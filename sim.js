@@ -23,54 +23,81 @@ const CFG = {
 };
 
 /* ==========================================================================
- *  2. PLAN RÉEL — coordonnées reprises du plan Orly (grille du fichier Excel)
- *     g:[col_départ, ligne_départ, col_fin, ligne_fin]
- *     Haut (lignes basses) = quais camions / réception ; bas = intérieur.
+ *  2. PLAN RÉEL D'ORLY
+ *     Le fond est le plan d'architecte lui-même (MAP_ORY.xlsx), découpé en 12
+ *     tuiles. Les coordonnées ci-dessous sont en pixels du plan d'origine :
+ *     elles proviennent des ancrages du fichier (colonne = 82 px,
+ *     ligne = 14,4 pt = 19,2 px), donc zones et fond sont alignés par
+ *     construction.
  * ==========================================================================*/
-// Ateliers = stations de simulation (clé = id moteur)
+const TILES = [
+  { n: 1, x:    0.0, y:   14.7, w:1833.9, h:792.6 }, { n: 2, x:1826.7, y:   0.0, w:1625.9, h:821.5 },
+  { n: 3, x: 3437.2, y:   21.9, w:1884.1, h:794.5 }, { n: 4, x:  24.0, y: 799.2, w:1606.0, h:741.4 },
+  { n: 5, x: 1630.0, y:  803.2, w:1843.3, h:757.2 }, { n: 6, x:3470.7, y: 793.2, w:1607.3, h:763.1 },
+  { n: 7, x:   12.0, y: 1548.0, w:1613.5, h:765.1 }, { n: 8, x:1578.0, y:1545.6, w:1848.0, h:762.5 },
+  { n: 9, x: 3434.0, y: 1557.2, w:1882.0, h:754.9 }, { n:10, x:   0.0, y:2310.0, w:1622.0, h:763.1 },
+  { n:11, x: 1570.0, y: 2302.8, w:1866.0, h:769.3 }, { n:12, x:3426.0, y:2304.0, w:1894.0, h:750.9 }
+];
+// Cadrage sur le bâtiment
+const VUE = { x:300, y:320, w:4340, h:2140 };
+
+/* Ateliers = stations de simulation (clé = id moteur).
+ * `reel:true` => boîte reprise telle quelle des annotations du plan.
+ * `approx:true` => emplacement estimé, à confirmer (zone non annotée). */
 const ZONES = {
-  quais:    { nom:'QUAIS · RÉCEPTION MARCHANDISES', g:[6,30,52,39], sink:true,
+  quais:    { nom:'QUAIS · RÉCEPTION', x:700, y:330, w:1960, h:180, sink:true, approx:true,
               sous:['camions : départ trolleys / retour vols sales'] },
-  handling: { nom:'CF DÉPART FOOD', g:[18,40,28,47], buffer:true, sous:['trolleys prêts → camion'] },
-  armement: { nom:'ARMEMENT', g:[37,41,45,55], staff:'armement', sous:['trolleys non-food'] },
-  prepa:    { nom:'MONTAGE', g:[19,47,31,64], staff:'prepa', robot:true, sous:['dressage plateaux','montage trolleys'] },
-  appros:   { nom:'RÉCEPTION / APPROS', g:[41,46,50,68], staff:'appros', sous:['réceptions & commandes'] },
-  magasin:  { nom:'MAGASIN', g:[50,54,55,66], staff:'magasin', sous:['produit compagnie'] },
-  decontam: { nom:'LÉGUMERIE', g:[26,72,33,81], staff:'decontam', sous:['lavage / décontamination'] },
-  cuisine:  { nom:'CUISINE', g:[20,82,28,101], staff:'cuisine', sous:['tranche · froid · chaud'] },
-  dotation: { nom:'DOTATION', g:[14,72,18,105], staff:'dotation', sous:['couverts + serviettes','assiettes propres'] },
-  bobduty:  { nom:'DUTY FREE', g:[9,79,13,104], staff:'bobduty', sous:['buy-on-board'] },
-  plonge:   { nom:'PLONGE', g:[14,108,24,124], tunnels:true, sous:['3 tunnels de lavage'] }
+  handling: { nom:'CF DÉPART FOOD', x:1528, y:673.1, w:808.6, h:230.3, buffer:true, reel:true,
+              sous:['trolleys prêts → camion'] },
+  appros:   { nom:'RÉCEPTION / APPROS', x:2680, y:560, w:640, h:250, staff:'appros', approx:true,
+              sous:['réceptions & commandes'] },
+  armement: { nom:'ARMEMENT', x:3065.8, y:755.1, w:317.9, h:296, staff:'armement', reel:true,
+              sous:['trolleys non-food'] },
+  prepa:    { nom:'MONTAGE', x:2180, y:900, w:400, h:350, staff:'prepa', robot:true, reel:true,
+              sous:['dressage plateaux','montage trolleys'] },
+  magasin:  { nom:'MAGASIN', x:4009.3, y:1052.8, w:486.7, h:140, staff:'magasin', reel:true,
+              sous:['produit compagnie'] },
+  dotation: { nom:'DOTATION', x:1156, y:1387.9, w:348, h:629.9, staff:'dotation', reel:true,
+              sous:['couverts + serviettes','assiettes propres'] },
+  decontam: { nom:'LÉGUMERIE', x:2555.1, y:1446.3, w:165.7, h:115.2, staff:'decontam', reel:true,
+              sous:['lavage / décontamination'] },
+  bobduty:  { nom:'DUTY FREE', x:787.3, y:1519.5, w:348, h:492, staff:'bobduty', reel:true,
+              sous:['buy-on-board'] },
+  cuisine:  { nom:'CUISINE', x:1900, y:1560, w:280, h:520, staff:'cuisine', approx:true,
+              sous:['tranche · froid · chaud'] },
+  plonge:   { nom:'PLONGE', x:1180, y:2090, w:420, h:330, tunnels:true, approx:true,
+              sous:['3 tunnels de lavage'] }
 };
 
-// Stockages / chambres froides / locaux = zones passives (fidélité au plan réel)
+/* Stockages, chambres froides et locaux : repris tels quels du plan. */
 const STORAGES = [
-  { l:'CF départ armement',      g:[10,40,13,66], cat:'cf' },
-  { l:'Montage KSO',             g:[27,47,28,54], cat:'sub' },
-  { l:'Sortie KSO',              g:[28,48,31,56], cat:'sub' },
-  { l:'Congélateur KSO / chaude',g:[28,36,31,40], cat:'gel' },
-  { l:'SAS plaquage congelé',    g:[34,39,36,48], cat:'gel' },
-  { l:'Congélateur',             g:[34,48,36,71], cat:'gel' },
-  { l:'CF + BOF 1',              g:[32,50,33,60], cat:'cf' },
-  { l:'CF charcuterie',          g:[32,61,33,66], cat:'cf' },
-  { l:'CF Fruits & Légumes',     g:[27,65,31,71], cat:'cf' },
-  { l:'CF sortie cuisine',       g:[32,67,33,71], cat:'cf' },
-  { l:'CF sortie matière prépa', g:[27,71,30,78], cat:'cf' },
-  { l:'CF Jour (tranché/décont.)',g:[29,82,30,95], cat:'cf' },
-  { l:'CF intermédiaire',        g:[28,84,30,95], cat:'cf' },
-  { l:'Refroidissement / ss-vide',g:[26,95,28,101],cat:'cf' },
-  { l:'CF sous-vide',            g:[28,96,30,102], cat:'cf' },
-  { l:'CF 4e & 5e gamme',        g:[34,99,36,108], cat:'cf' },
-  { l:'CF PEQ tranche cuisine',  g:[32,102,33,109],cat:'cf' },
-  { l:'Local produit chimique',  g:[34,109,36,112],cat:'loc' },
-  { l:'Bureau maintenance',      g:[29,113,30,125],cat:'loc' },
-  { l:'Local QHSE',              g:[30,113,32,125],cat:'loc' },
-  { l:'Réserve sèche',           g:[32,113,36,125],cat:'sec' },
-  { l:'Aire de stockage',        g:[36,80,41,100], cat:'aire' },
-  { l:'Aire de stockage',        g:[50,80,55,96],  cat:'aire' },
-  { l:'Aire de stockage',        g:[47,106,55,125],cat:'aire' },
-  { l:'Stockage compagnie',      g:[4,79,9,105],   cat:'aire' },
-  { l:'Armement — zone retour',  g:[10,113,13,126],cat:'sub' }
+  { l:'CF départ armement',        x:850,    y:680.6,  w:289.8, h:593.3, cat:'cf' },
+  { l:'Congélateur (KSO + cuisine chaude)', x:2355.8, y:692.9, w:204.5, h:227.4, cat:'gel' },
+  { l:'SAS plaquage produit congelé', x:2793.9, y:750.8, w:217, h:184.6, cat:'gel' },
+  { l:'Montage KSO',               x:2216.7, y:914.1,  w:142.1, h:131.6, cat:'sub' },
+  { l:'Sortie KSO',                x:2368.6, y:926.9,  w:186.5, h:152.5, cat:'sub' },
+  { l:'Congélateur',               x:2845.3, y:936.8,  w:128,   h:581.3, cat:'gel' },
+  { l:'CF + BOF',                  x:2637.4, y:978.4,  w:148.8, h:184.3, cat:'cf' },
+  { l:'Réserve local Montage (mise à dispo montage + pain)', x:2270.3, y:1085.3, w:282.8, h:166, cat:'sub' },
+  { l:'CF charcuterie',            x:2636.7, y:1177.4, w:146,   h:99.2,  cat:'cf' },
+  { l:'CF Fruits & Légumes',       x:2267.8, y:1257.8, w:289.6, h:111.5, cat:'cf' },
+  { l:'CF sortie cuisine',         x:2638.7, y:1292.3, w:148.1, h:80.2,  cat:'cf' },
+  { l:'CF sortie matière pour prépa montage', x:2272.6, y:1377.7, w:220.2, h:137.9, cat:'cf' },
+  { l:'Stockage compagnie',        x:383.1,  y:1533.8, w:380.3, h:492.9, cat:'aire' },
+  { l:'Aire de stockage',          x:3033.3, y:1540,   w:390,   h:453.6, cat:'aire' },
+  { l:'Aire de stockage',          x:4132,   y:1544,   w:408.7, h:313.9, cat:'aire' },
+  { l:'CF Jour (tranché et décontaminé)', x:2420.1, y:1565.3, w:120.1, h:259.5, cat:'cf' },
+  { l:'CF intermédiaire (prépa montage + produit fini)', x:2244.9, y:1620.2, w:165.7, h:204.9, cat:'cf' },
+  { l:'Refroidissement et sous-vide', x:2194.4, y:1840.6, w:133.6, h:111.2, cat:'cf' },
+  { l:'CF sous-vide',              x:2338.4, y:1842.1, w:200.9, h:117.8, cat:'cf' },
+  { l:'CF 4e et 5e gamme',         x:2789.2, y:1915.3, w:228,   h:176.8, cat:'cf' },
+  { l:'CF PEQ tranche cuisine',    x:2624.3, y:1965.2, w:111.8, h:139.2, cat:'cf' },
+  { l:'Aire de stockage',          x:3890,   y:2039.2, w:658.7, h:381.3, cat:'aire' },
+  { l:'Local produit chimique',    x:2793.8, y:2095,   w:218.2, h:70.7,  cat:'loc' },
+  { l:'Bureau maintenance',        x:2397.3, y:2174.3, w:108.6, h:238,   cat:'loc' },
+  { l:'Local QHSE (produit hygiène)', x:2522.3, y:2172.2, w:108, h:241.2, cat:'loc' },
+  { l:'Réserve sèche',             x:2651.5, y:2175.9, w:302.2, h:241.8, cat:'sec' },
+  { l:'Armement — zone retour',    x:915.2,  y:2182.3, w:208,   h:242.7, cat:'sub' }
 ];
 
 /* Flux fonctionnels (graphe de précédences §3), entre ateliers. */
@@ -82,13 +109,12 @@ const FLUX = [
 ];
 const FLUX_RETOUR = [ ['quais','plonge'], ['quais','armement'] ];
 
-/* Transformation grille -> coordonnées SVG (le plan réel est en paysage). */
-const T = { x: c => (c - 4) * 20 + 24, y: r => (r - 30) * 8.2 + 20 };
-function boite(g) { return { x:T.x(g[0]), y:T.y(g[1]), w:T.x(g[2]) - T.x(g[0]), h:T.y(g[3]) - T.y(g[1]) }; }
-function centre(id) { const b = boite(ZONES[id].g); return { x:b.x + b.w/2, y:b.y + b.h/2 }; }
+/* Les coordonnées sont déjà en pixels du plan : pas de transformation. */
+function boite(z) { return { x:z.x, y:z.y, w:z.w, h:z.h }; }
+function centre(id) { const b = ZONES[id]; return { x:b.x + b.w/2, y:b.y + b.h/2 }; }
 // Point sur le bord d'une boîte en direction d'une cible
 function bord(id, cible) {
-  const b = boite(ZONES[id].g), cx = b.x + b.w/2, cy = b.y + b.h/2;
+  const b = ZONES[id], cx = b.x + b.w/2, cy = b.y + b.h/2;
   const dx = cible.x - cx, dy = cible.y - cy;
   if (dx === 0 && dy === 0) return { x:cx, y:cy };
   const sx = dx !== 0 ? (b.w/2) / Math.abs(dx) : Infinity;
@@ -278,69 +304,110 @@ function svgEl(t, a) { const e = document.createElementNS(SVGNS, t); for (const 
 
 function construirePlan() {
   while (svg.firstChild) svg.removeChild(svg.firstChild);
+  svg.setAttribute('viewBox', VUE.x + ' ' + VUE.y + ' ' + VUE.w + ' ' + VUE.h);
+
+  // Conteneur zoomable/déplaçable
+  const gVue = svgEl('g', { id:'viewport' }); svg.appendChild(gVue); Sim._gVue = gVue;
+
+  // Fond : le plan d'architecte réel (12 tuiles)
+  const gFond = svgEl('g', { id:'plan-fond' }); gVue.appendChild(gFond);
+  TILES.forEach(t => {
+    gFond.appendChild(svgEl('image', { href:'assets/plan/tuile' + t.n + '.png',
+      x:t.x, y:t.y, width:t.w, height:t.h, preserveAspectRatio:'none' }));
+  });
 
   // Arêtes de flux
-  const gEdges = svgEl('g', {}); svg.appendChild(gEdges);
+  const gEdges = svgEl('g', {}); gVue.appendChild(gEdges);
   Sim._edges = {};
   FLUX.concat(FLUX_RETOUR.map(e => e.concat('R'))).forEach(fl => {
     const [a, b] = fl, retour = fl[2] === 'R', id = a + '_' + b;
     const pa = bord(a, centre(b)), pb = bord(b, centre(a));
     const mx = (pa.x + pb.x) / 2, my = (pa.y + pb.y) / 2;
     const dx = pb.x - pa.x, dy = pb.y - pa.y, len = Math.hypot(dx, dy) || 1;
-    const cx = mx - dy / len * 26, cy = my + dx / len * 26; // courbure
+    const cx = mx - dy / len * 130, cy = my + dx / len * 130; // courbure
     const path = svgEl('path', { id:'edge-' + id, class:'edge' + (retour ? ' retour' : ''), d:`M ${pa.x} ${pa.y} Q ${cx} ${cy} ${pb.x} ${pb.y}` });
     gEdges.appendChild(path);
     // flèche
-    const ang = Math.atan2(pb.y - cy, pb.x - cx);
-    gEdges.appendChild(svgEl('path', { class:'edge' + (retour ? ' retour' : ''),
-      d:`M ${pb.x} ${pb.y} L ${pb.x-9*Math.cos(ang-0.4)} ${pb.y-9*Math.sin(ang-0.4)} M ${pb.x} ${pb.y} L ${pb.x-9*Math.cos(ang+0.4)} ${pb.y-9*Math.sin(ang+0.4)}` }));
+    const ang = Math.atan2(pb.y - cy, pb.x - cx), F = 42;
+    gEdges.appendChild(svgEl('path', { class:'edge fleche' + (retour ? ' retour' : ''),
+      d:`M ${pb.x} ${pb.y} L ${pb.x-F*Math.cos(ang-0.4)} ${pb.y-F*Math.sin(ang-0.4)} M ${pb.x} ${pb.y} L ${pb.x-F*Math.cos(ang+0.4)} ${pb.y-F*Math.sin(ang+0.4)}` }));
   });
 
-  // Stockages / chambres froides (passifs, dessinés SOUS les ateliers)
-  const gSto = svgEl('g', {}); svg.appendChild(gSto);
+  // Stockages / chambres froides (repris du plan, sous les ateliers)
+  const gSto = svgEl('g', {}); gVue.appendChild(gSto);
   STORAGES.forEach(s => {
-    const b = boite(s.g);
     const g = svgEl('g', { class:'sto sto-' + s.cat });
-    g.appendChild(svgEl('rect', { x:b.x, y:b.y, width:b.w, height:b.h, rx:3 }));
+    g.appendChild(svgEl('rect', { x:s.x, y:s.y, width:s.w, height:s.h, rx:8 }));
     const ti = svgEl('title', {}); ti.textContent = s.l; g.appendChild(ti);
-    if (b.w >= 46) {
-      const lbl = svgEl('text', { class:'sto-txt', x:b.x+b.w/2, y:b.y+b.h/2+3, 'text-anchor':'middle' });
-      lbl.textContent = s.l.length > 18 ? s.l.slice(0,17)+'…' : s.l; g.appendChild(lbl);
-    } else {
-      const lbl = svgEl('text', { class:'sto-txt sto-code', x:b.x+b.w/2, y:b.y+b.h/2+3, 'text-anchor':'middle' });
-      lbl.textContent = s.cat === 'gel' ? '❄' : (s.cat === 'cf' ? 'CF' : '');
-      g.appendChild(lbl);
-    }
+    // libellé affiché seulement en zoom (sinon le plan devient illisible)
+    const lbl = svgEl('text', { class:'sto-txt', x:s.x + s.w/2, y:s.y + s.h/2 + 10, 'text-anchor':'middle' });
+    lbl.textContent = s.l; g.appendChild(lbl);
     gSto.appendChild(g);
   });
 
-  // Ateliers (au-dessus des stockages)
-  const gZones = svgEl('g', {}); svg.appendChild(gZones);
+  // Ateliers (au-dessus)
+  const gZones = svgEl('g', {}); gVue.appendChild(gZones);
   Object.keys(ZONES).forEach(id => {
-    const z = ZONES[id], b = boite(z.g);
-    const g = svgEl('g', { class:'zone', 'data-id':id });
-    g.appendChild(svgEl('rect', { class:'fond', x:b.x, y:b.y, width:b.w, height:b.h, rx:6 }));
-    const t = svgEl('text', { class:'titre', x:b.x+8, y:b.y+16 }); t.textContent = z.nom; g.appendChild(t);
-    (z.sous||[]).forEach((s,i) => { const st = svgEl('text', { class:'sous', x:b.x+8, y:b.y+30+i*11 }); st.textContent = s; g.appendChild(st); });
+    const z = ZONES[id], b = boite(z);
+    const g = svgEl('g', { class:'zone' + (z.approx ? ' approx' : ''), 'data-id':id });
+    g.appendChild(svgEl('rect', { class:'fond', x:b.x, y:b.y, width:b.w, height:b.h, rx:10 }));
+    const ti = svgEl('title', {}); ti.textContent = z.nom + (z.approx ? ' (emplacement à confirmer)' : ''); g.appendChild(ti);
+    const t = svgEl('text', { class:'titre', x:b.x+14, y:b.y+56 }); t.textContent = z.nom; g.appendChild(t);
+    (z.sous||[]).forEach((s,i) => {
+      const st = svgEl('text', { class:'sous', x:b.x+14, y:b.y+96+i*38 }); st.textContent = s; g.appendChild(st);
+    });
     if (!z.sink && !z.buffer) {
-      g.appendChild(svgEl('rect', { class:'barre-fond', x:b.x+8, y:b.y+b.h-11, width:b.w-16, height:6, rx:3 }));
-      const jauge = svgEl('rect', { class:'barre-jauge', x:b.x+8, y:b.y+b.h-11, width:0, height:6, rx:3, fill:'var(--vert)' });
+      g.appendChild(svgEl('rect', { class:'barre-fond', x:b.x+14, y:b.y+b.h-30, width:b.w-28, height:16, rx:8 }));
+      const jauge = svgEl('rect', { class:'barre-jauge', x:b.x+14, y:b.y+b.h-30, width:0, height:16, rx:8, fill:'var(--vert)' });
       g.appendChild(jauge); zoneEls[id] = { g, jauge, rect:g.querySelector('rect.fond'), b };
     } else zoneEls[id] = { g, rect:g.querySelector('rect.fond'), b };
-    if (z.robot) ajoutRessource(g, b.x+b.w-92, b.y+b.h-46, 'ROBOT', 'robot');
-    if (z.tunnels) ajoutRessource(g, b.x+8, b.y+b.h-46, 'TUNNELS', 'tunnels');
-    const badge = svgEl('text', { class:'goulot-badge', x:b.x+b.w-8, y:b.y+16, 'text-anchor':'end' }); g.appendChild(badge); zoneEls[id].badge = badge;
+    if (z.robot) ajoutRessource(g, b.x+b.w-210, b.y+b.h-130, 'ROBOT', 'robot');
+    if (z.tunnels) ajoutRessource(g, b.x+14, b.y+b.h-130, 'TUNNELS', 'tunnels');
+    const badge = svgEl('text', { class:'goulot-badge', x:b.x+b.w-14, y:b.y+56, 'text-anchor':'end' }); g.appendChild(badge); zoneEls[id].badge = badge;
     g.addEventListener('click', () => selectionner(id));
     gZones.appendChild(g);
   });
 
-  const gTok = svgEl('g', { id:'tokens' }); svg.appendChild(gTok); Sim._gTok = gTok;
+  const gTok = svgEl('g', { id:'tokens' }); gVue.appendChild(gTok); Sim._gTok = gTok;
+  initZoom();
+}
+
+/* --- Zoom / déplacement --------------------------------------------------- */
+let vk = 1, vtx = 0, vty = 0;
+function appliquerVue() {
+  Sim._gVue.setAttribute('transform', 'translate(' + vtx + ' ' + vty + ') scale(' + vk + ')');
+  svg.classList.toggle('zoomed', vk >= 1.7);
+  const z = document.getElementById('zoom-val'); if (z) z.textContent = Math.round(vk*100) + '%';
+}
+function ptSvg(e) {
+  const m = svg.getScreenCTM(); if (!m) return { x:0, y:0 };
+  const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
+  return p.matrixTransform(m.inverse());
+}
+function zoomer(f, p) {
+  const nk = Math.min(8, Math.max(0.5, vk * f));
+  if (!p) p = { x:VUE.x + VUE.w/2, y:VUE.y + VUE.h/2 };
+  const wx = (p.x - vtx) / vk, wy = (p.y - vty) / vk;
+  vk = nk; vtx = p.x - wx*vk; vty = p.y - wy*vk;
+  appliquerVue();
+}
+function initZoom() {
+  svg.addEventListener('wheel', e => { e.preventDefault(); zoomer(e.deltaY < 0 ? 1.18 : 1/1.18, ptSvg(e)); }, { passive:false });
+  let drag = null;
+  svg.addEventListener('pointerdown', e => { drag = { p:ptSvg(e), tx:vtx, ty:vty }; svg.setPointerCapture(e.pointerId); svg.style.cursor = 'grabbing'; });
+  svg.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const p = ptSvg(e); vtx = drag.tx + (p.x - drag.p.x); vty = drag.ty + (p.y - drag.p.y); appliquerVue();
+  });
+  const fin = e => { drag = null; svg.style.cursor = ''; };
+  svg.addEventListener('pointerup', fin); svg.addEventListener('pointercancel', fin);
+  appliquerVue();
 }
 
 function ajoutRessource(g, x, y, label, type) {
-  g.appendChild(svgEl('rect', { class:'ressource-box', x, y, width:84, height:36, rx:5 }));
-  const l = svgEl('text', { class:'ressource-txt', x:x+7, y:y+14 }); l.textContent = label; g.appendChild(l);
-  const v = svgEl('text', { class:'ressource-val', x:x+7, y:y+29, id:'res-' + type }); v.textContent = '—'; g.appendChild(v);
+  g.appendChild(svgEl('rect', { class:'ressource-box', x, y, width:196, height:96, rx:10 }));
+  const l = svgEl('text', { class:'ressource-txt', x:x+16, y:y+36 }); l.textContent = label; g.appendChild(l);
+  const v = svgEl('text', { class:'ressource-val', x:x+16, y:y+78, id:'res-' + type }); v.textContent = '—'; g.appendChild(v);
 }
 
 let selection = null;
@@ -353,7 +420,7 @@ function selectionner(id) {
 function spawnToken(edgeId, color) {
   if (!edgeId || tokens.length > 90) return;
   const path = document.getElementById('edge-' + edgeId); if (!path) return;
-  const c = svgEl('circle', { r:4, fill:color, opacity:0.95 }); Sim._gTok.appendChild(c);
+  const c = svgEl('circle', { class:'token', r:17, fill:color }); Sim._gTok.appendChild(c);
   tokens.push({ el:c, path, len:path.getTotalLength(), t:0, v:0.012 + Math.random()*0.006 });
 }
 function animerTokens() {
@@ -514,6 +581,13 @@ function initControles() {
   document.getElementById('snap-clear').addEventListener('click', () => { snaps = {}; majCompare(); });
   document.getElementById('imp-vols').addEventListener('change', importVols);
   window.addEventListener('resize', dessinerChart);
+  // zoom / fond de plan
+  document.getElementById('zoom-in').addEventListener('click', () => zoomer(1.35));
+  document.getElementById('zoom-out').addEventListener('click', () => zoomer(1/1.35));
+  document.getElementById('zoom-reset').addEventListener('click', () => { vk = 1; vtx = 0; vty = 0; appliquerVue(); });
+  document.getElementById('fond-plan').addEventListener('change', e => {
+    svg.classList.toggle('sans-fond', !e.target.checked);
+  });
   initTheme();
 }
 

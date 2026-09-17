@@ -30,17 +30,32 @@ le choix est mémorisé.
 
 ## 🗺️ Le plan (cœur du livrable)
 
-Le plan est **reconstruit fidèlement à partir de la carte réelle de l'unité**
-(`MAP_ORY.xlsx`) : positions, libellés et chambres froides sont ceux du plan
-Orly. En haut les **quais / réception marchandises** (camions), en bas
-l'intérieur de l'unité.
+Le fond est **le plan d'architecte réel de l'unité** (`docs/MAP_ORY.xlsx`),
+découpé en 12 tuiles et réassemblé (`assets/plan/`). Les zones interactives sont
+posées par-dessus, en translucide, pour laisser voir les locaux.
 
-Ateliers (stations de simulation) : **Réception/Appros, Magasin, Cuisine,
-Légumerie, Montage (dressage + robot), Dotation, Duty free, Armement, Plonge**,
-plus le **CF départ food**. Sont aussi dessinées **toutes les chambres froides,
-congélateurs, aires de stockage et locaux** (CF + BOF, CF charcuterie, CF Jour,
-CF PEQ tranche cuisine, congélateur, réserve sèche, local QHSE, etc.) —
-survolez-les pour le nom complet.
+L'alignement est **exact par construction** : les tuiles et les zones sont
+placées à partir des mêmes ancrages du fichier source (colonne = 82 px,
+ligne = 14,4 pt = 19,2 px).
+
+**Zoom & déplacement** : molette ou boutons `−` / `+` / `⟲`, glisser pour se
+déplacer. Au-delà de ~170 % les libellés des chambres froides apparaissent et
+le plan CAD (noms de pièces, cotes, surfaces) devient lisible. La case
+**Fond de plan** masque le CAD pour ne garder que le schéma des flux.
+
+![Vue zoomée](assets/apercu-zoom.png)
+
+### Zones
+
+Reprises telles quelles des annotations du plan : **CF départ food, Armement,
+Montage, Magasin, Dotation, Légumerie, Duty free**, plus toutes les
+**chambres froides, congélateurs, aires de stockage et locaux**
+(CF + BOF, CF charcuterie, CF Jour, CF intermédiaire, CF PEQ tranche cuisine,
+congélateur, réserve sèche, local QHSE…) — survol = nom complet.
+
+> ⚠️ Quatre zones ne sont **pas annotées** sur le plan source et sont donc
+> **placées approximativement** (affichées en pointillés) : **Quais/Réception,
+> Réception/Appros, Cuisine, Plonge**. À corriger avec les emplacements réels.
 
 - **Tokens animés** circulant le long des arêtes du graphe de flux.
 - **Code couleur de congestion** par atelier : 🟢 fluide → 🟠 chargé → 🔴 goulot.
@@ -91,10 +106,12 @@ vols** :
 
 ## 🗂️ Structure
 
-| Fichier          | Rôle                                                         |
-|------------------|--------------------------------------------------------------|
-| `index.html`     | Structure, thème et disposition (plan + dashboard + leviers) |
-| `sim.js`         | Données d'exemple, moteur de simulation, rendu SVG, contrôles |
+| Fichier            | Rôle                                                          |
+|--------------------|---------------------------------------------------------------|
+| `index.html`       | Structure, thème et disposition (plan + dashboard + leviers)  |
+| `sim.js`           | Données d'exemple, moteur, rendu SVG, zoom, contrôles         |
+| `assets/plan/`     | Les 12 tuiles du plan d'architecte réel                       |
+| `docs/MAP_ORY.xlsx`| Carte source fournie par Newrest (référence)                  |
 
 Paramètres regroupés en tête de `sim.js` (bloc `CFG`) : cadence robot, tunnels,
 délai de chargement, effectifs, fenêtre de la journée.
