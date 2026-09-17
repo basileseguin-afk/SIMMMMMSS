@@ -85,13 +85,26 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
 .zone{cursor:pointer}
 .zone rect.fond{fill:var(--bg3);stroke:var(--bordure2);stroke-width:1.5;transition:fill .4s,stroke .4s}
 .zone.saturee rect.fond{stroke-width:2.5}
-.zone text.titre{fill:var(--txt);font-weight:800;font-size:15px}
-.zone text.sous{fill:var(--txt3);font-size:10.5px}
+.zone text.titre{fill:var(--txt);font-weight:800;font-size:12px}
+.zone text.sous{fill:var(--txt3);font-size:9px}
 .zone .barre-fond{fill:#0a0e14}
 .zone .barre-jauge{transition:width .3s,fill .4s}
 .zone.selection rect.fond{stroke:var(--accent);stroke-width:3}
 .storage{fill:#0e1620;stroke:#2b3a4d;stroke-width:1}
 .storage-txt{fill:var(--txt3);font-size:9px}
+/* stockages passifs / chambres froides */
+.sto rect{stroke-width:1;transition:fill .2s}
+.sto-txt{font-size:8px;fill:var(--txt3);pointer-events:none}
+.sto-code{fill:#6f8bb0;font-size:9px}
+.sto{cursor:help}
+.sto-cf rect{fill:#122232;stroke:#274766}
+.sto-gel rect{fill:#0e2634;stroke:#1f6d86}
+.sto-gel .sto-txt,.sto-gel .sto-code{fill:#4fb3cc}
+.sto-aire rect{fill:#171e28;stroke:#2c3846}
+.sto-sec rect{fill:#221d14;stroke:#4a3d24}
+.sto-loc rect{fill:#14181f;stroke:#283040}
+.sto-sub rect{fill:#1a2432;stroke:#33445a;stroke-dasharray:3 2}
+.sto:hover rect{stroke:var(--accent);stroke-width:1.5}
 .edge{fill:none;stroke:#31425a;stroke-width:2;opacity:.55}
 .edge.retour{stroke-dasharray:5 5;stroke:#5a3f6e}
 .edge-actif{stroke:var(--accent);opacity:.9}
@@ -224,10 +237,10 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
         <span><span class="pastille" style="background:var(--orange)"></span>chargé</span>
         <span><span class="pastille" style="background:var(--rouge)"></span>goulot</span>
       </div>
-      <div class="boussole"><b>↑ N</b>Nord</div>
+      <div class="boussole"><b>↑</b>Quais / piste</div>
     </div>
     <div class="plan-wrap">
-      <svg id="plan" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid meet"></svg>
+      <svg id="plan" viewBox="0 0 1075 835" preserveAspectRatio="xMidYMid meet"></svg>
     </div>
   </div>
 
