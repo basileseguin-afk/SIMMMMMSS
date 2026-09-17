@@ -143,17 +143,17 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 
 /* zones actives : translucides pour laisser voir le plan dessous */
 .zone{cursor:pointer}
-.zone rect.fond{fill:var(--zone-fill);fill-opacity:.30;stroke:var(--zone-stroke);stroke-width:7;transition:fill .35s,stroke .35s}
-.zone.c-ok   rect.fond{fill:var(--ok-stroke);  stroke:var(--ok-stroke)}
-.zone.c-warn rect.fond{fill:var(--warn-stroke);stroke:var(--warn-stroke);fill-opacity:.34}
-.zone.c-bad  rect.fond{fill:var(--bad-stroke); stroke:var(--bad-stroke);fill-opacity:.40;stroke-width:11}
-.zone.approx rect.fond{stroke-dasharray:22 14}
+.zone .fond{fill:var(--zone-fill);fill-opacity:.30;stroke:var(--zone-stroke);stroke-width:7;transition:fill .35s,stroke .35s}
+.zone.c-ok   .fond{fill:var(--ok-stroke);  stroke:var(--ok-stroke)}
+.zone.c-warn .fond{fill:var(--warn-stroke);stroke:var(--warn-stroke);fill-opacity:.34}
+.zone.c-bad  .fond{fill:var(--bad-stroke); stroke:var(--bad-stroke);fill-opacity:.40;stroke-width:11}
+.zone.approx .fond{stroke-dasharray:22 14}
 .zone text{paint-order:stroke fill;stroke:var(--halo);stroke-width:9px;stroke-linejoin:round}
 .zone text.titre{fill:var(--zone-txt);font-weight:800;font-size:46px}
 .zone text.sous{fill:var(--zone-sous);font-size:30px;font-weight:600}
 .zone .barre-fond{fill:var(--jauge-bg);stroke:none}
 .zone .barre-jauge{transition:width .3s,fill .35s;stroke:none}
-.zone.selection rect.fond{stroke:var(--accent);stroke-width:13}
+.zone.selection .fond{stroke:var(--accent);stroke-width:13}
 .goulot-badge{fill:var(--rouge);font-weight:800;font-size:38px}
 .ressource-box{fill:var(--bg3);stroke:var(--bordure2);stroke-width:4;fill-opacity:.94}
 .ressource-txt{fill:var(--txt2);font-size:26px;font-weight:700;stroke:none}
@@ -193,9 +193,13 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 
 /* poignées de redimensionnement sur le plan */
 #plan.edition .zone{cursor:move}
-#plan.edition .zone rect.fond{fill-opacity:.22}
+#plan.edition .zone .fond{fill-opacity:.22}
 .poignee{fill:var(--accent);stroke:#fff;stroke-width:3;cursor:nwse-resize}
 .poignee.ne,.poignee.sw{cursor:nesw-resize}
+.poignee.sommet{fill:var(--accent);cursor:move}
+.poignee-ajout{fill:var(--vert);stroke:#fff;cursor:copy;opacity:.75}
+.poignee-ajout:hover{opacity:1}
+.trace-poly{fill:var(--accent);fill-opacity:.2;stroke:var(--accent);stroke-width:6;stroke-dasharray:18 12}
 #plan.tracage{cursor:crosshair}
 .trace-rect{fill:var(--accent);fill-opacity:.25;stroke:var(--accent);stroke-width:6;stroke-dasharray:18 12}
 
@@ -282,9 +286,14 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
           <label>Hauteur <input type="number" id="ez-h" step="1"></label>
         </div>
         <div class="row-btns">
-          <button class="btn btn-sm" id="ez-redraw">⬚ Redessiner</button>
+          <button class="btn btn-sm" id="ez-redraw">⬚ Rectangle</button>
+          <button class="btn btn-sm" id="ez-poly">⬠ Tracer une forme</button>
+        </div>
+        <div class="row-btns" style="margin-top:6px">
+          <button class="btn btn-sm" id="ez-toshape">⬠ Convertir</button>
           <button class="btn btn-sm" id="ez-reset">↺ Cette zone</button>
         </div>
+        <div class="mini-note" id="ez-forme" style="margin-top:7px"></div>
       </div>
 
       <div class="edit-liste" id="edit-liste"></div>
