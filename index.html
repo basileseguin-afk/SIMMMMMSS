@@ -35,6 +35,7 @@
   --sub-f:#e8eff7; --sub-s:#9ab2cb; --sub-t:#2c4560;
   /* chart */
   --chart-grid:rgba(19,32,48,.10); --chart-line:#0b6fa4; --chart-aire:rgba(124,58,237,.16); --chart-now:rgba(19,32,48,.32);
+  --halo:#ffffff;
   --ombre:0 1px 3px rgba(19,32,48,.10), 0 4px 14px rgba(19,32,48,.07);
   --r:10px; --r2:6px;
 }
@@ -58,6 +59,7 @@
   --loc-f:#172029; --loc-s:#35485d; --loc-t:#9fb2c7;
   --sub-f:#1c2836; --sub-s:#547093; --sub-t:#c3d6ea;
   --chart-grid:rgba(255,255,255,.09); --chart-line:#4cb8ef; --chart-aire:rgba(185,140,245,.20); --chart-now:rgba(255,255,255,.35);
+  --halo:#0d141d;
   --ombre:0 4px 18px rgba(0,0,0,.45);
 }
 
@@ -132,38 +134,55 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 .plan-wrap{flex:1;position:relative;overflow:hidden}
 #plan{width:100%;height:100%;display:block}
 
-/* zones du plan */
-.zone{cursor:pointer}
-.zone rect.fond{fill:var(--zone-fill);stroke:var(--zone-stroke);stroke-width:1.8;transition:fill .35s,stroke .35s}
-.zone.c-ok   rect.fond{fill:var(--ok-fill);  stroke:var(--ok-stroke)}
-.zone.c-warn rect.fond{fill:var(--warn-fill);stroke:var(--warn-stroke)}
-.zone.c-bad  rect.fond{fill:var(--bad-fill); stroke:var(--bad-stroke);stroke-width:2.6}
-.zone text.titre{fill:var(--zone-txt);font-weight:800;font-size:13px}
-.zone text.sous{fill:var(--zone-sous);font-size:10.5px;font-weight:600}
-.zone .barre-fond{fill:var(--jauge-bg)}
-.zone .barre-jauge{transition:width .3s,fill .35s}
-.zone.selection rect.fond{stroke:var(--accent);stroke-width:3.4}
-.goulot-badge{fill:var(--rouge);font-weight:800;font-size:11.5px}
-.ressource-box{fill:var(--bg3);stroke:var(--bordure2);stroke-width:1.4}
-.ressource-txt{fill:var(--txt2);font-size:10px;font-weight:700}
-.ressource-val{fill:var(--txt);font-weight:800;font-size:13.5px}
+/* --- plan : fond CAD réel ------------------------------------------------- */
+#plan{cursor:grab;touch-action:none;background:#fff}
+:root[data-theme="dark"] #plan{background:#0d141d}
+#plan-fond{opacity:.92}
+:root[data-theme="dark"] #plan-fond{filter:invert(1) hue-rotate(180deg);opacity:.75}
+#plan.sans-fond #plan-fond{display:none}
 
-/* stockages passifs / chambres froides */
+/* zones actives : translucides pour laisser voir le plan dessous */
+.zone{cursor:pointer}
+.zone rect.fond{fill:var(--zone-fill);fill-opacity:.30;stroke:var(--zone-stroke);stroke-width:7;transition:fill .35s,stroke .35s}
+.zone.c-ok   rect.fond{fill:var(--ok-stroke);  stroke:var(--ok-stroke)}
+.zone.c-warn rect.fond{fill:var(--warn-stroke);stroke:var(--warn-stroke);fill-opacity:.34}
+.zone.c-bad  rect.fond{fill:var(--bad-stroke); stroke:var(--bad-stroke);fill-opacity:.40;stroke-width:11}
+.zone.approx rect.fond{stroke-dasharray:22 14}
+.zone text{paint-order:stroke fill;stroke:var(--halo);stroke-width:9px;stroke-linejoin:round}
+.zone text.titre{fill:var(--zone-txt);font-weight:800;font-size:46px}
+.zone text.sous{fill:var(--zone-sous);font-size:30px;font-weight:600}
+.zone .barre-fond{fill:var(--jauge-bg);stroke:none}
+.zone .barre-jauge{transition:width .3s,fill .35s;stroke:none}
+.zone.selection rect.fond{stroke:var(--accent);stroke-width:13}
+.goulot-badge{fill:var(--rouge);font-weight:800;font-size:38px}
+.ressource-box{fill:var(--bg3);stroke:var(--bordure2);stroke-width:4;fill-opacity:.94}
+.ressource-txt{fill:var(--txt2);font-size:26px;font-weight:700;stroke:none}
+.ressource-val{fill:var(--txt);font-weight:800;font-size:38px;stroke:none}
+
+/* stockages / chambres froides repris du plan */
 .sto{cursor:help}
-.sto rect{stroke-width:1.2}
-.sto-txt{font-size:9.5px;font-weight:600;pointer-events:none}
-.sto-code{font-size:10px;font-weight:800}
-.sto-cf   rect{fill:var(--cf-f);  stroke:var(--cf-s)}   .sto-cf   text{fill:var(--cf-t)}
-.sto-gel  rect{fill:var(--gel-f); stroke:var(--gel-s)}  .sto-gel  text{fill:var(--gel-t)}
-.sto-aire rect{fill:var(--aire-f);stroke:var(--aire-s)} .sto-aire text{fill:var(--aire-t)}
-.sto-sec  rect{fill:var(--sec-f); stroke:var(--sec-s)}  .sto-sec  text{fill:var(--sec-t)}
-.sto-loc  rect{fill:var(--loc-f); stroke:var(--loc-s)}  .sto-loc  text{fill:var(--loc-t)}
-.sto-sub  rect{fill:var(--sub-f); stroke:var(--sub-s);stroke-dasharray:3 2} .sto-sub text{fill:var(--sub-t)}
-.sto:hover rect{stroke:var(--accent);stroke-width:2}
+.sto rect{stroke-width:4;fill-opacity:.30}
+.sto-txt{font-size:26px;font-weight:700;pointer-events:none;display:none;
+         paint-order:stroke fill;stroke:var(--halo);stroke-width:7px;stroke-linejoin:round}
+#plan.zoomed .sto-txt{display:block}
+.sto-cf   rect{fill:var(--cf-s);  stroke:var(--cf-s)}   .sto-cf   text{fill:var(--cf-t)}
+.sto-gel  rect{fill:var(--gel-s); stroke:var(--gel-s)}  .sto-gel  text{fill:var(--gel-t)}
+.sto-aire rect{fill:var(--aire-s);stroke:var(--aire-s)} .sto-aire text{fill:var(--aire-t)}
+.sto-sec  rect{fill:var(--sec-s); stroke:var(--sec-s)}  .sto-sec  text{fill:var(--sec-t)}
+.sto-loc  rect{fill:var(--loc-s); stroke:var(--loc-s)}  .sto-loc  text{fill:var(--loc-t)}
+.sto-sub  rect{fill:var(--sub-s); stroke:var(--sub-s);stroke-dasharray:14 9} .sto-sub text{fill:var(--sub-t)}
+.sto:hover rect{stroke:var(--accent);stroke-width:8;fill-opacity:.45}
 
 /* arêtes de flux */
-.edge{fill:none;stroke:var(--edge);stroke-width:2.2;opacity:.75}
-.edge.retour{stroke-dasharray:6 4;stroke:var(--edge-retour)}
+.edge{fill:none;stroke:var(--edge);stroke-width:7;opacity:.85;pointer-events:none}
+.edge.retour{stroke-dasharray:22 14;stroke:var(--edge-retour)}
+.token{opacity:.98;stroke:var(--halo);stroke-width:3}
+
+/* contrôles de zoom */
+.zoom-ctrl{display:flex;align-items:center;gap:5px}
+.zoom-ctrl b{font-size:12px;min-width:42px;text-align:center;color:var(--txt2);font-variant-numeric:tabular-nums}
+.btn-mini{padding:3px 9px;font-size:14px;line-height:1.2;font-weight:800}
+.chk-mini{font-size:12px}
 
 /* --- Dashboard ------------------------------------------------------------*/
 .kpi-grille{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
@@ -285,6 +304,13 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
         <span><span class="pastille" style="background:var(--warn-stroke)"></span>chargé</span>
         <span><span class="pastille" style="background:var(--bad-stroke)"></span>goulot</span>
       </div>
+      <div class="zoom-ctrl">
+        <button class="btn btn-mini" id="zoom-out" title="Dézoomer">−</button>
+        <b id="zoom-val">100%</b>
+        <button class="btn btn-mini" id="zoom-in" title="Zoomer">+</button>
+        <button class="btn btn-mini" id="zoom-reset" title="Vue d'ensemble">⟲</button>
+      </div>
+      <label class="chk chk-mini"><input type="checkbox" id="fond-plan" checked> Fond de plan</label>
       <div class="boussole"><b>↑</b>Quais / piste</div>
     </div>
     <div class="plan-wrap">
