@@ -109,12 +109,46 @@ const FLUX = [
 ];
 const FLUX_RETOUR = [ ['quais','plonge'], ['quais','armement'] ];
 
-/* Les coordonnées sont déjà en pixels du plan : pas de transformation. */
-function boite(z) { return { x:z.x, y:z.y, w:z.w, h:z.h }; }
-function centre(id) { const b = ZONES[id]; return { x:b.x + b.w/2, y:b.y + b.h/2 }; }
-// Point sur le bord d'une boîte en direction d'une cible
+/* Les coordonnées sont déjà en pixels du plan : pas de transformation.
+ * Une zone est soit un rectangle (x,y,w,h), soit un polygone libre (pts).
+ * Dans les deux cas, boite() renvoie la boîte englobante, qui sert au
+ * placement des libellés, des jauges et des arêtes de flux. */
+function estPoly(z) { return !!(z.pts && z.pts.length >= 3); }
+function boite(z) {
+  if (estPoly(z)) {
+    const xs = z.pts.map(p => p[0]), ys = z.pts.map(p => p[1]);
+    const x = Math.min.apply(null, xs), y = Math.min.apply(null, ys);
+    return { x, y, w:Math.max.apply(null, xs) - x, h:Math.max.apply(null, ys) - y };
+  }
+  return { x:z.x, y:z.y, w:z.w, h:z.h };
+}
+/* Maintient x/y/w/h en phase avec les points d'un polygone. */
+function syncBoite(z) { const b = boite(z); z.x = b.x; z.y = b.y; z.w = b.w; z.h = b.h; }
+/* Déplace la zone entière. */
+function deplacerZone(z, dx, dy) {
+  if (estPoly(z)) { z.pts = z.pts.map(pt => [pt[0] + dx, pt[1] + dy]); syncBoite(z); }
+  else { z.x += dx; z.y += dy; }
+}
+/* Applique une nouvelle boîte englobante (un polygone est mis à l'échelle). */
+function appliquerBoite(z, nb) {
+  const b = boite(z);
+  if (estPoly(z)) {
+    const sx = b.w ? nb.w / b.w : 1, sy = b.h ? nb.h / b.h : 1;
+    z.pts = z.pts.map(pt => [nb.x + (pt[0] - b.x) * sx, nb.y + (pt[1] - b.y) * sy]);
+  }
+  z.x = nb.x; z.y = nb.y; z.w = nb.w; z.h = nb.h;
+}
+/* Tracé SVG de la zone. */
+function dZone(z) {
+  if (estPoly(z)) return 'M ' + z.pts.map(pt => pt[0] + ' ' + pt[1]).join(' L ') + ' Z';
+  const b = boite(z);
+  return 'M ' + b.x + ' ' + b.y + ' L ' + (b.x+b.w) + ' ' + b.y +
+         ' L ' + (b.x+b.w) + ' ' + (b.y+b.h) + ' L ' + b.x + ' ' + (b.y+b.h) + ' Z';
+}
+function centre(id) { const b = boite(ZONES[id]); return { x:b.x + b.w/2, y:b.y + b.h/2 }; }
+// Point sur le bord de la boîte englobante en direction d'une cible
 function bord(id, cible) {
-  const b = ZONES[id], cx = b.x + b.w/2, cy = b.y + b.h/2;
+  const b = boite(ZONES[id]), cx = b.x + b.w/2, cy = b.y + b.h/2;
   const dx = cible.x - cx, dy = cible.y - cy;
   if (dx === 0 && dy === 0) return { x:cx, y:cy };
   const sx = dx !== 0 ? (b.w/2) / Math.abs(dx) : Infinity;
@@ -301,7 +335,7 @@ const svg = document.getElementById('plan');
 let tokens = [];
 const zoneEls = {};
 let edgeEls = {}, gPoign = null;
-let editMode = false, tracage = false;
+let editMode = false, tracage = false, tracagePoly = false;
 // Géométrie d'origine (pour « réinitialiser »)
 const ZONES_DEFAUT = JSON.parse(JSON.stringify(
   Object.keys(ZONES).reduce((o, id) => {
@@ -353,7 +387,7 @@ function construirePlan() {
   Object.keys(ZONES).forEach(id => {
     const z = ZONES[id];
     const g = svgEl('g', { class:'zone', 'data-id':id });
-    const rect = svgEl('rect', { class:'fond', rx:10 }); g.appendChild(rect);
+    const rect = svgEl('path', { class:'fond' }); g.appendChild(rect);
     const ti = svgEl('title', {}); g.appendChild(ti);
     const titre = svgEl('text', { class:'titre' }); titre.textContent = z.nom; g.appendChild(titre);
     const sous = (z.sous || []).map(s => {
@@ -384,7 +418,7 @@ function positionnerZone(id) {
   const z = ZONES[id], e = zoneEls[id]; if (!e) return;
   const b = boite(z); e.b = b;
   const s = (el, a) => { for (const k in a) el.setAttribute(k, a[k]); };
-  s(e.rect, { x:b.x, y:b.y, width:b.w, height:b.h });
+  e.rect.setAttribute('d', dZone(z));
   e.g.classList.toggle('approx', !!z.approx);
   e.tip.textContent = z.nom + (z.approx ? ' (emplacement à confirmer)' : '');
   s(e.titre, { x:b.x + 14, y:b.y + 56 });
@@ -447,11 +481,44 @@ function initInteractions() {
     const p = ptSvg(e), m = versPlan(p);
     svg.setPointerCapture(e.pointerId);
 
+    // tracé d'un polygone : chaque clic ajoute un point
+    if (tracagePoly && selection) {
+      if (!tracePts) tracePts = [];
+      // e.detail >= 2 = second clic d'un double-clic (il sert à fermer, pas à ajouter)
+      const dernier = tracePts[tracePts.length - 1];
+      const doublon = dernier && Math.hypot(m.x - dernier[0], m.y - dernier[1]) < 12 / vk;
+      if (e.detail < 2 && !doublon) {
+        tracePts.push([Math.round(m.x), Math.round(m.y)]);
+        dessinerTracePoly(tracePts);
+      }
+      act = { t:'poly' };
+      return;
+    }
     if (tracage && selection) { act = { t:'trace', m0:m }; return; }
 
+    // ajout d'un point au milieu d'un segment
+    const ha = e.target.closest && e.target.closest('.poignee-ajout');
+    if (editMode && ha && selection) {
+      const z = ZONES[selection], i = +ha.dataset.add;
+      const nx = z.pts[(i + 1) % z.pts.length];
+      z.pts.splice(i + 1, 0, [(z.pts[i][0] + nx[0]) / 2, (z.pts[i][1] + nx[1]) / 2]);
+      syncBoite(z); majApresEdition();
+      act = { t:'vertex', i:i + 1 };
+      return;
+    }
     const hp = e.target.closest && e.target.closest('.poignee');
-    if (editMode && hp) {
+    if (editMode && hp && selection) {
       const z = ZONES[selection];
+      if (estPoly(z)) {
+        const i = +hp.dataset.i;
+        if (e.altKey) {          // Alt+clic : supprimer le sommet
+          if (z.pts.length > 3) { z.pts.splice(i, 1); syncBoite(z); majApresEdition(); toast('Point supprimé'); }
+          else toast('Un polygone garde au moins 3 points');
+          return;
+        }
+        act = { t:'vertex', i:i };
+        return;
+      }
       act = { t:'resize', coin:hp.dataset.h, m0:m, z0:{ x:z.x, y:z.y, w:z.w, h:z.h } };
       return;
     }
@@ -459,8 +526,8 @@ function initInteractions() {
     if (editMode && gz) {
       const id = gz.dataset.id;
       if (id !== selection) selectionner(id);
-      const z = ZONES[id];
-      act = { t:'move', m0:m, z0:{ x:z.x, y:z.y } };
+      const b0 = boite(ZONES[id]);
+      act = { t:'move', m0:m, z0:{ x:b0.x, y:b0.y } };
       return;
     }
     act = { t:'pan', p0:p, tx:vtx, ty:vty }; svg.style.cursor = 'grabbing';
@@ -476,12 +543,17 @@ function initInteractions() {
     if (act.t === 'trace') {
       const r = rectDe(act.m0, m); dessinerTrace(r); return;
     }
+    if (act.t === 'poly') { dessinerTracePoly(tracePts, [m.x, m.y]); return; }
     const z = ZONES[selection]; if (!z) return;
     act.bouge = true;
 
-    if (act.t === 'move') {
-      z.x = Math.round(act.z0.x + (m.x - act.m0.x));
-      z.y = Math.round(act.z0.y + (m.y - act.m0.y));
+    if (act.t === 'vertex') {
+      z.pts[act.i] = [Math.round(m.x), Math.round(m.y)];
+      syncBoite(z);
+    } else if (act.t === 'move') {
+      const dx = Math.round(act.z0.x + (m.x - act.m0.x)) - boite(z).x;
+      const dy = Math.round(act.z0.y + (m.y - act.m0.y)) - boite(z).y;
+      deplacerZone(z, dx, dy);
     } else if (act.t === 'resize') {
       const d = { x:m.x - act.m0.x, y:m.y - act.m0.y }, o = act.z0, MIN = 60;
       let x = o.x, y = o.y, w = o.w, h = o.h;
@@ -491,7 +563,7 @@ function initInteractions() {
       if (act.coin.includes('s')) { h = o.h + d.y; }
       if (w < MIN) { if (act.coin.includes('w')) x = o.x + o.w - MIN; w = MIN; }
       if (h < MIN) { if (act.coin.includes('n')) y = o.y + o.h - MIN; h = MIN; }
-      z.x = Math.round(x); z.y = Math.round(y); z.w = Math.round(w); z.h = Math.round(h);
+      appliquerBoite(z, { x:Math.round(x), y:Math.round(y), w:Math.round(w), h:Math.round(h) });
     }
     majApresEdition();
   });
@@ -506,13 +578,20 @@ function initInteractions() {
       }
       dessinerTrace(null); tracage = false; svg.classList.remove('tracage');
     }
-    if (act && (act.t === 'move' || act.t === 'resize') && act.bouge && selection) {
+    if (act && act.t === 'poly') { act = null; return; }   // le tracé continue
+    if (act && (act.t === 'move' || act.t === 'resize' || act.t === 'vertex') && act.bouge && selection) {
       ZONES[selection].approx = false; majApresEdition();
     }
     act = null; svg.style.cursor = '';
   };
   svg.addEventListener('pointerup', fin);
   svg.addEventListener('pointercancel', () => { act = null; svg.style.cursor = ''; });
+
+  svg.addEventListener('dblclick', e => { if (tracagePoly) { e.preventDefault(); finirTracePoly(); } });
+  window.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && tracagePoly) { tracePts = null; dessinerTracePoly(null); tracagePoly = false; svg.classList.remove('tracage'); majChampsEdition(); }
+    if (e.key === 'Enter' && tracagePoly) finirTracePoly();
+  });
 
   appliquerVue();
 }
@@ -540,15 +619,67 @@ function majApresEdition() {
 /* Poignées de redimensionnement de la zone sélectionnée. */
 function majPoignees() {
   if (!gPoign) return;
-  [...gPoign.querySelectorAll('.poignee')].forEach(n => n.remove());
+  [...gPoign.querySelectorAll('.poignee, .poignee-ajout')].forEach(n => n.remove());
   if (!editMode || !selection) return;
-  const z = ZONES[selection], r = 16 / vk;
-  [['nw', z.x, z.y], ['ne', z.x + z.w, z.y], ['se', z.x + z.w, z.y + z.h], ['sw', z.x, z.y + z.h]]
-    .forEach(([k, x, y]) => {
-      const c = svgEl('circle', { class:'poignee ' + k, cx:x, cy:y, r:r, 'data-h':k });
-      c.setAttribute('stroke-width', 3 / vk);
+  const z = ZONES[selection], r = 15 / vk, sw = 3 / vk;
+
+  if (estPoly(z)) {
+    // un point par sommet + un bouton « + » au milieu de chaque segment
+    z.pts.forEach((pt, i) => {
+      const c = svgEl('circle', { class:'poignee sommet', cx:pt[0], cy:pt[1], r:r, 'data-i':i });
+      c.setAttribute('stroke-width', sw);
+      const t = svgEl('title', {}); t.textContent = 'Glisser pour déplacer · Alt+clic pour supprimer';
+      c.appendChild(t);
       gPoign.appendChild(c);
     });
+    z.pts.forEach((pt, i) => {
+      const nx = z.pts[(i + 1) % z.pts.length];
+      const c = svgEl('circle', { class:'poignee-ajout', cx:(pt[0]+nx[0])/2, cy:(pt[1]+nx[1])/2,
+                                  r:r * 0.72, 'data-add':i });
+      c.setAttribute('stroke-width', sw);
+      const t = svgEl('title', {}); t.textContent = 'Ajouter un point ici'; c.appendChild(t);
+      gPoign.appendChild(c);
+    });
+  } else {
+    [['nw', z.x, z.y], ['ne', z.x + z.w, z.y], ['se', z.x + z.w, z.y + z.h], ['sw', z.x, z.y + z.h]]
+      .forEach(([k, x, y]) => {
+        const c = svgEl('circle', { class:'poignee ' + k, cx:x, cy:y, r:r, 'data-h':k });
+        c.setAttribute('stroke-width', sw);
+        gPoign.appendChild(c);
+      });
+  }
+}
+
+/* --- Conversions et tracé de polygone ------------------------------------- */
+function versPolygone(z) {
+  if (estPoly(z)) return;
+  const b = boite(z);
+  z.pts = [[b.x, b.y], [b.x + b.w, b.y], [b.x + b.w, b.y + b.h], [b.x, b.y + b.h]];
+  syncBoite(z);
+}
+function versRectangle(z) {
+  if (!estPoly(z)) return;
+  const b = boite(z);
+  delete z.pts;
+  z.x = b.x; z.y = b.y; z.w = b.w; z.h = b.h;
+}
+let tracePts = null, tracePolyEl = null;
+function dessinerTracePoly(pts, curseur) {
+  if (!pts) { if (tracePolyEl) { tracePolyEl.remove(); tracePolyEl = null; } return; }
+  if (!tracePolyEl) { tracePolyEl = svgEl('path', { class:'trace-poly' }); gPoign.appendChild(tracePolyEl); }
+  const tous = curseur ? pts.concat([curseur]) : pts;
+  if (!tous.length) return;
+  tracePolyEl.setAttribute('d', 'M ' + tous.map(pt => pt[0] + ' ' + pt[1]).join(' L ') + (tous.length > 2 ? ' Z' : ''));
+}
+function finirTracePoly() {
+  if (tracePts && tracePts.length >= 3 && selection) {
+    const z = ZONES[selection];
+    z.pts = tracePts.slice(); syncBoite(z); z.approx = false;
+    majApresEdition(); toast(tracePts.length + ' points');
+  }
+  tracePts = null; dessinerTracePoly(null);
+  tracagePoly = false; svg.classList.remove('tracage');
+  majChampsEdition();
 }
 
 function ajoutRessource(g, label, type) {
@@ -575,6 +706,7 @@ function geomZones() {
   Object.keys(ZONES).forEach(id => {
     const z = ZONES[id];
     o[id] = { nom:z.nom, x:Math.round(z.x), y:Math.round(z.y), w:Math.round(z.w), h:Math.round(z.h), approx:!!z.approx };
+    if (estPoly(z)) o[id].pts = z.pts.map(pt => [Math.round(pt[0]), Math.round(pt[1])]);
   });
   return o;
 }
@@ -592,6 +724,8 @@ function appliquerGeom(o, silencieux) {
     const z = ZONES[id], v = o[id]; if (!z || !v) return;
     if (isFinite(v.x)) z.x = +v.x; if (isFinite(v.y)) z.y = +v.y;
     if (isFinite(v.w)) z.w = +v.w; if (isFinite(v.h)) z.h = +v.h;
+    if (Array.isArray(v.pts) && v.pts.length >= 3) { z.pts = v.pts.map(pt => [+pt[0], +pt[1]]); syncBoite(z); }
+    else delete z.pts;
     z.approx = !!v.approx; n++;
   });
   if (zoneEls[Object.keys(ZONES)[0]]) {
@@ -631,9 +765,16 @@ function majChampsEdition() {
   bloc.hidden = false;
   const z = ZONES[selection];
   document.getElementById('edit-nom').textContent = z.nom + (z.approx ? '  (à confirmer)' : '');
+  const b = boite(z);
   [['ez-x','x'],['ez-y','y'],['ez-w','w'],['ez-h','h']].forEach(([el,k]) => {
-    const n = document.getElementById(el); if (n && document.activeElement !== n) n.value = Math.round(z[k]);
+    const n = document.getElementById(el); if (n && document.activeElement !== n) n.value = Math.round(b[k]);
   });
+  const f = document.getElementById('ez-forme');
+  if (f) f.innerHTML = estPoly(z)
+    ? '⬠ <b>Forme libre</b> — ' + z.pts.length + ' points. Glissez un point, « + » pour en ajouter, <b>Alt+clic</b> pour en supprimer.'
+    : '▱ <b>Rectangle</b>. Utilisez « Convertir » pour passer en forme libre.';
+  const tb = document.getElementById('ez-toshape');
+  if (tb) tb.textContent = estPoly(z) ? '▱ Revenir au rectangle' : '⬠ Convertir en forme';
   majListeEdition();
 }
 
@@ -644,8 +785,9 @@ function initEdition() {
     document.getElementById(el).addEventListener('input', e => {
       if (!selection) return;
       const v = parseFloat(e.target.value); if (!isFinite(v)) return;
-      ZONES[selection][k] = (k === 'w' || k === 'h') ? Math.max(60, v) : v;
-      ZONES[selection].approx = false;
+      const z = ZONES[selection], nb = boite(z);
+      nb[k] = (k === 'w' || k === 'h') ? Math.max(60, v) : v;
+      appliquerBoite(z, nb); z.approx = false;
       positionnerZone(selection); redessinerEdges(); majPoignees(); sauvegarderZones();
     });
   });
@@ -655,13 +797,27 @@ function initEdition() {
     tracage = true; svg.classList.add('tracage');
     toast('Tracez le rectangle de « ' + ZONES[selection].nom +' »');
   });
+  document.getElementById('ez-poly').addEventListener('click', () => {
+    if (!selection) return;
+    tracagePoly = true; tracePts = null; tracage = false;
+    svg.classList.add('tracage');
+    toast('Cliquez les sommets · double-clic ou Entrée pour fermer · Échap pour annuler');
+  });
+  document.getElementById('ez-toshape').addEventListener('click', () => {
+    if (!selection) return;
+    const z = ZONES[selection];
+    if (estPoly(z)) versRectangle(z); else versPolygone(z);
+    z.approx = false; majApresEdition();
+  });
   document.getElementById('ez-reset').addEventListener('click', () => {
     if (!selection) return;
+    delete ZONES[selection].pts;
     Object.assign(ZONES[selection], ZONES_DEFAUT[selection]);
     majApresEdition(); toast('Zone réinitialisée');
   });
   document.getElementById('ez-reset-all').addEventListener('click', () => {
     if (!confirm('Réinitialiser toutes les zones à leur position d\'origine ?')) return;
+    Object.keys(ZONES).forEach(id => delete ZONES[id].pts);
     appliquerGeom(ZONES_DEFAUT, true); sauvegarderZones(); toast('Zones réinitialisées');
   });
 

@@ -65,9 +65,16 @@ c'est à l'exploitant de les poser. L'outil est fait pour ça.
 2. Cliquez une zone (sur le plan ou dans la liste du panneau de gauche).
 3. **Glissez** le rectangle pour le déplacer, tirez un **coin** pour le
    redimensionner — ou saisissez **X / Y / Largeur / Hauteur** au clavier.
-   **⬚ Redessiner** permet de retracer entièrement la zone à la souris.
-4. Zoomez (molette) pour viser précisément les locaux du plan.
-5. Une zone corrigée perd son marquage « à confirmer ».
+   **⬚ Rectangle** permet de retracer la zone à la souris.
+4. Les locaux ne sont pas des rectangles : passez la zone en **forme libre**.
+   - **⬠ Convertir** transforme le rectangle en polygone à 4 points ;
+   - **⬠ Tracer une forme** : cliquez les sommets un par un, `double-clic` ou
+     `Entrée` pour fermer, `Échap` pour annuler ;
+   - **glissez un sommet** pour le déplacer, le bouton **`+`** au milieu d'un
+     segment **ajoute** un point, **`Alt`+clic** sur un sommet le **supprime** ;
+   - **▱ Revenir au rectangle** repasse à la boîte englobante.
+5. Zoomez (molette) pour viser précisément les locaux du plan.
+6. Une zone corrigée perd son marquage « à confirmer ».
 
 Les modifications sont **sauvegardées automatiquement** dans le navigateur.
 
@@ -76,9 +83,15 @@ transmettre pour l'intégrer comme valeurs par défaut dans `sim.js` :
 
 ```json
 {
-  "plonge": { "nom": "PLONGE", "x": 1501, "y": 1876, "w": 500, "h": 330, "approx": false }
+  "plonge": {
+    "nom": "PLONGE", "x": 1264, "y": 632, "w": 1286, "h": 1232, "approx": false,
+    "pts": [[1264,632],[2550,632],[2550,1110],[1980,1110],[1980,1864],[1264,1864]]
+  }
 }
 ```
+
+`pts` n'est présent que pour les zones en forme libre ; sans lui, la zone est
+le rectangle `x / y / w / h`.
 
 **📂 Importer** relit un tel fichier ; **↺ Tout réinitialiser** revient aux
 valeurs d'origine.
@@ -130,6 +143,11 @@ vols** :
 - Un vol est **à l'heure** si ses trolleys atteignent le frigo handling avant
   `heure_std − délai_chargement`.
 
+## 📝 Journal des modifications
+
+Chaque commit est documenté dans **[`CHANGELOG.md`](CHANGELOG.md)** : ce qui a
+changé et sur quels fichiers.
+
 ## 🗂️ Structure
 
 | Fichier            | Rôle                                                          |
@@ -138,6 +156,7 @@ vols** :
 | `sim.js`           | Données d'exemple, moteur, rendu SVG, zoom, contrôles         |
 | `assets/plan/`     | Les 12 tuiles du plan d'architecte réel                       |
 | `docs/MAP_ORY.xlsx`| Carte source fournie par Newrest (référence)                  |
+| `CHANGELOG.md`     | Journal des modifications, commit par commit                  |
 
 Paramètres regroupés en tête de `sim.js` (bloc `CFG`) : cadence robot, tunnels,
 délai de chargement, effectifs, fenêtre de la journée.
