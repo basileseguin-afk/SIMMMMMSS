@@ -178,6 +178,21 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 .edge.retour{stroke-dasharray:22 14;stroke:var(--edge-retour)}
 .token{opacity:.98;stroke:var(--halo);stroke-width:3}
 
+/* --- marquage « démonstration » ------------------------------------------ */
+.badge-demo{
+  display:inline-block;padding:4px 10px;border-radius:20px;font-size:11.5px;font-weight:800;
+  letter-spacing:.02em;background:#fdf0d5;color:#8a5a06;border:1.5px solid #d99b2a;cursor:help;
+}
+:root[data-theme="dark"] .badge-demo{background:#3a2c10;color:#f5c86a;border-color:#8a6a22}
+.panneau-demo{border:1.5px solid #d99b2a;background:#fffaf0}
+:root[data-theme="dark"] .panneau-demo{border-color:#8a6a22;background:#241c0c}
+.panneau-demo h3{color:#8a5a06}
+:root[data-theme="dark"] .panneau-demo h3{color:#f5c86a}
+.liste-limites{margin:7px 0 7px 0;padding-left:17px}
+.liste-limites li{margin-bottom:3px}
+.kpi .sub{font-size:10.5px;color:var(--txt3);font-weight:600;margin-top:2px}
+.val.na{color:var(--txt3)}
+
 /* --- mode édition des zones ---------------------------------------------- */
 .panneau-edit{border:2px solid var(--accent);background:var(--bg3)}
 .edit-nom{font-weight:800;font-size:13.5px;margin:10px 0 8px;color:var(--accent2)}
@@ -259,6 +274,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 
   <div class="entete-droite">
     <div class="vitesse-box">⏩ Vitesse <input type="range" id="vitesse" min="1" max="120" value="30"><b id="vitesse-val">30×</b></div>
+    <span class="badge-demo" id="badge-demo" title="Les paramètres (coefficients par passager, calendrier, cadences) sont des valeurs de démonstration non calibrées. Les résultats ne sont pas exploitables pour décider.">⚠️ DÉMONSTRATION — non calibré</span>
     <button class="btn" id="btn-theme" title="Basculer clair / sombre">🌙</button>
     <button class="btn" id="btn-export" title="Exporter les résultats (JSON)">⇩ Export</button>
   </div>
@@ -356,6 +372,11 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
         <button class="btn" id="snap-clear">Effacer</button>
       </div>
       <table class="compare-tab" id="compare" style="margin-top:10px"><tbody></tbody></table>
+      <div class="mini-note" style="margin-top:8px">
+        ⚠️ Ces captures enregistrent l'<b>état courant</b> de la simulation, pas
+        deux exécutions complètes et comparables. À ne pas utiliser comme
+        comparatif de scénarios.
+      </div>
     </div>
 
     <div class="panneau">
@@ -392,8 +413,14 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
   <!-- ============ DASHBOARD ============ -->
   <div class="colonne col-droite">
     <div class="kpi-grille">
-      <div class="kpi"><div class="lab">Vols à l'heure</div><div class="val bon" id="kpi-ontime">100%</div></div>
-      <div class="kpi"><div class="lab">Retard moyen</div><div class="val" id="kpi-retard">0 <small>min</small></div></div>
+      <div class="kpi" title="Part des vols exigibles dont les trolleys sont disponibles au frigo handling avant heure_std − délai de chargement. Ce n'est PAS la ponctualité de départ de l'avion.">
+        <div class="lab">Prêts à l'échéance</div><div class="val" id="kpi-ontime">n/a</div>
+        <div class="sub" id="kpi-ontime-sub">aucun vol exigible</div>
+      </div>
+      <div class="kpi" title="Moyenne sur les vols exigibles. Un vol non terminé dont l'échéance est passée compte son retard en cours.">
+        <div class="lab">Retard moyen</div><div class="val" id="kpi-retard">n/a</div>
+        <div class="sub" id="kpi-retard-sub">—</div>
+      </div>
       <div class="kpi"><div class="lab">Débit plateaux</div><div class="val" id="kpi-debit">0 <small>/h</small></div></div>
       <div class="kpi"><div class="lab">WIP total</div><div class="val" id="kpi-wip">0 <small>OF</small></div></div>
     </div>
@@ -406,6 +433,23 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
     <div class="panneau">
       <h3>🏭 Charge par atelier</h3>
       <div id="stats-ateliers"></div>
+    </div>
+
+    <div class="panneau panneau-demo">
+      <h3>⚠️ Statut : démonstration</h3>
+      <div class="mini-note">
+        Le moteur actuel est une <b>maquette</b>. Ne pas s'en servir pour décider.
+        Points connus non représentatifs :
+        <ul class="liste-limites">
+          <li>Coefficients par passager <b>inventés</b>, pas issus du classeur des heures.</li>
+          <li>Robot appliqué à <b>tous les YC</b> (en réalité : FBU, TX/FWI, CRL).</li>
+          <li>Production lancée quelques heures avant le départ : <b>pas de J−1 / J−2</b>.</li>
+          <li>Effectifs = capacité globale constante, <b>sans horaires ni compétences</b>.</li>
+          <li>Stockages affichés mais <b>ne limitent pas</b> le flux ; la plonge ne réalimente pas de stock.</li>
+          <li>Captures A/B = <b>instantanés</b>, pas deux exécutions comparables.</li>
+        </ul>
+        Détail et plan de correction : <code>docs/FEUILLE_DE_ROUTE.md</code>.
+      </div>
     </div>
 
     <div class="panneau">

@@ -6,8 +6,25 @@ par atelier** et **tester des scénarios what-if** (effectifs, cadence robot,
 tunnels de plonge, horaires de vols) sur une journée type.
 
 Application **navigateur, hors-ligne, sans dépendance externe**. Un jeu de données
-d'exemple réaliste (vague matin + vague soir) est embarqué : tout est fonctionnel
-dès l'ouverture.
+d'exemple est embarqué : tout est fonctionnel dès l'ouverture.
+
+> ## ⚠️ Statut : démonstration, non calibré
+>
+> **Les résultats ne sont pas exploitables pour décider.** Le moteur actuel est
+> une maquette dont les paramètres sont inventés. Points connus non
+> représentatifs de l'unité :
+>
+> - Coefficients par passager **inventés**, pas issus du classeur des heures.
+> - Robot appliqué à **tous les YC** (en réalité : FBU, TX/FWI, CRL uniquement).
+> - Production lancée quelques heures avant le départ : **pas de J−1 / J−2**.
+> - Effectifs = capacité globale constante, **sans horaires ni compétences**.
+> - Stockages affichés mais **ne limitent pas** le flux ; la plonge ne
+>   réalimente pas de stock utilisé par la production.
+> - Import CSV simplifié : ne représente pas les lignes de prestations, dossiers
+>   et dates de l'export Winrest.
+> - Captures A/B = **instantanés**, pas deux exécutions comparables.
+>
+> Le plan de correction est dans **[`docs/FEUILLE_DE_ROUTE.md`](docs/FEUILLE_DE_ROUTE.md)**.
 
 ![Aperçu de la simulation](assets/apercu.png)
 
@@ -104,7 +121,12 @@ valeurs d'origine.
 
 ## 📊 Tableau de bord (en direct)
 
-- **% de vols à l'heure** et **retard moyen**.
+- **Prêts à l'échéance** : part des vols **exigibles** dont les trolleys sont
+  disponibles au frigo handling avant `heure_std − délai de chargement`.
+  Ce n'est **pas** la ponctualité de départ de l'avion. Le dénominateur est
+  affiché ; un vol non terminé dont l'échéance est passée **compte comme en
+  retard** ; sans vol exigible, l'indicateur affiche **`n/a`** (et non 100 %).
+- **Retard moyen** sur les vols exigibles, inachevés compris.
 - **Débit plateaux/h** (robot) et **WIP** (en-cours) total.
 - **Charge (utilisation) par atelier** avec longueur de file.
 - **Courbe** débit & en-cours sur la journée (pics matin/soir visibles).
@@ -119,12 +141,11 @@ valeurs d'origine.
 - **Comparaison de scénarios A vs B** sur les KPI clés.
 - **Import `vols.csv`** (schéma tolérant) et **export JSON** des résultats.
 
-Exemple mesuré sur la journée d'exemple :
-
-| Scénario                     | Vols à l'heure | Retard moyen |
-|------------------------------|:--------------:|:------------:|
-| Robot 320 · Prépa 18         | 67 %           | 15 min       |
-| Robot 520 · Prépa 24         | 100 %          | 0 min        |
+> ⚠️ Les leviers modifient bien le comportement de la maquette, mais **aucun
+> chiffre produit ici n'est une prévision**. Les écarts observés entre deux
+> réglages reflètent les coefficients inventés du moteur, pas l'unité réelle.
+> De plus, les captures A/B enregistrent l'**état courant** et ne constituent
+> pas deux exécutions comparables (cf. feuille de route, étape 8).
 
 ## 🧠 Modèle de simulation
 
@@ -156,6 +177,7 @@ changé et sur quels fichiers.
 | `sim.js`           | Données d'exemple, moteur, rendu SVG, zoom, contrôles         |
 | `assets/plan/`     | Les 12 tuiles du plan d'architecte réel                       |
 | `docs/MAP_ORY.xlsx`| Carte source fournie par Newrest (référence)                  |
+| `docs/FEUILLE_DE_ROUTE.md` | Feuille de route et revue technique du projet         |
 | `CHANGELOG.md`     | Journal des modifications, commit par commit                  |
 
 Paramètres regroupés en tête de `sim.js` (bloc `CFG`) : cadence robot, tunnels,
@@ -163,6 +185,8 @@ délai de chargement, effectifs, fenêtre de la journée.
 
 ## 🚧 Suite prévue
 
-Interface d'abord (objet de cette étape). Pistes d'affinage du moteur :
-événements discrets plus fins, `man_minutes.csv` / `staffing.csv` importables,
-clé de répartition paramétrable par atelier, capture du plan en image.
+Voir **[`docs/FEUILLE_DE_ROUTE.md`](docs/FEUILLE_DE_ROUTE.md)**. Priorité :
+séparer le calcul de l'affichage, puis raccorder progressivement le modèle
+métier (données Winrest contrôlées, calendrier J−2/J−1/J, gammes et standards
+réels, ressources finies). Côté interface : éditeur de zones, replay des
+événements calculés par le moteur, indicateurs traçables.

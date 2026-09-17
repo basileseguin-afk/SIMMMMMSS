@@ -5,7 +5,54 @@ Le plus récent est en haut.
 
 ---
 
-## 2026-09-17 — Formes libres pour les zones + ce journal
+## 2026-09-17 — Marquage « démonstration » et correction du taux de service
+
+**Contexte :** revue technique externe (feuille de route ChatGPT/Astra,
+ticket n° 2). Ses critiques ont été vérifiées dans le code : elles sont
+exactes.
+
+**Bug corrigé — l'indicateur de service était trompeur.** `kpis()` calculait
+`ontime = prets.length ? … : 100` :
+
+- il affichait **100 %** quand *aucun* vol n'était terminé ;
+- les vols **non terminés dont l'échéance était dépassée** étaient exclus du
+  dénominateur, donc une dégradation devenait invisible.
+
+Désormais, un vol compte dès qu'il est **exigible** (échéance atteinte) :
+terminé à temps, terminé en retard, ou **non terminé et en retard**. Sans vol
+exigible, l'indicateur affiche **`n/a`** et non un succès. Le **dénominateur est
+affiché** (`3 / 7 vols exigibles`), ainsi que le nombre d'inachevés.
+
+*Démonstration :* effectifs à zéro, 12 h 20 → l'ancienne version affichait
+**100 %**, la nouvelle affiche **0 % — 0/7 vols exigibles, 7 inachevés**.
+
+**Clarification :** l'indicateur mesure la **disponibilité au frigo handling**
+avant `heure_std − délai de chargement`, pas la ponctualité de départ de
+l'avion. Renommé « Prêts à l'échéance ».
+
+**Marquage du statut de démonstration :**
+
+- Badge permanent **« ⚠️ DÉMONSTRATION — non calibré »** dans l'en-tête.
+- Panneau listant les limites connues (coefficients inventés, robot appliqué à
+  tous les YC, absence de J−1/J−2, effectifs sans horaires ni compétences,
+  stockages non limitants, captures A/B non comparables).
+- Avertissement sur les captures A/B et dans l'export JSON.
+- README : encadré de statut en tête ; **suppression du tableau de résultats
+  chiffrés**, qui donnait une apparence de validation métier.
+
+**Fichiers :**
+
+| Fichier | Modification |
+|---|---|
+| `sim.js` | `etatVol()`, réécriture de `kpis()` (exigibles / inachevés / `n/a`), affichage des dénominateurs, avertissement dans l'export |
+| `index.html` | Badge de démonstration, panneau des limites, sous-libellés des KPI, avertissement A/B, styles associés |
+| `docs/FEUILLE_DE_ROUTE.md` | **Nouveau** — revue technique et feuille de route du projet |
+| `README.md` | Encadré de statut, définition précise des indicateurs, retrait du tableau de résultats |
+| `CHANGELOG.md` | Cette entrée |
+
+---
+
+## 2026-09-17 — Formes libres pour les zones + ce journal (`0d7f7d2`)
 
 **Ce qui change :** les zones ne sont plus limitées à des rectangles. Chaque
 zone peut devenir une **forme libre** (polygone) pour épouser la géométrie

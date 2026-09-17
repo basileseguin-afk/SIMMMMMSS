@@ -305,15 +305,31 @@ function spawnEntree(j) {
 /* ==========================================================================
  *  6. KPI
  * ==========================================================================*/
+/* État d'un vol au regard de son échéance (disponibilité au frigo handling).
+ * Renvoie null tant que le vol n'est pas *exigible* : il ne compte alors dans
+ * aucun taux. Un vol non terminé dont l'échéance est passée compte comme
+ * en retard — il ne doit pas disparaître du dénominateur. */
+function etatVol(f) {
+  if (f.readyTime != null) return { fini:true,  retard:Math.max(0, f.readyTime - f.due) };
+  if (now >= f.due)        return { fini:false, retard:now - f.due };
+  return null;
+}
+
 function kpis() {
   const dep = flights.filter(f => f.sens === 'DEP');
-  const prets = dep.filter(f => f.readyTime != null);
-  const aHeure = prets.filter(f => f.retard <= 0).length;
-  const ontime = prets.length ? Math.round(100 * aHeure / prets.length) : 100;
-  const retardMoy = prets.length ? Math.round(prets.reduce((s,f)=>s+f.retard,0) / prets.length) : 0;
+  let exigibles = 0, aHeure = 0, inacheves = 0, sommeRetard = 0;
+  dep.forEach(f => {
+    const e = etatVol(f); if (!e) return;
+    exigibles++; sommeRetard += e.retard;
+    if (e.fini) { if (e.retard <= 0) aHeure++; } else inacheves++;
+  });
+  // Sans vol exigible, le taux n'est pas applicable (null) — surtout pas 100 %.
+  const ontime = exigibles ? Math.round(100 * aHeure / exigibles) : null;
+  const retardMoy = exigibles ? Math.round(sommeRetard / exigibles) : null;
   const wip = jobs.filter(j => j.released && !j.done).length;
   const debit = Math.round((Sim.robotRate || 0) * 60);
-  return { ontime, retardMoy, wip, debit, goulot:goulotCourant(), prets:prets.length, total:dep.length };
+  return { ontime, retardMoy, wip, debit, goulot:goulotCourant(),
+           exigibles, aHeure, inacheves, total:dep.length };
 }
 function goulotCourant() {
   let best = null, bu = 0.55;
@@ -883,10 +899,22 @@ function majDashboard() {
   const k = kpis();
   const set = (id, v) => { const n = document.getElementById(id); if (n) n.innerHTML = v; };
   const ontEl = document.getElementById('kpi-ontime');
-  ontEl.textContent = k.ontime + '%';
-  ontEl.className = 'val ' + (k.ontime >= 90 ? 'bon' : k.ontime >= 70 ? 'moyen' : 'mauvais');
-  set('kpi-retard', k.retardMoy + ' <small>min</small>');
-  document.getElementById('kpi-retard').className = 'val ' + (k.retardMoy <= 0 ? 'bon' : k.retardMoy < 15 ? 'moyen' : 'mauvais');
+  if (k.ontime == null) {
+    ontEl.textContent = 'n/a'; ontEl.className = 'val na';
+    set('kpi-ontime-sub', 'aucun vol exigible');
+  } else {
+    ontEl.textContent = k.ontime + '%';
+    ontEl.className = 'val ' + (k.ontime >= 90 ? 'bon' : k.ontime >= 70 ? 'moyen' : 'mauvais');
+    set('kpi-ontime-sub', k.aHeure + ' / ' + k.exigibles + ' vols exigibles');
+  }
+  const retEl = document.getElementById('kpi-retard');
+  if (k.retardMoy == null) {
+    retEl.textContent = 'n/a'; retEl.className = 'val na'; set('kpi-retard-sub', '—');
+  } else {
+    retEl.innerHTML = k.retardMoy + ' <small>min</small>';
+    retEl.className = 'val ' + (k.retardMoy <= 0 ? 'bon' : k.retardMoy < 15 ? 'moyen' : 'mauvais');
+    set('kpi-retard-sub', k.inacheves ? k.inacheves + ' inachevé(s) en retard' : 'tous terminés');
+  }
   set('kpi-debit', k.debit + ' <small>/h</small>');
   set('kpi-wip', k.wip + ' <small>OF</small>');
 
@@ -1073,7 +1101,8 @@ function parseVols(txt) {
 }
 function exporter() {
   const k = kpis();
-  const data = { horaire:document.getElementById('horloge').textContent, config:CFG, kpis:k,
+  const data = { avertissement:'DÉMONSTRATION — paramètres non calibrés, résultats non exploitables pour décider.',
+    horaire:document.getElementById('horloge').textContent, config:CFG, kpis:k,
     vols:flights.map(f => ({ id:f.id, sens:f.sens, readyTime:f.readyTime, retard:f.retard })),
     ateliers:Object.keys(ZONES).reduce((o,id)=>{ o[id]={util:Math.round(stations[id].util*100),file:stations[id].qlen}; return o; }, {}) };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
