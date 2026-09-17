@@ -53,9 +53,35 @@ Montage, Magasin, Dotation, Légumerie, Duty free**, plus toutes les
 (CF + BOF, CF charcuterie, CF Jour, CF intermédiaire, CF PEQ tranche cuisine,
 congélateur, réserve sèche, local QHSE…) — survol = nom complet.
 
-> ⚠️ Quatre zones ne sont **pas annotées** sur le plan source et sont donc
-> **placées approximativement** (affichées en pointillés) : **Quais/Réception,
-> Réception/Appros, Cuisine, Plonge**. À corriger avec les emplacements réels.
+> ⚠️ Les zones marquées **`?`** ne sont pas annotées sur le plan source : elles
+> sont **placées approximativement** (pointillés) et doivent être corrigées.
+
+## ✏️ Corriger les zones (mode édition)
+
+Les tailles et emplacements des zones ne sont pas déductibles du plan source :
+c'est à l'exploitant de les poser. L'outil est fait pour ça.
+
+1. Bouton **✏️ Éditer les zones** dans l'en-tête du plan.
+2. Cliquez une zone (sur le plan ou dans la liste du panneau de gauche).
+3. **Glissez** le rectangle pour le déplacer, tirez un **coin** pour le
+   redimensionner — ou saisissez **X / Y / Largeur / Hauteur** au clavier.
+   **⬚ Redessiner** permet de retracer entièrement la zone à la souris.
+4. Zoomez (molette) pour viser précisément les locaux du plan.
+5. Une zone corrigée perd son marquage « à confirmer ».
+
+Les modifications sont **sauvegardées automatiquement** dans le navigateur.
+
+**📋 Copier le JSON** / **⇩ Exporter** produit un fichier de ce type, à
+transmettre pour l'intégrer comme valeurs par défaut dans `sim.js` :
+
+```json
+{
+  "plonge": { "nom": "PLONGE", "x": 1501, "y": 1876, "w": 500, "h": 330, "approx": false }
+}
+```
+
+**📂 Importer** relit un tel fichier ; **↺ Tout réinitialiser** revient aux
+valeurs d'origine.
 
 - **Tokens animés** circulant le long des arêtes du graphe de flux.
 - **Code couleur de congestion** par atelier : 🟢 fluide → 🟠 chargé → 🔴 goulot.
