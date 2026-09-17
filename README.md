@@ -1,93 +1,98 @@
-# 🏭 UsineSim — Simulateur de gestion d'usine
+# 🛫 Newrest Orly — Simulation des flux de production
 
-Un « Sims pour l'industrie » : construisez votre usine, créez des ateliers,
-embauchez du personnel, installez des machines de production et regardez la
-chaîne tourner en temps réel — des matières premières jusqu'aux produits finis
-vendus sur le marché.
+Simulation visuelle et dynamique des flux d'une **unité de catering aérien**.
+L'objectif : **repérer visuellement les goulots (bouchons)**, **mesurer la charge
+par atelier** et **tester des scénarios what-if** (effectifs, cadence robot,
+tunnels de plonge, horaires de vols) sur une journée type.
 
-Application **100 % navigateur**, sans installation ni serveur : ouvrez
-`index.html` et jouez. La partie est sauvegardée automatiquement dans le
-navigateur (localStorage).
+Application **navigateur, hors-ligne, sans dépendance externe**. Un jeu de données
+d'exemple réaliste (vague matin + vague soir) est embarqué : tout est fonctionnel
+dès l'ouverture.
 
-![Aperçu de l'usine](assets/apercu.png)
+![Aperçu de la simulation](assets/apercu.png)
 
 ## ▶️ Lancer
 
-Ouvrez simplement `index.html` dans un navigateur récent.
-(Ou servez le dossier : `python3 -m http.server` puis ouvrez `http://localhost:8000`.)
+Ouvrez `index.html` dans un navigateur, ou servez le dossier
+(`python3 -m http.server`). Cliquez sur **▶ Lancer** ; ajustez la vitesse.
 
-Une usine de démonstration est déjà en place. Cliquez sur **▶ Démarrer** pour
-lancer la production, et ajustez la vitesse (1× → 8×).
+> ℹ️ Le projet est actuellement en deux fichiers (`index.html` + `sim.js`) pour
+> faciliter l'itération. Les deux s'ouvrent hors-ligne par double-clic. Un
+> **bundle en un seul fichier HTML autonome** peut être généré sur demande.
 
-## 🎮 Ce que vous pouvez faire
+## 🗺️ Le plan (cœur du livrable)
 
-- **🧱 Ateliers** — créez des ateliers et réglez pour chacun :
-  - un **temps de préparation** (setup avant chaque redémarrage),
-  - une **cadence de production** (multiplicateur de vitesse),
-  - les **machines** qu'il contient.
-- **👷 Personnel** — embauchez des ouvriers, affectez-les à un atelier puis à
-  une machine. Une machine ne tourne que si elle a **assez d'ouvriers**.
-- **⚙️ Machines de production** — ajoutez des machines à vos ateliers. Chaque
-  machine suit une **recette** : elle consomme des entrées et produit des
-  sorties, à son rythme.
-- **📦 Zones de stockage** — créez des zones pour augmenter la **capacité**.
-  Une machine se **bloque** quand le stock est plein.
-- **🏁 Sorties de produits finis** — la chaîne transforme les matières brutes en
-  produits intermédiaires puis en produits finis.
-- **💶 Marché & économie** — les matières brutes sont **achetées** à la
-  production, les produits finis peuvent être **vendus automatiquement**. Suivez
-  budget, recettes et dépenses.
-- **📚 Catalogue** — définissez vos propres **produits** et **types de machines**
-  (constructeur de recettes entrées → sorties).
-
-## 🔄 Comment fonctionne la simulation
-
-Chaque machine passe par un cycle :
+Plan 2D orienté **Sud (bas) → Nord (haut)**, avec toutes les zones et leurs
+stockages :
 
 ```
-à l'arrêt → préparation (temps de prépa de l'atelier) → production → (répète)
+                        PISTE / VOLS            (Nord)
+        ARMEMENT  ┆  BOB DUTY
+  DOTATION                 FRIGO HANDLING
+  PLONGE          PRÉPA (robot de dressage)
+                CUISINE        DÉCONTAMINATION
+        MAGASIN            APPROS               (Sud)
 ```
 
-À chaque cycle terminé, la machine **consomme ses entrées** et **produit ses
-sorties**. Elle s'interrompt automatiquement si :
+- **Tokens animés** circulant le long des arêtes du graphe de flux.
+- **Code couleur de congestion** par atelier : 🟢 fluide → 🟠 chargé → 🔴 goulot.
+- **Ressources dédiées** affichées en direct : le **robot de dressage** (YC) et
+  les **3 tunnels de plonge** (1 double vitesse + 2 simples).
+- Cliquez sur un atelier pour voir son détail (charge, file, effectif).
 
-| État              | Cause                                    |
-|-------------------|------------------------------------------|
-| Sans personnel    | pas assez d'ouvriers affectés            |
-| Attente matières  | entrées manquantes en stock              |
-| Stock plein       | plus de place pour ranger les sorties    |
+## 📊 Tableau de bord (en direct)
 
-La durée d'un cycle vaut `temps de base de la machine ÷ cadence de l'atelier`.
+- **% de vols à l'heure** et **retard moyen**.
+- **Débit plateaux/h** (robot) et **WIP** (en-cours) total.
+- **Charge (utilisation) par atelier** avec longueur de file.
+- **Courbe** débit & en-cours sur la journée (pics matin/soir visibles).
+- **Goulot courant** mis en évidence.
 
-## 🏗️ La chaîne de démonstration
+## 🎛️ Leviers what-if (effet immédiat)
 
-```
-Bois  ──[Scie]──▶ Planche ─┐
-                           ├─[Assemblage]──▶ Chaise 🪑 (vendue)
-Métal ─[Presse]─▶ Vis ─────┘
-```
+- **Effectif par atelier** (sliders).
+- **Cadence du robot** de dressage : 320 (actuel) → 420 (benchmark) → 520 (théorique).
+- **Nombre de tunnels de plonge** actifs + tunnel double vitesse.
+- **Décalage horaire** global des vols et **délai de chargement**.
+- **Comparaison de scénarios A vs B** sur les KPI clés.
+- **Import `vols.csv`** (schéma tolérant) et **export JSON** des résultats.
 
-D'autres recettes sont fournies (mouleuse, couture, électronique, tapisserie)
-pour construire des chaînes plus longues jusqu'au **Gadget 📱** et au
-**Fauteuil 💺**.
+Exemple mesuré sur la journée d'exemple :
 
-## 🧩 Structure du projet
+| Scénario                     | Vols à l'heure | Retard moyen |
+|------------------------------|:--------------:|:------------:|
+| Robot 320 · Prépa 18         | 67 %           | 15 min       |
+| Robot 520 · Prépa 24         | 100 %          | 0 min        |
 
-| Fichier          | Rôle                                                        |
-|------------------|-------------------------------------------------------------|
-| `index.html`     | Structure de la page et barre d'outils                      |
-| `css/styles.css` | Thème industriel sombre, responsive                         |
-| `js/data.js`     | Catalogue par défaut (produits, machines) et usine de démo  |
-| `js/state.js`    | État global, persistance, mutations du modèle               |
-| `js/sim.js`      | Moteur de simulation (boucle de production, économie)       |
-| `js/ui.js`       | Rendu de l'interface et interactions                        |
-| `js/main.js`     | Point d'entrée et câblage des contrôles                     |
+## 🧠 Modèle de simulation
 
-Aucune dépendance, aucune étape de build : du HTML/CSS/JavaScript pur.
+Moteur de flux à stations, alimenté par les **man-minutes** et les **données de
+vols** :
 
-## 💾 Sauvegarde
+- Chaque vol génère des **OF** (ordres de fabrication) par classe (BC/PC/YC) et
+  par atelier.
+- Chaque atelier est une **station** de capacité = `effectif × disponibilité`
+  (consommation de man-minutes) ; une **file** se forme quand la demande dépasse
+  la capacité sur la fenêtre de temps → **goulot**.
+- Les **précédences** du graphe de flux sont respectées (Appros → Cuisine →
+  Prépa → Frigo handling → Piste, etc.).
+- Le **robot** est une ressource dédiée aux plateaux YC ; la **plonge** traite
+  les retours sales selon les tunnels actifs.
+- Un vol est **à l'heure** si ses trolleys atteignent le frigo handling avant
+  `heure_std − délai_chargement`.
 
-- Sauvegarde **automatique** toutes les 10 s pendant la simulation et à la
-  fermeture de l'onglet.
-- Bouton **💾** pour sauvegarder à la demande.
-- Bouton **↺** pour repartir d'une usine neuve.
+## 🗂️ Structure
+
+| Fichier          | Rôle                                                         |
+|------------------|--------------------------------------------------------------|
+| `index.html`     | Structure, thème et disposition (plan + dashboard + leviers) |
+| `sim.js`         | Données d'exemple, moteur de simulation, rendu SVG, contrôles |
+
+Paramètres regroupés en tête de `sim.js` (bloc `CFG`) : cadence robot, tunnels,
+délai de chargement, effectifs, fenêtre de la journée.
+
+## 🚧 Suite prévue
+
+Interface d'abord (objet de cette étape). Pistes d'affinage du moteur :
+événements discrets plus fins, `man_minutes.csv` / `staffing.csv` importables,
+clé de répartition paramétrable par atelier, capture du plan en image.
