@@ -22,17 +22,17 @@ Ouvrez `index.html` dans un navigateur, ou servez le dossier
 
 ## 🗺️ Le plan (cœur du livrable)
 
-Plan 2D orienté **Sud (bas) → Nord (haut)**, avec toutes les zones et leurs
-stockages :
+Le plan est **reconstruit fidèlement à partir de la carte réelle de l'unité**
+(`MAP_ORY.xlsx`) : positions, libellés et chambres froides sont ceux du plan
+Orly. En haut les **quais / réception marchandises** (camions), en bas
+l'intérieur de l'unité.
 
-```
-                        PISTE / VOLS            (Nord)
-        ARMEMENT  ┆  BOB DUTY
-  DOTATION                 FRIGO HANDLING
-  PLONGE          PRÉPA (robot de dressage)
-                CUISINE        DÉCONTAMINATION
-        MAGASIN            APPROS               (Sud)
-```
+Ateliers (stations de simulation) : **Réception/Appros, Magasin, Cuisine,
+Légumerie, Montage (dressage + robot), Dotation, Duty free, Armement, Plonge**,
+plus le **CF départ food**. Sont aussi dessinées **toutes les chambres froides,
+congélateurs, aires de stockage et locaux** (CF + BOF, CF charcuterie, CF Jour,
+CF PEQ tranche cuisine, congélateur, réserve sèche, local QHSE, etc.) —
+survolez-les pour le nom complet.
 
 - **Tokens animés** circulant le long des arêtes du graphe de flux.
 - **Code couleur de congestion** par atelier : 🟢 fluide → 🟠 chargé → 🔴 goulot.
