@@ -300,6 +300,14 @@ const SVGNS = 'http://www.w3.org/2000/svg';
 const svg = document.getElementById('plan');
 let tokens = [];
 const zoneEls = {};
+let edgeEls = {}, gPoign = null;
+let editMode = false, tracage = false;
+// Géométrie d'origine (pour « réinitialiser »)
+const ZONES_DEFAUT = JSON.parse(JSON.stringify(
+  Object.keys(ZONES).reduce((o, id) => {
+    const z = ZONES[id]; o[id] = { x:z.x, y:z.y, w:z.w, h:z.h, approx:!!z.approx }; return o;
+  }, {})
+));
 function svgEl(t, a) { const e = document.createElementNS(SVGNS, t); for (const k in a) e.setAttribute(k, a[k]); return e; }
 
 function construirePlan() {
@@ -316,22 +324,17 @@ function construirePlan() {
       x:t.x, y:t.y, width:t.w, height:t.h, preserveAspectRatio:'none' }));
   });
 
-  // Arêtes de flux
+  // Arêtes de flux (recalculées à chaque modification de géométrie)
   const gEdges = svgEl('g', {}); gVue.appendChild(gEdges);
-  Sim._edges = {};
+  edgeEls = {};
   FLUX.concat(FLUX_RETOUR.map(e => e.concat('R'))).forEach(fl => {
     const [a, b] = fl, retour = fl[2] === 'R', id = a + '_' + b;
-    const pa = bord(a, centre(b)), pb = bord(b, centre(a));
-    const mx = (pa.x + pb.x) / 2, my = (pa.y + pb.y) / 2;
-    const dx = pb.x - pa.x, dy = pb.y - pa.y, len = Math.hypot(dx, dy) || 1;
-    const cx = mx - dy / len * 130, cy = my + dx / len * 130; // courbure
-    const path = svgEl('path', { id:'edge-' + id, class:'edge' + (retour ? ' retour' : ''), d:`M ${pa.x} ${pa.y} Q ${cx} ${cy} ${pb.x} ${pb.y}` });
-    gEdges.appendChild(path);
-    // flèche
-    const ang = Math.atan2(pb.y - cy, pb.x - cx), F = 42;
-    gEdges.appendChild(svgEl('path', { class:'edge fleche' + (retour ? ' retour' : ''),
-      d:`M ${pb.x} ${pb.y} L ${pb.x-F*Math.cos(ang-0.4)} ${pb.y-F*Math.sin(ang-0.4)} M ${pb.x} ${pb.y} L ${pb.x-F*Math.cos(ang+0.4)} ${pb.y-F*Math.sin(ang+0.4)}` }));
+    const path = svgEl('path', { id:'edge-' + id, class:'edge' + (retour ? ' retour' : '') });
+    const fleche = svgEl('path', { class:'edge fleche' + (retour ? ' retour' : '') });
+    gEdges.appendChild(path); gEdges.appendChild(fleche);
+    edgeEls[id] = { path, fleche, a, b };
   });
+  redessinerEdges();
 
   // Stockages / chambres froides (repris du plan, sous les ateliers)
   const gSto = svgEl('g', {}); gVue.appendChild(gSto);
@@ -348,28 +351,68 @@ function construirePlan() {
   // Ateliers (au-dessus)
   const gZones = svgEl('g', {}); gVue.appendChild(gZones);
   Object.keys(ZONES).forEach(id => {
-    const z = ZONES[id], b = boite(z);
-    const g = svgEl('g', { class:'zone' + (z.approx ? ' approx' : ''), 'data-id':id });
-    g.appendChild(svgEl('rect', { class:'fond', x:b.x, y:b.y, width:b.w, height:b.h, rx:10 }));
-    const ti = svgEl('title', {}); ti.textContent = z.nom + (z.approx ? ' (emplacement à confirmer)' : ''); g.appendChild(ti);
-    const t = svgEl('text', { class:'titre', x:b.x+14, y:b.y+56 }); t.textContent = z.nom; g.appendChild(t);
-    (z.sous||[]).forEach((s,i) => {
-      const st = svgEl('text', { class:'sous', x:b.x+14, y:b.y+96+i*38 }); st.textContent = s; g.appendChild(st);
+    const z = ZONES[id];
+    const g = svgEl('g', { class:'zone', 'data-id':id });
+    const rect = svgEl('rect', { class:'fond', rx:10 }); g.appendChild(rect);
+    const ti = svgEl('title', {}); g.appendChild(ti);
+    const titre = svgEl('text', { class:'titre' }); titre.textContent = z.nom; g.appendChild(titre);
+    const sous = (z.sous || []).map(s => {
+      const st = svgEl('text', { class:'sous' }); st.textContent = s; g.appendChild(st); return st;
     });
+    let barreFond = null, jauge = null;
     if (!z.sink && !z.buffer) {
-      g.appendChild(svgEl('rect', { class:'barre-fond', x:b.x+14, y:b.y+b.h-30, width:b.w-28, height:16, rx:8 }));
-      const jauge = svgEl('rect', { class:'barre-jauge', x:b.x+14, y:b.y+b.h-30, width:0, height:16, rx:8, fill:'var(--vert)' });
-      g.appendChild(jauge); zoneEls[id] = { g, jauge, rect:g.querySelector('rect.fond'), b };
-    } else zoneEls[id] = { g, rect:g.querySelector('rect.fond'), b };
-    if (z.robot) ajoutRessource(g, b.x+b.w-210, b.y+b.h-130, 'ROBOT', 'robot');
-    if (z.tunnels) ajoutRessource(g, b.x+14, b.y+b.h-130, 'TUNNELS', 'tunnels');
-    const badge = svgEl('text', { class:'goulot-badge', x:b.x+b.w-14, y:b.y+56, 'text-anchor':'end' }); g.appendChild(badge); zoneEls[id].badge = badge;
-    g.addEventListener('click', () => selectionner(id));
+      barreFond = svgEl('rect', { class:'barre-fond', height:16, rx:8 }); g.appendChild(barreFond);
+      jauge = svgEl('rect', { class:'barre-jauge', width:0, height:16, rx:8, fill:'var(--vert)' }); g.appendChild(jauge);
+    }
+    let res = null;
+    if (z.robot) res = ajoutRessource(g, 'ROBOT', 'robot');
+    if (z.tunnels) res = ajoutRessource(g, 'TUNNELS', 'tunnels');
+    const badge = svgEl('text', { class:'goulot-badge', 'text-anchor':'end' }); g.appendChild(badge);
+    zoneEls[id] = { g, rect, titre, sous, barreFond, jauge, res, badge, tip:ti, b:boite(z) };
+    g.addEventListener('click', e => { e.stopPropagation(); selectionner(id); });
     gZones.appendChild(g);
+    positionnerZone(id);
   });
 
   const gTok = svgEl('g', { id:'tokens' }); gVue.appendChild(gTok); Sim._gTok = gTok;
-  initZoom();
+  gPoign = svgEl('g', { id:'poignees' }); gVue.appendChild(gPoign);
+  initInteractions();
+}
+
+/* Place tous les éléments d'une zone d'après sa géométrie courante. */
+function positionnerZone(id) {
+  const z = ZONES[id], e = zoneEls[id]; if (!e) return;
+  const b = boite(z); e.b = b;
+  const s = (el, a) => { for (const k in a) el.setAttribute(k, a[k]); };
+  s(e.rect, { x:b.x, y:b.y, width:b.w, height:b.h });
+  e.g.classList.toggle('approx', !!z.approx);
+  e.tip.textContent = z.nom + (z.approx ? ' (emplacement à confirmer)' : '');
+  s(e.titre, { x:b.x + 14, y:b.y + 56 });
+  e.sous.forEach((st, i) => s(st, { x:b.x + 14, y:b.y + 96 + i*38 }));
+  if (e.barreFond) s(e.barreFond, { x:b.x + 14, y:b.y + b.h - 30, width:Math.max(0, b.w - 28) });
+  if (e.jauge) s(e.jauge, { x:b.x + 14, y:b.y + b.h - 30 });
+  if (e.res) {
+    const rx = z.robot ? b.x + b.w - 210 : b.x + 14, ry = b.y + b.h - 130;
+    s(e.res.box, { x:rx, y:ry });
+    s(e.res.txt, { x:rx + 16, y:ry + 36 });
+    s(e.res.val, { x:rx + 16, y:ry + 78 });
+  }
+  s(e.badge, { x:b.x + b.w - 14, y:b.y + 56 });
+}
+
+/* Recalcule le tracé de toutes les arêtes. */
+function redessinerEdges() {
+  Object.keys(edgeEls).forEach(id => {
+    const e = edgeEls[id];
+    const pa = bord(e.a, centre(e.b)), pb = bord(e.b, centre(e.a));
+    const mx = (pa.x + pb.x)/2, my = (pa.y + pb.y)/2;
+    const dx = pb.x - pa.x, dy = pb.y - pa.y, len = Math.hypot(dx, dy) || 1;
+    const cx = mx - dy/len * 130, cy = my + dx/len * 130;
+    e.path.setAttribute('d', `M ${pa.x} ${pa.y} Q ${cx} ${cy} ${pb.x} ${pb.y}`);
+    const ang = Math.atan2(pb.y - cy, pb.x - cx), F = 42;
+    e.fleche.setAttribute('d',
+      `M ${pb.x} ${pb.y} L ${pb.x-F*Math.cos(ang-0.4)} ${pb.y-F*Math.sin(ang-0.4)} M ${pb.x} ${pb.y} L ${pb.x-F*Math.cos(ang+0.4)} ${pb.y-F*Math.sin(ang+0.4)}`);
+  });
 }
 
 /* --- Zoom / déplacement --------------------------------------------------- */
@@ -378,6 +421,7 @@ function appliquerVue() {
   Sim._gVue.setAttribute('transform', 'translate(' + vtx + ' ' + vty + ') scale(' + vk + ')');
   svg.classList.toggle('zoomed', vk >= 1.7);
   const z = document.getElementById('zoom-val'); if (z) z.textContent = Math.round(vk*100) + '%';
+  majPoignees();
 }
 function ptSvg(e) {
   const m = svg.getScreenCTM(); if (!m) return { x:0, y:0 };
@@ -391,30 +435,259 @@ function zoomer(f, p) {
   vk = nk; vtx = p.x - wx*vk; vty = p.y - wy*vk;
   appliquerVue();
 }
-function initZoom() {
+/* Convertit un point du repère SVG vers le repère du plan. */
+function versPlan(p) { return { x:(p.x - vtx) / vk, y:(p.y - vty) / vk }; }
+
+function initInteractions() {
   svg.addEventListener('wheel', e => { e.preventDefault(); zoomer(e.deltaY < 0 ? 1.18 : 1/1.18, ptSvg(e)); }, { passive:false });
-  let drag = null;
-  svg.addEventListener('pointerdown', e => { drag = { p:ptSvg(e), tx:vtx, ty:vty }; svg.setPointerCapture(e.pointerId); svg.style.cursor = 'grabbing'; });
-  svg.addEventListener('pointermove', e => {
-    if (!drag) return;
-    const p = ptSvg(e); vtx = drag.tx + (p.x - drag.p.x); vty = drag.ty + (p.y - drag.p.y); appliquerVue();
+
+  let act = null;   // action en cours : pan | move | resize | trace
+
+  svg.addEventListener('pointerdown', e => {
+    const p = ptSvg(e), m = versPlan(p);
+    svg.setPointerCapture(e.pointerId);
+
+    if (tracage && selection) { act = { t:'trace', m0:m }; return; }
+
+    const hp = e.target.closest && e.target.closest('.poignee');
+    if (editMode && hp) {
+      const z = ZONES[selection];
+      act = { t:'resize', coin:hp.dataset.h, m0:m, z0:{ x:z.x, y:z.y, w:z.w, h:z.h } };
+      return;
+    }
+    const gz = e.target.closest && e.target.closest('.zone');
+    if (editMode && gz) {
+      const id = gz.dataset.id;
+      if (id !== selection) selectionner(id);
+      const z = ZONES[id];
+      act = { t:'move', m0:m, z0:{ x:z.x, y:z.y } };
+      return;
+    }
+    act = { t:'pan', p0:p, tx:vtx, ty:vty }; svg.style.cursor = 'grabbing';
   });
-  const fin = e => { drag = null; svg.style.cursor = ''; };
-  svg.addEventListener('pointerup', fin); svg.addEventListener('pointercancel', fin);
+
+  svg.addEventListener('pointermove', e => {
+    if (!act) return;
+    const p = ptSvg(e), m = versPlan(p);
+
+    if (act.t === 'pan') {
+      vtx = act.tx + (p.x - act.p0.x); vty = act.ty + (p.y - act.p0.y); appliquerVue(); return;
+    }
+    if (act.t === 'trace') {
+      const r = rectDe(act.m0, m); dessinerTrace(r); return;
+    }
+    const z = ZONES[selection]; if (!z) return;
+    act.bouge = true;
+
+    if (act.t === 'move') {
+      z.x = Math.round(act.z0.x + (m.x - act.m0.x));
+      z.y = Math.round(act.z0.y + (m.y - act.m0.y));
+    } else if (act.t === 'resize') {
+      const d = { x:m.x - act.m0.x, y:m.y - act.m0.y }, o = act.z0, MIN = 60;
+      let x = o.x, y = o.y, w = o.w, h = o.h;
+      if (act.coin.includes('w')) { x = o.x + d.x; w = o.w - d.x; }
+      if (act.coin.includes('e')) { w = o.w + d.x; }
+      if (act.coin.includes('n')) { y = o.y + d.y; h = o.h - d.y; }
+      if (act.coin.includes('s')) { h = o.h + d.y; }
+      if (w < MIN) { if (act.coin.includes('w')) x = o.x + o.w - MIN; w = MIN; }
+      if (h < MIN) { if (act.coin.includes('n')) y = o.y + o.h - MIN; h = MIN; }
+      z.x = Math.round(x); z.y = Math.round(y); z.w = Math.round(w); z.h = Math.round(h);
+    }
+    majApresEdition();
+  });
+
+  const fin = e => {
+    if (act && act.t === 'trace') {
+      const r = rectDe(act.m0, versPlan(ptSvg(e)));
+      if (r.w > 40 && r.h > 40) {
+        const z = ZONES[selection];
+        z.x = Math.round(r.x); z.y = Math.round(r.y); z.w = Math.round(r.w); z.h = Math.round(r.h);
+        majApresEdition();
+      }
+      dessinerTrace(null); tracage = false; svg.classList.remove('tracage');
+    }
+    if (act && (act.t === 'move' || act.t === 'resize') && act.bouge && selection) {
+      ZONES[selection].approx = false; majApresEdition();
+    }
+    act = null; svg.style.cursor = '';
+  };
+  svg.addEventListener('pointerup', fin);
+  svg.addEventListener('pointercancel', () => { act = null; svg.style.cursor = ''; });
+
   appliquerVue();
 }
 
-function ajoutRessource(g, x, y, label, type) {
-  g.appendChild(svgEl('rect', { class:'ressource-box', x, y, width:196, height:96, rx:10 }));
-  const l = svgEl('text', { class:'ressource-txt', x:x+16, y:y+36 }); l.textContent = label; g.appendChild(l);
-  const v = svgEl('text', { class:'ressource-val', x:x+16, y:y+78, id:'res-' + type }); v.textContent = '—'; g.appendChild(v);
+function rectDe(a, b) {
+  return { x:Math.min(a.x, b.x), y:Math.min(a.y, b.y), w:Math.abs(b.x - a.x), h:Math.abs(b.y - a.y) };
+}
+let traceEl = null;
+function dessinerTrace(r) {
+  if (!r) { if (traceEl) { traceEl.remove(); traceEl = null; } return; }
+  if (!traceEl) { traceEl = svgEl('rect', { class:'trace-rect', rx:10 }); gPoign.appendChild(traceEl); }
+  traceEl.setAttribute('x', r.x); traceEl.setAttribute('y', r.y);
+  traceEl.setAttribute('width', r.w); traceEl.setAttribute('height', r.h);
+}
+
+/* Après toute modification de géométrie : replace, recalcule, sauvegarde. */
+function majApresEdition() {
+  positionnerZone(selection);
+  redessinerEdges();
+  majPoignees();
+  majChampsEdition();
+  sauvegarderZones();
+}
+
+/* Poignées de redimensionnement de la zone sélectionnée. */
+function majPoignees() {
+  if (!gPoign) return;
+  [...gPoign.querySelectorAll('.poignee')].forEach(n => n.remove());
+  if (!editMode || !selection) return;
+  const z = ZONES[selection], r = 16 / vk;
+  [['nw', z.x, z.y], ['ne', z.x + z.w, z.y], ['se', z.x + z.w, z.y + z.h], ['sw', z.x, z.y + z.h]]
+    .forEach(([k, x, y]) => {
+      const c = svgEl('circle', { class:'poignee ' + k, cx:x, cy:y, r:r, 'data-h':k });
+      c.setAttribute('stroke-width', 3 / vk);
+      gPoign.appendChild(c);
+    });
+}
+
+function ajoutRessource(g, label, type) {
+  const box = svgEl('rect', { class:'ressource-box', width:196, height:96, rx:10 }); g.appendChild(box);
+  const txt = svgEl('text', { class:'ressource-txt' }); txt.textContent = label; g.appendChild(txt);
+  const val = svgEl('text', { class:'ressource-val', id:'res-' + type }); val.textContent = '—'; g.appendChild(val);
+  return { box, txt, val };
 }
 
 let selection = null;
 function selectionner(id) {
-  selection = (selection === id) ? null : id;
+  selection = (!editMode && selection === id) ? null : id;
   Object.keys(zoneEls).forEach(k => zoneEls[k].g.classList.toggle('selection', k === selection));
-  majGoulotInfo();
+  majGoulotInfo(); majPoignees(); majChampsEdition();
+}
+
+/* ==========================================================================
+ *  7 bis. MODE ÉDITION DES ZONES
+ *  L'utilisateur place lui-même les zones sur le plan ; la géométrie est
+ *  sauvegardée dans le navigateur et exportable en JSON.
+ * ==========================================================================*/
+function geomZones() {
+  const o = {};
+  Object.keys(ZONES).forEach(id => {
+    const z = ZONES[id];
+    o[id] = { nom:z.nom, x:Math.round(z.x), y:Math.round(z.y), w:Math.round(z.w), h:Math.round(z.h), approx:!!z.approx };
+  });
+  return o;
+}
+function sauvegarderZones() {
+  try { localStorage.setItem('orly-zones', JSON.stringify(geomZones())); } catch (e) { /* indisponible */ }
+}
+function chargerZones() {
+  let o = null;
+  try { o = JSON.parse(localStorage.getItem('orly-zones') || 'null'); } catch (e) { return; }
+  if (o) appliquerGeom(o, true);
+}
+function appliquerGeom(o, silencieux) {
+  let n = 0;
+  Object.keys(o || {}).forEach(id => {
+    const z = ZONES[id], v = o[id]; if (!z || !v) return;
+    if (isFinite(v.x)) z.x = +v.x; if (isFinite(v.y)) z.y = +v.y;
+    if (isFinite(v.w)) z.w = +v.w; if (isFinite(v.h)) z.h = +v.h;
+    z.approx = !!v.approx; n++;
+  });
+  if (zoneEls[Object.keys(ZONES)[0]]) {
+    Object.keys(ZONES).forEach(positionnerZone); redessinerEdges(); majPoignees(); majChampsEdition();
+  }
+  if (!silencieux) toast(n + ' zones appliquées');
+  return n;
+}
+
+function basculerEdition() {
+  editMode = !editMode;
+  svg.classList.toggle('edition', editMode);
+  document.getElementById('panneau-edition').hidden = !editMode;
+  const b = document.getElementById('btn-edit');
+  b.classList.toggle('on', editMode);
+  b.textContent = editMode ? '✓ Terminer l\'édition' : '✏️ Éditer les zones';
+  if (editMode && !selection) selectionner(Object.keys(ZONES)[0]);
+  majPoignees(); majChampsEdition(); majListeEdition();
+}
+
+function majListeEdition() {
+  const box = document.getElementById('edit-liste'); if (!box) return;
+  box.innerHTML = '';
+  Object.keys(ZONES).forEach(id => {
+    const z = ZONES[id];
+    const b = document.createElement('button');
+    b.className = 'edit-puce' + (id === selection ? ' on' : '') + (z.approx ? ' approx' : '');
+    b.textContent = z.nom;
+    b.addEventListener('click', () => { selectionner(id); majListeEdition(); });
+    box.appendChild(b);
+  });
+}
+
+function majChampsEdition() {
+  const bloc = document.getElementById('edit-sel'); if (!bloc) return;
+  if (!editMode || !selection) { bloc.hidden = true; return; }
+  bloc.hidden = false;
+  const z = ZONES[selection];
+  document.getElementById('edit-nom').textContent = z.nom + (z.approx ? '  (à confirmer)' : '');
+  [['ez-x','x'],['ez-y','y'],['ez-w','w'],['ez-h','h']].forEach(([el,k]) => {
+    const n = document.getElementById(el); if (n && document.activeElement !== n) n.value = Math.round(z[k]);
+  });
+  majListeEdition();
+}
+
+function initEdition() {
+  document.getElementById('btn-edit').addEventListener('click', basculerEdition);
+
+  [['ez-x','x'],['ez-y','y'],['ez-w','w'],['ez-h','h']].forEach(([el,k]) => {
+    document.getElementById(el).addEventListener('input', e => {
+      if (!selection) return;
+      const v = parseFloat(e.target.value); if (!isFinite(v)) return;
+      ZONES[selection][k] = (k === 'w' || k === 'h') ? Math.max(60, v) : v;
+      ZONES[selection].approx = false;
+      positionnerZone(selection); redessinerEdges(); majPoignees(); sauvegarderZones();
+    });
+  });
+
+  document.getElementById('ez-redraw').addEventListener('click', () => {
+    if (!selection) return;
+    tracage = true; svg.classList.add('tracage');
+    toast('Tracez le rectangle de « ' + ZONES[selection].nom +' »');
+  });
+  document.getElementById('ez-reset').addEventListener('click', () => {
+    if (!selection) return;
+    Object.assign(ZONES[selection], ZONES_DEFAUT[selection]);
+    majApresEdition(); toast('Zone réinitialisée');
+  });
+  document.getElementById('ez-reset-all').addEventListener('click', () => {
+    if (!confirm('Réinitialiser toutes les zones à leur position d\'origine ?')) return;
+    appliquerGeom(ZONES_DEFAUT, true); sauvegarderZones(); toast('Zones réinitialisées');
+  });
+
+  document.getElementById('ez-copy').addEventListener('click', async () => {
+    const txt = JSON.stringify(geomZones(), null, 2);
+    try { await navigator.clipboard.writeText(txt); toast('JSON copié'); }
+    catch (e) {
+      const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta);
+      ta.select(); try { document.execCommand('copy'); toast('JSON copié'); } catch (e2) { toast('Copie impossible — utilisez Exporter'); }
+      ta.remove();
+    }
+  });
+  document.getElementById('ez-export').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(geomZones(), null, 2)], { type:'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = 'newrest-orly-zones.json'; a.click(); toast('zones exportées');
+  });
+  document.getElementById('ez-import').addEventListener('change', e => {
+    const f = e.target.files[0]; if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      try { appliquerGeom(JSON.parse(rd.result)); sauvegarderZones(); }
+      catch (err) { toast('JSON illisible'); }
+    };
+    rd.readAsText(f);
+  });
 }
 
 function spawnToken(edgeId, color) {
@@ -657,7 +930,8 @@ function exporter() {
  * ==========================================================================*/
 const Sim = { robotRate:0, dataCourante:SAMPLE, _gTok:null };
 window.Sim = Sim;
-construirePlan(); initStations(); build(SAMPLE); initControles();
+chargerZones();
+construirePlan(); initStations(); build(SAMPLE); initControles(); initEdition();
 majHorloge(); majPlan(); majDashboard(); dessinerChart();
 
 })();

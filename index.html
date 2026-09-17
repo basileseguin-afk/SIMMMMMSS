@@ -178,6 +178,27 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 .edge.retour{stroke-dasharray:22 14;stroke:var(--edge-retour)}
 .token{opacity:.98;stroke:var(--halo);stroke-width:3}
 
+/* --- mode édition des zones ---------------------------------------------- */
+.panneau-edit{border:2px solid var(--accent);background:var(--bg3)}
+.edit-nom{font-weight:800;font-size:13.5px;margin:10px 0 8px;color:var(--accent2)}
+.edit-grille{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:9px}
+.edit-grille label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--txt2);font-weight:700}
+.edit-grille input{width:100%;padding:5px 7px;font-size:12.5px}
+.btn-sm{padding:5px 9px;font-size:12px}
+.edit-liste{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px;padding-top:9px;border-top:1px solid var(--bordure)}
+.edit-puce{font-size:11px;padding:3px 8px;border-radius:20px;border:1.5px solid var(--bordure2);background:var(--bg2);cursor:pointer;font-weight:700;color:var(--txt2)}
+.edit-puce:hover{border-color:var(--accent);color:var(--accent)}
+.edit-puce.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.edit-puce.approx::after{content:' ?';opacity:.8}
+
+/* poignées de redimensionnement sur le plan */
+#plan.edition .zone{cursor:move}
+#plan.edition .zone rect.fond{fill-opacity:.22}
+.poignee{fill:var(--accent);stroke:#fff;stroke-width:3;cursor:nwse-resize}
+.poignee.ne,.poignee.sw{cursor:nesw-resize}
+#plan.tracage{cursor:crosshair}
+.trace-rect{fill:var(--accent);fill-opacity:.25;stroke:var(--accent);stroke-width:6;stroke-dasharray:18 12}
+
 /* contrôles de zoom */
 .zoom-ctrl{display:flex;align-items:center;gap:5px}
 .zoom-ctrl b{font-size:12px;min-width:42px;text-align:center;color:var(--txt2);font-variant-numeric:tabular-nums}
@@ -243,6 +264,46 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 
   <!-- ============ LEVIERS WHAT-IF ============ -->
   <div class="colonne col-gauche">
+
+    <!-- Panneau d'édition des zones (affiché en mode édition) -->
+    <div class="panneau panneau-edit" id="panneau-edition" hidden>
+      <h3>✏️ Édition des zones</h3>
+      <div class="mini-note" id="edit-aide">
+        Cliquez une zone sur le plan, puis <b>glissez</b> pour la déplacer ou
+        tirez un <b>coin</b> pour la redimensionner.
+      </div>
+
+      <div id="edit-sel" hidden>
+        <div class="edit-nom" id="edit-nom">—</div>
+        <div class="edit-grille">
+          <label>X <input type="number" id="ez-x" step="1"></label>
+          <label>Y <input type="number" id="ez-y" step="1"></label>
+          <label>Largeur <input type="number" id="ez-w" step="1"></label>
+          <label>Hauteur <input type="number" id="ez-h" step="1"></label>
+        </div>
+        <div class="row-btns">
+          <button class="btn btn-sm" id="ez-redraw">⬚ Redessiner</button>
+          <button class="btn btn-sm" id="ez-reset">↺ Cette zone</button>
+        </div>
+      </div>
+
+      <div class="edit-liste" id="edit-liste"></div>
+
+      <div class="row-btns" style="margin-top:10px">
+        <button class="btn btn-sm" id="ez-copy">📋 Copier le JSON</button>
+        <button class="btn btn-sm" id="ez-export">⇩ Exporter</button>
+      </div>
+      <div class="row-btns" style="margin-top:6px">
+        <label class="btn btn-sm" style="cursor:pointer">📂 Importer<input type="file" id="ez-import" accept=".json" hidden></label>
+        <button class="btn btn-sm" id="ez-reset-all">↺ Tout réinitialiser</button>
+      </div>
+      <div class="mini-note" style="margin-top:8px">
+        Vos modifications sont <b>sauvegardées automatiquement</b> dans le
+        navigateur. Exportez le JSON et transmettez-le pour l'intégrer comme
+        valeurs par défaut.
+      </div>
+    </div>
+
     <div class="panneau">
       <h3>👥 Effectifs par atelier</h3>
       <div id="sliders-staff"></div>
@@ -311,6 +372,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
         <button class="btn btn-mini" id="zoom-reset" title="Vue d'ensemble">⟲</button>
       </div>
       <label class="chk chk-mini"><input type="checkbox" id="fond-plan" checked> Fond de plan</label>
+      <button class="btn btn-mini" id="btn-edit" title="Éditer la position et la taille des zones">✏️ Éditer les zones</button>
       <div class="boussole"><b>↑</b>Quais / piste</div>
     </div>
     <div class="plan-wrap">
