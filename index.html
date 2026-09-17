@@ -1,63 +1,264 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Usine — Simulateur de production</title>
-  <meta name="description" content="Simulateur de gestion d'usine : ateliers, machines, personnel, cadences, stockage et production en temps réel." />
-  <link rel="stylesheet" href="css/styles.css" />
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Newrest Orly — Simulation des flux de production</title>
+<meta name="description" content="Simulation visuelle des flux de production d'une unité de catering aérien : goulots, charge par atelier, scénarios what-if." />
+<style>
+/* ==========================================================================
+ *  THÈME
+ * ==========================================================================*/
+:root{
+  --bg:#0c1016; --bg2:#131b26; --bg3:#1b2634; --panneau:#141d29; --bordure:#25313f;
+  --bordure2:#33445a; --txt:#e8eef6; --txt2:#93a4b8; --txt3:#5f7086;
+  --accent:#38bdf8; --accent2:#7dd3fc;
+  --vert:#3fb96b; --orange:#f0a93c; --rouge:#e5544b; --violet:#a874e8; --jaune:#e8c84a;
+  --r:10px; --r2:6px;
+  --ombre:0 6px 22px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  background:var(--bg); color:var(--txt);
+  font-family:'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif; font-size:13px;
+  display:grid; grid-template-rows:auto 1fr;
+  height:100vh; overflow:hidden;
+}
+
+/* --- En-tête --------------------------------------------------------------*/
+header{
+  display:flex; align-items:center; gap:20px; padding:9px 16px;
+  background:linear-gradient(180deg,var(--bg3),var(--bg2)); border-bottom:1px solid var(--bordure);
+  flex-wrap:wrap;
+}
+.marque{display:flex;align-items:center;gap:9px;font-weight:800;font-size:17px;white-space:nowrap}
+.marque .logo{font-size:22px}
+.marque small{color:var(--txt3);font-weight:600;font-size:11px}
+.horloge-box{display:flex;align-items:center;gap:14px;background:var(--bg);border:1px solid var(--bordure);border-radius:var(--r2);padding:6px 14px}
+.horloge{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px}
+.horloge .jour{font-size:11px;color:var(--txt3);font-weight:600}
+.transport{display:flex;gap:6px}
+.btn{border:1px solid var(--bordure2);background:var(--bg3);color:var(--txt);padding:7px 12px;border-radius:var(--r2);cursor:pointer;font-weight:600;font-size:12.5px;transition:filter .12s,background .12s}
+.btn:hover{filter:brightness(1.15)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-play{background:var(--vert);border-color:var(--vert);color:#05230f}
+.btn-pause{background:var(--orange);border-color:var(--orange);color:#241804}
+.btn.on{background:var(--accent);border-color:var(--accent);color:#04222e}
+.entete-droite{margin-left:auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.vitesse-box{display:flex;align-items:center;gap:8px;color:var(--txt2);font-size:12px}
+.vitesse-box input{width:110px;accent-color:var(--accent)}
+
+/* --- Disposition principale ----------------------------------------------*/
+.app{display:grid;grid-template-columns:290px 1fr 320px;gap:0;height:100%;overflow:hidden}
+.colonne{overflow-y:auto;padding:14px}
+.col-gauche{background:var(--bg2);border-right:1px solid var(--bordure)}
+.col-plan{background:radial-gradient(900px 500px at 70% 0%,rgba(56,189,248,.05),transparent),var(--bg);display:flex;flex-direction:column;padding:0}
+.col-droite{background:var(--bg2);border-left:1px solid var(--bordure)}
+
+/* --- Panneaux (contrôles) -------------------------------------------------*/
+.panneau{background:var(--panneau);border:1px solid var(--bordure);border-radius:var(--r);padding:12px;margin-bottom:12px}
+.panneau h3{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--txt3);font-weight:800;display:flex;align-items:center;gap:6px}
+.slider-ligne{margin-bottom:11px}
+.slider-ligne label{display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;color:var(--txt2)}
+.slider-ligne label b{color:var(--txt);font-variant-numeric:tabular-nums}
+.slider-ligne input[type=range]{width:100%;accent-color:var(--accent)}
+.champ{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.champ span{font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.04em}
+select,input[type=number]{background:var(--bg);border:1px solid var(--bordure2);color:var(--txt);padding:7px 9px;border-radius:var(--r2);font-size:12.5px;font-family:inherit}
+select:focus,input:focus{outline:none;border-color:var(--accent)}
+.pastille{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.mini-note{font-size:11px;color:var(--txt3);line-height:1.5}
+.row-btns{display:flex;gap:6px;flex-wrap:wrap}
+
+/* --- Plan -----------------------------------------------------------------*/
+.plan-tete{display:flex;align-items:center;gap:14px;padding:9px 16px;border-bottom:1px solid var(--bordure);background:var(--bg2)}
+.plan-tete .titre{font-weight:700}
+.plan-tete .boussole{margin-left:auto;display:flex;flex-direction:column;align-items:center;color:var(--txt3);font-size:10px;line-height:1.1}
+.plan-tete .boussole b{color:var(--accent2);font-size:13px}
+.legende{display:flex;gap:14px;font-size:11px;color:var(--txt2);flex-wrap:wrap}
+.legende span{display:flex;align-items:center}
+.plan-wrap{flex:1;position:relative;overflow:hidden}
+#plan{width:100%;height:100%;display:block}
+
+/* zones SVG */
+.zone{cursor:pointer}
+.zone rect.fond{fill:var(--bg3);stroke:var(--bordure2);stroke-width:1.5;transition:fill .4s,stroke .4s}
+.zone.saturee rect.fond{stroke-width:2.5}
+.zone text.titre{fill:var(--txt);font-weight:800;font-size:15px}
+.zone text.sous{fill:var(--txt3);font-size:10.5px}
+.zone .barre-fond{fill:#0a0e14}
+.zone .barre-jauge{transition:width .3s,fill .4s}
+.zone.selection rect.fond{stroke:var(--accent);stroke-width:3}
+.storage{fill:#0e1620;stroke:#2b3a4d;stroke-width:1}
+.storage-txt{fill:var(--txt3);font-size:9px}
+.edge{fill:none;stroke:#31425a;stroke-width:2;opacity:.55}
+.edge.retour{stroke-dasharray:5 5;stroke:#5a3f6e}
+.edge-actif{stroke:var(--accent);opacity:.9}
+.goulot-badge{fill:var(--rouge);font-weight:800;font-size:11px}
+.ressource-box{fill:#0e1620;stroke:#3a4a5f;stroke-width:1}
+.ressource-txt{fill:var(--txt2);font-size:10px}
+.ressource-val{fill:var(--txt);font-weight:800;font-size:13px}
+
+/* --- Dashboard ------------------------------------------------------------*/
+.kpi-grille{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.kpi{background:var(--panneau);border:1px solid var(--bordure);border-radius:var(--r2);padding:9px 10px}
+.kpi .lab{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--txt3)}
+.kpi .val{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px}
+.kpi .val small{font-size:11px;color:var(--txt3);font-weight:600}
+.val.bon{color:var(--vert)} .val.moyen{color:var(--orange)} .val.mauvais{color:var(--rouge)}
+
+.stat-atelier{margin-bottom:9px}
+.stat-atelier .haut{display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px}
+.stat-atelier .haut b{font-variant-numeric:tabular-nums}
+.barre{height:8px;background:var(--bg);border-radius:5px;overflow:hidden;border:1px solid var(--bordure)}
+.barre i{display:block;height:100%;transition:width .3s,background .3s}
+.badge-q{font-size:10px;color:var(--txt3);margin-left:6px}
+
+.chart-wrap{background:var(--panneau);border:1px solid var(--bordure);border-radius:var(--r);padding:10px;margin-bottom:12px}
+.chart-wrap h3{margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--txt3);font-weight:800}
+#chart{width:100%;height:110px;display:block}
+
+.compare-tab{width:100%;border-collapse:collapse;font-size:11.5px}
+.compare-tab th,.compare-tab td{padding:5px 6px;text-align:right;border-bottom:1px solid var(--bordure)}
+.compare-tab th:first-child,.compare-tab td:first-child{text-align:left;color:var(--txt2)}
+.compare-tab thead th{color:var(--txt3);font-size:10px;text-transform:uppercase}
+
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--accent);color:#04222e;padding:9px 18px;border-radius:30px;font-weight:700;opacity:0;pointer-events:none;transition:.25s;z-index:50;box-shadow:var(--ombre)}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media(max-width:1200px){
+  .app{grid-template-columns:250px 1fr 280px}
+}
+@media(max-width:900px){
+  body{overflow:auto;height:auto}
+  .app{grid-template-columns:1fr;height:auto}
+  .col-plan{min-height:70vh}
+  .colonne{max-height:none}
+}
+</style>
 </head>
 <body>
-  <!-- Barre supérieure : marque + KPI + contrôles -->
-  <header class="barre-haut">
-    <div class="marque">
-      <span class="marque-logo">🏭</span>
-      <span class="marque-nom">Usine<span class="marque-suffix">Sim</span></span>
+
+<header>
+  <div class="marque"><span class="logo">🛫</span><div>Newrest&nbsp;Orly<br><small>Simulation des flux de production</small></div></div>
+
+  <div class="horloge-box">
+    <div><div class="horloge" id="horloge">05:00</div><div class="jour">journée type</div></div>
+    <div class="transport">
+      <button class="btn btn-play" id="btn-play">▶ Lancer</button>
+      <button class="btn" id="btn-reset" title="Réinitialiser la journée">↺</button>
+    </div>
+  </div>
+
+  <div class="entete-droite">
+    <div class="vitesse-box">⏩ Vitesse <input type="range" id="vitesse" min="1" max="120" value="30"><b id="vitesse-val">30×</b></div>
+    <button class="btn" id="btn-export" title="Exporter les résultats (JSON)">⇩ Export</button>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- ================= COLONNE GAUCHE : LEVIERS WHAT-IF ================= -->
+  <div class="colonne col-gauche">
+    <div class="panneau">
+      <h3>👥 Effectifs par atelier</h3>
+      <div id="sliders-staff"></div>
     </div>
 
-    <div class="kpis">
-      <div class="kpi"><span class="kpi-label">Temps</span><span class="kpi-val" id="kpi-temps">00:00:00</span></div>
-      <div class="kpi"><span class="kpi-label">Budget</span><span class="kpi-val pos" id="kpi-budget">0 €</span></div>
-      <div class="kpi"><span class="kpi-label">Personnel affecté</span><span class="kpi-val" id="kpi-perso">0 / 0</span></div>
-      <div class="kpi"><span class="kpi-label">Stock</span><span class="kpi-val" id="kpi-stock">0 / 0</span></div>
-    </div>
-
-    <div class="controles">
-      <button class="btn btn-play" id="btn-play">▶ Démarrer</button>
-      <div class="vitesses">
-        <button class="btn-vitesse actif" data-v="1">1×</button>
-        <button class="btn-vitesse" data-v="2">2×</button>
-        <button class="btn-vitesse" data-v="4">4×</button>
-        <button class="btn-vitesse" data-v="8">8×</button>
+    <div class="panneau">
+      <h3>🤖 Robot de dressage (YC)</h3>
+      <div class="slider-ligne">
+        <label>Cadence <b id="robot-val">320 pl/h</b></label>
+        <input type="range" id="robot" min="200" max="560" step="20" value="320">
       </div>
-      <button class="btn btn-ghost" id="btn-sauver" title="Sauvegarder">💾</button>
-      <button class="btn btn-ghost" id="btn-reset" title="Réinitialiser">↺</button>
+      <div class="mini-note">Théorique 520 · benchmark 420 · actuel <b id="robot-note">320</b> plateaux/h.</div>
     </div>
-  </header>
 
-  <!-- Navigation par onglets -->
-  <nav class="onglets">
-    <button class="onglet actif" data-onglet="usine">🏭 Usine</button>
-    <button class="onglet" data-onglet="ateliers">🧱 Ateliers</button>
-    <button class="onglet" data-onglet="personnel">👷 Personnel</button>
-    <button class="onglet" data-onglet="stockage">📦 Stockage</button>
-    <button class="onglet" data-onglet="marche">💶 Marché</button>
-    <button class="onglet" data-onglet="catalogue">📚 Catalogue</button>
-  </nav>
+    <div class="panneau">
+      <h3>🧽 Plonge — tunnels</h3>
+      <div class="slider-ligne">
+        <label>Tunnels actifs <b id="tunnels-val">3</b></label>
+        <input type="range" id="tunnels" min="1" max="3" step="1" value="3">
+      </div>
+      <label style="display:flex;gap:8px;align-items:center;font-size:12px;color:var(--txt2)">
+        <input type="checkbox" id="double" checked> 1 tunnel double vitesse (×2)
+      </label>
+    </div>
 
-  <!-- Contenu principal -->
-  <main id="contenu" class="contenu"></main>
+    <div class="panneau">
+      <h3>🕑 Horaires de vols</h3>
+      <div class="slider-ligne">
+        <label>Décalage global <b id="shift-val">0 min</b></label>
+        <input type="range" id="shift" min="-60" max="60" step="5" value="0">
+      </div>
+      <div class="champ">
+        <span>Délai de chargement avant départ</span>
+        <input type="number" id="loadDelay" value="45" min="10" max="120">
+      </div>
+    </div>
 
-  <!-- Journal d'événements -->
-  <aside class="journal-wrap">
-    <div class="journal-tete">📋 Journal</div>
-    <div id="journal" class="journal"></div>
-  </aside>
+    <div class="panneau">
+      <h3>📑 Scénarios A / B</h3>
+      <div class="row-btns">
+        <button class="btn" id="snap-a">Capturer A</button>
+        <button class="btn" id="snap-b">Capturer B</button>
+        <button class="btn" id="snap-clear">Effacer</button>
+      </div>
+      <table class="compare-tab" id="compare" style="margin-top:10px"><tbody></tbody></table>
+    </div>
 
-  <script src="js/data.js"></script>
-  <script src="js/state.js"></script>
-  <script src="js/sim.js"></script>
-  <script src="js/ui.js"></script>
-  <script src="js/main.js"></script>
+    <div class="panneau">
+      <h3>📥 Données</h3>
+      <div class="champ"><span>Importer vols.csv</span><input type="file" id="imp-vols" accept=".csv"></div>
+      <div class="mini-note">Schéma tolérant : <code>vol_id,compagnie,type_avion,sens,heure_std,heure_sta,nb_BC,nb_PC,nb_YC</code>. Sans import, un jeu d'exemple réaliste est utilisé.</div>
+    </div>
+  </div>
+
+  <!-- ================= COLONNE CENTRE : PLAN ================= -->
+  <div class="colonne col-plan">
+    <div class="plan-tete">
+      <span class="titre">🗺️ Plan de l'unité</span>
+      <div class="legende">
+        <span><span class="pastille" style="background:var(--vert)"></span>fluide</span>
+        <span><span class="pastille" style="background:var(--orange)"></span>chargé</span>
+        <span><span class="pastille" style="background:var(--rouge)"></span>goulot</span>
+      </div>
+      <div class="boussole"><b>↑ N</b>Nord</div>
+    </div>
+    <div class="plan-wrap">
+      <svg id="plan" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+  </div>
+
+  <!-- ================= COLONNE DROITE : DASHBOARD ================= -->
+  <div class="colonne col-droite">
+    <div class="kpi-grille">
+      <div class="kpi"><div class="lab">Vols à l'heure</div><div class="val bon" id="kpi-ontime">100%</div></div>
+      <div class="kpi"><div class="lab">Retard moyen</div><div class="val" id="kpi-retard">0 <small>min</small></div></div>
+      <div class="kpi"><div class="lab">Débit plateaux</div><div class="val" id="kpi-debit">0 <small>/h</small></div></div>
+      <div class="kpi"><div class="lab">WIP total</div><div class="val" id="kpi-wip">0 <small>OF</small></div></div>
+    </div>
+
+    <div class="chart-wrap">
+      <h3>📈 Débit &amp; en-cours sur la journée</h3>
+      <canvas id="chart"></canvas>
+    </div>
+
+    <div class="panneau">
+      <h3>🏭 Charge par atelier</h3>
+      <div id="stats-ateliers"></div>
+    </div>
+
+    <div class="panneau">
+      <h3>⚠️ Goulot courant</h3>
+      <div id="goulot-info" class="mini-note">Simulation à l'arrêt.</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="sim.js"></script>
 </body>
 </html>
