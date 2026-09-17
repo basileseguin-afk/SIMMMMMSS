@@ -165,7 +165,8 @@ function build(data) {
   });
 }
 function mkJob(f, kind, route, work, robot, releaseT) {
-  const couleurs = { food:'#38bdf8', dot:'#3fb96b', arm:'#e8c84a', plonge:'#a874e8' };
+  // couleurs des tokens : assez saturées pour rester lisibles en clair comme en sombre
+  const couleurs = { food:'#0c74ad', dot:'#12813f', arm:'#c47a08', plonge:'#7b3fd4' };
   return { flight:f, kind, route, work, robot:robot||0, releaseT,
            dueT:(f.due!=null?f.due:releaseT+30), released:false, done:false,
            stationId:null, idx:0, rem:0, remRobot:0, color:couleurs[kind] };
@@ -370,9 +371,9 @@ function majPlan() {
     if (!els || z.sink) return;
     const u = Math.min(1, st.util), col = couleurCharge(u);
     if (els.jauge) { els.jauge.setAttribute('width', (els.b.w-16) * u); els.jauge.setAttribute('fill', col); }
-    els.rect.setAttribute('fill', u < 0.55 ? '#16202c' : u < 0.85 ? '#2a2416' : '#2c1a18');
-    els.rect.setAttribute('stroke', u >= 0.85 ? 'var(--rouge)' : u >= 0.55 ? 'var(--orange)' : 'var(--bordure2)');
-    els.g.classList.toggle('saturee', u >= 0.85);
+    // la couleur de fond/bordure est pilotée par le thème via une classe
+    els.g.classList.remove('c-ok', 'c-warn', 'c-bad');
+    els.g.classList.add(u < 0.55 ? 'c-ok' : u < 0.85 ? 'c-warn' : 'c-bad');
     if (els.badge) els.badge.textContent = st.qlen > 0 ? st.qlen + ' OF' : '';
   });
   const r = document.getElementById('res-robot'); if (r) r.textContent = Math.round((Sim.robotRate||0)*60) + '/' + CFG.robotCadence;
@@ -428,16 +429,20 @@ function dessinerChart() {
   const maxDebit = Math.max(560, ...historique.map(p => p.debit));
   const maxWip = Math.max(10, ...historique.map(p => p.wip));
   const X = t => (t - t0) / (t1 - t0) * w;
-  ctx.strokeStyle = 'rgba(255,255,255,.05)'; ctx.fillStyle = '#5f7086'; ctx.font = '9px sans-serif';
+  // couleurs reprises du thème courant
+  const cs = getComputedStyle(document.documentElement);
+  const cv = n => cs.getPropertyValue(n).trim();
+  ctx.strokeStyle = cv('--chart-grid'); ctx.fillStyle = cv('--txt3'); ctx.font = '600 10px sans-serif';
   for (let hh = 6; hh <= 22; hh += 4) { const x = X(hh*60); ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h-12); ctx.stroke(); ctx.fillText(hh+'h', x+2, h-2); }
   ctx.beginPath(); ctx.moveTo(X(historique[0].t), h-12);
   historique.forEach(p => ctx.lineTo(X(p.t), (h-12) - (p.wip/maxWip)*(h-20)));
   ctx.lineTo(X(historique[historique.length-1].t), h-12); ctx.closePath();
-  ctx.fillStyle = 'rgba(168,116,232,.18)'; ctx.fill();
-  ctx.beginPath(); ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 2;
+  ctx.fillStyle = cv('--chart-aire'); ctx.fill();
+  ctx.beginPath(); ctx.strokeStyle = cv('--chart-line'); ctx.lineWidth = 2.2;
   historique.forEach((p,i) => { const x=X(p.t), y=(h-12)-(p.debit/maxDebit)*(h-20); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
   ctx.stroke();
-  ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.beginPath(); ctx.moveTo(X(now),0); ctx.lineTo(X(now),h-12); ctx.stroke();
+  ctx.strokeStyle = cv('--chart-now'); ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(X(now),0); ctx.lineTo(X(now),h-12); ctx.stroke();
 }
 
 /* ==========================================================================
@@ -509,6 +514,26 @@ function initControles() {
   document.getElementById('snap-clear').addEventListener('click', () => { snaps = {}; majCompare(); });
   document.getElementById('imp-vols').addEventListener('change', importVols);
   window.addEventListener('resize', dessinerChart);
+  initTheme();
+}
+
+/* --- Thème clair / sombre ------------------------------------------------- */
+function appliquerTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  const b = document.getElementById('btn-theme');
+  b.textContent = t === 'dark' ? '☀️' : '🌙';
+  b.title = t === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre';
+  try { localStorage.setItem('orly-theme', t); } catch (e) { /* stockage indisponible */ }
+  dessinerChart();
+}
+function initTheme() {
+  let t = 'light';
+  try { t = localStorage.getItem('orly-theme') || 'light'; } catch (e) { /* stockage indisponible */ }
+  appliquerTheme(t);
+  document.getElementById('btn-theme').addEventListener('click', () => {
+    const cur = document.documentElement.getAttribute('data-theme');
+    appliquerTheme(cur === 'dark' ? 'light' : 'dark');
+  });
 }
 
 let snaps = {};

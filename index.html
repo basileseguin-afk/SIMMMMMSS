@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-theme="light">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,147 +7,196 @@
 <meta name="description" content="Simulation visuelle des flux de production d'une unité de catering aérien : goulots, charge par atelier, scénarios what-if." />
 <style>
 /* ==========================================================================
- *  THÈME
+ *  THÈME — clair par défaut (lisible), sombre en option
  * ==========================================================================*/
 :root{
-  --bg:#0c1016; --bg2:#131b26; --bg3:#1b2634; --panneau:#141d29; --bordure:#25313f;
-  --bordure2:#33445a; --txt:#e8eef6; --txt2:#93a4b8; --txt3:#5f7086;
-  --accent:#38bdf8; --accent2:#7dd3fc;
-  --vert:#3fb96b; --orange:#f0a93c; --rouge:#e5544b; --violet:#a874e8; --jaune:#e8c84a;
+  /* surfaces */
+  --bg:#e9eef4; --bg2:#f4f7fa; --bg3:#ffffff; --panneau:#ffffff;
+  --bordure:#c8d3e0; --bordure2:#9fb2c7;
+  /* texte */
+  --txt:#132030; --txt2:#41566e; --txt3:#63788f;
+  /* couleurs */
+  --accent:#0b6fa4; --accent2:#0a5c88;
+  --vert:#15803d; --orange:#b45309; --rouge:#c02618; --violet:#7c3aed; --jaune:#a16207;
+  /* plan */
+  --plan-bg:#f7f9fc;
+  --zone-fill:#ffffff; --zone-stroke:#8ea4bb; --zone-txt:#0f1d2c; --zone-sous:#55697f;
+  --ok-fill:#e6f7ec;  --ok-stroke:#17904a;
+  --warn-fill:#fdf3dd; --warn-stroke:#c97a0a;
+  --bad-fill:#fde8e5;  --bad-stroke:#c02618;
+  --jauge-bg:#dfe7ef;
+  --edge:#7d92a9; --edge-retour:#9b7cc4;
+  /* stockages */
+  --cf-f:#dfeeff;  --cf-s:#6ea3d8;  --cf-t:#1d4f7c;
+  --gel-f:#d6f4fa; --gel-s:#2fa0bd; --gel-t:#0b5f77;
+  --aire-f:#eef2f7;--aire-s:#bccadb;--aire-t:#5b6d82;
+  --sec-f:#fbf0d5; --sec-s:#cfae5c; --sec-t:#7a5f14;
+  --loc-f:#f2f5f9; --loc-s:#c3cfdd; --loc-t:#5b6d82;
+  --sub-f:#e8eff7; --sub-s:#9ab2cb; --sub-t:#2c4560;
+  /* chart */
+  --chart-grid:rgba(19,32,48,.10); --chart-line:#0b6fa4; --chart-aire:rgba(124,58,237,.16); --chart-now:rgba(19,32,48,.32);
+  --ombre:0 1px 3px rgba(19,32,48,.10), 0 4px 14px rgba(19,32,48,.07);
   --r:10px; --r2:6px;
-  --ombre:0 6px 22px rgba(0,0,0,.45);
 }
+:root[data-theme="dark"]{
+  --bg:#0f1620; --bg2:#16202c; --bg3:#1d2938; --panneau:#18222f;
+  --bordure:#33445a; --bordure2:#4a6180;
+  --txt:#f2f6fa; --txt2:#bccadb; --txt3:#93a8bf;
+  --accent:#4cb8ef; --accent2:#7fd0fb;
+  --vert:#46d07d; --orange:#f5b73f; --rouge:#ff6a5e; --violet:#b98cf5; --jaune:#f0cf5c;
+  --plan-bg:#111a25;
+  --zone-fill:#1e2a3a; --zone-stroke:#5d7695; --zone-txt:#f2f6fa; --zone-sous:#a9bdd3;
+  --ok-fill:#14342292;  --ok-stroke:#46d07d;
+  --warn-fill:#3c2f1092; --warn-stroke:#f5b73f;
+  --bad-fill:#40201c92;  --bad-stroke:#ff6a5e;
+  --jauge-bg:#0d1520;
+  --edge:#6f89a6; --edge-retour:#9d7fd0;
+  --cf-f:#16324c; --cf-s:#4d84b8; --cf-t:#a9d2f5;
+  --gel-f:#0f3743; --gel-s:#2e9cba; --gel-t:#8fe2f5;
+  --aire-f:#1a2431; --aire-s:#3c5069; --aire-t:#9fb2c7;
+  --sec-f:#332a13; --sec-s:#8a7333; --sec-t:#e8cf88;
+  --loc-f:#172029; --loc-s:#35485d; --loc-t:#9fb2c7;
+  --sub-f:#1c2836; --sub-s:#547093; --sub-t:#c3d6ea;
+  --chart-grid:rgba(255,255,255,.09); --chart-line:#4cb8ef; --chart-aire:rgba(185,140,245,.20); --chart-now:rgba(255,255,255,.35);
+  --ombre:0 4px 18px rgba(0,0,0,.45);
+}
+
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
 body{
   background:var(--bg); color:var(--txt);
-  font-family:'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif; font-size:13px;
-  display:grid; grid-template-rows:auto 1fr;
-  height:100vh; overflow:hidden;
+  font-family:'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif; font-size:14px;
+  display:grid; grid-template-rows:auto 1fr; height:100vh; overflow:hidden;
 }
 
 /* --- En-tête --------------------------------------------------------------*/
 header{
-  display:flex; align-items:center; gap:20px; padding:9px 16px;
-  background:linear-gradient(180deg,var(--bg3),var(--bg2)); border-bottom:1px solid var(--bordure);
-  flex-wrap:wrap;
+  display:flex; align-items:center; gap:18px; padding:9px 16px;
+  background:var(--bg3); border-bottom:2px solid var(--bordure); flex-wrap:wrap;
 }
-.marque{display:flex;align-items:center;gap:9px;font-weight:800;font-size:17px;white-space:nowrap}
+.marque{display:flex;align-items:center;gap:9px;font-weight:800;font-size:17px;white-space:nowrap;color:var(--txt)}
 .marque .logo{font-size:22px}
-.marque small{color:var(--txt3);font-weight:600;font-size:11px}
-.horloge-box{display:flex;align-items:center;gap:14px;background:var(--bg);border:1px solid var(--bordure);border-radius:var(--r2);padding:6px 14px}
-.horloge{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px}
+.marque small{color:var(--txt3);font-weight:600;font-size:11.5px}
+.horloge-box{display:flex;align-items:center;gap:14px;background:var(--bg2);border:1px solid var(--bordure);border-radius:var(--r2);padding:6px 14px}
+.horloge{font-size:23px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px;color:var(--txt)}
 .horloge .jour{font-size:11px;color:var(--txt3);font-weight:600}
 .transport{display:flex;gap:6px}
-.btn{border:1px solid var(--bordure2);background:var(--bg3);color:var(--txt);padding:7px 12px;border-radius:var(--r2);cursor:pointer;font-weight:600;font-size:12.5px;transition:filter .12s,background .12s}
-.btn:hover{filter:brightness(1.15)}
+.btn{
+  border:1.5px solid var(--bordure2); background:var(--bg3); color:var(--txt);
+  padding:7px 13px; border-radius:var(--r2); cursor:pointer; font-weight:700; font-size:13px;
+  transition:background .12s,border-color .12s;
+}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
 .btn:disabled{opacity:.45;cursor:not-allowed}
-.btn-play{background:var(--vert);border-color:var(--vert);color:#05230f}
-.btn-pause{background:var(--orange);border-color:var(--orange);color:#241804}
-.btn.on{background:var(--accent);border-color:var(--accent);color:#04222e}
+.btn-play{background:var(--vert);border-color:var(--vert);color:#fff}
+.btn-play:hover{background:#126d34;border-color:#126d34;color:#fff}
+.btn-pause{background:var(--orange);border-color:var(--orange);color:#fff}
+.btn-pause:hover{background:#96460a;border-color:#96460a;color:#fff}
 .entete-droite{margin-left:auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.vitesse-box{display:flex;align-items:center;gap:8px;color:var(--txt2);font-size:12px}
+.vitesse-box{display:flex;align-items:center;gap:8px;color:var(--txt2);font-size:12.5px;font-weight:600}
 .vitesse-box input{width:110px;accent-color:var(--accent)}
+.vitesse-box b{color:var(--txt);min-width:38px}
 
-/* --- Disposition principale ----------------------------------------------*/
-.app{display:grid;grid-template-columns:290px 1fr 320px;gap:0;height:100%;overflow:hidden}
+/* --- Disposition ----------------------------------------------------------*/
+.app{display:grid;grid-template-columns:300px 1fr 330px;height:100%;overflow:hidden}
 .colonne{overflow-y:auto;padding:14px}
-.col-gauche{background:var(--bg2);border-right:1px solid var(--bordure)}
-.col-plan{background:radial-gradient(900px 500px at 70% 0%,rgba(56,189,248,.05),transparent),var(--bg);display:flex;flex-direction:column;padding:0}
-.col-droite{background:var(--bg2);border-left:1px solid var(--bordure)}
+.col-gauche{background:var(--bg2);border-right:2px solid var(--bordure)}
+.col-plan{background:var(--plan-bg);display:flex;flex-direction:column;padding:0}
+.col-droite{background:var(--bg2);border-left:2px solid var(--bordure)}
 
-/* --- Panneaux (contrôles) -------------------------------------------------*/
-.panneau{background:var(--panneau);border:1px solid var(--bordure);border-radius:var(--r);padding:12px;margin-bottom:12px}
-.panneau h3{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--txt3);font-weight:800;display:flex;align-items:center;gap:6px}
-.slider-ligne{margin-bottom:11px}
-.slider-ligne label{display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;color:var(--txt2)}
-.slider-ligne label b{color:var(--txt);font-variant-numeric:tabular-nums}
+/* --- Panneaux -------------------------------------------------------------*/
+.panneau{background:var(--panneau);border:1px solid var(--bordure);border-radius:var(--r);padding:13px;margin-bottom:12px;box-shadow:var(--ombre)}
+.panneau h3{margin:0 0 11px;font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--txt2);font-weight:800;display:flex;align-items:center;gap:6px}
+.slider-ligne{margin-bottom:12px}
+.slider-ligne label{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;color:var(--txt2);font-weight:600}
+.slider-ligne label b{color:var(--txt);font-variant-numeric:tabular-nums;font-weight:800}
 .slider-ligne input[type=range]{width:100%;accent-color:var(--accent)}
 .champ{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
-.champ span{font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.04em}
-select,input[type=number]{background:var(--bg);border:1px solid var(--bordure2);color:var(--txt);padding:7px 9px;border-radius:var(--r2);font-size:12.5px;font-family:inherit}
-select:focus,input:focus{outline:none;border-color:var(--accent)}
-.pastille{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle}
-.mini-note{font-size:11px;color:var(--txt3);line-height:1.5}
+.champ span{font-size:11.5px;color:var(--txt2);text-transform:uppercase;letter-spacing:.03em;font-weight:700}
+select,input[type=number],input[type=file]{background:var(--bg3);border:1.5px solid var(--bordure2);color:var(--txt);padding:7px 9px;border-radius:var(--r2);font-size:13px;font-family:inherit}
+select:focus,input:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:var(--accent)}
+.pastille{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle;border:1px solid rgba(0,0,0,.18)}
+.mini-note{font-size:12px;color:var(--txt2);line-height:1.55}
+.mini-note b{color:var(--txt)}
 .row-btns{display:flex;gap:6px;flex-wrap:wrap}
+label.chk{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--txt2);font-weight:600;cursor:pointer}
+label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 
 /* --- Plan -----------------------------------------------------------------*/
-.plan-tete{display:flex;align-items:center;gap:14px;padding:9px 16px;border-bottom:1px solid var(--bordure);background:var(--bg2)}
-.plan-tete .titre{font-weight:700}
-.plan-tete .boussole{margin-left:auto;display:flex;flex-direction:column;align-items:center;color:var(--txt3);font-size:10px;line-height:1.1}
-.plan-tete .boussole b{color:var(--accent2);font-size:13px}
-.legende{display:flex;gap:14px;font-size:11px;color:var(--txt2);flex-wrap:wrap}
+.plan-tete{display:flex;align-items:center;gap:16px;padding:10px 16px;border-bottom:2px solid var(--bordure);background:var(--bg3)}
+.plan-tete .titre{font-weight:800;font-size:14px}
+.plan-tete .boussole{margin-left:auto;display:flex;flex-direction:column;align-items:center;color:var(--txt2);font-size:11px;line-height:1.15;font-weight:700}
+.plan-tete .boussole b{color:var(--accent);font-size:15px}
+.legende{display:flex;gap:15px;font-size:12.5px;color:var(--txt2);flex-wrap:wrap;font-weight:600}
 .legende span{display:flex;align-items:center}
 .plan-wrap{flex:1;position:relative;overflow:hidden}
 #plan{width:100%;height:100%;display:block}
 
-/* zones SVG */
+/* zones du plan */
 .zone{cursor:pointer}
-.zone rect.fond{fill:var(--bg3);stroke:var(--bordure2);stroke-width:1.5;transition:fill .4s,stroke .4s}
-.zone.saturee rect.fond{stroke-width:2.5}
-.zone text.titre{fill:var(--txt);font-weight:800;font-size:12px}
-.zone text.sous{fill:var(--txt3);font-size:9px}
-.zone .barre-fond{fill:#0a0e14}
-.zone .barre-jauge{transition:width .3s,fill .4s}
-.zone.selection rect.fond{stroke:var(--accent);stroke-width:3}
-.storage{fill:#0e1620;stroke:#2b3a4d;stroke-width:1}
-.storage-txt{fill:var(--txt3);font-size:9px}
+.zone rect.fond{fill:var(--zone-fill);stroke:var(--zone-stroke);stroke-width:1.8;transition:fill .35s,stroke .35s}
+.zone.c-ok   rect.fond{fill:var(--ok-fill);  stroke:var(--ok-stroke)}
+.zone.c-warn rect.fond{fill:var(--warn-fill);stroke:var(--warn-stroke)}
+.zone.c-bad  rect.fond{fill:var(--bad-fill); stroke:var(--bad-stroke);stroke-width:2.6}
+.zone text.titre{fill:var(--zone-txt);font-weight:800;font-size:13px}
+.zone text.sous{fill:var(--zone-sous);font-size:10.5px;font-weight:600}
+.zone .barre-fond{fill:var(--jauge-bg)}
+.zone .barre-jauge{transition:width .3s,fill .35s}
+.zone.selection rect.fond{stroke:var(--accent);stroke-width:3.4}
+.goulot-badge{fill:var(--rouge);font-weight:800;font-size:11.5px}
+.ressource-box{fill:var(--bg3);stroke:var(--bordure2);stroke-width:1.4}
+.ressource-txt{fill:var(--txt2);font-size:10px;font-weight:700}
+.ressource-val{fill:var(--txt);font-weight:800;font-size:13.5px}
+
 /* stockages passifs / chambres froides */
-.sto rect{stroke-width:1;transition:fill .2s}
-.sto-txt{font-size:8px;fill:var(--txt3);pointer-events:none}
-.sto-code{fill:#6f8bb0;font-size:9px}
 .sto{cursor:help}
-.sto-cf rect{fill:#122232;stroke:#274766}
-.sto-gel rect{fill:#0e2634;stroke:#1f6d86}
-.sto-gel .sto-txt,.sto-gel .sto-code{fill:#4fb3cc}
-.sto-aire rect{fill:#171e28;stroke:#2c3846}
-.sto-sec rect{fill:#221d14;stroke:#4a3d24}
-.sto-loc rect{fill:#14181f;stroke:#283040}
-.sto-sub rect{fill:#1a2432;stroke:#33445a;stroke-dasharray:3 2}
-.sto:hover rect{stroke:var(--accent);stroke-width:1.5}
-.edge{fill:none;stroke:#31425a;stroke-width:2;opacity:.55}
-.edge.retour{stroke-dasharray:5 5;stroke:#5a3f6e}
-.edge-actif{stroke:var(--accent);opacity:.9}
-.goulot-badge{fill:var(--rouge);font-weight:800;font-size:11px}
-.ressource-box{fill:#0e1620;stroke:#3a4a5f;stroke-width:1}
-.ressource-txt{fill:var(--txt2);font-size:10px}
-.ressource-val{fill:var(--txt);font-weight:800;font-size:13px}
+.sto rect{stroke-width:1.2}
+.sto-txt{font-size:9.5px;font-weight:600;pointer-events:none}
+.sto-code{font-size:10px;font-weight:800}
+.sto-cf   rect{fill:var(--cf-f);  stroke:var(--cf-s)}   .sto-cf   text{fill:var(--cf-t)}
+.sto-gel  rect{fill:var(--gel-f); stroke:var(--gel-s)}  .sto-gel  text{fill:var(--gel-t)}
+.sto-aire rect{fill:var(--aire-f);stroke:var(--aire-s)} .sto-aire text{fill:var(--aire-t)}
+.sto-sec  rect{fill:var(--sec-f); stroke:var(--sec-s)}  .sto-sec  text{fill:var(--sec-t)}
+.sto-loc  rect{fill:var(--loc-f); stroke:var(--loc-s)}  .sto-loc  text{fill:var(--loc-t)}
+.sto-sub  rect{fill:var(--sub-f); stroke:var(--sub-s);stroke-dasharray:3 2} .sto-sub text{fill:var(--sub-t)}
+.sto:hover rect{stroke:var(--accent);stroke-width:2}
+
+/* arêtes de flux */
+.edge{fill:none;stroke:var(--edge);stroke-width:2.2;opacity:.75}
+.edge.retour{stroke-dasharray:6 4;stroke:var(--edge-retour)}
 
 /* --- Dashboard ------------------------------------------------------------*/
-.kpi-grille{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
-.kpi{background:var(--panneau);border:1px solid var(--bordure);border-radius:var(--r2);padding:9px 10px}
-.kpi .lab{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--txt3)}
-.kpi .val{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px}
-.kpi .val small{font-size:11px;color:var(--txt3);font-weight:600}
+.kpi-grille{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
+.kpi{background:var(--panneau);border:1px solid var(--bordure);border-radius:var(--r2);padding:10px 11px;box-shadow:var(--ombre)}
+.kpi .lab{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--txt2);font-weight:700}
+.kpi .val{font-size:21px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px;color:var(--txt)}
+.kpi .val small{font-size:11.5px;color:var(--txt3);font-weight:700}
 .val.bon{color:var(--vert)} .val.moyen{color:var(--orange)} .val.mauvais{color:var(--rouge)}
 
-.stat-atelier{margin-bottom:9px}
-.stat-atelier .haut{display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px}
-.stat-atelier .haut b{font-variant-numeric:tabular-nums}
-.barre{height:8px;background:var(--bg);border-radius:5px;overflow:hidden;border:1px solid var(--bordure)}
+.stat-atelier{margin-bottom:10px}
+.stat-atelier .haut{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px;font-weight:600;color:var(--txt)}
+.stat-atelier .haut b{font-variant-numeric:tabular-nums;font-weight:800}
+.barre{height:9px;background:var(--jauge-bg);border-radius:5px;overflow:hidden;border:1px solid var(--bordure)}
 .barre i{display:block;height:100%;transition:width .3s,background .3s}
-.badge-q{font-size:10px;color:var(--txt3);margin-left:6px}
+.badge-q{font-size:11px;color:var(--txt3);margin-left:6px;font-weight:700}
 
-.chart-wrap{background:var(--panneau);border:1px solid var(--bordure);border-radius:var(--r);padding:10px;margin-bottom:12px}
-.chart-wrap h3{margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--txt3);font-weight:800}
-#chart{width:100%;height:110px;display:block}
+.chart-wrap{background:var(--panneau);border:1px solid var(--bordure);border-radius:var(--r);padding:11px;margin-bottom:12px;box-shadow:var(--ombre)}
+.chart-wrap h3{margin:0 0 6px;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--txt2);font-weight:800}
+#chart{width:100%;height:112px;display:block}
 
-.compare-tab{width:100%;border-collapse:collapse;font-size:11.5px}
-.compare-tab th,.compare-tab td{padding:5px 6px;text-align:right;border-bottom:1px solid var(--bordure)}
-.compare-tab th:first-child,.compare-tab td:first-child{text-align:left;color:var(--txt2)}
-.compare-tab thead th{color:var(--txt3);font-size:10px;text-transform:uppercase}
+.compare-tab{width:100%;border-collapse:collapse;font-size:12.5px}
+.compare-tab th,.compare-tab td{padding:6px;text-align:right;border-bottom:1px solid var(--bordure);color:var(--txt)}
+.compare-tab td:first-child,.compare-tab th:first-child{text-align:left;color:var(--txt2);font-weight:600}
+.compare-tab thead th{color:var(--txt2);font-size:10.5px;text-transform:uppercase;font-weight:800}
 
-.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--accent);color:#04222e;padding:9px 18px;border-radius:30px;font-weight:700;opacity:0;pointer-events:none;transition:.25s;z-index:50;box-shadow:var(--ombre)}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--accent);color:#fff;padding:10px 20px;border-radius:30px;font-weight:700;opacity:0;pointer-events:none;transition:.25s;z-index:50;box-shadow:var(--ombre)}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 
-@media(max-width:1200px){
-  .app{grid-template-columns:250px 1fr 280px}
-}
+@media(max-width:1250px){ .app{grid-template-columns:260px 1fr 290px} }
 @media(max-width:900px){
   body{overflow:auto;height:auto}
   .app{grid-template-columns:1fr;height:auto}
   .col-plan{min-height:70vh}
-  .colonne{max-height:none}
 }
 </style>
 </head>
@@ -166,13 +215,14 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
 
   <div class="entete-droite">
     <div class="vitesse-box">⏩ Vitesse <input type="range" id="vitesse" min="1" max="120" value="30"><b id="vitesse-val">30×</b></div>
+    <button class="btn" id="btn-theme" title="Basculer clair / sombre">🌙</button>
     <button class="btn" id="btn-export" title="Exporter les résultats (JSON)">⇩ Export</button>
   </div>
 </header>
 
 <div class="app">
 
-  <!-- ================= COLONNE GAUCHE : LEVIERS WHAT-IF ================= -->
+  <!-- ============ LEVIERS WHAT-IF ============ -->
   <div class="colonne col-gauche">
     <div class="panneau">
       <h3>👥 Effectifs par atelier</h3>
@@ -194,9 +244,7 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
         <label>Tunnels actifs <b id="tunnels-val">3</b></label>
         <input type="range" id="tunnels" min="1" max="3" step="1" value="3">
       </div>
-      <label style="display:flex;gap:8px;align-items:center;font-size:12px;color:var(--txt2)">
-        <input type="checkbox" id="double" checked> 1 tunnel double vitesse (×2)
-      </label>
+      <label class="chk"><input type="checkbox" id="double" checked> 1 tunnel double vitesse (×2)</label>
     </div>
 
     <div class="panneau">
@@ -224,18 +272,18 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
     <div class="panneau">
       <h3>📥 Données</h3>
       <div class="champ"><span>Importer vols.csv</span><input type="file" id="imp-vols" accept=".csv"></div>
-      <div class="mini-note">Schéma tolérant : <code>vol_id,compagnie,type_avion,sens,heure_std,heure_sta,nb_BC,nb_PC,nb_YC</code>. Sans import, un jeu d'exemple réaliste est utilisé.</div>
+      <div class="mini-note">Schéma tolérant : <code>vol_id, compagnie, type_avion, sens, heure_std, heure_sta, nb_BC, nb_PC, nb_YC</code>. Sans import, un jeu d'exemple réaliste est utilisé.</div>
     </div>
   </div>
 
-  <!-- ================= COLONNE CENTRE : PLAN ================= -->
+  <!-- ============ PLAN ============ -->
   <div class="colonne col-plan">
     <div class="plan-tete">
       <span class="titre">🗺️ Plan de l'unité</span>
       <div class="legende">
-        <span><span class="pastille" style="background:var(--vert)"></span>fluide</span>
-        <span><span class="pastille" style="background:var(--orange)"></span>chargé</span>
-        <span><span class="pastille" style="background:var(--rouge)"></span>goulot</span>
+        <span><span class="pastille" style="background:var(--ok-stroke)"></span>fluide</span>
+        <span><span class="pastille" style="background:var(--warn-stroke)"></span>chargé</span>
+        <span><span class="pastille" style="background:var(--bad-stroke)"></span>goulot</span>
       </div>
       <div class="boussole"><b>↑</b>Quais / piste</div>
     </div>
@@ -244,7 +292,7 @@ select:focus,input:focus{outline:none;border-color:var(--accent)}
     </div>
   </div>
 
-  <!-- ================= COLONNE DROITE : DASHBOARD ================= -->
+  <!-- ============ DASHBOARD ============ -->
   <div class="colonne col-droite">
     <div class="kpi-grille">
       <div class="kpi"><div class="lab">Vols à l'heure</div><div class="val bon" id="kpi-ontime">100%</div></div>

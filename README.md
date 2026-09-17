@@ -20,6 +20,14 @@ Ouvrez `index.html` dans un navigateur, ou servez le dossier
 > faciliter l'itération. Les deux s'ouvrent hors-ligne par double-clic. Un
 > **bundle en un seul fichier HTML autonome** peut être généré sur demande.
 
+## 🎨 Lisibilité
+
+Thème **clair à fort contraste** par défaut (lecture de plan, vidéoprojection,
+impression). Un **thème sombre** est disponible via le bouton 🌙 de l'en-tête ;
+le choix est mémorisé.
+
+![Thème sombre](assets/apercu-sombre.png)
+
 ## 🗺️ Le plan (cœur du livrable)
 
 Le plan est **reconstruit fidèlement à partir de la carte réelle de l'unité**
