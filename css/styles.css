@@ -1,0 +1,283 @@
+/* ============================================================================
+ * styles.css — UsineSim (thème industriel sombre)
+ * ==========================================================================*/
+:root {
+  --bg:        #0f1319;
+  --bg-2:      #161c26;
+  --bg-3:      #1e2632;
+  --panneau:   #1a212c;
+  --bordure:   #2a3441;
+  --bordure-2: #384456;
+  --texte:     #e6ecf3;
+  --texte-2:   #9aa8ba;
+  --texte-3:   #67748a;
+  --accent:    #f0a030;
+  --accent-2:  #ffb84d;
+  --bleu:      #4a90d9;
+  --vert:      #57bd7a;
+  --rouge:     #e0574f;
+  --violet:    #b06cd9;
+  --rayon:     10px;
+  --rayon-sm:  6px;
+  --ombre:     0 4px 18px rgba(0,0,0,.35);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(240,160,48,.06), transparent),
+    var(--bg);
+  color: var(--texte);
+  font-family: 'Segoe UI', system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  grid-template-columns: 1fr 280px;
+  grid-template-areas:
+    'barre   barre'
+    'onglets onglets'
+    'contenu journal';
+}
+
+/* --- Barre supérieure ----------------------------------------------------- */
+.barre-haut {
+  grid-area: barre;
+  display: flex; align-items: center; gap: 24px;
+  padding: 10px 18px;
+  background: linear-gradient(180deg, var(--bg-3), var(--bg-2));
+  border-bottom: 1px solid var(--bordure);
+  flex-wrap: wrap;
+}
+.marque { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 19px; }
+.marque-logo { font-size: 24px; }
+.marque-suffix { color: var(--accent); }
+
+.kpis { display: flex; gap: 22px; flex: 1; flex-wrap: wrap; }
+.kpi { display: flex; flex-direction: column; line-height: 1.25; }
+.kpi-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--texte-3); }
+.kpi-val { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.kpi-val.pos { color: var(--vert); }
+.kpi-val.neg { color: var(--rouge); }
+
+.controles { display: flex; align-items: center; gap: 10px; }
+.vitesses { display: flex; background: var(--bg); border: 1px solid var(--bordure); border-radius: var(--rayon-sm); overflow: hidden; }
+.btn-vitesse {
+  background: transparent; color: var(--texte-2); border: none; padding: 7px 11px;
+  cursor: pointer; font-weight: 600; font-size: 13px;
+}
+.btn-vitesse:hover { color: var(--texte); }
+.btn-vitesse.actif { background: var(--accent); color: #23180a; }
+
+/* --- Boutons -------------------------------------------------------------- */
+.btn {
+  border: 1px solid var(--bordure-2); background: var(--bg-3); color: var(--texte);
+  padding: 8px 14px; border-radius: var(--rayon-sm); cursor: pointer; font-weight: 600; font-size: 13px;
+  transition: filter .12s, background .12s, border-color .12s;
+}
+.btn:hover { filter: brightness(1.12); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn-play { background: var(--vert); border-color: var(--vert); color: #07240f; }
+.btn-pause { background: var(--accent); border-color: var(--accent); color: #23180a; }
+.btn-primaire { background: var(--accent); border-color: var(--accent); color: #23180a; }
+.btn-secondaire { background: var(--bleu); border-color: var(--bleu); color: #041729; }
+.btn-danger { background: transparent; border-color: var(--bordure-2); color: var(--rouge); }
+.btn-danger:hover { background: rgba(224,87,79,.14); }
+.btn-ghost { background: transparent; padding: 8px 11px; }
+.btn-sm { padding: 5px 9px; }
+.btn-xs { padding: 3px 8px; font-size: 12px; }
+
+/* --- Onglets -------------------------------------------------------------- */
+.onglets {
+  grid-area: onglets;
+  display: flex; gap: 4px; padding: 0 14px;
+  background: var(--bg-2); border-bottom: 1px solid var(--bordure);
+  overflow-x: auto;
+}
+.onglet {
+  background: transparent; border: none; border-bottom: 3px solid transparent;
+  color: var(--texte-2); padding: 12px 16px; cursor: pointer; font-weight: 600; font-size: 14px;
+  white-space: nowrap;
+}
+.onglet:hover { color: var(--texte); }
+.onglet.actif { color: var(--accent-2); border-bottom-color: var(--accent); }
+
+/* --- Contenu -------------------------------------------------------------- */
+.contenu { grid-area: contenu; padding: 22px; overflow-y: auto; }
+.vue { max-width: 1100px; }
+
+.section-tete { margin-bottom: 16px; }
+.section-tete h2 { margin: 0 0 4px; font-size: 22px; }
+.section-desc { margin: 0; color: var(--texte-2); max-width: 720px; }
+
+.sous-titre { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--texte-3); margin: 22px 0 10px; font-weight: 700; }
+.sous-titre-mini { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--texte-3); margin-bottom: 6px; }
+
+/* --- Cartes & formulaires ------------------------------------------------- */
+.carte {
+  background: var(--panneau); border: 1px solid var(--bordure); border-radius: var(--rayon);
+  padding: 16px; margin-bottom: 14px; box-shadow: var(--ombre);
+  border-left: 4px solid var(--couleur, var(--bordure-2));
+}
+.carte-form { align-items: flex-end; }
+.carte-petite { padding: 14px; }
+.carte-tete { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.carte-titre { font-weight: 700; font-size: 15px; flex: 1; }
+
+.grille-cartes { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.grille-kpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 8px; }
+
+.form-ligne { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 8px; }
+.form-ligne-mini { display: flex; gap: 6px; margin-bottom: 6px; }
+.champ { display: flex; flex-direction: column; gap: 4px; }
+.champ-label { font-size: 11px; color: var(--texte-3); text-transform: uppercase; letter-spacing: .04em; }
+
+.input {
+  background: var(--bg); border: 1px solid var(--bordure-2); color: var(--texte);
+  padding: 8px 10px; border-radius: var(--rayon-sm); font-size: 13px; font-family: inherit;
+  min-width: 120px;
+}
+.input:focus { outline: none; border-color: var(--accent); }
+.input:disabled { opacity: .5; }
+.input-court { min-width: 74px; width: 90px; }
+.input-titre { font-weight: 700; font-size: 15px; flex: 1; min-width: 140px; background: transparent; border-color: transparent; }
+.input-titre:hover, .input-titre:focus { background: var(--bg); border-color: var(--bordure-2); }
+select.input { cursor: pointer; }
+
+.note { color: var(--texte-2); font-size: 12.5px; align-self: center; }
+
+/* --- Sous-listes (machines dans un atelier) ------------------------------- */
+.sous-liste { margin-top: 12px; border-top: 1px dashed var(--bordure); padding-top: 12px; }
+.ligne-item {
+  display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: var(--rayon-sm);
+  background: var(--bg-2); margin-bottom: 6px;
+}
+.ligne-icone { font-size: 18px; }
+.ligne-nom { font-weight: 600; min-width: 120px; }
+.ligne-badge { font-size: 12px; color: var(--texte-2); background: var(--bg); padding: 3px 8px; border-radius: 20px; }
+.ligne-item .btn { margin-left: auto; }
+.ligne-item .ligne-badge + .btn { margin-left: 0; }
+
+.mini-vide { color: var(--texte-3); font-style: italic; padding: 8px 0; font-size: 13px; }
+
+/* --- Tableaux ------------------------------------------------------------- */
+.table { background: var(--panneau); border: 1px solid var(--bordure); border-radius: var(--rayon); overflow: hidden; }
+.table-tete, .table-ligne {
+  display: grid; grid-template-columns: 1.4fr 1fr 1fr 40px; gap: 10px; align-items: center; padding: 10px 14px;
+}
+.table-tete-4 { grid-template-columns: 1.6fr 1fr 1fr 1fr; }
+.table-tete { background: var(--bg-3); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--texte-3); font-weight: 700; }
+.table-ligne { border-top: 1px solid var(--bordure); }
+.table-ligne:hover { background: var(--bg-2); }
+.perso-nom { font-weight: 600; }
+
+.table-inv { display: flex; flex-wrap: wrap; gap: 0; }
+.inv-item { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-right: 1px solid var(--bordure); border-top: 1px solid var(--bordure); min-width: 160px; flex: 1; }
+.inv-icone { font-size: 18px; }
+.inv-nom { flex: 1; color: var(--texte-2); }
+.inv-qte { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 16px; }
+
+/* --- Badges de catégorie -------------------------------------------------- */
+.badge-cat { font-size: 10.5px; padding: 2px 8px; border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
+.cat-brut { background: rgba(74,144,217,.18); color: #7fb6ec; }
+.cat-intermediaire { background: rgba(240,160,48,.18); color: var(--accent-2); }
+.cat-fini { background: rgba(87,189,122,.18); color: #7fd89a; }
+
+/* --- Puces (catalogue produits) ------------------------------------------- */
+.puce { display: flex; align-items: center; gap: 8px; background: var(--panneau); border: 1px solid var(--bordure); border-radius: 30px; padding: 6px 8px 6px 12px; }
+.puce-ico { font-size: 18px; }
+.puce-nom { font-weight: 600; flex: 1; }
+
+.recette { margin-top: 8px; font-size: 15px; letter-spacing: 1px; }
+.recette-grille { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 12px 0; }
+.recette-bloc { background: var(--bg-2); border-radius: var(--rayon-sm); padding: 10px; }
+
+/* --- KPI cartes (marché) -------------------------------------------------- */
+.kpi-carte { background: var(--panneau); border: 1px solid var(--bordure); border-radius: var(--rayon); padding: 14px 16px; }
+.kpi-carte-label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--texte-3); }
+.kpi-carte-val { font-size: 24px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+
+.switch-ligne { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.switch-ligne input { width: 16px; height: 16px; accent-color: var(--accent); }
+
+/* --- Jauge ---------------------------------------------------------------- */
+.jauge { height: 14px; background: var(--bg); border-radius: 10px; overflow: hidden; border: 1px solid var(--bordure-2); margin: 6px 0; }
+.jauge-fill { height: 100%; background: linear-gradient(90deg, var(--vert), var(--accent)); transition: width .3s; }
+
+/* ==========================================================================
+ *  VUE USINE (plan animé)
+ * ==========================================================================*/
+.vue-usine { }
+.usine-grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+.atelier-plan {
+  background: var(--panneau); border: 1px solid var(--bordure); border-top: 4px solid var(--couleur, var(--accent));
+  border-radius: var(--rayon); padding: 14px; box-shadow: var(--ombre);
+}
+.atelier-plan-tete { display: flex; flex-direction: column; gap: 2px; margin-bottom: 12px; }
+.atelier-plan-nom { font-weight: 700; font-size: 16px; }
+.atelier-plan-meta { font-size: 12px; color: var(--texte-2); }
+.atelier-plan-machines { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+
+.machine-tuile {
+  background: var(--bg-2); border: 1px solid var(--bordure-2); border-radius: var(--rayon-sm);
+  padding: 10px 10px 12px; text-align: center; position: relative; overflow: hidden;
+  transition: border-color .2s, box-shadow .2s;
+}
+.machine-icone { font-size: 30px; line-height: 1; }
+.machine-nom { font-weight: 600; font-size: 12.5px; margin: 6px 0 2px; }
+.machine-etat { font-size: 11px; color: var(--texte-2); min-height: 14px; }
+.machine-staff { font-size: 11px; color: var(--texte-3); margin-top: 2px; }
+.machine-barre { height: 5px; background: var(--bg); border-radius: 4px; margin-top: 8px; overflow: hidden; }
+.machine-barre-fill { height: 100%; width: 0; background: var(--accent); transition: width .15s linear; }
+
+/* États machine */
+.machine-tuile.etat-marche { border-color: var(--vert); box-shadow: 0 0 0 1px var(--vert), 0 0 16px rgba(87,189,122,.25); }
+.machine-tuile.etat-marche .machine-icone { animation: pulse 1.1s ease-in-out infinite; }
+.machine-tuile.etat-marche .machine-barre-fill { background: var(--vert); }
+.machine-tuile.etat-prepa { border-color: var(--accent); }
+.machine-tuile.etat-prepa .machine-barre-fill { background: var(--accent); }
+.machine-tuile.etat-prepa .machine-etat { color: var(--accent-2); }
+.machine-tuile.etat-en_attente { border-color: var(--bleu); }
+.machine-tuile.etat-en_attente .machine-etat { color: #7fb6ec; }
+.machine-tuile.etat-bloque, .machine-tuile.etat-sans_personnel { border-color: var(--rouge); }
+.machine-tuile.etat-bloque .machine-etat, .machine-tuile.etat-sans_personnel .machine-etat { color: #ec8a84; }
+.machine-tuile.etat-arret { opacity: .7; }
+
+@keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.14); } }
+
+.vide { text-align: center; color: var(--texte-2); padding: 60px 20px; font-size: 16px; line-height: 1.7; }
+
+/* ==========================================================================
+ *  JOURNAL
+ * ==========================================================================*/
+.journal-wrap { grid-area: journal; background: var(--bg-2); border-left: 1px solid var(--bordure); display: flex; flex-direction: column; overflow: hidden; }
+.journal-tete { padding: 12px 14px; font-weight: 700; border-bottom: 1px solid var(--bordure); font-size: 13px; }
+.journal { overflow-y: auto; padding: 8px; flex: 1; }
+.journal-vide { color: var(--texte-3); font-style: italic; padding: 10px; font-size: 12.5px; }
+.journal-item { display: flex; flex-direction: column; gap: 2px; padding: 7px 8px; border-radius: var(--rayon-sm); font-size: 12px; }
+.journal-item:hover { background: var(--bg-3); }
+.journal-t { color: var(--texte-3); font-variant-numeric: tabular-nums; font-size: 10.5px; }
+.journal-type { font-size: 9.5px; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; align-self: flex-start; padding: 1px 6px; border-radius: 10px; background: var(--bg); color: var(--texte-2); }
+.journal-type.type-atelier { color: var(--accent-2); }
+.journal-type.type-machine { color: var(--bleu); }
+.journal-type.type-personnel { color: var(--vert); }
+.journal-type.type-stockage { color: var(--violet); }
+.journal-msg { color: var(--texte); }
+
+/* --- Toast ---------------------------------------------------------------- */
+#toast {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--vert); color: #07240f; padding: 10px 20px; border-radius: 30px; font-weight: 700;
+  opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; z-index: 100; box-shadow: var(--ombre);
+}
+#toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* --- Responsive ----------------------------------------------------------- */
+@media (max-width: 900px) {
+  body { grid-template-columns: 1fr; grid-template-areas: 'barre' 'onglets' 'contenu' 'journal'; grid-template-rows: auto auto 1fr auto; }
+  .journal-wrap { border-left: none; border-top: 1px solid var(--bordure); max-height: 180px; }
+  .recette-grille { grid-template-columns: 1fr; }
+  .kpis { gap: 14px; order: 3; width: 100%; }
+  .controles { order: 2; }
+}

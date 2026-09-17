@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Usine — Simulateur de production</title>
+  <meta name="description" content="Simulateur de gestion d'usine : ateliers, machines, personnel, cadences, stockage et production en temps réel." />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <!-- Barre supérieure : marque + KPI + contrôles -->
+  <header class="barre-haut">
+    <div class="marque">
+      <span class="marque-logo">🏭</span>
+      <span class="marque-nom">Usine<span class="marque-suffix">Sim</span></span>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><span class="kpi-label">Temps</span><span class="kpi-val" id="kpi-temps">00:00:00</span></div>
+      <div class="kpi"><span class="kpi-label">Budget</span><span class="kpi-val pos" id="kpi-budget">0 €</span></div>
+      <div class="kpi"><span class="kpi-label">Personnel affecté</span><span class="kpi-val" id="kpi-perso">0 / 0</span></div>
+      <div class="kpi"><span class="kpi-label">Stock</span><span class="kpi-val" id="kpi-stock">0 / 0</span></div>
+    </div>
+
+    <div class="controles">
+      <button class="btn btn-play" id="btn-play">▶ Démarrer</button>
+      <div class="vitesses">
+        <button class="btn-vitesse actif" data-v="1">1×</button>
+        <button class="btn-vitesse" data-v="2">2×</button>
+        <button class="btn-vitesse" data-v="4">4×</button>
+        <button class="btn-vitesse" data-v="8">8×</button>
+      </div>
+      <button class="btn btn-ghost" id="btn-sauver" title="Sauvegarder">💾</button>
+      <button class="btn btn-ghost" id="btn-reset" title="Réinitialiser">↺</button>
+    </div>
+  </header>
+
+  <!-- Navigation par onglets -->
+  <nav class="onglets">
+    <button class="onglet actif" data-onglet="usine">🏭 Usine</button>
+    <button class="onglet" data-onglet="ateliers">🧱 Ateliers</button>
+    <button class="onglet" data-onglet="personnel">👷 Personnel</button>
+    <button class="onglet" data-onglet="stockage">📦 Stockage</button>
+    <button class="onglet" data-onglet="marche">💶 Marché</button>
+    <button class="onglet" data-onglet="catalogue">📚 Catalogue</button>
+  </nav>
+
+  <!-- Contenu principal -->
+  <main id="contenu" class="contenu"></main>
+
+  <!-- Journal d'événements -->
+  <aside class="journal-wrap">
+    <div class="journal-tete">📋 Journal</div>
+    <div id="journal" class="journal"></div>
+  </aside>
+
+  <script src="js/data.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/sim.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
