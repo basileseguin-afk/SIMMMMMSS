@@ -5,6 +5,35 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-18 — Relève d'équipe : la capacité varie dans le temps
+
+| Fichier | Changement |
+|---|---|
+| `moteur/ressources.js` | `Ressource.modifierCapacite(n)` ; capacité 0 permise ; **capacité effective** mesurée (places ouvertes, ou présents qui finissent après une baisse) : le taux d'occupation ne dépasse jamais 1 |
+| `moteur/orly.js` | `cfg.equipes = { bascule, soir: { atelier: n } }` : à l'heure de relève, l'effectif de l'atelier change ; un atelier à 0 fait attendre au lieu d'être absent ; `personnes` du bilan = moyenne sur la journée |
+| `sim.js`, `index.html` | bloc repliable « Équipe du soir » : heure de relève et un curseur par atelier, « comme le matin » tant qu'on n'y touche pas ; détail d'atelier = personnes présentes ; ligne A/B |
+| `tests/ressources.test.cjs` | relève et renfort sans interruption, occupation ∫occupées / ∫capacité effective, ressource à zéro place |
+| `tests/orly.test.cjs`, `tests/import-browser.cjs` | cuisine sans équipe du soir : vague du matin faite, vague du soir jamais ; renfort ; bascule avant l'ouverture |
+| `README.md` | réglages, limites |
+
+La feuille de route relevait que « les ressources humaines sont des capacités
+globales constantes ; leurs horaires ne sont pas représentés ». Un effectif peut
+maintenant changer à une heure donnée. Personne n'est interrompu à la relève :
+les places en trop se ferment au fil des libérations, et les renforts servent
+aussitôt ce qui attend.
+
+**Point de conception trouvé par le test.** Mesurée naïvement, l'occupation
+dépassait 100 % après une baisse d'effectif : deux personnes finissaient leur
+lot alors qu'une seule place restait ouverte. La capacité mesurée est donc la
+capacité **effective** — les présents, pas les places du planning. Quelqu'un qui
+termine après la relève est encore là.
+
+Deux équipes au plus (matin, soir) : c'est un premier pas, pas un planning.
+
+Tests : 78 unitaires et 4 parcours navigateur, tous au vert.
+
+---
+
 ## 2026-09-18 — Règle du robot, dressage manuel et contenance des ateliers
 
 Trois leviers de la feuille de route entrent dans le modèle et dans les réglages.

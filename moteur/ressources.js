@@ -118,21 +118,53 @@
       if (!env || typeof env.maintenant !== 'number') throw new TypeError('Ressource attend un environnement.');
       this.env = env;
       this.nom = o.nom || 'ressource';
-      this.capacite = verifierCapacite(capacite === undefined ? 1 : capacite, 'La capacité d\'une ressource', true);
+      const cap = capacite === undefined ? 1 : capacite;
+      if (!Number.isInteger(cap) || cap < 0) {
+        throw new RangeError('La capacité d\'une ressource doit être un entier ≥ 0 (reçu : ' + String(capacite) + ').');
+      }
+      this.capacite = cap;   // 0 est permis : personne à ce poste pour l'instant
 
       this._occupees = [];   // demandes accordées
       this._file = [];       // demandes en attente, triées
       this._seq = 0;
 
       this.occupation = new Moniteur(env, { nom: this.nom + ' · places occupées', niveau: true, valeurInitiale: 0 });
+      // Capacité EFFECTIVE : le nombre de places ouvertes, ou, s'il est plus
+      // grand, le nombre de places encore occupées après une baisse. Quelqu'un
+      // qui finit son lot après la relève est encore là : le taux d'occupation
+      // ne dépasse donc jamais 1, et « personnes » compte les présents.
+      this.capaciteMesuree = new Moniteur(env, { nom: this.nom + ' · capacité effective', niveau: true, valeurInitiale: cap });
       this.longueurFile = new Moniteur(env, { nom: this.nom + ' · file', niveau: true, valeurInitiale: 0 });
       this.attente = new Moniteur(env, { nom: this.nom + ' · attente', niveau: false });
     }
 
     /** Nombre de places actuellement occupées. */
     get occupees() { return this._occupees.length; }
-    /** Nombre de places libres. */
-    get libres() { return this.capacite - this._occupees.length; }
+    /** Nombre de places libres (jamais négatif, même après une baisse de capacité). */
+    get libres() { return Math.max(0, this.capacite - this._occupees.length); }
+
+    /**
+     * Change le nombre de places : une relève d'équipe, un renfort, une
+     * absence. À la hausse, les demandes en attente sont servies aussitôt. À
+     * la baisse, personne n'est interrompu : les places en trop se ferment au
+     * fur et à mesure des libérations. Le taux d'occupation reste juste, car
+     * il rapporte les places occupées à la capacité intégrée dans le temps.
+     */
+    modifierCapacite(capacite) {
+      if (!Number.isInteger(capacite) || capacite < 0) {
+        throw new RangeError('La capacité doit être un entier ≥ 0 (reçu : ' + String(capacite) + ').');
+      }
+      if (capacite === this.capacite) return this;
+      this.capacite = capacite;
+      this._noterCapacite();
+      this._traiterFile();
+      return this;
+    }
+
+    _noterCapacite() {
+      const effective = Math.max(this.capacite, this._occupees.length);
+      if (effective !== this.capaciteMesuree.derniere) this.capaciteMesuree.noter(effective);
+    }
     /** Nombre de demandes en attente. */
     get enAttente() { return this._file.length; }
 
@@ -207,6 +239,7 @@
         this._occupees.splice(i, 1);
         demande.accordee = false;
         this.occupation.noter(this._occupees.length);
+        this._noterCapacite();          // une place en trop se ferme ici, après la relève
         this._traiterFile();
         return true;
       }
@@ -225,8 +258,9 @@
      * durée et par la capacité. Pas un lissage, pas de plancher.
      */
     tauxOccupation() {
-      const m = this.occupation.moyenne();
-      return m === null ? null : m / this.capacite;
+      const occ = this.occupation.moyenne(), cap = this.capaciteMesuree.moyenne();
+      if (occ === null || cap === null || cap <= 0) return null;
+      return occ / cap;
     }
 
     resume() {

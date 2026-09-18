@@ -82,7 +82,10 @@ n'est présent dans ce dépôt.
    liste des compagnies qu’il sert (règle de la feuille de route : FBU, TX/FWI
    et CRL ; les autres YC sont dressés à la main à un coefficient non calibré),
    la contenance des ateliers en ordres de fabrication (vide = illimitée ; finie,
-   elle crée le blocage amont), les tunnels et les horaires avant de lancer. Une fois l’essai commencé, les paramètres sont verrouillés, même
+   elle crée le blocage amont), l’**équipe du soir** (effectif par atelier à
+   partir de l’heure de relève, 14:00 par défaut ; personne n’est interrompu à
+   la relève, les places en trop se ferment au fil des libérations), les
+   tunnels et les horaires avant de lancer. Une fois l’essai commencé, les paramètres sont verrouillés, même
    en pause. **Recommencer** libère les réglages et efface la progression après
    confirmation ; les instantanés restent disponibles.
 3. **Plan / Suivi** : sélectionner un atelier depuis le plan, la liste Atelier
@@ -186,8 +189,9 @@ imports, sauvegardes et limites.
   coefficient de dressage manuel des autres YC n’est pas calibré.
 - Standards théoriques du classeur, effets de lot et non-linéarité non intégrés.
 - Stocks, retours utilisables, compétences, pauses et transferts physiques incomplets.
-- Les curseurs décrivent des personnes simultanées ; la convention heures / 7
-  produit un équivalent de charge, pas une affectation de personnel.
+- Les curseurs décrivent des personnes simultanées, en deux équipes au plus
+  (matin, soir) ; la convention heures / 7 produit un équivalent de charge, pas
+  une affectation de personnel.
 
 La prochaine étape consiste à connecter une chaîne de calcul validée à cette
 interface. L’**[étude des moteurs open source](docs/ETUDE_OPEN_SOURCE.md)**

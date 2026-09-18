@@ -789,7 +789,7 @@ function majGoulotInfo(goulot) {
     html+='<p>'+(z.approx?'Emplacement à confirmer.':'Emplacement enregistré ; validation terrain distincte.')+'</p>';
     if(NON_MODELISES.has(id))html+='<p>Charge non calculée dans cette version.</p>';
     else {
-      html+='<p>'+st.qlen+' OF présents'+(CFG.staff[id]!=null?' · '+CFG.staff[id]+' personnes':id==='plonge'?' · '+CFG.tunnels+' tunnels':'')+(now>CFG.jour.debut?' · occupation '+Math.round(Math.min(1,st.util)*100)+' % sur 15 min, '+Math.round(st.tauxJour*100)+' % depuis 05:00':'')+(st.enAttente?' · <strong>'+st.enAttente+' lot(s) attendent une personne</strong>':'')+(id==='prepa'&&now>CFG.jour.debut?' · robot '+Math.round(Math.min(1,st.robotUtil)*100)+' % sur 15 min'+(st.robotAttente?', <strong>'+st.robotAttente+' vol(s) attendent le robot</strong>':''):'')+(st.bloque?' · <strong>tampon plein : l’amont est bloqué</strong>':'')+'.</p>';
+      html+='<p>'+st.qlen+' OF présents'+(id==='plonge'?' · '+CFG.tunnels+' tunnels':' · '+st.capacite+' personne(s) présentes')+(now>CFG.jour.debut?' · occupation '+Math.round(Math.min(1,st.util)*100)+' % sur 15 min, '+Math.round(st.tauxJour*100)+' % depuis 05:00':'')+(st.enAttente?' · <strong>'+st.enAttente+' lot(s) attendent une personne</strong>':'')+(id==='prepa'&&now>CFG.jour.debut?' · robot '+Math.round(Math.min(1,st.robotUtil)*100)+' % sur 15 min'+(st.robotAttente?', <strong>'+st.robotAttente+' vol(s) attendent le robot</strong>':''):'')+(st.bloque?' · <strong>tampon plein : l’amont est bloqué</strong>':'')+'.</p>';
       const current=jobs.filter(j=>j.released&&!j.done&&j.stationId===id);
       html+=current.length?'<ul class="detail-jobs">'+current.slice(0,8).map(j=>'<li>'+escapeHTML(j.flight.id)+' · '+escapeHTML(j.kind)+' · échéance '+formatTime(j.dueT)+'</li>').join('')+'</ul>':'<p>Aucun ordre de fabrication actif ici.</p>';
       if(current.length>8)html+='<p>Et '+(current.length-8)+' autre(s) OF.</p>';
@@ -886,7 +886,26 @@ function initControles() {
     const d = document.createElement('div'); d.className = 'slider-ligne';
     d.innerHTML = '<label for="staff-' + id + '">' + ZONES[id].nom + ' <b id="s-' + id + '">' + CFG.staff[id] + '</b></label><input id="staff-' + id + '" type="range" min="0" max="40" value="' + CFG.staff[id] + '" data-id="' + id + '">';
     box.appendChild(d);
-    d.querySelector('input').addEventListener('input', e => { CFG.staff[id] = +e.target.value; document.getElementById('s-' + id).textContent = e.target.value; majPlan(); majDashboard(); });
+    d.querySelector('input').addEventListener('input', e => { CFG.staff[id] = +e.target.value; document.getElementById('s-' + id).textContent = e.target.value; majSoirLibelle(id); majPlan(); majDashboard(); });
+  });
+  // Relève d'équipe : effectif du soir par atelier, « comme le matin » tant qu'on n'y touche pas.
+  const det = document.createElement('details'); det.className = 'equipe-soir'; det.id = 'equipe-soir';
+  det.innerHTML = '<summary>Équipe du soir <b id="bascule-lab">à partir de 14:00</b></summary>' +
+    '<div class="champ"><span>Heure de relève</span><input id="bascule" type="time" value="14:00" step="300" aria-label="Heure de relève des équipes"></div>' +
+    '<p class="mini-note">Les curseurs ci-dessus sont l’équipe du matin. Un curseur du soir non touché suit le matin. Personne n’est interrompu à la relève : les places en trop se ferment au fil des libérations.</p>';
+  box.appendChild(det);
+  const majSoirLibelle = id => { const b = document.getElementById('so-' + id); if (!b) return; const v = CFG.equipes.soir[id]; b.textContent = v === undefined ? CFG.staff[id] + ' (comme le matin)' : v; const r = document.getElementById('soir-' + id); if (r && v === undefined) r.value = CFG.staff[id]; };
+  Object.keys(CFG.staff).forEach(id => {
+    if (NON_MODELISES.has(id)) return;
+    const d = document.createElement('div'); d.className = 'slider-ligne';
+    d.innerHTML = '<label for="soir-' + id + '">' + ZONES[id].nom + ' <b id="so-' + id + '"></b></label><input id="soir-' + id + '" type="range" min="0" max="40" value="' + CFG.staff[id] + '" data-id="' + id + '" data-soir="1">';
+    det.appendChild(d);
+    d.querySelector('input').addEventListener('input', e => { CFG.equipes.soir[id] = +e.target.value; majSoirLibelle(id); });
+    majSoirLibelle(id);
+  });
+  det.querySelector('#bascule').addEventListener('change', e => {
+    const m = /^(\d{2}):(\d{2})$/.exec(e.target.value); if (!m) { e.target.value = formatTime(CFG.equipes.bascule); return; }
+    CFG.equipes.bascule = (+m[1]) * 60 + (+m[2]); document.getElementById('bascule-lab').textContent = 'à partir de ' + e.target.value;
   });
   const bind = (id, fn) => document.getElementById(id).addEventListener('input', fn);
   bind('vitesse', e => { vitesse = +e.target.value; document.getElementById('vitesse-val').textContent = vitesse + '×'; });
@@ -966,6 +985,7 @@ function capturer(slot) {
     robot:config.robotCadence,robotCies:(config.robotCompagnies||[]).join(', ')||'aucune',ycManuel:config.ycManuel,
     tampons:Object.keys(config.tampons||{}).map(k=>ZONES[k].nom+' '+config.tampons[k]).join(', ')||'illimitées',
     prepa:config.staff.prepa,tunnels:config.tunnels+(config.tunnelDouble?' (1×2)':''),
+    soir:Object.keys((config.equipes||{}).soir||{}).filter(k=>config.equipes.soir[k]!==config.staff[k]).map(k=>ZONES[k].nom+' '+config.equipes.soir[k]).join(', ')||'comme le matin',
     robotJour:Math.round((b.robot.occupationJour||0)*100),robotP90:b.robot.attenteP90==null?null:Math.round(b.robot.attenteP90),
     prepaJour:Math.round((b.ateliers.prepa.occupationJour||0)*100),cuisineJour:Math.round((b.ateliers.cuisine.occupationJour||0)*100),
     plongeJour:Math.round((b.ateliers.plonge.occupationJour||0)*100)};
@@ -974,7 +994,7 @@ function capturer(slot) {
 function majCompare() {
   const lignes = [
     ['Journée simulée jusqu’à','time','h'],
-    ['Robot pl/h','robot'],['Compagnies servies par le robot','robotCies'],['YC manuel, min/plateau','ycManuel'],['Contenances','tampons'],['Personnes au montage','prepa'],['Tunnels de plonge','tunnels'],
+    ['Robot pl/h','robot'],['Compagnies servies par le robot','robotCies'],['YC manuel, min/plateau','ycManuel'],['Contenances','tampons'],['Personnes au montage (matin)','prepa'],['Équipe du soir','soir'],['Tunnels de plonge','tunnels'],
     ['Prêts à l’échéance','ontime','%'],['Échéances dépassées en fin de journée','overdue'],['Retard moyen des dossiers','retard','min'],
     ['Robot occupé sur la journée','robotJour','%'],['Attente du robot, p90','robotP90','min'],
     ['Montage occupé sur la journée','prepaJour','%'],['Cuisine occupée sur la journée','cuisineJour','%'],['Plonge occupée sur la journée','plongeJour','%']

@@ -241,5 +241,50 @@ test('les quantités impossibles sont refusées à la source', () => {
   assert.throws(() => n.retirer(11), /jamais être satisfaite/);
   assert.throws(() => new Niveau(env, { capacite: 5, initial: 6 }), RangeError);
   assert.throws(() => new Ressource(env, 1.5), RangeError);
-  assert.throws(() => new Ressource(env, 0), RangeError);
+  assert.throws(() => new Ressource(env, -1), RangeError);
+  assert.equal(new Ressource(env, 0).capacite, 0);   // permis : personne pour l'instant
+});
+
+test('une relève d’équipe change la capacité sans interrompre personne, et l’occupation reste juste', () => {
+  const env = new Environnement();
+  const poste = new Ressource(env, 2, { nom: 'montage' });
+  const debuts = [];
+  const of = arrivee => env.processus(function* (e) {
+    if (arrivee) yield e.delai(arrivee);
+    const p = poste.demander();
+    yield p;
+    debuts.push(e.maintenant);
+    try { yield e.delai(10); } finally { poste.liberer(p); }
+  });
+  of(0); of(0); of(0); of(25); of(31);
+  env.processus(function* (e) { yield e.delai(5); poste.modifierCapacite(1); });   // relève : 2 → 1
+  env.processus(function* (e) { yield e.delai(30); poste.modifierCapacite(3); });  // renfort : 1 → 3
+  env.avancerA(30);
+  // À 5 la capacité tombe à 1 mais les deux premiers finissent leur lot (pas
+  // d'interruption) ; le 3e n'entre qu'à 10, seul ; le 4e arrive à 25 et passe.
+  assert.deepEqual(debuts, [0, 0, 10, 25]);
+  assert.equal(poste.occupees, 1);
+  env.executer();
+  assert.deepEqual(debuts, [0, 0, 10, 25, 31]);       // le renfort sert le 5e aussitôt
+  assert.equal(env.maintenant, 41);
+  // Capacité EFFECTIVE : 2 jusqu'à 10 (les deux présents finissent), 1 de 10 à
+  // 30, 3 de 30 à 41 → ∫cap = 20 + 20 + 33 = 73 ; ∫occupées = 20 + 10 + 10 + 10 = 50.
+  assert.ok(Math.abs(poste.capaciteMesuree.moyenne() - 73 / 41) < 1e-9);
+  assert.ok(Math.abs(poste.tauxOccupation() - 50 / 73) < 1e-9, String(poste.tauxOccupation()));
+  assert.ok(poste.tauxOccupation() <= 1);
+  assert.throws(() => poste.modifierCapacite(-1), RangeError);
+});
+
+test('une ressource à zéro place fait attendre sans erreur, jusqu’à ce qu’on l’ouvre', () => {
+  const env = new Environnement();
+  const poste = new Ressource(env, 0, { nom: 'fermé' });
+  let servi = null;
+  env.processus(function* () { const p = poste.demander(); yield p; servi = env.maintenant; poste.liberer(p); });
+  env.avancerA(100);
+  assert.equal(servi, null);
+  assert.equal(poste.enAttente, 1);
+  assert.equal(poste.tauxOccupation(), null);   // aucune capacité : le taux n'a pas de sens
+  poste.modifierCapacite(1);
+  env.executer();
+  assert.equal(servi, 100);
 });

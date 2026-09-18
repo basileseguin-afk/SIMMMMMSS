@@ -59,7 +59,10 @@
     // CRL uniquement. Les autres YC sont dressés à la main. Les prestations
     // exactes et les cas SPML restent à préciser.
     robotCompagnies: ['FBU', 'TX', 'FWI', 'CRL'],
-    ycManuel: 0.35                           // homme-minutes par plateau YC dressé à la main — NON CALIBRÉ
+    ycManuel: 0.35,                          // homme-minutes par plateau YC dressé à la main — NON CALIBRÉ
+    // Relève d'équipe : `staff` est l'équipe du matin ; `soir[id]`, s'il est
+    // renseigné, remplace l'effectif de l'atelier à partir de `bascule`.
+    equipes: { bascule: 14 * 60, soir: {} }
   };
 
   /* Vols fictifs : vague du matin et vague du soir. Les codes TX, FWI, CRL et
@@ -166,12 +169,13 @@
 
     /* ---- ateliers ---- */
     const stations = {};
+    const equipes = cfg.equipes || CFG_DEFAUT.equipes;
     ATELIERS.forEach(id => {
       const capacite = id === 'plonge' ? capacitePlonge(cfg) : Math.max(0, (cfg.staff[id] | 0));
       const contenance = cfg.tampons && cfg.tampons[id] > 0 ? cfg.tampons[id] : Infinity;
       stations[id] = {
         id, capacite,
-        ressource: capacite > 0 ? new Ressource(env, capacite, { nom: id }) : null,
+        ressource: new Ressource(env, capacite, { nom: id }),
         tampon: new Tampon(env, { nom: id, capacite: contenance }),
         glissante: new Glissante(FENETRE),
         // vue lue par l'interface
@@ -211,8 +215,19 @@
       }
     });
 
-    /** Un événement qui ne se résout jamais : un atelier sans personne ne finit rien. */
-    const jamais = env.evenement('capacité nulle');
+    /* Relève d'équipe : à `bascule`, chaque atelier dont l'effectif du soir est
+     * renseigné change de capacité. Personne n'est interrompu : les places en
+     * trop se ferment au fil des libérations, les renforts servent aussitôt. */
+    if (equipes && equipes.soir) {
+      Object.keys(equipes.soir).forEach(id => {
+        const st = stations[id];
+        const soir = equipes.soir[id];
+        if (!st || id === 'plonge' || !Number.isInteger(soir) || soir < 0 || soir === st.capacite) return;
+        const bascule = equipes.bascule === undefined ? CFG_DEFAUT.equipes.bascule : equipes.bascule;
+        if (bascule <= t0) { st.ressource.modifierCapacite(soir); st.capacite = soir; return; }
+        env.processus(function* (e) { yield e.delai(bascule - t0); st.ressource.modifierCapacite(soir); }, id + ' relève');
+      });
+    }
 
     function spawnEntree(j) {
       if (j.kind === 'food') surToken('appros_decontam', j.color);
@@ -264,10 +279,9 @@
         j.stationId = id;
         const travail = j.work[id] || 0;
         const taches = [];
-        if (travail > 0) {
-          if (st.ressource) decouper(travail).forEach(l => taches.push(lot(st, j, l)));
-          else taches.push(jamais);
-        }
+        // Un atelier à zéro place fait simplement attendre : si une relève
+        // l'ouvre plus tard, le travail repart ; sinon l'OF ne finit jamais.
+        if (travail > 0) decouper(travail).forEach(l => taches.push(lot(st, j, l)));
         if (id === 'prepa' && j.robot > 0) taches.push(dressageRobot(j));
         if (taches.length) yield e.tousDe(taches);
 
@@ -288,13 +302,14 @@
     function rafraichir(dt) {
       ATELIERS.forEach(id => {
         const st = stations[id], r = st.ressource;
-        const occ = r ? r.occupees / r.capacite : 0;
+        st.capacite = r.capacite;                                  // suit les relèves
+        const occ = r.capacite > 0 ? Math.min(1, r.occupees / r.capacite) : 0;
         if (dt > 0) st.glissante.noter(occ, dt);
         st.util = st.glissante.valeur;
         st.qlen = st.tampon.remplissageCourant + st.tampon.depotsEnAttente;
-        st.enAttente = r ? r.enAttente : (st.qlen > 0 ? st.qlen : 0);
+        st.enAttente = r.enAttente;
         st.bloque = st.tampon.bloque;
-        st.tauxJour = r ? (r.tauxOccupation() || 0) : 0;
+        st.tauxJour = r.tauxOccupation() || 0;
       });
       if (dt > 0) robotGlissante.noter(robot.occupees, dt);
       const prepa = stations.prepa;
@@ -328,7 +343,7 @@
         const attente = st.enAttente + (st.bloque ? st.tampon.depotsEnAttente : 0);
         if (attente <= 0 && !st.bloque) return;
         retenir({ id, sev: Math.min(1, st.util), qlen: st.qlen, attente,
-                  cause: st.bloque ? 'tampon saturé' : (st.ressource ? 'personnes occupées' : 'aucune personne') });
+                  cause: st.bloque ? 'tampon saturé' : (st.capacite > 0 ? 'personnes occupées' : 'aucune personne') });
       });
       // Le robot n'est pas un atelier mais c'est une place unique : des vols
       // qui l'attendent au montage sont un goulot au même titre.
@@ -345,10 +360,10 @@
       ATELIERS.forEach(id => {
         const st = stations[id], r = st.ressource;
         ateliers[id] = {
-          personnes: st.capacite,
-          occupationJour: r ? r.tauxOccupation() : null,
-          attenteMoyenne: r ? r.attente.moyenne() : null,
-          attenteP90: r ? r.attente.percentile(90) : null,
+          personnes: r.capaciteMesuree.moyenne(),          // moyenne sur la journée si relève
+          occupationJour: r.tauxOccupation(),
+          attenteMoyenne: r.attente.moyenne(),
+          attenteP90: r.attente.percentile(90),
           ofMoyens: st.tampon.remplissage.moyenne(),
           partBloquante: st.tampon.partBloquante()
         };

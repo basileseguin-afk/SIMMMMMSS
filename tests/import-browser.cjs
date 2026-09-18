@@ -64,6 +64,17 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await click('#snap-b');
   assert.match((await ligne('Contenances'))[2],/MONTAGE 2/);
   await page.locator('#tampon-prepa').fill('');await page.locator('#tampon-prepa').dispatchEvent('change');
+  // Équipe du soir : cuisine à 0 après 14:00 → la vague du soir ne sort pas.
+  await page.locator('#equipe-soir summary').click();
+  assert.match(await page.locator('#so-cuisine').textContent(),/comme le matin/);
+  await setRange('#soir-cuisine','0');
+  assert.equal(await page.locator('#so-cuisine').textContent(),'0');
+  await click('#snap-b');
+  assert.match((await ligne('Équipe du soir'))[2],/CUISINE 0/);
+  assert.equal((await ligne('Équipe du soir'))[1],'comme le matin');
+  const pretsSoir=await ligne('Prêts à l’échéance');assert.ok(pct(pretsSoir[2])<pct(pretsSoir[1]),'sans cuisine le soir, la ponctualité doit chuter : '+pretsSoir);
+  assert.ok(pct((await ligne('Échéances dépassées'))[2])>0);
+  await setRange('#soir-cuisine','10');
   // Capturer pendant une simulation en cours reste possible et rejoue la journée entière.
   await setRange('#vitesse','120');await click('#btn-play');await page.waitForTimeout(300);await click('#btn-play');
   await click('#snap-a');assert.deepEqual((await ligne('Journée simulée')).slice(1),['23:00','23:00']);

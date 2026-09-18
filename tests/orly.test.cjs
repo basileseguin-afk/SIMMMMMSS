@@ -41,7 +41,7 @@ test('un atelier sans personne ne finit jamais : les départs restent non prêts
   assert.equal(r.kpis.overdue, 12);
   // Les OF food sont libérés et attendent bien en appros, l'interface doit le voir.
   const st = r.modele.stations.appros;
-  assert.equal(st.ressource, null);
+  assert.equal(st.capacite, 0);
   assert.equal(st.qlen, 12);
   const g = r.modele.goulot();
   assert.equal(g.id, 'appros');
@@ -144,4 +144,26 @@ test('la liste des compagnies servies est un levier : sans robot, le montage por
   assert.equal(sans.bilan.robot.occupationJour, 0);
   assert.ok(sans.bilan.ateliers.prepa.occupationJour > ref.bilan.ateliers.prepa.occupationJour);
   assert.equal(sans.bilan.robot.plateauxManuel, ref.bilan.robot.plateauxRobot + ref.bilan.robot.plateauxManuel);
+});
+
+test('la relève d’équipe change l’effectif à l’heure dite, et le soir se joue avec l’équipe du soir', () => {
+  // Cuisine : 10 le matin, personne le soir → la vague du soir reste bloquée en cuisine.
+  const soirVide = journee(cfg(c => { c.equipes = { bascule: 14 * 60, soir: { cuisine: 0 } }; }));
+  const matin = soirVide.modele.flights.filter(f => f.sens === 'DEP' && f.std < 14 * 60);
+  const soir = soirVide.modele.flights.filter(f => f.sens === 'DEP' && f.std >= 14 * 60);
+  assert.ok(matin.every(f => f.readyTime != null), 'la vague du matin est faite par l’équipe du matin');
+  assert.ok(soir.every(f => f.readyTime == null), 'sans équipe du soir en cuisine, rien ne sort le soir');
+  assert.equal(soirVide.modele.stations.cuisine.capacite, 0);
+  assert.equal(soirVide.modele.goulot().cause, 'aucune personne');
+  // Personnes moyennes sur la journée : 10 pendant 9 h puis 0 pendant 9 h = 5.
+  assert.ok(Math.abs(soirVide.bilan.ateliers.cuisine.personnes - 5) < 1e-9);
+
+  // Renfort du soir : identique au matin en ponctualité, occupation plus basse le soir.
+  const ref = journee(cfg());
+  const renfort = journee(cfg(c => { c.equipes = { bascule: 14 * 60, soir: { prepa: 30 } }; }));
+  assert.ok(renfort.kpis.retardMoy <= ref.kpis.retardMoy);
+  assert.ok(renfort.bilan.ateliers.prepa.occupationJour < ref.bilan.ateliers.prepa.occupationJour);
+  // Une bascule avant l'ouverture s'applique d'emblée, sans processus.
+  const tot = journee(cfg(c => { c.equipes = { bascule: 4 * 60, soir: { prepa: 0 } }; }));
+  assert.equal(tot.kpis.prets, 0);
 });
