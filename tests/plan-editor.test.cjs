@@ -20,3 +20,11 @@ test('polygon resizing preserves the outline proportions',()=>{
  const z=validZone({...base[0],pts:[[0,0],[20,0],[10,10],[0,10]]});resize(z,{x:100,y:200,w:40,h:30});
  assert.deepEqual(z.pts,[[100,200],[140,200],[120,230],[100,230]]);assert.deepEqual(bounds(z),{x:100,y:200,w:40,h:30});
 });
+test('storage migration removes only storage shapes and preserves service data',()=>{
+ const old={schema:'ory-plan',version:2,zones:[...base,{id:'storage-0',nom:'Froid',kind:'cold',x:0,y:0,w:20,h:20},{id:'storage-23',nom:'Bureau',kind:'room',x:0,y:0,w:20,h:20}]};
+ const p=validatePlan(old,base);assert.equal(p.version,3);assert.equal(p.zones.length,2);assert.equal(p.unassignedStorages[0].nom,'Froid');
+ p.zones[0].storages.push({id:'s1',nom:'Réserve',contenu:'Familles de produits'});
+ assert.deepEqual(validatePlan(JSON.parse(JSON.stringify(p)),base),p);
+ assert.equal(validatePlan({cuisine:{x:5,y:5,w:20,h:20}},p.zones.filter(z=>z.kind==='service')).zones[0].storages.length,1);
+ p.zones[0].storages.push({...p.zones[0].storages[0]});assert.throws(()=>validatePlan(p,base),/Stockage invalide/);
+});

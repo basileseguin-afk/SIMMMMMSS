@@ -14,7 +14,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
   await page.evaluate(()=>localStorage.setItem('orly-zones',JSON.stringify({cuisine:{x:1880,y:1560,w:280,h:520,approx:true}})));await page.reload();
   await click('#btn-edit');assert.equal(await page.locator('#btn-play').isDisabled(),true);
-  const initial=(await state()).zones.length;assert.ok(initial>30,'existing storage annotations are editable');
+  const initial=(await state()).zones.length;assert.ok(initial>=11&&initial<30,'storage shapes no longer clutter the plan');
   await click('[data-action=select][data-zone=cuisine]');assert.equal((await selected()).x,1880);await click('#pe-focus');
   const h1=await page.locator('.handle-nw').boundingBox();await click('#zoom-in');const h2=await page.locator('.handle-nw').boundingBox();assert.ok(Math.abs(h1.width-h2.width)<.5,'handles remain constant screen size');
   await click('#zoom-reset');await page.locator('summary').filter({hasText:'Fond & aide au placement'}).click();await page.locator('#pe-snap').uncheck();await page.locator('summary').filter({hasText:'Fond & aide au placement'}).click();
