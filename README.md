@@ -122,6 +122,7 @@ interface. Voir [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/ui-model.test.cjs` | Régressions de l’import et des indicateurs |
 | `tests/browser-smoke.cjs` | Parcours dans Chromium, export, édition et responsive |
 | `BUGS.md` | Registre des bugs connus — à lire avant de coder, à compléter après chaque revue |
+| `postes/` | Éditeur de postes de travail sur trame 50 cm (outil indépendant) |
 
 Tests purs, avec Node : `node --test tests/ui-model.test.cjs`.
 

@@ -5,6 +5,47 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-18 — Éditeur de postes de travail (trame 50 cm)
+
+**Pourquoi :** préparer la finalité du projet — composer le plan de l'unité à
+partir de carreaux de 50 × 50 cm. Premier temps : une bibliothèque de modèles,
+sans toucher au simulateur.
+
+**Nouveau dossier `postes/`**, outil autonome (aucune dépendance au reste du
+dépôt, aucun fichier partagé avec le simulateur).
+
+- **Trame de 50 cm** avec règles en mètres et trait fort tous les 2 m.
+- Deux familles : **table** (établi) et **chaîne** (tapis roulant, avec sens
+  d'avancement affiché par des chevrons et débit en unités/heure).
+- **Formes sur mesure** : un modèle est un *ensemble de carreaux*, pas un
+  rectangle. Les outils ➕/➖ Carreaux permettent les formes en L, en U et les
+  îlots.
+- **Personnes** posées sur les bords libres du meuble, silhouette vue de dessus
+  tournée vers le plan de travail ; un clic ajoute, un second retire.
+- **Mesures en direct** : encombrement, carreaux occupés, surface de travail,
+  emprise au sol, personnes, surface par personne, débit par personne.
+- Sauvegarde navigateur, **export / import JSON** avec refus atomique des
+  fichiers invalides et alerte si le fichier utilise une autre taille de carreau.
+
+**Bug trouvé et corrigé pendant le développement :** la silhouette d'une
+personne recouvrait sa zone de clic, ce qui rendait impossible de la retirer une
+fois placée (`pointer-events:none` sur le dessin).
+
+**Portée assumée, écrite dans l'outil et son README :** les débits sont des
+hypothèses saisies à la main, pas des cadences mesurées ; les modèles ne sont
+pas encore implantés sur le plan de l'unité ni reliés au moteur.
+
+| Fichier | Modification |
+|---|---|
+| `postes/index.html` | **Nouveau** — structure de l'éditeur |
+| `postes/postes.css` | **Nouveau** — thème clair/sombre, rendu vu de dessus |
+| `postes/postes.js` | **Nouveau** — modèle de données, rendu SVG, interactions, import/export |
+| `postes/README.md` | **Nouveau** — usage, format d'échange et limites |
+| `README.md` | Renvoi vers le nouvel outil |
+| `CHANGELOG.md` | Cette entrée |
+
+---
+
 ## 2026-09-18 — Registre des bugs
 
 **Pourquoi :** la revue de l'interface a produit six constats. Sans endroit où

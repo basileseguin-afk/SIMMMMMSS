@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ORY — Éditeur de postes de travail</title>
+<meta name="description" content="Créer des modèles de tables et de chaînes de production sur une trame de 50 cm, avec affectation de personnes et débit." />
+<link rel="stylesheet" href="postes.css" />
+</head>
+<body>
+
+<header>
+  <div class="marque"><span>🧰</span><div>Postes de travail<small>Trame 50 cm · vue de dessus</small></div></div>
+  <div class="entete-droite">
+    <button class="btn" id="btn-theme" title="Basculer clair / sombre">🌙</button>
+    <button class="btn" id="btn-import-lbl" style="position:relative;overflow:hidden">📂 Importer
+      <input type="file" id="btn-import" accept=".json" style="position:absolute;inset:0;opacity:0;cursor:pointer">
+    </button>
+    <button class="btn" id="btn-export">⇩ Exporter la bibliothèque</button>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- ============ CATALOGUE ============ -->
+  <div class="colonne col-gauche">
+    <div class="panneau">
+      <h3>📚 Bibliothèque</h3>
+      <div class="row-btns" style="margin-bottom:10px">
+        <button class="btn btn-sm btn-primaire" id="new-table">+ Table</button>
+        <button class="btn btn-sm btn-primaire" id="new-tapis">+ Chaîne</button>
+      </div>
+      <div id="catalogue"></div>
+    </div>
+
+    <div class="panneau">
+      <h3>Σ Bibliothèque</h3>
+      <div id="totaux"></div>
+    </div>
+  </div>
+
+  <!-- ============ PLAN ============ -->
+  <div class="colonne col-plan">
+    <div class="plan-tete">
+      <div class="outils" id="outils">
+        <button class="outil on" data-outil="postes" title="Ajouter ou retirer une personne sur un bord">👤 Personnes</button>
+        <button class="outil" data-outil="ajouter" title="Ajouter des carreaux au meuble">➕ Carreaux</button>
+        <button class="outil" data-outil="retirer" title="Retirer des carreaux">➖ Carreaux</button>
+      </div>
+      <span class="mini-note" id="aide-outil"></span>
+      <div class="row-btns" style="margin-left:auto">
+        <button class="btn btn-sm" id="zoom-out">−</button>
+        <button class="btn btn-sm" id="zoom-in">+</button>
+        <button class="btn btn-sm" id="zoom-fit">⤢ Ajuster</button>
+      </div>
+    </div>
+    <div class="plan-wrap"><svg id="plan"></svg></div>
+    <div class="legende-plan">1 carreau = <b>50 × 50 cm</b> · trait fort tous les <b>2 m</b> · les personnes se placent sur les bords libres du meuble.</div>
+  </div>
+
+  <!-- ============ PROPRIÉTÉS ============ -->
+  <div class="colonne col-droite">
+    <div class="panneau" id="pan-props">
+      <h3>⚙️ Modèle</h3>
+      <div id="props"></div>
+    </div>
+
+    <div class="panneau">
+      <h3>📐 Mesures</h3>
+      <div id="mesures"></div>
+    </div>
+
+    <div class="panneau">
+      <h3 style="color:var(--orange)">⚠️ Portée</h3>
+      <div class="mini-note">
+        Ces modèles décrivent une <b>géométrie</b> et une <b>affectation</b>.
+        Les débits saisis sont des <b>hypothèses de travail</b>, pas des cadences
+        mesurées sur le site. Rien ici n'est encore relié au moteur de simulation.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="postes.js"></script>
+</body>
+</html>
