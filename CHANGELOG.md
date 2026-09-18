@@ -5,6 +5,50 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-18 — Éditeur de plan : dessin, locaux et historique
+
+**Problème :** corriger le plan détaillé exigeait de retoucher des zones fixes,
+avec de petites poignées, peu d’aide au placement et aucune annulation.
+
+- Espace d’édition dédié : tableau de bord masqué, plan agrandi, simulation en
+  pause ; outils Sélection, Rectangle, Polygone et Main.
+- Création de locaux, chambres froides, équipements et circulations. Les
+  stockages déjà annotés sont repris comme objets éditables. Les nouveaux objets
+  restent des annotations et ne créent pas de ressources dans le moteur.
+- Liste recherchable des zones, centrage de la sélection, noms, catégories et
+  couleurs ; masquage et verrouillage indépendants.
+- Huit poignées de rectangle, sommets et insertion de points pour les polygones.
+  Les poignées gardent une taille constante à l’écran quelle que soit l’échelle.
+- Redessin du contour d’un atelier, conversion rectangle/polygone, duplication
+  et suppression des annotations. Un atelier du moteur ne peut pas être supprimé.
+- Historique Annuler / Rétablir de 80 actions dans la session, un glisser comptant
+  pour une action ; créations, propriétés, suppressions et imports inclus.
+- Échap annule le geste en cours ; Entrée ou clic sur le premier sommet termine
+  un contour ; Retour arrière retire le dernier sommet en cours de tracé.
+- Espace + glisser, outil Main et bouton central pour déplacer la vue ; flèches
+  pour ajuster la position ; raccourcis V/R/P/H, Ctrl/Cmd Z et Ctrl/Cmd D.
+- Aimantation aux bords/sommets voisins avec guides, grille optionnelle de 20
+  unités de dessin, Alt pour suspendre l’aimantation et Maj pour contraindre un tracé.
+- Opacité du fond réglable ; libellés abrégés sur les petites zones, nom complet
+  dans la liste et au survol ; interface adaptée au thème sombre et au mobile.
+- Sauvegarde locale v2 avec copie précédente, export complet et import atomique.
+  Les anciennes positions et exports sont repris, sans effacer l’ancienne clé.
+  Une erreur d’import conserve le plan courant ; une erreur de stockage est signalée.
+- Confirmation terrain explicite, distincte du déplacement d’une forme. Les
+  coordonnées restent celles du dessin et ne sont pas présentées comme des mètres.
+- Guide d’utilisation ajouté et tests couvrant les gestes de dessin, l’historique,
+  le verrouillage, la migration, les exports et les erreurs d’import.
+
+**Intégration avec les changements parallèles :** conservation de l’accueil,
+de l’éditeur `postes/`, du registre `BUGS.md` et du retrait du fond de plan public.
+Le fond reste chargé uniquement depuis `plan-prive/`, ignoré par Git.
+
+**Fichiers :** `plan-editor.js`, `editor.css`, intégration dans `sim.js` et
+`index.html`, `README.md`, `docs/EDITEUR_PLAN.md`, `tests/plan-editor.test.cjs`,
+`tests/editor-browser.cjs` et adaptation de `tests/browser-smoke.cjs`.
+
+---
+
 ## 2026-09-18 — Retrait du plan de l'unité du dépôt public
 
 Le dépôt est public : le plan de l'unité ne doit pas y figurer. Il se

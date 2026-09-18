@@ -172,3 +172,11 @@ node tests/browser-smoke.cjs            # parcours navigateur (Playwright requis
 
 Ces tests **ne couvrent aucun des bugs ci-dessus** : ils sont tous passés au
 travers. Toute correction doit s'accompagner d'un test qui échouait avant.
+
+## Revue d’intégration — éditeur de plan v2
+
+La PR #2 ajoute un éditeur distinct et ses tests de gestes réels, migration,
+annulation, sauvegarde et import. Les BUG-001 à BUG-006 ci-dessus restent
+ouverts : cette intégration ne prétend pas corriger les interactions du
+simulateur hors édition, l’import CSV ou les performances du moteur.
+Les changements parallèles de confidentialité du fond de plan sont conservés.
