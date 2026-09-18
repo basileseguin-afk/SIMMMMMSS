@@ -79,19 +79,25 @@ Toute erreur refuse le fichier entier et conserve le jeu précédent. Taille
 maximale : 2 Mo. **Le XLSX Winrest et ses lignes de prestations ne sont pas
 encore pris en charge.** Aucun effectif passager n’est déduit de cet export.
 
-## Éditer les zones
+## Dessiner et détailler le plan
 
-**Éditer les zones** met la simulation en pause et ouvre le panneau dédié.
-Les rectangles et polygones, poignées, tracés et exports JSON sont conservés.
-Les coordonnées peuvent être saisies au clavier. **Terminer l’édition** revient
-au suivi sans reprendre automatiquement le calcul.
+**Éditer les zones** ouvre un espace dédié : plan agrandi, outils Rectangle /
+Polygone / Sélection / Main, liste recherchable des ateliers, chambres froides
+et stockages existants. Ajouter des locaux et équipements, les nommer, choisir
+une couleur, dupliquer, masquer ou verrouiller leur géométrie.
 
-Les positions sont enregistrées dans le navigateur. Exporter le JSON pour
-partager les modifications. Un simple déplacement ne retire plus le statut
-« emplacement à confirmer ». Les anciennes données enregistrées restent
-compatibles ; leur statut ne prouve pas une validation terrain. Un import de
-zones incorrect est refusé avant toute modification. Les zones restent des
-annotations : elles ne déterminent ni une capacité de stockage ni un temps de trajet.
+Les poignées gardent une taille lisible au zoom. L’aimantation et les guides
+facilitent l’alignement ; Espace + glisser déplace la vue. **Annuler / Rétablir**
+couvre les gestes et les imports. **Centrer la sélection** permet de travailler
+sur une petite pièce. L’édition est compatible avec les anciennes positions
+sauvegardées et les anciens exports JSON.
+
+Les nouvelles zones sont des annotations, sans charge simulée. Les ateliers
+reliés au moteur conservent leur identité. La sauvegarde dans le navigateur est
+automatique ; **Exporter le plan** permet de conserver une copie indépendante.
+
+Voir le **[guide de l’éditeur](docs/EDITEUR_PLAN.md)** pour les gestes, raccourcis,
+imports, sauvegardes et limites.
 
 ## Limites métier à traiter ensuite
 
@@ -116,15 +122,18 @@ interface. Voir [l’audit d’usage](docs/AUDIT_INTERFACE.md) et le
 | `index.html` | Structure et contrôles |
 | `interface.css` | Disposition, hiérarchie visuelle et adaptations mobile |
 | `sim.js` | Démonstrateur, plan, interactions et rendu |
+| `plan-editor.js` / `editor.css` | Dessin, annotations, historique et sauvegarde du plan |
 | `ui-model.js` | Import CSV, calcul des états et règles de présentation testables |
 | `assets/plan/` | Fond de plan existant |
 | `tests/ui-model.test.cjs` | Régressions de l’import et des indicateurs |
 | `tests/browser-smoke.cjs` | Parcours dans Chromium, export, édition et responsive |
 
-Tests purs, avec Node : `node --test tests/ui-model.test.cjs`.
+Tests purs, avec Node : `node --test tests/*test.cjs`.
 
 Tests navigateur, avec Playwright installé dans l’environnement de développement
 et Chromium disponible : `node tests/browser-smoke.cjs`. La variable optionnelle
 `CHROMIUM_EXECUTABLE_PATH` permet de choisir un exécutable Chromium existant.
 Les captures de contrôle sont écrites dans le dossier temporaire du système.
 Ces outils sont nécessaires uniquement aux tests, pas à l’application.
+
+Parcours spécifiques de l’éditeur : `node tests/editor-browser.cjs` (Playwright / Chromium).
