@@ -39,9 +39,240 @@ avec de petites poignées, peu d’aide au placement et aucune annulation.
 - Guide d’utilisation ajouté et tests couvrant les gestes de dessin, l’historique,
   le verrouillage, la migration, les exports et les erreurs d’import.
 
+**Intégration avec les changements parallèles :** conservation de l’accueil,
+de l’éditeur `postes/`, du registre `BUGS.md` et du retrait du fond de plan public.
+Le fond reste chargé uniquement depuis `plan-prive/`, ignoré par Git.
+
 **Fichiers :** `plan-editor.js`, `editor.css`, intégration dans `sim.js` et
 `index.html`, `README.md`, `docs/EDITEUR_PLAN.md`, `tests/plan-editor.test.cjs`,
 `tests/editor-browser.cjs` et adaptation de `tests/browser-smoke.cjs`.
+
+---
+
+## 2026-09-18 — Retrait du plan de l'unité du dépôt public
+
+Le dépôt est public : le plan de l'unité ne doit pas y figurer. Il se
+travaillera en privé, comme les exports de vols.
+
+- **Supprimés du suivi Git** : `docs/MAP_ORY.xlsx` et les 12 tuiles
+  `assets/plan/tuile*.png`.
+- Le simulateur charge désormais le fond depuis **`plan-prive/`**, dossier
+  local ignoré par Git. **Sans ce dossier, l'application fonctionne
+  normalement** : zones, simulation et indicateurs inchangés ; la case
+  *Fond de plan* est désactivée et signalée « (absent) ».
+- **`.gitignore`** bloque `plan-prive/`, `prive/`, `*.xlsx`, `vols*.csv` et
+  tout fichier contenant « winrest ».
+- README : section *Données confidentielles*, et marche à suivre pour
+  réafficher le fond en local.
+
+**Vérifié** dans les deux cas : avec le plan en local il s'affiche ; sans lui,
+les 11 zones restent dessinées, la simulation tourne et aucune erreur n'est
+levée.
+
+**Aucun export de vols réel n'était présent** dans le dépôt : les vols
+embarqués sont fictifs. Les coordonnées des zones et des tuiles restent dans
+le code — ce sont des nombres, pas le dessin.
+
+> ⚠️ **Cette suppression ne purge pas l'historique Git.** Les fichiers restent
+> accessibles dans les commits antérieurs d'un dépôt public. Voir la note dans
+> le README pour les options (réécriture d'historique, ou dépôt privé).
+
+| Fichier | Modification |
+|---|---|
+| `docs/MAP_ORY.xlsx`, `assets/plan/*` | **Supprimés** du dépôt |
+| `.gitignore` | Règles pour les données confidentielles |
+| `sim.js` | Fond chargé depuis `plan-prive/`, absence gérée proprement |
+| `README.md` | Section *Données confidentielles* |
+| `CHANGELOG.md` | Cette entrée |
+
+---
+
+## 2026-09-18 — Page d'accueil des applications
+
+GitHub Pages est **activé** et le déploiement est **passé** (« pages build and
+deployment », conclusion `success`, sur le commit `b8e34a4`). Vérifié via
+l'historique des exécutions GitHub : le proxy de l'environnement de
+développement bloque `github.io`, les adresses n'ont donc pas pu être testées
+par requête directe.
+
+Ajout de **`accueil.html`** : un point d'entrée unique listant les
+applications, avec la règle pour ouvrir n'importe quel autre fichier du dépôt
+et le rappel que le dépôt est public. Un seul lien à mettre en favori.
+
+| Fichier | Modification |
+|---|---|
+| `accueil.html` | **Nouveau** — point d'entrée des applications |
+| `README.md` | Adresse de l'accueil et règle de conversion des chemins |
+| `CHANGELOG.md` | Cette entrée |
+
+---
+
+## 2026-09-18 — Ouverture des applications depuis GitHub
+
+Pour éviter de télécharger et dézipper le dépôt à chaque essai : mode d'emploi
+de **GitHub Pages**, qui sert le dépôt tel quel.
+
+Vérifié avant d'écrire : le dépôt est **public** (`visibility: public`) et sa
+branche par défaut est déjà la branche de travail — Pages peut donc la servir
+sans rien réorganiser. L'activation elle-même se fait dans les réglages du
+dépôt et ne peut pas être faite depuis le code.
+
+- Ajout de **`.nojekyll`** : les fichiers sont servis tels quels, sans
+  traitement Jekyll.
+- README : marche à suivre, adresses des deux applications, et solution de
+  dépannage ponctuel via `raw.githack.com`.
+- **Point signalé** : le dépôt étant public, le plan d'architecte de l'unité
+  (`docs/MAP_ORY.xlsx`, `assets/plan/`) est accessible à tous, et Pages le
+  rendrait consultable dans un navigateur. Arbitrage à faire.
+
+| Fichier | Modification |
+|---|---|
+| `.nojekyll` | **Nouveau** — désactive Jekyll sur GitHub Pages |
+| `README.md` | Section d'ouverture depuis GitHub et avertissement dépôt public |
+| `CHANGELOG.md` | Cette entrée |
+
+---
+
+## 2026-09-18 — Postes : lignes robot, stockages, assemblages
+
+- **Mode jour/nuit retiré** de l'éditeur de postes : thème clair unique.
+- **Nouvelle famille « ligne robot »** : une chaîne découpée en **modules**
+  mis bout à bout, chacun avec son nom, sa longueur et son débit. Le débit de
+  la ligne est le **minimum des modules** et le **module limitant** est nommé.
+  La forme découle des modules, donc les outils Carreaux n'y s'appliquent pas.
+- **Deux familles de stockage** : **desserte roulante** (défaut 70 × 50 cm) et
+  **trolley** (défaut 80 × 45 cm), avec capacité et roulettes. Leur géométrie
+  est en **centimètres**, pas en carreaux : une desserte de 70 cm ne tombe pas
+  sur la trame de 50, et l'y forcer fausserait l'encombrement. Ces dimensions
+  par défaut sont indicatives et à corriger.
+- **Assemblages** : composer plusieurs modèles sur un même plan sous un nom
+  propre. Ajout depuis une palette, déplacement au glisser (pas de 25 cm),
+  **orientation 0/90/180/270** — carreaux, personnes et sens d'avancement
+  pivotent ensemble —, retrait au clavier. Mesures cumulées. Un assemblage
+  référence les modèles : modifier une table met à jour les assemblages.
+
+**Bugs trouvés et corrigés pendant le développement :**
+
+- créer ou dupliquer un modèle ou un assemblage n'enregistrait pas ; l'objet
+  était perdu au rechargement s'il n'avait pas été modifié ensuite ;
+- `display:flex` sur les barres d'outils annulait l'attribut `hidden` : les
+  outils du mode modèle restaient visibles en mode assemblage ;
+- les éléments ajoutés à un assemblage se superposaient tous au même point.
+
+*Note de méthode : un premier test de persistance était faux — il effaçait le
+stockage à chaque chargement, rechargement compris, et ne prouvait donc rien.*
+
+| Fichier | Modification |
+|---|---|
+| `postes/postes.js` | Cinq familles, rotation, assemblages, corrections ci-dessus |
+| `postes/index.html` | Onglets Modèles/Assemblages, palette, outils, thème retiré |
+| `postes/postes.css` | Thème clair unique, familles de couleurs, `[hidden]` |
+| `postes/README.md` | Familles, assemblages, format d'échange étendu |
+| `CHANGELOG.md` | Cette entrée |
+
+---
+
+## 2026-09-18 — Éditeur de postes : thème système, export et copie
+
+- **Thème** : sans choix explicite du visiteur, la préférence système
+  s'applique (bloc `prefers-color-scheme` en plus du marquage `data-theme`).
+  Le bouton reflète le thème réellement affiché au lieu d'en imposer un.
+- **Hauteur** en `100%` plutôt que `100vh`, pour respecter les marges de
+  sécurité sur mobile.
+- **Export** : passe par la capacité `downloads` de la plateforme quand la
+  page est publiée (le téléchargement direct y est inerte), et retombe sur le
+  téléchargement classique en local. Un refus du visiteur n'affiche pas
+  d'erreur.
+- **Nouveau bouton « Copier le JSON »**, qui fonctionne partout — pratique
+  pour transmettre une bibliothèque sans passer par un fichier.
+
+| Fichier | Modification |
+|---|---|
+| `postes/postes.css` | Bloc sombre pour la préférence système, hauteur `100%` |
+| `postes/postes.js` | `themeAffiche`/`majBoutonTheme`, export via `downloads` avec repli, copie presse-papiers |
+| `postes/index.html` | Bouton « Copier le JSON » |
+| `CHANGELOG.md` | Cette entrée |
+
+---
+
+## 2026-09-18 — Éditeur de postes de travail (trame 50 cm)
+
+**Pourquoi :** préparer la finalité du projet — composer le plan de l'unité à
+partir de carreaux de 50 × 50 cm. Premier temps : une bibliothèque de modèles,
+sans toucher au simulateur.
+
+**Nouveau dossier `postes/`**, outil autonome (aucune dépendance au reste du
+dépôt, aucun fichier partagé avec le simulateur).
+
+- **Trame de 50 cm** avec règles en mètres et trait fort tous les 2 m.
+- Deux familles : **table** (établi) et **chaîne** (tapis roulant, avec sens
+  d'avancement affiché par des chevrons et débit en unités/heure).
+- **Formes sur mesure** : un modèle est un *ensemble de carreaux*, pas un
+  rectangle. Les outils ➕/➖ Carreaux permettent les formes en L, en U et les
+  îlots.
+- **Personnes** posées sur les bords libres du meuble, silhouette vue de dessus
+  tournée vers le plan de travail ; un clic ajoute, un second retire.
+- **Mesures en direct** : encombrement, carreaux occupés, surface de travail,
+  emprise au sol, personnes, surface par personne, débit par personne.
+- Sauvegarde navigateur, **export / import JSON** avec refus atomique des
+  fichiers invalides et alerte si le fichier utilise une autre taille de carreau.
+
+**Bug trouvé et corrigé pendant le développement :** la silhouette d'une
+personne recouvrait sa zone de clic, ce qui rendait impossible de la retirer une
+fois placée (`pointer-events:none` sur le dessin).
+
+**Portée assumée, écrite dans l'outil et son README :** les débits sont des
+hypothèses saisies à la main, pas des cadences mesurées ; les modèles ne sont
+pas encore implantés sur le plan de l'unité ni reliés au moteur.
+
+| Fichier | Modification |
+|---|---|
+| `postes/index.html` | **Nouveau** — structure de l'éditeur |
+| `postes/postes.css` | **Nouveau** — thème clair/sombre, rendu vu de dessus |
+| `postes/postes.js` | **Nouveau** — modèle de données, rendu SVG, interactions, import/export |
+| `postes/README.md` | **Nouveau** — usage, format d'échange et limites |
+| `README.md` | Renvoi vers le nouvel outil |
+| `CHANGELOG.md` | Cette entrée |
+
+---
+
+## 2026-09-18 — Registre des bugs
+
+**Pourquoi :** la revue de l'interface a produit six constats. Sans endroit où
+les inscrire, ils seraient perdus à la fin de la conversation et réintroduits
+plus tard.
+
+**Ajout de `BUGS.md`**, registre des défauts connus, à lire avant de coder et à
+compléter après chaque revue et chaque correction. Chaque entrée porte une
+gravité, un statut, le fichier concerné, la cause, la preuve et une piste de
+correction. Le champ **Vérification** distingue ce qui est *confirmé*
+(reproduit, preuve à l'appui) de ce qui est seulement *signalé*.
+
+**Six entrées ouvertes**, issues de la revue du diff `88ea4a9..13d86c9` :
+
+- `BUG-001` *(majeur, confirmé)* — la garde anti-re-rendu de `majGoulotInfo`
+  compare du HTML contenant un attribut nu à sa re-sérialisation par le
+  navigateur : elle ne retient jamais. Le panneau est reconstruit ~60×/s
+  (90 remplacements mesurés en 1,5 s) et le bouton « Fermer » est incliquable.
+- `BUG-002` *(majeur, confirmé)* — cliquer une zone du plan ne la sélectionne
+  pas : `setPointerCapture` redirige le `click` vers le `<svg>`. Introduit par
+  le commit `4e2bf69` (Claude), donc antérieur à la refonte ; le README décrit
+  pourtant ce geste comme fonctionnel.
+- `BUG-003` *(mineur, confirmé)* — une ligne vide décale les numéros de ligne
+  des erreurs d'import CSV.
+- `BUG-004` à `BUG-006` *(mineurs, signalés non revérifiés)* — état périmé des
+  boutons d'atelier, réimport impossible après échec de lecture, recalcul
+  redondant de `qlen`.
+
+Aucun correctif dans ce commit : `sim.js`, `index.html` et `interface.css` sont
+en cours de modification par ailleurs. Les tests existants ne couvrent aucun de
+ces bugs ; toute correction devra venir avec un test qui échouait avant.
+
+| Fichier | Modification |
+|---|---|
+| `BUGS.md` | **Nouveau** — registre des bugs et règles d'usage |
+| `README.md` | Renvois vers le registre |
+| `CHANGELOG.md` | Cette entrée |
 
 ---
 

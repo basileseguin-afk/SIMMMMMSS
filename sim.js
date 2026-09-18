@@ -1,7 +1,8 @@
 /* ============================================================================
  *  Newrest Orly — Simulation des flux de production (moteur + rendu)
- *  Plan reconstruit fidèlement à partir de la carte réelle de l'unité
- *  (fichier MAP_ORY.xlsx) : positions et libellés des zones sont ceux du plan.
+ *  Les positions et libellés des zones proviennent du plan réel de l'unité.
+ *  Le plan lui-même est CONFIDENTIEL et n'est pas dans ce dépôt public :
+ *  déposez ses tuiles dans `plan-prive/` en local (dossier non suivi par Git).
  *  Modèle de flux à stations : chaque atelier consomme des man-minutes ;
  *  une file se forme quand la demande dépasse la capacité => goulot.
  *  ==========================================================================*/
@@ -28,12 +29,17 @@ const CFG = {
 
 /* ==========================================================================
  *  2. PLAN RÉEL D'ORLY
- *     Le fond est le plan d'architecte lui-même (MAP_ORY.xlsx), découpé en 12
- *     tuiles. Les coordonnées ci-dessous sont en pixels du plan d'origine :
+ *     Le fond est le plan d'architecte, découpé en 12 tuiles, chargé depuis
+ *     `plan-prive/` — absent du dépôt. Sans lui, l'application fonctionne :
+ *     seules les zones sont dessinées.
+ *     Les coordonnées ci-dessous sont en pixels du plan d'origine :
  *     elles proviennent des ancrages du fichier (colonne = 82 px,
  *     ligne = 14,4 pt = 19,2 px), donc zones et fond sont alignés par
  *     construction.
  * ==========================================================================*/
+// Le plan est confidentiel : il n'est pas versionné. Déposez ses tuiles ici.
+const DOSSIER_PLAN = 'plan-prive';
+
 const TILES = [
   { n: 1, x:    0.0, y:   14.7, w:1833.9, h:792.6 }, { n: 2, x:1826.7, y:   0.0, w:1625.9, h:821.5 },
   { n: 3, x: 3437.2, y:   21.9, w:1884.1, h:794.5 }, { n: 4, x:  24.0, y: 799.2, w:1606.0, h:741.4 },
@@ -353,9 +359,10 @@ function construirePlan() {
   // Fond : le plan d'architecte réel (12 tuiles)
   const gFond = svgEl('g', { id:'plan-fond' }); gVue.appendChild(gFond);
   TILES.forEach(t => {
-    gFond.appendChild(svgEl('image', { href:'assets/plan/tuile' + t.n + '.png',
+    gFond.appendChild(svgEl('image', { href:DOSSIER_PLAN + '/tuile' + t.n + '.png',
       x:t.x, y:t.y, width:t.w, height:t.h, preserveAspectRatio:'none' }));
   });
+  verifierPlan();
 
   // Arêtes de flux (recalculées à chaque modification de géométrie)
   const gEdges = svgEl('g', {}); gVue.appendChild(gEdges);
@@ -448,6 +455,31 @@ function redessinerEdges() {
     e.fleche.setAttribute('d',
       `M ${pb.x} ${pb.y} L ${pb.x-F*Math.cos(ang-0.4)} ${pb.y-F*Math.sin(ang-0.4)} M ${pb.x} ${pb.y} L ${pb.x-F*Math.cos(ang+0.4)} ${pb.y-F*Math.sin(ang+0.4)}`);
   });
+}
+
+/* Le fond de plan est facultatif : s'il n'est pas présent en local, on le
+ * signale et on désactive la case, au lieu d'afficher un cadre vide. */
+let planVerifie = false;
+function verifierPlan() {
+  if (planVerifie) return; planVerifie = true;
+  const img = new Image();
+  img.onerror = function () {
+    svg.classList.add('sans-fond');
+    const c = document.getElementById('fond-plan');
+    if (c) {
+      c.checked = false; c.disabled = true;
+      const l = c.closest('label');
+      if (l) {
+        l.title = 'Plan confidentiel, absent de ce dépôt public. Placez ses tuiles ' +
+                  'dans le dossier ' + DOSSIER_PLAN + '/ en local pour l\'afficher.';
+        const n = l.querySelector('.sans-plan') || document.createElement('span');
+        n.className = 'sans-plan'; n.textContent = ' (absent)';
+        n.style.color = 'var(--txt3)';
+        if (!l.querySelector('.sans-plan')) l.appendChild(n);
+      }
+    }
+  };
+  img.src = DOSSIER_PLAN + '/tuile1.png';
 }
 
 /* --- Zoom / déplacement --------------------------------------------------- */

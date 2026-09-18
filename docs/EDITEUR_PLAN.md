@@ -1,7 +1,9 @@
 # Construire le plan détaillé de l’unité
 
 Cliquer sur **Éditer les zones**. Le tableau de bord laisse place à l’espace de
-dessin et la simulation est mise en pause. Le fond d’architecte reste la référence.
+dessin et la simulation est mise en pause. Le fond d’architecte reste la référence lorsqu’il est disponible en privé.
+Il n’est pas réintroduit dans le dépôt public : les 12 tuiles se chargent depuis
+`plan-prive/` en local. Sans ce dossier, le dessin des zones reste utilisable.
 
 ## Corriger une pièce existante
 
