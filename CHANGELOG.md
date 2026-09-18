@@ -5,6 +5,47 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-18 — Retrait des captures d'écran reproduisant le plan
+
+Signalé par Astra : les captures `assets/apercu*.png` reproduisent le plan de
+l'unité et sont donc confidentielles au même titre que le plan lui-même.
+**Constat exact, et oubli de ma part** — ces captures avaient été produites
+avant la décision de confidentialité.
+
+- **Vérification faite image par image**, et non de mémoire : je pensais que
+  `apercu-forme.png` montrait l'éditeur de postes sur une trame vierge. C'est
+  faux : c'est le simulateur avec le plan CAD entièrement lisible. **Les cinq
+  captures sont concernées**, aucune n'est sûre.
+- `assets/` supprimé du suivi Git. Ce dossier n'a jamais contenu que ces cinq
+  captures et les douze tuiles du plan : rien d'utile n'est perdu. Aucun
+  fichier du projet ne les référençait.
+- `.gitignore` bloque désormais `assets/` et `*apercu*.png`.
+
+**Périmètre de purge élargi et revalidé en essai à blanc** sur un clone miroir,
+couvrant toutes les références et non la seule branche principale :
+
+```
+git-filter-repo --invert-paths --path docs/MAP_ORY.xlsx --path assets --force
+```
+
+Résultat : 0 fichier sensible, 0 blob, dépôt de 4,8 Mo à 396 Ko, et les quatre
+branches conservées avec leurs commits (22, 9, 19 et 21).
+
+**Deux éléments que le miroir a révélés, au-delà de ce qui était annoncé :**
+
+- une quatrième branche, `codex/stockages-par-service` ;
+- les références de pull requests `refs/pull/1..3/head`, que GitHub conserve
+  côté serveur et **qu'un force-push ne peut pas réécrire**. Elles pointeront
+  encore sur l'ancien historique : seul le support GitHub peut les purger.
+
+| Fichier | Modification |
+|---|---|
+| `assets/apercu*.png` | **Supprimés** du dépôt (5 captures) |
+| `.gitignore` | Blocage de `assets/` et `*apercu*.png` |
+| `CHANGELOG.md` | Cette entrée |
+
+---
+
 ## 2026-09-18 — Retrait du plan de l'unité du dépôt public
 
 Le dépôt est public : le plan de l'unité ne doit pas y figurer. Il se

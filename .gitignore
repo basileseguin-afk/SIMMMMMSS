@@ -9,6 +9,10 @@ node_modules/
 plan-prive/
 prive/
 
+# captures d'écran : elles reproduisent le plan de l'unité
+assets/
+*apercu*.png
+
 # classeurs et exports (plan, man-hours, Winrest…)
 *.xlsx
 *.xlsm
