@@ -5,6 +5,37 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-18 — Règle du robot, dressage manuel et contenance des ateliers
+
+Trois leviers de la feuille de route entrent dans le modèle et dans les réglages.
+
+| Fichier | Changement |
+|---|---|
+| `moteur/orly.js` | `robotServi(f, cfg)` : le robot ne sert que les compagnies de `cfg.robotCompagnies` (défaut FBU, TX, FWI, CRL) ; les autres YC coûtent `cfg.ycManuel` homme-minutes au montage ; bilan avec plateaux robot / manuels ; jeu de démo relabellisé (TX305, FWI40, CRL76, TX315, FBU78) pour que la règle s'y exerce |
+| `sim.js`, `index.html` | champ « Compagnies servies par le robot », curseur « Dressage manuel des autres YC », panneau « Contenance des ateliers » (une case par atelier, vide = illimitée) ; verrouillés une fois la journée lancée ; repris dans les scénarios A/B ; suivi des vols marqué robot / manuel |
+| `tests/orly.test.cjs`, `tests/import-browser.cjs` | règle du robot, insensibilité à la casse, liste vide, contenance dans la capture |
+| `README.md` | réglages et limites |
+
+**Ce que la règle change à la démonstration, et qu'il faut dire.** Avec tous
+les YC au robot, la démo montrait un goulot robot le matin et 58 % de vols à
+l'heure. **C'était un artefact** du modèle précédent. Avec la règle de la
+feuille de route, seuls trois vols du matin passent au robot ; la journée de
+démonstration est à l'heure par défaut (100 %), et ce sont les leviers qui
+créent la tension : robot à 200 pl/h → 83 %, cuisine réduite → retards. Les
+tests ont été réécrits en conséquence, sans ajuster les données pour « faire
+joli ».
+
+Le coefficient de dressage manuel (0,35 min/plateau) est inventé, affiché comme
+tel et réglable : il vaut mieux un paramètre visible qu'une constante enfouie.
+
+**Défaut de test trouvé et corrigé** : le parcours navigateur relisait un
+tableau capturé avant la modification qu'il vérifiait ; il lit désormais le
+tableau à chaque assertion.
+
+Tests : 75 unitaires et 4 parcours navigateur, tous au vert.
+
+---
+
 ## 2026-09-18 — Scénarios A/B par rejeu complet ; BUG-003 et BUG-005 corrigés
 
 | Fichier | Changement |

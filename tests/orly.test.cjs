@@ -16,7 +16,11 @@ test('la journée de démonstration se termine : tous les départs finissent par
   assert.equal(r.kpis.total, 12);
   assert.equal(r.kpis.prets, 12);
   assert.equal(r.kpis.overdue, 0);
-  assert.ok(r.kpis.ontime > 0 && r.kpis.ontime < 100, 'la démo doit montrer des retards ET des vols à l’heure : ' + r.kpis.ontime);
+  // Avec la règle du robot, la démo passe à l'heure par défaut : la tension du
+  // matin était un artefact de l'ancien modèle qui envoyait tous les YC au robot.
+  assert.equal(r.kpis.ontime, 100);
+  assert.ok(journee(cfg(c => { c.robotCadence = 200; })).kpis.ontime < 100, 'ralentir le robot doit créer des retards');
+  assert.ok(journee(cfg(c => { c.staff.cuisine = 2; })).kpis.ontime < 100, 'réduire la cuisine doit créer des retards');
   // Toutes les grandeurs du bilan sont mesurées, jamais NaN.
   Object.values(r.bilan.ateliers).forEach(a => {
     assert.ok(a.occupationJour >= 0 && a.occupationJour <= 1);
@@ -44,15 +48,15 @@ test('un atelier sans personne ne finit jamais : les départs restent non prêts
   assert.equal(g.cause, 'aucune personne');
 });
 
-test('le robot est le goulot du matin : sa cadence change la ponctualité, dans le bon sens', () => {
+test('la cadence du robot agit sur la ponctualité et sur l’attente, dans le bon sens', () => {
   const lent = journee(cfg(c => { c.robotCadence = 200; }));
   const ref = journee(cfg());
   const rapide = journee(cfg(c => { c.robotCadence = 560; }));
   assert.ok(lent.kpis.ontime < ref.kpis.ontime, 'ralentir le robot doit dégrader : ' + lent.kpis.ontime + ' vs ' + ref.kpis.ontime);
-  assert.ok(rapide.kpis.ontime > ref.kpis.ontime, 'accélérer le robot doit améliorer : ' + rapide.kpis.ontime + ' vs ' + ref.kpis.ontime);
-  assert.ok(ref.bilan.robot.attenteP90 > 30, 'des vols attendent le robot : p90 = ' + ref.bilan.robot.attenteP90);
-  // L'occupation des ateliers est basse : ce sont les personnes qui attendent le robot, pas l'inverse.
-  assert.ok(ref.bilan.ateliers.prepa.occupationJour < 0.3);
+  assert.ok(rapide.kpis.ontime >= ref.kpis.ontime);
+  assert.ok(lent.bilan.robot.attenteP90 > ref.bilan.robot.attenteP90 && ref.bilan.robot.attenteP90 > rapide.bilan.robot.attenteP90,
+    'l’attente du robot doit décroître avec la cadence : ' + [lent, ref, rapide].map(r => r.bilan.robot.attenteP90).join(' > '));
+  assert.ok(ref.bilan.robot.attenteP90 > 10, 'des vols attendent le robot : p90 = ' + ref.bilan.robot.attenteP90);
 });
 
 test('ajouter des personnes au montage ne peut pas dégrader la ponctualité', () => {
@@ -90,8 +94,9 @@ test('l’avancée par pas expose une vue cohérente pour le rendu', () => {
 });
 
 test('le barème et la plonge gardent leurs définitions', () => {
-  const c = chargeVol({ bc: 10, pc: 0, yc: 100 });
+  const c = chargeVol({ cie: 'TX', bc: 10, pc: 0, yc: 100 });   // compagnie servie par le robot
   assert.equal(c.food.robot, 100);
+  assert.equal(chargeVol({ cie: 'AF', bc: 10, pc: 0, yc: 100 }).food.robot, 0);
   assert.equal(c.armement, 110 * 0.08 + 15);
   assert.equal(capacitePlonge({ tunnels: 3, tunnelDouble: true }), 4);
   assert.equal(capacitePlonge({ tunnels: 2, tunnelDouble: false }), 2);
@@ -108,11 +113,35 @@ test('un vol importé dont l’échéance est déjà passée reste comptabilisé
 test('des vols qui attendent le robot sont désignés comme goulot, avec leur cause', () => {
   const c = cfg();
   const m = construireModele(JEU_DEMO, c);
-  for (let t = c.jour.debut + 0.5; t <= c.jour.debut + 150; t += 0.5) m.avancerA(t);   // 07:30
-  const g = m.goulot();
-  assert.ok(g, 'à 07:30 le robot a une file');
-  assert.equal(g.id, 'prepa');
-  assert.match(g.cause, /robot occupé/);
-  assert.ok(m.stations.prepa.robotUtil > 0.9);
-  assert.ok(m.stations.prepa.robotAttente >= 1);
+  let vu = null;
+  for (let t = c.jour.debut + 0.5; t <= c.jour.debut + 300 && !vu; t += 0.5) {   // jusqu'à 10:00
+    m.avancerA(t);
+    const g = m.goulot();
+    if (g && /robot occupé/.test(g.cause)) vu = { t, g, robotUtil: m.stations.prepa.robotUtil, attente: m.stations.prepa.robotAttente };
+  }
+  assert.ok(vu, 'au cours du matin, au moins un vol doit attendre le robot');
+  assert.equal(vu.g.id, 'prepa');
+  assert.ok(vu.attente >= 1);
+  assert.ok(vu.robotUtil > 0);
+});
+
+test('le robot ne sert que les compagnies de la liste ; les autres YC sont dressés à la main', () => {
+  const { robotServi } = require('../moteur/orly.js');
+  const c = cfg();
+  const tx = chargeVol({ cie: 'tx', bc: 0, pc: 0, yc: 100 }, c);     // insensible à la casse
+  const af = chargeVol({ cie: 'AF', bc: 0, pc: 0, yc: 100 }, c);
+  assert.equal(tx.robotServi, true);  assert.equal(tx.food.robot, 100);
+  assert.equal(af.robotServi, false); assert.equal(af.food.robot, 0);
+  assert.equal(af.food.prepa - tx.food.prepa, 100 * c.ycManuel);   // le manuel coûte des homme-minutes au montage
+  assert.equal(robotServi({ cie: 'CRL' }, cfg(x => { x.robotCompagnies = []; })), false);
+});
+
+test('la liste des compagnies servies est un levier : sans robot, le montage porte tout', () => {
+  const ref = journee(cfg());
+  const sans = journee(cfg(c => { c.robotCompagnies = []; }));
+  assert.ok(ref.bilan.robot.plateauxRobot > 0 && ref.bilan.robot.plateauxManuel > 0, 'la démo doit exercer les deux voies');
+  assert.equal(sans.bilan.robot.plateauxRobot, 0);
+  assert.equal(sans.bilan.robot.occupationJour, 0);
+  assert.ok(sans.bilan.ateliers.prepa.occupationJour > ref.bilan.ateliers.prepa.occupationJour);
+  assert.equal(sans.bilan.robot.plateauxManuel, ref.bilan.robot.plateauxRobot + ref.bilan.robot.plateauxManuel);
 });

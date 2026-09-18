@@ -313,7 +313,20 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <label for="robot">Cadence <b id="robot-val">320 pl/h</b></label>
 <input id="robot" max="560" min="200" step="20" type="range" value="320"/>
 </div>
-<div class="mini-note">Cadences de démonstration. Les valeurs 320, 420 et 520 ne sont pas des mesures validées du site.</div>
+<div class="champ">
+<span>Compagnies servies par le robot</span>
+<input aria-label="Codes des compagnies dont les YC sont dressés par le robot, séparés par des virgules" id="robot-cies" type="text" value="FBU, TX, FWI, CRL"/>
+</div>
+<div class="slider-ligne">
+<label for="yc-manuel">Dressage manuel des autres YC <b id="yc-manuel-val">0,35 min/plateau</b></label>
+<input id="yc-manuel" max="1" min="0.1" step="0.05" type="range" value="0.35"/>
+</div>
+<div class="mini-note">Règle de la feuille de route : le robot sert l’économie FBU, TX/FWI et CRL ; les autres YC sont dressés à la main au montage. Cadences et coefficient de démonstration, non validés sur le site.</div>
+</div>
+<div class="panneau">
+<h3>Contenance des ateliers</h3>
+<p class="mini-note">Nombre d’ordres de fabrication qu’un atelier peut contenir, en attente, en cours ou finis mais pas encore partis. Vide = illimitée. Une contenance finie crée le blocage amont.</p>
+<div id="tampons"></div>
 </div>
 <div class="panneau">
 <h3>Plonge — tunnels</h3>
@@ -385,7 +398,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <h3>Importer un CSV simplifié</h3>
 <div class="champ"><span>Fichier de démonstration (.csv)</span><input accept=".csv" aria-label="Importer un fichier CSV simplifié de vols" id="imp-vols" type="file"/></div>
 <div class="mini-note">Ce format attend une ligne par départ ou retour. L’export Winrest XLSX et ses lignes de prestations ne sont pas encore pris en charge.</div>
-<div class="row-btns"><button class="btn" id="csv-template">Télécharger le modèle</button><button class="btn" id="restore-demo">Charger la démo</button></div><div aria-live="polite" class="import-report" id="import-report" role="status">Aucun fichier importé.</div></div><div class="panneau" id="model-limits"><h3>Périmètre du calcul actuel</h3><p class="mini-note">Les données importées restent calculées par un moteur de démonstration. Ses résultats ne permettent pas de dimensionner les équipes.</p><ul class="limits-list"><li>Calendrier limité à une journée ; J−2, J−1 et l’exception CRL ne sont pas intégrés.</li><li>Le moteur affecte encore tous les YC au robot. La règle réelle se limite à l’économie FBU, TX/FWI et CRL ; les cas SPML restent à préciser.</li><li>Barème d’homme-minutes non calibré ; contenances des tampons illimitées tant qu’elles ne sont pas renseignées.</li><li>Stocks, pauses et transferts physiques non intégrés.</li><li>Magasin, Duty free et handling ne disposent pas d’une charge calculée.</li></ul></div></div></aside></div>
+<div class="row-btns"><button class="btn" id="csv-template">Télécharger le modèle</button><button class="btn" id="restore-demo">Charger la démo</button></div><div aria-live="polite" class="import-report" id="import-report" role="status">Aucun fichier importé.</div></div><div class="panneau" id="model-limits"><h3>Périmètre du calcul actuel</h3><p class="mini-note">Les données importées restent calculées par un moteur de démonstration. Ses résultats ne permettent pas de dimensionner les équipes.</p><ul class="limits-list"><li>Calendrier limité à une journée ; J−2, J−1 et l’exception CRL ne sont pas intégrés.</li><li>Le robot sert les compagnies de la liste (FBU, TX/FWI, CRL par défaut) ; les autres YC sont dressés à la main à un coefficient non calibré. Prestations exactes et cas SPML à préciser.</li><li>Barème d’homme-minutes non calibré ; contenances des tampons illimitées tant qu’elles ne sont pas renseignées.</li><li>Stocks, pauses et transferts physiques non intégrés.</li><li>Magasin, Duty free et handling ne disposent pas d’une charge calculée.</li></ul></div></div></aside></div>
 <div aria-live="polite" class="toast" id="toast" role="status"></div>
 <script src="ui-model.js"></script>
 <script src="moteur/noyau.js"></script>

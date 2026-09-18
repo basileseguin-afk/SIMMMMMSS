@@ -78,8 +78,11 @@ n'est présent dans ce dépôt.
 1. **Données** : consulter les limites du moteur, télécharger le modèle CSV ou
    importer un fichier simplifié. Le nom du jeu et le nombre de départs/retours
    restent visibles en haut de page.
-2. **Réglages** : préparer les effectifs simultanés, cadences et horaires avant
-   de lancer. Une fois l’essai commencé, les paramètres sont verrouillés, même
+2. **Réglages** : préparer les effectifs simultanés, la cadence du robot et la
+   liste des compagnies qu’il sert (règle de la feuille de route : FBU, TX/FWI
+   et CRL ; les autres YC sont dressés à la main à un coefficient non calibré),
+   la contenance des ateliers en ordres de fabrication (vide = illimitée ; finie,
+   elle crée le blocage amont), les tunnels et les horaires avant de lancer. Une fois l’essai commencé, les paramètres sont verrouillés, même
    en pause. **Recommencer** libère les réglages et efface la progression après
    confirmation ; les instantanés restent disponibles.
 3. **Plan / Suivi** : sélectionner un atelier depuis le plan, la liste Atelier
@@ -178,9 +181,9 @@ imports, sauvegardes et limites.
 ## Limites métier à traiter ensuite
 
 - Cuisine J−2, prépa J−1 et exception CRL du soir produit le matin de J non intégrées.
-- Le moteur utilise encore le robot pour tous les YC. La règle réelle limite
-  son usage à l’économie FBU, TX/FWI et CRL ; les prestations exactes et SPML
-  restent à préciser.
+- Le robot sert les compagnies de la liste réglable (FBU, TX/FWI et CRL par
+  défaut) ; les prestations exactes et les cas SPML restent à préciser, et le
+  coefficient de dressage manuel des autres YC n’est pas calibré.
 - Standards théoriques du classeur, effets de lot et non-linéarité non intégrés.
 - Stocks, retours utilisables, compétences, pauses et transferts physiques incomplets.
 - Les curseurs décrivent des personnes simultanées ; la convention heures / 7

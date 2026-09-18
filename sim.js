@@ -891,6 +891,23 @@ function initControles() {
   const bind = (id, fn) => document.getElementById(id).addEventListener('input', fn);
   bind('vitesse', e => { vitesse = +e.target.value; document.getElementById('vitesse-val').textContent = vitesse + '×'; });
   bind('robot', e => { CFG.robotCadence = +e.target.value; document.getElementById('robot-val').textContent = e.target.value + ' pl/h'; majPlan(); });
+  bind('yc-manuel', e => { CFG.ycManuel = +e.target.value; document.getElementById('yc-manuel-val').textContent = (+e.target.value).toFixed(2).replace('.', ',') + ' min/plateau'; });
+  document.getElementById('robot-cies').addEventListener('change', e => {
+    CFG.robotCompagnies = e.target.value.split(/[\s,;]+/).map(v => v.trim().toUpperCase()).filter(Boolean);
+    e.target.value = CFG.robotCompagnies.join(', ');
+    if (now === CFG.jour.debut) { build(Sim.dataCourante || SAMPLE); majDashboard(); }
+  });
+  // Contenance des ateliers : une case par atelier modélisé, vide = illimitée.
+  const tb = document.getElementById('tampons');
+  Orly.ATELIERS.forEach(id => {
+    const d = document.createElement('div'); d.className = 'champ';
+    d.innerHTML = '<span>' + escapeHTML(ZONES[id].nom) + '</span><input id="tampon-' + id + '" type="number" min="1" step="1" placeholder="illimitée" aria-label="Contenance de l\'atelier ' + escapeHTML(ZONES[id].nom) + ' en ordres de fabrication">';
+    tb.appendChild(d);
+    d.querySelector('input').addEventListener('change', e => {
+      const v = parseInt(e.target.value, 10);
+      if (v > 0) CFG.tampons[id] = v; else { delete CFG.tampons[id]; e.target.value = ''; }
+    });
+  });
   bind('tunnels', e => { CFG.tunnels = +e.target.value; document.getElementById('tunnels-val').textContent = e.target.value; majPlan(); });
   document.getElementById('double').addEventListener('change', e => { CFG.tunnelDouble = e.target.checked; majPlan(); });
   bind('shift', e => { CFG.shift = +e.target.value; document.getElementById('shift-val').textContent = (e.target.value>0?'+':'') + e.target.value + ' min'; reset(); });
@@ -946,7 +963,9 @@ function capturer(slot) {
   const b=r.bilan;
   snaps[slot]={time:config.jour.fin,source:dataSource,config,data,kpis:r.kpis,bilan:b,
     ontime:r.kpis.ontime,retard:r.kpis.retardMoy,overdue:r.kpis.overdue,
-    robot:config.robotCadence,prepa:config.staff.prepa,tunnels:config.tunnels+(config.tunnelDouble?' (1×2)':''),
+    robot:config.robotCadence,robotCies:(config.robotCompagnies||[]).join(', ')||'aucune',ycManuel:config.ycManuel,
+    tampons:Object.keys(config.tampons||{}).map(k=>ZONES[k].nom+' '+config.tampons[k]).join(', ')||'illimitées',
+    prepa:config.staff.prepa,tunnels:config.tunnels+(config.tunnelDouble?' (1×2)':''),
     robotJour:Math.round((b.robot.occupationJour||0)*100),robotP90:b.robot.attenteP90==null?null:Math.round(b.robot.attenteP90),
     prepaJour:Math.round((b.ateliers.prepa.occupationJour||0)*100),cuisineJour:Math.round((b.ateliers.cuisine.occupationJour||0)*100),
     plongeJour:Math.round((b.ateliers.plonge.occupationJour||0)*100)};
@@ -955,7 +974,7 @@ function capturer(slot) {
 function majCompare() {
   const lignes = [
     ['Journée simulée jusqu’à','time','h'],
-    ['Robot pl/h','robot'],['Personnes au montage','prepa'],['Tunnels de plonge','tunnels'],
+    ['Robot pl/h','robot'],['Compagnies servies par le robot','robotCies'],['YC manuel, min/plateau','ycManuel'],['Contenances','tampons'],['Personnes au montage','prepa'],['Tunnels de plonge','tunnels'],
     ['Prêts à l’échéance','ontime','%'],['Échéances dépassées en fin de journée','overdue'],['Retard moyen des dossiers','retard','min'],
     ['Robot occupé sur la journée','robotJour','%'],['Attente du robot, p90','robotP90','min'],
     ['Montage occupé sur la journée','prepaJour','%'],['Cuisine occupée sur la journée','cuisineJour','%'],['Plonge occupée sur la journée','plongeJour','%']
@@ -1039,7 +1058,7 @@ function updateSource() {
 function updateRunState() {
   const started=enMarche||now>CFG.jour.debut;
   document.getElementById('run-state').textContent=editMode?'Édition du plan':now>=CFG.jour.fin?'Terminé':enMarche?'En cours':started?'En pause':'Prêt à lancer';
-  document.querySelectorAll('#sliders-staff input,#robot,#tunnels,#double,#shift,#loadDelay').forEach(input=>{
+  document.querySelectorAll('#sliders-staff input,#robot,#robot-cies,#yc-manuel,#tampons input,#tunnels,#double,#shift,#loadDelay').forEach(input=>{
     input.disabled=started||NON_MODELISES.has(input.dataset.id);
     input.title=NON_MODELISES.has(input.dataset.id)?'Service non relié au calcul actuel':started?'Recommencez la simulation pour modifier les réglages':'';
   });
@@ -1056,7 +1075,7 @@ function renderFlights() {
   const html=rows.map(f=>{
     const status=flightStatus(f,now),pending=jobs.filter(j=>j.flight===f&&!j.done);
     const operations=pending.map(j=>j.released?ZONES[j.stationId].nom:'À libérer ('+({food:'food',dot:'dotation',arm:'armement'}[j.kind]||j.kind)+')');
-    return '<tr><td><strong>'+escapeHTML(f.id)+'</strong><small>'+escapeHTML(f.cie)+'</small></td><td>'+formatTime(f.std+CFG.shift)+'</td><td>'+formatTime(f.due)+'</td><td><span class="status '+status.key+'">'+status.label+'</span>'+(f.readyTime!=null?'<small>Prêt à '+formatTime(f.readyTime)+'</small>':'')+'</td><td>'+escapeHTML(operations.join(' · ')||'Toutes terminées')+'</td></tr>';
+    return '<tr><td><strong>'+escapeHTML(f.id)+'</strong><small>'+escapeHTML(f.cie)+(f.robot?' · robot':' · manuel')+'</small></td><td>'+formatTime(f.std+CFG.shift)+'</td><td>'+formatTime(f.due)+'</td><td><span class="status '+status.key+'">'+status.label+'</span>'+(f.readyTime!=null?'<small>Prêt à '+formatTime(f.readyTime)+'</small>':'')+'</td><td>'+escapeHTML(operations.join(' · ')||'Toutes terminées')+'</td></tr>';
   }).join('') || '<tr><td colspan="5" class="empty-state">Aucun départ ne correspond à ces filtres.</td></tr>';
   const body=document.getElementById('flight-rows');if(body.innerHTML!==html)body.innerHTML=html;
 }

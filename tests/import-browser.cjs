@@ -36,24 +36,37 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await click('#restore-demo');
   await click('[data-panel="reglages"]');
   await click('#snap-a');
-  await setRange('#robot','560');
+  await setRange('#robot','200');
   await click('#snap-b');
-  const lignes=await page.locator('#compare tbody tr').evaluateAll(trs=>trs.map(tr=>[...tr.querySelectorAll('td')].map(td=>td.textContent)));
-  const ligne=nom=>lignes.find(l=>l[0].startsWith(nom));
-  assert.deepEqual(ligne('Journée simulée').slice(1),['23:00','23:00']);
-  assert.deepEqual(ligne('Robot pl/h').slice(1),['320','560']);
+  // Le tableau est relu à chaque appel : il change à chaque capture.
+  const lignes=()=>page.locator('#compare tbody tr').evaluateAll(trs=>trs.map(tr=>[...tr.querySelectorAll('td')].map(td=>td.textContent)));
+  const ligne=async nom=>(await lignes()).find(l=>l[0].startsWith(nom));
+  assert.deepEqual((await ligne('Journée simulée')).slice(1),['23:00','23:00']);
+  assert.deepEqual((await ligne('Robot pl/h')).slice(1),['320','200']);
   const pct=v=>parseInt(v,10);
-  assert.ok(pct(ligne('Prêts à l’échéance')[2])>pct(ligne('Prêts à l’échéance')[1]),'un robot plus rapide doit améliorer la ponctualité : '+ligne('Prêts à l’échéance'));
-  assert.ok(pct(ligne('Robot occupé')[2])<pct(ligne('Robot occupé')[1]));
+  const prets=await ligne('Prêts à l’échéance');assert.ok(pct(prets[2])<pct(prets[1]),'un robot plus lent doit dégrader la ponctualité : '+prets);
+  const occ=await ligne('Robot occupé');assert.ok(pct(occ[2])>pct(occ[1]));
+  assert.deepEqual((await ligne('Compagnies servies')).slice(1),['FBU, TX, FWI, CRL','FBU, TX, FWI, CRL']);
   assert.equal(await page.locator('#compare tr.diff').count()>0,true);
   assert.match(await page.locator('#compare-note').textContent(),/journée entière/);
   // Même réglages ⇒ mêmes chiffres, et la note le dit.
   await setRange('#robot','320');await click('#snap-b');
   assert.match(await page.locator('#compare-note').textContent(),/Réglages identiques/);
   assert.equal(await page.locator('#compare tr.diff').count(),0);
+  // Retirer toutes les compagnies du robot : le montage porte tout, la ligne diffère.
+  await page.locator('#robot-cies').fill('');await page.locator('#robot-cies').dispatchEvent('change');
+  await click('#snap-b');
+  assert.deepEqual((await ligne('Compagnies servies')).slice(1),['FBU, TX, FWI, CRL','aucune']);
+  assert.equal(pct((await ligne('Robot occupé'))[2]),0);
+  await page.locator('#robot-cies').fill('FBU, TX, FWI, CRL');await page.locator('#robot-cies').dispatchEvent('change');
+  // Contenance finie au montage : le levier est pris en compte dans la capture.
+  await page.locator('#tampon-prepa').fill('2');await page.locator('#tampon-prepa').dispatchEvent('change');
+  await click('#snap-b');
+  assert.match((await ligne('Contenances'))[2],/MONTAGE 2/);
+  await page.locator('#tampon-prepa').fill('');await page.locator('#tampon-prepa').dispatchEvent('change');
   // Capturer pendant une simulation en cours reste possible et rejoue la journée entière.
   await setRange('#vitesse','120');await click('#btn-play');await page.waitForTimeout(300);await click('#btn-play');
-  await click('#snap-a');assert.deepEqual(ligne('Journée simulée').slice(1),['23:00','23:00']);
+  await click('#snap-a');assert.deepEqual((await ligne('Journée simulée')).slice(1),['23:00','23:00']);
   assert.deepEqual(errors,[]);
   console.log('Import browser passed: read failure then re-import (BUG-005), physical line numbers (BUG-003), A/B full-day replay.');
  }finally{await browser.close();}

@@ -54,24 +54,30 @@
     loadDelay: 45,                           // min avant heure_std pour être « à l'heure »
     shift: 0,                                // décalage horaire global (min)
     staff: { magasin:3, appros:6, decontam:3, cuisine:10, prepa:18, dotation:6, armement:5, bobduty:2 },
-    tampons: {}                              // contenance en OF par atelier ; absent = illimitée
+    tampons: {},                             // contenance en OF par atelier ; absent = illimitée
+    // Règle de la feuille de route : le robot sert l'économie de FBU, TX/FWI et
+    // CRL uniquement. Les autres YC sont dressés à la main. Les prestations
+    // exactes et les cas SPML restent à préciser.
+    robotCompagnies: ['FBU', 'TX', 'FWI', 'CRL'],
+    ycManuel: 0.35                           // homme-minutes par plateau YC dressé à la main — NON CALIBRÉ
   };
 
-  /* Vols fictifs : vague du matin et vague du soir. */
+  /* Vols fictifs : vague du matin et vague du soir. Les codes TX, FWI, CRL et
+   * FBU y figurent pour que la règle du robot s'exerce sur la démonstration. */
   const JEU_DEMO = [
     { id:'AF1080', cie:'AF', avion:'A320', sens:'DEP', std:6*60+40, bc:12, pc:0,  yc:150, spml:6 },
-    { id:'BA305',  cie:'BA', avion:'A320', sens:'DEP', std:7*60+5,  bc:16, pc:0,  yc:120, spml:4 },
+    { id:'TX305',  cie:'TX', avion:'A320', sens:'DEP', std:7*60+5,  bc:16, pc:0,  yc:120, spml:4 },
     { id:'AF1180', cie:'AF', avion:'A350', sens:'DEP', std:7*60+30, bc:32, pc:48, yc:210, spml:12 },
     { id:'DL84',   cie:'DL', avion:'B777', sens:'DEP', std:8*60+0,  bc:38, pc:40, yc:230, spml:14 },
-    { id:'QR40',   cie:'QR', avion:'A350', sens:'DEP', std:8*60+20, bc:30, pc:44, yc:200, spml:10 },
-    { id:'EK76',   cie:'EK', avion:'A380', sens:'DEP', std:8*60+50, bc:14, pc:76, yc:340, spml:18 },
+    { id:'FWI40',  cie:'FWI', avion:'A350', sens:'DEP', std:8*60+20, bc:30, pc:44, yc:200, spml:10 },
+    { id:'CRL76',  cie:'CRL', avion:'A380', sens:'DEP', std:8*60+50, bc:14, pc:76, yc:340, spml:18 },
     { id:'AF1290', cie:'AF', avion:'A320', sens:'DEP', std:9*60+10, bc:12, pc:0,  yc:140, spml:5 },
     { id:'AF1081', cie:'AF', avion:'A320', sens:'RET', sta:6*60+10, bc:12, pc:0,  yc:150 },
     { id:'DL85',   cie:'DL', avion:'B777', sens:'RET', sta:7*60+40, bc:38, pc:40, yc:230 },
     { id:'AF1680', cie:'AF', avion:'A350', sens:'DEP', std:17*60+20,bc:32, pc:48, yc:205, spml:11 },
-    { id:'BA315',  cie:'BA', avion:'A320', sens:'DEP', std:17*60+50,bc:16, pc:0,  yc:130, spml:5 },
+    { id:'TX315',  cie:'TX', avion:'A320', sens:'DEP', std:17*60+50,bc:16, pc:0,  yc:130, spml:5 },
     { id:'QR42',   cie:'QR', avion:'A350', sens:'DEP', std:18*60+30,bc:30, pc:44, yc:210, spml:10 },
-    { id:'EK78',   cie:'EK', avion:'A380', sens:'DEP', std:19*60+0, bc:14, pc:76, yc:350, spml:20 },
+    { id:'FBU78',  cie:'FBU', avion:'A380', sens:'DEP', std:19*60+0, bc:14, pc:76, yc:350, spml:20 },
     { id:'DL88',   cie:'DL', avion:'B777', sens:'DEP', std:19*60+40,bc:38, pc:40, yc:235, spml:15 },
     { id:'EK77',   cie:'EK', avion:'A380', sens:'RET', sta:16*60+30,bc:14, pc:76, yc:340 },
     { id:'QR41',   cie:'QR', avion:'A350', sens:'RET', sta:17*60+10,bc:30, pc:44, yc:200 },
@@ -79,12 +85,25 @@
     { id:'DL89',   cie:'DL', avion:'B777', sens:'RET', sta:18*60+50,bc:38, pc:40, yc:235 }
   ];
 
-  /* Barème d'homme-minutes par passager, par classe et par atelier. NON CALIBRÉ. */
-  function chargeVol(f) {
+  /** Le robot dresse-t-il les YC de ce vol ? Selon la liste des compagnies servies. */
+  function robotServi(f, cfg) {
+    const liste = (cfg && cfg.robotCompagnies) || CFG_DEFAUT.robotCompagnies;
+    const cie = String(f.cie || '').trim().toUpperCase();
+    return liste.some(c => String(c).trim().toUpperCase() === cie);
+  }
+
+  /* Barème d'homme-minutes par passager, par classe et par atelier. NON CALIBRÉ.
+   * Les YC vont au robot si la compagnie est servie, sinon au dressage manuel. */
+  function chargeVol(f, cfg) {
+    const c = cfg || CFG_DEFAUT;
     const bc = f.bc || 0, pc = f.pc || 0, yc = f.yc || 0, pax = bc + pc + yc;
+    const servi = robotServi(f, c);
+    const ycManuel = servi ? 0 : yc * (c.ycManuel === undefined ? CFG_DEFAUT.ycManuel : c.ycManuel);
     return {
+      robotServi: servi,
       food: { appros: bc*0.6 + pc*0.35 + yc*0.12, decontam: pax*0.05,
-              cuisine: bc*1.4 + pc*0.7 + yc*0.28, prepa: bc*2.2 + pc*1.1 + pax*0.06, robot: yc },
+              cuisine: bc*1.4 + pc*0.7 + yc*0.28, prepa: bc*2.2 + pc*1.1 + pax*0.06 + ycManuel,
+              robot: servi ? yc : 0 },
       dotation: bc*0.5 + pc*0.3 + yc*0.12,
       armement: pax*0.08 + 15,
       plonge:   pax*0.9
@@ -175,11 +194,14 @@
       dueT: f.due != null ? f.due : releaseT + 30,
       released: false, done: false, stationId: null, color: COULEURS[kind]
     });
+    let plateauxRobot = 0, plateauxManuel = 0;
     flights.forEach(f => {
-      const c = chargeVol(f);
+      const c = chargeVol(f, cfg);
       if (f.sens === 'DEP') {
         const std = (f.std || 0) + cfg.shift;
         f.due = std - cfg.loadDelay; f.readyTime = null; f.retard = 0;
+        f.robot = c.robotServi;
+        if (c.robotServi) plateauxRobot += f.yc || 0; else plateauxManuel += f.yc || 0;
         f.foodDone = f.dotDone = f.armDone = false;
         jobs.push(mkJob(f, 'food', ROUTES.food, c.food, c.food.robot, std - 200));
         jobs.push(mkJob(f, 'dot', ROUTES.dot, { dotation: c.dotation }, 0, std - 175));
@@ -333,7 +355,8 @@
       });
       return {
         ateliers,
-        robot: { cadence: cfg.robotCadence, occupationJour: robot.tauxOccupation(), attenteMoyenne: robot.attente.moyenne(), attenteP90: robot.attente.percentile(90) }
+        robot: { cadence: cfg.robotCadence, compagnies: (cfg.robotCompagnies || []).slice(), plateauxRobot, plateauxManuel,
+                 occupationJour: robot.tauxOccupation(), attenteMoyenne: robot.attente.moyenne(), attenteP90: robot.attente.percentile(90) }
       };
     }
 
@@ -353,5 +376,5 @@
     return { modele: m, kpis: kpis ? kpis(m.flights, cfg.jour.fin) : null, bilan: m.bilan() };
   }
 
-  return { CFG_DEFAUT, JEU_DEMO, ROUTES, ATELIERS, LOT, FENETRE, chargeVol, capacitePlonge, construireModele, simulerJournee };
+  return { CFG_DEFAUT, JEU_DEMO, ROUTES, ATELIERS, LOT, FENETRE, chargeVol, robotServi, capacitePlonge, construireModele, simulerJournee };
 });
