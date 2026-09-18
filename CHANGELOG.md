@@ -5,6 +5,45 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-18 — Postes : lignes robot, stockages, assemblages
+
+- **Mode jour/nuit retiré** de l'éditeur de postes : thème clair unique.
+- **Nouvelle famille « ligne robot »** : une chaîne découpée en **modules**
+  mis bout à bout, chacun avec son nom, sa longueur et son débit. Le débit de
+  la ligne est le **minimum des modules** et le **module limitant** est nommé.
+  La forme découle des modules, donc les outils Carreaux n'y s'appliquent pas.
+- **Deux familles de stockage** : **desserte roulante** (défaut 70 × 50 cm) et
+  **trolley** (défaut 80 × 45 cm), avec capacité et roulettes. Leur géométrie
+  est en **centimètres**, pas en carreaux : une desserte de 70 cm ne tombe pas
+  sur la trame de 50, et l'y forcer fausserait l'encombrement. Ces dimensions
+  par défaut sont indicatives et à corriger.
+- **Assemblages** : composer plusieurs modèles sur un même plan sous un nom
+  propre. Ajout depuis une palette, déplacement au glisser (pas de 25 cm),
+  **orientation 0/90/180/270** — carreaux, personnes et sens d'avancement
+  pivotent ensemble —, retrait au clavier. Mesures cumulées. Un assemblage
+  référence les modèles : modifier une table met à jour les assemblages.
+
+**Bugs trouvés et corrigés pendant le développement :**
+
+- créer ou dupliquer un modèle ou un assemblage n'enregistrait pas ; l'objet
+  était perdu au rechargement s'il n'avait pas été modifié ensuite ;
+- `display:flex` sur les barres d'outils annulait l'attribut `hidden` : les
+  outils du mode modèle restaient visibles en mode assemblage ;
+- les éléments ajoutés à un assemblage se superposaient tous au même point.
+
+*Note de méthode : un premier test de persistance était faux — il effaçait le
+stockage à chaque chargement, rechargement compris, et ne prouvait donc rien.*
+
+| Fichier | Modification |
+|---|---|
+| `postes/postes.js` | Cinq familles, rotation, assemblages, corrections ci-dessus |
+| `postes/index.html` | Onglets Modèles/Assemblages, palette, outils, thème retiré |
+| `postes/postes.css` | Thème clair unique, familles de couleurs, `[hidden]` |
+| `postes/README.md` | Familles, assemblages, format d'échange étendu |
+| `CHANGELOG.md` | Cette entrée |
+
+---
+
 ## 2026-09-18 — Éditeur de postes : thème système, export et copie
 
 - **Thème** : sans choix explicite du visiteur, la préférence système

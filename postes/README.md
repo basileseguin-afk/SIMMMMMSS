@@ -10,14 +10,46 @@ Ouvrir `postes/index.html` dans un navigateur. Aucune dépendance, aucun serveur
 > Il produit pour l'instant une **bibliothèque de modèles**, pas une
 > implantation dans l'unité.
 
-## Deux familles de modèles
+## Cinq familles de modèles
 
-| | Table (établi) | Chaîne (tapis roulant) |
-|---|---|---|
-| Forme | libre, sur la trame | libre, sur la trame |
-| Personnes | sur les bords libres | sur les bords libres |
-| Sens d'avancement | — | ↑ ↓ ← → |
-| Débit | — | unités/heure |
+Deux natures de géométrie coexistent, et c'est voulu :
+
+- **sur la trame** (table, chaîne, ligne robot) — formes libres en carreaux ;
+- **en centimètres** (desserte, trolley) — rectangle libre posé par-dessus la
+  trame. Une desserte de **70 cm** ne tombe pas sur un carreau de 50 : la
+  forcer fausserait l'encombrement.
+
+| Famille | Géométrie | Personnes | Particularités |
+|---|---|---|---|
+| 🪵 **Table** | trame, forme libre | bords libres | — |
+| 🏭 **Chaîne** | trame, forme libre | bords libres | sens, débit (u/h) |
+| 🤖 **Ligne robot** | trame, droite | bords libres | **modules** en série, sens, débit par module |
+| 🛒 **Desserte roulante** | cm (défaut 70 × 50) | 4 côtés | capacité, roulettes |
+| 🧳 **Trolley** | cm (défaut 80 × 45) | — | capacité, roulettes |
+
+Une **ligne robot** est une chaîne découpée en **modules** mis bout à bout.
+Chaque module a son nom, sa longueur et son débit. Le **débit de la ligne est
+le minimum des modules** — une ligne va à la vitesse de son maillon le plus
+lent — et le **module limitant** est nommé dans les mesures.
+
+> Les dimensions par défaut des stockages (70 × 50, 80 × 45) sont **indicatives
+> et à corriger**. Elles ne viennent pas d'un relevé.
+
+## Assemblages
+
+L'onglet **Assemblages** compose plusieurs modèles sur un même plan : par
+exemple la Table 1 avec la Table 2 et une desserte, sous un nom à vous
+(« Îlot montage A »).
+
+- **Ajouter au plan** pose un modèle ; il se place à droite des précédents.
+- **Glisser** pour déplacer, au **quart de mètre**.
+- **⟳ Pivoter** ou la touche **R** : 0° / 90° / 180° / 270°. Les carreaux, les
+  personnes et le sens d'avancement pivotent ensemble.
+- **Suppr** retire l'élément sélectionné.
+- Les mesures cumulent éléments, personnes, surface et débit.
+
+Un assemblage **référence** les modèles : modifier une table met à jour tous
+les assemblages qui l'utilisent.
 
 ## Utilisation
 
@@ -28,6 +60,11 @@ Ouvrir `postes/index.html` dans un navigateur. Aucune dépendance, aucun serveur
 4. Outil **👤 Personnes** : cliquer un bord libre du meuble y place une
    personne tournée vers le plan de travail ; recliquer la retire.
 5. Pour une chaîne, régler le **sens** (chevrons sur le tapis) et le **débit**.
+   Pour une ligne robot, ajouter/retirer des **modules** et régler leur
+   longueur et leur débit.
+
+Les outils ➕/➖ Carreaux ne s'appliquent pas à une ligne robot : sa forme
+découle de ses modules.
 
 Les mesures se recalculent en direct : encombrement, carreaux occupés, surface
 de travail, emprise au sol, personnes, surface par personne, et pour une chaîne
@@ -47,6 +84,18 @@ invalide, bibliothèque inchangée).
     "cells": ["0,0", "1,0", "0,1"],
     "postes": [{ "x": 0, "y": 0, "cote": "N" }],
     "hauteurCm": 90, "sens": "E", "debit": 0
+  }, {
+    "id": "robot_...", "type": "robot", "nom": "Ligne robot 1", "largeur": 2, "sens": "E",
+    "modules": [{ "nom": "M1", "long": 4, "debit": 520 }],
+    "cells": ["0,0"], "postes": []
+  }, {
+    "id": "desserte_...", "type": "desserte", "nom": "Desserte roulante 1",
+    "dimCm": { "l": 70, "p": 50 }, "capacite": 6, "roulettes": true,
+    "postes": [{ "cote": "S" }]
+  }],
+  "assemblages": [{
+    "id": "asm_...", "nom": "Îlot montage A",
+    "elements": [{ "id": "el_...", "refId": "table_...", "x": 1, "y": 1, "rot": 90 }]
   }]
 }
 ```
@@ -55,6 +104,10 @@ invalide, bibliothèque inchangée).
 - `postes` : une personne par entrée, posée sur le côté `N`/`S`/`E`/`O` du
   carreau indiqué. Un poste n'existe que sur un **bord libre**.
 - `carreauCm` : taille du carreau du fichier ; un écart est signalé à l'import.
+- `dimCm` : pour les stockages, dimensions réelles en centimètres (hors trame).
+- `modules` : pour une ligne robot ; `cells` en découle et est recalculé.
+- `assemblages[].elements[]` : `refId` désigne un modèle, `x`/`y` sont en
+  carreaux (pas de 0,5) et `rot` vaut 0, 90, 180 ou 270.
 
 ## Limites
 
@@ -62,5 +115,7 @@ invalide, bibliothèque inchangée).
   mesurées sur le site.
 - Un modèle décrit une **géométrie et une affectation**. Rien n'est relié au
   moteur de simulation, ni aux standards de travail.
-- Pas encore d'implantation : les modèles ne sont pas posés sur le plan de
+- Pas encore d'implantation : les assemblages ne sont pas posés sur le plan de
   l'unité. C'est l'étape suivante.
+- Pas de détection de collision entre éléments d'un assemblage.
+- Thème clair uniquement.
