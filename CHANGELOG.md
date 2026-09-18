@@ -5,6 +5,32 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-18 — Ouverture des applications depuis GitHub
+
+Pour éviter de télécharger et dézipper le dépôt à chaque essai : mode d'emploi
+de **GitHub Pages**, qui sert le dépôt tel quel.
+
+Vérifié avant d'écrire : le dépôt est **public** (`visibility: public`) et sa
+branche par défaut est déjà la branche de travail — Pages peut donc la servir
+sans rien réorganiser. L'activation elle-même se fait dans les réglages du
+dépôt et ne peut pas être faite depuis le code.
+
+- Ajout de **`.nojekyll`** : les fichiers sont servis tels quels, sans
+  traitement Jekyll.
+- README : marche à suivre, adresses des deux applications, et solution de
+  dépannage ponctuel via `raw.githack.com`.
+- **Point signalé** : le dépôt étant public, le plan d'architecte de l'unité
+  (`docs/MAP_ORY.xlsx`, `assets/plan/`) est accessible à tous, et Pages le
+  rendrait consultable dans un navigateur. Arbitrage à faire.
+
+| Fichier | Modification |
+|---|---|
+| `.nojekyll` | **Nouveau** — désactive Jekyll sur GitHub Pages |
+| `README.md` | Section d'ouverture depuis GitHub et avertissement dépôt public |
+| `CHANGELOG.md` | Cette entrée |
+
+---
+
 ## 2026-09-18 — Postes : lignes robot, stockages, assemblages
 
 - **Mode jour/nuit retiré** de l'éditeur de postes : thème clair unique.

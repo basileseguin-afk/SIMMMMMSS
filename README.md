@@ -13,6 +13,35 @@ Ouvrir `index.html` dans un navigateur récent. Aucun serveur, aucune installati
 et aucune dépendance réseau ne sont nécessaires à l’utilisation. Conserver les
 fichiers JavaScript, CSS et le dossier `assets` à côté du HTML.
 
+## 🌐 Ouvrir l'application depuis GitHub (sans rien télécharger)
+
+Le dépôt est **public** et sa branche par défaut est la branche de travail :
+**GitHub Pages** peut donc le servir tel quel. À activer une seule fois :
+
+> **Settings** → **Pages** → *Build and deployment* → Source : **Deploy from a
+> branch** → Branch : `claude/factory-management-system-b1e0am` → dossier
+> `/ (root)` → **Save**. Le site est en ligne au bout d'une minute environ.
+
+Ensuite, chaque `push` republie automatiquement. Les adresses :
+
+| Application | Adresse |
+|---|---|
+| Simulateur des flux | `https://basileseguin-afk.github.io/SIMMMMMSS/` |
+| Éditeur de postes de travail | `https://basileseguin-afk.github.io/SIMMMMMSS/postes/` |
+
+Le fichier `.nojekyll` à la racine désactive le traitement Jekyll : les fichiers
+sont servis tels quels.
+
+**Sans activer Pages**, pour ouvrir un fichier ponctuellement, remplacez
+`github.com` par `raw.githack.com` et `/blob/` par rien :
+`https://raw.githack.com/basileseguin-afk/SIMMMMMSS/claude/factory-management-system-b1e0am/postes/index.html`
+(service tiers, pratique pour un essai, pas pour un usage durable).
+
+> ⚠️ **Le dépôt est public.** Le plan d'architecte de l'unité (`docs/MAP_ORY.xlsx`
+> et `assets/plan/`) y est donc accessible à tous, et activer Pages le rend
+> consultable dans un navigateur. À arbitrer : garder ainsi, rendre le dépôt
+> privé (Pages devient alors payant), ou sortir le plan du dépôt.
+
 ## Parcours d’utilisation
 
 1. **Données** : consulter les limites du moteur, télécharger le modèle CSV ou
