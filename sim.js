@@ -932,19 +932,46 @@ function initTheme() {
   });
 }
 
+/* --- Scénarios A / B : deux journées complètes rejouées à l'identique ------
+ *  Une capture enregistre les réglages et les vols du moment, puis REJOUE LA
+ *  JOURNÉE ENTIÈRE sans interface (quelques dizaines de millisecondes). Deux
+ *  captures se comparent donc à conditions égales : mêmes vols, aucun aléa,
+ *  seuls les réglages diffèrent. Ce n'est plus une photographie à un instant.
+ * ------------------------------------------------------------------------- */
 let snaps = {};
 function capturer(slot) {
-  const k=kpis();
-  snaps[slot]={ontime:k.ontime,retard:k.retardMoy,debit:k.debit,wip:k.wip,robot:CFG.robotCadence,prepa:CFG.staff.prepa,tunnels:CFG.tunnels,
-    time:now,source:dataSource,config:JSON.parse(JSON.stringify(CFG)),data:JSON.parse(JSON.stringify(Sim.dataCourante)),kpis:k};
-  majCompare();toast('Instantané '+slot+' enregistré à '+formatTime(now));
+  const config=JSON.parse(JSON.stringify(runConfig||CFG));
+  const data=JSON.parse(JSON.stringify(Sim.dataCourante));
+  const r=Orly.simulerJournee(data,config,serviceMetrics);
+  const b=r.bilan;
+  snaps[slot]={time:config.jour.fin,source:dataSource,config,data,kpis:r.kpis,bilan:b,
+    ontime:r.kpis.ontime,retard:r.kpis.retardMoy,overdue:r.kpis.overdue,
+    robot:config.robotCadence,prepa:config.staff.prepa,tunnels:config.tunnels+(config.tunnelDouble?' (1×2)':''),
+    robotJour:Math.round((b.robot.occupationJour||0)*100),robotP90:b.robot.attenteP90==null?null:Math.round(b.robot.attenteP90),
+    prepaJour:Math.round((b.ateliers.prepa.occupationJour||0)*100),cuisineJour:Math.round((b.ateliers.cuisine.occupationJour||0)*100),
+    plongeJour:Math.round((b.ateliers.plonge.occupationJour||0)*100)};
+  majCompare();toast('Scénario '+slot+' : journée rejouée jusqu’à '+formatTime(config.jour.fin));
 }
 function majCompare() {
-  const lignes = [['Heure simulée','time'],['Robot pl/h','robot'],['Staff Montage','prepa'],['Tunnels','tunnels'],['Prêts à échéance %','ontime'],['Retard moy.','retard'],['Débit /h','debit'],['WIP','wip']];
-  let html = '<thead><tr><th>KPI</th><th>A</th><th>B</th></tr></thead>';
-  lignes.forEach(l => { const a = snaps.A ? (l[1]==='time'?formatTime(snaps.A.time):snaps.A[l[1]]??'—') : '—', b = snaps.B ? (l[1]==='time'?formatTime(snaps.B.time):snaps.B[l[1]]??'—') : '—'; html += '<tr><td>' + l[0] + '</td><td>' + a + '</td><td>' + b + '</td></tr>'; });
-  document.getElementById('compare').innerHTML = html;
-  document.getElementById('compare-note').textContent=snaps.A&&snaps.B&&snaps.A.time!==snaps.B.time?'Heures de capture différentes : les résultats ne sont pas directement comparables.':'Instantanés indicatifs ; aucune validation de scénario.';
+  const lignes = [
+    ['Journée simulée jusqu’à','time','h'],
+    ['Robot pl/h','robot'],['Personnes au montage','prepa'],['Tunnels de plonge','tunnels'],
+    ['Prêts à l’échéance','ontime','%'],['Échéances dépassées en fin de journée','overdue'],['Retard moyen des dossiers','retard','min'],
+    ['Robot occupé sur la journée','robotJour','%'],['Attente du robot, p90','robotP90','min'],
+    ['Montage occupé sur la journée','prepaJour','%'],['Cuisine occupée sur la journée','cuisineJour','%'],['Plonge occupée sur la journée','plongeJour','%']
+  ];
+  const cell=(sn,l)=>{ if(!sn)return '—'; const v=sn[l[1]]; if(v==null)return '—'; if(l[2]==='h')return formatTime(v); return v+(l[2]?' '+l[2]:''); };
+  let html = '<thead><tr><th>Indicateur</th><th>A</th><th>B</th></tr></thead><tbody>';
+  lignes.forEach(l => {
+    const a=cell(snaps.A,l), b=cell(snaps.B,l);
+    const diff=snaps.A&&snaps.B&&a!==b&&l[1]!=='time';
+    html += '<tr'+(diff?' class="diff"':'')+'><td>' + l[0] + '</td><td>' + a + '</td><td>' + b + '</td></tr>';
+  });
+  document.getElementById('compare').innerHTML = html+'</tbody>';
+  let note='Chaque capture rejoue la journée entière avec les réglages du moment : mêmes vols, aucun aléa, seuls les réglages diffèrent.';
+  if(snaps.A&&snaps.B&&snaps.A.source!==snaps.B.source)note='Les deux scénarios n’utilisent pas les mêmes vols ('+snaps.A.source+' / '+snaps.B.source+') : la comparaison porte sur des journées différentes.';
+  else if(snaps.A&&snaps.B&&JSON.stringify(snaps.A.config)===JSON.stringify(snaps.B.config))note='Réglages identiques : les deux journées sont exactement les mêmes, au chiffre près.';
+  document.getElementById('compare-note').textContent=note+' Barème non calibré : comparer des scénarios entre eux, pas à la réalité.';
 }
 
 function importVols(e) {
@@ -953,7 +980,9 @@ function importVols(e) {
   const fail=message=>{report.classList.add('error');report.textContent=message;};
   if(file.size>2*1024*1024){fail('Fichier trop volumineux (maximum 2 Mo). Aucune donnée remplacée.');e.target.value='';return;}
   const rd=new FileReader();
-  rd.onerror=()=>fail('Lecture du fichier impossible. Aucune donnée remplacée.');
+  // BUG-005 : vider le champ aussi en cas d'échec de lecture, sinon resélectionner
+  // le même fichier ne déclenche plus `change` et l'application semble muette.
+  rd.onerror=()=>{fail('Lecture du fichier impossible. Aucune donnée remplacée.');e.target.value='';};
   rd.onload=()=>{
     try {
       const data=parseVols(rd.result);

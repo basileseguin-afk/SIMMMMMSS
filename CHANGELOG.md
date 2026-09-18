@@ -5,6 +5,43 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-18 — Scénarios A/B par rejeu complet ; BUG-003 et BUG-005 corrigés
+
+| Fichier | Changement |
+|---|---|
+| `sim.js` | « Capturer A/B » **rejoue la journée entière** avec les réglages du moment (`Orly.simulerJournee`) ; tableau d'indicateurs finaux, lignes différentes surlignées, note explicite ; BUG-005 corrigé |
+| `ui-model.js` | BUG-003 corrigé : chaque ligne CSV garde son numéro physique |
+| `index.html`, `interface.css` | panneau « Scénarios A / B », style des lignes qui diffèrent |
+| `tests/import-browser.cjs` | **nouveau** — échec de lecture puis réimport, numéro de ligne physique, A/B |
+| `tests/ui-model.test.cjs` | test BUG-003, **vérifié en échec sur l'ancien code** |
+| `README.md`, `BUGS.md` | scénarios, bugs clos avec preuve |
+
+**Ce que les instantanés ne pouvaient pas faire.** Ils photographiaient un
+instant ; deux captures à des heures différentes n'étaient pas comparables, et
+le README le disait. Le moteur est maintenant sans aléa et rejoue une journée en
+quelques dizaines de millisecondes : une capture rejoue donc **toute la
+journée** avec les réglages du moment. Deux captures se comparent à conditions
+égales — mêmes vols, seuls les réglages diffèrent. Réglages identiques ⇒
+chiffres identiques, et la note le dit. C'est le « what-if » du cahier des
+charges, enfin honnête.
+
+Le parcours navigateur le vérifie : robot à 320 puis 560 pl/h, la ponctualité
+finale monte et l'occupation du robot baisse ; retour à 320, aucune ligne ne
+diffère.
+
+**BUG-003** (numéros de ligne CSV faux avec des lignes vides) : `csvRows`
+attache à chaque ligne son numéro physique, compté avant tout filtrage, fins de
+ligne Windows comprises. Le test ajouté **échoue sur l'ancien `ui-model.js`**
+(vérifié en le rejouant contre `git show HEAD:ui-model.js`) et passe sur le
+nouveau. **BUG-005** (réimport impossible après un échec de lecture) : le
+gestionnaire d'erreur vide le champ. Le test navigateur force un échec de
+lecture puis resélectionne le même fichier ; **il échoue avec l'ancien
+gestionnaire** (vérifié en le remettant temporairement) et passe avec le nouveau.
+
+Tests : 73 unitaires et 4 parcours navigateur, tous au vert.
+
+---
+
 ## 2026-09-18 — L'interface tourne sur le moteur à événements discrets
 
 `sim.js` ne calcule plus rien. Le modèle de l'unité vit dans `moteur/orly.js`,

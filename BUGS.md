@@ -35,9 +35,9 @@ Identifiants : `BUG-001`, `BUG-002`… jamais réutilisés, même après correct
 |---|---|---|---|---|---|
 | BUG-001 | Majeur | Corrigé | Confirmé | Panneau de détail reconstruit ~60×/s, bouton « Fermer » incliquable | `sim.js:942` |
 | BUG-002 | Majeur | Corrigé | Confirmé | Cliquer une zone du plan ne la sélectionne pas | `sim.js:483` |
-| BUG-003 | Mineur | Ouvert | Confirmé | Numéros de ligne CSV faux dès qu'une ligne est vide | `ui-model.js:52` |
+| BUG-003 | Mineur | Corrigé | Confirmé | Numéros de ligne CSV faux dès qu'une ligne est vide | `ui-model.js:52` |
 | BUG-004 | Mineur | Corrigé | Signalé | Boutons d'atelier à l'état périmé après sélection | `sim.js:700` |
-| BUG-005 | Mineur | Ouvert | Signalé | Réimport impossible après un échec de lecture | `sim.js:1095` |
+| BUG-005 | Mineur | Corrigé | Confirmé | Réimport impossible après un échec de lecture | `sim.js:1095` |
 | BUG-006 | Performance | Écarté | Confirmé | Recalcul redondant de `qlen` à chaque pas | `sim.js:280` (code supprimé) |
 
 ---
@@ -113,7 +113,7 @@ fermeture avec clic maintenu pendant la simulation.
 
 ## BUG-003 — Numéros de ligne CSV faux avec des lignes vides
 
-- **Gravité** : Mineur · **Statut** : Ouvert · **Vérification** : Confirmé
+- **Gravité** : Mineur · **Statut** : Corrigé · **Vérification** : Confirmé
 - **Fichier** : `ui-model.js:52` (`csvRows`)
 - **Détecté** : 2026-09-18, revue de code
 
@@ -126,6 +126,15 @@ l'indice ne correspond plus à la position physique dans le fichier.
 
 **Piste de correction.** Conserver le numéro de ligne d'origine au moment du
 découpage, avant tout filtrage.
+
+**Correction :** commit « Scénarios A/B par rejeu complet ; BUG-003 et BUG-005
+corrigés ». `csvRows` attache à chaque ligne retenue son numéro physique
+(`row.ligne`), compté avant tout filtrage, fins de ligne Windows et champs
+multilignes compris ; `parseFlights` l'utilise. **Preuve :** le test
+`tests/ui-model.test.cjs` « BUG-003 … » **échoue contre l'ancien fichier**
+(rejoué contre `git show HEAD:ui-model.js` : `not ok 7`) et passe sur le nouveau ;
+`tests/import-browser.cjs` vérifie de bout en bout qu'un fichier dont la ligne 4
+est fautive produit « Ligne 4 ».
 
 ---
 
@@ -148,13 +157,20 @@ fermeture avec clic maintenu pendant la simulation.
 
 ## BUG-005 — Réimport impossible après un échec de lecture
 
-- **Gravité** : Mineur · **Statut** : Ouvert · **Vérification** : Signalé
+- **Gravité** : Mineur · **Statut** : Corrigé · **Vérification** : Confirmé
 - **Fichier** : `sim.js:1095` (`rd.onerror`)
 
 Le gestionnaire d'erreur ne remet pas `e.target.value` à vide. Resélectionner le
 même fichier ne déclenche alors plus l'événement `change` : l'utilisateur croit
 que l'application ne répond pas.
-*Rapporté par la revue automatique, non reproduit manuellement.*
+*Rapporté par la revue automatique, reproduit ensuite dans Chromium.*
+
+**Correction :** commit « Scénarios A/B par rejeu complet ; BUG-003 et BUG-005
+corrigés ». Le gestionnaire vide le champ après l'échec. **Preuve :**
+`tests/import-browser.cjs` force un échec de `FileReader.readAsText`, vérifie
+que le champ est vidé, puis resélectionne le même fichier et vérifie qu'il est
+importé. **Avec l'ancien gestionnaire remis temporairement, le test échoue**
+(« le champ doit être vidé après un échec de lecture ») ; il passe avec le nouveau.
 
 ---
 
@@ -181,8 +197,9 @@ la boucle de calcul ; la journée complète se rejoue en 51 ms sous Node
 
 ## Bugs corrigés
 
-Voir BUG-001, BUG-002 et BUG-004 ci-dessus et leur preuve de correction.
-BUG-006 est écarté : le code concerné a disparu avec le remplacement du moteur.
+BUG-001 à BUG-005 sont corrigés, chacun avec sa preuve ci-dessus. BUG-006 est
+écarté : le code concerné a disparu avec le remplacement du moteur. **Aucune
+entrée ouverte** à ce jour — ce qui n'est pas la même chose qu'aucun bug.
 
 ---
 
@@ -195,8 +212,9 @@ node tests/storage-browser.cjs
 node tests/editor-browser.cjs
 ```
 
-Ces tests **ne couvrent aucun des bugs ci-dessus** : ils sont tous passés au
-travers. Toute correction doit s'accompagner d'un test qui échouait avant.
+Chaque bug corrigé est couvert par un test qui échouait avant la correction :
+c'est la règle, et elle a été vérifiée pour chacun. Toute correction future
+doit s'accompagner d'un test qui échouait avant.
 
 ## Revue d’intégration — éditeur de plan v2
 

@@ -27,3 +27,13 @@ test('invalid files are rejected atomically, with actionable diagnostics',()=>{
 test('untrusted imported identifiers are escaped for HTML rendering',()=>{
  assert.equal(escapeHTML('<img src=x onerror="alert(1)">'),'&lt;img src=x onerror=&quot;alert(1)&quot;&gt;');
 });
+test('BUG-003 : le numéro de ligne d’une erreur est le numéro physique, lignes vides comprises',()=>{
+ // ligne 1 : en-tête · ligne 2 : vide · ligne 3 : fautive
+ assert.throws(()=>parseFlights(head+'\n'+'X,TX,A350,DEP,25:00,,1,2,100'),/Ligne 3 /);
+ // deux lignes vides puis une bonne puis une fautive : la fautive est la ligne 5
+ assert.throws(()=>parseFlights(head+'\n\n'+'A,TX,A350,DEP,12:00,,1,2,100\n'+'B,TX,A350,DEP,bad,,1,2,100'),/Ligne 5 /);
+ // fins de ligne Windows : même numérotation
+ assert.throws(()=>parseFlights((head+'\n'+'X,TX,A350,DEP,25:00,,1,2,100').replace(/\n/g,'\r\n')),/Ligne 3 /);
+ // sans ligne vide, rien ne change
+ assert.throws(()=>parseFlights(head+'X,TX,A350,DEP,25:00,,1,2,100'),/Ligne 2 /);
+});

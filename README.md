@@ -87,7 +87,8 @@ n'est présent dans ce dépôt.
 4. **Suivi des vols** : rechercher un vol ou une compagnie, filtrer les dossiers
    non prêts ou dont l’échéance est dépassée, voir les opérations restantes.
 5. **Exporter le résultat** : télécharger les données d’entrée, paramètres,
-   indicateurs et instantanés avec le statut explicite de démonstration.
+   indicateurs, mesures par atelier et scénarios A/B avec le statut explicite
+   de démonstration.
 
 Le bouton Pause arrête le calcul. La vitesse est exprimée en minutes simulées
 par seconde. Le calcul est un **moteur à événements discrets** (`moteur/`) :
@@ -124,9 +125,14 @@ temps de transfert.
 L’échéance vaut départ simulé moins délai de chargement. Ces états concernent
 la production ; ils ne constituent pas une mesure du retard avion.
 
-Les instantanés A/B enregistrent l’heure, les données et la configuration. Ils
-restent des photographies, pas deux simulations complètes comparables. Des
-heures différentes sont signalées. Un changement de jeu efface les instantanés.
+**Scénarios A/B.** Une capture enregistre les réglages et les vols du moment,
+puis rejoue la **journée entière** sans interface — quelques dizaines de
+millisecondes, le moteur étant sans aléa. Deux captures se comparent donc à
+conditions égales : mêmes vols, seuls les réglages diffèrent, et les lignes qui
+diffèrent ressortent. Réglages identiques ⇒ chiffres identiques, et la note le
+dit. Le tableau donne la ponctualité finale, les échéances dépassées, le retard
+moyen, et l’occupation sur la journée du robot, du montage, de la cuisine et de
+la plonge. Un changement de jeu efface les scénarios.
 
 ## Import CSV simplifié
 
@@ -222,6 +228,7 @@ Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/procede.test.cjs` | Régressions du procédé : validation, reproductibilité, goulot mesuré |
 | `tests/orly.test.cjs` | Journée de démonstration rejouée sans interface : leviers, déterminisme, blocage |
 | `tests/browser-smoke.cjs` | Parcours dans Chromium, export, édition et responsive |
+| `tests/import-browser.cjs` | Import CSV : échec de lecture puis réimport, numéros de ligne, scénarios A/B |
 | `BUGS.md` | Registre des bugs connus — à lire avant de coder, à compléter après chaque revue |
 | `postes/` | Éditeur de postes de travail sur trame 50 cm (outil indépendant) |
 
@@ -233,4 +240,5 @@ et Chromium disponible : `node tests/browser-smoke.cjs`. La variable optionnelle
 Les captures de contrôle sont écrites dans le dossier temporaire du système.
 Ces outils sont nécessaires uniquement aux tests, pas à l’application.
 
-Parcours spécifiques de l’éditeur : `node tests/editor-browser.cjs` (Playwright / Chromium).
+Parcours spécifiques : `node tests/editor-browser.cjs`, `node tests/storage-browser.cjs`,
+`node tests/import-browser.cjs` (Playwright / Chromium).
