@@ -548,19 +548,70 @@ poste tenu. Conséquence : une rupture durable de composant immobilise les
 places concernées au lieu de simplement ralentir. C'est le comportement de
 ProdSim, il est voulu, et il est écrit dans le code et dans le guide.
 
-### Ce qu'il reste : le branchement sur l'interface
+### Le branchement sur l'interface : **fait** (`moteur/orly.js`, 16 tests)
 
-Les trois couches sont là et testées. Ce qui manque est le raccordement, et il
-pose des questions qui ne sont plus techniques :
+`sim.js` ne calcule plus rien. `moteur/orly.js` construit le modèle de l'unité
+sur le noyau, les ressources et la mesure ; l'interface lit ses vues. Le
+barème d'homme-minutes du démonstrateur est repris tel quel, et reste non
+calibré. Ce qui a changé de nature :
 
-- **traduire le programme de vols en sources** — la forme `calendrier` existe
-  pour ça, mais le passage d'un vol à des unités de production suppose les
-  règles métier (prestations par classe, robot limité à certaines compagnies,
-  cuisine J−2) qui restent à préciser ;
-- **écrire le procédé réel de l'unité**, en privé, avec les capacités et les
-  contenances de tampon réelles — que je ne peux pas inventer ;
-- **remplacer `step(dt)`** par `env.avancerA(now + dt)` et brancher le rendu
-  sur les moniteurs au lieu des tableaux recalculés à chaque image.
+| Avant (`step(dt)`) | Maintenant (`moteur/orly.js`) |
+|---|---|
+| budget d'homme-minutes réparti par pas de 30 s | une personne occupée par un lot de 5 homme-minutes à la fois |
+| robot = débit continu | robot = une place, un vol à la fois, par ordre d'échéance, servi aux compagnies de la liste (FBU, TX/FWI, CRL) |
+| aucun tampon | contenance en OF par atelier, réglable ; finie, elle crée le blocage amont |
+| effectifs constants | équipe du matin, équipe du soir, heure de relève ; personne n'est interrompu |
+| `util` lissé avec plancher | occupation mesurée sur 15 min et sur la journée |
+| goulot par seuils (0,55 et 4) | le poste où l'on attend, sans seuil, robot compris |
+| instantanés non comparables | scénarios A/B par rejeu complet de la journée, sans aléa |
+| retard constaté | retard **expliqué** par l'OF qui fixe l'heure : attentes par cause, travail, journal exporté |
 
-Les deux premiers points demandent des informations que seul l'exploitant a.
-C'est là que l'étude s'arrête et que le travail en privé commence.
+**Ce que la règle du robot a changé à la démonstration, et qu'il faut dire.**
+Avec tous les YC au robot, la démo montrait un goulot robot le matin et 58 % de
+vols à l'heure. C'était un artefact. Avec la règle de la feuille de route, la
+journée de démonstration est à l'heure par défaut ; ce sont les leviers qui
+créent la tension, et les tests le vérifient sans que les données aient été
+ajustées.
+
+### Une décision à prendre : un seul moteur fait autorité
+
+La feuille de route (§ 3) demande de « viser un moteur Python à événements
+discrets, par exemple avec SimPy », l'interface s'y connectant par fichiers
+JSON, et précise qu'« un seul moteur fera autorité pour les résultats métier ».
+
+Cette étude a conclu autrement, et le code a suivi : le moteur à événements
+discrets existe **en JavaScript, dans le navigateur**, sans serveur ni
+installation, et il tourne. Ses primitives sont celles de SimPy, transposées et
+testées ; la journée complète se rejoue en quelques dizaines de millisecondes.
+
+Les deux options restent ouvertes, et ce n'est pas à cette étude de trancher :
+
+- **Garder le moteur JavaScript comme moteur d'autorité.** Avantage : un seul
+  langage, des fichiers statiques ouverts depuis GitHub Pages, le rejeu A/B
+  instantané dans l'interface. Coût : l'import des exports réels et les
+  référentiels métier se feront aussi en JavaScript, ou par fichiers JSON
+  préparés ailleurs.
+- **Bâtir le moteur Python prévu et reléguer celui-ci au rôle de
+  démonstrateur.** Avantage : l'écosystème SimPy/ProdSim pour l'import, la
+  calibration et l'analyse. Coût : deux moteurs à tenir cohérents, un serveur
+  ou une installation locale, et le rejeu A/B ne sera plus instantané.
+
+Ce qui ne dépend pas du choix : le format `procede.json` (§ étape 3) est
+lisible par les deux ; les indicateurs et leur définition (§ étape 6 de la
+feuille de route) sont les mêmes ; et Warteschlangensimulator reste le banc de
+validation indépendant proposé au § 1.
+
+### Ce qui reste, et qui n'est plus technique
+
+- **traduire le programme de vols réel en ordres de fabrication** — la forme
+  `calendrier` du procédé existe, mais le passage d'un dossier Winrest à des
+  unités de production suppose les règles métier (prestations par classe, cas
+  SPML, cuisine J−2, prépa J−1) qui restent à confirmer ;
+- **renseigner les contenances des ateliers et les effectifs par équipe** —
+  ce sont des données de l'exploitant, désormais des réglages et non des
+  constantes ;
+- **calibrer le barème** — le coefficient de dressage manuel (0,35 min par
+  plateau) est inventé, affiché comme tel et réglable.
+
+Les trois demandent des informations que seul l'exploitant a, et se
+travaillent en privé.
