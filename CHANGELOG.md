@@ -5,6 +5,31 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-18 — Un retard s'explique : étapes par OF, état en direct, journal
+
+| Fichier | Changement |
+|---|---|
+| `moteur/orly.js` | chaque OF garde ses étapes (entrée, première personne, fin, sortie, demande/début/fin robot) ; `etatOF` dérive ce qu'il attend ; `decomposer` et `expliquer(vol)` désignent l'OF qui a fixé l'heure et ses attentes ; `journal()` |
+| `sim.js` | suivi des vols : état vivant par OF, explication du vol prêt ; détail d'atelier : état de chaque OF ; export `0.4` avec `explication` par vol et `journal` |
+| `tests/orly.test.cjs`, `tests/import-browser.cjs` | explication d'un retard robot, bornes de la décomposition, état en direct, journal ordonné, export |
+| `README.md` | lecture de la colonne « Opérations » |
+
+C'est l'étape 6 de la feuille de route : « permettre à un responsable
+d'expliquer un résultat depuis les opérations qui le produisent » et « cause du
+retard : personnel, machine, matériel… ». Avec le robot à 200 pl/h, la démo dit
+par exemple : *CRL76, retard 59 min — OF food (le dernier fini) : attente du
+robot 42 min · attente de personnes 14 min (appros 13, cuisine 1) · travail 201
+min*. Le travail inclut les 102 minutes de dressage robot de ce vol : un robot
+lent, ce n'est pas seulement de l'attente.
+
+**Précaution écrite dans le code et dans le README** : au montage, l'attente du
+robot et l'attente de personnes se recouvrent. Ce sont des mesures séparées,
+pas les parts d'un total ; les additionner serait faux.
+
+Tests : 81 unitaires et 4 parcours navigateur.
+
+---
+
 ## 2026-09-18 — Relève d'équipe : la capacité varie dans le temps
 
 | Fichier | Changement |

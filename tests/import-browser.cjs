@@ -4,7 +4,7 @@ const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
 (async()=>{
  const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE_PATH?{executablePath:process.env.CHROMIUM_EXECUTABLE_PATH,args:['--no-sandbox','--disable-gpu','--disable-software-rasterizer','--no-zygote','--single-process']}:{})});
- const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
+ const page=await browser.newPage({viewport:{width:1440,height:1000},acceptDownloads:true}),errors=[];
  page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
  const click=s=>page.locator(s).click();
  const setRange=(s,v)=>page.locator(s).evaluate((e,v)=>{e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));},v);
@@ -76,8 +76,19 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(pct((await ligne('Échéances dépassées'))[2])>0);
   await setRange('#soir-cuisine','10');
   // Capturer pendant une simulation en cours reste possible et rejoue la journée entière.
-  await setRange('#vitesse','120');await click('#btn-play');await page.waitForTimeout(300);await click('#btn-play');
+  await setRange('#robot','200');await setRange('#vitesse','120');await click('#btn-play');await page.waitForTimeout(300);await click('#btn-play');
   await click('#snap-a');assert.deepEqual((await ligne('Journée simulée')).slice(1),['23:00','23:00']);
+  // Pendant la journée, chaque OF dit ce qu'il attend ; à la fin, le retard s'explique.
+  await click('[data-view="vols"]');
+  assert.match(await page.locator('#flight-rows').textContent(),/en cours|attend/);
+  await click('#btn-play');await page.waitForFunction(()=>document.getElementById('run-state').textContent==='Terminé',{},{timeout:20000});
+  const texte=await page.locator('#flight-rows').textContent();
+  assert.match(texte,/attente du robot \d+ min/,'un vol servi par le robot doit expliquer son retard');
+  assert.match(texte,/le dernier fini/);
+  const attendu=page.waitForEvent('download');await click('#btn-export');const dl=await attendu;
+  const exp=JSON.parse(require('node:fs').readFileSync(await dl.path(),'utf8'));
+  assert.equal(exp.schemaVersion,'0.4');assert.ok(exp.journal.length>50);
+  assert.ok(exp.vols.some(v=>v.explication&&v.explication.attenteRobot>0));
   assert.deepEqual(errors,[]);
   console.log('Import browser passed: read failure then re-import (BUG-005), physical line numbers (BUG-003), A/B full-day replay.');
  }finally{await browser.close();}

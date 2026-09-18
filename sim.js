@@ -791,7 +791,7 @@ function majGoulotInfo(goulot) {
     else {
       html+='<p>'+st.qlen+' OF présents'+(id==='plonge'?' · '+CFG.tunnels+' tunnels':' · '+st.capacite+' personne(s) présentes')+(now>CFG.jour.debut?' · occupation '+Math.round(Math.min(1,st.util)*100)+' % sur 15 min, '+Math.round(st.tauxJour*100)+' % depuis 05:00':'')+(st.enAttente?' · <strong>'+st.enAttente+' lot(s) attendent une personne</strong>':'')+(id==='prepa'&&now>CFG.jour.debut?' · robot '+Math.round(Math.min(1,st.robotUtil)*100)+' % sur 15 min'+(st.robotAttente?', <strong>'+st.robotAttente+' vol(s) attendent le robot</strong>':''):'')+(st.bloque?' · <strong>tampon plein : l’amont est bloqué</strong>':'')+'.</p>';
       const current=jobs.filter(j=>j.released&&!j.done&&j.stationId===id);
-      html+=current.length?'<ul class="detail-jobs">'+current.slice(0,8).map(j=>'<li>'+escapeHTML(j.flight.id)+' · '+escapeHTML(j.kind)+' · échéance '+formatTime(j.dueT)+'</li>').join('')+'</ul>':'<p>Aucun ordre de fabrication actif ici.</p>';
+      html+=current.length?'<ul class="detail-jobs">'+current.slice(0,8).map(j=>'<li>'+escapeHTML(j.flight.id)+' · '+escapeHTML(j.kind)+' · échéance '+formatTime(j.dueT)+' · '+escapeHTML(modele.ETATS[modele.etatOF(j)])+'</li>').join('')+'</ul>':'<p>Aucun ordre de fabrication actif ici.</p>';
       if(current.length>8)html+='<p>Et '+(current.length-8)+' autre(s) OF.</p>';
     }
   } else if(now===CFG.jour.debut)html='Lancez la démonstration, puis sélectionnez un atelier ou ouvrez le suivi des vols.';
@@ -1037,10 +1037,12 @@ function importVols(e) {
 function parseVols(txt) { return parseFlights(txt); }
 function exporter() {
   const k = kpis();
-  const data = { avertissement:'DÉMONSTRATION — paramètres non calibrés, résultats non exploitables pour décider.',schemaVersion:'0.3',modelStatus:'demonstration_non_calibree',source:dataSource,
+  const data = { avertissement:'DÉMONSTRATION — paramètres non calibrés, résultats non exploitables pour décider.',schemaVersion:'0.4',modelStatus:'demonstration_non_calibree',source:dataSource,
     limites:['Calendrier J−1/J−2 non intégré','Barème d’homme-minutes non calibré','Contenances des tampons à renseigner (illimitées par défaut)','Stocks et compétences non modélisés'],
     horaire:document.getElementById('horloge').textContent,termine:now>=CFG.jour.fin,config:runConfig||CFG,entrees:Sim.dataCourante,instantanes:snaps,kpis:k,
-    vols:flights.map(f => ({ id:f.id, sens:f.sens, due:f.due, readyTime:f.readyTime, retard:f.sens==='DEP'&&f.readyTime!=null?f.retard:null, statut:f.sens==='DEP'?flightStatus(f,now).key:'retour' })),
+    vols:flights.map(f => { const x=f.sens==='DEP'&&modele?modele.expliquer(f):null; return { id:f.id, sens:f.sens, robot:!!f.robot, due:f.due, readyTime:f.readyTime, retard:f.sens==='DEP'&&f.readyTime!=null?f.retard:null, statut:f.sens==='DEP'?flightStatus(f,now).key:'retour',
+      explication:x?{ of:x.of, phrase:x.phrase, attenteEntree:x.attenteEntree, attentePersonnes:x.attentePersonnes, attenteRobot:x.attenteRobot, attenteAval:x.attenteAval, travail:x.travail, parAtelier:x.parAtelier }:null }; }),
+    journal:modele?modele.journal():[],
     ateliers:Object.keys(ZONES).reduce((o,id)=>{ o[id]={occupation15min:NON_MODELISES.has(id)?null:Math.round(stations[id].util*100),occupationJour:NON_MODELISES.has(id)?null:Math.round(stations[id].tauxJour*100),ordresActifs:NON_MODELISES.has(id)?null:stations[id].qlen}; return o; }, {}),
     mesures:modele?modele.bilan():null };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
@@ -1094,8 +1096,12 @@ function renderFlights() {
   }).sort((a,b)=>a.due-b.due);
   const html=rows.map(f=>{
     const status=flightStatus(f,now),pending=jobs.filter(j=>j.flight===f&&!j.done);
-    const operations=pending.map(j=>j.released?ZONES[j.stationId].nom:'À libérer ('+({food:'food',dot:'dotation',arm:'armement'}[j.kind]||j.kind)+')');
-    return '<tr><td><strong>'+escapeHTML(f.id)+'</strong><small>'+escapeHTML(f.cie)+(f.robot?' · robot':' · manuel')+'</small></td><td>'+formatTime(f.std+CFG.shift)+'</td><td>'+formatTime(f.due)+'</td><td><span class="status '+status.key+'">'+status.label+'</span>'+(f.readyTime!=null?'<small>Prêt à '+formatTime(f.readyTime)+'</small>':'')+'</td><td>'+escapeHTML(operations.join(' · ')||'Toutes terminées')+'</td></tr>';
+    // En cours : chaque OF dit où il est et ce qu'il attend. Terminé : l'OF qui
+    // a fixé l'heure explique où il a attendu (mesures séparées, pas un total).
+    let operations;
+    if(pending.length)operations=pending.map(j=>{const et=modele.etatOF(j);return j.kind+(j.released&&j.stationId?' · '+ZONES[j.stationId].nom:'')+' · '+modele.ETATS[et];}).join(' — ');
+    else {const x=modele.expliquer(f);operations=x?x.phrase:'Toutes terminées';}
+    return '<tr><td><strong>'+escapeHTML(f.id)+'</strong><small>'+escapeHTML(f.cie)+(f.robot?' · robot':' · manuel')+'</small></td><td>'+formatTime(f.std+CFG.shift)+'</td><td>'+formatTime(f.due)+'</td><td><span class="status '+status.key+'">'+status.label+'</span>'+(f.readyTime!=null?'<small>Prêt à '+formatTime(f.readyTime)+'</small>':'')+'</td><td>'+escapeHTML(operations)+'</td></tr>';
   }).join('') || '<tr><td colspan="5" class="empty-state">Aucun départ ne correspond à ces filtres.</td></tr>';
   const body=document.getElementById('flight-rows');if(body.innerHTML!==html)body.innerHTML=html;
 }

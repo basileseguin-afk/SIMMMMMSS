@@ -196,7 +196,10 @@
     const mkJob = (f, kind, route, work, robotPl, releaseT) => ({
       flight: f, kind, route, work, robot: robotPl || 0, releaseT,
       dueT: f.due != null ? f.due : releaseT + 30,
-      released: false, done: false, stationId: null, color: COULEURS[kind]
+      released: false, done: false, stationId: null, color: COULEURS[kind],
+      // Trace de l'OF, pour expliquer un retard : une entrée par atelier traversé.
+      etapes: [], finT: null,
+      _entreeAttendue: false, _avalAttendu: false, _lotsEnCours: 0, _lotsRestants: 0, _robotAttend: false
     });
     let plateauxRobot = 0, plateauxManuel = 0;
     flights.forEach(f => {
@@ -246,19 +249,25 @@
     }
 
     /** Un lot : une personne (ou un tunnel) pendant sa durée. */
-    const lot = (st, j, l) => env.processus(function* (e) {
+    const lot = (st, j, l, etape) => env.processus(function* (e) {
+      j._lotsRestants++;
       const place = st.ressource.demander({ priorite: j.dueT });
       yield place;
+      j._lotsRestants--; j._lotsEnCours++;
+      if (etape.debut == null) etape.debut = e.maintenant;        // première personne sur l'OF
       try { yield e.delai(dureeLot(st.id, l)); }
-      finally { st.ressource.liberer(place); }
+      finally { j._lotsEnCours--; st.ressource.liberer(place); }
     }, st.id + ' lot');
 
     /** Le robot dresse les plateaux YC d'un vol, un vol à la fois. */
-    const dressageRobot = j => env.processus(function* (e) {
+    const dressageRobot = (j, etape) => env.processus(function* (e) {
+      etape.robotDemande = e.maintenant; j._robotAttend = true;
       const place = robot.demander({ priorite: j.dueT });
       yield place;
+      j._robotAttend = false; etape.robotDebut = e.maintenant;
+      if (etape.debut == null) etape.debut = e.maintenant;
       try { yield e.delai(j.robot / cadenceRobot()); }
-      finally { robot.liberer(place); }
+      finally { etape.robotFin = e.maintenant; robot.liberer(place); }
     }, 'robot');
 
     /**
@@ -270,30 +279,43 @@
     jobs.forEach(j => env.processus(function* (e) {
       const attente = j.releaseT - t0;
       if (attente > 0) yield e.delai(attente);
-      j.released = true; j.stationId = j.route[0];
+      j.released = true; j.stationId = j.route[0]; j.liberationT = e.maintenant;
       spawnEntree(j);
+      j._entreeAttendue = true;
       yield stations[j.route[0]].tampon.deposer(j);
+      j._entreeAttendue = false;
+      j.attenteEntree = e.maintenant - j.liberationT;         // premier atelier plein
 
       for (let k = 0; k < j.route.length; k++) {
         const id = j.route[k], st = stations[id];
         j.stationId = id;
+        const etape = { atelier: id, entree: e.maintenant, debut: null, fin: null, sortie: null,
+                        robotDemande: null, robotDebut: null, robotFin: null };
+        j.etapes.push(etape);
         const travail = j.work[id] || 0;
         const taches = [];
         // Un atelier à zéro place fait simplement attendre : si une relève
         // l'ouvre plus tard, le travail repart ; sinon l'OF ne finit jamais.
-        if (travail > 0) decouper(travail).forEach(l => taches.push(lot(st, j, l)));
-        if (id === 'prepa' && j.robot > 0) taches.push(dressageRobot(j));
+        if (travail > 0) decouper(travail).forEach(l => taches.push(lot(st, j, l, etape)));
+        if (id === 'prepa' && j.robot > 0) taches.push(dressageRobot(j, etape));
         if (taches.length) yield e.tousDe(taches);
+        etape.fin = e.maintenant;
+        if (etape.debut == null) etape.debut = etape.fin;        // rien à faire ici
 
         if (k + 1 < j.route.length) {
           const suivant = j.route[k + 1];
+          j._avalAttendu = true;
           yield stations[suivant].tampon.deposer(j);      // BLOQUE si l'aval est plein
+          j._avalAttendu = false;
+          etape.sortie = e.maintenant;
           yield st.tampon.prendre(x => x === j);
           surToken(id + '_' + suivant, j.color);
         } else {
+          etape.sortie = e.maintenant;
           yield st.tampon.prendre(x => x === j);
         }
       }
+      j.finT = e.maintenant;
       finaliser(j);
       j.done = true;
     }, j.flight.id + ' ' + j.kind));
@@ -354,6 +376,84 @@
       return best;
     }
 
+    /* ---- lecture d'un OF et d'un vol ---------------------------------- */
+
+    const ETATS = {
+      a_liberer: 'à libérer', attente_entree: 'attend une place dans l’atelier', attente_personne: 'attend une personne',
+      travail: 'en cours', attente_robot: 'attend le robot', attente_aval: 'fini, attend une place en aval', fini: 'terminé'
+    };
+
+    /** État courant d'un OF, dérivé de ce qu'il attend. */
+    function etatOF(j) {
+      if (j.done) return 'fini';
+      if (!j.released) return 'a_liberer';
+      if (j._entreeAttendue) return 'attente_entree';
+      if (j._avalAttendu) return 'attente_aval';
+      if (j._lotsEnCours > 0) return 'travail';
+      if (j._robotAttend) return 'attente_robot';
+      if (j._lotsRestants > 0) return 'attente_personne';
+      return 'travail';   // robot en cours, ou transfert
+    }
+
+    /** Décomposition d'un OF terminé : où il a attendu, combien il a travaillé. */
+    function decomposer(j) {
+      const d = { attenteEntree: j.attenteEntree || 0, attentePersonnes: 0, attenteRobot: 0, attenteAval: 0, travail: 0, parAtelier: [] };
+      j.etapes.forEach(et => {
+        const fin = et.fin == null ? env.maintenant : et.fin;
+        const debut = et.debut == null ? fin : et.debut;
+        const sortie = et.sortie == null ? fin : et.sortie;
+        const ap = Math.max(0, debut - et.entree), tr = Math.max(0, fin - debut), aa = Math.max(0, sortie - fin);
+        const ar = et.robotDemande != null ? Math.max(0, (et.robotDebut == null ? env.maintenant : et.robotDebut) - et.robotDemande) : 0;
+        d.attentePersonnes += ap; d.travail += tr; d.attenteAval += aa; d.attenteRobot += ar;
+        d.parAtelier.push({ atelier: et.atelier, attentePersonnes: ap, attenteRobot: ar, travail: tr, attenteAval: aa });
+      });
+      return d;
+    }
+
+    /**
+     * Pourquoi ce vol est-il prêt quand il l'est ? On regarde l'OF qui a fini
+     * en dernier — c'est lui qui fixe l'heure — et on dit où il a attendu.
+     * Les attentes du robot et des personnes au montage peuvent se recouvrir :
+     * ce sont des mesures séparées, pas des parts d'un total.
+     */
+    function expliquer(f) {
+      const ofs = jobs.filter(j => j.flight === f && j.kind !== 'plonge');
+      if (!ofs.length) return null;
+      const finis = ofs.filter(j => j.done);
+      const critique = finis.length === ofs.length
+        ? finis.reduce((a, b) => (b.finT > a.finT ? b : a))
+        : ofs.filter(j => !j.done).sort((a, b) => a.releaseT - b.releaseT)[0];
+      const d = decomposer(critique);
+      const r = Math.round;
+      const morceaux = [];
+      if (d.attenteRobot > 0.5) morceaux.push('attente du robot ' + r(d.attenteRobot) + ' min');
+      if (d.attentePersonnes > 0.5) morceaux.push('attente de personnes ' + r(d.attentePersonnes) + ' min' +
+        (d.parAtelier.length > 1 ? ' (' + d.parAtelier.filter(x => x.attentePersonnes > 0.5).map(x => x.atelier + ' ' + r(x.attentePersonnes)).join(', ') + ')' : ''));
+      if (d.attenteAval > 0.5) morceaux.push('bloqué par l’aval ' + r(d.attenteAval) + ' min');
+      if (d.attenteEntree > 0.5) morceaux.push('atelier plein à l’entrée ' + r(d.attenteEntree) + ' min');
+      morceaux.push('travail ' + r(d.travail) + ' min');
+      const etat = etatOF(critique);
+      const tete = critique.done
+        ? 'OF ' + critique.kind + ' (le dernier fini)'
+        : 'OF ' + critique.kind + ' ' + ETATS[etat] + (critique.stationId ? ' — ' + critique.stationId : '');
+      return Object.assign({ of: critique.kind, etat, atelier: critique.stationId, phrase: tete + ' : ' + morceaux.join(' · ') }, d);
+    }
+
+    /** Journal des OF : une ligne par étape traversée, pour l'export. */
+    function journal() {
+      const lignes = [];
+      jobs.forEach(j => {
+        if (!j.released) return;
+        j.etapes.forEach(et => lignes.push({
+          vol: j.flight.id, of: j.kind, atelier: et.atelier,
+          entree: et.entree, debut: et.debut, fin: et.fin, sortie: et.sortie,
+          robotDemande: et.robotDemande, robotDebut: et.robotDebut, robotFin: et.robotFin
+        }));
+      });
+      lignes.sort((a, b) => a.entree - b.entree);
+      return lignes;
+    }
+
     /** Résumé mesuré de la journée, pour l'export et la comparaison A/B. */
     function bilan() {
       const ateliers = {};
@@ -376,7 +476,8 @@
     }
 
     rafraichir(0);
-    return { env, flights, jobs, stations, robot, ATELIERS, avancerA, debitRobot, goulot, bilan,
+    return { env, flights, jobs, stations, robot, ATELIERS, ETATS, avancerA, debitRobot, goulot, bilan,
+             etatOF, decomposer, expliquer, journal,
              get maintenant() { return env.maintenant; } };
   }
 

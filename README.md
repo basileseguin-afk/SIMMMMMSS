@@ -127,6 +127,13 @@ temps de transfert.
 - **Point d’attention** : le poste où l’on attend — lots en attente d’une
   personne, vols en attente du robot, ou tampon plein qui bloque l’amont. Aucun
   seuil : s’il n’y a d’attente nulle part, rien n’est désigné.
+- **Suivi des vols, colonne « Opérations »** : pendant la journée, chaque ordre
+  de fabrication dit où il est et ce qu’il attend (une personne, le robot, une
+  place en aval). Une fois le vol prêt, l’OF qui a fixé l’heure explique son
+  parcours : attente du robot, attente de personnes par atelier, blocage aval,
+  travail. Ces attentes sont des **mesures séparées qui peuvent se recouvrir**
+  (au montage, robot et personnes travaillent en parallèle), pas les parts d’un
+  total. L’export contient cette explication par vol et le journal des étapes.
 
 L’échéance vaut départ simulé moins délai de chargement. Ces états concernent
 la production ; ils ne constituent pas une mesure du retard avion.

@@ -167,3 +167,58 @@ test('la relève d’équipe change l’effectif à l’heure dite, et le soir s
   const tot = journee(cfg(c => { c.equipes = { bascule: 4 * 60, soir: { prepa: 0 } }; }));
   assert.equal(tot.kpis.prets, 0);
 });
+
+test('un retard s’explique : l’OF qui fixe l’heure dit où il a attendu', () => {
+  const r = journee(cfg(c => { c.robotCadence = 200; }));
+  const m = r.modele;
+  const enRetard = m.flights.filter(f => f.sens === 'DEP' && f.retard > 0);
+  assert.ok(enRetard.length > 0, 'à 200 pl/h la démo doit produire des retards');
+  const robotEnRetard = enRetard.filter(f => f.robot);
+  assert.ok(robotEnRetard.length > 0);
+  // Tous les retards ne viennent pas d'une attente : un vol peut être en retard
+  // parce que son seul dressage robot dure plus que sa fenêtre. L'explication
+  // doit alors le dire par le travail, sans inventer une attente.
+  robotEnRetard.forEach(f => {
+    const x = m.expliquer(f);
+    assert.equal(x.of, 'food');
+    assert.match(x.phrase, /le dernier fini/);
+    assert.match(x.phrase, /travail \d+ min/);
+    if (x.attenteRobot > 0.5) assert.match(x.phrase, /attente du robot \d+ min/);
+    else assert.doesNotMatch(x.phrase, /attente du robot/);
+  });
+  assert.ok(robotEnRetard.some(f => m.expliquer(f).attenteRobot > 0), 'au moins un vol du matin doit avoir attendu le robot');
+  // Cohérence : chaque composante est bornée par le séjour de l'OF, et le
+  // travail au montage inclut le dressage robot (qui dure, lui aussi).
+  m.jobs.filter(j => j.done && j.kind === 'food').forEach(j => {
+    const d = m.decomposer(j);
+    const sejour = j.finT - j.liberationT;
+    for (const k of ['attenteEntree', 'attentePersonnes', 'attenteRobot', 'attenteAval', 'travail']) {
+      assert.ok(d[k] >= 0 && d[k] <= sejour + 1e-9, j.flight.id + ' ' + k + '=' + d[k] + ' séjour=' + sejour);
+    }
+    assert.equal(d.parAtelier.length, j.route.length);
+    assert.deepEqual(d.parAtelier.map(x => x.atelier), j.route);
+  });
+});
+
+test('l’état d’un OF dit ce qu’il attend, en direct', () => {
+  const c = cfg(x => { x.staff.appros = 0; });
+  const m = construireModele(JEU_DEMO, c);
+  const food = m.jobs.find(j => j.kind === 'food');
+  assert.equal(m.etatOF(food), 'a_liberer');
+  m.avancerA(c.jour.debut + 1);
+  assert.equal(m.etatOF(food), 'attente_personne');
+  assert.equal(m.ETATS[m.etatOF(food)], 'attend une personne');
+  const x = m.expliquer(food.flight);
+  assert.equal(x.etat, 'attente_personne');
+  assert.match(x.phrase, /^OF food attend une personne — appros/);
+});
+
+test('le journal donne une ligne par atelier traversé, dans l’ordre du temps', () => {
+  const r = journee(cfg());
+  const j = r.modele.journal();
+  const finis = r.modele.jobs.filter(x => x.done);
+  assert.equal(j.length, finis.reduce((n, x) => n + x.route.length, 0));
+  for (let i = 1; i < j.length; i++) assert.ok(j[i].entree >= j[i - 1].entree);
+  j.forEach(l => { assert.ok(l.entree <= l.debut && l.debut <= l.fin && l.fin <= l.sortie, JSON.stringify(l)); });
+  assert.ok(j.some(l => l.atelier === 'prepa' && l.robotDebut != null && l.robotFin > l.robotDebut));
+});
