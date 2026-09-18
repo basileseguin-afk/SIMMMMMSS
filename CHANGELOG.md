@@ -5,6 +5,60 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-18 — Purge de l'historique (réécriture + force-push)
+
+**Opération destructive, réalisée sur accord explicite.** L'historique des
+quatre branches a été réécrit pour supprimer définitivement le plan de l'unité
+et les captures qui le reproduisent.
+
+```
+git-filter-repo --invert-paths --path docs/MAP_ORY.xlsx --path assets --force
+```
+
+**Résultat vérifié sur un clone neuf du dépôt distant**, après coup et non en
+essai :
+
+| Branche | Commits | Fichiers sensibles |
+|---|---:|---:|
+| `claude/factory-management-system-b1e0am` | 24 | **0** |
+| `codex/interface-usage-review` | 9 | **0** |
+| `codex/plan-editor-v2` | 19 | **0** |
+| `codex/stockages-par-service` | 21 | **0** |
+
+Dépôt de 4,6 Mo à 400 Ko. Aucun commit perdu, tous les travaux conservés.
+Après réécriture : 11 tests unitaires et les 3 parcours navigateur passent.
+
+Une **sauvegarde locale** de l'état d'avant purge a été faite avant l'opération
+(`plan-prive/sauvegarde-avant-purge.bundle`, hors Git).
+
+### ⚠️ Ce qui n'est PAS purgé
+
+Les références de pull requests que GitHub conserve côté serveur **ne peuvent
+pas être réécrites par un force-push**. Contrôlées sur le dépôt distant après
+l'opération :
+
+| Référence | Fichiers sensibles restants |
+|---|---:|
+| `refs/pull/1/head` | 24 |
+| `refs/pull/2/head` | 37 |
+| `refs/pull/3/head` | 37 |
+
+**Le plan reste donc accessible par ces références.** Seul le support GitHub
+peut les purger : une demande doit être déposée. Tant qu'elle n'est pas
+traitée, l'exposition subsiste.
+
+### Conséquence pour les postes de travail
+
+Tous les SHA ont changé. **Les clones existants sont incompatibles** : il faut
+re-cloner, un `git pull` ne suffit pas.
+
+| Fichier | Modification |
+|---|---|
+| Historique complet | Réécrit sur les 4 branches |
+| `CHANGELOG.md` | Cette entrée |
+
+---
+
 ## 2026-09-18 — Retrait des captures d'écran reproduisant le plan
 
 Signalé par Astra : les captures `assets/apercu*.png` reproduisent le plan de
