@@ -5,6 +5,46 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-18 — Registre des bugs
+
+**Pourquoi :** la revue de l'interface a produit six constats. Sans endroit où
+les inscrire, ils seraient perdus à la fin de la conversation et réintroduits
+plus tard.
+
+**Ajout de `BUGS.md`**, registre des défauts connus, à lire avant de coder et à
+compléter après chaque revue et chaque correction. Chaque entrée porte une
+gravité, un statut, le fichier concerné, la cause, la preuve et une piste de
+correction. Le champ **Vérification** distingue ce qui est *confirmé*
+(reproduit, preuve à l'appui) de ce qui est seulement *signalé*.
+
+**Six entrées ouvertes**, issues de la revue du diff `88ea4a9..13d86c9` :
+
+- `BUG-001` *(majeur, confirmé)* — la garde anti-re-rendu de `majGoulotInfo`
+  compare du HTML contenant un attribut nu à sa re-sérialisation par le
+  navigateur : elle ne retient jamais. Le panneau est reconstruit ~60×/s
+  (90 remplacements mesurés en 1,5 s) et le bouton « Fermer » est incliquable.
+- `BUG-002` *(majeur, confirmé)* — cliquer une zone du plan ne la sélectionne
+  pas : `setPointerCapture` redirige le `click` vers le `<svg>`. Introduit par
+  le commit `4e2bf69` (Claude), donc antérieur à la refonte ; le README décrit
+  pourtant ce geste comme fonctionnel.
+- `BUG-003` *(mineur, confirmé)* — une ligne vide décale les numéros de ligne
+  des erreurs d'import CSV.
+- `BUG-004` à `BUG-006` *(mineurs, signalés non revérifiés)* — état périmé des
+  boutons d'atelier, réimport impossible après échec de lecture, recalcul
+  redondant de `qlen`.
+
+Aucun correctif dans ce commit : `sim.js`, `index.html` et `interface.css` sont
+en cours de modification par ailleurs. Les tests existants ne couvrent aucun de
+ces bugs ; toute correction devra venir avec un test qui échouait avant.
+
+| Fichier | Modification |
+|---|---|
+| `BUGS.md` | **Nouveau** — registre des bugs et règles d'usage |
+| `README.md` | Renvois vers le registre |
+| `CHANGELOG.md` | Cette entrée |
+
+---
+
 ## 2026-09-18 — Revue critique de l’interface et fiabilisation de sa lecture
 
 **Pourquoi :** l’écran privilégiait les curseurs au détriment du plan, ne

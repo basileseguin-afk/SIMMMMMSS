@@ -105,7 +105,8 @@ annotations : elles ne déterminent ni une capacité de stockage ni un temps de 
   produit un équivalent de charge, pas une affectation de personnel.
 
 La prochaine étape consiste à connecter une chaîne de calcul validée à cette
-interface. Voir [l’audit d’usage](docs/AUDIT_INTERFACE.md) et le
+interface. Voir [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
+[registre des bugs](BUGS.md) et le
 [journal des modifications](CHANGELOG.md). La
 [feuille de route commune](docs/FEUILLE_DE_ROUTE.md) reste la référence du projet.
 
@@ -120,6 +121,7 @@ interface. Voir [l’audit d’usage](docs/AUDIT_INTERFACE.md) et le
 | `assets/plan/` | Fond de plan existant |
 | `tests/ui-model.test.cjs` | Régressions de l’import et des indicateurs |
 | `tests/browser-smoke.cjs` | Parcours dans Chromium, export, édition et responsive |
+| `BUGS.md` | Registre des bugs connus — à lire avant de coder, à compléter après chaque revue |
 
 Tests purs, avec Node : `node --test tests/ui-model.test.cjs`.
 
