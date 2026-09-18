@@ -5,6 +5,42 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-18 — Étape 1 : noyau à événements discrets
+
+Premier code du nouveau moteur. **`sim.js` est inchangé** : rien n'est encore
+branché sur l'interface, le noyau seul ne sait pas exprimer un poste occupé ni
+un tampon plein.
+
+| Fichier | Changement |
+|---|---|
+| `moteur/noyau.js` | **nouveau** — `Environnement`, `Evenement`, `Delai`, `Processus`, `tousDe`/`unDe`, `interrompre`, `FilePriorite` |
+| `tests/noyau.test.cjs` | **nouveau** — 19 régressions |
+| `docs/ETUDE_OPEN_SOURCE.md` | section « Avancement » : partis pris, défauts corrigés, limite documentée, débit mesuré |
+| `README.md` | noyau et tests ajoutés au tableau des fichiers |
+
+Quatre partis pris, tous pris contre ce que fait uia-simjs : les erreurs de
+modèle **remontent** au lieu d'être rattrapées et affichées ; l'ordre des
+événements simultanés est totalement déterminé par `(instant, priorité, rang de
+création)`, donc reproductible ; `avancerA(t)` traite l'instant `t` inclus puis
+cale l'horloge, de sorte que des appels successifs ne rejouent ni ne sautent
+rien ; aucune dépendance et aucune sortie console.
+
+**Deux défauts trouvés par les tests et corrigés avant le commit** : un
+processus interrompu avant le démarrage de son générateur était tué par une
+erreur non rattrapable — l'interruption est désormais refusée explicitement,
+comme dans SimPy ; et un processus achevé pouvait être relancé par son amorce.
+
+Limite assumée et documentée : l'événement attendu par un processus interrompu
+reste programmé et peut tirer l'horloge jusqu'à son instant. Même comportement
+que SimPy.
+
+Débit mesuré : 120 000 événements en 268 ms sous Node, soit environ 450 000
+événements par seconde.
+
+Tests : 30 unitaires (11 `ui-model` + 19 `noyau`), tous au vert.
+
+---
+
 ## 2026-09-18 — Étude des moteurs de simulation open source
 
 Ajout de **`docs/ETUDE_OPEN_SOURCE.md`** : lecture et évaluation de quatre

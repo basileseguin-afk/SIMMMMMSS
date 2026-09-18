@@ -315,3 +315,69 @@ Copyright (c) 2021 Tom Fuchs — licence MIT
 salabim n'apparaît pas dans cette liste : **seules ses idées** sont reprises
 (la distinction niveau/comptage), et son dépôt ne fournit pas de fichier de
 licence.
+
+---
+
+## 6. Avancement
+
+### Étape 1 — noyau événementiel : **faite** (`moteur/noyau.js`, 19 tests)
+
+`moteur/noyau.js` (≈ 480 lignes, script classique sans étape de construction,
+utilisable depuis `file://` comme depuis Node) fournit :
+
+| Élément | Rôle |
+|---|---|
+| `Environnement` | `maintenant`, `programmer`, `pas`, `executer`, `avancerA` |
+| `Evenement` | attente → programmé → traité ; `reussir` / `echouer` / `annuler` |
+| `Delai` | l'attente d'une durée |
+| `Processus` | une fonction génératrice reprise à chaque `yield` ; c'est aussi un événement, donc attendable |
+| `tousDe` / `unDe` | attendre tous les événements, ou le premier |
+| `interrompre` | fait lever une `Interruption` au point d'attente d'un processus |
+| `FilePriorite` | tas binaire, ordre `(instant, priorité, rang de création)` |
+
+Quatre partis pris, tous pris contre ce que fait uia-simjs :
+
+1. **Les erreurs remontent.** Un événement en échec que personne n'attend fait
+   lever son erreur par `pas()`. uia-simjs arrête la simulation en levant une
+   exception qu'il rattrape et affiche : une vraie erreur de modèle y serait
+   avalée de la même façon. Un échec *attendu*, lui, se rattrape normalement
+   par `try`/`catch` autour du `yield`.
+2. **L'ordre est totalement déterminé** par le triplet
+   `(instant, priorité, rang de création)`. Sans le troisième critère, deux
+   événements simultanés de même priorité sortiraient dans un ordre dépendant
+   du tas : un test vérifie que deux exécutions identiques donnent la même
+   trace, caractère par caractère.
+3. **`avancerA(t)` traite l'instant `t` inclus, puis cale l'horloge sur `t`.**
+   Des appels successifs ne rejouent ni ne sautent aucun événement, même
+   lorsqu'aucun ne tombe dans l'intervalle. C'est ce dont le rendu a besoin
+   pour appeler `avancerA(now + dt)` à chaque image.
+4. **Aucune dépendance, aucune sortie console** dans le chemin critique. Le tas
+   binaire fait trente lignes ; l'importer coûterait plus cher que l'écrire.
+
+**Deux défauts trouvés par les tests**, corrigés avant le commit : un processus
+interrompu avant le démarrage de son générateur était tué par une erreur non
+rattrapable (l'interruption est désormais refusée explicitement tant que le
+générateur n'est pas entamé, comme dans SimPy) ; et un processus achevé pouvait
+être relancé par son amorce.
+
+**Limite documentée et assumée** : quand un processus est interrompu,
+l'événement qu'il attendait reste programmé. Il se résout dans le vide, mais il
+fait avancer l'horloge jusqu'à son instant si plus rien d'autre n'est en file.
+On ne peut pas le retirer du tas à coût constant, et il peut être partagé avec
+d'autres processus. SimPy a exactement le même comportement.
+
+**Débit mesuré** : 20 000 ordres de cinq étapes, soit 120 000 événements, en
+268 ms sous Node — environ **450 000 événements par seconde**. Une journée
+d'exploitation se compte en dizaines de milliers d'événements : la marge est
+large, y compris dans un navigateur.
+
+**Ce que le noyau ne fait pas encore**, et pourquoi rien n'est encore branché
+sur l'interface : il n'a ni poste de capacité finie, ni tampon, ni mesure. Un
+noyau seul ne sait pas exprimer « ce poste est occupé » ni « ce tampon est
+plein ». C'est l'objet de l'étape 2, et c'est elle qui fera apparaître les
+vrais goulots. `sim.js` est inchangé.
+
+### Étapes 2 et 3 — à faire
+
+Voir le § 4. Prochaine : `moteur/ressources.js` — `Ressource`, `Tampon`,
+`Niveau`, transposés de SimPy.

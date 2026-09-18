@@ -173,6 +173,9 @@ La prochaine étape consiste à connecter une chaîne de calcul validée à cett
 interface. L’**[étude des moteurs open source](docs/ETUDE_OPEN_SOURCE.md)**
 compare SimPy, ProdSim, uia-simjs et salabim, explique pourquoi le moteur
 actuel ne détecte pas les vrais goulots et propose le chemin de remplacement.
+Sa première étape est faite : `moteur/noyau.js` fournit le cœur à événements
+discrets, testé et mesuré, mais **`sim.js` est inchangé** — le remplacement du
+moteur attend les ressources et les tampons de l’étape 2.
 Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 [registre des bugs](BUGS.md) et le
 [journal des modifications](CHANGELOG.md). La
@@ -187,8 +190,10 @@ Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `sim.js` | Démonstrateur, plan, interactions et rendu |
 | `plan-editor.js` / `editor.css` | Dessin, annotations, historique et sauvegarde du plan |
 | `ui-model.js` | Import CSV, calcul des états et règles de présentation testables |
+| `moteur/noyau.js` | Noyau à événements discrets (étape 1) — **pas encore branché sur l’interface** |
 | `plan-prive/` | Fond de plan **local, non versionné** (voir ci-dessous) |
 | `tests/ui-model.test.cjs` | Régressions de l’import et des indicateurs |
+| `tests/noyau.test.cjs` | Régressions du noyau : ordre, horloge, conditions, interruptions, erreurs |
 | `tests/browser-smoke.cjs` | Parcours dans Chromium, export, édition et responsive |
 | `BUGS.md` | Registre des bugs connus — à lire avant de coder, à compléter après chaque revue |
 | `postes/` | Éditeur de postes de travail sur trame 50 cm (outil indépendant) |
