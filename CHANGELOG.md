@@ -5,6 +5,26 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-18 — Stockages rattachés aux services
+
+- Les stockages ne sont plus dessinés individuellement sur le plan. Les locaux
+  hors stockage et les services restent éditables.
+- Cliquer sur un service ouvre une liste de stockages : ajout, nom, description
+  du contenu, suppression, annulation et rétablissement. Même accès dans l’éditeur.
+- Aucun catalogue d’articles, quantité ou calcul d’approvisionnement : prévu pour
+  une extension ultérieure ; le moteur de simulation reste inchangé.
+- Format JSON v3 : sauvegarde locale, export et import des fiches. Lecture des
+  anciens formats ; les stockages existants passent dans une liste à rattacher,
+  sans attribution automatique. La sauvegarde v2 n’est pas écrasée.
+- Correction des BUG-001, BUG-002 et BUG-004 : fermeture du détail pendant la
+  simulation, clic réel sur le plan, sélection des boutons même en pause.
+- Fichiers : `plan-editor.js`, `sim.js`, `index.html`, `editor.css`, guide de
+  l’éditeur, registre des bugs et tests.
+- Vérifications : 11 tests purs ; parcours navigateur du simulateur, de l’éditeur
+  et des stockages (migration, saisie, historique, export, rechargement, mobile).
+- Le fond privé et son repli en cas d’absence sont conservés. La purge de
+  confidentialité reste une intervention distincte.
+
 ## 2026-09-18 — Éditeur de plan : dessin, locaux et historique
 
 **Problème :** corriger le plan détaillé exigeait de retoucher des zones fixes,

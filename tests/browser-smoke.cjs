@@ -30,9 +30,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator('[data-action=select][data-zone=cuisine]').click();
   await page.locator('#pe-x').fill('1910');await page.locator('#pe-x').press('Tab');
   await click('#pe-convert');await click('#edit-done');
-  const geom=await page.evaluate(()=>Object.fromEntries(JSON.parse(localStorage.getItem('orly-plan-v2')).zones.map(z=>[z.id,z])));
+  const geom=await page.evaluate(()=>Object.fromEntries(JSON.parse(localStorage.getItem('orly-plan-v3')).zones.map(z=>[z.id,z])));
   assert.equal(geom.cuisine.x,1910);assert.equal(geom.cuisine.approx,true);assert.equal(geom.cuisine.pts.length,4);
-  await page.reload();assert.equal(await page.evaluate(()=>Object.fromEntries(JSON.parse(localStorage.getItem('orly-plan-v2')).zones.map(z=>[z.id,z])).cuisine.x),1910);
+  await page.reload();assert.equal(await page.evaluate(()=>Object.fromEntries(JSON.parse(localStorage.getItem('orly-plan-v3')).zones.map(z=>[z.id,z])).cuisine.x),1910);
   await click('[data-panel="donnees"]');
   await page.locator('#imp-vols').setInputFiles({name:'invalid.csv',mimeType:'text/csv',buffer:Buffer.from('FlightId,Qty\n1,100')});
   await page.waitForFunction(()=>document.getElementById('import-report').classList.contains('error'));
@@ -49,7 +49,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const downloaded=page.waitForEvent('download');await click('#btn-export');const download=await downloaded;
   const result=JSON.parse(fs.readFileSync(await download.path(),'utf8'));assert.equal(result.modelStatus,'demonstration_non_calibree');assert.equal(result.vols[0].retard,null);assert.equal(result.kpis.overdue,1);
   await click('[data-panel="donnees"]');await click('#restore-demo');await click('[data-view="plan"]');await click('[data-panel="suivi"]');
-  await page.evaluate(()=>{localStorage.removeItem('orly-zones');localStorage.removeItem('orly-plan-v2');});await page.reload();
+  await page.evaluate(()=>{localStorage.removeItem('orly-zones');localStorage.removeItem('orly-plan-v3');});await page.reload();
   await page.screenshot({path:path.join(os.tmpdir(),'ory-interface-desktop.png'),fullPage:true});
   await click('#btn-theme');assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');
   await page.screenshot({path:path.join(os.tmpdir(),'ory-interface-dark.png'),fullPage:true});
