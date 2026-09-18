@@ -5,6 +5,34 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-18 — Étude des moteurs de simulation open source
+
+Ajout de **`docs/ETUDE_OPEN_SOURCE.md`** : lecture et évaluation de quatre
+moteurs open source, licences vérifiées dans les fichiers, et conclusion sur ce
+que notre moteur doit leur emprunter.
+
+| Fichier | Changement |
+|---|---|
+| `docs/ETUDE_OPEN_SOURCE.md` | **nouveau** — étude comparative et chemin proposé |
+| `README.md` | lien vers l'étude |
+
+Projets lus : **SimPy** 4.1.2 (MIT), **ProdSim** (MIT), **uia-simjs**
+(Apache-2.0), **salabim** (MIT annoncé mais **aucun fichier de licence** dans
+le dépôt — à ne pas recopier en l'état). Aucun projet en GPL/AGPL : tous
+compatibles avec une adaptation privée.
+
+Trois limites de `sim.js` documentées avec leur cause dans le code : travail
+infiniment divisible (`capLeft` en homme-minutes), absence de tampon donc
+absence de blocage amont, et taux de charge cosmétique (`st.util` lissé
+0,82/0,18 avec plancher `Math.max(u, 0.97)`).
+
+Conclusion : un moteur à événements discrets **en JavaScript, dans le
+navigateur**, est réaliste — noyau inspiré d'uia-simjs, ressources transposées
+de SimPy, procédé décrit en données à la ProdSim, mesure à la salabim. Aucun
+code n'a encore été écrit : cette note est une étude.
+
+---
+
 ## 2026-09-18 — Purge de l'historique (réécriture + force-push)
 
 **Opération destructive, réalisée sur accord explicite.** L'historique des

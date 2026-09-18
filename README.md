@@ -170,7 +170,10 @@ imports, sauvegardes et limites.
   produit un équivalent de charge, pas une affectation de personnel.
 
 La prochaine étape consiste à connecter une chaîne de calcul validée à cette
-interface. Voir [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
+interface. L’**[étude des moteurs open source](docs/ETUDE_OPEN_SOURCE.md)**
+compare SimPy, ProdSim, uia-simjs et salabim, explique pourquoi le moteur
+actuel ne détecte pas les vrais goulots et propose le chemin de remplacement.
+Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 [registre des bugs](BUGS.md) et le
 [journal des modifications](CHANGELOG.md). La
 [feuille de route commune](docs/FEUILLE_DE_ROUTE.md) reste la référence du projet.
