@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ORY — Applications</title>
+<meta name="description" content="Point d'entrée des applications du projet de simulation de l'unité ORY." />
+<style>
+:root{
+  --bg:#e9eef4; --carte:#fff; --bordure:#c8d3e0; --bordure2:#9fb2c7;
+  --txt:#132030; --txt2:#41566e; --txt3:#63788f; --accent:#0b6fa4; --orange:#b45309;
+  --ombre:0 1px 3px rgba(19,32,48,.10), 0 4px 14px rgba(19,32,48,.07);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);
+  font-family:'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif;
+  font-size:15px;line-height:1.6;padding:32px 16px}
+.page{max-width:760px;margin:0 auto}
+h1{font-size:26px;margin:0 0 4px}
+.sous{color:var(--txt3);margin:0 0 26px;font-weight:600}
+.apps{display:grid;gap:14px;margin-bottom:26px}
+a.app{display:flex;gap:15px;align-items:flex-start;text-decoration:none;color:inherit;
+  background:var(--carte);border:1.5px solid var(--bordure);border-radius:12px;
+  padding:16px 18px;box-shadow:var(--ombre);transition:border-color .12s,transform .12s}
+a.app:hover{border-color:var(--accent);transform:translateY(-1px)}
+a.app:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.ico{font-size:30px;line-height:1}
+.app h2{margin:0 0 3px;font-size:17px;color:var(--accent)}
+.app p{margin:0;color:var(--txt2);font-size:13.5px}
+.bloc{background:var(--carte);border:1px solid var(--bordure);border-radius:12px;
+  padding:16px 18px;margin-bottom:14px}
+.bloc h3{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--txt2)}
+code{background:#eef2f7;border:1px solid var(--bordure);border-radius:4px;
+  padding:1px 5px;font-size:12.5px;word-break:break-all}
+.avert{border-left:4px solid var(--orange)}
+.avert h3{color:var(--orange)}
+p.fin{color:var(--txt3);font-size:13px}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>ORY — Applications</h1>
+  <p class="sous">Point d'entrée du projet. Rien à télécharger : tout s'ouvre dans le navigateur.</p>
+
+  <div class="apps">
+    <a class="app" href="./">
+      <span class="ico">🛫</span>
+      <span><h2>Simulateur des flux de production</h2>
+      <p>Plan de l'unité, charge par atelier, goulots et essais de capacité.
+         Prototype non calibré.</p></span>
+    </a>
+    <a class="app" href="./postes/">
+      <span class="ico">🧰</span>
+      <span><h2>Éditeur de postes de travail</h2>
+      <p>Tables, chaînes, lignes robot et stockages sur une trame de 50 cm,
+         puis assemblages.</p></span>
+    </a>
+  </div>
+
+  <div class="bloc">
+    <h3>Ouvrir n'importe quel autre fichier</h3>
+    <p>Tout fichier du dépôt est servi à la même adresse relative. Prenez son
+    chemin sur GitHub et remplacez le début :</p>
+    <p><code>github.com/basileseguin-afk/SIMMMMMSS/blob/&lt;branche&gt;/</code><br>
+    devient <code>basileseguin-afk.github.io/SIMMMMMSS/</code></p>
+    <p>Un dossier contenant un <code>index.html</code> s'ouvre sans nommer le
+    fichier : <code>/postes/</code> suffit.</p>
+  </div>
+
+  <div class="bloc avert">
+    <h3>À savoir</h3>
+    <p>Le dépôt est <b>public</b> : le plan de l'unité y est accessible à tous,
+    et ce site le rend consultable dans un navigateur.</p>
+    <p>Après chaque <code>push</code>, la mise en ligne prend environ une minute.
+    Si une page semble figée, forcez le rechargement (<b>Ctrl+Maj+R</b>).</p>
+  </div>
+
+  <p class="fin">Code source :
+  <a href="https://github.com/basileseguin-afk/SIMMMMMSS">github.com/basileseguin-afk/SIMMMMMSS</a></p>
+</div>
+</body>
+</html>
