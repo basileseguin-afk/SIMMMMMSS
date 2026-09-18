@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="fr" data-theme="light">
+
+<html data-theme="light" lang="fr">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Newrest Orly — Simulation des flux de production</title>
-<meta name="description" content="Simulation visuelle des flux de production d'une unité de catering aérien : goulots, charge par atelier, scénarios what-if." />
+<meta content="Simulation visuelle des flux de production d'une unité de catering aérien : goulots, charge par atelier, scénarios what-if." name="description"/>
 <style>
 /* ==========================================================================
  *  THÈME — clair par défaut (lisible), sombre en option
@@ -178,21 +179,6 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 .edge.retour{stroke-dasharray:22 14;stroke:var(--edge-retour)}
 .token{opacity:.98;stroke:var(--halo);stroke-width:3}
 
-/* --- marquage « démonstration » ------------------------------------------ */
-.badge-demo{
-  display:inline-block;padding:4px 10px;border-radius:20px;font-size:11.5px;font-weight:800;
-  letter-spacing:.02em;background:#fdf0d5;color:#8a5a06;border:1.5px solid #d99b2a;cursor:help;
-}
-:root[data-theme="dark"] .badge-demo{background:#3a2c10;color:#f5c86a;border-color:#8a6a22}
-.panneau-demo{border:1.5px solid #d99b2a;background:#fffaf0}
-:root[data-theme="dark"] .panneau-demo{border-color:#8a6a22;background:#241c0c}
-.panneau-demo h3{color:#8a5a06}
-:root[data-theme="dark"] .panneau-demo h3{color:#f5c86a}
-.liste-limites{margin:7px 0 7px 0;padding-left:17px}
-.liste-limites li{margin-bottom:3px}
-.kpi .sub{font-size:10.5px;color:var(--txt3);font-weight:600;margin-top:2px}
-.val.na{color:var(--txt3)}
-
 /* --- mode édition des zones ---------------------------------------------- */
 .panneau-edit{border:2px solid var(--accent);background:var(--bg3)}
 .edit-nom{font-weight:800;font-size:13.5px;margin:10px 0 8px;color:var(--accent2)}
@@ -258,209 +244,149 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
   .col-plan{min-height:70vh}
 }
 </style>
-</head>
-<body>
-
+<link href="interface.css" rel="stylesheet"/></head>
+<body><a class="skip-link" href="#workspace">Aller à la simulation</a>
 <header>
-  <div class="marque"><span class="logo">🛫</span><div>Newrest&nbsp;Orly<br><small>Simulation des flux de production</small></div></div>
+<div class="marque"><span class="brand-mark">N</span><div>ORY <span class="brand-separator">/</span> Flux de production<small>Atelier de simulation</small></div></div>
+<div class="horloge-box">
+<div><div class="horloge" id="horloge">05:00</div><div class="jour">Heure simulée · démo 05:00–23:00</div></div>
+<div class="transport">
+<button class="btn btn-play" id="btn-play">▶ Lancer</button>
+<button aria-label="Recommencer la simulation avec les réglages actuels" class="btn" id="btn-reset" title="Réinitialiser la journée">Recommencer</button>
+</div>
+<span class="run-state" id="run-state" role="status">Prêt à lancer</span></div>
+<div class="entete-droite">
+<div class="vitesse-box">Lecture <input aria-label="Vitesse de lecture, minutes simulées par seconde" id="vitesse" max="120" min="1" type="range" value="30"/><b id="vitesse-val">30×</b></div>
+<button aria-label="Changer le thème" class="btn" id="btn-theme" title="Basculer clair / sombre">🌙</button>
+<button class="btn" id="btn-export" title="Exporter les résultats (JSON)">Exporter le résultat</button>
+</div>
+</header><div class="context-bar"><div><span class="demo-badge">Prototype</span><strong id="source-label">Jeu de démonstration</strong><span id="source-count"></span></div><button class="text-button" id="btn-limits">Calcul non calibré · voir les limites</button></div>
+<div class="kpi-grille"><div class="kpi"><div class="lab">Prêts à l’échéance</div><div class="val" id="kpi-ontime">—</div><div class="kpi-note" id="kpi-denom">Aucun départ exigible</div></div>
+<div class="kpi"><div class="lab">Échéances dépassées · non prêts</div><div class="val" id="kpi-overdue">0</div><div class="kpi-note" id="kpi-ready">0 dossier terminé</div></div>
+<div class="kpi"><div class="lab">Travail en cours</div><div class="val" id="kpi-wip">0 <small>OF</small></div><div class="kpi-note">Ordres de fabrication libérés, non terminés</div></div>
+<div class="kpi"><div class="lab">Débit instantané du robot</div><div class="val" id="kpi-debit">0 <small>plateaux/h</small></div><div class="kpi-note">Valeur simulée, cadence non mesurée</div></div></div><div class="app" id="workspace" tabindex="-1">
+<!-- ============ LEVIERS WHAT-IF ============ -->
+<!-- ============ PLAN ============ -->
+<div class="colonne col-plan"><div class="workspace-heading"><div><span class="eyebrow">EXPLORER L’UNITÉ</span><h1>Production &amp; flux</h1></div><nav aria-label="Vue principale" class="view-tabs"><button aria-pressed="true" class="active" data-view="plan">Plan</button><button aria-pressed="false" data-view="vols">Suivi des vols <span id="flight-count">0</span></button></nav></div>
+<div class="plan-tete"><label class="zone-picker">Atelier <select id="zone-picker"><option value="">Vue d’ensemble</option></select></label>
+<div class="zoom-ctrl">
+<button aria-label="Dézoomer" class="btn btn-mini" id="zoom-out" title="Dézoomer">−</button>
+<b id="zoom-val">100%</b>
+<button aria-label="Zoomer" class="btn btn-mini" id="zoom-in" title="Zoomer">+</button>
+<button aria-label="Revenir à la vue d’ensemble" class="btn btn-mini" id="zoom-reset" title="Vue d'ensemble">⟲</button>
+</div>
+<label class="chk chk-mini"><input checked="" id="fond-plan" type="checkbox"/> Fond de plan</label>
+<button aria-pressed="false" class="btn btn-mini" id="btn-edit" title="Éditer la position et la taille des zones">Éditer les zones</button>
+</div>
+<div class="plan-wrap" id="view-plan">
+<svg aria-label="Plan interactif de l’unité. Utilisez la liste Atelier pour sélectionner une zone." id="plan" preserveaspectratio="xMidYMid meet" viewbox="0 0 1075 835"></svg>
+</div>
+<div class="map-footer"><div aria-label="Pression indicative" class="legende">
+<span><span class="pastille" style="background:var(--ok-stroke)"></span>Faible</span>
+<span><span class="pastille" style="background:var(--warn-stroke)"></span>Soutenue</span>
+<span><span class="pastille" style="background:var(--bad-stroke)"></span>Forte</span>
+</div><span>Molette : zoom · Glisser : déplacer · Pointillés : emplacement à confirmer</span></div><section aria-label="Suivi des départs" class="flights-view" hidden="" id="view-vols"><div class="flight-filters"><label>Rechercher <input id="flight-search" placeholder="Vol ou compagnie" type="search"/></label><label>Afficher <select id="flight-filter"><option value="all">Tous les départs</option><option value="overdue">Échéance dépassée, non prêt</option><option value="pending">Non prêts</option><option value="ready">Terminés</option></select></label></div><p class="mini-note">Échéance = départ simulé − délai de chargement. Le statut concerne la production, pas la ponctualité de l’avion.</p><div class="table-scroll"><table class="flight-table"><caption class="sr-only">État de production des départs simulés</caption><thead><tr><th scope="col">Vol / compagnie</th><th scope="col">Départ</th><th scope="col">Échéance</th><th scope="col">Statut</th><th scope="col">Opérations restantes</th></tr></thead><tbody id="flight-rows"></tbody></table></div></section></div>
+<!-- ============ DASHBOARD ============ -->
+<aside aria-label="Outils de simulation" class="workbench"><nav aria-label="Panneaux" class="panel-tabs"><button aria-pressed="true" class="active" data-panel="suivi">Suivi</button><button aria-pressed="false" data-panel="reglages">Réglages</button><button aria-pressed="false" data-panel="donnees">Données</button></nav><div class="panel-content" id="panel-suivi"><div class="panel-heading"><h2>Lire la situation</h2><p>Indices du démonstrateur. Cliquez un atelier pour consulter ses opérations.</p></div><div class="panneau">
+<h3>Point d’attention</h3>
+<div class="mini-note" id="goulot-info">Simulation à l'arrêt.</div>
+</div>
 
-  <div class="horloge-box">
-    <div><div class="horloge" id="horloge">05:00</div><div class="jour">journée type</div></div>
-    <div class="transport">
-      <button class="btn btn-play" id="btn-play">▶ Lancer</button>
-      <button class="btn" id="btn-reset" title="Réinitialiser la journée">↺</button>
-    </div>
-  </div>
+<div class="panneau">
+<h3>Pression indicative par atelier</h3>
+<div id="stats-ateliers"></div>
+<p class="mini-note">Indice visuel du moteur, pas un taux d’occupation mesuré. OF = en attente ou en traitement.</p></div>
 
-  <div class="entete-droite">
-    <div class="vitesse-box">⏩ Vitesse <input type="range" id="vitesse" min="1" max="120" value="30"><b id="vitesse-val">30×</b></div>
-    <span class="badge-demo" id="badge-demo" title="Les paramètres (coefficients par passager, calendrier, cadences) sont des valeurs de démonstration non calibrées. Les résultats ne sont pas exploitables pour décider.">⚠️ DÉMONSTRATION — non calibré</span>
-    <button class="btn" id="btn-theme" title="Basculer clair / sombre">🌙</button>
-    <button class="btn" id="btn-export" title="Exporter les résultats (JSON)">⇩ Export</button>
-  </div>
-</header>
-
-<div class="app">
-
-  <!-- ============ LEVIERS WHAT-IF ============ -->
-  <div class="colonne col-gauche">
-
-    <!-- Panneau d'édition des zones (affiché en mode édition) -->
-    <div class="panneau panneau-edit" id="panneau-edition" hidden>
-      <h3>✏️ Édition des zones</h3>
-      <div class="mini-note" id="edit-aide">
+<div class="panneau"><h3>Retard courant des départs exigibles</h3><div class="val" id="kpi-retard-exigibles">—</div><p class="mini-note">Moyenne à cet instant, dossiers inachevés compris.</p><h3>Retard des dossiers terminés</h3><div class="val" id="kpi-retard">—</div><p class="mini-note">Moyenne sur les dossiers terminés uniquement ; les non prêts restent comptés en haut de page.</p></div><div class="chart-wrap">
+<h3>Évolution de la démonstration</h3>
+<canvas id="chart"></canvas>
+<p class="mini-note" id="chart-legend">Les courbes apparaîtront pendant la simulation.</p></div></div><div class="panel-content" hidden="" id="panel-reglages"><div class="panel-heading"><h2>Préparer un essai</h2><p>Réglez les capacités, puis lancez. Pour modifier un essai commencé, recommencez la simulation.</p></div>
+<!-- Panneau d'édition des zones (affiché en mode édition) -->
+<div class="panneau">
+<h3>Effectifs par atelier</h3>
+<div id="sliders-staff"></div>
+</div>
+<div class="panneau">
+<h3>Robot de dressage (YC)</h3>
+<div class="slider-ligne">
+<label for="robot">Cadence <b id="robot-val">320 pl/h</b></label>
+<input id="robot" max="560" min="200" step="20" type="range" value="320"/>
+</div>
+<div class="mini-note">Cadences de démonstration. Les valeurs 320, 420 et 520 ne sont pas des mesures validées du site.</div>
+</div>
+<div class="panneau">
+<h3>Plonge — tunnels</h3>
+<div class="slider-ligne">
+<label for="tunnels">Tunnels actifs <b id="tunnels-val">3</b></label>
+<input id="tunnels" max="3" min="1" step="1" type="range" value="3"/>
+</div>
+<label class="chk"><input checked="" id="double" type="checkbox"/> 1 tunnel double vitesse (×2)</label>
+</div>
+<div class="panneau">
+<h3>Horaires de vols</h3>
+<div class="slider-ligne">
+<label for="shift">Décalage global <b id="shift-val">0 min</b></label>
+<input id="shift" max="60" min="-60" step="5" type="range" value="0"/>
+</div>
+<div class="champ">
+<span>Délai de chargement avant départ</span>
+<input aria-label="Délai de chargement avant départ, en minutes" id="loadDelay" max="120" min="10" type="number" value="45"/>
+</div>
+</div>
+<div class="panneau">
+<p class="mini-note">Photographies à un instant donné. Elles ne constituent pas une comparaison de scénarios complets.</p><h3>Instantanés A / B</h3>
+<div class="row-btns">
+<button class="btn" id="snap-a">Capturer A</button>
+<button class="btn" id="snap-b">Capturer B</button>
+<button class="btn" id="snap-clear">Effacer</button>
+</div>
+<table class="compare-tab" id="compare" style="margin-top:10px"><tbody></tbody></table>
+<p class="mini-note" id="compare-note"></p></div>
+<p class="mini-note">Magasin et Duty free : capacités non reliées au moteur actuel. ETP de charge = heures ÷ 7 ; les curseurs représentent des personnes simultanées.</p></div><div class="panneau panneau-edit" hidden="" id="panneau-edition">
+<h3>✏️ Édition des zones</h3>
+<div class="mini-note" id="edit-aide">
         Cliquez une zone sur le plan, puis <b>glissez</b> pour la déplacer ou
         tirez un <b>coin</b> pour la redimensionner.
       </div>
-
-      <div id="edit-sel" hidden>
-        <div class="edit-nom" id="edit-nom">—</div>
-        <div class="edit-grille">
-          <label>X <input type="number" id="ez-x" step="1"></label>
-          <label>Y <input type="number" id="ez-y" step="1"></label>
-          <label>Largeur <input type="number" id="ez-w" step="1"></label>
-          <label>Hauteur <input type="number" id="ez-h" step="1"></label>
-        </div>
-        <div class="row-btns">
-          <button class="btn btn-sm" id="ez-redraw">⬚ Rectangle</button>
-          <button class="btn btn-sm" id="ez-poly">⬠ Tracer une forme</button>
-        </div>
-        <div class="row-btns" style="margin-top:6px">
-          <button class="btn btn-sm" id="ez-toshape">⬠ Convertir</button>
-          <button class="btn btn-sm" id="ez-reset">↺ Cette zone</button>
-        </div>
-        <div class="mini-note" id="ez-forme" style="margin-top:7px"></div>
-      </div>
-
-      <div class="edit-liste" id="edit-liste"></div>
-
-      <div class="row-btns" style="margin-top:10px">
-        <button class="btn btn-sm" id="ez-copy">📋 Copier le JSON</button>
-        <button class="btn btn-sm" id="ez-export">⇩ Exporter</button>
-      </div>
-      <div class="row-btns" style="margin-top:6px">
-        <label class="btn btn-sm" style="cursor:pointer">📂 Importer<input type="file" id="ez-import" accept=".json" hidden></label>
-        <button class="btn btn-sm" id="ez-reset-all">↺ Tout réinitialiser</button>
-      </div>
-      <div class="mini-note" style="margin-top:8px">
+<div hidden="" id="edit-sel">
+<div class="edit-nom" id="edit-nom">—</div>
+<div class="edit-grille">
+<label>X <input id="ez-x" step="1" type="number"/></label>
+<label>Y <input id="ez-y" step="1" type="number"/></label>
+<label>Largeur <input id="ez-w" step="1" type="number"/></label>
+<label>Hauteur <input id="ez-h" step="1" type="number"/></label>
+</div>
+<div class="row-btns">
+<button class="btn btn-sm" id="ez-redraw">⬚ Rectangle</button>
+<button class="btn btn-sm" id="ez-poly">⬠ Tracer une forme</button>
+</div>
+<div class="row-btns" style="margin-top:6px">
+<button class="btn btn-sm" id="ez-toshape">⬠ Convertir</button>
+<button class="btn btn-sm" id="ez-reset">↺ Cette zone</button>
+</div>
+<div class="mini-note" id="ez-forme" style="margin-top:7px"></div>
+</div>
+<div class="edit-liste" id="edit-liste"></div>
+<div class="row-btns" style="margin-top:10px">
+<button class="btn btn-sm" id="ez-copy">📋 Copier le JSON</button>
+<button class="btn btn-sm" id="ez-export">⇩ Exporter</button>
+</div>
+<div class="row-btns" style="margin-top:6px">
+<label class="btn btn-sm" style="cursor:pointer">📂 Importer<input accept=".json" hidden="" id="ez-import" type="file"/></label>
+<button class="btn btn-sm" id="ez-reset-all">↺ Tout réinitialiser</button>
+</div>
+<div class="mini-note" style="margin-top:8px">
         Vos modifications sont <b>sauvegardées automatiquement</b> dans le
         navigateur. Exportez le JSON et transmettez-le pour l'intégrer comme
         valeurs par défaut.
       </div>
-    </div>
-
-    <div class="panneau">
-      <h3>👥 Effectifs par atelier</h3>
-      <div id="sliders-staff"></div>
-    </div>
-
-    <div class="panneau">
-      <h3>🤖 Robot de dressage (YC)</h3>
-      <div class="slider-ligne">
-        <label>Cadence <b id="robot-val">320 pl/h</b></label>
-        <input type="range" id="robot" min="200" max="560" step="20" value="320">
-      </div>
-      <div class="mini-note">Théorique 520 · benchmark 420 · actuel <b id="robot-note">320</b> plateaux/h.</div>
-    </div>
-
-    <div class="panneau">
-      <h3>🧽 Plonge — tunnels</h3>
-      <div class="slider-ligne">
-        <label>Tunnels actifs <b id="tunnels-val">3</b></label>
-        <input type="range" id="tunnels" min="1" max="3" step="1" value="3">
-      </div>
-      <label class="chk"><input type="checkbox" id="double" checked> 1 tunnel double vitesse (×2)</label>
-    </div>
-
-    <div class="panneau">
-      <h3>🕑 Horaires de vols</h3>
-      <div class="slider-ligne">
-        <label>Décalage global <b id="shift-val">0 min</b></label>
-        <input type="range" id="shift" min="-60" max="60" step="5" value="0">
-      </div>
-      <div class="champ">
-        <span>Délai de chargement avant départ</span>
-        <input type="number" id="loadDelay" value="45" min="10" max="120">
-      </div>
-    </div>
-
-    <div class="panneau">
-      <h3>📑 Scénarios A / B</h3>
-      <div class="row-btns">
-        <button class="btn" id="snap-a">Capturer A</button>
-        <button class="btn" id="snap-b">Capturer B</button>
-        <button class="btn" id="snap-clear">Effacer</button>
-      </div>
-      <table class="compare-tab" id="compare" style="margin-top:10px"><tbody></tbody></table>
-      <div class="mini-note" style="margin-top:8px">
-        ⚠️ Ces captures enregistrent l'<b>état courant</b> de la simulation, pas
-        deux exécutions complètes et comparables. À ne pas utiliser comme
-        comparatif de scénarios.
-      </div>
-    </div>
-
-    <div class="panneau">
-      <h3>📥 Données</h3>
-      <div class="champ"><span>Importer vols.csv</span><input type="file" id="imp-vols" accept=".csv"></div>
-      <div class="mini-note">Schéma tolérant : <code>vol_id, compagnie, type_avion, sens, heure_std, heure_sta, nb_BC, nb_PC, nb_YC</code>. Sans import, un jeu d'exemple réaliste est utilisé.</div>
-    </div>
-  </div>
-
-  <!-- ============ PLAN ============ -->
-  <div class="colonne col-plan">
-    <div class="plan-tete">
-      <span class="titre">🗺️ Plan de l'unité</span>
-      <div class="legende">
-        <span><span class="pastille" style="background:var(--ok-stroke)"></span>fluide</span>
-        <span><span class="pastille" style="background:var(--warn-stroke)"></span>chargé</span>
-        <span><span class="pastille" style="background:var(--bad-stroke)"></span>goulot</span>
-      </div>
-      <div class="zoom-ctrl">
-        <button class="btn btn-mini" id="zoom-out" title="Dézoomer">−</button>
-        <b id="zoom-val">100%</b>
-        <button class="btn btn-mini" id="zoom-in" title="Zoomer">+</button>
-        <button class="btn btn-mini" id="zoom-reset" title="Vue d'ensemble">⟲</button>
-      </div>
-      <label class="chk chk-mini"><input type="checkbox" id="fond-plan" checked> Fond de plan</label>
-      <button class="btn btn-mini" id="btn-edit" title="Éditer la position et la taille des zones">✏️ Éditer les zones</button>
-      <div class="boussole"><b>↑</b>Quais / piste</div>
-    </div>
-    <div class="plan-wrap">
-      <svg id="plan" viewBox="0 0 1075 835" preserveAspectRatio="xMidYMid meet"></svg>
-    </div>
-  </div>
-
-  <!-- ============ DASHBOARD ============ -->
-  <div class="colonne col-droite">
-    <div class="kpi-grille">
-      <div class="kpi" title="Part des vols exigibles dont les trolleys sont disponibles au frigo handling avant heure_std − délai de chargement. Ce n'est PAS la ponctualité de départ de l'avion.">
-        <div class="lab">Prêts à l'échéance</div><div class="val" id="kpi-ontime">n/a</div>
-        <div class="sub" id="kpi-ontime-sub">aucun vol exigible</div>
-      </div>
-      <div class="kpi" title="Moyenne sur les vols exigibles. Un vol non terminé dont l'échéance est passée compte son retard en cours.">
-        <div class="lab">Retard moyen</div><div class="val" id="kpi-retard">n/a</div>
-        <div class="sub" id="kpi-retard-sub">—</div>
-      </div>
-      <div class="kpi"><div class="lab">Débit plateaux</div><div class="val" id="kpi-debit">0 <small>/h</small></div></div>
-      <div class="kpi"><div class="lab">WIP total</div><div class="val" id="kpi-wip">0 <small>OF</small></div></div>
-    </div>
-
-    <div class="chart-wrap">
-      <h3>📈 Débit &amp; en-cours sur la journée</h3>
-      <canvas id="chart"></canvas>
-    </div>
-
-    <div class="panneau">
-      <h3>🏭 Charge par atelier</h3>
-      <div id="stats-ateliers"></div>
-    </div>
-
-    <div class="panneau panneau-demo">
-      <h3>⚠️ Statut : démonstration</h3>
-      <div class="mini-note">
-        Le moteur actuel est une <b>maquette</b>. Ne pas s'en servir pour décider.
-        Points connus non représentatifs :
-        <ul class="liste-limites">
-          <li>Coefficients par passager <b>inventés</b>, pas issus du classeur des heures.</li>
-          <li>Robot appliqué à <b>tous les YC</b> (en réalité : FBU, TX/FWI, CRL).</li>
-          <li>Production lancée quelques heures avant le départ : <b>pas de J−1 / J−2</b>.</li>
-          <li>Effectifs = capacité globale constante, <b>sans horaires ni compétences</b>.</li>
-          <li>Stockages affichés mais <b>ne limitent pas</b> le flux ; la plonge ne réalimente pas de stock.</li>
-          <li>Captures A/B = <b>instantanés</b>, pas deux exécutions comparables.</li>
-        </ul>
-        Détail et plan de correction : <code>docs/FEUILLE_DE_ROUTE.md</code>.
-      </div>
-    </div>
-
-    <div class="panneau">
-      <h3>⚠️ Goulot courant</h3>
-      <div id="goulot-info" class="mini-note">Simulation à l'arrêt.</div>
-    </div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
-
+<button class="btn" id="edit-done">Terminer l’édition</button></div><div class="panel-content" hidden="" id="panel-donnees"><div class="panneau">
+<h3>Importer un CSV simplifié</h3>
+<div class="champ"><span>Fichier de démonstration (.csv)</span><input accept=".csv" aria-label="Importer un fichier CSV simplifié de vols" id="imp-vols" type="file"/></div>
+<div class="mini-note">Ce format attend une ligne par départ ou retour. L’export Winrest XLSX et ses lignes de prestations ne sont pas encore pris en charge.</div>
+<div class="row-btns"><button class="btn" id="csv-template">Télécharger le modèle</button><button class="btn" id="restore-demo">Charger la démo</button></div><div aria-live="polite" class="import-report" id="import-report" role="status">Aucun fichier importé.</div></div><div class="panneau" id="model-limits"><h3>Périmètre du calcul actuel</h3><p class="mini-note">Les données importées restent calculées par un moteur de démonstration. Ses résultats ne permettent pas de dimensionner les équipes.</p><ul class="limits-list"><li>Calendrier limité à une journée ; J−2, J−1 et l’exception CRL ne sont pas intégrés.</li><li>Le moteur affecte encore tous les YC au robot. La règle réelle se limite à l’économie FBU, TX/FWI et CRL ; les cas SPML restent à préciser.</li><li>Temps théoriques du classeur, stocks, pauses et transferts physiques non intégrés.</li><li>Magasin, Duty free et handling ne disposent pas d’une charge calculée.</li></ul></div></div></aside></div>
+<div aria-live="polite" class="toast" id="toast" role="status"></div>
+<script src="ui-model.js"></script>
 <script src="sim.js"></script>
 </body>
 </html>

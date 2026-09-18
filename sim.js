@@ -7,6 +7,10 @@
  *  ==========================================================================*/
 (function () {
 'use strict';
+const {escapeHTML, serviceMetrics, flightStatus, parseFlights} = window.OrlyUI;
+const NON_MODELISES = new Set(['magasin','bobduty','handling','quais']);
+let activePanel = 'suivi', activeView = 'plan', dataSource = 'Jeu de démonstration';
+let frameId = null, pendingTime = 0, runConfig = null;
 
 /* ==========================================================================
  *  1. PARAMÈTRES (regroupés en tête, cf. cahier des charges §9)
@@ -272,9 +276,8 @@ function step(dt) {
     st.usedRate = st._used / dt;
   });
 
-  stations.magasin.util = 0.15 + 0.4 * stations.prepa.util;
-  stations.bobduty.util = Math.max(stations.bobduty.util, 0.2);
-  stations.handling.util = 0.1 + 0.3 * stations.prepa.util;
+  // Unmodelled services stay neutral instead of displaying fabricated activity.
+  Object.keys(stations).forEach(id => { stations[id].qlen = jobs.filter(j => j.released && !j.done && j.stationId === id).length; });
   Sim.robotRate = robotUsed / dt;
 }
 
@@ -288,7 +291,7 @@ function avancer(j) {
 }
 function finaliser(j) {
   const f = j.flight;
-  if (j.kind === 'food') { spawnToken('prepa_handling', j.color); setTimeout(()=>spawnToken('handling_quais', j.color), 400); f.foodDone = true; }
+  if (j.kind === 'food') { spawnToken('prepa_handling', j.color); spawnToken('handling_quais', j.color); f.foodDone = true; }
   else if (j.kind === 'dot') { spawnToken('dotation_quais', j.color); f.dotDone = true; }
   else if (j.kind === 'arm') { spawnToken('armement_quais', j.color); f.armDone = true; }
   else if (j.kind === 'plonge') { spawnToken('plonge_prepa', j.color); spawnToken('plonge_dotation', j.color); }
@@ -305,36 +308,16 @@ function spawnEntree(j) {
 /* ==========================================================================
  *  6. KPI
  * ==========================================================================*/
-/* État d'un vol au regard de son échéance (disponibilité au frigo handling).
- * Renvoie null tant que le vol n'est pas *exigible* : il ne compte alors dans
- * aucun taux. Un vol non terminé dont l'échéance est passée compte comme
- * en retard — il ne doit pas disparaître du dénominateur. */
-function etatVol(f) {
-  if (f.readyTime != null) return { fini:true,  retard:Math.max(0, f.readyTime - f.due) };
-  if (now >= f.due)        return { fini:false, retard:now - f.due };
-  return null;
-}
-
 function kpis() {
-  const dep = flights.filter(f => f.sens === 'DEP');
-  let exigibles = 0, aHeure = 0, inacheves = 0, sommeRetard = 0;
-  dep.forEach(f => {
-    const e = etatVol(f); if (!e) return;
-    exigibles++; sommeRetard += e.retard;
-    if (e.fini) { if (e.retard <= 0) aHeure++; } else inacheves++;
+  return Object.assign(serviceMetrics(flights, now), {
+    wip:jobs.filter(j => j.released && !j.done).length,
+    debit:Math.round((Sim.robotRate || 0) * 60), goulot:goulotCourant()
   });
-  // Sans vol exigible, le taux n'est pas applicable (null) — surtout pas 100 %.
-  const ontime = exigibles ? Math.round(100 * aHeure / exigibles) : null;
-  const retardMoy = exigibles ? Math.round(sommeRetard / exigibles) : null;
-  const wip = jobs.filter(j => j.released && !j.done).length;
-  const debit = Math.round((Sim.robotRate || 0) * 60);
-  return { ontime, retardMoy, wip, debit, goulot:goulotCourant(),
-           exigibles, aHeure, inacheves, total:dep.length };
 }
 function goulotCourant() {
   let best = null, bu = 0.55;
   Object.keys(ZONES).forEach(id => {
-    if (ZONES[id].sink || ZONES[id].buffer) return;
+    if (NON_MODELISES.has(id)) return;
     const st = stations[id];
     const sev = Math.max(st.util, Math.min(1, st.qlen / 4));
     if (sev > bu) { bu = sev; best = id; }
@@ -419,6 +402,8 @@ function construirePlan() {
     if (z.tunnels) res = ajoutRessource(g, 'TUNNELS', 'tunnels');
     const badge = svgEl('text', { class:'goulot-badge', 'text-anchor':'end' }); g.appendChild(badge);
     zoneEls[id] = { g, rect, titre, sous, barreFond, jauge, res, badge, tip:ti, b:boite(z) };
+    g.setAttribute('role','button'); g.setAttribute('tabindex','0'); g.setAttribute('aria-label',z.nom);
+    g.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' '){e.preventDefault();selectionner(id);} });
     g.addEventListener('click', e => { e.stopPropagation(); selectionner(id); });
     gZones.appendChild(g);
     positionnerZone(id);
@@ -596,7 +581,7 @@ function initInteractions() {
     }
     if (act && act.t === 'poly') { act = null; return; }   // le tracé continue
     if (act && (act.t === 'move' || act.t === 'resize' || act.t === 'vertex') && act.bouge && selection) {
-      ZONES[selection].approx = false; majApresEdition();
+      majApresEdition();
     }
     act = null; svg.style.cursor = '';
   };
@@ -690,7 +675,7 @@ function dessinerTracePoly(pts, curseur) {
 function finirTracePoly() {
   if (tracePts && tracePts.length >= 3 && selection) {
     const z = ZONES[selection];
-    z.pts = tracePts.slice(); syncBoite(z); z.approx = false;
+    z.pts = tracePts.slice(); syncBoite(z); /* Geometry changes do not establish operational validation. */
     majApresEdition(); toast(tracePts.length + ' points');
   }
   tracePts = null; dessinerTracePoly(null);
@@ -709,7 +694,10 @@ let selection = null;
 function selectionner(id) {
   selection = (!editMode && selection === id) ? null : id;
   Object.keys(zoneEls).forEach(k => zoneEls[k].g.classList.toggle('selection', k === selection));
+  Object.keys(zoneEls).forEach(k => zoneEls[k].g.setAttribute('aria-pressed',String(k===selection)));
+  document.getElementById('zone-picker').value = selection || '';
   majGoulotInfo(); majPoignees(); majChampsEdition();
+  if(!editMode) showPanel('suivi');
 }
 
 /* ==========================================================================
@@ -732,34 +720,44 @@ function sauvegarderZones() {
 function chargerZones() {
   let o = null;
   try { o = JSON.parse(localStorage.getItem('orly-zones') || 'null'); } catch (e) { return; }
-  if (o) appliquerGeom(o, true);
+  if (o) {try{appliquerGeom(o, true);}catch(e){toast('Zones enregistrées invalides : positions par défaut chargées');}}
 }
 function appliquerGeom(o, silencieux) {
-  let n = 0;
-  Object.keys(o || {}).forEach(id => {
-    const z = ZONES[id], v = o[id]; if (!z || !v) return;
-    if (isFinite(v.x)) z.x = +v.x; if (isFinite(v.y)) z.y = +v.y;
-    if (isFinite(v.w)) z.w = +v.w; if (isFinite(v.h)) z.h = +v.h;
-    if (Array.isArray(v.pts) && v.pts.length >= 3) { z.pts = v.pts.map(pt => [+pt[0], +pt[1]]); syncBoite(z); }
-    else delete z.pts;
-    z.approx = !!v.approx; n++;
+  if(!o || typeof o!=='object' || Array.isArray(o))throw new Error('Objet de zones attendu.');
+  const ids=Object.keys(o).filter(id=>Object.hasOwn(ZONES,id));
+  if(!ids.length)throw new Error('Aucune zone reconnue.');
+  // Validate every entry before changing any geometry.
+  ids.forEach(id=>{
+    const v=o[id];
+    if(!v || !['x','y','w','h'].every(k=>typeof v[k]==='number' && Number.isFinite(v[k])) || v.w<=0 || v.h<=0)throw new Error('Géométrie invalide : '+id);
+    if(v.pts!==undefined && (!Array.isArray(v.pts) || v.pts.length<3 || !v.pts.every(pt=>Array.isArray(pt)&&pt.length===2&&pt.every(n=>typeof n==='number'&&Number.isFinite(n)))))throw new Error('Polygone invalide : '+id);
+    if(v.pts){const xs=v.pts.map(p=>p[0]),ys=v.pts.map(p=>p[1]);if(Math.max(...xs)<=Math.min(...xs)||Math.max(...ys)<=Math.min(...ys))throw new Error('Polygone sans surface : '+id);}
   });
-  if (zoneEls[Object.keys(ZONES)[0]]) {
-    Object.keys(ZONES).forEach(positionnerZone); redessinerEdges(); majPoignees(); majChampsEdition();
-  }
-  if (!silencieux) toast(n + ' zones appliquées');
-  return n;
+  ids.forEach(id=>{
+    const z=ZONES[id],v=o[id];['x','y','w','h'].forEach(k=>z[k]=v[k]);
+    if(v.pts){z.pts=v.pts.map(pt=>pt.slice());syncBoite(z);}else delete z.pts;
+    if(typeof v.approx==='boolean')z.approx=v.approx;
+  });
+  if(zoneEls[Object.keys(ZONES)[0]]){Object.keys(ZONES).forEach(positionnerZone);redessinerEdges();majPoignees();majChampsEdition();}
+  if(!silencieux)toast(ids.length+' zones appliquées');
+  return ids.length;
 }
 
 function basculerEdition() {
   editMode = !editMode;
+  if(editMode){pause();showView('plan');}
+  else {tracage=false;tracagePoly=false;tracePts=null;dessinerTracePoly(null);dessinerTrace(null);svg.classList.remove('tracage');}
+  document.body.classList.toggle('editing',editMode);
+  document.getElementById('btn-edit').setAttribute('aria-pressed',String(editMode));
+  document.getElementById('btn-play').disabled=editMode;
   svg.classList.toggle('edition', editMode);
   document.getElementById('panneau-edition').hidden = !editMode;
   const b = document.getElementById('btn-edit');
   b.classList.toggle('on', editMode);
   b.textContent = editMode ? '✓ Terminer l\'édition' : '✏️ Éditer les zones';
   if (editMode && !selection) selectionner(Object.keys(ZONES)[0]);
-  majPoignees(); majChampsEdition(); majListeEdition();
+  if(editMode && window.innerWidth<=760)document.getElementById('panneau-edition').scrollIntoView({block:'start'});
+  majPoignees(); majChampsEdition(); majListeEdition(); updateRunState();
 }
 
 function majListeEdition() {
@@ -803,7 +801,7 @@ function initEdition() {
       const v = parseFloat(e.target.value); if (!isFinite(v)) return;
       const z = ZONES[selection], nb = boite(z);
       nb[k] = (k === 'w' || k === 'h') ? Math.max(60, v) : v;
-      appliquerBoite(z, nb); z.approx = false;
+      appliquerBoite(z, nb); /* Geometry changes do not establish operational validation. */
       positionnerZone(selection); redessinerEdges(); majPoignees(); sauvegarderZones();
     });
   });
@@ -823,7 +821,7 @@ function initEdition() {
     if (!selection) return;
     const z = ZONES[selection];
     if (estPoly(z)) versRectangle(z); else versPolygone(z);
-    z.approx = false; majApresEdition();
+    /* Geometry changes do not establish operational validation. */ majApresEdition();
   });
   document.getElementById('ez-reset').addEventListener('click', () => {
     if (!selection) return;
@@ -856,7 +854,8 @@ function initEdition() {
     const rd = new FileReader();
     rd.onload = () => {
       try { appliquerGeom(JSON.parse(rd.result)); sauvegarderZones(); }
-      catch (err) { toast('JSON illisible'); }
+      catch (err) { toast('Import refusé : '+err.message); }
+      finally { e.target.value=''; }
     };
     rd.readAsText(f);
   });
@@ -885,7 +884,7 @@ function majPlan() {
     if (els.jauge) { els.jauge.setAttribute('width', (els.b.w-16) * u); els.jauge.setAttribute('fill', col); }
     // la couleur de fond/bordure est pilotée par le thème via une classe
     els.g.classList.remove('c-ok', 'c-warn', 'c-bad');
-    els.g.classList.add(u < 0.55 ? 'c-ok' : u < 0.85 ? 'c-warn' : 'c-bad');
+    if(now>CFG.jour.debut && !NON_MODELISES.has(id)) els.g.classList.add(u < 0.55 ? 'c-ok' : u < 0.85 ? 'c-warn' : 'c-bad');
     if (els.badge) els.badge.textContent = st.qlen > 0 ? st.qlen + ' OF' : '';
   });
   const r = document.getElementById('res-robot'); if (r) r.textContent = Math.round((Sim.robotRate||0)*60) + '/' + CFG.robotCadence;
@@ -896,58 +895,60 @@ function majPlan() {
  *  8. DASHBOARD
  * ==========================================================================*/
 function majDashboard() {
-  const k = kpis();
-  const set = (id, v) => { const n = document.getElementById(id); if (n) n.innerHTML = v; };
-  const ontEl = document.getElementById('kpi-ontime');
-  if (k.ontime == null) {
-    ontEl.textContent = 'n/a'; ontEl.className = 'val na';
-    set('kpi-ontime-sub', 'aucun vol exigible');
-  } else {
-    ontEl.textContent = k.ontime + '%';
-    ontEl.className = 'val ' + (k.ontime >= 90 ? 'bon' : k.ontime >= 70 ? 'moyen' : 'mauvais');
-    set('kpi-ontime-sub', k.aHeure + ' / ' + k.exigibles + ' vols exigibles');
-  }
-  const retEl = document.getElementById('kpi-retard');
-  if (k.retardMoy == null) {
-    retEl.textContent = 'n/a'; retEl.className = 'val na'; set('kpi-retard-sub', '—');
-  } else {
-    retEl.innerHTML = k.retardMoy + ' <small>min</small>';
-    retEl.className = 'val ' + (k.retardMoy <= 0 ? 'bon' : k.retardMoy < 15 ? 'moyen' : 'mauvais');
-    set('kpi-retard-sub', k.inacheves ? k.inacheves + ' inachevé(s) en retard' : 'tous terminés');
-  }
-  set('kpi-debit', k.debit + ' <small>/h</small>');
-  set('kpi-wip', k.wip + ' <small>OF</small>');
-
-  const box = document.getElementById('stats-ateliers'); box.innerHTML = '';
-  ['appros','decontam','cuisine','prepa','dotation','plonge','armement','magasin','bobduty'].forEach(id => {
-    const st = stations[id], u = Math.min(1, st.util);
-    const d = document.createElement('div'); d.className = 'stat-atelier';
-    d.innerHTML = '<div class="haut"><span>' + ZONES[id].nom + '<span class="badge-q">' + (st.qlen?('· '+st.qlen+' OF'):'') + '</span></span><b>' + Math.round(u*100) + '%</b></div>' +
-      '<div class="barre"><i style="width:' + (u*100) + '%;background:' + couleurCharge(u) + '"></i></div>';
-    box.appendChild(d);
+  const k=kpis(), put=(id,v)=>document.getElementById(id).textContent=v;
+  put('kpi-ontime',k.ontime==null?'—':k.ontime+' %');
+  document.getElementById('kpi-ontime').className='val '+(k.ontime==null?'':k.ontime>=90?'bon':k.ontime>=70?'moyen':'mauvais');
+  put('kpi-denom',k.exigibles?k.aHeure+' / '+k.exigibles+' départs à échéance atteinte':'Aucun départ exigible');
+  put('kpi-overdue',k.overdue);document.getElementById('kpi-overdue').className='val '+(k.overdue?'mauvais':'');
+  put('kpi-ready',k.prets+' / '+k.total+' dossiers terminés');
+  put('kpi-retard',k.retardMoy==null?'—':k.retardMoy+' min');
+  put('kpi-retard-exigibles',k.retardExigibles==null?'—':k.retardExigibles+' min');
+  document.getElementById('kpi-debit').innerHTML=k.debit+' <small>plateaux/h</small>';
+  document.getElementById('kpi-wip').innerHTML=k.wip+' <small>OF</small>';
+  const box=document.getElementById('stats-ateliers');
+  if(!box.children.length) ['appros','decontam','cuisine','prepa','dotation','plonge','armement','magasin','bobduty'].forEach(id=>{
+    const b=document.createElement('button');b.className='stat-atelier';b.dataset.station=id;
+    b.innerHTML='<div class="haut"><span>'+escapeHTML(ZONES[id].nom)+'<span class="badge-q"></span></span><b></b></div><div class="barre"><i></i></div>';
+    b.addEventListener('click',()=>selectionner(id));box.appendChild(b);
   });
-  majGoulotInfo(k.goulot);
+  box.querySelectorAll('[data-station]').forEach(b=>{
+    const id=b.dataset.station,st=stations[id],u=Math.min(1,st.util),unmodeled=NON_MODELISES.has(id);
+    b.classList.toggle('active',id===selection);b.setAttribute('aria-pressed',String(id===selection));
+    b.querySelector('b').textContent=unmodeled?'Non simulé':now===CFG.jour.debut?'—':Math.round(u*100)+' %';
+    b.querySelector('.badge-q').textContent=st.qlen?' · '+st.qlen+' OF':'';
+    b.querySelector('.barre').hidden=unmodeled;
+    b.querySelector('i').style.cssText='width:'+u*100+'%;background:'+couleurCharge(u);
+  });
+  majGoulotInfo(k.goulot);renderFlights();updateRunState();
 }
+
 function majGoulotInfo(goulot) {
-  if (goulot === undefined) goulot = goulotCourant();
-  const el = document.getElementById('goulot-info');
-  if (selection) {
-    const st = stations[selection];
-    el.innerHTML = '<b style="color:var(--accent2)">' + ZONES[selection].nom + '</b><br>Charge : <b>' + Math.round(st.util*100) + '%</b> · File : <b>' + st.qlen + ' OF</b>' +
-      (CFG.staff[selection] != null ? '<br>Effectif : <b>' + CFG.staff[selection] + '</b> pers.' : (selection==='plonge' ? '<br>Tunnels : <b>' + CFG.tunnels + '</b>' : ''));
-    return;
-  }
-  if (!enMarche && now <= CFG.jour.debut + 1) { el.textContent = 'Simulation à l\'arrêt. Cliquez sur « Lancer ».'; return; }
-  if (!goulot) { el.innerHTML = '<span style="color:var(--vert)">✔ Aucun goulot — flux fluide.</span>'; return; }
-  el.innerHTML = '<b style="color:var(--rouge)">🔴 ' + goulot.nom + '</b><br>Charge ' + Math.round(goulot.sev*100) + '% · file ' + goulot.qlen + ' OF.<br>' +
-    '<span class="mini-note">Ajustez l\'effectif' + (goulot.id==='prepa'?' ou la cadence robot':goulot.id==='plonge'?' ou les tunnels':'') + '.</span>';
+  if(goulot===undefined)goulot=goulotCourant();
+  const el=document.getElementById('goulot-info');let html='';
+  if(selection){
+    const id=selection,z=ZONES[id],st=stations[id];
+    html='<div class="detail-title"><strong>'+escapeHTML(z.nom)+'</strong><button class="btn" data-clear-selection>Fermer</button></div>';
+    html+='<p>'+(z.approx?'Emplacement à confirmer.':'Emplacement enregistré ; validation terrain distincte.')+'</p>';
+    if(NON_MODELISES.has(id))html+='<p>Charge non calculée dans cette version.</p>';
+    else {
+      html+='<p>'+st.qlen+' OF en attente ou en traitement'+(CFG.staff[id]!=null?' · '+CFG.staff[id]+' personnes paramétrées':id==='plonge'?' · '+CFG.tunnels+' tunnels':'')+'.</p>';
+      const current=jobs.filter(j=>j.released&&!j.done&&j.stationId===id);
+      html+=current.length?'<ul class="detail-jobs">'+current.slice(0,8).map(j=>'<li>'+escapeHTML(j.flight.id)+' · '+escapeHTML(j.kind)+' · échéance '+formatTime(j.dueT)+'</li>').join('')+'</ul>':'<p>Aucun ordre de fabrication actif ici.</p>';
+      if(current.length>8)html+='<p>Et '+(current.length-8)+' autre(s) OF.</p>';
+    }
+  } else if(now===CFG.jour.debut)html='Lancez la démonstration, puis sélectionnez un atelier ou ouvrez le suivi des vols.';
+  else if(!goulot)html='Aucune pression élevée détectée par le démonstrateur à cet instant.';
+  else html='<strong>'+escapeHTML(goulot.nom)+'</strong><p>'+goulot.qlen+' OF en attente ou en traitement. Consultez les opérations et les échéances avant de tester un changement.</p>';
+  if(el.innerHTML!==html)el.innerHTML=html;
 }
 
 const chart = document.getElementById('chart');
+
 function dessinerChart() {
   const ctx = chart.getContext('2d');
   const w = chart.width = chart.clientWidth, h = chart.height = 110;
   ctx.clearRect(0, 0, w, h);
+  document.getElementById('chart-legend').textContent = historique.length<2 ? 'Les courbes apparaîtront après 20 minutes simulées.' : 'Bleu : débit robot (0–'+Math.max(560,...historique.map(p=>p.debit))+' plateaux/h). Violet : encours (0–'+Math.max(10,...historique.map(p=>p.wip))+' OF). Échelles distinctes.';
   if (historique.length < 2) return;
   const t0 = CFG.jour.debut, t1 = CFG.jour.fin;
   const maxDebit = Math.max(560, ...historique.map(p => p.debit));
@@ -976,14 +977,14 @@ let dernierReel = 0, accHist = 0;
 function boucle(ts) {
   if (!enMarche) return;
   const dtReel = Math.min(0.1, (ts - dernierReel) / 1000); dernierReel = ts;
-  let dtSim = dtReel * vitesse;
-  while (dtSim > 0 && now < CFG.jour.fin) {
-    const p = Math.min(0.5, dtSim); step(p); dtSim -= p; accHist += p;
+  pendingTime += dtReel * vitesse;
+  while (pendingTime >= 0.5 && now < CFG.jour.fin) {
+    const p = Math.min(0.5,CFG.jour.fin-now); step(p); pendingTime -= p; accHist += p;
     if (accHist >= 10) { accHist = 0; historique.push({ t:now, debit:Math.round((Sim.robotRate||0)*60), wip:jobs.filter(j=>j.released&&!j.done).length }); }
   }
   animerTokens(); majHorloge(); majPlan(); majDashboard(); dessinerChart();
   if (now >= CFG.jour.fin) { pause(); toast('Journée simulée terminée'); return; }
-  requestAnimationFrame(boucle);
+  frameId=requestAnimationFrame(boucle);
 }
 function majHorloge() {
   const hh = Math.floor(now/60), mm = Math.floor(now%60);
@@ -994,18 +995,21 @@ function majHorloge() {
  *  10. CONTRÔLES
  * ==========================================================================*/
 function lancer() {
-  if (enMarche) return; if (now >= CFG.jour.fin) reset();
+  if (enMarche || editMode) return; if (now >= CFG.jour.fin) reset();
+  if(!runConfig)runConfig=JSON.parse(JSON.stringify(CFG));
   enMarche = true; dernierReel = performance.now();
   const b = document.getElementById('btn-play'); b.textContent = '⏸ Pause'; b.className = 'btn btn-pause';
-  requestAnimationFrame(boucle);
+  updateRunState();frameId=requestAnimationFrame(boucle);
 }
 function pause() {
   enMarche = false;
-  const b = document.getElementById('btn-play'); b.textContent = '▶ Reprendre'; b.className = 'btn btn-play';
+  if(frameId!==null){cancelAnimationFrame(frameId);frameId=null;}
+  const b = document.getElementById('btn-play'); b.textContent = now>=CFG.jour.fin?'▶ Relancer':now===CFG.jour.debut?'▶ Lancer':'▶ Reprendre'; b.className = 'btn btn-play';
+  updateRunState();
 }
 function basculer() { enMarche ? pause() : lancer(); }
 function reset(data) {
-  pause(); now = CFG.jour.debut; historique = []; tokens.forEach(t=>t.el.remove()); tokens = [];
+  pause(); now = CFG.jour.debut; historique = [];pendingTime=0;accHist=0;Sim.robotRate=0;runConfig=null; tokens.forEach(t=>t.el.remove()); tokens = [];
   build(data || Sim.dataCourante || SAMPLE); initStations();
   const b = document.getElementById('btn-play'); b.textContent = '▶ Lancer'; b.className = 'btn btn-play';
   majHorloge(); majPlan(); majDashboard(); dessinerChart();
@@ -1019,19 +1023,19 @@ function initControles() {
   const box = document.getElementById('sliders-staff');
   Object.keys(CFG.staff).forEach(id => {
     const d = document.createElement('div'); d.className = 'slider-ligne';
-    d.innerHTML = '<label>' + ZONES[id].nom + ' <b id="s-' + id + '">' + CFG.staff[id] + '</b></label><input type="range" min="0" max="40" value="' + CFG.staff[id] + '" data-id="' + id + '">';
+    d.innerHTML = '<label for="staff-' + id + '">' + ZONES[id].nom + ' <b id="s-' + id + '">' + CFG.staff[id] + '</b></label><input id="staff-' + id + '" type="range" min="0" max="40" value="' + CFG.staff[id] + '" data-id="' + id + '">';
     box.appendChild(d);
     d.querySelector('input').addEventListener('input', e => { CFG.staff[id] = +e.target.value; document.getElementById('s-' + id).textContent = e.target.value; majPlan(); majDashboard(); });
   });
   const bind = (id, fn) => document.getElementById(id).addEventListener('input', fn);
   bind('vitesse', e => { vitesse = +e.target.value; document.getElementById('vitesse-val').textContent = vitesse + '×'; });
-  bind('robot', e => { CFG.robotCadence = +e.target.value; document.getElementById('robot-val').textContent = e.target.value + ' pl/h'; document.getElementById('robot-note').textContent = e.target.value; majPlan(); });
+  bind('robot', e => { CFG.robotCadence = +e.target.value; document.getElementById('robot-val').textContent = e.target.value + ' pl/h'; majPlan(); });
   bind('tunnels', e => { CFG.tunnels = +e.target.value; document.getElementById('tunnels-val').textContent = e.target.value; majPlan(); });
   document.getElementById('double').addEventListener('change', e => { CFG.tunnelDouble = e.target.checked; majPlan(); });
   bind('shift', e => { CFG.shift = +e.target.value; document.getElementById('shift-val').textContent = (e.target.value>0?'+':'') + e.target.value + ' min'; reset(); });
-  bind('loadDelay', e => { CFG.loadDelay = +e.target.value || 45; reset(); });
+  document.getElementById('loadDelay').addEventListener('change',e=>{if(!e.target.checkValidity() || !e.target.value){e.target.value=CFG.loadDelay;toast('Délai attendu : 10 à 120 minutes');return;}CFG.loadDelay=+e.target.value;reset();});
   document.getElementById('btn-play').addEventListener('click', basculer);
-  document.getElementById('btn-reset').addEventListener('click', () => { reset(); toast('Journée réinitialisée'); });
+  document.getElementById('btn-reset').addEventListener('click', () => { if(now>CFG.jour.debut && !confirm('Recommencer à 05:00 ? La progression actuelle sera effacée ; les instantanés A/B seront conservés.'))return;reset(); toast('Simulation réinitialisée ; réglages disponibles'); });
   document.getElementById('btn-export').addEventListener('click', exporter);
   document.getElementById('snap-a').addEventListener('click', () => capturer('A'));
   document.getElementById('snap-b').addEventListener('click', () => capturer('B'));
@@ -1052,8 +1056,8 @@ function initControles() {
 function appliquerTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
   const b = document.getElementById('btn-theme');
-  b.textContent = t === 'dark' ? '☀️' : '🌙';
-  b.title = t === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre';
+  b.textContent = t === 'dark' ? 'Clair' : 'Sombre';
+  b.title = t === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre';b.setAttribute('aria-label',b.title);
   try { localStorage.setItem('orly-theme', t); } catch (e) { /* stockage indisponible */ }
   dessinerChart();
 }
@@ -1069,45 +1073,125 @@ function initTheme() {
 
 let snaps = {};
 function capturer(slot) {
-  const k = kpis();
-  snaps[slot] = { ontime:k.ontime, retard:k.retardMoy, debit:k.debit, wip:k.wip, robot:CFG.robotCadence, prepa:CFG.staff.prepa, tunnels:CFG.tunnels };
-  majCompare(); toast('Scénario ' + slot + ' capturé');
+  const k=kpis();
+  snaps[slot]={ontime:k.ontime,retard:k.retardMoy,debit:k.debit,wip:k.wip,robot:CFG.robotCadence,prepa:CFG.staff.prepa,tunnels:CFG.tunnels,
+    time:now,source:dataSource,config:JSON.parse(JSON.stringify(CFG)),data:JSON.parse(JSON.stringify(Sim.dataCourante)),kpis:k};
+  majCompare();toast('Instantané '+slot+' enregistré à '+formatTime(now));
 }
 function majCompare() {
-  const lignes = [['Robot pl/h','robot'],['Staff Montage','prepa'],['Tunnels','tunnels'],['Vols à l\'heure %','ontime'],['Retard moy.','retard'],['Débit /h','debit'],['WIP','wip']];
+  const lignes = [['Heure simulée','time'],['Robot pl/h','robot'],['Staff Montage','prepa'],['Tunnels','tunnels'],['Prêts à échéance %','ontime'],['Retard moy.','retard'],['Débit /h','debit'],['WIP','wip']];
   let html = '<thead><tr><th>KPI</th><th>A</th><th>B</th></tr></thead>';
-  lignes.forEach(l => { const a = snaps.A ? snaps.A[l[1]] : '—', b = snaps.B ? snaps.B[l[1]] : '—'; html += '<tr><td>' + l[0] + '</td><td>' + a + '</td><td>' + b + '</td></tr>'; });
+  lignes.forEach(l => { const a = snaps.A ? (l[1]==='time'?formatTime(snaps.A.time):snaps.A[l[1]]??'—') : '—', b = snaps.B ? (l[1]==='time'?formatTime(snaps.B.time):snaps.B[l[1]]??'—') : '—'; html += '<tr><td>' + l[0] + '</td><td>' + a + '</td><td>' + b + '</td></tr>'; });
   document.getElementById('compare').innerHTML = html;
+  document.getElementById('compare-note').textContent=snaps.A&&snaps.B&&snaps.A.time!==snaps.B.time?'Heures de capture différentes : les résultats ne sont pas directement comparables.':'Instantanés indicatifs ; aucune validation de scénario.';
 }
 
 function importVols(e) {
-  const file = e.target.files[0]; if (!file) return;
-  const rd = new FileReader();
-  rd.onload = () => { try { const data = parseVols(rd.result); if (!data.length) { toast('CSV vide ou illisible'); return; } Sim.dataCourante = data; reset(data); toast(data.length + ' vols importés'); } catch (err) { toast('Erreur CSV'); console.error(err); } };
+  const file=e.target.files[0];if(!file)return;
+  const report=document.getElementById('import-report');
+  const fail=message=>{report.classList.add('error');report.textContent=message;};
+  if(file.size>2*1024*1024){fail('Fichier trop volumineux (maximum 2 Mo). Aucune donnée remplacée.');e.target.value='';return;}
+  const rd=new FileReader();
+  rd.onerror=()=>fail('Lecture du fichier impossible. Aucune donnée remplacée.');
+  rd.onload=()=>{
+    try {
+      const data=parseVols(rd.result);
+      if(now>CFG.jour.debut && !confirm('Importer ce fichier et recommencer à 05:00 ? La progression et les instantanés seront effacés.'))return;
+      Sim.dataCourante=data;dataSource=file.name;snaps={};majCompare();reset(data);updateSource();
+      report.classList.remove('error');report.textContent=data.length+' lignes importées. '+data.filter(f=>f.sens==='DEP').length+' départs et '+data.filter(f=>f.sens==='RET').length+' retours. Calcul de démonstration uniquement.';
+      if(data.some(f=>f.sens==='DEP'&&(f.std+CFG.shift-CFG.loadDelay<CFG.jour.debut || f.std+CFG.shift-CFG.loadDelay>CFG.jour.fin)))report.textContent+=' Certaines échéances sont hors de la fenêtre 05:00–23:00.';
+    } catch(err){fail(err.message);}
+    finally{e.target.value='';}
+  };
   rd.readAsText(file);
 }
-function parseVols(txt) {
-  const lignes = txt.split(/\r?\n/).filter(l => l.trim()); if (!lignes.length) return [];
-  const head = lignes[0].split(/[,;]/).map(s => s.trim().toLowerCase());
-  const idx = n => head.findIndex(h => h.includes(n));
-  const c = { id:idx('vol'), cie:idx('compagnie'), av:idx('type'), sens:idx('sens'), std:idx('std'), sta:idx('sta'), bc:idx('bc'), pc:idx('pc'), yc:idx('yc') };
-  const toMin = v => { if (!v) return 0; if (v.includes(':')) { const [h,m]=v.split(':'); return (+h)*60+(+m||0); } return +v||0; };
-  return lignes.slice(1).map((l,i) => {
-    const p = l.split(/[,;]/).map(s => s.trim());
-    const sens = (c.sens>=0 ? (p[c.sens]||'DEP') : 'DEP').toUpperCase().includes('RET') ? 'RET' : 'DEP';
-    return { id:c.id>=0?p[c.id]:'V'+i, cie:c.cie>=0?p[c.cie]:'—', avion:c.av>=0?p[c.av]:'—', sens,
-             std:c.std>=0?toMin(p[c.std]):7*60, sta:c.sta>=0?toMin(p[c.sta]):7*60, bc:+(p[c.bc]||0), pc:+(p[c.pc]||0), yc:+(p[c.yc]||0) };
-  }).filter(f => f.bc||f.pc||f.yc);
-}
+function parseVols(txt) { return parseFlights(txt); }
 function exporter() {
   const k = kpis();
-  const data = { avertissement:'DÉMONSTRATION — paramètres non calibrés, résultats non exploitables pour décider.',
-    horaire:document.getElementById('horloge').textContent, config:CFG, kpis:k,
-    vols:flights.map(f => ({ id:f.id, sens:f.sens, readyTime:f.readyTime, retard:f.retard })),
-    ateliers:Object.keys(ZONES).reduce((o,id)=>{ o[id]={util:Math.round(stations[id].util*100),file:stations[id].qlen}; return o; }, {}) };
+  const data = { avertissement:'DÉMONSTRATION — paramètres non calibrés, résultats non exploitables pour décider.',schemaVersion:'0.2',modelStatus:'demonstration_non_calibree',source:dataSource,
+    limites:['Calendrier J−1/J−2 non intégré','Routage robot et temps non calibrés','Stocks et ressources humaines incomplets'],
+    horaire:document.getElementById('horloge').textContent,termine:now>=CFG.jour.fin,config:runConfig||CFG,entrees:Sim.dataCourante,instantanes:snaps,kpis:k,
+    vols:flights.map(f => ({ id:f.id, sens:f.sens, due:f.due, readyTime:f.readyTime, retard:f.sens==='DEP'&&f.readyTime!=null?f.retard:null, statut:f.sens==='DEP'?flightStatus(f,now).key:'retour' })),
+    ateliers:Object.keys(ZONES).reduce((o,id)=>{ o[id]={pressionIndicative:NON_MODELISES.has(id)?null:Math.round(stations[id].util*100),ordresActifs:NON_MODELISES.has(id)?null:stations[id].qlen}; return o; }, {}) };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'newrest-orly-resultats.json'; a.click();
-  toast('Résultats exportés');
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Résultat de démonstration exporté');
+}
+
+/* Workbench navigation and operational reading of the demonstrator. */
+function formatTime(t) {
+  if(t==null || !Number.isFinite(t))return '—';
+  const day=Math.floor(t/1440),minutes=((Math.floor(t)%1440)+1440)%1440;
+  return String(Math.floor(minutes/60)).padStart(2,'0')+':'+String(minutes%60).padStart(2,'0')+(day?' (J'+(day>0?'+':'')+day+')':'');
+}
+function showPanel(name) {
+  activePanel=name;
+  document.querySelectorAll('[data-panel]').forEach(b=>{b.classList.toggle('active',b.dataset.panel===name);b.setAttribute('aria-pressed',String(b.dataset.panel===name));});
+  ['suivi','reglages','donnees'].forEach(id=>document.getElementById('panel-'+id).hidden=id!==name);
+  if(name==='suivi')dessinerChart();
+}
+function showView(name) {
+  if(editMode && name!=='plan')return;
+  activeView=name;
+  document.getElementById('view-plan').hidden=name!=='plan';
+  document.getElementById('view-vols').hidden=name!=='vols';
+  document.querySelector('.plan-tete').hidden=name!=='plan';
+  document.querySelector('.map-footer').hidden=name!=='plan';
+  document.querySelectorAll('[data-view]').forEach(b=>{b.classList.toggle('active',b.dataset.view===name);b.setAttribute('aria-pressed',String(b.dataset.view===name));});
+  if(name==='vols')renderFlights();
+}
+function updateSource() {
+  document.getElementById('source-label').textContent=dataSource;
+  document.getElementById('source-count').textContent=flights.filter(f=>f.sens==='DEP').length+' départs · '+flights.filter(f=>f.sens==='RET').length+' retours';
+  document.getElementById('flight-count').textContent=flights.filter(f=>f.sens==='DEP').length;
+}
+function updateRunState() {
+  const started=enMarche||now>CFG.jour.debut;
+  document.getElementById('run-state').textContent=editMode?'Édition du plan':now>=CFG.jour.fin?'Terminé':enMarche?'En cours':started?'En pause':'Prêt à lancer';
+  document.querySelectorAll('#sliders-staff input,#robot,#tunnels,#double,#shift,#loadDelay').forEach(input=>{
+    input.disabled=started||NON_MODELISES.has(input.dataset.id);
+    input.title=NON_MODELISES.has(input.dataset.id)?'Service non relié au calcul actuel':started?'Recommencez la simulation pour modifier les réglages':'';
+  });
+  document.querySelectorAll('[data-view]').forEach(b=>b.disabled=editMode&&b.dataset.view!=='plan');
+}
+function renderFlights() {
+  if(activeView!=='vols')return;
+  const search=document.getElementById('flight-search').value.trim().toLowerCase();
+  const filter=document.getElementById('flight-filter').value;
+  const rows=flights.filter(f=>f.sens==='DEP').filter(f=>{
+    const st=flightStatus(f,now).key;
+    return (!search||(f.id+' '+f.cie).toLowerCase().includes(search)) && (filter==='all'||filter==='ready'&&f.readyTime!=null||filter==='pending'&&f.readyTime==null||filter==='overdue'&&st==='overdue');
+  }).sort((a,b)=>a.due-b.due);
+  const html=rows.map(f=>{
+    const status=flightStatus(f,now),pending=jobs.filter(j=>j.flight===f&&!j.done);
+    const operations=pending.map(j=>j.released?ZONES[j.stationId].nom:'À libérer ('+({food:'food',dot:'dotation',arm:'armement'}[j.kind]||j.kind)+')');
+    return '<tr><td><strong>'+escapeHTML(f.id)+'</strong><small>'+escapeHTML(f.cie)+'</small></td><td>'+formatTime(f.std+CFG.shift)+'</td><td>'+formatTime(f.due)+'</td><td><span class="status '+status.key+'">'+status.label+'</span>'+(f.readyTime!=null?'<small>Prêt à '+formatTime(f.readyTime)+'</small>':'')+'</td><td>'+escapeHTML(operations.join(' · ')||'Toutes terminées')+'</td></tr>';
+  }).join('') || '<tr><td colspan="5" class="empty-state">Aucun départ ne correspond à ces filtres.</td></tr>';
+  const body=document.getElementById('flight-rows');if(body.innerHTML!==html)body.innerHTML=html;
+}
+function initWorkbench() {
+  document.querySelectorAll('[data-panel]').forEach(b=>b.addEventListener('click',()=>showPanel(b.dataset.panel)));
+  document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
+  document.getElementById('btn-limits').addEventListener('click',()=>{
+    if(editMode)basculerEdition();showPanel('donnees');document.getElementById('model-limits').scrollIntoView({block:'nearest'});
+  });
+  document.getElementById('edit-done').addEventListener('click',()=>{if(editMode)basculerEdition();document.getElementById('btn-edit').focus();});
+  const picker=document.getElementById('zone-picker');
+  Object.keys(ZONES).forEach(id=>{const o=document.createElement('option');o.value=id;o.textContent=ZONES[id].nom;picker.appendChild(o);});
+  picker.addEventListener('change',()=>{const id=picker.value;selection=null;selectionner(id||null);});
+  document.getElementById('goulot-info').addEventListener('click',e=>{if(e.target.closest('[data-clear-selection]'))selectionner(selection);});
+  document.getElementById('flight-search').addEventListener('input',renderFlights);
+  document.getElementById('flight-filter').addEventListener('change',renderFlights);
+  document.getElementById('csv-template').addEventListener('click',()=>{
+    const content='vol_id,compagnie,type_avion,sens,heure_std,heure_sta,nb_BC,nb_PC,nb_YC\nDEMO001,DEMO,A320,DEP,12:00,,0,0,100\nDEMO-RET001,DEMO,A320,RET,,08:00,0,0,100\n';
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type:'text/csv;charset=utf-8'}));a.download='modele-vols-demo.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  });
+  document.getElementById('restore-demo').addEventListener('click',()=>{
+    if((now>CFG.jour.debut||dataSource!=='Jeu de démonstration')&&!confirm('Recharger la démo ? Les données importées, la progression et les instantanés seront remplacés.'))return;
+    dataSource='Jeu de démonstration';Sim.dataCourante=SAMPLE;snaps={};majCompare();reset(SAMPLE);updateSource();
+    const report=document.getElementById('import-report');report.classList.remove('error');report.textContent='Jeu de démonstration rechargé.';
+  });
+  updateSource();updateRunState();majCompare();
 }
 
 /* ==========================================================================
@@ -1116,7 +1200,7 @@ function exporter() {
 const Sim = { robotRate:0, dataCourante:SAMPLE, _gTok:null };
 window.Sim = Sim;
 chargerZones();
-construirePlan(); initStations(); build(SAMPLE); initControles(); initEdition();
+construirePlan(); initStations(); build(SAMPLE); initControles(); initEdition(); initWorkbench();
 majHorloge(); majPlan(); majDashboard(); dessinerChart();
 
 })();

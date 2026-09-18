@@ -1,0 +1,74 @@
+/* Pure presentation rules: shared by the browser and Node regression tests. */
+(function (root) {
+  'use strict';
+  const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function serviceMetrics(flights, now) {
+    const departures = flights.filter(f => f.sens === 'DEP');
+    const due = departures.filter(f => f.due <= now);
+    const ready = departures.filter(f => f.readyTime != null);
+    const onTime = due.filter(f => f.readyTime != null && f.readyTime <= f.due).length;
+    return { total:departures.length, prets:ready.length, exigibles:due.length,
+      retardExigibles:due.length ? Math.round(due.reduce((n,f)=>n+Math.max(0,(f.readyTime??now)-f.due),0)/due.length) : null,
+      aHeure:onTime, ontime:due.length ? Math.round(100 * onTime / due.length) : null,
+      overdue:due.filter(f => f.readyTime == null).length,
+      retardMoy:ready.length ? Math.round(ready.reduce((n,f) => n + Math.max(0,f.readyTime-f.due),0)/ready.length) : null };
+  }
+  function flightStatus(f, now) {
+    if (f.readyTime != null) return f.readyTime <= f.due ? { key:'ready', label:'Prêt à temps' } : { key:'late', label:'Prêt en retard' };
+    return now >= f.due ? { key:'overdue', label:'Échéance dépassée' } : { key:'pending', label:'Non prêt' };
+  }
+  function csvRows(text) {
+    text=String(text).replace(/^\uFEFF/,'');
+    const first=text.split(/\r?\n/)[0];
+    const delimiter=(first.match(/;/g)||[]).length>(first.match(/,/g)||[]).length ? ';' : ',';
+    const rows=[];let row=[],cell='',quoted=false,closed=false;
+    for(let i=0;i<text.length;i++) {
+      const c=text[i];
+      if(quoted) {
+        if(c==='"' && text[i+1]==='"'){cell+='"';i++;}
+        else if(c==='"'){quoted=false;closed=true;} else cell+=c;
+      } else if(c==='"') {
+        if(cell.trim() || closed) throw new Error('Guillemets CSV mal placés.');
+        cell='';quoted=true;
+      } else if(c===delimiter || c==='\n' || c==='\r') {
+        row.push(cell.trim());cell='';closed=false;
+        if(c!==delimiter){if(c==='\r' && text[i+1]==='\n')i++;if(row.some(Boolean))rows.push(row);row=[];}
+      } else { if(closed && c.trim())throw new Error('Texte après un champ CSV entre guillemets.');cell+=c; }
+    }
+    if(quoted)throw new Error('Champ CSV entre guillemets non fermé.');
+    row.push(cell.trim());if(row.some(Boolean))rows.push(row);
+    return rows;
+  }
+  function parseFlights(text) {
+    const rows=csvRows(text);
+    if(rows.length<2)throw new Error('Le CSV doit contenir un en-tête et au moins un vol.');
+    const headers=rows[0].map(h=>h.toLowerCase());
+    const required=['vol_id','compagnie','sens','heure_std','heure_sta','nb_bc','nb_pc','nb_yc'];
+    const missing=required.filter(h=>!headers.includes(h));
+    if(missing.length)throw new Error('Colonnes manquantes : '+missing.join(', ')+'. Téléchargez le modèle CSV.');
+    if(new Set(headers).size!==headers.length)throw new Error('Les noms de colonnes doivent être uniques.');
+    const errors=[],seen=new Set(),out=[];
+    rows.slice(1).forEach((r,i)=>{
+      const line=i+2,get=h=>r[headers.indexOf(h)]||'';
+      try {
+        if(r.length!==headers.length)throw new Error('nombre de colonnes différent de l’en-tête');
+        const id=get('vol_id'),cie=get('compagnie'),sens=get('sens').toUpperCase();
+        if(!id || !cie)throw new Error('vol_id et compagnie obligatoires');
+        if(!['DEP','RET'].includes(sens))throw new Error('sens attendu : DEP ou RET');
+        const key=sens+'|'+id;if(seen.has(key))throw new Error('doublon '+id+' ('+sens+')');seen.add(key);
+        const quantity=h=>{const v=get(h);if(!/^\d+$/.test(v) || !Number.isSafeInteger(+v))throw new Error(h+' : entier positif ou nul requis');return +v;};
+        const time=h=>{const v=get(h);if(!/^([01]?\d|2[0-3]):[0-5]\d$/.test(v))throw new Error(h+' : horaire HH:MM requis (00:00 à 23:59)');const [hh,mm]=v.split(':').map(Number);return hh*60+mm;};
+        const bc=quantity('nb_bc'),pc=quantity('nb_pc'),yc=quantity('nb_yc');
+        if(bc+pc+yc===0)throw new Error('au moins une quantité doit être supérieure à zéro');
+        const std=sens==='DEP'?time('heure_std'):get('heure_std')?time('heure_std'):null;
+        const sta=sens==='RET'?time('heure_sta'):get('heure_sta')?time('heure_sta'):null;
+        out.push({id,cie,sens,avion:get('type_avion')||'—',std,sta,bc,pc,yc});
+      } catch(e){errors.push('Ligne '+line+' : '+e.message);}
+    });
+    if(errors.length)throw new Error(errors.slice(0,8).join('\n')+(errors.length>8?'\n… '+(errors.length-8)+' autre(s) erreur(s).':'')+'\nAucune donnée remplacée.');
+    return out;
+  }
+  const api={escapeHTML,serviceMetrics,flightStatus,parseFlights};
+  if(typeof module!=='undefined' && module.exports)module.exports=api;
+  else root.OrlyUI=api;
+})(typeof globalThis!=='undefined'?globalThis:this);

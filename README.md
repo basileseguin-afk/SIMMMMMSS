@@ -1,192 +1,130 @@
-# 🛫 Newrest Orly — Simulation des flux de production
+# ORY — Simulation des flux de production
 
-Simulation visuelle et dynamique des flux d'une **unité de catering aérien**.
-L'objectif : **repérer visuellement les goulots (bouchons)**, **mesurer la charge
-par atelier** et **tester des scénarios what-if** (effectifs, cadence robot,
-tunnels de plonge, horaires de vols) sur une journée type.
+Interface de travail pour explorer les ateliers d’une unité de catering aérien,
+suivre les départs simulés et préparer des essais de capacité.
 
-Application **navigateur, hors-ligne, sans dépendance externe**. Un jeu de données
-d'exemple est embarqué : tout est fonctionnel dès l'ouverture.
+**Statut : prototype non calibré.** Le plan provient du fichier de l’unité ;
+les vols embarqués et les calculs sont des exemples. Les résultats ne permettent
+pas encore de dimensionner les équipes ou de prédire la ponctualité réelle.
 
-> ## ⚠️ Statut : démonstration, non calibré
->
-> **Les résultats ne sont pas exploitables pour décider.** Le moteur actuel est
-> une maquette dont les paramètres sont inventés. Points connus non
-> représentatifs de l'unité :
->
-> - Coefficients par passager **inventés**, pas issus du classeur des heures.
-> - Robot appliqué à **tous les YC** (en réalité : FBU, TX/FWI, CRL uniquement).
-> - Production lancée quelques heures avant le départ : **pas de J−1 / J−2**.
-> - Effectifs = capacité globale constante, **sans horaires ni compétences**.
-> - Stockages affichés mais **ne limitent pas** le flux ; la plonge ne
->   réalimente pas de stock utilisé par la production.
-> - Import CSV simplifié : ne représente pas les lignes de prestations, dossiers
->   et dates de l'export Winrest.
-> - Captures A/B = **instantanés**, pas deux exécutions comparables.
->
-> Le plan de correction est dans **[`docs/FEUILLE_DE_ROUTE.md`](docs/FEUILLE_DE_ROUTE.md)**.
+## Ouvrir l’application
 
-![Aperçu de la simulation](assets/apercu.png)
+Ouvrir `index.html` dans un navigateur récent. Aucun serveur, aucune installation
+et aucune dépendance réseau ne sont nécessaires à l’utilisation. Conserver les
+fichiers JavaScript, CSS et le dossier `assets` à côté du HTML.
 
-## ▶️ Lancer
+## Parcours d’utilisation
 
-Ouvrez `index.html` dans un navigateur, ou servez le dossier
-(`python3 -m http.server`). Cliquez sur **▶ Lancer** ; ajustez la vitesse.
+1. **Données** : consulter les limites du moteur, télécharger le modèle CSV ou
+   importer un fichier simplifié. Le nom du jeu et le nombre de départs/retours
+   restent visibles en haut de page.
+2. **Réglages** : préparer les effectifs simultanés, cadences et horaires avant
+   de lancer. Une fois l’essai commencé, les paramètres sont verrouillés, même
+   en pause. **Recommencer** libère les réglages et efface la progression après
+   confirmation ; les instantanés restent disponibles.
+3. **Plan / Suivi** : sélectionner un atelier depuis le plan, la liste Atelier
+   ou les indicateurs. Les opérations actives apparaissent dans le détail.
+4. **Suivi des vols** : rechercher un vol ou une compagnie, filtrer les dossiers
+   non prêts ou dont l’échéance est dépassée, voir les opérations restantes.
+5. **Exporter le résultat** : télécharger les données d’entrée, paramètres,
+   indicateurs et instantanés avec le statut explicite de démonstration.
 
-> ℹ️ Le projet est actuellement en deux fichiers (`index.html` + `sim.js`) pour
-> faciliter l'itération. Les deux s'ouvrent hors-ligne par double-clic. Un
-> **bundle en un seul fichier HTML autonome** peut être généré sur demande.
+Le bouton Pause arrête le calcul. La vitesse est exprimée en minutes simulées
+par seconde. Le moteur avance désormais par pas fixes de 30 secondes simulées,
+sans dépendre du découpage des images du navigateur ; il reste un modèle simplifié.
+Les déplacements de jetons sont illustratifs, sans valeur de temps de transfert.
 
-## 🎨 Lisibilité
+## Lire les indicateurs
 
-Thème **clair à fort contraste** par défaut (lecture de plan, vidéoprojection,
-impression). Un **thème sombre** est disponible via le bouton 🌙 de l'en-tête ;
-le choix est mémorisé.
+- **Prêts à l’échéance** : dossiers prêts à temps / départs dont l’échéance est
+  atteinte. Avant la première échéance, la valeur est « — ». Un dossier
+  inachevé à échéance dépassée reste dans le dénominateur.
+- **Échéances dépassées · non prêts** : dossiers encore inachevés dont
+  l’échéance est atteinte.
+- **Travail en cours** : ordres de fabrication libérés et non terminés, en
+  attente ou en traitement.
+- **Débit robot** : débit instantané simulé, pas une mesure du site.
+- **Retard courant des départs exigibles** : moyenne incluant les dossiers
+  inachevés, dont le retard augmente jusqu’à leur fin.
+- **Retard des dossiers terminés** : moyenne sur les dossiers terminés uniquement.
+- **Pression par atelier** : indice indicatif hérité du démonstrateur ; il ne
+  représente pas un taux d’occupation mesuré. Magasin, Duty free et handling
+  n’ont pas de charge calculée et ne reçoivent plus d’activité artificielle.
 
-![Thème sombre](assets/apercu-sombre.png)
+L’échéance vaut départ simulé moins délai de chargement. Ces états concernent
+la production ; ils ne constituent pas une mesure du retard avion.
 
-## 🗺️ Le plan (cœur du livrable)
+Les instantanés A/B enregistrent l’heure, les données et la configuration. Ils
+restent des photographies, pas deux simulations complètes comparables. Des
+heures différentes sont signalées. Un changement de jeu efface les instantanés.
 
-Le fond est **le plan d'architecte réel de l'unité** (`docs/MAP_ORY.xlsx`),
-découpé en 12 tuiles et réassemblé (`assets/plan/`). Les zones interactives sont
-posées par-dessus, en translucide, pour laisser voir les locaux.
+## Import CSV simplifié
 
-L'alignement est **exact par construction** : les tuiles et les zones sont
-placées à partir des mêmes ancrages du fichier source (colonne = 82 px,
-ligne = 14,4 pt = 19,2 px).
+Utiliser **Télécharger le modèle**. En-têtes attendus, insensibles à la casse :
 
-**Zoom & déplacement** : molette ou boutons `−` / `+` / `⟲`, glisser pour se
-déplacer. Au-delà de ~170 % les libellés des chambres froides apparaissent et
-le plan CAD (noms de pièces, cotes, surfaces) devient lisible. La case
-**Fond de plan** masque le CAD pour ne garder que le schéma des flux.
-
-![Vue zoomée](assets/apercu-zoom.png)
-
-### Zones
-
-Reprises telles quelles des annotations du plan : **CF départ food, Armement,
-Montage, Magasin, Dotation, Légumerie, Duty free**, plus toutes les
-**chambres froides, congélateurs, aires de stockage et locaux**
-(CF + BOF, CF charcuterie, CF Jour, CF intermédiaire, CF PEQ tranche cuisine,
-congélateur, réserve sèche, local QHSE…) — survol = nom complet.
-
-> ⚠️ Les zones marquées **`?`** ne sont pas annotées sur le plan source : elles
-> sont **placées approximativement** (pointillés) et doivent être corrigées.
-
-## ✏️ Corriger les zones (mode édition)
-
-Les tailles et emplacements des zones ne sont pas déductibles du plan source :
-c'est à l'exploitant de les poser. L'outil est fait pour ça.
-
-1. Bouton **✏️ Éditer les zones** dans l'en-tête du plan.
-2. Cliquez une zone (sur le plan ou dans la liste du panneau de gauche).
-3. **Glissez** le rectangle pour le déplacer, tirez un **coin** pour le
-   redimensionner — ou saisissez **X / Y / Largeur / Hauteur** au clavier.
-   **⬚ Rectangle** permet de retracer la zone à la souris.
-4. Les locaux ne sont pas des rectangles : passez la zone en **forme libre**.
-   - **⬠ Convertir** transforme le rectangle en polygone à 4 points ;
-   - **⬠ Tracer une forme** : cliquez les sommets un par un, `double-clic` ou
-     `Entrée` pour fermer, `Échap` pour annuler ;
-   - **glissez un sommet** pour le déplacer, le bouton **`+`** au milieu d'un
-     segment **ajoute** un point, **`Alt`+clic** sur un sommet le **supprime** ;
-   - **▱ Revenir au rectangle** repasse à la boîte englobante.
-5. Zoomez (molette) pour viser précisément les locaux du plan.
-6. Une zone corrigée perd son marquage « à confirmer ».
-
-Les modifications sont **sauvegardées automatiquement** dans le navigateur.
-
-**📋 Copier le JSON** / **⇩ Exporter** produit un fichier de ce type, à
-transmettre pour l'intégrer comme valeurs par défaut dans `sim.js` :
-
-```json
-{
-  "plonge": {
-    "nom": "PLONGE", "x": 1264, "y": 632, "w": 1286, "h": 1232, "approx": false,
-    "pts": [[1264,632],[2550,632],[2550,1110],[1980,1110],[1980,1864],[1264,1864]]
-  }
-}
+```csv
+vol_id,compagnie,type_avion,sens,heure_std,heure_sta,nb_BC,nb_PC,nb_YC
+DEMO001,DEMO,A320,DEP,12:00,,0,0,100
+DEMO-RET001,DEMO,A320,RET,,08:00,0,0,100
 ```
 
-`pts` n'est présent que pour les zones en forme libre ; sans lui, la zone est
-le rectangle `x / y / w / h`.
+`type_avion` est facultatif. Toutes les autres colonnes sont obligatoires.
+`heure_std` doit être renseignée pour DEP, `heure_sta` pour RET, au format
+HH:MM. Les quantités sont des entiers positifs ou nuls, avec au moins une
+quantité non nulle par ligne. Une ligne représente un départ ou un retour ;
+un même identifiant ne peut pas être répété dans le même sens.
 
-**📂 Importer** relit un tel fichier ; **↺ Tout réinitialiser** revient aux
-valeurs d'origine.
+Virgules, points-virgules et champs entre guillemets sont pris en charge.
+Toute erreur refuse le fichier entier et conserve le jeu précédent. Taille
+maximale : 2 Mo. **Le XLSX Winrest et ses lignes de prestations ne sont pas
+encore pris en charge.** Aucun effectif passager n’est déduit de cet export.
 
-- **Tokens animés** circulant le long des arêtes du graphe de flux.
-- **Code couleur de congestion** par atelier : 🟢 fluide → 🟠 chargé → 🔴 goulot.
-- **Ressources dédiées** affichées en direct : le **robot de dressage** (YC) et
-  les **3 tunnels de plonge** (1 double vitesse + 2 simples).
-- Cliquez sur un atelier pour voir son détail (charge, file, effectif).
+## Éditer les zones
 
-## 📊 Tableau de bord (en direct)
+**Éditer les zones** met la simulation en pause et ouvre le panneau dédié.
+Les rectangles et polygones, poignées, tracés et exports JSON sont conservés.
+Les coordonnées peuvent être saisies au clavier. **Terminer l’édition** revient
+au suivi sans reprendre automatiquement le calcul.
 
-- **Prêts à l'échéance** : part des vols **exigibles** dont les trolleys sont
-  disponibles au frigo handling avant `heure_std − délai de chargement`.
-  Ce n'est **pas** la ponctualité de départ de l'avion. Le dénominateur est
-  affiché ; un vol non terminé dont l'échéance est passée **compte comme en
-  retard** ; sans vol exigible, l'indicateur affiche **`n/a`** (et non 100 %).
-- **Retard moyen** sur les vols exigibles, inachevés compris.
-- **Débit plateaux/h** (robot) et **WIP** (en-cours) total.
-- **Charge (utilisation) par atelier** avec longueur de file.
-- **Courbe** débit & en-cours sur la journée (pics matin/soir visibles).
-- **Goulot courant** mis en évidence.
+Les positions sont enregistrées dans le navigateur. Exporter le JSON pour
+partager les modifications. Un simple déplacement ne retire plus le statut
+« emplacement à confirmer ». Les anciennes données enregistrées restent
+compatibles ; leur statut ne prouve pas une validation terrain. Un import de
+zones incorrect est refusé avant toute modification. Les zones restent des
+annotations : elles ne déterminent ni une capacité de stockage ni un temps de trajet.
 
-## 🎛️ Leviers what-if (effet immédiat)
+## Limites métier à traiter ensuite
 
-- **Effectif par atelier** (sliders).
-- **Cadence du robot** de dressage : 320 (actuel) → 420 (benchmark) → 520 (théorique).
-- **Nombre de tunnels de plonge** actifs + tunnel double vitesse.
-- **Décalage horaire** global des vols et **délai de chargement**.
-- **Comparaison de scénarios A vs B** sur les KPI clés.
-- **Import `vols.csv`** (schéma tolérant) et **export JSON** des résultats.
+- Cuisine J−2, prépa J−1 et exception CRL du soir produit le matin de J non intégrées.
+- Le moteur utilise encore le robot pour tous les YC. La règle réelle limite
+  son usage à l’économie FBU, TX/FWI et CRL ; les prestations exactes et SPML
+  restent à préciser.
+- Standards théoriques du classeur, effets de lot et non-linéarité non intégrés.
+- Stocks, retours utilisables, compétences, pauses et transferts physiques incomplets.
+- Les curseurs décrivent des personnes simultanées ; la convention heures / 7
+  produit un équivalent de charge, pas une affectation de personnel.
 
-> ⚠️ Les leviers modifient bien le comportement de la maquette, mais **aucun
-> chiffre produit ici n'est une prévision**. Les écarts observés entre deux
-> réglages reflètent les coefficients inventés du moteur, pas l'unité réelle.
-> De plus, les captures A/B enregistrent l'**état courant** et ne constituent
-> pas deux exécutions comparables (cf. feuille de route, étape 8).
+La prochaine étape consiste à connecter une chaîne de calcul validée à cette
+interface. Voir [l’audit d’usage](docs/AUDIT_INTERFACE.md) et le
+[journal des modifications](CHANGELOG.md). La
+[feuille de route commune](docs/FEUILLE_DE_ROUTE.md) reste la référence du projet.
 
-## 🧠 Modèle de simulation
+## Fichiers et vérification
 
-Moteur de flux à stations, alimenté par les **man-minutes** et les **données de
-vols** :
+| Fichier | Rôle |
+|---|---|
+| `index.html` | Structure et contrôles |
+| `interface.css` | Disposition, hiérarchie visuelle et adaptations mobile |
+| `sim.js` | Démonstrateur, plan, interactions et rendu |
+| `ui-model.js` | Import CSV, calcul des états et règles de présentation testables |
+| `assets/plan/` | Fond de plan existant |
+| `tests/ui-model.test.cjs` | Régressions de l’import et des indicateurs |
+| `tests/browser-smoke.cjs` | Parcours dans Chromium, export, édition et responsive |
 
-- Chaque vol génère des **OF** (ordres de fabrication) par classe (BC/PC/YC) et
-  par atelier.
-- Chaque atelier est une **station** de capacité = `effectif × disponibilité`
-  (consommation de man-minutes) ; une **file** se forme quand la demande dépasse
-  la capacité sur la fenêtre de temps → **goulot**.
-- Les **précédences** du graphe de flux sont respectées (Appros → Cuisine →
-  Prépa → Frigo handling → Piste, etc.).
-- Le **robot** est une ressource dédiée aux plateaux YC ; la **plonge** traite
-  les retours sales selon les tunnels actifs.
-- Un vol est **à l'heure** si ses trolleys atteignent le frigo handling avant
-  `heure_std − délai_chargement`.
+Tests purs, avec Node : `node --test tests/ui-model.test.cjs`.
 
-## 📝 Journal des modifications
-
-Chaque commit est documenté dans **[`CHANGELOG.md`](CHANGELOG.md)** : ce qui a
-changé et sur quels fichiers.
-
-## 🗂️ Structure
-
-| Fichier            | Rôle                                                          |
-|--------------------|---------------------------------------------------------------|
-| `index.html`       | Structure, thème et disposition (plan + dashboard + leviers)  |
-| `sim.js`           | Données d'exemple, moteur, rendu SVG, zoom, contrôles         |
-| `assets/plan/`     | Les 12 tuiles du plan d'architecte réel                       |
-| `docs/MAP_ORY.xlsx`| Carte source fournie par Newrest (référence)                  |
-| `docs/FEUILLE_DE_ROUTE.md` | Feuille de route et revue technique du projet         |
-| `CHANGELOG.md`     | Journal des modifications, commit par commit                  |
-
-Paramètres regroupés en tête de `sim.js` (bloc `CFG`) : cadence robot, tunnels,
-délai de chargement, effectifs, fenêtre de la journée.
-
-## 🚧 Suite prévue
-
-Voir **[`docs/FEUILLE_DE_ROUTE.md`](docs/FEUILLE_DE_ROUTE.md)**. Priorité :
-séparer le calcul de l'affichage, puis raccorder progressivement le modèle
-métier (données Winrest contrôlées, calendrier J−2/J−1/J, gammes et standards
-réels, ressources finies). Côté interface : éditeur de zones, replay des
-événements calculés par le moteur, indicateurs traçables.
+Tests navigateur, avec Playwright installé dans l’environnement de développement
+et Chromium disponible : `node tests/browser-smoke.cjs`. La variable optionnelle
+`CHROMIUM_EXECUTABLE_PATH` permet de choisir un exécutable Chromium existant.
+Les captures de contrôle sont écrites dans le dossier temporaire du système.
+Ces outils sont nécessaires uniquement aux tests, pas à l’application.

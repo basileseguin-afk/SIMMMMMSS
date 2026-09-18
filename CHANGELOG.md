@@ -5,6 +5,79 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-18 — Revue critique de l’interface et fiabilisation de sa lecture
+
+**Pourquoi :** l’écran privilégiait les curseurs au détriment du plan, ne
+permettait pas d’identifier les vols bloqués et présentait certains résultats
+de démonstration comme des indicateurs opérationnels.
+
+**Intégration :** cette refonte prolonge le commit `88ea4a9` de Claude. Son
+marquage de démonstration, la prise en compte des inachevés, le retard courant
+sur les dossiers exigibles et `docs/FEUILLE_DE_ROUTE.md` sont conservés. Le taux
+est désormais strictement limité aux échéances atteintes, même si un dossier
+futur est déjà terminé. Le retard des terminés est présenté séparément.
+
+**Interface et parcours :**
+- Plan agrandi avec un seul panneau contextuel : Suivi, Réglages et Données.
+- Bandeau de provenance du jeu chargé, statut Prototype et accès aux limites.
+- Indicateurs prioritaires en haut de page, sélection d’atelier depuis le plan,
+  une liste ou les barres, détail des OF dans le panneau Suivi.
+- Vue Suivi des vols : recherche, filtres, départ, échéance, statut de production
+  et opérations restantes ; état explicite lorsqu’aucun résultat ne correspond.
+- Mise en page adaptée aux petits écrans, focus visibles, commandes nommées,
+  zones activables au clavier et animations réduites selon la préférence système.
+- Édition du plan séparée de la lecture ; entrée en édition mettant en pause,
+  sortie annulant les tracés en cours et ne relançant pas le calcul.
+
+**Fiabilité des indications et interactions :**
+- Pourcentage de dossiers prêts à temps calculé sur les départs à échéance
+  atteinte, incluant les dossiers inachevés ; « — » sans échéance atteinte.
+- Compteur distinct des échéances dépassées avec dossier non prêt ; retard
+  moyen explicitement limité aux dossiers terminés.
+- Retrait des activités artificielles Magasin/Duty/Handling ; services non
+  calculés identifiés, curseurs sans effet désactivés.
+- Indice de charge renommé Pression indicative ; ordres en attente ou traitement
+  distingués d’une file d’attente pure. Échelles des deux courbes précisées.
+- Réglages figés pendant un essai, y compris en pause ; recommencer les libère.
+- Réinitialisation de l’accumulateur, du débit et de l’historique ; annulation
+  du callback d’animation lors d’une pause pour éviter plusieurs boucles actives.
+- Calcul par pas fixes de 30 secondes simulées, indépendants des images et de
+  la vitesse de lecture ; fin exactement à 23 h. Jetons toujours illustratifs.
+- Instantanés A/B renommés et horodatés ; entrées/configuration conservées,
+  heures différentes signalées, remise à zéro lors d’un changement de jeu.
+
+**Import, export et plan :**
+- Modèle CSV téléchargeable, en-têtes explicites, gestion des séparateurs et
+  guillemets, contrôles des horaires, quantités, sens et doublons.
+- Refus atomique avec erreurs détaillées ; absence d’horaire jamais remplacée
+  silencieusement. Taille maximale de 2 Mo et mention de l’absence d’import XLSX.
+- Confirmation avant remplacement d’un essai commencé ; rechargement de la démo.
+- Échappement des valeurs importées avant affichage HTML.
+- Export versionné avec provenance, entrées, configuration, statut de
+  démonstration, limites, instantanés et états des dossiers ; retard nul au sens
+  JSON (`null`) tant que le dossier n’est pas terminé.
+- Déplacement ou conversion d’une zone ne supprimant plus le statut À confirmer.
+- Validation atomique des géométries JSON ; sauvegardes locales invalides
+  signalées et retour aux positions par défaut.
+
+**Documentation et contrôle :** README réécrit pour décrire le comportement
+réel, audit d’usage ajouté, tests de non-régression Node et parcours Chromium.
+Les standards de travail, calendriers J−1/J−2, stocks et règles robot ne sont
+pas calibrés ou intégrés par ce changement ; cette limite est visible dans l’UI.
+
+| Fichier | Modification |
+|---|---|
+| `index.html` | Structure, parcours, vues et libellés |
+| `interface.css` | Hiérarchie visuelle, panneaux, responsive et accessibilité |
+| `sim.js` | Navigation, interactions, rendu, états, export, édition et boucle |
+| `ui-model.js` | Import CSV et règles de présentation testables |
+| `tests/ui-model.test.cjs` | Tests purs d’import et d’indicateurs |
+| `tests/browser-smoke.cjs` | Parcours navigateur et contrôles de présentation |
+| `README.md` | Utilisation, formats, limites et vérification |
+| `docs/AUDIT_INTERFACE.md` | Constats, corrections et limites de la revue |
+
+---
+
 ## 2026-09-17 — Marquage « démonstration » et correction du taux de service
 
 **Contexte :** revue technique externe (feuille de route ChatGPT/Astra,
