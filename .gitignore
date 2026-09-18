@@ -1,2 +1,20 @@
 .DS_Store
 node_modules/
+
+# ==========================================================================
+#  Données confidentielles — ne JAMAIS committer
+#  Le dépôt est public. Le plan de l'unité et les exports de vols se
+#  travaillent en local, dans les dossiers ci-dessous.
+# ==========================================================================
+plan-prive/
+prive/
+
+# classeurs et exports (plan, man-hours, Winrest…)
+*.xlsx
+*.xlsm
+*.xls
+
+# exports de vols
+vols*.csv
+*winrest*
+*Winrest*

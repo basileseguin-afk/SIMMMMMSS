@@ -43,10 +43,34 @@ sont servis tels quels.
 `https://raw.githack.com/basileseguin-afk/SIMMMMMSS/claude/factory-management-system-b1e0am/postes/index.html`
 (service tiers, pratique pour un essai, pas pour un usage durable).
 
-> ⚠️ **Le dépôt est public.** Le plan d'architecte de l'unité (`docs/MAP_ORY.xlsx`
-> et `assets/plan/`) y est donc accessible à tous, et activer Pages le rend
-> consultable dans un navigateur. À arbitrer : garder ainsi, rendre le dépôt
-> privé (Pages devient alors payant), ou sortir le plan du dépôt.
+> ⚠️ **Le dépôt est public.** Aucune donnée confidentielle ne doit y être
+> commitée — voir *Données confidentielles* ci-dessous.
+
+## 🔒 Données confidentielles
+
+Le dépôt est **public**. Le plan de l'unité et les exports de vols **n'y sont
+pas** et ne doivent jamais y être commités. Ils se travaillent en local.
+
+| Donnée | Où la mettre | État |
+|---|---|---|
+| Plan de l'unité (tuiles + classeur source) | `plan-prive/` | ignoré par Git |
+| Exports de vols, man-hours, tout classeur | `prive/` | ignoré par Git |
+
+`.gitignore` bloque `plan-prive/`, `prive/`, `*.xlsx`, `vols*.csv` et tout
+fichier contenant « winrest ».
+
+### Afficher le fond de plan
+
+Créez un dossier `plan-prive/` à la racine et déposez-y les 12 tuiles nommées
+`tuile1.png` … `tuile12.png`. Le fond apparaît alors automatiquement.
+
+**Sans ce dossier, l'application fonctionne normalement** : les zones, la
+simulation et les indicateurs sont inchangés, seul le fond d'architecte manque.
+La case *Fond de plan* est alors désactivée et signalée « (absent) ».
+
+Les **coordonnées** des zones et des tuiles restent dans le code : ce sont des
+nombres, pas le dessin. Les **vols embarqués sont fictifs** ; aucun export réel
+n'est présent dans ce dépôt.
 
 ## Parcours d’utilisation
 
@@ -153,7 +177,7 @@ interface. Voir [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `interface.css` | Disposition, hiérarchie visuelle et adaptations mobile |
 | `sim.js` | Démonstrateur, plan, interactions et rendu |
 | `ui-model.js` | Import CSV, calcul des états et règles de présentation testables |
-| `assets/plan/` | Fond de plan existant |
+| `plan-prive/` | Fond de plan **local, non versionné** (voir ci-dessous) |
 | `tests/ui-model.test.cjs` | Régressions de l’import et des indicateurs |
 | `tests/browser-smoke.cjs` | Parcours dans Chromium, export, édition et responsive |
 | `BUGS.md` | Registre des bugs connus — à lire avant de coder, à compléter après chaque revue |
