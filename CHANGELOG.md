@@ -5,6 +5,29 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-18 — Éditeur de postes : thème système, export et copie
+
+- **Thème** : sans choix explicite du visiteur, la préférence système
+  s'applique (bloc `prefers-color-scheme` en plus du marquage `data-theme`).
+  Le bouton reflète le thème réellement affiché au lieu d'en imposer un.
+- **Hauteur** en `100%` plutôt que `100vh`, pour respecter les marges de
+  sécurité sur mobile.
+- **Export** : passe par la capacité `downloads` de la plateforme quand la
+  page est publiée (le téléchargement direct y est inerte), et retombe sur le
+  téléchargement classique en local. Un refus du visiteur n'affiche pas
+  d'erreur.
+- **Nouveau bouton « Copier le JSON »**, qui fonctionne partout — pratique
+  pour transmettre une bibliothèque sans passer par un fichier.
+
+| Fichier | Modification |
+|---|---|
+| `postes/postes.css` | Bloc sombre pour la préférence système, hauteur `100%` |
+| `postes/postes.js` | `themeAffiche`/`majBoutonTheme`, export via `downloads` avec repli, copie presse-papiers |
+| `postes/index.html` | Bouton « Copier le JSON » |
+| `CHANGELOG.md` | Cette entrée |
+
+---
+
 ## 2026-09-18 — Éditeur de postes de travail (trame 50 cm)
 
 **Pourquoi :** préparer la finalité du projet — composer le plan de l'unité à

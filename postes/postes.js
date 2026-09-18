@@ -383,25 +383,72 @@ document.getElementById('zoom-fit').addEventListener('click', () => { zoom = 34;
 document.getElementById('new-table').addEventListener('click', () => { const m = nouveauModele('table'); biblio.push(m); selId = m.id; tout(); });
 document.getElementById('new-tapis').addEventListener('click', () => { const m = nouveauModele('tapis'); biblio.push(m); selId = m.id; tout(); });
 
+function themeAffiche() {
+  const stamp = document.documentElement.getAttribute('data-theme');
+  if (stamp === 'dark' || stamp === 'light') return stamp;
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+function majBoutonTheme() {
+  const b = document.getElementById('btn-theme');
+  const sombre = themeAffiche() === 'dark';
+  b.textContent = sombre ? '☀️' : '🌙';
+  b.title = sombre ? 'Passer en thème clair' : 'Passer en thème sombre';
+}
 function appliquerTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
-  document.getElementById('btn-theme').textContent = t === 'dark' ? '☀️' : '🌙';
   try { localStorage.setItem('orly-theme', t); } catch (e) { /* indisponible */ }
+  majBoutonTheme();
 }
 document.getElementById('btn-theme').addEventListener('click', () => {
-  appliquerTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  appliquerTheme(themeAffiche() === 'dark' ? 'light' : 'dark');
 });
-let themeInitial = 'light';
-try { themeInitial = localStorage.getItem('orly-theme') || 'light'; } catch (e) { /* indisponible */ }
-appliquerTheme(themeInitial);
+// Sans choix explicite, on ne marque rien : la préférence système s'applique
+// via la media query, et le bouton reflète le thème réellement affiché.
+let themeStocke = null;
+try { themeStocke = localStorage.getItem('orly-theme'); } catch (e) { /* indisponible */ }
+if (themeStocke === 'dark' || themeStocke === 'light') appliquerTheme(themeStocke);
+else majBoutonTheme();
 
-document.getElementById('btn-export').addEventListener('click', () => {
-  const data = { format:'ory-postes', version:1, carreauCm:CELL_CM,
+function donneesExport() {
+  return { format:'ory-postes', version:1, carreauCm:CELL_CM,
     avertissement:'Géométrie et affectations. Les débits sont des hypothèses, pas des mesures du site.',
     modeles:biblio };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
+}
+
+/* Enregistrement. Sur une page publiée, le téléchargement direct est inerte :
+ * on passe par la capacité « downloads » de la plateforme. En local (fichier
+ * ouvert depuis le dépôt), on retombe sur le téléchargement classique. */
+async function exporter() {
+  const texte = JSON.stringify(donneesExport(), null, 2);
+  let dl = null;
+  try { dl = (window.claude && window.claude.use) ? await window.claude.use('downloads') : null; }
+  catch (e) { dl = null; }
+
+  if (dl) {
+    try { await dl.save({ filename:'ory-postes.json', data:texte }); }
+    catch (e) {
+      if (e && e.code === 'declined') return;              // refus : on n'insiste pas
+      alert('Enregistrement impossible (' + ((e && e.code) || 'erreur') + '). Utilisez « Copier le JSON ».');
+    }
+    return;
+  }
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = 'ory-postes.json'; a.click();
+  a.href = URL.createObjectURL(new Blob([texte], { type:'application/json' }));
+  a.download = 'ory-postes.json'; a.click();
+}
+document.getElementById('btn-export').addEventListener('click', exporter);
+
+document.getElementById('btn-copier').addEventListener('click', async () => {
+  const texte = JSON.stringify(donneesExport(), null, 2);
+  const btn = document.getElementById('btn-copier');
+  const dire = m => { btn.textContent = m; setTimeout(() => { btn.textContent = '📋 Copier le JSON'; }, 1600); };
+  try { await navigator.clipboard.writeText(texte); dire('✓ Copié'); }
+  catch (e) {
+    const ta = document.createElement('textarea');
+    ta.value = texte; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); dire('✓ Copié'); } catch (e2) { dire('Copie impossible'); }
+    ta.remove();
+  }
 });
 
 document.getElementById('btn-import').addEventListener('click', e => e.stopPropagation());
