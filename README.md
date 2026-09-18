@@ -13,6 +13,65 @@ Ouvrir `index.html` dans un navigateur récent. Aucun serveur, aucune installati
 et aucune dépendance réseau ne sont nécessaires à l’utilisation. Conserver les
 fichiers JavaScript, CSS et le dossier `assets` à côté du HTML.
 
+## 🌐 Ouvrir l'application depuis GitHub (sans rien télécharger)
+
+Le dépôt est **public** et sa branche par défaut est la branche de travail :
+**GitHub Pages** peut donc le servir tel quel. À activer une seule fois :
+
+> **Settings** → **Pages** → *Build and deployment* → Source : **Deploy from a
+> branch** → Branch : `claude/factory-management-system-b1e0am` → dossier
+> `/ (root)` → **Save**. Le site est en ligne au bout d'une minute environ.
+
+Ensuite, chaque `push` republie automatiquement. Les adresses :
+
+| Page | Adresse |
+|---|---|
+| **Accueil** (point d'entrée, à mettre en favori) | `https://basileseguin-afk.github.io/SIMMMMMSS/accueil.html` |
+| Simulateur des flux | `https://basileseguin-afk.github.io/SIMMMMMSS/` |
+| Éditeur de postes de travail | `https://basileseguin-afk.github.io/SIMMMMMSS/postes/` |
+
+Pour ouvrir **n'importe quel autre fichier**, reprenez son chemin sur GitHub et
+remplacez `github.com/basileseguin-afk/SIMMMMMSS/blob/<branche>/` par
+`basileseguin-afk.github.io/SIMMMMMSS/`. Un dossier contenant un `index.html`
+s'ouvre sans nommer le fichier.
+
+Le fichier `.nojekyll` à la racine désactive le traitement Jekyll : les fichiers
+sont servis tels quels.
+
+**Sans activer Pages**, pour ouvrir un fichier ponctuellement, remplacez
+`github.com` par `raw.githack.com` et `/blob/` par rien :
+`https://raw.githack.com/basileseguin-afk/SIMMMMMSS/claude/factory-management-system-b1e0am/postes/index.html`
+(service tiers, pratique pour un essai, pas pour un usage durable).
+
+> ⚠️ **Le dépôt est public.** Aucune donnée confidentielle ne doit y être
+> commitée — voir *Données confidentielles* ci-dessous.
+
+## 🔒 Données confidentielles
+
+Le dépôt est **public**. Le plan de l'unité et les exports de vols **n'y sont
+pas** et ne doivent jamais y être commités. Ils se travaillent en local.
+
+| Donnée | Où la mettre | État |
+|---|---|---|
+| Plan de l'unité (tuiles + classeur source) | `plan-prive/` | ignoré par Git |
+| Exports de vols, man-hours, tout classeur | `prive/` | ignoré par Git |
+
+`.gitignore` bloque `plan-prive/`, `prive/`, `*.xlsx`, `vols*.csv` et tout
+fichier contenant « winrest ».
+
+### Afficher le fond de plan
+
+Créez un dossier `plan-prive/` à la racine et déposez-y les 12 tuiles nommées
+`tuile1.png` … `tuile12.png`. Le fond apparaît alors automatiquement.
+
+**Sans ce dossier, l'application fonctionne normalement** : les zones, la
+simulation et les indicateurs sont inchangés, seul le fond d'architecte manque.
+La case *Fond de plan* est alors désactivée et signalée « (absent) ».
+
+Les **coordonnées** des zones et des tuiles restent dans le code : ce sont des
+nombres, pas le dessin. Les **vols embarqués sont fictifs** ; aucun export réel
+n'est présent dans ce dépôt.
+
 ## Parcours d’utilisation
 
 1. **Données** : consulter les limites du moteur, télécharger le modèle CSV ou
@@ -111,7 +170,8 @@ imports, sauvegardes et limites.
   produit un équivalent de charge, pas une affectation de personnel.
 
 La prochaine étape consiste à connecter une chaîne de calcul validée à cette
-interface. Voir [l’audit d’usage](docs/AUDIT_INTERFACE.md) et le
+interface. Voir [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
+[registre des bugs](BUGS.md) et le
 [journal des modifications](CHANGELOG.md). La
 [feuille de route commune](docs/FEUILLE_DE_ROUTE.md) reste la référence du projet.
 
@@ -124,9 +184,11 @@ interface. Voir [l’audit d’usage](docs/AUDIT_INTERFACE.md) et le
 | `sim.js` | Démonstrateur, plan, interactions et rendu |
 | `plan-editor.js` / `editor.css` | Dessin, annotations, historique et sauvegarde du plan |
 | `ui-model.js` | Import CSV, calcul des états et règles de présentation testables |
-| `assets/plan/` | Fond de plan existant |
+| `plan-prive/` | Fond de plan **local, non versionné** (voir ci-dessous) |
 | `tests/ui-model.test.cjs` | Régressions de l’import et des indicateurs |
 | `tests/browser-smoke.cjs` | Parcours dans Chromium, export, édition et responsive |
+| `BUGS.md` | Registre des bugs connus — à lire avant de coder, à compléter après chaque revue |
+| `postes/` | Éditeur de postes de travail sur trame 50 cm (outil indépendant) |
 
 Tests purs, avec Node : `node --test tests/*test.cjs`.
 
