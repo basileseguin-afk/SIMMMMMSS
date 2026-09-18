@@ -5,6 +5,26 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-18 — Page d'accueil des applications
+
+GitHub Pages est **activé** et le déploiement est **passé** (« pages build and
+deployment », conclusion `success`, sur le commit `b8e34a4`). Vérifié via
+l'historique des exécutions GitHub : le proxy de l'environnement de
+développement bloque `github.io`, les adresses n'ont donc pas pu être testées
+par requête directe.
+
+Ajout de **`accueil.html`** : un point d'entrée unique listant les
+applications, avec la règle pour ouvrir n'importe quel autre fichier du dépôt
+et le rappel que le dépôt est public. Un seul lien à mettre en favori.
+
+| Fichier | Modification |
+|---|---|
+| `accueil.html` | **Nouveau** — point d'entrée des applications |
+| `README.md` | Adresse de l'accueil et règle de conversion des chemins |
+| `CHANGELOG.md` | Cette entrée |
+
+---
+
 ## 2026-09-18 — Ouverture des applications depuis GitHub
 
 Pour éviter de télécharger et dézipper le dépôt à chaque essai : mode d'emploi

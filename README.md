@@ -24,10 +24,16 @@ Le dépôt est **public** et sa branche par défaut est la branche de travail :
 
 Ensuite, chaque `push` republie automatiquement. Les adresses :
 
-| Application | Adresse |
+| Page | Adresse |
 |---|---|
+| **Accueil** (point d'entrée, à mettre en favori) | `https://basileseguin-afk.github.io/SIMMMMMSS/accueil.html` |
 | Simulateur des flux | `https://basileseguin-afk.github.io/SIMMMMMSS/` |
 | Éditeur de postes de travail | `https://basileseguin-afk.github.io/SIMMMMMSS/postes/` |
+
+Pour ouvrir **n'importe quel autre fichier**, reprenez son chemin sur GitHub et
+remplacez `github.com/basileseguin-afk/SIMMMMMSS/blob/<branche>/` par
+`basileseguin-afk.github.io/SIMMMMMSS/`. Un dossier contenant un `index.html`
+s'ouvre sans nommer le fichier.
 
 Le fichier `.nojekyll` à la racine désactive le traitement Jekyll : les fichiers
 sont servis tels quels.
