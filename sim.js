@@ -370,7 +370,7 @@ function construirePlan() {
   redessinerEdges();
 
   // Stockages / chambres froides (repris du plan, sous les ateliers)
-  const gSto = svgEl('g', {}); gVue.appendChild(gSto);
+  const gSto = svgEl('g', {id:'plan-storages'}); gVue.appendChild(gSto);
   STORAGES.forEach(s => {
     const g = svgEl('g', { class:'sto sto-' + s.cat });
     g.appendChild(svgEl('rect', { x:s.x, y:s.y, width:s.w, height:s.h, rx:8 }));
@@ -457,6 +457,7 @@ function appliquerVue() {
   svg.classList.toggle('zoomed', vk >= 1.7);
   const z = document.getElementById('zoom-val'); if (z) z.textContent = Math.round(vk*100) + '%';
   majPoignees();
+  if(Sim.editor)Sim.editor.renderCanvas();
 }
 function ptSvg(e) {
   const m = svg.getScreenCTM(); if (!m) return { x:0, y:0 };
@@ -590,6 +591,7 @@ function initInteractions() {
 
   svg.addEventListener('dblclick', e => { if (tracagePoly) { e.preventDefault(); finirTracePoly(); } });
   window.addEventListener('keydown', e => {
+    if(editMode&&Sim.editor)return;
     if (e.key === 'Escape' && tracagePoly) { tracePts = null; dessinerTracePoly(null); tracagePoly = false; svg.classList.remove('tracage'); majChampsEdition(); }
     if (e.key === 'Enter' && tracagePoly) finirTracePoly();
   });
@@ -744,20 +746,14 @@ function appliquerGeom(o, silencieux) {
 }
 
 function basculerEdition() {
-  editMode = !editMode;
+  editMode=!editMode;
   if(editMode){pause();showView('plan');}
-  else {tracage=false;tracagePoly=false;tracePts=null;dessinerTracePoly(null);dessinerTrace(null);svg.classList.remove('tracage');}
+  svg.classList.toggle('edition',editMode);
   document.body.classList.toggle('editing',editMode);
   document.getElementById('btn-edit').setAttribute('aria-pressed',String(editMode));
+  document.getElementById('btn-edit').textContent=editMode?'Terminer l’édition':'Éditer les zones';
   document.getElementById('btn-play').disabled=editMode;
-  svg.classList.toggle('edition', editMode);
-  document.getElementById('panneau-edition').hidden = !editMode;
-  const b = document.getElementById('btn-edit');
-  b.classList.toggle('on', editMode);
-  b.textContent = editMode ? '✓ Terminer l\'édition' : '✏️ Éditer les zones';
-  if (editMode && !selection) selectionner(Object.keys(ZONES)[0]);
-  if(editMode && window.innerWidth<=760)document.getElementById('panneau-edition').scrollIntoView({block:'start'});
-  majPoignees(); majChampsEdition(); majListeEdition(); updateRunState();
+  Sim.editor.setActive(editMode);updateRunState();
 }
 
 function majListeEdition() {
@@ -793,72 +789,16 @@ function majChampsEdition() {
 }
 
 function initEdition() {
-  document.getElementById('btn-edit').addEventListener('click', basculerEdition);
-
-  [['ez-x','x'],['ez-y','y'],['ez-w','w'],['ez-h','h']].forEach(([el,k]) => {
-    document.getElementById(el).addEventListener('input', e => {
-      if (!selection) return;
-      const v = parseFloat(e.target.value); if (!isFinite(v)) return;
-      const z = ZONES[selection], nb = boite(z);
-      nb[k] = (k === 'w' || k === 'h') ? Math.max(60, v) : v;
-      appliquerBoite(z, nb); /* Geometry changes do not establish operational validation. */
-      positionnerZone(selection); redessinerEdges(); majPoignees(); sauvegarderZones();
-    });
+  Sim.editor=new window.OrlyPlan.PlanEditor({
+    svg,viewport:Sim._gVue,zones:ZONES,storages:STORAGES,notify:toast,
+    update(id,visible){positionnerZone(id);zoneEls[id].titre.textContent=ZONES[id].nom;zoneEls[id].g.setAttribute('aria-label',ZONES[id].nom);zoneEls[id].g.style.display=visible?'':'none';},
+    refresh(){redessinerEdges();document.querySelectorAll('#zone-picker option').forEach(o=>{if(ZONES[o.value])o.textContent=ZONES[o.value].nom;});},
+    getView(){return {vk,vtx,vty};},
+    pan(v,dx,dy){const m=svg.getScreenCTM();vtx=v.vtx+dx/m.a;vty=v.vty+dy/m.d;vk=v.vk;appliquerVue();},
+    focus(b){vk=Math.min(8,Math.max(.5,Math.min(VUE.w/(b.w+150),VUE.h/(b.h+150))*.8));vtx=VUE.x+VUE.w/2-(b.x+b.w/2)*vk;vty=VUE.y+VUE.h/2-(b.y+b.h/2)*vk;appliquerVue();}
   });
-
-  document.getElementById('ez-redraw').addEventListener('click', () => {
-    if (!selection) return;
-    tracage = true; svg.classList.add('tracage');
-    toast('Tracez le rectangle de « ' + ZONES[selection].nom +' »');
-  });
-  document.getElementById('ez-poly').addEventListener('click', () => {
-    if (!selection) return;
-    tracagePoly = true; tracePts = null; tracage = false;
-    svg.classList.add('tracage');
-    toast('Cliquez les sommets · double-clic ou Entrée pour fermer · Échap pour annuler');
-  });
-  document.getElementById('ez-toshape').addEventListener('click', () => {
-    if (!selection) return;
-    const z = ZONES[selection];
-    if (estPoly(z)) versRectangle(z); else versPolygone(z);
-    /* Geometry changes do not establish operational validation. */ majApresEdition();
-  });
-  document.getElementById('ez-reset').addEventListener('click', () => {
-    if (!selection) return;
-    delete ZONES[selection].pts;
-    Object.assign(ZONES[selection], ZONES_DEFAUT[selection]);
-    majApresEdition(); toast('Zone réinitialisée');
-  });
-  document.getElementById('ez-reset-all').addEventListener('click', () => {
-    if (!confirm('Réinitialiser toutes les zones à leur position d\'origine ?')) return;
-    Object.keys(ZONES).forEach(id => delete ZONES[id].pts);
-    appliquerGeom(ZONES_DEFAUT, true); sauvegarderZones(); toast('Zones réinitialisées');
-  });
-
-  document.getElementById('ez-copy').addEventListener('click', async () => {
-    const txt = JSON.stringify(geomZones(), null, 2);
-    try { await navigator.clipboard.writeText(txt); toast('JSON copié'); }
-    catch (e) {
-      const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta);
-      ta.select(); try { document.execCommand('copy'); toast('JSON copié'); } catch (e2) { toast('Copie impossible — utilisez Exporter'); }
-      ta.remove();
-    }
-  });
-  document.getElementById('ez-export').addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify(geomZones(), null, 2)], { type:'application/json' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = 'newrest-orly-zones.json'; a.click(); toast('zones exportées');
-  });
-  document.getElementById('ez-import').addEventListener('change', e => {
-    const f = e.target.files[0]; if (!f) return;
-    const rd = new FileReader();
-    rd.onload = () => {
-      try { appliquerGeom(JSON.parse(rd.result)); sauvegarderZones(); }
-      catch (err) { toast('Import refusé : '+err.message); }
-      finally { e.target.value=''; }
-    };
-    rd.readAsText(f);
-  });
+  document.getElementById('plan-storages').style.display='none';
+  document.getElementById('btn-edit').addEventListener('click',basculerEdition);
 }
 
 function spawnToken(edgeId, color) {
@@ -913,6 +853,7 @@ function majDashboard() {
   });
   box.querySelectorAll('[data-station]').forEach(b=>{
     const id=b.dataset.station,st=stations[id],u=Math.min(1,st.util),unmodeled=NON_MODELISES.has(id);
+    b.querySelector('.haut>span').firstChild.textContent=ZONES[id].nom;
     b.classList.toggle('active',id===selection);b.setAttribute('aria-pressed',String(id===selection));
     b.querySelector('b').textContent=unmodeled?'Non simulé':now===CFG.jour.debut?'—':Math.round(u*100)+' %';
     b.querySelector('.badge-q').textContent=st.qlen?' · '+st.qlen+' OF':'';
