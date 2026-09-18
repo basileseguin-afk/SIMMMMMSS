@@ -22,3 +22,7 @@ assets/
 vols*.csv
 *winrest*
 *Winrest*
+
+# Procédés : seul l'exemple fictif est publié, le procédé réel reste local
+moteur/procede-*.json
+!moteur/procede-exemple.json

@@ -56,8 +56,9 @@ pas** et ne doivent jamais y être commités. Ils se travaillent en local.
 | Plan de l'unité (tuiles + classeur source) | `plan-prive/` | ignoré par Git |
 | Exports de vols, man-hours, tout classeur | `prive/` | ignoré par Git |
 
-`.gitignore` bloque `plan-prive/`, `prive/`, `*.xlsx`, `vols*.csv` et tout
-fichier contenant « winrest ».
+`.gitignore` bloque `plan-prive/`, `prive/`, `*.xlsx`, `vols*.csv`, tout fichier
+contenant « winrest » et tout `moteur/procede-*.json` autre que l’exemple
+fictif.
 
 ### Afficher le fond de plan
 
@@ -173,14 +174,16 @@ La prochaine étape consiste à connecter une chaîne de calcul validée à cett
 interface. L’**[étude des moteurs open source](docs/ETUDE_OPEN_SOURCE.md)**
 compare SimPy, ProdSim, uia-simjs et salabim, explique pourquoi le moteur
 actuel ne détecte pas les vrais goulots et propose le chemin de remplacement.
-Ses deux premières étapes sont faites : `moteur/noyau.js` fournit le cœur à
-événements discrets, `moteur/ressources.js` et `moteur/mesure.js` ajoutent les
-postes à places, les tampons bloquants et les statistiques pondérées par le
-temps. Un test chiffre le gain : à débit et production identiques, un tampon
-d’une place immobilise le poste amont **41 minutes au lieu de 10** — c’est le
-blocage amont, le mécanisme de goulot que le moteur actuel ne sait pas
-produire. **`sim.js` est inchangé** : le branchement attend la description du
-procédé en données (étape 3).
+Ses trois étapes sont faites : `moteur/noyau.js` fournit le cœur à événements
+discrets, `moteur/ressources.js` et `moteur/mesure.js` les postes à places, les
+tampons bloquants et les statistiques pondérées par le temps, `moteur/procede.js`
+la description de la gamme en données — voir le **[guide du procédé](docs/PROCEDE.md)**.
+Un test chiffre le gain : à débit et production identiques, un tampon d’une
+place immobilise le poste amont **41 minutes au lieu de 10** — c’est le blocage
+amont, le mécanisme de goulot que le moteur actuel ne sait pas produire.
+**`sim.js` est inchangé** : le raccordement à l’interface demande le programme
+de vols traduit en sources et le procédé réel de l’unité, qui se travaillent en
+privé.
 Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 [registre des bugs](BUGS.md) et le
 [journal des modifications](CHANGELOG.md). La
@@ -198,11 +201,14 @@ Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `moteur/noyau.js` | Noyau à événements discrets (étape 1) — **pas encore branché sur l’interface** |
 | `moteur/mesure.js` | Moniteurs de niveau (pondérés par le temps) et de comptage |
 | `moteur/ressources.js` | Postes à places, tampons bloquants, niveaux (étape 2) |
+| `moteur/procede.js` | Procédé décrit en données : validation, tirages à graine, exécution (étape 3) |
+| `moteur/procede-exemple.json` | Procédé **fictif** publiable — voir [le guide](docs/PROCEDE.md) |
 | `plan-prive/` | Fond de plan **local, non versionné** (voir ci-dessous) |
 | `tests/ui-model.test.cjs` | Régressions de l’import et des indicateurs |
 | `tests/noyau.test.cjs` | Régressions du noyau : ordre, horloge, conditions, interruptions, erreurs |
 | `tests/mesure.test.cjs` | Régressions des moniteurs : pondération par le temps, percentiles |
 | `tests/ressources.test.cjs` | Régressions des ressources, dont la démonstration du blocage amont |
+| `tests/procede.test.cjs` | Régressions du procédé : validation, reproductibilité, goulot mesuré |
 | `tests/browser-smoke.cjs` | Parcours dans Chromium, export, édition et responsive |
 | `BUGS.md` | Registre des bugs connus — à lire avant de coder, à compléter après chaque revue |
 | `postes/` | Éditeur de postes de travail sur trame 50 cm (outil indépendant) |

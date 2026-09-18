@@ -5,6 +5,57 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-18 — Étape 3 : le procédé décrit en données
+
+La gamme n'est plus codée en dur : c'est un fichier JSON validé, exécutable et
+reproductible. **`sim.js` est toujours inchangé** — le raccordement à
+l'interface demande des informations métier qui se travaillent en privé.
+
+| Fichier | Changement |
+|---|---|
+| `moteur/procede.js` | **nouveau** — `Aleas` (tirages à graine), `validerProcede`, `Procede.simuler()` |
+| `moteur/procede-exemple.json` | **nouveau** — procédé **fictif** publiable, 4 postes, 3 produits |
+| `docs/PROCEDE.md` | **nouveau** — guide du format |
+| `tests/procede.test.cjs` | **nouveau** — 14 régressions |
+| `.gitignore` | refuse tout `moteur/procede-*.json` autre que l'exemple |
+| `docs/ETUDE_OPEN_SOURCE.md`, `README.md` | avancement, fichiers, guide |
+
+Quatre listes de même longueur décrivent une gamme, une case par étape :
+`poste`, `operation`, `quantite`, `composants`. L'invariant est vérifié au
+chargement.
+
+Trois écarts assumés par rapport à ProdSim : `quantite` (lot) et `composants`
+(nomenclature) sont séparés au lieu d'un unique champ `demand` surchargé ; la
+validation rassemble **toutes** les anomalies avant de refuser le fichier ; les
+tirages passent par un générateur à graine, si bien qu'à graine égale deux
+exécutions donnent exactement le même résultat — un test compare deux résultats
+complets.
+
+Un contrôle évite un blocage certain : un lot ne peut pas être plus grand que
+le tampon du poste, sinon les unités s'y accumulent sans jamais atteindre le
+compte.
+
+**Deux défauts du validateur trouvés par les tests et corrigés avant le
+commit** : une anomalie sur les postes court-circuitait tout le contrôle des
+gammes, et un poste inconnu faisait sauter les contrôles du reste de l'étape.
+Les deux contredisaient l'intention annoncée — tout signaler d'un coup.
+
+L'exemple fictif, sur 240 minutes : `dressage` occupé à 98,2 % et bloquant son
+amont 20,5 % du temps, 312 plateaux terminés, traversée moyenne 31,5 min pour
+5,8 min d'opérations. Le goulot est désigné par la mesure, sans seuil choisi à
+la main — à comparer avec `goulotCourant()` de `sim.js` et ses `0,55` et `4`.
+
+Confidentialité : seul l'exemple fictif est publié ; vérifié qu'un
+`moteur/procede-ory.json` est invisible pour Git et que l'exemple reste visible.
+
+Limite connue, écrite dans le code et le guide : une place est prise avant les
+unités et les composants, donc une rupture durable de composant immobilise les
+places au lieu de ralentir. Comportement de ProdSim, voulu.
+
+Tests : 62 unitaires, tous au vert. Parcours navigateur au vert.
+
+---
+
 ## 2026-09-18 — Étape 2 : ressources, tampons, niveaux et mesure
 
 **`sim.js` est inchangé.** Le nouveau moteur a maintenant de quoi exprimer un

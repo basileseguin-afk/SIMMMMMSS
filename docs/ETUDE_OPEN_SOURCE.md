@@ -475,9 +475,92 @@ avant les deux autres avec un message explicite plutôt qu'un `undefined`.
 données : tant que la gamme est codée en dur, brancher le nouveau moteur
 reviendrait à réécrire `sim.js` à la main au lieu de le nourrir.
 
-### Étape 3 — à faire
+### Étape 3 — le procédé en données : **faite** (14 tests)
 
-`moteur/procede.json` et son chargeur : postes avec `capacite` et `tampon`,
-produits avec les listes alignées `poste` / `operation` / `quantite` /
-`composants`, convention de distribution `["f", x]` / `["n", moyenne, ecart]`.
-Puis le branchement sur l'interface. Voir le § 4.
+`moteur/procede.js` et `moteur/procede-exemple.json`. Le format complet est
+décrit dans le **[guide du procédé](PROCEDE.md)** ; l'essentiel tient en ceci :
+quatre listes de même longueur, une case par étape.
+
+```json
+"poste":      ["prepa_froide",   "dressage",      "controle"],
+"operation":  [["n", 0.9, 0.15], ["n", 4.5, 0.5], ["f", 0.35]],
+"quantite":   [1,                6,               12],
+"composants": [[{ "produit": "barquette", "quantite": 1 }], [], []]
+```
+
+Le procédé cesse d'être codé en dur dans `sim.js` : il devient une donnée qu'on
+relit, qu'on discute et qu'on corrige sans toucher au moteur.
+
+**Trois écarts assumés par rapport à ProdSim :**
+
+1. ProdSim surcharge un unique champ `demand`, tantôt taille de lot, tantôt
+   quantités de composants selon qu'on y met un nombre ou une liste. Ici
+   `quantite` est le lot et `composants` la nomenclature. Une liste nommée vaut
+   mieux qu'une position à deviner.
+2. La validation **rassemble toutes les anomalies** avant de refuser le
+   fichier, comme l'import CSV de l'interface. Corriger un procédé une faute à
+   la fois est une perte de temps.
+3. Les tirages passent par un générateur à graine : **à graine égale, deux
+   exécutions donnent exactement le même résultat**. Sans cela, comparer deux
+   scénarios ne voudrait rien dire, l'écart pouvant venir du hasard. Un test le
+   vérifie en comparant deux résultats complets.
+
+Un contrôle mérite d'être cité, parce qu'il évite un blocage certain plutôt
+qu'un simple message : **un lot ne peut pas être plus grand que le tampon du
+poste**, sinon les unités s'y accumulent sans jamais atteindre le compte.
+
+#### Ce que l'exemple montre
+
+`moteur/procede-exemple.json` — fictif, publiable — décrit quatre postes et
+trois produits. Sur 240 minutes :
+
+| Poste | Places | Occupation | Tampon moyen | Bloque l'amont |
+|---|---:|---:|---:|---:|
+| decontamination | 2 | 10,9 % | 1,8 / 40 | 0 % |
+| prepa_froide | 2 | 82,2 % | 7,4 / 60 | 0 % |
+| **dressage** | 1 | **98,2 %** | 26,9 / 36 | **20,5 %** |
+| controle | 1 | 3,8 % | 3,0 / 24 | 0 % |
+
+312 plateaux terminés, traversée moyenne **31,5 minutes** pour un produit dont
+les opérations totalisent 5,8 minutes. Le reste est de l'attente.
+
+Le goulot est **désigné par la mesure** : le poste dont l'occupation ou le
+blocage aval est le plus élevé, avec sa cause. Aucun seuil choisi à la main,
+aucune heuristique — à comparer avec `goulotCourant()` de `sim.js`, qui
+compare un lissage à `0,55` et une longueur de file à `4`.
+
+Les 82,2 % de `prepa_froide` se lisent correctement : ce poste ne travaille pas
+82 % du temps, il **tient sa place** 82 % du temps, dont une partie à attendre
+que le tampon du dressage se libère.
+
+#### Confidentialité
+
+Seul l'exemple fictif est publié. `.gitignore` refuse désormais tout
+`moteur/procede-*.json` autre que lui, et le procédé réel se travaille dans
+`prive/`. Vérifié : un `moteur/procede-ory.json` est invisible pour Git,
+l'exemple reste visible.
+
+#### Limite connue
+
+Une place est prise **avant** les unités et les composants : un opérateur
+occupe son poste pendant qu'il rassemble son lot, ce qui décrit fidèlement un
+poste tenu. Conséquence : une rupture durable de composant immobilise les
+places concernées au lieu de simplement ralentir. C'est le comportement de
+ProdSim, il est voulu, et il est écrit dans le code et dans le guide.
+
+### Ce qu'il reste : le branchement sur l'interface
+
+Les trois couches sont là et testées. Ce qui manque est le raccordement, et il
+pose des questions qui ne sont plus techniques :
+
+- **traduire le programme de vols en sources** — la forme `calendrier` existe
+  pour ça, mais le passage d'un vol à des unités de production suppose les
+  règles métier (prestations par classe, robot limité à certaines compagnies,
+  cuisine J−2) qui restent à préciser ;
+- **écrire le procédé réel de l'unité**, en privé, avec les capacités et les
+  contenances de tampon réelles — que je ne peux pas inventer ;
+- **remplacer `step(dt)`** par `env.avancerA(now + dt)` et brancher le rendu
+  sur les moniteurs au lieu des tableaux recalculés à chaque image.
+
+Les deux premiers points demandent des informations que seul l'exploitant a.
+C'est là que l'étude s'arrête et que le travail en privé commence.
