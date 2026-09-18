@@ -5,6 +5,44 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-18 — Retrait du plan de l'unité du dépôt public
+
+Le dépôt est public : le plan de l'unité ne doit pas y figurer. Il se
+travaillera en privé, comme les exports de vols.
+
+- **Supprimés du suivi Git** : `docs/MAP_ORY.xlsx` et les 12 tuiles
+  `assets/plan/tuile*.png`.
+- Le simulateur charge désormais le fond depuis **`plan-prive/`**, dossier
+  local ignoré par Git. **Sans ce dossier, l'application fonctionne
+  normalement** : zones, simulation et indicateurs inchangés ; la case
+  *Fond de plan* est désactivée et signalée « (absent) ».
+- **`.gitignore`** bloque `plan-prive/`, `prive/`, `*.xlsx`, `vols*.csv` et
+  tout fichier contenant « winrest ».
+- README : section *Données confidentielles*, et marche à suivre pour
+  réafficher le fond en local.
+
+**Vérifié** dans les deux cas : avec le plan en local il s'affiche ; sans lui,
+les 11 zones restent dessinées, la simulation tourne et aucune erreur n'est
+levée.
+
+**Aucun export de vols réel n'était présent** dans le dépôt : les vols
+embarqués sont fictifs. Les coordonnées des zones et des tuiles restent dans
+le code — ce sont des nombres, pas le dessin.
+
+> ⚠️ **Cette suppression ne purge pas l'historique Git.** Les fichiers restent
+> accessibles dans les commits antérieurs d'un dépôt public. Voir la note dans
+> le README pour les options (réécriture d'historique, ou dépôt privé).
+
+| Fichier | Modification |
+|---|---|
+| `docs/MAP_ORY.xlsx`, `assets/plan/*` | **Supprimés** du dépôt |
+| `.gitignore` | Règles pour les données confidentielles |
+| `sim.js` | Fond chargé depuis `plan-prive/`, absence gérée proprement |
+| `README.md` | Section *Données confidentielles* |
+| `CHANGELOG.md` | Cette entrée |
+
+---
+
 ## 2026-09-18 — Page d'accueil des applications
 
 GitHub Pages est **activé** et le déploiement est **passé** (« pages build and
