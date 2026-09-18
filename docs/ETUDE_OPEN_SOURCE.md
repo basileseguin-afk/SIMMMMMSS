@@ -377,7 +377,107 @@ noyau seul ne sait pas exprimer « ce poste est occupé » ni « ce tampon est
 plein ». C'est l'objet de l'étape 2, et c'est elle qui fera apparaître les
 vrais goulots. `sim.js` est inchangé.
 
-### Étapes 2 et 3 — à faire
+### Étape 2 — ressources et mesure : **faite** (18 tests)
 
-Voir le § 4. Prochaine : `moteur/ressources.js` — `Ressource`, `Tampon`,
-`Niveau`, transposés de SimPy.
+Deux fichiers, transposés de SimPy (MIT) pour les ressources et inspirés de
+salabim pour la mesure. La mesure était annoncée « en parallèle de l'étape 2 » :
+elle est là, parce qu'une ressource incapable de répondre « quelle est ton
+occupation » ne règle pas le défaut n° 3.
+
+| Objet | Fichier | Rôle |
+|---|---|---|
+| `Ressource` | `moteur/ressources.js` | un nombre entier de places, file triée par priorité |
+| `Tampon` | `moteur/ressources.js` | contenance finie ; `deposer` **bloque** quand c'est plein ; `prendre` accepte un filtre |
+| `Niveau` | `moteur/ressources.js` | quantité continue, plafond, rupture mesurée |
+| `Moniteur` | `moteur/mesure.js` | statistiques de niveau (pondérées par le temps) et de comptage |
+
+La gamme d'un produit s'écrit alors :
+
+```js
+const place = poste.demander({ priorite: dossier.echeance });
+yield place;
+try {
+  const article = yield tamponEntree.prendre();
+  yield env.delai(dureeOperation);
+  yield tamponSuivant.deposer(article);   // BLOQUE si l'aval est plein
+} finally {
+  poste.liberer(place);                   // après le dépôt, jamais avant
+}
+```
+
+**L'ordre des deux dernières lignes est tout le sujet.** Le poste reste occupé
+tant que l'aval n'a pas de place : le blocage amont sort de cet ordre, pas
+d'une règle écrite pour lui.
+
+#### La démonstration, et elle est chiffrée
+
+Un test compare deux exécutions qui ne diffèrent **que** par la contenance du
+tampon intermédiaire. Deux postes en série, le second cinq fois plus lent, dix
+articles à traiter :
+
+| | tampon illimité | tampon d'une place |
+|---|---:|---:|
+| Articles produits | 10 | 10 |
+| Dernier fini | 51 min | 51 min |
+| **Minutes pendant lesquelles le poste rapide tient sa place** | **10** | **41** |
+| Part du temps où le tampon bloque l'amont | 0 | 0,16 |
+| Attente moyenne au dépôt | 0 | 3,1 min |
+
+Le poste rapide ne travaille que 10 minutes dans les deux cas — dix articles,
+une minute chacun. Mais avec un tampon d'une place il **immobilise son poste 41
+minutes**. Les 31 minutes d'écart sont le blocage amont, et elles n'existent
+dans aucune formule : elles sortent du modèle. C'est exactement ce que `sim.js`
+ne sait pas produire, et c'est pour cela qu'il ne peut pas désigner un vrai
+goulot.
+
+#### La mesure remplace le lissage
+
+`Ressource.tauxOccupation()` est l'intégrale des places occupées divisée par la
+durée et par la capacité. Un test vérifie qu'un poste occupé 30 minutes sur 100
+rend exactement `0,3` — pas un lissage, pas de plancher `Math.max(u, 0.97)`.
+
+Les moniteurs distinguent, comme salabim, les grandeurs qui **durent** (file,
+places occupées, encours : pondérées par le temps) des valeurs **par objet**
+(attente, retard, traversée : non pondérées). Un test montre l'écart : une file
+à 10 pendant une minute puis à 0 pendant 99 a une longueur moyenne de **0,1**,
+là où une moyenne arithmétique des observations dirait 3,3.
+
+Deux indicateurs de goulot sortent directement des objets, sans heuristique :
+`Tampon.partBloquante()` — part du temps où ce tampon a bloqué son amont — et
+`Niveau.partEnRupture()` — part du temps où un retrait a attendu.
+
+#### Écarts assumés par rapport à SimPy
+
+- **`liberer` agit immédiatement** au lieu de produire un événement à attendre.
+  On n'a jamais besoin d'attendre une libération, et un `yield` de plus serait
+  un oubli de plus. La réservation, le dépôt et la prise restent des événements.
+- **`liberer` couvre aussi l'abandon** : appelé sur une demande encore en file,
+  il l'en retire. C'est le schéma de ProdSim — demander une place en parallèle
+  d'autre chose avec `unDe`, puis annuler la demande si elle n'a pas abouti. Un
+  test vérifie qu'une demande abandonnée ne bloque pas la file derrière elle.
+  Il ne faut jamais abandonner une demande qu'un processus attend encore : il
+  ne serait pas réveillé. C'est écrit dans le code, à l'endroit où ça compte.
+- **Pas de préemption.** Aucun besoin identifié, et elle coûterait cher.
+- Les files de `Tampon` et de `Niveau` sont dans l'ordre d'arrivée, sans
+  priorité : la priorité est portée par `Ressource`, là où les échéances de vol
+  s'appliquent. Conséquence testée et voulue : un petit retrait attend derrière
+  un gros qui ne peut pas être servi.
+
+Le traitement des deux files d'un tampon est déclenché par la **résolution** des
+événements, pas par leur enregistrement — même mécanisme que SimPy, et c'est ce
+qui évite toute réentrance entre dépôts et prises.
+
+Chargés dans un navigateur, les trois fichiers exposent `MoteurNoyau`,
+`MoteurMesure` et `MoteurRessources` ; `ressources.js` refuse de se charger
+avant les deux autres avec un message explicite plutôt qu'un `undefined`.
+
+**`sim.js` reste inchangé.** Il manque encore la description du procédé en
+données : tant que la gamme est codée en dur, brancher le nouveau moteur
+reviendrait à réécrire `sim.js` à la main au lieu de le nourrir.
+
+### Étape 3 — à faire
+
+`moteur/procede.json` et son chargeur : postes avec `capacite` et `tampon`,
+produits avec les listes alignées `poste` / `operation` / `quantite` /
+`composants`, convention de distribution `["f", x]` / `["n", moyenne, ecart]`.
+Puis le branchement sur l'interface. Voir le § 4.

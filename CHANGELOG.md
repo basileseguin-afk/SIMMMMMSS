@@ -5,6 +5,56 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-18 — Étape 2 : ressources, tampons, niveaux et mesure
+
+**`sim.js` est inchangé.** Le nouveau moteur a maintenant de quoi exprimer un
+poste occupé et un tampon plein, mais la gamme est encore codée en dur : le
+brancher attend l'étape 3.
+
+| Fichier | Changement |
+|---|---|
+| `moteur/ressources.js` | **nouveau** — `Ressource` (places entières, file par priorité), `Tampon` (contenance finie, dépôt bloquant, prise filtrée), `Niveau` (quantité continue) |
+| `moteur/mesure.js` | **nouveau** — `Moniteur` de niveau (pondéré par le temps) et de comptage |
+| `tests/ressources.test.cjs` | **nouveau** — 12 régressions |
+| `tests/mesure.test.cjs` | **nouveau** — 6 régressions |
+| `docs/ETUDE_OPEN_SOURCE.md` | section « Étape 2 » : démonstration chiffrée, écarts assumés |
+| `README.md` | fichiers et statut |
+
+**Le blocage amont existe enfin, et il est chiffré.** Un test compare deux
+exécutions qui ne diffèrent que par la contenance du tampon intermédiaire. Deux
+postes en série, le second cinq fois plus lent, dix articles :
+
+| | tampon illimité | tampon d'une place |
+|---|---:|---:|
+| Articles produits, dernier fini | 10, à 51 min | 10, à 51 min |
+| Minutes où le poste rapide tient sa place | **10** | **41** |
+| Part du temps où le tampon bloque l'amont | 0 | 0,16 |
+
+Le poste rapide ne travaille que 10 minutes dans les deux cas. Les 31 minutes
+d'écart ne sortent d'aucune formule : elles sortent du modèle. C'est le
+mécanisme de goulot que `sim.js` ne sait pas produire.
+
+**La mesure remplace le lissage.** `Ressource.tauxOccupation()` est l'intégrale
+des places occupées divisée par la durée et la capacité : un poste occupé 30
+minutes sur 100 rend exactement 0,3, sans plancher `Math.max(u, 0.97)`. Les
+moniteurs distinguent les grandeurs qui durent (pondérées par le temps) des
+valeurs par objet, comme dans salabim. `Tampon.partBloquante()` et
+`Niveau.partEnRupture()` donnent deux indicateurs de goulot sans heuristique.
+
+Écarts assumés par rapport à SimPy, tous documentés dans le code : `liberer`
+agit immédiatement au lieu de produire un événement, et couvre aussi l'abandon
+d'une demande restée en file ; pas de préemption ; files de tampon et de niveau
+dans l'ordre d'arrivée, la priorité étant portée par `Ressource`.
+
+Chargés dans un navigateur, les trois fichiers exposent `MoteurNoyau`,
+`MoteurMesure` et `MoteurRessources` ; `ressources.js` refuse de se charger
+avant les deux autres avec un message explicite.
+
+Tests : 48 unitaires (11 `ui-model` + 19 `noyau` + 6 `mesure` + 12
+`ressources`), tous au vert. Parcours navigateur au vert.
+
+---
+
 ## 2026-09-18 — Étape 1 : noyau à événements discrets
 
 Premier code du nouveau moteur. **`sim.js` est inchangé** : rien n'est encore
