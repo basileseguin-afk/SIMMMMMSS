@@ -33,10 +33,10 @@ Identifiants : `BUG-001`, `BUG-002`… jamais réutilisés, même après correct
 
 | ID | Gravité | Statut | Vérif. | Résumé | Fichier |
 |---|---|---|---|---|---|
-| BUG-001 | Majeur | Ouvert | Confirmé | Panneau de détail reconstruit ~60×/s, bouton « Fermer » incliquable | `sim.js:942` |
-| BUG-002 | Majeur | Ouvert | Confirmé | Cliquer une zone du plan ne la sélectionne pas | `sim.js:483` |
+| BUG-001 | Majeur | Corrigé | Confirmé | Panneau de détail reconstruit ~60×/s, bouton « Fermer » incliquable | `sim.js:942` |
+| BUG-002 | Majeur | Corrigé | Confirmé | Cliquer une zone du plan ne la sélectionne pas | `sim.js:483` |
 | BUG-003 | Mineur | Ouvert | Confirmé | Numéros de ligne CSV faux dès qu'une ligne est vide | `ui-model.js:52` |
-| BUG-004 | Mineur | Ouvert | Signalé | Boutons d'atelier à l'état périmé après sélection | `sim.js:700` |
+| BUG-004 | Mineur | Corrigé | Signalé | Boutons d'atelier à l'état périmé après sélection | `sim.js:700` |
 | BUG-005 | Mineur | Ouvert | Signalé | Réimport impossible après un échec de lecture | `sim.js:1095` |
 | BUG-006 | Performance | Ouvert | Signalé | Recalcul redondant de `qlen` à chaque pas | `sim.js:280` |
 
@@ -44,7 +44,7 @@ Identifiants : `BUG-001`, `BUG-002`… jamais réutilisés, même après correct
 
 ## BUG-001 — Panneau de détail reconstruit en continu
 
-- **Gravité** : Majeur · **Statut** : Ouvert · **Vérification** : Confirmé
+- **Gravité** : Majeur · **Statut** : Corrigé · **Vérification** : Confirmé
 - **Fichier** : `sim.js:942` (`majGoulotInfo`)
 - **Détecté** : 2026-09-18, revue de code du diff `88ea4a9..13d86c9`
 
@@ -72,11 +72,16 @@ Playwright sur `[data-clear-selection]` expire ; la zone reste sélectionnée.
 (`data-clear-selection=""`) pour que la comparaison soit exacte, ou mieux :
 comparer une clé d'état (id de zone + nombre d'OF) plutôt que du HTML.
 
+
+**Correction :** commit « Rattache les stockages aux services ». Vérifié par
+`tests/storage-browser.cjs` : clic souris réel, état du bouton en pause et
+fermeture avec clic maintenu pendant la simulation.
+
 ---
 
 ## BUG-002 — Cliquer une zone du plan ne la sélectionne pas
 
-- **Gravité** : Majeur · **Statut** : Ouvert · **Vérification** : Confirmé
+- **Gravité** : Majeur · **Statut** : Corrigé · **Vérification** : Confirmé
 - **Fichier** : `sim.js:483` (`initInteractions`), écouteur concerné `sim.js:407`
 - **Introduit par** : commit `4e2bf69` (ajout du zoom/déplacement) — **Claude**
 - **Détecté** : 2026-09-18, revue de code
@@ -98,6 +103,11 @@ pas de capture — la sélection fonctionne normalement.
 **Piste de correction.** Ne capturer le pointeur qu'une fois un déplacement
 réellement engagé (seuil de quelques pixels), ou sélectionner la zone depuis le
 gestionnaire `pointerdown` au lieu de s'appuyer sur `click`.
+
+
+**Correction :** commit « Rattache les stockages aux services ». Vérifié par
+`tests/storage-browser.cjs` : clic souris réel, état du bouton en pause et
+fermeture avec clic maintenu pendant la simulation.
 
 ---
 
@@ -121,13 +131,18 @@ découpage, avant tout filtrage.
 
 ## BUG-004 — Boutons d'atelier à l'état périmé
 
-- **Gravité** : Mineur · **Statut** : Ouvert · **Vérification** : Signalé
+- **Gravité** : Mineur · **Statut** : Corrigé · **Vérification** : Confirmé
 - **Fichier** : `sim.js:700` (`selectionner`)
 
 `selectionner()` ne rafraîchit pas les boutons de `#stats-ateliers` : leur état
 `.active` / `aria-pressed` reste faux tant que la simulation est arrêtée ou en
 pause. Gêne aussi la navigation au clavier et les lecteurs d'écran.
 *Rapporté par la revue automatique, non reproduit manuellement.*
+
+
+**Correction :** commit « Rattache les stockages aux services ». Vérifié par
+`tests/storage-browser.cjs` : clic souris réel, état du bouton en pause et
+fermeture avec clic maintenu pendant la simulation.
 
 ---
 
@@ -158,8 +173,7 @@ vitesse élevée.
 
 ## Bugs corrigés
 
-*(aucun pour l'instant — y déplacer les entrées fermées, avec leur commit et
-la vérification effectuée)*
+Voir BUG-001, BUG-002 et BUG-004 ci-dessus et leur preuve de correction.
 
 ---
 
@@ -172,3 +186,18 @@ node tests/browser-smoke.cjs            # parcours navigateur (Playwright requis
 
 Ces tests **ne couvrent aucun des bugs ci-dessus** : ils sont tous passés au
 travers. Toute correction doit s'accompagner d'un test qui échouait avant.
+
+## Revue d’intégration — éditeur de plan v2
+
+La PR #2 ajoute un éditeur distinct et ses tests de gestes réels, migration,
+annulation, sauvegarde et import. Les BUG-001 à BUG-006 ci-dessus restent
+ouverts : cette intégration ne prétend pas corriger les interactions du
+simulateur hors édition, l’import CSV ou les performances du moteur.
+Les changements parallèles de confidentialité du fond de plan sont conservés.
+
+## Revue — stockages par service
+
+BUG-001, BUG-002 et BUG-004 corrigés et couverts par le parcours stockages.
+BUG-003, BUG-005 et BUG-006 restent ouverts : import CSV et performances hors
+périmètre. Le nouveau format garde la sauvegarde v2 et ne déduit pas les services
+propriétaires des stockages migrés. Vérification par tests purs et navigateur.
