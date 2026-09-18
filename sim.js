@@ -513,7 +513,7 @@ function initInteractions() {
 
   svg.addEventListener('pointerdown', e => {
     const p = ptSvg(e), m = versPlan(p);
-    svg.setPointerCapture(e.pointerId);
+    if(editMode)svg.setPointerCapture(e.pointerId);
 
     // tracé d'un polygone : chaque clic ajoute un point
     if (tracagePoly && selection) {
@@ -564,7 +564,7 @@ function initInteractions() {
       act = { t:'move', m0:m, z0:{ x:b0.x, y:b0.y } };
       return;
     }
-    act = { t:'pan', p0:p, tx:vtx, ty:vty }; svg.style.cursor = 'grabbing';
+    act = { t:'pan', p0:p, cx:e.clientX, cy:e.clientY, tx:vtx, ty:vty }; svg.style.cursor = 'grabbing';
   });
 
   svg.addEventListener('pointermove', e => {
@@ -572,6 +572,8 @@ function initInteractions() {
     const p = ptSvg(e), m = versPlan(p);
 
     if (act.t === 'pan') {
+      if(!act.bouge&&Math.hypot(e.clientX-act.cx,e.clientY-act.cy)<4)return;
+      act.bouge=true;svg.setPointerCapture(e.pointerId);
       vtx = act.tx + (p.x - act.p0.x); vty = act.ty + (p.y - act.p0.y); appliquerVue(); return;
     }
     if (act.t === 'trace') {
@@ -730,6 +732,8 @@ function selectionner(id) {
   Object.keys(zoneEls).forEach(k => zoneEls[k].g.classList.toggle('selection', k === selection));
   Object.keys(zoneEls).forEach(k => zoneEls[k].g.setAttribute('aria-pressed',String(k===selection)));
   document.getElementById('zone-picker').value = selection || '';
+  if(Sim.editor)Sim.editor.showService(selection);
+  document.querySelectorAll('#stats-ateliers button').forEach(b=>{const active=b.dataset.station===selection;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});
   majGoulotInfo(); majPoignees(); majChampsEdition();
   if(!editMode) showPanel('suivi');
 }
@@ -898,9 +902,12 @@ function majDashboard() {
 function majGoulotInfo(goulot) {
   if(goulot===undefined)goulot=goulotCourant();
   const el=document.getElementById('goulot-info');let html='';
+  if(!el.querySelector('[data-detail-body]'))el.innerHTML='<div class="detail-title"><strong></strong><button class="btn" data-clear-selection>Fermer</button></div><div data-detail-body></div>';
+  el.querySelector('.detail-title').hidden=!selection;
+  el.querySelector('strong').textContent=selection?ZONES[selection].nom:'';
   if(selection){
     const id=selection,z=ZONES[id],st=stations[id];
-    html='<div class="detail-title"><strong>'+escapeHTML(z.nom)+'</strong><button class="btn" data-clear-selection>Fermer</button></div>';
+
     html+='<p>'+(z.approx?'Emplacement à confirmer.':'Emplacement enregistré ; validation terrain distincte.')+'</p>';
     if(NON_MODELISES.has(id))html+='<p>Charge non calculée dans cette version.</p>';
     else {
@@ -912,7 +919,7 @@ function majGoulotInfo(goulot) {
   } else if(now===CFG.jour.debut)html='Lancez la démonstration, puis sélectionnez un atelier ou ouvrez le suivi des vols.';
   else if(!goulot)html='Aucune pression élevée détectée par le démonstrateur à cet instant.';
   else html='<strong>'+escapeHTML(goulot.nom)+'</strong><p>'+goulot.qlen+' OF en attente ou en traitement. Consultez les opérations et les échéances avant de tester un changement.</p>';
-  if(el.innerHTML!==html)el.innerHTML=html;
+  if(el._detailHTML!==html){el.querySelector('[data-detail-body]').innerHTML=html;el._detailHTML=html;}
 }
 
 const chart = document.getElementById('chart');
