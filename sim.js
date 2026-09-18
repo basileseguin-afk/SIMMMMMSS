@@ -1,31 +1,26 @@
 /* ============================================================================
- *  Newrest Orly — Simulation des flux de production (moteur + rendu)
+ *  Newrest Orly — Simulation des flux de production (interface + rendu)
  *  Les positions et libellés des zones proviennent du plan réel de l'unité.
  *  Le plan lui-même est CONFIDENTIEL et n'est pas dans ce dépôt public :
  *  déposez ses tuiles dans `plan-prive/` en local (dossier non suivi par Git).
- *  Modèle de flux à stations : chaque atelier consomme des man-minutes ;
- *  une file se forme quand la demande dépasse la capacité => goulot.
+ *
+ *  Le calcul est fait par `moteur/orly.js` sur le moteur à événements
+ *  discrets (`moteur/noyau.js`, `mesure.js`, `ressources.js`) : personnes
+ *  occupées par des lots, robot à une place, tampons par atelier. Ce fichier
+ *  ne contient plus que l'interface, le plan et l'animation.
  *  ==========================================================================*/
 (function () {
 'use strict';
 const {escapeHTML, serviceMetrics, flightStatus, parseFlights} = window.OrlyUI;
+const Orly = window.MoteurOrly;
 const NON_MODELISES = new Set(['magasin','bobduty','handling','quais']);
 let activePanel = 'suivi', activeView = 'plan', dataSource = 'Jeu de démonstration';
 let frameId = null, pendingTime = 0, runConfig = null;
 
 /* ==========================================================================
- *  1. PARAMÈTRES (regroupés en tête, cf. cahier des charges §9)
+ *  1. PARAMÈTRES — valeurs par défaut portées par le modèle
  * ==========================================================================*/
-const CFG = {
-  jour: { debut: 5 * 60, fin: 23 * 60 },   // fenêtre simulée (minutes depuis 00:00)
-  dispo: 0.85,                             // disponibilité effective du staff
-  robotCadence: 320,                       // plateaux YC / heure (actuel)
-  tunnels: 3, tunnelDouble: true,          // plonge
-  tunnelDebit: 4,                          // trays/min par tunnel simple (double = ×2)
-  loadDelay: 45,                           // min avant heure_std pour être "à l'heure"
-  shift: 0,                                // décalage horaire global (min)
-  staff: { magasin:3, appros:6, decontam:3, cuisine:10, prepa:18, dotation:6, armement:5, bobduty:2 }
-};
+const CFG = JSON.parse(JSON.stringify(Orly.CFG_DEFAUT));
 
 /* ==========================================================================
  *  2. PLAN RÉEL D'ORLY
@@ -168,147 +163,35 @@ function bord(id, cible) {
 }
 
 /* ==========================================================================
- *  3. JEU DE DONNÉES D'EXEMPLE (vague matin + vague soir)
+ *  3. JEU DE DONNÉES D'EXEMPLE — porté par le modèle (moteur/orly.js)
  * ==========================================================================*/
-const SAMPLE = [
-  { id:'AF1080', cie:'AF', avion:'A320', sens:'DEP', std:6*60+40, bc:12, pc:0,  yc:150, spml:6 },
-  { id:'BA305',  cie:'BA', avion:'A320', sens:'DEP', std:7*60+5,  bc:16, pc:0,  yc:120, spml:4 },
-  { id:'AF1180', cie:'AF', avion:'A350', sens:'DEP', std:7*60+30, bc:32, pc:48, yc:210, spml:12 },
-  { id:'DL84',   cie:'DL', avion:'B777', sens:'DEP', std:8*60+0,  bc:38, pc:40, yc:230, spml:14 },
-  { id:'QR40',   cie:'QR', avion:'A350', sens:'DEP', std:8*60+20, bc:30, pc:44, yc:200, spml:10 },
-  { id:'EK76',   cie:'EK', avion:'A380', sens:'DEP', std:8*60+50, bc:14, pc:76, yc:340, spml:18 },
-  { id:'AF1290', cie:'AF', avion:'A320', sens:'DEP', std:9*60+10, bc:12, pc:0,  yc:140, spml:5 },
-  { id:'AF1081', cie:'AF', avion:'A320', sens:'RET', sta:6*60+10, bc:12, pc:0,  yc:150 },
-  { id:'DL85',   cie:'DL', avion:'B777', sens:'RET', sta:7*60+40, bc:38, pc:40, yc:230 },
-  { id:'AF1680', cie:'AF', avion:'A350', sens:'DEP', std:17*60+20,bc:32, pc:48, yc:205, spml:11 },
-  { id:'BA315',  cie:'BA', avion:'A320', sens:'DEP', std:17*60+50,bc:16, pc:0,  yc:130, spml:5 },
-  { id:'QR42',   cie:'QR', avion:'A350', sens:'DEP', std:18*60+30,bc:30, pc:44, yc:210, spml:10 },
-  { id:'EK78',   cie:'EK', avion:'A380', sens:'DEP', std:19*60+0, bc:14, pc:76, yc:350, spml:20 },
-  { id:'DL88',   cie:'DL', avion:'B777', sens:'DEP', std:19*60+40,bc:38, pc:40, yc:235, spml:15 },
-  { id:'EK77',   cie:'EK', avion:'A380', sens:'RET', sta:16*60+30,bc:14, pc:76, yc:340 },
-  { id:'QR41',   cie:'QR', avion:'A350', sens:'RET', sta:17*60+10,bc:30, pc:44, yc:200 },
-  { id:'AF1681', cie:'AF', avion:'A350', sens:'RET', sta:18*60+0, bc:32, pc:48, yc:205 },
-  { id:'DL89',   cie:'DL', avion:'B777', sens:'RET', sta:18*60+50,bc:38, pc:40, yc:235 }
-];
-
-/* Barème de man-minutes : minutes par passager, par classe et par atelier. */
-function chargeVol(f) {
-  const bc=f.bc||0, pc=f.pc||0, yc=f.yc||0, pax=bc+pc+yc;
-  return {
-    food: { appros: bc*0.6 + pc*0.35 + yc*0.12, decontam: pax*0.05,
-            cuisine: bc*1.4 + pc*0.7 + yc*0.28, prepa: bc*2.2 + pc*1.1 + pax*0.06, robot: yc },
-    dotation: bc*0.5 + pc*0.3 + yc*0.12,
-    armement: pax*0.08 + 15,
-    plonge:   pax*0.9
-  };
-}
+const SAMPLE = Orly.JEU_DEMO;
 
 /* ==========================================================================
- *  4. ÉTAT DU MOTEUR
+ *  4. ÉTAT DE LA SIMULATION
+ *     `modele` est construit par moteur/orly.js. `stations` et `jobs` sont
+ *     les vues que le rendu lit ; elles sont rafraîchies par le modèle à
+ *     chaque avancée. Les ateliers non modélisés ont une vue neutre.
  * ==========================================================================*/
-let flights = [], jobs = [], stations = {};
+let modele = null, flights = [], jobs = [], stations = {};
 let now = CFG.jour.debut, enMarche = false, vitesse = 30, historique = [];
-const ordreTraitement = ['magasin','appros','decontam','cuisine','dotation','armement','bobduty','plonge','prepa','handling'];
-
-function robotCap() { return CFG.robotCadence / 60; }
-function plongeCap() {
-  const simples = CFG.tunnelDouble ? CFG.tunnels - 1 : CFG.tunnels;
-  return simples * CFG.tunnelDebit + (CFG.tunnelDouble ? CFG.tunnelDebit * 2 : 0);
-}
-function staffCap(id) { return (CFG.staff[id] || 0) * CFG.dispo; }
+const VUE_NEUTRE = { util:0, qlen:0, enAttente:0, bloque:false, tauxJour:0 };
 
 function build(data) {
-  flights = data.map(f => Object.assign({}, f));
-  jobs = [];
-  flights.forEach(f => {
-    const c = chargeVol(f);
-    if (f.sens === 'DEP') {
-      const std = (f.std || 0) + CFG.shift;
-      f.due = std - CFG.loadDelay; f.readyTime = null; f.retard = 0;
-      f.foodDone = f.dotDone = f.armDone = false;
-      jobs.push(mkJob(f, 'food', ['appros','decontam','cuisine','prepa'], c.food, c.food.robot, std - 200));
-      jobs.push(mkJob(f, 'dot', ['dotation'], { dotation:c.dotation }, 0, std - 175));
-      jobs.push(mkJob(f, 'arm', ['armement'], { armement:c.armement }, 0, std - 175));
-    } else {
-      jobs.push(mkJob(f, 'plonge', ['plonge'], { plonge:c.plonge }, 0, (f.sta||0) + CFG.shift));
-    }
-  });
-}
-function mkJob(f, kind, route, work, robot, releaseT) {
-  // couleurs des tokens : assez saturées pour rester lisibles en clair comme en sombre
-  const couleurs = { food:'#0c74ad', dot:'#12813f', arm:'#c47a08', plonge:'#7b3fd4' };
-  return { flight:f, kind, route, work, robot:robot||0, releaseT,
-           dueT:(f.due!=null?f.due:releaseT+30), released:false, done:false,
-           stationId:null, idx:0, rem:0, remRobot:0, color:couleurs[kind] };
-}
-function initStations() {
+  modele = Orly.construireModele(data, CFG, { surToken: spawnToken });
+  flights = modele.flights; jobs = modele.jobs;
   stations = {};
-  Object.keys(ZONES).forEach(id => stations[id] = { util:0, qlen:0, usedRate:0, _used:0 });
+  Object.keys(ZONES).forEach(id => { stations[id] = modele.stations[id] || VUE_NEUTRE; });
+  now = modele.maintenant;
+  Sim.robotRate = 0;
 }
 
 /* ==========================================================================
- *  5. PAS DE SIMULATION
+ *  5. PAS DE SIMULATION — délégué au moteur à événements discrets
  * ==========================================================================*/
 function step(dt) {
-  now += dt;
-  jobs.forEach(j => {
-    if (!j.released && now >= j.releaseT) {
-      j.released = true; j.idx = 0; j.stationId = j.route[0];
-      j.rem = j.work[j.route[0]] || 0; j.remRobot = (j.route[0] === 'prepa') ? j.robot : 0;
-      spawnEntree(j);
-    }
-  });
-  ordreTraitement.forEach(id => { stations[id]._used = 0; });
-  let robotUsed = 0;
-
-  ordreTraitement.forEach(id => {
-    const st = stations[id];
-    let capLeft = (id === 'plonge' ? plongeCap() : staffCap(id)) * dt;
-    let robotLeft = (id === 'prepa') ? robotCap() * dt : 0;
-    const ici = jobs.filter(j => j.released && !j.done && j.stationId === id);
-    ici.sort((a, b) => a.dueT - b.dueT);
-    st.qlen = ici.length;
-    for (const j of ici) {
-      if (id === 'prepa' && j.remRobot > 0) { const r = Math.min(robotLeft, j.remRobot); j.remRobot -= r; robotLeft -= r; robotUsed += r; }
-      if (capLeft > 0 && j.rem > 0) { const w = Math.min(capLeft, j.rem); j.rem -= w; capLeft -= w; st._used += w; }
-      if (j.rem <= 1e-6 && j.remRobot <= 1e-6) avancer(j);
-      if (capLeft <= 1e-6 && robotLeft <= 1e-6) break;
-    }
-    const cap = (id === 'plonge' ? plongeCap() : staffCap(id)) * dt;
-    let u = cap > 0 ? st._used / cap : 0;
-    if (id === 'prepa') { const rc = robotCap() * dt; if (rc > 0) u = Math.max(u, robotUsed / rc); }
-    if (ici.some(j => j.rem > 1e-6 || j.remRobot > 1e-6)) u = Math.max(u, 0.97);
-    st.util = st.util * 0.82 + u * 0.18;
-    st.usedRate = st._used / dt;
-  });
-
-  // Unmodelled services stay neutral instead of displaying fabricated activity.
-  Object.keys(stations).forEach(id => { stations[id].qlen = jobs.filter(j => j.released && !j.done && j.stationId === id).length; });
-  Sim.robotRate = robotUsed / dt;
-}
-
-function avancer(j) {
-  const cour = j.stationId; j.idx++;
-  if (j.idx < j.route.length) {
-    const ns = j.route[j.idx];
-    spawnToken(cour + '_' + ns, j.color);
-    j.stationId = ns; j.rem = j.work[ns] || 0; j.remRobot = (ns === 'prepa') ? j.robot : 0;
-  } else { finaliser(j, cour); j.done = true; }
-}
-function finaliser(j) {
-  const f = j.flight;
-  if (j.kind === 'food') { spawnToken('prepa_handling', j.color); spawnToken('handling_quais', j.color); f.foodDone = true; }
-  else if (j.kind === 'dot') { spawnToken('dotation_quais', j.color); f.dotDone = true; }
-  else if (j.kind === 'arm') { spawnToken('armement_quais', j.color); f.armDone = true; }
-  else if (j.kind === 'plonge') { spawnToken('plonge_prepa', j.color); spawnToken('plonge_dotation', j.color); }
-  if (f.sens === 'DEP' && f.foodDone && f.dotDone && f.armDone && f.readyTime == null) {
-    f.readyTime = now; f.retard = Math.max(0, now - f.due);
-  }
-}
-function spawnEntree(j) {
-  if (j.kind === 'food') spawnToken('appros_decontam', j.color);
-  else if (j.kind === 'plonge') spawnToken('quais_plonge', j.color);
-  else if (j.kind === 'arm') spawnToken('quais_armement', j.color);
+  now = modele.avancerA(now + dt);
+  Sim.robotRate = modele.debitRobot();
 }
 
 /* ==========================================================================
@@ -320,15 +203,10 @@ function kpis() {
     debit:Math.round((Sim.robotRate || 0) * 60), goulot:goulotCourant()
   });
 }
+/* Le goulot est mesuré par le modèle : le poste où l'on attend. */
 function goulotCourant() {
-  let best = null, bu = 0.55;
-  Object.keys(ZONES).forEach(id => {
-    if (NON_MODELISES.has(id)) return;
-    const st = stations[id];
-    const sev = Math.max(st.util, Math.min(1, st.qlen / 4));
-    if (sev > bu) { bu = sev; best = id; }
-  });
-  return best ? { id:best, nom:ZONES[best].nom, sev:bu, qlen:stations[best].qlen } : null;
+  const g = modele ? modele.goulot() : null;
+  return g ? { id:g.id, nom:ZONES[g.id].nom, sev:g.sev, qlen:g.qlen, attente:g.attente, cause:g.cause } : null;
 }
 function couleurCharge(u) { return u < 0.55 ? 'var(--vert)' : u < 0.85 ? 'var(--orange)' : 'var(--rouge)'; }
 
@@ -891,7 +769,7 @@ function majDashboard() {
     const id=b.dataset.station,st=stations[id],u=Math.min(1,st.util),unmodeled=NON_MODELISES.has(id);
     b.querySelector('.haut>span').firstChild.textContent=ZONES[id].nom;
     b.classList.toggle('active',id===selection);b.setAttribute('aria-pressed',String(id===selection));
-    b.querySelector('b').textContent=unmodeled?'Non simulé':now===CFG.jour.debut?'—':Math.round(u*100)+' %';
+    b.querySelector('b').textContent=unmodeled?'Non simulé':now===CFG.jour.debut?'—':Math.round(u*100)+' %'+(id==='prepa'?' · robot '+Math.round(Math.min(1,st.robotUtil)*100)+' %':'');
     b.querySelector('.badge-q').textContent=st.qlen?' · '+st.qlen+' OF':'';
     b.querySelector('.barre').hidden=unmodeled;
     b.querySelector('i').style.cssText='width:'+u*100+'%;background:'+couleurCharge(u);
@@ -911,14 +789,14 @@ function majGoulotInfo(goulot) {
     html+='<p>'+(z.approx?'Emplacement à confirmer.':'Emplacement enregistré ; validation terrain distincte.')+'</p>';
     if(NON_MODELISES.has(id))html+='<p>Charge non calculée dans cette version.</p>';
     else {
-      html+='<p>'+st.qlen+' OF en attente ou en traitement'+(CFG.staff[id]!=null?' · '+CFG.staff[id]+' personnes paramétrées':id==='plonge'?' · '+CFG.tunnels+' tunnels':'')+'.</p>';
+      html+='<p>'+st.qlen+' OF présents'+(CFG.staff[id]!=null?' · '+CFG.staff[id]+' personnes':id==='plonge'?' · '+CFG.tunnels+' tunnels':'')+(now>CFG.jour.debut?' · occupation '+Math.round(Math.min(1,st.util)*100)+' % sur 15 min, '+Math.round(st.tauxJour*100)+' % depuis 05:00':'')+(st.enAttente?' · <strong>'+st.enAttente+' lot(s) attendent une personne</strong>':'')+(id==='prepa'&&now>CFG.jour.debut?' · robot '+Math.round(Math.min(1,st.robotUtil)*100)+' % sur 15 min'+(st.robotAttente?', <strong>'+st.robotAttente+' vol(s) attendent le robot</strong>':''):'')+(st.bloque?' · <strong>tampon plein : l’amont est bloqué</strong>':'')+'.</p>';
       const current=jobs.filter(j=>j.released&&!j.done&&j.stationId===id);
       html+=current.length?'<ul class="detail-jobs">'+current.slice(0,8).map(j=>'<li>'+escapeHTML(j.flight.id)+' · '+escapeHTML(j.kind)+' · échéance '+formatTime(j.dueT)+'</li>').join('')+'</ul>':'<p>Aucun ordre de fabrication actif ici.</p>';
       if(current.length>8)html+='<p>Et '+(current.length-8)+' autre(s) OF.</p>';
     }
   } else if(now===CFG.jour.debut)html='Lancez la démonstration, puis sélectionnez un atelier ou ouvrez le suivi des vols.';
-  else if(!goulot)html='Aucune pression élevée détectée par le démonstrateur à cet instant.';
-  else html='<strong>'+escapeHTML(goulot.nom)+'</strong><p>'+goulot.qlen+' OF en attente ou en traitement. Consultez les opérations et les échéances avant de tester un changement.</p>';
+  else if(!goulot)html='Personne n’attend à cet instant : aucun poste ne contraint le flux.';
+  else html='<strong>'+escapeHTML(goulot.nom)+'</strong><p>'+goulot.attente+' lot(s) en attente · '+escapeHTML(goulot.cause)+' · '+goulot.qlen+' OF présents. Mesuré, pas estimé : le goulot est le poste où l’on attend.</p>';
   if(el._detailHTML!==html){el.querySelector('[data-detail-body]').innerHTML=html;el._detailHTML=html;}
 }
 
@@ -976,6 +854,9 @@ function majHorloge() {
  * ==========================================================================*/
 function lancer() {
   if (enMarche || editMode) return; if (now >= CFG.jour.fin) reset();
+  // Les réglages sont lus à la construction du modèle : on le reconstruit au
+  // départ, pour que les curseurs touchés avant « Lancer » soient pris en compte.
+  if (now === CFG.jour.debut) build(Sim.dataCourante || SAMPLE);
   if(!runConfig)runConfig=JSON.parse(JSON.stringify(CFG));
   enMarche = true; dernierReel = performance.now();
   const b = document.getElementById('btn-play'); b.textContent = '⏸ Pause'; b.className = 'btn btn-pause';
@@ -989,8 +870,8 @@ function pause() {
 }
 function basculer() { enMarche ? pause() : lancer(); }
 function reset(data) {
-  pause(); now = CFG.jour.debut; historique = [];pendingTime=0;accHist=0;Sim.robotRate=0;runConfig=null; tokens.forEach(t=>t.el.remove()); tokens = [];
-  build(data || Sim.dataCourante || SAMPLE); initStations();
+  pause(); historique = [];pendingTime=0;accHist=0;runConfig=null; tokens.forEach(t=>t.el.remove()); tokens = [];
+  build(data || Sim.dataCourante || SAMPLE);
   const b = document.getElementById('btn-play'); b.textContent = '▶ Lancer'; b.className = 'btn btn-play';
   majHorloge(); majPlan(); majDashboard(); dessinerChart();
 }
@@ -1088,11 +969,12 @@ function importVols(e) {
 function parseVols(txt) { return parseFlights(txt); }
 function exporter() {
   const k = kpis();
-  const data = { avertissement:'DÉMONSTRATION — paramètres non calibrés, résultats non exploitables pour décider.',schemaVersion:'0.2',modelStatus:'demonstration_non_calibree',source:dataSource,
-    limites:['Calendrier J−1/J−2 non intégré','Routage robot et temps non calibrés','Stocks et ressources humaines incomplets'],
+  const data = { avertissement:'DÉMONSTRATION — paramètres non calibrés, résultats non exploitables pour décider.',schemaVersion:'0.3',modelStatus:'demonstration_non_calibree',source:dataSource,
+    limites:['Calendrier J−1/J−2 non intégré','Barème d’homme-minutes non calibré','Contenances des tampons à renseigner (illimitées par défaut)','Stocks et compétences non modélisés'],
     horaire:document.getElementById('horloge').textContent,termine:now>=CFG.jour.fin,config:runConfig||CFG,entrees:Sim.dataCourante,instantanes:snaps,kpis:k,
     vols:flights.map(f => ({ id:f.id, sens:f.sens, due:f.due, readyTime:f.readyTime, retard:f.sens==='DEP'&&f.readyTime!=null?f.retard:null, statut:f.sens==='DEP'?flightStatus(f,now).key:'retour' })),
-    ateliers:Object.keys(ZONES).reduce((o,id)=>{ o[id]={pressionIndicative:NON_MODELISES.has(id)?null:Math.round(stations[id].util*100),ordresActifs:NON_MODELISES.has(id)?null:stations[id].qlen}; return o; }, {}) };
+    ateliers:Object.keys(ZONES).reduce((o,id)=>{ o[id]={occupation15min:NON_MODELISES.has(id)?null:Math.round(stations[id].util*100),occupationJour:NON_MODELISES.has(id)?null:Math.round(stations[id].tauxJour*100),ordresActifs:NON_MODELISES.has(id)?null:stations[id].qlen}; return o; }, {}),
+    mesures:modele?modele.bilan():null };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'newrest-orly-resultats.json'; a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Résultat de démonstration exporté');
@@ -1180,7 +1062,7 @@ function initWorkbench() {
 const Sim = { robotRate:0, dataCourante:SAMPLE, _gTok:null };
 window.Sim = Sim;
 chargerZones();
-construirePlan(); initStations(); build(SAMPLE); initControles(); initEdition(); initWorkbench();
+construirePlan(); build(SAMPLE); initControles(); initEdition(); initWorkbench();
 majHorloge(); majPlan(); majDashboard(); dessinerChart();
 
 })();

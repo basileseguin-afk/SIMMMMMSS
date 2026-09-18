@@ -90,9 +90,14 @@ n'est présent dans ce dépôt.
    indicateurs et instantanés avec le statut explicite de démonstration.
 
 Le bouton Pause arrête le calcul. La vitesse est exprimée en minutes simulées
-par seconde. Le moteur avance désormais par pas fixes de 30 secondes simulées,
-sans dépendre du découpage des images du navigateur ; il reste un modèle simplifié.
-Les déplacements de jetons sont illustratifs, sans valeur de temps de transfert.
+par seconde. Le calcul est un **moteur à événements discrets** (`moteur/`) :
+chaque personne est occupée par un lot de 5 homme-minutes à la fois, le robot
+dresse un vol à la fois dans l’ordre des échéances, la plonge a autant de
+places que de tunnels, et chaque atelier a une contenance en OF (illimitée
+tant qu’elle n’est pas renseignée dans `CFG.tampons`). Le rendu avance la
+simulation par pas de 30 secondes simulées. Le barème d’homme-minutes reste
+non calibré. Les déplacements de jetons sont illustratifs, sans valeur de
+temps de transfert.
 
 ## Lire les indicateurs
 
@@ -103,13 +108,18 @@ Les déplacements de jetons sont illustratifs, sans valeur de temps de transfert
   l’échéance est atteinte.
 - **Travail en cours** : ordres de fabrication libérés et non terminés, en
   attente ou en traitement.
-- **Débit robot** : débit instantané simulé, pas une mesure du site.
+- **Débit robot** : part du temps où le robot est occupé sur les 15 dernières
+  minutes simulées, multipliée par sa cadence. Une mesure du modèle, pas du site.
 - **Retard courant des départs exigibles** : moyenne incluant les dossiers
   inachevés, dont le retard augmente jusqu’à leur fin.
 - **Retard des dossiers terminés** : moyenne sur les dossiers terminés uniquement.
-- **Pression par atelier** : indice indicatif hérité du démonstrateur ; il ne
-  représente pas un taux d’occupation mesuré. Magasin, Duty free et handling
-  n’ont pas de charge calculée et ne reçoivent plus d’activité artificielle.
+- **Occupation par atelier** : part des personnes occupées par un lot de travail
+  sur les 15 dernières minutes simulées, mesurée, sans lissage ni plancher. Le
+  détail d’un atelier donne aussi l’occupation depuis 05:00. Magasin, Duty free
+  et handling ne sont pas modélisés.
+- **Point d’attention** : le poste où l’on attend — lots en attente d’une
+  personne, vols en attente du robot, ou tampon plein qui bloque l’amont. Aucun
+  seuil : s’il n’y a d’attente nulle part, rien n’est désigné.
 
 L’échéance vaut départ simulé moins délai de chargement. Ces états concernent
 la production ; ils ne constituent pas une mesure du retard avion.
@@ -195,7 +205,8 @@ Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 |---|---|
 | `index.html` | Structure et contrôles |
 | `interface.css` | Disposition, hiérarchie visuelle et adaptations mobile |
-| `sim.js` | Démonstrateur, plan, interactions et rendu |
+| `sim.js` | Interface, plan, interactions et rendu |
+| `moteur/orly.js` | Modèle des flux de l’unité sur le moteur : ateliers, robot, plonge, tampons, goulot mesuré |
 | `plan-editor.js` / `editor.css` | Dessin, annotations, historique et sauvegarde du plan |
 | `ui-model.js` | Import CSV, calcul des états et règles de présentation testables |
 | `moteur/noyau.js` | Noyau à événements discrets (étape 1) — **pas encore branché sur l’interface** |
@@ -209,6 +220,7 @@ Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/mesure.test.cjs` | Régressions des moniteurs : pondération par le temps, percentiles |
 | `tests/ressources.test.cjs` | Régressions des ressources, dont la démonstration du blocage amont |
 | `tests/procede.test.cjs` | Régressions du procédé : validation, reproductibilité, goulot mesuré |
+| `tests/orly.test.cjs` | Journée de démonstration rejouée sans interface : leviers, déterminisme, blocage |
 | `tests/browser-smoke.cjs` | Parcours dans Chromium, export, édition et responsive |
 | `BUGS.md` | Registre des bugs connus — à lire avant de coder, à compléter après chaque revue |
 | `postes/` | Éditeur de postes de travail sur trame 50 cm (outil indépendant) |

@@ -38,7 +38,7 @@ Identifiants : `BUG-001`, `BUG-002`… jamais réutilisés, même après correct
 | BUG-003 | Mineur | Ouvert | Confirmé | Numéros de ligne CSV faux dès qu'une ligne est vide | `ui-model.js:52` |
 | BUG-004 | Mineur | Corrigé | Signalé | Boutons d'atelier à l'état périmé après sélection | `sim.js:700` |
 | BUG-005 | Mineur | Ouvert | Signalé | Réimport impossible après un échec de lecture | `sim.js:1095` |
-| BUG-006 | Performance | Ouvert | Signalé | Recalcul redondant de `qlen` à chaque pas | `sim.js:280` |
+| BUG-006 | Performance | Écarté | Confirmé | Recalcul redondant de `qlen` à chaque pas | `sim.js:280` (code supprimé) |
 
 ---
 
@@ -160,8 +160,8 @@ que l'application ne répond pas.
 
 ## BUG-006 — Recalcul redondant de `qlen`
 
-- **Gravité** : Performance · **Statut** : Ouvert · **Vérification** : Signalé
-- **Fichier** : `sim.js:280`
+- **Gravité** : Performance · **Statut** : Écarté · **Vérification** : Confirmé
+- **Fichier** : `sim.js:280` — **code supprimé**
 
 Un parcours complet `O(stations × jobs)` est refait à chaque pas alors que la
 ligne 264 l'a déjà calculé ; seul `quais` est ajouté, toujours à 0. Sans effet
@@ -169,19 +169,30 @@ visible sur le jeu de démonstration, mais coûteux sur un CSV volumineux lu à
 vitesse élevée.
 *Rapporté par la revue automatique, non mesuré.*
 
+**Écarté :** commit « Branche l'interface sur le moteur à événements discrets ».
+La fonction `step(dt)` et son parcours ont été supprimés : `qlen` est désormais
+le remplissage du tampon de l'atelier, tenu à jour par le moteur (`moteur/orly.js`,
+`rafraichir`). Pas de correction à proprement parler — le code n'existe plus.
+Vérification : `grep -n "jobs.filter" sim.js` ne trouve plus de parcours dans
+la boucle de calcul ; la journée complète se rejoue en 51 ms sous Node
+(`tests/orly.test.cjs`).
+
 ---
 
 ## Bugs corrigés
 
 Voir BUG-001, BUG-002 et BUG-004 ci-dessus et leur preuve de correction.
+BUG-006 est écarté : le code concerné a disparu avec le remplacement du moteur.
 
 ---
 
 ## Vérifier avant de livrer
 
 ```bash
-node --test tests/ui-model.test.cjs     # tests purs (import CSV, indicateurs)
+node --test tests/*.test.cjs            # tests purs : import CSV, moteur, modèle Orly
 node tests/browser-smoke.cjs            # parcours navigateur (Playwright requis)
+node tests/storage-browser.cjs
+node tests/editor-browser.cjs
 ```
 
 Ces tests **ne couvrent aucun des bugs ci-dessus** : ils sont tous passés au
@@ -201,3 +212,16 @@ BUG-001, BUG-002 et BUG-004 corrigés et couverts par le parcours stockages.
 BUG-003, BUG-005 et BUG-006 restent ouverts : import CSV et performances hors
 périmètre. Le nouveau format garde la sauvegarde v2 et ne déduit pas les services
 propriétaires des stockages migrés. Vérification par tests purs et navigateur.
+
+## Revue — branchement du moteur à événements discrets
+
+`sim.js` ne calcule plus rien : `moteur/orly.js` construit le modèle et le rendu
+lit ses vues (`stations`, `jobs`, `goulot()`, `debitRobot()`). Constats :
+
+- Le robot n'était pas candidat au goulot dans la première version du modèle :
+  à 07:30, trois vols l'attendaient au montage et l'interface affichait
+  « personne n'attend ». **Corrigé avant le commit**, test ajouté
+  (`tests/orly.test.cjs`, « des vols qui attendent le robot… »).
+- Les libellés « pression indicative » et « indice visuel » de l'interface
+  étaient devenus faux : remplacés par « occupation mesurée ».
+- BUG-003 et BUG-005 restent ouverts : import CSV hors périmètre de ce commit.

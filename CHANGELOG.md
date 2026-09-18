@@ -5,6 +5,51 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-18 — L'interface tourne sur le moteur à événements discrets
+
+`sim.js` ne calcule plus rien. Le modèle de l'unité vit dans `moteur/orly.js`,
+sur le noyau, les ressources et la mesure des étapes 1 à 3. L'interface, le
+plan, l'éditeur, l'import CSV et l'export sont inchangés pour l'utilisateur ;
+ce qu'ils affichent, lui, a changé de nature.
+
+| Fichier | Changement |
+|---|---|
+| `moteur/orly.js` | **nouveau** — ateliers = personnes occupées par lots, robot à une place, plonge = tunnels, tampon par atelier, goulot mesuré, `simulerJournee` sans interface |
+| `sim.js` | moteur à débit **supprimé** (`step`, `avancer`, `finaliser`, `staffCap`, `plongeCap`, `robotCap`, barème, jeu de démo) ; `build()` construit le modèle, `step(dt)` appelle `avancerA` ; détail d'atelier et point d'attention réécrits ; export `0.3` avec `mesures` |
+| `index.html` | scripts du moteur ; « pression indicative » → « occupation mesurée » |
+| `tests/orly.test.cjs` | **nouveau** — 10 régressions sur la journée rejouée sans navigateur |
+| `README.md` | indicateurs redéfinis, fichiers |
+| `BUGS.md` | BUG-006 écarté (code supprimé), revue du branchement |
+
+**Ce qui change pour de vrai.** Une personne est occupée par un lot de 5
+homme-minutes à la fois ; le robot dresse un vol à la fois dans l'ordre des
+échéances ; l'occupation affichée est la part des personnes occupées sur les 15
+dernières minutes, mesurée, sans lissage ni plancher ; le point d'attention est
+**le poste où l'on attend** — lots en attente d'une personne, vols en attente du
+robot, tampon plein — sans aucun seuil.
+
+**Ce que la démo révèle maintenant** et qu'elle cachait : à 07:30, les 18
+personnes du montage sont à 0 % d'occupation et **le robot à 100 % avec trois
+vols en file**. Le matin est en retard à cause du robot, pas des équipes. Le
+levier « cadence du robot » a enfin un effet mesurable : 200 pl/h dégrade la
+ponctualité, 560 l'améliore, et un test le vérifie dans les deux sens.
+
+**Défaut trouvé et corrigé avant le commit** : la première version du goulot
+mesuré ignorait le robot, qui n'est pas un atelier ; l'interface disait
+« personne n'attend » pendant que trois vols attendaient. Test ajouté.
+
+La journée complète de démonstration se rejoue en **51 ms** sous Node, sans
+aléa : rejouée deux fois, elle donne le même résultat au chiffre près. C'est ce
+qui rend possible une vraie comparaison A/B de scénarios.
+
+Ce qui ne change pas : le barème d'homme-minutes n'est pas calibré, les
+contenances des tampons sont illimitées tant qu'elles ne sont pas renseignées
+(`CFG.tampons`), et le résultat reste une démonstration.
+
+Tests : 72 unitaires et 3 parcours navigateur, tous au vert.
+
+---
+
 ## 2026-09-18 — Étape 3 : le procédé décrit en données
 
 La gamme n'est plus codée en dur : c'est un fichier JSON validé, exécutable et

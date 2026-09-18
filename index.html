@@ -264,7 +264,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <div class="kpi-grille"><div class="kpi"><div class="lab">Prêts à l’échéance</div><div class="val" id="kpi-ontime">—</div><div class="kpi-note" id="kpi-denom">Aucun départ exigible</div></div>
 <div class="kpi"><div class="lab">Échéances dépassées · non prêts</div><div class="val" id="kpi-overdue">0</div><div class="kpi-note" id="kpi-ready">0 dossier terminé</div></div>
 <div class="kpi"><div class="lab">Travail en cours</div><div class="val" id="kpi-wip">0 <small>OF</small></div><div class="kpi-note">Ordres de fabrication libérés, non terminés</div></div>
-<div class="kpi"><div class="lab">Débit instantané du robot</div><div class="val" id="kpi-debit">0 <small>plateaux/h</small></div><div class="kpi-note">Valeur simulée, cadence non mesurée</div></div></div><div class="app" id="workspace" tabindex="-1">
+<div class="kpi"><div class="lab">Débit instantané du robot</div><div class="val" id="kpi-debit">0 <small>plateaux/h</small></div><div class="kpi-note">Robot occupé sur les 15 dernières minutes × cadence</div></div></div><div class="app" id="workspace" tabindex="-1">
 <!-- ============ LEVIERS WHAT-IF ============ -->
 <!-- ============ PLAN ============ -->
 <div class="colonne col-plan"><div class="workspace-heading"><div><span class="eyebrow">EXPLORER L’UNITÉ</span><h1>Production &amp; flux</h1></div><nav aria-label="Vue principale" class="view-tabs"><button aria-pressed="true" class="active" data-view="plan">Plan</button><button aria-pressed="false" data-view="vols">Suivi des vols <span id="flight-count">0</span></button></nav></div>
@@ -281,22 +281,22 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <div class="plan-wrap" id="view-plan">
 <svg tabindex="0" aria-label="Plan interactif de l’unité. Utilisez la liste Atelier pour sélectionner une zone." id="plan" preserveaspectratio="xMidYMid meet" viewbox="0 0 1075 835"></svg>
 </div>
-<div class="map-footer"><div aria-label="Pression indicative" class="legende">
+<div class="map-footer"><div aria-label="Occupation mesurée" class="legende">
 <span><span class="pastille" style="background:var(--ok-stroke)"></span>Faible</span>
 <span><span class="pastille" style="background:var(--warn-stroke)"></span>Soutenue</span>
 <span><span class="pastille" style="background:var(--bad-stroke)"></span>Forte</span>
 </div><span>Molette : zoom · Glisser : déplacer · Pointillés : emplacement à confirmer</span></div><section aria-label="Suivi des départs" class="flights-view" hidden="" id="view-vols"><div class="flight-filters"><label>Rechercher <input id="flight-search" placeholder="Vol ou compagnie" type="search"/></label><label>Afficher <select id="flight-filter"><option value="all">Tous les départs</option><option value="overdue">Échéance dépassée, non prêt</option><option value="pending">Non prêts</option><option value="ready">Terminés</option></select></label></div><p class="mini-note">Échéance = départ simulé − délai de chargement. Le statut concerne la production, pas la ponctualité de l’avion.</p><div class="table-scroll"><table class="flight-table"><caption class="sr-only">État de production des départs simulés</caption><thead><tr><th scope="col">Vol / compagnie</th><th scope="col">Départ</th><th scope="col">Échéance</th><th scope="col">Statut</th><th scope="col">Opérations restantes</th></tr></thead><tbody id="flight-rows"></tbody></table></div></section></div>
 <!-- ============ DASHBOARD ============ -->
-<aside aria-label="Outils de simulation" class="workbench"><nav aria-label="Panneaux" class="panel-tabs"><button aria-pressed="true" class="active" data-panel="suivi">Suivi</button><button aria-pressed="false" data-panel="reglages">Réglages</button><button aria-pressed="false" data-panel="donnees">Données</button></nav><div class="panel-content" id="panel-suivi"><div class="panel-heading"><h2>Lire la situation</h2><p>Indices du démonstrateur. Cliquez un atelier pour consulter ses opérations.</p></div><div class="panneau">
+<aside aria-label="Outils de simulation" class="workbench"><nav aria-label="Panneaux" class="panel-tabs"><button aria-pressed="true" class="active" data-panel="suivi">Suivi</button><button aria-pressed="false" data-panel="reglages">Réglages</button><button aria-pressed="false" data-panel="donnees">Données</button></nav><div class="panel-content" id="panel-suivi"><div class="panel-heading"><h2>Lire la situation</h2><p>Occupation mesurée par atelier. Cliquez un atelier pour consulter ses opérations.</p></div><div class="panneau">
 <h3>Point d’attention</h3>
 <div class="mini-note" id="goulot-info">Simulation à l'arrêt.</div>
 <section id="service-storages" class="pe-section" hidden></section>
 </div>
 
 <div class="panneau">
-<h3>Pression indicative par atelier</h3>
+<h3>Occupation mesurée par atelier</h3>
 <div id="stats-ateliers"></div>
-<p class="mini-note">Indice visuel du moteur, pas un taux d’occupation mesuré. OF = en attente ou en traitement.</p></div>
+<p class="mini-note">Part des personnes occupées sur les 15 dernières minutes simulées ; le robot est indiqué à part sur le montage. OF = ordres présents dans l’atelier.</p></div>
 
 <div class="panneau"><h3>Retard courant des départs exigibles</h3><div class="val" id="kpi-retard-exigibles">—</div><p class="mini-note">Moyenne à cet instant, dossiers inachevés compris.</p><h3>Retard des dossiers terminés</h3><div class="val" id="kpi-retard">—</div><p class="mini-note">Moyenne sur les dossiers terminés uniquement ; les non prêts restent comptés en haut de page.</p></div><div class="chart-wrap">
 <h3>Évolution de la démonstration</h3>
@@ -385,9 +385,13 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <h3>Importer un CSV simplifié</h3>
 <div class="champ"><span>Fichier de démonstration (.csv)</span><input accept=".csv" aria-label="Importer un fichier CSV simplifié de vols" id="imp-vols" type="file"/></div>
 <div class="mini-note">Ce format attend une ligne par départ ou retour. L’export Winrest XLSX et ses lignes de prestations ne sont pas encore pris en charge.</div>
-<div class="row-btns"><button class="btn" id="csv-template">Télécharger le modèle</button><button class="btn" id="restore-demo">Charger la démo</button></div><div aria-live="polite" class="import-report" id="import-report" role="status">Aucun fichier importé.</div></div><div class="panneau" id="model-limits"><h3>Périmètre du calcul actuel</h3><p class="mini-note">Les données importées restent calculées par un moteur de démonstration. Ses résultats ne permettent pas de dimensionner les équipes.</p><ul class="limits-list"><li>Calendrier limité à une journée ; J−2, J−1 et l’exception CRL ne sont pas intégrés.</li><li>Le moteur affecte encore tous les YC au robot. La règle réelle se limite à l’économie FBU, TX/FWI et CRL ; les cas SPML restent à préciser.</li><li>Temps théoriques du classeur, stocks, pauses et transferts physiques non intégrés.</li><li>Magasin, Duty free et handling ne disposent pas d’une charge calculée.</li></ul></div></div></aside></div>
+<div class="row-btns"><button class="btn" id="csv-template">Télécharger le modèle</button><button class="btn" id="restore-demo">Charger la démo</button></div><div aria-live="polite" class="import-report" id="import-report" role="status">Aucun fichier importé.</div></div><div class="panneau" id="model-limits"><h3>Périmètre du calcul actuel</h3><p class="mini-note">Les données importées restent calculées par un moteur de démonstration. Ses résultats ne permettent pas de dimensionner les équipes.</p><ul class="limits-list"><li>Calendrier limité à une journée ; J−2, J−1 et l’exception CRL ne sont pas intégrés.</li><li>Le moteur affecte encore tous les YC au robot. La règle réelle se limite à l’économie FBU, TX/FWI et CRL ; les cas SPML restent à préciser.</li><li>Barème d’homme-minutes non calibré ; contenances des tampons illimitées tant qu’elles ne sont pas renseignées.</li><li>Stocks, pauses et transferts physiques non intégrés.</li><li>Magasin, Duty free et handling ne disposent pas d’une charge calculée.</li></ul></div></div></aside></div>
 <div aria-live="polite" class="toast" id="toast" role="status"></div>
 <script src="ui-model.js"></script>
+<script src="moteur/noyau.js"></script>
+<script src="moteur/mesure.js"></script>
+<script src="moteur/ressources.js"></script>
+<script src="moteur/orly.js"></script>
 <script src="plan-editor.js"></script>
 <script src="sim.js"></script>
 </body>
