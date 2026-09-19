@@ -34,6 +34,44 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-19 — Boucle du matériel propre, et goulot recompté en ordres
+
+| Fichier | Changement |
+|---|---|
+| `moteur/orly.js` | `Niveau` « matériel propre » : consommé par la dotation (unités par passager), réalimenté par les retours lavés à la plonge. Nouvel état `attente_materiel`, nouvelle cause dans l'explication, bilan `materiel`. **`goulot()` réécrit** : compté en ordres de fabrication |
+| `sim.js`, `index.html` | curseur « Matériel propre à l'ouverture » dans le panneau Plonge ; niveau du stock dans le détail de la dotation ; trois lignes A/B |
+| `tests/orly.test.cjs`, `tests/import-browser.cjs` | conservation du stock, seuil, état et cause, non-double-comptage, levier dans l'interface |
+| `README.md` | lecture du point d'attention et du matériel |
+
+La feuille de route relevait que « la plonge ne remet pas réellement du matériel
+dans un stock utilisé par la production ». C'est fait, et la boucle se referme :
+retours → plonge → stock → dotation → départs.
+
+**Ce que le modèle sait maintenant répondre.** Le seuil mesuré sur la
+démonstration : au-dessus de 2 000 unités à l'ouverture la journée passe à
+100 % ; à 1 600 elle tombe à 83 % ; à 1 000, à 33 % avec 135 minutes de retard
+moyen. Et l'explication le dit par vol : *CRL76, retard 548 min — OF dot (le
+dernier fini) : attente de matériel propre 660 min · travail 18 min*. Le
+réglage par défaut (2 600) ne contraint pas la démonstration : aucun résultat
+existant n'a bougé, un test le vérifie.
+
+Point de conception : l'OF attend le matériel **dans** l'atelier mais **sans
+mobiliser d'opérateur**. On ne met pas quelqu'un devant un stock vide.
+Conséquence à lire correctement : la dotation affiche une occupation basse
+pendant que rien n'avance — c'est le point d'attention qui donne la cause.
+
+**Défaut trouvé par un test et corrigé : le goulot comparait des unités
+différentes.** Il mettait en concurrence un nombre de lots (atelier), un nombre
+de vols (robot) et un nombre de dossiers (matériel). Un atelier avec beaucoup de
+petits lots l'emportait toujours. `goulot()` compte désormais, pour chaque
+poste, **combien d'ordres de fabrication sont arrêtés à cause de lui** — une
+seule unité, comparable. Et un OF bloqué faute de place en aval est imputé à
+l'atelier aval, celui qui est plein, pas à celui où il patiente.
+
+Tests : 91 unitaires et 5 parcours navigateur.
+
+---
+
 ## 2026-09-18 — Un retard s'explique : étapes par OF, état en direct, journal
 
 | Fichier | Changement |

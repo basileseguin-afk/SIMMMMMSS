@@ -75,6 +75,17 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const pretsSoir=await ligne('Prêts à l’échéance');assert.ok(pct(pretsSoir[2])<pct(pretsSoir[1]),'sans cuisine le soir, la ponctualité doit chuter : '+pretsSoir);
   assert.ok(pct((await ligne('Échéances dépassées'))[2])>0);
   await setRange('#soir-cuisine','10');
+  // Matériel propre : un stock serré dégrade la ponctualité et se mesure.
+  await setRange('#materiel','600');
+  assert.equal(await page.locator('#materiel-val').textContent(),'600 u');
+  await click('#snap-b');
+  assert.deepEqual((await ligne('Matériel propre à l’ouverture')).slice(1),['2600 u','600 u']);
+  const pretsMat=await ligne('Prêts à l’échéance');
+  assert.ok(pct(pretsMat[2])<pct(pretsMat[1]),'un stock serré doit dégrader la ponctualité : '+pretsMat);
+  const rupture=await ligne('Part du temps en rupture');
+  assert.ok(pct(rupture[2])>50,'stock serré : la rupture doit dominer la journée · '+rupture);
+  assert.ok(pct(rupture[1])<10,'stock par défaut : la rupture doit rester marginale · '+rupture);
+  await setRange('#materiel','2600');
   // Capturer pendant une simulation en cours reste possible et rejoue la journée entière.
   await setRange('#robot','200');await setRange('#vitesse','120');await click('#btn-play');await page.waitForTimeout(300);await click('#btn-play');
   await click('#snap-a');assert.deepEqual((await ligne('Journée simulée')).slice(1),['23:00','23:00']);

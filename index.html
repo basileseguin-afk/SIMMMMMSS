@@ -338,6 +338,11 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <input id="tunnels" max="3" min="1" step="1" type="range" value="3"/>
 </div>
 <label class="chk"><input checked="" id="double" type="checkbox"/> 1 tunnel double vitesse (×2)</label>
+<div class="slider-ligne" style="margin-top:12px">
+<label for="materiel">Matériel propre à l’ouverture <b id="materiel-val">2600 u</b></label>
+<input id="materiel" max="6000" min="0" step="200" type="range" value="2600"/>
+</div>
+<div class="mini-note">Un seul compte, en unités par passager. La dotation en consomme pour chaque départ, les retours lavés le réalimentent. À zéro, la dotation attend sans mobiliser personne. Unité de compte, non calibrée.</div>
 </div>
 <div class="panneau">
 <h3>Horaires de vols</h3>
@@ -401,7 +406,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <h3>Importer un CSV simplifié</h3>
 <div class="champ"><span>Fichier de démonstration (.csv)</span><input accept=".csv" aria-label="Importer un fichier CSV simplifié de vols" id="imp-vols" type="file"/></div>
 <div class="mini-note">Ce format attend une ligne par départ ou retour. L’export Winrest XLSX et ses lignes de prestations ne sont pas encore pris en charge.</div>
-<div class="row-btns"><button class="btn" id="csv-template">Télécharger le modèle</button><button class="btn" id="restore-demo">Charger la démo</button></div><div aria-live="polite" class="import-report" id="import-report" role="status">Aucun fichier importé.</div></div><div class="panneau" id="model-limits"><h3>Périmètre du calcul actuel</h3><p class="mini-note">Les données importées restent calculées par un moteur de démonstration. Ses résultats ne permettent pas de dimensionner les équipes.</p><ul class="limits-list"><li>Calendrier limité à une journée ; J−2, J−1 et l’exception CRL ne sont pas intégrés.</li><li>Le robot sert les compagnies de la liste (FBU, TX/FWI, CRL par défaut) ; les autres YC sont dressés à la main à un coefficient non calibré. Prestations exactes et cas SPML à préciser.</li><li>Barème d’homme-minutes non calibré ; contenances des tampons illimitées tant qu’elles ne sont pas renseignées.</li><li>Stocks, pauses et transferts physiques non intégrés.</li><li>Magasin, Duty free et handling ne disposent pas d’une charge calculée.</li></ul></div></div></aside></div>
+<div class="row-btns"><button class="btn" id="csv-template">Télécharger le modèle</button><button class="btn" id="restore-demo">Charger la démo</button></div><div aria-live="polite" class="import-report" id="import-report" role="status">Aucun fichier importé.</div></div><div class="panneau" id="model-limits"><h3>Périmètre du calcul actuel</h3><p class="mini-note">Les données importées restent calculées par un moteur de démonstration. Ses résultats ne permettent pas de dimensionner les équipes.</p><ul class="limits-list"><li>Calendrier limité à une journée ; J−2, J−1 et l’exception CRL ne sont pas intégrés.</li><li>Le robot sert les compagnies de la liste (FBU, TX/FWI, CRL par défaut) ; les autres YC sont dressés à la main à un coefficient non calibré. Prestations exactes et cas SPML à préciser.</li><li>Barème d’homme-minutes non calibré ; contenances des tampons illimitées tant qu’elles ne sont pas renseignées.</li><li>Un seul compte de matériel propre, consommé par la dotation et réalimenté par la plonge. Les trolleys d’armement, les stocks de denrées, les pauses et les transferts physiques ne sont pas modélisés.</li><li>Magasin, Duty free et handling ne disposent pas d’une charge calculée.</li></ul></div></div></aside></div>
 <div aria-live="polite" class="toast" id="toast" role="status"></div>
 <script src="ui-model.js"></script>
 <script src="moteur/noyau.js"></script>

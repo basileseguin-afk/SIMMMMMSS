@@ -813,7 +813,8 @@ function majGoulotInfo(goulot) {
     html+='<p>'+(z.approx?'Emplacement à confirmer.':'Emplacement enregistré ; validation terrain distincte.')+'</p>';
     if(NON_MODELISES.has(id))html+='<p>Charge non calculée dans cette version.</p>';
     else {
-      html+='<p>'+st.qlen+' OF présents'+(id==='plonge'?' · '+CFG.tunnels+' tunnels':' · '+st.capacite+' personne(s) présentes')+(now>CFG.jour.debut?' · occupation '+Math.round(Math.min(1,st.util)*100)+' % sur 15 min, '+Math.round(st.tauxJour*100)+' % depuis 05:00':'')+(st.enAttente?' · <strong>'+st.enAttente+' lot(s) attendent une personne</strong>':'')+(id==='prepa'&&now>CFG.jour.debut?' · robot '+Math.round(Math.min(1,st.robotUtil)*100)+' % sur 15 min'+(st.robotAttente?', <strong>'+st.robotAttente+' vol(s) attendent le robot</strong>':''):'')+(st.bloque?' · <strong>tampon plein : l’amont est bloqué</strong>':'')+'.</p>';
+      html+='<p>'+st.qlen+' OF présents'+(id==='plonge'?' · '+CFG.tunnels+' tunnels':' · '+st.capacite+' personne(s) présentes')+(now>CFG.jour.debut?' · occupation '+Math.round(Math.min(1,st.util)*100)+' % sur 15 min, '+Math.round(st.tauxJour*100)+' % depuis 05:00':'')+(st.enAttente?' · <strong>'+st.enAttente+' lot(s) attendent une personne</strong>':'')+(id==='prepa'&&now>CFG.jour.debut?' · robot '+Math.round(Math.min(1,st.robotUtil)*100)+' % sur 15 min'+(st.robotAttente?', <strong>'+st.robotAttente+' vol(s) attendent le robot</strong>':''):'')
+        +(id==='dotation'&&modele.stock?' · matériel propre '+Math.round(modele.stock.niveau)+' u'+(modele.stock.resume().retraitsEnAttente?', <strong>'+modele.stock.resume().retraitsEnAttente+' dossier(s) en attente</strong>':''):'')+(st.bloque?' · <strong>tampon plein : l’amont est bloqué</strong>':'')+'.</p>';
       const current=jobs.filter(j=>j.released&&!j.done&&j.stationId===id);
       html+=current.length?'<ul class="detail-jobs">'+current.slice(0,8).map(j=>'<li>'+escapeHTML(j.flight.id)+' · '+escapeHTML(j.kind)+' · échéance '+formatTime(j.dueT)+' · '+escapeHTML(modele.ETATS[modele.etatOF(j)])+'</li>').join('')+'</ul>':'<p>Aucun ordre de fabrication actif ici.</p>';
       if(current.length>8)html+='<p>Et '+(current.length-8)+' autre(s) OF.</p>';
@@ -953,6 +954,7 @@ function initControles() {
   });
   bind('tunnels', e => { CFG.tunnels = +e.target.value; document.getElementById('tunnels-val').textContent = e.target.value; majPlan(); });
   document.getElementById('double').addEventListener('change', e => { CFG.tunnelDouble = e.target.checked; majPlan(); });
+  bind('materiel', e => { CFG.materiel.initial = +e.target.value; document.getElementById('materiel-val').textContent = e.target.value + ' u'; });
   bind('shift', e => { CFG.shift = +e.target.value; document.getElementById('shift-val').textContent = (e.target.value>0?'+':'') + e.target.value + ' min'; reset(); });
   document.getElementById('loadDelay').addEventListener('change',e=>{if(!e.target.checkValidity() || !e.target.value){e.target.value=CFG.loadDelay;toast('Délai attendu : 10 à 120 minutes');return;}CFG.loadDelay=+e.target.value;reset();});
   document.getElementById('btn-play').addEventListener('click', basculer);
@@ -1008,6 +1010,9 @@ function capturer(slot) {
     ontime:r.kpis.ontime,retard:r.kpis.retardMoy,overdue:r.kpis.overdue,
     robot:config.robotCadence,robotCies:(config.robotCompagnies||[]).join(', ')||'aucune',ycManuel:config.ycManuel,
     tampons:Object.keys(config.tampons||{}).map(k=>ZONES[k].nom+' '+config.tampons[k]).join(', ')||'illimitées',
+    materiel:config.materiel&&config.materiel.actif?config.materiel.initial+' u':'non modélisé',
+    materielMin:b.materiel?Math.round(b.materiel.niveauMin):null,
+    materielRupture:b.materiel?Math.round(b.materiel.partEnRupture*100):null,
     prepa:config.staff.prepa,tunnels:config.tunnels+(config.tunnelDouble?' (1×2)':''),
     soir:Object.keys((config.equipes||{}).soir||{}).filter(k=>config.equipes.soir[k]!==config.staff[k]).map(k=>ZONES[k].nom+' '+config.equipes.soir[k]).join(', ')||'comme le matin',
     robotJour:Math.round((b.robot.occupationJour||0)*100),robotP90:b.robot.attenteP90==null?null:Math.round(b.robot.attenteP90),
@@ -1018,10 +1023,11 @@ function capturer(slot) {
 function majCompare() {
   const lignes = [
     ['Journée simulée jusqu’à','time','h'],
-    ['Robot pl/h','robot'],['Compagnies servies par le robot','robotCies'],['YC manuel, min/plateau','ycManuel'],['Contenances','tampons'],['Personnes au montage (matin)','prepa'],['Équipe du soir','soir'],['Tunnels de plonge','tunnels'],
+    ['Robot pl/h','robot'],['Compagnies servies par le robot','robotCies'],['YC manuel, min/plateau','ycManuel'],['Contenances','tampons'],['Matériel propre à l’ouverture','materiel'],['Personnes au montage (matin)','prepa'],['Équipe du soir','soir'],['Tunnels de plonge','tunnels'],
     ['Prêts à l’échéance','ontime','%'],['Échéances dépassées en fin de journée','overdue'],['Retard moyen des dossiers','retard','min'],
     ['Robot occupé sur la journée','robotJour','%'],['Attente du robot, p90','robotP90','min'],
-    ['Montage occupé sur la journée','prepaJour','%'],['Cuisine occupée sur la journée','cuisineJour','%'],['Plonge occupée sur la journée','plongeJour','%']
+    ['Montage occupé sur la journée','prepaJour','%'],['Cuisine occupée sur la journée','cuisineJour','%'],['Plonge occupée sur la journée','plongeJour','%'],
+    ['Matériel propre, plus bas niveau','materielMin','u'],['Part du temps en rupture de matériel','materielRupture','%']
   ];
   const cell=(sn,l)=>{ if(!sn)return '—'; const v=sn[l[1]]; if(v==null)return '—'; if(l[2]==='h')return formatTime(v); return v+(l[2]?' '+l[2]:''); };
   let html = '<thead><tr><th>Indicateur</th><th>A</th><th>B</th></tr></thead><tbody>';
@@ -1107,7 +1113,7 @@ function updateSource() {
 function updateRunState() {
   const started=enMarche||now>CFG.jour.debut;
   document.getElementById('run-state').textContent=editMode?'Édition du plan':now>=CFG.jour.fin?'Terminé':enMarche?'En cours':started?'En pause':'Prêt à lancer';
-  document.querySelectorAll('#sliders-staff input,#robot,#robot-cies,#yc-manuel,#tampons input,#tunnels,#double,#shift,#loadDelay').forEach(input=>{
+  document.querySelectorAll('#sliders-staff input,#robot,#robot-cies,#yc-manuel,#tampons input,#tunnels,#double,#materiel,#shift,#loadDelay').forEach(input=>{
     input.disabled=started||NON_MODELISES.has(input.dataset.id);
     input.title=NON_MODELISES.has(input.dataset.id)?'Service non relié au calcul actuel':started?'Recommencez la simulation pour modifier les réglages':'';
   });

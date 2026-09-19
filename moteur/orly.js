@@ -40,6 +40,7 @@
   const Environnement = noyau.Environnement;
   const Ressource = ressources.Ressource;
   const Tampon = ressources.Tampon;
+  const Niveau = ressources.Niveau;
 
   /* ========================================================================
    *  1. PARAMÈTRES ET DONNÉES DE DÉMONSTRATION
@@ -62,7 +63,16 @@
     ycManuel: 0.35,                          // homme-minutes par plateau YC dressé à la main — NON CALIBRÉ
     // Relève d'équipe : `staff` est l'équipe du matin ; `soir[id]`, s'il est
     // renseigné, remplace l'effectif de l'atelier à partir de `bascule`.
-    equipes: { bascule: 14 * 60, soir: {} }
+    equipes: { bascule: 14 * 60, soir: {} },
+    // Boucle du matériel propre : les retours lavés à la plonge réalimentent un
+    // stock que la dotation consomme pour les départs. Un stock insuffisant
+    // arrête la dotation, même avec tout le personnel du monde.
+    materiel: {
+      actif: true,
+      initial: 2600,     // unités propres disponibles à l'ouverture
+      capacite: 8000,    // plafond du stock
+      parPax: 1          // unités par passager — unité de compte, NON CALIBRÉE
+    }
   };
 
   /* Vols fictifs : vague du matin et vague du soir. Les codes TX, FWI, CRL et
@@ -184,6 +194,17 @@
       };
     });
     const robot = new Ressource(env, 1, { nom: 'robot' });
+
+    /* Matériel propre : un seul compte, en unités par passager. Il est
+     * consommé par la dotation (assiettes et couverts propres) et réalimenté
+     * par les retours lavés à la plonge. L'armement récupère ses trolleys
+     * directement des quais (flux de retour du plan) : il n'est pas concerné.
+     * Simplification assumée — un seul compte pour tout le matériel. */
+    const mat = Object.assign({}, CFG_DEFAUT.materiel, cfg.materiel || {});
+    const stock = mat.actif
+      ? new Niveau(env, { nom: 'matériel propre', initial: Math.max(0, mat.initial),
+                          capacite: Math.max(Math.max(0, mat.initial), mat.capacite) })
+      : null;
     const robotGlissante = new Glissante(FENETRE);
     const cadenceRobot = () => Math.max(1e-9, (cfg.robotCadence || 0) / 60);   // plateaux / min
 
@@ -199,7 +220,8 @@
       released: false, done: false, stationId: null, color: COULEURS[kind],
       // Trace de l'OF, pour expliquer un retard : une entrée par atelier traversé.
       etapes: [], finT: null,
-      _entreeAttendue: false, _avalAttendu: false, _lotsEnCours: 0, _lotsRestants: 0, _robotAttend: false
+      _entreeAttendue: false, _avalAttendu: false, _lotsEnCours: 0, _lotsRestants: 0, _robotAttend: false,
+      _materielAttendu: false, _avalVers: null, besoinMateriel: 0, apportMateriel: 0
     });
     let plateauxRobot = 0, plateauxManuel = 0;
     flights.forEach(f => {
@@ -217,6 +239,15 @@
         jobs.push(mkJob(f, 'plonge', ROUTES.plonge, { plonge: c.plonge }, 0, (f.sta || 0) + cfg.shift));
       }
     });
+    if (stock) {
+      const pax = f => (f.bc || 0) + (f.pc || 0) + (f.yc || 0);
+      jobs.forEach(j => {
+        const q = Math.round(pax(j.flight) * mat.parPax);
+        if (q <= 0) return;
+        if (j.kind === 'dot') j.besoinMateriel = Math.min(q, stock.capacite);
+        else if (j.kind === 'plonge') j.apportMateriel = Math.min(q, stock.capacite);
+      });
+    }
 
     /* Relève d'équipe : à `bascule`, chaque atelier dont l'effectif du soir est
      * renseigné change de capacité. Personne n'est interrompu : les places en
@@ -290,8 +321,20 @@
         const id = j.route[k], st = stations[id];
         j.stationId = id;
         const etape = { atelier: id, entree: e.maintenant, debut: null, fin: null, sortie: null,
-                        robotDemande: null, robotDebut: null, robotFin: null };
+                        robotDemande: null, robotDebut: null, robotFin: null, attenteMateriel: 0 };
         j.etapes.push(etape);
+
+        // Le matériel propre se prend AVANT d'occuper quelqu'un : on ne mobilise
+        // pas un opérateur devant un stock vide. L'OF attend dans l'atelier,
+        // visible dans sa file, sans consommer de capacité.
+        if (stock && j.besoinMateriel > 0 && k === 0) {
+          const t0m = e.maintenant;
+          j._materielAttendu = true;
+          yield stock.retirer(j.besoinMateriel);
+          j._materielAttendu = false;
+          etape.attenteMateriel = e.maintenant - t0m;
+        }
+
         const travail = j.work[id] || 0;
         const taches = [];
         // Un atelier à zéro place fait simplement attendre : si une relève
@@ -304,9 +347,9 @@
 
         if (k + 1 < j.route.length) {
           const suivant = j.route[k + 1];
-          j._avalAttendu = true;
+          j._avalAttendu = true; j._avalVers = suivant;
           yield stations[suivant].tampon.deposer(j);      // BLOQUE si l'aval est plein
-          j._avalAttendu = false;
+          j._avalAttendu = false; j._avalVers = null;
           etape.sortie = e.maintenant;
           yield st.tampon.prendre(x => x === j);
           surToken(id + '_' + suivant, j.color);
@@ -315,6 +358,8 @@
           yield st.tampon.prendre(x => x === j);
         }
       }
+      // Les retours lavés reviennent au stock de matériel propre.
+      if (stock && j.apportMateriel > 0) yield stock.ajouter(j.apportMateriel);
       j.finT = e.maintenant;
       finaliser(j);
       j.done = true;
@@ -355,24 +400,53 @@
      * Le goulot est le poste où l'on ATTEND : celui qui a le plus de lots en
      * attente d'une personne, ou dont le tampon bloque l'amont. Pas de seuil.
      */
+    /**
+     * Le goulot est le poste où l'on attend, **compté en ordres de fabrication**.
+     *
+     * Un lot de travail, un vol en file du robot et un dossier sans matériel ne
+     * sont pas la même chose : les compter ensemble reviendrait à additionner
+     * des unités différentes. On compte donc, pour chaque poste, combien d'OF
+     * sont actuellement arrêtés à cause de lui — une seule unité, comparable.
+     *
+     * Un OF bloqué faute de place en aval est imputé à l'atelier AVAL, celui
+     * qui est plein, pas à celui où il patiente.
+     */
     function goulot() {
-      let best = null;
-      const retenir = cand => {
-        if (!best || cand.attente > best.attente || (cand.attente === best.attente && cand.sev > best.sev)) best = cand;
+      const parPoste = new Map();
+      const ajouter = (id, cause) => {
+        if (!id || !stations[id]) return;
+        const e = parPoste.get(id) || { id, attente: 0, causes: new Map() };
+        e.attente += 1;
+        e.causes.set(cause, (e.causes.get(cause) || 0) + 1);
+        parPoste.set(id, e);
       };
-      ATELIERS.forEach(id => {
-        const st = stations[id];
-        const attente = st.enAttente + (st.bloque ? st.tampon.depotsEnAttente : 0);
-        if (attente <= 0 && !st.bloque) return;
-        retenir({ id, sev: Math.min(1, st.util), qlen: st.qlen, attente,
-                  cause: st.bloque ? 'tampon saturé' : (st.capacite > 0 ? 'personnes occupées' : 'aucune personne') });
+
+      jobs.forEach(j => {
+        if (!j.released || j.done) return;
+        switch (etatOF(j)) {
+          case 'attente_personne':
+            ajouter(j.stationId, stations[j.stationId] && stations[j.stationId].capacite > 0 ? 'personnes occupées' : 'aucune personne');
+            break;
+          case 'attente_robot': ajouter('prepa', 'robot occupé'); break;
+          case 'attente_materiel': ajouter('dotation', 'matériel propre en rupture'); break;
+          case 'attente_aval': ajouter(j._avalVers, 'tampon saturé'); break;
+          case 'attente_entree': ajouter(j.route[0], 'tampon saturé'); break;
+          default: break;
+        }
       });
-      // Le robot n'est pas un atelier mais c'est une place unique : des vols
-      // qui l'attendent au montage sont un goulot au même titre.
-      if (robot.enAttente > 0) {
-        retenir({ id: 'prepa', sev: Math.min(1, robotGlissante.valeur), qlen: stations.prepa.qlen,
-                  attente: robot.enAttente, cause: 'robot occupé (' + robot.enAttente + ' vol(s) en file)' });
-      }
+
+      let best = null;
+      parPoste.forEach(e => {
+        const st = stations[e.id];
+        const sev = Math.min(1, e.id === 'prepa' && e.causes.has('robot occupé') ? Math.max(st.util, st.robotUtil) : st.util);
+        // Cause dominante, et son détail quand il éclaire l'action.
+        let cause = null, n = 0;
+        e.causes.forEach((c, nom) => { if (c > n) { n = c; cause = nom; } });
+        if (cause === 'robot occupé') cause += ' (' + n + ' vol(s) en file)';
+        else if (cause === 'matériel propre en rupture') cause += ' (' + Math.round(stock ? stock.niveau : 0) + ' unités)';
+        const cand = { id: e.id, sev, qlen: st.qlen, attente: e.attente, cause };
+        if (!best || cand.attente > best.attente || (cand.attente === best.attente && cand.sev > best.sev)) best = cand;
+      });
       return best;
     }
 
@@ -380,7 +454,8 @@
 
     const ETATS = {
       a_liberer: 'à libérer', attente_entree: 'attend une place dans l’atelier', attente_personne: 'attend une personne',
-      travail: 'en cours', attente_robot: 'attend le robot', attente_aval: 'fini, attend une place en aval', fini: 'terminé'
+      travail: 'en cours', attente_robot: 'attend le robot', attente_materiel: 'attend du matériel propre',
+      attente_aval: 'fini, attend une place en aval', fini: 'terminé'
     };
 
     /** État courant d'un OF, dérivé de ce qu'il attend. */
@@ -388,6 +463,7 @@
       if (j.done) return 'fini';
       if (!j.released) return 'a_liberer';
       if (j._entreeAttendue) return 'attente_entree';
+      if (j._materielAttendu) return 'attente_materiel';
       if (j._avalAttendu) return 'attente_aval';
       if (j._lotsEnCours > 0) return 'travail';
       if (j._robotAttend) return 'attente_robot';
@@ -397,15 +473,18 @@
 
     /** Décomposition d'un OF terminé : où il a attendu, combien il a travaillé. */
     function decomposer(j) {
-      const d = { attenteEntree: j.attenteEntree || 0, attentePersonnes: 0, attenteRobot: 0, attenteAval: 0, travail: 0, parAtelier: [] };
+      const d = { attenteEntree: j.attenteEntree || 0, attentePersonnes: 0, attenteRobot: 0, attenteMateriel: 0, attenteAval: 0, travail: 0, parAtelier: [] };
       j.etapes.forEach(et => {
         const fin = et.fin == null ? env.maintenant : et.fin;
         const debut = et.debut == null ? fin : et.debut;
         const sortie = et.sortie == null ? fin : et.sortie;
-        const ap = Math.max(0, debut - et.entree), tr = Math.max(0, fin - debut), aa = Math.max(0, sortie - fin);
+        // L'attente de matériel précède l'attente de personnes : on la retire de
+        // celle-ci pour ne pas compter deux fois le même délai.
+        const am = et.attenteMateriel || (j._materielAttendu && et.fin == null ? env.maintenant - et.entree : 0);
+        const ap = Math.max(0, debut - et.entree - am), tr = Math.max(0, fin - debut), aa = Math.max(0, sortie - fin);
         const ar = et.robotDemande != null ? Math.max(0, (et.robotDebut == null ? env.maintenant : et.robotDebut) - et.robotDemande) : 0;
-        d.attentePersonnes += ap; d.travail += tr; d.attenteAval += aa; d.attenteRobot += ar;
-        d.parAtelier.push({ atelier: et.atelier, attentePersonnes: ap, attenteRobot: ar, travail: tr, attenteAval: aa });
+        d.attentePersonnes += ap; d.travail += tr; d.attenteAval += aa; d.attenteRobot += ar; d.attenteMateriel += am;
+        d.parAtelier.push({ atelier: et.atelier, attentePersonnes: ap, attenteRobot: ar, attenteMateriel: am, travail: tr, attenteAval: aa });
       });
       return d;
     }
@@ -426,6 +505,7 @@
       const d = decomposer(critique);
       const r = Math.round;
       const morceaux = [];
+      if (d.attenteMateriel > 0.5) morceaux.push('attente de matériel propre ' + r(d.attenteMateriel) + ' min');
       if (d.attenteRobot > 0.5) morceaux.push('attente du robot ' + r(d.attenteRobot) + ' min');
       if (d.attentePersonnes > 0.5) morceaux.push('attente de personnes ' + r(d.attentePersonnes) + ' min' +
         (d.parAtelier.length > 1 ? ' (' + d.parAtelier.filter(x => x.attentePersonnes > 0.5).map(x => x.atelier + ' ' + r(x.attentePersonnes)).join(', ') + ')' : ''));
@@ -471,12 +551,19 @@
       return {
         ateliers,
         robot: { cadence: cfg.robotCadence, compagnies: (cfg.robotCompagnies || []).slice(), plateauxRobot, plateauxManuel,
-                 occupationJour: robot.tauxOccupation(), attenteMoyenne: robot.attente.moyenne(), attenteP90: robot.attente.percentile(90) }
+                 occupationJour: robot.tauxOccupation(), attenteMoyenne: robot.attente.moyenne(), attenteP90: robot.attente.percentile(90) },
+        materiel: stock ? {
+          initial: mat.initial, parPax: mat.parPax,
+          consomme: jobs.reduce((n, j) => n + (j.besoinMateriel && j.done ? j.besoinMateriel : 0), 0),
+          lave: jobs.reduce((n, j) => n + (j.apportMateriel && j.done ? j.apportMateriel : 0), 0),
+          niveau: stock.niveau, niveauMin: stock.mesure.minimum, niveauMoyen: stock.mesure.moyenne(),
+          partEnRupture: stock.partEnRupture(), dossiersEnAttente: jobs.filter(j => j._materielAttendu).length
+        } : null
       };
     }
 
     rafraichir(0);
-    return { env, flights, jobs, stations, robot, ATELIERS, ETATS, avancerA, debitRobot, goulot, bilan,
+    return { env, flights, jobs, stations, robot, stock, ATELIERS, ETATS, avancerA, debitRobot, goulot, bilan,
              etatOF, decomposer, expliquer, journal,
              get maintenant() { return env.maintenant; } };
   }

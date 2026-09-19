@@ -86,7 +86,8 @@ n'est présent dans ce dépôt.
    elle crée le blocage amont), l’**équipe du soir** (effectif par atelier à
    partir de l’heure de relève, 14:00 par défaut ; personne n’est interrompu à
    la relève, les places en trop se ferment au fil des libérations), les
-   tunnels et les horaires avant de lancer. Une fois l’essai commencé, les paramètres sont verrouillés, même
+   tunnels, le **matériel propre à l’ouverture** et les horaires avant de
+   lancer. Une fois l’essai commencé, les paramètres sont verrouillés, même
    en pause. **Recommencer** libère les réglages et efface la progression après
    confirmation ; les instantanés restent disponibles.
 3. **Plan / Suivi** : sélectionner un atelier depuis le plan, la liste Atelier
@@ -101,7 +102,8 @@ Le bouton Pause arrête le calcul. La vitesse est exprimée en minutes simulées
 par seconde. Le calcul est un **moteur à événements discrets** (`moteur/`) :
 chaque personne est occupée par un lot de 5 homme-minutes à la fois, le robot
 dresse un vol à la fois dans l’ordre des échéances, la plonge a autant de
-places que de tunnels, et chaque atelier a une contenance en OF (illimitée
+places que de tunnels, la dotation consomme du matériel propre que la plonge
+réalimente, et chaque atelier a une contenance en OF (illimitée
 tant qu’elle n’est pas renseignée dans `CFG.tampons`). Le rendu avance la
 simulation par pas de 30 secondes simulées. Le barème d’homme-minutes reste
 non calibré. Les déplacements de jetons sont illustratifs, sans valeur de
@@ -125,9 +127,15 @@ temps de transfert.
   sur les 15 dernières minutes simulées, mesurée, sans lissage ni plancher. Le
   détail d’un atelier donne aussi l’occupation depuis 05:00. Magasin, Duty free
   et handling ne sont pas modélisés.
-- **Point d’attention** : le poste où l’on attend — lots en attente d’une
-  personne, vols en attente du robot, ou tampon plein qui bloque l’amont. Aucun
-  seuil : s’il n’y a d’attente nulle part, rien n’est désigné.
+- **Point d’attention** : le poste où l’on attend, compté en **ordres de
+  fabrication arrêtés à cause de lui** — personnes occupées, robot occupé,
+  matériel propre en rupture, ou tampon plein. Un OF bloqué faute de place en
+  aval est imputé à l’atelier aval, celui qui est plein. Aucun seuil : s’il n’y
+  a d’attente nulle part, rien n’est désigné.
+- **Matériel propre** : un seul compte, en unités par passager. La dotation en
+  consomme pour chaque départ, la plonge le réalimente avec les retours lavés.
+  À stock vide, la dotation attend **sans mobiliser personne** : son occupation
+  reste basse alors que rien n’avance, et c’est le point d’attention qui le dit.
 - **Suivi des vols, colonne « Opérations »** : pendant la journée, chaque ordre
   de fabrication dit où il est et ce qu’il attend (une personne, le robot, une
   place en aval). Une fois le vol prêt, l’OF qui a fixé l’heure explique son
@@ -213,7 +221,10 @@ du moteur existant. Leur raccordement aux nouvelles liaisons reste à définir.
   défaut) ; les prestations exactes et les cas SPML restent à préciser, et le
   coefficient de dressage manuel des autres YC n’est pas calibré.
 - Standards théoriques du classeur, effets de lot et non-linéarité non intégrés.
-- Stocks, retours utilisables, compétences, pauses et transferts physiques incomplets.
+- Un seul compte de matériel propre : la dotation en consomme pour chaque
+  départ, les retours lavés à la plonge le réalimentent. Les trolleys
+  d’armement, les stocks de denrées, les compétences, les pauses et les
+  transferts physiques ne sont pas modélisés.
 - Les curseurs décrivent des personnes simultanées, en deux équipes au plus
   (matin, soir) ; la convention heures / 7 produit un équivalent de charge, pas
   une affectation de personnel.

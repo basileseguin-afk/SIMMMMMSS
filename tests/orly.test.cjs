@@ -222,3 +222,79 @@ test('le journal donne une ligne par atelier traversé, dans l’ordre du temps'
   j.forEach(l => { assert.ok(l.entree <= l.debut && l.debut <= l.fin && l.fin <= l.sortie, JSON.stringify(l)); });
   assert.ok(j.some(l => l.atelier === 'prepa' && l.robotDebut != null && l.robotFin > l.robotDebut));
 });
+
+/* ======================================================================
+ *  MATÉRIEL PROPRE — la plonge réalimente ce que la dotation consomme
+ * ====================================================================*/
+
+test('le matériel propre se conserve : initial + lavé − consommé = stock final', () => {
+  const r = journee(cfg(c => { c.materiel.initial = 8000; }));
+  const m = r.bilan.materiel;
+  assert.ok(r.modele.jobs.every(j => j.done), 'avec un stock large, tout doit finir');
+  assert.equal(m.initial + m.lave - m.consomme, m.niveau);
+  assert.equal(m.lave, 1772);          // somme des passagers des six retours
+  assert.equal(m.consomme, 3220);      // somme des passagers des douze départs
+  assert.equal(m.partEnRupture, 0);
+});
+
+test('un stock insuffisant arrête la dotation, et la ponctualité suit le stock', () => {
+  const large = journee(cfg(c => { c.materiel.initial = 8000; }));
+  const juste = journee(cfg(c => { c.materiel.initial = 1400; }));
+  const vide  = journee(cfg(c => { c.materiel.initial = 0; }));
+
+  assert.equal(large.kpis.ontime, 100);
+  assert.ok(juste.kpis.ontime < large.kpis.ontime, 'stock serré : ' + juste.kpis.ontime);
+  assert.ok(vide.kpis.ontime < juste.kpis.ontime, 'stock vide : ' + vide.kpis.ontime);
+  assert.ok(vide.bilan.materiel.partEnRupture > 0.9);
+  assert.equal(large.bilan.materiel.partEnRupture, 0);
+
+  // Le personnel n'y est pour rien : la dotation n'est pas plus occupée.
+  assert.ok(vide.bilan.ateliers.dotation.occupationJour <= large.bilan.ateliers.dotation.occupationJour + 1e-9,
+    'un stock vide ne doit pas occuper davantage la dotation');
+  // Sans retours lavés, rien ne repart : c'est la plonge qui réalimente.
+  assert.equal(vide.bilan.materiel.lave, large.bilan.materiel.lave);
+});
+
+test('le réglage par défaut ne contraint pas la démonstration', () => {
+  const avec = journee(cfg());
+  const sans = journee(cfg(c => { c.materiel.actif = false; }));
+  assert.equal(sans.bilan.materiel, null);
+  assert.deepEqual(avec.kpis, sans.kpis);   // même journée : le stock par défaut suffit
+  assert.ok(avec.bilan.materiel.niveauMin > 0, 'le stock ne doit pas tomber à zéro par défaut');
+});
+
+test('un dossier qui attend du matériel le dit, sans occuper personne', () => {
+  const c = cfg(x => { x.materiel.initial = 0; });
+  const m = construireModele(JEU_DEMO, c);
+  m.avancerA(c.jour.debut + 60);                       // 06:00, aucun retour encore lavé
+  const dot = m.jobs.find(j => j.kind === 'dot' && j.released && !j.done);
+  assert.ok(dot, 'un OF dotation doit être libéré');
+  assert.equal(m.etatOF(dot), 'attente_materiel');
+  assert.equal(m.ETATS.attente_materiel, 'attend du matériel propre');
+  assert.equal(m.stations.dotation.ressource.occupees, 0, 'personne ne doit être mobilisé devant un stock vide');
+  assert.ok(m.stations.dotation.qlen > 0, 'l’OF reste visible dans l’atelier');
+
+  const g = m.goulot();
+  assert.equal(g.id, 'dotation');
+  assert.match(g.cause, /matériel propre en rupture/);
+
+  const x = m.expliquer(dot.flight);
+  assert.equal(x.etat, 'attente_materiel');
+  assert.match(x.phrase, /attend du matériel propre/);
+});
+
+test('l’attente de matériel n’est pas recomptée comme attente de personnes', () => {
+  const r = journee(cfg(c => { c.materiel.initial = 1000; }));
+  const m = r.modele;
+  const dots = m.jobs.filter(j => j.kind === 'dot' && j.done);
+  assert.ok(dots.some(j => m.decomposer(j).attenteMateriel > 1), 'la démo doit produire des attentes matériel');
+  dots.forEach(j => {
+    const d = m.decomposer(j);
+    const sejour = j.finT - j.liberationT;
+    assert.ok(d.attenteMateriel >= 0);
+    assert.ok(d.attentePersonnes >= 0, 'l’attente de personnes ne doit pas devenir négative');
+    assert.ok(d.attenteMateriel + d.attentePersonnes + d.travail <= sejour + 1e-9,
+      j.flight.id + ' : ' + JSON.stringify(d) + ' séjour ' + sejour);
+    assert.equal(d.parAtelier[0].atelier, 'dotation');
+  });
+});
