@@ -5,6 +5,35 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-19 — Centre des flux, repris sur le nouveau moteur
+
+- Reprise sur un clone neuf après la purge, depuis `90fc4e0`. Conservés : moteur
+  à événements discrets branché, scénarios A/B par rejeu, règles robot / manuel,
+  contenances, relève d’équipe, explications par OF et export de résultats 0.4.
+  Aucun ancien commit ni fichier confidentiel réintroduit.
+- Nouvel onglet **Centre des flux** : liaisons orientées par listes déroulantes
+  entre services et stockages, avec plusieurs origines et destinations.
+- Quatre familles : humains (personnel / runners), matériels, matières
+  (premières / transformées), informations (OF / kanban uniquement).
+- Circulation interne libre par défaut, réglable par service ; sorties humaines
+  réservées aux liaisons Runner explicites. Les anciennes flèches restent à classer.
+- Ajout, modification, activation, suppression, retour, filtres par famille et
+  service, annulation/rétablissement, sauvegarde locale, export/import validé.
+- Noms et stockages synchronisés avec le plan. Stockage supprimé : ses liaisons
+  sont conservées et signalées à réparer. Pas de réaffectation automatique.
+- Réseau affiché sur le plan sans replacer les frigos. Les échanges internes
+  restent dans la liste ; les liaisons entre services sont filtrables.
+- Portée explicite : le centre configure les échanges, mais ne remplace pas les
+  gammes de `moteur/orly.js` et ne change pas ses résultats. Le choix du moteur
+  d’autorité JavaScript / Python reste ouvert, conformément à l’étude actualisée.
+- README remis en cohérence avec le branchement du moteur et le retrait d’assets.
+- Fichiers : `flow-center.js`, `flow-center.css`, `index.html`, `sim.js`, README,
+  guide `docs/CENTRE_DES_FLUX.md`, registre des bugs et deux nouveaux tests.
+- Vérification : 86 tests unitaires et cinq parcours navigateur réussis
+  (flux, import/A-B, simulateur, éditeur et stockages), sur la version intégrée.
+
+---
+
 ## 2026-09-18 — Un retard s'explique : étapes par OF, état en direct, journal
 
 | Fichier | Changement |

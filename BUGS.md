@@ -243,3 +243,14 @@ lit ses vues (`stations`, `jobs`, `goulot()`, `debitRobot()`). Constats :
 - Les libellés « pression indicative » et « indice visuel » de l'interface
   étaient devenus faux : remplacés par « occupation mesurée ».
 - BUG-003 et BUG-005 restent ouverts : import CSV hors périmètre de ce commit.
+
+## Revue du 2026-09-19 — Centre des flux
+
+Reprise après les corrections CSV et le remplacement du moteur : BUG-001 à
+BUG-005 restent corrigés, BUG-006 écarté. Aucun ancien statut rouvert.
+Le nouveau parcours `tests/flows-browser.cjs` couvre les liaisons multiples,
+restrictions humaines, retour, activation, filtres du plan, sauvegarde, import
+invalide sans remplacement et stockage supprimé puis restauré.
+Les extrémités absentes sont signalées, jamais effacées ou réaffectées.
+Le réseau configuré ne pilote pas encore les gammes ni les déplacements du
+moteur Orly : limite affichée dans l’onglet et documentée dans son guide.

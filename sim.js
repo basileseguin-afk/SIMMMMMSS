@@ -243,7 +243,7 @@ function construirePlan() {
   verifierPlan();
 
   // Arêtes de flux (recalculées à chaque modification de géométrie)
-  const gEdges = svgEl('g', {}); gVue.appendChild(gEdges);
+  const gEdges = svgEl('g', {id:'flow-edges'}); gVue.appendChild(gEdges);
   edgeEls = {};
   FLUX.concat(FLUX_RETOUR.map(e => e.concat('R'))).forEach(fl => {
     const [a, b] = fl, retour = fl[2] === 'R', id = a + '_' + b;
@@ -322,6 +322,7 @@ function positionnerZone(id) {
 
 /* Recalcule le tracé de toutes les arêtes. */
 function redessinerEdges() {
+  if(Sim.flows){dessinerFluxConfigures();return;}
   Object.keys(edgeEls).forEach(id => {
     const e = edgeEls[id];
     const pa = bord(e.a, centre(e.b)), pb = bord(e.b, centre(e.a));
@@ -333,6 +334,29 @@ function redessinerEdges() {
     e.fleche.setAttribute('d',
       `M ${pb.x} ${pb.y} L ${pb.x-F*Math.cos(ang-0.4)} ${pb.y-F*Math.sin(ang-0.4)} M ${pb.x} ${pb.y} L ${pb.x-F*Math.cos(ang+0.4)} ${pb.y-F*Math.sin(ang+0.4)}`);
   });
+}
+
+function dessinerFluxConfigures(){
+  const group=document.getElementById('flow-edges');group.replaceChildren();
+  const points=Sim.flows.points,pairs=new Map();
+  document.getElementById('fc-map-scope').textContent=Sim.flows.mapOwner?' · '+(ZONES[Sim.flows.mapOwner]?.nom||'Service absent'):'';
+  for(const flow of Sim.flows.mapFlows()){
+    const a=points.find(p=>p.id===flow.from),b=points.find(p=>p.id===flow.to);
+    if(a.owner===b.owner)continue; // les échanges internes se lisent dans la liste
+    const key=JSON.stringify([a.owner,b.owner]);const offset=pairs.get(key)||0;pairs.set(key,offset+1);
+    const pa=bord(a.owner,centre(b.owner)),pb=bord(b.owner,centre(a.owner));
+    const dx=pb.x-pa.x,dy=pb.y-pa.y,len=Math.hypot(dx,dy)||1;
+    const cx=(pa.x+pb.x)/2-dy/len*(130+offset*65),cy=(pa.y+pb.y)/2+dx/len*(130+offset*65);
+    const path=svgEl('path',{d:`M ${pa.x} ${pa.y} Q ${cx} ${cy} ${pb.x} ${pb.y}`,class:'edge','data-flow-id':flow.id});
+    path.style.stroke=OrlyFlows.TYPES[flow.type].color;if(flow.type==='unclassified')path.style.strokeDasharray='20 14';
+    const title=svgEl('title',{});title.textContent=OrlyFlows.TYPES[flow.type].label+' : '+a.label+' → '+b.label;path.appendChild(title);group.appendChild(path);
+    const ang=Math.atan2(pb.y-cy,pb.x-cx),F=42;
+    const arrow=svgEl('path',{d:`M ${pb.x-F*Math.cos(ang-.4)} ${pb.y-F*Math.sin(ang-.4)} L ${pb.x} ${pb.y} L ${pb.x-F*Math.cos(ang+.4)} ${pb.y-F*Math.sin(ang+.4)}`,class:'edge'});arrow.style.stroke=OrlyFlows.TYPES[flow.type].color;group.appendChild(arrow);
+  }
+}
+function initFlux(){
+  Sim.flows=new OrlyFlows.FlowCenter({zones:()=>Sim.editor.state.zones,legacy:FLUX.concat(FLUX_RETOUR),changed:()=>{if(Sim.flows)redessinerEdges();},showMap:()=>showView('plan'),notify:toast});
+  redessinerEdges();
 }
 
 /* Le fond de plan est facultatif : s'il n'est pas présent en local, on le
@@ -706,7 +730,7 @@ function initEdition() {
   Sim.editor=new window.OrlyPlan.PlanEditor({
     svg,viewport:Sim._gVue,zones:ZONES,storages:STORAGES,notify:toast,
     update(id,visible){positionnerZone(id);zoneEls[id].titre.textContent=ZONES[id].nom;zoneEls[id].g.setAttribute('aria-label',ZONES[id].nom);zoneEls[id].g.style.display=visible?'':'none';},
-    refresh(){redessinerEdges();document.querySelectorAll('#zone-picker option').forEach(o=>{if(ZONES[o.value])o.textContent=ZONES[o.value].nom;});},
+    refresh(){if(Sim.flows)Sim.flows.refresh();redessinerEdges();document.querySelectorAll('#zone-picker option').forEach(o=>{if(ZONES[o.value])o.textContent=ZONES[o.value].nom;});},
     getView(){return {vk,vtx,vty};},
     pan(v,dx,dy){const m=svg.getScreenCTM();vtx=v.vtx+dx/m.a;vty=v.vty+dy/m.d;vk=v.vk;appliquerVue();},
     focus(b){vk=Math.min(8,Math.max(.5,Math.min(VUE.w/(b.w+150),VUE.h/(b.h+150))*.8));vtx=VUE.x+VUE.w/2-(b.x+b.w/2)*vk;vty=VUE.y+VUE.h/2-(b.y+b.h/2)*vk;appliquerVue();}
@@ -1065,6 +1089,9 @@ function showPanel(name) {
 function showView(name) {
   if(editMode && name!=='plan')return;
   activeView=name;
+  document.body.classList.toggle('flows-open',name==='flux');
+  document.getElementById('view-flux').hidden=name!=='flux';
+  if(name==='flux'&&Sim.flows)Sim.flows.refresh();
   document.getElementById('view-plan').hidden=name!=='plan';
   document.getElementById('view-vols').hidden=name!=='vols';
   document.querySelector('.plan-tete').hidden=name!=='plan';
@@ -1136,7 +1163,7 @@ function initWorkbench() {
 const Sim = { robotRate:0, dataCourante:SAMPLE, _gTok:null };
 window.Sim = Sim;
 chargerZones();
-construirePlan(); build(SAMPLE); initControles(); initEdition(); initWorkbench();
+construirePlan(); build(SAMPLE); initControles(); initEdition(); initFlux(); initWorkbench();
 majHorloge(); majPlan(); majDashboard(); dessinerChart();
 
 })();

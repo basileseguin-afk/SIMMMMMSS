@@ -11,7 +11,8 @@ pas encore de dimensionner les équipes ou de prédire la ponctualité réelle.
 
 Ouvrir `index.html` dans un navigateur récent. Aucun serveur, aucune installation
 et aucune dépendance réseau ne sont nécessaires à l’utilisation. Conserver les
-fichiers JavaScript, CSS et le dossier `assets` à côté du HTML.
+fichiers JavaScript, CSS et le dossier `moteur` à côté du HTML. Le fond privé
+est facultatif ; aucun dossier `assets` n’est nécessaire.
 
 ## 🌐 Ouvrir l'application depuis GitHub (sans rien télécharger)
 
@@ -171,8 +172,9 @@ encore pris en charge.** Aucun effectif passager n’est déduit de cet export.
 ## Dessiner et détailler le plan
 
 **Éditer les zones** ouvre un espace dédié : plan agrandi, outils Rectangle /
-Polygone / Sélection / Main, liste recherchable des ateliers, chambres froides
-et stockages existants. Ajouter des locaux et équipements, les nommer, choisir
+Polygone / Sélection / Main, liste recherchable des ateliers et locaux.
+Les stockages sont des fiches rattachées aux services, sans contour individuel.
+Ajouter des locaux et équipements, les nommer, choisir
 une couleur, dupliquer, masquer ou verrouiller leur géométrie.
 
 Les poignées gardent une taille lisible au zoom. L’aimantation et les guides
@@ -188,6 +190,22 @@ automatique ; **Exporter le plan** permet de conserver une copie indépendante.
 Voir le **[guide de l’éditeur](docs/EDITEUR_PLAN.md)** pour les gestes, raccourcis,
 imports, sauvegardes et limites.
 
+## Centre des flux
+
+L’onglet **Centre des flux** permet de définir des liaisons par listes
+déroulantes entre services et stockages, avec plusieurs origines et destinations.
+Quatre familles : humains (personnel / runners), matériels, matières premières
+ou transformées, informations (OF / kanban). La circulation interne est libre
+par défaut ; une liaison interservices humaine nécessite le type Runner.
+
+Modification, désactivation, suppression, retour, filtres du plan, historique,
+sauvegarde locale et export/import sont disponibles. Les anciennes flèches sont
+conservées **À classer**. Voir le [guide du Centre des flux](docs/CENTRE_DES_FLUX.md).
+
+Ce réseau configurable ne remplace pas les gammes de `moteur/orly.js` : les
+calculs A/B, les équipes, les tampons et les explications par OF restent ceux
+du moteur existant. Leur raccordement aux nouvelles liaisons reste à définir.
+
 ## Limites métier à traiter ensuite
 
 - Cuisine J−2, prépa J−1 et exception CRL du soir produit le matin de J non intégrées.
@@ -200,20 +218,15 @@ imports, sauvegardes et limites.
   (matin, soir) ; la convention heures / 7 produit un équivalent de charge, pas
   une affectation de personnel.
 
-La prochaine étape consiste à connecter une chaîne de calcul validée à cette
-interface. L’**[étude des moteurs open source](docs/ETUDE_OPEN_SOURCE.md)**
-compare SimPy, ProdSim, uia-simjs et salabim, explique pourquoi le moteur
-actuel ne détecte pas les vrais goulots et propose le chemin de remplacement.
-Ses trois étapes sont faites : `moteur/noyau.js` fournit le cœur à événements
-discrets, `moteur/ressources.js` et `moteur/mesure.js` les postes à places, les
-tampons bloquants et les statistiques pondérées par le temps, `moteur/procede.js`
-la description de la gamme en données — voir le **[guide du procédé](docs/PROCEDE.md)**.
-Un test chiffre le gain : à débit et production identiques, un tampon d’une
-place immobilise le poste amont **41 minutes au lieu de 10** — c’est le blocage
-amont, le mécanisme de goulot que le moteur actuel ne sait pas produire.
-**`sim.js` est inchangé** : le raccordement à l’interface demande le programme
-de vols traduit en sources et le procédé réel de l’unité, qui se travaillent en
-privé.
+Le moteur à événements discrets est maintenant branché à l’interface via
+`moteur/orly.js`. Le noyau, les ressources et les mesures prennent en charge
+les files, les tampons bloquants, les relèves et le rejeu A/B ; `moteur/procede.js`
+propose aussi une description de gamme en données — voir le
+[guide du procédé](docs/PROCEDE.md). La calibration, l’intégration du calendrier
+métier et le raccordement du Centre des flux restent à faire.
+L’[étude des moteurs](docs/ETUDE_OPEN_SOURCE.md) décrit le bilan et la décision
+encore ouverte sur le moteur d’autorité (JavaScript ou Python). Cette évolution
+d’interface ne tranche pas cette décision. Les données réelles restent en privé.
 Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 [registre des bugs](BUGS.md) et le
 [journal des modifications](CHANGELOG.md). La
@@ -229,7 +242,8 @@ Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `moteur/orly.js` | Modèle des flux de l’unité sur le moteur : ateliers, robot, plonge, tampons, goulot mesuré |
 | `plan-editor.js` / `editor.css` | Dessin, annotations, historique et sauvegarde du plan |
 | `ui-model.js` | Import CSV, calcul des états et règles de présentation testables |
-| `moteur/noyau.js` | Noyau à événements discrets (étape 1) — **pas encore branché sur l’interface** |
+| `moteur/noyau.js` | Noyau à événements discrets utilisé par le modèle Orly branché à l’interface |
+| `flow-center.js` / `flow-center.css` | Réseau configurable, règles humaines, onglet et affichage des flux |
 | `moteur/mesure.js` | Moniteurs de niveau (pondérés par le temps) et de comptage |
 | `moteur/ressources.js` | Postes à places, tampons bloquants, niveaux (étape 2) |
 | `moteur/procede.js` | Procédé décrit en données : validation, tirages à graine, exécution (étape 3) |
