@@ -133,3 +133,8 @@ input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
 .elem{cursor:move}
 .elem.sel .contour{stroke:var(--accent);stroke-width:5}
 .elem-etiq{fill:var(--txt2);font-size:12px;font-weight:800;pointer-events:none}
+
+/* Cohérence avec la simulation : contrôles contrastés et outils identifiables. */
+:root{--txt3:#50647b;--bordure2:#697e94;--accent:#086c71;--accent2:#055357}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.btn{min-height:36px}.onglet.on{background:var(--accent);color:#fff}
