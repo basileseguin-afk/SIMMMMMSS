@@ -13,3 +13,17 @@ test('rotation and existing library models map to the grid',()=>{
  assert.equal(footprint({type:'desserte',dimCm:{l:70,p:50}}).length,2);
  assert.throws(()=>footprint({type:'table',cells:['NaN,0']}));
 });
+
+test('validated workshops preserve codes and reject duplicate codes or empty surfaces',()=>{
+ const s=state();s.workshops[0].code='AT-001';s.workshops[0].validated=true;
+ assert.deepEqual(validate(s),s);s.workshops.push({id:'w2',service:'prepa',nom:'Autre',code:'AT-001'});assert.throws(()=>validate(s),/Code atelier/);
+ s.workshops.pop();s.items=[];assert.throws(()=>validate(s),/vide/);
+});
+test('surface union removes interior edges and preserves gaps and holes',()=>{
+ const {surface,nextCode}=require('../workshop-grid.js');
+ assert.equal(surface(['0,0','1,0'],40).outline.split('M').length-1,6);
+ assert.equal(surface(['0,0','2,0'],40).outline.split('M').length-1,8);
+ const ring=['0,0','1,0','2,0','0,1','2,1','0,2','1,2','2,2'];
+ assert.equal(surface(ring,40).outline.split('M').length-1,16);
+ assert.equal(nextCode([{code:'AT-001'},{code:'AT-003'}]),'AT-002');
+});

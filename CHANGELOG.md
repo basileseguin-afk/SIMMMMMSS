@@ -5,6 +5,24 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-20 — Valider les ateliers et afficher leur code sur le plan
+
+- `workshop-grid.js` : bouton « Valider l’atelier », puis « Modifier l’atelier ».
+  Les cases des équipements de cet atelier deviennent une surface commune,
+  avec contour extérieur sans joints internes et remplissage à 22 % d’opacité.
+  La grille reste visible ; trous et espaces entre îlots sont conservés.
+- Code automatique unique dans l’aménagement (`AT-001`, etc.) affiché sur
+  le plan ; nom complet conservé dans le panneau d’édition. Le code reste
+  stable lors d’une reprise du dessin, d’un renommage ou d’un rechargement.
+- Les cellules et équipements restent éditables sans perte. Toute modification
+  de géométrie remet l’atelier en dessin ; une nouvelle validation unifie le rendu.
+  Validation refusée si l’atelier est vide ou ses équipements hors service.
+- Codes et état conservés dans la sauvegarde locale et les exports/imports v1 ;
+  anciennes sauvegardes toujours acceptées. Annuler/rétablir reste disponible.
+- Tests : 97 tests unitaires réussis et parcours ateliers enrichi (validation,
+  reprise, historique, suppression, rechargement et export). Inspection du rendu
+  translucide sans fond privé. Aucun changement du moteur de simulation.
+
 ## 2026-09-20 — Interface : contraste et hiérarchie des actions
 
 - Revue heuristique documentée dans `docs/AUDIT_ERGONOMIE_2026-09-20.md` :
