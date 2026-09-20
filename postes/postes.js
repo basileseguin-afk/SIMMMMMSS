@@ -812,4 +812,18 @@ tout();
 window.__postes = { get modeles(){return modeles;}, get assemblages(){return assemblages;},
   tourne, dim, bordsLibres, valide, debitLigne, CELL_CM };
 
+// Mode intégré : réutiliser une copie du modèle/assemblage, sans modifier la bibliothèque.
+if(new URLSearchParams(location.search).get('integrated')==='1'&&window.parent!==window){
+  const button=document.createElement('button');button.id='btn-place-service';button.className='btn btn-primaire';button.textContent='Placer dans le service';
+  button.addEventListener('click',()=>{
+    let payload;
+    if(mode==='assemblages'){
+      const a=assemblage();if(!a||!a.elements.length){alert('Sélectionnez un assemblage non vide.');return;}
+      payload=a.elements.map(e=>({model:modeleDe(e.refId),x:e.x,y:e.y,rot:e.rot||0}));
+    }else{const m=modele();if(!m)return;payload=[{model:m,x:0,y:0,rot:0}];}
+    window.parent.postMessage({type:'ory-place-selection',payload},location.protocol==='file:'||location.origin==='null'?'*':location.origin);
+  });
+  document.querySelector('.entete-droite').prepend(button);
+}
+
 })();

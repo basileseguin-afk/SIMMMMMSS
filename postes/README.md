@@ -115,7 +115,9 @@ invalide, bibliothèque inchangée).
   mesurées sur le site.
 - Un modèle décrit une **géométrie et une affectation**. Rien n'est relié au
   moteur de simulation, ni aux standards de travail.
-- Pas encore d'implantation : les assemblages ne sont pas posés sur le plan de
-  l'unité. C'est l'étape suivante.
+- Les modèles et assemblages peuvent maintenant être copiés sur le plan via
+  l’onglet **Création des ateliers** de la simulation. La grille y est
+  schématique, non calibrée sur les dimensions du bâtiment. Voir le
+  [guide d’intégration](../docs/CREATION_ATELIERS.md).
 - Pas de détection de collision entre éléments d'un assemblage.
 - Thème clair uniquement.

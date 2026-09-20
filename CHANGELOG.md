@@ -5,6 +5,35 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-20 — Création des ateliers : construction sur grille dans les services
+
+- Onglet **Création des ateliers** dans la simulation, conservant la carte.
+  Clic service : cadrage automatique et zoom plafonné à ce cadrage. Lecture
+  suspendue pendant l’aménagement, vue dégagée des jauges et grands libellés.
+- Plusieurs ateliers nommés par service. Tables, chaînes et lignes robot
+  construites case par case au clic-glissé ; gomme, sélection/déplacement,
+  rotation, renommage et suppression. Cases occupées et hors service refusées.
+- Grille de 50 × 50 cm **théoriques**, explicitement schématique : aucune cote
+  réelle n’est déduite du plan. Taille visuelle commune réglable avant placement.
+- Bibliothèque `postes/` accessible dans l’application : modèles et assemblages
+  réutilisés par copie. Le détail source est conservé ; seule l’emprise est
+  dessinée. Meubles en cm et positions d’assemblage arrondis sur la grille.
+- Sauvegarde locale, export/import validé, annulation/rétablissement par geste.
+  Un service absent ou modifié ne supprime pas les données : alerte de placement.
+- Correction de l’échange intégré en ouverture locale : origine opaque `file:`
+  prise en charge et source de la fenêtre émettrice contrôlée.
+- Moteur, scénarios A/B, Centre des flux et fichiers privés conservés, sans
+  liaison automatique entre dessin des équipements et capacité simulée.
+- Reprise sur `726e4f8` : boucle du matériel propre plonge/dotation et nouveau
+  calcul du goulot conservés. Aucun fichier du moteur remplacé.
+- Vérification : 95 tests unitaires et six parcours navigateur, dont le nouveau
+  parcours ateliers (zoom plafonné, tracé, gomme, rotation, bibliothèque,
+  services distincts, persistance, export, import invalide et affichage mobile).
+- Fichiers : `workshop-grid.js/css`, `sim.js`, `index.html`, `postes/postes.js`,
+  tests, guides, README et registre des bugs.
+
+---
+
 ## 2026-09-19 — Centre des flux, repris sur le nouveau moteur
 
 - Reprise sur un clone neuf après la purge, depuis `90fc4e0`. Conservés : moteur

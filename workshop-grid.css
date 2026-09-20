@@ -1,0 +1,24 @@
+body.workshops-open .workbench>.panel-tabs,body.workshops-open .workbench>.panel-content:not(#workshop-panel){display:none!important}
+#workshop-panel h2{font-size:19px;margin:0 0 12px}
+#workshop-panel h3{font-size:14px;margin:20px 0 12px}
+#workshop-panel label{display:grid;gap:6px;font-size:12px;margin:12px 0}
+#workshop-panel select,#workshop-panel input{width:100%;min-width:0;box-sizing:border-box;padding:8px;border:1px solid var(--bordure2);border-radius:6px;color:var(--txt);background:var(--bg3);font:inherit}
+.wg-actions,.wg-tools{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0}
+.wg-tools [aria-pressed=true],.wg-item[aria-pressed=true]{background:var(--accent);color:var(--bg3)}
+.wg-item{display:block;width:100%;text-align:left;margin:7px 0}
+#wg-status{color:var(--accent2);font-size:12px;line-height:1.6;margin:14px 0}
+#wg-library-dialog{width:94vw;max-width:1500px;height:90vh;padding:14px;border:1px solid var(--bordure);border-radius:12px;background:var(--bg3);color:var(--txt)}
+#wg-library-dialog::backdrop{background:#10203099}
+.wg-dialog-head{display:flex;align-items:center;justify-content:space-between;gap:16px}
+#wg-library-dialog p{font-size:12px}
+#wg-library-frame{width:100%;height:calc(100% - 90px);border:1px solid var(--bordure)}
+body.workshops-open #btn-edit{display:none}
+.workspace-heading,.view-tabs{flex-wrap:wrap}
+body.workshops-open #viewport #plan-storages,body.workshops-open #viewport #flow-edges{display:none}
+body.workshops-open{grid-template-rows:auto auto minmax(0,1fr)}
+body.workshops-open>.kpi-grille{display:none}
+body.workshops-open #tokens{display:none}
+body.workshop-focused .zone>:not(.fond):not(title){display:none}
+body.workshop-focused .zone .fond{stroke-width:2;vector-effect:non-scaling-stroke}
+body.workshops-open .map-footer>*{display:none}
+body.workshops-open .map-footer::before{content:'Grille 50 × 50 cm schématique · Glisser pour construire · Sélection pour déplacer';font-size:12px;color:var(--txt2)}

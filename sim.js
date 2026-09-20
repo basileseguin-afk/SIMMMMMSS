@@ -354,6 +354,13 @@ function dessinerFluxConfigures(){
     const arrow=svgEl('path',{d:`M ${pb.x-F*Math.cos(ang-.4)} ${pb.y-F*Math.sin(ang-.4)} L ${pb.x} ${pb.y} L ${pb.x-F*Math.cos(ang+.4)} ${pb.y-F*Math.sin(ang+.4)}`,class:'edge'});arrow.style.stroke=OrlyFlows.TYPES[flow.type].color;group.appendChild(arrow);
   }
 }
+function zoomService(z){const b=boite(z);return Math.max(.5,Math.min(VUE.w/(b.w+80),VUE.h/(b.h+80))*.93);}
+function initWorkshops(){
+  Sim.workshops=new OrlyWorkshops.WorkshopGrid({svg,viewport:Sim._gVue,zones:()=>Sim.editor.state.zones,
+    focus(z){const b=boite(z);vk=zoomService(z);vtx=VUE.x+VUE.w/2-(b.x+b.w/2)*vk;vty=VUE.y+VUE.h/2-(b.y+b.h/2)*vk;appliquerVue();},
+    overview(){selectionner(null);vk=1;vtx=0;vty=0;appliquerVue();}
+  });
+}
 function initFlux(){
   Sim.flows=new OrlyFlows.FlowCenter({zones:()=>Sim.editor.state.zones,legacy:FLUX.concat(FLUX_RETOUR),changed:()=>{if(Sim.flows)redessinerEdges();},showMap:()=>showView('plan'),notify:toast});
   redessinerEdges();
@@ -392,6 +399,7 @@ function appliquerVue() {
   const z = document.getElementById('zoom-val'); if (z) z.textContent = Math.round(vk*100) + '%';
   majPoignees();
   if(Sim.editor)Sim.editor.renderCanvas();
+  if(Sim.workshops)Sim.workshops.renderCanvas();
 }
 function ptSvg(e) {
   const m = svg.getScreenCTM(); if (!m) return { x:0, y:0 };
@@ -399,7 +407,8 @@ function ptSvg(e) {
   return p.matrixTransform(m.inverse());
 }
 function zoomer(f, p) {
-  const nk = Math.min(8, Math.max(0.5, vk * f));
+  const max=activeView==='ateliers'&&Sim.workshops?.zone?zoomService(Sim.workshops.zone):8;
+  const nk = Math.min(max, Math.max(0.5, vk * f));
   if (!p) p = { x:VUE.x + VUE.w/2, y:VUE.y + VUE.h/2 };
   const wx = (p.x - vtx) / vk, wy = (p.y - vty) / vk;
   vk = nk; vtx = p.x - wx*vk; vty = p.y - wy*vk;
@@ -630,11 +639,12 @@ function ajoutRessource(g, label, type) {
 
 let selection = null;
 function selectionner(id) {
-  selection = (!editMode && selection === id) ? null : id;
+  selection = (!editMode && activeView!=='ateliers' && selection === id) ? null : id;
   Object.keys(zoneEls).forEach(k => zoneEls[k].g.classList.toggle('selection', k === selection));
   Object.keys(zoneEls).forEach(k => zoneEls[k].g.setAttribute('aria-pressed',String(k===selection)));
   document.getElementById('zone-picker').value = selection || '';
   if(Sim.editor)Sim.editor.showService(selection);
+  if(activeView==='ateliers'&&Sim.workshops)Sim.workshops.selectService(selection);
   document.querySelectorAll('#stats-ateliers button').forEach(b=>{const active=b.dataset.station===selection;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});
   majGoulotInfo(); majPoignees(); majChampsEdition();
   if(!editMode) showPanel('suivi');
@@ -1095,13 +1105,15 @@ function showPanel(name) {
 function showView(name) {
   if(editMode && name!=='plan')return;
   activeView=name;
+  if(Sim.workshops){Sim.workshops.setActive(name==='ateliers');if(name==='ateliers'){pause();Sim.workshops.selectService(selection);}}
+  document.getElementById('btn-play').disabled=name==='ateliers'||editMode;
   document.body.classList.toggle('flows-open',name==='flux');
   document.getElementById('view-flux').hidden=name!=='flux';
   if(name==='flux'&&Sim.flows)Sim.flows.refresh();
-  document.getElementById('view-plan').hidden=name!=='plan';
+  document.getElementById('view-plan').hidden=!['plan','ateliers'].includes(name);
   document.getElementById('view-vols').hidden=name!=='vols';
-  document.querySelector('.plan-tete').hidden=name!=='plan';
-  document.querySelector('.map-footer').hidden=name!=='plan';
+  document.querySelector('.plan-tete').hidden=!['plan','ateliers'].includes(name);
+  document.querySelector('.map-footer').hidden=!['plan','ateliers'].includes(name);
   document.querySelectorAll('[data-view]').forEach(b=>{b.classList.toggle('active',b.dataset.view===name);b.setAttribute('aria-pressed',String(b.dataset.view===name));});
   if(name==='vols')renderFlights();
 }
@@ -1169,7 +1181,7 @@ function initWorkbench() {
 const Sim = { robotRate:0, dataCourante:SAMPLE, _gTok:null };
 window.Sim = Sim;
 chargerZones();
-construirePlan(); build(SAMPLE); initControles(); initEdition(); initFlux(); initWorkbench();
+construirePlan(); build(SAMPLE); initControles(); initEdition(); initFlux(); initWorkshops(); initWorkbench();
 majHorloge(); majPlan(); majDashboard(); dessinerChart();
 
 })();
