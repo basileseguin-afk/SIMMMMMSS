@@ -1,0 +1,37 @@
+const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs');
+const {pathToFileURL}=require('node:url');
+const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
+(async()=>{
+ const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE_PATH?{executablePath:process.env.CHROMIUM_EXECUTABLE_PATH,args:['--no-sandbox','--disable-gpu','--disable-software-rasterizer','--no-zygote','--single-process']}:{})});
+ const page=await browser.newPage({viewport:{width:1440,height:1000},acceptDownloads:true}),errors=[];
+ page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
+ const click=s=>page.locator(s).click();
+ const state=()=>page.evaluate(()=>structuredClone(Sim.workshops.state));
+ const screen=async(c)=>page.evaluate(c=>{const p=document.getElementById('plan').createSVGPoint();p.x=(c[0]+.5)*Sim.workshops.state.step;p.y=(c[1]+.5)*Sim.workshops.state.step;const q=p.matrixTransform(document.getElementById('workshop-layer').getScreenCTM());return{x:q.x,y:q.y};},c);
+ const at=async(c)=>{const p=await screen(c);await page.mouse.click(p.x,p.y);};
+ try{
+  await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
+  await click('[data-view=ateliers]');assert.equal(await page.locator('#view-plan').isVisible(),true);assert.equal(await page.locator('#btn-play').isDisabled(),true);
+  await page.locator('.zone[data-id=cuisine]').click();
+  const transform=await page.locator('#viewport').getAttribute('transform');await click('#zoom-in');assert.equal(await page.locator('#viewport').getAttribute('transform'),transform,'service fit is maximum zoom');
+  const cells=await page.evaluate(()=>{const w=Sim.workshops,z=w.zone,s=w.state.step;for(let y=Math.ceil(z.y/s)+1;y<(z.y+z.h)/s-2;y++)for(let x=Math.ceil(z.x/s)+1;x<(z.x+z.w)/s-5;x++)if(Array.from({length:5},(_,i)=>OrlyWorkshops.cellInside((x+i)+','+y,z,s)).every(Boolean))return [x,y];throw Error('No five-cell span');});
+  await click('[data-wg-tool=table]');const a=await screen(cells),b=await screen([cells[0]+2,cells[1]]);await page.mouse.move(a.x,a.y);await page.mouse.down();await page.mouse.move(b.x,b.y,{steps:6});await page.mouse.up();
+  assert.equal((await state()).items.length,1);assert.equal((await state()).items[0].cells.length,3);assert.equal((await state()).workshops[0].service,'cuisine');
+  await click('#wg-undo');assert.equal((await state()).items.length,0);await click('#wg-redo');assert.equal((await state()).items.length,1);
+  await click('[data-wg-tool=erase]');await at([cells[0]+1,cells[1]]);assert.equal((await state()).items[0].cells.length,2);await click('#wg-undo');
+  await click('[data-wg-tool=select]');await at(cells);await click('#wg-rotate');assert.equal((await state()).items[0].cells.length,3);
+  await page.locator('#wg-item-name').fill('Table test');await page.locator('#wg-item-name').press('Tab');
+  const saved=await state();await page.reload();await click('[data-view=ateliers]');await page.locator('#zone-picker').selectOption('cuisine');assert.deepEqual(await state(),saved);
+  await click('#wg-add-group');await page.locator('#wg-group-name').fill('Deuxième atelier');await page.locator('#wg-group-name').press('Tab');
+  await click('[data-wg-tool=tapis]');await at([cells[0]+4,cells[1]]);assert.equal((await state()).workshops.length,2);assert.equal((await state()).items.length,2);
+  await click('#wg-library');const frame=page.frameLocator('#wg-library-frame');await frame.locator('[data-neuf=table]').click();await frame.locator('#btn-place-service').click();await page.locator('#wg-library-dialog').waitFor({state:'hidden'});
+  await at([cells[0],cells[1]+4]);assert.equal((await state()).items.length,3,'library model is placed on main map');assert.ok((await state()).items[2].source);
+  const download=page.waitForEvent('download');await page.locator('#workshop-panel summary').click();await click('#wg-export');const d=await download;const exported=JSON.parse(fs.readFileSync(await d.path(),'utf8'));assert.equal(exported.items.length,3);
+  const before=await state();await page.locator('#wg-import').setInputFiles({name:'bad.json',mimeType:'application/json',buffer:Buffer.from('{"schema":"no"}')});await page.waitForFunction(()=>document.getElementById('wg-status').textContent.includes('Import refusé'));assert.deepEqual(await state(),before);
+  await click('#wg-overview');assert.equal(await page.locator('#zone-picker').inputValue(),'');await page.locator('#zone-picker').selectOption('prepa');assert.equal(await page.locator('#wg-items [data-wg-item]').count(),0);
+  await page.locator('#zone-picker').selectOption('cuisine');await page.screenshot({path:'/tmp/ory-workshops-desktop.png'});await click('#btn-theme');await page.screenshot({path:'/tmp/ory-workshops-dark.png'});
+  await click('[data-view=flux]');assert.equal(await page.locator('#view-flux').isVisible(),true);await click('[data-view=plan]');assert.equal(await page.locator('#btn-play').isDisabled(),false);
+  await page.setViewportSize({width:390,height:844});await click('[data-view=ateliers]');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  assert.deepEqual(errors,[]);console.log('Workshop browser passed: same map, capped zoom, painting, erase, rotation, groups, library placement, persistence, export, invalid import, tabs and mobile.');
+ }finally{await browser.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});

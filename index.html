@@ -247,7 +247,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
   .col-plan{min-height:70vh}
 }
 </style>
-<link href="interface.css" rel="stylesheet"/><link href="editor.css" rel="stylesheet"/><link href="flow-center.css" rel="stylesheet"/></head>
+<link href="interface.css" rel="stylesheet"/><link href="editor.css" rel="stylesheet"/><link href="flow-center.css" rel="stylesheet"/><link href="workshop-grid.css" rel="stylesheet"/></head>
 <body><a class="skip-link" href="#workspace">Aller à la simulation</a>
 <header>
 <div class="marque"><span class="brand-mark">N</span><div>ORY <span class="brand-separator">/</span> Flux de production<small>Atelier de simulation</small></div></div>
@@ -270,7 +270,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <div class="kpi"><div class="lab">Débit instantané du robot</div><div class="val" id="kpi-debit">0 <small>plateaux/h</small></div><div class="kpi-note">Robot occupé sur les 15 dernières minutes × cadence</div></div></div><div class="app" id="workspace" tabindex="-1">
 <!-- ============ LEVIERS WHAT-IF ============ -->
 <!-- ============ PLAN ============ -->
-<div class="colonne col-plan"><div class="workspace-heading"><div><span class="eyebrow">EXPLORER L’UNITÉ</span><h1>Production &amp; flux</h1></div><nav aria-label="Vue principale" class="view-tabs"><button aria-pressed="true" class="active" data-view="plan">Plan</button><button aria-pressed="false" data-view="flux">Centre des flux</button><button aria-pressed="false" data-view="vols">Suivi des vols <span id="flight-count">0</span></button></nav></div>
+<div class="colonne col-plan"><div class="workspace-heading"><div><span class="eyebrow">EXPLORER L’UNITÉ</span><h1>Production &amp; flux</h1></div><nav aria-label="Vue principale" class="view-tabs"><button aria-pressed="true" class="active" data-view="plan">Plan</button><button aria-pressed="false" data-view="ateliers">Création des ateliers</button><button aria-pressed="false" data-view="flux">Centre des flux</button><button aria-pressed="false" data-view="vols">Suivi des vols <span id="flight-count">0</span></button></nav></div>
 <div class="plan-tete"><label class="zone-picker">Atelier <select id="zone-picker"><option value="">Vue d’ensemble</option></select></label>
 <div class="zoom-ctrl">
 <button aria-label="Dézoomer" class="btn btn-mini" id="zoom-out" title="Dézoomer">−</button>
@@ -415,6 +415,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <script src="moteur/orly.js"></script>
 <script src="plan-editor.js"></script>
 <script src="flow-center.js"></script>
+<script src="workshop-grid.js"></script>
 <script src="sim.js"></script>
 </body>
 </html>

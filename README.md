@@ -198,6 +198,18 @@ automatique ; **Exporter le plan** permet de conserver une copie indépendante.
 Voir le **[guide de l’éditeur](docs/EDITEUR_PLAN.md)** pour les gestes, raccourcis,
 imports, sauvegardes et limites.
 
+## Création des ateliers
+
+L’onglet **Création des ateliers** conserve la carte : cliquer un service le
+cadre au zoom maximal. Créer des ateliers internes puis construire tables et
+chaînes case par case sur une grille de **50 × 50 cm théoriques**, avec gomme,
+déplacement, rotation et annulation. La bibliothèque de modèles et assemblages
+existante est accessible dans l’application pour les poser sur cette grille.
+
+Le fond n’est pas calibré : l’aménagement reste schématique, sans vérification
+des dimensions réelles ni calcul automatique des capacités du moteur.
+Voir le [guide de création des ateliers](docs/CREATION_ATELIERS.md).
+
 ## Centre des flux
 
 L’onglet **Centre des flux** permet de définir des liaisons par listes

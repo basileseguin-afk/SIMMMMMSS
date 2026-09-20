@@ -254,3 +254,22 @@ invalide sans remplacement et stockage supprimé puis restauré.
 Les extrémités absentes sont signalées, jamais effacées ou réaffectées.
 Le réseau configuré ne pilote pas encore les gammes ni les déplacements du
 moteur Orly : limite affichée dans l’onglet et documentée dans son guide.
+
+## Revue du 2026-09-19 — Création des ateliers
+
+BUG-001 à BUG-005 restent corrigés, BUG-006 écarté. Nouveaux contrôles :
+cases distinctes par service, contour du service, import atomique, géométrie
+de modèle bornée et fenêtre émettrice vérifiée pour l’intégration de la bibliothèque.
+Le parcours `tests/workshops-browser.cjs` vérifie les gestes réels, le zoom
+plafonné, l’historique, plusieurs ateliers, la bibliothèque en fichier local,
+la persistance et la navigation mobile.
+
+Défaut trouvé avant livraison : pour un fichier local, `location.origin` peut
+valoir `file://` alors que la cible de `postMessage` a une origine opaque `null`.
+Le placement de modèle ne quittait pas la bibliothèque. Corrigé en traitant le
+protocole `file:` explicitement, sans relâcher le contrôle de la fenêtre source.
+Le même parcours, initialement en échec sur la fermeture de la bibliothèque,
+passe avec la correction.
+
+Limites explicites : grille non calibrée, arrondi d’emprise des meubles en cm,
+pas de validation QHSE ni d’effet des équipements sur les capacités simulées.
