@@ -5,6 +5,22 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-20 — Interface : contraste et hiérarchie des actions
+
+- Revue heuristique documentée dans `docs/AUDIT_ERGONOMIE_2026-09-20.md` :
+  constats, contrastes chiffrés, décisions et limites de la vérification.
+- `usability.css` : en-tête sombre, surfaces distinctes, contrôles contrastés,
+  navigation active pleine, palette ateliers, styles clair/sombre et mobile.
+- `index.html`, `sim.js` : navigation raccourcie, titre propre à chaque vue,
+  indicateurs plus concis et explications repliables accessibles au clavier.
+- `workshop-grid.js`, `flow-center.js` : commandes hiérarchisées, consignes
+  regroupées dans des aides ; limites du modèle toujours visibles.
+- `postes/postes.css` : cohérence des contrôles de la bibliothèque embarquée.
+- Vérification : 95 tests unitaires, six parcours navigateur existants et un
+  parcours ciblé contraste / clavier / responsive. Sélecteur de sauvegarde
+  du test ateliers précisé pour permettre plusieurs aides repliables.
+- Aucun changement du moteur, des données sauvegardées ou du fond privé.
+
 ## 2026-09-20 — Création des ateliers : construction sur grille dans les services
 
 - Onglet **Création des ateliers** dans la simulation, conservant la carte.

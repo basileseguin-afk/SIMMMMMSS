@@ -1105,6 +1105,7 @@ function showPanel(name) {
 function showView(name) {
   if(editMode && name!=='plan')return;
   activeView=name;
+  document.getElementById('view-title').textContent=({plan:'Simulation',ateliers:'Création des ateliers',flux:'Centre des flux',vols:'Suivi des vols'})[name];
   if(Sim.workshops){Sim.workshops.setActive(name==='ateliers');if(name==='ateliers'){pause();Sim.workshops.selectService(selection);}}
   document.getElementById('btn-play').disabled=name==='ateliers'||editMode;
   document.body.classList.toggle('flows-open',name==='flux');

@@ -247,7 +247,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
   .col-plan{min-height:70vh}
 }
 </style>
-<link href="interface.css" rel="stylesheet"/><link href="editor.css" rel="stylesheet"/><link href="flow-center.css" rel="stylesheet"/><link href="workshop-grid.css" rel="stylesheet"/></head>
+<link href="interface.css" rel="stylesheet"/><link href="editor.css" rel="stylesheet"/><link href="flow-center.css" rel="stylesheet"/><link href="workshop-grid.css" rel="stylesheet"/><link href="usability.css" rel="stylesheet"/></head>
 <body><a class="skip-link" href="#workspace">Aller à la simulation</a>
 <header>
 <div class="marque"><span class="brand-mark">N</span><div>ORY <span class="brand-separator">/</span> Flux de production<small>Atelier de simulation</small></div></div>
@@ -261,17 +261,17 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <div class="entete-droite">
 <div class="vitesse-box">Lecture <input aria-label="Vitesse de lecture, minutes simulées par seconde" id="vitesse" max="120" min="1" type="range" value="30"/><b id="vitesse-val">30×</b></div>
 <button aria-label="Changer le thème" class="btn" id="btn-theme" title="Basculer clair / sombre">🌙</button>
-<button class="btn" id="btn-export" title="Exporter les résultats (JSON)">Exporter le résultat</button>
+<button class="btn" id="btn-export" title="Exporter les résultats (JSON)">Exporter</button>
 </div>
-</header><div class="context-bar"><div><span class="demo-badge">Prototype</span><strong id="source-label">Jeu de démonstration</strong><span id="source-count"></span></div><button class="text-button" id="btn-limits">Calcul non calibré · voir les limites</button></div>
+</header><div class="context-bar"><div><span class="demo-badge">Prototype</span><strong id="source-label">Jeu de démonstration</strong><span id="source-count"></span></div><button class="text-button" id="btn-limits">Non calibré · limites</button></div>
 <div class="kpi-grille"><div class="kpi"><div class="lab">Prêts à l’échéance</div><div class="val" id="kpi-ontime">—</div><div class="kpi-note" id="kpi-denom">Aucun départ exigible</div></div>
-<div class="kpi"><div class="lab">Échéances dépassées · non prêts</div><div class="val" id="kpi-overdue">0</div><div class="kpi-note" id="kpi-ready">0 dossier terminé</div></div>
-<div class="kpi"><div class="lab">Travail en cours</div><div class="val" id="kpi-wip">0 <small>OF</small></div><div class="kpi-note">Ordres de fabrication libérés, non terminés</div></div>
-<div class="kpi"><div class="lab">Débit instantané du robot</div><div class="val" id="kpi-debit">0 <small>plateaux/h</small></div><div class="kpi-note">Robot occupé sur les 15 dernières minutes × cadence</div></div></div><div class="app" id="workspace" tabindex="-1">
+<div class="kpi"><div class="lab">En retard · non prêts</div><div class="val" id="kpi-overdue">0</div><div class="kpi-note" id="kpi-ready">0 dossier terminé</div></div>
+<div class="kpi"><div class="lab">Travail en cours</div><div class="val" id="kpi-wip">0 <small>OF</small></div><div class="kpi-note">OF libérés, non terminés</div></div>
+<div class="kpi"><div class="lab">Cadence observée du robot</div><div class="val" id="kpi-debit">0 <small>plateaux/h</small></div><div class="kpi-note">Occupation sur 15 min × cadence</div></div></div><div class="app" id="workspace" tabindex="-1">
 <!-- ============ LEVIERS WHAT-IF ============ -->
 <!-- ============ PLAN ============ -->
-<div class="colonne col-plan"><div class="workspace-heading"><div><span class="eyebrow">EXPLORER L’UNITÉ</span><h1>Production &amp; flux</h1></div><nav aria-label="Vue principale" class="view-tabs"><button aria-pressed="true" class="active" data-view="plan">Plan</button><button aria-pressed="false" data-view="ateliers">Création des ateliers</button><button aria-pressed="false" data-view="flux">Centre des flux</button><button aria-pressed="false" data-view="vols">Suivi des vols <span id="flight-count">0</span></button></nav></div>
-<div class="plan-tete"><label class="zone-picker">Atelier <select id="zone-picker"><option value="">Vue d’ensemble</option></select></label>
+<div class="colonne col-plan"><div class="workspace-heading"><div><h1 id="view-title">Simulation</h1></div><nav aria-label="Vue principale" class="view-tabs"><button aria-pressed="true" class="active" data-view="plan">Simulation</button><button aria-pressed="false" data-view="ateliers">Ateliers</button><button aria-pressed="false" data-view="flux">Flux</button><button aria-pressed="false" data-view="vols">Vols <span id="flight-count">0</span></button></nav></div>
+<div class="plan-tete"><label class="zone-picker">Service <select id="zone-picker"><option value="">Vue d’ensemble</option></select></label>
 <div class="zoom-ctrl">
 <button aria-label="Dézoomer" class="btn btn-mini" id="zoom-out" title="Dézoomer">−</button>
 <b id="zoom-val">100%</b>
@@ -288,9 +288,9 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <span><span class="pastille" style="background:var(--ok-stroke)"></span>Faible</span>
 <span><span class="pastille" style="background:var(--warn-stroke)"></span>Soutenue</span>
 <span><span class="pastille" style="background:var(--bad-stroke)"></span>Forte</span>
-</div><span>Molette : zoom · Glisser : déplacer · Pointillés : emplacement à confirmer</span></div><section aria-label="Suivi des départs" class="flights-view" hidden="" id="view-vols"><div class="flight-filters"><label>Rechercher <input id="flight-search" placeholder="Vol ou compagnie" type="search"/></label><label>Afficher <select id="flight-filter"><option value="all">Tous les départs</option><option value="overdue">Échéance dépassée, non prêt</option><option value="pending">Non prêts</option><option value="ready">Terminés</option></select></label></div><p class="mini-note">Échéance = départ simulé − délai de chargement. Le statut concerne la production, pas la ponctualité de l’avion.</p><div class="table-scroll"><table class="flight-table"><caption class="sr-only">État de production des départs simulés</caption><thead><tr><th scope="col">Vol / compagnie</th><th scope="col">Départ</th><th scope="col">Échéance</th><th scope="col">Statut</th><th scope="col">Opérations restantes</th></tr></thead><tbody id="flight-rows"></tbody></table></div></section><section id="view-flux" aria-label="Centre des flux" hidden></section></div>
+</div><span>Molette : zoom · Glisser : déplacer · Pointillés : emplacement à confirmer</span></div><section aria-label="Suivi des départs" class="flights-view" hidden="" id="view-vols"><div class="flight-filters"><label>Rechercher <input id="flight-search" placeholder="Vol ou compagnie" type="search"/></label><label>Afficher <select id="flight-filter"><option value="all">Tous les départs</option><option value="overdue">Échéance dépassée, non prêt</option><option value="pending">Non prêts</option><option value="ready">Terminés</option></select></label></div><details class="inline-help"><summary>Comprendre les échéances</summary><p class="mini-note">Échéance = départ simulé − délai de chargement. Le statut concerne la production, pas la ponctualité de l’avion.</p></details><div class="table-scroll"><table class="flight-table"><caption class="sr-only">État de production des départs simulés</caption><thead><tr><th scope="col">Vol / compagnie</th><th scope="col">Départ</th><th scope="col">Échéance</th><th scope="col">Statut</th><th scope="col">Opérations restantes</th></tr></thead><tbody id="flight-rows"></tbody></table></div></section><section id="view-flux" aria-label="Centre des flux" hidden></section></div>
 <!-- ============ DASHBOARD ============ -->
-<aside aria-label="Outils de simulation" class="workbench"><nav aria-label="Panneaux" class="panel-tabs"><button aria-pressed="true" class="active" data-panel="suivi">Suivi</button><button aria-pressed="false" data-panel="reglages">Réglages</button><button aria-pressed="false" data-panel="donnees">Données</button></nav><div class="panel-content" id="panel-suivi"><div class="panel-heading"><h2>Lire la situation</h2><p>Occupation mesurée par atelier. Cliquez un atelier pour consulter ses opérations.</p></div><div class="panneau">
+<aside aria-label="Outils de simulation" class="workbench"><nav aria-label="Panneaux" class="panel-tabs"><button aria-pressed="true" class="active" data-panel="suivi">Suivi</button><button aria-pressed="false" data-panel="reglages">Réglages</button><button aria-pressed="false" data-panel="donnees">Données</button></nav><div class="panel-content" id="panel-suivi"><div class="panel-heading"><h2>Suivi de production</h2></div><div class="panneau">
 <h3>Point d’attention</h3>
 <div class="mini-note" id="goulot-info">Simulation à l'arrêt.</div>
 <section id="service-storages" class="pe-section" hidden></section>
@@ -299,12 +299,12 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <div class="panneau">
 <h3>Occupation mesurée par atelier</h3>
 <div id="stats-ateliers"></div>
-<p class="mini-note">Part des personnes occupées sur les 15 dernières minutes simulées ; le robot est indiqué à part sur le montage. OF = ordres présents dans l’atelier.</p></div>
+<details class="inline-help"><summary>Lire les taux d’occupation</summary><p class="mini-note">Part des personnes occupées sur les 15 dernières minutes simulées ; le robot est indiqué à part sur le montage. OF = ordres présents dans l’atelier.</p></details></div>
 
-<div class="panneau"><h3>Retard courant des départs exigibles</h3><div class="val" id="kpi-retard-exigibles">—</div><p class="mini-note">Moyenne à cet instant, dossiers inachevés compris.</p><h3>Retard des dossiers terminés</h3><div class="val" id="kpi-retard">—</div><p class="mini-note">Moyenne sur les dossiers terminés uniquement ; les non prêts restent comptés en haut de page.</p></div><div class="chart-wrap">
+<div class="panneau"><h3>Retard courant des départs exigibles</h3><div class="val" id="kpi-retard-exigibles">—</div><details class="inline-help"><summary>Calcul du retard</summary><p class="mini-note">Moyenne à cet instant, dossiers inachevés compris.</p></details><h3>Retard des dossiers terminés</h3><div class="val" id="kpi-retard">—</div><details class="inline-help"><summary>Calcul du retard</summary><p class="mini-note">Moyenne sur les dossiers terminés uniquement ; les non prêts restent comptés en haut de page.</p></details></div><div class="chart-wrap">
 <h3>Évolution de la démonstration</h3>
 <canvas id="chart"></canvas>
-<p class="mini-note" id="chart-legend">Les courbes apparaîtront pendant la simulation.</p></div></div><div class="panel-content" hidden="" id="panel-reglages"><div class="panel-heading"><h2>Préparer un essai</h2><p>Réglez les capacités, puis lancez. Pour modifier un essai commencé, recommencez la simulation.</p></div>
+<p class="mini-note" id="chart-legend">Les courbes apparaîtront pendant la simulation.</p></div></div><div class="panel-content" hidden="" id="panel-reglages"><div class="panel-heading"><h2>Réglages de l’essai</h2><p>Réglez les capacités, puis lancez. Pour modifier un essai commencé, recommencez la simulation.</p></div>
 <!-- Panneau d'édition des zones (affiché en mode édition) -->
 <div class="panneau">
 <h3>Effectifs par atelier</h3>
@@ -324,11 +324,11 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <label for="yc-manuel">Dressage manuel des autres YC <b id="yc-manuel-val">0,35 min/plateau</b></label>
 <input id="yc-manuel" max="1" min="0.1" step="0.05" type="range" value="0.35"/>
 </div>
-<div class="mini-note">Règle de la feuille de route : le robot sert l’économie FBU, TX/FWI et CRL ; les autres YC sont dressés à la main au montage. Cadences et coefficient de démonstration, non validés sur le site.</div>
+<details class="inline-help"><summary>Périmètre du robot</summary><p class="mini-note">Règle de la feuille de route : le robot sert l’économie FBU, TX/FWI et CRL ; les autres YC sont dressés à la main au montage. Cadences et coefficient de démonstration, non validés sur le site.</p></details>
 </div>
 <div class="panneau">
 <h3>Contenance des ateliers</h3>
-<p class="mini-note">Nombre d’ordres de fabrication qu’un atelier peut contenir, en attente, en cours ou finis mais pas encore partis. Vide = illimitée. Une contenance finie crée le blocage amont.</p>
+<details class="inline-help"><summary>Comprendre la contenance</summary><p class="mini-note">Nombre d’ordres de fabrication qu’un atelier peut contenir, en attente, en cours ou finis mais pas encore partis. Vide = illimitée. Une contenance finie crée le blocage amont.</p></details>
 <div id="tampons"></div>
 </div>
 <div class="panneau">
@@ -342,7 +342,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <label for="materiel">Matériel propre à l’ouverture <b id="materiel-val">2600 u</b></label>
 <input id="materiel" max="6000" min="0" step="200" type="range" value="2600"/>
 </div>
-<div class="mini-note">Un seul compte, en unités par passager. La dotation en consomme pour chaque départ, les retours lavés le réalimentent. À zéro, la dotation attend sans mobiliser personne. Unité de compte, non calibrée.</div>
+<details class="inline-help"><summary>Fonctionnement du stock</summary><p class="mini-note">Un seul compte, en unités par passager. La dotation en consomme pour chaque départ, les retours lavés le réalimentent. À zéro, la dotation attend sans mobiliser personne. Unité de compte, non calibrée.</p></details>
 </div>
 <div class="panneau">
 <h3>Horaires de vols</h3>
@@ -356,7 +356,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 </div>
 </div>
 <div class="panneau">
-<h3>Scénarios A / B</h3><p class="mini-note">Réglez, capturez A ; changez un réglage, capturez B. Chaque capture rejoue la journée entière avec ces réglages, instantanément.</p>
+<h3>Scénarios A / B</h3><details class="inline-help"><summary>Comparer deux essais</summary><p class="mini-note">Réglez, capturez A ; changez un réglage, capturez B. Chaque capture rejoue la journée entière avec ces réglages, instantanément.</p></details>
 <div class="row-btns">
 <button class="btn" id="snap-a">Capturer A</button>
 <button class="btn" id="snap-b">Capturer B</button>
