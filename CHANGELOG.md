@@ -5,6 +5,20 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-20 — Codes par type d’équipement
+
+- `workshop-grid.js` : remplacement du repère global AT affiché sur le plan
+  par un code pour chaque équipement : T-001 (table), R-001 (robot), C-001
+  (chaîne), D-001 (desserte), TR-001 (trolley). Numérotation indépendante
+  par type, unique dans l’aménagement, visible sur le plan et dans la liste.
+- Codes conservés au renommage, à la validation, au rechargement et à
+  l’export/import. Les anciennes sauvegardes reçoivent automatiquement des
+  codes ; les anciens identifiants AT restent acceptés mais ne sont plus affichés.
+- Rendu fusionné et transparent des ateliers validés conservé, avec un repère
+  par équipement. Noms complets réservés au panneau d’édition.
+- Vérification : 98 tests unitaires et parcours navigateur ateliers réussis ;
+  migration, préfixes, doublons, stabilité, historique et export couverts.
+
 ## 2026-09-20 — Valider les ateliers et afficher leur code sur le plan
 
 - `workshop-grid.js` : bouton « Valider l’atelier », puis « Modifier l’atelier ».
