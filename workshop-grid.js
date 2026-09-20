@@ -2,6 +2,7 @@
 (function(root){
 'use strict';
 const TYPES={table:'Table',tapis:'Chaîne',robot:'Ligne robot',desserte:'Desserte',trolley:'Trolley'};
+const PREFIXES={table:'T',robot:'R',tapis:'C',desserte:'D',trolley:'TR'};
 const COLORS={table:'#b67b34',tapis:'#168886',robot:'#7956ad',desserte:'#4479ae',trolley:'#657482'};
 const clone=x=>JSON.parse(JSON.stringify(x)),uid=()=> 'atelier-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -24,13 +25,17 @@ function validate(raw){
  if(!raw||raw.schema!=='ory-workshops'||raw.version!==1||!Number.isInteger(raw.step)||raw.step<10||raw.step>200||!Array.isArray(raw.workshops)||raw.workshops.length>300||!Array.isArray(raw.items)||raw.items.length>2000)throw Error('Aménagement v1 invalide.');
  const ids=new Set(),groups=new Map(),codes=new Set();
  const text=(s,n)=>typeof s==='string'&&s.trim().length>0&&s.length<=n;
- const workshops=raw.workshops.map(w=>{if(!w||!text(w.id,160)||ids.has(w.id)||!text(w.service,160)||!text(w.nom,120))throw Error('Atelier invalide ou identifiant en double.');if(w.code!==undefined&&(!/^AT-\d{3,6}$/.test(w.code)||codes.has(w.code)))throw Error('Code atelier invalide ou en double.');if(w.validated!==undefined&&typeof w.validated!=='boolean')throw Error('État atelier invalide.');if(w.validated&&!w.code)throw Error('Code atelier manquant.');if(w.code)codes.add(w.code);ids.add(w.id);groups.set(w.id,w);return{id:w.id,service:w.service,nom:w.nom.trim(),...(w.code?{code:w.code}:{}),...(w.validated!==undefined?{validated:w.validated}:{})};});
+ const workshops=raw.workshops.map(w=>{if(!w||!text(w.id,160)||ids.has(w.id)||!text(w.service,160)||!text(w.nom,120))throw Error('Atelier invalide ou identifiant en double.');if(w.code!==undefined&&(!/^AT-\d{3,6}$/.test(w.code)||codes.has(w.code)))throw Error('Code atelier invalide ou en double.');if(w.validated!==undefined&&typeof w.validated!=='boolean')throw Error('État atelier invalide.');if(w.code)codes.add(w.code);ids.add(w.id);groups.set(w.id,w);return{id:w.id,service:w.service,nom:w.nom.trim(),...(w.code?{code:w.code}:{}),...(w.validated!==undefined?{validated:w.validated}:{})};});
  const occupied=new Set();let total=0;
+ // Reserve existing codes before allocating any missing ones (legacy imports).
+ const equipmentCodes=new Set();
+ for(const i of raw.items){if(i?.code!==undefined){if(typeof i.code!=='string'||!new RegExp('^'+(PREFIXES[i.type]||'INVALID')+'-[0-9]{3,6}$').test(i.code)||equipmentCodes.has(i.code))throw Error('Code équipement invalide ou en double.');equipmentCodes.add(i.code);}}
  const items=raw.items.map(i=>{
   if(!i||!text(i.id,160)||ids.has(i.id)||!groups.has(i.workshop)||!Object.hasOwn(TYPES,i.type)||!text(i.nom,120)||!Array.isArray(i.cells)||!i.cells.length||i.cells.length>5000)throw Error('Équipement invalide.');
   ids.add(i.id);total+=i.cells.length;if(total>30000)throw Error('Maximum 30 000 cases.');
   const cells=i.cells.map(c=>{if(typeof c!=='string'||!/^(-?\d+),(-?\d+)$/.test(c)||xy(c).some(v=>Math.abs(v)>100000))throw Error('Case invalide.');c=key(...xy(c));const k=groups.get(i.workshop).service+':'+c;if(occupied.has(k))throw Error('Deux équipements ne peuvent pas occuper la même case.');occupied.add(k);return c;});
-  return{id:i.id,workshop:i.workshop,type:i.type,nom:i.nom.trim(),cells,...(i.source?{source:clone(i.source)}:{})};
+  const code=i.code||nextCode(equipmentCodes,i.type);equipmentCodes.add(code);
+  return{id:i.id,workshop:i.workshop,type:i.type,nom:i.nom.trim(),code,cells,...(i.source?{source:clone(i.source)}:{})};
  });if(workshops.some(w=>w.validated&&!items.some(i=>i.workshop===w.id)))throw Error('Un atelier vide ne peut pas être validé.');return{schema:'ory-workshops',version:1,step:raw.step,workshops,items};
 }
 // Union visuelle exacte : aplats sans joints et contour seulement sur les bords libres.
@@ -45,7 +50,7 @@ function surface(cells,step){
   if(!set.has(key(cx-1,cy)))outline+=`M${x} ${y}v${step}`;
  }return{fill,outline};
 }
-function nextCode(workshops){const used=new Set(workshops.map(w=>w.code));let n=1;while(used.has('AT-'+String(n).padStart(3,'0')))n++;return 'AT-'+String(n).padStart(3,'0');}
+function nextCode(used,type){const prefix=PREFIXES[type];if(!prefix)throw Error('Type équipement inconnu.');let n=1;while(used.has(prefix+'-'+String(n).padStart(3,'0')))n++;return prefix+'-'+String(n).padStart(3,'0');}
 function rotate(cells){const pts=cells.map(xy),minX=Math.min(...pts.map(p=>p[0])),minY=Math.min(...pts.map(p=>p[1])),maxY=Math.max(...pts.map(p=>p[1]));return pts.map(([x,y])=>key(minX+maxY-y,minY+x-minX));}
 function footprint(model){
  if(!model||!Object.hasOwn(TYPES,model.type))throw Error('Modèle inconnu.');
@@ -66,7 +71,7 @@ class WorkshopGrid{
  get item(){return this.state.items.find(i=>i.id===this.selected);}
  status(s){document.getElementById('wg-status').textContent=s;}
  build(){
-  const panel=document.createElement('section');panel.id='workshop-panel';panel.hidden=true;panel.className='panel-content';panel.innerHTML=`<h2>Aménager le service</h2><p id="wg-service">Choisissez un service sur la carte.</p><p class="scope-badge">Grille 50 × 50 cm · schématique</p><div id="wg-status" role="status" aria-live="polite"></div><div class="wg-actions"><button class="btn" id="wg-overview">Toute l’unité</button><button class="btn" id="wg-focus">Cadrer le service</button></div><div id="wg-controls" hidden><label>Atelier dans ce service<select id="wg-group"></select></label><div class="wg-actions"><button class="btn" id="wg-add-group">+ Atelier</button><button class="btn" id="wg-delete-group">Supprimer l’atelier</button></div><label>Nom de l’atelier<input id="wg-group-name" maxlength="120"></label><div id="wg-validation-state" class="mini-note"></div><button class="btn btn-play" id="wg-validate">Valider l’atelier</button><h3>Outils de construction</h3><div class="wg-tools">${[['select','Sélection'],['table','Table'],['tapis','Chaîne'],['robot','Ligne robot'],['erase','Gomme']].map(([id,label])=>`<button class="btn" data-wg-tool="${id}" aria-pressed="false">${label}</button>`).join('')}</div><button class="btn" id="wg-new-item">+ Nouvel équipement</button><details class="inline-help"><summary>Comment construire ?</summary><p class="mini-note">Choisissez Table, Chaîne ou Ligne robot, puis cliquez-glissez sur la grille. Les cases voisines prolongent l’équipement sélectionné. Utilisez « Nouvel équipement » pour en commencer un autre. La gomme retire des cases ; Sélection permet de déplacer un équipement. Validez l’atelier pour unifier sa surface et afficher son code. Une modification des cases le remet en dessin, sans perdre son code.</p><p class="mini-note">Le fond n’est pas calibré : les cases de 50 × 50 cm sont théoriques, pas un relevé réel. L’aménagement ne modifie pas encore les capacités du moteur.</p></details><div id="wg-items"></div><div id="wg-item-properties" hidden><label>Nom de l’équipement<input id="wg-item-name" maxlength="120"></label><div class="wg-actions"><button class="btn" id="wg-rotate">Pivoter 90°</button><button class="btn" id="wg-delete-item">Supprimer</button></div></div><button class="btn" id="wg-library">Modèles de tables et chaînes…</button></div><div class="wg-actions"><button class="btn" id="wg-undo">Annuler</button><button class="btn" id="wg-redo">Rétablir</button></div><details id="wg-settings"><summary>Grille et sauvegarde</summary><label>Taille visuelle d’une case (unités du dessin)<input type="number" id="wg-step" min="10" max="200" step="1"></label><p class="mini-note">Réglage commun à l’unité, indépendant d’une mesure réelle. Verrouillé dès qu’un équipement est placé.</p><div class="wg-actions"><button class="btn" id="wg-export">Exporter les ateliers</button><button class="btn" id="wg-import-button">Importer</button><input id="wg-import" type="file" accept=".json" hidden></div></details>`;
+  const panel=document.createElement('section');panel.id='workshop-panel';panel.hidden=true;panel.className='panel-content';panel.innerHTML=`<h2>Aménager le service</h2><p id="wg-service">Choisissez un service sur la carte.</p><p class="scope-badge">Grille 50 × 50 cm · schématique</p><div id="wg-status" role="status" aria-live="polite"></div><div class="wg-actions"><button class="btn" id="wg-overview">Toute l’unité</button><button class="btn" id="wg-focus">Cadrer le service</button></div><div id="wg-controls" hidden><label>Atelier dans ce service<select id="wg-group"></select></label><div class="wg-actions"><button class="btn" id="wg-add-group">+ Atelier</button><button class="btn" id="wg-delete-group">Supprimer l’atelier</button></div><label>Nom de l’atelier<input id="wg-group-name" maxlength="120"></label><div id="wg-validation-state" class="mini-note"></div><button class="btn btn-play" id="wg-validate">Valider l’atelier</button><h3>Outils de construction</h3><div class="wg-tools">${[['select','Sélection'],['table','Table'],['tapis','Chaîne'],['robot','Ligne robot'],['erase','Gomme']].map(([id,label])=>`<button class="btn" data-wg-tool="${id}" aria-pressed="false">${label}</button>`).join('')}</div><button class="btn" id="wg-new-item">+ Nouvel équipement</button><details class="inline-help"><summary>Comment construire ?</summary><p class="mini-note">Choisissez Table, Chaîne ou Ligne robot, puis cliquez-glissez sur la grille. Les cases voisines prolongent l’équipement sélectionné. Utilisez « Nouvel équipement » pour en commencer un autre. La gomme retire des cases ; Sélection permet de déplacer un équipement. Chaque équipement a son code : T = table, R = robot, C = chaîne, D = desserte, TR = trolley. Validez l’atelier pour unifier sa surface. Une modification le remet en dessin, sans changer les codes.</p><p class="mini-note">Le fond n’est pas calibré : les cases de 50 × 50 cm sont théoriques, pas un relevé réel. L’aménagement ne modifie pas encore les capacités du moteur.</p></details><div id="wg-items"></div><div id="wg-item-properties" hidden><label>Nom de l’équipement<input id="wg-item-name" maxlength="120"></label><div class="wg-actions"><button class="btn" id="wg-rotate">Pivoter 90°</button><button class="btn" id="wg-delete-item">Supprimer</button></div></div><button class="btn" id="wg-library">Modèles de tables et chaînes…</button></div><div class="wg-actions"><button class="btn" id="wg-undo">Annuler</button><button class="btn" id="wg-redo">Rétablir</button></div><details id="wg-settings"><summary>Grille et sauvegarde</summary><label>Taille visuelle d’une case (unités du dessin)<input type="number" id="wg-step" min="10" max="200" step="1"></label><p class="mini-note">Réglage commun à l’unité, indépendant d’une mesure réelle. Verrouillé dès qu’un équipement est placé.</p><div class="wg-actions"><button class="btn" id="wg-export">Exporter les ateliers</button><button class="btn" id="wg-import-button">Importer</button><input id="wg-import" type="file" accept=".json" hidden></div></details>`;
   document.querySelector('.workbench').appendChild(panel);
   const warning=document.createElement('p');warning.id='wg-placement-warning';warning.className='mini-note';warning.setAttribute('role','status');document.getElementById('wg-status').after(warning);
   const dialog=document.createElement('dialog');dialog.id='wg-library-dialog';dialog.innerHTML='<div class="wg-dialog-head"><strong>Bibliothèque existante — modèles et assemblages</strong><button class="btn" id="wg-close-library">Retour au plan</button></div><p>Créez ou sélectionnez un modèle / assemblage, puis cliquez « Placer dans le service ».</p><iframe id="wg-library-frame" title="Éditeur de tables, chaînes et assemblages"></iframe>';document.body.appendChild(dialog);
@@ -80,7 +85,7 @@ class WorkshopGrid{
    if(w.validated){w.validated=false;return;}
    const items=this.state.items.filter(i=>i.workshop===w.id);if(!items.length)throw Error('Dessinez des cases avant de valider.');
    for(const item of items)this.assertPlacement(item);
-   w.code=w.code||nextCode(this.state.workshops);w.validated=true;this.tool='select';this.selected=null;
+   w.validated=true;this.tool='select';this.selected=null;
   },'État de l’atelier enregistré.'));
   on('wg-group','change' ,e=>{this.workshop=e.target.value;this.selected=null;this.render();});
   on('wg-group-name','change',e=>{const value=e.target.value;this.change(()=>{const w=this.state.workshops.find(w=>w.id===this.workshop);if(w)w.nom=value;},'Atelier renommé.');});
@@ -142,15 +147,15 @@ class WorkshopGrid{
   document.getElementById('wg-placement-warning').textContent=invalid||orphan?`${invalid} équipement(s) hors contour / service absent ; ${orphan} atelier(s) sans service reconnu. Données conservées : corrigez le plan, déplacez les équipements ou exportez-les.`:'';
   const groups=this.state.workshops.filter(w=>w.service===this.service);if(!groups.some(w=>w.id===this.workshop))this.workshop=groups[0]?.id||null;if(!this.item)this.selected=null;
   document.getElementById('wg-controls').hidden=!this.zone;document.getElementById('wg-service').textContent=this.zone?this.zone.nom:'Choisissez un service sur la carte.';
-  document.getElementById('wg-group').innerHTML=groups.length?groups.map(w=>`<option value="${esc(w.id)}" ${w.id===this.workshop?'selected':''}>${w.code?esc(w.code)+' · ':''}${esc(w.nom)}</option>`).join(''):'<option>Aucun atelier — créez ou dessinez</option>';
+  document.getElementById('wg-group').innerHTML=groups.length?groups.map(w=>`<option value="${esc(w.id)}" ${w.id===this.workshop?'selected':''}>${esc(w.nom)}</option>`).join(''):'<option>Aucun atelier — créez ou dessinez</option>';
   const assign=(id,value)=>{const e=document.getElementById(id);if(document.activeElement!==e)e.value=value;};assign('wg-group-name',groups.find(w=>w.id===this.workshop)?.nom||'');document.getElementById('wg-group-name').disabled=!this.workshop;
   const group=groups.find(w=>w.id===this.workshop),filled=this.state.items.some(i=>i.workshop===this.workshop);
   document.getElementById('wg-validate').disabled=!group||!filled;
   document.getElementById('wg-validate').textContent=group?.validated?'Modifier l’atelier':'Valider l’atelier';
-  document.getElementById('wg-validation-state').textContent=group?(group.code?group.code+' · ':'')+(group.validated?'Validé':'En dessin'):'';
+  document.getElementById('wg-validation-state').textContent=group?(group.validated?'Validé':'En dessin'):'';
   document.getElementById('wg-delete-group').disabled=!this.workshop;document.getElementById('wg-focus').disabled=!this.zone;
   document.querySelectorAll('[data-wg-tool]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.wgTool===this.tool)));
-  document.getElementById('wg-items').innerHTML=this.state.items.filter(i=>i.workshop===this.workshop).map(i=>`<button class="btn wg-item" data-wg-item="${esc(i.id)}" aria-pressed="${i.id===this.selected}">${esc(i.nom)} · ${i.cells.length} cases</button>`).join('');
+  document.getElementById('wg-items').innerHTML=this.state.items.filter(i=>i.workshop===this.workshop).map(i=>`<button class="btn wg-item" data-wg-item="${esc(i.id)}" aria-pressed="${i.id===this.selected}">${i.code?esc(i.code)+' · ':''}${esc(i.nom)} · ${i.cells.length} cases</button>`).join('');
   document.getElementById('wg-item-properties').hidden=!this.item;assign('wg-item-name',this.item?.nom||'');assign('wg-step',this.state.step);document.getElementById('wg-step').disabled=!!this.state.items.length;
   document.getElementById('wg-undo').disabled=!this.undoStack.length;document.getElementById('wg-redo').disabled=!this.redoStack.length;this.renderCanvas();
  }
@@ -167,10 +172,10 @@ class WorkshopGrid{
   }
   for(const item of this.itemsForService().filter(i=>!confirmed.has(i.workshop)))for(const c of item.cells){const [x,y]=xy(c);g.appendChild(this.el('rect',{x:x*s+1/scale,y:y*s+1/scale,width:s-2/scale,height:s-2/scale,fill:COLORS[item.type],opacity:item.workshop===this.workshop?.toString()?'.85':'.55',stroke:item.id===this.selected?'#102c40':'#fff','stroke-width':item.id===this.selected?2/scale:.6/scale,'data-workshop-item':item.id}));}
   // Anchor on an occupied cell, never in a hole or outside an L-shaped footprint.
-  for(const w of this.state.workshops.filter(w=>w.service===this.service&&w.code)){
-   const cells=this.state.items.filter(i=>i.workshop===w.id).flatMap(i=>i.cells);if(!cells.length)continue;
+  for(const item of this.itemsForService().filter(i=>i.code)){
+   const cells=item.cells;if(!cells.length)continue;
    const [x,y]=cells.map(xy).sort((a,b)=>a[1]-b[1]||a[0]-b[0])[0];
-   const label=this.el('text',{x:(x+.5)*s,y:(y+.5)*s,'text-anchor':'middle','dominant-baseline':'central','font-size':12/scale,'font-weight':700,fill:'var(--txt)',stroke:'var(--bg3)','stroke-width':4/scale,'paint-order':'stroke','pointer-events':'none','data-workshop-code':w.id});label.textContent=w.code;this.layer.appendChild(label);
+   const label=this.el('text',{x:(x+.5)*s,y:(y+.5)*s,'text-anchor':'middle','dominant-baseline':'central','font-size':12/scale,'font-weight':700,fill:'var(--txt)',stroke:'var(--bg3)','stroke-width':4/scale,'paint-order':'stroke','pointer-events':'none','data-equipment-code':item.id});label.textContent=item.code;this.layer.appendChild(label);
   }
  }
 }
