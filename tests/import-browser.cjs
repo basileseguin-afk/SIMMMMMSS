@@ -34,7 +34,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // Scénarios A/B : deux journées complètes, seule la cadence du robot change.
   await click('#restore-demo');
-  await click('[data-panel="reglages"]');
+  await click('[data-view="reglages"]');
   await click('#snap-a');
   await setRange('#robot','200');
   await click('#snap-b');
@@ -101,6 +101,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(exp.schemaVersion,'0.4');assert.ok(exp.journal.length>50);
   assert.ok(exp.vols.some(v=>v.explication&&v.explication.attenteRobot>0));
   // Heures, reste à faire et ETP : le vocabulaire de la feuille de route.
+  // Le bloc précédent a laissé la vue sur « Vols » : on revient aux réglages.
+  await click('[data-view="reglages"]');
   await click('#btn-reset');await click('#snap-a');
   // L'équipe du soir est restée réglée par un bloc précédent : sans la baisser
   // aussi, l'après-midi rattraperait tout et la comparaison ne montrerait rien.

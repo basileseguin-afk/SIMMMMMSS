@@ -25,3 +25,32 @@ body.workshops-open .map-footer::before{content:'Grille 50 × 50 cm schématique
 
 /* Total des personnes affectées : le chiffre qui alimentera le moteur. */
 .wg-total:not(:empty){margin:10px 0;padding:8px 10px;border-radius:8px;background:var(--bg3);font-weight:700;color:var(--txt)}
+
+/* --- Panneau d'aménagement : rendre la structure visible ----------------- */
+.wg-modele{font-size:12.5px;line-height:1.5;color:var(--txt2);background:var(--bg3);
+  border-left:3px solid var(--accent);padding:8px 10px;border-radius:0 8px 8px 0;margin:8px 0}
+.wg-modele b{color:var(--txt)}
+.wg-etape{display:flex;align-items:center;gap:8px;margin:18px 0 8px;font-size:13px;
+  text-transform:uppercase;letter-spacing:.04em;color:var(--txt2)}
+.wg-etape span{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;
+  background:var(--accent);color:#fff;font-size:12px;font-weight:800;flex:none}
+.wg-groups{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.wg-group-btn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;
+  padding:8px 10px;border:1px solid var(--bordure);border-radius:8px;background:var(--bg2);
+  cursor:pointer;text-align:left;font:inherit;color:var(--txt)}
+.wg-group-btn span{font-size:11.5px;color:var(--txt2);font-weight:600}
+.wg-group-btn[aria-pressed=true]{border-color:var(--accent);border-width:2px;background:var(--bg3)}
+.wg-group-btn:hover{border-color:var(--accent)}
+.wg-item-group{margin-bottom:10px}
+.wg-item-group h4{margin:6px 0 4px;font-size:11.5px;text-transform:uppercase;
+  letter-spacing:.04em;color:var(--txt3)}
+.wg-item-group[data-wg-courant] h4{color:var(--accent)}
+.wg-dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;
+  vertical-align:-1px;border:1px solid rgba(0,0,0,.2)}
+.wg-item{display:block;width:100%;text-align:left;margin-bottom:4px}
+
+/* La case à cocher du panneau ne doit pas s'étirer comme un curseur. */
+#workshop-panel .chk{display:flex;align-items:flex-start;gap:8px;font-size:12px;
+  line-height:1.4;color:var(--txt2);margin:6px 0 10px}
+#workshop-panel .chk input{width:16px;height:16px;flex:none;margin-top:1px;accent-color:var(--accent)}
+#workshop-panel .chk input:disabled+*,#workshop-panel .chk:has(input:disabled){opacity:.55}

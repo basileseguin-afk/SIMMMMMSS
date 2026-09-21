@@ -1272,22 +1272,40 @@ function formatTime(t) {
   return String(Math.floor(minutes/60)).padStart(2,'0')+':'+String(minutes%60).padStart(2,'0')+(day?' (J'+(day>0?'+':'')+day+')':'');
 }
 function showPanel(name) {
+  if(name==='reglages'){showView('reglages');return;}   // les réglages ont leur onglet
+  // La colonne de droite est masquée dans le Centre des réglages : demander un
+  // de ses panneaux depuis là doit ramener à une vue où il est visible.
+  if(activeView==='reglages')showView('plan');
   activePanel=name;
   document.querySelectorAll('[data-panel]').forEach(b=>{b.classList.toggle('active',b.dataset.panel===name);b.setAttribute('aria-pressed',String(b.dataset.panel===name));});
-  ['suivi','reglages','donnees'].forEach(id=>document.getElementById('panel-'+id).hidden=id!==name);
-  if(name==='reglages'&&Sim.majGrilleEffectifs)Sim.majGrilleEffectifs();
+  ['suivi','donnees'].forEach(id=>document.getElementById('panel-'+id).hidden=id!==name);
   if(name==='suivi')dessinerChart();
+}
+/* Les réglages sortent du panneau étroit de droite pour occuper toute la
+ * largeur, comme le Centre des flux. On DÉPLACE le nœud existant : toutes les
+ * liaisons se font par identifiant, elles continuent de fonctionner telles quelles. */
+function installerCentreReglages() {
+  const hote=document.getElementById('view-reglages'),bloc=document.getElementById('panel-reglages');
+  if(!hote||!bloc)return;
+  bloc.hidden=false;bloc.classList.remove('panel-content');bloc.classList.add('reglages-grille');
+  const titre=document.createElement('div');titre.className='reglages-entete';
+  // Pas de second titre : l'en-tête de vue dit déjà « Centre des réglages ».
+  titre.innerHTML='<p class="mini-note">Tout ce qui décrit l’unité et l’essai à lancer. Les réglages se verrouillent une fois la simulation commencée : <strong>Recommencer</strong> les libère.</p>';
+  hote.appendChild(titre);hote.appendChild(bloc);
 }
 function showView(name) {
   if(editMode && name!=='plan')return;
   activeView=name;
-  document.getElementById('view-title').textContent=({plan:'Simulation',ateliers:'Création des ateliers',flux:'Centre des flux',vols:'Suivi des vols'})[name];
+  document.getElementById('view-title').textContent=({plan:'Simulation',ateliers:'Création des ateliers',flux:'Centre des flux',reglages:'Centre des réglages',vols:'Suivi des vols'})[name];
   if(name!=='ateliers'&&Sim.majGrilleEffectifs)Sim.majGrilleEffectifs();
   if(Sim.workshops){Sim.workshops.setActive(name==='ateliers');if(name==='ateliers'){pause();Sim.workshops.selectService(selection);}}
   document.getElementById('btn-play').disabled=name==='ateliers'||editMode;
   document.body.classList.toggle('flows-open',name==='flux');
   document.getElementById('view-flux').hidden=name!=='flux';
+  document.getElementById('view-reglages').hidden=name!=='reglages';
+  if(name==='reglages'&&Sim.majGrilleEffectifs)Sim.majGrilleEffectifs();
   if(name==='flux'&&Sim.flows)Sim.flows.refresh();
+  document.body.classList.toggle('reglages-open',name==='reglages');
   document.getElementById('view-plan').hidden=!['plan','ateliers'].includes(name);
   document.getElementById('view-vols').hidden=name!=='vols';
   document.querySelector('.plan-tete').hidden=!['plan','ateliers'].includes(name);
@@ -1351,6 +1369,7 @@ function initWorkbench() {
     dataSource='Jeu de démonstration';Sim.dataCourante=SAMPLE;snaps={};majCompare();reset(SAMPLE);updateSource();
     const report=document.getElementById('import-report');report.classList.remove('error');report.textContent='Jeu de démonstration rechargé.';
   });
+  installerCentreReglages();
   updateSource();updateRunState();majCompare();
 }
 

@@ -111,6 +111,56 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-21 — Ateliers compréhensibles, Centre des réglages pleine largeur
+
+Retour d'usage après une vraie séance de tracé. Les cinq constats sont traités.
+
+### Le défaut qui faisait croire à « une table par atelier »
+
+Il était réel. **Deux tracés séparés ne donnaient qu'un seul équipement** : le
+second prolongeait le premier, parce que le dernier élément restait sélectionné.
+Reproduit en une ligne, corrigé en une ligne :
+
+> **Chaque tracé crée un équipement.** Pour agrandir un équipement existant, une
+> case à cocher explicite, « Agrandir l'équipement sélectionné ».
+
+### Rendre la structure visible
+
+| Avant | Maintenant |
+|---|---|
+| Menu déroulant « Atelier dans ce service » | **Liste visible** : chaque atelier, son nombre d'équipements et de personnes |
+| Liste des équipements du seul atelier courant | **Tous** les équipements du service, groupés par atelier, avec pastille de couleur |
+| « Valider l'atelier », sans dire ce que ça fait | **« Fusionner en une surface »** / « Reprendre le détail » |
+| Aucune explication du modèle | Une phrase en tête : un **service** contient des **ateliers**, un atelier contient des **équipements**, les **personnes** s'affectent aux équipements |
+| Un long empilement | Trois étapes numérotées : ateliers, dessiner, équipements et personnes |
+
+### Centre des réglages
+
+Les réglages quittent le panneau étroit de droite pour un **onglet pleine
+largeur**, en trois colonnes, comme le Centre des flux. Le nœud existant est
+**déplacé** plutôt que recopié : toutes les liaisons se font par identifiant et
+continuent de fonctionner.
+
+**Défaut introduit puis corrigé dans la même passe** : la colonne de droite
+étant masquée dans cette vue, ses panneaux Suivi et Données devenaient
+inatteignables. Demander un panneau de la colonne ramène maintenant à la vue
+Simulation.
+
+| Fichier | Changement |
+|---|---|
+| `workshop-grid.js`, `workshop-grid.css` | panneau réécrit, un tracé = un équipement, liste d'ateliers, équipements groupés, légende |
+| `sim.js`, `index.html`, `interface.css` | onglet Réglages, déplacement du panneau, retour à la vue Simulation |
+| `tests/workshops-browser.cjs` | deux tracés = deux équipements, agrandissement explicite, disparition du menu déroulant |
+| `tests/usability-browser.cjs` | cinq vues au lieu de quatre |
+| `BUGS.md` | revue d'usage |
+
+Le modèle de données n'a pas bougé : les huit tests de `workshops.test.cjs`
+passent sans modification.
+
+Tests : 118 unitaires et 7 parcours navigateur.
+
+---
+
 ## 2026-09-21 — Sauvegarde complète, avant la saisie de l'unité
 
 | Fichier | Changement |

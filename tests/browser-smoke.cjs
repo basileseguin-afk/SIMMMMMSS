@@ -17,7 +17,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('#kpi-ontime').textContent(),'—');
   assert.equal(await page.locator('#source-count').textContent(),'12 départs · 6 retours');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-  await click('[data-panel="reglages"]');assert.equal(await page.locator('#staff-magasin').isDisabled(),true);
+  await click('[data-view="reglages"]');assert.equal(await page.locator('#staff-magasin').isDisabled(),true);
   await setRange('#staff-prepa','19');
   await click('#btn-play');await page.waitForTimeout(400);await click('#btn-play');
   assert.equal(await page.locator('#staff-prepa').isDisabled(),true);
@@ -42,7 +42,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.waitForFunction(()=>document.getElementById('source-label').textContent==='test.csv');
   await click('[data-view="vols"]');assert.equal(await page.locator('#flight-rows img').count(),0);assert.match(await page.locator('#flight-rows').textContent(),/<img src=x>/);
   assert.equal(await page.locator('#kpi-ontime').textContent(),'0 %');assert.equal(await page.locator('#kpi-overdue').textContent(),'1');
-  await click('[data-panel="reglages"]');await setRange('#staff-appros','0');await setRange('#vitesse','120');
+  await click('[data-view="reglages"]');await setRange('#staff-appros','0');await setRange('#vitesse','120');
   await click('#btn-play');await page.waitForFunction(()=>document.getElementById('run-state').textContent==='Terminé',{},{timeout:20000});
   assert.equal(await page.locator('#kpi-overdue').textContent(),'1');assert.equal(await page.locator('#kpi-ontime').textContent(),'0 %');
   await click('#snap-a');assert.match(await page.locator('#compare').textContent(),/23:00/);

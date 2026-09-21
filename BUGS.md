@@ -273,3 +273,27 @@ passe avec la correction.
 
 Limites explicites : grille non calibrée, arrondi d’emprise des meubles en cm,
 pas de validation QHSE ni d’effet des équipements sur les capacités simulées.
+
+## Revue du 2026-09-21 — Retour d'usage après le tracé de la cuisine
+
+Constats de l'utilisateur après une vraie séance de saisie, et ce qui en a été
+fait. Le registre n'avait aucune entrée ouverte : ces défauts d'usage n'étaient
+pas des bugs signalés, ils sont apparus à l'usage.
+
+| Constat | Traitement |
+|---|---|
+| « On dirait qu'on ne peut ajouter qu'une seule table par atelier » | **Défaut réel, reproduit et corrigé.** Deux tracés séparés donnaient **un seul** équipement : le second prolongeait le premier. Un tracé = un équipement ; l'agrandissement devient une case à cocher explicite |
+| Menu déroulant des ateliers pénible | Remplacé par une **liste visible** des ateliers du service, avec nombre d'équipements et de personnes |
+| « Je ne comprends pas la logique des ateliers et des tables » | Phrase de modèle en tête du panneau, étapes numérotées 1-2-3, et **tous** les équipements du service listés groupés par atelier |
+| « Validation et édition pas intuitives » | « Valider l'atelier » → **« Fusionner en une surface »** / « Reprendre le détail », avec un état lisible |
+| Réglages entassés dans le panneau étroit de droite | **Onglet « Réglages » pleine largeur**, en colonnes, comme le Centre des flux |
+
+**Défaut introduit puis corrigé dans la même passe :** la colonne de droite
+étant masquée dans le Centre des réglages, ses panneaux Suivi et Données
+devenaient inatteignables depuis cette vue. Demander un panneau de la colonne
+ramène désormais à la vue Simulation.
+
+**Preuve :** `tests/workshops-browser.cjs` vérifie que deux tracés séparés
+donnent deux équipements, que « agrandir » prolonge bien la sélection, que le
+menu déroulant a disparu et que les équipements sont groupés.
+`tests/usability-browser.cjs` couvre maintenant cinq vues.
