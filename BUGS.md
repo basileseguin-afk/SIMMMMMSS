@@ -297,3 +297,33 @@ ramène désormais à la vue Simulation.
 donnent deux équipements, que « agrandir » prolonge bien la sélection, que le
 menu déroulant a disparu et que les équipements sont groupés.
 `tests/usability-browser.cjs` couvre maintenant cinq vues.
+
+## BUG-012 — Parcours de navigation cassé et non vu (2026-09-21)
+
+**État : corrigé.**
+
+La sortie des réglages en onglet pleine largeur masque la colonne de droite
+(`body.reglages-open`). Les trois parcours navigateur qui ouvraient le panneau
+« Données » en cliquant son onglet dans cette colonne cliquaient dès lors un
+bouton invisible : `tests/browser-smoke.cjs` échouait par expiration.
+
+Deux fautes distinctes :
+
+1. **Le code.** Le garde-fou ajouté dans `showPanel` ramenait bien à la vue
+   Simulation, mais seulement une fois le bouton cliqué — or il n'était plus
+   cliquable. Un garde-fou qui suppose atteignable ce qu'on vient de masquer
+   ne protège rien.
+2. **La vérification.** La livraison précédente a été annoncée avec « 7 parcours
+   navigateur au vert » alors que `browser-smoke` échouait déjà. Seule une
+   partie des parcours avait été rejouée après la dernière retouche.
+
+**Correction de fond**, plutôt que de rafistoler le garde-fou : le programme de
+vols, la sauvegarde complète et le périmètre du calcul décrivent l'essai autant
+que les réglages. Ils rejoignent l'onglet « Réglages », sous le titre
+« Données, sauvegarde et périmètre ». La colonne de droite ne garde que le
+suivi vivant et perd sa barre d'onglets, devenue inutile ; ses styles morts
+sont supprimés de `interface.css`, `usability.css` et `workshop-grid.css`.
+
+**Preuve :** les neuf parcours navigateur et les 118 tests purs passent.
+`docs/ETAT_DES_LIEUX.md` et `README.md` listent désormais les neuf parcours,
+avec la consigne de les rejouer en entier.

@@ -5,6 +5,31 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-21 — Le plan dit ce qu'il reste à renseigner
+
+- `sim.js` : état de paramétrage par atelier tant que la simulation n'a pas
+  démarré. Trois états — **Personne** (atelier simulé sans effectif),
+  **Au curseur** (effectif réglé, rien de tracé), **Aménagé** (effectif et au
+  moins un équipement) — plus **Hors calcul** pour les services présents sur
+  le plan mais sans charge calculée (magasin, duty free, quais, tampons).
+- Deux langages de couleur qui ne se croisent jamais : progression avant le
+  lancement, charge mesurée pendant la simulation. La légende du plan est
+  réécrite au basculement plutôt que d'en afficher deux.
+- Ligne d'état sous le plan : « N atelier(s) restent à aménager », qui décroît
+  à mesure du traçage.
+- `usability.css`, `interface.css`, `index.html` : couleurs d'état, légende
+  pilotée par le code, bande d'indicateurs masquée hors Simulation et Vols
+  (elle décrit une simulation en cours, pas un réglage), grille des onglets
+  corrigée sur mobile — elle datait de quatre onglets, il y en a cinq.
+- **BUG-012** : la colonne de droite étant masquée dans le Centre des réglages,
+  l'onglet « Données » y était inatteignable et `tests/browser-smoke.cjs`
+  échouait depuis la livraison précédente, annoncée à tort comme vérifiée.
+  Le panneau Données rejoint l'onglet Réglages, sous « Données, sauvegarde et
+  périmètre » ; la barre d'onglets de la colonne disparaît avec ses styles morts.
+- `tests/etat-plan-browser.cjs` : nouveau parcours — les trois états, le hors
+  calcul, la bascule de légende au lancement et la bande d'indicateurs.
+- Vérification : 118 tests purs et **neuf** parcours navigateur au vert.
+
 ## 2026-09-20 — Codes par type d’équipement
 
 - `workshop-grid.js` : remplacement du repère global AT affiché sur le plan

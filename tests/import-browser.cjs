@@ -11,7 +11,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const header='vol_id,compagnie,type_avion,sens,heure_std,heure_sta,nb_BC,nb_PC,nb_YC\n';
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
-  await click('[data-panel="donnees"]');
+  await click('[data-view="reglages"]');
 
   // BUG-005 : on force un échec de lecture, puis on vérifie qu'un second choix du
   // même fichier est bien pris en compte.

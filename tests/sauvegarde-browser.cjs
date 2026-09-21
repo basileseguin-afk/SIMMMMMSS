@@ -30,7 +30,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(avant[0]&&avant[1],'plan et ateliers doivent exister après le tracé');
 
   // 2. Tout sauvegarder en un fichier.
-  await click('[data-panel=donnees]');
+  await click('[data-view=reglages]');
   const dl=page.waitForEvent('download');await click('#sauvegarde-export');const fichier=await dl;
   assert.match(fichier.suggestedFilename(),/^ory-sauvegarde-\d{4}-\d{2}-\d{2}\.json$/);
   const chemin=await fichier.path(),sauvegarde=JSON.parse(fs.readFileSync(chemin,'utf8'));
@@ -56,7 +56,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('#wg-items [data-wg-item]').count(),0,'tout doit avoir disparu');
 
   // 5. Restaurer : le tracé revient à l'identique.
-  await click('[data-view=plan]');await click('[data-panel=donnees]');
+  await click('[data-view=reglages]');
   await page.locator('#sauvegarde-import').setInputFiles({name:'ory-sauvegarde.json',mimeType:'application/json',buffer:fs.readFileSync(chemin)});
   await page.waitForFunction(()=>localStorage.getItem('ory-workshops-v1')!==null,{},{timeout:15000});
   await page.waitForLoadState('load');

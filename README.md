@@ -325,6 +325,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/browser-smoke.cjs` | Parcours dans Chromium, export, édition et responsive |
 | `tests/import-browser.cjs` | Import CSV : échec de lecture puis réimport, numéros de ligne, scénarios A/B |
 | `tests/sauvegarde-browser.cjs` | Sauvegarde complète : export, refus atomique, effacement et restauration |
+| `tests/etat-plan-browser.cjs` | État de paramétrage des ateliers sur le plan, bascule des légendes, bande d'indicateurs contextuelle |
 | `BUGS.md` | Registre des bugs connus — à lire avant de coder, à compléter après chaque revue |
 | `postes/` | **Bibliothèque** de modèles de tables, chaînes et assemblages, ouverte depuis l’onglet « Création des ateliers ». Ce n’est plus une application autonome |
 
@@ -337,4 +338,8 @@ Les captures de contrôle sont écrites dans le dossier temporaire du système.
 Ces outils sont nécessaires uniquement aux tests, pas à l’application.
 
 Parcours spécifiques : `node tests/editor-browser.cjs`, `node tests/storage-browser.cjs`,
-`node tests/import-browser.cjs` (Playwright / Chromium).
+`node tests/import-browser.cjs`, `node tests/flows-browser.cjs`,
+`node tests/workshops-browser.cjs`, `node tests/usability-browser.cjs`,
+`node tests/sauvegarde-browser.cjs`, `node tests/etat-plan-browser.cjs`
+(Playwright / Chromium). Ils se rejouent **tous** : un parcours laissé de côté
+est une régression qui passe.

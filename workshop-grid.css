@@ -1,4 +1,4 @@
-body.workshops-open .workbench>.panel-tabs,body.workshops-open .workbench>.panel-content:not(#workshop-panel){display:none!important}
+body.workshops-open .workbench>.panel-content:not(#workshop-panel){display:none!important}
 #workshop-panel h2{font-size:19px;margin:0 0 12px}
 #workshop-panel h3{font-size:14px;margin:20px 0 12px}
 #workshop-panel label{display:grid;gap:6px;font-size:12px;margin:12px 0}

@@ -788,6 +788,92 @@ function majPlan() {
   });
   const r = document.getElementById('res-robot'); if (r) r.textContent = Math.round((Sim.robotRate||0)*60) + '/' + CFG.robotCadence;
   const t = document.getElementById('res-tunnels'); if (t) t.textContent = CFG.tunnels + (CFG.tunnelDouble ? ' (1×2)' : '');
+  majEtatPlan();
+}
+
+/* ==========================================================================
+ *  7 bis. ÉTAT DE PARAMÉTRAGE — ce que le plan dit AVANT de lancer
+ *  Tant que la simulation n'a pas démarré, les couleurs d'occupation ne
+ *  veulent rien dire : tout serait à zéro. On se sert donc du plan pour
+ *  répondre à l'autre question, celle que l'on se pose en traçant l'unité :
+ *  qu'est-ce qui reste à renseigner ? Deux langages de couleur distincts,
+ *  jamais affichés en même temps : progression avant le lancement, charge
+ *  pendant la simulation.
+ * ==========================================================================*/
+const ETATS_PARAM = {
+  vide:    { lib:'Personne',  aide:'Atelier simulé sans effectif : il ne produira rien.' },
+  partiel: { lib:'Au curseur', aide:'Effectif réglé dans les Réglages, aucun équipement tracé.' },
+  pret:    { lib:'Aménagé',  aide:'Effectif et au moins un équipement tracé dans « Création des ateliers ».' }
+};
+
+/* Équipements et postes tracés, regroupés par service. */
+function amenagementParService() {
+  const w = Sim.workshops && Sim.workshops.state, par = {};
+  if (!w) return par;
+  w.items.forEach(i => {
+    const a = w.workshops.find(x => x.id === i.workshop); if (!a) return;
+    const e = par[a.service] || (par[a.service] = { equipements:0, postes:0 });
+    e.equipements++; e.postes += (i.postes || 0);
+  });
+  return par;
+}
+
+/* 'hors' = pas dans le calcul ; sinon progression du paramétrage. */
+function etatParametrage(id, amenagement) {
+  if (!Orly.ATELIERS.includes(id)) return 'hors';
+  const gens = id === 'plonge' ? CFG.tunnels : (CFG.staff[id] || 0);
+  if (!gens) return 'vide';
+  return (amenagement[id] && amenagement[id].equipements) ? 'pret' : 'partiel';
+}
+
+let _legendeCle = null;
+function majEtatPlan() {
+  const avant = now === DEBUT();
+  document.body.classList.toggle('avant-lancement', avant);
+  const compte = { vide:0, partiel:0, pret:0 };
+  if (avant) {
+    const amenagement = amenagementParService();
+    Object.keys(ZONES).forEach(id => {
+      const els = zoneEls[id]; if (!els) return;
+      const etat = etatParametrage(id, amenagement);
+      els.g.classList.remove('p-vide', 'p-partiel', 'p-pret', 'p-hors');
+      els.g.classList.add('p-' + etat);
+      if (etat !== 'hors') compte[etat]++;
+    });
+  }
+  majLegende(avant, compte);
+}
+
+/* La légende change de sens avec le plan : on la réécrit plutôt que d'en
+ * afficher deux, pour qu'il n'y ait jamais deux grilles de lecture à l'écran. */
+function majLegende(avant, compte) {
+  const box = document.getElementById('legende-plan'), etat = document.getElementById('plan-etat');
+  if (!box) return;
+  const cle = avant ? 'param:' + compte.vide + '/' + compte.partiel + '/' + compte.pret : 'charge';
+  if (cle === _legendeCle) return;
+  _legendeCle = cle;
+  const puce = (coul, texte, titre) => '<span title="' + escapeHTML(titre) + '"><span class="pastille" style="background:' + coul + '"></span>' + escapeHTML(texte) + '</span>';
+  if (avant) {
+    box.setAttribute('aria-label', 'État de paramétrage des ateliers');
+    box.innerHTML = puce('var(--bad-stroke)', ETATS_PARAM.vide.lib, ETATS_PARAM.vide.aide)
+      + puce('var(--bordure2)', ETATS_PARAM.partiel.lib, ETATS_PARAM.partiel.aide)
+      + puce('var(--accent)', ETATS_PARAM.pret.lib, ETATS_PARAM.pret.aide)
+      + puce('transparent', 'Hors calcul', 'Service présent sur le plan mais sans charge calculée.');
+    if (etat) {
+      const n = compte.vide + compte.partiel;
+      etat.textContent = n
+        ? n + ' atelier(s) restent à aménager — onglet « Ateliers »'
+        : 'Tous les ateliers simulés sont aménagés.';
+      etat.className = 'plan-etat' + (n ? '' : ' complet');
+    }
+  } else {
+    box.setAttribute('aria-label', 'Occupation mesurée');
+    box.innerHTML = puce('var(--ok-stroke)', 'Faible', 'Moins de 55 % des personnes occupées sur 15 min.')
+      + puce('var(--warn-stroke)', 'Soutenue', 'De 55 à 85 %.')
+      + puce('var(--bad-stroke)', 'Forte', 'Plus de 85 %.')
+      + puce('transparent', 'Hors calcul', 'Service présent sur le plan mais sans charge calculée.');
+    if (etat) { etat.textContent = 'Couleurs d’occupation : le paramétrage reparaîtra après « Recommencer ».'; etat.className = 'plan-etat'; }
+  }
 }
 
 /* ==========================================================================
@@ -1272,30 +1358,41 @@ function formatTime(t) {
   return String(Math.floor(minutes/60)).padStart(2,'0')+':'+String(minutes%60).padStart(2,'0')+(day?' (J'+(day>0?'+':'')+day+')':'');
 }
 function showPanel(name) {
-  if(name==='reglages'){showView('reglages');return;}   // les réglages ont leur onglet
-  // La colonne de droite est masquée dans le Centre des réglages : demander un
-  // de ses panneaux depuis là doit ramener à une vue où il est visible.
+  // Réglages et Données décrivent l'essai : tous deux vivent dans l'onglet large.
+  if(name==='reglages'||name==='donnees'){showView('reglages');return;}
+  // La colonne de droite est masquée dans le Centre des réglages : demander le
+  // suivi depuis là doit ramener à une vue où il est visible.
   if(activeView==='reglages')showView('plan');
   activePanel=name;
-  document.querySelectorAll('[data-panel]').forEach(b=>{b.classList.toggle('active',b.dataset.panel===name);b.setAttribute('aria-pressed',String(b.dataset.panel===name));});
-  ['suivi','donnees'].forEach(id=>document.getElementById('panel-'+id).hidden=id!==name);
+  document.getElementById('panel-suivi').hidden=name!=='suivi';
   if(name==='suivi')dessinerChart();
 }
 /* Les réglages sortent du panneau étroit de droite pour occuper toute la
  * largeur, comme le Centre des flux. On DÉPLACE le nœud existant : toutes les
  * liaisons se font par identifiant, elles continuent de fonctionner telles quelles. */
 function installerCentreReglages() {
-  const hote=document.getElementById('view-reglages'),bloc=document.getElementById('panel-reglages');
+  const hote=document.getElementById('view-reglages'),bloc=document.getElementById('panel-reglages'),
+        donnees=document.getElementById('panel-donnees');
   if(!hote||!bloc)return;
   bloc.hidden=false;bloc.classList.remove('panel-content');bloc.classList.add('reglages-grille');
   const titre=document.createElement('div');titre.className='reglages-entete';
   // Pas de second titre : l'en-tête de vue dit déjà « Centre des réglages ».
   titre.innerHTML='<p class="mini-note">Tout ce qui décrit l’unité et l’essai à lancer. Les réglages se verrouillent une fois la simulation commencée : <strong>Recommencer</strong> les libère.</p>';
   hote.appendChild(titre);hote.appendChild(bloc);
+  // Le programme de vols, la sauvegarde et le périmètre décrivent l'essai eux
+  // aussi : les laisser dans la colonne étroite obligeait à changer de vue pour
+  // préparer une seule et même chose. La colonne ne garde que le suivi vivant.
+  if(donnees){
+    donnees.hidden=false;donnees.classList.remove('panel-content');donnees.classList.add('reglages-grille');
+    const sous=document.createElement('h2');sous.className='reglages-titre';
+    sous.textContent='Données, sauvegarde et périmètre';
+    hote.appendChild(sous);hote.appendChild(donnees);
+  }
 }
 function showView(name) {
   if(editMode && name!=='plan')return;
   activeView=name;
+  document.body.dataset.vue=name;
   document.getElementById('view-title').textContent=({plan:'Simulation',ateliers:'Création des ateliers',flux:'Centre des flux',reglages:'Centre des réglages',vols:'Suivi des vols'})[name];
   if(name!=='ateliers'&&Sim.majGrilleEffectifs)Sim.majGrilleEffectifs();
   if(Sim.workshops){Sim.workshops.setActive(name==='ateliers');if(name==='ateliers'){pause();Sim.workshops.selectService(selection);}}
