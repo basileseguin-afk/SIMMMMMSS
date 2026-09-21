@@ -534,3 +534,77 @@ test('le vivier respecte les heures d’ouverture avec le calendrier', () => {
   m.avancerA(1440 + c.jour.debut + 30);
   assert.equal(m.viviers[0].ressource.capacite, 6);
 });
+
+/* ======================================================================
+ *  HEURES ET ETP — le vocabulaire de la feuille de route
+ * ====================================================================*/
+
+test('quand tout se fait, les heures réalisées égalent les heures demandées', () => {
+  const r = journee(cfg());
+  const c = r.bilan.charge;
+  assert.ok(Math.abs(c.heuresDemandees - c.heuresRealisees) < 1e-9, c.heuresDemandees + ' vs ' + c.heuresRealisees);
+  assert.equal(c.heuresResteAFaire, 0);
+  assert.equal(c.heuresParEtp, 7);
+  assert.equal(c.horsPlonge, true);
+  // ETP = heures / 7, convention de la feuille de route.
+  assert.ok(Math.abs(c.etpRealise - c.heuresRealisees / 7) < 1e-9);
+  // Le total hors plonge est bien la somme des ateliers de personnes.
+  const somme = Object.entries(r.bilan.ateliers)
+    .filter(([id]) => id !== 'plonge').reduce((n, [, a]) => n + a.heuresDemandees, 0);
+  assert.ok(Math.abs(somme - c.heuresDemandees) < 1e-9);
+});
+
+test('la présence dépasse le travail d’exactement la disponibilité', () => {
+  const r = journee(cfg());
+  const c = r.bilan.charge;
+  // Une heure de travail mobilise 1 / dispo heure de présence : c'est la
+  // définition de `dispo`, et c'est ce qui distingue les deux grandeurs.
+  assert.ok(Math.abs(c.heuresPresence - c.heuresRealisees / CFG_DEFAUT.dispo) < 1e-6,
+    c.heuresPresence + ' attendu ' + c.heuresRealisees / CFG_DEFAUT.dispo);
+  const demi = journee(cfg(x => { x.dispo = 0.5; }));
+  assert.ok(demi.bilan.charge.heuresPresence > r.bilan.charge.heuresPresence * 1.6);
+  assert.ok(Math.abs(demi.bilan.charge.heuresRealisees - r.bilan.charge.heuresRealisees) < 1e-6,
+    'moins disponible ne veut pas dire moins de travail à faire');
+});
+
+test('la plonge compte en tunnels : ses heures ne sont pas des ETP', () => {
+  const r = journee(cfg());
+  assert.equal(r.bilan.ateliers.plonge.nature, 'tunnels');
+  assert.equal(r.bilan.ateliers.plonge.etpRealise, null);
+  assert.equal(r.bilan.ateliers.plonge.etpDemande, null);
+  assert.equal(r.bilan.ateliers.cuisine.nature, 'personnes');
+  assert.ok(r.bilan.ateliers.cuisine.etpRealise > 0);
+  // Ses heures ne sont pas comptées dans le total humain.
+  const c = r.bilan.charge;
+  assert.ok(c.heuresDemandees < r.bilan.ateliers.plonge.heuresDemandees + c.heuresDemandees);
+  assert.ok(Math.abs(c.heuresDemandees + r.bilan.ateliers.plonge.heuresDemandees
+    - Object.values(r.bilan.ateliers).reduce((n, a) => n + a.heuresDemandees, 0)) < 1e-9);
+});
+
+test('un atelier sous-doté laisse du travail sur le carreau, et on le chiffre', () => {
+  const plein = journee(cfg());
+  const maigre = journee(cfg(x => { x.staff.cuisine = 1; }));
+  const a = maigre.bilan.ateliers.cuisine;
+  assert.equal(a.heuresDemandees, plein.bilan.ateliers.cuisine.heuresDemandees, 'la demande ne change pas');
+  assert.ok(a.heuresRealisees < a.heuresDemandees, 'une partie n’a pas pu être faite');
+  assert.ok(Math.abs(a.resteAFaire / 60 - (a.heuresDemandees - a.heuresRealisees)) < 1e-9);
+  assert.ok(maigre.bilan.charge.heuresResteAFaire > 5);
+});
+
+test('le travail fait par le vivier est porté par l’atelier servi', () => {
+  const sans = journee(cfg(x => { x.staff.cuisine = 2; }));
+  const avec = journee(cfg(x => { x.staff.cuisine = 2; x.viviers = vivier(8, ['cuisine']); }));
+  const a = avec.bilan.ateliers.cuisine, b = sans.bilan.ateliers.cuisine;
+  // Le CONTENU de travail ne change pas : à deux, la cuisine finissait déjà
+  // tout, mais trop tard. Ce que le vivier change, c'est QUI le fait et QUAND.
+  assert.ok(Math.abs(a.heuresRealisees - b.heuresRealisees) < 1e-6);
+  assert.equal(a.resteAFaire, 0);
+  assert.equal(b.resteAFaire, 0);
+  assert.ok(avec.kpis.ontime > sans.kpis.ontime + 40, 'c’est la ponctualité qui change');
+  // Les prêts comptent dans la présence de l'atelier servi, sans s'y ajouter
+  // deux fois : la présence propre de la cuisine s'effondre d'autant.
+  assert.ok(a.minutesPretees > 1000);
+  assert.ok(a.heuresPresence * 60 >= a.minutesPretees);
+  const proprePar = x => x.heuresPresence - x.minutesPretees / 60;
+  assert.ok(proprePar(a) < proprePar(b) / 3, proprePar(a) + ' devrait être bien inférieur à ' + proprePar(b));
+});

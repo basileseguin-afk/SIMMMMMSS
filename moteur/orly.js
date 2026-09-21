@@ -154,6 +154,9 @@
   const LOT = 5;
   /** Fenêtre glissante de l'occupation affichée, en minutes simulées. */
   const FENETRE = 15;
+  /** Convention de la feuille de route : 1 ETP = 7 heures de travail.
+   *  C'est un équivalent de CHARGE, pas un nombre de personnes à affecter. */
+  const HEURES_PAR_ETP = 7;
 
   /** Tunnels équivalents : le tunnel double compte pour deux tunnels simples. */
   function capacitePlonge(cfg) { return Math.max(0, (cfg.tunnels | 0) + (cfg.tunnelDouble ? 1 : 0)); }
@@ -246,7 +249,7 @@
         tampon: new Tampon(env, { nom: id, capacite: contenance }),
         glissante: new Glissante(FENETRE),
         // vue lue par l'interface
-        util: 0, qlen: 0, enAttente: 0, bloque: false, tauxJour: 0, pretes: 0, _pretes: 0,
+        util: 0, qlen: 0, enAttente: 0, bloque: false, tauxJour: 0, pretes: 0, _pretes: 0, _faites: 0,
         robotUtil: 0, robotAttente: 0, robotTauxJour: 0   // renseignés sur le montage seulement
       };
     });
@@ -423,7 +426,7 @@
       if (prete) { st._pretes++; st.pretes = st._pretes; }
       if (etape.debut == null) etape.debut = e.maintenant;        // première personne sur l'OF
       const duree = dureeLot(st.id, l);
-      try { yield e.delai(duree); }
+      try { yield e.delai(duree); st._faites += l; }
       finally {
         j._lotsEnCours--;
         if (prete) { st._pretes--; st.pretes = st._pretes; vivier.pretsPar[st.id] = (vivier.pretsPar[st.id] || 0) + duree; }
@@ -712,11 +715,37 @@
     /** Résumé mesuré de la journée, pour l'export et la comparaison A/B. */
     function bilan() {
       const ateliers = {};
+      // Heures DEMANDÉES : ce que le barème réclame, tous ordres confondus,
+      // qu'ils aient été faits ou non. Heures RÉALISÉES : ce qui a réellement
+      // été travaillé ici, prêts du vivier compris. L'écart est le travail
+      // resté sur le carreau.
+      const demandees = {}, pretees = {};
+      ATELIERS.forEach(id => { demandees[id] = 0; pretees[id] = 0; });
+      jobs.forEach(j => ATELIERS.forEach(id => { demandees[id] += j.work[id] || 0; }));
+      viviers.forEach(v => Object.keys(v.pretsPar).forEach(id => { pretees[id] = (pretees[id] || 0) + v.pretsPar[id]; }));
+      const propresDe = id => (stations[id].ressource.occupation.moyenne() || 0) * stations[id].ressource.occupation.duree;
       ATELIERS.forEach(id => {
         const st = stations[id], r = st.ressource;
+        // L'intégrale des places occupées EST le nombre d'homme-minutes
+        // travaillées par les gens de l'atelier.
+        // Deux grandeurs distinctes, à ne jamais confondre :
+        //   RÉALISÉ  = contenu de travail réellement traité (barème),
+        //   PRÉSENCE = temps pendant lequel quelqu'un a été mobilisé.
+        // La présence dépasse le travail parce qu'une personne n'est
+        // disponible qu'à `dispo` : 1 h de travail mobilise 1/dispo heure.
+        // La plonge compte en TUNNELS, pas en personnes : ses heures ne sont
+        // pas des homme-heures et n'entrent pas dans les ETP.
+        const presence = propresDe(id) + pretees[id];
         ateliers[id] = {
+          nature: id === 'plonge' ? 'tunnels' : 'personnes',
           personnes: r.capaciteMesuree.moyenne(),          // moyenne sur la journée si relève
           occupationJour: r.tauxOccupation(),
+          minutesDemandees: demandees[id], minutesRealisees: st._faites,
+          minutesPresence: presence, minutesPretees: pretees[id],
+          heuresDemandees: demandees[id] / 60, heuresRealisees: st._faites / 60, heuresPresence: presence / 60,
+          etpDemande: id === 'plonge' ? null : demandees[id] / 60 / HEURES_PAR_ETP,
+          etpRealise: id === 'plonge' ? null : st._faites / 60 / HEURES_PAR_ETP,
+          resteAFaire: Math.max(0, demandees[id] - st._faites),
           attenteMoyenne: r.attente.moyenne(),
           attenteP90: r.attente.percentile(90),
           ofMoyens: st.tampon.remplissage.moyenne(),
@@ -735,6 +764,18 @@
           pretsPar: Object.assign({}, v.pretsPar),
           minutesPretees: Object.values(v.pretsPar).reduce((n, x) => n + x, 0)
         })),
+        // Totaux en HOMME-heures : la plonge en est exclue, ses heures sont
+        // des heures de tunnel. Elle reste détaillée dans `ateliers`.
+        charge: (() => {
+          const humains = ATELIERS.filter(id => id !== 'plonge');
+          const d = humains.reduce((n, id) => n + demandees[id], 0);
+          const f = humains.reduce((n, id) => n + stations[id]._faites, 0);
+          const p = humains.reduce((n, id) => n + propresDe(id) + pretees[id], 0);
+          return { heuresDemandees: d / 60, heuresRealisees: f / 60, heuresPresence: p / 60,
+                   etpDemande: d / 60 / HEURES_PAR_ETP, etpRealise: f / 60 / HEURES_PAR_ETP,
+                   heuresParEtp: HEURES_PAR_ETP, heuresResteAFaire: Math.max(0, d - f) / 60,
+                   horsPlonge: true };
+        })(),
         calendrier: { actif: cal.actif, joursDeparts, joursProduction, decalage, horizon,
                       avance: Object.assign({}, cal.avance), exception: Object.assign({}, cal.exception) },
         materiel: stock ? {
@@ -766,5 +807,5 @@
     return { modele: m, kpis: kpis ? kpis(m.flights, m.horizon) : null, bilan: m.bilan() };
   }
 
-  return { CFG_DEFAUT, JEU_DEMO, ROUTES, ATELIERS, LOT, FENETRE, chargeVol, robotServi, capacitePlonge, construireModele, simulerJournee };
+  return { CFG_DEFAUT, JEU_DEMO, ROUTES, ATELIERS, LOT, FENETRE, HEURES_PAR_ETP, chargeVol, robotServi, capacitePlonge, construireModele, simulerJournee };
 });

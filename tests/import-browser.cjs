@@ -100,6 +100,21 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const exp=JSON.parse(require('node:fs').readFileSync(await dl.path(),'utf8'));
   assert.equal(exp.schemaVersion,'0.4');assert.ok(exp.journal.length>50);
   assert.ok(exp.vols.some(v=>v.explication&&v.explication.attenteRobot>0));
+  // Heures, reste à faire et ETP : le vocabulaire de la feuille de route.
+  await click('#btn-reset');await click('#snap-a');
+  // L'équipe du soir est restée réglée par un bloc précédent : sans la baisser
+  // aussi, l'après-midi rattraperait tout et la comparaison ne montrerait rien.
+  await setRange('#staff-cuisine','1');await setRange('#soir-cuisine','1');await click('#snap-b');
+  const dem=await ligne('Heures demandées');
+  assert.equal(dem[1],dem[2],'la demande ne dépend pas de l’effectif');
+  const faites=await ligne('Heures faites');
+  assert.ok(parseFloat(faites[2])<parseFloat(faites[1]),'à une personne, tout n’est pas fait : '+faites);
+  assert.equal(parseFloat((await ligne('Reste à faire'))[1]),0);
+  assert.ok(parseFloat((await ligne('Reste à faire'))[2])>5);
+  const etp=await ligne('Équivalent ETP');
+  assert.ok(parseFloat(etp[1])>5&&parseFloat(etp[1])<40,'ETP plausible : '+etp);
+  await setRange('#staff-cuisine','10');await setRange('#soir-cuisine','10');
+
   // Vivier polyvalent : effectif + ateliers couverts, et l'effet se mesure.
   await click('#btn-reset');
   await setRange('#staff-cuisine','2');

@@ -111,6 +111,60 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-21 — Curseurs et grille réconciliés ; heures demandées, faites et ETP
+
+### La question « curseurs ou grille ? » n'a plus à être tranchée
+
+Elle était insoluble parce qu'elle était posée en tout ou rien : si la grille
+faisait foi, un service non aménagé tombait à zéro. Elle est donc posée
+**service par service**.
+
+| Fichier | Changement |
+|---|---|
+| `sim.js`, `index.html`, `interface.css` | effectif déduit de la grille affiché **en permanence** à côté de chaque curseur (« grille 6 ») ; case « Reprendre les effectifs de Création des ateliers » ; les curseurs des services renseignés se verrouillent, les autres restent libres |
+| `tests/workshops-browser.cjs` | l'écart visible sans la case, le verrou avec, et un service non aménagé intact |
+
+Sans la case, rien ne change et l'**écart entre les deux est visible** — c'est
+déjà une information. Avec, la grille pilote **les seuls services qu'elle
+renseigne**. Il n'y a plus de choix global à faire : on bascule service par
+service, au fil de l'aménagement.
+
+### Heures demandées, heures faites, présence, ETP
+
+| Fichier | Changement |
+|---|---|
+| `moteur/orly.js` | `bilan.ateliers[].heuresDemandees / heuresRealisees / heuresPresence / resteAFaire / etpRealise`, et un total `bilan.charge` hors plonge |
+| `sim.js` | détail d'atelier et quatre lignes A/B |
+| `tests/orly.test.cjs` | 5 régressions sur les invariants |
+
+C'est l'étape 6 de la feuille de route et son vocabulaire : « heures théoriques
+demandées, heures humaines simulées » et « équivalent de charge sur 7 h ».
+
+Sur la journée de démonstration : **82,3 h demandées, 82,3 h faites, 96,8 h de
+présence, 11,76 ETP**. Cuisine réduite à une personne : 63,9 h faites, **18,4 h
+restent sur le carreau**.
+
+**Deux erreurs de ma part, révélées par les chiffres eux-mêmes :**
+
+1. Je comptais l'intégrale d'occupation comme des heures de travail. C'est du
+   **temps de présence** : une heure de travail mobilise 1 / disponibilité heure
+   de quelqu'un, soit 1,18 h ici. Les deux grandeurs sont désormais séparées, et
+   un test vérifie le rapport exact.
+2. La plonge entrait dans le total des ETP. Ses « heures » sont des **heures de
+   tunnel**, pas des homme-heures : elle est marquée `nature: 'tunnels'`, son
+   ETP vaut `null`, et le total humain l'exclut.
+
+Invariant vérifié par test : quand tout se fait, **heures faites = heures
+demandées**. L'écart, c'est exactement le travail resté sur le carreau.
+
+**Code mort retiré :** le tableau A/B interprétait encore `'h'` comme un format
+d'horloge, reliquat de l'instantané qui porte désormais son propre libellé. Mes
+lignes en heures s'affichaient « — ».
+
+Tests : 118 unitaires et 6 parcours navigateur.
+
+---
+
 ## 2026-09-21 — Personnes sur les équipements, site autonome retiré, vivier partagé
 
 ### La régression de l'absorption est réparée

@@ -45,3 +45,9 @@ h1{font-size:21px;margin:4px 0 0;letter-spacing:-.025em}.eyebrow{font-size:9px;f
 /* Ateliers couverts par le vivier polyvalent. */
 .vivier-ateliers{display:flex;flex-wrap:wrap;gap:6px 14px;margin:8px 0}
 .vivier-ateliers .chk{font-size:12px}
+
+/* Effectif venu de l'aménagement : visible à côté du curseur, même quand il
+   ne pilote pas — c'est l'écart entre les deux qui informe. */
+.depuis-grille{margin-left:8px;padding:1px 6px;border-radius:99px;background:var(--bg3);
+  border:1px solid var(--bordure);font-size:11px;font-weight:700;color:var(--txt2);vertical-align:middle}
+input.pilote-grille{accent-color:var(--txt3);opacity:.7}

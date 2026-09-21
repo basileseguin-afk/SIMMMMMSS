@@ -78,7 +78,10 @@ n'est présent dans ce dépôt.
 1. **Données** : consulter les limites du moteur, télécharger le modèle CSV ou
    importer un fichier simplifié. Le nom du jeu et le nombre de départs/retours
    restent visibles en haut de page.
-2. **Réglages** : préparer les effectifs simultanés, la cadence du robot et la
+2. **Réglages** : préparer les effectifs simultanés — le curseur de chaque
+   service affiche l’effectif déduit de « Création des ateliers » quand il y en
+   a un, et une case permet de laisser la grille piloter **les services qu’elle
+   renseigne seulement**, les autres restant réglables au curseur —, la cadence du robot et la
    liste des compagnies qu’il sert (règle de la feuille de route : FBU, TX/FWI
    et CRL ; les autres YC sont dressés à la main à un coefficient non calibré),
    la contenance des ateliers en ordres de fabrication (vide = illimitée ; finie,
@@ -139,6 +142,13 @@ temps de transfert.
   deux étapes séparées par une nuit, l’ordre **quitte son atelier** et attend
   en stock : il ne bloque pas l’amont. Cette attente est dite « planifiée »
   dans l’explication — ce n’est pas un retard.
+- **Heures et ETP** : le détail d’un atelier donne les **heures demandées** par
+  le barème, les **heures faites**, le **reste à faire** et les **heures de
+  présence**. La présence dépasse le travail d’exactement 1 / disponibilité :
+  une heure de travail mobilise plus d’une heure de quelqu’un. L’**ETP** vaut
+  heures ÷ 7, convention de la feuille de route — un équivalent de **charge**,
+  pas un nombre de personnes à affecter. La **plonge en est exclue** : ses
+  heures sont des heures de tunnel, pas des homme-heures.
 - **Vivier polyvalent** : des personnes rattachées à aucun atelier, qui vont
   là où l’on attend parmi les ateliers cochés. Un atelier sert d’abord avec ses
   propres gens ; le détail d’un atelier indique combien lui sont prêtées. La

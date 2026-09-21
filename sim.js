@@ -14,6 +14,7 @@
 const {escapeHTML, serviceMetrics, flightStatus, parseFlights} = window.OrlyUI;
 const Orly = window.MoteurOrly;
 const NON_MODELISES = new Set(['magasin','bobduty','handling','quais']);
+const CFG_ETP = Orly.HEURES_PAR_ETP;   // 1 ETP = 7 h, convention de la feuille de route
 let activePanel = 'suivi', activeView = 'plan', dataSource = 'Jeu de démonstration';
 let frameId = null, pendingTime = 0, runConfig = null;
 
@@ -836,6 +837,11 @@ function majGoulotInfo(goulot) {
       html+='<p>'+st.qlen+' OF présents'+(id==='plonge'?' · '+CFG.tunnels+' tunnels':' · '+st.capacite+' personne(s) présentes')+(now>DEBUT()?' · occupation '+Math.round(Math.min(1,st.util)*100)+' % sur 15 min, '+Math.round(st.tauxJour*100)+' % depuis 05:00':'')+(st.pretes?' · <strong>'+st.pretes+' prêtée(s) par le vivier</strong>':'')+(st.enAttente?' · <strong>'+st.enAttente+' lot(s) attendent une personne</strong>':'')+(id==='prepa'&&now>DEBUT()?' · robot '+Math.round(Math.min(1,st.robotUtil)*100)+' % sur 15 min'+(st.robotAttente?', <strong>'+st.robotAttente+' vol(s) attendent le robot</strong>':''):'')
         +(id==='dotation'&&modele.stock?' · matériel propre '+Math.round(modele.stock.niveau)+' u'+(modele.stock.resume().retraitsEnAttente?', <strong>'+modele.stock.resume().retraitsEnAttente+' dossier(s) en attente</strong>':''):'')+(st.bloque?' · <strong>tampon plein : l’amont est bloqué</strong>':'')+'.</p>';
       const current=jobs.filter(j=>j.released&&!j.done&&j.stationId===id);
+      const bil=modele.bilan().ateliers[id];
+      if(bil)html+='<p class="mini-note">'+bil.heuresDemandees.toFixed(1)+' h demandées · '+bil.heuresRealisees.toFixed(1)+' h faites'
+        +(bil.resteAFaire>1?' · <strong>'+(bil.resteAFaire/60).toFixed(1)+' h restant à faire</strong>':'')
+        +' · '+bil.heuresPresence.toFixed(1)+' h de présence'
+        +(bil.etpRealise!=null?' · '+bil.etpRealise.toFixed(2)+' ETP (heures ÷ '+CFG_ETP+')':' · heures de tunnel, pas d’ETP')+'</p>';
       html+=current.length?'<ul class="detail-jobs">'+current.slice(0,8).map(j=>'<li>'+escapeHTML(j.flight.id)+' · '+escapeHTML(j.kind)+' · échéance '+heureJour(j.dueT)+' · '+escapeHTML(modele.ETATS[modele.etatOF(j)])+'</li>').join('')+'</ul>':'<p>Aucun ordre de fabrication actif ici.</p>';
       if(current.length>8)html+='<p>Et '+(current.length-8)+' autre(s) OF.</p>';
     }
@@ -932,7 +938,7 @@ function initControles() {
     const d = document.createElement('div'); d.className = 'slider-ligne';
     d.innerHTML = '<label for="staff-' + id + '">' + ZONES[id].nom + ' <b id="s-' + id + '">' + CFG.staff[id] + '</b></label><input id="staff-' + id + '" type="range" min="0" max="40" value="' + CFG.staff[id] + '" data-id="' + id + '">';
     box.appendChild(d);
-    d.querySelector('input').addEventListener('input', e => { CFG.staff[id] = +e.target.value; document.getElementById('s-' + id).textContent = e.target.value; majSoirLibelle(id); majPlan(); majDashboard(); });
+    d.querySelector('input').addEventListener('input', e => { CFG.staff[id] = +e.target.value; majSoirLibelle(id); majGrilleEffectifs(); majPlan(); majDashboard(); });
   });
   // Relève d'équipe : effectif du soir par atelier, « comme le matin » tant qu'on n'y touche pas.
   const det = document.createElement('details'); det.className = 'equipe-soir'; det.id = 'equipe-soir';
@@ -976,6 +982,50 @@ function initControles() {
   bind('tunnels', e => { CFG.tunnels = +e.target.value; document.getElementById('tunnels-val').textContent = e.target.value; majPlan(); });
   document.getElementById('double').addEventListener('change', e => { CFG.tunnelDouble = e.target.checked; majPlan(); });
   bind('materiel', e => { CFG.materiel.initial = +e.target.value; document.getElementById('materiel-val').textContent = e.target.value + ' u'; });
+  /* Effectifs déduits de l'aménagement : somme des personnes affectées aux
+   * équipements de chaque service. La grille ne pilote QUE les services où
+   * elle est renseignée ; partout ailleurs le curseur reste la référence.
+   * C'est ce qui évite d'avoir à choisir entre les deux : un service non
+   * aménagé ne tombe pas à zéro parce qu'un autre l'a été. */
+  const effectifsGrille = () => {
+    const w = Sim.workshops && Sim.workshops.state;
+    if (!w) return {};
+    const parService = {};
+    w.items.forEach(i => {
+      if (!i.postes) return;
+      const atelier = w.workshops.find(x => x.id === i.workshop);
+      if (atelier) parService[atelier.service] = (parService[atelier.service] || 0) + i.postes;
+    });
+    return parService;
+  };
+  function majGrilleEffectifs() {
+    const grille = effectifsGrille(), pilote = CFG.grilleEffectifs;
+    Sim.grilleCache = grille;
+    let renseignes = 0;
+    Object.keys(CFG.staff).forEach(id => {
+      const n = grille[id] || 0, input = document.getElementById('staff-' + id);
+      if (!input) return;
+      if (n > 0) renseignes++;
+      if (pilote && n > 0 && now === DEBUT()) { CFG.staff[id] = n; input.value = n; }
+      const b = document.getElementById('s-' + id);
+      if (b) b.innerHTML = escapeHTML(String(CFG.staff[id])) +
+        (n > 0 ? '<span class="depuis-grille">grille ' + n + '</span>' : '');
+      input.classList.toggle('pilote-grille', !!(pilote && n > 0));
+    });
+    const note = document.getElementById('grille-note');
+    if (note) note.textContent = renseignes
+      ? renseignes + ' service(s) aménagé(s) avec des personnes. ' + (pilote
+          ? 'Leur curseur suit la grille ; les autres restent réglables ici.'
+          : 'Cochez ci-dessus pour que leur curseur suive la grille.')
+      : 'Aucune personne affectée dans « Création des ateliers » pour l’instant : les curseurs font foi.';
+    updateRunState();
+    if (now === DEBUT()) { build(Sim.dataCourante || SAMPLE); majPlan(); majDashboard(); }
+  }
+  Sim.majGrilleEffectifs = majGrilleEffectifs;
+  document.getElementById('grille-effectifs').addEventListener('change', e => {
+    CFG.grilleEffectifs = e.target.checked; majGrilleEffectifs();
+  });
+
   // Vivier polyvalent : un effectif et les ateliers qu'il peut servir.
   const AT_VIVIER = Orly.ATELIERS.filter(id => id !== 'plonge');
   const boiteVivier = document.getElementById('vivier-ateliers');
@@ -1057,6 +1107,10 @@ function capturer(slot) {
     materiel:config.materiel&&config.materiel.actif?config.materiel.initial+' u':'non modélisé',
     vivier:(config.viviers||[]).length?config.viviers[0].effectif+' pers. · '+config.viviers[0].ateliers.map(k=>ZONES[k].nom).join(', '):'aucun',
     vivierPretes:b.viviers&&b.viviers.length?Math.round(b.viviers[0].minutesPretees):null,
+    heuresDemandees:b.charge?b.charge.heuresDemandees.toFixed(1):null,
+    heuresFaites:b.charge?b.charge.heuresRealisees.toFixed(1):null,
+    etpRealise:b.charge?b.charge.etpRealise.toFixed(2):null,
+    resteAFaire:b.charge?b.charge.heuresResteAFaire.toFixed(1):null,
     calendrier:config.calendrier&&config.calendrier.actif?config.calendrier.jours+' journées de départs, cuisine J−2 et prépa J−1':'journée unique',
     materielMin:b.materiel?Math.round(b.materiel.niveauMin):null,
     materielRupture:b.materiel?Math.round(b.materiel.partEnRupture*100):null,
@@ -1072,11 +1126,15 @@ function majCompare() {
     ['Journée simulée jusqu’à','time'],
     ['Robot pl/h','robot'],['Compagnies servies par le robot','robotCies'],['YC manuel, min/plateau','ycManuel'],['Contenances','tampons'],['Matériel propre à l’ouverture','materiel'],['Vivier polyvalent','vivier'],['Calendrier','calendrier'],['Personnes au montage (matin)','prepa'],['Équipe du soir','soir'],['Tunnels de plonge','tunnels'],
     ['Prêts à l’échéance','ontime','%'],['Échéances dépassées en fin de journée','overdue'],['Retard moyen des dossiers','retard','min'],
+    ['Heures demandées (hors plonge)','heuresDemandees','h'],['Heures faites','heuresFaites','h'],
+    ['Reste à faire','resteAFaire','h'],['Équivalent ETP','etpRealise'],
     ['Robot occupé sur la journée','robotJour','%'],['Attente du robot, p90','robotP90','min'],
     ['Montage occupé sur la journée','prepaJour','%'],['Cuisine occupée sur la journée','cuisineJour','%'],['Plonge occupée sur la journée','plongeJour','%'],
     ['Minutes prêtées par le vivier','vivierPretes','min'],['Matériel propre, plus bas niveau','materielMin','u'],['Part du temps en rupture de matériel','materielRupture','%']
   ];
-  const cell=(sn,l)=>{ if(!sn)return '—'; const v=sn[l[1]]; if(v==null)return '—'; if(l[2]==='h')return heureJour(v); return v+(l[2]?' '+l[2]:''); };
+  // `l[2]` est une UNITÉ à suffixer, rien d'autre. L'instant de fin est déjà
+  // formaté à la capture, chaque instantané portant son propre libellé de jour.
+  const cell=(sn,l)=>{ if(!sn)return '—'; const v=sn[l[1]]; if(v==null)return '—'; return v+(l[2]?' '+l[2]:''); };
   let html = '<thead><tr><th>Indicateur</th><th>A</th><th>B</th></tr></thead><tbody>';
   lignes.forEach(l => {
     const a=cell(snaps.A,l), b=cell(snaps.B,l);
@@ -1147,12 +1205,14 @@ function showPanel(name) {
   activePanel=name;
   document.querySelectorAll('[data-panel]').forEach(b=>{b.classList.toggle('active',b.dataset.panel===name);b.setAttribute('aria-pressed',String(b.dataset.panel===name));});
   ['suivi','reglages','donnees'].forEach(id=>document.getElementById('panel-'+id).hidden=id!==name);
+  if(name==='reglages'&&Sim.majGrilleEffectifs)Sim.majGrilleEffectifs();
   if(name==='suivi')dessinerChart();
 }
 function showView(name) {
   if(editMode && name!=='plan')return;
   activeView=name;
   document.getElementById('view-title').textContent=({plan:'Simulation',ateliers:'Création des ateliers',flux:'Centre des flux',vols:'Suivi des vols'})[name];
+  if(name!=='ateliers'&&Sim.majGrilleEffectifs)Sim.majGrilleEffectifs();
   if(Sim.workshops){Sim.workshops.setActive(name==='ateliers');if(name==='ateliers'){pause();Sim.workshops.selectService(selection);}}
   document.getElementById('btn-play').disabled=name==='ateliers'||editMode;
   document.body.classList.toggle('flows-open',name==='flux');
@@ -1174,8 +1234,9 @@ function updateRunState() {
   const started=enMarche||now>DEBUT();
   document.getElementById('run-state').textContent=editMode?'Édition du plan':now>=FIN()?'Terminé':enMarche?'En cours':started?'En pause':'Prêt à lancer';
   document.querySelectorAll('#sliders-staff input,#robot,#robot-cies,#yc-manuel,#tampons input,#tunnels,#double,#materiel,#vivier,#vivier-ateliers input,#calendrier,#cal-jours,#shift,#loadDelay').forEach(input=>{
-    input.disabled=started||NON_MODELISES.has(input.dataset.id);
-    input.title=NON_MODELISES.has(input.dataset.id)?'Service non relié au calcul actuel':started?'Recommencez la simulation pour modifier les réglages':'';
+    const parGrille=CFG.grilleEffectifs&&input.dataset.id&&(Sim.grilleCache||{})[input.dataset.id]>0;
+    input.disabled=started||NON_MODELISES.has(input.dataset.id)||parGrille;
+    input.title=NON_MODELISES.has(input.dataset.id)?'Service non relié au calcul actuel':parGrille?'Effectif repris de « Création des ateliers ». Décochez pour régler ici.':started?'Recommencez la simulation pour modifier les réglages':'';
   });
   document.querySelectorAll('[data-view]').forEach(b=>b.disabled=editMode&&b.dataset.view!=='plan');
 }

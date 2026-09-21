@@ -54,6 +54,22 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await click('#wg-overview');assert.equal(await page.locator('#zone-picker').inputValue(),'');await page.locator('#zone-picker').selectOption('prepa');assert.equal(await page.locator('#wg-items [data-wg-item]').count(),0);
   await page.locator('#zone-picker').selectOption('cuisine');await page.screenshot({path:'/tmp/ory-workshops-desktop.png'});await click('#btn-theme');await page.screenshot({path:'/tmp/ory-workshops-dark.png'});
   await click('[data-view=flux]');assert.equal(await page.locator('#view-flux').isVisible(),true);await click('[data-view=plan]');assert.equal(await page.locator('#btn-play').isDisabled(),false);
+  // Réconciliation curseurs / grille : l'écart se voit toujours, la grille ne
+  // pilote que les services renseignés, et seulement si on le demande.
+  await click('[data-view=plan]');await click('[data-panel=reglages]');
+  assert.match(await page.locator('#grille-note').textContent(),/service\(s\) aménagé/);
+  assert.match(await page.locator('#s-cuisine').innerText(),/grille/);
+  assert.equal(await page.locator('#staff-cuisine').isDisabled(),false,'sans la case, le curseur reste maître');
+  const avant=await page.locator('#staff-cuisine').inputValue();
+  await page.locator('#grille-effectifs').check();
+  assert.equal(await page.locator('#staff-cuisine').isDisabled(),true);
+  assert.notEqual(await page.locator('#staff-cuisine').inputValue(),avant);
+  // Un service non aménagé n'est pas touché : c'est ce qui évite de choisir.
+  assert.equal(await page.locator('#staff-appros').isDisabled(),false);
+  assert.doesNotMatch(await page.locator('#s-appros').innerText(),/grille/);
+  await page.locator('#grille-effectifs').uncheck();
+  assert.equal(await page.locator('#staff-cuisine').isDisabled(),false);
+
   await page.setViewportSize({width:390,height:844});await click('[data-view=ateliers]');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   assert.deepEqual(errors,[]);console.log('Workshop browser passed: same map, capped zoom, painting, erase, rotation, groups, library placement, persistence, export, invalid import, tabs and mobile.');
  }finally{await browser.close();}
