@@ -100,6 +100,23 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const exp=JSON.parse(require('node:fs').readFileSync(await dl.path(),'utf8'));
   assert.equal(exp.schemaVersion,'0.4');assert.ok(exp.journal.length>50);
   assert.ok(exp.vols.some(v=>v.explication&&v.explication.attenteRobot>0));
+  // Vivier polyvalent : effectif + ateliers couverts, et l'effet se mesure.
+  await click('#btn-reset');
+  await setRange('#staff-cuisine','2');
+  await click('#snap-a');
+  await setRange('#vivier','8');
+  assert.match(await page.locator('#vivier-val').textContent(),/8 — cochez un atelier/);
+  assert.equal(await page.locator('[data-vivier=plonge]').count(),0,'la plonge ne peut pas être couverte');
+  for(const id of ['cuisine','prepa','dotation'])await page.locator('[data-vivier='+id+']').check();
+  assert.equal(await page.locator('#vivier-val').textContent(),'8');
+  await click('#snap-b');
+  assert.deepEqual((await ligne('Vivier polyvalent')).slice(1),['aucun','8 pers. · CUISINE, MONTAGE, DOTATION']);
+  const pretsA=await ligne('Prêts à l’échéance');
+  assert.ok(pct(pretsA[2])>pct(pretsA[1])+40,'le vivier doit rattraper la cuisine sous-dotée : '+pretsA);
+  assert.ok(pct((await ligne('Minutes prêtées'))[2])>1000);
+  assert.equal((await ligne('Minutes prêtées'))[1],'—');
+  await setRange('#vivier','0');await setRange('#staff-cuisine','10');
+
   // Calendrier multijour : l'horloge, le compteur et le tableau A/B suivent.
   // Les réglages sont verrouillés dès qu'un essai a commencé : on recommence.
   await click('#btn-reset');

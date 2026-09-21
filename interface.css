@@ -41,3 +41,7 @@ h1{font-size:21px;margin:4px 0 0;letter-spacing:-.025em}.eyebrow{font-size:9px;f
 /* Scénarios A/B : les lignes qui diffèrent ressortent. */
 .compare-tab tr.diff td{font-weight:700;background:var(--accent-fond, rgba(12,116,173,.08))}
 .compare-tab tr.diff td:first-child{position:relative}
+
+/* Ateliers couverts par le vivier polyvalent. */
+.vivier-ateliers{display:flex;flex-wrap:wrap;gap:6px 14px;margin:8px 0}
+.vivier-ateliers .chk{font-size:12px}

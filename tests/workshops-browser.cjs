@@ -28,6 +28,23 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.screenshot({path:'/tmp/ory-validated-workshop.png'});
   const saved=await state();await page.reload();await click('[data-view=ateliers]');await page.locator('#zone-picker').selectOption('cuisine');assert.deepEqual(await state(),saved);
   await page.locator('#wg-items [data-wg-item]').first().click();await click('#wg-delete-item');assert.equal((await state()).workshops[0].validated,false);await click('#wg-undo');assert.equal((await state()).workshops[0].validated,true);
+  // Personnes affectées à un équipement : la régression de l'absorption.
+  await page.locator('#wg-items [data-wg-item]').first().click();
+  assert.equal(await page.locator('#wg-item-postes').inputValue(),'0');
+  await page.locator('#wg-item-postes').fill('4');await page.locator('#wg-item-postes').press('Tab');
+  assert.equal((await state()).items[0].postes,4);
+  assert.match(await page.locator('#wg-postes-total').textContent(),/ce service : 4/);
+  assert.match(await page.locator('#wg-items [data-wg-item]').first().textContent(),/4 pers\./);
+  assert.match(await page.locator('[data-equipment-code]').textContent(),/T-001 · 4p/);
+  // Bornes : refusé au-delà de 99, ramené à l'entier, zéro efface le champ.
+  await page.locator('#wg-item-postes').fill('150');await page.locator('#wg-item-postes').press('Tab');
+  assert.equal((await state()).items[0].postes,99);
+  await page.locator('#wg-item-postes').fill('0');await page.locator('#wg-item-postes').press('Tab');
+  assert.equal((await state()).items[0].postes,undefined);
+  await page.locator('#wg-item-postes').fill('4');await page.locator('#wg-item-postes').press('Tab');
+  await click('#wg-undo');assert.equal((await state()).items[0].postes,undefined);
+  await click('#wg-redo');assert.equal((await state()).items[0].postes,4);
+
   await click('#wg-add-group');await page.locator('#wg-group-name').fill('Deuxième atelier');await page.locator('#wg-group-name').press('Tab');
   await click('[data-wg-tool=tapis]');await at([cells[0]+4,cells[1]]);assert.equal((await state()).workshops.length,2);assert.equal((await state()).items.length,2);assert.equal((await state()).items[1].code,'C-001');
   await click('#wg-library');const frame=page.frameLocator('#wg-library-frame');await frame.locator('[data-neuf=table]').click();await frame.locator('#btn-place-service').click();await page.locator('#wg-library-dialog').waitFor({state:'hidden'});

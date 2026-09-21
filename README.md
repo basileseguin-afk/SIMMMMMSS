@@ -29,7 +29,6 @@ Ensuite, chaque `push` republie automatiquement. Les adresses :
 |---|---|
 | **Accueil** (point d'entrée, à mettre en favori) | `https://basileseguin-afk.github.io/SIMMMMMSS/accueil.html` |
 | Simulateur des flux | `https://basileseguin-afk.github.io/SIMMMMMSS/` |
-| Éditeur de postes de travail | `https://basileseguin-afk.github.io/SIMMMMMSS/postes/` |
 
 Pour ouvrir **n'importe quel autre fichier**, reprenez son chemin sur GitHub et
 remplacez `github.com/basileseguin-afk/SIMMMMMSS/blob/<branche>/` par
@@ -41,7 +40,7 @@ sont servis tels quels.
 
 **Sans activer Pages**, pour ouvrir un fichier ponctuellement, remplacez
 `github.com` par `raw.githack.com` et `/blob/` par rien :
-`https://raw.githack.com/basileseguin-afk/SIMMMMMSS/claude/factory-management-system-b1e0am/postes/index.html`
+`https://raw.githack.com/basileseguin-afk/SIMMMMMSS/claude/factory-management-system-b1e0am/index.html`
 (service tiers, pratique pour un essai, pas pour un usage durable).
 
 > ⚠️ **Le dépôt est public.** Aucune donnée confidentielle ne doit y être
@@ -86,7 +85,8 @@ n'est présent dans ce dépôt.
    elle crée le blocage amont), l’**équipe du soir** (effectif par atelier à
    partir de l’heure de relève, 14:00 par défaut ; personne n’est interrompu à
    la relève, les places en trop se ferment au fil des libérations), les
-   tunnels, le **matériel propre à l’ouverture**, le **calendrier de
+   tunnels, le **matériel propre à l’ouverture**, le **vivier polyvalent**
+   (personnes partagées entre plusieurs ateliers), le **calendrier de
    production** (cuisine J−2, prépa J−1 ; inactif par défaut) et les horaires
    avant de lancer. Une fois l’essai commencé, les paramètres sont verrouillés, même
    en pause. **Recommencer** libère les réglages et efface la progression après
@@ -139,6 +139,12 @@ temps de transfert.
   deux étapes séparées par une nuit, l’ordre **quitte son atelier** et attend
   en stock : il ne bloque pas l’amont. Cette attente est dite « planifiée »
   dans l’explication — ce n’est pas un retard.
+- **Vivier polyvalent** : des personnes rattachées à aucun atelier, qui vont
+  là où l’on attend parmi les ateliers cochés. Un atelier sert d’abord avec ses
+  propres gens ; le détail d’un atelier indique combien lui sont prêtées. La
+  **plonge en est exclue** : ses places sont des tunnels, prêter quelqu’un n’en
+  ajoute pas un. Un atelier sans personne à lui n’a pas de taux d’occupation —
+  la question n’a pas de sens, l’indicateur affiche « — ».
 - **Matériel propre** : un seul compte, en unités par passager. La dotation en
   consomme pour chaque départ, la plonge le réalimente avec les retours lavés.
   À stock vide, la dotation attend **sans mobiliser personne** : son occupation
@@ -249,7 +255,8 @@ du moteur existant. Leur raccordement aux nouvelles liaisons reste à définir.
   d’armement, les stocks de denrées, les compétences, les pauses et les
   transferts physiques ne sont pas modélisés.
 - Les curseurs décrivent des personnes simultanées, en deux équipes au plus
-  (matin, soir) ; la convention heures / 7 produit un équivalent de charge, pas
+  (matin, soir), auxquelles s’ajoute un vivier polyvalent ; les compétences
+  réelles ne sont pas modélisées ; la convention heures / 7 produit un équivalent de charge, pas
   une affectation de personnel.
 
 Le moteur à événements discrets est maintenant branché à l’interface via
@@ -294,7 +301,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/browser-smoke.cjs` | Parcours dans Chromium, export, édition et responsive |
 | `tests/import-browser.cjs` | Import CSV : échec de lecture puis réimport, numéros de ligne, scénarios A/B |
 | `BUGS.md` | Registre des bugs connus — à lire avant de coder, à compléter après chaque revue |
-| `postes/` | Éditeur de postes de travail sur trame 50 cm (outil indépendant) |
+| `postes/` | **Bibliothèque** de modèles de tables, chaînes et assemblages, ouverte depuis l’onglet « Création des ateliers ». Ce n’est plus une application autonome |
 
 Tests purs, avec Node : `node --test tests/*test.cjs`.
 

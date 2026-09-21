@@ -111,6 +111,66 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-21 — Personnes sur les équipements, site autonome retiré, vivier partagé
+
+### La régression de l'absorption est réparée
+
+Depuis que l'éditeur de postes a été absorbé dans l'onglet « Création des
+ateliers », un équipement dessiné sur la grille n'avait **aucun moyen de porter
+des personnes**. C'était une perte par rapport au site autonome.
+
+| Fichier | Changement |
+|---|---|
+| `workshop-grid.js` | champ `postes` par équipement (entier 0–99, validé) ; champ dans la fiche, total par atelier et par service, compte repris d'un modèle posé depuis la bibliothèque, affiché sur le plan à côté du code |
+| `workshop-grid.css` | mise en avant du total |
+| `tests/workshops.test.cjs`, `tests/workshops-browser.cjs` | conservation, bornes, zéro qui efface le champ, saisie réelle, annuler/rétablir |
+
+Un **compte**, pas des positions : la grille est schématique, le placement fin
+reste l'affaire de la bibliothèque. Le champ est absent quand il vaut zéro — une
+sauvegarde ancienne reste valide et n'est pas alourdie.
+
+### Le site autonome disparaît
+
+`postes/` n'est plus proposé comme application séparée : la carte de la page
+d'accueil et la ligne du README sont retirées. **Les fichiers restent** : c'est
+la bibliothèque de modèles et d'assemblages qu'ouvre l'onglet « Création des
+ateliers ». Une seule porte d'entrée, un seul endroit où aménager.
+
+### Vivier de personnes partagé
+
+| Fichier | Changement |
+|---|---|
+| `moteur/orly.js` | `cfg.viviers` : effectif + ateliers couverts ; un lot demande une place à son atelier **et** aux viviers qui le couvrent, garde la première accordée et abandonne les autres ; heures d'ouverture communes ; minutes prêtées par atelier |
+| `sim.js`, `index.html`, `interface.css` | curseur d'effectif et cases des ateliers couverts ; personnes prêtées dans le détail d'un atelier ; deux lignes A/B |
+| `tests/orly.test.cjs` | 7 régressions |
+| `tests/import-browser.cjs` | le levier dans l'interface |
+
+La feuille de route demandait de représenter les compétences et les
+affectations simultanées. C'est un premier pas : des personnes rattachées à
+aucun atelier, qui vont là où l'on attend.
+
+**Ce que ça donne.** Cuisine réduite à 2 personnes : 25 % de vols à l'heure,
+103 minutes de retard moyen. Avec un vivier de 8 couvrant cuisine, montage et
+dotation : **92 % à l'heure, aucun retard**. Le vivier a prêté 1 841
+homme-minutes, dont 1 248 à la cuisine — le bilan dit à quoi il a servi.
+
+Trois partis pris, écrits dans le code :
+
+1. **Les gens de l'atelier passent avant un prêt.** L'atelier est en tête de la
+   liste des sources ; mieux il est doté, moins il emprunte — un test le vérifie.
+2. **La plonge ne peut pas être couverte.** Ses places sont des tunnels, pas des
+   personnes : prêter quelqu'un n'en ajoute pas un. Un vivier réduit à la plonge
+   est écarté, et la case n'existe pas dans l'interface.
+3. **Un atelier sans personne à lui n'a pas de taux d'occupation.** L'indicateur
+   vaut `null`, pas zéro : la question n'a pas de sens. C'est mon assertion de
+   test qui avait tort, pas le moteur.
+
+Le moteur accepte plusieurs viviers ; l'interface n'en expose qu'un, et le dit.
+
+Tests : 113 unitaires et 6 parcours navigateur.
+
+---
+
 ## 2026-09-21 — Calendrier multijour : cuisine J−2, prépa J−1, nuits fermées
 
 | Fichier | Changement |

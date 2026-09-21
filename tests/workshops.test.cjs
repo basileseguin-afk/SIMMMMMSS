@@ -37,3 +37,19 @@ test('equipment codes migrate legacy data and count separately by type',()=>{
  migrated.items[0].code='R-001';assert.throws(()=>validate(migrated),/Code équipement/);
  migrated.items[0].code='T-001';assert.throws(()=>validate(migrated),/Code équipement/);
 });
+
+test('les personnes affectées à un équipement sont conservées et contrôlées',()=>{
+ const s=state();
+ // Absente par défaut : une donnée ancienne reste valide et n'est pas alourdie.
+ assert.equal(validate(JSON.parse(JSON.stringify(s))).items[0].postes,undefined);
+ s.items[0].postes=4;assert.equal(validate(JSON.parse(JSON.stringify(s))).items[0].postes,4);
+ // Zéro équivaut à « aucune » : le champ disparaît au lieu d'encombrer le fichier.
+ s.items[0].postes=0;assert.equal(validate(JSON.parse(JSON.stringify(s))).items[0].postes,undefined);
+ for(const mauvais of [-1,1.5,100,'3',null]){s.items[0].postes=mauvais;assert.throws(()=>validate(JSON.parse(JSON.stringify(s))),/personnes invalide/,String(mauvais));}
+ s.items[0].postes=99;assert.equal(validate(JSON.parse(JSON.stringify(s))).items[0].postes,99);
+ // Le total d'un service est la somme de ses équipements, ateliers confondus.
+ const t=state();t.workshops.push({id:'w2',service:'cuisine',nom:'Second'});
+ t.items[0].postes=3;t.items.push({id:'j',workshop:'w2',type:'table',nom:'T2',code:'T-002',cells:['5,5'],postes:2});
+ const v=validate(t);
+ assert.equal(v.items.filter(i=>['w','w2'].includes(i.workshop)).reduce((n,i)=>n+(i.postes||0),0),5);
+});

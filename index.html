@@ -332,6 +332,15 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <div id="tampons"></div>
 </div>
 <div class="panneau">
+<h3>Vivier polyvalent</h3>
+<div class="slider-ligne">
+<label for="vivier">Personnes partagées <b id="vivier-val">0</b></label>
+<input id="vivier" max="30" min="0" step="1" type="range" value="0"/>
+</div>
+<div id="vivier-ateliers" class="vivier-ateliers"></div>
+<div class="mini-note">Ces personnes ne sont rattachées à aucun atelier : elles vont là où l’on attend, parmi les ateliers cochés. Un atelier sert d’abord avec ses propres gens. La <strong>plonge est exclue</strong> : ses places sont des tunnels, prêter quelqu’un n’en ajoute pas un. Le moteur accepte plusieurs viviers ; l’interface n’en expose qu’un.</div>
+</div>
+<div class="panneau">
 <h3>Calendrier de production</h3>
 <label class="chk"><input id="calendrier" type="checkbox"/> Production en avance : cuisine J−2, prépa J−1</label>
 <div id="cal-detail" hidden="">

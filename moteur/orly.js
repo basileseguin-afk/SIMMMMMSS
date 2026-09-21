@@ -64,6 +64,13 @@
     // Relève d'équipe : `staff` est l'équipe du matin ; `soir[id]`, s'il est
     // renseigné, remplace l'effectif de l'atelier à partir de `bascule`.
     equipes: { bascule: 14 * 60, soir: {} },
+    // Viviers de personnes polyvalentes. Chacun a un effectif et la liste des
+    // ateliers qu'il peut servir. Un lot cherche d'abord quelqu'un dans son
+    // propre atelier ; à défaut, dans les viviers qui le couvrent.
+    //
+    // La plonge est volontairement exclue : ses « places » sont des tunnels,
+    // pas des personnes. Prêter quelqu'un n'ajoute pas un tunnel.
+    viviers: [],   // ex. [{ nom:'Polyvalents', effectif:8, ateliers:['cuisine','prepa'] }]
     // Calendrier de production. Inactif, tout se fait le jour du départ, comme
     // avant. Actif, la production remonte de plusieurs jours : cuisine J−2,
     // prépa J−1, le reste le jour même — cible théorique de la feuille de
@@ -239,11 +246,25 @@
         tampon: new Tampon(env, { nom: id, capacite: contenance }),
         glissante: new Glissante(FENETRE),
         // vue lue par l'interface
-        util: 0, qlen: 0, enAttente: 0, bloque: false, tauxJour: 0,
+        util: 0, qlen: 0, enAttente: 0, bloque: false, tauxJour: 0, pretes: 0, _pretes: 0,
         robotUtil: 0, robotAttente: 0, robotTauxJour: 0   // renseignés sur le montage seulement
       };
     });
     const robot = new Ressource(env, 1, { nom: 'robot' });
+
+    /* ---- viviers polyvalents ---- */
+    const viviers = (Array.isArray(cfg.viviers) ? cfg.viviers : []).map((v, i) => {
+      const effectif = Math.max(0, (v && v.effectif) | 0);
+      const couvre = (Array.isArray(v && v.ateliers) ? v.ateliers : [])
+        .filter(id => ATELIERS.includes(id) && id !== 'plonge');   // voir remarque ci-dessus
+      return {
+        nom: (v && v.nom) || ('Vivier ' + (i + 1)), effectif, ateliers: couvre,
+        ressource: new Ressource(env, effectif, { nom: (v && v.nom) || ('vivier ' + (i + 1)) }),
+        pretsPar: {}   // atelier -> homme-minutes prêtées
+      };
+    }).filter(v => v.effectif > 0 && v.ateliers.length > 0);
+    const viviersDe = id => viviers.filter(v => v.ateliers.includes(id));
+    const couvert = id => viviersDe(id).length > 0;
 
     /* Matériel propre : un seul compte, en unités par passager. Il est
      * consommé par la dotation (assiettes et couverts propres) et réalimenté
@@ -353,6 +374,20 @@
         }
       }, id + ' planning');
     });
+    // Les viviers suivent les mêmes heures d'ouverture.
+    viviers.forEach(v => {
+      const pts = [];
+      for (let d = 0; d < joursProduction; d++) {
+        pts.push({ t: d * 1440 + cfg.jour.debut, n: v.effectif });
+        pts.push({ t: d * 1440 + cfg.jour.fin, n: 0 });
+      }
+      env.processus(function* (e) {
+        for (const p of pts) {
+          if (p.t > e.maintenant) yield e.delai(p.t - e.maintenant);
+          v.ressource.modifierCapacite(p.n);
+        }
+      }, v.nom + ' planning');
+    });
 
     function spawnEntree(j) {
       if (j.kind === 'food') surToken('appros_decontam', j.color);
@@ -373,12 +408,27 @@
     /** Un lot : une personne (ou un tunnel) pendant sa durée. */
     const lot = (st, j, l, etape) => env.processus(function* (e) {
       j._lotsRestants++;
-      const place = st.ressource.demander({ priorite: j.dueT });
-      yield place;
+      // On demande une place à l'atelier ET à chaque vivier qui le couvre, puis
+      // on garde la première accordée et on abandonne les autres. L'atelier est
+      // en tête : ses propres gens passent avant un prêt.
+      const sources = [st.ressource, ...viviersDe(st.id).map(v => v.ressource)];
+      const demandes = sources.map(r => r.demander({ priorite: j.dueT }));
+      if (demandes.length === 1) yield demandes[0]; else yield e.unDe(demandes);
+      const i = demandes.findIndex(d => d.accordee);
+      demandes.forEach((d, k) => { if (k !== i) sources[k].liberer(d); });
+      const source = sources[i], prete = i > 0;
+      const vivier = prete ? viviersDe(st.id)[i - 1] : null;
+
       j._lotsRestants--; j._lotsEnCours++;
+      if (prete) { st._pretes++; st.pretes = st._pretes; }
       if (etape.debut == null) etape.debut = e.maintenant;        // première personne sur l'OF
-      try { yield e.delai(dureeLot(st.id, l)); }
-      finally { j._lotsEnCours--; st.ressource.liberer(place); }
+      const duree = dureeLot(st.id, l);
+      try { yield e.delai(duree); }
+      finally {
+        j._lotsEnCours--;
+        if (prete) { st._pretes--; st.pretes = st._pretes; vivier.pretsPar[st.id] = (vivier.pretsPar[st.id] || 0) + duree; }
+        source.liberer(demandes[i]);
+      }
     }, st.id + ' lot');
 
     /** Le robot dresse les plateaux YC d'un vol, un vol à la fois. */
@@ -539,7 +589,10 @@
         if (!j.released || j.done) return;
         switch (etatOF(j)) {
           case 'attente_personne':
-            ajouter(j.stationId, stations[j.stationId] && stations[j.stationId].capacite > 0 ? 'personnes occupées' : 'aucune personne');
+            // « Aucune personne » seulement si l'atelier n'a personne ET qu'aucun
+            // vivier ne le couvre : sinon quelqu'un pourrait venir, il est occupé.
+            ajouter(j.stationId, (stations[j.stationId] && stations[j.stationId].capacite > 0) || couvert(j.stationId)
+              ? 'personnes occupées' : 'aucune personne');
             break;
           case 'attente_robot': ajouter('prepa', 'robot occupé'); break;
           case 'attente_materiel': ajouter('dotation', 'matériel propre en rupture'); break;
@@ -674,6 +727,14 @@
         ateliers,
         robot: { cadence: cfg.robotCadence, compagnies: (cfg.robotCompagnies || []).slice(), plateauxRobot, plateauxManuel,
                  occupationJour: robot.tauxOccupation(), attenteMoyenne: robot.attente.moyenne(), attenteP90: robot.attente.percentile(90) },
+        viviers: viviers.map(v => ({
+          nom: v.nom, effectif: v.effectif, ateliers: v.ateliers.slice(),
+          occupationJour: v.ressource.tauxOccupation(),
+          attenteMoyenne: v.ressource.attente.moyenne(),
+          // Homme-minutes prêtées à chaque atelier : à quoi le vivier a servi.
+          pretsPar: Object.assign({}, v.pretsPar),
+          minutesPretees: Object.values(v.pretsPar).reduce((n, x) => n + x, 0)
+        })),
         calendrier: { actif: cal.actif, joursDeparts, joursProduction, decalage, horizon,
                       avance: Object.assign({}, cal.avance), exception: Object.assign({}, cal.exception) },
         materiel: stock ? {
@@ -688,7 +749,7 @@
 
     rafraichir(0);
     return { env, flights, jobs, stations, robot, stock, ATELIERS, ETATS,
-             debut: t0, horizon, calendrier: cal, decalage, joursProduction, joursDeparts, etiquetteJour,
+             debut: t0, horizon, calendrier: cal, decalage, joursProduction, joursDeparts, etiquetteJour, viviers,
              avancerA, debitRobot, goulot, bilan,
              etatOF, decomposer, expliquer, journal,
              get maintenant() { return env.maintenant; } };

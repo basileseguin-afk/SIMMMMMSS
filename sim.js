@@ -833,7 +833,7 @@ function majGoulotInfo(goulot) {
     html+='<p>'+(z.approx?'Emplacement à confirmer.':'Emplacement enregistré ; validation terrain distincte.')+'</p>';
     if(NON_MODELISES.has(id))html+='<p>Charge non calculée dans cette version.</p>';
     else {
-      html+='<p>'+st.qlen+' OF présents'+(id==='plonge'?' · '+CFG.tunnels+' tunnels':' · '+st.capacite+' personne(s) présentes')+(now>DEBUT()?' · occupation '+Math.round(Math.min(1,st.util)*100)+' % sur 15 min, '+Math.round(st.tauxJour*100)+' % depuis 05:00':'')+(st.enAttente?' · <strong>'+st.enAttente+' lot(s) attendent une personne</strong>':'')+(id==='prepa'&&now>DEBUT()?' · robot '+Math.round(Math.min(1,st.robotUtil)*100)+' % sur 15 min'+(st.robotAttente?', <strong>'+st.robotAttente+' vol(s) attendent le robot</strong>':''):'')
+      html+='<p>'+st.qlen+' OF présents'+(id==='plonge'?' · '+CFG.tunnels+' tunnels':' · '+st.capacite+' personne(s) présentes')+(now>DEBUT()?' · occupation '+Math.round(Math.min(1,st.util)*100)+' % sur 15 min, '+Math.round(st.tauxJour*100)+' % depuis 05:00':'')+(st.pretes?' · <strong>'+st.pretes+' prêtée(s) par le vivier</strong>':'')+(st.enAttente?' · <strong>'+st.enAttente+' lot(s) attendent une personne</strong>':'')+(id==='prepa'&&now>DEBUT()?' · robot '+Math.round(Math.min(1,st.robotUtil)*100)+' % sur 15 min'+(st.robotAttente?', <strong>'+st.robotAttente+' vol(s) attendent le robot</strong>':''):'')
         +(id==='dotation'&&modele.stock?' · matériel propre '+Math.round(modele.stock.niveau)+' u'+(modele.stock.resume().retraitsEnAttente?', <strong>'+modele.stock.resume().retraitsEnAttente+' dossier(s) en attente</strong>':''):'')+(st.bloque?' · <strong>tampon plein : l’amont est bloqué</strong>':'')+'.</p>';
       const current=jobs.filter(j=>j.released&&!j.done&&j.stationId===id);
       html+=current.length?'<ul class="detail-jobs">'+current.slice(0,8).map(j=>'<li>'+escapeHTML(j.flight.id)+' · '+escapeHTML(j.kind)+' · échéance '+heureJour(j.dueT)+' · '+escapeHTML(modele.ETATS[modele.etatOF(j)])+'</li>').join('')+'</ul>':'<p>Aucun ordre de fabrication actif ici.</p>';
@@ -976,6 +976,23 @@ function initControles() {
   bind('tunnels', e => { CFG.tunnels = +e.target.value; document.getElementById('tunnels-val').textContent = e.target.value; majPlan(); });
   document.getElementById('double').addEventListener('change', e => { CFG.tunnelDouble = e.target.checked; majPlan(); });
   bind('materiel', e => { CFG.materiel.initial = +e.target.value; document.getElementById('materiel-val').textContent = e.target.value + ' u'; });
+  // Vivier polyvalent : un effectif et les ateliers qu'il peut servir.
+  const AT_VIVIER = Orly.ATELIERS.filter(id => id !== 'plonge');
+  const boiteVivier = document.getElementById('vivier-ateliers');
+  AT_VIVIER.forEach(id => {
+    const l = document.createElement('label'); l.className = 'chk chk-mini';
+    l.innerHTML = '<input type="checkbox" data-vivier="' + id + '"> ' + escapeHTML(ZONES[id].nom);
+    boiteVivier.appendChild(l);
+  });
+  const majVivier = () => {
+    const effectif = +document.getElementById('vivier').value;
+    const ateliers = [...boiteVivier.querySelectorAll('[data-vivier]:checked')].map(c => c.dataset.vivier);
+    CFG.viviers = effectif > 0 && ateliers.length ? [{ nom:'Polyvalents', effectif, ateliers }] : [];
+    document.getElementById('vivier-val').textContent = effectif + (effectif && !ateliers.length ? ' — cochez un atelier' : '');
+    if (now === DEBUT()) { build(Sim.dataCourante || SAMPLE); majPlan(); majDashboard(); }
+  };
+  bind('vivier', majVivier);
+  boiteVivier.addEventListener('change', majVivier);
   const majCal = () => {
     document.getElementById('cal-detail').hidden = !CFG.calendrier.actif;
     if (now === DEBUT()) { build(Sim.dataCourante || SAMPLE); majHorloge(); majPlan(); majDashboard(); dessinerChart(); }
@@ -1038,6 +1055,8 @@ function capturer(slot) {
     robot:config.robotCadence,robotCies:(config.robotCompagnies||[]).join(', ')||'aucune',ycManuel:config.ycManuel,
     tampons:Object.keys(config.tampons||{}).map(k=>ZONES[k].nom+' '+config.tampons[k]).join(', ')||'illimitées',
     materiel:config.materiel&&config.materiel.actif?config.materiel.initial+' u':'non modélisé',
+    vivier:(config.viviers||[]).length?config.viviers[0].effectif+' pers. · '+config.viviers[0].ateliers.map(k=>ZONES[k].nom).join(', '):'aucun',
+    vivierPretes:b.viviers&&b.viviers.length?Math.round(b.viviers[0].minutesPretees):null,
     calendrier:config.calendrier&&config.calendrier.actif?config.calendrier.jours+' journées de départs, cuisine J−2 et prépa J−1':'journée unique',
     materielMin:b.materiel?Math.round(b.materiel.niveauMin):null,
     materielRupture:b.materiel?Math.round(b.materiel.partEnRupture*100):null,
@@ -1051,11 +1070,11 @@ function capturer(slot) {
 function majCompare() {
   const lignes = [
     ['Journée simulée jusqu’à','time'],
-    ['Robot pl/h','robot'],['Compagnies servies par le robot','robotCies'],['YC manuel, min/plateau','ycManuel'],['Contenances','tampons'],['Matériel propre à l’ouverture','materiel'],['Calendrier','calendrier'],['Personnes au montage (matin)','prepa'],['Équipe du soir','soir'],['Tunnels de plonge','tunnels'],
+    ['Robot pl/h','robot'],['Compagnies servies par le robot','robotCies'],['YC manuel, min/plateau','ycManuel'],['Contenances','tampons'],['Matériel propre à l’ouverture','materiel'],['Vivier polyvalent','vivier'],['Calendrier','calendrier'],['Personnes au montage (matin)','prepa'],['Équipe du soir','soir'],['Tunnels de plonge','tunnels'],
     ['Prêts à l’échéance','ontime','%'],['Échéances dépassées en fin de journée','overdue'],['Retard moyen des dossiers','retard','min'],
     ['Robot occupé sur la journée','robotJour','%'],['Attente du robot, p90','robotP90','min'],
     ['Montage occupé sur la journée','prepaJour','%'],['Cuisine occupée sur la journée','cuisineJour','%'],['Plonge occupée sur la journée','plongeJour','%'],
-    ['Matériel propre, plus bas niveau','materielMin','u'],['Part du temps en rupture de matériel','materielRupture','%']
+    ['Minutes prêtées par le vivier','vivierPretes','min'],['Matériel propre, plus bas niveau','materielMin','u'],['Part du temps en rupture de matériel','materielRupture','%']
   ];
   const cell=(sn,l)=>{ if(!sn)return '—'; const v=sn[l[1]]; if(v==null)return '—'; if(l[2]==='h')return heureJour(v); return v+(l[2]?' '+l[2]:''); };
   let html = '<thead><tr><th>Indicateur</th><th>A</th><th>B</th></tr></thead><tbody>';
@@ -1154,7 +1173,7 @@ function updateSource() {
 function updateRunState() {
   const started=enMarche||now>DEBUT();
   document.getElementById('run-state').textContent=editMode?'Édition du plan':now>=FIN()?'Terminé':enMarche?'En cours':started?'En pause':'Prêt à lancer';
-  document.querySelectorAll('#sliders-staff input,#robot,#robot-cies,#yc-manuel,#tampons input,#tunnels,#double,#materiel,#calendrier,#cal-jours,#shift,#loadDelay').forEach(input=>{
+  document.querySelectorAll('#sliders-staff input,#robot,#robot-cies,#yc-manuel,#tampons input,#tunnels,#double,#materiel,#vivier,#vivier-ateliers input,#calendrier,#cal-jours,#shift,#loadDelay').forEach(input=>{
     input.disabled=started||NON_MODELISES.has(input.dataset.id);
     input.title=NON_MODELISES.has(input.dataset.id)?'Service non relié au calcul actuel':started?'Recommencez la simulation pour modifier les réglages':'';
   });

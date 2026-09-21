@@ -427,3 +427,110 @@ test('le calendrier ne change rien quand il est inactif', () => {
   assert.deepEqual(a.kpis, b.kpis);
   assert.deepEqual(a.bilan.ateliers, b.bilan.ateliers);
 });
+
+/* ======================================================================
+ *  VIVIERS — des personnes polyvalentes partagées entre ateliers
+ * ====================================================================*/
+
+const vivier = (effectif, ateliers, nom) => [{ nom: nom || 'Polyvalents', effectif, ateliers }];
+
+test('sans vivier déclaré, rien ne change', () => {
+  const a = journee(cfg());
+  const b = journee(cfg(c => { c.viviers = []; }));
+  assert.deepEqual(a.kpis, b.kpis);
+  assert.deepEqual(a.bilan.viviers, []);
+});
+
+test('un vivier rattrape un atelier sous-doté, et l’on sait à quoi il a servi', () => {
+  const sans = journee(cfg(c => { c.staff.cuisine = 2; }));
+  const avec = journee(cfg(c => { c.staff.cuisine = 2; c.viviers = vivier(8, ['cuisine', 'prepa', 'dotation']); }));
+
+  assert.ok(sans.kpis.ontime < 40, 'cuisine à 2 doit dégrader : ' + sans.kpis.ontime);
+  assert.ok(avec.kpis.ontime > sans.kpis.ontime + 40, 'le vivier doit rattraper : ' + avec.kpis.ontime);
+  assert.equal(avec.kpis.retardMoy, 0);
+
+  const v = avec.bilan.viviers[0];
+  assert.equal(v.effectif, 8);
+  assert.deepEqual(v.ateliers, ['cuisine', 'prepa', 'dotation']);
+  assert.ok(v.minutesPretees > 1000, 'le vivier doit avoir travaillé : ' + v.minutesPretees);
+  // C'est bien la cuisine, l'atelier en peine, qui a le plus reçu.
+  const plusServi = Object.entries(v.pretsPar).sort((a, b) => b[1] - a[1])[0][0];
+  assert.equal(plusServi, 'cuisine');
+  // Les minutes prêtées ne peuvent pas dépasser ce que huit personnes peuvent faire.
+  assert.ok(v.minutesPretees <= 8 * (CFG_DEFAUT.jour.fin - CFG_DEFAUT.jour.debut) + 1e-6);
+  // L'occupation propre de la cuisine baisse : le travail est fait par le vivier.
+  assert.ok(avec.bilan.ateliers.cuisine.occupationJour < sans.bilan.ateliers.cuisine.occupationJour);
+});
+
+test('les gens de l’atelier passent avant un prêt', () => {
+  const dote = journee(cfg(c => { c.viviers = vivier(5, ['dotation']); }));
+  const sousDote = journee(cfg(c => { c.staff.dotation = 1; c.viviers = vivier(5, ['dotation']); }));
+  // Mieux doté, l'atelier se débrouille seul plus souvent : il emprunte moins.
+  assert.ok(dote.bilan.viviers[0].minutesPretees < sousDote.bilan.viviers[0].minutesPretees,
+    dote.bilan.viviers[0].minutesPretees + ' devrait être inférieur à ' + sousDote.bilan.viviers[0].minutesPretees);
+  // Un atelier sans personne à lui fait tout faire par le vivier.
+  const zero = journee(cfg(c => { c.staff.cuisine = 0; c.viviers = vivier(6, ['cuisine']); }));
+  assert.equal(zero.kpis.prets, 12);
+  assert.ok(zero.bilan.viviers[0].pretsPar.cuisine > 1000);
+  // Pas de taux d'occupation pour un atelier sans personne à lui : la question
+  // n'a pas de sens, et `null` le dit mieux que zéro.
+  assert.equal(zero.bilan.ateliers.cuisine.occupationJour, null);
+  assert.equal(zero.bilan.ateliers.cuisine.personnes, 0);
+  assert.ok(zero.bilan.viviers[0].occupationJour > 0, 'c’est le vivier qui porte l’occupation');
+});
+
+test('un vivier ne sert que les ateliers qu’il couvre, et jamais la plonge', () => {
+  // La plonge compte des tunnels, pas des personnes : la couvrir n’aurait pas de sens.
+  const surPlonge = journee(cfg(c => { c.viviers = vivier(5, ['plonge']); }));
+  assert.deepEqual(surPlonge.bilan.viviers, [], 'un vivier réduit à la plonge est écarté');
+  const mixte = journee(cfg(c => { c.staff.cuisine = 2; c.viviers = vivier(5, ['plonge', 'cuisine', 'inconnu']); }));
+  assert.deepEqual(mixte.bilan.viviers[0].ateliers, ['cuisine'], 'plonge et atelier inconnu sont retirés');
+
+  // Un vivier qui ne couvre pas la cuisine ne la sauve pas.
+  const ailleurs = journee(cfg(c => { c.staff.cuisine = 2; c.viviers = vivier(8, ['armement']); }));
+  const cible = journee(cfg(c => { c.staff.cuisine = 2; c.viviers = vivier(8, ['cuisine']); }));
+  assert.ok(ailleurs.kpis.ontime < cible.kpis.ontime);
+  assert.equal(ailleurs.bilan.viviers[0].pretsPar.cuisine, undefined);
+});
+
+test('un atelier sans personne mais couvert par un vivier n’est pas « aucune personne »', () => {
+  const c = cfg(x => { x.staff.cuisine = 0; x.viviers = vivier(1, ['cuisine']); });
+  const m = construireModele(JEU_DEMO, c);
+  let cause = null;
+  for (let t = c.jour.debut + 1; t <= c.jour.fin && !cause; t += 1) {
+    m.avancerA(t);
+    const g = m.goulot();
+    if (g && g.id === 'cuisine') cause = g.cause;
+  }
+  assert.equal(cause, 'personnes occupées', 'quelqu’un peut venir, il est occupé');
+
+  // Sans vivier, le même atelier vide dit bien qu’il n’y a personne.
+  const seul = construireModele(JEU_DEMO, cfg(x => { x.staff.cuisine = 0; }));
+  let cause2 = null;
+  for (let t = CFG_DEFAUT.jour.debut + 1; t <= CFG_DEFAUT.jour.fin && !cause2; t += 1) {
+    seul.avancerA(t);
+    const g = seul.goulot();
+    if (g && g.id === 'cuisine') cause2 = g.cause;
+  }
+  assert.equal(cause2, 'aucune personne');
+});
+
+test('les personnes prêtées sont visibles en direct sur l’atelier', () => {
+  const c = cfg(x => { x.staff.cuisine = 0; x.viviers = vivier(4, ['cuisine']); });
+  const m = construireModele(JEU_DEMO, c);
+  let vu = 0;
+  for (let t = c.jour.debut + 1; t <= c.jour.fin; t += 5) { m.avancerA(t); vu = Math.max(vu, m.stations.cuisine.pretes); }
+  assert.ok(vu > 0 && vu <= 4, 'la cuisine doit afficher des personnes prêtées : ' + vu);
+  m.avancerA(c.jour.fin);
+  assert.equal(m.stations.cuisine.pretes, 0, 'tout le monde est rendu à la fin');
+  assert.equal(m.viviers[0].ressource.occupees, 0);
+});
+
+test('le vivier respecte les heures d’ouverture avec le calendrier', () => {
+  const c = calendrier(x => { x.staff.cuisine = 0; x.viviers = vivier(6, ['cuisine']); });
+  const m = construireModele(JEU_DEMO, c);
+  m.avancerA(1440 + 2 * 60);                       // 02:00
+  assert.equal(m.viviers[0].ressource.capacite, 0, 'le vivier ferme la nuit');
+  m.avancerA(1440 + c.jour.debut + 30);
+  assert.equal(m.viviers[0].ressource.capacite, 6);
+});
