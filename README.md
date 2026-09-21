@@ -88,10 +88,8 @@ n'est présent dans ce dépôt.
 1. **Données** : consulter les limites du moteur, télécharger le modèle CSV ou
    importer un fichier simplifié. Le nom du jeu et le nombre de départs/retours
    restent visibles en haut de page.
-2. **Réglages** : préparer les effectifs simultanés — le curseur de chaque
-   service affiche l’effectif déduit de « Création des ateliers » quand il y en
-   a un, et une case permet de laisser la grille piloter **les services qu’elle
-   renseigne seulement**, les autres restant réglables au curseur —, la cadence du robot et la
+2. **Réglages** : préparer les effectifs simultanés de l'ancien calcul de la vue
+   Simulation, la cadence du robot et la
    liste des compagnies qu’il sert (règle de la feuille de route : FBU, TX/FWI
    et CRL ; les autres YC sont dressés à la main à un coefficient non calibré),
    la contenance des ateliers en ordres de fabrication (vide = illimitée ; finie,
@@ -231,17 +229,22 @@ automatique ; **Exporter le plan** permet de conserver une copie indépendante.
 Voir le **[guide de l’éditeur](docs/EDITEUR_PLAN.md)** pour les gestes, raccourcis,
 imports, sauvegardes et limites.
 
-## Création des ateliers
+## Ateliers de travail
 
-L’onglet **Création des ateliers** conserve la carte : cliquer un service le
-cadre au zoom maximal. Créer des ateliers internes puis construire tables et
-chaînes case par case sur une grille de **50 × 50 cm théoriques**, avec gomme,
-déplacement, rotation et annulation. La bibliothèque de modèles et assemblages
-existante est accessible dans l’application pour les poser sur cette grille.
+L'onglet **Ateliers de travail** décrit qui fabrique quoi, quand, et à combien.
+Un atelier est une équipe dans un service : un nom libre (« Prépa CRL BC »),
+une **heure de début que vous donnez**, un effectif, et une liste **ordonnée**
+de lots à fabriquer. La fin est calculée. Un atelier **robot** travaille à son
+débit et refuse de tourner sous son effectif minimum.
 
-Le fond n’est pas calibré : l’aménagement reste schématique, sans vérification
-des dimensions réelles ni calcul automatique des capacités du moteur.
-Voir le [guide de création des ateliers](docs/CREATION_ATELIERS.md).
+L'unité de fabrication est la **compagnie × classe** (`CRL/BC`, `AF/YC`…),
+déduite du programme de vols. Son parcours se lit dans le graphe du Centre des
+flux : un service ne travaille un lot que lorsque **tous ses fournisseurs** ont
+livré ses classes — c'est là que les branches food, matériel et armement se
+rejoignent.
+
+Le barème d'homme-minutes est **non calibré** : ses durées ne dimensionnent pas
+une équipe. Voir [la note de modèle](docs/MODELE_ATELIERS.md).
 
 ## Centre des flux
 
@@ -314,6 +317,8 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `moteur/mesure.js` | Moniteurs de niveau (pondérés par le temps) et de comptage |
 | `moteur/ressources.js` | Postes à places, tampons bloquants, niveaux (étape 2) |
 | `moteur/procede.js` | Procédé décrit en données : validation, tirages à graine, exécution (étape 3) |
+| **`moteur/production.js`** | **Modèle par ateliers de travail** — compagnie × classe, lots ordonnés, robot, parcours lu des flux. Voir [la note de modèle](docs/MODELE_ATELIERS.md) |
+| `ateliers.js` / `ateliers.css` | Onglet « Ateliers de travail » : saisie, planning, couverture par classe |
 | `moteur/procede-exemple.json` | Procédé **fictif** publiable — voir [le guide](docs/PROCEDE.md) |
 | `plan-prive/` | Fond de plan **local, non versionné** (voir ci-dessous) |
 | `tests/ui-model.test.cjs` | Régressions de l’import et des indicateurs |
@@ -325,12 +330,12 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/browser-smoke.cjs` | Parcours dans Chromium, export, édition et responsive |
 | `tests/import-browser.cjs` | Import CSV : échec de lecture puis réimport, numéros de ligne, scénarios A/B |
 | `tests/sauvegarde-browser.cjs` | Sauvegarde complète : export, refus atomique, effacement et restauration |
+| `tests/production.test.cjs` | Régressions du modèle par ateliers : enchaînement des lots, attente des amonts, robot, pauses, validation |
+| `tests/ateliers-browser.cjs` | Onglet Ateliers de bout en bout : saisie, calcul, planning, persistance |
 | `tests/etat-plan-browser.cjs` | État de paramétrage des ateliers sur le plan, bascule des légendes, bande d'indicateurs contextuelle |
 | `tests/zoom-browser.cjs` | Bornes du zoom, cadrage d'un service, raccourcis clavier, bridage du déplacement |
-| `tests/grille-moteur-browser.cjs` | Tunnels et lignes robot tracés pilotant les réglages du moteur |
 | `tests/annexe-browser.cjs` | Zone de production annexe (« Armement 2 ») : création, rattachement, aménagement, effectif |
 | `BUGS.md` | Registre des bugs connus — à lire avant de coder, à compléter après chaque revue |
-| `postes/` | **Bibliothèque** de modèles de tables, chaînes et assemblages, ouverte depuis l’onglet « Création des ateliers ». Ce n’est plus une application autonome |
 
 Tests purs, avec Node : `node --test tests/*test.cjs`.
 
@@ -342,8 +347,8 @@ Ces outils sont nécessaires uniquement aux tests, pas à l’application.
 
 Parcours spécifiques : `node tests/editor-browser.cjs`, `node tests/storage-browser.cjs`,
 `node tests/import-browser.cjs`, `node tests/flows-browser.cjs`,
-`node tests/workshops-browser.cjs`, `node tests/usability-browser.cjs`,
+`node tests/ateliers-browser.cjs`, `node tests/usability-browser.cjs`,
 `node tests/sauvegarde-browser.cjs`, `node tests/etat-plan-browser.cjs`,
-`node tests/zoom-browser.cjs`, `node tests/grille-moteur-browser.cjs`,
+`node tests/zoom-browser.cjs`,
 `node tests/annexe-browser.cjs` (Playwright / Chromium). Ils se rejouent **tous** : un parcours laissé de côté
 est une régression qui passe.

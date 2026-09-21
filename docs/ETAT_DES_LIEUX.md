@@ -198,7 +198,7 @@ La règle qui a fonctionné, à garder :
 | Territoire | Fichiers |
 |---|---|
 | **Claude** | `moteur/`, `ui-model.js`, la glue moteur de `sim.js`, ses tests |
-| **Astra** | `plan-editor.js`, `flow-center.js`, `workshop-grid.js`, `postes/`, les onglets et le rendu du plan dans `index.html` |
+| **Astra** | `plan-editor.js`, `flow-center.js`, les onglets et le rendu du plan dans `index.html` |
 | **Partagé** | `README.md`, `CHANGELOG.md`, `BUGS.md` — ajouter en tête, ne pas réécrire |
 
 Fusionner avant de commencer, relancer tous les tests après la fusion. Les
@@ -210,8 +210,8 @@ en gardant les deux entrées.
 ## 7. Vérifier avant de livrer
 
 ```bash
-node --test tests/*.test.cjs     # 121 tests purs
-node tests/browser-smoke.cjs     # puis les 11 autres parcours (Playwright + Chromium)
+node --test tests/*.test.cjs     # 136 tests purs
+node tests/browser-smoke.cjs     # puis les 10 autres parcours (Playwright + Chromium)
 ```
 
 | Parcours | Couvre |
@@ -221,15 +221,14 @@ node tests/browser-smoke.cjs     # puis les 11 autres parcours (Playwright + Chr
 | `editor-browser` | gestes de l'éditeur, migration, annulation, import/export |
 | `storage-browser` | stockages par service, clics réels, migration v2 |
 | `flows-browser` | centre des flux |
-| `workshops-browser` | création des ateliers sur grille |
 | `usability-browser` | repères d'ergonomie : titres, vues, contrastes |
 | `sauvegarde-browser` | sauvegarde complète : export, refus atomique, restauration |
+| `ateliers-browser` | ateliers de travail : saisie, calcul, planning, persistance |
 | `etat-plan-browser` | état de paramétrage sur le plan et bascule des légendes |
 | `zoom-browser` | bornes du zoom, cadrage, clavier, bridage du déplacement |
-| `grille-moteur-browser` | tunnels et lignes robot tracés pilotant le moteur |
 | `annexe-browser` | seconde salle d'un atelier : création, aménagement, effectif |
 
-**Les douze parcours navigateur doivent être passés avant de livrer**, pas le seul
+**Les onze parcours navigateur doivent être passés avant de livrer**, pas le seul
 `browser-smoke` : c'est en n'en rejouant qu'une partie qu'une régression de
 navigation est partie sur la branche (voir BUG-012).
 

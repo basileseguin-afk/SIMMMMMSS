@@ -294,3 +294,22 @@ test('une tâche qui commence pendant une pause attend sa fin', () => {
   const p = [{ de: 600, a: 660 }];
   assert.deepEqual(P.finAvecPauses(620, 30, p), { fin: 690, arret: 40 });
 });
+
+test('un retour qui boucle dans le graphe ne bloque pas une classe qui n’y passe pas', () => {
+  // quais → plonge → dotation → quais : le graphe boucle, mais aucune classe ne
+  // parcourt ce circuit. Refuser cette unité serait refuser sa description juste.
+  const r = P.simuler({
+    vols: VOLS,
+    liaisons: [
+      { from: 'quais', to: 'plonge' }, { from: 'plonge', to: 'dotation' },
+      { from: 'dotation', to: 'quais' }, { from: 'cuisine', to: 'prepa' }
+    ],
+    ateliers: [
+      atelier({ id: 'c', nom: 'C', service: 'cuisine', debut: '05:00', personnes: 4, lots: [['CRL/BC']] }),
+      atelier({ id: 'd', nom: 'D', service: 'dotation', debut: '05:00', personnes: 4, lots: [['CRL/PC']] }),
+      atelier({ id: 'p', nom: 'P', service: 'prepa', debut: '05:00', personnes: 4, lots: [['CRL/BC']] })
+    ]
+  });
+  assert.equal(r.ok, true, JSON.stringify(r.anomalies));
+  assert.ok(r.parClasse['CRL/BC'].fin != null);
+});

@@ -5,6 +5,35 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-21 — Refonte : le modèle par ateliers de travail remplace la grille
+
+La grille 50 × 50, les équipements et la bibliothèque sont **abandonnés**. Un
+atelier n'occupe plus de place dans l'espace : c'est une équipe, décrite par ce
+qu'elle fait, quand elle commence et à combien.
+
+- **`moteur/production.js`** (nouveau) : compagnie × classe déduite des départs,
+  ateliers à lots ordonnés, atelier robot à débit et effectif minimum, pauses,
+  parcours lu du graphe du Centre des flux. Un service ne travaille un lot que
+  lorsque **tous ses fournisseurs** ont livré ses classes.
+- Un cycle dans les liaisons n'est refusé que s'il bloque **une classe réelle** :
+  les retours (quais → plonge → dotation → quais) bouclent sans gêner personne.
+- **`ateliers.js` / `ateliers.css`** (nouveaux) : l'onglet « Ateliers de travail »
+  — saisie par service, planning en barres avec l'attente des amonts, et une
+  table de couverture qui nomme les classes que personne ne fabrique.
+- **Une annexe hérite des liaisons de son atelier** : un atelier posé dans
+  « Armement 2 » attend et alimente les mêmes services qu'Armement.
+- **Supprimés** : `workshop-grid.js`, `workshop-grid.css`, `postes/`, la reprise
+  des effectifs depuis la grille, le pilotage des tunnels et des lignes robot
+  par la grille, et les trois parcours de test correspondants.
+- Le barème d'homme-minutes est une **table unique, non calibrée**, faite pour
+  être remplacée en bloc par l'étude à venir.
+- Vérification : 136 tests purs et onze parcours navigateur, dont
+  `tests/production.test.cjs` (23) et `tests/ateliers-browser.cjs`.
+
+**Reste à faire** : la vue Simulation tourne encore sur l'ancien moteur
+(`moteur/orly.js`) et ses réglages. La brancher sur le nouveau modèle, puis
+déposer l'ancien, est l'étape suivante.
+
 ## 2026-09-21 — BUG-014 : sortir la création de liaison du fil de la liste
 
 - `flow-center.js` : le formulaire d'ajout portait la même carte et les mêmes

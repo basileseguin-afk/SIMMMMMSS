@@ -37,25 +37,26 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(iAnx>0,'l’annexe est proposée');
   assert.equal(iAnx,iArm+1,'elle est rangée juste sous son atelier');
 
-  // 4. On peut l'aménager comme un service.
+  // 4. Elle accueille des ateliers de travail comme n'importe quel service.
   await click('[data-view=ateliers]');
-  await page.locator('#zone-picker').selectOption(zone.id);
-  assert.match(await page.locator('#wg-service').textContent(),/ARMEMENT 2/);
-  const cellule=await page.evaluate(()=>{const w=Sim.workshops,z=w.zone,s=w.state.step;
-   for(let y=Math.ceil(z.y/s);y<(z.y+z.h)/s;y++)for(let x=Math.ceil(z.x/s);x<(z.x+z.w)/s;x++)
-    if(OrlyWorkshops.cellInside(x+','+y,z,s))return [x,y];throw Error('aucune case dans l’annexe');});
-  const p=await page.evaluate(c=>{const q=document.getElementById('plan').createSVGPoint();q.x=(c[0]+.5)*Sim.workshops.state.step;q.y=(c[1]+.5)*Sim.workshops.state.step;const r=q.matrixTransform(document.getElementById('workshop-layer').getScreenCTM());return{x:r.x,y:r.y};},cellule);
-  await click('[data-wg-tool=table]');
-  await page.mouse.move(p.x,p.y);await page.mouse.down();await page.mouse.move(p.x,p.y,{steps:2});await page.mouse.up();
-  assert.equal(await page.evaluate(()=>Sim.workshops.state.items.length),1);
-  await page.locator('#wg-item-postes').fill('4');
-  await page.locator('#wg-item-postes').press('Tab');
+  await page.locator('#at-new').click();await page.waitForTimeout(150);
+  const at=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
+  await page.selectOption(`[data-at="${at}"] [data-at-champ=service]`,zone.id);await page.waitForTimeout(150);
+  await page.fill(`[data-at="${at}"] [data-at-champ=debut]`,'05:00');
+  await page.dispatchEvent(`[data-at="${at}"] [data-at-champ=debut]`,'change');await page.waitForTimeout(150);
+  await page.locator(`[data-at="${at}"] [data-at-action=lot-ajouter]`).click();await page.waitForTimeout(150);
+  await page.selectOption(`[data-at="${at}"] [data-at-champ=lot-ajout][data-index="0"]`,'CRL/BC');await page.waitForTimeout(200);
+  assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).service,at),zone.id);
 
-  // 5. Ses personnes comptent dans l'effectif de l'atelier dont elle dépend.
-  await click('[data-view=reglages]');
-  assert.match(await page.locator('#s-armement').textContent(),/grille 4/,'le tracé de l’annexe alimente ARMEMENT');
-  await click('#grille-effectifs');
-  assert.equal(await page.evaluate(()=>Sim.cfg.staff.armement),4);
+  // 5. Elle hérite des liaisons de son atelier : ses amonts sont ceux d'ARMEMENT.
+  const liens=await page.evaluate(()=>Sim.ateliers.a.liaisons());
+  const amontsArmement=liens.filter(l=>l.to==='armement').map(l=>l.from).sort();
+  const amontsAnnexe=liens.filter(l=>l.to===zone.id).map(l=>l.from).sort();
+  assert.deepEqual(amontsAnnexe,amontsArmement,'mêmes fournisseurs que l’atelier dont elle dépend');
+  const r=await page.evaluate(()=>({ok:Sim.ateliers.resultat.ok,
+    services:(Sim.ateliers.resultat.parClasse['CRL/BC']||{}).services||[]}));
+  assert.equal(r.ok,true);
+  assert.ok(r.services.includes(zone.id),'le parcours de CRL/BC passe par l’annexe');
 
   // 6. Le plan la montre et la décrit, sans prétendre à une file séparée.
   await click('[data-view=plan]');

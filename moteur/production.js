@@ -224,10 +224,12 @@
         } catch (e) { dire('pause', e.message); }
       }
 
-      if (!Array.isArray(a.lots) || !a.lots.length) dire('lots', 'aucun lot à fabriquer.');
+      // Un atelier sans lot, ou un lot encore vide, c'est une saisie en cours :
+      // on le signale sans empêcher le reste de la journée d'être calculé.
+      if (!Array.isArray(a.lots) || !a.lots.length) dire('lots', 'aucun lot à fabriquer pour l’instant.');
       else for (const lot of a.lots) {
         const liste = Array.isArray(lot) ? lot : (lot && lot.classes);
-        if (!Array.isArray(liste) || !liste.length) { dire('lot', 'un lot doit porter au moins une compagnie × classe.'); continue; }
+        if (!Array.isArray(liste) || !liste.length) { dire('lot-vide', 'un lot est encore vide.'); continue; }
         for (const id of liste) if (classes.size && !classes.has(id)) dire('lot', 'compagnie × classe absente du programme : ' + id + '.');
       }
     }
@@ -319,10 +321,37 @@
     const services = new Set(ateliers.map(a => a.service));
     const anomalies = validerAteliers(ateliers, { services: opts.services || [...services], classes });
     const fourn = fournisseurs(opts.liaisons);
-    for (const c of cycles(fourn, services)) {
-      anomalies.push({ code: 'cycle', message: 'Les liaisons bouclent : ' + c.join(' → ') + '. La fabrication ne pourrait jamais commencer.' });
+
+    // Quels services fabriquent quelle classe. C'est ce qui définit le parcours
+    // réel, et c'est sur lui seul qu'un cycle est bloquant : le graphe des flux
+    // contient des retours (quais → plonge → dotation → quais) qui bouclent
+    // sans jamais empêcher une classe d'avancer. Refuser ces boucles-là serait
+    // refuser une unité correctement décrite.
+    const producteurs = new Map();
+    for (const a of ateliers) for (const lot of (a.lots || [])) for (const id of classesDuLot(lot)) {
+      if (!producteurs.has(id)) producteurs.set(id, new Set());
+      producteurs.get(id).add(a.service);
     }
-    const bloquant = anomalies.some(a => a.code !== 'doublon');
+    const vus = new Set();
+    for (const [id, svc] of producteurs) {
+      for (const c of cycles(fourn, svc)) {
+        const cle = c.join('>');
+        if (vus.has(cle)) continue; vus.add(cle);
+        anomalies.push({ code: 'cycle',
+          message: 'Les liaisons bouclent sur ' + id + ' : ' + c.join(' → ') + '. Cette classe ne pourrait jamais avancer.' });
+      }
+    }
+    // Un service absent du barème produit des durées nulles. Ce n'est pas une
+    // erreur de saisie, mais un zéro muet trompe : on le nomme.
+    for (const a of ateliers) {
+      if (a.type === 'robot') continue;
+      if (!bareme[a.service]) anomalies.push({ code: 'bareme', atelier: a.id,
+        message: a.nom + ' : aucun barème pour « ' + a.service + ' », sa durée est nulle tant qu’il n’est pas renseigné.' });
+    }
+
+    // Ce qui n'empêche pas de jouer la journée ne doit pas l'empêcher.
+    const NON_BLOQUANTES = new Set(['doublon', 'bareme', 'lots', 'lot-vide']);
+    const bloquant = anomalies.some(a => !NON_BLOQUANTES.has(a.code));
     if (bloquant) return { ok: false, anomalies, classes, lots: [], ateliers: [] };
 
     const debuts = ateliers.map(a => minutes(a.debut) + (a.jour || 0) * MINUTES_PAR_JOUR);
@@ -361,6 +390,7 @@
 
         for (const lot of a.lots) {
           const ids = classesDuLot(lot);
+          if (!ids.length) continue;          // lot en cours de saisie
           const nom = ids.join(' + ');
 
           // Attendre que TOUS les fournisseurs aient livré TOUTES les classes

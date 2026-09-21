@@ -1,0 +1,91 @@
+/* Centre des ateliers de travail : saisie, planning et couverture. */
+#view-ateliers{overflow:auto;min-height:0;padding:24px;flex:1;background:var(--bg2)}
+body.ateliers-open .app{grid-template-columns:minmax(0,1fr)}
+body.ateliers-open .workbench{display:none}
+
+.at-tete{display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap}
+.at-actions{display:flex;gap:6px;flex-wrap:wrap}
+
+/* Les quatre chiffres qui disent si la journée tient. */
+.at-indicateurs{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1px;
+  background:var(--bordure);border:1px solid var(--bordure);border-radius:10px;overflow:hidden;margin:16px 0}
+.at-kpi{background:var(--bg3);padding:12px 16px}
+.at-kpi .lab{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--txt2);font-weight:700}
+.at-kpi .val{font-size:26px;font-weight:800;margin:2px 0 2px;color:var(--txt)}
+.at-kpi .note{font-size:11.5px;color:var(--txt2)}
+
+#at-status:not(:empty){font-size:13px;color:var(--accent2);margin:8px 0}
+.at-anomalies{border-left:3px solid var(--warn-stroke);background:var(--warn-fill);color:var(--txt);
+  padding:10px 14px;border-radius:0 8px 8px 0;font-size:12.5px;line-height:1.5;margin:12px 0}
+.at-anomalies ul{margin:6px 0 0;padding-left:18px}
+
+.at-barre{display:flex;align-items:end;gap:14px;flex-wrap:wrap;margin:18px 0 14px}
+.at-barre label{display:grid;gap:6px;font-size:12px;color:var(--txt2)}
+.at-barre-fin{flex:1}
+
+.at-titre{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--txt2);
+  margin:26px 0 12px;padding-top:16px;border-top:1px solid var(--bordure)}
+.at-vide{padding:28px;text-align:center;color:var(--txt2);border:1px dashed var(--bordure);border-radius:10px}
+
+.at-service{margin-bottom:22px}
+.at-service>h3{font-size:14px;margin:0 0 10px;color:var(--txt)}
+.at-service>h3 span{font-weight:600;color:var(--txt2);font-size:12px;margin-left:6px}
+
+.at-carte{border:1px solid var(--bordure);border-radius:10px;background:var(--bg3);margin-bottom:8px}
+.at-carte.ouverte{border-color:var(--accent);border-width:2px}
+.at-carte-tete{display:flex;align-items:center;gap:16px;padding:10px 14px;flex-wrap:wrap}
+.at-carte-nom{flex:1;min-width:220px;text-align:left;border:0;background:none;font:inherit;color:var(--txt);cursor:pointer;padding:0}
+.at-carte-nom strong{display:block;font-size:14px}
+.at-carte-nom span{font-size:12px;color:var(--txt2)}
+.at-resume{font-size:12px;color:var(--txt2);overflow-wrap:anywhere}
+
+.at-champs{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;padding:0 14px 12px}
+.at-champs label,.at-lot select{display:grid;gap:6px;font-size:12px;color:var(--txt2)}
+#view-ateliers input,#view-ateliers select{width:100%;min-width:0;box-sizing:border-box;padding:8px;
+  border:1px solid var(--bordure2);border-radius:6px;background:var(--bg2);color:var(--txt);font:inherit}
+
+.at-sous-titre{padding:12px 14px 6px;font-size:12.5px;font-weight:700;color:var(--txt);
+  border-top:1px solid var(--bordure);display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.at-sous-titre .mini-note{font-weight:400}
+
+.at-lot{border:1px solid var(--bordure);border-radius:8px;margin:8px 14px;padding:10px;background:var(--bg2)}
+.at-lot-tete{display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:8px;flex-wrap:wrap}
+.at-lot-tete b{font-size:12px}
+.at-lot-fin{flex:1;color:var(--txt2)}
+.at-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;font-size:12px;color:var(--txt2)}
+.at-chip{border:1px solid var(--accent);background:var(--bg3);color:var(--accent2);
+  border-radius:20px;padding:3px 10px;font:600 12px inherit;cursor:pointer}
+.at-chip:hover{background:var(--accent);color:var(--on-accent,#fff)}
+
+.at-pause{display:flex;gap:8px;align-items:center;margin:0 14px 8px}
+.at-pause input{max-width:130px}
+.at-actions-lot{display:flex;gap:8px;flex-wrap:wrap;padding:0 14px 12px}
+.at-bas{border-top:1px solid var(--bordure);padding-top:12px}
+.at-danger{color:var(--rouge)}
+
+/* Planning : une ligne par atelier, une barre par lot. */
+.at-planning svg{width:100%;height:auto;background:var(--bg3);border:1px solid var(--bordure);border-radius:10px}
+.at-pl-grille{stroke:var(--bordure);stroke-width:1}
+.at-pl-heure{fill:var(--txt2);font-size:10px;text-anchor:middle}
+.at-pl-nom{fill:var(--txt);font-size:11px;font-weight:600}
+.at-pl-lot{fill:var(--accent)}
+.at-pl-lot.robot{fill:var(--violet)}
+.at-pl-attente{fill:var(--warn-stroke);opacity:.55}
+.at-pl-bloque{fill:var(--rouge)}
+
+.at-table{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--bg3);
+  border:1px solid var(--bordure);border-radius:10px;overflow:hidden}
+.at-table th,.at-table td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--bordure)}
+.at-table thead th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--txt2);background:var(--bg2)}
+.at-table tbody tr:last-child th,.at-table tbody tr:last-child td{border-bottom:0}
+.at-parcours{color:var(--txt2)}
+.at-etat{font-weight:700}
+.at-etat.ok{color:var(--vert)}
+.at-etat.retard{color:var(--rouge)}
+.at-etat.manque{color:var(--orange)}
+
+@media(max-width:700px){
+  #view-ateliers{padding:16px}
+  .at-champs{grid-template-columns:1fr 1fr}
+  .at-table{display:block;overflow-x:auto}
+}

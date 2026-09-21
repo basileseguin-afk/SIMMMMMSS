@@ -48,59 +48,53 @@ et refuse le fichier **en entier** si une partie est abîmée — jamais à moit
    contour ; convertir en forme libre là où un rectangle ment. C'est la base :
    les ateliers ne peuvent pas déborder du contour d'un service.
 3. **Les stockages** rattachés à chaque service — nom et contenu.
-4. **Les ateliers** — *Création des ateliers*. Cliquer un service, créer un
-   atelier, peindre tables, chaînes et lignes robot sur la trame de 50 cm.
-5. **Les personnes** sur chaque équipement — c'est le chiffre qui fera le lien
-   avec le calcul (voir § 4).
-6. **Les flux** — *Centre des flux*, pour décrire qui envoie quoi à qui.
+4. **Les ateliers de travail** — *Ateliers de travail*. Un atelier par équipe :
+   son nom, son heure de début, son effectif, et les compagnies × classes
+   qu'elle fabrique, dans l'ordre.
+5. **Les flux** — *Centre des flux*, pour décrire qui envoie quoi à qui. C'est
+   ce graphe qui dit ce qu'un atelier doit attendre avant de commencer.
 
-À tout moment, **Valider l'atelier** fusionne ses cases en une surface. Une
-modification le remet en dessin sans changer les codes.
+## 4. Ce que les ateliers changent dans le calcul
 
-## 4. Ce que les personnes changent dans le calcul
+La durée d'un lot vient du barème d'homme-minutes, divisée par l'effectif de
+l'atelier. Le premier lot part à l'heure de début ; chacun des suivants quand
+le précédent est fini. Un lot attend en outre que **tous les fournisseurs** de
+son service aient livré ses classes.
 
-Dans **Réglages**, chaque service affiche l'effectif déduit de votre
-aménagement, à côté du curseur : `CUISINE  10  [grille 6]`. L'écart entre les
-deux est visible en permanence.
+Un lot portant plusieurs classes les fabrique **ensemble** : c'est ainsi que se
+décrivent les services **en amont de la séparation par compagnie** — appros,
+légumerie, plonge, magasin — sans règle particulière.
 
-La case **« Reprendre ce qui est tracé dans Création des ateliers »** fait
-piloter la grille — **uniquement pour ce que vous avez renseigné**. Les autres
-réglages restent au curseur. Vous pouvez donc basculer service par service, au
-fil de la saisie, sans jamais devoir choisir pour l'ensemble.
-
-Trois choses remontent au moteur :
-
-| Tracé | Ce qu'il pilote |
-|---|---|
-| Personnes affectées aux équipements | l'effectif du service |
-| **Tunnels de lavage** dans la plonge | le nombre de tunnels actifs |
-| **Lignes robot** au montage | le nombre de lignes ; la cadence est par ligne |
-
-À zéro ligne robot, tout le YC part au dressage manuel : c'est un essai en soi.
+Le **barème est non calibré**. Tant qu'il ne l'est pas, aucun chiffre de sortie
+ne permet de dimensionner une équipe.
 
 ## 5. Une seconde salle pour un atelier — « Armement 2 »
 
 Un atelier peut occuper deux endroits de l'unité. Dans **Éditer les zones**,
 sélectionnez l'atelier et cliquez **Dupliquer** : vous obtenez « ARMEMENT 2 »,
 une **zone de production annexe** rattachée à Armement. Déplacez-la où elle se
-trouve réellement, puis aménagez-la dans « Création des ateliers » comme
+trouve réellement, puis posez-y des ateliers dans « Ateliers de travail » comme
 n'importe quel service : elle apparaît dans la liste, sous son atelier.
 
-Ce qui y est tracé et les personnes qu'on y affecte **comptent dans l'atelier
-dont elle dépend**. Ce que cela ne fait pas : une file d'attente séparée. Deux
+Elle **hérite des liaisons** de l'atelier dont elle dépend : ses amonts et ses
+avals sont les siens. Ce que cela ne fait pas : une file d'attente séparée. Deux
 équipes qui se partageraient les ordres selon une règle à elles, c'est un autre
 modèle — il faudrait d'abord dire **quelle règle** répartit le travail.
 
 Vous pouvez aussi dessiner un rectangle libre et lui donner le type
 « Zone de production (annexe) », en choisissant son atelier de rattachement.
 
-## 6. Ce que la grille ne dit pas
+## 6. Ce que le modèle ne dit pas
 
-- Une case vaut **50 × 50 cm théoriques**. Sans cote de référence sur le fond
-  d'architecte, la correspondance n'est pas mesurée : ce n'est pas une preuve
-  qu'une table rentre physiquement dans le local.
-- Aucun contrôle d'allée, d'ergonomie ou d'hygiène n'est déduit du dessin.
-- Les **débits** des chaînes et les contenances ne sont pas encore lus.
+- **Le barème n'est pas calibré.** Les durées sortent d'une table de valeurs
+  d'attente, là pour que le modèle tourne.
+- **Il ne choisit pas les heures de début.** Vous décidez ; il calcule les
+  conséquences et nomme ce qui ne tient pas.
+- **Il ne répartit pas le travail.** Une même classe fabriquée par deux ateliers
+  du même service est signalée, pas arbitrée : sans règle de répartition,
+  trancher serait inventer.
+- **Un atelier fait ses lots l'un après l'autre.** Une équipe qui mènerait deux
+  lots de front se décrit comme deux ateliers.
 
 ## 7. Ce qu'il est utile de noter pendant la saisie
 

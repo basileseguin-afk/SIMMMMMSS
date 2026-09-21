@@ -250,7 +250,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
   .col-plan{min-height:70vh}
 }
 </style>
-<link href="interface.css" rel="stylesheet"/><link href="editor.css" rel="stylesheet"/><link href="flow-center.css" rel="stylesheet"/><link href="workshop-grid.css" rel="stylesheet"/><link href="usability.css" rel="stylesheet"/></head>
+<link href="interface.css" rel="stylesheet"/><link href="editor.css" rel="stylesheet"/><link href="flow-center.css" rel="stylesheet"/><link href="ateliers.css" rel="stylesheet"/><link href="usability.css" rel="stylesheet"/></head>
 <body><a class="skip-link" href="#workspace">Aller à la simulation</a>
 <header>
 <div class="marque"><span class="brand-mark">N</span><div>ORY <span class="brand-separator">/</span> Flux de production<small>Atelier de simulation</small></div></div>
@@ -293,7 +293,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <span><span class="pastille" style="background:var(--bordure2)"></span>Au curseur</span>
 <span><span class="pastille" style="background:var(--accent)"></span>Aménagé</span>
 <span><span class="pastille" style="background:transparent"></span>Hors calcul</span>
-</div><span class="plan-etat" id="plan-etat"></span><span class="plan-aide">Molette ou <kbd>+</kbd><kbd>−</kbd> : zoom · Double-clic : cadrer · <kbd>0</kbd> : vue d’ensemble</span></div><section aria-label="Suivi des départs" class="flights-view" hidden="" id="view-vols"><div class="flight-filters"><label>Rechercher <input id="flight-search" placeholder="Vol ou compagnie" type="search"/></label><label>Afficher <select id="flight-filter"><option value="all">Tous les départs</option><option value="overdue">Échéance dépassée, non prêt</option><option value="pending">Non prêts</option><option value="ready">Terminés</option></select></label></div><details class="inline-help"><summary>Comprendre les échéances</summary><p class="mini-note">Échéance = départ simulé − délai de chargement. Le statut concerne la production, pas la ponctualité de l’avion.</p></details><div class="table-scroll"><table class="flight-table"><caption class="sr-only">État de production des départs simulés</caption><thead><tr><th scope="col">Vol / compagnie</th><th scope="col">Départ</th><th scope="col">Échéance</th><th scope="col">Statut</th><th scope="col">Opérations restantes</th></tr></thead><tbody id="flight-rows"></tbody></table></div></section><section id="view-flux" aria-label="Centre des flux" hidden></section><section id="view-reglages" aria-label="Centre des réglages" class="reglages-view" hidden></section></div>
+</div><span class="plan-etat" id="plan-etat"></span><span class="plan-aide">Molette ou <kbd>+</kbd><kbd>−</kbd> : zoom · Double-clic : cadrer · <kbd>0</kbd> : vue d’ensemble</span></div><section aria-label="Suivi des départs" class="flights-view" hidden="" id="view-vols"><div class="flight-filters"><label>Rechercher <input id="flight-search" placeholder="Vol ou compagnie" type="search"/></label><label>Afficher <select id="flight-filter"><option value="all">Tous les départs</option><option value="overdue">Échéance dépassée, non prêt</option><option value="pending">Non prêts</option><option value="ready">Terminés</option></select></label></div><details class="inline-help"><summary>Comprendre les échéances</summary><p class="mini-note">Échéance = départ simulé − délai de chargement. Le statut concerne la production, pas la ponctualité de l’avion.</p></details><div class="table-scroll"><table class="flight-table"><caption class="sr-only">État de production des départs simulés</caption><thead><tr><th scope="col">Vol / compagnie</th><th scope="col">Départ</th><th scope="col">Échéance</th><th scope="col">Statut</th><th scope="col">Opérations restantes</th></tr></thead><tbody id="flight-rows"></tbody></table></div></section><section id="view-ateliers" aria-label="Ateliers de travail" hidden></section><section id="view-flux" aria-label="Centre des flux" hidden></section><section id="view-reglages" aria-label="Centre des réglages" class="reglages-view" hidden></section></div>
 <!-- ============ DASHBOARD ============ -->
 <aside aria-label="Suivi de production" class="workbench"><div class="panel-content" id="panel-suivi"><div class="panel-heading"><h2>Suivi de production</h2></div><div class="panneau">
 <h3>Point d’attention</h3>
@@ -313,15 +313,14 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <!-- Panneau d'édition des zones (affiché en mode édition) -->
 <div class="panneau">
 <h3>Effectifs par atelier</h3>
-<label class="chk"><input id="grille-effectifs" type="checkbox"/> Reprendre ce qui est tracé dans « Création des ateliers » : personnes, tunnels, lignes robot</label>
-<p class="mini-note" id="grille-note"></p>
+
 <div id="sliders-staff"></div>
 </div>
 <div class="panneau">
 <h3>Robot de dressage (YC)</h3>
 <div class="slider-ligne">
 <label for="robot-lignes">Lignes robot installées <b id="robot-lignes-val">1</b></label>
-<input data-grille="robotLignes" id="robot-lignes" max="4" min="0" step="1" type="range" value="1"/>
+<input id="robot-lignes" max="4" min="0" step="1" type="range" value="1"/>
 </div>
 <div class="slider-ligne">
 <label for="robot">Cadence par ligne <b id="robot-val">320 pl/h</b></label>
@@ -366,7 +365,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <h3>Plonge — tunnels</h3>
 <div class="slider-ligne">
 <label for="tunnels">Tunnels actifs <b id="tunnels-val">3</b></label>
-<input data-grille="tunnels" id="tunnels" max="8" min="1" step="1" type="range" value="3"/>
+<input id="tunnels" max="8" min="1" step="1" type="range" value="3"/>
 </div>
 <label class="chk"><input checked="" id="double" type="checkbox"/> 1 tunnel double vitesse (×2)</label>
 <div class="slider-ligne" style="margin-top:12px">
@@ -439,7 +438,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <div class="mini-note">Ce format attend une ligne par départ ou retour. L’export Winrest XLSX et ses lignes de prestations ne sont pas encore pris en charge.</div>
 <div class="row-btns"><button class="btn" id="csv-template">Télécharger le modèle</button><button class="btn" id="restore-demo">Charger la démo</button></div><div aria-live="polite" class="import-report" id="import-report" role="status">Aucun fichier importé.</div></div><div class="panneau">
 <h3>Sauvegarde complète</h3>
-<p class="mini-note">Le plan, les ateliers, les personnes, les flux et la bibliothèque vivent <strong>dans ce navigateur</strong>. Ils disparaissent si vous videz vos données de site, et ils ne suivent pas d’un appareil à l’autre. Un fichier les réunit tous.</p>
+<p class="mini-note">Le plan, les ateliers de travail, les flux et les vols vivent <strong>dans ce navigateur</strong>. Ils disparaissent si vous videz vos données de site, et ils ne suivent pas d’un appareil à l’autre. Un fichier les réunit tous.</p>
 <div class="row-btns"><button class="btn" id="sauvegarde-export">⇩ Tout sauvegarder</button><button class="btn" id="sauvegarde-import-btn">⇧ Restaurer</button><input accept=".json" hidden="" id="sauvegarde-import" type="file"/></div>
 <div aria-live="polite" class="import-report" id="sauvegarde-etat" role="status">Sauvegardez avant de fermer, et à chaque étape importante de votre tracé.</div>
 <p class="mini-note">⚠️ Ce fichier <strong>contient le plan réel de l’unité</strong> : gardez-le hors du dépôt public. La restauration est refusée en entier si une partie est invalide, et demande confirmation.</p>
@@ -452,9 +451,10 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <script src="moteur/mesure.js"></script>
 <script src="moteur/ressources.js"></script>
 <script src="moteur/orly.js"></script>
+<script src="moteur/production.js"></script>
 <script src="plan-editor.js"></script>
 <script src="flow-center.js"></script>
-<script src="workshop-grid.js"></script>
+<script src="ateliers.js"></script>
 <script src="sim.js"></script>
 </body>
 </html>

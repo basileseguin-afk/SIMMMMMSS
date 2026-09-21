@@ -277,10 +277,6 @@ function construirePlan() {
     gSto.appendChild(g);
   });
 
-  // Aperçu des équipements tracés : sous les ateliers, pour ne pas couvrir
-  // les libellés ni capter les clics.
-  gVue.appendChild(svgEl('g', { id:'workshop-overview' }));
-
   // Ateliers (au-dessus)
   const gZones = svgEl('g', {}); gVue.appendChild(gZones);
   Object.keys(ZONES).forEach(id => {
@@ -370,11 +366,51 @@ function dessinerFluxConfigures(){
   }
 }
 function zoomService(z){const b=boite(z);return Math.max(.5,Math.min(VUE.w/(b.w+80),VUE.h/(b.h+80))*.93);}
-function initWorkshops(){
-  Sim.workshops=new OrlyWorkshops.WorkshopGrid({svg,viewport:Sim._gVue,zones:()=>Sim.editor.state.zones,
-    apercu:()=>document.getElementById('workshop-overview'),
-    focus(z){cadrerZone(z);},
-    overview(){selectionner(null);vueEnsemble();}
+/* ==========================================================================
+ *  CENTRE DES ATELIERS DE TRAVAIL
+ *  L'onglet « Ateliers » ne sert plus à dessiner des tables : il décrit QUI
+ *  fabrique QUOI, QUAND et À COMBIEN. Le calcul est dans moteur/production.js.
+ * ==========================================================================*/
+function servicesDisponibles(){
+  const liste=Object.keys(ZONES).map(id=>({id,nom:ZONES[id].nom}));
+  for(const a of annexes()) liste.push({id:a.id,nom:a.nom});
+  return liste;
+}
+/* Le parcours des compagnies × classes se lit dans le graphe du Centre des
+ * flux : on n'en retient que les couples de services, en ignorant le détail
+ * des stockages et les liaisons désactivées. */
+function liaisonsServices(){
+  const f=Sim.flows; if(!f) return FLUX.map(([from,to])=>({from,to}));
+  const service=point=>{try{return JSON.parse(point)[0];}catch(e){return null;}};
+  const out=[];
+  for(const l of f.state.flows){
+    if(!l.enabled) continue;
+    const from=service(l.from),to=service(l.to);
+    if(from&&to&&from!==to) out.push({from,to});
+  }
+  // Une annexe est une seconde salle de son atelier : elle en hérite les
+  // fournisseurs et les clients. Sans cela, un atelier posé dans « Armement 2 »
+  // n'attendrait personne et ne serait attendu de personne.
+  const liens=out.slice();
+  for(const a of annexes()){
+    for(const l of liens){
+      if(l.to===a.parent) out.push({from:l.from,to:a.id});
+      if(l.from===a.parent) out.push({from:a.id,to:l.to});
+    }
+  }
+  return out;
+}
+function initAteliers(){
+  Sim.ateliers=new OrlyAteliers.CentreAteliers({
+    hote:()=>document.getElementById('view-ateliers'),
+    services:servicesDisponibles,
+    vols:()=>flights,
+    classes:()=>MoteurProduction.classesDeVols(flights,{delaiChargement:CFG.loadDelay}),
+    liaisons:liaisonsServices,
+    reglages:()=>({delaiChargement:CFG.loadDelay}),
+    // Le plan dit « aménagé » d'après les ateliers : il doit suivre leur saisie.
+    change:()=>majEtatPlan(),
+    notify:toast
   });
 }
 function initFlux(){
@@ -435,7 +471,6 @@ function appliquerVue() {
   const z = document.getElementById('zoom-val'); if (z) z.textContent = Math.round(vk*100) + '%';
   majPoignees();
   if(Sim.editor)Sim.editor.renderCanvas();
-  if(Sim.workshops)Sim.workshops.renderCanvas();
 }
 function ptSvg(e) {
   const m = svg.getScreenCTM(); if (!m) return { x:0, y:0 };
@@ -708,7 +743,6 @@ function selectionner(id) {
   Object.keys(zoneEls).forEach(k => zoneEls[k].g.setAttribute('aria-pressed',String(k===selection)));
   document.getElementById('zone-picker').value = selection || '';
   if(Sim.editor)Sim.editor.showService(selection);
-  if(activeView==='ateliers'&&Sim.workshops)Sim.workshops.selectService(selection);
   document.querySelectorAll('#stats-ateliers button').forEach(b=>{const active=b.dataset.station===selection;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});
   majGoulotInfo(); majPoignees(); majChampsEdition();
   if(!editMode) showPanel('suivi');
@@ -814,7 +848,7 @@ function initEdition() {
       e.g.classList.toggle('couleur-perso',!!c);
       if(c)e.g.style.setProperty('--zone-perso',c);else e.g.style.removeProperty('--zone-perso');
     },
-    refresh(){if(Sim.flows)Sim.flows.refresh();redessinerEdges();majPicker();if(Sim.majGrilleEffectifs)Sim.majGrilleEffectifs();},
+    refresh(){if(Sim.flows)Sim.flows.refresh();redessinerEdges();majPicker();if(Sim.ateliers)Sim.ateliers.rendre();},
     pick(id){selectionner(id);},
     getView(){return {vk,vtx,vty};},
     pan(v,dx,dy){const m=svg.getScreenCTM();vtx=v.vtx+dx/m.a;vty=v.vty+dy/m.d;vk=v.vk;appliquerVue();},
@@ -907,19 +941,15 @@ function majPicker() {
   if (picker.value !== garde) picker.value = '';
 }
 
-/* Équipements, postes et types tracés, regroupés par service. Un seul
- * balayage : les effectifs, les tunnels et les lignes robot en sortent tous. */
+/* Ce qui est décrit dans « Ateliers de travail », service par service.
+ * Un service est « aménagé » dès qu'un atelier y fabrique quelque chose. */
 function amenagementParService() {
-  const w = Sim.workshops && Sim.workshops.state, par = {};
-  if (!w) return par;
-  w.items.forEach(i => {
-    const a = w.workshops.find(x => x.id === i.workshop); if (!a) return;
-    // Ce qui est tracé dans une annexe compte pour l'atelier dont elle dépend.
-    const service = serviceMoteur(a.service);
-    const e = par[service] || (par[service] = { equipements:0, postes:0, types:{} });
-    e.equipements++; e.postes += (i.postes || 0);
-    e.types[i.type] = (e.types[i.type] || 0) + 1;
-  });
+  const c = Sim.ateliers, par = {};
+  if (!c) return par;
+  for (const a of c.state.ateliers) {
+    const e = par[a.service] || (par[a.service] = { ateliers: 0, lots: 0, personnes: 0 });
+    e.ateliers++; e.lots += a.lots.filter(l => l.length).length; e.personnes += a.personnes;
+  }
   return par;
 }
 
@@ -928,7 +958,7 @@ function etatParametrage(id, amenagement) {
   if (!Orly.ATELIERS.includes(id)) return 'hors';
   const gens = id === 'plonge' ? CFG.tunnels : (CFG.staff[id] || 0);
   if (!gens) return 'vide';
-  return (amenagement[id] && amenagement[id].equipements) ? 'pret' : 'partiel';
+  return (amenagement[id] && amenagement[id].lots) ? 'pret' : 'partiel';
 }
 
 let _legendeCle = null;
@@ -1135,7 +1165,7 @@ function initControles() {
     const d = document.createElement('div'); d.className = 'slider-ligne';
     d.innerHTML = '<label for="staff-' + id + '">' + ZONES[id].nom + ' <b id="s-' + id + '">' + CFG.staff[id] + '</b></label><input id="staff-' + id + '" type="range" min="0" max="40" value="' + CFG.staff[id] + '" data-id="' + id + '">';
     box.appendChild(d);
-    d.querySelector('input').addEventListener('input', e => { CFG.staff[id] = +e.target.value; majSoirLibelle(id); majGrilleEffectifs(); majPlan(); majDashboard(); });
+    d.querySelector('input').addEventListener('input', e => { CFG.staff[id] = +e.target.value; majSoirLibelle(id); majPlan(); majDashboard(); });
   });
   // Relève d'équipe : effectif du soir par atelier, « comme le matin » tant qu'on n'y touche pas.
   const det = document.createElement('details'); det.className = 'equipe-soir'; det.id = 'equipe-soir';
@@ -1189,59 +1219,10 @@ function initControles() {
    * elle est renseignée ; partout ailleurs le curseur reste la référence.
    * C'est ce qui évite d'avoir à choisir entre les deux : un service non
    * aménagé ne tombe pas à zéro parce qu'un autre l'a été. */
-  const effectifsGrille = () => {
-    const par = amenagementParService(), out = {};
-    Object.keys(par).forEach(id => { if (par[id].postes) out[id] = par[id].postes; });
-    return out;
-  };
-  function majGrilleEffectifs() {
-    const grille = effectifsGrille(), pilote = CFG.grilleEffectifs;
-    Sim.grilleCache = grille;
-    let renseignes = 0;
-    Object.keys(CFG.staff).forEach(id => {
-      const n = grille[id] || 0, input = document.getElementById('staff-' + id);
-      if (!input) return;
-      if (n > 0) renseignes++;
-      if (pilote && n > 0 && now === DEBUT()) { CFG.staff[id] = n; input.value = n; }
-      const b = document.getElementById('s-' + id);
-      if (b) b.innerHTML = escapeHTML(String(CFG.staff[id])) +
-        (n > 0 ? '<span class="depuis-grille">grille ' + n + '</span>' : '');
-      input.classList.toggle('pilote-grille', !!(pilote && n > 0));
-    });
-    // Même règle que pour les personnes : un tunnel ou une ligne robot tracés
-    // font foi ; rien de tracé, le curseur reste maître. Ce sont des équipements
-    // qu'on installe, pas des effectifs : on les compte, on ne les additionne pas
-    // aux postes.
-    const amen = Sim.amenagement = amenagementParService();
-    const equip = [
-      { cle:'tunnels',     service:'plonge', type:'tunnel', champ:'tunnels',      val:'tunnels-val',      suffixe:'' },
-      { cle:'robotLignes', service:'prepa',  type:'robot',  champ:'robot-lignes', val:'robot-lignes-val', suffixe:'' }
-    ];
-    const pilotes = Sim.grillePilote = {};
-    equip.forEach(e => {
-      const n = ((amen[e.service] || {}).types || {})[e.type] || 0;
-      const input = document.getElementById(e.champ); if (!input) return;
-      pilotes[e.cle] = !!(pilote && n > 0);
-      if (pilotes[e.cle] && now === DEBUT()) { CFG[e.cle] = n; input.value = n; }
-      const b = document.getElementById(e.val);
-      if (b) b.innerHTML = escapeHTML(String(CFG[e.cle])) + e.suffixe +
-        (n > 0 ? '<span class="depuis-grille">grille ' + n + '</span>' : '');
-    });
-
-    const note = document.getElementById('grille-note');
-    if (note) note.textContent = renseignes
-      ? renseignes + ' service(s) aménagé(s) avec des personnes. ' + (pilote
-          ? 'Leur curseur suit la grille ; les autres restent réglables ici.'
-          : 'Cochez ci-dessus pour que leur curseur suive la grille.')
-      : 'Aucune personne affectée dans « Création des ateliers » pour l’instant : les curseurs font foi.';
-    updateRunState();
-    if (now === DEBUT()) { build(Sim.dataCourante || SAMPLE); majPlan(); majDashboard(); }
-  }
-  Sim.majGrilleEffectifs = majGrilleEffectifs;
-  document.getElementById('grille-effectifs').addEventListener('change', e => {
-    CFG.grilleEffectifs = e.target.checked; majGrilleEffectifs();
-  });
-
+  // La grille d'équipements a été abandonnée : personnes, tunnels et lignes
+  // robot se décrivent désormais atelier par atelier, dans « Ateliers de
+  // travail ». Les curseurs ci-dessous ne pilotent plus que l'ancien calcul
+  // de la vue Simulation.
   // Vivier polyvalent : un effectif et les ateliers qu'il peut servir.
   const AT_VIVIER = Orly.ATELIERS.filter(id => id !== 'plonge');
   const boiteVivier = document.getElementById('vivier-ateliers');
@@ -1283,7 +1264,7 @@ function initControles() {
   document.getElementById('zoom-out').addEventListener('click', () => zoomer(1/1.25));
   document.getElementById('zoom-reset').addEventListener('click', vueEnsemble);
   document.getElementById('zoom-fit').addEventListener('click', () => {
-    const id = selection || (Sim.workshops && Sim.workshops.service);
+    const id = selection;
     if (id && ZONES[id]) cadrerZone(ZONES[id]); else toast('Choisissez d’abord un service.');
   });
   document.getElementById('fond-plan').addEventListener('change', e => {
@@ -1382,7 +1363,7 @@ function majCompare() {
  * ==========================================================================*/
 const PARTIES = [
   { cle:'orly-plan-v3',     nom:'plan et zones',           valider:r => window.OrlyPlan.validatePlan(r, Sim.editor.originals) },
-  { cle:'ory-workshops-v1', nom:'ateliers et personnes',   valider:r => window.OrlyWorkshops.validate(r) },
+  { cle:'ory-ateliers-v1',  nom:'ateliers de travail',     valider:r => window.OrlyAteliers.valider(r) },
   { cle:'orly-flows-v1',    nom:'centre des flux',         valider:r => window.OrlyFlows.validate(r) },
   { cle:'ory-postes-v2',    nom:'bibliothèque de modèles',
     valider:r => { if(!r || !Array.isArray(r.modeles)) throw new Error('bibliothèque illisible'); return r; } }
@@ -1527,20 +1508,20 @@ function showView(name) {
   if(editMode && name!=='plan')return;
   activeView=name;
   document.body.dataset.vue=name;
-  document.getElementById('view-title').textContent=({plan:'Simulation',ateliers:'Création des ateliers',flux:'Centre des flux',reglages:'Centre des réglages',vols:'Suivi des vols'})[name];
-  if(name!=='ateliers'&&Sim.majGrilleEffectifs)Sim.majGrilleEffectifs();
-  if(Sim.workshops){Sim.workshops.setActive(name==='ateliers');if(name==='ateliers'){pause();Sim.workshops.selectService(selection);}}
+  document.getElementById('view-title').textContent=({plan:'Simulation',ateliers:'Ateliers de travail',flux:'Centre des flux',reglages:'Centre des réglages',vols:'Suivi des vols'})[name];
+  if(name==='ateliers'){pause();if(Sim.ateliers)Sim.ateliers.rendre();}
+  document.body.classList.toggle('ateliers-open',name==='ateliers');
+  document.getElementById('view-ateliers').hidden=name!=='ateliers';
   document.getElementById('btn-play').disabled=name==='ateliers'||editMode;
   document.body.classList.toggle('flows-open',name==='flux');
   document.getElementById('view-flux').hidden=name!=='flux';
   document.getElementById('view-reglages').hidden=name!=='reglages';
-  if(name==='reglages'&&Sim.majGrilleEffectifs)Sim.majGrilleEffectifs();
   if(name==='flux'&&Sim.flows)Sim.flows.refresh();
   document.body.classList.toggle('reglages-open',name==='reglages');
-  document.getElementById('view-plan').hidden=!['plan','ateliers'].includes(name);
+  document.getElementById('view-plan').hidden=name!=='plan';
   document.getElementById('view-vols').hidden=name!=='vols';
-  document.querySelector('.plan-tete').hidden=!['plan','ateliers'].includes(name);
-  document.querySelector('.map-footer').hidden=!['plan','ateliers'].includes(name);
+  document.querySelector('.plan-tete').hidden=name!=='plan';
+  document.querySelector('.map-footer').hidden=name!=='plan';
   document.querySelectorAll('[data-view]').forEach(b=>{b.classList.toggle('active',b.dataset.view===name);b.setAttribute('aria-pressed',String(b.dataset.view===name));});
   if(name==='vols')renderFlights();
 }
@@ -1553,8 +1534,7 @@ function updateRunState() {
   const started=enMarche||now>DEBUT();
   document.getElementById('run-state').textContent=editMode?'Édition du plan':now>=FIN()?'Terminé':enMarche?'En cours':started?'En pause':'Prêt à lancer';
   document.querySelectorAll('#sliders-staff input,#robot,#robot-lignes,#robot-cies,#yc-manuel,#tampons input,#tunnels,#double,#materiel,#vivier,#vivier-ateliers input,#calendrier,#cal-jours,#shift,#loadDelay').forEach(input=>{
-    const parGrille=(CFG.grilleEffectifs&&input.dataset.id&&(Sim.grilleCache||{})[input.dataset.id]>0)
-      ||(input.dataset.grille&&(Sim.grillePilote||{})[input.dataset.grille]);
+    const parGrille=false;   // plus aucun réglage n'est repris d'ailleurs
     input.disabled=started||NON_MODELISES.has(input.dataset.id)||parGrille;
     input.title=NON_MODELISES.has(input.dataset.id)?'Service non relié au calcul actuel':parGrille?'Repris de « Création des ateliers ». Décochez pour régler ici.':started?'Recommencez la simulation pour modifier les réglages':'';
   });
@@ -1610,12 +1590,12 @@ function initWorkbench() {
  * ==========================================================================*/
 const Sim = { robotRate:0, dataCourante:SAMPLE, _gTok:null };
 // Réglages et état courant, publiés pour l'inspection et les parcours de test
-// au même titre que Sim.editor et Sim.workshops : lecture seule côté appelant.
+// au même titre que Sim.editor et Sim.ateliers : lecture seule côté appelant.
 Sim.cfg = CFG;
 Sim.etat = () => ({ now, debut:DEBUT(), fin:FIN(), enMarche, modele });
 window.Sim = Sim;
 chargerZones();
-construirePlan(); build(SAMPLE); initControles(); initEdition(); initFlux(); initWorkshops(); initWorkbench();
+construirePlan(); build(SAMPLE); initControles(); initEdition(); initFlux(); initAteliers(); initWorkbench();
 majHorloge(); majPlan(); majDashboard(); dessinerChart();
 
 })();
