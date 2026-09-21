@@ -5,6 +5,19 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-21 — BUG-014 : sortir la création de liaison du fil de la liste
+
+- `flow-center.js` : le formulaire d'ajout portait la même carte et les mêmes
+  quatre champs que les liaisons juste en dessous ; on lisait son bouton comme
+  appartenant à la première d'entre elles.
+- Un bouton **« + Nouvelle liaison »** rejoint la barre de filtres, hors de la
+  liste. Le formulaire est fermé par défaut, s'ouvre à la demande et reste
+  ouvert tant qu'on enchaîne ; « Fermer » le replie.
+- Ouvert, il ne ressemble plus à une liaison : fond teinté, bordure d'accent,
+  en-tête propre. La liste commence après un titre **Liaisons existantes**.
+- `tests/flows-browser.cjs` vérifie l'état fermé, l'ouverture, la fermeture et
+  la séparation d'avec la liste.
+
 ## 2026-09-21 — Panneau d'aménagement : moins de texte, moins d'étapes
 
 Retour d'usage : « la bande à droite, je veux moins de texte et que ça soit

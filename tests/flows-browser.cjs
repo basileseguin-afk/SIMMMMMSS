@@ -16,11 +16,23 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const endpoint=(id,stock=null)=>JSON.stringify([id,stock]);
   await click('[data-view=flux]');assert.equal(await page.locator('#view-flux').isVisible(),true);assert.equal(await page.locator('.workbench').isVisible(),false);
   const old=await page.evaluate(()=>Sim.flows.state.flows.length);assert.equal(old,16);
-  const add=async(type,from,to)=>{await page.locator('#fc-type').selectOption(type);await page.locator('#fc-from').selectOption(endpoint(from));await page.locator('#fc-to').selectOption(endpoint(to));await page.locator('#fc-add button[type=submit]').click();};
+  // Le formulaire de création s'ouvre à la demande : il ne traîne plus en
+  // permanence en tête de liste, où on le lisait comme la première liaison
+  // (BUG-014).
+  assert.equal(await page.locator('#fc-add').isHidden(),true,'fermé au départ');
+  assert.equal(await page.locator('#fc-new').isVisible(),true,'le bouton de création est visible');
+  assert.equal(await page.locator('#fc-list #fc-add, #fc-list #fc-new').count(),0,'ni l’un ni l’autre dans la liste');
+  assert.equal(await page.locator('#fc-add.fc-card').count(),0,'le formulaire n’a plus l’allure d’une liaison');
+  await page.locator('#fc-new').click();
+  assert.equal(await page.locator('#fc-add').isVisible(),true);
+  await page.locator('#fc-cancel').click();
+  assert.equal(await page.locator('#fc-add').isHidden(),true,'« Fermer » le referme');
+  const ouvrir=async()=>{if(await page.locator('#fc-add').isHidden())await page.locator('#fc-new').click();};
+  const add=async(type,from,to)=>{await ouvrir();await page.locator('#fc-type').selectOption(type);await page.locator('#fc-from').selectOption(endpoint(from));await page.locator('#fc-to').selectOption(endpoint(to));await page.locator('#fc-add button[type=submit]').click();};
   await add('raw','appros','cuisine');await add('raw','appros','prepa');await add('raw','cuisine','prepa');
   assert.equal(await page.evaluate(()=>Sim.flows.state.flows.filter(f=>f.type==='raw').length),3);
   await add('raw','appros','cuisine');assert.match(await page.locator('#fc-status').innerText(),/existe déjà/);
-  await page.locator('#fc-type').selectOption('personnel');await page.locator('#fc-from').selectOption(endpoint('cuisine'));
+  await ouvrir();await page.locator('#fc-type').selectOption('personnel');await page.locator('#fc-from').selectOption(endpoint('cuisine'));
   assert.equal(await page.locator('#fc-to option').count(),1,'employee cannot select another service');
   await add('runner','cuisine','prepa');let row=page.locator('#fc-list article').first();
   await row.locator('[data-action=reverse]').click();assert.equal(await page.locator('#fc-list article').count(),2);
@@ -39,7 +51,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // A service storage becomes an endpoint, rename remains linked, delete is flagged.
   await click('[data-view=plan]');await page.locator('#zone-picker').selectOption('cuisine');await page.locator('#service-storages [data-stock-action=add]').click();
   const stock=await page.evaluate(()=>Sim.editor.state.zones.find(z=>z.id==='cuisine').storages[0].id);
-  await click('[data-view=flux]');await page.locator('#fc-type').selectOption('processed');await page.locator('#fc-from').selectOption(endpoint('cuisine',stock));await page.locator('#fc-to').selectOption(endpoint('prepa'));await page.locator('#fc-add button[type=submit]').click();
+  await click('[data-view=flux]');await ouvrir();await page.locator('#fc-type').selectOption('processed');await page.locator('#fc-from').selectOption(endpoint('cuisine',stock));await page.locator('#fc-to').selectOption(endpoint('prepa'));await page.locator('#fc-add button[type=submit]').click();
   await click('[data-view=plan]');await page.locator('#service-storages [data-stock-action=remove]').click();
   await click('[data-view=flux]');assert.match(await page.locator('#fc-summary').innerText(),/à réparer/);
   await click('[data-view=plan]');await page.locator('#service-storages [data-stock-action=undo]').click();await click('[data-view=flux]');assert.doesNotMatch(await page.locator('#fc-summary').innerText(),/à réparer/);

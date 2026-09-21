@@ -366,3 +366,33 @@ en arrière, visible seulement quand une couleur a été choisie.
 **Preuve :** `tests/etat-plan-browser.cjs` colorie un atelier, quitte l'édition,
 vérifie le fond, vérifie que le contour porte toujours le même état qu'un
 atelier non colorié, recharge la page, puis rétablit la couleur du type.
+
+## BUG-014 — Le formulaire d'ajout se lisait comme la première liaison (2026-09-21)
+
+**État : corrigé.** Signalé à l'usage : « dans centre des flux le bouton ajouter
+un flux est associé au premier flux créé, il faut le sortir et le mettre en
+dehors ».
+
+Constaté tel quel. Le formulaire de création portait la classe `fc-card` —
+**la même carte, la même bordure, la même largeur et les mêmes quatre champs**
+(Flux / Origine / Destination / Précision) que les liaisons de la liste juste
+en dessous. Rien ne les séparait qu'un filet d'accent de 4 px à gauche. L'œil
+lisait donc « Ajouter une liaison » comme un en-tête, puis les champs, puis le
+bouton — et rattachait ce bouton à la liaison qui suivait.
+
+Ce n'était pas un défaut de code mais de forme : deux choses de nature
+différente, créer et modifier, avaient la même apparence.
+
+**Correction.** Le formulaire sort du fil de la liste :
+
+- un bouton d'appel **« + Nouvelle liaison »** rejoint la barre de filtres,
+  au-dessus, hors de la liste ;
+- le formulaire est **fermé par défaut**, s'ouvre à la demande et reste ouvert
+  tant qu'on enchaîne les ajouts ; « Fermer » le replie ;
+- ouvert, il ne ressemble plus à une liaison : fond teinté d'accent, bordure
+  épaisse, en-tête propre ;
+- la liste commence après un titre de section **LIAISONS EXISTANTES**.
+
+**Preuve :** `tests/flows-browser.cjs` vérifie que le formulaire est fermé au
+départ, qu'il n'est ni dans la liste ni habillé en liaison, qu'il s'ouvre et se
+referme, et que tout le parcours de création continue de passer.

@@ -14,6 +14,16 @@ body.flows-open .workbench{display:none}
 .fc-filters{display:flex;align-items:end;gap:16px;flex-wrap:wrap;margin-bottom:20px}
 #fc-summary{font-size:12px;flex:1;padding-bottom:10px;color:var(--txt2)}
 .fc-card,.fc-rules{border:1px solid var(--bordure);border-radius:10px;background:var(--bg3);padding:16px;margin-bottom:14px}
+/* Le formulaire de création portait la même carte et les mêmes quatre champs
+   que les liaisons : on le lisait comme l'en-tête de la première d'entre elles.
+   Il s'en distingue maintenant par sa teinte et par son propre en-tête, et la
+   liste commence après un titre de section. */
+.fc-creation{border:2px solid var(--accent);border-radius:10px;padding:16px;margin:0 0 22px;
+  background:color-mix(in srgb,var(--accent) 7%,var(--bg3))}
+.fc-creation-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px}
+.fc-creation-head h3{margin:0;font-size:15px}
+.fc-list-title{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--txt2);
+  margin:0 0 12px;padding-top:14px;border-top:1px solid var(--bordure)}
 .fc-card h3{font-size:15px;margin:0 0 16px}
 .fc-card-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}
 .fc-card-head strong{font-size:13px;overflow-wrap:anywhere}

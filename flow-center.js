@@ -50,9 +50,10 @@ class FlowCenter{
    <details class="inline-help"><summary>Comment organiser les flux ?</summary><p class="mini-note">Une ligne par sens de circulation. Chaque emplacement peut avoir plusieurs origines et destinations. Les stockages se créent dans la fiche du service sur le plan. Ces liaisons ne recalculent pas encore les temps de transport, les stocks ou les effectifs.</p></details>
    <div id="fc-status" role="status" aria-live="polite"></div>
    <nav id="fc-families" class="fc-families" aria-label="Familles de flux"></nav>
-   <div class="fc-filters"><label>Service concerné<select id="fc-service"></select></label><span id="fc-summary"></span><button class="btn" id="fc-show-map">Voir ces flux sur le plan</button></div>
+   <div class="fc-filters"><label>Service concerné<select id="fc-service"></select></label><span id="fc-summary"></span><button class="btn" id="fc-show-map">Voir ces flux sur le plan</button><button class="btn btn-play" id="fc-new">+ Nouvelle liaison</button></div>
    <details id="fc-rules" class="fc-rules"><summary>Circulation humaine à l’intérieur des services</summary><p>Par défaut, chacun peut circuler dans son service et ses stockages. Les sorties du service nécessitent une liaison Runner explicite. Une liaison autorise seulement le sens indiqué.</p><div id="fc-internal"></div></details>
-   <form id="fc-add" class="fc-card"><h3>Ajouter une liaison</h3><div class="fc-fields"><label>Flux<select id="fc-type">${this.typeOptions('material',false)}</select></label><label>Origine<select id="fc-from" required></select></label><label>Destination<select id="fc-to" required></select></label><label>Précision facultative<input id="fc-label" maxlength="200" placeholder="Ex. matériel propre"></label></div><button class="btn btn-play" type="submit">Ajouter la liaison</button></form>
+   <form id="fc-add" class="fc-creation" hidden><div class="fc-creation-head"><h3>Nouvelle liaison</h3><button class="text-button" type="button" id="fc-cancel">Fermer</button></div><div class="fc-fields"><label>Flux<select id="fc-type">${this.typeOptions('material',false)}</select></label><label>Origine<select id="fc-from" required></select></label><label>Destination<select id="fc-to" required></select></label><label>Précision facultative<input id="fc-label" maxlength="200" placeholder="Ex. matériel propre"></label></div><button class="btn btn-play" type="submit">Ajouter la liaison</button></form>
+   <h3 class="fc-list-title">Liaisons existantes</h3>
    <div id="fc-list"></div>`;
   const label=document.createElement('label');label.className='fc-map-filter';label.innerHTML=`Flux affichés <select id="fc-map-filter" title="Liaisons entre services. Les échanges internes sont décrits dans le Centre des flux.">${Object.entries(FAMILIES).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}<option value="none">Aucun</option></select><span id="fc-map-scope"></span>`;document.querySelector('.map-footer').appendChild(label);
  }
@@ -84,6 +85,10 @@ class FlowCenter{
   on('fc-undo','click',()=>this.history(false));on('fc-redo','click',()=>this.history(true));
   on('fc-show-map','click',()=>{this.mapFilter=this.family;this.mapOwner=this.service;document.getElementById('fc-map-filter').value=this.mapFilter;this.a.changed();this.a.showMap();});
   on('fc-map-filter','change',e=>{this.mapFilter=e.target.value;this.mapOwner='';this.a.changed();});
+  // Le formulaire ne vit plus au milieu des liaisons : on l'ouvre quand on en
+  // veut une nouvelle, et il reste ouvert tant qu'on en enchaîne.
+  on('fc-new','click',()=>{const f=document.getElementById('fc-add');f.hidden=false;f.scrollIntoView({block:'nearest'});document.getElementById('fc-type').focus();});
+  on('fc-cancel','click',()=>{document.getElementById('fc-add').hidden=true;document.getElementById('fc-new').focus();});
   on('fc-export','click',()=>this.export());on('fc-import-button','click',()=>document.getElementById('fc-import').click());
   on('fc-import','change',e=>this.import(e));
  }
