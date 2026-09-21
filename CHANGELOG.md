@@ -111,6 +111,38 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-21 — État des lieux du projet
+
+| Fichier | Changement |
+|---|---|
+| `docs/ETAT_DES_LIEUX.md` | **nouveau** — où en est le projet, décisions prises, limites, points ouverts |
+| `README.md` | l'état des lieux devient le point d'entrée pour reprendre le projet |
+
+Le `CHANGELOG` dit ce qui a changé commit par commit ; il ne dit pas où on en
+est. Après cinq jours, quarante commits et deux assistants en parallèle, ce
+fichier manquait. Il est vérifié contre le dépôt, pas écrit de mémoire.
+
+**Deux faits vérifiés à cette occasion, et l'un est préoccupant.**
+
+Les références de pull request conservent toujours le plan de l'unité :
+`refs/pull/1/head` en contient 18 fichiers, `refs/pull/2` et `refs/pull/3` en
+contiennent 5 chacun. La purge des branches est bien effective, mais ces
+références ne peuvent pas être réécrites par un `push` — seul le support GitHub
+peut les supprimer. La demande a été rédigée le 18 septembre et **n'a pas été
+envoyée**. Tant qu'elle ne l'est pas, le plan reste récupérable sur un dépôt
+public.
+
+Correction d'une affirmation fausse écrite dans le brouillon de ce fichier : il
+n'y avait pas « 6 tests » le 17 septembre, il n'y en avait **aucun**. Les
+premiers arrivent le 18 avec Astra. Vérifié par `git log --diff-filter=A`.
+
+Comptes à la révision `0bfe587` : 98 tests unitaires (noyau 19, orly 21,
+procede 14, ressources 14, ui-model 7, workshops 7, mesure 6, flows 5,
+plan-editor 5) et 6 parcours navigateur, tous au vert après fusion des quatre
+intégrations d'Astra du 20 septembre.
+
+---
+
 ## 2026-09-19 — Boucle du matériel propre, et goulot recompté en ordres
 
 | Fichier | Changement |

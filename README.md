@@ -250,10 +250,12 @@ métier et le raccordement du Centre des flux restent à faire.
 L’[étude des moteurs](docs/ETUDE_OPEN_SOURCE.md) décrit le bilan et la décision
 encore ouverte sur le moteur d’autorité (JavaScript ou Python). Cette évolution
 d’interface ne tranche pas cette décision. Les données réelles restent en privé.
-Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
+**Pour reprendre le projet, commencer par l’[état des lieux](docs/ETAT_DES_LIEUX.md)** :
+où en est le travail, ce qui est décidé, ce qui ne l’est pas, et ce qui reste à
+faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 [registre des bugs](BUGS.md) et le
 [journal des modifications](CHANGELOG.md). La
-[feuille de route commune](docs/FEUILLE_DE_ROUTE.md) reste la référence du projet.
+[feuille de route commune](docs/FEUILLE_DE_ROUTE.md) reste la référence métier.
 
 ## Fichiers et vérification
 
