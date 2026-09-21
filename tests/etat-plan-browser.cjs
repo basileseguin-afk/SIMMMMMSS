@@ -77,10 +77,31 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await fond('.zone[data-id=dotation] .fond'),'rgb(204, 0, 51)','la couleur tient hors édition');
   assert.notEqual(await fond('.zone[data-id=dotation] .fond'),avantCouleur);
   assert.match(await etat('dotation'),/\bp-partiel\b/);
-  assert.equal(await contour('.zone[data-id=dotation] .fond'),await contour('.zone[data-id=appros] .fond'),
-    'l’état reste lisible dans le contour, comme un atelier non colorié');
+  assert.equal(await contour('.zone[data-id=dotation] .fond'),'rgb(204, 0, 51)',
+    'le contour prend aussi la couleur : c’est lui qui la porte à petite taille');
+  assert.notEqual(await contour('.zone[data-id=appros] .fond'),'rgb(204, 0, 51)');
   // Un atelier non colorié garde le fond du thème.
   assert.notEqual(await fond('.zone[data-id=appros] .fond'),'rgb(204, 0, 51)');
+  // Exception : un atelier simulé sans personne garde son contour d'alerte,
+  // même colorié. La couleur est une identité, pas un moyen de masquer un défaut.
+  await click('[data-view=reglages]');
+  await page.locator('#staff-dotation').fill('0');
+  await page.locator('#staff-dotation').dispatchEvent('input');
+  await click('[data-view=plan]');
+  assert.match(await etat('dotation'),/\bp-vide\b/);
+  assert.equal(await fond('.zone[data-id=dotation] .fond'),'rgb(204, 0, 51)','le fond reste celui qu’on a choisi');
+  const rouge=await contour('.zone[data-id=prepa] .fond');
+  await click('[data-view=reglages]');
+  await page.locator('#staff-prepa').fill('0');
+  await page.locator('#staff-prepa').dispatchEvent('input');
+  await click('[data-view=plan]');
+  assert.equal(await contour('.zone[data-id=dotation] .fond'),await contour('.zone[data-id=prepa] .fond'),
+    'même contour d’alerte qu’un atelier vide non colorié');
+  await click('[data-view=reglages]');
+  for(const [id,v] of [['staff-dotation','6'],['staff-prepa','18']]){
+    await page.locator('#'+id).fill(v);await page.locator('#'+id).dispatchEvent('input');
+  }
+  await click('[data-view=plan]');
   // Elle survit au rechargement.
   await page.reload();
   assert.equal(await fond('.zone[data-id=dotation] .fond'),'rgb(204, 0, 51)','la couleur est relue au démarrage');

@@ -36,13 +36,17 @@ header .marque,header .horloge,header #vitesse-val{color:#fff}
 body.avant-lancement #plan .zone.p-vide .fond{fill:var(--bad-stroke);fill-opacity:.14;stroke:var(--bad-stroke);stroke-width:9}
 body.avant-lancement #plan .zone.p-partiel .fond{fill:var(--zone-fill);fill-opacity:.55;stroke:var(--zone-stroke);stroke-width:7}
 body.avant-lancement #plan .zone.p-pret .fond{fill:var(--accent);fill-opacity:.20;stroke:var(--accent);stroke-width:9}
-body.avant-lancement #plan .zone.selection .fond{stroke:var(--accent);stroke-width:13}
-/* Une couleur choisie dans « Éditer les zones » est l'identité de l'atelier :
-   elle tient le fond, et l'état de paramétrage passe dans le contour. Pendant
-   la simulation, les couleurs de charge reprennent la main — c'est ce que la
-   légende annonce. Un service hors calcul n'en reçoit jamais : il garde la sienne. */
-body.avant-lancement #plan .zone.couleur-perso .fond{fill:var(--zone-perso);fill-opacity:.28}
-#plan .zone.couleur-perso.p-hors .fond{fill:var(--zone-perso);fill-opacity:.16;stroke:var(--zone-perso);stroke-opacity:.7}
+
+/* Une couleur choisie dans « Éditer les zones » est l'identité de l'atelier.
+   Elle tient le fond ET le contour, pour que la zone ait le même aspect qu'au
+   moment où on l'a peinte : c'est le contour qui porte l'impression de couleur
+   à petite taille. Deux exceptions gardent la main, parce qu'elles alertent :
+   un atelier simulé sans personne, et la zone sélectionnée. */
+body.avant-lancement #plan .zone.couleur-perso .fond{fill:var(--zone-perso);fill-opacity:.30;stroke:var(--zone-perso);stroke-opacity:1}
+body.avant-lancement #plan .zone.couleur-perso.p-vide .fond{stroke:var(--bad-stroke)}
+#plan .zone.couleur-perso.p-hors .fond{fill:var(--zone-perso);fill-opacity:.18;stroke:var(--zone-perso);stroke-opacity:.75;stroke-dasharray:4 10}
+
+body.avant-lancement #plan .zone.selection .fond{stroke:var(--accent);stroke-width:13;stroke-opacity:1}
 .plan-etat{color:var(--txt2)}.plan-aide kbd{font:inherit;font-weight:700;border:1px solid var(--bordure2);border-radius:3px;padding:0 4px;margin:0 1px}.plan-etat.complet{color:var(--accent2)}
 .legende .pastille{border:1px solid var(--bordure2)}
 

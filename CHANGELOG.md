@@ -13,9 +13,11 @@ Le plus récent est en haut.
   les ateliers étaient touchés ; locaux et annexes gardaient bien la leur.
 - Seule une couleur **voulue** est transmise : chaque zone reçoit d'office la
   teinte de son type, la recopier sans distinction aurait peint l'unité en bleu.
-- Règle : la teinte choisie tient le **fond**, l'état de paramétrage passe dans
-  le **contour**. Pendant la simulation, les couleurs de charge reprennent le
-  fond ; un service hors calcul garde la sienne.
+- Règle : la teinte choisie tient le **fond et le contour**, pour que la zone
+  ait le même aspect qu'au moment où on l'a peinte. Deux exceptions alertent et
+  gardent la main : un atelier simulé **sans personne** (contour rouge) et la
+  zone sélectionnée. Pendant la simulation, les couleurs de charge reprennent
+  le fond ; un service hors calcul garde la sienne.
 - Bouton « Couleur du type » pour revenir en arrière, affiché seulement quand
   une couleur a été choisie.
 - `tests/etat-plan-browser.cjs` couvre le cycle complet, rechargement compris.

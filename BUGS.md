@@ -352,8 +352,12 @@ donc transmettre `color` sans distinction aurait peint toute l'unité en bleu.
 Une couleur identique à celle du type ne change rien.
 
 **Règle retenue**, pour ne pas écraser le sens déjà porté par les couleurs :
-la teinte choisie est l'**identité** de l'atelier et tient le fond ; l'état de
-paramétrage (personne / au curseur / aménagé) passe dans le **contour**. Pendant
+la teinte choisie est l'**identité** de l'atelier et tient le fond **et le
+contour** — c'est le contour qui porte l'impression de couleur à petite taille,
+une première version qui ne peignait que le fond donnait encore une zone fade.
+Deux exceptions gardent la main parce qu'elles alertent : un atelier simulé
+**sans personne** garde son contour rouge, et la zone sélectionnée son contour
+d'accent. Pendant
 la simulation, les couleurs de charge reprennent le fond — ce que la légende
 annonce déjà. Un service hors calcul, qui ne reçoit jamais de couleur de charge,
 garde la sienne en toutes circonstances. Bouton « Couleur du type » pour revenir
