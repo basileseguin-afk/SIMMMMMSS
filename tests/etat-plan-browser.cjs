@@ -61,6 +61,36 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.doesNotMatch(await page.locator('#legende-plan').textContent(),/Aménagé/);
   assert.match(await etat('magasin'),/\bp-hors\b/,'hors calcul le reste pendant la simulation');
 
+  // 5. BUG-013 : une couleur choisie dans l'éditeur survit à la sortie du mode
+  //    édition. Elle tient le fond ; l'état de paramétrage passe au contour.
+  await click('#btn-reset');
+  // Le fond des zones est en transition (0,35 s) : lire trop tôt donne une
+  // couleur intermédiaire. On attend la fin de l'animation avant de mesurer.
+  const pose=()=>page.waitForTimeout(450);
+  const fond=async s=>{await pose();return page.locator(s).evaluate(e=>getComputedStyle(e).fill);};
+  const contour=async s=>{await pose();return page.locator(s).evaluate(e=>getComputedStyle(e).stroke);};
+  const avantCouleur=await fond('.zone[data-id=dotation] .fond');
+  await click('#btn-edit');
+  await page.locator('.pe-shape[data-pe-zone=dotation]').click();
+  await page.locator('#pe-color').evaluate(i=>{i.value='#cc0033';i.dispatchEvent(new Event('change',{bubbles:true}));});
+  await click('#edit-done');
+  assert.equal(await fond('.zone[data-id=dotation] .fond'),'rgb(204, 0, 51)','la couleur tient hors édition');
+  assert.notEqual(await fond('.zone[data-id=dotation] .fond'),avantCouleur);
+  assert.match(await etat('dotation'),/\bp-partiel\b/);
+  assert.equal(await contour('.zone[data-id=dotation] .fond'),await contour('.zone[data-id=appros] .fond'),
+    'l’état reste lisible dans le contour, comme un atelier non colorié');
+  // Un atelier non colorié garde le fond du thème.
+  assert.notEqual(await fond('.zone[data-id=appros] .fond'),'rgb(204, 0, 51)');
+  // Elle survit au rechargement.
+  await page.reload();
+  assert.equal(await fond('.zone[data-id=dotation] .fond'),'rgb(204, 0, 51)','la couleur est relue au démarrage');
+  // Retour à la couleur du type.
+  await click('#btn-edit');
+  await page.locator('.pe-shape[data-pe-zone=dotation]').click();
+  await click('#pe-color-reset');
+  await click('#edit-done');
+  assert.equal(await fond('.zone[data-id=dotation] .fond'),avantCouleur,'le bouton rend la couleur du thème');
+
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('etat-plan-browser : ok');
  }finally{await browser.close();}

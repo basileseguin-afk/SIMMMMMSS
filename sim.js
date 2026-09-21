@@ -803,7 +803,17 @@ function majChampsEdition() {
 function initEdition() {
   Sim.editor=new window.OrlyPlan.PlanEditor({
     svg,viewport:Sim._gVue,zones:ZONES,storages:STORAGES,notify:toast,
-    update(id,visible){positionnerZone(id);zoneEls[id].titre.textContent=ZONES[id].nom;zoneEls[id].g.setAttribute('aria-label',ZONES[id].nom);zoneEls[id].g.style.display=visible?'':'none';},
+    update(id,visible){
+      positionnerZone(id);
+      const e=zoneEls[id];if(!e)return;
+      e.titre.textContent=ZONES[id].nom;e.g.setAttribute('aria-label',ZONES[id].nom);
+      e.g.style.display=visible?'':'none';
+      // Couleur choisie dans l'éditeur : elle tient le fond, l'état de
+      // paramétrage passe dans le contour. Rien de choisi, rien ne change.
+      const c=ZONES[id].couleur;
+      e.g.classList.toggle('couleur-perso',!!c);
+      if(c)e.g.style.setProperty('--zone-perso',c);else e.g.style.removeProperty('--zone-perso');
+    },
     refresh(){if(Sim.flows)Sim.flows.refresh();redessinerEdges();majPicker();if(Sim.majGrilleEffectifs)Sim.majGrilleEffectifs();},
     pick(id){selectionner(id);},
     getView(){return {vk,vtx,vty};},

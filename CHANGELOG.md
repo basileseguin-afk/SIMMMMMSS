@@ -5,6 +5,21 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-21 — BUG-013 : la couleur d'un atelier tient hors édition
+
+- `plan-editor.js` : `sync()` transmet la couleur choisie à l'interface de
+  simulation. Elle était enregistrée mais jamais relue : hors édition, les
+  ateliers du moteur sont rendus par `sim.js`, qui ne la connaissait pas. Seuls
+  les ateliers étaient touchés ; locaux et annexes gardaient bien la leur.
+- Seule une couleur **voulue** est transmise : chaque zone reçoit d'office la
+  teinte de son type, la recopier sans distinction aurait peint l'unité en bleu.
+- Règle : la teinte choisie tient le **fond**, l'état de paramétrage passe dans
+  le **contour**. Pendant la simulation, les couleurs de charge reprennent le
+  fond ; un service hors calcul garde la sienne.
+- Bouton « Couleur du type » pour revenir en arrière, affiché seulement quand
+  une couleur a été choisie.
+- `tests/etat-plan-browser.cjs` couvre le cycle complet, rechargement compris.
+
 ## 2026-09-21 — Une seconde salle pour un atelier : « Armement 2 »
 
 - `plan-editor.js` : nouveau type de zone **« Zone de production (annexe) »**,

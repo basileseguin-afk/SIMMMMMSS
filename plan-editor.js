@@ -7,6 +7,11 @@ const COLORS={service:'#0b6fa4',annexe:'#0e8aa8',room:'#087f75',cold:'#3178c6',e
 // même travail qu'Armement. Elle a son espace et ses gens, pas sa propre file.
 const TYPES={service:'Atelier simulé',annexe:'Zone de production (annexe)',room:'Local / zone',cold:'Chambre froide',equipment:'Équipement',path:'Circulation'};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* La couleur retenue par l'utilisateur, ou null si c'est celle du type. */
+function couleurVoulue(z){
+ const def=COLORS[z.kind];
+ return z.color&&def&&z.color.toLowerCase()!==def.toLowerCase()?z.color:null;
+}
 function bounds(z){if(!z.pts)return {x:z.x,y:z.y,w:z.w,h:z.h};const xs=z.pts.map(p=>p[0]),ys=z.pts.map(p=>p[1]);return{x:Math.min(...xs),y:Math.min(...ys),w:Math.max(...xs)-Math.min(...xs),h:Math.max(...ys)-Math.min(...ys)};}
 function resize(z,b){const old=bounds(z);if(z.pts)z.pts=z.pts.map(p=>[b.x+(p[0]-old.x)*b.w/old.w,b.y+(p[1]-old.y)*b.h/old.h]);Object.assign(z,b);}
 function area(pts){return Math.abs(pts.reduce((a,p,i)=>{const n=pts[(i+1)%pts.length];return a+p[0]*n[1]-n[0]*p[1];},0))/2;}
@@ -68,7 +73,7 @@ class PlanEditor{
    <div class="pe-heading"><div><span class="eyebrow">ÉDITEUR DU PLAN</span><h2>Construire l’unité</h2></div><button class="btn" id="edit-done">Terminer</button></div>
    <div id="pe-status" role="status" aria-live="polite"></div>
    <div class="pe-section"><div class="pe-section-title"><h3>Zones & locaux <span id="pe-count"></span></h3><button class="text-button" id="pe-focus">Centrer la sélection</button></div><label class="sr-only" for="pe-search">Rechercher une zone</label><input type="search" id="pe-search" placeholder="Rechercher une zone…"><div id="pe-list" aria-label="Liste des zones"></div></div>
-   <div class="pe-section" id="pe-properties" hidden><h3>Zone sélectionnée</h3><label>Nom<input id="pe-name" maxlength="120" type="text"></label><div class="pe-two"><label>Type<select id="pe-kind"><option value="service">Atelier simulé</option><option value="annexe">Zone de production (annexe)</option><option value="room">Local / zone</option><option value="equipment">Équipement</option><option value="path">Circulation</option></select></label><label>Couleur<input type="color" id="pe-color"></label></div>
+   <div class="pe-section" id="pe-properties" hidden><h3>Zone sélectionnée</h3><label>Nom<input id="pe-name" maxlength="120" type="text"></label><div class="pe-two"><label>Type<select id="pe-kind"><option value="service">Atelier simulé</option><option value="annexe">Zone de production (annexe)</option><option value="room">Local / zone</option><option value="equipment">Équipement</option><option value="path">Circulation</option></select></label><label>Couleur<input type="color" id="pe-color"><button class="text-button" id="pe-color-reset" type="button">Couleur du type</button></label></div>
    <label id="pe-parent-champ" hidden>Atelier dont elle dépend<select id="pe-parent"></select></label>
    <p id="pe-kind-note" class="mini-note"></p><div class="pe-two pe-dimensions">${[['x','X'],['y','Y'],['w','Largeur'],['h','Hauteur']].map(([k,label])=>`<label>${label}<input id="pe-${k}" type="number" step="1" ${k==='w'||k==='h'?'min="1"':''}></label>`).join('')}</div><p class="mini-note">Coordonnées du dessin, pas des mètres.</p>
    <label class="chk"><input id="pe-locked" type="checkbox">Verrouiller la géométrie</label><label class="chk"><input id="pe-confirmed" type="checkbox">Emplacement confirmé sur le terrain</label>
@@ -90,7 +95,8 @@ class PlanEditor{
   });
   on('pe-list','dblclick',e=>{const b=e.target.closest('[data-zone]');if(b&&b.dataset.action==='select'){this.select(b.dataset.zone);this.a.focus(bounds(this.zone));}});
   on('pe-name','change',e=>{const value=e.target.value.trim();if(!value){e.target.value=this.zone?.nom||'';this.status('Le nom ne peut pas être vide.');return;}this.change(()=>{if(this.zone)this.zone.nom=value;},'Nom enregistré.');});
-  on('pe-color','change',e=>{const value=e.target.value;this.change(()=>{if(this.zone)this.zone.color=value;},'Couleur enregistrée.');});
+  on('pe-color','change',e=>{const value=e.target.value;this.change(()=>{if(this.zone)this.zone.color=value;},'Couleur enregistrée. Elle reste visible hors édition.');});
+  on('pe-color-reset','click',()=>{this.change(()=>{if(this.zone)this.zone.color=COLORS[this.zone.kind];},'Couleur du type rétablie.');});
   on('pe-kind','change',e=>{const value=e.target.value;this.change(()=>{if(this.zone&&this.zone.kind!=='service'&&value!=='service'){this.zone.kind=value;this.zone.color=COLORS[value];if(value==='annexe'){if(!this.zone.parent)this.zone.parent=this.originals[0].id;}else delete this.zone.parent;}},'Type enregistré.');});
   on('pe-parent','change',e=>{const value=e.target.value;this.change(()=>{if(this.zone&&this.zone.kind==='annexe')this.zone.parent=value;},'Atelier de rattachement enregistré.');});
   for(const k of ['x','y','w','h'])on('pe-'+k,'change',e=>{const n=Number(e.target.value);if(!e.target.value||!Number.isFinite(n)||Math.abs(n)>=1e7||(['w','h'].includes(k)&&n<=0)){e.target.value=this.zone?Math.round(bounds(this.zone)[k]):'';this.status('Valeur invalide.');return;}this.change(()=>{if(this.zone&&!this.zone.locked)resize(this.zone,{...bounds(this.zone),[k]:n});},'Dimensions enregistrées.');});
@@ -127,7 +133,22 @@ class PlanEditor{
   this.render();if(message)this.status(message);
  }
  persist(){try{const old=localStorage.getItem('orly-plan-v3');if(old)localStorage.setItem('orly-plan-v3-backup',old);localStorage.setItem('orly-plan-v3',JSON.stringify(this.state));return true;}catch(e){this.status('Sauvegarde locale impossible. Exportez le plan pour conserver vos modifications.');this.a.notify('Sauvegarde impossible : utilisez Exporter le plan.');return false;}}
- sync(){for(const z of this.state.zones){if(!Object.hasOwn(this.a.zones,z.id))continue;const target=this.a.zones[z.id];Object.assign(target,{nom:z.nom,...bounds(z),approx:z.approx});if(z.pts)target.pts=clone(z.pts);else delete target.pts;this.a.update(z.id,z.visible);}this.a.refresh();}
+ /* Hors édition, les ateliers du moteur ne sont plus dessinés ici : c'est
+  * l'interface de simulation qui les rend. Sa couleur doit donc lui être
+  * transmise, sans quoi le choix de l'utilisateur disparaît en quittant
+  * l'éditeur (BUG-013). On ne transmet qu'une couleur VOULUE : la teinte par
+  * défaut du type resterait un aplat bleu sur toute l'unité. */
+ sync(){
+  for(const z of this.state.zones){
+   if(!Object.hasOwn(this.a.zones,z.id))continue;
+   const target=this.a.zones[z.id];
+   Object.assign(target,{nom:z.nom,...bounds(z),approx:z.approx});
+   if(z.pts)target.pts=clone(z.pts);else delete target.pts;
+   target.couleur=couleurVoulue(z);
+   this.a.update(z.id,z.visible);
+  }
+  this.a.refresh();
+ }
  undo(){this.cancel();if(!this.undoStack.length)return;this.redoStack.push(clone(this.state));this.state=this.undoStack.pop();this.afterHistory('Action annulée.');}
  redo(){this.cancel();if(!this.redoStack.length)return;this.undoStack.push(clone(this.state));this.state=this.redoStack.pop();this.afterHistory('Action rétablie.');}
  afterHistory(message){if(!this.zone)this.selected=null;this.vertex=null;this.sync();const saved=this.persist();this.render();if(saved)this.status(message);}
@@ -273,6 +294,7 @@ class PlanEditor{
   const z=this.zone;document.getElementById('pe-properties').hidden=!z;document.getElementById('pe-focus').disabled=!z;if(!z)return;
   const assign=(id,value)=>{const e=document.getElementById(id);if(document.activeElement!==e)e.value=value;};
   assign('pe-name',z.nom);assign('pe-kind',z.kind);assign('pe-color',z.color);
+  document.getElementById('pe-color-reset').hidden=!couleurVoulue(z);
   document.getElementById('pe-kind').disabled=z.kind==='service';document.querySelector('#pe-kind option[value=service]').disabled=z.kind!=='service';
   const champParent=document.getElementById('pe-parent-champ'),selParent=document.getElementById('pe-parent');
   champParent.hidden=z.kind!=='annexe';

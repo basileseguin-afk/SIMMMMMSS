@@ -327,3 +327,38 @@ sont supprimés de `interface.css`, `usability.css` et `workshop-grid.css`.
 **Preuve :** les neuf parcours navigateur et les 118 tests purs passent.
 `docs/ETAT_DES_LIEUX.md` et `README.md` listent désormais les neuf parcours,
 avec la consigne de les rejouer en entier.
+
+## BUG-013 — La couleur choisie pour un atelier disparaissait hors édition (2026-09-21)
+
+**État : corrigé.** Signalé à l'usage : « j'ai colorié les zones dans Éditer le
+plan mais les couleurs n'apparaissent pas quand je quitte Éditer le plan ».
+
+Reproduit exactement, et le défaut ne touchait qu'une catégorie de zones :
+
+| Zone coloriée | Hors édition |
+|---|---|
+| Local, chambre froide, circulation, annexe | couleur conservée |
+| **Atelier simulé** (cuisine, montage, plonge…) | **couleur perdue** |
+
+La cause est une frontière entre deux rendus. `plan-editor.js` cesse de dessiner
+les zones de type `service` dès qu'on quitte l'édition — c'est `sim.js` qui les
+rend, depuis sa propre table `ZONES`. Or `sync()`, qui recopie nom, contour et
+géométrie de l'éditeur vers cette table, **ne recopiait pas `color`**. La valeur
+était bien enregistrée : elle n'était simplement jamais lue par le rendu.
+
+**Correction.** `sync()` transmet désormais la couleur, et seulement une couleur
+*voulue* : `validZone` attribue à chaque zone la teinte par défaut de son type,
+donc transmettre `color` sans distinction aurait peint toute l'unité en bleu.
+Une couleur identique à celle du type ne change rien.
+
+**Règle retenue**, pour ne pas écraser le sens déjà porté par les couleurs :
+la teinte choisie est l'**identité** de l'atelier et tient le fond ; l'état de
+paramétrage (personne / au curseur / aménagé) passe dans le **contour**. Pendant
+la simulation, les couleurs de charge reprennent le fond — ce que la légende
+annonce déjà. Un service hors calcul, qui ne reçoit jamais de couleur de charge,
+garde la sienne en toutes circonstances. Bouton « Couleur du type » pour revenir
+en arrière, visible seulement quand une couleur a été choisie.
+
+**Preuve :** `tests/etat-plan-browser.cjs` colorie un atelier, quitte l'édition,
+vérifie le fond, vérifie que le contour porte toujours le même état qu'un
+atelier non colorié, recharge la page, puis rétablit la couleur du type.
