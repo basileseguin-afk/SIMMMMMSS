@@ -5,6 +5,25 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-21 — Une seconde salle pour un atelier : « Armement 2 »
+
+- `plan-editor.js` : nouveau type de zone **« Zone de production (annexe) »**,
+  rattachée à un atelier du moteur. Le chemin le plus court : sélectionner
+  l'atelier et cliquer **Dupliquer** — on obtient « ARMEMENT 2 », déjà
+  rattaché, déjà numéroté. La validation refuse une annexe sans atelier de
+  rattachement, ou rattachée à un atelier qui n'existe pas.
+- Une annexe est **cliquable hors édition** et figure dans la liste des
+  services, rangée sous son atelier. Elle s'aménage dans « Création des
+  ateliers » comme n'importe quel service.
+- `sim.js` : ce qui est tracé dans une annexe — équipements et personnes —
+  **compte pour l'atelier dont elle dépend**. Le panneau de suivi le dit
+  explicitement au lieu d'un chiffre muet.
+- **Ce que cela ne fait pas**, et c'est écrit dans l'interface : une file
+  d'attente séparée. Deux équipes se partageant les ordres demanderaient une
+  règle de répartition, qui n'existe pas encore.
+- Vérification : 121 tests purs et douze parcours navigateur, dont
+  `tests/annexe-browser.cjs`, nouveau, qui refait le geste de bout en bout.
+
 ## 2026-09-21 — Zoom déplafonné, équipements visibles, tunnels et robot reliés
 
 - **Zoom** (`sim.js`) : le cadrage du service servait de plafond en vue Ateliers,

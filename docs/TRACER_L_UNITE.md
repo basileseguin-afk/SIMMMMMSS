@@ -63,21 +63,46 @@ Dans **Réglages**, chaque service affiche l'effectif déduit de votre
 aménagement, à côté du curseur : `CUISINE  10  [grille 6]`. L'écart entre les
 deux est visible en permanence.
 
-La case **« Reprendre les effectifs de Création des ateliers »** fait piloter
-la grille — **uniquement pour les services que vous avez renseignés**. Les
-autres restent réglables au curseur. Vous pouvez donc basculer service par
-service, au fil de la saisie, sans jamais devoir choisir pour l'ensemble.
+La case **« Reprendre ce qui est tracé dans Création des ateliers »** fait
+piloter la grille — **uniquement pour ce que vous avez renseigné**. Les autres
+réglages restent au curseur. Vous pouvez donc basculer service par service, au
+fil de la saisie, sans jamais devoir choisir pour l'ensemble.
 
-## 5. Ce que la grille ne dit pas
+Trois choses remontent au moteur :
+
+| Tracé | Ce qu'il pilote |
+|---|---|
+| Personnes affectées aux équipements | l'effectif du service |
+| **Tunnels de lavage** dans la plonge | le nombre de tunnels actifs |
+| **Lignes robot** au montage | le nombre de lignes ; la cadence est par ligne |
+
+À zéro ligne robot, tout le YC part au dressage manuel : c'est un essai en soi.
+
+## 5. Une seconde salle pour un atelier — « Armement 2 »
+
+Un atelier peut occuper deux endroits de l'unité. Dans **Éditer les zones**,
+sélectionnez l'atelier et cliquez **Dupliquer** : vous obtenez « ARMEMENT 2 »,
+une **zone de production annexe** rattachée à Armement. Déplacez-la où elle se
+trouve réellement, puis aménagez-la dans « Création des ateliers » comme
+n'importe quel service : elle apparaît dans la liste, sous son atelier.
+
+Ce qui y est tracé et les personnes qu'on y affecte **comptent dans l'atelier
+dont elle dépend**. Ce que cela ne fait pas : une file d'attente séparée. Deux
+équipes qui se partageraient les ordres selon une règle à elles, c'est un autre
+modèle — il faudrait d'abord dire **quelle règle** répartit le travail.
+
+Vous pouvez aussi dessiner un rectangle libre et lui donner le type
+« Zone de production (annexe) », en choisissant son atelier de rattachement.
+
+## 6. Ce que la grille ne dit pas
 
 - Une case vaut **50 × 50 cm théoriques**. Sans cote de référence sur le fond
   d'architecte, la correspondance n'est pas mesurée : ce n'est pas une preuve
   qu'une table rentre physiquement dans le local.
 - Aucun contrôle d'allée, d'ergonomie ou d'hygiène n'est déduit du dessin.
-- Les débits des chaînes et les modules robot de la bibliothèque ne sont pas
-  encore lus par le moteur. Seules les **personnes** le sont.
+- Les **débits** des chaînes et les contenances ne sont pas encore lus.
 
-## 6. Ce qu'il est utile de noter pendant la saisie
+## 7. Ce qu'il est utile de noter pendant la saisie
 
 Ces points bloquent le calcul et vous seul pouvez les trancher :
 
@@ -93,7 +118,7 @@ Ces points bloquent le calcul et vous seul pouvez les trancher :
 - Tout endroit où le plan vous paraît faux : c'est plus utile qu'un contour
   approximatif corrigé en silence.
 
-## 7. Quand vous aurez fini
+## 8. Quand vous aurez fini
 
 Sauvegardez, puis dites-le : le raccordement du reste de l'aménagement au
 moteur — débits des chaînes, contenances, calibration du barème — se fait à

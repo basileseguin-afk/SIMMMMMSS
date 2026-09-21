@@ -2,8 +2,10 @@
 (function(root){
 'use strict';
 const clone=x=>JSON.parse(JSON.stringify(x));
-const COLORS={service:'#0b6fa4',room:'#087f75',cold:'#3178c6',equipment:'#9659b5',path:'#bd7621'};
-const TYPES={service:'Atelier simulé',room:'Local / zone',cold:'Chambre froide',equipment:'Équipement',path:'Circulation'};
+const COLORS={service:'#0b6fa4',annexe:'#0e8aa8',room:'#087f75',cold:'#3178c6',equipment:'#9659b5',path:'#bd7621'};
+// Une annexe est une seconde salle d'un atelier du moteur : Armement 2 fait le
+// même travail qu'Armement. Elle a son espace et ses gens, pas sa propre file.
+const TYPES={service:'Atelier simulé',annexe:'Zone de production (annexe)',room:'Local / zone',cold:'Chambre froide',equipment:'Équipement',path:'Circulation'};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function bounds(z){if(!z.pts)return {x:z.x,y:z.y,w:z.w,h:z.h};const xs=z.pts.map(p=>p[0]),ys=z.pts.map(p=>p[1]);return{x:Math.min(...xs),y:Math.min(...ys),w:Math.max(...xs)-Math.min(...xs),h:Math.max(...ys)-Math.min(...ys)};}
 function resize(z,b){const old=bounds(z);if(z.pts)z.pts=z.pts.map(p=>[b.x+(p[0]-old.x)*b.w/old.w,b.y+(p[1]-old.y)*b.h/old.h]);Object.assign(z,b);}
@@ -23,7 +25,8 @@ function validZone(z){
  if(!['x','y','w','h'].every(k=>typeof z[k]==='number'&&Number.isFinite(z[k])&&Math.abs(z[k])<1e7)||z.w<=0||z.h<=0)throw new Error('Dimensions invalides pour '+z.nom+'.');
  if(z.pts!==undefined){if(!Array.isArray(z.pts)||z.pts.length<3||z.pts.length>500||!z.pts.every(p=>Array.isArray(p)&&p.length===2&&p.every(n=>typeof n==='number'&&Number.isFinite(n)&&Math.abs(n)<1e7))||area(z.pts)<1)throw new Error('Polygone invalide pour '+z.nom+'.');Object.assign(z,bounds(z));}
  if(z.color!==undefined&&!/^#[0-9a-f]{6}$/i.test(z.color))throw new Error('Couleur invalide.');
- return{id:z.id,nom:z.nom.trim(),kind:z.kind,...(z.kind==='service'?{storages:validStorages(z.storages)}:{}),...bounds(z),...(z.pts?{pts:clone(z.pts)}:{}),color:z.color||COLORS[z.kind],locked:z.locked===true,visible:z.visible!==false,approx:z.approx===true};
+ if(z.kind==='annexe'&&(typeof z.parent!=='string'||!z.parent.trim()||z.parent.length>160))throw new Error('L’annexe '+z.nom+' doit indiquer l’atelier dont elle dépend.');
+ return{id:z.id,nom:z.nom.trim(),kind:z.kind,...(z.kind==='service'?{storages:validStorages(z.storages)}:{}),...(z.kind==='annexe'?{parent:z.parent.trim()}:{}),...bounds(z),...(z.pts?{pts:clone(z.pts)}:{}),color:z.color||COLORS[z.kind],locked:z.locked===true,visible:z.visible!==false,approx:z.approx===true};
 }
 function validatePlan(raw,originals){
  const base=clone(originals);let zones,opacity=.85,pending=[];
@@ -36,7 +39,7 @@ function validatePlan(raw,originals){
   zones=base.map(z=>{const v=raw[z.id];return v?{...z,...v,id:z.id,kind:'service'}:z;});
  }
  if(!zones.length||zones.length>500||typeof opacity!=='number'||!Number.isFinite(opacity)||opacity<0||opacity>1)throw new Error('Plan invalide (maximum 500 zones).');
- const ids=new Set();zones=zones.map(z=>{const v=validZone(z);if(ids.has(v.id))throw new Error('Identifiant de zone en double.');ids.add(v.id);const builtin=base.some(b=>b.id===v.id);if((v.kind==='service')!==builtin)throw new Error('Les ateliers du moteur ne peuvent pas être ajoutés ou convertis par import.');return v;});
+ const ids=new Set();zones=zones.map(z=>{const v=validZone(z);if(ids.has(v.id))throw new Error('Identifiant de zone en double.');ids.add(v.id);const builtin=base.some(b=>b.id===v.id);if((v.kind==='service')!==builtin)throw new Error('Les ateliers du moteur ne peuvent pas être ajoutés ou convertis par import.');if(v.kind==='annexe'&&!base.some(b=>b.id===v.parent))throw new Error('L’annexe '+v.nom+' dépend d’un atelier inconnu : '+v.parent+'.');return v;});
  if(base.some(z=>!ids.has(z.id)))throw new Error('Le plan doit conserver tous les ateliers du moteur. Vous pouvez les masquer.');
  zones=zones.filter(z=>{if(z.kind!=='service'&&(z.kind==='cold'||OLD_STORAGE_IDS.has(z.id))){pending.push({id:z.id,nom:z.nom,contenu:''});return false;}return true;});
  return {schema:'ory-plan',version:3,zones,unassignedStorages:validStorages(pending),backgroundOpacity:opacity};
@@ -58,14 +61,15 @@ class PlanEditor{
  status(text){document.getElementById('pe-status').textContent=text;}
  setActive(active){
   this.cancel();this.active=active;this.tool='select';this.space=false;document.body.classList.toggle('plan-editing',active);document.getElementById('plan-editor-toolbar').hidden=!active;
-  document.getElementById('panneau-edition').hidden=!active;this.render();this.status(active?'Choisissez une zone ou dessinez un nouveau local. Espace + glisser pour déplacer le plan.':'Plan enregistré dans ce navigateur.');
+  document.getElementById('panneau-edition').hidden=!active;this.render();this.status(active?'Choisissez une zone, ou dessinez-en une nouvelle : un local, ou une zone de production rattachée à un atelier.':'Plan enregistré dans ce navigateur.');
  }
  buildUI(){
   const panel=document.getElementById('panneau-edition');panel.innerHTML=`
    <div class="pe-heading"><div><span class="eyebrow">ÉDITEUR DU PLAN</span><h2>Construire l’unité</h2></div><button class="btn" id="edit-done">Terminer</button></div>
    <div id="pe-status" role="status" aria-live="polite"></div>
    <div class="pe-section"><div class="pe-section-title"><h3>Zones & locaux <span id="pe-count"></span></h3><button class="text-button" id="pe-focus">Centrer la sélection</button></div><label class="sr-only" for="pe-search">Rechercher une zone</label><input type="search" id="pe-search" placeholder="Rechercher une zone…"><div id="pe-list" aria-label="Liste des zones"></div></div>
-   <div class="pe-section" id="pe-properties" hidden><h3>Zone sélectionnée</h3><label>Nom<input id="pe-name" maxlength="120" type="text"></label><div class="pe-two"><label>Type<select id="pe-kind"><option value="service">Atelier simulé</option><option value="room">Local / zone</option><option value="equipment">Équipement</option><option value="path">Circulation</option></select></label><label>Couleur<input type="color" id="pe-color"></label></div>
+   <div class="pe-section" id="pe-properties" hidden><h3>Zone sélectionnée</h3><label>Nom<input id="pe-name" maxlength="120" type="text"></label><div class="pe-two"><label>Type<select id="pe-kind"><option value="service">Atelier simulé</option><option value="annexe">Zone de production (annexe)</option><option value="room">Local / zone</option><option value="equipment">Équipement</option><option value="path">Circulation</option></select></label><label>Couleur<input type="color" id="pe-color"></label></div>
+   <label id="pe-parent-champ" hidden>Atelier dont elle dépend<select id="pe-parent"></select></label>
    <p id="pe-kind-note" class="mini-note"></p><div class="pe-two pe-dimensions">${[['x','X'],['y','Y'],['w','Largeur'],['h','Hauteur']].map(([k,label])=>`<label>${label}<input id="pe-${k}" type="number" step="1" ${k==='w'||k==='h'?'min="1"':''}></label>`).join('')}</div><p class="mini-note">Coordonnées du dessin, pas des mètres.</p>
    <label class="chk"><input id="pe-locked" type="checkbox">Verrouiller la géométrie</label><label class="chk"><input id="pe-confirmed" type="checkbox">Emplacement confirmé sur le terrain</label>
    <div class="pe-actions"><button class="btn" id="pe-duplicate">Dupliquer</button><button class="btn" id="pe-delete">Supprimer</button><button class="btn" id="pe-redraw">Redessiner le contour</button><button class="btn" id="pe-convert">Convertir en polygone</button><button class="btn" id="pe-delete-vertex">Supprimer le sommet</button></div></div>
@@ -87,7 +91,8 @@ class PlanEditor{
   on('pe-list','dblclick',e=>{const b=e.target.closest('[data-zone]');if(b&&b.dataset.action==='select'){this.select(b.dataset.zone);this.a.focus(bounds(this.zone));}});
   on('pe-name','change',e=>{const value=e.target.value.trim();if(!value){e.target.value=this.zone?.nom||'';this.status('Le nom ne peut pas être vide.');return;}this.change(()=>{if(this.zone)this.zone.nom=value;},'Nom enregistré.');});
   on('pe-color','change',e=>{const value=e.target.value;this.change(()=>{if(this.zone)this.zone.color=value;},'Couleur enregistrée.');});
-  on('pe-kind','change',e=>{const value=e.target.value;this.change(()=>{if(this.zone&&this.zone.kind!=='service'&&value!=='service'){this.zone.kind=value;this.zone.color=COLORS[value];}},'Type enregistré.');});
+  on('pe-kind','change',e=>{const value=e.target.value;this.change(()=>{if(this.zone&&this.zone.kind!=='service'&&value!=='service'){this.zone.kind=value;this.zone.color=COLORS[value];if(value==='annexe'){if(!this.zone.parent)this.zone.parent=this.originals[0].id;}else delete this.zone.parent;}},'Type enregistré.');});
+  on('pe-parent','change',e=>{const value=e.target.value;this.change(()=>{if(this.zone&&this.zone.kind==='annexe')this.zone.parent=value;},'Atelier de rattachement enregistré.');});
   for(const k of ['x','y','w','h'])on('pe-'+k,'change',e=>{const n=Number(e.target.value);if(!e.target.value||!Number.isFinite(n)||Math.abs(n)>=1e7||(['w','h'].includes(k)&&n<=0)){e.target.value=this.zone?Math.round(bounds(this.zone)[k]):'';this.status('Valeur invalide.');return;}this.change(()=>{if(this.zone&&!this.zone.locked)resize(this.zone,{...bounds(this.zone),[k]:n});},'Dimensions enregistrées.');});
   on('pe-locked','change',e=>{const checked=e.target.checked;this.change(()=>{if(this.zone)this.zone.locked=checked;},'Verrouillage mis à jour.');});
   on('pe-confirmed','change',e=>{const checked=e.target.checked;this.change(()=>{if(this.zone)this.zone.approx=!checked;},'Statut de confirmation enregistré.');});
@@ -106,6 +111,12 @@ class PlanEditor{
   window.addEventListener('keydown',e=>this.key(e),true);window.addEventListener('keyup',e=>{if(e.code==='Space'){this.space=false;this.svg.classList.remove('pe-panning');}},true);
   window.addEventListener('blur',()=>{this.space=false;if(this.gesture)this.cancel();});
   window.addEventListener('resize',()=>this.renderCanvas());
+  // Hors édition, cliquer une annexe la choisit comme service courant.
+  this.layer.addEventListener('click',e=>{
+   if(this.active)return;const g=e.target.closest('[data-pe-zone]');if(!g)return;
+   const z=this.state.zones.find(v=>v.id===g.dataset.peZone);
+   if(z&&z.kind==='annexe'&&this.a.pick)this.a.pick(z.id);
+  });
  }
  setTool(tool){this.cancel();this.tool=tool;this.vertex=null;this.render();}
  select(id){this.cancel();this.selected=id;this.vertex=null;this.tool='select';this.render();if(this.zone)this.status(this.zone.locked?'Zone verrouillée : déverrouillez-la pour modifier sa géométrie.':'Glissez la zone ou une poignée. Double-cliquez son nom dans la liste pour zoomer.');}
@@ -168,7 +179,7 @@ class PlanEditor{
   if(!this.active)return;e.stopImmediatePropagation();if(this.svg.hasPointerCapture(e.pointerId))this.svg.releasePointerCapture(e.pointerId);
   const g=this.gesture;if(!g)return;this.gesture=null;this.guides=[];
   if(g.type==='pan')return;
-  if(g.type==='rect'){const b=this.preview;this.preview=null;if(!b||b.w*this.scale()<6||b.h*this.scale()<6){this.render();this.status('Glissez pour dessiner une zone ; un simple clic ne suffit pas.');return;}this.addZone(b);this.tool='select';this.commit(g.before,'Local créé. Nommez-le dans le panneau de droite.');return;}
+  if(g.type==='rect'){const b=this.preview;this.preview=null;if(!b||b.w*this.scale()<6||b.h*this.scale()<6){this.render();this.status('Glissez pour dessiner une zone ; un simple clic ne suffit pas.');return;}this.addZone(b);this.tool='select';this.commit(g.before,'Local créé. Nommez-le à droite ; pour une seconde salle d’atelier, choisissez le type « Zone de production ».');return;}
   try{if(this.zone)validZone(this.zone);this.commit(g.before,'Géométrie enregistrée.');}catch(err){this.state=g.before;this.render();this.status(err.message+' Geste annulé.');}
  }
  addZone(shape){const id='local-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7);const n=this.state.zones.filter(z=>z.kind!=='service').length+1;const z=validZone({id,nom:'Local '+n,kind:'room',...shape,approx:true});this.state.zones.push(z);this.selected=id;this.vertex=null;}
@@ -178,7 +189,26 @@ class PlanEditor{
   const before=clone(this.state);if(this.redraw&&this.zone){Object.assign(this.zone,b,{pts});}else this.addZone({...b,pts});
   this.points=[];this.preview=null;this.redraw=false;this.tool='select';this.commit(before,'Contour enregistré. Déplacez ses sommets ou utilisez les + pour en ajouter.');
  }
- duplicate(){if(!this.zone)return;this.change(()=>{const z=clone(this.zone);z.id='local-'+Date.now().toString(36);z.nom=(z.nom+' — copie').slice(0,120);z.kind=z.kind==='service'?'room':z.kind;z.locked=false;z.visible=true;z.approx=true;resize(z,{...bounds(z),x:z.x+30,y:z.y+30});this.state.zones.push(z);this.selected=z.id;},'Copie créée comme annotation, sans nouvelle ressource simulée.');}
+ /* Dupliquer un atelier du moteur, c'est lui ouvrir une seconde salle : on
+  * obtient « Armement 2 », rattaché à Armement, et non une annotation morte.
+  * Dupliquer autre chose reste une copie sans effet sur le calcul. */
+ duplicate(){
+  if(!this.zone)return;const src=this.zone,seconde=src.kind==='service'||src.kind==='annexe';
+  const pere=src.kind==='annexe'?src.parent:src.id;
+  this.change(()=>{
+   const z=clone(src);z.id='local-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7);
+   if(seconde){
+    z.kind='annexe';z.parent=pere;z.color=COLORS.annexe;delete z.storages;
+    const base=this.state.zones.find(v=>v.id===pere),racine=base?base.nom:src.nom;
+    const n=this.state.zones.filter(v=>v.kind==='annexe'&&v.parent===pere).length+2;
+    z.nom=(racine+' '+n).slice(0,120);
+   } else z.nom=(z.nom+' — copie').slice(0,120);
+   z.locked=false;z.visible=true;z.approx=true;
+   resize(z,{...bounds(z),x:z.x+30,y:z.y+30});
+   this.state.zones.push(z);this.selected=z.id;this.vertex=null;
+  },seconde?'Seconde salle créée : déplacez-la, puis aménagez-la dans « Création des ateliers ».'
+          :'Copie créée comme annotation, sans nouvelle ressource simulée.');
+ }
  remove(){if(!this.zone)return;if(this.zone.kind==='service'){this.status('Cet atelier est relié au moteur. Utilisez l’œil pour le masquer ; il ne peut pas être supprimé.');return;}if(this.zone.locked){this.status('Déverrouillez la zone avant de la supprimer.');return;}this.change(()=>{this.state.zones=this.state.zones.filter(z=>z.id!==this.selected);this.selected=null;},'Zone supprimée. Annuler permet de la retrouver.');}
  removeVertex(){if(!this.zone?.pts||this.vertex==null||this.zone.locked)return;if(this.zone.pts.length<=3){this.status('Un polygone doit conserver au moins trois sommets.');return;}this.change(()=>{this.zone.pts.splice(this.vertex,1);Object.assign(this.zone,bounds(this.zone));this.vertex=null;},'Sommet supprimé.');}
  key(e){
@@ -198,7 +228,7 @@ class PlanEditor{
  render(){this.renderStoragePanels();this.renderCanvas();if(!this.active)return;const opacity=document.getElementById('pe-opacity');if(document.activeElement!==opacity)opacity.value=Math.round(this.state.backgroundOpacity*100);this.renderList();this.renderProperties();document.querySelectorAll('[data-pe-tool]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.peTool===this.tool)));document.getElementById('pe-undo').disabled=!this.undoStack.length;document.getElementById('pe-redo').disabled=!this.redoStack.length;document.getElementById('pe-finish').hidden=this.tool!=='poly';document.getElementById('pe-finish').disabled=this.points.length<3;document.getElementById('pe-cancel').hidden=!this.points.length&&!this.gesture;
   document.getElementById('pe-tool-help').textContent={select:'Glisser : déplacer · poignées : redimensionner · Espace : déplacer la vue',rect:'Glissez sur le plan pour créer un local · Maj : carré',poly:'Cliquez les sommets · cliquez le premier point ou Entrée pour fermer · Échap : annuler',hand:'Glissez pour déplacer le plan · molette : zoom'}[this.tool];this.svg.dataset.editorTool=this.tool;
  }
- showService(id){this.serviceId=id;this.renderStoragePanels();}
+ showService(id){this.serviceId=id;this.renderStoragePanels();if(!this.active)this.renderCanvas();}
  bindStoragePanel(panel){
   panel.addEventListener('click',e=>{
    const b=e.target.closest('[data-stock-action]');if(!b)return;
@@ -244,7 +274,17 @@ class PlanEditor{
   const assign=(id,value)=>{const e=document.getElementById(id);if(document.activeElement!==e)e.value=value;};
   assign('pe-name',z.nom);assign('pe-kind',z.kind);assign('pe-color',z.color);
   document.getElementById('pe-kind').disabled=z.kind==='service';document.querySelector('#pe-kind option[value=service]').disabled=z.kind!=='service';
-  document.getElementById('pe-kind-note').textContent=z.kind==='service'?'Atelier relié au moteur : vous pouvez corriger son contour et son nom.':'Annotation du plan : aucune charge ni ressource ajoutée au moteur.';
+  const champParent=document.getElementById('pe-parent-champ'),selParent=document.getElementById('pe-parent');
+  champParent.hidden=z.kind!=='annexe';
+  if(z.kind==='annexe'){
+   selParent.innerHTML=this.originals.map(o=>`<option value="${esc(o.id)}">${esc(o.nom)}</option>`).join('');
+   assign('pe-parent',z.parent||this.originals[0].id);
+  }
+  document.getElementById('pe-kind-note').textContent=z.kind==='service'
+   ?'Atelier relié au moteur : vous pouvez corriger son contour et son nom.'
+   :z.kind==='annexe'
+    ?'Seconde salle d’un atelier : elle s’aménage comme lui et ses personnes rejoignent son effectif. Elle ne crée pas une file séparée.'
+    :'Annotation du plan : aucune charge ni ressource ajoutée au moteur.';
   for(const k of ['x','y','w','h']){assign('pe-'+k,Math.round(bounds(z)[k]));document.getElementById('pe-'+k).disabled=z.locked;}
   document.getElementById('pe-locked').checked=z.locked;document.getElementById('pe-confirmed').checked=!z.approx;
   document.getElementById('pe-delete').disabled=z.kind==='service'||z.locked;
@@ -256,9 +296,11 @@ class PlanEditor{
   this.layer.replaceChildren();document.getElementById('plan-fond').style.opacity=this.state.backgroundOpacity;
   if(this.active&&this.grid){const defs=this.el('defs');const pattern=this.el('pattern',{id:'pe-grid-pattern',width:20,height:20,patternUnits:'userSpaceOnUse'});pattern.appendChild(this.el('path',{d:'M 20 0 L 0 0 0 20',fill:'none',stroke:'#91a0ac','stroke-width':.7}));defs.appendChild(pattern);this.layer.appendChild(defs);this.layer.appendChild(this.el('rect',{x:-10000,y:-10000,width:30000,height:30000,fill:'url(#pe-grid-pattern)','pointer-events':'none'}));}
   const scale=this.scale(),r=6/scale;
-  for(const z of this.state.zones){if(!z.visible||(!this.active&&z.kind==='service'))continue;const g=this.el('g',{'data-pe-zone':z.id,class:'pe-shape'+(z.id===this.selected&&this.active?' selected':''),'pointer-events':this.active?'all':'none'});
+  for(const z of this.state.zones){if(!z.visible||(!this.active&&z.kind==='service'))continue;
+   const vise=this.active?z.id===this.selected:z.id===this.serviceId;
+   const g=this.el('g',{'data-pe-zone':z.id,class:'pe-shape'+(vise?' selected':'')+(z.kind==='annexe'?' pe-annexe':''),'pointer-events':this.active||z.kind==='annexe'?'all':'none'});
    const b=bounds(z),shape=z.pts?this.el('polygon',{points:z.pts.map(p=>p.join(',')).join(' ')}):this.el('rect',{x:b.x,y:b.y,width:b.w,height:b.h});
-   for(const[k,v]of Object.entries({fill:z.color,'fill-opacity':z.id===this.selected ? .22 : .09,stroke:z.color,'stroke-width':z.id===this.selected?2.5:1.3,'vector-effect':'non-scaling-stroke','stroke-dasharray':z.approx?'6 4':'none'}))shape.setAttribute(k,v);g.appendChild(shape);
+   for(const[k,v]of Object.entries({fill:z.color,'fill-opacity':vise?.22:z.kind==='annexe'?.16:.09,stroke:z.color,'stroke-width':vise?2.5:z.kind==='annexe'?2:1.3,'vector-effect':'non-scaling-stroke','stroke-dasharray':z.approx?'6 4':'none'}))shape.setAttribute(k,v);g.appendChild(shape);
    const text=this.el('text',{x:b.x+7/scale,y:b.y+17/scale,'font-size':12/scale,'pointer-events':'none',class:'pe-shape-label'});const limit=Math.floor((b.w*scale-14)/7);text.textContent=limit>=5?(z.nom.length>limit?z.nom.slice(0,limit-1)+'…':z.nom):'';if(z.id===this.selected)text.textContent=z.nom;const title=this.el('title');title.textContent=z.nom;g.appendChild(title);g.appendChild(text);this.layer.appendChild(g);
   }
   if(!this.active)return;

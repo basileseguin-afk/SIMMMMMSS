@@ -328,6 +328,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/etat-plan-browser.cjs` | État de paramétrage des ateliers sur le plan, bascule des légendes, bande d'indicateurs contextuelle |
 | `tests/zoom-browser.cjs` | Bornes du zoom, cadrage d'un service, raccourcis clavier, bridage du déplacement |
 | `tests/grille-moteur-browser.cjs` | Tunnels et lignes robot tracés pilotant les réglages du moteur |
+| `tests/annexe-browser.cjs` | Zone de production annexe (« Armement 2 ») : création, rattachement, aménagement, effectif |
 | `BUGS.md` | Registre des bugs connus — à lire avant de coder, à compléter après chaque revue |
 | `postes/` | **Bibliothèque** de modèles de tables, chaînes et assemblages, ouverte depuis l’onglet « Création des ateliers ». Ce n’est plus une application autonome |
 
@@ -343,6 +344,6 @@ Parcours spécifiques : `node tests/editor-browser.cjs`, `node tests/storage-bro
 `node tests/import-browser.cjs`, `node tests/flows-browser.cjs`,
 `node tests/workshops-browser.cjs`, `node tests/usability-browser.cjs`,
 `node tests/sauvegarde-browser.cjs`, `node tests/etat-plan-browser.cjs`,
-`node tests/zoom-browser.cjs`, `node tests/grille-moteur-browser.cjs`
-(Playwright / Chromium). Ils se rejouent **tous** : un parcours laissé de côté
+`node tests/zoom-browser.cjs`, `node tests/grille-moteur-browser.cjs`,
+`node tests/annexe-browser.cjs` (Playwright / Chromium). Ils se rejouent **tous** : un parcours laissé de côté
 est une régression qui passe.

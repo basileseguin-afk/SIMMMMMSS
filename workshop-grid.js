@@ -137,7 +137,7 @@ class WorkshopGrid{
   this.a.svg.addEventListener('click',e=>{if(this.blockClick){e.stopImmediatePropagation();this.blockClick=false;}},true);
  }
  setActive(active){this.active=active;document.body.classList.toggle('workshops-open',active);document.getElementById('workshop-panel').hidden=!active;if(!active){this.stamp=null;this.tool='select';}this.render();}
- selectService(id){this.service=id;this.selected=null;this.workshop=this.state.workshops.find(w=>w.service===id)?.id||null;this.stamp=null;this.tool='select';this.render();if(this.zone){this.a.focus(this.zone);this.status('Service cadré au zoom maximal. Créez un atelier, puis peignez ses équipements.');}}
+ selectService(id){this.service=id;this.selected=null;this.workshop=this.state.workshops.find(w=>w.service===id)?.id||null;this.stamp=null;this.tool='select';this.render();if(this.zone){this.a.focus(this.zone);this.status('Service cadré. Créez un atelier, puis peignez ses équipements.');}}
  ensureGroup(){if(!this.workshop){const w={id:uid(),service:this.service,nom:'Atelier 1'};this.state.workshops.push(w);this.workshop=w.id;}}
  itemsForService(){const ids=new Set(this.state.workshops.filter(w=>w.service===this.service).map(w=>w.id));return this.state.items.filter(i=>ids.has(i.workshop));}
  point(e){const p=this.a.svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;const q=p.matrixTransform(this.layer.getScreenCTM().inverse());return [Math.floor(q.x/this.state.step),Math.floor(q.y/this.state.step)];}

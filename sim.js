@@ -632,7 +632,7 @@ function majApresEdition() {
 function majPoignees() {
   if (!gPoign) return;
   [...gPoign.querySelectorAll('.poignee, .poignee-ajout')].forEach(n => n.remove());
-  if (!editMode || !selection) return;
+  if (!editMode || !selection || !ZONES[selection]) return;   // une annexe se retouche dans l'éditeur du plan
   const z = ZONES[selection], r = 15 / vk, sw = 3 / vk;
 
   if (estPoly(z)) {
@@ -783,7 +783,7 @@ function majListeEdition() {
 
 function majChampsEdition() {
   const bloc = document.getElementById('edit-sel'); if (!bloc) return;
-  if (!editMode || !selection) { bloc.hidden = true; return; }
+  if (!editMode || !selection || !ZONES[selection]) { bloc.hidden = true; return; }
   bloc.hidden = false;
   const z = ZONES[selection];
   document.getElementById('edit-nom').textContent = z.nom + (z.approx ? '  (à confirmer)' : '');
@@ -804,13 +804,15 @@ function initEdition() {
   Sim.editor=new window.OrlyPlan.PlanEditor({
     svg,viewport:Sim._gVue,zones:ZONES,storages:STORAGES,notify:toast,
     update(id,visible){positionnerZone(id);zoneEls[id].titre.textContent=ZONES[id].nom;zoneEls[id].g.setAttribute('aria-label',ZONES[id].nom);zoneEls[id].g.style.display=visible?'':'none';},
-    refresh(){if(Sim.flows)Sim.flows.refresh();redessinerEdges();document.querySelectorAll('#zone-picker option').forEach(o=>{if(ZONES[o.value])o.textContent=ZONES[o.value].nom;});},
+    refresh(){if(Sim.flows)Sim.flows.refresh();redessinerEdges();majPicker();if(Sim.majGrilleEffectifs)Sim.majGrilleEffectifs();},
+    pick(id){selectionner(id);},
     getView(){return {vk,vtx,vty};},
     pan(v,dx,dy){const m=svg.getScreenCTM();vtx=v.vtx+dx/m.a;vty=v.vty+dy/m.d;vk=v.vk;appliquerVue();},
     focus(b){vk=Math.min(8,Math.max(.5,Math.min(VUE.w/(b.w+150),VUE.h/(b.h+150))*.8));vtx=VUE.x+VUE.w/2-(b.x+b.w/2)*vk;vty=VUE.y+VUE.h/2-(b.y+b.h/2)*vk;appliquerVue();}
   });
   document.getElementById('plan-storages').style.display='none';
   document.getElementById('btn-edit').addEventListener('click',basculerEdition);
+  majPicker();   // le plan enregistré peut contenir des annexes
 }
 
 function spawnToken(edgeId, color) {
@@ -859,6 +861,42 @@ const ETATS_PARAM = {
   pret:    { lib:'Aménagé',  aide:'Effectif et au moins un équipement tracé dans « Création des ateliers ».' }
 };
 
+/* ==========================================================================
+ *  ZONES ANNEXES — une seconde salle pour un atelier du moteur
+ *  Armement 2 fait le même travail qu'Armement : même file, même procédé.
+ *  Ce qu'elle apporte, c'est un espace à aménager et des gens à y affecter.
+ *  Un atelier qui aurait sa propre file d'attente serait un autre modèle : il
+ *  faudrait une règle de répartition des ordres, qui n'existe pas encore.
+ * ==========================================================================*/
+function annexes() {
+  const e = Sim.editor; if (!e) return [];
+  return e.state.zones.filter(z => z.kind === 'annexe' && z.visible !== false);
+}
+/* L'atelier du moteur derrière un identifiant de zone : lui-même, ou le parent
+ * quand c'est une annexe. */
+function serviceMoteur(id) {
+  const a = annexes().find(z => z.id === id);
+  return a ? a.parent : id;
+}
+/* La liste des services suit le plan : les annexes y figurent sous leur parent. */
+function majPicker() {
+  const picker = document.getElementById('zone-picker'); if (!picker) return;
+  const garde = picker.value;
+  picker.innerHTML = '<option value="">Vue d\u2019ensemble</option>';
+  const ajoute = (id, nom, decale) => {
+    const o = document.createElement('option');
+    o.value = id; o.textContent = (decale ? '\u2514 ' : '') + nom; picker.appendChild(o);
+  };
+  Object.keys(ZONES).forEach(id => {
+    ajoute(id, ZONES[id].nom, false);
+    annexes().filter(a => a.parent === id).forEach(a => ajoute(a.id, a.nom, true));
+  });
+  // Une annexe dont l'atelier a disparu resterait invisible : on la remonte.
+  annexes().filter(a => !ZONES[a.parent]).forEach(a => ajoute(a.id, a.nom, false));
+  picker.value = garde;
+  if (picker.value !== garde) picker.value = '';
+}
+
 /* Équipements, postes et types tracés, regroupés par service. Un seul
  * balayage : les effectifs, les tunnels et les lignes robot en sortent tous. */
 function amenagementParService() {
@@ -866,7 +904,9 @@ function amenagementParService() {
   if (!w) return par;
   w.items.forEach(i => {
     const a = w.workshops.find(x => x.id === i.workshop); if (!a) return;
-    const e = par[a.service] || (par[a.service] = { equipements:0, postes:0, types:{} });
+    // Ce qui est tracé dans une annexe compte pour l'atelier dont elle dépend.
+    const service = serviceMoteur(a.service);
+    const e = par[service] || (par[service] = { equipements:0, postes:0, types:{} });
     e.equipements++; e.postes += (i.postes || 0);
     e.types[i.type] = (e.types[i.type] || 0) + 1;
   });
@@ -968,7 +1008,13 @@ function majGoulotInfo(goulot) {
   const el=document.getElementById('goulot-info');let html='';
   if(!el.querySelector('[data-detail-body]'))el.innerHTML='<div class="detail-title"><strong></strong><button class="btn" data-clear-selection>Fermer</button></div><div data-detail-body></div>';
   el.querySelector('.detail-title').hidden=!selection;
-  el.querySelector('strong').textContent=selection?ZONES[selection].nom:'';
+  const annexe=selection&&!ZONES[selection]?annexes().find(a=>a.id===selection):null;
+  el.querySelector('strong').textContent=annexe?annexe.nom:selection?ZONES[selection].nom:'';
+  if(annexe){
+    const pere=ZONES[annexe.parent];
+    el.querySelector('[data-detail-body]').innerHTML='<p>Annexe de <strong>'+escapeHTML(pere?pere.nom:annexe.parent)+'</strong>\u00a0: ce qui y est trac\u00e9 et les personnes qu\u2019on y affecte comptent dans cet atelier. Elle ne forme pas une file d\u2019attente \u00e0 part.</p>';
+    return;
+  }
   if(selection){
     const id=selection,z=ZONES[id],st=stations[id];
 
@@ -1531,7 +1577,7 @@ function initWorkbench() {
   });
   document.getElementById('edit-done').addEventListener('click',()=>{if(editMode)basculerEdition();document.getElementById('btn-edit').focus();});
   const picker=document.getElementById('zone-picker');
-  Object.keys(ZONES).forEach(id=>{const o=document.createElement('option');o.value=id;o.textContent=ZONES[id].nom;picker.appendChild(o);});
+  majPicker();
   picker.addEventListener('change',()=>{const id=picker.value;selection=null;selectionner(id||null);});
   document.getElementById('goulot-info').addEventListener('click',e=>{if(e.target.closest('[data-clear-selection]'))selectionner(selection);});
   document.getElementById('flight-search').addEventListener('input',renderFlights);

@@ -28,3 +28,18 @@ test('storage migration removes only storage shapes and preserves service data',
  assert.equal(validatePlan({cuisine:{x:5,y:5,w:20,h:20}},p.zones.filter(z=>z.kind==='service')).zones[0].storages.length,1);
  p.zones[0].storages.push({...p.zones[0].storages[0]});assert.throws(()=>validatePlan(p,base),/Stockage invalide/);
 });
+
+test('une annexe doit nommer un atelier du moteur existant',()=>{
+ const annexe={id:'local-1',nom:'Cuisine 2',kind:'annexe',parent:'cuisine',x:0,y:0,w:40,h:40};
+ const p=validatePlan({schema:'ory-plan',version:3,zones:[...base,annexe]},base);
+ assert.equal(p.zones.length,2);
+ assert.equal(p.zones[1].kind,'annexe');
+ assert.equal(p.zones[1].parent,'cuisine');
+ // Sans rattachement, ou rattachée à un atelier qui n'existe pas, elle est refusée :
+ // une seconde salle de rien du tout n'aurait aucun sens pour le moteur.
+ assert.throws(()=>validZone({...annexe,parent:''}),/annexe/i);
+ assert.throws(()=>validZone({...annexe,parent:undefined}),/annexe/i);
+ assert.throws(()=>validatePlan({schema:'ory-plan',version:3,zones:[...base,{...annexe,parent:'plonge'}]},base),/atelier inconnu/);
+ // L'annexe n'emporte pas de stockages : ce sont ceux de son atelier.
+ assert.equal(p.zones[1].storages,undefined);
+});
