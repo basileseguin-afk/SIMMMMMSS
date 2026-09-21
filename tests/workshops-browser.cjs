@@ -13,7 +13,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
   await click('[data-view=ateliers]');assert.equal(await page.locator('#view-plan').isVisible(),true);assert.equal(await page.locator('#btn-play').isDisabled(),true);
   await page.locator('.zone[data-id=cuisine]').click();
-  const transform=await page.locator('#viewport').getAttribute('transform');await click('#zoom-in');assert.equal(await page.locator('#viewport').getAttribute('transform'),transform,'service fit is maximum zoom');
+  const cadrage=await page.locator('#viewport').getAttribute('transform');await click('#zoom-in');
+  // Le cadrage du service n'est plus un plafond : on doit pouvoir s'approcher
+  // d'un carreau de 50 cm, puis revenir au cadrage d'un bouton.
+  const proche=await page.locator('#viewport').getAttribute('transform');
+  const ech=t=>parseFloat(t.match(/scale\(([\d.]+)\)/)[1]);
+  assert.ok(ech(proche)>ech(cadrage),'on peut zoomer au-del\u00e0 du cadrage du service');
+  await click('#zoom-fit');assert.equal(await page.locator('#viewport').getAttribute('transform'),cadrage,'\u00ab cadrer \u00bb revient au service');
   const cells=await page.evaluate(()=>{const w=Sim.workshops,z=w.zone,s=w.state.step;for(let y=Math.ceil(z.y/s)+1;y<(z.y+z.h)/s-2;y++)for(let x=Math.ceil(z.x/s)+1;x<(z.x+z.w)/s-5;x++)if(Array.from({length:5},(_,i)=>OrlyWorkshops.cellInside((x+i)+','+y,z,s)).every(Boolean))return [x,y];throw Error('No five-cell span');});
   await click('[data-wg-tool=table]');const a=await screen(cells),b=await screen([cells[0]+2,cells[1]]);await page.mouse.move(a.x,a.y);await page.mouse.down();await page.mouse.move(b.x,b.y,{steps:6});await page.mouse.up();
   assert.equal((await state()).items.length,1);assert.equal((await state()).items[0].cells.length,3);assert.equal((await state()).workshops[0].service,'cuisine');
@@ -102,6 +108,6 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('#staff-cuisine').isDisabled(),false);
 
   await page.setViewportSize({width:390,height:844});await click('[data-view=ateliers]');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-  assert.deepEqual(errors,[]);console.log('Workshop browser passed: same map, capped zoom, painting, erase, rotation, groups, library placement, persistence, export, invalid import, tabs and mobile.');
+  assert.deepEqual(errors,[]);console.log('Workshop browser passed: same map, zoom beyond the service fit, painting, erase, rotation, groups, library placement, persistence, export, invalid import, tabs and mobile.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

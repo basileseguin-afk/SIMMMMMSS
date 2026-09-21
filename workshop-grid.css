@@ -21,7 +21,14 @@ body.workshops-open #tokens{display:none}
 body.workshop-focused .zone>:not(.fond):not(title){display:none}
 body.workshop-focused .zone .fond{stroke-width:2;vector-effect:non-scaling-stroke}
 body.workshops-open .map-footer>*{display:none}
-body.workshops-open .map-footer::before{content:'Grille 50 × 50 cm schématique · Glisser pour construire · Sélection pour déplacer';font-size:12px;color:var(--txt2)}
+body.workshops-open .map-footer::before{content:'Grille 50 × 50 cm · Glisser pour construire · Molette : zoom · Double-clic : cadrer';font-size:12px;color:var(--txt2)}
+
+/* Aperçu des équipements sur la vue d'ensemble : lisible sans masquer le fond,
+   et transparent aux clics — on sélectionne l'atelier, pas la table. */
+#workshop-overview{pointer-events:none}
+/* Le fond translucide de la zone passe par-dessus : un contour net, d'épaisseur
+   constante à tous les zooms, garde les formes lisibles. */
+#workshop-overview .wg-apercu rect{fill-opacity:.5;stroke-opacity:.95;stroke-width:1;vector-effect:non-scaling-stroke}
 
 /* Total des personnes affectées : le chiffre qui alimentera le moteur. */
 .wg-total:not(:empty){margin:10px 0;padding:8px 10px;border-radius:8px;background:var(--bg3);font-weight:700;color:var(--txt)}

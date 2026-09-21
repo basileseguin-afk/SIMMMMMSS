@@ -210,8 +210,8 @@ en gardant les deux entrées.
 ## 7. Vérifier avant de livrer
 
 ```bash
-node --test tests/*.test.cjs     # 118 tests purs
-node tests/browser-smoke.cjs     # puis les 8 autres parcours (Playwright + Chromium)
+node --test tests/*.test.cjs     # 120 tests purs
+node tests/browser-smoke.cjs     # puis les 10 autres parcours (Playwright + Chromium)
 ```
 
 | Parcours | Couvre |
@@ -225,8 +225,10 @@ node tests/browser-smoke.cjs     # puis les 8 autres parcours (Playwright + Chro
 | `usability-browser` | repères d'ergonomie : titres, vues, contrastes |
 | `sauvegarde-browser` | sauvegarde complète : export, refus atomique, restauration |
 | `etat-plan-browser` | état de paramétrage sur le plan et bascule des légendes |
+| `zoom-browser` | bornes du zoom, cadrage, clavier, bridage du déplacement |
+| `grille-moteur-browser` | tunnels et lignes robot tracés pilotant le moteur |
 
-**Les neuf parcours navigateur doivent être passés avant de livrer**, pas le seul
+**Les onze parcours navigateur doivent être passés avant de livrer**, pas le seul
 `browser-smoke` : c'est en n'en rejouant qu'une partie qu'une régression de
 navigation est partie sur la branche (voir BUG-012).
 

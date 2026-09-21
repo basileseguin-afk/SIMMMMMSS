@@ -49,7 +49,8 @@
   const CFG_DEFAUT = {
     jour: { debut: 5 * 60, fin: 23 * 60 },   // fenêtre simulée (minutes depuis 00:00)
     dispo: 0.85,                             // disponibilité effective d'une personne
-    robotCadence: 320,                       // plateaux YC / heure
+    robotCadence: 320,                       // plateaux YC / heure, PAR LIGNE
+    robotLignes: 1,                          // lignes robot installées ; 0 = tout le YC à la main
     tunnels: 3, tunnelDouble: true,          // plonge
     tunnelDebit: 4,                          // unités / min par tunnel simple (double = ×2)
     loadDelay: 45,                           // min avant heure_std pour être « à l'heure »
@@ -123,6 +124,8 @@
 
   /** Le robot dresse-t-il les YC de ce vol ? Selon la liste des compagnies servies. */
   function robotServi(f, cfg) {
+    // Sans ligne installée, il n'y a pas de robot : tout le YC part à la main.
+    if (cfg && (cfg.robotLignes | 0) <= 0 && cfg.robotLignes !== undefined) return false;
     const liste = (cfg && cfg.robotCompagnies) || CFG_DEFAUT.robotCompagnies;
     const cie = String(f.cie || '').trim().toUpperCase();
     return liste.some(c => String(c).trim().toUpperCase() === cie);
@@ -253,7 +256,11 @@
         robotUtil: 0, robotAttente: 0, robotTauxJour: 0   // renseignés sur le montage seulement
       };
     });
-    const robot = new Ressource(env, 1, { nom: 'robot' });
+    // Une place par ligne robot : deux lignes dressent deux vols à la fois, chacune
+    // à sa cadence. Le minimum de 1 évite une ressource vide quand il n'y a pas de
+    // robot du tout — dans ce cas aucun plateau ne lui est routé.
+    const lignesRobot = Math.max(1, (cfg.robotLignes === undefined ? 1 : cfg.robotLignes) | 0);
+    const robot = new Ressource(env, lignesRobot, { nom: 'robot' });
 
     /* ---- viviers polyvalents ---- */
     const viviers = (Array.isArray(cfg.viviers) ? cfg.viviers : []).map((v, i) => {
@@ -754,7 +761,8 @@
       });
       return {
         ateliers,
-        robot: { cadence: cfg.robotCadence, compagnies: (cfg.robotCompagnies || []).slice(), plateauxRobot, plateauxManuel,
+        robot: { cadence: cfg.robotCadence, lignes: (cfg.robotLignes === undefined ? 1 : cfg.robotLignes | 0),
+                 compagnies: (cfg.robotCompagnies || []).slice(), plateauxRobot, plateauxManuel,
                  occupationJour: robot.tauxOccupation(), attenteMoyenne: robot.attente.moyenne(), attenteP90: robot.attente.percentile(90) },
         viviers: viviers.map(v => ({
           nom: v.nom, effectif: v.effectif, ateliers: v.ateliers.slice(),

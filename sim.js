@@ -277,6 +277,10 @@ function construirePlan() {
     gSto.appendChild(g);
   });
 
+  // Aperçu des équipements tracés : sous les ateliers, pour ne pas couvrir
+  // les libellés ni capter les clics.
+  gVue.appendChild(svgEl('g', { id:'workshop-overview' }));
+
   // Ateliers (au-dessus)
   const gZones = svgEl('g', {}); gVue.appendChild(gZones);
   Object.keys(ZONES).forEach(id => {
@@ -368,8 +372,9 @@ function dessinerFluxConfigures(){
 function zoomService(z){const b=boite(z);return Math.max(.5,Math.min(VUE.w/(b.w+80),VUE.h/(b.h+80))*.93);}
 function initWorkshops(){
   Sim.workshops=new OrlyWorkshops.WorkshopGrid({svg,viewport:Sim._gVue,zones:()=>Sim.editor.state.zones,
-    focus(z){const b=boite(z);vk=zoomService(z);vtx=VUE.x+VUE.w/2-(b.x+b.w/2)*vk;vty=VUE.y+VUE.h/2-(b.y+b.h/2)*vk;appliquerVue();},
-    overview(){selectionner(null);vk=1;vtx=0;vty=0;appliquerVue();}
+    apercu:()=>document.getElementById('workshop-overview'),
+    focus(z){cadrerZone(z);},
+    overview(){selectionner(null);vueEnsemble();}
   });
 }
 function initFlux(){
@@ -404,7 +409,27 @@ function verifierPlan() {
 
 /* --- Zoom / déplacement --------------------------------------------------- */
 let vk = 1, vtx = 0, vty = 0;
+const ZOOM_MIN = 0.5, ZOOM_MAX = 16;
+/* Le centre de l'écran reste toujours à portée du plan. Sans cela on peut
+ * dériver jusqu'à l'écran vide, et le seul recours est « vue d'ensemble ». */
+function brider() {
+  const m = 0.35;
+  const cx = (VUE.x + VUE.w/2 - vtx) / vk, cy = (VUE.y + VUE.h/2 - vty) / vk;
+  const bx = Math.min(Math.max(cx, VUE.x - VUE.w*m), VUE.x + VUE.w*(1+m));
+  const by = Math.min(Math.max(cy, VUE.y - VUE.h*m), VUE.y + VUE.h*(1+m));
+  vtx = VUE.x + VUE.w/2 - bx*vk; vty = VUE.y + VUE.h/2 - by*vk;
+}
+/* Cadre une zone au centre. Le facteur de cadrage n'est plus un plafond :
+ * on peut toujours s'approcher davantage pour tracer au carreau. */
+function cadrerZone(z) {
+  const b = boite(z);
+  vk = Math.min(ZOOM_MAX, zoomService(z)); 
+  vtx = VUE.x + VUE.w/2 - (b.x + b.w/2)*vk; vty = VUE.y + VUE.h/2 - (b.y + b.h/2)*vk;
+  appliquerVue();
+}
+function vueEnsemble() { vk = 1; vtx = 0; vty = 0; appliquerVue(); }
 function appliquerVue() {
+  brider();
   Sim._gVue.setAttribute('transform', 'translate(' + vtx + ' ' + vty + ') scale(' + vk + ')');
   svg.classList.toggle('zoomed', vk >= 1.7);
   const z = document.getElementById('zoom-val'); if (z) z.textContent = Math.round(vk*100) + '%';
@@ -418,8 +443,9 @@ function ptSvg(e) {
   return p.matrixTransform(m.inverse());
 }
 function zoomer(f, p) {
-  const max=activeView==='ateliers'&&Sim.workshops?.zone?zoomService(Sim.workshops.zone):8;
-  const nk = Math.min(max, Math.max(0.5, vk * f));
+  // Le cadrage du service servait de plafond en vue Ateliers : on ne pouvait
+  // pas s'approcher d'un carreau de 50 cm pour le tracer. Même borne partout.
+  const nk = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, vk * f));
   if (!p) p = { x:VUE.x + VUE.w/2, y:VUE.y + VUE.h/2 };
   const wx = (p.x - vtx) / vk, wy = (p.y - vty) / vk;
   vk = nk; vtx = p.x - wx*vk; vty = p.y - wy*vk;
@@ -429,7 +455,34 @@ function zoomer(f, p) {
 function versPlan(p) { return { x:(p.x - vtx) / vk, y:(p.y - vty) / vk }; }
 
 function initInteractions() {
-  svg.addEventListener('wheel', e => { e.preventDefault(); zoomer(e.deltaY < 0 ? 1.18 : 1/1.18, ptSvg(e)); }, { passive:false });
+  // Un cran fixe saute trop sur un pavé tactile, qui envoie beaucoup de petits
+  // événements ; le pincement arrive en molette avec ctrlKey. D'où un facteur
+  // proportionnel à la distance parcourue plutôt qu'un pas constant.
+  svg.addEventListener('wheel', e => {
+    e.preventDefault();
+    const d = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+    zoomer(Math.exp(-d * (e.ctrlKey ? 0.012 : 0.0035)), ptSvg(e));
+  }, { passive:false });
+
+  // Double-clic : cadrer l'atelier visé, ou revenir à l'ensemble ailleurs.
+  svg.addEventListener('dblclick', e => {
+    if (editMode) return;
+    const gz = e.target.closest && e.target.closest('.zone');
+    if (gz && ZONES[gz.dataset.id]) { selectionner(gz.dataset.id); cadrerZone(ZONES[gz.dataset.id]); }
+    else vueEnsemble();
+  });
+
+  // Clavier : le plan est focalisable, il doit se piloter sans souris.
+  svg.addEventListener('keydown', e => {
+    const pas = 90;
+    const gestes = {
+      '+':()=>zoomer(1.25), '=':()=>zoomer(1.25), '-':()=>zoomer(1/1.25), '_':()=>zoomer(1/1.25),
+      '0':()=>vueEnsemble(),
+      ArrowLeft:()=>{vtx += pas; appliquerVue();}, ArrowRight:()=>{vtx -= pas; appliquerVue();},
+      ArrowUp:()=>{vty += pas; appliquerVue();},   ArrowDown:()=>{vty -= pas; appliquerVue();}
+    };
+    const g = gestes[e.key]; if (g) { e.preventDefault(); g(); }
+  });
 
   let act = null;   // action en cours : pan | move | resize | trace
 
@@ -806,14 +859,16 @@ const ETATS_PARAM = {
   pret:    { lib:'Aménagé',  aide:'Effectif et au moins un équipement tracé dans « Création des ateliers ».' }
 };
 
-/* Équipements et postes tracés, regroupés par service. */
+/* Équipements, postes et types tracés, regroupés par service. Un seul
+ * balayage : les effectifs, les tunnels et les lignes robot en sortent tous. */
 function amenagementParService() {
   const w = Sim.workshops && Sim.workshops.state, par = {};
   if (!w) return par;
   w.items.forEach(i => {
     const a = w.workshops.find(x => x.id === i.workshop); if (!a) return;
-    const e = par[a.service] || (par[a.service] = { equipements:0, postes:0 });
+    const e = par[a.service] || (par[a.service] = { equipements:0, postes:0, types:{} });
     e.equipements++; e.postes += (i.postes || 0);
+    e.types[i.type] = (e.types[i.type] || 0) + 1;
   });
   return par;
 }
@@ -1066,6 +1121,11 @@ function initControles() {
     });
   });
   bind('tunnels', e => { CFG.tunnels = +e.target.value; document.getElementById('tunnels-val').textContent = e.target.value; majPlan(); });
+  bind('robot-lignes', e => {
+    CFG.robotLignes = +e.target.value;
+    document.getElementById('robot-lignes-val').textContent = e.target.value;
+    if (now === DEBUT()) { build(Sim.dataCourante || SAMPLE); majPlan(); majDashboard(); }
+  });
   document.getElementById('double').addEventListener('change', e => { CFG.tunnelDouble = e.target.checked; majPlan(); });
   bind('materiel', e => { CFG.materiel.initial = +e.target.value; document.getElementById('materiel-val').textContent = e.target.value + ' u'; });
   /* Effectifs déduits de l'aménagement : somme des personnes affectées aux
@@ -1074,15 +1134,9 @@ function initControles() {
    * C'est ce qui évite d'avoir à choisir entre les deux : un service non
    * aménagé ne tombe pas à zéro parce qu'un autre l'a été. */
   const effectifsGrille = () => {
-    const w = Sim.workshops && Sim.workshops.state;
-    if (!w) return {};
-    const parService = {};
-    w.items.forEach(i => {
-      if (!i.postes) return;
-      const atelier = w.workshops.find(x => x.id === i.workshop);
-      if (atelier) parService[atelier.service] = (parService[atelier.service] || 0) + i.postes;
-    });
-    return parService;
+    const par = amenagementParService(), out = {};
+    Object.keys(par).forEach(id => { if (par[id].postes) out[id] = par[id].postes; });
+    return out;
   };
   function majGrilleEffectifs() {
     const grille = effectifsGrille(), pilote = CFG.grilleEffectifs;
@@ -1098,6 +1152,26 @@ function initControles() {
         (n > 0 ? '<span class="depuis-grille">grille ' + n + '</span>' : '');
       input.classList.toggle('pilote-grille', !!(pilote && n > 0));
     });
+    // Même règle que pour les personnes : un tunnel ou une ligne robot tracés
+    // font foi ; rien de tracé, le curseur reste maître. Ce sont des équipements
+    // qu'on installe, pas des effectifs : on les compte, on ne les additionne pas
+    // aux postes.
+    const amen = Sim.amenagement = amenagementParService();
+    const equip = [
+      { cle:'tunnels',     service:'plonge', type:'tunnel', champ:'tunnels',      val:'tunnels-val',      suffixe:'' },
+      { cle:'robotLignes', service:'prepa',  type:'robot',  champ:'robot-lignes', val:'robot-lignes-val', suffixe:'' }
+    ];
+    const pilotes = Sim.grillePilote = {};
+    equip.forEach(e => {
+      const n = ((amen[e.service] || {}).types || {})[e.type] || 0;
+      const input = document.getElementById(e.champ); if (!input) return;
+      pilotes[e.cle] = !!(pilote && n > 0);
+      if (pilotes[e.cle] && now === DEBUT()) { CFG[e.cle] = n; input.value = n; }
+      const b = document.getElementById(e.val);
+      if (b) b.innerHTML = escapeHTML(String(CFG[e.cle])) + e.suffixe +
+        (n > 0 ? '<span class="depuis-grille">grille ' + n + '</span>' : '');
+    });
+
     const note = document.getElementById('grille-note');
     if (note) note.textContent = renseignes
       ? renseignes + ' service(s) aménagé(s) avec des personnes. ' + (pilote
@@ -1149,9 +1223,13 @@ function initControles() {
   document.getElementById('sauvegarde-import').addEventListener('change', restaurerSauvegarde);
   window.addEventListener('resize', dessinerChart);
   // zoom / fond de plan
-  document.getElementById('zoom-in').addEventListener('click', () => zoomer(1.35));
-  document.getElementById('zoom-out').addEventListener('click', () => zoomer(1/1.35));
-  document.getElementById('zoom-reset').addEventListener('click', () => { vk = 1; vtx = 0; vty = 0; appliquerVue(); });
+  document.getElementById('zoom-in').addEventListener('click', () => zoomer(1.25));
+  document.getElementById('zoom-out').addEventListener('click', () => zoomer(1/1.25));
+  document.getElementById('zoom-reset').addEventListener('click', vueEnsemble);
+  document.getElementById('zoom-fit').addEventListener('click', () => {
+    const id = selection || (Sim.workshops && Sim.workshops.service);
+    if (id && ZONES[id]) cadrerZone(ZONES[id]); else toast('Choisissez d’abord un service.');
+  });
   document.getElementById('fond-plan').addEventListener('change', e => {
     svg.classList.toggle('sans-fond', !e.target.checked);
   });
@@ -1418,10 +1496,11 @@ function updateSource() {
 function updateRunState() {
   const started=enMarche||now>DEBUT();
   document.getElementById('run-state').textContent=editMode?'Édition du plan':now>=FIN()?'Terminé':enMarche?'En cours':started?'En pause':'Prêt à lancer';
-  document.querySelectorAll('#sliders-staff input,#robot,#robot-cies,#yc-manuel,#tampons input,#tunnels,#double,#materiel,#vivier,#vivier-ateliers input,#calendrier,#cal-jours,#shift,#loadDelay').forEach(input=>{
-    const parGrille=CFG.grilleEffectifs&&input.dataset.id&&(Sim.grilleCache||{})[input.dataset.id]>0;
+  document.querySelectorAll('#sliders-staff input,#robot,#robot-lignes,#robot-cies,#yc-manuel,#tampons input,#tunnels,#double,#materiel,#vivier,#vivier-ateliers input,#calendrier,#cal-jours,#shift,#loadDelay').forEach(input=>{
+    const parGrille=(CFG.grilleEffectifs&&input.dataset.id&&(Sim.grilleCache||{})[input.dataset.id]>0)
+      ||(input.dataset.grille&&(Sim.grillePilote||{})[input.dataset.grille]);
     input.disabled=started||NON_MODELISES.has(input.dataset.id)||parGrille;
-    input.title=NON_MODELISES.has(input.dataset.id)?'Service non relié au calcul actuel':parGrille?'Effectif repris de « Création des ateliers ». Décochez pour régler ici.':started?'Recommencez la simulation pour modifier les réglages':'';
+    input.title=NON_MODELISES.has(input.dataset.id)?'Service non relié au calcul actuel':parGrille?'Repris de « Création des ateliers ». Décochez pour régler ici.':started?'Recommencez la simulation pour modifier les réglages':'';
   });
   document.querySelectorAll('[data-view]').forEach(b=>b.disabled=editMode&&b.dataset.view!=='plan');
 }
@@ -1474,6 +1553,10 @@ function initWorkbench() {
  *  11. DÉMARRAGE
  * ==========================================================================*/
 const Sim = { robotRate:0, dataCourante:SAMPLE, _gTok:null };
+// Réglages et état courant, publiés pour l'inspection et les parcours de test
+// au même titre que Sim.editor et Sim.workshops : lecture seule côté appelant.
+Sim.cfg = CFG;
+Sim.etat = () => ({ now, debut:DEBUT(), fin:FIN(), enMarche, modele });
 window.Sim = Sim;
 chargerZones();
 construirePlan(); build(SAMPLE); initControles(); initEdition(); initFlux(); initWorkshops(); initWorkbench();

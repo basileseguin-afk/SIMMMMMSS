@@ -27,6 +27,8 @@
   --bad-fill:#fde8e5;  --bad-stroke:#c02618;
   --jauge-bg:#dfe7ef;
   --edge:#7d92a9; --edge-retour:#9b7cc4;
+  /* équipements tracés : mêmes couleurs à l'édition et sur la vue d'ensemble */
+  --eq-table:#b67b34; --eq-tapis:#168886; --eq-robot:#7956ad; --eq-tunnel:#2f7fb8; --eq-desserte:#4479ae; --eq-trolley:#657482;
   /* stockages */
   --cf-f:#dfeeff;  --cf-s:#6ea3d8;  --cf-t:#1d4f7c;
   --gel-f:#d6f4fa; --gel-s:#2fa0bd; --gel-t:#0b5f77;
@@ -46,6 +48,7 @@
   --txt:#f2f6fa; --txt2:#bccadb; --txt3:#93a8bf;
   --accent:#4cb8ef; --accent2:#7fd0fb;
   --vert:#46d07d; --orange:#f5b73f; --rouge:#ff6a5e; --violet:#b98cf5; --jaune:#f0cf5c;
+  --eq-table:#e0a761; --eq-tapis:#3fc4c0; --eq-robot:#b08ee3; --eq-tunnel:#6cc0f0; --eq-desserte:#7fb2e0; --eq-trolley:#9aa8b8;
   --plan-bg:#111a25;
   --zone-fill:#1e2a3a; --zone-stroke:#5d7695; --zone-txt:#f2f6fa; --zone-sous:#a9bdd3;
   --ok-fill:#14342292;  --ok-stroke:#46d07d;
@@ -276,7 +279,8 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <button aria-label="Dézoomer" class="btn btn-mini" id="zoom-out" title="Dézoomer">−</button>
 <b id="zoom-val">100%</b>
 <button aria-label="Zoomer" class="btn btn-mini" id="zoom-in" title="Zoomer">+</button>
-<button aria-label="Revenir à la vue d’ensemble" class="btn btn-mini" id="zoom-reset" title="Vue d'ensemble">⟲</button>
+<button aria-label="Cadrer le service sélectionné" class="btn btn-mini" id="zoom-fit" title="Cadrer le service sélectionné">⌗</button>
+<button aria-label="Revenir à la vue d’ensemble" class="btn btn-mini" id="zoom-reset" title="Vue d'ensemble (touche 0)">⟲</button>
 </div>
 <label class="chk chk-mini"><input checked="" id="fond-plan" type="checkbox"/> Fond de plan</label>
 <button aria-pressed="false" class="btn btn-mini" id="btn-edit" title="Éditer la position et la taille des zones">Éditer les zones</button>
@@ -289,7 +293,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <span><span class="pastille" style="background:var(--bordure2)"></span>Au curseur</span>
 <span><span class="pastille" style="background:var(--accent)"></span>Aménagé</span>
 <span><span class="pastille" style="background:transparent"></span>Hors calcul</span>
-</div><span class="plan-etat" id="plan-etat"></span><span class="plan-aide">Molette : zoom · Glisser : déplacer · Pointillés : à confirmer</span></div><section aria-label="Suivi des départs" class="flights-view" hidden="" id="view-vols"><div class="flight-filters"><label>Rechercher <input id="flight-search" placeholder="Vol ou compagnie" type="search"/></label><label>Afficher <select id="flight-filter"><option value="all">Tous les départs</option><option value="overdue">Échéance dépassée, non prêt</option><option value="pending">Non prêts</option><option value="ready">Terminés</option></select></label></div><details class="inline-help"><summary>Comprendre les échéances</summary><p class="mini-note">Échéance = départ simulé − délai de chargement. Le statut concerne la production, pas la ponctualité de l’avion.</p></details><div class="table-scroll"><table class="flight-table"><caption class="sr-only">État de production des départs simulés</caption><thead><tr><th scope="col">Vol / compagnie</th><th scope="col">Départ</th><th scope="col">Échéance</th><th scope="col">Statut</th><th scope="col">Opérations restantes</th></tr></thead><tbody id="flight-rows"></tbody></table></div></section><section id="view-flux" aria-label="Centre des flux" hidden></section><section id="view-reglages" aria-label="Centre des réglages" class="reglages-view" hidden></section></div>
+</div><span class="plan-etat" id="plan-etat"></span><span class="plan-aide">Molette ou <kbd>+</kbd><kbd>−</kbd> : zoom · Double-clic : cadrer · <kbd>0</kbd> : vue d’ensemble</span></div><section aria-label="Suivi des départs" class="flights-view" hidden="" id="view-vols"><div class="flight-filters"><label>Rechercher <input id="flight-search" placeholder="Vol ou compagnie" type="search"/></label><label>Afficher <select id="flight-filter"><option value="all">Tous les départs</option><option value="overdue">Échéance dépassée, non prêt</option><option value="pending">Non prêts</option><option value="ready">Terminés</option></select></label></div><details class="inline-help"><summary>Comprendre les échéances</summary><p class="mini-note">Échéance = départ simulé − délai de chargement. Le statut concerne la production, pas la ponctualité de l’avion.</p></details><div class="table-scroll"><table class="flight-table"><caption class="sr-only">État de production des départs simulés</caption><thead><tr><th scope="col">Vol / compagnie</th><th scope="col">Départ</th><th scope="col">Échéance</th><th scope="col">Statut</th><th scope="col">Opérations restantes</th></tr></thead><tbody id="flight-rows"></tbody></table></div></section><section id="view-flux" aria-label="Centre des flux" hidden></section><section id="view-reglages" aria-label="Centre des réglages" class="reglages-view" hidden></section></div>
 <!-- ============ DASHBOARD ============ -->
 <aside aria-label="Suivi de production" class="workbench"><div class="panel-content" id="panel-suivi"><div class="panel-heading"><h2>Suivi de production</h2></div><div class="panneau">
 <h3>Point d’attention</h3>
@@ -300,23 +304,27 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <div class="panneau">
 <h3>Occupation mesurée par atelier</h3>
 <div id="stats-ateliers"></div>
-<details class="inline-help"><summary>Lire les taux d’occupation</summary><p class="mini-note">Part des personnes occupées sur les 15 dernières minutes simulées ; le robot est indiqué à part sur le montage. OF = ordres présents dans l’atelier.</p></details></div>
+<details class="inline-help"><summary>Lire les taux</summary><p class="mini-note">Personnes occupées sur 15 min. OF = ordres présents.</p></details></div>
 
-<div class="panneau"><h3>Retard courant des départs exigibles</h3><div class="val" id="kpi-retard-exigibles">—</div><details class="inline-help"><summary>Calcul du retard</summary><p class="mini-note">Moyenne à cet instant, dossiers inachevés compris.</p></details><h3>Retard des dossiers terminés</h3><div class="val" id="kpi-retard">—</div><details class="inline-help"><summary>Calcul du retard</summary><p class="mini-note">Moyenne sur les dossiers terminés uniquement ; les non prêts restent comptés en haut de page.</p></details></div><div class="chart-wrap">
+<div class="panneau"><h3>Retard courant des départs exigibles</h3><div class="val" id="kpi-retard-exigibles">—</div><h3>Retard des dossiers terminés</h3><div class="val" id="kpi-retard">—</div><details class="inline-help"><summary>Ces deux moyennes</summary><p class="mini-note">En haut : tous les exigibles à cet instant, inachevés compris. En bas : les dossiers terminés seulement.</p></details></div><div class="chart-wrap">
 <h3>Évolution de la démonstration</h3>
 <canvas id="chart"></canvas>
 <p class="mini-note" id="chart-legend">Les courbes apparaîtront pendant la simulation.</p></div></div><div class="panel-content" hidden="" id="panel-reglages"><div class="panel-heading"><h2>Réglages de l’essai</h2><p>Réglez les capacités, puis lancez. Pour modifier un essai commencé, recommencez la simulation.</p></div>
 <!-- Panneau d'édition des zones (affiché en mode édition) -->
 <div class="panneau">
 <h3>Effectifs par atelier</h3>
-<label class="chk"><input id="grille-effectifs" type="checkbox"/> Reprendre les effectifs de « Création des ateliers »</label>
+<label class="chk"><input id="grille-effectifs" type="checkbox"/> Reprendre ce qui est tracé dans « Création des ateliers » : personnes, tunnels, lignes robot</label>
 <p class="mini-note" id="grille-note"></p>
 <div id="sliders-staff"></div>
 </div>
 <div class="panneau">
 <h3>Robot de dressage (YC)</h3>
 <div class="slider-ligne">
-<label for="robot">Cadence <b id="robot-val">320 pl/h</b></label>
+<label for="robot-lignes">Lignes robot installées <b id="robot-lignes-val">1</b></label>
+<input data-grille="robotLignes" id="robot-lignes" max="4" min="0" step="1" type="range" value="1"/>
+</div>
+<div class="slider-ligne">
+<label for="robot">Cadence par ligne <b id="robot-val">320 pl/h</b></label>
 <input id="robot" max="560" min="200" step="20" type="range" value="320"/>
 </div>
 <div class="champ">
@@ -358,7 +366,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <h3>Plonge — tunnels</h3>
 <div class="slider-ligne">
 <label for="tunnels">Tunnels actifs <b id="tunnels-val">3</b></label>
-<input id="tunnels" max="3" min="1" step="1" type="range" value="3"/>
+<input data-grille="tunnels" id="tunnels" max="8" min="1" step="1" type="range" value="3"/>
 </div>
 <label class="chk"><input checked="" id="double" type="checkbox"/> 1 tunnel double vitesse (×2)</label>
 <div class="slider-ligne" style="margin-top:12px">

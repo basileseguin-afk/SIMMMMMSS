@@ -15,7 +15,7 @@ for(const theme of ['light','dark']){
    const c=await el.evaluate(e=>{let p=e,b;while(p){b=getComputedStyle(p).backgroundColor;if(b!=='rgba(0, 0, 0, 0)')break;p=p.parentElement}return[getComputedStyle(e).color,b]});assert.ok(ratio(...c)>=4.5,`${theme} ${view} ${selector}: ${ratio(...c)}`);
   }
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-  if(view==='ateliers'){const help=page.getByText('Codes, gomme et limites', {exact:true});await help.focus();await page.keyboard.press('Enter');assert.equal(await help.evaluate(e=>e.parentElement.open),true);await page.keyboard.press('Enter');}
+  if(view==='ateliers'){const help=page.getByText('Codes et limites', {exact:true});await help.focus();await page.keyboard.press('Enter');assert.equal(await help.evaluate(e=>e.parentElement.open),true);await page.keyboard.press('Enter');}
   await page.screenshot({path:'/tmp/ory-review-'+theme+'-'+view+'.png'});
  }
 }

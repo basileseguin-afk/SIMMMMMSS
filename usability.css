@@ -37,7 +37,7 @@ body.avant-lancement #plan .zone.p-vide .fond{fill:var(--bad-stroke);fill-opacit
 body.avant-lancement #plan .zone.p-partiel .fond{fill:var(--zone-fill);fill-opacity:.55;stroke:var(--zone-stroke);stroke-width:7}
 body.avant-lancement #plan .zone.p-pret .fond{fill:var(--accent);fill-opacity:.20;stroke:var(--accent);stroke-width:9}
 body.avant-lancement #plan .zone.selection .fond{stroke:var(--accent);stroke-width:13}
-.plan-etat{color:var(--txt2)}.plan-etat.complet{color:var(--accent2)}
+.plan-etat{color:var(--txt2)}.plan-aide kbd{font:inherit;font-weight:700;border:1px solid var(--bordure2);border-radius:3px;padding:0 4px;margin:0 1px}.plan-etat.complet{color:var(--accent2)}
 .legende .pastille{border:1px solid var(--bordure2)}
 
 /* La bande d'indicateurs décrit une simulation en cours : elle n'a rien à

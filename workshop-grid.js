@@ -1,9 +1,11 @@
 /* Aménagement schématique : un carreau représente 50 cm, sans calibrer le fond. */
 (function(root){
 'use strict';
-const TYPES={table:'Table',tapis:'Chaîne',robot:'Ligne robot',desserte:'Desserte',trolley:'Trolley'};
-const PREFIXES={table:'T',robot:'R',tapis:'C',desserte:'D',trolley:'TR'};
-const COLORS={table:'#b67b34',tapis:'#168886',robot:'#7956ad',desserte:'#4479ae',trolley:'#657482'};
+const TYPES={table:'Table',tapis:'Chaîne',robot:'Ligne robot',tunnel:'Tunnel de lavage',desserte:'Desserte',trolley:'Trolley'};
+const PREFIXES={table:'T',robot:'R',tapis:'C',tunnel:'TU',desserte:'D',trolley:'TR'};
+// Une seule définition de couleur par type, prise dans le thème : ce qu'on
+// voit en traçant est exactement ce qu'on retrouve sur la vue d'ensemble.
+const COLORS={table:'var(--eq-table)',tapis:'var(--eq-tapis)',robot:'var(--eq-robot)',tunnel:'var(--eq-tunnel)',desserte:'var(--eq-desserte)',trolley:'var(--eq-trolley)'};
 const clone=x=>JSON.parse(JSON.stringify(x)),uid=()=> 'atelier-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const key=(x,y)=>x+','+y,xy=s=>s.split(',').map(Number);
@@ -74,9 +76,9 @@ class WorkshopGrid{
  get item(){return this.state.items.find(i=>i.id===this.selected);}
  status(s){document.getElementById('wg-status').textContent=s;}
  build(){
-  const outils=[['select','Déplacer',''],['table','Table',COLORS.table],['tapis','Chaîne',COLORS.tapis],['robot','Ligne robot',COLORS.robot],['erase','Gomme','']];
+  const outils=[['select','Déplacer',''],['table','Table',COLORS.table],['tapis','Chaîne',COLORS.tapis],['robot','Ligne robot',COLORS.robot],['tunnel','Tunnel',COLORS.tunnel],['erase','Gomme','']];
   const panel=document.createElement('section');panel.id='workshop-panel';panel.hidden=true;panel.className='panel-content';panel.innerHTML=`<h2>Aménager le service</h2><p id="wg-service">Choisissez un service sur la carte.</p>
-<p class="wg-modele">Un <b>service</b> contient un ou plusieurs <b>ateliers</b> — un îlot, une ligne, un coin de la pièce. Chaque atelier contient des <b>équipements</b> : tables, chaînes, lignes robot. Les <b>personnes</b> s’affectent aux équipements.</p>
+<p class="wg-modele"><b>Service</b> › <b>ateliers</b> › <b>équipements</b>. Les personnes s’affectent aux équipements.</p>
 <p class="scope-badge">Grille 50 × 50 cm · schématique</p><div id="wg-status" role="status" aria-live="polite"></div><div class="wg-actions"><button class="btn" id="wg-overview">Toute l’unité</button><button class="btn" id="wg-focus">Cadrer le service</button></div>
 <div id="wg-controls" hidden>
 <h3 class="wg-etape"><span>1</span> Ateliers de ce service</h3>
@@ -86,18 +88,18 @@ class WorkshopGrid{
 <div class="wg-actions"><button class="btn" id="wg-validate">Fusionner en une surface</button><span class="mini-note" id="wg-validation-state"></span></div>
 <h3 class="wg-etape"><span>2</span> Dessiner les équipements</h3>
 <div class="wg-tools">${outils.map(([id,label,c])=>`<button class="btn" data-wg-tool="${id}" aria-pressed="false">${c?`<span class="wg-dot" style="background:${c}"></span>`:''}${label}</button>`).join('')}</div>
-<p class="mini-note"><b>Chaque tracé crée un équipement.</b> Cliquez-glissez pour en poser un, recommencez pour en poser un deuxième. Un équipement peut prendre n’importe quelle forme.</p>
-<label class="chk chk-mini"><input type="checkbox" id="wg-extend"> Agrandir l’équipement sélectionné au lieu d’en créer un nouveau</label>
-<details class="inline-help"><summary>Codes, gomme et limites</summary><p class="mini-note">La gomme retire des cases ; retirer la dernière supprime l’équipement. « Déplacer » sélectionne et fait glisser. Chaque équipement porte un code : T = table, C = chaîne, R = ligne robot, D = desserte, TR = trolley.</p><p class="mini-note">« Fusionner en une surface » réunit les cases d’un atelier en un seul aplat, une fois son dessin arrêté. Le détail revient en un clic, sans changer les codes.</p><p class="mini-note">Le fond n’est pas calibré : les cases de 50 × 50 cm sont théoriques, pas un relevé réel. Seules les personnes affectées sont lues par le moteur.</p></details>
+<p class="mini-note"><b>Un tracé = un équipement.</b> Recommencez pour en poser un deuxième.</p>
+<label class="chk chk-mini"><input type="checkbox" id="wg-extend"> Agrandir l’équipement sélectionné</label>
+<details class="inline-help"><summary>Codes et limites</summary><p class="mini-note">Codes : T table, C chaîne, R robot, TU tunnel, D desserte, TR trolley.</p><p class="mini-note">Grille non calibrée. Le moteur lit les personnes, les tunnels de la plonge et les lignes robot du montage.</p></details>
 <h3 class="wg-etape"><span>3</span> Équipements et personnes</h3>
 <div id="wg-postes-total" class="wg-total"></div>
 <div id="wg-items"></div>
 <div id="wg-item-properties" hidden><label>Nom de l’équipement<input id="wg-item-name" maxlength="120"></label><label>Personnes à cet équipement<input id="wg-item-postes" type="number" min="0" max="99" step="1"></label><div class="wg-actions"><button class="btn" id="wg-rotate">Pivoter 90°</button><button class="btn" id="wg-delete-item">Supprimer</button></div></div>
 <button class="btn" id="wg-library">Modèles de tables et chaînes…</button></div>
-<div class="wg-actions"><button class="btn" id="wg-undo">Annuler</button><button class="btn" id="wg-redo">Rétablir</button></div><details id="wg-settings"><summary>Grille et sauvegarde</summary><label>Taille visuelle d’une case (unités du dessin)<input type="number" id="wg-step" min="10" max="200" step="1"></label><p class="mini-note">Réglage commun à l’unité, indépendant d’une mesure réelle. Verrouillé dès qu’un équipement est placé.</p><div class="wg-actions"><button class="btn" id="wg-export">Exporter les ateliers</button><button class="btn" id="wg-import-button">Importer</button><input id="wg-import" type="file" accept=".json" hidden></div></details>`;
+<div class="wg-actions"><button class="btn" id="wg-undo">Annuler</button><button class="btn" id="wg-redo">Rétablir</button></div><details id="wg-settings"><summary>Grille et sauvegarde</summary><label>Taille visuelle d’une case (unités du dessin)<input type="number" id="wg-step" min="10" max="200" step="1"></label><p class="mini-note">Verrouillé dès qu’un équipement est placé.</p><div class="wg-actions"><button class="btn" id="wg-export">Exporter les ateliers</button><button class="btn" id="wg-import-button">Importer</button><input id="wg-import" type="file" accept=".json" hidden></div></details>`;
   document.querySelector('.workbench').appendChild(panel);
   const warning=document.createElement('p');warning.id='wg-placement-warning';warning.className='mini-note';warning.setAttribute('role','status');document.getElementById('wg-status').after(warning);
-  const dialog=document.createElement('dialog');dialog.id='wg-library-dialog';dialog.innerHTML='<div class="wg-dialog-head"><strong>Bibliothèque existante — modèles et assemblages</strong><button class="btn" id="wg-close-library">Retour au plan</button></div><p>Créez ou sélectionnez un modèle / assemblage, puis cliquez « Placer dans le service ».</p><iframe id="wg-library-frame" title="Éditeur de tables, chaînes et assemblages"></iframe>';document.body.appendChild(dialog);
+  const dialog=document.createElement('dialog');dialog.id='wg-library-dialog';dialog.innerHTML='<div class="wg-dialog-head"><strong>Bibliothèque existante — modèles et assemblages</strong><button class="btn" id="wg-close-library">Retour au plan</button></div><p>Sélectionnez un modèle, puis « Placer dans le service ».</p><iframe id="wg-library-frame" title="Éditeur de tables, chaînes et assemblages"></iframe>';document.body.appendChild(dialog);
  }
  bind(){
   const on=(id,event,fn)=>document.getElementById(id).addEventListener(event,fn);
@@ -207,7 +209,23 @@ class WorkshopGrid{
   const ext=document.getElementById('wg-extend');ext.checked=!!this.extend;ext.disabled=!this.item;assign('wg-step',this.state.step);document.getElementById('wg-step').disabled=!!this.state.items.length;
   document.getElementById('wg-undo').disabled=!this.undoStack.length;document.getElementById('wg-redo').disabled=!this.redoStack.length;this.renderCanvas();
  }
- renderCanvas(){this.layer.replaceChildren();if(!this.active||!this.zone)return;const z=this.zone,s=this.state.step,scale=Math.hypot(this.layer.getScreenCTM()?.a||1,this.layer.getScreenCTM()?.b||0);
+ /* Ce qui a été tracé doit rester visible là où l'on regarde la simulation :
+  * sinon on aménage à l'aveugle, sans jamais revoir son travail. */
+ renderOverview(){
+  const hote=this.a.apercu&&this.a.apercu();if(!hote)return;hote.replaceChildren();
+  if(this.active)return;
+  const s=this.state.step,zones=this.a.zones();
+  for(const w of this.state.workshops){
+   if(!zones.some(z=>z.id===w.service))continue;
+   for(const i of this.state.items){
+    if(i.workshop!==w.id)continue;
+    const c=COLORS[i.type]||'var(--eq-table)';const g=this.el('g',{class:'wg-apercu',fill:c,stroke:c});
+    for(const c of i.cells){const [x,y]=xy(c);g.appendChild(this.el('rect',{x:x*s,y:y*s,width:s,height:s}));}
+    hote.appendChild(g);
+   }
+  }
+ }
+ renderCanvas(){this.renderOverview();this.layer.replaceChildren();if(!this.active||!this.zone)return;const z=this.zone,s=this.state.step,scale=Math.hypot(this.layer.getScreenCTM()?.a||1,this.layer.getScreenCTM()?.b||0);
   const defs=this.el('defs'),clip=this.el('clipPath',{id:'wg-service-clip'});clip.appendChild(z.pts?this.el('polygon',{points:z.pts.map(p=>p.join(',')).join(' ')}):this.el('rect',{x:z.x,y:z.y,width:z.w,height:z.h}));defs.appendChild(clip);
   const pattern=this.el('pattern',{id:'wg-pattern',width:s,height:s,patternUnits:'userSpaceOnUse'});pattern.appendChild(this.el('path',{d:`M ${s} 0 H 0 V ${s}`,fill:'none',stroke:'#6e8396','stroke-width':.6/scale}));defs.appendChild(pattern);this.layer.appendChild(defs);
   const g=this.el('g',{'clip-path':'url(#wg-service-clip)'});g.appendChild(this.el('rect',{x:z.x,y:z.y,width:z.w,height:z.h,fill:'url(#wg-pattern)','pointer-events':'none'}));this.layer.appendChild(g);

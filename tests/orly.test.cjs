@@ -608,3 +608,29 @@ test('le travail fait par le vivier est porté par l’atelier servi', () => {
   const proprePar = x => x.heuresPresence - x.minutesPretees / 60;
   assert.ok(proprePar(a) < proprePar(b) / 3, proprePar(a) + ' devrait être bien inférieur à ' + proprePar(b));
 });
+
+test('sans ligne robot installée, tout le YC part au dressage manuel', () => {
+  const avec = journee(cfg());
+  const sans = journee(cfg(c => { c.robotLignes = 0; }));
+  assert.ok(avec.bilan.robot.plateauxRobot > 0, 'la démonstration envoie bien des plateaux au robot');
+  assert.equal(sans.bilan.robot.plateauxRobot, 0);
+  assert.equal(sans.bilan.robot.plateauxManuel,
+    avec.bilan.robot.plateauxRobot + avec.bilan.robot.plateauxManuel,
+    'les plateaux ne disparaissent pas : ils changent de main');
+  // Le dressage manuel est du travail humain en plus sur le montage.
+  assert.ok(sans.bilan.ateliers.prepa.heuresDemandees > avec.bilan.ateliers.prepa.heuresDemandees);
+});
+
+test('une deuxième ligne robot fait tomber l’attente devant le robot', () => {
+  // On resserre la cadence pour que le robot devienne un goulot mesurable.
+  const lent = c => { c.robotCadence = 200; c.robotCompagnies = ['FBU','TX','FWI','CRL','AF','DL','BA','LH']; };
+  const une = journee(cfg(c => { lent(c); c.robotLignes = 1; }));
+  const deux = journee(cfg(c => { lent(c); c.robotLignes = 2; }));
+  assert.equal(une.bilan.robot.lignes, 1);
+  assert.equal(deux.bilan.robot.lignes, 2);
+  assert.ok(une.bilan.robot.attenteMoyenne > 0, 'une seule ligne fait attendre');
+  assert.ok(deux.bilan.robot.attenteMoyenne < une.bilan.robot.attenteMoyenne,
+    'deux lignes dressent deux vols à la fois');
+  // Le travail du robot est le même : c'est le temps d'attente qui change.
+  assert.equal(deux.bilan.robot.plateauxRobot, une.bilan.robot.plateauxRobot);
+});

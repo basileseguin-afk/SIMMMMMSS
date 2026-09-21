@@ -5,6 +5,35 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-21 — Zoom déplafonné, équipements visibles, tunnels et robot reliés
+
+- **Zoom** (`sim.js`) : le cadrage du service servait de plafond en vue Ateliers,
+  on ne pouvait pas s'approcher d'un carreau de 50 cm. Même borne partout
+  (0,5× → 16×). Molette proportionnelle — un pavé tactile envoie beaucoup de
+  petits événements, un cran fixe sautait ; pincement reconnu. Double-clic sur
+  un atelier pour le cadrer, ailleurs pour revenir à l'ensemble. Bouton
+  « cadrer le service », raccourcis <kbd>+</kbd> <kbd>−</kbd> <kbd>0</kbd> et
+  flèches. Le centre de l'écran reste bridé à portée du plan.
+- **Couleurs partagées** : la palette des équipements devient des jetons de
+  thème (`--eq-table`, `--eq-tapis`, `--eq-robot`, `--eq-tunnel`…), clairs et
+  sombres. Ce qu'on trace se revoit sur la vue Simulation, dans la même
+  couleur : une couche en lecture seule sous les ateliers, transparente aux
+  clics. Jusqu'ici on aménageait sans jamais revoir son travail.
+- **Tunnels et lignes robot** : nouveau type d'équipement « Tunnel de lavage »
+  (code TU). Les tunnels tracés dans la plonge et les lignes robot tracées au
+  montage pilotent désormais `CFG.tunnels` et `CFG.robotLignes`, sous la même
+  règle que les personnes : la grille pilote là où elle est renseignée.
+- `moteur/orly.js` : `robotLignes` (défaut 1). Une place de ressource par ligne,
+  la cadence devient une cadence **par ligne**. À zéro ligne il n'y a pas de
+  robot : tout le YC part au dressage manuel. Curseur « Lignes robot » dans les
+  Réglages, curseur des tunnels porté à 8.
+- **Textes allégés** dans le panneau d'aménagement et le suivi : le modèle tient
+  en une ligne, les deux dépliants du retard n'en font qu'un, les codes et les
+  limites sont réduits à l'essentiel.
+- `sim.js` publie `Sim.cfg` et `Sim.etat()` pour l'inspection et les parcours.
+- Vérification : 120 tests purs et onze parcours navigateur au vert, dont
+  `tests/zoom-browser.cjs` et `tests/grille-moteur-browser.cjs`, nouveaux.
+
 ## 2026-09-21 — Le plan dit ce qu'il reste à renseigner
 
 - `sim.js` : état de paramétrage par atelier tant que la simulation n'a pas

@@ -47,6 +47,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await click('[data-view=plan]');
   assert.match(await etat('cuisine'),/\bp-pret\b/,'une table tracée suffit à marquer le service aménagé');
   assert.notEqual(await page.locator('#plan-etat').textContent(),avant,'le reste à faire diminue');
+  // Ce qui a été tracé se revoit sur la vue d'ensemble, dans la couleur du type.
+  assert.equal(await page.locator('#workshop-overview .wg-apercu').count(),1,'la table tracée apparaît sur le plan');
+  assert.equal(await page.locator('#workshop-overview .wg-apercu').getAttribute('fill'),'var(--eq-table)');
+  await click('[data-view=ateliers]');
+  assert.equal(await page.locator('#workshop-overview .wg-apercu').count(),0,'pas de doublon pendant l’édition');
+  await click('[data-view=plan]');
 
   // 4. Une fois lancée, la simulation reprend la main sur les couleurs.
   await click('#btn-play');
