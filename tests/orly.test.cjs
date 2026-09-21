@@ -298,3 +298,132 @@ test('l’attente de matériel n’est pas recomptée comme attente de personnes
     assert.equal(d.parAtelier[0].atelier, 'dotation');
   });
 });
+
+/* ======================================================================
+ *  CALENDRIER MULTIJOUR — cuisine J−2, prépa J−1, heures d'ouverture
+ * ====================================================================*/
+
+const calendrier = (patch) => cfg(c => { c.calendrier.actif = true; if (patch) patch(c); });
+/** Jour d'un instant, relatif au premier jour de départs : −2, −1, 0, +1… */
+const jourDe = (m, t) => Math.floor(t / 1440) - m.decalage;
+const etapeDe = (j, atelier) => j.etapes.find(e => e.atelier === atelier);
+
+test('l’arithmétique des jours est cohérente et le calendrier est inactif par défaut', () => {
+  assert.equal(CFG_DEFAUT.calendrier.actif, false);
+  const sans = construireModele(JEU_DEMO, cfg());
+  assert.equal(sans.decalage, 0);
+  assert.equal(sans.joursProduction, 1);
+  assert.equal(sans.horizon, CFG_DEFAUT.jour.fin);
+  assert.equal(sans.flights.length, JEU_DEMO.length);
+
+  const avec = construireModele(JEU_DEMO, calendrier());
+  assert.equal(avec.decalage, 2);                 // cuisine J−2
+  assert.equal(avec.joursDeparts, 3);
+  assert.equal(avec.joursProduction, 5);          // J−2 … J+2
+  assert.equal(avec.horizon, 4 * 1440 + CFG_DEFAUT.jour.fin);
+  assert.equal(avec.flights.length, JEU_DEMO.length * 3);
+  assert.equal(avec.etiquetteJour(avec.debut), 'J−2');
+  assert.equal(avec.etiquetteJour(2 * 1440 + 600), 'J');
+  assert.equal(avec.etiquetteJour(avec.horizon), 'J+2');
+  // Les copies des jours suivants portent un identifiant distinct.
+  assert.equal(avec.flights.filter(f => f.id === 'AF1080').length, 1);
+  assert.ok(avec.flights.some(f => f.id === 'AF1080·J+1'));
+});
+
+test('la cuisine se fait bien J−2 et la prépa J−1', () => {
+  const m = construireModele(JEU_DEMO, calendrier());
+  m.avancerA(m.horizon);
+  const food = m.jobs.filter(j => j.kind === 'food' && j.done);
+  assert.ok(food.length > 30);
+  food.forEach(j => {
+    const d = j.flight.jour;
+    assert.equal(jourDe(m, etapeDe(j, 'appros').entree), d - 2, j.flight.id + ' appros');
+    assert.equal(jourDe(m, etapeDe(j, 'cuisine').entree), d - 2, j.flight.id + ' cuisine');
+    assert.equal(jourDe(m, etapeDe(j, 'prepa').entree), d - 1, j.flight.id + ' prépa');
+  });
+  // Dotation et armement restent le jour du départ.
+  m.jobs.filter(j => (j.kind === 'dot' || j.kind === 'arm') && j.done)
+    .forEach(j => assert.equal(jourDe(m, j.etapes[0].entree), j.flight.jour));
+});
+
+test('l’exception CRL du soir ramène la prépa au matin du départ', () => {
+  const soir = [
+    { id: 'CRL900', cie: 'CRL', avion: 'A350', sens: 'DEP', std: 21 * 60 + 30, bc: 10, pc: 10, yc: 100 },
+    { id: 'CRL700', cie: 'CRL', avion: 'A350', sens: 'DEP', std: 7 * 60, bc: 10, pc: 10, yc: 100 },
+    { id: 'AF900', cie: 'AF', avion: 'A350', sens: 'DEP', std: 21 * 60 + 30, bc: 10, pc: 10, yc: 100 }
+  ];
+  const m = construireModele(soir, calendrier(c => { c.calendrier.jours = 1; }));
+  m.avancerA(m.horizon);
+  const prepaDe = id => jourDe(m, etapeDe(m.jobs.find(j => j.flight.id === id && j.kind === 'food'), 'prepa').entree);
+  assert.equal(prepaDe('CRL900'), 0, 'CRL du soir : prépa le matin de J');
+  assert.equal(prepaDe('CRL700'), -1, 'CRL du matin : prépa J−1, l’exception ne s’applique pas');
+  assert.equal(prepaDe('AF900'), -1, 'autre compagnie le soir : prépa J−1');
+  // La règle est réglable : liste vide, plus personne n'est excepté.
+  const sans = construireModele(soir, calendrier(c => { c.calendrier.jours = 1; c.calendrier.exception.compagnies = []; }));
+  sans.avancerA(sans.horizon);
+  const j = sans.jobs.find(x => x.flight.id === 'CRL900' && x.kind === 'food');
+  assert.equal(jourDe(sans, etapeDe(j, 'prepa').entree), -1);
+});
+
+test('la nuit, plus personne n’est là, et le travail reprend à l’ouverture', () => {
+  const c = calendrier();
+  const m = construireModele(JEU_DEMO, c);
+  m.avancerA(1440 + 2 * 60);                      // 02:00, deuxième nuit
+  m.ATELIERS.forEach(id => assert.equal(m.stations[id].capacite, 0, id + ' doit être fermé la nuit'));
+  m.avancerA(1440 + c.jour.debut + 30);           // 05:30 le lendemain
+  assert.equal(m.stations.cuisine.capacite, c.staff.cuisine);
+  assert.equal(m.stations.plonge.capacite, 4);
+  // Aucun lot ne DÉMARRE hors de la fenêtre d'ouverture — un lot commencé
+  // avant la fermeture peut en revanche se terminer après, personne n'est interrompu.
+  m.avancerA(m.horizon);
+  m.jobs.filter(j => j.etapes.length).forEach(j => j.etapes.forEach(et => {
+    if (et.debut == null || et.debut === et.entree) return;
+    const minute = ((et.debut % 1440) + 1440) % 1440;
+    assert.ok(minute >= c.jour.debut && minute <= c.jour.fin,
+      j.flight.id + ' ' + et.atelier + ' démarre à ' + minute);
+  }));
+});
+
+test('un ordre qui attend la nuit quitte son atelier au lieu de le bloquer', () => {
+  const m = construireModele(JEU_DEMO, calendrier());
+  m.avancerA(1440 + 2 * 60);                       // 02:00 de la première nuit
+  const dormants = m.jobs.filter(j => m.etatOF(j) === 'attente_calendrier');
+  assert.ok(dormants.length > 0, 'des OF doivent attendre l’ouverture du montage');
+  assert.equal(m.ETATS.attente_calendrier, 'en stock, attend l’ouverture de son atelier');
+  // Ils ne sont dans le tampon d'aucun atelier : ils attendent en stock.
+  const dansUnTampon = m.ATELIERS.reduce((n, id) => n + m.stations[id].tampon.remplissageCourant, 0);
+  assert.equal(dansUnTampon, 0, 'aucun OF ne doit occuper un atelier pendant la nuit');
+  // Et le goulot ne désigne rien : attendre l'ouverture n'est pas un goulot.
+  assert.equal(m.goulot(), null);
+});
+
+test('le calendrier lève la pression d’échéance sur la cuisine et la prépa', () => {
+  // Matériel neutralisé pour isoler l'effet du calendrier.
+  const sansCal = journee(cfg(c => { c.materiel.actif = false; }));
+  const avecCal = (() => {
+    const c = calendrier(x => { x.materiel.actif = false; });
+    const m = construireModele(JEU_DEMO, c);
+    m.avancerA(m.horizon);
+    return { modele: m, kpis: serviceMetrics(m.flights, m.horizon), bilan: m.bilan() };
+  })();
+  assert.equal(avecCal.kpis.total, 36);
+  assert.equal(avecCal.kpis.ontime, 100);
+  assert.equal(avecCal.kpis.overdue, 0);
+  assert.equal(sansCal.kpis.ontime, 100);
+  // Le volume de travail est inchangé : trois fois la journée, même barème.
+  const heures = b => Object.values(b.ateliers).reduce((n, a) => n + a.occupationJour * a.personnes, 0);
+  assert.ok(heures(avecCal.bilan) > 0 && heures(sansCal.bilan) > 0);
+  // L'explication nomme l'attente planifiée, sans la confondre avec un retard.
+  const f = avecCal.modele.flights.find(x => x.sens === 'DEP' && x.jour === 1);
+  const food = avecCal.modele.jobs.find(j => j.flight === f && j.kind === 'food');
+  const d = avecCal.modele.decomposer(food);
+  assert.ok(d.attenteCalendrier > 600, 'la nuit entre cuisine et prépa doit être comptée : ' + d.attenteCalendrier);
+  assert.ok(d.attentePersonnes < d.attenteCalendrier);
+});
+
+test('le calendrier ne change rien quand il est inactif', () => {
+  const a = journee(cfg());
+  const b = journee(cfg(c => { c.calendrier.actif = false; c.calendrier.jours = 7; }));
+  assert.deepEqual(a.kpis, b.kpis);
+  assert.deepEqual(a.bilan.ateliers, b.bilan.ateliers);
+});

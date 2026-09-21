@@ -175,6 +175,11 @@ const SAMPLE = Orly.JEU_DEMO;
  * ==========================================================================*/
 let modele = null, flights = [], jobs = [], stations = {};
 let now = CFG.jour.debut, enMarche = false, vitesse = 30, historique = [];
+/* Bornes de la simulation, lues sur le modèle. Sans calendrier multijour elles
+ * valent la fenêtre quotidienne ; avec, elles couvrent toutes les journées. */
+const DEBUT = () => modele ? modele.debut : CFG.jour.debut;
+const FIN = () => modele ? modele.horizon : CFG.jour.fin;
+const MULTIJOUR = () => !!(modele && modele.joursProduction > 1);
 const VUE_NEUTRE = { util:0, qlen:0, enAttente:0, bloque:false, tauxJour:0 };
 
 function build(data) {
@@ -184,6 +189,11 @@ function build(data) {
   Object.keys(ZONES).forEach(id => { stations[id] = modele.stations[id] || VUE_NEUTRE; });
   now = modele.maintenant;
   Sim.robotRate = 0;
+  if (document.getElementById('source-count')) updateSource();
+  const legende = document.querySelector('.jour');
+  if (legende) legende.textContent = MULTIJOUR()
+    ? 'Heure simulée · ' + modele.joursDeparts + ' journées de départs, production dès J−' + modele.decalage
+    : 'Heure simulée · démo 05:00–23:00';
 }
 
 /* ==========================================================================
@@ -772,7 +782,7 @@ function majPlan() {
     if (els.jauge) { els.jauge.setAttribute('width', (els.b.w-16) * u); els.jauge.setAttribute('fill', col); }
     // la couleur de fond/bordure est pilotée par le thème via une classe
     els.g.classList.remove('c-ok', 'c-warn', 'c-bad');
-    if(now>CFG.jour.debut && !NON_MODELISES.has(id)) els.g.classList.add(u < 0.55 ? 'c-ok' : u < 0.85 ? 'c-warn' : 'c-bad');
+    if(now>DEBUT() && !NON_MODELISES.has(id)) els.g.classList.add(u < 0.55 ? 'c-ok' : u < 0.85 ? 'c-warn' : 'c-bad');
     if (els.badge) els.badge.textContent = st.qlen > 0 ? st.qlen + ' OF' : '';
   });
   const r = document.getElementById('res-robot'); if (r) r.textContent = Math.round((Sim.robotRate||0)*60) + '/' + CFG.robotCadence;
@@ -803,7 +813,7 @@ function majDashboard() {
     const id=b.dataset.station,st=stations[id],u=Math.min(1,st.util),unmodeled=NON_MODELISES.has(id);
     b.querySelector('.haut>span').firstChild.textContent=ZONES[id].nom;
     b.classList.toggle('active',id===selection);b.setAttribute('aria-pressed',String(id===selection));
-    b.querySelector('b').textContent=unmodeled?'Non simulé':now===CFG.jour.debut?'—':Math.round(u*100)+' %'+(id==='prepa'?' · robot '+Math.round(Math.min(1,st.robotUtil)*100)+' %':'');
+    b.querySelector('b').textContent=unmodeled?'Non simulé':now===DEBUT()?'—':Math.round(u*100)+' %'+(id==='prepa'?' · robot '+Math.round(Math.min(1,st.robotUtil)*100)+' %':'');
     b.querySelector('.badge-q').textContent=st.qlen?' · '+st.qlen+' OF':'';
     b.querySelector('.barre').hidden=unmodeled;
     b.querySelector('i').style.cssText='width:'+u*100+'%;background:'+couleurCharge(u);
@@ -823,13 +833,13 @@ function majGoulotInfo(goulot) {
     html+='<p>'+(z.approx?'Emplacement à confirmer.':'Emplacement enregistré ; validation terrain distincte.')+'</p>';
     if(NON_MODELISES.has(id))html+='<p>Charge non calculée dans cette version.</p>';
     else {
-      html+='<p>'+st.qlen+' OF présents'+(id==='plonge'?' · '+CFG.tunnels+' tunnels':' · '+st.capacite+' personne(s) présentes')+(now>CFG.jour.debut?' · occupation '+Math.round(Math.min(1,st.util)*100)+' % sur 15 min, '+Math.round(st.tauxJour*100)+' % depuis 05:00':'')+(st.enAttente?' · <strong>'+st.enAttente+' lot(s) attendent une personne</strong>':'')+(id==='prepa'&&now>CFG.jour.debut?' · robot '+Math.round(Math.min(1,st.robotUtil)*100)+' % sur 15 min'+(st.robotAttente?', <strong>'+st.robotAttente+' vol(s) attendent le robot</strong>':''):'')
+      html+='<p>'+st.qlen+' OF présents'+(id==='plonge'?' · '+CFG.tunnels+' tunnels':' · '+st.capacite+' personne(s) présentes')+(now>DEBUT()?' · occupation '+Math.round(Math.min(1,st.util)*100)+' % sur 15 min, '+Math.round(st.tauxJour*100)+' % depuis 05:00':'')+(st.enAttente?' · <strong>'+st.enAttente+' lot(s) attendent une personne</strong>':'')+(id==='prepa'&&now>DEBUT()?' · robot '+Math.round(Math.min(1,st.robotUtil)*100)+' % sur 15 min'+(st.robotAttente?', <strong>'+st.robotAttente+' vol(s) attendent le robot</strong>':''):'')
         +(id==='dotation'&&modele.stock?' · matériel propre '+Math.round(modele.stock.niveau)+' u'+(modele.stock.resume().retraitsEnAttente?', <strong>'+modele.stock.resume().retraitsEnAttente+' dossier(s) en attente</strong>':''):'')+(st.bloque?' · <strong>tampon plein : l’amont est bloqué</strong>':'')+'.</p>';
       const current=jobs.filter(j=>j.released&&!j.done&&j.stationId===id);
-      html+=current.length?'<ul class="detail-jobs">'+current.slice(0,8).map(j=>'<li>'+escapeHTML(j.flight.id)+' · '+escapeHTML(j.kind)+' · échéance '+formatTime(j.dueT)+' · '+escapeHTML(modele.ETATS[modele.etatOF(j)])+'</li>').join('')+'</ul>':'<p>Aucun ordre de fabrication actif ici.</p>';
+      html+=current.length?'<ul class="detail-jobs">'+current.slice(0,8).map(j=>'<li>'+escapeHTML(j.flight.id)+' · '+escapeHTML(j.kind)+' · échéance '+heureJour(j.dueT)+' · '+escapeHTML(modele.ETATS[modele.etatOF(j)])+'</li>').join('')+'</ul>':'<p>Aucun ordre de fabrication actif ici.</p>';
       if(current.length>8)html+='<p>Et '+(current.length-8)+' autre(s) OF.</p>';
     }
-  } else if(now===CFG.jour.debut)html='Lancez la démonstration, puis sélectionnez un atelier ou ouvrez le suivi des vols.';
+  } else if(now===DEBUT())html='Lancez la démonstration, puis sélectionnez un atelier ou ouvrez le suivi des vols.';
   else if(!goulot)html='Personne n’attend à cet instant : aucun poste ne contraint le flux.';
   else html='<strong>'+escapeHTML(goulot.nom)+'</strong><p>'+goulot.attente+' lot(s) en attente · '+escapeHTML(goulot.cause)+' · '+goulot.qlen+' OF présents. Mesuré, pas estimé : le goulot est le poste où l’on attend.</p>';
   if(el._detailHTML!==html){el.querySelector('[data-detail-body]').innerHTML=html;el._detailHTML=html;}
@@ -843,7 +853,7 @@ function dessinerChart() {
   ctx.clearRect(0, 0, w, h);
   document.getElementById('chart-legend').textContent = historique.length<2 ? 'Les courbes apparaîtront après 20 minutes simulées.' : 'Bleu : débit robot (0–'+Math.max(560,...historique.map(p=>p.debit))+' plateaux/h). Violet : encours (0–'+Math.max(10,...historique.map(p=>p.wip))+' OF). Échelles distinctes.';
   if (historique.length < 2) return;
-  const t0 = CFG.jour.debut, t1 = CFG.jour.fin;
+  const t0 = DEBUT(), t1 = FIN();
   const maxDebit = Math.max(560, ...historique.map(p => p.debit));
   const maxWip = Math.max(10, ...historique.map(p => p.wip));
   const X = t => (t - t0) / (t1 - t0) * w;
@@ -871,27 +881,28 @@ function boucle(ts) {
   if (!enMarche) return;
   const dtReel = Math.min(0.1, (ts - dernierReel) / 1000); dernierReel = ts;
   pendingTime += dtReel * vitesse;
-  while (pendingTime >= 0.5 && now < CFG.jour.fin) {
-    const p = Math.min(0.5,CFG.jour.fin-now); step(p); pendingTime -= p; accHist += p;
+  while (pendingTime >= 0.5 && now < FIN()) {
+    const p = Math.min(0.5,FIN()-now); step(p); pendingTime -= p; accHist += p;
     if (accHist >= 10) { accHist = 0; historique.push({ t:now, debit:Math.round((Sim.robotRate||0)*60), wip:jobs.filter(j=>j.released&&!j.done).length }); }
   }
   animerTokens(); majHorloge(); majPlan(); majDashboard(); dessinerChart();
-  if (now >= CFG.jour.fin) { pause(); toast('Journée simulée terminée'); return; }
+  if (now >= FIN()) { pause(); toast(MULTIJOUR()?'Journées simulées terminées':'Journée simulée terminée'); return; }
   frameId=requestAnimationFrame(boucle);
 }
 function majHorloge() {
-  const hh = Math.floor(now/60), mm = Math.floor(now%60);
-  document.getElementById('horloge').textContent = String(hh).padStart(2,'0') + ':' + String(mm).padStart(2,'0');
+  const minutes = ((Math.floor(now) % 1440) + 1440) % 1440;
+  const heure = String(Math.floor(minutes/60)).padStart(2,'0') + ':' + String(minutes%60).padStart(2,'0');
+  document.getElementById('horloge').textContent = MULTIJOUR() ? modele.etiquetteJour(now) + ' ' + heure : heure;
 }
 
 /* ==========================================================================
  *  10. CONTRÔLES
  * ==========================================================================*/
 function lancer() {
-  if (enMarche || editMode) return; if (now >= CFG.jour.fin) reset();
+  if (enMarche || editMode) return; if (now >= FIN()) reset();
   // Les réglages sont lus à la construction du modèle : on le reconstruit au
   // départ, pour que les curseurs touchés avant « Lancer » soient pris en compte.
-  if (now === CFG.jour.debut) build(Sim.dataCourante || SAMPLE);
+  if (now === DEBUT()) build(Sim.dataCourante || SAMPLE);
   if(!runConfig)runConfig=JSON.parse(JSON.stringify(CFG));
   enMarche = true; dernierReel = performance.now();
   const b = document.getElementById('btn-play'); b.textContent = '⏸ Pause'; b.className = 'btn btn-pause';
@@ -900,7 +911,7 @@ function lancer() {
 function pause() {
   enMarche = false;
   if(frameId!==null){cancelAnimationFrame(frameId);frameId=null;}
-  const b = document.getElementById('btn-play'); b.textContent = now>=CFG.jour.fin?'▶ Relancer':now===CFG.jour.debut?'▶ Lancer':'▶ Reprendre'; b.className = 'btn btn-play';
+  const b = document.getElementById('btn-play'); b.textContent = now>=FIN()?'▶ Relancer':now===DEBUT()?'▶ Lancer':'▶ Reprendre'; b.className = 'btn btn-play';
   updateRunState();
 }
 function basculer() { enMarche ? pause() : lancer(); }
@@ -949,7 +960,7 @@ function initControles() {
   document.getElementById('robot-cies').addEventListener('change', e => {
     CFG.robotCompagnies = e.target.value.split(/[\s,;]+/).map(v => v.trim().toUpperCase()).filter(Boolean);
     e.target.value = CFG.robotCompagnies.join(', ');
-    if (now === CFG.jour.debut) { build(Sim.dataCourante || SAMPLE); majDashboard(); }
+    if (now === DEBUT()) { build(Sim.dataCourante || SAMPLE); majDashboard(); }
   });
   // Contenance des ateliers : une case par atelier modélisé, vide = illimitée.
   const tb = document.getElementById('tampons');
@@ -965,10 +976,16 @@ function initControles() {
   bind('tunnels', e => { CFG.tunnels = +e.target.value; document.getElementById('tunnels-val').textContent = e.target.value; majPlan(); });
   document.getElementById('double').addEventListener('change', e => { CFG.tunnelDouble = e.target.checked; majPlan(); });
   bind('materiel', e => { CFG.materiel.initial = +e.target.value; document.getElementById('materiel-val').textContent = e.target.value + ' u'; });
+  const majCal = () => {
+    document.getElementById('cal-detail').hidden = !CFG.calendrier.actif;
+    if (now === DEBUT()) { build(Sim.dataCourante || SAMPLE); majHorloge(); majPlan(); majDashboard(); dessinerChart(); }
+  };
+  document.getElementById('calendrier').addEventListener('change', e => { CFG.calendrier.actif = e.target.checked; majCal(); });
+  bind('cal-jours', e => { CFG.calendrier.jours = +e.target.value; document.getElementById('cal-jours-val').textContent = e.target.value + ' j'; majCal(); });
   bind('shift', e => { CFG.shift = +e.target.value; document.getElementById('shift-val').textContent = (e.target.value>0?'+':'') + e.target.value + ' min'; reset(); });
   document.getElementById('loadDelay').addEventListener('change',e=>{if(!e.target.checkValidity() || !e.target.value){e.target.value=CFG.loadDelay;toast('Délai attendu : 10 à 120 minutes');return;}CFG.loadDelay=+e.target.value;reset();});
   document.getElementById('btn-play').addEventListener('click', basculer);
-  document.getElementById('btn-reset').addEventListener('click', () => { if(now>CFG.jour.debut && !confirm('Recommencer à 05:00 ? La progression actuelle sera effacée ; les instantanés A/B seront conservés.'))return;reset(); toast('Simulation réinitialisée ; réglages disponibles'); });
+  document.getElementById('btn-reset').addEventListener('click', () => { if(now>DEBUT() && !confirm('Recommencer à 05:00 ? La progression actuelle sera effacée ; les instantanés A/B seront conservés.'))return;reset(); toast('Simulation réinitialisée ; réglages disponibles'); });
   document.getElementById('btn-export').addEventListener('click', exporter);
   document.getElementById('snap-a').addEventListener('click', () => capturer('A'));
   document.getElementById('snap-b').addEventListener('click', () => capturer('B'));
@@ -1016,11 +1033,12 @@ function capturer(slot) {
   const data=JSON.parse(JSON.stringify(Sim.dataCourante));
   const r=Orly.simulerJournee(data,config,serviceMetrics);
   const b=r.bilan;
-  snaps[slot]={time:config.jour.fin,source:dataSource,config,data,kpis:r.kpis,bilan:b,
+  snaps[slot]={time:instantDu(r.modele,r.modele.horizon),source:dataSource,config,data,kpis:r.kpis,bilan:b,
     ontime:r.kpis.ontime,retard:r.kpis.retardMoy,overdue:r.kpis.overdue,
     robot:config.robotCadence,robotCies:(config.robotCompagnies||[]).join(', ')||'aucune',ycManuel:config.ycManuel,
     tampons:Object.keys(config.tampons||{}).map(k=>ZONES[k].nom+' '+config.tampons[k]).join(', ')||'illimitées',
     materiel:config.materiel&&config.materiel.actif?config.materiel.initial+' u':'non modélisé',
+    calendrier:config.calendrier&&config.calendrier.actif?config.calendrier.jours+' journées de départs, cuisine J−2 et prépa J−1':'journée unique',
     materielMin:b.materiel?Math.round(b.materiel.niveauMin):null,
     materielRupture:b.materiel?Math.round(b.materiel.partEnRupture*100):null,
     prepa:config.staff.prepa,tunnels:config.tunnels+(config.tunnelDouble?' (1×2)':''),
@@ -1028,18 +1046,18 @@ function capturer(slot) {
     robotJour:Math.round((b.robot.occupationJour||0)*100),robotP90:b.robot.attenteP90==null?null:Math.round(b.robot.attenteP90),
     prepaJour:Math.round((b.ateliers.prepa.occupationJour||0)*100),cuisineJour:Math.round((b.ateliers.cuisine.occupationJour||0)*100),
     plongeJour:Math.round((b.ateliers.plonge.occupationJour||0)*100)};
-  majCompare();toast('Scénario '+slot+' : journée rejouée jusqu’à '+formatTime(config.jour.fin));
+  majCompare();toast('Scénario '+slot+' : '+(r.modele.joursProduction>1?r.modele.joursProduction+' journées rejouées':'journée rejouée jusqu’à '+formatTime(config.jour.fin)));
 }
 function majCompare() {
   const lignes = [
-    ['Journée simulée jusqu’à','time','h'],
-    ['Robot pl/h','robot'],['Compagnies servies par le robot','robotCies'],['YC manuel, min/plateau','ycManuel'],['Contenances','tampons'],['Matériel propre à l’ouverture','materiel'],['Personnes au montage (matin)','prepa'],['Équipe du soir','soir'],['Tunnels de plonge','tunnels'],
+    ['Journée simulée jusqu’à','time'],
+    ['Robot pl/h','robot'],['Compagnies servies par le robot','robotCies'],['YC manuel, min/plateau','ycManuel'],['Contenances','tampons'],['Matériel propre à l’ouverture','materiel'],['Calendrier','calendrier'],['Personnes au montage (matin)','prepa'],['Équipe du soir','soir'],['Tunnels de plonge','tunnels'],
     ['Prêts à l’échéance','ontime','%'],['Échéances dépassées en fin de journée','overdue'],['Retard moyen des dossiers','retard','min'],
     ['Robot occupé sur la journée','robotJour','%'],['Attente du robot, p90','robotP90','min'],
     ['Montage occupé sur la journée','prepaJour','%'],['Cuisine occupée sur la journée','cuisineJour','%'],['Plonge occupée sur la journée','plongeJour','%'],
     ['Matériel propre, plus bas niveau','materielMin','u'],['Part du temps en rupture de matériel','materielRupture','%']
   ];
-  const cell=(sn,l)=>{ if(!sn)return '—'; const v=sn[l[1]]; if(v==null)return '—'; if(l[2]==='h')return formatTime(v); return v+(l[2]?' '+l[2]:''); };
+  const cell=(sn,l)=>{ if(!sn)return '—'; const v=sn[l[1]]; if(v==null)return '—'; if(l[2]==='h')return heureJour(v); return v+(l[2]?' '+l[2]:''); };
   let html = '<thead><tr><th>Indicateur</th><th>A</th><th>B</th></tr></thead><tbody>';
   lignes.forEach(l => {
     const a=cell(snaps.A,l), b=cell(snaps.B,l);
@@ -1065,7 +1083,7 @@ function importVols(e) {
   rd.onload=()=>{
     try {
       const data=parseVols(rd.result);
-      if(now>CFG.jour.debut && !confirm('Importer ce fichier et recommencer à 05:00 ? La progression et les instantanés seront effacés.'))return;
+      if(now>DEBUT() && !confirm('Importer ce fichier et recommencer à 05:00 ? La progression et les instantanés seront effacés.'))return;
       Sim.dataCourante=data;dataSource=file.name;snaps={};majCompare();reset(data);updateSource();
       report.classList.remove('error');report.textContent=data.length+' lignes importées. '+data.filter(f=>f.sens==='DEP').length+' départs et '+data.filter(f=>f.sens==='RET').length+' retours. Calcul de démonstration uniquement.';
       if(data.some(f=>f.sens==='DEP'&&(f.std+CFG.shift-CFG.loadDelay<CFG.jour.debut || f.std+CFG.shift-CFG.loadDelay>CFG.jour.fin)))report.textContent+=' Certaines échéances sont hors de la fenêtre 05:00–23:00.';
@@ -1079,7 +1097,7 @@ function exporter() {
   const k = kpis();
   const data = { avertissement:'DÉMONSTRATION — paramètres non calibrés, résultats non exploitables pour décider.',schemaVersion:'0.4',modelStatus:'demonstration_non_calibree',source:dataSource,
     limites:['Calendrier J−1/J−2 non intégré','Barème d’homme-minutes non calibré','Contenances des tampons à renseigner (illimitées par défaut)','Stocks et compétences non modélisés'],
-    horaire:document.getElementById('horloge').textContent,termine:now>=CFG.jour.fin,config:runConfig||CFG,entrees:Sim.dataCourante,instantanes:snaps,kpis:k,
+    horaire:document.getElementById('horloge').textContent,termine:now>=FIN(),config:runConfig||CFG,entrees:Sim.dataCourante,instantanes:snaps,kpis:k,
     vols:flights.map(f => { const x=f.sens==='DEP'&&modele?modele.expliquer(f):null; return { id:f.id, sens:f.sens, robot:!!f.robot, due:f.due, readyTime:f.readyTime, retard:f.sens==='DEP'&&f.readyTime!=null?f.retard:null, statut:f.sens==='DEP'?flightStatus(f,now).key:'retour',
       explication:x?{ of:x.of, phrase:x.phrase, attenteEntree:x.attenteEntree, attentePersonnes:x.attentePersonnes, attenteRobot:x.attenteRobot, attenteAval:x.attenteAval, travail:x.travail, parAtelier:x.parAtelier }:null }; }),
     journal:modele?modele.journal():[],
@@ -1091,6 +1109,16 @@ function exporter() {
 }
 
 /* Workbench navigation and operational reading of the demonstrator. */
+/* Instant lisible. En multijour, l'étiquette est celle du CALENDRIER (J−2, J,
+ * J+1), pas le numéro de journée de calcul : un vol du premier jour de départs
+ * part « J », même si la production a commencé deux jours plus tôt. */
+function instantDu(m, t) {
+  if (t == null || !Number.isFinite(t)) return '—';
+  if (!m || m.joursProduction <= 1) return formatTime(t);
+  const minutes = ((Math.floor(t) % 1440) + 1440) % 1440;
+  return m.etiquetteJour(t) + ' ' + String(Math.floor(minutes/60)).padStart(2,'0') + ':' + String(minutes%60).padStart(2,'0');
+}
+function heureJour(t) { return instantDu(modele, t); }
 function formatTime(t) {
   if(t==null || !Number.isFinite(t))return '—';
   const day=Math.floor(t/1440),minutes=((Math.floor(t)%1440)+1440)%1440;
@@ -1124,9 +1152,9 @@ function updateSource() {
   document.getElementById('flight-count').textContent=flights.filter(f=>f.sens==='DEP').length;
 }
 function updateRunState() {
-  const started=enMarche||now>CFG.jour.debut;
-  document.getElementById('run-state').textContent=editMode?'Édition du plan':now>=CFG.jour.fin?'Terminé':enMarche?'En cours':started?'En pause':'Prêt à lancer';
-  document.querySelectorAll('#sliders-staff input,#robot,#robot-cies,#yc-manuel,#tampons input,#tunnels,#double,#materiel,#shift,#loadDelay').forEach(input=>{
+  const started=enMarche||now>DEBUT();
+  document.getElementById('run-state').textContent=editMode?'Édition du plan':now>=FIN()?'Terminé':enMarche?'En cours':started?'En pause':'Prêt à lancer';
+  document.querySelectorAll('#sliders-staff input,#robot,#robot-cies,#yc-manuel,#tampons input,#tunnels,#double,#materiel,#calendrier,#cal-jours,#shift,#loadDelay').forEach(input=>{
     input.disabled=started||NON_MODELISES.has(input.dataset.id);
     input.title=NON_MODELISES.has(input.dataset.id)?'Service non relié au calcul actuel':started?'Recommencez la simulation pour modifier les réglages':'';
   });
@@ -1147,7 +1175,7 @@ function renderFlights() {
     let operations;
     if(pending.length)operations=pending.map(j=>{const et=modele.etatOF(j);return j.kind+(j.released&&j.stationId?' · '+ZONES[j.stationId].nom:'')+' · '+modele.ETATS[et];}).join(' — ');
     else {const x=modele.expliquer(f);operations=x?x.phrase:'Toutes terminées';}
-    return '<tr><td><strong>'+escapeHTML(f.id)+'</strong><small>'+escapeHTML(f.cie)+(f.robot?' · robot':' · manuel')+'</small></td><td>'+formatTime(f.std+CFG.shift)+'</td><td>'+formatTime(f.due)+'</td><td><span class="status '+status.key+'">'+status.label+'</span>'+(f.readyTime!=null?'<small>Prêt à '+formatTime(f.readyTime)+'</small>':'')+'</td><td>'+escapeHTML(operations)+'</td></tr>';
+    return '<tr><td><strong>'+escapeHTML(f.id)+'</strong><small>'+escapeHTML(f.cie)+(f.robot?' · robot':' · manuel')+'</small></td><td>'+heureJour(f.stdAbs!=null?f.stdAbs:f.std+CFG.shift)+'</td><td>'+heureJour(f.due)+'</td><td><span class="status '+status.key+'">'+status.label+'</span>'+(f.readyTime!=null?'<small>Prêt à '+heureJour(f.readyTime)+'</small>':'')+'</td><td>'+escapeHTML(operations)+'</td></tr>';
   }).join('') || '<tr><td colspan="5" class="empty-state">Aucun départ ne correspond à ces filtres.</td></tr>';
   const body=document.getElementById('flight-rows');if(body.innerHTML!==html)body.innerHTML=html;
 }
@@ -1169,7 +1197,7 @@ function initWorkbench() {
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type:'text/csv;charset=utf-8'}));a.download='modele-vols-demo.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
   });
   document.getElementById('restore-demo').addEventListener('click',()=>{
-    if((now>CFG.jour.debut||dataSource!=='Jeu de démonstration')&&!confirm('Recharger la démo ? Les données importées, la progression et les instantanés seront remplacés.'))return;
+    if((now>DEBUT()||dataSource!=='Jeu de démonstration')&&!confirm('Recharger la démo ? Les données importées, la progression et les instantanés seront remplacés.'))return;
     dataSource='Jeu de démonstration';Sim.dataCourante=SAMPLE;snaps={};majCompare();reset(SAMPLE);updateSource();
     const report=document.getElementById('import-report');report.classList.remove('error');report.textContent='Jeu de démonstration rechargé.';
   });

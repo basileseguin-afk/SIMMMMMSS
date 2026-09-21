@@ -64,6 +64,22 @@
     // Relève d'équipe : `staff` est l'équipe du matin ; `soir[id]`, s'il est
     // renseigné, remplace l'effectif de l'atelier à partir de `bascule`.
     equipes: { bascule: 14 * 60, soir: {} },
+    // Calendrier de production. Inactif, tout se fait le jour du départ, comme
+    // avant. Actif, la production remonte de plusieurs jours : cuisine J−2,
+    // prépa J−1, le reste le jour même — cible théorique de la feuille de
+    // route. Les heures d'ouverture deviennent alors réelles : la nuit, plus
+    // personne n'est là. `jours` répète le même programme de vols, faute de
+    // quoi une seule journée étalée sur trois n'aurait aucune charge.
+    //
+    // ATTENTION : la liste des vols concernés par l'exception CRL et le seuil
+    // horaire ne sont PAS confirmés. Le seuil de 21 h est une valeur de départ,
+    // réglable, pas une règle validée sur le site.
+    calendrier: {
+      actif: false,
+      jours: 3,
+      avance: { appros: 2, decontam: 2, cuisine: 2, prepa: 1, dotation: 0, armement: 0, plonge: 0 },
+      exception: { compagnies: ['CRL'], apresHeure: 21 * 60, avance: { prepa: 0 } }
+    },
     // Boucle du matériel propre : les retours lavés à la plonge réalimentent un
     // stock que la dotation consomme pour les départs. Un stock insuffisant
     // arrête la dotation, même avec tout le personnel du monde.
@@ -174,7 +190,41 @@
   function construireModele(donnees, cfg, options) {
     const o = options || {};
     const surToken = typeof o.surToken === 'function' ? o.surToken : function () {};
+    /* ---- calendrier : arithmétique des jours --------------------------- */
+    const cal = Object.assign({}, CFG_DEFAUT.calendrier, cfg.calendrier || {});
+    cal.avance = Object.assign({}, CFG_DEFAUT.calendrier.avance, (cfg.calendrier || {}).avance || {});
+    cal.exception = Object.assign({}, CFG_DEFAUT.calendrier.exception, (cfg.calendrier || {}).exception || {});
+
+    /** Jours d'avance de production d'un atelier pour ce vol, exception comprise. */
+    const avanceDe = (f, id) => {
+      if (!cal.actif) return 0;
+      const ex = cal.exception;
+      if (ex && Array.isArray(ex.compagnies) && ex.avance && ex.avance[id] !== undefined) {
+        const cie = String(f.cie || '').trim().toUpperCase();
+        const vise = ex.compagnies.some(c => String(c).trim().toUpperCase() === cie);
+        if (vise && (f.std || 0) >= ex.apresHeure) return ex.avance[id];
+      }
+      const a = cal.avance[id];
+      return Number.isInteger(a) && a >= 0 ? a : 0;
+    };
+
+    // Décalage : on place le premier jour de production à l'indice 0, pour que
+    // le temps reste positif. Un vol du jour `d` part donc au jour `d + decalage`.
+    const decalage = cal.actif ? Math.max(0, ...ATELIERS.map(id => {
+      const a = cal.avance[id]; return Number.isInteger(a) && a > 0 ? a : 0;
+    }), ...Object.keys(cal.exception.avance || {}).map(id => cal.exception.avance[id] || 0)) : 0;
+    const joursDeparts = cal.actif ? Math.max(1, cal.jours | 0) : 1;
+    const joursProduction = decalage + joursDeparts;
+
     const t0 = cfg.jour.debut;
+    const horizon = (joursProduction - 1) * 1440 + cfg.jour.fin;
+    const ouvertureDuJour = d => d * 1440 + cfg.jour.debut;
+    /** Étiquette d'un instant relative au premier jour de départs : J−2, J, J+1… */
+    const etiquetteJour = t => {
+      const d = Math.floor(t / 1440) - decalage;
+      return d === 0 ? 'J' : 'J' + (d > 0 ? '+' : '−') + Math.abs(d);
+    };
+
     const env = new Environnement(t0);
 
     /* ---- ateliers ---- */
@@ -211,8 +261,20 @@
     /** Durée, pour une personne ou un tunnel, d'un lot de `l` unités à l'atelier `id`. */
     const dureeLot = (id, l) => id === 'plonge' ? l / Math.max(1e-9, cfg.tunnelDebit || 0) : l / Math.max(1e-9, cfg.dispo || 0);
 
-    /* ---- vols et ordres de fabrication ---- */
-    const flights = donnees.map(f => Object.assign({}, f));
+    /* ---- vols et ordres de fabrication ----
+     * Avec le calendrier, le même programme est répété sur `jours` journées de
+     * départs : sans cela, une seule journée étalée sur trois jours de
+     * production n'aurait presque aucune charge et le résultat serait flatteur
+     * pour rien. Les copies portent un identifiant suffixé. */
+    const flights = [];
+    for (let d = 0; d < joursDeparts; d++) {
+      donnees.forEach(f => {
+        const c = Object.assign({}, f);
+        c.jour = d;
+        if (d > 0) c.id = f.id + '·J+' + d;
+        flights.push(c);
+      });
+    }
     const jobs = [];
     const mkJob = (f, kind, route, work, robotPl, releaseT) => ({
       flight: f, kind, route, work, robot: robotPl || 0, releaseT,
@@ -221,22 +283,36 @@
       // Trace de l'OF, pour expliquer un retard : une entrée par atelier traversé.
       etapes: [], finT: null,
       _entreeAttendue: false, _avalAttendu: false, _lotsEnCours: 0, _lotsRestants: 0, _robotAttend: false,
-      _materielAttendu: false, _avalVers: null, besoinMateriel: 0, apportMateriel: 0
+      _materielAttendu: false, _calendaire: false, _avalVers: null, besoinMateriel: 0, apportMateriel: 0
     });
     let plateauxRobot = 0, plateauxManuel = 0;
     flights.forEach(f => {
       const c = chargeVol(f, cfg);
+      const base = (f.jour || 0) * 1440;
+      // Libération d'un ordre : le calendrier décide, quand il est actif —
+      // l'ouverture du jour où l'atelier de tête est censé produire. Il
+      // remplace alors les décalages forfaitaires (départ − 200, − 175) qui en
+      // tenaient lieu.
+      const liberation = (route, defaut) => cal.actif
+        ? ouvertureDuJour((f.jour || 0) + decalage - avanceDe(f, route[0]))
+        : defaut;
       if (f.sens === 'DEP') {
-        const std = (f.std || 0) + cfg.shift;
+        const std = base + (f.std || 0) + cfg.shift + (cal.actif ? decalage * 1440 : 0);
+        f.stdAbs = std;
         f.due = std - cfg.loadDelay; f.readyTime = null; f.retard = 0;
         f.robot = c.robotServi;
         if (c.robotServi) plateauxRobot += f.yc || 0; else plateauxManuel += f.yc || 0;
         f.foodDone = f.dotDone = f.armDone = false;
-        jobs.push(mkJob(f, 'food', ROUTES.food, c.food, c.food.robot, std - 200));
-        jobs.push(mkJob(f, 'dot', ROUTES.dot, { dotation: c.dotation }, 0, std - 175));
-        jobs.push(mkJob(f, 'arm', ROUTES.arm, { armement: c.armement }, 0, std - 175));
+        jobs.push(mkJob(f, 'food', ROUTES.food, c.food, c.food.robot, liberation(ROUTES.food, std - 200)));
+        jobs.push(mkJob(f, 'dot', ROUTES.dot, { dotation: c.dotation }, 0, liberation(ROUTES.dot, std - 175)));
+        jobs.push(mkJob(f, 'arm', ROUTES.arm, { armement: c.armement }, 0, liberation(ROUTES.arm, std - 175)));
       } else {
-        jobs.push(mkJob(f, 'plonge', ROUTES.plonge, { plonge: c.plonge }, 0, (f.sta || 0) + cfg.shift));
+        // Un retour ne peut pas être lavé avant d'avoir atterri : l'ouverture
+        // du jour ne suffit pas, l'heure d'arrivée s'impose aussi.
+        const sta = base + (f.sta || 0) + cfg.shift + (cal.actif ? decalage * 1440 : 0);
+        f.staAbs = sta;
+        jobs.push(mkJob(f, 'plonge', ROUTES.plonge, { plonge: c.plonge }, 0,
+          Math.max(liberation(ROUTES.plonge, sta), sta)));
       }
     });
     if (stock) {
@@ -249,19 +325,34 @@
       });
     }
 
-    /* Relève d'équipe : à `bascule`, chaque atelier dont l'effectif du soir est
-     * renseigné change de capacité. Personne n'est interrompu : les places en
-     * trop se ferment au fil des libérations, les renforts servent aussitôt. */
-    if (equipes && equipes.soir) {
-      Object.keys(equipes.soir).forEach(id => {
-        const st = stations[id];
-        const soir = equipes.soir[id];
-        if (!st || id === 'plonge' || !Number.isInteger(soir) || soir < 0 || soir === st.capacite) return;
-        const bascule = equipes.bascule === undefined ? CFG_DEFAUT.equipes.bascule : equipes.bascule;
-        if (bascule <= t0) { st.ressource.modifierCapacite(soir); st.capacite = soir; return; }
-        env.processus(function* (e) { yield e.delai(bascule - t0); st.ressource.modifierCapacite(soir); }, id + ' relève');
-      });
-    }
+    /* Planning quotidien de chaque atelier : ouverture avec l'équipe du matin,
+     * relève avec celle du soir, puis fermeture — capacité zéro, plus personne.
+     * Répété pour chaque journée simulée. Personne n'est interrompu : les
+     * places en trop se ferment au fil des libérations, et un lot commencé
+     * avant la fermeture se termine après. Les renforts servent aussitôt.
+     *
+     * Sans calendrier il n'y a qu'une journée et la fermeture tombe à
+     * l'horizon : le comportement est exactement celui d'avant. */
+    const bascule = equipes.bascule === undefined ? CFG_DEFAUT.equipes.bascule : equipes.bascule;
+    ATELIERS.forEach(id => {
+      const st = stations[id];
+      const matin = st.capacite;
+      const soirBrut = equipes.soir ? equipes.soir[id] : undefined;
+      const soir = (id !== 'plonge' && Number.isInteger(soirBrut) && soirBrut >= 0) ? soirBrut : matin;
+      const pts = [];
+      for (let d = 0; d < joursProduction; d++) {
+        const base = d * 1440;
+        pts.push({ t: base + cfg.jour.debut, n: matin });
+        if (soir !== matin) pts.push({ t: base + Math.max(cfg.jour.debut, bascule), n: soir });
+        pts.push({ t: base + cfg.jour.fin, n: 0 });
+      }
+      env.processus(function* (e) {
+        for (const p of pts) {
+          if (p.t > e.maintenant) yield e.delai(p.t - e.maintenant);
+          st.ressource.modifierCapacite(p.n);
+        }
+      }, id + ' planning');
+    });
 
     function spawnEntree(j) {
       if (j.kind === 'food') surToken('appros_decontam', j.color);
@@ -321,7 +412,8 @@
         const id = j.route[k], st = stations[id];
         j.stationId = id;
         const etape = { atelier: id, entree: e.maintenant, debut: null, fin: null, sortie: null,
-                        robotDemande: null, robotDebut: null, robotFin: null, attenteMateriel: 0 };
+                        robotDemande: null, robotDebut: null, robotFin: null,
+                        attenteMateriel: 0, attenteCalendrier: 0 };
         j.etapes.push(etape);
 
         // Le matériel propre se prend AVANT d'occuper quelqu'un : on ne mobilise
@@ -347,12 +439,34 @@
 
         if (k + 1 < j.route.length) {
           const suivant = j.route[k + 1];
-          j._avalAttendu = true; j._avalVers = suivant;
-          yield stations[suivant].tampon.deposer(j);      // BLOQUE si l'aval est plein
-          j._avalAttendu = false; j._avalVers = null;
-          etape.sortie = e.maintenant;
-          yield st.tampon.prendre(x => x === j);
-          surToken(id + '_' + suivant, j.color);
+          const ouvSuivant = cal.actif
+            ? ouvertureDuJour((j.flight.jour || 0) + decalage - avanceDe(j.flight, suivant))
+            : -Infinity;
+
+          if (e.maintenant < ouvSuivant) {
+            // L'étape suivante est prévue un autre jour. L'OF QUITTE l'atelier
+            // et attend en stock : il n'immobilise pas une place toute la nuit
+            // et ne bloque pas l'amont. Le blocage aval ne se joue qu'entre
+            // deux étapes du même jour, là où il a un sens.
+            etape.sortie = e.maintenant;
+            yield st.tampon.prendre(x => x === j);
+            etape.attenteCalendrier = ouvSuivant - e.maintenant;
+            j.stationId = suivant;
+            j._calendaire = true;
+            yield e.delai(etape.attenteCalendrier);
+            j._calendaire = false;
+            j._entreeAttendue = true;
+            yield stations[suivant].tampon.deposer(j);
+            j._entreeAttendue = false;
+            surToken(id + '_' + suivant, j.color);
+          } else {
+            j._avalAttendu = true; j._avalVers = suivant;
+            yield stations[suivant].tampon.deposer(j);      // BLOQUE si l'aval est plein
+            j._avalAttendu = false; j._avalVers = null;
+            etape.sortie = e.maintenant;
+            yield st.tampon.prendre(x => x === j);
+            surToken(id + '_' + suivant, j.color);
+          }
         } else {
           etape.sortie = e.maintenant;
           yield st.tampon.prendre(x => x === j);
@@ -455,6 +569,7 @@
     const ETATS = {
       a_liberer: 'à libérer', attente_entree: 'attend une place dans l’atelier', attente_personne: 'attend une personne',
       travail: 'en cours', attente_robot: 'attend le robot', attente_materiel: 'attend du matériel propre',
+      attente_calendrier: 'en stock, attend l’ouverture de son atelier',
       attente_aval: 'fini, attend une place en aval', fini: 'terminé'
     };
 
@@ -462,6 +577,7 @@
     function etatOF(j) {
       if (j.done) return 'fini';
       if (!j.released) return 'a_liberer';
+      if (j._calendaire) return 'attente_calendrier';
       if (j._entreeAttendue) return 'attente_entree';
       if (j._materielAttendu) return 'attente_materiel';
       if (j._avalAttendu) return 'attente_aval';
@@ -473,7 +589,8 @@
 
     /** Décomposition d'un OF terminé : où il a attendu, combien il a travaillé. */
     function decomposer(j) {
-      const d = { attenteEntree: j.attenteEntree || 0, attentePersonnes: 0, attenteRobot: 0, attenteMateriel: 0, attenteAval: 0, travail: 0, parAtelier: [] };
+      const d = { attenteEntree: j.attenteEntree || 0, attentePersonnes: 0, attenteRobot: 0, attenteMateriel: 0,
+                  attenteAval: 0, attenteCalendrier: 0, travail: 0, parAtelier: [] };
       j.etapes.forEach(et => {
         const fin = et.fin == null ? env.maintenant : et.fin;
         const debut = et.debut == null ? fin : et.debut;
@@ -483,8 +600,10 @@
         const am = et.attenteMateriel || (j._materielAttendu && et.fin == null ? env.maintenant - et.entree : 0);
         const ap = Math.max(0, debut - et.entree - am), tr = Math.max(0, fin - debut), aa = Math.max(0, sortie - fin);
         const ar = et.robotDemande != null ? Math.max(0, (et.robotDebut == null ? env.maintenant : et.robotDebut) - et.robotDemande) : 0;
+        const ac = et.attenteCalendrier || (j._calendaire && et.sortie != null ? env.maintenant - et.sortie : 0);
         d.attentePersonnes += ap; d.travail += tr; d.attenteAval += aa; d.attenteRobot += ar; d.attenteMateriel += am;
-        d.parAtelier.push({ atelier: et.atelier, attentePersonnes: ap, attenteRobot: ar, attenteMateriel: am, travail: tr, attenteAval: aa });
+        d.attenteCalendrier += ac;
+        d.parAtelier.push({ atelier: et.atelier, attentePersonnes: ap, attenteRobot: ar, attenteMateriel: am, travail: tr, attenteAval: aa, attenteCalendrier: ac });
       });
       return d;
     }
@@ -512,6 +631,9 @@
       if (d.attenteAval > 0.5) morceaux.push('bloqué par l’aval ' + r(d.attenteAval) + ' min');
       if (d.attenteEntree > 0.5) morceaux.push('atelier plein à l’entrée ' + r(d.attenteEntree) + ' min');
       morceaux.push('travail ' + r(d.travail) + ' min');
+      // L'attente calendaire n'est PAS un problème : c'est la production
+      // planifiée en avance. Dite en dernier, et nommée comme telle.
+      if (d.attenteCalendrier > 0.5) morceaux.push('attente planifiée ' + r(d.attenteCalendrier) + ' min (calendrier)');
       const etat = etatOF(critique);
       const tete = critique.done
         ? 'OF ' + critique.kind + ' (le dernier fini)'
@@ -552,6 +674,8 @@
         ateliers,
         robot: { cadence: cfg.robotCadence, compagnies: (cfg.robotCompagnies || []).slice(), plateauxRobot, plateauxManuel,
                  occupationJour: robot.tauxOccupation(), attenteMoyenne: robot.attente.moyenne(), attenteP90: robot.attente.percentile(90) },
+        calendrier: { actif: cal.actif, joursDeparts, joursProduction, decalage, horizon,
+                      avance: Object.assign({}, cal.avance), exception: Object.assign({}, cal.exception) },
         materiel: stock ? {
           initial: mat.initial, parPax: mat.parPax,
           consomme: jobs.reduce((n, j) => n + (j.besoinMateriel && j.done ? j.besoinMateriel : 0), 0),
@@ -563,7 +687,9 @@
     }
 
     rafraichir(0);
-    return { env, flights, jobs, stations, robot, stock, ATELIERS, ETATS, avancerA, debitRobot, goulot, bilan,
+    return { env, flights, jobs, stations, robot, stock, ATELIERS, ETATS,
+             debut: t0, horizon, calendrier: cal, decalage, joursProduction, joursDeparts, etiquetteJour,
+             avancerA, debitRobot, goulot, bilan,
              etatOF, decomposer, expliquer, journal,
              get maintenant() { return env.maintenant; } };
   }
@@ -575,8 +701,8 @@
    */
   function simulerJournee(donnees, cfg, kpis) {
     const m = construireModele(donnees, cfg);
-    m.avancerA(cfg.jour.fin);
-    return { modele: m, kpis: kpis ? kpis(m.flights, cfg.jour.fin) : null, bilan: m.bilan() };
+    m.avancerA(m.horizon);
+    return { modele: m, kpis: kpis ? kpis(m.flights, m.horizon) : null, bilan: m.bilan() };
   }
 
   return { CFG_DEFAUT, JEU_DEMO, ROUTES, ATELIERS, LOT, FENETRE, chargeVol, robotServi, capacitePlonge, construireModele, simulerJournee };

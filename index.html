@@ -332,6 +332,17 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <div id="tampons"></div>
 </div>
 <div class="panneau">
+<h3>Calendrier de production</h3>
+<label class="chk"><input id="calendrier" type="checkbox"/> Production en avance : cuisine J−2, prépa J−1</label>
+<div id="cal-detail" hidden="">
+<div class="slider-ligne" style="margin-top:10px">
+<label for="cal-jours">Journées de départs simulées <b id="cal-jours-val">3 j</b></label>
+<input id="cal-jours" max="7" min="1" step="1" type="range" value="3"/>
+</div>
+<div class="mini-note">Le même programme de vols est répété chaque jour : sans cela, une seule journée étalée sur plusieurs n’aurait presque aucune charge. Les ateliers ferment la nuit. Un CRL partant après 21:00 est préparé le matin du départ — <strong>seuil et liste de compagnies à confirmer</strong>. Sur plusieurs jours, le matériel propre doit se boucler : le jeu de démonstration compte deux fois plus de départs que de retours, la rupture y est donc attendue.</div>
+</div>
+</div>
+<div class="panneau">
 <h3>Plonge — tunnels</h3>
 <div class="slider-ligne">
 <label for="tunnels">Tunnels actifs <b id="tunnels-val">3</b></label>

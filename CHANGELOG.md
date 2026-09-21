@@ -111,6 +111,62 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-21 — Calendrier multijour : cuisine J−2, prépa J−1, nuits fermées
+
+| Fichier | Changement |
+|---|---|
+| `moteur/orly.js` | `cfg.calendrier` : avance par atelier, exception CRL du soir, programme répété sur N journées de départs ; **planning quotidien** de chaque atelier (ouverture, relève, fermeture) ; attente calendaire entre deux étapes séparées par une nuit ; `debut`, `horizon`, `etiquetteJour` exposés |
+| `sim.js` | l'interface lit `DEBUT()` / `FIN()` sur le modèle au lieu de la fenêtre quotidienne ; horloge et tableaux étiquetés par jour ; case « Calendrier de production » et curseur de journées ; ligne A/B |
+| `index.html` | panneau « Calendrier de production » |
+| `tests/orly.test.cjs` | 7 régressions : arithmétique des jours, cuisine J−2 et prépa J−1, exception CRL, nuits fermées, sortie d'atelier la nuit, rétrocompatibilité |
+| `tests/import-browser.cjs` | la case, l'horloge, le compteur et l'A/B dans le navigateur |
+| `README.md` | réglages, lecture, limites |
+
+C'était la **première limite métier de la feuille de route**. Elle est levée,
+avec une réserve écrite partout : le seuil de 21:00 et la liste des compagnies
+exceptées **ne sont pas confirmés**, et le programme de vols est répété faute de
+données réelles datées.
+
+**Inactif par défaut.** Il change tout l'axe du temps de l'interface, et Astra
+y travaille en parallèle. Activé, il se voit : l'horloge passe à « J−2 05:00 »,
+le programme devient 36 départs sur trois jours, les ateliers ferment la nuit.
+
+**Ce que le calendrier révèle.** Sur la démonstration, matériel neutralisé pour
+isoler l'effet :
+
+| | départs | à l'heure | cuisine | prépa | robot |
+|---|---:|---:|---:|---:|---:|
+| Journée unique | 12 | 100 % | 15 % | 11 % | 20 % |
+| Calendrier, 3 journées | 36 | 100 % | 9 % | 6 % | 9 % |
+
+La pression d'échéance sur la cuisine et la prépa **était un artefact du modèle
+d'une seule journée**, qui entassait deux jours de production dans celui du
+départ. Un plat cuisiné l'avant-veille n'a pas d'échéance le jour du vol.
+
+**Et un résultat que la journée unique cachait.** Calendrier actif avec le
+matériel : 47 % à l'heure, 148 minutes de retard moyen. Ce n'est pas le
+calendrier qui dégrade, c'est la **boucle du matériel qui ne se boucle pas** —
+le jeu de démonstration compte 3 220 passagers au départ pour 1 772 au retour.
+Sur une journée, le stock initial masquait l'écart ; sur trois, il se vide.
+C'est la donnée de démonstration qui est déséquilibrée, pas le modèle, et
+c'est dit dans l'interface.
+
+Points de conception, écrits dans le code : un ordre qui attend l'ouverture du
+lendemain **quitte son atelier** — il n'immobilise pas une place toute la nuit
+et ne bloque pas l'amont ; le blocage aval ne se joue qu'entre deux étapes du
+même jour. Personne n'est interrompu à la fermeture : un lot commencé à 22:58
+se termine après 23:00.
+
+**Trois défauts corrigés en cours de route.** Le tableau A/B formatait un
+instantané ancien avec le calendrier courant, affichant un jour qui n'était pas
+le sien — chaque instantané porte désormais son propre libellé. Le compteur de
+vols ne suivait pas la reconstruction du modèle. Et l'étiquette de jour des vols
+était celle du calcul (J+2) au lieu de celle du calendrier (J).
+
+Tests : 105 unitaires et 6 parcours navigateur.
+
+---
+
 ## 2026-09-21 — État des lieux du projet
 
 | Fichier | Changement |

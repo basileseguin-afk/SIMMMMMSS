@@ -86,8 +86,9 @@ n'est présent dans ce dépôt.
    elle crée le blocage amont), l’**équipe du soir** (effectif par atelier à
    partir de l’heure de relève, 14:00 par défaut ; personne n’est interrompu à
    la relève, les places en trop se ferment au fil des libérations), les
-   tunnels, le **matériel propre à l’ouverture** et les horaires avant de
-   lancer. Une fois l’essai commencé, les paramètres sont verrouillés, même
+   tunnels, le **matériel propre à l’ouverture**, le **calendrier de
+   production** (cuisine J−2, prépa J−1 ; inactif par défaut) et les horaires
+   avant de lancer. Une fois l’essai commencé, les paramètres sont verrouillés, même
    en pause. **Recommencer** libère les réglages et efface la progression après
    confirmation ; les instantanés restent disponibles.
 3. **Plan / Suivi** : sélectionner un atelier depuis le plan, la liste Atelier
@@ -132,6 +133,12 @@ temps de transfert.
   matériel propre en rupture, ou tampon plein. Un OF bloqué faute de place en
   aval est imputé à l’atelier aval, celui qui est plein. Aucun seuil : s’il n’y
   a d’attente nulle part, rien n’est désigné.
+- **Calendrier de production** (facultatif) : la cuisine travaille deux jours
+  avant le départ, la prépa la veille, le reste le jour même. Les ateliers
+  **ferment la nuit**. L’horloge affiche alors le jour (J−2, J, J+1). Entre
+  deux étapes séparées par une nuit, l’ordre **quitte son atelier** et attend
+  en stock : il ne bloque pas l’amont. Cette attente est dite « planifiée »
+  dans l’explication — ce n’est pas un retard.
 - **Matériel propre** : un seul compte, en unités par passager. La dotation en
   consomme pour chaque départ, la plonge le réalimente avec les retours lavés.
   À stock vide, la dotation attend **sans mobiliser personne** : son occupation
@@ -228,7 +235,11 @@ du moteur existant. Leur raccordement aux nouvelles liaisons reste à définir.
 
 ## Limites métier à traiter ensuite
 
-- Cuisine J−2, prépa J−1 et exception CRL du soir produit le matin de J non intégrées.
+- Le **calendrier de production** (cuisine J−2, prépa J−1, exception CRL du
+  soir) est modélisé mais **inactif par défaut** : il change tout l’axe du
+  temps. Le seuil de 21:00 et la liste des compagnies exceptées ne sont **pas
+  confirmés**. Le même programme de vols est répété chaque jour, faute de
+  données réelles datées.
 - Le robot sert les compagnies de la liste réglable (FBU, TX/FWI et CRL par
   défaut) ; les prestations exactes et les cas SPML restent à préciser, et le
   coefficient de dressage manuel des autres YC n’est pas calibré.

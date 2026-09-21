@@ -100,6 +100,24 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const exp=JSON.parse(require('node:fs').readFileSync(await dl.path(),'utf8'));
   assert.equal(exp.schemaVersion,'0.4');assert.ok(exp.journal.length>50);
   assert.ok(exp.vols.some(v=>v.explication&&v.explication.attenteRobot>0));
+  // Calendrier multijour : l'horloge, le compteur et le tableau A/B suivent.
+  // Les réglages sont verrouillés dès qu'un essai a commencé : on recommence.
+  await click('#btn-reset');
+  assert.equal(await page.locator('#calendrier').isDisabled(),false);
+  await setRange('#materiel','2600');
+  assert.equal(await page.locator('#cal-detail').isVisible(),false);
+  await page.locator('#calendrier').check();
+  assert.equal(await page.locator('#cal-detail').isVisible(),true);
+  assert.equal(await page.locator('#horloge').textContent(),'J−2 05:00');
+  assert.match(await page.locator('.jour').textContent(),/3 journées de départs/);
+  assert.equal(await page.locator('#source-count').textContent(),'36 départs · 18 retours');
+  await click('#snap-b');
+  assert.deepEqual((await ligne('Calendrier')).slice(1),['journée unique','3 journées de départs, cuisine J−2 et prépa J−1']);
+  assert.deepEqual((await ligne('Journée simulée')).slice(1),['23:00','J+2 23:00']);
+  await page.locator('#calendrier').uncheck();
+  assert.equal(await page.locator('#horloge').textContent(),'05:00');
+  assert.equal(await page.locator('#source-count').textContent(),'12 départs · 6 retours');
+
   assert.deepEqual(errors,[]);
   console.log('Import browser passed: read failure then re-import (BUG-005), physical line numbers (BUG-003), A/B full-day replay.');
  }finally{await browser.close();}

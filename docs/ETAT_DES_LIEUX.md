@@ -5,7 +5,7 @@ qui a changé commit par commit ; ce fichier dit **où en est le projet**, ce qu
 est décidé, ce qui ne l'est pas, et ce qui reste à faire. Il est vérifié contre
 le dépôt, pas écrit de mémoire.
 
-Révision décrite : `0bfe587`, branche `claude/factory-management-system-b1e0am`.
+Révision décrite : `0bfe587` + calendrier multijour, branche `claude/factory-management-system-b1e0am`.
 Deux assistants travaillent en parallèle sur cette branche : **Claude** et
 **Astra** (ChatGPT). Basile arbitre.
 
@@ -25,7 +25,7 @@ Le projet est passé, en cinq jours, d'une maquette animée à un **simulateur �
 | Retard | constaté | expliqué par cause, avec journal exporté |
 | Plan | schéma inventé | plan réel, éditable, avec flux et ateliers sur grille |
 | Confidentialité | plan et vols dans un dépôt public | retirés des branches, **encore présents dans les refs de PR** |
-| Tests | aucun | **98 unitaires + 6 parcours navigateur** |
+| Tests | aucun | **105 unitaires + 6 parcours navigateur** |
 
 **Ce qui reste vrai malgré tout :** le barème d'homme-minutes n'est pas
 calibré. Les résultats servent à **comparer des scénarios entre eux**, pas à
@@ -48,7 +48,7 @@ discrets **en JavaScript, dans le navigateur**, sans serveur.
 | `mesure.js` | moniteurs de niveau (pondérés par le temps) et de comptage | 6 |
 | `ressources.js` | postes à places, tampons bloquants, niveaux continus | 14 |
 | `procede.js` | gamme décrite en données, validation, tirages à graine | 14 |
-| `orly.js` | modèle de l'unité : ateliers, robot, plonge, matériel, calendrier | 21 |
+| `orly.js` | modèle de l'unité : ateliers, robot, plonge, matériel, calendrier | 28 |
 
 Ce que le modèle représente aujourd'hui :
 
@@ -60,7 +60,9 @@ Ce que le modèle représente aujourd'hui :
 - chaque atelier a une **contenance** en ordres de fabrication ; finie, elle
   crée le blocage amont ;
 - les effectifs changent à la **relève d'équipe**, sans interrompre personne ;
-- le **matériel propre** boucle : retours → plonge → stock → dotation → départs.
+- le **matériel propre** boucle : retours → plonge → stock → dotation → départs ;
+- le **calendrier** (facultatif) fait produire la cuisine deux jours avant le
+  départ et la prépa la veille, ateliers fermés la nuit.
 
 ### L'interface (Astra) — plan, flux, ateliers
 
@@ -83,6 +85,7 @@ Ce que le modèle représente aujourd'hui :
 | Moteur à événements discrets en JavaScript, dans le navigateur | Claude, suivi | 18/09 |
 | Le robot ne sert que FBU, TX/FWI et CRL | feuille de route, appliqué | 18/09 |
 | Le goulot se compte en ordres de fabrication, pas en lots | Claude | 19/09 |
+| Le calendrier multijour existe mais reste inactif par défaut | Claude | 21/09 |
 | La grille des ateliers est schématique, pas une mesure du bâtiment | Astra | 20/09 |
 
 ### Ce qui a été corrigé parce qu'un test l'a montré
@@ -135,9 +138,11 @@ récupérable par quiconque connaît l'adresse, sur un dépôt public.
 
 ### Limites métier
 
-- **Calendrier multijour absent.** Cuisine J−2, prépa J−1 et l'exception CRL du
-  soir ne sont pas représentées : tout se passe sur une seule journée. C'est la
-  première limite de la feuille de route et la plus lourde qui reste.
+- **Calendrier multijour : fait, mais inactif par défaut.** Cuisine J−2, prépa
+  J−1, exception CRL du soir, ateliers fermés la nuit. Il s'active dans les
+  réglages. Deux réserves : le seuil de 21:00 et la liste des compagnies
+  exceptées **ne sont pas confirmés**, et le programme de vols est répété
+  chaque jour faute de données réelles datées.
 - **Barème non calibré.** Les coefficients par passager viennent du
   démonstrateur, pas du classeur des heures. Le coefficient de dressage manuel
   (0,35 min/plateau) est inventé, affiché comme tel et réglable.
