@@ -5,6 +5,31 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-21 — Panneau d'aménagement : moins de texte, moins d'étapes
+
+Retour d'usage : « la bande à droite, je veux moins de texte et que ça soit
+bien plus intuitif ». Avant d'atteindre le premier bouton utile, le panneau
+empilait quatre blocs de texte gris.
+
+- Le titre du panneau disparaît : le nom du service **est** le titre. L'onglet
+  dit déjà « Création des ateliers ».
+- La pastille « Grille 50 × 50 cm » était en double avec le bas du plan :
+  supprimée du panneau.
+- « Cadrer », « Toute l'unité », annuler et rétablir passent sur **une seule
+  barre**, en haut, au lieu de quatre boutons pleine largeur éparpillés.
+- L'avertissement de placement ne s'affiche **que s'il y a de quoi avertir**,
+  en une ligne, et ne récite plus les compteurs à zéro.
+- Ce qui est acquis disparaît : la phrase de modèle une fois qu'un atelier
+  existe, l'astuce « un tracé = un équipement » une fois un équipement posé,
+  le titre d'atelier au-dessus de la liste tant qu'il n'y en a qu'un.
+- Trois étapes deviennent deux (« Équipements » absorbe « et personnes », où
+  les personnes se saisissaient déjà). La phrase d'état sous « Fusionner »
+  disait ce que le bouton dit : supprimée. Le total des personnes tient en une
+  ligne, sans détail par atelier tant qu'il n'y en a qu'un.
+- **Raccourci préservé** : une première version masquait les outils tant
+  qu'aucun atelier n'existait. Cela supprimait le chemin le plus court —
+  dessiner directement crée le premier atelier tout seul. Annulé.
+
 ## 2026-09-21 — BUG-013 : la couleur d'un atelier tient hors édition
 
 - `plan-editor.js` : `sync()` transmet la couleur choisie à l'interface de

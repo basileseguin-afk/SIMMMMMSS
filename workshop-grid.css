@@ -1,12 +1,21 @@
 body.workshops-open .workbench>.panel-content:not(#workshop-panel){display:none!important}
-#workshop-panel h2{font-size:19px;margin:0 0 12px}
-#workshop-panel h3{font-size:14px;margin:20px 0 12px}
+#workshop-panel h2{font-size:17px;margin:0 0 10px;line-height:1.25}
+/* Barre d'outils du panneau : cadrage et historique sur une seule ligne,
+   au lieu de quatre boutons pleine largeur empilés. */
+.wg-bar{display:flex;align-items:center;gap:6px;margin-bottom:10px}
+.wg-bar-fin{flex:1}
+.wg-bar .btn{padding:6px 9px;min-height:32px}
+/* Un avertissement ne s'affiche que s'il y a de quoi avertir. */
+.wg-alerte{margin:8px 0;padding:8px 10px;border-radius:8px;font-size:12px;line-height:1.45;
+  color:var(--txt);background:var(--warn-fill);border-left:3px solid var(--warn-stroke)}
+#wg-group-name{margin:8px 0 4px}
+#workshop-panel h3{font-size:14px;margin:18px 0 10px}
 #workshop-panel label{display:grid;gap:6px;font-size:12px;margin:12px 0}
 #workshop-panel select,#workshop-panel input{width:100%;min-width:0;box-sizing:border-box;padding:8px;border:1px solid var(--bordure2);border-radius:6px;color:var(--txt);background:var(--bg3);font:inherit}
 .wg-actions,.wg-tools{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0}
 .wg-tools [aria-pressed=true],.wg-item[aria-pressed=true]{background:var(--accent);color:var(--bg3)}
 .wg-item{display:block;width:100%;text-align:left;margin:7px 0}
-#wg-status{color:var(--accent2);font-size:12px;line-height:1.6;margin:14px 0}
+#wg-status:not(:empty){color:var(--accent2);font-size:12px;line-height:1.5;margin:8px 0}
 #wg-library-dialog{width:94vw;max-width:1500px;height:90vh;padding:14px;border:1px solid var(--bordure);border-radius:12px;background:var(--bg3);color:var(--txt)}
 #wg-library-dialog::backdrop{background:#10203099}
 .wg-dialog-head{display:flex;align-items:center;justify-content:space-between;gap:16px}

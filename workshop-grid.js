@@ -69,7 +69,7 @@ class WorkshopGrid{
  constructor(a){
   this.a=a;this.active=false;this.service=null;this.workshop=null;this.selected=null;this.tool='select';this.undoStack=[];this.redoStack=[];this.state={schema:'ory-workshops',version:1,step:40,workshops:[],items:[]};
   let warning='';try{const data=localStorage.getItem('ory-workshops-v1');if(data)this.state=validate(JSON.parse(data));}catch(e){warning='Sauvegarde non chargée : '+e.message+' La copie originale reste conservée.';}
-  this.layer=this.el('g',{id:'workshop-layer'});a.viewport.appendChild(this.layer);this.build();this.bind();this.render();this.status(warning||'Choisissez un service sur le plan.');
+  this.layer=this.el('g',{id:'workshop-layer'});a.viewport.appendChild(this.layer);this.build();this.bind();this.render();this.status(warning||'');
  }
  el(tag,attrs={}){const el=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const [k,v]of Object.entries(attrs))el.setAttribute(k,v);return el;}
  get zone(){return this.a.zones().find(z=>z.id===this.service);}
@@ -77,34 +77,41 @@ class WorkshopGrid{
  status(s){document.getElementById('wg-status').textContent=s;}
  build(){
   const outils=[['select','Déplacer',''],['table','Table',COLORS.table],['tapis','Chaîne',COLORS.tapis],['robot','Ligne robot',COLORS.robot],['tunnel','Tunnel',COLORS.tunnel],['erase','Gomme','']];
-  const panel=document.createElement('section');panel.id='workshop-panel';panel.hidden=true;panel.className='panel-content';panel.innerHTML=`<h2>Aménager le service</h2><p id="wg-service">Choisissez un service sur la carte.</p>
-<p class="wg-modele"><b>Service</b> › <b>ateliers</b> › <b>équipements</b>. Les personnes s’affectent aux équipements.</p>
-<p class="scope-badge">Grille 50 × 50 cm · schématique</p><div id="wg-status" role="status" aria-live="polite"></div><div class="wg-actions"><button class="btn" id="wg-overview">Toute l’unité</button><button class="btn" id="wg-focus">Cadrer le service</button></div>
+  const panel=document.createElement('section');panel.id='workshop-panel';panel.hidden=true;panel.className='panel-content';panel.innerHTML=`<h2 id="wg-service">Choisissez un service sur la carte</h2>
+<div class="wg-bar">
+<button class="btn btn-sm" id="wg-focus" title="Cadrer le service">\u2317 Cadrer</button>
+<button class="btn btn-sm" id="wg-overview" title="Revenir \u00e0 toute l\u2019unit\u00e9">\u27f2 Toute l\u2019unit\u00e9</button>
+<span class="wg-bar-fin"></span>
+<button class="btn btn-sm" id="wg-undo" title="Annuler" aria-label="Annuler">\u21b6</button>
+<button class="btn btn-sm" id="wg-redo" title="R\u00e9tablir" aria-label="R\u00e9tablir">\u21b7</button>
+</div>
+<p id="wg-status" role="status" aria-live="polite"></p>
 <div id="wg-controls" hidden>
-<h3 class="wg-etape"><span>1</span> Ateliers de ce service</h3>
+<p class="wg-modele" id="wg-modele">Un service contient des <b>ateliers</b> ; chaque atelier, des <b>\u00e9quipements</b> ; les <b>personnes</b> vont sur les \u00e9quipements.</p>
+<h3 class="wg-etape"><span>1</span> Ateliers</h3>
 <div id="wg-groups" class="wg-groups"></div>
-<div class="wg-actions"><button class="btn" id="wg-add-group">+ Nouvel atelier</button><button class="btn" id="wg-delete-group">Supprimer</button></div>
-<label>Nom de l’atelier<input id="wg-group-name" maxlength="120"></label>
-<div class="wg-actions"><button class="btn" id="wg-validate">Fusionner en une surface</button><span class="mini-note" id="wg-validation-state"></span></div>
-<h3 class="wg-etape"><span>2</span> Dessiner les équipements</h3>
+<div class="wg-actions"><button class="btn" id="wg-add-group">+ Atelier</button><button class="btn btn-sm" id="wg-delete-group">Supprimer</button></div>
+<input id="wg-group-name" maxlength="120" placeholder="Nom de l\u2019atelier" aria-label="Nom de l\u2019atelier">
+<div id="wg-etape2">
+<h3 class="wg-etape"><span>2</span> \u00c9quipements</h3>
 <div class="wg-tools">${outils.map(([id,label,c])=>`<button class="btn" data-wg-tool="${id}" aria-pressed="false">${c?`<span class="wg-dot" style="background:${c}"></span>`:''}${label}</button>`).join('')}</div>
-<p class="mini-note"><b>Un tracé = un équipement.</b> Recommencez pour en poser un deuxième.</p>
-<label class="chk chk-mini"><input type="checkbox" id="wg-extend"> Agrandir l’équipement sélectionné</label>
-<details class="inline-help"><summary>Codes et limites</summary><p class="mini-note">Codes : T table, C chaîne, R robot, TU tunnel, D desserte, TR trolley.</p><p class="mini-note">Grille non calibrée. Le moteur lit les personnes, les tunnels de la plonge et les lignes robot du montage.</p></details>
-<h3 class="wg-etape"><span>3</span> Équipements et personnes</h3>
-<div id="wg-postes-total" class="wg-total"></div>
+<p class="mini-note" id="wg-astuce"><b>Un trac\u00e9 = un \u00e9quipement.</b> Recommencez pour le suivant.</p>
+<label class="chk chk-mini"><input type="checkbox" id="wg-extend"> Agrandir la s\u00e9lection</label>
 <div id="wg-items"></div>
-<div id="wg-item-properties" hidden><label>Nom de l’équipement<input id="wg-item-name" maxlength="120"></label><label>Personnes à cet équipement<input id="wg-item-postes" type="number" min="0" max="99" step="1"></label><div class="wg-actions"><button class="btn" id="wg-rotate">Pivoter 90°</button><button class="btn" id="wg-delete-item">Supprimer</button></div></div>
-<button class="btn" id="wg-library">Modèles de tables et chaînes…</button></div>
-<div class="wg-actions"><button class="btn" id="wg-undo">Annuler</button><button class="btn" id="wg-redo">Rétablir</button></div><details id="wg-settings"><summary>Grille et sauvegarde</summary><label>Taille visuelle d’une case (unités du dessin)<input type="number" id="wg-step" min="10" max="200" step="1"></label><p class="mini-note">Verrouillé dès qu’un équipement est placé.</p><div class="wg-actions"><button class="btn" id="wg-export">Exporter les ateliers</button><button class="btn" id="wg-import-button">Importer</button><input id="wg-import" type="file" accept=".json" hidden></div></details>`;
+<div id="wg-item-properties" hidden><label>Nom<input id="wg-item-name" maxlength="120"></label><label>Personnes<input id="wg-item-postes" type="number" min="0" max="99" step="1"></label><div class="wg-actions"><button class="btn btn-sm" id="wg-rotate">Pivoter 90\u00b0</button><button class="btn btn-sm" id="wg-delete-item">Supprimer</button></div></div>
+<div id="wg-postes-total" class="wg-total"></div>
+<div class="wg-actions"><button class="btn btn-sm" id="wg-validate">Fusionner en une surface</button><button class="btn btn-sm" id="wg-library">Mod\u00e8les\u2026</button></div>
+<details class="inline-help"><summary>Codes et limites</summary><p class="mini-note">Codes : T table, C cha\u00eene, R robot, TU tunnel, D desserte, TR trolley.</p><p class="mini-note">Grille non calibr\u00e9e. Le moteur lit les personnes, les tunnels de la plonge et les lignes robot du montage.</p></details>
+</div></div>
+<details id="wg-settings"><summary>Grille et sauvegarde</summary><label>Taille visuelle d\u2019une case<input type="number" id="wg-step" min="10" max="200" step="1"></label><p class="mini-note">Verrouill\u00e9 d\u00e8s qu\u2019un \u00e9quipement est plac\u00e9.</p><div class="wg-actions"><button class="btn btn-sm" id="wg-export">Exporter</button><button class="btn btn-sm" id="wg-import-button">Importer</button><input id="wg-import" type="file" accept=".json" hidden></div></details>`;
   document.querySelector('.workbench').appendChild(panel);
-  const warning=document.createElement('p');warning.id='wg-placement-warning';warning.className='mini-note';warning.setAttribute('role','status');document.getElementById('wg-status').after(warning);
+  const warning=document.createElement('p');warning.id='wg-placement-warning';warning.className='wg-alerte';warning.hidden=true;warning.setAttribute('role','status');document.getElementById('wg-status').after(warning);
   const dialog=document.createElement('dialog');dialog.id='wg-library-dialog';dialog.innerHTML='<div class="wg-dialog-head"><strong>Bibliothèque existante — modèles et assemblages</strong><button class="btn" id="wg-close-library">Retour au plan</button></div><p>Sélectionnez un modèle, puis « Placer dans le service ».</p><iframe id="wg-library-frame" title="Éditeur de tables, chaînes et assemblages"></iframe>';document.body.appendChild(dialog);
  }
  bind(){
   const on=(id,event,fn)=>document.getElementById(id).addEventListener(event,fn);
   on('wg-overview','click',()=>this.a.overview());on('wg-focus','click',()=>{if(this.zone)this.a.focus(this.zone);});
-  on('wg-add-group','click',()=>this.change(()=>{const w={id:uid(),service:this.service,nom:'Atelier '+(this.state.workshops.filter(w=>w.service===this.service).length+1)};this.state.workshops.push(w);this.workshop=w.id;this.selected=null;},'Atelier créé. Choisissez Table ou Chaîne et dessinez.'));
+  on('wg-add-group','click',()=>this.change(()=>{const w={id:uid(),service:this.service,nom:'Atelier '+(this.state.workshops.filter(w=>w.service===this.service).length+1)};this.state.workshops.push(w);this.workshop=w.id;this.selected=null;},'Atelier créé.'));
   on('wg-validate','click',()=>this.change(()=>{
    const w=this.state.workshops.find(w=>w.id===this.workshop);if(!w)return;
    if(w.validated){w.validated=false;return;}
@@ -137,7 +144,7 @@ class WorkshopGrid{
   this.a.svg.addEventListener('click',e=>{if(this.blockClick){e.stopImmediatePropagation();this.blockClick=false;}},true);
  }
  setActive(active){this.active=active;document.body.classList.toggle('workshops-open',active);document.getElementById('workshop-panel').hidden=!active;if(!active){this.stamp=null;this.tool='select';}this.render();}
- selectService(id){this.service=id;this.selected=null;this.workshop=this.state.workshops.find(w=>w.service===id)?.id||null;this.stamp=null;this.tool='select';this.render();if(this.zone){this.a.focus(this.zone);this.status('Service cadré. Créez un atelier, puis peignez ses équipements.');}}
+ selectService(id){this.service=id;this.selected=null;this.workshop=this.state.workshops.find(w=>w.service===id)?.id||null;this.stamp=null;this.tool='select';this.render();if(this.zone){this.a.focus(this.zone);this.status('');}}
  ensureGroup(){if(!this.workshop){const w={id:uid(),service:this.service,nom:'Atelier 1'};this.state.workshops.push(w);this.workshop=w.id;}}
  itemsForService(){const ids=new Set(this.state.workshops.filter(w=>w.service===this.service).map(w=>w.id));return this.state.items.filter(i=>ids.has(i.workshop));}
  point(e){const p=this.a.svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;const q=p.matrixTransform(this.layer.getScreenCTM().inverse());return [Math.floor(q.x/this.state.step),Math.floor(q.y/this.state.step)];}
@@ -176,21 +183,34 @@ class WorkshopGrid{
   document.body.classList.toggle('workshop-focused',this.active&&!!this.zone);
   const invalid=this.state.items.filter(i=>{const owner=this.state.workshops.find(w=>w.id===i.workshop)?.service,z=this.a.zones().find(z=>z.id===owner);return !z||i.cells.some(c=>!cellInside(c,z,this.state.step));}).length;
   const orphan=this.state.workshops.filter(w=>!this.a.zones().some(z=>z.id===w.service)).length;
-  document.getElementById('wg-placement-warning').textContent=invalid||orphan?`${invalid} équipement(s) hors contour / service absent ; ${orphan} atelier(s) sans service reconnu. Données conservées : corrigez le plan, déplacez les équipements ou exportez-les.`:'';
+  // Un avertissement permanent n'avertit plus de rien : il ne s'affiche que
+  // lorsqu'il y a vraiment quelque chose à corriger, et en une ligne.
+  const alerte=document.getElementById('wg-placement-warning');
+  const maux=[];
+  if(invalid)maux.push(invalid+(invalid>1?' équipements sortent':' équipement sort')+' de son contour');
+  if(orphan)maux.push(orphan+(orphan>1?' ateliers n’ont plus':' atelier n’a plus')+' de service');
+  alerte.hidden=!maux.length;
+  alerte.textContent=maux.length?maux.join(' · ')+'. Rien n’est perdu : corrigez le plan ou déplacez-les.':'';
   const groups=this.state.workshops.filter(w=>w.service===this.service);if(!groups.some(w=>w.id===this.workshop))this.workshop=groups[0]?.id||null;if(!this.item)this.selected=null;
-  document.getElementById('wg-controls').hidden=!this.zone;document.getElementById('wg-service').textContent=this.zone?this.zone.nom:'Choisissez un service sur la carte.';
+  document.getElementById('wg-controls').hidden=!this.zone;
+  document.getElementById('wg-service').textContent=this.zone?this.zone.nom:'Choisissez un service sur la carte';
   // Les ateliers du service sont VISIBLES, pas cachés dans un menu déroulant :
   // on voit d'un coup d'œil combien il y en a et ce que chacun contient.
   document.getElementById('wg-groups').innerHTML=groups.length?groups.map(w=>{
    const items=this.state.items.filter(i=>i.workshop===w.id);
    const pers=items.reduce((n,i)=>n+(i.postes||0),0);
    return `<button class="wg-group-btn" data-wg-group="${esc(w.id)}" aria-pressed="${w.id===this.workshop}"><b>${esc(w.nom)}</b><span>${items.length} équipement${items.length>1?'s':''} · ${pers} personne${pers>1?'s':''}${w.validated?' · surface fusionnée':''}</span></button>`;
-  }).join(''):'<p class="mini-note">Aucun atelier dans ce service. Dessinez directement : le premier sera créé pour vous.</p>';
+  }).join(''):'<p class="mini-note">Aucun atelier. Dessinez : le premier sera créé pour vous.</p>';
   const assign=(id,value)=>{const e=document.getElementById(id);if(document.activeElement!==e)e.value=value;};assign('wg-group-name',groups.find(w=>w.id===this.workshop)?.nom||'');document.getElementById('wg-group-name').disabled=!this.workshop;
+  // Ce qui est acquis disparaît : la phrase de modèle une fois qu'un atelier
+  // existe, l'astuce de tracé une fois qu'un équipement est posé. Les outils,
+  // eux, restent accessibles dès le début : dessiner sans avoir créé d'atelier
+  // en crée un tout seul, et c'est le chemin le plus court.
+  document.getElementById('wg-modele').hidden=groups.length>0;
+  document.getElementById('wg-astuce').hidden=this.state.items.some(i=>i.workshop===this.workshop);
   const group=groups.find(w=>w.id===this.workshop),filled=this.state.items.some(i=>i.workshop===this.workshop);
   document.getElementById('wg-validate').disabled=!group||!filled;
   document.getElementById('wg-validate').textContent=group?.validated?'Reprendre le détail':'Fusionner en une surface';
-  document.getElementById('wg-validation-state').textContent=group?(group.validated?'Surface fusionnée : les cases ne se distinguent plus.':'En cours de dessin : chaque équipement se voit.'):'';
   document.getElementById('wg-delete-group').disabled=!this.workshop;document.getElementById('wg-focus').disabled=!this.zone;
   document.querySelectorAll('[data-wg-tool]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.wgTool===this.tool)));
   // TOUS les équipements du service, groupés par atelier : c'est ce qui montre
@@ -198,12 +218,12 @@ class WorkshopGrid{
   document.getElementById('wg-items').innerHTML=groups.map(w=>{
    const items=this.state.items.filter(i=>i.workshop===w.id);
    if(!items.length)return '';
-   return `<div class="wg-item-group"${w.id===this.workshop?' data-wg-courant="1"':''}><h4>${esc(w.nom)}</h4>`+items.map(i=>`<button class="btn wg-item" data-wg-item="${esc(i.id)}" aria-pressed="${i.id===this.selected}"><span class="wg-dot" style="background:${COLORS[i.type]}"></span>${i.code?esc(i.code)+' · ':''}${esc(i.nom)} · ${i.cells.length} cases${i.postes?' · '+i.postes+' pers.':''}</button>`).join('')+'</div>';
-  }).join('')||'<p class="mini-note">Aucun équipement pour l’instant : choisissez Table, Chaîne ou Ligne robot, puis cliquez-glissez sur la grille.</p>';
+   return `<div class="wg-item-group"${w.id===this.workshop?' data-wg-courant="1"':''}>${groups.length>1?`<h4>${esc(w.nom)}</h4>`:''}`+items.map(i=>`<button class="btn wg-item" data-wg-item="${esc(i.id)}" aria-pressed="${i.id===this.selected}"><span class="wg-dot" style="background:${COLORS[i.type]}"></span>${i.code?esc(i.code)+' · ':''}${esc(i.nom)} · ${i.cells.length} cases${i.postes?' · '+i.postes+' pers.':''}</button>`).join('')+'</div>';
+  }).join('')||'<p class="mini-note">Choisissez un outil, puis cliquez-glissez sur la grille.</p>';
   const parAtelier=this.state.items.filter(i=>i.workshop===this.workshop).reduce((n,i)=>n+(i.postes||0),0);
   const parService=this.itemsForService().reduce((n,i)=>n+(i.postes||0),0);
   document.getElementById('wg-postes-total').textContent=this.zone
-   ? 'Personnes affectées — ce service : '+parService+' · atelier courant : '+parAtelier
+   ? parService+(parService>1?' personnes':' personne')+' dans le service'+(groups.length>1?', '+parAtelier+' dans cet atelier':'')
    : '';
   document.getElementById('wg-item-properties').hidden=!this.item;assign('wg-item-name',this.item?.nom||'');assign('wg-item-postes',String(this.item?.postes||0));
   const ext=document.getElementById('wg-extend');ext.checked=!!this.extend;ext.disabled=!this.item;assign('wg-step',this.state.step);document.getElementById('wg-step').disabled=!!this.state.items.length;

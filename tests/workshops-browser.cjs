@@ -39,7 +39,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('#wg-item-postes').inputValue(),'0');
   await page.locator('#wg-item-postes').fill('4');await page.locator('#wg-item-postes').press('Tab');
   assert.equal((await state()).items[0].postes,4);
-  assert.match(await page.locator('#wg-postes-total').textContent(),/ce service : 4/);
+  assert.match(await page.locator('#wg-postes-total').textContent(),/4 personnes dans le service/);
   assert.match(await page.locator('#wg-items [data-wg-item]').first().textContent(),/4 pers\./);
   assert.match(await page.locator('[data-equipment-code]').textContent(),/T-001 · 4p/);
   // Bornes : refusé au-delà de 99, ramené à l'entier, zéro efface le champ.

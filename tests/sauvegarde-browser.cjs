@@ -65,7 +65,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator('#wg-items [data-wg-item]').first().click();
   assert.equal(await page.locator('#wg-item-postes').inputValue(),'5');
   assert.match(await page.locator('#wg-items [data-wg-item]').first().textContent(),/Table témoin · 3 cases · 5 pers\./);
-  assert.match(await page.locator('#wg-postes-total').textContent(),/ce service : 5/);
+  assert.match(await page.locator('#wg-postes-total').textContent(),/5 personnes dans le service/);
   assert.equal(await page.evaluate(()=>Sim.editor.state.zones.find(z=>z.id==='cuisine').x),1888,'la zone déplacée est revenue');
 
   assert.deepEqual(errors,[]);
