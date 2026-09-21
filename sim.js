@@ -1058,6 +1058,9 @@ function initControles() {
   document.getElementById('snap-b').addEventListener('click', () => capturer('B'));
   document.getElementById('snap-clear').addEventListener('click', () => { snaps = {}; majCompare(); });
   document.getElementById('imp-vols').addEventListener('change', importVols);
+  document.getElementById('sauvegarde-export').addEventListener('click', sauvegardeComplete);
+  document.getElementById('sauvegarde-import-btn').addEventListener('click', () => document.getElementById('sauvegarde-import').click());
+  document.getElementById('sauvegarde-import').addEventListener('change', restaurerSauvegarde);
   window.addEventListener('resize', dessinerChart);
   // zoom / fond de plan
   document.getElementById('zoom-in').addEventListener('click', () => zoomer(1.35));
@@ -1146,6 +1149,73 @@ function majCompare() {
   if(snaps.A&&snaps.B&&snaps.A.source!==snaps.B.source)note='Les deux scénarios n’utilisent pas les mêmes vols ('+snaps.A.source+' / '+snaps.B.source+') : la comparaison porte sur des journées différentes.';
   else if(snaps.A&&snaps.B&&JSON.stringify(snaps.A.config)===JSON.stringify(snaps.B.config))note='Réglages identiques : les deux journées sont exactement les mêmes, au chiffre près.';
   document.getElementById('compare-note').textContent=note+' Barème non calibré : comparer des scénarios entre eux, pas à la réalité.';
+}
+
+/* ==========================================================================
+ *  SAUVEGARDE COMPLÈTE
+ *  Le tracé de l'unité vit dans le navigateur, réparti sur quatre clés et
+ *  quatre boutons d'export. Quatre fichiers à ne pas perdre, c'est trois de
+ *  trop. Un seul fichier les réunit, et il se relit en entier ou pas du tout.
+ *
+ *  ⚠ Ce fichier CONTIENT LE PLAN RÉEL de l'unité : il ne doit jamais être
+ *  commité. `.gitignore` refuse `ory-sauvegarde*.json`.
+ * ==========================================================================*/
+const PARTIES = [
+  { cle:'orly-plan-v3',     nom:'plan et zones',           valider:r => window.OrlyPlan.validatePlan(r, Sim.editor.originals) },
+  { cle:'ory-workshops-v1', nom:'ateliers et personnes',   valider:r => window.OrlyWorkshops.validate(r) },
+  { cle:'orly-flows-v1',    nom:'centre des flux',         valider:r => window.OrlyFlows.validate(r) },
+  { cle:'ory-postes-v2',    nom:'bibliothèque de modèles',
+    valider:r => { if(!r || !Array.isArray(r.modeles)) throw new Error('bibliothèque illisible'); return r; } }
+];
+
+function sauvegardeComplete() {
+  const contenu = {}; let parties = 0;
+  PARTIES.forEach(p => {
+    let brut = null;
+    try { brut = localStorage.getItem(p.cle); } catch (e) { /* stockage indisponible */ }
+    if (!brut) return;
+    try { contenu[p.cle] = JSON.parse(brut); parties++; } catch (e) { /* clé illisible : ignorée */ }
+  });
+  if (!parties) { toast('Rien à sauvegarder pour l’instant.'); return; }
+  const jour = new Date().toISOString().slice(0, 10);
+  const blob = new Blob([JSON.stringify({ schema:'ory-sauvegarde', version:1, date:new Date().toISOString(), contenu }, null, 2)],
+    { type:'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'ory-sauvegarde-' + jour + '.json'; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  const r = document.getElementById('sauvegarde-etat');
+  r.classList.remove('error');
+  r.textContent = parties + ' partie(s) enregistrée(s). Ce fichier contient le plan réel : gardez-le hors du dépôt.';
+  toast('Sauvegarde complète téléchargée');
+}
+
+async function restaurerSauvegarde(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const r = document.getElementById('sauvegarde-etat');
+  const refuser = m => { r.classList.add('error'); r.textContent = 'Restauration refusée : ' + m + ' Rien n’a été remplacé.'; };
+  try {
+    if (file.size > 20 * 1024 * 1024) throw new Error('fichier trop volumineux (maximum 20 Mo).');
+    const brut = JSON.parse(await file.text());
+    if (!brut || brut.schema !== 'ory-sauvegarde' || brut.version !== 1 || !brut.contenu || typeof brut.contenu !== 'object') {
+      throw new Error('ce n’est pas une sauvegarde complète.');
+    }
+    // TOUT valider avant d'écrire QUOI QUE CE SOIT : une sauvegarde à moitié
+    // restaurée serait pire qu'un refus.
+    const aEcrire = [];
+    for (const p of PARTIES) {
+      const part = brut.contenu[p.cle];
+      if (part === undefined) continue;
+      try { p.valider(JSON.parse(JSON.stringify(part))); }
+      catch (err) { throw new Error(p.nom + ' — ' + err.message); }
+      aEcrire.push([p.cle, JSON.stringify(part)]);
+    }
+    if (!aEcrire.length) throw new Error('la sauvegarde ne contient aucune partie connue.');
+    if (!confirm('Remplacer le plan, les ateliers et les flux enregistrés dans ce navigateur par cette sauvegarde (' +
+      aEcrire.length + ' partie(s)) ? La page sera rechargée.')) { e.target.value = ''; return; }
+    aEcrire.forEach(([cle, valeur]) => localStorage.setItem(cle, valeur));
+    location.reload();
+  } catch (err) { refuser(err.message); }
+  finally { e.target.value = ''; }
 }
 
 function importVols(e) {

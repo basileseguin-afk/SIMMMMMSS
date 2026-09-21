@@ -111,6 +111,37 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-21 — Sauvegarde complète, avant la saisie de l'unité
+
+| Fichier | Changement |
+|---|---|
+| `sim.js`, `index.html` | **Données → Sauvegarde complète** : un seul fichier pour le plan, les zones, les stockages, les ateliers, les personnes, les flux et la bibliothèque. Restauration validée **avant** toute écriture, refusée en entier si une partie est abîmée |
+| `.gitignore` | les sauvegardes de l'unité, y compris les exports par éditeur existants |
+| `docs/TRACER_L_UNITE.md` | **nouveau** — mode d'emploi de la séance de saisie |
+| `tests/sauvegarde-browser.cjs` | **nouveau** — l'aller-retour prouvé |
+| `README.md` | sauvegarde, confidentialité, lien vers le mode d'emploi |
+
+Le tracé vit dans le navigateur, réparti sur **quatre clés et quatre boutons
+d'export**. Quatre fichiers à ne pas perdre, c'est trois de trop, et il suffit
+de vider les données de site pour effacer des heures de travail. Un seul
+fichier les réunit désormais.
+
+**Le piège le plus sournois est nommé dans l'interface et dans le guide** : le
+stockage d'un navigateur est cloisonné par adresse. Un tracé fait sur GitHub
+Pages **n'apparaît pas** dans un `index.html` ouvert depuis le disque, et
+inversement.
+
+Le parcours navigateur ne se contente pas de vérifier le bouton : il trace une
+zone déplacée et une table de cinq personnes, exporte, **fait refuser un
+fichier dont une partie est corrompue** en vérifiant qu'aucune clé n'a bougé,
+**vide entièrement le stockage**, restaure, et retrouve la table, ses cinq
+personnes et la zone à sa nouvelle position. C'est cette preuve qui compte, pas
+le bouton.
+
+Tests : 118 unitaires et 7 parcours navigateur.
+
+---
+
 ## 2026-09-21 — Curseurs et grille réconciliés ; heures demandées, faites et ETP
 
 ### La question « curseurs ou grille ? » n'a plus à être tranchée
