@@ -44,8 +44,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.selectOption(`[data-at="${at}"] [data-at-champ=service]`,zone.id);await page.waitForTimeout(150);
   await page.fill(`[data-at="${at}"] [data-at-champ=debut]`,'05:00');
   await page.dispatchEvent(`[data-at="${at}"] [data-at-champ=debut]`,'change');await page.waitForTimeout(150);
-  await page.locator(`[data-at="${at}"] [data-at-action=lot-ajouter]`).click();await page.waitForTimeout(150);
-  await page.selectOption(`[data-at="${at}"] [data-at-champ=lot-ajout][data-index="0"]`,'CRL/BC');await page.waitForTimeout(200);
+  await page.selectOption(`[data-at="${at}"] [data-at-champ=lot-nouveau]`,'CRL/BC');await page.waitForTimeout(250);
   assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).service,at),zone.id);
 
   // 5. Elle hérite des liaisons de son atelier : ses amonts sont ceux d'ARMEMENT.

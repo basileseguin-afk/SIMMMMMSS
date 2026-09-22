@@ -42,18 +42,36 @@ qu'il faut savoir de lui, c'est ce qu'il fait, quand, et à combien.
 | `debut` | **donnée par vous**, au format `HH:MM` |
 | `jour` | décalage en jours : `-1` pour la veille, `-2` pour l'avant-veille |
 | `personnes` | effectif |
-| `lots` | liste **ordonnée** de lots à fabriquer |
-| `pauses` | plages d'arrêt — pause de midi, changement d'équipe |
+| `lots` | ce que l'équipe fabrique, **dans l'ordre** |
+| `pauses` | **arrêts programmés** — machine à l'arrêt, local fermé, créneau de nettoyage |
 
-Un **lot** porte une ou plusieurs compagnies × classes. Le premier lot commence
-à l'heure de début ; **chacun des suivants démarre quand le précédent est
-fini**. C'est ce qui permet à un atelier d'enchaîner CRL/BC puis CRL/PC sans
-qu'on ait à calculer la seconde heure soi-même.
+L'interface ne dit pas « lot », elle dit **une ligne = une fabrication**, et la
+règle tient en une phrase : *plusieurs classes sur la même ligne sortent
+ensemble ; sur deux lignes, l'une après l'autre.* Le mot « lot » ne survit que
+dans le nom du champ, pour ne pas réécrire les sauvegardes.
 
-Un lot à plusieurs classes les fabrique **ensemble** : elles sortent au même
+La première ligne commence à l'heure de début ; **chacune des suivantes démarre
+quand la précédente est finie**. C'est ce qui permet à un atelier d'enchaîner
+CRL/BC puis CRL/PC sans qu'on ait à calculer la seconde heure soi-même.
+
+Une ligne à plusieurs classes les fabrique **ensemble** : elles sortent au même
 instant. C'est ainsi qu'on décrit les services **en amont de la séparation par
 compagnie** — appros, légumerie, plonge, magasin — sans règle particulière :
-un seul lot contenant tout.
+une seule ligne contenant tout.
+
+### L'arrêt programmé n'est pas la pause de l'équipe
+
+Les deux se confondent facilement, et ne se ressemblent pas :
+
+| | Quand | Qui l'écrit |
+|---|---|---|
+| **Pause de l'équipe** | après un **temps de travail** — 3 h, puis 6 h | le modèle, tout seul |
+| **Arrêt programmé** | à une **heure fixe** | vous, et seulement si besoin |
+
+Un atelier n'a normalement **aucun arrêt programmé** : ses pauses sont déjà
+comptées. On en saisit un quand rien ne tourne pendant une plage donnée — un
+robot à l'arrêt pour nettoyage, un local fermé. C'est pourquoi la section est
+**repliée** tant qu'elle est vide.
 
 ### Durée d'un atelier manuel
 
@@ -74,14 +92,14 @@ que le modèle tourne, et se remplacent en bloc sans toucher au moteur.
 | `debit` | plateaux par heure |
 | `personnes` / `personnesMin` | sous le minimum, **le robot ne tourne pas** et le dit |
 | `debut` | heure d'allumage |
-| `pauses` | plages d'arrêt |
+| `pauses` | arrêts programmés |
 
 ```
 durée = plateaux ÷ débit
 ```
 
 Le robot ne consomme pas de barème d'homme-minutes : son temps vient de son
-débit. Les pauses ne changent pas la durée du travail, elles **repoussent la
+débit. Un arrêt programmé ne change pas la durée du travail, il **repousse la
 fin** d'autant — et ce temps d'arrêt est compté à part.
 
 ### Le poste : pauses et heure de fin
@@ -99,8 +117,9 @@ Soit **7 h 30 de travail effectif**. Les seuils comptent le travail *cumulé*,
 pas l'heure qu'il est : une équipe qui attend ses amonts ne consomme pas son
 crédit de travail, donc ne prend pas sa pause.
 
-Un lot que le poste ne peut pas finir est **signalé et laissé inachevé** : sa
-fin est vide, sa classe ne sort pas, et les lots suivants ne sont pas commencés.
+Une fabrication que le poste ne peut pas finir est **signalée et laissée
+inachevée** : sa fin est vide, sa classe ne sort pas, et les suivantes ne sont
+pas commencées.
 C'est le résultat le plus utile du modèle — ce qui ne rentre pas dans la
 journée. Le régime se désactive atelier par atelier, et la durée de présence se
 règle, pour une équipe qui ne suit pas la règle commune.
@@ -126,7 +145,7 @@ pas.
 | Propre à l'ouverture | le stock de départ, souvent nul |
 | Délai après atterrissage | minutes avant que le sale soit à la plonge |
 
-Un atelier de type **Lavage** n'a pas de lots : son travail vient des retours, à
+Un atelier de type **Lavage** ne fabrique rien : son travail vient des retours, à
 mesure qu'ils arrivent. Il suit le même régime de poste que les autres — ce qui
 arrive après la fin de son poste reste sale.
 

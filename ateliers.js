@@ -271,9 +271,9 @@
             this.state.ateliers.splice(this.state.ateliers.indexOf(a) + 1, 0, c);
           }, 'Atelier dupliqué.');
         case 'lot-ajouter':
-          return this.changer(() => a.lots.push([]), 'Lot ajouté : choisissez ses compagnies × classes.');
+          return this.changer(() => a.lots.push([]), 'Ligne ajoutée : choisissez ce qu’elle fabrique.');
         case 'lot-retirer':
-          return this.changer(() => a.lots.splice(+data.index, 1), 'Lot retiré.');
+          return this.changer(() => a.lots.splice(+data.index, 1), 'Fabrication retirée.');
         case 'lot-monter':
           return this.changer(() => { const i = +data.index; if (i > 0) a.lots.splice(i - 1, 0, a.lots.splice(i, 1)[0]); }, 'Ordre modifié.');
         case 'lot-descendre':
@@ -282,14 +282,14 @@
           return this.changer(() => { a.lots[+data.index] = a.lots[+data.index].filter(c => c !== data.classe); }, 'Classe retirée.');
         case 'lot-tout':
           return this.changer(() => { a.lots = [this.classes.map(c => c.id)]; },
-            'Toutes les classes dans un seul lot : elles sortiront ensemble.');
+            'Tout sur une seule ligne : ces classes sortiront ensemble.');
         case 'lot-separer':
           return this.changer(() => { a.lots = this.classes.map(c => [c.id]); },
-            'Une classe par lot, dans l’ordre des échéances.');
+            'Une ligne par classe, dans l’ordre des échéances.');
         case 'pause-ajouter':
-          return this.changer(() => a.pauses.push({ de: '12:00', a: '12:45' }), 'Pause ajoutée.');
+          return this.changer(() => a.pauses.push({ de: '12:00', a: '12:45' }), 'Arrêt ajouté.');
         case 'pause-retirer':
-          return this.changer(() => a.pauses.splice(+data.index, 1), 'Pause retirée.');
+          return this.changer(() => a.pauses.splice(+data.index, 1), 'Arrêt retiré.');
         case 'tunnel-ajouter':
           return this.changer(() => a.tunnels.push({ nom: 'Tunnel ' + (a.tunnels.length + 1), debit: 300, actif: true }),
             'Tunnel ajouté. Le débit de la plonge est la somme des tunnels actifs.');
@@ -360,6 +360,13 @@
             if (v && !a.lots[i].includes(v)) a.lots[i].push(v);
             break;
           }
+          // Ajouter une fabrication en un seul geste : la ligne naît remplie.
+          // En deux temps — créer une ligne vide, puis la garnir — on ne
+          // comprenait pas à quoi servait la ligne.
+          case 'lot-nouveau':
+            if (v && !a.lots.some(l => l.includes(v))) a.lots.push([v]);
+            el.value = '';
+            break;
           case 'pause-de': a.pauses[+el.dataset.index].de = v; break;
           case 'pause-a':  a.pauses[+el.dataset.index].a = v; break;
         }
@@ -378,7 +385,7 @@
       const lots = touches.reduce((n, a) => n + a.lots.filter(l => l.includes(id)).length, 0);
       const vides = touches.reduce((n, a) => n + a.lots.filter(l => l.length === 1 && l[0] === id).length, 0);
       const message = lots
-        ? id + ' retirée — ' + lots + ' lot(s) dans ' + touches.map(a => a.nom).join(', ')
+        ? id + ' retirée — ' + lots + ' fabrication(s) dans ' + touches.map(a => a.nom).join(', ')
             + (vides ? ', dont ' + vides + ' vidé(s) et supprimé(s)' : '') + '.'
         : id + ' retirée : aucun atelier ne la fabriquait.';
       this.changer(() => {
@@ -471,7 +478,7 @@
           i.aHeure + ' / ' + i.classesSuivies + ' fabriquées'),
         tuile('Retard maximum', i.retardMax == null ? '—' : Math.round(i.retardMax) + ' min',
           i.retardMoyen == null ? '' : 'moyenne ' + Math.round(i.retardMoyen) + ' min'),
-        tuile('Dernière sortie', P.hhmm(i.finDerniere), 'fin du dernier lot'),
+        tuile('Dernière sortie', P.hhmm(i.finDerniere), 'fin de la dernière fabrication'),
         tuile('Jamais fabriquées', String(i.classesAbsentes),
           i.classesAbsentes ? 'classes du programme sans atelier' : 'tout le programme est couvert')
       ].join('');
@@ -518,7 +525,7 @@
     ${chiffre('Emporté', bilan.consommees + ' u')}
     ${chiffre('Reste propre', bilan.restePropre + ' u', bilan.restePropre ? 'disponible demain' : 'aucun amortisseur')}
     ${chiffre('Plus bas niveau', bilan.minPropre + ' u', bilan.minPropre === 0 ? 'passé par zéro' : '')}
-    ${chiffre('Attente de matériel', Math.round(bilan.attente) + ' min', bilan.enAttente ? bilan.enAttente + ' lot(s) jamais servis' : '')}
+    ${chiffre('Attente de matériel', Math.round(bilan.attente) + ' min', bilan.enAttente ? bilan.enAttente + ' fabrication(s) jamais servie(s)' : '')}
   </div>` : ''}
 </section>`;
     }
@@ -549,9 +556,9 @@
       const attente = calcul && calcul.attente ? ' · ' + Math.round(calcul.attente) + ' min d’attente' : '';
       const jour = a.jour ? ' (J' + a.jour + ')' : '';
       const noms = a.lots.map(l => l.join(' + '));
-      const resume = !noms.length ? 'aucun lot'
+      const resume = !noms.length ? 'ne fabrique rien'
         : noms.length <= 3 ? noms.join(' → ')
-        : noms.slice(0, 3).join(' → ') + ' → … (' + noms.length + ' lots)';
+        : noms.slice(0, 3).join(' → ') + ' → … (' + noms.length + ' fabrications)';
 
       const entete = `<div class="at-carte-tete">
         <button class="at-carte-nom" data-at-action="ouvrir" aria-expanded="${ouvert}">
@@ -566,19 +573,24 @@
       const services = this.a.services();
       const restantes = i => this.classes.filter(c => !a.lots[i].includes(c.id));
 
+      const libres = this.classes.filter(c => !a.lots.some(l => l.includes(c.id)));
+      const optionsDe = liste => liste
+        .map(c => `<option value="${esc(c.id)}">${esc(c.id)} · ${c.pax} pax · ${c.vols.length} vol(s)</option>`).join('');
+
       const lots = a.lots.map((l, i) => `
         <div class="at-lot">
           <div class="at-lot-tete">
-            <b>Lot ${i + 1}</b>
+            <b>${i + 1}.</b>
+            <span class="at-chips">${l.map(c => `<button class="at-chip" data-at-action="classe-retirer" data-index="${i}" data-classe="${esc(c)}"
+              title="Retirer ${esc(c)} de cette fabrication">${esc(c)} ×</button>`).join('') || '<em>à renseigner</em>'}</span>
             <span class="at-lot-fin">${esc(this.finLot(a.id, i))}</span>
-            <button class="btn btn-sm" data-at-action="lot-monter" data-index="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Monter">↑</button>
-            <button class="btn btn-sm" data-at-action="lot-descendre" data-index="${i}" ${i === a.lots.length - 1 ? 'disabled' : ''} aria-label="Descendre">↓</button>
-            <button class="btn btn-sm" data-at-action="lot-retirer" data-index="${i}">Retirer</button>
+            <button class="btn btn-sm" data-at-action="lot-monter" data-index="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Plus tôt">↑</button>
+            <button class="btn btn-sm" data-at-action="lot-descendre" data-index="${i}" ${i === a.lots.length - 1 ? 'disabled' : ''} aria-label="Plus tard">↓</button>
+            <button class="btn btn-sm" data-at-action="lot-retirer" data-index="${i}" aria-label="Retirer cette fabrication">×</button>
           </div>
-          <div class="at-chips">${l.map(c => `<button class="at-chip" data-at-action="classe-retirer" data-index="${i}" data-classe="${esc(c)}">${esc(c)} ×</button>`).join('') || '<em>vide</em>'}</div>
-          <select data-at-champ="lot-ajout" data-index="${i}" aria-label="Ajouter une compagnie × classe au lot ${i + 1}">
-            <option value="">Ajouter une compagnie × classe…</option>
-            ${restantes(i).map(c => `<option value="${esc(c.id)}">${esc(c.id)} · ${c.pax} pax · ${c.vols.length} vol(s)</option>`).join('')}
+          <select class="at-lot-plus" data-at-champ="lot-ajout" data-index="${i}" aria-label="Fabriquer autre chose en même temps que la ligne ${i + 1}">
+            <option value="">+ fabriquer en même temps…</option>
+            ${optionsDe(restantes(i))}
           </select>
         </div>`).join('');
 
@@ -631,19 +643,28 @@
           <span class="at-tunnel-total">Débit total : <b>${P.debitLavage(a)}</b> u/h${
             a.tunnels.filter(t => !t.actif).length ? ' · ' + a.tunnels.filter(t => !t.actif).length + ' à l’arrêt' : ''}</span>
         </div>
-        <p class="mini-note at-lavage-note">Cet atelier n’a pas de lots : son travail vient des retours de vols, à mesure qu’ils arrivent.</p>` : `
-        <div class="at-sous-titre">Lots, dans l’ordre de fabrication
-          <span class="mini-note">le premier part à l’heure de début, les suivants quand le précédent est fini</span></div>
-        ${lots || '<p class="mini-note">Aucun lot : cet atelier ne fabrique rien.</p>'}
+        <p class="mini-note at-lavage-note">Cet atelier ne fabrique rien : son travail vient des retours de vols, à mesure qu’ils arrivent.</p>` : `
+        <div class="at-sous-titre">Ce que cette équipe fabrique, dans l’ordre</div>
+        <p class="mini-note at-regle">Une ligne = une fabrication. Plusieurs sur la même ligne sortent <b>ensemble</b> ;
+          sur deux lignes, <b>l’une après l’autre</b>. La première part à l’heure de début.</p>
+        ${lots || '<p class="mini-note at-rien">Rien pour l’instant : cette équipe ne produit pas.</p>'}
         <div class="at-actions-lot">
-          <button class="btn btn-sm" data-at-action="lot-ajouter">+ Lot</button>
-          <button class="btn btn-sm" data-at-action="lot-separer">Une classe par lot</button>
-          <button class="btn btn-sm" data-at-action="lot-tout">Tout en un seul lot</button>
+          <select class="at-ajout-lot" data-at-champ="lot-nouveau" aria-label="Ajouter une fabrication">
+            <option value="">+ Ajouter une fabrication…</option>
+            ${optionsDe(libres)}
+          </select>
+          ${a.lots.length ? '' : `<button class="btn btn-sm" data-at-action="lot-separer">Tout, une ligne par classe</button>
+          <button class="btn btn-sm" data-at-action="lot-tout">Tout sur une seule ligne</button>`}
         </div>`}
 
-        <div class="at-sous-titre">Pauses <span class="mini-note">le travail s’arrête et reprend après</span></div>
-        ${pauses}
-        <div class="at-actions-lot"><button class="btn btn-sm" data-at-action="pause-ajouter">+ Pause</button></div>
+        <details class="at-arrets" ${a.pauses.length ? 'open' : ''}>
+          <summary>Arrêt programmé${a.pauses.length ? ' (' + a.pauses.length + ')' : ''}</summary>
+          <p class="mini-note">Les pauses de l’équipe sont déjà prises en compte plus haut. Ici, c’est autre chose :
+            une plage où <b>rien ne tourne</b> — machine à l’arrêt, local fermé, créneau de nettoyage.
+            À une heure fixe, pas après un temps de travail.</p>
+          ${pauses}
+          <div class="at-actions-lot"><button class="btn btn-sm" data-at-action="pause-ajouter">+ Arrêt</button></div>
+        </details>
 
         <div class="at-actions-lot at-bas">
           <button class="btn btn-sm" data-at-action="dupliquer">Dupliquer</button>
@@ -666,7 +687,7 @@
     rendrePlanning(r) {
       const box = document.getElementById('at-planning');
       if (!r.ok || !r.lots.length) {
-        box.innerHTML = '<p class="mini-note">Le planning apparaîtra dès qu’un atelier aura un lot à fabriquer.</p>';
+        box.innerHTML = '<p class="mini-note">Le planning apparaîtra dès qu’une équipe aura quelque chose à fabriquer.</p>';
         return;
       }
       const t0 = Math.min(...r.lots.map(l => l.debut));

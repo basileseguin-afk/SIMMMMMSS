@@ -5,6 +5,32 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-22 — Le mot « lot » disparaît, et l'arrêt programmé se distingue de la pause
+
+Deux points de vocabulaire signalés en relecture : « je ne comprends pas le
+truc des lots », et « pourquoi on rajoute les pauses alors que l'opérateur en
+a une automatiquement ». Le modèle ne change pas ; ce qu'on en lit, si.
+
+- `ateliers.js` : la section ne s'appelle plus « Lots, dans l'ordre de
+  fabrication » mais **« Ce que cette équipe fabrique, dans l'ordre »**, et la
+  règle tient en une ligne : *une ligne = une fabrication ; plusieurs sur la
+  même ligne sortent ensemble, sur deux lignes l'une après l'autre.*
+- L'en-tête d'une ligne est son **numéro** — `1.`, `2.` — et les classes sont
+  **dans cet en-tête**, plus en dessous : on voit la fabrication d'un coup d'œil.
+- Ajouter se fait **en un geste** : un menu « + Ajouter une fabrication… » crée
+  la ligne déjà remplie, au lieu d'un bouton qui créait une ligne vide à
+  compléter ensuite. Chaque ligne porte son « + fabriquer en même temps… ».
+- Les pauses saisies à la main deviennent l'**« Arrêt programmé »**, replié par
+  défaut, et disent ce qu'elles ne sont pas : la pause de l'équipe est déjà
+  comptée par le régime de poste. Un arrêt programmé est une plage où **rien ne
+  tourne** — machine à l'arrêt, local fermé, créneau de nettoyage — à une
+  heure fixe, pas après un temps de travail.
+- `ateliers.css` : styles des chips en en-tête, des deux menus d'ajout et du
+  repli de l'arrêt programmé.
+- Tests : quatre parcours navigateur suivent le nouveau geste d'ajout, et
+  `ateliers-browser` ouvre le repli avant d'ajouter un arrêt.
+- Vérification : 156 tests purs et onze parcours navigateur au vert.
+
 ## 2026-09-22 — Le débit d'une plonge est la somme de ses tunnels
 
 - `moteur/production.js` : `debitLavage()` additionne les débits des tunnels

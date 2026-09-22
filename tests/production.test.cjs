@@ -395,7 +395,7 @@ test('un lot que le poste ne peut pas finir est signalé, pas dissimulé', () =>
   assert.equal(r.lots[0].horsPoste, true);
   assert.equal(r.lots[0].fin, null);
   assert.equal(r.parClasse['CRL/YC'].fin, null, 'la classe ne sort pas');
-  assert.match(r.anomalies.map(a => a.message).join(' '), /le poste se termine avant le lot/);
+  assert.match(r.anomalies.map(a => a.message).join(' '), /le poste se termine avant la fin/);
 });
 
 test('les lots suivants d’un poste terminé ne sont pas fabriqués', () => {

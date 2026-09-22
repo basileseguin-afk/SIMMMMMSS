@@ -20,8 +20,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.dispatchEvent(`[data-at="${at}"] [data-at-champ=nom]`,'change');await page.waitForTimeout(150);
   await page.fill(`[data-at="${at}"] [data-at-champ=personnes]`,'5');
   await page.dispatchEvent(`[data-at="${at}"] [data-at-champ=personnes]`,'change');await page.waitForTimeout(150);
-  await page.locator(`[data-at="${at}"] [data-at-action=lot-ajouter]`).click();await page.waitForTimeout(150);
-  await page.selectOption(`[data-at="${at}"] [data-at-champ=lot-ajout][data-index="0"]`,'CRL/BC');await page.waitForTimeout(200);
+  await page.selectOption(`[data-at="${at}"] [data-at-champ=lot-nouveau]`,'CRL/BC');await page.waitForTimeout(250);
   await click('[data-view=plan]');await click('#btn-edit');
   await page.locator('[data-action=select][data-zone=cuisine]').click();
   await page.locator('#pe-x').fill('1888');await page.locator('#pe-x').press('Tab');await click('#edit-done');

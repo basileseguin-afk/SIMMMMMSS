@@ -248,10 +248,10 @@
       // on le signale sans empêcher le reste de la journée d'être calculé. Un
       // atelier de lavage, lui, n'a pas de lots : son travail vient des retours.
       if (lavage) { /* rien à exiger */ }
-      else if (!Array.isArray(a.lots) || !a.lots.length) dire('lots', 'aucun lot à fabriquer pour l’instant.');
+      else if (!Array.isArray(a.lots) || !a.lots.length) dire('lots', 'ne fabrique rien pour l’instant.');
       else for (const lot of (a.lots || [])) {
         const liste = Array.isArray(lot) ? lot : (lot && lot.classes);
-        if (!Array.isArray(liste) || !liste.length) { dire('lot-vide', 'un lot est encore vide.'); continue; }
+        if (!Array.isArray(liste) || !liste.length) { dire('lot-vide', 'une ligne de fabrication est encore vide.'); continue; }
         for (const id of liste) if (classes.size && !classes.has(id)) dire('lot', 'compagnie × classe inconnue : ' + id + '.');
       }
     }
@@ -736,7 +736,7 @@
     // c'est le résultat, et le plus utile. On le nomme sans bloquer.
     for (const l of journal.filter(l => l.horsPoste)) {
       anomalies.push({ code: 'poste', atelier: l.atelier,
-        message: l.nom + ' dans « ' + l.service + ' » : le poste se termine avant le lot. '
+        message: l.nom + ' dans « ' + l.service + ' » : le poste se termine avant la fin. '
           + 'Commencez plus tôt, ajoutez du monde, ou confiez-le à une autre équipe.' });
     }
 

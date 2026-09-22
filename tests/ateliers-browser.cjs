@@ -33,11 +33,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    if(await page.evaluate(id=>Sim.ateliers.ouvert===id,id))return;
    await page.locator(`[data-at="${id}"] .at-carte-nom`).click();await attendre();
  };
+ // Une fabrication s'ajoute d'un seul geste : la ligne na\u00eet avec sa classe.
+ // Les suivantes de la m\u00eame ligne passent par « fabriquer en m\u00eame temps ».
  const lot=async(id,classes)=>{
    await ouvrir(id);
-   await page.locator(`[data-at="${id}"] [data-at-action=lot-ajouter]`).click();await attendre();
-   const i=await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).lots.length-1,id);
-   for(const c of classes){await page.selectOption(`[data-at="${id}"] [data-at-champ=lot-ajout][data-index="${i}"]`,c);await attendre();}
+   await page.selectOption(`[data-at="${id}"] [data-at-champ=lot-nouveau]`,classes[0]);await attendre();
+   const i=await page.evaluate(([id,c])=>Sim.ateliers.state.ateliers.find(a=>a.id===id).lots.findIndex(l=>l.includes(c)),[id,classes[0]]);
+   for(const c of classes.slice(1)){await page.selectOption(`[data-at="${id}"] [data-at-champ=lot-ajout][data-index="${i}"]`,c);await attendre();}
    return i;
  };
  try{
@@ -89,6 +91,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 6. Une pause repousse la fin sans changer le travail.
   const avant=(await resultat()).lots.find(l=>l.plateaux!==undefined);
+  // L’arrêt programmé est replié tant qu’il n’y en a aucun : il faut l’ouvrir.
+  await page.locator(`[data-at="${rob}"] .at-arrets > summary`).click();
   await page.locator(`[data-at="${rob}"] [data-at-action=pause-ajouter]`).click();await attendre();
   await page.fill(`[data-at="${rob}"] [data-at-champ=pause-de][data-index="0"]`,'06:10');
   await page.dispatchEvent(`[data-at="${rob}"] [data-at-champ=pause-de][data-index="0"]`,'change');await attendre();
@@ -203,7 +207,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator('[data-at-champ=mat-actif]').check();await attendre();
   assert.equal(await page.locator('[data-at-champ=mat-parpax]').count(),1);
   const plonge=await creer('Plonge','plonge','05:00',3,'lavage');
-  assert.equal(await page.locator(`[data-at="${plonge}"] [data-at-action=lot-ajouter]`).count(),0,
+  assert.equal(await page.locator(`[data-at="${plonge}"] [data-at-champ=lot-nouveau]`).count(),0,
     'un atelier de lavage n\u2019a pas de lots');
   assert.match(await page.locator(`[data-at="${plonge}"] .at-lavage-note`).textContent(),/retours de vols/);
 

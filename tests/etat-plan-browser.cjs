@@ -45,8 +45,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await etat('cuisine'),/\bp-partiel\b/,'un atelier vide n’aménage rien');
   const avant=await page.locator('#plan-etat').textContent();
   await click('[data-view=ateliers]');
-  await page.locator(`[data-at="${at}"] [data-at-action=lot-ajouter]`).click();await page.waitForTimeout(150);
-  await page.selectOption(`[data-at="${at}"] [data-at-champ=lot-ajout][data-index="0"]`,'CRL/BC');await page.waitForTimeout(150);
+  await page.selectOption(`[data-at="${at}"] [data-at-champ=lot-nouveau]`,'CRL/BC');await page.waitForTimeout(250);
   await click('[data-view=plan]');
   assert.match(await etat('cuisine'),/\bp-pret\b/,'un lot à fabriquer suffit à marquer le service aménagé');
   assert.notEqual(await page.locator('#plan-etat').textContent(),avant,'le reste à faire diminue');
