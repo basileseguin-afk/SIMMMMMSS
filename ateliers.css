@@ -41,8 +41,11 @@ body.ateliers-open .workbench{display:none}
 
 .at-champs{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;padding:0 14px 12px}
 .at-champs label,.at-lot select{display:grid;gap:6px;font-size:12px;color:var(--txt2)}
-#view-ateliers input,#view-ateliers select{width:100%;min-width:0;box-sizing:border-box;padding:8px;
+/* Les cases à cocher sont exclues : la largeur pleine les étirerait et
+   rejetterait leur libellé hors de l'écran. */
+#view-ateliers input:not([type=checkbox]),#view-ateliers select{width:100%;min-width:0;box-sizing:border-box;padding:8px;
   border:1px solid var(--bordure2);border-radius:6px;background:var(--bg2);color:var(--txt);font:inherit}
+#view-ateliers input[type=checkbox]{width:16px;height:16px;flex:none;accent-color:var(--accent)}
 
 .at-sous-titre{padding:12px 14px 6px;font-size:12.5px;font-weight:700;color:var(--txt);
   border-top:1px solid var(--bordure);display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
@@ -104,3 +107,26 @@ body.ateliers-open .workbench{display:none}
 .at-source{font-size:10px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;
   color:var(--accent2);border:1px solid var(--accent);border-radius:4px;padding:1px 5px;margin-left:6px}
 .at-table td:last-child{text-align:right;white-space:nowrap}
+
+/* Poste : pauses automatiques et durée de présence. */
+.at-cases{display:flex;flex-direction:column;gap:6px;padding:0 14px 12px}
+.at-cases .chk{display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:1.4;color:var(--txt2)}
+.at-cases .chk input{width:16px;height:16px;flex:none;margin-top:1px;accent-color:var(--accent)}
+.at-presence{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--txt2);margin-left:24px}
+.at-presence input{max-width:90px}
+.at-lavage-note{padding:0 14px 12px;margin:0}
+
+/* La boucle du matériel : ce qui part revient. */
+.at-mat{border:1px solid var(--bordure);border-radius:10px;background:var(--bg3);padding:12px 16px;margin-bottom:16px}
+.at-mat-tete{display:flex;align-items:flex-start;gap:10px;font-size:12.5px;line-height:1.5;color:var(--txt2)}
+.at-mat-tete input{width:16px;height:16px;flex:none;margin-top:2px;accent-color:var(--accent)}
+.at-mat-tete strong{color:var(--txt)}
+.at-mat-champs{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;align-items:end;margin:12px 0}
+.at-mat-champs label:not(.chk){display:grid;gap:6px;font-size:12px;color:var(--txt2)}
+.at-mat-champs .chk{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--txt2)}
+.at-mat-champs .chk input{width:16px;height:16px;accent-color:var(--accent)}
+.at-mat-bilan{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;
+  border-top:1px solid var(--bordure);padding-top:12px}
+.at-mat-chiffre{font-size:12px;color:var(--txt2)}
+.at-mat-chiffre b{display:block;font-size:18px;color:var(--txt);font-weight:800}
+.at-mat-chiffre em{display:block;font-style:normal;font-size:11px}

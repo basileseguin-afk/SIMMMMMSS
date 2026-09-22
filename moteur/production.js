@@ -178,7 +178,7 @@
    *  5. ATELIERS — validation
    * ====================================================================*/
 
-  const TYPES = ['manuel', 'robot'];
+  const TYPES = ['manuel', 'robot', 'lavage'];
 
   /**
    * Relit une liste d'ateliers et rassemble TOUTES les anomalies, plutôt que
@@ -205,11 +205,12 @@
 
       try { minutes(a.debut); } catch (e) { dire('debut', e.message); }
 
-      const robot = a.type === 'robot';
+      const robot = a.type === 'robot', lavage = a.type === 'lavage';
       const gens = a.personnes;
       if (!Number.isInteger(gens) || gens < 0) dire('personnes', 'nombre de personnes entier attendu.');
       else if (!robot && gens === 0) dire('personnes', 'sans personne, rien n’est fabriqué.');
 
+      if (lavage && !(a.debit > 0)) dire('debit', 'débit attendu, en unités de matériel par heure.');
       if (robot) {
         if (!(a.debit > 0)) dire('debit', 'débit attendu, en plateaux par heure.');
         const mini = a.personnesMin === undefined ? 1 : a.personnesMin;
@@ -225,9 +226,11 @@
       }
 
       // Un atelier sans lot, ou un lot encore vide, c'est une saisie en cours :
-      // on le signale sans empêcher le reste de la journée d'être calculé.
-      if (!Array.isArray(a.lots) || !a.lots.length) dire('lots', 'aucun lot à fabriquer pour l’instant.');
-      else for (const lot of a.lots) {
+      // on le signale sans empêcher le reste de la journée d'être calculé. Un
+      // atelier de lavage, lui, n'a pas de lots : son travail vient des retours.
+      if (lavage) { /* rien à exiger */ }
+      else if (!Array.isArray(a.lots) || !a.lots.length) dire('lots', 'aucun lot à fabriquer pour l’instant.');
+      else for (const lot of (a.lots || [])) {
         const liste = Array.isArray(lot) ? lot : (lot && lot.classes);
         if (!Array.isArray(liste) || !liste.length) { dire('lot-vide', 'un lot est encore vide.'); continue; }
         for (const id of liste) if (classes.size && !classes.has(id)) dire('lot', 'compagnie × classe inconnue : ' + id + '.');
@@ -289,6 +292,128 @@
       reste -= dispo; t = suivante.a; arret += suivante.a - suivante.de;
     }
     throw new Error('Trop de pauses pour achever une tâche.');
+  }
+
+  /* ----------------------------------------------------------------------
+   *  RÉGIME DE POSTE
+   *  Une équipe ne travaille pas huit heures d'affilée. Elle prend une pause
+   *  après un certain temps de TRAVAIL cumulé — pas après une heure fixe —
+   *  et son poste a une durée de présence totale au bout de laquelle elle
+   *  s'en va, que le travail soit fini ou non. C'est cette dernière règle qui
+   *  fait apparaître ce qui ne rentre pas dans la journée.
+   * --------------------------------------------------------------------*/
+
+  /** 15 min après 3 h de travail, 30 min après 6 h, 8 h 15 de présence. */
+  const REGIME_DEFAUT = {
+    actif: true,
+    seuils: [{ apres: 180, duree: 15 }, { apres: 360, duree: 30 }],
+    presence: 495
+  };
+
+  /** Travail effectif d'un poste : la présence moins les pauses qu'il contient. */
+  function travailDuPoste(regime) {
+    const r = normaliserRegime(regime);
+    if (!r.actif) return Infinity;
+    return r.presence - r.seuils.reduce((n, s) => n + s.duree, 0);
+  }
+
+  function normaliserRegime(regime) {
+    if (regime === false || (regime && regime.actif === false)) return { actif: false, seuils: [], presence: Infinity };
+    const r = regime || {};
+    const seuils = (Array.isArray(r.seuils) ? r.seuils : REGIME_DEFAUT.seuils)
+      .map(s => ({ apres: +s.apres, duree: +s.duree }))
+      .filter(s => Number.isFinite(s.apres) && s.apres >= 0 && Number.isFinite(s.duree) && s.duree > 0)
+      .sort((a, b) => a.apres - b.apres);
+    const presence = Number.isFinite(+r.presence) ? +r.presence : REGIME_DEFAUT.presence;
+    return { actif: true, seuils, presence };
+  }
+
+  /**
+   * Exécute `duree` minutes de travail à partir de `depart`, en respectant
+   * les pauses fixes, les pauses de régime et la fin du poste.
+   *
+   * @returns {object} fin, arret (temps immobile), cumul (travail total du
+   *   poste après la tâche), fait (minutes réellement travaillées ici) et
+   *   `tronque` quand le poste s'est terminé avant la tâche.
+   */
+  function executerTache(o) {
+    const pauses = o.pauses || [];
+    const regime = normaliserRegime(o.regime);
+    // La fin du poste se déduit de son début et de la présence, sauf si
+    // l'appelant l'impose : c'est lui qui sait quand l'équipe est arrivée.
+    const finPoste = Number.isFinite(o.finPoste) ? o.finPoste
+      : (regime.actif && Number.isFinite(o.debutPoste)) ? o.debutPoste + regime.presence
+      : Infinity;
+    const prises = o.prises || new Set();   // seuils de pause déjà honorés dans ce poste
+    let t = o.depart, reste = o.duree, cumul = o.cumul || 0, arret = 0, fait = 0;
+
+    if (reste <= 0) return { fin: t, arret: 0, cumul, fait: 0, tronque: false };
+
+    for (let garde = 0; garde < 5000; garde++) {
+      if (t >= finPoste) return { fin: finPoste, arret, cumul, fait, tronque: true };
+
+      // Une pause fixe en cours : on attend sa fin.
+      const fixe = pauses.find(p => t >= p.de && t < p.a);
+      if (fixe) { arret += Math.min(fixe.a, finPoste) - t; t = Math.min(fixe.a, finPoste); continue; }
+
+      // Une pause de régime due : le seuil de travail cumulé est atteint.
+      const due = regime.seuils.find(s => cumul >= s.apres && !prises.has(s.apres));
+      if (due) { prises.add(due.apres); arret += due.duree; t += due.duree; continue; }
+
+      // Jusqu'où peut-on travailler sans être interrompu ?
+      const prochainSeuil = regime.seuils.find(s => s.apres > cumul);
+      const versSeuil = prochainSeuil ? prochainSeuil.apres - cumul : Infinity;
+      const prochaineFixe = pauses.find(p => p.de > t);
+      const versFixe = prochaineFixe ? prochaineFixe.de - t : Infinity;
+      const versFin = finPoste - t;
+      const creneau = Math.min(reste, versSeuil, versFixe, versFin);
+
+      t += creneau; cumul += creneau; fait += creneau; reste -= creneau;
+      if (reste <= 1e-9) return { fin: t, arret, cumul, fait, tronque: false };
+      if (creneau === versFin) return { fin: finPoste, arret, cumul, fait, tronque: true };
+    }
+    throw new Error('Trop d’interruptions pour achever une tâche.');
+  }
+
+  /* ----------------------------------------------------------------------
+   *  BOUCLE DU MATÉRIEL
+   *  Les trolleys, la porcelaine, les couverts ne s'achètent pas : ils
+   *  reviennent. Un départ les emporte, un retour les ramène sales, la plonge
+   *  les rend propres, un départ les remporte. En théorie il n'y a pas de
+   *  stock : si les retours égalent les départs, tout ce qui part vient de
+   *  revenir. Un excédent de retours se stocke et sert d'amortisseur — quand
+   *  la plonge prend du retard, ou le jour où les retours manquent.
+   *
+   *  On tient donc UN compte unique, en unités par passager. C'est une
+   *  simplification assumée : un trolley de CRL n'est pas un trolley d'AF.
+   * --------------------------------------------------------------------*/
+
+  const MATERIEL_DEFAUT = {
+    actif: false,
+    parPax: 1,          // unités emportées par passager — NON CALIBRÉ
+    stockInitial: 0,    // propre disponible à l'ouverture
+    delaiRetour: 30     // minutes entre l'arrivée d'un vol et sa mise à disposition
+  };
+
+  /** Ce que les vols retour ramènent de sale, et quand. */
+  function retoursDeVols(vols, materiel) {
+    const m = { ...MATERIEL_DEFAUT, ...(materiel || {}) };
+    const out = [];
+    for (const v of vols || []) {
+      if (v.sens !== 'RET') continue;
+      const arrivee = v.sta === undefined ? v.heure : v.sta;
+      if (!Number.isFinite(arrivee)) continue;
+      const pax = CABINES.reduce((n, c) => n + (v[CHAMP_PAX[c]] || 0), 0);
+      if (pax <= 0) continue;
+      out.push({ vol: v.id, t: arrivee + m.delaiRetour, unites: pax * m.parPax });
+    }
+    return out.sort((a, b) => a.t - b.t);
+  }
+
+  /** Ce qu'un lot emporte : le nombre de passagers de ses classes, en unités. */
+  function besoinMateriel(classes, materiel) {
+    const m = { ...MATERIEL_DEFAUT, ...(materiel || {}) };
+    return classes.reduce((n, c) => n + c.pax, 0) * m.parPax;
   }
 
   /* ======================================================================
@@ -353,7 +478,7 @@
     }
 
     // Ce qui n'empêche pas de jouer la journée ne doit pas l'empêcher.
-    const NON_BLOQUANTES = new Set(['doublon', 'bareme', 'lots', 'lot-vide']);
+    const NON_BLOQUANTES = new Set(['doublon', 'bareme', 'lots', 'lot-vide', 'poste', 'materiel']);
     const bloquant = anomalies.some(a => !NON_BLOQUANTES.has(a.code));
     if (bloquant) return { ok: false, anomalies, classes, lots: [], ateliers: [] };
 
@@ -376,6 +501,55 @@
     const produit = new Set();
     for (const a of ateliers) for (const lot of a.lots) for (const id of classesDuLot(lot)) produit.add(cle(a.service, id));
 
+    /* ---- boucle du matériel ------------------------------------------ */
+
+    const mat = { ...MATERIEL_DEFAUT, ...(opts.materiel || {}) };
+    const stock = {
+      propre: mat.stockInitial, sale: 0,
+      minPropre: mat.stockInitial, entrees: 0, lavees: 0, consommees: 0, attente: 0
+    };
+    const attenteurs = [];      // lots en attente de matériel propre, dans l'ordre
+    const reveilsSale = [];     // processus de lavage en attente d'un retour
+
+    function servir() {
+      // Premier arrivé, premier servi : sans cela un petit lot passerait devant
+      // un gros indéfiniment, et l'attente mesurée ne voudrait plus rien dire.
+      while (attenteurs.length && stock.propre >= attenteurs[0].besoin) {
+        const a = attenteurs.shift();
+        stock.propre -= a.besoin; stock.consommees += a.besoin;
+        stock.minPropre = Math.min(stock.minPropre, stock.propre);
+        a.ev.reussir(env.maintenant);
+      }
+    }
+    function crediter(n) { stock.propre += n; stock.lavees += n; servir(); }
+
+    /** Prend `besoin` unités propres, en attendant s'il le faut. */
+    function* prendreMateriel(besoin, contexte) {
+      if (besoin <= 0) return 0;
+      if (!attenteurs.length && stock.propre >= besoin) {
+        stock.propre -= besoin; stock.consommees += besoin;
+        stock.minPropre = Math.min(stock.minPropre, stock.propre);
+        return 0;
+      }
+      const ev = env.evenement('materiel');
+      attenteurs.push({ besoin, ev, ...contexte, depuis: env.maintenant });
+      const t0 = env.maintenant;
+      yield ev;
+      const attendu = env.maintenant - t0;
+      stock.attente += attendu;
+      return attendu;
+    }
+
+    if (mat.actif) {
+      for (const r of retoursDeVols(opts.vols, mat)) {
+        env.processus(function* () {
+          if (env.maintenant < r.t) yield env.delai(r.t - env.maintenant);
+          stock.sale += r.unites; stock.entrees += r.unites;
+          while (reveilsSale.length) { const ev = reveilsSale.shift(); if (!ev.declenche) ev.reussir(env.maintenant); }
+        }, 'retour ' + r.vol);
+      }
+    }
+
     const journal = [];   // une ligne par lot : ce que l'on affichera
     const suivi = ateliers.map(a => ({ id: a.id, nom: a.nom, service: a.service, type: a.type,
       debut: minutes(a.debut) + (a.jour || 0) * MINUTES_PAR_JOUR, personnes: a.personnes,
@@ -386,6 +560,45 @@
       const vue = parId.get(a.id);
       const pauses = pausesDe(a);
       const depart = vue.debut;
+      const regime = normaliserRegime(a.regime);
+      const finPoste = regime.actif ? depart + regime.presence : Infinity;
+      const prises = new Set();   // pauses de régime déjà prises dans ce poste
+      let cumul = 0;              // travail effectif depuis le début du poste
+      vue.finPoste = Number.isFinite(finPoste) ? finPoste : null;
+
+      if (a.type === 'lavage') {
+        env.processus(function* () {
+          if (env.maintenant < depart) yield env.delai(depart - env.maintenant);
+          const prisesL = new Set(); let cumulL = 0;
+          for (let garde = 0; garde < 5000; garde++) {
+            if (env.maintenant >= finPoste) break;
+            if (stock.sale <= 0) {
+              // Rien \u00e0 laver : on attend le prochain retour, ou la fin du poste.
+              const ev = env.evenement('retour'); reveilsSale.push(ev);
+              yield env.unDe([ev, env.delai(Math.max(0, finPoste - env.maintenant))]);
+              continue;
+            }
+            // On lave tout ce qui est l\u00e0 ; ce qui arrive pendant sera le tour suivant.
+            const unites = stock.sale; stock.sale = 0;
+            const duree = unites / a.debit * 60;
+            const t = executerTache({ depart: env.maintenant, duree, cumul: cumulL,
+              prises: prisesL, pauses, regime, finPoste });
+            const debutLot = env.maintenant;
+            yield env.delai(t.fin - env.maintenant);
+            cumulL = t.cumul;
+            const lavees = t.tronque ? unites * (t.fait / duree) : unites;
+            stock.sale += unites - lavees;      // ce qui n'a pas \u00e9t\u00e9 lav\u00e9 reste sale
+            crediter(lavees);
+            const ligne = { atelier: a.id, service: a.service, nom: Math.round(lavees) + ' u lav\u00e9es',
+              classes: [], debut: debutLot, fin: env.maintenant, duree: t.fait, attente: 0,
+              arret: t.arret, impossible: false, horsPoste: t.tronque, unites: lavees };
+            journal.push(ligne); vue.lots.push(ligne);
+            vue.travail += t.fait; vue.arret += t.arret; vue.fin = env.maintenant;
+            if (t.tronque) break;
+          }
+        }, a.nom);
+        continue;
+      }
 
       env.processus(function* () {
         if (env.maintenant < depart) yield env.delai(depart - env.maintenant);
@@ -431,9 +644,39 @@
             return;   // rien ne sortira de cet atelier : inutile d'enchaîner
           }
 
-          const { fin, arret } = finAvecPauses(env.maintenant, duree, pauses);
+          // Le matériel propre : un lot ne part pas sans ce qu'il emporte.
+          // C'est ici que la boucle des retours touche la production.
+          let attenteMat = 0;
+          if (mat.actif && a.materiel === 'consomme') {
+            const besoin = besoinMateriel(lots, mat);
+            attenteMat = yield* prendreMateriel(besoin,
+              { atelier: a.id, service: a.service, nom, classes: ids });
+            horloge = Math.max(horloge, env.maintenant);
+          }
+
+          // Le poste s'arrête : ce qui reste ne sera pas fait aujourd'hui.
+          if (env.maintenant >= finPoste) {
+            const ligne = { atelier: a.id, service: a.service, nom, classes: ids,
+              debut: env.maintenant, fin: null, duree: null, attente, arret: 0,
+              impossible: true, horsPoste: true, ...detail };
+            journal.push(ligne); vue.lots.push(ligne);
+            return;
+          }
+
+          const t = executerTache({ depart: env.maintenant, duree, cumul, prises, pauses, regime, finPoste });
           const debutLot = env.maintenant;
-          yield env.delai(fin - env.maintenant);
+          yield env.delai(t.fin - env.maintenant);
+          cumul = t.cumul;
+          const { arret } = t;
+
+          if (t.tronque) {
+            const ligne = { atelier: a.id, service: a.service, nom, classes: ids,
+              debut: debutLot, fin: null, duree, attente, arret,
+              fait: t.fait, impossible: true, horsPoste: true, ...detail };
+            journal.push(ligne); vue.lots.push(ligne);
+            vue.attente += attente; vue.arret += arret; vue.travail += t.fait;
+            return;   // l'équipe est partie : les lots suivants non plus
+          }
 
           // Si deux ateliers du même service fabriquent la même classe — une
           // anomalie déjà signalée — c'est la première livraison qui fait foi.
@@ -444,7 +687,8 @@
           }
 
           const ligne = { atelier: a.id, service: a.service, nom, classes: ids,
-            debut: debutLot, fin: env.maintenant, duree, attente, arret, impossible: false, ...detail };
+            debut: debutLot, fin: env.maintenant, duree, attente, attenteMateriel: attenteMat,
+            arret, impossible: false, ...detail };
           journal.push(ligne); vue.lots.push(ligne);
           vue.travail += duree; vue.attente += attente; vue.arret += arret;
           vue.fin = env.maintenant;
@@ -454,6 +698,28 @@
     }
 
     env.executer();
+
+    // Un lot encore en attente de matériel à la fin de la journée ne produit
+    // aucune ligne de journal : son processus est resté suspendu. Sans cette
+    // trace, sa classe paraîtrait fabriquée par ses autres étapes.
+    for (const a of attenteurs) {
+      const ligne = { atelier: a.atelier, service: a.service, nom: a.nom, classes: a.classes || [],
+        debut: a.depuis, fin: null, duree: null, attente: 0, arret: 0,
+        impossible: true, sansMateriel: true, besoin: a.besoin };
+      journal.push(ligne);
+      const vue = parId.get(a.atelier); if (vue) vue.lots.push(ligne);
+      anomalies.push({ code: 'materiel', atelier: a.atelier,
+        message: a.nom + ' dans « ' + a.service + ' » : ' + Math.round(a.besoin)
+          + ' unités de matériel propre manquent et ne sont jamais arrivées.' });
+    }
+
+    // Un lot que le poste n'a pas pu finir n'est pas une erreur de saisie :
+    // c'est le résultat, et le plus utile. On le nomme sans bloquer.
+    for (const l of journal.filter(l => l.horsPoste)) {
+      anomalies.push({ code: 'poste', atelier: l.atelier,
+        message: l.nom + ' dans « ' + l.service + ' » : le poste se termine avant le lot. '
+          + 'Commencez plus tôt, ajoutez du monde, ou confiez-le à une autre équipe.' });
+    }
 
     /* ---- ce qu'il faut en retenir ------------------------------------ */
 
@@ -496,8 +762,16 @@
         retardMax: retards.length ? Math.max(...retards) : null,
         finDerniere: journal.length ? Math.max(...journal.map(l => l.fin == null ? -Infinity : l.fin)) : null,
         attenteTotale: journal.reduce((n, l) => n + l.attente, 0),
+        attenteMateriel: journal.reduce((n, l) => n + (l.attenteMateriel || 0), 0),
         hommeHeures: journal.reduce((n, l) => n + (l.hommeMinutes || 0), 0) / 60
       },
+      materiel: mat.actif ? {
+        parPax: mat.parPax, stockInitial: mat.stockInitial,
+        entrees: stock.entrees, lavees: Math.round(stock.lavees), consommees: stock.consommees,
+        restePropre: Math.round(stock.propre), resteSale: Math.round(stock.sale),
+        minPropre: Math.round(stock.minPropre), attente: stock.attente,
+        enAttente: attenteurs.length
+      } : null,
       finDe
     };
   }
@@ -509,9 +783,11 @@
   const api = {
     MINUTES_PAR_JOUR, CABINES, TYPES,
     minutes, hhmm, idClasse,
+    REGIME_DEFAUT, normaliserRegime, travailDuPoste, executerTache,
     classesDeVols, BAREME_DEMO, RENDEMENT_DEMO, travailClasse,
     fournisseurs, cycles, validerAteliers,
     pausesDe, finAvecPauses,
+    MATERIEL_DEFAUT, retoursDeVols, besoinMateriel,
     simuler
   };
 

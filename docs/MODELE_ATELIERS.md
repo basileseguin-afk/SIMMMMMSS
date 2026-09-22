@@ -84,7 +84,62 @@ Le robot ne consomme pas de barème d'homme-minutes : son temps vient de son
 débit. Les pauses ne changent pas la durée du travail, elles **repoussent la
 fin** d'autant — et ce temps d'arrêt est compté à part.
 
-## 3. Le parcours
+### Le poste : pauses et heure de fin
+
+Une équipe ne travaille pas huit heures d'affilée, et elle s'en va à la fin de
+son poste que le travail soit fini ou non.
+
+| Règle | Valeur par défaut |
+|---|---|
+| Pause après 3 h de **travail** | 15 min |
+| Pause après 6 h de **travail** | 30 min |
+| Présence totale sur le site | 8 h 15 |
+
+Soit **7 h 30 de travail effectif**. Les seuils comptent le travail *cumulé*,
+pas l'heure qu'il est : une équipe qui attend ses amonts ne consomme pas son
+crédit de travail, donc ne prend pas sa pause.
+
+Un lot que le poste ne peut pas finir est **signalé et laissé inachevé** : sa
+fin est vide, sa classe ne sort pas, et les lots suivants ne sont pas commencés.
+C'est le résultat le plus utile du modèle — ce qui ne rentre pas dans la
+journée. Le régime se désactive atelier par atelier, et la durée de présence se
+règle, pour une équipe qui ne suit pas la règle commune.
+
+## 3. La boucle du matériel
+
+Les trolleys, la porcelaine, les couverts ne s'achètent pas : ils reviennent.
+Un départ les emporte, un retour les ramène sales, la plonge les rend propres,
+un départ les remporte.
+
+> **En théorie il n'y a pas de stock.** Si les retours égalent les départs, tout
+> ce qui part vient de revenir. Un excédent de retours se stocke et sert
+> d'amortisseur : quand la plonge prend du retard, ou le jour où les retours
+> manquent.
+
+Le modèle tient **un compte unique**, en unités par passager. C'est une
+simplification assumée : un trolley de CRL et un trolley d'AF ne s'y distinguent
+pas.
+
+| Réglage | Sens |
+|---|---|
+| Unités par passager | ce qu'un passager emporte — **non calibré** |
+| Propre à l'ouverture | le stock de départ, souvent nul |
+| Délai après atterrissage | minutes avant que le sale soit à la plonge |
+
+Un atelier de type **Lavage** n'a pas de lots : son travail vient des retours, à
+mesure qu'ils arrivent, à son **débit en unités par heure**. Il suit le même
+régime de poste que les autres — ce qui arrive après la fin de son poste reste
+sale.
+
+Un atelier coché **« emporte du matériel propre »** attend, avant chaque lot,
+que le compte couvre ce que ses classes emportent. L'attente est mesurée. Un lot
+qui n'obtient jamais son matériel **figure au journal sans fin** : sans cette
+trace, sa classe paraîtrait fabriquée par ses autres étapes.
+
+Le service est **premier arrivé, premier servi** : sans cela un petit lot
+passerait indéfiniment devant un gros.
+
+## 4. Le parcours
 
 Une compagnie × classe n'est pas une ligne mais un **assemblage** : sa part food
 vient des appros, son matériel du magasin et des retours de dotation, son
@@ -117,8 +172,11 @@ bloquerait la fabrication sans jamais rien dire.
 - **Il ne répartit pas le travail.** Une même classe fabriquée par deux ateliers
   du même service est **signalée**, pas arbitrée : sans règle de répartition,
   trancher serait inventer. Un service, une classe, un atelier.
-- **Il n'invente pas de file d'attente.** Il n'y a ni contenance, ni blocage
-  amont, ni vivier. Un atelier fait ses lots, dans l'ordre, à son effectif.
+- **Il n'invente pas de file d'attente** entre ateliers. Il n'y a ni contenance,
+  ni blocage amont, ni vivier. Un atelier fait ses lots, dans l'ordre, à son
+  effectif. La seule ressource partagée est le matériel propre.
+- **Il ne distingue pas les matériels.** Un seul compte pour les trolleys, la
+  porcelaine et les couverts, toutes compagnies confondues.
 
 ## Ce qu'il rapporte
 
@@ -136,3 +194,7 @@ bloquerait la fabrication sans jamais rien dire.
   deux lots de front se décrit comme deux ateliers.
 - Le rendement est un **coefficient unique**. S'il doit varier par service ou par
   heure, c'est une évolution du barème, pas du moteur.
+- Les **unités par passager** et le **délai après atterrissage** sont des valeurs
+  d'attente, comme le barème.
+- La journée est **unique**. Un excédent de matériel « disponible demain » n'est
+  pas reporté automatiquement : il se saisit comme stock à l'ouverture.

@@ -187,6 +187,42 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.reload();await page.locator('[data-view=ateliers]').click();await attendre();
   assert.deepEqual(await etat(),memoire,'exclusions et ajouts sont relus du navigateur');
 
+  // 18. Le poste : pauses automatiques et heure de fin, visibles et r\u00e9glables.
+  await ouvrir(cui2);
+  assert.equal(await page.locator(`[data-at="${cui2}"] [data-at-champ=regime]`).isChecked(),true);
+  assert.match(await page.locator(`[data-at="${cui2}"] .at-cases`).textContent(),/15 min apr\u00e8s 3 h, 30 min apr\u00e8s 6 h/);
+  assert.equal(await page.locator(`[data-at="${cui2}"] [data-at-champ=presence]`).inputValue(),'495');
+  assert.match(await page.locator(`[data-at="${cui2}"] .at-cases`).textContent(),/7,5 h de travail/);
+  await page.locator(`[data-at="${cui2}"] [data-at-champ=regime]`).uncheck();await attendre();
+  assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).regime.actif,cui2),false);
+  assert.equal(await page.locator(`[data-at="${cui2}"] [data-at-champ=presence]`).count(),0,'sans poste, pas de pr\u00e9sence \u00e0 r\u00e9gler');
+  await page.locator(`[data-at="${cui2}"] [data-at-champ=regime]`).check();await attendre();
+
+  // 19. La boucle du mat\u00e9riel : la plonge lave ce qui revient, la prod l'emporte.
+  assert.equal(await page.locator('[data-at-champ=mat-parpax]').count(),0,'rien \u00e0 r\u00e9gler tant que le compte n\u2019est pas tenu');
+  await page.locator('[data-at-champ=mat-actif]').check();await attendre();
+  assert.equal(await page.locator('[data-at-champ=mat-parpax]').count(),1);
+  const plonge=await creer('Plonge','plonge','05:00',3,'lavage');
+  await champ(plonge,'debit',600);
+  assert.equal(await page.locator(`[data-at="${plonge}"] [data-at-action=lot-ajouter]`).count(),0,
+    'un atelier de lavage n\u2019a pas de lots');
+  assert.match(await page.locator(`[data-at="${plonge}"] .at-lavage-note`).textContent(),/retours de vols/);
+
+  await ouvrir(cui2);
+  await page.locator(`[data-at="${cui2}"] [data-at-champ=consomme]`).check();await attendre();
+  const rm=await page.evaluate(()=>Sim.ateliers.resultat.materiel);
+  assert.ok(rm.entrees>0,'les retours du programme ram\u00e8nent du mat\u00e9riel');
+  assert.ok(rm.lavees>0,'la plonge en lave une partie');
+  assert.match(await page.locator('.at-mat-bilan').textContent(),/Revenu des vols/);
+
+  // Sans plonge, rien ne revient propre : la production attend pour de bon.
+  await ouvrir(plonge);
+  await page.locator(`[data-at="${plonge}"] [data-at-action=supprimer]`).click();await attendre();
+  const sansPlonge=await page.evaluate(()=>Sim.ateliers.resultat);
+  assert.equal(sansPlonge.materiel.lavees,0);
+  assert.ok(sansPlonge.materiel.enAttente>0,'le lot attend un mat\u00e9riel qui ne vient pas');
+  assert.equal(sansPlonge.parClasse['CRL/BC'].fin,null,'et la classe ne sort pas');
+
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('ateliers-browser : ok');
  }finally{await browser.close();}

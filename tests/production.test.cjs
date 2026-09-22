@@ -343,3 +343,215 @@ test('un lot qui nomme une classe inconnue est refusé, en la nommant', () => {
   assert.equal(r.ok, false);
   assert.match(r.anomalies.map(a => a.message).join(' '), /compagnie × classe inconnue : ZZ\/BC/);
 });
+
+/* ---- régime de poste -------------------------------------------------- */
+
+test('une équipe prend 15 min après 3 h de travail, puis 30 min après 6 h', () => {
+  const t = P.executerTache({ depart: 300, debutPoste: 300, duree: 200, prises: new Set() });
+  // 180 min de travail, 15 min de pause, puis les 20 min restantes.
+  assert.equal(t.fin, 300 + 200 + 15);
+  assert.equal(t.arret, 15);
+  assert.equal(t.cumul, 200);
+
+  const long = P.executerTache({ depart: 300, debutPoste: 300, duree: 400, prises: new Set() });
+  assert.equal(long.arret, 45, 'les deux pauses ont été prises');
+  assert.equal(long.fin, 300 + 400 + 45);
+});
+
+test('une pause de régime n’est prise qu’une fois par poste', () => {
+  const prises = new Set();
+  const a = P.executerTache({ depart: 300, debutPoste: 300, duree: 200, prises });
+  const b = P.executerTache({ depart: a.fin, debutPoste: 300, duree: 50, cumul: a.cumul, prises });
+  assert.equal(b.arret, 0, 'le seuil de 3 h ne se redéclenche pas au lot suivant');
+  assert.equal(b.fin, a.fin + 50);
+});
+
+test('le poste dure 8 h 15 de présence, dont 7 h 30 de travail', () => {
+  assert.equal(P.REGIME_DEFAUT.presence, 495);
+  assert.equal(P.travailDuPoste(), 450, '495 − 15 − 30');
+  const t = P.executerTache({ depart: 300, debutPoste: 300, duree: 600, prises: new Set() });
+  assert.equal(t.tronque, true, 'on ne fait pas 10 h dans un poste de 8 h 15');
+  assert.equal(t.fait, 450);
+  assert.equal(t.fin, 300 + 495);
+});
+
+test('un régime désactivé laisse travailler sans fin', () => {
+  const t = P.executerTache({ depart: 300, debutPoste: 300, duree: 900, regime: false, prises: new Set() });
+  assert.equal(t.tronque, false);
+  assert.equal(t.arret, 0);
+  assert.equal(t.fin, 300 + 900);
+});
+
+test('un lot que le poste ne peut pas finir est signalé, pas dissimulé', () => {
+  // 250 passagers à 2 min chacun : 500 min de travail pour une seule personne,
+  // là où le poste n'en offre que 450.
+  const lourd = { cuisine: { YC: { parPax: 2, parVol: 0 }, BC: { parPax: 2, parVol: 0 } } };
+  const r = P.simuler({
+    vols: VOLS, liaisons: [], bareme: lourd,
+    ateliers: [atelier({ id: 'a', nom: 'Cuisine', service: 'cuisine', debut: '05:00', personnes: 1,
+      lots: [['CRL/YC']] })]
+  });
+  assert.equal(r.ok, true, 'la journée se joue quand même');
+  assert.equal(r.lots[0].horsPoste, true);
+  assert.equal(r.lots[0].fin, null);
+  assert.equal(r.parClasse['CRL/YC'].fin, null, 'la classe ne sort pas');
+  assert.match(r.anomalies.map(a => a.message).join(' '), /le poste se termine avant le lot/);
+});
+
+test('les lots suivants d’un poste terminé ne sont pas fabriqués', () => {
+  const lourd = { cuisine: { YC: { parPax: 2, parVol: 0 }, BC: { parPax: 2, parVol: 0 } } };
+  const r = P.simuler({
+    vols: VOLS, liaisons: [], bareme: lourd,
+    ateliers: [atelier({ id: 'a', nom: 'Cuisine', service: 'cuisine', debut: '05:00', personnes: 1,
+      lots: [['CRL/YC'], ['CRL/BC']] })]
+  });
+  assert.equal(r.lots.length, 1, 'le second lot n’est même pas commencé');
+  assert.equal(r.parClasse['CRL/BC'].absente, true);
+});
+
+test('les pauses de régime décalent la fin d’un atelier aval', () => {
+  const sans = P.simuler({
+    vols: VOLS, liaisons: LIAISONS,
+    ateliers: [
+      atelier({ id: 'c', nom: 'C', service: 'cuisine', debut: '05:00', personnes: 1, regime: false, lots: [['CRL/BC']] }),
+      atelier({ id: 'p', nom: 'P', service: 'prepa', debut: '05:00', personnes: 4, regime: false, lots: [['CRL/BC']] })
+    ]
+  });
+  // Un régime très serré : pause de 20 min après 5 min de travail.
+  const serre = { seuils: [{ apres: 5, duree: 20 }], presence: 600 };
+  const avec = P.simuler({
+    vols: VOLS, liaisons: LIAISONS,
+    ateliers: [
+      atelier({ id: 'c', nom: 'C', service: 'cuisine', debut: '05:00', personnes: 1, regime: serre, lots: [['CRL/BC']] }),
+      atelier({ id: 'p', nom: 'P', service: 'prepa', debut: '05:00', personnes: 4, regime: false, lots: [['CRL/BC']] })
+    ]
+  });
+  const finSans = sans.lots.find(l => l.service === 'prepa').fin;
+  const finAvec = avec.lots.find(l => l.service === 'prepa').fin;
+  assert.equal(finAvec, finSans + 20, 'la pause de la cuisine retarde le montage d’autant');
+});
+
+/* ---- boucle du matériel ---------------------------------------------- */
+
+/* Un programme équilibré : ce qui part le matin revient l'après-midi. */
+const VOLS_BOUCLE = [
+  { id: 'R1', cie: 'CRL', sens: 'RET', sta: 6 * 60,  bc: 0, pc: 0, yc: 100 },
+  { id: 'D1', cie: 'CRL', sens: 'DEP', std: 10 * 60, bc: 0, pc: 0, yc: 100 }
+];
+const MAT = { actif: true, parPax: 1, stockInitial: 0, delaiRetour: 30 };
+const bouclier = (p) => ({ type: 'manuel', personnes: 4, jour: 0, lots: [], ...p });
+
+test('sans stock, la production attend que les retours soient lavés', () => {
+  const r = P.simuler({
+    vols: VOLS_BOUCLE, liaisons: [], materiel: MAT,
+    ateliers: [
+      { id: 'pl', nom: 'Plonge', service: 'plonge', type: 'lavage', debut: '05:00', personnes: 3, debit: 600, jour: 0, lots: [] },
+      bouclier({ id: 'do', nom: 'Dotation', service: 'dotation', debut: '05:00', materiel: 'consomme', lots: [['CRL/YC']] })
+    ]
+  });
+  assert.equal(r.ok, true, JSON.stringify(r.anomalies));
+  const lavage = r.lots.find(l => l.unites !== undefined);
+  const dotation = r.lots.find(l => l.service === 'dotation');
+  // Le vol arrive à 06:00, disponible à 06:30, lavé à 100 u sur 600 u/h = 10 min.
+  assert.equal(lavage.debut, 6 * 60 + 30);
+  assert.equal(lavage.fin, 6 * 60 + 40);
+  assert.equal(dotation.debut, lavage.fin, 'la dotation part quand le propre arrive');
+  assert.ok(dotation.attenteMateriel > 0, 'l’attente de matériel est mesurée');
+  assert.equal(Math.round(dotation.attenteMateriel), 100, 'de 05:00 à 06:40');
+});
+
+test('retours = départs : le stock revient à zéro, sans jamais manquer deux fois', () => {
+  const r = P.simuler({
+    vols: VOLS_BOUCLE, liaisons: [], materiel: MAT,
+    ateliers: [
+      { id: 'pl', nom: 'Plonge', service: 'plonge', type: 'lavage', debut: '05:00', personnes: 3, debit: 600, jour: 0, lots: [] },
+      bouclier({ id: 'do', nom: 'Dotation', service: 'dotation', debut: '05:00', materiel: 'consomme', lots: [['CRL/YC']] })
+    ]
+  });
+  assert.equal(r.materiel.entrees, 100);
+  assert.equal(r.materiel.lavees, 100);
+  assert.equal(r.materiel.consommees, 100);
+  assert.equal(r.materiel.restePropre, 0, 'rien ne reste : les retours couvraient juste les départs');
+  assert.equal(r.materiel.resteSale, 0);
+});
+
+test('un excédent de retours se stocke et sert d’amortisseur', () => {
+  // Deux retours pour un départ : le surplus reste propre en fin de journée.
+  const vols = VOLS_BOUCLE.concat([{ id: 'R2', cie: 'CRL', sens: 'RET', sta: 7 * 60, bc: 0, pc: 0, yc: 60 }]);
+  const r = P.simuler({
+    vols, liaisons: [], materiel: MAT,
+    ateliers: [
+      { id: 'pl', nom: 'Plonge', service: 'plonge', type: 'lavage', debut: '05:00', personnes: 3, debit: 600, jour: 0, lots: [] },
+      bouclier({ id: 'do', nom: 'Dotation', service: 'dotation', debut: '05:00', materiel: 'consomme', lots: [['CRL/YC']] })
+    ]
+  });
+  assert.equal(r.materiel.entrees, 160);
+  assert.equal(r.materiel.consommees, 100);
+  assert.equal(r.materiel.restePropre, 60, 'l’excédent est disponible pour le lendemain');
+});
+
+test('un stock d’ouverture évite l’attente : c’est à cela qu’il sert', () => {
+  const avec = P.simuler({
+    vols: VOLS_BOUCLE, liaisons: [], materiel: { ...MAT, stockInitial: 100 },
+    ateliers: [
+      { id: 'pl', nom: 'Plonge', service: 'plonge', type: 'lavage', debut: '05:00', personnes: 3, debit: 600, jour: 0, lots: [] },
+      bouclier({ id: 'do', nom: 'Dotation', service: 'dotation', debut: '05:00', materiel: 'consomme', lots: [['CRL/YC']] })
+    ]
+  });
+  assert.equal(avec.lots.find(l => l.service === 'dotation').debut, 5 * 60, 'plus d’attente');
+  assert.equal(avec.materiel.attente, 0);
+  // Le matériel lavé n'a servi à personne ce jour-là : il reste pour demain.
+  assert.equal(avec.materiel.restePropre, 100);
+  assert.equal(avec.materiel.minPropre, 0, 'le stock est bien passé par zéro');
+});
+
+test('une plonge lente retarde la production, et le bilan le dit', () => {
+  const lente = P.simuler({
+    vols: VOLS_BOUCLE, liaisons: [], materiel: MAT,
+    ateliers: [
+      { id: 'pl', nom: 'Plonge', service: 'plonge', type: 'lavage', debut: '05:00', personnes: 1, debit: 60, jour: 0, lots: [] },
+      bouclier({ id: 'do', nom: 'Dotation', service: 'dotation', debut: '05:00', materiel: 'consomme', lots: [['CRL/YC']] })
+    ]
+  });
+  // 100 unités à 60 u/h = 100 min, à partir de 06:30.
+  assert.equal(lente.lots.find(l => l.unites !== undefined).fin, 6 * 60 + 30 + 100);
+  assert.equal(lente.lots.find(l => l.service === 'dotation').debut, 6 * 60 + 30 + 100);
+  assert.ok(lente.indicateurs.attenteMateriel > 0);
+});
+
+test('un atelier qui ne consomme pas de matériel n’attend rien', () => {
+  const r = P.simuler({
+    vols: VOLS_BOUCLE, liaisons: [], materiel: MAT,
+    ateliers: [bouclier({ id: 'c', nom: 'Cuisine', service: 'cuisine', debut: '05:00', lots: [['CRL/YC']] })]
+  });
+  assert.equal(r.lots[0].debut, 5 * 60);
+  assert.equal(r.materiel.consommees, 0);
+});
+
+test('les retours se déduisent des vols, avec leur délai de mise à disposition', () => {
+  const r = P.retoursDeVols(VOLS_BOUCLE, MAT);
+  assert.equal(r.length, 1, 'seuls les retours ramènent du matériel');
+  assert.equal(r[0].t, 6 * 60 + 30);
+  assert.equal(r[0].unites, 100);
+  assert.equal(P.retoursDeVols(VOLS_BOUCLE, { ...MAT, parPax: 2 })[0].unites, 200);
+});
+
+test('un lot qui n’obtient jamais son matériel laisse une trace', () => {
+  // Aucune plonge : rien ne revient propre. Sans ligne de journal, la classe
+  // paraîtrait fabriquée par ses autres étapes.
+  const r = P.simuler({
+    vols: VOLS_BOUCLE, liaisons: LIAISONS, materiel: MAT,
+    ateliers: [
+      bouclier({ id: 'c', nom: 'Cuisine', service: 'cuisine', debut: '05:00', lots: [['CRL/YC']] }),
+      bouclier({ id: 'd', nom: 'Dotation', service: 'dotation', debut: '05:00', materiel: 'consomme', lots: [['CRL/YC']] })
+    ]
+  });
+  assert.equal(r.ok, true, 'ce n’est pas une erreur de saisie');
+  const bloque = r.lots.find(l => l.sansMateriel);
+  assert.ok(bloque, 'le lot bloqué figure au journal');
+  assert.equal(bloque.service, 'dotation');
+  assert.equal(bloque.fin, null);
+  assert.equal(bloque.besoin, 100);
+  assert.equal(r.parClasse['CRL/YC'].fin, null, 'la classe ne sort pas de l’unité');
+  assert.match(r.anomalies.map(a => a.message).join(' '), /unités de matériel propre manquent/);
+});

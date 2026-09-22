@@ -5,6 +5,40 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-22 — Le poste avec ses pauses, et la boucle du matériel
+
+Deux contraintes réelles entrent dans le modèle. La note complète est dans
+[docs/MODELE_ATELIERS.md](docs/MODELE_ATELIERS.md).
+
+**Le poste.** Une équipe prend **15 min après 3 h de travail**, **30 min après
+6 h**, et reste **8 h 15 sur le site** — soit 7 h 30 de travail effectif. Les
+seuils comptent le travail *cumulé*, pas l'heure qu'il est : une équipe qui
+attend ses amonts ne consomme pas son crédit, donc ne prend pas sa pause.
+
+- Un lot que le poste ne peut pas finir est **laissé inachevé et signalé** : sa
+  classe ne sort pas, et les lots suivants ne sont pas commencés. C'est le
+  résultat le plus utile — ce qui ne rentre pas dans la journée.
+- Le régime se désactive atelier par atelier, la présence se règle.
+
+**Le matériel en boucle.** Trolleys et porcelaine ne s'achètent pas : un départ
+les emporte, un retour les ramène sales, la plonge les rend propres. Un compte
+unique, en unités par passager.
+
+- Nouveau type d'atelier **Lavage** : pas de lots, son travail vient des retours
+  à mesure qu'ils arrivent, à son débit en unités par heure. Il suit le même
+  régime de poste — ce qui arrive après sa fin de poste reste sale.
+- Un atelier **« emporte du matériel propre »** attend, avant chaque lot, que le
+  compte couvre ses classes. Service premier arrivé, premier servi.
+- Le bilan dit ce que la boucle a fait : revenu, lavé, emporté, reste propre,
+  **plus bas niveau** et attente. Retours = départs → le stock revient à zéro ;
+  retours > départs → l'excédent reste disponible.
+- Un lot qui n'obtient **jamais** son matériel figure au journal sans fin : sans
+  cette trace, sa classe paraissait fabriquée par ses autres étapes.
+- Corrigé au passage : les cases à cocher héritaient d'une largeur pleine qui
+  rejetait leur libellé hors de l'écran ; et les réglages du matériel, qui ne
+  vivent pas dans une carte d'atelier, étaient ignorés en silence à la saisie.
+- Vérification : 153 tests purs et onze parcours navigateur au vert.
+
 ## 2026-09-22 — La liste des compagnies × classes se retouche
 
 - `ateliers.js` : chaque ligne du tableau porte un bouton **Retirer**, et un
