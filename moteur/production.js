@@ -230,7 +230,7 @@
       else for (const lot of a.lots) {
         const liste = Array.isArray(lot) ? lot : (lot && lot.classes);
         if (!Array.isArray(liste) || !liste.length) { dire('lot-vide', 'un lot est encore vide.'); continue; }
-        for (const id of liste) if (classes.size && !classes.has(id)) dire('lot', 'compagnie × classe absente du programme : ' + id + '.');
+        for (const id of liste) if (classes.size && !classes.has(id)) dire('lot', 'compagnie × classe inconnue : ' + id + '.');
       }
     }
 
@@ -314,7 +314,10 @@
     const rendement = opts.rendement === undefined ? RENDEMENT_DEMO : opts.rendement;
     if (!(rendement > 0)) throw new Error('Le rendement doit être strictement positif.');
 
-    const classes = classesDeVols(opts.vols, { delaiChargement: opts.delaiChargement });
+    // Les compagnies × classes viennent du programme de vols, sauf quand
+    // l'appelant en fournit une liste : l'utilisateur peut en retirer qu'il ne
+    // fabrique pas, et en ajouter que le programme ne porte pas encore.
+    const classes = opts.classes || classesDeVols(opts.vols, { delaiChargement: opts.delaiChargement });
     const parClasse = new Map(classes.map(c => [c.id, c]));
     const ateliers = (opts.ateliers || []).map(a => ({ ...a, type: a.type || 'manuel' }));
 

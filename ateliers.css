@@ -73,8 +73,12 @@ body.ateliers-open .workbench{display:none}
 .at-pl-attente{fill:var(--warn-stroke);opacity:.55}
 .at-pl-bloque{fill:var(--rouge)}
 
+/* `position:relative` n'est pas décoratif : le libellé pour lecteur d'écran de
+   la dernière colonne est en position absolue. Sans bloc englobant ici, il se
+   place dans les coordonnées de la page — à droite d'un tableau large qui
+   défile — et rallonge le défilement horizontal de tout le document. */
 .at-table{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--bg3);
-  border:1px solid var(--bordure);border-radius:10px;overflow:hidden}
+  border:1px solid var(--bordure);border-radius:10px;overflow:hidden;position:relative}
 .at-table th,.at-table td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--bordure)}
 .at-table thead th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--txt2);background:var(--bg2)}
 .at-table tbody tr:last-child th,.at-table tbody tr:last-child td{border-bottom:0}
@@ -89,3 +93,14 @@ body.ateliers-open .workbench{display:none}
   .at-champs{grid-template-columns:1fr 1fr}
   .at-table{display:block;overflow-x:auto}
 }
+
+/* Compagnies × classes : le programme de vols corrigé à la main. */
+.at-ajout{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;align-items:end;
+  border:2px solid var(--accent);border-radius:10px;padding:14px;margin-bottom:14px;
+  background:color-mix(in srgb,var(--accent) 7%,var(--bg3))}
+.at-ajout label{display:grid;gap:6px;font-size:12px;color:var(--txt2)}
+.at-ajout-actions{display:flex;gap:8px}
+.at-exclues{font-size:12px;color:var(--txt2);margin:0 0 12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.at-source{font-size:10px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;
+  color:var(--accent2);border:1px solid var(--accent);border-radius:4px;padding:1px 5px;margin-left:6px}
+.at-table td:last-child{text-align:right;white-space:nowrap}

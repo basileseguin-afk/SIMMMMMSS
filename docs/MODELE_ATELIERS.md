@@ -8,8 +8,8 @@ seulement. Le moteur est `moteur/production.js`, testé par
 
 ## 1. La compagnie × classe
 
-L'unité de fabrication. Déduite du programme de vols, jamais saisie à la main :
-`CRL/BC`, `AF/YC`… Une compagnie × classe porte
+L'unité de fabrication. Déduite du programme de vols — et **corrigée à la
+main** quand il le faut : `CRL/BC`, `AF/YC`… Une compagnie × classe porte
 
 - le nombre de passagers de la journée, tous vols confondus ;
 - la liste de ses vols ;
@@ -17,6 +17,18 @@ L'unité de fabrication. Déduite du programme de vols, jamais saisie à la main
 
 Les **retours ne fabriquent rien**. Un avion qui arrive ne crée pas de classe à
 produire.
+
+La liste se **retouche** dans l'onglet : on **retire** une classe qu'on ne
+fabrique pas, on en **ajoute** une que le programme ne porte pas encore
+(compagnie, cabine, passagers, nombre de vols, échéance). Un ajout qui porte
+l'identifiant d'une classe du programme la **remplace** — c'est ainsi qu'on
+corrige un volume sans toucher au fichier de vols.
+
+Retirer une classe **coupe tous les liens** que les ateliers avaient avec elle :
+elle disparaît de chaque lot, et un lot vidé de sa dernière classe disparaît
+avec elle. Sans cela les ateliers désigneraient un identifiant inexistant et le
+modèle refuserait de tourner. Un retrait pris sur le programme se **rétablit**
+d'un clic ; une classe ajoutée puis retirée, elle, est supprimée.
 
 ## 2. L'atelier de travail
 

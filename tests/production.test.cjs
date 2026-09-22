@@ -313,3 +313,33 @@ test('un retour qui boucle dans le graphe ne bloque pas une classe qui n’y pas
   assert.equal(r.ok, true, JSON.stringify(r.anomalies));
   assert.ok(r.parClasse['CRL/BC'].fin != null);
 });
+
+test('une liste de compagnies × classes fournie remplace celle des vols', () => {
+  // On retire CRL/PC du programme et on ajoute une compagnie qui n'y figure pas.
+  const duProgramme = P.classesDeVols(VOLS);
+  const classes = duProgramme.filter(c => c.id !== 'CRL/PC').concat([{
+    id: 'ZZ/BC', cie: 'ZZ', cabine: 'BC', pax: 40,
+    vols: [{ id: 'ZZ1', pax: 40, depart: 9 * 60, echeance: 9 * 60 - 45 }],
+    echeance: 9 * 60 - 45
+  }]);
+  const r = P.simuler({
+    vols: VOLS, classes, liaisons: [],
+    ateliers: [atelier({ id: 'a', nom: 'A', service: 'cuisine', debut: '06:00', personnes: 2,
+      lots: [['ZZ/BC']] })]
+  });
+  assert.equal(r.ok, true, JSON.stringify(r.anomalies));
+  assert.ok(r.parClasse['ZZ/BC'], 'la classe ajoutée est fabricable');
+  assert.equal(r.parClasse['ZZ/BC'].aHeure, true);
+  assert.equal(r.parClasse['CRL/PC'], undefined, 'la classe retirée a disparu du bilan');
+  // Son travail suit le barème comme n'importe quelle autre.
+  assert.ok(r.lots[0].hommeMinutes > 0);
+});
+
+test('un lot qui nomme une classe inconnue est refusé, en la nommant', () => {
+  const r = P.simuler({
+    vols: VOLS, liaisons: [],
+    ateliers: [atelier({ id: 'a', nom: 'A', service: 'cuisine', debut: '06:00', lots: [['ZZ/BC']] })]
+  });
+  assert.equal(r.ok, false);
+  assert.match(r.anomalies.map(a => a.message).join(' '), /compagnie × classe inconnue : ZZ\/BC/);
+});

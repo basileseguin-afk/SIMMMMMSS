@@ -27,7 +27,14 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    if(type)await champ(id,'type',type);
    return id;
  };
+ // Créer un atelier ouvre sa carte et referme la précédente : pour agir sur
+ // une carte plus ancienne, il faut la rouvrir.
+ const ouvrir=async(id)=>{
+   if(await page.evaluate(id=>Sim.ateliers.ouvert===id,id))return;
+   await page.locator(`[data-at="${id}"] .at-carte-nom`).click();await attendre();
+ };
  const lot=async(id,classes)=>{
+   await ouvrir(id);
    await page.locator(`[data-at="${id}"] [data-at-action=lot-ajouter]`).click();await attendre();
    const i=await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).lots.length-1,id);
    for(const c of classes){await page.selectOption(`[data-at="${id}"] [data-at-champ=lot-ajout][data-index="${i}"]`,c);await attendre();}
@@ -97,10 +104,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(await page.locator('#at-planning .at-pl-attente').count()>0,'l’attente est dessinée');
 
   // 8. La couverture par classe dit ce qui sort et par où.
-  const etats=await page.locator('#at-classes tbody tr').evaluateAll(rs=>rs.map(r=>r.cells[0].textContent+'|'+r.cells[5].textContent));
+  const etats=await page.locator('#at-classes tbody tr').evaluateAll(rs=>rs.map(r=>r.cells[0].textContent.trim()+'|'+r.cells[5].textContent));
   assert.ok(etats.some(t=>t.startsWith('CRL/BC')&&/à l’heure/.test(t)));
   assert.equal(etats.filter(t=>/jamais fabriquée/.test(t)).length,17);
-  const parcours=await page.locator('#at-classes tbody tr').evaluateAll(rs=>(rs.find(r=>r.cells[0].textContent==='CRL/BC')||{cells:[]}).cells[6].textContent);
+  const parcours=await page.locator('#at-classes tbody tr').evaluateAll(rs=>(rs.find(r=>r.cells[0].textContent.trim()==='CRL/BC')||{cells:[]}).cells[6].textContent);
   assert.equal(parcours,'cuisine → prepa','le parcours réel est affiché');
 
   // 9. Les indicateurs résument la journée.
@@ -123,6 +130,62 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await attendre();
   assert.match(await page.locator('#at-status').textContent(),/Import refusé/);
   assert.deepEqual(await etat(),garde,'rien n’a été remplacé');
+
+  // 12. Retirer une compagnie × classe coupe ses liens avec les ateliers.
+  const cui2=await creer('Cuisine CRL 2','cuisine','04:00',4);
+  const iLot=await lot(cui2,['CRL/BC','CRL/PC']);
+  await page.selectOption(`[data-at="${cui2}"] [data-at-champ=lot-ajout][data-index="${iLot}"]`,'CRL/YC');await attendre();
+  assert.deepEqual((await etat()).ateliers.find(a=>a.id===cui2).lots,[['CRL/BC','CRL/PC','CRL/YC']]);
+  const avantLignes=await page.locator('#at-classes tbody tr').count();
+  await page.locator('[data-at-action=classe-supprimer][data-classe="CRL/PC"]').click();await attendre();
+  assert.equal(await page.locator('#at-classes tbody tr').count(),avantLignes-1,'la ligne dispara\u00eet');
+  assert.deepEqual((await etat()).ateliers.find(a=>a.id===cui2).lots,[['CRL/BC','CRL/YC']],
+    'le lien est coup\u00e9 dans le lot, les autres classes restent');
+  assert.match(await page.locator('#at-status').textContent(),/CRL\/PC retir\u00e9e/);
+  assert.equal((await resultat()).ok,true,'le mod\u00e8le tourne encore : aucun lot ne d\u00e9signe un inconnu');
+
+  // 13. Un lot vidé de sa dernière classe disparaît avec elle.
+  const seul=await creer('Armement CRL','armement','05:00',2);
+  await lot(seul,['CRL/YC']);
+  assert.equal((await etat()).ateliers.find(a=>a.id===seul).lots.length,1);
+  await page.locator('[data-at-action=classe-supprimer][data-classe="CRL/YC"]').click();await attendre();
+  assert.deepEqual((await etat()).ateliers.find(a=>a.id===seul).lots,[],'plus de lot, puisqu\u2019il n\u2019avait que celle-l\u00e0');
+  assert.deepEqual((await etat()).ateliers.find(a=>a.id===cui2).lots,[['CRL/BC']],'et l\u2019autre atelier perd juste le lien');
+
+  // 14. Un retrait se rétablit : rien n'est perdu définitivement.
+  assert.match(await page.locator('.at-exclues').textContent(),/CRL\/PC/);
+  await page.locator('[data-at-action=classe-retablir][data-classe="CRL/PC"]').click();await attendre();
+  assert.equal(await page.locator('#at-classes tbody tr').count(),avantLignes-1,'CRL/PC revient, CRL/YC reste retir\u00e9e');
+  assert.ok((await etat()).exclues.includes('CRL/YC'));
+  assert.ok(!(await etat()).exclues.includes('CRL/PC'));
+
+  // 15. On ajoute une compagnie × classe que le programme de vols ne porte pas.
+  await page.locator('[data-at-action=classe-nouvelle]').click();await attendre();
+  await page.fill('#at-cls-cie','zz');await page.selectOption('#at-cls-cabine','BC');
+  await page.fill('#at-cls-pax','80');await page.fill('#at-cls-vols','2');await page.fill('#at-cls-echeance','09:30');
+  await page.locator('[data-at-action=classe-valider]').click();await attendre();
+  assert.match(await page.locator('#at-status').textContent(),/ZZ\/BC ajout\u00e9e/);
+  const ajoutee=(await etat()).ajoutees[0];
+  assert.equal(ajoutee.cie,'ZZ','la compagnie est normalis\u00e9e en majuscules');
+  assert.equal(ajoutee.cabine,'BC');
+  // Elle se fabrique comme les autres.
+  await ouvrir(cui2);
+  await page.selectOption(`[data-at="${cui2}"] [data-at-champ=lot-ajout][data-index="0"]`,'ZZ/BC');await attendre();
+  const rz=await resultat();
+  assert.equal(rz.ok,true,JSON.stringify(rz.anomalies));
+  assert.ok(rz.parClasse['ZZ/BC'].fin!=null,'ZZ/BC sort bien de l\u2019unit\u00e9');
+
+  // 16. Une ajoutée se retire comme les autres, et quitte la liste pour de bon.
+  await page.locator('[data-at-action=classe-supprimer][data-classe="ZZ/BC"]').click();await attendre();
+  assert.equal((await etat()).ajoutees.length,0,'elle n\u2019est pas mise de c\u00f4t\u00e9, elle est supprim\u00e9e');
+  assert.deepEqual((await etat()).ateliers.find(a=>a.id===cui2).lots,[['CRL/BC']]);
+
+  // 17. Retraits et ajouts survivent au rechargement.
+  await page.locator('[data-at-action=classe-nouvelle]').click();await attendre();
+  await page.fill('#at-cls-cie','QQ');await page.locator('[data-at-action=classe-valider]').click();await attendre();
+  const memoire=await etat();
+  await page.reload();await page.locator('[data-view=ateliers]').click();await attendre();
+  assert.deepEqual(await etat(),memoire,'exclusions et ajouts sont relus du navigateur');
 
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('ateliers-browser : ok');

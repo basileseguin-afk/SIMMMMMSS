@@ -49,10 +49,22 @@
         } : {})
       };
     });
-    return { schema: 'ory-ateliers', version: 1, ateliers };
+    // Ce que l'utilisateur retire du programme, et ce qu'il y ajoute. Le
+    // programme de vols reste la source ; ces deux listes le corrigent.
+    const exclues = [...new Set((Array.isArray(brut.exclues) ? brut.exclues : []).map(String))].slice(0, 500);
+    const ajoutees = (Array.isArray(brut.ajoutees) ? brut.ajoutees : []).slice(0, 500).map(c => {
+      const cie = String(c.cie ?? '').trim().toUpperCase().slice(0, 40);
+      const cabine = P.CABINES.includes(c.cabine) ? c.cabine : 'YC';
+      if (!cie) throw new Error('Une compagnie \u00d7 classe ajout\u00e9e doit nommer sa compagnie.');
+      const pax = Number.isFinite(+c.pax) ? Math.max(0, Math.round(+c.pax)) : 0;
+      const vols = Number.isInteger(c.vols) ? Math.max(1, Math.min(999, c.vols)) : 1;
+      P.minutes(c.echeance ?? '12:00');
+      return { cie, cabine, pax, vols, echeance: String(c.echeance ?? '12:00') };
+    });
+    return { schema: 'ory-ateliers', version: 1, ateliers, exclues, ajoutees };
   }
 
-  const vide = () => ({ schema: 'ory-ateliers', version: 1, ateliers: [] });
+  const vide = () => ({ schema: 'ory-ateliers', version: 1, ateliers: [], exclues: [], ajoutees: [] });
 
   /* ======================================================================
    *  Le panneau
@@ -84,13 +96,45 @@
 
     /* ---- données ----------------------------------------------------- */
 
-    get classes() { return this.a.classes() || []; }
+    /* Le programme de vols reste la source. L'utilisateur en retire ce qu'il ne
+     * fabrique pas et y ajoute ce que le programme ne porte pas encore : une
+     * compagnie à venir, une prestation hors vol. Un ajout qui porte le même
+     * identifiant qu'une classe du programme la remplace — c'est la façon de
+     * corriger un volume sans toucher au fichier de vols. */
+    get classes() {
+      const exclues = new Set(this.state.exclues || []);
+      const par = new Map();
+      for (const c of (this.a.classes() || [])) {
+        if (exclues.has(c.id)) continue;
+        par.set(c.id, { ...c, origine: 'programme' });
+      }
+      for (const c of (this.state.ajoutees || [])) {
+        const id = P.idClasse(c.cie, c.cabine);
+        if (exclues.has(id)) continue;
+        const echeance = P.minutes(c.echeance);
+        par.set(id, {
+          id, cie: c.cie, cabine: c.cabine, pax: c.pax, echeance, origine: 'ajoutee',
+          vols: Array.from({ length: c.vols }, (_, i) => ({
+            id: id + '-' + (i + 1), pax: Math.round(c.pax / c.vols), depart: echeance, echeance
+          }))
+        });
+      }
+      return [...par.values()].sort((a, b) => a.echeance - b.echeance || a.id.localeCompare(b.id));
+    }
+
+    /* Les classes du programme que l'utilisateur a retirées, pour pouvoir les
+     * rétablir : un retrait qu'on ne peut pas défaire est un piège. */
+    get retirees() {
+      const exclues = new Set(this.state.exclues || []);
+      return (this.a.classes() || []).filter(c => exclues.has(c.id));
+    }
 
     calculer() {
       const r = this.a.reglages ? this.a.reglages() : {};
       try {
         this.resultat = P.simuler({
-          vols: this.a.vols(), ateliers: this.state.ateliers, liaisons: this.a.liaisons(),
+          vols: this.a.vols(), classes: this.classes,
+          ateliers: this.state.ateliers, liaisons: this.a.liaisons(),
           bareme: r.bareme, rendement: r.rendement, delaiChargement: r.delaiChargement
         });
       } catch (e) {
@@ -222,6 +266,11 @@
           return this.changer(() => a.pauses.push({ de: '12:00', a: '12:45' }), 'Pause ajoutée.');
         case 'pause-retirer':
           return this.changer(() => a.pauses.splice(+data.index, 1), 'Pause retirée.');
+        case 'classe-supprimer': return this.supprimerClasse(data.classe);
+        case 'classe-retablir':  return this.retablirClasse(data.classe);
+        case 'classe-nouvelle':  return this.ouvrirAjout();
+        case 'classe-annuler':   { this.ajout = null; return this.rendre(''); }
+        case 'classe-valider':   return this.validerAjout();
       }
     }
 
@@ -258,6 +307,66 @@
           case 'pause-a':  a.pauses[+el.dataset.index].a = v; break;
         }
       }, 'Enregistré.');
+    }
+
+    /* Retirer une compagnie × classe, c'est aussi couper tous les liens que les
+     * ateliers avaient avec elle : sinon ils désigneraient un identifiant qui
+     * n'existe plus, et le modèle refuserait de tourner. Un lot vidé de sa
+     * dernière classe disparaît avec elle. */
+    supprimerClasse(id) {
+      const ajoutee = (this.state.ajoutees || []).some(c => P.idClasse(c.cie, c.cabine) === id);
+      // Le message se construit AVANT le changement : les arguments d'un appel
+      // sont évalués d'abord, compter pendant la modification ne dirait rien.
+      const touches = this.state.ateliers.filter(a => a.lots.some(l => l.includes(id)));
+      const lots = touches.reduce((n, a) => n + a.lots.filter(l => l.includes(id)).length, 0);
+      const vides = touches.reduce((n, a) => n + a.lots.filter(l => l.length === 1 && l[0] === id).length, 0);
+      const message = lots
+        ? id + ' retirée — ' + lots + ' lot(s) dans ' + touches.map(a => a.nom).join(', ')
+            + (vides ? ', dont ' + vides + ' vidé(s) et supprimé(s)' : '') + '.'
+        : id + ' retirée : aucun atelier ne la fabriquait.';
+      this.changer(() => {
+        for (const a of this.state.ateliers) {
+          const restants = [];
+          for (const l of a.lots) {
+            if (!l.includes(id)) { restants.push(l); continue; }
+            const reste = l.filter(c => c !== id);
+            // Un lot vidé de sa dernière classe disparaît avec elle. Un lot
+            // resté vide parce qu'on vient de le créer, lui, est conservé.
+            if (reste.length) restants.push(reste);
+          }
+          a.lots = restants;
+        }
+        if (ajoutee) this.state.ajoutees = this.state.ajoutees.filter(c => P.idClasse(c.cie, c.cabine) !== id);
+        else this.state.exclues = [...new Set([...(this.state.exclues || []), id])];
+      }, message);
+    }
+
+    retablirClasse(id) {
+      this.changer(() => { this.state.exclues = (this.state.exclues || []).filter(x => x !== id); },
+        id + ' rétablie. Elle est à fabriquer de nouveau.');
+    }
+
+    ouvrirAjout() { this.ajout = { cie: '', cabine: 'YC', pax: 100, vols: 1, echeance: '12:00' }; this.rendre(''); }
+
+    validerAjout() {
+      const lire = id => (document.getElementById(id) || {}).value;
+      const brouillon = {
+        cie: lire('at-cls-cie'), cabine: lire('at-cls-cabine'),
+        pax: +lire('at-cls-pax'), vols: parseInt(lire('at-cls-vols'), 10),
+        echeance: lire('at-cls-echeance')
+      };
+      if (!String(brouillon.cie || '').trim()) return this.rendre('Nommez la compagnie.');
+      const id = P.idClasse(brouillon.cie, brouillon.cabine);
+      if (this.classes.some(c => c.id === id && c.origine === 'ajoutee'))
+        return this.rendre(id + ' est déjà ajoutée. Retirez-la d’abord pour la redéfinir.');
+      const remplace = this.classes.some(c => c.id === id && c.origine === 'programme');
+      this.ajout = null;
+      this.changer(() => {
+        this.state.exclues = (this.state.exclues || []).filter(x => x !== id);
+        this.state.ajoutees = [...(this.state.ajoutees || []), brouillon];
+      }, id + (remplace
+        ? ' ajoutée : elle remplace celle du programme de vols.'
+        : ' ajoutée. Elle est fabricable comme les autres.'));
     }
 
     exporter() {
@@ -480,22 +589,52 @@
 
     rendreClasses(r) {
       const box = document.getElementById('at-classes');
-      const classes = this.classes;
-      if (!classes.length) { box.innerHTML = '<p class="mini-note">Aucun départ dans le programme courant.</p>'; return; }
+      const classes = this.classes, retirees = this.retirees;
       const par = (r && r.parClasse) || {};
-      box.innerHTML = `<table class="at-table"><thead><tr>
-        <th scope="col">Compagnie × classe</th><th scope="col">Passagers</th><th scope="col">Vols</th>
-        <th scope="col">Échéance</th><th scope="col">Fin</th><th scope="col">État</th><th scope="col">Services</th>
+
+      const ajout = this.ajout ? `<div class="at-ajout">
+        <label>Compagnie<input id="at-cls-cie" maxlength="40" placeholder="Ex. CRL" value="${esc(this.ajout.cie)}"></label>
+        <label>Classe<select id="at-cls-cabine">${P.CABINES.map(c => `<option value="${c}" ${c === this.ajout.cabine ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
+        <label>Passagers<input id="at-cls-pax" type="number" min="0" value="${this.ajout.pax}"></label>
+        <label>Vols<input id="at-cls-vols" type="number" min="1" value="${this.ajout.vols}"></label>
+        <label>\u00c9ch\u00e9ance<input id="at-cls-echeance" type="time" value="${esc(this.ajout.echeance)}"></label>
+        <div class="at-ajout-actions">
+          <button class="btn btn-play btn-sm" data-at-action="classe-valider">Ajouter</button>
+          <button class="btn btn-sm" data-at-action="classe-annuler">Annuler</button>
+        </div>
+      </div>` : '';
+
+      const barre = `<div class="at-barre">
+        <span class="at-barre-fin"></span>
+        <button class="btn btn-sm" data-at-action="classe-nouvelle" ${this.ajout ? 'disabled' : ''}>+ Compagnie \u00d7 classe</button>
+      </div>`;
+
+      const exclues = retirees.length ? `<p class="at-exclues">Retir\u00e9es du programme :
+        ${retirees.map(c => `<button class="at-chip" data-at-action="classe-retablir" data-classe="${esc(c.id)}">${esc(c.id)} \u21ba</button>`).join(' ')}</p>` : '';
+
+      if (!classes.length) {
+        box.innerHTML = barre + ajout + exclues +
+          '<p class="mini-note">Aucune compagnie \u00d7 classe \u00e0 fabriquer : ni dans le programme de vols, ni ajout\u00e9e ici.</p>';
+        return;
+      }
+
+      box.innerHTML = barre + ajout + exclues + `<table class="at-table"><thead><tr>
+        <th scope="col">Compagnie \u00d7 classe</th><th scope="col">Passagers</th><th scope="col">Vols</th>
+        <th scope="col">\u00c9ch\u00e9ance</th><th scope="col">Fin</th><th scope="col">\u00c9tat</th>
+        <th scope="col">Services</th><th scope="col"><span class="sr-only">Retirer</span></th>
         </tr></thead><tbody>` +
         classes.map(c => {
           const v = par[c.id] || {};
-          const etat = v.absente ? '<span class="at-etat manque">jamais fabriquée</span>'
-            : v.fin == null ? '<span class="at-etat manque">inachevée</span>'
-            : v.aHeure ? '<span class="at-etat ok">à l’heure</span>'
+          const etat = v.absente ? '<span class="at-etat manque">jamais fabriqu\u00e9e</span>'
+            : v.fin == null ? '<span class="at-etat manque">inachev\u00e9e</span>'
+            : v.aHeure ? '<span class="at-etat ok">\u00e0 l\u2019heure</span>'
             : '<span class="at-etat retard">+' + Math.round(v.retard) + ' min</span>';
-          return `<tr><th scope="row">${esc(c.id)}</th><td>${c.pax}</td><td>${c.vols.length}</td>
-            <td>${P.hhmm(c.echeance)}</td><td>${v.fin == null ? '—' : P.hhmm(v.fin)}</td><td>${etat}</td>
-            <td class="at-parcours">${esc((v.services || []).join(' → ')) || '—'}</td></tr>`;
+          const source = c.origine === 'ajoutee' ? '<span class="at-source">ajout\u00e9e</span>' : '';
+          return `<tr><th scope="row">${esc(c.id)} ${source}</th><td>${c.pax}</td><td>${c.vols.length}</td>
+            <td>${P.hhmm(c.echeance)}</td><td>${v.fin == null ? '\u2014' : P.hhmm(v.fin)}</td><td>${etat}</td>
+            <td class="at-parcours">${esc((v.services || []).join(' \u2192 ')) || '\u2014'}</td>
+            <td><button class="btn btn-sm at-danger" data-at-action="classe-supprimer" data-classe="${esc(c.id)}"
+              title="Retirer ${esc(c.id)} et couper ses liens avec les ateliers">Retirer</button></td></tr>`;
         }).join('') + '</tbody></table>';
     }
   }

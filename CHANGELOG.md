@@ -5,6 +5,27 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-22 — La liste des compagnies × classes se retouche
+
+- `ateliers.js` : chaque ligne du tableau porte un bouton **Retirer**, et un
+  bouton **+ Compagnie × classe** ajoute ce que le programme de vols ne porte
+  pas (compagnie, cabine, passagers, nombre de vols, échéance).
+- **Les liens suivent** : retirer une classe la retire de **chaque lot** de
+  chaque atelier, et un lot vidé de sa dernière classe disparaît avec elle.
+  Un lot resté vide parce qu'on vient de le créer, lui, est conservé. Le
+  message nomme les ateliers touchés et les lots supprimés.
+- Un retrait pris sur le programme se **rétablit** d'un clic : les classes
+  retirées restent listées au-dessus du tableau.
+- Un ajout portant l'identifiant d'une classe du programme la **remplace** :
+  c'est la façon de corriger un volume sans toucher au fichier de vols.
+- `moteur/production.js` : `simuler()` accepte une liste `classes` qui remplace
+  celle déduite des vols. Un lot qui nomme une classe inconnue est refusé en la
+  nommant.
+- Corrigé au passage : le libellé pour lecteur d'écran de la dernière colonne,
+  en position absolue sans bloc englobant, rallongeait le défilement horizontal
+  de toute la page sur mobile.
+- Vérification : 138 tests purs et onze parcours navigateur au vert.
+
 ## 2026-09-21 — Refonte : le modèle par ateliers de travail remplace la grille
 
 La grille 50 × 50, les équipements et la bibliothèque sont **abandonnés**. Un
