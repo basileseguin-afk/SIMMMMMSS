@@ -56,6 +56,45 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await click('[data-view=flux]');assert.match(await page.locator('#fc-summary').innerText(),/à réparer/);
   await click('[data-view=plan]');await page.locator('#service-storages [data-stock-action=undo]').click();await click('[data-view=flux]');assert.doesNotMatch(await page.locator('#fc-summary').innerText(),/à réparer/);
   await click('[data-family=human]');await page.locator('#fc-internal [data-owner=cuisine]').uncheck();assert.equal(await page.evaluate(()=>Sim.flows.state.internal.cuisine),false);
+
+  /* Ce que le modèle en lit : depuis les ateliers de travail, ce graphe n'est
+   * plus décoratif — il donne le parcours. La section le dit et le montre. */
+  await click('[data-view=flux]');
+  assert.doesNotMatch(await page.locator('#view-flux .scope-badge').textContent(),/sans effet/,
+    'le badge ne peut plus dire que ce graphe ne sert à rien');
+  assert.match(await page.locator('#fc-lecture').textContent(),/tous ses fournisseurs/);
+  // Sans aucune équipe décrite, le graphe ne porte aucun parcours, et on le dit.
+  assert.match(await page.locator('#fc-parcours').textContent(),/Aucune équipe/);
+  // Une équipe au montage met ses fournisseurs sur le chemin.
+  await click('[data-view=ateliers]');
+  await page.locator('#at-new').click();await page.waitForTimeout(150);
+  const eq=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
+  await page.selectOption(`[data-at="${eq}"] [data-at-champ=service]`,'prepa');await page.waitForTimeout(150);
+  await page.selectOption(`[data-at="${eq}"] [data-at-champ=lot-nouveau]`,'CRL/BC');await page.waitForTimeout(250);
+  await click('[data-view=flux]');await page.waitForTimeout(150);
+  // Le nom du service est en TÊTE de ligne : le chercher dans toute la ligne
+  // attraperait MAGASIN, qui livre à MONTAGE.
+  const parcours=nom=>page.evaluate(n=>{
+    const tr=[...document.querySelectorAll('#fc-parcours tbody tr')].find(r=>r.cells[0].textContent.trim()===n);
+    return tr?[...tr.cells].map(c=>c.textContent.trim()).join(' | '):null;
+  },nom);
+  const ligne=await parcours('MONTAGE');
+  assert.match(ligne,/1 équipe/);
+  assert.match(ligne,/CUISINE/,'ses fournisseurs sont nommés');
+  // Un fournisseur sans équipe ne produit rien : l'alerte le dit et propose le remède.
+  assert.match(await page.locator('#fc-alertes').textContent(),/sans avoir d’équipe/);
+  assert.match(await page.locator('#fc-alertes').textContent(),/mise à disposition/);
+  // Une mise à disposition sur ce fournisseur fait taire l'alerte le concernant.
+  await click('[data-view=ateliers]');
+  await page.locator('#at-new').click();await page.waitForTimeout(150);
+  const md=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
+  await page.selectOption(`[data-at="${md}"] [data-at-champ=service]`,'magasin');await page.waitForTimeout(150);
+  await page.selectOption(`[data-at="${md}"] [data-at-champ=type]`,'dispo');await page.waitForTimeout(250);
+  await click('[data-view=flux]');await page.waitForTimeout(150);
+  assert.doesNotMatch(await page.locator('#fc-alertes').textContent(),/MAGASIN/,
+    'le magasin n’est plus signalé');
+  assert.match(await parcours('MAGASIN'),/mise à disposition/i);
+
   await page.screenshot({path:'/tmp/ory-flows-desktop.png'});
   await click('#btn-theme');await page.screenshot({path:'/tmp/ory-flows-dark.png'});
   await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.screenshot({path:'/tmp/ory-flows-mobile.png',fullPage:true});

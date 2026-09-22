@@ -19,10 +19,17 @@ Les **retours ne fabriquent rien**. Un avion qui arrive ne crée pas de classe �
 produire.
 
 La liste se **retouche** dans l'onglet : on **retire** une classe qu'on ne
-fabrique pas, on en **ajoute** une que le programme ne porte pas encore
-(compagnie, cabine, passagers, nombre de vols, échéance). Un ajout qui porte
-l'identifiant d'une classe du programme la **remplace** — c'est ainsi qu'on
-corrige un volume sans toucher au fichier de vols.
+fabrique pas, on en **déclare** une que le programme ne porte pas encore. Une
+déclaration ne porte que son **identité** — compagnie et cabine.
+
+> **Les chiffres viennent de l'import, jamais de la saisie.** Passagers, nombre
+> de vols et échéance sont lus dans le programme de vols. Les redemander à la
+> main ouvrirait deux vérités pour la même classe, et la mauvaise finirait par
+> l'emporter.
+
+Une classe déclarée que l'import ne porte pas reste donc **à volume nul** : la
+table l'affiche « hors import », sans passagers ni échéance, jusqu'au prochain
+import. Corriger un volume se fait dans le fichier de vols.
 
 Retirer une classe **coupe tous les liens** que les ateliers avaient avec elle :
 elle disparaît de chaque lot, et un lot vidé de sa dernière classe disparaît
@@ -124,6 +131,32 @@ C'est le résultat le plus utile du modèle — ce qui ne rentre pas dans la
 journée. Le régime se désactive atelier par atelier, et la durée de présence se
 règle, pour une équipe qui ne suit pas la règle commune.
 
+### La mise à disposition
+
+Un magasin, des appros, tout service qui se contente de **sortir du matériel ou
+des matières premières** ne fabrique rien. Il a préparé à l'avance, ou il sert
+dans l'instant.
+
+| Champ | Sens |
+|---|---|
+| `type: 'dispo'` | |
+| `permanent` | **vrai par défaut** : personne ne l'attend |
+| `debut` / `jour` | l'heure d'ouverture, quand `permanent` est faux |
+
+Ni effectif, ni barème, ni durée — et **aucune liste** : elle sert **toutes**
+les compagnies × classes, sans qu'on les énumère. Le magasin sort du matériel
+pour qui en demande.
+
+> **Mais elle ne fabrique rien.** Une classe dont la mise à disposition est la
+> seule étape reste « jamais fabriquée ». Sans cette distinction, ouvrir un
+> magasin suffirait à afficher « 100 % à l'heure ».
+
+Elle figure malgré tout au **parcours** de ce qu'elle sert : c'est ce qui permet
+de voir d'où vient le matériel. Sur le planning, c'est un repère, pas une barre.
+
+Deux mises à disposition ne se cumulent pas : un service qui en porte une **et**
+un autre atelier est signalé, car le second ne serait jamais attendu.
+
 ## 3. La boucle du matériel
 
 Les trolleys, la porcelaine, les couverts ne s'achètent pas : ils reviennent.
@@ -170,8 +203,21 @@ vient des appros, son matériel du magasin et des retours de dotation, son
 armement de l'armement — et tout cela converge au montage.
 
 Ce parcours **n'est pas inventé par le moteur** : il se lit dans le graphe des
-liaisons du **Centre des flux**, celui que vous entretenez déjà. La règle tient
-en une phrase :
+liaisons du **Centre des flux**. Cet onglet n'est donc plus décoratif — il
+**décide**. Il porte pour cela une section « **Ce que le modèle en lit** » qui
+montre, service par service, ce qu'il attend et à qui il livre, et qui nomme ce
+qui empêcherait la journée de se jouer :
+
+- un service qui **fournit sans avoir d'équipe** — rien n'en sort, et personne
+  ne l'attend ; c'est le cas que la *mise à disposition* règle ;
+- une équipe qui **ne fabrique rien** ;
+- un service **relié à personne**, ou qui **ne livre à personne** ;
+- une **boucle sans fin**.
+
+Du graphe, le moteur ne retient que le **sens** des liaisons actives, d'un
+service à un autre. La famille de flux, les stockages, la précision et les
+règles de circulation humaine restent de la description. La règle tient en une
+phrase :
 
 > Un service ne peut travailler un lot que lorsque **tous ses fournisseurs**
 > dans ce graphe ont livré **toutes les classes** de ce lot.

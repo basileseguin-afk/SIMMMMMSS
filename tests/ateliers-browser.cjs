@@ -171,15 +171,24 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok((await etat()).exclues.includes('CRL/YC'));
   assert.ok(!(await etat()).exclues.includes('CRL/PC'));
 
-  // 15. On ajoute une compagnie × classe que le programme de vols ne porte pas.
+  // 15. On déclare une compagnie × classe que le programme de vols ne porte pas.
+  //     On ne lui saisit QUE son identité : passagers, vols et échéance viennent
+  //     de l'import, et les redemander ouvrirait deux vérités.
   await page.locator('[data-at-action=classe-nouvelle]').click();await attendre();
+  assert.equal(await page.locator('#at-cls-pax').count(),0,'plus de champ Passagers');
+  assert.equal(await page.locator('#at-cls-vols').count(),0,'plus de champ Vols');
+  assert.equal(await page.locator('#at-cls-echeance').count(),0,'plus de champ Échéance');
   await page.fill('#at-cls-cie','zz');await page.selectOption('#at-cls-cabine','BC');
-  await page.fill('#at-cls-pax','80');await page.fill('#at-cls-vols','2');await page.fill('#at-cls-echeance','09:30');
   await page.locator('[data-at-action=classe-valider]').click();await attendre();
-  assert.match(await page.locator('#at-status').textContent(),/ZZ\/BC ajout\u00e9e/);
+  assert.match(await page.locator('#at-status').textContent(),/ZZ\/BC déclarée/);
   const ajoutee=(await etat()).ajoutees[0];
-  assert.equal(ajoutee.cie,'ZZ','la compagnie est normalis\u00e9e en majuscules');
+  assert.equal(ajoutee.cie,'ZZ','la compagnie est normalisée en majuscules');
   assert.equal(ajoutee.cabine,'BC');
+  assert.deepEqual(Object.keys(ajoutee).sort(),['cabine','cie'],'rien d’autre n’est retenu');
+  // Hors import, elle n'a ni volume ni échéance : on le dit, on ne l'invente pas.
+  const ligneZZ=await page.locator('#at-classes tbody tr',{hasText:'ZZ/BC'}).first()
+    .evaluate(tr=>[...tr.cells].slice(1,4).map(c=>c.textContent.trim()));
+  assert.deepEqual(ligneZZ,['—','—','—'],'passagers, vols et échéance restent vides');
   // Elle se fabrique comme les autres.
   await ouvrir(cui2);
   await page.selectOption(`[data-at="${cui2}"] [data-at-champ=lot-ajout][data-index="0"]`,'ZZ/BC');await attendre();
@@ -198,6 +207,29 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const memoire=await etat();
   await page.reload();await page.locator('[data-view=ateliers]').click();await attendre();
   assert.deepEqual(await etat(),memoire,'exclusions et ajouts sont relus du navigateur');
+
+  // 17 bis. La mise à disposition : un service qui ne fabrique pas.
+  //         Ni effectif, ni homme-minutes, ni durée — et il sert TOUT.
+  const mag=await creer('Magasin','magasin','06:00',2);
+  await champ(mag,'type','dispo');
+  const fiche=`[data-at="${mag}"]`;
+  assert.equal(await page.locator(`${fiche} [data-at-champ=personnes]`).count(),0,'aucun effectif à saisir');
+  assert.equal(await page.locator(`${fiche} [data-at-champ=lot-nouveau]`).count(),0,'rien à fabriquer');
+  assert.equal(await page.locator(`${fiche} .at-arrets`).count(),0,'aucun arrêt programmé');
+  assert.equal(await page.locator(`${fiche} [data-at-champ=permanent]`).isChecked(),true,'permanente par défaut');
+  assert.equal(await page.locator(`${fiche} [data-at-champ=debut]`).count(),0,'permanente, elle n’a pas d’heure');
+  const apresDispo=await resultat();
+  assert.equal(apresDispo.ok,true,JSON.stringify(apresDispo.anomalies));
+  const mise=apresDispo.lots.find(l=>l.service==='magasin');
+  assert.equal(mise.fin,mise.debut,'elle ne dure pas');
+  assert.ok(apresDispo.parClasse['CRL/BC'].services.includes('magasin'),'elle figure au parcours');
+  // Décochée, elle prend une heure — et son aval l'attend.
+  await page.locator(`${fiche} [data-at-champ=permanent]`).uncheck();await attendre();
+  assert.equal(await page.locator(`${fiche} [data-at-champ=debut]`).count(),1,'l’heure apparaît');
+  await champ(mag,'debut','09:00');
+  const tard=(await resultat()).lots.find(l=>l.service==='magasin');
+  assert.equal(tard.debut,9*60,'elle ouvre à l’heure dite');
+
 
   // 18. Le poste : pauses automatiques et heure de fin, visibles et r\u00e9glables.
   await ouvrir(cui2);

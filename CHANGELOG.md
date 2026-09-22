@@ -5,6 +5,54 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-22 — La mise à disposition, et le Centre des flux qui décide
+
+Trois points signalés à la relecture de l'onglet Ateliers.
+
+**Une classe déclarée ne porte plus que son identité.** « Passagers, vols et
+échéance, tu les auras à l'import du planning des vols. » Exact : les
+redemander à la main ouvrait deux vérités pour la même classe.
+
+- `ateliers.js` : le formulaire « + Compagnie × classe » ne demande plus que la
+  **compagnie** et la **cabine**. Les trois champs de volume disparaissent.
+- Une classe déclarée que l'import ne porte pas est marquée **« hors import »**
+  et affiche « — » plutôt qu'un volume inventé.
+- Une classe que le programme porte déjà garde **ses** chiffres : une
+  déclaration ne les écrase plus.
+
+**Un nouveau type d'atelier : la mise à disposition.** « Les zones qui mettent
+uniquement à disposition du matériel ou des matières premières n'ont ni
+man-minutes ni temps de production. »
+
+- `moteur/production.js` : `type: 'dispo'`. Ni effectif, ni barème, ni durée,
+  ni liste — elle sert **toutes** les compagnies × classes sans qu'on les
+  énumère. **Permanente par défaut** ; décochée, elle prend une heure
+  d'ouverture et son aval l'attend.
+- Elle **ne fabrique rien** : une classe dont c'est la seule étape reste
+  « jamais fabriquée ». Sans cela, ouvrir un magasin aurait suffi à afficher
+  « 100 % à l'heure ».
+- Elle figure au **parcours** de ce qu'elle sert, et sur le planning comme un
+  repère — pas comme une barre de durée nulle.
+- Deux ateliers dont l'un est une mise à disposition, dans le même service :
+  signalé, car le second ne serait jamais attendu.
+
+**Le Centre des flux refondu.** Depuis les ateliers de travail, ce graphe donne
+le parcours : son bandeau disait pourtant encore « sans effet sur le calcul ».
+
+- Le badge dit désormais ce qu'il en est, et une section
+  **« Ce que le modèle en lit »** passe **avant** la liste : un tableau
+  service par service — ce qu'il est, ce qu'il **attend**, à qui il **livre**.
+- Elle nomme ce qui empêcherait la journée de se jouer : un service qui
+  **fournit sans avoir d'équipe**, une équipe qui ne fabrique rien, un service
+  relié à personne, une **boucle sans fin**. Une alerte par nature de problème,
+  pas une par service.
+- Les règles de circulation humaine descendent en bas, avec leur périmètre dit :
+  de la description, le modèle ne déplace pas encore les personnes.
+- Modifier une liaison **recalcule** désormais les ateliers.
+- Tests : cinq tests moteur pour la mise à disposition, une section navigateur
+  dans `ateliers-browser` et une dans `flows-browser`.
+- Vérification : 163 tests purs et onze parcours navigateur au vert.
+
 ## 2026-09-22 — Confirmer la création d'un atelier, câbler une annexe
 
 Deux points signalés à l'usage, [BUG-015](BUGS.md) et [BUG-016](BUGS.md).

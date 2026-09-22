@@ -415,6 +415,61 @@ function liaisonsServices(){
   }
   return out;
 }
+/* ==========================================================================
+ *  CE QUE LE MODÈLE LIT DU CENTRE DES FLUX
+ *  Depuis les ateliers de travail, ce graphe n'est plus décoratif : il donne
+ *  le parcours des compagnies × classes. Un service ne travaille une classe
+ *  que lorsque TOUS ses fournisseurs la lui ont livrée. Cette lecture rend
+ *  visible ce que le moteur en retient — et ce qui, dans le graphe, ne
+ *  produira rien.
+ * ==========================================================================*/
+function lectureDuGraphe(){
+  const liens=liaisonsServices();
+  const noms=new Map(servicesDisponibles().map(s=>[s.id,s.nom]));
+  const nom=id=>noms.get(id)||id;
+  const ateliers=(Sim.ateliers&&Sim.ateliers.state.ateliers)||[];
+
+  const equipes=new Map();
+  for(const a of ateliers){
+    const e=equipes.get(a.service)||{n:0,dispo:false,fabrique:false};
+    e.n++; if(a.type==='dispo')e.dispo=true; if((a.lots||[]).some(l=>l.length))e.fabrique=true;
+    equipes.set(a.service,e);
+  }
+  // Un service ne compte dans le parcours que s'il porte une équipe : c'est
+  // l'atelier qui met un service sur le chemin d'une classe, pas la liaison.
+  const concernes=new Set([...equipes.keys()]);
+  for(const l of liens){ if(concernes.has(l.to))concernes.add(l.from); }
+
+  const lignes=[...concernes].map(id=>{
+    const e=equipes.get(id)||{n:0,dispo:false,fabrique:false};
+    return { id, nom:nom(id), equipes:e.n, dispo:e.dispo, produit:e.dispo||e.fabrique,
+      amonts:[...new Set(liens.filter(l=>l.to===id).map(l=>l.from))],
+      avals:[...new Set(liens.filter(l=>l.from===id).map(l=>l.to))] };
+  }).sort((a,b)=>a.amonts.length-b.amonts.length||a.nom.localeCompare(b.nom));
+
+  // Une alerte par NATURE de problème, pas par service : cinq fois la même
+  // phrase ne se lit plus, et ce qu'il y a à faire est le même pour tous.
+  const alertes=[];
+  const grouper=(liste,grave,texte)=>{ if(liste.length) alertes.push({grave,texte:texte(liste.map(l=>nom(l.id)))}); };
+  grouper(lignes.filter(l=>!l.equipes), true, noms2=>
+    noms2.join(', ')+(noms2.length>1?' fournissent':' fournit')+' sans avoir d’équipe : '
+    +'rien n’en sort, et personne ne '+(noms2.length>1?'les':'l’')+' attend. '
+    +'Donnez-'+(noms2.length>1?'leur':'lui')+' un atelier — une « mise à disposition » '
+    +'suffit pour un magasin, des appros ou tout ce qui ne fait que sortir du matériel.');
+  grouper(lignes.filter(l=>l.equipes&&!l.produit), true, noms2=>
+    noms2.join(', ')+' : une équipe est décrite mais ne fabrique rien. Dites ce qu’elle produit.');
+  grouper(lignes.filter(l=>l.produit&&!l.amonts.length&&!l.avals.length), false, noms2=>
+    noms2.join(', ')+' n’est relié à personne : ce qui y est fabriqué ne sert à aucun autre service.');
+  grouper(lignes.filter(l=>l.produit&&l.avals.length===0&&l.amonts.length), false, noms2=>
+    noms2.join(', ')+' ne livre à personne. Normal en bout de chaîne.');
+  // Un cycle bloquerait la fabrication sans jamais rien dire.
+  const fourn=MoteurProduction.fournisseurs(liens);
+  for(const c of MoteurProduction.cycles(fourn,new Set(lignes.filter(l=>l.produit).map(l=>l.id))))
+    alertes.push({ service:c[0], grave:true,
+      texte:'Boucle sans fin : '+c.map(nom).join(' → ')+'. Le modèle refusera de tourner.' });
+
+  return { lignes, alertes, liens, noms:Object.fromEntries(noms) };
+}
 function initAteliers(){
   Sim.ateliers=new OrlyAteliers.CentreAteliers({
     hote:()=>document.getElementById('view-ateliers'),
@@ -429,7 +484,10 @@ function initAteliers(){
   });
 }
 function initFlux(){
-  Sim.flows=new OrlyFlows.FlowCenter({zones:()=>Sim.editor.state.zones,legacy:FLUX.concat(FLUX_RETOUR),changed:()=>{if(Sim.flows)redessinerEdges();},showMap:()=>showView('plan'),notify:toast});
+  Sim.flows=new OrlyFlows.FlowCenter({zones:()=>Sim.editor.state.zones,legacy:FLUX.concat(FLUX_RETOUR),
+    lecture:lectureDuGraphe,
+    changed:()=>{if(Sim.flows)redessinerEdges();if(Sim.ateliers)Sim.ateliers.rendre();},
+    showMap:()=>showView('plan'),notify:toast});
   redessinerEdges();
 }
 

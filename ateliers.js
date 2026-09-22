@@ -31,7 +31,7 @@
       ids.add(id);
       const nom = String(a.nom ?? '').slice(0, 160);
       const service = String(a.service ?? '').slice(0, 160);
-      const type = ['robot', 'lavage'].includes(a.type) ? a.type : 'manuel';
+      const type = ['robot', 'lavage', 'dispo'].includes(a.type) ? a.type : 'manuel';
       P.minutes(a.debut ?? '06:00');
       const jour = Number.isInteger(a.jour) ? Math.max(-7, Math.min(0, a.jour)) : 0;
       const personnes = Number.isInteger(a.personnes) ? Math.max(0, Math.min(999, a.personnes)) : 1;
@@ -61,20 +61,22 @@
               debit: Number.isFinite(+t.debit) ? Math.max(0, +t.debit) : 300,
               actif: t.actif !== false
             }))
-        } : {})
+        } : {}),
+        // Une mise à disposition est permanente sauf si on lui donne une heure.
+        ...(type === 'dispo' ? { permanent: a.permanent !== false } : {})
       };
     });
     // Ce que l'utilisateur retire du programme, et ce qu'il y ajoute. Le
     // programme de vols reste la source ; ces deux listes le corrigent.
     const exclues = [...new Set((Array.isArray(brut.exclues) ? brut.exclues : []).map(String))].slice(0, 500);
+    // Une compagnie × classe déclarée à la main ne porte QUE son identité.
+    // Les passagers, le nombre de vols et l'échéance viennent du programme de
+    // vols importé : les ressaisir serait ouvrir la porte à deux vérités.
     const ajoutees = (Array.isArray(brut.ajoutees) ? brut.ajoutees : []).slice(0, 500).map(c => {
       const cie = String(c.cie ?? '').trim().toUpperCase().slice(0, 40);
       const cabine = P.CABINES.includes(c.cabine) ? c.cabine : 'YC';
       if (!cie) throw new Error('Une compagnie × classe ajoutée doit nommer sa compagnie.');
-      const pax = Number.isFinite(+c.pax) ? Math.max(0, Math.round(+c.pax)) : 0;
-      const vols = Number.isInteger(c.vols) ? Math.max(1, Math.min(999, c.vols)) : 1;
-      P.minutes(c.echeance ?? '12:00');
-      return { cie, cabine, pax, vols, echeance: String(c.echeance ?? '12:00') };
+      return { cie, cabine };
     });
     const m = brut.materiel || {};
     const materiel = {
@@ -134,13 +136,12 @@
       for (const c of (this.state.ajoutees || [])) {
         const id = P.idClasse(c.cie, c.cabine);
         if (exclues.has(id)) continue;
-        const echeance = P.minutes(c.echeance);
-        par.set(id, {
-          id, cie: c.cie, cabine: c.cabine, pax: c.pax, echeance, origine: 'ajoutee',
-          vols: Array.from({ length: c.vols }, (_, i) => ({
-            id: id + '-' + (i + 1), pax: Math.round(c.pax / c.vols), depart: echeance, echeance
-          }))
-        });
+        // Le programme fait foi : une classe qu'il porte déjà garde SES chiffres.
+        // Une déclaration ne sert qu'à nommer ce que l'import ne nomme pas — et
+        // ce qu'il ne nomme pas n'a, aujourd'hui, ni passager ni vol.
+        if (par.has(id)) { par.get(id).declaree = true; continue; }
+        par.set(id, { id, cie: c.cie, cabine: c.cabine, pax: 0, vols: [],
+          echeance: P.MINUTES_PAR_JOUR, origine: 'ajoutee' });
       }
       return [...par.values()].sort((a, b) => a.echeance - b.echeance || a.id.localeCompare(b.id));
     }
@@ -353,12 +354,20 @@
             a.type = v;
             if (v === 'robot') { a.debit = a.debit || 320; a.personnesMin = a.personnesMin === undefined ? 1 : a.personnesMin; }
             else if (v === 'lavage') { delete a.debit; delete a.personnesMin; a.lots = []; }
+            // Une mise à disposition ne fabrique rien : ses lignes, son
+            // effectif et ses arrêts n'ont plus de sens, on les efface.
+            else if (v === 'dispo') {
+              delete a.debit; delete a.personnesMin; delete a.tunnels;
+              a.lots = []; a.pauses = []; a.personnes = 0;
+              if (a.permanent === undefined) a.permanent = true;
+            }
             else { delete a.debit; delete a.personnesMin; }
             break;
           case 'consomme': a.materiel = el.checked ? 'consomme' : undefined; break;
           case 'tunnel-nom': a.tunnels[+el.dataset.index].nom = v; break;
           case 'tunnel-debit': a.tunnels[+el.dataset.index].debit = Math.max(0, parseFloat(v) || 0); break;
           case 'tunnel-actif': a.tunnels[+el.dataset.index].actif = el.checked; break;
+          case 'permanent': a.permanent = el.checked; break;
           case 'regime': a.regime = { ...a.regime, actif: el.checked }; break;
           case 'presence': a.regime = { ...a.regime, presence: Math.max(30, parseInt(v, 10) || 495) }; break;
 
@@ -417,27 +426,23 @@
         id + ' rétablie. Elle est à fabriquer de nouveau.');
     }
 
-    ouvrirAjout() { this.ajout = { cie: '', cabine: 'YC', pax: 100, vols: 1, echeance: '12:00' }; this.rendre(''); }
+    ouvrirAjout() { this.ajout = { cie: '', cabine: 'YC' }; this.rendre(''); }
 
     validerAjout() {
       const lire = id => (document.getElementById(id) || {}).value;
-      const brouillon = {
-        cie: lire('at-cls-cie'), cabine: lire('at-cls-cabine'),
-        pax: +lire('at-cls-pax'), vols: parseInt(lire('at-cls-vols'), 10),
-        echeance: lire('at-cls-echeance')
-      };
+      const brouillon = { cie: lire('at-cls-cie'), cabine: lire('at-cls-cabine') };
       if (!String(brouillon.cie || '').trim()) return this.rendre('Nommez la compagnie.');
       const id = P.idClasse(brouillon.cie, brouillon.cabine);
-      if (this.classes.some(c => c.id === id && c.origine === 'ajoutee'))
-        return this.rendre(id + ' est déjà ajoutée. Retirez-la d’abord pour la redéfinir.');
-      const remplace = this.classes.some(c => c.id === id && c.origine === 'programme');
+      if ((this.state.ajoutees || []).some(c => P.idClasse(c.cie, c.cabine) === id))
+        return this.rendre(id + ' est déjà déclarée.');
+      const connue = this.classes.some(c => c.id === id && c.origine === 'programme');
       this.ajout = null;
       this.changer(() => {
         this.state.exclues = (this.state.exclues || []).filter(x => x !== id);
         this.state.ajoutees = [...(this.state.ajoutees || []), brouillon];
-      }, id + (remplace
-        ? ' ajoutée : elle remplace celle du programme de vols.'
-        : ' ajoutée. Elle est fabricable comme les autres.'));
+      }, id + (connue
+        ? ' était déjà au programme : ce sont ses chiffres qui comptent.'
+        : ' déclarée. Ses passagers viendront de l’import des vols.'));
     }
 
     exporter() {
@@ -559,18 +564,27 @@
 
     carte(a, calcul) {
       const ouvert = this.ouvert === a.id;
+      const dispo = a.type === 'dispo';
       const fin = calcul && calcul.fin != null ? P.hhmm(calcul.fin) : '—';
       const attente = calcul && calcul.attente ? ' · ' + Math.round(calcul.attente) + ' min d’attente' : '';
       const jour = a.jour ? ' (J' + a.jour + ')' : '';
       const noms = a.lots.map(l => l.join(' + '));
-      const resume = !noms.length ? 'ne fabrique rien'
+      const resume = dispo ? 'sert toutes les classes'
+        : !noms.length ? 'ne fabrique rien'
         : noms.length <= 3 ? noms.join(' → ')
         : noms.slice(0, 3).join(' → ') + ' → … (' + noms.length + ' fabrications)';
+      // Une mise à disposition n'a ni effectif ni heure de fin : son en-tête
+      // dirait trois fois « — ». Elle dit ce qu'elle est.
+      const sous = dispo
+        ? (a.permanent === false ? 'disponible à partir de ' + esc(a.debut) + jour : 'disponible en permanence')
+        : esc(a.debut) + jour + ' · ' + a.personnes + ' pers.'
+          + (a.type === 'robot' ? ' · robot ' + a.debit + ' pl/h' : a.type === 'lavage' ? ' · ' + P.debitLavage(a) + ' u/h' : '')
+          + ' → fin ' + esc(fin) + esc(attente);
 
       const entete = `<div class="at-carte-tete">
         <button class="at-carte-nom" data-at-action="ouvrir" aria-expanded="${ouvert}">
           <strong>${esc(a.nom)}</strong>
-          <span>${esc(a.debut)}${jour} · ${a.personnes} pers.${a.type === 'robot' ? ' · robot ' + a.debit + ' pl/h' : a.type === 'lavage' ? ' · ' + P.debitLavage(a) + ' u/h' : ''} → fin ${esc(fin)}${esc(attente)}</span>
+          <span>${sous}</span>
         </button>
         <span class="at-resume">${esc(resume)}</span>
       </div>`;
@@ -615,14 +629,28 @@
           <label>Type<select data-at-champ="type">
             <option value="manuel" ${a.type === 'manuel' ? 'selected' : ''}>Équipe</option>
             <option value="robot" ${a.type === 'robot' ? 'selected' : ''}>Robot</option>
-            <option value="lavage" ${a.type === 'lavage' ? 'selected' : ''}>Lavage (plonge)</option></select></label>
+            <option value="lavage" ${a.type === 'lavage' ? 'selected' : ''}>Lavage (plonge)</option>
+            <option value="dispo" ${dispo ? 'selected' : ''}>Mise à disposition</option></select></label>
+          ${dispo ? '' : `
           <label>Début<input type="time" value="${esc(a.debut)}" data-at-champ="debut"></label>
           <label>Jour<select data-at-champ="jour">${[0, -1, -2, -3].map(j => `<option value="${j}" ${j === a.jour ? 'selected' : ''}>${j === 0 ? 'Jour du départ' : 'J' + j}</option>`).join('')}</select></label>
-          <label>Personnes<input type="number" min="0" max="999" value="${a.personnes}" data-at-champ="personnes"></label>
+          <label>Personnes<input type="number" min="0" max="999" value="${a.personnes}" data-at-champ="personnes"></label>`}
           ${a.type === 'robot' ? `
           <label>Débit (plateaux/h)<input type="number" min="1" value="${a.debit}" data-at-champ="debit"></label>
           <label>Personnes minimum<input type="number" min="0" value="${a.personnesMin}" data-at-champ="personnesMin"></label>` : ''}
         </div>
+        ${dispo ? `
+        <p class="mini-note at-regle">Ce service <b>ne fabrique pas</b> : il sort du matériel ou des matières
+          premières, préparés à l’avance. Ni effectif, ni homme-minutes, ni durée — et il sert
+          <b>toutes</b> les compagnies × classes, sans qu’on les énumère.</p>
+        <div class="at-cases">
+          <label class="chk chk-mini"><input type="checkbox" data-at-champ="permanent" ${a.permanent !== false ? 'checked' : ''}>
+            Disponible en permanence — personne ne l’attend</label>
+          ${a.permanent === false ? `<div class="at-pause">
+            <label>À partir de<input type="time" value="${esc(a.debut)}" data-at-champ="debut"></label>
+            <label>Jour<select data-at-champ="jour">${[0, -1, -2, -3].map(j => `<option value="${j}" ${j === a.jour ? 'selected' : ''}>${j === 0 ? 'Jour du départ' : 'J' + j}</option>`).join('')}</select></label>
+          </div>` : ''}
+        </div>` : `
         <div class="at-cases">
           <label class="chk chk-mini"><input type="checkbox" data-at-champ="regime" ${a.regime.actif ? 'checked' : ''}>
             Poste avec pauses — 15 min après 3 h, 30 min après 6 h</label>
@@ -632,9 +660,9 @@
           ${a.type !== 'lavage' && this.state.materiel.actif ? `<label class="chk chk-mini"><input type="checkbox" data-at-champ="consomme"
             ${a.materiel === 'consomme' ? 'checked' : ''}>
             Emporte du matériel propre (trolleys, porcelaine)</label>` : ''}
-        </div>
+        </div>`}
 
-        ${a.type === 'lavage' ? `
+        ${dispo ? '' : a.type === 'lavage' ? `
         <div class="at-sous-titre">Tunnels de lavage
           <span class="mini-note">le débit de la plonge est la somme des tunnels actifs</span></div>
         ${a.tunnels.map((t, i) => `<div class="at-tunnel ${t.actif ? '' : 'arret'}">
@@ -664,6 +692,7 @@
           <button class="btn btn-sm" data-at-action="lot-tout">Tout sur une seule ligne</button>`}
         </div>`}
 
+        ${dispo ? '' : `
         <details class="at-arrets" ${a.pauses.length ? 'open' : ''}>
           <summary>Arrêt programmé${a.pauses.length ? ' (' + a.pauses.length + ')' : ''}</summary>
           <p class="mini-note">Les pauses de l’équipe sont déjà prises en compte plus haut. Ici, c’est autre chose :
@@ -671,7 +700,7 @@
             À une heure fixe, pas après un temps de travail.</p>
           ${pauses}
           <div class="at-actions-lot"><button class="btn btn-sm" data-at-action="pause-ajouter">+ Arrêt</button></div>
-        </details>
+        </details>`}
 
         <div class="at-actions-lot at-bas">
           <button class="btn btn-play btn-sm" data-at-action="fermer">Terminé</button>
@@ -713,6 +742,9 @@
         const y = 28 + i * H;
         const nom = `<text class="at-pl-nom" x="8" y="${y + 13}">${esc(a.nom)}</text>`;
         const lots = a.lots.map(l => {
+          // Une mise à disposition n'a pas de durée : une barre de deux pixels
+          // se lirait comme une fabrication minuscule. C'est un repère.
+          if (l.dispo) return `<rect class="at-pl-dispo" x="${x(l.debut) - 3}" y="${y + 2}" width="6" height="16" rx="2"><title>Disponible à partir de ${P.hhmm(l.debut)}</title></rect>`;
           if (l.fin == null) return `<rect class="at-pl-bloque" x="${x(l.debut)}" y="${y + 3}" width="10" height="14" rx="3"><title>${esc(l.nom)} : ne tourne pas</title></rect>`;
           const att = l.attente ? `<rect class="at-pl-attente" x="${x(l.debut - l.attente)}" y="${y + 6}" width="${Math.max(1, x(l.debut) - x(l.debut - l.attente))}" height="8" rx="2"><title>Attente des amonts : ${Math.round(l.attente)} min</title></rect>` : '';
           const w = Math.max(2, x(l.fin) - x(l.debut));
@@ -739,13 +771,13 @@
       const ajout = this.ajout ? `<div class="at-ajout">
         <label>Compagnie<input id="at-cls-cie" maxlength="40" placeholder="Ex. CRL" value="${esc(this.ajout.cie)}"></label>
         <label>Classe<select id="at-cls-cabine">${P.CABINES.map(c => `<option value="${c}" ${c === this.ajout.cabine ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
-        <label>Passagers<input id="at-cls-pax" type="number" min="0" value="${this.ajout.pax}"></label>
-        <label>Vols<input id="at-cls-vols" type="number" min="1" value="${this.ajout.vols}"></label>
-        <label>Échéance<input id="at-cls-echeance" type="time" value="${esc(this.ajout.echeance)}"></label>
         <div class="at-ajout-actions">
-          <button class="btn btn-play btn-sm" data-at-action="classe-valider">Ajouter</button>
+          <button class="btn btn-play btn-sm" data-at-action="classe-valider">Déclarer</button>
           <button class="btn btn-sm" data-at-action="classe-annuler">Annuler</button>
         </div>
+        <p class="mini-note at-ajout-note">Passagers, nombre de vols et échéance viennent de
+          l’<b>import du programme de vols</b> — on ne les saisit pas deux fois. Une classe que
+          l’import ne porte pas reste déclarée, à volume nul, jusqu’au prochain import.</p>
       </div>` : '';
 
       const barre = `<div class="at-barre">
@@ -773,9 +805,14 @@
             : v.fin == null ? '<span class="at-etat manque">inachevée</span>'
             : v.aHeure ? '<span class="at-etat ok">à l’heure</span>'
             : '<span class="at-etat retard">+' + Math.round(v.retard) + ' min</span>';
-          const source = c.origine === 'ajoutee' ? '<span class="at-source">ajoutée</span>' : '';
-          return `<tr><th scope="row">${esc(c.id)} ${source}</th><td>${c.pax}</td><td>${c.vols.length}</td>
-            <td>${P.hhmm(c.echeance)}</td><td>${v.fin == null ? '—' : P.hhmm(v.fin)}</td><td>${etat}</td>
+          // Une classe déclarée que l'import ne porte pas n'a ni volume ni
+          // échéance : afficher zéro et une heure ferait croire à une donnée.
+          const horsImport = c.origine === 'ajoutee' && !c.vols.length;
+          const source = c.origine === 'ajoutee'
+            ? '<span class="at-source">' + (horsImport ? 'hors import' : 'déclarée') + '</span>' : '';
+          return `<tr><th scope="row">${esc(c.id)} ${source}</th>
+            <td>${horsImport ? '—' : c.pax}</td><td>${horsImport ? '—' : c.vols.length}</td>
+            <td>${horsImport ? '—' : P.hhmm(c.echeance)}</td><td>${v.fin == null ? '—' : P.hhmm(v.fin)}</td><td>${etat}</td>
             <td class="at-parcours">${esc((v.services || []).join(' → ')) || '—'}</td>
             <td><button class="btn btn-sm at-danger" data-at-action="classe-supprimer" data-classe="${esc(c.id)}"
               title="Retirer ${esc(c.id)} et couper ses liens avec les ateliers">Retirer</button></td></tr>`;

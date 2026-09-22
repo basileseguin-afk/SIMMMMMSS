@@ -178,7 +178,26 @@
    *  5. ATELIERS — validation
    * ====================================================================*/
 
-  const TYPES = ['manuel', 'robot', 'lavage'];
+  /*
+   * Quatre natures d'atelier, et quatre seulement.
+   *
+   *   manuel  — une équipe, un barème d'homme-minutes
+   *   robot   — une machine, un débit
+   *   lavage  — la plonge : son travail vient des retours, pas d'une liste
+   *   dispo   — une mise à disposition : magasin, appros…
+   *
+   * Le dernier ne fabrique rien. Un service qui se contente de **sortir du
+   * matériel ou des matières premières** ne consomme ni homme-minutes ni
+   * temps de production : il a préparé à l'avance, ou il sert dans l'instant.
+   * Lui demander un effectif et une durée serait inventer du travail.
+   */
+  const TYPES = ['manuel', 'robot', 'lavage', 'dispo'];
+
+  /** Heure à partir de laquelle une mise à disposition sert, en minutes. */
+  function disponibleDes(atelier) {
+    if (atelier.permanent !== false) return -Infinity;   // toujours servi
+    return minutes(atelier.debut) + (atelier.jour || 0) * MINUTES_PAR_JOUR;
+  }
 
   /**
    * Débit d'un atelier de lavage : la SOMME des débits de ses tunnels actifs.
@@ -215,11 +234,16 @@
       if (services.size && !services.has(a.service)) dire('service', 'service inconnu « ' + a.service + ' ».');
       if (a.type !== undefined && !TYPES.includes(a.type)) dire('type', 'type inconnu « ' + a.type + ' ».');
 
-      try { minutes(a.debut); } catch (e) { dire('debut', e.message); }
-
-      const robot = a.type === 'robot', lavage = a.type === 'lavage';
+      const robot = a.type === 'robot', lavage = a.type === 'lavage', dispo = a.type === 'dispo';
+      // Une mise à disposition permanente n'a pas d'heure : lui en réclamer une
+      // serait inventer une contrainte qu'elle n'a pas.
+      if (!(dispo && a.permanent !== false)) {
+        try { minutes(a.debut); } catch (e) { dire('debut', e.message); }
+      }
       const gens = a.personnes;
-      if (!Number.isInteger(gens) || gens < 0) dire('personnes', 'nombre de personnes entier attendu.');
+      // Une mise à disposition n'a pas d'effectif : elle ne fabrique pas.
+      if (dispo) { /* ni personnes, ni lots, ni barème */ }
+      else if (!Number.isInteger(gens) || gens < 0) dire('personnes', 'nombre de personnes entier attendu.');
       else if (!robot && gens === 0) dire('personnes', 'sans personne, rien n’est fabriqué.');
 
       if (lavage) {
@@ -247,13 +271,24 @@
       // Un atelier sans lot, ou un lot encore vide, c'est une saisie en cours :
       // on le signale sans empêcher le reste de la journée d'être calculé. Un
       // atelier de lavage, lui, n'a pas de lots : son travail vient des retours.
-      if (lavage) { /* rien à exiger */ }
+      if (lavage || dispo) { /* rien à exiger : ni l'un ni l'autre ne suit une liste */ }
       else if (!Array.isArray(a.lots) || !a.lots.length) dire('lots', 'ne fabrique rien pour l’instant.');
       else for (const lot of (a.lots || [])) {
         const liste = Array.isArray(lot) ? lot : (lot && lot.classes);
         if (!Array.isArray(liste) || !liste.length) { dire('lot-vide', 'une ligne de fabrication est encore vide.'); continue; }
         for (const id of liste) if (classes.size && !classes.has(id)) dire('lot', 'compagnie × classe inconnue : ' + id + '.');
       }
+    }
+
+    // Une mise à disposition sert TOUTES les classes de son service, et tout de
+    // suite. Un autre atelier dans le même service ne serait donc jamais
+    // attendu : son travail ne compterait pour personne.
+    const avecDispo = new Set(ateliers.filter(a => a && a.type === 'dispo').map(a => a.service));
+    for (const a of ateliers) {
+      if (!a || a.type === 'dispo' || !avecDispo.has(a.service)) continue;
+      anomalies.push({ code: 'dispo', atelier: a.id,
+        message: (a.nom || a.id) + ' : « ' + a.service + ' » est déjà une mise à disposition. '
+          + 'Elle sert tout, tout de suite : ce que fabrique cet atelier ne serait attendu par personne.' });
     }
 
     // Une même classe fabriquée deux fois dans le même service : sans règle de
@@ -497,11 +532,14 @@
     }
 
     // Ce qui n'empêche pas de jouer la journée ne doit pas l'empêcher.
-    const NON_BLOQUANTES = new Set(['doublon', 'bareme', 'lots', 'lot-vide', 'poste', 'materiel']);
+    const NON_BLOQUANTES = new Set(['doublon', 'bareme', 'lots', 'lot-vide', 'poste', 'materiel', 'dispo']);
     const bloquant = anomalies.some(a => !NON_BLOQUANTES.has(a.code));
     if (bloquant) return { ok: false, anomalies, classes, lots: [], ateliers: [] };
 
-    const debuts = ateliers.map(a => minutes(a.debut) + (a.jour || 0) * MINUTES_PAR_JOUR);
+    // Une mise à disposition permanente n'a pas d'heure : elle ne doit pas
+    // tirer le début de la journée en arrière.
+    const debuts = ateliers.filter(a => a.type !== 'dispo' || a.permanent === false)
+      .map(a => minutes(a.debut) + (a.jour || 0) * MINUTES_PAR_JOUR);
     const env = new Environnement(debuts.length ? Math.min(...debuts) : 0);
 
     // Livraisons : un événement par (service, classe), créé à la demande.
@@ -518,7 +556,10 @@
     // sinon il ne fait pas partie du parcours de cette classe et n'est pas
     // attendu. C'est ce qui permet à un parcours d'être différent par classe.
     const produit = new Set();
-    for (const a of ateliers) for (const lot of a.lots) for (const id of classesDuLot(lot)) produit.add(cle(a.service, id));
+    for (const a of ateliers) for (const lot of (a.lots || [])) for (const id of classesDuLot(lot)) produit.add(cle(a.service, id));
+    // Une mise à disposition sert TOUT : on ne lui fait pas énumérer les
+    // classes. Le magasin sort du matériel pour qui en demande.
+    for (const a of ateliers) if (a.type === 'dispo') for (const c of classes) produit.add(cle(a.service, c.id));
 
     /* ---- boucle du matériel ------------------------------------------ */
 
@@ -571,7 +612,9 @@
 
     const journal = [];   // une ligne par lot : ce que l'on affichera
     const suivi = ateliers.map(a => ({ id: a.id, nom: a.nom, service: a.service, type: a.type,
-      debut: minutes(a.debut) + (a.jour || 0) * MINUTES_PAR_JOUR, personnes: a.personnes,
+      debut: a.type === 'dispo' && a.permanent !== false
+        ? env.maintenant : minutes(a.debut) + (a.jour || 0) * MINUTES_PAR_JOUR,
+      personnes: a.personnes,
       fin: null, travail: 0, attente: 0, arret: 0, lots: [] }));
     const parId = new Map(suivi.map(s => [s.id, s]));
 
@@ -584,6 +627,28 @@
       const prises = new Set();   // pauses de régime déjà prises dans ce poste
       let cumul = 0;              // travail effectif depuis le début du poste
       vue.finPoste = Number.isFinite(finPoste) ? finPoste : null;
+
+      // Une mise à disposition ne travaille pas : elle ouvre. Une seule ligne
+      // de journal, portée par toutes les classes, pour que le parcours la
+      // montre sans encombrer le planning de vingt barres de largeur nulle.
+      if (a.type === 'dispo') {
+        const des = disponibleDes(a);
+        const ouverture = Math.max(env.maintenant, Number.isFinite(des) ? des : env.maintenant);
+        vue.debut = ouverture; vue.finPoste = null;
+        env.processus(function* () {
+          if (env.maintenant < ouverture) yield env.delai(ouverture - env.maintenant);
+          const ids = classes.map(c => c.id);
+          for (const id of ids) {
+            const ev = livraison(a.service, id);
+            if (!ev.declenche) ev.reussir(env.maintenant);
+          }
+          const ligne = { atelier: a.id, service: a.service, nom: 'mise à disposition',
+            classes: ids, debut: env.maintenant, fin: env.maintenant, duree: 0,
+            attente: 0, arret: 0, impossible: false, dispo: true };
+          journal.push(ligne); vue.lots.push(ligne); vue.fin = env.maintenant;
+        }, a.nom);
+        continue;
+      }
 
       if (a.type === 'lavage') {
         env.processus(function* () {
@@ -749,15 +814,19 @@
     const derniers = {};   // dernier service du parcours de chaque classe
     for (const c of classes) {
       const etapes = journal.filter(l => l.classes.includes(c.id));
-      const fin = etapes.length && etapes.every(l => l.fin != null)
-        ? Math.max(...etapes.map(l => l.fin)) : null;
+      // Une mise à disposition figure au parcours mais ne fabrique rien : si
+      // c'est la seule étape d'une classe, cette classe n'est pas faite. Sans
+      // cette distinction, un magasin ouvert suffirait à dire « 100 % à l'heure ».
+      const reels = etapes.filter(l => !l.dispo);
+      const fin = reels.length && reels.every(l => l.fin != null)
+        ? Math.max(...reels.map(l => l.fin)) : null;
       derniers[c.id] = {
         id: c.id, cie: c.cie, cabine: c.cabine, pax: c.pax, vols: c.vols.length,
         echeance: c.echeance, fin,
         services: etapes.map(l => l.service),
         retard: fin == null ? null : Math.max(0, fin - c.echeance),
         aHeure: fin != null && fin <= c.echeance,
-        absente: !etapes.length
+        absente: !reels.length
       };
     }
 

@@ -41,3 +41,35 @@ body.flows-open .workbench{display:none}
 .map-footer{flex-wrap:wrap}
 @media(max-width:1050px){.fc-fields{grid-template-columns:1fr 1fr}.fc-heading{flex-direction:column}.workspace-heading{flex-wrap:wrap}.view-tabs{flex-wrap:wrap}}
 @media(max-width:600px){#view-flux{padding:16px;overflow:visible}.fc-fields{grid-template-columns:1fr}.fc-card-head{align-items:flex-start}.fc-actions .btn{min-height:40px}.fc-heading h2{font-size:21px}.fc-filters{align-items:stretch;flex-direction:column}}
+
+/* ==========================================================================
+ *  CE QUE LE MODÈLE EN LIT
+ *  Depuis les ateliers de travail, ce graphe donne le parcours. Cette section
+ *  passe donc AVANT la liste : on vérifie ce que le moteur retient, ensuite
+ *  seulement on décrit. Le reste de l'onglet garde son rôle documentaire.
+ * ==========================================================================*/
+.fc-lecture{margin-bottom:26px}
+.fc-lecture .fc-list-title{margin-top:0}
+.fc-lecture>.mini-note{max-width:850px;margin:0 0 12px}
+
+.fc-alerte{border-left:3px solid var(--bordure2);background:var(--bg3);color:var(--txt);
+  padding:10px 14px;border-radius:0 8px 8px 0;font-size:12.5px;line-height:1.55;margin:0 0 12px}
+.fc-alerte.grave{border-left-color:var(--warn-stroke);background:var(--warn-fill)}
+.fc-alerte.ok{color:var(--vert);border-left-color:var(--vert);font-weight:600}
+.fc-alerte ul{margin:6px 0 0;padding-left:18px}
+.fc-alerte b{display:block;margin-bottom:2px}
+
+.fc-table{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--bg3);
+  border:1px solid var(--bordure);border-radius:10px;overflow:hidden}
+.fc-table th,.fc-table td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--bordure);vertical-align:top}
+.fc-table thead th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--txt2);background:var(--bg2)}
+.fc-table tbody tr:last-child th,.fc-table tbody tr:last-child td{border-bottom:0}
+.fc-table td{color:var(--txt2)}
+/* Un service sans équipe ne produit rien : il ne fait pas partie du parcours. */
+.fc-inerte th,.fc-inerte td{opacity:.62}
+.fc-nature{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;
+  border:1px solid var(--bordure2);border-radius:4px;padding:1px 6px;white-space:nowrap}
+.fc-nature.dispo{color:var(--accent2);border-color:var(--accent)}
+.fc-nature.vide{color:var(--rouge);border-color:var(--rouge)}
+
+@media(max-width:700px){.fc-table{display:block;overflow-x:auto}}

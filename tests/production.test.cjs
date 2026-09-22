@@ -589,3 +589,102 @@ test('une plonge dont tous les tunnels sont à l’arrêt le dit', () => {
   assert.equal(r.ok, false);
   assert.match(r.anomalies.map(a => a.message).join(' '), /aucun tunnel actif/);
 });
+
+/* ---- la mise à disposition ------------------------------------------- */
+
+test('une mise à disposition ne coûte ni personne ni minute', () => {
+  const r = P.simuler({
+    vols: VOLS, liaisons: LIAISONS,
+    ateliers: [
+      atelier({ id: 'mag', nom: 'Magasin', service: 'magasin', type: 'dispo', personnes: 0 }),
+      atelier({ id: 'mo', nom: 'Montage', service: 'prepa', debut: '06:00', personnes: 4,
+        lots: [['CRL/BC']] })
+    ]
+  });
+  assert.equal(r.ok, true, JSON.stringify(r.anomalies));
+  const mise = r.lots.find(l => l.dispo);
+  assert.ok(mise, 'elle figure au parcours');
+  assert.equal(mise.duree, 0, 'aucun temps de production');
+  assert.equal(mise.hommeMinutes, undefined, 'aucun homme-minute');
+  assert.equal(r.indicateurs.hommeHeures, r.lots.filter(l => !l.dispo)
+    .reduce((n, l) => n + (l.hommeMinutes || 0), 0) / 60, 'elle ne pèse pas dans les heures');
+});
+
+test('elle sert toutes les classes sans qu’on les énumère', () => {
+  const r = P.simuler({
+    vols: VOLS, liaisons: LIAISONS,
+    ateliers: [
+      atelier({ id: 'mag', nom: 'Magasin', service: 'magasin', type: 'dispo', personnes: 0 }),
+      atelier({ id: 'mo', nom: 'Montage', service: 'prepa', debut: '06:00', personnes: 4,
+        lots: [['CRL/BC'], ['AF/YC']] })
+    ]
+  });
+  assert.equal(r.ok, true);
+  for (const id of ['CRL/BC', 'AF/YC'])
+    assert.ok(r.parClasse[id].services.includes('magasin'), id + ' passe par le magasin');
+});
+
+test('permanente, elle ne fait attendre personne ; à l’heure, elle retarde l’aval', () => {
+  const jouer = (dispo) => P.simuler({
+    vols: VOLS, liaisons: [{ from: 'magasin', to: 'prepa' }],
+    ateliers: [
+      atelier({ id: 'mag', nom: 'Magasin', service: 'magasin', type: 'dispo', personnes: 0, ...dispo }),
+      atelier({ id: 'mo', nom: 'Montage', service: 'prepa', debut: '06:00', personnes: 4,
+        lots: [['CRL/BC']] })
+    ]
+  }).lots.find(l => l.atelier === 'mo');
+  const libre = jouer({});
+  assert.equal(libre.debut, 6 * 60, 'rien à attendre');
+  assert.equal(libre.attente, 0);
+  const tard = jouer({ permanent: false, debut: '07:30' });
+  assert.equal(tard.debut, 7 * 60 + 30, 'le montage attend l’ouverture du magasin');
+  assert.equal(tard.attente, 90);
+});
+
+test('une mise à disposition doublée d’un atelier dans le même service est signalée', () => {
+  const r = P.simuler({
+    vols: VOLS, liaisons: LIAISONS,
+    ateliers: [
+      atelier({ id: 'mag', nom: 'Magasin', service: 'magasin', type: 'dispo', personnes: 0 }),
+      atelier({ id: 'mag2', nom: 'Prépa magasin', service: 'magasin', debut: '05:00',
+        personnes: 3, lots: [['CRL/BC']] })
+    ]
+  });
+  assert.equal(r.ok, true, 'signalé, pas bloquant');
+  assert.match(r.anomalies.map(a => a.message).join(' '), /déjà une mise à disposition/);
+});
+
+test('elle n’exige ni effectif ni ligne de fabrication', () => {
+  const anomalies = P.validerAteliers([
+    { id: 'mag', nom: 'Magasin', service: 'magasin', type: 'dispo', debut: '06:00',
+      personnes: 0, lots: [] }
+  ], {});
+  assert.deepEqual(anomalies, [], 'rien à lui reprocher');
+});
+
+test('une mise à disposition seule ne rend aucune classe « fabriquée »', () => {
+  const r = P.simuler({
+    vols: VOLS, liaisons: LIAISONS,
+    ateliers: [atelier({ id: 'mag', nom: 'Magasin', service: 'magasin', type: 'dispo', personnes: 0 })]
+  });
+  assert.equal(r.ok, true);
+  assert.equal(r.indicateurs.classesSuivies, 0, 'ouvrir un magasin ne fabrique rien');
+  assert.equal(r.indicateurs.classesAbsentes, r.classes.length);
+  assert.equal(r.parClasse['CRL/BC'].absente, true);
+  assert.equal(r.parClasse['CRL/BC'].fin, null);
+});
+
+test('mais elle figure au parcours de ce qu’elle sert', () => {
+  const r = P.simuler({
+    vols: VOLS, liaisons: [{ from: 'magasin', to: 'prepa' }],
+    ateliers: [
+      atelier({ id: 'mag', nom: 'Magasin', service: 'magasin', type: 'dispo', personnes: 0 }),
+      atelier({ id: 'mo', nom: 'Montage', service: 'prepa', debut: '06:00', personnes: 4, lots: [['CRL/BC']] })
+    ]
+  });
+  const c = r.parClasse['CRL/BC'];
+  assert.ok(c.services.includes('magasin'), 'le parcours la montre');
+  assert.equal(c.absente, false);
+  // Sa fin est celle du montage, pas celle de l'ouverture du magasin.
+  assert.equal(c.fin, r.lots.find(l => l.atelier === 'mo').fin);
+});
