@@ -7,6 +7,23 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE_PATH?{executablePath:process.env.CHROMIUM_EXECUTABLE_PATH,args:['--no-sandbox','--disable-gpu','--disable-software-rasterizer','--no-zygote','--single-process']}:{})});
  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
  page.on('pageerror',e=>errors.push(e.message));
+ /* Un point du plan qui ne tombe sur AUCUN atelier. Des coordonnées en dur
+  * cassaient dès qu'une bande s'ajoutait au-dessus du plan. */
+ const videDuPlan=()=>page.evaluate(()=>{
+   const plan=document.getElementById('plan');
+   const b=plan.getBoundingClientRect();
+   // Test de touche exact : ce que le navigateur trouve sous le point est ce
+   // que le double-clic atteindra. Une boîte englobante s'en approcherait mal
+   // — les zones sont parfois des polygones.
+   for(let y=b.bottom-14;y>b.top+14;y-=7){
+     for(let x=b.left+14;x<b.right-14;x+=7){
+       const el=document.elementFromPoint(x,y);
+       // Le gestionnaire vise `.zone` : c'est donc `.zone` qu'il faut éviter.
+       if(el&&plan.contains(el)&&!el.closest('.zone'))return{x,y};
+     }
+   }
+   return null;
+ });
  const vue=()=>page.evaluate(()=>{const t=document.getElementById('viewport').getAttribute('transform');const [,x,y,k]=t.match(/translate\(([-\d.]+) ([-\d.]+)\) scale\(([\d.]+)\)/);return{x:+x,y:+y,k:+k};});
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
@@ -38,7 +55,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.deepEqual(await vue(),cadre,'« cadrer » = cadrage du service sélectionné');
 
   // 4. Double-clic hors atelier et touche 0 : retour à l'ensemble.
-  await page.mouse.dblclick(120,700);
+  const vide=await videDuPlan();
+  assert.ok(vide,'le plan doit avoir un endroit sans atelier');
+  await page.mouse.dblclick(vide.x,vide.y);
   assert.deepEqual(await vue(),{x:0,y:0,k:1});
   await page.locator('#zoom-in').click();
   await page.locator('#plan').focus();await page.keyboard.press('0');

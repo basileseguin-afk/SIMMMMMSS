@@ -87,12 +87,19 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(pct(rupture[1])<10,'stock par défaut : la rupture doit rester marginale · '+rupture);
   await setRange('#materiel','2600');
   // Capturer pendant une simulation en cours reste possible et rejoue la journée entière.
-  await setRange('#robot','200');await setRange('#vitesse','120');await click('#btn-play');await page.waitForTimeout(300);await click('#btn-play');
+  // Les commandes de lecture vivent dans la vue Simulation : on y passe.
+  await setRange('#robot','200');
+  await click('#rg-vers-simu');await setRange('#vitesse','120');
+  await click('#btn-play');await page.waitForTimeout(300);await click('#btn-play');
+  await click('[data-view="reglages"]');
   await click('#snap-a');assert.deepEqual((await ligne('Journée simulée')).slice(1),['23:00','23:00']);
   // Pendant la journée, chaque OF dit ce qu'il attend ; à la fin, le retard s'explique.
   await click('[data-view="vols"]');
   assert.match(await page.locator('#flight-rows').textContent(),/en cours|attend/);
+  await click('[data-view="plan"]');
   await click('#btn-play');await page.waitForFunction(()=>document.getElementById('run-state').textContent==='Terminé',{},{timeout:20000});
+  // Le tableau des vols ne se redessine que dans sa vue : on y revient pour le lire.
+  await click('[data-view="vols"]');
   const texte=await page.locator('#flight-rows').textContent();
   assert.match(texte,/attente du robot \d+ min/,'un vol servi par le robot doit expliquer son retard');
   assert.match(texte,/le dernier fini/);
@@ -103,7 +110,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // Heures, reste à faire et ETP : le vocabulaire de la feuille de route.
   // Le bloc précédent a laissé la vue sur « Vols » : on revient aux réglages.
   await click('[data-view="reglages"]');
-  await click('#btn-reset');await click('#snap-a');
+  // « Recommencer » est là où la page le nomme, pas seulement dans la vue Simulation.
+  await click('#rg-recommencer');await click('#snap-a');
   // L'équipe du soir est restée réglée par un bloc précédent : sans la baisser
   // aussi, l'après-midi rattraperait tout et la comparaison ne montrerait rien.
   await setRange('#staff-cuisine','1');await setRange('#soir-cuisine','1');await click('#snap-b');
@@ -118,7 +126,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await setRange('#staff-cuisine','10');await setRange('#soir-cuisine','10');
 
   // Vivier polyvalent : effectif + ateliers couverts, et l'effet se mesure.
-  await click('#btn-reset');
+  await click('#rg-recommencer');
   await setRange('#staff-cuisine','2');
   await click('#snap-a');
   await setRange('#vivier','8');
@@ -136,7 +144,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // Calendrier multijour : l'horloge, le compteur et le tableau A/B suivent.
   // Les réglages sont verrouillés dès qu'un essai a commencé : on recommence.
-  await click('#btn-reset');
+  await click('#rg-recommencer');
   assert.equal(await page.locator('#calendrier').isDisabled(),false);
   await setRange('#materiel','2600');
   assert.equal(await page.locator('#cal-detail').isVisible(),false);

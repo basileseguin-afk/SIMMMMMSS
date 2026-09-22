@@ -5,6 +5,43 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-22 — Par où commencer : un fil, et un seul en-tête
+
+« Il faut retravailler tout le site pour qu'il soit bien plus user friendly. »
+Première passe, sur ce qui manquait le plus : **on ne savait ni par quoi
+commencer, ni où l'on en était.**
+
+**Un fil de mise en route** (`demarrage.js`, `demarrage.css`), sous les onglets,
+sur toutes les vues. Cinq étapes dans l'ordre où on les fait — vols, plan,
+ateliers, flux, barème — chacune avec son état réel et son geste suivant, et
+une phrase qui dit quoi faire maintenant. Il ne calcule rien de neuf : il relit
+ce que les autres savent déjà. Trois états seulement, chacun avec un **signe**
+en plus de sa couleur. Tout au vert, il se réduit à une ligne.
+
+Les **ateliers passent avant les flux** : c'est l'atelier qui met un service sur
+le chemin d'une classe, donc sans équipe le graphe ne porte aucun parcours et
+rien ne peut en être jugé. Le fil le dit au lieu d'afficher un faux « fait ».
+
+**Un seul en-tête.** L'horloge, « Lancer », la vitesse de lecture et les quatre
+indicateurs ne décrivent que la vue Simulation — ils s'affichaient partout. Sur
+« Ateliers » ou « Réglages », c'était un gros bouton vert invitant à lancer ce
+qu'on ne regardait pas, et **trois bandeaux avant le contenu**. Ils restent dans
+leur vue ; les réglages de l'ancien moteur portent désormais « Ouvrir la vue
+Simulation » et « Recommencer » — ce dernier là où la page le nomme déjà.
+
+**Les indicateurs attendent d'avoir quelque chose à dire.** Avant le lancement
+ils valaient « — », « 0 », « 0 OF », « 0 plateaux/h » : une bande entière pour
+ne rien dire, juste au-dessus du plan qu'on venait voir.
+
+Corrigé au passage : sans `data-vue` sur `<body>` au premier chargement, les
+commandes de la vue Simulation disparaissaient dès l'arrivée. Et
+`zoom-browser` cliquait des coordonnées en dur, que toute bande ajoutée
+au-dessus du plan cassait ; il cherche maintenant lui-même un point libre,
+avec le sélecteur qu'emploie le gestionnaire.
+
+- Tests : `tests/demarrage.test.cjs`, neuf tests purs sur `etapes(etat)`.
+- Vérification : 193 tests purs et douze parcours navigateur au vert.
+
 ## 2026-09-22 — Le matériel ne se compte plus au seul passager
 
 « Je ne comprends pas l'utilité d'“unités par passager”, notre unité par

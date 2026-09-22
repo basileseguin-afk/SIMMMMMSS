@@ -28,7 +28,14 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator('#staff-cuisine').dispatchEvent('input');
   await click('[data-view=plan]');
   assert.match(await etat('cuisine'),/\bp-vide\b/);
-  assert.equal(await page.locator('.kpi-grille').isVisible(),true);
+  // Avant le lancement, les quatre indicateurs valent tous « — » ou « 0 » : une
+  // bande entière pour ne rien dire, juste au-dessus de ce qu'on vient voir.
+  assert.equal(await page.locator('.kpi-grille').isVisible(),false,'rien à montrer avant de lancer');
+  await page.locator('#btn-play').click();await page.waitForTimeout(350);
+  assert.equal(await page.locator('.kpi-grille').isVisible(),true,'ils apparaissent dès que la journée tourne');
+  await page.locator('#btn-play').click();
+  await page.locator('#btn-reset').click();await page.waitForTimeout(200);
+  assert.equal(await page.locator('.kpi-grille').isVisible(),false,'et repartent avec « Recommencer »');
   await click('[data-view=reglages]');
   await page.locator('#staff-cuisine').fill('10');
   await page.locator('#staff-cuisine').dispatchEvent('input');

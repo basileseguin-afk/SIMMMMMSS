@@ -1,0 +1,78 @@
+/* ==========================================================================
+ *  PAR OÙ COMMENCER
+ *  Le fil de mise en route, sous les onglets, sur toutes les vues. Il répond
+ *  aux deux questions qu'on se pose en arrivant — « qu'est-ce que je fais ? »
+ *  et « où j'en suis ? » — et il s'efface quand elles ne se posent plus.
+ * ==========================================================================*/
+.guide{border-bottom:1px solid var(--bordure);background:var(--bg3);padding:14px 24px 16px}
+.guide-tete{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.guide-tete h2{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--txt2);margin:0}
+.guide-suite{margin:0;font-size:13px;color:var(--txt);flex:1;min-width:200px}
+.guide-tete .text-button{margin-left:auto}
+
+.guide-etapes{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:8px;list-style:none;margin:12px 0 0;padding:0;counter-reset:none}
+.guide.replie .guide-etapes{display:none}
+
+.guide-etape button{display:flex;align-items:flex-start;gap:9px;width:100%;text-align:left;
+  background:var(--bg2);border:1px solid var(--bordure2);border-radius:9px;padding:9px 11px;
+  color:var(--txt);font:inherit;cursor:pointer;min-height:auto}
+.guide-etape button:hover{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 6%,var(--bg2))}
+.guide-etape button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.guide-txt{display:block;min-width:0}
+.guide-txt b{display:block;font-size:12.5px;font-weight:700;line-height:1.35}
+.guide-txt em{display:block;font-style:normal;font-size:11.5px;color:var(--txt2);line-height:1.4;
+  overflow-wrap:anywhere}
+
+/* Trois états, trois pastilles. Jamais la couleur seule : chacune porte aussi
+   un signe, pour qui ne distingue pas le vert de l'orange. */
+.pastille{flex:none;width:19px;height:19px;border-radius:50%;display:grid;place-items:center;
+  font-size:11px;font-weight:800;line-height:1;margin-top:1px}
+.pastille.fait{background:var(--vert);color:#fff}
+.pastille.verifier{background:var(--orange);color:#fff}
+.pastille.afaire{background:var(--bordure2);color:var(--txt2)}
+.guide-etape.fait button{opacity:.72}
+.guide-etape.fait button:hover{opacity:1}
+.guide-etape.afaire button{border-color:var(--accent);border-width:2px;padding:8px 10px}
+
+/* Mise en route finie : une seule ligne, et on passe à autre chose. */
+.guide.fini{padding:9px 24px}
+.guide-fini{display:flex;align-items:center;gap:9px;margin:0;font-size:12.5px;color:var(--txt2)}
+.guide .lien{background:none;border:0;padding:0;font:inherit;font-weight:700;
+  color:var(--accent2);text-decoration:underline;cursor:pointer}
+
+@media(max-width:700px){
+  .guide{padding:12px 16px}
+  .guide.fini{padding:9px 16px}
+  .guide-etapes{grid-template-columns:1fr}
+}
+
+/* ==========================================================================
+ *  UN SEUL EN-TÊTE
+ *  L'horloge, « Lancer », la vitesse de lecture et les quatre indicateurs ne
+ *  décrivent QUE la vue Simulation. Les afficher sur « Ateliers » ou
+ *  « Réglages », c'est offrir un gros bouton vert qui n'a rien à voir avec ce
+ *  qu'on regarde — et c'est ce qui faisait trois bandeaux avant le contenu.
+ * ========================================================================== */
+body:not([data-vue="plan"]) .horloge-box,
+body:not([data-vue="plan"]) .vitesse-box,
+body:not([data-vue="plan"]) .kpi-grille{display:none}
+/* En édition du plan, les commandes n'ont pas de sens non plus. */
+body.editing .horloge-box,body.editing .vitesse-box,body.editing .kpi-grille{display:none}
+
+/* Avant le lancement, les quatre indicateurs valent « — », « 0 », « 0 OF » et
+   « 0 plateaux/h ». Une bande entière pour ne rien dire, juste au-dessus de ce
+   qu'on est venu voir. Ils apparaissent quand ils ont quelque chose à montrer. */
+body.avant-lancement .kpi-grille{display:none}
+
+/* La barre de contexte se réduit à ce qu'elle dit vraiment. */
+.context-bar{padding-top:6px;padding-bottom:6px}
+
+/* En édition du plan, le fil de mise en route n'a rien à dire et prend la
+   place des outils de tracé. */
+body.editing .guide{display:none}
+
+/* Depuis les réglages de l'ancien moteur, le chemin vers la vue qu'ils
+   pilotent doit être dit : le bouton « Lancer » n'est plus là. */
+.reglages-vers-simu{grid-column:1/-1;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  margin:0 0 4px;font-size:12.5px;color:var(--txt2)}

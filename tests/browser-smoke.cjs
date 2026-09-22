@@ -19,7 +19,14 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await click('[data-view="reglages"]');assert.equal(await page.locator('#staff-magasin').isDisabled(),true);
   await setRange('#staff-prepa','19');
+  // Les commandes de lecture ne vivent plus que dans la vue qu'elles pilotent :
+  // ailleurs, un gros bouton « Lancer » invitait à lancer ce qu'on ne regardait pas.
+  assert.equal(await page.locator('#btn-play').isVisible(),false,'pas de « Lancer » sur les réglages');
+  assert.equal(await page.locator('.kpi-grille').isVisible(),false,'ni les indicateurs de la simulation');
+  await click('#rg-vers-simu');   // le chemin est dit, et il y mène
+  assert.equal(await page.locator('#btn-play').isVisible(),true);
   await click('#btn-play');await page.waitForTimeout(400);await click('#btn-play');
+  await click('[data-view="reglages"]');
   assert.equal(await page.locator('#staff-prepa').isDisabled(),true);
   const clock=await page.locator('#horloge').textContent();await page.waitForTimeout(150);assert.equal(await page.locator('#horloge').textContent(),clock);
   await click('[data-view="vols"]');assert.equal(await page.locator('#flight-rows tr').count(),12);
@@ -42,9 +49,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.waitForFunction(()=>document.getElementById('source-label').textContent==='test.csv');
   await click('[data-view="vols"]');assert.equal(await page.locator('#flight-rows img').count(),0);assert.match(await page.locator('#flight-rows').textContent(),/<img src=x>/);
   assert.equal(await page.locator('#kpi-ontime').textContent(),'0 %');assert.equal(await page.locator('#kpi-overdue').textContent(),'1');
-  await click('[data-view="reglages"]');await setRange('#staff-appros','0');await setRange('#vitesse','120');
+  await click('[data-view="reglages"]');await setRange('#staff-appros','0');
+  await click('#rg-vers-simu');await setRange('#vitesse','120');
   await click('#btn-play');await page.waitForFunction(()=>document.getElementById('run-state').textContent==='Terminé',{},{timeout:20000});
   assert.equal(await page.locator('#kpi-overdue').textContent(),'1');assert.equal(await page.locator('#kpi-ontime').textContent(),'0 %');
+  await click('[data-view="reglages"]');
   await click('#snap-a');assert.match(await page.locator('#compare').textContent(),/23:00/);
   const downloaded=page.waitForEvent('download');await click('#btn-export');const download=await downloaded;
   const result=JSON.parse(fs.readFileSync(await download.path(),'utf8'));assert.equal(result.modelStatus,'demonstration_non_calibree');assert.equal(result.vols[0].retard,null);assert.equal(result.kpis.overdue,1);

@@ -210,7 +210,7 @@ en gardant les deux entrées.
 ## 7. Vérifier avant de livrer
 
 ```bash
-node --test tests/*.test.cjs     # 163 tests purs
+node --test tests/*.test.cjs     # 193 tests purs
 node tests/browser-smoke.cjs     # puis les 11 autres parcours (Playwright + Chromium)
 ```
 
@@ -228,6 +228,9 @@ node tests/browser-smoke.cjs     # puis les 11 autres parcours (Playwright + Chr
 | `zoom-browser` | bornes du zoom, cadrage, clavier, bridage du déplacement |
 | `annexe-browser` | seconde salle d'un atelier : création, aménagement, liaisons propres |
 | `reglages-browser` | barème, rendement, régime de poste, import/export, séparation d'avec l'ancien moteur |
+
+Le fil de mise en route est couvert par `tests/demarrage.test.cjs`, en tests
+purs : c'est une fonction, `etapes(etat)`, qui ne touche pas au navigateur.
 
 **Les douze parcours navigateur doivent être passés avant de livrer**, pas le seul
 `browser-smoke` : c'est en n'en rejouant qu'une partie qu'une régression de

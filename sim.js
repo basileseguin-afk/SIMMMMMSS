@@ -479,14 +479,54 @@ function initAteliers(){
     liaisons:liaisonsServices,
     reglages:()=>(Sim.reglages?Sim.reglages.pourMoteur():{delaiChargement:CFG.loadDelay}),
     // Le plan dit « aménagé » d'après les ateliers : il doit suivre leur saisie.
-    change:()=>majEtatPlan(),
+    change:()=>{majEtatPlan();majDemarrage();},
     notify:toast
+  });
+}
+/* ==========================================================================
+ *  PAR OÙ COMMENCER
+ *  Ce que le fil de mise en route relit. Rien n'est calculé ici : chaque
+ *  chiffre vient de celui qui le tient déjà. L'état de départ le plus utile
+ *  est celui qu'on n'a pas eu à saisir deux fois.
+ * ==========================================================================*/
+function etatDemarrage(){
+  const zones=(Sim.editor&&Sim.editor.state.zones)||[];
+  const lu=Sim.flows?lectureDuGraphe():{lignes:[],alertes:[]};
+  const r=(Sim.ateliers&&Sim.ateliers.resultat)||{};
+  const ats=(Sim.ateliers&&Sim.ateliers.state.ateliers)||[];
+  const fabriquent=ats.filter(a=>a.type==='dispo'||a.type==='lavage'||(a.lots||[]).some(l=>l.length)).length;
+  // « Calibré » ne veut pas dire « juste » : seulement que ce ne sont plus les
+  // valeurs de démonstration. C'est tout ce qu'on peut honnêtement constater.
+  let calibre=false;
+  try{ calibre=Sim.reglages
+    ? JSON.stringify(Sim.reglages.etat.bareme)!==JSON.stringify(MoteurProduction.BAREME_DEMO)
+    : false; }catch(e){ calibre=false; }
+  return {
+    vols:{ total:flights.length, departs:flights.filter(f=>f.sens==='DEP').length,
+           source:dataSource==='Jeu de démonstration'?'demo':'importe' },
+    plan:{ services:Object.keys(ZONES).length+annexes().length,
+           approx:zones.filter(z=>z.approx&&z.visible!==false).length },
+    flux:{ liaisons:Sim.flows?Sim.flows.state.flows.filter(f=>f.enabled).length:0,
+           alertes:lu.alertes.filter(a=>a.grave).length },
+    ateliers:{ total:ats.length, fabriquent,
+               absentes:(r.indicateurs||{}).classesAbsentes||0 },
+    bareme:{ calibre }
+  };
+}
+function majDemarrage(){ if(Sim.demarrage)Sim.demarrage.rendre(); }
+function initDemarrage(){
+  const tete=document.querySelector('.workspace-heading');
+  if(!tete||!window.OrlyDemarrage)return;
+  const hote=document.createElement('div');hote.id='guide-hote';
+  tete.parentNode.insertBefore(hote,tete.nextSibling);
+  Sim.demarrage=new OrlyDemarrage.Demarrage({
+    hote:()=>hote, etat:etatDemarrage, aller:onglet=>showView(onglet)
   });
 }
 function initFlux(){
   Sim.flows=new OrlyFlows.FlowCenter({zones:()=>Sim.editor.state.zones,legacy:FLUX.concat(FLUX_RETOUR),
     lecture:lectureDuGraphe,
-    changed:()=>{if(Sim.flows)redessinerEdges();if(Sim.ateliers)Sim.ateliers.rendre();},
+    changed:()=>{if(Sim.flows)redessinerEdges();if(Sim.ateliers)Sim.ateliers.rendre();majDemarrage();},
     showMap:()=>showView('plan'),notify:toast});
   redessinerEdges();
 }
@@ -1578,7 +1618,7 @@ function installerCentreReglages() {
     services:servicesDisponibles,
     parent:id=>{const a=annexes().find(z=>z.id===id);return a?a.parent:null;},
     delaiChargement:()=>CFG.loadDelay,
-    change:()=>{if(Sim.ateliers)Sim.ateliers.rendre();},
+    change:()=>{if(Sim.ateliers)Sim.ateliers.rendre();majDemarrage();},
     notify:toast
   });
   // Les horaires de vols servent aux DEUX moteurs : le délai de chargement fixe
@@ -1592,7 +1632,22 @@ function installerCentreReglages() {
   ancien.textContent='Ancien moteur de démonstration';
   const note=document.createElement('p');note.className='mini-note reglages-entete';
   note.innerHTML='Ces réglages ne pilotent que la vue <b>Simulation</b>, restée sur le moteur précédent : effectifs par curseur, files d’attente, contenances, vivier. Le modèle par ateliers n’a ni file ni contenance. Ils se verrouillent une fois la simulation commencée : <strong>Recommencer</strong> les libère.';
-  hote.appendChild(ancien);hote.appendChild(note);hote.appendChild(bloc);
+  // Les commandes de lecture vivent désormais dans la vue qu'elles pilotent :
+  // il faut donc dire où aller pour voir l'effet de ces curseurs.
+  const vers=document.createElement('p');vers.className='reglages-vers-simu';
+  vers.innerHTML='<span>Pour voir l’effet de ces réglages :</span>';
+  const bouton=document.createElement('button');bouton.className='btn btn-sm';bouton.id='rg-vers-simu';
+  bouton.textContent='Ouvrir la vue Simulation';
+  bouton.addEventListener('click',()=>showView('plan'));
+  vers.appendChild(bouton);
+  // « Recommencer les libère » : le geste doit être là où la phrase le nomme,
+  // sinon elle envoie chercher un bouton qui n'est plus sur cette page.
+  const rejouer=document.createElement('button');rejouer.className='btn btn-sm';rejouer.id='rg-recommencer';
+  rejouer.textContent='Recommencer';
+  rejouer.title='Réinitialiser la journée et déverrouiller les réglages';
+  rejouer.addEventListener('click',()=>document.getElementById('btn-reset').click());
+  vers.appendChild(rejouer);
+  hote.appendChild(ancien);hote.appendChild(note);hote.appendChild(vers);hote.appendChild(bloc);
   // Le programme de vols, la sauvegarde et le périmètre décrivent l'essai eux
   // aussi : les laisser dans la colonne étroite obligeait à changer de vue pour
   // préparer une seule et même chose. La colonne ne garde que le suivi vivant.
@@ -1625,6 +1680,7 @@ function showView(name) {
   if(name==='vols')renderFlights();
 }
 function updateSource() {
+  majDemarrage();
   document.getElementById('source-label').textContent=dataSource;
   document.getElementById('source-count').textContent=flights.filter(f=>f.sens==='DEP').length+' départs · '+flights.filter(f=>f.sens==='RET').length+' retours';
   document.getElementById('flight-count').textContent=flights.filter(f=>f.sens==='DEP').length;
@@ -1695,6 +1751,9 @@ Sim.etat = () => ({ now, debut:DEBUT(), fin:FIN(), enMarche, modele });
 window.Sim = Sim;
 chargerZones();
 construirePlan(); build(SAMPLE); initControles(); initEdition(); initFlux(); initAteliers(); initWorkbench();
+// Le fil de mise en route vient en dernier : il relit les autres, il ne peut
+// donc se dresser qu'une fois qu'ils sont là.
+initDemarrage();
 majHorloge(); majPlan(); majDashboard(); dessinerChart();
 
 })();
