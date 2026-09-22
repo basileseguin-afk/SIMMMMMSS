@@ -515,32 +515,86 @@
    *  simplification assumée : un trolley de CRL n'est pas un trolley d'AF.
    * --------------------------------------------------------------------*/
 
+  /*
+   * Ce qu'un vol emporte de matériel, classé comme le barème : **par passager
+   * ET par vol**, pour chaque classe.
+   *
+   * Compter tout au passager ne décrit pas l'unité : un trolley part avec le
+   * vol, pas avec le passager, et sa quantité ne bouge pas parce que l'avion
+   * est à moitié vide. La porcelaine, elle, suit bien le passager — mais
+   * seulement en avant. Une seule « unité par passager » devait donc faire les
+   * deux, et n'en faisait bien aucune.
+   *
+   * Qui ne veut pas du compte au passager met simplement ses `parPax` à zéro.
+   */
+  const UNITES_DEFAUT = Object.fromEntries(
+    CABINES.map(c => [c, { parPax: 1, parVol: 0 }]));
+
   const MATERIEL_DEFAUT = {
     actif: false,
-    parPax: 1,          // unités emportées par passager — NON CALIBRÉ
-    stockInitial: 0,    // propre disponible à l'ouverture
-    delaiRetour: 30     // minutes entre l'arrivée d'un vol et sa mise à disposition
+    unites: UNITES_DEFAUT,   // par classe : par passager et par vol — NON CALIBRÉ
+    stockInitial: 0,         // propre disponible à l'ouverture
+    delaiRetour: 30          // minutes entre l'arrivée d'un vol et sa mise à disposition
   };
+
+  /**
+   * La table des unités d'un réglage, quelle que soit la forme où il arrive.
+   * Un `parPax` scalaire — l'ancienne saisie — devient une table uniforme :
+   * une sauvegarde d'hier continue de donner le même résultat.
+   */
+  function unitesDe(materiel) {
+    const m = materiel || {};
+    // On lit le réglage TEL QU'IL ARRIVE. Le fusionner avec le défaut d'abord
+    // masquerait un `parPax` hérité derrière la table par défaut, et une
+    // sauvegarde d'hier rendrait silencieusement un autre résultat.
+    if (Number.isFinite(+m.parPax) && !m.unites) {
+      const legacy = +m.parPax;
+      return Object.fromEntries(CABINES.map(c => [c, { parPax: legacy, parVol: 0 }]));
+    }
+    if (m.unites && typeof m.unites === 'object') {
+      return Object.fromEntries(CABINES.map(c => {
+        const u = m.unites[c] || {};
+        return [c, { parPax: +u.parPax || 0, parVol: +u.parVol || 0 }];
+      }));
+    }
+    return clone(UNITES_DEFAUT);
+  }
+  const clone = x => JSON.parse(JSON.stringify(x));
+
+  /** Ce qu'un vol emporte, toutes classes confondues. */
+  function unitesDuVol(vol, unites) {
+    let n = 0;
+    for (const c of CABINES) {
+      const pax = vol[CHAMP_PAX[c]] || 0;
+      if (pax <= 0) continue;
+      n += pax * unites[c].parPax + unites[c].parVol;
+    }
+    return n;
+  }
 
   /** Ce que les vols retour ramènent de sale, et quand. */
   function retoursDeVols(vols, materiel) {
     const m = { ...MATERIEL_DEFAUT, ...(materiel || {}) };
+    const unites = unitesDe(materiel);
     const out = [];
     for (const v of vols || []) {
       if (v.sens !== 'RET') continue;
       const arrivee = v.sta === undefined ? v.heure : v.sta;
       if (!Number.isFinite(arrivee)) continue;
-      const pax = CABINES.reduce((n, c) => n + (v[CHAMP_PAX[c]] || 0), 0);
-      if (pax <= 0) continue;
-      out.push({ vol: v.id, t: arrivee + m.delaiRetour, unites: pax * m.parPax });
+      const n = unitesDuVol(v, unites);
+      if (n <= 0) continue;
+      out.push({ vol: v.id, t: arrivee + m.delaiRetour, unites: n });
     }
     return out.sort((a, b) => a.t - b.t);
   }
 
-  /** Ce qu'un lot emporte : le nombre de passagers de ses classes, en unités. */
+  /** Ce qu'un lot emporte : par passager ET par vol, classe par classe. */
   function besoinMateriel(classes, materiel) {
-    const m = { ...MATERIEL_DEFAUT, ...(materiel || {}) };
-    return classes.reduce((n, c) => n + c.pax, 0) * m.parPax;
+    const unites = unitesDe(materiel);
+    return classes.reduce((n, c) => {
+      const u = unites[c.cabine] || { parPax: 0, parVol: 0 };
+      return n + c.pax * u.parPax + c.vols.length * u.parVol;
+    }, 0);
   }
 
   /* ======================================================================
@@ -636,7 +690,9 @@
 
     /* ---- boucle du matériel ------------------------------------------ */
 
-    const mat = { ...MATERIEL_DEFAUT, ...(opts.materiel || {}) };
+    // La table des unités se lit sur le réglage BRUT et voyage avec lui : la
+    // fusion avec le défaut masquerait un réglage hérité.
+    const mat = { ...MATERIEL_DEFAUT, ...(opts.materiel || {}), unites: unitesDe(opts.materiel) };
     const stock = {
       propre: mat.stockInitial, sale: 0,
       minPropre: mat.stockInitial, entrees: 0, lavees: 0, consommees: 0, attente: 0
@@ -927,7 +983,7 @@
         hommeHeures: journal.reduce((n, l) => n + (l.hommeMinutes || 0), 0) / 60
       },
       materiel: mat.actif ? {
-        parPax: mat.parPax, stockInitial: mat.stockInitial,
+        unites: unitesDe(mat), stockInitial: mat.stockInitial,
         entrees: stock.entrees, lavees: Math.round(stock.lavees), consommees: stock.consommees,
         restePropre: Math.round(stock.propre), resteSale: Math.round(stock.sale),
         minPropre: Math.round(stock.minPropre), attente: stock.attente,
@@ -948,7 +1004,7 @@
     classesDeVols, BAREME_DEMO, RENDEMENT_DEMO, travailClasse,
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,
     pausesDe, finAvecPauses,
-    MATERIEL_DEFAUT, retoursDeVols, besoinMateriel,
+    MATERIEL_DEFAUT, UNITES_DEFAUT, unitesDe, retoursDeVols, besoinMateriel,
     simuler
   };
 

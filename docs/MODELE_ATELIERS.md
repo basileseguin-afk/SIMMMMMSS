@@ -202,15 +202,34 @@ un départ les remporte.
 > d'amortisseur : quand la plonge prend du retard, ou le jour où les retours
 > manquent.
 
-Le modèle tient **un compte unique**, en unités par passager. C'est une
-simplification assumée : un trolley de CRL et un trolley d'AF ne s'y distinguent
-pas.
+Le modèle tient **un compte unique** d'unités. C'est une simplification
+assumée : un trolley de CRL et un trolley d'AF ne s'y distinguent pas.
+
+### Ce qu'un vol emporte se compte comme le barème
+
+**Par passager ET par vol, classe par classe.** Pas au seul passager.
+
+Un trolley part avec **le vol** : sa quantité ne bouge pas parce que la cabine
+est à moitié vide. La porcelaine suit **le passager**, mais seulement en avant.
+Une unique « unité par passager » devait donc faire les deux, et n'en faisait
+bien aucune.
+
+| | Ce qu'on y met |
+|---|---|
+| **u / vol** | ce qui part avec l'avion — trolleys, caissons, fours |
+| **u / passager** | ce qui suit les gens — porcelaine, couverts en cabine avant |
+
+Qui n'a pas d'unité au passager met simplement cette colonne à **zéro** : c'est
+le cas le plus courant, et le modèle n'en compte alors que par vol.
 
 | Réglage | Sens |
 |---|---|
-| Unités par passager | ce qu'un passager emporte — **non calibré** |
+| Unités par classe | **non calibré**, par passager et par vol |
 | Propre à l'ouverture | le stock de départ, souvent nul |
 | Délai après atterrissage | minutes avant que le sale soit à la plonge |
+
+Une saisie d'hier, qui ne portait qu'un « unités par passager » unique, est
+relue telle quelle : elle donne exactement le même résultat.
 
 Un atelier de type **Lavage** ne fabrique rien : son travail vient des retours, à
 mesure qu'ils arrivent. Il suit le même régime de poste que les autres — ce qui

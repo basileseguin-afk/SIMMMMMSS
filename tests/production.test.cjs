@@ -846,3 +846,54 @@ test('le plafond change la durée réellement simulée', () => {
   assert.equal(libre.fin - libre.debut, 10, '100 unités à 600/h');
   assert.equal(bride.fin - bride.debut, 20, 'le plafond de 300/h double la durée');
 });
+
+/* ---- le matériel se compte par passager ET par vol ---------------------- */
+
+test('une quantité par vol ne bouge pas avec le remplissage', () => {
+  // Six trolleys par vol en YC, rien au passager : c'est ainsi qu'on décrit un
+  // matériel qui part avec l'avion, pas avec les gens.
+  const unites = { YC: { parPax: 0, parVol: 6 } };
+  const plein = P.retoursDeVols(
+    [{ id: 'R', sens: 'RET', sta: 6 * 60, bc: 0, pc: 0, yc: 300 }], { unites, delaiRetour: 0 });
+  const vide = P.retoursDeVols(
+    [{ id: 'R', sens: 'RET', sta: 6 * 60, bc: 0, pc: 0, yc: 20 }], { unites, delaiRetour: 0 });
+  assert.equal(plein[0].unites, 6);
+  assert.equal(vide[0].unites, 6, 'un avion à moitié vide ramène autant de trolleys');
+});
+
+test('chaque classe a sa propre quantité', () => {
+  // La porcelaine suit le passager, mais seulement en avant.
+  const unites = {
+    BC: { parPax: 4, parVol: 0 }, PC: { parPax: 2, parVol: 0 },
+    YC: { parPax: 0, parVol: 6 }, CREW: { parPax: 1, parVol: 0 }, SPML: { parPax: 1, parVol: 0 }
+  };
+  const r = P.retoursDeVols(
+    [{ id: 'R', sens: 'RET', sta: 6 * 60, bc: 10, pc: 20, yc: 200 }], { unites, delaiRetour: 0 });
+  assert.equal(r[0].unites, 10 * 4 + 20 * 2 + 6, '40 + 40 + 6');
+});
+
+test('mettre les parPax à zéro retire le compte au passager', () => {
+  const unites = Object.fromEntries(P.CABINES.map(c => [c, { parPax: 0, parVol: 3 }]));
+  const classes = P.classesDeVols(VOLS, { delaiChargement: 45 })
+    .filter(c => c.id === 'CRL/YC');
+  assert.equal(P.besoinMateriel(classes, { unites }), classes[0].vols.length * 3,
+    'seul le nombre de vols compte');
+});
+
+test('un réglage d’hier — un seul « unités par passager » — donne le même résultat', () => {
+  const vols = [{ id: 'R', sens: 'RET', sta: 6 * 60, bc: 10, pc: 0, yc: 90 }];
+  assert.equal(P.retoursDeVols(vols, { parPax: 1, delaiRetour: 0 })[0].unites, 100);
+  assert.equal(P.retoursDeVols(vols, { parPax: 2, delaiRetour: 0 })[0].unites, 200);
+  assert.deepEqual(P.unitesDe({ parPax: 2 }).BC, { parPax: 2, parVol: 0 });
+  // Et sans rien du tout, la valeur d'attente.
+  assert.deepEqual(P.unitesDe(undefined), P.UNITES_DEFAUT);
+});
+
+test('le besoin d’un lot suit la même règle que les retours', () => {
+  const unites = { BC: { parPax: 4, parVol: 2 }, YC: { parPax: 0, parVol: 6 } };
+  const classes = [
+    { id: 'A/BC', cabine: 'BC', pax: 10, vols: [{}, {}] },
+    { id: 'A/YC', cabine: 'YC', pax: 200, vols: [{}, {}] }
+  ];
+  assert.equal(P.besoinMateriel(classes, { unites }), 10 * 4 + 2 * 2 + 0 + 2 * 6, '40 + 4 + 12');
+});

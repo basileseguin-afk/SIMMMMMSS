@@ -5,6 +5,24 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-22 — Le matériel ne se compte plus au seul passager
+
+« Je ne comprends pas l'utilité d'“unités par passager”, notre unité par
+passager n'est pas utile. » Le réglage était le bon endroit, mais la mauvaise
+question : **un trolley part avec le vol**, pas avec le passager, et sa
+quantité ne bouge pas parce que la cabine est à moitié vide.
+
+- `moteur/production.js` : le matériel se compte comme le barème —
+  **par passager ET par vol, classe par classe**. Une unique « unité par
+  passager » devait faire les deux, et n'en faisait bien aucune.
+- Qui n'a pas d'unité au passager met cette colonne à **zéro** : le compte se
+  fait alors uniquement par vol, ce qui est le cas le plus courant.
+- `unitesDe()` relit une saisie d'hier — un `parPax` scalaire — et rend
+  exactement le même résultat. Le réglage brut est lu **avant** la fusion avec
+  le défaut, sans quoi la table par défaut masquait la valeur héritée.
+- `ateliers.js` : le champ unique devient une petite table à cinq lignes.
+- Vérification : 184 tests purs et douze parcours navigateur au vert.
+
 ## 2026-09-22 — CREW et SPML, et les deux débits de la plonge
 
 **Deux classes de plus.** `CABINES` devient `['BC','PC','YC','CREW','SPML']`.

@@ -178,3 +178,10 @@ body.ateliers-open .workbench{display:none}
 /* Bridée : le plafond est ce qui décide, et il faut le voir. */
 .at-bilan-debit.bride{border-color:var(--orange)}
 .at-bilan-debit.bride .retenu b{color:var(--orange)}
+
+/* Le matériel, classe par classe : par passager et par vol. */
+.at-mat-table{width:100%;max-width:520px;border-collapse:collapse;font-size:12.5px;margin-top:10px}
+.at-mat-table th,.at-mat-table td{padding:5px 8px;border-bottom:1px solid var(--bordure);text-align:left}
+.at-mat-table thead th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--txt2)}
+.at-mat-table tbody th{font-weight:700;white-space:nowrap}
+.at-mat-table input{width:100%;max-width:110px;text-align:right}

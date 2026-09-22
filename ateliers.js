@@ -89,7 +89,9 @@
     const m = brut.materiel || {};
     const materiel = {
       actif: m.actif === true,
-      parPax: Number.isFinite(+m.parPax) ? Math.max(0, +m.parPax) : 1,
+      // Par classe, par passager ET par vol : un trolley part avec le vol, la
+      // porcelaine avec le passager. `unitesDe` relit aussi l'ancienne saisie.
+      unites: P.unitesDe(m),
       stockInitial: Number.isFinite(+m.stockInitial) ? Math.max(0, Math.round(+m.stockInitial)) : 0,
       delaiRetour: Number.isFinite(+m.delaiRetour) ? Math.max(0, Math.round(+m.delaiRetour)) : 30
     };
@@ -327,7 +329,8 @@
       // chercher par identifiant d'atelier les ferait disparaître en silence.
       if (champ.startsWith('mat-')) {
         const v = el.type === 'checkbox' ? el.checked : el.value;
-        setTimeout(() => this.appliquerMateriel(champ, v), 0);
+        const data = { cabine: el.dataset.cabine, part: el.dataset.part };
+        setTimeout(() => this.appliquerMateriel(champ, v, data), 0);
         return;
       }
       const a = this.state.ateliers.find(x => x.id === id); if (!a) return;
@@ -335,11 +338,16 @@
       setTimeout(() => this.appliquerSaisie(champ, a, el, v), 0);
     }
 
-    appliquerMateriel(champ, v) {
+    appliquerMateriel(champ, v, data) {
       this.changer(() => {
         const m = this.state.materiel;
         if (champ === 'mat-actif') m.actif = !!v;
-        if (champ === 'mat-parpax') m.parPax = Math.max(0, parseFloat(v) || 0);
+        if (champ === 'mat-unite') {
+          const { cabine, part } = data || {};
+          if (m.unites[cabine] && (part === 'parPax' || part === 'parVol')) {
+            m.unites[cabine][part] = Math.max(0, parseFloat(v) || 0);
+          }
+        }
         if (champ === 'mat-stock') m.stockInitial = Math.max(0, parseInt(v, 10) || 0);
         if (champ === 'mat-delai') m.delaiRetour = Math.max(0, parseInt(v, 10) || 0);
       }, champ === 'mat-actif'
@@ -544,10 +552,22 @@
     <span><strong>Matériel en boucle</strong> — ce qui part revient : un départ l'emporte, un retour
     le ramène sale, la plonge le rend propre. Un seul compte, non calibré.</span></label>
   ${m.actif ? `<div class="at-mat-champs">
-    <label>Unités par passager<input type="number" min="0" step="0.1" value="${m.parPax}" data-at-champ="mat-parpax"></label>
     <label>Propre à l'ouverture<input type="number" min="0" value="${m.stockInitial}" data-at-champ="mat-stock"></label>
     <label>Délai après atterrissage (min)<input type="number" min="0" value="${m.delaiRetour}" data-at-champ="mat-delai"></label>
-  </div>` : ''}
+  </div>
+  <p class="mini-note">Combien d'unités partent, classe par classe. <b>Par vol</b> pour ce qui part
+    avec l'avion — un trolley ne se multiplie pas parce que la cabine est pleine. <b>Par passager</b>
+    pour ce qui suit les gens, la porcelaine par exemple. Laissez une colonne à zéro si elle ne
+    veut rien dire chez vous : c'est le cas le plus courant pour « par passager ».</p>
+  <table class="at-mat-table"><thead><tr><th scope="col">Classe</th>
+    <th scope="col">u / passager</th><th scope="col">u / vol</th></tr></thead><tbody>
+    ${P.CABINES.map(c => `<tr><th scope="row" title="${esc((P.NOM_CABINE || {})[c] || c)}">${c}</th>
+      ${['parPax', 'parVol'].map(part => `<td><input type="number" min="0" step="0.1"
+        value="${(m.unites[c] || {})[part] || 0}" data-at-champ="mat-unite"
+        data-cabine="${c}" data-part="${part}"
+        aria-label="${c} : unités par ${part === 'parPax' ? 'passager' : 'vol'}"></td>`).join('')}
+    </tr>`).join('')}
+  </tbody></table>` : ''}
   ${m.actif && bilan ? `<div class="at-mat-bilan">
     ${chiffre('Revenu des vols', bilan.entrees + ' u')}
     ${chiffre('Lavé', bilan.lavees + ' u', bilan.resteSale ? bilan.resteSale + ' u sales non lavées' : '')}

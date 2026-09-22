@@ -260,9 +260,20 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator(`[data-at="${cui2}"] [data-at-champ=regime]`).check();await attendre();
 
   // 19. La boucle du mat\u00e9riel : la plonge lave ce qui revient, la prod l'emporte.
-  assert.equal(await page.locator('[data-at-champ=mat-parpax]').count(),0,'rien \u00e0 r\u00e9gler tant que le compte n\u2019est pas tenu');
+  assert.equal(await page.locator('[data-at-champ=mat-unite]').count(),0,'rien à régler tant que le compte n’est pas tenu');
   await page.locator('[data-at-champ=mat-actif]').check();await attendre();
-  assert.equal(await page.locator('[data-at-champ=mat-parpax]').count(),1);
+  // Le matériel se compte PAR CLASSE, par passager ET par vol : un trolley part
+  // avec le vol et ne se multiplie pas parce que la cabine est pleine.
+  assert.equal(await page.locator('[data-at-champ=mat-unite]').count(),10,'cinq classes × deux colonnes');
+  assert.equal(await page.locator('[data-at-champ=mat-parpax]').count(),0,'plus de champ unique');
+  const unite=(c,part)=>`[data-at-champ=mat-unite][data-cabine=${c}][data-part=${part}]`;
+  await page.fill(unite('YC','parPax'),'0');await page.dispatchEvent(unite('YC','parPax'),'change');await attendre();
+  await page.fill(unite('YC','parVol'),'6');await page.dispatchEvent(unite('YC','parVol'),'change');await attendre();
+  assert.deepEqual(await page.evaluate(()=>Sim.ateliers.state.materiel.unites.YC),{parPax:0,parVol:6},
+    'le compte au passager se retire, celui au vol le remplace');
+  // Remis au passager pour la suite du parcours.
+  await page.fill(unite('YC','parPax'),'1');await page.dispatchEvent(unite('YC','parPax'),'change');await attendre();
+  await page.fill(unite('YC','parVol'),'0');await page.dispatchEvent(unite('YC','parVol'),'change');await attendre();
   const plonge=await creer('Plonge','plonge','05:00',3,'lavage');
   assert.equal(await page.locator(`[data-at="${plonge}"] [data-at-champ=lot-nouveau]`).count(),0,
     'un atelier de lavage n\u2019a pas de lots');
