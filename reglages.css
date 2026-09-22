@@ -4,7 +4,10 @@
  *  pilote les ateliers de travail, et donc les chiffres qu'on lit aujourd'hui.
  * ==========================================================================*/
 .rg-modele{display:contents}
-.rg-modele .reglages-titre,.rg-modele .rg-intro,.rg-modele #rg-status,.rg-modele .rg-ailleurs{grid-column:1/-1}
+.rg-modele .reglages-titre,.rg-modele .rg-intro,.rg-modele #rg-status,.rg-modele .rg-ailleurs,
+/* L'enveloppe titre + « ? » est désormais l'élément de grille : sans cette
+   ligne elle tient dans une seule colonne, et le titre déborde de son filet. */
+.rg-modele .titre-aide{grid-column:1/-1}
 .rg-intro{max-width:850px;margin:0 0 4px}
 #rg-status:not(:empty){font-size:13px;color:var(--accent2);margin:0 0 6px}
 
@@ -15,14 +18,44 @@
 .rg-avertissement{border-left:3px solid var(--warn-stroke);background:var(--warn-fill);color:var(--txt);
   padding:10px 14px;border-radius:0 8px 8px 0;font-size:12.5px;line-height:1.55;margin:10px 0}
 
+/* ==========================================================================
+ *  LE BARÈME, UN SERVICE À LA FOIS
+ *  Onze services × cinq classes × deux colonnes faisaient cent dix champs d'un
+ *  bloc. Replié, chaque service tient en une ligne qui dit l'essentiel ;
+ *  ouvert, il montre ses dix champs et rien d'autre.
+ * ==========================================================================*/
+.rg-service{border:1px solid var(--bordure);border-radius:9px;background:var(--bg3);margin-bottom:6px}
+.rg-service+.rg-service{margin-top:0}
+.rg-service>summary{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:9px 13px;min-height:0;cursor:pointer;list-style:none;
+  font-size:12.5px;color:var(--txt);font-weight:400}
+.rg-service>summary::-webkit-details-marker{display:none}
+.rg-service>summary::before{content:'\25b8';flex:none;color:var(--txt2);font-size:11px;
+  transition:transform .12s ease}
+.rg-service[open]>summary::before{transform:rotate(90deg)}
+.rg-service>summary:hover{background:var(--bg2)}
+.rg-service[open]{border-color:var(--accent);border-width:2px}
+.rg-service[open]>summary{border-bottom:1px solid var(--bordure)}
+.rg-svc-nom{font-weight:700;font-size:12.5px;min-width:190px;display:flex;align-items:center;gap:6px}
+.rg-svc-digest{color:var(--txt2);font-size:12px;overflow-wrap:anywhere}
+.rg-svc-digest b{color:var(--txt2);font-weight:700;font-size:10.5px;letter-spacing:.03em}
+.rg-svc-digest em{font-style:normal;color:var(--accent2)}
+/* Un service sans barème travaillerait en temps nul : il ne doit pas se fondre. */
+.rg-service.vide{border-left:3px solid var(--orange)}
+.rg-service.vide .rg-svc-digest{opacity:.6}
+.rg-occupe{font-size:10px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;
+  color:var(--vert);border:1px solid var(--vert);border-radius:4px;padding:1px 5px;white-space:nowrap}
+.rg-service .rg-table{margin:0;max-width:420px}
+.rg-service .rg-table th,.rg-service .rg-table td{padding:5px 12px 5px 13px}
+.rg-service .rg-table tbody tr:last-child th,.rg-service .rg-table tbody tr:last-child td{border-bottom:0}
+
 .rg-table{width:100%;border-collapse:collapse;font-size:12.5px;margin:10px 0 4px}
 .rg-table th,.rg-table td{border-bottom:1px solid var(--bordure);padding:4px 6px;text-align:left}
 .rg-table thead th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--txt2);
   background:var(--bg2);text-align:center;border-bottom:1px solid var(--bordure2)}
 .rg-table thead th:first-child{text-align:left}
 /* Une colonne sur deux : min/pax et min/vol d'une même cabine restent ensemble. */
-.rg-table thead tr:first-child th+th{border-left:1px solid var(--bordure2)}
-.rg-table tbody td:nth-child(2n){border-left:1px solid var(--bordure2)}
+
 .rg-table tbody th{font-weight:600;white-space:nowrap}
 .rg-table input{width:100%;min-width:62px;box-sizing:border-box;padding:5px 6px;text-align:right;
   border:1px solid var(--bordure2);border-radius:5px;background:var(--bg2);color:var(--txt);font:inherit;font-size:12.5px}

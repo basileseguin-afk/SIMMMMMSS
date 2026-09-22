@@ -479,7 +479,9 @@ function initAteliers(){
     liaisons:liaisonsServices,
     reglages:()=>(Sim.reglages?Sim.reglages.pourMoteur():{delaiChargement:CFG.loadDelay}),
     // Le plan dit « aménagé » d'après les ateliers : il doit suivre leur saisie.
-    change:()=>{majEtatPlan();majDemarrage();},
+    // La liste du barème marque les services qui portent une équipe : elle doit
+    // donc se redessiner quand les ateliers bougent.
+    change:()=>{majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();},
     notify:toast
   });
 }
@@ -1624,6 +1626,9 @@ function installerCentreReglages() {
     hote:()=>hote,
     services:servicesDisponibles,
     parent:id=>{const a=annexes().find(z=>z.id===id);return a?a.parent:null;},
+    // Les services qui portent une équipe : ce sont leurs lignes de barème qui
+    // comptent d'abord, et il faut pouvoir les repérer dans la liste.
+    occupes:()=>[...new Set(((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]).map(a=>a.service))],
     delaiChargement:()=>CFG.loadDelay,
     change:()=>{if(Sim.ateliers)Sim.ateliers.rendre();majDemarrage();},
     notify:toast

@@ -111,8 +111,13 @@ cabine, tenue dans le **Centre des réglages** sous « Le modèle de production 
 Les valeurs en place sont **non calibrées** : elles n'existent que pour que le
 modèle tourne.
 
-Elles se corrigent case par case, ou **s'importent en bloc** : c'est ainsi qu'une
-étude de man-minutes entre dans le modèle, sans toucher au moteur. Le fichier
+Le barème se lit **un service à la fois** : replié, chacun tient en une ligne
+qui montre ses minutes par unité ; ouvert, il montre ses dix champs et rien
+d'autre. Les services qui portent une équipe sont marqués, ce sont leurs lignes
+qui comptent d'abord.
+
+Elles se corrigent service par service, ou **s'importent en bloc** : c'est ainsi
+qu'une étude de man-minutes entre dans le modèle, sans toucher au moteur. Le fichier
 porte `schema: "ory-bareme"` et désigne les services par leur identifiant du
 plan ; l'export donne le gabarit. Un service que le barème ne connaît pas est
 marqué **« non renseigné »** — sans quoi il travaillerait en temps nul sans rien

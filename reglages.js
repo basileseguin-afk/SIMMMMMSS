@@ -93,6 +93,7 @@
       this.a = a;
       this.etat = valider(null);
       this.undo = []; this.redo = [];
+      this.serviceOuvert = null;   // un seul service déplié à la fois
       let alerte = '';
       try {
         const garde = localStorage.getItem(CLE);
@@ -183,7 +184,6 @@
             </span></details></div>
           <p class="mini-note"><span class="rg-formule">durée = homme-minutes ÷ personnes ÷ rendement</span></p>
           <div id="rg-alerte"></div>
-          <div id="rg-bareme"></div>
           <div class="rg-actions">
             <button class="btn btn-sm" id="rg-undo">Annuler</button>
             <button class="btn btn-sm" id="rg-redo">Rétablir</button>
@@ -192,6 +192,7 @@
             <button class="btn btn-sm" id="rg-reset">Valeurs de démonstration</button>
             <input id="rg-import" type="file" accept=".json" hidden>
           </div>
+          <div id="rg-bareme"></div>
         </div>
         <div class="panneau">
           <div class="titre-aide"><h3>Rendement</h3><details class="aide">
@@ -275,6 +276,12 @@
         }, 'Enregistré.'), 0);
       });
       section.addEventListener('click', e => {
+        const tete = e.target.closest('.rg-service > summary');
+        if (tete) {
+          const d = tete.parentElement;
+          this.serviceOuvert = d.open ? null : d.dataset.service;
+          return;   // le navigateur fait le reste : on ne redessine pas
+        }
         const b = e.target.closest('[data-rg-action="seuil-retirer"]'); if (!b) return;
         this.changer(() => { this.etat.regime.seuils.splice(+b.dataset.index, 1); }, 'Seuil retiré.');
       });
@@ -294,39 +301,68 @@
       if (r) r.disabled = !this.redo.length;
     }
 
+    /*
+     * Onze services × cinq classes × deux colonnes faisaient **cent dix champs
+     * numériques d'un bloc**. Personne ne lit ça : on cherche sa ligne, on se
+     * trompe de colonne, on renonce.
+     *
+     * Un service à la fois, donc. Replié, chacun tient en une ligne qui dit
+     * l'essentiel ; ouvert, il montre ses dix champs et rien d'autre. Le
+     * navigateur n'en garde qu'un ouvert (`name` sur le `<details>`).
+     */
     rendreBareme() {
       const box = document.getElementById('rg-bareme'); if (!box) return;
       const services = (this.a.services ? this.a.services() : []);
       const complet = this.baremeComplet();
-      // Remplacer le tableau détruit ses champs. Si rien n'a bougé, on n'y
+      const occupes = new Set(this.a.occupes ? this.a.occupes() : []);
+      // Remplacer la liste détruit ses champs. Si rien n'a bougé, on n'y
       // touche pas : sinon un rendu déclenché par la sortie d'un champ
       // arrache le bouton qu'on était en train de cliquer, et le clic se perd.
-      const signature = JSON.stringify([services.map(s => [s.id, s.nom]), complet, this.etat.bareme]);
-      if (box._signature === signature) return;
-      box._signature = signature;
-      // Un `input[type=number]` n'accepte que le point décimal : « 0,6 » le
-      // laisse vide, et le barème semble ne rien contenir.
-      const nombre = n => String(n);
+      const signature = JSON.stringify([services.map(s => [s.id, s.nom]), complet,
+        this.etat.bareme, [...occupes]]);
+      if (box._signature !== signature) {
+        box._signature = signature;
+        // Un `input[type=number]` n'accepte que le point décimal : « 0,6 » le
+        // laisse vide, et le barème semble ne rien contenir.
+        const fr = n => String(n).replace('.', ',');
 
-      box.innerHTML = `<table class="rg-table"><thead>
-        <tr><th scope="col" rowspan="2">Service</th>${P.CABINES.map(c =>
-          `<th scope="col" colspan="2" title="${esc((P.NOM_CABINE || {})[c] || c)}">${c}</th>`).join('')}</tr>
-        <tr>${P.CABINES.map(() => '<th scope="col">min/pax</th><th scope="col">min/vol</th>').join('')}</tr>
-        </thead><tbody>` + services.map(s => {
+        box.innerHTML = services.map(s => {
           const propre = this.etat.bareme[s.id];
           const pere = this.a.parent ? this.a.parent(s.id) : null;
           const herite = !propre && pere && complet[s.id];
           const ligne = propre || complet[s.id] || ligneVide();
+          const etat = herite ? 'herite' : propre ? 'ok' : 'vide';
           const marque = herite
             ? '<span class="rg-herite" title="Même travail que l’atelier dont elle dépend">hérité</span>'
             : propre ? '' : '<span class="rg-zero">non renseigné</span>';
-          return `<tr${propre ? '' : ' class="rg-pale"'}><th scope="row">${esc(s.nom)} ${marque}</th>`
-            + P.CABINES.map(c => ['parPax', 'parVol'].map(k =>
-              `<td><input type="number" min="0" step="0.01" value="${nombre(ligne[c][k])}"
-                 data-rg-champ="${k}" data-service="${esc(s.id)}" data-cabine="${c}"
-                 aria-label="${esc(s.nom)} ${c} ${k === 'parPax' ? 'minutes par passager' : 'minutes par vol'}"></td>`
-            ).join('')).join('') + '</tr>';
-        }).join('') + '</tbody></table>';
+          // Le résumé replié : les minutes par unité, et le fixe par vol s'il existe.
+          const parVol = P.CABINES.filter(c => ligne[c].parVol > 0);
+          const digest = P.CABINES.map(c => `<b>${c}</b> ${fr(ligne[c].parPax)}`).join(' · ')
+            + (parVol.length ? ' · <em>+ ' + fr(ligne[parVol[0]].parVol) + ' min/vol</em>' : '');
+
+          return `<details class="rg-service ${etat}" name="rg-bareme" data-service="${esc(s.id)}">
+            <summary>
+              <span class="rg-svc-nom">${esc(s.nom)}${occupes.has(s.id)
+                ? '<span class="rg-occupe" title="Un atelier de travail y est décrit">équipe</span>' : ''}${marque}</span>
+              <span class="rg-svc-digest">${digest}</span>
+            </summary>
+            <table class="rg-table"><thead><tr><th scope="col">Classe</th>
+              <th scope="col">min / unité</th><th scope="col">min / vol</th></tr></thead><tbody>
+              ${P.CABINES.map(c => `<tr>
+                <th scope="row" title="${esc((P.NOM_CABINE || {})[c] || c)}">${c}</th>
+                ${['parPax', 'parVol'].map(k => `<td><input type="number" min="0" step="0.01"
+                   value="${ligne[c][k]}" data-rg-champ="${k}" data-service="${esc(s.id)}" data-cabine="${c}"
+                   aria-label="${esc(s.nom)} ${c} ${k === 'parPax' ? 'minutes par unité' : 'minutes par vol'}"></td>`).join('')}
+              </tr>`).join('')}
+            </tbody></table>
+          </details>`;
+        }).join('');
+      }
+      // Le service ouvert survit à un rendu : sans cela, saisir une valeur
+      // refermait la fiche qu'on était en train de remplir.
+      for (const d of box.querySelectorAll('.rg-service')) {
+        d.open = d.dataset.service === this.serviceOuvert;
+      }
 
       // Le barème n'est pas calibré : le dire ici, là où on le modifie.
       const alerte = document.getElementById('rg-alerte');

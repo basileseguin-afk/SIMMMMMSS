@@ -5,6 +5,33 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-22 — Le barème, un service à la fois
+
+Deuxième des trois points d'ergonomie. Onze services × cinq classes × deux
+colonnes faisaient **cent dix champs numériques d'un bloc**. Personne ne lit
+ça : on cherche sa ligne, on se trompe de colonne, on renonce.
+
+- Le barème devient une **liste de services**. Replié, chacun tient en une
+  ligne qui montre ses minutes par unité — `BC 1,4 · PC 0,7 · YC 0,28 ·
+  CREW 1,4 · SPML 2,2` — et le fixe par vol s'il existe.
+- Ouvert, il montre **dix champs et rien d'autre**. Le navigateur n'en garde
+  **qu'un ouvert** à la fois (`name` sur le `<details>`), sinon on retrouve le mur.
+- À l'arrivée : **zéro champ à l'écran** au lieu de cent dix.
+- Un service **sans barème** porte un liseré orange et sa marque « non
+  renseigné » sans qu'on ait à l'ouvrir : il travaillerait en temps nul.
+- Un service qui **porte une équipe** est marqué « équipe » : ce sont ses
+  lignes qui comptent d'abord.
+- Les actions passent **au-dessus** de la liste : l'import est le vrai chemin
+  d'entrée d'une étude, il ne doit pas être enterré sous le tableau.
+- Le service ouvert **survit à un rendu** : sans cela, saisir une valeur
+  refermait la fiche qu'on était en train de remplir.
+
+Corrigé au passage : devenu élément flex à côté de son « ? », un titre de
+section se réduisait à la largeur de son texte et son filet de séparation n'en
+soulignait plus qu'un bout.
+
+- Vérification : 193 tests purs et treize parcours navigateur au vert.
+
 ## 2026-09-22 — Un « ? » plutôt qu'un paragraphe
 
 Deuxième passe d'ergonomie, sur le premier des trois points restés ouverts :

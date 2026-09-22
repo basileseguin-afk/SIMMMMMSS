@@ -34,11 +34,26 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // Le barème n'est pas calibré : le dire là où on le modifie.
   assert.match(await page.locator('#rg-alerte').textContent(),/non calibrées/);
 
-  // 3. Le barème pilote la durée : doubler les minutes par passager double la durée.
+  // 3. Le barème se lit un service à la fois : cent dix champs d'un bloc ne se
+  //    lisaient pas. Replié, chaque service tient en une ligne.
+  assert.equal(await page.locator('#rg-bareme input:visible').count(),0,'aucun champ à l’arrivée');
+  assert.ok(await page.locator('.rg-service').count()>=10,'un pli par service');
+  assert.match(await page.locator('.rg-service[data-service=cuisine] .rg-svc-digest').textContent(),
+    /BC 1,4/,'le résumé replié dit l’essentiel');
+  await page.locator('.rg-service[data-service=cuisine] > summary').click();await attendre();
+  assert.equal(await page.locator('#rg-bareme input:visible').count(),10,'dix champs, pas cent dix');
+  // Un seul service ouvert à la fois : sinon on retrouve le mur.
+  await page.locator('.rg-service[data-service=magasin] > summary').click();await attendre();
+  assert.equal(await page.locator('.rg-service[open]').count(),1);
+  await page.locator('.rg-service[data-service=cuisine] > summary').click();await attendre();
+
+  // Le barème pilote la durée : doubler les minutes par unité double la durée.
   const cuisineBC='[data-rg-champ=parPax][data-service=cuisine][data-cabine=BC]';
   assert.equal(await page.locator(cuisineBC).inputValue(),'1.4','la valeur est lisible, pas vide');
   await ecrire(cuisineBC,'2.8');
   assert.ok(Math.abs(await duree()-avant*2)<1e-6,'la durée a doublé');
+  // Saisir ne referme pas la fiche qu'on était en train de remplir.
+  assert.equal(await page.locator('.rg-service[data-service=cuisine][open]').count(),1);
 
   // 4. Le rendement allonge la journée sans toucher au barème.
   await ecrire('#rg-rendement','0.5');
@@ -61,7 +76,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 6. Un service que le barème ne connaît pas est signalé : sans cela il
   //    travaillerait en temps nul sans rien dire.
-  assert.match(await page.locator('#rg-bareme').textContent(),/non renseigné/);
+  assert.ok(await page.locator('.rg-service.vide .rg-zero').count()>0,
+    'un service sans barème se voit sans qu’on ait à l’ouvrir');
 
   // 7. Annuler et rétablir.
   await page.locator('#rg-undo').click();await attendre();

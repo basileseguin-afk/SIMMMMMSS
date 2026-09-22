@@ -73,3 +73,9 @@
 .titre-aide>h2,.titre-aide>h3{margin:0}
 .titre-aide{margin-bottom:14px}
 .panneau .titre-aide{margin-bottom:14px}
+
+/* Un `.reglages-titre` porte son filet de séparation. Devenu élément flex à
+   côté de son « ? », il se réduit à la largeur du texte et ce filet n'en
+   soulignait plus qu'un bout. Le filet passe donc sur l'enveloppe. */
+.titre-aide:has(>.reglages-titre){margin-top:22px;padding-top:16px;border-top:1px solid var(--bordure)}
+.titre-aide>.reglages-titre{border-top:0;padding-top:0;margin:0}

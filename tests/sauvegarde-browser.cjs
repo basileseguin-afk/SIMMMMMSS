@@ -33,6 +33,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await click('[data-view=reglages]');
   // Comme le centre des flux, le barème n'écrit sa clé que si on y touche.
   const champBareme='[data-rg-champ=parPax][data-service=cuisine][data-cabine=BC]';
+  // Le barème se lit un service à la fois : il faut déplier celui qu'on modifie.
+  await page.locator('.rg-service[data-service=cuisine] > summary').click();
+  await page.waitForTimeout(150);
   await page.fill(champBareme,'1.55');await page.dispatchEvent(champBareme,'change');
   await page.waitForTimeout(200);
   const dl=page.waitForEvent('download');await click('#sauvegarde-export');const fichier=await dl;
