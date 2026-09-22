@@ -1,0 +1,49 @@
+/* ==========================================================================
+ *  LE MODÈLE DE PRODUCTION dans le Centre des réglages
+ *  Cette section passe AVANT les curseurs de l'ancien moteur : c'est elle qui
+ *  pilote les ateliers de travail, et donc les chiffres qu'on lit aujourd'hui.
+ * ==========================================================================*/
+.rg-modele{display:contents}
+.rg-modele .reglages-titre,.rg-modele .rg-intro,.rg-modele #rg-status,.rg-modele .rg-ailleurs{grid-column:1/-1}
+.rg-intro{max-width:850px;margin:0 0 4px}
+#rg-status:not(:empty){font-size:13px;color:var(--accent2);margin:0 0 6px}
+
+#rg-bareme-panneau{grid-column:1/-1}
+.rg-formule{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:4px;
+  background:var(--bg2);border:1px solid var(--bordure2);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px}
+
+.rg-avertissement{border-left:3px solid var(--warn-stroke);background:var(--warn-fill);color:var(--txt);
+  padding:10px 14px;border-radius:0 8px 8px 0;font-size:12.5px;line-height:1.55;margin:10px 0}
+
+.rg-table{width:100%;border-collapse:collapse;font-size:12.5px;margin:10px 0 4px}
+.rg-table th,.rg-table td{border-bottom:1px solid var(--bordure);padding:4px 6px;text-align:left}
+.rg-table thead th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--txt2);
+  background:var(--bg2);text-align:center;border-bottom:1px solid var(--bordure2)}
+.rg-table thead th:first-child{text-align:left}
+/* Une colonne sur deux : min/pax et min/vol d'une même cabine restent ensemble. */
+.rg-table thead tr:first-child th+th{border-left:1px solid var(--bordure2)}
+.rg-table tbody td:nth-child(2n){border-left:1px solid var(--bordure2)}
+.rg-table tbody th{font-weight:600;white-space:nowrap}
+.rg-table input{width:100%;min-width:62px;box-sizing:border-box;padding:5px 6px;text-align:right;
+  border:1px solid var(--bordure2);border-radius:5px;background:var(--bg2);color:var(--txt);font:inherit;font-size:12.5px}
+.rg-table input:focus{outline:2px solid var(--accent);outline-offset:-1px}
+/* Un service dont le barème n'est pas renseigné travaillerait en temps nul. */
+.rg-pale th{color:var(--txt2)}
+.rg-herite,.rg-zero{font-size:10px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;
+  border-radius:4px;padding:1px 5px;margin-left:5px;white-space:nowrap}
+.rg-herite{color:var(--accent2);border:1px solid var(--accent)}
+.rg-zero{color:var(--orange);border:1px solid var(--orange)}
+
+.rg-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+
+.rg-seuil{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--txt2);margin-bottom:8px}
+.rg-seuil input{width:80px;padding:6px 8px;border:1px solid var(--bordure2);border-radius:5px;
+  background:var(--bg2);color:var(--txt);font:inherit}
+
+.rg-ailleurs{max-width:850px;margin:2px 0 0}
+.reglages-ancien{margin-top:28px;padding-top:18px;border-top:1px solid var(--bordure)}
+
+@media(max-width:900px){
+  .rg-table{display:block;overflow-x:auto;white-space:nowrap}
+  .rg-table input{min-width:70px}
+}

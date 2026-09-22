@@ -44,9 +44,11 @@
       return {
         id, nom, service, type, debut: String(a.debut ?? '06:00'), jour, personnes, pauses, lots,
         // Un poste : pauses automatiques et durée de présence. Désactivable
-        // pour une équipe qui ne suit pas la règle commune.
+        // pour une équipe qui ne suit pas la règle commune. La présence n'est
+        // retenue QUE si on l'a fixée : sans elle, l'atelier suit le réglage
+        // général, et changer la règle commune déplace tout le monde.
         regime: { actif: a.regime ? a.regime.actif !== false : true,
-                  presence: Number.isFinite(+(a.regime || {}).presence) ? +a.regime.presence : 495 },
+                  ...(Number.isFinite(+(a.regime || {}).presence) ? { presence: +a.regime.presence } : {}) },
         ...(a.materiel === 'consomme' ? { materiel: 'consomme' } : {}),
         ...(type === 'robot' ? {
           debit: Number.isFinite(a.debit) ? Math.max(1, a.debit) : 320,
@@ -159,7 +161,7 @@
         this.resultat = P.simuler({
           vols: this.a.vols(), classes: this.classes,
           ateliers: this.state.ateliers, liaisons: this.a.liaisons(), materiel: this.state.materiel,
-          bareme: r.bareme, rendement: r.rendement, delaiChargement: r.delaiChargement
+          bareme: r.bareme, rendement: r.rendement, regime: r.regime, delaiChargement: r.delaiChargement
         });
       } catch (e) {
         this.resultat = { ok: false, anomalies: [{ code: 'moteur', message: e.message }], lots: [], ateliers: [], classes: [], parClasse: {} };
@@ -369,7 +371,14 @@
           case 'tunnel-actif': a.tunnels[+el.dataset.index].actif = el.checked; break;
           case 'permanent': a.permanent = el.checked; break;
           case 'regime': a.regime = { ...a.regime, actif: el.checked }; break;
-          case 'presence': a.regime = { ...a.regime, presence: Math.max(30, parseInt(v, 10) || 495) }; break;
+          case 'presence': {
+            // Vider le champ, c'est revenir au réglage général.
+            const n = parseInt(v, 10);
+            const suite = { ...a.regime }; delete suite.presence;
+            if (Number.isFinite(n)) suite.presence = Math.max(30, n);
+            a.regime = suite;
+            break;
+          }
 
           case 'lot-ajout': {
             const i = +el.dataset.index;
@@ -592,6 +601,9 @@
       if (!ouvert) return `<article class="at-carte" data-at="${esc(a.id)}">${entete}</article>`;
 
       const services = this.a.services();
+      // Le régime de la maison, pour dire ce que suit un atelier qui ne fixe rien.
+      const reg = P.normaliserRegime(undefined, (this.a.reglages ? this.a.reglages() : {}).regime);
+      const defaut = { presence: reg.presence, arret: reg.seuils.reduce((n, x) => n + x.duree, 0) };
       const restantes = i => this.classes.filter(c => !a.lots[i].includes(c.id));
 
       const libres = this.classes.filter(c => !a.lots.some(l => l.includes(c.id)));
@@ -655,8 +667,10 @@
           <label class="chk chk-mini"><input type="checkbox" data-at-champ="regime" ${a.regime.actif ? 'checked' : ''}>
             Poste avec pauses — 15 min après 3 h, 30 min après 6 h</label>
           ${a.regime.actif ? `<label class="at-presence">Présence (min)<input type="number" min="30" max="1440"
-            value="${a.regime.presence}" data-at-champ="presence"></label>
-            <span class="mini-note">soit ${String(Math.round((a.regime.presence - 45) / 6) / 10).replace('.', ',')} h de travail</span>` : ''}
+            value="${a.regime.presence ?? ''}" placeholder="${defaut.presence}" data-at-champ="presence"></label>
+            <span class="mini-note">${a.regime.presence === undefined
+              ? 'réglage général · ' + defaut.presence + ' min' : 'propre à cette équipe'}
+              — soit ${String(Math.round(((a.regime.presence ?? defaut.presence) - defaut.arret) / 6) / 10).replace('.', ',')} h de travail</span>` : ''}
           ${a.type !== 'lavage' && this.state.materiel.actif ? `<label class="chk chk-mini"><input type="checkbox" data-at-champ="consomme"
             ${a.materiel === 'consomme' ? 'checked' : ''}>
             Emporte du matériel propre (trolleys, porcelaine)</label>` : ''}

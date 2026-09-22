@@ -88,8 +88,20 @@ durée                = homme-minutes ÷ personnes ÷ rendement
 ```
 
 Les deux coefficients sont lus dans une **table unique**, par service et par
-cabine. Les valeurs en place sont **non calibrées** : elles n'existent que pour
-que le modèle tourne, et se remplacent en bloc sans toucher au moteur.
+cabine, tenue dans le **Centre des réglages** sous « Le modèle de production ».
+Les valeurs en place sont **non calibrées** : elles n'existent que pour que le
+modèle tourne.
+
+Elles se corrigent case par case, ou **s'importent en bloc** : c'est ainsi qu'une
+étude de man-minutes entre dans le modèle, sans toucher au moteur. Le fichier
+porte `schema: "ory-bareme"` et désigne les services par leur identifiant du
+plan ; l'export donne le gabarit. Un service que le barème ne connaît pas est
+marqué **« non renseigné »** — sans quoi il travaillerait en temps nul sans rien
+dire. Une **annexe** hérite du barème de l'atelier dont elle dépend.
+
+Le **rendement** et les **règles de poste** sont réglés au même endroit. Une
+équipe qui ne fixe pas sa présence suit celle de la maison : changer la règle
+commune les déplace toutes.
 
 ### L'atelier robot
 
@@ -119,6 +131,9 @@ son poste que le travail soit fini ou non.
 | Pause après 3 h de **travail** | 15 min |
 | Pause après 6 h de **travail** | 30 min |
 | Présence totale sur le site | 8 h 15 |
+
+Ces trois valeurs sont **réglables** dans le Centre des réglages, et les seuils
+s'ajoutent ou se retirent.
 
 Soit **7 h 30 de travail effectif**. Les seuils comptent le travail *cumulé*,
 pas l'heure qu'il est : une équipe qui attend ses amonts ne consomme pas son

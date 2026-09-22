@@ -250,7 +250,8 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
   .col-plan{min-height:70vh}
 }
 </style>
-<link href="interface.css" rel="stylesheet"/><link href="editor.css" rel="stylesheet"/><link href="flow-center.css" rel="stylesheet"/><link href="ateliers.css" rel="stylesheet"/><link href="usability.css" rel="stylesheet"/></head>
+<link href="interface.css" rel="stylesheet"/><link href="editor.css" rel="stylesheet"/><link href="flow-center.css" rel="stylesheet"/><link href="ateliers.css" rel="stylesheet"/>
+<link href="reglages.css" rel="stylesheet"/><link href="usability.css" rel="stylesheet"/></head>
 <body><a class="skip-link" href="#workspace">Aller à la simulation</a>
 <header>
 <div class="marque"><span class="brand-mark">N</span><div>ORY <span class="brand-separator">/</span> Flux de production<small>Atelier de simulation</small></div></div>
@@ -374,7 +375,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 </div>
 <details class="inline-help"><summary>Fonctionnement du stock</summary><p class="mini-note">Un seul compte, en unités par passager. La dotation en consomme pour chaque départ, les retours lavés le réalimentent. À zéro, la dotation attend sans mobiliser personne. Unité de compte, non calibrée.</p></details>
 </div>
-<div class="panneau">
+<div class="panneau" id="panneau-horaires">
 <h3>Horaires de vols</h3>
 <div class="slider-ligne">
 <label for="shift">Décalage global <b id="shift-val">0 min</b></label>
@@ -455,6 +456,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <script src="plan-editor.js"></script>
 <script src="flow-center.js"></script>
 <script src="ateliers.js"></script>
+<script src="reglages.js"></script>
 <script src="sim.js"></script>
 </body>
 </html>

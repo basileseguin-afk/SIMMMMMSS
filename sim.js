@@ -477,7 +477,7 @@ function initAteliers(){
     vols:()=>flights,
     classes:()=>MoteurProduction.classesDeVols(flights,{delaiChargement:CFG.loadDelay}),
     liaisons:liaisonsServices,
-    reglages:()=>({delaiChargement:CFG.loadDelay}),
+    reglages:()=>(Sim.reglages?Sim.reglages.pourMoteur():{delaiChargement:CFG.loadDelay}),
     // Le plan dit « aménagé » d'après les ateliers : il doit suivre leur saisie.
     change:()=>majEtatPlan(),
     notify:toast
@@ -1438,6 +1438,9 @@ const PARTIES = [
   { cle:'orly-plan-v3',     nom:'plan et zones',           valider:r => window.OrlyPlan.validatePlan(r, Sim.editor.originals) },
   { cle:'ory-ateliers-v1',  nom:'ateliers de travail',     valider:r => window.OrlyAteliers.valider(r) },
   { cle:'orly-flows-v1',    nom:'centre des flux',         valider:r => window.OrlyFlows.validate(r) },
+  // Le barème est une étude à part entière : une sauvegarde qui l'oublierait
+  // ramènerait les valeurs de démonstration sans le dire.
+  { cle:'ory-modele-v1',    nom:'barème et règles de poste', valider:r => window.OrlyReglages.valider(r) },
   { cle:'ory-postes-v2',    nom:'bibliothèque de modèles',
     valider:r => { if(!r || !Array.isArray(r.modeles)) throw new Error('bibliothèque illisible'); return r; } }
 ];
@@ -1565,8 +1568,31 @@ function installerCentreReglages() {
   bloc.hidden=false;bloc.classList.remove('panel-content');bloc.classList.add('reglages-grille');
   const titre=document.createElement('div');titre.className='reglages-entete';
   // Pas de second titre : l'en-tête de vue dit déjà « Centre des réglages ».
-  titre.innerHTML='<p class="mini-note">Tout ce qui décrit l’unité et l’essai à lancer. Les réglages se verrouillent une fois la simulation commencée : <strong>Recommencer</strong> les libère.</p>';
-  hote.appendChild(titre);hote.appendChild(bloc);
+  titre.innerHTML='<p class="mini-note">Deux moteurs cohabitent le temps de la bascule. Ce qui pilote les <b>ateliers de travail</b> est en haut ; ce qui pilote l’ancienne vue <b>Simulation</b> est en dessous, et disparaîtra.</p>';
+  hote.appendChild(titre);
+
+  /* Le modèle par ateliers d'abord : c'est lui qui produit les résultats qu'on
+   * lit aujourd'hui. L'ancien moteur garde ses curseurs, mais plus la vedette. */
+  Sim.reglages=new OrlyReglages.CentreReglages({
+    hote:()=>hote,
+    services:servicesDisponibles,
+    parent:id=>{const a=annexes().find(z=>z.id===id);return a?a.parent:null;},
+    delaiChargement:()=>CFG.loadDelay,
+    change:()=>{if(Sim.ateliers)Sim.ateliers.rendre();},
+    notify:toast
+  });
+  // Les horaires de vols servent aux DEUX moteurs : le délai de chargement fixe
+  // l'échéance d'une compagnie × classe. Le panneau remonte donc avec le modèle,
+  // plutôt que d'être recopié — deux champs pour une valeur finiraient par diverger.
+  const horaires=document.getElementById('panneau-horaires');
+  const modele=document.getElementById('rg-modele');
+  if(horaires&&modele)modele.insertBefore(horaires,document.querySelector('.rg-ailleurs'));
+
+  const ancien=document.createElement('h2');ancien.className='reglages-titre reglages-ancien';
+  ancien.textContent='Ancien moteur de démonstration';
+  const note=document.createElement('p');note.className='mini-note reglages-entete';
+  note.innerHTML='Ces réglages ne pilotent que la vue <b>Simulation</b>, restée sur le moteur précédent : effectifs par curseur, files d’attente, contenances, vivier. Le modèle par ateliers n’a ni file ni contenance. Ils se verrouillent une fois la simulation commencée : <strong>Recommencer</strong> les libère.';
+  hote.appendChild(ancien);hote.appendChild(note);hote.appendChild(bloc);
   // Le programme de vols, la sauvegarde et le périmètre décrivent l'essai eux
   // aussi : les laisser dans la colonne étroite obligeait à changer de vue pour
   // préparer une seule et même chose. La colonne ne garde que le suivi vivant.

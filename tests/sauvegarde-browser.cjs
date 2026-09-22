@@ -31,11 +31,19 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 2. Tout sauvegarder en un fichier.
   await click('[data-view=reglages]');
+  // Comme le centre des flux, le barème n'écrit sa clé que si on y touche.
+  const champBareme='[data-rg-champ=parPax][data-service=cuisine][data-cabine=BC]';
+  await page.fill(champBareme,'1.55');await page.dispatchEvent(champBareme,'change');
+  await page.waitForTimeout(200);
   const dl=page.waitForEvent('download');await click('#sauvegarde-export');const fichier=await dl;
   assert.match(fichier.suggestedFilename(),/^ory-sauvegarde-\d{4}-\d{2}-\d{2}\.json$/);
   const chemin=await fichier.path(),sauvegarde=JSON.parse(fs.readFileSync(chemin,'utf8'));
   assert.equal(sauvegarde.schema,'ory-sauvegarde');assert.equal(sauvegarde.version,1);
   assert.ok(sauvegarde.contenu['orly-plan-v3']&&sauvegarde.contenu['ory-ateliers-v1']);
+  // Le barème est une étude à part entière : une sauvegarde qui l'oublierait
+  // ramènerait les valeurs de démonstration sans le dire.
+  assert.ok(sauvegarde.contenu['ory-modele-v1'],'le barème et les règles de poste en font partie');
+  assert.equal(sauvegarde.contenu['ory-modele-v1'].bareme.cuisine.BC.parPax,1.55,'avec la valeur saisie');
   assert.match(await page.locator('#sauvegarde-etat').textContent(),/partie\(s\) enregistrée/);
 
   // 3. Un fichier invalide ne remplace rien — la validation est atomique.

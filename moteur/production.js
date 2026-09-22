@@ -371,14 +371,23 @@
     return r.presence - r.seuils.reduce((n, s) => n + s.duree, 0);
   }
 
-  function normaliserRegime(regime) {
+  /**
+   * @param regime le régime propre à un atelier ; `false` ou `{actif:false}`
+   *   le désactive complètement.
+   * @param defaut le régime de la maison, réglé une fois pour toutes. Un
+   *   atelier qui ne fixe ni seuils ni présence le suit — c'est ce qui permet
+   *   de changer la règle commune sans rouvrir chaque fiche.
+   */
+  function normaliserRegime(regime, defaut) {
     if (regime === false || (regime && regime.actif === false)) return { actif: false, seuils: [], presence: Infinity };
+    const d = { ...REGIME_DEFAUT, ...(defaut || {}) };
     const r = regime || {};
-    const seuils = (Array.isArray(r.seuils) ? r.seuils : REGIME_DEFAUT.seuils)
+    const seuils = (Array.isArray(r.seuils) ? r.seuils : d.seuils)
       .map(s => ({ apres: +s.apres, duree: +s.duree }))
       .filter(s => Number.isFinite(s.apres) && s.apres >= 0 && Number.isFinite(s.duree) && s.duree > 0)
       .sort((a, b) => a.apres - b.apres);
-    const presence = Number.isFinite(+r.presence) ? +r.presence : REGIME_DEFAUT.presence;
+    const presence = Number.isFinite(+r.presence) ? +r.presence
+      : Number.isFinite(+d.presence) ? +d.presence : REGIME_DEFAUT.presence;
     return { actif: true, seuils, presence };
   }
 
@@ -622,7 +631,7 @@
       const vue = parId.get(a.id);
       const pauses = pausesDe(a);
       const depart = vue.debut;
-      const regime = normaliserRegime(a.regime);
+      const regime = normaliserRegime(a.regime, opts.regime);
       const finPoste = regime.actif ? depart + regime.presence : Infinity;
       const prises = new Set();   // pauses de régime déjà prises dans ce poste
       let cumul = 0;              // travail effectif depuis le début du poste

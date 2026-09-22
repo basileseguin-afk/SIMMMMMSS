@@ -235,8 +235,21 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await ouvrir(cui2);
   assert.equal(await page.locator(`[data-at="${cui2}"] [data-at-champ=regime]`).isChecked(),true);
   assert.match(await page.locator(`[data-at="${cui2}"] .at-cases`).textContent(),/15 min apr\u00e8s 3 h, 30 min apr\u00e8s 6 h/);
-  assert.equal(await page.locator(`[data-at="${cui2}"] [data-at-champ=presence]`).inputValue(),'495');
+  // La présence suit le réglage général tant que l'équipe n'en fixe pas une :
+  // changer la règle commune doit déplacer tout le monde, pas seulement les
+  // ateliers créés ensuite.
+  const champPresence=`[data-at="${cui2}"] [data-at-champ=presence]`;
+  assert.equal(await page.locator(champPresence).inputValue(),'','aucune valeur propre');
+  assert.equal(await page.locator(champPresence).getAttribute('placeholder'),'495','le réglage général est montré');
+  assert.match(await page.locator(`[data-at="${cui2}"] .at-cases`).textContent(),/réglage général/);
   assert.match(await page.locator(`[data-at="${cui2}"] .at-cases`).textContent(),/7,5 h de travail/);
+  assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).regime.presence,cui2),undefined);
+  // Une valeur saisie l'emporte, et se rend en la vidant.
+  await champ(cui2,'presence',600);
+  assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).regime.presence,cui2),600);
+  assert.match(await page.locator(`[data-at="${cui2}"] .at-cases`).textContent(),/propre à cette équipe/);
+  await champ(cui2,'presence','');
+  assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).regime.presence,cui2),undefined,'vider revient au réglage général');
   await page.locator(`[data-at="${cui2}"] [data-at-champ=regime]`).uncheck();await attendre();
   assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).regime.actif,cui2),false);
   assert.equal(await page.locator(`[data-at="${cui2}"] [data-at-champ=presence]`).count(),0,'sans poste, pas de pr\u00e9sence \u00e0 r\u00e9gler');

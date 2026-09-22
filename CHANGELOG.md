@@ -5,6 +5,50 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-22 — Le Centre des réglages règle enfin le bon moteur
+
+Le Centre des réglages décrivait encore le seul moteur de démonstration :
+effectifs par curseur, contenances, vivier, scénarios A/B. Depuis les ateliers
+de travail, ce n'est plus là que se joue la production — et un réglage qui ne
+règle rien est pire qu'un réglage absent.
+
+**Une section « Le modèle de production », en tête** (`reglages.js`,
+`reglages.css`, clé `ory-modele-v1`) :
+
+- le **barème** — homme-minutes par service × cabine, en clair et modifiable
+  case par case. Il n'était jusqu'ici qu'une constante du moteur.
+- il **s'importe et s'exporte** (`schema: "ory-bareme"`) : c'est ainsi qu'une
+  étude de man-minutes entrera en bloc. L'export donne le gabarit.
+- un service que le barème ne connaît pas est marqué **« non renseigné »** —
+  sans quoi il travaillait en temps nul sans rien dire. Une **annexe** hérite du
+  barème de l'atelier dont elle dépend.
+- l'avertissement « **valeurs de démonstration, non calibrées** » est là où on
+  les modifie, pas seulement dans un coin de la page.
+- le **rendement**, et les **règles de poste** : seuils de pause (ajoutables,
+  retirables) et durée de présence.
+- les **horaires de vols** remontent ici : le délai de chargement fixe
+  l'échéance d'une compagnie × classe. Un seul champ pour les deux moteurs —
+  deux champs pour une valeur finiraient par diverger.
+
+**Le régime de poste devient celui de la maison.** `moteur/production.js` :
+`normaliserRegime(regime, defaut)` et `simuler({regime})`. Un atelier ne retient
+sa présence que s'il en a fixé une ; sinon il suit le réglage général, et
+changer la règle commune les déplace tous. Dans la fiche d'un atelier, le champ
+est vide avec le réglage général en filigrane ; le vider y revient.
+
+**Le reste est nommé pour ce qu'il est.** « Ancien moteur de démonstration » :
+ces réglages ne pilotent que la vue Simulation, restée sur le moteur précédent.
+Le modèle par ateliers n'a ni file d'attente ni contenance.
+
+- `sim.js` : le barème entre dans la **sauvegarde complète** — l'oublier
+  ramènerait les valeurs de démonstration sans le dire.
+- Corrigé au passage : un `input[type=number]` refuse la virgule, et le barème
+  paraissait vide ; et un rendu déclenché par la sortie d'un champ arrachait le
+  bouton qu'on était en train de cliquer — les blocs ne sont plus redessinés
+  quand rien n'a bougé.
+- Tests : `tests/reglages-browser.cjs`, onzième… **douzième** parcours.
+- Vérification : 163 tests purs et douze parcours navigateur au vert.
+
 ## 2026-09-22 — La mise à disposition, et le Centre des flux qui décide
 
 Trois points signalés à la relecture de l'onglet Ateliers.
