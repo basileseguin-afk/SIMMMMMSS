@@ -207,10 +207,18 @@
           </div>
           <p class="mini-note" id="rg-presence-note"></p>
         </div>
+        <p class="rg-version" id="rg-version"></p>
         <p class="mini-note rg-ailleurs">Deux réglages du modèle ne sont pas ici, parce qu’ils se
           décrivent atelier par atelier : les <b>tunnels de la plonge</b> — leur somme fait son débit —
           et la <b>boucle du matériel</b>. Ils sont dans l’onglet <b>Ateliers de travail</b>.</p>`;
       hote.appendChild(section);
+      // Quelle version le navigateur sert-il ? La question revient dès qu'un
+      // doute s'installe, et un cache périmé ne se voit autrement pas.
+      const v = document.querySelector('meta[name="ory-version"]');
+      const boite = section.querySelector('#rg-version');
+      boite.textContent = v && v.content && /^[0-9a-f]{4,}$/.test(v.content)
+        ? 'Version servie : ' + v.content
+        : 'Version servie : inconnue (page ouverte hors du site).';
       this.lier();
     }
 

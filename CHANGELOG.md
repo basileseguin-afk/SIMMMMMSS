@@ -5,6 +5,24 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-22 — Le navigateur ne peut plus servir une version périmée
+
+« Je ne vois rien sur le visuel. » Le déploiement était vert, le dépôt à jour,
+et la page servie datait. GitHub Pages met ses fichiers en cache
+quelques minutes, les navigateurs bien plus longtemps — et le pire n'est pas de
+voir l'ancienne version, c'est d'en voir **un mélange** : un `index.html` neuf
+avec un `sim.js` périmé, donc une page cassée. C'est arrivé deux fois.
+
+- `outils/empreinte.cjs` : chaque script et chaque feuille de style porte
+  `?v=<empreinte>`, huit caractères du hachage de **son contenu**. Le fichier
+  change, l'URL change, le navigateur redemande ; le fichier ne change pas,
+  l'URL ne change pas, le cache fait son travail.
+- `tests/empreinte.test.cjs` **refuse** une page dont une empreinte a vieilli :
+  l'oubli ne peut plus partir sur la branche.
+- Le Centre des réglages affiche la **version servie**, pour répondre d'un coup
+  d'œil à « mon navigateur a-t-il bien la dernière ? »
+- Vérification : 167 tests purs et douze parcours navigateur au vert.
+
 ## 2026-09-22 — Le Centre des réglages règle enfin le bon moteur
 
 Le Centre des réglages décrivait encore le seul moteur de démonstration :
