@@ -37,6 +37,25 @@ avec elle. Sans cela les ateliers désigneraient un identifiant inexistant et le
 modèle refuserait de tourner. Un retrait pris sur le programme se **rétablit**
 d'un clic ; une classe ajoutée puis retirée, elle, est supprimée.
 
+### Les cinq classes
+
+| Code | Ce que c'est |
+|---|---|
+| `BC` | Business |
+| `PC` | Premium |
+| `YC` | Économie |
+| `CREW` | les plateaux de l'**équipage**, sur le même vol que les passagers |
+| `SPML` | les **repas spéciaux**, toutes cabines confondues |
+
+Les deux dernières ne sont pas des cabines, mais se fabriquent exactement comme
+elles. Les compter à part, c'est pouvoir leur donner **leur propre barème** : un
+repas spécial ne coûte pas le temps d'un plateau de masse, et le noyer dans
+l'économie reviendrait à sous-estimer la cuisine.
+
+Dans le programme de vols, elles se lisent dans les colonnes **facultatives**
+`nb_CREW` et `nb_SPML`. Un export qui ne les porte pas reste lisible : elles
+valent zéro, et aucune classe n'est créée pour elles.
+
 ## 2. L'atelier de travail
 
 Une équipe dans un service. Il n'occupe **aucune place dans l'espace** : ce
@@ -197,11 +216,26 @@ Un atelier de type **Lavage** ne fabrique rien : son travail vient des retours, 
 mesure qu'ils arrivent. Il suit le même régime de poste que les autres — ce qui
 arrive après la fin de son poste reste sale.
 
-Son **débit est la somme des débits de ses tunnels actifs**. On décrit donc la
-plonge tunnel par tunnel, chacun avec son débit en unités par heure : un tunnel
-deux fois plus rapide compte pour ce qu'il vaut, pas pour un. Chaque tunnel se
-met **à l'arrêt** sans être supprimé — c'est ainsi qu'on essaie une panne. Si
-tous sont arrêtés, le modèle le dit plutôt que de laver à zéro.
+### La plonge se décrit tunnel par tunnel
+
+Chaque tunnel porte son **nom**, son **débit** en unités par heure, les
+**personnes** qu'il faut pour le tenir, et son état **en service ou à l'arrêt**.
+
+> Le débit de la plonge est la somme des débits des tunnels qui **tournent
+> vraiment** — pas de ceux qui sont décrits.
+
+Un tunnel ne tourne que si l'équipe a les gens pour le tenir. Les tunnels sont
+servis **dans l'ordre de la liste** : à vous de mettre en tête ceux qu'on allume
+d'abord. Ceux que l'effectif ne couvre pas sont **nommés et laissés à l'arrêt**,
+pas silencieusement ignorés.
+
+Sans cette règle, trois tunnels à 300 u/h tenus par deux personnes annonçaient
+900 u/h. C'était le chiffre le plus faux du modèle, et rien ne le disait.
+
+Un tunnel deux fois plus rapide compte pour ce qu'il vaut, pas pour un. Un
+tunnel **à l'arrêt** ne lave rien et ne mobilise personne — c'est ainsi qu'on
+essaie une panne sans effacer sa description. Si aucun ne tourne, le modèle le
+dit plutôt que de laver à zéro.
 
 Un atelier coché **« emporte du matériel propre »** attend, avant chaque lot,
 que le compte couvre ce que ses classes emportent. L'attente est mesurée. Un lot

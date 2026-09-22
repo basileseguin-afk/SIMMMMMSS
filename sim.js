@@ -1672,7 +1672,7 @@ function initWorkbench() {
   document.getElementById('flight-search').addEventListener('input',renderFlights);
   document.getElementById('flight-filter').addEventListener('change',renderFlights);
   document.getElementById('csv-template').addEventListener('click',()=>{
-    const content='vol_id,compagnie,type_avion,sens,heure_std,heure_sta,nb_BC,nb_PC,nb_YC\nDEMO001,DEMO,A320,DEP,12:00,,0,0,100\nDEMO-RET001,DEMO,A320,RET,,08:00,0,0,100\n';
+    const content='vol_id,compagnie,type_avion,sens,heure_std,heure_sta,nb_BC,nb_PC,nb_YC,nb_CREW,nb_SPML\nDEMO001,DEMO,A320,DEP,12:00,,0,0,100,4,3\nDEMO-RET001,DEMO,A320,RET,,08:00,0,0,100,4,0\n';
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type:'text/csv;charset=utf-8'}));a.download='modele-vols-demo.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
   });
   document.getElementById('restore-demo').addEventListener('click',()=>{

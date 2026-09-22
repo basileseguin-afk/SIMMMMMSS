@@ -169,8 +169,9 @@
         <p id="rg-status" role="status" aria-live="polite"></p>
         <div class="panneau" id="rg-bareme-panneau">
           <h3>Barème — homme-minutes</h3>
-          <p class="mini-note">Pour un service et une cabine : les minutes de travail d’<b>un passager</b>,
-            plus celles que coûte <b>un vol</b> quel que soit son remplissage.
+          <p class="mini-note">Pour un service et une classe : les minutes de travail d’<b>une unité</b>
+            — un passager, un plateau d’équipage, un repas spécial — plus celles que coûte
+            <b>un vol</b> quel que soit son remplissage.
             <span class="rg-formule">durée = homme-minutes ÷ personnes ÷ rendement</span></p>
           <div id="rg-alerte"></div>
           <div id="rg-bareme"></div>
@@ -297,7 +298,7 @@
 
       box.innerHTML = `<table class="rg-table"><thead>
         <tr><th scope="col" rowspan="2">Service</th>${P.CABINES.map(c =>
-          `<th scope="col" colspan="2">${c}</th>`).join('')}</tr>
+          `<th scope="col" colspan="2" title="${esc((P.NOM_CABINE || {})[c] || c)}">${c}</th>`).join('')}</tr>
         <tr>${P.CABINES.map(() => '<th scope="col">min/pax</th><th scope="col">min/vol</th>').join('')}</tr>
         </thead><tbody>` + services.map(s => {
           const propre = this.etat.bareme[s.id];

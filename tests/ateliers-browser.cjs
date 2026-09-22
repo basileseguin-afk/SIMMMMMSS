@@ -54,8 +54,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 2. Toutes les compagnies × classes du programme sont listées, à fabriquer.
   const lignes=await page.locator('#at-classes tbody tr').count();
-  assert.equal(lignes,20,'20 compagnies × classes dans le jeu de démonstration');
-  assert.equal(await page.locator('.at-etat.manque').count(),20,'aucune n’est fabriquée au départ');
+  assert.equal(lignes,34,'34 compagnies × classes dans le jeu de démonstration');
+  assert.equal(await page.locator('.at-etat.manque').count(),34,'aucune n’est fabriquée au départ');
+  // CREW et SPML sont des classes comme les autres : elles figurent au tableau.
+  const ids=await page.locator('#at-classes tbody tr th').allTextContents();
+  assert.ok(ids.some(t=>t.includes('/CREW')),'les plateaux d’équipage sont comptés');
+  assert.ok(ids.some(t=>t.includes('/SPML')),'les repas spéciaux aussi');
 
   // 3. Un atelier enchaîne ses lots : le second démarre quand le premier finit.
   const cui=await creer('Cuisine CRL','cuisine','04:30',6);
@@ -118,13 +122,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 8. La couverture par classe dit ce qui sort et par où.
   const etats=await page.locator('#at-classes tbody tr').evaluateAll(rs=>rs.map(r=>r.cells[0].textContent.trim()+'|'+r.cells[5].textContent));
   assert.ok(etats.some(t=>t.startsWith('CRL/BC')&&/à l’heure/.test(t)));
-  assert.equal(etats.filter(t=>/jamais fabriquée/.test(t)).length,17);
+  assert.equal(etats.filter(t=>/jamais fabriquée/.test(t)).length,31,'34 classes moins les 3 fabriquées');
   const parcours=await page.locator('#at-classes tbody tr').evaluateAll(rs=>(rs.find(r=>r.cells[0].textContent.trim()==='CRL/BC')||{cells:[]}).cells[6].textContent);
   assert.equal(parcours,'cuisine → prepa','le parcours réel est affiché');
 
   // 9. Les indicateurs résument la journée.
   assert.match(await page.locator('#at-indicateurs').textContent(),/Classes à l’heure/);
-  assert.match(await page.locator('#at-indicateurs').textContent(),/17/,'les classes sans atelier sont comptées');
+  assert.match(await page.locator('#at-indicateurs').textContent(),/31/,'les classes sans atelier sont comptées');
 
   // 10. Annuler, rétablir, et la saisie survit au rechargement.
   const avantSuppr=(await etat()).ateliers.length;
@@ -264,17 +268,37 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     'un atelier de lavage n\u2019a pas de lots');
   assert.match(await page.locator(`[data-at="${plonge}"] .at-lavage-note`).textContent(),/retours de vols/);
 
-  // 19 bis. Le d\u00e9bit de la plonge est la SOMME de ses tunnels actifs.
-  assert.match(await page.locator('.at-tunnel-total').textContent(),/300/,'un tunnel par d\u00e9faut');
+  // 19 bis. La plonge se décrit TUNNEL PAR TUNNEL : son débit est la somme de
+  //         ceux qui tournent — et un tunnel ne tourne que si l'équipe a les
+  //         gens pour le tenir. Sans cela, additionner les débits donnerait une
+  //         plonge deux fois trop rapide sans qu'on sache pourquoi.
+  const total=()=>page.locator(`[data-at="${plonge}"] .at-tunnel-total`).textContent();
+  assert.match(await total(),/300/,'un tunnel par défaut');
   await page.locator(`[data-at="${plonge}"] [data-at-action=tunnel-ajouter]`).click();await attendre();
   await page.fill(`[data-at="${plonge}"] [data-at-champ=tunnel-debit][data-index="1"]`,'600');
   await page.dispatchEvent(`[data-at="${plonge}"] [data-at-champ=tunnel-debit][data-index="1"]`,'change');await attendre();
-  assert.match(await page.locator('.at-tunnel-total').textContent(),/900/,'300 + 600');
-  // Un tunnel \u00e0 l'arr\u00eat ne lave rien, sans qu'on ait \u00e0 le supprimer.
+  assert.match(await total(),/900/,'300 + 600, les deux sont tenus');
+  // Deux personnes par tunnel, mais l'équipe est à trois : le second ne tourne pas.
+  for(const i of [0,1]){
+    const s=`[data-at="${plonge}"] [data-at-champ=tunnel-personnes][data-index="${i}"]`;
+    await page.fill(s,'2');await page.dispatchEvent(s,'change');await attendre();
+  }
+  assert.match(await total(),/300 u\/h/,'seul le premier tunnel est tenu');
+  assert.match(await total(),/1 tunnel\(s\) sur 2/);
+  assert.match(await total(),/1 sans personnel/);
+  assert.equal(await page.locator(`[data-at="${plonge}"] .at-tunnel.sans-personne`).count(),1,
+    'le tunnel sans personnel se voit');
+  assert.match(await page.locator('.at-anomalies').textContent(),/sans personne pour les tenir/);
+  // Ajouter du monde le fait tourner.
+  await champ(plonge,'personnes',4);
+  assert.match(await total(),/900 u\/h/,'les deux tunnels tournent');
+  assert.equal(await page.locator(`[data-at="${plonge}"] .at-tunnel.sans-personne`).count(),0);
+  // Un tunnel à l'arrêt ne lave rien et ne mobilise personne, sans être supprimé.
   await page.locator(`[data-at="${plonge}"] [data-at-champ=tunnel-actif][data-index="0"]`).uncheck();await attendre();
-  assert.match(await page.locator('.at-tunnel-total').textContent(),/600 u\/h \u00b7 1 \u00e0 l\u2019arr\u00eat/);
+  assert.match(await total(),/600 u\/h/);
+  assert.match(await total(),/1 tunnel\(s\) sur 2/);
   const tunnels=await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).tunnels,plonge);
-  assert.deepEqual(tunnels.map(t=>[t.debit,t.actif]),[[300,false],[600,true]]);
+  assert.deepEqual(tunnels.map(t=>[t.debit,t.personnes,t.actif]),[[300,2,false],[600,2,true]]);
   await page.locator(`[data-at="${plonge}"] [data-at-champ=tunnel-actif][data-index="0"]`).check();await attendre();
 
   await ouvrir(cui2);

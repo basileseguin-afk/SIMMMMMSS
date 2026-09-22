@@ -114,7 +114,7 @@ body.ateliers-open .workbench{display:none}
 .at-cases .chk input{width:16px;height:16px;flex:none;margin-top:1px;accent-color:var(--accent)}
 .at-presence{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--txt2);margin-left:24px}
 .at-presence input{max-width:90px}
-.at-lavage-note{padding:0 14px 12px;margin:0}
+.at-lavage-note,.at-tunnel-note{padding:0 14px 12px;margin:0}
 
 /* La boucle du matériel : ce qui part revient. */
 .at-mat{border:1px solid var(--bordure);border-radius:10px;background:var(--bg3);padding:12px 16px;margin-bottom:16px}
@@ -158,3 +158,8 @@ body.ateliers-open .workbench{display:none}
 /* Une mise à disposition n'a pas de durée : un repère, pas une barre. */
 .at-pl-dispo{fill:var(--txt2)}
 .at-ajout-note{grid-column:1/-1;margin:0}
+
+/* Un tunnel que personne ne tient ne tourne pas : il se voit. */
+.at-tunnel-etat{font-size:11px;color:var(--txt2);min-width:120px}
+.at-tunnel.sans-personne{border-left:3px solid var(--orange);padding-left:8px;margin-left:11px}
+.at-tunnel.sans-personne .at-tunnel-etat{color:var(--orange);font-weight:700}

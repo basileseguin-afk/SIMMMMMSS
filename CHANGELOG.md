@@ -5,6 +5,37 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-22 — CREW et SPML, et la plonge tunnel par tunnel
+
+**Deux classes de plus.** `CABINES` devient `['BC','PC','YC','CREW','SPML']`.
+Les deux dernières ne sont pas des cabines mais se fabriquent comme elles :
+les plateaux de l'**équipage**, et les **repas spéciaux**. Les compter à part,
+c'est pouvoir leur donner leur propre barème — un repas spécial ne coûte pas
+le temps d'un plateau de masse, et le noyer dans l'économie sous-estimait la
+cuisine.
+
+- `ui-model.js` : colonnes **facultatives** `nb_CREW` et `nb_SPML`. Un export
+  qui ne les porte pas reste lisible ; elles valent zéro et ne créent rien.
+- Le barème passe à cinq colonnes, le modèle CSV et le jeu de démonstration
+  les portent. Le jeu de démonstration compte donc 34 classes au lieu de 20.
+
+**La plonge se décrit vraiment tunnel par tunnel.** « Pour plonge et tunnels
+détaille plus, ça peut être pour chaque tunnel et pas au global. » Le défaut
+n'était pas l'affichage : c'était que **le débit s'additionnait sans se
+demander s'il y avait les gens**.
+
+- Chaque tunnel porte désormais les **personnes qu'il faut pour le tenir**.
+  Le débit de la plonge est la somme de ceux qui **tournent vraiment**.
+- Les tunnels sont servis **dans l'ordre de la liste** — à vous de mettre en
+  tête ceux qu'on allume d'abord. Ceux que l'effectif ne couvre pas sont
+  **nommés et laissés à l'arrêt**, avec un liseré orange et une anomalie.
+- Trois tunnels à 300 u/h tenus par deux personnes annonçaient 900 u/h. C'était
+  le chiffre le plus faux du modèle, et rien ne le disait.
+- `tunnelsQuiTournent()` dans `moteur/production.js`, et le bilan de la fiche
+  dit : débit réel, tunnels qui tournent sur tunnels décrits, sans personnel,
+  personnes disponibles.
+- Vérification : 175 tests purs et douze parcours navigateur au vert.
+
 ## 2026-09-22 — Le navigateur ne peut plus servir une version périmée
 
 « Je ne vois rien sur le visuel. » Le déploiement était vert, le dépôt à jour,

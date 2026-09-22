@@ -587,7 +587,7 @@ test('une plonge dont tous les tunnels sont à l’arrêt le dit', () => {
       tunnels: [{ debit: 300, actif: false }, { debit: 300, actif: false }] }]
   });
   assert.equal(r.ok, false);
-  assert.match(r.anomalies.map(a => a.message).join(' '), /aucun tunnel actif/);
+  assert.match(r.anomalies.map(a => a.message).join(' '), /aucun tunnel ne tourne/);
 });
 
 /* ---- la mise à disposition ------------------------------------------- */
@@ -687,4 +687,113 @@ test('mais elle figure au parcours de ce qu’elle sert', () => {
   assert.equal(c.absente, false);
   // Sa fin est celle du montage, pas celle de l'ouverture du magasin.
   assert.equal(c.fin, r.lots.find(l => l.atelier === 'mo').fin);
+});
+
+/* ---- équipage et repas spéciaux --------------------------------------- */
+
+const VOLS_CS = [
+  { id: 'AF1', cie: 'AF', sens: 'DEP', std: 10 * 60, bc: 10, pc: 0, yc: 100, crew: 8, spml: 6 },
+  { id: 'AF2', cie: 'AF', sens: 'DEP', std: 11 * 60, bc: 0, pc: 0, yc: 120, crew: 6, spml: 0 }
+];
+
+test('CREW et SPML sont des classes comme les autres', () => {
+  const classes = P.classesDeVols(VOLS_CS, { delaiChargement: 45 });
+  const par = Object.fromEntries(classes.map(c => [c.id, c]));
+  assert.equal(par['AF/CREW'].pax, 14, 'les équipages des deux vols');
+  assert.equal(par['AF/CREW'].vols.length, 2);
+  assert.equal(par['AF/SPML'].pax, 6, 'un seul vol en porte');
+  assert.equal(par['AF/SPML'].vols.length, 1, 'un vol sans repas spécial n’en crée pas');
+  assert.equal(par['AF/YC'].pax, 220, 'les cabines ne changent pas');
+});
+
+test('un vol qui ne les porte pas n’en fabrique pas', () => {
+  const classes = P.classesDeVols(
+    [{ id: 'X', cie: 'ZZ', sens: 'DEP', std: 9 * 60, bc: 0, pc: 0, yc: 80 }], {});
+  assert.deepEqual(classes.map(c => c.id), ['ZZ/YC']);
+});
+
+test('elles ont leur propre barème : un repas spécial coûte plus cher', () => {
+  const classe = P.classesDeVols(VOLS_CS, {}).find(c => c.id === 'AF/SPML');
+  const yc = P.classesDeVols(VOLS_CS, {}).find(c => c.id === 'AF/YC');
+  const parTete = (c) => P.travailClasse('cuisine', c, P.BAREME_DEMO) / c.pax;
+  assert.ok(parTete(classe) > parTete(yc) * 3,
+    'un repas spécial pèse bien plus qu’un plateau d’économie');
+});
+
+test('elles se fabriquent et sortent comme les cabines', () => {
+  const r = P.simuler({
+    vols: VOLS_CS, liaisons: [{ from: 'cuisine', to: 'prepa' }],
+    ateliers: [
+      atelier({ id: 'cu', nom: 'Cuisine', service: 'cuisine', debut: '04:00', personnes: 6,
+        lots: [['AF/SPML'], ['AF/CREW']] }),
+      atelier({ id: 'mo', nom: 'Montage', service: 'prepa', debut: '04:00', personnes: 6,
+        lots: [['AF/SPML', 'AF/CREW']] })
+    ]
+  });
+  assert.equal(r.ok, true, JSON.stringify(r.anomalies));
+  for (const id of ['AF/SPML', 'AF/CREW']) {
+    assert.equal(r.parClasse[id].absente, false, id + ' est fabriquée');
+    assert.ok(r.parClasse[id].fin != null);
+  }
+  // Le montage attend que la cuisine ait livré LES DEUX.
+  const montage = r.lots.find(l => l.atelier === 'mo');
+  const finCuisine = Math.max(...r.lots.filter(l => l.atelier === 'cu').map(l => l.fin));
+  assert.equal(montage.debut, finCuisine);
+});
+
+/* ---- la plonge, tunnel par tunnel -------------------------------------- */
+
+const plonge = (personnes, tunnels) => ({ id: 'pl', nom: 'Plonge', service: 'plonge',
+  type: 'lavage', debut: '05:00', personnes, jour: 0, lots: [], tunnels });
+
+test('un tunnel sans personne pour le tenir ne tourne pas, et on le dit', () => {
+  // Trois tunnels à deux personnes chacun, mais l'équipe est à quatre.
+  const a = plonge(4, [
+    { nom: 'T1', debit: 300, personnes: 2 },
+    { nom: 'T2', debit: 300, personnes: 2 },
+    { nom: 'T3', debit: 300, personnes: 2 }
+  ]);
+  const etat = P.tunnelsQuiTournent(a);
+  assert.deepEqual(etat.tournent.map(t => t.nom), ['T1', 'T2'], 'servis dans l’ordre décrit');
+  assert.deepEqual(etat.sansPersonne.map(t => t.nom), ['T3']);
+  assert.equal(etat.debit, 600, 'et non 900');
+  assert.equal(P.debitLavage(a), 600);
+
+  const r = P.simuler({ vols: VOLS_BOUCLE, liaisons: [], materiel: MAT, ateliers: [a] });
+  assert.equal(r.ok, true, 'signalé, pas bloquant');
+  assert.match(r.anomalies.map(x => x.message).join(' '), /T3.*ne tournent pas/s);
+});
+
+test('ajouter du monde fait tourner le tunnel qui manquait', () => {
+  const tunnels = [
+    { nom: 'T1', debit: 300, personnes: 2 },
+    { nom: 'T2', debit: 300, personnes: 2 }
+  ];
+  assert.equal(P.debitLavage(plonge(2, tunnels)), 300);
+  assert.equal(P.debitLavage(plonge(4, tunnels)), 600);
+  // Au-delà, rien de plus : ce sont les tunnels qui lavent, pas les gens.
+  assert.equal(P.debitLavage(plonge(10, tunnels)), 600);
+  assert.equal(P.tunnelsQuiTournent(plonge(10, tunnels)).reste, 6, 'les personnes en trop sont comptées');
+});
+
+test('un tunnel à l’arrêt ne mobilise personne', () => {
+  const a = plonge(2, [
+    { nom: 'T1', debit: 300, personnes: 2, actif: false },
+    { nom: 'T2', debit: 400, personnes: 2 }
+  ]);
+  assert.equal(P.debitLavage(a), 400, 'le tunnel arrêté laisse ses gens au suivant');
+  assert.deepEqual(P.tunnelsQuiTournent(a).sansPersonne, []);
+});
+
+test('la durée du lavage suit le débit réellement disponible', () => {
+  const jouer = (personnes) => P.simuler({
+    vols: VOLS_BOUCLE, liaisons: [], materiel: MAT,
+    ateliers: [plonge(personnes, [
+      { nom: 'T1', debit: 300, personnes: 2 },
+      { nom: 'T2', debit: 300, personnes: 2 }
+    ])]
+  }).lots.find(l => l.unites !== undefined);
+  const seul = jouer(2), deux = jouer(4);
+  assert.equal(seul.fin - seul.debut, 20, '100 unités à 300/h');
+  assert.equal(deux.fin - deux.debut, 10, 'deux tunnels tenus : deux fois plus vite');
 });

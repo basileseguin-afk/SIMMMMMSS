@@ -62,12 +62,16 @@
         if(!['DEP','RET'].includes(sens))throw new Error('sens attendu : DEP ou RET');
         const key=sens+'|'+id;if(seen.has(key))throw new Error('doublon '+id+' ('+sens+')');seen.add(key);
         const quantity=h=>{const v=get(h);if(!/^\d+$/.test(v) || !Number.isSafeInteger(+v))throw new Error(h+' : entier positif ou nul requis');return +v;};
+        const optionnel=h=>{if(!headers.includes(h))return 0;const v=get(h).trim();if(!v)return 0;return quantity(h);};
         const time=h=>{const v=get(h);if(!/^([01]?\d|2[0-3]):[0-5]\d$/.test(v))throw new Error(h+' : horaire HH:MM requis (00:00 à 23:59)');const [hh,mm]=v.split(':').map(Number);return hh*60+mm;};
         const bc=quantity('nb_bc'),pc=quantity('nb_pc'),yc=quantity('nb_yc');
-        if(bc+pc+yc===0)throw new Error('au moins une quantité doit être supérieure à zéro');
+        // Équipage et repas spéciaux sont FACULTATIFS : un export qui ne les
+        // porte pas reste lisible, et vaut zéro plutôt que d'être refusé.
+        const crew=optionnel('nb_crew'),spml=optionnel('nb_spml');
+        if(bc+pc+yc+crew+spml===0)throw new Error('au moins une quantité doit être supérieure à zéro');
         const std=sens==='DEP'?time('heure_std'):get('heure_std')?time('heure_std'):null;
         const sta=sens==='RET'?time('heure_sta'):get('heure_sta')?time('heure_sta'):null;
-        out.push({id,cie,sens,avion:get('type_avion')||'—',std,sta,bc,pc,yc});
+        out.push({id,cie,sens,avion:get('type_avion')||'—',std,sta,bc,pc,yc,crew,spml});
       } catch(e){errors.push('Ligne '+line+' : '+e.message);}
     });
     if(errors.length)throw new Error(errors.slice(0,8).join('\n')+(errors.length>8?'\n… '+(errors.length-8)+' autre(s) erreur(s).':'')+'\nAucune donnée remplacée.');

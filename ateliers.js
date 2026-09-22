@@ -61,6 +61,9 @@
             .slice(0, 20).map((t, i) => ({
               nom: String(t.nom ?? ('Tunnel ' + (i + 1))).slice(0, 80),
               debit: Number.isFinite(+t.debit) ? Math.max(0, +t.debit) : 300,
+              // Un tunnel que personne ne tient ne tourne pas : l'effectif de
+              // l'équipe décide combien tournent vraiment.
+              personnes: Number.isInteger(+t.personnes) ? Math.max(0, Math.min(99, +t.personnes)) : 1,
               actif: t.actif !== false
             }))
         } : {}),
@@ -301,8 +304,8 @@
         case 'pause-retirer':
           return this.changer(() => a.pauses.splice(+data.index, 1), 'Arrêt retiré.');
         case 'tunnel-ajouter':
-          return this.changer(() => a.tunnels.push({ nom: 'Tunnel ' + (a.tunnels.length + 1), debit: 300, actif: true }),
-            'Tunnel ajouté. Le débit de la plonge est la somme des tunnels actifs.');
+          return this.changer(() => a.tunnels.push({ nom: 'Tunnel ' + (a.tunnels.length + 1), debit: 300, personnes: 1, actif: true }),
+            'Tunnel ajouté. Le débit de la plonge est la somme des tunnels qui tournent.');
         case 'tunnel-retirer':
           return this.changer(() => a.tunnels.splice(+data.index, 1), 'Tunnel retiré.');
         case 'classe-supprimer': return this.supprimerClasse(data.classe);
@@ -369,6 +372,7 @@
           case 'tunnel-nom': a.tunnels[+el.dataset.index].nom = v; break;
           case 'tunnel-debit': a.tunnels[+el.dataset.index].debit = Math.max(0, parseFloat(v) || 0); break;
           case 'tunnel-actif': a.tunnels[+el.dataset.index].actif = el.checked; break;
+          case 'tunnel-personnes': a.tunnels[+el.dataset.index].personnes = Math.max(0, parseInt(v, 10) || 0); break;
           case 'permanent': a.permanent = el.checked; break;
           case 'regime': a.regime = { ...a.regime, actif: el.checked }; break;
           case 'presence': {
@@ -602,6 +606,7 @@
 
       const services = this.a.services();
       // Le régime de la maison, pour dire ce que suit un atelier qui ne fixe rien.
+      const etatTunnels = P.tunnelsQuiTournent(a);
       const reg = P.normaliserRegime(undefined, (this.a.reglages ? this.a.reglages() : {}).regime);
       const defaut = { presence: reg.presence, arret: reg.seuils.reduce((n, x) => n + x.duree, 0) };
       const restantes = i => this.classes.filter(c => !a.lots[i].includes(c.id));
@@ -678,20 +683,29 @@
 
         ${dispo ? '' : a.type === 'lavage' ? `
         <div class="at-sous-titre">Tunnels de lavage
-          <span class="mini-note">le débit de la plonge est la somme des tunnels actifs</span></div>
-        ${a.tunnels.map((t, i) => `<div class="at-tunnel ${t.actif ? '' : 'arret'}">
+          <span class="mini-note">son débit est la somme des tunnels qui tournent vraiment</span></div>
+        ${a.tunnels.map((t, i) => `<div class="at-tunnel ${t.actif ? '' : 'arret'}${
+          etatTunnels.sansPersonne.includes(t) ? ' sans-personne' : ''}">
           <label class="chk chk-mini"><input type="checkbox" data-at-champ="tunnel-actif" data-index="${i}" ${t.actif ? 'checked' : ''}>
             <span class="sr-only">${esc(t.nom)} en service</span></label>
           <input value="${esc(t.nom)}" data-at-champ="tunnel-nom" data-index="${i}" maxlength="80" aria-label="Nom du tunnel">
           <input type="number" min="0" step="10" value="${t.debit}" data-at-champ="tunnel-debit" data-index="${i}" aria-label="Débit en unités par heure">
           <span class="at-tunnel-unite">u/h</span>
+          <input type="number" min="0" max="99" value="${t.personnes}" data-at-champ="tunnel-personnes" data-index="${i}" aria-label="Personnes pour tenir ${esc(t.nom)}">
+          <span class="at-tunnel-unite">pers.</span>
+          <span class="at-tunnel-etat">${!t.actif ? 'à l’arrêt'
+            : etatTunnels.sansPersonne.includes(t) ? 'personne pour le tenir' : 'tourne'}</span>
           <button class="btn btn-sm" data-at-action="tunnel-retirer" data-index="${i}">Retirer</button>
         </div>`).join('')}
         <div class="at-actions-lot">
           <button class="btn btn-sm" data-at-action="tunnel-ajouter">+ Tunnel</button>
-          <span class="at-tunnel-total">Débit total : <b>${P.debitLavage(a)}</b> u/h${
-            a.tunnels.filter(t => !t.actif).length ? ' · ' + a.tunnels.filter(t => !t.actif).length + ' à l’arrêt' : ''}</span>
+          <span class="at-tunnel-total">Débit réel : <b>${etatTunnels.debit}</b> u/h ·
+            ${etatTunnels.tournent.length} tunnel(s) sur ${a.tunnels.length}${
+            etatTunnels.sansPersonne.length ? ' · ' + etatTunnels.sansPersonne.length + ' sans personnel' : ''}${
+            etatTunnels.reste ? ' · ' + etatTunnels.reste + ' personne(s) disponible(s)' : ''}</span>
         </div>
+        <p class="mini-note at-tunnel-note">Un tunnel ne tourne que si l’équipe a les gens pour le tenir.
+          Ils sont servis <b>dans l’ordre de la liste</b> : mettez en tête ceux qu’on allume d’abord.</p>
         <p class="mini-note at-lavage-note">Cet atelier ne fabrique rien : son travail vient des retours de vols, à mesure qu’ils arrivent.</p>` : `
         <div class="at-sous-titre">Ce que cette équipe fabrique, dans l’ordre</div>
         <p class="mini-note at-regle">Une ligne = une fabrication. Plusieurs sur la même ligne sortent <b>ensemble</b> ;

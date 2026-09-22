@@ -68,8 +68,21 @@
    *  2. COMPAGNIES × CLASSES
    * ====================================================================*/
 
-  const CABINES = ['BC', 'PC', 'YC'];
-  const CHAMP_PAX = { BC: 'bc', PC: 'pc', YC: 'yc' };
+  /*
+   * Les classes fabriquées. Les trois premières sont des cabines ; les deux
+   * dernières n'en sont pas, mais se fabriquent exactement comme elles :
+   *
+   *   CREW — les plateaux de l'équipage, sur le même vol que les passagers ;
+   *   SPML — les repas spéciaux, toutes cabines confondues.
+   *
+   * Les compter à part, c'est pouvoir leur donner leur propre barème : un
+   * repas spécial ne coûte pas le temps d'un plateau de masse, et le noyer
+   * dans l'économie reviendrait à sous-estimer la cuisine.
+   */
+  const CABINES = ['BC', 'PC', 'YC', 'CREW', 'SPML'];
+  const CHAMP_PAX = { BC: 'bc', PC: 'pc', YC: 'yc', CREW: 'crew', SPML: 'spml' };
+  const NOM_CABINE = { BC: 'Business', PC: 'Premium', YC: 'Économie',
+    CREW: 'Équipage', SPML: 'Repas spéciaux' };
 
   const idClasse = (cie, cabine) => String(cie).trim().toUpperCase() + '/' + cabine;
 
@@ -110,14 +123,22 @@
   /* Minutes de travail humain par passager, et minutes fixes par vol (mise en
    * route, trolley, contrôle). Par service et par cabine. VALEURS D'ATTENTE. */
   const BAREME_DEMO = {
-    appros:   { BC: { parPax: 0.60, parVol: 0 }, PC: { parPax: 0.35, parVol: 0 }, YC: { parPax: 0.12, parVol: 0 } },
-    decontam: { BC: { parPax: 0.05, parVol: 0 }, PC: { parPax: 0.05, parVol: 0 }, YC: { parPax: 0.05, parVol: 0 } },
-    cuisine:  { BC: { parPax: 1.40, parVol: 0 }, PC: { parPax: 0.70, parVol: 0 }, YC: { parPax: 0.28, parVol: 0 } },
-    prepa:    { BC: { parPax: 2.20, parVol: 5 }, PC: { parPax: 1.10, parVol: 5 }, YC: { parPax: 0.35, parVol: 5 } },
-    dotation: { BC: { parPax: 0.50, parVol: 0 }, PC: { parPax: 0.30, parVol: 0 }, YC: { parPax: 0.12, parVol: 0 } },
-    armement: { BC: { parPax: 0.08, parVol: 5 }, PC: { parPax: 0.08, parVol: 5 }, YC: { parPax: 0.08, parVol: 5 } },
-    magasin:  { BC: { parPax: 0.10, parVol: 0 }, PC: { parPax: 0.08, parVol: 0 }, YC: { parPax: 0.04, parVol: 0 } },
-    plonge:   { BC: { parPax: 0.90, parVol: 0 }, PC: { parPax: 0.90, parVol: 0 }, YC: { parPax: 0.90, parVol: 0 } }
+    appros:   { BC: { parPax: 0.60, parVol: 0 }, PC: { parPax: 0.35, parVol: 0 }, YC: { parPax: 0.12, parVol: 0 },
+                CREW: { parPax: 0.90, parVol: 0 }, SPML: { parPax: 0.30, parVol: 0 } },
+    decontam: { BC: { parPax: 0.05, parVol: 0 }, PC: { parPax: 0.05, parVol: 0 }, YC: { parPax: 0.05, parVol: 0 },
+                CREW: { parPax: 0.05, parVol: 0 }, SPML: { parPax: 0.10, parVol: 0 } },
+    cuisine:  { BC: { parPax: 1.40, parVol: 0 }, PC: { parPax: 0.70, parVol: 0 }, YC: { parPax: 0.28, parVol: 0 },
+                CREW: { parPax: 1.40, parVol: 0 }, SPML: { parPax: 2.20, parVol: 0 } },
+    prepa:    { BC: { parPax: 2.20, parVol: 5 }, PC: { parPax: 1.10, parVol: 5 }, YC: { parPax: 0.35, parVol: 5 },
+                CREW: { parPax: 2.20, parVol: 5 }, SPML: { parPax: 2.60, parVol: 5 } },
+    dotation: { BC: { parPax: 0.50, parVol: 0 }, PC: { parPax: 0.30, parVol: 0 }, YC: { parPax: 0.12, parVol: 0 },
+                CREW: { parPax: 0.50, parVol: 0 }, SPML: { parPax: 0.50, parVol: 0 } },
+    armement: { BC: { parPax: 0.08, parVol: 5 }, PC: { parPax: 0.08, parVol: 5 }, YC: { parPax: 0.08, parVol: 5 },
+                CREW: { parPax: 0.08, parVol: 5 }, SPML: { parPax: 0.08, parVol: 5 } },
+    magasin:  { BC: { parPax: 0.10, parVol: 0 }, PC: { parPax: 0.08, parVol: 0 }, YC: { parPax: 0.04, parVol: 0 },
+                CREW: { parPax: 0.10, parVol: 0 }, SPML: { parPax: 0.10, parVol: 0 } },
+    plonge:   { BC: { parPax: 0.90, parVol: 0 }, PC: { parPax: 0.90, parVol: 0 }, YC: { parPax: 0.90, parVol: 0 },
+                CREW: { parPax: 0.90, parVol: 0 }, SPML: { parPax: 0.90, parVol: 0 } }
   };
 
   /** Rendement : part du temps de présence réellement produite. 1 = idéal. */
@@ -205,10 +226,27 @@
    * sans effacer sa description. Un atelier sans liste de tunnels retombe sur
    * son débit global, pour les saisies antérieures.
    */
-  function debitLavage(atelier) {
+  function tunnelsQuiTournent(atelier) {
     const t = atelier && atelier.tunnels;
-    if (!Array.isArray(t) || !t.length) return (atelier && atelier.debit) || 0;
-    return t.filter(x => x && x.actif !== false).reduce((n, x) => n + (+x.debit || 0), 0);
+    if (!Array.isArray(t) || !t.length) {
+      return { tournent: [], sansPersonne: [], reste: 0, debit: (atelier && atelier.debit) || 0 };
+    }
+    // Les tunnels sont servis dans l'ordre où ils sont décrits. Ce n'est pas
+    // arbitraire : c'est à vous de mettre en tête ceux qu'on allume d'abord.
+    let reste = Number.isFinite(+atelier.personnes) ? Math.max(0, +atelier.personnes) : 0;
+    const tournent = [], sansPersonne = [];
+    for (const x of t) {
+      if (!x || x.actif === false) continue;
+      const n = Number.isFinite(+x.personnes) ? Math.max(0, +x.personnes) : 0;
+      if (n > reste) { sansPersonne.push(x); continue; }
+      reste -= n; tournent.push(x);
+    }
+    return { tournent, sansPersonne, reste,
+      debit: tournent.reduce((n, x) => n + (+x.debit || 0), 0) };
+  }
+
+  function debitLavage(atelier) {
+    return tunnelsQuiTournent(atelier).debit;
   }
 
   /**
@@ -250,8 +288,17 @@
         const tunnels = Array.isArray(a.tunnels) ? a.tunnels : null;
         if (tunnels && tunnels.some(t => !(+t.debit > 0)))
           dire('tunnel', 'chaque tunnel attend un débit, en unités par heure.');
-        if (!(debitLavage(a) > 0)) dire('debit', tunnels && tunnels.length
-          ? 'aucun tunnel actif : rien n’est lavé.'
+        // Un tunnel sans personne pour le tenir ne tourne pas. Additionner
+        // les débits sans se demander s'il y a les gens donnerait une plonge
+        // deux fois trop rapide, et on ne saurait pas pourquoi.
+        const etat = tunnelsQuiTournent(a);
+        if (etat.sansPersonne.length) {
+          dire('tunnel-personnes', etat.sansPersonne.length + ' tunnel(s) sans personne pour les tenir — '
+            + etat.sansPersonne.map(t => t.nom || 'sans nom').join(', ')
+            + '. Ils ne tournent pas. Ajoutez du monde ou arrêtez-les.');
+        }
+        if (!(etat.debit > 0)) dire('debit', tunnels && tunnels.length
+          ? 'aucun tunnel ne tourne : rien n’est lavé.'
           : 'débit attendu, en unités de matériel par heure.');
       }
       if (robot) {
@@ -541,7 +588,7 @@
     }
 
     // Ce qui n'empêche pas de jouer la journée ne doit pas l'empêcher.
-    const NON_BLOQUANTES = new Set(['doublon', 'bareme', 'lots', 'lot-vide', 'poste', 'materiel', 'dispo']);
+    const NON_BLOQUANTES = new Set(['doublon', 'bareme', 'lots', 'lot-vide', 'poste', 'materiel', 'dispo', 'tunnel-personnes']);
     const bloquant = anomalies.some(a => !NON_BLOQUANTES.has(a.code));
     if (bloquant) return { ok: false, anomalies, classes, lots: [], ateliers: [] };
 
@@ -882,7 +929,7 @@
     minutes, hhmm, idClasse,
     REGIME_DEFAUT, normaliserRegime, travailDuPoste, executerTache,
     classesDeVols, BAREME_DEMO, RENDEMENT_DEMO, travailClasse,
-    fournisseurs, cycles, validerAteliers, debitLavage,
+    fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,
     pausesDe, finAvecPauses,
     MATERIEL_DEFAUT, retoursDeVols, besoinMateriel,
     simuler
