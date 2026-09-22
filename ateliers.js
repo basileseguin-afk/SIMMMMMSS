@@ -254,7 +254,8 @@
       const n = this.state.ateliers.filter(a => a.service === service).length + 1;
       const atelier = { id: uid(), nom: 'Atelier ' + n, service, type: 'manuel',
         debut: '06:00', jour: 0, personnes: 2, pauses: [], lots: [] };
-      this.changer(() => this.state.ateliers.push(atelier), 'Atelier créé. Ajoutez-lui un lot.');
+      this.changer(() => this.state.ateliers.push(atelier),
+        'Atelier créé et déjà enregistré. Dites ce qu’il fabrique, puis « Terminé ».');
       this.ouvert = atelier.id; this.rendre();
     }
 
@@ -262,6 +263,12 @@
       const a = this.state.ateliers.find(x => x.id === id);
       switch (quoi) {
         case 'ouvrir': this.ouvert = this.ouvert === id ? null : id; return this.rendre();
+        // Rien à valider : la saisie est enregistrée à chaque frappe. Le bouton
+        // referme la fiche et le dit — sans lui, on cherche un « créer »
+        // qui n'existe pas et on doute que l'atelier existe.
+        case 'fermer':
+          this.ouvert = null;
+          return this.rendre('« ' + a.nom + ' » enregistré.');
         case 'supprimer':
           if (!confirm('Supprimer « ' + a.nom + ' » ?')) return;
           return this.changer(() => { this.state.ateliers = this.state.ateliers.filter(x => x.id !== id); }, 'Atelier supprimé.');
@@ -667,6 +674,7 @@
         </details>
 
         <div class="at-actions-lot at-bas">
+          <button class="btn btn-play btn-sm" data-at-action="fermer">Terminé</button>
           <button class="btn btn-sm" data-at-action="dupliquer">Dupliquer</button>
           <button class="btn btn-sm at-danger" data-at-action="supprimer">Supprimer</button>
         </div>

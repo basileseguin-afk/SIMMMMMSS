@@ -5,6 +5,33 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-22 — Confirmer la création d'un atelier, câbler une annexe
+
+Deux points signalés à l'usage, [BUG-015](BUGS.md) et [BUG-016](BUGS.md).
+
+**« On ne peut pas valider la création d'un atelier. »** La fiche s'enregistrait
+déjà à chaque frappe, mais rien ne le disait : un formulaire sans bouton laisse
+croire que rien n'est pris.
+
+- `ateliers.js` : un bouton **« Terminé »** en tête des actions referme la fiche
+  et confirme l'enregistrement dans la ligne d'état.
+- Le message de création le dit aussi : « Atelier créé et **déjà enregistré**… »
+
+**« Ma seconde zone Armement n'apparaît pas dans les flux. »** Le Centre des
+flux ne retenait que les onze ateliers du moteur.
+
+- `flow-center.js` : une **annexe est un emplacement comme un autre**. On peut
+  lui adresser une liaison.
+- `sim.js` : l'héritage des liaisons du parent devient un **défaut, pas une
+  règle**. Une annexe sans liaison à son nom hérite de celles de son atelier ;
+  dès qu'on lui en saisit une, la saisie l'emporte. C'est ainsi qu'on donne à
+  « Armement 2 » un parcours qui lui soit propre.
+- `sim.js` : `zoneParId()` trouve la géométrie d'une annexe pour tracer le flux
+  sur le plan — sans quoi le tracé entier tombait. Un flux dont une extrémité
+  a disparu est simplement ignoré.
+- Tests : `ateliers-browser` § 3 bis et `annexe-browser` § 6.
+- Vérification : 156 tests purs et onze parcours navigateur au vert.
+
 ## 2026-09-22 — Le mot « lot » disparaît, et l'arrêt programmé se distingue de la pause
 
 Deux points de vocabulaire signalés en relecture : « je ne comprends pas le

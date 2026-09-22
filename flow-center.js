@@ -7,7 +7,9 @@ const clone=x=>JSON.parse(JSON.stringify(x));
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=()=> 'flow-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);
 const endpointId=(service,storage=null)=>JSON.stringify([service,storage]);
-function endpoints(zones){return zones.filter(z=>z.kind==='service').flatMap(z=>[{id:endpointId(z.id),owner:z.id,label:z.nom,service:true},...(z.storages||[]).map(s=>({id:endpointId(z.id,s.id),owner:z.id,label:z.nom+' / '+s.nom,service:false}))]);}
+/* Une annexe — « Armement 2 » — est un emplacement comme un autre : on doit
+ * pouvoir lui adresser une liaison. Elle n'a pas de stockages propres. */
+function endpoints(zones){return zones.filter(z=>z.kind==='service'||z.kind==='annexe').flatMap(z=>[{id:endpointId(z.id),owner:z.id,label:z.nom,service:true},...(z.storages||[]).map(s=>({id:endpointId(z.id,s.id),owner:z.id,label:z.nom+' / '+s.nom,service:false}))]);}
 function parseEndpoint(id){
  if(typeof id!=='string'||id.length>400)throw Error('Origine ou destination invalide.');
  let p;try{p=JSON.parse(id);}catch{throw Error('Origine ou destination invalide.');}

@@ -57,18 +57,34 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(r.ok,true);
   assert.ok(r.services.includes(zone.id),'le parcours de CRL/BC passe par l’annexe');
 
-  // 6. Le plan la montre et la décrit, sans prétendre à une file séparée.
+  // 6. Le Centre des flux la propose comme n'importe quel emplacement, et une
+  //    liaison saisie à la main l'emporte sur l'héritage.
+  await click('[data-view=flux]');
+  const emplacements=await page.evaluate(()=>Sim.flows.points.map(p=>p.label));
+  assert.ok(emplacements.includes('ARMEMENT 2'),'l’annexe figure parmi les emplacements du Centre des flux');
+  await click('#fc-new');
+  await page.selectOption('#fc-type','material');
+  await page.selectOption('#fc-from',JSON.stringify(['magasin',null]));
+  await page.selectOption('#fc-to',JSON.stringify([zone.id,null]));
+  await page.locator('#fc-add button[type=submit]').click();
+  const cables=await page.evaluate(()=>Sim.ateliers.a.liaisons());
+  assert.deepEqual(cables.filter(l=>l.to===zone.id).map(l=>l.from),['magasin'],
+    'câblée à la main, elle n’hérite plus des amonts de son atelier');
+  assert.deepEqual(cables.filter(l=>l.to==='armement').map(l=>l.from).sort(),amontsArmement,
+    'l’atelier dont elle dépend garde les siens');
+
+  // 7. Le plan la montre et la décrit, sans prétendre à une file séparée.
   await click('[data-view=plan]');
   await page.locator('#zone-picker').selectOption(zone.id);
   assert.match(await page.locator('#goulot-info').textContent(),/Annexe de/);
   assert.match(await page.locator('#goulot-info').textContent(),/ARMEMENT/);
 
-  // 7. Elle survit au rechargement.
+  // 8. Elle survit au rechargement.
   await page.reload();
   assert.equal(await page.evaluate(()=>Sim.editor.state.zones.filter(z=>z.kind==='annexe').length),1);
   assert.ok((await page.locator('#zone-picker option').allTextContents()).some(t=>t.includes('ARMEMENT 2')));
 
-  // 8. Le chemin le plus court : dupliquer l'atelier donne directement sa 2e salle.
+  // 9. Le chemin le plus court : dupliquer l'atelier donne directement sa 2e salle.
   await click('#btn-edit');
   await page.locator('.pe-shape[data-pe-zone=armement]').click();
   await click('#pe-duplicate');

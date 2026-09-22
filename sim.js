@@ -151,10 +151,18 @@ function dZone(z) {
   return 'M ' + b.x + ' ' + b.y + ' L ' + (b.x+b.w) + ' ' + b.y +
          ' L ' + (b.x+b.w) + ' ' + (b.y+b.h) + ' L ' + b.x + ' ' + (b.y+b.h) + ' Z';
 }
-function centre(id) { const b = boite(ZONES[id]); return { x:b.x + b.w/2, y:b.y + b.h/2 }; }
+/* La géométrie derrière un identifiant : un atelier du moteur, ou une zone
+ * tracée dans l'éditeur — une annexe comme « Armement 2 ». Sans cela une
+ * liaison vers une annexe ne saurait où aller. */
+function zoneParId(id) {
+  if (ZONES[id]) return ZONES[id];
+  const e = Sim.editor;
+  return (e && e.state.zones.find(z => z.id === id)) || null;
+}
+function centre(id) { const b = boite(zoneParId(id)); return { x:b.x + b.w/2, y:b.y + b.h/2 }; }
 // Point sur le bord de la boîte englobante en direction d'une cible
 function bord(id, cible) {
-  const b = boite(ZONES[id]), cx = b.x + b.w/2, cy = b.y + b.h/2;
+  const b = boite(zoneParId(id)), cx = b.x + b.w/2, cy = b.y + b.h/2;
   const dx = cible.x - cx, dy = cible.y - cy;
   if (dx === 0 && dy === 0) return { x:cx, y:cy };
   const sx = dx !== 0 ? (b.w/2) / Math.abs(dx) : Infinity;
@@ -350,9 +358,12 @@ function redessinerEdges() {
 function dessinerFluxConfigures(){
   const group=document.getElementById('flow-edges');group.replaceChildren();
   const points=Sim.flows.points,pairs=new Map();
-  document.getElementById('fc-map-scope').textContent=Sim.flows.mapOwner?' · '+(ZONES[Sim.flows.mapOwner]?.nom||'Service absent'):'';
+  document.getElementById('fc-map-scope').textContent=Sim.flows.mapOwner?' · '+(zoneParId(Sim.flows.mapOwner)?.nom||'Service absent'):'';
   for(const flow of Sim.flows.mapFlows()){
     const a=points.find(p=>p.id===flow.from),b=points.find(p=>p.id===flow.to);
+    // Une zone supprimée depuis la saisie du flux n'a plus de géométrie : on
+    // ne dessine pas plutôt que de faire tomber tout le tracé.
+    if(!a||!b||!zoneParId(a.owner)||!zoneParId(b.owner))continue;
     if(a.owner===b.owner)continue; // les échanges internes se lisent dans la liste
     const key=JSON.stringify([a.owner,b.owner]);const offset=pairs.get(key)||0;pairs.set(key,offset+1);
     const pa=bord(a.owner,centre(b.owner)),pb=bord(b.owner,centre(a.owner));
@@ -393,6 +404,10 @@ function liaisonsServices(){
   // n'attendrait personne et ne serait attendu de personne.
   const liens=out.slice();
   for(const a of annexes()){
+    // … sauf si on l'a câblée soi-même dans le Centre des flux : la saisie
+    // explicite l'emporte sur l'héritage, sinon on ne pourrait jamais donner
+    // à une annexe un parcours qui lui soit propre.
+    if(liens.some(l=>l.from===a.id||l.to===a.id))continue;
     for(const l of liens){
       if(l.to===a.parent) out.push({from:l.from,to:a.id});
       if(l.from===a.parent) out.push({from:a.id,to:l.to});

@@ -187,6 +187,13 @@ Deux conséquences utiles :
 Un **cycle** dans les liaisons est refusé avant de jouer quoi que ce soit : il
 bloquerait la fabrication sans jamais rien dire.
 
+Une **annexe** — « Armement 2 » — figure dans le Centre des flux au même titre
+qu'un atelier. Tant qu'on ne lui saisit aucune liaison, elle **hérite** de
+celles de l'atelier dont elle dépend : c'est une seconde salle, elle attend les
+mêmes amonts. Dès qu'on lui en saisit une, **la saisie l'emporte** sur
+l'héritage — sans quoi une annexe alimentée autrement que son parent ne serait
+pas descriptible.
+
 ---
 
 ## Ce que le modèle ne fait pas — délibérément

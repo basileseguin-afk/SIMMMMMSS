@@ -66,6 +66,14 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(r.lots[0].debut,4*60+30,'il part à l’heure dite');
   assert.equal(r.lots[1].debut,r.lots[0].fin,'le second enchaîne sans trou');
 
+  // 3 bis. « Terminé » referme la fiche et confirme : sans ce geste, on cherche
+  //        un bouton de création qui n'existe pas et on doute que l'atelier soit là.
+  assert.equal(await page.evaluate(()=>Sim.ateliers.ouvert),cui,'la fiche est ouverte');
+  await page.locator(`[data-at="${cui}"] [data-at-action=fermer]`).click();await attendre();
+  assert.equal(await page.evaluate(()=>Sim.ateliers.ouvert),null,'la fiche est refermée');
+  assert.match(await page.locator('#at-status').textContent(),/enregistré/,'et l’enregistrement est dit');
+  assert.equal((await etat()).ateliers.length,1,'l’atelier reste, il n’y avait rien à valider');
+
   // 4. Un atelier aval attend son amont, et l'attente est chiffrée.
   const mon=await creer('Montage CRL','prepa','04:00',8);
   await lot(mon,['CRL/BC']);

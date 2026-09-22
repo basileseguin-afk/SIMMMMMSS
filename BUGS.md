@@ -396,3 +396,58 @@ différente, créer et modifier, avaient la même apparence.
 **Preuve :** `tests/flows-browser.cjs` vérifie que le formulaire est fermé au
 départ, qu'il n'est ni dans la liste ni habillé en liaison, qu'il s'ouvre et se
 referme, et que tout le parcours de création continue de passer.
+
+## BUG-015 — Rien ne confirmait la création d'un atelier de travail (2026-09-22)
+
+**État : corrigé.** Signalé à l'usage : « quand tu crées un atelier tu ne peux
+pas le valider pour confirmer la création ».
+
+Constaté. La fiche s'enregistre **à chaque frappe** : l'atelier existe dès le
+clic sur « + Nouvel atelier ». Mais rien ne le disait. On voyait une fiche
+ouverte, des champs à remplir, un bandeau d'anomalies qui réclamait « 1 point à
+corriger », et en bas seulement « Dupliquer » et « Supprimer » — aucun geste
+pour dire « c'est bon ». L'interface avait la forme d'un formulaire sans en
+avoir le bouton, ce qui laisse croire que rien n'est pris.
+
+**Correction.** Un bouton **« Terminé »** en tête des actions de la fiche : il
+la referme et écrit « « Atelier 1 » enregistré. » dans la ligne d'état. Le
+message de création dit désormais ce qu'il en est — « Atelier créé et déjà
+enregistré. Dites ce qu'il fabrique, puis « Terminé ». »
+
+Rien n'a changé au modèle : il n'y avait rien à valider. Ce qui manquait, c'est
+la phrase qui le dit.
+
+**Preuve :** `tests/ateliers-browser.cjs` § 3 bis — la fiche est ouverte, le
+bouton la referme, l'état confirme l'enregistrement, l'atelier est toujours là.
+
+## BUG-016 — Une annexe n'était pas proposée dans le Centre des flux (2026-09-22)
+
+**État : corrigé.** Signalé à l'usage : « j'ai créé une seconde zone armement
+sur le plan grâce à l'édition mais elle n'apparaît pas dans la liste des
+services dans les flux ».
+
+Constaté. `endpoints()` ne retenait que les zones `kind === 'service'`, c'est-à-dire
+les onze ateliers du moteur. Une annexe — `kind === 'annexe'` — était donc
+invisible du Centre des flux : impossible de lui adresser une liaison.
+
+C'était cohérent avec le choix d'origine : une annexe est une **seconde salle**
+de son atelier, elle en hérite les fournisseurs et les clients. Mais hériter et
+pouvoir câbler ne s'excluent pas — et sans la seconde possibilité, une annexe
+qu'on veut alimenter autrement que son parent n'est pas descriptible.
+
+**Correction.**
+
+- `flow-center.js` : les annexes sont des emplacements comme les autres. Elles
+  n'ont pas de stockages propres, donc une seule entrée chacune.
+- `sim.js` : l'héritage devient un **défaut, pas une règle**. Une annexe sans
+  aucune liaison à son nom hérite de celles de son atelier ; dès qu'on lui en
+  saisit une, la saisie l'emporte.
+- `sim.js` : `zoneParId()` cherche la géométrie dans `ZONES` **puis dans les
+  zones de l'éditeur**. Sans cela une liaison vers une annexe faisait tomber
+  tout le tracé des flux sur le plan : `boite(undefined)`.
+- Un flux dont une extrémité a été supprimée depuis n'est plus dessiné, au lieu
+  d'interrompre le tracé.
+
+**Preuve :** `tests/annexe-browser.cjs` § 6 — l'annexe figure parmi les
+emplacements, une liaison `MAGASIN → ARMEMENT 2` se saisit, et elle remplace
+alors l'héritage sans toucher aux amonts d'`ARMEMENT`.
