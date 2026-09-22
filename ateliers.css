@@ -163,3 +163,18 @@ body.ateliers-open .workbench{display:none}
 .at-tunnel-etat{font-size:11px;color:var(--txt2);min-width:120px}
 .at-tunnel.sans-personne{border-left:3px solid var(--orange);padding-left:8px;margin-left:11px}
 .at-tunnel.sans-personne .at-tunnel-etat{color:var(--orange);font-weight:700}
+
+/* Les deux débits de la plonge : celui des lignes, celui de l'ensemble. */
+.at-plafond{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt2)}
+.at-plafond input{max-width:120px}
+.at-bilan-debit{display:flex;flex-wrap:wrap;gap:18px;align-items:baseline;
+  margin:0 14px 10px;padding:10px 12px;border:1px solid var(--bordure);border-radius:8px;background:var(--bg2)}
+.at-bilan-debit span{font-size:12px;color:var(--txt2)}
+.at-bilan-debit em{display:block;font-style:normal;font-size:10.5px;text-transform:uppercase;
+  letter-spacing:.04em;font-weight:700}
+.at-bilan-debit b{font-size:17px;color:var(--txt);margin-right:3px}
+.at-bilan-debit .retenu b{color:var(--accent2)}
+.at-bilan-debit .at-tunnel-total{margin-left:auto;align-self:center}
+/* Bridée : le plafond est ce qui décide, et il faut le voir. */
+.at-bilan-debit.bride{border-color:var(--orange)}
+.at-bilan-debit.bride .retenu b{color:var(--orange)}

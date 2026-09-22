@@ -216,13 +216,21 @@ Un atelier de type **Lavage** ne fabrique rien : son travail vient des retours, 
 mesure qu'ils arrivent. Il suit le même régime de poste que les autres — ce qui
 arrive après la fin de son poste reste sale.
 
-### La plonge se décrit tunnel par tunnel
+### La plonge : un débit par ligne, un plafond pour l'ensemble
 
 Chaque tunnel porte son **nom**, son **débit** en unités par heure, les
 **personnes** qu'il faut pour le tenir, et son état **en service ou à l'arrêt**.
+La plonge, elle, porte un **débit maximum de l'ensemble** — facultatif.
 
-> Le débit de la plonge est la somme des débits des tunnels qui **tournent
-> vraiment** — pas de ceux qui sont décrits.
+> **Deux limites, et c'est la plus basse qui compte.**
+> La somme des tunnels qui tournent vraiment, et le plafond de l'ensemble.
+
+Il faut les deux. Le débit par ligne dit ce que coûte l'arrêt d'un tunnel ; le
+plafond dit ce que la plonge ne dépassera pas **quoi qu'on ajoute** — parce que
+le côté sale, le séchage et le retour des paniers sont partagés entre les
+lignes et les brident toutes. Sans lui, ajouter un quatrième tunnel augmentait
+le débit sans fin, ce qu'aucune plonge ne fait. Le plafond laissé vide ne bride
+rien.
 
 Un tunnel ne tourne que si l'équipe a les gens pour le tenir. Les tunnels sont
 servis **dans l'ordre de la liste** : à vous de mettre en tête ceux qu'on allume
@@ -231,6 +239,9 @@ pas silencieusement ignorés.
 
 Sans cette règle, trois tunnels à 300 u/h tenus par deux personnes annonçaient
 900 u/h. C'était le chiffre le plus faux du modèle, et rien ne le disait.
+
+La fiche affiche les trois nombres côte à côte — somme des lignes, plafond,
+**débit retenu** — pour qu'on voie d'un coup d'œil lequel décide.
 
 Un tunnel deux fois plus rapide compte pour ce qu'il vaut, pas pour un. Un
 tunnel **à l'arrêt** ne lave rien et ne mobilise personne — c'est ainsi qu'on

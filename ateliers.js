@@ -55,6 +55,9 @@
           personnesMin: Number.isInteger(a.personnesMin) ? Math.max(0, a.personnesMin) : 1
         } : {}),
         ...(type === 'lavage' ? {
+          // Le débit de l'ENSEMBLE : ce qui est partagé entre les lignes les
+          // bride toutes. Zéro ou absent = aucun plafond.
+          plafond: Number.isFinite(+a.plafond) ? Math.max(0, +a.plafond) : 0,
           // Le débit d'une plonge est la somme de ses tunnels : on garde la
           // liste, pas le total, sinon on ne saurait plus d'où il vient.
           tunnels: (Array.isArray(a.tunnels) ? a.tunnels : [{ nom: 'Tunnel 1', debit: 300 }])
@@ -373,6 +376,7 @@
           case 'tunnel-debit': a.tunnels[+el.dataset.index].debit = Math.max(0, parseFloat(v) || 0); break;
           case 'tunnel-actif': a.tunnels[+el.dataset.index].actif = el.checked; break;
           case 'tunnel-personnes': a.tunnels[+el.dataset.index].personnes = Math.max(0, parseInt(v, 10) || 0); break;
+          case 'plafond': a.plafond = Math.max(0, parseFloat(v) || 0); break;
           case 'permanent': a.permanent = el.checked; break;
           case 'regime': a.regime = { ...a.regime, actif: el.checked }; break;
           case 'presence': {
@@ -683,7 +687,7 @@
 
         ${dispo ? '' : a.type === 'lavage' ? `
         <div class="at-sous-titre">Tunnels de lavage
-          <span class="mini-note">son débit est la somme des tunnels qui tournent vraiment</span></div>
+          <span class="mini-note">un débit par ligne, un plafond pour l’ensemble</span></div>
         ${a.tunnels.map((t, i) => `<div class="at-tunnel ${t.actif ? '' : 'arret'}${
           etatTunnels.sansPersonne.includes(t) ? ' sans-personne' : ''}">
           <label class="chk chk-mini"><input type="checkbox" data-at-champ="tunnel-actif" data-index="${i}" ${t.actif ? 'checked' : ''}>
@@ -699,13 +703,24 @@
         </div>`).join('')}
         <div class="at-actions-lot">
           <button class="btn btn-sm" data-at-action="tunnel-ajouter">+ Tunnel</button>
-          <span class="at-tunnel-total">Débit réel : <b>${etatTunnels.debit}</b> u/h ·
-            ${etatTunnels.tournent.length} tunnel(s) sur ${a.tunnels.length}${
+          <label class="at-plafond">Débit maximum de l’ensemble
+            <input type="number" min="0" step="50" value="${a.plafond || ''}" placeholder="aucun plafond"
+              data-at-champ="plafond" aria-label="Débit maximum de la plonge, toutes lignes confondues">
+            <span class="at-tunnel-unite">u/h</span></label>
+        </div>
+        <div class="at-bilan-debit${etatTunnels.bride ? ' bride' : ''}">
+          <span><em>Somme des tunnels qui tournent</em><b>${etatTunnels.somme}</b> u/h</span>
+          <span><em>Plafond de l’ensemble</em><b>${a.plafond ? a.plafond : '—'}</b>${a.plafond ? ' u/h' : ''}</span>
+          <span class="retenu"><em>Débit retenu</em><b>${etatTunnels.debit}</b> u/h</span>
+          <span class="at-tunnel-total">${etatTunnels.tournent.length} tunnel(s) sur ${a.tunnels.length}${
             etatTunnels.sansPersonne.length ? ' · ' + etatTunnels.sansPersonne.length + ' sans personnel' : ''}${
             etatTunnels.reste ? ' · ' + etatTunnels.reste + ' personne(s) disponible(s)' : ''}</span>
         </div>
-        <p class="mini-note at-tunnel-note">Un tunnel ne tourne que si l’équipe a les gens pour le tenir.
-          Ils sont servis <b>dans l’ordre de la liste</b> : mettez en tête ceux qu’on allume d’abord.</p>
+        <p class="mini-note at-tunnel-note">Deux limites, et c’est la plus basse qui compte.
+          Un tunnel ne tourne que si l’équipe a les gens pour le tenir — ils sont servis
+          <b>dans l’ordre de la liste</b>. Et l’ensemble ne dépasse pas son plafond, quoi qu’on
+          ajoute : ce qui est partagé entre les lignes les bride toutes.${
+          etatTunnels.bride ? ' <b class="at-danger">Ici, le plafond bride la plonge.</b>' : ''}</p>
         <p class="mini-note at-lavage-note">Cet atelier ne fabrique rien : son travail vient des retours de vols, à mesure qu’ils arrivent.</p>` : `
         <div class="at-sous-titre">Ce que cette équipe fabrique, dans l’ordre</div>
         <p class="mini-note at-regle">Une ligne = une fabrication. Plusieurs sur la même ligne sortent <b>ensemble</b> ;

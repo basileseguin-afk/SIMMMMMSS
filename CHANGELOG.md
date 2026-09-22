@@ -5,7 +5,7 @@ Le plus récent est en haut.
 
 ---
 
-## 2026-09-22 — CREW et SPML, et la plonge tunnel par tunnel
+## 2026-09-22 — CREW et SPML, et les deux débits de la plonge
 
 **Deux classes de plus.** `CABINES` devient `['BC','PC','YC','CREW','SPML']`.
 Les deux dernières ne sont pas des cabines mais se fabriquent comme elles :
@@ -31,10 +31,17 @@ demander s'il y avait les gens**.
   **nommés et laissés à l'arrêt**, avec un liseré orange et une anomalie.
 - Trois tunnels à 300 u/h tenus par deux personnes annonçaient 900 u/h. C'était
   le chiffre le plus faux du modèle, et rien ne le disait.
-- `tunnelsQuiTournent()` dans `moteur/production.js`, et le bilan de la fiche
-  dit : débit réel, tunnels qui tournent sur tunnels décrits, sans personnel,
-  personnes disponibles.
-- Vérification : 175 tests purs et douze parcours navigateur au vert.
+- « Mais un débit par tunnel de plonge **et pour l'ensemble des tunnels**. »
+  La plonge porte donc aussi un **débit maximum de l'ensemble**, facultatif :
+  ce qui est partagé entre les lignes — le côté sale, le séchage, le retour des
+  paniers — les bride toutes. Sans lui, ajouter un quatrième tunnel augmentait
+  le débit sans fin, ce qu'aucune plonge ne fait.
+- **Deux limites, et c'est la plus basse qui compte.** La fiche affiche les
+  trois nombres côte à côte — somme des lignes, plafond, **débit retenu** —
+  pour qu'on voie d'un coup d'œil lequel décide, et le cadre passe à l'orange
+  quand c'est le plafond.
+- `tunnelsQuiTournent()` dans `moteur/production.js` porte les deux.
+- Vérification : 179 tests purs et douze parcours navigateur au vert.
 
 ## 2026-09-22 — Le navigateur ne peut plus servir une version périmée
 

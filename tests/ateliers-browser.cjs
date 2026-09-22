@@ -272,7 +272,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   //         ceux qui tournent — et un tunnel ne tourne que si l'équipe a les
   //         gens pour le tenir. Sans cela, additionner les débits donnerait une
   //         plonge deux fois trop rapide sans qu'on sache pourquoi.
-  const total=()=>page.locator(`[data-at="${plonge}"] .at-tunnel-total`).textContent();
+  const total=()=>page.locator(`[data-at="${plonge}"] .at-bilan-debit`).textContent();
   assert.match(await total(),/300/,'un tunnel par défaut');
   await page.locator(`[data-at="${plonge}"] [data-at-action=tunnel-ajouter]`).click();await attendre();
   await page.fill(`[data-at="${plonge}"] [data-at-champ=tunnel-debit][data-index="1"]`,'600');
@@ -300,6 +300,31 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const tunnels=await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).tunnels,plonge);
   assert.deepEqual(tunnels.map(t=>[t.debit,t.personnes,t.actif]),[[300,2,false],[600,2,true]]);
   await page.locator(`[data-at="${plonge}"] [data-at-champ=tunnel-actif][data-index="0"]`).check();await attendre();
+
+  // 19 ter. Deux débits : celui de chaque ligne, et celui de L'ENSEMBLE.
+  //         C'est le plus bas qui compte — ce qui est partagé entre les lignes
+  //         les bride toutes, et un tunnel de plus n'y change rien.
+  const debits=()=>page.evaluate(id=>{
+    const b=document.querySelector(`[data-at="${id}"] .at-bilan-debit`);
+    return [...b.querySelectorAll('b')].map(x=>x.textContent);
+  },plonge);
+  assert.deepEqual(await debits(),['900','—','900'],'sans plafond, la somme des lignes');
+  const champPlafond=`[data-at="${plonge}"] [data-at-champ=plafond]`;
+  assert.equal(await page.locator(champPlafond).getAttribute('placeholder'),'aucun plafond');
+  await page.fill(champPlafond,'700');await page.dispatchEvent(champPlafond,'change');await attendre();
+  assert.deepEqual(await debits(),['900','700','700'],'le plafond l’emporte');
+  assert.equal(await page.locator(`[data-at="${plonge}"] .at-bilan-debit.bride`).count(),1,'et se voit');
+  assert.match(await page.locator(`[data-at="${plonge}"] .at-tunnel-note`).textContent(),/le plafond bride la plonge/);
+  assert.equal(await page.evaluate(id=>MoteurProduction.debitLavage(
+    Sim.ateliers.state.ateliers.find(a=>a.id===id)),plonge),700,'le moteur retient 700');
+  // Un plafond plus haut que les lignes ne bride rien.
+  await page.fill(champPlafond,'1500');await page.dispatchEvent(champPlafond,'change');await attendre();
+  assert.deepEqual(await debits(),['900','1500','900']);
+  assert.equal(await page.locator(`[data-at="${plonge}"] .at-bilan-debit.bride`).count(),0);
+  // Le vider rend la plonge à ses lignes.
+  await page.fill(champPlafond,'');await page.dispatchEvent(champPlafond,'change');await attendre();
+  assert.deepEqual(await debits(),['900','—','900']);
+  assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).plafond,plonge),0);
 
   await ouvrir(cui2);
   await page.locator(`[data-at="${cui2}"] [data-at-champ=consomme]`).check();await attendre();

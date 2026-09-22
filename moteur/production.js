@@ -226,10 +226,26 @@
    * sans effacer sa description. Un atelier sans liste de tunnels retombe sur
    * son débit global, pour les saisies antérieures.
    */
+  /**
+   * Deux débits, et il faut les deux.
+   *
+   *   • celui de CHAQUE TUNNEL — une ligne vaut ce qu'elle vaut ;
+   *   • celui de L'ENSEMBLE — un plafond, facultatif, que la plonge ne dépasse
+   *     pas quoi qu'on ajoute : ce qui est partagé entre les lignes (le côté
+   *     sale, le séchage, le retour des paniers) les bride toutes ensemble.
+   *
+   * Sans le plafond, ajouter un quatrième tunnel augmentait le débit sans fin,
+   * ce qu'aucune plonge ne fait. Sans les débits par tunnel, on ne saurait pas
+   * ce que coûte l'arrêt d'une ligne. Le débit retenu est le plus petit des deux.
+   */
   function tunnelsQuiTournent(atelier) {
+    const plafond = Number.isFinite(+(atelier || {}).plafond) && +atelier.plafond > 0
+      ? +atelier.plafond : Infinity;
     const t = atelier && atelier.tunnels;
     if (!Array.isArray(t) || !t.length) {
-      return { tournent: [], sansPersonne: [], reste: 0, debit: (atelier && atelier.debit) || 0 };
+      const seul = (atelier && atelier.debit) || 0;
+      return { tournent: [], sansPersonne: [], reste: 0, somme: seul, plafond,
+        debit: Math.min(seul, plafond), bride: seul > plafond };
     }
     // Les tunnels sont servis dans l'ordre où ils sont décrits. Ce n'est pas
     // arbitraire : c'est à vous de mettre en tête ceux qu'on allume d'abord.
@@ -241,8 +257,9 @@
       if (n > reste) { sansPersonne.push(x); continue; }
       reste -= n; tournent.push(x);
     }
-    return { tournent, sansPersonne, reste,
-      debit: tournent.reduce((n, x) => n + (+x.debit || 0), 0) };
+    const somme = tournent.reduce((n, x) => n + (+x.debit || 0), 0);
+    return { tournent, sansPersonne, reste, somme, plafond,
+      debit: Math.min(somme, plafond), bride: somme > plafond };
   }
 
   function debitLavage(atelier) {

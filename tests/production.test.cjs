@@ -797,3 +797,52 @@ test('la durée du lavage suit le débit réellement disponible', () => {
   assert.equal(seul.fin - seul.debut, 20, '100 unités à 300/h');
   assert.equal(deux.fin - deux.debut, 10, 'deux tunnels tenus : deux fois plus vite');
 });
+
+test('le plafond de la plonge bride l’ensemble de ses tunnels', () => {
+  const tunnels = [
+    { nom: 'T1', debit: 300, personnes: 1 },
+    { nom: 'T2', debit: 300, personnes: 1 },
+    { nom: 'T3', debit: 300, personnes: 1 }
+  ];
+  const sans = P.tunnelsQuiTournent(plonge(3, tunnels));
+  assert.equal(sans.somme, 900, 'les trois lignes valent 900');
+  assert.equal(sans.debit, 900, 'sans plafond, rien ne les bride');
+  assert.equal(sans.bride, false);
+
+  const avec = P.tunnelsQuiTournent({ ...plonge(3, tunnels), plafond: 700 });
+  assert.equal(avec.somme, 900, 'les lignes valent toujours 900');
+  assert.equal(avec.debit, 700, 'mais l’ensemble ne dépasse pas son plafond');
+  assert.equal(avec.bride, true, 'et le modèle le dit');
+  assert.equal(P.debitLavage({ ...plonge(3, tunnels), plafond: 700 }), 700);
+});
+
+test('un plafond plus haut que les lignes ne change rien', () => {
+  const a = { ...plonge(2, [{ nom: 'T1', debit: 300, personnes: 1 }]), plafond: 1000 };
+  assert.equal(P.debitLavage(a), 300);
+  assert.equal(P.tunnelsQuiTournent(a).bride, false);
+});
+
+test('les deux contraintes se cumulent : le personnel puis le plafond', () => {
+  const tunnels = [
+    { nom: 'T1', debit: 500, personnes: 2 },
+    { nom: 'T2', debit: 500, personnes: 2 },
+    { nom: 'T3', debit: 500, personnes: 2 }
+  ];
+  // Quatre personnes : deux lignes tournent, soit 1000 ; le plafond les ramène à 800.
+  const a = { ...plonge(4, tunnels), plafond: 800 };
+  const etat = P.tunnelsQuiTournent(a);
+  assert.equal(etat.tournent.length, 2);
+  assert.equal(etat.somme, 1000);
+  assert.equal(etat.debit, 800);
+});
+
+test('le plafond change la durée réellement simulée', () => {
+  const tunnels = [{ nom: 'T1', debit: 300, personnes: 1 }, { nom: 'T2', debit: 300, personnes: 1 }];
+  const jouer = (plafond) => P.simuler({
+    vols: VOLS_BOUCLE, liaisons: [], materiel: MAT,
+    ateliers: [{ ...plonge(2, tunnels), ...(plafond ? { plafond } : {}) }]
+  }).lots.find(l => l.unites !== undefined);
+  const libre = jouer(null), bride = jouer(300);
+  assert.equal(libre.fin - libre.debut, 10, '100 unités à 600/h');
+  assert.equal(bride.fin - bride.debut, 20, 'le plafond de 300/h double la durée');
+});
