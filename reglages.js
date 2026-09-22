@@ -162,17 +162,26 @@
       const section = document.createElement('section');
       section.className = 'rg-modele'; section.id = 'rg-modele';
       section.innerHTML = `
-        <h2 class="reglages-titre">Le modèle de production</h2>
-        <p class="mini-note rg-intro">Ce qui pilote les <b>ateliers de travail</b> : le temps que coûte
-          une compagnie × classe dans chaque service, et les règles de poste. Le reste de cette page
-          décrit l’ancien moteur de démonstration, celui de la vue Simulation.</p>
+        <div class="titre-aide">
+          <h2 class="reglages-titre">Le modèle de production</h2><details class="aide">
+          <summary aria-label="À quoi sert cette section ?">?</summary>
+          <span class="aide-corps">Ces réglages pilotent les <b>ateliers de travail</b> : le temps que
+            coûte une compagnie × classe dans chaque service, et les règles de poste. Le reste de la
+            page décrit l’ancien moteur de démonstration, celui de la vue Simulation.</span></details></div>
         <p id="rg-status" role="status" aria-live="polite"></p>
         <div class="panneau" id="rg-bareme-panneau">
-          <h3>Barème — homme-minutes</h3>
-          <p class="mini-note">Pour un service et une classe : les minutes de travail d’<b>une unité</b>
-            — un passager, un plateau d’équipage, un repas spécial — plus celles que coûte
-            <b>un vol</b> quel que soit son remplissage.
-            <span class="rg-formule">durée = homme-minutes ÷ personnes ÷ rendement</span></p>
+          <div class="titre-aide"><h3>Barème — homme-minutes</h3><details class="aide">
+            <summary aria-label="Comment lire le barème ?">?</summary>
+            <span class="aide-corps">
+              <p>Pour un service et une classe : les minutes de travail d’<b>une unité</b> — un
+                passager, un plateau d’équipage, un repas spécial — plus celles que coûte
+                <b>un vol</b> quel que soit son remplissage.</p>
+              <p>Un service marqué « non renseigné » travaillerait en temps nul. Une annexe
+                hérite du barème de l’atelier dont elle dépend.</p>
+              <p><b>Exporter</b> donne le gabarit à remplir ; <b>Importer</b> reprend une étude
+                entière d’un coup.</p>
+            </span></details></div>
+          <p class="mini-note"><span class="rg-formule">durée = homme-minutes ÷ personnes ÷ rendement</span></p>
           <div id="rg-alerte"></div>
           <div id="rg-bareme"></div>
           <div class="rg-actions">
@@ -185,19 +194,23 @@
           </div>
         </div>
         <div class="panneau">
-          <h3>Rendement</h3>
+          <div class="titre-aide"><h3>Rendement</h3><details class="aide">
+            <summary aria-label="À quoi sert le rendement ?">?</summary>
+            <span class="aide-corps">Un coefficient unique, appliqué à tous les services. Au-dessous
+              de 1, la journée s’allonge d’autant. S’il doit varier par service ou par heure, c’est
+              le barème qu’il faut enrichir, pas ce curseur.</span></details></div>
           <div class="slider-ligne">
             <label for="rg-rendement">Part du temps réellement produite <b id="rg-rendement-val"></b></label>
             <input id="rg-rendement" type="range" min="0.5" max="1.2" step="0.01">
           </div>
-          <p class="mini-note">Un coefficient unique, appliqué à tous les services. Au-dessous de 1,
-            la journée s’allonge d’autant. S’il doit varier par service ou par heure, c’est le barème
-            qu’il faut enrichir, pas ce curseur.</p>
         </div>
         <div class="panneau">
-          <h3>Poste de travail</h3>
-          <p class="mini-note">Les seuils comptent le travail <b>cumulé</b>, pas l’heure qu’il est :
-            une équipe qui attend ses amonts ne consomme pas son crédit, donc ne prend pas sa pause.</p>
+          <div class="titre-aide"><h3>Poste de travail</h3><details class="aide">
+            <summary aria-label="Comment sont comptées les pauses ?">?</summary>
+            <span class="aide-corps">Les seuils comptent le travail <b>cumulé</b>, pas l’heure qu’il
+              est : une équipe qui attend ses amonts ne consomme pas son crédit, donc ne prend pas
+              sa pause. La présence réglée ici s’applique à tout atelier qui n’a pas fixé la
+              sienne.</span></details></div>
           <div id="rg-seuils"></div>
           <div class="rg-actions">
             <button class="btn btn-sm" id="rg-seuil-ajouter">+ Seuil</button>
@@ -209,9 +222,8 @@
           <p class="mini-note" id="rg-presence-note"></p>
         </div>
         <p class="rg-version" id="rg-version"></p>
-        <p class="mini-note rg-ailleurs">Deux réglages du modèle ne sont pas ici, parce qu’ils se
-          décrivent atelier par atelier : les <b>tunnels de la plonge</b> — leur somme fait son débit —
-          et la <b>boucle du matériel</b>. Ils sont dans l’onglet <b>Ateliers de travail</b>.</p>`;
+        <p class="mini-note rg-ailleurs">Les <b>tunnels de la plonge</b> et la <b>boucle du matériel</b>
+          se règlent atelier par atelier, dans l’onglet <b>Ateliers de travail</b>.</p>`;
       hote.appendChild(section);
       // Quelle version le navigateur sert-il ? La question revient dès qu'un
       // doute s'installe, et un cache périmé ne se voit autrement pas.
@@ -320,9 +332,12 @@
       const alerte = document.getElementById('rg-alerte');
       const memeQueDemo = JSON.stringify(this.etat.bareme) === JSON.stringify(P.BAREME_DEMO);
       alerte.innerHTML = memeQueDemo
-        ? `<p class="rg-avertissement"><b>Valeurs de démonstration, non calibrées.</b> Elles n’existent
-           que pour que le modèle tourne. Tant qu’elles ne sont pas remplacées par une étude réelle,
-           aucune durée affichée ne permet de dimensionner une équipe.</p>`
+        ? `<div class="rg-avertissement"><b>Valeurs de démonstration, non calibrées.</b>
+           Aucune durée affichée ne permet de dimensionner une équipe.<details class="aide">
+           <summary aria-label="Pourquoi non calibré ?">?</summary>
+           <span class="aide-corps">Ces valeurs n’existent que pour que le modèle tourne. Elles
+             seront remplacées en bloc par une étude de man-minutes — bouton <b>Importer</b>.
+             D’ici là, les durées montrent des enchaînements, pas des effectifs.</span></details></div>`
         : '';
     }
 
@@ -358,8 +373,7 @@
       const travail = Math.max(0, s.presence - arret);
       document.getElementById('rg-presence-note').innerHTML =
         `Soit <b>${String(Math.round(travail / 6) / 10).replace('.', ',')} h de travail effectif</b>
-         (${s.presence} min de présence − ${arret} min de pause).
-         Elle s’applique à tout atelier qui n’a pas fixé la sienne.`;
+         — ${s.presence} min moins ${arret} min de pause.`;
     }
 
     /* ---- échange de fichiers -------------------------------------------- */

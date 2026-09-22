@@ -48,7 +48,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const occ=await ligne('Robot occupé');assert.ok(pct(occ[2])>pct(occ[1]));
   assert.deepEqual((await ligne('Compagnies servies')).slice(1),['FBU, TX, FWI, CRL','FBU, TX, FWI, CRL']);
   assert.equal(await page.locator('#compare tr.diff').count()>0,true);
-  assert.match(await page.locator('#compare-note').textContent(),/journée entière/);
+  assert.match(await page.locator('#compare-note').textContent(),/seuls les réglages diffèrent/);
   // Même réglages ⇒ mêmes chiffres, et la note le dit.
   await setRange('#robot','320');await click('#snap-b');
   assert.match(await page.locator('#compare-note').textContent(),/Réglages identiques/);
@@ -65,7 +65,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match((await ligne('Contenances'))[2],/MONTAGE 2/);
   await page.locator('#tampon-prepa').fill('');await page.locator('#tampon-prepa').dispatchEvent('change');
   // Équipe du soir : cuisine à 0 après 14:00 → la vague du soir ne sort pas.
-  await page.locator('#equipe-soir summary').click();
+  await page.locator('#equipe-soir > summary').click();
   assert.match(await page.locator('#so-cuisine').textContent(),/comme le matin/);
   await setRange('#soir-cuisine','0');
   assert.equal(await page.locator('#so-cuisine').textContent(),'0');

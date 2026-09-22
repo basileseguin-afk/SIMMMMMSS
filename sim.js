@@ -1284,7 +1284,10 @@ function initControles() {
   const det = document.createElement('details'); det.className = 'equipe-soir'; det.id = 'equipe-soir';
   det.innerHTML = '<summary>Équipe du soir <b id="bascule-lab">à partir de 14:00</b></summary>' +
     '<div class="champ"><span>Heure de relève</span><input id="bascule" type="time" value="14:00" step="300" aria-label="Heure de relève des équipes"></div>' +
-    '<p class="mini-note">Les curseurs ci-dessus sont l’équipe du matin. Un curseur du soir non touché suit le matin. Personne n’est interrompu à la relève : les places en trop se ferment au fil des libérations.</p>';
+    '<details class="aide bloc"><summary>Équipe du matin et du soir</summary>'
+    +'<span class="aide-corps">Les curseurs ci-dessus sont l’équipe du matin. Un curseur du soir non '
+    +'touché suit le matin. Personne n’est interrompu à la relève : les places en trop se ferment '
+    +'au fil des libérations.</span></details>';
   box.appendChild(det);
   const majSoirLibelle = id => { const b = document.getElementById('so-' + id); if (!b) return; const v = CFG.equipes.soir[id]; b.textContent = v === undefined ? CFG.staff[id] + ' (comme le matin)' : v; const r = document.getElementById('soir-' + id); if (r && v === undefined) r.value = CFG.staff[id]; };
   Object.keys(CFG.staff).forEach(id => {
@@ -1459,10 +1462,10 @@ function majCompare() {
     html += '<tr'+(diff?' class="diff"':'')+'><td>' + l[0] + '</td><td>' + a + '</td><td>' + b + '</td></tr>';
   });
   document.getElementById('compare').innerHTML = html+'</tbody>';
-  let note='Chaque capture rejoue la journée entière avec les réglages du moment : mêmes vols, aucun aléa, seuls les réglages diffèrent.';
+  let note='Mêmes vols, aucun aléa : seuls les réglages diffèrent.';
   if(snaps.A&&snaps.B&&snaps.A.source!==snaps.B.source)note='Les deux scénarios n’utilisent pas les mêmes vols ('+snaps.A.source+' / '+snaps.B.source+') : la comparaison porte sur des journées différentes.';
   else if(snaps.A&&snaps.B&&JSON.stringify(snaps.A.config)===JSON.stringify(snaps.B.config))note='Réglages identiques : les deux journées sont exactement les mêmes, au chiffre près.';
-  document.getElementById('compare-note').textContent=note+' Barème non calibré : comparer des scénarios entre eux, pas à la réalité.';
+  document.getElementById('compare-note').textContent=note;
 }
 
 /* ==========================================================================
@@ -1608,7 +1611,11 @@ function installerCentreReglages() {
   bloc.hidden=false;bloc.classList.remove('panel-content');bloc.classList.add('reglages-grille');
   const titre=document.createElement('div');titre.className='reglages-entete';
   // Pas de second titre : l'en-tête de vue dit déjà « Centre des réglages ».
-  titre.innerHTML='<p class="mini-note">Deux moteurs cohabitent le temps de la bascule. Ce qui pilote les <b>ateliers de travail</b> est en haut ; ce qui pilote l’ancienne vue <b>Simulation</b> est en dessous, et disparaîtra.</p>';
+  titre.innerHTML='<div class="mini-note">Deux moteurs cohabitent le temps de la bascule.'
+    +'<details class="aide"><summary aria-label="Pourquoi deux moteurs ?">?</summary>'
+    +'<span class="aide-corps">Ce qui pilote les <b>ateliers de travail</b> est en haut de cette page. '
+    +'Ce qui pilote l’ancienne vue <b>Simulation</b> est en dessous, et disparaîtra quand cette vue '
+    +'sera portée sur le nouveau modèle.</span></details></div>';
   hote.appendChild(titre);
 
   /* Le modèle par ateliers d'abord : c'est lui qui produit les résultats qu'on
@@ -1630,8 +1637,15 @@ function installerCentreReglages() {
 
   const ancien=document.createElement('h2');ancien.className='reglages-titre reglages-ancien';
   ancien.textContent='Ancien moteur de démonstration';
-  const note=document.createElement('p');note.className='mini-note reglages-entete';
-  note.innerHTML='Ces réglages ne pilotent que la vue <b>Simulation</b>, restée sur le moteur précédent : effectifs par curseur, files d’attente, contenances, vivier. Le modèle par ateliers n’a ni file ni contenance. Ils se verrouillent une fois la simulation commencée : <strong>Recommencer</strong> les libère.';
+  // Un <div>, pas un <p> : le navigateur referme un paragraphe dès qu'il y
+  // rencontre un <details>, et le « ? » tomberait à la ligne.
+  const note=document.createElement('div');note.className='mini-note reglages-entete';
+  note.innerHTML='Ces réglages ne pilotent que la vue <b>Simulation</b>.'
+    +'<details class="aide"><summary aria-label="Ce que ces réglages font, et ne font pas">?</summary>'
+    +'<span class="aide-corps"><p>Effectifs par curseur, files d’attente, contenances, vivier : '
+    +'le moteur précédent. Le modèle par ateliers n’a ni file ni contenance.</p>'
+    +'<p>Ils se verrouillent une fois la simulation commencée ; <b>Recommencer</b> les libère.</p>'
+    +'</span></details>';
   // Les commandes de lecture vivent désormais dans la vue qu'elles pilotent :
   // il faut donc dire où aller pour voir l'effet de ces curseurs.
   const vers=document.createElement('p');vers.className='reglages-vers-simu';

@@ -211,7 +211,7 @@ en gardant les deux entrées.
 
 ```bash
 node --test tests/*.test.cjs     # 193 tests purs
-node tests/browser-smoke.cjs     # puis les 11 autres parcours (Playwright + Chromium)
+node tests/browser-smoke.cjs     # puis les 12 autres parcours (Playwright + Chromium)
 ```
 
 | Parcours | Couvre |
@@ -228,11 +228,12 @@ node tests/browser-smoke.cjs     # puis les 11 autres parcours (Playwright + Chr
 | `zoom-browser` | bornes du zoom, cadrage, clavier, bridage du déplacement |
 | `annexe-browser` | seconde salle d'un atelier : création, aménagement, liaisons propres |
 | `reglages-browser` | barème, rendement, régime de poste, import/export, séparation d'avec l'ancien moteur |
+| `aide-browser` | aucun pavé de texte imposé, l'aide s'ouvre sans rien déplacer, chaque « ? » se nomme |
 
 Le fil de mise en route est couvert par `tests/demarrage.test.cjs`, en tests
 purs : c'est une fonction, `etapes(etat)`, qui ne touche pas au navigateur.
 
-**Les douze parcours navigateur doivent être passés avant de livrer**, pas le seul
+**Les treize parcours navigateur doivent être passés avant de livrer**, pas le seul
 `browser-smoke` : c'est en n'en rejouant qu'une partie qu'une régression de
 navigation est partie sur la branche (voir BUG-012).
 

@@ -1,0 +1,75 @@
+/* ==========================================================================
+ *  L'AIDE REPLIÉE — un « ? » plutôt qu'un paragraphe
+ *
+ *  Chaque panneau s'ouvrait sur une explication, toutes au même niveau visuel
+ *  que les champs. Résultat : 722 mots en permanence sur le seul Centre des
+ *  réglages, et l'œil ne savait plus où était le geste à faire.
+ *
+ *  La règle appliquée partout :
+ *
+ *    • RESTE VISIBLE ce qui guide le geste — une phrase, les unités, un
+ *      libellé. Jamais plus de quinze mots.
+ *    • PASSE DERRIÈRE LE « ? » le pourquoi, les définitions, les mises en
+ *      garde de fond. Rien n'est supprimé : tout est à un clic.
+ *
+ *  C'est un `<details>` natif : pas de JavaScript, donc cela marche au clavier
+ *  et à la recherche dans la page sans qu'on ait rien à écrire.
+ * ==========================================================================*/
+
+.aide{position:relative;display:inline-block;vertical-align:middle;margin-left:6px}
+.aide>summary{
+  display:inline-grid;place-items:center;list-style:none;
+  width:18px;height:18px;padding:0;border-radius:50%;
+  border:1px solid var(--bordure2);background:var(--bg2);color:var(--txt2);
+  font:700 11px/1 inherit;cursor:pointer;min-height:0;user-select:none}
+.aide>summary::-webkit-details-marker,.aide>summary::marker{display:none;content:''}
+.aide>summary:hover{border-color:var(--accent);color:var(--accent2);background:var(--bg3)}
+.aide>summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.aide[open]>summary{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff)}
+
+/* Le corps est une BULLE ANCRÉE, pas un bloc dans le fil du texte.
+   Dans le fil, il grossissait la ligne qui le portait : ouvrir l'aide d'un
+   titre écrasait ce titre sur la gauche et faisait sauter tout le panneau.
+   En position absolue, ouvrir une aide ne déplace plus rien. */
+/* `display:block` sur un enfant de <details> écrase aussi le masquage du
+   navigateur : sans cette première règle, l'aide restait ouverte en
+   permanence — exactement ce qu'on voulait éviter. */
+.aide:not([open]) .aide-corps{display:none}
+.aide[open] .aide-corps{
+  display:block;position:absolute;z-index:40;top:calc(100% + 7px);left:-2px;
+  width:max-content;max-width:min(440px,72vw);
+  padding:11px 14px;border:1px solid var(--bordure2);border-left:3px solid var(--accent);
+  border-radius:0 9px 9px 0;background:var(--bg3);color:var(--txt2);
+  box-shadow:0 10px 28px rgba(0,0,0,.18);
+  font:400 12.5px/1.6 inherit;text-align:left;white-space:normal}
+/* Près du bord droit, la bulle s'ouvre vers la gauche plutôt que d'allonger
+   la page : un débordement horizontal casse la lecture sur téléphone. */
+.aide.gauche[open] .aide-corps{left:auto;right:-2px;border-left-width:1px;
+  border-right:3px solid var(--accent);border-radius:9px 0 0 9px}
+.aide[open] .aide-corps b,.aide[open] .aide-corps strong{color:var(--txt)}
+.aide[open] .aide-corps p{margin:0 0 8px}
+.aide[open] .aide-corps p:last-child{margin-bottom:0}
+.aide[open] .aide-corps ul{margin:6px 0 0;padding-left:18px}
+.aide[open] .aide-corps table{border-collapse:collapse;margin:8px 0 0;font-size:12px}
+.aide[open] .aide-corps th,.aide[open] .aide-corps td{border-bottom:1px solid var(--bordure);padding:4px 10px 4px 0;text-align:left}
+
+/* Une aide qui occupe sa propre ligne : là, le corps reste dans le fil, il
+   n'a personne à bousculer. */
+.aide.bloc{display:block;margin-left:0;position:static}
+.aide.bloc[open] .aide-corps{position:static;width:auto;max-width:70ch;
+  margin-top:8px;box-shadow:none;border-radius:0 8px 8px 0;background:var(--bg2)}
+.aide.bloc>summary{display:inline-flex;gap:7px;width:auto;height:auto;border-radius:6px;
+  padding:4px 10px;font-weight:600;font-size:12px}
+.aide.bloc>summary::before{content:'?';display:grid;place-items:center;
+  width:15px;height:15px;border-radius:50%;background:var(--bordure2);color:var(--txt);font-size:10px}
+.aide.bloc[open]>summary::before{background:var(--on-accent,#fff);color:var(--accent2)}
+
+@media(max-width:700px){ .aide[open] .aide-corps{font-size:12px} }
+
+/* Un titre et son « ? ». Le `<details>` ne peut pas vivre DANS un `<h2>`/`<h3>`
+   — ni dans un `<p>`, que le navigateur referme alors tout seul. On les met
+   côte à côte, et le titre garde sa marge basse pour tout le groupe. */
+.titre-aide{display:flex;align-items:center;gap:2px;flex-wrap:wrap}
+.titre-aide>h2,.titre-aide>h3{margin:0}
+.titre-aide{margin-bottom:14px}
+.panneau .titre-aide{margin-bottom:14px}

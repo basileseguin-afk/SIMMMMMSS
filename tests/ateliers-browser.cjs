@@ -325,7 +325,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.fill(champPlafond,'700');await page.dispatchEvent(champPlafond,'change');await attendre();
   assert.deepEqual(await debits(),['900','700','700'],'le plafond l’emporte');
   assert.equal(await page.locator(`[data-at="${plonge}"] .at-bilan-debit.bride`).count(),1,'et se voit');
-  assert.match(await page.locator(`[data-at="${plonge}"] .at-tunnel-note`).textContent(),/le plafond bride la plonge/);
+  assert.match(await page.locator(`[data-at="${plonge}"] .at-tunnel-note`).textContent(),/Ici, c’est le plafond/);
   assert.equal(await page.evaluate(id=>MoteurProduction.debitLavage(
     Sim.ateliers.state.ateliers.find(a=>a.id===id)),plonge),700,'le moteur retient 700');
   // Un plafond plus haut que les lignes ne bride rien.

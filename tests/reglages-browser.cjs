@@ -24,7 +24,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 2. Le modèle passe AVANT l'ancien moteur, et chacun dit ce qu'il pilote.
   await page.locator('[data-view=reglages]').click();await attendre();
-  const ordre=await page.evaluate(()=>[...document.querySelectorAll('#view-reglages .reglages-titre')].map(h=>h.textContent.trim()));
+  // Le titre porte désormais un « ? » : on ne lit que son propre texte, pas
+  // celui de l'aide repliée (textContent ramasse aussi ce qui est caché).
+  const ordre=await page.evaluate(()=>[...document.querySelectorAll('#view-reglages .reglages-titre')]
+    .map(h=>[...h.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join('').trim()));
   assert.equal(ordre[0],'Le modèle de production','il vient en premier');
   assert.ok(ordre.includes('Ancien moteur de démonstration'),'l’ancien est nommé pour ce qu’il est');
   assert.match(await page.locator('#view-reglages').textContent(),/ne pilotent que la vue/);

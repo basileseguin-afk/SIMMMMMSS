@@ -549,16 +549,24 @@
       document.getElementById('at-materiel').innerHTML = `
 <section class="at-mat">
   <label class="chk chk-mini at-mat-tete"><input type="checkbox" data-at-champ="mat-actif" ${m.actif ? 'checked' : ''}>
-    <span><strong>Matériel en boucle</strong> — ce qui part revient : un départ l'emporte, un retour
-    le ramène sale, la plonge le rend propre. Un seul compte, non calibré.</span></label>
+    <span><strong>Matériel en boucle</strong> — ce qui part revient.<details class="aide">
+      <summary aria-label="Comment la boucle du matériel fonctionne">?</summary>
+      <span class="aide-corps">Un départ l’emporte, un retour le ramène sale, la plonge le rend
+        propre, un départ le remporte. Un seul compte pour tout le matériel, non calibré : un
+        trolley de CRL et un trolley d’AF ne s’y distinguent pas.</span></details></span></label>
   ${m.actif ? `<div class="at-mat-champs">
     <label>Propre à l'ouverture<input type="number" min="0" value="${m.stockInitial}" data-at-champ="mat-stock"></label>
     <label>Délai après atterrissage (min)<input type="number" min="0" value="${m.delaiRetour}" data-at-champ="mat-delai"></label>
   </div>
-  <p class="mini-note">Combien d'unités partent, classe par classe. <b>Par vol</b> pour ce qui part
-    avec l'avion — un trolley ne se multiplie pas parce que la cabine est pleine. <b>Par passager</b>
-    pour ce qui suit les gens, la porcelaine par exemple. Laissez une colonne à zéro si elle ne
-    veut rien dire chez vous : c'est le cas le plus courant pour « par passager ».</p>
+  <div class="mini-note">Ce qui part, classe par classe.<details class="aide">
+    <summary aria-label="Par passager ou par vol ?">?</summary>
+    <span class="aide-corps">
+      <p><b>Par vol</b> pour ce qui part avec l’avion — un trolley ne se multiplie pas parce que
+        la cabine est pleine.</p>
+      <p><b>Par passager</b> pour ce qui suit les gens, la porcelaine par exemple.</p>
+      <p>Laissez une colonne à zéro si elle ne veut rien dire chez vous : c’est le cas le plus
+        courant pour « par passager ».</p>
+    </span></details></div>
   <table class="at-mat-table"><thead><tr><th scope="col">Classe</th>
     <th scope="col">u / passager</th><th scope="col">u / vol</th></tr></thead><tbody>
     ${P.CABINES.map(c => `<tr><th scope="row" title="${esc((P.NOM_CABINE || {})[c] || c)}">${c}</th>
@@ -736,11 +744,16 @@
             etatTunnels.sansPersonne.length ? ' · ' + etatTunnels.sansPersonne.length + ' sans personnel' : ''}${
             etatTunnels.reste ? ' · ' + etatTunnels.reste + ' personne(s) disponible(s)' : ''}</span>
         </div>
-        <p class="mini-note at-tunnel-note">Deux limites, et c’est la plus basse qui compte.
-          Un tunnel ne tourne que si l’équipe a les gens pour le tenir — ils sont servis
-          <b>dans l’ordre de la liste</b>. Et l’ensemble ne dépasse pas son plafond, quoi qu’on
-          ajoute : ce qui est partagé entre les lignes les bride toutes.${
-          etatTunnels.bride ? ' <b class="at-danger">Ici, le plafond bride la plonge.</b>' : ''}</p>
+        <div class="mini-note at-tunnel-note">Deux limites, et c’est la plus basse qui compte.${
+          etatTunnels.bride ? ' <b class="at-danger">Ici, c’est le plafond.</b>' : ''}<details class="aide">
+          <summary aria-label="Quelles limites et pourquoi">?</summary>
+          <span class="aide-corps">
+            <p>Un tunnel ne tourne que si l’équipe a les gens pour le tenir. Ils sont servis
+              <b>dans l’ordre de la liste</b> : mettez en tête ceux qu’on allume d’abord.</p>
+            <p>Et l’ensemble ne dépasse pas son plafond, quoi qu’on ajoute : le côté sale, le
+              séchage et le retour des paniers sont partagés entre les lignes et les brident
+              toutes.</p>
+          </span></details></div>
         <p class="mini-note at-lavage-note">Cet atelier ne fabrique rien : son travail vient des retours de vols, à mesure qu’ils arrivent.</p>` : `
         <div class="at-sous-titre">Ce que cette équipe fabrique, dans l’ordre</div>
         <p class="mini-note at-regle">Une ligne = une fabrication. Plusieurs sur la même ligne sortent <b>ensemble</b> ;

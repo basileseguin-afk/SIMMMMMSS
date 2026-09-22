@@ -5,6 +5,44 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-22 — Un « ? » plutôt qu'un paragraphe
+
+Deuxième passe d'ergonomie, sur le premier des trois points restés ouverts :
+**tout était expliqué en permanence, au même niveau visuel que les champs.**
+L'œil ne savait plus où était le geste à faire.
+
+| Vue | Mots visibles avant | Après | Paragraphes de 20 mots et plus |
+|---|---|---|---|
+| Ateliers | 175 | **74** | 2 → **0** |
+| Flux | 195 | **168** | 1 → **0** |
+| Réglages | 574 | **161** | 16 → **0** |
+
+La règle, tenue partout (`aide.css`) :
+
+- **reste visible** ce qui guide le geste — une phrase, les unités, un libellé ;
+- **passe derrière le « ? »** le pourquoi, les définitions, les mises en garde
+  de fond. Rien n'est supprimé : tout est à un clic.
+
+C'est un `<details>` natif — donc au clavier et à la recherche dans la page
+sans une ligne de JavaScript. Le corps est une **bulle ancrée** : ouvrir une
+aide ne déplace rien.
+
+Trois défauts trouvés en le posant :
+
+- `display:block` sur un enfant de `<details>` **écrase le masquage du
+  navigateur** : l'aide serait restée ouverte en permanence, exactement ce
+  qu'on voulait éviter.
+- Dans le fil du texte, le corps **grossissait la ligne qui le portait** :
+  ouvrir l'aide d'un titre écrasait ce titre sur la gauche.
+- Un `<details>` **ne peut pas vivre dans un `<p>`** : le navigateur referme le
+  paragraphe, et le « ? » tombe à la ligne. Les conteneurs concernés sont
+  devenus des `<div>`, et les aides de titre sortent du `<h2>`/`<h3>`.
+
+- `tests/aide-browser.cjs` tient la règle : aucun pavé imposé, l'aide s'ouvre
+  sans rien déplacer, aucune aide imbriquée dans un titre ou un paragraphe,
+  chaque « ? » porte un libellé, et rien ne déborde sur téléphone.
+- Vérification : 193 tests purs et treize parcours navigateur au vert.
+
 ## 2026-09-22 — Par où commencer : un fil, et un seul en-tête
 
 « Il faut retravailler tout le site pour qu'il soit bien plus user friendly. »

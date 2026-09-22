@@ -52,9 +52,11 @@ class FlowCenter{
    <div id="fc-status" role="status" aria-live="polite"></div>
    <section id="fc-lecture" class="fc-lecture">
     <h3 class="fc-list-title">Ce que le modèle en lit</h3>
-    <p class="mini-note">Un service ne travaille une classe que lorsque <b>tous ses fournisseurs</b>
-     la lui ont livrée. Seul compte ici le <b>sens</b> des liaisons actives, d'un service à un autre :
-     la famille de flux, les stockages et la précision restent de la description.</p>
+    <div class="mini-note">Un service ne travaille une classe que lorsque <b>tous ses fournisseurs</b>
+     la lui ont livrée.<details class="aide"><summary aria-label="Ce que le modèle retient du graphe">?</summary>
+     <span class="aide-corps">Seul compte le <b>sens</b> des liaisons actives, d’un service à un
+       autre. La famille de flux, les stockages et la précision restent de la description : ils
+       n’entrent pas dans le calcul.</span></details></div>
     <div id="fc-alertes"></div>
     <div id="fc-parcours"></div>
    </section>
