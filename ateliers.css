@@ -130,3 +130,13 @@ body.ateliers-open .workbench{display:none}
 .at-mat-chiffre{font-size:12px;color:var(--txt2)}
 .at-mat-chiffre b{display:block;font-size:18px;color:var(--txt);font-weight:800}
 .at-mat-chiffre em{display:block;font-style:normal;font-size:11px}
+
+/* Les tunnels d'une plonge : leur somme fait son débit. */
+.at-tunnel{display:flex;align-items:center;gap:8px;margin:0 14px 6px}
+.at-tunnel input[type=text],.at-tunnel input:not([type=checkbox]):not([type=number]){flex:1}
+.at-tunnel input[type=number]{max-width:110px}
+.at-tunnel .chk{margin:0}
+.at-tunnel-unite{font-size:12px;color:var(--txt2)}
+.at-tunnel.arret input:not([type=checkbox]),.at-tunnel.arret .at-tunnel-unite{opacity:.5}
+.at-tunnel-total{font-size:12px;color:var(--txt2);align-self:center}
+.at-tunnel-total b{color:var(--txt);font-size:14px}

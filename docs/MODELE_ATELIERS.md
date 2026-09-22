@@ -127,9 +127,14 @@ pas.
 | Délai après atterrissage | minutes avant que le sale soit à la plonge |
 
 Un atelier de type **Lavage** n'a pas de lots : son travail vient des retours, à
-mesure qu'ils arrivent, à son **débit en unités par heure**. Il suit le même
-régime de poste que les autres — ce qui arrive après la fin de son poste reste
-sale.
+mesure qu'ils arrivent. Il suit le même régime de poste que les autres — ce qui
+arrive après la fin de son poste reste sale.
+
+Son **débit est la somme des débits de ses tunnels actifs**. On décrit donc la
+plonge tunnel par tunnel, chacun avec son débit en unités par heure : un tunnel
+deux fois plus rapide compte pour ce qu'il vaut, pas pour un. Chaque tunnel se
+met **à l'arrêt** sans être supprimé — c'est ainsi qu'on essaie une panne. Si
+tous sont arrêtés, le modèle le dit plutôt que de laver à zéro.
 
 Un atelier coché **« emporte du matériel propre »** attend, avant chaque lot,
 que le compte couvre ce que ses classes emportent. L'attente est mesurée. Un lot

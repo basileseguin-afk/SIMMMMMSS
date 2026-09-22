@@ -5,6 +5,18 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-22 — Le débit d'une plonge est la somme de ses tunnels
+
+- `moteur/production.js` : `debitLavage()` additionne les débits des tunnels
+  **actifs** d'un atelier de lavage. Un atelier sans liste de tunnels retombe
+  sur son débit global, pour les saisies antérieures.
+- `ateliers.js` : la plonge se décrit tunnel par tunnel — nom, débit, en
+  service ou non — et l'interface affiche la somme. Un tunnel deux fois plus
+  rapide compte pour ce qu'il vaut, pas pour un.
+- Un tunnel se met **à l'arrêt sans être supprimé** : c'est ainsi qu'on essaie
+  une panne. Tous arrêtés, le modèle refuse plutôt que de laver à zéro.
+- Vérification : 156 tests purs et onze parcours navigateur au vert.
+
 ## 2026-09-22 — Le poste avec ses pauses, et la boucle du matériel
 
 Deux contraintes réelles entrent dans le modèle. La note complète est dans

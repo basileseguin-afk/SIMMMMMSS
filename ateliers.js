@@ -52,7 +52,16 @@
           debit: Number.isFinite(a.debit) ? Math.max(1, a.debit) : 320,
           personnesMin: Number.isInteger(a.personnesMin) ? Math.max(0, a.personnesMin) : 1
         } : {}),
-        ...(type === 'lavage' ? { debit: Number.isFinite(a.debit) ? Math.max(1, a.debit) : 600 } : {})
+        ...(type === 'lavage' ? {
+          // Le débit d'une plonge est la somme de ses tunnels : on garde la
+          // liste, pas le total, sinon on ne saurait plus d'où il vient.
+          tunnels: (Array.isArray(a.tunnels) ? a.tunnels : [{ nom: 'Tunnel 1', debit: 300 }])
+            .slice(0, 20).map((t, i) => ({
+              nom: String(t.nom ?? ('Tunnel ' + (i + 1))).slice(0, 80),
+              debit: Number.isFinite(+t.debit) ? Math.max(0, +t.debit) : 300,
+              actif: t.actif !== false
+            }))
+        } : {})
       };
     });
     // Ce que l'utilisateur retire du programme, et ce qu'il y ajoute. Le
@@ -281,6 +290,11 @@
           return this.changer(() => a.pauses.push({ de: '12:00', a: '12:45' }), 'Pause ajoutée.');
         case 'pause-retirer':
           return this.changer(() => a.pauses.splice(+data.index, 1), 'Pause retirée.');
+        case 'tunnel-ajouter':
+          return this.changer(() => a.tunnels.push({ nom: 'Tunnel ' + (a.tunnels.length + 1), debit: 300, actif: true }),
+            'Tunnel ajouté. Le débit de la plonge est la somme des tunnels actifs.');
+        case 'tunnel-retirer':
+          return this.changer(() => a.tunnels.splice(+data.index, 1), 'Tunnel retiré.');
         case 'classe-supprimer': return this.supprimerClasse(data.classe);
         case 'classe-retablir':  return this.retablirClasse(data.classe);
         case 'classe-nouvelle':  return this.ouvrirAjout();
@@ -331,10 +345,13 @@
           case 'type':
             a.type = v;
             if (v === 'robot') { a.debit = a.debit || 320; a.personnesMin = a.personnesMin === undefined ? 1 : a.personnesMin; }
-            else if (v === 'lavage') { a.debit = a.debit || 600; delete a.personnesMin; a.lots = []; }
+            else if (v === 'lavage') { delete a.debit; delete a.personnesMin; a.lots = []; }
             else { delete a.debit; delete a.personnesMin; }
             break;
           case 'consomme': a.materiel = el.checked ? 'consomme' : undefined; break;
+          case 'tunnel-nom': a.tunnels[+el.dataset.index].nom = v; break;
+          case 'tunnel-debit': a.tunnels[+el.dataset.index].debit = Math.max(0, parseFloat(v) || 0); break;
+          case 'tunnel-actif': a.tunnels[+el.dataset.index].actif = el.checked; break;
           case 'regime': a.regime = { ...a.regime, actif: el.checked }; break;
           case 'presence': a.regime = { ...a.regime, presence: Math.max(30, parseInt(v, 10) || 495) }; break;
 
@@ -539,7 +556,7 @@
       const entete = `<div class="at-carte-tete">
         <button class="at-carte-nom" data-at-action="ouvrir" aria-expanded="${ouvert}">
           <strong>${esc(a.nom)}</strong>
-          <span>${esc(a.debut)}${jour} · ${a.personnes} pers.${a.type === 'robot' ? ' · robot ' + a.debit + ' pl/h' : ''} → fin ${esc(fin)}${esc(attente)}</span>
+          <span>${esc(a.debut)}${jour} · ${a.personnes} pers.${a.type === 'robot' ? ' · robot ' + a.debit + ' pl/h' : a.type === 'lavage' ? ' · ' + P.debitLavage(a) + ' u/h' : ''} → fin ${esc(fin)}${esc(attente)}</span>
         </button>
         <span class="at-resume">${esc(resume)}</span>
       </div>`;
@@ -586,8 +603,6 @@
           ${a.type === 'robot' ? `
           <label>Débit (plateaux/h)<input type="number" min="1" value="${a.debit}" data-at-champ="debit"></label>
           <label>Personnes minimum<input type="number" min="0" value="${a.personnesMin}" data-at-champ="personnesMin"></label>` : ''}
-          ${a.type === 'lavage' ? `
-          <label>Débit (unités/h)<input type="number" min="1" value="${a.debit}" data-at-champ="debit"></label>` : ''}
         </div>
         <div class="at-cases">
           <label class="chk chk-mini"><input type="checkbox" data-at-champ="regime" ${a.regime.actif ? 'checked' : ''}>
@@ -600,7 +615,23 @@
             Emporte du matériel propre (trolleys, porcelaine)</label>` : ''}
         </div>
 
-        ${a.type === 'lavage' ? '<p class="mini-note at-lavage-note">Cet atelier n’a pas de lots : son travail vient des retours de vols, à mesure qu’ils arrivent.</p>' : `
+        ${a.type === 'lavage' ? `
+        <div class="at-sous-titre">Tunnels de lavage
+          <span class="mini-note">le débit de la plonge est la somme des tunnels actifs</span></div>
+        ${a.tunnels.map((t, i) => `<div class="at-tunnel ${t.actif ? '' : 'arret'}">
+          <label class="chk chk-mini"><input type="checkbox" data-at-champ="tunnel-actif" data-index="${i}" ${t.actif ? 'checked' : ''}>
+            <span class="sr-only">${esc(t.nom)} en service</span></label>
+          <input value="${esc(t.nom)}" data-at-champ="tunnel-nom" data-index="${i}" maxlength="80" aria-label="Nom du tunnel">
+          <input type="number" min="0" step="10" value="${t.debit}" data-at-champ="tunnel-debit" data-index="${i}" aria-label="Débit en unités par heure">
+          <span class="at-tunnel-unite">u/h</span>
+          <button class="btn btn-sm" data-at-action="tunnel-retirer" data-index="${i}">Retirer</button>
+        </div>`).join('')}
+        <div class="at-actions-lot">
+          <button class="btn btn-sm" data-at-action="tunnel-ajouter">+ Tunnel</button>
+          <span class="at-tunnel-total">Débit total : <b>${P.debitLavage(a)}</b> u/h${
+            a.tunnels.filter(t => !t.actif).length ? ' · ' + a.tunnels.filter(t => !t.actif).length + ' à l’arrêt' : ''}</span>
+        </div>
+        <p class="mini-note at-lavage-note">Cet atelier n’a pas de lots : son travail vient des retours de vols, à mesure qu’ils arrivent.</p>` : `
         <div class="at-sous-titre">Lots, dans l’ordre de fabrication
           <span class="mini-note">le premier part à l’heure de début, les suivants quand le précédent est fini</span></div>
         ${lots || '<p class="mini-note">Aucun lot : cet atelier ne fabrique rien.</p>'}

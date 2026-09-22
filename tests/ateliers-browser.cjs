@@ -203,10 +203,22 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator('[data-at-champ=mat-actif]').check();await attendre();
   assert.equal(await page.locator('[data-at-champ=mat-parpax]').count(),1);
   const plonge=await creer('Plonge','plonge','05:00',3,'lavage');
-  await champ(plonge,'debit',600);
   assert.equal(await page.locator(`[data-at="${plonge}"] [data-at-action=lot-ajouter]`).count(),0,
     'un atelier de lavage n\u2019a pas de lots');
   assert.match(await page.locator(`[data-at="${plonge}"] .at-lavage-note`).textContent(),/retours de vols/);
+
+  // 19 bis. Le d\u00e9bit de la plonge est la SOMME de ses tunnels actifs.
+  assert.match(await page.locator('.at-tunnel-total').textContent(),/300/,'un tunnel par d\u00e9faut');
+  await page.locator(`[data-at="${plonge}"] [data-at-action=tunnel-ajouter]`).click();await attendre();
+  await page.fill(`[data-at="${plonge}"] [data-at-champ=tunnel-debit][data-index="1"]`,'600');
+  await page.dispatchEvent(`[data-at="${plonge}"] [data-at-champ=tunnel-debit][data-index="1"]`,'change');await attendre();
+  assert.match(await page.locator('.at-tunnel-total').textContent(),/900/,'300 + 600');
+  // Un tunnel \u00e0 l'arr\u00eat ne lave rien, sans qu'on ait \u00e0 le supprimer.
+  await page.locator(`[data-at="${plonge}"] [data-at-champ=tunnel-actif][data-index="0"]`).uncheck();await attendre();
+  assert.match(await page.locator('.at-tunnel-total').textContent(),/600 u\/h \u00b7 1 \u00e0 l\u2019arr\u00eat/);
+  const tunnels=await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).tunnels,plonge);
+  assert.deepEqual(tunnels.map(t=>[t.debit,t.actif]),[[300,false],[600,true]]);
+  await page.locator(`[data-at="${plonge}"] [data-at-champ=tunnel-actif][data-index="0"]`).check();await attendre();
 
   await ouvrir(cui2);
   await page.locator(`[data-at="${cui2}"] [data-at-champ=consomme]`).check();await attendre();

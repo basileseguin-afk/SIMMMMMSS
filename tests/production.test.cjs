@@ -555,3 +555,37 @@ test('un lot qui n’obtient jamais son matériel laisse une trace', () => {
   assert.equal(r.parClasse['CRL/YC'].fin, null, 'la classe ne sort pas de l’unité');
   assert.match(r.anomalies.map(a => a.message).join(' '), /unités de matériel propre manquent/);
 });
+
+test('le débit d’un lavage est la somme de ses tunnels actifs', () => {
+  assert.equal(P.debitLavage({ tunnels: [{ debit: 200 }, { debit: 200 }, { debit: 400 }] }), 800);
+  assert.equal(P.debitLavage({ tunnels: [{ debit: 200 }, { debit: 200, actif: false }] }), 200,
+    'un tunnel à l’arrêt ne lave rien');
+  assert.equal(P.debitLavage({ debit: 600 }), 600, 'sans liste, le débit global fait foi');
+  assert.equal(P.debitLavage({ tunnels: [] }), 0);
+});
+
+test('deux tunnels lavent deux fois plus vite qu’un seul', () => {
+  const avec = (tunnels) => P.simuler({
+    vols: VOLS_BOUCLE, liaisons: [], materiel: MAT,
+    ateliers: [{ id: 'pl', nom: 'Plonge', service: 'plonge', type: 'lavage',
+      debut: '05:00', personnes: 3, jour: 0, lots: [], tunnels }]
+  }).lots.find(l => l.unites !== undefined);
+  const un = avec([{ debit: 300 }]);
+  const deux = avec([{ debit: 300 }, { debit: 300 }]);
+  assert.equal(un.fin - un.debut, 20, '100 unités à 300/h');
+  assert.equal(deux.fin - deux.debut, 10);
+  // Le tunnel double vitesse compte pour ce qu'il vaut, pas pour un.
+  const double = avec([{ debit: 300 }, { debit: 600 }]);
+  assert.ok(Math.abs((double.fin - double.debut) - 100 / 900 * 60) < 1e-9);
+});
+
+test('une plonge dont tous les tunnels sont à l’arrêt le dit', () => {
+  const r = P.simuler({
+    vols: VOLS_BOUCLE, liaisons: [], materiel: MAT,
+    ateliers: [{ id: 'pl', nom: 'Plonge', service: 'plonge', type: 'lavage',
+      debut: '05:00', personnes: 3, jour: 0, lots: [],
+      tunnels: [{ debit: 300, actif: false }, { debit: 300, actif: false }] }]
+  });
+  assert.equal(r.ok, false);
+  assert.match(r.anomalies.map(a => a.message).join(' '), /aucun tunnel actif/);
+});

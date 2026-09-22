@@ -181,6 +181,18 @@
   const TYPES = ['manuel', 'robot', 'lavage'];
 
   /**
+   * Débit d'un atelier de lavage : la SOMME des débits de ses tunnels actifs.
+   * Un tunnel à l'arrêt ne lave rien — c'est ce qui permet d'essayer une panne
+   * sans effacer sa description. Un atelier sans liste de tunnels retombe sur
+   * son débit global, pour les saisies antérieures.
+   */
+  function debitLavage(atelier) {
+    const t = atelier && atelier.tunnels;
+    if (!Array.isArray(t) || !t.length) return (atelier && atelier.debit) || 0;
+    return t.filter(x => x && x.actif !== false).reduce((n, x) => n + (+x.debit || 0), 0);
+  }
+
+  /**
    * Relit une liste d'ateliers et rassemble TOUTES les anomalies, plutôt que
    * de s'arrêter à la première : on veut pouvoir tout corriger d'un coup.
    */
@@ -210,7 +222,14 @@
       if (!Number.isInteger(gens) || gens < 0) dire('personnes', 'nombre de personnes entier attendu.');
       else if (!robot && gens === 0) dire('personnes', 'sans personne, rien n’est fabriqué.');
 
-      if (lavage && !(a.debit > 0)) dire('debit', 'débit attendu, en unités de matériel par heure.');
+      if (lavage) {
+        const tunnels = Array.isArray(a.tunnels) ? a.tunnels : null;
+        if (tunnels && tunnels.some(t => !(+t.debit > 0)))
+          dire('tunnel', 'chaque tunnel attend un débit, en unités par heure.');
+        if (!(debitLavage(a) > 0)) dire('debit', tunnels && tunnels.length
+          ? 'aucun tunnel actif : rien n’est lavé.'
+          : 'débit attendu, en unités de matériel par heure.');
+      }
       if (robot) {
         if (!(a.debit > 0)) dire('debit', 'débit attendu, en plateaux par heure.');
         const mini = a.personnesMin === undefined ? 1 : a.personnesMin;
@@ -580,7 +599,7 @@
             }
             // On lave tout ce qui est l\u00e0 ; ce qui arrive pendant sera le tour suivant.
             const unites = stock.sale; stock.sale = 0;
-            const duree = unites / a.debit * 60;
+            const duree = unites / debitLavage(a) * 60;
             const t = executerTache({ depart: env.maintenant, duree, cumul: cumulL,
               prises: prisesL, pauses, regime, finPoste });
             const debutLot = env.maintenant;
@@ -785,7 +804,7 @@
     minutes, hhmm, idClasse,
     REGIME_DEFAUT, normaliserRegime, travailDuPoste, executerTache,
     classesDeVols, BAREME_DEMO, RENDEMENT_DEMO, travailClasse,
-    fournisseurs, cycles, validerAteliers,
+    fournisseurs, cycles, validerAteliers, debitLavage,
     pausesDe, finAvecPauses,
     MATERIEL_DEFAUT, retoursDeVols, besoinMateriel,
     simuler
