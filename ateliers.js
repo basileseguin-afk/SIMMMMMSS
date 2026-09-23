@@ -135,7 +135,7 @@
           this.state = valider(lu);
           if (lu && lu.parcours === undefined) {
             alerte = 'Parcours types créés : « Complet » pour BC, PC, CREW et SPML, « Sans cuisine » pour YC. '
-              + 'Ajustez-les dans « Parcours et équipes ».';
+              + 'Ajustez-les dans « 1. Les parcours ».';
             this.enregistrer();
           }
         }
@@ -150,7 +150,7 @@
         services: () => this.a.services(),
         classes: () => this.classes,
         resultat: () => this.resultat,
-        ouvrirAtelier: id => this.ouvrirFiche(id)
+        ouvrirAtelier: (id, defiler, message) => this.ouvrirFiche(id, defiler, message)
       });
       this.rendre(alerte);
     }
@@ -245,19 +245,8 @@
 <div id="at-indicateurs" class="at-indicateurs"></div>
 <p id="at-status" role="status" aria-live="polite"></p>
 <div id="at-anomalies" class="at-anomalies" hidden></div>
-<div class="titre-aide at-titre-aide"><h3 class="at-titre">Parcours et équipes</h3><details class="aide">
-  <summary aria-label="Qu’est-ce qu’un parcours ?">?</summary>
-  <span class="aide-corps"><p>Le <b>parcours</b> dit par où passe une compagnie × classe, en
-    <b>branches</b> qui partent en parallèle et se rejoignent : l’agro par les appros et la cuisine,
-    le matériel par la plonge et la dotation, le produit compagnie par le magasin. Les
-    <b>équipes</b> disent qui la travaille à chaque étape, quand, et à combien.</p>
-    <p>À chaque étape : les équipes et leurs heures, et les classes qu’aucune n’a encore prises.
-    « Confier » les ajoute à l’équipe en place ; « + Équipe ici » en crée une. Sous chaque
-    parcours, une classe se lit <b>dans le temps</b>, branche par branche.</p>
-    <p>Chaque classe a un parcours par défaut ; une compagnie × classe peut avoir le sien, dans le
-    tableau « Compagnies × classes ».</p></span></details></div>
 <div id="at-parcours" class="pc"></div>
-<h3 class="at-titre">Équipes</h3>
+<h3 class="at-titre">3. Les équipes <span class="pc-sous">horaires, effectifs, ordre de fabrication</span></h3>
 <div class="at-barre">
   <label>Service <select id="at-filtre"><option value="">Tous</option></select></label>
   <span class="at-barre-fin"></span>
@@ -265,10 +254,10 @@
 </div>
 <div id="at-materiel" class="at-materiel"></div>
 <div id="at-liste"></div>
-<h3 class="at-titre">Planning des équipes</h3>
+<h3 class="at-titre">4. La journée <span class="pc-sous">équipe par équipe</span></h3>
 <div id="at-planning" class="at-planning"></div>
 
-<h3 class="at-titre">Compagnies × classes</h3>
+<h3 class="at-titre">Compagnies × classes <span class="pc-sous">volumes et échéances</span></h3>
 <div id="at-classes"></div>`;
     }
 
@@ -313,12 +302,13 @@
       this.ouvert = atelier.id; this.rendre();
     }
 
-    /* Depuis une étape du parcours : ouvrir la fiche d'une équipe, et y aller. */
-    ouvrirFiche(id) {
+    /* Depuis le tableau « Qui fabrique quoi » : ouvrir la fiche d'une équipe,
+     * et y aller si on le demande. */
+    ouvrirFiche(id, defiler = true, message) {
       this.filtre = '';
       const sel = document.getElementById('at-filtre'); if (sel) sel.value = '';
-      this.ouvert = id; this.rendre();
-      const carte = document.querySelector(`[data-at="${CSS.escape(id)}"]`);
+      this.ouvert = id; this.rendre(message);
+      const carte = defiler && document.querySelector(`[data-at="${CSS.escape(id)}"]`);
       if (carte) { carte.scrollIntoView({ block: 'start', behavior: 'smooth' }); const f = carte.querySelector('input,select,button'); if (f) f.focus({ preventScroll: true }); }
     }
 
@@ -596,11 +586,19 @@
 
     rendreAnomalies(r) {
       const box = document.getElementById('at-anomalies');
-      const list = r.anomalies || [];
+      // Une étape de parcours sans équipe se lit mieux dans le tableau « Qui
+      // fabrique quoi » (ses cases « à choisir ») qu'en une phrase par service.
+      const trous = (r.anomalies || []).filter(a => a.code === 'parcours-trou');
+      const list = (r.anomalies || []).filter(a => a.code !== 'parcours-trou').map(a => esc(a.message));
+      if (trous.length) {
+        const n = trous.reduce((s, a) => s + (a.classes || []).length, 0);
+        list.push(n + ' case(s) « à choisir » dans « 2. Qui fabrique quoi » ('
+          + trous.map(a => esc((this.a.services().find(x => x.id === a.service) || {}).nom || a.service)).join(', ') + ') : ces étapes sont sautées.');
+      }
       box.hidden = !list.length;
       box.innerHTML = list.length
-        ? '<strong>' + list.length + ' point(s) à corriger</strong><ul>' +
-          list.map(a => '<li>' + esc(a.message) + '</li>').join('') + '</ul>'
+        ? '<strong>' + list.length + ' point(s) à regarder</strong><ul>' +
+          list.map(m => '<li>' + m + '</li>').join('') + '</ul>'
         : '';
     }
 
@@ -937,16 +935,10 @@
         return;
       }
 
-      const services = this.a.services();
-      const nomSvc = id => (services.find(s => s.id === id) || {}).nom || id;
-      const defaut = c => {
-        const p = (this.state.parcours || []).find(x => x.id === (this.state.parcoursCabine || {})[c.cabine]);
-        return p ? 'comme ' + c.cabine + ' : ' + p.nom : 'graphe des flux';
-      };
       box.innerHTML = barre + ajout + exclues + `<table class="at-table"><thead><tr>
         <th scope="col">Compagnie × classe</th><th scope="col">Passagers</th><th scope="col">Vols</th>
         <th scope="col">Échéance</th><th scope="col">Fin</th><th scope="col">État</th>
-        <th scope="col">Parcours</th><th scope="col">Services traversés</th><th scope="col"><span class="sr-only">Retirer</span></th>
+        <th scope="col"><span class="sr-only">Retirer</span></th>
         </tr></thead><tbody>` +
         classes.map(c => {
           const v = par[c.id] || {};
@@ -962,12 +954,6 @@
           return `<tr><th scope="row">${esc(c.id)} ${source}</th>
             <td>${horsImport ? '—' : c.pax}</td><td>${horsImport ? '—' : c.vols.length}</td>
             <td>${horsImport ? '—' : P.hhmm(c.echeance)}</td><td>${v.fin == null ? '—' : P.hhmm(v.fin)}</td><td>${etat}</td>
-            <td><select class="at-cls-parcours" data-at-champ="classe-parcours" data-classe="${esc(c.id)}"
-              aria-label="Parcours de ${esc(c.id)}">
-              <option value="">${esc(defaut(c))}</option>
-              ${(this.state.parcours || []).map(p => `<option value="${esc(p.id)}" ${this.state.parcoursClasse[c.id] === p.id ? 'selected' : ''}>${esc(p.nom)}</option>`).join('')}
-            </select></td>
-            <td class="at-parcours">${esc([...new Set(v.services || [])].map(nomSvc).join(', ')) || '—'}</td>
             <td><button class="btn btn-sm at-danger" data-at-action="classe-supprimer" data-classe="${esc(c.id)}"
               title="Retirer ${esc(c.id)} et couper ses liens avec les ateliers">Retirer</button></td></tr>`;
         }).join('') + '</tbody></table>';

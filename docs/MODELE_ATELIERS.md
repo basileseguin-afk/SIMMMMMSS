@@ -320,51 +320,62 @@ plonge, la cuisine que la légumerie. La règle tient en une phrase :
 > Un service ne travaille un lot que lorsque **les services qui le précèdent sur
 > le parcours de chaque classe** du lot la lui ont livrée.
 
-Les parcours se décrivent dans l'onglet **Ateliers**, section « Parcours et
-équipes » : chaque étape est un menu, chaque branche une chaîne qu'on lit de
-gauche à droite (« Modifier les branches »). Deux parcours types sont créés
-d'office — **Complet** pour BC, PC, CREW et SPML, **Sans cuisine** pour YC — et
-se modifient librement.
+Les parcours se décrivent dans l'onglet **Ateliers**, section « 1. Les
+parcours » : un schéma par parcours, une ligne par branche, la jonction à droite.
+« Modifier » ouvre ses branches : chaque étape est un menu. Deux parcours types
+sont créés d'office — **Complet** pour BC, PC, CREW et SPML, **Sans cuisine**
+pour YC — et se modifient librement.
 
-### Parcours et équipes : une seule vue
+### Qui fabrique quoi : le parcours et les équipes dans un seul tableau
 
 Le parcours dit **par où** passe une classe ; les équipes disent **qui, quand et
-en combien de temps**. Les deux se lisent ensemble : le parcours est le
-squelette, les équipes s'y accrochent.
+en combien de temps**. La section « 2. Qui fabrique quoi » les réunit dans un
+tableau qui se lit comme une feuille Excel :
 
-- **Chaque étape montre ses équipes** et leurs heures pour les classes du
-  parcours (« Cuisine matin 04:30–09:10 ») ; un clic ouvre la fiche de l'équipe.
-- **Chaque étape dit sa couverture** : « 7 / 9 classes ». Verte si toutes les
-  classes du parcours y sont fabriquées, orange s'il en manque.
-- **Ce qui manque se complète sur place** :
-  - une seule équipe à l'étape : « Confier les 2 à Cuisine matin » ;
-  - plusieurs : un menu pour choisir laquelle ;
-  - aucune : « + Équipe ici… » pose une équipe qui fabrique les classes
-    manquantes (ou une plonge, ou une mise à disposition) et ouvre sa fiche.
-  Les classes confiées s'ajoutent à la fin de la liste de l'équipe, rangées par
-  heure de départ ; l'ordre se retouche dans la fiche.
-- **« Confier les classes sans équipe »** fait d'un coup tout ce qui n'a qu'une
-  équipe possible.
-- **Le chronogramme** suit une compagnie × classe au choix dans le temps : une
-  ligne par branche, chaque étape à ses heures, l'attente de ses amonts en
-  orange, la jonction alignée, et le trait de l'échéance (premier départ moins
-  le délai de chargement). C'est là qu'on voit quelle branche fait attendre le
-  montage.
+- **une ligne par compagnie × classe**, avec son heure de départ et son
+  parcours (modifiable sur place) ;
+- **une colonne par service**, rangées par branche (Agro, Matériel, Magasin),
+  puis la jonction ;
+- **dans chaque case, l'équipe** qui la fabrique et ses heures. Trois aspects
+  se voient de loin : **remplie** (vert), **« à choisir »** (pointillés orange),
+  **grisée** quand le parcours de la ligne ne passe pas par ce service. Une
+  plonge ou une mise à disposition, qui sert tout le monde, s'écrit en clair.
 
-Le **planning des équipes**, plus bas, reste la vue par équipe : qui travaille
-quoi, heure par heure.
+Les gestes :
+
+- **Cliquer une case** ouvre un petit menu : les équipes du service (avec leur
+  heure, leur effectif et leur charge), « Nouvelle équipe », « Vider la case »,
+  et une case à cocher pour **remplir d'un coup toutes les cases « à choisir »
+  de la colonne**. Une classe confiée à une équipe quitte les autres équipes du
+  même service, et s'ajoute à la fin de sa liste, rangée par heure de départ.
+- **Cliquer le nom d'un service** remplit toutes ses cases vides à la fois.
+- **« Remplir automatiquement »** fait tout ce qui n'a qu'une équipe possible.
+- **Une nouvelle équipe** naît avec la case cliquée ; sa fiche s'ouvre dans
+  « 3. Les équipes » pour régler son heure et son effectif.
+- **La dernière colonne** dit quand la ligne est prête, à l'heure ou en retard.
+  Un clic la **déplie dans le temps** : une barre par étape, dans l'ordre des
+  colonnes, l'attente de l'étape d'avant en orange, le trait de l'heure de
+  chargement, et une phrase qui résume — « AF/BC est prête à 06:45 pour un
+  chargement avant 05:55 : 50 min de retard. Le plus long à attendre : MONTAGE a
+  attendu 25 min que DOTATION finisse. »
+- Une barre du haut compte les cases remplies ; on peut **chercher une
+  compagnie** ou n'afficher que **les lignes à compléter**. Le tableau se pilote
+  au clavier (Entrée ouvre le menu d'une case, Échap le referme).
+
+Les sections « 3. Les équipes » (horaires, effectifs, ordre de fabrication) et
+« 4. La journée » (le planning, équipe par équipe) restent la vue par équipe.
 
 - **Par défaut, par classe** : BC, PC, YC, CREW et SPML ont chacune un parcours.
-- **Par compagnie × classe** : le tableau des compagnies × classes a une colonne
-  « Parcours » ; une compagnie peut y suivre un autre chemin que sa classe.
+- **Par compagnie × classe** : chaque ligne du tableau « Qui fabrique quoi » a
+  son menu de parcours ; une compagnie peut y suivre un autre chemin que sa classe.
 - **Une étape sans équipe est enjambée** : si personne ne travaille une classe
-  à la cuisine, le montage attend directement ce qui précède la cuisine. C'est
-  signalé — « « CUISINE » est sur le parcours de 3 classe(s) sans qu'aucun
-  atelier ne l'y travaille » — sans bloquer la journée.
+  à la cuisine, le montage attend directement ce qui précède la cuisine. Sa case
+  reste « à choisir », et les points à regarder le rappellent, sans bloquer la
+  journée.
 - **Une plonge n'est jamais un trou** : elle lave ce qui revient, elle ne
   fabrique pas de classe ; la boucle du matériel porte cette contrainte.
-- **Un atelier qui fabrique une classe hors de son parcours** est signalé : son
-  travail est compté, mais personne ne l'attend.
+- **Un atelier qui fabrique une classe hors de son parcours** est signalé (sa
+  case, grisée, porte ⚠) : son travail est compté, mais personne ne l'attend.
 - **Un parcours qui boucle** est refusé avant de jouer quoi que ce soit.
 
 Le **graphe du Centre des flux** décrit l'unité — qui livre qui. Il ne décide

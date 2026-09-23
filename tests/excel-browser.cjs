@@ -1,7 +1,8 @@
 /* Piloter le site depuis Excel, et décrire le chemin de chaque classe.
  *  1. les parcours : branches, jonction, parcours propre à une compagnie × classe ;
  *  2. le classeur des ateliers : exporter, modifier dans « Excel », réimporter ;
- *  3. le classeur des vols : départs et retours, aller-retour. */
+ *  3. le classeur des vols : départs et retours, aller-retour ;
+ *  4. le tableau « Qui fabrique quoi » : choisir, créer, vider, remplir, suivre. */
 const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs'),os=require('node:os');
 const {pathToFileURL}=require('node:url');
 const T=require('../tableur.js');
@@ -42,13 +43,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await creer('Montage','prepa',[['AF/YC'],['AF/BC']]);
   assert.equal((await lot('prepa','AF/YC')).debut,(await lot('dotation','AF/YC')).fin,'YC : le montage attend la dotation, pas la cuisine');
   assert.ok((await lot('prepa','AF/BC')).debut>=(await lot('cuisine','AF/BC')).fin,'BC : le montage attend la cuisine');
-  assert.match(await page.locator('#at-anomalies').textContent(),/sans qu’aucun atelier ne l’y travaille/,'les étapes sans équipe sont dites');
+  assert.match(await page.locator('#at-anomalies').textContent(),/case\(s\) « à choisir » dans « 2\. Qui fabrique quoi »/,'les étapes sans équipe renvoient au tableau');
 
   // Une compagnie × classe peut suivre un autre parcours que sa classe.
   await page.selectOption('[data-at-champ=classe-parcours][data-classe="AF/YC"]','complet');await attendre();
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.parcoursClasse['AF/YC']),'complet');
-  assert.match(await page.locator('#at-anomalies').textContent(),/« CUISINE » est sur le parcours de 1 classe\(s\)[^.]*\(AF\/YC\)/,
-    'la cuisine est désormais sur son chemin, sans équipe pour AF/YC : la liste le dit');
+  assert.match(await page.locator('[data-qf=case][data-classe="AF/YC"][data-service=cuisine]').textContent(),/à choisir/,
+    'la cuisine est désormais sur son chemin, sans équipe pour AF/YC : sa case le dit');
   await page.selectOption('[data-at-champ=classe-parcours][data-classe="AF/YC"]','');await attendre();
 
   // Modifier un parcours : ajouter une étape à une branche.
@@ -114,33 +115,58 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator('#import-report').textContent(),/Départs, ligne 15/);
   assert.equal(await page.locator('#source-count').textContent(),'13 départs · 6 retours','rien n’a été remplacé');
 
-  // 4. Parcours et équipes, d'un même geste : chaque étape dit ses équipes et
-  //    ce qui lui manque, et se complète sur place.
+  // 4. « Qui fabrique quoi » : une ligne par compagnie × classe, une colonne
+  //    par service, une équipe par case — et un clic pour la choisir.
   await page.locator('[data-view=ateliers]').click();await attendre();
-  const complet='[data-parcours=complet]';
-  const boite=s=>page.locator(`${complet} .pc-box[data-service=${s}]`);
-  assert.match(await boite('cuisine').locator('.pc-chip').textContent(),/Cuisine/,'l’équipe figure à son étape');
-  assert.match(await boite('cuisine').getAttribute('class'),/manque/,'des classes du parcours n’y sont pas');
-  // Une seule équipe à l'étape : un bouton lui confie les classes qui manquent.
-  await boite('cuisine').locator('[data-pc-action=confier]').click();await attendre();
-  assert.match(await boite('cuisine').getAttribute('class'),/\bok\b/,'toutes les classes du parcours passent en cuisine');
+  const kase=(c,s)=>page.locator(`[data-qf=case][data-classe="${c}"][data-service=${s}]`);
+  assert.match(await kase('AF/BC','cuisine').textContent(),/Cuisine/,'l’équipe figure dans sa case, avec ses heures');
+  assert.match(await kase('AF/BC','cuisine').textContent(),/\d\d:\d\d–\d\d:\d\d/);
+  assert.equal(await page.locator('tr[data-classe="AF/YC"] td.hors').count()>=2,true,'YC ne passe ni en cuisine ni en légumerie : grisé');
+  // Choisir l'équipe d'une case, et d'un coup celles de toute la colonne.
+  await kase('DL/BC','cuisine').click();await attendre();
+  assert.equal(await page.locator('.qf-menu').count(),1,'le menu de la case s’ouvre');
+  await page.locator('.qf-menu [data-qf=tout]').check();
+  await page.locator('.qf-menu [data-qf=choisir]').first().click();await attendre();
   const lotsCuisine=await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.nom==='Cuisine').lots.flat());
-  assert.ok(lotsCuisine.includes('DL/BC')&&!lotsCuisine.some(c=>c.endsWith('/YC')),'les YC ne vont pas en cuisine');
-  // Aucune équipe : on la pose ici, et sa fiche s'ouvre.
+  assert.ok(lotsCuisine.includes('DL/BC')&&!lotsCuisine.some(c=>c.endsWith('/YC')),'toute la colonne, sauf les YC qui n’y passent pas');
+  assert.equal(await page.locator('[data-qf=case][data-service=cuisine].libre').count(),0,'plus aucune case à choisir en cuisine');
+  // Aucune équipe : on la crée depuis la case, sa fiche s'ouvre plus bas.
   const avantN=await page.evaluate(()=>Sim.ateliers.state.ateliers.length);
-  await boite('appros').locator('[data-pc-champ=equipe-creer]').selectOption('manuel');await attendre();
+  await kase('AF/BC','appros').click();await attendre();
+  await page.locator('.qf-menu [data-qf=nouvelle][data-type=manuel]').click();await attendre();
   const nouvelle=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1));
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.length),avantN+1);
   assert.equal(nouvelle.service,'appros');
-  assert.ok(nouvelle.lots.length>0,'elle naît avec les classes de l’étape');
+  assert.deepEqual(nouvelle.lots,[['AF/BC']],'elle naît avec la case cliquée');
   assert.equal(await page.evaluate(()=>Sim.ateliers.ouvert),nouvelle.id,'sa fiche est ouverte');
-  // Le bouton général confie tout ce qui n'a qu'une équipe possible.
-  await page.locator('[data-pc-action=completer]').click();await attendre();
-  assert.equal(await page.locator('.pc-box.manque [data-pc-action=confier]').count(),0,'plus rien à confier d’un clic');
-  assert.equal(await page.locator('[data-pc-action=completer]').count(),0,'le bouton s’efface');
-  // Le chronogramme suit une classe à travers les branches, jusqu'à l'échéance.
-  await page.selectOption(`[data-pc-champ=chrono][data-parcours=complet]`,'AF/BC');await attendre();
-  assert.equal(await page.locator(`${complet} .pc-chrono svg`).count(),1,'le chemin de AF/BC dans le temps');
+  assert.match(await page.locator('#at-status').textContent(),/créée[\s\S]*heure et son effectif/);
+  // Vider une case.
+  await kase('AF/BC','appros').click();await attendre();
+  await page.locator('.qf-menu [data-qf=vider]').click();await attendre();
+  assert.match(await kase('AF/BC','appros').textContent(),/à choisir/);
+  // Le bouton général remplit là où un service n'a qu'une équipe.
+  await page.locator('[data-qf=remplir]').click();await attendre();
+  assert.equal(await page.locator('[data-qf=remplir]').count(),0,'plus rien à remplir d’un clic');
+  assert.equal(await kase('AF/BC','appros').getAttribute('class'),'qf-case ok');
+  // La colonne entière d'un coup, depuis son en-tête.
+  await page.locator('[data-qf=col][data-service=magasin]').click();await attendre();
+  await page.locator('.qf-menu [data-qf=nouvelle][data-type=dispo]').click();await attendre();
+  assert.equal(await page.locator('td.qf-c.auto').count()>0,true,'le magasin sert tout le monde');
+  // Au clavier : Entrée ouvre le menu d'une case, Échap le referme et rend la main à la case.
+  await kase('DL/BC','prepa').focus();await page.keyboard.press('Enter');await attendre();
+  assert.equal(await page.evaluate(()=>!!document.activeElement.closest('.qf-menu')),true,'le focus entre dans le menu');
+  await page.keyboard.press('Escape');await attendre();
+  assert.equal(await page.locator('.qf-menu').count(),0);
+  assert.equal(await page.evaluate(()=>document.activeElement.dataset.classe+'|'+document.activeElement.dataset.service),'DL/BC|prepa');
+  // Filtrer : chercher une compagnie.
+  await page.fill('[data-qf=recherche]','AF/');
+  assert.ok(await page.locator('tr[data-classe]:visible').count()>0);
+  assert.equal(await page.locator('tr[data-classe^="DL"]:visible').count(),0,'DL est masquée');
+  await page.fill('[data-qf=recherche]','');
+  // Une ligne se suit dans le temps, étape par étape, et le dit en clair.
+  await page.locator('[data-qf=suivre][data-classe="AF/BC"]').click();await attendre();
+  assert.equal(await page.locator('.qf-temps svg').count(),1,'le chemin de AF/BC dans le temps');
+  assert.match(await page.locator('.qf-temps .qf-phrase').textContent(),/AF\/BC (est prête à \d\d:\d\d|n’est pas encore fabriquée)/);
 
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('excel-browser : ok');

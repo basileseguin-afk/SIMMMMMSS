@@ -177,16 +177,52 @@ test('compléter confie là où une seule équipe travaille, et rend la main ail
   assert.ok(r.lots.some(l => l.service === 'prepa' && l.classes.includes('TX/YC')));
 });
 
-test('le chronogramme montre les branches d’une classe dans le temps, jusqu’à leur jonction', () => {
+test('les colonnes du tableau suivent les branches, puis la jonction', () => {
+  assert.deepEqual(PC.colonnes(PARCOURS.parcours).map(c => c.groupe + ':' + c.service),
+    ['Agro:appros', 'Agro:cuisine', 'Matériel:plonge', 'Matériel:dotation', 'Magasin:magasin', 'Jonction:prepa']);
+  // Ce qui suit la jonction reste après elle, dans l'ordre du flux.
+  const long = { id: 'l', nom: 'L', branches: [{ nom: 'A', services: ['cuisine', 'prepa', 'armement'] },
+    { nom: 'B', services: ['dotation', 'prepa'] }] };
+  assert.deepEqual(PC.colonnes([long]).map(c => c.service), ['cuisine', 'dotation', 'prepa', 'armement']);
+});
+
+test('le tableau dit, case par case, qui fabrique quoi', () => {
+  const etat = etatAvec([at('cu', 'cuisine', '05:00', [['AF/BC'], ['AF/YC']]),
+    { id: 'pl', nom: 'Plonge', service: 'plonge', type: 'lavage', debut: '05:00', lots: [] }]);
+  const t = PC.tableau(etat, CLASSES);
+  const k = (c, s) => t.lignes.find(l => l.classe.id === c).cases[s];
+  assert.equal(k('AF/BC', 'cuisine').etat, 'equipe');
+  assert.deepEqual(k('AF/BC', 'cuisine').ateliers, ['cu']);
+  assert.equal(k('AF/BC', 'prepa').etat, 'libre', 'personne au montage');
+  assert.equal(k('AF/BC', 'plonge').etat, 'auto', 'la plonge lave pour tout le monde');
+  assert.equal(k('TX/YC', 'cuisine').etat, 'hors', 'YC ne passe pas en cuisine');
+  assert.equal(k('AF/YC', 'cuisine').etat, 'hors-fait', 'fabriquée hors de son parcours : on le voit');
+  const col = t.colonnes.find(c => c.service === 'prepa');
+  assert.deepEqual(col.libres.sort(), ['AF/BC', 'AF/YC', 'TX/YC']);
+});
+
+test('choisir une équipe déplace la classe ; vider la case la retire', () => {
+  const etat = etatAvec([at('d1', 'dotation', '05:00', [['AF/BC', 'AF/YC']]), at('d2', 'dotation', '06:00', [])]);
+  PC.affecter(etat, 'dotation', ['AF/BC'], 'd2', CLASSES);
+  assert.deepEqual(etat.ateliers[0].lots, [['AF/YC']], 'elle quitte l’autre équipe, sa voisine de lot reste');
+  assert.deepEqual(etat.ateliers[1].lots, [['AF/BC']]);
+  PC.affecter(etat, 'dotation', ['AF/BC'], null, CLASSES);
+  assert.deepEqual(etat.ateliers[1].lots, [], 'case vidée');
+});
+
+test('le chronogramme suit une classe étape par étape et dit qui l’a fait attendre', () => {
   const ateliers = [at('ap', 'appros', '05:00', [['AF/BC']]), at('cu', 'cuisine', '05:00', [['AF/BC']]),
     at('do', 'dotation', '05:00', [['AF/BC']]), at('mo', 'prepa', '05:00', [['AF/BC']])];
   const r = jouer(ateliers);
   const g = PC.chronogramme(r, COMPLET, 'AF/BC');
-  assert.equal(g.lanes.length, 3);
-  const agro = g.lanes[0].etapes, mat = g.lanes[1].etapes;
-  assert.equal(agro[1].service, 'cuisine');
-  assert.ok(agro[1].fin <= agro[2].debut, 'la cuisine finit avant que le montage commence');
-  assert.equal(agro[2].debut, mat[2].debut, 'la jonction est au même instant sur toutes les branches');
-  assert.equal(mat[0].absent, true, 'pas de plonge décrite : l’étape est vide');
+  assert.deepEqual(g.etapes.map(e => e.service), ['appros', 'cuisine', 'plonge', 'dotation', 'magasin', 'prepa'],
+    'dans l’ordre des colonnes du tableau');
+  const e = s => g.etapes.find(x => x.service === s);
+  assert.equal(e('plonge').absent, true, 'pas de plonge décrite : l’étape est vide');
+  assert.equal(e('prepa').branche, 'Jonction');
+  assert.ok(e('cuisine').fin <= e('prepa').debut, 'la cuisine finit avant que le montage commence');
+  const dernier = ['cuisine', 'dotation'].sort((a, b) => e(b).fin - e(a).fin)[0];
+  assert.ok(e('prepa').attente > 0, 'le montage, arrivé à 05:00, attend ses amonts');
+  assert.equal(e('prepa').attendu, dernier, 'le montage a attendu la branche la plus lente');
   assert.equal(g.debut, 5 * 60);
 });

@@ -92,16 +92,20 @@ l’ordre :
    retours) ou un CSV simplifié, ou garder le jeu de démonstration. Le nom du jeu et le nombre de départs/retours restent
    visibles en haut de page.
 2. **Plan** : tracer ou confirmer les services (« Éditer les zones »).
-3. **Ateliers** : décrire, service par service, les équipes (personnes, horaire,
-   pauses), ce qu’elles fabriquent (compagnie × classe, dans l’ordre), les
-   plonges (tunnels, débits) et les mises à disposition. La section **Parcours
-   et équipes** dit le chemin de chaque compagnie × classe : des branches qui
-   partent en parallèle et se rejoignent (ex. l’agro par les appros et la
-   cuisine, le matériel par la plonge et la dotation, le produit compagnie par
-   le magasin, tout se retrouvant au montage). YC ne passe pas par la cuisine.
-   Chaque étape y montre ses équipes, leurs heures et les classes qui n’y sont
-   encore fabriquées par personne, avec de quoi les confier ou poser une équipe ;
-   un chronogramme suit une classe dans le temps, branche par branche.
+3. **Ateliers**, en quatre temps :
+   1. **Les parcours** : par où passe chaque compagnie × classe, en branches qui
+      partent en parallèle et se rejoignent (l’agro par les appros et la
+      cuisine, le matériel par la plonge et la dotation, le produit compagnie
+      par le magasin, tout se retrouvant au montage). YC ne passe pas par la
+      cuisine.
+   2. **Qui fabrique quoi** : un tableau, une ligne par compagnie × classe, une
+      colonne par service ; chaque case dit l’équipe qui la fabrique et ses
+      heures. Un clic sur une case choisit l’équipe (ou en crée une), un clic
+      sur un service remplit toute sa colonne. Chaque ligne dit quand elle est
+      prête et se déplie pour se suivre dans le temps, étape par étape.
+   3. **Les équipes** : horaire, effectif, pauses, ordre de fabrication, et les
+      plonges (tunnels, débits) et mises à disposition.
+   4. **La journée** : le planning, équipe par équipe.
 4. **Flux** : relier les services. Le graphe décrit l’unité ; il ne décide que
    pour les classes qui n’ont pas de parcours.
 5. **Barème** (Réglages) : homme-minutes **par vol**, par service et par
@@ -269,7 +273,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `replay.js` / `simulation.js` | Relecture de la journée calculée : états à l’instant t, vue Simulation |
 | `comparaison.js` | Scénarios A/B : capture, tableau, verdict par ligne |
 | `vols-demo.js` | Programme de vols **fictif** de démonstration |
-| `parcours.js` | Parcours des compagnies × classes : validation, parcours types, couverture par les équipes, chronogramme, éditeur |
+| `parcours.js` | Parcours des compagnies × classes : validation, parcours types, tableau « Qui fabrique quoi », suivi d’une ligne dans le temps, éditeur |
 | `tableur.js` | Lecture et écriture de classeurs Excel (.xlsx) et de CSV, sans bibliothèque |
 | `echanges.js` | Les trois classeurs (ateliers, barème, vols) : format et conversions |
 | `plan-editor.js` / `editor.css` | Dessin, annotations, historique et sauvegarde du plan |
@@ -284,10 +288,10 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/production.test.cjs` | Régressions du modèle par ateliers : enchaînement des lots, attente des amonts, robot, pauses, validation |
 | `tests/replay.test.cjs` | Relecture : états d’un service, ponctualité à l’instant t, pas suivant |
 | `tests/comparaison.test.cjs` | Scénarios A/B : capture, déterminisme, verdicts, jeu de démonstration |
-| `tests/parcours.test.cjs` | Parcours : branches parallèles, jonction, étape enjambée, hors parcours, boucle ; couverture, confier, compléter, chronogramme |
+| `tests/parcours.test.cjs` | Parcours : branches parallèles, jonction, étape enjambée, hors parcours, boucle ; tableau « Qui fabrique quoi », choisir une équipe, remplir, suivi dans le temps |
 | `tests/tableur.test.cjs` | Classeurs Excel : aller-retour, fichier compressé d’un autre logiciel, CSV |
 | `tests/echanges.test.cjs` | Les trois classeurs : aller-retour, ajouts, erreurs regroupées |
-| `tests/excel-browser.cjs` | Parcours et équipes dans l’interface, classeurs ateliers et vols de bout en bout |
+| `tests/excel-browser.cjs` | Parcours et tableau « Qui fabrique quoi » dans l’interface, classeurs ateliers et vols de bout en bout |
 | `tests/browser-smoke.cjs` | Parcours dans Chromium : relecture, vols, import, export, thèmes, mobile |
 | `tests/import-browser.cjs` | Import CSV : échec de lecture puis réimport, numéros de ligne, export, scénarios A/B |
 | `tests/sauvegarde-browser.cjs` | Sauvegarde complète : export, refus atomique, effacement et restauration |

@@ -5,6 +5,45 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-23 — « Qui fabrique quoi » : parcours et équipes dans un tableau
+
+Les cartes de parcours pleines de cases rouges, de « Confier » et de
+« + Équipe ici… » étaient justes mais illisibles. L'onglet Ateliers se lit
+désormais en quatre temps numérotés.
+
+**1. Les parcours** — un schéma neutre par parcours (branches, jonction), côte à
+côte, avec les classes qui le suivent. Plus d'équipes ni de rouge ici : seulement
+par où l'on passe. « Modifier » ouvre les branches comme avant.
+
+**2. Qui fabrique quoi** — un tableau :
+- une ligne par compagnie × classe (départ, parcours modifiable sur place),
+  une colonne par service rangée par branche puis la jonction ;
+- chaque case dit l'équipe et ses heures : remplie (vert), « à choisir »
+  (pointillés), grisée si le parcours ne passe pas par là ;
+- un clic sur une case : choisir l'équipe, en créer une, vider la case, et
+  cocher « et les N autres cases à choisir » pour toute la colonne ; un clic sur
+  un service remplit sa colonne ; « Remplir automatiquement » fait tout ce qui
+  n'a qu'une équipe possible ;
+- la dernière colonne dit quand la ligne est prête ; un clic la déplie dans le
+  temps : une barre par étape, l'attente, l'heure de chargement, et une phrase
+  (« prête à 06:45 pour un chargement avant 05:55 : 50 min de retard ; le
+  montage a attendu 25 min la dotation ») ;
+- jauge des cases remplies, recherche, « lignes à compléter », clavier.
+
+**3. Les équipes** et **4. La journée** : inchangés, renommés.
+
+**Doublons retirés** : les phrases « … est sur le parcours de N classe(s) sans
+qu'aucun atelier ne l'y travaille » deviennent une seule ligne qui renvoie au
+tableau ; les colonnes « Parcours » et « Services traversés » du tableau des
+compagnies × classes, que le nouveau tableau porte.
+
+**Fichiers** : `parcours.js` (`colonnes`, `tableau`, `affecter`, `chronogramme`
+par étape, éditeur réécrit), `ateliers.js`, `ateliers.css`, `index.html`
+(empreintes) ; tests `parcours` (176 tests purs), `excel-browser`,
+`ateliers-browser` ; docs `MODELE_ATELIERS.md`, `ETAT_DES_LIEUX.md`, `README.md`.
+
+---
+
 ## 2026-09-23 — Parcours et équipes fusionnés ; barème par compagnie × classe
 
 **Le barème, service par service, par classe ou par compagnie × classe**

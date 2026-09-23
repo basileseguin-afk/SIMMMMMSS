@@ -123,8 +123,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const etats=await page.locator('#at-classes tbody tr').evaluateAll(rs=>rs.map(r=>r.cells[0].textContent.trim()+'|'+r.cells[5].textContent));
   assert.ok(etats.some(t=>t.startsWith('CRL/BC')&&/à l’heure/.test(t)));
   assert.equal(etats.filter(t=>/jamais fabriquée/.test(t)).length,31,'34 classes moins les 3 fabriquées');
-  const traverses=await page.locator('#at-classes tbody tr').evaluateAll(rs=>(rs.find(r=>r.cells[0].textContent.trim()==='CRL/BC')||{cells:[]}).cells[7].textContent);
-  assert.equal(traverses,'CUISINE, MONTAGE','les services réellement traversés sont affichés');
+  // Par où elle passe, et qui la fabrique : le tableau « Qui fabrique quoi » le dit case par case.
+  const traverses=await page.locator('tr[data-classe="CRL/BC"] .qf-case.ok').evaluateAll(bs=>bs.map(b=>b.dataset.service).sort());
+  assert.deepEqual(traverses,['cuisine','prepa'],'les services qui la fabriquent ont leur case remplie');
 
   // 9. Les indicateurs résument la journée.
   assert.match(await page.locator('#at-indicateurs').textContent(),/Classes à l’heure/);

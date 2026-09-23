@@ -28,11 +28,12 @@ Deux assistants travaillent en parallèle sur cette branche : **Claude** et
 > barème et vols s'échangent en `.xlsx` (`tableur.js`, `echanges.js`) : voir
 > [les formats Excel](FORMATS_EXCEL.md).
 >
-> **Puis — parcours et équipes fusionnés.** La section « Parcours et équipes »
-> de l'onglet Ateliers montre, à chaque étape d'un parcours, ses équipes, leurs
-> heures et les classes qui manquent, et se complète sur place ; un chronogramme
-> suit une classe à travers ses branches. Le barème se saisit, service par
-> service, par classe ou en grille compagnie × classe.
+> **Puis — parcours et équipes réunis.** L'onglet Ateliers se lit en quatre
+> temps : 1. les parcours (un schéma par parcours) ; 2. « Qui fabrique quoi », un
+> tableau compagnie × classe × service où chaque case dit l'équipe et se choisit
+> d'un clic, chaque ligne se dépliant dans le temps ; 3. les équipes ; 4. la
+> journée. Le barème se saisit, service par service, par classe ou en grille
+> compagnie × classe.
 
 ---
 
@@ -236,7 +237,7 @@ en gardant les deux entrées.
 ## 7. Vérifier avant de livrer
 
 ```bash
-node --test tests/*.test.cjs     # 173 tests purs
+node --test tests/*.test.cjs     # 176 tests purs
 node tests/browser-smoke.cjs     # puis les 13 autres parcours (Playwright + Chromium)
 ```
 
@@ -255,7 +256,7 @@ node tests/browser-smoke.cjs     # puis les 13 autres parcours (Playwright + Chr
 | `annexe-browser` | seconde salle d'un atelier : création, aménagement, liaisons propres |
 | `reglages-browser` | barème par vol (commun, par compagnie, grille compagnie × classe), rendement, poste, échange Excel, ancien JSON converti |
 | `aide-browser` | aucun pavé de texte imposé, l'aide s'ouvre sans rien déplacer, chaque « ? » se nomme |
-| `excel-browser` | parcours et équipes dans l'interface (confier, poser une équipe, compléter, chronogramme) ; classeurs ateliers et vols : export, modification, import, refus |
+| `excel-browser` | parcours et tableau « Qui fabrique quoi » (choisir, créer, vider, remplir une colonne, clavier, recherche, suivi dans le temps) ; classeurs ateliers et vols : export, modification, import, refus |
 
 La relecture de la journée (`replay.js` : où en est chaque service à l'instant
 t) est couverte par `tests/replay.test.cjs`, la comparaison A/B par
