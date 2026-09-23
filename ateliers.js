@@ -570,16 +570,17 @@
 
     rendreIndicateurs(r) {
       const i = r.indicateurs || {};
-      const tuile = (lab, val, note) =>
-        `<div class="at-kpi"><div class="lab">${esc(lab)}</div><div class="val">${esc(val)}</div><div class="note">${esc(note || '')}</div></div>`;
+      const I = root.OrlyIcones;
+      const tuile = (lab, val, note, ico, ton) =>
+        `<div class="at-kpi ton-${ton || 'neutre'}">${I ? `<span class="at-kpi-ico">${I.ico(ico)}</span>` : ''}<div><div class="lab">${esc(lab)}</div><div class="val">${esc(val)}</div><div class="note">${esc(note || '')}</div></div></div>`;
       document.getElementById('at-indicateurs').innerHTML = !r.ok ? '' : [
         tuile('Repas prêts à l’heure', i.partAHeure == null ? '—' : i.partAHeure + ' %',
-          i.aHeure + ' sur ' + i.classesSuivies + ' préparés'),
+          i.aHeure + ' sur ' + i.classesSuivies + ' préparés', 'check', i.partAHeure >= 90 ? 'ok' : i.partAHeure == null ? '' : 'mal'),
         tuile('Plus long retard', i.retardMax == null ? '—' : Math.round(i.retardMax) + ' min',
-          i.retardMoyen == null ? '' : 'en moyenne ' + Math.round(i.retardMoyen) + ' min'),
-        tuile('Dernier repas prêt', P.hhmm(i.finDerniere), 'fin de la dernière préparation'),
+          i.retardMoyen == null ? '' : 'en moyenne ' + Math.round(i.retardMoyen) + ' min', 'sablier', i.retardMax ? 'attente' : 'ok'),
+        tuile('Dernier repas prêt', P.hhmm(i.finDerniere), 'fin de la dernière préparation', 'chrono', 'journee'),
         tuile('Sans équipe', String(i.classesAbsentes),
-          i.classesAbsentes ? 'repas que personne ne prépare' : 'tous les repas ont une équipe')
+          i.classesAbsentes ? 'repas que personne ne prépare' : 'tous les repas ont une équipe', 'equipe', i.classesAbsentes ? 'mal' : 'ok')
       ].join('');
     }
 

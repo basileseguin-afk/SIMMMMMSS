@@ -423,7 +423,7 @@
         const propres = Object.entries(etat.parcoursClasse).filter(([, v]) => v === p.id).map(([k]) => k);
         const n = classes.filter(c => (parcoursDe(etat, c) || {}).id === p.id).length;
         const qui = `<span class="pc-qui">${cabines.length || propres.length ? 'pour ' : 'suivi par aucun repas'}
-          ${cabines.map(c => `<b class="pc-cab" title="${esc(c)}">${esc((P.NOM_CABINE || {})[c] || c)}</b>`).join(' ')}
+          ${cabines.map(c => `<b class="pc-cab" title="${esc(c)}"><span class="puce-classe" data-cab="${c}"></span>${esc((P.NOM_CABINE || {})[c] || c)}</b>`).join(' ')}
           ${propres.length ? ` + ${propres.slice(0, 3).map(x => esc(P.libelleClasse(x))).join(', ')}${propres.length > 3 ? '…' : ''}` : ''}
           ${n ? `<span class="pc-n">· ${n} repas</span>` : ''}</span>`;
         const edition = ouvert ? `<div class="pc-branches">${p.branches.map((b, ib) => `
@@ -458,7 +458,7 @@
           <details class="aide"><summary aria-label="Qu’est-ce qu’un chemin ?">?</summary><span class="aide-corps">${AIDE_PARCOURS}</span></details></div>
         <div class="pc-defauts">
           <span class="pc-defauts-lab">Chemin de chaque classe</span>
-          ${P.CABINES.map(c => `<label>${esc((P.NOM_CABINE || {})[c] || c)}<select data-pc-champ="cabine" data-cabine="${c}">${optionsParcours(etat.parcoursCabine[c])}</select></label>`).join('')}
+          ${P.CABINES.map(c => `<label><span class="pc-lab-cab"><span class="puce-classe" data-cab="${c}"></span>${esc((P.NOM_CABINE || {})[c] || c)}</span><select data-pc-champ="cabine" data-cabine="${c}">${optionsParcours(etat.parcoursCabine[c])}</select></label>`).join('')}
         </div>
         <div class="pc-cartes">${cartes || '<p class="mini-note">Aucun chemin : chaque repas suit les liens de l’unité.</p>'}</div>
         <div class="pc-actions">
@@ -473,11 +473,14 @@
       if (!p.branches.length) return '<p class="mini-note">Ce chemin n’a pas encore de branche : « Modifier » pour en ajouter.</p>';
       const derniers = p.branches.map(b => b.services[b.services.length - 1]);
       const jonction = p.branches.length > 1 && derniers.every(x => x && x === derniers[0]) ? derniers[0] : null;
-      const boite = s => `<span class="pc-box" data-service="${esc(s)}">${esc(this.nom(s))}</span>`;
-      const fleche = '<span class="pc-fleche" aria-hidden="true">→</span>';
-      const lanes = p.branches.map(b => {
+      // Un plan de métro : une ligne de couleur par branche, une station par
+      // service, et toutes les lignes qui arrivent à la même station.
+      const I = root.OrlyIcones;
+      const boite = s => `<span class="pc-box" data-service="${esc(s)}"><span class="pc-station">${I ? I.ico(I.icoService(s, this.nom(s))) : ''}</span><span class="pc-st-nom">${esc(this.nom(s))}</span></span>`;
+      const fleche = '<span class="pc-fleche" aria-hidden="true"></span>';
+      const lanes = p.branches.map((b, ib) => {
         const pas = jonction ? b.services.slice(0, -1) : b.services;
-        return `<div class="pc-lane"><span class="pc-lane-nom">${esc(b.nom)}</span>
+        return `<div class="pc-lane" data-ligne="${ib % 4}"><span class="pc-lane-nom">${esc(b.nom)}</span>
           <div class="pc-lane-etapes">${pas.map(boite).join(fleche)}${jonction ? '<span class="pc-vers" aria-hidden="true"></span>' : ''}</div></div>`;
       }).join('');
       return `<div class="pc-flux${jonction ? ' avec-jonction' : ''}">
@@ -537,7 +540,7 @@
           const sous = c.auto.length && !n ? 'sert tout le monde'
             : (n ? n + ' équipe' + (n > 1 ? 's' : '') : 'aucune équipe') + (libres ? ' · ' + libres + ' à choisir' : '');
           return `<th scope="col"><button class="qf-col${libres ? ' a-remplir' : ''}" data-qf="col" data-service="${esc(c.service)}"
-            title="${libres ? 'Remplir les ' + libres + ' cases vides de ' + esc(this.nom(c.service)) : esc(this.nom(c.service))}">${esc(this.nom(c.service))}<small>${esc(sous)}</small></button></th>`;
+            title="${libres ? 'Remplir les ' + libres + ' cases vides de ' + esc(this.nom(c.service)) : esc(this.nom(c.service))}"><span class="qf-col-nom">${root.OrlyIcones ? root.OrlyIcones.ico(root.OrlyIcones.icoService(c.service, this.nom(c.service))) : ''}${esc(this.nom(c.service))}</span><small>${esc(sous)}</small></button></th>`;
         }).join('')}
         <th scope="col" class="qf-fin-tete">Prêt à</th></tr></thead>`;
 
@@ -558,7 +561,7 @@
           if (k.etat === 'hors') return `<td class="qf-c hors" title="${esc(P.libelleClasse(c.id))} ne passe pas par ${esc(this.nom(s))}"></td>`;
           if (k.etat === 'auto') return `<td class="qf-c auto" title="${esc(nomAt(k.ateliers[0]))} sert tout le monde">${esc(nomAt(k.ateliers[0]))}</td>`;
           if (k.etat === 'libre') return `<td class="qf-c"><button class="qf-case libre" ${attrs} aria-haspopup="dialog"
-            aria-label="${esc(this.nom(s))} pour ${esc(P.libelleClasse(c.id))} : à choisir">à choisir</button></td>`;
+            aria-label="${esc(this.nom(s))} pour ${esc(P.libelleClasse(c.id))} : à choisir"><span class="qf-plus" aria-hidden="true">+</span><span class="sr-only">à choisir</span></button></td>`;
           const lot = lots.get(k.ateliers[0] + '|' + c.id);
           const h = lot && Number.isFinite(lot.debut) ? P.hhmm(lot.debut) + (Number.isFinite(lot.fin) ? '–' + P.hhmm(lot.fin) : '') : '';
           const plus = k.ateliers.length > 1 ? ' +' + (k.ateliers.length - 1) : '';
@@ -572,7 +575,7 @@
           : `<b>${P.hhmm(v.fin)}</b> ${v.aHeure ? '<span class="qf-etat ok">à l’heure</span>' : `<span class="qf-etat retard">+${Math.round(v.retard)} min</span>`}`;
         const suivie = this.suivies.has(c.id);
         return `<tr data-classe="${esc(c.id)}" data-incomplete="${incomplete ? 1 : 0}">
-          <th scope="row"><div class="qf-id"><b>${esc(P.libelleClasse(c.id))}</b><small>${depart.length ? 'départ ' + P.hhmm(Math.min(...depart)) : 'hors programme'}</small></div>${choix}</th>
+          <th scope="row"><div class="qf-id"><b><span class="puce-classe" data-cab="${esc(c.cabine)}"></span>${esc(P.libelleClasse(c.id))}</b><small>${depart.length ? 'départ ' + P.hhmm(Math.min(...depart)) : 'hors programme'}</small></div>${choix}</th>
           ${cases}
           <td class="qf-fin"><button class="qf-suivre" data-qf="suivre" data-classe="${esc(c.id)}" aria-expanded="${suivie}"
             title="${suivie ? 'Replier' : 'Suivre ' + esc(P.libelleClasse(c.id)) + ' dans le temps, étape par étape'}">${fin}<span class="qf-chevron" aria-hidden="true">${suivie ? '▾' : '▸'}</span></button></td>

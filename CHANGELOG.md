@@ -5,6 +5,44 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-23 — Un site qui se lit en images
+
+Le site était juste mais trop textuel et monochrome. Repris en designer : le
+sens passe d'abord par la couleur, le pictogramme et le graphique.
+
+**Des couleurs qui ont un sens** (palettes vérifiées contre le daltonisme, en
+clair et en sombre)
+- Une par étape : vols bleu, équipes vert d'eau, temps violet, journée
+  framboise. La barre d'étapes devient des tuiles colorées avec pictogramme.
+- Une par classe de cabine : Business or, Premium violet, Économie turquoise,
+  Équipage bleu, Repas spéciaux orange — toujours avec son nom.
+- Vert, ambre, rouge réservés aux états (à l'heure, attend, en retard).
+
+**Des pictogrammes** (`icones.js`, nouveau) : un par étape, un par service
+(cuisine, plonge, montage, dotation, magasin…), un par état. Le plan porte un
+médaillon par service, qui prend la couleur de son état pendant la lecture.
+
+**Des visuels à la place des phrases**
+- « Comment ça marche » : une frise de quatre grands pictogrammes reliés.
+- La journée : jauge en anneau pour les repas à l'heure, pictogrammes colorés
+  pour les retards, le travail et l'attente ; les services en pastilles d'état ;
+  une journée vide = un seul encart avec un bouton vers l'étape 2.
+- Les vols : trois compteurs qui filtrent, une frise où chaque avion est posé à
+  son heure dans la couleur de son état, et un tableau des départs façon
+  aéroport, chaque repas en pastille de sa classe.
+- Qui prépare quoi : les chemins en plan de métro (une ligne de couleur par
+  branche, une station par service) ; le tableau avec les pictogrammes des
+  services, les pastilles de classe, et des cases vides discrètes (« + »).
+- Les temps de travail : de petites barres par classe pour chaque service, sur
+  une même échelle ; l'exemple devient une équation « 60 min ÷ 2 = 30 min ».
+
+**Fichiers** : `icones.js` (nouveau), `histoire.css`, `index.html`,
+`demarrage.js`, `sim.js`, `simulation.js`, `ateliers.js`, `parcours.js`,
+`reglages.js` ; tests `icones.test.cjs` (nouveau), `histoire-browser`,
+`import-browser` ; docs `README.md`, `ETAT_DES_LIEUX.md`.
+
+---
+
 ## 2026-09-23 — Un site qu'on comprend sans être du métier
 
 Le visuel est repris de A à Z pour qu'une personne qui n'est pas dans

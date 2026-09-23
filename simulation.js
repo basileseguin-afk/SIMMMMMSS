@@ -177,6 +177,11 @@
       // La ponctualité ne juge que les échéances déjà passées : à l'aube, il
       // n'y a encore rien à juger, et « 0 % » serait une fausse alarme.
       const part = c.exigibles ? c.tenues / c.exigibles : null;
+      const anneau = document.getElementById('kpi-anneau');
+      if (anneau) {
+        anneau.setAttribute('stroke-dasharray', (part == null ? 0 : Math.round(part * 100)) + ' 100');
+        anneau.setAttribute('class', 'anneau-plein ' + (!part ? 'zero' : part >= 0.9 ? 'bon' : part >= 0.7 ? 'moyen' : 'mauvais'));
+      }
       mettre('kpi-ontime', part == null ? '—' : Math.round(part * 100) + ' %',
         part == null ? '' : part >= 0.9 ? 'bon' : part >= 0.7 ? 'moyen' : 'mauvais',
         'kpi-denom', c.exigibles ? c.tenues + ' repas sur ' + c.exigibles + ' prêts avant leur chargement'
@@ -185,7 +190,7 @@
         'kpi-ready', c.enRetard ? 'repas pas prêts à l’heure du chargement' : 'aucun retard à cette heure');
       mettre('kpi-wip', c.auTravail + ' <small>services</small>', '', 'kpi-wip-note', 'qui préparent en ce moment');
       mettre('kpi-debit', c.enAttente + ' <small>services</small>', c.enAttente ? 'moyen' : '',
-        'kpi-debit-note', 'équipe en place, mais le service d’avant n’a pas encore livré');
+        'kpi-debit-note', 'le service d’avant n’a pas livré');
     }
 
     /**
@@ -225,12 +230,16 @@
       const rang = { travail: 0, attente: 1, avenir: 2, fini: 3 };
       vus.sort((x, y) => rang[i.services[x.id].etat] - rang[i.services[y.id].etat]
         || x.nom.localeCompare(y.nom));
+      const I = root.OrlyIcones;
+      const icoEtat = { travail: 'lecture', attente: 'sablier', fini: 'check', avenir: 'chrono' };
       box.innerHTML = vus.map(s => {
         const e = i.services[s.id];
         return `<button class="stat-atelier etat-${e.etat}${s.id === selection ? ' active' : ''}"
           data-station="${esc(s.id)}" aria-pressed="${s.id === selection}">
-          <div class="haut"><span>${esc(s.nom)}</span><b>${esc(LIBELLE[e.etat])}</b></div>
-          <div class="stat-quoi">${e.etat === 'avenir' ? '' : esc(P.enClair(e.nom || ''))}</div>
+          <span class="stat-ico">${I ? I.ico(I.icoService(s.id, s.nom)) : ''}</span>
+          <span class="stat-corps"><span class="haut"><span>${esc(s.nom)}</span>
+            <b class="stat-etat">${I ? I.ico(icoEtat[e.etat]) : ''}${esc(LIBELLE[e.etat])}</b></span>
+          <span class="stat-quoi">${e.etat === 'avenir' ? '' : esc(P.enClair(e.nom || ''))}</span></span>
         </button>`;
       }).join('');
       for (const b of box.querySelectorAll('[data-station]')) {

@@ -28,7 +28,14 @@ Deux assistants travaillent en parallèle sur cette branche : **Claude** et
 > barème et vols s'échangent en `.xlsx` (`tableur.js`, `echanges.js`) : voir
 > [les formats Excel](FORMATS_EXCEL.md).
 >
-> **Puis — un site qu'on comprend sans être du métier.** La navigation est une
+> **Puis — un site qui se lit en images.** Chaque couleur a un sens (une par
+> étape, une par classe de cabine, les états en vert, ambre, rouge), chaque
+> service a son pictogramme, sur le plan comme dans les tableaux. Les vols sont un
+> tableau des départs d'aéroport avec une frise de la journée ; les chemins un
+> plan de métro ; les minutes de travail de petites barres ; les indicateurs des
+> jauges.
+>
+> **Avant — un site qu'on comprend sans être du métier.** La navigation est une
 > histoire en quatre étapes numérotées (1. Les vols, 2. Qui prépare quoi, 3. Les
 > temps de travail, 4. La journée, et à part L'unité), chacune avec son état en
 > clair ; un encart « Comment ça marche » la raconte en quatre images. Le
@@ -246,7 +253,7 @@ en gardant les deux entrées.
 ## 7. Vérifier avant de livrer
 
 ```bash
-node --test tests/*.test.cjs     # 177 tests purs
+node --test tests/*.test.cjs     # 179 tests purs
 node tests/browser-smoke.cjs     # puis les 14 autres parcours (Playwright + Chromium)
 ```
 

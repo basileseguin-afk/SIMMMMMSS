@@ -12,86 +12,118 @@
   body>.app{flex:1 1 auto;min-height:0}
 }
 
-/* --- Les étapes --------------------------------------------------------- */
+/* --- Les couleurs : chacune a un sens ---------------------------------
+   Une par étape (se repérer), une par classe de cabine (la reconnaître
+   partout, toujours avec son nom). Validées contre le daltonisme. */
+:root{
+  --c-vols:#2a78d6; --c-equipes:#138a60; --c-temps:#4a3aa7; --c-journee:#c2477a; --c-unite:#5b6b7d;
+  --cab-BC:#c98500; --cab-PC:#7b61d6; --cab-YC:#1baf7a; --cab-CREW:#2a78d6; --cab-SPML:#eb6834;
+  --ok:#15803d; --attente:#b45309; --retard:#c02618;
+}
+:root[data-theme="dark"]{
+  --c-vols:#3987e5; --c-equipes:#199e70; --c-temps:#9085e9; --c-journee:#d55181; --c-unite:#8a9bb0;
+  --cab-PC:#9085e9; --cab-YC:#199e70; --cab-CREW:#3987e5; --cab-SPML:#d95926;
+  --ok:#46d07d; --attente:#f5b73f; --retard:#ff6a5e;
+}
+.ico{width:1.25em;height:1.25em;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;
+  stroke-linejoin:round;flex:none;vertical-align:-.25em}
+.puce-classe{display:inline-block;width:10px;height:10px;border-radius:3px;flex:none;background:var(--bordure2);vertical-align:0}
+.puce-classe[data-cab="BC"]{background:var(--cab-BC)} .puce-classe[data-cab="PC"]{background:var(--cab-PC)}
+.puce-classe[data-cab="YC"]{background:var(--cab-YC)} .puce-classe[data-cab="CREW"]{background:var(--cab-CREW)}
+.puce-classe[data-cab="SPML"]{background:var(--cab-SPML)}
+
+/* --- Les étapes : des tuiles de couleur ---------------------------------- */
 .etapes{display:flex;align-items:stretch;gap:12px;padding:10px 20px;background:var(--bg3);
   border-bottom:1px solid var(--bordure)}
 .etapes-liste{display:flex;align-items:stretch;gap:2px;list-style:none;margin:0;padding:0;flex:1;min-width:0}
 .etapes-liste>li{display:flex;min-width:0}
 .etapes-liste>li:not(.etape-fleche){flex:1 1 0}
-.etape-fleche{align-items:center;color:var(--txt3);font-size:26px;line-height:1;padding:0 2px;user-select:none}
-.etape{display:flex;align-items:center;gap:10px;width:100%;text-align:left;font:inherit;cursor:pointer;
-  background:transparent;border:1.5px solid transparent;border-radius:10px;padding:7px 12px;color:var(--txt);
-  position:relative;min-height:54px;min-width:0}
-.etape:hover{background:var(--bg2);border-color:var(--bordure)}
-.etape:focus-visible{outline:3px solid var(--accent);outline-offset:1px}
-.etape.active{background:color-mix(in srgb,var(--accent) 9%,var(--bg3));border-color:var(--accent)}
-.etape-num{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-weight:800;
-  font-size:16px;background:var(--bg2);border:2px solid var(--bordure2);color:var(--txt2)}
-.etape.active .etape-num{background:var(--accent);border-color:var(--accent);color:#fff}
-:root[data-theme="dark"] .etape.active .etape-num{color:#0b1520}
+.etape-fleche{align-items:center;color:var(--bordure2);font-size:28px;line-height:1;padding:0 2px;user-select:none}
+.etape{display:flex;align-items:center;gap:12px;width:100%;text-align:left;font:inherit;cursor:pointer;
+  background:transparent;border:2px solid transparent;border-radius:14px;padding:7px 12px 7px 9px;color:var(--txt);
+  position:relative;min-height:60px;min-width:0;transition:background .15s,border-color .15s}
+.etape:hover{background:color-mix(in srgb,var(--c) 7%,var(--bg3))}
+.etape:focus-visible{outline:3px solid var(--c);outline-offset:1px}
+.etape.active{background:color-mix(in srgb,var(--c) 10%,var(--bg3));border-color:var(--c)}
+.etape-ico{position:relative;flex:none;width:44px;height:44px;border-radius:13px;display:grid;place-items:center;
+  background:color-mix(in srgb,var(--c) 15%,var(--bg3));color:var(--c)}
+.etape-ico .ico{width:25px;height:25px;stroke-width:1.8}
+.etape.active .etape-ico{background:var(--c);color:#fff}
+:root[data-theme="dark"] .etape.active .etape-ico{color:#0b1520}
+.etape-num{position:absolute;top:-7px;left:-7px;width:21px;height:21px;border-radius:50%;display:grid;place-items:center;
+  font-size:11.5px;font-weight:800;background:var(--bg3);color:var(--c);border:2px solid var(--c)}
 .etape-txt{display:block;min-width:0}
-.etape-txt b{display:block;font-size:14.5px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.etape-txt b{display:block;font-size:14.5px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .etape-txt em{display:flex;gap:6px;align-items:flex-start;font-style:normal;font-size:12px;color:var(--txt2);
-  margin-top:2px;line-height:1.3}
-.etape-etat{margin-top:1px}
+  margin-top:3px;line-height:1.3}
 .etape-etat{flex:none;width:16px;height:16px;border-radius:50%;display:inline-grid;place-items:center;
-  font-size:10px;font-weight:800;line-height:1}
-.etape-etat.fait{background:var(--vert);color:#fff}
-.etape-etat.verifier{background:var(--orange);color:#fff}
+  font-size:10px;font-weight:800;line-height:1;margin-top:0}
+.etape-etat.fait{background:var(--ok);color:#fff}
+.etape-etat.verifier{background:var(--attente);color:#fff}
 .etape-etat.afaire{background:var(--bordure2);color:var(--txt)}
 :root[data-theme="dark"] .etape-etat.fait,:root[data-theme="dark"] .etape-etat.verifier{color:#0b1520}
-.etape-suite{position:absolute;top:-9px;right:10px;font-size:10px;font-weight:800;text-transform:uppercase;
-  letter-spacing:.04em;background:var(--accent);color:#fff;border-radius:99px;padding:1px 8px;white-space:nowrap}
+.etape-suite{position:absolute;top:-10px;right:10px;font-size:10px;font-weight:800;text-transform:uppercase;
+  letter-spacing:.04em;background:var(--c);color:#fff;border-radius:99px;padding:2px 9px;white-space:nowrap;
+  box-shadow:0 2px 6px color-mix(in srgb,var(--c) 40%,transparent)}
 :root[data-theme="dark"] .etape-suite{color:#0b1520}
-.etapes-annexe{display:flex;border-left:1px solid var(--bordure);padding-left:12px;flex:0 0 auto}
+.etapes-annexe{display:flex;border-left:1px dashed var(--bordure2);padding-left:12px;flex:0 0 auto}
 .etape.annexe{min-width:170px}
-.etape.annexe .etape-num{width:28px;height:28px;font-size:14px}
+.etape.annexe .etape-ico{width:38px;height:38px}
 .etape.annexe b{font-size:13.5px}
-/* Pendant qu'on déplace les zones du plan, on ne change pas d'étape. */
 body.editing .etapes{opacity:.45;pointer-events:none}
 
-/* --- Comment ça marche -------------------------------------------------- */
-.comment{background:var(--bg3);border-bottom:1px solid var(--bordure);padding:14px 20px 16px}
+/* --- Comment ça marche : une frise d'images ------------------------------ */
+.comment{background:linear-gradient(180deg,var(--bg3),var(--bg2));border-bottom:1px solid var(--bordure);padding:14px 20px 16px}
 .comment[hidden]{display:none}
 .cm-tete{display:flex;justify-content:space-between;align-items:center;gap:12px}
-.cm-tete h2{margin:0;font-size:17px}
-.cm-liste{list-style:none;margin:12px 0 0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
-.cm-liste li{display:grid;grid-template-columns:52px minmax(0,1fr);column-gap:12px;align-content:start;
-  background:var(--bg2);border:1px solid var(--bordure);border-radius:12px;padding:12px 14px;position:relative}
-.cm-liste li:not(:last-child)::after{content:"›";position:absolute;right:-15px;top:50%;transform:translateY(-50%);
-  font-size:24px;color:var(--txt3)}
-.cm-picto{grid-row:span 2;width:52px;height:52px;fill:none;stroke:var(--accent);stroke-width:2.6;
-  stroke-linecap:round;stroke-linejoin:round}
-.cm-liste b{display:flex;align-items:center;gap:7px;font-size:14px;line-height:1.3}
-.cm-num{flex:none;width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-size:11.5px;
-  display:grid;place-items:center}
+.cm-tete h2{margin:0;font-size:18px}
+.cm-liste{list-style:none;margin:6px 0 0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;
+  position:relative}
+.cm-liste li{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;position:relative;padding:6px 6px 0}
+.cm-liste li:not(:last-child)::after{content:"";position:absolute;top:44px;left:calc(50% + 50px);right:calc(-50% + 50px);
+  border-top:3px dotted var(--bordure2)}
+.cm-liste li:not(:last-child)::before{content:"";position:absolute;top:39px;right:calc(-50% + 46px);
+  border:6px solid transparent;border-left:9px solid var(--bordure2)}
+.cm-rond{position:relative;width:78px;height:78px;border-radius:50%;display:grid;place-items:center;
+  background:color-mix(in srgb,var(--c) 14%,var(--bg3));color:var(--c);border:3px solid var(--c);margin-bottom:4px}
+.cm-picto.ico{width:40px;height:40px;stroke-width:1.7}
+.cm-num{position:absolute;top:-4px;right:-4px;width:24px;height:24px;border-radius:50%;background:var(--c);color:#fff;
+  font-size:12.5px;font-weight:800;display:grid;place-items:center;border:2px solid var(--bg3)}
 :root[data-theme="dark"] .cm-num{color:#0b1520}
-.cm-liste p{margin:4px 0 0;font-size:12.5px;color:var(--txt2);line-height:1.45}
-.cm-pied{margin:12px 0 0;font-size:12.5px;color:var(--txt2);max-width:110ch}
+.cm-liste b{font-size:14.5px;line-height:1.25}
+.cm-liste p{margin:0;font-size:12.5px;color:var(--txt2)}
+.cm-pied{margin:12px auto 0;font-size:12.5px;color:var(--txt2);text-align:center;display:flex;gap:6px;justify-content:center;align-items:center}
+.cm-pied .ico{color:var(--attente)}
 .cm-pied b{color:var(--txt)}
 
-/* --- Le titre de chaque vue, et sa phrase -------------------------------- */
-.view-intro{margin:3px 0 0;font-size:13.5px;color:var(--txt2);max-width:90ch;line-height:1.45}
+/* --- Le titre de chaque vue : une tuile de couleur, un titre, une phrase - */
+.workspace-heading>div{display:grid;grid-template-columns:auto 1fr;column-gap:14px;align-items:center}
+.view-ico{grid-row:span 2;width:48px;height:48px;border-radius:14px;display:grid;place-items:center;
+  background:var(--c,var(--accent));color:#fff}
+:root[data-theme="dark"] .view-ico{color:#0b1520}
+.view-ico .ico{width:27px;height:27px}
+.view-ico:empty{display:none}
+.view-intro{margin:2px 0 0;font-size:13.5px;color:var(--txt2);max-width:90ch;line-height:1.4}
 .view-intro:empty{display:none}
 
 @media(max-width:1250px){
   .etapes-liste>.etape-fleche{display:none}
-  .etape{padding:6px 8px;gap:8px}
+  .etape{padding:6px 8px;gap:9px}
   .etape-txt b{font-size:13.5px}
+  .etape-ico{width:38px;height:38px}
 }
 @media(max-width:1000px){
   .etapes{flex-direction:column;gap:6px}
   .etapes-liste{display:grid;grid-template-columns:1fr 1fr;gap:6px}
   .etapes-annexe{border-left:0;padding-left:0}
   .etape.annexe{min-width:0}
-  .cm-liste{grid-template-columns:1fr 1fr}
-  .cm-liste li::after{display:none}
+  .cm-liste{grid-template-columns:1fr 1fr;row-gap:16px}
+  .cm-liste li::after,.cm-liste li::before{display:none}
 }
 @media(max-width:560px){
   .etapes{padding:8px 16px}
   .etapes-liste{grid-template-columns:1fr}
   .comment{padding:12px 16px}
-  .cm-liste{grid-template-columns:1fr;gap:10px}
 }
 
 /* --- Rejouer la journée -------------------------------------------------
@@ -118,5 +150,211 @@ body[data-vue="vols"] .workbench{display:none}
 @media(max-width:900px){.vols-donnees{grid-template-columns:1fr}}
 
 /* --- Les temps de travail : un exemple plutôt qu'une formule ------------- */
-.rg-exemple{margin:4px 0 10px;font-size:13px;color:var(--txt)}
+.rg-exemple{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 12px}
+.rg-eq{display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto;column-gap:9px;align-items:center;
+  background:color-mix(in srgb,var(--c-temps) 9%,var(--bg3));border:1px solid color-mix(in srgb,var(--c-temps) 30%,var(--bordure));
+  border-radius:12px;padding:7px 12px}
+.rg-eq .ico{grid-row:span 2;width:26px;height:26px;color:var(--c-temps)}
+.rg-eq b{font-size:18px;line-height:1.1;color:var(--txt)}
+.rg-eq small{font-size:11px;color:var(--txt2)}
+.rg-eq.res{background:var(--c-temps);border-color:var(--c-temps)}
+.rg-eq.res .ico,.rg-eq.res b,.rg-eq.res small{color:#fff}
+:root[data-theme="dark"] .rg-eq.res .ico,:root[data-theme="dark"] .rg-eq.res b,:root[data-theme="dark"] .rg-eq.res small{color:#0b1520}
+.rg-op{font-size:26px;font-weight:300;color:var(--txt2)}
 .rg-codes{margin:-6px 0 10px;font-size:11.5px;color:var(--txt2)}
+
+/* --- La journée : des indicateurs qu'on lit sans lire -------------------- */
+.kpi-grille .kpi{display:flex;align-items:center;gap:14px}
+.kpi-ico{flex:none;width:52px;height:52px;border-radius:50%;display:grid;place-items:center}
+.kpi-ico .ico{width:27px;height:27px}
+.kpi-retard .kpi-ico{background:color-mix(in srgb,var(--retard) 14%,var(--bg3));color:var(--retard)}
+.kpi-travail .kpi-ico{background:color-mix(in srgb,var(--c-journee) 14%,var(--bg3));color:var(--c-journee)}
+.kpi-attente .kpi-ico{background:color-mix(in srgb,var(--attente) 16%,var(--bg3));color:var(--attente)}
+.anneau{flex:none;width:58px;height:58px;transform:rotate(-90deg)}
+.anneau circle{fill:none;stroke-width:4.2}
+.anneau-fond{stroke:var(--jauge-bg)}
+.anneau-plein{stroke:var(--bordure2);stroke-linecap:round;transition:stroke-dasharray .4s}
+.anneau-plein.bon{stroke:var(--ok)} .anneau-plein.moyen{stroke:var(--attente)} .anneau-plein.mauvais{stroke:var(--retard)}
+.kpi-retard .val.mauvais{color:var(--retard)}
+.anneau-plein.zero{display:none}
+
+/* --- En ce moment : chaque service, son pictogramme, son état en couleur -- */
+.stat-atelier{display:flex;align-items:center;gap:11px;border-radius:12px;padding:8px 10px;margin:0 0 6px;
+  background:var(--bg2);border:1px solid transparent}
+.stat-atelier:hover{border-color:var(--bordure2)}
+.stat-atelier.active{border-color:var(--c-journee);background:color-mix(in srgb,var(--c-journee) 8%,var(--bg2))}
+.stat-ico{flex:none;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:var(--bg3);color:var(--txt2)}
+.stat-ico .ico{width:21px;height:21px}
+.stat-corps{flex:1;min-width:0;display:block}
+.stat-atelier .haut{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:var(--txt)}
+.stat-etat{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;border-radius:99px;padding:2px 8px 2px 6px;white-space:nowrap}
+.stat-etat .ico{width:13px;height:13px;stroke-width:2.4}
+.stat-atelier.etat-travail .stat-etat{background:color-mix(in srgb,var(--c-journee) 15%,var(--bg3));color:var(--c-journee)}
+.stat-atelier.etat-attente .stat-etat{background:color-mix(in srgb,var(--attente) 16%,var(--bg3));color:var(--attente)}
+.stat-atelier.etat-fini .stat-etat{background:color-mix(in srgb,var(--ok) 15%,var(--bg3));color:var(--ok)}
+.stat-atelier.etat-avenir .stat-etat{background:var(--bg3);color:var(--txt2)}
+.stat-atelier.etat-travail .stat-ico{background:var(--c-journee);color:#fff}
+.stat-atelier.etat-attente .stat-ico{background:var(--attente);color:#fff}
+.stat-atelier.etat-fini .stat-ico{background:color-mix(in srgb,var(--ok) 18%,var(--bg3));color:var(--ok)}
+:root[data-theme="dark"] .stat-atelier.etat-travail .stat-ico,:root[data-theme="dark"] .stat-atelier.etat-attente .stat-ico{color:#0b1520}
+.stat-atelier .stat-quoi{display:block;margin-top:2px}
+
+/* --- Rien à rejouer : un seul encart, qui dit quoi faire ------------------ */
+.vide-carte{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:14px 8px}
+.vide-carte>.ico{width:46px;height:46px;padding:12px;box-sizing:content-box;border-radius:50%;
+  background:color-mix(in srgb,var(--c-equipes) 15%,var(--bg3));color:var(--c-equipes)}
+.vide-carte b{font-size:15px;color:var(--txt)}
+.vide-carte p{margin:0;font-size:12.5px;color:var(--txt2)}
+.vide-carte .btn{background:var(--c-equipes);border-color:var(--c-equipes);color:#fff}
+:root[data-theme="dark"] .vide-carte .btn{color:#0b1520}
+body.journee-vide #panel-suivi .panneau:has(#stats-ateliers),body.journee-vide #panel-suivi .panneau:has(#bilan-journee){display:none}
+body.journee-vide #goulot-info{border:0;background:none;padding:0}
+
+/* --- Les vols : un tableau des départs comme à l'aéroport ---------------- */
+.vols-titre{display:none}
+.vols-frise{margin:14px 0 10px;background:var(--bg3);border:1px solid var(--bordure);border-radius:14px;padding:12px 14px 6px}
+.vf-comptes{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
+.vf-compte{display:flex;align-items:center;gap:10px;font:inherit;cursor:pointer;border:2px solid transparent;border-radius:12px;
+  padding:8px 14px 8px 10px;background:var(--bg2);color:var(--txt);min-height:0}
+.vf-compte .ico{width:30px;height:30px;padding:6px;box-sizing:content-box;border-radius:50%;color:#fff}
+.vf-compte b{font-size:26px;line-height:1;font-variant-numeric:tabular-nums}
+.vf-compte span{font-size:12.5px;color:var(--txt2);font-weight:600;max-width:110px;line-height:1.2;text-align:left}
+.vf-ok .ico{background:var(--ok)} .vf-tard .ico{background:var(--attente)} .vf-sans .ico{background:var(--retard)}
+:root[data-theme="dark"] .vf-compte .ico{color:#0b1520}
+.vf-compte:hover,.vf-compte.actif{border-color:var(--bordure2)}
+.vf-compte.actif{background:var(--bg3);box-shadow:0 2px 8px #0002}
+.vf-tout{font:inherit;font-size:12.5px;border:0;background:none;color:var(--accent2);text-decoration:underline;cursor:pointer}
+.vf-svg{width:100%;height:auto;display:block}
+.vf-grille{stroke:var(--bordure);stroke-width:1;stroke-dasharray:2 4}
+.vf-heure{font-size:11px;fill:var(--txt3)}
+.vf-vol circle{stroke:var(--bg3);stroke-width:2}
+.vf-vol .vf-avion{transform:translate(-1px,-1px) scale(1.0);fill:none;stroke:#fff;stroke-width:1.7;stroke-linejoin:round}
+.vf-vol text{font-size:11.5px;font-weight:700;fill:var(--txt)}
+.vf-ready circle{fill:var(--ok)} .vf-late circle{fill:var(--attente)}
+.vf-overdue circle,.vf-orphan circle{fill:var(--retard)} .vf-pending circle{fill:var(--bordure2)}
+:root[data-theme="dark"] .vf-vol .vf-avion{stroke:#0b1520}
+
+.flights-view .table-scroll{position:relative;border-radius:14px;overflow:auto;border:1px solid #0e1d2e}
+.flight-table{background:#14283e;color:#e8f0f8}
+.flight-table thead th{background:#0e1d2e;color:#9fb6cc;font-size:11px;letter-spacing:.08em}
+.flight-table td,.flight-table th{border-bottom:1px solid #22384f !important}
+.flight-table td small{color:#9fb6cc}
+.flight-table td strong{color:#fff;font-size:14px;letter-spacing:.03em}
+.vol-heure,.vol-avant{font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+.flight-table td.vol-heure{font-size:20px;font-weight:800;color:#ffd24a}
+.flight-table td.vol-avant{font-size:14px;color:#cfe0f0}
+.flight-table .status{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:4px 11px 4px 8px;
+  font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+.flight-table .status .ico{width:15px;height:15px;stroke-width:2.4}
+.flight-table .status.ready{background:#1d6b3a;color:#dcfce7}
+.flight-table .status.late{background:#8a5a0b;color:#fff3d6}
+.flight-table .status.overdue,.flight-table .status.orphan{background:#8f231a;color:#ffe3df}
+.flight-table .status.pending{background:#33495f;color:#dbe6f0}
+.vol-repas{display:flex;flex-wrap:wrap;gap:5px}
+.rc{display:inline-flex;align-items:center;gap:5px;border-radius:99px;padding:3px 9px 3px 6px;font-size:11.5px;font-weight:700;
+  background:#22384f;color:#e8f0f8;border:1.5px solid transparent}
+.rc.ok{border-color:#3fbf73}
+.rc.tard{border-color:#e0a32e}
+.rc.attente{border-style:dashed;border-color:#6d86a0}
+.rc.sans{background:transparent;border:1.5px dashed #ff8a7e;color:#ffc9c2}
+.rc.sans::after{content:"✕";font-size:10px;margin-left:1px}
+.rc .puce-classe{width:9px;height:9px;border-radius:50%}
+.flight-table tbody tr,.flight-table tbody tr:nth-child(even),.flight-table tbody tr:hover{background:#14283e}
+.flight-table tbody tr:nth-child(even){background:#172e46}
+.flight-table tbody td{color:#e8f0f8}
+
+/* --- Les temps de travail : de petites barres, une par classe ------------- */
+.rg-codes{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:12px;color:var(--txt2);margin:0 0 12px}
+.rg-codes>span{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:var(--txt)}
+.rg-codes em{font-style:normal;margin-left:auto}
+.rg-svc-ico{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:9px;margin-right:9px;vertical-align:middle;
+  background:color-mix(in srgb,var(--c-temps) 13%,var(--bg3));color:var(--c-temps)}
+.rg-svc-ico .ico{width:18px;height:18px}
+.rg-barres{display:inline-flex;align-items:flex-end;gap:8px;height:48px;vertical-align:middle}
+.rg-barre{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;width:34px;height:100%}
+.rg-barre i{display:block;width:22px;border-radius:4px 4px 0 0;background:var(--bordure2)}
+.rg-barre i[data-cab="BC"]{background:var(--cab-BC)} .rg-barre i[data-cab="PC"]{background:var(--cab-PC)}
+.rg-barre i[data-cab="YC"]{background:var(--cab-YC)} .rg-barre i[data-cab="CREW"]{background:var(--cab-CREW)}
+.rg-barre i[data-cab="SPML"]{background:var(--cab-SPML)}
+.rg-barre em{font-style:normal;font-size:11px;font-weight:700;color:var(--txt);margin-top:3px;font-variant-numeric:tabular-nums}
+.rg-plus{font-style:normal;font-size:11.5px;color:var(--txt2);margin-left:10px}
+.rg-service>summary .rg-svc-nom{flex:0 0 330px;min-width:0;gap:0}
+@media(max-width:760px){.rg-service>summary .rg-svc-nom{flex:1 1 100%}}
+
+/* --- Le chemin des repas : un plan de métro ------------------------------ */
+.pc-flux .pc-lane{grid-template-columns:76px minmax(0,1fr);gap:8px;align-items:start;padding:4px 0}
+.pc-flux .pc-lane[data-ligne="0"]{--l:var(--c-equipes)} .pc-flux .pc-lane[data-ligne="1"]{--l:var(--c-vols)}
+.pc-flux .pc-lane[data-ligne="2"]{--l:var(--cab-PC)} .pc-flux .pc-lane[data-ligne="3"]{--l:var(--cab-BC)}
+.pc-flux .pc-lane-nom{color:var(--l);font-weight:800;margin-top:12px;display:flex;align-items:center;gap:6px}
+.pc-flux .pc-lane-nom::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--l)}
+.pc-flux .pc-lane-etapes{flex-wrap:nowrap;gap:0;align-items:flex-start}
+.pc-flux .pc-box{display:flex;flex-direction:column;align-items:center;gap:4px;border:0;background:none;padding:0;
+  width:82px;flex:none;white-space:normal;text-align:center;font-size:10.5px;line-height:1.15;position:relative;z-index:1}
+.pc-station{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--bg3);
+  border:4px solid var(--l,var(--txt2));color:var(--l,var(--txt2));box-sizing:border-box}
+.pc-station .ico{width:19px;height:19px;stroke-width:2}
+.pc-flux .pc-fleche,.pc-flux .pc-vers{flex:1 1 12px;min-width:12px;height:6px;background:var(--l);margin:17px -22px 0;
+  border:0;border-radius:3px;position:relative;z-index:0}
+.pc-flux .pc-vers{margin-right:0}
+.pc-flux .pc-vers::after{content:"";position:absolute;right:-3px;top:-5px;border:8px solid transparent;border-left:10px solid var(--l);border-right:0}
+.pc-flux.avec-jonction{align-items:stretch}
+.pc-flux .pc-jonction-col{border-left:7px solid var(--txt);border-radius:4px;padding:0 0 0 14px;margin-left:10px;align-items:center}
+.pc-flux .pc-jonction-col .pc-box{width:92px;font-size:11.5px}
+.pc-flux .pc-jonction-col .pc-station{width:54px;height:54px;border-color:var(--txt);color:var(--txt);background:var(--bg2)}
+.pc-flux .pc-jonction-col .pc-station .ico{width:26px;height:26px}
+.qf-col-nom{display:flex;align-items:center;gap:6px}
+.qf-col-nom .ico{width:17px;height:17px;color:var(--txt2)}
+.qf-id b{display:flex;align-items:center;gap:6px}
+/* Une case vide ne crie pas : un « + » discret. L'ambre reste aux alertes. */
+.qf-case.libre{background:transparent;border:1.5px dashed var(--bordure2);color:var(--txt3);display:grid;place-items:center}
+.qf-case.libre:hover{border-color:var(--c-equipes);color:var(--c-equipes);background:color-mix(in srgb,var(--c-equipes) 7%,transparent)}
+.qf-plus{font-size:20px;font-weight:300;line-height:1}
+.qf-case.ok{background:color-mix(in srgb,var(--c-equipes) 12%,var(--bg3));border-color:color-mix(in srgb,var(--c-equipes) 45%,var(--bordure2))}
+.qf-l.libre::before{background:transparent;border:1.5px dashed var(--bordure2)}
+.qf-l.ok::before{background:color-mix(in srgb,var(--c-equipes) 12%,var(--bg3));border-color:var(--c-equipes)}
+.qf-g[data-g="0"]{border-bottom-color:var(--c-equipes) !important}
+.qf-g[data-g="1"]{border-bottom-color:var(--c-vols) !important}
+.qf-g[data-g="2"]{border-bottom-color:var(--cab-PC) !important}
+.qf-g[data-g="3"]{border-bottom-color:var(--cab-BC) !important}
+.qf-g.jonction{border-bottom-color:var(--txt) !important}
+.qf-col.a-remplir small{color:var(--txt2);font-weight:600}
+.pc-lab-cab{display:inline-flex;align-items:center;gap:5px}
+.pc-cab{display:inline-flex;align-items:center;gap:5px;background:var(--bg2);color:var(--txt)}
+.pc-cab .puce-classe{border-radius:50%}
+
+/* --- Indicateurs de « Qui prépare quoi » : un pictogramme par chiffre ----- */
+.at-kpi{display:flex;align-items:center;gap:12px}
+.at-kpi-ico{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--bg2);color:var(--txt2)}
+.at-kpi-ico .ico{width:23px;height:23px}
+.at-kpi.ton-ok .at-kpi-ico{background:color-mix(in srgb,var(--ok) 15%,var(--bg3));color:var(--ok)}
+.at-kpi.ton-mal .at-kpi-ico{background:color-mix(in srgb,var(--retard) 14%,var(--bg3));color:var(--retard)}
+.at-kpi.ton-attente .at-kpi-ico{background:color-mix(in srgb,var(--attente) 15%,var(--bg3));color:var(--attente)}
+.at-kpi.ton-journee .at-kpi-ico{background:color-mix(in srgb,var(--c-journee) 14%,var(--bg3));color:var(--c-journee)}
+
+/* --- La barre des vols chargés : des pastilles, pas des phrases ---------- */
+.context-bar .demo-badge{display:inline-grid;place-items:center;width:26px;height:26px;padding:0;border-radius:8px;
+  border:0;background:color-mix(in srgb,var(--c-vols) 14%,var(--bg3));color:var(--c-vols)}
+.context-bar .demo-badge .ico{width:16px;height:16px}
+.ctx-exemple{display:inline-flex;align-items:center;gap:6px;text-decoration:none !important;border-radius:99px;padding:4px 12px !important;
+  background:color-mix(in srgb,var(--attente) 13%,var(--bg3)) !important;color:var(--txt) !important;font-weight:700}
+.ctx-exemple .ico{color:var(--attente);width:16px;height:16px}
+
+/* --- Le plan : un médaillon par service, qui prend la couleur de l'état --- */
+.zone-ico{pointer-events:none}
+.zone-ico circle{fill:var(--bg3);fill-opacity:.92;stroke:var(--zone-stroke);stroke-width:1.2}
+.zone-ico-trait{fill:none;stroke:var(--zone-txt);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+body.avant-lancement .zone.p-vide .zone-ico circle{stroke:var(--bad-stroke)}
+body.avant-lancement .zone.p-vide .zone-ico-trait{stroke:var(--bad-stroke)}
+body.avant-lancement .zone.p-pret .zone-ico circle{fill:var(--c-equipes);stroke:var(--c-equipes)}
+body.avant-lancement .zone.p-pret .zone-ico-trait{stroke:#fff}
+body.en-lecture .zone.s-travail .zone-ico circle{fill:var(--c-journee);stroke:var(--c-journee)}
+body.en-lecture .zone.s-attente .zone-ico circle{fill:var(--attente);stroke:var(--attente)}
+body.en-lecture .zone.s-fini .zone-ico circle{fill:var(--ok);stroke:var(--ok)}
+body.en-lecture .zone.s-travail .zone-ico-trait,body.en-lecture .zone.s-attente .zone-ico-trait,body.en-lecture .zone.s-fini .zone-ico-trait{stroke:#fff}
+:root[data-theme="dark"] body .zone .zone-ico-trait{stroke:var(--zone-txt)}
+:root[data-theme="dark"] body.en-lecture .zone:is(.s-travail,.s-attente,.s-fini) .zone-ico-trait,
+:root[data-theme="dark"] body.avant-lancement .zone.p-pret .zone-ico-trait{stroke:#0b1520}
+.goulot-tete{display:flex;align-items:center;gap:8px}
+.goulot-tete .ico{width:30px;height:30px;padding:6px;box-sizing:content-box;border-radius:50%;color:#fff}
+.goulot-tete.attente .ico{background:var(--attente)} .goulot-tete.ok .ico{background:var(--ok)}
+:root[data-theme="dark"] .goulot-tete .ico{color:#0b1520}

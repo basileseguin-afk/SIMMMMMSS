@@ -184,8 +184,13 @@
               <p><b>⇩ Excel</b> donne le tableau à remplir, une ligne par repas et par service de son
                 chemin ; <b>Importer</b> reprend l’étude entière d’un coup.</p>
             </span></details></div>
-          <p class="rg-exemple">Exemple : <b>60 minutes de travail</b> pour un vol, à <b>2 personnes</b>, prennent <b>30 minutes</b>.</p>
-          <p class="rg-codes">BC Business · PC Premium · YC Économie · CREW Équipage · SPML repas spéciaux</p>
+          <p class="rg-exemple" aria-label="Exemple : 60 minutes de travail pour un vol, à 2 personnes, prennent 30 minutes.">
+            <span class="rg-eq">${root.OrlyIcones ? root.OrlyIcones.ico('chrono') : ''}<b>60 min</b><small>de travail pour un vol</small></span>
+            <span class="rg-op">÷</span>
+            <span class="rg-eq">${root.OrlyIcones ? root.OrlyIcones.ico('equipe') : ''}<b>2</b><small>personnes</small></span>
+            <span class="rg-op">=</span>
+            <span class="rg-eq res">${root.OrlyIcones ? root.OrlyIcones.ico('journee') : ''}<b>30 min</b><small>de préparation</small></span></p>
+          <p class="rg-codes">${P.CABINES.map(c => `<span><span class="puce-classe" data-cab="${c}"></span>${esc((P.NOM_CABINE || {})[c] || c)}</span>`).join('')}<em>minutes de travail pour un vol</em></p>
           <div id="rg-alerte"></div>
           <div class="rg-actions">
             <button class="btn btn-sm" id="rg-undo">Annuler</button>
@@ -349,6 +354,12 @@
 
         const classes = this.a.classes ? this.a.classes() : [];
         const routes = this.a.routes ? this.a.routes(classes) : new Map();
+        const I = root.OrlyIcones;
+        // Une même échelle pour tous les services : on compare d'un coup d'œil.
+        const maxi = Math.max(1, ...services.flatMap(s => {
+          const l = this.etat.bareme[s.id] || complet[s.id] || {};
+          return P.CABINES.map(c => l[P.cleBareme(P.TOUTES, c)]).filter(Number.isFinite);
+        }));
         box.innerHTML = services.map(s => {
           const propre = this.etat.bareme[s.id];
           const pere = this.a.parent ? this.a.parent(s.id) : null;
@@ -374,8 +385,13 @@
           const digest = parCompagnie
             ? `<em>par compagnie × classe</em> · ${propres.length} valeur(s)`
               + (manquent.length ? ` · <b class="rg-manque-txt">${manquent.length} à renseigner</b>` : '')
-            : P.CABINES.map((c, i) => `<b>${c}</b> ${Number.isFinite(communes[i]) ? fr(communes[i]) : '—'}`).join(' · ')
-              + ' <em>min/vol</em>' + (propres.length ? ` · <em>+ ${propres.length} par compagnie</em>` : '');
+            : `<span class="rg-barres" aria-hidden="true">${P.CABINES.map((c, i) => {
+                const v = communes[i], ok = Number.isFinite(v);
+                return `<span class="rg-barre" title="${esc((P.NOM_CABINE || {})[c] || c)} : ${ok ? fr(v) + ' min par vol' : 'à remplir'}">
+                  <i data-cab="${c}" style="height:${ok ? Math.max(3, Math.round(v / maxi * 30)) : 0}px"></i><em>${ok ? fr(v) : '—'}</em></span>`;
+              }).join('')}</span>`
+              + `<span class="sr-only">${P.CABINES.map((c, i) => `${c} ${Number.isFinite(communes[i]) ? fr(communes[i]) : '—'}`).join(' · ')} min/vol</span>`
+              + (propres.length ? `<em class="rg-plus">+ ${propres.length} par compagnie</em>` : '');
 
           const mode = `<div class="rg-mode" role="group" aria-label="Saisie des minutes de ${esc(s.nom)}">
             <button class="btn btn-sm" data-rg-action="mode" data-mode="classe" data-service="${esc(s.id)}"
@@ -433,7 +449,7 @@
 
           return `<details class="rg-service ${etat}${manquent.length && parCompagnie ? ' manque' : ''}" name="rg-bareme" data-service="${esc(s.id)}">
             <summary>
-              <span class="rg-svc-nom">${esc(s.nom)}${occupes.has(s.id)
+              <span class="rg-svc-nom">${I ? `<span class="rg-svc-ico">${I.ico(I.icoService(s.id, s.nom))}</span>` : ''}${esc(s.nom)}${occupes.has(s.id)
                 ? '<span class="rg-occupe" title="Une équipe travaille dans ce service">a une équipe</span>' : ''}${marque}</span>
               <span class="rg-svc-digest">${digest}</span>
             </summary>

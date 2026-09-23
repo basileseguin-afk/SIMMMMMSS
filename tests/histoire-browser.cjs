@@ -70,7 +70,24 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // Les repas s'écrivent en clair, jamais en code seul.
   assert.match(await page.locator(`[data-at="${id}"] .at-chips`).textContent(),/AF · Business/);
 
-  // 6. Sur téléphone, rien ne déborde et les étapes restent lisibles.
+  // 6. Le sens passe par l'image : pictogrammes, couleurs, graphiques.
+  assert.equal(await page.locator('#etapes .etape-ico svg.ico').count(),5,'un pictogramme par étape');
+  assert.equal(await page.locator('#view-ico svg').count(),1,'la vue porte le pictogramme de son étape');
+  assert.ok(await page.locator('#plan .zone-ico').count()>=10,'chaque service du plan a son médaillon');
+  await page.locator('#etapes [data-view=vols]').click();await attendre();
+  assert.equal(await page.locator('#vols-frise svg.vf-svg').count(),1,'la frise des départs');
+  assert.equal(await page.locator('#vols-frise .vf-vol').count(),12,'un avion par départ');
+  await page.locator('.vf-compte.vf-sans').click();await attendre();
+  assert.equal(await page.locator('#flight-filter').inputValue(),'pending','un compteur filtre le tableau');
+  await page.locator('.vf-compte.vf-sans').click();await attendre();
+  assert.equal(await page.locator('#flight-filter').inputValue(),'all','et le recliquer rend tout');
+  assert.ok(await page.locator('#flight-rows .rc .puce-classe').count()>0,'chaque repas porte la couleur de sa classe');
+  await page.locator('#etapes [data-view=reglages]').click();await attendre();
+  assert.ok(await page.locator('.rg-barres .rg-barre i[data-cab=BC]').count()>5,'les minutes se lisent en barres');
+  await page.locator('#etapes [data-view=ateliers]').click();await attendre();
+  assert.ok(await page.locator('.pc-flux .pc-station svg').count()>5,'le chemin est un plan de métro');
+
+  // 7. Sur téléphone, rien ne déborde et les étapes restent lisibles.
   await page.setViewportSize({width:390,height:844});await attendre();
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'pas de débordement');
   assert.equal(await page.locator('#etapes [data-view=vols]').isVisible(),true);

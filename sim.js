@@ -210,7 +210,15 @@ function construirePlan() {
     const sous = (z.sous || []).map(s => {
       const st = svgEl('text', { class:'sous' }); st.textContent = s; g.appendChild(st); return st;
     });
-    zoneEls[id] = { g, rect, titre, sous, tip:ti, b:boite(z) };
+    // Le pictogramme du service, au centre : on reconnaît la cuisine sans lire.
+    let ico = null;
+    if (window.OrlyIcones) {
+      ico = svgEl('g', { class:'zone-ico', 'aria-hidden':'true' });
+      ico.innerHTML = '<circle cx="12" cy="12" r="13.5"/><g class="zone-ico-trait">'
+        + OrlyIcones.TRAITS[OrlyIcones.icoService(id, z.nom)] + '</g>';
+      g.insertBefore(ico, titre);
+    }
+    zoneEls[id] = { g, rect, titre, sous, ico, tip:ti, b:boite(z) };
     g.setAttribute('role','button'); g.setAttribute('tabindex','0'); g.setAttribute('aria-label',z.nom);
     g.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' '){e.preventDefault();selectionner(id);} });
     g.addEventListener('click', e => { e.stopPropagation(); selectionner(id); });
@@ -231,6 +239,11 @@ function positionnerZone(id) {
   e.tip.textContent = z.nom + (z.approx ? ' (emplacement à confirmer)' : '');
   s(e.titre, { x:b.x + 14, y:b.y + 56 });
   e.sous.forEach((st, i) => s(st, { x:b.x + 14, y:b.y + 96 + i*38 }));
+  if (e.ico) {
+    const taille = Math.max(56, Math.min(150, Math.min(b.w, b.h) * 0.5));
+    const k = taille / 27, cx = b.x + b.w / 2, cy = b.y + b.h / 2 + (b.h > 200 ? 24 : 0);
+    e.ico.setAttribute('transform', 'translate(' + (cx - 12 * k) + ',' + (cy - 12 * k) + ') scale(' + k + ')');
+  }
 }
 
 /* Redessine les arêtes : celles du Centre des flux, dès qu'il existe. */
@@ -401,6 +414,8 @@ function etatDemarrage(){
 }
 function majDemarrage(){ if(Sim.demarrage)Sim.demarrage.rendre(); }
 function initDemarrage(){
+  // Les pictogrammes posés dans la page : un par indicateur, un par panneau.
+  if(window.OrlyIcones)document.querySelectorAll('[data-ico]').forEach(e=>{if(!e.firstChild)e.innerHTML=OrlyIcones.ico(e.dataset.ico);});
   if(!window.OrlyDemarrage)return;
   Sim.demarrage=new OrlyDemarrage.Demarrage({
     hote:()=>document.getElementById('etapes'),
@@ -414,6 +429,8 @@ function initDemarrage(){
 function afficherTitre(name){
   const v=(window.OrlyDemarrage&&OrlyDemarrage.VUES[name])||{titre:name,intro:''};
   document.getElementById('view-title').textContent=v.titre;
+  const e=window.OrlyIcones&&OrlyIcones.ETAPES[name], tuile=document.getElementById('view-ico');
+  if(e&&tuile){tuile.innerHTML=OrlyIcones.ico(e.ico);tuile.style.setProperty('--c',e.couleur);}
   const intro=document.getElementById('view-intro');if(intro)intro.textContent=v.intro;
 }
 function initFlux(){
@@ -789,7 +806,9 @@ function majGoulotInfo() {
       if(ici.length>8)html+='<p>Et '+(ici.length-8)+' autre(s) préparation(s).</p>';
     }
   } else if(!lots.length){
-    html='Donnez une équipe aux repas (étape 2, « Qui prépare quoi ») : la journée se calcule toute seule, puis se rejoue ici.';
+    html='<div class="vide-carte">'+(window.OrlyIcones?OrlyIcones.ico('equipe'):'')
+      +'<b>Pas encore de journée à rejouer</b><p>Donnez une équipe aux repas : la journée se calcule toute seule.</p>'
+      +'<button class="btn btn-play" data-aller="ateliers">Étape 2 : Qui prépare quoi →</button></div>';
   } else {
     // Qui attend depuis le plus longtemps, à cet instant ?
     let pire=null;
@@ -798,11 +817,12 @@ function majGoulotInfo() {
       const depuis=t-(e.lot.debut-(e.lot.attente||0));
       if(!pire||depuis>pire.depuis)pire={id,depuis,lot:e.lot};
     }
-    if(pire)html='<strong>'+escapeHTML(noms[pire.id]||pire.id)+'</strong><p>attend le service d’avant depuis '
+    const I=window.OrlyIcones;
+    if(pire)html='<div class="goulot-tete attente">'+(I?I.ico('sablier'):'')+'<strong>'+escapeHTML(noms[pire.id]||pire.id)+'</strong></div><p>attend le service d’avant depuis '
       +Math.round(pire.depuis)+' min pour « '+escapeHTML(MoteurProduction.enClair(pire.lot.nom||''))+' » ; il se met au travail à '+hh(pire.lot.debut)+'.</p>';
     else html=Sim.vue&&t<=Sim.vue.debut
       ?'Rejouez la journée, ou cliquez un service sur le plan pour voir ce qu’il prépare.'
-      :'Personne n’attend à cet instant.';
+      :'<div class="goulot-tete ok">'+(I?I.ico('check'):'')+'<span>Personne n’attend à cet instant.</span></div>';
     // Et sur toute la journée : le service qui a le plus attendu.
     const cumul={};for(const l of lots)if(l.attente>=1)cumul[l.service]=(cumul[l.service]||0)+l.attente;
     const top=Object.entries(cumul).sort((x,y)=>y[1]-x[1])[0];
@@ -810,6 +830,7 @@ function majGoulotInfo() {
       +Math.round(top[1])+' min en tout.</p>';
   }
   if(el._detailHTML!==html){el.querySelector('[data-detail-body]').innerHTML=html;el._detailHTML=html;}
+  document.body.classList.toggle('journee-vide',!lots.length);
 }
 
 /* ==========================================================================
@@ -1213,7 +1234,7 @@ function renderFlights() {
     pending: 'Pas encore prêt', orphan: 'Des repas sans équipe' };
   // Les filtres regroupent : « Non prêts » compte aussi ce qui a dépassé son
   // échéance, « Terminés » ce qui est sorti, à l'heure ou non.
-  const groupe = { pending: ['pending', 'overdue', 'orphan'], overdue: ['overdue'], ready: ['ready', 'late'] };
+  const groupe = { pending: ['pending', 'overdue', 'orphan'], overdue: ['overdue'], ready: ['ready', 'late'], ontime: ['ready'] };
 
   const lignes = departsSuivis().filter(d => {
     const e = etatDe(d);
@@ -1221,30 +1242,80 @@ function renderFlights() {
       && (filtre === 'all' || (groupe[filtre] || [filtre]).includes(e));
   });
 
+  const I = window.OrlyIcones, hh = MoteurProduction.hhmm;
+  const icoEtat = { ready: 'check', late: 'sablier', overdue: 'alerte', pending: 'chrono', orphan: 'croix' };
+  const nomCab = k => (MoteurProduction.NOM_CABINE || {})[k] || k;
+  // Chaque repas du vol : une pastille de la couleur de sa classe, et son état.
+  const pastille = c => {
+    const k = c.cabine || c.id.slice(c.id.lastIndexOf('/') + 1), e = c.etat;
+    const etat = e.absente ? 'sans' : e.fin == null ? 'attente' : e.aHeure === false || (e.retard > 0) ? 'tard' : 'ok';
+    const dit = e.absente ? 'personne ne le prépare' : e.fin == null ? 'pas prêt'
+      : 'prêt à ' + hh(e.fin) + (e.retard > 0 ? ' (+' + Math.round(e.retard) + ' min)' : '');
+    return '<span class="rc ' + etat + '" title="' + escapeHTML(nomCab(k) + ' : ' + dit) + '">'
+      + '<span class="puce-classe" data-cab="' + escapeHTML(k) + '"></span>' + escapeHTML(nomCab(k))
+      + (etat === 'sans' ? '<span class="sr-only"> : personne ne le prépare</span>' : '') + '</span>';
+  };
   const html = lignes.map(d => {
     const e = etatDe(d);
-    const sans = orphelines(d);
-    const manquent = d.classes.filter(c => !c.etat.absente && (c.etat.fin == null || c.etat.fin > t));
-    const cab = c => { const n = MoteurProduction.NOM_CABINE; const k = c.id.slice(c.id.lastIndexOf('/') + 1); return (n && n[k]) || k; };
-    const liste = cs => escapeHTML(cs.slice(0, 3).map(cab).join(', ')) + (cs.length > 3 ? '…' : '');
-    const detail = sans.length
-      ? 'personne ne prépare : ' + liste(sans) + ' — étape 2, « Qui prépare quoi »'
-      : !manquent.length
-      ? (d.retard ? 'le dernier repas prêt, ' + escapeHTML(d.dernier ? cab(d.dernier) : '') + ', l’a été à '
-          + MoteurProduction.hhmm(d.fin) : 'tout est prêt')
-      : 'pas encore prêts : ' + liste(manquent);
-    return '<tr><td><strong>' + escapeHTML(d.id) + '</strong><small>' + escapeHTML(d.cie)
+    return '<tr class="vol-' + e + '"><td class="vol-heure">' + hh(d.depart) + '</td>'
+      + '<td><strong>' + escapeHTML(d.id) + '</strong><small>' + escapeHTML(d.cie)
       + ' · ' + d.classes.length + ' classe' + (d.classes.length > 1 ? 's' : '') + '</small></td>'
-      + '<td>' + MoteurProduction.hhmm(d.depart) + '</td>'
-      + '<td>' + MoteurProduction.hhmm(d.echeance) + '</td>'
-      + '<td><span class="status ' + e + '">' + mot[e] + '</span>'
-      + (d.fin != null && d.fin <= t ? '<small>prêt à ' + MoteurProduction.hhmm(d.fin)
+      + '<td class="vol-avant">' + hh(d.echeance) + '</td>'
+      + '<td><span class="status ' + e + '">' + (I ? I.ico(icoEtat[e]) : '') + mot[e] + '</span>'
+      + (d.fin != null && d.fin <= t ? '<small>prêt à ' + hh(d.fin)
           + (d.retard ? ' · +' + d.retard + ' min' : '') + '</small>' : '')
-      + '</td><td>' + detail + '</td></tr>';
+      + '</td><td><div class="vol-repas">' + d.classes.map(pastille).join('') + '</div></td></tr>';
   }).join('') || '<tr><td colspan="5" class="empty-state">Aucun départ ne correspond à ces filtres.</td></tr>';
+  renderFriseVols(departsSuivis(), etatDe, mot, icoEtat);
 
   const body = document.getElementById('flight-rows');
   if (body.innerHTML !== html) body.innerHTML = html;
+}
+
+/* La journée des vols en un coup d'œil : trois compteurs qui filtrent, et une
+ * frise où chaque avion est posé à son heure de départ, dans la couleur de son
+ * état. Personne ne lit douze lignes ; tout le monde voit trois taches rouges. */
+function renderFriseVols(tous, etatDe, mot, icoEtat) {
+  const box = document.getElementById('vols-frise'); if (!box) return;
+  const I = window.OrlyIcones, hh = MoteurProduction.hhmm;
+  if (!tous.length) { box.innerHTML = ''; return; }
+  const n = { ready: 0, late: 0, sans: 0 };
+  for (const d of tous) { const e = etatDe(d); if (e === 'ready') n.ready++; else if (e === 'late') n.late++; else n.sans++; }
+  const filtre = document.getElementById('flight-filter').value;
+  const compteur = (cle, val, nb, lib, ico) => '<button class="vf-compte vf-' + cle + (filtre === val ? ' actif' : '')
+    + '" data-vf-filtre="' + val + '" aria-pressed="' + (filtre === val) + '">' + (I ? I.ico(ico) : '')
+    + '<b>' + nb + '</b><span>' + lib + '</span></button>';
+  const t0 = Math.floor((Math.min(...tous.map(d => d.echeance)) - 30) / 60) * 60;
+  const t1 = Math.ceil((Math.max(...tous.map(d => d.depart)) + 30) / 60) * 60;
+  const L = 1400, G = 24, W = L - 2 * G - 60, x = t => G + (t - t0) / Math.max(1, t1 - t0) * W;
+  // Des couloirs, pour que deux avions proches ne se couvrent pas.
+  const couloirs = [];
+  const points = tous.slice().sort((a, b) => a.depart - b.depart).map(d => {
+    let c = couloirs.findIndex(fin => x(d.depart) - fin > 38 + d.id.length * 8.5);
+    if (c < 0) { c = couloirs.length; couloirs.push(0); }
+    couloirs[c] = x(d.depart);
+    return { d, c, e: etatDe(d) };
+  });
+  const H = 20 + couloirs.length * 32 + 22;
+  const heures = []; for (let h = t0; h <= t1; h += 60) heures.push(h);
+  const pas = heures.length > 14 ? 2 : 1;
+  box.innerHTML = '<div class="vf-comptes">'
+    + compteur('ok', 'ontime', n.ready, 'prêts à l’heure', 'check')
+    + compteur('tard', 'late', n.late, 'prêts en retard', 'sablier')
+    + compteur('sans', 'pending', n.sans, 'pas prêts ou sans équipe', 'alerte')
+    + (filtre !== 'all' ? '<button class="vf-tout" data-vf-filtre="all">Tout voir</button>' : '') + '</div>'
+    + '<svg class="vf-svg" viewBox="0 0 ' + L + ' ' + H + '" role="img" aria-label="Les départs de la journée, par heure et par état">'
+    + heures.map((h, i) => '<line class="vf-grille" x1="' + x(h) + '" y1="14" x2="' + x(h) + '" y2="' + (H - 18) + '"/>'
+        + (i % pas ? '' : '<text class="vf-heure" x="' + x(h) + '" y="' + (H - 4) + '" text-anchor="middle">' + hh(h) + '</text>')).join('')
+    + points.map(p => {
+        const y = 16 + p.c * 32;
+        return '<g class="vf-vol vf-' + p.e + '" transform="translate(' + (x(p.d.depart) - 11) + ',' + y + ')">'
+          + '<title>' + escapeHTML(p.d.id + ' · départ ' + hh(p.d.depart) + ' · ' + mot[p.e]) + '</title>'
+          + '<circle cx="11" cy="11" r="14"/>'
+          + (I ? '<g class="vf-avion">' + I.TRAITS.avion + '</g>' : '')
+          + '<text x="30" y="15">' + escapeHTML(p.d.id) + '</text></g>';
+      }).join('')
+    + '</svg>';
 }
 
 function initWorkbench() {
@@ -1256,8 +1327,12 @@ function initWorkbench() {
   majPicker();
   picker.addEventListener('change',()=>{const id=picker.value;selection=null;selectionner(id||null);});
   document.getElementById('goulot-info').addEventListener('click',e=>{if(e.target.closest('[data-clear-selection]'))selectionner(selection);});
+  // Un bouton « aller à l'étape… » posé n'importe où dans la page.
+  document.addEventListener('click',e=>{const b=e.target.closest('[data-aller]');if(b&&!editMode)showView(b.dataset.aller);});
   document.getElementById('flight-search').addEventListener('input',renderFlights);
   document.getElementById('flight-filter').addEventListener('change',renderFlights);
+  document.getElementById('vols-frise').addEventListener('click',e=>{const b=e.target.closest('[data-vf-filtre]');if(!b)return;
+    const f=document.getElementById('flight-filter');f.value=f.value===b.dataset.vfFiltre?'all':b.dataset.vfFiltre;renderFlights();});
   document.getElementById('csv-template').addEventListener('click',()=>{
     const content='vol_id,compagnie,type_avion,sens,heure_std,heure_sta,nb_BC,nb_PC,nb_YC,nb_CREW,nb_SPML\nDEMO001,DEMO,A320,DEP,12:00,,0,0,100,4,3\nDEMO-RET001,DEMO,A320,RET,,08:00,0,0,100,4,0\n';
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type:'text/csv;charset=utf-8'}));a.download='modele-vols-demo.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);

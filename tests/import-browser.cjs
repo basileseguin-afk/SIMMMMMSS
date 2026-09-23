@@ -38,7 +38,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // La vue Vols lit le modèle par équipes : sans équipe décrite, aucun repas
   // n'est préparé, et le tableau le dit plutôt que d'annoncer un retard.
   assert.match(await page.locator('#flight-rows').textContent(),/Des repas sans équipe/);
-  assert.match(await page.locator('#flight-rows').textContent(),/personne ne prépare/);
+  assert.match(await page.locator('#flight-rows').textContent(),/personne ne le prépare/);
+  assert.ok(await page.locator('#flight-rows .rc.sans').count()>0,'chaque repas sans équipe a sa pastille barrée');
   // L'export suit ce qu'on regarde : la journée calculée.
   const attendu=page.waitForEvent('download');await click('#btn-export');const dl=await attendu;
   const exp=JSON.parse(require('node:fs').readFileSync(await dl.path(),'utf8'));

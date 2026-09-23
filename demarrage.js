@@ -129,15 +129,17 @@
   const picto = nom => `<svg viewBox="0 0 52 52" aria-hidden="true" class="cm-picto">${PICTOS[nom]}</svg>`;
 
   const COMMENT = [
-    { picto: 'avion', titre: 'Des avions partent',
-      texte: 'Le programme dit à quelle heure part chaque vol, et combien de passagers il emporte, classe par classe.' },
-    { picto: 'plateau', titre: 'Chaque vol emporte ses repas',
-      texte: 'On les compte par compagnie et par classe — Air France en Business, par exemple. Ils doivent être prêts avant le chargement.' },
-    { picto: 'equipe', titre: 'Des équipes les préparent',
-      texte: 'Les repas passent de service en service : réception, cuisine, montage… Chaque service a ses équipes, leurs horaires, leur effectif.' },
-    { picto: 'horloge', titre: 'Le site calcule la journée',
-      texte: 'Il dit à quelle heure chaque repas est prêt, lequel est en retard, et ce qui l’a fait attendre.' }
+    { picto: 'avion', ico: 'avion', couleur: 'var(--c-vols)', titre: 'Des avions partent',
+      texte: 'à heure fixe, pleins de passagers' },
+    { picto: 'plateau', ico: 'plateau', couleur: 'var(--cab-BC)', titre: 'Chaque vol emporte ses repas',
+      texte: 'par compagnie et par classe' },
+    { picto: 'equipe', ico: 'equipe', couleur: 'var(--c-equipes)', titre: 'Des équipes les préparent',
+      texte: 'de service en service' },
+    { picto: 'horloge', ico: 'chrono', couleur: 'var(--c-journee)', titre: 'Le site calcule la journée',
+      texte: 'prêts à l’heure, ou en retard ?' }
   ];
+  const I = () => root.OrlyIcones;
+  const icone = (nom, classe) => I() ? I().ico(nom, classe) : '';
 
   class Demarrage {
     /**
@@ -183,10 +185,11 @@
       const prochain = suite(liste).etape;
       const bouton = s => {
         const actif = s.onglet === vue;
+        const e = (I() && I().ETAPES[s.onglet]) || {};
         return `<button data-view="${s.onglet}" class="etape ${s.etat}${actif ? ' active' : ''}${s.annexe ? ' annexe' : ''}"
-          aria-pressed="${actif}" ${actif ? 'aria-current="page"' : ''}
+          style="--c:${e.couleur || 'var(--accent)'}" aria-pressed="${actif}" ${actif ? 'aria-current="page"' : ''}
           aria-label="${esc((s.num ? 'Étape ' + s.num + ' : ' : '') + s.titre + ' — ' + s.detail + ' (' + MOTS[s.etat] + ')')}">
-          ${s.num ? `<span class="etape-num" aria-hidden="true">${s.num}</span>` : '<span class="etape-num annexe" aria-hidden="true">⚙</span>'}
+          <span class="etape-ico" aria-hidden="true">${icone(e.ico || 'service')}${s.num ? `<span class="etape-num">${s.num}</span>` : ''}</span>
           <span class="etape-txt"><b>${esc(s.titre)}</b>
             <em><span class="etape-etat ${s.etat}" aria-hidden="true">${ETATS[s.etat]}</span>${esc(s.detail)}</em></span>
           ${prochain && prochain.cle === s.cle && !actif ? '<span class="etape-suite">à faire ensuite</span>' : ''}
@@ -207,11 +210,10 @@
       c.dataset.rendu = '1';
       c.innerHTML = `<div class="cm-tete"><h2>Comment ça marche</h2>
           <button class="btn btn-sm" data-comment-fermer>J’ai compris</button></div>
-        <ol class="cm-liste">${COMMENT.map((x, i) => `<li>${picto(x.picto)}
-          <b><span class="cm-num">${i + 1}</span>${esc(x.titre)}</b><p>${esc(x.texte)}</p></li>`).join('')}</ol>
-        <p class="cm-pied">Pour commencer, suivez les étapes dans l’ordre, de <b>1. Les vols</b> à <b>4. La journée</b>.
-          Tant que l’étude de temps de l’unité n’est pas importée, <b>les chiffres sont des exemples</b> : ils montrent le
-          fonctionnement, pas la réalité.</p>`;
+        <ol class="cm-liste">${COMMENT.map((x, i) => `<li style="--c:${x.couleur}">
+          <span class="cm-rond">${I() ? I().ico(x.ico, 'cm-picto') : picto(x.picto)}<span class="cm-num">${i + 1}</span></span>
+          <b>${esc(x.titre)}</b><p>${esc(x.texte)}</p></li>`).join('')}</ol>
+        <p class="cm-pied">${icone('ampoule')} Suivez les étapes <b>1 → 4</b>. Les chiffres sont des <b>exemples</b> tant que l’étude de temps n’est pas importée.</p>`;
     }
   }
 
