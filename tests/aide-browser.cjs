@@ -77,8 +77,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     .filter(s=>!s.getAttribute('aria-label')&&s.textContent.trim().length<3).length);
   assert.equal(anonymes,0,'un « ? » sans libellé ne dit rien à un lecteur d’écran');
 
-  // 6. Rien ne déborde, y compris avec une bulle ouverte sur téléphone.
-  await page.setViewportSize({width:390,height:844});await attendre();
+  // 6. Rien ne déborde, y compris avec une bulle ouverte sur le plus petit écran visé.
+  await page.setViewportSize({width:1024,height:700});await attendre();
   await page.locator('#rg-bareme-panneau .aide').first().locator('summary').click();await attendre();
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,
     'une bulle ouverte ne doit pas allonger la page');

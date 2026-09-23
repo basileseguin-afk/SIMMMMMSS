@@ -35,8 +35,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.reload();await page.locator('.zone[data-id="cuisine"]').click();assert.equal((await state()).unassignedStorages.length,1);assert.equal(await page.locator('[data-pe-zone="cold-custom"]').count(),0);
   await panel.locator('summary').click();await panel.locator('[data-stock-action=assign]').click();assert.equal((await state()).unassignedStorages.length,0);assert.equal(await panel.locator('fieldset').count(),2);
   await page.reload();assert.equal((await state()).zones.find(z=>z.id==='cuisine').storages.length,2);
-  await page.setViewportSize({width:390,height:844});await page.locator('#zone-picker').selectOption('cuisine');assert.equal(await panel.isVisible(),true);
+  await page.setViewportSize({width:1024,height:700});await page.locator('#zone-picker').selectOption('cuisine');assert.equal(await panel.isVisible(),true);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-  assert.deepEqual(errors,[]);console.log('Service storage browser passed: real clicks, CRUD, undo/redo, reload, editor, export, v2 migration and assignment, running close, mobile.');
+  assert.deepEqual(errors,[]);console.log('Service storage browser passed: real clicks, CRUD, undo/redo, reload, editor, export, v2 migration and assignment, running close, narrow desktop.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

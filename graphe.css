@@ -31,7 +31,6 @@
 .gr-port{cursor:crosshair}
 .gr-port circle{fill:var(--c,var(--accent));stroke:var(--bg3);stroke-width:2.5}
 .gr-port path{stroke:#fff;stroke-width:2;stroke-linecap:round}
-:root[data-theme="dark"] .gr-port path{stroke:#0b1520}
 .gr-port:hover circle{r:11}
 
 .gr-lien{cursor:pointer}
@@ -55,7 +54,6 @@
   border:1.5px solid var(--bordure2);background:var(--bg3);color:var(--txt)}
 .pc-puce:hover{border-color:var(--c-equipes)}
 .pc-puce.actif{background:var(--c-equipes);border-color:var(--c-equipes);color:#fff}
-:root[data-theme="dark"] .pc-puce.actif{color:#0b1520}
 .pc-outils{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:end}
 .pc-outils label{display:grid;gap:4px;font-size:12px;color:var(--txt2)}
 .pc-outils .pc-nom{font:inherit;font-weight:700;padding:7px 9px;border:1.5px solid var(--bordure2);border-radius:var(--r2);background:var(--bg3);color:var(--txt);min-width:180px}

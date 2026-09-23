@@ -86,8 +86,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator('#fc-undo').click();await attendre();
   assert.equal(await nb(),n0+1,'et Annuler le rend');
 
-  // 6. Sur téléphone, rien ne déborde : le diagramme défile dans son cadre.
-  await page.setViewportSize({width:390,height:844});await attendre();
+  // 6. Sur le plus petit écran visé, rien ne déborde : le diagramme défile dans son cadre.
+  await page.setViewportSize({width:1024,height:700});await attendre();
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
 
   assert.deepEqual(errors,[],'aucune erreur de page');

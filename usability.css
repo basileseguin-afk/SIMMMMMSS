@@ -1,7 +1,6 @@
 /* Hiérarchie commune : navigation, espace de travail, commandes contextuelles.
    Chargé après les styles des modules ; aucune incidence sur leur état. */
 :root{--bg:#e2e8f0;--bg2:#eef2f6;--txt:#172638;--txt2:#394d63;--txt3:#50647b;--bordure:#b8c5d3;--bordure2:#697e94;--accent:#086c71;--accent2:#055357;--on-accent:#fff;--plan-bg:#e7edf3;--zone-fill:#fff;--zone-stroke:#536b84;--edge:#53677e;--jauge-bg:#d6e0ea}
-:root[data-theme=dark]{--bg:#0b121c;--bg2:#101d2a;--bg3:#1b2a3a;--panneau:#1b2a3a;--txt:#f4f7fb;--txt2:#c8d5e4;--txt3:#afc1d4;--bordure:#52677d;--bordure2:#8499af;--accent:#79dfd7;--accent2:#9aeee6;--on-accent:#102a2d;--plan-bg:#0e1823;--zone-fill:#24394e;--zone-stroke:#a1b6ca;--edge:#9db0c4;--jauge-bg:#455b70}
 body{font-family:Arial,Helvetica,sans-serif;line-height:1.4}
 body>header{background:#14283e;color:#fff;border-bottom:0;padding:12px 20px;gap:20px}
 header .marque small,header .jour,header .run-state,header .vitesse-box{color:#d3dfec}header .brand-separator{color:#afc1d4}header .brand-mark{background:#96e4da;color:#14363a}
@@ -22,7 +21,6 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,su
 #view-flux{background:var(--bg2)}.fc-heading{align-items:center;margin-bottom:4px}.fc-card{border-color:var(--bordure2)}.fc-card-head{border-bottom:1px solid var(--bordure);padding-bottom:12px}.fc-card-head strong{font-size:14px}.fc-families .btn{min-height:42px}.fc-fields label,.fc-filters label{font-size:13px;color:var(--txt)}#fc-status{margin:8px 0}.fc-heading .scope-badge{margin:0}.flight-table th{font-size:11px}.flight-table tbody tr:nth-child(even){background:var(--bg2)}.status{font-size:12px}
 .toast{background:var(--accent);color:var(--on-accent)}input[type=range],input[type=checkbox]{accent-color:var(--accent)}
 @media(max-width:1150px){body>header{gap:12px}.workspace-heading{align-items:flex-start}}
-@media(max-width:760px){body>header{padding:12px 16px}.marque small{display:none}.context-bar{padding:8px 16px;gap:2px}.kpi-grille{padding:14px 16px;gap:16px}.kpi .lab{min-height:30px}.kpi-note{font-size:11px}.workspace-heading{padding:12px 16px;gap:10px}.workspace-heading>div{width:100%}.plan-tete{padding:10px 16px}.map-footer{padding:8px 16px}}
 header .marque,header .horloge,header #vitesse-val{color:#fff}
 
 /* ---------------------------------------------------------------------------

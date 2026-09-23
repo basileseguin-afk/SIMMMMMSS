@@ -91,12 +91,6 @@ body.ateliers-open .workbench{display:none}
 .at-etat.retard{color:var(--rouge)}
 .at-etat.manque{color:var(--orange)}
 
-@media(max-width:700px){
-  #view-ateliers{padding:16px}
-  .at-champs{grid-template-columns:1fr 1fr}
-  .at-table{display:block;overflow-x:auto}
-}
-
 /* Compagnies × classes : le programme de vols corrigé à la main. */
 .at-ajout{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;align-items:end;
   border:2px solid var(--accent);border-radius:10px;padding:14px;margin-bottom:14px;
@@ -311,4 +305,3 @@ body.ateliers-open .workbench{display:none}
 .qf-menu-pied{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;border-top:1px solid var(--bordure);padding-top:6px}
 .qf-lien{font:inherit;font-size:12px;border:0;background:none;color:var(--accent2);cursor:pointer;padding:2px 0;text-decoration:underline;min-height:0;text-align:left}
 .qf-lien.danger{color:var(--rouge)}
-@media(max-width:760px){.qf-table tbody th,.qf-coin{min-width:110px}}

@@ -5,6 +5,30 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-23 — Bureau seulement, thème clair seulement
+
+Décision de Basile : le thème sombre et la version téléphone ne sont pas utiles.
+
+- **Thème sombre retiré** : le bouton de l'en-tête, la fonction de bascule
+  (`sim.js`), et toutes les règles `[data-theme="dark"]` des feuilles de style
+  (`index.html`, `histoire.css`, `graphe.css`, `interface.css`, `usability.css`).
+- **Version téléphone retirée** : tous les blocs `@media` de 900 px et moins
+  (`aide.css`, `ateliers.css`, `editor.css`, `flow-center.css`, `histoire.css`,
+  `interface.css`, `reglages.css`, `usability.css`, `index.html`). Les
+  ajustements pour petits portables (1 000 à 1 250 px) restent.
+- La page vise les écrans de bureau : `viewport` à 1 280 px, largeur minimale
+  de 1 024 px (au-dessous, elle défile de côté). À 1 024 px, les outils d'une
+  vue passent proprement sous ses onglets.
+- Corrigé au passage : une ligne orpheline de `reglages.css` faisait ignorer la
+  règle suivante, l'encadré d'avertissement des temps de travail.
+- **Tests** : les vérifications « téléphone » et « sombre » deviennent « rien ne
+  déborde à 1 024 px » ; `browser-smoke` vérifie qu'il n'y a plus de bascule de
+  thème. 193 tests purs, 16 parcours navigateur.
+- **Docs** : `README.md`, `docs/ETAT_DES_LIEUX.md`, `docs/CAHIER_DES_CHARGES.md`
+  (C7 abandonné, §11, décision).
+
+---
+
 ## 2026-09-23 — Les chemins et les liens se dessinent en diagramme de nœuds
 
 Proposition de Basile : créer les chemins, les liens et les équipes en reliant

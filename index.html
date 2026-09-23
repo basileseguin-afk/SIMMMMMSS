@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 
-<html data-theme="light" lang="fr">
+<html lang="fr">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta content="width=1280" name="viewport"/>
 <title>Production ORY — simulation d’une journée de repas à bord</title>
 <meta content="Simulation visuelle des flux de production d'une unité de catering aérien : goulots, charge par atelier, scénarios what-if." name="description"/>
 <style>
 /* ==========================================================================
- *  THÈME — clair par défaut (lisible), sombre en option
+ *  THÈME — un seul thème, clair (le site vise les écrans de bureau)
  * ==========================================================================*/
 :root{
   /* surfaces */
@@ -30,22 +30,6 @@
   --halo:#ffffff;
   --ombre:0 1px 3px rgba(19,32,48,.10), 0 4px 14px rgba(19,32,48,.07);
   --r:10px; --r2:6px;
-}
-:root[data-theme="dark"]{
-  --bg:#0f1620; --bg2:#16202c; --bg3:#1d2938; --panneau:#18222f;
-  --bordure:#33445a; --bordure2:#4a6180;
-  --txt:#f2f6fa; --txt2:#bccadb; --txt3:#93a8bf;
-  --accent:#4cb8ef; --accent2:#7fd0fb;
-  --vert:#46d07d; --orange:#f5b73f; --rouge:#ff6a5e; --violet:#b98cf5;
-  --plan-bg:#111a25;
-  --zone-fill:#1e2a3a; --zone-stroke:#5d7695; --zone-txt:#f2f6fa; --zone-sous:#a9bdd3;
-  --ok-fill:#14342292;
-  --warn-fill:#3c2f1092; --warn-stroke:#f5b73f;
-  --bad-fill:#40201c92;  --bad-stroke:#ff6a5e;
-  --jauge-bg:#0d1520;
-  --edge:#6f89a6; --edge-retour:#9d7fd0;
-  --halo:#0d141d;
-  --ombre:0 4px 18px rgba(0,0,0,.45);
 }
 
 *{box-sizing:border-box}
@@ -120,9 +104,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 
 /* --- plan : fond CAD réel ------------------------------------------------- */
 #plan{cursor:grab;touch-action:none;background:#fff}
-:root[data-theme="dark"] #plan{background:#0d141d}
 #plan-fond{opacity:.92}
-:root[data-theme="dark"] #plan-fond{filter:invert(1) hue-rotate(180deg);opacity:.75}
 #plan.sans-fond #plan-fond{display:none}
 
 /* zones actives : translucides pour laisser voir le plan dessous */
@@ -181,15 +163,10 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 
 @media(max-width:1250px){ .app{grid-template-columns:260px 1fr 290px} }
-@media(max-width:900px){
-  body{overflow:auto;height:auto}
-  .app{grid-template-columns:1fr;height:auto}
-  .col-plan{min-height:70vh}
-}
 </style>
-<meta name="ory-version" content="ca82de70d2"/>
-<link href="interface.css?v=b2024e75" rel="stylesheet"/><link href="editor.css?v=3b19487e" rel="stylesheet"/><link href="flow-center.css?v=5fe35155" rel="stylesheet"/><link href="ateliers.css?v=1e13c70f" rel="stylesheet"/>
-<link href="reglages.css?v=1c966f81" rel="stylesheet"/><link href="demarrage.css?v=fb42cdcb" rel="stylesheet"/><link href="aide.css?v=ef788016" rel="stylesheet"/><link href="usability.css?v=0d0c450f" rel="stylesheet"/><link href="graphe.css?v=057053f0" rel="stylesheet"/><link href="histoire.css?v=d738d737" rel="stylesheet"/></head>
+<meta name="ory-version" content="ff37e5a772"/>
+<link href="interface.css?v=f1ed3f71" rel="stylesheet"/><link href="editor.css?v=389e4cac" rel="stylesheet"/><link href="flow-center.css?v=4ba18c95" rel="stylesheet"/><link href="ateliers.css?v=0b478e98" rel="stylesheet"/>
+<link href="reglages.css?v=0613d139" rel="stylesheet"/><link href="demarrage.css?v=fb42cdcb" rel="stylesheet"/><link href="aide.css?v=935ab1b2" rel="stylesheet"/><link href="usability.css?v=52310c70" rel="stylesheet"/><link href="graphe.css?v=705fde80" rel="stylesheet"/><link href="histoire.css?v=dc371f72" rel="stylesheet"/></head>
 <body data-vue="plan"><a class="skip-link" href="#workspace">Aller au contenu</a>
 <header>
 <div class="marque"><span class="brand-mark">N</span><div>Production ORY<small>Simulation d’une journée de repas à bord</small></div></div>
@@ -197,7 +174,6 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 
 <button class="btn ctx-exemple" id="btn-limits" title="Ce que le calcul ne sait pas encore faire"><span data-ico="ampoule"></span>Chiffres d’exemple</button>
 <button class="btn" id="btn-comment" data-comment-bouton aria-expanded="false" aria-controls="comment">Comment ça marche ?</button>
-<button aria-label="Changer le thème" class="btn" id="btn-theme" title="Basculer clair / sombre">🌙</button>
 <button class="btn" id="btn-export" title="Enregistrer les résultats de la journée dans un fichier">Exporter</button>
 </div>
 </header>
@@ -308,6 +284,6 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <script src="replay.js?v=016adb42"></script>
 <script src="simulation.js?v=2e4b774a"></script>
 <script src="comparaison.js?v=2ef11b4e"></script>
-<script src="sim.js?v=0cb7b2c4"></script>
+<script src="sim.js?v=a05a801b"></script>
 </body>
 </html>

@@ -167,11 +167,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     'et il vit à l’étape 1, « Les vols »');
   await page.locator('[data-view=reglages]').click();await attendre();
 
-  // 11. Rien ne déborde, en clair comme en sombre, sur téléphone comme sur écran.
+  // 11. Rien ne déborde, sur grand écran comme sur le plus petit visé.
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-  await page.locator('#btn-theme').click();await attendre();
-  await page.setViewportSize({width:390,height:844});await attendre();
-  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'pas de débordement sur téléphone');
+  await page.setViewportSize({width:1024,height:700});await attendre();
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'pas de débordement à 1 024 px');
 
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('reglages-browser : ok');

@@ -950,25 +950,6 @@ function initControles() {
   document.getElementById('fond-plan').addEventListener('change', e => {
     svg.classList.toggle('sans-fond', !e.target.checked);
   });
-  initTheme();
-}
-
-/* --- Thème clair / sombre ------------------------------------------------- */
-function appliquerTheme(t) {
-  document.documentElement.setAttribute('data-theme', t);
-  const b = document.getElementById('btn-theme');
-  b.textContent = t === 'dark' ? 'Clair' : 'Sombre';
-  b.title = t === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre';b.setAttribute('aria-label',b.title);
-  try { localStorage.setItem('orly-theme', t); } catch (e) { /* stockage indisponible */ }
-}
-function initTheme() {
-  let t = 'light';
-  try { t = localStorage.getItem('orly-theme') || 'light'; } catch (e) { /* stockage indisponible */ }
-  appliquerTheme(t);
-  document.getElementById('btn-theme').addEventListener('click', () => {
-    const cur = document.documentElement.getAttribute('data-theme');
-    appliquerTheme(cur === 'dark' ? 'light' : 'dark');
-  });
 }
 
 /* --- Scénarios A / B ----------------------------------------------------

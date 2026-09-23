@@ -89,13 +89,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await click('[data-view="plan"]');await click('[data-sous-onglet=j-plan]');
   await page.evaluate(()=>{localStorage.removeItem('orly-zones');localStorage.removeItem('orly-plan-v3');});await page.reload();
   await page.screenshot({path:path.join(os.tmpdir(),'ory-interface-desktop.png'),fullPage:true});
-  await click('#btn-theme');assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');
-  await page.screenshot({path:path.join(os.tmpdir(),'ory-interface-dark.png'),fullPage:true});
-  await page.setViewportSize({width:390,height:844});
+  // Un seul thème, clair ; le site vise les écrans de bureau (1 024 px et plus).
+  assert.equal(await page.locator('#btn-theme').count(),0,'plus de bascule de thème');
+  await page.setViewportSize({width:1024,height:700});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-  await page.screenshot({path:path.join(os.tmpdir(),'ory-interface-mobile.png'),fullPage:true});
   await click('[data-view="vols"]');assert.equal(await page.locator('#flight-rows tr').count(),12);
   assert.deepEqual(errors,[]);
-  console.log('Browser smoke passed: navigation, replay controls, editor persistence, CSV rejection/import, escaping, overdue completion, snapshots, export, dark/mobile layouts.');
+  console.log('Browser smoke passed: navigation, replay controls, editor persistence, CSV rejection/import, escaping, overdue completion, snapshots, export, narrow desktop layout.');
  } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

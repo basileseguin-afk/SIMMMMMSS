@@ -1,7 +1,6 @@
 /* Interface métier : plan prioritaire, outils contextuels et états explicites. */
 [hidden]{display:none!important}
 :root{--bg:#f2f4f7;--bg2:#f6f8fa;--accent:#086c71;--accent2:#055357;--r:12px;--ombre:none}
-:root[data-theme=dark]{--accent:#65d1ca;--accent2:#9aeee6}
 body{height:100dvh;grid-template-rows:auto auto auto minmax(0,1fr);font-size:14px}
 header{padding:14px 24px;gap:24px;border-bottom:1px solid var(--bordure)}
 .marque{font-size:17px;gap:12px}.marque small{display:block;margin-top:4px;font-size:11px;letter-spacing:.04em}
@@ -31,9 +30,7 @@ h1{font-size:21px;margin:4px 0 0;letter-spacing:-.025em}.eyebrow{font-size:9px;f
 .sr-only,.skip-link:not(:focus){position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}.skip-link:focus{position:fixed;top:0;left:0;z-index:100;background:var(--bg3);padding:16px}.toast{max-width:calc(100vw - 32px);border-radius:8px;font-size:12px}
 @media(min-width:1600px){.app{grid-template-columns:minmax(0,1fr) 380px}.plan-tete{gap:16px}}
 @media(max-width:1150px){header{gap:12px;padding:12px 16px}.marque{font-size:14px}.run-state{display:none}.entete-droite{gap:8px}.vitesse-box input{width:70px}.app{grid-template-columns:minmax(0,1fr) 300px}.panel-content{padding:16px}.workspace-heading,.plan-tete{padding-left:16px;padding-right:16px}.kpi{padding:0 14px}.kpi .val{font-size:26px}.workspace-heading{flex-wrap:wrap}.plan-aide{display:none}}
-@media(max-width:760px){body{height:auto;min-height:100dvh;overflow:auto;display:block}header{align-items:flex-start}.marque{width:100%}.entete-droite{margin-left:0;width:100%;justify-content:space-between}.horloge-box{width:100%;justify-content:space-between}.run-state{display:block;max-width:none}.context-bar{padding:10px 16px;align-items:flex-start;flex-direction:column}.kpi-grille{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;padding:16px}.kpi{padding:0!important;border:0}.kpi .lab{min-height:24px}.kpi-note{font-size:10px}.app{display:flex;flex-direction:column;height:auto;overflow:visible}.col-plan{min-height:0;overflow:visible}.workspace-heading{padding:16px}.plan-wrap{flex:none;height:52vh;min-height:320px}.plan-tete{gap:8px}.zone-picker{width:100%}.zone-picker select{max-width:none;flex:1}.zoom-ctrl{margin-left:0}.map-footer{padding:10px 16px}.workbench{border-left:0;border-top:1px solid var(--bordure);overflow:visible}.panel-content{overflow:visible;padding:20px}.flights-view{padding:16px;max-height:65vh}.flight-table{min-width:620px}#panneau-edition{overflow:visible}.btn{min-height:40px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
-@media(max-width:760px){.horloge-box{flex-wrap:wrap;gap:10px}.horloge-box .run-state{width:100%;border:0;padding:0}.horloge-box .transport{flex-wrap:wrap}.vitesse-box{font-size:11px}.entete-droite{flex-wrap:wrap}}
 
 /* Scénarios A/B : les lignes qui diffèrent ressortent. */
 .compare-tab tr.diff td{font-weight:700;background:var(--accent-fond, rgba(12,116,173,.08))}
@@ -57,4 +54,3 @@ h1{font-size:21px;margin:4px 0 0;letter-spacing:-.025em}.eyebrow{font-size:9px;f
    s'efface, il n'y a rien à suivre pendant qu'on règle. */
 body.reglages-open .app{grid-template-columns:minmax(0,1fr)}
 body.reglages-open .workbench{display:none}
-@media (max-width:900px){.reglages-grille{columns:1}}

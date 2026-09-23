@@ -143,8 +143,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('#model-limits').isVisible(),true);
   assert.equal(await page.locator('#fc-export').isVisible(),false,'les outils des liens ne suivent pas dans la sauvegarde');
 
-  // 8. Sur téléphone, rien ne déborde et les étapes restent lisibles.
-  await page.setViewportSize({width:390,height:844});await attendre();
+  // 8. Sur le plus petit écran visé (1 024 px), rien ne déborde et les étapes restent lisibles.
+  await page.setViewportSize({width:1024,height:700});await attendre();
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'pas de débordement');
   assert.equal(await page.locator('#etapes [data-view=vols]').isVisible(),true);
 

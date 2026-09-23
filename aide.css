@@ -63,8 +63,6 @@
   width:15px;height:15px;border-radius:50%;background:var(--bordure2);color:var(--txt);font-size:10px}
 .aide.bloc[open]>summary::before{background:var(--on-accent,#fff);color:var(--accent2)}
 
-@media(max-width:700px){ .aide[open] .aide-corps{font-size:12px} }
-
 /* Un titre et son « ? ». Le `<details>` ne peut pas vivre DANS un `<h2>`/`<h3>`
    — ni dans un `<p>`, que le navigateur referme alors tout seul. On les met
    côte à côte, et le titre garde sa marge basse pour tout le groupe. */

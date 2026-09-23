@@ -7,10 +7,9 @@
 
 /* La page empile ses bandeaux ; le contenu prend ce qui reste. Une grille à
    rangées fixes décalait tout dès qu'un bandeau se masquait. */
-@media(min-width:761px){
   body{display:flex;flex-direction:column}
   body>.app{flex:1 1 auto;min-height:0}
-}
+
 
 /* --- Les couleurs : chacune a un sens ---------------------------------
    Une par étape (se repérer), une par classe de cabine (la reconnaître
@@ -19,11 +18,6 @@
   --c-vols:#2a78d6; --c-equipes:#138a60; --c-temps:#4a3aa7; --c-journee:#c2477a; --c-unite:#5b6b7d;
   --cab-BC:#c98500; --cab-PC:#7b61d6; --cab-YC:#1baf7a; --cab-CREW:#2a78d6; --cab-SPML:#eb6834;
   --ok:#15803d; --attente:#b45309; --retard:#c02618;
-}
-:root[data-theme="dark"]{
-  --c-vols:#3987e5; --c-equipes:#199e70; --c-temps:#9085e9; --c-journee:#d55181; --c-unite:#8a9bb0;
-  --cab-PC:#9085e9; --cab-YC:#199e70; --cab-CREW:#3987e5; --cab-SPML:#d95926;
-  --ok:#46d07d; --attente:#f5b73f; --retard:#ff6a5e;
 }
 .ico{width:1.25em;height:1.25em;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;
   stroke-linejoin:round;flex:none;vertical-align:-.25em}
@@ -49,7 +43,6 @@
   background:color-mix(in srgb,var(--c) 15%,var(--bg3));color:var(--c)}
 .etape-ico .ico{width:25px;height:25px;stroke-width:1.8}
 .etape.active .etape-ico{background:var(--c);color:#fff}
-:root[data-theme="dark"] .etape.active .etape-ico{color:#0b1520}
 .etape-num{position:absolute;top:-7px;left:-7px;width:21px;height:21px;border-radius:50%;display:grid;place-items:center;
   font-size:11.5px;font-weight:800;background:var(--bg3);color:var(--c);border:2px solid var(--c)}
 .etape-txt{display:block;min-width:0}
@@ -61,11 +54,9 @@
 .etape-etat.fait{background:var(--ok);color:#fff}
 .etape-etat.verifier{background:var(--attente);color:#fff}
 .etape-etat.afaire{background:var(--bordure2);color:var(--txt)}
-:root[data-theme="dark"] .etape-etat.fait,:root[data-theme="dark"] .etape-etat.verifier{color:#0b1520}
 .etape-suite{position:absolute;top:-10px;right:10px;font-size:10px;font-weight:800;text-transform:uppercase;
   letter-spacing:.04em;background:var(--c);color:#fff;border-radius:99px;padding:2px 9px;white-space:nowrap;
   box-shadow:0 2px 6px color-mix(in srgb,var(--c) 40%,transparent)}
-:root[data-theme="dark"] .etape-suite{color:#0b1520}
 .etapes-annexe{display:flex;border-left:1px dashed var(--bordure2);padding-left:12px;flex:0 0 auto}
 .etape.annexe{min-width:170px}
 .etape.annexe .etape-ico{width:38px;height:38px}
@@ -89,7 +80,6 @@ body.editing .etapes{opacity:.45;pointer-events:none}
 .cm-picto.ico{width:40px;height:40px;stroke-width:1.7}
 .cm-num{position:absolute;top:-4px;right:-4px;width:24px;height:24px;border-radius:50%;background:var(--c);color:#fff;
   font-size:12.5px;font-weight:800;display:grid;place-items:center;border:2px solid var(--bg3)}
-:root[data-theme="dark"] .cm-num{color:#0b1520}
 .cm-liste b{font-size:14.5px;line-height:1.25}
 .cm-liste p{margin:0;font-size:12.5px;color:var(--txt2)}
 .cm-pied{margin:12px auto 0;font-size:12.5px;color:var(--txt2);text-align:center;display:flex;gap:6px;justify-content:center;align-items:center}
@@ -100,7 +90,6 @@ body.editing .etapes{opacity:.45;pointer-events:none}
 .workspace-heading>div{display:grid;grid-template-columns:auto 1fr;column-gap:14px;align-items:center}
 .view-ico{grid-row:span 2;width:48px;height:48px;border-radius:14px;display:grid;place-items:center;
   background:var(--c,var(--accent));color:#fff}
-:root[data-theme="dark"] .view-ico{color:#0b1520}
 .view-ico .ico{width:27px;height:27px}
 .view-ico:empty{display:none}
 .view-intro{margin:2px 0 0;font-size:13.5px;color:var(--txt2);max-width:90ch;line-height:1.4}
@@ -120,11 +109,6 @@ body.editing .etapes{opacity:.45;pointer-events:none}
   .cm-liste{grid-template-columns:1fr 1fr;row-gap:16px}
   .cm-liste li::after,.cm-liste li::before{display:none}
 }
-@media(max-width:560px){
-  .etapes{padding:8px 16px}
-  .etapes-liste{grid-template-columns:1fr}
-  .comment{padding:12px 16px}
-}
 
 /* --- Rejouer la journée -------------------------------------------------
    L'horloge et les boutons de lecture ne servent qu'à « La journée » : ils
@@ -139,7 +123,6 @@ body.editing .etapes{opacity:.45;pointer-events:none}
 .lecteur .vitesse-box{color:var(--txt2)}
 .lecteur .vitesse-box b{color:var(--txt)}
 body:not([data-vue="plan"]) .lecteur,body.editing .lecteur{display:none}
-@media(max-width:760px){.lecteur{padding:10px 16px}.lecteur .run-state{display:block;max-width:none;width:100%;border:0;padding:0}}
 
 /* --- Les vols : leur programme et leurs horaires, puis le bilan ---------- */
 body[data-vue="vols"] .app{grid-template-columns:minmax(0,1fr)}
@@ -147,7 +130,6 @@ body[data-vue="vols"] .workbench{display:none}
 .vols-donnees{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:14px;margin-bottom:6px}
 .vols-donnees .panneau{margin:0}
 .vols-titre{font-size:16px;margin:14px 0 8px}
-@media(max-width:900px){.vols-donnees{grid-template-columns:1fr}}
 
 /* --- Les temps de travail : un exemple plutôt qu'une formule ------------- */
 .rg-exemple{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 12px}
@@ -159,7 +141,6 @@ body[data-vue="vols"] .workbench{display:none}
 .rg-eq small{font-size:11px;color:var(--txt2)}
 .rg-eq.res{background:var(--c-temps);border-color:var(--c-temps)}
 .rg-eq.res .ico,.rg-eq.res b,.rg-eq.res small{color:#fff}
-:root[data-theme="dark"] .rg-eq.res .ico,:root[data-theme="dark"] .rg-eq.res b,:root[data-theme="dark"] .rg-eq.res small{color:#0b1520}
 .rg-op{font-size:26px;font-weight:300;color:var(--txt2)}
 .rg-codes{margin:-6px 0 10px;font-size:11.5px;color:var(--txt2)}
 
@@ -196,7 +177,6 @@ body[data-vue="vols"] .workbench{display:none}
 .stat-atelier.etat-travail .stat-ico{background:var(--c-journee);color:#fff}
 .stat-atelier.etat-attente .stat-ico{background:var(--attente);color:#fff}
 .stat-atelier.etat-fini .stat-ico{background:color-mix(in srgb,var(--ok) 18%,var(--bg3));color:var(--ok)}
-:root[data-theme="dark"] .stat-atelier.etat-travail .stat-ico,:root[data-theme="dark"] .stat-atelier.etat-attente .stat-ico{color:#0b1520}
 .stat-atelier .stat-quoi{display:block;margin-top:2px}
 
 /* --- Rien à rejouer : un seul encart, qui dit quoi faire ------------------ */
@@ -206,7 +186,6 @@ body[data-vue="vols"] .workbench{display:none}
 .vide-carte b{font-size:15px;color:var(--txt)}
 .vide-carte p{margin:0;font-size:12.5px;color:var(--txt2)}
 .vide-carte .btn{background:var(--c-equipes);border-color:var(--c-equipes);color:#fff}
-:root[data-theme="dark"] .vide-carte .btn{color:#0b1520}
 body.journee-vide #panel-suivi .panneau:has(#stats-ateliers),body.journee-vide #panel-suivi .panneau:has(#bilan-journee){display:none}
 body.journee-vide #goulot-info{border:0;background:none;padding:0}
 
@@ -220,7 +199,6 @@ body.journee-vide #goulot-info{border:0;background:none;padding:0}
 .vf-compte b{font-size:26px;line-height:1;font-variant-numeric:tabular-nums}
 .vf-compte span{font-size:12.5px;color:var(--txt2);font-weight:600;max-width:110px;line-height:1.2;text-align:left}
 .vf-ok .ico{background:var(--ok)} .vf-tard .ico{background:var(--attente)} .vf-sans .ico{background:var(--retard)}
-:root[data-theme="dark"] .vf-compte .ico{color:#0b1520}
 .vf-compte:hover,.vf-compte.actif{border-color:var(--bordure2)}
 .vf-compte.actif{background:var(--bg3);box-shadow:0 2px 8px #0002}
 .vf-tout{font:inherit;font-size:12.5px;border:0;background:none;color:var(--accent2);text-decoration:underline;cursor:pointer}
@@ -232,7 +210,6 @@ body.journee-vide #goulot-info{border:0;background:none;padding:0}
 .vf-vol text{font-size:11.5px;font-weight:700;fill:var(--txt)}
 .vf-ready circle{fill:var(--ok)} .vf-late circle{fill:var(--attente)}
 .vf-overdue circle,.vf-orphan circle{fill:var(--retard)} .vf-pending circle{fill:var(--bordure2)}
-:root[data-theme="dark"] .vf-vol .vf-avion{stroke:#0b1520}
 
 .flights-view .table-scroll{position:relative;border-radius:14px;overflow:auto;border:1px solid #0e1d2e}
 .flight-table{background:#14283e;color:#e8f0f8}
@@ -279,7 +256,6 @@ body.journee-vide #goulot-info{border:0;background:none;padding:0}
 .rg-barre em{font-style:normal;font-size:11px;font-weight:700;color:var(--txt);margin-top:3px;font-variant-numeric:tabular-nums}
 .rg-plus{font-style:normal;font-size:11.5px;color:var(--txt2);margin-left:10px}
 .rg-service>summary .rg-svc-nom{flex:0 0 330px;min-width:0;gap:0}
-@media(max-width:760px){.rg-service>summary .rg-svc-nom{flex:1 1 100%}}
 
 .qf-col-nom{display:flex;align-items:center;gap:6px}
 .qf-col-nom .ico{width:17px;height:17px;color:var(--txt2)}
@@ -327,13 +303,9 @@ body.en-lecture .zone.s-travail .zone-ico circle{fill:var(--c-journee);stroke:va
 body.en-lecture .zone.s-attente .zone-ico circle{fill:var(--attente);stroke:var(--attente)}
 body.en-lecture .zone.s-fini .zone-ico circle{fill:var(--ok);stroke:var(--ok)}
 body.en-lecture .zone.s-travail .zone-ico-trait,body.en-lecture .zone.s-attente .zone-ico-trait,body.en-lecture .zone.s-fini .zone-ico-trait{stroke:#fff}
-:root[data-theme="dark"] body .zone .zone-ico-trait{stroke:var(--zone-txt)}
-:root[data-theme="dark"] body.en-lecture .zone:is(.s-travail,.s-attente,.s-fini) .zone-ico-trait,
-:root[data-theme="dark"] body.avant-lancement .zone.p-pret .zone-ico-trait{stroke:#0b1520}
 .goulot-tete{display:flex;align-items:center;gap:8px}
 .goulot-tete .ico{width:30px;height:30px;padding:6px;box-sizing:content-box;border-radius:50%;color:#fff}
 .goulot-tete.attente .ico{background:var(--attente)} .goulot-tete.ok .ico{background:var(--ok)}
-:root[data-theme="dark"] .goulot-tete .ico{color:#0b1520}
 
 /* ==========================================================================
  *  ÉPURER : UNE VUE, QUELQUES ONGLETS
@@ -345,7 +317,7 @@ body.en-lecture .zone.s-travail .zone-ico-trait,body.en-lecture .zone.s-attente 
 .workspace-heading{border-bottom:0 !important;padding-bottom:6px !important}
 .view-ico{width:42px;height:42px;border-radius:12px}
 .view-ico .ico{width:24px;height:24px}
-.sous-onglets{display:flex;align-items:flex-end;gap:12px;padding:0 20px;background:var(--bg3);
+.sous-onglets{display:flex;flex-wrap:wrap;align-items:flex-end;gap:0 12px;padding:0 20px;background:var(--bg3);
   border-bottom:1px solid var(--bordure);--c:var(--accent)}
 .sous-onglets[hidden]{display:none}
 body[data-vue="vols"] .sous-onglets{--c:var(--c-vols)}
@@ -367,20 +339,13 @@ body[data-vue="flux"] .sous-onglets{--c:var(--c-unite)}
   font-size:11px;font-weight:800;color:#fff;background:var(--txt2)}
 .so-badge.attente{background:var(--attente)}
 .so-badge.retard{background:var(--retard)}
-:root[data-theme="dark"] .so-badge{color:#0b1520}
-.so-outils{display:flex;gap:6px;padding:6px 0;flex:0 1 auto;min-width:0;justify-content:flex-end}
-.so-outils>[data-vue-outils]{display:flex;gap:6px;flex-wrap:wrap}
+.so-outils{display:flex;gap:6px;padding:6px 0;flex:none;margin-left:auto}
+.so-outils>[data-vue-outils]{display:flex;gap:6px;flex-wrap:nowrap}
 .so-outils .btn{padding:5px 10px;font-size:12.5px}
 body:not([data-vue="ateliers"]) [data-vue-outils="ateliers"],
 body:not([data-vue="flux"]) [data-vue-outils="flux"]{display:none}
 body.editing .sous-onglets{display:none}
 #view-flux .fc-heading{display:none}
-@media(max-width:760px){
-  .sous-onglets{flex-wrap:wrap;padding:0 16px;gap:0}
-  .so-liste{flex:1 1 100%}
-  .so-onglet{padding:10px 10px 9px}
-  .so-outils{padding:0 0 8px}
-}
 
 /* La journée : le plan, ses chiffres, la comparaison de deux essais. */
 body[data-vue="plan"][data-sous="j-chiffres"] .app,
@@ -407,7 +372,6 @@ body.journee-vide .journee-chiffres .panneau,body.journee-vide .col-plan>.kpi-gr
 /* Le bouton « chiffres d'exemple » dans l'en-tête sombre. */
 header .ctx-exemple{background:#3b3320 !important;border:1.5px solid #c9a24a !important;color:#fff !important;padding:6px 12px !important}
 header .ctx-exemple .ico{color:#f5c75a}
-@media(max-width:560px){header .ctx-exemple{font-size:0;gap:0;padding:6px 10px !important}header .ctx-exemple .ico{width:18px;height:18px}}
 
 /* Les points à regarder : repliés, un clic les déplie. */
 details.at-anomalies{padding-top:8px;padding-bottom:8px}
@@ -430,8 +394,8 @@ details.at-anomalies{margin-bottom:12px}
 #view-reglages .titre-aide:has(>.reglages-titre){display:none}
 #view-flux .fc-list-title[data-sous="u-liens"]{display:none}
 #view-flux #fc-lecture{margin-top:0;padding-top:0;border-top:0}
-@media(max-width:560px){
-  header .entete-droite{gap:6px;justify-content:flex-start}
-  header .entete-droite .btn{padding:6px 9px;font-size:12px;min-height:36px}
-  header .entete-droite .ctx-exemple{font-size:0;gap:0}
-}
+
+/* Le site vise les écrans de bureau : sous 1 024 px de large, la page garde sa
+   mise en page et défile de côté plutôt que de se réorganiser. */
+html{overflow-x:auto}
+body{min-width:1024px}

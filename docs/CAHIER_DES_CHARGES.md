@@ -48,7 +48,7 @@ de relire le cahier des charges initial :
 | C4 | Un fichier qui dit, à chaque commit, ce qui a changé et où | 17/09 | ✅ | `CHANGELOG.md` |
 | C5 | Un fichier de bugs à relire et remplir après chaque revue | 18/09 | ✅ | `BUGS.md` — à tenir à jour après chaque revue |
 | C6 | Travail à deux assistants (Claude, Astra) sur le même dépôt | 17-19/09 | ✅ | Pas de conflit en cours ; Astra n'a pas poussé depuis la refonte du 21/09 |
-| C7 | Contraste lisible en thème sombre | 17/09 | ✅ | Contrôlé par `usability-browser` |
+| C7 | Contraste lisible en thème sombre | 17/09 | ⛔ | Thème sombre abandonné le 23/09 (voir §11) ; le contraste du thème clair reste contrôlé par `usability-browser` |
 | C8 | S'inspirer des meilleurs simulateurs industriels open source | 18/09 | ✅ | `docs/ETUDE_OPEN_SOURCE.md` ; noyau à événements discrets inspiré de SimPy |
 
 ## 3. Le plan de l'unité
@@ -175,6 +175,8 @@ de relire le cahier des charges initial :
 | Curseurs d'effectifs, contenances par atelier | 17-22/09 | Effectif et horaires par équipe |
 | Unité de travail par passager | 17/09 | Minutes par vol (23/09) |
 | Un seul fichier HTML | 17/09 | Site GitHub Pages |
+| Thème sombre | 17/09 | Un seul thème, clair (23/09) |
+| Version téléphone (mise en page mobile) | 18/09 | Écrans de bureau seulement, 1 024 px et plus (23/09) |
 
 ---
 
@@ -233,6 +235,7 @@ Réponse attendue de Basile ; sans elle, le modèle actuel reste en place.
 | 23/09 | **Objectif final : plusieurs journées enchaînées** | Basile | |
 | 23/09 | Validation du modèle au fil de l'eau | Basile | Les données arrivent progressivement |
 | 23/09 | Animations reportées | Basile | |
+| 23/09 | Abandon du thème sombre et de la version téléphone | Basile | « Pas vraiment utile » : le site sert sur un poste de bureau |
 | 23/09 | Chemins et liens dessinés en diagramme de nœuds ; les parcours deviennent des graphes (nœuds + liens) | Basile | Plus simple, plus intuitif, et un graphe se raisonne bien mathématiquement |
 | 23/09 | Pages découpées en sous-onglets, une chose à la fois | Basile (proposition), Claude (découpage) | « Les pages sont beaucoup trop chargées, le cerveau s'y perd » |
 

@@ -28,7 +28,11 @@ Deux assistants travaillent en parallèle sur cette branche : **Claude** et
 > barème et vols s'échangent en `.xlsx` (`tableur.js`, `echanges.js`) : voir
 > [les formats Excel](FORMATS_EXCEL.md).
 >
-> **Puis — des diagrammes de nœuds.** Les chemins des repas et les liens de
+> **Puis — bureau seulement, thème clair seulement.** Le thème sombre et la
+> version téléphone sont abandonnés (décision de Basile) : un seul thème, et une
+> mise en page pour écrans de bureau à partir de 1 024 px de large.
+>
+> **Avant — des diagrammes de nœuds.** Les chemins des repas et les liens de
 > l'unité se dessinent : chaque service est un nœud, on tire un trait d'un
 > service à un autre pour dire qu'il le livre (`graphe.js`). Un parcours est
 > désormais un graphe `{ noeuds, liens }` ; les anciens parcours en branches
@@ -275,7 +279,7 @@ node tests/browser-smoke.cjs     # puis les 14 autres parcours (Playwright + Chr
 
 | Parcours | Couvre |
 |---|---|
-| `browser-smoke` | navigation, relecture de la journée, vols, import, export, thèmes, mobile |
+| `browser-smoke` | navigation, relecture de la journée, vols, import, export, écran étroit de bureau |
 | `import-browser` | échec de lecture puis réimport, numéros de ligne, export de la journée, scénarios A/B |
 | `editor-browser` | gestes de l'éditeur, migration, annulation, import/export |
 | `storage-browser` | stockages par service, clics réels, migration v2 |
@@ -288,7 +292,7 @@ node tests/browser-smoke.cjs     # puis les 14 autres parcours (Playwright + Chr
 | `annexe-browser` | seconde salle d'un atelier : création, aménagement, liaisons propres |
 | `reglages-browser` | barème par vol (commun, par compagnie, grille compagnie × classe), rendement, poste, échange Excel, ancien JSON converti |
 | `aide-browser` | aucun pavé de texte imposé, l'aide s'ouvre sans rien déplacer, chaque « ? » se nomme |
-| `histoire-browser` | les quatre étapes et leur état, « Comment ça marche », titre et phrase de chaque vue, repas en clair, téléphone |
+| `histoire-browser` | les quatre étapes et leur état, « Comment ça marche », titre et phrase de chaque vue, repas en clair, écran de 1 024 px |
 | `excel-browser` | chemins et tableau « Qui prépare quoi » (choisir, créer, vider, remplir une colonne, clavier, recherche, suivi dans le temps) ; classeurs ateliers et vols : export, modification, import, refus |
 
 La relecture de la journée (`replay.js` : où en est chaque service à l'instant
