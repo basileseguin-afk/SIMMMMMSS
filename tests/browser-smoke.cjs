@@ -17,8 +17,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('#kpi-ontime').textContent(),'—');
   assert.equal(await page.locator('#source-count').textContent(),'12 départs · 6 retours');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-  await click('[data-view="reglages"]');assert.equal(await page.locator('#staff-magasin').isDisabled(),true);
-  await setRange('#staff-prepa','19');
+  await click('[data-view="reglages"]');
   // Les commandes de lecture ne vivent plus que dans la vue qu'elles pilotent :
   // ailleurs, un gros bouton « Lancer » invitait à lancer ce qu'on ne regardait pas.
   assert.equal(await page.locator('#btn-play').isVisible(),false,'pas de « Lancer » sur les réglages');
@@ -31,7 +30,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator('#run-state').textContent(),/Rien à relire/);
   // Les réglages ne se verrouillent plus : la journée se recalcule à chaque frappe.
   await click('[data-view="reglages"]');
-  assert.equal(await page.locator('#staff-prepa').isDisabled(),false);
+  assert.equal(await page.locator('#loadDelay').isDisabled(),false);
   await click('[data-view="vols"]');assert.equal(await page.locator('#flight-rows tr').count(),12);
   await page.locator('#flight-search').fill('NO-MATCH');assert.match(await page.locator('#flight-rows').textContent(),/Aucun départ/);
   await page.locator('#flight-search').fill('');
@@ -78,7 +77,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const ligneVol=await page.locator('#flight-rows').textContent();
   assert.match(ligneVol,/Prêt en retard/);
   await click('[data-view="reglages"]');
-  await click('#snap-a');assert.match(await page.locator('#compare').textContent(),/23:00/);
+  await click('#snap-a');assert.match(await page.locator('#compare').textContent(),/Échéances tenues/);
   const downloaded=page.waitForEvent('download');await click('#btn-export');const download=await downloaded;
   const result=JSON.parse(fs.readFileSync(await download.path(),'utf8'));
   assert.equal(result.modele,'ateliers');

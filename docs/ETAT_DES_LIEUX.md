@@ -9,6 +9,18 @@ Révision décrite : `0bfe587` + calendrier multijour, branche `claude/factory-m
 Deux assistants travaillent en parallèle sur cette branche : **Claude** et
 **Astra** (ChatGPT). Basile arbitre.
 
+> **Mise à jour du 23 septembre 2026 — un seul moteur.** L'ancien moteur de
+> démonstration (`moteur/orly.js`, `ressources.js`, `mesure.js`, `procede.js`,
+> leurs 59 tests) est **retiré**. Le calcul tient désormais en
+> `moteur/production.js` (modèle par ateliers de travail) sur `moteur/noyau.js`.
+> La vue Simulation **relit** la journée calculée (`replay.js`, `simulation.js`) ;
+> la comparaison A/B compare deux journées de ce modèle (`comparaison.js`) ; le
+> jeu de vols fictif vit dans `vols-demo.js`. Effectifs par curseur, contenances,
+> vivier, équipe du soir et calendrier multijour ont disparu avec l'ancien
+> moteur : ce qu'ils décrivaient se décrit maintenant atelier par atelier
+> (personnes, horaire, jour, pauses). Les sections ci-dessous qui parlent de
+> l'ancien moteur décrivent **l'historique**, pas l'état présent.
+
 ---
 
 ## 1. En une page
@@ -42,15 +54,16 @@ ProdSim, uia-simjs et salabim ont été clonés, lus et évalués, licences
 vérifiées dans les fichiers. Conclusion suivie : un moteur à événements
 discrets **en JavaScript, dans le navigateur**, sans serveur.
 
-| Fichier | Rôle | Tests |
-|---|---|---:|
-| `noyau.js` | événements, processus sur générateurs, file de priorité, interruptions | 19 |
-| `mesure.js` | moniteurs de niveau (pondérés par le temps) et de comptage | 6 |
-| `ressources.js` | postes à places, tampons bloquants, niveaux continus | 14 |
-| `procede.js` | gamme décrite en données, validation, tirages à graine | 14 |
-| `orly.js` | modèle de l'unité : ateliers, robot, plonge, matériel, calendrier | 28 |
+| Fichier | Rôle | Statut |
+|---|---|---|
+| `noyau.js` | événements, processus sur générateurs, file de priorité, interruptions | **conservé** |
+| `production.js` | modèle par ateliers de travail, compagnie × classe | **le seul moteur** |
+| `mesure.js` | moniteurs de niveau (pondérés par le temps) et de comptage | retiré le 23/09 |
+| `ressources.js` | postes à places, tampons bloquants, niveaux continus | retiré le 23/09 |
+| `procede.js` | gamme décrite en données, validation, tirages à graine | retiré le 23/09 |
+| `orly.js` | modèle de l'unité : ateliers, robot, plonge, matériel, calendrier | retiré le 23/09 |
 
-Ce que le modèle représente aujourd'hui :
+Ce que l'ancien moteur représentait (historique) :
 
 - une **personne** est occupée par un lot de 5 homme-minutes à la fois ;
 - le **robot** est une place unique, un vol à la fois par ordre d'échéance,
@@ -210,14 +223,14 @@ en gardant les deux entrées.
 ## 7. Vérifier avant de livrer
 
 ```bash
-node --test tests/*.test.cjs     # 205 tests purs
+node --test tests/*.test.cjs     # 133 tests purs
 node tests/browser-smoke.cjs     # puis les 12 autres parcours (Playwright + Chromium)
 ```
 
 | Parcours | Couvre |
 |---|---|
 | `browser-smoke` | navigation, relecture de la journée, vols, import, export, thèmes, mobile |
-| `import-browser` | échec de lecture puis réimport, numéros de ligne, scénarios A/B (ancien moteur), export de la journée |
+| `import-browser` | échec de lecture puis réimport, numéros de ligne, export de la journée, scénarios A/B |
 | `editor-browser` | gestes de l'éditeur, migration, annulation, import/export |
 | `storage-browser` | stockages par service, clics réels, migration v2 |
 | `flows-browser` | centre des flux |
@@ -227,11 +240,12 @@ node tests/browser-smoke.cjs     # puis les 12 autres parcours (Playwright + Chr
 | `etat-plan-browser` | état de paramétrage sur le plan, quatre états de la relecture, bascule des légendes |
 | `zoom-browser` | bornes du zoom, cadrage, clavier, bridage du déplacement |
 | `annexe-browser` | seconde salle d'un atelier : création, aménagement, liaisons propres |
-| `reglages-browser` | barème, rendement, régime de poste, import/export, séparation d'avec l'ancien moteur |
+| `reglages-browser` | barème, rendement, régime de poste, import/export, ordre des sections |
 | `aide-browser` | aucun pavé de texte imposé, l'aide s'ouvre sans rien déplacer, chaque « ? » se nomme |
 
 La relecture de la journée (`replay.js` : où en est chaque service à l'instant
-t) est couverte par `tests/replay.test.cjs`, en tests purs. Le fil de mise en
+t) est couverte par `tests/replay.test.cjs`, la comparaison A/B par
+`tests/comparaison.test.cjs`, en tests purs. Le fil de mise en
 route est couvert par `tests/demarrage.test.cjs`, en tests
 purs : c'est une fonction, `etapes(etat)`, qui ne touche pas au navigateur.
 

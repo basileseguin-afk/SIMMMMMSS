@@ -2,21 +2,6 @@
 (function (root) {
   'use strict';
   const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  function serviceMetrics(flights, now) {
-    const departures = flights.filter(f => f.sens === 'DEP');
-    const due = departures.filter(f => f.due <= now);
-    const ready = departures.filter(f => f.readyTime != null);
-    const onTime = due.filter(f => f.readyTime != null && f.readyTime <= f.due).length;
-    return { total:departures.length, prets:ready.length, exigibles:due.length,
-      retardExigibles:due.length ? Math.round(due.reduce((n,f)=>n+Math.max(0,(f.readyTime??now)-f.due),0)/due.length) : null,
-      aHeure:onTime, ontime:due.length ? Math.round(100 * onTime / due.length) : null,
-      overdue:due.filter(f => f.readyTime == null).length,
-      retardMoy:ready.length ? Math.round(ready.reduce((n,f) => n + Math.max(0,f.readyTime-f.due),0)/ready.length) : null };
-  }
-  function flightStatus(f, now) {
-    if (f.readyTime != null) return f.readyTime <= f.due ? { key:'ready', label:'Prêt à temps' } : { key:'late', label:'Prêt en retard' };
-    return now >= f.due ? { key:'overdue', label:'Échéance dépassée' } : { key:'pending', label:'Non prêt' };
-  }
   function csvRows(text) {
     text=String(text).replace(/^\uFEFF/,'');
     const first=text.split(/\r?\n/)[0];
@@ -77,7 +62,7 @@
     if(errors.length)throw new Error(errors.slice(0,8).join('\n')+(errors.length>8?'\n… '+(errors.length-8)+' autre(s) erreur(s).':'')+'\nAucune donnée remplacée.');
     return out;
   }
-  const api={escapeHTML,serviceMetrics,flightStatus,parseFlights};
+  const api={escapeHTML,parseFlights};
   if(typeof module!=='undefined' && module.exports)module.exports=api;
   else root.OrlyUI=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

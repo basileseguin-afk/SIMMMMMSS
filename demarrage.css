@@ -60,9 +60,9 @@ body:not([data-vue="plan"]) .kpi-grille{display:none}
 /* En édition du plan, les commandes n'ont pas de sens non plus. */
 body.editing .horloge-box,body.editing .vitesse-box,body.editing .kpi-grille{display:none}
 
-/* Avant le lancement, les quatre indicateurs valent « — », « 0 », « 0 OF » et
-   « 0 plateaux/h ». Une bande entière pour ne rien dire, juste au-dessus de ce
-   qu'on est venu voir. Ils apparaissent quand ils ont quelque chose à montrer. */
+/* Au début de la journée, les quatre indicateurs valent « — » ou « 0 ». Une
+   bande entière pour ne rien dire, juste au-dessus de ce qu'on est venu voir.
+   Ils apparaissent dès qu'on avance dans la relecture. */
 body.avant-lancement .kpi-grille{display:none}
 
 /* La barre de contexte se réduit à ce qu'elle dit vraiment. */

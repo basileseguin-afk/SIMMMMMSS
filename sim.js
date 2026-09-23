@@ -4,24 +4,23 @@
  *  Le plan lui-même est CONFIDENTIEL et n'est pas dans ce dépôt public :
  *  déposez ses tuiles dans `plan-prive/` en local (dossier non suivi par Git).
  *
- *  Le calcul est fait par `moteur/orly.js` sur le moteur à événements
- *  discrets (`moteur/noyau.js`, `mesure.js`, `ressources.js`) : personnes
- *  occupées par des lots, robot à une place, tampons par atelier. Ce fichier
- *  ne contient plus que l'interface, le plan et l'animation.
+ *  Le calcul est fait par `moteur/production.js` (modèle par ateliers de
+ *  travail, sur le noyau à événements discrets `moteur/noyau.js`) ; la vue
+ *  Simulation le relit avec `replay.js` et `simulation.js`. Ce fichier tient
+ *  l'interface, le plan et la glue entre les centres.
  *  ==========================================================================*/
 (function () {
 'use strict';
-const {escapeHTML, serviceMetrics, flightStatus, parseFlights} = window.OrlyUI;
-const Orly = window.MoteurOrly;
-const NON_MODELISES = new Set(['magasin','bobduty','handling','quais']);
-const CFG_ETP = Orly.HEURES_PAR_ETP;   // 1 ETP = 7 h, convention de la feuille de route
+const {escapeHTML, parseFlights} = window.OrlyUI;
 let activePanel = 'suivi', activeView = 'plan', dataSource = 'Jeu de démonstration';
-let frameId = null, pendingTime = 0, runConfig = null;
 
 /* ==========================================================================
- *  1. PARAMÈTRES — valeurs par défaut portées par le modèle
+ *  1. PARAMÈTRES DES HORAIRES — les seuls qui ne vivent pas dans un centre
+ *  `loadDelay` : minutes entre l'échéance de production et le départ.
+ *  `shift` : décalage appliqué à tous les départs, pour éprouver un programme
+ *  avancé ou retardé sans réimporter.
  * ==========================================================================*/
-const CFG = JSON.parse(JSON.stringify(Orly.CFG_DEFAUT));
+const CFG = { loadDelay: 45, shift: 0 };
 
 /* ==========================================================================
  *  2. PLAN RÉEL D'ORLY
@@ -172,66 +171,27 @@ function bord(id, cible) {
 }
 
 /* ==========================================================================
- *  3. JEU DE DONNÉES D'EXEMPLE — porté par le modèle (moteur/orly.js)
+ *  3. PROGRAMME DE VOLS
+ *  Le jeu de démonstration (`vols-demo.js`) tant que l'unité n'a pas importé
+ *  le sien. Le décalage global s'applique ici, une fois pour toutes : le
+ *  modèle par ateliers reçoit des horaires déjà décalés.
  * ==========================================================================*/
-const SAMPLE = Orly.JEU_DEMO;
+const SAMPLE = window.OrlyDemo.VOLS;
+let flights = [];
 
-/* ==========================================================================
- *  4. ÉTAT DE LA SIMULATION
- *     `modele` est construit par moteur/orly.js. `stations` et `jobs` sont
- *     les vues que le rendu lit ; elles sont rafraîchies par le modèle à
- *     chaque avancée. Les ateliers non modélisés ont une vue neutre.
- * ==========================================================================*/
-let modele = null, flights = [], jobs = [], stations = {};
-let now = CFG.jour.debut, enMarche = false, vitesse = 30, historique = [];
-/* Bornes de la simulation, lues sur le modèle. Sans calendrier multijour elles
- * valent la fenêtre quotidienne ; avec, elles couvrent toutes les journées. */
-const DEBUT = () => modele ? modele.debut : CFG.jour.debut;
-const FIN = () => modele ? modele.horizon : CFG.jour.fin;
-const MULTIJOUR = () => !!(modele && modele.joursProduction > 1);
-const VUE_NEUTRE = { util:0, qlen:0, enAttente:0, bloque:false, tauxJour:0 };
-
-function build(data) {
-  modele = Orly.construireModele(data, CFG, { surToken: spawnToken });
-  flights = modele.flights; jobs = modele.jobs;
-  stations = {};
-  Object.keys(ZONES).forEach(id => { stations[id] = modele.stations[id] || VUE_NEUTRE; });
-  now = modele.maintenant;
-  Sim.robotRate = 0;
+function chargerVols(data) {
+  flights = (data || []).map(f => Object.assign({}, f, {
+    std: f.std == null ? f.std : f.std + CFG.shift,
+    sta: f.sta == null ? f.sta : f.sta + CFG.shift
+  }));
   if (document.getElementById('source-count')) updateSource();
-  // La légende de l'horloge appartient à la relecture (simulation.js).
 }
-
-/* ==========================================================================
- *  5. PAS DE SIMULATION — délégué au moteur à événements discrets
- * ==========================================================================*/
-function step(dt) {
-  now = modele.avancerA(now + dt);
-  Sim.robotRate = modele.debitRobot();
-}
-
-/* ==========================================================================
- *  6. KPI
- * ==========================================================================*/
-function kpis() {
-  return Object.assign(serviceMetrics(flights, now), {
-    wip:jobs.filter(j => j.released && !j.done).length,
-    debit:Math.round((Sim.robotRate || 0) * 60), goulot:goulotCourant()
-  });
-}
-/* Le goulot est mesuré par le modèle : le poste où l'on attend. */
-function goulotCourant() {
-  const g = modele ? modele.goulot() : null;
-  return g ? { id:g.id, nom:ZONES[g.id].nom, sev:g.sev, qlen:g.qlen, attente:g.attente, cause:g.cause } : null;
-}
-function couleurCharge(u) { return u < 0.55 ? 'var(--vert)' : u < 0.85 ? 'var(--orange)' : 'var(--rouge)'; }
 
 /* ==========================================================================
  *  7. RENDU DU PLAN
  * ==========================================================================*/
 const SVGNS = 'http://www.w3.org/2000/svg';
 const svg = document.getElementById('plan');
-let tokens = [];
 const zoneEls = {};
 let edgeEls = {}, gPoign = null;
 let editMode = false, tracage = false, tracagePoly = false;
@@ -293,16 +253,10 @@ function construirePlan() {
     const sous = (z.sous || []).map(s => {
       const st = svgEl('text', { class:'sous' }); st.textContent = s; g.appendChild(st); return st;
     });
-    let barreFond = null, jauge = null;
-    if (!z.sink && !z.buffer) {
-      barreFond = svgEl('rect', { class:'barre-fond', height:16, rx:8 }); g.appendChild(barreFond);
-      jauge = svgEl('rect', { class:'barre-jauge', width:0, height:16, rx:8, fill:'var(--vert)' }); g.appendChild(jauge);
-    }
     let res = null;
     if (z.robot) res = ajoutRessource(g, 'ROBOT', 'robot');
     if (z.tunnels) res = ajoutRessource(g, 'TUNNELS', 'tunnels');
-    const badge = svgEl('text', { class:'goulot-badge', 'text-anchor':'end' }); g.appendChild(badge);
-    zoneEls[id] = { g, rect, titre, sous, barreFond, jauge, res, badge, tip:ti, b:boite(z) };
+    zoneEls[id] = { g, rect, titre, sous, res, tip:ti, b:boite(z) };
     g.setAttribute('role','button'); g.setAttribute('tabindex','0'); g.setAttribute('aria-label',z.nom);
     g.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' '){e.preventDefault();selectionner(id);} });
     g.addEventListener('click', e => { e.stopPropagation(); selectionner(id); });
@@ -310,7 +264,6 @@ function construirePlan() {
     positionnerZone(id);
   });
 
-  const gTok = svgEl('g', { id:'tokens' }); gVue.appendChild(gTok); Sim._gTok = gTok;
   gPoign = svgEl('g', { id:'poignees' }); gVue.appendChild(gPoign);
   initInteractions();
 }
@@ -325,15 +278,12 @@ function positionnerZone(id) {
   e.tip.textContent = z.nom + (z.approx ? ' (emplacement à confirmer)' : '');
   s(e.titre, { x:b.x + 14, y:b.y + 56 });
   e.sous.forEach((st, i) => s(st, { x:b.x + 14, y:b.y + 96 + i*38 }));
-  if (e.barreFond) s(e.barreFond, { x:b.x + 14, y:b.y + b.h - 30, width:Math.max(0, b.w - 28) });
-  if (e.jauge) s(e.jauge, { x:b.x + 14, y:b.y + b.h - 30 });
   if (e.res) {
     const rx = z.robot ? b.x + b.w - 210 : b.x + 14, ry = b.y + b.h - 130;
     s(e.res.box, { x:rx, y:ry });
     s(e.res.txt, { x:rx + 16, y:ry + 36 });
     s(e.res.val, { x:rx + 16, y:ry + 78 });
   }
-  s(e.badge, { x:b.x + b.w - 14, y:b.y + 56 });
 }
 
 /* Recalcule le tracé de toutes les arêtes. */
@@ -971,21 +921,6 @@ function initEdition() {
   majPicker();   // le plan enregistré peut contenir des annexes
 }
 
-function spawnToken(edgeId, color) {
-  if (!edgeId || tokens.length > 90) return;
-  const path = document.getElementById('edge-' + edgeId); if (!path) return;
-  const c = svgEl('circle', { class:'token', r:17, fill:color }); Sim._gTok.appendChild(c);
-  tokens.push({ el:c, path, len:path.getTotalLength(), t:0, v:0.012 + Math.random()*0.006 });
-}
-function animerTokens() {
-  for (let i = tokens.length - 1; i >= 0; i--) {
-    const tk = tokens[i]; tk.t += tk.v;
-    if (tk.t >= 1) { tk.el.remove(); tokens.splice(i, 1); continue; }
-    const pt = tk.path.getPointAtLength(tk.t * tk.len);
-    tk.el.setAttribute('cx', pt.x); tk.el.setAttribute('cy', pt.y);
-  }
-}
-
 function majPlan() {
   const r = document.getElementById('res-robot'); if (r) r.textContent = '';
   const t = document.getElementById('res-tunnels'); if (t) t.textContent = '';
@@ -1006,12 +941,6 @@ const ETATS_PARAM = {
 function annexes() {
   const e = Sim.editor; if (!e) return [];
   return e.state.zones.filter(z => z.kind === 'annexe' && z.visible !== false);
-}
-/* L'atelier du moteur derrière un identifiant de zone : lui-même, ou le parent
- * quand c'est une annexe. */
-function serviceMoteur(id) {
-  const a = annexes().find(z => z.id === id);
-  return a ? a.parent : id;
 }
 /* La liste des services suit le plan : les annexes y figurent sous leur parent. */
 function majPicker() {
@@ -1186,10 +1115,6 @@ function majGoulotInfo() {
 }
 
 /* ==========================================================================
- *  9. BOUCLE TEMPS RÉEL
- * ==========================================================================*/
-let dernierReel = 0, accHist = 0;
-/* ==========================================================================
  *  9. LECTURE DE LA JOURNÉE
  *  Il n'y a plus de boucle de simulation : `moteur/production.js` a déjà
  *  calculé la journée. Ces fonctions ne sont plus que des relais vers
@@ -1203,7 +1128,7 @@ function basculer()   { if (Sim.vue) Sim.vue.basculer(); }
  * délai de chargement change les classes à fabriquer : on relit les vols, on
  * recalcule la journée des ateliers, et la relecture repart de là. */
 function reset(data) {
-  build(data || Sim.dataCourante || SAMPLE);
+  chargerVols(data || Sim.dataCourante || SAMPLE);
   if (Sim.ateliers) Sim.ateliers.rendre();
   if (Sim.vue) Sim.vue.recalculer();
   majDemarrage(); renderFlights();
@@ -1219,9 +1144,7 @@ function peindreInstant(i) {
     const e = i.services[s.id];
     els.g.classList.remove('s-travail', 's-attente', 's-fini', 's-avenir');
     if (e) els.g.classList.add('s-' + e.etat);
-    // Le badge rouge du « goulot » d'hier criait une alarme ; ce que fait le
-    // service se lit dans la liste de droite et dans l'infobulle.
-    if (els.badge) els.badge.textContent = '';
+    // Ce que fait le service se lit dans la liste de droite et dans l'infobulle.
     if (els.tip) els.tip.textContent = s.nom + (e ? ' — ' + OrlySimulation.LIBELLE[e.etat] + (e.etat !== 'avenir' && e.nom ? ' : ' + e.nom : '') : '');
   }
   majEtatPlan();
@@ -1245,94 +1168,7 @@ function toast(msg) {
 }
 
 function initControles() {
-  const box = document.getElementById('sliders-staff');
-  Object.keys(CFG.staff).forEach(id => {
-    const d = document.createElement('div'); d.className = 'slider-ligne';
-    d.innerHTML = '<label for="staff-' + id + '">' + ZONES[id].nom + ' <b id="s-' + id + '">' + CFG.staff[id] + '</b></label><input id="staff-' + id + '" type="range" min="0" max="40" value="' + CFG.staff[id] + '" data-id="' + id + '">';
-    box.appendChild(d);
-    d.querySelector('input').addEventListener('input', e => { CFG.staff[id] = +e.target.value; majSoirLibelle(id); majPlan(); majDashboard(); });
-  });
-  // Relève d'équipe : effectif du soir par atelier, « comme le matin » tant qu'on n'y touche pas.
-  const det = document.createElement('details'); det.className = 'equipe-soir'; det.id = 'equipe-soir';
-  det.innerHTML = '<summary>Équipe du soir <b id="bascule-lab">à partir de 14:00</b></summary>' +
-    '<div class="champ"><span>Heure de relève</span><input id="bascule" type="time" value="14:00" step="300" aria-label="Heure de relève des équipes"></div>' +
-    '<details class="aide bloc"><summary>Équipe du matin et du soir</summary>'
-    +'<span class="aide-corps">Les curseurs ci-dessus sont l’équipe du matin. Un curseur du soir non '
-    +'touché suit le matin. Personne n’est interrompu à la relève : les places en trop se ferment '
-    +'au fil des libérations.</span></details>';
-  box.appendChild(det);
-  const majSoirLibelle = id => { const b = document.getElementById('so-' + id); if (!b) return; const v = CFG.equipes.soir[id]; b.textContent = v === undefined ? CFG.staff[id] + ' (comme le matin)' : v; const r = document.getElementById('soir-' + id); if (r && v === undefined) r.value = CFG.staff[id]; };
-  Object.keys(CFG.staff).forEach(id => {
-    if (NON_MODELISES.has(id)) return;
-    const d = document.createElement('div'); d.className = 'slider-ligne';
-    d.innerHTML = '<label for="soir-' + id + '">' + ZONES[id].nom + ' <b id="so-' + id + '"></b></label><input id="soir-' + id + '" type="range" min="0" max="40" value="' + CFG.staff[id] + '" data-id="' + id + '" data-soir="1">';
-    det.appendChild(d);
-    d.querySelector('input').addEventListener('input', e => { CFG.equipes.soir[id] = +e.target.value; majSoirLibelle(id); });
-    majSoirLibelle(id);
-  });
-  det.querySelector('#bascule').addEventListener('change', e => {
-    const m = /^(\d{2}):(\d{2})$/.exec(e.target.value); if (!m) { e.target.value = formatTime(CFG.equipes.bascule); return; }
-    CFG.equipes.bascule = (+m[1]) * 60 + (+m[2]); document.getElementById('bascule-lab').textContent = 'à partir de ' + e.target.value;
-  });
   const bind = (id, fn) => document.getElementById(id).addEventListener('input', fn);
-  bind('robot', e => { CFG.robotCadence = +e.target.value; document.getElementById('robot-val').textContent = e.target.value + ' pl/h'; majPlan(); });
-  bind('yc-manuel', e => { CFG.ycManuel = +e.target.value; document.getElementById('yc-manuel-val').textContent = (+e.target.value).toFixed(2).replace('.', ',') + ' min/plateau'; });
-  document.getElementById('robot-cies').addEventListener('change', e => {
-    CFG.robotCompagnies = e.target.value.split(/[\s,;]+/).map(v => v.trim().toUpperCase()).filter(Boolean);
-    e.target.value = CFG.robotCompagnies.join(', ');
-    reset();
-  });
-  // Contenance des ateliers : une case par atelier modélisé, vide = illimitée.
-  const tb = document.getElementById('tampons');
-  Orly.ATELIERS.forEach(id => {
-    const d = document.createElement('div'); d.className = 'champ';
-    d.innerHTML = '<span>' + escapeHTML(ZONES[id].nom) + '</span><input id="tampon-' + id + '" type="number" min="1" step="1" placeholder="illimitée" aria-label="Contenance de l\'atelier ' + escapeHTML(ZONES[id].nom) + ' en ordres de fabrication">';
-    tb.appendChild(d);
-    d.querySelector('input').addEventListener('change', e => {
-      const v = parseInt(e.target.value, 10);
-      if (v > 0) CFG.tampons[id] = v; else { delete CFG.tampons[id]; e.target.value = ''; }
-    });
-  });
-  bind('tunnels', e => { CFG.tunnels = +e.target.value; document.getElementById('tunnels-val').textContent = e.target.value; majPlan(); });
-  bind('robot-lignes', e => {
-    CFG.robotLignes = +e.target.value;
-    document.getElementById('robot-lignes-val').textContent = e.target.value;
-    reset();
-  });
-  document.getElementById('double').addEventListener('change', e => { CFG.tunnelDouble = e.target.checked; majPlan(); });
-  bind('materiel', e => { CFG.materiel.initial = +e.target.value; document.getElementById('materiel-val').textContent = e.target.value + ' u'; });
-  /* Effectifs déduits de l'aménagement : somme des personnes affectées aux
-   * équipements de chaque service. La grille ne pilote QUE les services où
-   * elle est renseignée ; partout ailleurs le curseur reste la référence.
-   * C'est ce qui évite d'avoir à choisir entre les deux : un service non
-   * aménagé ne tombe pas à zéro parce qu'un autre l'a été. */
-  // La grille d'équipements a été abandonnée : personnes, tunnels et lignes
-  // robot se décrivent désormais atelier par atelier, dans « Ateliers de
-  // travail ». Les curseurs ci-dessous ne pilotent plus que l'ancien calcul,
-  // celui de la comparaison A/B.
-  // Vivier polyvalent : un effectif et les ateliers qu'il peut servir.
-  const AT_VIVIER = Orly.ATELIERS.filter(id => id !== 'plonge');
-  const boiteVivier = document.getElementById('vivier-ateliers');
-  AT_VIVIER.forEach(id => {
-    const l = document.createElement('label'); l.className = 'chk chk-mini';
-    l.innerHTML = '<input type="checkbox" data-vivier="' + id + '"> ' + escapeHTML(ZONES[id].nom);
-    boiteVivier.appendChild(l);
-  });
-  const majVivier = () => {
-    const effectif = +document.getElementById('vivier').value;
-    const ateliers = [...boiteVivier.querySelectorAll('[data-vivier]:checked')].map(c => c.dataset.vivier);
-    CFG.viviers = effectif > 0 && ateliers.length ? [{ nom:'Polyvalents', effectif, ateliers }] : [];
-    document.getElementById('vivier-val').textContent = effectif + (effectif && !ateliers.length ? ' — cochez un atelier' : '');
-    reset();
-  };
-  bind('vivier', majVivier);
-  boiteVivier.addEventListener('change', majVivier);
-  const majCal = () => {
-    document.getElementById('cal-detail').hidden = !CFG.calendrier.actif;
-    reset();
-  };
-  document.getElementById('calendrier').addEventListener('change', e => { CFG.calendrier.actif = e.target.checked; majCal(); });
-  bind('cal-jours', e => { CFG.calendrier.jours = +e.target.value; document.getElementById('cal-jours-val').textContent = e.target.value + ' j'; majCal(); });
   bind('shift', e => { CFG.shift = +e.target.value; document.getElementById('shift-val').textContent = (e.target.value>0?'+':'') + e.target.value + ' min'; reset(); });
   document.getElementById('loadDelay').addEventListener('change',e=>{if(!e.target.checkValidity() || !e.target.value){e.target.value=CFG.loadDelay;toast('Délai attendu : 10 à 120 minutes');return;}CFG.loadDelay=+e.target.value;reset();});
   document.getElementById('btn-export').addEventListener('click', exporter);
@@ -1375,64 +1211,35 @@ function initTheme() {
   });
 }
 
-/* --- Scénarios A / B : deux journées complètes rejouées à l'identique ------
- *  Une capture enregistre les réglages et les vols du moment, puis REJOUE LA
- *  JOURNÉE ENTIÈRE sans interface (quelques dizaines de millisecondes). Deux
- *  captures se comparent donc à conditions égales : mêmes vols, aucun aléa,
- *  seuls les réglages diffèrent. Ce n'est plus une photographie à un instant.
+/* --- Scénarios A / B ----------------------------------------------------
+ *  La journée des ateliers est recalculée à chaque frappe : capturer ne
+ *  relance rien, cela fige ce qu'on a sous les yeux (`comparaison.js`).
  * ------------------------------------------------------------------------- */
 let snaps = {};
 function capturer(slot) {
-  const config=JSON.parse(JSON.stringify(runConfig||CFG));
-  const data=JSON.parse(JSON.stringify(Sim.dataCourante));
-  const r=Orly.simulerJournee(data,config,serviceMetrics);
-  const b=r.bilan;
-  snaps[slot]={time:instantDu(r.modele,r.modele.horizon),source:dataSource,config,data,kpis:r.kpis,bilan:b,
-    ontime:r.kpis.ontime,retard:r.kpis.retardMoy,overdue:r.kpis.overdue,
-    robot:config.robotCadence,robotCies:(config.robotCompagnies||[]).join(', ')||'aucune',ycManuel:config.ycManuel,
-    tampons:Object.keys(config.tampons||{}).map(k=>ZONES[k].nom+' '+config.tampons[k]).join(', ')||'illimitées',
-    materiel:config.materiel&&config.materiel.actif?config.materiel.initial+' u':'non modélisé',
-    vivier:(config.viviers||[]).length?config.viviers[0].effectif+' pers. · '+config.viviers[0].ateliers.map(k=>ZONES[k].nom).join(', '):'aucun',
-    vivierPretes:b.viviers&&b.viviers.length?Math.round(b.viviers[0].minutesPretees):null,
-    heuresDemandees:b.charge?b.charge.heuresDemandees.toFixed(1):null,
-    heuresFaites:b.charge?b.charge.heuresRealisees.toFixed(1):null,
-    etpRealise:b.charge?b.charge.etpRealise.toFixed(2):null,
-    resteAFaire:b.charge?b.charge.heuresResteAFaire.toFixed(1):null,
-    calendrier:config.calendrier&&config.calendrier.actif?config.calendrier.jours+' journées de départs, cuisine J−2 et prépa J−1':'journée unique',
-    materielMin:b.materiel?Math.round(b.materiel.niveauMin):null,
-    materielRupture:b.materiel?Math.round(b.materiel.partEnRupture*100):null,
-    prepa:config.staff.prepa,tunnels:config.tunnels+(config.tunnelDouble?' (1×2)':''),
-    soir:Object.keys((config.equipes||{}).soir||{}).filter(k=>config.equipes.soir[k]!==config.staff[k]).map(k=>ZONES[k].nom+' '+config.equipes.soir[k]).join(', ')||'comme le matin',
-    robotJour:Math.round((b.robot.occupationJour||0)*100),robotP90:b.robot.attenteP90==null?null:Math.round(b.robot.attenteP90),
-    prepaJour:Math.round((b.ateliers.prepa.occupationJour||0)*100),cuisineJour:Math.round((b.ateliers.cuisine.occupationJour||0)*100),
-    plongeJour:Math.round((b.ateliers.plonge.occupationJour||0)*100)};
-  majCompare();toast('Scénario '+slot+' : '+(r.modele.joursProduction>1?r.modele.joursProduction+' journées rejouées':'journée rejouée jusqu’à '+formatTime(config.jour.fin)));
+  const r = Sim.ateliers && Sim.ateliers.resultat;
+  if (!r) { toast('Aucune journée à capturer.'); return; }
+  snaps[slot] = OrlyComparaison.capturer(r, {
+    source: dataSource,
+    ateliers: JSON.parse(JSON.stringify(Sim.ateliers.state.ateliers)),
+    reglages: Sim.reglages ? Sim.reglages.pourMoteur() : { delaiChargement: CFG.loadDelay },
+    liaisons: liaisonsServices(),
+    decalage: CFG.shift
+  });
+  majCompare();
+  toast('Scénario ' + slot + ' capturé');
 }
 function majCompare() {
-  const lignes = [
-    ['Journée simulée jusqu’à','time'],
-    ['Robot pl/h','robot'],['Compagnies servies par le robot','robotCies'],['YC manuel, min/plateau','ycManuel'],['Contenances','tampons'],['Matériel propre à l’ouverture','materiel'],['Vivier polyvalent','vivier'],['Calendrier','calendrier'],['Personnes au montage (matin)','prepa'],['Équipe du soir','soir'],['Tunnels de plonge','tunnels'],
-    ['Prêts à l’échéance','ontime','%'],['Échéances dépassées en fin de journée','overdue'],['Retard moyen des dossiers','retard','min'],
-    ['Heures demandées (hors plonge)','heuresDemandees','h'],['Heures faites','heuresFaites','h'],
-    ['Reste à faire','resteAFaire','h'],['Équivalent ETP','etpRealise'],
-    ['Robot occupé sur la journée','robotJour','%'],['Attente du robot, p90','robotP90','min'],
-    ['Montage occupé sur la journée','prepaJour','%'],['Cuisine occupée sur la journée','cuisineJour','%'],['Plonge occupée sur la journée','plongeJour','%'],
-    ['Minutes prêtées par le vivier','vivierPretes','min'],['Matériel propre, plus bas niveau','materielMin','u'],['Part du temps en rupture de matériel','materielRupture','%']
-  ];
-  // `l[2]` est une UNITÉ à suffixer, rien d'autre. L'instant de fin est déjà
-  // formaté à la capture, chaque instantané portant son propre libellé de jour.
-  const cell=(sn,l)=>{ if(!sn)return '—'; const v=sn[l[1]]; if(v==null)return '—'; return v+(l[2]?' '+l[2]:''); };
-  let html = '<thead><tr><th>Indicateur</th><th>A</th><th>B</th></tr></thead><tbody>';
-  lignes.forEach(l => {
-    const a=cell(snaps.A,l), b=cell(snaps.B,l);
-    const diff=snaps.A&&snaps.B&&a!==b&&l[1]!=='time';
-    html += '<tr'+(diff?' class="diff"':'')+'><td>' + l[0] + '</td><td>' + a + '</td><td>' + b + '</td></tr>';
-  });
-  document.getElementById('compare').innerHTML = html+'</tbody>';
-  let note='Mêmes vols, aucun aléa : seuls les réglages diffèrent.';
-  if(snaps.A&&snaps.B&&snaps.A.source!==snaps.B.source)note='Les deux scénarios n’utilisent pas les mêmes vols ('+snaps.A.source+' / '+snaps.B.source+') : la comparaison porte sur des journées différentes.';
-  else if(snaps.A&&snaps.B&&JSON.stringify(snaps.A.config)===JSON.stringify(snaps.B.config))note='Réglages identiques : les deux journées sont exactement les mêmes, au chiffre près.';
-  document.getElementById('compare-note').textContent=note;
+  const lignes = OrlyComparaison.lignes(snaps.A, snaps.B);
+  let groupe = '', html = '<thead><tr><th scope="col">Indicateur</th><th scope="col">A</th><th scope="col">B</th></tr></thead><tbody>';
+  for (const l of lignes) {
+    if (l.groupe !== groupe) { groupe = l.groupe; html += '<tr class="compare-groupe"><th colspan="3" scope="colgroup">' + escapeHTML(groupe) + '</th></tr>'; }
+    const cls = [l.diff ? 'diff' : '', l.verdict === 'mieux' ? 'mieux' : l.verdict ? 'moins-bien' : ''].filter(Boolean).join(' ');
+    html += '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + escapeHTML(l.lib) + '</td><td>' + escapeHTML(l.a)
+      + '</td><td>' + escapeHTML(l.b) + (l.verdict ? ' <small>' + escapeHTML(l.verdict) + '</small>' : '') + '</td></tr>';
+  }
+  document.getElementById('compare').innerHTML = html + '</tbody>';
+  document.getElementById('compare-note').textContent = OrlyComparaison.note(snaps.A, snaps.B);
 }
 
 /* ==========================================================================
@@ -1517,10 +1324,8 @@ function importVols(e) {
   rd.onload=()=>{
     try {
       const data=parseVols(rd.result);
-      if(now>DEBUT() && !confirm('Importer ce fichier et recommencer à 05:00 ? La progression et les instantanés seront effacés.'))return;
       Sim.dataCourante=data;dataSource=file.name;snaps={};majCompare();reset(data);updateSource();
-      report.classList.remove('error');report.textContent=data.length+' lignes importées. '+data.filter(f=>f.sens==='DEP').length+' départs et '+data.filter(f=>f.sens==='RET').length+' retours. Calcul de démonstration uniquement.';
-      if(data.some(f=>f.sens==='DEP'&&(f.std+CFG.shift-CFG.loadDelay<CFG.jour.debut || f.std+CFG.shift-CFG.loadDelay>CFG.jour.fin)))report.textContent+=' Certaines échéances sont hors de la fenêtre 05:00–23:00.';
+      report.classList.remove('error');report.textContent=data.length+' lignes importées. '+data.filter(f=>f.sens==='DEP').length+' départs et '+data.filter(f=>f.sens==='RET').length+' retours.';
     } catch(err){fail(err.message);}
     finally{e.target.value='';}
   };
@@ -1562,21 +1367,6 @@ function exporter() {
 }
 
 /* Workbench navigation and operational reading of the demonstrator. */
-/* Instant lisible. En multijour, l'étiquette est celle du CALENDRIER (J−2, J,
- * J+1), pas le numéro de journée de calcul : un vol du premier jour de départs
- * part « J », même si la production a commencé deux jours plus tôt. */
-function instantDu(m, t) {
-  if (t == null || !Number.isFinite(t)) return '—';
-  if (!m || m.joursProduction <= 1) return formatTime(t);
-  const minutes = ((Math.floor(t) % 1440) + 1440) % 1440;
-  return m.etiquetteJour(t) + ' ' + String(Math.floor(minutes/60)).padStart(2,'0') + ':' + String(minutes%60).padStart(2,'0');
-}
-function heureJour(t) { return instantDu(modele, t); }
-function formatTime(t) {
-  if(t==null || !Number.isFinite(t))return '—';
-  const day=Math.floor(t/1440),minutes=((Math.floor(t)%1440)+1440)%1440;
-  return String(Math.floor(minutes/60)).padStart(2,'0')+':'+String(minutes%60).padStart(2,'0')+(day?' (J'+(day>0?'+':'')+day+')':'');
-}
 function showPanel(name) {
   // Réglages et Données décrivent l'essai : tous deux vivent dans l'onglet large.
   if(name==='reglages'||name==='donnees'){showView('reglages');return;}
@@ -1594,17 +1384,6 @@ function installerCentreReglages() {
         donnees=document.getElementById('panel-donnees');
   if(!hote||!bloc)return;
   bloc.hidden=false;bloc.classList.remove('panel-content');bloc.classList.add('reglages-grille');
-  const titre=document.createElement('div');titre.className='reglages-entete';
-  // Pas de second titre : l'en-tête de vue dit déjà « Centre des réglages ».
-  titre.innerHTML='<div class="mini-note">Le haut de la page règle la journée que relit la vue Simulation.'
-    +'<details class="aide"><summary aria-label="Et le bas de la page ?">?</summary>'
-    +'<span class="aide-corps">Ce qui pilote les <b>ateliers de travail</b> — donc la vue <b>Simulation</b> — '
-    +'est en haut de cette page. En dessous, l’ancien moteur ne sert plus qu’à la comparaison A/B ; '
-    +'il disparaîtra à l’étape suivante.</span></details></div>';
-  hote.appendChild(titre);
-
-  /* Le modèle par ateliers d'abord : c'est lui qui produit les résultats qu'on
-   * lit aujourd'hui. L'ancien moteur garde ses curseurs, mais plus la vedette. */
   Sim.reglages=new OrlyReglages.CentreReglages({
     hote:()=>hote,
     services:servicesDisponibles,
@@ -1616,26 +1395,17 @@ function installerCentreReglages() {
     change:()=>{if(Sim.ateliers)Sim.ateliers.rendre();majDemarrage();if(Sim.vue)Sim.vue.recalculer();},
     notify:toast
   });
-  // Les horaires de vols servent aux DEUX moteurs : le délai de chargement fixe
-  // l'échéance d'une compagnie × classe. Le panneau remonte donc avec le modèle,
-  // plutôt que d'être recopié — deux champs pour une valeur finiraient par diverger.
+  // Les horaires de vols fixent l'échéance d'une compagnie × classe : le
+  // panneau rejoint le modèle, dont il est un réglage comme un autre.
   const horaires=document.getElementById('panneau-horaires');
   const modele=document.getElementById('rg-modele');
   if(horaires&&modele)modele.insertBefore(horaires,document.querySelector('.rg-ailleurs'));
 
-  const ancien=document.createElement('h2');ancien.className='reglages-titre reglages-ancien';
-  ancien.textContent='Ancien moteur de démonstration';
-  // Un <div>, pas un <p> : le navigateur referme un paragraphe dès qu'il y
-  // rencontre un <details>, et le « ? » tomberait à la ligne.
-  const note=document.createElement('div');note.className='mini-note reglages-entete';
-  note.innerHTML='Ils ne pilotent plus que la <b>comparaison A/B</b> ci-dessous.'
-    +'<details class="aide"><summary aria-label="Ce que ces réglages font, et ne font pas">?</summary>'
-    +'<span class="aide-corps"><p>Effectifs par curseur, files d’attente, contenances, vivier : '
-    +'le moteur précédent. Le modèle par ateliers n’a ni file ni contenance.</p>'
-    +'<p>La vue <b>Simulation</b> relit désormais la journée des ateliers de travail : '
-    +'ces curseurs n’y changent rien. Ils disparaîtront avec l’ancien moteur.</p>'
-    +'</span></details>';
-  hote.appendChild(ancien);hote.appendChild(note);hote.appendChild(bloc);
+  // Comparer deux scénarios : c'est ici qu'on change un réglage pour voir
+  // ce qu'il donne, c'est donc ici qu'on le compare.
+  const comparer=document.createElement('h2');comparer.className='reglages-titre';
+  comparer.textContent='Comparer deux scénarios';
+  hote.appendChild(comparer);hote.appendChild(bloc);
   // Le programme de vols, la sauvegarde et le périmètre décrivent l'essai eux
   // aussi : les laisser dans la colonne étroite obligeait à changer de vue pour
   // préparer une seule et même chose. La colonne ne garde que le suivi vivant.
@@ -1681,12 +1451,6 @@ function updateRunState() {
     const e = document.getElementById('run-state');
     if (e) e.textContent = 'Édition du plan';
   } else if (Sim.vue) Sim.vue.rendreTransport();
-  // L'ancien moteur ne calcule pas ces services : leurs curseurs restent grisés.
-  document.querySelectorAll('#sliders-staff input').forEach(input => {
-    const hors = NON_MODELISES.has(input.dataset.id);
-    input.disabled = hors;
-    input.title = hors ? 'Service non relié au calcul de l’ancien moteur' : '';
-  });
   document.querySelectorAll('[data-view]').forEach(b => b.disabled = editMode && b.dataset.view !== 'plan');
 }
 
@@ -1790,7 +1554,7 @@ function initWorkbench() {
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type:'text/csv;charset=utf-8'}));a.download='modele-vols-demo.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
   });
   document.getElementById('restore-demo').addEventListener('click',()=>{
-    if((now>DEBUT()||dataSource!=='Jeu de démonstration')&&!confirm('Recharger la démo ? Les données importées, la progression et les instantanés seront remplacés.'))return;
+    if(dataSource!=='Jeu de démonstration'&&!confirm('Recharger la démo ? Les vols importés et les scénarios capturés seront remplacés.'))return;
     dataSource='Jeu de démonstration';Sim.dataCourante=SAMPLE;snaps={};majCompare();reset(SAMPLE);updateSource();
     const report=document.getElementById('import-report');report.classList.remove('error');report.textContent='Jeu de démonstration rechargé.';
   });
@@ -1801,14 +1565,13 @@ function initWorkbench() {
 /* ==========================================================================
  *  11. DÉMARRAGE
  * ==========================================================================*/
-const Sim = { robotRate:0, dataCourante:SAMPLE, _gTok:null };
+const Sim = { dataCourante:SAMPLE };
 // Réglages et état courant, publiés pour l'inspection et les parcours de test
 // au même titre que Sim.editor et Sim.ateliers : lecture seule côté appelant.
 Sim.cfg = CFG;
-Sim.etat = () => ({ now, debut:DEBUT(), fin:FIN(), enMarche, modele });
 window.Sim = Sim;
 chargerZones();
-construirePlan(); build(SAMPLE); initControles(); initEdition(); initFlux(); initAteliers(); initWorkbench();
+construirePlan(); chargerVols(SAMPLE); initControles(); initEdition(); initFlux(); initAteliers(); initWorkbench();
 // Le fil de mise en route vient en dernier : il relit les autres, il ne peut
 // donc se dresser qu'une fois qu'ils sont là.
 initVueSimulation();

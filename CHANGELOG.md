@@ -5,6 +5,40 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-23 — Un seul moteur
+
+L'ancien moteur de démonstration est retiré. Depuis que la vue Simulation relit
+la journée des ateliers, il ne servait plus qu'à une comparaison A/B menée sur
+**un autre modèle que celui qu'on décrit** — des curseurs d'effectif, de
+contenance, de vivier ou de calendrier qui ne changeaient rien à ce qu'on
+regardait.
+
+- **Supprimés** : `moteur/orly.js`, `moteur/ressources.js`, `moteur/mesure.js`,
+  `moteur/procede.js` et son exemple, leurs 59 tests, et tout ce qui les
+  pilotait dans Réglages (effectifs, équipe du soir, robot, contenances,
+  vivier, calendrier multijour, tunnels, stock de matériel). Ce qu'ils
+  décrivaient se décrit maintenant atelier par atelier.
+- **Conservés** : le noyau à événements discrets (`moteur/noyau.js`), sur
+  lequel tourne le modèle par ateliers, et le panneau « Horaires de vols ».
+- **Scénarios A/B refaits** sur le modèle par ateliers (`comparaison.js`,
+  nouveau, testé). La journée étant déjà calculée, capturer **fige** réglages
+  et résultats. Le tableau sépare les deux, fait ressortir ce qui diffère et
+  écrit « mieux » ou « moins bien » sur chaque résultat qui bouge — le mot, pas
+  seulement la couleur. Il vit dans sa propre section, « Comparer deux
+  scénarios ».
+- **Le décalage global des vols** agit enfin sur le calcul : il n'était lu que
+  par l'ancien moteur.
+- **Jeu de démonstration** sorti du moteur dans `vols-demo.js` : ce n'est
+  qu'une donnée, au format de l'import.
+- Nettoyés : les jauges d'occupation vides dans les zones, les jetons animés,
+  le badge rouge du goulot, l'indicateur et le statut par vol de l'ancien
+  moteur dans `ui-model.js`, les styles devenus orphelins. Le périmètre du
+  calcul (« Non calibré · limites ») décrit désormais le modèle par ateliers.
+- Documentation : README, état des lieux ; le guide du procédé et l'étude des
+  moteurs portent une note « retiré, pour mémoire ».
+
+- Vérification : 133 tests purs et treize parcours navigateur au vert.
+
 ## 2026-09-23 — La vue Simulation relit la journée des ateliers
 
 Troisième des trois points d'ergonomie. La vue Simulation tournait encore sur

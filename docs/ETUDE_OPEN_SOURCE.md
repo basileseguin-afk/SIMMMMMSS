@@ -1,5 +1,7 @@
 # Étude : moteurs de simulation industrielle open source
 
+> **Note du 23 septembre 2026.** Les étapes 2 à 4 décrites ici (`ressources.js`, `mesure.js`, `procede.js`, `orly.js`) ont été **retirées** : seul le noyau (`moteur/noyau.js`) a été conservé, sous le modèle par ateliers (`moteur/production.js`). L'étude reste valable pour le choix du noyau.
+
 **Objet.** Identifier, lire et évaluer le meilleur code open source de
 simulation de production, puis dire précisément ce que notre moteur doit lui
 emprunter. Cette note est une étude technique : elle ne contient aucune donnée

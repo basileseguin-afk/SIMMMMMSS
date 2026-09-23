@@ -16,7 +16,8 @@
  *      (instant, priorité, rang de création), donc reproductible.
  *
  *  Ce fichier ne contient ni ressource, ni tampon, ni mesure : c'est l'étape 1
- *  de docs/ETUDE_OPEN_SOURCE.md. Voir `moteur/ressources.js` pour la suite.
+ *  de docs/ETUDE_OPEN_SOURCE.md. Le modèle par ateliers (`moteur/production.js`)
+ *  s'en sert directement.
  * ==========================================================================*/
 (function (root) {
   'use strict';

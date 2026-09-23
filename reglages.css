@@ -74,7 +74,7 @@
   background:var(--bg2);color:var(--txt);font:inherit}
 
 .rg-ailleurs{max-width:850px;margin:2px 0 0}
-.reglages-ancien{margin-top:28px;padding-top:18px;border-top:1px solid var(--bordure)}
+
 
 @media(max-width:900px){
   .rg-table{display:block;overflow-x:auto;white-space:nowrap}
@@ -84,3 +84,21 @@
 /* La version servie : la réponse à « mon navigateur a-t-il la dernière ? ». */
 .rg-version{grid-column:1/-1;margin:0;font-size:11.5px;color:var(--txt2);
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+
+/* ==========================================================================
+ *  COMPARER DEUX SCÉNARIOS
+ *  Deux groupes — ce qu'on a changé, ce que ça a donné — et, sur chaque
+ *  résultat qui bouge, le mot « mieux » ou « moins bien » : la couleur
+ *  l'accompagne, elle ne le remplace pas.
+ * ==========================================================================*/
+.panneau-compare{max-width:760px}
+.compare-tab tr.compare-groupe th{text-align:left;padding-top:14px;font-size:10.5px;text-transform:uppercase;
+  letter-spacing:.05em;color:var(--txt2);font-weight:800;border-bottom:1px solid var(--bordure2)}
+.compare-tab td small{display:block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.compare-tab tr.mieux td small{color:var(--vert)}
+.compare-tab tr.moins-bien td small{color:var(--rouge)}
+/* Le modèle ouvre la page : son titre n'a rien au-dessus à séparer. */
+#rg-modele>.titre-aide:first-child{margin-top:0;padding-top:0;border-top:0}
+/* Une seule carte dans la section : elle prend la largeur d'un tableau lisible,
+   pas une colonne étroite à côté d'un grand vide. */
+#panel-reglages.reglages-grille{columns:auto;max-width:760px}

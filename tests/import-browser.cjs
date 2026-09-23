@@ -1,4 +1,5 @@
-/* Import CSV dans le navigateur : BUG-005 (réimport après échec de lecture) et scénarios A/B. */
+/* Import CSV dans le navigateur : BUG-005 (réimport après échec de lecture), vols,
+ * export et scénarios A/B sur le modèle par ateliers. */
 const assert=require('node:assert/strict'),path=require('node:path');
 const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
@@ -32,124 +33,62 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator('#import-report').textContent(),/Ligne 4 /);
   assert.equal(await page.locator('#source-label').textContent(),'vols.csv');
 
-  // Scénarios A/B : deux journées complètes, seule la cadence du robot change.
   await click('#restore-demo');
-  await click('[data-view="reglages"]');
-  await click('#snap-a');
-  await setRange('#robot','200');
-  await click('#snap-b');
-  // Le tableau est relu à chaque appel : il change à chaque capture.
-  const lignes=()=>page.locator('#compare tbody tr').evaluateAll(trs=>trs.map(tr=>[...tr.querySelectorAll('td')].map(td=>td.textContent)));
-  const ligne=async nom=>(await lignes()).find(l=>l[0].startsWith(nom));
-  assert.deepEqual((await ligne('Journée simulée')).slice(1),['23:00','23:00']);
-  assert.deepEqual((await ligne('Robot pl/h')).slice(1),['320','200']);
-  const pct=v=>parseInt(v,10);
-  const prets=await ligne('Prêts à l’échéance');assert.ok(pct(prets[2])<pct(prets[1]),'un robot plus lent doit dégrader la ponctualité : '+prets);
-  const occ=await ligne('Robot occupé');assert.ok(pct(occ[2])>pct(occ[1]));
-  assert.deepEqual((await ligne('Compagnies servies')).slice(1),['FBU, TX, FWI, CRL','FBU, TX, FWI, CRL']);
-  assert.equal(await page.locator('#compare tr.diff').count()>0,true);
-  assert.match(await page.locator('#compare-note').textContent(),/seuls les réglages diffèrent/);
-  // Même réglages ⇒ mêmes chiffres, et la note le dit.
-  await setRange('#robot','320');await click('#snap-b');
-  assert.match(await page.locator('#compare-note').textContent(),/Réglages identiques/);
-  assert.equal(await page.locator('#compare tr.diff').count(),0);
-  // Retirer toutes les compagnies du robot : le montage porte tout, la ligne diffère.
-  await page.locator('#robot-cies').fill('');await page.locator('#robot-cies').dispatchEvent('change');
-  await click('#snap-b');
-  assert.deepEqual((await ligne('Compagnies servies')).slice(1),['FBU, TX, FWI, CRL','aucune']);
-  assert.equal(pct((await ligne('Robot occupé'))[2]),0);
-  await page.locator('#robot-cies').fill('FBU, TX, FWI, CRL');await page.locator('#robot-cies').dispatchEvent('change');
-  // Contenance finie au montage : le levier est pris en compte dans la capture.
-  await page.locator('#tampon-prepa').fill('2');await page.locator('#tampon-prepa').dispatchEvent('change');
-  await click('#snap-b');
-  assert.match((await ligne('Contenances'))[2],/MONTAGE 2/);
-  await page.locator('#tampon-prepa').fill('');await page.locator('#tampon-prepa').dispatchEvent('change');
-  // Équipe du soir : cuisine à 0 après 14:00 → la vague du soir ne sort pas.
-  await page.locator('#equipe-soir > summary').click();
-  assert.match(await page.locator('#so-cuisine').textContent(),/comme le matin/);
-  await setRange('#soir-cuisine','0');
-  assert.equal(await page.locator('#so-cuisine').textContent(),'0');
-  await click('#snap-b');
-  assert.match((await ligne('Équipe du soir'))[2],/CUISINE 0/);
-  assert.equal((await ligne('Équipe du soir'))[1],'comme le matin');
-  const pretsSoir=await ligne('Prêts à l’échéance');assert.ok(pct(pretsSoir[2])<pct(pretsSoir[1]),'sans cuisine le soir, la ponctualité doit chuter : '+pretsSoir);
-  assert.ok(pct((await ligne('Échéances dépassées'))[2])>0);
-  await setRange('#soir-cuisine','10');
-  // Matériel propre : un stock serré dégrade la ponctualité et se mesure.
-  await setRange('#materiel','600');
-  assert.equal(await page.locator('#materiel-val').textContent(),'600 u');
-  await click('#snap-b');
-  assert.deepEqual((await ligne('Matériel propre à l’ouverture')).slice(1),['2600 u','600 u']);
-  const pretsMat=await ligne('Prêts à l’échéance');
-  assert.ok(pct(pretsMat[2])<pct(pretsMat[1]),'un stock serré doit dégrader la ponctualité : '+pretsMat);
-  const rupture=await ligne('Part du temps en rupture');
-  assert.ok(pct(rupture[2])>50,'stock serré : la rupture doit dominer la journée · '+rupture);
-  assert.ok(pct(rupture[1])<10,'stock par défaut : la rupture doit rester marginale · '+rupture);
-  await setRange('#materiel','2600');
-  // Capturer rejoue toujours la journée entière, où qu'on en soit de la relecture.
-  await setRange('#robot','200');
-  await click('[data-view="plan"]');await click('#sim-pas');
-  await click('[data-view="reglages"]');
-  await click('#snap-a');assert.deepEqual((await ligne('Journée simulée')).slice(1),['23:00','23:00']);
   // La vue Vols lit le modèle par ateliers : sans atelier décrit, aucune classe
   // n'est fabriquée, et le tableau le dit plutôt que d'annoncer un retard.
   await click('[data-view="vols"]');
   assert.match(await page.locator('#flight-rows').textContent(),/Non fabriqué/);
   assert.match(await page.locator('#flight-rows').textContent(),/aucun atelier ne fabrique/);
-  // L'export suit ce qu'on regarde : la journée calculée, pas l'ancien moteur.
+  // L'export suit ce qu'on regarde : la journée calculée.
   const attendu=page.waitForEvent('download');await click('#btn-export');const dl=await attendu;
   const exp=JSON.parse(require('node:fs').readFileSync(await dl.path(),'utf8'));
   assert.equal(exp.schemaVersion,'0.5');assert.equal(exp.modele,'ateliers');
   assert.ok(exp.departs.length>0,'les départs du programme sont exportés');
   assert.ok(exp.departs.every(d=>d.classes.every(c=>c.absente)),'sans atelier, aucune classe n’est fabriquée');
-  // Le bloc précédent a laissé la vue sur « Vols » : on revient aux réglages.
+
+  // Scénarios A/B sur le modèle par ateliers : une cuisine à deux, puis à douze.
+  await click('[data-view="ateliers"]');
+  await page.locator('#at-new').click();await page.waitForTimeout(150);
+  const at=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
+  await page.selectOption(`[data-at="${at}"] [data-at-champ=service]`,'cuisine');await page.waitForTimeout(150);
+  for(const c of ['AF/BC','AF/YC','DL/YC'])await page.selectOption(`[data-at="${at}"] [data-at-champ=lot-nouveau]`,c);
+  const personnes=n=>page.evaluate(([id,n])=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.find(a=>a.id===id).personnes=n;}),[at,n]);
+  await personnes(2);
   await click('[data-view="reglages"]');
-  // Heures, reste à faire et ETP : le vocabulaire de la feuille de route.
+  assert.match(await page.locator('#compare-note').textContent(),/Capturez A/);
   await click('#snap-a');
-  // L'équipe du soir est restée réglée par un bloc précédent : sans la baisser
-  // aussi, l'après-midi rattraperait tout et la comparaison ne montrerait rien.
-  await setRange('#staff-cuisine','1');await setRange('#soir-cuisine','1');await click('#snap-b');
-  const dem=await ligne('Heures demandées');
-  assert.equal(dem[1],dem[2],'la demande ne dépend pas de l’effectif');
-  const faites=await ligne('Heures faites');
-  assert.ok(parseFloat(faites[2])<parseFloat(faites[1]),'à une personne, tout n’est pas fait : '+faites);
-  assert.equal(parseFloat((await ligne('Reste à faire'))[1]),0);
-  assert.ok(parseFloat((await ligne('Reste à faire'))[2])>5);
-  const etp=await ligne('Équivalent ETP');
-  assert.ok(parseFloat(etp[1])>5&&parseFloat(etp[1])<40,'ETP plausible : '+etp);
-  await setRange('#staff-cuisine','10');await setRange('#soir-cuisine','10');
-
-  // Vivier polyvalent : effectif + ateliers couverts, et l'effet se mesure.
-  await setRange('#staff-cuisine','2');
-  await click('#snap-a');
-  await setRange('#vivier','8');
-  assert.match(await page.locator('#vivier-val').textContent(),/8 — cochez un atelier/);
-  assert.equal(await page.locator('[data-vivier=plonge]').count(),0,'la plonge ne peut pas être couverte');
-  for(const id of ['cuisine','prepa','dotation'])await page.locator('[data-vivier='+id+']').check();
-  assert.equal(await page.locator('#vivier-val').textContent(),'8');
+  await personnes(12);
   await click('#snap-b');
-  assert.deepEqual((await ligne('Vivier polyvalent')).slice(1),['aucun','8 pers. · CUISINE, MONTAGE, DOTATION']);
-  const pretsA=await ligne('Prêts à l’échéance');
-  assert.ok(pct(pretsA[2])>pct(pretsA[1])+40,'le vivier doit rattraper la cuisine sous-dotée : '+pretsA);
-  assert.ok(pct((await ligne('Minutes prêtées'))[2])>1000);
-  assert.equal((await ligne('Minutes prêtées'))[1],'—');
-  await setRange('#vivier','0');await setRange('#staff-cuisine','10');
-
-  // Calendrier multijour : le compteur et le tableau A/B suivent. (L'horloge
-  // appartient désormais à la relecture du modèle par ateliers.)
-  assert.equal(await page.locator('#calendrier').isDisabled(),false);
-  await setRange('#materiel','2600');
-  assert.equal(await page.locator('#cal-detail').isVisible(),false);
-  await page.locator('#calendrier').check();
-  assert.equal(await page.locator('#cal-detail').isVisible(),true);
-  assert.equal(await page.locator('#source-count').textContent(),'36 départs · 18 retours');
+  // Le tableau est relu à chaque appel : il change à chaque capture.
+  const lignes=()=>page.locator('#compare tbody tr:not(.compare-groupe)').evaluateAll(trs=>trs.map(tr=>[...tr.querySelectorAll('td')].map(td=>td.textContent)));
+  const ligne=async nom=>(await lignes()).find(l=>l[0].startsWith(nom));
+  assert.deepEqual((await ligne('Personnes postées')).slice(1),['2','12']);
+  assert.deepEqual((await ligne('Programme de vols')).slice(1),['Jeu de démonstration','Jeu de démonstration']);
+  assert.match((await ligne('Dernière sortie'))[2],/mieux/,'à douze, la cuisine finit plus tôt, et le tableau le dit en mots');
+  assert.equal(await page.locator('#compare tr.diff').count()>0,true);
+  assert.equal(await page.locator('#compare tr.moins-bien').count(),0,'plus de monde ne dégrade rien');
+  assert.match(await page.locator('#compare-note').textContent(),/seuls les réglages diffèrent/);
+  // Mêmes réglages ⇒ mêmes chiffres, et la note le dit.
+  await personnes(2);await click('#snap-b');
+  assert.match(await page.locator('#compare-note').textContent(),/Réglages identiques/);
+  assert.equal(await page.locator('#compare tr.diff').count(),0);
+  // Le décalage des vols est un réglage comme un autre : il se capture.
+  await setRange('#shift','30');
+  assert.equal(await page.locator('#shift-val').textContent(),'+30 min');
   await click('#snap-b');
-  assert.deepEqual((await ligne('Calendrier')).slice(1),['journée unique','3 journées de départs, cuisine J−2 et prépa J−1']);
-  assert.deepEqual((await ligne('Journée simulée')).slice(1),['23:00','J+2 23:00']);
-  await page.locator('#calendrier').uncheck();
-  assert.equal(await page.locator('#source-count').textContent(),'12 départs · 6 retours');
+  assert.deepEqual((await ligne('Décalage des vols')).slice(1),['0 min','+30 min']);
+  await setRange('#shift','0');
+  // Deux programmes de vols différents : la comparaison le signale.
+  await page.locator('#imp-vols').setInputFiles({name:'autre.csv',mimeType:'text/csv',buffer:Buffer.from(header+'AF1,AF,A320,DEP,12:00,,4,0,90')});
+  await page.waitForFunction(()=>document.getElementById('source-label').textContent==='autre.csv');
+  assert.match(await page.locator('#compare-note').textContent(),/Capturez A/,'un nouveau programme efface les captures');
+  await click('#snap-a');await click('#restore-demo');await click('[data-view="reglages"]');
+  assert.match(await page.locator('#compare-note').textContent(),/Capturez A/);
+  // L'ancien moteur n'a plus de curseurs à offrir.
+  for(const id of ['#staff-cuisine','#robot','#vivier','#calendrier','#materiel','#tunnels'])
+    assert.equal(await page.locator(id).count(),0,id+' a disparu avec l’ancien moteur');
 
   assert.deepEqual(errors,[]);
-  console.log('Import browser passed: read failure then re-import (BUG-005), physical line numbers (BUG-003), A/B full-day replay.');
+  console.log('Import browser passed: read failure then re-import (BUG-005), physical line numbers (BUG-003), Vols and export, A/B on the atelier model.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

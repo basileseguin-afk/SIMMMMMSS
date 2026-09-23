@@ -1,5 +1,7 @@
 # Décrire un procédé en données
 
+> **Retiré le 23 septembre 2026.** `moteur/procede.js` et son exemple ont été supprimés avec l'ancien moteur. Ce guide reste pour mémoire : le procédé se décrit désormais atelier par atelier (voir [la note de modèle](MODELE_ATELIERS.md)).
+
 Le procédé n'est plus codé en dur : c'est un fichier JSON qu'on relit, qu'on
 discute et qu'on corrige sans toucher au moteur. La forme est inspirée de
 [ProdSim](https://github.com/FuchsTom/ProdSim) (MIT) — voir

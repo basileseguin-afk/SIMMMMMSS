@@ -85,119 +85,69 @@ n'est présent dans ce dépôt.
 
 ## Parcours d’utilisation
 
-1. **Données** : consulter les limites du moteur, télécharger le modèle CSV ou
-   importer un fichier simplifié. Le nom du jeu et le nombre de départs/retours
-   restent visibles en haut de page.
-2. **Réglages** : préparer les effectifs simultanés de l'ancien calcul de la vue
-   Simulation, la cadence du robot et la
-   liste des compagnies qu’il sert (règle de la feuille de route : FBU, TX/FWI
-   et CRL ; les autres YC sont dressés à la main à un coefficient non calibré),
-   la contenance des ateliers en ordres de fabrication (vide = illimitée ; finie,
-   elle crée le blocage amont), l’**équipe du soir** (effectif par atelier à
-   partir de l’heure de relève, 14:00 par défaut ; personne n’est interrompu à
-   la relève, les places en trop se ferment au fil des libérations), les
-   tunnels, le **matériel propre à l’ouverture**, le **vivier polyvalent**
-   (personnes partagées entre plusieurs ateliers), le **calendrier de
-   production** (cuisine J−2, prépa J−1 ; inactif par défaut) et les horaires
-   avant de lancer. Une fois l’essai commencé, les paramètres sont verrouillés, même
-   en pause. **Recommencer** libère les réglages et efface la progression après
-   confirmation ; les instantanés restent disponibles.
-3. **Plan / Suivi** : sélectionner un atelier depuis le plan, la liste Atelier
-   ou les indicateurs. Les opérations actives apparaissent dans le détail.
-4. **Suivi des vols** : rechercher un vol ou une compagnie, filtrer les dossiers
-   non prêts ou dont l’échéance est dépassée, voir les opérations restantes.
-5. **Exporter le résultat** : télécharger les données d’entrée, paramètres,
-   indicateurs, mesures par atelier et scénarios A/B avec le statut explicite
-   de démonstration.
+Le fil « Par où commencer », sous les onglets, donne l’étape suivante. Dans
+l’ordre :
 
-Le bouton Pause arrête le calcul. La vitesse est exprimée en minutes simulées
-par seconde. Le calcul est un **moteur à événements discrets** (`moteur/`) :
-chaque personne est occupée par un lot de 5 homme-minutes à la fois, le robot
-dresse un vol à la fois dans l’ordre des échéances, la plonge a autant de
-places que de tunnels, la dotation consomme du matériel propre que la plonge
-réalimente, et chaque atelier a une contenance en OF (illimitée
-tant qu’elle n’est pas renseignée dans `CFG.tampons`). Le rendu avance la
-simulation par pas de 30 secondes simulées. Le barème d’homme-minutes reste
-non calibré. Les déplacements de jetons sont illustratifs, sans valeur de
-temps de transfert.
+1. **Vols** (Réglages › Données) : importer un CSV simplifié, ou garder le jeu
+   de démonstration. Le nom du jeu et le nombre de départs/retours restent
+   visibles en haut de page.
+2. **Plan** : tracer ou confirmer les services (« Éditer les zones »).
+3. **Ateliers** : décrire, service par service, les équipes (personnes, horaire,
+   pauses), ce qu’elles fabriquent (compagnie × classe, dans l’ordre), les
+   plonges (tunnels, débits) et les mises à disposition.
+4. **Flux** : relier les services ; le parcours des classes se lit dans ce graphe.
+5. **Barème** (Réglages) : homme-minutes par unité et par service, rendement,
+   régime de poste, délai de chargement et décalage des vols.
+
+La journée est **calculée d’un coup** par `moteur/production.js` et
+**recalculée à chaque modification** : aucun réglage ne se verrouille.
+
+- **Simulation** : relit la journée calculée. « ▶ Lire », « ⏭ Pas » (saute au
+  prochain changement), « ↺ Début » et un curseur de temps qui va dans les deux
+  sens. Le plan montre quatre états par service : au travail, attend un amont
+  (pointillé), a fini, pas commencé. Au début de la journée, il montre plutôt
+  ce qui reste à décrire.
+- **Vols** : chaque départ, suivi classe par classe ; une classe qu’aucun
+  atelier ne fabrique est dite « Non fabriqué ».
+- **Exporter** : la journée calculée — départs, classes, journal des lots.
 
 ## Lire les indicateurs
 
-- **Prêts à l’échéance** : dossiers prêts à temps / départs dont l’échéance est
-  atteinte. Avant la première échéance, la valeur est « — ». Un dossier
-  inachevé à échéance dépassée reste dans le dénominateur.
-- **Échéances dépassées · non prêts** : dossiers encore inachevés dont
-  l’échéance est atteinte.
-- **Travail en cours** : ordres de fabrication libérés et non terminés, en
-  attente ou en traitement.
-- **Débit robot** : part du temps où le robot est occupé sur les 15 dernières
-  minutes simulées, multipliée par sa cadence. Une mesure du modèle, pas du site.
-- **Retard courant des départs exigibles** : moyenne incluant les dossiers
-  inachevés, dont le retard augmente jusqu’à leur fin.
-- **Retard des dossiers terminés** : moyenne sur les dossiers terminés uniquement.
-- **Occupation par atelier** : part des personnes occupées par un lot de travail
-  sur les 15 dernières minutes simulées, mesurée, sans lissage ni plancher. Le
-  détail d’un atelier donne aussi l’occupation depuis 05:00. Magasin, Duty free
-  et handling ne sont pas modélisés.
-- **Point d’attention** : le poste où l’on attend, compté en **ordres de
-  fabrication arrêtés à cause de lui** — personnes occupées, robot occupé,
-  matériel propre en rupture, ou tampon plein. Un OF bloqué faute de place en
-  aval est imputé à l’atelier aval, celui qui est plein. Aucun seuil : s’il n’y
-  a d’attente nulle part, rien n’est désigné.
-- **Calendrier de production** (facultatif) : la cuisine travaille deux jours
-  avant le départ, la prépa la veille, le reste le jour même. Les ateliers
-  **ferment la nuit**. L’horloge affiche alors le jour (J−2, J, J+1). Entre
-  deux étapes séparées par une nuit, l’ordre **quitte son atelier** et attend
-  en stock : il ne bloque pas l’amont. Cette attente est dite « planifiée »
-  dans l’explication — ce n’est pas un retard.
-- **Heures et ETP** : le détail d’un atelier donne les **heures demandées** par
-  le barème, les **heures faites**, le **reste à faire** et les **heures de
-  présence**. La présence dépasse le travail d’exactement 1 / disponibilité :
-  une heure de travail mobilise plus d’une heure de quelqu’un. L’**ETP** vaut
-  heures ÷ 7, convention de la feuille de route — un équivalent de **charge**,
-  pas un nombre de personnes à affecter. La **plonge en est exclue** : ses
-  heures sont des heures de tunnel, pas des homme-heures.
-- **Vivier polyvalent** : des personnes rattachées à aucun atelier, qui vont
-  là où l’on attend parmi les ateliers cochés. Un atelier sert d’abord avec ses
-  propres gens ; le détail d’un atelier indique combien lui sont prêtées. La
-  **plonge en est exclue** : ses places sont des tunnels, prêter quelqu’un n’en
-  ajoute pas un. Un atelier sans personne à lui n’a pas de taux d’occupation —
-  la question n’a pas de sens, l’indicateur affiche « — ».
-- **Matériel propre** : un seul compte, en unités par passager. La dotation en
-  consomme pour chaque départ, la plonge le réalimente avec les retours lavés.
-  À stock vide, la dotation attend **sans mobiliser personne** : son occupation
-  reste basse alors que rien n’avance, et c’est le point d’attention qui le dit.
-- **Suivi des vols, colonne « Opérations »** : pendant la journée, chaque ordre
-  de fabrication dit où il est et ce qu’il attend (une personne, le robot, une
-  place en aval). Une fois le vol prêt, l’OF qui a fixé l’heure explique son
-  parcours : attente du robot, attente de personnes par atelier, blocage aval,
-  travail. Ces attentes sont des **mesures séparées qui peuvent se recouvrir**
-  (au montage, robot et personnes travaillent en parallèle), pas les parts d’un
-  total. L’export contient cette explication par vol et le journal des étapes.
+- **Échéances tenues** : parmi les classes dont l’échéance est **déjà passée**
+  à l’instant relu, celles sorties à temps. Avant la première échéance : « — ».
+- **Échéance dépassée** : classes dont l’échéance est passée et qui ne sont pas
+  encore sorties.
+- **Au travail** / **En attente** : services qui fabriquent, et services
+  ouverts dont l’amont n’a pas encore livré.
+- **Point d’attention** : le poste qui attend son amont depuis le plus
+  longtemps à cet instant, et, sur la journée, celui qui a le plus attendu.
+  Pour un service choisi : ses équipes et ses lots avec leurs heures.
+- **La journée calculée** : classes à l’heure, retard le plus long, dernière
+  sortie, attente cumulée, homme-heures, classes sans atelier.
 
-L’échéance vaut départ simulé moins délai de chargement. Ces états concernent
-la production ; ils ne constituent pas une mesure du retard avion.
+L’échéance vaut départ moins délai de chargement. Ces états concernent la
+production ; ils ne mesurent pas le retard avion.
 
-**Scénarios A/B.** Une capture enregistre les réglages et les vols du moment,
-puis rejoue la **journée entière** sans interface — quelques dizaines de
-millisecondes, le moteur étant sans aléa. Deux captures se comparent donc à
-conditions égales : mêmes vols, seuls les réglages diffèrent, et les lignes qui
-diffèrent ressortent. Réglages identiques ⇒ chiffres identiques, et la note le
-dit. Le tableau donne la ponctualité finale, les échéances dépassées, le retard
-moyen, et l’occupation sur la journée du robot, du montage, de la cuisine et de
-la plonge. Un changement de jeu efface les scénarios.
+**Scénarios A/B** (Réglages › Comparer deux scénarios). La journée étant déjà
+calculée, une capture **fige** les réglages et leurs résultats. Changez un
+atelier, le barème ou un horaire, capturez B : le tableau sépare les réglages
+des résultats, fait ressortir les lignes qui diffèrent et écrit, sur chaque
+résultat, « mieux » ou « moins bien ». Le calcul n’a aucun aléa : réglages
+identiques ⇒ chiffres identiques, et la note le dit. Un nouveau programme de
+vols efface les captures.
 
 ## Import CSV simplifié
 
 Utiliser **Télécharger le modèle**. En-têtes attendus, insensibles à la casse :
 
 ```csv
-vol_id,compagnie,type_avion,sens,heure_std,heure_sta,nb_BC,nb_PC,nb_YC
-DEMO001,DEMO,A320,DEP,12:00,,0,0,100
-DEMO-RET001,DEMO,A320,RET,,08:00,0,0,100
+vol_id,compagnie,type_avion,sens,heure_std,heure_sta,nb_BC,nb_PC,nb_YC,nb_CREW,nb_SPML
+DEMO001,DEMO,A320,DEP,12:00,,0,0,100,4,3
+DEMO-RET001,DEMO,A320,RET,,08:00,0,0,100,4,0
 ```
 
-`type_avion` est facultatif. Toutes les autres colonnes sont obligatoires.
+`type_avion`, `nb_CREW` et `nb_SPML` sont facultatifs. Toutes les autres
+colonnes sont obligatoires.
 `heure_std` doit être renseignée pour DEP, `heure_sta` pour RET, au format
 HH:MM. Les quantités sont des entiers positifs ou nuls, avec au moins une
 quantité non nulle par ligne. Une ligne représente un départ ou un retour ;
@@ -258,39 +208,26 @@ Modification, désactivation, suppression, retour, filtres du plan, historique,
 sauvegarde locale et export/import sont disponibles. Les anciennes flèches sont
 conservées **À classer**. Voir le [guide du Centre des flux](docs/CENTRE_DES_FLUX.md).
 
-Ce réseau configurable ne remplace pas les gammes de `moteur/orly.js` : les
-calculs A/B, les équipes, les tampons et les explications par OF restent ceux
-du moteur existant. Leur raccordement aux nouvelles liaisons reste à définir.
+Le modèle par ateliers lit ce graphe : c’est lui qui dit quel service attend
+quel autre (voir la [note de modèle](docs/MODELE_ATELIERS.md)).
 
 ## Limites métier à traiter ensuite
 
-- Le **calendrier de production** (cuisine J−2, prépa J−1, exception CRL du
-  soir) est modélisé mais **inactif par défaut** : il change tout l’axe du
-  temps. Le seuil de 21:00 et la liste des compagnies exceptées ne sont **pas
-  confirmés**. Le même programme de vols est répété chaque jour, faute de
-  données réelles datées.
-- Le robot sert les compagnies de la liste réglable (FBU, TX/FWI et CRL par
-  défaut) ; les prestations exactes et les cas SPML restent à préciser, et le
-  coefficient de dressage manuel des autres YC n’est pas calibré.
-- Standards théoriques du classeur, effets de lot et non-linéarité non intégrés.
-- Un seul compte de matériel propre : la dotation en consomme pour chaque
-  départ, les retours lavés à la plonge le réalimentent. Les trolleys
-  d’armement, les stocks de denrées, les compétences, les pauses et les
-  transferts physiques ne sont pas modélisés.
-- Les curseurs décrivent des personnes simultanées, en deux équipes au plus
-  (matin, soir), auxquelles s’ajoute un vivier polyvalent ; les compétences
-  réelles ne sont pas modélisées ; la convention heures / 7 produit un équivalent de charge, pas
-  une affectation de personnel.
+- Le **barème d’homme-minutes n’est pas calibré** : valeurs de démonstration
+  tant que l’étude de l’unité n’est pas importée.
+- Calcul **sans aléa** : pas de panne, d’absence ni de retard de livraison.
+- Un seul compte de matériel propre, consommé et relavé ; les stocks de
+  denrées, les trolleys et les transferts physiques ne sont pas modélisés.
+- Les compétences ne sont pas modélisées : une personne ne va pas aider dans
+  un autre atelier.
+- L’export Winrest (XLSX, lignes de prestations) n’est pas encore lu.
 
-Le moteur à événements discrets est maintenant branché à l’interface via
-`moteur/orly.js`. Le noyau, les ressources et les mesures prennent en charge
-les files, les tampons bloquants, les relèves et le rejeu A/B ; `moteur/procede.js`
-propose aussi une description de gamme en données — voir le
-[guide du procédé](docs/PROCEDE.md). La calibration, l’intégration du calendrier
-métier et le raccordement du Centre des flux restent à faire.
-L’[étude des moteurs](docs/ETUDE_OPEN_SOURCE.md) décrit le bilan et la décision
-encore ouverte sur le moteur d’autorité (JavaScript ou Python). Cette évolution
-d’interface ne tranche pas cette décision. Les données réelles restent en privé.
+L’ancien moteur de démonstration (`moteur/orly.js`, `ressources.js`,
+`mesure.js`, `procede.js`) a été **retiré le 23 septembre 2026** : la vue
+Simulation relit désormais le modèle par ateliers, qui porte seul le calcul.
+L’[étude des moteurs](docs/ETUDE_OPEN_SOURCE.md) et le
+[guide du procédé](docs/PROCEDE.md) restent pour mémoire. Les données réelles
+restent en privé.
 **Pour tracer et paramétrer l’unité, suivre le
 [mode d’emploi de la saisie](docs/TRACER_L_UNITE.md)** : où travailler, dans
 quel ordre, et comment ne rien perdre.
@@ -308,31 +245,29 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 |---|---|
 | `index.html` | Structure et contrôles |
 | `interface.css` | Disposition, hiérarchie visuelle et adaptations mobile |
-| `sim.js` | Interface, plan, interactions et rendu |
-| `moteur/orly.js` | Modèle des flux de l’unité sur le moteur : ateliers, robot, plonge, tampons, goulot mesuré |
+| `sim.js` | Interface, plan, interactions, glue entre les centres |
+| **`moteur/production.js`** | **Modèle par ateliers de travail** — compagnie × classe, lots ordonnés, robot, plonge, parcours lu des flux. Voir [la note de modèle](docs/MODELE_ATELIERS.md) |
+| `moteur/noyau.js` | Noyau à événements discrets sur lequel tourne le modèle par ateliers |
+| `replay.js` / `simulation.js` | Relecture de la journée calculée : états à l’instant t, vue Simulation |
+| `comparaison.js` | Scénarios A/B : capture, tableau, verdict par ligne |
+| `vols-demo.js` | Programme de vols **fictif** de démonstration |
 | `plan-editor.js` / `editor.css` | Dessin, annotations, historique et sauvegarde du plan |
-| `ui-model.js` | Import CSV, calcul des états et règles de présentation testables |
-| `moteur/noyau.js` | Noyau à événements discrets utilisé par le modèle Orly branché à l’interface |
+| `ui-model.js` | Import CSV et échappement, testables |
 | `flow-center.js` / `flow-center.css` | Réseau configurable, règles humaines, onglet et affichage des flux |
-| `moteur/mesure.js` | Moniteurs de niveau (pondérés par le temps) et de comptage |
-| `moteur/ressources.js` | Postes à places, tampons bloquants, niveaux (étape 2) |
-| `moteur/procede.js` | Procédé décrit en données : validation, tirages à graine, exécution (étape 3) |
-| **`moteur/production.js`** | **Modèle par ateliers de travail** — compagnie × classe, lots ordonnés, robot, parcours lu des flux. Voir [la note de modèle](docs/MODELE_ATELIERS.md) |
 | `ateliers.js` / `ateliers.css` | Onglet « Ateliers de travail » : saisie, planning, couverture par classe |
-| `moteur/procede-exemple.json` | Procédé **fictif** publiable — voir [le guide](docs/PROCEDE.md) |
+| `reglages.js` / `reglages.css` | Centre des réglages : barème, rendement, régime de poste |
+| `demarrage.js` / `demarrage.css` | Fil « Par où commencer » |
 | `plan-prive/` | Fond de plan **local, non versionné** (voir ci-dessous) |
-| `tests/ui-model.test.cjs` | Régressions de l’import et des indicateurs |
+| `tests/ui-model.test.cjs` | Régressions de l’import CSV |
 | `tests/noyau.test.cjs` | Régressions du noyau : ordre, horloge, conditions, interruptions, erreurs |
-| `tests/mesure.test.cjs` | Régressions des moniteurs : pondération par le temps, percentiles |
-| `tests/ressources.test.cjs` | Régressions des ressources, dont la démonstration du blocage amont |
-| `tests/procede.test.cjs` | Régressions du procédé : validation, reproductibilité, goulot mesuré |
-| `tests/orly.test.cjs` | Journée de démonstration rejouée sans interface : leviers, déterminisme, blocage |
-| `tests/browser-smoke.cjs` | Parcours dans Chromium, export, édition et responsive |
-| `tests/import-browser.cjs` | Import CSV : échec de lecture puis réimport, numéros de ligne, scénarios A/B |
-| `tests/sauvegarde-browser.cjs` | Sauvegarde complète : export, refus atomique, effacement et restauration |
 | `tests/production.test.cjs` | Régressions du modèle par ateliers : enchaînement des lots, attente des amonts, robot, pauses, validation |
+| `tests/replay.test.cjs` | Relecture : états d’un service, ponctualité à l’instant t, pas suivant |
+| `tests/comparaison.test.cjs` | Scénarios A/B : capture, déterminisme, verdicts, jeu de démonstration |
+| `tests/browser-smoke.cjs` | Parcours dans Chromium : relecture, vols, import, export, thèmes, mobile |
+| `tests/import-browser.cjs` | Import CSV : échec de lecture puis réimport, numéros de ligne, export, scénarios A/B |
+| `tests/sauvegarde-browser.cjs` | Sauvegarde complète : export, refus atomique, effacement et restauration |
 | `tests/ateliers-browser.cjs` | Onglet Ateliers de bout en bout : saisie, calcul, planning, persistance |
-| `tests/etat-plan-browser.cjs` | État de paramétrage des ateliers sur le plan, bascule des légendes, bande d'indicateurs contextuelle |
+| `tests/etat-plan-browser.cjs` | État de paramétrage sur le plan, quatre états de la relecture, bascule des légendes |
 | `tests/zoom-browser.cjs` | Bornes du zoom, cadrage d'un service, raccourcis clavier, bridage du déplacement |
 | `tests/annexe-browser.cjs` | Zone de production annexe (« Armement 2 ») : création, rattachement, aménagement, effectif |
 | `BUGS.md` | Registre des bugs connus — à lire avant de coder, à compléter après chaque revue |
