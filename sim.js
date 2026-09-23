@@ -206,7 +206,7 @@ function construirePlan() {
     const g = svgEl('g', { class:'zone', 'data-id':id });
     const rect = svgEl('path', { class:'fond' }); g.appendChild(rect);
     const ti = svgEl('title', {}); g.appendChild(ti);
-    const titre = svgEl('text', { class:'titre' }); titre.textContent = z.nom; g.appendChild(titre);
+    const titre = svgEl('text', { class:'titre' }); titre.textContent = nomLisible(z.nom); g.appendChild(titre);
     const sous = (z.sous || []).map(s => {
       const st = svgEl('text', { class:'sous' }); st.textContent = s; g.appendChild(st); return st;
     });
@@ -219,7 +219,7 @@ function construirePlan() {
       g.insertBefore(ico, titre);
     }
     zoneEls[id] = { g, rect, titre, sous, ico, tip:ti, b:boite(z) };
-    g.setAttribute('role','button'); g.setAttribute('tabindex','0'); g.setAttribute('aria-label',z.nom);
+    g.setAttribute('role','button'); g.setAttribute('tabindex','0'); g.setAttribute('aria-label',nomLisible(z.nom));
     g.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' '){e.preventDefault();selectionner(id);} });
     g.addEventListener('click', e => { e.stopPropagation(); selectionner(id); });
     gZones.appendChild(g);
@@ -236,7 +236,7 @@ function positionnerZone(id) {
   const s = (el, a) => { for (const k in a) el.setAttribute(k, a[k]); };
   e.rect.setAttribute('d', dZone(z));
   e.g.classList.toggle('approx', !!z.approx);
-  e.tip.textContent = z.nom + (z.approx ? ' (emplacement à confirmer)' : '');
+  e.tip.textContent = nomLisible(z.nom) + (z.approx ? ' (emplacement à confirmer)' : '');
   s(e.titre, { x:b.x + 14, y:b.y + 56 });
   e.sous.forEach((st, i) => s(st, { x:b.x + 14, y:b.y + 96 + i*38 }));
   if (e.ico) {
@@ -252,7 +252,7 @@ function redessinerEdges() { if (Sim.flows) dessinerFluxConfigures(); }
 function dessinerFluxConfigures(){
   const group=document.getElementById('flow-edges');group.replaceChildren();
   const points=Sim.flows.points,pairs=new Map();
-  document.getElementById('fc-map-scope').textContent=Sim.flows.mapOwner?' · '+(zoneParId(Sim.flows.mapOwner)?.nom||'Service absent'):'';
+  document.getElementById('fc-map-scope').textContent=Sim.flows.mapOwner?' · '+nomLisible(zoneParId(Sim.flows.mapOwner)?.nom||'Service absent'):'';
   for(const flow of Sim.flows.mapFlows()){
     const a=points.find(p=>p.id===flow.from),b=points.find(p=>p.id===flow.to);
     // Une zone supprimée depuis la saisie du flux n'a plus de géométrie : on
@@ -276,9 +276,11 @@ function zoomService(z){const b=boite(z);return Math.max(.5,Math.min(VUE.w/(b.w+
  *  L'onglet « Ateliers » ne sert plus à dessiner des tables : il décrit QUI
  *  fabrique QUOI, QUAND et À COMBIEN. Le calcul est dans moteur/production.js.
  * ==========================================================================*/
+/* Le nom d'un service tel qu'on l'affiche : lisible, même s'il est enregistré en capitales. */
+const nomLisible=n=>window.OrlyIcones?OrlyIcones.nomLisible(n):n;
 function servicesDisponibles(){
-  const liste=Object.keys(ZONES).map(id=>({id,nom:ZONES[id].nom}));
-  for(const a of annexes()) liste.push({id:a.id,nom:a.nom});
+  const liste=Object.keys(ZONES).map(id=>({id,nom:nomLisible(ZONES[id].nom)}));
+  for(const a of annexes()) liste.push({id:a.id,nom:nomLisible(a.nom)});
   return liste;
 }
 /* Le parcours des compagnies × classes se lit dans le graphe du Centre des
@@ -418,17 +420,20 @@ function majDemarrage(){ if(Sim.demarrage)Sim.demarrage.rendre(); if(Sim.onglets
 /* Un nombre sur un onglet dit qu'il y a quelque chose à y faire, sans l'ouvrir. */
 function badgeOnglet(id){
   const r=(Sim.ateliers&&Sim.ateliers.resultat)||{};
-  if(id==='at-grille'){
-    const n=(r.anomalies||[]).filter(a=>a.code==='parcours-trou').reduce((s,a)=>s+(a.classes||[]).length,0);
-    return n?{n,ton:'attente',titre:n+' case(s) à choisir'}:null;
+  // Sans équipe, le tableau montre un encart, pas des cases : pas de compte à afficher.
+  if(id==='at-grille'&&window.OrlyParcours&&Sim.ateliers&&Sim.ateliers.state.ateliers.length){
+    // Le même compte que la jauge du tableau : ses cases « à choisir ».
+    const t=OrlyParcours.tableau(Sim.ateliers.state,Sim.ateliers.classes);
+    const n=t.lignes.reduce((s,l)=>s+Object.values(l.cases).filter(k=>k.etat==='libre').length,0);
+    return n?{n,ton:'neutre',titre:n+(n>1?' cases à choisir':' case à choisir')}:null;
   }
   if(id==='at-repas'){
     const n=(r.indicateurs||{}).classesAbsentes||0;
-    return n?{n,ton:'retard',titre:n+' repas sans équipe'}:null;
+    return n?{n,ton:'neutre',titre:n+(n>1?' commandes':' commande')+' sans équipe'}:null;
   }
   if(id==='u-lecture'&&Sim.flows){
     const n=lectureDuGraphe().alertes.filter(a=>a.grave).length;
-    return n?{n,ton:'retard',titre:n+' point(s) à corriger'}:null;
+    return n?{n,ton:'attente',titre:n+(n>1?' points':' point')+' à corriger'}:null;
   }
   return null;
 }
@@ -465,6 +470,9 @@ function initDemarrage(){
     etat:etatDemarrage, vue:()=>activeView, aller:onglet=>showView(onglet)
   });
   document.getElementById('btn-comment').addEventListener('click',()=>Sim.demarrage.basculer());
+  // On arrive sur l'étape à faire ensuite, pas sur une journée vide.
+  const s=OrlyDemarrage.suite(OrlyDemarrage.etapes(etatDemarrage()));
+  if(s.etape&&s.etape.onglet!==activeView)showView(s.etape.onglet);
   afficherTitre(activeView);
 }
 /* Le titre de la vue et la phrase qui dit, en mots simples, ce qu'on y voit. */
@@ -476,7 +484,7 @@ function afficherTitre(name){
   const intro=document.getElementById('view-intro');if(intro)intro.textContent=v.intro;
 }
 function initFlux(){
-  Sim.flows=new OrlyFlows.FlowCenter({zones:()=>Sim.editor.state.zones,legacy:FLUX.concat(FLUX_RETOUR),
+  Sim.flows=new OrlyFlows.FlowCenter({zones:()=>Sim.editor.state.zones.map(z=>({...z,nom:nomLisible(z.nom)})),legacy:FLUX.concat(FLUX_RETOUR),
     lecture:lectureDuGraphe,
     changed:()=>{if(Sim.flows)redessinerEdges();if(Sim.ateliers)Sim.ateliers.rendre();majDemarrage();},
     showMap:()=>showView('plan'),notify:toast});
@@ -662,7 +670,7 @@ function initEdition() {
     update(id,visible){
       positionnerZone(id);
       const e=zoneEls[id];if(!e)return;
-      e.titre.textContent=ZONES[id].nom;e.g.setAttribute('aria-label',ZONES[id].nom);
+      e.titre.textContent=nomLisible(ZONES[id].nom);e.g.setAttribute('aria-label',nomLisible(ZONES[id].nom));
       e.g.style.display=visible?'':'none';
       // Couleur choisie dans l'éditeur : elle tient le fond, l'état de
       // paramétrage passe dans le contour. Rien de choisi, rien ne change.
@@ -691,8 +699,8 @@ function majPlan() {
  * ==========================================================================*/
 const ETATS_PARAM = {
   vide:    { lib:'Aucune équipe',  aide:'Personne ne travaille dans ce service : il ne préparera rien.' },
-  partiel: { lib:'Équipe sans travail',    aide:'Une équipe existe, mais aucun repas ne lui est confié.' },
-  pret:    { lib:'Équipe au travail',  aide:'Une équipe y prépare au moins un repas.' }
+  partiel: { lib:'Équipe sans travail',    aide:'Une équipe existe, mais aucune commande ne lui est confiée.' },
+  pret:    { lib:'Équipe au travail',  aide:'Une équipe y prépare au moins une commande.' }
 };
 
 function annexes() {
@@ -709,8 +717,8 @@ function majPicker() {
     o.value = id; o.textContent = (decale ? '\u2514 ' : '') + nom; picker.appendChild(o);
   };
   Object.keys(ZONES).forEach(id => {
-    ajoute(id, ZONES[id].nom, false);
-    annexes().filter(a => a.parent === id).forEach(a => ajoute(a.id, a.nom, true));
+    ajoute(id, nomLisible(ZONES[id].nom), false);
+    annexes().filter(a => a.parent === id).forEach(a => ajoute(a.id, nomLisible(a.nom), true));
   });
   // Une annexe dont l'atelier a disparu resterait invisible : on la remonte.
   annexes().filter(a => !ZONES[a.parent]).forEach(a => ajoute(a.id, a.nom, false));
@@ -779,13 +787,13 @@ function majLegende(avant, compte) {
   const puce = (coul, texte, titre) => '<span title="' + escapeHTML(titre) + '"><span class="pastille" style="background:' + coul + '"></span>' + escapeHTML(texte) + '</span>';
   if (avant) {
     box.setAttribute('aria-label', 'Ce que dit la couleur des services');
-    box.innerHTML = puce('var(--bad-stroke)', ETATS_PARAM.vide.lib, ETATS_PARAM.vide.aide)
+    box.innerHTML = puce('var(--txt3)', ETATS_PARAM.vide.lib, ETATS_PARAM.vide.aide)
       + puce('var(--bordure2)', ETATS_PARAM.partiel.lib, ETATS_PARAM.partiel.aide)
       + puce('var(--accent)', ETATS_PARAM.pret.lib, ETATS_PARAM.pret.aide);
     if (etat) {
       const n = compte.vide + compte.partiel;
       etat.textContent = n
-        ? n + ' service(s) sans travail — voir l’étape 2, « Qui prépare quoi »'
+        ? n + (n > 1 ? ' services' : ' service') + ' sans travail — voir l’étape 2, « Qui prépare quoi »'
         : 'Chaque service a une équipe au travail.';
       etat.className = 'plan-etat' + (n ? '' : ' complet');
     }
@@ -793,11 +801,11 @@ function majLegende(avant, compte) {
     // Pendant la relecture : les quatre états de `replay.js`, et eux seuls.
     // L'attente est aussi en pointillé, pour ne pas dépendre de la couleur.
     box.setAttribute('aria-label', 'État des services à cet instant');
-    box.innerHTML = puce('var(--accent)', 'Au travail', 'Une équipe prépare des repas à cette heure.')
+    box.innerHTML = puce('var(--accent)', 'Au travail', 'Une équipe prépare des commandes à cette heure.')
       + puce('var(--orange)', 'Attend le service d’avant', 'L’équipe est là, mais ce qu’elle doit recevoir n’est pas encore arrivé.')
       + puce('var(--vert)', 'A fini', 'Tout ce que ce service avait à faire est prêt.')
       + puce('var(--bordure2)', 'Pas commencé', 'Le service n’a pas encore ouvert.');
-    if (etat) { etat.textContent = 'La journée défile — « ↺ Début » pour revenir au début.'; etat.className = 'plan-etat'; }
+    if (etat) { etat.textContent = ''; etat.className = 'plan-etat'; }
   }
 }
 
@@ -829,7 +837,7 @@ function majGoulotInfo() {
     const id=selection,z=ZONES[id];
     if(z&&z.approx)html+='<p>Emplacement sur le plan à confirmer.</p>';
     const annexe=!z?annexes().find(a=>a.id===id):null;
-    if(annexe){const pere=ZONES[annexe.parent];html+='<p>Annexe de <strong>'+escapeHTML(pere?pere.nom:annexe.parent)+'</strong>.</p>';}
+    if(annexe){const pere=ZONES[annexe.parent];html+='<p>Annexe de <strong>'+escapeHTML(pere?nomLisible(pere.nom):annexe.parent)+'</strong>.</p>';}
     const equipes=((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]).filter(a=>a.service===id);
     if(!equipes.length)html+='<p>Aucune équipe ici — étape 2, « Qui prépare quoi ».</p>';
     else html+='<p>'+equipes.map(a=>'<strong>'+escapeHTML(a.nom)+'</strong>'
@@ -845,11 +853,11 @@ function majGoulotInfo() {
           +' · '+escapeHTML(MoteurProduction.enClair(l.nom||''))+(l.attente>=1?' · attend '+Math.round(l.attente)+' min':'')
           +(l.impossible?' · <strong>ne tient pas dans le poste</strong>':'')+'</li>';
       }).join('')+'</ul>';
-      if(ici.length>8)html+='<p>Et '+(ici.length-8)+' autre(s) préparation(s).</p>';
+      if(ici.length>8)html+='<p>Et '+(ici.length-8)+(ici.length-8>1?' autres préparations':' autre préparation')+'.</p>';
     }
   } else if(!lots.length){
     html='<div class="vide-carte">'+(window.OrlyIcones?OrlyIcones.ico('equipe'):'')
-      +'<b>Pas encore de journée à rejouer</b><p>Donnez une équipe aux repas : la journée se calcule toute seule.</p>'
+      +'<b>Pas encore de journée à rejouer</b><p>Donnez une équipe aux commandes : la journée se calcule toute seule.</p>'
       +'<button class="btn btn-play" data-aller="ateliers">Étape 2 : Qui prépare quoi →</button></div>';
   } else {
     // Qui attend depuis le plus longtemps, à cet instant ?
@@ -981,6 +989,11 @@ function majCompare() {
   }
   document.getElementById('compare').innerHTML = html + '</tbody>';
   document.getElementById('compare-note').textContent = OrlyComparaison.note(snaps.A, snaps.B);
+  // Tant que rien n'est retenu, un tableau de tirets ne dit rien : un seul bouton suffit.
+  const rien=!snaps.A&&!snaps.B;
+  document.getElementById('compare').hidden=rien;
+  document.getElementById('snap-clear').hidden=rien;
+  document.getElementById('snap-b').hidden=!snaps.A;
 }
 
 /* ==========================================================================
@@ -1021,7 +1034,7 @@ function sauvegardeComplete() {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   const r = document.getElementById('sauvegarde-etat');
   r.classList.remove('error');
-  r.textContent = parties + ' partie(s) enregistrée(s). Ce fichier contient le plan réel : gardez-le hors du dépôt.';
+  r.textContent = parties + (parties > 1 ? ' parties enregistrées' : ' partie enregistrée') + '. Ce fichier contient le plan réel : gardez-le hors du dépôt.';
   toast('Sauvegarde complète téléchargée');
 }
 
@@ -1047,7 +1060,7 @@ async function restaurerSauvegarde(e) {
     }
     if (!aEcrire.length) throw new Error('la sauvegarde ne contient aucune partie connue.');
     if (!confirm('Remplacer le plan, les ateliers et les flux enregistrés dans ce navigateur par cette sauvegarde (' +
-      aEcrire.length + ' partie(s)) ? La page sera rechargée.')) { e.target.value = ''; return; }
+      aEcrire.length + (aEcrire.length > 1 ? ' parties' : ' partie') + ') ? La page sera rechargée.')) { e.target.value = ''; return; }
     aEcrire.forEach(([cle, valeur]) => localStorage.setItem(cle, valeur));
     location.reload();
   } catch (err) { refuser(err.message); }
@@ -1168,6 +1181,10 @@ function installerCentreReglages() {
     if(unite)unite.appendChild(donnees);
   }
   if(volsDonnees&&horaires)volsDonnees.appendChild(horaires);
+  // La version servie aide à diagnostiquer un cache périmé : elle n'a rien à
+  // faire au milieu des réglages, elle rejoint les limites du calcul.
+  const version=document.getElementById('rg-version'),limites=document.getElementById('model-limits');
+  if(version&&limites){delete version.dataset.sous;limites.appendChild(version);}
 }
 function showView(name) {
   if(editMode && name!=='plan')return;
@@ -1254,7 +1271,7 @@ function renderFlights() {
     : d.fin == null || d.fin > t ? (t > d.echeance ? 'overdue' : 'pending')
     : d.retard > 0 ? 'late' : 'ready';
   const mot = { ready: 'Prêt à l’heure', late: 'Prêt en retard', overdue: 'En retard',
-    pending: 'Pas encore prêt', orphan: 'Des repas sans équipe' };
+    pending: 'Pas encore prêt', orphan: 'Commandes sans équipe' };
   // Les filtres regroupent : « Non prêts » compte aussi ce qui a dépassé son
   // échéance, « Terminés » ce qui est sorti, à l'heure ou non.
   const groupe = { pending: ['pending', 'overdue', 'orphan'], overdue: ['overdue'], ready: ['ready', 'late'], ontime: ['ready'] };
@@ -1266,17 +1283,17 @@ function renderFlights() {
   });
 
   const I = window.OrlyIcones, hh = MoteurProduction.hhmm;
-  const icoEtat = { ready: 'check', late: 'sablier', overdue: 'alerte', pending: 'chrono', orphan: 'croix' };
+  const icoEtat = { ready: 'check', late: 'sablier', overdue: 'alerte', pending: 'chrono', orphan: 'equipe' };
   const nomCab = k => (MoteurProduction.NOM_CABINE || {})[k] || k;
   // Chaque repas du vol : une pastille de la couleur de sa classe, et son état.
   const pastille = c => {
     const k = c.cabine || c.id.slice(c.id.lastIndexOf('/') + 1), e = c.etat;
     const etat = e.absente ? 'sans' : e.fin == null ? 'attente' : e.aHeure === false || (e.retard > 0) ? 'tard' : 'ok';
-    const dit = e.absente ? 'personne ne le prépare' : e.fin == null ? 'pas prêt'
-      : 'prêt à ' + hh(e.fin) + (e.retard > 0 ? ' (+' + Math.round(e.retard) + ' min)' : '');
+    const dit = e.absente ? 'pas encore d’équipe' : e.fin == null ? 'pas prête'
+      : 'prête à ' + hh(e.fin) + (e.retard > 0 ? ' (+' + Math.round(e.retard) + ' min)' : '');
     return '<span class="rc ' + etat + '" title="' + escapeHTML(nomCab(k) + ' : ' + dit) + '">'
       + '<span class="puce-classe" data-cab="' + escapeHTML(k) + '"></span>' + escapeHTML(nomCab(k))
-      + (etat === 'sans' ? '<span class="sr-only"> : personne ne le prépare</span>' : '') + '</span>';
+      + (etat === 'sans' ? '<span class="sr-only"> : pas encore d’équipe</span>' : '') + '</span>';
   };
   const html = lignes.map(d => {
     const e = etatDe(d);
@@ -1323,9 +1340,9 @@ function renderFriseVols(tous, etatDe, mot, icoEtat) {
   const heures = []; for (let h = t0; h <= t1; h += 60) heures.push(h);
   const pas = heures.length > 14 ? 2 : 1;
   box.innerHTML = '<div class="vf-comptes">'
-    + compteur('ok', 'ontime', n.ready, 'prêts à l’heure', 'check')
-    + compteur('tard', 'late', n.late, 'prêts en retard', 'sablier')
-    + compteur('sans', 'pending', n.sans, 'pas prêts ou sans équipe', 'alerte')
+    + compteur('ok', 'ontime', n.ready, (n.ready > 1 ? 'vols prêts' : 'vol prêt') + ' à l’heure', 'check')
+    + compteur('tard', 'late', n.late, (n.late > 1 ? 'vols prêts' : 'vol prêt') + ' en retard', 'sablier')
+    + compteur('sans', 'pending', n.sans, (n.sans > 1 ? 'vols pas prêts' : 'vol pas prêt') + ' ou sans équipe', 'chrono')
     + (filtre !== 'all' ? '<button class="vf-tout" data-vf-filtre="all">Tout voir</button>' : '') + '</div>'
     + '<svg class="vf-svg" viewBox="0 0 ' + L + ' ' + H + '" role="img" aria-label="Les départs de la journée, par heure et par état">'
     + heures.map((h, i) => '<line class="vf-grille" x1="' + x(h) + '" y1="14" x2="' + x(h) + '" y2="' + (H - 18) + '"/>'

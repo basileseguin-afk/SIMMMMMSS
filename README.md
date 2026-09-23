@@ -96,38 +96,47 @@ et le site calcule à quelle heure chaque repas est prêt.** L’encart « Comme
 depuis l’en-tête).
 
 La navigation **est** cette histoire : quatre étapes numérotées, chacune avec
-son état en clair (✓ fait, ! à vérifier, · à faire) et un repère « à faire
-ensuite ».
+son état en clair (✓ fait, · à faire, ~ provisoire — des chiffres d’exemple,
+par exemple —, ! à vérifier, réservé aux vrais problèmes) et un repère « à faire
+ensuite ». Le site s’ouvre sur cette étape-là.
+
+**Le vocabulaire.** Chaque vol **commande** ses repas : une **commande** par
+compagnie et par classe (« AF · Business », 88 passagers), pour la journée.
+Chaque chiffre dit son unité (vols, commandes, services) et son moment (« à
+07:00 », « sur toute la journée »). Ce qui n’est pas encore rempli est gris ;
+le rouge ne sert qu’aux retards.
 
 **Une chose à la fois.** Chaque étape se découpe en quelques **onglets** (sous
 son titre) : un seul est affiché, les autres attendent derrière leur nom. Un
 nombre sur un onglet dit qu’il y a quelque chose à y faire (cases à choisir,
-repas sans équipe, liens à corriger). Le dernier onglet ouvert de chaque étape
+commandes sans équipe, liens à corriger). Le dernier onglet ouvert de chaque étape
 est retenu ; les outils de l’étape (annuler, Excel, importer) se rangent à
 droite des onglets.
 
 1. **Les vols** — onglets *Les départs* (une frise de la journée et un tableau
-   qui dit, vol par vol, si ses repas sont prêts à l’heure, en retard, ou sans
-   équipe) et *Le programme* (importer le programme en Excel ou CSV simplifié,
+   qui dit, vol par vol, si ses commandes sont prêtes à l’heure, en retard, ou
+   sans équipe) et *Le programme* (importer le programme en Excel ou CSV simplifié,
    ou garder les vols d’exemple ; le délai de chargement — « repas prêts combien
    de minutes avant le départ ? » — et le décalage des vols).
 2. **Qui prépare quoi**, en cinq onglets :
-   1. **Les chemins** : par où passe chaque repas, **dessiné en diagramme de
+   1. **Les chemins** : par où passe chaque commande, **dessiné en diagramme de
       nœuds**. Chaque service est un nœud ; on tire le `+` d’un service jusqu’à
       un autre pour dire qu’il le livre. Les chemins partent en parallèle et se
       rejoignent (les aliments par la réception et la cuisine, le matériel par
       la plonge et la dotation, les produits de la compagnie par le magasin,
       tout se retrouvant au montage). Chaque nœud dit ses équipes ; un clic
       dessus permet d’en créer une. L’économie ne passe pas par la cuisine.
-   2. **Qui prépare quoi** (l’onglet ouvert d’abord) : un tableau, une ligne par repas (« AF · Business »),
+   2. **Qui prépare quoi** (l’onglet ouvert d’abord) : un tableau, une ligne par commande (« AF · Business »),
       une colonne par service ; chaque case dit l’équipe et ses heures. Un clic
       sur une case choisit l’équipe (ou en crée une), un clic sur un service
-      remplit toute sa colonne. Chaque ligne dit quand le repas est prêt et se
+      remplit toute sa colonne. Chaque ligne dit quand la commande est prête et se
       déplie pour se suivre dans le temps, avec une phrase qui l’explique.
    3. **Les équipes** : horaire, effectif, pauses, ordre de préparation, et les
       plonges (tunnels, débits) et mises à disposition.
-   4. **Leur journée** : les indicateurs et le planning, équipe par équipe.
-   5. **Les repas** : la liste des compagnies × classes à préparer.
+   4. **Leur journée** : le planning, équipe par équipe, et une phrase qui
+      résume la journée (les indicateurs complets sont à l’étape 4).
+   5. **Les commandes** : la liste des commandes à préparer (compagnie × classe).
+   Sans aucune équipe, le tableau laisse place à un encart qui dit par où commencer.
 3. **Les temps de travail** — onglets *Minutes par vol* (service par service et
    classe par classe : une valeur commune, des valeurs propres à une compagnie,
    ou une grille compagnie par classe) et *Rythme et pauses* (rythme de travail,
@@ -137,7 +146,7 @@ droite des onglets.
    l’heure rejouée et le bilan de la journée) et *Comparer deux essais* (A / B).
 
 À part, **L’unité** — onglets *Les liens* (qui livre qui, dessinés dans le même
-diagramme de nœuds ; ces liens ne servent qu’aux repas qui n’ont pas de chemin), *Ce que le calcul en retient* et
+diagramme de nœuds ; ces liens ne servent qu’aux commandes qui n’ont pas de chemin), *Ce que le calcul en retient* et
 *Sauvegarde et limites*. Le plan des services se modifie depuis « La journée »
 (« Modifier le plan »). Le bouton **Chiffres d’exemple** de l’en-tête mène aux
 limites du calcul.

@@ -127,7 +127,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await dl[0].saveAs(fichier);
   const feuilles=await T.lireClasseur(fs.readFileSync(fichier));
   const bareme=T.feuille(feuilles,'Barème');
-  const ligne=(svc,cie,cab)=>bareme.lignes.findIndex(l=>l[0]===svc&&l[1]===cie&&l[2]===cab);
+  const ligne=(svc,cie,cab)=>bareme.lignes.findIndex(l=>String(l[0]).toUpperCase()===svc&&l[1]===cie&&l[2]===cab);
   assert.equal(bareme.lignes[ligne('CUISINE','*','BC')][3],70,'la valeur commune est dans le classeur');
   assert.ok(ligne('CUISINE','CRL','BC')>0,'une ligne pour CRL/BC, que son parcours fait passer en cuisine');
   assert.equal(ligne('CUISINE','CRL','YC'),-1,'aucune pour CRL/YC : son parcours évite la cuisine');
@@ -135,7 +135,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   bareme.lignes[ligne('CUISINE','CRL','BC')][3]=17.5;
   const modifie=path.join(dossier,'bareme-modifie.xlsx');
   fs.writeFileSync(modifie,T.ecrireClasseur(feuilles));
-  await page.locator('#rg-reset').click();await attendre();
+  await page.locator('[data-sous-onglet=rg-minutes]').click();await page.locator('#rg-reset').click();await attendre();
   assert.equal(await valeur('*/BC'),35,'les valeurs de démonstration sont revenues');
   await page.locator('#rg-import').setInputFiles(modifie);await page.waitForTimeout(400);
   assert.equal(await valeur('*/BC'),70,'le fichier a repris la main');

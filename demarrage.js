@@ -25,21 +25,23 @@
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-  const ETATS = { fait: '✓', verifier: '!', afaire: '·' };
-  const MOTS = { fait: 'fait', verifier: 'à vérifier', afaire: 'à faire' };
+  // « provisoire » : ça marche, mais avec des valeurs d'exemple ou à confirmer.
+  // Ce n'est pas une alerte : pas de « ! » orange pour un site qu'on découvre.
+  const ETATS = { fait: '✓', verifier: '!', afaire: '·', provisoire: '~' };
+  const MOTS = { fait: 'fait', verifier: 'à vérifier', afaire: 'à faire', provisoire: 'provisoire' };
 
   /** Le titre et la phrase d'accueil de chaque vue, en mots de tous les jours. */
   const VUES = {
     vols: { titre: 'Les vols',
       intro: 'Les avions qui partent aujourd’hui, et si leurs repas sont prêts à temps.' },
     ateliers: { titre: 'Qui prépare quoi',
-      intro: 'Par où passe chaque repas, et quelle équipe le prépare à chaque étape.' },
+      intro: 'Une commande par compagnie et par classe : par où elle passe, et quelle équipe la prépare.' },
     reglages: { titre: 'Les temps de travail',
       intro: 'Combien de minutes chaque service passe sur un vol : c’est ce qui fait durer chaque préparation.' },
     plan: { titre: 'La journée',
       intro: 'Rejouez la journée sur le plan de l’unité : qui travaille, qui attend, ce qui est prêt.' },
     flux: { titre: 'L’unité : qui livre qui',
-      intro: 'Les liens entre les services de l’unité. Ils ne servent qu’aux repas qui n’ont pas de chemin.' }
+      intro: 'Les liens entre les services de l’unité. Ils ne servent qu’aux commandes qui n’ont pas de chemin.' }
   };
 
   const pluriel = (n, mot, pl) => n + ' ' + (n > 1 ? (pl || mot + 's') : mot);
@@ -63,7 +65,7 @@
 
     out.push({
       cle: 'vols', onglet: 'vols', num: 1, titre: VUES.vols.titre,
-      etat: !vols.total ? 'afaire' : vols.source === 'importe' ? 'fait' : 'verifier',
+      etat: !vols.total ? 'afaire' : vols.source === 'importe' ? 'fait' : 'provisoire',
       detail: !vols.total ? 'aucun vol'
         : pluriel(vols.departs, 'départ') + (vols.source === 'importe' ? ' · les vôtres' : ' · exemple'),
       geste: !vols.total ? 'Importer vos vols'
@@ -72,17 +74,17 @@
 
     out.push({
       cle: 'ateliers', onglet: 'ateliers', num: 2, titre: VUES.ateliers.titre,
-      etat: !at.fabriquent ? 'afaire' : at.absentes ? 'verifier' : 'fait',
+      etat: !at.fabriquent || at.absentes ? 'afaire' : 'fait',
       detail: !at.fabriquent ? 'aucune équipe'
-        : pluriel(at.fabriquent, 'équipe')
-          + (at.absentes ? ' · ' + pluriel(at.absentes, 'repas', 'repas') + ' sans équipe' : ' · tout est couvert'),
+        : at.absentes ? pluriel(at.absentes, 'commande') + ' sans équipe'
+          : pluriel(at.fabriquent, 'équipe') + ' · tout est couvert',
       geste: !at.fabriquent ? 'Décrire une première équipe'
-        : at.absentes ? 'Donner une équipe aux repas qui n’en ont pas' : null
+        : at.absentes ? 'Donner une équipe aux commandes qui n’en ont pas' : null
     });
 
     out.push({
       cle: 'bareme', onglet: 'reglages', num: 3, titre: VUES.reglages.titre,
-      etat: bar.calibre ? 'fait' : 'verifier',
+      etat: bar.calibre ? 'fait' : 'provisoire',
       detail: bar.calibre ? 'vos chiffres' : 'chiffres d’exemple',
       geste: bar.calibre ? null : 'Remplacer les chiffres d’exemple par votre étude'
     });
@@ -92,14 +94,14 @@
       cle: 'journee', onglet: 'plan', num: 4, titre: VUES.plan.titre,
       etat: !j.calculee ? 'afaire' : retard > 0 ? 'verifier' : 'fait',
       detail: !j.calculee ? 'rien à calculer encore'
-        : retard > 0 ? pluriel(retard, 'repas', 'repas') + ' en retard'
+        : retard > 0 ? pluriel(retard, 'commande') + ' en retard'
         : 'tout est à l’heure' + (j.fin ? ' · fini à ' + j.fin : ''),
       geste: null
     });
 
     out.push({
       cle: 'unite', onglet: 'flux', num: null, annexe: true, titre: 'L’unité',
-      etat: plan.approx || flux.alertes ? 'verifier' : 'fait',
+      etat: flux.alertes ? 'verifier' : plan.approx ? 'provisoire' : 'fait',
       detail: pluriel(plan.services || 0, 'service') + ' · ' + pluriel(flux.liaisons || 0, 'lien')
         + (plan.approx ? ' · ' + pluriel(plan.approx, 'zone') + ' à confirmer' : '')
         + (flux.alertes ? ' · ' + flux.alertes + ' à corriger' : ''),
@@ -115,6 +117,8 @@
     if (afaire) return { etape: afaire, texte: afaire.geste };
     const verifier = liste.find(s => s.etat === 'verifier' && s.geste);
     if (verifier) return { etape: verifier, texte: verifier.geste };
+    const provisoire = liste.find(s => s.etat === 'provisoire' && s.geste);
+    if (provisoire) return { etape: provisoire, texte: provisoire.geste };
     return { etape: null, texte: null };
   }
 
@@ -131,12 +135,12 @@
   const COMMENT = [
     { picto: 'avion', ico: 'avion', couleur: 'var(--c-vols)', titre: 'Des avions partent',
       texte: 'à heure fixe, pleins de passagers' },
-    { picto: 'plateau', ico: 'plateau', couleur: 'var(--cab-BC)', titre: 'Chaque vol emporte ses repas',
-      texte: 'par compagnie et par classe' },
+    { picto: 'plateau', ico: 'plateau', couleur: 'var(--cab-BC)', titre: 'Chaque vol commande ses repas',
+      texte: 'une commande par compagnie et par classe' },
     { picto: 'equipe', ico: 'equipe', couleur: 'var(--c-equipes)', titre: 'Des équipes les préparent',
       texte: 'de service en service' },
     { picto: 'horloge', ico: 'chrono', couleur: 'var(--c-journee)', titre: 'Le site calcule la journée',
-      texte: 'prêts à l’heure, ou en retard ?' }
+      texte: 'chaque commande prête à l’heure, ou en retard ?' }
   ];
   const I = () => root.OrlyIcones;
   const icone = (nom, classe) => I() ? I().ico(nom, classe) : '';

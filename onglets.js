@@ -24,7 +24,7 @@
       { id: 'at-chemins', nom: 'Les chemins', ico: 'fleche' },
       { id: 'at-equipes', nom: 'Les équipes', ico: 'service' },
       { id: 'at-planning', nom: 'Leur journée', ico: 'journee' },
-      { id: 'at-repas', nom: 'Les repas', ico: 'plateau' }
+      { id: 'at-repas', nom: 'Les commandes', ico: 'plateau' }
     ],
     reglages: [
       { id: 'rg-minutes', nom: 'Minutes par vol', ico: 'chrono' },

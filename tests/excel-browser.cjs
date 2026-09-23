@@ -54,7 +54,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await creer('Montage','prepa',[['AF/YC'],['AF/BC']]);
   assert.equal((await lot('prepa','AF/YC')).debut,(await lot('dotation','AF/YC')).fin,'YC : le montage attend la dotation, pas la cuisine');
   assert.ok((await lot('prepa','AF/BC')).debut>=(await lot('cuisine','AF/BC')).fin,'BC : le montage attend la cuisine');
-  assert.match(await page.locator('#at-anomalies').textContent(),/case\(s\) « à choisir » dans l’onglet « Qui prépare quoi »/,'les étapes sans équipe renvoient au tableau');
+  assert.match(await page.locator('#at-anomalies').textContent(),/commandes? commencées? sautent? une étape sans équipe[\s\S]*« Qui prépare quoi »/,'les étapes sans équipe renvoient au tableau');
 
   // Une compagnie × classe peut suivre un autre parcours que sa classe.
   await page.locator('[data-sous-onglet=at-grille]').click();await page.selectOption('[data-at-champ=classe-parcours][data-classe="AF/YC"]','complet');await attendre();
@@ -72,7 +72,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('.pc-graphe [data-noeud=armement]').count(),1,'le service rejoint le diagramme');
   await tirer('prepa','armement');
   assert.deepEqual(await liens('sans-cuisine'),avant.concat('prepa>armement'),'tirer un trait crée le lien');
-  assert.match(await page.locator('#at-status').textContent(),/MONTAGE livre maintenant ARMEMENT/);
+  assert.match(await page.locator('#at-status').textContent(),/Montage livre maintenant Armement/);
   // « Relier à… » fait la même chose sans glisser — et une boucle est refusée.
   await page.locator('.pc-graphe [data-noeud=armement]').click();await attendre();
   await page.locator('[data-pc-action=relier-depuis]').click();await attendre();
@@ -110,7 +110,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(cuisine.personnes,2);
   assert.deepEqual(cuisine.lots,[['AF/BC'],['DL/BC']]);
   assert.ok(etat.parcours.find(p=>p.id==='complet').liens.some(l=>l.de==='armement'&&l.vers==='prepa'));
-  assert.match(await page.locator('#at-status').textContent(),/Ateliers importés/);
+  assert.match(await page.locator('#at-status').textContent(),/Équipes importées/);
   // Un classeur faux est refusé en bloc, et dit quoi corriger.
   at.lignes.push(['Fantaisie','GARAGE','manuel','05:00']);
   const faux=path.join(dossier,'faux.xlsx');fs.writeFileSync(faux,T.ecrireClasseur(feuilles));
@@ -194,7 +194,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // Une ligne se suit dans le temps, étape par étape, et le dit en clair.
   await page.locator('[data-qf=suivre][data-classe="AF/BC"]').click();await attendre();
   assert.equal(await page.locator('.qf-temps svg').count(),1,'le chemin de AF/BC dans le temps');
-  assert.match(await page.locator('.qf-temps .qf-phrase').textContent(),/AF · Business (est prêt à \d\d:\d\d|n’est pas encore prêt)/);
+  assert.match(await page.locator('.qf-temps .qf-phrase').textContent(),/AF · Business (est prête à \d\d:\d\d|n’est pas encore prête)/);
 
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('excel-browser : ok');

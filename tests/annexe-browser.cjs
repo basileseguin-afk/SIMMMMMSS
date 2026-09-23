@@ -10,6 +10,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const click=s=>page.locator(s).click();
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
+  // Le site s'ouvre sur l'étape à faire ensuite : ce parcours travaille sur le plan.
+  const versPlan=async()=>{await page.locator('#etapes [data-view=plan]').click();await page.waitForTimeout(120);};await versPlan();
 
   // 1. Dessiner un rectangle libre dans l'éditeur du plan.
   await click('#btn-edit');
@@ -33,7 +35,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 3. Elle figure dans la liste des services, sous son atelier.
   const options=await page.locator('#zone-picker option').allTextContents();
-  const iArm=options.findIndex(t=>t.trim()==='ARMEMENT'), iAnx=options.findIndex(t=>t.includes('ARMEMENT 2'));
+  const iArm=options.findIndex(t=>t.trim()==='Armement'), iAnx=options.findIndex(t=>t.includes('Armement 2'));
   assert.ok(iAnx>0,'l’annexe est proposée');
   assert.equal(iAnx,iArm+1,'elle est rangée juste sous son atelier');
 
@@ -61,7 +63,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   //    liaison saisie à la main l'emporte sur l'héritage.
   await click('[data-view=flux]');
   const emplacements=await page.evaluate(()=>Sim.flows.points.map(p=>p.label));
-  assert.ok(emplacements.includes('ARMEMENT 2'),'l’annexe figure parmi les emplacements du Centre des flux');
+  assert.ok(emplacements.includes('Armement 2'),'l’annexe figure parmi les emplacements du Centre des flux');
   await click('#fc-new');
   await page.selectOption('#fc-type','material');
   await page.selectOption('#fc-from',JSON.stringify(['magasin',null]));
@@ -77,12 +79,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await click('[data-view=plan]');
   await page.locator('#zone-picker').selectOption(zone.id);
   assert.match(await page.locator('#goulot-info').textContent(),/Annexe de/);
-  assert.match(await page.locator('#goulot-info').textContent(),/ARMEMENT/);
+  assert.match(await page.locator('#goulot-info').textContent(),/Armement/);
 
   // 8. Elle survit au rechargement.
-  await page.reload();
+  await page.reload();await versPlan();
   assert.equal(await page.evaluate(()=>Sim.editor.state.zones.filter(z=>z.kind==='annexe').length),1);
-  assert.ok((await page.locator('#zone-picker option').allTextContents()).some(t=>t.includes('ARMEMENT 2')));
+  assert.ok((await page.locator('#zone-picker option').allTextContents()).some(t=>t.includes('Armement 2')),'affichée en minuscules lisibles');
 
   // 9. Le chemin le plus court : dupliquer l'atelier donne directement sa 2e salle.
   await click('#btn-edit');

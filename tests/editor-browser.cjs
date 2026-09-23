@@ -12,7 +12,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const center=async selector=>{const b=await page.locator(selector).boundingBox();assert.ok(b);return{x:b.x+b.width/2,y:b.y+b.height/2};};
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
-  await page.evaluate(()=>localStorage.setItem('orly-zones',JSON.stringify({cuisine:{x:1880,y:1560,w:280,h:520,approx:true}})));await page.reload();
+  // Le site s'ouvre sur l'étape à faire ensuite : ce parcours travaille sur le plan.
+  const versPlan=async()=>{await page.locator('#etapes [data-view=plan]').click();await page.waitForTimeout(120);};await versPlan();
+  await page.evaluate(()=>localStorage.setItem('orly-zones',JSON.stringify({cuisine:{x:1880,y:1560,w:280,h:520,approx:true}})));await page.reload();await versPlan();
   await click('#btn-edit');assert.equal(await page.locator('#btn-play').isDisabled(),true);
   const initial=(await state()).zones.length;assert.ok(initial>=11&&initial<30,'storage shapes no longer clutter the plan');
   await click('[data-action=select][data-zone=cuisine]');assert.equal((await selected()).x,1880);await click('#pe-focus');
@@ -38,7 +40,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // Entire exported document survives reload and round-trip import.
   await page.locator('summary').filter({hasText:'Enregistrer & partager'}).click();
   const downloadPromise=page.waitForEvent('download');await click('#pe-export');const download=await downloadPromise;const exported=JSON.parse(fs.readFileSync(await download.path(),'utf8'));assert.equal(exported.zones.length,count);
-  await page.reload();await click('#btn-edit');assert.deepEqual((await state()).zones,exported.zones);
+  await page.reload();await versPlan();await click('#btn-edit');assert.deepEqual((await state()).zones,exported.zones);
   const beforeInvalid=JSON.stringify(await state());await page.locator('#pe-import').setInputFiles({name:'bad.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({schema:'ory-plan',version:2,zones:[]}))});await page.waitForFunction(()=>document.getElementById('pe-status').textContent.includes('Import refusé'));assert.equal(JSON.stringify(await state()),beforeInvalid);
   await page.locator('#pe-import').setInputFiles({name:'plan.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(exported))});await page.waitForFunction(()=>document.getElementById('pe-status').textContent.includes('Plan importé'));assert.deepEqual((await state()).zones,exported.zones);
   await click('[data-action=select][data-zone=cuisine]');await click('#pe-focus');await page.screenshot({path:path.join(os.tmpdir(),'ory-editor-desktop.png'),fullPage:true});

@@ -23,19 +23,19 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 1. Chaque service du chemin est un nœud ; il dit ses équipes.
   assert.equal(await page.locator(`${Z} [data-noeud=prepa] .gr-sous`).textContent(),'aucune équipe');
-  assert.equal(await page.locator(`${Z} [data-noeud=prepa]`).evaluate(n=>n.classList.contains('ton-attente')),true,'un service sans équipe se voit');
+  assert.equal(await page.locator(`${Z} [data-noeud=prepa]`).evaluate(n=>n.classList.contains('ton-neutre')),true,'un service sans équipe est à faire, pas en alerte');
 
   // 2. Créer l'équipe depuis le nœud : elle prépare les repas du chemin qui n'avaient personne.
   await page.locator(`${Z} [data-noeud=prepa]`).click();await attendre();
-  assert.match(await page.locator('.pc-panneau').textContent(),/MONTAGE[\s\S]*aucune équipe/);
+  assert.match(await page.locator('.pc-panneau').textContent(),/Montage[\s\S]*aucune équipe/);
   await page.locator('[data-pc-action=equipe-nouvelle]').click();await attendre();
   const eq=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1));
   assert.equal(eq.service,'prepa');
   assert.ok(eq.lots.length>5,'les repas du chemin lui sont confiés');
   assert.equal(await page.locator('[data-sous-onglet=at-chemins]').getAttribute('aria-selected'),'true','on reste sur le diagramme');
-  assert.match(await page.locator('#at-status').textContent(),/Équipe « MONTAGE » créée/);
+  assert.match(await page.locator('#at-status').textContent(),/Équipe « Montage » créée/);
   assert.equal(await page.locator(`${Z} [data-noeud=prepa]`).evaluate(n=>n.classList.contains('ton-ok')),true,'le nœud passe au vert');
-  assert.equal(await page.locator(`${Z} [data-noeud=prepa] .gr-sous`).textContent(),'MONTAGE');
+  assert.equal(await page.locator(`${Z} [data-noeud=prepa] .gr-sous`).textContent(),'Montage');
   // Son nom mène à sa fiche.
   await page.locator(`${Z} [data-noeud=prepa]`).click();await attendre();
   await page.locator('.pc-panneau [data-pc-action=fiche]').click();await attendre();

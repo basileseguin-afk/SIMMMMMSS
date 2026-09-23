@@ -54,6 +54,7 @@
 .etape-etat.fait{background:var(--ok);color:#fff}
 .etape-etat.verifier{background:var(--attente);color:#fff}
 .etape-etat.afaire{background:var(--bordure2);color:var(--txt)}
+.etape-etat.provisoire{background:var(--bg2);color:var(--txt2);border:1px solid var(--bordure2)}
 .etape-suite{position:absolute;top:-10px;right:10px;font-size:10px;font-weight:800;text-transform:uppercase;
   letter-spacing:.04em;background:var(--c);color:#fff;border-radius:99px;padding:2px 9px;white-space:nowrap;
   box-shadow:0 2px 6px color-mix(in srgb,var(--c) 40%,transparent)}
@@ -198,7 +199,7 @@ body.journee-vide #goulot-info{border:0;background:none;padding:0}
 .vf-compte .ico{width:30px;height:30px;padding:6px;box-sizing:content-box;border-radius:50%;color:#fff}
 .vf-compte b{font-size:26px;line-height:1;font-variant-numeric:tabular-nums}
 .vf-compte span{font-size:12.5px;color:var(--txt2);font-weight:600;max-width:110px;line-height:1.2;text-align:left}
-.vf-ok .ico{background:var(--ok)} .vf-tard .ico{background:var(--attente)} .vf-sans .ico{background:var(--retard)}
+.vf-ok .ico{background:var(--ok)} .vf-tard .ico{background:var(--attente)} .vf-sans .ico{background:var(--txt3)}
 .vf-compte:hover,.vf-compte.actif{border-color:var(--bordure2)}
 .vf-compte.actif{background:var(--bg3);box-shadow:0 2px 8px #0002}
 .vf-tout{font:inherit;font-size:12.5px;border:0;background:none;color:var(--accent2);text-decoration:underline;cursor:pointer}
@@ -209,7 +210,7 @@ body.journee-vide #goulot-info{border:0;background:none;padding:0}
 .vf-vol .vf-avion{transform:translate(-1px,-1px) scale(1.0);fill:none;stroke:#fff;stroke-width:1.7;stroke-linejoin:round}
 .vf-vol text{font-size:11.5px;font-weight:700;fill:var(--txt)}
 .vf-ready circle{fill:var(--ok)} .vf-late circle{fill:var(--attente)}
-.vf-overdue circle,.vf-orphan circle{fill:var(--retard)} .vf-pending circle{fill:var(--bordure2)}
+.vf-overdue circle{fill:var(--retard)} .vf-pending circle,.vf-orphan circle{fill:var(--txt3)}
 
 .flights-view .table-scroll{position:relative;border-radius:14px;overflow:auto;border:1px solid #0e1d2e}
 .flight-table{background:#14283e;color:#e8f0f8}
@@ -225,7 +226,8 @@ body.journee-vide #goulot-info{border:0;background:none;padding:0}
 .flight-table .status .ico{width:15px;height:15px;stroke-width:2.4}
 .flight-table .status.ready{background:#1d6b3a;color:#dcfce7}
 .flight-table .status.late{background:#8a5a0b;color:#fff3d6}
-.flight-table .status.overdue,.flight-table .status.orphan{background:#8f231a;color:#ffe3df}
+.flight-table .status.overdue{background:#8f231a;color:#ffe3df}
+.flight-table .status.orphan{background:#33495f;color:#dbe6f0}
 .flight-table .status.pending{background:#33495f;color:#dbe6f0}
 .vol-repas{display:flex;flex-wrap:wrap;gap:5px}
 .rc{display:inline-flex;align-items:center;gap:5px;border-radius:99px;padding:3px 9px 3px 6px;font-size:11.5px;font-weight:700;
@@ -233,8 +235,7 @@ body.journee-vide #goulot-info{border:0;background:none;padding:0}
 .rc.ok{border-color:#3fbf73}
 .rc.tard{border-color:#e0a32e}
 .rc.attente{border-style:dashed;border-color:#6d86a0}
-.rc.sans{background:transparent;border:1.5px dashed #ff8a7e;color:#ffc9c2}
-.rc.sans::after{content:"✕";font-size:10px;margin-left:1px}
+.rc.sans{background:transparent;border:1.5px dashed #8aa0b8;color:#c9d6e3}
 .rc .puce-classe{width:9px;height:9px;border-radius:50%}
 .flight-table tbody tr,.flight-table tbody tr:nth-child(even),.flight-table tbody tr:hover{background:#14283e}
 .flight-table tbody tr:nth-child(even){background:#172e46}
@@ -295,8 +296,8 @@ body.journee-vide #goulot-info{border:0;background:none;padding:0}
 .zone-ico{pointer-events:none}
 .zone-ico circle{fill:var(--bg3);fill-opacity:.92;stroke:var(--zone-stroke);stroke-width:1.2}
 .zone-ico-trait{fill:none;stroke:var(--zone-txt);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-body.avant-lancement .zone.p-vide .zone-ico circle{stroke:var(--bad-stroke)}
-body.avant-lancement .zone.p-vide .zone-ico-trait{stroke:var(--bad-stroke)}
+body.avant-lancement .zone.p-vide .zone-ico circle{stroke:var(--txt3)}
+body.avant-lancement .zone.p-vide .zone-ico-trait{stroke:var(--txt3)}
 body.avant-lancement .zone.p-pret .zone-ico circle{fill:var(--c-equipes);stroke:var(--c-equipes)}
 body.avant-lancement .zone.p-pret .zone-ico-trait{stroke:#fff}
 body.en-lecture .zone.s-travail .zone-ico circle{fill:var(--c-journee);stroke:var(--c-journee)}
@@ -370,7 +371,7 @@ body.journee-vide .journee-chiffres .panneau,body.journee-vide .col-plan>.kpi-gr
 .vols-frise{margin-top:0}
 
 /* Le bouton « chiffres d'exemple » dans l'en-tête sombre. */
-header .ctx-exemple{background:#3b3320 !important;border:1.5px solid #c9a24a !important;color:#fff !important;padding:6px 12px !important}
+header .ctx-exemple{background:#233e59 !important;border:1.5px solid #8298ae !important;color:#fff !important;padding:6px 12px !important}
 header .ctx-exemple .ico{color:#f5c75a}
 
 /* Les points à regarder : repliés, un clic les déplie. */
@@ -399,3 +400,60 @@ details.at-anomalies{margin-bottom:12px}
    mise en page et défile de côté plutôt que de se réorganiser. */
 html{overflow-x:auto}
 body{min-width:1024px}
+
+/* ==========================================================================
+ *  AUDIT DU 23/09 — lisibilité, neutralité, une seule façon de dire
+ * ==========================================================================*/
+/* Ce qui n'est pas encore rempli n'est pas une alerte : gris, pas rouge. */
+.at-etat.neutre,.qf-etat.manque{color:var(--txt2);font-weight:600}
+.so-badge.neutre{background:var(--bg2);color:var(--txt);border:1px solid var(--bordure2)}
+/* Une action rare ou destructive : un lien discret, rouge au survol seulement. */
+.lien-discret{appearance:none;border:0;background:none;padding:6px 8px;min-height:32px;font:inherit;font-size:12.5px;
+  color:var(--txt2);text-decoration:underline;text-underline-offset:2px;cursor:pointer;min-height:0}
+.lien-discret:hover,.lien-discret:focus-visible{color:var(--accent2)}
+.lien-discret.danger:hover,.lien-discret.danger:focus-visible,
+[data-at-action="classe-supprimer"].lien-discret:hover{color:var(--rouge)}
+/* Le résumé de la journée, dans l'étape 2 : une phrase, les mêmes mots qu'à l'étape 4. */
+.at-resume{margin:0 0 12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--bordure);border-radius:10px;font-size:13.5px}
+.at-resume-retard{color:var(--retard);font-weight:700}
+/* L'heure à laquelle valent les indicateurs de « Les chiffres ». */
+.kpi-quand{margin:0;padding:12px 20px 0;background:var(--bg3);font-size:12.5px;font-weight:700;color:var(--c-journee)}
+body.avant-lancement .kpi-quand{display:none}
+.qf-vide{background:var(--bg3);border:1px dashed var(--bordure2);border-radius:14px;padding:28px 20px;max-width:720px;margin:10px auto}
+.qf-vide p{max-width:58ch}
+#fc-status:empty{display:none}
+/* Un champ a la taille de ce qu'il contient : un curseur de 0,5 à 1,2 ne
+   traverse pas l'écran, un nombre de trois chiffres ne prend pas une ligne. */
+.rg-modele .slider-ligne,#panneau-horaires .slider-ligne{max-width:460px}
+#rg-presence,#loadDelay{max-width:130px}
+.champ:has(#rg-presence),.champ:has(#loadDelay){max-width:420px}
+/* Le choix de fichier : un bouton du site, pas le contrôle du navigateur. */
+.fichier-btn{position:relative;display:inline-flex;align-items:center;width:max-content;cursor:pointer}
+.fichier-input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.fichier-btn:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+/* Les panneaux du programme de vols : des cartes, sans traits de séparation vides. */
+.vols-donnees .panneau{border:1px solid var(--bordure);border-radius:10px;padding:14px 16px;background:var(--bg3);margin:0}
+.rg-version{margin-top:10px;font-size:11.5px;color:var(--txt3)}
+.rg-reset-ligne{margin:12px 0 0;text-align:right}
+/* Une seule typographie de libellés : en minuscules, comme une phrase. Les
+   majuscules sont réservées aux petites pastilles d'état (« À faire ensuite »,
+   « à remplir »). */
+.panneau h3,.champ span,.kpi .lab,.at-kpi .lab,.pc-defauts-lab,.qf-g,.fc-list-title,.demo-badge,
+.flight-table th,.at-table thead th,.at-mat-table thead th,.fc-table thead th,.rg-table thead th,
+.compare-tab thead th,.compare-tab tr.compare-groupe th,.compare-tab td small,.at-bilan-debit em{
+  text-transform:none;letter-spacing:0}
+.champ span,.kpi .lab,.at-kpi .lab,.pc-defauts-lab{font-size:12.5px}
+.panneau h3,.fc-list-title{font-size:14px;color:var(--txt)}
+.flight-table th,.at-table thead th,.at-mat-table thead th,.fc-table thead th,.rg-table thead th,.compare-tab thead th{font-size:12px}
+.qf-g{font-size:12px}
+/* Les lignes de « Minutes par vol » : une ligne, pas un bloc. */
+.rg-barres{height:34px}
+.rg-service>summary{padding-top:5px;padding-bottom:5px}
+/* Le bilan tient dans la largeur de l'œil. */
+.journee-chiffres .panneau{max-width:640px}
+.gr-lien.pointille .gr-trait{opacity:.45;stroke-width:1.8}
+.gr-lien.pointille:hover .gr-trait,.gr-lien.pointille.sel .gr-trait{opacity:1}
+.fc-a-classer{margin:0;padding:8px 12px;border:1px dashed var(--bordure2);border-radius:8px;background:var(--bg3);font-size:13px;color:var(--txt2)}
+#fc-lecture>.fc-list-title{display:none}
+#at-indicateurs{display:block;background:none;border:0;box-shadow:none;padding:0;overflow:visible}
+button.lien-discret{min-height:32px !important}

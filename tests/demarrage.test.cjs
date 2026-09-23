@@ -33,38 +33,39 @@ test('chaque vue a un titre et une phrase en mots de tous les jours', () => {
   }
 });
 
-test('les vols d’exemple sont « à vérifier », les vôtres « fait »', () => {
+test('les vols d’exemple sont « provisoires » (pas une alerte), les vôtres « fait »', () => {
   const e = neuf(); e.vols = { total: 12, departs: 12, source: 'demo' };
-  assert.equal(par(e).vols.etat, 'verifier');
+  assert.equal(par(e).vols.etat, 'provisoire');
   assert.match(par(e).vols.detail, /12 départs · exemple/);
   e.vols.source = 'importe';
   assert.equal(par(e).vols.etat, 'fait');
   assert.equal(par(e).vols.geste, null, 'rien à proposer quand c’est fait');
 });
 
-test('des repas sans équipe mettent « Qui prépare quoi » à vérifier', () => {
+test('des commandes sans équipe laissent « Qui prépare quoi » à faire', () => {
   const e = neuf();
   assert.equal(par(e).ateliers.etat, 'afaire');
   e.ateliers = { total: 2, fabriquent: 2, absentes: 5 };
-  assert.equal(par(e).ateliers.etat, 'verifier');
-  assert.match(par(e).ateliers.detail, /2 équipes · 5 repas sans équipe/);
+  assert.equal(par(e).ateliers.etat, 'afaire', 'ce n’est pas une alerte : c’est ce qui reste à faire');
+  assert.equal(par(e).ateliers.detail, '5 commandes sans équipe');
+  assert.match(par(e).ateliers.geste, /commandes qui n’en ont pas/);
   e.ateliers.absentes = 0;
   assert.equal(par(e).ateliers.etat, 'fait');
 });
 
-test('les temps de travail restent « à vérifier » tant que ce sont des chiffres d’exemple', () => {
-  assert.equal(par(neuf()).bareme.etat, 'verifier');
+test('les temps de travail restent « provisoires » tant que ce sont des chiffres d’exemple', () => {
+  assert.equal(par(neuf()).bareme.etat, 'provisoire');
   assert.match(par(neuf()).bareme.detail, /exemple/);
   const e = neuf(); e.bareme.calibre = true;
   assert.equal(par(e).bareme.etat, 'fait');
 });
 
-test('la journée dit combien de repas sont en retard, ou que tout est à l’heure', () => {
+test('la journée dit combien de commandes sont en retard, ou que tout est à l’heure', () => {
   const e = neuf();
   assert.equal(par(e).journee.etat, 'afaire');
   e.journee = { calculee: true, suivies: 10, aHeure: 7, fin: '10:24' };
   assert.equal(par(e).journee.etat, 'verifier');
-  assert.match(par(e).journee.detail, /3 repas en retard/);
+  assert.equal(par(e).journee.detail, '3 commandes en retard');
   e.journee.aHeure = 10;
   assert.equal(par(e).journee.etat, 'fait');
   assert.match(par(e).journee.detail, /tout est à l’heure · fini à 10:24/);
@@ -73,7 +74,9 @@ test('la journée dit combien de repas sont en retard, ou que tout est à l’he
 test('l’unité signale les zones à confirmer et les liens à corriger', () => {
   const e = neuf(); e.flux = { liaisons: 16, alertes: 0 };
   assert.equal(par(e).unite.etat, 'fait');
-  e.plan.approx = 3; e.flux.alertes = 1;
+  e.plan.approx = 3;
+  assert.equal(par(e).unite.etat, 'provisoire', 'une zone à confirmer n’est pas une alerte');
+  e.flux.alertes = 1;
   assert.equal(par(e).unite.etat, 'verifier');
   assert.match(par(e).unite.detail, /3 zones à confirmer · 1 à corriger/);
 });

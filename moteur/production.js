@@ -480,7 +480,7 @@
         // deux fois trop rapide, et on ne saurait pas pourquoi.
         const etat = tunnelsQuiTournent(a);
         if (etat.sansPersonne.length) {
-          dire('tunnel-personnes', etat.sansPersonne.length + ' tunnel(s) sans personne pour les tenir — '
+          dire('tunnel-personnes', etat.sansPersonne.length + (etat.sansPersonne.length > 1 ? ' tunnels' : ' tunnel') + ' sans personne pour les tenir — '
             + etat.sansPersonne.map(t => t.nom || 'sans nom').join(', ')
             + '. Ils ne tournent pas. Ajoutez du monde ou arrêtez-les.');
         }
@@ -493,7 +493,7 @@
         const mini = a.personnesMin === undefined ? 1 : a.personnesMin;
         if (!Number.isInteger(mini) || mini < 0) dire('personnesMin', 'effectif minimum entier attendu.');
         else if (Number.isInteger(gens) && gens < mini)
-          dire('personnesMin', gens + ' personne(s) pour un minimum de ' + mini + ' : le robot ne tourne pas.');
+          dire('personnesMin', gens + (gens > 1 ? ' personnes' : ' personne') + ' pour un minimum de ' + mini + ' : le robot ne tourne pas.');
       }
 
       for (const p of (a.pauses || [])) {
@@ -923,7 +923,7 @@
       }
       for (const [s, ids] of trous) {
         anomalies.push({ code: 'parcours-trou', service: s, classes: ids,
-          message: '« ' + nom(s) + ' » est sur le parcours de ' + ids.length + ' classe(s) sans qu’aucun atelier ne l’y travaille ('
+          message: '« ' + nom(s) + ' » est sur le chemin de ' + ids.length + (ids.length > 1 ? ' commandes' : ' commande') + ' sans qu’aucune équipe ne l’y prépare ('
             + ids.slice(0, 4).join(', ') + (ids.length > 4 ? '…' : '') + ') : l’étape est sautée.' });
       }
       for (const a of ateliers) {

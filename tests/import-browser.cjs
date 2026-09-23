@@ -39,9 +39,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await click('#restore-demo');await click('[data-sous-onglet=v-departs]');
   // La vue Vols lit le modèle par équipes : sans équipe décrite, aucun repas
   // n'est préparé, et le tableau le dit plutôt que d'annoncer un retard.
-  assert.match(await page.locator('#flight-rows').textContent(),/Des repas sans équipe/);
-  assert.match(await page.locator('#flight-rows').textContent(),/personne ne le prépare/);
-  assert.ok(await page.locator('#flight-rows .rc.sans').count()>0,'chaque repas sans équipe a sa pastille barrée');
+  assert.match(await page.locator('#flight-rows').textContent(),/Commandes sans équipe/);
+  assert.match(await page.locator('#flight-rows').textContent(),/pas encore d’équipe/);
+  assert.ok(await page.locator('#flight-rows .rc.sans').count()>0,'chaque commande sans équipe a sa pastille en pointillés');
+  assert.equal(await page.locator('#flight-rows .rc.sans').first().evaluate(e=>getComputedStyle(e,'::after').content),'none','sans croix, qui se lirait « supprimer »');
   // L'export suit ce qu'on regarde : la journée calculée.
   const attendu=page.waitForEvent('download');await click('#btn-export');const dl=await attendu;
   const exp=JSON.parse(require('node:fs').readFileSync(await dl.path(),'utf8'));
@@ -58,7 +59,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const personnes=n=>page.evaluate(([id,n])=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.find(a=>a.id===id).personnes=n;}),[at,n]);
   await personnes(2);
   await comparer();
-  assert.match(await page.locator('#compare-note').textContent(),/Photographiez A/);
+  assert.match(await page.locator('#compare-note').textContent(),/essai A/);
   await click('#snap-a');
   await personnes(12);
   await click('#snap-b');
@@ -67,7 +68,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const ligne=async nom=>(await lignes()).find(l=>l[0].startsWith(nom));
   assert.deepEqual((await ligne('Personnes au travail')).slice(1),['2','12']);
   assert.deepEqual((await ligne('Vols')).slice(1),['Jeu de démonstration','Jeu de démonstration']);
-  assert.match((await ligne('Dernier repas prêt'))[2],/mieux/,'à douze, la cuisine finit plus tôt, et le tableau le dit en mots');
+  assert.match((await ligne('Dernière commande prête'))[2],/mieux/,'à douze, la cuisine finit plus tôt, et le tableau le dit en mots');
   assert.equal(await page.locator('#compare tr.diff').count()>0,true);
   assert.equal(await page.locator('#compare tr.moins-bien').count(),0,'plus de monde ne dégrade rien');
   assert.match(await page.locator('#compare-note').textContent(),/seul ce que vous avez changé/);
@@ -85,9 +86,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator('#imp-vols').setInputFiles({name:'autre.csv',mimeType:'text/csv',buffer:Buffer.from(header+'AF1,AF,A320,DEP,12:00,,4,0,90')});
   await page.waitForFunction(()=>document.getElementById('source-label').textContent==='autre.csv');
   await comparer();
-  assert.match(await page.locator('#compare-note').textContent(),/Photographiez A/,'un nouveau programme efface les captures');
+  assert.match(await page.locator('#compare-note').textContent(),/essai A/,'un nouveau programme efface les captures');
   await click('#snap-a');await click('[data-view="vols"]');await click('[data-sous-onglet=v-programme]');await click('#restore-demo');await comparer();
-  assert.match(await page.locator('#compare-note').textContent(),/Photographiez A/);
+  assert.match(await page.locator('#compare-note').textContent(),/essai A/);
   // L'ancien moteur n'a plus de curseurs à offrir.
   for(const id of ['#staff-cuisine','#robot','#vivier','#calendrier','#materiel','#tunnels'])
     assert.equal(await page.locator(id).count(),0,id+' a disparu avec l’ancien moteur');

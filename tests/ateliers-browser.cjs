@@ -59,7 +59,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 2. Toutes les compagnies × classes du programme sont listées, à fabriquer.
   const lignes=await page.locator('#at-classes tbody tr').count();
   assert.equal(lignes,34,'34 compagnies × classes dans le jeu de démonstration');
-  assert.equal(await page.locator('.at-etat.manque').count(),34,'aucune n’est fabriquée au départ');
+  assert.equal(await page.locator('.at-etat.neutre').count(),34,'aucune n’est préparée au départ : un état neutre, pas une alerte');
   // CREW et SPML sont des classes comme les autres : elles figurent au tableau.
   // Les classes s'écrivent en toutes lettres ; l'identifiant reste en attribut.
   const ids=await page.locator('#at-classes tbody tr th').allTextContents();
@@ -128,14 +128,14 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 8. La couverture par classe dit ce qui sort et par où.
   const etats=await page.locator('#at-classes tbody tr').evaluateAll(rs=>rs.map(r=>r.cells[0].dataset.classe+'|'+r.cells[5].textContent));
   assert.ok(etats.some(t=>t.startsWith('CRL/BC')&&/à l’heure/.test(t)));
-  assert.equal(etats.filter(t=>/personne ne le prépare/.test(t)).length,31,'34 repas moins les 3 préparés');
+  assert.equal(etats.filter(t=>/pas encore d’équipe/.test(t)).length,31,'34 commandes moins les 3 préparées');
   // Par où elle passe, et qui la fabrique : le tableau « Qui fabrique quoi » le dit case par case.
   const traverses=await page.locator('tr[data-classe="CRL/BC"] .qf-case.ok').evaluateAll(bs=>bs.map(b=>b.dataset.service).sort());
   assert.deepEqual(traverses,['cuisine','prepa'],'les services qui la fabriquent ont leur case remplie');
 
   // 9. Les indicateurs résument la journée.
-  assert.match(await page.locator('#at-indicateurs').textContent(),/Repas prêts à l’heure/);
-  assert.match(await page.locator('#at-indicateurs').textContent(),/31/,'les classes sans atelier sont comptées');
+  assert.match(await page.locator('#at-indicateurs').textContent(),/Sur la journée : \d+ commandes? prêtes? à l’heure sur \d+/,'une phrase, les mêmes mots que l’étape 4');
+  assert.match(await page.locator('#at-indicateurs').textContent(),/31 commandes sans équipe/,'les commandes sans équipe sont comptées');
 
   // 10. Annuler, rétablir, et la saisie survit au rechargement.
   const avantSuppr=(await etat()).ateliers.length;
@@ -298,7 +298,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     await page.fill(s,'2');await page.dispatchEvent(s,'change');await attendre();
   }
   assert.match(await total(),/300 u\/h/,'seul le premier tunnel est tenu');
-  assert.match(await total(),/1 tunnel\(s\) sur 2/);
+  assert.match(await total(),/1 tunnel sur 2/);
   assert.match(await total(),/1 sans personnel/);
   assert.equal(await page.locator(`[data-at="${plonge}"] .at-tunnel.sans-personne`).count(),1,
     'le tunnel sans personnel se voit');
@@ -310,7 +310,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // Un tunnel à l'arrêt ne lave rien et ne mobilise personne, sans être supprimé.
   await page.locator(`[data-at="${plonge}"] [data-at-champ=tunnel-actif][data-index="0"]`).uncheck();await attendre();
   assert.match(await total(),/600 u\/h/);
-  assert.match(await total(),/1 tunnel\(s\) sur 2/);
+  assert.match(await total(),/1 tunnel sur 2/);
   const tunnels=await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).tunnels,plonge);
   assert.deepEqual(tunnels.map(t=>[t.debit,t.personnes,t.actif]),[[300,2,false],[600,2,true]]);
   await page.locator(`[data-at="${plonge}"] [data-at-champ=tunnel-actif][data-index="0"]`).check();await attendre();

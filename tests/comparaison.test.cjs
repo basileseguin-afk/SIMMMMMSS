@@ -38,8 +38,8 @@ test('plus de monde en cuisine : B fait mieux, et le tableau le dit en mots', ()
   const par = Object.fromEntries(C.lignes(a, b).map(l => [l.lib, l]));
   assert.equal(par['Personnes au travail'].diff, true);
   assert.equal(par['Personnes au travail'].verdict, '', 'un réglage n’est ni mieux ni moins bien');
-  assert.equal(par['Dernier repas prêt'].verdict, 'mieux', 'on finit plus tôt');
-  assert.equal(par['Repas sans équipe'].diff, false);
+  assert.equal(par['Dernière commande prête'].verdict, 'mieux', 'on finit plus tôt');
+  assert.equal(par['Commandes sans équipe'].diff, false);
 });
 
 test('deux programmes de vols différents sont signalés', () => {
@@ -49,7 +49,8 @@ test('deux programmes de vols différents sont signalés', () => {
 test('une seule capture ne se compare à rien', () => {
   const l = C.lignes(scenario(4), null);
   assert.ok(l.every(x => x.b === '—' && !x.diff && !x.verdict));
-  assert.match(C.note(scenario(4), null), /Photographiez A/);
+  assert.match(C.note(scenario(4), null), /retenez l’essai B/);
+  assert.match(C.note(null, null), /essai A/);
 });
 
 test('le jeu de démonstration a le format de l’import', () => {

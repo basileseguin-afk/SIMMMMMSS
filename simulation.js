@@ -159,7 +159,7 @@
       }
       const e = document.getElementById('run-state');
       if (e) {
-        e.textContent = this.vide ? 'Rien à relire : donnez d’abord une équipe aux repas (étape 2)'
+        e.textContent = this.vide ? 'Rien à relire : donnez d’abord une équipe aux commandes (étape 2)'
           : this.enMarche ? 'La journée défile…'
           : this.t >= this.fin ? 'Fin de journée'
           : this.t <= this.debut ? 'Appuyez sur « Rejouer » pour voir la journée défiler' : 'En pause'; 
@@ -184,10 +184,14 @@
       }
       mettre('kpi-ontime', part == null ? '—' : Math.round(part * 100) + ' %',
         part == null ? '' : part >= 0.9 ? 'bon' : part >= 0.7 ? 'moyen' : 'mauvais',
-        'kpi-denom', c.exigibles ? c.tenues + ' repas sur ' + c.exigibles + ' prêts avant leur chargement'
-          : c.suivies ? 'aucun chargement encore passé' : 'aucun repas préparé');
+        'kpi-denom', c.exigibles ? c.tenues + ' sur ' + c.exigibles + ' dont le chargement est passé'
+          : c.suivies ? 'aucun chargement encore passé' : 'aucune commande préparée');
       mettre('kpi-overdue', String(c.enRetard), c.enRetard ? 'mauvais' : '',
-        'kpi-ready', c.enRetard ? 'repas pas prêts à l’heure du chargement' : 'aucun retard à cette heure');
+        'kpi-ready', c.enRetard ? (c.enRetard > 1 ? 'pas prêtes' : 'pas prête') + ' à l’heure du chargement' : 'aucun retard à cette heure');
+      // Ces quatre chiffres suivent l'heure rejouée : on la dit, pour qu'ils ne
+      // se confondent pas avec le bilan de la journée entière.
+      const quand = document.getElementById('kpi-quand');
+      if (quand) quand.textContent = 'À ' + P.hhmm(this.t) + ', heure rejouée';
       mettre('kpi-wip', c.auTravail + ' <small>services</small>', '', 'kpi-wip-note', 'qui préparent en ce moment');
       mettre('kpi-debit', c.enAttente + ' <small>services</small>', c.enAttente ? 'moyen' : '',
         'kpi-debit-note', 'le service d’avant n’a pas livré');
@@ -202,17 +206,18 @@
       const box = document.getElementById('bilan-journee'); if (!box) return;
       const r = this.resultat, k = r.indicateurs;
       if (this.vide || !k) {
-        box.innerHTML = '<p class="mini-note">Rien à résumer : aucune équipe ne prépare encore de repas.</p>';
+        box.innerHTML = '<p class="mini-note">Rien à résumer : aucune équipe ne prépare encore de commande.</p>';
         return;
       }
       const lignes = [
-        ['Repas prêts à l’heure', k.classesSuivies ? k.aHeure + ' sur ' + k.classesSuivies + (k.partAHeure != null ? ' · ' + k.partAHeure + ' %' : '') : '—'],
+        ['Commandes prêtes à l’heure', k.classesSuivies ? k.aHeure + ' sur ' + k.classesSuivies + (k.partAHeure != null ? ' · ' + k.partAHeure + ' %' : '') : '—'],
+        ['Commandes en retard', String((k.classesSuivies || 0) - (k.aHeure || 0))],
         ['Retard le plus long', k.retardMax ? Math.round(k.retardMax) + ' min' : 'aucun'],
-        ['Dernier repas prêt à', k.finDerniere != null && Number.isFinite(k.finDerniere) ? P.hhmm(k.finDerniere) : '—'],
+        ['Dernière commande prête à', k.finDerniere != null && Number.isFinite(k.finDerniere) ? P.hhmm(k.finDerniere) : '—'],
         ['Temps passé à attendre', Math.round(k.attenteTotale || 0) + ' min, tous services'],
         ['Travail fourni', (k.hommeHeures || 0).toFixed(1).replace('.', ',') + ' heures de travail']
       ];
-      if (k.classesAbsentes) lignes.push(['Sans équipe', k.classesAbsentes + ' repas que personne ne prépare']);
+      if (k.classesAbsentes) lignes.push(['Sans équipe', k.classesAbsentes + (k.classesAbsentes > 1 ? ' commandes que personne ne prépare' : ' commande que personne ne prépare')]);
       box.innerHTML = '<dl class="bilan">' + lignes.map(([q, v]) =>
         '<div><dt>' + esc(q) + '</dt><dd>' + esc(v) + '</dd></div>').join('') + '</dl>';
     }
@@ -223,7 +228,7 @@
       const services = this.a.services();
       const vus = services.filter(s => i.services[s.id]);
       if (!vus.length) {
-        box.innerHTML = '<p class="mini-note">Aucun service ne travaille : donnez une équipe aux repas (étape 2).</p>';
+        box.innerHTML = '<p class="mini-note">Aucun service ne travaille : donnez une équipe aux commandes (étape 2).</p>';
         return;
       }
       const selection = this.a.selection ? this.a.selection() : '';

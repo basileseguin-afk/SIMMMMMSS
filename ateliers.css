@@ -245,7 +245,7 @@ body.ateliers-open .workbench{display:none}
 .qf-id{display:grid;line-height:1.2}
 .qf-id b{font-size:12.5px}
 .qf-id small{font-size:10.5px;color:var(--txt2)}
-#view-ateliers .qf-parcours{font-size:10.5px;padding:1px 4px;margin-top:2px;max-width:150px;border-color:transparent;background:transparent;color:var(--txt2)}
+#view-ateliers .qf-parcours{font-size:11px;padding:4px 6px;min-height:32px;margin-top:2px;max-width:150px;border-color:transparent;background:transparent;color:var(--txt2)}
 #view-ateliers .qf-parcours:hover,#view-ateliers .qf-parcours:focus{border-color:var(--bordure2)}
 #view-ateliers .qf-parcours.propre{color:var(--accent2);font-weight:700}
 .qf-c{min-width:108px}
@@ -262,7 +262,7 @@ body.ateliers-open .workbench{display:none}
 .qf-fin{white-space:nowrap}
 .qf-fin-tete{font-size:11px;color:var(--txt2)}
 .qf-suivre{font:inherit;font-size:12px;display:flex;align-items:center;gap:6px;border:1px solid transparent;background:none;
-  border-radius:6px;padding:4px 6px;cursor:pointer;color:var(--txt);min-height:0;width:100%}
+  border-radius:6px;padding:4px 6px;cursor:pointer;color:var(--txt);min-height:34px;width:100%}
 .qf-suivre:hover,.qf-suivre[aria-expanded="true"]{border-color:var(--bordure2);background:var(--bg2)}
 .qf-chevron{margin-left:auto;color:var(--txt2)}
 .qf-etat{font-size:11px;font-weight:700}

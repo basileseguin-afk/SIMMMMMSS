@@ -13,6 +13,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
+  // Le site s'ouvre sur l'étape à faire ensuite : ce parcours travaille sur le plan.
+  const versPlan=async()=>{await page.locator('#etapes [data-view=plan]').click();await page.waitForTimeout(120);};await versPlan();
   // Real mouse selection, not synthetic dispatch: BUG-002.
   await page.locator('.zone[data-id="cuisine"]').click();
   assert.equal(await page.locator('#zone-picker').inputValue(),'cuisine');
@@ -25,16 +27,16 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await panel.locator('[data-stock-action=remove]').last().click();assert.equal(await panel.locator('fieldset').count(),1);
   await panel.locator('[data-stock-action=undo]').click();assert.equal(await panel.locator('fieldset').count(),2);
   await panel.locator('[data-stock-action=redo]').click();assert.equal(await panel.locator('fieldset').count(),1);
-  await page.reload();await page.locator('.zone[data-id="cuisine"]').click();assert.equal(await panel.locator('input').inputValue(),'Réserve essai');
+  await page.reload();await versPlan();await page.locator('.zone[data-id="cuisine"]').click();assert.equal(await panel.locator('input').inputValue(),'Réserve essai');
   await click('#btn-edit');await click('[data-action=select][data-zone=cuisine]');assert.equal(await page.locator('#pe-storages input').inputValue(),'Réserve essai');
   const download=page.waitForEvent('download');await page.evaluate(()=>Sim.editor.export());const d=await download;const exported=JSON.parse(fs.readFileSync(await d.path(),'utf8'));assert.equal(exported.zones.find(z=>z.id==='cuisine').storages.length,1);
   await click('#edit-done');await click('#sim-pas');
   await page.locator('[data-clear-selection]').click({delay:150});assert.equal(await page.locator('#zone-picker').inputValue(),'');
   // Existing v2 data migrates without assuming which service owns a fridge.
   await page.evaluate(()=>{const p=structuredClone(Sim.editor.state);p.version=2;p.zones.push({id:'cold-custom',nom:'Ancien froid',kind:'cold',x:0,y:0,w:20,h:20});localStorage.removeItem('orly-plan-v3');localStorage.setItem('orly-plan-v2',JSON.stringify(p));});
-  await page.reload();await page.locator('.zone[data-id="cuisine"]').click();assert.equal((await state()).unassignedStorages.length,1);assert.equal(await page.locator('[data-pe-zone="cold-custom"]').count(),0);
+  await page.reload();await versPlan();await page.locator('.zone[data-id="cuisine"]').click();assert.equal((await state()).unassignedStorages.length,1);assert.equal(await page.locator('[data-pe-zone="cold-custom"]').count(),0);
   await panel.locator('summary').click();await panel.locator('[data-stock-action=assign]').click();assert.equal((await state()).unassignedStorages.length,0);assert.equal(await panel.locator('fieldset').count(),2);
-  await page.reload();assert.equal((await state()).zones.find(z=>z.id==='cuisine').storages.length,2);
+  await page.reload();await versPlan();assert.equal((await state()).zones.find(z=>z.id==='cuisine').storages.length,2);
   await page.setViewportSize({width:1024,height:700});await page.locator('#zone-picker').selectOption('cuisine');assert.equal(await panel.isVisible(),true);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   assert.deepEqual(errors,[]);console.log('Service storage browser passed: real clicks, CRUD, undo/redo, reload, editor, export, v2 migration and assignment, running close, narrow desktop.');

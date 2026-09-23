@@ -31,7 +31,7 @@ header .marque,header .horloge,header #vitesse-val{color:#fff}
    --------------------------------------------------------------------------- */
 #plan .zone.p-hors .fond{fill:var(--txt3);fill-opacity:.07;stroke:var(--bordure2);stroke-width:5;stroke-dasharray:4 10}
 #plan .zone.p-hors text.titre{fill:var(--txt2)}
-body.avant-lancement #plan .zone.p-vide .fond{fill:var(--bad-stroke);fill-opacity:.14;stroke:var(--bad-stroke);stroke-width:9}
+body.avant-lancement #plan .zone.p-vide .fond{fill:var(--zone-fill);fill-opacity:.35;stroke:var(--txt3);stroke-width:6;stroke-dasharray:18 12}
 body.avant-lancement #plan .zone.p-partiel .fond{fill:var(--zone-fill);fill-opacity:.55;stroke:var(--zone-stroke);stroke-width:7}
 body.avant-lancement #plan .zone.p-pret .fond{fill:var(--accent);fill-opacity:.20;stroke:var(--accent);stroke-width:9}
 
@@ -41,7 +41,7 @@ body.avant-lancement #plan .zone.p-pret .fond{fill:var(--accent);fill-opacity:.2
    à petite taille. Deux exceptions gardent la main, parce qu'elles alertent :
    un atelier simulé sans personne, et la zone sélectionnée. */
 body.avant-lancement #plan .zone.couleur-perso .fond{fill:var(--zone-perso);fill-opacity:.30;stroke:var(--zone-perso);stroke-opacity:1}
-body.avant-lancement #plan .zone.couleur-perso.p-vide .fond{stroke:var(--bad-stroke)}
+body.avant-lancement #plan .zone.couleur-perso.p-vide .fond{stroke:var(--txt3)}
 #plan .zone.couleur-perso.p-hors .fond{fill:var(--zone-perso);fill-opacity:.18;stroke:var(--zone-perso);stroke-opacity:.75;stroke-dasharray:4 10}
 
 body.avant-lancement #plan .zone.selection .fond{stroke:var(--accent);stroke-width:13;stroke-opacity:1}

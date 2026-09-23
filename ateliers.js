@@ -256,7 +256,7 @@
 <div id="at-indicateurs" class="at-indicateurs" data-sous="at-planning"></div>
 <div id="at-planning" class="at-planning" data-sous="at-planning"></div>
 
-<h3 class="at-titre" data-sous="at-repas">Les repas à préparer <span class="pc-sous">un par compagnie et par classe</span></h3>
+<h3 class="at-titre" data-sous="at-repas">Les commandes à préparer <span class="pc-sous">une par compagnie et par classe, pour la journée</span></h3>
 <div id="at-classes" data-sous="at-repas"></div>`;
     }
 
@@ -475,9 +475,9 @@
       const lots = touches.reduce((n, a) => n + a.lots.filter(l => l.includes(id)).length, 0);
       const vides = touches.reduce((n, a) => n + a.lots.filter(l => l.length === 1 && l[0] === id).length, 0);
       const message = lots
-        ? id + ' retirée — ' + lots + ' préparation(s) chez ' + touches.map(a => a.nom).join(', ')
-            + (vides ? ', dont ' + vides + ' vidé(s) et supprimé(s)' : '') + '.'
-        : id + ' retiré : aucune équipe ne le préparait.';
+        ? id + ' retirée — ' + lots + (lots > 1 ? ' préparations chez ' : ' préparation chez ') + touches.map(a => a.nom).join(', ')
+            + (vides ? ', dont ' + vides + (vides > 1 ? ' vidées et supprimées' : ' vidée et supprimée') : '') + '.'
+        : id + ' retirée : aucune équipe ne la préparait.';
       this.changer(() => {
         for (const a of this.state.ateliers) {
           const restants = [];
@@ -545,9 +545,9 @@
             { services: this.a.services(), programme: this.a.classes() || [] });
           etat = valider(r.etat); ajouts = r.ajouteesAuto;
         }
-        if (!confirm('Remplacer les équipes par celles du fichier (' + etat.ateliers.length + ' équipe(s)) ? L’action est annulable.')) return;
-        this.changer(() => { this.state = etat; }, 'Ateliers importés : ' + etat.ateliers.length + ' atelier(s).'
-          + (ajouts.length ? ' Repas ajouté(s) : ' + ajouts.join(', ') + '.' : ''));
+        if (!confirm('Remplacer les équipes par celles du fichier (' + etat.ateliers.length + (etat.ateliers.length > 1 ? ' équipes' : ' équipe') + ') ? L’action est annulable.')) return;
+        this.changer(() => { this.state = etat; }, 'Équipes importées : ' + etat.ateliers.length + (etat.ateliers.length > 1 ? ' équipes.' : ' équipe.')
+          + (ajouts.length ? (ajouts.length > 1 ? ' Commandes ajoutées : ' : ' Commande ajoutée : ') + ajouts.join(', ') + '.' : ''));
       } catch (err) { this.rendre('Import refusé — ' + err.message); }
       finally { e.target.value = ''; }
     }
@@ -570,20 +570,21 @@
       if (this.a.change) this.a.change(r);
     }
 
+    /* Les indicateurs vivent à un seul endroit, « La journée › Les chiffres ».
+     * Ici, une phrase les résume, avec les mêmes mots et le même moment
+     * (la journée entière), et un lien y mène. */
     rendreIndicateurs(r) {
       const i = r.indicateurs || {};
-      const I = root.OrlyIcones;
-      const tuile = (lab, val, note, ico, ton) =>
-        `<div class="at-kpi ton-${ton || 'neutre'}">${I ? `<span class="at-kpi-ico">${I.ico(ico)}</span>` : ''}<div><div class="lab">${esc(lab)}</div><div class="val">${esc(val)}</div><div class="note">${esc(note || '')}</div></div></div>`;
-      document.getElementById('at-indicateurs').innerHTML = !r.ok ? '' : [
-        tuile('Repas prêts à l’heure', i.partAHeure == null ? '—' : i.partAHeure + ' %',
-          i.aHeure + ' sur ' + i.classesSuivies + ' préparés', 'check', i.partAHeure >= 90 ? 'ok' : i.partAHeure == null ? '' : 'mal'),
-        tuile('Plus long retard', i.retardMax == null ? '—' : Math.round(i.retardMax) + ' min',
-          i.retardMoyen == null ? '' : 'en moyenne ' + Math.round(i.retardMoyen) + ' min', 'sablier', i.retardMax ? 'attente' : 'ok'),
-        tuile('Dernier repas prêt', P.hhmm(i.finDerniere), 'fin de la dernière préparation', 'chrono', 'journee'),
-        tuile('Sans équipe', String(i.classesAbsentes),
-          i.classesAbsentes ? 'repas que personne ne prépare' : 'tous les repas ont une équipe', 'equipe', i.classesAbsentes ? 'mal' : 'ok')
-      ].join('');
+      const pl = (n, s, p) => n + ' ' + (n > 1 ? p : s);
+      const box = document.getElementById('at-indicateurs');
+      if (!r.ok || !i.classesSuivies && !i.classesAbsentes) { box.innerHTML = ''; return; }
+      const retard = (i.classesSuivies || 0) - (i.aHeure || 0);
+      box.innerHTML = '<p class="at-resume"><b>Sur la journée :</b> '
+        + pl(i.aHeure || 0, 'commande prête', 'commandes prêtes') + ' à l’heure sur ' + (i.classesSuivies || 0)
+        + (retard ? ' · <span class="at-resume-retard">' + pl(retard, 'en retard', 'en retard') + '</span>' : '')
+        + (i.classesAbsentes ? ' · ' + pl(i.classesAbsentes, 'commande', 'commandes') + ' sans équipe' : '')
+        + (Number.isFinite(i.finDerniere) ? ' · dernière prête à ' + P.hhmm(i.finDerniere) : '')
+        + ' <button class="lien-discret" data-aller="plan" data-onglet="j-chiffres">Les chiffres de la journée →</button></p>';
     }
 
     rendreAnomalies(r) {
@@ -593,14 +594,17 @@
       const trous = (r.anomalies || []).filter(a => a.code === 'parcours-trou');
       const list = (r.anomalies || []).filter(a => a.code !== 'parcours-trou').map(a => esc(a.message));
       if (trous.length) {
-        const n = trous.reduce((s, a) => s + (a.classes || []).length, 0);
-        list.push(n + ' case(s) « à choisir » dans l’onglet « Qui prépare quoi » ('
-          + trous.map(a => esc((this.a.services().find(x => x.id === a.service) || {}).nom || a.service)).join(', ') + ') : ces étapes sont sautées.');
+        // Des commandes déjà commencées dont une étape n'a personne : elle est
+        // sautée. Ce n'est pas le compte des cases vides du tableau (celles
+        // des commandes pas encore commencées) : on le dit autrement.
+        const cmd = new Set(trous.flatMap(a => a.classes || [])).size;
+        list.push((cmd > 1 ? cmd + ' commandes commencées sautent' : '1 commande commencée saute') + ' une étape sans équipe ('
+          + trous.map(a => esc((this.a.services().find(x => x.id === a.service) || {}).nom || a.service)).join(', ') + ') : à compléter dans l’onglet « Qui prépare quoi ».');
       }
       box.hidden = !list.length;
       // Replié par défaut : le nombre suffit à savoir qu'il y a à faire.
       box.innerHTML = list.length
-        ? '<summary><strong>' + list.length + ' point(s) à regarder</strong></summary><ul>' +
+        ? '<summary><strong>' + list.length + (list.length > 1 ? ' points' : ' point') + ' à regarder</strong></summary><ul>' +
           list.map(m => '<li>' + m + '</li>').join('') + '</ul>'
         : '';
     }
@@ -650,7 +654,7 @@
     ${chiffre('Emporté', bilan.consommees + ' u')}
     ${chiffre('Reste propre', bilan.restePropre + ' u', bilan.restePropre ? 'disponible demain' : 'aucun amortisseur')}
     ${chiffre('Plus bas niveau', bilan.minPropre + ' u', bilan.minPropre === 0 ? 'passé par zéro' : '')}
-    ${chiffre('Attente de matériel', Math.round(bilan.attente) + ' min', bilan.enAttente ? bilan.enAttente + ' préparation(s) jamais servie(s)' : '')}
+    ${chiffre('Attente de matériel', Math.round(bilan.attente) + ' min', bilan.enAttente ? bilan.enAttente + (bilan.enAttente > 1 ? ' préparations jamais servies' : ' préparation jamais servie') : '')}
   </div>` : ''}
 </section>`;
     }
@@ -682,7 +686,7 @@
       const attente = calcul && calcul.attente ? ' · ' + Math.round(calcul.attente) + ' min d’attente' : '';
       const jour = a.jour ? ' (J' + a.jour + ')' : '';
       const noms = a.lots.map(l => l.map(P.libelleClasse).join(' + '));
-      const resume = dispo ? 'sert tous les repas'
+      const resume = dispo ? 'sert toutes les commandes'
         : !noms.length ? 'ne prépare rien'
         : noms.length <= 3 ? noms.join(' → ')
         : noms.slice(0, 3).join(' → ') + ' → … (' + noms.length + ' préparations)';
@@ -757,9 +761,9 @@
           <label>Personnes minimum<input type="number" min="0" value="${a.personnesMin}" data-at-champ="personnesMin"></label>` : ''}
         </div>
         ${dispo ? `
-        <p class="mini-note at-regle">Ce service <b>ne prépare pas</b> de repas : il sort du matériel ou des
+        <p class="mini-note at-regle">Ce service <b>ne prépare pas</b> de commande : il sort du matériel ou des
           matières premières, prêts à l’avance. Ni effectif, ni minutes de travail, ni durée — et il sert
-          <b>tous</b> les repas, sans qu’on les énumère.</p>
+          <b>toutes</b> les commandes, sans qu’on les énumère.</p>
         <div class="at-cases">
           <label class="chk chk-mini"><input type="checkbox" data-at-champ="permanent" ${a.permanent !== false ? 'checked' : ''}>
             Disponible en permanence — personne ne l’attend</label>
@@ -808,9 +812,9 @@
           <span><em>Somme des tunnels qui tournent</em><b>${etatTunnels.somme}</b> u/h</span>
           <span><em>Plafond de l’ensemble</em><b>${a.plafond ? a.plafond : '—'}</b>${a.plafond ? ' u/h' : ''}</span>
           <span class="retenu"><em>Débit retenu</em><b>${etatTunnels.debit}</b> u/h</span>
-          <span class="at-tunnel-total">${etatTunnels.tournent.length} tunnel(s) sur ${a.tunnels.length}${
+          <span class="at-tunnel-total">${etatTunnels.tournent.length} ${etatTunnels.tournent.length > 1 ? 'tunnels' : 'tunnel'} sur ${a.tunnels.length}${
             etatTunnels.sansPersonne.length ? ' · ' + etatTunnels.sansPersonne.length + ' sans personnel' : ''}${
-            etatTunnels.reste ? ' · ' + etatTunnels.reste + ' personne(s) disponible(s)' : ''}</span>
+            etatTunnels.reste ? ' · ' + etatTunnels.reste + (etatTunnels.reste > 1 ? ' personnes disponibles' : ' personne disponible') : ''}</span>
         </div>
         <div class="mini-note at-tunnel-note">Deux limites, et c’est la plus basse qui compte.${
           etatTunnels.bride ? ' <b class="at-danger">Ici, c’est le plafond.</b>' : ''}<details class="aide">
@@ -822,17 +826,17 @@
               séchage et le retour des paniers sont partagés entre les lignes et les brident
               toutes.</p>
           </span></details></div>
-        <p class="mini-note at-lavage-note">Cette équipe ne prépare pas de repas : son travail vient des retours de vols, à mesure qu’ils arrivent.</p>` : `
+        <p class="mini-note at-lavage-note">Cette équipe ne prépare pas de commande : son travail vient des retours de vols, à mesure qu’ils arrivent.</p>` : `
         <div class="at-sous-titre">Ce que cette équipe prépare, dans l’ordre</div>
         <p class="mini-note at-regle">Une ligne = une préparation. Plusieurs sur la même ligne sortent <b>ensemble</b> ;
           sur deux lignes, <b>l’une après l’autre</b>. La première part à l’heure de début.</p>
         ${lots || '<p class="mini-note at-rien">Rien pour l’instant : cette équipe ne prépare rien.</p>'}
         <div class="at-actions-lot">
-          <select class="at-ajout-lot" data-at-champ="lot-nouveau" aria-label="Ajouter un repas à préparer">
-            <option value="">+ Ajouter un repas à préparer…</option>
+          <select class="at-ajout-lot" data-at-champ="lot-nouveau" aria-label="Ajouter une commande à préparer">
+            <option value="">+ Ajouter une commande à préparer…</option>
             ${optionsDe(libres)}
           </select>
-          ${a.lots.length ? '' : `<button class="btn btn-sm" data-at-action="lot-separer">Tous les repas, un par ligne</button>
+          ${a.lots.length ? '' : `<button class="btn btn-sm" data-at-action="lot-separer">Toutes les commandes, une par ligne</button>
           <button class="btn btn-sm" data-at-action="lot-tout">Tout sur une seule ligne</button>`}
         </div>`}
 
@@ -920,13 +924,13 @@
           <button class="btn btn-sm" data-at-action="classe-annuler">Annuler</button>
         </div>
         <p class="mini-note at-ajout-note">Passagers, nombre de vols et heure viennent de
-          l’<b>import des vols</b> — on ne les saisit pas deux fois. Un repas absent des vols
-          reste ajouté, sans volume, jusqu’au prochain import.</p>
+          l’<b>import des vols</b> — on ne les saisit pas deux fois. Une commande absente des vols
+          reste ajoutée, sans volume, jusqu’au prochain import.</p>
       </div>` : '';
 
       const barre = `<div class="at-barre">
         <span class="at-barre-fin"></span>
-        <button class="btn btn-sm" data-at-action="classe-nouvelle" ${this.ajout ? 'disabled' : ''}>+ Ajouter un repas</button>
+        <button class="btn btn-sm" data-at-action="classe-nouvelle" ${this.ajout ? 'disabled' : ''}>+ Ajouter une commande</button>
       </div>`;
 
       const exclues = retirees.length ? `<p class="at-exclues">Retirées du programme :
@@ -934,30 +938,30 @@
 
       if (!classes.length) {
         box.innerHTML = barre + ajout + exclues +
-          '<p class="mini-note">Aucun repas à préparer : ni dans le programme de vols, ni ajouté ici.</p>';
+          '<p class="mini-note">Aucune commande à préparer : ni dans le programme de vols, ni ajoutée ici.</p>';
         return;
       }
 
       box.innerHTML = barre + ajout + exclues + `<table class="at-table"><thead><tr>
-        <th scope="col">Repas</th><th scope="col">Passagers</th><th scope="col">Vols</th>
-        <th scope="col">Prêt avant</th><th scope="col">Prêt à</th><th scope="col">Où il en est</th>
+        <th scope="col">Commande</th><th scope="col">Passagers</th><th scope="col">Vols</th>
+        <th scope="col">Prête avant</th><th scope="col">Prête à</th><th scope="col">Où elle en est</th>
         <th scope="col"><span class="sr-only">Retirer</span></th>
         </tr></thead><tbody>` +
         classes.map(c => {
           const v = par[c.id] || {};
-          const etat = v.absente ? '<span class="at-etat manque">personne ne le prépare</span>'
-            : v.fin == null ? '<span class="at-etat manque">pas fini</span>'
+          const etat = v.absente ? '<span class="at-etat neutre">pas encore d’équipe</span>'
+            : v.fin == null ? '<span class="at-etat neutre">pas finie</span>'
             : v.aHeure ? '<span class="at-etat ok">à l’heure</span>'
             : '<span class="at-etat retard">+' + Math.round(v.retard) + ' min</span>';
           // Une classe déclarée que l'import ne porte pas n'a ni volume ni
           // échéance : afficher zéro et une heure ferait croire à une donnée.
           const horsImport = c.origine === 'ajoutee' && !c.vols.length;
           const source = c.origine === 'ajoutee'
-            ? '<span class="at-source">' + (horsImport ? 'pas dans les vols' : 'ajouté') + '</span>' : '';
+            ? '<span class="at-source">' + (horsImport ? 'pas dans les vols' : 'ajoutée') + '</span>' : '';
           return `<tr><th scope="row" data-classe="${esc(c.id)}">${esc(P.libelleClasse(c.id))} ${source}</th>
             <td>${horsImport ? '—' : c.pax}</td><td>${horsImport ? '—' : c.vols.length}</td>
             <td>${horsImport ? '—' : P.hhmm(c.echeance)}</td><td>${v.fin == null ? '—' : P.hhmm(v.fin)}</td><td>${etat}</td>
-            <td><button class="btn btn-sm at-danger" data-at-action="classe-supprimer" data-classe="${esc(c.id)}"
+            <td><button class="lien-discret" data-at-action="classe-supprimer" data-classe="${esc(c.id)}"
               title="Retirer ${esc(P.libelleClasse(c.id))} et couper ses liens avec les équipes">Retirer</button></td></tr>`;
         }).join('') + '</tbody></table>';
     }

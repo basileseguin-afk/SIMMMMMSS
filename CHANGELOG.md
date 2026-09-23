@@ -5,6 +5,60 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-23 — Corrections de l'audit visuel
+
+L'audit (lisibilité, compréhension, épuration) a relevé des points de
+priorité 1, 2 et 3. Tous sont traités ; la version téléphone et le thème
+sombre, abandonnés entre-temps, sortent du périmètre.
+
+**Priorité 1 — comprendre**
+- On arrive sur l'**étape à faire ensuite**, plus sur une journée vide (`sim.js`).
+- **« Commande »** remplace « repas » quand il s'agit d'une compagnie × classe :
+  « 4 commandes en retard », « 30 commandes sans équipe », onglet « Les
+  commandes », colonne « Commande » ; chaque ligne du tableau dit ses passagers.
+- **Des chiffres qui concordent** : les indicateurs de « Les chiffres » disent
+  leur heure (« À 07:00, heure rejouée »), le bilan « Sur toute la journée » ;
+  les compteurs des vols disent « vols » ; le badge du tableau compte ses cases
+  « à choisir », comme sa jauge ; « Leur journée » ne duplique plus les
+  indicateurs, une phrase les résume avec les mêmes mots et renvoie à l'étape 4.
+- **Plus de ×** sur les pastilles de classe (il se lisait « supprimer »).
+- **Plus de mur rouge** sur un site neuf : ce qui n'est pas encore rempli est
+  gris (plan, vols, commandes, nœuds du chemin, liens de l'unité) ; un état
+  « provisoire » (~) remplace le « ! » orange des exemples ; le rouge est
+  réservé aux vrais retards.
+
+**Priorité 1 — épurer**
+- Sans équipe, le tableau « Qui prépare quoi » laisse place à un encart qui dit
+  par où commencer (12 commandes visibles au lieu de 311) ; en-têtes de colonne
+  réduits à une information ; cibles d'au moins 32 px (71 trop petites → 0).
+
+**Priorité 2**
+- La version servie rejoint « Sauvegarde et limites » ; le statut permanent
+  des liens disparaît.
+- Champs à leur taille (rythme, décalage, présence, délai) ; bouton « Choisir
+  un fichier… » au lieu du contrôle du navigateur ; plus de traits vides.
+- Actions destructives en liens discrets (Retirer, Supprimer ce chemin,
+  Remettre les chiffres d'exemple, Effacer les essais).
+- « Comparer deux essais » vide : un seul bouton, « Retenir comme essai A ».
+- Bilan resserré ; lignes de « Minutes par vol » compactes.
+- Libellés en minuscules (les capitales restent aux petites pastilles) ; plus
+  aucun « (s) » ; chaque « Exporter » dit ce qu'il exporte.
+- Plan : « Cadrer » et « Tout voir » en toutes lettres ; « Liens dessinés »
+  dans la barre d'outils.
+- Diagramme de l'unité : liens « à classer » pâles, et un bandeau pour les classer.
+
+**Priorité 3** : titres qui redisaient l'onglet retirés ; noms de services
+affichés en minuscules lisibles (« Réception / Appros », « CF départ food »)
+sans toucher aux noms enregistrés (`OrlyIcones.nomLisible`).
+
+**Tests** : `demarrage.test` (état provisoire, commandes), `comparaison.test`,
+`icones.test` (noms lisibles), `histoire-browser` (arrivée sur l'étape à faire,
+aucune alerte sur un site neuf, tableau vide guidé), `import-browser` (pastille
+sans croix) ; les autres parcours suivent les nouveaux mots et partent de « La
+journée » quand ils travaillent sur le plan. 194 tests purs, 16 parcours navigateur.
+
+---
+
 ## 2026-09-23 — Bureau seulement, thème clair seulement
 
 Décision de Basile : le thème sombre et la version téléphone ne sont pas utiles.

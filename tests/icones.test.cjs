@@ -17,3 +17,12 @@ test('un pictogramme est un SVG muet, sauf s’il porte un titre', () => {
   assert.match(I.ico('avion', 'x', 'Départ'), /role="img" aria-label="Départ"/);
   for (const e of Object.values(I.ETAPES)) assert.ok(I.TRAITS[e.ico], e.ico);
 });
+
+test('un nom de service en capitales s’affiche comme une phrase, sans toucher aux sigles', () => {
+  assert.equal(I.nomLisible('RÉCEPTION / APPROS'), 'Réception / Appros');
+  assert.equal(I.nomLisible('CF DÉPART FOOD'), 'CF départ food');
+  assert.equal(I.nomLisible('QUAIS · RÉCEPTION'), 'Quais · Réception');
+  assert.equal(I.nomLisible('MONTAGE'), 'Montage');
+  assert.equal(I.nomLisible('Armement 2'), 'Armement 2', 'un nom déjà écrit en minuscules reste tel quel');
+  assert.equal(I.nomLisible(''), '');
+});

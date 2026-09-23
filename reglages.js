@@ -197,10 +197,10 @@
             <button class="btn btn-sm" id="rg-redo">Rétablir</button>
             <button class="btn btn-sm" id="rg-export" title="Ces chiffres dans un classeur Excel, prêt à remplir">⇩ Excel</button>
             <button class="btn btn-sm" id="rg-import-btn" title="Réimporter un classeur (ou un CSV) modifié">⇧ Importer</button>
-            <button class="btn btn-sm" id="rg-reset">Remettre les chiffres d’exemple</button>
             <input id="rg-import" type="file" accept=".xlsx,.csv,.json" hidden>
           </div>
           <div id="rg-bareme"></div>
+          <p class="rg-reset-ligne"><button class="lien-discret danger" id="rg-reset">Remettre les chiffres d’exemple</button></p>
         </div>
         <div class="panneau" data-sous="rg-rythme">
           <div class="titre-aide"><h3>Rythme de travail</h3><details class="aide">
@@ -383,7 +383,7 @@
             data-cle="${esc(cle)}" aria-label="${esc(label)}"${attrs && attrs.manque ? ' class="rg-manque"' : ''}>`;
 
           const digest = parCompagnie
-            ? `<em>par compagnie × classe</em> · ${propres.length} valeur(s)`
+            ? `<em>par compagnie × classe</em> · ${propres.length} ${propres.length > 1 ? 'valeurs' : 'valeur'}`
               + (manquent.length ? ` · <b class="rg-manque-txt">${manquent.length} à renseigner</b>` : '')
             : `<span class="rg-barres" aria-hidden="true">${P.CABINES.map((c, i) => {
                 const v = communes[i], ok = Number.isFinite(v);
@@ -554,9 +554,9 @@
           lu = valider({ ...this.etat, ...r, detail, regime: { ...this.etat.regime, ...(r.regime || {}) } });
         }
         const n = Object.values(lu.bareme).reduce((k, t) => k + Object.keys(t).length, 0);
-        if (!confirm('Remplacer le barème entier par celui du fichier (' + n + ' valeur(s)) ? L’action est annulable.')) return;
+        if (!confirm('Remplacer le barème entier par celui du fichier (' + n + (n > 1 ? ' valeurs' : ' valeur') + ') ? L’action est annulable.')) return;
         this.converti = false;
-        this.changer(() => { this.etat = lu; }, 'Barème importé : ' + n + ' valeur(s).');
+        this.changer(() => { this.etat = lu; }, 'Barème importé : ' + n + (n > 1 ? ' valeurs.' : ' valeur.'));
       } catch (err) {
         this.rendre('Import refusé — ' + err.message + '\nLe barème en place est conservé.');
       } finally { e.target.value = ''; }

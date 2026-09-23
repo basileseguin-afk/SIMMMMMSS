@@ -43,7 +43,7 @@ class FlowCenter{
  constructor(adapter){
   this.a=adapter;this.host=document.getElementById('view-flux');this.family='all';this.service='';this.undoStack=[];this.redoStack=[];this.state=initial(adapter.legacy);this.mapFilter='all';this.mapOwner='';
   let warning='';try{const saved=localStorage.getItem('orly-flows-v1');if(saved)this.state=validate(JSON.parse(saved));}catch(e){warning='Configuration enregistrée non chargée : '+e.message+' La copie reste conservée.';}
-  this.paire=null;this.build();this.graphe=this.creerGraphe();this.bind();this.refresh();this.status(warning||'Enregistré dans ce navigateur · certains liens n’ont pas encore de type.');
+  this.paire=null;this.build();this.graphe=this.creerGraphe();this.bind();this.refresh();this.status(warning||'');
  }
  get points(){return endpoints(this.a.zones());}
  /* Le diagramme des liens : un nœud par service, un trait par couple
@@ -59,7 +59,7 @@ class FlowCenter{
    titre:'Le diagramme de l’unité : un nœud par service, un trait par lien',
    noeuds:()=>{const lu=fc.a.lecture?fc.a.lecture():{lignes:[]},eq=new Map((lu.lignes||[]).map(l=>[l.id,l]));const I=root.OrlyIcones;
     return fc.points.filter(p=>p.service).map(p=>{const l=eq.get(p.owner);return{id:p.owner,nom:p.label,ico:I?I.icoService(p.owner,p.label):'service',
-     sous:!l?'':l.dispo?'mise à disposition':l.equipes?l.equipes+' équipe'+(l.equipes>1?'s':''):'aucune équipe',ton:l&&!l.equipes?'attente':l?'ok':'neutre'};});},
+     sous:!l?'':l.dispo?'mise à disposition':l.equipes?l.equipes+' équipe'+(l.equipes>1?'s':''):'aucune équipe',ton:l&&l.equipes?'ok':'neutre'};});},
    liens:()=>paires().map(p=>{const types=[...new Set(p.flows.map(f=>f.type))],ok=p.flows.some(f=>usable(f,fc.points));
     const nom=id=>(fc.points.find(x=>x.owner===id&&x.service)||{}).label||id;
     return{id:p.id,de:p.de,vers:p.vers,couleur:types.length===1?TYPES[types[0]].color:'',pointille:!ok,
@@ -88,7 +88,7 @@ class FlowCenter{
  }
  status(message){document.getElementById('fc-status').textContent=message;}
  build(){
-  this.host.innerHTML=`<div class="fc-heading"><div><p class="scope-badge">Qui livre qui, entre les services de l’unité</p></div><div class="fc-actions"><button class="btn" id="fc-undo">Annuler</button><button class="btn" id="fc-redo">Rétablir</button><button class="btn" id="fc-export">Exporter</button><button class="btn" id="fc-import-button">Importer</button><input id="fc-import" type="file" accept=".json" hidden></div></div>
+  this.host.innerHTML=`<div class="fc-heading"><div><p class="scope-badge">Qui livre qui, entre les services de l’unité</p></div><div class="fc-actions"><button class="btn" id="fc-undo">Annuler</button><button class="btn" id="fc-redo">Rétablir</button><button class="btn" id="fc-export">⇩ Exporter les liens</button><button class="btn" id="fc-import-button">⇧ Importer des liens</button><input id="fc-import" type="file" accept=".json" hidden></div></div>
    <div id="fc-status" role="status" aria-live="polite"></div>
    <section id="fc-lecture" class="fc-lecture" data-sous="u-lecture">
     <h3 class="fc-list-title">Ce que le calcul en retient</h3>
@@ -107,13 +107,14 @@ class FlowCenter{
    <nav id="fc-families" class="fc-families" aria-label="Types de liens" data-sous="u-liens"></nav>
    <div class="fc-filters" data-sous="u-liens"><label>Service concerné<select id="fc-service"></select></label><label>Ce qui circule dans les liens que vous tirez<select id="fc-graphe-type">${this.typeOptions('material',false)}</select></label><span id="fc-summary"></span><button class="btn" id="fc-reorganiser" title="Ranger les services d’eux-mêmes, dans le sens du flux">Réorganiser</button><button class="btn" id="fc-show-map">Voir ces liens sur le plan</button><button class="btn btn-play" id="fc-new">+ Nouveau lien</button></div>
    <div class="fc-graphe-zone" data-sous="u-liens">
+    <p id="fc-a-classer" class="fc-a-classer" hidden></p>
     <div id="fc-graphe"></div>
     <div id="fc-detail" class="fc-detail" aria-live="polite"></div>
    </div>
    <form id="fc-add" class="fc-creation" hidden data-sous="u-liens"><div class="fc-creation-head"><h3>Nouveau lien</h3><button class="text-button" type="button" id="fc-cancel">Fermer</button></div><div class="fc-fields"><label>Ce qui circule<select id="fc-type">${this.typeOptions('material',false)}</select></label><label>De<select id="fc-from" required></select></label><label>Vers<select id="fc-to" required></select></label><label>Précision facultative<input id="fc-label" maxlength="200" placeholder="Ex. matériel propre"></label></div><button class="btn btn-play" type="submit">Ajouter le lien</button></form>
    <details id="fc-liste-toute" class="fc-liste-toute" data-sous="u-liens"><summary>Tous les liens, en liste</summary><div id="fc-list"></div></details>
    <details id="fc-rules" class="fc-rules" data-sous="u-liens"><summary>Circulation humaine à l’intérieur des services</summary><p class="mini-note">Pour décrire seulement : le calcul ne déplace pas encore les personnes. Par défaut, chacun circule dans son service et ses stockages ; sortir demande une liaison Runner explicite, dans le sens indiqué.</p><div id="fc-internal"></div></details>`;
-  const label=document.createElement('label');label.className='fc-map-filter';label.innerHTML=`Liens dessinés <select id="fc-map-filter" title="Les liens entre services, dessinés sur le plan. Ils se règlent dans « L’unité ».">${Object.entries(FAMILIES).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}<option value="none">Aucun</option></select><span id="fc-map-scope"></span>`;document.querySelector('.map-footer').appendChild(label);
+  const label=document.createElement('label');label.className='fc-map-filter';label.innerHTML=`Liens dessinés <select id="fc-map-filter" title="Les liens entre services, dessinés sur le plan. Ils se règlent dans « L’unité ».">${Object.entries(FAMILIES).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}<option value="none">Aucun</option></select><span id="fc-map-scope"></span>`;document.querySelector('.plan-tete').insertBefore(label,document.getElementById('btn-edit'));
  }
  typeOptions(value,pending=true){return Object.entries(FAMILIES).filter(([k])=>k!=='all'&&(pending||k!=='unclassified')).map(([family,label])=>`<optgroup label="${label}">${Object.entries(TYPES).filter(([,t])=>t.family===family).map(([k,t])=>`<option value="${k}" ${k===value?'selected':''}>${t.label}</option>`).join('')}</optgroup>`).join('');}
  pointOptions(value,allowed=this.points){
@@ -148,6 +149,7 @@ class FlowCenter{
   on('fc-new','click',()=>{const f=document.getElementById('fc-add');f.hidden=false;f.scrollIntoView({block:'nearest'});document.getElementById('fc-type').focus();});
   on('fc-cancel','click',()=>{document.getElementById('fc-add').hidden=true;document.getElementById('fc-new').focus();});
   on('fc-reorganiser','click',()=>{if(this.graphe)this.graphe.reorganiser();});
+  on('fc-a-classer','click',e=>{if(!e.target.closest('[data-fc-graphe]'))return;this.family='unclassified';document.getElementById('fc-liste-toute').open=true;this.render();document.getElementById('fc-liste-toute').scrollIntoView({block:'start'});});
   on('fc-detail','click',e=>{const b=e.target.closest('[data-fc-graphe]');if(!b||!this.graphe)return;
    if(b.dataset.fcGraphe==='retirer'&&this.paire)this.graphe.retirer(this.paire);
    if(b.dataset.fcGraphe==='relier'&&this.noeud)this.graphe.relierDepuis(this.noeud);});
@@ -185,7 +187,7 @@ class FlowCenter{
   }
   const nom=id=>esc((lu.noms||{})[id]||id);
   const graves=lu.alertes.filter(a=>a.grave),notes=lu.alertes.filter(a=>!a.grave);
-  alertes.innerHTML=(graves.length?`<div class="fc-alerte grave"><b>${graves.length} point(s) à corriger</b><ul>${graves.map(a=>`<li>${esc(a.texte)}</li>`).join('')}</ul></div>`:'')
+  alertes.innerHTML=(graves.length?`<div class="fc-alerte grave"><b>${graves.length} ${graves.length>1?'points':'point'} à corriger</b><ul>${graves.map(a=>`<li>${esc(a.texte)}</li>`).join('')}</ul></div>`:'')
    +(notes.length?`<div class="fc-alerte"><ul>${notes.map(a=>`<li>${esc(a.texte)}</li>`).join('')}</ul></div>`:'')
    +(!lu.alertes.length?'<p class="fc-alerte ok">Le parcours se lit de bout en bout.</p>':'');
   box.innerHTML=`<table class="fc-table"><thead><tr>
@@ -209,8 +211,12 @@ class FlowCenter{
   document.getElementById('fc-internal').innerHTML=services.map(p=>`<label><input type="checkbox" data-owner="${esc(p.owner)}" ${this.state.internal[p.owner]!==false?'checked':''}> ${esc(p.label)} : circulation interne libre</label>`).join('');
   document.getElementById('fc-rules').open=this.family==='human';
   if(this.graphe)this.graphe.rendre();this.renderDetail();
+  // Des liens sans type encombrent le dessin sans rien dire : on les montre pâles et on propose de les classer.
+  const aClasser=this.state.flows.filter(f=>f.type==='unclassified').length,bandeau=document.getElementById('fc-a-classer');
+  bandeau.hidden=!aClasser||this.family==='unclassified';
+  bandeau.innerHTML=aClasser?`${aClasser} ${aClasser>1?'liens n’ont':'lien n’a'} pas encore de type : ${aClasser>1?'ils sont dessinés':'il est dessiné'} en pointillés pâles. <button class="lien-discret" data-fc-graphe="a-classer">Les classer</button>`:'';
   const flows=this.renderListe();const missing=this.state.flows.filter(f=>!points.some(p=>p.id===f.from)||!points.some(p=>p.id===f.to)).length;
-  document.getElementById('fc-summary').textContent=flows.length+' lien(s) affiché(s) · '+this.state.flows.filter(f=>usable(f,points)).length+' actif(s) avec un type'+(missing?' · '+missing+' à réparer (emplacement absent)':'');
+  document.getElementById('fc-summary').textContent=(n=>n+(n>1?' liens affichés':' lien affiché'))(flows.length)+' · '+(n=>n+(n>1?' actifs':' actif'))(this.state.flows.filter(f=>usable(f,points)).length)+' avec un type'+(missing?' · '+missing+' à réparer (emplacement absent)':'');
   document.getElementById('fc-undo').disabled=!this.undoStack.length;document.getElementById('fc-redo').disabled=!this.redoStack.length;
  }
  /* La liste des liens : ceux du trait choisi dans le diagramme, sinon tous

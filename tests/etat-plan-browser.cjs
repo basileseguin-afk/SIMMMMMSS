@@ -12,6 +12,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const etat=id=>page.locator('.zone[data-id='+id+']').getAttribute('class');
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
+  // Le site s'ouvre sur l'étape à faire ensuite : ce parcours travaille sur le plan.
+  const versPlan=async()=>{await page.locator('#etapes [data-view=plan]').click();await page.waitForTimeout(120);};await versPlan();
 
   // 1. Au repos : rien n'est décrit, donc tout est vide. L'état se lit
   //    désormais dans les ateliers de travail, et plus dans des curseurs —
@@ -122,7 +124,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await contour('.zone[data-id=dotation] .fond'),await contour('.zone[data-id=appros] .fond'),
     'même contour d’alerte qu’un service vide non colorié');
   // Elle survit au rechargement.
-  await page.reload();
+  await page.reload();await versPlan();
   assert.equal(await fond('.zone[data-id=prepa] .fond'),'rgb(204, 0, 51)','la couleur est relue au démarrage');
   // Retour à la couleur du thème.
   await colorier('prepa',null);

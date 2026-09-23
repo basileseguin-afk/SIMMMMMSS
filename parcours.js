@@ -391,22 +391,22 @@
    *       choisit. Une ligne se déplie pour se lire dans le temps.
    * ====================================================================*/
 
-  const AIDE_PARCOURS = `<p>Un <b>chemin</b> dit par où passe un repas. C’est un <b>diagramme</b> : chaque
+  const AIDE_PARCOURS = `<p>Un <b>chemin</b> dit par où passe une commande de repas. C’est un <b>diagramme</b> : chaque
     service est un nœud, et un lien « A → B » veut dire que A livre B. Pour relier deux services, tirez
     le <b>+</b> à droite du premier jusqu’au second (ou cliquez-le, « Relier à… », puis l’autre).</p>
     <p>Plusieurs chemins partent en même temps et se rejoignent : les aliments par la réception et la
     cuisine, le matériel par la plonge et la dotation, les produits de la compagnie par le magasin — tout
-    se retrouve au montage, qui attend tous ses liens entrants. Un lien qui ferait tourner un repas en
+    se retrouve au montage, qui attend tous ses liens entrants. Un lien qui ferait tourner une commande en
     rond est refusé.</p>
-    <p>Chaque classe (Business, Économie…) suit un chemin par défaut ; les repas d’une compagnie
+    <p>Chaque classe (Business, Économie…) suit un chemin par défaut ; les commandes d’une compagnie
     peuvent en suivre un autre, dans le tableau « Qui prépare quoi ».</p>`;
-  const AIDE_TABLEAU = `<p>Une <b>ligne</b> par repas (une compagnie dans une classe), une <b>colonne</b> par
-    service. Chaque case dit quelle équipe prépare ce repas dans ce service : cliquez-la pour choisir
+  const AIDE_TABLEAU = `<p>Une <b>ligne</b> par commande (les repas d’une compagnie dans une classe, pour la
+    journée), une <b>colonne</b> par service. Chaque case dit quelle équipe prépare cette commande dans ce service : cliquez-la pour choisir
     l’équipe, en créer une, ou vider la case. Cliquez le <b>nom d’un service</b> pour remplir d’un coup
     toutes ses cases vides.</p>
     <p>Une case « à choisir » n’arrête rien : l’étape est sautée, et le site le signale. Une case
-    hachurée : ce repas ne passe pas par ce service.</p>
-    <p>La dernière colonne dit quand le repas est prêt ; cliquez-la pour le suivre dans le temps,
+    hachurée : cette commande ne passe pas par ce service.</p>
+    <p>La dernière colonne dit quand la commande est prête ; cliquez-la pour la suivre dans le temps,
     étape par étape.</p>`;
 
   class EditeurParcours {
@@ -472,14 +472,14 @@
       const I = root.OrlyIcones;
       const puces = etat.parcours.map(x => `<button class="pc-puce${x === p ? ' actif' : ''}" data-pc-action="voir" data-parcours="${esc(x.id)}"
         aria-pressed="${x === p}">${esc(x.nom)}</button>`).join('');
-      let corps = '<p class="mini-note">Aucun chemin : chaque repas suit les liens de l’unité.</p>';
+      let corps = '<p class="mini-note">Aucun chemin : chaque commande suit les liens de l’unité.</p>';
       if (p) {
         const cabines = P.CABINES.filter(c => etat.parcoursCabine[c] === p.id);
         const propres = Object.keys(etat.parcoursClasse).filter(k => etat.parcoursClasse[k] === p.id);
         const qui = cabines.length || propres.length
           ? 'Suivi par ' + cabines.map(c => `<b class="pc-cab"><span class="puce-classe" data-cab="${c}"></span>${esc((P.NOM_CABINE || {})[c] || c)}</b>`).join(' ')
             + (propres.length ? ` + ${propres.slice(0, 3).map(x => esc(P.libelleClasse(x))).join(', ')}${propres.length > 3 ? '…' : ''}` : '')
-          : 'Suivi par aucun repas pour l’instant';
+          : 'Suivi par aucune commande pour l’instant';
         const dedans = new Set(P.servicesDuParcours(p));
         const hors = this.a.services().filter(s => !dedans.has(s.id));
         corps = `<div class="pc-outils" data-parcours="${esc(p.id)}">
@@ -488,14 +488,14 @@
               <option value="">Choisir…</option>${hors.map(s => `<option value="${esc(s.id)}">${esc(s.nom)}</option>`).join('')}</select></label>
             <span class="pc-outils-fin"></span>
             <button class="btn btn-sm" data-pc-action="reorganiser" title="Ranger les services d’eux-mêmes, de gauche à droite dans le sens du flux">Réorganiser</button>
-            <button class="btn btn-sm at-danger" data-pc-action="parcours-retirer">Supprimer ce chemin</button>
+            <button class="lien-discret danger" data-pc-action="parcours-retirer">Supprimer ce chemin</button>
           </div>
           <p class="pc-qui">${qui}</p>
           <div class="pc-graphe" data-parcours="${esc(p.id)}"></div>
           <div class="pc-panneau" data-parcours="${esc(p.id)}" aria-live="polite">${this.panneau(etat, classes, p)}</div>`;
       }
       return `<section class="pc-sec" aria-labelledby="pc-t1" data-sous="at-chemins">
-        <div class="titre-aide at-titre-aide"><h3 class="at-titre" id="pc-t1">Le chemin des repas <span class="pc-sous">un diagramme : chaque service est un nœud, chaque lien dit qui livre qui</span></h3>
+        <div class="titre-aide at-titre-aide"><h3 class="at-titre" id="pc-t1">Le chemin des commandes</h3>
           <details class="aide"><summary aria-label="Qu’est-ce qu’un chemin ?">?</summary><span class="aide-corps">${AIDE_PARCOURS}</span></details></div>
         <div class="pc-defauts">
           <span class="pc-defauts-lab">Chemin de chaque classe</span>
@@ -525,9 +525,12 @@
         const sous = e.lavage ? 'plonge' + (n > 1 ? ' · ' + n + ' équipes' : '')
           : e.dispo && !e.fabriquent.length ? 'mise à disposition'
           : !e.fabriquent.length ? 'aucune équipe'
-          : e.manquantes.length ? e.manquantes.length + ' repas sans équipe'
+          : e.manquantes.length ? e.manquantes.length + (e.manquantes.length > 1 ? ' commandes' : ' commande') + ' sans équipe'
           : n === 1 ? noms[0] : n + ' équipes';
-        const ton = e.lavage || e.dispo || (e.fabriquent.length && !e.manquantes.length) ? 'ok' : 'attente';
+        // Vert : tout est couvert. Ambre : commencé, il manque des commandes.
+        // Neutre : rien encore — ce n'est pas une alerte, c'est à faire.
+        const ton = e.lavage || e.dispo || (e.fabriquent.length && !e.manquantes.length) ? 'ok'
+          : e.fabriquent.length ? 'attente' : 'neutre';
         return { id: s, nom: this.nom(s), ico: I ? I.icoService(s, this.nom(s)) : 'service', sous, ton };
       });
     }
@@ -559,7 +562,7 @@
       const p = this.parcoursActif(this.a.etat()); if (!p) return 'Aucun chemin choisi.';
       if (P.arcsDuParcours(p).some(a => a.from === de && a.to === vers)) return this.nom(de) + ' livre déjà ' + this.nom(vers) + '.';
       if (creeBoucle(p, de, vers)) return 'Impossible : ' + this.nom(vers) + ' livre déjà ' + this.nom(de)
-        + ' (directement ou par d’autres services). Un repas tournerait en rond.';
+        + ' (directement ou par d’autres services). Une commande tournerait en rond.';
       this.a.changer(etat => {
         const q = etat.parcours.find(x => x.id === p.id);
         for (const s of [de, vers]) if (!q.noeuds.includes(s)) q.noeuds.push(s);
@@ -595,18 +598,18 @@
         const equipe = id => {
           const a = this.atelier(id) || {};
           const detail = a.type === 'lavage' ? 'plonge' : a.type === 'dispo' ? 'mise à disposition'
-            : (a.debut || '') + ' · ' + (a.personnes || 0) + ' pers. · ' + ((a.lots || []).length) + ' repas';
+            : (a.debut || '') + ' · ' + (a.personnes || 0) + ' pers. · ' + ((a.lots || []).length) + ((a.lots || []).length > 1 ? ' commandes' : ' commande');
           return `<button class="btn btn-sm pc-equipe" data-pc-action="fiche" data-atelier="${esc(id)}" title="Ouvrir sa fiche">${esc(a.nom || id)} <small>${esc(detail)}</small></button>`;
         };
         const I = root.OrlyIcones;
         return `<p class="pc-pan-tete">${I ? I.ico(I.icoService(s, this.nom(s))) : ''}<b>${esc(this.nom(s))}</b>
-            <span>${e.equipes.length ? e.equipes.length + ' équipe' + (e.equipes.length > 1 ? 's' : '') : 'aucune équipe'}${e.manquantes.length ? ' · ' + e.manquantes.length + ' repas sans équipe ici' : ''}</span></p>
+            <span>${e.equipes.length ? e.equipes.length + ' équipe' + (e.equipes.length > 1 ? 's' : '') : 'aucune équipe'}${e.manquantes.length ? ' · ' + e.manquantes.length + (e.manquantes.length > 1 ? ' commandes' : ' commande') + ' sans équipe ici' : ''}</span></p>
           ${e.equipes.length ? `<div class="row-btns">${e.equipes.map(equipe).join('')}</div>` : ''}
           <div class="row-btns">
             <button class="btn btn-sm btn-play" data-pc-action="equipe-nouvelle" data-service="${esc(s)}"
-              title="Une équipe dans ce service, qui prépare les repas de ce chemin qui n’en ont pas encore ici">+ Nouvelle équipe ici</button>
+              title="Une équipe dans ce service, qui prépare les commandes de ce chemin qui n’en ont pas encore ici">+ Nouvelle équipe ici</button>
             <button class="btn btn-sm" data-pc-action="relier-depuis" data-service="${esc(s)}">Relier à…</button>
-            <button class="btn btn-sm at-danger" data-pc-action="noeud-retirer" data-service="${esc(s)}">Retirer du chemin</button>
+            <button class="lien-discret danger" data-pc-action="noeud-retirer" data-service="${esc(s)}">Retirer du chemin</button>
           </div>`;
       }
       const I = root.OrlyIcones;
@@ -627,7 +630,14 @@
       const titre = `<div class="titre-aide at-titre-aide"><h3 class="at-titre" id="pc-t2">Qui prépare quoi <span class="pc-sous">une équipe dans chaque case</span></h3>
         <details class="aide"><summary aria-label="Comment remplir le tableau ?">?</summary><span class="aide-corps">${AIDE_TABLEAU}</span></details></div>`;
       if (!t.lignes.length) return `<section class="qf" aria-labelledby="pc-t2" data-sous="at-grille">${titre}
-        <p class="mini-note">Aucun repas à préparer : importez un programme de vols (étape 1).</p></section>`;
+        <p class="mini-note">Aucune commande à préparer : importez un programme de vols (étape 1).</p></section>`;
+      // Sans aucune équipe, deux cents cases vides ne disent rien : on dit par où commencer.
+      if (!(etat.ateliers || []).length) return `<section class="qf" aria-labelledby="pc-t2" data-sous="at-grille">${titre}
+        <div class="vide-carte qf-vide">${root.OrlyIcones ? root.OrlyIcones.ico('equipe') : ''}<b>Aucune équipe pour l’instant</b>
+          <p>Ce tableau dira quelle équipe prépare chaque commande, service par service.</p>
+          <p>Pour commencer : ouvrez « Les chemins », cliquez un service, puis « + Nouvelle équipe ici ».</p>
+          <div class="row-btns"><button class="btn btn-play" data-aller="ateliers" data-onglet="at-chemins">Ouvrir « Les chemins »</button>
+            <button class="btn" data-aller="ateliers" data-onglet="at-equipes">Créer une équipe à la main</button></div></div></section>`;
       if (!t.colonnes.length) return `<section class="qf" aria-labelledby="pc-t2" data-sous="at-grille">${titre}
         <p class="mini-note">Aucun chemin : décrivez-en un ci-dessus pour que le tableau ait des colonnes.</p></section>`;
 
@@ -646,13 +656,13 @@
       const total = remplies + aRemplir, pct = total ? Math.round(remplies / total * 100) : 100;
 
       const barre = `<div class="qf-barre">
-        <div class="qf-progres" title="${remplies} case(s) ont leur équipe, ${aRemplir} sont à choisir">
+        <div class="qf-progres" title="${remplies} ${remplies > 1 ? 'cases ont leur' : 'case a son'} équipe, ${aRemplir} à choisir">
           <div class="qf-jauge" aria-hidden="true"><span style="width:${pct}%"></span></div>
           <span><b>${remplies} sur ${total}</b> cases remplies${aRemplir ? '' : ' — tout a son équipe'}</span></div>
         ${auto ? `<button class="btn btn-play btn-sm" data-qf="remplir" title="Là où un service n’a qu’une équipe, elle prend toutes ses cases vides">Remplir automatiquement · ${auto} case${auto > 1 ? 's' : ''}</button>` : ''}
         <span class="qf-barre-fin"></span>
-        <input type="search" class="qf-recherche" data-qf="recherche" placeholder="Chercher une compagnie (AF, DL…)" value="${esc(this.recherche)}" aria-label="Chercher un repas par sa compagnie">
-        <label class="chk chk-mini"><input type="checkbox" data-qf="incompletes" ${this.incompletes ? 'checked' : ''}> Seulement les repas à compléter</label>
+        <input type="search" class="qf-recherche" data-qf="recherche" placeholder="Chercher une compagnie (AF, DL…)" value="${esc(this.recherche)}" aria-label="Chercher une commande par sa compagnie">
+        <label class="chk chk-mini"><input type="checkbox" data-qf="incompletes" ${this.incompletes ? 'checked' : ''}> Seulement les commandes à compléter</label>
       </div>
       <div class="qf-legende" aria-hidden="true"><span class="qf-l ok">équipe choisie</span><span class="qf-l libre">à choisir</span><span class="qf-l auto">sert tout le monde</span><span class="qf-l hors">ne passe pas par là</span></div>`;
 
@@ -664,15 +674,16 @@
       }
       const tete = `<thead>
         <tr class="qf-groupes"><th></th>${groupes.map((g, i) => `<th colspan="${g.n}" class="qf-g${g.nom === 'Jonction' ? ' jonction' : ''}" data-g="${i % 4}">${esc(this.groupe(g.nom))}</th>`).join('')}<th></th></tr>
-        <tr><th scope="col" class="qf-coin">Repas</th>
+        <tr><th scope="col" class="qf-coin">Commande</th>
         ${t.colonnes.map(c => {
           const n = c.fabriquent.length, libres = c.libres.length;
+          // Une information par en-tête : ce qui reste à faire, sinon qui travaille.
           const sous = c.auto.length && !n ? 'sert tout le monde'
-            : (n ? n + ' équipe' + (n > 1 ? 's' : '') : 'aucune équipe') + (libres ? ' · ' + libres + ' à choisir' : '');
+            : libres ? libres + ' à choisir' : n + ' équipe' + (n > 1 ? 's' : '');
           return `<th scope="col"><button class="qf-col${libres ? ' a-remplir' : ''}" data-qf="col" data-service="${esc(c.service)}"
             title="${libres ? 'Remplir les ' + libres + ' cases vides de ' + esc(this.nom(c.service)) : esc(this.nom(c.service))}"><span class="qf-col-nom">${root.OrlyIcones ? root.OrlyIcones.ico(root.OrlyIcones.icoService(c.service, this.nom(c.service))) : ''}${esc(this.nom(c.service))}</span><small>${esc(sous)}</small></button></th>`;
         }).join('')}
-        <th scope="col" class="qf-fin-tete">Prêt à</th></tr></thead>`;
+        <th scope="col" class="qf-fin-tete">Prête à</th></tr></thead>`;
 
       const par = (r && r.parClasse) || {};
       const nbCol = t.colonnes.length + 2;
@@ -701,11 +712,11 @@
             <span class="qf-nom">${hors ? '⚠ ' : ''}${esc(nomAt(k.ateliers[0]))}${plus}</span>${h ? `<small>${h}</small>` : ''}</button></td>`;
         }).join('');
         const v = par[c.id] || {};
-        const fin = v.absente || v.fin == null ? '<span class="qf-etat manque">pas encore prêt</span>'
+        const fin = v.absente || v.fin == null ? '<span class="qf-etat manque">pas encore prête</span>'
           : `<b>${P.hhmm(v.fin)}</b> ${v.aHeure ? '<span class="qf-etat ok">à l’heure</span>' : `<span class="qf-etat retard">+${Math.round(v.retard)} min</span>`}`;
         const suivie = this.suivies.has(c.id);
         return `<tr data-classe="${esc(c.id)}" data-incomplete="${incomplete ? 1 : 0}">
-          <th scope="row"><div class="qf-id"><b><span class="puce-classe" data-cab="${esc(c.cabine)}"></span>${esc(P.libelleClasse(c.id))}</b><small>${depart.length ? 'départ ' + P.hhmm(Math.min(...depart)) : 'hors programme'}</small></div>${choix}</th>
+          <th scope="row"><div class="qf-id"><b><span class="puce-classe" data-cab="${esc(c.cabine)}"></span>${esc(P.libelleClasse(c.id))}</b><small>${depart.length ? 'départ ' + P.hhmm(Math.min(...depart)) + (c.pax ? ' · ' + c.pax + ' passagers' : '') : 'hors programme'}</small></div>${choix}</th>
           ${cases}
           <td class="qf-fin"><button class="qf-suivre" data-qf="suivre" data-classe="${esc(c.id)}" aria-expanded="${suivie}"
             title="${suivie ? 'Replier' : 'Suivre ' + esc(P.libelleClasse(c.id)) + ' dans le temps, étape par étape'}">${fin}<span class="qf-chevron" aria-hidden="true">${suivie ? '▾' : '▸'}</span></button></td>
@@ -721,14 +732,14 @@
     /* Une ligne dans le temps : une barre par étape, et la phrase qui l'explique. */
     temps(ligne, r) {
       const c = ligne.classe, p = ligne.parcours;
-      if (!p) return '<p class="mini-note">Ce repas n’a pas de chemin : il suit les liens de l’unité.</p>';
+      if (!p) return '<p class="mini-note">Cette commande n’a pas de chemin : elle suit les liens de l’unité.</p>';
       const g = chronogramme(r, p, c.id);
       const v = ((r && r.parClasse) || {})[c.id] || {};
       const sautees = g.etapes.filter(e => e.absent).map(e => this.nom(e.service));
       const goulot = g.etapes.filter(e => e.attendu).sort((a, b) => b.attente - a.attente)[0];
       const phrases = [];
-      if (v.fin == null) phrases.push(`<b>${esc(P.libelleClasse(c.id))}</b> n’est pas encore prêt : aucune étape de son chemin n’a d’équipe.`);
-      else phrases.push(`<b>${esc(P.libelleClasse(c.id))}</b> est prêt à <b>${P.hhmm(v.fin)}</b>`
+      if (v.fin == null) phrases.push(`<b>${esc(P.libelleClasse(c.id))}</b> n’est pas encore prête : aucune étape de son chemin n’a d’équipe.`);
+      else phrases.push(`<b>${esc(P.libelleClasse(c.id))}</b> est prête à <b>${P.hhmm(v.fin)}</b>`
         + (Number.isFinite(c.echeance) ? ` pour un chargement avant <b>${P.hhmm(c.echeance)}</b>` : '')
         + (v.aHeure ? ' : <span class="qf-etat ok">à l’heure</span>.' : ` : <span class="qf-etat retard">${Math.round(v.retard)} min de retard</span>.`));
       if (goulot) phrases.push(`Le plus long à attendre : <b>${esc(this.nom(goulot.service))}</b> a attendu ${Math.round(goulot.attente)} min que <b>${esc(this.nom(goulot.attendu))}</b> finisse.`);
@@ -817,9 +828,9 @@
           <span><b>Nouvelle équipe</b><small>de ${esc(nom)}, réglable ensuite</small></span></button>
         ${equipes.length || !(lave || sert) ? '' : `<p class="qf-menu-note">ou, s’il travaille pour tout le monde :</p>`}
         ${!equipes.length && lave ? `<button class="qf-choix nouveau" data-qf="nouvelle" data-type="lavage"><span class="qf-coche" aria-hidden="true">+</span>
-          <span><b>Une plonge</b><small>lave les retours, pour tous les repas</small></span></button>` : ''}
+          <span><b>Une plonge</b><small>lave les retours, pour toutes les commandes</small></span></button>` : ''}
         ${!equipes.length && sert ? `<button class="qf-choix nouveau" data-qf="nouvelle" data-type="dispo"><span class="qf-coche" aria-hidden="true">+</span>
-          <span><b>Une mise à disposition</b><small>sert tous les repas sans les préparer</small></span></button>` : ''}
+          <span><b>Une mise à disposition</b><small>sert toutes les commandes sans les préparer</small></span></button>` : ''}
       </div>`;
     }
 
@@ -887,7 +898,7 @@
         return this.a.changer(etat => { Object.assign(etat, t); }, 'Chemins types créés.');
       }
       if (action === 'parcours-retirer') {
-        if (!confirm('Supprimer le chemin « ' + (p ? p.nom : '') + ' » ? Les repas qui le suivaient retomberont sur les liens de l’unité. L’action est annulable.')) return;
+        if (!confirm('Supprimer le chemin « ' + (p ? p.nom : '') + ' » ? Les commandes qui le suivaient retomberont sur les liens de l’unité. L’action est annulable.')) return;
         this.actif = null; this.sel = null;
         return this.a.changer(etat => {
           etat.parcours = etat.parcours.filter(x => x.id !== pid);
@@ -911,7 +922,7 @@
         this.a.changer(etat => { cree = nouvelleEquipe(etat, s, this.nom(s), [], classes); affecter(etat, s, manquantes, cree.id, classes); });
         if (!cree || !this.a.ouvrirAtelier) return;
         return this.a.ouvrirAtelier(cree.id, false, 'Équipe « ' + cree.nom + ' » créée'
-          + (manquantes.length ? ' : elle prépare les ' + manquantes.length + ' repas de ce chemin qui n’avaient personne ici' : '')
+          + (manquantes.length ? ' : elle prépare les ' + manquantes.length + ' commandes de ce chemin qui n’avaient personne ici' : '')
           + '. Réglez son heure et son effectif dans l’onglet « Les équipes » : sa fiche y est ouverte.');
       }
     }
@@ -941,7 +952,7 @@
       if (quoi === 'choisir') {
         const a = this.atelier(q.dataset.atelier);
         return this.a.changer(etat => { affecter(etat, service, ids, q.dataset.atelier, classes); },
-          (a ? a.nom : '') + ' prépare ' + (ids.length > 3 ? ids.length + ' repas de plus' : ids.map(P.libelleClasse).join(', ')) + '.');
+          (a ? a.nom : '') + ' prépare ' + (ids.length > 3 ? ids.length + ' commandes de plus' : ids.map(P.libelleClasse).join(', ')) + '.');
       }
       if (quoi === 'nouvelle') {
         const type = q.dataset.type;
@@ -957,7 +968,7 @@
         if (!cree || !this.a.ouvrirAtelier) return;
         // Sa fiche s'ouvre dans l'onglet « Les équipes » : il reste son heure et son effectif.
         return this.a.ouvrirAtelier(cree.id, false, 'Équipe « ' + cree.nom + ' » créée'
-          + (type === 'manuel' ? ' pour ' + (ids.length > 3 ? ids.length + ' repas' : ids.map(P.libelleClasse).join(', ')) : '')
+          + (type === 'manuel' ? ' pour ' + (ids.length > 3 ? ids.length + ' commandes' : ids.map(P.libelleClasse).join(', ')) : '')
           + '. Réglez son heure et son effectif dans l’onglet « Les équipes » : sa fiche y est ouverte.');
       }
     }

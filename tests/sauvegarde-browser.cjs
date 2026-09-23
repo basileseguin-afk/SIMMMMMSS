@@ -49,7 +49,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // ramènerait les valeurs de démonstration sans le dire.
   assert.ok(sauvegarde.contenu['ory-modele-v1'],'le barème et les règles de poste en font partie');
   assert.equal(sauvegarde.contenu['ory-modele-v1'].bareme.cuisine['*/BC'],41.5,'avec la valeur saisie');
-  assert.match(await page.locator('#sauvegarde-etat').textContent(),/partie\(s\) enregistrée/);
+  assert.match(await page.locator('#sauvegarde-etat').textContent(),/\d+ parties enregistrées/);
 
   // 3. Un fichier invalide ne remplace rien — la validation est atomique.
   const casse=JSON.parse(JSON.stringify(sauvegarde));

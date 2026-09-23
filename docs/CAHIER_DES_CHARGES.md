@@ -154,6 +154,7 @@ de relire le cahier des charges initial :
 | E7 | Moins textuel, **coloré, visuel** | 23/09 | ✅ | Couleurs par sens, pictogrammes, jauges, frise, plan de métro, barres |
 | E8 | Nettoyage de tout ce qui n'est plus utilisé | 23/09 | ✅ | |
 | E9 | Tester l'interface avec de vrais utilisateurs | — | ❌ | Jamais fait ; seul moyen de savoir si E6, E7 et E10 sont atteints |
+| E12 | Audit visuel : lisibilité, compréhension, épuration | 23/09 | ✅ | Tous les points traités : vocabulaire « commande », chiffres qui concordent (unité et moment explicites), états neutres au lieu du rouge, arrivée sur l'étape à faire, tableau vide guidé, pluriels, libellés, champs |
 | E11 | Chemins, liens de l'unité et équipes créés dans un **diagramme de nœuds** : relier deux services en tirant un trait | 23/09 | ✅ | Chemins et liens de l'unité dessinés ; les équipes s'affichent et se créent sur les nœuds du chemin. L'affectation équipe × repas reste un tableau (c'est un croisement, pas un graphe) |
 | E10 | Pages **épurées** : ne plus tout montrer à la fois, onglets et sous-onglets | 23/09 | ✅ | Deux à cinq onglets par étape, un seul affiché ; bandeau de contexte retiré ; indicateurs de la journée dans leur onglet. Pas de sous-sous-onglet : aucun onglet n'en a eu besoin |
 
@@ -235,6 +236,7 @@ Réponse attendue de Basile ; sans elle, le modèle actuel reste en place.
 | 23/09 | **Objectif final : plusieurs journées enchaînées** | Basile | |
 | 23/09 | Validation du modèle au fil de l'eau | Basile | Les données arrivent progressivement |
 | 23/09 | Animations reportées | Basile | |
+| 23/09 | « Commande » désigne une compagnie × classe pour la journée (au lieu de « repas ») | Claude, en attendant l'avis de Basile | Un non-initié lisait « 4 repas » comme 4 plateaux |
 | 23/09 | Abandon du thème sombre et de la version téléphone | Basile | « Pas vraiment utile » : le site sert sur un poste de bureau |
 | 23/09 | Chemins et liens dessinés en diagramme de nœuds ; les parcours deviennent des graphes (nœuds + liens) | Basile | Plus simple, plus intuitif, et un graphe se raisonne bien mathématiquement |
 | 23/09 | Pages découpées en sous-onglets, une chose à la fois | Basile (proposition), Claude (découpage) | « Les pages sont beaucoup trop chargées, le cerveau s'y perd » |

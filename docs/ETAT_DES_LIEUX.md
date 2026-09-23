@@ -28,7 +28,12 @@ Deux assistants travaillent en parallèle sur cette branche : **Claude** et
 > barème et vols s'échangent en `.xlsx` (`tableur.js`, `echanges.js`) : voir
 > [les formats Excel](FORMATS_EXCEL.md).
 >
-> **Puis — bureau seulement, thème clair seulement.** Le thème sombre et la
+> **Puis — les corrections de l'audit visuel.** Une compagnie × classe s'appelle
+> une **commande** ; chaque chiffre dit son unité et son moment ; ce qui n'est pas
+> encore rempli est gris, le rouge est réservé aux retards ; on arrive sur
+> l'étape à faire ; le tableau vide guide au lieu d'aligner 224 cases.
+>
+> **Avant — bureau seulement, thème clair seulement.** Le thème sombre et la
 > version téléphone sont abandonnés (décision de Basile) : un seul thème, et une
 > mise en page pour écrans de bureau à partir de 1 024 px de large.
 >

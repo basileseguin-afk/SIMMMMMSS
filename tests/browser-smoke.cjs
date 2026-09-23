@@ -34,7 +34,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await click('[data-view="vols"]');assert.equal(await page.locator('#flight-rows tr').count(),12);
   await page.locator('#flight-search').fill('NO-MATCH');assert.match(await page.locator('#flight-rows').textContent(),/Aucun départ/);
   await page.locator('#flight-search').fill('');
-  await click('[data-view="plan"]');await page.locator('#zone-picker').selectOption('prepa');assert.match(await page.locator('#goulot-info').textContent(),/MONTAGE/);
+  await click('[data-view="plan"]');await page.locator('#zone-picker').selectOption('prepa');assert.match(await page.locator('#goulot-info').textContent(),/Montage/);
   await click('#btn-edit');assert.equal(await page.locator('#btn-play').isVisible(),false,'pas de lecture pendant l’édition du plan');
   await page.locator('[data-action=select][data-zone=cuisine]').click();
   await page.locator('#pe-x').fill('1910');await page.locator('#pe-x').press('Tab');
@@ -51,7 +51,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.waitForFunction(()=>document.getElementById('source-label').textContent==='test.csv');
   await click('[data-view="vols"]');assert.equal(await page.locator('#flight-rows img').count(),0);assert.match(await page.locator('#flight-rows').textContent(),/<img src=x>/);
   // Personne ne fabrique ce vol : le tableau le dit, sans inventer de retard.
-  assert.match(await page.locator('#flight-rows').textContent(),/Des repas sans équipe/);
+  assert.match(await page.locator('#flight-rows').textContent(),/Commandes sans équipe/);
   // Un atelier qui ouvre à 06:00 pour un départ de 05:00 : la classe sort, en retard.
   await click('[data-view="ateliers"]');
   await page.locator('[data-sous-onglet=at-equipes]').click();await page.locator('#at-new').click();await page.waitForTimeout(150);
@@ -78,7 +78,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(ligneVol,/Prêt en retard/);
   // Comparer deux essais : un onglet de « La journée ».
   await click('[data-view="plan"]');await click('[data-sous-onglet=j-comparer]');
-  await click('#snap-a');assert.match(await page.locator('#compare').textContent(),/Repas prêts à l’heure/);
+  await click('#snap-a');assert.match(await page.locator('#compare').textContent(),/Commandes prêtes à l’heure/);
   const downloaded=page.waitForEvent('download');await click('#btn-export');const download=await downloaded;
   const result=JSON.parse(fs.readFileSync(await download.path(),'utf8'));
   assert.equal(result.modele,'ateliers');

@@ -27,6 +27,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const vue=()=>page.evaluate(()=>{const t=document.getElementById('viewport').getAttribute('transform');const [,x,y,k]=t.match(/translate\(([-\d.]+) ([-\d.]+)\) scale\(([\d.]+)\)/);return{x:+x,y:+y,k:+k};});
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
+  // Le site s'ouvre sur l'étape à faire ensuite : ce parcours travaille sur le plan.
+  const versPlan=async()=>{await page.locator('#etapes [data-view=plan]').click();await page.waitForTimeout(120);};await versPlan();
   assert.equal((await vue()).k,1);
 
   // 1. Le pas des boutons est fin, et la borne haute est large.

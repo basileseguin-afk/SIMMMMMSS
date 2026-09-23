@@ -37,8 +37,15 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator('#etapes [data-view=ateliers]').textContent(),/aucune équipe/);
   assert.match(await page.locator('#etapes [data-view=reglages]').textContent(),/chiffres d’exemple/);
   assert.match(await page.locator('#etapes [data-view=plan]').textContent(),/rien à calculer/);
-  // Et la suivante à faire est désignée.
-  assert.match(await page.locator('#etapes [data-view=ateliers]').textContent(),/à faire ensuite/);
+  // Et on arrive directement sur l'étape à faire ensuite, pas sur une journée vide.
+  assert.equal(await page.locator('#etapes [data-view=ateliers]').getAttribute('aria-current'),'page','on arrive sur l’étape à faire');
+  assert.equal(await page.locator('#etapes [aria-current=page]').count(),1);
+  // Un exemple n'est pas une alerte : pas de « ! » tant que rien n'est faux.
+  assert.equal(await page.locator('#etapes .etape-etat.verifier').count(),0,'aucune alerte sur un site neuf');
+  // Sans équipe, le tableau n'aligne pas deux cents cases vides : il dit par où commencer.
+  assert.equal(await page.locator('.qf-vide').isVisible(),true);
+  assert.equal(await page.locator('[data-sous-onglet=at-grille] .so-badge').count(),0,'pas de compte sur un tableau vide');
+  assert.equal(await page.locator('.qf-table').count(),0);
 
   // 3. Chaque étape ouvre sa vue, avec un titre et une phrase simples.
   const titres={vols:'Les vols',ateliers:'Qui prépare quoi',reglages:'Les temps de travail',plan:'La journée',flux:'L’unité : qui livre qui'};
@@ -65,7 +72,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const id=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
   await page.selectOption(`[data-at="${id}"] [data-at-champ=service]`,'prepa');await attendre();
   await page.selectOption(`[data-at="${id}"] [data-at-champ=lot-nouveau]`,'AF/BC');await attendre();
-  assert.match(await page.locator('#etapes [data-view=ateliers]').textContent(),/1 équipe · \d+ repas sans équipe/);
+  assert.match(await page.locator('#etapes [data-view=ateliers]').textContent(),/\d+ commandes sans équipe/);
   assert.match(await page.locator('#etapes [data-view=plan]').textContent(),/en retard|à l’heure/,'la journée a un résultat');
   // Les repas s'écrivent en clair, jamais en code seul.
   assert.match(await page.locator(`[data-at="${id}"] .at-chips`).textContent(),/AF · Business/);

@@ -66,7 +66,7 @@ body.flows-open .workbench{display:none}
 .fc-table td{color:var(--txt2)}
 /* Un service sans équipe ne produit rien : il ne fait pas partie du parcours. */
 .fc-inerte th,.fc-inerte td{opacity:.62}
-.fc-nature{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;
+.fc-nature{font-size:11.5px;font-weight:700;
   border:1px solid var(--bordure2);border-radius:4px;padding:1px 6px;white-space:nowrap}
 .fc-nature.dispo{color:var(--accent2);border-color:var(--accent)}
-.fc-nature.vide{color:var(--rouge);border-color:var(--rouge)}
+.fc-nature.vide{color:var(--txt2);border-color:var(--bordure2);border-style:dashed}

@@ -66,7 +66,7 @@
         out.push({id,cie,sens,avion:String(get('type_avion')||'—'),std,sta,bc,pc,yc,crew,spml});
       } catch(e){errors.push('Ligne '+line+' : '+e.message);}
     });
-    if(errors.length)throw new Error(errors.slice(0,8).join('\n')+(errors.length>8?'\n… '+(errors.length-8)+' autre(s) erreur(s).':'')+'\nAucune donnée remplacée.');
+    if(errors.length)throw new Error(errors.slice(0,8).join('\n')+(errors.length>8?'\n… '+(errors.length-8)+(errors.length-8>1?' autres erreurs.':' autre erreur.'):'')+'\nAucune donnée remplacée.');
     return out;
   }
   const api={escapeHTML,parseFlights,parseFlightRows};

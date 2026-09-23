@@ -60,23 +60,23 @@
     { groupe: 'Ce qui a changé', lib: 'Équipes', val: s => String(s.ateliers), sens: 0 },
     { groupe: 'Ce qui a changé', lib: 'Personnes au travail', val: s => String(s.personnes), sens: 0 },
     { groupe: 'Ce qui a changé', lib: 'Rythme de travail', val: s => s.rendement == null ? '—' : s.rendement + ' %', sens: 0 },
-    { groupe: 'Ce qui a changé', lib: 'Repas prêts avant le départ', val: s => s.delai == null ? '—' : s.delai + ' min', sens: 0 },
+    { groupe: 'Ce qui a changé', lib: 'Commandes prêtes avant le départ', val: s => s.delai == null ? '—' : s.delai + ' min', sens: 0 },
     { groupe: 'Ce qui a changé', lib: 'Décalage des vols', val: s => (s.decalage > 0 ? '+' : '') + s.decalage + ' min', sens: 0 },
-    { groupe: 'Ce que ça donne', lib: 'Repas prêts à l’heure',
+    { groupe: 'Ce que ça donne', lib: 'Commandes prêtes à l’heure',
       val: s => s.suivies ? s.aHeure + ' / ' + s.suivies + (s.part != null ? ' · ' + s.part + ' %' : '') : '—',
       num: s => s.part, sens: 1 },
     { groupe: 'Ce que ça donne', lib: 'Retard moyen', val: s => s.retardMoyen == null ? '—' : s.retardMoyen + ' min',
       num: s => s.retardMoyen, sens: -1 },
     { groupe: 'Ce que ça donne', lib: 'Retard le plus long', val: s => s.retardMax == null ? '—' : s.retardMax + ' min',
       num: s => s.retardMax, sens: -1 },
-    { groupe: 'Ce que ça donne', lib: 'Dernier repas prêt', val: s => hhmm(s.finDerniere), num: s => s.finDerniere, sens: -1 },
+    { groupe: 'Ce que ça donne', lib: 'Dernière commande prête', val: s => hhmm(s.finDerniere), num: s => s.finDerniere, sens: -1 },
     { groupe: 'Ce que ça donne', lib: 'Temps passé à attendre', val: s => s.attente == null ? '—' : s.attente + ' min',
       num: s => s.attente, sens: -1 },
     { groupe: 'Ce que ça donne', lib: 'Attente de matériel propre', val: s => s.attenteMateriel == null ? '—' : s.attenteMateriel + ' min',
       num: s => s.attenteMateriel, sens: -1 },
     { groupe: 'Ce que ça donne', lib: 'Heures de travail', val: s => s.hommeHeures == null ? '—' : String(s.hommeHeures).replace('.', ',') + ' h',
       num: s => s.hommeHeures, sens: 0 },
-    { groupe: 'Ce que ça donne', lib: 'Repas sans équipe', val: s => String(s.absentes), num: s => s.absentes, sens: -1 }
+    { groupe: 'Ce que ça donne', lib: 'Commandes sans équipe', val: s => String(s.absentes), num: s => s.absentes, sens: -1 }
   ];
 
   /**
@@ -97,7 +97,8 @@
 
   /** Ce qu'il faut savoir avant de lire le tableau. */
   function note(A, B) {
-    if (!A || !B) return 'Photographiez A, changez quelque chose, photographiez B.';
+    if (!A) return 'Retenez la journée telle qu’elle est : ce sera l’essai A.';
+    if (!B) return 'Changez une équipe, un temps de travail ou un horaire, puis retenez l’essai B.';
     if (A.source !== B.source) return 'Attention : A et B ne portent pas sur les mêmes vols ('
       + A.source + ' / ' + B.source + ').';
     if (A.empreinte === B.empreinte) return 'Rien n’a changé : les deux journées sont identiques.';

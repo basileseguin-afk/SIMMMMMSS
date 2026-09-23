@@ -76,12 +76,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // Le nom du service est en TÊTE de ligne : le chercher dans toute la ligne
   // attraperait MAGASIN, qui livre à MONTAGE.
   const parcours=nom=>page.evaluate(n=>{
-    const tr=[...document.querySelectorAll('#fc-parcours tbody tr')].find(r=>r.cells[0].textContent.trim()===n);
+    const tr=[...document.querySelectorAll('#fc-parcours tbody tr')].find(r=>r.cells[0].textContent.trim().toUpperCase()===n);
     return tr?[...tr.cells].map(c=>c.textContent.trim()).join(' | '):null;
   },nom);
   const ligne=await parcours('MONTAGE');
   assert.match(ligne,/1 équipe/);
-  assert.match(ligne,/CUISINE/,'ses fournisseurs sont nommés');
+  assert.match(ligne,/Cuisine/,'ses fournisseurs sont nommés, lisiblement');
   // Un fournisseur sans équipe ne produit rien : l'alerte le dit et propose le remède.
   assert.match(await page.locator('#fc-alertes').textContent(),/sans avoir d’équipe/);
   assert.match(await page.locator('#fc-alertes').textContent(),/mise à disposition/);
@@ -92,7 +92,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.selectOption(`[data-at="${md}"] [data-at-champ=service]`,'magasin');await page.waitForTimeout(150);
   await page.selectOption(`[data-at="${md}"] [data-at-champ=type]`,'dispo');await page.waitForTimeout(250);
   await click('[data-view=flux]');await page.waitForTimeout(150);
-  assert.doesNotMatch(await page.locator('#fc-alertes').textContent(),/MAGASIN/,
+  assert.doesNotMatch(await page.locator('#fc-alertes').textContent(),/Magasin/,
     'le magasin n’est plus signalé');
   assert.match(await parcours('MAGASIN'),/mise à disposition/i);
 

@@ -77,7 +77,27 @@
     return `<span class="puce-classe" data-cab="${String(cabine).replace(/[^A-Z]/g, '')}" aria-hidden="true"></span>`;
   }
 
-  const api = { TRAITS, ico, icoService, ETAPES, puceClasse };
+  /**
+   * Un nom de service écrit TOUT EN MAJUSCULES (comme sur le plan d'architecte)
+   * se lit mal à l'écran. On l'affiche comme une phrase — « Réception /
+   * appros », « CF départ food » — sans toucher au nom enregistré. Un sigle de
+   * deux lettres (CF) reste en capitales ; un nom déjà en minuscules est laissé tel quel.
+   */
+  const PETITS = new Set(['de', 'du', 'des', 'la', 'le', 'les', 'et', 'à', 'au', 'aux', 'en', 'sur', 'pour']);
+  function nomLisible(nom) {
+    const n = String(nom == null ? '' : nom);
+    if (!/[A-ZÀ-Ý]/.test(n) || n !== n.toUpperCase()) return n;
+    return n.split(/(\s*[\/·]\s*)/).map((part, i) => {
+      if (i % 2) return part;                              // un séparateur
+      return part.split(' ').map((mot, j) => {
+        const m = mot.toLowerCase();
+        if (mot.length === 2 && /^[A-Z]+$/.test(mot) && !PETITS.has(m)) return mot;   // un sigle
+        return j === 0 ? m.charAt(0).toUpperCase() + m.slice(1) : m;
+      }).join(' ');
+    }).join('');
+  }
+
+  const api = { nomLisible, TRAITS, ico, icoService, ETAPES, puceClasse };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyIcones = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
