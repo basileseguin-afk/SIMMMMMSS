@@ -320,16 +320,16 @@ plonge, la cuisine que la légumerie. La règle tient en une phrase :
 > Un service ne travaille un lot que lorsque **les services qui le précèdent sur
 > le parcours de chaque classe** du lot la lui ont livrée.
 
-Les parcours se décrivent dans l'onglet **Ateliers**, section « 1. Les
-parcours » : un schéma par parcours, une ligne par branche, la jonction à droite.
+Les parcours se décrivent à l'étape 2, « Qui prépare quoi », section « 1. Le
+chemin des repas » : un schéma par parcours, une ligne par branche, la jonction à droite.
 « Modifier » ouvre ses branches : chaque étape est un menu. Deux parcours types
 sont créés d'office — **Complet** pour BC, PC, CREW et SPML, **Sans cuisine**
 pour YC — et se modifient librement.
 
-### Qui fabrique quoi : le parcours et les équipes dans un seul tableau
+### Qui prépare quoi : le chemin et les équipes dans un seul tableau
 
 Le parcours dit **par où** passe une classe ; les équipes disent **qui, quand et
-en combien de temps**. La section « 2. Qui fabrique quoi » les réunit dans un
+en combien de temps**. La section « 2. Qui prépare quoi » les réunit dans un
 tableau qui se lit comme une feuille Excel :
 
 - **une ligne par compagnie × classe**, avec son heure de départ et son
@@ -363,10 +363,10 @@ Les gestes :
   au clavier (Entrée ouvre le menu d'une case, Échap le referme).
 
 Les sections « 3. Les équipes » (horaires, effectifs, ordre de fabrication) et
-« 4. La journée » (le planning, équipe par équipe) restent la vue par équipe.
+« 4. La journée des équipes » (le planning, équipe par équipe) restent la vue par équipe.
 
 - **Par défaut, par classe** : BC, PC, YC, CREW et SPML ont chacune un parcours.
-- **Par compagnie × classe** : chaque ligne du tableau « Qui fabrique quoi » a
+- **Par compagnie × classe** : chaque ligne du tableau « Qui prépare quoi » a
   son menu de parcours ; une compagnie peut y suivre un autre chemin que sa classe.
 - **Une étape sans équipe est enjambée** : si personne ne travaille une classe
   à la cuisine, le montage attend directement ce qui précède la cuisine. Sa case

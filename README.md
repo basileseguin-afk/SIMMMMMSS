@@ -85,33 +85,44 @@ n'est présent dans ce dépôt.
 
 ## Parcours d’utilisation
 
-Le fil « Par où commencer », sous les onglets, donne l’étape suivante. Dans
-l’ordre :
+Le site raconte une histoire simple, pour qu’une personne qui n’est pas du
+métier de l’informatique comprenne ce qu’elle regarde : **des avions partent,
+chaque vol emporte ses repas, des équipes les préparent de service en service,
+et le site calcule à quelle heure chaque repas est prêt.** L’encart « Comment
+ça marche » la raconte en quatre images à la première visite (il se rouvre
+depuis l’en-tête).
 
-1. **Vols** (Réglages › Données) : importer un classeur Excel (départs et
-   retours) ou un CSV simplifié, ou garder le jeu de démonstration. Le nom du jeu et le nombre de départs/retours restent
-   visibles en haut de page.
-2. **Plan** : tracer ou confirmer les services (« Éditer les zones »).
-3. **Ateliers**, en quatre temps :
-   1. **Les parcours** : par où passe chaque compagnie × classe, en branches qui
-      partent en parallèle et se rejoignent (l’agro par les appros et la
-      cuisine, le matériel par la plonge et la dotation, le produit compagnie
-      par le magasin, tout se retrouvant au montage). YC ne passe pas par la
-      cuisine.
-   2. **Qui fabrique quoi** : un tableau, une ligne par compagnie × classe, une
-      colonne par service ; chaque case dit l’équipe qui la fabrique et ses
-      heures. Un clic sur une case choisit l’équipe (ou en crée une), un clic
-      sur un service remplit toute sa colonne. Chaque ligne dit quand elle est
-      prête et se déplie pour se suivre dans le temps, étape par étape.
-   3. **Les équipes** : horaire, effectif, pauses, ordre de fabrication, et les
+La navigation **est** cette histoire : quatre étapes numérotées, chacune avec
+son état en clair (✓ fait, ! à vérifier, · à faire) et un repère « à faire
+ensuite ».
+
+1. **Les vols** : importer le programme (Excel ou CSV simplifié), ou garder les
+   vols d’exemple ; régler le délai de chargement (« repas prêts combien de
+   minutes avant le départ ? ») et le décalage des vols. Le tableau dit, vol
+   par vol, si ses repas sont prêts à l’heure, en retard, ou sans équipe.
+2. **Qui prépare quoi**, en quatre temps :
+   1. **Le chemin des repas** : par où passe chaque repas, en branches qui
+      partent en parallèle et se rejoignent (les aliments par la réception et la
+      cuisine, le matériel par la plonge et la dotation, les produits de la
+      compagnie par le magasin, tout se retrouvant au montage). L’économie ne
+      passe pas par la cuisine.
+   2. **Qui prépare quoi** : un tableau, une ligne par repas (« AF · Business »),
+      une colonne par service ; chaque case dit l’équipe et ses heures. Un clic
+      sur une case choisit l’équipe (ou en crée une), un clic sur un service
+      remplit toute sa colonne. Chaque ligne dit quand le repas est prêt et se
+      déplie pour se suivre dans le temps, avec une phrase qui l’explique.
+   3. **Les équipes** : horaire, effectif, pauses, ordre de préparation, et les
       plonges (tunnels, débits) et mises à disposition.
-   4. **La journée** : le planning, équipe par équipe.
-4. **Flux** : relier les services. Le graphe décrit l’unité ; il ne décide que
-   pour les classes qui n’ont pas de parcours.
-5. **Barème** (Réglages) : homme-minutes **par vol**, par service et par
-   compagnie × classe (une valeur commune, des valeurs propres, ou une grille
-   compagnie × classe pour les services qui se chiffrent ainsi), rendement,
-   régime de poste, délai de chargement et décalage des vols.
+   4. **La journée des équipes** : le planning, équipe par équipe.
+3. **Les temps de travail** : minutes de travail **par vol**, service par
+   service et classe par classe (une valeur commune, des valeurs propres à une
+   compagnie, ou une grille compagnie par classe), rythme de travail, pauses et
+   présence ; puis « Comparer deux essais » (A / B), la sauvegarde et les limites
+   du calcul.
+4. **La journée** : rejouer la journée sur le plan de l’unité.
+
+À part, **L’unité** : le plan des services (« Modifier le plan ») et qui livre
+qui. Ces liens ne servent qu’aux repas qui n’ont pas de chemin.
 
 **Tout se pilote aussi depuis Excel** : ateliers (avec classes et parcours),
 barème et programme de vols s’exportent en `.xlsx`, se modifient dans le
@@ -120,23 +131,24 @@ tableur et se réimportent. Voir [les formats Excel](docs/FORMATS_EXCEL.md).
 La journée est **calculée d’un coup** par `moteur/production.js` et
 **recalculée à chaque modification** : aucun réglage ne se verrouille.
 
-- **Simulation** : relit la journée calculée. « ▶ Lire », « ⏭ Pas » (saute au
-  prochain changement), « ↺ Début » et un curseur de temps qui va dans les deux
-  sens. Le plan montre quatre états par service : au travail, attend un amont
-  (pointillé), a fini, pas commencé. Au début de la journée, il montre plutôt
-  ce qui reste à décrire.
-- **Vols** : chaque départ, suivi classe par classe ; une classe qu’aucun
-  atelier ne fabrique est dite « Non fabriqué ».
+- **La journée** : rejoue la journée calculée. « ▶ Rejouer », « ⏭ Pas à pas »
+  (saute au prochain changement), « ↺ Début » et un curseur de temps qui va dans
+  les deux sens. Le plan montre quatre états par service : au travail, attend le
+  service d’avant (pointillé), a fini, pas commencé. Au début de la journée, il
+  montre plutôt ce qui reste à décrire (aucune équipe, équipe sans travail,
+  équipe au travail).
+- **Les vols** : le bilan de la journée, départ par départ ; un vol dont des
+  repas n’ont pas d’équipe est dit « Des repas sans équipe ».
 - **Exporter** : la journée calculée — départs, classes, journal des lots.
 
 ## Lire les indicateurs
 
-- **Échéances tenues** : parmi les classes dont l’échéance est **déjà passée**
-  à l’instant relu, celles sorties à temps. Avant la première échéance : « — ».
-- **Échéance dépassée** : classes dont l’échéance est passée et qui ne sont pas
-  encore sorties.
-- **Au travail** / **En attente** : services qui fabriquent, et services
-  ouverts dont l’amont n’a pas encore livré.
+- **Prêts à l’heure** : parmi les repas dont l’heure de chargement est **déjà
+  passée** à l’heure rejouée, ceux prêts à temps. Avant le premier chargement : « — ».
+- **En retard** : repas dont l’heure de chargement est passée et qui ne sont pas
+  encore prêts.
+- **Services au travail** / **Services qui attendent** : services qui préparent,
+  et services dont l’équipe est là mais dont le service d’avant n’a pas encore livré.
 - **Point d’attention** : le poste qui attend son amont depuis le plus
   longtemps à cet instant, et, sur la journée, celui qui a le plus attendu.
   Pour un service choisi : ses équipes et ses lots avec leurs heures.
@@ -273,7 +285,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `replay.js` / `simulation.js` | Relecture de la journée calculée : états à l’instant t, vue Simulation |
 | `comparaison.js` | Scénarios A/B : capture, tableau, verdict par ligne |
 | `vols-demo.js` | Programme de vols **fictif** de démonstration |
-| `parcours.js` | Parcours des compagnies × classes : validation, parcours types, tableau « Qui fabrique quoi », suivi d’une ligne dans le temps, éditeur |
+| `parcours.js` | Chemins des repas : validation, chemins types, tableau « Qui prépare quoi », suivi d’un repas dans le temps, éditeur |
 | `tableur.js` | Lecture et écriture de classeurs Excel (.xlsx) et de CSV, sans bibliothèque |
 | `echanges.js` | Les trois classeurs (ateliers, barème, vols) : format et conversions |
 | `plan-editor.js` / `editor.css` | Dessin, annotations, historique et sauvegarde du plan |
@@ -281,17 +293,19 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `flow-center.js` / `flow-center.css` | Réseau configurable, règles humaines, onglet et affichage des flux |
 | `ateliers.js` / `ateliers.css` | Onglet « Ateliers de travail » : saisie, planning, couverture par classe |
 | `reglages.js` / `reglages.css` | Centre des réglages : barème, rendement, régime de poste |
-| `demarrage.js` / `demarrage.css` | Fil « Par où commencer » |
+| `demarrage.js` / `histoire.css` | Les quatre étapes (navigation et état de chacune), « Comment ça marche », titre et phrase de chaque vue |
+| `demarrage.css` | Ce que montre chaque vue (lecture de la journée seulement dans « La journée ») et couleurs du plan en lecture |
 | `plan-prive/` | Fond de plan **local, non versionné** (voir ci-dessous) |
 | `tests/ui-model.test.cjs` | Régressions de l’import CSV |
 | `tests/noyau.test.cjs` | Régressions du noyau : ordre, horloge, conditions, interruptions, erreurs |
 | `tests/production.test.cjs` | Régressions du modèle par ateliers : enchaînement des lots, attente des amonts, robot, pauses, validation |
 | `tests/replay.test.cjs` | Relecture : états d’un service, ponctualité à l’instant t, pas suivant |
 | `tests/comparaison.test.cjs` | Scénarios A/B : capture, déterminisme, verdicts, jeu de démonstration |
-| `tests/parcours.test.cjs` | Parcours : branches parallèles, jonction, étape enjambée, hors parcours, boucle ; tableau « Qui fabrique quoi », choisir une équipe, remplir, suivi dans le temps |
+| `tests/parcours.test.cjs` | Parcours : branches parallèles, jonction, étape enjambée, hors parcours, boucle ; tableau « Qui prépare quoi », choisir une équipe, remplir, suivi dans le temps |
 | `tests/tableur.test.cjs` | Classeurs Excel : aller-retour, fichier compressé d’un autre logiciel, CSV |
 | `tests/echanges.test.cjs` | Les trois classeurs : aller-retour, ajouts, erreurs regroupées |
-| `tests/excel-browser.cjs` | Parcours et tableau « Qui fabrique quoi » dans l’interface, classeurs ateliers et vols de bout en bout |
+| `tests/excel-browser.cjs` | Chemins et tableau « Qui prépare quoi » dans l’interface, classeurs ateliers et vols de bout en bout |
+| `tests/histoire-browser.cjs` | Les quatre étapes, « Comment ça marche », titres et phrases, repas écrits en clair, téléphone |
 | `tests/browser-smoke.cjs` | Parcours dans Chromium : relecture, vols, import, export, thèmes, mobile |
 | `tests/import-browser.cjs` | Import CSV : échec de lecture puis réimport, numéros de ligne, export, scénarios A/B |
 | `tests/sauvegarde-browser.cjs` | Sauvegarde complète : export, refus atomique, effacement et restauration |

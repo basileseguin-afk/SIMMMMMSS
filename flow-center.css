@@ -39,7 +39,7 @@ body.flows-open .workbench{display:none}
 .fc-map-filter{display:flex;align-items:center;gap:8px;font-size:12px;white-space:nowrap}
 .fc-map-filter select{width:auto}
 .map-footer{flex-wrap:wrap}
-@media(max-width:1050px){.fc-fields{grid-template-columns:1fr 1fr}.fc-heading{flex-direction:column}.workspace-heading{flex-wrap:wrap}.view-tabs{flex-wrap:wrap}}
+@media(max-width:1050px){.fc-fields{grid-template-columns:1fr 1fr}.fc-heading{flex-direction:column}.workspace-heading{flex-wrap:wrap}}
 @media(max-width:600px){#view-flux{padding:16px;overflow:visible}.fc-fields{grid-template-columns:1fr}.fc-card-head{align-items:flex-start}.fc-actions .btn{min-height:40px}.fc-heading h2{font-size:21px}.fc-filters{align-items:stretch;flex-direction:column}}
 
 /* ==========================================================================

@@ -1,0 +1,122 @@
+/* ==========================================================================
+ *  L'HISTOIRE DU SITE
+ *  Quatre étapes numérotées, dans l'ordre où l'on pense, qui sont aussi la
+ *  navigation ; un encart « Comment ça marche » en quatre images ; et, sur
+ *  chaque vue, un titre et une phrase en mots de tous les jours.
+ * ==========================================================================*/
+
+/* La page empile ses bandeaux ; le contenu prend ce qui reste. Une grille à
+   rangées fixes décalait tout dès qu'un bandeau se masquait. */
+@media(min-width:761px){
+  body{display:flex;flex-direction:column}
+  body>.app{flex:1 1 auto;min-height:0}
+}
+
+/* --- Les étapes --------------------------------------------------------- */
+.etapes{display:flex;align-items:stretch;gap:12px;padding:10px 20px;background:var(--bg3);
+  border-bottom:1px solid var(--bordure)}
+.etapes-liste{display:flex;align-items:stretch;gap:2px;list-style:none;margin:0;padding:0;flex:1;min-width:0}
+.etapes-liste>li{display:flex;min-width:0}
+.etapes-liste>li:not(.etape-fleche){flex:1 1 0}
+.etape-fleche{align-items:center;color:var(--txt3);font-size:26px;line-height:1;padding:0 2px;user-select:none}
+.etape{display:flex;align-items:center;gap:10px;width:100%;text-align:left;font:inherit;cursor:pointer;
+  background:transparent;border:1.5px solid transparent;border-radius:10px;padding:7px 12px;color:var(--txt);
+  position:relative;min-height:54px;min-width:0}
+.etape:hover{background:var(--bg2);border-color:var(--bordure)}
+.etape:focus-visible{outline:3px solid var(--accent);outline-offset:1px}
+.etape.active{background:color-mix(in srgb,var(--accent) 9%,var(--bg3));border-color:var(--accent)}
+.etape-num{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-weight:800;
+  font-size:16px;background:var(--bg2);border:2px solid var(--bordure2);color:var(--txt2)}
+.etape.active .etape-num{background:var(--accent);border-color:var(--accent);color:#fff}
+:root[data-theme="dark"] .etape.active .etape-num{color:#0b1520}
+.etape-txt{display:block;min-width:0}
+.etape-txt b{display:block;font-size:14.5px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.etape-txt em{display:flex;gap:6px;align-items:flex-start;font-style:normal;font-size:12px;color:var(--txt2);
+  margin-top:2px;line-height:1.3}
+.etape-etat{margin-top:1px}
+.etape-etat{flex:none;width:16px;height:16px;border-radius:50%;display:inline-grid;place-items:center;
+  font-size:10px;font-weight:800;line-height:1}
+.etape-etat.fait{background:var(--vert);color:#fff}
+.etape-etat.verifier{background:var(--orange);color:#fff}
+.etape-etat.afaire{background:var(--bordure2);color:var(--txt)}
+:root[data-theme="dark"] .etape-etat.fait,:root[data-theme="dark"] .etape-etat.verifier{color:#0b1520}
+.etape-suite{position:absolute;top:-9px;right:10px;font-size:10px;font-weight:800;text-transform:uppercase;
+  letter-spacing:.04em;background:var(--accent);color:#fff;border-radius:99px;padding:1px 8px;white-space:nowrap}
+:root[data-theme="dark"] .etape-suite{color:#0b1520}
+.etapes-annexe{display:flex;border-left:1px solid var(--bordure);padding-left:12px;flex:0 0 auto}
+.etape.annexe{min-width:170px}
+.etape.annexe .etape-num{width:28px;height:28px;font-size:14px}
+.etape.annexe b{font-size:13.5px}
+/* Pendant qu'on déplace les zones du plan, on ne change pas d'étape. */
+body.editing .etapes{opacity:.45;pointer-events:none}
+
+/* --- Comment ça marche -------------------------------------------------- */
+.comment{background:var(--bg3);border-bottom:1px solid var(--bordure);padding:14px 20px 16px}
+.comment[hidden]{display:none}
+.cm-tete{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.cm-tete h2{margin:0;font-size:17px}
+.cm-liste{list-style:none;margin:12px 0 0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
+.cm-liste li{display:grid;grid-template-columns:52px minmax(0,1fr);column-gap:12px;align-content:start;
+  background:var(--bg2);border:1px solid var(--bordure);border-radius:12px;padding:12px 14px;position:relative}
+.cm-liste li:not(:last-child)::after{content:"›";position:absolute;right:-15px;top:50%;transform:translateY(-50%);
+  font-size:24px;color:var(--txt3)}
+.cm-picto{grid-row:span 2;width:52px;height:52px;fill:none;stroke:var(--accent);stroke-width:2.6;
+  stroke-linecap:round;stroke-linejoin:round}
+.cm-liste b{display:flex;align-items:center;gap:7px;font-size:14px;line-height:1.3}
+.cm-num{flex:none;width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-size:11.5px;
+  display:grid;place-items:center}
+:root[data-theme="dark"] .cm-num{color:#0b1520}
+.cm-liste p{margin:4px 0 0;font-size:12.5px;color:var(--txt2);line-height:1.45}
+.cm-pied{margin:12px 0 0;font-size:12.5px;color:var(--txt2);max-width:110ch}
+.cm-pied b{color:var(--txt)}
+
+/* --- Le titre de chaque vue, et sa phrase -------------------------------- */
+.view-intro{margin:3px 0 0;font-size:13.5px;color:var(--txt2);max-width:90ch;line-height:1.45}
+.view-intro:empty{display:none}
+
+@media(max-width:1250px){
+  .etapes-liste>.etape-fleche{display:none}
+  .etape{padding:6px 8px;gap:8px}
+  .etape-txt b{font-size:13.5px}
+}
+@media(max-width:1000px){
+  .etapes{flex-direction:column;gap:6px}
+  .etapes-liste{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .etapes-annexe{border-left:0;padding-left:0}
+  .etape.annexe{min-width:0}
+  .cm-liste{grid-template-columns:1fr 1fr}
+  .cm-liste li::after{display:none}
+}
+@media(max-width:560px){
+  .etapes{padding:8px 16px}
+  .etapes-liste{grid-template-columns:1fr}
+  .comment{padding:12px 16px}
+  .cm-liste{grid-template-columns:1fr;gap:10px}
+}
+
+/* --- Rejouer la journée -------------------------------------------------
+   L'horloge et les boutons de lecture ne servent qu'à « La journée » : ils
+   vivent dans la vue, pas dans l'en-tête commun. */
+.lecteur{display:flex;align-items:center;gap:18px;padding:10px 20px;background:var(--bg3);
+  border-bottom:1px solid var(--bordure);flex-wrap:wrap}
+.lecteur .horloge-box{flex:1 1 520px;min-width:0;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.lecteur .horloge{font-size:26px;color:var(--txt)}
+.lecteur .jour{font-size:11px;color:var(--txt2)}
+.lecteur .run-state{max-width:240px;font-size:12px;color:var(--txt2)}
+.lecteur #sim-curseur{flex:1 1 180px;width:auto;min-width:140px}
+.lecteur .vitesse-box{color:var(--txt2)}
+.lecteur .vitesse-box b{color:var(--txt)}
+body:not([data-vue="plan"]) .lecteur,body.editing .lecteur{display:none}
+@media(max-width:760px){.lecteur{padding:10px 16px}.lecteur .run-state{display:block;max-width:none;width:100%;border:0;padding:0}}
+
+/* --- Les vols : leur programme et leurs horaires, puis le bilan ---------- */
+body[data-vue="vols"] .app{grid-template-columns:minmax(0,1fr)}
+body[data-vue="vols"] .workbench{display:none}
+.vols-donnees{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:14px;margin-bottom:6px}
+.vols-donnees .panneau{margin:0}
+.vols-titre{font-size:16px;margin:14px 0 8px}
+@media(max-width:900px){.vols-donnees{grid-template-columns:1fr}}
+
+/* --- Les temps de travail : un exemple plutôt qu'une formule ------------- */
+.rg-exemple{margin:4px 0 10px;font-size:13px;color:var(--txt)}
+.rg-codes{margin:-6px 0 10px;font-size:11.5px;color:var(--txt2)}

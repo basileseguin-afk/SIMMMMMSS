@@ -2,7 +2,7 @@
  *  1. les parcours : branches, jonction, parcours propre à une compagnie × classe ;
  *  2. le classeur des ateliers : exporter, modifier dans « Excel », réimporter ;
  *  3. le classeur des vols : départs et retours, aller-retour ;
- *  4. le tableau « Qui fabrique quoi » : choisir, créer, vider, remplir, suivre. */
+ *  4. le tableau « Qui prépare quoi » : choisir, créer, vider, remplir, suivre. */
 const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs'),os=require('node:os');
 const {pathToFileURL}=require('node:url');
 const T=require('../tableur.js');
@@ -43,7 +43,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await creer('Montage','prepa',[['AF/YC'],['AF/BC']]);
   assert.equal((await lot('prepa','AF/YC')).debut,(await lot('dotation','AF/YC')).fin,'YC : le montage attend la dotation, pas la cuisine');
   assert.ok((await lot('prepa','AF/BC')).debut>=(await lot('cuisine','AF/BC')).fin,'BC : le montage attend la cuisine');
-  assert.match(await page.locator('#at-anomalies').textContent(),/case\(s\) « à choisir » dans « 2\. Qui fabrique quoi »/,'les étapes sans équipe renvoient au tableau');
+  assert.match(await page.locator('#at-anomalies').textContent(),/case\(s\) « à choisir » dans « 2\. Qui prépare quoi »/,'les étapes sans équipe renvoient au tableau');
 
   // Une compagnie × classe peut suivre un autre parcours que sa classe.
   await page.selectOption('[data-at-champ=classe-parcours][data-classe="AF/YC"]','complet');await attendre();
@@ -95,7 +95,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.nom==='Cuisine').personnes),1);
 
   // 3. Le classeur des vols : départs et retours, aller-retour.
-  await page.locator('[data-view=reglages]').click();await attendre();
+  // L'import et l'export des vols vivent à l'étape 1, « Les vols ».
+  await page.locator('[data-view=vols]').click();await attendre();
   const {f:fVols}=await telecharger('#exp-vols','vols.xlsx');
   const vols=await T.lireClasseur(fs.readFileSync(fVols));
   const dep=T.feuille(vols,'Départs'),ret=T.feuille(vols,'Retours');
@@ -115,7 +116,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator('#import-report').textContent(),/Départs, ligne 15/);
   assert.equal(await page.locator('#source-count').textContent(),'13 départs · 6 retours','rien n’a été remplacé');
 
-  // 4. « Qui fabrique quoi » : une ligne par compagnie × classe, une colonne
+  // 4. « Qui prépare quoi » : une ligne par repas (compagnie · classe), une colonne
   //    par service, une équipe par case — et un clic pour la choisir.
   await page.locator('[data-view=ateliers]').click();await attendre();
   const kase=(c,s)=>page.locator(`[data-qf=case][data-classe="${c}"][data-service=${s}]`);
@@ -166,7 +167,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // Une ligne se suit dans le temps, étape par étape, et le dit en clair.
   await page.locator('[data-qf=suivre][data-classe="AF/BC"]').click();await attendre();
   assert.equal(await page.locator('.qf-temps svg').count(),1,'le chemin de AF/BC dans le temps');
-  assert.match(await page.locator('.qf-temps .qf-phrase').textContent(),/AF\/BC (est prête à \d\d:\d\d|n’est pas encore fabriquée)/);
+  assert.match(await page.locator('.qf-temps .qf-phrase').textContent(),/AF · Business (est prêt à \d\d:\d\d|n’est pas encore prêt)/);
 
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('excel-browser : ok');

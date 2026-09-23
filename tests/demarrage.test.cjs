@@ -1,6 +1,6 @@
-/* Le fil de mise en route : cinq étapes, trois états, et une phrase qui dit
- * quoi faire maintenant. C'est la seule chose de l'interface qui répond à
- * « par où je commence ? » — elle doit dire vrai. */
+/* Les étapes du site : elles sont la navigation, et chacune dit son état en
+ * clair. Quelqu'un qui n'est pas du métier doit savoir, d'un coup d'œil, où
+ * il en est et quoi faire ensuite — elles doivent donc dire vrai. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const D = require('../demarrage.js');
@@ -10,85 +10,99 @@ const neuf = () => ({
   plan: { services: 11, approx: 0 },
   flux: { liaisons: 0, alertes: 0 },
   ateliers: { total: 0, fabriquent: 0, absentes: 0 },
-  bareme: { calibre: false }
+  bareme: { calibre: false },
+  journee: { calculee: false, suivies: 0, aHeure: 0, fin: null }
 });
 const par = (e) => Object.fromEntries(D.etapes(e).map(s => [s.cle, s]));
 
-test('cinq étapes, dans l’ordre où on les fait', () => {
+test('quatre étapes numérotées, dans l’ordre où l’on pense, puis l’unité à part', () => {
   const l = D.etapes(neuf());
-  assert.deepEqual(l.map(s => s.cle), ['vols', 'plan', 'ateliers', 'flux', 'bareme']);
+  assert.deepEqual(l.map(s => s.cle), ['vols', 'ateliers', 'bareme', 'journee', 'unite']);
+  assert.deepEqual(l.map(s => s.num), [1, 2, 3, 4, null]);
+  assert.deepEqual(l.map(s => s.onglet), ['vols', 'ateliers', 'reglages', 'plan', 'flux'],
+    'chaque étape ouvre sa vue');
+  assert.equal(par(neuf()).unite.annexe, true);
 });
 
-test('les ateliers viennent avant les flux : sans équipe, le graphe ne porte rien', () => {
-  const e = neuf();
-  e.flux.liaisons = 16;
-  assert.equal(par(e).flux.etat, 'afaire', 'des liaisons sans équipe ne sont pas « fait »');
-  assert.match(par(e).flux.detail, /sans équipe/);
-  // Dès qu'une équipe fabrique, le graphe se juge.
-  e.ateliers = { total: 1, fabriquent: 1, absentes: 0 };
-  assert.equal(par(e).flux.etat, 'fait');
-  e.flux.alertes = 3;
-  assert.equal(par(e).flux.etat, 'verifier');
-  assert.match(par(e).flux.detail, /3 à corriger/);
+test('chaque vue a un titre et une phrase en mots de tous les jours', () => {
+  for (const v of ['vols', 'ateliers', 'reglages', 'plan', 'flux']) {
+    assert.ok(D.VUES[v].titre, v);
+    assert.ok(D.VUES[v].intro.length > 20, v);
+    assert.doesNotMatch(D.VUES[v].intro, /atelier|barème|homme-minutes|échéance|compagnie × classe/i,
+      'pas de jargon dans la phrase d’accueil de ' + v);
+  }
 });
 
-test('le jeu de démonstration est un état « à vérifier », pas « fait »', () => {
+test('les vols d’exemple sont « à vérifier », les vôtres « fait »', () => {
   const e = neuf(); e.vols = { total: 12, departs: 12, source: 'demo' };
   assert.equal(par(e).vols.etat, 'verifier');
-  assert.match(par(e).vols.detail, /jeu de démonstration/);
+  assert.match(par(e).vols.detail, /12 départs · exemple/);
   e.vols.source = 'importe';
   assert.equal(par(e).vols.etat, 'fait');
   assert.equal(par(e).vols.geste, null, 'rien à proposer quand c’est fait');
 });
 
-test('une classe que personne ne fabrique met les ateliers « à vérifier »', () => {
+test('des repas sans équipe mettent « Qui prépare quoi » à vérifier', () => {
   const e = neuf();
+  assert.equal(par(e).ateliers.etat, 'afaire');
   e.ateliers = { total: 2, fabriquent: 2, absentes: 5 };
   assert.equal(par(e).ateliers.etat, 'verifier');
-  assert.match(par(e).ateliers.detail, /5 classes que personne ne fabrique/);
+  assert.match(par(e).ateliers.detail, /2 équipes · 5 repas sans équipe/);
   e.ateliers.absentes = 0;
   assert.equal(par(e).ateliers.etat, 'fait');
 });
 
-test('le barème reste « à vérifier » tant qu’il n’est pas calibré', () => {
+test('les temps de travail restent « à vérifier » tant que ce sont des chiffres d’exemple', () => {
   assert.equal(par(neuf()).bareme.etat, 'verifier');
+  assert.match(par(neuf()).bareme.detail, /exemple/);
   const e = neuf(); e.bareme.calibre = true;
   assert.equal(par(e).bareme.etat, 'fait');
+});
+
+test('la journée dit combien de repas sont en retard, ou que tout est à l’heure', () => {
+  const e = neuf();
+  assert.equal(par(e).journee.etat, 'afaire');
+  e.journee = { calculee: true, suivies: 10, aHeure: 7, fin: '10:24' };
+  assert.equal(par(e).journee.etat, 'verifier');
+  assert.match(par(e).journee.detail, /3 repas en retard/);
+  e.journee.aHeure = 10;
+  assert.equal(par(e).journee.etat, 'fait');
+  assert.match(par(e).journee.detail, /tout est à l’heure · fini à 10:24/);
+});
+
+test('l’unité signale les zones à confirmer et les liens à corriger', () => {
+  const e = neuf(); e.flux = { liaisons: 16, alertes: 0 };
+  assert.equal(par(e).unite.etat, 'fait');
+  e.plan.approx = 3; e.flux.alertes = 1;
+  assert.equal(par(e).unite.etat, 'verifier');
+  assert.match(par(e).unite.detail, /3 zones à confirmer · 1 à corriger/);
 });
 
 test('la prochaine étape est la première à faire, sinon la première à vérifier', () => {
   const e = neuf();
   e.vols = { total: 12, departs: 12, source: 'demo' };
-  // Rien n'est décrit : c'est par les ateliers qu'on commence.
+  // Rien n'est décrit : c'est par les équipes qu'on commence.
   assert.equal(D.suite(D.etapes(e)).etape.cle, 'ateliers');
   assert.match(D.suite(D.etapes(e)).texte, /première équipe/);
-  // Une fois les équipes là et les flux lus, restent les vols et le barème.
+  // Une fois les équipes là, restent les vols d'exemple.
   e.ateliers = { total: 1, fabriquent: 1, absentes: 0 };
-  e.flux = { liaisons: 16, alertes: 0 };
   assert.equal(D.suite(D.etapes(e)).etape.cle, 'vols');
 });
 
-test('tout au vert : plus aucune étape restante', () => {
+test('tout au vert : plus aucune étape à faire', () => {
   const e = {
     vols: { total: 12, departs: 12, source: 'importe' },
     plan: { services: 11, approx: 0 },
     flux: { liaisons: 16, alertes: 0 },
     ateliers: { total: 3, fabriquent: 3, absentes: 0 },
-    bareme: { calibre: true }
+    bareme: { calibre: true },
+    journee: { calculee: true, suivies: 4, aHeure: 4, fin: '09:00' }
   };
   assert.deepEqual(D.etapes(e).map(s => s.etat), ['fait', 'fait', 'fait', 'fait', 'fait']);
   assert.equal(D.suite(D.etapes(e)).etape, null);
 });
 
-test('chaque état porte un signe, pas seulement une couleur', () => {
-  // Un daltonien doit pouvoir lire le fil.
-  assert.equal(Object.keys(D.ETATS).length, 3);
-  for (const v of Object.values(D.ETATS)) assert.ok(v && v.length === 1);
-  assert.equal(new Set(Object.values(D.ETATS)).size, 3, 'trois signes distincts');
-});
-
-test('un état vide ne fait pas tomber le fil', () => {
-  const l = D.etapes({});
-  assert.equal(l.length, 5);
-  assert.ok(l.every(s => s.titre && s.detail !== undefined && s.onglet));
+test('« Comment ça marche » raconte l’histoire en quatre images', () => {
+  assert.equal(D.COMMENT.length, 4);
+  assert.deepEqual(D.COMMENT.map(c => c.picto), ['avion', 'plateau', 'equipe', 'horloge']);
 });

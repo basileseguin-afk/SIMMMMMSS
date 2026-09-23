@@ -11,7 +11,7 @@ header .btn{background:#233e59;border-color:#8298ae;color:#fff}header .btn:hover
 button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:3px}header button:focus-visible{outline-color:#fff}
 .context-bar{padding:7px 20px}.demo-badge{color:var(--txt);border-color:var(--bordure2)}
 .kpi-grille{padding:14px 20px}.kpi .lab{font-size:11px;min-height:16px}.kpi .val{font-size:30px}.kpi-note{font-size:12px}
-.workspace-heading{padding:16px 20px;border-bottom:1px solid var(--bordure);gap:12px}h1{font-size:22px;margin:0}.view-tabs{background:var(--bg2);border-color:var(--bordure2);padding:4px;gap:4px}.view-tabs button{font-size:14px;padding:9px 16px;color:var(--txt);font-weight:600}.view-tabs button.active{background:var(--accent);color:var(--on-accent);box-shadow:none}.view-tabs button.active span{background:var(--on-accent);color:var(--accent2)}
+.workspace-heading{padding:16px 20px;border-bottom:1px solid var(--bordure);gap:12px}h1{font-size:22px;margin:0}
 
 .panel-content{padding:18px}.panel-heading h2{font-size:18px;margin-bottom:18px}.panel-heading p{margin-bottom:16px}.panneau h3{font-size:12px;letter-spacing:0;text-transform:none;color:var(--txt)}
 .mini-note{font-size:12px;line-height:1.55;color:var(--txt2)}.inline-help{margin:10px 0;font-size:12px;color:var(--txt2)}summary{cursor:pointer;min-height:32px;padding:7px 0;font-size:13px;color:var(--accent2);font-weight:600}.inline-help[open]{padding-bottom:4px}.inline-help p{margin:8px 0 12px}.scope-badge{display:inline-block;margin:0 0 8px;padding:6px 9px;border-radius:5px;background:var(--bg2);border:1px solid var(--bordure2);color:var(--txt2);font-size:12px}
@@ -21,8 +21,8 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,su
 
 #view-flux{background:var(--bg2)}.fc-heading{align-items:center;margin-bottom:4px}.fc-card{border-color:var(--bordure2)}.fc-card-head{border-bottom:1px solid var(--bordure);padding-bottom:12px}.fc-card-head strong{font-size:14px}.fc-families .btn{min-height:42px}.fc-fields label,.fc-filters label{font-size:13px;color:var(--txt)}#fc-status{margin:8px 0}.fc-heading .scope-badge{margin:0}.flight-table th{font-size:11px}.flight-table tbody tr:nth-child(even){background:var(--bg2)}.status{font-size:12px}
 .toast{background:var(--accent);color:var(--on-accent)}input[type=range],input[type=checkbox]{accent-color:var(--accent)}
-@media(max-width:1150px){body>header{gap:12px}.workspace-heading{align-items:flex-start}.view-tabs button{padding:8px 12px}}
-@media(max-width:760px){body>header{padding:12px 16px}.marque small{display:none}.context-bar{padding:8px 16px;gap:2px}.kpi-grille{padding:14px 16px;gap:16px}.kpi .lab{min-height:30px}.kpi-note{font-size:11px}.workspace-heading{padding:12px 16px;gap:10px}.workspace-heading>div{width:100%}.view-tabs{width:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px}.view-tabs button{padding:8px 3px;font-size:12px;min-width:0}.view-tabs span{margin-left:2px}.plan-tete{padding:10px 16px}.map-footer{padding:8px 16px}}
+@media(max-width:1150px){body>header{gap:12px}.workspace-heading{align-items:flex-start}}
+@media(max-width:760px){body>header{padding:12px 16px}.marque small{display:none}.context-bar{padding:8px 16px;gap:2px}.kpi-grille{padding:14px 16px;gap:16px}.kpi .lab{min-height:30px}.kpi-note{font-size:11px}.workspace-heading{padding:12px 16px;gap:10px}.workspace-heading>div{width:100%}.plan-tete{padding:10px 16px}.map-footer{padding:8px 16px}}
 header .marque,header .horloge,header #vitesse-val{color:#fff}
 
 /* ---------------------------------------------------------------------------

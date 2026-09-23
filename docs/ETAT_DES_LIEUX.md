@@ -28,7 +28,16 @@ Deux assistants travaillent en parallèle sur cette branche : **Claude** et
 > barème et vols s'échangent en `.xlsx` (`tableur.js`, `echanges.js`) : voir
 > [les formats Excel](FORMATS_EXCEL.md).
 >
-> **Puis — parcours et équipes réunis.** L'onglet Ateliers se lit en quatre
+> **Puis — un site qu'on comprend sans être du métier.** La navigation est une
+> histoire en quatre étapes numérotées (1. Les vols, 2. Qui prépare quoi, 3. Les
+> temps de travail, 4. La journée, et à part L'unité), chacune avec son état en
+> clair ; un encart « Comment ça marche » la raconte en quatre images. Le
+> vocabulaire technique a disparu de l'écran : repas, équipe, chemin, minutes de
+> travail, « prêts avant », « qui livre qui » ; les classes s'écrivent en toutes
+> lettres (« AF · Business »). L'import des vols et le délai de chargement sont
+> passés à l'étape 1.
+>
+> **Avant — parcours et équipes réunis.** L'onglet Ateliers se lit en quatre
 > temps : 1. les parcours (un schéma par parcours) ; 2. « Qui fabrique quoi », un
 > tableau compagnie × classe × service où chaque case dit l'équipe et se choisit
 > d'un clic, chaque ligne se dépliant dans le temps ; 3. les équipes ; 4. la
@@ -237,8 +246,8 @@ en gardant les deux entrées.
 ## 7. Vérifier avant de livrer
 
 ```bash
-node --test tests/*.test.cjs     # 176 tests purs
-node tests/browser-smoke.cjs     # puis les 13 autres parcours (Playwright + Chromium)
+node --test tests/*.test.cjs     # 177 tests purs
+node tests/browser-smoke.cjs     # puis les 14 autres parcours (Playwright + Chromium)
 ```
 
 | Parcours | Couvre |
@@ -256,15 +265,16 @@ node tests/browser-smoke.cjs     # puis les 13 autres parcours (Playwright + Chr
 | `annexe-browser` | seconde salle d'un atelier : création, aménagement, liaisons propres |
 | `reglages-browser` | barème par vol (commun, par compagnie, grille compagnie × classe), rendement, poste, échange Excel, ancien JSON converti |
 | `aide-browser` | aucun pavé de texte imposé, l'aide s'ouvre sans rien déplacer, chaque « ? » se nomme |
-| `excel-browser` | parcours et tableau « Qui fabrique quoi » (choisir, créer, vider, remplir une colonne, clavier, recherche, suivi dans le temps) ; classeurs ateliers et vols : export, modification, import, refus |
+| `histoire-browser` | les quatre étapes et leur état, « Comment ça marche », titre et phrase de chaque vue, repas en clair, téléphone |
+| `excel-browser` | chemins et tableau « Qui prépare quoi » (choisir, créer, vider, remplir une colonne, clavier, recherche, suivi dans le temps) ; classeurs ateliers et vols : export, modification, import, refus |
 
 La relecture de la journée (`replay.js` : où en est chaque service à l'instant
 t) est couverte par `tests/replay.test.cjs`, la comparaison A/B par
-`tests/comparaison.test.cjs`, en tests purs. Le fil de mise en
-route est couvert par `tests/demarrage.test.cjs`, en tests
+`tests/comparaison.test.cjs`, en tests purs. Les étapes de la
+navigation sont couvertes par `tests/demarrage.test.cjs`, en tests
 purs : c'est une fonction, `etapes(etat)`, qui ne touche pas au navigateur.
 
-**Les quatorze parcours navigateur doivent être passés avant de livrer**, pas le seul
+**Les quinze parcours navigateur doivent être passés avant de livrer**, pas le seul
 `browser-smoke` : c'est en n'en rejouant qu'une partie qu'une régression de
 navigation est partie sur la branche (voir BUG-012).
 

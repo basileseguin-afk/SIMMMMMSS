@@ -344,17 +344,18 @@
    *       choisit. Une ligne se déplie pour se lire dans le temps.
    * ====================================================================*/
 
-  const AIDE_PARCOURS = `<p>Un <b>parcours</b> dit par où passe une compagnie × classe, en
-    <b>branches</b> qui démarrent en même temps et se rejoignent : l’agro par les appros et la cuisine,
-    le matériel par la plonge et la dotation, le produit compagnie par le magasin, tout se retrouvant
-    au montage.</p><p>Chaque classe (BC, YC…) suit un parcours par défaut ; une compagnie × classe
-    peut en suivre un autre, dans le tableau « Qui fabrique quoi ».</p>`;
-  const AIDE_TABLEAU = `<p>Chaque <b>case</b> dit quelle équipe fabrique cette compagnie × classe dans
-    ce service. Cliquez-la pour choisir l’équipe, en créer une, ou vider la case. Cliquez le
-    <b>nom d’un service</b> pour remplir d’un coup toutes ses cases vides.</p>
-    <p>Une case vide n’arrête rien : l’étape est simplement sautée, et la simulation le signale.
-    Une case grisée : le parcours de la ligne ne passe pas par ce service.</p>
-    <p>La dernière colonne dit quand la ligne est prête ; cliquez-la pour la suivre dans le temps,
+  const AIDE_PARCOURS = `<p>Un <b>chemin</b> dit par où passe un repas, en <b>branches</b> qui démarrent
+    en même temps et se rejoignent : les aliments par la réception et la cuisine, le matériel par la
+    plonge et la dotation, les produits de la compagnie par le magasin — tout se retrouve au montage.</p>
+    <p>Chaque classe (Business, Économie…) suit un chemin par défaut ; les repas d’une compagnie
+    peuvent en suivre un autre, dans le tableau « Qui prépare quoi ».</p>`;
+  const AIDE_TABLEAU = `<p>Une <b>ligne</b> par repas (une compagnie dans une classe), une <b>colonne</b> par
+    service. Chaque case dit quelle équipe prépare ce repas dans ce service : cliquez-la pour choisir
+    l’équipe, en créer une, ou vider la case. Cliquez le <b>nom d’un service</b> pour remplir d’un coup
+    toutes ses cases vides.</p>
+    <p>Une case « à choisir » n’arrête rien : l’étape est sautée, et le site le signale. Une case
+    hachurée : ce repas ne passe pas par ce service.</p>
+    <p>La dernière colonne dit quand le repas est prêt ; cliquez-la pour le suivre dans le temps,
     étape par étape.</p>`;
 
   class EditeurParcours {
@@ -413,7 +414,7 @@
       const optionsService = choisi => services.map(s =>
         `<option value="${esc(s.id)}" ${s.id === choisi ? 'selected' : ''}>${esc(s.nom)}</option>`).join('')
         + (choisi && !services.some(s => s.id === choisi) ? `<option value="${esc(choisi)}" selected>${esc(choisi)} (absent du plan)</option>` : '');
-      const optionsParcours = choisi => '<option value="">aucun (graphe des flux)</option>'
+      const optionsParcours = choisi => '<option value="">aucun (liens de l’unité)</option>'
         + etat.parcours.map(p => `<option value="${esc(p.id)}" ${p.id === choisi ? 'selected' : ''}>${esc(p.nom)}</option>`).join('');
 
       const cartes = etat.parcours.map(p => {
@@ -421,10 +422,10 @@
         const cabines = P.CABINES.filter(c => etat.parcoursCabine[c] === p.id);
         const propres = Object.entries(etat.parcoursClasse).filter(([, v]) => v === p.id).map(([k]) => k);
         const n = classes.filter(c => (parcoursDe(etat, c) || {}).id === p.id).length;
-        const qui = `<span class="pc-qui">${cabines.length || propres.length ? 'suivi par ' : 'suivi par personne'}
-          ${cabines.map(c => `<b class="pc-cab">${c}</b>`).join(' ')}
-          ${propres.length ? ` + ${propres.slice(0, 3).map(esc).join(', ')}${propres.length > 3 ? '…' : ''}` : ''}
-          ${n ? `<span class="pc-n">· ${n} ligne${n > 1 ? 's' : ''}</span>` : ''}</span>`;
+        const qui = `<span class="pc-qui">${cabines.length || propres.length ? 'pour ' : 'suivi par aucun repas'}
+          ${cabines.map(c => `<b class="pc-cab" title="${esc(c)}">${esc((P.NOM_CABINE || {})[c] || c)}</b>`).join(' ')}
+          ${propres.length ? ` + ${propres.slice(0, 3).map(x => esc(P.libelleClasse(x))).join(', ')}${propres.length > 3 ? '…' : ''}` : ''}
+          ${n ? `<span class="pc-n">· ${n} repas</span>` : ''}</span>`;
         const edition = ouvert ? `<div class="pc-branches">${p.branches.map((b, ib) => `
           <div class="pc-branche" data-branche="${ib}">
             <input class="pc-branche-nom" value="${esc(b.nom)}" data-pc-champ="branche-nom" aria-label="Nom de la branche ${ib + 1}">
@@ -438,12 +439,12 @@
           </div>`).join('')}
           <div class="pc-actions">
             <button class="btn btn-sm" data-pc-action="branche-ajouter">+ Branche</button>
-            <button class="btn btn-sm at-danger" data-pc-action="parcours-retirer">Supprimer le parcours</button>
+            <button class="btn btn-sm at-danger" data-pc-action="parcours-retirer">Supprimer ce chemin</button>
             <button class="btn btn-play btn-sm" data-pc-action="fermer">Terminé</button>
           </div></div>` : '';
         return `<article class="pc-carte${ouvert ? ' ouvert' : ''}" data-parcours="${esc(p.id)}">
           <header class="pc-tete">
-            ${ouvert ? `<input class="pc-nom" value="${esc(p.nom)}" data-pc-champ="nom" aria-label="Nom du parcours">`
+            ${ouvert ? `<input class="pc-nom" value="${esc(p.nom)}" data-pc-champ="nom" aria-label="Nom du chemin">`
               : `<h4>${esc(p.nom)}</h4>`}
             ${ouvert ? '' : qui}
             ${ouvert ? '' : `<button class="btn btn-sm" data-pc-action="ouvrir">Modifier</button>`}
@@ -453,23 +454,23 @@
       }).join('');
 
       return `<section class="pc-sec" aria-labelledby="pc-t1">
-        <div class="titre-aide at-titre-aide"><h3 class="at-titre" id="pc-t1">1. Les parcours <span class="pc-sous">par où passe chaque classe</span></h3>
-          <details class="aide"><summary aria-label="Qu’est-ce qu’un parcours ?">?</summary><span class="aide-corps">${AIDE_PARCOURS}</span></details></div>
+        <div class="titre-aide at-titre-aide"><h3 class="at-titre" id="pc-t1">1. Le chemin des repas <span class="pc-sous">par où passe chaque repas</span></h3>
+          <details class="aide"><summary aria-label="Qu’est-ce qu’un chemin ?">?</summary><span class="aide-corps">${AIDE_PARCOURS}</span></details></div>
         <div class="pc-defauts">
-          <span class="pc-defauts-lab">Parcours par défaut</span>
-          ${P.CABINES.map(c => `<label>${c}<select data-pc-champ="cabine" data-cabine="${c}">${optionsParcours(etat.parcoursCabine[c])}</select></label>`).join('')}
+          <span class="pc-defauts-lab">Chemin de chaque classe</span>
+          ${P.CABINES.map(c => `<label>${esc((P.NOM_CABINE || {})[c] || c)}<select data-pc-champ="cabine" data-cabine="${c}">${optionsParcours(etat.parcoursCabine[c])}</select></label>`).join('')}
         </div>
-        <div class="pc-cartes">${cartes || '<p class="mini-note">Aucun parcours : chaque classe suit le graphe du Centre des flux.</p>'}</div>
+        <div class="pc-cartes">${cartes || '<p class="mini-note">Aucun chemin : chaque repas suit les liens de l’unité.</p>'}</div>
         <div class="pc-actions">
-          <button class="btn btn-sm" data-pc-action="parcours-ajouter">+ Parcours</button>
-          ${etat.parcours.length ? '' : '<button class="btn btn-sm" data-pc-action="types">Créer les parcours types</button>'}
+          <button class="btn btn-sm" data-pc-action="parcours-ajouter">+ Nouveau chemin</button>
+          ${etat.parcours.length ? '' : '<button class="btn btn-sm" data-pc-action="types">Créer les chemins types</button>'}
         </div>
       </section>`;
     }
 
     /* Le schéma d'un parcours : une ligne par branche, la jonction à droite. */
     schema(p) {
-      if (!p.branches.length) return '<p class="mini-note">Ce parcours n’a pas encore de branche : « Modifier » pour en ajouter.</p>';
+      if (!p.branches.length) return '<p class="mini-note">Ce chemin n’a pas encore de branche : « Modifier » pour en ajouter.</p>';
       const derniers = p.branches.map(b => b.services[b.services.length - 1]);
       const jonction = p.branches.length > 1 && derniers.every(x => x && x === derniers[0]) ? derniers[0] : null;
       const boite = s => `<span class="pc-box" data-service="${esc(s)}">${esc(this.nom(s))}</span>`;
@@ -490,12 +491,12 @@
     sectionTableau(etat, classes) {
       const t = tableau(etat, classes);
       const r = this.a.resultat ? this.a.resultat() : null;
-      const titre = `<div class="titre-aide at-titre-aide"><h3 class="at-titre" id="pc-t2">2. Qui fabrique quoi <span class="pc-sous">une équipe par case</span></h3>
+      const titre = `<div class="titre-aide at-titre-aide"><h3 class="at-titre" id="pc-t2">2. Qui prépare quoi <span class="pc-sous">une équipe dans chaque case</span></h3>
         <details class="aide"><summary aria-label="Comment remplir le tableau ?">?</summary><span class="aide-corps">${AIDE_TABLEAU}</span></details></div>`;
       if (!t.lignes.length) return `<section class="qf" aria-labelledby="pc-t2">${titre}
-        <p class="mini-note">Aucune compagnie × classe à fabriquer : importez un programme de vols.</p></section>`;
+        <p class="mini-note">Aucun repas à préparer : importez un programme de vols (étape 1).</p></section>`;
       if (!t.colonnes.length) return `<section class="qf" aria-labelledby="pc-t2">${titre}
-        <p class="mini-note">Aucun parcours : décrivez-en un ci-dessus pour que le tableau ait des colonnes.</p></section>`;
+        <p class="mini-note">Aucun chemin : décrivez-en un ci-dessus pour que le tableau ait des colonnes.</p></section>`;
 
       // Les heures d'un lot, pour lire le tableau comme un planning.
       const lots = new Map();
@@ -514,11 +515,11 @@
       const barre = `<div class="qf-barre">
         <div class="qf-progres" title="${remplies} case(s) ont leur équipe, ${aRemplir} sont à choisir">
           <div class="qf-jauge" aria-hidden="true"><span style="width:${pct}%"></span></div>
-          <span><b>${remplies} / ${total}</b> cases remplies${aRemplir ? '' : ' — tout a son équipe'}</span></div>
+          <span><b>${remplies} sur ${total}</b> cases remplies${aRemplir ? '' : ' — tout a son équipe'}</span></div>
         ${auto ? `<button class="btn btn-play btn-sm" data-qf="remplir" title="Là où un service n’a qu’une équipe, elle prend toutes ses cases vides">Remplir automatiquement · ${auto} case${auto > 1 ? 's' : ''}</button>` : ''}
         <span class="qf-barre-fin"></span>
-        <input type="search" class="qf-recherche" data-qf="recherche" placeholder="Chercher une compagnie…" value="${esc(this.recherche)}" aria-label="Chercher une compagnie × classe">
-        <label class="chk chk-mini"><input type="checkbox" data-qf="incompletes" ${this.incompletes ? 'checked' : ''}> Lignes à compléter</label>
+        <input type="search" class="qf-recherche" data-qf="recherche" placeholder="Chercher une compagnie (AF, DL…)" value="${esc(this.recherche)}" aria-label="Chercher un repas par sa compagnie">
+        <label class="chk chk-mini"><input type="checkbox" data-qf="incompletes" ${this.incompletes ? 'checked' : ''}> Seulement les repas à compléter</label>
       </div>
       <div class="qf-legende" aria-hidden="true"><span class="qf-l ok">équipe choisie</span><span class="qf-l libre">à choisir</span><span class="qf-l auto">sert tout le monde</span><span class="qf-l hors">ne passe pas par là</span></div>`;
 
@@ -530,7 +531,7 @@
       }
       const tete = `<thead>
         <tr class="qf-groupes"><th></th>${groupes.map((g, i) => `<th colspan="${g.n}" class="qf-g${g.nom === 'Jonction' ? ' jonction' : ''}" data-g="${i % 4}">${esc(g.nom)}</th>`).join('')}<th></th></tr>
-        <tr><th scope="col" class="qf-coin">Compagnie × classe</th>
+        <tr><th scope="col" class="qf-coin">Repas</th>
         ${t.colonnes.map(c => {
           const n = c.fabriquent.length, libres = c.libres.length;
           const sous = c.auto.length && !n ? 'sert tout le monde'
@@ -538,7 +539,7 @@
           return `<th scope="col"><button class="qf-col${libres ? ' a-remplir' : ''}" data-qf="col" data-service="${esc(c.service)}"
             title="${libres ? 'Remplir les ' + libres + ' cases vides de ' + esc(this.nom(c.service)) : esc(this.nom(c.service))}">${esc(this.nom(c.service))}<small>${esc(sous)}</small></button></th>`;
         }).join('')}
-        <th scope="col" class="qf-fin-tete">Prête à</th></tr></thead>`;
+        <th scope="col" class="qf-fin-tete">Prêt à</th></tr></thead>`;
 
       const par = (r && r.parClasse) || {};
       const nbCol = t.colonnes.length + 2;
@@ -548,33 +549,33 @@
         const depart = (c.vols || []).map(v => v.depart).filter(Number.isFinite);
         const defaut = (etat.parcours.find(p => p.id === etat.parcoursCabine[c.cabine]) || {}).nom;
         const propre = etat.parcoursClasse[c.id];
-        const choix = `<select class="qf-parcours${propre ? ' propre' : ''}" data-at-champ="classe-parcours" data-classe="${esc(c.id)}" aria-label="Parcours de ${esc(c.id)}">
+        const choix = `<select class="qf-parcours${propre ? ' propre' : ''}" data-at-champ="classe-parcours" data-classe="${esc(c.id)}" aria-label="Chemin de ${esc(P.libelleClasse(c.id))}">
           <option value="">${esc(defaut ? defaut + ' (défaut)' : 'graphe des flux')}</option>
           ${etat.parcours.map(p => `<option value="${esc(p.id)}" ${propre === p.id ? 'selected' : ''}>${esc(p.nom)}</option>`).join('')}</select>`;
         const cases = t.colonnes.map(col => {
           const k = l.cases[col.service], s = col.service;
           const attrs = `data-qf="case" data-classe="${esc(c.id)}" data-service="${esc(s)}"`;
-          if (k.etat === 'hors') return `<td class="qf-c hors" title="${esc(c.id)} ne passe pas par ${esc(this.nom(s))}"></td>`;
+          if (k.etat === 'hors') return `<td class="qf-c hors" title="${esc(P.libelleClasse(c.id))} ne passe pas par ${esc(this.nom(s))}"></td>`;
           if (k.etat === 'auto') return `<td class="qf-c auto" title="${esc(nomAt(k.ateliers[0]))} sert tout le monde">${esc(nomAt(k.ateliers[0]))}</td>`;
           if (k.etat === 'libre') return `<td class="qf-c"><button class="qf-case libre" ${attrs} aria-haspopup="dialog"
-            aria-label="${esc(this.nom(s))} pour ${esc(c.id)} : à choisir">à choisir</button></td>`;
+            aria-label="${esc(this.nom(s))} pour ${esc(P.libelleClasse(c.id))} : à choisir">à choisir</button></td>`;
           const lot = lots.get(k.ateliers[0] + '|' + c.id);
           const h = lot && Number.isFinite(lot.debut) ? P.hhmm(lot.debut) + (Number.isFinite(lot.fin) ? '–' + P.hhmm(lot.fin) : '') : '';
           const plus = k.ateliers.length > 1 ? ' +' + (k.ateliers.length - 1) : '';
           const hors = k.etat === 'hors-fait';
           return `<td class="qf-c${hors ? ' hors' : ''}"><button class="qf-case ${hors ? 'alerte' : 'ok'}" ${attrs} aria-haspopup="dialog"
-            title="${hors ? esc(c.id) + ' ne passe pas par ' + esc(this.nom(s)) + ' selon son parcours : ce travail n’est attendu par personne' : esc(nomAt(k.ateliers[0])) + (h ? ' · ' + h : '')}">
+            title="${hors ? esc(P.libelleClasse(c.id)) + ' ne passe pas par ' + esc(this.nom(s)) + ' selon son chemin : ce travail n’est attendu par personne' : esc(nomAt(k.ateliers[0])) + (h ? ' · ' + h : '')}">
             <span class="qf-nom">${hors ? '⚠ ' : ''}${esc(nomAt(k.ateliers[0]))}${plus}</span>${h ? `<small>${h}</small>` : ''}</button></td>`;
         }).join('');
         const v = par[c.id] || {};
-        const fin = v.absente || v.fin == null ? '<span class="qf-etat manque">pas encore fabriquée</span>'
+        const fin = v.absente || v.fin == null ? '<span class="qf-etat manque">pas encore prêt</span>'
           : `<b>${P.hhmm(v.fin)}</b> ${v.aHeure ? '<span class="qf-etat ok">à l’heure</span>' : `<span class="qf-etat retard">+${Math.round(v.retard)} min</span>`}`;
         const suivie = this.suivies.has(c.id);
         return `<tr data-classe="${esc(c.id)}" data-incomplete="${incomplete ? 1 : 0}">
-          <th scope="row"><div class="qf-id"><b>${esc(c.id)}</b><small>${depart.length ? 'départ ' + P.hhmm(Math.min(...depart)) : 'hors programme'}</small></div>${choix}</th>
+          <th scope="row"><div class="qf-id"><b>${esc(P.libelleClasse(c.id))}</b><small>${depart.length ? 'départ ' + P.hhmm(Math.min(...depart)) : 'hors programme'}</small></div>${choix}</th>
           ${cases}
           <td class="qf-fin"><button class="qf-suivre" data-qf="suivre" data-classe="${esc(c.id)}" aria-expanded="${suivie}"
-            title="${suivie ? 'Replier' : 'Suivre ' + esc(c.id) + ' dans le temps, étape par étape'}">${fin}<span class="qf-chevron" aria-hidden="true">${suivie ? '▾' : '▸'}</span></button></td>
+            title="${suivie ? 'Replier' : 'Suivre ' + esc(P.libelleClasse(c.id)) + ' dans le temps, étape par étape'}">${fin}<span class="qf-chevron" aria-hidden="true">${suivie ? '▾' : '▸'}</span></button></td>
         </tr>${suivie ? `<tr class="qf-temps" data-pour="${esc(c.id)}"><td colspan="${nbCol}">${this.temps(l, r)}</td></tr>` : ''}`;
       }).join('');
 
@@ -587,14 +588,14 @@
     /* Une ligne dans le temps : une barre par étape, et la phrase qui l'explique. */
     temps(ligne, r) {
       const c = ligne.classe, p = ligne.parcours;
-      if (!p) return '<p class="mini-note">Cette ligne n’a pas de parcours : elle suit le graphe du Centre des flux.</p>';
+      if (!p) return '<p class="mini-note">Ce repas n’a pas de chemin : il suit les liens de l’unité.</p>';
       const g = chronogramme(r, p, c.id);
       const v = ((r && r.parClasse) || {})[c.id] || {};
       const sautees = g.etapes.filter(e => e.absent).map(e => this.nom(e.service));
       const goulot = g.etapes.filter(e => e.attendu).sort((a, b) => b.attente - a.attente)[0];
       const phrases = [];
-      if (v.fin == null) phrases.push(`<b>${esc(c.id)}</b> n’est pas encore fabriquée : aucune étape de son parcours n’a d’équipe.`);
-      else phrases.push(`<b>${esc(c.id)}</b> est prête à <b>${P.hhmm(v.fin)}</b>`
+      if (v.fin == null) phrases.push(`<b>${esc(P.libelleClasse(c.id))}</b> n’est pas encore prêt : aucune étape de son chemin n’a d’équipe.`);
+      else phrases.push(`<b>${esc(P.libelleClasse(c.id))}</b> est prêt à <b>${P.hhmm(v.fin)}</b>`
         + (Number.isFinite(c.echeance) ? ` pour un chargement avant <b>${P.hhmm(c.echeance)}</b>` : '')
         + (v.aHeure ? ' : <span class="qf-etat ok">à l’heure</span>.' : ` : <span class="qf-etat retard">${Math.round(v.retard)} min de retard</span>.`));
       if (goulot) phrases.push(`Le plus long à attendre : <b>${esc(this.nom(goulot.service))}</b> a attendu ${Math.round(goulot.attente)} min que <b>${esc(this.nom(goulot.attendu))}</b> finisse.`);
@@ -626,7 +627,7 @@
       const haut = 24 + g.etapes.length * (H + 4);
       const ech = Number.isFinite(c.echeance) ? `<line class="qf-t-echeance" x1="${x(c.echeance)}" y1="16" x2="${x(c.echeance)}" y2="${haut + 4}"/>
         <text class="qf-t-echeance-txt" x="${x(c.echeance)}" y="${haut + 16}" text-anchor="middle">chargement ${P.hhmm(c.echeance)}</text>` : '';
-      return texte + `<svg class="qf-t" viewBox="0 0 ${L} ${haut + 20}" role="img" aria-label="${esc(c.id)} dans le temps, étape par étape">
+      return texte + `<svg class="qf-t" viewBox="0 0 ${L} ${haut + 20}" role="img" aria-label="${esc(P.libelleClasse(c.id))} dans le temps, étape par étape">
         ${heures.map(t => `<line class="qf-t-grille" x1="${x(t)}" y1="16" x2="${x(t)}" y2="${haut}"/><text class="qf-t-heure" x="${x(t) + 2}" y="12">${P.hhmm(t)}</text>`).join('')}
         ${lignes}${ech}</svg>
         <p class="qf-t-legende"><span class="qf-l ok">travail</span><span class="qf-l attente">attente de l’étape d’avant</span><span class="qf-l echeance">heure de chargement</span></p>`;
@@ -642,7 +643,7 @@
       const actuelles = k.ateliers;
       const autres = col.libres.filter(id => id !== classe);
       this.ouvrirMenu(bouton, { service, ids: [classe], autres }, `
-        <p class="qf-menu-titre">${esc(this.nom(service))} <span>pour</span> ${esc(classe)}</p>
+        <p class="qf-menu-titre">${esc(this.nom(service))} <span>pour</span> ${esc(P.libelleClasse(classe))}</p>
         ${k.etat === 'libre' && autres.length ? `<label class="qf-menu-tout"><input type="checkbox" data-qf="tout">
           <span>et les ${autres.length} autre${autres.length > 1 ? 's' : ''} case${autres.length > 1 ? 's' : ''} « à choisir » de ${esc(this.nom(service))}</span></label>` : ''}
         ${this.choixEquipes(col, actuelles)}
@@ -683,9 +684,9 @@
           <span><b>Nouvelle équipe</b><small>de ${esc(nom)}, réglable ensuite</small></span></button>
         ${equipes.length || !(lave || sert) ? '' : `<p class="qf-menu-note">ou, s’il travaille pour tout le monde :</p>`}
         ${!equipes.length && lave ? `<button class="qf-choix nouveau" data-qf="nouvelle" data-type="lavage"><span class="qf-coche" aria-hidden="true">+</span>
-          <span><b>Une plonge</b><small>lave les retours, pour toutes les lignes</small></span></button>` : ''}
+          <span><b>Une plonge</b><small>lave les retours, pour tous les repas</small></span></button>` : ''}
         ${!equipes.length && sert ? `<button class="qf-choix nouveau" data-qf="nouvelle" data-type="dispo"><span class="qf-coche" aria-hidden="true">+</span>
-          <span><b>Une mise à disposition</b><small>sert toutes les lignes sans les fabriquer</small></span></button>` : ''}
+          <span><b>Une mise à disposition</b><small>sert tous les repas sans les préparer</small></span></button>` : ''}
       </div>`;
     }
 
@@ -742,22 +743,22 @@
         const id = uid();
         this.ouvert = id;
         return this.a.changer(etat => {
-          etat.parcours.push({ id, nom: 'Nouveau parcours', branches: [{ nom: 'Branche 1', services: [] }] });
-        }, 'Parcours créé : ajoutez ses étapes, branche par branche.');
+          etat.parcours.push({ id, nom: 'Nouveau chemin', branches: [{ nom: 'Branche 1', services: [] }] });
+        }, 'Chemin créé : ajoutez ses étapes, branche par branche.');
       }
       if (action === 'types') {
         const t = parcoursTypes(this.a.services().map(s => s.id));
-        return this.a.changer(etat => { Object.assign(etat, t); }, 'Parcours types créés.');
+        return this.a.changer(etat => { Object.assign(etat, t); }, 'Chemins types créés.');
       }
       if (action === 'parcours-retirer') {
         const p = trouver(this.a.etat());
-        if (!confirm('Supprimer le parcours « ' + (p ? p.nom : '') + ' » ? Les classes qui le suivaient retomberont sur le graphe des flux. L’action est annulable.')) return;
+        if (!confirm('Supprimer le chemin « ' + (p ? p.nom : '') + ' » ? Les repas qui le suivaient retomberont sur les liens de l’unité. L’action est annulable.')) return;
         this.ouvert = null;
         return this.a.changer(etat => {
           etat.parcours = etat.parcours.filter(x => x.id !== pid);
           for (const c of Object.keys(etat.parcoursCabine)) if (etat.parcoursCabine[c] === pid) delete etat.parcoursCabine[c];
           for (const c of Object.keys(etat.parcoursClasse)) if (etat.parcoursClasse[c] === pid) delete etat.parcoursClasse[c];
-        }, 'Parcours supprimé.');
+        }, 'Chemin supprimé.');
       }
       if (action === 'branche-ajouter') return this.a.changer(etat => {
         const p = trouver(etat); p.branches.push({ nom: 'Branche ' + (p.branches.length + 1), services: [] });
@@ -793,7 +794,7 @@
       if (quoi === 'choisir') {
         const a = this.atelier(q.dataset.atelier);
         return this.a.changer(etat => { affecter(etat, service, ids, q.dataset.atelier, classes); },
-          (a ? a.nom : '') + ' fabrique ' + (ids.length > 3 ? ids.length + ' lignes de plus' : ids.join(', ')) + '.');
+          (a ? a.nom : '') + ' prépare ' + (ids.length > 3 ? ids.length + ' repas de plus' : ids.map(P.libelleClasse).join(', ')) + '.');
       }
       if (quoi === 'nouvelle') {
         const type = q.dataset.type;
@@ -809,7 +810,7 @@
         if (!cree || !this.a.ouvrirAtelier) return;
         // Sa fiche s'ouvre plus bas, sans quitter le tableau : il reste son heure et son effectif.
         return this.a.ouvrirAtelier(cree.id, false, 'Équipe « ' + cree.nom + ' » créée'
-          + (type === 'manuel' ? ' pour ' + (ids.length > 3 ? ids.length + ' lignes' : ids.join(', ')) : '')
+          + (type === 'manuel' ? ' pour ' + (ids.length > 3 ? ids.length + ' repas' : ids.map(P.libelleClasse).join(', ')) : '')
           + '. Réglez son heure et son effectif dans « 3. Les équipes », plus bas : sa fiche est ouverte.');
       }
     }
@@ -830,7 +831,7 @@
         else if (champ === 'branche-nom') p.branches[ib].nom = v;
         else if (champ === 'etape') p.branches[ib].services[+el.dataset.etape] = v;
         else if (champ === 'etape-ajout' && v) p.branches[ib].services.push(v);
-      }, 'Parcours enregistré.'), 0);
+      }, 'Chemin enregistré.'), 0);
     }
   }
 

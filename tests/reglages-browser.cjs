@@ -30,11 +30,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // celui de l'aide repliée (textContent ramasse aussi ce qui est caché).
   const ordre=await page.evaluate(()=>[...document.querySelectorAll('#view-reglages .reglages-titre')]
     .map(h=>[...h.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join('').trim()));
-  assert.equal(ordre[0],'Le modèle de production','il vient en premier');
+  assert.equal(ordre[0],'Minutes de travail par vol','il vient en premier');
   assert.ok(!ordre.includes('Ancien moteur de démonstration'),'l’ancien moteur a disparu');
-  assert.ok(ordre.includes('Comparer deux scénarios'),'la comparaison a sa propre section');
-  // Le barème n'est pas calibré : le dire là où on le modifie.
-  assert.match(await page.locator('#rg-alerte').textContent(),/non calibrées/);
+  assert.ok(ordre.includes('Comparer deux essais'),'la comparaison a sa propre section');
+  // Ce sont des chiffres d'exemple : le dire là où on les modifie.
+  assert.match(await page.locator('#rg-alerte').textContent(),/chiffres d’exemple/);
 
   // 3. Le barème se lit un service à la fois : cent dix champs d'un bloc ne se
   //    lisaient pas. Replié, chaque service tient en une ligne.
@@ -154,11 +154,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.reload();await page.waitForTimeout(500);
   assert.equal(await valeur('CRL/BC'),17.5);
 
-  // 10. Le délai de chargement n'est pas recopié : un seul champ pour les deux moteurs.
-  await page.locator('[data-view=reglages]').click();await attendre();
+  // 10. Le délai de chargement n'est pas recopié : un seul champ, avec les vols
+  //     dont il fixe l'heure où les repas doivent être prêts.
+  await page.locator('[data-view=vols]').click();await attendre();
   assert.equal(await page.locator('#loadDelay').count(),1,'un seul champ');
-  assert.equal(await page.evaluate(()=>document.getElementById('rg-modele').contains(document.getElementById('loadDelay'))),true,
-    'et il est remonté avec le modèle');
+  assert.equal(await page.evaluate(()=>document.getElementById('view-vols').contains(document.getElementById('loadDelay'))),true,
+    'et il vit à l’étape 1, « Les vols »');
+  await page.locator('[data-view=reglages]').click();await attendre();
 
   // 11. Rien ne déborde, en clair comme en sombre, sur téléphone comme sur écran.
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);

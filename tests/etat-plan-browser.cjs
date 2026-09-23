@@ -20,8 +20,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.evaluate(()=>document.body.classList.contains('avant-lancement')),true);
   assert.match(await etat('cuisine'),/\bp-vide\b/,'aucun atelier décrit');
   assert.match(await etat('magasin'),/\bp-vide\b/);
-  assert.match(await page.locator('#plan-etat').textContent(),/restent à aménager/);
-  assert.match(await page.locator('#legende-plan').textContent(),/Aménagé/);
+  assert.match(await page.locator('#plan-etat').textContent(),/sans travail/);
+  assert.match(await page.locator('#legende-plan').textContent(),/Équipe au travail/);
 
   // 2. Une équipe sans rien à fabriquer n'est pas un état neutre : elle est
   //    décrite, mais elle ne produira rien.
@@ -68,8 +68,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.evaluate(()=>document.body.classList.contains('avant-lancement')),false);
   assert.equal(await page.evaluate(()=>document.body.classList.contains('en-lecture')),true);
   const legende=await page.locator('#legende-plan').textContent();
-  assert.match(legende,/Au travail/);assert.match(legende,/Attend un amont/);
-  assert.doesNotMatch(legende,/Aménagé/,'jamais deux grilles de lecture à la fois');
+  assert.match(legende,/Au travail/);assert.match(legende,/Attend le service d’avant/);
+  assert.doesNotMatch(legende,/Équipe au travail|Aucune équipe/,'jamais deux grilles de lecture à la fois');
   assert.doesNotMatch(legende,/Hors calcul/);
   const actifs=await page.evaluate(()=>['cuisine','prepa'].map(id=>document.querySelector('.zone[data-id='+id+']').getAttribute('class')).join(' '));
   assert.match(actifs,/\bs-(travail|attente)\b/,'le premier pas montre un service ouvert');

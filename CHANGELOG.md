@@ -5,6 +5,58 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-23 — Un site qu'on comprend sans être du métier
+
+Le visuel est repris de A à Z pour qu'une personne qui n'est pas dans
+l'informatique comprenne ce qu'elle regarde.
+
+**Une histoire en quatre étapes, qui est la navigation**
+- Les onglets (Simulation, Ateliers, Flux, Réglages, Vols) et le bandeau « Par
+  où commencer », qui disaient deux fois la même chose, laissent la place à une
+  seule barre : **1. Les vols → 2. Qui prépare quoi → 3. Les temps de travail →
+  4. La journée**, et à part **L'unité** (plan et liens entre services). Chaque
+  étape dit son état en clair (✓ fait, ! à vérifier, · à faire), un détail
+  (« 12 départs · exemple », « 4 repas en retard ») et « à faire ensuite ».
+- **« Comment ça marche »** raconte l'histoire en quatre images (des avions
+  partent, chaque vol emporte ses repas, des équipes les préparent, le site
+  calcule la journée). Ouvert à la première visite, il se rouvre depuis
+  l'en-tête.
+- Chaque vue a un titre et **une phrase** qui dit ce qu'on y voit.
+- L'en-tête ne garde que le nom, « Comment ça marche ? », le thème et
+  l'export : l'horloge et les boutons de lecture vivent dans « La journée ».
+
+**Les mots de tous les jours**
+- atelier → équipe ; compagnie × classe → repas (« AF · Business », les
+  classes en toutes lettres) ; parcours → chemin ; barème, homme-minutes →
+  minutes de travail par vol ; rendement → rythme de travail ; échéance →
+  « prêts avant » ; flux, liaisons → qui livre qui, liens ; amont → service
+  d'avant ; scénarios → essais que l'on photographie (A / B).
+- La formule `durée = homme-minutes ÷ personnes ÷ rendement` devient un
+  exemple : « 60 minutes de travail pour un vol, à 2 personnes, prennent 30
+  minutes ».
+- La légende du plan : aucune équipe / équipe sans travail / équipe au
+  travail, puis au travail / attend le service d'avant / a fini / pas commencé.
+- Les indicateurs : prêts à l'heure, en retard, services au travail,
+  services qui attendent — avec une phrase sous chaque chiffre.
+
+**Chaque chose à sa place**
+- L'import des vols, le délai de chargement et le décalage des vols passent à
+  l'étape 1, « Les vols ». Le tableau des vols y montre le **bilan de la
+  journée**, sans dépendre de l'heure rejouée ailleurs.
+- « Des repas sans équipe » remplace « Non fabriqué » pour un vol dont une
+  partie seulement n'a pas d'équipe.
+
+**Fichiers** : `index.html`, `demarrage.js` (étapes, « Comment ça marche »,
+titres), `histoire.css` (nouveau), `sim.js`, `simulation.js`, `ateliers.js`,
+`parcours.js`, `reglages.js`, `reglages.css`, `flow-center.js`,
+`comparaison.js`, `moteur/production.js` (`libelleClasse`, `enClair`),
+`interface.css`, `usability.css`, `demarrage.css`, `editor.css`,
+`flow-center.css` ; tests `demarrage` (réécrit), `comparaison`,
+`histoire-browser` (nouveau) et les parcours navigateur existants ; docs
+`README.md`, `ETAT_DES_LIEUX.md`, `MODELE_ATELIERS.md`, `FORMATS_EXCEL.md`.
+
+---
+
 ## 2026-09-23 — « Qui fabrique quoi » : parcours et équipes dans un tableau
 
 Les cartes de parcours pleines de cases rouges, de « Confier » et de

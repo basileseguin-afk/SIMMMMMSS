@@ -233,11 +233,10 @@
     construire() {
       this.a.hote().innerHTML = `
 <div class="at-tete">
-  <p class="scope-badge">Barème non calibré · les durées ne dimensionnent pas une équipe</p>
   <div class="at-actions">
-    <button class="btn btn-sm" id="at-undo">↶</button>
-    <button class="btn btn-sm" id="at-redo">↷</button>
-    <button class="btn btn-sm" id="at-export" title="Ateliers, fabrications, classes et parcours, dans un classeur Excel">⇩ Excel</button>
+    <button class="btn btn-sm" id="at-undo" title="Annuler" aria-label="Annuler">↶ Annuler</button>
+    <button class="btn btn-sm" id="at-redo" title="Rétablir" aria-label="Rétablir">↷</button>
+    <button class="btn btn-sm" id="at-export" title="Les équipes, ce qu’elles préparent et les chemins, dans un classeur Excel">⇩ Excel</button>
     <button class="btn btn-sm" id="at-import-btn" title="Réimporter un classeur modifié dans Excel">⇧ Importer</button>
     <input id="at-import" type="file" accept=".xlsx,.json" hidden>
   </div>
@@ -246,18 +245,18 @@
 <p id="at-status" role="status" aria-live="polite"></p>
 <div id="at-anomalies" class="at-anomalies" hidden></div>
 <div id="at-parcours" class="pc"></div>
-<h3 class="at-titre">3. Les équipes <span class="pc-sous">horaires, effectifs, ordre de fabrication</span></h3>
+<h3 class="at-titre">3. Les équipes <span class="pc-sous">horaires, effectifs, ordre de préparation</span></h3>
 <div class="at-barre">
   <label>Service <select id="at-filtre"><option value="">Tous</option></select></label>
   <span class="at-barre-fin"></span>
-  <button class="btn btn-play" id="at-new">+ Nouvel atelier</button>
+  <button class="btn btn-play" id="at-new">+ Nouvelle équipe</button>
 </div>
 <div id="at-materiel" class="at-materiel"></div>
 <div id="at-liste"></div>
-<h3 class="at-titre">4. La journée <span class="pc-sous">équipe par équipe</span></h3>
+<h3 class="at-titre">4. La journée des équipes <span class="pc-sous">qui travaille quand</span></h3>
 <div id="at-planning" class="at-planning"></div>
 
-<h3 class="at-titre">Compagnies × classes <span class="pc-sous">volumes et échéances</span></h3>
+<h3 class="at-titre">Les repas à préparer <span class="pc-sous">un par compagnie et par classe</span></h3>
 <div id="at-classes"></div>`;
     }
 
@@ -298,7 +297,7 @@
       const atelier = { id: uid(), nom: 'Atelier ' + n, service, type: 'manuel',
         debut: '06:00', jour: 0, personnes: 2, pauses: [], lots: [] };
       this.changer(() => this.state.ateliers.push(atelier),
-        'Atelier créé et déjà enregistré. Dites ce qu’il fabrique, puis « Terminé ».');
+        'Équipe créée et déjà enregistrée. Dites ce qu’elle prépare, puis « Terminé ».');
       this.ouvert = atelier.id; this.rendre();
     }
 
@@ -329,7 +328,7 @@
           return this.changer(() => {
             const c = clone(a); c.id = uid(); c.nom = (a.nom + ' (2)').slice(0, 160);
             this.state.ateliers.splice(this.state.ateliers.indexOf(a) + 1, 0, c);
-          }, 'Atelier dupliqué.');
+          }, 'Équipe dupliquée.');
         case 'lot-ajouter':
           return this.changer(() => a.lots.push([]), 'Ligne ajoutée : choisissez ce qu’elle fabrique.');
         case 'lot-retirer':
@@ -399,7 +398,7 @@
         if (champ === 'mat-stock') m.stockInitial = Math.max(0, parseInt(v, 10) || 0);
         if (champ === 'mat-delai') m.delaiRetour = Math.max(0, parseInt(v, 10) || 0);
       }, champ === 'mat-actif'
-        ? (v ? 'Le compte du matériel est tenu : déclarez la plonge et les ateliers qui en emportent.'
+        ? (v ? 'Le compte du matériel est tenu : déclarez la plonge et les équipes qui en emportent.'
              : 'Compte du matériel abandonné.')
         : 'Enregistré.');
     }
@@ -474,9 +473,9 @@
       const lots = touches.reduce((n, a) => n + a.lots.filter(l => l.includes(id)).length, 0);
       const vides = touches.reduce((n, a) => n + a.lots.filter(l => l.length === 1 && l[0] === id).length, 0);
       const message = lots
-        ? id + ' retirée — ' + lots + ' fabrication(s) dans ' + touches.map(a => a.nom).join(', ')
+        ? id + ' retirée — ' + lots + ' préparation(s) chez ' + touches.map(a => a.nom).join(', ')
             + (vides ? ', dont ' + vides + ' vidé(s) et supprimé(s)' : '') + '.'
-        : id + ' retirée : aucun atelier ne la fabriquait.';
+        : id + ' retiré : aucune équipe ne le préparait.';
       this.changer(() => {
         for (const a of this.state.ateliers) {
           const restants = [];
@@ -507,15 +506,15 @@
       if (!String(brouillon.cie || '').trim()) return this.rendre('Nommez la compagnie.');
       const id = P.idClasse(brouillon.cie, brouillon.cabine);
       if ((this.state.ajoutees || []).some(c => P.idClasse(c.cie, c.cabine) === id))
-        return this.rendre(id + ' est déjà déclarée.');
+        return this.rendre(P.libelleClasse(id) + ' est déjà ajouté.');
       const connue = this.classes.some(c => c.id === id && c.origine === 'programme');
       this.ajout = null;
       this.changer(() => {
         this.state.exclues = (this.state.exclues || []).filter(x => x !== id);
         this.state.ajoutees = [...(this.state.ajoutees || []), brouillon];
-      }, id + (connue
-        ? ' était déjà au programme : ce sont ses chiffres qui comptent.'
-        : ' déclarée. Ses passagers viendront de l’import des vols.'));
+      }, P.libelleClasse(id) + (connue
+        ? ' était déjà dans les vols : ce sont leurs chiffres qui comptent.'
+        : ' ajouté. Ses passagers viendront de l’import des vols.'));
     }
 
     /* Le classeur Excel : c'est lui qu'on modifie hors du site, puis qu'on
@@ -544,9 +543,9 @@
             { services: this.a.services(), programme: this.a.classes() || [] });
           etat = valider(r.etat); ajouts = r.ajouteesAuto;
         }
-        if (!confirm('Remplacer les ateliers par ceux du fichier (' + etat.ateliers.length + ' atelier(s)) ? L’action est annulable.')) return;
+        if (!confirm('Remplacer les équipes par celles du fichier (' + etat.ateliers.length + ' équipe(s)) ? L’action est annulable.')) return;
         this.changer(() => { this.state = etat; }, 'Ateliers importés : ' + etat.ateliers.length + ' atelier(s).'
-          + (ajouts.length ? ' Compagnie(s) × classe(s) ajoutée(s) : ' + ajouts.join(', ') + '.' : ''));
+          + (ajouts.length ? ' Repas ajouté(s) : ' + ajouts.join(', ') + '.' : ''));
       } catch (err) { this.rendre('Import refusé — ' + err.message); }
       finally { e.target.value = ''; }
     }
@@ -574,13 +573,13 @@
       const tuile = (lab, val, note) =>
         `<div class="at-kpi"><div class="lab">${esc(lab)}</div><div class="val">${esc(val)}</div><div class="note">${esc(note || '')}</div></div>`;
       document.getElementById('at-indicateurs').innerHTML = !r.ok ? '' : [
-        tuile('Classes à l’heure', i.partAHeure == null ? '—' : i.partAHeure + ' %',
-          i.aHeure + ' / ' + i.classesSuivies + ' fabriquées'),
-        tuile('Retard maximum', i.retardMax == null ? '—' : Math.round(i.retardMax) + ' min',
-          i.retardMoyen == null ? '' : 'moyenne ' + Math.round(i.retardMoyen) + ' min'),
-        tuile('Dernière sortie', P.hhmm(i.finDerniere), 'fin de la dernière fabrication'),
-        tuile('Jamais fabriquées', String(i.classesAbsentes),
-          i.classesAbsentes ? 'classes du programme sans atelier' : 'tout le programme est couvert')
+        tuile('Repas prêts à l’heure', i.partAHeure == null ? '—' : i.partAHeure + ' %',
+          i.aHeure + ' sur ' + i.classesSuivies + ' préparés'),
+        tuile('Plus long retard', i.retardMax == null ? '—' : Math.round(i.retardMax) + ' min',
+          i.retardMoyen == null ? '' : 'en moyenne ' + Math.round(i.retardMoyen) + ' min'),
+        tuile('Dernier repas prêt', P.hhmm(i.finDerniere), 'fin de la dernière préparation'),
+        tuile('Sans équipe', String(i.classesAbsentes),
+          i.classesAbsentes ? 'repas que personne ne prépare' : 'tous les repas ont une équipe')
       ].join('');
     }
 
@@ -592,7 +591,7 @@
       const list = (r.anomalies || []).filter(a => a.code !== 'parcours-trou').map(a => esc(a.message));
       if (trous.length) {
         const n = trous.reduce((s, a) => s + (a.classes || []).length, 0);
-        list.push(n + ' case(s) « à choisir » dans « 2. Qui fabrique quoi » ('
+        list.push(n + ' case(s) « à choisir » dans « 2. Qui prépare quoi » ('
           + trous.map(a => esc((this.a.services().find(x => x.id === a.service) || {}).nom || a.service)).join(', ') + ') : ces étapes sont sautées.');
       }
       box.hidden = !list.length;
@@ -647,7 +646,7 @@
     ${chiffre('Emporté', bilan.consommees + ' u')}
     ${chiffre('Reste propre', bilan.restePropre + ' u', bilan.restePropre ? 'disponible demain' : 'aucun amortisseur')}
     ${chiffre('Plus bas niveau', bilan.minPropre + ' u', bilan.minPropre === 0 ? 'passé par zéro' : '')}
-    ${chiffre('Attente de matériel', Math.round(bilan.attente) + ' min', bilan.enAttente ? bilan.enAttente + ' fabrication(s) jamais servie(s)' : '')}
+    ${chiffre('Attente de matériel', Math.round(bilan.attente) + ' min', bilan.enAttente ? bilan.enAttente + ' préparation(s) jamais servie(s)' : '')}
   </div>` : ''}
 </section>`;
     }
@@ -660,7 +659,7 @@
 
       if (!montrer.length) {
         document.getElementById('at-liste').innerHTML =
-          '<p class="at-vide">Aucun atelier. Un atelier, c’est une équipe : ce qu’elle fait, quand elle commence, et à combien.</p>';
+          '<p class="at-vide">Aucune équipe. Une équipe, c’est : ce qu’elle prépare, quand elle commence, et à combien.</p>';
         return;
       }
       const groupes = {};
@@ -678,11 +677,11 @@
       const fin = calcul && calcul.fin != null ? P.hhmm(calcul.fin) : '—';
       const attente = calcul && calcul.attente ? ' · ' + Math.round(calcul.attente) + ' min d’attente' : '';
       const jour = a.jour ? ' (J' + a.jour + ')' : '';
-      const noms = a.lots.map(l => l.join(' + '));
-      const resume = dispo ? 'sert toutes les classes'
-        : !noms.length ? 'ne fabrique rien'
+      const noms = a.lots.map(l => l.map(P.libelleClasse).join(' + '));
+      const resume = dispo ? 'sert tous les repas'
+        : !noms.length ? 'ne prépare rien'
         : noms.length <= 3 ? noms.join(' → ')
-        : noms.slice(0, 3).join(' → ') + ' → … (' + noms.length + ' fabrications)';
+        : noms.slice(0, 3).join(' → ') + ' → … (' + noms.length + ' préparations)';
       // Une mise à disposition n'a ni effectif ni heure de fin : son en-tête
       // dirait trois fois « — ». Elle dit ce qu'elle est.
       const sous = dispo
@@ -710,21 +709,21 @@
 
       const libres = this.classes.filter(c => !a.lots.some(l => l.includes(c.id)));
       const optionsDe = liste => liste
-        .map(c => `<option value="${esc(c.id)}">${esc(c.id)} · ${c.pax} pax · ${c.vols.length} vol(s)</option>`).join('');
+        .map(c => `<option value="${esc(c.id)}">${esc(P.libelleClasse(c.id))} · ${c.vols.length} vol${c.vols.length > 1 ? 's' : ''}</option>`).join('');
 
       const lots = a.lots.map((l, i) => `
         <div class="at-lot">
           <div class="at-lot-tete">
             <b>${i + 1}.</b>
             <span class="at-chips">${l.map(c => `<button class="at-chip" data-at-action="classe-retirer" data-index="${i}" data-classe="${esc(c)}"
-              title="Retirer ${esc(c)} de cette fabrication">${esc(c)} ×</button>`).join('') || '<em>à renseigner</em>'}</span>
+              title="Retirer ${esc(P.libelleClasse(c))} de cette préparation">${esc(P.libelleClasse(c))} ×</button>`).join('') || '<em>à renseigner</em>'}</span>
             <span class="at-lot-fin">${esc(this.finLot(a.id, i))}</span>
             <button class="btn btn-sm" data-at-action="lot-monter" data-index="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Plus tôt">↑</button>
             <button class="btn btn-sm" data-at-action="lot-descendre" data-index="${i}" ${i === a.lots.length - 1 ? 'disabled' : ''} aria-label="Plus tard">↓</button>
-            <button class="btn btn-sm" data-at-action="lot-retirer" data-index="${i}" aria-label="Retirer cette fabrication">×</button>
+            <button class="btn btn-sm" data-at-action="lot-retirer" data-index="${i}" aria-label="Retirer cette préparation">×</button>
           </div>
-          <select class="at-lot-plus" data-at-champ="lot-ajout" data-index="${i}" aria-label="Fabriquer autre chose en même temps que la ligne ${i + 1}">
-            <option value="">+ fabriquer en même temps…</option>
+          <select class="at-lot-plus" data-at-champ="lot-ajout" data-index="${i}" aria-label="Préparer autre chose en même temps que la ligne ${i + 1}">
+            <option value="">+ préparer en même temps…</option>
             ${optionsDe(restantes(i))}
           </select>
         </div>`).join('');
@@ -741,12 +740,12 @@
           <label>Nom<input value="${esc(a.nom)}" data-at-champ="nom" maxlength="160"></label>
           <label>Service<select data-at-champ="service">${services.map(s => `<option value="${esc(s.id)}" ${s.id === a.service ? 'selected' : ''}>${esc(s.nom)}</option>`).join('')}</select></label>
           <label>Type<select data-at-champ="type">
-            <option value="manuel" ${a.type === 'manuel' ? 'selected' : ''}>Équipe</option>
+            <option value="manuel" ${a.type === 'manuel' ? 'selected' : ''}>Équipe qui prépare</option>
             <option value="robot" ${a.type === 'robot' ? 'selected' : ''}>Robot</option>
             <option value="lavage" ${a.type === 'lavage' ? 'selected' : ''}>Lavage (plonge)</option>
             <option value="dispo" ${dispo ? 'selected' : ''}>Mise à disposition</option></select></label>
           ${dispo ? '' : `
-          <label>Début<input type="time" value="${esc(a.debut)}" data-at-champ="debut"></label>
+          <label>Arrive à<input type="time" value="${esc(a.debut)}" data-at-champ="debut"></label>
           <label>Jour<select data-at-champ="jour">${[0, -1, -2, -3].map(j => `<option value="${j}" ${j === a.jour ? 'selected' : ''}>${j === 0 ? 'Jour du départ' : 'J' + j}</option>`).join('')}</select></label>
           <label>Personnes<input type="number" min="0" max="999" value="${a.personnes}" data-at-champ="personnes"></label>`}
           ${a.type === 'robot' ? `
@@ -754,9 +753,9 @@
           <label>Personnes minimum<input type="number" min="0" value="${a.personnesMin}" data-at-champ="personnesMin"></label>` : ''}
         </div>
         ${dispo ? `
-        <p class="mini-note at-regle">Ce service <b>ne fabrique pas</b> : il sort du matériel ou des matières
-          premières, préparés à l’avance. Ni effectif, ni homme-minutes, ni durée — et il sert
-          <b>toutes</b> les compagnies × classes, sans qu’on les énumère.</p>
+        <p class="mini-note at-regle">Ce service <b>ne prépare pas</b> de repas : il sort du matériel ou des
+          matières premières, prêts à l’avance. Ni effectif, ni minutes de travail, ni durée — et il sert
+          <b>tous</b> les repas, sans qu’on les énumère.</p>
         <div class="at-cases">
           <label class="chk chk-mini"><input type="checkbox" data-at-champ="permanent" ${a.permanent !== false ? 'checked' : ''}>
             Disponible en permanence — personne ne l’attend</label>
@@ -819,17 +818,17 @@
               séchage et le retour des paniers sont partagés entre les lignes et les brident
               toutes.</p>
           </span></details></div>
-        <p class="mini-note at-lavage-note">Cet atelier ne fabrique rien : son travail vient des retours de vols, à mesure qu’ils arrivent.</p>` : `
-        <div class="at-sous-titre">Ce que cette équipe fabrique, dans l’ordre</div>
-        <p class="mini-note at-regle">Une ligne = une fabrication. Plusieurs sur la même ligne sortent <b>ensemble</b> ;
+        <p class="mini-note at-lavage-note">Cette équipe ne prépare pas de repas : son travail vient des retours de vols, à mesure qu’ils arrivent.</p>` : `
+        <div class="at-sous-titre">Ce que cette équipe prépare, dans l’ordre</div>
+        <p class="mini-note at-regle">Une ligne = une préparation. Plusieurs sur la même ligne sortent <b>ensemble</b> ;
           sur deux lignes, <b>l’une après l’autre</b>. La première part à l’heure de début.</p>
-        ${lots || '<p class="mini-note at-rien">Rien pour l’instant : cette équipe ne produit pas.</p>'}
+        ${lots || '<p class="mini-note at-rien">Rien pour l’instant : cette équipe ne prépare rien.</p>'}
         <div class="at-actions-lot">
-          <select class="at-ajout-lot" data-at-champ="lot-nouveau" aria-label="Ajouter une fabrication">
-            <option value="">+ Ajouter une fabrication…</option>
+          <select class="at-ajout-lot" data-at-champ="lot-nouveau" aria-label="Ajouter un repas à préparer">
+            <option value="">+ Ajouter un repas à préparer…</option>
             ${optionsDe(libres)}
           </select>
-          ${a.lots.length ? '' : `<button class="btn btn-sm" data-at-action="lot-separer">Tout, une ligne par classe</button>
+          ${a.lots.length ? '' : `<button class="btn btn-sm" data-at-action="lot-separer">Tous les repas, un par ligne</button>
           <button class="btn btn-sm" data-at-action="lot-tout">Tout sur une seule ligne</button>`}
         </div>`}
 
@@ -895,11 +894,11 @@
         return nom + lots;
       }).join('');
 
-      box.innerHTML = `<svg viewBox="0 0 ${L} ${haut}" role="img" aria-label="Planning des ateliers">
+      box.innerHTML = `<svg viewBox="0 0 ${L} ${haut}" role="img" aria-label="La journée des équipes">
         ${reperes.map(t => `<g><line class="at-pl-grille" x1="${x(t)}" y1="20" x2="${x(t)}" y2="${haut}"/><text class="at-pl-heure" x="${x(t)}" y="14">${P.hhmm(t)}</text></g>`).join('')}
         ${barres}
       </svg>
-      <p class="mini-note">Barre pleine : fabrication. Barre fine devant : attente des amonts.</p>`;
+      <p class="mini-note">Barre pleine : l’équipe prépare. Barre fine devant : elle attend le service d’avant.</p>`;
     }
 
     /* ---- couverture par classe --------------------------------------- */
@@ -911,19 +910,19 @@
 
       const ajout = this.ajout ? `<div class="at-ajout">
         <label>Compagnie<input id="at-cls-cie" maxlength="40" placeholder="Ex. CRL" value="${esc(this.ajout.cie)}"></label>
-        <label>Classe<select id="at-cls-cabine">${P.CABINES.map(c => `<option value="${c}" ${c === this.ajout.cabine ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
+        <label>Classe<select id="at-cls-cabine">${P.CABINES.map(c => `<option value="${c}" ${c === this.ajout.cabine ? 'selected' : ''}>${esc((P.NOM_CABINE || {})[c] || c)}</option>`).join('')}</select></label>
         <div class="at-ajout-actions">
-          <button class="btn btn-play btn-sm" data-at-action="classe-valider">Déclarer</button>
+          <button class="btn btn-play btn-sm" data-at-action="classe-valider">Ajouter</button>
           <button class="btn btn-sm" data-at-action="classe-annuler">Annuler</button>
         </div>
-        <p class="mini-note at-ajout-note">Passagers, nombre de vols et échéance viennent de
-          l’<b>import du programme de vols</b> — on ne les saisit pas deux fois. Une classe que
-          l’import ne porte pas reste déclarée, à volume nul, jusqu’au prochain import.</p>
+        <p class="mini-note at-ajout-note">Passagers, nombre de vols et heure viennent de
+          l’<b>import des vols</b> — on ne les saisit pas deux fois. Un repas absent des vols
+          reste ajouté, sans volume, jusqu’au prochain import.</p>
       </div>` : '';
 
       const barre = `<div class="at-barre">
         <span class="at-barre-fin"></span>
-        <button class="btn btn-sm" data-at-action="classe-nouvelle" ${this.ajout ? 'disabled' : ''}>+ Compagnie × classe</button>
+        <button class="btn btn-sm" data-at-action="classe-nouvelle" ${this.ajout ? 'disabled' : ''}>+ Ajouter un repas</button>
       </div>`;
 
       const exclues = retirees.length ? `<p class="at-exclues">Retirées du programme :
@@ -931,31 +930,31 @@
 
       if (!classes.length) {
         box.innerHTML = barre + ajout + exclues +
-          '<p class="mini-note">Aucune compagnie × classe à fabriquer : ni dans le programme de vols, ni ajoutée ici.</p>';
+          '<p class="mini-note">Aucun repas à préparer : ni dans le programme de vols, ni ajouté ici.</p>';
         return;
       }
 
       box.innerHTML = barre + ajout + exclues + `<table class="at-table"><thead><tr>
-        <th scope="col">Compagnie × classe</th><th scope="col">Passagers</th><th scope="col">Vols</th>
-        <th scope="col">Échéance</th><th scope="col">Fin</th><th scope="col">État</th>
+        <th scope="col">Repas</th><th scope="col">Passagers</th><th scope="col">Vols</th>
+        <th scope="col">Prêt avant</th><th scope="col">Prêt à</th><th scope="col">Où il en est</th>
         <th scope="col"><span class="sr-only">Retirer</span></th>
         </tr></thead><tbody>` +
         classes.map(c => {
           const v = par[c.id] || {};
-          const etat = v.absente ? '<span class="at-etat manque">jamais fabriquée</span>'
-            : v.fin == null ? '<span class="at-etat manque">inachevée</span>'
+          const etat = v.absente ? '<span class="at-etat manque">personne ne le prépare</span>'
+            : v.fin == null ? '<span class="at-etat manque">pas fini</span>'
             : v.aHeure ? '<span class="at-etat ok">à l’heure</span>'
             : '<span class="at-etat retard">+' + Math.round(v.retard) + ' min</span>';
           // Une classe déclarée que l'import ne porte pas n'a ni volume ni
           // échéance : afficher zéro et une heure ferait croire à une donnée.
           const horsImport = c.origine === 'ajoutee' && !c.vols.length;
           const source = c.origine === 'ajoutee'
-            ? '<span class="at-source">' + (horsImport ? 'hors import' : 'déclarée') + '</span>' : '';
-          return `<tr><th scope="row">${esc(c.id)} ${source}</th>
+            ? '<span class="at-source">' + (horsImport ? 'pas dans les vols' : 'ajouté') + '</span>' : '';
+          return `<tr><th scope="row" data-classe="${esc(c.id)}">${esc(P.libelleClasse(c.id))} ${source}</th>
             <td>${horsImport ? '—' : c.pax}</td><td>${horsImport ? '—' : c.vols.length}</td>
             <td>${horsImport ? '—' : P.hhmm(c.echeance)}</td><td>${v.fin == null ? '—' : P.hhmm(v.fin)}</td><td>${etat}</td>
             <td><button class="btn btn-sm at-danger" data-at-action="classe-supprimer" data-classe="${esc(c.id)}"
-              title="Retirer ${esc(c.id)} et couper ses liens avec les ateliers">Retirer</button></td></tr>`;
+              title="Retirer ${esc(P.libelleClasse(c.id))} et couper ses liens avec les équipes">Retirer</button></td></tr>`;
         }).join('') + '</tbody></table>';
     }
   }

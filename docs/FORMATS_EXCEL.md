@@ -4,9 +4,9 @@ Le site s'échange avec Excel en trois classeurs, un par sujet :
 
 | Classeur | Où | Ce qu'il porte |
 |---|---|---|
-| **Ateliers** | onglet Ateliers › `⇩ Excel` / `⇧ Importer` | équipes, fabrications, tunnels, compagnies × classes, parcours, matériel |
-| **Barème** | Réglages › Barème › `⇩ Excel` / `⇧ Importer` | homme-minutes **par vol**, par service et par compagnie × classe ; rendement, poste |
-| **Vols** | Réglages › Programme de vols › `⇩ Exporter (Excel)` / fichier à importer | départs et retours |
+| **Ateliers** | étape 2, « Qui prépare quoi » › `⇩ Excel` / `⇧ Importer` | équipes, fabrications, tunnels, compagnies × classes, parcours, matériel |
+| **Barème** | étape 3, « Les temps de travail » › `⇩ Excel` / `⇧ Importer` | homme-minutes **par vol**, par service et par compagnie × classe ; rendement, poste |
+| **Vols** | étape 1, « Les vols » › `⇩ Exporter (Excel)` / fichier à importer | départs et retours |
 
 **Le plus simple est toujours le même geste : exporter, modifier dans Excel,
 réimporter.** Chaque classeur porte une feuille « Lisez-moi » qui redit ses

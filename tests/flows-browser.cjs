@@ -62,8 +62,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await click('[data-view=flux]');
   assert.doesNotMatch(await page.locator('#view-flux .scope-badge').textContent(),/sans effet/,
     'le badge ne peut plus dire que ce graphe ne sert à rien');
-  assert.match(await page.locator('#fc-lecture').textContent(),/son parcours/,'le parcours de la classe passe avant le graphe');
-  assert.match(await page.locator('#fc-lecture').textContent(),/tous ses\s+fournisseurs/);
+  assert.match(await page.locator('#fc-lecture').textContent(),/son chemin/,'le chemin du repas passe avant ces liens');
+  assert.match(await page.locator('#fc-lecture').textContent(),/tous ceux qui le\s+livrent/);
   // Sans aucune équipe décrite, le graphe ne porte aucun parcours, et on le dit.
   assert.match(await page.locator('#fc-parcours').textContent(),/Aucune équipe/);
   // Une équipe au montage met ses fournisseurs sur le chemin.

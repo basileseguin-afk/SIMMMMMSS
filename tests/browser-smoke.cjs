@@ -29,7 +29,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('#btn-play').isDisabled(),true);
   assert.match(await page.locator('#run-state').textContent(),/Rien à relire/);
   // Les réglages ne se verrouillent plus : la journée se recalcule à chaque frappe.
-  await click('[data-view="reglages"]');
+  await click('[data-view="vols"]');
   assert.equal(await page.locator('#loadDelay').isDisabled(),false);
   await click('[data-view="vols"]');assert.equal(await page.locator('#flight-rows tr').count(),12);
   await page.locator('#flight-search').fill('NO-MATCH');assert.match(await page.locator('#flight-rows').textContent(),/Aucun départ/);
@@ -42,7 +42,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const geom=await page.evaluate(()=>Object.fromEntries(JSON.parse(localStorage.getItem('orly-plan-v3')).zones.map(z=>[z.id,z])));
   assert.equal(geom.cuisine.x,1910);assert.equal(geom.cuisine.approx,true);assert.equal(geom.cuisine.pts.length,4);
   await page.reload();assert.equal(await page.evaluate(()=>Object.fromEntries(JSON.parse(localStorage.getItem('orly-plan-v3')).zones.map(z=>[z.id,z])).cuisine.x),1910);
-  await click('[data-view="reglages"]');
+  await click('[data-view="vols"]');
   await page.locator('#imp-vols').setInputFiles({name:'invalid.csv',mimeType:'text/csv',buffer:Buffer.from('FlightId,Qty\n1,100')});
   await page.waitForFunction(()=>document.getElementById('import-report').classList.contains('error'));
   assert.match(await page.locator('#source-count').textContent(),/12 départs/);
@@ -51,7 +51,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.waitForFunction(()=>document.getElementById('source-label').textContent==='test.csv');
   await click('[data-view="vols"]');assert.equal(await page.locator('#flight-rows img').count(),0);assert.match(await page.locator('#flight-rows').textContent(),/<img src=x>/);
   // Personne ne fabrique ce vol : le tableau le dit, sans inventer de retard.
-  assert.match(await page.locator('#flight-rows').textContent(),/Non fabriqué/);
+  assert.match(await page.locator('#flight-rows').textContent(),/Des repas sans équipe/);
   // Un atelier qui ouvre à 06:00 pour un départ de 05:00 : la classe sort, en retard.
   await click('[data-view="ateliers"]');
   await page.locator('#at-new').click();await page.waitForTimeout(150);
@@ -69,22 +69,22 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('#kpi-overdue').textContent(),'0','sortie, elle n’est plus « en retard à venir »');
   // Le panneau de droite résume la journée entière et nomme qui attend.
   const bilan=await page.locator('#bilan-journee').textContent();
-  assert.match(bilan,/0 \/ 3 classes/);assert.match(bilan,/Retard le plus long/);
+  assert.match(bilan,/0 sur 3/);assert.match(bilan,/Retard le plus long/);
   await page.locator('#zone-picker').selectOption('prepa');
-  assert.match(await page.locator('#goulot-info').textContent(),/TX\/YC/,'le service choisi liste ses lots');
+  assert.match(await page.locator('#goulot-info').textContent(),/TX · Économie/,'le service choisi liste ce qu’il prépare, en clair');
   await page.locator('#zone-picker').selectOption('');
   await click('[data-view="vols"]');
   const ligneVol=await page.locator('#flight-rows').textContent();
   assert.match(ligneVol,/Prêt en retard/);
   await click('[data-view="reglages"]');
-  await click('#snap-a');assert.match(await page.locator('#compare').textContent(),/Échéances tenues/);
+  await click('#snap-a');assert.match(await page.locator('#compare').textContent(),/Repas prêts à l’heure/);
   const downloaded=page.waitForEvent('download');await click('#btn-export');const download=await downloaded;
   const result=JSON.parse(fs.readFileSync(await download.path(),'utf8'));
   assert.equal(result.modele,'ateliers');
   assert.ok(result.departs[0].retard>0,'le retard du départ est exporté');
   assert.ok(result.instant,'l’instant relu est exporté');
   assert.ok(result.journal.some(l=>l.service==='prepa'),'le journal des lots est exporté');
-  await click('[data-view="reglages"]');await click('#restore-demo');await click('[data-view="plan"]');
+  await click('[data-view="vols"]');await click('#restore-demo');await click('[data-view="plan"]');
   await page.evaluate(()=>{localStorage.removeItem('orly-zones');localStorage.removeItem('orly-plan-v3');});await page.reload();
   await page.screenshot({path:path.join(os.tmpdir(),'ory-interface-desktop.png'),fullPage:true});
   await click('#btn-theme');assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');

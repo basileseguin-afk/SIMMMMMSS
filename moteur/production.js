@@ -86,6 +86,15 @@
     CREW: 'Équipage', SPML: 'Repas spéciaux' };
 
   const idClasse = (cie, cabine) => String(cie).trim().toUpperCase() + '/' + cabine;
+  /** « AF/BC » en toutes lettres : « AF · Business ». */
+  const libelleClasse = id => {
+    const i = String(id).lastIndexOf('/');
+    if (i < 0) return String(id);
+    const cab = String(id).slice(i + 1);
+    return String(id).slice(0, i) + ' · ' + (NOM_CABINE[cab] || cab);
+  };
+  /** Un texte où chaque « AF/BC » est écrit en clair. */
+  const enClair = texte => String(texte ?? '').replace(/[A-Z0-9]{1,40}\/(BC|PC|YC|CREW|SPML)\b/g, libelleClasse);
 
   /**
    * Les compagnies × classes présentes dans un programme de vols.
@@ -1220,7 +1229,7 @@
 
   const api = {
     MINUTES_PAR_JOUR, CABINES, TYPES,
-    minutes, hhmm, idClasse,
+    minutes, hhmm, idClasse, libelleClasse, enClair,
     REGIME_DEFAUT, normaliserRegime, travailDuPoste, executerTache,
     classesDeVols, BAREME_DEMO, RENDEMENT_DEMO, travailClasse,
     PAX_TYPE, TOUTES, cleBareme, normaliserBareme, minutesParVol,

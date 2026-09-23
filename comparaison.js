@@ -56,27 +56,27 @@
    * résultats — dans quel sens c'est mieux. `sens` +1 : plus haut est mieux ;
    * −1 : plus bas est mieux ; 0 : ni l'un ni l'autre, c'est un réglage. */
   const LIGNES = [
-    { groupe: 'Réglages', lib: 'Programme de vols', val: s => s.source || '—', sens: 0 },
-    { groupe: 'Réglages', lib: 'Ateliers de travail', val: s => String(s.ateliers), sens: 0 },
-    { groupe: 'Réglages', lib: 'Personnes postées', val: s => String(s.personnes), sens: 0 },
-    { groupe: 'Réglages', lib: 'Rendement', val: s => s.rendement == null ? '—' : s.rendement + ' %', sens: 0 },
-    { groupe: 'Réglages', lib: 'Délai de chargement', val: s => s.delai == null ? '—' : s.delai + ' min', sens: 0 },
-    { groupe: 'Réglages', lib: 'Décalage des vols', val: s => (s.decalage > 0 ? '+' : '') + s.decalage + ' min', sens: 0 },
-    { groupe: 'Résultats', lib: 'Échéances tenues',
+    { groupe: 'Ce qui a changé', lib: 'Vols', val: s => s.source || '—', sens: 0 },
+    { groupe: 'Ce qui a changé', lib: 'Équipes', val: s => String(s.ateliers), sens: 0 },
+    { groupe: 'Ce qui a changé', lib: 'Personnes au travail', val: s => String(s.personnes), sens: 0 },
+    { groupe: 'Ce qui a changé', lib: 'Rythme de travail', val: s => s.rendement == null ? '—' : s.rendement + ' %', sens: 0 },
+    { groupe: 'Ce qui a changé', lib: 'Repas prêts avant le départ', val: s => s.delai == null ? '—' : s.delai + ' min', sens: 0 },
+    { groupe: 'Ce qui a changé', lib: 'Décalage des vols', val: s => (s.decalage > 0 ? '+' : '') + s.decalage + ' min', sens: 0 },
+    { groupe: 'Ce que ça donne', lib: 'Repas prêts à l’heure',
       val: s => s.suivies ? s.aHeure + ' / ' + s.suivies + (s.part != null ? ' · ' + s.part + ' %' : '') : '—',
       num: s => s.part, sens: 1 },
-    { groupe: 'Résultats', lib: 'Retard moyen', val: s => s.retardMoyen == null ? '—' : s.retardMoyen + ' min',
+    { groupe: 'Ce que ça donne', lib: 'Retard moyen', val: s => s.retardMoyen == null ? '—' : s.retardMoyen + ' min',
       num: s => s.retardMoyen, sens: -1 },
-    { groupe: 'Résultats', lib: 'Retard le plus long', val: s => s.retardMax == null ? '—' : s.retardMax + ' min',
+    { groupe: 'Ce que ça donne', lib: 'Retard le plus long', val: s => s.retardMax == null ? '—' : s.retardMax + ' min',
       num: s => s.retardMax, sens: -1 },
-    { groupe: 'Résultats', lib: 'Dernière sortie', val: s => hhmm(s.finDerniere), num: s => s.finDerniere, sens: -1 },
-    { groupe: 'Résultats', lib: 'Attente cumulée', val: s => s.attente == null ? '—' : s.attente + ' min',
+    { groupe: 'Ce que ça donne', lib: 'Dernier repas prêt', val: s => hhmm(s.finDerniere), num: s => s.finDerniere, sens: -1 },
+    { groupe: 'Ce que ça donne', lib: 'Temps passé à attendre', val: s => s.attente == null ? '—' : s.attente + ' min',
       num: s => s.attente, sens: -1 },
-    { groupe: 'Résultats', lib: 'Attente de matériel', val: s => s.attenteMateriel == null ? '—' : s.attenteMateriel + ' min',
+    { groupe: 'Ce que ça donne', lib: 'Attente de matériel propre', val: s => s.attenteMateriel == null ? '—' : s.attenteMateriel + ' min',
       num: s => s.attenteMateriel, sens: -1 },
-    { groupe: 'Résultats', lib: 'Travail', val: s => s.hommeHeures == null ? '—' : String(s.hommeHeures).replace('.', ',') + ' h',
+    { groupe: 'Ce que ça donne', lib: 'Heures de travail', val: s => s.hommeHeures == null ? '—' : String(s.hommeHeures).replace('.', ',') + ' h',
       num: s => s.hommeHeures, sens: 0 },
-    { groupe: 'Résultats', lib: 'Classes sans atelier', val: s => String(s.absentes), num: s => s.absentes, sens: -1 }
+    { groupe: 'Ce que ça donne', lib: 'Repas sans équipe', val: s => String(s.absentes), num: s => s.absentes, sens: -1 }
   ];
 
   /**
@@ -97,11 +97,11 @@
 
   /** Ce qu'il faut savoir avant de lire le tableau. */
   function note(A, B) {
-    if (!A || !B) return 'Capturez A, changez un réglage, capturez B.';
-    if (A.source !== B.source) return 'Attention : A et B ne portent pas sur le même programme de vols ('
+    if (!A || !B) return 'Photographiez A, changez quelque chose, photographiez B.';
+    if (A.source !== B.source) return 'Attention : A et B ne portent pas sur les mêmes vols ('
       + A.source + ' / ' + B.source + ').';
-    if (A.empreinte === B.empreinte) return 'Réglages identiques : les deux journées sont exactement les mêmes.';
-    return 'Mêmes vols, aucun aléa : seuls les réglages diffèrent.';
+    if (A.empreinte === B.empreinte) return 'Rien n’a changé : les deux journées sont identiques.';
+    return 'Mêmes vols, aucun hasard : seul ce que vous avez changé fait la différence.';
   }
 
   const api = { capturer, lignes, note, LIGNES };

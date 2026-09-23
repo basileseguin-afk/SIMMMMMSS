@@ -28,7 +28,7 @@
   /* Ce que chaque état dit sur le plan, et le mot qui va avec. */
   const LIBELLE = {
     travail: 'au travail',
-    attente: 'attend un amont',
+    attente: 'attend le service d’avant',
     fini:    'a fini',
     avenir:  'pas commencé'
   };
@@ -140,8 +140,8 @@
       const j = document.querySelector('.jour');
       if (j) {
         j.textContent = this.vide
-          ? 'Aucune journée à relire'
-          : 'Journée calculée · ' + P.hhmm(this.debut) + '–' + P.hhmm(this.fin);
+          ? 'Aucune journée à rejouer'
+          : 'journée de ' + P.hhmm(this.debut) + ' à ' + P.hhmm(this.fin);
       }
       const c = document.getElementById('sim-curseur');
       if (c) {
@@ -153,16 +153,16 @@
     rendreTransport() {
       const b = document.getElementById('btn-play');
       if (b) {
-        b.textContent = this.vide ? '▶ Lire' : this.enMarche ? '⏸ Pause' : this.t >= this.fin ? '▶ Revoir' : '▶ Lire';
+        b.textContent = this.vide ? '▶ Rejouer' : this.enMarche ? '⏸ Pause' : this.t >= this.fin ? '▶ Revoir' : '▶ Rejouer';
         b.className = this.enMarche ? 'btn btn-pause' : 'btn btn-play';
         b.disabled = this.vide;
       }
       const e = document.getElementById('run-state');
       if (e) {
-        e.textContent = this.vide ? 'Rien à relire : décrivez des ateliers'
-          : this.enMarche ? 'Lecture en cours'
+        e.textContent = this.vide ? 'Rien à relire : donnez d’abord une équipe aux repas (étape 2)'
+          : this.enMarche ? 'La journée défile…'
           : this.t >= this.fin ? 'Fin de journée'
-          : this.t <= this.debut ? 'Prêt à lire' : 'En pause';
+          : this.t <= this.debut ? 'Appuyez sur « Rejouer » pour voir la journée défiler' : 'En pause'; 
       }
     }
 
@@ -179,13 +179,13 @@
       const part = c.exigibles ? c.tenues / c.exigibles : null;
       mettre('kpi-ontime', part == null ? '—' : Math.round(part * 100) + ' %',
         part == null ? '' : part >= 0.9 ? 'bon' : part >= 0.7 ? 'moyen' : 'mauvais',
-        'kpi-denom', c.exigibles ? c.tenues + ' / ' + c.exigibles + ' échéances passées tenues'
-          : c.suivies ? 'aucune échéance encore passée' : 'aucune classe fabriquée');
+        'kpi-denom', c.exigibles ? c.tenues + ' repas sur ' + c.exigibles + ' prêts avant leur chargement'
+          : c.suivies ? 'aucun chargement encore passé' : 'aucun repas préparé');
       mettre('kpi-overdue', String(c.enRetard), c.enRetard ? 'mauvais' : '',
-        'kpi-ready', c.enRetard ? 'classes pas encore sorties' : 'aucune échéance manquée à cet instant');
-      mettre('kpi-wip', c.auTravail + ' <small>services</small>', '', 'kpi-wip-note', 'qui fabriquent à cet instant');
+        'kpi-ready', c.enRetard ? 'repas pas prêts à l’heure du chargement' : 'aucun retard à cette heure');
+      mettre('kpi-wip', c.auTravail + ' <small>services</small>', '', 'kpi-wip-note', 'qui préparent en ce moment');
       mettre('kpi-debit', c.enAttente + ' <small>services</small>', c.enAttente ? 'moyen' : '',
-        'kpi-debit-note', 'postes ouverts, amont pas encore livré');
+        'kpi-debit-note', 'équipe en place, mais le service d’avant n’a pas encore livré');
     }
 
     /**
@@ -197,17 +197,17 @@
       const box = document.getElementById('bilan-journee'); if (!box) return;
       const r = this.resultat, k = r.indicateurs;
       if (this.vide || !k) {
-        box.innerHTML = '<p class="mini-note">Rien à résumer : aucun atelier ne fabrique encore.</p>';
+        box.innerHTML = '<p class="mini-note">Rien à résumer : aucune équipe ne prépare encore de repas.</p>';
         return;
       }
       const lignes = [
-        ['À l’heure', k.classesSuivies ? k.aHeure + ' / ' + k.classesSuivies + ' classes' + (k.partAHeure != null ? ' · ' + k.partAHeure + ' %' : '') : '—'],
+        ['Repas prêts à l’heure', k.classesSuivies ? k.aHeure + ' sur ' + k.classesSuivies + (k.partAHeure != null ? ' · ' + k.partAHeure + ' %' : '') : '—'],
         ['Retard le plus long', k.retardMax ? Math.round(k.retardMax) + ' min' : 'aucun'],
-        ['Dernière sortie', k.finDerniere != null && Number.isFinite(k.finDerniere) ? P.hhmm(k.finDerniere) : '—'],
-        ['Attente cumulée', Math.round(k.attenteTotale || 0) + ' min'],
-        ['Travail', (k.hommeHeures || 0).toFixed(1).replace('.', ',') + ' homme-heures']
+        ['Dernier repas prêt à', k.finDerniere != null && Number.isFinite(k.finDerniere) ? P.hhmm(k.finDerniere) : '—'],
+        ['Temps passé à attendre', Math.round(k.attenteTotale || 0) + ' min, tous services'],
+        ['Travail fourni', (k.hommeHeures || 0).toFixed(1).replace('.', ',') + ' heures de travail']
       ];
-      if (k.classesAbsentes) lignes.push(['Sans atelier', k.classesAbsentes + ' classe(s) que personne ne fabrique']);
+      if (k.classesAbsentes) lignes.push(['Sans équipe', k.classesAbsentes + ' repas que personne ne prépare']);
       box.innerHTML = '<dl class="bilan">' + lignes.map(([q, v]) =>
         '<div><dt>' + esc(q) + '</dt><dd>' + esc(v) + '</dd></div>').join('') + '</dl>';
     }
@@ -218,7 +218,7 @@
       const services = this.a.services();
       const vus = services.filter(s => i.services[s.id]);
       if (!vus.length) {
-        box.innerHTML = '<p class="mini-note">Aucun service ne travaille : décrivez des ateliers.</p>';
+        box.innerHTML = '<p class="mini-note">Aucun service ne travaille : donnez une équipe aux repas (étape 2).</p>';
         return;
       }
       const selection = this.a.selection ? this.a.selection() : '';
@@ -230,7 +230,7 @@
         return `<button class="stat-atelier etat-${e.etat}${s.id === selection ? ' active' : ''}"
           data-station="${esc(s.id)}" aria-pressed="${s.id === selection}">
           <div class="haut"><span>${esc(s.nom)}</span><b>${esc(LIBELLE[e.etat])}</b></div>
-          <div class="stat-quoi">${e.etat === 'avenir' ? '' : esc(e.nom || '')}</div>
+          <div class="stat-quoi">${e.etat === 'avenir' ? '' : esc(P.enClair(e.nom || ''))}</div>
         </button>`;
       }).join('');
       for (const b of box.querySelectorAll('[data-station]')) {

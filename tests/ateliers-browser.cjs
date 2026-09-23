@@ -50,16 +50,18 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('#view-ateliers').isVisible(),true);
   assert.equal(await page.locator('.workbench').isVisible(),false,'la colonne de droite s’efface');
   assert.equal(await page.locator('#view-plan').isVisible(),false,'le plan n’est plus la vue des ateliers');
-  assert.match(await page.locator('.at-vide').textContent(),/Aucun atelier/);
+  assert.match(await page.locator('.at-vide').textContent(),/Aucune équipe/);
 
   // 2. Toutes les compagnies × classes du programme sont listées, à fabriquer.
   const lignes=await page.locator('#at-classes tbody tr').count();
   assert.equal(lignes,34,'34 compagnies × classes dans le jeu de démonstration');
   assert.equal(await page.locator('.at-etat.manque').count(),34,'aucune n’est fabriquée au départ');
   // CREW et SPML sont des classes comme les autres : elles figurent au tableau.
+  // Les classes s'écrivent en toutes lettres ; l'identifiant reste en attribut.
   const ids=await page.locator('#at-classes tbody tr th').allTextContents();
-  assert.ok(ids.some(t=>t.includes('/CREW')),'les plateaux d’équipage sont comptés');
-  assert.ok(ids.some(t=>t.includes('/SPML')),'les repas spéciaux aussi');
+  assert.ok(ids.some(t=>t.includes(' · Équipage')),'les plateaux d’équipage sont comptés');
+  assert.ok(ids.some(t=>t.includes(' · Repas spéciaux')),'les repas spéciaux aussi');
+  assert.ok(await page.locator('#at-classes th[data-classe="AF/BC"]').count(),'l’identifiant est gardé');
 
   // 3. Un atelier enchaîne ses lots : le second démarre quand le premier finit.
   const cui=await creer('Cuisine CRL','cuisine','04:30',6);
@@ -120,15 +122,15 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(await page.locator('#at-planning .at-pl-attente').count()>0,'l’attente est dessinée');
 
   // 8. La couverture par classe dit ce qui sort et par où.
-  const etats=await page.locator('#at-classes tbody tr').evaluateAll(rs=>rs.map(r=>r.cells[0].textContent.trim()+'|'+r.cells[5].textContent));
+  const etats=await page.locator('#at-classes tbody tr').evaluateAll(rs=>rs.map(r=>r.cells[0].dataset.classe+'|'+r.cells[5].textContent));
   assert.ok(etats.some(t=>t.startsWith('CRL/BC')&&/à l’heure/.test(t)));
-  assert.equal(etats.filter(t=>/jamais fabriquée/.test(t)).length,31,'34 classes moins les 3 fabriquées');
+  assert.equal(etats.filter(t=>/personne ne le prépare/.test(t)).length,31,'34 repas moins les 3 préparés');
   // Par où elle passe, et qui la fabrique : le tableau « Qui fabrique quoi » le dit case par case.
   const traverses=await page.locator('tr[data-classe="CRL/BC"] .qf-case.ok').evaluateAll(bs=>bs.map(b=>b.dataset.service).sort());
   assert.deepEqual(traverses,['cuisine','prepa'],'les services qui la fabriquent ont leur case remplie');
 
   // 9. Les indicateurs résument la journée.
-  assert.match(await page.locator('#at-indicateurs').textContent(),/Classes à l’heure/);
+  assert.match(await page.locator('#at-indicateurs').textContent(),/Repas prêts à l’heure/);
   assert.match(await page.locator('#at-indicateurs').textContent(),/31/,'les classes sans atelier sont comptées');
 
   // 10. Annuler, rétablir, et la saisie survit au rechargement.
@@ -185,13 +187,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('#at-cls-echeance').count(),0,'plus de champ Échéance');
   await page.fill('#at-cls-cie','zz');await page.selectOption('#at-cls-cabine','BC');
   await page.locator('[data-at-action=classe-valider]').click();await attendre();
-  assert.match(await page.locator('#at-status').textContent(),/ZZ\/BC déclarée/);
+  assert.match(await page.locator('#at-status').textContent(),/ZZ · Business ajouté/);
   const ajoutee=(await etat()).ajoutees[0];
   assert.equal(ajoutee.cie,'ZZ','la compagnie est normalisée en majuscules');
   assert.equal(ajoutee.cabine,'BC');
   assert.deepEqual(Object.keys(ajoutee).sort(),['cabine','cie'],'rien d’autre n’est retenu');
   // Hors import, elle n'a ni volume ni échéance : on le dit, on ne l'invente pas.
-  const ligneZZ=await page.locator('#at-classes tbody tr',{hasText:'ZZ/BC'}).first()
+  const ligneZZ=await page.locator('#at-classes tbody tr',{has:page.locator('th[data-classe="ZZ/BC"]')}).first()
     .evaluate(tr=>[...tr.cells].slice(1,4).map(c=>c.textContent.trim()));
   assert.deepEqual(ligneZZ,['—','—','—'],'passagers, vols et échéance restent vides');
   // Elle se fabrique comme les autres.

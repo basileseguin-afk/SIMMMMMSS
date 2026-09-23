@@ -165,69 +165,68 @@
       section.className = 'rg-modele'; section.id = 'rg-modele';
       section.innerHTML = `
         <div class="titre-aide">
-          <h2 class="reglages-titre">Le modèle de production</h2><details class="aide">
-          <summary aria-label="À quoi sert cette section ?">?</summary>
-          <span class="aide-corps">Ces réglages pilotent les <b>ateliers de travail</b> : le temps que
-            coûte une compagnie × classe dans chaque service, et les règles de poste. C’est la
-            journée qu’ils calculent que relit la vue Simulation.</span></details></div>
+          <h2 class="reglages-titre">Minutes de travail par vol</h2><details class="aide">
+          <summary aria-label="À quoi sert cette page ?">?</summary>
+          <span class="aide-corps">Ces chiffres disent combien de temps prend chaque préparation. Ils
+            servent au calcul de la journée qui se rejoue à l’étape 4, « La journée ».</span></details></div>
         <p id="rg-status" role="status" aria-live="polite"></p>
         <div class="panneau" id="rg-bareme-panneau">
-          <div class="titre-aide"><h3>Barème — homme-minutes</h3><details class="aide">
-            <summary aria-label="Comment lire le barème ?">?</summary>
+          <div class="titre-aide"><h3>Service par service</h3><details class="aide">
+            <summary aria-label="Comment lire ces chiffres ?">?</summary>
             <span class="aide-corps">
-              <p>Pour un service : les minutes de travail que coûte <b>un vol</b> d’une compagnie
-                dans une classe. La journée d’une compagnie × classe vaut ces minutes <b>fois son
-                nombre de vols</b> ; le remplissage n’y change rien.</p>
-              <p>Une valeur <b>commune</b> par classe vaut pour toutes les compagnies ; une
-                compagnie peut avoir la sienne.</p>
-              <p>Un service marqué « non renseigné » travaillerait en temps nul. Une annexe
-                hérite du barème de l’atelier dont elle dépend.</p>
-              <p><b>⇩ Excel</b> donne le classeur à remplir — une ligne par compagnie × classe et
-                par service de son parcours ; <b>Importer</b> reprend l’étude entière d’un coup.</p>
+              <p>Pour chaque service : les minutes de travail que demande <b>un vol</b> d’une compagnie
+                dans une classe. Pour la journée, on multiplie par le <b>nombre de vols</b> ; le nombre
+                de passagers n’y change rien.</p>
+              <p>Une valeur <b>commune</b> par classe vaut pour toutes les compagnies ; une compagnie
+                peut avoir la sienne.</p>
+              <p>Un service marqué « à remplir » travaillerait en zéro minute. Une salle annexe reprend
+                les chiffres du service dont elle dépend.</p>
+              <p><b>⇩ Excel</b> donne le tableau à remplir, une ligne par repas et par service de son
+                chemin ; <b>Importer</b> reprend l’étude entière d’un coup.</p>
             </span></details></div>
-          <p class="mini-note"><span class="rg-formule">durée = homme-minutes ÷ personnes ÷ rendement</span></p>
+          <p class="rg-exemple">Exemple : <b>60 minutes de travail</b> pour un vol, à <b>2 personnes</b>, prennent <b>30 minutes</b>.</p>
+          <p class="rg-codes">BC Business · PC Premium · YC Économie · CREW Équipage · SPML repas spéciaux</p>
           <div id="rg-alerte"></div>
           <div class="rg-actions">
             <button class="btn btn-sm" id="rg-undo">Annuler</button>
             <button class="btn btn-sm" id="rg-redo">Rétablir</button>
-            <button class="btn btn-sm" id="rg-export" title="Le barème dans un classeur Excel, prêt à remplir">⇩ Excel</button>
+            <button class="btn btn-sm" id="rg-export" title="Ces chiffres dans un classeur Excel, prêt à remplir">⇩ Excel</button>
             <button class="btn btn-sm" id="rg-import-btn" title="Réimporter un classeur (ou un CSV) modifié">⇧ Importer</button>
-            <button class="btn btn-sm" id="rg-reset">Valeurs de démonstration</button>
+            <button class="btn btn-sm" id="rg-reset">Remettre les chiffres d’exemple</button>
             <input id="rg-import" type="file" accept=".xlsx,.csv,.json" hidden>
           </div>
           <div id="rg-bareme"></div>
         </div>
         <div class="panneau">
-          <div class="titre-aide"><h3>Rendement</h3><details class="aide">
-            <summary aria-label="À quoi sert le rendement ?">?</summary>
-            <span class="aide-corps">Un coefficient unique, appliqué à tous les services. Au-dessous
-              de 1, la journée s’allonge d’autant. S’il doit varier par service ou par heure, c’est
-              le barème qu’il faut enrichir, pas ce curseur.</span></details></div>
+          <div class="titre-aide"><h3>Rythme de travail</h3><details class="aide">
+            <summary aria-label="À quoi sert le rythme ?">?</summary>
+            <span class="aide-corps">Un seul chiffre pour tous les services. À 1, les équipes tiennent
+              exactement les minutes ci-dessus ; à 0,8, tout prend un quart de temps en plus. S’il doit
+              varier d’un service à l’autre, ce sont les minutes du service qu’il faut changer.</span></details></div>
           <div class="slider-ligne">
-            <label for="rg-rendement">Part du temps réellement produite <b id="rg-rendement-val"></b></label>
+            <label for="rg-rendement">Rythme (1 = les minutes ci-dessus) <b id="rg-rendement-val"></b></label>
             <input id="rg-rendement" type="range" min="0.5" max="1.2" step="0.01">
           </div>
         </div>
         <div class="panneau">
-          <div class="titre-aide"><h3>Poste de travail</h3><details class="aide">
+          <div class="titre-aide"><h3>Pauses et présence</h3><details class="aide">
             <summary aria-label="Comment sont comptées les pauses ?">?</summary>
-            <span class="aide-corps">Les seuils comptent le travail <b>cumulé</b>, pas l’heure qu’il
-              est : une équipe qui attend ses amonts ne consomme pas son crédit, donc ne prend pas
-              sa pause. La présence réglée ici s’applique à tout atelier qui n’a pas fixé la
-              sienne.</span></details></div>
+            <span class="aide-corps">Une pause vient après un temps de <b>travail</b>, pas à une heure
+              fixe : une équipe qui attend le service d’avant ne travaille pas, donc ne prend pas encore
+              sa pause. La présence réglée ici vaut pour toute équipe qui n’a pas fixé la sienne.</span></details></div>
           <div id="rg-seuils"></div>
           <div class="rg-actions">
-            <button class="btn btn-sm" id="rg-seuil-ajouter">+ Seuil</button>
+            <button class="btn btn-sm" id="rg-seuil-ajouter">+ Pause</button>
           </div>
           <div class="champ">
-            <span>Présence sur le site (min)</span>
+            <span>Temps de présence d’une équipe (min)</span>
             <input id="rg-presence" type="number" min="30" max="1440" step="5">
           </div>
           <p class="mini-note" id="rg-presence-note"></p>
         </div>
         <p class="rg-version" id="rg-version"></p>
         <p class="mini-note rg-ailleurs">Les <b>tunnels de la plonge</b> et la <b>boucle du matériel</b>
-          se règlent atelier par atelier, dans l’onglet <b>Ateliers de travail</b>.</p>`;
+          se règlent équipe par équipe, à l’étape 2, <b>Qui prépare quoi</b>.</p>`;
       hote.appendChild(section);
       // Quelle version le navigateur sert-il ? La question revient dès qu'un
       // doute s'installe, et un cache périmé ne se voit autrement pas.
@@ -253,7 +252,7 @@
       sur('rg-seuil-ajouter', 'click', () => this.changer(() => {
         const dernier = this.etat.regime.seuils[this.etat.regime.seuils.length - 1];
         this.etat.regime.seuils.push({ apres: (dernier ? dernier.apres : 0) + 180, duree: 15 });
-      }, 'Seuil ajouté.'));
+      }, 'Pause ajoutée.'));
       sur('rg-rendement', 'input', e => {
         document.getElementById('rg-rendement-val').textContent = (+e.target.value).toFixed(2).replace('.', ',');
       });
@@ -304,7 +303,7 @@
         if (p) return this.changer(() => { delete this.etat.bareme[p.dataset.service][p.dataset.cle]; },
           p.dataset.cle + ' : retour à la valeur commune.');
         const b = e.target.closest('[data-rg-action="seuil-retirer"]'); if (!b) return;
-        this.changer(() => { this.etat.regime.seuils.splice(+b.dataset.index, 1); }, 'Seuil retiré.');
+        this.changer(() => { this.etat.regime.seuils.splice(+b.dataset.index, 1); }, 'Pause retirée.');
       });
     }
 
@@ -359,8 +358,8 @@
           const renseigne = communes.some(Number.isFinite) || Object.keys(ligne).length;
           const etat = herite ? 'herite' : renseigne ? 'ok' : 'vide';
           const marque = herite
-            ? '<span class="rg-herite" title="Même travail que l’atelier dont elle dépend">hérité</span>'
-            : renseigne ? '' : '<span class="rg-zero">non renseigné</span>';
+            ? '<span class="rg-herite" title="Mêmes chiffres que le service dont elle dépend">repris</span>'
+            : renseigne ? '' : '<span class="rg-zero">à remplir</span>';
           const propres = Object.entries(ligne).filter(([k]) => !k.startsWith(P.TOUTES + '/'))
             .sort(([x], [y]) => x.localeCompare(y));
           const parCompagnie = this.etat.detail[s.id] === 'compagnie';
@@ -380,9 +379,9 @@
 
           const mode = `<div class="rg-mode" role="group" aria-label="Saisie des minutes de ${esc(s.nom)}">
             <button class="btn btn-sm" data-rg-action="mode" data-mode="classe" data-service="${esc(s.id)}"
-              aria-pressed="${!parCompagnie}">Par classe</button>
+              aria-pressed="${!parCompagnie}">Une valeur par classe</button>
             <button class="btn btn-sm" data-rg-action="mode" data-mode="compagnie" data-service="${esc(s.id)}"
-              aria-pressed="${parCompagnie}">Par compagnie × classe</button>
+              aria-pressed="${parCompagnie}">Une valeur par compagnie et par classe</button>
           </div>`;
 
           let corps;
@@ -435,7 +434,7 @@
           return `<details class="rg-service ${etat}${manquent.length && parCompagnie ? ' manque' : ''}" name="rg-bareme" data-service="${esc(s.id)}">
             <summary>
               <span class="rg-svc-nom">${esc(s.nom)}${occupes.has(s.id)
-                ? '<span class="rg-occupe" title="Un atelier de travail y est décrit">équipe</span>' : ''}${marque}</span>
+                ? '<span class="rg-occupe" title="Une équipe travaille dans ce service">a une équipe</span>' : ''}${marque}</span>
               <span class="rg-svc-digest">${digest}</span>
             </summary>
             ${mode}
@@ -457,12 +456,12 @@
            (BC ${P.PAX_TYPE.BC}, PC ${P.PAX_TYPE.PC}, YC ${P.PAX_TYPE.YC}, CREW ${P.PAX_TYPE.CREW}, SPML ${P.PAX_TYPE.SPML}).
            Vérifiez-le, ou importez votre étude.</div>` : '';
       alerte.innerHTML = conversion + (memeQueDemo
-        ? `<div class="rg-avertissement"><b>Valeurs de démonstration, non calibrées.</b>
-           Aucune durée affichée ne permet de dimensionner une équipe.<details class="aide">
-           <summary aria-label="Pourquoi non calibré ?">?</summary>
-           <span class="aide-corps">Ces valeurs n’existent que pour que le modèle tourne. Elles
-             seront remplacées en bloc par une étude de man-minutes — bouton <b>Importer</b>.
-             D’ici là, les durées montrent des enchaînements, pas des effectifs.</span></details></div>`
+        ? `<div class="rg-avertissement"><b>Ce sont des chiffres d’exemple.</b>
+           Ils montrent comment le calcul fonctionne, pas la réalité de l’unité.<details class="aide">
+           <summary aria-label="Pourquoi des chiffres d’exemple ?">?</summary>
+           <span class="aide-corps">Ils seront remplacés d’un coup par l’étude de temps de l’unité —
+             bouton <b>Importer</b>. D’ici là, les durées montrent comment les services s’enchaînent,
+             pas combien de personnes il faut.</span></details></div>`
         : '');
     }
 
@@ -489,7 +488,7 @@
           data-rg-champ="seuil-duree" data-index="${i}" aria-label="Durée de la pause ${i + 1}">
         <span>min</span>
         <button class="btn btn-sm" data-rg-action="seuil-retirer" data-index="${i}">Retirer</button>
-      </div>`).join('') || '<p class="mini-note">Aucun seuil : les équipes travaillent sans pause.</p>';
+      </div>`).join('') || '<p class="mini-note">Aucune pause : les équipes travaillent sans s’arrêter.</p>';
       }
 
       const p = document.getElementById('rg-presence');

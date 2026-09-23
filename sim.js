@@ -335,12 +335,12 @@ function lectureDuGraphe(){
   grouper(lignes.filter(l=>!l.equipes), true, noms2=>
     noms2.join(', ')+(noms2.length>1?' fournissent':' fournit')+' sans avoir d’équipe : '
     +'rien n’en sort, et personne ne '+(noms2.length>1?'les':'l’')+' attend. '
-    +'Donnez-'+(noms2.length>1?'leur':'lui')+' un atelier — une « mise à disposition » '
+    +'Donnez-'+(noms2.length>1?'leur':'lui')+' une équipe — une « mise à disposition » '
     +'suffit pour un magasin, des appros ou tout ce qui ne fait que sortir du matériel.');
   grouper(lignes.filter(l=>l.equipes&&!l.produit), true, noms2=>
-    noms2.join(', ')+' : une équipe est décrite mais ne fabrique rien. Dites ce qu’elle produit.');
+    noms2.join(', ')+' : une équipe est décrite mais ne prépare rien. Dites ce qu’elle prépare.');
   grouper(lignes.filter(l=>l.produit&&!l.amonts.length&&!l.avals.length), false, noms2=>
-    noms2.join(', ')+' n’est relié à personne : ce qui y est fabriqué ne sert à aucun autre service.');
+    noms2.join(', ')+' n’est relié à personne : ce qui y est préparé ne sert à aucun autre service.');
   grouper(lignes.filter(l=>l.produit&&l.avals.length===0&&l.amonts.length), false, noms2=>
     noms2.join(', ')+' ne livre à personne. Normal en bout de chaîne.');
   // Un cycle bloquerait la fabrication sans jamais rien dire.
@@ -393,18 +393,28 @@ function etatDemarrage(){
            alertes:lu.alertes.filter(a=>a.grave).length },
     ateliers:{ total:ats.length, fabriquent,
                absentes:(r.indicateurs||{}).classesAbsentes||0 },
-    bareme:{ calibre }
+    bareme:{ calibre },
+    journee:{ calculee:!!(r.lots&&r.lots.length), suivies:(r.indicateurs||{}).classesSuivies||0,
+              aHeure:(r.indicateurs||{}).aHeure||0,
+              fin:Number.isFinite((r.indicateurs||{}).finDerniere)?MoteurProduction.hhmm(r.indicateurs.finDerniere):null }
   };
 }
 function majDemarrage(){ if(Sim.demarrage)Sim.demarrage.rendre(); }
 function initDemarrage(){
-  const tete=document.querySelector('.workspace-heading');
-  if(!tete||!window.OrlyDemarrage)return;
-  const hote=document.createElement('div');hote.id='guide-hote';
-  tete.parentNode.insertBefore(hote,tete.nextSibling);
+  if(!window.OrlyDemarrage)return;
   Sim.demarrage=new OrlyDemarrage.Demarrage({
-    hote:()=>hote, etat:etatDemarrage, aller:onglet=>showView(onglet)
+    hote:()=>document.getElementById('etapes'),
+    comment:()=>document.getElementById('comment'),
+    etat:etatDemarrage, vue:()=>activeView, aller:onglet=>showView(onglet)
   });
+  document.getElementById('btn-comment').addEventListener('click',()=>Sim.demarrage.basculer());
+  afficherTitre(activeView);
+}
+/* Le titre de la vue et la phrase qui dit, en mots simples, ce qu'on y voit. */
+function afficherTitre(name){
+  const v=(window.OrlyDemarrage&&OrlyDemarrage.VUES[name])||{titre:name,intro:''};
+  document.getElementById('view-title').textContent=v.titre;
+  const intro=document.getElementById('view-intro');if(intro)intro.textContent=v.intro;
 }
 function initFlux(){
   Sim.flows=new OrlyFlows.FlowCenter({zones:()=>Sim.editor.state.zones,legacy:FLUX.concat(FLUX_RETOUR),
@@ -621,9 +631,9 @@ function majPlan() {
  *  de la saisie tant qu'on n'a pas commencé à relire, l'activité ensuite.
  * ==========================================================================*/
 const ETATS_PARAM = {
-  vide:    { lib:'Personne',  aide:'Service sans atelier de travail : il ne produira rien.' },
-  partiel: { lib:'Décrit',    aide:'Un atelier existe, mais il ne fabrique encore rien.' },
-  pret:    { lib:'Aménagé',  aide:'Un atelier de travail y fabrique au moins une compagnie × classe.' }
+  vide:    { lib:'Aucune équipe',  aide:'Personne ne travaille dans ce service : il ne préparera rien.' },
+  partiel: { lib:'Équipe sans travail',    aide:'Une équipe existe, mais aucun repas ne lui est confié.' },
+  pret:    { lib:'Équipe au travail',  aide:'Une équipe y prépare au moins un repas.' }
 };
 
 function annexes() {
@@ -709,26 +719,26 @@ function majLegende(avant, compte) {
   _legendeCle = cle;
   const puce = (coul, texte, titre) => '<span title="' + escapeHTML(titre) + '"><span class="pastille" style="background:' + coul + '"></span>' + escapeHTML(texte) + '</span>';
   if (avant) {
-    box.setAttribute('aria-label', 'État de paramétrage des ateliers');
+    box.setAttribute('aria-label', 'Ce que dit la couleur des services');
     box.innerHTML = puce('var(--bad-stroke)', ETATS_PARAM.vide.lib, ETATS_PARAM.vide.aide)
       + puce('var(--bordure2)', ETATS_PARAM.partiel.lib, ETATS_PARAM.partiel.aide)
       + puce('var(--accent)', ETATS_PARAM.pret.lib, ETATS_PARAM.pret.aide);
     if (etat) {
       const n = compte.vide + compte.partiel;
       etat.textContent = n
-        ? n + ' atelier(s) restent à aménager — onglet « Ateliers »'
-        : 'Tous les ateliers simulés sont aménagés.';
+        ? n + ' service(s) sans travail — voir l’étape 2, « Qui prépare quoi »'
+        : 'Chaque service a une équipe au travail.';
       etat.className = 'plan-etat' + (n ? '' : ' complet');
     }
   } else {
     // Pendant la relecture : les quatre états de `replay.js`, et eux seuls.
     // L'attente est aussi en pointillé, pour ne pas dépendre de la couleur.
     box.setAttribute('aria-label', 'État des services à cet instant');
-    box.innerHTML = puce('var(--accent)', 'Au travail', 'Une équipe fabrique à cet instant.')
-      + puce('var(--orange)', 'Attend un amont', 'Le poste est ouvert mais ce qu’il doit recevoir n’est pas encore arrivé.')
-      + puce('var(--vert)', 'A fini', 'Tout ce que ce service avait à faire est sorti.')
+    box.innerHTML = puce('var(--accent)', 'Au travail', 'Une équipe prépare des repas à cette heure.')
+      + puce('var(--orange)', 'Attend le service d’avant', 'L’équipe est là, mais ce qu’elle doit recevoir n’est pas encore arrivé.')
+      + puce('var(--vert)', 'A fini', 'Tout ce que ce service avait à faire est prêt.')
       + puce('var(--bordure2)', 'Pas commencé', 'Le service n’a pas encore ouvert.');
-    if (etat) { etat.textContent = 'Relecture de la journée — « ↺ Début » pour revenir au paramétrage.'; etat.className = 'plan-etat'; }
+    if (etat) { etat.textContent = 'La journée défile — « ↺ Début » pour revenir au début.'; etat.className = 'plan-etat'; }
   }
 }
 
@@ -758,28 +768,28 @@ function majGoulotInfo() {
   let html='';
   if(selection){
     const id=selection,z=ZONES[id];
-    if(z)html+='<p>'+(z.approx?'Emplacement à confirmer.':'Emplacement enregistré ; validation terrain distincte.')+'</p>';
+    if(z&&z.approx)html+='<p>Emplacement sur le plan à confirmer.</p>';
     const annexe=!z?annexes().find(a=>a.id===id):null;
     if(annexe){const pere=ZONES[annexe.parent];html+='<p>Annexe de <strong>'+escapeHTML(pere?pere.nom:annexe.parent)+'</strong>.</p>';}
     const equipes=((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]).filter(a=>a.service===id);
-    if(!equipes.length)html+='<p>Aucun atelier de travail ici — onglet « Ateliers ».</p>';
+    if(!equipes.length)html+='<p>Aucune équipe ici — étape 2, « Qui prépare quoi ».</p>';
     else html+='<p>'+equipes.map(a=>'<strong>'+escapeHTML(a.nom)+'</strong>'
       +(a.type==='dispo'?' · mise à disposition':a.type==='lavage'?' · plonge':' · '+a.personnes+' pers.')).join('<br>')+'</p>';
     const e=services[id];
     if(e&&!Sim.vue.vide)html+='<p>À '+hh(t)+' : <strong>'+escapeHTML(OrlySimulation.LIBELLE[e.etat])+'</strong>'
-      +(e.etat!=='avenir'&&e.nom?' — '+escapeHTML(e.nom):'')+'.</p>';
+      +(e.etat!=='avenir'&&e.nom?' — '+escapeHTML(MoteurProduction.enClair(e.nom)):'')+'.</p>';
     const ici=lots.filter(l=>l.service===id);
     if(ici.length){
       html+='<ul class="detail-jobs">'+ici.slice(0,8).map(l=>{
         const encours=t>=l.debut&&(l.fin==null||t<l.fin);
         return '<li'+(encours?' class="en-cours"':'')+'>'+hh(l.debut)+(l.dispo?'':'–'+(l.fin==null?'?':hh(l.fin)))
-          +' · '+escapeHTML(l.nom||'')+(l.attente>=1?' · attente '+Math.round(l.attente)+' min':'')
+          +' · '+escapeHTML(MoteurProduction.enClair(l.nom||''))+(l.attente>=1?' · attend '+Math.round(l.attente)+' min':'')
           +(l.impossible?' · <strong>ne tient pas dans le poste</strong>':'')+'</li>';
       }).join('')+'</ul>';
-      if(ici.length>8)html+='<p>Et '+(ici.length-8)+' autre(s) lot(s).</p>';
+      if(ici.length>8)html+='<p>Et '+(ici.length-8)+' autre(s) préparation(s).</p>';
     }
   } else if(!lots.length){
-    html='Décrivez des ateliers de travail : la journée se calcule d’elle-même, puis se relit ici.';
+    html='Donnez une équipe aux repas (étape 2, « Qui prépare quoi ») : la journée se calcule toute seule, puis se rejoue ici.';
   } else {
     // Qui attend depuis le plus longtemps, à cet instant ?
     let pire=null;
@@ -788,16 +798,16 @@ function majGoulotInfo() {
       const depuis=t-(e.lot.debut-(e.lot.attente||0));
       if(!pire||depuis>pire.depuis)pire={id,depuis,lot:e.lot};
     }
-    if(pire)html='<strong>'+escapeHTML(noms[pire.id]||pire.id)+'</strong><p>attend son amont depuis '
-      +Math.round(pire.depuis)+' min pour « '+escapeHTML(pire.lot.nom||'')+' » ; il se met au travail à '+hh(pire.lot.debut)+'.</p>';
+    if(pire)html='<strong>'+escapeHTML(noms[pire.id]||pire.id)+'</strong><p>attend le service d’avant depuis '
+      +Math.round(pire.depuis)+' min pour « '+escapeHTML(MoteurProduction.enClair(pire.lot.nom||''))+' » ; il se met au travail à '+hh(pire.lot.debut)+'.</p>';
     else html=Sim.vue&&t<=Sim.vue.debut
-      ?'Lisez la journée, ou choisissez un service pour voir ses lots.'
+      ?'Rejouez la journée, ou cliquez un service sur le plan pour voir ce qu’il prépare.'
       :'Personne n’attend à cet instant.';
     // Et sur toute la journée : le service qui a le plus attendu.
     const cumul={};for(const l of lots)if(l.attente>=1)cumul[l.service]=(cumul[l.service]||0)+l.attente;
     const top=Object.entries(cumul).sort((x,y)=>y[1]-x[1])[0];
-    if(top)html+='<p class="mini-note">Sur la journée, <strong>'+escapeHTML(noms[top[0]]||top[0])+'</strong> attend le plus : '
-      +Math.round(top[1])+' min cumulées.</p>';
+    if(top)html+='<p class="mini-note">Sur toute la journée, c’est <strong>'+escapeHTML(noms[top[0]]||top[0])+'</strong> qui attend le plus : '
+      +Math.round(top[1])+' min en tout.</p>';
   }
   if(el._detailHTML!==html){el.querySelector('[data-detail-body]').innerHTML=html;el._detailHTML=html;}
 }
@@ -905,7 +915,7 @@ function initTheme() {
 let snaps = {};
 function capturer(slot) {
   const r = Sim.ateliers && Sim.ateliers.resultat;
-  if (!r) { toast('Aucune journée à capturer.'); return; }
+  if (!r) { toast('Aucune journée à photographier.'); return; }
   snaps[slot] = OrlyComparaison.capturer(r, {
     source: dataSource,
     ateliers: JSON.parse(JSON.stringify(Sim.ateliers.state.ateliers)),
@@ -1092,32 +1102,34 @@ function installerCentreReglages() {
     change:()=>{if(Sim.ateliers)Sim.ateliers.rendre();majDemarrage();if(Sim.vue)Sim.vue.recalculer();},
     notify:toast
   });
-  // Les horaires de vols fixent l'échéance d'une compagnie × classe : le
-  // panneau rejoint le modèle, dont il est un réglage comme un autre.
+  // Les vols, leur import et leurs horaires vivent à l'étape 1 : c'est là
+  // qu'on les cherche. Le délai de chargement dit quand un repas doit être prêt.
+  const volsDonnees=document.getElementById('vols-donnees');
   const horaires=document.getElementById('panneau-horaires');
-  const modele=document.getElementById('rg-modele');
-  if(horaires&&modele)modele.insertBefore(horaires,document.querySelector('.rg-ailleurs'));
 
   // Comparer deux scénarios : c'est ici qu'on change un réglage pour voir
   // ce qu'il donne, c'est donc ici qu'on le compare.
   const comparer=document.createElement('h2');comparer.className='reglages-titre';
-  comparer.textContent='Comparer deux scénarios';
+  comparer.textContent='Comparer deux essais';
   hote.appendChild(comparer);hote.appendChild(bloc);
   // Le programme de vols, la sauvegarde et le périmètre décrivent l'essai eux
   // aussi : les laisser dans la colonne étroite obligeait à changer de vue pour
   // préparer une seule et même chose. La colonne ne garde que le suivi vivant.
   if(donnees){
     donnees.hidden=false;donnees.classList.remove('panel-content');donnees.classList.add('reglages-grille');
+    const programme=donnees.querySelector('.panneau');
+    if(volsDonnees&&programme)volsDonnees.appendChild(programme);
     const sous=document.createElement('h2');sous.className='reglages-titre';
-    sous.textContent='Données, sauvegarde et périmètre';
+    sous.textContent='Sauvegarde et limites du calcul';
     hote.appendChild(sous);hote.appendChild(donnees);
   }
+  if(volsDonnees&&horaires)volsDonnees.appendChild(horaires);
 }
 function showView(name) {
   if(editMode && name!=='plan')return;
   activeView=name;
   document.body.dataset.vue=name;
-  document.getElementById('view-title').textContent=({plan:'Simulation',ateliers:'Ateliers de travail',flux:'Centre des flux',reglages:'Centre des réglages',vols:'Suivi des vols'})[name];
+  afficherTitre(name);
   if(name==='ateliers'){pause();if(Sim.ateliers)Sim.ateliers.rendre();}
   document.body.classList.toggle('ateliers-open',name==='ateliers');
   document.getElementById('view-ateliers').hidden=name!=='ateliers';
@@ -1130,14 +1142,13 @@ function showView(name) {
   document.getElementById('view-vols').hidden=name!=='vols';
   document.querySelector('.plan-tete').hidden=name!=='plan';
   document.querySelector('.map-footer').hidden=name!=='plan';
-  document.querySelectorAll('[data-view]').forEach(b=>{b.classList.toggle('active',b.dataset.view===name);b.setAttribute('aria-pressed',String(b.dataset.view===name));});
+  majDemarrage();
   if(name==='vols')renderFlights();
 }
 function updateSource() {
   majDemarrage();
   document.getElementById('source-label').textContent=dataSource;
   document.getElementById('source-count').textContent=flights.filter(f=>f.sens==='DEP').length+' départs · '+flights.filter(f=>f.sens==='RET').length+' retours';
-  document.getElementById('flight-count').textContent=flights.filter(f=>f.sens==='DEP').length;
 }
 /* L'état de lecture appartient désormais à la vue. Il ne reste ici que ce qui
  * concerne l'édition du plan : pendant qu'on déplace des zones, on ne change
@@ -1187,7 +1198,9 @@ function departsSuivis() {
 
 function renderFlights() {
   if (activeView !== 'vols') return;
-  const t = Sim.vue ? Sim.vue.t : Infinity;
+  // Le tableau des vols est le bilan de la journée entière : il ne suit pas
+  // l'heure rejouée dans « La journée ».
+  const t = Infinity;
   const search = document.getElementById('flight-search').value.trim().toLowerCase();
   const filtre = document.getElementById('flight-filter').value;
   // Une classe que personne ne fabrique ne sera jamais prête : ce n'est pas un
@@ -1196,8 +1209,8 @@ function renderFlights() {
   const etatDe = d => orphelines(d).length ? 'orphan'
     : d.fin == null || d.fin > t ? (t > d.echeance ? 'overdue' : 'pending')
     : d.retard > 0 ? 'late' : 'ready';
-  const mot = { ready: 'Prêt à l’heure', late: 'Prêt en retard', overdue: 'Échéance dépassée',
-    pending: 'Pas prêt', orphan: 'Non fabriqué' };
+  const mot = { ready: 'Prêt à l’heure', late: 'Prêt en retard', overdue: 'En retard',
+    pending: 'Pas encore prêt', orphan: 'Des repas sans équipe' };
   // Les filtres regroupent : « Non prêts » compte aussi ce qui a dépassé son
   // échéance, « Terminés » ce qui est sorti, à l'heure ou non.
   const groupe = { pending: ['pending', 'overdue', 'orphan'], overdue: ['overdue'], ready: ['ready', 'late'] };
@@ -1212,19 +1225,20 @@ function renderFlights() {
     const e = etatDe(d);
     const sans = orphelines(d);
     const manquent = d.classes.filter(c => !c.etat.absente && (c.etat.fin == null || c.etat.fin > t));
-    const liste = cs => escapeHTML(cs.slice(0, 3).map(c => c.id).join(', ')) + (cs.length > 3 ? '…' : '');
+    const cab = c => { const n = MoteurProduction.NOM_CABINE; const k = c.id.slice(c.id.lastIndexOf('/') + 1); return (n && n[k]) || k; };
+    const liste = cs => escapeHTML(cs.slice(0, 3).map(cab).join(', ')) + (cs.length > 3 ? '…' : '');
     const detail = sans.length
-      ? 'aucun atelier ne fabrique ' + liste(sans) + ' — onglet « Ateliers »'
+      ? 'personne ne prépare : ' + liste(sans) + ' — étape 2, « Qui prépare quoi »'
       : !manquent.length
-      ? (d.retard ? 'la dernière, ' + escapeHTML(d.dernier ? d.dernier.id : '') + ', est sortie à '
-          + MoteurProduction.hhmm(d.fin) : 'toutes sorties')
-      : manquent.length + ' classe(s) pas encore sortie(s) : ' + liste(manquent);
+      ? (d.retard ? 'le dernier repas prêt, ' + escapeHTML(d.dernier ? cab(d.dernier) : '') + ', l’a été à '
+          + MoteurProduction.hhmm(d.fin) : 'tout est prêt')
+      : 'pas encore prêts : ' + liste(manquent);
     return '<tr><td><strong>' + escapeHTML(d.id) + '</strong><small>' + escapeHTML(d.cie)
-      + ' · ' + d.classes.length + ' classe(s)</small></td>'
+      + ' · ' + d.classes.length + ' classe' + (d.classes.length > 1 ? 's' : '') + '</small></td>'
       + '<td>' + MoteurProduction.hhmm(d.depart) + '</td>'
       + '<td>' + MoteurProduction.hhmm(d.echeance) + '</td>'
       + '<td><span class="status ' + e + '">' + mot[e] + '</span>'
-      + (d.fin != null && d.fin <= t ? '<small>fini à ' + MoteurProduction.hhmm(d.fin)
+      + (d.fin != null && d.fin <= t ? '<small>prêt à ' + MoteurProduction.hhmm(d.fin)
           + (d.retard ? ' · +' + d.retard + ' min' : '') + '</small>' : '')
       + '</td><td>' + detail + '</td></tr>';
   }).join('') || '<tr><td colspan="5" class="empty-state">Aucun départ ne correspond à ces filtres.</td></tr>';
@@ -1234,7 +1248,6 @@ function renderFlights() {
 }
 
 function initWorkbench() {
-  document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
   document.getElementById('btn-limits').addEventListener('click',()=>{
     if(editMode)basculerEdition();showView('reglages');document.getElementById('model-limits').scrollIntoView({block:'nearest'});
   });

@@ -6,7 +6,7 @@ body.plan-editing header{padding:10px 20px}
 body.plan-editing .app{grid-template-columns:minmax(0,1fr) 370px}
 body.plan-editing .workspace-heading{padding:12px 20px}
 body.plan-editing .workspace-heading h1{font-size:18px}
-body.plan-editing .view-tabs,body.plan-editing .map-footer,body.plan-editing .zone-picker,body.plan-editing .plan-tete>#btn-edit{display:none}
+body.plan-editing .etapes,body.plan-editing .map-footer,body.plan-editing .zone-picker,body.plan-editing .plan-tete>#btn-edit{display:none}
 body.plan-editing .plan-tete{padding:8px 20px;justify-content:flex-end}
 body.plan-editing #viewport>g:not(#plan-fond):not(#editor-layer){display:none}
 body.plan-editing #panneau-edition{padding:18px;overflow:auto;min-height:0}

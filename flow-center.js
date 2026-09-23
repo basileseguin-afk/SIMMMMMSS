@@ -43,33 +43,33 @@ class FlowCenter{
  constructor(adapter){
   this.a=adapter;this.host=document.getElementById('view-flux');this.family='all';this.service='';this.undoStack=[];this.redoStack=[];this.state=initial(adapter.legacy);this.mapFilter='all';this.mapOwner='';
   let warning='';try{const saved=localStorage.getItem('orly-flows-v1');if(saved)this.state=validate(JSON.parse(saved));}catch(e){warning='Configuration enregistrée non chargée : '+e.message+' La copie reste conservée.';}
-  this.build();this.bind();this.refresh();this.status(warning||'Configuration locale · liaisons non classées à préciser.');
+  this.build();this.bind();this.refresh();this.status(warning||'Enregistré dans ce navigateur · certains liens n’ont pas encore de type.');
  }
  get points(){return endpoints(this.a.zones());}
  status(message){document.getElementById('fc-status').textContent=message;}
  build(){
-  this.host.innerHTML=`<div class="fc-heading"><div><p class="scope-badge">Ce graphe décrit qui livre qui dans l’unité</p></div><div class="fc-actions"><button class="btn" id="fc-undo">Annuler</button><button class="btn" id="fc-redo">Rétablir</button><button class="btn" id="fc-export">Exporter</button><button class="btn" id="fc-import-button">Importer</button><input id="fc-import" type="file" accept=".json" hidden></div></div>
+  this.host.innerHTML=`<div class="fc-heading"><div><p class="scope-badge">Qui livre qui, entre les services de l’unité</p></div><div class="fc-actions"><button class="btn" id="fc-undo">Annuler</button><button class="btn" id="fc-redo">Rétablir</button><button class="btn" id="fc-export">Exporter</button><button class="btn" id="fc-import-button">Importer</button><input id="fc-import" type="file" accept=".json" hidden></div></div>
    <div id="fc-status" role="status" aria-live="polite"></div>
    <section id="fc-lecture" class="fc-lecture">
-    <h3 class="fc-list-title">Ce que le modèle en lit</h3>
-    <div class="mini-note">Une classe suit d’abord <b>son parcours</b> (onglet Ateliers) ; ce graphe
-     ne décide que pour les classes qui n’en ont pas.<details class="aide"><summary aria-label="Ce que le modèle retient du graphe">?</summary>
-     <span class="aide-corps"><p>Le graphe décrit l’unité : qui livre qui. Il ne dit pas le chemin de
-       <b>chaque</b> compagnie × classe — un plateau d’économie ne passe pas par la cuisine. C’est le
-       rôle des <b>parcours des classes</b>, dans l’onglet Ateliers.</p>
-       <p>Pour une classe sans parcours, un service ne la travaille que lorsque tous ses
-       fournisseurs ici la lui ont livrée. Seul compte le <b>sens</b> des liaisons actives ; la
-       famille de flux, les stockages et la précision restent de la description.</p></span></details></div>
+    <h3 class="fc-list-title">Ce que le calcul en retient</h3>
+    <div class="mini-note">Un repas suit d’abord <b>son chemin</b> (étape 2, « Qui prépare quoi ») ; ces
+     liens ne servent qu’aux repas qui n’en ont pas.<details class="aide"><summary aria-label="Ce que le calcul retient de ces liens">?</summary>
+     <span class="aide-corps"><p>Ces liens décrivent l’unité : qui livre qui. Ils ne disent pas le
+       chemin de <b>chaque</b> repas — un plateau d’économie ne passe pas par la cuisine. C’est le
+       rôle des <b>chemins</b>, à l’étape 2.</p>
+       <p>Pour un repas sans chemin, un service ne le prépare que lorsque tous ceux qui le
+       livrent ici l’ont fait. Seul compte le <b>sens</b> des liens actifs ; leur type et leur
+       précision ne servent qu’à décrire.</p></span></details></div>
     <div id="fc-alertes"></div>
     <div id="fc-parcours"></div>
    </section>
-   <h3 class="fc-list-title">Les liaisons</h3>
-   <nav id="fc-families" class="fc-families" aria-label="Familles de flux"></nav>
-   <div class="fc-filters"><label>Service concerné<select id="fc-service"></select></label><span id="fc-summary"></span><button class="btn" id="fc-show-map">Voir ces flux sur le plan</button><button class="btn btn-play" id="fc-new">+ Nouvelle liaison</button></div>
-   <form id="fc-add" class="fc-creation" hidden><div class="fc-creation-head"><h3>Nouvelle liaison</h3><button class="text-button" type="button" id="fc-cancel">Fermer</button></div><div class="fc-fields"><label>Flux<select id="fc-type">${this.typeOptions('material',false)}</select></label><label>Origine<select id="fc-from" required></select></label><label>Destination<select id="fc-to" required></select></label><label>Précision facultative<input id="fc-label" maxlength="200" placeholder="Ex. matériel propre"></label></div><button class="btn btn-play" type="submit">Ajouter la liaison</button></form>
+   <h3 class="fc-list-title">Les liens</h3>
+   <nav id="fc-families" class="fc-families" aria-label="Types de liens"></nav>
+   <div class="fc-filters"><label>Service concerné<select id="fc-service"></select></label><span id="fc-summary"></span><button class="btn" id="fc-show-map">Voir ces liens sur le plan</button><button class="btn btn-play" id="fc-new">+ Nouveau lien</button></div>
+   <form id="fc-add" class="fc-creation" hidden><div class="fc-creation-head"><h3>Nouveau lien</h3><button class="text-button" type="button" id="fc-cancel">Fermer</button></div><div class="fc-fields"><label>Ce qui circule<select id="fc-type">${this.typeOptions('material',false)}</select></label><label>De<select id="fc-from" required></select></label><label>Vers<select id="fc-to" required></select></label><label>Précision facultative<input id="fc-label" maxlength="200" placeholder="Ex. matériel propre"></label></div><button class="btn btn-play" type="submit">Ajouter le lien</button></form>
    <div id="fc-list"></div>
-   <details id="fc-rules" class="fc-rules"><summary>Circulation humaine à l’intérieur des services</summary><p class="mini-note">Description seule : le modèle ne déplace pas encore les personnes. Par défaut, chacun circule dans son service et ses stockages ; sortir demande une liaison Runner explicite, dans le sens indiqué.</p><div id="fc-internal"></div></details>`;
-  const label=document.createElement('label');label.className='fc-map-filter';label.innerHTML=`Flux affichés <select id="fc-map-filter" title="Liaisons entre services. Les échanges internes sont décrits dans le Centre des flux.">${Object.entries(FAMILIES).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}<option value="none">Aucun</option></select><span id="fc-map-scope"></span>`;document.querySelector('.map-footer').appendChild(label);
+   <details id="fc-rules" class="fc-rules"><summary>Circulation humaine à l’intérieur des services</summary><p class="mini-note">Pour décrire seulement : le calcul ne déplace pas encore les personnes. Par défaut, chacun circule dans son service et ses stockages ; sortir demande une liaison Runner explicite, dans le sens indiqué.</p><div id="fc-internal"></div></details>`;
+  const label=document.createElement('label');label.className='fc-map-filter';label.innerHTML=`Liens dessinés <select id="fc-map-filter" title="Les liens entre services, dessinés sur le plan. Ils se règlent dans « L’unité ».">${Object.entries(FAMILIES).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}<option value="none">Aucun</option></select><span id="fc-map-scope"></span>`;document.querySelector('.map-footer').appendChild(label);
  }
  typeOptions(value,pending=true){return Object.entries(FAMILIES).filter(([k])=>k!=='all'&&(pending||k!=='unclassified')).map(([family,label])=>`<optgroup label="${label}">${Object.entries(TYPES).filter(([,t])=>t.family===family).map(([k,t])=>`<option value="${k}" ${k===value?'selected':''}>${t.label}</option>`).join('')}</optgroup>`).join('');}
  pointOptions(value,allowed=this.points){
@@ -89,7 +89,7 @@ class FlowCenter{
   on('fc-add','submit',e=>{e.preventDefault();const from=document.getElementById('fc-from').value,to=document.getElementById('fc-to').value;
    if(!from||!to){this.status('Choisissez une origine et une destination.');return;}
    const flow={id:uid(),type:document.getElementById('fc-type').value,from,to,enabled:true,label:document.getElementById('fc-label').value};
-   if(this.change(()=>this.state.flows.push(flow),'Liaison ajoutée.')){this.family=TYPES[flow.type].family;document.getElementById('fc-label').value='';this.render();}
+   if(this.change(()=>this.state.flows.push(flow),'Lien ajouté.')){this.family=TYPES[flow.type].family;document.getElementById('fc-label').value='';this.render();}
   });
   on('fc-list','change',e=>{const field=e.target.dataset.field,id=e.target.closest('[data-flow]')?.dataset.flow;if(!field||!id)return;const value=field==='enabled'?e.target.checked:e.target.value;if((field==='from'||field==='to')&&!value){this.render();return;}this.change(()=>{this.state.flows.find(f=>f.id===id)[field]=value;},'Liaison enregistrée.');});
   on('fc-list','click',e=>{const b=e.target.closest('[data-action]'),id=b?.closest('[data-flow]')?.dataset.flow;if(!id)return;
@@ -161,7 +161,7 @@ class FlowCenter{
   document.getElementById('fc-internal').innerHTML=services.map(p=>`<label><input type="checkbox" data-owner="${esc(p.owner)}" ${this.state.internal[p.owner]!==false?'checked':''}> ${esc(p.label)} : circulation interne libre</label>`).join('');
   document.getElementById('fc-rules').open=this.family==='human';
   const flows=this.visibleFlows();const missing=this.state.flows.filter(f=>!points.some(p=>p.id===f.from)||!points.some(p=>p.id===f.to)).length;
-  document.getElementById('fc-summary').textContent=flows.length+' liaison(s) affichée(s) · '+this.state.flows.filter(f=>usable(f,points)).length+' active(s) et classée(s)'+(missing?' · '+missing+' à réparer (emplacement absent)':'');
+  document.getElementById('fc-summary').textContent=flows.length+' lien(s) affiché(s) · '+this.state.flows.filter(f=>usable(f,points)).length+' actif(s) avec un type'+(missing?' · '+missing+' à réparer (emplacement absent)':'');
   const list=document.getElementById('fc-list');
   // Keep the card nodes stable on edits, so blur cannot swallow the next button click.
   const structure=JSON.stringify([flows.map(f=>f.id),points]);
