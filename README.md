@@ -83,6 +83,9 @@ Les **coordonnées** des zones et des tuiles restent dans le code : ce sont des
 nombres, pas le dessin. Les **vols embarqués sont fictifs** ; aucun export réel
 n'est présent dans ce dépôt.
 
+> **Où en est-on ?** Le [cahier des charges consolidé](docs/CAHIER_DES_CHARGES.md)
+> reprend tout ce qui a été demandé, l’état de chaque point et les écarts restants.
+
 ## Parcours d’utilisation
 
 Le site raconte une histoire simple, pour qu’une personne qui n’est pas du

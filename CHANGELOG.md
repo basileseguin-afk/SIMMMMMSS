@@ -5,6 +5,17 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-23 — Cahier des charges consolidé et écarts
+
+- `docs/CAHIER_DES_CHARGES.md` (nouveau) : toutes les demandes depuis le 17/09
+  (cahier des charges initial, feuille de route d'Astra, échanges), chacune
+  avec sa source, son état vérifié dans le code et l'écart restant ; les
+  décisions d'abandon ; les écarts classés par priorité ; les questions à
+  trancher.
+- `README.md` : lien vers ce document.
+
+---
+
 ## 2026-09-23 — Un site qui se lit en images
 
 Le site était juste mais trop textuel et monochrome. Repris en designer : le
