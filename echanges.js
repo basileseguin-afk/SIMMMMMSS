@@ -57,7 +57,8 @@
 
   /**
    * @param etat  { bareme, rendement, regime }
-   * @param ctx   { services:[{id,nom}], classes:[classe], routes: Map classe → {services:Set} }
+   * @param ctx   { services:[{id,nom}], classes:[classe], routes: Map classe → {services:Set},
+   *                sansBareme?: Set des services dont aucune équipe ne lit le barème }
    */
   function baremeVersClasseur(etat, ctx) {
     const services = ctx.services || [];
@@ -72,7 +73,10 @@
 
     for (const sid of ordre) {
       const table = etat.bareme[sid] || {};
-      // Les services sans barème ni classe à travailler n'encombrent pas la feuille.
+      // Les services sans barème ni classe à travailler n'encombrent pas la
+      // feuille ; ceux dont les équipes ne lisent pas le barème (plonge au
+      // débit, mise à disposition, robot) non plus.
+      if (ctx.sansBareme && ctx.sansBareme.has(sid) && !Object.keys(table).length) continue;
       const concerne = Object.keys(table).length
         || (ctx.classes || []).some(c => { const r = ctx.routes && ctx.routes.get(c.id); return r && r.services.has(sid); });
       if (!concerne) continue;
@@ -548,7 +552,7 @@
   }
 
   const api = { baremeVersClasseur, classeurVersBareme, volsVersClasseur, classeurVersVols,
-    ateliersVersClasseur, classeurVersAteliers, ENTETE_BAREME };
+    ateliersVersClasseur, classeurVersAteliers };
   if (enNode && module.exports) module.exports = api;
   else root.OrlyEchanges = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

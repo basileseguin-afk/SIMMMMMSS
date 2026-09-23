@@ -155,9 +155,9 @@
       prepa:    { BC: [2.20, 5], PC: [1.10, 5], YC: [0.35, 5], CREW: [2.20, 5], SPML: [2.60, 5] },
       dotation: { BC: [0.50, 0], PC: [0.30, 0], YC: [0.12, 0], CREW: [0.50, 0], SPML: [0.50, 0] },
       armement: { BC: [0.08, 5], PC: [0.08, 5], YC: [0.08, 5], CREW: [0.08, 5], SPML: [0.08, 5] },
-      magasin:  { BC: [0.10, 0], PC: [0.08, 0], YC: [0.04, 0], CREW: [0.10, 0], SPML: [0.10, 0] },
-      plonge:   { BC: [0.90, 0], PC: [0.90, 0], YC: [0.90, 0], CREW: [0.90, 0], SPML: [0.90, 0] }
+      magasin:  { BC: [0.10, 0], PC: [0.08, 0], YC: [0.04, 0], CREW: [0.10, 0], SPML: [0.10, 0] }
     };
+    // Pas de ligne pour la plonge : elle travaille au débit de ses tunnels.
     const out = {};
     for (const [service, t] of Object.entries(ancien)) {
       out[service] = {};
@@ -1207,11 +1207,11 @@
     minutes, hhmm, idClasse,
     REGIME_DEFAUT, normaliserRegime, travailDuPoste, executerTache,
     classesDeVols, BAREME_DEMO, RENDEMENT_DEMO, travailClasse,
-    PAX_TYPE, TOUTES, cleBareme, normaliserBareme, minutesParVol, CHAMP_PAX,
+    PAX_TYPE, TOUTES, cleBareme, normaliserBareme, minutesParVol,
     arcsDuParcours, servicesDuParcours, routesDesClasses,
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,
     pausesDe, finAvecPauses,
-    MATERIEL_DEFAUT, UNITES_DEFAUT, unitesDe, retoursDeVols, besoinMateriel,
+    UNITES_DEFAUT, unitesDe, retoursDeVols, besoinMateriel,
     simuler
   };
 

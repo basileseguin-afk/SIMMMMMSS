@@ -190,3 +190,10 @@ test('ateliers : une classe retirée mais encore fabriquée est refusée', () =>
   f = modifier(f, 'Classes', l => l.map(x => (x[0] === 'AF' && x[1] === 'BC' ? [x[0], x[1], x[2], 'oui'] : x)));
   assert.throws(() => E.classeurVersAteliers(f, etat, ctxAteliers()), /AF\/BC est retirée .* Cuisine matin la fabrique encore/);
 });
+
+test('barème : un service qui ne lit pas le barème n’encombre pas le classeur', () => {
+  const ctx = { ...ctxBareme(), sansBareme: new Set(['plonge', 'magasin']) };
+  const lignes = E.baremeVersClasseur({ ...ETAT_BAREME, bareme: { ...ETAT_BAREME.bareme, magasin: { '*/BC': 2 } } }, ctx)[0].lignes;
+  assert.ok(!lignes.some(l => l[0] === 'PLONGE'), 'la plonge travaille au débit de ses tunnels');
+  assert.ok(lignes.some(l => l[0] === 'MAGASIN'), 'mais une valeur déjà saisie reste, pour ne rien perdre');
+});

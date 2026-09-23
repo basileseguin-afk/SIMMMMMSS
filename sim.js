@@ -12,7 +12,7 @@
 (function () {
 'use strict';
 const {escapeHTML, parseFlights} = window.OrlyUI;
-let activePanel = 'suivi', activeView = 'plan', dataSource = 'Jeu de démonstration';
+let activeView = 'plan', dataSource = 'Jeu de démonstration';
 
 /* ==========================================================================
  *  1. PARAMÈTRES DES HORAIRES — les seuls qui ne vivent pas dans un centre
@@ -46,32 +46,31 @@ const TILES = [
 // Cadrage sur le bâtiment
 const VUE = { x:300, y:320, w:4340, h:2140 };
 
-/* Ateliers = stations de simulation (clé = id moteur).
- * `reel:true` => boîte reprise telle quelle des annotations du plan.
- * `approx:true` => emplacement estimé, à confirmer (zone non annotée). */
+/* Les services du plan de base (clé = identifiant du service).
+ * `approx:true` => emplacement estimé, à confirmer. `sous` : sous-titres. */
 const ZONES = {
-  quais:    { nom:'QUAIS · RÉCEPTION', x:700, y:330, w:1960, h:180, sink:true, approx:true,
+  quais:    { nom:'QUAIS · RÉCEPTION', x:700, y:330, w:1960, h:180, approx:true,
               sous:['camions : départ trolleys / retour vols sales'] },
-  handling: { nom:'CF DÉPART FOOD', x:1528, y:673.1, w:808.6, h:230.3, buffer:true, reel:true,
+  handling: { nom:'CF DÉPART FOOD', x:1528, y:673.1, w:808.6, h:230.3,
               sous:['trolleys prêts → camion'] },
-  appros:   { nom:'RÉCEPTION / APPROS', x:2680, y:560, w:640, h:250, staff:'appros', approx:true,
+  appros:   { nom:'RÉCEPTION / APPROS', x:2680, y:560, w:640, h:250, approx:true,
               sous:['réceptions & commandes'] },
-  armement: { nom:'ARMEMENT', x:3065.8, y:755.1, w:317.9, h:296, staff:'armement', reel:true,
+  armement: { nom:'ARMEMENT', x:3065.8, y:755.1, w:317.9, h:296,
               sous:['trolleys non-food'] },
-  prepa:    { nom:'MONTAGE', x:2180, y:900, w:400, h:350, staff:'prepa', robot:true, reel:true,
+  prepa:    { nom:'MONTAGE', x:2180, y:900, w:400, h:350,
               sous:['dressage plateaux','montage trolleys'] },
-  magasin:  { nom:'MAGASIN', x:4009.3, y:1052.8, w:486.7, h:140, staff:'magasin', reel:true,
+  magasin:  { nom:'MAGASIN', x:4009.3, y:1052.8, w:486.7, h:140,
               sous:['produit compagnie'] },
-  dotation: { nom:'DOTATION', x:1156, y:1387.9, w:348, h:629.9, staff:'dotation', reel:true,
+  dotation: { nom:'DOTATION', x:1156, y:1387.9, w:348, h:629.9,
               sous:['couverts + serviettes','assiettes propres'] },
-  decontam: { nom:'LÉGUMERIE', x:2555.1, y:1446.3, w:165.7, h:115.2, staff:'decontam', reel:true,
+  decontam: { nom:'LÉGUMERIE', x:2555.1, y:1446.3, w:165.7, h:115.2,
               sous:['lavage / décontamination'] },
-  bobduty:  { nom:'DUTY FREE', x:787.3, y:1519.5, w:348, h:492, staff:'bobduty', reel:true,
+  bobduty:  { nom:'DUTY FREE', x:787.3, y:1519.5, w:348, h:492,
               sous:['buy-on-board'] },
-  cuisine:  { nom:'CUISINE', x:1900, y:1560, w:280, h:520, staff:'cuisine', approx:true,
+  cuisine:  { nom:'CUISINE', x:1900, y:1560, w:280, h:520, approx:true,
               sous:['tranche · froid · chaud'] },
-  plonge:   { nom:'PLONGE', x:1180, y:2090, w:420, h:330, tunnels:true, approx:true,
-              sous:['3 tunnels de lavage'] }
+  plonge:   { nom:'PLONGE', x:1180, y:2090, w:420, h:330, approx:true,
+              sous:['lavage des retours'] }
 };
 
 /* Stockages, chambres froides et locaux : repris tels quels du plan. */
@@ -129,20 +128,6 @@ function boite(z) {
 }
 /* Maintient x/y/w/h en phase avec les points d'un polygone. */
 function syncBoite(z) { const b = boite(z); z.x = b.x; z.y = b.y; z.w = b.w; z.h = b.h; }
-/* Déplace la zone entière. */
-function deplacerZone(z, dx, dy) {
-  if (estPoly(z)) { z.pts = z.pts.map(pt => [pt[0] + dx, pt[1] + dy]); syncBoite(z); }
-  else { z.x += dx; z.y += dy; }
-}
-/* Applique une nouvelle boîte englobante (un polygone est mis à l'échelle). */
-function appliquerBoite(z, nb) {
-  const b = boite(z);
-  if (estPoly(z)) {
-    const sx = b.w ? nb.w / b.w : 1, sy = b.h ? nb.h / b.h : 1;
-    z.pts = z.pts.map(pt => [nb.x + (pt[0] - b.x) * sx, nb.y + (pt[1] - b.y) * sy]);
-  }
-  z.x = nb.x; z.y = nb.y; z.w = nb.w; z.h = nb.h;
-}
 /* Tracé SVG de la zone. */
 function dZone(z) {
   if (estPoly(z)) return 'M ' + z.pts.map(pt => pt[0] + ' ' + pt[1]).join(' L ') + ' Z';
@@ -193,14 +178,7 @@ function chargerVols(data) {
 const SVGNS = 'http://www.w3.org/2000/svg';
 const svg = document.getElementById('plan');
 const zoneEls = {};
-let edgeEls = {}, gPoign = null;
-let editMode = false, tracage = false, tracagePoly = false;
-// Géométrie d'origine (pour « réinitialiser »)
-const ZONES_DEFAUT = JSON.parse(JSON.stringify(
-  Object.keys(ZONES).reduce((o, id) => {
-    const z = ZONES[id]; o[id] = { x:z.x, y:z.y, w:z.w, h:z.h, approx:!!z.approx }; return o;
-  }, {})
-));
+let editMode = false;
 function svgEl(t, a) { const e = document.createElementNS(SVGNS, t); for (const k in a) e.setAttribute(k, a[k]); return e; }
 
 function construirePlan() {
@@ -218,29 +196,8 @@ function construirePlan() {
   });
   verifierPlan();
 
-  // Arêtes de flux (recalculées à chaque modification de géométrie)
-  const gEdges = svgEl('g', {id:'flow-edges'}); gVue.appendChild(gEdges);
-  edgeEls = {};
-  FLUX.concat(FLUX_RETOUR.map(e => e.concat('R'))).forEach(fl => {
-    const [a, b] = fl, retour = fl[2] === 'R', id = a + '_' + b;
-    const path = svgEl('path', { id:'edge-' + id, class:'edge' + (retour ? ' retour' : '') });
-    const fleche = svgEl('path', { class:'edge fleche' + (retour ? ' retour' : '') });
-    gEdges.appendChild(path); gEdges.appendChild(fleche);
-    edgeEls[id] = { path, fleche, a, b };
-  });
-  redessinerEdges();
-
-  // Stockages / chambres froides (repris du plan, sous les ateliers)
-  const gSto = svgEl('g', {id:'plan-storages'}); gVue.appendChild(gSto);
-  STORAGES.forEach(s => {
-    const g = svgEl('g', { class:'sto sto-' + s.cat });
-    g.appendChild(svgEl('rect', { x:s.x, y:s.y, width:s.w, height:s.h, rx:8 }));
-    const ti = svgEl('title', {}); ti.textContent = s.l; g.appendChild(ti);
-    // libellé affiché seulement en zoom (sinon le plan devient illisible)
-    const lbl = svgEl('text', { class:'sto-txt', x:s.x + s.w/2, y:s.y + s.h/2 + 10, 'text-anchor':'middle' });
-    lbl.textContent = s.l; g.appendChild(lbl);
-    gSto.appendChild(g);
-  });
+  // Arêtes de flux : celles du Centre des flux, redessinées à chaque changement.
+  gVue.appendChild(svgEl('g', { id:'flow-edges' }));
 
   // Ateliers (au-dessus)
   const gZones = svgEl('g', {}); gVue.appendChild(gZones);
@@ -253,10 +210,7 @@ function construirePlan() {
     const sous = (z.sous || []).map(s => {
       const st = svgEl('text', { class:'sous' }); st.textContent = s; g.appendChild(st); return st;
     });
-    let res = null;
-    if (z.robot) res = ajoutRessource(g, 'ROBOT', 'robot');
-    if (z.tunnels) res = ajoutRessource(g, 'TUNNELS', 'tunnels');
-    zoneEls[id] = { g, rect, titre, sous, res, tip:ti, b:boite(z) };
+    zoneEls[id] = { g, rect, titre, sous, tip:ti, b:boite(z) };
     g.setAttribute('role','button'); g.setAttribute('tabindex','0'); g.setAttribute('aria-label',z.nom);
     g.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' '){e.preventDefault();selectionner(id);} });
     g.addEventListener('click', e => { e.stopPropagation(); selectionner(id); });
@@ -264,7 +218,6 @@ function construirePlan() {
     positionnerZone(id);
   });
 
-  gPoign = svgEl('g', { id:'poignees' }); gVue.appendChild(gPoign);
   initInteractions();
 }
 
@@ -278,29 +231,10 @@ function positionnerZone(id) {
   e.tip.textContent = z.nom + (z.approx ? ' (emplacement à confirmer)' : '');
   s(e.titre, { x:b.x + 14, y:b.y + 56 });
   e.sous.forEach((st, i) => s(st, { x:b.x + 14, y:b.y + 96 + i*38 }));
-  if (e.res) {
-    const rx = z.robot ? b.x + b.w - 210 : b.x + 14, ry = b.y + b.h - 130;
-    s(e.res.box, { x:rx, y:ry });
-    s(e.res.txt, { x:rx + 16, y:ry + 36 });
-    s(e.res.val, { x:rx + 16, y:ry + 78 });
-  }
 }
 
-/* Recalcule le tracé de toutes les arêtes. */
-function redessinerEdges() {
-  if(Sim.flows){dessinerFluxConfigures();return;}
-  Object.keys(edgeEls).forEach(id => {
-    const e = edgeEls[id];
-    const pa = bord(e.a, centre(e.b)), pb = bord(e.b, centre(e.a));
-    const mx = (pa.x + pb.x)/2, my = (pa.y + pb.y)/2;
-    const dx = pb.x - pa.x, dy = pb.y - pa.y, len = Math.hypot(dx, dy) || 1;
-    const cx = mx - dy/len * 130, cy = my + dx/len * 130;
-    e.path.setAttribute('d', `M ${pa.x} ${pa.y} Q ${cx} ${cy} ${pb.x} ${pb.y}`);
-    const ang = Math.atan2(pb.y - cy, pb.x - cx), F = 42;
-    e.fleche.setAttribute('d',
-      `M ${pb.x} ${pb.y} L ${pb.x-F*Math.cos(ang-0.4)} ${pb.y-F*Math.sin(ang-0.4)} M ${pb.x} ${pb.y} L ${pb.x-F*Math.cos(ang+0.4)} ${pb.y-F*Math.sin(ang+0.4)}`);
-  });
-}
+/* Redessine les arêtes : celles du Centre des flux, dès qu'il existe. */
+function redessinerEdges() { if (Sim.flows) dessinerFluxConfigures(); }
 
 function dessinerFluxConfigures(){
   const group=document.getElementById('flow-edges');group.replaceChildren();
@@ -531,7 +465,6 @@ function appliquerVue() {
   Sim._gVue.setAttribute('transform', 'translate(' + vtx + ' ' + vty + ') scale(' + vk + ')');
   svg.classList.toggle('zoomed', vk >= 1.7);
   const z = document.getElementById('zoom-val'); if (z) z.textContent = Math.round(vk*100) + '%';
-  majPoignees();
   if(Sim.editor)Sim.editor.renderCanvas();
 }
 function ptSvg(e) {
@@ -548,8 +481,6 @@ function zoomer(f, p) {
   vk = nk; vtx = p.x - wx*vk; vty = p.y - wy*vk;
   appliquerVue();
 }
-/* Convertit un point du repère SVG vers le repère du plan. */
-function versPlan(p) { return { x:(p.x - vtx) / vk, y:(p.y - vty) / vk }; }
 
 function initInteractions() {
   // Un cran fixe saute trop sur un pavé tactile, qui envoie beaucoup de petits
@@ -581,221 +512,25 @@ function initInteractions() {
     const g = gestes[e.key]; if (g) { e.preventDefault(); g(); }
   });
 
-  let act = null;   // action en cours : pan | move | resize | trace
-
+  // Glisser déplace la vue. Toute retouche de géométrie passe par l'éditeur
+  // du plan (plan-editor.js), qui a sa propre couche au-dessus des zones.
+  let act = null;
   svg.addEventListener('pointerdown', e => {
-    const p = ptSvg(e), m = versPlan(p);
-    if(editMode)svg.setPointerCapture(e.pointerId);
-
-    // tracé d'un polygone : chaque clic ajoute un point
-    if (tracagePoly && selection) {
-      if (!tracePts) tracePts = [];
-      // e.detail >= 2 = second clic d'un double-clic (il sert à fermer, pas à ajouter)
-      const dernier = tracePts[tracePts.length - 1];
-      const doublon = dernier && Math.hypot(m.x - dernier[0], m.y - dernier[1]) < 12 / vk;
-      if (e.detail < 2 && !doublon) {
-        tracePts.push([Math.round(m.x), Math.round(m.y)]);
-        dessinerTracePoly(tracePts);
-      }
-      act = { t:'poly' };
-      return;
-    }
-    if (tracage && selection) { act = { t:'trace', m0:m }; return; }
-
-    // ajout d'un point au milieu d'un segment
-    const ha = e.target.closest && e.target.closest('.poignee-ajout');
-    if (editMode && ha && selection) {
-      const z = ZONES[selection], i = +ha.dataset.add;
-      const nx = z.pts[(i + 1) % z.pts.length];
-      z.pts.splice(i + 1, 0, [(z.pts[i][0] + nx[0]) / 2, (z.pts[i][1] + nx[1]) / 2]);
-      syncBoite(z); majApresEdition();
-      act = { t:'vertex', i:i + 1 };
-      return;
-    }
-    const hp = e.target.closest && e.target.closest('.poignee');
-    if (editMode && hp && selection) {
-      const z = ZONES[selection];
-      if (estPoly(z)) {
-        const i = +hp.dataset.i;
-        if (e.altKey) {          // Alt+clic : supprimer le sommet
-          if (z.pts.length > 3) { z.pts.splice(i, 1); syncBoite(z); majApresEdition(); toast('Point supprimé'); }
-          else toast('Un polygone garde au moins 3 points');
-          return;
-        }
-        act = { t:'vertex', i:i };
-        return;
-      }
-      act = { t:'resize', coin:hp.dataset.h, m0:m, z0:{ x:z.x, y:z.y, w:z.w, h:z.h } };
-      return;
-    }
-    const gz = e.target.closest && e.target.closest('.zone');
-    if (editMode && gz) {
-      const id = gz.dataset.id;
-      if (id !== selection) selectionner(id);
-      const b0 = boite(ZONES[id]);
-      act = { t:'move', m0:m, z0:{ x:b0.x, y:b0.y } };
-      return;
-    }
-    act = { t:'pan', p0:p, cx:e.clientX, cy:e.clientY, tx:vtx, ty:vty }; svg.style.cursor = 'grabbing';
+    const p = ptSvg(e);
+    act = { p0:p, cx:e.clientX, cy:e.clientY, tx:vtx, ty:vty }; svg.style.cursor = 'grabbing';
   });
-
   svg.addEventListener('pointermove', e => {
     if (!act) return;
-    const p = ptSvg(e), m = versPlan(p);
-
-    if (act.t === 'pan') {
-      if(!act.bouge&&Math.hypot(e.clientX-act.cx,e.clientY-act.cy)<4)return;
-      act.bouge=true;svg.setPointerCapture(e.pointerId);
-      vtx = act.tx + (p.x - act.p0.x); vty = act.ty + (p.y - act.p0.y); appliquerVue(); return;
-    }
-    if (act.t === 'trace') {
-      const r = rectDe(act.m0, m); dessinerTrace(r); return;
-    }
-    if (act.t === 'poly') { dessinerTracePoly(tracePts, [m.x, m.y]); return; }
-    const z = ZONES[selection]; if (!z) return;
-    act.bouge = true;
-
-    if (act.t === 'vertex') {
-      z.pts[act.i] = [Math.round(m.x), Math.round(m.y)];
-      syncBoite(z);
-    } else if (act.t === 'move') {
-      const dx = Math.round(act.z0.x + (m.x - act.m0.x)) - boite(z).x;
-      const dy = Math.round(act.z0.y + (m.y - act.m0.y)) - boite(z).y;
-      deplacerZone(z, dx, dy);
-    } else if (act.t === 'resize') {
-      const d = { x:m.x - act.m0.x, y:m.y - act.m0.y }, o = act.z0, MIN = 60;
-      let x = o.x, y = o.y, w = o.w, h = o.h;
-      if (act.coin.includes('w')) { x = o.x + d.x; w = o.w - d.x; }
-      if (act.coin.includes('e')) { w = o.w + d.x; }
-      if (act.coin.includes('n')) { y = o.y + d.y; h = o.h - d.y; }
-      if (act.coin.includes('s')) { h = o.h + d.y; }
-      if (w < MIN) { if (act.coin.includes('w')) x = o.x + o.w - MIN; w = MIN; }
-      if (h < MIN) { if (act.coin.includes('n')) y = o.y + o.h - MIN; h = MIN; }
-      appliquerBoite(z, { x:Math.round(x), y:Math.round(y), w:Math.round(w), h:Math.round(h) });
-    }
-    majApresEdition();
+    if (!act.bouge && Math.hypot(e.clientX - act.cx, e.clientY - act.cy) < 4) return;
+    act.bouge = true; svg.setPointerCapture(e.pointerId);
+    const p = ptSvg(e);
+    vtx = act.tx + (p.x - act.p0.x); vty = act.ty + (p.y - act.p0.y); appliquerVue();
   });
-
-  const fin = e => {
-    if (act && act.t === 'trace') {
-      const r = rectDe(act.m0, versPlan(ptSvg(e)));
-      if (r.w > 40 && r.h > 40) {
-        const z = ZONES[selection];
-        z.x = Math.round(r.x); z.y = Math.round(r.y); z.w = Math.round(r.w); z.h = Math.round(r.h);
-        majApresEdition();
-      }
-      dessinerTrace(null); tracage = false; svg.classList.remove('tracage');
-    }
-    if (act && act.t === 'poly') { act = null; return; }   // le tracé continue
-    if (act && (act.t === 'move' || act.t === 'resize' || act.t === 'vertex') && act.bouge && selection) {
-      majApresEdition();
-    }
-    act = null; svg.style.cursor = '';
-  };
+  const fin = () => { act = null; svg.style.cursor = ''; };
   svg.addEventListener('pointerup', fin);
-  svg.addEventListener('pointercancel', () => { act = null; svg.style.cursor = ''; });
-
-  svg.addEventListener('dblclick', e => { if (tracagePoly) { e.preventDefault(); finirTracePoly(); } });
-  window.addEventListener('keydown', e => {
-    if(editMode&&Sim.editor)return;
-    if (e.key === 'Escape' && tracagePoly) { tracePts = null; dessinerTracePoly(null); tracagePoly = false; svg.classList.remove('tracage'); majChampsEdition(); }
-    if (e.key === 'Enter' && tracagePoly) finirTracePoly();
-  });
+  svg.addEventListener('pointercancel', fin);
 
   appliquerVue();
-}
-
-function rectDe(a, b) {
-  return { x:Math.min(a.x, b.x), y:Math.min(a.y, b.y), w:Math.abs(b.x - a.x), h:Math.abs(b.y - a.y) };
-}
-let traceEl = null;
-function dessinerTrace(r) {
-  if (!r) { if (traceEl) { traceEl.remove(); traceEl = null; } return; }
-  if (!traceEl) { traceEl = svgEl('rect', { class:'trace-rect', rx:10 }); gPoign.appendChild(traceEl); }
-  traceEl.setAttribute('x', r.x); traceEl.setAttribute('y', r.y);
-  traceEl.setAttribute('width', r.w); traceEl.setAttribute('height', r.h);
-}
-
-/* Après toute modification de géométrie : replace, recalcule, sauvegarde. */
-function majApresEdition() {
-  positionnerZone(selection);
-  redessinerEdges();
-  majPoignees();
-  majChampsEdition();
-  sauvegarderZones();
-}
-
-/* Poignées de redimensionnement de la zone sélectionnée. */
-function majPoignees() {
-  if (!gPoign) return;
-  [...gPoign.querySelectorAll('.poignee, .poignee-ajout')].forEach(n => n.remove());
-  if (!editMode || !selection || !ZONES[selection]) return;   // une annexe se retouche dans l'éditeur du plan
-  const z = ZONES[selection], r = 15 / vk, sw = 3 / vk;
-
-  if (estPoly(z)) {
-    // un point par sommet + un bouton « + » au milieu de chaque segment
-    z.pts.forEach((pt, i) => {
-      const c = svgEl('circle', { class:'poignee sommet', cx:pt[0], cy:pt[1], r:r, 'data-i':i });
-      c.setAttribute('stroke-width', sw);
-      const t = svgEl('title', {}); t.textContent = 'Glisser pour déplacer · Alt+clic pour supprimer';
-      c.appendChild(t);
-      gPoign.appendChild(c);
-    });
-    z.pts.forEach((pt, i) => {
-      const nx = z.pts[(i + 1) % z.pts.length];
-      const c = svgEl('circle', { class:'poignee-ajout', cx:(pt[0]+nx[0])/2, cy:(pt[1]+nx[1])/2,
-                                  r:r * 0.72, 'data-add':i });
-      c.setAttribute('stroke-width', sw);
-      const t = svgEl('title', {}); t.textContent = 'Ajouter un point ici'; c.appendChild(t);
-      gPoign.appendChild(c);
-    });
-  } else {
-    [['nw', z.x, z.y], ['ne', z.x + z.w, z.y], ['se', z.x + z.w, z.y + z.h], ['sw', z.x, z.y + z.h]]
-      .forEach(([k, x, y]) => {
-        const c = svgEl('circle', { class:'poignee ' + k, cx:x, cy:y, r:r, 'data-h':k });
-        c.setAttribute('stroke-width', sw);
-        gPoign.appendChild(c);
-      });
-  }
-}
-
-/* --- Conversions et tracé de polygone ------------------------------------- */
-function versPolygone(z) {
-  if (estPoly(z)) return;
-  const b = boite(z);
-  z.pts = [[b.x, b.y], [b.x + b.w, b.y], [b.x + b.w, b.y + b.h], [b.x, b.y + b.h]];
-  syncBoite(z);
-}
-function versRectangle(z) {
-  if (!estPoly(z)) return;
-  const b = boite(z);
-  delete z.pts;
-  z.x = b.x; z.y = b.y; z.w = b.w; z.h = b.h;
-}
-let tracePts = null, tracePolyEl = null;
-function dessinerTracePoly(pts, curseur) {
-  if (!pts) { if (tracePolyEl) { tracePolyEl.remove(); tracePolyEl = null; } return; }
-  if (!tracePolyEl) { tracePolyEl = svgEl('path', { class:'trace-poly' }); gPoign.appendChild(tracePolyEl); }
-  const tous = curseur ? pts.concat([curseur]) : pts;
-  if (!tous.length) return;
-  tracePolyEl.setAttribute('d', 'M ' + tous.map(pt => pt[0] + ' ' + pt[1]).join(' L ') + (tous.length > 2 ? ' Z' : ''));
-}
-function finirTracePoly() {
-  if (tracePts && tracePts.length >= 3 && selection) {
-    const z = ZONES[selection];
-    z.pts = tracePts.slice(); syncBoite(z); /* Geometry changes do not establish operational validation. */
-    majApresEdition(); toast(tracePts.length + ' points');
-  }
-  tracePts = null; dessinerTracePoly(null);
-  tracagePoly = false; svg.classList.remove('tracage');
-  majChampsEdition();
-}
-
-function ajoutRessource(g, label, type) {
-  const box = svgEl('rect', { class:'ressource-box', width:196, height:96, rx:10 }); g.appendChild(box);
-  const txt = svgEl('text', { class:'ressource-txt' }); txt.textContent = label; g.appendChild(txt);
-  const val = svgEl('text', { class:'ressource-val', id:'res-' + type }); val.textContent = '—'; g.appendChild(val);
-  return { box, txt, val };
 }
 
 let selection = null;
@@ -806,27 +541,15 @@ function selectionner(id) {
   document.getElementById('zone-picker').value = selection || '';
   if(Sim.editor)Sim.editor.showService(selection);
   document.querySelectorAll('#stats-ateliers button').forEach(b=>{const active=b.dataset.station===selection;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});
-  majGoulotInfo(); majPoignees(); majChampsEdition();
-  if(!editMode) showPanel('suivi');
+  majGoulotInfo();
 }
 
 /* ==========================================================================
  *  7 bis. MODE ÉDITION DES ZONES
- *  L'utilisateur place lui-même les zones sur le plan ; la géométrie est
- *  sauvegardée dans le navigateur et exportable en JSON.
+ *  L'édition elle-même est dans plan-editor.js, qui enregistre le plan
+ *  (`orly-plan-v3`). Il ne reste ici que la relecture des positions
+ *  enregistrées par les toutes premières versions (`orly-zones`).
  * ==========================================================================*/
-function geomZones() {
-  const o = {};
-  Object.keys(ZONES).forEach(id => {
-    const z = ZONES[id];
-    o[id] = { nom:z.nom, x:Math.round(z.x), y:Math.round(z.y), w:Math.round(z.w), h:Math.round(z.h), approx:!!z.approx };
-    if (estPoly(z)) o[id].pts = z.pts.map(pt => [Math.round(pt[0]), Math.round(pt[1])]);
-  });
-  return o;
-}
-function sauvegarderZones() {
-  try { localStorage.setItem('orly-zones', JSON.stringify(geomZones())); } catch (e) { /* indisponible */ }
-}
 function chargerZones() {
   let o = null;
   try { o = JSON.parse(localStorage.getItem('orly-zones') || 'null'); } catch (e) { return; }
@@ -848,7 +571,7 @@ function appliquerGeom(o, silencieux) {
     if(v.pts){z.pts=v.pts.map(pt=>pt.slice());syncBoite(z);}else delete z.pts;
     if(typeof v.approx==='boolean')z.approx=v.approx;
   });
-  if(zoneEls[Object.keys(ZONES)[0]]){Object.keys(ZONES).forEach(positionnerZone);redessinerEdges();majPoignees();majChampsEdition();}
+  if(zoneEls[Object.keys(ZONES)[0]]){Object.keys(ZONES).forEach(positionnerZone);redessinerEdges();}
   if(!silencieux)toast(ids.length+' zones appliquées');
   return ids.length;
 }
@@ -862,38 +585,6 @@ function basculerEdition() {
   document.getElementById('btn-edit').textContent=editMode?'Terminer l’édition':'Éditer les zones';
   // Le bouton de lecture appartient à la vue ; l'édition le masque déjà.
   Sim.editor.setActive(editMode);updateRunState();
-}
-
-function majListeEdition() {
-  const box = document.getElementById('edit-liste'); if (!box) return;
-  box.innerHTML = '';
-  Object.keys(ZONES).forEach(id => {
-    const z = ZONES[id];
-    const b = document.createElement('button');
-    b.className = 'edit-puce' + (id === selection ? ' on' : '') + (z.approx ? ' approx' : '');
-    b.textContent = z.nom;
-    b.addEventListener('click', () => { selectionner(id); majListeEdition(); });
-    box.appendChild(b);
-  });
-}
-
-function majChampsEdition() {
-  const bloc = document.getElementById('edit-sel'); if (!bloc) return;
-  if (!editMode || !selection || !ZONES[selection]) { bloc.hidden = true; return; }
-  bloc.hidden = false;
-  const z = ZONES[selection];
-  document.getElementById('edit-nom').textContent = z.nom + (z.approx ? '  (à confirmer)' : '');
-  const b = boite(z);
-  [['ez-x','x'],['ez-y','y'],['ez-w','w'],['ez-h','h']].forEach(([el,k]) => {
-    const n = document.getElementById(el); if (n && document.activeElement !== n) n.value = Math.round(b[k]);
-  });
-  const f = document.getElementById('ez-forme');
-  if (f) f.innerHTML = estPoly(z)
-    ? '⬠ <b>Forme libre</b> — ' + z.pts.length + ' points. Glissez un point, « + » pour en ajouter, <b>Alt+clic</b> pour en supprimer.'
-    : '▱ <b>Rectangle</b>. Utilisez « Convertir » pour passer en forme libre.';
-  const tb = document.getElementById('ez-toshape');
-  if (tb) tb.textContent = estPoly(z) ? '▱ Revenir au rectangle' : '⬠ Convertir en forme';
-  majListeEdition();
 }
 
 function initEdition() {
@@ -916,14 +607,11 @@ function initEdition() {
     pan(v,dx,dy){const m=svg.getScreenCTM();vtx=v.vtx+dx/m.a;vty=v.vty+dy/m.d;vk=v.vk;appliquerVue();},
     focus(b){vk=Math.min(8,Math.max(.5,Math.min(VUE.w/(b.w+150),VUE.h/(b.h+150))*.8));vtx=VUE.x+VUE.w/2-(b.x+b.w/2)*vk;vty=VUE.y+VUE.h/2-(b.y+b.h/2)*vk;appliquerVue();}
   });
-  document.getElementById('plan-storages').style.display='none';
   document.getElementById('btn-edit').addEventListener('click',basculerEdition);
   majPicker();   // le plan enregistré peut contenir des annexes
 }
 
 function majPlan() {
-  const r = document.getElementById('res-robot'); if (r) r.textContent = '';
-  const t = document.getElementById('res-tunnels'); if (t) t.textContent = '';
   if (Sim.vue) Sim.vue.rendre(); else majEtatPlan();
 }
 
@@ -1121,9 +809,7 @@ function majGoulotInfo() {
  *  `simulation.js`, qui la relit. Les appelants d'hier restent valides.
  * ==========================================================================*/
 function majHorloge() { if (Sim.vue) Sim.vue.rendreHorloge(); }
-function lancer()     { if (Sim.vue) Sim.vue.lancer(); }
 function pause()      { if (Sim.vue) Sim.vue.pause(); }
-function basculer()   { if (Sim.vue) Sim.vue.basculer(); }
 /* Un nouveau programme de vols (import, jeu de démonstration) ou un nouveau
  * délai de chargement change les classes à fabriquer : on relit les vols, on
  * recalcule la journée des ateliers, et la relecture repart de là. */
@@ -1258,9 +944,7 @@ const PARTIES = [
   { cle:'orly-flows-v1',    nom:'centre des flux',         valider:r => window.OrlyFlows.validate(r) },
   // Le barème est une étude à part entière : une sauvegarde qui l'oublierait
   // ramènerait les valeurs de démonstration sans le dire.
-  { cle:'ory-modele-v1',    nom:'barème et règles de poste', valider:r => window.OrlyReglages.valider(r) },
-  { cle:'ory-postes-v2',    nom:'bibliothèque de modèles',
-    valider:r => { if(!r || !Array.isArray(r.modeles)) throw new Error('bibliothèque illisible'); return r; } }
+  { cle:'ory-modele-v1',    nom:'barème et règles de poste', valider:r => window.OrlyReglages.valider(r) }
 ];
 
 function sauvegardeComplete() {
@@ -1375,16 +1059,7 @@ function exporter() {
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Journée exportée');
 }
 
-/* Workbench navigation and operational reading of the demonstrator. */
-function showPanel(name) {
-  // Réglages et Données décrivent l'essai : tous deux vivent dans l'onglet large.
-  if(name==='reglages'||name==='donnees'){showView('reglages');return;}
-  // La colonne de droite est masquée dans le Centre des réglages : demander le
-  // suivi depuis là doit ramener à une vue où il est visible.
-  if(activeView==='reglages')showView('plan');
-  activePanel=name;
-  document.getElementById('panel-suivi').hidden=name!=='suivi';
-}
+
 /* Les réglages sortent du panneau étroit de droite pour occuper toute la
  * largeur, comme le Centre des flux. On DÉPLACE le nœud existant : toutes les
  * liaisons se font par identifiant, elles continuent de fonctionner telles quelles. */
@@ -1404,6 +1079,14 @@ function installerCentreReglages() {
     // que le classeur du barème propose de renseigner, service par service.
     classes:()=>Sim.ateliers?Sim.ateliers.classes:[],
     routes:cls=>MoteurProduction.routesDesClasses(cls,Sim.ateliers?Sim.ateliers.state:{}),
+    // Un service dont toutes les équipes sont des plonges, des mises à
+    // disposition ou des robots ne lit pas le barème : inutile de le proposer.
+    sansBareme:()=>{
+      const par=new Map();
+      for(const a of ((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]))
+        par.set(a.service,(par.get(a.service)||false)||a.type==='manuel');
+      return [...par].filter(([,manuel])=>!manuel).map(([s])=>s);
+    },
     delaiChargement:()=>CFG.loadDelay,
     change:()=>{if(Sim.ateliers)Sim.ateliers.rendre();majDemarrage();if(Sim.vue)Sim.vue.recalculer();},
     notify:toast
@@ -1550,10 +1233,9 @@ function renderFlights() {
 }
 
 function initWorkbench() {
-  document.querySelectorAll('[data-panel]').forEach(b=>b.addEventListener('click',()=>showPanel(b.dataset.panel)));
   document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
   document.getElementById('btn-limits').addEventListener('click',()=>{
-    if(editMode)basculerEdition();showPanel('donnees');document.getElementById('model-limits').scrollIntoView({block:'nearest'});
+    if(editMode)basculerEdition();showView('reglages');document.getElementById('model-limits').scrollIntoView({block:'nearest'});
   });
   document.getElementById('edit-done').addEventListener('click',()=>{if(editMode)basculerEdition();document.getElementById('btn-edit').focus();});
   const picker=document.getElementById('zone-picker');

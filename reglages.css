@@ -4,11 +4,11 @@
  *  pilote les ateliers de travail, et donc les chiffres qu'on lit aujourd'hui.
  * ==========================================================================*/
 .rg-modele{display:contents}
-.rg-modele .reglages-titre,.rg-modele .rg-intro,.rg-modele #rg-status,.rg-modele .rg-ailleurs,
+.rg-modele .reglages-titre,.rg-modele #rg-status,.rg-modele .rg-ailleurs,
 /* L'enveloppe titre + « ? » est désormais l'élément de grille : sans cette
    ligne elle tient dans une seule colonne, et le titre déborde de son filet. */
 .rg-modele .titre-aide{grid-column:1/-1}
-.rg-intro{max-width:850px;margin:0 0 4px}
+
 #rg-status:not(:empty){font-size:13px;color:var(--accent2);margin:0 0 6px;white-space:pre-line}
 
 #rg-bareme-panneau{grid-column:1/-1}
@@ -61,7 +61,7 @@
   border:1px solid var(--bordure2);border-radius:5px;background:var(--bg2);color:var(--txt);font:inherit;font-size:12.5px}
 .rg-table input:focus{outline:2px solid var(--accent);outline-offset:-1px}
 /* Un service dont le barème n'est pas renseigné travaillerait en temps nul. */
-.rg-pale th{color:var(--txt2)}
+
 .rg-herite,.rg-zero{font-size:10px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;
   border-radius:4px;padding:1px 5px;margin-left:5px;white-space:nowrap}
 .rg-herite{color:var(--accent2);border:1px solid var(--accent)}
@@ -74,7 +74,6 @@
   background:var(--bg2);color:var(--txt);font:inherit}
 
 .rg-ailleurs{max-width:850px;margin:2px 0 0}
-
 
 @media(max-width:900px){
   .rg-table{display:block;overflow-x:auto;white-space:nowrap}

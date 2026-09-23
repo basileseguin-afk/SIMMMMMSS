@@ -453,7 +453,8 @@
       const octets = T.ecrireClasseur(E.baremeVersClasseur(
         { bareme: this.etat.bareme, rendement: this.etat.rendement, regime: this.etat.regime },
         { services: this.a.services ? this.a.services() : [], classes,
-          routes: this.a.routes ? this.a.routes(classes) : new Map() }));
+          routes: this.a.routes ? this.a.routes(classes) : new Map(),
+          sansBareme: new Set(this.a.sansBareme ? this.a.sansBareme() : []) }));
       T.telecharger('ory-bareme-' + new Date().toISOString().slice(0, 10) + '.xlsx', octets);
       this.rendre('Barème exporté : remplissez la colonne « Minutes par vol », puis « Importer ».');
     }
@@ -484,7 +485,7 @@
     }
   }
 
-  const api = { CLE, valider, validerBareme, CentreReglages };
+  const api = { CLE, valider, CentreReglages };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyReglages = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

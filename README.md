@@ -57,7 +57,7 @@ pas** et ne doivent jamais y être commités. Ils se travaillent en local.
 | Exports de vols, man-hours, tout classeur | `prive/` | ignoré par Git |
 
 `.gitignore` bloque `plan-prive/`, `prive/`, `*.xlsx`, `vols*.csv`, tout fichier
-contenant « winrest », tout `moteur/procede-*.json` autre que l’exemple fictif,
+contenant « winrest », tout `moteur/procede-*.json`,
 et les **sauvegardes de l’unité** (`ory-sauvegarde*.json`, `plan-ory-*.json`,
 `ateliers-ory.json`, `centre-flux-*.json`, `ory-postes.json`).
 
@@ -240,8 +240,7 @@ quel autre (voir la [note de modèle](docs/MODELE_ATELIERS.md)).
 L’ancien moteur de démonstration (`moteur/orly.js`, `ressources.js`,
 `mesure.js`, `procede.js`) a été **retiré le 23 septembre 2026** : la vue
 Simulation relit désormais le modèle par ateliers, qui porte seul le calcul.
-L’[étude des moteurs](docs/ETUDE_OPEN_SOURCE.md) et le
-[guide du procédé](docs/PROCEDE.md) restent pour mémoire. Les données réelles
+L’[étude des moteurs](docs/ETUDE_OPEN_SOURCE.md) reste pour mémoire. Les données réelles
 restent en privé.
 **Pour tracer et paramétrer l’unité, suivre le
 [mode d’emploi de la saisie](docs/TRACER_L_UNITE.md)** : où travailler, dans

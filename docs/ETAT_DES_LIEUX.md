@@ -230,7 +230,7 @@ en gardant les deux entrées.
 ## 7. Vérifier avant de livrer
 
 ```bash
-node --test tests/*.test.cjs     # 165 tests purs
+node --test tests/*.test.cjs     # 166 tests purs
 node tests/browser-smoke.cjs     # puis les 13 autres parcours (Playwright + Chromium)
 ```
 

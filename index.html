@@ -18,26 +18,15 @@
   --txt:#132030; --txt2:#41566e; --txt3:#63788f;
   /* couleurs */
   --accent:#0b6fa4; --accent2:#0a5c88;
-  --vert:#15803d; --orange:#b45309; --rouge:#c02618; --violet:#7c3aed; --jaune:#a16207;
+  --vert:#15803d; --orange:#b45309; --rouge:#c02618; --violet:#7c3aed;
   /* plan */
   --plan-bg:#f7f9fc;
   --zone-fill:#ffffff; --zone-stroke:#8ea4bb; --zone-txt:#0f1d2c; --zone-sous:#55697f;
-  --ok-fill:#e6f7ec;  --ok-stroke:#17904a;
+  --ok-fill:#e6f7ec;
   --warn-fill:#fdf3dd; --warn-stroke:#c97a0a;
   --bad-fill:#fde8e5;  --bad-stroke:#c02618;
   --jauge-bg:#dfe7ef;
   --edge:#7d92a9; --edge-retour:#9b7cc4;
-  /* équipements tracés : mêmes couleurs à l'édition et sur la vue d'ensemble */
-  --eq-table:#b67b34; --eq-tapis:#168886; --eq-robot:#7956ad; --eq-tunnel:#2f7fb8; --eq-desserte:#4479ae; --eq-trolley:#657482;
-  /* stockages */
-  --cf-f:#dfeeff;  --cf-s:#6ea3d8;  --cf-t:#1d4f7c;
-  --gel-f:#d6f4fa; --gel-s:#2fa0bd; --gel-t:#0b5f77;
-  --aire-f:#eef2f7;--aire-s:#bccadb;--aire-t:#5b6d82;
-  --sec-f:#fbf0d5; --sec-s:#cfae5c; --sec-t:#7a5f14;
-  --loc-f:#f2f5f9; --loc-s:#c3cfdd; --loc-t:#5b6d82;
-  --sub-f:#e8eff7; --sub-s:#9ab2cb; --sub-t:#2c4560;
-  /* chart */
-  --chart-grid:rgba(19,32,48,.10); --chart-line:#0b6fa4; --chart-aire:rgba(124,58,237,.16); --chart-now:rgba(19,32,48,.32);
   --halo:#ffffff;
   --ombre:0 1px 3px rgba(19,32,48,.10), 0 4px 14px rgba(19,32,48,.07);
   --r:10px; --r2:6px;
@@ -47,22 +36,14 @@
   --bordure:#33445a; --bordure2:#4a6180;
   --txt:#f2f6fa; --txt2:#bccadb; --txt3:#93a8bf;
   --accent:#4cb8ef; --accent2:#7fd0fb;
-  --vert:#46d07d; --orange:#f5b73f; --rouge:#ff6a5e; --violet:#b98cf5; --jaune:#f0cf5c;
-  --eq-table:#e0a761; --eq-tapis:#3fc4c0; --eq-robot:#b08ee3; --eq-tunnel:#6cc0f0; --eq-desserte:#7fb2e0; --eq-trolley:#9aa8b8;
+  --vert:#46d07d; --orange:#f5b73f; --rouge:#ff6a5e; --violet:#b98cf5;
   --plan-bg:#111a25;
   --zone-fill:#1e2a3a; --zone-stroke:#5d7695; --zone-txt:#f2f6fa; --zone-sous:#a9bdd3;
-  --ok-fill:#14342292;  --ok-stroke:#46d07d;
+  --ok-fill:#14342292;
   --warn-fill:#3c2f1092; --warn-stroke:#f5b73f;
   --bad-fill:#40201c92;  --bad-stroke:#ff6a5e;
   --jauge-bg:#0d1520;
   --edge:#6f89a6; --edge-retour:#9d7fd0;
-  --cf-f:#16324c; --cf-s:#4d84b8; --cf-t:#a9d2f5;
-  --gel-f:#0f3743; --gel-s:#2e9cba; --gel-t:#8fe2f5;
-  --aire-f:#1a2431; --aire-s:#3c5069; --aire-t:#9fb2c7;
-  --sec-f:#332a13; --sec-s:#8a7333; --sec-t:#e8cf88;
-  --loc-f:#172029; --loc-s:#35485d; --loc-t:#9fb2c7;
-  --sub-f:#1c2836; --sub-s:#547093; --sub-t:#c3d6ea;
-  --chart-grid:rgba(255,255,255,.09); --chart-line:#4cb8ef; --chart-aire:rgba(185,140,245,.20); --chart-now:rgba(255,255,255,.35);
   --halo:#0d141d;
   --ombre:0 4px 18px rgba(0,0,0,.45);
 }
@@ -81,7 +62,7 @@ header{
   background:var(--bg3); border-bottom:2px solid var(--bordure); flex-wrap:wrap;
 }
 .marque{display:flex;align-items:center;gap:9px;font-weight:800;font-size:17px;white-space:nowrap;color:var(--txt)}
-.marque .logo{font-size:22px}
+
 .marque small{color:var(--txt3);font-weight:600;font-size:11.5px}
 .horloge-box{display:flex;align-items:center;gap:14px;background:var(--bg2);border:1px solid var(--bordure);border-radius:var(--r2);padding:6px 14px}
 .horloge{font-size:23px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px;color:var(--txt)}
@@ -106,9 +87,8 @@ header{
 /* --- Disposition ----------------------------------------------------------*/
 .app{display:grid;grid-template-columns:300px 1fr 330px;height:100%;overflow:hidden}
 .colonne{overflow-y:auto;padding:14px}
-.col-gauche{background:var(--bg2);border-right:2px solid var(--bordure)}
+
 .col-plan{background:var(--plan-bg);display:flex;flex-direction:column;padding:0}
-.col-droite{background:var(--bg2);border-left:2px solid var(--bordure)}
 
 /* --- Panneaux -------------------------------------------------------------*/
 .panneau{background:var(--panneau);border:1px solid var(--bordure);border-radius:var(--r);padding:13px;margin-bottom:12px;box-shadow:var(--ombre)}
@@ -132,8 +112,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 /* --- Plan -----------------------------------------------------------------*/
 .plan-tete{display:flex;align-items:center;gap:16px;padding:10px 16px;border-bottom:2px solid var(--bordure);background:var(--bg3)}
 .plan-tete .titre{font-weight:800;font-size:14px}
-.plan-tete .boussole{margin-left:auto;display:flex;flex-direction:column;align-items:center;color:var(--txt2);font-size:11px;line-height:1.15;font-weight:700}
-.plan-tete .boussole b{color:var(--accent);font-size:15px}
+
 .legende{display:flex;gap:15px;font-size:12.5px;color:var(--txt2);flex-wrap:wrap;font-weight:600}
 .legende span{display:flex;align-items:center}
 .plan-wrap{flex:1;position:relative;overflow:hidden}
@@ -149,32 +128,18 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 /* zones actives : translucides pour laisser voir le plan dessous */
 .zone{cursor:pointer}
 .zone .fond{fill:var(--zone-fill);fill-opacity:.30;stroke:var(--zone-stroke);stroke-width:7;transition:fill .35s,stroke .35s}
-.zone.c-ok   .fond{fill:var(--ok-stroke);  stroke:var(--ok-stroke)}
-.zone.c-warn .fond{fill:var(--warn-stroke);stroke:var(--warn-stroke);fill-opacity:.34}
-.zone.c-bad  .fond{fill:var(--bad-stroke); stroke:var(--bad-stroke);fill-opacity:.40;stroke-width:11}
+
 .zone.approx .fond{stroke-dasharray:22 14}
 .zone text{paint-order:stroke fill;stroke:var(--halo);stroke-width:9px;stroke-linejoin:round}
 .zone text.titre{fill:var(--zone-txt);font-weight:800;font-size:46px}
 .zone text.sous{fill:var(--zone-sous);font-size:30px;font-weight:600}
 
 .zone.selection .fond{stroke:var(--accent);stroke-width:13}
-.ressource-box{fill:var(--bg3);stroke:var(--bordure2);stroke-width:4;fill-opacity:.94}
-.ressource-txt{fill:var(--txt2);font-size:26px;font-weight:700;stroke:none}
-.ressource-val{fill:var(--txt);font-weight:800;font-size:38px;stroke:none}
 
 /* stockages / chambres froides repris du plan */
-.sto{cursor:help}
-.sto rect{stroke-width:4;fill-opacity:.30}
-.sto-txt{font-size:26px;font-weight:700;pointer-events:none;display:none;
-         paint-order:stroke fill;stroke:var(--halo);stroke-width:7px;stroke-linejoin:round}
-#plan.zoomed .sto-txt{display:block}
-.sto-cf   rect{fill:var(--cf-s);  stroke:var(--cf-s)}   .sto-cf   text{fill:var(--cf-t)}
-.sto-gel  rect{fill:var(--gel-s); stroke:var(--gel-s)}  .sto-gel  text{fill:var(--gel-t)}
-.sto-aire rect{fill:var(--aire-s);stroke:var(--aire-s)} .sto-aire text{fill:var(--aire-t)}
-.sto-sec  rect{fill:var(--sec-s); stroke:var(--sec-s)}  .sto-sec  text{fill:var(--sec-t)}
-.sto-loc  rect{fill:var(--loc-s); stroke:var(--loc-s)}  .sto-loc  text{fill:var(--loc-t)}
-.sto-sub  rect{fill:var(--sub-s); stroke:var(--sub-s);stroke-dasharray:14 9} .sto-sub text{fill:var(--sub-t)}
-.sto:hover rect{stroke:var(--accent);stroke-width:8;fill-opacity:.45}
+
+  
+  
 
 /* arêtes de flux */
 .edge{fill:none;stroke:var(--edge);stroke-width:7;opacity:.85;pointer-events:none}
@@ -182,28 +147,12 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 
 /* --- mode édition des zones ---------------------------------------------- */
 .panneau-edit{border:2px solid var(--accent);background:var(--bg3)}
-.edit-nom{font-weight:800;font-size:13.5px;margin:10px 0 8px;color:var(--accent2)}
-.edit-grille{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:9px}
-.edit-grille label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--txt2);font-weight:700}
-.edit-grille input{width:100%;padding:5px 7px;font-size:12.5px}
+
 .btn-sm{padding:5px 9px;font-size:12px}
-.edit-liste{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px;padding-top:9px;border-top:1px solid var(--bordure)}
-.edit-puce{font-size:11px;padding:3px 8px;border-radius:20px;border:1.5px solid var(--bordure2);background:var(--bg2);cursor:pointer;font-weight:700;color:var(--txt2)}
-.edit-puce:hover{border-color:var(--accent);color:var(--accent)}
-.edit-puce.on{background:var(--accent);border-color:var(--accent);color:#fff}
-.edit-puce.approx::after{content:' ?';opacity:.8}
 
 /* poignées de redimensionnement sur le plan */
 #plan.edition .zone{cursor:move}
 #plan.edition .zone .fond{fill-opacity:.22}
-.poignee{fill:var(--accent);stroke:#fff;stroke-width:3;cursor:nwse-resize}
-.poignee.ne,.poignee.sw{cursor:nesw-resize}
-.poignee.sommet{fill:var(--accent);cursor:move}
-.poignee-ajout{fill:var(--vert);stroke:#fff;cursor:copy;opacity:.75}
-.poignee-ajout:hover{opacity:1}
-.trace-poly{fill:var(--accent);fill-opacity:.2;stroke:var(--accent);stroke-width:6;stroke-dasharray:18 12}
-#plan.tracage{cursor:crosshair}
-.trace-rect{fill:var(--accent);fill-opacity:.25;stroke:var(--accent);stroke-width:6;stroke-dasharray:18 12}
 
 /* contrôles de zoom */
 .zoom-ctrl{display:flex;align-items:center;gap:5px}
@@ -238,9 +187,9 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
   .col-plan{min-height:70vh}
 }
 </style>
-<meta name="ory-version" content="6c0259fb31"/>
-<link href="interface.css?v=2fea6c74" rel="stylesheet"/><link href="editor.css?v=c4c575db" rel="stylesheet"/><link href="flow-center.css?v=91a8db6b" rel="stylesheet"/><link href="ateliers.css?v=c1c10c03" rel="stylesheet"/>
-<link href="reglages.css?v=3166b9c2" rel="stylesheet"/><link href="demarrage.css?v=bef655b8" rel="stylesheet"/><link href="aide.css?v=023946ae" rel="stylesheet"/><link href="usability.css?v=a44c8ff6" rel="stylesheet"/></head>
+<meta name="ory-version" content="d581234f9d"/>
+<link href="interface.css?v=a15fccc3" rel="stylesheet"/><link href="editor.css?v=c4c575db" rel="stylesheet"/><link href="flow-center.css?v=b652f37c" rel="stylesheet"/><link href="ateliers.css?v=c1c10c03" rel="stylesheet"/>
+<link href="reglages.css?v=52d7d242" rel="stylesheet"/><link href="demarrage.css?v=bef655b8" rel="stylesheet"/><link href="aide.css?v=ef788016" rel="stylesheet"/><link href="usability.css?v=4a12f8ff" rel="stylesheet"/></head>
 <body data-vue="plan"><a class="skip-link" href="#workspace">Aller à la simulation</a>
 <header>
 <div class="marque"><span class="brand-mark">N</span><div>ORY <span class="brand-separator">/</span> Flux de production<small>Atelier de simulation</small></div></div>
@@ -317,45 +266,8 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <button class="btn" id="snap-clear">Effacer</button>
 </div>
 <table class="compare-tab" id="compare" style="margin-top:10px"><tbody></tbody></table>
-<p class="mini-note" id="compare-note"></p></div></div><div class="panneau panneau-edit" hidden="" id="panneau-edition">
-<h3>✏️ Édition des zones</h3>
-<div class="mini-note" id="edit-aide">
-        Cliquez une zone sur le plan, puis <b>glissez</b> pour la déplacer ou
-        tirez un <b>coin</b> pour la redimensionner.
-      </div>
-<div hidden="" id="edit-sel">
-<div class="edit-nom" id="edit-nom">—</div>
-<div class="edit-grille">
-<label>X <input id="ez-x" step="1" type="number"/></label>
-<label>Y <input id="ez-y" step="1" type="number"/></label>
-<label>Largeur <input id="ez-w" step="1" type="number"/></label>
-<label>Hauteur <input id="ez-h" step="1" type="number"/></label>
-</div>
-<div class="row-btns">
-<button class="btn btn-sm" id="ez-redraw">⬚ Rectangle</button>
-<button class="btn btn-sm" id="ez-poly">⬠ Tracer une forme</button>
-</div>
-<div class="row-btns" style="margin-top:6px">
-<button class="btn btn-sm" id="ez-toshape">⬠ Convertir</button>
-<button class="btn btn-sm" id="ez-reset">↺ Cette zone</button>
-</div>
-<div class="mini-note" id="ez-forme" style="margin-top:7px"></div>
-</div>
-<div class="edit-liste" id="edit-liste"></div>
-<div class="row-btns" style="margin-top:10px">
-<button class="btn btn-sm" id="ez-copy">📋 Copier le JSON</button>
-<button class="btn btn-sm" id="ez-export">⇩ Exporter</button>
-</div>
-<div class="row-btns" style="margin-top:6px">
-<label class="btn btn-sm" style="cursor:pointer">📂 Importer<input accept=".json" hidden="" id="ez-import" type="file"/></label>
-<button class="btn btn-sm" id="ez-reset-all">↺ Tout réinitialiser</button>
-</div>
-<div class="mini-note" style="margin-top:8px">
-        Vos modifications sont <b>sauvegardées automatiquement</b> dans le
-        navigateur. Exportez le JSON et transmettez-le pour l'intégrer comme
-        valeurs par défaut.
-      </div>
-<button class="btn" id="edit-done">Terminer l’édition</button></div><div class="panel-content" hidden="" id="panel-donnees"><div class="panneau">
+<p class="mini-note" id="compare-note"></p></div></div><!-- Rempli par plan-editor.js en mode édition. -->
+<div class="panneau panneau-edit" hidden="" id="panneau-edition"></div><div class="panel-content" hidden="" id="panel-donnees"><div class="panneau">
 <h3>Programme de vols</h3>
 <div class="champ"><span>Importer un classeur Excel ou un CSV</span><input accept=".xlsx,.csv" aria-label="Importer le programme de vols, Excel ou CSV" id="imp-vols" type="file"/></div>
 <details class="aide bloc"><summary>Format attendu</summary><span class="aide-corps"><p>Excel : une feuille « Départs » (heure_std) et une feuille « Retours » (heure_sta) ; colonnes vol_id, compagnie, type_avion, nb_BC, nb_PC, nb_YC, nb_CREW, nb_SPML.</p><p>CSV : une seule table, avec une colonne « sens » (DEP ou RET).</p><p>Le plus simple : exportez le programme actuel, modifiez-le, réimportez-le. L’export Winrest et ses lignes de prestations ne sont pas encore lus.</p></span></details>
@@ -372,18 +284,18 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <script src="vols-demo.js?v=909320b7"></script>
 <script src="ui-model.js?v=ae1132ec"></script>
 <script src="moteur/noyau.js?v=c3946d15"></script>
-<script src="moteur/production.js?v=ba11b9a8"></script>
-<script src="plan-editor.js?v=c85752d4"></script>
-<script src="flow-center.js?v=8bbc6d87"></script>
-<script src="tableur.js?v=02d41a1a"></script>
-<script src="parcours.js?v=8980e5f5"></script>
-<script src="echanges.js?v=c3e0ae08"></script>
+<script src="moteur/production.js?v=276fd999"></script>
+<script src="plan-editor.js?v=9fd62d9e"></script>
+<script src="flow-center.js?v=902cdfe1"></script>
+<script src="tableur.js?v=366d65ec"></script>
+<script src="parcours.js?v=22cc6bce"></script>
+<script src="echanges.js?v=55f2bc2f"></script>
 <script src="ateliers.js?v=bdad765f"></script>
-<script src="reglages.js?v=50c8f467"></script>
+<script src="reglages.js?v=6497fa72"></script>
 <script src="demarrage.js?v=420bc9d1"></script>
 <script src="replay.js?v=016adb42"></script>
 <script src="simulation.js?v=cfc059c7"></script>
 <script src="comparaison.js?v=89b75230"></script>
-<script src="sim.js?v=7d36ae9f"></script>
+<script src="sim.js?v=b46817ea"></script>
 </body>
 </html>

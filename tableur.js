@@ -487,7 +487,7 @@
   }
 
   const api = { ecrireClasseur, lireClasseur, lireCsv, ecrireCsv, lireFichier, enObjets, feuille,
-    cleEntete, heureDe, hhmm, nombreDe, ouiNon, telecharger, correspondance, crc32, zipper, dezipper };
+    cleEntete, heureDe, hhmm, nombreDe, ouiNon, telecharger, correspondance, zipper };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyTableur = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

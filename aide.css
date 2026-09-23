@@ -44,8 +44,7 @@
   font:400 12.5px/1.6 inherit;text-align:left;white-space:normal}
 /* Près du bord droit, la bulle s'ouvre vers la gauche plutôt que d'allonger
    la page : un débordement horizontal casse la lecture sur téléphone. */
-.aide.gauche[open] .aide-corps{left:auto;right:-2px;border-left-width:1px;
-  border-right:3px solid var(--accent);border-radius:9px 0 0 9px}
+
 .aide[open] .aide-corps b,.aide[open] .aide-corps strong{color:var(--txt)}
 .aide[open] .aide-corps p{margin:0 0 8px}
 .aide[open] .aide-corps p:last-child{margin-bottom:0}

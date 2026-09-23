@@ -48,7 +48,7 @@ class FlowCenter{
  get points(){return endpoints(this.a.zones());}
  status(message){document.getElementById('fc-status').textContent=message;}
  build(){
-  this.host.innerHTML=`<div class="fc-heading"><div><p class="scope-badge">Ce graphe donne le parcours des compagnies × classes</p></div><div class="fc-actions"><button class="btn" id="fc-undo">Annuler</button><button class="btn" id="fc-redo">Rétablir</button><button class="btn" id="fc-export">Exporter</button><button class="btn" id="fc-import-button">Importer</button><input id="fc-import" type="file" accept=".json" hidden></div></div>
+  this.host.innerHTML=`<div class="fc-heading"><div><p class="scope-badge">Ce graphe décrit qui livre qui dans l’unité</p></div><div class="fc-actions"><button class="btn" id="fc-undo">Annuler</button><button class="btn" id="fc-redo">Rétablir</button><button class="btn" id="fc-export">Exporter</button><button class="btn" id="fc-import-button">Importer</button><input id="fc-import" type="file" accept=".json" hidden></div></div>
    <div id="fc-status" role="status" aria-live="polite"></div>
    <section id="fc-lecture" class="fc-lecture">
     <h3 class="fc-list-title">Ce que le modèle en lit</h3>

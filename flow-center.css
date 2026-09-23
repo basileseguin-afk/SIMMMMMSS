@@ -3,10 +3,10 @@ body.flows-open .workbench{display:none}
 #view-flux{overflow:auto;min-height:0;padding:24px;flex:1}
 .fc-heading{display:flex;justify-content:space-between;gap:24px;align-items:flex-start}
 .fc-heading h2{margin:5px 0 8px;font-size:24px}
-.fc-heading p,.fc-scope,.fc-rules p{font-size:13px;line-height:1.65;color:var(--txt2);max-width:850px}
+.fc-heading p,.fc-rules p{font-size:13px;line-height:1.65;color:var(--txt2);max-width:850px}
 .fc-actions,.fc-families{display:flex;flex-wrap:wrap;gap:8px}
 .fc-actions{flex-shrink:0}
-.fc-scope{border-left:3px solid var(--accent);padding:8px 12px;background:var(--bg2)}
+
 #fc-status{font-size:13px;min-height:24px;margin:16px 0;color:var(--accent2)}
 .fc-families{margin:16px 0}
 .fc-families [aria-pressed=true]{background:var(--accent);color:var(--bg3);border-color:var(--accent)}

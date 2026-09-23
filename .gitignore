@@ -25,7 +25,6 @@ vols*.csv
 
 # Procédés : seul l'exemple fictif est publié, le procédé réel reste local
 moteur/procede-*.json
-!moteur/procede-exemple.json
 
 # Sauvegardes de l'unité : elles contiennent le plan réel
 ory-sauvegarde*.json

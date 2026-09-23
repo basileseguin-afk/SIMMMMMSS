@@ -5,6 +5,47 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-23 — Grand ménage
+
+Tout ce qui n'était plus relié à rien est retiré : environ 710 lignes en moins,
+sans changer ce que fait le site.
+
+**Dans la page**
+- L'ancien panneau d'édition des zones (coordonnées X/Y, « Tracer une forme »,
+  « Copier le JSON », « Tout réinitialiser »…) : l'éditeur du plan le
+  remplaçait au démarrage, ses boutons n'étaient branchés sur rien.
+- Les encarts « ROBOT » et « TUNNELS » dessinés dans les zones, vides depuis
+  l'ancien moteur ; la couche des stockages, construite puis masquée aussitôt.
+- Le sous-titre « 3 tunnels de lavage » de la plonge, chiffre figé d'un autre
+  temps : les tunnels se décrivent dans les ateliers.
+- La plonge dans le barème de démonstration : elle travaille au débit de ses
+  tunnels, pas en homme-minutes. Le classeur du barème ne propose plus de
+  lignes pour un service dont les équipes ne lisent pas le barème (plonge, mise
+  à disposition, robot).
+
+**Dans le code**
+- `sim.js` : le tracé de zones à la main (rectangle, polygone, poignées,
+  déplacement, redimensionnement), jamais déclenché depuis l'éditeur du plan ;
+  l'écriture de l'ancienne clé `orly-zones` (sa relecture reste, pour migrer
+  un très ancien tracé) ; les arêtes de flux codées en dur, redessinées aussitôt
+  par le Centre des flux ; la navigation entre panneaux de l'ancienne colonne ;
+  des propriétés de zones que plus rien ne lisait (`staff`, `sink`, `buffer`…).
+- La sauvegarde complète ne cherche plus `ory-postes-v2`, que plus rien n'écrit.
+- Styles : une soixantaine de règles et trente variables de couleur sans cible
+  (jauges, graphique, stockages, poignées, anciennes grilles d'équipements).
+- Exports de modules que personne n'importait.
+
+**Dans les textes**
+- L'accueil décrivait « charge par atelier, goulots, trame de 50 cm » et
+  affirmait que le plan était public : il décrit le site actuel, et rappelle que
+  le plan et les classeurs restent en local.
+- L'éditeur du plan parlait d'« atelier simulé » et de « ressource » : il dit
+  « service du plan ». Le Centre des flux ne prétend plus que son graphe donne
+  le parcours des classes.
+- `docs/PROCEDE.md`, guide d'un module supprimé, est retiré.
+
+- Vérification : 166 tests purs et quatorze parcours navigateur au vert.
+
 ## 2026-09-23 — Excel, parcours par classe, et fin du compte au passager
 
 Six demandes, livrées ensemble parce qu'elles se tiennent : on ne peut pas

@@ -247,7 +247,7 @@
     }
   }
 
-  const api = { parcoursTypes, validerParcours, parcoursDe, jonctions, EditeurParcours };
+  const api = { parcoursTypes, validerParcours, EditeurParcours };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyParcours = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

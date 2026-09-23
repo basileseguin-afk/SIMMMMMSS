@@ -480,7 +480,7 @@ reviendrait à réécrire `sim.js` à la main au lieu de le nourrir.
 ### Étape 3 — le procédé en données : **faite** (14 tests)
 
 `moteur/procede.js` et `moteur/procede-exemple.json`. Le format complet est
-décrit dans le **[guide du procédé](PROCEDE.md)** ; l'essentiel tient en ceci :
+décrit dans le guide du procédé (retiré depuis, avec le module) ; l'essentiel tenait en ceci :
 quatre listes de même longueur, une case par étape.
 
 ```json
