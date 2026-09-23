@@ -24,8 +24,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const defaut=c=>page.locator(`[data-pc-champ=cabine][data-cabine=${c}]`).inputValue();
   assert.equal(await defaut('BC'),'complet');
   assert.equal(await defaut('YC'),'sans-cuisine');
-  assert.match(await page.locator('[data-parcours=complet] .pc-jonction').textContent(),/MONTAGE/,'la jonction des branches est dite');
-  assert.doesNotMatch(await page.locator('[data-parcours=sans-cuisine]').textContent(),/CUISINE|LÉGUMERIE/);
+  assert.match(await page.locator('[data-parcours=complet] .pc-jonction-col').textContent(),/MONTAGE/,'les branches se rejoignent au montage');
+  assert.equal(await page.locator('[data-parcours=sans-cuisine] .pc-box[data-service=cuisine], [data-parcours=sans-cuisine] .pc-box[data-service=decontam]').count(),0,
+    'le parcours sans cuisine n’a ni cuisine ni légumerie');
 
   // Trois équipes : cuisine, dotation, montage. Le montage YC n'attend que la dotation.
   const creer=async(nom,service,lots)=>{
@@ -112,6 +113,34 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.waitForFunction(()=>document.getElementById('import-report').classList.contains('error'));
   assert.match(await page.locator('#import-report').textContent(),/Départs, ligne 15/);
   assert.equal(await page.locator('#source-count').textContent(),'13 départs · 6 retours','rien n’a été remplacé');
+
+  // 4. Parcours et équipes, d'un même geste : chaque étape dit ses équipes et
+  //    ce qui lui manque, et se complète sur place.
+  await page.locator('[data-view=ateliers]').click();await attendre();
+  const complet='[data-parcours=complet]';
+  const boite=s=>page.locator(`${complet} .pc-box[data-service=${s}]`);
+  assert.match(await boite('cuisine').locator('.pc-chip').textContent(),/Cuisine/,'l’équipe figure à son étape');
+  assert.match(await boite('cuisine').getAttribute('class'),/manque/,'des classes du parcours n’y sont pas');
+  // Une seule équipe à l'étape : un bouton lui confie les classes qui manquent.
+  await boite('cuisine').locator('[data-pc-action=confier]').click();await attendre();
+  assert.match(await boite('cuisine').getAttribute('class'),/\bok\b/,'toutes les classes du parcours passent en cuisine');
+  const lotsCuisine=await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.nom==='Cuisine').lots.flat());
+  assert.ok(lotsCuisine.includes('DL/BC')&&!lotsCuisine.some(c=>c.endsWith('/YC')),'les YC ne vont pas en cuisine');
+  // Aucune équipe : on la pose ici, et sa fiche s'ouvre.
+  const avantN=await page.evaluate(()=>Sim.ateliers.state.ateliers.length);
+  await boite('appros').locator('[data-pc-champ=equipe-creer]').selectOption('manuel');await attendre();
+  const nouvelle=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1));
+  assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.length),avantN+1);
+  assert.equal(nouvelle.service,'appros');
+  assert.ok(nouvelle.lots.length>0,'elle naît avec les classes de l’étape');
+  assert.equal(await page.evaluate(()=>Sim.ateliers.ouvert),nouvelle.id,'sa fiche est ouverte');
+  // Le bouton général confie tout ce qui n'a qu'une équipe possible.
+  await page.locator('[data-pc-action=completer]').click();await attendre();
+  assert.equal(await page.locator('.pc-box.manque [data-pc-action=confier]').count(),0,'plus rien à confier d’un clic');
+  assert.equal(await page.locator('[data-pc-action=completer]').count(),0,'le bouton s’efface');
+  // Le chronogramme suit une classe à travers les branches, jusqu'à l'échéance.
+  await page.selectOption(`[data-pc-champ=chrono][data-parcours=complet]`,'AF/BC');await attendre();
+  assert.equal(await page.locator(`${complet} .pc-chrono svg`).count(),1,'le chemin de AF/BC dans le temps');
 
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('excel-browser : ok');

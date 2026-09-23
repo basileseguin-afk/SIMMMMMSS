@@ -197,27 +197,76 @@ body.ateliers-open .workbench{display:none}
   border:1px solid var(--bordure);border-radius:9px;background:var(--bg2)}
 .pc-defauts-lab{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--txt2);align-self:center}
 .pc-defauts label{display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:700;color:var(--txt2)}
-.pc-defauts select{font-size:12px;padding:5px 7px;max-width:170px}
+#view-ateliers .pc-defauts select{font-size:12px;padding:5px 7px;max-width:170px}
 .pc-carte{border:1px solid var(--bordure2);border-radius:10px;padding:10px 12px;background:var(--bg3)}
 .pc-carte.ouvert{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 .pc-tete{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .pc-tete h4{margin:0;font-size:14px}
-.pc-nom{font:inherit;font-weight:700;font-size:14px;padding:5px 8px;min-width:200px}
+#view-ateliers .pc-nom{font:inherit;font-weight:700;font-size:14px;padding:5px 8px;min-width:200px}
 .pc-qui{font-size:11.5px;color:var(--txt2);flex:1;min-width:160px}
 .pc-resume{margin:8px 0 0;padding:0;list-style:none;display:grid;gap:3px;font-size:12.5px}
 .pc-resume b{display:inline-block;min-width:78px;color:var(--txt2);font-weight:700}
 .pc-jonction{margin:6px 0 0;font-size:12px;color:var(--txt2)}
 .pc-branches{display:grid;gap:10px;margin-top:10px}
 .pc-branche{border-left:3px solid var(--accent);padding:4px 0 4px 10px;display:grid;gap:6px}
-.pc-branche-nom{font:inherit;font-weight:700;font-size:12.5px;padding:4px 7px;max-width:220px}
+#view-ateliers .pc-branche-nom{font:inherit;font-weight:700;font-size:12.5px;padding:4px 7px;max-width:220px}
 .pc-chaine{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
 .pc-etape{display:inline-flex;align-items:center;gap:2px}
-.pc-chaine select{font-size:12px;padding:4px 6px;max-width:190px}
+#view-ateliers .pc-chaine select{font-size:12px;padding:4px 6px;max-width:190px}
 .pc-fleche{color:var(--txt2);font-weight:700}
 .pc-x{border:0;background:none;color:var(--txt2);font-size:15px;cursor:pointer;padding:0 4px;min-height:0}
 .pc-x:hover{color:var(--rouge)}
 .pc-actions{display:flex;flex-wrap:wrap;gap:8px}
 .pc-branche .btn{justify-self:start}
-.at-cls-parcours{font-size:12px;padding:4px 6px;max-width:190px}
+#view-ateliers .at-cls-parcours{font-size:12px;padding:4px 6px;max-width:190px}
 .at-titre-aide{margin-top:18px}
 .at-titre-aide .at-titre{margin:0}
+
+/* ==========================================================================
+ *  PARCOURS × ÉQUIPES
+ *  Le parcours est le squelette : une ligne par branche, la jonction à
+ *  droite. Chaque étape porte ses équipes et leurs heures, et dit en clair ce
+ *  qui n'a pas d'équipe. Dessous, une classe se lit dans le temps.
+ * ==========================================================================*/
+.pc-completer{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pc-a-confier{color:var(--rouge)}
+.pc-flux{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin-top:10px}
+.pc-flux.avec-jonction{grid-template-columns:minmax(0,1fr) minmax(180px,230px);align-items:center}
+.pc-lanes{display:grid;gap:8px}
+.pc-lane{display:grid;grid-template-columns:78px minmax(0,1fr);align-items:center;gap:8px}
+.pc-lane-nom{font-size:11.5px;font-weight:700;color:var(--txt2)}
+.pc-lane-etapes{display:flex;align-items:stretch;gap:4px;flex-wrap:wrap}
+.pc-lane-etapes>.pc-fleche{align-self:center}
+.pc-jonction-col{border-left:3px solid var(--accent);padding-left:10px}
+.pc-box{border:1px solid var(--bordure2);border-radius:8px;padding:6px 8px;background:var(--bg2);
+  min-width:150px;max-width:230px;display:grid;gap:5px;align-content:start}
+.pc-box-tete{display:flex;justify-content:space-between;gap:8px;font-size:12px}
+.pc-box-tete span{color:var(--txt2);font-size:11px;white-space:nowrap}
+.pc-box.ok{border-color:var(--vert)}
+.pc-box.ok .pc-box-tete span{color:var(--vert);font-weight:700}
+.pc-box.manque{border-color:var(--rouge);border-width:2px;padding:5px 7px}
+.pc-box.manque .pc-box-tete span{color:var(--rouge);font-weight:700}
+.pc-box.neutre{border-style:dashed}
+.pc-box.vide{opacity:.6}
+.pc-chips{display:flex;flex-wrap:wrap;gap:4px}
+.pc-chip{font:inherit;font-size:11px;font-weight:700;border:1px solid var(--accent);background:var(--bg3);
+  color:var(--accent2);border-radius:99px;padding:2px 8px;cursor:pointer;min-height:0}
+.pc-chip span{font-weight:500;color:var(--txt2);font-variant-numeric:tabular-nums}
+.pc-chip:hover{background:color-mix(in srgb,var(--accent) 10%,var(--bg3))}
+#view-ateliers .pc-box-action .btn,#view-ateliers .pc-box-action select{font-size:11.5px;padding:3px 7px;min-height:0;width:100%}
+.pc-chrono{margin-top:12px;border-top:1px dashed var(--bordure);padding-top:8px}
+.pc-chrono-choix{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:var(--txt2);white-space:nowrap}
+#view-ateliers .pc-chrono-choix select{width:auto;font-size:12px;padding:3px 6px}
+.pc-chrono svg{width:100%;max-width:1000px;height:auto;display:block;margin-top:6px}
+.pc-ch-grille{stroke:var(--bordure);stroke-width:1}
+.pc-ch-heure{font-size:10px;fill:var(--txt3)}
+.pc-ch-lane{font-size:11px;font-weight:700;fill:var(--txt2)}
+.pc-ch-lot{fill:color-mix(in srgb,var(--accent) 28%,var(--bg3));stroke:var(--accent);stroke-width:1}
+.pc-ch-lot.inacheve{fill:var(--bad-fill);stroke:var(--rouge);stroke-dasharray:4 3}
+.pc-ch-attente{fill:var(--orange);opacity:.55}
+.pc-ch-dispo{fill:var(--vert)}
+.pc-ch-txt{font-size:10.5px;fill:var(--txt);pointer-events:none}
+.pc-ch-echeance{stroke:var(--rouge);stroke-width:1.5;stroke-dasharray:4 3}
+.pc-ch-echeance-txt{font-size:10px;fill:var(--rouge);font-weight:700}
+@media(max-width:760px){.pc-flux.avec-jonction{grid-template-columns:1fr}.pc-jonction-col{border-left:0;border-top:3px solid var(--accent);padding:8px 0 0}
+  .pc-lane{grid-template-columns:1fr}.pc-box{max-width:none;flex:1}}

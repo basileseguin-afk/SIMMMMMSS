@@ -123,3 +123,70 @@ test('arcs et services se lisent dans les branches', () => {
   assert.equal(routes.get('AF/YC').parcours.id, 'sans-cuisine');
   assert.equal(routes.has('AF/XX'), false, 'une classe sans parcours n’en reçoit pas');
 });
+
+/* ---- parcours × équipes : la fusion ----------------------------------- */
+const PC = require('../parcours.js');
+const CLASSES = P.classesDeVols(VOLS, { delaiChargement: 45 });
+const etatAvec = ateliers => ({ ateliers, ...PARCOURS, parcoursClasse: {} });
+
+test('les étapes se lisent dans l’ordre du flux : sources d’abord, jonction à la fin', () => {
+  assert.deepEqual(PC.etapesOrdonnees(COMPLET), ['appros', 'plonge', 'magasin', 'cuisine', 'dotation', 'prepa']);
+});
+
+test('la couverture dit, étape par étape, quelle équipe travaille quelle classe', () => {
+  const etat = etatAvec([at('cu', 'cuisine', '05:00', [['AF/BC']]),
+    { id: 'pl', nom: 'Plonge', service: 'plonge', type: 'lavage', debut: '05:00', lots: [] }]);
+  const c = PC.couverture(etat, CLASSES);
+  const complet = c.find(x => x.parcours.id === 'complet');
+  assert.deepEqual(complet.classes, ['AF/BC'], 'seule AF/BC suit le parcours complet dans ce programme');
+  const e = s => complet.etapes.find(x => x.service === s);
+  assert.deepEqual(e('cuisine').manquantes, [], 'la cuisine fait AF/BC');
+  assert.equal(e('cuisine').classes[0].atelier, 'cu');
+  assert.deepEqual(e('prepa').manquantes, ['AF/BC'], 'personne au montage');
+  assert.deepEqual(e('plonge').manquantes, [], 'une plonge n’a rien à se voir confier');
+  const sans = c.find(x => x.parcours.id === 'sans-cuisine');
+  assert.deepEqual(sans.classes.sort(), ['AF/YC', 'TX/YC']);
+});
+
+test('confier ajoute une fabrication par classe, dans l’ordre des échéances, sans doublon', () => {
+  const etat = etatAvec([at('mo', 'prepa', '05:00', [['AF/YC']])]);
+  const n = PC.confier(etat, 'mo', ['TX/YC', 'AF/BC', 'AF/YC'], CLASSES);
+  assert.equal(n, 2, 'AF/YC y était déjà');
+  assert.deepEqual(etat.ateliers[0].lots, [['AF/YC'], ['AF/BC'], ['TX/YC']], 'AF (12:00) avant TX (13:00)');
+  assert.throws(() => PC.confier(etatAvec([{ id: 'pl', type: 'lavage', service: 'plonge', lots: [] }]), 'pl', ['AF/BC'], CLASSES), /ne fabrique pas/);
+});
+
+test('une équipe se pose sur une étape avec ce qu’elle a à faire', () => {
+  const etat = etatAvec([]);
+  const a = PC.nouvelleEquipe(etat, 'dotation', 'DOTATION', ['TX/YC', 'AF/YC'], CLASSES);
+  assert.equal(a.service, 'dotation'); assert.equal(a.nom, 'DOTATION');
+  assert.deepEqual(a.lots, [['AF/YC'], ['TX/YC']]);
+  assert.equal(PC.nouvelleEquipe(etat, 'dotation', 'DOTATION', [], CLASSES).nom, 'DOTATION 2');
+});
+
+test('compléter confie là où une seule équipe travaille, et rend la main ailleurs', () => {
+  const etat = etatAvec([at('mo', 'prepa', '05:00', []), at('d1', 'dotation', '05:00', []), at('d2', 'dotation', '05:00', [])]);
+  const { faits, restent } = PC.completer(etat, CLASSES);
+  const auMontage = faits.filter(f => f.service === 'prepa').reduce((n, f) => n + f.n, 0);
+  assert.equal(auMontage, 3, 'le montage reçoit ses trois classes, des deux parcours qui y passent');
+  assert.ok(restent.some(r => r.service === 'dotation' && r.raison === 'plusieurs équipes'), 'deux dotations : on ne choisit pas');
+  assert.ok(restent.some(r => r.service === 'cuisine' && r.raison === 'aucune équipe'));
+  // Et la journée tourne sur ce qui a été confié.
+  const r = P.simuler({ vols: VOLS, liaisons: [], bareme: BAREME, ateliers: etat.ateliers, ...PARCOURS });
+  assert.equal(r.ok, true);
+  assert.ok(r.lots.some(l => l.service === 'prepa' && l.classes.includes('TX/YC')));
+});
+
+test('le chronogramme montre les branches d’une classe dans le temps, jusqu’à leur jonction', () => {
+  const ateliers = [at('ap', 'appros', '05:00', [['AF/BC']]), at('cu', 'cuisine', '05:00', [['AF/BC']]),
+    at('do', 'dotation', '05:00', [['AF/BC']]), at('mo', 'prepa', '05:00', [['AF/BC']])];
+  const r = jouer(ateliers);
+  const g = PC.chronogramme(r, COMPLET, 'AF/BC');
+  assert.equal(g.lanes.length, 3);
+  const agro = g.lanes[0].etapes, mat = g.lanes[1].etapes;
+  assert.equal(agro[1].service, 'cuisine');
+  assert.ok(agro[1].fin <= agro[2].debut, 'la cuisine finit avant que le montage commence');
+  assert.equal(agro[2].debut, mat[2].debut, 'la jonction est au même instant sur toutes les branches');
+  assert.equal(mat[0].absent, true, 'pas de plonge décrite : l’étape est vide');
+  assert.equal(g.debut, 5 * 60);
+});

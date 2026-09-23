@@ -807,9 +807,25 @@
         message: a.nom + ' : aucun barème pour « ' + nom(a.service) + ' », sa durée est nulle tant qu’il n’est pas renseigné.' });
     }
 
+    // Une compagnie × classe fabriquée dans un service qui n'a de minutes ni
+    // pour elle ni pour sa classe y travaillerait en temps nul. On la nomme :
+    // c'est le cas courant d'un service chiffré compagnie par compagnie.
+    for (const a of ateliers) {
+      if (a.type !== 'manuel' || !bareme[a.service]) continue;
+      const sans = [];
+      for (const lot of (a.lots || [])) for (const id of classesDuLot(lot)) {
+        const c = parClasse.get(id);
+        if (c && c.vols.length && minutesParVol(bareme[a.service], c) == null && !sans.includes(id)) sans.push(id);
+      }
+      if (sans.length) anomalies.push({ code: 'bareme-classe', atelier: a.id, classes: sans,
+        message: '« ' + nom(a.service) + ' » n’a pas de minutes pour ' + sans.slice(0, 5).join(', ')
+          + (sans.length > 5 ? '…' : '') + ' : ' + (sans.length > 1 ? 'elles y travaillent' : 'elle y travaille')
+          + ' en temps nul. Renseignez le barème.' });
+    }
+
     // Ce qui n'empêche pas de jouer la journée ne doit pas l'empêcher.
     const NON_BLOQUANTES = new Set(['doublon', 'bareme', 'lots', 'lot-vide', 'poste', 'materiel', 'dispo',
-      'tunnel-personnes', 'parcours-trou', 'hors-parcours']);
+      'tunnel-personnes', 'parcours-trou', 'hors-parcours', 'bareme-classe']);
     const bloquant = anomalies.some(a => !NON_BLOQUANTES.has(a.code));
     if (bloquant) return { ok: false, anomalies, classes, lots: [], ateliers: [] };
 

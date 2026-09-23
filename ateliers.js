@@ -135,7 +135,7 @@
           this.state = valider(lu);
           if (lu && lu.parcours === undefined) {
             alerte = 'Parcours types créés : « Complet » pour BC, PC, CREW et SPML, « Sans cuisine » pour YC. '
-              + 'Ajustez-les dans « Parcours des classes ».';
+              + 'Ajustez-les dans « Parcours et équipes ».';
             this.enregistrer();
           }
         }
@@ -148,7 +148,9 @@
         etat: () => this.state,
         changer: (fn, message) => this.changer(() => fn(this.state), message),
         services: () => this.a.services(),
-        classes: () => this.classes
+        classes: () => this.classes,
+        resultat: () => this.resultat,
+        ouvrirAtelier: id => this.ouvrirFiche(id)
       });
       this.rendre(alerte);
     }
@@ -243,6 +245,19 @@
 <div id="at-indicateurs" class="at-indicateurs"></div>
 <p id="at-status" role="status" aria-live="polite"></p>
 <div id="at-anomalies" class="at-anomalies" hidden></div>
+<div class="titre-aide at-titre-aide"><h3 class="at-titre">Parcours et équipes</h3><details class="aide">
+  <summary aria-label="Qu’est-ce qu’un parcours ?">?</summary>
+  <span class="aide-corps"><p>Le <b>parcours</b> dit par où passe une compagnie × classe, en
+    <b>branches</b> qui partent en parallèle et se rejoignent : l’agro par les appros et la cuisine,
+    le matériel par la plonge et la dotation, le produit compagnie par le magasin. Les
+    <b>équipes</b> disent qui la travaille à chaque étape, quand, et à combien.</p>
+    <p>À chaque étape : les équipes et leurs heures, et les classes qu’aucune n’a encore prises.
+    « Confier » les ajoute à l’équipe en place ; « + Équipe ici » en crée une. Sous chaque
+    parcours, une classe se lit <b>dans le temps</b>, branche par branche.</p>
+    <p>Chaque classe a un parcours par défaut ; une compagnie × classe peut avoir le sien, dans le
+    tableau « Compagnies × classes ».</p></span></details></div>
+<div id="at-parcours" class="pc"></div>
+<h3 class="at-titre">Équipes</h3>
 <div class="at-barre">
   <label>Service <select id="at-filtre"><option value="">Tous</option></select></label>
   <span class="at-barre-fin"></span>
@@ -250,17 +265,9 @@
 </div>
 <div id="at-materiel" class="at-materiel"></div>
 <div id="at-liste"></div>
-<h3 class="at-titre">Planning</h3>
+<h3 class="at-titre">Planning des équipes</h3>
 <div id="at-planning" class="at-planning"></div>
-<div class="titre-aide at-titre-aide"><h3 class="at-titre">Parcours des classes</h3><details class="aide">
-  <summary aria-label="Qu’est-ce qu’un parcours ?">?</summary>
-  <span class="aide-corps"><p>Le chemin d’une compagnie × classe, en <b>branches</b> qui partent en
-    parallèle et se rejoignent : l’agro par les appros et la cuisine, le matériel par la plonge et
-    la dotation, le produit compagnie par le magasin. Un service n’attend que ce qui le précède
-    <b>sur le parcours de la classe</b>.</p>
-    <p>Chaque classe a un parcours par défaut ; une compagnie × classe peut avoir le sien, dans le
-    tableau plus bas.</p></span></details></div>
-<div id="at-parcours" class="pc"></div>
+
 <h3 class="at-titre">Compagnies × classes</h3>
 <div id="at-classes"></div>`;
     }
@@ -304,6 +311,15 @@
       this.changer(() => this.state.ateliers.push(atelier),
         'Atelier créé et déjà enregistré. Dites ce qu’il fabrique, puis « Terminé ».');
       this.ouvert = atelier.id; this.rendre();
+    }
+
+    /* Depuis une étape du parcours : ouvrir la fiche d'une équipe, et y aller. */
+    ouvrirFiche(id) {
+      this.filtre = '';
+      const sel = document.getElementById('at-filtre'); if (sel) sel.value = '';
+      this.ouvert = id; this.rendre();
+      const carte = document.querySelector(`[data-at="${CSS.escape(id)}"]`);
+      if (carte) { carte.scrollIntoView({ block: 'start', behavior: 'smooth' }); const f = carte.querySelector('input,select,button'); if (f) f.focus({ preventScroll: true }); }
     }
 
     action(quoi, id, data) {

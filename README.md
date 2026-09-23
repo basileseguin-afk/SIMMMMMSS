@@ -95,14 +95,18 @@ l’ordre :
 3. **Ateliers** : décrire, service par service, les équipes (personnes, horaire,
    pauses), ce qu’elles fabriquent (compagnie × classe, dans l’ordre), les
    plonges (tunnels, débits) et les mises à disposition. La section **Parcours
-   des classes** dit le chemin de chaque compagnie × classe : des branches qui
+   et équipes** dit le chemin de chaque compagnie × classe : des branches qui
    partent en parallèle et se rejoignent (ex. l’agro par les appros et la
    cuisine, le matériel par la plonge et la dotation, le produit compagnie par
    le magasin, tout se retrouvant au montage). YC ne passe pas par la cuisine.
+   Chaque étape y montre ses équipes, leurs heures et les classes qui n’y sont
+   encore fabriquées par personne, avec de quoi les confier ou poser une équipe ;
+   un chronogramme suit une classe dans le temps, branche par branche.
 4. **Flux** : relier les services. Le graphe décrit l’unité ; il ne décide que
    pour les classes qui n’ont pas de parcours.
 5. **Barème** (Réglages) : homme-minutes **par vol**, par service et par
-   compagnie × classe (une valeur commune, des valeurs propres), rendement,
+   compagnie × classe (une valeur commune, des valeurs propres, ou une grille
+   compagnie × classe pour les services qui se chiffrent ainsi), rendement,
    régime de poste, délai de chargement et décalage des vols.
 
 **Tout se pilote aussi depuis Excel** : ateliers (avec classes et parcours),
@@ -265,7 +269,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `replay.js` / `simulation.js` | Relecture de la journée calculée : états à l’instant t, vue Simulation |
 | `comparaison.js` | Scénarios A/B : capture, tableau, verdict par ligne |
 | `vols-demo.js` | Programme de vols **fictif** de démonstration |
-| `parcours.js` | Parcours des compagnies × classes : validation, parcours types, éditeur |
+| `parcours.js` | Parcours des compagnies × classes : validation, parcours types, couverture par les équipes, chronogramme, éditeur |
 | `tableur.js` | Lecture et écriture de classeurs Excel (.xlsx) et de CSV, sans bibliothèque |
 | `echanges.js` | Les trois classeurs (ateliers, barème, vols) : format et conversions |
 | `plan-editor.js` / `editor.css` | Dessin, annotations, historique et sauvegarde du plan |
@@ -280,10 +284,10 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/production.test.cjs` | Régressions du modèle par ateliers : enchaînement des lots, attente des amonts, robot, pauses, validation |
 | `tests/replay.test.cjs` | Relecture : états d’un service, ponctualité à l’instant t, pas suivant |
 | `tests/comparaison.test.cjs` | Scénarios A/B : capture, déterminisme, verdicts, jeu de démonstration |
-| `tests/parcours.test.cjs` | Parcours : branches parallèles, jonction, étape enjambée, hors parcours, boucle |
+| `tests/parcours.test.cjs` | Parcours : branches parallèles, jonction, étape enjambée, hors parcours, boucle ; couverture, confier, compléter, chronogramme |
 | `tests/tableur.test.cjs` | Classeurs Excel : aller-retour, fichier compressé d’un autre logiciel, CSV |
 | `tests/echanges.test.cjs` | Les trois classeurs : aller-retour, ajouts, erreurs regroupées |
-| `tests/excel-browser.cjs` | Parcours dans l’interface, classeurs ateliers et vols de bout en bout |
+| `tests/excel-browser.cjs` | Parcours et équipes dans l’interface, classeurs ateliers et vols de bout en bout |
 | `tests/browser-smoke.cjs` | Parcours dans Chromium : relecture, vols, import, export, thèmes, mobile |
 | `tests/import-browser.cjs` | Import CSV : échec de lecture puis réimport, numéros de ligne, export, scénarios A/B |
 | `tests/sauvegarde-browser.cjs` | Sauvegarde complète : export, refus atomique, effacement et restauration |

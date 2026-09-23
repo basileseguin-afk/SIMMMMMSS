@@ -129,6 +129,24 @@ Le barème se lit **un service à la fois** : replié, chacun tient en une ligne
 qui montre ses minutes par vol ; ouvert, il montre la valeur commune de chaque
 classe, les valeurs propres à une compagnie, et un menu pour en ajouter une.
 
+**Certains services se chiffrent par compagnie × classe**, pas par classe : le
+dressage d'un plateau AF BC n'est pas celui d'un plateau DL BC. Chaque service a
+donc deux saisies, au choix :
+
+- **Par classe** : une valeur commune par classe, et quelques valeurs propres
+  ajoutées une à une.
+- **Par compagnie × classe** : une grille, une ligne par compagnie qui passe par
+  ce service (selon son parcours), une colonne par classe. Une case vide prend
+  la valeur de la ligne « Autres compagnies » ; si celle-ci est vide aussi, la
+  case est **encadrée de rouge** et le résumé du service dit combien il en reste
+  « à renseigner ». Un point `·` marque un couple qui ne passe pas par ce service.
+
+Le moteur ne fait pas de différence : une valeur propre l'emporte toujours sur
+la commune. Changer de saisie ne perd rien. Un classeur importé qui porte des
+valeurs propres bascule le service en grille. **Une compagnie × classe fabriquée
+par une équipe sans aucune minute** au barème est signalée (« … n'a pas de
+minutes pour AF/PC … en temps nul ») sans bloquer la journée.
+
 Il se corrige service par service, ou **s'échange avec Excel** : c'est ainsi
 qu'une étude de man-minutes entre dans le modèle, sans toucher au moteur. Le
 classeur exporté propose une ligne par compagnie × classe **et par service de
@@ -302,10 +320,39 @@ plonge, la cuisine que la légumerie. La règle tient en une phrase :
 > Un service ne travaille un lot que lorsque **les services qui le précèdent sur
 > le parcours de chaque classe** du lot la lui ont livrée.
 
-Les parcours se décrivent dans l'onglet **Ateliers**, section « Parcours des
-classes » : chaque étape est un menu, chaque branche une chaîne qu'on lit de
-gauche à droite. Deux parcours types sont créés d'office — **Complet** pour BC,
-PC, CREW et SPML, **Sans cuisine** pour YC — et se modifient librement.
+Les parcours se décrivent dans l'onglet **Ateliers**, section « Parcours et
+équipes » : chaque étape est un menu, chaque branche une chaîne qu'on lit de
+gauche à droite (« Modifier les branches »). Deux parcours types sont créés
+d'office — **Complet** pour BC, PC, CREW et SPML, **Sans cuisine** pour YC — et
+se modifient librement.
+
+### Parcours et équipes : une seule vue
+
+Le parcours dit **par où** passe une classe ; les équipes disent **qui, quand et
+en combien de temps**. Les deux se lisent ensemble : le parcours est le
+squelette, les équipes s'y accrochent.
+
+- **Chaque étape montre ses équipes** et leurs heures pour les classes du
+  parcours (« Cuisine matin 04:30–09:10 ») ; un clic ouvre la fiche de l'équipe.
+- **Chaque étape dit sa couverture** : « 7 / 9 classes ». Verte si toutes les
+  classes du parcours y sont fabriquées, orange s'il en manque.
+- **Ce qui manque se complète sur place** :
+  - une seule équipe à l'étape : « Confier les 2 à Cuisine matin » ;
+  - plusieurs : un menu pour choisir laquelle ;
+  - aucune : « + Équipe ici… » pose une équipe qui fabrique les classes
+    manquantes (ou une plonge, ou une mise à disposition) et ouvre sa fiche.
+  Les classes confiées s'ajoutent à la fin de la liste de l'équipe, rangées par
+  heure de départ ; l'ordre se retouche dans la fiche.
+- **« Confier les classes sans équipe »** fait d'un coup tout ce qui n'a qu'une
+  équipe possible.
+- **Le chronogramme** suit une compagnie × classe au choix dans le temps : une
+  ligne par branche, chaque étape à ses heures, l'attente de ses amonts en
+  orange, la jonction alignée, et le trait de l'échéance (premier départ moins
+  le délai de chargement). C'est là qu'on voit quelle branche fait attendre le
+  montage.
+
+Le **planning des équipes**, plus bas, reste la vue par équipe : qui travaille
+quoi, heure par heure.
 
 - **Par défaut, par classe** : BC, PC, YC, CREW et SPML ont chacune un parcours.
 - **Par compagnie × classe** : le tableau des compagnies × classes a une colonne

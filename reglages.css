@@ -106,3 +106,18 @@
 .rg-propres{display:grid;gap:8px;margin-top:10px}
 .rg-propres select{font-size:12px;padding:5px 8px;max-width:320px}
 .rg-table input::placeholder{color:var(--txt3)}
+
+/* Deux façons de chiffrer un service : par classe, ou compagnie par compagnie.
+   La grille garde la classe en colonne pour qu'une étude se recopie telle quelle. */
+.rg-mode{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.rg-mode .btn[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff)}
+.rg-grille-scroll{overflow-x:auto;max-width:100%}
+.rg-grille{min-width:520px}
+.rg-grille td{padding:3px 4px}
+.rg-grille input{width:74px}
+.rg-grille .rg-hors{color:var(--txt3);text-align:center}
+.rg-grille .rg-autres th,.rg-grille .rg-autres td{border-top:2px solid var(--bordure2);padding-top:7px}
+.rg-grille .rg-autres th{font-weight:600;color:var(--txt2)}
+.rg-table input.rg-manque{border-color:var(--rouge);box-shadow:0 0 0 1px var(--rouge)}
+.rg-manque-txt{color:var(--rouge)}
+.rg-service.manque{border-left:3px solid var(--rouge)}

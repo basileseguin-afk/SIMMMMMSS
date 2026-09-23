@@ -140,6 +140,9 @@ correspondante telle qu'elle est sur le site** : on peut n'envoyer que
 - L'export propose une ligne par compagnie × classe **et par service de son
   parcours** : exactement ce qu'une étude de temps doit renseigner.
 - **L'import remplace le barème entier.**
+- Un service qui reçoit au moins une valeur propre à une compagnie passe, sur le
+  site, en **saisie par compagnie × classe** (une grille) ; les autres restent
+  en saisie par classe. Le classeur, lui, a toujours la même forme.
 
 ### Feuille « Réglages » — facultative
 

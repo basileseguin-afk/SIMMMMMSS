@@ -1079,6 +1079,7 @@ function installerCentreReglages() {
     // que le classeur du barème propose de renseigner, service par service.
     classes:()=>Sim.ateliers?Sim.ateliers.classes:[],
     routes:cls=>MoteurProduction.routesDesClasses(cls,Sim.ateliers?Sim.ateliers.state:{}),
+    routesSignature:()=>{const e=(Sim.ateliers&&Sim.ateliers.state)||{};return JSON.stringify([e.parcours,e.parcoursCabine,e.parcoursClasse]);},
     // Un service dont toutes les équipes sont des plonges, des mises à
     // disposition ou des robots ne lit pas le barème : inutile de le proposer.
     sansBareme:()=>{

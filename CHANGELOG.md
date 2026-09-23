@@ -5,6 +5,41 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-23 — Parcours et équipes fusionnés ; barème par compagnie × classe
+
+**Le barème, service par service, par classe ou par compagnie × classe**
+- Chaque service du barème a deux saisies : « Par classe » (une valeur commune
+  par classe, quelques valeurs propres) ou « Par compagnie × classe » : une
+  grille, une ligne par compagnie qui passe par ce service selon son parcours,
+  une colonne par classe. Une case vide prend la valeur « Autres compagnies » ;
+  sans elle, la case est encadrée de rouge et le résumé du service compte ce
+  qui reste « à renseigner ». Un `·` marque un couple hors de ce service.
+- Un classeur importé qui porte des valeurs propres bascule le service en grille.
+- Le moteur signale une compagnie × classe fabriquée sans aucune minute au
+  barème (anomalie `bareme-classe`, non bloquante) : elle travaillerait en temps
+  nul sans rien dire.
+
+**Parcours et équipes : une seule vue**
+- La section « Parcours et équipes » de l'onglet Ateliers vient juste après les
+  anomalies. Chaque étape d'un parcours y montre ses équipes et leurs heures
+  pour les classes du parcours (un clic ouvre la fiche), sa couverture
+  (« 7 / 9 classes ») et ce qui manque.
+- Ce qui manque se complète sur place : « Confier » à l'unique équipe de
+  l'étape, un menu s'il y en a plusieurs, « + Équipe ici… » s'il n'y en a
+  aucune (équipe qui fabrique, plonge ou mise à disposition ; sa fiche s'ouvre).
+  « Confier les classes sans équipe » fait tout ce qui n'a qu'une équipe possible.
+- Un chronogramme par parcours suit une compagnie × classe au choix : une ligne
+  par branche, l'attente des amonts, la jonction alignée, l'échéance.
+
+**Fichiers** : `reglages.js`, `reglages.css`, `moteur/production.js`,
+`parcours.js` (`etapesOrdonnees`, `couverture`, `confier`, `nouvelleEquipe`,
+`completer`, `chronogramme`), `ateliers.js`, `ateliers.css`, `sim.js`,
+`index.html` (empreintes) ; tests `production`, `parcours` (173 tests purs),
+`reglages-browser`, `excel-browser` ; docs `MODELE_ATELIERS.md`,
+`FORMATS_EXCEL.md`, `ETAT_DES_LIEUX.md`, `README.md`.
+
+---
+
 ## 2026-09-23 — Grand ménage
 
 Tout ce qui n'était plus relié à rien est retiré : environ 710 lignes en moins,

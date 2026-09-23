@@ -43,6 +43,11 @@
     const b = brut || {};
     return {
       bareme: validerBareme(b.bareme),
+      // Certains services se chiffrent par compagnie × classe, d'autres par
+      // classe seulement. Le mode ne change pas le calcul — une valeur propre
+      // l'emporte toujours sur la commune — il change ce qu'on saisit.
+      detail: Object.fromEntries(Object.entries((b.detail && typeof b.detail === 'object') ? b.detail : {})
+        .filter(([k, v]) => v === 'compagnie' && typeof k === 'string' && k.length <= 160).slice(0, 300)),
       rendement: (() => {
         const n = +b.rendement;
         return Number.isFinite(n) && n > 0 && n <= 2 ? Math.round(n * 100) / 100 : P.RENDEMENT_DEMO;
@@ -268,8 +273,9 @@
         setTimeout(() => this.changer(() => {
           if (champ === 'minutes') {
             const ligne = this.etat.bareme[service] || (this.etat.bareme[service] = {});
-            // Une case commune vidée : « non renseigné », pas zéro.
-            if (v === '' && cle.startsWith(P.TOUTES + '/')) delete ligne[cle];
+            // Une case vidée : la valeur disparaît. Commune, le service devient
+            // « non renseigné » pour cette classe ; propre, la commune reprend.
+            if (v === '') delete ligne[cle];
             else ligne[cle] = min(v.replace(',', '.'), 0);
           } else if (champ === 'propre-ajout' && v) {
             const ligne = this.etat.bareme[service] || (this.etat.bareme[service] = {});
@@ -287,6 +293,13 @@
           this.serviceOuvert = d.open ? null : d.dataset.service;
           return;   // le navigateur fait le reste : on ne redessine pas
         }
+        const m = e.target.closest('[data-rg-action="mode"]');
+        if (m) return this.changer(() => {
+          if (m.dataset.mode === 'compagnie') this.etat.detail[m.dataset.service] = 'compagnie';
+          else delete this.etat.detail[m.dataset.service];
+        }, m.dataset.mode === 'compagnie'
+          ? 'Saisie par compagnie × classe : une ligne par compagnie, une colonne par classe.'
+          : 'Saisie par classe : les valeurs propres à une compagnie sont conservées.');
         const p = e.target.closest('[data-rg-action="propre-retirer"]');
         if (p) return this.changer(() => { delete this.etat.bareme[p.dataset.service][p.dataset.cle]; },
           p.dataset.cle + ' : retour à la valeur commune.');
@@ -327,7 +340,8 @@
       // touche pas : sinon un rendu déclenché par la sortie d'un champ
       // arrache le bouton qu'on était en train de cliquer, et le clic se perd.
       const signature = JSON.stringify([services.map(s => [s.id, s.nom]), complet,
-        this.etat.bareme, [...occupes], (this.a.classes ? this.a.classes() : []).map(c => c.id)]);
+        this.etat.bareme, this.etat.detail, [...occupes], (this.a.classes ? this.a.classes() : []).map(c => c.id),
+        this.a.routesSignature ? this.a.routesSignature() : '']);
       if (box._signature !== signature) {
         box._signature = signature;
         // Un `input[type=number]` n'accepte que le point décimal : « 0,6 » le
@@ -335,6 +349,7 @@
         const fr = n => String(n).replace('.', ',');
 
         const classes = this.a.classes ? this.a.classes() : [];
+        const routes = this.a.routes ? this.a.routes(classes) : new Map();
         box.innerHTML = services.map(s => {
           const propre = this.etat.bareme[s.id];
           const pere = this.a.parent ? this.a.parent(s.id) : null;
@@ -348,20 +363,53 @@
             : renseigne ? '' : '<span class="rg-zero">non renseigné</span>';
           const propres = Object.entries(ligne).filter(([k]) => !k.startsWith(P.TOUTES + '/'))
             .sort(([x], [y]) => x.localeCompare(y));
-          // Le résumé replié : les minutes par vol de chaque classe.
-          const digest = P.CABINES.map((c, i) => `<b>${c}</b> ${Number.isFinite(communes[i]) ? fr(communes[i]) : '—'}`).join(' · ')
-            + ' <em>min/vol</em>' + (propres.length ? ` · <em>+ ${propres.length} par compagnie</em>` : '');
-          const dispo = classes.filter(c => !(P.cleBareme(c.cie, c.cabine) in ligne));
-          const champ = (cle, val, label) => `<input type="number" min="0" step="0.1" value="${Number.isFinite(val) ? val : ''}"
-            placeholder="—" data-rg-champ="minutes" data-service="${esc(s.id)}" data-cle="${esc(cle)}" aria-label="${esc(label)}">`;
+          const parCompagnie = this.etat.detail[s.id] === 'compagnie';
+          // Les compagnies × classes qui passent par ce service : celles dont le
+          // parcours le traverse, ou toutes quand une classe n'a pas de parcours.
+          const ici = classes.filter(c => { const r = routes.get(c.id); return !r || r.services.has(s.id); });
+          const manquent = ici.filter(c => P.minutesParVol(ligne, c) == null);
+          const champ = (cle, val, label, attrs) => `<input type="number" min="0" step="0.1" value="${Number.isFinite(val) ? val : ''}"
+            placeholder="${esc((attrs && attrs.placeholder) || '—')}" data-rg-champ="minutes" data-service="${esc(s.id)}"
+            data-cle="${esc(cle)}" aria-label="${esc(label)}"${attrs && attrs.manque ? ' class="rg-manque"' : ''}>`;
 
-          return `<details class="rg-service ${etat}" name="rg-bareme" data-service="${esc(s.id)}">
-            <summary>
-              <span class="rg-svc-nom">${esc(s.nom)}${occupes.has(s.id)
-                ? '<span class="rg-occupe" title="Un atelier de travail y est décrit">équipe</span>' : ''}${marque}</span>
-              <span class="rg-svc-digest">${digest}</span>
-            </summary>
-            <table class="rg-table"><thead><tr><th scope="col">Classe</th>
+          const digest = parCompagnie
+            ? `<em>par compagnie × classe</em> · ${propres.length} valeur(s)`
+              + (manquent.length ? ` · <b class="rg-manque-txt">${manquent.length} à renseigner</b>` : '')
+            : P.CABINES.map((c, i) => `<b>${c}</b> ${Number.isFinite(communes[i]) ? fr(communes[i]) : '—'}`).join(' · ')
+              + ' <em>min/vol</em>' + (propres.length ? ` · <em>+ ${propres.length} par compagnie</em>` : '');
+
+          const mode = `<div class="rg-mode" role="group" aria-label="Saisie des minutes de ${esc(s.nom)}">
+            <button class="btn btn-sm" data-rg-action="mode" data-mode="classe" data-service="${esc(s.id)}"
+              aria-pressed="${!parCompagnie}">Par classe</button>
+            <button class="btn btn-sm" data-rg-action="mode" data-mode="compagnie" data-service="${esc(s.id)}"
+              aria-pressed="${parCompagnie}">Par compagnie × classe</button>
+          </div>`;
+
+          let corps;
+          if (parCompagnie) {
+            // Une ligne par compagnie, une colonne par classe. Une case vide
+            // prend la valeur « autres compagnies » ; sans elle, elle manque.
+            const cies = [...new Set(ici.map(c => c.cie).concat(propres.map(([k]) => k.slice(0, k.lastIndexOf('/')))))]
+              .sort((x, y) => x.localeCompare(y));
+            const passe = new Set(ici.map(c => c.id));
+            corps = `<div class="rg-grille-scroll"><table class="rg-table rg-grille"><thead><tr><th scope="col">Compagnie</th>
+              ${P.CABINES.map(c => `<th scope="col" title="${esc((P.NOM_CABINE || {})[c] || c)}">${c}</th>`).join('')}</tr></thead><tbody>
+              ${cies.map(cie => `<tr><th scope="row">${esc(cie)}</th>${P.CABINES.map((c, i) => {
+                const cle = P.cleBareme(cie, c), val = ligne[cle];
+                if (!passe.has(P.idClasse(cie, c)) && !Number.isFinite(val))
+                  return '<td class="rg-hors" title="Cette compagnie × classe ne passe pas par ce service">·</td>';
+                const manque = !Number.isFinite(val) && !Number.isFinite(communes[i]);
+                return `<td>${champ(cle, val, s.nom + ' ' + cie + '/' + c + ' minutes par vol',
+                  { placeholder: Number.isFinite(communes[i]) ? fr(communes[i]) : 'à saisir', manque })}</td>`;
+              }).join('')}</tr>`).join('')}
+              <tr class="rg-autres"><th scope="row" title="Valeur de toute compagnie qui n’a pas la sienne">Autres compagnies</th>
+                ${P.CABINES.map((c, i) => `<td>${champ(P.cleBareme(P.TOUTES, c), communes[i], s.nom + ' ' + c + ' minutes par vol, autres compagnies')}</td>`).join('')}</tr>
+            </tbody></table></div>
+            <p class="mini-note">Minutes par vol. Une case vide prend la valeur « autres compagnies » ;
+              encadrée de rouge, il n’y en a pas.${cies.length ? '' : ' Aucune compagnie ne passe par ce service.'}</p>`;
+          } else {
+            const dispo = classes.filter(c => !(P.cleBareme(c.cie, c.cabine) in ligne));
+            corps = `<table class="rg-table"><thead><tr><th scope="col">Classe</th>
               <th scope="col">Toutes compagnies — min / vol</th></tr></thead><tbody>
               ${P.CABINES.map((c, i) => `<tr>
                 <th scope="row" title="${esc((P.NOM_CABINE || {})[c] || c)}">${c}</th>
@@ -381,7 +429,17 @@
                 <option value="">+ Valeur propre à une compagnie × classe…</option>
                 ${dispo.map(c => `<option value="${esc(P.cleBareme(c.cie, c.cabine))}">${esc(c.id)}</option>`).join('')}
               </select>` : ''}
-            </div>
+            </div>`;
+          }
+
+          return `<details class="rg-service ${etat}${manquent.length && parCompagnie ? ' manque' : ''}" name="rg-bareme" data-service="${esc(s.id)}">
+            <summary>
+              <span class="rg-svc-nom">${esc(s.nom)}${occupes.has(s.id)
+                ? '<span class="rg-occupe" title="Un atelier de travail y est décrit">équipe</span>' : ''}${marque}</span>
+              <span class="rg-svc-digest">${digest}</span>
+            </summary>
+            ${mode}
+            ${corps}
           </details>`;
         }).join('');
       }
@@ -473,7 +531,12 @@
           const E = root.OrlyEchanges, T = root.OrlyTableur;
           const r = E.classeurVersBareme(await T.lireFichier(f, 4 * 1024 * 1024),
             { services: this.a.services ? this.a.services() : [] });
-          lu = valider({ ...this.etat, ...r, regime: { ...this.etat.regime, ...(r.regime || {}) } });
+          // Un service chiffré compagnie par compagnie dans le classeur se saisit
+          // de même sur le site.
+          const detail = { ...this.etat.detail };
+          for (const [sid, t] of Object.entries(r.bareme))
+            if (Object.keys(t).some(k => !k.startsWith(P.TOUTES + '/'))) detail[sid] = 'compagnie';
+          lu = valider({ ...this.etat, ...r, detail, regime: { ...this.etat.regime, ...(r.regime || {}) } });
         }
         const n = Object.values(lu.bareme).reduce((k, t) => k + Object.keys(t).length, 0);
         if (!confirm('Remplacer le barème entier par celui du fichier (' + n + ' valeur(s)) ? L’action est annulable.')) return;

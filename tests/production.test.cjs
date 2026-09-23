@@ -910,3 +910,17 @@ test('le besoin d’un lot suit la même règle que les retours', () => {
   ];
   assert.equal(P.besoinMateriel(classes, { unites }), 2 * 2 + 2 * 6, 'deux vols de chaque');
 });
+
+test('une compagnie × classe sans minutes dans un service est nommée, sans bloquer', () => {
+  // La cuisine est chiffrée compagnie par compagnie : AF a sa valeur, CRL non.
+  const r = P.simuler({
+    vols: VOLS, liaisons: [], bareme: { cuisine: { 'AF/BC': 30 } },
+    ateliers: [atelier({ id: 'a', nom: 'Cuisine', service: 'cuisine', debut: '06:00', lots: [['AF/BC'], ['CRL/BC']] })]
+  });
+  assert.equal(r.ok, true);
+  const a = r.anomalies.find(x => x.code === 'bareme-classe');
+  assert.ok(a, 'le trou du barème est signalé');
+  assert.deepEqual(a.classes, ['CRL/BC']);
+  assert.equal(r.lots.find(l => l.classes.includes('CRL/BC')).hommeMinutes, 0);
+  assert.equal(r.lots.find(l => l.classes.includes('AF/BC')).hommeMinutes, 30);
+});

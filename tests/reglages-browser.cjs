@@ -65,6 +65,25 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // Saisir ne referme pas la fiche qu'on était en train de remplir.
   assert.equal(await page.locator('.rg-service[data-service=cuisine][open]').count(),1);
 
+  // 3 bis. Saisie par compagnie × classe : une grille, une case par couple.
+  await page.locator('[data-rg-action=mode][data-mode=compagnie][data-service=cuisine]').click();await attendre();
+  assert.equal(await page.locator('.rg-service[data-service=cuisine] .rg-grille').count(),1,'la grille paraît');
+  assert.ok(await page.locator('.rg-service[data-service=cuisine] .rg-grille tbody tr').count()>=2,'une ligne par compagnie + « autres »');
+  assert.equal(await page.locator(crlBC).inputValue(),'','case vide : la valeur commune s’applique');
+  assert.equal(await page.locator(crlBC).getAttribute('placeholder'),'70');
+  await ecrire(crlBC,'35');
+  assert.ok(Math.abs(await duree()-avant)<1e-6,'la case de la grille pilote la durée');
+  assert.match(await page.locator('.rg-service[data-service=cuisine] .rg-svc-digest').textContent(),/par compagnie × classe/);
+  // Sans valeur commune, la case sans valeur propre est signalée.
+  const communePC='[data-rg-champ=minutes][data-service=cuisine][data-cle="*/PC"]',pc=await page.locator(communePC).inputValue();
+  await ecrire(communePC,'');
+  assert.ok(await page.locator('.rg-service[data-service=cuisine] input.rg-manque').count()>0,'case à renseigner signalée');
+  await ecrire(communePC,pc);
+  await ecrire(crlBC,'');
+  await page.locator('[data-rg-action=mode][data-mode=classe][data-service=cuisine]').click();await attendre();
+  assert.equal(await page.locator('.rg-service[data-service=cuisine] .rg-grille').count(),0,'retour à la saisie par classe');
+  assert.ok(Math.abs(await duree()-avant*2)<1e-6,'la valeur commune revient');
+
   // 4. Le rendement allonge la journée sans toucher au barème.
   await ecrire('#rg-rendement','0.5');
   assert.ok(Math.abs(await duree()-avant*4)<1e-6,'un rendement de 0,5 double encore');
