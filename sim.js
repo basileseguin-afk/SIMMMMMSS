@@ -376,6 +376,8 @@ function initAteliers(){
     // La liste du barème marque les services qui portent une équipe : elle doit
     // donc se redessiner quand les ateliers bougent.
     change:()=>{majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();},
+    // La fiche d'une équipe vit dans l'onglet « Les équipes » : l'ouvrir d'ailleurs y mène.
+    onglet:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
     notify:toast
   });
 }
@@ -412,7 +414,47 @@ function etatDemarrage(){
               fin:Number.isFinite((r.indicateurs||{}).finDerniere)?MoteurProduction.hhmm(r.indicateurs.finDerniere):null }
   };
 }
-function majDemarrage(){ if(Sim.demarrage)Sim.demarrage.rendre(); }
+function majDemarrage(){ if(Sim.demarrage)Sim.demarrage.rendre(); if(Sim.onglets)Sim.onglets.rendre(); }
+/* Un nombre sur un onglet dit qu'il y a quelque chose à y faire, sans l'ouvrir. */
+function badgeOnglet(id){
+  const r=(Sim.ateliers&&Sim.ateliers.resultat)||{};
+  if(id==='at-grille'){
+    const n=(r.anomalies||[]).filter(a=>a.code==='parcours-trou').reduce((s,a)=>s+(a.classes||[]).length,0);
+    return n?{n,ton:'attente',titre:n+' case(s) à choisir'}:null;
+  }
+  if(id==='at-repas'){
+    const n=(r.indicateurs||{}).classesAbsentes||0;
+    return n?{n,ton:'retard',titre:n+' repas sans équipe'}:null;
+  }
+  if(id==='u-lecture'&&Sim.flows){
+    const n=lectureDuGraphe().alertes.filter(a=>a.grave).length;
+    return n?{n,ton:'retard',titre:n+' point(s) à corriger'}:null;
+  }
+  return null;
+}
+function initOnglets(){
+  if(!window.OrlyOnglets)return;
+  Sim.onglets=new OrlyOnglets.SousOnglets({
+    hote:()=>document.getElementById('sous-onglets'),
+    vue:()=>activeView,
+    badge:badgeOnglet,
+    change:(vue,id)=>{
+      if(vue!==activeView)showView(vue);
+      if(id==='v-departs')renderFlights();
+      if(id==='u-lecture'&&Sim.flows)Sim.flows.refresh();
+    }
+  });
+  // Les outils d'une vue (annuler, Excel, importer) montent sur la barre des
+  // onglets : ils valent pour toute la vue, ils n'ont pas à prendre une ligne.
+  const outils=document.getElementById('so-outils');
+  // Ceux des liens ne valent que pour les liens : ils ne suivent pas dans la sauvegarde.
+  for(const [vue,sel,onglet] of [['ateliers','#view-ateliers .at-actions'],['reglages','#rg-bareme-panneau .rg-actions'],
+                                 ['flux','#view-flux .fc-actions','u-liens']]){
+    const e=document.querySelector(sel);if(!e||!outils)continue;
+    e.dataset.vueOutils=vue;if(onglet)e.dataset.sous=onglet;outils.appendChild(e);
+  }
+  Sim.onglets.rendre();
+}
 function initDemarrage(){
   // Les pictogrammes posés dans la page : un par indicateur, un par panneau.
   if(window.OrlyIcones)document.querySelectorAll('[data-ico]').forEach(e=>{if(!e.firstChild)e.innerHTML=OrlyIcones.ico(e.dataset.ico);});
@@ -605,7 +647,7 @@ function appliquerGeom(o, silencieux) {
 
 function basculerEdition() {
   editMode=!editMode;
-  if(editMode){pause();showView('plan');}
+  if(editMode){pause();showView('plan');if(Sim.onglets)Sim.onglets.choisir('j-plan');}
   svg.classList.toggle('edition',editMode);
   document.body.classList.toggle('editing',editMode);
   document.getElementById('btn-edit').setAttribute('aria-pressed',String(editMode));
@@ -1128,21 +1170,18 @@ function installerCentreReglages() {
   const volsDonnees=document.getElementById('vols-donnees');
   const horaires=document.getElementById('panneau-horaires');
 
-  // Comparer deux scénarios : c'est ici qu'on change un réglage pour voir
-  // ce qu'il donne, c'est donc ici qu'on le compare.
-  const comparer=document.createElement('h2');comparer.className='reglages-titre';
-  comparer.textContent='Comparer deux essais';
-  hote.appendChild(comparer);hote.appendChild(bloc);
-  // Le programme de vols, la sauvegarde et le périmètre décrivent l'essai eux
-  // aussi : les laisser dans la colonne étroite obligeait à changer de vue pour
-  // préparer une seule et même chose. La colonne ne garde que le suivi vivant.
+  // Comparer deux essais : c'est un regard sur la journée, il en est un onglet.
+  const comparer=document.getElementById('view-comparer');
+  if(comparer)comparer.appendChild(bloc);
+  // Le programme de vols rejoint l'étape 1 ; la sauvegarde et les limites du
+  // calcul, qui valent pour tout le travail, un onglet de « L'unité ».
   if(donnees){
     donnees.hidden=false;donnees.classList.remove('panel-content');donnees.classList.add('reglages-grille');
     const programme=donnees.querySelector('.panneau');
     if(volsDonnees&&programme)volsDonnees.appendChild(programme);
-    const sous=document.createElement('h2');sous.className='reglages-titre';
-    sous.textContent='Sauvegarde et limites du calcul';
-    hote.appendChild(sous);hote.appendChild(donnees);
+    donnees.dataset.sous='u-sauvegarde';
+    const unite=document.getElementById('view-flux');
+    if(unite)unite.appendChild(donnees);
   }
   if(volsDonnees&&horaires)volsDonnees.appendChild(horaires);
 }
@@ -1320,7 +1359,9 @@ function renderFriseVols(tous, etatDe, mot, icoEtat) {
 
 function initWorkbench() {
   document.getElementById('btn-limits').addEventListener('click',()=>{
-    if(editMode)basculerEdition();showView('reglages');document.getElementById('model-limits').scrollIntoView({block:'nearest'});
+    if(editMode)basculerEdition();if(Sim.onglets)Sim.onglets.choisir('u-sauvegarde');else showView('flux');
+    const l=document.getElementById('model-limits');l.scrollIntoView({block:'nearest'});
+    const d=l.querySelector('details');if(d)d.open=true;
   });
   document.getElementById('edit-done').addEventListener('click',()=>{if(editMode)basculerEdition();document.getElementById('btn-edit').focus();});
   const picker=document.getElementById('zone-picker');
@@ -1328,7 +1369,8 @@ function initWorkbench() {
   picker.addEventListener('change',()=>{const id=picker.value;selection=null;selectionner(id||null);});
   document.getElementById('goulot-info').addEventListener('click',e=>{if(e.target.closest('[data-clear-selection]'))selectionner(selection);});
   // Un bouton « aller à l'étape… » posé n'importe où dans la page.
-  document.addEventListener('click',e=>{const b=e.target.closest('[data-aller]');if(b&&!editMode)showView(b.dataset.aller);});
+  document.addEventListener('click',e=>{const b=e.target.closest('[data-aller]');if(!b||editMode)return;
+    showView(b.dataset.aller);if(b.dataset.onglet&&Sim.onglets)Sim.onglets.choisir(b.dataset.onglet);});
   document.getElementById('flight-search').addEventListener('input',renderFlights);
   document.getElementById('flight-filter').addEventListener('change',renderFlights);
   document.getElementById('vols-frise').addEventListener('click',e=>{const b=e.target.closest('[data-vf-filtre]');if(!b)return;
@@ -1359,6 +1401,7 @@ construirePlan(); chargerVols(SAMPLE); initControles(); initEdition(); initFlux(
 // Le fil de mise en route vient en dernier : il relit les autres, il ne peut
 // donc se dresser qu'une fois qu'ils sont là.
 initVueSimulation();
+initOnglets();
 initDemarrage();
 majHorloge(); majPlan(); majDashboard();
 

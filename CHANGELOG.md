@@ -5,6 +5,54 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-23 — Des pages épurées : une chose à la fois
+
+Les pages en montraient trop à la fois ; l'œil ne savait plus où se poser.
+Chaque étape se découpe maintenant en quelques onglets, sous son titre : un
+seul est affiché, les autres attendent derrière leur nom.
+
+**Les onglets** (`onglets.js`, nouveau)
+- Les vols : *Les départs* · *Le programme*.
+- Qui prépare quoi : *Qui prépare quoi* · *Les chemins* · *Les équipes* ·
+  *Leur journée* · *Les repas*.
+- Les temps de travail : *Minutes par vol* · *Rythme et pauses*.
+- La journée : *Le plan* · *Les chiffres* · *Comparer deux essais*.
+- L'unité : *Les liens* · *Ce que le calcul en retient* · *Sauvegarde et limites*.
+- Un nombre sur un onglet dit qu'il y a à faire derrière (cases à choisir,
+  repas sans équipe, liens à corriger). Le dernier onglet ouvert de chaque étape
+  est retenu. Flèches, Début et Fin au clavier. Sur téléphone, la barre défile
+  et garde l'onglet ouvert en vue.
+- Le découpage ne déplace rien : les éléments portent `data-sous`, une règle
+  générée masque ceux des autres onglets.
+
+**Ce qui a quitté l'écran**
+- Le bandeau de contexte : l'origine des vols est dite dans *Le programme*, et
+  « Chiffres d'exemple » devient un bouton de l'en-tête qui mène aux limites du
+  calcul.
+- Les quatre indicateurs de la journée et son bilan : dans *Les chiffres*. Le
+  plan reste seul avec « En ce moment ».
+- « Comparer deux essais » quitte les temps de travail pour la journée ; la
+  sauvegarde et les limites du calcul rejoignent L'unité.
+- Les outils d'une étape (annuler, rétablir, Excel, importer) montent à droite
+  des onglets au lieu de prendre une ligne.
+- Les titres de section qui redisaient l'onglet ne gardent que leur phrase ;
+  la numérotation « 1. … 4. » disparaît, les messages parlent d'onglets.
+- Les points à regarder sont repliés : leur nombre suffit à savoir qu'il y a à
+  faire.
+- Ouvrir la fiche d'une équipe depuis le tableau mène à l'onglet *Les équipes* ;
+  créée depuis le tableau, on reste sur le tableau.
+
+**Fichiers** : `onglets.js` (nouveau), `index.html`, `sim.js`, `ateliers.js`,
+`parcours.js`, `reglages.js`, `flow-center.js`, `histoire.css`.
+**Tests** : `tests/onglets.test.cjs` (nouveau) ; `histoire-browser` vérifie les
+onglets (un à la fois, clavier, onglet retenu, fiche d'équipe, limites) ;
+`usability-browser` le contraste des onglets ; les autres parcours passent par
+l'onglet voulu. 183 tests purs, 15 parcours navigateur.
+**Docs** : `README.md`, `docs/ETAT_DES_LIEUX.md`, `docs/MODELE_ATELIERS.md`,
+`docs/CAHIER_DES_CHARGES.md` (E10, registre des décisions).
+
+---
+
 ## 2026-09-23 — Cahier des charges consolidé et écarts
 
 - `docs/CAHIER_DES_CHARGES.md` (nouveau) : toutes les demandes depuis le 17/09

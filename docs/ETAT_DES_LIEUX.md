@@ -28,7 +28,16 @@ Deux assistants travaillent en parallèle sur cette branche : **Claude** et
 > barème et vols s'échangent en `.xlsx` (`tableur.js`, `echanges.js`) : voir
 > [les formats Excel](FORMATS_EXCEL.md).
 >
-> **Puis — un site qui se lit en images.** Chaque couleur a un sens (une par
+> **Puis — des pages épurées.** Chaque étape se découpe en quelques onglets
+> (sous son titre) : une seule chose à la fois. Les vols : les départs, le
+> programme. Qui prépare quoi : le tableau, les chemins, les équipes, leur
+> journée, les repas. Les temps : minutes par vol, rythme et pauses. La journée :
+> le plan, les chiffres, la comparaison A / B. L'unité : les liens, ce que le
+> calcul en retient, la sauvegarde et les limites. Le bandeau de contexte a
+> disparu, les indicateurs de la journée ont leur onglet, les outils d'une vue
+> se rangent à droite de ses onglets. Voir `onglets.js`.
+>
+> **Avant — un site qui se lit en images.** Chaque couleur a un sens (une par
 > étape, une par classe de cabine, les états en vert, ambre, rouge), chaque
 > service a son pictogramme, sur le plan comme dans les tableaux. Les vols sont un
 > tableau des départs d'aéroport avec une frise de la journée ; les chemins un

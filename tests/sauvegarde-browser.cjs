@@ -13,7 +13,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 1. Saisir quelque chose : un atelier de travail, et une zone déplacée.
   await click('[data-view=ateliers]');
-  await page.locator('#at-new').click();await page.waitForTimeout(150);
+  await page.locator('[data-sous-onglet=at-equipes]').click();await page.locator('#at-new').click();await page.waitForTimeout(150);
   const at=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
   await page.selectOption(`[data-at="${at}"] [data-at-champ=service]`,'cuisine');await page.waitForTimeout(150);
   await page.fill(`[data-at="${at}"] [data-at-champ=nom]`,'Atelier témoin');
@@ -38,6 +38,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.waitForTimeout(150);
   await page.fill(champBareme,'41.5');await page.dispatchEvent(champBareme,'change');
   await page.waitForTimeout(200);
+  // La sauvegarde vit dans « L'unité », onglet « Sauvegarde et limites ».
+  await click('[data-view=flux]');await click('[data-sous-onglet=u-sauvegarde]');
   const dl=page.waitForEvent('download');await click('#sauvegarde-export');const fichier=await dl;
   assert.match(fichier.suggestedFilename(),/^ory-sauvegarde-\d{4}-\d{2}-\d{2}\.json$/);
   const chemin=await fichier.path(),sauvegarde=JSON.parse(fs.readFileSync(chemin,'utf8'));
@@ -67,7 +69,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.length),0,'tout doit avoir disparu');
 
   // 5. Restaurer : le tracé revient à l'identique.
-  await click('[data-view=reglages]');
+  await click('[data-view=flux]');
   await page.locator('#sauvegarde-import').setInputFiles({name:'ory-sauvegarde.json',mimeType:'application/json',buffer:fs.readFileSync(chemin)});
   await page.waitForFunction(()=>localStorage.getItem('ory-ateliers-v1')!==null,{},{timeout:15000});
   await page.waitForLoadState('load');

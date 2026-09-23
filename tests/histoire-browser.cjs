@@ -61,7 +61,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 5. Une équipe qui prépare un repas : les étapes suivent.
   await page.locator('#etapes [data-view=ateliers]').click();await attendre();
-  await page.locator('#at-new').click();await attendre();
+  await page.locator('[data-sous-onglet=at-equipes]').click();await page.locator('#at-new').click();await attendre();
   const id=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
   await page.selectOption(`[data-at="${id}"] [data-at-champ=service]`,'prepa');await attendre();
   await page.selectOption(`[data-at="${id}"] [data-at-champ=lot-nouveau]`,'AF/BC');await attendre();
@@ -87,7 +87,63 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator('#etapes [data-view=ateliers]').click();await attendre();
   assert.ok(await page.locator('.pc-flux .pc-station svg').count()>5,'le chemin est un plan de métro');
 
-  // 7. Sur téléphone, rien ne déborde et les étapes restent lisibles.
+  // 7. Épuré : chaque vue montre une chose à la fois, derrière des onglets.
+  const onglets=async()=>page.locator('#sous-onglets [data-sous-onglet]').evaluateAll(bs=>bs.map(b=>b.dataset.sousOnglet));
+  const actif=()=>page.locator('#sous-onglets [aria-selected=true]').getAttribute('data-sous-onglet');
+  assert.equal(await page.locator('.context-bar').count(),0,'plus de bandeau de contexte au-dessus de la vue');
+  await page.locator('#etapes [data-view=plan]').click();await attendre();
+  assert.deepEqual(await onglets(),['j-plan','j-chiffres','j-comparer']);
+  assert.equal(await page.locator('#plan').isVisible(),true,'le plan d’abord');
+  assert.equal(await page.locator('.kpi-grille').isVisible(),false,'les chiffres attendent leur onglet');
+  assert.equal(await page.locator('#snap-a').isVisible(),false,'la comparaison aussi');
+  await page.locator('[data-sous-onglet=j-comparer]').click();await attendre();
+  assert.equal(await page.locator('#snap-a').isVisible(),true);
+  assert.equal(await page.locator('#plan').isVisible(),false,'un onglet à la fois');
+  assert.equal(await page.locator('.workbench').isVisible(),false,'la colonne « En ce moment » suit le plan');
+  // Au clavier : les flèches passent d'un onglet à l'autre.
+  await page.locator('[data-sous-onglet=j-comparer]').focus();await page.keyboard.press('ArrowRight');await attendre();
+  assert.equal(await actif(),'j-plan','après le dernier, on revient au premier');
+  assert.equal(await page.evaluate(()=>document.activeElement.dataset.sousOnglet),'j-plan','le focus suit');
+  await page.keyboard.press('ArrowLeft');await attendre();
+  assert.equal(await actif(),'j-comparer');
+  // L'onglet ouvert est retenu d'une visite à l'autre.
+  await page.reload();await attendre();await page.locator('#etapes [data-view=plan]').click();await attendre();
+  assert.equal(await actif(),'j-comparer','l’onglet choisi est retenu');
+  await page.locator('[data-sous-onglet=j-plan]').click();await attendre();
+
+  await page.locator('#etapes [data-view=ateliers]').click();await attendre();
+  assert.deepEqual(await onglets(),['at-grille','at-chemins','at-equipes','at-planning','at-repas']);
+  assert.equal(await actif(),'at-equipes','on retrouve l’onglet où l’on a créé l’équipe');
+  await page.locator('[data-sous-onglet=at-grille]').click();await attendre();
+  assert.equal(await page.locator('.qf-table').isVisible(),true);
+  assert.equal(await page.locator('.pc-sec').isVisible(),false);
+  assert.equal(await page.locator('#at-liste').isVisible(),false);
+  assert.equal(await page.locator('#at-planning').isVisible(),false);
+  assert.match(await page.locator('[data-sous-onglet=at-grille] .so-badge').textContent(),/^\d+$/,'un nombre dit les cases à choisir');
+  assert.equal(await page.locator('#at-export').isVisible(),true,'les outils de la vue restent à portée, sur la barre des onglets');
+  assert.equal(await page.locator('#at-anomalies').evaluate(d=>d.tagName==='DETAILS'&&!d.open),true,'les points à regarder sont repliés');
+  // Ouvrir la fiche d'une équipe depuis le tableau mène à l'onglet des équipes.
+  await page.locator(`[data-qf=case][data-classe="AF/BC"][data-service=prepa]`).click();await attendre();
+  await page.locator('.qf-menu [data-qf=fiche]').first().click();await attendre();
+  assert.equal(await actif(),'at-equipes');
+  assert.equal(await page.locator(`[data-at="${id}"]`).isVisible(),true,'sa fiche est ouverte');
+
+  await page.locator('#etapes [data-view=vols]').click();await attendre();
+  assert.deepEqual(await onglets(),['v-departs','v-programme']);
+  assert.equal(await page.locator('#imp-vols').isVisible(),false,'l’import attend dans « Le programme »');
+  await page.locator('[data-sous-onglet=v-programme]').click();await attendre();
+  assert.equal(await page.locator('#imp-vols').isVisible(),true);
+  assert.match(await page.locator('.vols-source').textContent(),/Jeu de démonstration/,'d’où viennent les vols, dit là où on les change');
+  await page.locator('[data-sous-onglet=v-departs]').click();await attendre();
+
+  // « Chiffres d'exemple », dans l'en-tête, mène aux limites du calcul.
+  await page.locator('#btn-limits').click();await attendre();
+  assert.equal(await page.locator('#etapes [data-view=flux]').getAttribute('aria-current'),'page');
+  assert.equal(await actif(),'u-sauvegarde');
+  assert.equal(await page.locator('#model-limits').isVisible(),true);
+  assert.equal(await page.locator('#fc-export').isVisible(),false,'les outils des liens ne suivent pas dans la sauvegarde');
+
+  // 8. Sur téléphone, rien ne déborde et les étapes restent lisibles.
   await page.setViewportSize({width:390,height:844});await attendre();
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'pas de débordement');
   assert.equal(await page.locator('#etapes [data-view=vols]').isVisible(),true);

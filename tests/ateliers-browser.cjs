@@ -15,12 +15,15 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    parClasse:Sim.ateliers.resultat.parClasse}));
  const champ=async(id,nom,valeur)=>{
    const s=`[data-at="${id}"] [data-at-champ=${nom}]`;
+   if(await page.evaluate(()=>document.body.dataset.sous!=='at-equipes'))await onglet('at-equipes');
    if(nom==='service'||nom==='type'||nom==='jour')await page.selectOption(s,valeur);
    else{await page.fill(s,String(valeur));await page.dispatchEvent(s,'change');}
    await attendre();
  };
+ // Chaque partie de la vue a son onglet : on y va comme on y irait à la main.
+ const onglet=async id=>{await page.locator(`[data-sous-onglet=${id}]`).click();await attendre();};
  const creer=async(nom,service,debut,personnes,type)=>{
-   await page.locator('#at-new').click();await attendre();
+   await page.locator('[data-sous-onglet=at-equipes]').click();await page.locator('#at-new').click();await attendre();
    const id=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
    await champ(id,'service',service);await champ(id,'nom',nom);
    await champ(id,'debut',debut);await champ(id,'personnes',personnes);
@@ -30,6 +33,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  // Créer un atelier ouvre sa carte et referme la précédente : pour agir sur
  // une carte plus ancienne, il faut la rouvrir.
  const ouvrir=async(id)=>{
+   if(await page.evaluate(()=>document.body.dataset.sous!=='at-equipes'))await onglet('at-equipes');
    if(await page.evaluate(id=>Sim.ateliers.ouvert===id,id))return;
    await page.locator(`[data-at="${id}"] .at-carte-nom`).click();await attendre();
  };
@@ -155,8 +159,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const iLot=await lot(cui2,['CRL/BC','CRL/PC']);
   await page.selectOption(`[data-at="${cui2}"] [data-at-champ=lot-ajout][data-index="${iLot}"]`,'CRL/YC');await attendre();
   assert.deepEqual((await etat()).ateliers.find(a=>a.id===cui2).lots,[['CRL/BC','CRL/PC','CRL/YC']]);
+  await onglet('at-repas');
   const avantLignes=await page.locator('#at-classes tbody tr').count();
-  await page.locator('[data-at-action=classe-supprimer][data-classe="CRL/PC"]').click();await attendre();
+  await onglet('at-repas');await page.locator('[data-at-action=classe-supprimer][data-classe="CRL/PC"]').click();await attendre();
   assert.equal(await page.locator('#at-classes tbody tr').count(),avantLignes-1,'la ligne dispara\u00eet');
   assert.deepEqual((await etat()).ateliers.find(a=>a.id===cui2).lots,[['CRL/BC','CRL/YC']],
     'le lien est coup\u00e9 dans le lot, les autres classes restent');
@@ -167,7 +172,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const seul=await creer('Armement CRL','armement','05:00',2);
   await lot(seul,['CRL/YC']);
   assert.equal((await etat()).ateliers.find(a=>a.id===seul).lots.length,1);
-  await page.locator('[data-at-action=classe-supprimer][data-classe="CRL/YC"]').click();await attendre();
+  await onglet('at-repas');await page.locator('[data-at-action=classe-supprimer][data-classe="CRL/YC"]').click();await attendre();
   assert.deepEqual((await etat()).ateliers.find(a=>a.id===seul).lots,[],'plus de lot, puisqu\u2019il n\u2019avait que celle-l\u00e0');
   assert.deepEqual((await etat()).ateliers.find(a=>a.id===cui2).lots,[['CRL/BC']],'et l\u2019autre atelier perd juste le lien');
 
@@ -181,7 +186,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 15. On déclare une compagnie × classe que le programme de vols ne porte pas.
   //     On ne lui saisit QUE son identité : passagers, vols et échéance viennent
   //     de l'import, et les redemander ouvrirait deux vérités.
-  await page.locator('[data-at-action=classe-nouvelle]').click();await attendre();
+  await onglet('at-repas');await page.locator('[data-at-action=classe-nouvelle]').click();await attendre();
   assert.equal(await page.locator('#at-cls-pax').count(),0,'plus de champ Passagers');
   assert.equal(await page.locator('#at-cls-vols').count(),0,'plus de champ Vols');
   assert.equal(await page.locator('#at-cls-echeance').count(),0,'plus de champ Échéance');
@@ -204,12 +209,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(rz.parClasse['ZZ/BC'].fin!=null,'ZZ/BC sort bien de l\u2019unit\u00e9');
 
   // 16. Une ajoutée se retire comme les autres, et quitte la liste pour de bon.
-  await page.locator('[data-at-action=classe-supprimer][data-classe="ZZ/BC"]').click();await attendre();
+  await onglet('at-repas');await page.locator('[data-at-action=classe-supprimer][data-classe="ZZ/BC"]').click();await attendre();
   assert.equal((await etat()).ajoutees.length,0,'elle n\u2019est pas mise de c\u00f4t\u00e9, elle est supprim\u00e9e');
   assert.deepEqual((await etat()).ateliers.find(a=>a.id===cui2).lots,[['CRL/BC']]);
 
   // 17. Retraits et ajouts survivent au rechargement.
-  await page.locator('[data-at-action=classe-nouvelle]').click();await attendre();
+  await onglet('at-repas');await page.locator('[data-at-action=classe-nouvelle]').click();await attendre();
   await page.fill('#at-cls-cie','QQ');await page.locator('[data-at-action=classe-valider]').click();await attendre();
   const memoire=await etat();
   await page.reload();await page.locator('[data-view=ateliers]').click();await attendre();

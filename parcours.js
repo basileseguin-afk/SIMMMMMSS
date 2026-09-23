@@ -453,8 +453,8 @@
         </article>`;
       }).join('');
 
-      return `<section class="pc-sec" aria-labelledby="pc-t1">
-        <div class="titre-aide at-titre-aide"><h3 class="at-titre" id="pc-t1">1. Le chemin des repas <span class="pc-sous">par où passe chaque repas</span></h3>
+      return `<section class="pc-sec" aria-labelledby="pc-t1" data-sous="at-chemins">
+        <div class="titre-aide at-titre-aide"><h3 class="at-titre" id="pc-t1">Le chemin des repas <span class="pc-sous">par où passe chaque repas</span></h3>
           <details class="aide"><summary aria-label="Qu’est-ce qu’un chemin ?">?</summary><span class="aide-corps">${AIDE_PARCOURS}</span></details></div>
         <div class="pc-defauts">
           <span class="pc-defauts-lab">Chemin de chaque classe</span>
@@ -494,11 +494,11 @@
     sectionTableau(etat, classes) {
       const t = tableau(etat, classes);
       const r = this.a.resultat ? this.a.resultat() : null;
-      const titre = `<div class="titre-aide at-titre-aide"><h3 class="at-titre" id="pc-t2">2. Qui prépare quoi <span class="pc-sous">une équipe dans chaque case</span></h3>
+      const titre = `<div class="titre-aide at-titre-aide"><h3 class="at-titre" id="pc-t2">Qui prépare quoi <span class="pc-sous">une équipe dans chaque case</span></h3>
         <details class="aide"><summary aria-label="Comment remplir le tableau ?">?</summary><span class="aide-corps">${AIDE_TABLEAU}</span></details></div>`;
-      if (!t.lignes.length) return `<section class="qf" aria-labelledby="pc-t2">${titre}
+      if (!t.lignes.length) return `<section class="qf" aria-labelledby="pc-t2" data-sous="at-grille">${titre}
         <p class="mini-note">Aucun repas à préparer : importez un programme de vols (étape 1).</p></section>`;
-      if (!t.colonnes.length) return `<section class="qf" aria-labelledby="pc-t2">${titre}
+      if (!t.colonnes.length) return `<section class="qf" aria-labelledby="pc-t2" data-sous="at-grille">${titre}
         <p class="mini-note">Aucun chemin : décrivez-en un ci-dessus pour que le tableau ait des colonnes.</p></section>`;
 
       // Les heures d'un lot, pour lire le tableau comme un planning.
@@ -582,7 +582,7 @@
         </tr>${suivie ? `<tr class="qf-temps" data-pour="${esc(c.id)}"><td colspan="${nbCol}">${this.temps(l, r)}</td></tr>` : ''}`;
       }).join('');
 
-      return `<section class="qf" aria-labelledby="pc-t2">${titre}${barre}
+      return `<section class="qf" aria-labelledby="pc-t2" data-sous="at-grille">${titre}${barre}
         <div class="qf-scroll"><table class="qf-table">${tete}<tbody>${corps}</tbody></table></div>
         <p class="mini-note qf-vide-note" hidden>Aucune ligne ne correspond.</p>
       </section>`;
@@ -811,10 +811,10 @@
           cree = a;
         });
         if (!cree || !this.a.ouvrirAtelier) return;
-        // Sa fiche s'ouvre plus bas, sans quitter le tableau : il reste son heure et son effectif.
+        // Sa fiche s'ouvre dans l'onglet « Les équipes » : il reste son heure et son effectif.
         return this.a.ouvrirAtelier(cree.id, false, 'Équipe « ' + cree.nom + ' » créée'
           + (type === 'manuel' ? ' pour ' + (ids.length > 3 ? ids.length + ' repas' : ids.map(P.libelleClasse).join(', ')) : '')
-          + '. Réglez son heure et son effectif dans « 3. Les équipes », plus bas : sa fiche est ouverte.');
+          + '. Réglez son heure et son effectif dans l’onglet « Les équipes » : sa fiche y est ouverte.');
       }
     }
 

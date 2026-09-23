@@ -135,7 +135,7 @@
           this.state = valider(lu);
           if (lu && lu.parcours === undefined) {
             alerte = 'Parcours types créés : « Complet » pour BC, PC, CREW et SPML, « Sans cuisine » pour YC. '
-              + 'Ajustez-les dans « 1. Les parcours ».';
+              + 'Ajustez-les dans l’onglet « Les chemins ».';
             this.enregistrer();
           }
         }
@@ -241,23 +241,23 @@
     <input id="at-import" type="file" accept=".xlsx,.json" hidden>
   </div>
 </div>
-<div id="at-indicateurs" class="at-indicateurs"></div>
 <p id="at-status" role="status" aria-live="polite"></p>
-<div id="at-anomalies" class="at-anomalies" hidden></div>
+<details id="at-anomalies" class="at-anomalies" hidden></details>
 <div id="at-parcours" class="pc"></div>
-<h3 class="at-titre">3. Les équipes <span class="pc-sous">horaires, effectifs, ordre de préparation</span></h3>
-<div class="at-barre">
+<h3 class="at-titre" data-sous="at-equipes">Les équipes <span class="pc-sous">horaires, effectifs, ordre de préparation</span></h3>
+<div class="at-barre" data-sous="at-equipes">
   <label>Service <select id="at-filtre"><option value="">Tous</option></select></label>
   <span class="at-barre-fin"></span>
   <button class="btn btn-play" id="at-new">+ Nouvelle équipe</button>
 </div>
-<div id="at-materiel" class="at-materiel"></div>
-<div id="at-liste"></div>
-<h3 class="at-titre">4. La journée des équipes <span class="pc-sous">qui travaille quand</span></h3>
-<div id="at-planning" class="at-planning"></div>
+<div id="at-materiel" class="at-materiel" data-sous="at-equipes"></div>
+<div id="at-liste" data-sous="at-equipes"></div>
+<h3 class="at-titre" data-sous="at-planning">La journée des équipes <span class="pc-sous">qui travaille quand</span></h3>
+<div id="at-indicateurs" class="at-indicateurs" data-sous="at-planning"></div>
+<div id="at-planning" class="at-planning" data-sous="at-planning"></div>
 
-<h3 class="at-titre">Les repas à préparer <span class="pc-sous">un par compagnie et par classe</span></h3>
-<div id="at-classes"></div>`;
+<h3 class="at-titre" data-sous="at-repas">Les repas à préparer <span class="pc-sous">un par compagnie et par classe</span></h3>
+<div id="at-classes" data-sous="at-repas"></div>`;
     }
 
     lier() {
@@ -304,6 +304,8 @@
     /* Depuis le tableau « Qui fabrique quoi » : ouvrir la fiche d'une équipe,
      * et y aller si on le demande. */
     ouvrirFiche(id, defiler = true, message) {
+      // Depuis un autre onglet, on y va ; créée depuis le tableau, on y reste.
+      if (defiler && this.a.onglet) this.a.onglet('at-equipes');
       this.filtre = '';
       const sel = document.getElementById('at-filtre'); if (sel) sel.value = '';
       this.ouvert = id; this.rendre(message);
@@ -592,12 +594,13 @@
       const list = (r.anomalies || []).filter(a => a.code !== 'parcours-trou').map(a => esc(a.message));
       if (trous.length) {
         const n = trous.reduce((s, a) => s + (a.classes || []).length, 0);
-        list.push(n + ' case(s) « à choisir » dans « 2. Qui prépare quoi » ('
+        list.push(n + ' case(s) « à choisir » dans l’onglet « Qui prépare quoi » ('
           + trous.map(a => esc((this.a.services().find(x => x.id === a.service) || {}).nom || a.service)).join(', ') + ') : ces étapes sont sautées.');
       }
       box.hidden = !list.length;
+      // Replié par défaut : le nombre suffit à savoir qu'il y a à faire.
       box.innerHTML = list.length
-        ? '<strong>' + list.length + ' point(s) à regarder</strong><ul>' +
+        ? '<summary><strong>' + list.length + ' point(s) à regarder</strong></summary><ul>' +
           list.map(m => '<li>' + m + '</li>').join('') + '</ul>'
         : '';
     }

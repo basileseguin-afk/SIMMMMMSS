@@ -320,8 +320,8 @@ plonge, la cuisine que la légumerie. La règle tient en une phrase :
 > Un service ne travaille un lot que lorsque **les services qui le précèdent sur
 > le parcours de chaque classe** du lot la lui ont livrée.
 
-Les parcours se décrivent à l'étape 2, « Qui prépare quoi », section « 1. Le
-chemin des repas » : un schéma par parcours, une ligne par branche, la jonction à droite.
+Les parcours se décrivent à l'étape 2, « Qui prépare quoi », onglet « Les
+chemins » : un schéma par parcours, une ligne par branche, la jonction à droite.
 « Modifier » ouvre ses branches : chaque étape est un menu. Deux parcours types
 sont créés d'office — **Complet** pour BC, PC, CREW et SPML, **Sans cuisine**
 pour YC — et se modifient librement.
@@ -329,7 +329,7 @@ pour YC — et se modifient librement.
 ### Qui prépare quoi : le chemin et les équipes dans un seul tableau
 
 Le parcours dit **par où** passe une classe ; les équipes disent **qui, quand et
-en combien de temps**. La section « 2. Qui prépare quoi » les réunit dans un
+en combien de temps**. L'onglet « Qui prépare quoi » les réunit dans un
 tableau qui se lit comme une feuille Excel :
 
 - **une ligne par compagnie × classe**, avec son heure de départ et son
@@ -351,7 +351,7 @@ Les gestes :
 - **Cliquer le nom d'un service** remplit toutes ses cases vides à la fois.
 - **« Remplir automatiquement »** fait tout ce qui n'a qu'une équipe possible.
 - **Une nouvelle équipe** naît avec la case cliquée ; sa fiche s'ouvre dans
-  « 3. Les équipes » pour régler son heure et son effectif.
+  l'onglet « Les équipes » pour régler son heure et son effectif.
 - **La dernière colonne** dit quand la ligne est prête, à l'heure ou en retard.
   Un clic la **déplie dans le temps** : une barre par étape, dans l'ordre des
   colonnes, l'attente de l'étape d'avant en orange, le trait de l'heure de
@@ -362,8 +362,8 @@ Les gestes :
   compagnie** ou n'afficher que **les lignes à compléter**. Le tableau se pilote
   au clavier (Entrée ouvre le menu d'une case, Échap le referme).
 
-Les sections « 3. Les équipes » (horaires, effectifs, ordre de fabrication) et
-« 4. La journée des équipes » (le planning, équipe par équipe) restent la vue par équipe.
+Les onglets « Les équipes » (horaires, effectifs, ordre de fabrication) et
+« Leur journée » (les indicateurs et le planning, équipe par équipe) restent la vue par équipe.
 
 - **Par défaut, par classe** : BC, PC, YC, CREW et SPML ont chacune un parcours.
 - **Par compagnie × classe** : chaque ligne du tableau « Qui prépare quoi » a

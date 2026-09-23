@@ -153,14 +153,15 @@ de relire le cahier des charges initial :
 | E6 | Compréhensible par un non-informaticien | 23/09 | ✅ | Quatre étapes, « Comment ça marche », mots simples |
 | E7 | Moins textuel, **coloré, visuel** | 23/09 | ✅ | Couleurs par sens, pictogrammes, jauges, frise, plan de métro, barres |
 | E8 | Nettoyage de tout ce qui n'est plus utilisé | 23/09 | ✅ | |
-| E9 | Tester l'interface avec de vrais utilisateurs | — | ❌ | Jamais fait ; seul moyen de savoir si E6 et E7 sont atteints |
+| E9 | Tester l'interface avec de vrais utilisateurs | — | ❌ | Jamais fait ; seul moyen de savoir si E6, E7 et E10 sont atteints |
+| E10 | Pages **épurées** : ne plus tout montrer à la fois, onglets et sous-onglets | 23/09 | ✅ | Deux à cinq onglets par étape, un seul affiché ; bandeau de contexte retiré ; indicateurs de la journée dans leur onglet. Pas de sous-sous-onglet : aucun onglet n'en a eu besoin |
 
 ## 10. Méthode et fiabilité (feuille de route d'Astra)
 
 | # | Exigence | État | Écart |
 |---|---|---|---|
 | F1 | Glossaire, registre des décisions, dictionnaire des données (`REGLES_METIER.md`, `DATA_DICTIONARY.md`) | 🟡 | Couvert en partie par `MODELE_ATELIERS.md` et `FORMATS_EXCEL.md` ; pas de registre des décisions |
-| F2 | Tests automatiques | ✅ | 179 tests purs, 15 parcours navigateur |
+| F2 | Tests automatiques | ✅ | 183 tests purs, 15 parcours navigateur |
 | F3 | **Calibration** sur des journées observées | ❌ | Il faut l'étude de man-minutes et des relevés terrain |
 | F4 | **Validation** sur des journées distinctes, tolérances fixées avec Basile | ⏸ | **Au fil de l'eau** (23/09) : les tolérances se fixeront à mesure que les données arrivent |
 
@@ -231,6 +232,7 @@ Réponse attendue de Basile ; sans elle, le modèle actuel reste en place.
 | 23/09 | **Objectif final : plusieurs journées enchaînées** | Basile | |
 | 23/09 | Validation du modèle au fil de l'eau | Basile | Les données arrivent progressivement |
 | 23/09 | Animations reportées | Basile | |
+| 23/09 | Pages découpées en sous-onglets, une chose à la fois | Basile (proposition), Claude (découpage) | « Les pages sont beaucoup trop chargées, le cerveau s'y perd » |
 
 **Pourquoi JavaScript plutôt que Python.**
 

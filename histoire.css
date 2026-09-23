@@ -331,10 +331,7 @@ body.journee-vide #goulot-info{border:0;background:none;padding:0}
 .at-kpi.ton-attente .at-kpi-ico{background:color-mix(in srgb,var(--attente) 15%,var(--bg3));color:var(--attente)}
 .at-kpi.ton-journee .at-kpi-ico{background:color-mix(in srgb,var(--c-journee) 14%,var(--bg3));color:var(--c-journee)}
 
-/* --- La barre des vols chargés : des pastilles, pas des phrases ---------- */
-.context-bar .demo-badge{display:inline-grid;place-items:center;width:26px;height:26px;padding:0;border-radius:8px;
-  border:0;background:color-mix(in srgb,var(--c-vols) 14%,var(--bg3));color:var(--c-vols)}
-.context-bar .demo-badge .ico{width:16px;height:16px}
+/* --- Le bouton « chiffres d'exemple » : une pastille, pas une phrase ------ */
 .ctx-exemple{display:inline-flex;align-items:center;gap:6px;text-decoration:none !important;border-radius:99px;padding:4px 12px !important;
   background:color-mix(in srgb,var(--attente) 13%,var(--bg3)) !important;color:var(--txt) !important;font-weight:700}
 .ctx-exemple .ico{color:var(--attente);width:16px;height:16px}
@@ -358,3 +355,104 @@ body.en-lecture .zone.s-travail .zone-ico-trait,body.en-lecture .zone.s-attente 
 .goulot-tete .ico{width:30px;height:30px;padding:6px;box-sizing:content-box;border-radius:50%;color:#fff}
 .goulot-tete.attente .ico{background:var(--attente)} .goulot-tete.ok .ico{background:var(--ok)}
 :root[data-theme="dark"] .goulot-tete .ico{color:#0b1520}
+
+/* ==========================================================================
+ *  ÉPURER : UNE VUE, QUELQUES ONGLETS
+ *  Chaque étape montre une chose à la fois. Les onglets portent la couleur de
+ *  l'étape ; un nombre dit qu'il y a quelque chose à faire derrière. Les
+ *  outils de la vue (annuler, Excel, importer) se rangent à droite des
+ *  onglets au lieu de prendre une ligne à eux seuls.
+ * ==========================================================================*/
+.workspace-heading{border-bottom:0 !important;padding-bottom:6px !important}
+.view-ico{width:42px;height:42px;border-radius:12px}
+.view-ico .ico{width:24px;height:24px}
+.sous-onglets{display:flex;align-items:flex-end;gap:12px;padding:0 20px;background:var(--bg3);
+  border-bottom:1px solid var(--bordure);--c:var(--accent)}
+.sous-onglets[hidden]{display:none}
+body[data-vue="vols"] .sous-onglets{--c:var(--c-vols)}
+body[data-vue="ateliers"] .sous-onglets{--c:var(--c-equipes)}
+body[data-vue="reglages"] .sous-onglets{--c:var(--c-temps)}
+body[data-vue="plan"] .sous-onglets{--c:var(--c-journee)}
+body[data-vue="flux"] .sous-onglets{--c:var(--c-unite)}
+.so-liste{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;min-width:0;flex:1 1 auto}
+.so-liste::-webkit-scrollbar{display:none}
+.so-onglet{appearance:none;background:none;border:0;border-bottom:3px solid transparent;border-radius:8px 8px 0 0;
+  padding:10px 14px 9px;display:inline-flex;align-items:center;gap:7px;font:inherit;font-size:13.5px;font-weight:700;
+  color:var(--txt2);cursor:pointer;white-space:nowrap}
+.so-onglet .ico{width:18px;height:18px}
+.so-onglet:hover{color:var(--txt);background:var(--bg2)}
+.so-onglet.actif{color:var(--txt);border-bottom-color:var(--c);background:var(--bg2)}
+.so-onglet.actif .ico{color:var(--c)}
+.so-onglet:focus-visible{outline:2px solid var(--c);outline-offset:-3px}
+.so-badge{min-width:20px;height:20px;padding:0 6px;border-radius:99px;display:inline-grid;place-items:center;
+  font-size:11px;font-weight:800;color:#fff;background:var(--txt2)}
+.so-badge.attente{background:var(--attente)}
+.so-badge.retard{background:var(--retard)}
+:root[data-theme="dark"] .so-badge{color:#0b1520}
+.so-outils{display:flex;gap:6px;padding:6px 0;flex:0 1 auto;min-width:0;justify-content:flex-end}
+.so-outils>[data-vue-outils]{display:flex;gap:6px;flex-wrap:wrap}
+.so-outils .btn{padding:5px 10px;font-size:12.5px}
+body:not([data-vue="ateliers"]) [data-vue-outils="ateliers"],
+body:not([data-vue="flux"]) [data-vue-outils="flux"]{display:none}
+body.editing .sous-onglets{display:none}
+#view-flux .fc-heading{display:none}
+@media(max-width:760px){
+  .sous-onglets{flex-wrap:wrap;padding:0 16px;gap:0}
+  .so-liste{flex:1 1 100%}
+  .so-onglet{padding:10px 10px 9px}
+  .so-outils{padding:0 0 8px}
+}
+
+/* La journée : le plan, ses chiffres, la comparaison de deux essais. */
+body[data-vue="plan"][data-sous="j-chiffres"] .app,
+body[data-vue="plan"][data-sous="j-comparer"] .app{grid-template-columns:minmax(0,1fr)}
+body:not([data-vue="plan"]) .journee-chiffres,body:not([data-vue="plan"]) .journee-comparer{display:none}
+.journee-chiffres,.journee-comparer{padding:18px 20px;overflow:auto;flex:1 1 auto;min-height:0}
+.col-plan>.kpi-grille{border-top:0}
+.chiffres-attente,.chiffres-vide{display:none}
+body.avant-lancement:not(.journee-vide) .chiffres-attente{display:block;font-size:13.5px}
+body.journee-vide .chiffres-vide{display:flex}
+body.journee-vide .journee-chiffres .panneau,body.journee-vide .col-plan>.kpi-grille{display:none}
+.journee-chiffres .panneau{max-width:1100px}
+.journee-comparer .reglages-grille{columns:auto;max-width:900px}
+.journee-comparer .panneau-compare{margin:0}
+
+/* Les vols : d'où vient le programme, dit une seule fois, là où on le change. */
+.vols-source{display:flex;align-items:center;gap:10px;margin:0 0 12px;font-size:13px;color:var(--txt2)}
+.vols-source .demo-badge{display:inline-grid;place-items:center;width:28px;height:28px;padding:0;border-radius:8px;
+  border:0;background:color-mix(in srgb,var(--c-vols) 14%,var(--bg3));color:var(--c-vols)}
+.vols-source .demo-badge .ico{width:16px;height:16px}
+.vols-source strong{color:var(--txt)}
+.vols-frise{margin-top:0}
+
+/* Le bouton « chiffres d'exemple » dans l'en-tête sombre. */
+header .ctx-exemple{background:#3b3320 !important;border:1.5px solid #c9a24a !important;color:#fff !important;padding:6px 12px !important}
+header .ctx-exemple .ico{color:#f5c75a}
+@media(max-width:560px){header .ctx-exemple{font-size:0;gap:0;padding:6px 10px !important}header .ctx-exemple .ico{width:18px;height:18px}}
+
+/* Les points à regarder : repliés, un clic les déplie. */
+details.at-anomalies{padding-top:8px;padding-bottom:8px}
+details.at-anomalies>summary{cursor:pointer;list-style-position:inside}
+details.at-anomalies:not([open])>summary{margin:0}
+body:not([data-vue="reglages"]) [data-vue-outils="reglages"]{display:none}
+.so-outils .rg-actions{margin:0}
+
+/* Le titre d'une section redit l'onglet : on n'en garde que la phrase qui
+   l'explique (le titre reste lu par les lecteurs d'écran). */
+#view-ateliers{padding-top:16px}
+#view-ateliers h3.at-titre{font-size:0;letter-spacing:0;margin:0 0 10px;padding-top:0;border-top:0}
+#at-status:empty{display:none}
+details.at-anomalies{margin-top:0}
+#view-ateliers .at-titre-aide{margin-top:0;padding-top:0;border-top:0}
+#view-ateliers .at-titre-aide .at-titre{margin:0}
+#view-ateliers h3.at-titre .pc-sous{font-size:13.5px;margin:0;display:inline-block;color:var(--txt2)}
+#view-ateliers h3.at-titre .pc-sous::first-letter{text-transform:uppercase}
+details.at-anomalies{margin-bottom:12px}
+#view-reglages .titre-aide:has(>.reglages-titre){display:none}
+#view-flux .fc-list-title[data-sous="u-liens"]{display:none}
+#view-flux #fc-lecture{margin-top:0;padding-top:0;border-top:0}
+@media(max-width:560px){
+  header .entete-droite{gap:6px;justify-content:flex-start}
+  header .entete-droite .btn{padding:6px 9px;font-size:12px;min-height:36px}
+  header .entete-droite .ctx-exemple{font-size:0;gap:0}
+}

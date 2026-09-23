@@ -164,13 +164,13 @@
       const section = document.createElement('section');
       section.className = 'rg-modele'; section.id = 'rg-modele';
       section.innerHTML = `
-        <div class="titre-aide">
+        <div class="titre-aide" data-sous="rg-minutes">
           <h2 class="reglages-titre">Minutes de travail par vol</h2><details class="aide">
           <summary aria-label="À quoi sert cette page ?">?</summary>
           <span class="aide-corps">Ces chiffres disent combien de temps prend chaque préparation. Ils
             servent au calcul de la journée qui se rejoue à l’étape 4, « La journée ».</span></details></div>
         <p id="rg-status" role="status" aria-live="polite"></p>
-        <div class="panneau" id="rg-bareme-panneau">
+        <div class="panneau" id="rg-bareme-panneau" data-sous="rg-minutes">
           <div class="titre-aide"><h3>Service par service</h3><details class="aide">
             <summary aria-label="Comment lire ces chiffres ?">?</summary>
             <span class="aide-corps">
@@ -202,7 +202,7 @@
           </div>
           <div id="rg-bareme"></div>
         </div>
-        <div class="panneau">
+        <div class="panneau" data-sous="rg-rythme">
           <div class="titre-aide"><h3>Rythme de travail</h3><details class="aide">
             <summary aria-label="À quoi sert le rythme ?">?</summary>
             <span class="aide-corps">Un seul chiffre pour tous les services. À 1, les équipes tiennent
@@ -213,7 +213,7 @@
             <input id="rg-rendement" type="range" min="0.5" max="1.2" step="0.01">
           </div>
         </div>
-        <div class="panneau">
+        <div class="panneau" data-sous="rg-rythme">
           <div class="titre-aide"><h3>Pauses et présence</h3><details class="aide">
             <summary aria-label="Comment sont comptées les pauses ?">?</summary>
             <span class="aide-corps">Une pause vient après un temps de <b>travail</b>, pas à une heure
@@ -229,8 +229,8 @@
           </div>
           <p class="mini-note" id="rg-presence-note"></p>
         </div>
-        <p class="rg-version" id="rg-version"></p>
-        <p class="mini-note rg-ailleurs">Les <b>tunnels de la plonge</b> et la <b>boucle du matériel</b>
+        <p class="rg-version" id="rg-version" data-sous="rg-rythme"></p>
+        <p class="mini-note rg-ailleurs" data-sous="rg-rythme">Les <b>tunnels de la plonge</b> et la <b>boucle du matériel</b>
           se règlent équipe par équipe, à l’étape 2, <b>Qui prépare quoi</b>.</p>`;
       hote.appendChild(section);
       // Quelle version le navigateur sert-il ? La question revient dès qu'un

@@ -66,7 +66,7 @@ et les **sauvegardes de l’unité** (`ory-sauvegarde*.json`, `plan-ory-*.json`,
 Le plan, les ateliers, les personnes, les flux et la bibliothèque vivent **dans
 le navigateur**, et son stockage est cloisonné par adresse : un tracé fait sur
 GitHub Pages n’apparaît pas dans un fichier ouvert depuis le disque.
-**Données → Sauvegarde complète** réunit tout dans un seul fichier, relu en
+**L’unité › Sauvegarde et limites › Tout sauvegarder** réunit tout dans un seul fichier, relu en
 entier ou refusé en entier. Ce fichier contient le plan réel : il reste hors du
 dépôt.
 
@@ -99,33 +99,46 @@ La navigation **est** cette histoire : quatre étapes numérotées, chacune avec
 son état en clair (✓ fait, ! à vérifier, · à faire) et un repère « à faire
 ensuite ».
 
-1. **Les vols** : importer le programme (Excel ou CSV simplifié), ou garder les
-   vols d’exemple ; régler le délai de chargement (« repas prêts combien de
-   minutes avant le départ ? ») et le décalage des vols. Le tableau dit, vol
-   par vol, si ses repas sont prêts à l’heure, en retard, ou sans équipe.
-2. **Qui prépare quoi**, en quatre temps :
-   1. **Le chemin des repas** : par où passe chaque repas, en branches qui
+**Une chose à la fois.** Chaque étape se découpe en quelques **onglets** (sous
+son titre) : un seul est affiché, les autres attendent derrière leur nom. Un
+nombre sur un onglet dit qu’il y a quelque chose à y faire (cases à choisir,
+repas sans équipe, liens à corriger). Le dernier onglet ouvert de chaque étape
+est retenu ; les outils de l’étape (annuler, Excel, importer) se rangent à
+droite des onglets.
+
+1. **Les vols** — onglets *Les départs* (une frise de la journée et un tableau
+   qui dit, vol par vol, si ses repas sont prêts à l’heure, en retard, ou sans
+   équipe) et *Le programme* (importer le programme en Excel ou CSV simplifié,
+   ou garder les vols d’exemple ; le délai de chargement — « repas prêts combien
+   de minutes avant le départ ? » — et le décalage des vols).
+2. **Qui prépare quoi**, en cinq onglets :
+   1. **Les chemins** : par où passe chaque repas, en branches qui
       partent en parallèle et se rejoignent (les aliments par la réception et la
       cuisine, le matériel par la plonge et la dotation, les produits de la
       compagnie par le magasin, tout se retrouvant au montage). L’économie ne
       passe pas par la cuisine.
-   2. **Qui prépare quoi** : un tableau, une ligne par repas (« AF · Business »),
+   2. **Qui prépare quoi** (l’onglet ouvert d’abord) : un tableau, une ligne par repas (« AF · Business »),
       une colonne par service ; chaque case dit l’équipe et ses heures. Un clic
       sur une case choisit l’équipe (ou en crée une), un clic sur un service
       remplit toute sa colonne. Chaque ligne dit quand le repas est prêt et se
       déplie pour se suivre dans le temps, avec une phrase qui l’explique.
    3. **Les équipes** : horaire, effectif, pauses, ordre de préparation, et les
       plonges (tunnels, débits) et mises à disposition.
-   4. **La journée des équipes** : le planning, équipe par équipe.
-3. **Les temps de travail** : minutes de travail **par vol**, service par
-   service et classe par classe (une valeur commune, des valeurs propres à une
-   compagnie, ou une grille compagnie par classe), rythme de travail, pauses et
-   présence ; puis « Comparer deux essais » (A / B), la sauvegarde et les limites
-   du calcul.
-4. **La journée** : rejouer la journée sur le plan de l’unité.
+   4. **Leur journée** : les indicateurs et le planning, équipe par équipe.
+   5. **Les repas** : la liste des compagnies × classes à préparer.
+3. **Les temps de travail** — onglets *Minutes par vol* (service par service et
+   classe par classe : une valeur commune, des valeurs propres à une compagnie,
+   ou une grille compagnie par classe) et *Rythme et pauses* (rythme de travail,
+   pauses et présence).
+4. **La journée** — onglets *Le plan* (rejouer la journée sur le plan de
+   l’unité, avec « En ce moment » à droite), *Les chiffres* (les indicateurs à
+   l’heure rejouée et le bilan de la journée) et *Comparer deux essais* (A / B).
 
-À part, **L’unité** : le plan des services (« Modifier le plan ») et qui livre
-qui. Ces liens ne servent qu’aux repas qui n’ont pas de chemin.
+À part, **L’unité** — onglets *Les liens* (qui livre qui ; ces liens ne servent
+qu’aux repas qui n’ont pas de chemin), *Ce que le calcul en retient* et
+*Sauvegarde et limites*. Le plan des services se modifie depuis « La journée »
+(« Modifier le plan »). Le bouton **Chiffres d’exemple** de l’en-tête mène aux
+limites du calcul.
 
 **Tout se pilote aussi depuis Excel** : ateliers (avec classes et parcours),
 barème et programme de vols s’exportent en `.xlsx`, se modifient dans le
@@ -161,7 +174,7 @@ La journée est **calculée d’un coup** par `moteur/production.js` et
 L’échéance vaut départ moins délai de chargement. Ces états concernent la
 production ; ils ne mesurent pas le retard avion.
 
-**Scénarios A/B** (Réglages › Comparer deux scénarios). La journée étant déjà
+**Scénarios A/B** (La journée › Comparer deux essais). La journée étant déjà
 calculée, une capture **fige** les réglages et leurs résultats. Changez un
 atelier, le barème ou un horaire, capturez B : le tableau sépare les réglages
 des résultats, fait ressortir les lignes qui diffèrent et écrit, sur chaque
@@ -297,6 +310,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `ateliers.js` / `ateliers.css` | Onglet « Ateliers de travail » : saisie, planning, couverture par classe |
 | `reglages.js` / `reglages.css` | Centre des réglages : barème, rendement, régime de poste |
 | `demarrage.js` / `histoire.css` | Les quatre étapes (navigation et état de chacune), « Comment ça marche », titre de chaque vue ; `histoire.css` porte aussi le graphisme : couleurs par sens, jauges, tableau des départs, plan de métro, barres |
+| `onglets.js` | Les sous-onglets de chaque étape : leur liste, la règle qui masque les autres, le clavier, l’onglet retenu |
 | `icones.js` | Les pictogrammes (étapes, services, états) et les couleurs d’étape |
 | `demarrage.css` | Ce que montre chaque vue (lecture de la journée seulement dans « La journée ») et couleurs du plan en lecture |
 | `plan-prive/` | Fond de plan **local, non versionné** (voir ci-dessous) |
@@ -309,8 +323,9 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/tableur.test.cjs` | Classeurs Excel : aller-retour, fichier compressé d’un autre logiciel, CSV |
 | `tests/echanges.test.cjs` | Les trois classeurs : aller-retour, ajouts, erreurs regroupées |
 | `tests/excel-browser.cjs` | Chemins et tableau « Qui prépare quoi » dans l’interface, classeurs ateliers et vols de bout en bout |
-| `tests/histoire-browser.cjs` | Les quatre étapes, « Comment ça marche », titres et phrases, repas écrits en clair, pictogrammes, frise des départs, barres, plan de métro, téléphone |
+| `tests/histoire-browser.cjs` | Les quatre étapes, « Comment ça marche », titres et phrases, repas écrits en clair, pictogrammes, frise des départs, barres, plan de métro, sous-onglets (un à la fois, clavier, onglet retenu, fiche d’équipe, limites du calcul), téléphone |
 | `tests/icones.test.cjs` | Chaque service reconnaît son pictogramme |
+| `tests/onglets.test.cjs` | Les sous-onglets : de deux à cinq par étape, identifiants uniques, règle de masquage, pictogrammes |
 | `tests/browser-smoke.cjs` | Parcours dans Chromium : relecture, vols, import, export, thèmes, mobile |
 | `tests/import-browser.cjs` | Import CSV : échec de lecture puis réimport, numéros de ligne, export, scénarios A/B |
 | `tests/sauvegarde-browser.cjs` | Sauvegarde complète : export, refus atomique, effacement et restauration |

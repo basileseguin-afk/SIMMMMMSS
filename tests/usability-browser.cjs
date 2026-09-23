@@ -9,8 +9,8 @@ try{await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href)
 for(const theme of ['light','dark']){
  if(await page.locator('html').getAttribute('data-theme')!==theme)await page.locator('#btn-theme').click();await page.waitForTimeout(200);
  for(const view of ['plan','ateliers','flux','reglages','vols']){
-  await page.locator('[data-view='+view+']').click();if(view==='ateliers')await page.locator('#at-new').click();await page.waitForTimeout(200);
-  for(const selector of ['.view-tabs .active','.panel-tabs .active','#btn-play','#btn-theme','#horloge','#wg-new-item','.wg-tools [aria-pressed=true]','.fc-families [aria-pressed=true]']){
+  await page.locator('[data-view='+view+']').click();if(view==='ateliers'){await page.locator('[data-sous-onglet=at-equipes]').click();await page.locator('#at-new').click();}await page.waitForTimeout(200);
+  for(const selector of ['.view-tabs .active','.panel-tabs .active','#btn-play','#btn-theme','#horloge','#wg-new-item','.wg-tools [aria-pressed=true]','.fc-families [aria-pressed=true]','.so-onglet.actif','.so-onglet:not(.actif) >> nth=0','.so-badge >> nth=0']){
    const el=page.locator(selector);if(!await el.count()||!await el.isVisible()||await el.isDisabled())continue;
    const c=await el.evaluate(e=>{let p=e,b;while(p){b=getComputedStyle(p).backgroundColor;if(b!=='rgba(0, 0, 0, 0)')break;p=p.parentElement}return[getComputedStyle(e).color,b]});assert.ok(ratio(...c)>=4.5,`${theme} ${view} ${selector}: ${ratio(...c)}`);
   }

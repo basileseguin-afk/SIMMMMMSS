@@ -54,7 +54,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator('#flight-rows').textContent(),/Des repas sans équipe/);
   // Un atelier qui ouvre à 06:00 pour un départ de 05:00 : la classe sort, en retard.
   await click('[data-view="ateliers"]');
-  await page.locator('#at-new').click();await page.waitForTimeout(150);
+  await page.locator('[data-sous-onglet=at-equipes]').click();await page.locator('#at-new').click();await page.waitForTimeout(150);
   const at=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
   await page.selectOption(`[data-at="${at}"] [data-at-champ=service]`,'prepa');await page.waitForTimeout(150);
   // Le vol emporte BC, PC et YC : l'atelier fabrique les trois.
@@ -76,7 +76,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await click('[data-view="vols"]');
   const ligneVol=await page.locator('#flight-rows').textContent();
   assert.match(ligneVol,/Prêt en retard/);
-  await click('[data-view="reglages"]');
+  // Comparer deux essais : un onglet de « La journée ».
+  await click('[data-view="plan"]');await click('[data-sous-onglet=j-comparer]');
   await click('#snap-a');assert.match(await page.locator('#compare').textContent(),/Repas prêts à l’heure/);
   const downloaded=page.waitForEvent('download');await click('#btn-export');const download=await downloaded;
   const result=JSON.parse(fs.readFileSync(await download.path(),'utf8'));
@@ -84,7 +85,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(result.departs[0].retard>0,'le retard du départ est exporté');
   assert.ok(result.instant,'l’instant relu est exporté');
   assert.ok(result.journal.some(l=>l.service==='prepa'),'le journal des lots est exporté');
-  await click('[data-view="vols"]');await click('#restore-demo');await click('[data-view="plan"]');
+  await click('[data-view="vols"]');await click('[data-sous-onglet=v-programme]');await click('#restore-demo');
+  await click('[data-view="plan"]');await click('[data-sous-onglet=j-plan]');
   await page.evaluate(()=>{localStorage.removeItem('orly-zones');localStorage.removeItem('orly-plan-v3');});await page.reload();
   await page.screenshot({path:path.join(os.tmpdir(),'ory-interface-desktop.png'),fullPage:true});
   await click('#btn-theme');assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');

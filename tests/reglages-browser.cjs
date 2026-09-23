@@ -17,7 +17,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 1. Un atelier réel, pour mesurer l'effet des réglages sur quelque chose.
   await page.locator('[data-view=ateliers]').click();await attendre();
-  await page.locator('#at-new').click();await attendre();
+  await page.locator('[data-sous-onglet=at-equipes]').click();await page.locator('#at-new').click();await attendre();
   const at=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
   await page.selectOption(`[data-at="${at}"] [data-at-champ=service]`,'cuisine');await attendre();
   await page.selectOption(`[data-at="${at}"] [data-at-champ=lot-nouveau]`,'CRL/BC');await attendre();
@@ -32,7 +32,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     .map(h=>[...h.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join('').trim()));
   assert.equal(ordre[0],'Minutes de travail par vol','il vient en premier');
   assert.ok(!ordre.includes('Ancien moteur de démonstration'),'l’ancien moteur a disparu');
-  assert.ok(ordre.includes('Comparer deux essais'),'la comparaison a sa propre section');
+  // Les temps de travail, et eux seuls : la comparaison est un onglet de « La journée ».
+  assert.ok(!ordre.includes('Comparer deux essais'),'la comparaison n’encombre plus les temps de travail');
+  assert.equal(await page.evaluate(()=>document.getElementById('view-comparer').contains(document.getElementById('snap-a'))),true);
   // Ce sont des chiffres d'exemple : le dire là où on les modifie.
   assert.match(await page.locator('#rg-alerte').textContent(),/chiffres d’exemple/);
 
@@ -84,7 +86,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('.rg-service[data-service=cuisine] .rg-grille').count(),0,'retour à la saisie par classe');
   assert.ok(Math.abs(await duree()-avant*2)<1e-6,'la valeur commune revient');
 
-  // 4. Le rendement allonge la journée sans toucher au barème.
+  // 4. Le rendement allonge la journée sans toucher au barème. Il a son onglet,
+  //    avec les pauses : les minutes par vol restent seules sur le leur.
+  await page.locator('[data-sous-onglet=rg-rythme]').click();await attendre();
+  assert.equal(await page.locator('#rg-bareme-panneau').isVisible(),false,'le barème attend derrière son onglet');
   await ecrire('#rg-rendement','0.5');
   assert.ok(Math.abs(await duree()-avant*4)<1e-6,'un rendement de 0,5 double encore');
   await ecrire('#rg-rendement','1');

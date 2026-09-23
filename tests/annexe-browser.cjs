@@ -39,7 +39,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 4. Elle accueille des ateliers de travail comme n'importe quel service.
   await click('[data-view=ateliers]');
-  await page.locator('#at-new').click();await page.waitForTimeout(150);
+  await page.locator('[data-sous-onglet=at-equipes]').click();await page.locator('#at-new').click();await page.waitForTimeout(150);
   const at=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
   await page.selectOption(`[data-at="${at}"] [data-at-champ=service]`,zone.id);await page.waitForTimeout(150);
   await page.fill(`[data-at="${at}"] [data-at-champ=debut]`,'05:00');

@@ -31,7 +31,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // Trois équipes : cuisine, dotation, montage. Le montage YC n'attend que la dotation.
   const creer=async(nom,service,lots)=>{
-    await page.locator('#at-new').click();await attendre();
+    await page.locator('[data-sous-onglet=at-equipes]').click();await page.locator('#at-new').click();await attendre();
     const id=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
     await page.evaluate(([id,nom,service,lots])=>Sim.ateliers.changer(()=>{
       Object.assign(Sim.ateliers.state.ateliers.find(a=>a.id===id),{nom,service,debut:'05:00',personnes:1,lots});
@@ -43,17 +43,17 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await creer('Montage','prepa',[['AF/YC'],['AF/BC']]);
   assert.equal((await lot('prepa','AF/YC')).debut,(await lot('dotation','AF/YC')).fin,'YC : le montage attend la dotation, pas la cuisine');
   assert.ok((await lot('prepa','AF/BC')).debut>=(await lot('cuisine','AF/BC')).fin,'BC : le montage attend la cuisine');
-  assert.match(await page.locator('#at-anomalies').textContent(),/case\(s\) « à choisir » dans « 2\. Qui prépare quoi »/,'les étapes sans équipe renvoient au tableau');
+  assert.match(await page.locator('#at-anomalies').textContent(),/case\(s\) « à choisir » dans l’onglet « Qui prépare quoi »/,'les étapes sans équipe renvoient au tableau');
 
   // Une compagnie × classe peut suivre un autre parcours que sa classe.
-  await page.selectOption('[data-at-champ=classe-parcours][data-classe="AF/YC"]','complet');await attendre();
+  await page.locator('[data-sous-onglet=at-grille]').click();await page.selectOption('[data-at-champ=classe-parcours][data-classe="AF/YC"]','complet');await attendre();
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.parcoursClasse['AF/YC']),'complet');
   assert.match(await page.locator('[data-qf=case][data-classe="AF/YC"][data-service=cuisine]').textContent(),/à choisir/,
     'la cuisine est désormais sur son chemin, sans équipe pour AF/YC : sa case le dit');
   await page.selectOption('[data-at-champ=classe-parcours][data-classe="AF/YC"]','');await attendre();
 
   // Modifier un parcours : ajouter une étape à une branche.
-  await page.locator('[data-parcours=sans-cuisine] [data-pc-action=ouvrir]').click();await attendre();
+  await page.locator('[data-sous-onglet=at-chemins]').click();await page.locator('[data-parcours=sans-cuisine] [data-pc-action=ouvrir]').click();await attendre();
   const branche=page.locator('[data-parcours=sans-cuisine] [data-branche="0"]');
   await branche.locator('[data-pc-champ=etape-ajout]').selectOption('armement');await attendre();
   assert.deepEqual(await page.evaluate(()=>Sim.ateliers.state.parcours.find(p=>p.id==='sans-cuisine').branches[0].services),
@@ -96,7 +96,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 3. Le classeur des vols : départs et retours, aller-retour.
   // L'import et l'export des vols vivent à l'étape 1, « Les vols ».
-  await page.locator('[data-view=vols]').click();await attendre();
+  await page.locator('[data-view=vols]').click();await page.locator('[data-sous-onglet=v-programme]').click();await attendre();
   const {f:fVols}=await telecharger('#exp-vols','vols.xlsx');
   const vols=await T.lireClasseur(fs.readFileSync(fVols));
   const dep=T.feuille(vols,'Départs'),ret=T.feuille(vols,'Retours');
@@ -118,7 +118,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 4. « Qui prépare quoi » : une ligne par repas (compagnie · classe), une colonne
   //    par service, une équipe par case — et un clic pour la choisir.
-  await page.locator('[data-view=ateliers]').click();await attendre();
+  await page.locator('[data-view=ateliers]').click();await page.locator('[data-sous-onglet=at-grille]').click();await attendre();
   const kase=(c,s)=>page.locator(`[data-qf=case][data-classe="${c}"][data-service=${s}]`);
   assert.match(await kase('AF/BC','cuisine').textContent(),/Cuisine/,'l’équipe figure dans sa case, avec ses heures');
   assert.match(await kase('AF/BC','cuisine').textContent(),/\d\d:\d\d–\d\d:\d\d/);

@@ -50,7 +50,7 @@ class FlowCenter{
  build(){
   this.host.innerHTML=`<div class="fc-heading"><div><p class="scope-badge">Qui livre qui, entre les services de l’unité</p></div><div class="fc-actions"><button class="btn" id="fc-undo">Annuler</button><button class="btn" id="fc-redo">Rétablir</button><button class="btn" id="fc-export">Exporter</button><button class="btn" id="fc-import-button">Importer</button><input id="fc-import" type="file" accept=".json" hidden></div></div>
    <div id="fc-status" role="status" aria-live="polite"></div>
-   <section id="fc-lecture" class="fc-lecture">
+   <section id="fc-lecture" class="fc-lecture" data-sous="u-lecture">
     <h3 class="fc-list-title">Ce que le calcul en retient</h3>
     <div class="mini-note">Un repas suit d’abord <b>son chemin</b> (étape 2, « Qui prépare quoi ») ; ces
      liens ne servent qu’aux repas qui n’en ont pas.<details class="aide"><summary aria-label="Ce que le calcul retient de ces liens">?</summary>
@@ -63,12 +63,12 @@ class FlowCenter{
     <div id="fc-alertes"></div>
     <div id="fc-parcours"></div>
    </section>
-   <h3 class="fc-list-title">Les liens</h3>
-   <nav id="fc-families" class="fc-families" aria-label="Types de liens"></nav>
-   <div class="fc-filters"><label>Service concerné<select id="fc-service"></select></label><span id="fc-summary"></span><button class="btn" id="fc-show-map">Voir ces liens sur le plan</button><button class="btn btn-play" id="fc-new">+ Nouveau lien</button></div>
-   <form id="fc-add" class="fc-creation" hidden><div class="fc-creation-head"><h3>Nouveau lien</h3><button class="text-button" type="button" id="fc-cancel">Fermer</button></div><div class="fc-fields"><label>Ce qui circule<select id="fc-type">${this.typeOptions('material',false)}</select></label><label>De<select id="fc-from" required></select></label><label>Vers<select id="fc-to" required></select></label><label>Précision facultative<input id="fc-label" maxlength="200" placeholder="Ex. matériel propre"></label></div><button class="btn btn-play" type="submit">Ajouter le lien</button></form>
-   <div id="fc-list"></div>
-   <details id="fc-rules" class="fc-rules"><summary>Circulation humaine à l’intérieur des services</summary><p class="mini-note">Pour décrire seulement : le calcul ne déplace pas encore les personnes. Par défaut, chacun circule dans son service et ses stockages ; sortir demande une liaison Runner explicite, dans le sens indiqué.</p><div id="fc-internal"></div></details>`;
+   <h3 class="fc-list-title" data-sous="u-liens">Les liens</h3>
+   <nav id="fc-families" class="fc-families" aria-label="Types de liens" data-sous="u-liens"></nav>
+   <div class="fc-filters" data-sous="u-liens"><label>Service concerné<select id="fc-service"></select></label><span id="fc-summary"></span><button class="btn" id="fc-show-map">Voir ces liens sur le plan</button><button class="btn btn-play" id="fc-new">+ Nouveau lien</button></div>
+   <form id="fc-add" class="fc-creation" hidden data-sous="u-liens"><div class="fc-creation-head"><h3>Nouveau lien</h3><button class="text-button" type="button" id="fc-cancel">Fermer</button></div><div class="fc-fields"><label>Ce qui circule<select id="fc-type">${this.typeOptions('material',false)}</select></label><label>De<select id="fc-from" required></select></label><label>Vers<select id="fc-to" required></select></label><label>Précision facultative<input id="fc-label" maxlength="200" placeholder="Ex. matériel propre"></label></div><button class="btn btn-play" type="submit">Ajouter le lien</button></form>
+   <div id="fc-list" data-sous="u-liens"></div>
+   <details id="fc-rules" class="fc-rules" data-sous="u-liens"><summary>Circulation humaine à l’intérieur des services</summary><p class="mini-note">Pour décrire seulement : le calcul ne déplace pas encore les personnes. Par défaut, chacun circule dans son service et ses stockages ; sortir demande une liaison Runner explicite, dans le sens indiqué.</p><div id="fc-internal"></div></details>`;
   const label=document.createElement('label');label.className='fc-map-filter';label.innerHTML=`Liens dessinés <select id="fc-map-filter" title="Les liens entre services, dessinés sur le plan. Ils se règlent dans « L’unité ».">${Object.entries(FAMILIES).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}<option value="none">Aucun</option></select><span id="fc-map-scope"></span>`;document.querySelector('.map-footer').appendChild(label);
  }
  typeOptions(value,pending=true){return Object.entries(FAMILIES).filter(([k])=>k!=='all'&&(pending||k!=='unclassified')).map(([family,label])=>`<optgroup label="${label}">${Object.entries(TYPES).filter(([,t])=>t.family===family).map(([k,t])=>`<option value="${k}" ${k===value?'selected':''}>${t.label}</option>`).join('')}</optgroup>`).join('');}

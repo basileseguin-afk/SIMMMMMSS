@@ -28,7 +28,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await click('[data-view=reglages]');
   assert.equal(await page.locator('.kpi-grille').isVisible(),false,'les indicateurs ne décrivent pas un réglage');
   await click('[data-view=ateliers]');
-  await page.locator('#at-new').click();await page.waitForTimeout(150);
+  await page.locator('[data-sous-onglet=at-equipes]').click();await page.locator('#at-new').click();await page.waitForTimeout(150);
   const eq=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
   await page.selectOption(`[data-at="${eq}"] [data-at-champ=service]`,'cuisine');await page.waitForTimeout(200);
   await click('[data-view=plan]');
@@ -43,15 +43,21 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // Tant qu'on est au début de la journée, les quatre indicateurs ne disent
   // rien : une bande entière au-dessus de ce qu'on vient voir.
   assert.equal(await page.locator('.kpi-grille').isVisible(),false,'rien à montrer au début');
-  // Avancer dans la journée les fait apparaître : ils ont alors quelque chose à dire.
+  // Ils ont leur onglet, « Les chiffres » : le plan reste seul avec ce qu'il montre.
   await page.evaluate(()=>Sim.vue.allerA(Sim.vue.fin));await page.waitForTimeout(200);
+  assert.equal(await page.locator('.kpi-grille').isVisible(),false,'pas sur l’onglet du plan');
+  await page.locator('[data-sous-onglet=j-chiffres]').click();await page.waitForTimeout(200);
+  // Avancer dans la journée les fait apparaître : ils ont alors quelque chose à dire.
   assert.equal(await page.locator('.kpi-grille').isVisible(),true,'ils apparaissent dès qu’on avance');
+  assert.equal(await page.locator('#bilan-journee').isVisible(),true,'avec le bilan de la journée');
   await page.locator('#btn-reset').click();await page.waitForTimeout(200);
   assert.equal(await page.locator('.kpi-grille').isVisible(),false,'et repartent au début');
+  assert.equal(await page.locator('.chiffres-attente').isVisible(),true,'une phrase dit comment les faire venir');
+  await page.locator('[data-sous-onglet=j-plan]').click();await page.waitForTimeout(150);
   // 3. Un second service décrit fait baisser le reste à faire.
   const avant=await page.locator('#plan-etat').textContent();
   await click('[data-view=ateliers]');
-  await page.locator('#at-new').click();await page.waitForTimeout(150);
+  await page.locator('[data-sous-onglet=at-equipes]').click();await page.locator('#at-new').click();await page.waitForTimeout(150);
   const at=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
   await page.selectOption(`[data-at="${at}"] [data-at-champ=service]`,'prepa');await page.waitForTimeout(150);
   await click('[data-view=plan]');
