@@ -50,7 +50,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await corps.isVisible(),false,'repliée au départ');
   await aide.locator('summary').click();await attendre();
   assert.equal(await corps.isVisible(),true,'le « ? » l’ouvre');
-  assert.match(await corps.textContent(),/plateau d’équipage/,'et le texte complet est là');
+  assert.match(await corps.textContent(),/fois son\s+nombre de vols/,'et le texte complet est là');
 
   // 3. Ouvrir une aide ne déplace RIEN. Dans le fil du texte, le corps
   //    grossissait la ligne qui le portait et faisait sauter tout le panneau.

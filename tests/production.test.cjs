@@ -119,11 +119,39 @@ test('le barème se remplace en bloc sans toucher au moteur', () => {
     vols: VOLS, liaisons: [], bareme,
     ateliers: [atelier({ id: 'a', nom: 'A', service: 'cuisine', debut: '06:00', personnes: 1, lots: [['CRL/BC']] })]
   }).lots[0];
-  const maison = { cuisine: { BC: { parPax: 10, parVol: 100 } } };
+  const maison = { cuisine: { '*/BC': 200 } };
   const l = sur(maison);
-  // 10 passagers BC sur un seul vol : 10 × 10 + 1 × 100 = 200 homme-minutes.
+  // CRL n'a qu'un vol en BC : 1 × 200 = 200 homme-minutes, quel que soit le remplissage.
   assert.equal(l.hommeMinutes, 200);
   assert.equal(l.duree, 200);
+});
+
+/* ---- le barème se compte par vol, par compagnie × classe --------------- */
+
+test('le barème compte des minutes par vol, jamais par passager', () => {
+  const classe = n => ({ id: 'X/YC', cie: 'X', cabine: 'YC', pax: n, vols: [{}, {}] });
+  const b = { cuisine: { '*/YC': 30 } };
+  assert.equal(P.travailClasse('cuisine', classe(300), b), 60, 'deux vols × 30 min');
+  assert.equal(P.travailClasse('cuisine', classe(20), b), 60, 'un avion à moitié vide coûte autant');
+});
+
+test('une compagnie peut avoir sa propre valeur ; les autres gardent la valeur commune', () => {
+  const b = { cuisine: { '*/BC': 100, 'CRL/BC': 150 } };
+  const r = P.simuler({
+    vols: VOLS, liaisons: [], bareme: b,
+    ateliers: [atelier({ id: 'a', nom: 'A', service: 'cuisine', debut: '06:00', personnes: 1, lots: [['CRL/BC'], ['AF/BC']] })]
+  });
+  assert.equal(r.lots[0].hommeMinutes, 150, 'CRL a sa valeur propre');
+  assert.equal(r.lots[1].hommeMinutes, 100, 'AF prend la valeur de toutes les compagnies');
+});
+
+test('un barème d’hier, compté par passager, est converti et le dit', () => {
+  const { bareme, converti } = P.normaliserBareme({ cuisine: { BC: { parPax: 2, parVol: 5 } } });
+  assert.equal(converti, true);
+  assert.equal(bareme.cuisine['*/BC'], 2 * P.PAX_TYPE.BC + 5, 'minutes par passager × passagers types + fixe par vol');
+  const neuf = P.normaliserBareme({ cuisine: { '*/BC': 12, 'af/pc': 3, 'n’importe quoi': 4, '*/XX': 1 } });
+  assert.equal(neuf.converti, false);
+  assert.deepEqual(neuf.bareme.cuisine, { '*/BC': 12, 'AF/PC': 3 }, 'les clés illisibles sont écartées');
 });
 
 /* ---- robot ----------------------------------------------------------- */
@@ -383,9 +411,9 @@ test('un régime désactivé laisse travailler sans fin', () => {
 });
 
 test('un lot que le poste ne peut pas finir est signalé, pas dissimulé', () => {
-  // 250 passagers à 2 min chacun : 500 min de travail pour une seule personne,
-  // là où le poste n'en offre que 450.
-  const lourd = { cuisine: { YC: { parPax: 2, parVol: 0 }, BC: { parPax: 2, parVol: 0 } } };
+  // Deux vols CRL en YC à 250 min chacun : 500 min de travail pour une seule
+  // personne, là où le poste n'en offre que 450.
+  const lourd = { cuisine: { '*/YC': 250, '*/BC': 250 } };
   const r = P.simuler({
     vols: VOLS, liaisons: [], bareme: lourd,
     ateliers: [atelier({ id: 'a', nom: 'Cuisine', service: 'cuisine', debut: '05:00', personnes: 1,
@@ -399,7 +427,7 @@ test('un lot que le poste ne peut pas finir est signalé, pas dissimulé', () =>
 });
 
 test('les lots suivants d’un poste terminé ne sont pas fabriqués', () => {
-  const lourd = { cuisine: { YC: { parPax: 2, parVol: 0 }, BC: { parPax: 2, parVol: 0 } } };
+  const lourd = { cuisine: { '*/YC': 250, '*/BC': 250 } };
   const r = P.simuler({
     vols: VOLS, liaisons: [], bareme: lourd,
     ateliers: [atelier({ id: 'a', nom: 'Cuisine', service: 'cuisine', debut: '05:00', personnes: 1,
@@ -438,7 +466,8 @@ const VOLS_BOUCLE = [
   { id: 'R1', cie: 'CRL', sens: 'RET', sta: 6 * 60,  bc: 0, pc: 0, yc: 100 },
   { id: 'D1', cie: 'CRL', sens: 'DEP', std: 10 * 60, bc: 0, pc: 0, yc: 100 }
 ];
-const MAT = { actif: true, parPax: 1, stockInitial: 0, delaiRetour: 30 };
+/* Cent unités par vol en YC : un vol parti, cent unités à relaver. */
+const MAT = { actif: true, unites: { YC: { parVol: 100 } }, stockInitial: 0, delaiRetour: 30 };
 const bouclier = (p) => ({ type: 'manuel', personnes: 4, jour: 0, lots: [], ...p });
 
 test('sans stock, la production attend que les retours soient lavés', () => {
@@ -485,9 +514,9 @@ test('un excédent de retours se stocke et sert d’amortisseur', () => {
       bouclier({ id: 'do', nom: 'Dotation', service: 'dotation', debut: '05:00', materiel: 'consomme', lots: [['CRL/YC']] })
     ]
   });
-  assert.equal(r.materiel.entrees, 160);
+  assert.equal(r.materiel.entrees, 200, 'un vol ramène sa quantité, quel que soit son remplissage');
   assert.equal(r.materiel.consommees, 100);
-  assert.equal(r.materiel.restePropre, 60, 'l’excédent est disponible pour le lendemain');
+  assert.equal(r.materiel.restePropre, 100, 'l’excédent est disponible pour le lendemain');
 });
 
 test('un stock d’ouverture évite l’attente : c’est à cela qu’il sert', () => {
@@ -533,7 +562,7 @@ test('les retours se déduisent des vols, avec leur délai de mise à dispositio
   assert.equal(r.length, 1, 'seuls les retours ramènent du matériel');
   assert.equal(r[0].t, 6 * 60 + 30);
   assert.equal(r[0].unites, 100);
-  assert.equal(P.retoursDeVols(VOLS_BOUCLE, { ...MAT, parPax: 2 })[0].unites, 200);
+  assert.equal(P.retoursDeVols(VOLS_BOUCLE, { ...MAT, unites: { YC: { parVol: 200 } } })[0].unites, 200);
 });
 
 test('un lot qui n’obtient jamais son matériel laisse une trace', () => {
@@ -712,12 +741,10 @@ test('un vol qui ne les porte pas n’en fabrique pas', () => {
   assert.deepEqual(classes.map(c => c.id), ['ZZ/YC']);
 });
 
-test('elles ont leur propre barème : un repas spécial coûte plus cher', () => {
-  const classe = P.classesDeVols(VOLS_CS, {}).find(c => c.id === 'AF/SPML');
-  const yc = P.classesDeVols(VOLS_CS, {}).find(c => c.id === 'AF/YC');
-  const parTete = (c) => P.travailClasse('cuisine', c, P.BAREME_DEMO) / c.pax;
-  assert.ok(parTete(classe) > parTete(yc) * 3,
-    'un repas spécial pèse bien plus qu’un plateau d’économie');
+test('elles ont leur propre ligne de barème', () => {
+  const spml = P.classesDeVols(VOLS_CS, {}).find(c => c.id === 'AF/SPML');
+  const b = { cuisine: { '*/SPML': 40, '*/YC': 10 } };
+  assert.equal(P.travailClasse('cuisine', spml, b), 40, 'un vol, la valeur SPML');
 });
 
 test('elles se fabriquent et sortent comme les cabines', () => {
@@ -847,12 +874,11 @@ test('le plafond change la durée réellement simulée', () => {
   assert.equal(bride.fin - bride.debut, 20, 'le plafond de 300/h double la durée');
 });
 
-/* ---- le matériel se compte par passager ET par vol ---------------------- */
+/* ---- le matériel se compte par vol ----------------------------------- */
 
 test('une quantité par vol ne bouge pas avec le remplissage', () => {
-  // Six trolleys par vol en YC, rien au passager : c'est ainsi qu'on décrit un
-  // matériel qui part avec l'avion, pas avec les gens.
-  const unites = { YC: { parPax: 0, parVol: 6 } };
+  // Six trolleys par vol en YC : ils partent avec l'avion, pas avec les gens.
+  const unites = { YC: { parVol: 6 } };
   const plein = P.retoursDeVols(
     [{ id: 'R', sens: 'RET', sta: 6 * 60, bc: 0, pc: 0, yc: 300 }], { unites, delaiRetour: 0 });
   const vide = P.retoursDeVols(
@@ -861,39 +887,26 @@ test('une quantité par vol ne bouge pas avec le remplissage', () => {
   assert.equal(vide[0].unites, 6, 'un avion à moitié vide ramène autant de trolleys');
 });
 
-test('chaque classe a sa propre quantité', () => {
-  // La porcelaine suit le passager, mais seulement en avant.
-  const unites = {
-    BC: { parPax: 4, parVol: 0 }, PC: { parPax: 2, parVol: 0 },
-    YC: { parPax: 0, parVol: 6 }, CREW: { parPax: 1, parVol: 0 }, SPML: { parPax: 1, parVol: 0 }
-  };
+test('chaque classe présente à bord apporte sa propre quantité', () => {
+  const unites = { BC: { parVol: 4 }, PC: { parVol: 2 }, YC: { parVol: 6 }, CREW: { parVol: 1 }, SPML: { parVol: 1 } };
   const r = P.retoursDeVols(
-    [{ id: 'R', sens: 'RET', sta: 6 * 60, bc: 10, pc: 20, yc: 200 }], { unites, delaiRetour: 0 });
-  assert.equal(r[0].unites, 10 * 4 + 20 * 2 + 6, '40 + 40 + 6');
+    [{ id: 'R', sens: 'RET', sta: 6 * 60, bc: 10, pc: 0, yc: 200 }], { unites, delaiRetour: 0 });
+  assert.equal(r[0].unites, 4 + 6, 'BC et YC à bord, pas de PC');
 });
 
-test('mettre les parPax à zéro retire le compte au passager', () => {
-  const unites = Object.fromEntries(P.CABINES.map(c => [c, { parPax: 0, parVol: 3 }]));
-  const classes = P.classesDeVols(VOLS, { delaiChargement: 45 })
-    .filter(c => c.id === 'CRL/YC');
-  assert.equal(P.besoinMateriel(classes, { unites }), classes[0].vols.length * 3,
-    'seul le nombre de vols compte');
-});
-
-test('un réglage d’hier — un seul « unités par passager » — donne le même résultat', () => {
-  const vols = [{ id: 'R', sens: 'RET', sta: 6 * 60, bc: 10, pc: 0, yc: 90 }];
-  assert.equal(P.retoursDeVols(vols, { parPax: 1, delaiRetour: 0 })[0].unites, 100);
-  assert.equal(P.retoursDeVols(vols, { parPax: 2, delaiRetour: 0 })[0].unites, 200);
-  assert.deepEqual(P.unitesDe({ parPax: 2 }).BC, { parPax: 2, parVol: 0 });
+test('un réglage d’hier, compté par passager, est converti en unités par vol', () => {
+  // Ancienne forme : un seul « unités par passager », ou un par classe.
+  assert.deepEqual(P.unitesDe({ parPax: 2 }).BC, { parVol: 2 * P.PAX_TYPE.BC });
+  assert.deepEqual(P.unitesDe({ unites: { YC: { parPax: 1, parVol: 3 } } }).YC, { parVol: P.PAX_TYPE.YC + 3 });
   // Et sans rien du tout, la valeur d'attente.
   assert.deepEqual(P.unitesDe(undefined), P.UNITES_DEFAUT);
 });
 
 test('le besoin d’un lot suit la même règle que les retours', () => {
-  const unites = { BC: { parPax: 4, parVol: 2 }, YC: { parPax: 0, parVol: 6 } };
+  const unites = { BC: { parVol: 2 }, YC: { parVol: 6 } };
   const classes = [
     { id: 'A/BC', cabine: 'BC', pax: 10, vols: [{}, {}] },
     { id: 'A/YC', cabine: 'YC', pax: 200, vols: [{}, {}] }
   ];
-  assert.equal(P.besoinMateriel(classes, { unites }), 10 * 4 + 2 * 2 + 0 + 2 * 6, '40 + 4 + 12');
+  assert.equal(P.besoinMateriel(classes, { unites }), 2 * 2 + 2 * 6, 'deux vols de chaque');
 });

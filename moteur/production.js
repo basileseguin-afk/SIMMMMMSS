@@ -27,9 +27,10 @@
  *  d'attente. L'utilisateur décide ; le modèle calcule les conséquences et
  *  nomme ce qui ne tient pas.
  *
- *  BARÈME : les minutes par passager ci-dessous sont des valeurs d'attente,
- *  NON CALIBRÉES, en place pour que le modèle tourne. Elles sont isolées dans
- *  une table unique afin d'être remplacées en bloc par l'étude à venir.
+ *  BARÈME : des homme-minutes PAR VOL, par service et par compagnie × classe.
+ *  Les valeurs ci-dessous sont des valeurs d'attente, NON CALIBRÉES, en place
+ *  pour que le modèle tourne. Elles sont isolées dans une table unique afin
+ *  d'être remplacées en bloc par l'étude à venir (import Excel).
  * ==========================================================================*/
 (function (root) {
   'use strict';
@@ -120,38 +121,105 @@
    *  3. BARÈME — table unique, remplaçable en bloc
    * ====================================================================*/
 
-  /* Minutes de travail humain par passager, et minutes fixes par vol (mise en
-   * route, trolley, contrôle). Par service et par cabine. VALEURS D'ATTENTE. */
-  const BAREME_DEMO = {
-    appros:   { BC: { parPax: 0.60, parVol: 0 }, PC: { parPax: 0.35, parVol: 0 }, YC: { parPax: 0.12, parVol: 0 },
-                CREW: { parPax: 0.90, parVol: 0 }, SPML: { parPax: 0.30, parVol: 0 } },
-    decontam: { BC: { parPax: 0.05, parVol: 0 }, PC: { parPax: 0.05, parVol: 0 }, YC: { parPax: 0.05, parVol: 0 },
-                CREW: { parPax: 0.05, parVol: 0 }, SPML: { parPax: 0.10, parVol: 0 } },
-    cuisine:  { BC: { parPax: 1.40, parVol: 0 }, PC: { parPax: 0.70, parVol: 0 }, YC: { parPax: 0.28, parVol: 0 },
-                CREW: { parPax: 1.40, parVol: 0 }, SPML: { parPax: 2.20, parVol: 0 } },
-    prepa:    { BC: { parPax: 2.20, parVol: 5 }, PC: { parPax: 1.10, parVol: 5 }, YC: { parPax: 0.35, parVol: 5 },
-                CREW: { parPax: 2.20, parVol: 5 }, SPML: { parPax: 2.60, parVol: 5 } },
-    dotation: { BC: { parPax: 0.50, parVol: 0 }, PC: { parPax: 0.30, parVol: 0 }, YC: { parPax: 0.12, parVol: 0 },
-                CREW: { parPax: 0.50, parVol: 0 }, SPML: { parPax: 0.50, parVol: 0 } },
-    armement: { BC: { parPax: 0.08, parVol: 5 }, PC: { parPax: 0.08, parVol: 5 }, YC: { parPax: 0.08, parVol: 5 },
-                CREW: { parPax: 0.08, parVol: 5 }, SPML: { parPax: 0.08, parVol: 5 } },
-    magasin:  { BC: { parPax: 0.10, parVol: 0 }, PC: { parPax: 0.08, parVol: 0 }, YC: { parPax: 0.04, parVol: 0 },
-                CREW: { parPax: 0.10, parVol: 0 }, SPML: { parPax: 0.10, parVol: 0 } },
-    plonge:   { BC: { parPax: 0.90, parVol: 0 }, PC: { parPax: 0.90, parVol: 0 }, YC: { parPax: 0.90, parVol: 0 },
-                CREW: { parPax: 0.90, parVol: 0 }, SPML: { parPax: 0.90, parVol: 0 } }
-  };
+  /*
+   * L'UNITÉ DE COMPTE : LE VOL.
+   *
+   * Le barème comptait des minutes « par passager ». Cela ne décrit rien de
+   * réel : on ne dresse pas un passager, on monte les trolleys d'un vol, on
+   * dresse les plateaux d'une classe de ce vol. Une étude de temps donne des
+   * minutes pour une compagnie × classe sur un vol — c'est donc l'unité.
+   *
+   *   bareme[service]['AF/BC'] — minutes par vol pour AF en BC, dans ce service
+   *   bareme[service]['*\/BC']  — la valeur de toutes les compagnies qui n'en
+   *                              ont pas de propre
+   *
+   * Le travail d'une compagnie × classe dans la journée est cette valeur fois
+   * le nombre de ses vols. Le nombre de passagers ne sert plus qu'au robot, qui
+   * compte bien des plateaux.
+   */
+
+  /* Passagers types d'un vol, par classe. Ils ne servent QU'À convertir un
+   * barème ou une table de matériel enregistrés dans l'ancienne unité : une
+   * sauvegarde d'hier doit continuer de s'ouvrir, et le dire. */
+  const PAX_TYPE = { BC: 25, PC: 40, YC: 190, CREW: 7, SPML: 10 };
+
+  const TOUTES = '*';
+  const cleBareme = (cie, cabine) => (cie === TOUTES ? TOUTES : String(cie).trim().toUpperCase()) + '/' + cabine;
+
+  /** Homme-minutes par vol, VALEURS D'ATTENTE (conversion de l'ancien barème). */
+  const BAREME_DEMO = (() => {
+    const ancien = {
+      appros:   { BC: [0.60, 0], PC: [0.35, 0], YC: [0.12, 0], CREW: [0.90, 0], SPML: [0.30, 0] },
+      decontam: { BC: [0.05, 0], PC: [0.05, 0], YC: [0.05, 0], CREW: [0.05, 0], SPML: [0.10, 0] },
+      cuisine:  { BC: [1.40, 0], PC: [0.70, 0], YC: [0.28, 0], CREW: [1.40, 0], SPML: [2.20, 0] },
+      prepa:    { BC: [2.20, 5], PC: [1.10, 5], YC: [0.35, 5], CREW: [2.20, 5], SPML: [2.60, 5] },
+      dotation: { BC: [0.50, 0], PC: [0.30, 0], YC: [0.12, 0], CREW: [0.50, 0], SPML: [0.50, 0] },
+      armement: { BC: [0.08, 5], PC: [0.08, 5], YC: [0.08, 5], CREW: [0.08, 5], SPML: [0.08, 5] },
+      magasin:  { BC: [0.10, 0], PC: [0.08, 0], YC: [0.04, 0], CREW: [0.10, 0], SPML: [0.10, 0] },
+      plonge:   { BC: [0.90, 0], PC: [0.90, 0], YC: [0.90, 0], CREW: [0.90, 0], SPML: [0.90, 0] }
+    };
+    const out = {};
+    for (const [service, t] of Object.entries(ancien)) {
+      out[service] = {};
+      for (const c of CABINES) out[service][cleBareme(TOUTES, c)] = Math.round((t[c][0] * PAX_TYPE[c] + t[c][1]) * 10) / 10;
+    }
+    return out;
+  })();
+
+  /**
+   * Un barème, quelle que soit la forme où il arrive.
+   *
+   *   • forme actuelle — { service: { 'AF/BC': 12, '*\/YC': 40 } }
+   *   • ancienne forme — { service: { BC: { parPax, parVol } } }, convertie en
+   *     minutes par vol sur la base de passagers types (PAX_TYPE)
+   *
+   * @returns {{ bareme, converti }} `converti` dit qu'une ancienne saisie a été
+   *   transformée : à l'interface de le signaler.
+   */
+  function normaliserBareme(brut) {
+    if (!brut || typeof brut !== 'object' || Array.isArray(brut)) return { bareme: clone(BAREME_DEMO), converti: false };
+    const out = {}; let converti = false;
+    for (const [service, table] of Object.entries(brut).slice(0, 300)) {
+      if (!service || service.length > 160 || !table || typeof table !== 'object') continue;
+      const ligne = {};
+      for (const [k, v] of Object.entries(table).slice(0, 2000)) {
+        if (CABINES.includes(k) && v && typeof v === 'object') {
+          // Ancienne forme : minutes par passager et fixe par vol.
+          converti = true;
+          const n = (+v.parPax || 0) * PAX_TYPE[k] + (+v.parVol || 0);
+          ligne[cleBareme(TOUTES, k)] = Math.max(0, Math.round(n * 10) / 10);
+          continue;
+        }
+        const i = k.lastIndexOf('/');
+        if (i <= 0) continue;
+        const cie = k.slice(0, i).trim(), cabine = k.slice(i + 1).trim().toUpperCase();
+        if (!CABINES.includes(cabine) || !cie || cie.length > 40) continue;
+        const n = +v;
+        if (!Number.isFinite(n) || n < 0) continue;
+        ligne[cleBareme(cie, cabine)] = Math.round(n * 100) / 100;
+      }
+      out[service] = ligne;
+    }
+    return { bareme: out, converti };
+  }
+
+  /** Minutes par vol d'une compagnie × classe dans un service, ou null. */
+  function minutesParVol(table, classe) {
+    if (!table) return null;
+    const propre = table[cleBareme(classe.cie, classe.cabine)];
+    if (Number.isFinite(propre)) return propre;
+    const commune = table[cleBareme(TOUTES, classe.cabine)];
+    return Number.isFinite(commune) ? commune : null;
+  }
 
   /** Rendement : part du temps de présence réellement produite. 1 = idéal. */
   const RENDEMENT_DEMO = 1;
 
-  /** Homme-minutes d'une classe dans un service, d'après le barème. */
+  /** Homme-minutes d'une classe dans un service : minutes par vol × vols. */
   function travailClasse(service, classe, bareme) {
-    const table = (bareme || BAREME_DEMO)[service];
-    if (!table) return 0;
-    const b = table[classe.cabine];
-    if (!b) return 0;
-    const parPax = b.parPax || 0, parVol = b.parVol || 0;
-    return classe.pax * parPax + classe.vols.length * parVol;
+    const b = bareme || BAREME_DEMO;
+    const m = minutesParVol(b[service], classe);
+    return (m || 0) * ((classe.vols && classe.vols.length) || 0);
   }
 
   /* ======================================================================
@@ -193,6 +261,81 @@
     };
     for (const s of services) visiter(s);
     return trouves;
+  }
+
+  /* ----------------------------------------------------------------------
+   *  PARCOURS EXPLICITES
+   *
+   *  Toutes les compagnies × classes ne passent pas par les mêmes services :
+   *  un plateau d'économie ne voit ni la cuisine ni la légumerie. Le graphe du
+   *  Centre des flux décrit l'unité ; il ne dit pas le chemin de CHAQUE classe.
+   *
+   *  Un parcours est un ensemble de BRANCHES. Chaque branche est un chemin,
+   *  service après service. Les branches partent en parallèle et se
+   *  rejoignent là où elles partagent un service :
+   *
+   *      Agro      appros → légumerie → cuisine → montage
+   *      Matériel  plonge → dotation ─────────→ montage
+   *      Magasin   magasin ───────────────────→ montage
+   *
+   *  Le montage attend donc les trois branches. Chaque compagnie × classe
+   *  reçoit un parcours : le sien, sinon celui de sa classe (BC, YC…). Sans
+   *  aucun parcours, le modèle retombe sur le graphe des flux.
+   * --------------------------------------------------------------------*/
+
+  /** Les arcs d'un parcours : chaque paire consécutive de chaque branche. */
+  function arcsDuParcours(parcours) {
+    const arcs = [], vus = new Set();
+    for (const b of ((parcours && parcours.branches) || [])) {
+      const etapes = (b && b.services) || b || [];
+      for (let i = 1; i < etapes.length; i++) {
+        const de = etapes[i - 1], vers = etapes[i];
+        if (!de || !vers || de === vers) continue;
+        const k = de + '>' + vers;
+        if (vus.has(k)) continue; vus.add(k);
+        arcs.push({ from: de, to: vers });
+      }
+    }
+    return arcs;
+  }
+
+  /** Les services d'un parcours, dans l'ordre où ils apparaissent. */
+  function servicesDuParcours(parcours) {
+    const out = [];
+    for (const b of ((parcours && parcours.branches) || [])) {
+      for (const s of ((b && b.services) || b || [])) if (s && !out.includes(s)) out.push(s);
+    }
+    return out;
+  }
+
+  /**
+   * Le parcours de chaque classe.
+   * @param classes  [{id, cabine}]
+   * @param o        { parcours: [{id, nom, branches}], parcoursCabine: {BC: id},
+   *                   parcoursClasse: {'AF/YC': id} }
+   * @returns Map id de classe → { parcours, services:Set, amonts:{service:[…]} }
+   *   Une classe sans parcours n'y figure pas.
+   */
+  function routesDesClasses(classes, o) {
+    const opts = o || {};
+    const liste = Array.isArray(opts.parcours) ? opts.parcours : [];
+    const parId = new Map(liste.map(p => [p.id, p]));
+    const prepares = new Map();
+    const preparer = p => {
+      if (prepares.has(p.id)) return prepares.get(p.id);
+      const amonts = {};
+      for (const a of arcsDuParcours(p)) (amonts[a.to] || (amonts[a.to] = [])).push(a.from);
+      const r = { parcours: p, services: new Set(servicesDuParcours(p)), amonts };
+      prepares.set(p.id, r);
+      return r;
+    };
+    const out = new Map();
+    for (const c of classes || []) {
+      const id = (opts.parcoursClasse || {})[c.id] || (opts.parcoursCabine || {})[c.cabine];
+      const p = id && parId.get(id);
+      if (p) out.set(c.id, preparer(p));
+    }
+    return out;
   }
 
   /* ======================================================================
@@ -511,63 +654,56 @@
    *  revenir. Un excédent de retours se stocke et sert d'amortisseur — quand
    *  la plonge prend du retard, ou le jour où les retours manquent.
    *
-   *  On tient donc UN compte unique, en unités par passager. C'est une
-   *  simplification assumée : un trolley de CRL n'est pas un trolley d'AF.
+   *  On tient donc UN compte unique, en unités. C'est une simplification
+   *  assumée : un trolley de CRL n'est pas un trolley d'AF.
    * --------------------------------------------------------------------*/
 
   /*
-   * Ce qu'un vol emporte de matériel, classé comme le barème : **par passager
-   * ET par vol**, pour chaque classe.
-   *
-   * Compter tout au passager ne décrit pas l'unité : un trolley part avec le
-   * vol, pas avec le passager, et sa quantité ne bouge pas parce que l'avion
-   * est à moitié vide. La porcelaine, elle, suit bien le passager — mais
-   * seulement en avant. Une seule « unité par passager » devait donc faire les
-   * deux, et n'en faisait bien aucune.
-   *
-   * Qui ne veut pas du compte au passager met simplement ses `parPax` à zéro.
+   * Ce qu'un vol emporte de matériel, classé comme le barème : **par vol**,
+   * pour chaque classe présente à bord. Le compte au passager ne décrivait
+   * rien : un trolley part avec le vol, et sa quantité ne bouge pas parce que
+   * l'avion est à moitié vide.
    */
-  const UNITES_DEFAUT = Object.fromEntries(
-    CABINES.map(c => [c, { parPax: 1, parVol: 0 }]));
+  const UNITES_DEFAUT = Object.fromEntries(CABINES.map(c => [c, { parVol: PAX_TYPE[c] }]));
 
   const MATERIEL_DEFAUT = {
     actif: false,
-    unites: UNITES_DEFAUT,   // par classe : par passager et par vol — NON CALIBRÉ
+    unites: UNITES_DEFAUT,   // par classe : unités par vol — NON CALIBRÉ
     stockInitial: 0,         // propre disponible à l'ouverture
     delaiRetour: 30          // minutes entre l'arrivée d'un vol et sa mise à disposition
   };
 
   /**
    * La table des unités d'un réglage, quelle que soit la forme où il arrive.
-   * Un `parPax` scalaire — l'ancienne saisie — devient une table uniforme :
-   * une sauvegarde d'hier continue de donner le même résultat.
+   * Les anciennes saisies comptaient aussi « par passager » — un `parPax`
+   * scalaire, ou un par classe. Elles sont converties en unités par vol sur
+   * la base de passagers types : une sauvegarde d'hier s'ouvre toujours.
    */
   function unitesDe(materiel) {
     const m = materiel || {};
     // On lit le réglage TEL QU'IL ARRIVE. Le fusionner avec le défaut d'abord
-    // masquerait un `parPax` hérité derrière la table par défaut, et une
-    // sauvegarde d'hier rendrait silencieusement un autre résultat.
+    // masquerait un `parPax` hérité derrière la table par défaut.
     if (Number.isFinite(+m.parPax) && !m.unites) {
       const legacy = +m.parPax;
-      return Object.fromEntries(CABINES.map(c => [c, { parPax: legacy, parVol: 0 }]));
+      return Object.fromEntries(CABINES.map(c => [c, { parVol: Math.round(legacy * PAX_TYPE[c] * 10) / 10 }]));
     }
     if (m.unites && typeof m.unites === 'object') {
       return Object.fromEntries(CABINES.map(c => {
         const u = m.unites[c] || {};
-        return [c, { parPax: +u.parPax || 0, parVol: +u.parVol || 0 }];
+        const n = (+u.parVol || 0) + (+u.parPax || 0) * PAX_TYPE[c];
+        return [c, { parVol: Math.max(0, Math.round(n * 10) / 10) }];
       }));
     }
     return clone(UNITES_DEFAUT);
   }
   const clone = x => JSON.parse(JSON.stringify(x));
 
-  /** Ce qu'un vol emporte, toutes classes confondues. */
+  /** Ce qu'un vol emporte, ou ramène : une quantité par classe présente à bord. */
   function unitesDuVol(vol, unites) {
     let n = 0;
     for (const c of CABINES) {
-      const pax = vol[CHAMP_PAX[c]] || 0;
-      if (pax <= 0) continue;
-      n += pax * unites[c].parPax + unites[c].parVol;
+      if ((vol[CHAMP_PAX[c]] || 0) <= 0) continue;
+      n += unites[c].parVol;
     }
     return n;
   }
@@ -588,12 +724,12 @@
     return out.sort((a, b) => a.t - b.t);
   }
 
-  /** Ce qu'un lot emporte : par passager ET par vol, classe par classe. */
+  /** Ce qu'un lot emporte : par vol, classe par classe. */
   function besoinMateriel(classes, materiel) {
     const unites = unitesDe(materiel);
     return classes.reduce((n, c) => {
-      const u = unites[c.cabine] || { parPax: 0, parVol: 0 };
-      return n + c.pax * u.parPax + c.vols.length * u.parVol;
+      const u = unites[c.cabine] || { parVol: 0 };
+      return n + ((c.vols && c.vols.length) || 0) * u.parVol;
     }, 0);
   }
 
@@ -616,7 +752,7 @@
    */
   function simuler(p) {
     const opts = p || {};
-    const bareme = opts.bareme || BAREME_DEMO;
+    const bareme = opts.bareme ? normaliserBareme(opts.bareme).bareme : BAREME_DEMO;
     const rendement = opts.rendement === undefined ? RENDEMENT_DEMO : opts.rendement;
     if (!(rendement > 0)) throw new Error('Le rendement doit être strictement positif.');
 
@@ -630,6 +766,8 @@
     const services = new Set(ateliers.map(a => a.service));
     const anomalies = validerAteliers(ateliers, { services: opts.services || [...services], classes });
     const fourn = fournisseurs(opts.liaisons);
+    const routes = routesDesClasses(classes, opts);
+    const nom = id => (opts.noms && opts.noms[id]) || id;
 
     // Quels services fabriquent quelle classe. C'est ce qui définit le parcours
     // réel, et c'est sur lui seul qu'un cycle est bloquant : le graphe des flux
@@ -642,7 +780,18 @@
       producteurs.get(id).add(a.service);
     }
     const vus = new Set();
+    // Un parcours qui boucle ne laisserait jamais avancer ses classes.
+    for (const p of (Array.isArray(opts.parcours) ? opts.parcours : [])) {
+      const f = fournisseurs(arcsDuParcours(p));
+      for (const c of cycles(f, new Set(servicesDuParcours(p)))) {
+        const cle = 'p:' + p.id + ':' + c.join('>');
+        if (vus.has(cle)) continue; vus.add(cle);
+        anomalies.push({ code: 'cycle',
+          message: 'Le parcours « ' + (p.nom || p.id) + ' » boucle : ' + c.map(nom).join(' → ') + '.' });
+      }
+    }
     for (const [id, svc] of producteurs) {
+      if (routes.has(id)) continue;    // son parcours explicite a été vérifié ci-dessus
       for (const c of cycles(fourn, svc)) {
         const cle = c.join('>');
         if (vus.has(cle)) continue; vus.add(cle);
@@ -655,11 +804,12 @@
     for (const a of ateliers) {
       if (a.type === 'robot') continue;
       if (!bareme[a.service]) anomalies.push({ code: 'bareme', atelier: a.id,
-        message: a.nom + ' : aucun barème pour « ' + a.service + ' », sa durée est nulle tant qu’il n’est pas renseigné.' });
+        message: a.nom + ' : aucun barème pour « ' + nom(a.service) + ' », sa durée est nulle tant qu’il n’est pas renseigné.' });
     }
 
     // Ce qui n'empêche pas de jouer la journée ne doit pas l'empêcher.
-    const NON_BLOQUANTES = new Set(['doublon', 'bareme', 'lots', 'lot-vide', 'poste', 'materiel', 'dispo', 'tunnel-personnes']);
+    const NON_BLOQUANTES = new Set(['doublon', 'bareme', 'lots', 'lot-vide', 'poste', 'materiel', 'dispo',
+      'tunnel-personnes', 'parcours-trou', 'hors-parcours']);
     const bloquant = anomalies.some(a => !NON_BLOQUANTES.has(a.code));
     if (bloquant) return { ok: false, anomalies, classes, lots: [], ateliers: [] };
 
@@ -687,6 +837,63 @@
     // Une mise à disposition sert TOUT : on ne lui fait pas énumérer les
     // classes. Le magasin sort du matériel pour qui en demande.
     for (const a of ateliers) if (a.type === 'dispo') for (const c of classes) produit.add(cle(a.service, c.id));
+    // Une plonge ne fabrique pas de classe : elle lave ce qui revient, et la
+    // boucle du matériel porte cette contrainte. Sur un parcours, elle est une
+    // étape franchie, jamais un trou.
+    const lavages = new Set(ateliers.filter(a => a.type === 'lavage').map(a => a.service));
+
+    /**
+     * Les livraisons qu'un lot doit attendre, pour une classe, dans un service.
+     * Avec un parcours : les services qui le précèdent sur ce parcours. Un
+     * service du parcours où personne ne travaille cette classe est un TROU :
+     * on l'enjambe pour attendre ceux d'avant — sinon l'aval attendrait une
+     * livraison qui ne viendra jamais. Sans parcours : le graphe des flux.
+     */
+    function amontsDe(service, id) {
+      const route = routes.get(id);
+      if (!route) {
+        return (fourn[service] || []).filter(amont => produit.has(cle(amont, id)));
+      }
+      const out = new Set(), vus = new Set();
+      const remonter = s => {
+        for (const amont of (route.amonts[s] || [])) {
+          if (vus.has(amont)) continue; vus.add(amont);
+          if (produit.has(cle(amont, id))) out.add(amont);
+          else remonter(amont);
+        }
+      };
+      remonter(service);
+      return [...out];
+    }
+
+    // Ce que les parcours disent et que les ateliers ne font pas — dans les
+    // deux sens. On le nomme sans bloquer : c'est une saisie en cours.
+    if (routes.size) {
+      const trous = new Map();          // service → classes non travaillées
+      for (const [id] of producteurs) {
+        const route = routes.get(id); if (!route) continue;
+        for (const s of route.services) {
+          if (produit.has(cle(s, id)) || lavages.has(s)) continue;
+          if (!trous.has(s)) trous.set(s, []);
+          trous.get(s).push(id);
+        }
+      }
+      for (const [s, ids] of trous) {
+        anomalies.push({ code: 'parcours-trou', service: s, classes: ids,
+          message: '« ' + nom(s) + ' » est sur le parcours de ' + ids.length + ' classe(s) sans qu’aucun atelier ne l’y travaille ('
+            + ids.slice(0, 4).join(', ') + (ids.length > 4 ? '…' : '') + ') : l’étape est sautée.' });
+      }
+      for (const a of ateliers) {
+        const hors = [];
+        for (const lot of (a.lots || [])) for (const id of classesDuLot(lot)) {
+          const route = routes.get(id);
+          if (route && !route.services.has(a.service) && !hors.includes(id)) hors.push(id);
+        }
+        if (hors.length) anomalies.push({ code: 'hors-parcours', atelier: a.id, classes: hors,
+          message: (a.nom || a.id) + ' : ' + hors.slice(0, 4).join(', ') + (hors.length > 4 ? '…' : '')
+            + ' ne passe(nt) pas par « ' + nom(a.service) + ' » selon leur parcours. Le travail est compté, mais personne ne l’attend.' });
+      }
+    }
 
     /* ---- boucle du matériel ------------------------------------------ */
 
@@ -827,9 +1034,7 @@
           // rejoignent : on ne choisit pas laquelle, on les attend toutes.
           const attendus = [];
           for (const id of ids) {
-            for (const amont of (fourn[a.service] || [])) {
-              if (produit.has(cle(amont, id))) attendus.push(livraison(amont, id));
-            }
+            for (const amont of amontsDe(a.service, id)) attendus.push(livraison(amont, id));
           }
           const debutAttente = env.maintenant;
           if (attendus.length) yield env.tousDe(attendus);
@@ -922,7 +1127,7 @@
       journal.push(ligne);
       const vue = parId.get(a.atelier); if (vue) vue.lots.push(ligne);
       anomalies.push({ code: 'materiel', atelier: a.atelier,
-        message: a.nom + ' dans « ' + a.service + ' » : ' + Math.round(a.besoin)
+        message: a.nom + ' dans « ' + nom(a.service) + ' » : ' + Math.round(a.besoin)
           + ' unités de matériel propre manquent et ne sont jamais arrivées.' });
     }
 
@@ -930,7 +1135,7 @@
     // c'est le résultat, et le plus utile. On le nomme sans bloquer.
     for (const l of journal.filter(l => l.horsPoste)) {
       anomalies.push({ code: 'poste', atelier: l.atelier,
-        message: l.nom + ' dans « ' + l.service + ' » : le poste se termine avant la fin. '
+        message: l.nom + ' dans « ' + nom(l.service) + ' » : le poste se termine avant la fin. '
           + 'Commencez plus tôt, ajoutez du monde, ou confiez-le à une autre équipe.' });
     }
 
@@ -1002,6 +1207,8 @@
     minutes, hhmm, idClasse,
     REGIME_DEFAUT, normaliserRegime, travailDuPoste, executerTache,
     classesDeVols, BAREME_DEMO, RENDEMENT_DEMO, travailClasse,
+    PAX_TYPE, TOUTES, cleBareme, normaliserBareme, minutesParVol, CHAMP_PAX,
+    arcsDuParcours, servicesDuParcours, routesDesClasses,
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,
     pausesDe, finAvecPauses,
     MATERIEL_DEFAUT, UNITES_DEFAUT, unitesDe, retoursDeVols, besoinMateriel,

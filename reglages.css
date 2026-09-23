@@ -9,7 +9,7 @@
    ligne elle tient dans une seule colonne, et le titre déborde de son filet. */
 .rg-modele .titre-aide{grid-column:1/-1}
 .rg-intro{max-width:850px;margin:0 0 4px}
-#rg-status:not(:empty){font-size:13px;color:var(--accent2);margin:0 0 6px}
+#rg-status:not(:empty){font-size:13px;color:var(--accent2);margin:0 0 6px;white-space:pre-line}
 
 #rg-bareme-panneau{grid-column:1/-1}
 .rg-formule{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:4px;
@@ -102,3 +102,8 @@
 /* Une seule carte dans la section : elle prend la largeur d'un tableau lisible,
    pas une colonne étroite à côté d'un grand vide. */
 #panel-reglages.reglages-grille{columns:auto;max-width:760px}
+
+/* Les valeurs propres à une compagnie, sous la valeur commune. */
+.rg-propres{display:grid;gap:8px;margin-top:10px}
+.rg-propres select{font-size:12px;padding:5px 8px;max-width:320px}
+.rg-table input::placeholder{color:var(--txt3)}

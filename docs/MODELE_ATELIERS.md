@@ -102,24 +102,38 @@ robot à l'arrêt pour nettoyage, un local fermé. C'est pourquoi la section est
 ### Durée d'un atelier manuel
 
 ```
-homme-minutes du lot = Σ sur ses classes ( pax × minutes/pax + nb vols × minutes fixes )
+homme-minutes du lot = Σ sur ses classes ( minutes par vol × nombre de vols )
 durée                = homme-minutes ÷ personnes ÷ rendement
 ```
 
-Les deux coefficients sont lus dans une **table unique**, par service et par
-cabine, tenue dans le **Centre des réglages** sous « Le modèle de production ».
+**L'unité de compte est le vol, pas le passager.** On ne dresse pas un passager :
+on monte les trolleys d'un vol, on dresse les plateaux d'une classe de ce vol.
+Une étude de temps donne des minutes pour une compagnie × classe sur un vol ;
+c'est donc ce que le barème contient. Le remplissage de l'avion n'y change rien.
+Le nombre de passagers ne sert plus qu'au **robot**, qui compte bien des plateaux.
+
+Le barème est une **table unique**, par service, tenue dans le **Centre des
+réglages** sous « Le modèle de production » :
+
+| Clé | Sens |
+|---|---|
+| `*/BC` | la valeur **commune** : toutes les compagnies qui n'en ont pas de propre |
+| `AF/BC` | la valeur **propre** à AF en BC ; elle l'emporte sur la commune |
+
 Les valeurs en place sont **non calibrées** : elles n'existent que pour que le
-modèle tourne.
+modèle tourne. Un barème d'hier, qui comptait par passager, est **converti** à
+l'ouverture sur la base de passagers types (BC 25, PC 40, YC 190, CREW 7,
+SPML 10) ; la page le dit, pour qu'on le vérifie.
 
 Le barème se lit **un service à la fois** : replié, chacun tient en une ligne
-qui montre ses minutes par unité ; ouvert, il montre ses dix champs et rien
-d'autre. Les services qui portent une équipe sont marqués, ce sont leurs lignes
-qui comptent d'abord.
+qui montre ses minutes par vol ; ouvert, il montre la valeur commune de chaque
+classe, les valeurs propres à une compagnie, et un menu pour en ajouter une.
 
-Elles se corrigent service par service, ou **s'importent en bloc** : c'est ainsi
-qu'une étude de man-minutes entre dans le modèle, sans toucher au moteur. Le fichier
-porte `schema: "ory-bareme"` et désigne les services par leur identifiant du
-plan ; l'export donne le gabarit. Un service que le barème ne connaît pas est
+Il se corrige service par service, ou **s'échange avec Excel** : c'est ainsi
+qu'une étude de man-minutes entre dans le modèle, sans toucher au moteur. Le
+classeur exporté propose une ligne par compagnie × classe **et par service de
+son parcours** — exactement ce que l'étude doit renseigner. Le format est décrit
+dans [les formats Excel](FORMATS_EXCEL.md). Un service que le barème ne connaît pas est
 marqué **« non renseigné »** — sans quoi il travaillerait en temps nul sans rien
 dire. Une **annexe** hérite du barème de l'atelier dont elle dépend.
 
@@ -210,31 +224,20 @@ un départ les remporte.
 Le modèle tient **un compte unique** d'unités. C'est une simplification
 assumée : un trolley de CRL et un trolley d'AF ne s'y distinguent pas.
 
-### Ce qu'un vol emporte se compte comme le barème
+### Ce qu'un vol emporte se compte comme le barème : par vol
 
-**Par passager ET par vol, classe par classe.** Pas au seul passager.
-
-Un trolley part avec **le vol** : sa quantité ne bouge pas parce que la cabine
-est à moitié vide. La porcelaine suit **le passager**, mais seulement en avant.
-Une unique « unité par passager » devait donc faire les deux, et n'en faisait
-bien aucune.
-
-| | Ce qu'on y met |
-|---|---|
-| **u / vol** | ce qui part avec l'avion — trolleys, caissons, fours |
-| **u / passager** | ce qui suit les gens — porcelaine, couverts en cabine avant |
-
-Qui n'a pas d'unité au passager met simplement cette colonne à **zéro** : c'est
-le cas le plus courant, et le modèle n'en compte alors que par vol.
+**Une quantité par vol, pour chaque classe présente à bord.** Un trolley part
+avec l'avion : sa quantité ne bouge pas parce que la cabine est à moitié vide.
+Un vol retour ramène la même quantité, classe par classe.
 
 | Réglage | Sens |
 |---|---|
-| Unités par classe | **non calibré**, par passager et par vol |
+| Unités par vol, par classe | **non calibré** |
 | Propre à l'ouverture | le stock de départ, souvent nul |
 | Délai après atterrissage | minutes avant que le sale soit à la plonge |
 
-Une saisie d'hier, qui ne portait qu'un « unités par passager » unique, est
-relue telle quelle : elle donne exactement le même résultat.
+Une saisie d'hier, qui comptait aussi par passager, est convertie en unités par
+vol sur la base des mêmes passagers types que le barème.
 
 Un atelier de type **Lavage** ne fabrique rien : son travail vient des retours, à
 mesure qu'ils arrivent. Il suit le même régime de poste que les autres — ce qui
@@ -282,37 +285,48 @@ passerait indéfiniment devant un gros.
 
 ## 4. Le parcours
 
-Une compagnie × classe n'est pas une ligne mais un **assemblage** : sa part food
-vient des appros, son matériel du magasin et des retours de dotation, son
-armement de l'armement — et tout cela converge au montage.
+Une compagnie × classe n'est pas une ligne mais un **assemblage**, et toutes ne
+passent pas par les mêmes services : un plateau d'économie ne voit ni la cuisine
+ni la légumerie. Chaque classe suit donc un **parcours** : des **branches** qui
+partent en parallèle et se rejoignent là où elles partagent un service.
 
-Ce parcours **n'est pas inventé par le moteur** : il se lit dans le graphe des
-liaisons du **Centre des flux**. Cet onglet n'est donc plus décoratif — il
-**décide**. Il porte pour cela une section « **Ce que le modèle en lit** » qui
-montre, service par service, ce qu'il attend et à qui il livre, et qui nomme ce
-qui empêcherait la journée de se jouer :
+```
+Agro       RÉCEPTION / APPROS → LÉGUMERIE → CUISINE → MONTAGE
+Matériel   PLONGE → DOTATION ─────────────────────→ MONTAGE
+Magasin    MAGASIN ───────────────────────────────→ MONTAGE
+```
 
-- un service qui **fournit sans avoir d'équipe** — rien n'en sort, et personne
-  ne l'attend ; c'est le cas que la *mise à disposition* règle ;
-- une équipe qui **ne fabrique rien** ;
-- un service **relié à personne**, ou qui **ne livre à personne** ;
-- une **boucle sans fin**.
+Le montage attend alors **les trois branches** ; la dotation n'attend que la
+plonge, la cuisine que la légumerie. La règle tient en une phrase :
 
-Du graphe, le moteur ne retient que le **sens** des liaisons actives, d'un
-service à un autre. La famille de flux, les stockages, la précision et les
-règles de circulation humaine restent de la description. La règle tient en une
-phrase :
+> Un service ne travaille un lot que lorsque **les services qui le précèdent sur
+> le parcours de chaque classe** du lot la lui ont livrée.
 
-> Un service ne peut travailler un lot que lorsque **tous ses fournisseurs**
-> dans ce graphe ont livré **toutes les classes** de ce lot.
+Les parcours se décrivent dans l'onglet **Ateliers**, section « Parcours des
+classes » : chaque étape est un menu, chaque branche une chaîne qu'on lit de
+gauche à droite. Deux parcours types sont créés d'office — **Complet** pour BC,
+PC, CREW et SPML, **Sans cuisine** pour YC — et se modifient librement.
 
-Deux conséquences utiles :
+- **Par défaut, par classe** : BC, PC, YC, CREW et SPML ont chacune un parcours.
+- **Par compagnie × classe** : le tableau des compagnies × classes a une colonne
+  « Parcours » ; une compagnie peut y suivre un autre chemin que sa classe.
+- **Une étape sans équipe est enjambée** : si personne ne travaille une classe
+  à la cuisine, le montage attend directement ce qui précède la cuisine. C'est
+  signalé — « « CUISINE » est sur le parcours de 3 classe(s) sans qu'aucun
+  atelier ne l'y travaille » — sans bloquer la journée.
+- **Une plonge n'est jamais un trou** : elle lave ce qui revient, elle ne
+  fabrique pas de classe ; la boucle du matériel porte cette contrainte.
+- **Un atelier qui fabrique une classe hors de son parcours** est signalé : son
+  travail est compté, mais personne ne l'attend.
+- **Un parcours qui boucle** est refusé avant de jouer quoi que ce soit.
 
-- **Le parcours peut différer d'une classe à l'autre.** Un service qui ne
-  fabrique pas une classe donnée n'est pas attendu pour elle. C'est la présence
-  de la classe dans un lot qui met le service sur son chemin.
-- **L'attente est mesurée, pas dissimulée.** Chaque lot dit combien de temps il
-  a attendu ses amonts : c'est ce qui désigne la branche lente.
+Le **graphe du Centre des flux** décrit l'unité — qui livre qui. Il ne décide
+plus que pour les classes **sans parcours** : un service ne les travaille que
+lorsque tous ses fournisseurs dans ce graphe les lui ont livrées. Sa section
+« **Ce que le modèle en lit** » le dit.
+
+**L'attente est mesurée, pas dissimulée.** Chaque lot dit combien de temps il a
+attendu ses amonts : c'est ce qui désigne la branche lente.
 
 Un **cycle** dans les liaisons est refusé avant de jouer quoi que ce soit : il
 bloquerait la fabrication sans jamais rien dire.
@@ -355,7 +369,7 @@ pas descriptible.
   deux lots de front se décrit comme deux ateliers.
 - Le rendement est un **coefficient unique**. S'il doit varier par service ou par
   heure, c'est une évolution du barème, pas du moteur.
-- Les **unités par passager** et le **délai après atterrissage** sont des valeurs
-  d'attente, comme le barème.
+- Les **unités de matériel par vol** et le **délai après atterrissage** sont des
+  valeurs d'attente, comme le barème.
 - La journée est **unique**. Un excédent de matériel « disponible demain » n'est
   pas reporté automatiquement : il se saisit comme stock à l'ouverture.

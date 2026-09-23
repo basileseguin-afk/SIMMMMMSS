@@ -1176,6 +1176,7 @@ function initControles() {
   document.getElementById('snap-b').addEventListener('click', () => capturer('B'));
   document.getElementById('snap-clear').addEventListener('click', () => { snaps = {}; majCompare(); });
   document.getElementById('imp-vols').addEventListener('change', importVols);
+  document.getElementById('exp-vols').addEventListener('click', exporterVols);
   document.getElementById('sauvegarde-export').addEventListener('click', sauvegardeComplete);
   document.getElementById('sauvegarde-import-btn').addEventListener('click', () => document.getElementById('sauvegarde-import').click());
   document.getElementById('sauvegarde-import').addEventListener('change', restaurerSauvegarde);
@@ -1312,24 +1313,32 @@ async function restaurerSauvegarde(e) {
   finally { e.target.value = ''; }
 }
 
-function importVols(e) {
+/* Le programme de vols s'importe en Excel (feuilles « Départs » et
+ * « Retours ») ou en CSV (une table, colonne « sens »). */
+async function importVols(e) {
   const file=e.target.files[0];if(!file)return;
   const report=document.getElementById('import-report');
   const fail=message=>{report.classList.add('error');report.textContent=message;};
-  if(file.size>2*1024*1024){fail('Fichier trop volumineux (maximum 2 Mo). Aucune donnée remplacée.');e.target.value='';return;}
-  const rd=new FileReader();
-  // BUG-005 : vider le champ aussi en cas d'échec de lecture, sinon resélectionner
-  // le même fichier ne déclenche plus `change` et l'application semble muette.
-  rd.onerror=()=>{fail('Lecture du fichier impossible. Aucune donnée remplacée.');e.target.value='';};
-  rd.onload=()=>{
-    try {
-      const data=parseVols(rd.result);
-      Sim.dataCourante=data;dataSource=file.name;snaps={};majCompare();reset(data);updateSource();
-      report.classList.remove('error');report.textContent=data.length+' lignes importées. '+data.filter(f=>f.sens==='DEP').length+' départs et '+data.filter(f=>f.sens==='RET').length+' retours.';
-    } catch(err){fail(err.message);}
-    finally{e.target.value='';}
-  };
-  rd.readAsText(file);
+  try {
+    if(file.size>4*1024*1024)throw new Error('Fichier trop volumineux (maximum 4 Mo). Aucune donnée remplacée.');
+    let data;
+    if(/\.(csv|txt)$/i.test(file.name)){
+      // BUG-005 : un échec de lecture doit vider le champ, sinon resélectionner
+      // le même fichier ne déclenche plus `change`.
+      const texte=await new Promise((ok,ko)=>{const rd=new FileReader();rd.onload=()=>ok(rd.result);
+        rd.onerror=()=>ko(new Error('Lecture du fichier impossible. Aucune donnée remplacée.'));rd.readAsText(file);});
+      data=parseVols(texte);
+    } else data=OrlyEchanges.classeurVersVols(await OrlyTableur.lireFichier(file,4*1024*1024));
+    Sim.dataCourante=data;dataSource=file.name;snaps={};majCompare();reset(data);updateSource();
+    report.classList.remove('error');report.textContent=data.length+' lignes importées. '+data.filter(f=>f.sens==='DEP').length+' départs et '+data.filter(f=>f.sens==='RET').length+' retours.';
+  } catch(err){fail(err.message);}
+  finally{e.target.value='';}
+}
+function exporterVols() {
+  const octets=OrlyTableur.ecrireClasseur(OrlyEchanges.volsVersClasseur(Sim.dataCourante||SAMPLE));
+  const nom=dataSource.replace(/\.[a-z]+$/i,'').replace(/[^\w.-]+/g,'-').slice(0,40)||'vols';
+  OrlyTableur.telecharger('ory-vols-'+nom+'.xlsx',octets);
+  toast('Programme de vols exporté');
 }
 function parseVols(txt) { return parseFlights(txt); }
 /* L'export suit ce qu'on regarde : la journée du modèle par ateliers, telle
@@ -1391,6 +1400,10 @@ function installerCentreReglages() {
     // Les services qui portent une équipe : ce sont leurs lignes de barème qui
     // comptent d'abord, et il faut pouvoir les repérer dans la liste.
     occupes:()=>[...new Set(((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]).map(a=>a.service))],
+    // Les compagnies × classes du moment, et le parcours de chacune : c'est ce
+    // que le classeur du barème propose de renseigner, service par service.
+    classes:()=>Sim.ateliers?Sim.ateliers.classes:[],
+    routes:cls=>MoteurProduction.routesDesClasses(cls,Sim.ateliers?Sim.ateliers.state:{}),
     delaiChargement:()=>CFG.loadDelay,
     change:()=>{if(Sim.ateliers)Sim.ateliers.rendre();majDemarrage();if(Sim.vue)Sim.vue.recalculer();},
     notify:toast

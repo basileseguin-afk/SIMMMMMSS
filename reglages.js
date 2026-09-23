@@ -8,10 +8,11 @@
  *
  *  Ce module tient les quatre entrées du modèle par ateliers :
  *
- *    1. le BARÈME    — homme-minutes par service et par cabine ;
+ *    1. le BARÈME    — homme-minutes PAR VOL, par service et par compagnie ×
+ *                      classe (une valeur commune, et des valeurs propres) ;
  *    2. le RENDEMENT — part du temps de présence réellement produite ;
  *    3. le POSTE     — seuils de pause et durée de présence par défaut ;
- *    4. l'IMPORT/EXPORT du barème, pour recevoir une étude en bloc.
+ *    4. l'IMPORT/EXPORT Excel du barème, pour recevoir une étude en bloc.
  *
  *  Le délai de chargement reste tenu par le panneau « Horaires de vols » :
  *  il sert aux deux moteurs, et deux champs pour une seule valeur finiraient
@@ -60,24 +61,13 @@
     };
   }
 
-  /** Un barème : service → cabine → { parPax, parVol }. */
+  /**
+   * Un barème : service → { 'AF/BC': minutes par vol, '*\/BC': valeur commune }.
+   * L'ancienne forme, par passager, est convertie par le moteur.
+   */
   function validerBareme(brut) {
-    if (!brut || typeof brut !== 'object' || Array.isArray(brut)) return clone(P.BAREME_DEMO);
-    const out = {};
-    for (const [service, table] of Object.entries(brut).slice(0, 200)) {
-      if (!service || service.length > 160 || !table || typeof table !== 'object') continue;
-      const ligne = {};
-      for (const cabine of P.CABINES) {
-        const c = table[cabine] || {};
-        ligne[cabine] = { parPax: min(c.parPax, 0), parVol: min(c.parVol, 0) };
-      }
-      out[service] = ligne;
-    }
-    return Object.keys(out).length ? out : clone(P.BAREME_DEMO);
+    return P.normaliserBareme(brut).bareme;
   }
-
-  /** Une ligne vide, pour un service que le barème ne connaît pas encore. */
-  const ligneVide = () => Object.fromEntries(P.CABINES.map(c => [c, { parPax: 0, parVol: 0 }]));
 
   class CentreReglages {
     /**
@@ -94,10 +84,16 @@
       this.etat = valider(null);
       this.undo = []; this.redo = [];
       this.serviceOuvert = null;   // un seul service déplié à la fois
+      this.converti = false;
       let alerte = '';
       try {
         const garde = localStorage.getItem(CLE);
-        if (garde) this.etat = valider(JSON.parse(garde));
+        if (garde) {
+          const lu = JSON.parse(garde);
+          this.etat = valider(lu);
+          // Un barème d'hier comptait par passager : il est converti, et on le dit.
+          if (lu && P.normaliserBareme(lu.bareme).converti) { this.converti = true; this.enregistrer(); }
+        }
       } catch (e) { alerte = 'Réglages du modèle non relus : ' + e.message; }
       this.construire();
       this.rendre(alerte);
@@ -174,23 +170,25 @@
           <div class="titre-aide"><h3>Barème — homme-minutes</h3><details class="aide">
             <summary aria-label="Comment lire le barème ?">?</summary>
             <span class="aide-corps">
-              <p>Pour un service et une classe : les minutes de travail d’<b>une unité</b> — un
-                passager, un plateau d’équipage, un repas spécial — plus celles que coûte
-                <b>un vol</b> quel que soit son remplissage.</p>
+              <p>Pour un service : les minutes de travail que coûte <b>un vol</b> d’une compagnie
+                dans une classe. La journée d’une compagnie × classe vaut ces minutes <b>fois son
+                nombre de vols</b> ; le remplissage n’y change rien.</p>
+              <p>Une valeur <b>commune</b> par classe vaut pour toutes les compagnies ; une
+                compagnie peut avoir la sienne.</p>
               <p>Un service marqué « non renseigné » travaillerait en temps nul. Une annexe
                 hérite du barème de l’atelier dont elle dépend.</p>
-              <p><b>Exporter</b> donne le gabarit à remplir ; <b>Importer</b> reprend une étude
-                entière d’un coup.</p>
+              <p><b>⇩ Excel</b> donne le classeur à remplir — une ligne par compagnie × classe et
+                par service de son parcours ; <b>Importer</b> reprend l’étude entière d’un coup.</p>
             </span></details></div>
           <p class="mini-note"><span class="rg-formule">durée = homme-minutes ÷ personnes ÷ rendement</span></p>
           <div id="rg-alerte"></div>
           <div class="rg-actions">
             <button class="btn btn-sm" id="rg-undo">Annuler</button>
             <button class="btn btn-sm" id="rg-redo">Rétablir</button>
-            <button class="btn btn-sm" id="rg-export">Exporter le barème</button>
-            <button class="btn btn-sm" id="rg-import-btn">Importer</button>
+            <button class="btn btn-sm" id="rg-export" title="Le barème dans un classeur Excel, prêt à remplir">⇩ Excel</button>
+            <button class="btn btn-sm" id="rg-import-btn" title="Réimporter un classeur (ou un CSV) modifié">⇧ Importer</button>
             <button class="btn btn-sm" id="rg-reset">Valeurs de démonstration</button>
-            <input id="rg-import" type="file" accept=".json" hidden>
+            <input id="rg-import" type="file" accept=".xlsx,.csv,.json" hidden>
           </div>
           <div id="rg-bareme"></div>
         </div>
@@ -262,15 +260,22 @@
       const section = document.getElementById('rg-modele');
       section.addEventListener('change', e => {
         const champ = e.target.dataset.rgChamp; if (!champ) return;
-        const { service, cabine, index } = e.target.dataset;
+        const { service, cle, index } = e.target.dataset;
         const v = e.target.value;
         // Le rendu remplace le tableau : le faire PENDANT le `change` arrache
         // le champ qu'on vient de quitter, et le navigateur refuse. On laisse
         // l'événement se terminer d'abord.
         setTimeout(() => this.changer(() => {
-          if (champ === 'parPax' || champ === 'parVol') {
-            const ligne = this.etat.bareme[service] || (this.etat.bareme[service] = ligneVide());
-            ligne[cabine][champ] = min(v, 0);
+          if (champ === 'minutes') {
+            const ligne = this.etat.bareme[service] || (this.etat.bareme[service] = {});
+            // Une case commune vidée : « non renseigné », pas zéro.
+            if (v === '' && cle.startsWith(P.TOUTES + '/')) delete ligne[cle];
+            else ligne[cle] = min(v.replace(',', '.'), 0);
+          } else if (champ === 'propre-ajout' && v) {
+            const ligne = this.etat.bareme[service] || (this.etat.bareme[service] = {});
+            const cabine = v.slice(v.lastIndexOf('/') + 1);
+            // Elle naît à la valeur commune : on part de ce qui s'appliquait.
+            ligne[v] = ligne[P.cleBareme(P.TOUTES, cabine)] || 0;
           } else if (champ === 'seuil-apres') this.etat.regime.seuils[+index].apres = min(v, 0);
           else if (champ === 'seuil-duree') this.etat.regime.seuils[+index].duree = min(v, 0);
         }, 'Enregistré.'), 0);
@@ -282,6 +287,9 @@
           this.serviceOuvert = d.open ? null : d.dataset.service;
           return;   // le navigateur fait le reste : on ne redessine pas
         }
+        const p = e.target.closest('[data-rg-action="propre-retirer"]');
+        if (p) return this.changer(() => { delete this.etat.bareme[p.dataset.service][p.dataset.cle]; },
+          p.dataset.cle + ' : retour à la valeur commune.');
         const b = e.target.closest('[data-rg-action="seuil-retirer"]'); if (!b) return;
         this.changer(() => { this.etat.regime.seuils.splice(+b.dataset.index, 1); }, 'Seuil retiré.');
       });
@@ -319,26 +327,33 @@
       // touche pas : sinon un rendu déclenché par la sortie d'un champ
       // arrache le bouton qu'on était en train de cliquer, et le clic se perd.
       const signature = JSON.stringify([services.map(s => [s.id, s.nom]), complet,
-        this.etat.bareme, [...occupes]]);
+        this.etat.bareme, [...occupes], (this.a.classes ? this.a.classes() : []).map(c => c.id)]);
       if (box._signature !== signature) {
         box._signature = signature;
         // Un `input[type=number]` n'accepte que le point décimal : « 0,6 » le
         // laisse vide, et le barème semble ne rien contenir.
         const fr = n => String(n).replace('.', ',');
 
+        const classes = this.a.classes ? this.a.classes() : [];
         box.innerHTML = services.map(s => {
           const propre = this.etat.bareme[s.id];
           const pere = this.a.parent ? this.a.parent(s.id) : null;
           const herite = !propre && pere && complet[s.id];
-          const ligne = propre || complet[s.id] || ligneVide();
-          const etat = herite ? 'herite' : propre ? 'ok' : 'vide';
+          const ligne = propre || complet[s.id] || {};
+          const communes = P.CABINES.map(c => ligne[P.cleBareme(P.TOUTES, c)]);
+          const renseigne = communes.some(Number.isFinite) || Object.keys(ligne).length;
+          const etat = herite ? 'herite' : renseigne ? 'ok' : 'vide';
           const marque = herite
             ? '<span class="rg-herite" title="Même travail que l’atelier dont elle dépend">hérité</span>'
-            : propre ? '' : '<span class="rg-zero">non renseigné</span>';
-          // Le résumé replié : les minutes par unité, et le fixe par vol s'il existe.
-          const parVol = P.CABINES.filter(c => ligne[c].parVol > 0);
-          const digest = P.CABINES.map(c => `<b>${c}</b> ${fr(ligne[c].parPax)}`).join(' · ')
-            + (parVol.length ? ' · <em>+ ' + fr(ligne[parVol[0]].parVol) + ' min/vol</em>' : '');
+            : renseigne ? '' : '<span class="rg-zero">non renseigné</span>';
+          const propres = Object.entries(ligne).filter(([k]) => !k.startsWith(P.TOUTES + '/'))
+            .sort(([x], [y]) => x.localeCompare(y));
+          // Le résumé replié : les minutes par vol de chaque classe.
+          const digest = P.CABINES.map((c, i) => `<b>${c}</b> ${Number.isFinite(communes[i]) ? fr(communes[i]) : '—'}`).join(' · ')
+            + ' <em>min/vol</em>' + (propres.length ? ` · <em>+ ${propres.length} par compagnie</em>` : '');
+          const dispo = classes.filter(c => !(P.cleBareme(c.cie, c.cabine) in ligne));
+          const champ = (cle, val, label) => `<input type="number" min="0" step="0.1" value="${Number.isFinite(val) ? val : ''}"
+            placeholder="—" data-rg-champ="minutes" data-service="${esc(s.id)}" data-cle="${esc(cle)}" aria-label="${esc(label)}">`;
 
           return `<details class="rg-service ${etat}" name="rg-bareme" data-service="${esc(s.id)}">
             <summary>
@@ -347,14 +362,26 @@
               <span class="rg-svc-digest">${digest}</span>
             </summary>
             <table class="rg-table"><thead><tr><th scope="col">Classe</th>
-              <th scope="col">min / unité</th><th scope="col">min / vol</th></tr></thead><tbody>
-              ${P.CABINES.map(c => `<tr>
+              <th scope="col">Toutes compagnies — min / vol</th></tr></thead><tbody>
+              ${P.CABINES.map((c, i) => `<tr>
                 <th scope="row" title="${esc((P.NOM_CABINE || {})[c] || c)}">${c}</th>
-                ${['parPax', 'parVol'].map(k => `<td><input type="number" min="0" step="0.01"
-                   value="${ligne[c][k]}" data-rg-champ="${k}" data-service="${esc(s.id)}" data-cabine="${c}"
-                   aria-label="${esc(s.nom)} ${c} ${k === 'parPax' ? 'minutes par unité' : 'minutes par vol'}"></td>`).join('')}
+                <td>${champ(P.cleBareme(P.TOUTES, c), communes[i], s.nom + ' ' + c + ' minutes par vol, toutes compagnies')}</td>
               </tr>`).join('')}
             </tbody></table>
+            <div class="rg-propres">
+              ${propres.length ? `<table class="rg-table"><thead><tr><th scope="col">Compagnie × classe</th>
+                <th scope="col">min / vol</th><th scope="col"><span class="sr-only">Retirer</span></th></tr></thead><tbody>
+                ${propres.map(([k, v]) => `<tr><th scope="row">${esc(k)}</th>
+                  <td>${champ(k, v, s.nom + ' ' + k + ' minutes par vol')}</td>
+                  <td><button class="btn btn-sm" data-rg-action="propre-retirer" data-service="${esc(s.id)}" data-cle="${esc(k)}"
+                    title="Revenir à la valeur commune">Retirer</button></td></tr>`).join('')}
+              </tbody></table>` : ''}
+              ${dispo.length ? `<select data-rg-champ="propre-ajout" data-service="${esc(s.id)}"
+                aria-label="Donner à une compagnie × classe sa propre valeur dans ${esc(s.nom)}">
+                <option value="">+ Valeur propre à une compagnie × classe…</option>
+                ${dispo.map(c => `<option value="${esc(P.cleBareme(c.cie, c.cabine))}">${esc(c.id)}</option>`).join('')}
+              </select>` : ''}
+            </div>
           </details>`;
         }).join('');
       }
@@ -367,14 +394,18 @@
       // Le barème n'est pas calibré : le dire ici, là où on le modifie.
       const alerte = document.getElementById('rg-alerte');
       const memeQueDemo = JSON.stringify(this.etat.bareme) === JSON.stringify(P.BAREME_DEMO);
-      alerte.innerHTML = memeQueDemo
+      const conversion = this.converti ? `<div class="rg-avertissement"><b>Barème converti en minutes par vol.</b>
+           Il comptait par passager ; chaque valeur a été multipliée par un nombre de passagers types
+           (BC ${P.PAX_TYPE.BC}, PC ${P.PAX_TYPE.PC}, YC ${P.PAX_TYPE.YC}, CREW ${P.PAX_TYPE.CREW}, SPML ${P.PAX_TYPE.SPML}).
+           Vérifiez-le, ou importez votre étude.</div>` : '';
+      alerte.innerHTML = conversion + (memeQueDemo
         ? `<div class="rg-avertissement"><b>Valeurs de démonstration, non calibrées.</b>
            Aucune durée affichée ne permet de dimensionner une équipe.<details class="aide">
            <summary aria-label="Pourquoi non calibré ?">?</summary>
            <span class="aide-corps">Ces valeurs n’existent que pour que le modèle tourne. Elles
              seront remplacées en bloc par une étude de man-minutes — bouton <b>Importer</b>.
              D’ici là, les durées montrent des enchaînements, pas des effectifs.</span></details></div>`
-        : '';
+        : '');
     }
 
     rendreRendement() {
@@ -414,28 +445,41 @@
 
     /* ---- échange de fichiers -------------------------------------------- */
 
+    /* Le classeur du barème : une ligne par compagnie × classe et par service
+     * de son parcours. C'est la trame de l'étude de temps. */
     exporter() {
-      const contenu = { schema: 'ory-bareme', version: 1, bareme: this.etat.bareme,
-        rendement: this.etat.rendement, regime: this.etat.regime };
-      const lien = document.createElement('a');
-      lien.href = URL.createObjectURL(new Blob([JSON.stringify(contenu, null, 2)], { type: 'application/json' }));
-      lien.download = 'bareme-' + new Date().toISOString().slice(0, 10) + '.json';
-      lien.click();
-      setTimeout(() => URL.revokeObjectURL(lien.href), 1000);
-      this.rendre('Barème exporté. Les services sont désignés par leur identifiant du plan.');
+      const E = root.OrlyEchanges, T = root.OrlyTableur;
+      const classes = this.a.classes ? this.a.classes() : [];
+      const octets = T.ecrireClasseur(E.baremeVersClasseur(
+        { bareme: this.etat.bareme, rendement: this.etat.rendement, regime: this.etat.regime },
+        { services: this.a.services ? this.a.services() : [], classes,
+          routes: this.a.routes ? this.a.routes(classes) : new Map() }));
+      T.telecharger('ory-bareme-' + new Date().toISOString().slice(0, 10) + '.xlsx', octets);
+      this.rendre('Barème exporté : remplissez la colonne « Minutes par vol », puis « Importer ».');
     }
 
     async importer(e) {
       const f = e.target.files[0]; if (!f) return;
       try {
-        if (f.size > 1024 * 1024) throw new Error('Fichier trop volumineux (1 Mo maximum).');
-        const brut = JSON.parse(await f.text());
-        if (!brut || brut.schema !== 'ory-bareme') throw new Error('Fichier de barème attendu (schema « ory-bareme »).');
-        const lu = valider(brut);
-        if (!confirm('Remplacer le barème et les règles de poste ? L’action est annulable.')) return;
-        this.changer(() => { this.etat = lu; }, 'Barème importé.');
+        let lu;
+        if (/\.json$/i.test(f.name)) {
+          // L'ancien échange, en JSON : toujours lu, et converti s'il comptait par passager.
+          if (f.size > 1024 * 1024) throw new Error('Fichier trop volumineux (1 Mo maximum).');
+          const brut = JSON.parse(await f.text());
+          if (!brut || brut.schema !== 'ory-bareme') throw new Error('Fichier de barème attendu (schema « ory-bareme »).');
+          lu = valider(brut);
+        } else {
+          const E = root.OrlyEchanges, T = root.OrlyTableur;
+          const r = E.classeurVersBareme(await T.lireFichier(f, 4 * 1024 * 1024),
+            { services: this.a.services ? this.a.services() : [] });
+          lu = valider({ ...this.etat, ...r, regime: { ...this.etat.regime, ...(r.regime || {}) } });
+        }
+        const n = Object.values(lu.bareme).reduce((k, t) => k + Object.keys(t).length, 0);
+        if (!confirm('Remplacer le barème entier par celui du fichier (' + n + ' valeur(s)) ? L’action est annulable.')) return;
+        this.converti = false;
+        this.changer(() => { this.etat = lu; }, 'Barème importé : ' + n + ' valeur(s).');
       } catch (err) {
-        this.rendre('Import refusé : ' + err.message + ' Le barème en place est conservé.');
+        this.rendre('Import refusé — ' + err.message + '\nLe barème en place est conservé.');
       } finally { e.target.value = ''; }
     }
   }

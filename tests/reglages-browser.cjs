@@ -1,7 +1,9 @@
-/* Le Centre des réglages depuis qu'il pilote les ateliers de travail : barème,
- * rendement, régime de poste, et la séparation d'avec l'ancien moteur. */
+/* Le Centre des réglages depuis qu'il pilote les ateliers de travail : barème
+ * en minutes par vol (valeur commune et valeurs par compagnie), rendement,
+ * régime de poste, et l'échange du barème par Excel. */
 const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs'),os=require('node:os');
 const {pathToFileURL}=require('node:url');
+const T=require('../tableur.js');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
 (async()=>{
  const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE_PATH?{executablePath:process.env.CHROMIUM_EXECUTABLE_PATH,args:['--no-sandbox','--disable-gpu','--disable-software-rasterizer','--no-zygote','--single-process']}:{})});
@@ -39,19 +41,27 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('#rg-bareme input:visible').count(),0,'aucun champ à l’arrivée');
   assert.ok(await page.locator('.rg-service').count()>=10,'un pli par service');
   assert.match(await page.locator('.rg-service[data-service=cuisine] .rg-svc-digest').textContent(),
-    /BC 1,4/,'le résumé replié dit l’essentiel');
+    /BC 35 · .* min\/vol/,'le résumé replié dit l’essentiel, en minutes par vol');
   await page.locator('.rg-service[data-service=cuisine] > summary').click();await attendre();
-  assert.equal(await page.locator('#rg-bareme input:visible').count(),10,'dix champs, pas cent dix');
+  assert.equal(await page.locator('#rg-bareme input:visible').count(),5,'une valeur commune par classe');
   // Un seul service ouvert à la fois : sinon on retrouve le mur.
   await page.locator('.rg-service[data-service=magasin] > summary').click();await attendre();
   assert.equal(await page.locator('.rg-service[open]').count(),1);
   await page.locator('.rg-service[data-service=cuisine] > summary').click();await attendre();
 
-  // Le barème pilote la durée : doubler les minutes par unité double la durée.
-  const cuisineBC='[data-rg-champ=parPax][data-service=cuisine][data-cabine=BC]';
-  assert.equal(await page.locator(cuisineBC).inputValue(),'1.4','la valeur est lisible, pas vide');
-  await ecrire(cuisineBC,'2.8');
+  // Le barème pilote la durée : doubler les minutes par vol double la durée.
+  const cuisineBC='[data-rg-champ=minutes][data-service=cuisine][data-cle="*/BC"]';
+  assert.equal(await page.locator(cuisineBC).inputValue(),'35','la valeur est lisible, pas vide');
+  await ecrire(cuisineBC,'70');
   assert.ok(Math.abs(await duree()-avant*2)<1e-6,'la durée a doublé');
+  // Une compagnie peut avoir sa valeur propre : elle l'emporte sur la commune.
+  await page.selectOption('[data-rg-champ=propre-ajout][data-service=cuisine]','CRL/BC');await attendre();
+  const crlBC='[data-rg-champ=minutes][data-service=cuisine][data-cle="CRL/BC"]';
+  assert.equal(await page.locator(crlBC).inputValue(),'70','elle naît à la valeur commune');
+  await ecrire(crlBC,'35');
+  assert.ok(Math.abs(await duree()-avant)<1e-6,'CRL/BC suit sa propre valeur');
+  await page.locator('[data-rg-action=propre-retirer][data-cle="CRL/BC"]').click();await attendre();
+  assert.ok(Math.abs(await duree()-avant*2)<1e-6,'retirée, la valeur commune revient');
   // Saisir ne referme pas la fiche qu'on était en train de remplir.
   assert.equal(await page.locator('.rg-service[data-service=cuisine][open]').count(),1);
 
@@ -82,29 +92,48 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 7. Annuler et rétablir.
   await page.locator('#rg-undo').click();await attendre();
   await page.locator('#rg-redo').click();await attendre();
-  assert.equal(await page.evaluate(()=>Sim.reglages.etat.bareme.cuisine.BC.parPax),2.8);
+  const valeur=cle=>page.evaluate(c=>Sim.reglages.etat.bareme.cuisine[c],cle);
+  assert.equal(await valeur('*/BC'),70);
 
-  // 8. Le barème s'exporte et se réimporte : c'est ainsi qu'une étude arrive en bloc.
+  // 8. Le barème s'exporte en Excel et se réimporte : c'est ainsi qu'une étude arrive en bloc.
   const dl=await Promise.all([page.waitForEvent('download'),page.locator('#rg-export').click()]);
-  const fichier=path.join(fs.mkdtempSync(path.join(os.tmpdir(),'ory-')),'bareme.json');
+  assert.match(dl[0].suggestedFilename(),/^ory-bareme-.*\.xlsx$/);
+  const dossier=fs.mkdtempSync(path.join(os.tmpdir(),'ory-'));
+  const fichier=path.join(dossier,'bareme.xlsx');
   await dl[0].saveAs(fichier);
-  const lu=JSON.parse(fs.readFileSync(fichier,'utf8'));
-  assert.equal(lu.schema,'ory-bareme');
-  assert.equal(lu.bareme.cuisine.BC.parPax,2.8);
+  const feuilles=await T.lireClasseur(fs.readFileSync(fichier));
+  const bareme=T.feuille(feuilles,'Barème');
+  const ligne=(svc,cie,cab)=>bareme.lignes.findIndex(l=>l[0]===svc&&l[1]===cie&&l[2]===cab);
+  assert.equal(bareme.lignes[ligne('CUISINE','*','BC')][3],70,'la valeur commune est dans le classeur');
+  assert.ok(ligne('CUISINE','CRL','BC')>0,'une ligne pour CRL/BC, que son parcours fait passer en cuisine');
+  assert.equal(ligne('CUISINE','CRL','YC'),-1,'aucune pour CRL/YC : son parcours évite la cuisine');
+  // Dans Excel, on renseigne une valeur propre et on réimporte.
+  bareme.lignes[ligne('CUISINE','CRL','BC')][3]=17.5;
+  const modifie=path.join(dossier,'bareme-modifie.xlsx');
+  fs.writeFileSync(modifie,T.ecrireClasseur(feuilles));
   await page.locator('#rg-reset').click();await attendre();
-  assert.equal(await page.evaluate(()=>Sim.reglages.etat.bareme.cuisine.BC.parPax),1.4,'les valeurs de démonstration sont revenues');
-  await page.locator('#rg-import').setInputFiles(fichier);await page.waitForTimeout(350);
-  assert.equal(await page.evaluate(()=>Sim.reglages.etat.bareme.cuisine.BC.parPax),2.8,'le fichier a repris la main');
-  // Un fichier étranger est refusé, et le barème en place conservé.
-  const mauvais=path.join(path.dirname(fichier),'autre.json');
-  fs.writeFileSync(mauvais,JSON.stringify({schema:'autre-chose'}));
-  await page.locator('#rg-import').setInputFiles(mauvais);await page.waitForTimeout(350);
-  assert.match(await page.locator('#rg-status').textContent(),/refusé/i);
-  assert.equal(await page.evaluate(()=>Sim.reglages.etat.bareme.cuisine.BC.parPax),2.8);
+  assert.equal(await valeur('*/BC'),35,'les valeurs de démonstration sont revenues');
+  await page.locator('#rg-import').setInputFiles(modifie);await page.waitForTimeout(400);
+  assert.equal(await valeur('*/BC'),70,'le fichier a repris la main');
+  assert.equal(await valeur('CRL/BC'),17.5,'avec la valeur saisie dans Excel');
+  // Un fichier faux est refusé, ligne à l'appui, et le barème en place conservé.
+  bareme.lignes[ligne('CUISINE','*','PC')][0]='GARAGE';
+  const mauvais=path.join(dossier,'mauvais.xlsx');
+  fs.writeFileSync(mauvais,T.ecrireClasseur(feuilles));
+  await page.locator('#rg-import').setInputFiles(mauvais);await page.waitForTimeout(400);
+  assert.match(await page.locator('#rg-status').textContent(),/refusé[\s\S]*ligne \d+ : service inconnu « GARAGE »/i);
+  assert.equal(await valeur('CRL/BC'),17.5);
+  // Un barème d'hier, en JSON et par passager, est encore lu — et converti.
+  const ancien=path.join(dossier,'ancien.json');
+  fs.writeFileSync(ancien,JSON.stringify({schema:'ory-bareme',version:1,bareme:{cuisine:{BC:{parPax:2,parVol:0}}}}));
+  await page.locator('#rg-import').setInputFiles(ancien);await page.waitForTimeout(400);
+  assert.equal(await valeur('*/BC'),50,'2 min × 25 passagers types');
+  await page.locator('#rg-undo').click();await attendre();
+  assert.equal(await valeur('CRL/BC'),17.5,'et l’import s’annule');
 
   // 9. Tout survit au rechargement.
   await page.reload();await page.waitForTimeout(500);
-  assert.equal(await page.evaluate(()=>Sim.reglages.etat.bareme.cuisine.BC.parPax),2.8);
+  assert.equal(await valeur('CRL/BC'),17.5);
 
   // 10. Le délai de chargement n'est pas recopié : un seul champ pour les deux moteurs.
   await page.locator('[data-view=reglages]').click();await attendre();

@@ -88,16 +88,26 @@ n'est présent dans ce dépôt.
 Le fil « Par où commencer », sous les onglets, donne l’étape suivante. Dans
 l’ordre :
 
-1. **Vols** (Réglages › Données) : importer un CSV simplifié, ou garder le jeu
-   de démonstration. Le nom du jeu et le nombre de départs/retours restent
+1. **Vols** (Réglages › Données) : importer un classeur Excel (départs et
+   retours) ou un CSV simplifié, ou garder le jeu de démonstration. Le nom du jeu et le nombre de départs/retours restent
    visibles en haut de page.
 2. **Plan** : tracer ou confirmer les services (« Éditer les zones »).
 3. **Ateliers** : décrire, service par service, les équipes (personnes, horaire,
    pauses), ce qu’elles fabriquent (compagnie × classe, dans l’ordre), les
-   plonges (tunnels, débits) et les mises à disposition.
-4. **Flux** : relier les services ; le parcours des classes se lit dans ce graphe.
-5. **Barème** (Réglages) : homme-minutes par unité et par service, rendement,
+   plonges (tunnels, débits) et les mises à disposition. La section **Parcours
+   des classes** dit le chemin de chaque compagnie × classe : des branches qui
+   partent en parallèle et se rejoignent (ex. l’agro par les appros et la
+   cuisine, le matériel par la plonge et la dotation, le produit compagnie par
+   le magasin, tout se retrouvant au montage). YC ne passe pas par la cuisine.
+4. **Flux** : relier les services. Le graphe décrit l’unité ; il ne décide que
+   pour les classes qui n’ont pas de parcours.
+5. **Barème** (Réglages) : homme-minutes **par vol**, par service et par
+   compagnie × classe (une valeur commune, des valeurs propres), rendement,
    régime de poste, délai de chargement et décalage des vols.
+
+**Tout se pilote aussi depuis Excel** : ateliers (avec classes et parcours),
+barème et programme de vols s’exportent en `.xlsx`, se modifient dans le
+tableur et se réimportent. Voir [les formats Excel](docs/FORMATS_EXCEL.md).
 
 La journée est **calculée d’un coup** par `moteur/production.js` et
 **recalculée à chaque modification** : aucun réglage ne se verrouille.
@@ -137,6 +147,10 @@ identiques ⇒ chiffres identiques, et la note le dit. Un nouveau programme de
 vols efface les captures.
 
 ## Import CSV simplifié
+
+Le programme s’importe aussi en Excel, feuilles « Départs » et « Retours » :
+le plus simple est d’exporter le programme actuel puis de le modifier. Voir
+[les formats Excel](docs/FORMATS_EXCEL.md).
 
 Utiliser **Télécharger le modèle**. En-têtes attendus, insensibles à la casse :
 
@@ -214,7 +228,8 @@ quel autre (voir la [note de modèle](docs/MODELE_ATELIERS.md)).
 ## Limites métier à traiter ensuite
 
 - Le **barème d’homme-minutes n’est pas calibré** : valeurs de démonstration
-  tant que l’étude de l’unité n’est pas importée.
+  tant que l’étude de l’unité n’est pas importée. Il compte **par vol** ; le
+  nombre de passagers ne sert plus qu’au robot (des plateaux).
 - Calcul **sans aléa** : pas de panne, d’absence ni de retard de livraison.
 - Un seul compte de matériel propre, consommé et relavé ; les stocks de
   denrées, les trolleys et les transferts physiques ne sont pas modélisés.
@@ -251,6 +266,9 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `replay.js` / `simulation.js` | Relecture de la journée calculée : états à l’instant t, vue Simulation |
 | `comparaison.js` | Scénarios A/B : capture, tableau, verdict par ligne |
 | `vols-demo.js` | Programme de vols **fictif** de démonstration |
+| `parcours.js` | Parcours des compagnies × classes : validation, parcours types, éditeur |
+| `tableur.js` | Lecture et écriture de classeurs Excel (.xlsx) et de CSV, sans bibliothèque |
+| `echanges.js` | Les trois classeurs (ateliers, barème, vols) : format et conversions |
 | `plan-editor.js` / `editor.css` | Dessin, annotations, historique et sauvegarde du plan |
 | `ui-model.js` | Import CSV et échappement, testables |
 | `flow-center.js` / `flow-center.css` | Réseau configurable, règles humaines, onglet et affichage des flux |
@@ -263,6 +281,10 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/production.test.cjs` | Régressions du modèle par ateliers : enchaînement des lots, attente des amonts, robot, pauses, validation |
 | `tests/replay.test.cjs` | Relecture : états d’un service, ponctualité à l’instant t, pas suivant |
 | `tests/comparaison.test.cjs` | Scénarios A/B : capture, déterminisme, verdicts, jeu de démonstration |
+| `tests/parcours.test.cjs` | Parcours : branches parallèles, jonction, étape enjambée, hors parcours, boucle |
+| `tests/tableur.test.cjs` | Classeurs Excel : aller-retour, fichier compressé d’un autre logiciel, CSV |
+| `tests/echanges.test.cjs` | Les trois classeurs : aller-retour, ajouts, erreurs regroupées |
+| `tests/excel-browser.cjs` | Parcours dans l’interface, classeurs ateliers et vols de bout en bout |
 | `tests/browser-smoke.cjs` | Parcours dans Chromium : relecture, vols, import, export, thèmes, mobile |
 | `tests/import-browser.cjs` | Import CSV : échec de lecture puis réimport, numéros de ligne, export, scénarios A/B |
 | `tests/sauvegarde-browser.cjs` | Sauvegarde complète : export, refus atomique, effacement et restauration |

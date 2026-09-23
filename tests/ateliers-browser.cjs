@@ -123,8 +123,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const etats=await page.locator('#at-classes tbody tr').evaluateAll(rs=>rs.map(r=>r.cells[0].textContent.trim()+'|'+r.cells[5].textContent));
   assert.ok(etats.some(t=>t.startsWith('CRL/BC')&&/à l’heure/.test(t)));
   assert.equal(etats.filter(t=>/jamais fabriquée/.test(t)).length,31,'34 classes moins les 3 fabriquées');
-  const parcours=await page.locator('#at-classes tbody tr').evaluateAll(rs=>(rs.find(r=>r.cells[0].textContent.trim()==='CRL/BC')||{cells:[]}).cells[6].textContent);
-  assert.equal(parcours,'cuisine → prepa','le parcours réel est affiché');
+  const traverses=await page.locator('#at-classes tbody tr').evaluateAll(rs=>(rs.find(r=>r.cells[0].textContent.trim()==='CRL/BC')||{cells:[]}).cells[7].textContent);
+  assert.equal(traverses,'CUISINE, MONTAGE','les services réellement traversés sont affichés');
 
   // 9. Les indicateurs résument la journée.
   assert.match(await page.locator('#at-indicateurs').textContent(),/Classes à l’heure/);
@@ -262,18 +262,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 19. La boucle du mat\u00e9riel : la plonge lave ce qui revient, la prod l'emporte.
   assert.equal(await page.locator('[data-at-champ=mat-unite]').count(),0,'rien à régler tant que le compte n’est pas tenu');
   await page.locator('[data-at-champ=mat-actif]').check();await attendre();
-  // Le matériel se compte PAR CLASSE, par passager ET par vol : un trolley part
-  // avec le vol et ne se multiplie pas parce que la cabine est pleine.
-  assert.equal(await page.locator('[data-at-champ=mat-unite]').count(),10,'cinq classes × deux colonnes');
-  assert.equal(await page.locator('[data-at-champ=mat-parpax]').count(),0,'plus de champ unique');
-  const unite=(c,part)=>`[data-at-champ=mat-unite][data-cabine=${c}][data-part=${part}]`;
-  await page.fill(unite('YC','parPax'),'0');await page.dispatchEvent(unite('YC','parPax'),'change');await attendre();
-  await page.fill(unite('YC','parVol'),'6');await page.dispatchEvent(unite('YC','parVol'),'change');await attendre();
-  assert.deepEqual(await page.evaluate(()=>Sim.ateliers.state.materiel.unites.YC),{parPax:0,parVol:6},
-    'le compte au passager se retire, celui au vol le remplace');
-  // Remis au passager pour la suite du parcours.
-  await page.fill(unite('YC','parPax'),'1');await page.dispatchEvent(unite('YC','parPax'),'change');await attendre();
-  await page.fill(unite('YC','parVol'),'0');await page.dispatchEvent(unite('YC','parVol'),'change');await attendre();
+  // Le matériel se compte PAR CLASSE et PAR VOL : un trolley part avec le vol et
+  // ne se multiplie pas parce que la cabine est pleine. Plus rien au passager.
+  assert.equal(await page.locator('[data-at-champ=mat-unite]').count(),5,'une quantité par vol, par classe');
+  assert.equal(await page.locator('[data-at-champ=mat-unite][data-part=parPax]').count(),0,'plus de compte au passager');
+  const unite=c=>`[data-at-champ=mat-unite][data-cabine=${c}]`;
+  await page.fill(unite('YC'),'6');await page.dispatchEvent(unite('YC'),'change');await attendre();
+  assert.deepEqual(await page.evaluate(()=>Sim.ateliers.state.materiel.unites.YC),{parVol:6});
   const plonge=await creer('Plonge','plonge','05:00',3,'lavage');
   assert.equal(await page.locator(`[data-at="${plonge}"] [data-at-champ=lot-nouveau]`).count(),0,
     'un atelier de lavage n\u2019a pas de lots');

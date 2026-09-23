@@ -20,6 +20,13 @@ Deux assistants travaillent en parallèle sur cette branche : **Claude** et
 > moteur : ce qu'ils décrivaient se décrit maintenant atelier par atelier
 > (personnes, horaire, jour, pauses). Les sections ci-dessous qui parlent de
 > l'ancien moteur décrivent **l'historique**, pas l'état présent.
+>
+> **Même jour, plus tard — Excel et parcours.** Le barème compte désormais en
+> **minutes par vol** (valeur commune `*/BC`, valeurs propres `AF/BC`), plus par
+> passager ; le matériel aussi. Chaque compagnie × classe suit un **parcours**
+> (branches parallèles qui se rejoignent) décrit dans l'onglet Ateliers. Ateliers,
+> barème et vols s'échangent en `.xlsx` (`tableur.js`, `echanges.js`) : voir
+> [les formats Excel](FORMATS_EXCEL.md).
 
 ---
 
@@ -223,8 +230,8 @@ en gardant les deux entrées.
 ## 7. Vérifier avant de livrer
 
 ```bash
-node --test tests/*.test.cjs     # 133 tests purs
-node tests/browser-smoke.cjs     # puis les 12 autres parcours (Playwright + Chromium)
+node --test tests/*.test.cjs     # 165 tests purs
+node tests/browser-smoke.cjs     # puis les 13 autres parcours (Playwright + Chromium)
 ```
 
 | Parcours | Couvre |
@@ -240,8 +247,9 @@ node tests/browser-smoke.cjs     # puis les 12 autres parcours (Playwright + Chr
 | `etat-plan-browser` | état de paramétrage sur le plan, quatre états de la relecture, bascule des légendes |
 | `zoom-browser` | bornes du zoom, cadrage, clavier, bridage du déplacement |
 | `annexe-browser` | seconde salle d'un atelier : création, aménagement, liaisons propres |
-| `reglages-browser` | barème, rendement, régime de poste, import/export, ordre des sections |
+| `reglages-browser` | barème par vol (commun et par compagnie), rendement, poste, échange Excel, ancien JSON converti |
 | `aide-browser` | aucun pavé de texte imposé, l'aide s'ouvre sans rien déplacer, chaque « ? » se nomme |
+| `excel-browser` | parcours des classes dans l'interface ; classeurs ateliers et vols : export, modification, import, refus |
 
 La relecture de la journée (`replay.js` : où en est chaque service à l'instant
 t) est couverte par `tests/replay.test.cjs`, la comparaison A/B par
@@ -249,7 +257,7 @@ t) est couverte par `tests/replay.test.cjs`, la comparaison A/B par
 route est couvert par `tests/demarrage.test.cjs`, en tests
 purs : c'est une fonction, `etapes(etat)`, qui ne touche pas au navigateur.
 
-**Les treize parcours navigateur doivent être passés avant de livrer**, pas le seul
+**Les quatorze parcours navigateur doivent être passés avant de livrer**, pas le seul
 `browser-smoke` : c'est en n'en rejouant qu'une partie qu'une régression de
 navigation est partie sur la branche (voir BUG-012).
 

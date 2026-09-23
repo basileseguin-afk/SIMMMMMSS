@@ -9,6 +9,7 @@
   'use strict';
 
   const P = root.MoteurProduction;
+  const PC = root.OrlyParcours;
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   const uid = () => 'at-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
   const clone = x => JSON.parse(JSON.stringify(x));
@@ -89,17 +90,22 @@
     const m = brut.materiel || {};
     const materiel = {
       actif: m.actif === true,
-      // Par classe, par passager ET par vol : un trolley part avec le vol, la
-      // porcelaine avec le passager. `unitesDe` relit aussi l'ancienne saisie.
+      // Par classe, en unités PAR VOL. `unitesDe` convertit aussi l'ancienne
+      // saisie, qui comptait par passager.
       unites: P.unitesDe(m),
       stockInitial: Number.isFinite(+m.stockInitial) ? Math.max(0, Math.round(+m.stockInitial)) : 0,
       delaiRetour: Number.isFinite(+m.delaiRetour) ? Math.max(0, Math.round(+m.delaiRetour)) : 30
     };
-    return { schema: 'ory-ateliers', version: 1, ateliers, exclues, ajoutees, materiel };
+    // Le chemin de chaque classe. Une sauvegarde d'avant les parcours reçoit
+    // les parcours types ; une liste vidée exprès reste vide.
+    const { parcours, parcoursCabine, parcoursClasse } = PC.validerParcours(brut);
+    return { schema: 'ory-ateliers', version: 1, ateliers, exclues, ajoutees, materiel,
+      parcours, parcoursCabine, parcoursClasse };
   }
 
   const vide = () => ({ schema: 'ory-ateliers', version: 1, ateliers: [], exclues: [], ajoutees: [],
-    materiel: { actif: false, parPax: 1, stockInitial: 0, delaiRetour: 30 } });
+    materiel: { actif: false, unites: P.UNITES_DEFAUT, stockInitial: 0, delaiRetour: 30 },
+    ...PC.parcoursTypes() });
 
   /* ======================================================================
    *  Le panneau
@@ -122,10 +128,28 @@
       this.resultat = null;
       this.undo = []; this.redo = [];
       let alerte = '';
-      try { const brut = localStorage.getItem(CLE); if (brut) this.state = valider(JSON.parse(brut)); }
+      try {
+        const brut = localStorage.getItem(CLE);
+        if (brut) {
+          const lu = JSON.parse(brut);
+          this.state = valider(lu);
+          if (lu && lu.parcours === undefined) {
+            alerte = 'Parcours types créés : « Complet » pour BC, PC, CREW et SPML, « Sans cuisine » pour YC. '
+              + 'Ajustez-les dans « Parcours des classes ».';
+            this.enregistrer();
+          }
+        }
+      }
       catch (e) { alerte = 'Ateliers enregistrés non chargés : ' + e.message + ' La copie reste en place.'; }
       this.construire();
       this.lier();
+      this.parcours = new PC.EditeurParcours({
+        boite: () => document.getElementById('at-parcours'),
+        etat: () => this.state,
+        changer: (fn, message) => this.changer(() => fn(this.state), message),
+        services: () => this.a.services(),
+        classes: () => this.classes
+      });
       this.rendre(alerte);
     }
 
@@ -169,7 +193,10 @@
         this.resultat = P.simuler({
           vols: this.a.vols(), classes: this.classes,
           ateliers: this.state.ateliers, liaisons: this.a.liaisons(), materiel: this.state.materiel,
-          bareme: r.bareme, rendement: r.rendement, regime: r.regime, delaiChargement: r.delaiChargement
+          bareme: r.bareme, rendement: r.rendement, regime: r.regime, delaiChargement: r.delaiChargement,
+          parcours: this.state.parcours, parcoursCabine: this.state.parcoursCabine,
+          parcoursClasse: this.state.parcoursClasse,
+          noms: Object.fromEntries(this.a.services().map(s => [s.id, s.nom]))
         });
       } catch (e) {
         this.resultat = { ok: false, anomalies: [{ code: 'moteur', message: e.message }], lots: [], ateliers: [], classes: [], parClasse: {} };
@@ -208,9 +235,9 @@
   <div class="at-actions">
     <button class="btn btn-sm" id="at-undo">↶</button>
     <button class="btn btn-sm" id="at-redo">↷</button>
-    <button class="btn btn-sm" id="at-export">Exporter</button>
-    <button class="btn btn-sm" id="at-import-btn">Importer</button>
-    <input id="at-import" type="file" accept=".json" hidden>
+    <button class="btn btn-sm" id="at-export" title="Ateliers, fabrications, classes et parcours, dans un classeur Excel">⇩ Excel</button>
+    <button class="btn btn-sm" id="at-import-btn" title="Réimporter un classeur modifié dans Excel">⇧ Importer</button>
+    <input id="at-import" type="file" accept=".xlsx,.json" hidden>
   </div>
 </div>
 <div id="at-indicateurs" class="at-indicateurs"></div>
@@ -225,6 +252,15 @@
 <div id="at-liste"></div>
 <h3 class="at-titre">Planning</h3>
 <div id="at-planning" class="at-planning"></div>
+<div class="titre-aide at-titre-aide"><h3 class="at-titre">Parcours des classes</h3><details class="aide">
+  <summary aria-label="Qu’est-ce qu’un parcours ?">?</summary>
+  <span class="aide-corps"><p>Le chemin d’une compagnie × classe, en <b>branches</b> qui partent en
+    parallèle et se rejoignent : l’agro par les appros et la cuisine, le matériel par la plonge et
+    la dotation, le produit compagnie par le magasin. Un service n’attend que ce qui le précède
+    <b>sur le parcours de la classe</b>.</p>
+    <p>Chaque classe a un parcours par défaut ; une compagnie × classe peut avoir le sien, dans le
+    tableau plus bas.</p></span></details></div>
+<div id="at-parcours" class="pc"></div>
 <h3 class="at-titre">Compagnies × classes</h3>
 <div id="at-classes"></div>`;
     }
@@ -325,6 +361,14 @@
      * remplacer tout de suite le HTML qui le contient fait échouer le rendu.
      * On laisse le navigateur finir, puis on redessine. */
     saisir(champ, id, el) {
+      // Le parcours propre d'une compagnie × classe : vide = celui de sa classe.
+      if (champ === 'classe-parcours') {
+        const cls = el.dataset.classe, v = el.value;
+        setTimeout(() => this.changer(() => {
+          if (v) this.state.parcoursClasse[cls] = v; else delete this.state.parcoursClasse[cls];
+        }, cls + (v ? ' suit désormais son propre parcours.' : ' suit le parcours de sa classe.')), 0);
+        return;
+      }
       // Les réglages du matériel ne vivent pas dans une carte d'atelier : les
       // chercher par identifiant d'atelier les ferait disparaître en silence.
       if (champ.startsWith('mat-')) {
@@ -343,10 +387,8 @@
         const m = this.state.materiel;
         if (champ === 'mat-actif') m.actif = !!v;
         if (champ === 'mat-unite') {
-          const { cabine, part } = data || {};
-          if (m.unites[cabine] && (part === 'parPax' || part === 'parVol')) {
-            m.unites[cabine][part] = Math.max(0, parseFloat(v) || 0);
-          }
+          const { cabine } = data || {};
+          if (m.unites[cabine]) m.unites[cabine].parVol = Math.max(0, parseFloat(v) || 0);
         }
         if (champ === 'mat-stock') m.stockInitial = Math.max(0, parseInt(v, 10) || 0);
         if (champ === 'mat-delai') m.delaiRetour = Math.max(0, parseInt(v, 10) || 0);
@@ -470,22 +512,36 @@
         : ' déclarée. Ses passagers viendront de l’import des vols.'));
     }
 
+    /* Le classeur Excel : c'est lui qu'on modifie hors du site, puis qu'on
+     * réimporte. Le format est décrit dans sa feuille « Lisez-moi » et dans
+     * docs/FORMATS_EXCEL.md. */
     exporter() {
-      const blob = new Blob([JSON.stringify(this.state, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'ory-ateliers-' + new Date().toISOString().slice(0, 10) + '.json';
-      a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      const E = root.OrlyEchanges, T = root.OrlyTableur;
+      const octets = T.ecrireClasseur(E.ateliersVersClasseur(this.state,
+        { services: this.a.services(), classes: this.classes }));
+      T.telecharger('ory-ateliers-' + new Date().toISOString().slice(0, 10) + '.xlsx', octets);
+      this.rendre('Classeur exporté : modifiez-le dans Excel, puis « Importer ».');
     }
 
     async importer(e) {
+      const f = e.target.files[0]; if (!f) return;
       try {
-        const f = e.target.files[0]; if (!f) return;
-        if (f.size > 4 * 1024 * 1024) throw new Error('Fichier trop grand.');
-        const etat = valider(JSON.parse(await f.text()));
-        if (!confirm('Remplacer les ateliers enregistrés ? L’action est annulable.')) return;
-        this.changer(() => { this.state = etat; }, 'Ateliers importés.');
-      } catch (err) { this.rendre('Import refusé : ' + err.message); }
+        let etat, ajouts = [];
+        if (/\.json$/i.test(f.name)) {
+          // L'ancien format d'échange reste lu : une sauvegarde d'hier s'ouvre.
+          if (f.size > 4 * 1024 * 1024) throw new Error('Fichier trop grand.');
+          etat = valider(JSON.parse(await f.text()));
+        } else {
+          const E = root.OrlyEchanges, T = root.OrlyTableur;
+          const feuilles = await T.lireFichier(f, 8 * 1024 * 1024);
+          const r = E.classeurVersAteliers(feuilles, this.state,
+            { services: this.a.services(), programme: this.a.classes() || [] });
+          etat = valider(r.etat); ajouts = r.ajouteesAuto;
+        }
+        if (!confirm('Remplacer les ateliers par ceux du fichier (' + etat.ateliers.length + ' atelier(s)) ? L’action est annulable.')) return;
+        this.changer(() => { this.state = etat; }, 'Ateliers importés : ' + etat.ateliers.length + ' atelier(s).'
+          + (ajouts.length ? ' Compagnie(s) × classe(s) ajoutée(s) : ' + ajouts.join(', ') + '.' : ''));
+      } catch (err) { this.rendre('Import refusé — ' + err.message); }
       finally { e.target.value = ''; }
     }
 
@@ -500,6 +556,7 @@
       this.rendreMateriel(r);
       this.rendreListe(r);
       this.rendrePlanning(r);
+      this.parcours.rendre();
       this.rendreClasses(r);
       document.getElementById('at-undo').disabled = !this.undo.length;
       document.getElementById('at-redo').disabled = !this.redo.length;
@@ -558,22 +615,16 @@
     <label>Propre à l'ouverture<input type="number" min="0" value="${m.stockInitial}" data-at-champ="mat-stock"></label>
     <label>Délai après atterrissage (min)<input type="number" min="0" value="${m.delaiRetour}" data-at-champ="mat-delai"></label>
   </div>
-  <div class="mini-note">Ce qui part, classe par classe.<details class="aide">
-    <summary aria-label="Par passager ou par vol ?">?</summary>
-    <span class="aide-corps">
-      <p><b>Par vol</b> pour ce qui part avec l’avion — un trolley ne se multiplie pas parce que
-        la cabine est pleine.</p>
-      <p><b>Par passager</b> pour ce qui suit les gens, la porcelaine par exemple.</p>
-      <p>Laissez une colonne à zéro si elle ne veut rien dire chez vous : c’est le cas le plus
-        courant pour « par passager ».</p>
-    </span></details></div>
+  <div class="mini-note">Ce qu’un vol emporte, classe par classe présente à bord.<details class="aide">
+    <summary aria-label="Pourquoi par vol ?">?</summary>
+    <span class="aide-corps">Un trolley part avec l’avion : sa quantité ne bouge pas parce que la
+      cabine est à moitié vide. Un vol retour ramène la même quantité, classe par classe.</span></details></div>
   <table class="at-mat-table"><thead><tr><th scope="col">Classe</th>
-    <th scope="col">u / passager</th><th scope="col">u / vol</th></tr></thead><tbody>
+    <th scope="col">unités / vol</th></tr></thead><tbody>
     ${P.CABINES.map(c => `<tr><th scope="row" title="${esc((P.NOM_CABINE || {})[c] || c)}">${c}</th>
-      ${['parPax', 'parVol'].map(part => `<td><input type="number" min="0" step="0.1"
-        value="${(m.unites[c] || {})[part] || 0}" data-at-champ="mat-unite"
-        data-cabine="${c}" data-part="${part}"
-        aria-label="${c} : unités par ${part === 'parPax' ? 'passager' : 'vol'}"></td>`).join('')}
+      <td><input type="number" min="0" step="1"
+        value="${(m.unites[c] || {}).parVol || 0}" data-at-champ="mat-unite"
+        data-cabine="${c}" data-part="parVol" aria-label="${c} : unités par vol"></td>
     </tr>`).join('')}
   </tbody></table>` : ''}
   ${m.actif && bilan ? `<div class="at-mat-bilan">
@@ -870,10 +921,16 @@
         return;
       }
 
+      const services = this.a.services();
+      const nomSvc = id => (services.find(s => s.id === id) || {}).nom || id;
+      const defaut = c => {
+        const p = (this.state.parcours || []).find(x => x.id === (this.state.parcoursCabine || {})[c.cabine]);
+        return p ? 'comme ' + c.cabine + ' : ' + p.nom : 'graphe des flux';
+      };
       box.innerHTML = barre + ajout + exclues + `<table class="at-table"><thead><tr>
         <th scope="col">Compagnie × classe</th><th scope="col">Passagers</th><th scope="col">Vols</th>
         <th scope="col">Échéance</th><th scope="col">Fin</th><th scope="col">État</th>
-        <th scope="col">Services</th><th scope="col"><span class="sr-only">Retirer</span></th>
+        <th scope="col">Parcours</th><th scope="col">Services traversés</th><th scope="col"><span class="sr-only">Retirer</span></th>
         </tr></thead><tbody>` +
         classes.map(c => {
           const v = par[c.id] || {};
@@ -889,7 +946,12 @@
           return `<tr><th scope="row">${esc(c.id)} ${source}</th>
             <td>${horsImport ? '—' : c.pax}</td><td>${horsImport ? '—' : c.vols.length}</td>
             <td>${horsImport ? '—' : P.hhmm(c.echeance)}</td><td>${v.fin == null ? '—' : P.hhmm(v.fin)}</td><td>${etat}</td>
-            <td class="at-parcours">${esc((v.services || []).join(' → ')) || '—'}</td>
+            <td><select class="at-cls-parcours" data-at-champ="classe-parcours" data-classe="${esc(c.id)}"
+              aria-label="Parcours de ${esc(c.id)}">
+              <option value="">${esc(defaut(c))}</option>
+              ${(this.state.parcours || []).map(p => `<option value="${esc(p.id)}" ${this.state.parcoursClasse[c.id] === p.id ? 'selected' : ''}>${esc(p.nom)}</option>`).join('')}
+            </select></td>
+            <td class="at-parcours">${esc([...new Set(v.services || [])].map(nomSvc).join(', ')) || '—'}</td>
             <td><button class="btn btn-sm at-danger" data-at-action="classe-supprimer" data-classe="${esc(c.id)}"
               title="Retirer ${esc(c.id)} et couper ses liens avec les ateliers">Retirer</button></td></tr>`;
         }).join('') + '</tbody></table>';

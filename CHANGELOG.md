@@ -5,6 +5,69 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-23 — Excel, parcours par classe, et fin du compte au passager
+
+Six demandes, livrées ensemble parce qu'elles se tiennent : on ne peut pas
+échanger un barème avec Excel sans avoir d'abord fixé son unité, ni proposer
+une ligne par compagnie × classe et par service sans savoir par où chacune passe.
+
+**Plus de « par passager ».** Le barème comptait des minutes par passager ;
+cela ne décrivait rien de réel. Il compte désormais des **minutes par vol**, par
+service et par compagnie × classe : une valeur **commune** par classe (`*/BC`),
+et des valeurs **propres** à une compagnie (`AF/BC`) qui l'emportent. La journée
+d'une classe vaut ses minutes par vol fois son nombre de vols ; le remplissage
+n'y change rien. Le matériel suit la même règle : des unités par vol, par classe
+présente à bord. Le nombre de passagers ne sert plus qu'au robot, qui compte
+bien des plateaux. Un barème ou un matériel d'hier est **converti** à
+l'ouverture (passagers types BC 25, PC 40, YC 190, CREW 7, SPML 10), et la page
+le dit.
+
+**Un parcours par compagnie × classe.** Toutes les classes ne passent pas par
+les mêmes services. Un parcours est fait de **branches** qui partent en
+parallèle et se rejoignent — l'agro par les appros, la légumerie et la cuisine ;
+le matériel par la plonge et la dotation ; le produit compagnie par le magasin ;
+tout se retrouve au montage. Deux parcours types sont créés d'office :
+« Complet » (BC, PC, CREW, SPML) et « Sans cuisine » (YC, qui ne voit ni la
+cuisine ni la légumerie). Ils se modifient étape par étape dans l'onglet
+Ateliers ; une compagnie × classe peut suivre un autre parcours que sa classe.
+Une étape sans équipe est **enjambée** et signalée ; un atelier qui fabrique une
+classe hors de son parcours est signalé ; un parcours qui boucle est refusé. Le
+graphe du Centre des flux ne décide plus que pour les classes sans parcours.
+
+**Tout se pilote depuis Excel.** Trois classeurs, exportés en `.xlsx`, modifiés
+dans le tableur, réimportés :
+
+- **Ateliers** — équipes, fabrications (une ligne par lot : c'est là qu'on
+  change ou qu'on ajoute des compagnies × classes), tunnels, classes, parcours
+  (une branche s'écrit `PLONGE > DOTATION > MONTAGE`), matériel ;
+- **Barème** — une ligne par compagnie × classe **et par service de son
+  parcours** : exactement ce que l'étude de temps doit remplir ;
+- **Vols** — feuilles « Départs » et « Retours ».
+
+Un import refusé ne change rien et dit, en une fois, toutes les lignes à
+corriger ; un import réussi s'annule. Les services s'écrivent par leur nom sur
+le plan ou leur identifiant. Le format est décrit dans `docs/FORMATS_EXCEL.md`
+et dans la feuille « Lisez-moi » de chaque classeur.
+
+Pas de bibliothèque : `tableur.js` lit et écrit le `.xlsx` lui-même (archive via
+`DecompressionStream`, natif). SheetJS n'est plus publié sur npm dans une version
+sans faille connue, et le site doit marcher hors ligne. La lecture est testée sur
+un classeur compressé produit par un autre logiciel.
+
+Corrigé au passage : l'import des vols prenait une quantité ou une heure égale
+à zéro (minuit) pour une case vide ; plusieurs messages nommaient un service par
+son identifiant (« prepa ») au lieu de son nom (« MONTAGE »).
+
+- Fichiers : `tableur.js`, `parcours.js`, `echanges.js` (nouveaux),
+  `moteur/production.js`, `ateliers.js`, `reglages.js`, `ui-model.js`, `sim.js`,
+  `flow-center.js`, `index.html`, `ateliers.css`, `reglages.css` ;
+  `docs/FORMATS_EXCEL.md` (nouveau), `docs/MODELE_ATELIERS.md`, README, état
+  des lieux.
+- Tests : `parcours`, `tableur`, `echanges`, `excel-browser` (nouveaux) ;
+  `production`, `reglages-browser`, `ateliers-browser`, `sauvegarde-browser`,
+  `aide-browser`, `flows-browser` mis à jour.
+- Vérification : 165 tests purs et quatorze parcours navigateur au vert.
+
 ## 2026-09-23 — Un seul moteur
 
 L'ancien moteur de démonstration est retiré. Depuis que la vue Simulation relit
