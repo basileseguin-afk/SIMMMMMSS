@@ -112,11 +112,13 @@ droite des onglets.
    ou garder les vols d’exemple ; le délai de chargement — « repas prêts combien
    de minutes avant le départ ? » — et le décalage des vols).
 2. **Qui prépare quoi**, en cinq onglets :
-   1. **Les chemins** : par où passe chaque repas, en branches qui
-      partent en parallèle et se rejoignent (les aliments par la réception et la
-      cuisine, le matériel par la plonge et la dotation, les produits de la
-      compagnie par le magasin, tout se retrouvant au montage). L’économie ne
-      passe pas par la cuisine.
+   1. **Les chemins** : par où passe chaque repas, **dessiné en diagramme de
+      nœuds**. Chaque service est un nœud ; on tire le `+` d’un service jusqu’à
+      un autre pour dire qu’il le livre. Les chemins partent en parallèle et se
+      rejoignent (les aliments par la réception et la cuisine, le matériel par
+      la plonge et la dotation, les produits de la compagnie par le magasin,
+      tout se retrouvant au montage). Chaque nœud dit ses équipes ; un clic
+      dessus permet d’en créer une. L’économie ne passe pas par la cuisine.
    2. **Qui prépare quoi** (l’onglet ouvert d’abord) : un tableau, une ligne par repas (« AF · Business »),
       une colonne par service ; chaque case dit l’équipe et ses heures. Un clic
       sur une case choisit l’équipe (ou en crée une), un clic sur un service
@@ -134,8 +136,8 @@ droite des onglets.
    l’unité, avec « En ce moment » à droite), *Les chiffres* (les indicateurs à
    l’heure rejouée et le bilan de la journée) et *Comparer deux essais* (A / B).
 
-À part, **L’unité** — onglets *Les liens* (qui livre qui ; ces liens ne servent
-qu’aux repas qui n’ont pas de chemin), *Ce que le calcul en retient* et
+À part, **L’unité** — onglets *Les liens* (qui livre qui, dessinés dans le même
+diagramme de nœuds ; ces liens ne servent qu’aux repas qui n’ont pas de chemin), *Ce que le calcul en retient* et
 *Sauvegarde et limites*. Le plan des services se modifie depuis « La journée »
 (« Modifier le plan »). Le bouton **Chiffres d’exemple** de l’en-tête mène aux
 limites du calcul.
@@ -310,6 +312,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `ateliers.js` / `ateliers.css` | Onglet « Ateliers de travail » : saisie, planning, couverture par classe |
 | `reglages.js` / `reglages.css` | Centre des réglages : barème, rendement, régime de poste |
 | `demarrage.js` / `histoire.css` | Les quatre étapes (navigation et état de chacune), « Comment ça marche », titre de chaque vue ; `histoire.css` porte aussi le graphisme : couleurs par sens, jauges, tableau des départs, plan de métro, barres |
+| `graphe.js` / `graphe.css` | Le diagramme de nœuds des chemins et des liens de l’unité : disposition en colonnes avec couloirs, tirer un trait pour relier, clavier, disposition retenue |
 | `onglets.js` | Les sous-onglets de chaque étape : leur liste, la règle qui masque les autres, le clavier, l’onglet retenu |
 | `icones.js` | Les pictogrammes (étapes, services, états) et les couleurs d’étape |
 | `demarrage.css` | Ce que montre chaque vue (lecture de la journée seulement dans « La journée ») et couleurs du plan en lecture |
@@ -319,12 +322,14 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/production.test.cjs` | Régressions du modèle par ateliers : enchaînement des lots, attente des amonts, robot, pauses, validation |
 | `tests/replay.test.cjs` | Relecture : états d’un service, ponctualité à l’instant t, pas suivant |
 | `tests/comparaison.test.cjs` | Scénarios A/B : capture, déterminisme, verdicts, jeu de démonstration |
-| `tests/parcours.test.cjs` | Parcours : branches parallèles, jonction, étape enjambée, hors parcours, boucle ; tableau « Qui prépare quoi », choisir une équipe, remplir, suivi dans le temps |
+| `tests/parcours.test.cjs` | Parcours : graphe de nœuds et de liens, conversion des branches, boucle refusée, chemins parallèles, jonction, étape enjambée, hors parcours, boucle ; tableau « Qui prépare quoi », choisir une équipe, remplir, suivi dans le temps |
 | `tests/tableur.test.cjs` | Classeurs Excel : aller-retour, fichier compressé d’un autre logiciel, CSV |
 | `tests/echanges.test.cjs` | Les trois classeurs : aller-retour, ajouts, erreurs regroupées |
 | `tests/excel-browser.cjs` | Chemins et tableau « Qui prépare quoi » dans l’interface, classeurs ateliers et vols de bout en bout |
 | `tests/histoire-browser.cjs` | Les quatre étapes, « Comment ça marche », titres et phrases, repas écrits en clair, pictogrammes, frise des départs, barres, plan de métro, sous-onglets (un à la fois, clavier, onglet retenu, fiche d’équipe, limites du calcul), téléphone |
 | `tests/icones.test.cjs` | Chaque service reconnaît son pictogramme |
+| `tests/graphe.test.cjs` | Diagramme : colonnes, nœud au milieu de ses amonts, couloirs des longs liens, boucles, dispositions retenues |
+| `tests/graphe-browser.cjs` | Diagrammes dans la page : tirer un trait, clavier, doublon et boucle refusés, équipe créée depuis un nœud, disposition retenue, liens de l’unité |
 | `tests/onglets.test.cjs` | Les sous-onglets : de deux à cinq par étape, identifiants uniques, règle de masquage, pictogrammes |
 | `tests/browser-smoke.cjs` | Parcours dans Chromium : relecture, vols, import, export, thèmes, mobile |
 | `tests/import-browser.cjs` | Import CSV : échec de lecture puis réimport, numéros de ligne, export, scénarios A/B |

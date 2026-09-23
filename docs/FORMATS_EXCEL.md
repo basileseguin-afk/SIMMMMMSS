@@ -91,17 +91,25 @@ trois colonnes (info).
 
 ### Feuille « Parcours »
 
-Une ligne par **branche**.
+Un parcours est un **diagramme de nœuds** : une ligne par **lien**, « De » livre
+« Vers ».
 
-| Parcours | Branche | Étapes |
+| Parcours | De | Vers |
 |---|---|---|
-| Complet | Agro | `RÉCEPTION / APPROS > LÉGUMERIE > CUISINE > MONTAGE` |
-| Complet | Matériel | `PLONGE > DOTATION > MONTAGE` |
-| Complet | Magasin | `MAGASIN > MONTAGE` |
-| Sans cuisine | Matériel | `PLONGE > DOTATION > MONTAGE` |
+| Complet | RÉCEPTION / APPROS | LÉGUMERIE |
+| Complet | LÉGUMERIE | CUISINE |
+| Complet | CUISINE | MONTAGE |
+| Complet | PLONGE | DOTATION |
+| Complet | DOTATION | MONTAGE |
+| Complet | MAGASIN | MONTAGE |
 
-Les étapes se séparent par `>` (ou `→`). Les branches d'un même parcours partent
-en parallèle et **se rejoignent** aux services qu'elles partagent.
+Un service qui reçoit plusieurs liens (ici le montage) attend qu'ils aient tous
+livré. Une ligne dont la colonne « Vers » est vide pose un service dans le
+parcours sans le relier encore. Un service ne se livre pas lui-même.
+
+L'ancienne écriture est encore lue : colonnes `Branche` et `Étapes`, les étapes
+séparées par `>` (ou `→`), par exemple `PLONGE > DOTATION > MONTAGE`. Elle est
+convertie en liens à l'import.
 
 ### Feuille « Parcours par classe »
 

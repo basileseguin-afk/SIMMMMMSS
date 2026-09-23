@@ -197,27 +197,11 @@ body.ateliers-open .workbench{display:none}
 .pc-defauts-lab{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--txt2);align-self:center}
 .pc-defauts label{display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:700;color:var(--txt2)}
 #view-ateliers .pc-defauts select{font-size:12px;padding:5px 7px;max-width:170px}
-.pc-carte{border:1px solid var(--bordure2);border-radius:10px;padding:10px 12px;background:var(--bg3)}
-.pc-carte.ouvert{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
-.pc-tete{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.pc-tete h4{margin:0;font-size:14px}
-#view-ateliers .pc-nom{font:inherit;font-weight:700;font-size:14px;padding:5px 8px;min-width:200px}
-.pc-branches{display:grid;gap:10px;margin-top:10px}
-.pc-branche{border-left:3px solid var(--accent);padding:4px 0 4px 10px;display:grid;gap:6px}
-#view-ateliers .pc-branche-nom{font:inherit;font-weight:700;font-size:12.5px;padding:4px 7px;max-width:220px}
-.pc-chaine{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
-.pc-etape{display:inline-flex;align-items:center;gap:2px}
-#view-ateliers .pc-chaine select{font-size:12px;padding:4px 6px;max-width:190px}
-.pc-fleche{color:var(--txt2);font-weight:700}
-.pc-x{border:0;background:none;color:var(--txt2);font-size:15px;cursor:pointer;padding:0 4px;min-height:0}
-.pc-x:hover{color:var(--rouge)}
-.pc-actions{display:flex;flex-wrap:wrap;gap:8px}
-.pc-branche .btn{justify-self:start}
 .at-titre-aide{margin-top:18px}
 .at-titre-aide .at-titre{margin:0}
 
 /* ==========================================================================
- *  1. LES PARCOURS — un schéma neutre par parcours
+ *  1. LES CHEMINS — un diagramme de nœuds (graphe.css)
  *  2. QUI FABRIQUE QUOI — une ligne par compagnie × classe, une colonne par
  *     service, une équipe par case. Trois états se voient de loin : choisie
  *     (plein), à choisir (pointillés), hors parcours (grisé).
@@ -226,23 +210,9 @@ body.ateliers-open .workbench{display:none}
 .pc-sec,.qf{display:grid;gap:10px;margin-bottom:8px}
 .pc-sous{font-size:12px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--txt2);margin-left:6px}
 .at-titre .pc-sous{font-size:12px}
-.pc-cartes{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:10px}
 .pc-qui{font-size:12px;color:var(--txt2);flex:1;min-width:160px}
 .pc-cab{display:inline-block;font-size:11px;font-weight:800;border-radius:5px;padding:1px 6px;
   background:color-mix(in srgb,var(--accent) 14%,var(--bg3));color:var(--accent2)}
-.pc-n{margin-left:4px}
-.pc-flux{display:grid;grid-template-columns:minmax(0,1fr);gap:0;margin-top:10px}
-.pc-flux.avec-jonction{grid-template-columns:minmax(0,1fr) auto;align-items:center}
-.pc-lanes{display:grid;gap:6px}
-.pc-lane{display:grid;grid-template-columns:70px minmax(0,1fr);align-items:center;gap:8px}
-.pc-lane-nom{font-size:11px;font-weight:700;color:var(--txt2);text-transform:uppercase;letter-spacing:.03em}
-.pc-lane-etapes{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
-.pc-box{font-size:11.5px;font-weight:700;border:1px solid var(--bordure2);border-radius:6px;padding:4px 8px;
-  background:var(--bg2);white-space:nowrap}
-.pc-vers{flex:1;min-width:16px;height:0;border-top:2px solid var(--bordure2);position:relative;align-self:center}
-.pc-vers::after{content:"";position:absolute;right:-2px;top:-6px;border:5px solid transparent;border-left:7px solid var(--bordure2)}
-.pc-jonction-col{border-left:3px solid var(--accent);padding:0 0 0 10px;margin-left:4px;align-self:stretch;display:flex;align-items:center}
-.pc-jonction-col .pc-box{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--bg2))}
 
 .qf-barre{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .qf-barre-fin{flex:1}
@@ -341,5 +311,4 @@ body.ateliers-open .workbench{display:none}
 .qf-menu-pied{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;border-top:1px solid var(--bordure);padding-top:6px}
 .qf-lien{font:inherit;font-size:12px;border:0;background:none;color:var(--accent2);cursor:pointer;padding:2px 0;text-decoration:underline;min-height:0;text-align:left}
 .qf-lien.danger{color:var(--rouge)}
-@media(max-width:760px){.pc-flux.avec-jonction{grid-template-columns:1fr}.pc-jonction-col{border-left:0;border-top:3px solid var(--accent);padding:8px 0 0;margin:6px 0 0}
-  .pc-lane{grid-template-columns:1fr}.pc-vers{display:none}.qf-table tbody th,.qf-coin{min-width:110px}}
+@media(max-width:760px){.qf-table tbody th,.qf-coin{min-width:110px}}

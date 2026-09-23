@@ -1017,7 +1017,10 @@ const PARTIES = [
   { cle:'orly-flows-v1',    nom:'centre des flux',         valider:r => window.OrlyFlows.validate(r) },
   // Le barème est une étude à part entière : une sauvegarde qui l'oublierait
   // ramènerait les valeurs de démonstration sans le dire.
-  { cle:'ory-modele-v1',    nom:'barème et règles de poste', valider:r => window.OrlyReglages.valider(r) }
+  { cle:'ory-modele-v1',    nom:'barème et règles de poste', valider:r => window.OrlyReglages.valider(r) },
+  // Où l'on a posé les services dans les diagrammes : une préférence, mais un
+  // tracé soigné qu'on ne veut pas refaire.
+  { cle:'ory-graphes-v1',   nom:'disposition des diagrammes', valider:r => window.OrlyGraphe.validerPositions(r) }
 ];
 
 function sauvegardeComplete() {

@@ -305,25 +305,42 @@ passerait indéfiniment devant un gros.
 
 Une compagnie × classe n'est pas une ligne mais un **assemblage**, et toutes ne
 passent pas par les mêmes services : un plateau d'économie ne voit ni la cuisine
-ni la légumerie. Chaque classe suit donc un **parcours** : des **branches** qui
-partent en parallèle et se rejoignent là où elles partagent un service.
+ni la légumerie. Chaque classe suit donc un **parcours**, qui est un **graphe
+orienté** : les services sont les nœuds, un lien « A → B » dit que A livre B.
+Écrit `{ id, nom, noeuds: [service], liens: [{ de, vers }] }`.
 
 ```
-Agro       RÉCEPTION / APPROS → LÉGUMERIE → CUISINE → MONTAGE
-Matériel   PLONGE → DOTATION ─────────────────────→ MONTAGE
-Magasin    MAGASIN ───────────────────────────────→ MONTAGE
+RÉCEPTION / APPROS → LÉGUMERIE → CUISINE ─┐
+PLONGE → DOTATION ────────────────────────┼→ MONTAGE
+MAGASIN ──────────────────────────────────┘
 ```
 
-Le montage attend alors **les trois branches** ; la dotation n'attend que la
+Le montage reçoit trois liens et attend donc **ses trois amonts** ; la dotation n'attend que la
 plonge, la cuisine que la légumerie. La règle tient en une phrase :
 
 > Un service ne travaille un lot que lorsque **les services qui le précèdent sur
 > le parcours de chaque classe** du lot la lui ont livrée.
 
-Les parcours se décrivent à l'étape 2, « Qui prépare quoi », onglet « Les
-chemins » : un schéma par parcours, une ligne par branche, la jonction à droite.
-« Modifier » ouvre ses branches : chaque étape est un menu. Deux parcours types
-sont créés d'office — **Complet** pour BC, PC, CREW et SPML, **Sans cuisine**
+Les parcours se **dessinent** à l'étape 2, « Qui prépare quoi », onglet « Les
+chemins », dans un diagramme de nœuds (`graphe.js`) :
+
+- **tirer le `+`** à droite d'un service jusqu'à un autre crée le lien ; au doigt
+  ou au clavier, on clique le service, « Relier à… », puis le service qui reçoit ;
+- un lien qui **fermerait une boucle** est refusé (un repas tournerait en rond),
+  un lien en double aussi ;
+- **cliquer un lien** le choisit ; sa croix (ou la touche Suppr) le retire ;
+- **cliquer un service** montre ses équipes (chacune ouvre sa fiche), crée une
+  équipe ici (elle prépare d'emblée les repas du chemin qui n'avaient personne à
+  cette étape), le relie, ou le retire du chemin ;
+- chaque nœud dit ses équipes (« MONTAGE », « 3 repas sans équipe », « aucune
+  équipe ») et prend le vert quand tout est couvert, l'ambre sinon ;
+- on **déplace** les services à la souris ; la disposition est retenue
+  (`ory-graphes-v1`, incluse dans la sauvegarde complète). Sans disposition, les
+  nœuds se rangent en colonnes dans le sens du flux, et un lien qui saute des
+  colonnes y réserve un couloir pour ne pas passer sous un autre service.
+
+Les parcours enregistrés en branches (avant le 23/09) sont convertis en liens à
+la lecture. Deux parcours types sont créés d'office — **Complet** pour BC, PC, CREW et SPML, **Sans cuisine**
 pour YC — et se modifient librement.
 
 ### Qui prépare quoi : le chemin et les équipes dans un seul tableau
@@ -334,8 +351,9 @@ tableau qui se lit comme une feuille Excel :
 
 - **une ligne par compagnie × classe**, avec son heure de départ et son
   parcours (modifiable sur place) ;
-- **une colonne par service**, rangées par branche (Agro, Matériel, Magasin),
-  puis la jonction ;
+- **une colonne par service**, dans l'ordre du flux, groupées par service de
+  départ (« Depuis PLONGE »…), puis la jonction (un service qui reçoit plusieurs
+  liens, et ce qui le suit) ;
 - **dans chaque case, l'équipe** qui la fabrique et ses heures. Trois aspects
   se voient de loin : **remplie** (vert), **« à choisir »** (pointillés orange),
   **grisée** quand le parcours de la ligne ne passe pas par ce service. Une

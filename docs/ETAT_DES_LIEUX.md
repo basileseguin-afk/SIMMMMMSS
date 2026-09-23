@@ -28,7 +28,14 @@ Deux assistants travaillent en parallèle sur cette branche : **Claude** et
 > barème et vols s'échangent en `.xlsx` (`tableur.js`, `echanges.js`) : voir
 > [les formats Excel](FORMATS_EXCEL.md).
 >
-> **Puis — des pages épurées.** Chaque étape se découpe en quelques onglets
+> **Puis — des diagrammes de nœuds.** Les chemins des repas et les liens de
+> l'unité se dessinent : chaque service est un nœud, on tire un trait d'un
+> service à un autre pour dire qu'il le livre (`graphe.js`). Un parcours est
+> désormais un graphe `{ noeuds, liens }` ; les anciens parcours en branches
+> sont convertis à la lecture, et le classeur Excel écrit une ligne par lien.
+> Les nœuds du chemin disent leurs équipes et permettent d'en créer une.
+>
+> **Avant — des pages épurées.** Chaque étape se découpe en quelques onglets
 > (sous son titre) : une seule chose à la fois. Les vols : les départs, le
 > programme. Qui prépare quoi : le tableau, les chemins, les équipes, leur
 > journée, les repas. Les temps : minutes par vol, rythme et pauses. La journée :

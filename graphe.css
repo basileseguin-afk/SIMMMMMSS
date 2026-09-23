@@ -1,0 +1,84 @@
+/* ==========================================================================
+ *  DIAGRAMME DE NŒUDS — services reliés par des traits
+ *  Un nœud par service (son pictogramme, son nom, ses équipes) ; un trait
+ *  fléché par lien. Le « + » à droite d'un nœud se tire vers un autre.
+ * ==========================================================================*/
+.gr-cadre{overflow:auto;max-width:100%;min-width:0;background:
+  radial-gradient(circle,color-mix(in srgb,var(--bordure) 70%,transparent) 1px,transparent 1.2px) 0 0/18px 18px,
+  var(--bg3);border:1px solid var(--bordure);border-radius:14px;padding:6px;max-height:70vh}
+.gr-svg{display:block;touch-action:pan-x pan-y;user-select:none;-webkit-user-select:none;overflow:visible}
+.gr-svg:focus{outline:none}
+
+.gr-noeud{cursor:grab;touch-action:none}
+.gr-noeud:active{cursor:grabbing}
+.gr-fond{fill:var(--bg3);stroke:var(--bordure2);stroke-width:1.5;filter:drop-shadow(0 1px 2px rgba(19,32,48,.12))}
+.gr-bord{fill:var(--bordure2)}
+.gr-noeud.ton-ok .gr-bord{fill:var(--ok)}
+.gr-noeud.ton-attente .gr-bord{fill:var(--attente)}
+.gr-noeud.ton-retard .gr-bord{fill:var(--retard)}
+.gr-ico{fill:none;stroke:var(--c,var(--accent));stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.gr-nom{font-size:12.5px;font-weight:800;fill:var(--txt);pointer-events:none}
+.gr-sous{font-size:11px;fill:var(--txt2);pointer-events:none}
+.gr-noeud.ton-attente .gr-sous{fill:var(--attente)}
+.gr-noeud:hover .gr-fond,.gr-noeud:focus-visible .gr-fond{stroke:var(--c,var(--accent))}
+.gr-noeud:focus-visible{outline:none}
+.gr-noeud:focus-visible .gr-fond{stroke-width:3}
+.gr-noeud.sel .gr-fond{stroke:var(--c,var(--accent));stroke-width:3;fill:color-mix(in srgb,var(--c,var(--accent)) 7%,var(--bg3))}
+.gr-noeud.depuis .gr-fond{stroke:var(--c,var(--accent));stroke-width:3;stroke-dasharray:6 4}
+.gr-noeud.cible .gr-fond{stroke:var(--c,var(--accent));stroke-dasharray:3 3}
+.gr-noeud.survol .gr-fond{stroke:var(--c,var(--accent));stroke-width:3.5;fill:color-mix(in srgb,var(--c,var(--accent)) 12%,var(--bg3))}
+
+.gr-port{cursor:crosshair}
+.gr-port circle{fill:var(--c,var(--accent));stroke:var(--bg3);stroke-width:2.5}
+.gr-port path{stroke:#fff;stroke-width:2;stroke-linecap:round}
+:root[data-theme="dark"] .gr-port path{stroke:#0b1520}
+.gr-port:hover circle{r:11}
+
+.gr-lien{cursor:pointer}
+.gr-prise{fill:none;stroke:transparent;stroke-width:16}
+.gr-trait{fill:none;stroke:var(--edge);stroke-width:2.6}
+.gr-pointe{fill:var(--edge)}
+.gr-lien.pointille .gr-trait{stroke-dasharray:7 5}
+.gr-lien:hover .gr-trait,.gr-lien:focus-visible .gr-trait{stroke-width:4}
+.gr-lien:focus-visible{outline:none}
+.gr-lien.sel .gr-trait{stroke:var(--c,var(--accent)) !important;stroke-width:4.2}
+.gr-retirer{cursor:pointer}
+.gr-retirer circle{fill:var(--retard);stroke:var(--bg3);stroke-width:2}
+.gr-retirer path{stroke:#fff;stroke-width:2.2;stroke-linecap:round}
+.gr-brouillon{fill:none;stroke:var(--c,var(--accent));stroke-width:2.6;stroke-dasharray:6 5;pointer-events:none}
+
+/* --- Les chemins (Qui prépare quoi › Les chemins) ------------------------ */
+.pc-sec{--c:var(--c-equipes);grid-template-columns:minmax(0,1fr)}
+.pc-graphe{min-width:0}
+.pc-puces{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pc-puce{appearance:none;font:inherit;font-weight:700;font-size:13px;padding:7px 14px;border-radius:99px;cursor:pointer;
+  border:1.5px solid var(--bordure2);background:var(--bg3);color:var(--txt)}
+.pc-puce:hover{border-color:var(--c-equipes)}
+.pc-puce.actif{background:var(--c-equipes);border-color:var(--c-equipes);color:#fff}
+:root[data-theme="dark"] .pc-puce.actif{color:#0b1520}
+.pc-outils{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:end}
+.pc-outils label{display:grid;gap:4px;font-size:12px;color:var(--txt2)}
+.pc-outils .pc-nom{font:inherit;font-weight:700;padding:7px 9px;border:1.5px solid var(--bordure2);border-radius:var(--r2);background:var(--bg3);color:var(--txt);min-width:180px}
+.pc-outils-fin{flex:1}
+.pc-qui{margin:0;font-size:12.5px;color:var(--txt2)}
+.pc-qui .pc-cab{display:inline-flex;align-items:center;gap:4px;margin-right:6px;color:var(--txt)}
+.pc-geste{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--txt2)}
+.pc-geste .ico{color:var(--c-equipes);flex:none}
+.pc-rond{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--c-equipes);color:#fff;font-size:13px;line-height:1}
+.pc-panneau{border:1px solid var(--bordure);border-left:4px solid var(--c-equipes);border-radius:10px;background:var(--bg3);padding:10px 14px;display:grid;gap:8px}
+.pc-panneau p{margin:0}
+.pc-pan-tete{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pc-pan-tete .ico{color:var(--c-equipes)}
+.pc-pan-tete span{color:var(--txt2);font-size:12.5px}
+.pc-equipe small{font-weight:500;color:var(--txt2);margin-left:4px}
+
+/* --- Les liens de l'unité (L'unité › Les liens) -------------------------- */
+.fc-graphe-zone{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin:0 0 14px;--c:var(--c-unite)}
+.fc-graphe-outils{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:end}
+.fc-graphe-outils label{display:grid;gap:4px;font-size:12px;color:var(--txt2)}
+.fc-graphe-outils select{min-width:200px}
+.fc-graphe-outils .fc-graphe-fin{flex:1}
+.fc-detail{border:1px solid var(--bordure);border-left:4px solid var(--c-unite);border-radius:10px;background:var(--bg3);padding:10px 14px}
+.fc-detail:empty{display:none}
+.fc-detail p{margin:0 0 6px}
+.fc-liste-toute>summary{cursor:pointer;font-weight:700;margin:6px 0 10px}

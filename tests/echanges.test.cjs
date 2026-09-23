@@ -150,15 +150,28 @@ test('ateliers : ajouter une compagnie × classe à un atelier, c’est ajouter 
   assert.deepEqual(ajouteesAuto, ['NEW/SPML'], 'une classe hors programme est déclarée, et dite');
 });
 
-test('ateliers : une branche de parcours s’écrit en une cellule', async () => {
+test('ateliers : un lien de parcours s’écrit en une ligne, « De » livre « Vers »', async () => {
   const etat = ETAT_ATELIERS();
   let f = E.ateliersVersClasseur(etat, ctxAteliers());
-  f = modifier(f, 'Parcours', l => l.concat([['Magasin direct', 'Produit compagnie', 'magasin > montage']]));
+  assert.deepEqual(f.find(x => x.nom === 'Parcours').lignes[0], ['Parcours', 'De', 'Vers']);
+  f = modifier(f, 'Parcours', l => l.concat([['Magasin direct', 'Magasin', 'montage'], ['Magasin direct', 'dotation', null]]));
   f = modifier(f, 'Parcours par classe', l => l.map(x => (x[0] === 'SPML' ? ['SPML', 'magasin direct'] : x)));
   const { etat: lu } = E.classeurVersAteliers(await parFichier(f), etat, ctxAteliers());
   const p = lu.parcours.find(x => x.nom === 'Magasin direct');
-  assert.deepEqual(p.branches, [{ nom: 'Produit compagnie', services: ['magasin', 'prepa'] }], 'nom ou identifiant, casse indifférente');
+  assert.deepEqual(p.liens, [{ de: 'magasin', vers: 'prepa' }], 'nom ou identifiant, casse indifférente');
+  assert.deepEqual(p.noeuds, ['magasin', 'prepa', 'dotation'], 'un nœud sans lien se garde');
   assert.equal(lu.parcoursCabine.SPML, p.id);
+});
+
+test('ateliers : l’ancienne écriture en branches est encore lue', async () => {
+  const etat = ETAT_ATELIERS();
+  let f = E.ateliersVersClasseur(etat, ctxAteliers());
+  f = modifier(f, 'Parcours', () => [['Parcours', 'Branche', 'Étapes'], ['Ancien', 'Agro', 'appros > cuisine > montage'], ['Ancien', 'Magasin', 'magasin > montage']]);
+  f = modifier(f, 'Parcours par classe', l => l.map((x, i) => (i ? [x[0], 'Ancien'] : x)));
+  f = modifier(f, 'Classes', l => l.map((x, i) => (i ? [x[0], x[1], null, ...x.slice(3)] : x)));
+  const { etat: lu } = E.classeurVersAteliers(await parFichier(f), etat, ctxAteliers());
+  const p = lu.parcours.find(x => x.nom === 'Ancien');
+  assert.deepEqual(p.liens, [{ de: 'appros', vers: 'cuisine' }, { de: 'cuisine', vers: 'prepa' }, { de: 'magasin', vers: 'prepa' }]);
 });
 
 test('ateliers : une feuille absente laisse sa partie telle quelle', async () => {
@@ -176,7 +189,7 @@ test('ateliers : les erreurs de toutes les feuilles sont dites ensemble', () => 
   let f = E.ateliersVersClasseur(etat, ctxAteliers());
   f = modifier(f, 'Ateliers', l => l.concat([['Cuisine matin', 'CUISINE', 'manuel', '05:00'], ['X', 'GARAGE', 'manuel', '05:00'], ['Y', 'CUISINE', 'fusée', '05:00']]));
   f = modifier(f, 'Fabrications', l => l.concat([['Fantôme', 1, 'AF/BC'], ['Robot', 2, 'AF-YC']]));
-  f = modifier(f, 'Parcours', l => l.concat([['Faux', 'B', 'cuisine > garage']]));
+  f = modifier(f, 'Parcours', l => l.concat([['Faux', 'cuisine', 'garage']]));
   assert.throws(() => E.classeurVersAteliers(f, etat, ctxAteliers()), e => {
     for (const re of [/existe déjà/, /service inconnu « GARAGE »/, /type inconnu « fusée »/, /atelier inconnu « Fantôme »/,
       /illisible « AF-YC »/, /Parcours, ligne \d+ : service inconnu « garage »/, /Rien n’a été importé/]) assert.match(e.message, re);

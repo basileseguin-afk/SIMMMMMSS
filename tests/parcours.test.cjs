@@ -124,6 +124,38 @@ test('arcs et services se lisent dans les branches', () => {
   assert.equal(routes.has('AF/XX'), false, 'une classe sans parcours n’en reçoit pas');
 });
 
+/* ---- le parcours en diagramme de nœuds --------------------------------- */
+test('un parcours est un graphe : des nœuds et des liens « A livre B »', () => {
+  const g = { id: 'g', nom: 'G', noeuds: ['appros', 'cuisine', 'prepa', 'magasin', 'dotation'],
+    liens: [{ de: 'appros', vers: 'cuisine' }, { de: 'cuisine', vers: 'prepa' }, { de: 'magasin', vers: 'prepa' }] };
+  assert.deepEqual(P.arcsDuParcours(g).map(a => a.from + '>' + a.to), ['appros>cuisine', 'cuisine>prepa', 'magasin>prepa']);
+  assert.deepEqual(P.servicesDuParcours(g), ['appros', 'cuisine', 'prepa', 'magasin', 'dotation'], 'un nœud sans lien en fait partie');
+  // Et le calcul le lit comme il lisait les branches : le montage attend ses deux amonts.
+  const r = P.simuler({ vols: VOLS, liaisons: [], bareme: BAREME, parcours: [g], parcoursCabine: { YC: 'g' }, ateliers: [
+    at('ap', 'appros', '05:00', [['AF/YC']]), at('cu', 'cuisine', '05:00', [['AF/YC']]),
+    at('ma', 'magasin', '09:00', [['AF/YC']]), at('mo', 'prepa', '05:00', [['AF/YC']])] });
+  assert.equal(lot(r, 'prepa', 'AF/YC').debut, Math.max(lot(r, 'cuisine', 'AF/YC').fin, lot(r, 'magasin', 'AF/YC').fin));
+});
+
+test('un parcours en branches est converti en graphe à la lecture', () => {
+  const v = PC.validerParcours({ parcours: [COMPLET], parcoursCabine: { BC: 'complet' } });
+  assert.deepEqual(Object.keys(v.parcours[0]).sort(), ['id', 'liens', 'noeuds', 'nom']);
+  assert.deepEqual(v.parcours[0].liens.map(l => l.de + '>' + l.vers), P.arcsDuParcours(COMPLET).map(a => a.from + '>' + a.to));
+  // Les liens en double, les boucles sur soi et les champs vides sont écartés.
+  const w = PC.validerParcours({ parcours: [{ id: 'x', nom: 'X', noeuds: ['a'], liens: [{ de: 'a', vers: 'b' }, { de: 'a', vers: 'b' }, { de: 'b', vers: 'b' }, { de: '', vers: 'a' }] }] });
+  assert.deepEqual(w.parcours[0].liens, [{ de: 'a', vers: 'b' }]);
+  assert.deepEqual(w.parcours[0].noeuds, ['a', 'b'], 'un lien ajoute ses deux bouts aux nœuds');
+  // Les parcours types naissent en graphe.
+  assert.ok(PC.parcoursTypes().parcours.every(p => Array.isArray(p.liens) && !p.branches));
+});
+
+test('relier deux nœuds ne doit pas fermer de boucle', () => {
+  const g = { noeuds: ['a', 'b', 'c'], liens: [{ de: 'a', vers: 'b' }, { de: 'b', vers: 'c' }] };
+  assert.equal(PC.creeBoucle(g, 'c', 'a'), true, 'c → a ferait tourner a → b → c → a');
+  assert.equal(PC.creeBoucle(g, 'a', 'c'), false, 'un raccourci n’est pas une boucle');
+  assert.equal(PC.creeBoucle(g, 'b', 'b'), true);
+});
+
 /* ---- parcours × équipes : la fusion ----------------------------------- */
 const PC = require('../parcours.js');
 const CLASSES = P.classesDeVols(VOLS, { delaiChargement: 45 });
@@ -177,9 +209,9 @@ test('compléter confie là où une seule équipe travaille, et rend la main ail
   assert.ok(r.lots.some(l => l.service === 'prepa' && l.classes.includes('TX/YC')));
 });
 
-test('les colonnes du tableau suivent les branches, puis la jonction', () => {
+test('les colonnes du tableau se groupent par nœud de départ, puis la jonction', () => {
   assert.deepEqual(PC.colonnes(PARCOURS.parcours).map(c => c.groupe + ':' + c.service),
-    ['Agro:appros', 'Agro:cuisine', 'Matériel:plonge', 'Matériel:dotation', 'Magasin:magasin', 'Jonction:prepa']);
+    ['appros:appros', 'appros:cuisine', 'plonge:plonge', 'plonge:dotation', 'magasin:magasin', 'Jonction:prepa']);
   // Ce qui suit la jonction reste après elle, dans l'ordre du flux.
   const long = { id: 'l', nom: 'L', branches: [{ nom: 'A', services: ['cuisine', 'prepa', 'armement'] },
     { nom: 'B', services: ['dotation', 'prepa'] }] };

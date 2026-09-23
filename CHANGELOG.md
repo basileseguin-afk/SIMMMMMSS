@@ -5,6 +5,51 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-23 — Les chemins et les liens se dessinent en diagramme de nœuds
+
+Proposition de Basile : créer les chemins, les liens et les équipes en reliant
+des nœuds, comme au tableau. C'est aussi la forme exacte du calcul.
+
+**Le modèle**
+- Un parcours est un graphe : `{ id, nom, noeuds: [service], liens: [{ de, vers }] }`
+  (`parcours.js`, `moteur/production.js`). Les parcours en branches enregistrés
+  avant sont convertis à la lecture ; le moteur lit encore les deux écritures.
+- Les colonnes du tableau « Qui prépare quoi » se déduisent du graphe : un
+  groupe par service de départ (« Depuis PLONGE »), puis la jonction.
+- Classeur Excel, feuille « Parcours » : une ligne par lien (`Parcours`, `De`,
+  `Vers`) ; l'ancienne écriture (`Branche`, `Étapes`) est encore lue.
+
+**Le diagramme** (`graphe.js`, `graphe.css`, nouveaux)
+- Tirer le `+` d'un service jusqu'à un autre crée le lien ; « Relier à… » fait
+  de même au doigt ou au clavier (Entrée). Un lien choisi se retire par sa croix
+  ou la touche Suppr.
+- Un lien en double ou qui fermerait une boucle est refusé, avec la raison.
+- Disposition automatique en colonnes dans le sens du flux : un service se
+  place au milieu de ses amonts, un long lien réserve un couloir et ne passe
+  plus sous un autre service, les liens de retour n'étirent rien.
+- Les services se déplacent à la souris (Alt + flèches au clavier) ; la
+  disposition est retenue (`ory-graphes-v1`, dans la sauvegarde complète) ;
+  « Réorganiser » l'oublie.
+
+**Où on le trouve**
+- Qui prépare quoi › *Les chemins* : une pastille par chemin, le diagramme, et
+  un panneau pour le service ou le lien choisi. Chaque nœud dit ses équipes
+  (vert : tout est couvert ; ambre : des repas sans équipe). « + Nouvelle équipe
+  ici » crée l'équipe et lui confie les repas du chemin qui n'avaient personne.
+- L'unité › *Les liens* : les services et leurs liens dans le même diagramme ;
+  un trait tiré crée un lien du type choisi ; choisir un trait ouvre son détail,
+  la liste complète est repliée dessous.
+- Le « plan de métro » et l'édition par branches sont retirés, avec leur CSS.
+
+**Tests** : `tests/graphe.test.cjs`, `tests/graphe-browser.cjs` (nouveaux) ;
+`parcours.test.cjs` (graphe, conversion, boucle), `echanges.test.cjs` (liens et
+ancienne écriture), `excel-browser` (le chemin se modifie dans le diagramme).
+193 tests purs, 16 parcours navigateur.
+**Docs** : `README.md`, `docs/MODELE_ATELIERS.md`, `docs/FORMATS_EXCEL.md`,
+`docs/ETAT_DES_LIEUX.md`, `docs/CAHIER_DES_CHARGES.md` (E11, décision).
+
+---
+
 ## 2026-09-23 — Des pages épurées : une chose à la fois
 
 Les pages en montraient trop à la fois ; l'œil ne savait plus où se poser.

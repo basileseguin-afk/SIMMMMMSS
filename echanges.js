@@ -299,10 +299,14 @@
         exclues.has(id) ? 'oui' : 'non', ajoutees.has(id) ? 'non' : 'oui', null, null]);
     }
 
-    const parcours = [['Parcours', 'Branche', 'Étapes']];
+    // Un parcours est un diagramme de nœuds : une ligne par lien, « De » livre
+    // « Vers ». Un nœud encore sans lien s'écrit seul, colonne « Vers » vide.
+    const parcours = [['Parcours', 'De', 'Vers']];
     for (const p of (etat.parcours || [])) {
-      for (const b of p.branches) parcours.push([p.nom, b.nom, b.services.map(nomDe).join(' > ')]);
-      if (!p.branches.length) parcours.push([p.nom, null, null]);
+      const arcs = P.arcsDuParcours(p), relies = new Set(arcs.flatMap(a => [a.from, a.to]));
+      for (const a of arcs) parcours.push([p.nom, nomDe(a.from), nomDe(a.to)]);
+      for (const s of P.servicesDuParcours(p)) if (!relies.has(s)) parcours.push([p.nom, nomDe(s), null]);
+      if (!P.servicesDuParcours(p).length) parcours.push([p.nom, null, null]);
     }
     const defauts = [['Classe', 'Parcours']];
     for (const c of P.CABINES) defauts.push([c, nomParcours((etat.parcoursCabine || {})[c])]);
@@ -329,8 +333,9 @@
         'Tunnels : les tunnels d’une plonge, avec leur débit et le personnel qui les tient.',
         'Classes : les compagnies × classes. Parcours vide = celui de sa classe. Retirée = oui pour ne plus la fabriquer.',
         '   Une compagnie × classe absente du programme de vols est ajoutée : ses volumes viendront du prochain import des vols.',
-        'Parcours : une ligne par branche. Étapes = services séparés par « > », dans l’ordre (ex. PLONGE > DOTATION > MONTAGE).',
-        '   Les branches d’un même parcours partent en parallèle et se rejoignent aux services qu’elles partagent.',
+        'Parcours : une ligne par lien du diagramme. « De » livre « Vers » (ex. PLONGE → DOTATION).',
+        '   Un service qui reçoit plusieurs liens attend qu’ils aient tous livré. « Vers » vide : un service encore sans lien.',
+        '   L’ancienne écriture (Branche, Étapes « A > B > C ») est encore lue.',
         'Parcours par classe : le parcours par défaut de BC, PC, YC, CREW et SPML.',
         'Une feuille absente du fichier laisse la partie correspondante telle qu’elle est sur le site.',
         'Services : leur nom sur le plan ou leur identifiant. Les colonnes « (info) » sont ignorées à l’import.',
@@ -360,15 +365,25 @@
           let p = parNom.get(T.cleEntete(nom));
           if (!p) {
             const ancien = (etat.parcours || []).find(x => T.cleEntete(x.nom) === T.cleEntete(nom));
-            p = { id: ancien ? ancien.id : 'pc-' + T.cleEntete(nom).slice(0, 40), nom, branches: [] };
+            p = { id: ancien ? ancien.id : 'pc-' + T.cleEntete(nom).slice(0, 40), nom, noeuds: [], liens: [] };
             parNom.set(T.cleEntete(nom), p); liste.push(p);
           }
-          if (o.etapes === null || o.etapes === undefined || o.etapes === '') return;
-          const etapes = String(o.etapes).split(SEP_ETAPES).filter(Boolean).map(x => {
-            const sid = service(x); if (!sid) throw new Error('service inconnu « ' + x + ' »'); return sid;
-          });
+          const vide = v => v === null || v === undefined || v === '';
+          const sid = x => { const s = service(String(x).trim()); if (!s) throw new Error('service inconnu « ' + x + ' »'); return s; };
+          const noeud = s => { if (!p.noeuds.includes(s)) p.noeuds.push(s); return s; };
+          const lien = (de, vers) => {
+            if (de === vers) throw new Error('un service ne se livre pas lui-même');
+            if (!p.liens.some(l => l.de === de && l.vers === vers)) p.liens.push({ de, vers });
+          };
+          if (!vide(o.de)) {                       // l'écriture en liens
+            const de = noeud(sid(o.de));
+            if (!vide(o.vers)) lien(de, noeud(sid(o.vers)));
+            return;
+          }
+          if (vide(o.etapes)) return;              // l'ancienne écriture en branches
+          const etapes = String(o.etapes).split(SEP_ETAPES).filter(Boolean).map(sid);
           if (etapes.length < 2) throw new Error('une branche relie au moins deux services');
-          p.branches.push({ nom: String(o.branche ?? '').trim() || 'Branche ' + (p.branches.length + 1), services: etapes });
+          etapes.forEach((s, i) => { noeud(s); if (i) lien(etapes[i - 1], s); });
         });
       }
       out.parcours = liste;

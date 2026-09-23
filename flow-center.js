@@ -43,9 +43,49 @@ class FlowCenter{
  constructor(adapter){
   this.a=adapter;this.host=document.getElementById('view-flux');this.family='all';this.service='';this.undoStack=[];this.redoStack=[];this.state=initial(adapter.legacy);this.mapFilter='all';this.mapOwner='';
   let warning='';try{const saved=localStorage.getItem('orly-flows-v1');if(saved)this.state=validate(JSON.parse(saved));}catch(e){warning='Configuration enregistrée non chargée : '+e.message+' La copie reste conservée.';}
-  this.build();this.bind();this.refresh();this.status(warning||'Enregistré dans ce navigateur · certains liens n’ont pas encore de type.');
+  this.paire=null;this.build();this.graphe=this.creerGraphe();this.bind();this.refresh();this.status(warning||'Enregistré dans ce navigateur · certains liens n’ont pas encore de type.');
  }
  get points(){return endpoints(this.a.zones());}
+ /* Le diagramme des liens : un nœud par service, un trait par couple
+  * « qui livre qui » (plusieurs liens de types différents s'y regroupent).
+  * Tirer un trait crée un lien du type choisi au-dessus du diagramme. */
+ creerGraphe(){
+  if(!root.OrlyGraphe)return null;
+  const fc=this,own=id=>parseEndpoint(id)[0];
+  const paires=()=>{const m=new Map();for(const f of fc.visibleFlows()){const a=own(f.from),b=own(f.to);if(a===b)continue;const k=a+'>'+b;if(!m.has(k))m.set(k,{id:k,de:a,vers:b,flows:[]});m.get(k).flows.push(f);}return[...m.values()];};
+  this.paires=paires;
+  return new root.OrlyGraphe.Diagramme({
+   hote:()=>document.getElementById('fc-graphe'),cle:'flux',
+   titre:'Le diagramme de l’unité : un nœud par service, un trait par lien',
+   noeuds:()=>{const lu=fc.a.lecture?fc.a.lecture():{lignes:[]},eq=new Map((lu.lignes||[]).map(l=>[l.id,l]));const I=root.OrlyIcones;
+    return fc.points.filter(p=>p.service).map(p=>{const l=eq.get(p.owner);return{id:p.owner,nom:p.label,ico:I?I.icoService(p.owner,p.label):'service',
+     sous:!l?'':l.dispo?'mise à disposition':l.equipes?l.equipes+' équipe'+(l.equipes>1?'s':''):'aucune équipe',ton:l&&!l.equipes?'attente':l?'ok':'neutre'};});},
+   liens:()=>paires().map(p=>{const types=[...new Set(p.flows.map(f=>f.type))],ok=p.flows.some(f=>usable(f,fc.points));
+    const nom=id=>(fc.points.find(x=>x.owner===id&&x.service)||{}).label||id;
+    return{id:p.id,de:p.de,vers:p.vers,couleur:types.length===1?TYPES[types[0]].color:'',pointille:!ok,
+     titre:nom(p.de)+' → '+nom(p.vers)+' : '+types.map(t=>TYPES[t].label).join(', ')+(p.flows.length>1?' ('+p.flows.length+' liens)':'')+(ok?'':' — à classer ou désactivé')};}),
+   relier:(de,vers)=>{const type=document.getElementById('fc-graphe-type').value;
+    const flow={id:uid(),type,from:endpointId(de),to:endpointId(vers),enabled:true,label:''};
+    const ok=fc.change(()=>fc.state.flows.push(flow),'Lien ajouté : '+TYPES[type].label.toLowerCase()+'.');
+    if(ok&&fc.family!=='all'&&TYPES[type].family!==fc.family){fc.family='all';fc.render();}
+    return ok?'':document.getElementById('fc-status').textContent;},
+   retirerLien:id=>{const p=paires().find(x=>x.id===id);if(!p)return;const ids=new Set(p.flows.map(f=>f.id));fc.paire=null;
+    fc.change(()=>{fc.state.flows=fc.state.flows.filter(f=>!ids.has(f.id));},(ids.size>1?ids.size+' liens retirés':'Lien retiré')+'. Vous pouvez annuler.');},
+   choisir:sel=>{fc.paire=sel&&sel.type==='lien'?sel.id:null;fc.noeud=sel&&sel.type==='noeud'?sel.id:null;fc.renderListe();fc.renderDetail();},
+   message:t=>{if(t)fc.status(t);}
+  });
+ }
+ renderDetail(){
+  const box=document.getElementById('fc-detail');if(!box)return;
+  const nom=id=>esc((this.points.find(x=>x.owner===id&&x.service)||{}).label||id);
+  if(this.paire){const p=(this.paires?this.paires():[]).find(x=>x.id===this.paire);
+   if(!p){box.innerHTML='';return;}
+   box.innerHTML=`<p><b>${nom(p.de)}</b> → <b>${nom(p.vers)}</b> : ${p.flows.map(f=>esc(TYPES[f.type].label)+(f.enabled?'':' (désactivé)')).join(', ')}. Son détail est ouvert dans la liste ci-dessous.</p><div class="row-btns"><button class="btn btn-sm" data-fc-graphe="retirer">Retirer ${p.flows.length>1?'ces '+p.flows.length+' liens':'ce lien'}</button></div>`;return;}
+  if(this.noeud){const f=this.visibleFlows(),own=id=>parseEndpoint(id)[0];
+   const livre=[...new Set(f.filter(x=>own(x.from)===this.noeud&&own(x.to)!==this.noeud).map(x=>own(x.to)))],recoit=[...new Set(f.filter(x=>own(x.to)===this.noeud&&own(x.from)!==this.noeud).map(x=>own(x.from)))];
+   box.innerHTML=`<p><b>${nom(this.noeud)}</b> — livre : ${livre.map(nom).join(', ')||'personne'} · reçoit de : ${recoit.map(nom).join(', ')||'personne'}.</p><div class="row-btns"><button class="btn btn-sm" data-fc-graphe="relier">Relier à…</button></div>`;return;}
+  box.innerHTML='';
+ }
  status(message){document.getElementById('fc-status').textContent=message;}
  build(){
   this.host.innerHTML=`<div class="fc-heading"><div><p class="scope-badge">Qui livre qui, entre les services de l’unité</p></div><div class="fc-actions"><button class="btn" id="fc-undo">Annuler</button><button class="btn" id="fc-redo">Rétablir</button><button class="btn" id="fc-export">Exporter</button><button class="btn" id="fc-import-button">Importer</button><input id="fc-import" type="file" accept=".json" hidden></div></div>
@@ -65,9 +105,13 @@ class FlowCenter{
    </section>
    <h3 class="fc-list-title" data-sous="u-liens">Les liens</h3>
    <nav id="fc-families" class="fc-families" aria-label="Types de liens" data-sous="u-liens"></nav>
-   <div class="fc-filters" data-sous="u-liens"><label>Service concerné<select id="fc-service"></select></label><span id="fc-summary"></span><button class="btn" id="fc-show-map">Voir ces liens sur le plan</button><button class="btn btn-play" id="fc-new">+ Nouveau lien</button></div>
+   <div class="fc-filters" data-sous="u-liens"><label>Service concerné<select id="fc-service"></select></label><label>Ce qui circule dans les liens que vous tirez<select id="fc-graphe-type">${this.typeOptions('material',false)}</select></label><span id="fc-summary"></span><button class="btn" id="fc-reorganiser" title="Ranger les services d’eux-mêmes, dans le sens du flux">Réorganiser</button><button class="btn" id="fc-show-map">Voir ces liens sur le plan</button><button class="btn btn-play" id="fc-new">+ Nouveau lien</button></div>
+   <div class="fc-graphe-zone" data-sous="u-liens">
+    <div id="fc-graphe"></div>
+    <div id="fc-detail" class="fc-detail" aria-live="polite"></div>
+   </div>
    <form id="fc-add" class="fc-creation" hidden data-sous="u-liens"><div class="fc-creation-head"><h3>Nouveau lien</h3><button class="text-button" type="button" id="fc-cancel">Fermer</button></div><div class="fc-fields"><label>Ce qui circule<select id="fc-type">${this.typeOptions('material',false)}</select></label><label>De<select id="fc-from" required></select></label><label>Vers<select id="fc-to" required></select></label><label>Précision facultative<input id="fc-label" maxlength="200" placeholder="Ex. matériel propre"></label></div><button class="btn btn-play" type="submit">Ajouter le lien</button></form>
-   <div id="fc-list" data-sous="u-liens"></div>
+   <details id="fc-liste-toute" class="fc-liste-toute" data-sous="u-liens"><summary>Tous les liens, en liste</summary><div id="fc-list"></div></details>
    <details id="fc-rules" class="fc-rules" data-sous="u-liens"><summary>Circulation humaine à l’intérieur des services</summary><p class="mini-note">Pour décrire seulement : le calcul ne déplace pas encore les personnes. Par défaut, chacun circule dans son service et ses stockages ; sortir demande une liaison Runner explicite, dans le sens indiqué.</p><div id="fc-internal"></div></details>`;
   const label=document.createElement('label');label.className='fc-map-filter';label.innerHTML=`Liens dessinés <select id="fc-map-filter" title="Les liens entre services, dessinés sur le plan. Ils se règlent dans « L’unité ».">${Object.entries(FAMILIES).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}<option value="none">Aucun</option></select><span id="fc-map-scope"></span>`;document.querySelector('.map-footer').appendChild(label);
  }
@@ -89,7 +133,7 @@ class FlowCenter{
   on('fc-add','submit',e=>{e.preventDefault();const from=document.getElementById('fc-from').value,to=document.getElementById('fc-to').value;
    if(!from||!to){this.status('Choisissez une origine et une destination.');return;}
    const flow={id:uid(),type:document.getElementById('fc-type').value,from,to,enabled:true,label:document.getElementById('fc-label').value};
-   if(this.change(()=>this.state.flows.push(flow),'Lien ajouté.')){this.family=TYPES[flow.type].family;document.getElementById('fc-label').value='';this.render();}
+   if(this.change(()=>this.state.flows.push(flow),'Lien ajouté.')){this.family=TYPES[flow.type].family;document.getElementById('fc-label').value='';document.getElementById('fc-liste-toute').open=true;this.render();}
   });
   on('fc-list','change',e=>{const field=e.target.dataset.field,id=e.target.closest('[data-flow]')?.dataset.flow;if(!field||!id)return;const value=field==='enabled'?e.target.checked:e.target.value;if((field==='from'||field==='to')&&!value){this.render();return;}this.change(()=>{this.state.flows.find(f=>f.id===id)[field]=value;},'Liaison enregistrée.');});
   on('fc-list','click',e=>{const b=e.target.closest('[data-action]'),id=b?.closest('[data-flow]')?.dataset.flow;if(!id)return;
@@ -103,6 +147,10 @@ class FlowCenter{
   // veut une nouvelle, et il reste ouvert tant qu'on en enchaîne.
   on('fc-new','click',()=>{const f=document.getElementById('fc-add');f.hidden=false;f.scrollIntoView({block:'nearest'});document.getElementById('fc-type').focus();});
   on('fc-cancel','click',()=>{document.getElementById('fc-add').hidden=true;document.getElementById('fc-new').focus();});
+  on('fc-reorganiser','click',()=>{if(this.graphe)this.graphe.reorganiser();});
+  on('fc-detail','click',e=>{const b=e.target.closest('[data-fc-graphe]');if(!b||!this.graphe)return;
+   if(b.dataset.fcGraphe==='retirer'&&this.paire)this.graphe.retirer(this.paire);
+   if(b.dataset.fcGraphe==='relier'&&this.noeud)this.graphe.relierDepuis(this.noeud);});
   on('fc-export','click',()=>this.export());on('fc-import-button','click',()=>document.getElementById('fc-import').click());
   on('fc-import','change',e=>this.import(e));
  }
@@ -160,8 +208,17 @@ class FlowCenter{
   document.getElementById('fc-families').innerHTML=Object.entries(FAMILIES).map(([k,v])=>`<button class="btn" data-family="${k}" aria-pressed="${k===this.family}">${v} <span>${this.state.flows.filter(f=>k==='all'||TYPES[f.type].family===k).length}</span></button>`).join('');
   document.getElementById('fc-internal').innerHTML=services.map(p=>`<label><input type="checkbox" data-owner="${esc(p.owner)}" ${this.state.internal[p.owner]!==false?'checked':''}> ${esc(p.label)} : circulation interne libre</label>`).join('');
   document.getElementById('fc-rules').open=this.family==='human';
-  const flows=this.visibleFlows();const missing=this.state.flows.filter(f=>!points.some(p=>p.id===f.from)||!points.some(p=>p.id===f.to)).length;
+  if(this.graphe)this.graphe.rendre();this.renderDetail();
+  const flows=this.renderListe();const missing=this.state.flows.filter(f=>!points.some(p=>p.id===f.from)||!points.some(p=>p.id===f.to)).length;
   document.getElementById('fc-summary').textContent=flows.length+' lien(s) affiché(s) · '+this.state.flows.filter(f=>usable(f,points)).length+' actif(s) avec un type'+(missing?' · '+missing+' à réparer (emplacement absent)':'');
+  document.getElementById('fc-undo').disabled=!this.undoStack.length;document.getElementById('fc-redo').disabled=!this.redoStack.length;
+ }
+ /* La liste des liens : ceux du trait choisi dans le diagramme, sinon tous
+  * (repliée : le diagramme suffit à les voir). */
+ renderListe(){
+  const points=this.points,own=id=>parseEndpoint(id)[0];
+  const flows=this.visibleFlows().filter(f=>!this.paire||own(f.from)+'>'+own(f.to)===this.paire);
+  if(this.paire)document.getElementById('fc-liste-toute').open=true;
   const list=document.getElementById('fc-list');
   // Keep the card nodes stable on edits, so blur cannot swallow the next button click.
   const structure=JSON.stringify([flows.map(f=>f.id),points]);
@@ -178,7 +235,7 @@ class FlowCenter{
    card.querySelector('[data-field=label]').value=f.label;card.querySelector('[data-field=enabled]').checked=f.enabled;
    card.querySelector('[data-warning]').textContent=!a||!b?'Emplacement supprimé ou absent : liaison conservée mais inutilisable. Choisissez un nouvel emplacement.':f.type==='unclassified'?'Ancienne liaison : choisissez sa famille avant de l’utiliser.':!f.enabled?'Liaison désactivée.':'';
   }
-  document.getElementById('fc-undo').disabled=!this.undoStack.length;document.getElementById('fc-redo').disabled=!this.redoStack.length;
+  return flows;
  }
  export(){const link=document.createElement('a');link.href=URL.createObjectURL(new Blob([JSON.stringify(this.state,null,2)],{type:'application/json'}));link.download='centre-flux-'+new Date().toISOString().slice(0,10)+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(link.href),1000);this.status('Flux et règles humaines exportés. Les emplacements sont référencés par leurs identifiants du plan.');}
  async import(e){const file=e.target.files[0];if(!file)return;try{if(file.size>2*1024*1024)throw Error('Fichier trop volumineux (2 Mo maximum).');const state=validate(JSON.parse(await file.text()));if(!confirm('Remplacer la configuration des flux ? Cette action est annulable.'))return;this.change(()=>{this.state=state;},'Flux importés. Les emplacements absents sont signalés dans la liste.');}catch(err){this.status('Import refusé : '+err.message+' Configuration actuelle conservée.');}finally{e.target.value='';}}

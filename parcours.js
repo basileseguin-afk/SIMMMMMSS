@@ -3,12 +3,16 @@
  *
  *  Toutes les classes ne passent pas par les mêmes services : un plateau
  *  d'économie ne voit ni la cuisine ni la légumerie. Un parcours dit, pour
- *  une classe, par où elle passe — en BRANCHES qui partent en parallèle et se
- *  rejoignent :
+ *  une classe, par où elle passe. C'est un DIAGRAMME DE NŒUDS : les services
+ *  sont les nœuds, un lien « A → B » dit que A livre B. Des chemins partent en
+ *  parallèle et se rejoignent là où un nœud reçoit plusieurs liens :
  *
- *      Agro      appros → légumerie → cuisine → montage
- *      Matériel  plonge → dotation ─────────→ montage
- *      Magasin   magasin ───────────────────→ montage
+ *      appros → légumerie → cuisine ─┐
+ *      plonge → dotation ────────────┼→ montage
+ *      magasin ──────────────────────┘
+ *
+ *  Écrit ainsi : { id, nom, noeuds:[service], liens:[{de, vers}] }. L'ancienne
+ *  écriture en branches est relue et convertie.
  *
  *  Chaque classe (BC, YC…) a un parcours par défaut ; une compagnie × classe
  *  peut avoir le sien. Le calcul est dans moteur/production.js ; ce module
@@ -25,6 +29,33 @@
   const uid = () => 'pc-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
   const texte = (v, max) => String(v ?? '').trim().slice(0, max);
 
+  /** Des branches (chaînes de services) vers un graphe : nœuds et liens. */
+  function depuisBranches(branches) {
+    const noeuds = [], liens = [], vus = new Set();
+    for (const b of branches || []) {
+      const etapes = (Array.isArray(b) ? b : (b && b.services) || []).filter(Boolean);
+      etapes.forEach((s, i) => {
+        if (!noeuds.includes(s)) noeuds.push(s);
+        const de = etapes[i - 1];
+        if (i && de !== s && !vus.has(de + '>' + s)) { vus.add(de + '>' + s); liens.push({ de, vers: s }); }
+      });
+    }
+    return { noeuds, liens };
+  }
+
+  /** Relier `de` à `vers` fermerait-il une boucle ? Un repas n'y avancerait jamais. */
+  function creeBoucle(p, de, vers) {
+    if (de === vers) return true;
+    const arcs = P.arcsDuParcours(p), vus = new Set(), pile = [vers];
+    while (pile.length) {
+      const s = pile.pop();
+      if (s === de) return true;
+      if (vus.has(s)) continue; vus.add(s);
+      for (const a of arcs) if (a.from === s) pile.push(a.to);
+    }
+    return false;
+  }
+
   /**
    * Les parcours types de l'unité, d'après les services du plan de base.
    * « Montage » est le service `prepa`. Rien n'empêche d'insérer une
@@ -34,7 +65,8 @@
     const connus = servicesConnus ? new Set(servicesConnus) : null;
     const garder = liste => (connus ? liste.filter(s => connus.has(s)) : liste);
     const branche = (nom, services) => ({ nom, services: garder(services) });
-    const nettoyer = p => ({ ...p, branches: p.branches.filter(b => b.services.length >= 2) });
+    // Écrits en chaînes, lus en graphe : un service absent du plan est enjambé.
+    const nettoyer = ({ branches, ...p }) => ({ ...p, ...depuisBranches(branches.filter(b => b.services.length >= 2)) });
     const parcours = [
       nettoyer({ id: 'complet', nom: 'Complet', branches: [
         branche('Agro', ['appros', 'decontam', 'cuisine', 'prepa']),
@@ -72,12 +104,19 @@
       const id = typeof p.id === 'string' && p.id ? p.id.slice(0, 80) : uid();
       if (ids.has(id)) throw new Error('Identifiant de parcours en double : ' + id);
       ids.add(id);
-      const branches = (Array.isArray(p.branches) ? p.branches : []).slice(0, 20).map((br, i) => {
-        const services = (Array.isArray(br) ? br : (br && br.services) || [])
-          .map(s => texte(s, 160)).filter(Boolean).slice(0, 30);
-        return { nom: texte(br && br.nom, 80) || 'Branche ' + (i + 1), services };
-      });
-      return { id, nom: texte(p.nom, 80) || 'Parcours', branches };
+      // Un parcours d'avant les diagrammes arrive en branches : on le convertit.
+      const g = Array.isArray(p.liens) || Array.isArray(p.noeuds) ? p
+        : depuisBranches((Array.isArray(p.branches) ? p.branches : []).slice(0, 20)
+            .map(br => (Array.isArray(br) ? br : (br && br.services) || []).map(s => texte(s, 160)).slice(0, 30)));
+      const noeuds = [], liens = [], vus = new Set();
+      const noeud = s => { s = texte(s, 160); if (s && !noeuds.includes(s) && noeuds.length < 60) noeuds.push(s); return noeuds.includes(s) ? s : null; };
+      for (const s of (Array.isArray(g.noeuds) ? g.noeuds : [])) noeud(s);
+      for (const l of (Array.isArray(g.liens) ? g.liens : []).slice(0, 300)) {
+        const de = noeud(l && (l.de ?? l[0])), vers = noeud(l && (l.vers ?? l[1]));
+        if (!de || !vers || de === vers || vus.has(de + '>' + vers)) continue;
+        vus.add(de + '>' + vers); liens.push({ de, vers });
+      }
+      return { id, nom: texte(p.nom, 80) || 'Parcours', noeuds, liens };
     });
     const parcoursCabine = {};
     for (const c of P.CABINES) {
@@ -208,32 +247,40 @@
 
   /**
    * Les colonnes du tableau « Qui fabrique quoi » : les services de tous les
-   * parcours, rangés par branche (Agro, Matériel…), puis ce qui vient à partir
-   * de la jonction, dans l'ordre du flux.
+   * parcours, dans l'ordre du flux. Les groupes se lisent sur le graphe :
    *
-   * @returns [{ service, groupe }]
+   *   • la JONCTION — un nœud qui reçoit plusieurs liens dans un parcours, et
+   *     tout ce qui vient après lui ;
+   *   • avant elle, un groupe par nœud de DÉPART (sans lien entrant) : les
+   *     services qui en descendent, dans l'ordre.
+   *
+   * @returns [{ service, groupe }] — `groupe` est le service de départ, ou « Jonction ».
    */
   function colonnes(parcours) {
     const liste = parcours || [];
     const apres = new Set();
     for (const p of liste) {
-      const compte = new Map();
-      for (const b of p.branches) for (const s of new Set(b.services)) compte.set(s, (compte.get(s) || 0) + 1);
-      if (p.branches.length < 2) continue;
-      for (const b of p.branches) {
-        const i = b.services.findIndex(s => compte.get(s) > 1);
-        if (i >= 0) for (const s of b.services.slice(i)) apres.add(s);
+      const arcs = P.arcsDuParcours(p), entrants = new Map();
+      for (const x of arcs) entrants.set(x.to, (entrants.get(x.to) || 0) + 1);
+      const pile = [...entrants].filter(([, n]) => n > 1).map(([s]) => s);
+      while (pile.length) {
+        const s = pile.pop(); if (apres.has(s)) continue; apres.add(s);
+        for (const x of arcs) if (x.from === s) pile.push(x.to);
       }
     }
-    const avant = [], vus = new Set();
-    for (const p of liste) for (const b of p.branches) for (const s of b.services) {
-      if (apres.has(s) || vus.has(s)) continue;
-      vus.add(s); avant.push({ service: s, groupe: b.nom });
+    const union = { noeuds: liste.flatMap(p => P.servicesDuParcours(p)),
+      liens: liste.flatMap(p => P.arcsDuParcours(p).map(x => ({ de: x.from, vers: x.to }))) };
+    const ordre = etapesOrdonnees(union), arcs = P.arcsDuParcours(union);
+    // Le départ d'un service : on remonte ses liens entrants jusqu'à un nœud sans amont.
+    const depart = new Map();
+    for (const s of ordre) {
+      if (apres.has(s)) continue;
+      const amont = arcs.find(x => x.to === s && !apres.has(x.from) && depart.has(x.from));
+      depart.set(s, amont ? depart.get(amont.from) : s);
     }
-    const groupes = [...new Set(avant.map(c => c.groupe))];
-    const fin = etapesOrdonnees({ branches: liste.flatMap(p => p.branches) })
-      .filter(s => apres.has(s)).map(s => ({ service: s, groupe: 'Jonction' }));
-    return groupes.flatMap(g => avant.filter(c => c.groupe === g)).concat(fin);
+    const groupes = [...new Set(ordre.filter(s => !apres.has(s)).map(s => depart.get(s)))];
+    return groupes.flatMap(g => ordre.filter(s => !apres.has(s) && depart.get(s) === g).map(s => ({ service: s, groupe: g })))
+      .concat(ordre.filter(s => apres.has(s)).map(s => ({ service: s, groupe: 'Jonction' })));
   }
 
   /**
@@ -344,9 +391,13 @@
    *       choisit. Une ligne se déplie pour se lire dans le temps.
    * ====================================================================*/
 
-  const AIDE_PARCOURS = `<p>Un <b>chemin</b> dit par où passe un repas, en <b>branches</b> qui démarrent
-    en même temps et se rejoignent : les aliments par la réception et la cuisine, le matériel par la
-    plonge et la dotation, les produits de la compagnie par le magasin — tout se retrouve au montage.</p>
+  const AIDE_PARCOURS = `<p>Un <b>chemin</b> dit par où passe un repas. C’est un <b>diagramme</b> : chaque
+    service est un nœud, et un lien « A → B » veut dire que A livre B. Pour relier deux services, tirez
+    le <b>+</b> à droite du premier jusqu’au second (ou cliquez-le, « Relier à… », puis l’autre).</p>
+    <p>Plusieurs chemins partent en même temps et se rejoignent : les aliments par la réception et la
+    cuisine, le matériel par la plonge et la dotation, les produits de la compagnie par le magasin — tout
+    se retrouve au montage, qui attend tous ses liens entrants. Un lien qui ferait tourner un repas en
+    rond est refusé.</p>
     <p>Chaque classe (Business, Économie…) suit un chemin par défaut ; les repas d’une compagnie
     peuvent en suivre un autre, dans le tableau « Qui prépare quoi ».</p>`;
   const AIDE_TABLEAU = `<p>Une <b>ligne</b> par repas (une compagnie dans une classe), une <b>colonne</b> par
@@ -371,7 +422,9 @@
      */
     constructor(a) {
       this.a = a;
-      this.ouvert = null;          // parcours dont on modifie les branches
+      this.actif = null;           // le chemin affiché dans le diagramme
+      this.sel = null;             // le service ou le lien choisi dans le diagramme
+      this.graphe = null;
       this.suivies = new Set();    // lignes dépliées dans le temps
       this.recherche = '';
       this.incompletes = false;
@@ -398,95 +451,172 @@
     }
 
     nom(id) { return (this.a.services().find(s => s.id === id) || {}).nom || id; }
+    /** Le nom d'un groupe de colonnes : la jonction, ou le service d'où part le chemin. */
+    groupe(g) { return g === 'Jonction' ? 'Jonction' : 'Depuis ' + this.nom(g); }
     atelier(id) { return (this.a.etat().ateliers || []).find(a => a.id === id) || null; }
 
     rendre() {
       this.fermerMenu();
       const etat = this.a.etat(), classes = this.a.classes();
       this.a.boite().innerHTML = this.sectionParcours(etat, classes) + this.sectionTableau(etat, classes);
+      const g = this.diagramme(); if (g) { g.selection = this.sel || null; g.rendre(); }
       this.filtrer();
     }
 
     /* ---- 1. les parcours --------------------------------------------- */
 
     sectionParcours(etat, classes) {
-      const services = this.a.services();
-      const optionsService = choisi => services.map(s =>
-        `<option value="${esc(s.id)}" ${s.id === choisi ? 'selected' : ''}>${esc(s.nom)}</option>`).join('')
-        + (choisi && !services.some(s => s.id === choisi) ? `<option value="${esc(choisi)}" selected>${esc(choisi)} (absent du plan)</option>` : '');
       const optionsParcours = choisi => '<option value="">aucun (liens de l’unité)</option>'
         + etat.parcours.map(p => `<option value="${esc(p.id)}" ${p.id === choisi ? 'selected' : ''}>${esc(p.nom)}</option>`).join('');
-
-      const cartes = etat.parcours.map(p => {
-        const ouvert = this.ouvert === p.id;
+      const p = this.parcoursActif(etat);
+      const I = root.OrlyIcones;
+      const puces = etat.parcours.map(x => `<button class="pc-puce${x === p ? ' actif' : ''}" data-pc-action="voir" data-parcours="${esc(x.id)}"
+        aria-pressed="${x === p}">${esc(x.nom)}</button>`).join('');
+      let corps = '<p class="mini-note">Aucun chemin : chaque repas suit les liens de l’unité.</p>';
+      if (p) {
         const cabines = P.CABINES.filter(c => etat.parcoursCabine[c] === p.id);
-        const propres = Object.entries(etat.parcoursClasse).filter(([, v]) => v === p.id).map(([k]) => k);
-        const n = classes.filter(c => (parcoursDe(etat, c) || {}).id === p.id).length;
-        const qui = `<span class="pc-qui">${cabines.length || propres.length ? 'pour ' : 'suivi par aucun repas'}
-          ${cabines.map(c => `<b class="pc-cab" title="${esc(c)}"><span class="puce-classe" data-cab="${c}"></span>${esc((P.NOM_CABINE || {})[c] || c)}</b>`).join(' ')}
-          ${propres.length ? ` + ${propres.slice(0, 3).map(x => esc(P.libelleClasse(x))).join(', ')}${propres.length > 3 ? '…' : ''}` : ''}
-          ${n ? `<span class="pc-n">· ${n} repas</span>` : ''}</span>`;
-        const edition = ouvert ? `<div class="pc-branches">${p.branches.map((b, ib) => `
-          <div class="pc-branche" data-branche="${ib}">
-            <input class="pc-branche-nom" value="${esc(b.nom)}" data-pc-champ="branche-nom" aria-label="Nom de la branche ${ib + 1}">
-            <div class="pc-chaine">${b.services.map((s, is) => `${is ? '<span class="pc-fleche" aria-hidden="true">→</span>' : ''}
-              <span class="pc-etape"><select data-pc-champ="etape" data-etape="${is}" aria-label="Étape ${is + 1} de ${esc(b.nom)}">${optionsService(s)}</select>
-              <button class="pc-x" data-pc-action="etape-retirer" data-etape="${is}" title="Retirer cette étape" aria-label="Retirer l’étape ${is + 1}">×</button></span>`).join('')}
-              <span class="pc-fleche" aria-hidden="true">→</span>
-              <select data-pc-champ="etape-ajout" aria-label="Ajouter une étape à ${esc(b.nom)}"><option value="">+ étape</option>${optionsService('')}</select>
-            </div>
-            <button class="btn btn-sm at-danger" data-pc-action="branche-retirer">Retirer la branche</button>
-          </div>`).join('')}
-          <div class="pc-actions">
-            <button class="btn btn-sm" data-pc-action="branche-ajouter">+ Branche</button>
+        const propres = Object.keys(etat.parcoursClasse).filter(k => etat.parcoursClasse[k] === p.id);
+        const qui = cabines.length || propres.length
+          ? 'Suivi par ' + cabines.map(c => `<b class="pc-cab"><span class="puce-classe" data-cab="${c}"></span>${esc((P.NOM_CABINE || {})[c] || c)}</b>`).join(' ')
+            + (propres.length ? ` + ${propres.slice(0, 3).map(x => esc(P.libelleClasse(x))).join(', ')}${propres.length > 3 ? '…' : ''}` : '')
+          : 'Suivi par aucun repas pour l’instant';
+        const dedans = new Set(P.servicesDuParcours(p));
+        const hors = this.a.services().filter(s => !dedans.has(s.id));
+        corps = `<div class="pc-outils" data-parcours="${esc(p.id)}">
+            <label class="pc-nom-champ">Nom <input class="pc-nom" value="${esc(p.nom)}" data-pc-champ="nom" aria-label="Nom du chemin"></label>
+            <label>Ajouter un service <select data-pc-champ="noeud-ajout" aria-label="Ajouter un service à ce chemin">
+              <option value="">Choisir…</option>${hors.map(s => `<option value="${esc(s.id)}">${esc(s.nom)}</option>`).join('')}</select></label>
+            <span class="pc-outils-fin"></span>
+            <button class="btn btn-sm" data-pc-action="reorganiser" title="Ranger les services d’eux-mêmes, de gauche à droite dans le sens du flux">Réorganiser</button>
             <button class="btn btn-sm at-danger" data-pc-action="parcours-retirer">Supprimer ce chemin</button>
-            <button class="btn btn-play btn-sm" data-pc-action="fermer">Terminé</button>
-          </div></div>` : '';
-        return `<article class="pc-carte${ouvert ? ' ouvert' : ''}" data-parcours="${esc(p.id)}">
-          <header class="pc-tete">
-            ${ouvert ? `<input class="pc-nom" value="${esc(p.nom)}" data-pc-champ="nom" aria-label="Nom du chemin">`
-              : `<h4>${esc(p.nom)}</h4>`}
-            ${ouvert ? '' : qui}
-            ${ouvert ? '' : `<button class="btn btn-sm" data-pc-action="ouvrir">Modifier</button>`}
-          </header>
-          ${ouvert ? edition : this.schema(p)}
-        </article>`;
-      }).join('');
-
+          </div>
+          <p class="pc-qui">${qui}</p>
+          <div class="pc-graphe" data-parcours="${esc(p.id)}"></div>
+          <div class="pc-panneau" data-parcours="${esc(p.id)}" aria-live="polite">${this.panneau(etat, classes, p)}</div>`;
+      }
       return `<section class="pc-sec" aria-labelledby="pc-t1" data-sous="at-chemins">
-        <div class="titre-aide at-titre-aide"><h3 class="at-titre" id="pc-t1">Le chemin des repas <span class="pc-sous">par où passe chaque repas</span></h3>
+        <div class="titre-aide at-titre-aide"><h3 class="at-titre" id="pc-t1">Le chemin des repas <span class="pc-sous">un diagramme : chaque service est un nœud, chaque lien dit qui livre qui</span></h3>
           <details class="aide"><summary aria-label="Qu’est-ce qu’un chemin ?">?</summary><span class="aide-corps">${AIDE_PARCOURS}</span></details></div>
         <div class="pc-defauts">
           <span class="pc-defauts-lab">Chemin de chaque classe</span>
           ${P.CABINES.map(c => `<label><span class="pc-lab-cab"><span class="puce-classe" data-cab="${c}"></span>${esc((P.NOM_CABINE || {})[c] || c)}</span><select data-pc-champ="cabine" data-cabine="${c}">${optionsParcours(etat.parcoursCabine[c])}</select></label>`).join('')}
         </div>
-        <div class="pc-cartes">${cartes || '<p class="mini-note">Aucun chemin : chaque repas suit les liens de l’unité.</p>'}</div>
-        <div class="pc-actions">
+        <div class="pc-puces" role="group" aria-label="Les chemins">${puces}
           <button class="btn btn-sm" data-pc-action="parcours-ajouter">+ Nouveau chemin</button>
-          ${etat.parcours.length ? '' : '<button class="btn btn-sm" data-pc-action="types">Créer les chemins types</button>'}
-        </div>
+          ${etat.parcours.length ? '' : '<button class="btn btn-sm" data-pc-action="types">Créer les chemins types</button>'}</div>
+        ${corps}
       </section>`;
     }
 
-    /* Le schéma d'un parcours : une ligne par branche, la jonction à droite. */
-    schema(p) {
-      if (!p.branches.length) return '<p class="mini-note">Ce chemin n’a pas encore de branche : « Modifier » pour en ajouter.</p>';
-      const derniers = p.branches.map(b => b.services[b.services.length - 1]);
-      const jonction = p.branches.length > 1 && derniers.every(x => x && x === derniers[0]) ? derniers[0] : null;
-      // Un plan de métro : une ligne de couleur par branche, une station par
-      // service, et toutes les lignes qui arrivent à la même station.
+    parcoursActif(etat) {
+      const liste = etat.parcours || [];
+      return liste.find(p => p.id === this.actif) || liste[0] || null;
+    }
+
+    /* Les nœuds du diagramme : un par service du chemin, avec ses équipes. */
+    noeudsDiagramme() {
+      const etat = this.a.etat(), p = this.parcoursActif(etat); if (!p) return [];
+      const c = couverture(etat, this.a.classes()).find(x => x.parcours.id === p.id);
+      const par = new Map(((c && c.etapes) || []).map(e => [e.service, e]));
       const I = root.OrlyIcones;
-      const boite = s => `<span class="pc-box" data-service="${esc(s)}"><span class="pc-station">${I ? I.ico(I.icoService(s, this.nom(s))) : ''}</span><span class="pc-st-nom">${esc(this.nom(s))}</span></span>`;
-      const fleche = '<span class="pc-fleche" aria-hidden="true"></span>';
-      const lanes = p.branches.map((b, ib) => {
-        const pas = jonction ? b.services.slice(0, -1) : b.services;
-        return `<div class="pc-lane" data-ligne="${ib % 4}"><span class="pc-lane-nom">${esc(b.nom)}</span>
-          <div class="pc-lane-etapes">${pas.map(boite).join(fleche)}${jonction ? '<span class="pc-vers" aria-hidden="true"></span>' : ''}</div></div>`;
-      }).join('');
-      return `<div class="pc-flux${jonction ? ' avec-jonction' : ''}">
-        <div class="pc-lanes">${lanes}</div>
-        ${jonction ? `<div class="pc-jonction-col">${boite(jonction)}</div>` : ''}
-      </div>`;
+      return P.servicesDuParcours(p).map(s => {
+        const e = par.get(s) || { equipes: [], fabriquent: [], manquantes: [] };
+        const n = e.equipes.length, noms = e.equipes.map(id => (this.atelier(id) || {}).nom || id);
+        const sous = e.lavage ? 'plonge' + (n > 1 ? ' · ' + n + ' équipes' : '')
+          : e.dispo && !e.fabriquent.length ? 'mise à disposition'
+          : !e.fabriquent.length ? 'aucune équipe'
+          : e.manquantes.length ? e.manquantes.length + ' repas sans équipe'
+          : n === 1 ? noms[0] : n + ' équipes';
+        const ton = e.lavage || e.dispo || (e.fabriquent.length && !e.manquantes.length) ? 'ok' : 'attente';
+        return { id: s, nom: this.nom(s), ico: I ? I.icoService(s, this.nom(s)) : 'service', sous, ton };
+      });
+    }
+
+    liensDiagramme() {
+      const p = this.parcoursActif(this.a.etat()); if (!p) return [];
+      return P.arcsDuParcours(p).map(a => ({ id: a.from + '>' + a.to, de: a.from, vers: a.to,
+        titre: this.nom(a.from) + ' livre ' + this.nom(a.to) }));
+    }
+
+    diagramme() {
+      if (this.graphe || !root.OrlyGraphe) return this.graphe;
+      const ed = this;
+      this.graphe = new root.OrlyGraphe.Diagramme({
+        hote: () => ed.a.boite().querySelector('.pc-graphe'),
+        get cle() { const p = ed.parcoursActif(ed.a.etat()); return 'chemin:' + (p ? p.id : ''); },
+        titre: 'Le diagramme du chemin : un nœud par service, un lien par livraison',
+        noeuds: () => ed.noeudsDiagramme(),
+        liens: () => ed.liensDiagramme(),
+        relier: (de, vers) => ed.relier(de, vers),
+        retirerLien: id => ed.retirerLien(id),
+        choisir: sel => { ed.sel = sel; ed.rendrePanneau(); },
+        message: t => ed.dire(t)
+      });
+      return this.graphe;
+    }
+
+    relier(de, vers) {
+      const p = this.parcoursActif(this.a.etat()); if (!p) return 'Aucun chemin choisi.';
+      if (P.arcsDuParcours(p).some(a => a.from === de && a.to === vers)) return this.nom(de) + ' livre déjà ' + this.nom(vers) + '.';
+      if (creeBoucle(p, de, vers)) return 'Impossible : ' + this.nom(vers) + ' livre déjà ' + this.nom(de)
+        + ' (directement ou par d’autres services). Un repas tournerait en rond.';
+      this.a.changer(etat => {
+        const q = etat.parcours.find(x => x.id === p.id);
+        for (const s of [de, vers]) if (!q.noeuds.includes(s)) q.noeuds.push(s);
+        q.liens.push({ de, vers });
+      }, this.nom(de) + ' livre maintenant ' + this.nom(vers) + '.');
+      return '';
+    }
+
+    retirerLien(id) {
+      const p = this.parcoursActif(this.a.etat()); if (!p) return;
+      const [de, vers] = id.split('>');
+      this.sel = null;
+      this.a.changer(etat => {
+        const q = etat.parcours.find(x => x.id === p.id);
+        q.liens = q.liens.filter(l => !(l.de === de && l.vers === vers));
+      }, 'Lien retiré : ' + this.nom(de) + ' ne livre plus ' + this.nom(vers) + '. Vous pouvez annuler.');
+    }
+
+    dire(t) { const s = document.getElementById('at-status'); if (s) s.textContent = t || ''; }
+
+    /* Ce qu'on peut faire du service ou du lien choisi. */
+    panneau(etat, classes, p) {
+      const sel = this.sel;
+      if (sel && sel.type === 'lien') {
+        const [de, vers] = sel.id.split('>');
+        return `<p><b>${esc(this.nom(de))}</b> livre <b>${esc(this.nom(vers))}</b> : ${esc(this.nom(vers))} attend que ${esc(this.nom(de))} ait fini.</p>
+          <div class="row-btns"><button class="btn btn-sm at-danger" data-pc-action="lien-retirer" data-lien="${esc(sel.id)}">Retirer ce lien</button></div>`;
+      }
+      if (sel && sel.type === 'noeud' && P.servicesDuParcours(p).includes(sel.id)) {
+        const s = sel.id, c = couverture(etat, classes).find(x => x.parcours.id === p.id);
+        const e = ((c && c.etapes) || []).find(x => x.service === s) || { equipes: [], manquantes: [] };
+        const r = this.a.resultat ? this.a.resultat() : null;
+        const equipe = id => {
+          const a = this.atelier(id) || {};
+          const detail = a.type === 'lavage' ? 'plonge' : a.type === 'dispo' ? 'mise à disposition'
+            : (a.debut || '') + ' · ' + (a.personnes || 0) + ' pers. · ' + ((a.lots || []).length) + ' repas';
+          return `<button class="btn btn-sm pc-equipe" data-pc-action="fiche" data-atelier="${esc(id)}" title="Ouvrir sa fiche">${esc(a.nom || id)} <small>${esc(detail)}</small></button>`;
+        };
+        const I = root.OrlyIcones;
+        return `<p class="pc-pan-tete">${I ? I.ico(I.icoService(s, this.nom(s))) : ''}<b>${esc(this.nom(s))}</b>
+            <span>${e.equipes.length ? e.equipes.length + ' équipe' + (e.equipes.length > 1 ? 's' : '') : 'aucune équipe'}${e.manquantes.length ? ' · ' + e.manquantes.length + ' repas sans équipe ici' : ''}</span></p>
+          ${e.equipes.length ? `<div class="row-btns">${e.equipes.map(equipe).join('')}</div>` : ''}
+          <div class="row-btns">
+            <button class="btn btn-sm btn-play" data-pc-action="equipe-nouvelle" data-service="${esc(s)}"
+              title="Une équipe dans ce service, qui prépare les repas de ce chemin qui n’en ont pas encore ici">+ Nouvelle équipe ici</button>
+            <button class="btn btn-sm" data-pc-action="relier-depuis" data-service="${esc(s)}">Relier à…</button>
+            <button class="btn btn-sm at-danger" data-pc-action="noeud-retirer" data-service="${esc(s)}">Retirer du chemin</button>
+          </div>`;
+      }
+      const I = root.OrlyIcones;
+      return `<div class="pc-geste">${I ? I.ico('info') : ''}<span>Tirez le <b class="pc-rond">+</b> d’un service jusqu’à un autre pour les relier.
+        Cliquez un service pour voir ses équipes, en créer une ou le relier ; cliquez un lien pour le retirer.</span></div>`;
+    }
+
+    rendrePanneau() {
+      const etat = this.a.etat(), p = this.parcoursActif(etat), box = this.a.boite().querySelector('.pc-panneau');
+      if (box && p) box.innerHTML = this.panneau(etat, this.a.classes(), p);
     }
 
     /* ---- 2. qui fabrique quoi ---------------------------------------- */
@@ -526,14 +656,14 @@
       </div>
       <div class="qf-legende" aria-hidden="true"><span class="qf-l ok">équipe choisie</span><span class="qf-l libre">à choisir</span><span class="qf-l auto">sert tout le monde</span><span class="qf-l hors">ne passe pas par là</span></div>`;
 
-      // En-têtes : les branches, puis les services.
+      // En-têtes : un groupe par service de départ (« depuis la plonge »), puis la jonction.
       const groupes = [];
       for (const c of t.colonnes) {
         const g = groupes[groupes.length - 1];
         if (g && g.nom === c.groupe) g.n++; else groupes.push({ nom: c.groupe, n: 1 });
       }
       const tete = `<thead>
-        <tr class="qf-groupes"><th></th>${groupes.map((g, i) => `<th colspan="${g.n}" class="qf-g${g.nom === 'Jonction' ? ' jonction' : ''}" data-g="${i % 4}">${esc(g.nom)}</th>`).join('')}<th></th></tr>
+        <tr class="qf-groupes"><th></th>${groupes.map((g, i) => `<th colspan="${g.n}" class="qf-g${g.nom === 'Jonction' ? ' jonction' : ''}" data-g="${i % 4}">${esc(this.groupe(g.nom))}</th>`).join('')}<th></th></tr>
         <tr><th scope="col" class="qf-coin">Repas</th>
         ${t.colonnes.map(c => {
           const n = c.fabriquent.length, libres = c.libres.length;
@@ -614,7 +744,7 @@
         const y = 24 + i * (H + 4);
         const saute = e.absent || e.debut == null;
         const lab = `<text class="qf-t-svc${saute ? ' saute' : ''}" x="4" y="${y + 13}">${esc(this.nom(e.service))}</text>
-          <text class="qf-t-br" x="4" y="${y + 24}">${esc(e.branche)}${saute ? ' · sautée, sans équipe' : ''}</text>`;
+          <text class="qf-t-br" x="4" y="${y + 24}">${esc(this.groupe(e.branche))}${saute ? ' · sautée, sans équipe' : ''}</text>`;
         if (saute) return lab + `<line class="qf-t-vide" x1="${G}" y1="${y + H / 2}" x2="${G + W}" y2="${y + H / 2}"/>`;
         if (e.dispo) return lab + `<rect class="qf-t-dispo" x="${x(e.debut) - 2}" y="${y + 4}" width="4" height="${H - 8}"><title>${esc(this.nom(e.service))} : disponible</title></rect>`;
         const fin = e.fin == null ? t1 : e.fin, w = Math.max(3, x(fin) - x(e.debut));
@@ -736,40 +866,54 @@
       const q = e.target.closest('[data-qf]');
       if (q && q.tagName !== 'INPUT') return this.geste(q);
       const b = e.target.closest('[data-pc-action]'); if (!b) return;
-      const carte = b.closest('[data-parcours]'), pid = carte && carte.dataset.parcours;
-      const br = b.closest('[data-branche]'), ib = br ? +br.dataset.branche : -1;
       const action = b.dataset.pcAction;
-      if (action === 'ouvrir') { this.ouvert = pid; return this.rendre(); }
-      if (action === 'fermer') { this.ouvert = null; return this.rendre(); }
-      const trouver = etat => etat.parcours.find(p => p.id === pid);
+      const p = this.parcoursActif(this.a.etat()), pid = p && p.id;
+      const trouver = etat => etat.parcours.find(x => x.id === pid);
+      const s = b.dataset.service;
+      if (action === 'voir') { this.actif = b.dataset.parcours; this.sel = null; return this.rendre(); }
+      if (action === 'reorganiser') return this.diagramme() && this.diagramme().reorganiser();
+      if (action === 'relier-depuis') return this.diagramme() && this.diagramme().relierDepuis(s);
+      if (action === 'lien-retirer') return this.retirerLien(b.dataset.lien);
+      if (action === 'fiche') return this.a.ouvrirAtelier && this.a.ouvrirAtelier(b.dataset.atelier, true);
       if (action === 'parcours-ajouter') {
         const id = uid();
-        this.ouvert = id;
+        this.actif = id; this.sel = null;
         return this.a.changer(etat => {
-          etat.parcours.push({ id, nom: 'Nouveau chemin', branches: [{ nom: 'Branche 1', services: [] }] });
-        }, 'Chemin créé : ajoutez ses étapes, branche par branche.');
+          etat.parcours.push({ id, nom: 'Nouveau chemin', noeuds: [], liens: [] });
+        }, 'Chemin créé : ajoutez ses services (« Ajouter un service »), puis reliez-les en tirant un trait.');
       }
       if (action === 'types') {
-        const t = parcoursTypes(this.a.services().map(s => s.id));
+        const t = parcoursTypes(this.a.services().map(x => x.id));
         return this.a.changer(etat => { Object.assign(etat, t); }, 'Chemins types créés.');
       }
       if (action === 'parcours-retirer') {
-        const p = trouver(this.a.etat());
         if (!confirm('Supprimer le chemin « ' + (p ? p.nom : '') + ' » ? Les repas qui le suivaient retomberont sur les liens de l’unité. L’action est annulable.')) return;
-        this.ouvert = null;
+        this.actif = null; this.sel = null;
         return this.a.changer(etat => {
           etat.parcours = etat.parcours.filter(x => x.id !== pid);
           for (const c of Object.keys(etat.parcoursCabine)) if (etat.parcoursCabine[c] === pid) delete etat.parcoursCabine[c];
           for (const c of Object.keys(etat.parcoursClasse)) if (etat.parcoursClasse[c] === pid) delete etat.parcoursClasse[c];
         }, 'Chemin supprimé.');
       }
-      if (action === 'branche-ajouter') return this.a.changer(etat => {
-        const p = trouver(etat); p.branches.push({ nom: 'Branche ' + (p.branches.length + 1), services: [] });
-      }, 'Branche ajoutée.');
-      if (action === 'branche-retirer') return this.a.changer(etat => { trouver(etat).branches.splice(ib, 1); }, 'Branche retirée.');
-      if (action === 'etape-retirer') return this.a.changer(etat => {
-        trouver(etat).branches[ib].services.splice(+b.dataset.etape, 1);
-      }, 'Étape retirée.');
+      if (action === 'noeud-retirer') {
+        this.sel = null;
+        return this.a.changer(etat => {
+          const q = trouver(etat);
+          q.noeuds = q.noeuds.filter(x => x !== s);
+          q.liens = q.liens.filter(l => l.de !== s && l.vers !== s);
+        }, this.nom(s) + ' quitte ce chemin, avec ses liens. Vous pouvez annuler.');
+      }
+      if (action === 'equipe-nouvelle') {
+        const classes = this.a.classes();
+        const c = couverture(this.a.etat(), classes).find(x => x.parcours.id === pid);
+        const manquantes = ((((c && c.etapes) || []).find(x => x.service === s)) || {}).manquantes || [];
+        let cree = null;
+        this.a.changer(etat => { cree = nouvelleEquipe(etat, s, this.nom(s), [], classes); affecter(etat, s, manquantes, cree.id, classes); });
+        if (!cree || !this.a.ouvrirAtelier) return;
+        return this.a.ouvrirAtelier(cree.id, false, 'Équipe « ' + cree.nom + ' » créée'
+          + (manquantes.length ? ' : elle prépare les ' + manquantes.length + ' repas de ce chemin qui n’avaient personne ici' : '')
+          + '. Réglez son heure et son effectif dans l’onglet « Les équipes » : sa fiche y est ouverte.');
+      }
     }
 
     geste(q) {
@@ -822,23 +966,21 @@
       const el = e.target;
       if (el.dataset.qf === 'incompletes') { this.incompletes = el.checked; return this.filtrer(); }
       const champ = el.dataset.pcChamp; if (!champ) return;
-      const carte = el.closest('[data-parcours]'), pid = carte && carte.dataset.parcours;
-      const br = el.closest('[data-branche]'), ib = br ? +br.dataset.branche : -1;
+      const p = this.parcoursActif(this.a.etat()), pid = p && p.id;
       const v = el.value;
+      if (champ === 'noeud-ajout' && !v) return;
       // Laisser le `change` se terminer avant de redessiner : sinon le champ
       // qu'on quitte est arraché pendant son propre événement.
       setTimeout(() => this.a.changer(etat => {
-        const p = etat.parcours.find(x => x.id === pid);
+        const q = etat.parcours.find(x => x.id === pid);
         if (champ === 'cabine') { if (v) etat.parcoursCabine[el.dataset.cabine] = v; else delete etat.parcoursCabine[el.dataset.cabine]; }
-        else if (champ === 'nom') p.nom = v;
-        else if (champ === 'branche-nom') p.branches[ib].nom = v;
-        else if (champ === 'etape') p.branches[ib].services[+el.dataset.etape] = v;
-        else if (champ === 'etape-ajout' && v) p.branches[ib].services.push(v);
-      }, 'Chemin enregistré.'), 0);
+        else if (champ === 'nom') q.nom = v;
+        else if (champ === 'noeud-ajout' && !q.noeuds.includes(v)) { q.noeuds.push(v); this.sel = { type: 'noeud', id: v }; }
+      }, champ === 'noeud-ajout' ? this.nom(v) + ' ajouté au chemin : tirez un trait depuis ou vers lui.' : 'Chemin enregistré.'), 0);
     }
   }
 
-  const api = { parcoursTypes, validerParcours, etapesOrdonnees, couverture, confier, nouvelleEquipe,
+  const api = { depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, couverture, confier, nouvelleEquipe,
     completer, colonnes, tableau, affecter, chronogramme, EditeurParcours };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyParcours = api;

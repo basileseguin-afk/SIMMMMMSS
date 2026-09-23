@@ -15,18 +15,29 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const dossier=fs.mkdtempSync(path.join(os.tmpdir(),'ory-excel-'));
  const telecharger=async(sel,nom)=>{const [d]=await Promise.all([page.waitForEvent('download'),page.locator(sel).click()]);
    const f=path.join(dossier,nom);await d.saveAs(f);return {f,nom:d.suggestedFilename()};};
+ // Tirer le « + » d'un service jusqu'à un autre, dans le diagramme des chemins.
+ const tirer=async(de,vers)=>{
+   await page.locator(`.pc-graphe [data-noeud=${vers}]`).scrollIntoViewIfNeeded();
+   const a=await page.locator(`.pc-graphe .gr-port[data-port=${de}]`).boundingBox(),b=await page.locator(`.pc-graphe [data-noeud=${vers}] .gr-fond`).boundingBox();
+   await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();
+   await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:6});await page.mouse.up();await attendre();
+ };
+ const liens=id=>page.evaluate(id=>Sim.ateliers.state.parcours.find(p=>p.id===id).liens.map(l=>l.de+'>'+l.vers),id);
  const lot=(service,classe)=>page.evaluate(([s,c])=>Sim.ateliers.resultat.lots.find(l=>l.service===s&&l.classes.includes(c)),[service,classe]);
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
   await page.locator('[data-view=ateliers]').click();await attendre();
 
   // 1. Deux parcours types, prêts : YC ne passe ni par la cuisine ni par la légumerie.
-  assert.equal(await page.locator('.pc-carte').count(),2);
+  assert.equal(await page.locator('.pc-puce').count(),2,'deux chemins, deux pastilles');
   const defaut=c=>page.locator(`[data-pc-champ=cabine][data-cabine=${c}]`).inputValue();
   assert.equal(await defaut('BC'),'complet');
   assert.equal(await defaut('YC'),'sans-cuisine');
-  assert.match(await page.locator('[data-parcours=complet] .pc-jonction-col').textContent(),/MONTAGE/,'les branches se rejoignent au montage');
-  assert.equal(await page.locator('[data-parcours=sans-cuisine] .pc-box[data-service=cuisine], [data-parcours=sans-cuisine] .pc-box[data-service=decontam]').count(),0,
+  // Le chemin est un diagramme : un nœud par service, un trait par livraison.
+  assert.equal(await page.locator('.pc-graphe .gr-lien[data-lien$=">prepa"]').count(),3,'trois traits arrivent au montage');
+  await page.locator('[data-sous-onglet=at-chemins]').click();
+  await page.locator('[data-pc-action=voir][data-parcours=sans-cuisine]').click();await attendre();
+  assert.equal(await page.locator('.pc-graphe [data-noeud=cuisine], .pc-graphe [data-noeud=decontam]').count(),0,
     'le parcours sans cuisine n’a ni cuisine ni légumerie');
 
   // Trois équipes : cuisine, dotation, montage. Le montage YC n'attend que la dotation.
@@ -52,14 +63,29 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     'la cuisine est désormais sur son chemin, sans équipe pour AF/YC : sa case le dit');
   await page.selectOption('[data-at-champ=classe-parcours][data-classe="AF/YC"]','');await attendre();
 
-  // Modifier un parcours : ajouter une étape à une branche.
-  await page.locator('[data-sous-onglet=at-chemins]').click();await page.locator('[data-parcours=sans-cuisine] [data-pc-action=ouvrir]').click();await attendre();
-  const branche=page.locator('[data-parcours=sans-cuisine] [data-branche="0"]');
-  await branche.locator('[data-pc-champ=etape-ajout]').selectOption('armement');await attendre();
-  assert.deepEqual(await page.evaluate(()=>Sim.ateliers.state.parcours.find(p=>p.id==='sans-cuisine').branches[0].services),
-    ['appros','prepa','armement']);
-  await page.locator('[data-parcours=sans-cuisine] [data-branche="0"] [data-pc-action=etape-retirer][data-etape="2"]').click();await attendre();
-  await page.locator('[data-parcours=sans-cuisine] [data-pc-action=fermer]').click();await attendre();
+  // Modifier un chemin dans son diagramme : ajouter un service, le relier en
+  // tirant un trait, refuser une boucle, retirer le lien puis le service.
+  await page.locator('[data-sous-onglet=at-chemins]').click();await attendre();
+  await page.locator('[data-pc-action=voir][data-parcours=sans-cuisine]').click();await attendre();
+  const avant=await liens('sans-cuisine');
+  await page.selectOption('[data-pc-champ=noeud-ajout]','armement');await attendre();
+  assert.equal(await page.locator('.pc-graphe [data-noeud=armement]').count(),1,'le service rejoint le diagramme');
+  await tirer('prepa','armement');
+  assert.deepEqual(await liens('sans-cuisine'),avant.concat('prepa>armement'),'tirer un trait crée le lien');
+  assert.match(await page.locator('#at-status').textContent(),/MONTAGE livre maintenant ARMEMENT/);
+  // « Relier à… » fait la même chose sans glisser — et une boucle est refusée.
+  await page.locator('.pc-graphe [data-noeud=armement]').click();await attendre();
+  await page.locator('[data-pc-action=relier-depuis]').click();await attendre();
+  await page.locator('.pc-graphe [data-noeud=appros]').click();await attendre();
+  assert.deepEqual(await liens('sans-cuisine'),avant.concat('prepa>armement'),'armement → appros ferait tourner en rond');
+  assert.match(await page.locator('#at-status').textContent(),/Impossible[\s\S]*tournerait en rond/);
+  // Un lien choisi se retire par sa croix.
+  await page.locator('.pc-graphe .gr-lien[data-lien="prepa>armement"] .gr-prise').click({force:true});await attendre();
+  await page.locator('.pc-graphe .gr-retirer').click();await attendre();
+  assert.deepEqual(await liens('sans-cuisine'),avant);
+  await page.locator('.pc-graphe [data-noeud=armement]').click();await attendre();
+  await page.locator('[data-pc-action=noeud-retirer]').click();await attendre();
+  assert.equal(await page.locator('.pc-graphe [data-noeud=armement]').count(),0,'et le service quitte le chemin');
 
   // 2. Le classeur des ateliers : export, modification « dans Excel », import.
   const {f:fAt,nom:nomAt}=await telecharger('#at-export','ateliers.xlsx');
@@ -74,7 +100,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const col=at.lignes[0].indexOf('Personnes');
   at.lignes.find(l=>l[0]==='Cuisine')[col]=2;
   fab.lignes.push(['Cuisine',2,'DL/BC']);
-  T.feuille(feuilles,'Parcours').lignes.push(['Complet','Armement','ARMEMENT > MONTAGE']);
+  assert.deepEqual(T.feuille(feuilles,'Parcours').lignes[0],['Parcours','De','Vers'],'une ligne par lien du diagramme');
+  T.feuille(feuilles,'Parcours').lignes.push(['Complet','Armement','MONTAGE']);
   const modifie=path.join(dossier,'ateliers-modifie.xlsx');
   fs.writeFileSync(modifie,T.ecrireClasseur(feuilles));
   await page.locator('#at-import').setInputFiles(modifie);await attendre(400);
@@ -82,7 +109,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const cuisine=etat.ateliers.find(a=>a.nom==='Cuisine');
   assert.equal(cuisine.personnes,2);
   assert.deepEqual(cuisine.lots,[['AF/BC'],['DL/BC']]);
-  assert.ok(etat.parcours.find(p=>p.id==='complet').branches.some(b=>b.services.join('>')==='armement>prepa'));
+  assert.ok(etat.parcours.find(p=>p.id==='complet').liens.some(l=>l.de==='armement'&&l.vers==='prepa'));
   assert.match(await page.locator('#at-status').textContent(),/Ateliers importés/);
   // Un classeur faux est refusé en bloc, et dit quoi corriger.
   at.lignes.push(['Fantaisie','GARAGE','manuel','05:00']);

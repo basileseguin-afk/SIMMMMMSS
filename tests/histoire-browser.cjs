@@ -85,7 +85,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator('#etapes [data-view=reglages]').click();await attendre();
   assert.ok(await page.locator('.rg-barres .rg-barre i[data-cab=BC]').count()>5,'les minutes se lisent en barres');
   await page.locator('#etapes [data-view=ateliers]').click();await attendre();
-  assert.ok(await page.locator('.pc-flux .pc-station svg').count()>5,'le chemin est un plan de métro');
+  assert.ok(await page.locator('.pc-graphe .gr-noeud .gr-ico').count()>5,'le chemin est un diagramme de nœuds');
 
   // 7. Épuré : chaque vue montre une chose à la fois, derrière des onglets.
   const onglets=async()=>page.locator('#sous-onglets [data-sous-onglet]').evaluateAll(bs=>bs.map(b=>b.dataset.sousOnglet));

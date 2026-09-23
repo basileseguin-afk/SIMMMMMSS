@@ -92,7 +92,7 @@ de relire le cahier des charges initial :
 | M7 | **Plonge** : débit par tunnel **et** plafond de l'ensemble | 22/09 | ✅ | |
 | M8 | **Mise à disposition** (magasin, appros…) : ni man-minutes ni durée | 22/09 | ✅ | |
 | M9 | **Boucle du matériel** : départs → retours → plonge → propre ; stock = retours − départs | 22/09 | 🟡 | Un seul compte pour tout le matériel ; pas de distinction trolley / porcelaine / compagnie ; **pas de report d'un jour sur l'autre** |
-| M10 | **Parcours** en branches parallèles qui se rejoignent ; YC sans cuisine ni légumerie ; branche magasin → montage | 23/09 | ✅ | |
+| M10 | **Parcours** en branches parallèles qui se rejoignent ; YC sans cuisine ni légumerie ; branche magasin → montage | 23/09 | ✅ | Depuis le 23/09 au soir : un graphe de nœuds et de liens (voir E11) |
 | M11 | **Simuler plusieurs journées enchaînées** — cuisine J−2, prépa J−1, CRL du soir le matin de J | Feuille de route étape 2 ; **objectif final confirmé le 23/09** | 🟡 | Une équipe peut commencer de J−7 à J, mais **une seule journée est simulée** et rien ne passe d'un jour au suivant |
 | M12 | Stockages à **capacité finie** (frigos, frigo handling) qui bloquent le flux | CdC §4, feuille de route étape 5 | ❌ | Décrits sur le plan, sans effet sur le calcul |
 | M13 | **Compétences** et affectation des personnes (vivier partagé entre ateliers) | Feuille de route étape 3 ; 21/09 | ❌ | Le vivier partagé a disparu avec la refonte ; chaque équipe a son effectif propre |
@@ -154,6 +154,7 @@ de relire le cahier des charges initial :
 | E7 | Moins textuel, **coloré, visuel** | 23/09 | ✅ | Couleurs par sens, pictogrammes, jauges, frise, plan de métro, barres |
 | E8 | Nettoyage de tout ce qui n'est plus utilisé | 23/09 | ✅ | |
 | E9 | Tester l'interface avec de vrais utilisateurs | — | ❌ | Jamais fait ; seul moyen de savoir si E6, E7 et E10 sont atteints |
+| E11 | Chemins, liens de l'unité et équipes créés dans un **diagramme de nœuds** : relier deux services en tirant un trait | 23/09 | ✅ | Chemins et liens de l'unité dessinés ; les équipes s'affichent et se créent sur les nœuds du chemin. L'affectation équipe × repas reste un tableau (c'est un croisement, pas un graphe) |
 | E10 | Pages **épurées** : ne plus tout montrer à la fois, onglets et sous-onglets | 23/09 | ✅ | Deux à cinq onglets par étape, un seul affiché ; bandeau de contexte retiré ; indicateurs de la journée dans leur onglet. Pas de sous-sous-onglet : aucun onglet n'en a eu besoin |
 
 ## 10. Méthode et fiabilité (feuille de route d'Astra)
@@ -161,7 +162,7 @@ de relire le cahier des charges initial :
 | # | Exigence | État | Écart |
 |---|---|---|---|
 | F1 | Glossaire, registre des décisions, dictionnaire des données (`REGLES_METIER.md`, `DATA_DICTIONARY.md`) | 🟡 | Couvert en partie par `MODELE_ATELIERS.md` et `FORMATS_EXCEL.md` ; pas de registre des décisions |
-| F2 | Tests automatiques | ✅ | 183 tests purs, 15 parcours navigateur |
+| F2 | Tests automatiques | ✅ | 193 tests purs, 16 parcours navigateur |
 | F3 | **Calibration** sur des journées observées | ❌ | Il faut l'étude de man-minutes et des relevés terrain |
 | F4 | **Validation** sur des journées distinctes, tolérances fixées avec Basile | ⏸ | **Au fil de l'eau** (23/09) : les tolérances se fixeront à mesure que les données arrivent |
 
@@ -232,6 +233,7 @@ Réponse attendue de Basile ; sans elle, le modèle actuel reste en place.
 | 23/09 | **Objectif final : plusieurs journées enchaînées** | Basile | |
 | 23/09 | Validation du modèle au fil de l'eau | Basile | Les données arrivent progressivement |
 | 23/09 | Animations reportées | Basile | |
+| 23/09 | Chemins et liens dessinés en diagramme de nœuds ; les parcours deviennent des graphes (nœuds + liens) | Basile | Plus simple, plus intuitif, et un graphe se raisonne bien mathématiquement |
 | 23/09 | Pages découpées en sous-onglets, une chose à la fois | Basile (proposition), Claude (découpage) | « Les pages sont beaucoup trop chargées, le cerveau s'y perd » |
 
 **Pourquoi JavaScript plutôt que Python.**

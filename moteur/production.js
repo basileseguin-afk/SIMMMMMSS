@@ -279,9 +279,10 @@
    *  un plateau d'économie ne voit ni la cuisine ni la légumerie. Le graphe du
    *  Centre des flux décrit l'unité ; il ne dit pas le chemin de CHAQUE classe.
    *
-   *  Un parcours est un ensemble de BRANCHES. Chaque branche est un chemin,
-   *  service après service. Les branches partent en parallèle et se
-   *  rejoignent là où elles partagent un service :
+   *  Un parcours est un GRAPHE ORIENTÉ : des nœuds (les services) et des liens
+   *  « A livre B ». Il se dessine comme un diagramme de nœuds ; plusieurs
+   *  chemins partent en parallèle et se rejoignent là où un service a
+   *  plusieurs liens entrants :
    *
    *      Agro      appros → légumerie → cuisine → montage
    *      Matériel  plonge → dotation ─────────→ montage
@@ -292,9 +293,20 @@
    *  aucun parcours, le modèle retombe sur le graphe des flux.
    * --------------------------------------------------------------------*/
 
-  /** Les arcs d'un parcours : chaque paire consécutive de chaque branche. */
+  /** Les arcs d'un parcours : ses liens. L'ancienne écriture en branches
+   *  (chaque paire consécutive de chaque branche) reste lue. */
   function arcsDuParcours(parcours) {
     const arcs = [], vus = new Set();
+    if (parcours && Array.isArray(parcours.liens)) {
+      for (const l of parcours.liens) {
+        const de = l && (l.de ?? l.from ?? l[0]), vers = l && (l.vers ?? l.to ?? l[1]);
+        if (!de || !vers || de === vers) continue;
+        const k = de + '>' + vers;
+        if (vus.has(k)) continue; vus.add(k);
+        arcs.push({ from: de, to: vers });
+      }
+      return arcs;
+    }
     for (const b of ((parcours && parcours.branches) || [])) {
       const etapes = (b && b.services) || b || [];
       for (let i = 1; i < etapes.length; i++) {
@@ -308,9 +320,15 @@
     return arcs;
   }
 
-  /** Les services d'un parcours, dans l'ordre où ils apparaissent. */
+  /** Les services d'un parcours, dans l'ordre où ils apparaissent : ses
+   *  nœuds, puis ceux que ses liens nomment. */
   function servicesDuParcours(parcours) {
     const out = [];
+    if (parcours && (Array.isArray(parcours.noeuds) || Array.isArray(parcours.liens))) {
+      for (const s of (parcours.noeuds || [])) if (s && !out.includes(s)) out.push(s);
+      for (const a of arcsDuParcours(parcours)) for (const s of [a.from, a.to]) if (!out.includes(s)) out.push(s);
+      return out;
+    }
     for (const b of ((parcours && parcours.branches) || [])) {
       for (const s of ((b && b.services) || b || [])) if (s && !out.includes(s)) out.push(s);
     }
