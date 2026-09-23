@@ -30,7 +30,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     .map(h=>[...h.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join('').trim()));
   assert.equal(ordre[0],'Le modèle de production','il vient en premier');
   assert.ok(ordre.includes('Ancien moteur de démonstration'),'l’ancien est nommé pour ce qu’il est');
-  assert.match(await page.locator('#view-reglages').textContent(),/ne pilotent que la vue/);
+  assert.match(await page.locator('#view-reglages').textContent(),/ne pilotent plus que la comparaison A\/B/,'ce que l’ancien moteur pilote encore est dit');
   // Le barème n'est pas calibré : le dire là où on le modifie.
   assert.match(await page.locator('#rg-alerte').textContent(),/non calibrées/);
 

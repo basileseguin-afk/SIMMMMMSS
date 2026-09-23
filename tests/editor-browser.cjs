@@ -44,7 +44,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await click('[data-action=select][data-zone=cuisine]');await click('#pe-focus');await page.screenshot({path:path.join(os.tmpdir(),'ory-editor-desktop.png'),fullPage:true});
   await click('#btn-theme');await page.waitForTimeout(200);await page.screenshot({path:path.join(os.tmpdir(),'ory-editor-dark.png'),fullPage:true});
   await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:path.join(os.tmpdir(),'ory-editor-mobile.png'),fullPage:true});
-  await click('#edit-done');assert.equal(await page.locator('#btn-play').isDisabled(),false);assert.equal(await page.locator('[data-pe-tool=rect]').isVisible(),false);assert.deepEqual(errors,[]);
+  await click('#edit-done');assert.notEqual(await page.locator('#run-state').textContent(),'Édition du plan');assert.equal(await page.locator('#btn-play').isDisabled(),await page.evaluate(()=>Sim.vue.vide),'hors édition, seul un jour vide empêche de lire');assert.equal(await page.locator('[data-pe-tool=rect]').isVisible(),false);assert.deepEqual(errors,[]);
   console.log('Editor browser passed: legacy migration, storage zones, constant handles, drawing, movement, resize, undo/redo, locking, duplicate/delete, polygons, pan, import/export/reload, desktop/dark/mobile.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

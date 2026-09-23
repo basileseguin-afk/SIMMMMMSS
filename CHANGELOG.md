@@ -5,6 +5,57 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-23 — La vue Simulation relit la journée des ateliers
+
+Troisième des trois points d'ergonomie. La vue Simulation tournait encore sur
+l'ancien moteur : effectifs par curseur, files, contenances. On décrivait
+l'unité dans « Ateliers de travail » et on en regardait **une autre** sur le
+plan. Deux vérités sur le même écran.
+
+Le modèle par ateliers calcule la journée **d'un coup** : il n'y a donc plus
+rien à « lancer », il y a une journée à **relire**.
+
+- **Transport** : « ▶ Lire », « ⏭ Pas » (saute au prochain changement, pas à
+  la minute suivante), « ↺ Début » et un **curseur de temps** qui va dans les
+  deux sens. Sans atelier décrit, le bouton est grisé et le dit : « Rien à
+  relire : décrivez des ateliers ».
+- **Plus de verrou** : changer un atelier, un réglage ou le programme de vols
+  recalcule la journée dans l'instant. « Recommencer » disparaît.
+- **Le plan** : quatre états seulement — au travail, attend un amont (en
+  pointillé, pour ne pas dépendre de la couleur), a fini, pas commencé. Au début
+  de la journée il reprend l'état de paramétrage ; il n'existe plus de service
+  « hors calcul ».
+- **Les indicateurs** : « Échéances tenues » ne juge que les échéances **déjà
+  passées** — à l'aube il affiche « — », plus un « 0 % » rouge qui accusait une
+  journée n'ayant rien raté. Puis « Échéance dépassée », « Au travail »,
+  « En attente ».
+- **Panneau de droite** : le point d'attention nomme le poste qui attend
+  depuis le plus longtemps et, pour un service choisi, ses équipes et ses lots
+  avec leurs heures. « La journée calculée » résume le résultat final. Le
+  graphique et les taux d'occupation de l'ancien moteur sont retirés.
+- **Vols** : un départ est suivi classe par classe. Une classe que personne ne
+  fabrique est dite « Non fabriqué — onglet Ateliers » au lieu d'un faux retard.
+  Les filtres correspondent enfin à leurs libellés.
+- **Export** : la journée calculée (départs, classes, journal des lots),
+  et non plus l'état interne de l'ancien moteur.
+
+Corrigé au passage :
+
+- l'import d'un programme de vols ne recalculait plus la journée des ateliers
+  (régression de cette refonte, attrapée par le test de fumée) ;
+- au survol, les boutons de l'en-tête passaient en texte vert sur fond bleu
+  foncé, illisible ;
+- deux anciens bouts de code réactivaient « Lire » sur une journée vide.
+
+Les curseurs de l'ancien moteur, dans Réglages, ne pilotent plus que la
+comparaison A/B ; ils le disent. Leur suppression est l'étape suivante.
+
+- Fichiers : `simulation.js` (nouveau), `replay.js`, `sim.js`, `index.html`,
+  `demarrage.css`, `usability.css`, `reglages.js` ; tests `replay`,
+  `browser-smoke`, `etat-plan-browser`, `import-browser`, `editor-browser`,
+  `storage-browser`, `reglages-browser`.
+- Vérification : 205 tests purs et treize parcours navigateur au vert.
+
 ## 2026-09-22 — Le barème, un service à la fois
 
 Deuxième des trois points d'ergonomie. Onze services × cinq classes × deux

@@ -82,11 +82,15 @@
   function chiffresA(resultat, t) {
     const par = (resultat && resultat.parClasse) || {};
     const suivies = Object.values(par).filter(c => !c.absente);
-    let sorties = 0, enRetard = 0, sortiesEnRetard = 0;
+    let sorties = 0, enRetard = 0, sortiesEnRetard = 0, exigibles = 0, tenues = 0;
     for (const c of suivies) {
       const dehors = c.fin != null && c.fin <= t;
       if (dehors) { sorties++; if (c.fin > c.echeance) sortiesEnRetard++; }
       else if (t > c.echeance) enRetard++;
+      // Une échéance passée est une promesse à juger : tenue si la classe est
+      // sortie avant. Tant qu'aucune n'est passée, il n'y a rien à juger — et
+      // afficher « 0 % » à l'aube accuserait une journée qui n'a rien raté.
+      if (c.echeance <= t) { exigibles++; if (c.fin != null && c.fin <= c.echeance) tenues++; }
     }
     const services = servicesA(resultat, t);
     const etats = Object.values(services);
@@ -95,6 +99,8 @@
       sorties,
       sortiesEnRetard,
       enRetard,
+      exigibles,
+      tenues,
       auTravail: etats.filter(s => s.etat === 'travail').length,
       enAttente: etats.filter(s => s.etat === 'attente').length,
       part: suivies.length ? Math.round(sorties / suivies.length * 100) : null

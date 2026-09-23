@@ -210,27 +210,29 @@ en gardant les deux entrées.
 ## 7. Vérifier avant de livrer
 
 ```bash
-node --test tests/*.test.cjs     # 193 tests purs
+node --test tests/*.test.cjs     # 205 tests purs
 node tests/browser-smoke.cjs     # puis les 12 autres parcours (Playwright + Chromium)
 ```
 
 | Parcours | Couvre |
 |---|---|
-| `browser-smoke` | navigation, contrôles, import, export, thèmes, mobile |
-| `import-browser` | échec de lecture puis réimport, numéros de ligne, scénarios A/B, matériel |
+| `browser-smoke` | navigation, relecture de la journée, vols, import, export, thèmes, mobile |
+| `import-browser` | échec de lecture puis réimport, numéros de ligne, scénarios A/B (ancien moteur), export de la journée |
 | `editor-browser` | gestes de l'éditeur, migration, annulation, import/export |
 | `storage-browser` | stockages par service, clics réels, migration v2 |
 | `flows-browser` | centre des flux |
 | `usability-browser` | repères d'ergonomie : titres, vues, contrastes |
 | `sauvegarde-browser` | sauvegarde complète : export, refus atomique, restauration |
 | `ateliers-browser` | ateliers de travail : saisie, calcul, planning, persistance |
-| `etat-plan-browser` | état de paramétrage sur le plan et bascule des légendes |
+| `etat-plan-browser` | état de paramétrage sur le plan, quatre états de la relecture, bascule des légendes |
 | `zoom-browser` | bornes du zoom, cadrage, clavier, bridage du déplacement |
 | `annexe-browser` | seconde salle d'un atelier : création, aménagement, liaisons propres |
 | `reglages-browser` | barème, rendement, régime de poste, import/export, séparation d'avec l'ancien moteur |
 | `aide-browser` | aucun pavé de texte imposé, l'aide s'ouvre sans rien déplacer, chaque « ? » se nomme |
 
-Le fil de mise en route est couvert par `tests/demarrage.test.cjs`, en tests
+La relecture de la journée (`replay.js` : où en est chaque service à l'instant
+t) est couverte par `tests/replay.test.cjs`, en tests purs. Le fil de mise en
+route est couvert par `tests/demarrage.test.cjs`, en tests
 purs : c'est une fonction, `etapes(etat)`, qui ne touche pas au navigateur.
 
 **Les treize parcours navigateur doivent être passés avant de livrer**, pas le seul

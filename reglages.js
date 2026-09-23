@@ -167,8 +167,8 @@
           <h2 class="reglages-titre">Le modèle de production</h2><details class="aide">
           <summary aria-label="À quoi sert cette section ?">?</summary>
           <span class="aide-corps">Ces réglages pilotent les <b>ateliers de travail</b> : le temps que
-            coûte une compagnie × classe dans chaque service, et les règles de poste. Le reste de la
-            page décrit l’ancien moteur de démonstration, celui de la vue Simulation.</span></details></div>
+            coûte une compagnie × classe dans chaque service, et les règles de poste. C’est la
+            journée qu’ils calculent que relit la vue Simulation.</span></details></div>
         <p id="rg-status" role="status" aria-live="polite"></p>
         <div class="panneau" id="rg-bareme-panneau">
           <div class="titre-aide"><h3>Barème — homme-minutes</h3><details class="aide">

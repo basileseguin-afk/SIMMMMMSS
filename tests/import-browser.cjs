@@ -86,32 +86,26 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(pct(rupture[2])>50,'stock serré : la rupture doit dominer la journée · '+rupture);
   assert.ok(pct(rupture[1])<10,'stock par défaut : la rupture doit rester marginale · '+rupture);
   await setRange('#materiel','2600');
-  // Capturer pendant une simulation en cours reste possible et rejoue la journée entière.
-  // Les commandes de lecture vivent dans la vue Simulation : on y passe.
+  // Capturer rejoue toujours la journée entière, où qu'on en soit de la relecture.
   await setRange('#robot','200');
-  await click('#rg-vers-simu');await setRange('#vitesse','120');
-  await click('#btn-play');await page.waitForTimeout(300);await click('#btn-play');
+  await click('[data-view="plan"]');await click('#sim-pas');
   await click('[data-view="reglages"]');
   await click('#snap-a');assert.deepEqual((await ligne('Journée simulée')).slice(1),['23:00','23:00']);
-  // Pendant la journée, chaque OF dit ce qu'il attend ; à la fin, le retard s'explique.
+  // La vue Vols lit le modèle par ateliers : sans atelier décrit, aucune classe
+  // n'est fabriquée, et le tableau le dit plutôt que d'annoncer un retard.
   await click('[data-view="vols"]');
-  assert.match(await page.locator('#flight-rows').textContent(),/en cours|attend/);
-  await click('[data-view="plan"]');
-  await click('#btn-play');await page.waitForFunction(()=>document.getElementById('run-state').textContent==='Terminé',{},{timeout:20000});
-  // Le tableau des vols ne se redessine que dans sa vue : on y revient pour le lire.
-  await click('[data-view="vols"]');
-  const texte=await page.locator('#flight-rows').textContent();
-  assert.match(texte,/attente du robot \d+ min/,'un vol servi par le robot doit expliquer son retard');
-  assert.match(texte,/le dernier fini/);
+  assert.match(await page.locator('#flight-rows').textContent(),/Non fabriqué/);
+  assert.match(await page.locator('#flight-rows').textContent(),/aucun atelier ne fabrique/);
+  // L'export suit ce qu'on regarde : la journée calculée, pas l'ancien moteur.
   const attendu=page.waitForEvent('download');await click('#btn-export');const dl=await attendu;
   const exp=JSON.parse(require('node:fs').readFileSync(await dl.path(),'utf8'));
-  assert.equal(exp.schemaVersion,'0.4');assert.ok(exp.journal.length>50);
-  assert.ok(exp.vols.some(v=>v.explication&&v.explication.attenteRobot>0));
-  // Heures, reste à faire et ETP : le vocabulaire de la feuille de route.
+  assert.equal(exp.schemaVersion,'0.5');assert.equal(exp.modele,'ateliers');
+  assert.ok(exp.departs.length>0,'les départs du programme sont exportés');
+  assert.ok(exp.departs.every(d=>d.classes.every(c=>c.absente)),'sans atelier, aucune classe n’est fabriquée');
   // Le bloc précédent a laissé la vue sur « Vols » : on revient aux réglages.
   await click('[data-view="reglages"]');
-  // « Recommencer » est là où la page le nomme, pas seulement dans la vue Simulation.
-  await click('#rg-recommencer');await click('#snap-a');
+  // Heures, reste à faire et ETP : le vocabulaire de la feuille de route.
+  await click('#snap-a');
   // L'équipe du soir est restée réglée par un bloc précédent : sans la baisser
   // aussi, l'après-midi rattraperait tout et la comparaison ne montrerait rien.
   await setRange('#staff-cuisine','1');await setRange('#soir-cuisine','1');await click('#snap-b');
@@ -126,7 +120,6 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await setRange('#staff-cuisine','10');await setRange('#soir-cuisine','10');
 
   // Vivier polyvalent : effectif + ateliers couverts, et l'effet se mesure.
-  await click('#rg-recommencer');
   await setRange('#staff-cuisine','2');
   await click('#snap-a');
   await setRange('#vivier','8');
@@ -142,22 +135,18 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal((await ligne('Minutes prêtées'))[1],'—');
   await setRange('#vivier','0');await setRange('#staff-cuisine','10');
 
-  // Calendrier multijour : l'horloge, le compteur et le tableau A/B suivent.
-  // Les réglages sont verrouillés dès qu'un essai a commencé : on recommence.
-  await click('#rg-recommencer');
+  // Calendrier multijour : le compteur et le tableau A/B suivent. (L'horloge
+  // appartient désormais à la relecture du modèle par ateliers.)
   assert.equal(await page.locator('#calendrier').isDisabled(),false);
   await setRange('#materiel','2600');
   assert.equal(await page.locator('#cal-detail').isVisible(),false);
   await page.locator('#calendrier').check();
   assert.equal(await page.locator('#cal-detail').isVisible(),true);
-  assert.equal(await page.locator('#horloge').textContent(),'J−2 05:00');
-  assert.match(await page.locator('.jour').textContent(),/3 journées de départs/);
   assert.equal(await page.locator('#source-count').textContent(),'36 départs · 18 retours');
   await click('#snap-b');
   assert.deepEqual((await ligne('Calendrier')).slice(1),['journée unique','3 journées de départs, cuisine J−2 et prépa J−1']);
   assert.deepEqual((await ligne('Journée simulée')).slice(1),['23:00','J+2 23:00']);
   await page.locator('#calendrier').uncheck();
-  assert.equal(await page.locator('#horloge').textContent(),'05:00');
   assert.equal(await page.locator('#source-count').textContent(),'12 départs · 6 retours');
 
   assert.deepEqual(errors,[]);

@@ -231,9 +231,6 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 .barre i{display:block;height:100%;transition:width .3s,background .3s}
 .badge-q{font-size:11px;color:var(--txt3);margin-left:6px;font-weight:700}
 
-.chart-wrap{background:var(--panneau);border:1px solid var(--bordure);border-radius:var(--r);padding:11px;margin-bottom:12px;box-shadow:var(--ombre)}
-.chart-wrap h3{margin:0 0 6px;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--txt2);font-weight:800}
-#chart{width:100%;height:112px;display:block}
 
 .compare-tab{width:100%;border-collapse:collapse;font-size:12.5px}
 .compare-tab th,.compare-tab td{padding:6px;text-align:right;border-bottom:1px solid var(--bordure);color:var(--txt)}
@@ -250,9 +247,9 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
   .col-plan{min-height:70vh}
 }
 </style>
-<meta name="ory-version" content="26c5bcb29e"/>
+<meta name="ory-version" content="b4c33db56f"/>
 <link href="interface.css?v=b2f23790" rel="stylesheet"/><link href="editor.css?v=c4c575db" rel="stylesheet"/><link href="flow-center.css?v=91a8db6b" rel="stylesheet"/><link href="ateliers.css?v=92525b68" rel="stylesheet"/>
-<link href="reglages.css?v=4fa65108" rel="stylesheet"/><link href="demarrage.css?v=9056d195" rel="stylesheet"/><link href="aide.css?v=023946ae" rel="stylesheet"/><link href="usability.css?v=589ef696" rel="stylesheet"/></head>
+<link href="reglages.css?v=4fa65108" rel="stylesheet"/><link href="demarrage.css?v=ea8df11d" rel="stylesheet"/><link href="aide.css?v=023946ae" rel="stylesheet"/><link href="usability.css?v=ae1d3d05" rel="stylesheet"/></head>
 <body data-vue="plan"><a class="skip-link" href="#workspace">Aller à la simulation</a>
 <header>
 <div class="marque"><span class="brand-mark">N</span><div>ORY <span class="brand-separator">/</span> Flux de production<small>Atelier de simulation</small></div></div>
@@ -260,19 +257,21 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <div><div class="horloge" id="horloge">05:00</div><div class="jour">Heure simulée · démo 05:00–23:00</div></div>
 <div class="transport">
 <button class="btn btn-play" id="btn-play">▶ Lancer</button>
-<button aria-label="Recommencer la simulation avec les réglages actuels" class="btn" id="btn-reset" title="Réinitialiser la journée">Recommencer</button>
+<button class="btn" id="sim-pas" title="Aller au prochain changement">⏭ Pas</button>
+<button aria-label="Revenir au début de la journée" class="btn" id="btn-reset" title="Revenir au début">↺ Début</button>
 </div>
-<span class="run-state" id="run-state" role="status">Prêt à lancer</span></div>
+<span class="run-state" id="run-state" role="status">Prêt à lire</span>
+<input aria-label="Heure relue dans la journée calculée" id="sim-curseur" type="range" min="0" max="1440" step="1" value="0"/></div>
 <div class="entete-droite">
 <div class="vitesse-box">Lecture <input aria-label="Vitesse de lecture, minutes simulées par seconde" id="vitesse" max="120" min="1" type="range" value="30"/><b id="vitesse-val">30×</b></div>
 <button aria-label="Changer le thème" class="btn" id="btn-theme" title="Basculer clair / sombre">🌙</button>
 <button class="btn" id="btn-export" title="Exporter les résultats (JSON)">Exporter</button>
 </div>
 </header><div class="context-bar"><div><span class="demo-badge">Prototype</span><strong id="source-label">Jeu de démonstration</strong><span id="source-count"></span></div><button class="text-button" id="btn-limits">Non calibré · limites</button></div>
-<div class="kpi-grille"><div class="kpi"><div class="lab">Prêts à l’échéance</div><div class="val" id="kpi-ontime">—</div><div class="kpi-note" id="kpi-denom">Aucun départ exigible</div></div>
-<div class="kpi"><div class="lab">En retard · non prêts</div><div class="val" id="kpi-overdue">0</div><div class="kpi-note" id="kpi-ready">0 dossier terminé</div></div>
-<div class="kpi"><div class="lab">Travail en cours</div><div class="val" id="kpi-wip">0 <small>OF</small></div><div class="kpi-note">OF libérés, non terminés</div></div>
-<div class="kpi"><div class="lab">Cadence observée du robot</div><div class="val" id="kpi-debit">0 <small>plateaux/h</small></div><div class="kpi-note">Occupation sur 15 min × cadence</div></div></div><div class="app" id="workspace" tabindex="-1">
+<div class="kpi-grille"><div class="kpi"><div class="lab">Échéances tenues</div><div class="val" id="kpi-ontime">—</div><div class="kpi-note" id="kpi-denom">aucune classe fabriquée</div></div>
+<div class="kpi"><div class="lab">Échéance dépassée</div><div class="val" id="kpi-overdue">0</div><div class="kpi-note" id="kpi-ready">aucune échéance manquée à cet instant</div></div>
+<div class="kpi"><div class="lab">Au travail</div><div class="val" id="kpi-wip">0 <small>services</small></div><div class="kpi-note" id="kpi-wip-note">qui fabriquent à cet instant</div></div>
+<div class="kpi"><div class="lab">En attente</div><div class="val" id="kpi-debit">0 <small>services</small></div><div class="kpi-note" id="kpi-debit-note">postes ouverts, amont pas encore livré</div></div></div><div class="app" id="workspace" tabindex="-1">
 <!-- ============ LEVIERS WHAT-IF ============ -->
 <!-- ============ PLAN ============ -->
 <div class="colonne col-plan"><div class="workspace-heading"><div><h1 id="view-title">Simulation</h1></div><nav aria-label="Vue principale" class="view-tabs"><button aria-pressed="true" class="active" data-view="plan">Simulation</button><button aria-pressed="false" data-view="ateliers">Ateliers</button><button aria-pressed="false" data-view="flux">Flux</button><button aria-pressed="false" data-view="reglages">Réglages</button><button aria-pressed="false" data-view="vols">Vols <span id="flight-count">0</span></button></nav></div>
@@ -299,19 +298,15 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <!-- ============ DASHBOARD ============ -->
 <aside aria-label="Suivi de production" class="workbench"><div class="panel-content" id="panel-suivi"><div class="panel-heading"><h2>Suivi de production</h2></div><div class="panneau">
 <h3>Point d’attention</h3>
-<div class="mini-note" id="goulot-info">Simulation à l'arrêt.</div>
+<div class="mini-note" id="goulot-info"></div>
 <section id="service-storages" class="pe-section" hidden></section>
 </div>
 
 <div class="panneau">
-<h3>Occupation mesurée par atelier</h3>
-<div id="stats-ateliers"></div>
-<details class="inline-help"><summary>Lire les taux</summary><p class="mini-note">Personnes occupées sur 15 min. OF = ordres présents.</p></details></div>
+<h3>Services à cet instant</h3>
+<div id="stats-ateliers"></div></div>
 
-<div class="panneau"><h3>Retard courant des départs exigibles</h3><div class="val" id="kpi-retard-exigibles">—</div><h3>Retard des dossiers terminés</h3><div class="val" id="kpi-retard">—</div><details class="inline-help"><summary>Ces deux moyennes</summary><p class="mini-note">En haut : tous les exigibles à cet instant, inachevés compris. En bas : les dossiers terminés seulement.</p></details></div><div class="chart-wrap">
-<h3>Évolution de la démonstration</h3>
-<canvas id="chart"></canvas>
-<p class="mini-note" id="chart-legend">Les courbes apparaîtront pendant la simulation.</p></div></div><div class="panel-content" hidden="" id="panel-reglages"><div class="panel-heading"><h2>Réglages de l’essai</h2><p>Réglez les capacités, puis lancez. Pour modifier un essai commencé, recommencez la simulation.</p></div>
+<div class="panneau"><h3>La journée calculée</h3><div id="bilan-journee"></div></div></div><div class="panel-content" hidden="" id="panel-reglages"><div class="panel-heading"><h2>Réglages de l’essai</h2><p>Réglez les capacités, puis lancez. Pour modifier un essai commencé, recommencez la simulation.</p></div>
 <!-- Panneau d'édition des zones (affiché en mode édition) -->
 <div class="panneau">
 <h3>Effectifs par atelier</h3>
@@ -457,8 +452,10 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <script src="plan-editor.js?v=c85752d4"></script>
 <script src="flow-center.js?v=5a3b2131"></script>
 <script src="ateliers.js?v=70688677"></script>
-<script src="reglages.js?v=efe7c90d"></script>
+<script src="reglages.js?v=ae4f6b59"></script>
 <script src="demarrage.js?v=420bc9d1"></script>
-<script src="sim.js?v=7f818387"></script>
+<script src="replay.js?v=016adb42"></script>
+<script src="simulation.js?v=cfc059c7"></script>
+<script src="sim.js?v=c4e85a40"></script>
 </body>
 </html>

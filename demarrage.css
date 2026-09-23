@@ -72,7 +72,39 @@ body.avant-lancement .kpi-grille{display:none}
    place des outils de tracé. */
 body.editing .guide{display:none}
 
-/* Depuis les réglages de l'ancien moteur, le chemin vers la vue qu'ils
-   pilotent doit être dit : le bouton « Lancer » n'est plus là. */
-.reglages-vers-simu{grid-column:1/-1;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
-  margin:0 0 4px;font-size:12.5px;color:var(--txt2)}
+/* ==========================================================================
+ *  LA JOURNÉE RELUE SUR LE PLAN
+ *  Quatre états, jamais mélangés avec les couleurs de paramétrage : celles-ci
+ *  disent ce qui reste à renseigner AVANT de lire, celles-là ce qui se passe
+ *  PENDANT. On ne montre donc les secondes qu'une fois la lecture commencée.
+ * ==========================================================================*/
+body.en-lecture #plan .zone.s-travail .fond{fill:var(--accent);fill-opacity:.28;stroke:var(--accent);stroke-width:10}
+body.en-lecture #plan .zone.s-attente .fond{fill:var(--orange);fill-opacity:.22;stroke:var(--orange);stroke-width:10;stroke-dasharray:18 10}
+body.en-lecture #plan .zone.s-fini .fond{fill:var(--vert);fill-opacity:.14;stroke:var(--vert);stroke-width:7}
+body.en-lecture #plan .zone.s-avenir .fond{fill-opacity:.25;stroke-opacity:.5}
+
+/* Le curseur de temps : on relit dans les deux sens, ce que la simulation
+   d'hier ne permettait pas. */
+#sim-curseur{width:190px;accent-color:var(--accent);vertical-align:middle}
+.horloge-box .run-state{margin-right:8px}
+
+/* Un service et ce qu'il fait, à l'instant relu. */
+.stat-atelier .stat-quoi{font-size:11px;color:var(--txt2);text-align:left;margin-top:2px;
+  overflow-wrap:anywhere}
+.stat-atelier.etat-travail b{color:var(--accent2)}
+.stat-atelier.etat-attente b{color:var(--orange)}
+.stat-atelier.etat-fini b{color:var(--vert)}
+.stat-atelier.etat-avenir{opacity:.6}
+
+/* Un départ dont une classe n'a pas d'atelier : ce n'est pas un retard à
+   attendre, c'est une description à compléter. */
+.status.orphan{color:var(--orange);background:var(--warn-fill)}
+
+/* Le bilan de la journée : cinq lignes, une question chacune. */
+.bilan{margin:0;display:grid;gap:6px}
+.bilan>div{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;
+  border-bottom:1px solid var(--bordure);padding-bottom:5px}
+.bilan>div:last-child{border-bottom:0;padding-bottom:0}
+.bilan dt{color:var(--txt2)}
+.bilan dd{margin:0;font-weight:700;color:var(--txt);text-align:right;font-variant-numeric:tabular-nums}
+.detail-jobs li.en-cours{font-weight:700;color:var(--accent2)}

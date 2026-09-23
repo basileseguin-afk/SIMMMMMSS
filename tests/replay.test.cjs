@@ -91,6 +91,22 @@ test('« en retard » compte ce qui aurait dû être parti, pas ce qui l’est d
   assert.equal(c.part, 67);
 });
 
+test('la ponctualité ne juge que les échéances déjà passées', () => {
+  const faux = { lots: [], parClasse: {
+    tot:  { fin: 100, echeance: 200, absente: false },
+    tard: { fin: 300, echeance: 250, absente: false },
+    loin: { fin: 500, echeance: 600, absente: false }
+  } };
+  const aube = R.chiffresA(faux, 50);
+  assert.equal(aube.exigibles, 0, 'à l’aube, aucune échéance n’est passée : rien à juger');
+  const midi = R.chiffresA(faux, 260);
+  assert.equal(midi.exigibles, 2);
+  assert.equal(midi.tenues, 1, '« tard » a manqué la sienne, même sortie ensuite');
+  const soir = R.chiffresA(faux, 700);
+  assert.equal(soir.exigibles, 3);
+  assert.equal(soir.tenues, 2);
+});
+
 test('une mise à disposition est « fini » dès son ouverture, jamais « travail »', () => {
   const faux = { lots: [
     { service: 'mag', nom: 'mise à disposition', debut: 60, fin: 60, duree: 0,
@@ -127,7 +143,7 @@ test('instant() rassemble tout en un seul appel', () => {
   assert.equal(i.t, 7 * 60);
   assert.ok(i.services && i.chiffres);
   assert.deepEqual(Object.keys(i.chiffres).sort(),
-    ['auTravail', 'enAttente', 'enRetard', 'part', 'sorties', 'sortiesEnRetard', 'suivies']);
+    ['auTravail', 'enAttente', 'enRetard', 'exigibles', 'part', 'sorties', 'sortiesEnRetard', 'suivies', 'tenues']);
 });
 
 test('les quatre états sont nommés, et quatre seulement', () => {

@@ -16,7 +16,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // Real mouse selection, not synthetic dispatch: BUG-002.
   await page.locator('.zone[data-id="cuisine"]').click();
   assert.equal(await page.locator('#zone-picker').inputValue(),'cuisine');
-  assert.equal(await page.locator('[data-station="cuisine"]').getAttribute('aria-pressed'),'true');
+  assert.equal(await page.locator('.zone[data-id="cuisine"]').getAttribute('aria-pressed'),'true');
   const panel=page.locator('#service-storages');await panel.locator('[data-stock-action=add]').click();
   await panel.locator('input').fill('Réserve essai');await panel.locator('textarea').click();
   await panel.locator('textarea').fill('Produits de démonstration');await panel.locator('input').click();
@@ -28,7 +28,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.reload();await page.locator('.zone[data-id="cuisine"]').click();assert.equal(await panel.locator('input').inputValue(),'Réserve essai');
   await click('#btn-edit');await click('[data-action=select][data-zone=cuisine]');assert.equal(await page.locator('#pe-storages input').inputValue(),'Réserve essai');
   const download=page.waitForEvent('download');await page.evaluate(()=>Sim.editor.export());const d=await download;const exported=JSON.parse(fs.readFileSync(await d.path(),'utf8'));assert.equal(exported.zones.find(z=>z.id==='cuisine').storages.length,1);
-  await click('#edit-done');await click('#btn-play');
+  await click('#edit-done');await click('#sim-pas');
   await page.locator('[data-clear-selection]').click({delay:150});assert.equal(await page.locator('#zone-picker').inputValue(),'');
   // Existing v2 data migrates without assuming which service owns a fridge.
   await page.evaluate(()=>{const p=structuredClone(Sim.editor.state);p.version=2;p.zones.push({id:'cold-custom',nom:'Ancien froid',kind:'cold',x:0,y:0,w:20,h:20});localStorage.removeItem('orly-plan-v3');localStorage.setItem('orly-plan-v2',JSON.stringify(p));});

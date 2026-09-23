@@ -5,7 +5,7 @@
 body{font-family:Arial,Helvetica,sans-serif;line-height:1.4}
 body>header{background:#14283e;color:#fff;border-bottom:0;padding:12px 20px;gap:20px}
 header .marque small,header .jour,header .run-state,header .vitesse-box{color:#d3dfec}header .brand-separator{color:#afc1d4}header .brand-mark{background:#96e4da;color:#14363a}
-header .btn{background:#233e59;border-color:#8298ae;color:#fff}header .btn:hover{background:#35536f}header .btn-play{background:#96e4da;color:#12383a;border-color:#96e4da}header .btn-play:hover{background:#c0f3ec}
+header .btn{background:#233e59;border-color:#8298ae;color:#fff}header .btn:hover{background:#35536f;color:#fff}header .btn-play{background:#96e4da;color:#12383a;border-color:#96e4da}header .btn-play:hover{background:#c0f3ec}
 .btn{border-radius:6px;font-size:13px;min-height:38px}.btn:hover:not(:disabled){box-shadow:0 0 0 1px var(--bordure2)}
 .btn-play{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}.btn-play:hover{background:var(--accent2);color:var(--on-accent)}
 button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:3px}header button:focus-visible{outline-color:#fff}

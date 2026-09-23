@@ -199,10 +199,7 @@ function build(data) {
   now = modele.maintenant;
   Sim.robotRate = 0;
   if (document.getElementById('source-count')) updateSource();
-  const legende = document.querySelector('.jour');
-  if (legende) legende.textContent = MULTIJOUR()
-    ? 'Heure simulée · ' + modele.joursDeparts + ' journées de départs, production dès J−' + modele.decalage
-    : 'Heure simulée · démo 05:00–23:00';
+  // La légende de l'horloge appartient à la relecture (simulation.js).
 }
 
 /* ==========================================================================
@@ -481,7 +478,7 @@ function initAteliers(){
     // Le plan dit « aménagé » d'après les ateliers : il doit suivre leur saisie.
     // La liste du barème marque les services qui portent une équipe : elle doit
     // donc se redessiner quand les ateliers bougent.
-    change:()=>{majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();},
+    change:()=>{majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();},
     notify:toast
   });
 }
@@ -913,7 +910,7 @@ function basculerEdition() {
   document.body.classList.toggle('editing',editMode);
   document.getElementById('btn-edit').setAttribute('aria-pressed',String(editMode));
   document.getElementById('btn-edit').textContent=editMode?'Terminer l’édition':'Éditer les zones';
-  document.getElementById('btn-play').disabled=editMode;
+  // Le bouton de lecture appartient à la vue ; l'édition le masque déjà.
   Sim.editor.setActive(editMode);updateRunState();
 }
 
@@ -990,43 +987,22 @@ function animerTokens() {
 }
 
 function majPlan() {
-  Object.keys(ZONES).forEach(id => {
-    const z = ZONES[id], st = stations[id], els = zoneEls[id];
-    if (!els || z.sink) return;
-    const u = Math.min(1, st.util), col = couleurCharge(u);
-    if (els.jauge) { els.jauge.setAttribute('width', (els.b.w-16) * u); els.jauge.setAttribute('fill', col); }
-    // la couleur de fond/bordure est pilotée par le thème via une classe
-    els.g.classList.remove('c-ok', 'c-warn', 'c-bad');
-    if(now>DEBUT() && !NON_MODELISES.has(id)) els.g.classList.add(u < 0.55 ? 'c-ok' : u < 0.85 ? 'c-warn' : 'c-bad');
-    if (els.badge) els.badge.textContent = st.qlen > 0 ? st.qlen + ' OF' : '';
-  });
-  const r = document.getElementById('res-robot'); if (r) r.textContent = Math.round((Sim.robotRate||0)*60) + '/' + CFG.robotCadence;
-  const t = document.getElementById('res-tunnels'); if (t) t.textContent = CFG.tunnels + (CFG.tunnelDouble ? ' (1×2)' : '');
-  majEtatPlan();
+  const r = document.getElementById('res-robot'); if (r) r.textContent = '';
+  const t = document.getElementById('res-tunnels'); if (t) t.textContent = '';
+  if (Sim.vue) Sim.vue.rendre(); else majEtatPlan();
 }
 
 /* ==========================================================================
- *  7 bis. ÉTAT DE PARAMÉTRAGE — ce que le plan dit AVANT de lancer
- *  Tant que la simulation n'a pas démarré, les couleurs d'occupation ne
- *  veulent rien dire : tout serait à zéro. On se sert donc du plan pour
- *  répondre à l'autre question, celle que l'on se pose en traçant l'unité :
- *  qu'est-ce qui reste à renseigner ? Deux langages de couleur distincts,
- *  jamais affichés en même temps : progression avant le lancement, charge
- *  pendant la simulation.
+ *  ÉTAT DE PARAMÉTRAGE — ce que le plan dit AVANT de relire
+ *  Deux langages de couleur, jamais affichés en même temps : la progression
+ *  de la saisie tant qu'on n'a pas commencé à relire, l'activité ensuite.
  * ==========================================================================*/
 const ETATS_PARAM = {
-  vide:    { lib:'Personne',  aide:'Atelier simulé sans effectif : il ne produira rien.' },
-  partiel: { lib:'Au curseur', aide:'Effectif réglé dans les Réglages, aucun équipement tracé.' },
-  pret:    { lib:'Aménagé',  aide:'Effectif et au moins un équipement tracé dans « Création des ateliers ».' }
+  vide:    { lib:'Personne',  aide:'Service sans atelier de travail : il ne produira rien.' },
+  partiel: { lib:'Décrit',    aide:'Un atelier existe, mais il ne fabrique encore rien.' },
+  pret:    { lib:'Aménagé',  aide:'Un atelier de travail y fabrique au moins une compagnie × classe.' }
 };
 
-/* ==========================================================================
- *  ZONES ANNEXES — une seconde salle pour un atelier du moteur
- *  Armement 2 fait le même travail qu'Armement : même file, même procédé.
- *  Ce qu'elle apporte, c'est un espace à aménager et des gens à y affecter.
- *  Un atelier qui aurait sa propre file d'attente serait un autre modèle : il
- *  faudrait une règle de répartition des ordres, qui n'existe pas encore.
- * ==========================================================================*/
 function annexes() {
   const e = Sim.editor; if (!e) return [];
   return e.state.zones.filter(z => z.kind === 'annexe' && z.visible !== false);
@@ -1064,21 +1040,33 @@ function amenagementParService() {
   for (const a of c.state.ateliers) {
     const e = par[a.service] || (par[a.service] = { ateliers: 0, lots: 0, personnes: 0 });
     e.ateliers++; e.lots += a.lots.filter(l => l.length).length; e.personnes += a.personnes;
+    // Une plonge et une mise à disposition ne portent pas de lots, et pourtant
+    // elles produisent : les compter comme « rien à fabriquer » serait faux.
+    if (a.type === 'lavage' || a.type === 'dispo') e.sansLots = true;
   }
   return par;
 }
 
-/* 'hors' = pas dans le calcul ; sinon progression du paramétrage. */
+/* L'état d'un service avant de relire la journée. Il se lit désormais dans les
+ * ateliers de travail, et plus dans les curseurs : c'est là qu'on décrit
+ * l'unité, et le plan doit dire ce qu'il reste à y décrire.
+ *
+ * Il n'y a plus de service « hors calcul » : tout service peut porter une
+ * équipe, une mise à disposition ou une plonge. Un service vide n'est pas hors
+ * du modèle, il est juste vide — et c'est une information, pas une exclusion.
+ */
 function etatParametrage(id, amenagement) {
-  if (!Orly.ATELIERS.includes(id)) return 'hors';
-  const gens = id === 'plonge' ? CFG.tunnels : (CFG.staff[id] || 0);
-  if (!gens) return 'vide';
-  return (amenagement[id] && amenagement[id].lots) ? 'pret' : 'partiel';
+  const e = amenagement[id];
+  if (!e || !e.ateliers) return 'vide';
+  return e.lots || e.sansLots ? 'pret' : 'partiel';
 }
 
 let _legendeCle = null;
 function majEtatPlan() {
-  const avant = now === DEBUT();
+  // « Avant » ne veut plus dire « avant d'avoir lancé » : il n'y a plus rien à
+  // lancer. C'est « avant d'avoir commencé à relire » — tant qu'on est au début
+  // de la journée, le plan répond à l'autre question : que reste-t-il à décrire ?
+  const avant = !Sim.vue || Sim.vue.t <= Sim.vue.debut;
   document.body.classList.toggle('avant-lancement', avant);
   const compte = { vide:0, partiel:0, pret:0 };
   if (avant) {
@@ -1088,7 +1076,7 @@ function majEtatPlan() {
       const etat = etatParametrage(id, amenagement);
       els.g.classList.remove('p-vide', 'p-partiel', 'p-pret', 'p-hors');
       els.g.classList.add('p-' + etat);
-      if (etat !== 'hors') compte[etat]++;
+      compte[etat]++;
     });
   }
   majLegende(avant, compte);
@@ -1099,7 +1087,7 @@ function majEtatPlan() {
 function majLegende(avant, compte) {
   const box = document.getElementById('legende-plan'), etat = document.getElementById('plan-etat');
   if (!box) return;
-  const cle = avant ? 'param:' + compte.vide + '/' + compte.partiel + '/' + compte.pret : 'charge';
+  const cle = avant ? 'param:' + compte.vide + '/' + compte.partiel + '/' + compte.pret : 'lecture';
   if (cle === _legendeCle) return;
   _legendeCle = cle;
   const puce = (coul, texte, titre) => '<span title="' + escapeHTML(titre) + '"><span class="pastille" style="background:' + coul + '"></span>' + escapeHTML(texte) + '</span>';
@@ -1107,8 +1095,7 @@ function majLegende(avant, compte) {
     box.setAttribute('aria-label', 'État de paramétrage des ateliers');
     box.innerHTML = puce('var(--bad-stroke)', ETATS_PARAM.vide.lib, ETATS_PARAM.vide.aide)
       + puce('var(--bordure2)', ETATS_PARAM.partiel.lib, ETATS_PARAM.partiel.aide)
-      + puce('var(--accent)', ETATS_PARAM.pret.lib, ETATS_PARAM.pret.aide)
-      + puce('transparent', 'Hors calcul', 'Service présent sur le plan mais sans charge calculée.');
+      + puce('var(--accent)', ETATS_PARAM.pret.lib, ETATS_PARAM.pret.aide);
     if (etat) {
       const n = compte.vide + compte.partiel;
       etat.textContent = n
@@ -1117,158 +1104,141 @@ function majLegende(avant, compte) {
       etat.className = 'plan-etat' + (n ? '' : ' complet');
     }
   } else {
-    box.setAttribute('aria-label', 'Occupation mesurée');
-    box.innerHTML = puce('var(--ok-stroke)', 'Faible', 'Moins de 55 % des personnes occupées sur 15 min.')
-      + puce('var(--warn-stroke)', 'Soutenue', 'De 55 à 85 %.')
-      + puce('var(--bad-stroke)', 'Forte', 'Plus de 85 %.')
-      + puce('transparent', 'Hors calcul', 'Service présent sur le plan mais sans charge calculée.');
-    if (etat) { etat.textContent = 'Couleurs d’occupation : le paramétrage reparaîtra après « Recommencer ».'; etat.className = 'plan-etat'; }
+    // Pendant la relecture : les quatre états de `replay.js`, et eux seuls.
+    // L'attente est aussi en pointillé, pour ne pas dépendre de la couleur.
+    box.setAttribute('aria-label', 'État des services à cet instant');
+    box.innerHTML = puce('var(--accent)', 'Au travail', 'Une équipe fabrique à cet instant.')
+      + puce('var(--orange)', 'Attend un amont', 'Le poste est ouvert mais ce qu’il doit recevoir n’est pas encore arrivé.')
+      + puce('var(--vert)', 'A fini', 'Tout ce que ce service avait à faire est sorti.')
+      + puce('var(--bordure2)', 'Pas commencé', 'Le service n’a pas encore ouvert.');
+    if (etat) { etat.textContent = 'Relecture de la journée — « ↺ Début » pour revenir au paramétrage.'; etat.className = 'plan-etat'; }
   }
 }
 
 /* ==========================================================================
  *  8. DASHBOARD
  * ==========================================================================*/
+/* Les quatre chiffres et la liste des services sont tenus par la vue ; il
+ * reste à rafraîchir ce qui dépend de la sélection et des vols. */
 function majDashboard() {
-  const k=kpis(), put=(id,v)=>document.getElementById(id).textContent=v;
-  put('kpi-ontime',k.ontime==null?'—':k.ontime+' %');
-  document.getElementById('kpi-ontime').className='val '+(k.ontime==null?'':k.ontime>=90?'bon':k.ontime>=70?'moyen':'mauvais');
-  put('kpi-denom',k.exigibles?k.aHeure+' / '+k.exigibles+' départs à échéance atteinte':'Aucun départ exigible');
-  put('kpi-overdue',k.overdue);document.getElementById('kpi-overdue').className='val '+(k.overdue?'mauvais':'');
-  put('kpi-ready',k.prets+' / '+k.total+' dossiers terminés');
-  put('kpi-retard',k.retardMoy==null?'—':k.retardMoy+' min');
-  put('kpi-retard-exigibles',k.retardExigibles==null?'—':k.retardExigibles+' min');
-  document.getElementById('kpi-debit').innerHTML=k.debit+' <small>plateaux/h</small>';
-  document.getElementById('kpi-wip').innerHTML=k.wip+' <small>OF</small>';
-  const box=document.getElementById('stats-ateliers');
-  if(!box.children.length) ['appros','decontam','cuisine','prepa','dotation','plonge','armement','magasin','bobduty'].forEach(id=>{
-    const b=document.createElement('button');b.className='stat-atelier';b.dataset.station=id;
-    b.innerHTML='<div class="haut"><span>'+escapeHTML(ZONES[id].nom)+'<span class="badge-q"></span></span><b></b></div><div class="barre"><i></i></div>';
-    b.addEventListener('click',()=>selectionner(id));box.appendChild(b);
-  });
-  box.querySelectorAll('[data-station]').forEach(b=>{
-    const id=b.dataset.station,st=stations[id],u=Math.min(1,st.util),unmodeled=NON_MODELISES.has(id);
-    b.querySelector('.haut>span').firstChild.textContent=ZONES[id].nom;
-    b.classList.toggle('active',id===selection);b.setAttribute('aria-pressed',String(id===selection));
-    b.querySelector('b').textContent=unmodeled?'Non simulé':now===DEBUT()?'—':Math.round(u*100)+' %'+(id==='prepa'?' · robot '+Math.round(Math.min(1,st.robotUtil)*100)+' %':'');
-    b.querySelector('.badge-q').textContent=st.qlen?' · '+st.qlen+' OF':'';
-    b.querySelector('.barre').hidden=unmodeled;
-    b.querySelector('i').style.cssText='width:'+u*100+'%;background:'+couleurCharge(u);
-  });
-  majGoulotInfo(k.goulot);renderFlights();updateRunState();
+  if (Sim.vue) Sim.vue.rendre();
+  majGoulotInfo(); renderFlights(); updateRunState();
 }
 
-function majGoulotInfo(goulot) {
-  if(goulot===undefined)goulot=goulotCourant();
-  const el=document.getElementById('goulot-info');let html='';
+/* Le point d'attention se lit dans la journée relue : pour un service choisi,
+ * ce qu'il fait et ce qu'il a à faire ; sinon, le poste qui attend depuis le
+ * plus longtemps. Rien n'y est estimé : tout vient du journal des lots. */
+function majGoulotInfo() {
+  const el=document.getElementById('goulot-info');
   if(!el.querySelector('[data-detail-body]'))el.innerHTML='<div class="detail-title"><strong></strong><button class="btn" data-clear-selection>Fermer</button></div><div data-detail-body></div>';
   el.querySelector('.detail-title').hidden=!selection;
-  const annexe=selection&&!ZONES[selection]?annexes().find(a=>a.id===selection):null;
-  el.querySelector('strong').textContent=annexe?annexe.nom:selection?ZONES[selection].nom:'';
-  if(annexe){
-    const pere=ZONES[annexe.parent];
-    el.querySelector('[data-detail-body]').innerHTML='<p>Annexe de <strong>'+escapeHTML(pere?pere.nom:annexe.parent)+'</strong>\u00a0: ce qui y est trac\u00e9 et les personnes qu\u2019on y affecte comptent dans cet atelier. Elle ne forme pas une file d\u2019attente \u00e0 part.</p>';
-    return;
-  }
+  const noms=Object.fromEntries(servicesDisponibles().map(s=>[s.id,s.nom]));
+  el.querySelector('strong').textContent=selection?(noms[selection]||selection):'';
+  const r=(Sim.ateliers&&Sim.ateliers.resultat)||{lots:[]};
+  const lots=r.lots||[];
+  const t=Sim.vue?Sim.vue.t:0, hh=MoteurProduction.hhmm;
+  const services=OrlyReplay.servicesA(r,t);
+  let html='';
   if(selection){
-    const id=selection,z=ZONES[id],st=stations[id];
-
-    html+='<p>'+(z.approx?'Emplacement à confirmer.':'Emplacement enregistré ; validation terrain distincte.')+'</p>';
-    if(NON_MODELISES.has(id))html+='<p>Charge non calculée dans cette version.</p>';
-    else {
-      html+='<p>'+st.qlen+' OF présents'+(id==='plonge'?' · '+CFG.tunnels+' tunnels':' · '+st.capacite+' personne(s) présentes')+(now>DEBUT()?' · occupation '+Math.round(Math.min(1,st.util)*100)+' % sur 15 min, '+Math.round(st.tauxJour*100)+' % depuis 05:00':'')+(st.pretes?' · <strong>'+st.pretes+' prêtée(s) par le vivier</strong>':'')+(st.enAttente?' · <strong>'+st.enAttente+' lot(s) attendent une personne</strong>':'')+(id==='prepa'&&now>DEBUT()?' · robot '+Math.round(Math.min(1,st.robotUtil)*100)+' % sur 15 min'+(st.robotAttente?', <strong>'+st.robotAttente+' vol(s) attendent le robot</strong>':''):'')
-        +(id==='dotation'&&modele.stock?' · matériel propre '+Math.round(modele.stock.niveau)+' u'+(modele.stock.resume().retraitsEnAttente?', <strong>'+modele.stock.resume().retraitsEnAttente+' dossier(s) en attente</strong>':''):'')+(st.bloque?' · <strong>tampon plein : l’amont est bloqué</strong>':'')+'.</p>';
-      const current=jobs.filter(j=>j.released&&!j.done&&j.stationId===id);
-      const bil=modele.bilan().ateliers[id];
-      if(bil)html+='<p class="mini-note">'+bil.heuresDemandees.toFixed(1)+' h demandées · '+bil.heuresRealisees.toFixed(1)+' h faites'
-        +(bil.resteAFaire>1?' · <strong>'+(bil.resteAFaire/60).toFixed(1)+' h restant à faire</strong>':'')
-        +' · '+bil.heuresPresence.toFixed(1)+' h de présence'
-        +(bil.etpRealise!=null?' · '+bil.etpRealise.toFixed(2)+' ETP (heures ÷ '+CFG_ETP+')':' · heures de tunnel, pas d’ETP')+'</p>';
-      html+=current.length?'<ul class="detail-jobs">'+current.slice(0,8).map(j=>'<li>'+escapeHTML(j.flight.id)+' · '+escapeHTML(j.kind)+' · échéance '+heureJour(j.dueT)+' · '+escapeHTML(modele.ETATS[modele.etatOF(j)])+'</li>').join('')+'</ul>':'<p>Aucun ordre de fabrication actif ici.</p>';
-      if(current.length>8)html+='<p>Et '+(current.length-8)+' autre(s) OF.</p>';
+    const id=selection,z=ZONES[id];
+    if(z)html+='<p>'+(z.approx?'Emplacement à confirmer.':'Emplacement enregistré ; validation terrain distincte.')+'</p>';
+    const annexe=!z?annexes().find(a=>a.id===id):null;
+    if(annexe){const pere=ZONES[annexe.parent];html+='<p>Annexe de <strong>'+escapeHTML(pere?pere.nom:annexe.parent)+'</strong>.</p>';}
+    const equipes=((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]).filter(a=>a.service===id);
+    if(!equipes.length)html+='<p>Aucun atelier de travail ici — onglet « Ateliers ».</p>';
+    else html+='<p>'+equipes.map(a=>'<strong>'+escapeHTML(a.nom)+'</strong>'
+      +(a.type==='dispo'?' · mise à disposition':a.type==='lavage'?' · plonge':' · '+a.personnes+' pers.')).join('<br>')+'</p>';
+    const e=services[id];
+    if(e&&!Sim.vue.vide)html+='<p>À '+hh(t)+' : <strong>'+escapeHTML(OrlySimulation.LIBELLE[e.etat])+'</strong>'
+      +(e.etat!=='avenir'&&e.nom?' — '+escapeHTML(e.nom):'')+'.</p>';
+    const ici=lots.filter(l=>l.service===id);
+    if(ici.length){
+      html+='<ul class="detail-jobs">'+ici.slice(0,8).map(l=>{
+        const encours=t>=l.debut&&(l.fin==null||t<l.fin);
+        return '<li'+(encours?' class="en-cours"':'')+'>'+hh(l.debut)+(l.dispo?'':'–'+(l.fin==null?'?':hh(l.fin)))
+          +' · '+escapeHTML(l.nom||'')+(l.attente>=1?' · attente '+Math.round(l.attente)+' min':'')
+          +(l.impossible?' · <strong>ne tient pas dans le poste</strong>':'')+'</li>';
+      }).join('')+'</ul>';
+      if(ici.length>8)html+='<p>Et '+(ici.length-8)+' autre(s) lot(s).</p>';
     }
-  } else if(now===DEBUT())html='Lancez la démonstration, puis sélectionnez un atelier ou ouvrez le suivi des vols.';
-  else if(!goulot)html='Personne n’attend à cet instant : aucun poste ne contraint le flux.';
-  else html='<strong>'+escapeHTML(goulot.nom)+'</strong><p>'+goulot.attente+' lot(s) en attente · '+escapeHTML(goulot.cause)+' · '+goulot.qlen+' OF présents. Mesuré, pas estimé : le goulot est le poste où l’on attend.</p>';
+  } else if(!lots.length){
+    html='Décrivez des ateliers de travail : la journée se calcule d’elle-même, puis se relit ici.';
+  } else {
+    // Qui attend depuis le plus longtemps, à cet instant ?
+    let pire=null;
+    for(const [id,e] of Object.entries(services)){
+      if(e.etat!=='attente'||!e.lot)continue;
+      const depuis=t-(e.lot.debut-(e.lot.attente||0));
+      if(!pire||depuis>pire.depuis)pire={id,depuis,lot:e.lot};
+    }
+    if(pire)html='<strong>'+escapeHTML(noms[pire.id]||pire.id)+'</strong><p>attend son amont depuis '
+      +Math.round(pire.depuis)+' min pour « '+escapeHTML(pire.lot.nom||'')+' » ; il se met au travail à '+hh(pire.lot.debut)+'.</p>';
+    else html=Sim.vue&&t<=Sim.vue.debut
+      ?'Lisez la journée, ou choisissez un service pour voir ses lots.'
+      :'Personne n’attend à cet instant.';
+    // Et sur toute la journée : le service qui a le plus attendu.
+    const cumul={};for(const l of lots)if(l.attente>=1)cumul[l.service]=(cumul[l.service]||0)+l.attente;
+    const top=Object.entries(cumul).sort((x,y)=>y[1]-x[1])[0];
+    if(top)html+='<p class="mini-note">Sur la journée, <strong>'+escapeHTML(noms[top[0]]||top[0])+'</strong> attend le plus : '
+      +Math.round(top[1])+' min cumulées.</p>';
+  }
   if(el._detailHTML!==html){el.querySelector('[data-detail-body]').innerHTML=html;el._detailHTML=html;}
-}
-
-const chart = document.getElementById('chart');
-
-function dessinerChart() {
-  const ctx = chart.getContext('2d');
-  const w = chart.width = chart.clientWidth, h = chart.height = 110;
-  ctx.clearRect(0, 0, w, h);
-  document.getElementById('chart-legend').textContent = historique.length<2 ? 'Les courbes apparaîtront après 20 minutes simulées.' : 'Bleu : débit robot (0–'+Math.max(560,...historique.map(p=>p.debit))+' plateaux/h). Violet : encours (0–'+Math.max(10,...historique.map(p=>p.wip))+' OF). Échelles distinctes.';
-  if (historique.length < 2) return;
-  const t0 = DEBUT(), t1 = FIN();
-  const maxDebit = Math.max(560, ...historique.map(p => p.debit));
-  const maxWip = Math.max(10, ...historique.map(p => p.wip));
-  const X = t => (t - t0) / (t1 - t0) * w;
-  // couleurs reprises du thème courant
-  const cs = getComputedStyle(document.documentElement);
-  const cv = n => cs.getPropertyValue(n).trim();
-  ctx.strokeStyle = cv('--chart-grid'); ctx.fillStyle = cv('--txt3'); ctx.font = '600 10px sans-serif';
-  for (let hh = 6; hh <= 22; hh += 4) { const x = X(hh*60); ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h-12); ctx.stroke(); ctx.fillText(hh+'h', x+2, h-2); }
-  ctx.beginPath(); ctx.moveTo(X(historique[0].t), h-12);
-  historique.forEach(p => ctx.lineTo(X(p.t), (h-12) - (p.wip/maxWip)*(h-20)));
-  ctx.lineTo(X(historique[historique.length-1].t), h-12); ctx.closePath();
-  ctx.fillStyle = cv('--chart-aire'); ctx.fill();
-  ctx.beginPath(); ctx.strokeStyle = cv('--chart-line'); ctx.lineWidth = 2.2;
-  historique.forEach((p,i) => { const x=X(p.t), y=(h-12)-(p.debit/maxDebit)*(h-20); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
-  ctx.stroke();
-  ctx.strokeStyle = cv('--chart-now'); ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(X(now),0); ctx.lineTo(X(now),h-12); ctx.stroke();
 }
 
 /* ==========================================================================
  *  9. BOUCLE TEMPS RÉEL
  * ==========================================================================*/
 let dernierReel = 0, accHist = 0;
-function boucle(ts) {
-  if (!enMarche) return;
-  const dtReel = Math.min(0.1, (ts - dernierReel) / 1000); dernierReel = ts;
-  pendingTime += dtReel * vitesse;
-  while (pendingTime >= 0.5 && now < FIN()) {
-    const p = Math.min(0.5,FIN()-now); step(p); pendingTime -= p; accHist += p;
-    if (accHist >= 10) { accHist = 0; historique.push({ t:now, debit:Math.round((Sim.robotRate||0)*60), wip:jobs.filter(j=>j.released&&!j.done).length }); }
-  }
-  animerTokens(); majHorloge(); majPlan(); majDashboard(); dessinerChart();
-  if (now >= FIN()) { pause(); toast(MULTIJOUR()?'Journées simulées terminées':'Journée simulée terminée'); return; }
-  frameId=requestAnimationFrame(boucle);
-}
-function majHorloge() {
-  const minutes = ((Math.floor(now) % 1440) + 1440) % 1440;
-  const heure = String(Math.floor(minutes/60)).padStart(2,'0') + ':' + String(minutes%60).padStart(2,'0');
-  document.getElementById('horloge').textContent = MULTIJOUR() ? modele.etiquetteJour(now) + ' ' + heure : heure;
+/* ==========================================================================
+ *  9. LECTURE DE LA JOURNÉE
+ *  Il n'y a plus de boucle de simulation : `moteur/production.js` a déjà
+ *  calculé la journée. Ces fonctions ne sont plus que des relais vers
+ *  `simulation.js`, qui la relit. Les appelants d'hier restent valides.
+ * ==========================================================================*/
+function majHorloge() { if (Sim.vue) Sim.vue.rendreHorloge(); }
+function lancer()     { if (Sim.vue) Sim.vue.lancer(); }
+function pause()      { if (Sim.vue) Sim.vue.pause(); }
+function basculer()   { if (Sim.vue) Sim.vue.basculer(); }
+/* Un nouveau programme de vols (import, jeu de démonstration) ou un nouveau
+ * délai de chargement change les classes à fabriquer : on relit les vols, on
+ * recalcule la journée des ateliers, et la relecture repart de là. */
+function reset(data) {
+  build(data || Sim.dataCourante || SAMPLE);
+  if (Sim.ateliers) Sim.ateliers.rendre();
+  if (Sim.vue) Sim.vue.recalculer();
+  majDemarrage(); renderFlights();
 }
 
-/* ==========================================================================
- *  10. CONTRÔLES
- * ==========================================================================*/
-function lancer() {
-  if (enMarche || editMode) return; if (now >= FIN()) reset();
-  // Les réglages sont lus à la construction du modèle : on le reconstruit au
-  // départ, pour que les curseurs touchés avant « Lancer » soient pris en compte.
-  if (now === DEBUT()) build(Sim.dataCourante || SAMPLE);
-  if(!runConfig)runConfig=JSON.parse(JSON.stringify(CFG));
-  enMarche = true; dernierReel = performance.now();
-  const b = document.getElementById('btn-play'); b.textContent = '⏸ Pause'; b.className = 'btn btn-pause';
-  updateRunState();frameId=requestAnimationFrame(boucle);
+/* Colorer le plan à l'instant relu. Quatre états, jamais mélangés avec les
+ * couleurs de paramétrage : celles-ci disent ce qui reste à renseigner AVANT
+ * de lire, celles-là ce qui se passe PENDANT. */
+function peindreInstant(i) {
+  document.body.classList.toggle('en-lecture', Sim.vue ? Sim.vue.t > Sim.vue.debut : false);
+  for (const s of servicesDisponibles()) {
+    const els = zoneEls[s.id]; if (!els) continue;
+    const e = i.services[s.id];
+    els.g.classList.remove('s-travail', 's-attente', 's-fini', 's-avenir');
+    if (e) els.g.classList.add('s-' + e.etat);
+    // Le badge rouge du « goulot » d'hier criait une alarme ; ce que fait le
+    // service se lit dans la liste de droite et dans l'infobulle.
+    if (els.badge) els.badge.textContent = '';
+    if (els.tip) els.tip.textContent = s.nom + (e ? ' — ' + OrlySimulation.LIBELLE[e.etat] + (e.etat !== 'avenir' && e.nom ? ' : ' + e.nom : '') : '');
+  }
+  majEtatPlan();
+  majGoulotInfo();
 }
-function pause() {
-  enMarche = false;
-  if(frameId!==null){cancelAnimationFrame(frameId);frameId=null;}
-  const b = document.getElementById('btn-play'); b.textContent = now>=FIN()?'▶ Relancer':now===DEBUT()?'▶ Lancer':'▶ Reprendre'; b.className = 'btn btn-play';
-  updateRunState();
+
+function initVueSimulation() {
+  if (!window.OrlySimulation) return;
+  Sim.vue = new OrlySimulation.VueSimulation({
+    resultat: () => (Sim.ateliers && Sim.ateliers.resultat) || null,
+    services: servicesDisponibles,
+    selection: () => selection,
+    selectionner: id => selectionner(id),
+    surInstant: peindreInstant
+  });
 }
-function basculer() { enMarche ? pause() : lancer(); }
-function reset(data) {
-  pause(); historique = [];pendingTime=0;accHist=0;runConfig=null; tokens.forEach(t=>t.el.remove()); tokens = [];
-  build(data || Sim.dataCourante || SAMPLE);
-  const b = document.getElementById('btn-play'); b.textContent = '▶ Lancer'; b.className = 'btn btn-play';
-  majHorloge(); majPlan(); majDashboard(); dessinerChart();
-}
+
 function toast(msg) {
   const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on');
   clearTimeout(toast._t); toast._t = setTimeout(()=>t.classList.remove('on'), 1800);
@@ -1305,13 +1275,12 @@ function initControles() {
     CFG.equipes.bascule = (+m[1]) * 60 + (+m[2]); document.getElementById('bascule-lab').textContent = 'à partir de ' + e.target.value;
   });
   const bind = (id, fn) => document.getElementById(id).addEventListener('input', fn);
-  bind('vitesse', e => { vitesse = +e.target.value; document.getElementById('vitesse-val').textContent = vitesse + '×'; });
   bind('robot', e => { CFG.robotCadence = +e.target.value; document.getElementById('robot-val').textContent = e.target.value + ' pl/h'; majPlan(); });
   bind('yc-manuel', e => { CFG.ycManuel = +e.target.value; document.getElementById('yc-manuel-val').textContent = (+e.target.value).toFixed(2).replace('.', ',') + ' min/plateau'; });
   document.getElementById('robot-cies').addEventListener('change', e => {
     CFG.robotCompagnies = e.target.value.split(/[\s,;]+/).map(v => v.trim().toUpperCase()).filter(Boolean);
     e.target.value = CFG.robotCompagnies.join(', ');
-    if (now === DEBUT()) { build(Sim.dataCourante || SAMPLE); majDashboard(); }
+    reset();
   });
   // Contenance des ateliers : une case par atelier modélisé, vide = illimitée.
   const tb = document.getElementById('tampons');
@@ -1328,7 +1297,7 @@ function initControles() {
   bind('robot-lignes', e => {
     CFG.robotLignes = +e.target.value;
     document.getElementById('robot-lignes-val').textContent = e.target.value;
-    if (now === DEBUT()) { build(Sim.dataCourante || SAMPLE); majPlan(); majDashboard(); }
+    reset();
   });
   document.getElementById('double').addEventListener('change', e => { CFG.tunnelDouble = e.target.checked; majPlan(); });
   bind('materiel', e => { CFG.materiel.initial = +e.target.value; document.getElementById('materiel-val').textContent = e.target.value + ' u'; });
@@ -1339,8 +1308,8 @@ function initControles() {
    * aménagé ne tombe pas à zéro parce qu'un autre l'a été. */
   // La grille d'équipements a été abandonnée : personnes, tunnels et lignes
   // robot se décrivent désormais atelier par atelier, dans « Ateliers de
-  // travail ». Les curseurs ci-dessous ne pilotent plus que l'ancien calcul
-  // de la vue Simulation.
+  // travail ». Les curseurs ci-dessous ne pilotent plus que l'ancien calcul,
+  // celui de la comparaison A/B.
   // Vivier polyvalent : un effectif et les ateliers qu'il peut servir.
   const AT_VIVIER = Orly.ATELIERS.filter(id => id !== 'plonge');
   const boiteVivier = document.getElementById('vivier-ateliers');
@@ -1354,20 +1323,18 @@ function initControles() {
     const ateliers = [...boiteVivier.querySelectorAll('[data-vivier]:checked')].map(c => c.dataset.vivier);
     CFG.viviers = effectif > 0 && ateliers.length ? [{ nom:'Polyvalents', effectif, ateliers }] : [];
     document.getElementById('vivier-val').textContent = effectif + (effectif && !ateliers.length ? ' — cochez un atelier' : '');
-    if (now === DEBUT()) { build(Sim.dataCourante || SAMPLE); majPlan(); majDashboard(); }
+    reset();
   };
   bind('vivier', majVivier);
   boiteVivier.addEventListener('change', majVivier);
   const majCal = () => {
     document.getElementById('cal-detail').hidden = !CFG.calendrier.actif;
-    if (now === DEBUT()) { build(Sim.dataCourante || SAMPLE); majHorloge(); majPlan(); majDashboard(); dessinerChart(); }
+    reset();
   };
   document.getElementById('calendrier').addEventListener('change', e => { CFG.calendrier.actif = e.target.checked; majCal(); });
   bind('cal-jours', e => { CFG.calendrier.jours = +e.target.value; document.getElementById('cal-jours-val').textContent = e.target.value + ' j'; majCal(); });
   bind('shift', e => { CFG.shift = +e.target.value; document.getElementById('shift-val').textContent = (e.target.value>0?'+':'') + e.target.value + ' min'; reset(); });
   document.getElementById('loadDelay').addEventListener('change',e=>{if(!e.target.checkValidity() || !e.target.value){e.target.value=CFG.loadDelay;toast('Délai attendu : 10 à 120 minutes');return;}CFG.loadDelay=+e.target.value;reset();});
-  document.getElementById('btn-play').addEventListener('click', basculer);
-  document.getElementById('btn-reset').addEventListener('click', () => { if(now>DEBUT() && !confirm('Recommencer à 05:00 ? La progression actuelle sera effacée ; les instantanés A/B seront conservés.'))return;reset(); toast('Simulation réinitialisée ; réglages disponibles'); });
   document.getElementById('btn-export').addEventListener('click', exporter);
   document.getElementById('snap-a').addEventListener('click', () => capturer('A'));
   document.getElementById('snap-b').addEventListener('click', () => capturer('B'));
@@ -1376,7 +1343,6 @@ function initControles() {
   document.getElementById('sauvegarde-export').addEventListener('click', sauvegardeComplete);
   document.getElementById('sauvegarde-import-btn').addEventListener('click', () => document.getElementById('sauvegarde-import').click());
   document.getElementById('sauvegarde-import').addEventListener('change', restaurerSauvegarde);
-  window.addEventListener('resize', dessinerChart);
   // zoom / fond de plan
   document.getElementById('zoom-in').addEventListener('click', () => zoomer(1.25));
   document.getElementById('zoom-out').addEventListener('click', () => zoomer(1/1.25));
@@ -1398,7 +1364,6 @@ function appliquerTheme(t) {
   b.textContent = t === 'dark' ? 'Clair' : 'Sombre';
   b.title = t === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre';b.setAttribute('aria-label',b.title);
   try { localStorage.setItem('orly-theme', t); } catch (e) { /* stockage indisponible */ }
-  dessinerChart();
 }
 function initTheme() {
   let t = 'light';
@@ -1562,19 +1527,38 @@ function importVols(e) {
   rd.readAsText(file);
 }
 function parseVols(txt) { return parseFlights(txt); }
+/* L'export suit ce qu'on regarde : la journée du modèle par ateliers, telle
+ * qu'elle est calculée. Il se fait en local, par téléchargement — rien ne part
+ * ailleurs. On y met les départs, les classes et le journal des lots : de quoi
+ * refaire les comptes dans un tableur sans relancer le site. */
 function exporter() {
-  const k = kpis();
-  const data = { avertissement:'DÉMONSTRATION — paramètres non calibrés, résultats non exploitables pour décider.',schemaVersion:'0.4',modelStatus:'demonstration_non_calibree',source:dataSource,
-    limites:['Calendrier J−1/J−2 non intégré','Barème d’homme-minutes non calibré','Contenances des tampons à renseigner (illimitées par défaut)','Stocks et compétences non modélisés'],
-    horaire:document.getElementById('horloge').textContent,termine:now>=FIN(),config:runConfig||CFG,entrees:Sim.dataCourante,instantanes:snaps,kpis:k,
-    vols:flights.map(f => { const x=f.sens==='DEP'&&modele?modele.expliquer(f):null; return { id:f.id, sens:f.sens, robot:!!f.robot, due:f.due, readyTime:f.readyTime, retard:f.sens==='DEP'&&f.readyTime!=null?f.retard:null, statut:f.sens==='DEP'?flightStatus(f,now).key:'retour',
-      explication:x?{ of:x.of, phrase:x.phrase, attenteEntree:x.attenteEntree, attentePersonnes:x.attentePersonnes, attenteRobot:x.attenteRobot, attenteAval:x.attenteAval, travail:x.travail, parAtelier:x.parAtelier }:null }; }),
-    journal:modele?modele.journal():[],
-    ateliers:Object.keys(ZONES).reduce((o,id)=>{ o[id]={occupation15min:NON_MODELISES.has(id)?null:Math.round(stations[id].util*100),occupationJour:NON_MODELISES.has(id)?null:Math.round(stations[id].tauxJour*100),ordresActifs:NON_MODELISES.has(id)?null:stations[id].qlen}; return o; }, {}),
-    mesures:modele?modele.bilan():null };
+  const r = (Sim.ateliers && Sim.ateliers.resultat) || null;
+  const hh = t => t == null || !Number.isFinite(t) ? null : MoteurProduction.hhmm(t);
+  const noms = {};
+  for (const a of ((Sim.ateliers && Sim.ateliers.state.ateliers) || [])) noms[a.id] = a.nom;
+  const data = {
+    avertissement: 'PROTOTYPE — barème non calibré : résultats à lire comme un ordre de grandeur.',
+    schemaVersion: '0.5', modele: 'ateliers', source: dataSource,
+    instant: Sim.vue && !Sim.vue.vide ? hh(Sim.vue.t) : null,
+    indicateurs: r && r.indicateurs ? r.indicateurs : null,
+    anomalies: r ? r.anomalies || [] : [],
+    departs: departsSuivis().map(d => ({
+      id: d.id, compagnie: d.cie, depart: hh(d.depart), echeance: hh(d.echeance),
+      fin: hh(d.fin), retard: d.retard,
+      classes: d.classes.map(c => ({ id: c.id, pax: c.pax, fin: hh(c.etat.fin), absente: !!c.etat.absente }))
+    })),
+    classes: r ? Object.entries(r.parClasse || {}).map(([id, c]) => ({
+      id, fin: hh(c.fin), echeance: hh(c.echeance), retard: c.retard ?? null, absente: !!c.absente })) : [],
+    journal: r ? (r.lots || []).map(l => ({
+      service: l.service, atelier: noms[l.atelier] || l.atelier || '', lot: l.nom || '', classes: l.classes || [],
+      attente: Math.round(l.attente || 0), debut: hh(l.debut), fin: hh(l.fin),
+      hommeMinutes: l.hommeMinutes == null ? null : Math.round(l.hommeMinutes),
+      dispo: !!l.dispo })) : [],
+    materiel: r ? r.materiel || null : null
+  };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'newrest-orly-resultats.json'; a.click();
-  setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Résultat de démonstration exporté');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'newrest-orly-journee.json'; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Journée exportée');
 }
 
 /* Workbench navigation and operational reading of the demonstrator. */
@@ -1601,7 +1585,6 @@ function showPanel(name) {
   if(activeView==='reglages')showView('plan');
   activePanel=name;
   document.getElementById('panel-suivi').hidden=name!=='suivi';
-  if(name==='suivi')dessinerChart();
 }
 /* Les réglages sortent du panneau étroit de droite pour occuper toute la
  * largeur, comme le Centre des flux. On DÉPLACE le nœud existant : toutes les
@@ -1613,11 +1596,11 @@ function installerCentreReglages() {
   bloc.hidden=false;bloc.classList.remove('panel-content');bloc.classList.add('reglages-grille');
   const titre=document.createElement('div');titre.className='reglages-entete';
   // Pas de second titre : l'en-tête de vue dit déjà « Centre des réglages ».
-  titre.innerHTML='<div class="mini-note">Deux moteurs cohabitent le temps de la bascule.'
-    +'<details class="aide"><summary aria-label="Pourquoi deux moteurs ?">?</summary>'
-    +'<span class="aide-corps">Ce qui pilote les <b>ateliers de travail</b> est en haut de cette page. '
-    +'Ce qui pilote l’ancienne vue <b>Simulation</b> est en dessous, et disparaîtra quand cette vue '
-    +'sera portée sur le nouveau modèle.</span></details></div>';
+  titre.innerHTML='<div class="mini-note">Le haut de la page règle la journée que relit la vue Simulation.'
+    +'<details class="aide"><summary aria-label="Et le bas de la page ?">?</summary>'
+    +'<span class="aide-corps">Ce qui pilote les <b>ateliers de travail</b> — donc la vue <b>Simulation</b> — '
+    +'est en haut de cette page. En dessous, l’ancien moteur ne sert plus qu’à la comparaison A/B ; '
+    +'il disparaîtra à l’étape suivante.</span></details></div>';
   hote.appendChild(titre);
 
   /* Le modèle par ateliers d'abord : c'est lui qui produit les résultats qu'on
@@ -1630,7 +1613,7 @@ function installerCentreReglages() {
     // comptent d'abord, et il faut pouvoir les repérer dans la liste.
     occupes:()=>[...new Set(((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]).map(a=>a.service))],
     delaiChargement:()=>CFG.loadDelay,
-    change:()=>{if(Sim.ateliers)Sim.ateliers.rendre();majDemarrage();},
+    change:()=>{if(Sim.ateliers)Sim.ateliers.rendre();majDemarrage();if(Sim.vue)Sim.vue.recalculer();},
     notify:toast
   });
   // Les horaires de vols servent aux DEUX moteurs : le délai de chargement fixe
@@ -1645,28 +1628,14 @@ function installerCentreReglages() {
   // Un <div>, pas un <p> : le navigateur referme un paragraphe dès qu'il y
   // rencontre un <details>, et le « ? » tomberait à la ligne.
   const note=document.createElement('div');note.className='mini-note reglages-entete';
-  note.innerHTML='Ces réglages ne pilotent que la vue <b>Simulation</b>.'
+  note.innerHTML='Ils ne pilotent plus que la <b>comparaison A/B</b> ci-dessous.'
     +'<details class="aide"><summary aria-label="Ce que ces réglages font, et ne font pas">?</summary>'
     +'<span class="aide-corps"><p>Effectifs par curseur, files d’attente, contenances, vivier : '
     +'le moteur précédent. Le modèle par ateliers n’a ni file ni contenance.</p>'
-    +'<p>Ils se verrouillent une fois la simulation commencée ; <b>Recommencer</b> les libère.</p>'
+    +'<p>La vue <b>Simulation</b> relit désormais la journée des ateliers de travail : '
+    +'ces curseurs n’y changent rien. Ils disparaîtront avec l’ancien moteur.</p>'
     +'</span></details>';
-  // Les commandes de lecture vivent désormais dans la vue qu'elles pilotent :
-  // il faut donc dire où aller pour voir l'effet de ces curseurs.
-  const vers=document.createElement('p');vers.className='reglages-vers-simu';
-  vers.innerHTML='<span>Pour voir l’effet de ces réglages :</span>';
-  const bouton=document.createElement('button');bouton.className='btn btn-sm';bouton.id='rg-vers-simu';
-  bouton.textContent='Ouvrir la vue Simulation';
-  bouton.addEventListener('click',()=>showView('plan'));
-  vers.appendChild(bouton);
-  // « Recommencer les libère » : le geste doit être là où la phrase le nomme,
-  // sinon elle envoie chercher un bouton qui n'est plus sur cette page.
-  const rejouer=document.createElement('button');rejouer.className='btn btn-sm';rejouer.id='rg-recommencer';
-  rejouer.textContent='Recommencer';
-  rejouer.title='Réinitialiser la journée et déverrouiller les réglages';
-  rejouer.addEventListener('click',()=>document.getElementById('btn-reset').click());
-  vers.appendChild(rejouer);
-  hote.appendChild(ancien);hote.appendChild(note);hote.appendChild(vers);hote.appendChild(bloc);
+  hote.appendChild(ancien);hote.appendChild(note);hote.appendChild(bloc);
   // Le programme de vols, la sauvegarde et le périmètre décrivent l'essai eux
   // aussi : les laisser dans la colonne étroite obligeait à changer de vue pour
   // préparer une seule et même chose. La colonne ne garde que le suivi vivant.
@@ -1685,7 +1654,6 @@ function showView(name) {
   if(name==='ateliers'){pause();if(Sim.ateliers)Sim.ateliers.rendre();}
   document.body.classList.toggle('ateliers-open',name==='ateliers');
   document.getElementById('view-ateliers').hidden=name!=='ateliers';
-  document.getElementById('btn-play').disabled=name==='ateliers'||editMode;
   document.body.classList.toggle('flows-open',name==='flux');
   document.getElementById('view-flux').hidden=name!=='flux';
   document.getElementById('view-reglages').hidden=name!=='reglages';
@@ -1704,35 +1672,106 @@ function updateSource() {
   document.getElementById('source-count').textContent=flights.filter(f=>f.sens==='DEP').length+' départs · '+flights.filter(f=>f.sens==='RET').length+' retours';
   document.getElementById('flight-count').textContent=flights.filter(f=>f.sens==='DEP').length;
 }
+/* L'état de lecture appartient désormais à la vue. Il ne reste ici que ce qui
+ * concerne l'édition du plan : pendant qu'on déplace des zones, on ne change
+ * pas d'onglet. Les réglages, eux, ne se verrouillent plus — la journée est
+ * recalculée à chaque frappe, il n'y a plus d'« essai en cours » à protéger. */
 function updateRunState() {
-  const started=enMarche||now>DEBUT();
-  document.getElementById('run-state').textContent=editMode?'Édition du plan':now>=FIN()?'Terminé':enMarche?'En cours':started?'En pause':'Prêt à lancer';
-  document.querySelectorAll('#sliders-staff input,#robot,#robot-lignes,#robot-cies,#yc-manuel,#tampons input,#tunnels,#double,#materiel,#vivier,#vivier-ateliers input,#calendrier,#cal-jours,#shift,#loadDelay').forEach(input=>{
-    const parGrille=false;   // plus aucun réglage n'est repris d'ailleurs
-    input.disabled=started||NON_MODELISES.has(input.dataset.id)||parGrille;
-    input.title=NON_MODELISES.has(input.dataset.id)?'Service non relié au calcul actuel':parGrille?'Repris de « Création des ateliers ». Décochez pour régler ici.':started?'Recommencez la simulation pour modifier les réglages':'';
+  if (editMode) {
+    const e = document.getElementById('run-state');
+    if (e) e.textContent = 'Édition du plan';
+  } else if (Sim.vue) Sim.vue.rendreTransport();
+  // L'ancien moteur ne calcule pas ces services : leurs curseurs restent grisés.
+  document.querySelectorAll('#sliders-staff input').forEach(input => {
+    const hors = NON_MODELISES.has(input.dataset.id);
+    input.disabled = hors;
+    input.title = hors ? 'Service non relié au calcul de l’ancien moteur' : '';
   });
-  document.querySelectorAll('[data-view]').forEach(b=>b.disabled=editMode&&b.dataset.view!=='plan');
+  document.querySelectorAll('[data-view]').forEach(b => b.disabled = editMode && b.dataset.view !== 'plan');
 }
+
+/* ==========================================================================
+ *  SUIVI DES DÉPARTS
+ *  Le modèle par ateliers ne fabrique pas des vols, il fabrique des
+ *  **compagnies × classes** — un vol en emporte plusieurs, et une classe sert
+ *  plusieurs vols. Un départ est donc prêt quand **toutes** ses classes sont
+ *  sorties, et c'est la dernière qui fixe son heure. C'est elle qu'on nomme :
+ *  à elle seule, elle explique le retard.
+ * ==========================================================================*/
+function departsSuivis() {
+  const r = (Sim.ateliers && Sim.ateliers.resultat) || null;
+  if (!r || !r.classes) return [];
+  const par = r.parClasse || {};
+  const out = new Map();
+  for (const c of r.classes) {
+    for (const v of (c.vols || [])) {
+      let d = out.get(v.id);
+      if (!d) { d = { id: v.id, cie: c.cie, depart: v.depart, echeance: v.echeance, classes: [] }; out.set(v.id, d); }
+      d.depart = Math.min(d.depart, v.depart);
+      d.echeance = Math.min(d.echeance, v.echeance);
+      d.classes.push({ id: c.id, cabine: c.cabine, pax: v.pax, etat: par[c.id] || {} });
+    }
+  }
+  for (const d of out.values()) {
+    const fins = d.classes.map(c => c.etat.fin);
+    d.fin = fins.every(f => f != null) ? Math.max(...fins) : null;
+    // La dernière classe fixe l'heure du vol : c'est elle qu'il faut regarder.
+    d.dernier = d.fin == null
+      ? d.classes.find(c => c.etat.fin == null)
+      : d.classes.find(c => c.etat.fin === d.fin);
+    d.retard = d.fin == null ? null : Math.max(0, Math.round(d.fin - d.echeance));
+  }
+  return [...out.values()].sort((a, b) => a.echeance - b.echeance);
+}
+
 function renderFlights() {
-  if(activeView!=='vols')return;
-  const search=document.getElementById('flight-search').value.trim().toLowerCase();
-  const filter=document.getElementById('flight-filter').value;
-  const rows=flights.filter(f=>f.sens==='DEP').filter(f=>{
-    const st=flightStatus(f,now).key;
-    return (!search||(f.id+' '+f.cie).toLowerCase().includes(search)) && (filter==='all'||filter==='ready'&&f.readyTime!=null||filter==='pending'&&f.readyTime==null||filter==='overdue'&&st==='overdue');
-  }).sort((a,b)=>a.due-b.due);
-  const html=rows.map(f=>{
-    const status=flightStatus(f,now),pending=jobs.filter(j=>j.flight===f&&!j.done);
-    // En cours : chaque OF dit où il est et ce qu'il attend. Terminé : l'OF qui
-    // a fixé l'heure explique où il a attendu (mesures séparées, pas un total).
-    let operations;
-    if(pending.length)operations=pending.map(j=>{const et=modele.etatOF(j);return j.kind+(j.released&&j.stationId?' · '+ZONES[j.stationId].nom:'')+' · '+modele.ETATS[et];}).join(' — ');
-    else {const x=modele.expliquer(f);operations=x?x.phrase:'Toutes terminées';}
-    return '<tr><td><strong>'+escapeHTML(f.id)+'</strong><small>'+escapeHTML(f.cie)+(f.robot?' · robot':' · manuel')+'</small></td><td>'+heureJour(f.stdAbs!=null?f.stdAbs:f.std+CFG.shift)+'</td><td>'+heureJour(f.due)+'</td><td><span class="status '+status.key+'">'+status.label+'</span>'+(f.readyTime!=null?'<small>Prêt à '+heureJour(f.readyTime)+'</small>':'')+'</td><td>'+escapeHTML(operations)+'</td></tr>';
+  if (activeView !== 'vols') return;
+  const t = Sim.vue ? Sim.vue.t : Infinity;
+  const search = document.getElementById('flight-search').value.trim().toLowerCase();
+  const filtre = document.getElementById('flight-filter').value;
+  // Une classe que personne ne fabrique ne sera jamais prête : ce n'est pas un
+  // retard à attendre, c'est un atelier à décrire. On le dit tel quel.
+  const orphelines = d => d.classes.filter(c => c.etat.absente);
+  const etatDe = d => orphelines(d).length ? 'orphan'
+    : d.fin == null || d.fin > t ? (t > d.echeance ? 'overdue' : 'pending')
+    : d.retard > 0 ? 'late' : 'ready';
+  const mot = { ready: 'Prêt à l’heure', late: 'Prêt en retard', overdue: 'Échéance dépassée',
+    pending: 'Pas prêt', orphan: 'Non fabriqué' };
+  // Les filtres regroupent : « Non prêts » compte aussi ce qui a dépassé son
+  // échéance, « Terminés » ce qui est sorti, à l'heure ou non.
+  const groupe = { pending: ['pending', 'overdue', 'orphan'], overdue: ['overdue'], ready: ['ready', 'late'] };
+
+  const lignes = departsSuivis().filter(d => {
+    const e = etatDe(d);
+    return (!search || (d.id + ' ' + d.cie).toLowerCase().includes(search))
+      && (filtre === 'all' || (groupe[filtre] || [filtre]).includes(e));
+  });
+
+  const html = lignes.map(d => {
+    const e = etatDe(d);
+    const sans = orphelines(d);
+    const manquent = d.classes.filter(c => !c.etat.absente && (c.etat.fin == null || c.etat.fin > t));
+    const liste = cs => escapeHTML(cs.slice(0, 3).map(c => c.id).join(', ')) + (cs.length > 3 ? '…' : '');
+    const detail = sans.length
+      ? 'aucun atelier ne fabrique ' + liste(sans) + ' — onglet « Ateliers »'
+      : !manquent.length
+      ? (d.retard ? 'la dernière, ' + escapeHTML(d.dernier ? d.dernier.id : '') + ', est sortie à '
+          + MoteurProduction.hhmm(d.fin) : 'toutes sorties')
+      : manquent.length + ' classe(s) pas encore sortie(s) : ' + liste(manquent);
+    return '<tr><td><strong>' + escapeHTML(d.id) + '</strong><small>' + escapeHTML(d.cie)
+      + ' · ' + d.classes.length + ' classe(s)</small></td>'
+      + '<td>' + MoteurProduction.hhmm(d.depart) + '</td>'
+      + '<td>' + MoteurProduction.hhmm(d.echeance) + '</td>'
+      + '<td><span class="status ' + e + '">' + mot[e] + '</span>'
+      + (d.fin != null && d.fin <= t ? '<small>fini à ' + MoteurProduction.hhmm(d.fin)
+          + (d.retard ? ' · +' + d.retard + ' min' : '') + '</small>' : '')
+      + '</td><td>' + detail + '</td></tr>';
   }).join('') || '<tr><td colspan="5" class="empty-state">Aucun départ ne correspond à ces filtres.</td></tr>';
-  const body=document.getElementById('flight-rows');if(body.innerHTML!==html)body.innerHTML=html;
+
+  const body = document.getElementById('flight-rows');
+  if (body.innerHTML !== html) body.innerHTML = html;
 }
+
 function initWorkbench() {
   document.querySelectorAll('[data-panel]').forEach(b=>b.addEventListener('click',()=>showPanel(b.dataset.panel)));
   document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
@@ -1772,7 +1811,8 @@ chargerZones();
 construirePlan(); build(SAMPLE); initControles(); initEdition(); initFlux(); initAteliers(); initWorkbench();
 // Le fil de mise en route vient en dernier : il relit les autres, il ne peut
 // donc se dresser qu'une fois qu'ils sont là.
+initVueSimulation();
 initDemarrage();
-majHorloge(); majPlan(); majDashboard(); dessinerChart();
+majHorloge(); majPlan(); majDashboard();
 
 })();
