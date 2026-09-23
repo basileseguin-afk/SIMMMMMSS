@@ -13,6 +13,10 @@ Le plus récent est en haut.
   décisions d'abandon ; les écarts classés par priorité ; les questions à
   trancher.
 - `README.md` : lien vers ce document.
+- Réponses de Basile consignées : moteur unique en JavaScript (décision déléguée,
+  motivée au §14), objectif de plusieurs journées enchaînées, validation au fil
+  de l'eau, animations reportées ; priorités révisées ; question du « vivier »
+  reformulée avec un exemple ; registre des décisions.
 
 ---
 

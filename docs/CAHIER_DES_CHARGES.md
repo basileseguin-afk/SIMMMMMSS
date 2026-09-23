@@ -6,7 +6,7 @@ la feuille de route d'Astra (17/09) et les demandes de Basile au fil des
 échanges. Pour chaque exigence : sa **source**, son **état vérifié dans le
 code** au 23/09, et l'**écart** restant.
 
-Légende : ✅ fait · 🟡 partiel · ❌ absent · ⛔ abandonné ou remplacé par une décision de Basile
+Légende : ✅ fait · 🟡 partiel · ❌ absent · ⏸ reporté · ⛔ abandonné ou remplacé par une décision
 
 Aucune donnée réelle de l'unité ne figure ici : le dépôt est public.
 
@@ -14,7 +14,7 @@ Aucune donnée réelle de l'unité ne figure ici : le dépôt est public.
 
 ## 1. La finalité, telle qu'elle est aujourd'hui
 
-Simuler une **journée de production** de l'unité de catering aérien d'Orly pour :
+Simuler la production de l'unité de catering aérien d'Orly — une journée aujourd'hui, **plusieurs journées enchaînées** à terme (objectif confirmé le 23/09) — pour :
 
 1. **voir où et quand se forment les bouchons** selon les vagues de vols ;
 2. **mesurer la charge** et optimiser le personnel par service ;
@@ -84,7 +84,7 @@ de relire le cahier des charges initial :
 | # | Exigence | Source | État | Écart |
 |---|---|---|---|---|
 | M1 | Moteur à **événements discrets** | CdC §5 | ✅ | `moteur/noyau.js` (JavaScript) |
-| M2 | Moteur de référence en **Python / SimPy** | Feuille de route §3 | ⛔ | Le moteur est resté en JavaScript, dans le navigateur. **À arbitrer** si un calcul hors navigateur devient nécessaire |
+| M2 | Moteur de référence en **Python / SimPy** | Feuille de route §3 | ⛔ | **Décidé le 23/09 : un seul moteur, en JavaScript** (voir §14). Il tourne à l'identique dans le navigateur et en ligne de commande (Node) pour les calculs en série |
 | M3 | **Atelier de travail** = une équipe dans un service : heure de départ, nombre de personnes, ce qu'elle fait ; **heure de fin calculée** | 21/09 | ✅ | |
 | M4 | Un atelier fabrique **plusieurs compagnies × classes**, reliées d'un service à l'autre | 21/09 | ✅ | Via les parcours |
 | M5 | Atelier **robot** : débit, classes, personnes (avec minimum), heure d'allumage, pauses machine | 21/09 | ✅ | |
@@ -93,7 +93,7 @@ de relire le cahier des charges initial :
 | M8 | **Mise à disposition** (magasin, appros…) : ni man-minutes ni durée | 22/09 | ✅ | |
 | M9 | **Boucle du matériel** : départs → retours → plonge → propre ; stock = retours − départs | 22/09 | 🟡 | Un seul compte pour tout le matériel ; pas de distinction trolley / porcelaine / compagnie ; **pas de report d'un jour sur l'autre** |
 | M10 | **Parcours** en branches parallèles qui se rejoignent ; YC sans cuisine ni légumerie ; branche magasin → montage | 23/09 | ✅ | |
-| M11 | **Calendrier multijour** : cuisine J−2, prépa J−1, CRL du soir le matin de J | Feuille de route étape 2 | 🟡 | Une équipe peut commencer de J−7 à J ; **aucune règle automatique**, et une seule journée est simulée |
+| M11 | **Simuler plusieurs journées enchaînées** — cuisine J−2, prépa J−1, CRL du soir le matin de J | Feuille de route étape 2 ; **objectif final confirmé le 23/09** | 🟡 | Une équipe peut commencer de J−7 à J, mais **une seule journée est simulée** et rien ne passe d'un jour au suivant |
 | M12 | Stockages à **capacité finie** (frigos, frigo handling) qui bloquent le flux | CdC §4, feuille de route étape 5 | ❌ | Décrits sur le plan, sans effet sur le calcul |
 | M13 | **Compétences** et affectation des personnes (vivier partagé entre ateliers) | Feuille de route étape 3 ; 21/09 | ❌ | Le vivier partagé a disparu avec la refonte ; chaque équipe a son effectif propre |
 | M14 | Loi de charge : temps fixe, temps par lot, temps par pièce | Feuille de route étape 3 | ❌ | Travail = minutes par vol × nombre de vols ; linéaire |
@@ -106,10 +106,10 @@ de relire le cahier des charges initial :
 | # | Exigence | Source | État | Écart |
 |---|---|---|---|---|
 | V1 | Rejouer la journée : horloge, lecture, pause, pas à pas, vitesse | CdC §6 | ✅ | |
-| V2 | **Jetons animés** (trolleys, flux) circulant le long des liens | CdC §6 | ❌ | Retirés avec l'ancien moteur ; les liens sont dessinés, rien n'y circule |
+| V2 | **Jetons animés** (trolleys, flux) circulant le long des liens | CdC §6 | ⏸ | **Reporté le 23/09** : les animations viendront plus tard |
 | V3 | **Couleur de congestion** par service (vert → orange → rouge selon l'occupation et la file) | CdC §6 | 🟡 | Quatre états (au travail, attend, a fini, pas commencé) avec médaillon coloré ; **pas de gradient d'occupation** |
 | V4 | Mettre en évidence le **goulot courant** | CdC §6 | 🟡 | « À regarder » nomme le service qui attend depuis le plus longtemps, et celui qui a le plus attendu sur la journée |
-| V5 | **Robot** et **tunnels de plonge** visibles sur le plan avec leur cadence en direct | CdC §6 | ❌ | Réglés dans les fiches d'équipe ; absents du plan |
+| V5 | **Robot** et **tunnels de plonge** visibles sur le plan avec leur cadence en direct | CdC §6 | ⏸ | **Reporté le 23/09** avec les animations |
 | V6 | Plan et tableau de bord visibles en même temps | CdC §9 | ✅ | « La journée » : plan + panneau « En ce moment » |
 | V7 | Suivre un repas dans le temps et **expliquer son retard** | Feuille de route étape 6 | ✅ | Frise étape par étape et phrase (« le montage a attendu 25 min la dotation ») |
 
@@ -162,7 +162,7 @@ de relire le cahier des charges initial :
 | F1 | Glossaire, registre des décisions, dictionnaire des données (`REGLES_METIER.md`, `DATA_DICTIONARY.md`) | 🟡 | Couvert en partie par `MODELE_ATELIERS.md` et `FORMATS_EXCEL.md` ; pas de registre des décisions |
 | F2 | Tests automatiques | ✅ | 179 tests purs, 15 parcours navigateur |
 | F3 | **Calibration** sur des journées observées | ❌ | Il faut l'étude de man-minutes et des relevés terrain |
-| F4 | **Validation** sur des journées distinctes, tolérances fixées avec Basile | ❌ | Dépend de F3 |
+| F4 | **Validation** sur des journées distinctes, tolérances fixées avec Basile | ⏸ | **Au fil de l'eau** (23/09) : les tolérances se fixeront à mesure que les données arrivent |
 
 ## 11. Abandonné par décision — ne pas y revenir sans le décider
 
@@ -176,34 +176,76 @@ de relire le cahier des charges initial :
 
 ---
 
-## 12. Les écarts qui comptent, par ordre de priorité
+## 12. Les écarts qui comptent, par ordre de priorité (révisé le 23/09)
 
-1. **Importer l'étude de man-minutes réelle** (D3) et **calibrer** (F3, F4).
-   Tant que les chiffres sont des exemples, le site montre un fonctionnement,
-   pas une réalité. C'est l'écart qui conditionne tous les autres.
-2. **Indicateurs de charge** : occupation par atelier (K3), débit (K5),
-   consommé vs disponible (K6), ETP (K8), **courbe de la journée** (K7).
-   Ils répondent à l'usage n° 2 (optimiser le personnel), aujourd'hui mal servi.
-3. **Le goulot visible sur le plan** : couleur selon l'occupation et la file
-   (V3), **jetons qui circulent** (V2), robot et tunnels avec leur cadence (V5).
-   C'est le critère de succès n° 1 du cahier des charges initial : « voir
-   apparaître les bouchons au bon endroit et au bon moment ».
+1. **Importer l'étude de man-minutes réelle** (D3) et **calibrer au fil de
+   l'eau** (F3). Tant que les chiffres sont des exemples, le site montre un
+   fonctionnement, pas une réalité.
+2. **Simuler plusieurs journées enchaînées** (M11, M9) — l'objectif final :
+   - un programme de vols **daté**, sur plusieurs jours ;
+   - des équipes qui reviennent chaque jour (ou selon le jour de la semaine) ;
+   - la cuisine à J−2 et la prépa à J−1 **calculées**, plus réglées à la main ;
+   - ce qui reste le soir **passe au lendemain** : matériel propre et sale,
+     préparations d'avance, retards ;
+   - un bilan **par jour** et **sur la période**.
+3. **Indicateurs de charge**, par jour et sur la période : occupation par
+   équipe (K3), débit (K5), consommé / disponible (K6), ETP (K8), courbe de la
+   journée (K7).
 4. **Lire l'export Winrest réel** (D9), avec ses règles de dossiers.
-5. **Stocks à capacité finie** (M12) et **boucle du matériel détaillée et
-   multijour** (M9, M11).
-6. **Décalage par vol** (W5), **export CSV des résultats** et capture du plan (W8).
-7. **Vivier de personnes et compétences** (M13), **loi de charge par lot** (M14).
-8. **Purge des `refs/pull/1..3/head`** (C3) : c'est une action de Basile auprès
-   de GitHub Support.
-9. **Faire tester le site** par une ou deux personnes du terrain (E9).
+5. **Stocks à capacité finie** (M12) — ils prennent tout leur sens sur
+   plusieurs jours.
+6. **Décalage par vol** (W5), **export CSV des résultats** (W8), **loi de
+   charge par lot** (M14).
+7. **Couleur des services selon leur charge** (V3), sans animation.
+8. **Purge des `refs/pull/1..3/head`** (C3, action de Basile) et **test par des
+   personnes du terrain** (E9).
 
-## 13. Questions à trancher par Basile
+Reporté : tout ce qui est **animation** (V2, V5).
 
-- Le moteur reste-t-il en **JavaScript** dans le navigateur, ou faut-il le moteur
-  Python recommandé par Astra (M2) ?
-- La simulation doit-elle couvrir **plusieurs jours enchaînés** (stocks,
-  J−2 / J−1), ou une journée avec des équipes décalées suffit-elle (M11) ?
-- Faut-il réintroduire un **vivier de personnes partagé** entre équipes (M13) ?
-- Quelles **tolérances** rendront le modèle « bon » face au terrain (F4) ?
-- Les **jetons animés** (V2) valent-ils l'effort, ou un plan qui change de
-  couleur suffit-il ?
+## 13. Question encore ouverte : le « vivier » de personnes (M13)
+
+Aujourd'hui, chaque équipe a **son** effectif : « Cuisine matin, 4 personnes,
+de 04:30 à 12:45 ». Ces 4 personnes ne font que de la cuisine, du début à la
+fin de leur poste.
+
+La question est de savoir si, **dans la réalité**, des personnes changent de
+service en cours de journée. Par exemple, la plonge a fini à 10 h et ses 3
+personnes vont aider au montage.
+
+- **Si non** — chacun reste dans son équipe —, le modèle actuel suffit.
+- **Si oui**, il faut un « vivier » : on déclare « 20 personnes présentes de
+  04:00 à 12:15, dont 8 savent faire la cuisine », et la simulation les place là
+  où il y a du travail. C'est plus réaliste, mais plus lourd à paramétrer.
+
+Réponse attendue de Basile ; sans elle, le modèle actuel reste en place.
+
+## 14. Registre des décisions
+
+| Date | Décision | Par | Raison |
+|---|---|---|---|
+| 18/09 | Plan et vols réels hors du dépôt public | Basile | Confidentialité |
+| 21/09 | Ateliers de travail sans emplacement ; abandon des tables, chaînes, grille | Basile | Plus simple à simuler |
+| 23/09 | Temps de travail par vol, plus par passager | Basile | Le passager « ne représente rien » |
+| 23/09 | Parcours en branches ; fusion avec les équipes | Basile | Deux faces d'une même chose |
+| 23/09 | **Un seul moteur, en JavaScript** | Claude, délégué par Basile | Voir ci-dessous |
+| 23/09 | **Objectif final : plusieurs journées enchaînées** | Basile | |
+| 23/09 | Validation du modèle au fil de l'eau | Basile | Les données arrivent progressivement |
+| 23/09 | Animations reportées | Basile | |
+
+**Pourquoi JavaScript plutôt que Python.**
+
+- **Le site s'ouvre sans rien installer.** GitHub Pages ou un double-clic en
+  local suffisent, y compris pour le travail confidentiel dans `plan-prive/`.
+  Un moteur Python demanderait un serveur ou une installation sur chaque poste,
+  et ferait perdre le calcul instantané à chaque modification.
+- **Le volume est petit.** Une journée représente quelques milliers
+  d'événements, une semaine quelques dizaines de milliers : quelques
+  millisecondes en JavaScript. Plusieurs journées ne demandent pas Python.
+- **Un seul moteur, c'est une seule vérité.** Deux moteurs divergeraient et
+  doubleraient l'entretien. Celui-ci a déjà 179 tests.
+- **Le calcul en série reste possible.** Le même moteur tourne sous Node en
+  ligne de commande : c'est déjà le cas pour les tests. Il pourra donc enchaîner
+  des centaines de scénarios pour la calibration.
+- **Quand Python deviendrait utile** : pour une optimisation ou un ajustement
+  statistique lourd lors de la calibration. Ce serait alors un outil
+  **à côté**, qui lit et écrit les mêmes classeurs, et non un second moteur.
