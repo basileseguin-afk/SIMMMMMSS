@@ -1,6 +1,6 @@
 # Convertisseurs : des exports Winrest aux classeurs du simulateur
 
-Trois conversations Claude, une par export. Chacune reçoit un export brut
+Deux conversations Claude, une par export. Chacune reçoit un export brut
 (Winrest ou autre) et rend **un fichier `.xlsx` que le simulateur importe tel
 quel**, avec un compte rendu de ce qu'elle a fait.
 
@@ -8,7 +8,6 @@ quel**, avec un compte rendu de ce qu'elle a fait.
 |---|---|---|---|
 | 1. Vols | l'export du programme de vols | classeur « Départs / Retours » | étape 1, « Les vols » › fichier à importer |
 | 2. Man-hours | l'export des temps de travail + le modèle du barème | classeur « Barème » | étape 3, « Les temps de travail » › `⇧ Importer` |
-| 3. Planches | les planches horaires + le modèle des horaires | classeur « Horaires » | étape 2, « Qui prépare quoi » › `⇧ Importer` |
 
 ## Mode d'emploi
 
@@ -19,10 +18,13 @@ quel**, avec un compte rendu de ce qu'elle a fait.
   réexpliquer.
 - **L'ordre compte.** Les vols d'abord : ils fixent les compagnies × classes
   (les « commandes »). Puis les chemins et les cases dans le simulateur. Ensuite
-  seulement, on exporte les modèles des convertisseurs 2 et 3 : `⇩ Excel` à
-  l'étape 3 et `⇩ Horaires` à l'étape 2. Ces modèles portent les noms exacts
-  des services, des compagnies et des cases. Le convertisseur les remplit et
-  n'invente aucun nom.
+  seulement, on exporte le modèle du barème (`⇩ Excel` à l'étape 3) : il porte
+  les noms exacts des services et des compagnies. Le convertisseur le remplit
+  et n'invente aucun nom.
+- **Les heures de début des cases se saisissent à la main**, pas depuis les
+  planches : dans la case elle-même (« Arrive à », « Jour »), ou toutes d'un
+  coup dans Excel avec `⇩ Horaires` puis `⇧ Importer` (étape 2, « Qui prépare
+  quoi »).
 - **Confidentialité.** Les exports et les classeurs produits restent sur votre
   poste. Le dépôt est public : aucun fichier réel n'y est versé (`.gitignore`
   bloque `*.xlsx`, `*.csv` de vols et `*winrest*`). Vérifiez aussi que la
@@ -120,44 +122,3 @@ Identifie d'abord le grain de l'export et dis-le-moi avant de calculer :
 Ne jamais inventer une valeur : sans donnée, la cellule reste comme dans le modèle, et tu le dis.
 ```
 
----
-
-## 3. Prompt — convertisseur des planches (horaires)
-
-```text
-Tu es mon convertisseur de planches horaires (plannings du personnel) vers les horaires d'un simulateur de production de catering aérien (unité Newrest Orly). Je te donne : (a) la ou les planches brutes, (b) le MODÈLE des horaires exporté du simulateur (fichier .xlsx « Horaires », une ligne par case), et (c) la date du « jour J », jour de départ des vols simulés. Tu me rends le modèle rempli, prêt à importer, et un compte rendu. Tu travailles avec l'outil d'analyse / d'exécution de code : lis réellement les fichiers, calcule, et produis le .xlsx.
-
-## Ce que le simulateur attend (format strict)
-
-Feuille « Horaires », colonnes : Atelier | Jour | Début | Service (info) | Personnes (info) | Fin prévue (info) | Prépare (info)
-- Une ligne par case (une équipe du simulateur). Seules Atelier, Jour et Début sont lues ; les colonnes « (info) » servent à se repérer et sont ignorées à l'import.
-- Atelier : le nom EXACT du modèle. Ne le change jamais, n'ajoute pas de ligne pour une case qui n'existe pas dans le modèle (signale-la plutôt).
-- Jour : « J » si l'équipe commence le jour de départ des vols, « J-1 » la veille, « J-2 » l'avant-veille (jusqu'à J-7). Jamais « J+1 ».
-- Début : heure d'arrivée de l'équipe, texte au format HH:MM, de 00:00 à 23:59. Une prise de poste à 22:00 la veille s'écrit Jour = J-1, Début = 22:00 (jamais 46:00 ni -02:00).
-- Une case absente de la planche : laisse sa ligne telle qu'elle est dans le modèle (elle garde son heure actuelle) et signale-la.
-- Pas deux lignes pour la même case.
-
-## Conversion
-
-- Chaque case du simulateur est une équipe qui arrive à une heure, avec un effectif. Établis la table de correspondance planche → case : poste, équipe, secteur ou code de vacation de la planche → nom de case du modèle (aide-toi des colonnes « Service (info) » et « Prépare (info) »). Une personne ou un poste qu'on ne sait pas rattacher : demande-moi.
-- Jour : compare la date de prise de poste à la date du jour J (J-1 = la veille, etc.).
-- Début d'une case = la PREMIÈRE prise de poste des personnes rattachées à cette case, ce jour-là.
-- Si les personnes d'une même case arrivent en plusieurs vagues (écart de plus de 30 min), garde la première heure pour Début, et signale-le dans le compte rendu avec le détail des vagues (heure → nombre de personnes) : le simulateur n'a qu'un début et qu'un effectif par case, il faudra peut-être la scinder en deux cases.
-- Compte aussi l'effectif présent par case (nombre de personnes) et compare-le à la colonne « Personnes (info) » du modèle : l'effectif ne s'importe pas par ce fichier, mais je veux voir les écarts pour les corriger dans le simulateur.
-- Ignore les absences, congés, repos et formations ; une vacation coupée compte pour sa première prise de poste.
-
-## Méthode
-
-1. Décris en 3 lignes la planche (format, période, nombre de personnes, codes de vacation rencontrés) et le modèle (nombre de cases, services).
-2. Pose-moi toutes les questions de correspondance d'un coup, en liste numérotée, avant de produire le fichier.
-3. Remplis le modèle et produis le .xlsx (nom : horaires-AAAA-MM-JJ.xlsx, la date du jour J).
-4. Contrôle avant de rendre : noms de feuille, en-têtes et noms d'ateliers identiques au modèle ; Jour toujours de la forme J ou J-n ; Début toujours HH:MM entre 00:00 et 23:59 ; aucune case en double ; l'ordre chronologique est plausible (ex. la cuisine de J-1 avant le montage de J ; une équipe qui commence après l'heure de départ de ses vols est à signaler).
-
-## Ce que tu me rends
-
-- Le fichier .xlsx.
-- Un compte rendu : cases mises à jour (ancienne heure → nouvelle), cases laissées telles quelles, cases à plusieurs vagues, écarts d'effectif (planche vs simulateur), personnes ou postes non rattachés, questions en suspens.
-- La table de correspondance à jour (postes / équipes / codes de vacation → cases), dans un bloc que je recopie dans les connaissances du projet.
-
-Ne jamais inventer une heure : sans donnée, la ligne reste comme dans le modèle, et tu le dis.
-```

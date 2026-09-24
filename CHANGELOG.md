@@ -5,6 +5,12 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-24 — Convertisseurs : les planches retirées
+
+- `docs/CONVERTISSEURS.md` : le convertisseur des planches est retiré ; les
+  heures de début des cases se saisissent à la main (dans la case, ou en
+  bloc avec `⇩ Horaires` / `⇧ Importer`). Restent vols et man-hours.
+
 ## 2026-09-24 — Prompts des convertisseurs Winrest → simulateur
 
 - `docs/CONVERTISSEURS.md` : trois prompts pour trois conversations Claude
