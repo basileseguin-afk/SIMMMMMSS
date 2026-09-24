@@ -350,9 +350,11 @@ body.editing .sous-onglets{display:none}
 
 /* La journée : le plan, ses chiffres, la comparaison de deux essais. */
 body[data-vue="plan"][data-sous="j-chiffres"] .app,
-body[data-vue="plan"][data-sous="j-comparer"] .app{grid-template-columns:minmax(0,1fr)}
-body:not([data-vue="plan"]) .journee-chiffres,body:not([data-vue="plan"]) .journee-comparer{display:none}
+body[data-vue="plan"][data-sous="j-comparer"] .app,
+body[data-vue="plan"][data-sous="j-stocks"] .app{grid-template-columns:minmax(0,1fr)}
+body:not([data-vue="plan"]) .journee-chiffres,body:not([data-vue="plan"]) .journee-comparer,body:not([data-vue="plan"]) .journee-stocks{display:none}
 .journee-chiffres,.journee-comparer{padding:18px 20px;overflow:auto;flex:1 1 auto;min-height:0}
+.journee-stocks{overflow:auto;flex:1 1 auto;min-height:0;align-content:start}
 .col-plan>.kpi-grille{border-top:0}
 .chiffres-attente,.chiffres-vide{display:none}
 body.avant-lancement:not(.journee-vide) .chiffres-attente{display:block;font-size:13.5px}

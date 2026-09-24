@@ -59,9 +59,11 @@
   /** 390 → « 06:30 ». Les heures au-delà de 24:00 restent lisibles. */
   function hhmm(t) {
     if (t == null || !Number.isFinite(t)) return '—';
-    const j = Math.floor(t / MINUTES_PAR_JOUR), reste = t - j * MINUTES_PAR_JOUR;
+    // On arrondit à la minute AVANT de découper : sinon 03:59,6 s'écrirait « 03:60 ».
+    const u = Math.round(t);
+    const j = Math.floor(u / MINUTES_PAR_JOUR), reste = u - j * MINUTES_PAR_JOUR;
     const h = String(Math.floor(reste / 60)).padStart(2, '0');
-    const m = String(Math.round(reste % 60)).padStart(2, '0');
+    const m = String(reste % 60).padStart(2, '0');
     return (j ? (j > 0 ? 'J+' + j + ' ' : 'J' + j + ' ') : '') + h + ':' + m;
   }
 
@@ -840,7 +842,9 @@
     // Un service absent du barème produit des durées nulles. Ce n'est pas une
     // erreur de saisie, mais un zéro muet trompe : on le nomme.
     for (const a of ateliers) {
-      if (a.type === 'robot') continue;
+      // Un robot va à son débit, une plonge à celui de ses tunnels, une mise à
+      // disposition ne travaille pas : aucun n'a besoin de barème.
+      if (a.type === 'robot' || a.type === 'lavage' || a.type === 'dispo') continue;
       if (!bareme[a.service]) anomalies.push({ code: 'bareme', atelier: a.id,
         message: a.nom + ' : aucun barème pour « ' + nom(a.service) + ' », sa durée est nulle tant qu’il n’est pas renseigné.' });
     }
@@ -862,7 +866,7 @@
     }
 
     // Ce qui n'empêche pas de jouer la journée ne doit pas l'empêcher.
-    const NON_BLOQUANTES = new Set(['doublon', 'bareme', 'lots', 'lot-vide', 'poste', 'materiel', 'dispo', 'bouchon',
+    const NON_BLOQUANTES = new Set(['doublon', 'bareme', 'lots', 'lot-vide', 'poste', 'materiel', 'dispo', 'bouchon', 'inacheve', 'plonge-fermee',
       'tunnel-personnes', 'parcours-trou', 'hors-parcours', 'bareme-classe']);
     const bloquant = anomalies.some(a => !NON_BLOQUANTES.has(a.code));
     if (bloquant) return { ok: false, anomalies, classes, lots: [], ateliers: [] };
@@ -1237,6 +1241,37 @@
       const l = journal.find(x => x.service === service && x.classes.includes(id));
       return l ? l.fin : null;
     };
+    // Ce que chaque classe attend d'être faite : chaque service où une équipe
+    // l'a dans sa liste. Une équipe restée bloquée avant (matériel jamais venu,
+    // poste fini) ne la prépare jamais : la classe n'est PAS prête, même si
+    // ses étapes d'avant ont fini — sinon elle paraîtrait « prête à l'heure »
+    // sans être passée au montage.
+    const confiees = new Map();
+    for (const a of ateliers) {
+      if (!a || (a.type !== 'manuel' && a.type !== 'robot')) continue;
+      for (const lot of (a.lots || [])) for (const id of classesDuLot(lot)) {
+        if (!confiees.has(id)) confiees.set(id, []);
+        confiees.get(id).push(a);
+      }
+    }
+    const jamais = new Map();   // atelier → classes qu'il n'a jamais préparées
+    for (const [id, ats] of confiees) for (const a of ats) {
+      if (journal.some(l => l.atelier === a.id && (l.classes || []).includes(id))) continue;
+      if (!jamais.has(a)) jamais.set(a, []);
+      jamais.get(a).push(id);
+    }
+    for (const [a, ids] of jamais) {
+      const vue = parId.get(a.id), bloque = vue && vue.lots.find(l => l.fin == null);
+      // Sinon, l'équipe attend encore la première : quel service d'avant ne la livre jamais ?
+      const premiere = ids[0], attendus = bloque ? [] : amontsDe(a.service, premiere)
+        .filter(s => !journal.some(l => l.service === s && (l.classes || []).includes(premiere) && l.fin != null));
+      anomalies.push({ code: 'inacheve', atelier: a.id, classes: ids,
+        message: (a.nom || a.id) + ' ne prépare jamais ' + ids.slice(0, 6).map(enClair).join(', ') + (ids.length > 6 ? '… (' + ids.length + ')' : '') + ' : '
+          + (bloque ? 'l’équipe reste bloquée sur ' + enClair(bloque.nom) + (bloque.sansMateriel ? ', faute de matériel propre' : bloque.horsPoste ? ', son poste finit avant' : '') + '.'
+            : attendus.length ? 'l’équipe attend toujours ' + enClair(premiere) + ' de « ' + attendus.map(nom).join(' », « ') + ' », qui ne la livre jamais.'
+            : 'son poste finit avant qu’elle y arrive.') + ' Ces commandes ne sont pas prêtes.' });
+    }
+
     const derniers = {};   // dernier service du parcours de chaque classe
     for (const c of classes) {
       const etapes = journal.filter(l => l.classes.includes(c.id));
@@ -1244,7 +1279,8 @@
       // c'est la seule étape d'une classe, cette classe n'est pas faite. Sans
       // cette distinction, un magasin ouvert suffirait à dire « 100 % à l'heure ».
       const reels = etapes.filter(l => !l.dispo);
-      const fin = reels.length && reels.every(l => l.fin != null)
+      const manque = (confiees.get(c.id) || []).some(a => (jamais.get(a) || []).includes(c.id));
+      const fin = reels.length && !manque && reels.every(l => l.fin != null)
         ? Math.max(...reels.map(l => l.fin)) : null;
       derniers[c.id] = {
         id: c.id, cie: c.cie, cabine: c.cabine, pax: c.pax, vols: c.vols.length,
@@ -1257,7 +1293,14 @@
     }
 
     const stocks = stocksEntreAteliers(journal, classes, derniers, amontsDe);
-    const plonge = mat.actif ? bilanPlonge(file, stock, ateliers.filter(a => a.type === 'lavage'), env.maintenant) : null;
+    const plongeurs = ateliers.filter(a => a.type === 'lavage');
+    const plonge = mat.actif ? bilanPlonge(file, stock, plongeurs, env.maintenant,
+      plongeurs.map(a => (parId.get(a.id) || {}).finPoste).filter(Number.isFinite)) : null;
+    if (plonge && plonge.apresFermeture > 0) {
+      anomalies.push({ code: 'plonge-fermee', service: plonge.services[0] || 'plonge',
+        message: Math.round(plonge.apresFermeture) + ' u reviennent après la fin du poste de la plonge (' + hhmm(plonge.fermeture)
+          + ') et ne sont pas lavées ce jour : ouvrez-la plus tard, ou ajoutez une équipe de plonge du soir.' });
+    }
     if (plonge && plonge.attenteMax >= 60) {
       anomalies.push({ code: 'bouchon', service: plonge.services[0] || 'plonge',
         message: 'Bouchon à la plonge : jusqu’à ' + Math.round(plonge.max) + ' u sales en attente (à ' + hhmm(plonge.maxA) + ') ; '
@@ -1284,7 +1327,9 @@
         partAHeure: suivies.length ? Math.round(aHeure / suivies.length * 100) : null,
         retardMoyen: retards.length ? retards.reduce((a, b) => a + b, 0) / retards.length : null,
         retardMax: retards.length ? Math.max(...retards) : null,
-        finDerniere: journal.length ? Math.max(...journal.map(l => l.fin == null ? -Infinity : l.fin)) : null,
+        // La dernière COMMANDE prête : la plonge qui lave les retours du soir,
+        // ou un magasin ouvert, ne sont pas des commandes.
+        finDerniere: suivies.some(c => c.fin != null) ? Math.max(...suivies.filter(c => c.fin != null).map(c => c.fin)) : null,
         attenteTotale: journal.reduce((n, l) => n + l.attente, 0),
         attenteMateriel: journal.reduce((n, l) => n + (l.attenteMateriel || 0), 0),
         hommeHeures: journal.reduce((n, l) => n + (l.hommeMinutes || 0), 0) / 60
@@ -1424,8 +1469,12 @@
    * qu'une unité y attend, et les heures où les retours dépassent ce que les
    * tunnels lavent en une heure.
    */
-  function bilanPlonge(file, stock, lavages, finJournee) {
+  function bilanPlonge(file, stock, lavages, finJournee, finsDePoste) {
     const capacite = lavages.reduce((n, a) => n + debitLavage(a), 0);
+    // La plonge ferme à la dernière fin de poste de ses équipes (sans fin : jamais).
+    const fins = finsDePoste || [];
+    const fermeture = lavages.length && fins.length === lavages.length ? Math.max(...fins) : null;
+    const apresFermeture = fermeture == null ? 0 : file.retours.filter(x => x.t >= fermeture).reduce((n, x) => n + x.u, 0);
     const h = sommet(file.serie);
     const lavees = file.attentes.reduce((n, a) => n + a.u, 0);
     const parHeure = new Map();
@@ -1441,9 +1490,10 @@
     return {
       services: [...new Set(lavages.map(a => a.service))],
       capacite, serie: file.serie, max: h.max, maxA: h.a,
-      // Ce qui n'a jamais été lavé attend encore à la fin de la journée.
-      attenteMax: Math.max(file.attentes.reduce((n, a) => Math.max(n, a.pire), 0),
-        ...file.arrivees.filter(a => a.u > 1e-9).map(a => finJournee - a.t)),
+      // Le bouchon se mesure sur ce qui a été lavé : ce qui revient une fois
+      // la plonge fermée n'attend pas dans une file, il n'est pas lavé du tout.
+      attenteMax: file.attentes.reduce((n, a) => Math.max(n, a.pire), 0),
+      fermeture: fermeture, apresFermeture,
       attenteMoy: lavees ? file.attentes.reduce((n, a) => n + a.attente * a.u, 0) / lavees : 0,
       retours: file.retours, heures, depassements,
       resteSale: Math.round(stock.sale), fin: finJournee

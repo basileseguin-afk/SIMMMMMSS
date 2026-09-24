@@ -489,3 +489,44 @@ rechargement (la case retirée ne revient pas), renommage en double
 (« Refusé : le nom … est déjà celui d'une autre case »), 200 commandes
 (1 321 cases, 202 chemins, journée calculée en 71 ms ; saisie 0,27 s, choix
 d'une commande 0,07 s).
+
+## Revue du 2026-09-24 — Une journée complète jouée de bout en bout
+
+Méthode : une journée cohérente construite à la main et jouée dans le moteur
+puis dans le navigateur — 12 départs de démonstration, 7 compagnies, 34
+commandes (un chemin chacune), réception J-1 14:00, légumerie J-1 15:00,
+cuisine J-1 16:00 (6 personnes), prépa J-1 20:00, dotation 01:00 (consomme le
+matériel propre), montage 02:00, plonge 05:00 (2 tunnels de 400 u/h), magasin
+à disposition. Deux variantes : stock de matériel suffisant (4 000 u, plonge
+sans fin de poste) et stock court (1 500 u, plonge fermée à 13:15). Chaque
+écran relu (vols, chemin, case, tableau, frise, cases, planning, commandes,
+plan rejoué à 03:00, chiffres, stocks) ; chiffres recoupés (pas de
+chevauchement dans une case, pas de stock négatif, durées = man-minutes ÷
+personnes).
+
+| ID | Gravité | Statut | Vérif. | Résumé | Fichier |
+|---|---|---|---|---|---|
+| BUG-030 | Majeur | Corrigé | Confirmé | Stock court : la dotation reste bloquée faute de matériel propre, le montage n'en voit plus rien arriver… et 24 commandes jamais montées étaient dites « prêtes à l'heure ». Une commande confiée à une équipe qui ne l'a jamais préparée n'est plus prête ; l'anomalie nomme l'équipe et la cause (« attend toujours AF · Économie de « Dotation », qui ne la livre jamais ») | `moteur/production.js` |
+| BUG-031 | Majeur | Corrigé | Confirmé | L'onglet « Stocks et retours » ne défilait pas : les graphiques de la plonge, en bas, étaient coupés et inaccessibles ; une colonne vide occupait la droite | `histoire.css` |
+| BUG-032 | Moyen | Corrigé | Confirmé | Plonge fermée à 13:15 et retours du soir : le moteur annonçait un « bouchon » de plusieurs heures. C'était une fermeture : ces unités ne sont pas lavées du tout. Nouvelle anomalie « plonge-fermee » (combien, à partir de quelle heure) ; l'attente maximale ne compte plus que le matériel lavé | `moteur/production.js` |
+| BUG-033 | Moyen | Corrigé | Confirmé | « Dernière commande prête à 19:39 » : l'heure venait de la plonge qui lave les retours du soir ; c'est maintenant la dernière commande (06:34) | `moteur/production.js` |
+| BUG-034 | Mineur | Corrigé | Confirmé | Une heure à 59,6 min s'écrivait « 03:60 » : l'arrondi se fait avant de séparer heures et minutes | `moteur/production.js` |
+| BUG-035 | Mineur | Corrigé | Confirmé | Fausse alerte « aucun barème » pour la plonge et le magasin, qui n'en ont pas besoin (débit des tunnels, mise à disposition) | `moteur/production.js` |
+| BUG-036 | Mineur | Corrigé | Confirmé | Frise d'une commande commencée à J-1 : une étiquette par heure, illisibles (« J-1 14:00J-1 15:00… ») ; le jour n'est plus écrit qu'au changement et les repères s'espacent. La plonge y était dite « sautée, sans équipe » : elle « sert tout le monde » | `parcours.js` |
+| BUG-037 | Mineur | Corrigé | Confirmé | En-tête des stocks « J-1 14:00–19:00 » lu comme une seule soirée : « J-1 14:00 → J 19:00 » | `temps.js` |
+
+**Preuves.** `tests/journee-simulee.test.cjs` (un test par défaut ci-dessus,
+côté moteur et frise), `tests/temps-browser.cjs` (le bas de l'onglet des
+stocks s'atteint, sur toute la largeur ; vérifié en échec sans le correctif).
+Journée rejouée après correction : stock suffisant, 34/34 à l'heure, aucune
+anomalie, dernière commande 06:34 ; stock court, 10/34 à l'heure et chaque
+commande non montée nommée.
+
+**Remarques de modèle, laissées telles quelles (à trancher).**
+- Une commande (compagnie × classe) a une seule échéance : son premier départ
+  de la journée. Un vol du soir rangé dans la même commande qu'un vol du matin
+  est donc prêt le matin et attend en stock (FBU · Business : 11 h 59 avant le
+  chargement de 18:15).
+- Une case prépare ses commandes dans l'ordre : si la première est bloquée
+  (matériel absent), les suivantes attendent derrière elle. C'est voulu (une
+  équipe suit sa liste), mais un seul manque peut en bloquer beaucoup.

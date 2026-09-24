@@ -376,24 +376,28 @@
    * qui l'a fait attendre — l'amont présent qui a livré le dernier.
    *
    * @returns {{ etapes:[{ service, branche, debut, fin, attente, atelier,
-   *   dispo, absent, attendu }], debut, fin }}
+   *   dispo, absent, commun, attendu }], debut, fin }}
    */
   function chronogramme(resultat, parcours, classeId) {
     const lots = (resultat && resultat.lots) || [];
     const arcs = P.arcsDuParcours(parcours);
     // Le même ordre que les colonnes du tableau : branche par branche, puis la jonction.
+    // La plonge lave les retours de tous les vols : elle ne tient pas de lot par
+    // commande, mais elle n'est pas « sautée » pour autant.
+    const lavage = new Set(((resultat && resultat.ateliers) || []).filter(a => a.type === 'lavage').map(a => a.service));
     const etapes = colonnes([parcours]).map(({ service: s, groupe }) => {
       const l = lots.find(x => x.service === s && (x.classes || []).includes(classeId));
       return { service: s, branche: groupe,
         debut: l ? l.debut : null, fin: l ? l.fin : null, attente: l ? (l.attente || 0) : 0,
-        atelier: l ? l.atelier : null, dispo: !!(l && l.dispo), absent: !l, attendu: null };
+        atelier: l ? l.atelier : null, dispo: !!(l && l.dispo), absent: !l && !lavage.has(s),
+        commun: !l && lavage.has(s), attendu: null };
     });
     const par = new Map(etapes.map(e => [e.service, e]));
     // Une étape sans équipe est enjambée : on remonte jusqu'à ce qui a vraiment livré.
     const amonts = (s, vus = new Set()) => arcs.filter(a => a.to === s && !vus.has(a.from)).flatMap(a => {
       vus.add(a.from);
       const e = par.get(a.from);
-      return e && !e.absent ? [e] : amonts(a.from, vus);
+      return e && !e.absent && !e.commun ? [e] : amonts(a.from, vus);
     });
     for (const e of etapes) {
       if (e.absent || !(e.attente > 0)) continue;
@@ -1123,12 +1127,19 @@
       const t0 = Math.floor(Math.min(g.debut, Number.isFinite(c.echeance) ? c.echeance : g.debut) / 60) * 60;
       const t1 = Math.ceil(Math.max(g.fin, Number.isFinite(c.echeance) ? c.echeance : 0) / 60) * 60 || t0 + 60;
       const L = 1000, G = 150, H = 26, W = L - G - 44, x = t => G + (t - t0) / Math.max(1, t1 - t0) * W;
-      const heures = []; for (let t = t0; t <= t1; t += 60) heures.push(t);
+      // Repères horaires espacés d'au moins 70 px : sur une commande qui part
+      // de J-1, une étiquette par heure se chevauchait. Le jour n'est écrit
+      // qu'au premier repère et au changement de jour.
+      const pas = [60, 120, 180, 240, 360, 720].find(p => W * p / Math.max(1, t1 - t0) >= 70) || 720;
+      const heures = []; for (let t = Math.ceil(t0 / pas) * pas; t <= t1; t += pas) heures.push(t);
+      const jourDe = t => Math.floor(t / 1440);
+      const repere = (t, i) => i === 0 || jourDe(t) !== jourDe(heures[i - 1]) ? P.hhmm(t) : P.hhmm(t - jourDe(t) * 1440);
       const lignes = g.etapes.map((e, i) => {
         const y = 24 + i * (H + 4);
         const saute = e.absent || e.debut == null;
+        const note = e.commun ? ' · sert tout le monde' : saute ? ' · sautée, sans équipe' : '';
         const lab = `<text class="qf-t-svc${saute ? ' saute' : ''}" x="4" y="${y + 13}">${esc(this.nom(e.service))}</text>
-          <text class="qf-t-br" x="4" y="${y + 24}">${esc(this.groupe(e.branche))}${saute ? ' · sautée, sans équipe' : ''}</text>`;
+          <text class="qf-t-br" x="4" y="${y + 24}">${esc(this.groupe(e.branche))}${note}</text>`;
         if (saute) return lab + `<line class="qf-t-vide" x1="${G}" y1="${y + H / 2}" x2="${G + W}" y2="${y + H / 2}"/>`;
         // Ce qui l'attendait en stock, livré par les étapes d'avant, jusqu'à son début.
         const stock = sej.filter(x => x.vers === e.service);
@@ -1150,7 +1161,7 @@
       const ech = Number.isFinite(c.echeance) ? `<line class="qf-t-echeance" x1="${x(c.echeance)}" y1="16" x2="${x(c.echeance)}" y2="${haut + 4}"/>
         <text class="qf-t-echeance-txt" x="${x(c.echeance)}" y="${haut + 16}" text-anchor="middle">chargement ${P.hhmm(c.echeance)}</text>` : '';
       return texte + `<svg class="qf-t" viewBox="0 0 ${L} ${haut + 20}" role="img" aria-label="${esc(P.libelleClasse(c.id))} dans le temps, étape par étape">
-        ${heures.map(t => `<line class="qf-t-grille" x1="${x(t)}" y1="16" x2="${x(t)}" y2="${haut}"/><text class="qf-t-heure" x="${x(t) + 2}" y="12">${P.hhmm(t)}</text>`).join('')}
+        ${heures.map((t, i) => `<line class="qf-t-grille" x1="${x(t)}" y1="16" x2="${x(t)}" y2="${haut}"/><text class="qf-t-heure" x="${x(t) + 2}" y="12">${repere(t, i)}</text>`).join('')}
         ${lignes}${ech}</svg>
         <p class="qf-t-legende"><span class="qf-l ok">travail</span><span class="qf-l attente">attente de l’étape d’avant</span><span class="qf-l stock">en stock</span><span class="qf-l echeance">heure de chargement</span></p>`;
     }

@@ -5,6 +5,24 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-24 — Une journée complète jouée : 8 défauts corrigés
+
+Une journée cohérente (34 commandes, cuisine à J-1, plonge, dotation,
+montage) jouée de bout en bout, écran par écran (voir `BUGS.md`, BUG-030 à
+BUG-037).
+
+- **Moteur** : une commande qu'une équipe n'a jamais préparée (bloquée
+  derrière un lot sans matériel) n'est plus « prête à l'heure » ; l'anomalie
+  nomme l'équipe et ce qu'elle attend. Une plonge fermée avant les derniers
+  retours est signalée comme telle, plus comme un bouchon. « Dernière commande
+  prête » ne compte plus la plonge. Plus de « 03:60 ». Plus d'alerte de barème
+  pour la plonge et le magasin.
+- **Stocks et retours** : l'onglet défile et prend toute la largeur (les
+  graphiques de la plonge étaient coupés) ; « J-1 14:00 → J 19:00 ».
+- **Frise d'une commande** : repères horaires espacés, jour écrit au
+  changement seulement ; la plonge « sert tout le monde ».
+- Tests : `tests/journee-simulee.test.cjs`, `tests/temps-browser.cjs`.
+
 ## 2026-09-24 — Contrôle complet : 13 bugs corrigés
 
 Revue complète (voir `BUGS.md`, revue du 24/09 : BUG-017 à BUG-029).

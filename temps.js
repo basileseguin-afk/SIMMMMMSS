@@ -173,15 +173,18 @@
       d += ` H${w}`;
       return `<svg class="tp-spark" viewBox="0 0 ${w} ${h}" aria-hidden="true"><path class="tp-aire" d="${d} V${h - 2} H0 Z"/><path class="tp-ligne" d="${d}"/></svg>`;
     };
+    // « J-1 14:00–19:00 » se lirait comme une seule soirée : le jour J est nommé
+    // dès que la période commence la veille.
+    const fin = t0 < 0 && t1 >= 0 ? 'J ' + P.hhmm(t1) : P.hhmm(t1);
     const lignes = s.parLien.map(l => `<tr>
         <th scope="row">${esc(nom(l.de))} <span aria-hidden="true">→</span> ${esc(nom(l.vers))}</th>
         <td><b>${nombre(l.repasMax)}</b> repas<small>à ${l.a != null ? P.hhmm(l.a) : '—'}</small></td>
         <td><b>${duree(l.dureeMax)}</b><small>${esc(P.libelleClasse(l.classeMax))}</small></td>
         <td>${duree(l.dureeMoy)}<small>${l.sejours} ${l.sejours > 1 ? 'commandes' : 'commande'}</small></td>
-        <td title="Repas en stock de ${P.hhmm(t0)} à ${P.hhmm(t1)}">${spark(l)}</td></tr>`).join('');
+        <td title="Repas en stock de ${P.hhmm(t0)} à ${fin}">${spark(l)}</td></tr>`).join('');
     return `<section class="tp-sec">${titre}${intro}
       <div class="tp-scroll"><table class="tp-table"><thead><tr><th scope="col">Entre</th><th scope="col">Le plus en stock</th>
-        <th scope="col">Le plus long</th><th scope="col">En moyenne</th><th scope="col">Au fil de la journée <small>${P.hhmm(t0)}–${P.hhmm(t1)}</small></th></tr></thead>
+        <th scope="col">Le plus long</th><th scope="col">En moyenne</th><th scope="col">Au fil de la journée <small>${P.hhmm(t0)} → ${fin}</small></th></tr></thead>
         <tbody>${lignes}</tbody></table></div></section>`;
   }
 
