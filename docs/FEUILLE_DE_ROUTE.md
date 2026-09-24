@@ -232,6 +232,7 @@ Travaux :
 - Comparer heures par service, fins de production, files et localisation des contraintes. Utiliser un calcul linéaire simple comme référence de comparaison.
 - Examiner les erreurs par type de journée et famille de prestation, pas seulement un total mensuel.
 - Définir avec Basile les tolérances acceptables pour chaque usage avant d’accepter le modèle.
+- **Affinage de fin de projet — les réajustements du jour.** En théorie la cuisine travaille la veille (J−1) de la prépa : le stock entre les deux est prévu, pas un problème, et se règle en mettant la case cuisine au jour J−1. Dans la réalité, des réajustements le jour même créent des stocks et des attentes hors planning. Les modéliser (part de la production refaite ou complétée le jour J, et à quel moment) est un affinage à traiter à la toute fin, une fois le modèle calé.
 
 Des heures payées seules ne permettent pas d’identifier toutes les causes d’écart : occupation réelle, sous-charge, nettoyage, interruptions ou heures supplémentaires peuvent être mélangés. Ne pas appliquer un coefficient général d’heures supplémentaires sans diagnostic.
 
