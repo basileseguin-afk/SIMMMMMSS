@@ -5,6 +5,19 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-24 — Convertisseur man-hours corrigé après sa relecture
+
+- Prompt 2 réécrit : « * » ne remplace qu'une compagnie, jamais une classe ;
+  poste sans classe → une classe désignée (présente sur tous les vols) ;
+  travail effectif vs présence (sinon pauses et rendement comptés deux fois) ;
+  même période au numérateur et au dénominateur ; repas moyens divisés par
+  les vols qui ont la classe (c'est ce que compte le simulateur) ; vide ≠ 0 ;
+  unité des durées détectée ; modèle modifié en place (openpyxl, vérifié
+  contre le lecteur) ; table du projet appliquée sans la redemander ; codes
+  compagnie jamais choisis par le convertisseur.
+- Prompt 1 : une seule table des codes compagnie, partagée par les deux
+  projets.
+
 ## 2026-09-24 — Convertisseurs : les planches retirées
 
 - `docs/CONVERTISSEURS.md` : le convertisseur des planches est retiré ; les
