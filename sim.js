@@ -59,6 +59,10 @@ const ZONES = {
               sous:['trolleys non-food'] },
   prepa:    { nom:'MONTAGE', x:2180, y:900, w:400, h:350,
               sous:['dressage plateaux','montage trolleys'] },
+  // La prépa précède le montage : elle prépare ce que le montage dresse.
+  // Emplacement à confirmer sur le plan (« Modifier le plan »).
+  preparation: { nom:'PRÉPA', x:2180, y:1262, w:400, h:110, approx:true,
+              sous:['préparation avant montage'] },
   magasin:  { nom:'MAGASIN', x:4009.3, y:1052.8, w:486.7, h:140,
               sous:['produit compagnie'] },
   dotation: { nom:'DOTATION', x:1156, y:1387.9, w:348, h:629.9,

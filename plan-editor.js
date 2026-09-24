@@ -45,7 +45,10 @@ function validatePlan(raw,originals){
  }
  if(!zones.length||zones.length>500||typeof opacity!=='number'||!Number.isFinite(opacity)||opacity<0||opacity>1)throw new Error('Plan invalide (maximum 500 zones).');
  const ids=new Set();zones=zones.map(z=>{const v=validZone(z);if(ids.has(v.id))throw new Error('Identifiant de zone en double.');ids.add(v.id);const builtin=base.some(b=>b.id===v.id);if((v.kind==='service')!==builtin)throw new Error('Les ateliers du moteur ne peuvent pas être ajoutés ou convertis par import.');if(v.kind==='annexe'&&!base.some(b=>b.id===v.parent))throw new Error('L’annexe '+v.nom+' dépend d’un atelier inconnu : '+v.parent+'.');return v;});
- if(base.some(z=>!ids.has(z.id)))throw new Error('Le plan doit conserver tous les ateliers du moteur. Vous pouvez les masquer.');
+ // Un plan enregistré avant l'arrivée d'un nouveau service (la prépa) ne le
+ // connaît pas : on le complète à sa place par défaut, au lieu de refuser tout
+ // le tracé. (Un service ne peut pas être supprimé depuis l'éditeur.)
+ for(const b of base)if(!ids.has(b.id)){ids.add(b.id);zones.push(validZone(clone(b)));}
  zones=zones.filter(z=>{if(z.kind!=='service'&&(z.kind==='cold'||OLD_STORAGE_IDS.has(z.id))){pending.push({id:z.id,nom:z.nom,contenu:''});return false;}return true;});
  return {schema:'ory-plan',version:3,zones,unassignedStorages:validStorages(pending),backgroundOpacity:opacity};
 }

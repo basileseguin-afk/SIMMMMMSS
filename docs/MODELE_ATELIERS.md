@@ -310,13 +310,25 @@ orienté** : les services sont les nœuds, un lien « A → B » dit que A livre
 Écrit `{ id, nom, noeuds: [service], liens: [{ de, vers }] }`.
 
 ```
-RÉCEPTION / APPROS → LÉGUMERIE → CUISINE ─┐
-PLONGE → DOTATION ────────────────────────┼→ MONTAGE
-MAGASIN ──────────────────────────────────┘
+RÉCEPTION / APPROS → LÉGUMERIE → CUISINE → PRÉPA ─┐
+PLONGE → DOTATION ────────────────────────────────┼→ MONTAGE
+MAGASIN ──────────────────────────────────────────┘
 ```
 
 Le montage reçoit trois liens et attend donc **ses trois amonts** ; la dotation n'attend que la
-plonge, la cuisine que la légumerie. La règle tient en une phrase :
+plonge, la cuisine que la légumerie. Un service peut aussi **livrer plusieurs
+services** : ajouter « APPROS → MONTAGE » à côté de « APPROS → LÉGUMERIE » fait
+partir une partie des appros droit au montage, qui attend alors aussi les appros.
+
+La **prépa** (`preparation`, « PRÉPA » sur le plan) est le poste qui prépare
+avant le montage (le montage garde l'identifiant historique `prepa`). Les chemins
+types passent par elle. À la première ouverture après son arrivée, chaque chemin
+enregistré qui reliait directement la cuisine au montage est réécrit une fois en
+« CUISINE → PRÉPA → MONTAGE » (`insererPrepa`), puis marqué `prepa: true` pour ne
+plus jamais être retouché : si vous retirez la prépa d'un chemin, elle n'y revient
+pas. Un plan enregistré avant son arrivée est **complété** (la zone PRÉPA est
+posée à sa place par défaut, marquée à confirmer) au lieu d'être refusé. Son
+barème d'exemple est provisoire, comme les autres. La règle tient en une phrase :
 
 > Un service ne travaille un lot que lorsque **les services qui le précèdent sur
 > le parcours de chaque classe** du lot la lui ont livrée.
@@ -324,8 +336,12 @@ plonge, la cuisine que la légumerie. La règle tient en une phrase :
 Les parcours se **dessinent** à l'étape 2, « Qui prépare quoi », onglet « Les
 chemins », dans un diagramme de nœuds (`graphe.js`) :
 
-- **tirer le `+`** à droite d'un service jusqu'à un autre crée le lien ; au doigt
-  ou au clavier, on clique le service, « Relier à… », puis le service qui reçoit ;
+- **tirer le `+`** à droite d'un service jusqu'à un autre crée le lien ; ou bien
+  **cliquer le `+`**, puis le service qui reçoit (un second clic sur le même `+`,
+  Échap ou un clic dans le vide annule) ; au clavier, on choisit le service,
+  « Relier à… », puis le service qui reçoit. La consigne et le résultat
+  s'affichent juste au-dessus du diagramme ; le cadre défile tout seul quand on
+  tire un trait près de son bord ;
 - un lien qui **fermerait une boucle** est refusé (un repas tournerait en rond),
   un lien en double aussi ;
 - **cliquer un lien** le choisit ; sa croix (ou la touche Suppr) le retire ;

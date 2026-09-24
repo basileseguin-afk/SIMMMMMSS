@@ -5,6 +5,44 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-24 — Deux liens au départ d'un service, et le service Prépa
+
+**Relier un service à plusieurs services** (`graphe.js`, `parcours.js`)
+- Le modèle acceptait déjà « appros → légumerie » et « appros → montage » ; c'est
+  le geste qui échouait. Un **clic** sur le `+` d'un service, puis un clic sur le
+  service qui reçoit, crée maintenant le lien (avant, le clic sur le `+` ne
+  faisait rien et le second clic ouvrait seulement le panneau). Un second clic
+  sur le même `+`, Échap ou un clic dans le vide annule.
+- Le trait tiré ne compte qu'au-delà de 6 px, et le cadre du diagramme **défile
+  tout seul** quand on s'approche de son bord : le montage, souvent hors champ,
+  se rejoint sans lâcher la souris.
+- La consigne et le résultat (« … livre maintenant Montage », « livre déjà »)
+  s'affichent **au-dessus du diagramme**, plus seulement en haut de page, hors
+  de vue.
+- Le lien choisi est dessiné par-dessus les autres ; la bulle du `+` et la
+  phrase d'aide disent les deux gestes.
+
+**Nouveau service Prépa, avant le montage**
+- Service `preparation` (« PRÉPA ») : zone sur le plan, à confirmer
+  (`sim.js`), pictogramme saladier (`icones.js` ; le montage garde son plateau),
+  barème d'exemple provisoire (`moteur/production.js`).
+- Les chemins types passent par CUISINE → PRÉPA → MONTAGE (`parcours.js`).
+- Les chemins enregistrés sont réécrits **une fois** (`insererPrepa`, marque
+  `prepa: true`), et l'alerte le dit ; un chemin dont on retire ensuite la prépa
+  la garde retirée. Import Excel : les chemins créés sont marqués de même
+  (`echanges.js`).
+- Un plan enregistré sans la zone PRÉPA est **complété** au lieu d'être refusé
+  (`plan-editor.js`).
+
+**Tests** : icône et fixture Excel mis à jour ; plan complété au lieu de refusé ;
+insertion unique de la prépa, deux liens au départ des appros
+(`parcours.test`) ; clic `+` puis clic Montage, annulation, prépa dans le chemin
+(`graphe-browser`).
+
+**Docs** : README, MODELE_ATELIERS, FORMATS_EXCEL, CAHIER_DES_CHARGES (E13).
+
+---
+
 ## 2026-09-23 — Corrections de l'audit visuel
 
 L'audit (lisibilité, compréhension, épuration) a relevé des points de

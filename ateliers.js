@@ -138,6 +138,14 @@
               + 'Ajustez-les dans l’onglet « Les chemins ».';
             this.enregistrer();
           }
+          // La prépa (24/09) s'insère une fois entre la cuisine et le montage
+          // des chemins déjà dessinés. Les autres liens vers le montage restent.
+          const insere = PC.insererPrepa ? PC.insererPrepa(this.state) : 0;
+          if (insere) {
+            alerte = 'Nouveau service « Prépa » : il s’insère entre Cuisine et Montage dans '
+              + (insere > 1 ? insere + ' chemins' : '1 chemin') + '. Ajoutez-le ailleurs depuis l’onglet « Les chemins ».';
+            this.enregistrer();
+          }
         }
       }
       catch (e) { alerte = 'Ateliers enregistrés non chargés : ' + e.message + ' La copie reste en place.'; }

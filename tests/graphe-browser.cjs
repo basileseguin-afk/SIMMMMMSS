@@ -59,6 +59,23 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.deepEqual(await liens('complet'),avant);
   assert.match(await page.locator('#at-status').textContent(),/livre déjà/);
 
+  // 3 bis. La prépa se place avant le montage ; un service livre deux services.
+  assert.ok((await liens('complet')).includes('cuisine>preparation')&&(await liens('complet')).includes('preparation>prepa'),'cuisine → prépa → montage');
+  assert.equal(await page.locator(`${Z} [data-noeud=preparation] .gr-nom`).textContent(),'Prépa');
+  // Au clic : un clic sur le + des appros, un clic sur le montage.
+  const apres=await liens('complet');
+  assert.ok(apres.includes('appros>decontam'));
+  await page.locator(`${Z} .gr-port[data-port=appros]`).click();await attendre();
+  assert.match(await page.locator('.pc-message').textContent(),/Relier/,'la consigne s’affiche sous le diagramme');
+  await page.locator(`${Z} .gr-port[data-port=appros]`).click();await attendre();
+  assert.match(await page.locator('.pc-message').textContent(),/annulé/,'un second clic sur le même + annule');
+  await page.locator(`${Z} .gr-port[data-port=appros]`).click();await attendre();
+  await page.locator(`${Z} [data-noeud=prepa]`).click();await attendre();
+  assert.deepEqual(await liens('complet'),apres.concat('appros>prepa'),'appros → montage s’ajoute à appros → légumerie');
+  assert.equal(await page.locator(`${Z} .gr-lien[data-lien="appros>prepa"]`).count(),1);
+  await page.locator(`${Z} .gr-lien[data-lien="appros>prepa"]`).focus();await page.keyboard.press('Delete');await attendre();
+  assert.deepEqual(await liens('complet'),apres);
+
   // 4. Déplacer un service : la disposition est retenue ; « Réorganiser » l'oublie.
   const n=page.locator(`${Z} [data-noeud=magasin] .gr-fond`),b=await n.boundingBox();
   await page.mouse.move(b.x+60,b.y+20);await page.mouse.down();await page.mouse.move(b.x+60,b.y+140,{steps:5});await page.mouse.up();await attendre();

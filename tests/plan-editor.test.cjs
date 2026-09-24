@@ -4,10 +4,12 @@ const base=[{id:'cuisine',nom:'Cuisine',kind:'service',x:10,y:20,w:100,h:200,app
 test('legacy geometry migrates without losing service identity',()=>{
  const p=validatePlan({cuisine:{x:30,y:40,w:50,h:60}},base);assert.equal(p.zones[0].kind,'service');assert.equal(p.zones[0].x,30);assert.equal(p.zones[0].approx,true);
 });
-test('full plan preserves annotations and rejects loss of a motor service',()=>{
+test('full plan preserves annotations and completes a missing motor service',()=>{
  const room={id:'room1',nom:'Local',kind:'room',x:0,y:0,w:10,h:20};
  const p=validatePlan({schema:'ory-plan',version:2,zones:[...base,room]},base);assert.equal(p.zones.length,2);
- assert.throws(()=>validatePlan({schema:'ory-plan',version:2,zones:[room]},base),/conserver/);
+ const q=validatePlan({schema:'ory-plan',version:2,zones:[room]},base);
+ assert.deepEqual(q.zones.map(z=>z.id).sort(),['cuisine','room1'],'un service ajouté au moteur rejoint le plan');
+ assert.equal(q.zones.find(z=>z.id==='cuisine').x,10,'à sa place par défaut');
  assert.throws(()=>validatePlan({schema:'ory-plan',version:2,zones:[...base,{...room,kind:'service'}]},base),/ateliers/);
 });
 test('invalid shapes, duplicate ids and unknown format are refused',()=>{

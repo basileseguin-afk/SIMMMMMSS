@@ -121,8 +121,9 @@ droite des onglets.
 2. **Qui prépare quoi**, en cinq onglets :
    1. **Les chemins** : par où passe chaque commande, **dessiné en diagramme de
       nœuds**. Chaque service est un nœud ; on tire le `+` d’un service jusqu’à
-      un autre pour dire qu’il le livre. Les chemins partent en parallèle et se
-      rejoignent (les aliments par la réception et la cuisine, le matériel par
+      un autre (ou on clique le `+`, puis l’autre service) pour dire qu’il le
+      livre ; un service peut en livrer plusieurs. Les chemins partent en parallèle et se
+      rejoignent (les aliments par la réception, la cuisine et la prépa, le matériel par
       la plonge et la dotation, les produits de la compagnie par le magasin,
       tout se retrouvant au montage). Chaque nœud dit ses équipes ; un clic
       dessus permet d’en créer une. L’économie ne passe pas par la cuisine.

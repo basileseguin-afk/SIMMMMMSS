@@ -365,7 +365,7 @@
           let p = parNom.get(T.cleEntete(nom));
           if (!p) {
             const ancien = (etat.parcours || []).find(x => T.cleEntete(x.nom) === T.cleEntete(nom));
-            p = { id: ancien ? ancien.id : 'pc-' + T.cleEntete(nom).slice(0, 40), nom, noeuds: [], liens: [] };
+            p = { id: ancien ? ancien.id : 'pc-' + T.cleEntete(nom).slice(0, 40), nom, noeuds: [], liens: [], prepa: true };
             parNom.set(T.cleEntete(nom), p); liste.push(p);
           }
           const vide = v => v === null || v === undefined || v === '';

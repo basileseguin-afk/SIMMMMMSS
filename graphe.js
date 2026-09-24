@@ -228,7 +228,7 @@
             <text class="gr-nom" x="44" y="${n.sous ? 22 : 31}">${esc(court(n.nom, 19))}</text>
             ${n.sous ? `<text class="gr-sous" x="44" y="39">${esc(court(n.sous, 22))}</text>` : ''}
             <g class="gr-port" data-port="${esc(n.id)}" transform="translate(${L},${H / 2})"><circle r="9"/><path d="M-4,0 H4 M0,-4 V4"/>
-              <title>Tirer vers un autre service pour les relier</title></g>
+              <title>Tirer vers un autre service, ou cliquer ici puis sur lui, pour les relier</title></g>
           </g>`;
         }).join('')}</g>`;
       if (this.focus) {
@@ -269,9 +269,13 @@
       const noeud = e.target.closest('[data-noeud]');
       const lien = e.target.closest('[data-lien]');
       const svg = this.a.hote().querySelector('.gr-svg');
+      // En mode « relier », cliquer le + d'un autre service vaut le choisir comme destination.
+      if (port && this.depuis && port.dataset.port !== this.depuis) {
+        e.preventDefault(); return this.relier(this.depuis, port.dataset.port);
+      }
       if (port) {
         e.preventDefault();
-        this.geste = { type: 'relier', de: port.dataset.port, id: e.pointerId };
+        this.geste = { type: 'relier', de: port.dataset.port, id: e.pointerId, cx: e.clientX, cy: e.clientY, tire: false };
         svg.setPointerCapture(e.pointerId);
         return;
       }
@@ -291,7 +295,13 @@
       const p = this.point(e), svg = this.a.hote().querySelector('.gr-svg');
       if (g.type === 'relier') {
         const a = this.pos[g.de], b = svg.querySelector('.gr-brouillon');
+        if (!g.tire && Math.hypot(e.clientX - g.cx, e.clientY - g.cy) < 6) return;   // pas encore un trait
+        g.tire = true;
         b.hidden = false;
+        // Près du bord du cadre, il défile : on atteint un service hors de vue.
+        const cadre = this.a.hote().querySelector('.gr-cadre'), r = cadre.getBoundingClientRect();
+        if (e.clientX > r.right - 40) cadre.scrollLeft += 16; else if (e.clientX < r.left + 40) cadre.scrollLeft -= 16;
+        if (e.clientY > r.bottom - 40) cadre.scrollTop += 16; else if (e.clientY < r.top + 40) cadre.scrollTop -= 16;
         b.setAttribute('d', courbe(a, { x: p.x + 6, y: p.y - H / 2 }).d);
         const sous = this.noeudSous(e);
         svg.querySelectorAll('.gr-noeud.survol').forEach(n => n.classList.remove('survol'));
@@ -319,6 +329,12 @@
         const sous = this.noeudSous(e);
         this.a.hote().querySelector('.gr-brouillon').hidden = true;
         if (sous && sous.dataset.noeud !== g.de) return this.relier(g.de, sous.dataset.noeud);
+        // Un clic sur le + sans tirer : on passe en « relier à… », le prochain
+        // service cliqué reçoit le lien. Un second clic sur le même + annule.
+        if (!g.tire) {
+          if (this.depuis === g.de) { this.depuis = null; this.dire('Relier : annulé.'); return this.rendre(); }
+          return this.relierDepuis(g.de);
+        }
         return this.rendre();
       }
       if (g.bouge) {
@@ -381,7 +397,7 @@
     relierDepuis(id) {
       this.depuis = id;
       const n = this.a.noeuds().find(x => x.id === id);
-      this.dire('Relier ' + (n ? n.nom : id) + ' à… : cliquez le service qui le reçoit (Échap pour annuler).');
+      this.dire('Relier ' + (n ? n.nom : id) + ' à… : cliquez le service qui le reçoit (Échap ou un clic dans le vide pour annuler).');
       this.rendre();
       const autre = this.a.hote().querySelector('.gr-noeud.cible');
       if (autre) autre.focus({ preventScroll: true });

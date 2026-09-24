@@ -98,7 +98,8 @@ Un parcours est un **diagramme de nœuds** : une ligne par **lien**, « De » li
 |---|---|---|
 | Complet | RÉCEPTION / APPROS | LÉGUMERIE |
 | Complet | LÉGUMERIE | CUISINE |
-| Complet | CUISINE | MONTAGE |
+| Complet | CUISINE | PRÉPA |
+| Complet | PRÉPA | MONTAGE |
 | Complet | PLONGE | DOTATION |
 | Complet | DOTATION | MONTAGE |
 | Complet | MAGASIN | MONTAGE |

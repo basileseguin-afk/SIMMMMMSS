@@ -43,6 +43,28 @@
     return { noeuds, liens };
   }
 
+  /**
+   * La prépa, ajoutée le 24/09, précède le montage. Dans un chemin déjà dessiné,
+   * un lien « cuisine → montage » devient « cuisine → prépa → montage », une
+   * fois pour toutes : le chemin garde la trace (`prepa`) pour ne pas la
+   * réinsérer si on l'a retirée. Modifie `etat` ; renvoie le nombre de chemins touchés.
+   */
+  function insererPrepa(etat) {
+    let n = 0;
+    for (const p of (etat && etat.parcours) || []) {
+      if (p.prepa || !Array.isArray(p.liens)) continue;
+      p.prepa = true;
+      if ((p.noeuds || []).includes('preparation')) continue;
+      const i = p.liens.findIndex(l => l.de === 'cuisine' && l.vers === 'prepa');
+      if (i < 0) continue;
+      p.liens.splice(i, 1, { de: 'cuisine', vers: 'preparation' }, { de: 'preparation', vers: 'prepa' });
+      const j = p.noeuds.indexOf('prepa');
+      p.noeuds.splice(j < 0 ? p.noeuds.length : j, 0, 'preparation');
+      n++;
+    }
+    return n;
+  }
+
   /** Relier `de` à `vers` fermerait-il une boucle ? Un repas n'y avancerait jamais. */
   function creeBoucle(p, de, vers) {
     if (de === vers) return true;
@@ -66,15 +88,15 @@
     const garder = liste => (connus ? liste.filter(s => connus.has(s)) : liste);
     const branche = (nom, services) => ({ nom, services: garder(services) });
     // Écrits en chaînes, lus en graphe : un service absent du plan est enjambé.
-    const nettoyer = ({ branches, ...p }) => ({ ...p, ...depuisBranches(branches.filter(b => b.services.length >= 2)) });
+    const nettoyer = ({ branches, ...p }) => ({ ...p, ...depuisBranches(branches.filter(b => b.services.length >= 2)), prepa: true });
     const parcours = [
       nettoyer({ id: 'complet', nom: 'Complet', branches: [
-        branche('Agro', ['appros', 'decontam', 'cuisine', 'prepa']),
+        branche('Agro', ['appros', 'decontam', 'cuisine', 'preparation', 'prepa']),
         branche('Matériel', ['plonge', 'dotation', 'prepa']),
         branche('Magasin', ['magasin', 'prepa'])
       ] }),
       nettoyer({ id: 'sans-cuisine', nom: 'Sans cuisine', branches: [
-        branche('Agro', ['appros', 'prepa']),
+        branche('Agro', ['appros', 'preparation', 'prepa']),
         branche('Matériel', ['plonge', 'dotation', 'prepa']),
         branche('Magasin', ['magasin', 'prepa'])
       ] })
@@ -116,7 +138,7 @@
         if (!de || !vers || de === vers || vus.has(de + '>' + vers)) continue;
         vus.add(de + '>' + vers); liens.push({ de, vers });
       }
-      return { id, nom: texte(p.nom, 80) || 'Parcours', noeuds, liens };
+      return { id, nom: texte(p.nom, 80) || 'Parcours', noeuds, liens, ...(p.prepa ? { prepa: true } : {}) };
     });
     const parcoursCabine = {};
     for (const c of P.CABINES) {
@@ -460,6 +482,8 @@
       const etat = this.a.etat(), classes = this.a.classes();
       this.a.boite().innerHTML = this.sectionParcours(etat, classes) + this.sectionTableau(etat, classes);
       const g = this.diagramme(); if (g) { g.selection = this.sel || null; g.rendre(); }
+      const statut = document.getElementById('at-status'), m = this.a.boite().querySelector('.pc-message');
+      if (m && statut) m.textContent = statut.textContent;
       this.filtrer();
     }
 
@@ -491,6 +515,7 @@
             <button class="lien-discret danger" data-pc-action="parcours-retirer">Supprimer ce chemin</button>
           </div>
           <p class="pc-qui">${qui}</p>
+          <p class="pc-message" role="status" aria-live="polite"></p>
           <div class="pc-graphe" data-parcours="${esc(p.id)}"></div>
           <div class="pc-panneau" data-parcours="${esc(p.id)}" aria-live="polite">${this.panneau(etat, classes, p)}</div>`;
       }
@@ -581,7 +606,12 @@
       }, 'Lien retiré : ' + this.nom(de) + ' ne livre plus ' + this.nom(vers) + '. Vous pouvez annuler.');
     }
 
-    dire(t) { const s = document.getElementById('at-status'); if (s) s.textContent = t || ''; }
+    /* Ce qui vient de se passer se dit deux fois : dans la ligne d'état de la
+     * vue, et juste au-dessus du diagramme, là où l'on regarde. */
+    dire(t) {
+      const s = document.getElementById('at-status'); if (s) s.textContent = t || '';
+      const m = this.a.boite().querySelector('.pc-message'); if (m) m.textContent = t || '';
+    }
 
     /* Ce qu'on peut faire du service ou du lien choisi. */
     panneau(etat, classes, p) {
@@ -613,7 +643,7 @@
           </div>`;
       }
       const I = root.OrlyIcones;
-      return `<div class="pc-geste">${I ? I.ico('info') : ''}<span>Tirez le <b class="pc-rond">+</b> d’un service jusqu’à un autre pour les relier.
+      return `<div class="pc-geste">${I ? I.ico('info') : ''}<span>Tirez le <b class="pc-rond">+</b> d’un service jusqu’à un autre, ou cliquez-le puis cliquez l’autre, pour les relier ; un service peut en livrer plusieurs.
         Cliquez un service pour voir ses équipes, en créer une ou le relier ; cliquez un lien pour le retirer.</span></div>`;
     }
 
@@ -890,7 +920,7 @@
         const id = uid();
         this.actif = id; this.sel = null;
         return this.a.changer(etat => {
-          etat.parcours.push({ id, nom: 'Nouveau chemin', noeuds: [], liens: [] });
+          etat.parcours.push({ id, nom: 'Nouveau chemin', noeuds: [], liens: [], prepa: true });
         }, 'Chemin créé : ajoutez ses services (« Ajouter un service »), puis reliez-les en tirant un trait.');
       }
       if (action === 'types') {
@@ -991,7 +1021,7 @@
     }
   }
 
-  const api = { depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, couverture, confier, nouvelleEquipe,
+  const api = { insererPrepa, depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, couverture, confier, nouvelleEquipe,
     completer, colonnes, tableau, affecter, chronogramme, EditeurParcours };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyParcours = api;

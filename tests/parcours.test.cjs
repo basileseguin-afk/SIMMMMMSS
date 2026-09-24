@@ -156,6 +156,31 @@ test('relier deux nœuds ne doit pas fermer de boucle', () => {
   assert.equal(PC.creeBoucle(g, 'b', 'b'), true);
 });
 
+test('un service peut livrer deux services : appros → légumerie et appros → montage', () => {
+  const g = { noeuds: ['appros', 'decontam', 'cuisine', 'prepa'],
+    liens: [{ de: 'appros', vers: 'decontam' }, { de: 'decontam', vers: 'cuisine' }, { de: 'cuisine', vers: 'prepa' }] };
+  assert.equal(PC.creeBoucle(g, 'appros', 'prepa'), false, 'un second lien au départ des appros est permis');
+  g.liens.push({ de: 'appros', vers: 'prepa' });
+  assert.deepEqual(P.arcsDuParcours(g).filter(a => a.from === 'appros').map(a => a.to), ['decontam', 'prepa']);
+});
+
+test('la prépa s’insère une fois entre cuisine et montage dans les chemins enregistrés', () => {
+  const etat = { parcours: [
+    { id: 'a', nom: 'A', noeuds: ['appros', 'cuisine', 'prepa'], liens: [{ de: 'appros', vers: 'cuisine' }, { de: 'cuisine', vers: 'prepa' }] },
+    { id: 'b', nom: 'B', noeuds: ['magasin', 'prepa'], liens: [{ de: 'magasin', vers: 'prepa' }] },
+    { id: 'c', nom: 'C', prepa: true, noeuds: ['cuisine', 'prepa'], liens: [{ de: 'cuisine', vers: 'prepa' }] }] };
+  assert.equal(PC.insererPrepa(etat), 1, 'seul A passait de la cuisine au montage');
+  assert.deepEqual(etat.parcours[0].liens.map(l => l.de + '>' + l.vers), ['appros>cuisine', 'cuisine>preparation', 'preparation>prepa']);
+  assert.deepEqual(etat.parcours[0].noeuds, ['appros', 'cuisine', 'preparation', 'prepa']);
+  assert.ok(etat.parcours.every(p => p.prepa), 'chaque chemin est marqué : on ne le refait pas');
+  assert.deepEqual(etat.parcours[2].liens, [{ de: 'cuisine', vers: 'prepa' }], 'un chemin déjà marqué garde le choix de l’utilisateur');
+  assert.equal(PC.insererPrepa(etat), 0, 'une seconde lecture ne change rien');
+  assert.ok(PC.validerParcours(etat).parcours.every(p => p.prepa), 'la marque survit à la validation');
+  const types = PC.parcoursTypes().parcours;
+  assert.ok(types.filter(p => p.noeuds.includes('cuisine')).every(p => p.liens.some(l => l.de === 'preparation' && l.vers === 'prepa')),
+    'les chemins types passent par la prépa');
+});
+
 /* ---- parcours × équipes : la fusion ----------------------------------- */
 const PC = require('../parcours.js');
 const CLASSES = P.classesDeVols(VOLS, { delaiChargement: 45 });

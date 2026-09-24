@@ -10,7 +10,7 @@ const { VOLS } = require('../vols-demo.js');
 
 const SERVICES = [
   { id: 'appros', nom: 'RÉCEPTION / APPROS' }, { id: 'decontam', nom: 'LÉGUMERIE' },
-  { id: 'cuisine', nom: 'CUISINE' }, { id: 'prepa', nom: 'MONTAGE' }, { id: 'plonge', nom: 'PLONGE' },
+  { id: 'cuisine', nom: 'CUISINE' }, { id: 'preparation', nom: 'PRÉPA' }, { id: 'prepa', nom: 'MONTAGE' }, { id: 'plonge', nom: 'PLONGE' },
   { id: 'dotation', nom: 'DOTATION' }, { id: 'magasin', nom: 'MAGASIN' }
 ];
 const PROGRAMME = P.classesDeVols(VOLS, { delaiChargement: 45 });

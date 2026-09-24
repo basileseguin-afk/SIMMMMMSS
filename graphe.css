@@ -80,3 +80,5 @@
 .fc-detail:empty{display:none}
 .fc-detail p{margin:0 0 6px}
 .fc-liste-toute>summary{cursor:pointer;font-weight:700;margin:6px 0 10px}
+.pc-message{margin:0;min-height:1.4em;font-size:13px;font-weight:600;color:var(--accent2)}
+.pc-message:empty{min-height:0}

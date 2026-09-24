@@ -6,9 +6,11 @@ const I = require('../icones.js');
 test('chaque service du plan a son pictogramme', () => {
   const attendu = { cuisine: 'marmite', plonge: 'gouttes', decontam: 'carotte', prepa: 'plateau',
     dotation: 'couverts', magasin: 'etagere', armement: 'trolley', bobduty: 'sac',
-    quais: 'camion', handling: 'depart', appros: 'boite' };
+    quais: 'camion', handling: 'depart', appros: 'boite', preparation: 'saladier' };
   for (const [id, ico] of Object.entries(attendu)) assert.equal(I.icoService(id), ico, id);
   assert.equal(I.icoService('z-annexe-1', 'Armement 2'), 'trolley', 'une annexe se reconnaît à son nom');
+  assert.equal(I.icoService('prepa', 'MONTAGE'), 'plateau', 'le montage garde son plateau');
+  assert.equal(I.icoService('preparation', 'PRÉPA'), 'saladier');
   assert.equal(I.icoService('inconnu', 'Autre'), 'service');
 });
 
