@@ -153,6 +153,7 @@
      *   retirerLien(id)        — retire le lien
      *   choisir(selection)     — { type:'noeud'|'lien', id } ou null
      *   message(texte)         — facultatif : dire ce qui se passe
+     *   relierDebut(id)        — facultatif : « relier à… » commence
      * } */
     constructor(a) {
       this.a = a;
@@ -396,6 +397,7 @@
     /** « Relier à… » : le prochain service cliqué (ou validé au clavier) reçoit le lien. */
     relierDepuis(id) {
       this.depuis = id;
+      if (this.a.relierDebut) this.a.relierDebut(id);
       const n = this.a.noeuds().find(x => x.id === id);
       this.dire('Relier ' + (n ? n.nom : id) + ' à… : cliquez le service qui le reçoit (Échap ou un clic dans le vide pour annuler).');
       this.rendre();

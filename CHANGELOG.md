@@ -5,6 +5,26 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-24 — La case s'ouvre dans une fenêtre à droite
+
+Retour de test : cliquer « Cuisine » dans le chemin d'AF ne semblait rien
+ouvrir. La case s'ouvrait bien, mais sous le diagramme, hors de l'écran.
+
+- La case d'un service s'ouvre maintenant dans une **fenêtre à droite**, en vue
+  sans défiler (`parcours.js` : `blocPanneau`, `fermer`, `placeTiroir` ;
+  `graphe.css`). × ou Échap la referment ; « Relier à… » aussi, pour qu'on voie
+  le service visé (`graphe.js` : `relierDebut`).
+- La page se range à gauche de la fenêtre : rien ne passe dessous
+  (« Dupliquer pour… », « Réorganiser » restent à portée). La liste des
+  commandes s'efface le temps du réglage, et le service choisi reste dans le cadre.
+- La fenêtre garde sa position de défilement quand on modifie un champ.
+- Ajouter un service au chemin n'ouvre pas la fenêtre : on tire d'abord son lien.
+
+**Tests** : `graphe-browser` (la fenêtre est à l'écran, Échap et × la ferment,
+la liste revient).
+
+---
+
 ## 2026-09-24 — Une case pour chaque service du chemin, d'office
 
 Retour de test : un chemin créé pour AF · Équipage n'avait aucune case ; rien

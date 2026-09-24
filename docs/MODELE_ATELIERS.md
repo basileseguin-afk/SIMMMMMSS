@@ -393,7 +393,10 @@ Le chemin est un diagramme de nœuds (`graphe.js`) :
 - **cliquer un lien** le choisit ; sa croix (ou la touche Suppr) le retire ;
 - **chaque nœud porte sa case** (« TX BC · 3 p. · 06:00 », ou « aucune case »,
   en gris : l'étape est sautée) ;
-- **cliquer un service** ouvre sa case dessous : choisir une case existante du
+- **cliquer un service** ouvre sa case dans une **fenêtre à droite de l'écran**
+  (sous le diagramme, elle tombait hors de vue) ; la page se range à sa gauche,
+  la liste des commandes s'efface le temps du réglage et revient quand on la
+  ferme (× ou Échap) ; « Relier à… » la referme aussi. On y trouve : choisir une case existante du
   service (la commande s'y ajoute à la suite), en créer une (« Cuisine TX BC »),
   ou n'en mettre aucune ; puis la **fiche complète** de la case : nom, service,
   type, heure, jour, personnes, pauses, et **ce qu'elle prépare, dans l'ordre**,

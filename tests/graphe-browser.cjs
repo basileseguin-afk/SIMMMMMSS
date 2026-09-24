@@ -45,11 +45,17 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator(`#at-liste [data-at="${kase.id}"] .at-carte-nom`).click();await attendre();
   assert.equal(await page.locator('[data-sous-onglet=at-chemins]').getAttribute('aria-selected'),'true','elle se règle dans son chemin');
 
-  // 2. Cliquer un service : sa case s'ouvre dessous, fiche complète.
+  // 2. La case s'ouvre dans une fenêtre à droite, fiche complète, en vue sans défiler.
+  assert.equal(await page.locator('[data-pc-champ=case]').inputValue(),kase.id,'venue de « Les cases », la case est ouverte');
+  // × ou Échap la referment ; cliquer le service la rouvre.
+  const box=await page.locator('.pc-tiroir').boundingBox();
+  assert.ok(box&&box.y>=0&&box.y<50&&box.x+box.width<=1440+1,'la fenêtre de la case est à l’écran');
+  await page.keyboard.press('Escape');await attendre();
+  assert.equal(await page.locator('.pc-tiroir').count(),0,'Échap la referme');
   await page.locator(`${Z} [data-noeud=prepa]`).click();await attendre();
-  assert.equal(await page.locator('[data-pc-champ=case]').inputValue(),kase.id);
+  assert.equal(await page.locator('.pc-tiroir').isVisible(),true);
   assert.match(await page.locator(`${Z} [data-noeud=prepa] .gr-sous`).textContent(),/^TX BC · 2 p\. · 06:00/,'le nœud porte sa case');
-  const fiche=`.pc-panneau [data-at="${kase.id}"]`;
+  const fiche=`.pc-tiroir [data-at="${kase.id}"]`;
   assert.equal(await page.locator(fiche).isVisible(),true,'la fiche de la case est dans le chemin');
   // Ses personnes, son heure : saisies là, lues sur le nœud.
   await page.fill(`${fiche} [data-at-champ=personnes]`,'3');await page.dispatchEvent(`${fiche} [data-at-champ=personnes]`,'change');await attendre(300);
@@ -76,11 +82,14 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const lignes=await page.evaluate(id=>Sim.ateliers.resultat.lots.filter(l=>l.atelier===id).map(l=>({c:l.classes[0],fin:l.fin,mm:l.hommeMinutes})),kase.id);
   assert.equal(lignes[0].c,'TX/BC');assert.equal(lignes[0].mm,50);assert.ok(lignes[0].fin<lignes[1].fin);
   // Dans le chemin de TX YC, la même case, sa ligne en évidence.
+  assert.equal(await page.locator('.pc-cmds').isVisible(),false,'le temps de régler une case, la liste des commandes s’efface');
+  await page.locator('.pc-tiroir-fermer').click();await attendre();
+  assert.equal(await page.locator('.pc-cmds').isVisible(),true,'et revient quand on la ferme');
   await page.locator('[data-pc-action=cmd][data-classe="TX/YC"]').click();await attendre();
   await page.locator(`${Z} [data-noeud=prepa]`).click();await attendre();
   assert.equal(await page.locator('[data-pc-champ=case]').inputValue(),kase.id);
-  assert.match(await page.locator('.pc-panneau .pc-pan-tete').textContent(),/partagée avec TX BC/);
-  assert.match(await page.locator('.pc-panneau .at-lot.ici').textContent(),/TX · Économie/);
+  assert.match(await page.locator('.pc-tiroir .pc-pan-tete').textContent(),/partagée avec TX BC/);
+  assert.match(await page.locator('.pc-tiroir .at-lot.ici').textContent(),/TX · Économie/);
 
   // 4. Un lien ne vaut que pour son chemin : appros → montage sur TX YC, au clic.
   const liensBC=await liens(bc);

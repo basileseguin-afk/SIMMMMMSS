@@ -127,3 +127,27 @@
 .pc-case-choix{display:grid;gap:4px;font-size:12px;color:var(--txt2)}
 .pc-case-choix select{min-width:260px}
 .pc-panneau .at-carte{margin:4px 0 0;box-shadow:none}
+
+/* La case d'un service : une fenêtre à droite, toujours en vue. */
+.pc-tiroir{position:fixed;top:0;right:0;bottom:0;z-index:60;width:var(--tiroir);overflow:auto;
+  display:grid;align-content:start;gap:10px;padding:0 18px 24px;background:var(--bg3);
+  border-left:4px solid var(--c-equipes);box-shadow:-14px 0 40px rgba(15,23,42,.22)}
+.pc-tiroir-tete{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:12px 0 8px;background:var(--bg3);border-bottom:1px solid var(--bordure);font-weight:800;font-size:15px}
+.pc-tiroir-tete>span{display:inline-flex;align-items:center;gap:8px}
+.pc-tiroir-fermer{appearance:none;font:inherit;font-size:22px;line-height:1;width:36px;height:36px;border-radius:50%;cursor:pointer;
+  border:1px solid var(--bordure2);background:var(--bg2);color:var(--txt)}
+.pc-tiroir-fermer:hover{border-color:var(--c-equipes);color:var(--c-equipes)}
+.pc-tiroir p{margin:0}
+.pc-tiroir .at-carte{margin:4px 0 0;box-shadow:none}
+.pc-tiroir .pc-case-choix select{min-width:0;width:100%}
+.pc-tiroir .pc-case-outils{display:grid;grid-template-columns:1fr;gap:8px}
+.pc-tiroir .pc-case-outils .pc-outils-fin{display:none}
+.pc-renvoi{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--txt2)}
+.pc-renvoi .ico{color:var(--c-equipes)}
+/* La page se range à gauche de la fenêtre de la case. */
+:root{--tiroir:min(460px,40vw)}
+body.pc-tiroir-ouvert[data-vue="ateliers"][data-sous="at-chemins"] #view-ateliers{padding-right:calc(var(--tiroir) + 16px)}
+/* Le temps de régler une case, la liste des commandes s'efface : le chemin garde la place. */
+body.pc-tiroir-ouvert .pc-cadre{grid-template-columns:minmax(0,1fr)}
+body.pc-tiroir-ouvert .pc-cmds{display:none}

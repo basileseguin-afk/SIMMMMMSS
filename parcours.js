@@ -583,6 +583,9 @@
       const boite = a.boite();
       boite.addEventListener('click', e => this.cliquer(e));
       boite.addEventListener('change', e => this.saisir(e));
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && this.a.boite().querySelector('.pc-tiroir') && !(this.graphe && this.graphe.depuis)) this.fermer();
+      });
       boite.addEventListener('input', e => {
         if (e.target.dataset.qf === 'recherche') { this.recherche = e.target.value; this.filtrer(); }
         if (e.target.dataset.pc === 'cmd-recherche') { this.chercheCmd = e.target.value; this.filtrerCmd(); }
@@ -621,7 +624,10 @@
       if (this.cmd && !classes.some(c => c.id === this.cmd)) this.cmd = null;
       if (this.actif && !(etat.parcours || []).some(p => p.id === this.actif)) this.actif = null;
       if (!this.cmd && !this.actif && classes.length) this.cmd = this.ordreCommandes(classes)[0].id;
+      const t = this.a.boite().querySelector('.pc-tiroir'), haut = t ? t.scrollTop : 0;
       this.a.boite().innerHTML = this.sectionParcours(etat, classes) + this.sectionTableau(etat, classes);
+      const t2 = this.a.boite().querySelector('.pc-tiroir'); if (t2 && haut) t2.scrollTop = haut;
+      this.placeTiroir();
       const g = this.diagramme(); if (g) { g.selection = this.selection(); g.rendre(); }
       const statut = document.getElementById('at-status'), m = this.a.boite().querySelector('.pc-message');
       if (m && statut) m.textContent = statut.textContent;
@@ -704,7 +710,7 @@
       return this.teteCommande(c, true) + this.outils(etat, p, this.duplication(etat, classes, c))
         + `<p class="pc-message" role="status" aria-live="polite"></p>
         <div class="pc-graphe" data-parcours="${esc(p.id)}"></div>
-        <div class="pc-panneau" aria-live="polite">${this.panneau(etat, classes, p)}</div>`;
+        <div class="pc-bas">${this.blocPanneau(etat, classes, p)}</div>`;
     }
 
     corpsModele(etat, classes) {
@@ -717,7 +723,7 @@
         + this.outils(etat, p, '')
         + `<p class="pc-message" role="status" aria-live="polite"></p>
         <div class="pc-graphe" data-parcours="${esc(p.id)}"></div>
-        <div class="pc-panneau" aria-live="polite">${this.panneau(etat, classes, p)}</div>`;
+        <div class="pc-bas">${this.blocPanneau(etat, classes, p)}</div>`;
     }
 
     outils(etat, p, dup) {
@@ -807,6 +813,8 @@
           ed.svc = sel && sel.type === 'noeud' ? sel.id : '';
           ed.rendrePanneau();
         },
+        // Relier : la fenêtre de la case se referme, le service visé doit se voir.
+        relierDebut: () => { if (ed.svc) { ed.svc = ''; ed.rendrePanneau(); } },
         message: t => ed.dire(t)
       });
       return this.graphe;
@@ -885,9 +893,42 @@
         Cliquez un lien pour le retirer.</span></div>`;
     }
 
+    /* Un service choisi ouvre sa case dans une fenêtre à droite de l'écran :
+     * dessous le diagramme, elle tombait hors de vue. Un lien choisi, ou rien,
+     * se dit sous le diagramme. */
+    blocPanneau(etat, classes, p) {
+      const sel = this.selection();
+      if (!sel || sel.type !== 'noeud') return `<div class="pc-panneau" aria-live="polite">${this.panneau(etat, classes, p)}</div>`;
+      const I = root.OrlyIcones, s = sel.id;
+      return `<div class="pc-panneau pc-renvoi">${I ? I.ico('info') : ''}<span>La case de <b>${esc(this.nom(s))}</b> est ouverte à droite. Fermez-la (× ou Échap) pour revenir à la liste des commandes.</span></div>
+        <aside class="pc-tiroir" role="dialog" aria-label="${esc(this.nom(s))} : sa case">
+          <div class="pc-tiroir-tete"><span>${this.cmd ? `<span class="puce-classe" data-cab="${esc(this.cmd.split('/').pop())}"></span>${esc(this.lib(this.cmd))}` : 'Modèle'}</span>
+            <button class="pc-tiroir-fermer" data-pc-action="fermer" aria-label="Fermer la case" title="Fermer (Échap)">×</button></div>
+          ${this.panneau(etat, classes, p)}
+        </aside>`;
+    }
+
     rendrePanneau() {
-      const etat = this.a.etat(), p = this.parcoursActif(etat), box = this.a.boite().querySelector('.pc-panneau');
-      if (box && p) box.innerHTML = this.panneau(etat, this.a.classes(), p);
+      const etat = this.a.etat(), p = this.parcoursActif(etat), box = this.a.boite().querySelector('.pc-bas');
+      if (box && p) box.innerHTML = this.blocPanneau(etat, this.a.classes(), p);
+      this.placeTiroir();
+    }
+
+    /** Fenêtre ouverte : la page lui fait place à droite, rien ne passe dessous. */
+    placeTiroir() {
+      if (!root.document) return;
+      const ouvert = !!this.a.boite().querySelector('.pc-tiroir');
+      document.body.classList.toggle('pc-tiroir-ouvert', ouvert);
+      // Le service choisi reste en vue, à gauche de la fenêtre.
+      if (ouvert && this.graphe && this.svc) this.graphe.montrer(this.svc);
+    }
+
+    /** Refermer la fenêtre de la case : le service n'est plus choisi. */
+    fermer() {
+      this.svc = ''; this.sel = null;
+      const g = this.graphe;
+      if (g && g.a.hote()) { g.selection = null; g.rendre(); }
+      this.rendrePanneau();
     }
 
     filtrerCmd() {
@@ -1076,6 +1117,7 @@
       const trouver = x => x.parcours.find(y => y.id === pid);
       if (action === 'cmd') { this.cmd = b.dataset.classe; this.actif = null; this.sel = null; this.svc = ''; this.depuis = undefined; return this.rendre(); }
       if (action === 'modele') { this.cmd = null; this.actif = b.dataset.parcours; this.sel = null; this.svc = ''; return this.rendre(); }
+      if (action === 'fermer') return this.fermer();
       if (action === 'reorganiser') return this.diagramme() && this.diagramme().reorganiser();
       if (action === 'relier-depuis') return this.diagramme() && this.diagramme().relierDepuis(s);
       if (action === 'lien-retirer') return this.retirerLien(b.dataset.lien);
@@ -1180,10 +1222,10 @@
         if (champ === 'cabine') { if (v) etat.parcoursCabine[el.dataset.cabine] = v; else delete etat.parcoursCabine[el.dataset.cabine]; }
         else if (champ === 'nom') q.nom = v;
         else if (champ === 'noeud-ajout' && !q.noeuds.includes(v)) {
-          q.noeuds.push(v); this.sel = null; this.svc = v;
+          q.noeuds.push(v); this.sel = null; this.svc = '';
           if (this.cmd) donnerCases(etat, this.cmd, q, [v], y => this.nom(y), this.a.classes());
         }
-      }, champ === 'noeud-ajout' ? this.nom(v) + ' ajouté au chemin, avec sa case : tirez un trait depuis ou vers lui.' : 'Chemin enregistré.'), 0);
+      }, champ === 'noeud-ajout' ? this.nom(v) + ' ajouté au chemin, avec sa case : tirez un trait depuis ou vers lui, cliquez-le pour régler sa case.' : 'Chemin enregistré.'), 0);
     }
 
     /** La case de la commande dans ce service : aucune, une existante (à la suite), ou une nouvelle. */
