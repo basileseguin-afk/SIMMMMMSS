@@ -65,11 +65,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const propre=await page.evaluate(()=>Sim.ateliers.state.parcoursClasse['AF/YC']);
   assert.equal(await page.evaluate(id=>Sim.ateliers.state.parcours.find(p=>p.id===id).nom,propre),'Complet AF YC');
   await page.locator('[data-sous-onglet=at-grille]').click();await attendre();
-  assert.match(await page.locator('[data-qf=aller][data-classe="AF/YC"][data-service=cuisine]').textContent(),/à faire/,
-    'la cuisine est désormais sur son chemin, sans case pour AF/YC : sa case le dit');
+  assert.match(await page.locator('[data-qf=aller][data-classe="AF/YC"][data-service=cuisine]').textContent(),/Cuisine AF YC/,
+    'la cuisine est désormais sur son chemin, avec sa case, créée d’office');
   await page.locator('[data-sous-onglet=at-chemins]').click();await attendre();
   await page.locator('[data-pc-action=parcours-retirer]').click();await attendre();
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.parcoursClasse['AF/YC']),undefined,'supprimé, il suit de nouveau le modèle');
+  assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>/AF YC/.test(a.nom)).length),0,'ses cases propres partent avec lui');
 
   // Modifier un modèle dans son diagramme : ajouter un service, le relier en
   // tirant un trait, refuser une boucle, retirer le lien puis le service.
@@ -121,11 +122,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(etat.parcours.find(p=>p.id==='complet').liens.some(l=>l.de==='armement'&&l.vers==='prepa'));
   assert.match(await page.locator('#at-status').textContent(),/Équipes importées/);
   // Un classeur faux est refusé en bloc, et dit quoi corriger.
+  const nAvant=await page.evaluate(()=>Sim.ateliers.state.ateliers.length);
   at.lignes.push(['Fantaisie','GARAGE','manuel','05:00']);
   const faux=path.join(dossier,'faux.xlsx');fs.writeFileSync(faux,T.ecrireClasseur(feuilles));
   await page.locator('#at-import').setInputFiles(faux);await attendre(400);
   assert.match(await page.locator('#at-status').textContent(),/Import refusé[\s\S]*service inconnu « GARAGE »[\s\S]*Rien n’a été importé/);
-  assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.length),3,'rien n’a changé');
+  assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.length),nAvant,'rien n’a changé');
   // Et l'import s'annule.
   await page.locator('#at-undo').click();await attendre();
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.nom==='Cuisine').personnes),1);

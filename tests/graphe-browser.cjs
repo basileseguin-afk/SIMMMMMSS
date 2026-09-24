@@ -34,16 +34,20 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(bc,'TX/BC a son chemin');
   assert.equal(await page.evaluate(id=>Sim.ateliers.state.parcours.find(p=>p.id===id).nom,bc),'Complet TX BC');
   assert.match(await page.locator('.pc-cmd.actif').textContent(),/Complet TX BC/,'la liste le dit');
-  assert.equal(await page.locator(`${Z} [data-noeud=prepa] .gr-sous`).textContent(),'aucune case');
-  assert.equal(await page.locator(`${Z} [data-noeud=prepa]`).evaluate(n=>n.classList.contains('ton-neutre')),true,'sans case : à faire, pas une alerte');
+  // Chaque service du chemin a sa case dès la création : elle figure dans « Les cases ».
+  const kase=await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.service==='prepa'&&a.lots.some(l=>l.includes('TX/BC'))));
+  assert.equal(kase.nom,'Montage TX BC');assert.deepEqual(kase.lots,[['TX/BC']]);
+  assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.lots.some(l=>l.includes('TX/BC'))).length),
+    await page.evaluate(id=>Sim.ateliers.state.parcours.find(p=>p.id===id).noeuds.filter(s=>s!=='plonge').length,bc),'une case par service');
+  assert.equal(await page.locator(`${Z} [data-noeud=prepa]`).evaluate(n=>n.classList.contains('ton-ok')),true,'le nœud a sa case');
+  await page.locator('[data-sous-onglet=at-equipes]').click();await attendre();
+  assert.match(await page.locator('#at-liste').textContent(),/Montage TX BC/,'la case est dans « Les cases »');
+  await page.locator(`#at-liste [data-at="${kase.id}"] .at-carte-nom`).click();await attendre();
+  assert.equal(await page.locator('[data-sous-onglet=at-chemins]').getAttribute('aria-selected'),'true','elle se règle dans son chemin');
 
-  // 2. Cliquer un service : sa case se choisit ou se crée, et sa fiche s'ouvre dessous.
+  // 2. Cliquer un service : sa case s'ouvre dessous, fiche complète.
   await page.locator(`${Z} [data-noeud=prepa]`).click();await attendre();
-  assert.match(await page.locator('.pc-panneau').textContent(),/Montage[\s\S]*aucune case/);
-  await page.locator('[data-pc-champ=case]').selectOption('+');await attendre();
-  const kase=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1));
-  assert.equal(kase.service,'prepa');assert.equal(kase.nom,'Montage TX BC');assert.deepEqual(kase.lots,[['TX/BC']]);
-  assert.equal(await page.locator(`${Z} [data-noeud=prepa]`).evaluate(n=>n.classList.contains('ton-ok')),true,'le nœud passe au vert');
+  assert.equal(await page.locator('[data-pc-champ=case]').inputValue(),kase.id);
   assert.match(await page.locator(`${Z} [data-noeud=prepa] .gr-sous`).textContent(),/^TX BC · 2 p\. · 06:00/,'le nœud porte sa case');
   const fiche=`.pc-panneau [data-at="${kase.id}"]`;
   assert.equal(await page.locator(fiche).isVisible(),true,'la fiche de la case est dans le chemin');
@@ -111,8 +115,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator(`${Z} [data-noeud=prepa]`).evaluate(n=>n.classList.contains('sel')),true,'le service cliqué est choisi');
   assert.equal(await page.locator(fiche).isVisible(),true);
   await page.locator('[data-sous-onglet=at-equipes]').click();await attendre();
-  assert.equal(await page.locator('#at-liste [data-at-action=chemin]').count(),2,'la case dit ses deux commandes');
-  await page.locator('#at-liste [data-at-action=chemin][data-classe="TX/YC"]').click();await attendre();
+  assert.equal(await page.locator(`#at-liste [data-at="${kase.id}"] [data-at-action=chemin]`).count(),2,'la case dit ses deux commandes');
+  await page.locator(`#at-liste [data-at="${kase.id}"] [data-at-action=chemin][data-classe="TX/YC"]`).click();await attendre();
   assert.equal(await page.locator('.pc-cmd.actif').getAttribute('data-classe'),'TX/YC');
 
   // 4. Déplacer un service : la disposition est retenue ; « Réorganiser » l'oublie.

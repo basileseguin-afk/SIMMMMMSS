@@ -147,32 +147,42 @@ test('une case « TX BC puis TX PC » : le chemin TX BC ne tire que le temps de 
   assert.equal(P.travailDans({ service: 'cuisine' }, { id: 'TX/BC', cie: 'TX', cabine: 'BC', vols: ['TX9'] }, base.bareme), 60);
 });
 
-test('créer le chemin d’une commande : copié d’un autre, dans les mêmes cases, à la suite', () => {
-  const etat = { parcours: [{ id: 'complet', nom: 'Complet', noeuds: ['cuisine', 'prepa'], liens: [{ de: 'cuisine', vers: 'prepa' }] }],
+test('créer le chemin d’une commande : chaque service a sa case, reprise ou neuve', () => {
+  const etat = { parcours: [{ id: 'complet', nom: 'Complet', noeuds: ['plonge', 'cuisine', 'prepa'],
+    liens: [{ de: 'plonge', vers: 'prepa' }, { de: 'cuisine', vers: 'prepa' }] }],
     parcoursCabine: { BC: 'complet', PC: 'complet' }, parcoursClasse: {},
-    ateliers: [at('cu', 'cuisine', '05:00', []), at('mo', 'prepa', '05:00', [['AF/BC']]), { id: 'pl', nom: 'Plonge', service: 'plonge', type: 'lavage', lots: [] }] };
-  // Depuis un modèle : le nom prend la commande, pas de case à reprendre.
-  const a = PC.creerChemin(etat, 'TX/BC', 'complet', true);
+    ateliers: [at('mo', 'prepa', '05:00', [['AF/BC']])] };
+  const nomDe = s => ({ cuisine: 'Cuisine', prepa: 'Montage', plonge: 'Plonge' })[s];
+  // Depuis un modèle : le nom prend la commande, et chaque service reçoit une case neuve.
+  const a = PC.creerChemin(etat, 'TX/BC', 'complet', true, null, { nomDe });
   assert.equal(a.chemin.nom, 'Complet TX BC');
   assert.equal(etat.parcoursClasse['TX/BC'], a.chemin.id);
-  assert.deepEqual(a.chemin.liens, [{ de: 'cuisine', vers: 'prepa' }]);
-  assert.equal(a.cases, 0);
   assert.notEqual(a.chemin.liens, etat.parcours[0].liens, 'une copie : modifier l’un ne touche pas l’autre');
-  etat.ateliers[0].lots = [['TX/BC']]; etat.ateliers[1].lots = [['AF/BC'], ['TX/BC']];
-  // Depuis le chemin de TX BC, dans les mêmes cases : TX PC puis TX YC, chacun juste après.
-  const b = PC.creerChemin(etat, 'TX/PC', a.chemin.id, true);
+  assert.equal(a.cases, 0, 'un modèle n’a pas de cases à reprendre');
+  assert.equal(a.creees, 3);
+  assert.equal(PC.caseDe(etat, 'cuisine', 'TX/BC').nom, 'Cuisine TX BC');
+  assert.deepEqual(PC.caseDe(etat, 'cuisine', 'TX/BC').lots, [['TX/BC']]);
+  assert.equal(PC.caseDe(etat, 'prepa', 'TX/BC').nom, 'Montage TX BC', 'la case de AF/BC n’est pas prise d’office');
+  assert.equal(PC.caseDe(etat, 'plonge', 'TX/BC').type, 'lavage', 'la plonge lave pour tout le monde');
+  assert.equal(a.chemin.cases, true);
+  // Depuis le chemin de TX BC, dans les mêmes cases : TX PC puis TX YC, à la suite.
+  const b = PC.creerChemin(etat, 'TX/PC', a.chemin.id, true, null, { nomDe });
   assert.equal(b.chemin.nom, 'Complet TX PC', 'le nom suit la commande');
-  assert.equal(b.cases, 2);
-  PC.creerChemin(etat, 'TX/YC', a.chemin.id, true, ['TX/BC', 'TX/PC']);
-  assert.deepEqual(etat.ateliers[0].lots, [['TX/BC'], ['TX/PC'], ['TX/YC']], 'dans l’ordre de la duplication');
-  assert.deepEqual(etat.ateliers[1].lots, [['AF/BC'], ['TX/BC'], ['TX/PC'], ['TX/YC']]);
-  // Sans « mêmes cases » : un chemin, aucune case.
-  const c = PC.creerChemin(etat, 'DL/BC', a.chemin.id, false);
-  assert.equal(c.cases, 0);
-  assert.equal(PC.caseDe(etat, 'cuisine', 'DL/BC'), null);
-  // Une plonge sert tout le monde : c'est la case de chacun dans son service.
-  assert.equal(PC.caseDe(etat, 'plonge', 'DL/BC').id, 'pl');
-  assert.equal(PC.caseDe(etat, 'cuisine', 'TX/PC').id, 'cu');
+  assert.equal(b.cases, 2); assert.equal(b.creees, 0, 'la plonge existante sert aussi');
+  PC.creerChemin(etat, 'TX/YC', a.chemin.id, true, ['TX/BC', 'TX/PC'], { nomDe });
+  assert.deepEqual(PC.caseDe(etat, 'cuisine', 'TX/YC').lots, [['TX/BC'], ['TX/PC'], ['TX/YC']], 'dans l’ordre de la duplication');
+  assert.equal(etat.ateliers.filter(x => x.service === 'plonge').length, 1);
+  // Sans « mêmes cases » : des cases neuves.
+  const c = PC.creerChemin(etat, 'DL/BC', a.chemin.id, false, null, { nomDe });
+  assert.equal(c.cases, 0); assert.equal(c.creees, 2);
+  assert.equal(PC.caseDe(etat, 'cuisine', 'DL/BC').nom, 'Cuisine DL BC');
+  // Un chemin dessiné avant les cases d'office reçoit les siennes, une fois.
+  etat.parcours.push({ id: 'vieux', nom: 'Vieux FWI BC', noeuds: ['cuisine'], liens: [] });
+  etat.parcoursClasse['FWI/BC'] = 'vieux';
+  assert.equal(PC.completerCases(etat, nomDe), 1);
+  assert.equal(PC.caseDe(etat, 'cuisine', 'FWI/BC').nom, 'Cuisine FWI BC');
+  PC.affecter(etat, 'cuisine', ['FWI/BC'], null);
+  assert.equal(PC.completerCases(etat, nomDe), 0, 'une case retirée exprès ne revient pas');
   // Les modèles : les chemins d'une classe, ou ceux d'aucune commande.
   assert.deepEqual(PC.modeles(etat).map(p => p.id), ['complet']);
   assert.equal(PC.commandeDu(etat, a.chemin.id), 'TX/BC');
@@ -181,6 +191,7 @@ test('créer le chemin d’une commande : copié d’un autre, dans les mêmes c
   // Un nom de case est libre : c'est la clé des classeurs Excel.
   assert.equal(PC.nomLibre({ ateliers: [{ nom: 'Cuisine TX BC' }] }, 'Cuisine TX BC'), 'Cuisine TX BC 2');
   assert.equal(PC.etiquette('FWI/SPML'), 'FWI SPML');
+  assert.equal(PC.validerParcours(etat).parcours.find(p => p.id === a.chemin.id).cases, true, 'la marque survit à la validation');
 });
 
 /* ---- le parcours en diagramme de nœuds --------------------------------- */

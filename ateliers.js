@@ -159,6 +159,16 @@
         }
       }
       catch (e) { alerte = 'Ateliers enregistrés non chargés : ' + e.message + ' La copie reste en place.'; }
+      // Un chemin de commande dessiné avant le 24/09 n'avait pas ses cases :
+      // chaque service reçoit la sienne, une fois, pour qu'on puisse la régler.
+      try {
+        const nomDe = id => (this.a.services().find(x => x.id === id) || {}).nom || id;
+        const n = PC.completerCases ? PC.completerCases(this.state, nomDe, this.classes) : 0;
+        if (n) {
+          this.state = valider(this.state); this.enregistrer();
+          alerte = (n > 1 ? n + ' cases créées' : '1 case créée') + ' dans les chemins déjà dessinés : chaque service a maintenant la sienne, à régler dans « Les chemins » ou « Les cases ».';
+        }
+      } catch (e) { /* un état illisible est déjà signalé plus haut */ }
       this.construire();
       this.lier();
       this.parcours = new PC.EditeurParcours({

@@ -365,6 +365,15 @@ prête. Une recherche filtre la liste ; l'onglet compte les commandes sans chemi
 - **Créer le chemin** d'une commande : vide, copié d'un modèle, ou copié du
   chemin d'une autre commande — et dans ce dernier cas, **dans les mêmes
   cases** : la commande s'y ajoute sur sa propre ligne, juste après l'autre.
+- **Chaque service du chemin a sa case dès la création** : là où elle n'est pas
+  reprise d'un autre chemin, une case neuve est créée (« Cuisine AF CREW », 2
+  personnes, 06:00), qui figure aussitôt dans « Les cases ». La plonge, qui lave
+  pour tout le monde, reçoit une seule case « Plonge ». Un service ajouté ensuite
+  au chemin reçoit la sienne de même. Une case qu'on retire exprès (« — aucune — »)
+  ne revient pas. Les chemins dessinés avant cette règle reçoivent leurs cases
+  manquantes une fois, à l'ouverture (`completerCases`).
+- **Supprimer le chemin** d'une commande emporte les cases qui ne préparaient
+  qu'elle ; une case partagée reste telle quelle.
 - **Dupliquer pour…** : le chemin affiché pour d'autres commandes cochées,
   chacune le sien, dans les mêmes cases, à la suite (TX BC, puis TX PC, puis
   TX YC). La disposition du diagramme est copiée avec.

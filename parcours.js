@@ -138,7 +138,7 @@
         if (!de || !vers || de === vers || vus.has(de + '>' + vers)) continue;
         vus.add(de + '>' + vers); liens.push({ de, vers });
       }
-      return { id, nom: texte(p.nom, 80) || 'Parcours', noeuds, liens, ...(p.prepa ? { prepa: true } : {}) };
+      return { id, nom: texte(p.nom, 80) || 'Parcours', noeuds, liens, ...(p.prepa ? { prepa: true } : {}), ...(p.cases ? { cases: true } : {}) };
     });
     const parcoursCabine = {};
     for (const c of P.CABINES) {
@@ -452,7 +452,7 @@
    * du chemin copié) : « TX BC » puis « TX PC ».
    * @returns {{ chemin, cases }} le chemin créé, et combien de cases l'ont reçue
    */
-  function creerChemin(etat, cible, sourceId, memesCases, apres) {
+  function creerChemin(etat, cible, sourceId, memesCases, apres, o = {}) {
     const src = (etat.parcours || []).find(p => p.id === sourceId) || null;
     const srcCmd = src ? commandeDu(etat, src.id) : null;
     let base = src ? src.nom.trim() : 'Chemin';
@@ -475,7 +475,52 @@
         a.lots.splice(i + 1, 0, [cible]); cases++;
       }
     }
-    return { chemin, cases };
+    // Chaque service du chemin a sa case, dès la création : là où elle n'est
+    // pas reprise d'un autre chemin, une case neuve, à régler.
+    const creees = donnerCases(etat, cible, chemin, chemin.noeuds, o.nomDe, o.classes);
+    return { chemin, cases, creees };
+  }
+
+  /**
+   * Une case pour chaque service donné du chemin où la commande n'en a pas :
+   * une équipe neuve (« Cuisine AF CREW ») qui la prépare ; pour la plonge,
+   * qui lave pour tout le monde, une plonge s'il n'y en a aucune. Le chemin
+   * est marqué `cases` : une case qu'on retire ensuite ne revient pas.
+   * @returns {number} le nombre de cases créées
+   */
+  function donnerCases(etat, cmd, chemin, services, nomDe, classes) {
+    const nom = s => (nomDe ? nomDe(s) : s);
+    let n = 0;
+    for (const s of services || []) {
+      if (caseDe(etat, s, cmd)) continue;
+      if (s === 'plonge') {
+        etat.ateliers.push({ id: 'at-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
+          nom: nomLibre(etat, nom(s)), service: s, type: 'lavage', debut: '06:00', jour: 0, personnes: 2, pauses: [], lots: [],
+          regime: { actif: true }, plafond: 0, tunnels: [{ nom: 'Tunnel 1', debit: 300, personnes: 1, actif: true }] });
+      } else {
+        const a = nouvelleEquipe(etat, s, nom(s), [], classes);
+        a.nom = nomLibre(etat, nom(s) + ' ' + etiquette(cmd));
+        affecter(etat, s, [cmd], a.id, classes);
+      }
+      n++;
+    }
+    chemin.cases = true;
+    return n;
+  }
+
+  /**
+   * Les chemins de commande dessinés avant que les cases naissent d'office
+   * (24/09) : chacun reçoit, une fois, les cases qui lui manquent.
+   * @returns {number} le nombre de cases créées
+   */
+  function completerCases(etat, nomDe, classes) {
+    let n = 0;
+    for (const [cmd, pid] of Object.entries(etat.parcoursClasse || {})) {
+      const p = (etat.parcours || []).find(x => x.id === pid);
+      if (!p || p.cases || commandeDu(etat, pid) !== cmd) continue;
+      n += donnerCases(etat, cmd, p, P.servicesDuParcours(p), nomDe, classes);
+    }
+    return n;
   }
 
   /** Un nom de case libre : le nom est la clé des classeurs Excel. */
@@ -1050,8 +1095,8 @@
         const memes = !!(this.a.boite().querySelector('[data-pc="memes-cases"]') || {}).checked;
         let res = null;
         this.depuis = undefined; this.svc = '';
-        this.a.changer(x => { res = creerChemin(x, cible, source, memes); },
-          'Chemin de ' + this.lib(cible) + ' créé. Cliquez un service pour lui donner sa case.');
+        this.a.changer(x => { res = creerChemin(x, cible, source, memes, null, { nomDe: s => this.nom(s), classes }); },
+          'Chemin de ' + this.lib(cible) + ' créé : chaque service a sa case. Cliquez un service pour régler la sienne (personnes, heure, man-minutes).');
         if (res) this.copierDisposition(source, res.chemin.id);
         if (res && res.cases) this.dire('Chemin de ' + this.lib(cible) + ' créé, dans les mêmes cases que ' + this.lib(commandeDu(this.a.etat(), source) || '')
           + ' (' + res.cases + (res.cases > 1 ? ' cases' : ' case') + ', à la suite). Réglez-les en cliquant les services.');
@@ -1065,7 +1110,7 @@
         const faits = [], source = this.cmd;
         this.a.changer(x => {
           for (const c of cibles) {
-            const r = creerChemin(x, c, pid, memes, [source, ...faits]);
+            const r = creerChemin(x, c, pid, memes, [source, ...faits], { nomDe: y => this.nom(y), classes });
             this.copierDisposition(pid, r.chemin.id);
             faits.push(c);
           }
@@ -1075,10 +1120,18 @@
       }
       if (action === 'parcours-retirer') {
         if (this.cmd) {
-          if (!confirm('Supprimer le chemin de ' + this.lib(this.cmd) + ' ? Elle suivra de nouveau le modèle de sa classe ; ses cases restent. L’action est annulable.')) return;
+          if (!confirm('Supprimer le chemin de ' + this.lib(this.cmd) + ' ? Les cases qui ne préparent qu’elle disparaissent avec lui ; elle suit de nouveau le modèle de sa classe. L’action est annulable.')) return;
         } else if (!confirm('Supprimer le modèle « ' + (p ? p.nom : '') + ' » ? Les commandes sans chemin qui le suivaient retomberont sur les liens de l’unité. L’action est annulable.')) return;
         this.sel = null; this.svc = ''; if (!this.cmd) this.actif = null;
+        const cmd = this.cmd;
         return this.a.changer(x => {
+          // Les cases propres du chemin (qui ne préparent que cette commande)
+          // partent avec lui ; une case partagée reste telle quelle.
+          if (cmd && p) {
+            const dedans = new Set(P.servicesDuParcours(p));
+            x.ateliers = x.ateliers.filter(a => !(fabrique(a) && dedans.has(a.service) && a.lots.length
+              && a.lots.every(l => l.every(id => id === cmd))));
+          }
           x.parcours = x.parcours.filter(y => y.id !== pid);
           for (const c of Object.keys(x.parcoursCabine)) if (x.parcoursCabine[c] === pid) delete x.parcoursCabine[c];
           for (const c of Object.keys(x.parcoursClasse)) if (x.parcoursClasse[c] === pid) delete x.parcoursClasse[c];
@@ -1126,8 +1179,11 @@
         const q = etat.parcours.find(x => x.id === pid);
         if (champ === 'cabine') { if (v) etat.parcoursCabine[el.dataset.cabine] = v; else delete etat.parcoursCabine[el.dataset.cabine]; }
         else if (champ === 'nom') q.nom = v;
-        else if (champ === 'noeud-ajout' && !q.noeuds.includes(v)) { q.noeuds.push(v); this.sel = null; this.svc = v; }
-      }, champ === 'noeud-ajout' ? this.nom(v) + ' ajouté au chemin : tirez un trait depuis ou vers lui, et donnez-lui sa case.' : 'Chemin enregistré.'), 0);
+        else if (champ === 'noeud-ajout' && !q.noeuds.includes(v)) {
+          q.noeuds.push(v); this.sel = null; this.svc = v;
+          if (this.cmd) donnerCases(etat, this.cmd, q, [v], y => this.nom(y), this.a.classes());
+        }
+      }, champ === 'noeud-ajout' ? this.nom(v) + ' ajouté au chemin, avec sa case : tirez un trait depuis ou vers lui.' : 'Chemin enregistré.'), 0);
     }
 
     /** La case de la commande dans ce service : aucune, une existante (à la suite), ou une nouvelle. */
@@ -1153,7 +1209,7 @@
 
 
   const api = { insererPrepa, depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, couverture, confier, nouvelleEquipe,
-    completer, colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, nomLibre, EditeurParcours };
+    completer, colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, donnerCases, completerCases, nomLibre, EditeurParcours };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyParcours = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

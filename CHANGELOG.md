@@ -5,6 +5,28 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-24 — Une case pour chaque service du chemin, d'office
+
+Retour de test : un chemin créé pour AF · Équipage n'avait aucune case ; rien
+n'apparaissait dans « Les cases », et rien ne se réglait.
+
+- **Créer un chemin crée ses cases** (`parcours.js` : `donnerCases`) : chaque
+  service reçoit la sienne (« Cuisine AF CREW », 2 personnes, 06:00), sauf là où
+  elle est reprise d'un autre chemin (« mêmes cases »). La plonge reçoit une
+  seule case « Plonge », de type lavage, qui sert tout le monde. Même chose pour
+  « Dupliquer pour… » et pour un service ajouté au chemin.
+- **Les chemins déjà dessinés** reçoivent leurs cases manquantes une fois, à
+  l'ouverture (`completerCases`, marque `cases` sur le chemin), et l'alerte le
+  dit. Une case retirée exprès ensuite ne revient pas.
+- **Supprimer le chemin** d'une commande emporte les cases qui ne préparaient
+  qu'elle ; les cases partagées restent.
+
+**Tests** : `parcours.test` (création des cases, plonge unique, reprise, rattrapage
+unique) ; `graphe-browser` (la case est dans « Les cases » et y mène au chemin) ;
+`excel-browser` (supprimer le chemin emporte ses cases propres).
+
+---
+
 ## 2026-09-24 — Un chemin par commande, une case par service
 
 « Les chemins » et « Les équipes » partageaient un affichage, pas un
