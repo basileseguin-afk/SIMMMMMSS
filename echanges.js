@@ -266,6 +266,7 @@
       'Poste réglementaire', 'Présence (min)', 'Emporte du matériel', 'Débit robot (plateaux/h)',
       'Effectif mini robot', 'Plafond plonge (u/h)', 'Permanent', 'Identifiant']];
     const fab = [['Atelier', 'Ordre', 'Compagnies × classes']];
+    const mm = [['Atelier', 'Compagnie × classe', 'Man-minutes']];
     const tunnels = [['Atelier', 'Tunnel', 'Débit (u/h)', 'Personnes', 'Actif']];
     for (const a of etat.ateliers) {
       ateliers.push([a.nom, nomDe(a.service), TYPES_FR[a.type] || a.type, a.debut, a.jour || 0,
@@ -279,6 +280,7 @@
         a.type === 'dispo' ? (a.permanent === false ? 'non' : 'oui') : null,
         a.id]);
       (a.lots || []).forEach((l, i) => fab.push([a.nom, i + 1, l.join(' + ')]));
+      for (const [id, v] of Object.entries(a.minutes || {})) mm.push([a.nom, id, v]);
       for (const t of (a.tunnels || [])) tunnels.push([a.nom, t.nom, t.debit, t.personnes, t.actif === false ? 'non' : 'oui']);
     }
 
@@ -319,6 +321,7 @@
     return [
       { nom: 'Ateliers', lignes: ateliers },
       { nom: 'Fabrications', lignes: fab },
+      { nom: 'Man-minutes', lignes: mm },
       { nom: 'Tunnels', lignes: tunnels },
       { nom: 'Classes', lignes: classes },
       { nom: 'Parcours', lignes: parcours },
@@ -330,6 +333,7 @@
         '   Pauses : « 10:00-10:15; 12:00-12:30 ». Présence vide : celle du réglage général.',
         'Fabrications : ce que fait chaque atelier, DANS L’ORDRE. Une ligne par lot ; plusieurs classes d’un lot se séparent par « + ».',
         '   Pour ajouter une compagnie × classe à un atelier : ajoutez une ligne (Atelier, Ordre, ex. « AF/BC »).',
+        'Man-minutes : celles qu’un atelier fixe pour une compagnie × classe, à la place du barème importé. Absente = le barème.',
         'Tunnels : les tunnels d’une plonge, avec leur débit et le personnel qui les tient.',
         'Classes : les compagnies × classes. Parcours vide = celui de sa classe. Retirée = oui pour ne plus la fabriquer.',
         '   Une compagnie × classe absente du programme de vols est ajoutée : ses volumes viendront du prochain import des vols.',
@@ -503,6 +507,26 @@
       for (const [a, lots] of parAtelier) {
         lots.sort((x, y) => x.ordre - y.ordre || x.ligne - y.ligne);
         a.lots = lots.map(l => l.cls);
+      }
+    }
+
+    // Les man-minutes fixées dans une case : sans la feuille, celles du site restent.
+    const fMM = T.feuille(feuilles, 'Man-minutes');
+    for (const a of out.ateliers) {
+      const avant = etat.ateliers.find(x => x.id === a.id) || etat.ateliers.find(x => T.cleEntete(x.nom) === T.cleEntete(a.nom));
+      if (!fMM && avant && avant.minutes) a.minutes = JSON.parse(JSON.stringify(avant.minutes));
+    }
+    if (fMM) {
+      for (const o of T.enObjets(fMM.lignes).objets) {
+        const a = atelierNomme(o.atelier, fMM.nom, o._ligne); if (!a) continue;
+        err.essayer(fMM.nom, o._ligne, () => {
+          const m = /^(.+)\/([a-z]+)$/i.exec(String(o.compagnie_classe ?? '').trim());
+          if (!m || !P.CABINES.includes(m[2].toUpperCase())) throw new Error('compagnie × classe illisible « ' + (o.compagnie_classe ?? '') + ' » (ex. AF/BC)');
+          const v = T.nombreDe(o.man_minutes, null);
+          if (v === null) return;
+          if (!Number.isFinite(v) || v < 0) throw new Error('man-minutes : nombre positif attendu');
+          (a.minutes || (a.minutes = {}))[P.idClasse(m[1], m[2].toUpperCase())] = v;
+        });
       }
     }
 

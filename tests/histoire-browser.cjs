@@ -42,10 +42,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('#etapes [aria-current=page]').count(),1);
   // Un exemple n'est pas une alerte : pas de « ! » tant que rien n'est faux.
   assert.equal(await page.locator('#etapes .etape-etat.verifier').count(),0,'aucune alerte sur un site neuf');
-  // Sans équipe, le tableau n'aligne pas deux cents cases vides : il dit par où commencer.
+  // On arrive sur les chemins ; sans case, le tableau n'aligne pas deux cents cases vides : il dit par où commencer.
+  assert.equal(await page.locator('.pc-cmds').isVisible(),true,'les commandes, chacune son chemin');
+  await page.locator('[data-sous-onglet=at-grille]').click();await attendre();
   assert.equal(await page.locator('.qf-vide').isVisible(),true);
-  assert.equal(await page.locator('[data-sous-onglet=at-grille] .so-badge').count(),0,'pas de compte sur un tableau vide');
+  assert.equal(await page.locator('[data-sous-onglet=at-grille] .so-badge').count(),0,'pas de compte sur un tableau calculé');
   assert.equal(await page.locator('.qf-table').count(),0);
+  await page.locator('[data-sous-onglet=at-chemins]').click();await attendre();
 
   // 3. Chaque étape ouvre sa vue, avec un titre et une phrase simples.
   const titres={vols:'Les vols',ateliers:'Qui prépare quoi',reglages:'Les temps de travail',plan:'La journée',flux:'L’unité : qui livre qui'};
@@ -92,6 +95,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator('#etapes [data-view=reglages]').click();await attendre();
   assert.ok(await page.locator('.rg-barres .rg-barre i[data-cab=BC]').count()>5,'les minutes se lisent en barres');
   await page.locator('#etapes [data-view=ateliers]').click();await attendre();
+  await page.locator('[data-sous-onglet=at-chemins]').click();await attendre();
+  await page.locator('.pc-modeles>summary').click();
+  await page.locator('[data-pc-action=modele][data-parcours=complet]').click();await attendre();
   assert.ok(await page.locator('.pc-graphe .gr-noeud .gr-ico').count()>5,'le chemin est un diagramme de nœuds');
 
   // 7. Épuré : chaque vue montre une chose à la fois, derrière des onglets.
@@ -119,21 +125,22 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator('[data-sous-onglet=j-plan]').click();await attendre();
 
   await page.locator('#etapes [data-view=ateliers]').click();await attendre();
-  assert.deepEqual(await onglets(),['at-grille','at-chemins','at-equipes','at-planning','at-repas']);
-  assert.equal(await actif(),'at-equipes','on retrouve l’onglet où l’on a créé l’équipe');
+  assert.deepEqual(await onglets(),['at-chemins','at-grille','at-equipes','at-planning','at-repas']);
+  assert.equal(await actif(),'at-chemins','on retrouve l’onglet où l’on était');
+  assert.match(await page.locator('[data-sous-onglet=at-chemins] .so-badge').textContent(),/^\d+$/,'un nombre dit les commandes sans chemin');
   await page.locator('[data-sous-onglet=at-grille]').click();await attendre();
   assert.equal(await page.locator('.qf-table').isVisible(),true);
   assert.equal(await page.locator('.pc-sec').isVisible(),false);
   assert.equal(await page.locator('#at-liste').isVisible(),false);
   assert.equal(await page.locator('#at-planning').isVisible(),false);
-  assert.match(await page.locator('[data-sous-onglet=at-grille] .so-badge').textContent(),/^\d+$/,'un nombre dit les cases à choisir');
   assert.equal(await page.locator('#at-export').isVisible(),true,'les outils de la vue restent à portée, sur la barre des onglets');
   assert.equal(await page.locator('#at-anomalies').evaluate(d=>d.tagName==='DETAILS'&&!d.open),true,'les points à regarder sont repliés');
-  // Ouvrir la fiche d'une équipe depuis le tableau mène à l'onglet des équipes.
-  await page.locator(`[data-qf=case][data-classe="AF/BC"][data-service=prepa]`).click();await attendre();
-  await page.locator('.qf-menu [data-qf=fiche]').first().click();await attendre();
-  assert.equal(await actif(),'at-equipes');
-  assert.equal(await page.locator(`[data-at="${id}"]`).isVisible(),true,'sa fiche est ouverte');
+  // Le tableau se calcule : une case mène au chemin de sa commande.
+  assert.match(await page.locator(`[data-qf=aller][data-classe="AF/BC"][data-service=prepa]`).textContent(),/Montage/);
+  await page.locator(`[data-qf=aller][data-classe="AF/BC"][data-service=prepa]`).click();await attendre();
+  assert.equal(await actif(),'at-chemins');
+  assert.equal(await page.locator('.pc-cmd.actif').getAttribute('data-classe'),'AF/BC');
+  assert.equal(await page.locator('.pc-creer').isVisible(),true,'AF · Business n’a pas encore son chemin : on peut le créer');
 
   await page.locator('#etapes [data-view=vols]').click();await attendre();
   assert.deepEqual(await onglets(),['v-departs','v-programme']);

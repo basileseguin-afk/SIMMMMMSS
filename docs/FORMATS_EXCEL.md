@@ -74,6 +74,18 @@ Ce que fait chaque atelier, **dans l'ordre**. Une ligne par lot.
   le dit ; ses volumes viendront du prochain import des vols.
 - Les lots sont rangés par `Ordre` ; un `1,5` se glisse entre `1` et `2`.
 
+### Feuille « Man-minutes »
+
+Les man-minutes qu'une case fixe pour une commande, **à la place de l'import**,
+pour elle seule. Une ligne par valeur fixée ; une commande absente reprend le
+barème importé.
+
+| Atelier | Compagnie × classe | Man-minutes |
+|---|---|---|
+| Cuisine TX BC/PC | `TX/BC` | 90 |
+
+Feuille absente : les valeurs du site restent.
+
 ### Feuille « Tunnels »
 
 Les tunnels d'une plonge : `Atelier`, `Tunnel`, `Débit (u/h)`, `Personnes`,

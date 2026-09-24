@@ -153,9 +153,6 @@
      *   retirerLien(id)        — retire le lien
      *   choisir(selection)     — { type:'noeud'|'lien', id } ou null
      *   message(texte)         — facultatif : dire ce qui se passe
-     *   choixSeul()            — facultatif : vrai quand le diagramme sert
-     *                            seulement à choisir un service (ni +, ni lien
-     *                            à cliquer, ni nœud à déplacer)
      * } */
     constructor(a) {
       this.a = a;
@@ -164,9 +161,6 @@
       this.geste = null;           // un glisser en cours
       this.pos = {};
     }
-
-    /** Choisir seulement : le même dessin, sans rien qui modifie le chemin. */
-    choixSeul() { return !!(this.a.choixSeul && this.a.choixSeul()); }
 
     /* ---- dessin ------------------------------------------------------ */
 
@@ -193,14 +187,12 @@
 
     rendre() {
       const hote = this.a.hote(); if (!hote) return;
-      const noeuds = this.a.noeuds(), liens = this.a.liens(), fixe = this.choixSeul();
+      const noeuds = this.a.noeuds(), liens = this.a.liens();
       this.pos = this.positions();
-      if (fixe) { this.depuis = null; if (this.selection && this.selection.type === 'lien') this.selection = null; }
       if (this.selection && !(this.selection.type === 'noeud' ? noeuds : liens).some(x => x.id === this.selection.id)) this.selection = null;
       if (this.depuis && !noeuds.some(n => n.id === this.depuis)) this.depuis = null;
       if (!hote.querySelector('.gr-svg')) this.installer(hote);
       const svg = hote.querySelector('.gr-svg');
-      svg.classList.toggle('choix', fixe);
       const xs = Object.values(this.pos);
       const x0 = Math.min(0, ...xs.map(p => p.x)) - MARGE, y0 = Math.min(0, ...xs.map(p => p.y)) - MARGE;
       const x1 = Math.max(L, ...xs.map(p => p.x + L)) + MARGE + 30, y1 = Math.max(H, ...xs.map(p => p.y + H)) + MARGE;
@@ -215,8 +207,8 @@
         <g class="gr-liens">${liens.slice().sort((x, y) => this.estChoisi(x) - this.estChoisi(y)).map(l => {
           const a = this.pos[l.de], b = this.pos[l.vers]; if (!a || !b) return '';
           const k = courbe(a, b, this.via[l.de + '>' + l.vers]), sel = this.selection && this.selection.type === 'lien' && this.selection.id === l.id;
-          return `<g class="gr-lien${sel ? ' sel' : ''}${l.pointille ? ' pointille' : ''}" data-lien="${esc(l.id)}"${fixe ? '' : ` tabindex="0" role="button"
-              aria-label="${esc(l.titre || '')}. Entrée pour le choisir, Suppr pour le retirer."`}>
+          return `<g class="gr-lien${sel ? ' sel' : ''}${l.pointille ? ' pointille' : ''}" data-lien="${esc(l.id)}" tabindex="0" role="button"
+              aria-label="${esc(l.titre || '')}. Entrée pour le choisir, Suppr pour le retirer.">
             <title>${esc(l.titre || '')}</title>
             <path class="gr-prise" d="${k.d}"/><path class="gr-trait" d="${k.d}" marker-end="url(#${marque(l.couleur)})"${l.couleur ? ` style="stroke:${esc(l.couleur)}"` : ''}/>
             ${sel ? `<g class="gr-retirer" data-retirer="${esc(l.id)}" transform="translate(${k.mx},${k.my})"><circle r="11"/><path d="M-4,-4 L4,4 M4,-4 L-4,4"/><title>Retirer ce lien</title></g>` : ''}
@@ -228,15 +220,15 @@
           const cible = this.depuis && this.depuis !== n.id;
           return `<g class="gr-noeud ton-${esc(n.ton || 'neutre')}${sel ? ' sel' : ''}${this.depuis === n.id ? ' depuis' : ''}${cible ? ' cible' : ''}"
               data-noeud="${esc(n.id)}" transform="translate(${p.x},${p.y})" tabindex="0" role="button"
-              aria-label="${esc(n.nom + (n.sous ? ', ' + n.sous : ''))}${cible ? '. Entrée pour y relier.' : ''}"${fixe ? ` aria-pressed="${!!sel}"` : ''}>
+              aria-label="${esc(n.nom + (n.sous ? ', ' + n.sous : ''))}${cible ? '. Entrée pour y relier.' : ''}">
             <title>${esc(n.nom)}${n.sous ? ' — ' + esc(n.sous) : ''}</title>
             <rect class="gr-fond" width="${L}" height="${H}" rx="12"/>
             <rect class="gr-bord" width="5" height="${H - 16}" x="0" y="8" rx="2"/>
             ${I ? `<g class="gr-ico" transform="translate(12,${(H - 22) / 2}) scale(.92)">${I.TRAITS[n.ico] || I.TRAITS.service}</g>` : ''}
             <text class="gr-nom" x="44" y="${n.sous ? 22 : 31}">${esc(court(n.nom, 19))}</text>
-            ${n.sous ? `<text class="gr-sous" x="44" y="39">${esc(court(n.sous, 22))}</text>` : ''}
-            ${fixe ? '' : `<g class="gr-port" data-port="${esc(n.id)}" transform="translate(${L},${H / 2})"><circle r="9"/><path d="M-4,0 H4 M0,-4 V4"/>
-              <title>Tirer vers un autre service, ou cliquer ici puis sur lui, pour les relier</title></g>`}
+            ${n.sous ? `<text class="gr-sous" x="44" y="39">${esc(court(n.sous, 26))}</text>` : ''}
+            <g class="gr-port" data-port="${esc(n.id)}" transform="translate(${L},${H / 2})"><circle r="9"/><path d="M-4,0 H4 M0,-4 V4"/>
+              <title>Tirer vers un autre service, ou cliquer ici puis sur lui, pour les relier</title></g>
           </g>`;
         }).join('')}</g>`;
       if (this.focus) {
@@ -275,7 +267,7 @@
       if (retirer) { e.preventDefault(); return this.retirer(retirer.dataset.retirer); }
       const port = e.target.closest('[data-port]');
       const noeud = e.target.closest('[data-noeud]');
-      const lien = this.choixSeul() ? null : e.target.closest('[data-lien]');
+      const lien = e.target.closest('[data-lien]');
       const svg = this.a.hote().querySelector('.gr-svg');
       // En mode « relier », cliquer le + d'un autre service vaut le choisir comme destination.
       if (port && this.depuis && port.dataset.port !== this.depuis) {
@@ -316,7 +308,7 @@
         if (sous && sous.dataset.noeud !== g.de) sous.classList.add('survol');
         return;
       }
-      if (this.choixSeul() || (!g.bouge && Math.hypot(p.x - g.x0, p.y - g.y0) < 5)) return;
+      if (!g.bouge && Math.hypot(p.x - g.x0, p.y - g.y0) < 5) return;
       g.bouge = true;
       const q = this.pos[g.id]; q.x = Math.round(p.x - g.dx); q.y = Math.round(p.y - g.dy);
       const n = svg.querySelector(`[data-noeud="${CSS.escape(g.id)}"]`);
@@ -377,7 +369,6 @@
       }
       // Les flèches déplacent le service choisi, comme la souris.
       const pas = { ArrowLeft: [-12, 0], ArrowRight: [12, 0], ArrowUp: [0, -12], ArrowDown: [0, 12] }[e.key];
-      if (this.choixSeul()) return;
       if (n && pas && e.altKey) {
         e.preventDefault();
         const q = this.pos[n.dataset.noeud]; q.x += pas[0]; q.y += pas[1];
@@ -404,7 +395,6 @@
 
     /** « Relier à… » : le prochain service cliqué (ou validé au clavier) reçoit le lien. */
     relierDepuis(id) {
-      if (this.choixSeul()) return;
       this.depuis = id;
       const n = this.a.noeuds().find(x => x.id === id);
       this.dire('Relier ' + (n ? n.nom : id) + ' à… : cliquez le service qui le reçoit (Échap ou un clic dans le vide pour annuler).');

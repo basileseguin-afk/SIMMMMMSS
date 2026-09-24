@@ -34,9 +34,6 @@
 .gr-port:hover circle{r:11}
 
 .gr-lien{cursor:pointer}
-/* Choisir seulement (onglet « Les équipes ») : les traits se lisent, ils ne se cliquent pas. */
-.gr-svg.choix .gr-lien{pointer-events:none;cursor:default}
-.gr-svg.choix .gr-noeud{cursor:pointer}
 .gr-prise{fill:none;stroke:transparent;stroke-width:16}
 .gr-trait{fill:none;stroke:var(--edge);stroke-width:2.6}
 .gr-pointe{fill:var(--edge)}
@@ -53,9 +50,6 @@
 .pc-sec{--c:var(--c-equipes);grid-template-columns:minmax(0,1fr)}
 .pc-graphe{min-width:0}
 .pc-puces{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.pc-puces-lab{font-size:12px;font-weight:700;color:var(--txt2);margin-right:2px}
-/* Dans « Les équipes », le diagramme du chemin sert de sommaire : plus bas, sans panneau. */
-body[data-sous="at-equipes"] .pc-sec{margin-bottom:0}
 .pc-puce{appearance:none;font:inherit;font-weight:700;font-size:13px;padding:7px 14px;border-radius:99px;cursor:pointer;
   border:1.5px solid var(--bordure2);background:var(--bg3);color:var(--txt)}
 .pc-puce:hover{border-color:var(--c-equipes)}
@@ -88,3 +82,48 @@ body[data-sous="at-equipes"] .pc-sec{margin-bottom:0}
 .fc-liste-toute>summary{cursor:pointer;font-weight:700;margin:6px 0 10px}
 .pc-message{margin:0;min-height:1.4em;font-size:13px;font-weight:600;color:var(--accent2)}
 .pc-message:empty{min-height:0}
+
+/* --- Un chemin par commande (Qui prépare quoi › Les chemins) ------------- */
+.pc-cadre{display:grid;grid-template-columns:240px minmax(0,1fr);gap:18px;align-items:start}
+.pc-principal{display:grid;gap:12px;min-width:0}
+.pc-cmds{display:grid;gap:8px;position:sticky;top:8px;max-height:calc(100vh - 120px);grid-template-rows:auto auto minmax(0,1fr) auto;
+  border:1px solid var(--bordure);border-radius:12px;background:var(--bg3);padding:10px}
+.pc-cmds-tete{display:grid;gap:2px}
+.pc-cmds-tete span{font-size:12px;color:var(--txt2)}
+.pc-cmds-cherche{font:inherit;font-size:13px;padding:6px 9px;border:1.5px solid var(--bordure2);border-radius:var(--r2);background:var(--bg3);color:var(--txt);min-height:32px}
+.pc-cmds-liste{list-style:none;margin:0;padding:0;overflow:auto;display:grid;align-content:start;gap:2px}
+.pc-cie{font-size:11px;font-weight:800;letter-spacing:.05em;color:var(--txt2);padding:8px 6px 2px}
+.pc-cmd{appearance:none;font:inherit;width:100%;display:flex;align-items:center;gap:8px;text-align:left;cursor:pointer;
+  padding:5px 8px;min-height:36px;border-radius:8px;border:1px solid transparent;background:transparent;color:var(--txt)}
+.pc-cmd:hover{background:var(--bg2)}
+.pc-cmd.actif{background:color-mix(in srgb,var(--c-equipes) 12%,var(--bg3));border-color:var(--c-equipes)}
+.pc-cmd-nom{flex:1;display:grid;font-weight:700;font-size:13px;min-width:0}
+.pc-cmd-nom small{font-weight:500;font-size:11px;color:var(--txt2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-cmd.sans .pc-cmd-nom small{font-style:italic}
+.pc-cmd-etat{flex:none;display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;font-size:11px;font-weight:800;color:#fff;background:var(--txt2)}
+.pc-cmd-etat.ok{background:var(--vert)}
+.pc-cmd-etat.retard{background:var(--rouge)}
+.pc-cmd-etat.afaire{background:var(--bordure2);color:var(--txt)}
+.pc-modeles{border-top:1px solid var(--bordure);padding-top:6px;font-size:13px}
+.pc-modeles>summary{cursor:pointer;font-weight:700;min-height:32px;display:flex;align-items:center;gap:6px}
+.pc-modeles>summary small{font-weight:500;color:var(--txt2)}
+.pc-modeles-corps{display:grid;gap:10px;padding-top:6px}
+.pc-modeles .pc-defauts{display:grid;gap:6px}
+.pc-modeles .pc-defauts label{display:grid;grid-template-columns:110px 1fr;align-items:center;gap:6px;font-size:12px}
+.pc-modeles .pc-defauts select{min-width:0}
+.pc-cmd-tete{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:17px}
+.pc-cmd-tete span:last-child{font-size:13px;color:var(--txt2)}
+.pc-creer{justify-items:start;text-align:left}
+.pc-creer-choix{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:end}
+.pc-creer-choix label:not(.chk){display:grid;gap:4px;font-size:12px;color:var(--txt2)}
+.pc-dup{position:relative}
+.pc-dup>summary{list-style:none;cursor:pointer}
+.pc-dup>summary::-webkit-details-marker{display:none}
+.pc-dup-corps{position:absolute;right:0;top:calc(100% + 6px);z-index:30;width:360px;display:grid;gap:8px;padding:12px;
+  background:var(--bg3);border:1px solid var(--bordure2);border-radius:12px;box-shadow:0 10px 30px rgba(15,23,42,.18);font-size:13px}
+.pc-dup-corps p{margin:0;color:var(--txt2)}
+.pc-dup-liste{display:grid;grid-template-columns:1fr 1fr;gap:2px 10px;max-height:240px;overflow:auto}
+.pc-case-outils{align-items:end}
+.pc-case-choix{display:grid;gap:4px;font-size:12px;color:var(--txt2)}
+.pc-case-choix select{min-width:260px}
+.pc-panneau .at-carte{margin:4px 0 0;box-shadow:none}

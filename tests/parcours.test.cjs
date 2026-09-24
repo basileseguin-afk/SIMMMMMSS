@@ -124,6 +124,65 @@ test('arcs et services se lisent dans les branches', () => {
   assert.equal(routes.has('AF/XX'), false, 'une classe sans parcours n’en reçoit pas');
 });
 
+/* ---- un chemin par commande, des cases partagées ------------------------ */
+test('une case « TX BC puis TX PC » : le chemin TX BC ne tire que le temps de TX BC', () => {
+  const vols = [{ id: 'TX9', cie: 'TX', sens: 'DEP', std: 14 * 60, bc: 12, pc: 8, yc: 0 }];
+  const chemin = (id, cmd) => ({ id, nom: 'Complet ' + cmd, noeuds: ['cuisine', 'prepa'], liens: [{ de: 'cuisine', vers: 'prepa' }] });
+  const base = { vols, liaisons: [], bareme: { cuisine: { '*/BC': 60, '*/PC': 45 }, prepa: { '*/BC': 20, '*/PC': 20 } },
+    parcours: [chemin('c-bc', 'TX BC'), chemin('c-pc', 'TX PC')], parcoursCabine: {}, parcoursClasse: { 'TX/BC': 'c-bc', 'TX/PC': 'c-pc' } };
+  const cuisine = p => at('txbcpc', 'cuisine', '05:00', [['TX/BC'], ['TX/PC']], p);
+  const montage = at('mo', 'prepa', '05:00', [['TX/BC'], ['TX/PC']], { personnes: 2 });
+  const r = P.simuler({ ...base, ateliers: [cuisine(), montage] });
+  const bc = lot(r, 'cuisine', 'TX/BC'), pc = lot(r, 'cuisine', 'TX/PC');
+  assert.equal(bc.hommeMinutes, 60, 'la ligne TX BC ne compte que TX BC');
+  assert.equal(pc.hommeMinutes, 45);
+  assert.ok(bc.fin < pc.fin, 'TX BC sort d’abord, TX PC ensuite');
+  assert.equal(lot(r, 'prepa', 'TX/BC').debut, bc.fin, 'le montage de TX BC démarre à la fin de TX BC, sans attendre TX PC');
+  // Les man-minutes fixées dans la case remplacent celles de l'import, pour cette case seulement.
+  const r2 = P.simuler({ ...base, ateliers: [cuisine({ minutes: { 'TX/BC': 90 } }), montage] });
+  assert.equal(lot(r2, 'cuisine', 'TX/BC').hommeMinutes, 90);
+  assert.equal(lot(r2, 'cuisine', 'TX/PC').hommeMinutes, 45, 'TX PC garde celles de l’import');
+  assert.equal(lot(r2, 'prepa', 'TX/BC').hommeMinutes, 20, 'le montage garde les siennes');
+  assert.equal(P.travailDans({ service: 'cuisine', minutes: { 'TX/BC': 90 } }, { id: 'TX/BC', cie: 'TX', cabine: 'BC', vols: ['TX9'] }, base.bareme), 90);
+  assert.equal(P.travailDans({ service: 'cuisine' }, { id: 'TX/BC', cie: 'TX', cabine: 'BC', vols: ['TX9'] }, base.bareme), 60);
+});
+
+test('créer le chemin d’une commande : copié d’un autre, dans les mêmes cases, à la suite', () => {
+  const etat = { parcours: [{ id: 'complet', nom: 'Complet', noeuds: ['cuisine', 'prepa'], liens: [{ de: 'cuisine', vers: 'prepa' }] }],
+    parcoursCabine: { BC: 'complet', PC: 'complet' }, parcoursClasse: {},
+    ateliers: [at('cu', 'cuisine', '05:00', []), at('mo', 'prepa', '05:00', [['AF/BC']]), { id: 'pl', nom: 'Plonge', service: 'plonge', type: 'lavage', lots: [] }] };
+  // Depuis un modèle : le nom prend la commande, pas de case à reprendre.
+  const a = PC.creerChemin(etat, 'TX/BC', 'complet', true);
+  assert.equal(a.chemin.nom, 'Complet TX BC');
+  assert.equal(etat.parcoursClasse['TX/BC'], a.chemin.id);
+  assert.deepEqual(a.chemin.liens, [{ de: 'cuisine', vers: 'prepa' }]);
+  assert.equal(a.cases, 0);
+  assert.notEqual(a.chemin.liens, etat.parcours[0].liens, 'une copie : modifier l’un ne touche pas l’autre');
+  etat.ateliers[0].lots = [['TX/BC']]; etat.ateliers[1].lots = [['AF/BC'], ['TX/BC']];
+  // Depuis le chemin de TX BC, dans les mêmes cases : TX PC puis TX YC, chacun juste après.
+  const b = PC.creerChemin(etat, 'TX/PC', a.chemin.id, true);
+  assert.equal(b.chemin.nom, 'Complet TX PC', 'le nom suit la commande');
+  assert.equal(b.cases, 2);
+  PC.creerChemin(etat, 'TX/YC', a.chemin.id, true, ['TX/BC', 'TX/PC']);
+  assert.deepEqual(etat.ateliers[0].lots, [['TX/BC'], ['TX/PC'], ['TX/YC']], 'dans l’ordre de la duplication');
+  assert.deepEqual(etat.ateliers[1].lots, [['AF/BC'], ['TX/BC'], ['TX/PC'], ['TX/YC']]);
+  // Sans « mêmes cases » : un chemin, aucune case.
+  const c = PC.creerChemin(etat, 'DL/BC', a.chemin.id, false);
+  assert.equal(c.cases, 0);
+  assert.equal(PC.caseDe(etat, 'cuisine', 'DL/BC'), null);
+  // Une plonge sert tout le monde : c'est la case de chacun dans son service.
+  assert.equal(PC.caseDe(etat, 'plonge', 'DL/BC').id, 'pl');
+  assert.equal(PC.caseDe(etat, 'cuisine', 'TX/PC').id, 'cu');
+  // Les modèles : les chemins d'une classe, ou ceux d'aucune commande.
+  assert.deepEqual(PC.modeles(etat).map(p => p.id), ['complet']);
+  assert.equal(PC.commandeDu(etat, a.chemin.id), 'TX/BC');
+  assert.equal(PC.cheminDe(etat, 'TX/PC').id, b.chemin.id);
+  assert.equal(PC.cheminDe(etat, 'AF/BC'), null, 'AF/BC suit encore son modèle');
+  // Un nom de case est libre : c'est la clé des classeurs Excel.
+  assert.equal(PC.nomLibre({ ateliers: [{ nom: 'Cuisine TX BC' }] }, 'Cuisine TX BC'), 'Cuisine TX BC 2');
+  assert.equal(PC.etiquette('FWI/SPML'), 'FWI SPML');
+});
+
 /* ---- le parcours en diagramme de nœuds --------------------------------- */
 test('un parcours est un graphe : des nœuds et des liens « A livre B »', () => {
   const g = { id: 'g', nom: 'G', noeuds: ['appros', 'cuisine', 'prepa', 'magasin', 'dotation'],

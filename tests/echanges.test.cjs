@@ -103,7 +103,7 @@ test('vols : une erreur désigne la feuille et la ligne', () => {
 const ETAT_ATELIERS = () => ({
   schema: 'ory-ateliers', version: 1,
   ateliers: [
-    { id: 'a1', nom: 'Cuisine matin', service: 'cuisine', type: 'manuel', debut: '04:30', jour: 0, personnes: 6,
+    { id: 'a1', nom: 'Cuisine matin', service: 'cuisine', type: 'manuel', debut: '04:30', jour: 0, personnes: 6, minutes: { 'DL/PC': 75 },
       pauses: [{ de: '09:00', a: '09:15' }], lots: [['AF/BC'], ['DL/BC', 'DL/PC']], regime: { actif: true } },
     { id: 'a2', nom: 'Robot', service: 'prepa', type: 'robot', debut: '05:00', jour: 0, personnes: 2, debit: 400,
       personnesMin: 2, pauses: [], lots: [['AF/YC']], regime: { actif: false } },
@@ -127,7 +127,7 @@ test('ateliers : l’aller-retour par Excel ne perd rien', async () => {
   for (const a of etat.ateliers) {
     const b = lu.ateliers.find(x => x.nom === a.nom);
     assert.ok(b, a.nom);
-    for (const k of ['id', 'service', 'type', 'debut', 'jour', 'lots', 'pauses', 'debit', 'personnesMin', 'plafond', 'tunnels', 'permanent'])
+    for (const k of ['id', 'service', 'type', 'debut', 'jour', 'lots', 'pauses', 'debit', 'personnesMin', 'plafond', 'tunnels', 'permanent', 'minutes'])
       assert.deepEqual(b[k], a[k], a.nom + ' · ' + k);
     assert.equal(b.regime.actif, a.regime.actif);
     assert.equal(b.regime.presence, a.regime.presence);

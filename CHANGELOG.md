@@ -5,6 +5,59 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-24 — Un chemin par commande, une case par service
+
+« Les chemins » et « Les équipes » partageaient un affichage, pas un
+fonctionnement. Refonte selon le modèle demandé : **chaque commande a son
+chemin, et chaque nœud du chemin porte sa case.**
+
+**Le modèle**
+- Un chemin par commande (`parcoursClasse`), créé à la main ; les chemins de
+  classe deviennent des **modèles**, pour les commandes qui n'ont pas encore le
+  leur (`parcours.js` : `creerChemin`, `cheminDe`, `caseDe`, `modeles`).
+- Une **case** = une équipe (atelier) dans un service ; elle se partage entre
+  chemins, et prépare ses commandes dans l'ordre de ses lignes.
+- **Man-minutes propres à une case** (`minutes` sur l'atelier) : le calcul les
+  prend à la place de l'import, pour cette case seule (`moteur/production.js` :
+  `travailDans`). Feuille Excel « Man-minutes » (`echanges.js`).
+- Vérifié et testé : dans une case « TX BC puis TX PC », le chemin de TX BC ne
+  compte que les man-minutes de TX BC, et son montage démarre à la fin de la
+  ligne TX BC, sans attendre TX PC.
+
+**« Les chemins »** (`parcours.js`, `graphe.css`) — devient l'onglet d'entrée
+- À gauche, les commandes par compagnie, leur chemin ou leur modèle, un repère
+  (✓ à l'heure, ! en retard), une recherche ; les modèles en bas.
+- Créer le chemin d'une commande : vide, d'un modèle, ou du chemin d'une autre
+  commande **dans les mêmes cases** (à la suite). « Dupliquer pour… » plusieurs
+  commandes d'un coup. La disposition du diagramme est copiée.
+- Chaque nœud porte sa case (« TX BC · 3 p. · 06:00 ») ; cliquer un service ouvre
+  dessous le choix de la case (existante, nouvelle, aucune) et sa **fiche
+  complète**, avec les man-minutes de chaque commande (import en grisé, valeur
+  propre en gras) et la ligne de la commande regardée en évidence.
+- Les liens ne valent que pour le chemin affiché.
+
+**Les autres onglets se calculent**
+- « Qui prépare quoi » : plus de menu ni de « remplir » ; chaque cellule dit sa
+  case et ses heures, ou « à faire », et **ouvre le chemin** de la commande sur
+  ce service.
+- « Les équipes » devient **« Les cases »** : chaque case avec ses commandes
+  dans l'ordre, qui mènent à leur chemin ; « + Case hors chemin » pour une
+  plonge ou une mise à disposition.
+- Le badge de l'onglet « Les chemins » compte les commandes sans chemin.
+- Retiré : le diagramme en double dans « Les équipes » et le service partagé
+  entre onglets de la version précédente (`graphe.js` n'a plus de mode
+  « choisir seulement »).
+
+**Tests** : moteur (une case partagée, surcharge des man-minutes), création et
+duplication de chemins, Excel « Man-minutes » ; `graphe-browser` réécrit sur le
+parcours complet (créer, case, man-minutes, dupliquer, liens propres, tableau
+et cases qui mènent au chemin) ; `excel-browser` et `histoire-browser` adaptés
+au tableau calculé.
+
+**Docs** : README, MODELE_ATELIERS, FORMATS_EXCEL, CAHIER_DES_CHARGES (E15).
+
+---
+
 ## 2026-09-24 — « Les chemins » et « Les équipes » reliés
 
 Les deux onglets se parlaient mal : on dessinait un chemin d'un côté, on

@@ -232,6 +232,16 @@
     return (m || 0) * ((classe.vols && classe.vols.length) || 0);
   }
 
+  /**
+   * Les homme-minutes d'une classe DANS un atelier : celles que l'atelier fixe
+   * pour elle (`a.minutes[classe]`, saisies dans sa case), sinon celles du
+   * barème importé. La valeur fixée ne vaut que pour cet atelier.
+   */
+  function travailDans(a, classe, bareme) {
+    const propre = a && a.minutes ? a.minutes[classe.id] : undefined;
+    return Number.isFinite(propre) ? propre : travailClasse(a.service, classe, bareme);
+  }
+
   /* ======================================================================
    *  4. PARCOURS — lu dans le graphe des liaisons
    * ====================================================================*/
@@ -1095,7 +1105,9 @@
             duree = a.personnes >= mini ? (plateaux / a.debit) * 60 : Infinity;
             detail = { plateaux, debit: a.debit };
           } else {
-            const hommeMinutes = lots.reduce((n, c) => n + travailClasse(a.service, c, bareme), 0);
+            // Chaque ligne ne compte que ses classes : dans une case « TX BC puis
+            // TX PC », TX BC sort après ses seules minutes, sans attendre TX PC.
+            const hommeMinutes = lots.reduce((n, c) => n + travailDans(a, c, bareme), 0);
             duree = hommeMinutes / a.personnes / rendement;
             detail = { hommeMinutes };
           }
@@ -1250,7 +1262,7 @@
     MINUTES_PAR_JOUR, CABINES, TYPES,
     minutes, hhmm, idClasse, libelleClasse, enClair,
     REGIME_DEFAUT, normaliserRegime, travailDuPoste, executerTache,
-    classesDeVols, BAREME_DEMO, RENDEMENT_DEMO, travailClasse,
+    classesDeVols, BAREME_DEMO, RENDEMENT_DEMO, travailClasse, travailDans,
     PAX_TYPE, TOUTES, cleBareme, normaliserBareme, minutesParVol,
     arcsDuParcours, servicesDuParcours, routesDesClasses,
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,

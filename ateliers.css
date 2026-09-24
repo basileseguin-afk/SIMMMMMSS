@@ -22,15 +22,7 @@ body.ateliers-open .workbench{display:none}
 .at-barre{display:flex;align-items:end;gap:14px;flex-wrap:wrap;margin:18px 0 14px}
 .at-barre label{display:grid;gap:6px;font-size:12px;color:var(--txt2)}
 .at-barre-fin{flex:1}
-/* Le service choisi dans le diagramme, dit avec le chemin (reçoit de…, livre…). */
-.at-choix{flex:1;min-width:280px;display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;min-height:40px;padding:6px 12px;
-  border:1px solid var(--bordure);border-left:4px solid var(--accent);border-radius:10px;background:var(--bg2);font-size:14px}
-.at-choix .ico{width:20px;height:20px;color:var(--accent)}
-.at-choix>span{color:var(--txt2);font-size:13px}
-.at-hors{margin:26px 0 10px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--txt2)}
 .at-service-nom{display:inline-flex;align-items:center;gap:8px;font:inherit;font-weight:700;color:inherit;background:none;border:0;padding:4px 0;min-height:32px}
-button.at-service-nom{cursor:pointer;text-decoration:underline;text-decoration-color:var(--bordure);text-underline-offset:4px}
-button.at-service-nom:hover{text-decoration-color:currentColor}
 .at-service-nom .ico{width:18px;height:18px;color:var(--txt2)}
 
 .at-titre{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--txt2);
@@ -255,7 +247,7 @@ button.at-service-nom:hover{text-decoration-color:currentColor}
 .qf-id{display:grid;line-height:1.2}
 .qf-id b{font-size:12.5px}
 .qf-id small{font-size:10.5px;color:var(--txt2)}
-#view-ateliers .qf-parcours{font-size:11px;padding:4px 6px;min-height:32px;margin-top:2px;max-width:150px;border-color:transparent;background:transparent;color:var(--txt2)}
+#view-ateliers .qf-parcours{font:inherit;font-size:11px;cursor:pointer;text-align:left;border:1px solid transparent;border-radius:6px;padding:4px 6px;min-height:32px;margin-top:2px;max-width:150px;border-color:transparent;background:transparent;color:var(--txt2)}
 #view-ateliers .qf-parcours:hover,#view-ateliers .qf-parcours:focus{border-color:var(--bordure2)}
 #view-ateliers .qf-parcours.propre{color:var(--accent2);font-weight:700}
 .qf-c{min-width:108px}
@@ -315,3 +307,15 @@ button.at-service-nom:hover{text-decoration-color:currentColor}
 .qf-menu-pied{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;border-top:1px solid var(--bordure);padding-top:6px}
 .qf-lien{font:inherit;font-size:12px;border:0;background:none;color:var(--accent2);cursor:pointer;padding:2px 0;text-decoration:underline;min-height:0;text-align:left}
 .qf-lien.danger{color:var(--rouge)}
+
+/* Une case : ses commandes dans l'ordre, et leurs man-minutes. */
+.at-cmd-chip{appearance:none;font:inherit;font-size:12px;font-weight:700;padding:3px 8px;min-height:28px;border-radius:99px;cursor:pointer;
+  border:1px solid var(--bordure2);background:var(--bg2);color:var(--txt)}
+.at-cmd-chip:hover{border-color:var(--c-equipes);color:var(--c-equipes)}
+.at-carte-nom.fixe{cursor:default}
+.at-lot-cmd{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.at-mm{white-space:nowrap;display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--txt2)}
+#view-ateliers .at-mm input{width:76px;flex:none;font:inherit;font-size:13px;padding:4px 6px;min-height:30px;border:1.5px solid var(--bordure2);border-radius:6px;background:var(--bg3);color:var(--txt)}
+.at-mm input:not(:placeholder-shown){border-color:var(--accent2);font-weight:700}
+.at-mm-import{color:var(--txt2)}
+.at-lot.ici{border-left:4px solid var(--c-equipes);padding-left:8px;background:color-mix(in srgb,var(--c-equipes) 6%,transparent)}

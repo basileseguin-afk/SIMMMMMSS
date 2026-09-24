@@ -382,7 +382,7 @@ function initAteliers(){
     // La liste du barème marque les services qui portent une équipe : elle doit
     // donc se redessiner quand les ateliers bougent.
     change:()=>{majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();},
-    // La fiche d'une équipe vit dans l'onglet « Les équipes » : l'ouvrir d'ailleurs y mène.
+    // Une case se règle dans le chemin d'une commande : l'ouvrir d'ailleurs y mène.
     onglet:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
     notify:toast
   });
@@ -424,12 +424,10 @@ function majDemarrage(){ if(Sim.demarrage)Sim.demarrage.rendre(); if(Sim.onglets
 /* Un nombre sur un onglet dit qu'il y a quelque chose à y faire, sans l'ouvrir. */
 function badgeOnglet(id){
   const r=(Sim.ateliers&&Sim.ateliers.resultat)||{};
-  // Sans équipe, le tableau montre un encart, pas des cases : pas de compte à afficher.
-  if(id==='at-grille'&&window.OrlyParcours&&Sim.ateliers&&Sim.ateliers.state.ateliers.length){
-    // Le même compte que la jauge du tableau : ses cases « à choisir ».
-    const t=OrlyParcours.tableau(Sim.ateliers.state,Sim.ateliers.classes);
-    const n=t.lignes.reduce((s,l)=>s+Object.values(l.cases).filter(k=>k.etat==='libre').length,0);
-    return n?{n,ton:'neutre',titre:n+(n>1?' cases à choisir':' case à choisir')}:null;
+  // Les commandes qui n'ont pas encore leur chemin : ce qui reste à dessiner.
+  if(id==='at-chemins'&&window.OrlyParcours&&Sim.ateliers){
+    const n=Sim.ateliers.classes.filter(c=>!OrlyParcours.cheminDe(Sim.ateliers.state,c.id)).length;
+    return n?{n,ton:'neutre',titre:n+(n>1?' commandes sans chemin':' commande sans chemin')}:null;
   }
   if(id==='at-repas'){
     const n=(r.indicateurs||{}).classesAbsentes||0;
@@ -451,8 +449,6 @@ function initOnglets(){
       if(vue!==activeView)showView(vue);
       if(id==='v-departs')renderFlights();
       if(id==='u-lecture'&&Sim.flows)Sim.flows.refresh();
-      // Même diagramme dans « Les chemins » et « Les équipes » : il change de mode.
-      if((id==='at-chemins'||id==='at-equipes')&&Sim.ateliers)Sim.ateliers.parcours.surOnglet();
     }
   });
   // Les outils d'une vue (annuler, Excel, importer) montent sur la barre des

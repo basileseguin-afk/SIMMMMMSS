@@ -54,7 +54,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('#view-ateliers').isVisible(),true);
   assert.equal(await page.locator('.workbench').isVisible(),false,'la colonne de droite s’efface');
   assert.equal(await page.locator('#view-plan').isVisible(),false,'le plan n’est plus la vue des ateliers');
-  assert.match(await page.locator('.at-vide').textContent(),/Aucune équipe/);
+  assert.match(await page.locator('.at-vide').textContent(),/Aucune case/);
 
   // 2. Toutes les compagnies × classes du programme sont listées, à fabriquer.
   const lignes=await page.locator('#at-classes tbody tr').count();

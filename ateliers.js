@@ -20,6 +20,13 @@
    *  Validation du fichier enregistré. Refuse en bloc plutôt que de charger
    *  à moitié : une saisie perdue est pire qu'une saisie refusée.
    * --------------------------------------------------------------------*/
+  function minutesPropres(a, lots) {
+    const dedans = new Set(lots.flat()), m = {};
+    for (const [k, v] of Object.entries((a && a.minutes) || {}))
+      if (dedans.has(k) && Number.isFinite(+v) && v !== null && v !== '' && +v >= 0) m[k] = Math.round(+v * 10) / 10;
+    return Object.keys(m).length ? { minutes: m } : {};
+  }
+
   function valider(brut) {
     if (!brut || brut.schema !== 'ory-ateliers' || brut.version !== 1 || !Array.isArray(brut.ateliers))
       throw new Error('Fichier d’ateliers v1 attendu.');
@@ -51,6 +58,9 @@
         regime: { actif: a.regime ? a.regime.actif !== false : true,
                   ...(Number.isFinite(+(a.regime || {}).presence) ? { presence: +a.regime.presence } : {}) },
         ...(a.materiel === 'consomme' ? { materiel: 'consomme' } : {}),
+        // Les homme-minutes fixées dans la case, commande par commande ; sans
+        // elles, celles du barème importé. Seules les commandes qu'elle prépare.
+        ...minutesPropres(a, lots),
         ...(type === 'robot' ? {
           debit: Number.isFinite(a.debit) ? Math.max(1, a.debit) : 320,
           personnesMin: Number.isInteger(a.personnesMin) ? Math.max(0, a.personnesMin) : 1
@@ -158,11 +168,9 @@
         services: () => this.a.services(),
         classes: () => this.classes,
         resultat: () => this.resultat,
-        ouvrirAtelier: (id, defiler, message) => this.ouvrirFiche(id, defiler, message),
-        // Le service choisi est le même dans « Les chemins » et « Les équipes ».
-        service: () => this.filtre,
-        choisirService: id => this.choisirService(id),
-        voirEquipes: id => this.voirEquipes(id)
+        // La fiche d'une case s'ouvre dans le chemin, sous le service choisi.
+        fiche: (id, cmd) => this.ficheCase(id, cmd),
+        onglet: id => { if (this.a.onglet) this.a.onglet(id); }
       });
       this.rendre(alerte);
     }
@@ -255,12 +263,12 @@
 </div>
 <p id="at-status" role="status" aria-live="polite"></p>
 <details id="at-anomalies" class="at-anomalies" hidden></details>
-<h3 class="at-titre" data-sous="at-equipes">Les équipes <span class="pc-sous">cliquez un service du chemin pour voir les siennes</span></h3>
 <div id="at-parcours" class="pc"></div>
+<h3 class="at-titre" data-sous="at-equipes">Les cases <span class="pc-sous">calculées à partir des chemins : cliquez une commande pour régler sa case</span></h3>
 <div class="at-barre" data-sous="at-equipes">
-  <div id="at-choix" class="at-choix" aria-live="polite"></div>
   <label>Service <select id="at-filtre"><option value="">Tous</option></select></label>
-  <button class="btn btn-play" id="at-new">+ Nouvelle équipe</button>
+  <span class="at-barre-fin"></span>
+  <button class="btn" id="at-new" title="Une case qui ne suit pas une commande : une plonge, une mise à disposition qui sert tout le monde">+ Case hors chemin</button>
 </div>
 <div id="at-liste" data-sous="at-equipes"></div>
 <div id="at-materiel" class="at-materiel" data-sous="at-equipes"></div>
@@ -277,8 +285,8 @@
       const on = (id, ev, fn) => document.getElementById(id).addEventListener(ev, fn);
       on('at-undo', 'click', () => this.histoire(false));
       on('at-redo', 'click', () => this.histoire(true));
+      on('at-filtre', 'change', e => { this.filtre = e.target.value; this.rendreListe(this.resultat || {}); });
       on('at-new', 'click', () => this.creer());
-      on('at-filtre', 'change', e => this.choisirService(e.target.value));
       on('at-export', 'click', () => this.exporter());
       on('at-import-btn', 'click', () => document.getElementById('at-import').click());
       on('at-import', 'change', e => this.importer(e));
@@ -299,63 +307,48 @@
 
     /* ---- actions ----------------------------------------------------- */
 
+    /* Une case hors chemin : une plonge, une mise à disposition, ou une case
+     * qu'on rattachera ensuite. Elle s'ouvre ici, dans la liste. */
     creer() {
-      // Un service du chemin : l'équipe prend d'emblée les commandes du chemin
-      // qui n'ont personne ici, comme depuis « Les chemins ».
-      if (this.filtre && this.parcours.voisins(this.filtre).dedans) return this.parcours.creerEquipe(this.filtre);
-      // Un service absent du barème donnerait une durée nulle : on propose
-      // d'emblée un service qui sait travailler.
       const services = this.a.services();
-      const connu = services.find(s => P.BAREME_DEMO[s.id]);
-      const service = this.filtre || (connu || services[0] || {}).id;
-      const n = this.state.ateliers.filter(a => a.service === service).length + 1;
-      const atelier = { id: uid(), nom: 'Atelier ' + n, service, type: 'manuel',
+      const service = this.filtre || ((services.find(s => P.BAREME_DEMO[s.id]) || services[0] || {}).id);
+      const nom = (services.find(s => s.id === service) || {}).nom || 'Case';
+      const atelier = { id: uid(), nom: PC.nomLibre(this.state, nom), service, type: 'manuel',
         debut: '06:00', jour: 0, personnes: 2, pauses: [], lots: [] };
       this.changer(() => this.state.ateliers.push(atelier),
-        'Équipe créée et déjà enregistrée. Dites ce qu’elle prépare, puis « Terminé ».');
+        'Case créée, hors chemin. Donnez-lui son type (plonge, mise à disposition…) ; une case qui prépare se rattache à une commande dans son chemin.');
       this.ouvert = atelier.id; this.rendre();
     }
 
-    /* Depuis le tableau « Qui fabrique quoi » : ouvrir la fiche d'une équipe,
-     * et y aller si on le demande. */
-    ouvrirFiche(id, defiler = true, message) {
-      // Depuis un autre onglet, on y va ; créée depuis le tableau, on y reste.
-      if (defiler && this.a.onglet) this.a.onglet('at-equipes');
-      // Son service devient le service choisi : le diagramme le montre, la
-      // liste ne garde que ses équipes.
-      const a = this.state.ateliers.find(x => x.id === id);
-      this.filtre = a ? a.service : '';
-      this.ouvert = id; this.rendre(message);
-      const carte = defiler && document.querySelector(`[data-at="${CSS.escape(id)}"]`);
-      if (carte) { carte.scrollIntoView({ block: 'start', behavior: 'smooth' }); const f = carte.querySelector('input,select,button'); if (f) f.focus({ preventScroll: true }); }
+    /* Une case se règle dans le chemin d'une de ses commandes, sous son service.
+     * Une plonge ou une mise à disposition sert tout le monde : on prend la
+     * première commande dont le chemin passe par son service. Sans chemin qui
+     * passe par elle, elle se règle sur place. */
+    ouvrirFiche(id) {
+      const a = this.state.ateliers.find(x => x.id === id); if (!a) return false;
+      const passe = c => { const p = PC.cheminDe(this.state, c); return !!p && P.servicesDuParcours(p).includes(a.service); };
+      const cmd = [...new Set((a.lots || []).flat())].find(passe) || this.classes.map(c => c.id).find(passe);
+      if (!cmd) return false;
+      this.parcours.ouvrir(cmd, a.service);
+      return true;
     }
 
-    /* Le service choisi, partagé avec le diagramme des chemins. Pas de
-     * recalcul : seule la liste et ce qui la désigne changent. */
-    choisirService(id) {
-      this.filtre = id || '';
-      const sel = document.getElementById('at-filtre'); if (sel) sel.value = this.filtre;
-      this.rendreChoix();
-      if (this.resultat) this.rendreListe(this.resultat);
-      this.parcours.majSelection();
-    }
-
-    /* Depuis « Les chemins » : les équipes de ce service, avec le même diagramme au-dessus. */
-    voirEquipes(id) {
-      this.choisirService(id);
-      if (this.a.onglet) this.a.onglet('at-equipes');
-      // En haut de l'onglet : le diagramme, son service choisi, puis ses équipes.
-      const vue = this.a.hote().closest('[id^="view-"]') || this.a.hote();
-      vue.scrollTop = 0;
-      this.parcours.majSelection();
+    /* La fiche d'une case, ouverte, pour le panneau du chemin. */
+    ficheCase(id, cmd) {
+      const a = this.state.ateliers.find(x => x.id === id); if (!a) return '';
+      const calc = ((this.resultat || {}).ateliers || []).find(x => x.id === id);
+      return this.carte(a, calc, { cmd });
     }
 
     action(quoi, id, data) {
       const a = this.state.ateliers.find(x => x.id === id);
       switch (quoi) {
-        case 'tout': return this.choisirService('');
-        case 'service': return this.choisirService(data.service);
-        case 'ouvrir': this.ouvert = this.ouvert === id ? null : id; return this.rendre();
+        case 'chemin': return this.parcours.ouvrir(data.classe, a ? a.service : '');
+        // Dans la liste des cases : aller la régler dans un chemin ; faute de
+        // chemin qui passe par elle, elle se déplie sur place.
+        case 'ouvrir':
+          if (this.ouvert !== id && this.ouvrirFiche(id)) return;
+          this.ouvert = this.ouvert === id ? null : id; return this.rendre();
         // Rien à valider : la saisie est enregistrée à chaque frappe. Le bouton
         // referme la fiche et le dit — sans lui, on cherche un « créer »
         // qui n'existe pas et on doute que l'atelier existe.
@@ -363,8 +356,8 @@
           this.ouvert = null;
           return this.rendre('« ' + a.nom + ' » enregistré.');
         case 'supprimer':
-          if (!confirm('Supprimer « ' + a.nom + ' » ?')) return;
-          return this.changer(() => { this.state.ateliers = this.state.ateliers.filter(x => x.id !== id); }, 'Atelier supprimé.');
+          if (!confirm('Supprimer la case « ' + a.nom + ' » ? Ses commandes sauteront cette étape jusqu’à ce qu’on leur en donne une autre. L’action est annulable.')) return;
+          return this.changer(() => { this.state.ateliers = this.state.ateliers.filter(x => x.id !== id); }, 'Case « ' + a.nom + ' » supprimée.');
         case 'dupliquer':
           return this.changer(() => {
             const c = clone(a); c.id = uid(); c.nom = (a.nom + ' (2)').slice(0, 160);
@@ -407,14 +400,6 @@
      * remplacer tout de suite le HTML qui le contient fait échouer le rendu.
      * On laisse le navigateur finir, puis on redessine. */
     saisir(champ, id, el) {
-      // Le parcours propre d'une compagnie × classe : vide = celui de sa classe.
-      if (champ === 'classe-parcours') {
-        const cls = el.dataset.classe, v = el.value;
-        setTimeout(() => this.changer(() => {
-          if (v) this.state.parcoursClasse[cls] = v; else delete this.state.parcoursClasse[cls];
-        }, cls + (v ? ' suit désormais son propre parcours.' : ' suit le parcours de sa classe.')), 0);
-        return;
-      }
       // Les réglages du matériel ne vivent pas dans une carte d'atelier : les
       // chercher par identifiant d'atelier les ferait disparaître en silence.
       if (champ.startsWith('mat-')) {
@@ -448,7 +433,20 @@
       this.changer(() => {
         switch (champ) {
           case 'nom': a.nom = v; break;
-          case 'service': a.service = v; break;
+          // Les man-minutes d'une commande dans cette case ; vide = celles de l'import.
+          case 'minutes': {
+            const cls = el.dataset.classe, m = { ...(a.minutes || {}) };
+            if (v === '' || !Number.isFinite(+v)) delete m[cls]; else m[cls] = Math.max(0, +v);
+            if (Object.keys(m).length) a.minutes = m; else delete a.minutes;
+            break;
+          }
+          case 'service': {
+            // Un nom par défaut (« Cuisine TX BC ») suit le service ; un nom choisi reste.
+            const nomDe = id => (this.a.services().find(x => x.id === id) || {}).nom || id;
+            const ancien = nomDe(a.service);
+            if (a.nom === ancien || a.nom.startsWith(ancien + ' ')) a.nom = PC.nomLibre(this.state, nomDe(v) + a.nom.slice(ancien.length));
+            a.service = v; break;
+          }
           case 'debut': a.debut = v; break;
           case 'jour': a.jour = parseInt(v, 10) || 0; break;
           case 'personnes': a.personnes = Math.max(0, parseInt(v, 10) || 0); break;
@@ -599,7 +597,6 @@
       this.rendreIndicateurs(r);
       this.rendreAnomalies(r);
       this.rendreFiltre();
-      this.rendreChoix();
       this.rendreMateriel(r);
       this.rendreListe(r);
       this.rendrePlanning(r);
@@ -656,31 +653,6 @@
       sel.value = this.filtre || '';
     }
 
-    /* Ce que la liste montre, dit avec le chemin : d'où le service reçoit, qui il livre. */
-    rendreChoix() {
-      const box = document.getElementById('at-choix'); if (!box) return;
-      const nomDe = id => (this.a.services().find(x => x.id === id) || {}).nom || id;
-      const btn = document.getElementById('at-new');
-      const s = this.filtre;
-      if (btn) btn.textContent = s ? '+ Nouvelle équipe · ' + nomDe(s) : '+ Nouvelle équipe';
-      if (!s) {
-        const n = this.state.ateliers.length;
-        box.innerHTML = `<b>Toutes les équipes</b> <span>${n ? n + (n > 1 ? ' équipes' : ' équipe') + ' · ' : ''}cliquez un service du diagramme pour ne voir que les siennes</span>`;
-        return;
-      }
-      const I = root.OrlyIcones, v = this.parcours.voisins(s);
-      const n = this.state.ateliers.filter(a => a.service === s).length;
-      const liste = ids => ids.map(nomDe).join(', ');
-      const place = !v.chemin ? ''
-        : !v.dedans ? ' · hors du chemin « ' + esc(v.chemin) + ' »'
-        : (v.amont.length ? ' · reçoit de ' + esc(liste(v.amont)) : ' · début du chemin')
-          + (v.aval.length ? ' · livre ' + esc(liste(v.aval)) : ' · fin du chemin');
-      box.innerHTML = `${I ? I.ico(I.icoService(s, nomDe(s))) : ''}<b>${esc(nomDe(s))}</b>
-        <span>${n ? n + (n > 1 ? ' équipes' : ' équipe') : 'aucune équipe'}${place}</span>
-        <button class="lien-discret" data-at-action="tout">Toutes les équipes</button>
-        ${v.dedans ? '<button class="lien-discret" data-aller="ateliers" data-onglet="at-chemins">Modifier ses liens →</button>' : ''}`;
-    }
-
     /* Les trolleys et la porcelaine ne s'achètent pas : ils reviennent. Ce bloc
      * dit ce que la boucle a fait de la journée. */
     rendreMateriel(r) {
@@ -724,49 +696,47 @@
 </section>`;
     }
 
+    /* La liste des cases, calculée : chacune dit ses commandes dans l'ordre ;
+     * une commande mène à son chemin, où la case se règle. */
     rendreListe(r) {
       const services = this.a.services();
       const nom = id => (services.find(s => s.id === id) || {}).nom || id;
-      const parAtelier = new Map((r.ateliers || []).map(a => [a.id, a]));
+      const parAtelier = new Map(((r && r.ateliers) || []).map(a => [a.id, a]));
       const montrer = this.filtre ? this.state.ateliers.filter(a => a.service === this.filtre) : this.state.ateliers;
-
+      const box = document.getElementById('at-liste');
       if (!montrer.length) {
-        document.getElementById('at-liste').innerHTML = this.filtre
-          ? `<p class="at-vide">Aucune équipe dans ${esc(nom(this.filtre))}. « + Nouvelle équipe · ${esc(nom(this.filtre))} » en crée une`
-            + (this.parcours.voisins(this.filtre).dedans ? ', qui prépare d’emblée les commandes du chemin qui n’ont personne ici.</p>' : '.</p>')
-          : '<p class="at-vide">Aucune équipe. Cliquez un service du diagramme, puis « + Nouvelle équipe » : elle prépare d’emblée les commandes du chemin qui passent par là.</p>';
+        box.innerHTML = '<p class="at-vide">Aucune case' + (this.filtre ? ' dans ' + esc(nom(this.filtre)) : '')
+          + '. Les cases se créent dans « Les chemins » : choisissez une commande, puis cliquez un service de son chemin.'
+          + ' <button class="lien-discret" data-aller="ateliers" data-onglet="at-chemins">Ouvrir « Les chemins » →</button></p>';
         return;
       }
       const groupes = {};
       for (const a of montrer) (groupes[a.service] || (groupes[a.service] = [])).push(a);
-      // Dans le sens du chemin : on lit les équipes comme on lit le diagramme.
-      const ordre = this.parcours.ordre(), rang = s => { const i = ordre.indexOf(s); return i < 0 ? ordre.length + services.findIndex(x => x.id === s) : i; };
-      const cles = Object.keys(groupes).sort((x, y) => rang(x) - rang(y));
+      const rang = s => services.findIndex(x => x.id === s);
       const I = root.OrlyIcones;
-
-      document.getElementById('at-liste').innerHTML = cles.map((service, k) => {
+      box.innerHTML = Object.keys(groupes).sort((x, y) => rang(x) - rang(y)).map(service => {
         const cartes = groupes[service].map(a => this.carte(a, parAtelier.get(a.id))).join('');
-        const hors = ordre.length && !ordre.includes(service);
-        const debutHors = hors && (k === 0 || ordre.includes(cles[k - 1]));
-        // Un seul service choisi : la barre au-dessus le nomme déjà.
-        if (this.filtre) return `<section class="at-service">${cartes}</section>`;
-        return `${debutHors ? '<p class="at-hors">Hors du chemin affiché</p>' : ''}<section class="at-service${hors ? ' hors' : ''}">
-          <h3><button class="at-service-nom" data-at-action="service" data-service="${esc(service)}" title="Ne voir que ce service">${I ? I.ico(I.icoService(service, nom(service))) : ''}${esc(nom(service))}</button>
-            <span>${groupes[service].length}</span></h3>${cartes}</section>`;
+        return `<section class="at-service"><h3><span class="at-service-nom">${I ? I.ico(I.icoService(service, nom(service))) : ''}${esc(nom(service))}</span>
+          <span>${groupes[service].length}</span></h3>${cartes}</section>`;
       }).join('');
     }
 
-    carte(a, calcul) {
-      const ouvert = this.ouvert === a.id;
+    /* Une case. Dans la liste : son résumé, et ses commandes qui mènent à leur
+     * chemin. Dans un chemin (`o.cmd`, la commande qu'on y regarde) : sa fiche
+     * complète, ouverte. */
+    carte(a, calcul, o = {}) {
+      const dansChemin = o.cmd !== undefined;
+      const ouvert = dansChemin || this.ouvert === a.id;
       const dispo = a.type === 'dispo';
       const fin = calcul && calcul.fin != null ? P.hhmm(calcul.fin) : '—';
       const attente = calcul && calcul.attente ? ' · ' + Math.round(calcul.attente) + ' min d’attente' : '';
       const jour = a.jour ? ' (J' + a.jour + ')' : '';
-      const noms = a.lots.map(l => l.map(P.libelleClasse).join(' + '));
+      // Ses commandes dans l'ordre ; chacune ouvre son chemin sur cette case.
       const resume = dispo ? 'sert toutes les commandes'
-        : !noms.length ? 'ne prépare rien'
-        : noms.length <= 3 ? noms.join(' → ')
-        : noms.slice(0, 3).join(' → ') + ' → … (' + noms.length + ' préparations)';
+        : a.type === 'lavage' ? 'lave pour toutes les commandes'
+        : !a.lots.length ? 'rattachée à aucune commande'
+        : a.lots.map(l => l.map(c => `<button class="at-cmd-chip" data-at-action="chemin" data-classe="${esc(c)}"
+            title="Ouvrir le chemin de ${esc(P.libelleClasse(c))}">${esc(PC.etiquette(c))}</button>`).join(' + ')).join(' <span aria-hidden="true">→</span> ');
       // Une mise à disposition n'a ni effectif ni heure de fin : son en-tête
       // dirait trois fois « — ». Elle dit ce qu'elle est.
       const sous = dispo
@@ -775,12 +745,14 @@
           + (a.type === 'robot' ? ' · robot ' + a.debit + ' pl/h' : a.type === 'lavage' ? ' · ' + P.debitLavage(a) + ' u/h' : '')
           + ' → fin ' + esc(fin) + esc(attente);
 
-      const entete = `<div class="at-carte-tete">
-        <button class="at-carte-nom" data-at-action="ouvrir" aria-expanded="${ouvert}">
+      const entete = dansChemin
+        ? `<div class="at-carte-tete"><div class="at-carte-nom fixe"><strong>Case « ${esc(a.nom)} »</strong><span>${sous}</span></div></div>`
+        : `<div class="at-carte-tete">
+        <button class="at-carte-nom" data-at-action="ouvrir" aria-expanded="${ouvert}" title="La régler dans le chemin d’une de ses commandes">
           <strong>${esc(a.nom)}</strong>
           <span>${sous}</span>
         </button>
-        <span class="at-resume">${esc(resume)}</span>
+        <span class="at-resume">${resume}</span>
       </div>`;
 
       if (!ouvert) return `<article class="at-carte" data-at="${esc(a.id)}">${entete}</article>`;
@@ -796,12 +768,23 @@
       const optionsDe = liste => liste
         .map(c => `<option value="${esc(c.id)}">${esc(P.libelleClasse(c.id))} · ${c.vols.length} vol${c.vols.length > 1 ? 's' : ''}</option>`).join('');
 
+      // Les man-minutes de chaque commande : celles de l'import, sauf si la case
+      // en fixe d'autres (pour elle seule).
+      const bareme = (this.a.reglages ? this.a.reglages() : {}).bareme;
+      const importees = c => { const k = this.classes.find(x => x.id === c); return k ? Math.round(P.travailClasse(a.service, k, bareme) * 10) / 10 : 0; };
+      const mm = c => {
+        const imp = importees(c), propre = (a.minutes || {})[c];
+        return `<label class="at-mm" title="Man-minutes de ${esc(P.libelleClasse(c))} dans cette case. Vide : celles de l’import (${imp}).">
+          <input type="number" min="0" step="1" value="${propre ?? ''}" placeholder="${imp}" data-at-champ="minutes" data-classe="${esc(c)}"
+            aria-label="Man-minutes de ${esc(P.libelleClasse(c))} dans cette case (import : ${imp})"><span>man-min</span>${
+          propre != null ? `<small class="at-mm-import">import ${imp}</small>` : ''}</label>`;
+      };
       const lots = a.lots.map((l, i) => `
-        <div class="at-lot">
+        <div class="at-lot${o.cmd && l.includes(o.cmd) ? ' ici' : ''}">
           <div class="at-lot-tete">
             <b>${i + 1}.</b>
-            <span class="at-chips">${l.map(c => `<button class="at-chip" data-at-action="classe-retirer" data-index="${i}" data-classe="${esc(c)}"
-              title="Retirer ${esc(P.libelleClasse(c))} de cette préparation">${esc(P.libelleClasse(c))} ×</button>`).join('') || '<em>à renseigner</em>'}</span>
+            <span class="at-chips">${l.map(c => `<span class="at-lot-cmd"><button class="at-chip" data-at-action="classe-retirer" data-index="${i}" data-classe="${esc(c)}"
+              title="Retirer ${esc(P.libelleClasse(c))} de cette case">${esc(P.libelleClasse(c))} ×</button>${a.type === 'manuel' ? mm(c) : ''}</span>`).join('') || '<em>à renseigner</em>'}</span>
             <span class="at-lot-fin">${esc(this.finLot(a.id, i))}</span>
             <button class="btn btn-sm" data-at-action="lot-monter" data-index="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Plus tôt">↑</button>
             <button class="btn btn-sm" data-at-action="lot-descendre" data-index="${i}" ${i === a.lots.length - 1 ? 'disabled' : ''} aria-label="Plus tard">↓</button>
@@ -904,10 +887,10 @@
               toutes.</p>
           </span></details></div>
         <p class="mini-note at-lavage-note">Cette équipe ne prépare pas de commande : son travail vient des retours de vols, à mesure qu’ils arrivent.</p>` : `
-        <div class="at-sous-titre">Ce que cette équipe prépare, dans l’ordre</div>
+        <div class="at-sous-titre">Ce que cette case prépare, dans l’ordre</div>
         <p class="mini-note at-regle">Une ligne = une préparation. Plusieurs sur la même ligne sortent <b>ensemble</b> ;
           sur deux lignes, <b>l’une après l’autre</b>. La première part à l’heure de début.</p>
-        ${lots || '<p class="mini-note at-rien">Rien pour l’instant : cette équipe ne prépare rien.</p>'}
+        ${lots || '<p class="mini-note at-rien">Rien pour l’instant : cette case ne prépare rien.</p>'}
         <div class="at-actions-lot">
           <select class="at-ajout-lot" data-at-champ="lot-nouveau" aria-label="Ajouter une commande à préparer">
             <option value="">+ Ajouter une commande à préparer…</option>
@@ -927,10 +910,10 @@
           <div class="at-actions-lot"><button class="btn btn-sm" data-at-action="pause-ajouter">+ Arrêt</button></div>
         </details>`}
 
-        <div class="at-actions-lot at-bas">
-          <button class="btn btn-play btn-sm" data-at-action="fermer">Terminé</button>
-          <button class="btn btn-sm" data-at-action="dupliquer">Dupliquer</button>
-          <button class="btn btn-sm at-danger" data-at-action="supprimer">Supprimer</button>
+        <div class="at-actions-lot at-bas">${dansChemin
+          ? `<button class="btn btn-sm at-danger" data-at-action="supprimer">Supprimer la case</button>`
+          : `<button class="btn btn-play btn-sm" data-at-action="fermer">Terminé</button>
+          <button class="btn btn-sm at-danger" data-at-action="supprimer">Supprimer</button>`}
         </div>
       </article>`;
     }

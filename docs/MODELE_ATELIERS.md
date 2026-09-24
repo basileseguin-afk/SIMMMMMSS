@@ -333,8 +333,45 @@ barème d'exemple est provisoire, comme les autres. La règle tient en une phras
 > Un service ne travaille un lot que lorsque **les services qui le précèdent sur
 > le parcours de chaque classe** du lot la lui ont livrée.
 
-Les parcours se **dessinent** à l'étape 2, « Qui prépare quoi », onglet « Les
-chemins », dans un diagramme de nœuds (`graphe.js`) :
+### Un chemin par commande, une case par service
+
+Depuis le 24/09, **chaque commande a son chemin**, créé à la main : « Complet
+TX BC », « Complet TX PC »… même quand plusieurs se ressemblent. Il est rangé
+dans `parcoursClasse[commande]`. Sur ce chemin, chaque service porte une
+**case** : l'équipe (un atelier) qui y prépare la commande — son nom, ses
+personnes, son heure et son jour, ses pauses, et ses **man-minutes**.
+
+Une case se **partage** entre chemins : la case « TX BC/PC » de la cuisine sert
+au chemin de TX BC et à celui de TX PC. Elle les prépare dans l'ordre de ses
+lignes : TX BC d'abord, TX PC ensuite. **Le chemin de TX BC ne tire que le temps
+de TX BC** : chaque ligne d'une case est livrée à sa fin, avec les seules
+man-minutes de ses commandes, et le montage de TX BC démarre sans attendre la
+ligne de TX PC. Deux commandes sur la même ligne, elles, sortent ensemble.
+
+Les man-minutes d'une commande dans une case sont celles de l'**import**
+(barème par vol × nombre de vols). La case peut en fixer d'autres, pour elle
+seule (`minutes: { 'TX/BC': 90 }` sur l'atelier) ; vide, elle reprend l'import.
+
+Une commande qui n'a pas encore son chemin suit le **modèle** de sa classe
+(`parcoursCabine` : « Complet » pour BC, PC, CREW et SPML, « Sans cuisine » pour
+YC). Les modèles se gardent et se modifient en bas de la liste des commandes.
+
+#### L'onglet « Les chemins »
+
+À gauche, **les commandes**, par compagnie, avec leur chemin (ou le modèle
+qu'elles suivent) et un repère : ✓ prête à l'heure, ! en retard, · pas encore
+prête. Une recherche filtre la liste ; l'onglet compte les commandes sans chemin.
+
+- **Créer le chemin** d'une commande : vide, copié d'un modèle, ou copié du
+  chemin d'une autre commande — et dans ce dernier cas, **dans les mêmes
+  cases** : la commande s'y ajoute sur sa propre ligne, juste après l'autre.
+- **Dupliquer pour…** : le chemin affiché pour d'autres commandes cochées,
+  chacune le sien, dans les mêmes cases, à la suite (TX BC, puis TX PC, puis
+  TX YC). La disposition du diagramme est copiée avec.
+- **Un lien ne vaut que pour son chemin** : ajouter « Appros → Montage » sur
+  TX YC ne touche pas TX BC.
+
+Le chemin est un diagramme de nœuds (`graphe.js`) :
 
 - **tirer le `+`** à droite d'un service jusqu'à un autre crée le lien ; ou bien
   **cliquer le `+`**, puis le service qui reçoit (un second clic sur le même `+`,
@@ -345,76 +382,52 @@ chemins », dans un diagramme de nœuds (`graphe.js`) :
 - un lien qui **fermerait une boucle** est refusé (un repas tournerait en rond),
   un lien en double aussi ;
 - **cliquer un lien** le choisit ; sa croix (ou la touche Suppr) le retire ;
-- **cliquer un service** montre ses équipes (chacune ouvre sa fiche), crée une
-  équipe ici (elle prépare d'emblée les repas du chemin qui n'avaient personne à
-  cette étape), le relie, ou le retire du chemin ;
-- chaque nœud dit ses équipes (« MONTAGE », « 3 repas sans équipe », « aucune
-  équipe ») et prend le vert quand tout est couvert, l'ambre sinon ;
-- **le même diagramme** ouvre l'onglet « Les équipes », en mode *choisir
-  seulement* (ni `+`, ni lien à retirer, ni nœud à déplacer) : cliquer un
-  service n'affiche que ses équipes, dit d'où il reçoit et qui il livre, et
-  « + Nouvelle équipe » la crée dans ce service avec les commandes du chemin
-  qui n'y avaient personne. Sans service choisi, les équipes se rangent dans
-  le sens du chemin, puis « Hors du chemin affiché ». Le service choisi est
-  **partagé** entre les deux onglets (c'est le filtre des équipes) : ouvrir la
-  fiche d'une équipe le choisit, « Régler ses équipes → » et « Modifier ses
-  liens → » passent d'un onglet à l'autre sans le perdre ;
+- **chaque nœud porte sa case** (« TX BC · 3 p. · 06:00 », ou « aucune case »,
+  en gris : l'étape est sautée) ;
+- **cliquer un service** ouvre sa case dessous : choisir une case existante du
+  service (la commande s'y ajoute à la suite), en créer une (« Cuisine TX BC »),
+  ou n'en mettre aucune ; puis la **fiche complète** de la case : nom, service,
+  type, heure, jour, personnes, pauses, et **ce qu'elle prépare, dans l'ordre**,
+  une ligne par préparation, chacune avec ses man-minutes (l'import en grisé,
+  la valeur propre à la case en gras). La ligne de la commande regardée est
+  mise en évidence. « Relier à… » et « Retirer du chemin » y sont aussi ;
 - on **déplace** les services à la souris ; la disposition est retenue
   (`ory-graphes-v1`, incluse dans la sauvegarde complète). Sans disposition, les
   nœuds se rangent en colonnes dans le sens du flux, et un lien qui saute des
   colonnes y réserve un couloir pour ne pas passer sous un autre service.
 
 Les parcours enregistrés en branches (avant le 23/09) sont convertis en liens à
-la lecture. Deux parcours types sont créés d'office — **Complet** pour BC, PC, CREW et SPML, **Sans cuisine**
-pour YC — et se modifient librement.
+la lecture.
 
-### Qui prépare quoi : le chemin et les équipes dans un seul tableau
+### Les autres onglets se calculent
 
-Le parcours dit **par où** passe une classe ; les équipes disent **qui, quand et
-en combien de temps**. L'onglet « Qui prépare quoi » les réunit dans un
-tableau qui se lit comme une feuille Excel :
+Tout se règle dans les chemins ; le reste s'en déduit.
 
-- **une ligne par compagnie × classe**, avec son heure de départ et son
-  parcours (modifiable sur place) ;
-- **une colonne par service**, dans l'ordre du flux, groupées par service de
-  départ (« Depuis PLONGE »…), puis la jonction (un service qui reçoit plusieurs
-  liens, et ce qui le suit) ;
-- **dans chaque case, l'équipe** qui la fabrique et ses heures. Trois aspects
-  se voient de loin : **remplie** (vert), **« à choisir »** (pointillés orange),
-  **grisée** quand le parcours de la ligne ne passe pas par ce service. Une
-  plonge ou une mise à disposition, qui sert tout le monde, s'écrit en clair.
-
-Les gestes :
-
-- **Cliquer une case** ouvre un petit menu : les équipes du service (avec leur
-  heure, leur effectif et leur charge), « Nouvelle équipe », « Vider la case »,
-  et une case à cocher pour **remplir d'un coup toutes les cases « à choisir »
-  de la colonne**. Une classe confiée à une équipe quitte les autres équipes du
-  même service, et s'ajoute à la fin de sa liste, rangée par heure de départ.
-- **Cliquer le nom d'un service** remplit toutes ses cases vides à la fois.
-- **« Remplir automatiquement »** fait tout ce qui n'a qu'une équipe possible.
-- **Une nouvelle équipe** naît avec la case cliquée ; sa fiche s'ouvre dans
-  l'onglet « Les équipes » pour régler son heure et son effectif.
-- **La dernière colonne** dit quand la ligne est prête, à l'heure ou en retard.
-  Un clic la **déplie dans le temps** : une barre par étape, dans l'ordre des
-  colonnes, l'attente de l'étape d'avant en orange, le trait de l'heure de
-  chargement, et une phrase qui résume — « AF/BC est prête à 06:45 pour un
-  chargement avant 05:55 : 50 min de retard. Le plus long à attendre : MONTAGE a
-  attendu 25 min que DOTATION finisse. »
-- Une barre du haut compte les cases remplies ; on peut **chercher une
-  compagnie** ou n'afficher que **les lignes à compléter**. Le tableau se pilote
-  au clavier (Entrée ouvre le menu d'une case, Échap le referme).
-
-Les onglets « Les équipes » (horaires, effectifs, ordre de fabrication) et
-« Leur journée » (les indicateurs et le planning, équipe par équipe) restent la vue par équipe.
+- **Qui prépare quoi** : un tableau, **une ligne par commande** (son départ, ses
+  passagers, son chemin), **une colonne par service**, dans l'ordre du flux,
+  groupées par service de départ puis la jonction. Chaque cellule dit la case
+  qui prépare la commande et ses heures ; « à faire » quand le chemin passe par
+  là sans case ; grisée quand il n'y passe pas. **Un clic sur une cellule ouvre
+  le chemin de la commande, sur ce service.** La dernière colonne dit quand la
+  commande est prête et se **déplie dans le temps** : une barre par étape,
+  l'attente de l'étape d'avant en orange, le trait de l'heure de chargement, et
+  une phrase qui résume — « AF/BC est prête à 06:45 pour un chargement avant
+  05:55 : 50 min de retard. Le plus long à attendre : MONTAGE a attendu 25 min
+  que DOTATION finisse. » On peut chercher une compagnie ou n'afficher que les
+  commandes à compléter.
+- **Les cases** : chaque case, par service, avec ses commandes dans l'ordre ;
+  chacune ouvre son chemin sur cette case. « + Case hors chemin » crée ce qui
+  ne suit pas une commande : une plonge, une mise à disposition qui sert tout
+  le monde ; une case qu'aucun chemin n'atteint se règle sur place.
+- **Leur journée** : le planning, case par case.
 
 - **Par défaut, par classe** : BC, PC, YC, CREW et SPML ont chacune un parcours.
-- **Par compagnie × classe** : chaque ligne du tableau « Qui prépare quoi » a
-  son menu de parcours ; une compagnie peut y suivre un autre chemin que sa classe.
+- **Par commande** : chaque commande peut avoir son propre chemin (onglet « Les
+  chemins ») ; c'est la voie normale, le modèle de la classe n'est qu'un repli.
 - **Une étape sans équipe est enjambée** : si personne ne travaille une classe
-  à la cuisine, le montage attend directement ce qui précède la cuisine. Sa case
-  reste « à choisir », et les points à regarder le rappellent, sans bloquer la
-  journée.
+  à la cuisine, le montage attend directement ce qui précède la cuisine. Son
+  nœud dit « aucune case », sa cellule du tableau « à faire », et les points à
+  regarder le rappellent, sans bloquer la journée.
 - **Une plonge n'est jamais un trou** : elle lave ce qui revient, elle ne
   fabrique pas de classe ; la boucle du matériel porte cette contrainte.
 - **Un atelier qui fabrique une classe hors de son parcours** est signalé (sa

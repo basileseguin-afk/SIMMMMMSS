@@ -20,9 +20,9 @@
       { id: 'v-programme', nom: 'Le programme', ico: 'journee' }
     ],
     ateliers: [
-      { id: 'at-grille', nom: 'Qui prépare quoi', ico: 'equipe' },
       { id: 'at-chemins', nom: 'Les chemins', ico: 'fleche' },
-      { id: 'at-equipes', nom: 'Les équipes', ico: 'service' },
+      { id: 'at-grille', nom: 'Qui prépare quoi', ico: 'equipe' },
+      { id: 'at-equipes', nom: 'Les cases', ico: 'service' },
       { id: 'at-planning', nom: 'Leur journée', ico: 'journee' },
       { id: 'at-repas', nom: 'Les commandes', ico: 'plateau' }
     ],

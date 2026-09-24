@@ -16,11 +16,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const telecharger=async(sel,nom)=>{const [d]=await Promise.all([page.waitForEvent('download'),page.locator(sel).click()]);
    const f=path.join(dossier,nom);await d.saveAs(f);return {f,nom:d.suggestedFilename()};};
  // Tirer le « + » d'un service jusqu'à un autre, dans le diagramme des chemins.
+ // Relier au clic : le + du premier, puis le second (le trait tiré est éprouvé dans graphe-browser).
  const tirer=async(de,vers)=>{
-   await page.locator(`.pc-graphe [data-noeud=${vers}]`).scrollIntoViewIfNeeded();
-   const a=await page.locator(`.pc-graphe .gr-port[data-port=${de}]`).boundingBox(),b=await page.locator(`.pc-graphe [data-noeud=${vers}] .gr-fond`).boundingBox();
-   await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();
-   await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:6});await page.mouse.up();await attendre();
+   await page.locator(`.pc-graphe .gr-port[data-port=${de}]`).click();await attendre();
+   await page.locator(`.pc-graphe [data-noeud=${vers}] .gr-fond`).click();await attendre();
  };
  const liens=id=>page.evaluate(id=>Sim.ateliers.state.parcours.find(p=>p.id===id).liens.map(l=>l.de+'>'+l.vers),id);
  const lot=(service,classe)=>page.evaluate(([s,c])=>Sim.ateliers.resultat.lots.find(l=>l.service===s&&l.classes.includes(c)),[service,classe]);
@@ -33,10 +32,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const defaut=c=>page.locator(`[data-pc-champ=cabine][data-cabine=${c}]`).inputValue();
   assert.equal(await defaut('BC'),'complet');
   assert.equal(await defaut('YC'),'sans-cuisine');
-  // Le chemin est un diagramme : un nœud par service, un trait par livraison.
-  assert.equal(await page.locator('.pc-graphe .gr-lien[data-lien$=">prepa"]').count(),3,'trois traits arrivent au montage');
+  // Un modèle est un diagramme : un nœud par service, un trait par livraison.
   await page.locator('[data-sous-onglet=at-chemins]').click();
-  await page.locator('[data-pc-action=voir][data-parcours=sans-cuisine]').click();await attendre();
+  await page.locator('.pc-modeles>summary').click();
+  await page.locator('[data-pc-action=modele][data-parcours=complet]').click();await attendre();
+  assert.equal(await page.locator('.pc-graphe .gr-lien[data-lien$=">prepa"]').count(),3,'trois traits arrivent au montage');
+  await page.locator('[data-pc-action=modele][data-parcours=sans-cuisine]').click();await attendre();
   assert.equal(await page.locator('.pc-graphe [data-noeud=cuisine], .pc-graphe [data-noeud=decontam]').count(),0,
     'le parcours sans cuisine n’a ni cuisine ni légumerie');
 
@@ -56,17 +57,25 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok((await lot('prepa','AF/BC')).debut>=(await lot('cuisine','AF/BC')).fin,'BC : le montage attend la cuisine');
   assert.match(await page.locator('#at-anomalies').textContent(),/commandes? commencées? sautent? une étape sans équipe[\s\S]*« Qui prépare quoi »/,'les étapes sans équipe renvoient au tableau');
 
-  // Une compagnie × classe peut suivre un autre parcours que sa classe.
-  await page.locator('[data-sous-onglet=at-grille]').click();await page.selectOption('[data-at-champ=classe-parcours][data-classe="AF/YC"]','complet');await attendre();
-  assert.equal(await page.evaluate(()=>Sim.ateliers.state.parcoursClasse['AF/YC']),'complet');
-  assert.match(await page.locator('[data-qf=case][data-classe="AF/YC"][data-service=cuisine]').textContent(),/à choisir/,
-    'la cuisine est désormais sur son chemin, sans équipe pour AF/YC : sa case le dit');
-  await page.selectOption('[data-at-champ=classe-parcours][data-classe="AF/YC"]','');await attendre();
+  // Une commande peut avoir son propre chemin, copié d'un modèle.
+  await page.locator('[data-sous-onglet=at-chemins]').click();await attendre();
+  await page.locator('[data-pc-action=cmd][data-classe="AF/YC"]').click();await attendre();
+  await page.selectOption('[data-pc-champ=creer-depuis]','complet');await attendre();
+  await page.locator('[data-pc-action=creer]').click();await attendre();
+  const propre=await page.evaluate(()=>Sim.ateliers.state.parcoursClasse['AF/YC']);
+  assert.equal(await page.evaluate(id=>Sim.ateliers.state.parcours.find(p=>p.id===id).nom,propre),'Complet AF YC');
+  await page.locator('[data-sous-onglet=at-grille]').click();await attendre();
+  assert.match(await page.locator('[data-qf=aller][data-classe="AF/YC"][data-service=cuisine]').textContent(),/à faire/,
+    'la cuisine est désormais sur son chemin, sans case pour AF/YC : sa case le dit');
+  await page.locator('[data-sous-onglet=at-chemins]').click();await attendre();
+  await page.locator('[data-pc-action=parcours-retirer]').click();await attendre();
+  assert.equal(await page.evaluate(()=>Sim.ateliers.state.parcoursClasse['AF/YC']),undefined,'supprimé, il suit de nouveau le modèle');
 
-  // Modifier un chemin dans son diagramme : ajouter un service, le relier en
+  // Modifier un modèle dans son diagramme : ajouter un service, le relier en
   // tirant un trait, refuser une boucle, retirer le lien puis le service.
   await page.locator('[data-sous-onglet=at-chemins]').click();await attendre();
-  await page.locator('[data-pc-action=voir][data-parcours=sans-cuisine]').click();await attendre();
+  await page.locator('.pc-modeles>summary').click();
+  await page.locator('[data-pc-action=modele][data-parcours=sans-cuisine]').click();await attendre();
   const avant=await liens('sans-cuisine');
   await page.selectOption('[data-pc-champ=noeud-ajout]','armement');await attendre();
   assert.equal(await page.locator('.pc-graphe [data-noeud=armement]').count(),1,'le service rejoint le diagramme');
@@ -91,7 +100,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const {f:fAt,nom:nomAt}=await telecharger('#at-export','ateliers.xlsx');
   assert.match(nomAt,/^ory-ateliers-.*\.xlsx$/);
   const feuilles=await T.lireClasseur(fs.readFileSync(fAt));
-  assert.deepEqual(feuilles.map(f=>f.nom),['Ateliers','Fabrications','Tunnels','Classes','Parcours','Parcours par classe','Matériel','Lisez-moi']);
+  assert.deepEqual(feuilles.map(f=>f.nom),['Ateliers','Fabrications','Man-minutes','Tunnels','Classes','Parcours','Parcours par classe','Matériel','Lisez-moi']);
   const fab=T.feuille(feuilles,'Fabrications');
   assert.deepEqual(fab.lignes.slice(1).map(l=>l.join('|')),['Cuisine|1|AF/BC','Dotation|1|AF/YC','Dotation|2|AF/BC','Montage|1|AF/YC','Montage|2|AF/BC']);
   // Dans Excel : deux personnes en cuisine, une compagnie × classe de plus,
@@ -143,49 +152,22 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator('#import-report').textContent(),/Départs, ligne 15/);
   assert.equal(await page.locator('#source-count').textContent(),'13 départs · 6 retours','rien n’a été remplacé');
 
-  // 4. « Qui prépare quoi » : une ligne par repas (compagnie · classe), une colonne
-  //    par service, une équipe par case — et un clic pour la choisir.
+  // 4. « Qui prépare quoi » se calcule : une ligne par commande, une colonne
+  //    par service, dans chaque case celle qui la prépare — et un clic mène au chemin.
   await page.locator('[data-view=ateliers]').click();await page.locator('[data-sous-onglet=at-grille]').click();await attendre();
-  const kase=(c,s)=>page.locator(`[data-qf=case][data-classe="${c}"][data-service=${s}]`);
-  assert.match(await kase('AF/BC','cuisine').textContent(),/Cuisine/,'l’équipe figure dans sa case, avec ses heures');
+  const kase=(c,s)=>page.locator(`[data-qf=aller][data-classe="${c}"][data-service=${s}]`);
+  assert.match(await kase('AF/BC','cuisine').textContent(),/Cuisine/,'la case figure dans sa cellule, avec ses heures');
   assert.match(await kase('AF/BC','cuisine').textContent(),/\d\d:\d\d–\d\d:\d\d/);
   assert.equal(await page.locator('tr[data-classe="AF/YC"] td.hors').count()>=2,true,'YC ne passe ni en cuisine ni en légumerie : grisé');
-  // Choisir l'équipe d'une case, et d'un coup celles de toute la colonne.
+  assert.match(await kase('DL/BC','cuisine').textContent(),/à faire/,'une étape sans case est à faire');
+  assert.equal(await page.locator('.qf-menu').count(),0,'plus de menu : le tableau ne se modifie pas, il se lit');
+  assert.equal(await page.locator('[data-qf=remplir]').count(),0);
+  // Une cellule ouvre le chemin de sa commande, sur son service.
   await kase('DL/BC','cuisine').click();await attendre();
-  assert.equal(await page.locator('.qf-menu').count(),1,'le menu de la case s’ouvre');
-  await page.locator('.qf-menu [data-qf=tout]').check();
-  await page.locator('.qf-menu [data-qf=choisir]').first().click();await attendre();
-  const lotsCuisine=await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.nom==='Cuisine').lots.flat());
-  assert.ok(lotsCuisine.includes('DL/BC')&&!lotsCuisine.some(c=>c.endsWith('/YC')),'toute la colonne, sauf les YC qui n’y passent pas');
-  assert.equal(await page.locator('[data-qf=case][data-service=cuisine].libre').count(),0,'plus aucune case à choisir en cuisine');
-  // Aucune équipe : on la crée depuis la case, sa fiche s'ouvre plus bas.
-  const avantN=await page.evaluate(()=>Sim.ateliers.state.ateliers.length);
-  await kase('AF/BC','appros').click();await attendre();
-  await page.locator('.qf-menu [data-qf=nouvelle][data-type=manuel]').click();await attendre();
-  const nouvelle=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1));
-  assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.length),avantN+1);
-  assert.equal(nouvelle.service,'appros');
-  assert.deepEqual(nouvelle.lots,[['AF/BC']],'elle naît avec la case cliquée');
-  assert.equal(await page.evaluate(()=>Sim.ateliers.ouvert),nouvelle.id,'sa fiche est ouverte');
-  assert.match(await page.locator('#at-status').textContent(),/créée[\s\S]*heure et son effectif/);
-  // Vider une case.
-  await kase('AF/BC','appros').click();await attendre();
-  await page.locator('.qf-menu [data-qf=vider]').click();await attendre();
-  assert.match(await kase('AF/BC','appros').textContent(),/à choisir/);
-  // Le bouton général remplit là où un service n'a qu'une équipe.
-  await page.locator('[data-qf=remplir]').click();await attendre();
-  assert.equal(await page.locator('[data-qf=remplir]').count(),0,'plus rien à remplir d’un clic');
-  assert.equal(await kase('AF/BC','appros').getAttribute('class'),'qf-case ok');
-  // La colonne entière d'un coup, depuis son en-tête.
-  await page.locator('[data-qf=col][data-service=magasin]').click();await attendre();
-  await page.locator('.qf-menu [data-qf=nouvelle][data-type=dispo]').click();await attendre();
-  assert.equal(await page.locator('td.qf-c.auto').count()>0,true,'le magasin sert tout le monde');
-  // Au clavier : Entrée ouvre le menu d'une case, Échap le referme et rend la main à la case.
-  await kase('DL/BC','prepa').focus();await page.keyboard.press('Enter');await attendre();
-  assert.equal(await page.evaluate(()=>!!document.activeElement.closest('.qf-menu')),true,'le focus entre dans le menu');
-  await page.keyboard.press('Escape');await attendre();
-  assert.equal(await page.locator('.qf-menu').count(),0);
-  assert.equal(await page.evaluate(()=>document.activeElement.dataset.classe+'|'+document.activeElement.dataset.service),'DL/BC|prepa');
+  assert.equal(await page.locator('[data-sous-onglet=at-chemins]').getAttribute('aria-selected'),'true');
+  assert.equal(await page.locator('.pc-cmd.actif').getAttribute('data-classe'),'DL/BC');
+  // Le tableau se relit.
+  await page.locator('[data-sous-onglet=at-grille]').click();await attendre();
   // Filtrer : chercher une compagnie.
   await page.fill('[data-qf=recherche]','AF/');
   assert.ok(await page.locator('tr[data-classe]:visible').count()>0);

@@ -118,32 +118,29 @@ droite des onglets.
    sans équipe) et *Le programme* (importer le programme en Excel ou CSV simplifié,
    ou garder les vols d’exemple ; le délai de chargement — « repas prêts combien
    de minutes avant le départ ? » — et le décalage des vols).
-2. **Qui prépare quoi**, en cinq onglets :
-   1. **Les chemins** : par où passe chaque commande, **dessiné en diagramme de
-      nœuds**. Chaque service est un nœud ; on tire le `+` d’un service jusqu’à
-      un autre (ou on clique le `+`, puis l’autre service) pour dire qu’il le
-      livre ; un service peut en livrer plusieurs. Les chemins partent en parallèle et se
-      rejoignent (les aliments par la réception, la cuisine et la prépa, le matériel par
-      la plonge et la dotation, les produits de la compagnie par le magasin,
-      tout se retrouvant au montage). Chaque nœud dit ses équipes ; un clic
-      dessus permet d’en créer une. L’économie ne passe pas par la cuisine.
-   2. **Qui prépare quoi** (l’onglet ouvert d’abord) : un tableau, une ligne par commande (« AF · Business »),
-      une colonne par service ; chaque case dit l’équipe et ses heures. Un clic
-      sur une case choisit l’équipe (ou en crée une), un clic sur un service
-      remplit toute sa colonne. Chaque ligne dit quand la commande est prête et se
-      déplie pour se suivre dans le temps, avec une phrase qui l’explique.
-   3. **Les équipes** : horaire, effectif, pauses, ordre de préparation, et les
-      plonges (tunnels, débits) et mises à disposition. En haut, **le même
-      diagramme que « Les chemins »** sert de sommaire : on clique un service
-      pour ne voir que ses équipes (avec « reçoit de… · livre… »), et « +
-      Nouvelle équipe » la crée dans ce service, déjà chargée des commandes du
-      chemin qui n’y avaient personne. Le service choisi est le même dans les
-      deux onglets : « Régler ses équipes → » y mène depuis un chemin, «
-      Modifier ses liens → » ramène au chemin.
-   4. **Leur journée** : le planning, équipe par équipe, et une phrase qui
+2. **Qui prépare quoi**, en cinq onglets ; tout se règle dans le premier, les
+   autres se calculent :
+   1. **Les chemins** : **un chemin par commande** (« Complet TX BC »), créé à la
+      main — vide, copié d’un modèle, ou copié du chemin d’une autre commande —
+      et « Dupliquer pour… » d’autres commandes. À gauche la liste des
+      commandes, au centre le chemin **en diagramme de nœuds** : on tire le `+`
+      d’un service jusqu’à un autre (ou on clique le `+`, puis l’autre) pour dire
+      qu’il le livre ; un lien ne vaut que pour ce chemin. **Chaque nœud porte
+      une case** : l’équipe qui y prépare la commande, avec son nom, ses
+      personnes, son heure et ses man-minutes (celles de l’import, modifiables
+      pour la case). Une case se partage : « TX BC/PC » en cuisine prépare TX BC
+      puis TX PC, et le chemin de TX BC n’attend que la ligne de TX BC. Une
+      commande sans chemin suit le modèle de sa classe.
+   2. **Qui prépare quoi** : le tableau calculé, une ligne par commande, une
+      colonne par service, la case et ses heures dans chaque cellule ; un clic
+      ouvre le chemin de la commande sur ce service. Chaque ligne dit quand la
+      commande est prête et se déplie dans le temps.
+   3. **Les cases** : chaque case avec ses commandes dans l’ordre, qui mènent à
+      leur chemin ; « + Case hors chemin » pour une plonge ou une mise à
+      disposition qui sert tout le monde.
+   4. **Leur journée** : le planning, case par case, et une phrase qui
       résume la journée (les indicateurs complets sont à l’étape 4).
    5. **Les commandes** : la liste des commandes à préparer (compagnie × classe).
-   Sans aucune équipe, le tableau laisse place à un encart qui dit par où commencer.
 3. **Les temps de travail** — onglets *Minutes par vol* (service par service et
    classe par classe : une valeur commune, des valeurs propres à une compagnie,
    ou une grille compagnie par classe) et *Rythme et pauses* (rythme de travail,
