@@ -350,6 +350,15 @@ chemins », dans un diagramme de nœuds (`graphe.js`) :
   cette étape), le relie, ou le retire du chemin ;
 - chaque nœud dit ses équipes (« MONTAGE », « 3 repas sans équipe », « aucune
   équipe ») et prend le vert quand tout est couvert, l'ambre sinon ;
+- **le même diagramme** ouvre l'onglet « Les équipes », en mode *choisir
+  seulement* (ni `+`, ni lien à retirer, ni nœud à déplacer) : cliquer un
+  service n'affiche que ses équipes, dit d'où il reçoit et qui il livre, et
+  « + Nouvelle équipe » la crée dans ce service avec les commandes du chemin
+  qui n'y avaient personne. Sans service choisi, les équipes se rangent dans
+  le sens du chemin, puis « Hors du chemin affiché ». Le service choisi est
+  **partagé** entre les deux onglets (c'est le filtre des équipes) : ouvrir la
+  fiche d'une équipe le choisit, « Régler ses équipes → » et « Modifier ses
+  liens → » passent d'un onglet à l'autre sans le perdre ;
 - on **déplace** les services à la souris ; la disposition est retenue
   (`ory-graphes-v1`, incluse dans la sauvegarde complète). Sans disposition, les
   nœuds se rangent en colonnes dans le sens du flux, et un lien qui saute des

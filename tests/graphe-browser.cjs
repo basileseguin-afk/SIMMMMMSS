@@ -41,6 +41,41 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator('.pc-panneau [data-pc-action=fiche]').click();await attendre();
   assert.equal(await page.locator('[data-sous-onglet=at-equipes]').getAttribute('aria-selected'),'true');
   assert.equal(await page.locator(`[data-at="${eq.id}"]`).isVisible(),true);
+  // « Les équipes » montre le même chemin, son service choisi : on sait où l'on est.
+  assert.equal(await page.locator(`${Z} [data-noeud=prepa]`).isVisible(),true,'le diagramme suit dans « Les équipes »');
+  assert.equal(await page.locator(`${Z} [data-noeud=prepa]`).evaluate(n=>n.classList.contains('sel')),true);
+  assert.equal(await page.locator(`${Z} .gr-port`).count(),0,'ici il sert à choisir : pas de +');
+  assert.equal(await page.locator(`${Z} .gr-lien[tabindex]`).count(),0,'ni de lien à retirer');
+  assert.equal(await page.locator('.pc-panneau').isVisible(),false);
+  assert.match(await page.locator('#at-choix').textContent(),/Montage[\s\S]*reçoit de/);
+  assert.equal(await page.locator('#at-filtre').inputValue(),'prepa');
+  // Cliquer un autre service du diagramme : la liste passe à ses équipes.
+  await page.locator(`${Z} [data-noeud=cuisine]`).click();await attendre();
+  assert.equal(await page.locator('#at-filtre').inputValue(),'cuisine');
+  assert.match(await page.locator('#at-liste').textContent(),/Aucune équipe dans Cuisine/);
+  assert.match(await page.locator('#at-choix').textContent(),/Cuisine[\s\S]*reçoit de Légumerie[\s\S]*livre Prépa/);
+  // « + Nouvelle équipe · Cuisine » : elle prend d'emblée les commandes du chemin.
+  assert.match(await page.locator('#at-new').textContent(),/Cuisine/);
+  await page.locator('#at-new').click();await attendre();
+  const eq2=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1));
+  assert.equal(eq2.service,'cuisine');assert.ok(eq2.lots.length>0,'les commandes du chemin lui sont confiées');
+  assert.equal(await page.locator('[data-sous-onglet=at-equipes]').getAttribute('aria-selected'),'true');
+  assert.equal(await page.locator(`${Z} [data-noeud=cuisine]`).evaluate(n=>n.classList.contains('ton-ok')),true,'le nœud passe au vert');
+  // Toutes les équipes : rangées dans le sens du chemin, cuisine avant montage.
+  await page.locator('[data-at-action=tout]').click();await attendre();
+  assert.equal(await page.locator(`${Z} .gr-noeud.sel`).count(),0);
+  assert.deepEqual(await page.locator('#at-liste .at-service-nom').evaluateAll(b=>b.map(x=>x.dataset.service)),['cuisine','prepa']);
+  // Retour aux chemins : le même service est choisi, les + reviennent.
+  await page.locator('#at-liste .at-service-nom[data-service=cuisine]').click();await attendre();
+  await page.locator('[data-sous-onglet=at-chemins]').click();await attendre();
+  assert.equal(await page.locator(`${Z} [data-noeud=cuisine]`).evaluate(n=>n.classList.contains('sel')),true);
+  assert.match(await page.locator('.pc-panneau').textContent(),/Cuisine/);
+  assert.ok(await page.locator(`${Z} .gr-port`).count()>0);
+  // Et « Régler ses équipes → » y mène, sur ce service.
+  await page.locator(`${Z} [data-noeud=prepa]`).click();await attendre();
+  await page.locator('[data-pc-action=equipes]').click();await attendre();
+  assert.equal(await page.locator('[data-sous-onglet=at-equipes]').getAttribute('aria-selected'),'true');
+  assert.equal(await page.locator('#at-filtre').inputValue(),'prepa');
   await page.locator('[data-sous-onglet=at-chemins]').click();await attendre();
 
   // 3. Au clavier : Entrée choisit un service, « Relier à… », Entrée sur l'autre relie.

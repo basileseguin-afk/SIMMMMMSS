@@ -133,7 +133,13 @@ droite des onglets.
       remplit toute sa colonne. Chaque ligne dit quand la commande est prête et se
       déplie pour se suivre dans le temps, avec une phrase qui l’explique.
    3. **Les équipes** : horaire, effectif, pauses, ordre de préparation, et les
-      plonges (tunnels, débits) et mises à disposition.
+      plonges (tunnels, débits) et mises à disposition. En haut, **le même
+      diagramme que « Les chemins »** sert de sommaire : on clique un service
+      pour ne voir que ses équipes (avec « reçoit de… · livre… »), et « +
+      Nouvelle équipe » la crée dans ce service, déjà chargée des commandes du
+      chemin qui n’y avaient personne. Le service choisi est le même dans les
+      deux onglets : « Régler ses équipes → » y mène depuis un chemin, «
+      Modifier ses liens → » ramène au chemin.
    4. **Leur journée** : le planning, équipe par équipe, et une phrase qui
       résume la journée (les indicateurs complets sont à l’étape 4).
    5. **Les commandes** : la liste des commandes à préparer (compagnie × classe).

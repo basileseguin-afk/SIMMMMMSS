@@ -158,7 +158,11 @@
         services: () => this.a.services(),
         classes: () => this.classes,
         resultat: () => this.resultat,
-        ouvrirAtelier: (id, defiler, message) => this.ouvrirFiche(id, defiler, message)
+        ouvrirAtelier: (id, defiler, message) => this.ouvrirFiche(id, defiler, message),
+        // Le service choisi est le même dans « Les chemins » et « Les équipes ».
+        service: () => this.filtre,
+        choisirService: id => this.choisirService(id),
+        voirEquipes: id => this.voirEquipes(id)
       });
       this.rendre(alerte);
     }
@@ -251,15 +255,15 @@
 </div>
 <p id="at-status" role="status" aria-live="polite"></p>
 <details id="at-anomalies" class="at-anomalies" hidden></details>
+<h3 class="at-titre" data-sous="at-equipes">Les équipes <span class="pc-sous">cliquez un service du chemin pour voir les siennes</span></h3>
 <div id="at-parcours" class="pc"></div>
-<h3 class="at-titre" data-sous="at-equipes">Les équipes <span class="pc-sous">horaires, effectifs, ordre de préparation</span></h3>
 <div class="at-barre" data-sous="at-equipes">
+  <div id="at-choix" class="at-choix" aria-live="polite"></div>
   <label>Service <select id="at-filtre"><option value="">Tous</option></select></label>
-  <span class="at-barre-fin"></span>
   <button class="btn btn-play" id="at-new">+ Nouvelle équipe</button>
 </div>
-<div id="at-materiel" class="at-materiel" data-sous="at-equipes"></div>
 <div id="at-liste" data-sous="at-equipes"></div>
+<div id="at-materiel" class="at-materiel" data-sous="at-equipes"></div>
 <h3 class="at-titre" data-sous="at-planning">La journée des équipes <span class="pc-sous">qui travaille quand</span></h3>
 <div id="at-indicateurs" class="at-indicateurs" data-sous="at-planning"></div>
 <div id="at-planning" class="at-planning" data-sous="at-planning"></div>
@@ -274,7 +278,7 @@
       on('at-undo', 'click', () => this.histoire(false));
       on('at-redo', 'click', () => this.histoire(true));
       on('at-new', 'click', () => this.creer());
-      on('at-filtre', 'change', e => { this.filtre = e.target.value; this.rendre(); });
+      on('at-filtre', 'change', e => this.choisirService(e.target.value));
       on('at-export', 'click', () => this.exporter());
       on('at-import-btn', 'click', () => document.getElementById('at-import').click());
       on('at-import', 'change', e => this.importer(e));
@@ -296,6 +300,9 @@
     /* ---- actions ----------------------------------------------------- */
 
     creer() {
+      // Un service du chemin : l'équipe prend d'emblée les commandes du chemin
+      // qui n'ont personne ici, comme depuis « Les chemins ».
+      if (this.filtre && this.parcours.voisins(this.filtre).dedans) return this.parcours.creerEquipe(this.filtre);
       // Un service absent du barème donnerait une durée nulle : on propose
       // d'emblée un service qui sait travailler.
       const services = this.a.services();
@@ -314,16 +321,40 @@
     ouvrirFiche(id, defiler = true, message) {
       // Depuis un autre onglet, on y va ; créée depuis le tableau, on y reste.
       if (defiler && this.a.onglet) this.a.onglet('at-equipes');
-      this.filtre = '';
-      const sel = document.getElementById('at-filtre'); if (sel) sel.value = '';
+      // Son service devient le service choisi : le diagramme le montre, la
+      // liste ne garde que ses équipes.
+      const a = this.state.ateliers.find(x => x.id === id);
+      this.filtre = a ? a.service : '';
       this.ouvert = id; this.rendre(message);
       const carte = defiler && document.querySelector(`[data-at="${CSS.escape(id)}"]`);
       if (carte) { carte.scrollIntoView({ block: 'start', behavior: 'smooth' }); const f = carte.querySelector('input,select,button'); if (f) f.focus({ preventScroll: true }); }
     }
 
+    /* Le service choisi, partagé avec le diagramme des chemins. Pas de
+     * recalcul : seule la liste et ce qui la désigne changent. */
+    choisirService(id) {
+      this.filtre = id || '';
+      const sel = document.getElementById('at-filtre'); if (sel) sel.value = this.filtre;
+      this.rendreChoix();
+      if (this.resultat) this.rendreListe(this.resultat);
+      this.parcours.majSelection();
+    }
+
+    /* Depuis « Les chemins » : les équipes de ce service, avec le même diagramme au-dessus. */
+    voirEquipes(id) {
+      this.choisirService(id);
+      if (this.a.onglet) this.a.onglet('at-equipes');
+      // En haut de l'onglet : le diagramme, son service choisi, puis ses équipes.
+      const vue = this.a.hote().closest('[id^="view-"]') || this.a.hote();
+      vue.scrollTop = 0;
+      this.parcours.majSelection();
+    }
+
     action(quoi, id, data) {
       const a = this.state.ateliers.find(x => x.id === id);
       switch (quoi) {
+        case 'tout': return this.choisirService('');
+        case 'service': return this.choisirService(data.service);
         case 'ouvrir': this.ouvert = this.ouvert === id ? null : id; return this.rendre();
         // Rien à valider : la saisie est enregistrée à chaque frappe. Le bouton
         // referme la fiche et le dit — sans lui, on cherche un « créer »
@@ -568,6 +599,7 @@
       this.rendreIndicateurs(r);
       this.rendreAnomalies(r);
       this.rendreFiltre();
+      this.rendreChoix();
       this.rendreMateriel(r);
       this.rendreListe(r);
       this.rendrePlanning(r);
@@ -618,10 +650,35 @@
     }
 
     rendreFiltre() {
-      const sel = document.getElementById('at-filtre'), garde = sel.value;
+      const sel = document.getElementById('at-filtre');
       sel.innerHTML = '<option value="">Tous les services</option>' +
         this.a.services().map(s => `<option value="${esc(s.id)}">${esc(s.nom)}</option>`).join('');
-      sel.value = garde;
+      sel.value = this.filtre || '';
+    }
+
+    /* Ce que la liste montre, dit avec le chemin : d'où le service reçoit, qui il livre. */
+    rendreChoix() {
+      const box = document.getElementById('at-choix'); if (!box) return;
+      const nomDe = id => (this.a.services().find(x => x.id === id) || {}).nom || id;
+      const btn = document.getElementById('at-new');
+      const s = this.filtre;
+      if (btn) btn.textContent = s ? '+ Nouvelle équipe · ' + nomDe(s) : '+ Nouvelle équipe';
+      if (!s) {
+        const n = this.state.ateliers.length;
+        box.innerHTML = `<b>Toutes les équipes</b> <span>${n ? n + (n > 1 ? ' équipes' : ' équipe') + ' · ' : ''}cliquez un service du diagramme pour ne voir que les siennes</span>`;
+        return;
+      }
+      const I = root.OrlyIcones, v = this.parcours.voisins(s);
+      const n = this.state.ateliers.filter(a => a.service === s).length;
+      const liste = ids => ids.map(nomDe).join(', ');
+      const place = !v.chemin ? ''
+        : !v.dedans ? ' · hors du chemin « ' + esc(v.chemin) + ' »'
+        : (v.amont.length ? ' · reçoit de ' + esc(liste(v.amont)) : ' · début du chemin')
+          + (v.aval.length ? ' · livre ' + esc(liste(v.aval)) : ' · fin du chemin');
+      box.innerHTML = `${I ? I.ico(I.icoService(s, nomDe(s))) : ''}<b>${esc(nomDe(s))}</b>
+        <span>${n ? n + (n > 1 ? ' équipes' : ' équipe') : 'aucune équipe'}${place}</span>
+        <button class="lien-discret" data-at-action="tout">Toutes les équipes</button>
+        ${v.dedans ? '<button class="lien-discret" data-aller="ateliers" data-onglet="at-chemins">Modifier ses liens →</button>' : ''}`;
     }
 
     /* Les trolleys et la porcelaine ne s'achètent pas : ils reviennent. Ce bloc
@@ -674,16 +731,28 @@
       const montrer = this.filtre ? this.state.ateliers.filter(a => a.service === this.filtre) : this.state.ateliers;
 
       if (!montrer.length) {
-        document.getElementById('at-liste').innerHTML =
-          '<p class="at-vide">Aucune équipe. Une équipe, c’est : ce qu’elle prépare, quand elle commence, et à combien.</p>';
+        document.getElementById('at-liste').innerHTML = this.filtre
+          ? `<p class="at-vide">Aucune équipe dans ${esc(nom(this.filtre))}. « + Nouvelle équipe · ${esc(nom(this.filtre))} » en crée une`
+            + (this.parcours.voisins(this.filtre).dedans ? ', qui prépare d’emblée les commandes du chemin qui n’ont personne ici.</p>' : '.</p>')
+          : '<p class="at-vide">Aucune équipe. Cliquez un service du diagramme, puis « + Nouvelle équipe » : elle prépare d’emblée les commandes du chemin qui passent par là.</p>';
         return;
       }
       const groupes = {};
       for (const a of montrer) (groupes[a.service] || (groupes[a.service] = [])).push(a);
+      // Dans le sens du chemin : on lit les équipes comme on lit le diagramme.
+      const ordre = this.parcours.ordre(), rang = s => { const i = ordre.indexOf(s); return i < 0 ? ordre.length + services.findIndex(x => x.id === s) : i; };
+      const cles = Object.keys(groupes).sort((x, y) => rang(x) - rang(y));
+      const I = root.OrlyIcones;
 
-      document.getElementById('at-liste').innerHTML = Object.keys(groupes).map(service => {
+      document.getElementById('at-liste').innerHTML = cles.map((service, k) => {
         const cartes = groupes[service].map(a => this.carte(a, parAtelier.get(a.id))).join('');
-        return `<section class="at-service"><h3>${esc(nom(service))} <span>${groupes[service].length}</span></h3>${cartes}</section>`;
+        const hors = ordre.length && !ordre.includes(service);
+        const debutHors = hors && (k === 0 || ordre.includes(cles[k - 1]));
+        // Un seul service choisi : la barre au-dessus le nomme déjà.
+        if (this.filtre) return `<section class="at-service">${cartes}</section>`;
+        return `${debutHors ? '<p class="at-hors">Hors du chemin affiché</p>' : ''}<section class="at-service${hors ? ' hors' : ''}">
+          <h3><button class="at-service-nom" data-at-action="service" data-service="${esc(service)}" title="Ne voir que ce service">${I ? I.ico(I.icoService(service, nom(service))) : ''}${esc(nom(service))}</button>
+            <span>${groupes[service].length}</span></h3>${cartes}</section>`;
       }).join('');
     }
 

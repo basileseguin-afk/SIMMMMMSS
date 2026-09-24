@@ -451,6 +451,8 @@ function initOnglets(){
       if(vue!==activeView)showView(vue);
       if(id==='v-departs')renderFlights();
       if(id==='u-lecture'&&Sim.flows)Sim.flows.refresh();
+      // Même diagramme dans « Les chemins » et « Les équipes » : il change de mode.
+      if((id==='at-chemins'||id==='at-equipes')&&Sim.ateliers)Sim.ateliers.parcours.surOnglet();
     }
   });
   // Les outils d'une vue (annuler, Excel, importer) montent sur la barre des

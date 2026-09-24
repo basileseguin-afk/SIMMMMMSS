@@ -5,6 +5,38 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-24 — « Les chemins » et « Les équipes » reliés
+
+Les deux onglets se parlaient mal : on dessinait un chemin d'un côté, on
+réglait des équipes filtrées par un menu de l'autre, sans voir le lien.
+
+- **Le même diagramme** ouvre maintenant « Les équipes » (`parcours.js`,
+  `graphe.js`), en mode *choisir seulement* : pas de `+`, pas de lien à
+  retirer, pas de nœud à déplacer. Cliquer un service n'affiche que ses
+  équipes ; un clic dans le vide ou « Toutes les équipes » les remontre toutes.
+- **Un service choisi partagé** : c'est le filtre de la liste des équipes, et
+  le nœud choisi du diagramme dans les deux onglets. Ouvrir la fiche d'une
+  équipe (depuis le tableau ou le chemin) choisit son service au lieu de
+  vider le filtre. Le menu « Service » reste pour les services hors chemin.
+- **Une barre qui situe** le service (`ateliers.js`) : « Cuisine · 1 équipe ·
+  reçoit de Légumerie · livre Prépa », avec « Toutes les équipes » et
+  « Modifier ses liens → ».
+- **« + Nouvelle équipe · Cuisine »** : dans un service du chemin, l'équipe
+  prend d'emblée les commandes du chemin qui n'y avaient personne, comme
+  « + Nouvelle équipe ici » dans « Les chemins » (même code, `creerEquipe`).
+- **« Régler ses équipes → »** dans le panneau d'un service du chemin mène à
+  « Les équipes » sur ce service, en haut de l'onglet, le nœud dans le cadre.
+- Sans service choisi, les équipes sont **rangées dans le sens du chemin**,
+  puis « Hors du chemin affiché » ; le nom d'un service choisit ce service.
+- Le bloc « Matériel en boucle » passe sous la liste des équipes.
+
+**Tests** : `graphe-browser` suit le va-et-vient complet (service choisi
+partagé, mode choisir seulement, création dans le service, ordre du chemin).
+
+**Docs** : README, MODELE_ATELIERS, CAHIER_DES_CHARGES (E14).
+
+---
+
 ## 2026-09-24 — Deux liens au départ d'un service, et le service Prépa
 
 **Relier un service à plusieurs services** (`graphe.js`, `parcours.js`)

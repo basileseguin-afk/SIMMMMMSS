@@ -34,6 +34,9 @@
 .gr-port:hover circle{r:11}
 
 .gr-lien{cursor:pointer}
+/* Choisir seulement (onglet « Les équipes ») : les traits se lisent, ils ne se cliquent pas. */
+.gr-svg.choix .gr-lien{pointer-events:none;cursor:default}
+.gr-svg.choix .gr-noeud{cursor:pointer}
 .gr-prise{fill:none;stroke:transparent;stroke-width:16}
 .gr-trait{fill:none;stroke:var(--edge);stroke-width:2.6}
 .gr-pointe{fill:var(--edge)}
@@ -50,6 +53,9 @@
 .pc-sec{--c:var(--c-equipes);grid-template-columns:minmax(0,1fr)}
 .pc-graphe{min-width:0}
 .pc-puces{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pc-puces-lab{font-size:12px;font-weight:700;color:var(--txt2);margin-right:2px}
+/* Dans « Les équipes », le diagramme du chemin sert de sommaire : plus bas, sans panneau. */
+body[data-sous="at-equipes"] .pc-sec{margin-bottom:0}
 .pc-puce{appearance:none;font:inherit;font-weight:700;font-size:13px;padding:7px 14px;border-radius:99px;cursor:pointer;
   border:1.5px solid var(--bordure2);background:var(--bg3);color:var(--txt)}
 .pc-puce:hover{border-color:var(--c-equipes)}
