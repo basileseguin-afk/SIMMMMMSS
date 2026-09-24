@@ -5,6 +5,13 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-24 — Prompts des convertisseurs Winrest → simulateur
+
+- `docs/CONVERTISSEURS.md` : trois prompts pour trois conversations Claude
+  (vols, man-hours → barème, planches → horaires), qui rendent chacune un
+  `.xlsx` importable tel quel, un compte rendu et une table de correspondance
+  à réutiliser. Formats vérifiés contre les lecteurs d'import.
+
 ## 2026-09-24 — Les horaires des cases par Excel
 
 - Bouton **`⇩ Horaires`** (« Qui prépare quoi ») : un petit classeur, une
