@@ -613,14 +613,35 @@
       this.rendreIndicateurs(r);
       this.rendreAnomalies(r);
       this.rendreFiltre();
-      this.rendreMateriel(r);
-      this.rendreListe(r);
-      this.rendrePlanning(r);
-      this.parcours.rendre();
-      this.rendreClasses(r);
+      // Seul l'onglet affiché se redessine : à deux cents commandes, la liste
+      // des cases, le planning, les commandes et le tableau coûtent cher, et
+      // personne ne les regarde. Les autres attendent qu'on les ouvre.
+      this.aDessiner = new Set(['at-equipes', 'at-planning', 'at-repas', 'at-grille']);
+      const visible = this.ongletVisible();
+      if (visible !== 'at-grille') this.parcours.rendre();
+      this.surOnglet(visible);
       document.getElementById('at-undo').disabled = !this.undo.length;
       document.getElementById('at-redo').disabled = !this.redo.length;
       if (this.a.change) this.a.change(r);
+    }
+
+    /** L'onglet affiché de la vue, ou rien quand la vue est cachée. */
+    ongletVisible() {
+      const b = document.body;
+      return b.dataset.vue === 'ateliers' ? b.dataset.sous || null : null;
+    }
+
+    /** Un onglet s'ouvre : on dessine ce qu'il montre, s'il a changé depuis. */
+    surOnglet(id) {
+      const r = this.resultat; if (!r || !this.aDessiner) return;
+      // Le tableau a pu être remplacé par sa place vide en redessinant les chemins.
+      if (id === 'at-grille' && document.querySelector('#at-parcours .qf[data-a-dessiner]')) this.aDessiner.add(id);
+      if (!this.aDessiner.has(id)) return;
+      this.aDessiner.delete(id);
+      if (id === 'at-equipes') { this.rendreMateriel(r); this.rendreListe(r); }
+      if (id === 'at-planning') this.rendrePlanning(r);
+      if (id === 'at-repas') this.rendreClasses(r);
+      if (id === 'at-grille') this.parcours.rendre();
     }
 
     /* Les indicateurs vivent à un seul endroit, « La journée › Les chiffres ».

@@ -640,7 +640,10 @@
       if (this.actif && !(etat.parcours || []).some(p => p.id === this.actif)) this.actif = null;
       if (!this.cmd && !this.actif && classes.length) this.cmd = this.ordreCommandes(classes)[0].id;
       const t = this.a.boite().querySelector('.pc-tiroir'), haut = t ? t.scrollTop : 0;
-      this.a.boite().innerHTML = this.sectionParcours(etat, classes) + this.sectionTableau(etat, classes);
+      // Le tableau ne se construit que s'il est affiché (ou hors navigateur).
+      const tableau = !root.document || root.document.body.dataset.sous === 'at-grille';
+      this.a.boite().innerHTML = this.sectionParcours(etat, classes)
+        + (tableau ? this.sectionTableau(etat, classes) : '<section class="qf" data-sous="at-grille" data-a-dessiner></section>');
       const t2 = this.a.boite().querySelector('.pc-tiroir'); if (t2 && haut) t2.scrollTop = haut;
       this.placeTiroir();
       const g = this.diagramme(); if (g) { g.selection = this.selection(); g.rendre(); }

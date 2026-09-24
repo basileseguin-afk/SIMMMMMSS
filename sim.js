@@ -461,6 +461,8 @@ function initOnglets(){
       if(id==='u-lecture'&&Sim.flows)Sim.flows.refresh();
       // La fenêtre d'une case se cale sous la barre des onglets, mesurée une fois visible.
       if(id==='at-chemins'&&Sim.ateliers)Sim.ateliers.parcours.placeTiroir();
+      // Un onglet des ateliers se dessine à son ouverture, s'il a changé depuis.
+      if(vue==='ateliers'&&Sim.ateliers)Sim.ateliers.surOnglet(id);
     }
   });
   // Les outils d'une vue (annuler, Excel, importer) montent sur la barre des
@@ -1252,8 +1254,9 @@ function showView(name) {
   document.querySelector('.map-footer').hidden=name!=='plan';
   majDemarrage();
   if(name==='vols')renderFlights();
-  // La vue est affichée : la fenêtre d'une case peut mesurer où se caler.
-  if(name==='ateliers'&&Sim.ateliers)Sim.ateliers.parcours.placeTiroir();
+  // La vue est affichée, son onglet connu : on dessine ce qu'il montre, et la
+  // fenêtre d'une case peut mesurer où se caler.
+  if(name==='ateliers'&&Sim.ateliers){Sim.ateliers.surOnglet(document.body.dataset.sous);Sim.ateliers.parcours.placeTiroir();}
 }
 function updateSource() {
   majDemarrage();

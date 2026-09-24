@@ -54,9 +54,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('#view-ateliers').isVisible(),true);
   assert.equal(await page.locator('.workbench').isVisible(),false,'la colonne de droite s’efface');
   assert.equal(await page.locator('#view-plan').isVisible(),false,'le plan n’est plus la vue des ateliers');
+  await onglet('at-equipes');
   assert.match(await page.locator('.at-vide').textContent(),/Aucune case/);
 
   // 2. Toutes les compagnies × classes du programme sont listées, à fabriquer.
+  await onglet('at-repas');
   const lignes=await page.locator('#at-classes tbody tr').count();
   assert.equal(lignes,34,'34 compagnies × classes dans le jeu de démonstration');
   assert.equal(await page.locator('.at-etat.neutre').count(),34,'aucune n’est préparée au départ : un état neutre, pas une alerte');
@@ -120,16 +122,19 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(apres.fin,avant.fin+30,'la pause de 30 min décale la fin de 30 min');
 
   // 7. Le planning dessine une barre par lot.
+  await onglet('at-planning');
   assert.equal(await page.locator('#at-planning svg').count(),1);
   assert.equal(await page.locator('#at-planning .at-pl-lot').count(),4,'quatre lots fabriqués');
   assert.equal(await page.locator('#at-planning .at-pl-lot.robot').count(),1,'le robot se distingue');
   assert.ok(await page.locator('#at-planning .at-pl-attente').count()>0,'l’attente est dessinée');
 
   // 8. La couverture par classe dit ce qui sort et par où.
+  await onglet('at-repas');
   const etats=await page.locator('#at-classes tbody tr').evaluateAll(rs=>rs.map(r=>r.cells[0].dataset.classe+'|'+r.cells[5].textContent));
   assert.ok(etats.some(t=>t.startsWith('CRL/BC')&&/à l’heure/.test(t)));
   assert.equal(etats.filter(t=>/pas encore d’équipe/.test(t)).length,31,'34 commandes moins les 3 préparées');
   // Par où elle passe, et qui la fabrique : le tableau « Qui fabrique quoi » le dit case par case.
+  await onglet('at-grille');
   const traverses=await page.locator('tr[data-classe="CRL/BC"] .qf-case.ok').evaluateAll(bs=>bs.map(b=>b.dataset.service).sort());
   assert.deepEqual(traverses,['cuisine','prepa'],'les services qui la fabriquent ont leur case remplie');
 
@@ -139,6 +144,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 10. Annuler, rétablir, et la saisie survit au rechargement.
   const avantSuppr=(await etat()).ateliers.length;
+  await onglet('at-equipes');
   await page.locator(`[data-at="${rob}"] [data-at-action=supprimer]`).click();await attendre();
   assert.equal((await etat()).ateliers.length,avantSuppr-1);
   await page.locator('#at-undo').click();await attendre();

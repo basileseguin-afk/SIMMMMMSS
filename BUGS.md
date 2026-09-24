@@ -477,7 +477,7 @@ injection) ; charge de 200 commandes et 1 321 cases.
 | BUG-026 | Mineur | Corrigé | Confirmé | Échap dans un champ de la case fermait la fenêtre ; sa position se mesurait vue cachée | `parcours.js`, `sim.js` |
 | BUG-027 | Mineur | Corrigé | Confirmé | Une barre de retours pile sur l'heure de fin débordait du graphique | `temps.js` |
 | BUG-028 | Mineur | Corrigé | Confirmé | Le rattrapage des cases pouvait en créer pour une commande retirée du programme | `parcours.js` |
-| BUG-029 | Performance | Ouvert | Confirmé | À 200 commandes, une saisie dans une case redessine toute la vue : ≈ 0,9 s | `ateliers.js` |
+| BUG-029 | Performance | Corrigé | Confirmé | À 200 commandes, une saisie dans une case redessinait toute la vue (liste des cases, planning, commandes, tableau) : ≈ 0,9 s → 0,27 s en ne dessinant que l'onglet affiché | `ateliers.js`, `parcours.js`, `sim.js` |
 
 **Preuves.** `tests/parcours.test.cjs` (noms de chemins uniques, commande
 retirée), `tests/comparaison.test.cjs` (chemin ou vols différents : pas
@@ -487,4 +487,5 @@ retirée), `tests/comparaison.test.cjs` (chemin ou vols différents : pas
 retrait d'un service (plus d'anomalie « hors parcours »), Excel puis
 rechargement (la case retirée ne revient pas), renommage en double
 (« Refusé : le nom … est déjà celui d'une autre case »), 200 commandes
-(1 321 cases, 202 chemins, journée calculée en 71 ms).
+(1 321 cases, 202 chemins, journée calculée en 71 ms ; saisie 0,27 s, choix
+d'une commande 0,07 s).

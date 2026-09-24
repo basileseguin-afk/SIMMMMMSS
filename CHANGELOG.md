@@ -5,7 +5,7 @@ Le plus récent est en haut.
 
 ---
 
-## 2026-09-24 — Contrôle complet : 12 bugs corrigés
+## 2026-09-24 — Contrôle complet : 13 bugs corrigés
 
 Revue complète (voir `BUGS.md`, revue du 24/09 : BUG-017 à BUG-029).
 
@@ -28,7 +28,8 @@ Revue complète (voir `BUGS.md`, revue du 24/09 : BUG-017 à BUG-029).
   touche plus une commande retirée du programme.
 - Libellés : « Cases importées », « Remplacer les cases et les chemins ».
 
-Reste ouvert : BUG-029, une saisie à 200 commandes prend ≈ 0,9 s.
+- **Performance** (BUG-029) : seul l'onglet affiché se redessine ; les autres
+  le sont à leur ouverture. À 200 commandes, une saisie passe de 0,9 à 0,27 s.
 
 ---
 
