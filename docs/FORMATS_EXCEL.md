@@ -1,10 +1,12 @@
-# Piloter le site depuis Excel — les trois classeurs
+# Piloter le site depuis Excel — les classeurs
 
-Le site s'échange avec Excel en trois classeurs, un par sujet :
+Le site s'échange avec Excel en trois classeurs, un par sujet, plus un petit
+classeur des horaires tiré de celui des ateliers :
 
 | Classeur | Où | Ce qu'il porte |
 |---|---|---|
-| **Ateliers** | étape 2, « Qui prépare quoi » › `⇩ Excel` / `⇧ Importer` | équipes, fabrications, tunnels, compagnies × classes, parcours, matériel |
+| **Ateliers** | étape 2, « Qui prépare quoi » › `⇩ Excel` / `⇧ Importer` | équipes, horaires, fabrications, tunnels, compagnies × classes, parcours, matériel |
+| **Horaires** | étape 2, « Qui prépare quoi » › `⇩ Horaires` / `⇧ Importer` | l'heure et le jour de début de chaque case, seuls |
 | **Barème** | étape 3, « Les temps de travail » › `⇩ Excel` / `⇧ Importer` | homme-minutes **par vol**, par service et par compagnie × classe ; rendement, poste |
 | **Vols** | étape 1, « Les vols » › `⇩ Exporter (Excel)` / fichier à importer | départs et retours |
 
@@ -46,8 +48,6 @@ Une ligne par équipe. **Le nom est la clé** : les autres feuilles s'y réfère
 | Atelier | nom, unique |
 | Service | nom ou identifiant du service |
 | Type | `manuel`, `robot`, `plonge` ou `mise à disposition` |
-| Début | heure d'arrivée de l'équipe, `HH:MM` |
-| Jour | `0` le jour du départ, `-1` la veille… jusqu'à `-7` |
 | Personnes | effectif (vide pour une mise à disposition) |
 | Pauses | `10:00-10:15; 12:00-12:30` |
 | Poste réglementaire | `oui` : pauses de régime et durée de présence s'appliquent |
@@ -127,6 +127,36 @@ convertie en liens à l'import.
 ### Feuille « Parcours par classe »
 
 Le parcours par défaut de `BC`, `PC`, `YC`, `CREW` et `SPML`.
+
+Les heures de début ne sont plus dans cette feuille mais dans « Horaires ».
+Un ancien classeur qui porte encore les colonnes `Début` et `Jour` ici est lu
+comme avant.
+
+### Feuille « Horaires »
+
+Une ligne par atelier, **dans l'ordre de la journée**. Seules `Atelier`,
+`Jour` et `Début` sont lues.
+
+| Colonne | Sens |
+|---|---|
+| Atelier | nom de l'atelier (la clé : ne pas le changer ici) |
+| Jour | `J` le jour du départ des vols, `J-1` la veille, `J-2`… jusqu'à `J-7` (`0`, `-1` sont lus aussi) |
+| Début | heure d'arrivée de l'équipe, `HH:MM`, de `00:00` à `23:59` |
+| Service (info), Personnes (info), Fin prévue (info), Prépare (info) | pour se repérer ; la fin prévue est celle de la journée calculée à l'export |
+
+Un atelier sans ligne garde son heure du site ; un atelier nouveau, créé dans
+« Ateliers » sans ligne ici, commence à `06:00`, jour `J`. Une heure au-delà
+de `23:59` est refusée : on écrit l'heure du jour et on change la colonne Jour.
+
+### Le petit classeur des horaires (`⇩ Horaires`)
+
+La feuille « Horaires » seule, avec son « Lisez-moi ». C'est le fichier à
+ouvrir pour **décaler des équipes** : changer les heures dans Excel, puis
+`⇧ Importer`. Le site reconnaît un classeur sans feuille « Ateliers » et **ne
+change que les heures** : cases, commandes, chemins et réglages ne bougent
+pas. Il demande confirmation en nommant les cases décalées, recalcule la
+journée, et l'import est annulable. Un atelier inconnu, un horaire en double,
+un jour ou une heure illisible : l'import est refusé en entier.
 
 ### Feuille « Matériel »
 

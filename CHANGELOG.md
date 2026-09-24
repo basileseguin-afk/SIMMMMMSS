@@ -5,6 +5,20 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-24 — Les horaires des cases par Excel
+
+- Bouton **`⇩ Horaires`** (« Qui prépare quoi ») : un petit classeur, une
+  ligne par case dans l'ordre de la journée — Atelier, Jour (`J`, `J-1`…),
+  Début, et pour se repérer le service, l'effectif, la fin prévue et ce que
+  la case prépare.
+- **`⇧ Importer`** reconnaît ce classeur et ne change que les heures ; il
+  nomme les cases décalées, recalcule la journée, et s'annule.
+- Le classeur complet porte les heures dans la même feuille « Horaires »
+  (plus dans « Ateliers ») : un seul endroit où les changer. Un ancien
+  classeur est lu comme avant ; sans la feuille, les heures du site restent.
+- Fichiers : `echanges.js`, `ateliers.js`, `docs/FORMATS_EXCEL.md` ; tests :
+  `tests/echanges.test.cjs`, `tests/excel-browser.cjs`.
+
 ## 2026-09-24 — Une journée complète jouée : 8 défauts corrigés
 
 Une journée cohérente (34 commandes, cuisine à J-1, plonge, dotation,

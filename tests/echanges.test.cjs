@@ -212,3 +212,67 @@ test('barème : un service qui ne lit pas le barème n’encombre pas le classeu
   assert.ok(!lignes.some(l => l[0] === 'PLONGE'), 'la plonge travaille au débit de ses tunnels');
   assert.ok(lignes.some(l => l[0] === 'MAGASIN'), 'mais une valeur déjà saisie reste, pour ne rien perdre');
 });
+
+/* ---- horaires --------------------------------------------------------- */
+
+test('horaires : le petit classeur porte une ligne par case, dans l’ordre de la journée', () => {
+  const f = E.horairesVersClasseur(ETAT_ATELIERS(), { services: SERVICES });
+  assert.deepEqual(f.map(x => x.nom), ['Horaires', 'Lisez-moi']);
+  const [entete, ...lignes] = f[0].lignes;
+  assert.deepEqual(entete.slice(0, 3), ['Atelier', 'Jour', 'Début']);
+  assert.deepEqual(lignes.map(l => [l[0], l[1], l[2]]),
+    [['Plonge', 'J-1', '05:00'], ['Cuisine matin', 'J', '04:30'], ['Robot', 'J', '05:00'], ['Magasin', 'J', '06:00']],
+    'la plonge de la veille d’abord ; « J-1 » écrit en clair');
+  assert.equal(E.estClasseurHoraires(f), true);
+  assert.equal(E.estClasseurHoraires(E.ateliersVersClasseur(ETAT_ATELIERS(), ctxAteliers())), false, 'le classeur complet n’est pas « horaires seuls »');
+});
+
+test('horaires : réimporter ne change que les heures, et dit lesquelles', async () => {
+  const etat = ETAT_ATELIERS();
+  let f = E.horairesVersClasseur(etat, { services: SERVICES });
+  f = modifier(f, 'Horaires', l => l.map(x => (x[0] === 'Cuisine matin' ? ['cuisine MATIN', 'J-1', 22 / 24 + 15 / 1440, ...x.slice(3)]
+    : x[0] === 'Robot' ? [x[0], 'j', '5h30'] : x)).filter(x => x[0] !== 'Magasin'));
+  const { etat: lu, changes } = E.classeurVersHoraires(await parFichier(f), etat);
+  assert.deepEqual(changes, ['Cuisine matin', 'Robot']);
+  const par = n => lu.ateliers.find(a => a.nom === n);
+  assert.deepEqual([par('Cuisine matin').debut, par('Cuisine matin').jour], ['22:15', -1], 'une heure saisie dans Excel (fraction de jour) est comprise');
+  assert.deepEqual([par('Robot').debut, par('Robot').jour], ['05:30', 0]);
+  assert.equal(par('Magasin').debut, '06:00', 'une ligne retirée laisse sa case à son heure');
+  const sansHeures = e => JSON.stringify(e.ateliers.map(({ debut, jour, ...a }) => a)) + JSON.stringify({ ...e, ateliers: null });
+  assert.equal(sansHeures(lu), sansHeures(etat), 'rien d’autre ne bouge');
+  assert.equal(etat.ateliers[0].debut, '04:30', 'l’état du site n’est pas touché avant validation');
+});
+
+test('horaires : les erreurs sont dites ensemble, et rien n’est importé', () => {
+  const etat = ETAT_ATELIERS();
+  let f = E.horairesVersClasseur(etat, { services: SERVICES });
+  f = modifier(f, 'Horaires', l => l.concat([['Fantôme', 'J', '05:00'], ['Robot', 'J', '06:00']])
+    .map(x => (x[0] === 'Cuisine matin' ? [x[0], 'J', '25:00'] : x[0] === 'Magasin' ? [x[0], 'J', null] : x[0] === 'Plonge' ? [x[0], 'J+1', '05:00'] : x)));
+  assert.throws(() => E.classeurVersHoraires(f, etat), e => {
+    for (const re of [/atelier inconnu « Fantôme »/, /« Robot » a déjà son horaire/, /jour illisible « J\+1 »/,
+      /25:00 dépasse 23:59/, /Magasin : heure de début manquante/, /Rien n’a été importé/]) assert.match(e.message, re);
+    return true;
+  });
+});
+
+test('horaires : dans le classeur complet, la feuille « Horaires » règle les heures', async () => {
+  const etat = ETAT_ATELIERS();
+  let f = E.ateliersVersClasseur(etat, ctxAteliers());
+  assert.ok(!f.find(x => x.nom === 'Ateliers').lignes[0].includes('Début'), 'les heures ne sont écrites qu’à un endroit');
+  f = modifier(f, 'Horaires', l => l.map(x => (x[0] === 'Robot' ? [x[0], 'J-2', '23:00'] : x)));
+  let lu = E.classeurVersAteliers(await parFichier(f), etat, ctxAteliers()).etat;
+  assert.deepEqual([lu.ateliers[1].debut, lu.ateliers[1].jour], ['23:00', -2]);
+  // Sans la feuille, chaque case garde son heure du site ; une nouvelle commence à 06:00, jour J.
+  f = f.filter(x => x.nom !== 'Horaires');
+  f = modifier(f, 'Ateliers', l => l.concat([['Nouvelle', 'cuisine', 'manuel', 2]]));
+  lu = E.classeurVersAteliers(await parFichier(f), etat, ctxAteliers()).etat;
+  assert.deepEqual(lu.ateliers.map(a => a.debut + ' ' + a.jour), ['04:30 0', '05:00 0', '05:00 -1', '06:00 0', '06:00 0']);
+});
+
+test('horaires : un ancien classeur, heures dans « Ateliers », est encore lu', async () => {
+  const etat = ETAT_ATELIERS();
+  const ancien = [{ nom: 'Ateliers', lignes: [['Atelier', 'Service', 'Type', 'Début', 'Jour', 'Personnes'],
+    ['Cuisine matin', 'cuisine', 'manuel', '03:45', -1, 6]] }];
+  const lu = E.classeurVersAteliers(await parFichier(ancien), etat, ctxAteliers()).etat;
+  assert.deepEqual([lu.ateliers[0].debut, lu.ateliers[0].jour], ['03:45', -1]);
+});

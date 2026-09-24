@@ -101,7 +101,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const {f:fAt,nom:nomAt}=await telecharger('#at-export','ateliers.xlsx');
   assert.match(nomAt,/^ory-ateliers-.*\.xlsx$/);
   const feuilles=await T.lireClasseur(fs.readFileSync(fAt));
-  assert.deepEqual(feuilles.map(f=>f.nom),['Ateliers','Fabrications','Man-minutes','Tunnels','Classes','Parcours','Parcours par classe','Matériel','Lisez-moi']);
+  assert.deepEqual(feuilles.map(f=>f.nom),['Ateliers','Horaires','Fabrications','Man-minutes','Tunnels','Classes','Parcours','Parcours par classe','Matériel','Lisez-moi']);
   const fab=T.feuille(feuilles,'Fabrications');
   assert.deepEqual(fab.lignes.slice(1).map(l=>l.join('|')),['Cuisine|1|AF/BC','Dotation|1|AF/YC','Dotation|2|AF/BC','Montage|1|AF/YC','Montage|2|AF/BC']);
   // Dans Excel : deux personnes en cuisine, une compagnie × classe de plus,
@@ -123,7 +123,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator('#at-status').textContent(),/Cases importées/);
   // Un classeur faux est refusé en bloc, et dit quoi corriger.
   const nAvant=await page.evaluate(()=>Sim.ateliers.state.ateliers.length);
-  at.lignes.push(['Fantaisie','GARAGE','manuel','05:00']);
+  at.lignes.push(['Fantaisie','GARAGE','manuel',1]);
   const faux=path.join(dossier,'faux.xlsx');fs.writeFileSync(faux,T.ecrireClasseur(feuilles));
   await page.locator('#at-import').setInputFiles(faux);await attendre(400);
   assert.match(await page.locator('#at-status').textContent(),/Import refusé[\s\S]*service inconnu « GARAGE »[\s\S]*Rien n’a été importé/);
@@ -131,6 +131,30 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // Et l'import s'annule.
   await page.locator('#at-undo').click();await attendre();
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.nom==='Cuisine').personnes),1);
+
+  // 2 bis. Les horaires seuls : un petit classeur, et seules les heures changent.
+  const {f:fH,nom:nomH}=await telecharger('#at-export-horaires','horaires.xlsx');
+  assert.match(nomH,/^ory-horaires-.*\.xlsx$/);
+  const hor=await T.lireClasseur(fs.readFileSync(fH));
+  assert.deepEqual(hor.map(f=>f.nom),['Horaires','Lisez-moi']);
+  const h=T.feuille(hor,'Horaires');
+  assert.deepEqual(h.lignes[0].slice(0,3),['Atelier','Jour','Début']);
+  const ligneCuisine=h.lignes.find(l=>l[0]==='Cuisine');
+  assert.deepEqual(ligneCuisine.slice(1,3),['J','05:00']);
+  assert.match(String(ligneCuisine[5]),/^\d\d:\d\d$/,'la fin prévue, pour se repérer');
+  ligneCuisine[1]='J-1';ligneCuisine[2]='21:30';
+  const avantH=await page.evaluate(()=>JSON.stringify(Sim.ateliers.state.ateliers.map(({debut,jour,...a})=>a)));
+  const finAvant=await page.evaluate(()=>Sim.ateliers.resultat.lots.find(l=>l.service==='cuisine').debut);
+  const modifH=path.join(dossier,'horaires-modifie.xlsx');fs.writeFileSync(modifH,T.ecrireClasseur(hor));
+  await page.locator('#at-import').setInputFiles(modifH);await attendre(400);
+  const cu=await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.nom==='Cuisine'));
+  assert.deepEqual([cu.debut,cu.jour],['21:30',-1]);
+  assert.equal(await page.evaluate(()=>JSON.stringify(Sim.ateliers.state.ateliers.map(({debut,jour,...a})=>a))),avantH,'rien d’autre ne change');
+  assert.match(await page.locator('#at-status').textContent(),/Horaires importés : 1 case décalée \(Cuisine\)/);
+  assert.equal(await page.evaluate(()=>Sim.ateliers.resultat.lots.find(l=>l.service==='cuisine').debut),-150,'la journée est recalculée : la cuisine part la veille à 21:30');
+  assert.notEqual(finAvant,-150);
+  await page.locator('#at-undo').click();await attendre();
+  assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.nom==='Cuisine').debut),'05:00','annulable');
 
   // 3. Le classeur des vols : départs et retours, aller-retour.
   // L'import et l'export des vols vivent à l'étape 1, « Les vols ».

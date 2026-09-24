@@ -268,6 +268,7 @@
     <button class="btn btn-sm" id="at-undo" title="Annuler" aria-label="Annuler">↶ Annuler</button>
     <button class="btn btn-sm" id="at-redo" title="Rétablir" aria-label="Rétablir">↷</button>
     <button class="btn btn-sm" id="at-export" title="Les cases, ce qu’elles préparent et les chemins, dans un classeur Excel">⇩ Excel</button>
+    <button class="btn btn-sm" id="at-export-horaires" title="L’heure de début de chaque case, dans un petit classeur Excel à modifier puis réimporter">⇩ Horaires</button>
     <button class="btn btn-sm" id="at-import-btn" title="Réimporter un classeur modifié dans Excel">⇧ Importer</button>
     <input id="at-import" type="file" accept=".xlsx,.json" hidden>
   </div>
@@ -299,6 +300,7 @@
       on('at-filtre', 'change', e => { this.filtre = e.target.value; this.rendreListe(this.resultat || {}); });
       on('at-new', 'click', () => this.creer());
       on('at-export', 'click', () => this.exporter());
+      on('at-export-horaires', 'click', () => this.exporterHoraires());
       on('at-import-btn', 'click', () => document.getElementById('at-import').click());
       on('at-import', 'change', e => this.importer(e));
 
@@ -578,9 +580,19 @@
     exporter() {
       const E = root.OrlyEchanges, T = root.OrlyTableur;
       const octets = T.ecrireClasseur(E.ateliersVersClasseur(this.state,
-        { services: this.a.services(), classes: this.classes }));
+        { services: this.a.services(), classes: this.classes, resultat: this.resultat }));
       T.telecharger('ory-ateliers-' + new Date().toISOString().slice(0, 10) + '.xlsx', octets);
       this.rendre('Classeur exporté : modifiez-le dans Excel, puis « Importer ».');
+    }
+
+    /** Juste les heures de début : le fichier qu'on retouche le plus souvent. */
+    exporterHoraires() {
+      const E = root.OrlyEchanges, T = root.OrlyTableur;
+      if (!this.state.ateliers.length) return this.rendre('Aucune case encore : créez les chemins, les horaires suivront.');
+      const octets = T.ecrireClasseur(E.horairesVersClasseur(this.state,
+        { services: this.a.services(), resultat: this.resultat }));
+      T.telecharger('ory-horaires-' + new Date().toISOString().slice(0, 10) + '.xlsx', octets);
+      this.rendre('Horaires exportés : changez les heures dans Excel, puis « Importer ».');
     }
 
     async importer(e) {
@@ -594,6 +606,8 @@
         } else {
           const E = root.OrlyEchanges, T = root.OrlyTableur;
           const feuilles = await T.lireFichier(f, 8 * 1024 * 1024);
+          // Un classeur d'horaires seuls ne remplace rien : il décale des équipes.
+          if (E.estClasseurHoraires(feuilles)) return this.importerHoraires(E.classeurVersHoraires(feuilles, this.state));
           const r = E.classeurVersAteliers(feuilles, this.state,
             { services: this.a.services(), programme: this.a.classes() || [] });
           etat = valider(r.etat); ajouts = r.ajouteesAuto;
@@ -603,6 +617,14 @@
           + (ajouts.length ? (ajouts.length > 1 ? ' Commandes ajoutées : ' : ' Commande ajoutée : ') + ajouts.join(', ') + '.' : ''));
       } catch (err) { this.rendre('Import refusé — ' + err.message); }
       finally { e.target.value = ''; }
+    }
+
+    importerHoraires({ etat, changes }) {
+      if (!changes.length) return this.rendre('Horaires lus : aucune heure ne change.');
+      const liste = changes.slice(0, 6).join(', ') + (changes.length > 6 ? '…' : '');
+      if (!confirm('Changer l’heure de début de ' + changes.length + (changes.length > 1 ? ' cases' : ' case') + ' (' + liste + ') ? Rien d’autre ne change. L’action est annulable.')) return;
+      this.changer(() => { this.state = valider(etat); },
+        'Horaires importés : ' + changes.length + (changes.length > 1 ? ' cases décalées' : ' case décalée') + ' (' + liste + ').');
     }
 
     /* ---- rendu ------------------------------------------------------- */

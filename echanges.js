@@ -255,21 +255,115 @@
   const SEP_CLASSES = /\s*[+,;]\s*/;
   const SEP_ETAPES = /\s*(?:→|->|>)\s*/;
 
+  /* ---- Horaires : l'heure de début de chaque case ------------------------
+   * Une feuille à part, la seule à ouvrir pour décaler une équipe. Elle voyage
+   * seule (bouton « ⇩ Horaires ») ou dans le classeur complet. */
+
+  /** « J-1 », « J », « -1 » ou 0 : le décalage en jours, de -7 à 0. */
+  function jourDe(v) {
+    if (v === null || v === undefined || v === '') return 0;
+    const t = String(v).trim().toUpperCase().replace(/\s+/g, '');
+    const m = /^(?:J)?([-−–]\d+)?$/.exec(t) || /^(?:J)?(0)$/.exec(t);
+    const n = m ? (m[1] ? -Math.abs(parseInt(m[1].replace(/[−–]/, '-'), 10)) : 0) : NaN;
+    if (!Number.isInteger(n) || n < -7) throw new Error('jour illisible « ' + v + ' » : J pour le jour du départ, J-1 la veille… jusqu’à J-7');
+    return n || 0;
+  }
+  const jourEcrit = j => (j ? 'J' + j : 'J');
+
+  /**
+   * @param ctx { services, resultat? } — le résultat du moment, pour la fin (info).
+   */
+  function feuilleHoraires(etat, ctx) {
+    const services = ctx.services || [];
+    const nomDe = id => (services.find(s => s.id === id) || {}).nom || id;
+    const fins = new Map((((ctx.resultat || {}).ateliers) || []).map(a => [a.id, a.fin]));
+    const lignes = [['Atelier', 'Jour', 'Début', 'Service' + INFO, 'Personnes' + INFO, 'Fin prévue' + INFO, 'Prépare' + INFO]];
+    // Dans l'ordre de la journée : de la première équipe arrivée à la dernière.
+    const ordre = services.map(s => s.id);
+    const rang = a => (ordre.includes(a.service) ? ordre.indexOf(a.service) : ordre.length);
+    const debutDe = a => (a.jour || 0) * 1440 + (T.heureDe(a.debut) || 0);
+    const prepare = a => {
+      const ids = (a.lots || []).map(l => l.join(' + '));
+      return ids.length ? ids.slice(0, 8).join(', ') + (ids.length > 8 ? '… (' + ids.length + ')' : '') : null;
+    };
+    for (const a of [...etat.ateliers].sort((x, y) => debutDe(x) - debutDe(y) || rang(x) - rang(y))) {
+      const fin = fins.get(a.id);
+      lignes.push([a.nom, jourEcrit(a.jour || 0), a.debut, nomDe(a.service), a.type === 'dispo' ? null : a.personnes,
+        Number.isFinite(fin) ? P.hhmm(fin) : null, prepare(a)]);
+    }
+    return { nom: 'Horaires', lignes };
+  }
+
+  /** Applique la feuille « Horaires » aux ateliers que `atelierNomme` retrouve. */
+  function lireHoraires(fH, atelierNomme, err) {
+    const vus = new Map(), changes = [];
+    for (const o of T.enObjets(fH.lignes).objets) {
+      const a = atelierNomme(o.atelier, fH.nom, o._ligne); if (!a) continue;
+      err.essayer(fH.nom, o._ligne, () => {
+        if (vus.has(a)) throw new Error('« ' + a.nom + ' » a déjà son horaire ligne ' + vus.get(a));
+        vus.set(a, o._ligne);
+        const t = T.heureDe(o.debut);
+        if (t === null) throw new Error(a.nom + ' : heure de début manquante (HH:MM)');
+        if (t >= 1440) throw new Error(a.nom + ' : ' + hh(t) + ' dépasse 23:59 — écrivez l’heure du jour et changez la colonne Jour');
+        const jour = jourDe(o.jour);
+        if (a.debut !== hh(t) || (a.jour || 0) !== jour) changes.push(a);
+        a.debut = hh(t); a.jour = jour;
+      });
+    }
+    return changes;
+  }
+
+  /** Le petit classeur des horaires : la feuille, et comment la remplir. */
+  function horairesVersClasseur(etat, ctx) {
+    return [feuilleHoraires(etat, ctx),
+      lisezMoi('Horaires des ateliers — à modifier dans Excel puis réimporter', [
+        'Une ligne par atelier (une case). Seules les colonnes Jour et Début sont lues ; celles marquées « (info) » sont là pour se repérer.',
+        'Début : l’heure d’arrivée de l’équipe, en HH:MM (ex. 04:30).',
+        'Jour : J le jour du départ des vols, J-1 la veille, J-2 l’avant-veille (jusqu’à J-7).',
+        'Le nom de l’atelier est la clé : ne le changez pas ici. Une ligne retirée laisse son atelier à son heure.',
+        'Réimportez avec « ⇧ Importer » : seules les heures changent, le reste de l’unité ne bouge pas. L’import est annulable.',
+        'Une erreur, et rien n’est importé.'
+      ])];
+  }
+
+  /** Le classeur ne porte que des horaires : pas de feuille « Ateliers ». */
+  const estClasseurHoraires = feuilles => !!T.feuille(feuilles, 'Horaires') && !T.feuille(feuilles, 'Ateliers');
+
+  /**
+   * Seules les heures changent.
+   * @returns {{ etat, changes:[noms des ateliers décalés] }}
+   */
+  function classeurVersHoraires(feuilles, etat) {
+    const fH = T.feuille(feuilles, 'Horaires');
+    if (!fH) throw new Error('Feuille « Horaires » introuvable.');
+    const err = new Erreurs();
+    const out = JSON.parse(JSON.stringify(etat));
+    const parNom = new Map(out.ateliers.map(a => [T.cleEntete(a.nom), a]));
+    const atelierNomme = (v, ou, ligne) => {
+      const a = parNom.get(T.cleEntete(v));
+      if (!a) err.ajouter(ou, ligne, 'atelier inconnu « ' + (v ?? '') + ' » : le nom est la clé, il doit être celui du site');
+      return a;
+    };
+    const changes = lireHoraires(fH, atelierNomme, err);
+    err.lever();
+    return { etat: out, changes: changes.map(a => a.nom) };
+  }
+
   /**
    * @param etat l'état de l'onglet Ateliers
-   * @param ctx  { services:[{id,nom}], classes:[classe du moment] }
+   * @param ctx  { services:[{id,nom}], classes:[classe du moment], resultat? }
    */
   function ateliersVersClasseur(etat, ctx) {
     const services = ctx.services || [];
     const nomDe = id => (services.find(s => s.id === id) || {}).nom || id;
-    const ateliers = [['Atelier', 'Service', 'Type', 'Début', 'Jour', 'Personnes', 'Pauses',
+    const ateliers = [['Atelier', 'Service', 'Type', 'Personnes', 'Pauses',
       'Poste réglementaire', 'Présence (min)', 'Emporte du matériel', 'Débit robot (plateaux/h)',
       'Effectif mini robot', 'Plafond plonge (u/h)', 'Permanent', 'Identifiant']];
     const fab = [['Atelier', 'Ordre', 'Compagnies × classes']];
     const mm = [['Atelier', 'Compagnie × classe', 'Man-minutes']];
     const tunnels = [['Atelier', 'Tunnel', 'Débit (u/h)', 'Personnes', 'Actif']];
     for (const a of etat.ateliers) {
-      ateliers.push([a.nom, nomDe(a.service), TYPES_FR[a.type] || a.type, a.debut, a.jour || 0,
+      ateliers.push([a.nom, nomDe(a.service), TYPES_FR[a.type] || a.type,
         a.type === 'dispo' ? null : a.personnes,
         (a.pauses || []).map(p => p.de + '-' + p.a).join('; ') || null,
         a.regime && a.regime.actif === false ? 'non' : 'oui',
@@ -320,6 +414,7 @@
 
     return [
       { nom: 'Ateliers', lignes: ateliers },
+      feuilleHoraires(etat, ctx),
       { nom: 'Fabrications', lignes: fab },
       { nom: 'Man-minutes', lignes: mm },
       { nom: 'Tunnels', lignes: tunnels },
@@ -329,7 +424,9 @@
       { nom: 'Matériel', lignes: materiel },
       lisezMoi('Ateliers de travail — à modifier dans Excel puis réimporter', [
         'Ateliers : une ligne par équipe. Le nom est la clé : les autres feuilles s’y réfèrent.',
-        '   Type : manuel, robot, plonge ou mise à disposition. Début en HH:MM. Jour : 0 le jour du départ, -1 la veille.',
+        '   Type : manuel, robot, plonge ou mise à disposition.',
+        'Horaires : l’heure de début de chaque atelier, et son jour (J le jour du départ, J-1 la veille).',
+        '   Un atelier sans ligne ici garde son heure du site ; un nouvel atelier commence à 06:00, jour J.',
         '   Pauses : « 10:00-10:15; 12:00-12:30 ». Présence vide : celle du réglage général.',
         'Fabrications : ce que fait chaque atelier, DANS L’ORDRE. Une ligne par lot ; plusieurs classes d’un lot se séparent par « + ».',
         '   Pour ajouter une compagnie × classe à un atelier : ajoutez une ligne (Atelier, Ordre, ex. « AF/BC »).',
@@ -449,9 +546,12 @@
         const sid = service(o.service);
         if (!sid) throw new Error('service inconnu « ' + (o.service ?? '') + ' »');
         const type = typeDe(o.type);
-        const debut = T.heureDe(o.debut ?? '06:00');
-        const jour = T.nombreDe(o.jour, 0);
-        if (!Number.isInteger(jour) || jour > 0 || jour < -7) throw new Error('jour entre -7 et 0');
+        // Les heures vivent dans la feuille « Horaires ». Un ancien classeur les
+        // porte encore ici : on les lit. Sinon, celles du site restent.
+        const avant = etat.ateliers.find(x => x.id === String(o.identifiant ?? '').trim())
+          || etat.ateliers.find(x => T.cleEntete(x.nom) === k);
+        const debut = T.heureDe(o.debut ?? (avant ? avant.debut : '06:00'));
+        const jour = jourDe(o.jour ?? (avant ? avant.jour || 0 : 0));
         const personnes = T.nombreDe(o.personnes, type === 'dispo' ? 0 : 1);
         if (!Number.isInteger(personnes) || personnes < 0) throw new Error('personnes : entier positif ou nul');
         const pauses = String(o.pauses ?? '').split(/\s*;\s*/).filter(Boolean).map(t => {
@@ -481,6 +581,9 @@
       if (!a) err.ajouter(ou, ligne, 'atelier inconnu « ' + (v ?? '') + ' » (absent de la feuille Ateliers)');
       return a;
     };
+
+    const fH = T.feuille(feuilles, 'Horaires');
+    if (fH) lireHoraires(fH, atelierNomme, err);
 
     const fF = T.feuille(feuilles, 'Fabrications');
     const garder = !fF;   // sans la feuille, les fabrications restent celles du site
@@ -593,7 +696,7 @@
   }
 
   const api = { baremeVersClasseur, classeurVersBareme, volsVersClasseur, classeurVersVols,
-    ateliersVersClasseur, classeurVersAteliers };
+    ateliersVersClasseur, classeurVersAteliers, horairesVersClasseur, classeurVersHoraires, estClasseurHoraires, jourDe };
   if (enNode && module.exports) module.exports = api;
   else root.OrlyEchanges = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
