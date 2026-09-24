@@ -15,6 +15,12 @@ main** quand il le faut : `CRL/BC`, `AF/YC`… Une compagnie × classe porte
 - la liste de ses vols ;
 - son **échéance** : le départ le plus serré, moins le délai de chargement.
 
+C'est voulu (confirmé le 24/09) : **on produit une compagnie × classe en une
+fois pour tous ses vols de la journée**, quelle que soit leur heure. Le repas
+d'un vol du soir est donc prêt avec celui du matin et attend en stock jusqu'à
+son chargement — FBU · Business peut y passer près de 12 h. Ce temps en stock
+est une mesure, pas une anomalie.
+
 Les **retours ne fabriquent rien**. Un avion qui arrive ne crée pas de classe à
 produire.
 
@@ -77,7 +83,10 @@ ensemble ; sur deux lignes, l'une après l'autre.* Le mot « lot » ne survit qu
 dans le nom du champ, pour ne pas réécrire les sauvegardes.
 
 La première ligne commence à l'heure de début ; **chacune des suivantes démarre
-quand la précédente est finie**. C'est ce qui permet à un atelier d'enchaîner
+quand la précédente est finie**. Conséquence voulue (confirmée le 24/09) : un
+retard ou un blocage sur une ligne — matériel propre absent, amont en retard —
+**retarde toutes les suivantes de la case**, et avec elles la suite de leurs
+chemins. Le simulateur le montre, il ne le contourne pas. C'est ce qui permet à un atelier d'enchaîner
 CRL/BC puis CRL/PC sans qu'on ait à calculer la seconde heure soi-même.
 
 Une ligne à plusieurs classes les fabrique **ensemble** : elles sortent au même

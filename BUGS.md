@@ -522,11 +522,11 @@ Journée rejouée après correction : stock suffisant, 34/34 à l'heure, aucune
 anomalie, dernière commande 06:34 ; stock court, 10/34 à l'heure et chaque
 commande non montée nommée.
 
-**Remarques de modèle, laissées telles quelles (à trancher).**
-- Une commande (compagnie × classe) a une seule échéance : son premier départ
-  de la journée. Un vol du soir rangé dans la même commande qu'un vol du matin
-  est donc prêt le matin et attend en stock (FBU · Business : 11 h 59 avant le
-  chargement de 18:15).
-- Une case prépare ses commandes dans l'ordre : si la première est bloquée
-  (matériel absent), les suivantes attendent derrière elle. C'est voulu (une
-  équipe suit sa liste), mais un seul manque peut en bloquer beaucoup.
+**Remarques de modèle — confirmées, voulues (24/09).**
+- Une compagnie × classe se produit en une fois pour tous ses vols de la
+  journée : son échéance est son premier départ. Un vol du soir est donc prêt
+  le matin et attend en stock (FBU · Business : 11 h 59 avant le chargement de
+  18:15). C'est la réalité de l'unité.
+- Une case prépare ses commandes dans l'ordre : un retard ou un blocage sur
+  l'une se répercute sur toutes les suivantes et sur le reste de leurs
+  chemins. C'est la réalité de l'unité.
