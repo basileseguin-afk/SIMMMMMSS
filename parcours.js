@@ -389,7 +389,7 @@
       const l = lots.find(x => x.service === s && (x.classes || []).includes(classeId));
       return { service: s, branche: groupe,
         debut: l ? l.debut : null, fin: l ? l.fin : null, attente: l ? (l.attente || 0) : 0,
-        atelier: l ? l.atelier : null, dispo: !!(l && l.dispo && !l.travailFixe), absent: !l && !lavage.has(s),
+        atelier: l ? l.atelier : null, dispo: !!(l && l.dispo), absent: !l && !lavage.has(s),
         commun: !l && lavage.has(s), attendu: null };
     });
     const par = new Map(etapes.map(e => [e.service, e]));
@@ -806,7 +806,6 @@
         // « Cuisine TX BC » dans le nœud Cuisine : le service s'y lit déjà.
         const court = a ? (a.nom.toUpperCase().startsWith(this.nom(s).toUpperCase() + ' ') ? a.nom.slice(this.nom(s).length + 1) : a.nom) : '';
         const sous = !a ? 'aucune case'
-          : a.type === 'dispo' && +a.travail > 0 ? court + ' · ' + a.personnes + ' p. · ' + a.debut + ' · pour tous'
           : a.type === 'dispo' ? court + ' · à disposition'
           : a.type === 'lavage' ? court + ' · plonge'
           : court + ' · ' + a.personnes + ' p. · ' + a.debut;
@@ -903,7 +902,6 @@
         const cases = (etat.ateliers || []).filter(x => x.service === s && fabrique(x));
         const autres = a && fabrique(a) ? [...new Set(a.lots.flat())].filter(id => id !== this.cmd) : [];
         const dit = !a ? `aucune case : ${esc(lib)} saute cette étape`
-          : a.type === 'dispo' && +a.travail > 0 ? `« ${esc(a.nom)} » prépare pour toutes les commandes : ${Math.round(a.travail)} man-minutes de travail dans la journée`
           : a.type === 'dispo' ? `« ${esc(a.nom)} » est une mise à disposition : elle sert toutes les commandes`
           : a.type === 'lavage' ? `« ${esc(a.nom)} » lave pour toutes les commandes`
           : `case « ${esc(a.nom)} »${autres.length ? ' — partagée avec ' + esc(autres.map(etiquette).join(', ')) : ''}`;
@@ -945,7 +943,7 @@
       const r = this.a.resultat ? this.a.resultat() : null, cmd = this.cmd;
       if (!r || !r.ok || !cmd) return '';
       const hh = P.hhmm, d = P.dureeLisible, sej = (r.stocks && r.stocks.sejours) || [];
-      const lot = (r.lots || []).find(l => l.service === s && (!l.dispo || l.travailFixe) && (l.classes || []).includes(cmd));
+      const lot = (r.lots || []).find(l => l.service === s && !l.dispo && (l.classes || []).includes(cmd));
       const lignes = [];
       for (const x of sej.filter(x => x.vers === s && x.classe === cmd))
         lignes.push(`<li class="stock">Livrée par <b>${esc(this.nom(x.de))}</b> à ${hh(x.entree)}, prise à ${hh(x.sortie)} :

@@ -83,10 +83,7 @@
             }))
         } : {}),
         // Une mise à disposition est permanente sauf si on lui donne une heure.
-        // Avec un travail fixe (homme-minutes de la journée), elle a une équipe
-        // et n'est prête qu'une fois ce travail fait.
-        ...(type === 'dispo' ? { permanent: a.permanent !== false,
-          ...(+a.travail > 0 ? { travail: Math.min(100000, Math.round(+a.travail * 100) / 100) } : {}) } : {})
+        ...(type === 'dispo' ? { permanent: a.permanent !== false } : {})
       };
     });
     // Ce que l'utilisateur retire du programme, et ce qu'il y ajoute. Le
@@ -493,13 +490,6 @@
           case 'tunnel-personnes': a.tunnels[+el.dataset.index].personnes = Math.max(0, parseInt(v, 10) || 0); break;
           case 'plafond': a.plafond = Math.max(0, parseFloat(v) || 0); break;
           case 'permanent': a.permanent = el.checked; break;
-          // Une équipe qui prépare pour tout le monde (légumerie) : un travail
-          // de la journée, des gens, une heure d'arrivée.
-          case 'travail-actif':
-            if (el.checked) { a.travail = a.travail || 60; a.personnes = Math.max(1, a.personnes || 0); a.permanent = false; }
-            else { delete a.travail; a.personnes = 0; a.pauses = []; }
-            break;
-          case 'travail': a.travail = Math.max(1, parseFloat(v) || 1); break;
           case 'regime': a.regime = { ...a.regime, actif: el.checked }; break;
           case 'presence': {
             // Vider le champ, c'est revenir au réglage général.
@@ -808,10 +798,7 @@
             title="Ouvrir le chemin de ${esc(P.libelleClasse(c))}">${esc(PC.etiquette(c))}</button>`).join(' + ')).join(' <span aria-hidden="true">→</span> ');
       // Une mise à disposition n'a ni effectif ni heure de fin : son en-tête
       // dirait trois fois « — ». Elle dit ce qu'elle est.
-      const travail = dispo && +a.travail > 0;
-      const sous = travail
-        ? esc(a.debut) + jour + ' · ' + a.personnes + ' pers. · ' + Math.round(a.travail) + ' man-min → prête à ' + esc(fin)
-        : dispo
+      const sous = dispo
         ? (a.permanent === false ? 'disponible à partir de ' + esc(a.debut) + jour : 'disponible en permanence')
         : esc(a.debut) + jour + ' · ' + a.personnes + ' pers.'
           + (a.type === 'robot' ? ' · robot ' + a.debit + ' pl/h' : a.type === 'lavage' ? ' · ' + P.debitLavage(a) + ' u/h' : '')
@@ -892,30 +879,11 @@
           <label>Débit (plateaux/h)<input type="number" min="1" value="${a.debit}" data-at-champ="debit"></label>
           <label>Personnes minimum<input type="number" min="0" value="${a.personnesMin}" data-at-champ="personnesMin"></label>` : ''}
         </div>
-        ${travail ? `
-        <p class="mini-note at-regle">Ce service sert <b>toutes</b> les commandes sans en suivre aucune : son équipe
-          fait le <b>travail de la journée</b> (la désinfection des légumes, par exemple), et tout est prêt
-          quand ce travail est fini. Durée = man-minutes ÷ personnes, pauses comprises.</p>
-        <div class="at-cases">
-          <label class="chk chk-mini"><input type="checkbox" data-at-champ="travail-actif" checked>
-            Une équipe prépare pour tout le monde</label>
-        </div>
-        <div class="at-champs">
-          <label>Arrive à<input type="time" value="${esc(a.debut)}" data-at-champ="debut"></label>
-          <label>Jour<select data-at-champ="jour">${[0, -1, -2, -3].map(j => `<option value="${j}" ${j === a.jour ? 'selected' : ''}>${j === 0 ? 'Jour du départ' : 'J' + j}</option>`).join('')}</select></label>
-          <label>Personnes<input type="number" min="1" max="999" value="${a.personnes}" data-at-champ="personnes"></label>
-          <label>Travail de la journée (man-min)<input type="number" min="1" step="1" value="${a.travail}" data-at-champ="travail"></label>
-        </div>
-        <div class="at-cases">
-          <label class="chk chk-mini"><input type="checkbox" data-at-champ="regime" ${a.regime.actif ? 'checked' : ''}>
-            Poste avec pauses — 15 min après 3 h, 30 min après 6 h</label>
-        </div>` : dispo ? `
+        ${dispo ? `
         <p class="mini-note at-regle">Ce service <b>ne prépare pas</b> de commande : il sort du matériel ou des
-          matières premières, prêts à l’avance. Ni effectif, ni minutes de travail, ni durée — et il sert
-          <b>toutes</b> les commandes, sans qu’on les énumère.</p>
+          matières premières (magasin, légumerie…). Il travaille à la demande : ni effectif, ni man-minutes,
+          ni durée — seulement l’heure à partir de laquelle il sert <b>toutes</b> les commandes.</p>
         <div class="at-cases">
-          <label class="chk chk-mini"><input type="checkbox" data-at-champ="travail-actif">
-            Une équipe prépare pour tout le monde (ex. la légumerie) — un temps de travail fixe pour la journée</label>
           <label class="chk chk-mini"><input type="checkbox" data-at-champ="permanent" ${a.permanent !== false ? 'checked' : ''}>
             Disponible en permanence — personne ne l’attend</label>
           ${a.permanent === false ? `<div class="at-pause">
@@ -1043,7 +1011,7 @@
         const lots = a.lots.map(l => {
           // Une mise à disposition n'a pas de durée : une barre de deux pixels
           // se lirait comme une fabrication minuscule. C'est un repère.
-          if (l.dispo && !l.travailFixe) return `<rect class="at-pl-dispo" x="${x(l.debut) - 3}" y="${y + 2}" width="6" height="16" rx="2"><title>Disponible à partir de ${P.hhmm(l.debut)}</title></rect>`;
+          if (l.dispo) return `<rect class="at-pl-dispo" x="${x(l.debut) - 3}" y="${y + 2}" width="6" height="16" rx="2"><title>Disponible à partir de ${P.hhmm(l.debut)}</title></rect>`;
           if (l.fin == null) return `<rect class="at-pl-bloque" x="${x(l.debut)}" y="${y + 3}" width="10" height="14" rx="3"><title>${esc(l.nom)} : ne tourne pas</title></rect>`;
           const att = l.attente ? `<rect class="at-pl-attente" x="${x(l.debut - l.attente)}" y="${y + 6}" width="${Math.max(1, x(l.debut) - x(l.debut - l.attente))}" height="8" rx="2"><title>Attente des amonts : ${Math.round(l.attente)} min</title></rect>` : '';
           const w = Math.max(2, x(l.fin) - x(l.debut));

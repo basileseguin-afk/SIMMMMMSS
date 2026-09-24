@@ -358,13 +358,13 @@
     const nomDe = id => (services.find(s => s.id === id) || {}).nom || id;
     const ateliers = [['Atelier', 'Service', 'Type', 'Personnes', 'Pauses',
       'Poste réglementaire', 'Présence (min)', 'Emporte du matériel', 'Débit robot (plateaux/h)',
-      'Effectif mini robot', 'Plafond plonge (u/h)', 'Permanent', 'Travail fixe (man-min)', 'Identifiant']];
+      'Effectif mini robot', 'Plafond plonge (u/h)', 'Permanent', 'Identifiant']];
     const fab = [['Atelier', 'Ordre', 'Compagnies × classes']];
     const mm = [['Atelier', 'Compagnie × classe', 'Man-minutes']];
     const tunnels = [['Atelier', 'Tunnel', 'Débit (u/h)', 'Personnes', 'Actif']];
     for (const a of etat.ateliers) {
       ateliers.push([a.nom, nomDe(a.service), TYPES_FR[a.type] || a.type,
-        a.type === 'dispo' && !(+a.travail > 0) ? null : a.personnes,
+        a.type === 'dispo' ? null : a.personnes,
         (a.pauses || []).map(p => p.de + '-' + p.a).join('; ') || null,
         a.regime && a.regime.actif === false ? 'non' : 'oui',
         a.regime && Number.isFinite(a.regime.presence) ? a.regime.presence : null,
@@ -372,7 +372,6 @@
         a.type === 'robot' ? a.debit : null, a.type === 'robot' ? a.personnesMin : null,
         a.type === 'lavage' ? a.plafond || null : null,
         a.type === 'dispo' ? (a.permanent === false ? 'non' : 'oui') : null,
-        a.type === 'dispo' && +a.travail > 0 ? +a.travail : null,
         a.id]);
       (a.lots || []).forEach((l, i) => fab.push([a.nom, i + 1, l.join(' + ')]));
       for (const [id, v] of Object.entries(a.minutes || {})) mm.push([a.nom, id, v]);
@@ -426,7 +425,6 @@
       lisezMoi('Ateliers de travail — à modifier dans Excel puis réimporter', [
         'Ateliers : une ligne par équipe. Le nom est la clé : les autres feuilles s’y réfèrent.',
         '   Type : manuel, robot, plonge ou mise à disposition.',
-        '   Travail fixe (man-min) : pour une mise à disposition qui travaille pour tout le monde (ex. légumerie) — ses homme-minutes de la journée ; il faut alors des personnes. Vide : elle ne travaille pas.',
         'Horaires : l’heure de début de chaque atelier, et son jour (J le jour du départ, J-1 la veille).',
         '   Un atelier sans ligne ici garde son heure du site ; un nouvel atelier commence à 06:00, jour J.',
         '   Pauses : « 10:00-10:15; 12:00-12:30 ». Présence vide : celle du réglage général.',
@@ -573,16 +571,7 @@
           a.personnesMin = T.nombreDe(o.effectif_mini_robot, 1);
         }
         if (type === 'lavage') { a.plafond = T.nombreDe(o.plafond_plonge_u_h, 0); a.tunnels = []; }
-        if (type === 'dispo') {
-          a.permanent = T.ouiNon(o.permanent, true);
-          // Un travail fixe : une équipe prépare pour tout le monde (légumerie).
-          const travail = T.nombreDe(o.travail_fixe_man_min, 0);
-          if (!(travail >= 0)) throw new Error('travail fixe : homme-minutes positives attendues');
-          if (travail > 0) {
-            if (!(personnes >= 1)) throw new Error(nom + ' : un travail fixe demande au moins une personne');
-            a.travail = travail; a.permanent = false;
-          }
-        }
+        if (type === 'dispo') a.permanent = T.ouiNon(o.permanent, true);
         a._ligne = o._ligne;
         parNom.set(k, a); out.ateliers.push(a);
       });

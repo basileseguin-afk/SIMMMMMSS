@@ -60,7 +60,6 @@ Une ligne par équipe. **Le nom est la clé** : les autres feuilles s'y réfère
 | Effectif mini robot | robot seulement |
 | Plafond plonge (u/h) | plonge seulement ; vide = aucun plafond |
 | Permanent | mise à disposition seulement : `oui` = toujours servie |
-| Travail fixe (man-min) | mise à disposition seulement : homme-minutes de la journée d'une équipe qui prépare pour tout le monde (ex. légumerie, `420`) ; il faut alors des Personnes. Vide : simple ouverture |
 | Identifiant | facultatif ; garde la trace de l'atelier d'un import à l'autre |
 
 ### Feuille « Fabrications »

@@ -5,18 +5,14 @@ Le plus récent est en haut.
 
 ---
 
-## 2026-09-24 — Une équipe qui prépare pour tout le monde (légumerie)
+## 2026-09-24 — Mise à disposition : les man-minutes sont ignorés
 
-- Une mise à disposition peut porter un **travail fixe de la journée**
-  (homme-minutes) : son équipe arrive à son heure, fait ce travail (pauses et
-  fin de poste comprises), et toutes les commandes s'en servent à la fin ; le
-  service d'après l'attend. Case : « Une équipe prépare pour tout le monde »
-  (Arrive à, Jour, Personnes, Travail de la journée, pauses). Planning, frise et
-  chemin montrent une vraie barre.
-- Excel : colonne « Travail fixe (man-min) » de la feuille « Ateliers ».
-- Moteur : `travailFixe`, validation (au moins une personne), poste trop court
-  signalé. Docs : MODELE_ATELIERS, FORMATS_EXCEL. Tests : journee-simulee,
-  echanges, ateliers-browser.
+- Retiré : le « travail fixe » d'une mise à disposition, ajouté juste avant.
+  Règle confirmée : un poste de mise à disposition (légumerie, magasin)
+  travaille à la demande ; sa cadence existe, mais la simulation l'ignore et
+  ne retient que l'heure à partir de laquelle il sert.
+- Règle écrite dans MODELE_ATELIERS, dans la case (« il travaille à la
+  demande ») et dans le prompt man-hours (ces postes ne sont pas convertis).
 
 ## 2026-09-24 — Convertisseur man-hours corrigé après sa relecture
 
