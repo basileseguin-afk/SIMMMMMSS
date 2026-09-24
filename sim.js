@@ -857,7 +857,7 @@ function majGoulotInfo() {
     const equipes=((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]).filter(a=>a.service===id);
     if(!equipes.length)html+='<p>Aucune équipe ici — étape 2, « Qui prépare quoi ».</p>';
     else html+='<p>'+equipes.map(a=>'<strong>'+escapeHTML(a.nom)+'</strong>'
-      +(a.type==='dispo'?' · mise à disposition':a.type==='lavage'?' · plonge':' · '+a.personnes+' pers.')).join('<br>')+'</p>';
+      +(a.type==='dispo'&&+a.travail>0?' · '+a.personnes+' pers. pour tout le monde':a.type==='dispo'?' · mise à disposition':a.type==='lavage'?' · plonge':' · '+a.personnes+' pers.')).join('<br>')+'</p>';
     const e=services[id];
     if(e&&!Sim.vue.vide)html+='<p>À '+hh(t)+' : <strong>'+escapeHTML(OrlySimulation.LIBELLE[e.etat])+'</strong>'
       +(e.etat!=='avenir'&&e.nom?' — '+escapeHTML(MoteurProduction.enClair(e.nom)):'')+'.</p>';
@@ -865,7 +865,7 @@ function majGoulotInfo() {
     if(ici.length){
       html+='<ul class="detail-jobs">'+ici.slice(0,8).map(l=>{
         const encours=t>=l.debut&&(l.fin==null||t<l.fin);
-        return '<li'+(encours?' class="en-cours"':'')+'>'+hh(l.debut)+(l.dispo?'':'–'+(l.fin==null?'?':hh(l.fin)))
+        return '<li'+(encours?' class="en-cours"':'')+'>'+hh(l.debut)+(l.dispo&&!l.travailFixe?'':'–'+(l.fin==null?'?':hh(l.fin)))
           +' · '+escapeHTML(MoteurProduction.enClair(l.nom||''))+(l.attente>=1?' · attend '+Math.round(l.attente)+' min':'')
           +(l.impossible?' · <strong>ne tient pas dans le poste</strong>':'')+'</li>';
       }).join('')+'</ul>';

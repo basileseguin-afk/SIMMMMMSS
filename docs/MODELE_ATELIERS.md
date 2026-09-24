@@ -231,6 +231,27 @@ pour qui en demande.
 > seule étape reste « jamais fabriquée ». Sans cette distinction, ouvrir un
 > magasin suffirait à afficher « 100 % à l'heure ».
 
+#### Avec un travail fixe : une équipe qui prépare pour tout le monde
+
+Une légumerie ne suit aucune commande : elle désinfecte les légumes **pour
+toutes**, avec un temps de travail fixe par jour (le budget dit 7 h). Une mise à
+disposition peut porter ce travail :
+
+| Champ | Sens |
+|---|---|
+| `travail` | homme-minutes de la journée (ex. `420`) ; absent ou 0 = simple ouverture |
+| `personnes` | au moins 1 dès qu'il y a un travail |
+| `debut` / `jour` | l'heure d'arrivée de l'équipe (`permanent` ne s'applique plus) |
+| `regime` | pauses et fin de poste, comme toute équipe |
+
+Son équipe arrive à son heure, fait `travail ÷ personnes ÷ rendement` minutes,
+pauses comprises, et **c'est à la fin seulement** que toutes les commandes
+peuvent s'en servir : le service d'après l'attend. Si le poste finit avant, rien
+n'est prêt, et c'est dit (anomalies « poste » puis « inacheve » en aval). Son
+travail compte dans le travail fourni ; il ne rend aucune commande « prête » à
+lui seul. Dans la case : « Une équipe prépare pour tout le monde ». Dans Excel :
+colonne « Travail fixe (man-min) » de la feuille « Ateliers ».
+
 Elle figure malgré tout au **parcours** de ce qu'elle sert : c'est ce qui permet
 de voir d'où vient le matériel. Sur le planning, c'est un repère, pas une barre.
 

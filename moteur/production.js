@@ -397,9 +397,18 @@
    */
   const TYPES = ['manuel', 'robot', 'lavage', 'dispo'];
 
+  /**
+   * Le travail fixe d'une mise à disposition, en homme-minutes pour la journée :
+   * une légumerie désinfecte pour tout le monde, sans suivre de commande. Zéro :
+   * elle ne travaille pas, elle ouvre.
+   */
+  const travailFixe = a => (a && a.type === 'dispo' && +a.travail > 0 ? +a.travail : 0);
+  /** Toujours servie, sans heure : ni travail, ni ouverture fixée. */
+  const permanente = a => a.type === 'dispo' && a.permanent !== false && !travailFixe(a);
+
   /** Heure à partir de laquelle une mise à disposition sert, en minutes. */
   function disponibleDes(atelier) {
-    if (atelier.permanent !== false) return -Infinity;   // toujours servi
+    if (permanente(atelier)) return -Infinity;   // toujours servi
     return minutes(atelier.debut) + (atelier.jour || 0) * MINUTES_PAR_JOUR;
   }
 
@@ -475,12 +484,15 @@
       const robot = a.type === 'robot', lavage = a.type === 'lavage', dispo = a.type === 'dispo';
       // Une mise à disposition permanente n'a pas d'heure : lui en réclamer une
       // serait inventer une contrainte qu'elle n'a pas.
-      if (!(dispo && a.permanent !== false)) {
+      if (!(dispo && permanente(a))) {
         try { minutes(a.debut); } catch (e) { dire('debut', e.message); }
       }
       const gens = a.personnes;
-      // Une mise à disposition n'a pas d'effectif : elle ne fabrique pas.
-      if (dispo) { /* ni personnes, ni lots, ni barème */ }
+      // Une mise à disposition n'a pas d'effectif : elle ne fabrique pas. Sauf
+      // si elle porte un travail fixe : il faut alors des gens pour le faire.
+      if (dispo && a.travail !== undefined && a.travail !== null && !(+a.travail >= 0)) dire('travail', 'travail de la journée : homme-minutes positives attendues.');
+      else if (dispo && travailFixe(a) && !(Number.isInteger(gens) && gens >= 1)) dire('personnes', 'un travail fixe demande au moins une personne.');
+      else if (dispo) { /* ni personnes, ni lots, ni barème */ }
       else if (!Number.isInteger(gens) || gens < 0) dire('personnes', 'nombre de personnes entier attendu.');
       else if (!robot && gens === 0) dire('personnes', 'sans personne, rien n’est fabriqué.');
 
@@ -873,7 +885,7 @@
 
     // Une mise à disposition permanente n'a pas d'heure : elle ne doit pas
     // tirer le début de la journée en arrière.
-    const debuts = ateliers.filter(a => a.type !== 'dispo' || a.permanent === false)
+    const debuts = ateliers.filter(a => !permanente(a))
       .map(a => minutes(a.debut) + (a.jour || 0) * MINUTES_PAR_JOUR);
     const env = new Environnement(debuts.length ? Math.min(...debuts) : 0);
 
@@ -1019,8 +1031,7 @@
 
     const journal = [];   // une ligne par lot : ce que l'on affichera
     const suivi = ateliers.map(a => ({ id: a.id, nom: a.nom, service: a.service, type: a.type,
-      debut: a.type === 'dispo' && a.permanent !== false
-        ? env.maintenant : minutes(a.debut) + (a.jour || 0) * MINUTES_PAR_JOUR,
+      debut: permanente(a) ? env.maintenant : minutes(a.debut) + (a.jour || 0) * MINUTES_PAR_JOUR,
       personnes: a.personnes,
       fin: null, travail: 0, attente: 0, arret: 0, lots: [] }));
     const parId = new Map(suivi.map(s => [s.id, s]));
@@ -1038,6 +1049,34 @@
       // Une mise à disposition ne travaille pas : elle ouvre. Une seule ligne
       // de journal, portée par toutes les classes, pour que le parcours la
       // montre sans encombrer le planning de vingt barres de largeur nulle.
+      // Une mise à disposition qui travaille : son équipe arrive à son heure,
+      // fait le travail de la journée (pauses et fin de poste comprises), et
+      // ce n'est qu'à la fin que TOUTES les commandes peuvent s'en servir.
+      if (a.type === 'dispo' && travailFixe(a)) {
+        const hommeMinutes = travailFixe(a);
+        env.processus(function* () {
+          if (env.maintenant < depart) yield env.delai(depart - env.maintenant);
+          const ids = classes.map(c => c.id);
+          const duree = hommeMinutes / a.personnes / rendement;
+          const t = executerTache({ depart: env.maintenant, duree, cumul: 0, prises, pauses, regime, finPoste });
+          const debutLot = env.maintenant;
+          yield env.delai(t.fin - env.maintenant);
+          vue.travail += t.fait; vue.arret += t.arret;
+          const ligne = { atelier: a.id, service: a.service, nom: 'travail de la journée', classes: ids,
+            debut: debutLot, fin: t.tronque ? null : env.maintenant, duree, attente: 0, arret: t.arret,
+            impossible: t.tronque, dispo: true, travailFixe: true, hommeMinutes,
+            ...(t.tronque ? { horsPoste: true, fait: t.fait } : {}) };
+          journal.push(ligne); vue.lots.push(ligne);
+          if (t.tronque) return;   // l'équipe est partie : rien n'est prêt
+          for (const id of ids) {
+            const ev = livraison(a.service, id);
+            if (!ev.declenche) ev.reussir(env.maintenant);
+          }
+          vue.fin = env.maintenant;
+        }, a.nom);
+        continue;
+      }
+
       if (a.type === 'dispo') {
         const des = disponibleDes(a);
         const ouverture = Math.max(env.maintenant, Number.isFinite(des) ? des : env.maintenant);
@@ -1514,7 +1553,7 @@
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,
     pausesDe, finAvecPauses,
     UNITES_DEFAUT, unitesDe, retoursDeVols, besoinMateriel,
-    simuler, niveauA, niveauLineaire, dureeLisible
+    simuler, niveauA, niveauLineaire, dureeLisible, travailFixe
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

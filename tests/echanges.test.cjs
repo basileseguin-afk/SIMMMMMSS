@@ -276,3 +276,22 @@ test('horaires : un ancien classeur, heures dans « Ateliers », est encore lu',
   const lu = E.classeurVersAteliers(await parFichier(ancien), etat, ctxAteliers()).etat;
   assert.deepEqual([lu.ateliers[0].debut, lu.ateliers[0].jour], ['03:45', -1]);
 });
+
+test('ateliers : une mise à disposition avec travail fixe fait l’aller-retour par Excel', async () => {
+  const etat = ETAT_ATELIERS();
+  etat.ateliers.push({ id: 'a5', nom: 'Légumerie', service: 'decontam', type: 'dispo', debut: '04:00', jour: -1, personnes: 2,
+    travail: 420, pauses: [], lots: [], regime: { actif: true }, permanent: false });
+  let f = E.ateliersVersClasseur(etat, ctxAteliers());
+  const at = f.find(x => x.nom === 'Ateliers').lignes, col = at[0].indexOf('Travail fixe (man-min)');
+  assert.ok(col > 0);
+  assert.equal(at.find(l => l[0] === 'Légumerie')[col], 420);
+  assert.equal(at.find(l => l[0] === 'Légumerie')[at[0].indexOf('Personnes')], 2, 'ses personnes sont écrites');
+  assert.equal(at.find(l => l[0] === 'Magasin')[col], null, 'une simple ouverture n’en a pas');
+  let lu = E.classeurVersAteliers(await parFichier(f), etat, ctxAteliers()).etat;
+  const lg = lu.ateliers.find(a => a.nom === 'Légumerie');
+  assert.deepEqual([lg.travail, lg.personnes, lg.debut, lg.jour, lg.permanent], [420, 2, '04:00', -1, false]);
+  assert.equal(lu.ateliers.find(a => a.nom === 'Magasin').travail, undefined);
+  // Un travail fixe sans personne est refusé.
+  f = modifier(f, 'Ateliers', l => l.map(x => (x[0] === 'Légumerie' ? x.map((v, i) => (i === l[0].indexOf('Personnes') ? 0 : v)) : x)));
+  assert.throws(() => E.classeurVersAteliers(f, etat, ctxAteliers()), /Légumerie : un travail fixe demande au moins une personne/);
+});

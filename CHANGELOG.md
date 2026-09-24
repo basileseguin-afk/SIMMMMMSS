@@ -5,6 +5,19 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-24 — Une équipe qui prépare pour tout le monde (légumerie)
+
+- Une mise à disposition peut porter un **travail fixe de la journée**
+  (homme-minutes) : son équipe arrive à son heure, fait ce travail (pauses et
+  fin de poste comprises), et toutes les commandes s'en servent à la fin ; le
+  service d'après l'attend. Case : « Une équipe prépare pour tout le monde »
+  (Arrive à, Jour, Personnes, Travail de la journée, pauses). Planning, frise et
+  chemin montrent une vraie barre.
+- Excel : colonne « Travail fixe (man-min) » de la feuille « Ateliers ».
+- Moteur : `travailFixe`, validation (au moins une personne), poste trop court
+  signalé. Docs : MODELE_ATELIERS, FORMATS_EXCEL. Tests : journee-simulee,
+  echanges, ateliers-browser.
+
 ## 2026-09-24 — Convertisseur man-hours corrigé après sa relecture
 
 - Prompt 2 réécrit : « * » ne remplace qu'une compagnie, jamais une classe ;

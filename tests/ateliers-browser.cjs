@@ -247,6 +247,25 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await champ(mag,'debut','09:00');
   const tard=(await resultat()).lots.find(l=>l.service==='magasin');
   assert.equal(tard.debut,9*60,'elle ouvre à l’heure dite');
+  // Une équipe qui prépare pour tout le monde (la légumerie) : un travail fixe
+  // de la journée, des personnes, une heure ; tout est prêt à la fin.
+  await page.locator(`${fiche} [data-at-champ=travail-actif]`).check();await attendre();
+  assert.equal(await page.locator(`${fiche} [data-at-champ=personnes]`).inputValue(),'1','une personne au moins');
+  await champ(mag,'debut','04:00');await champ(mag,'personnes',2);await champ(mag,'travail',420);
+  const fixe=await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id),mag);
+  assert.deepEqual([fixe.travail,fixe.personnes,fixe.permanent],[420,2,false]);
+  const lotFixe=(await resultat()).lots.find(l=>l.service==='magasin');
+  assert.equal(lotFixe.debut,4*60);
+  assert.equal(lotFixe.fin,4*60+210+15,'420 man-min à deux, pause comprise');
+  assert.match(await page.locator(`${fiche} .at-carte-nom span`).textContent(),/04:00 · 2 pers\. · 420 man-min → prête à 07:45/);
+  await onglet('at-planning');
+  assert.match(await page.locator('#at-planning').innerHTML(),/<rect class="at-pl-lot[^>]*>\s*<title>travail de la journée\n04:00 → 07:45 \(210 min, dont 15 min d’arrêt\)/,
+    'une vraie barre au planning, pas un repère');
+  // Décochée, elle redevient une simple ouverture, sans effectif.
+  await ouvrir(mag);
+  await page.locator(`${fiche} [data-at-champ=travail-actif]`).uncheck();await attendre();
+  const sans=await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id),mag);
+  assert.deepEqual([sans.travail,sans.personnes],[undefined,0]);
 
 
   // 18. Le poste : pauses automatiques et heure de fin, visibles et r\u00e9glables.
