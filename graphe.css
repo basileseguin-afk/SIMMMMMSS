@@ -34,6 +34,8 @@
 .gr-port:hover circle{r:11}
 
 .gr-lien{cursor:pointer}
+/* Le temps en stock sur un lien : ce que l'amont a fini et que l'aval n'a pas encore pris. */
+.gr-etiq{font-size:12px;font-weight:700;fill:#1e5aa8;paint-order:stroke;stroke:var(--bg3);stroke-width:5px;stroke-linejoin:round;pointer-events:none}
 .gr-prise{fill:none;stroke:transparent;stroke-width:16}
 .gr-trait{fill:none;stroke:var(--edge);stroke-width:2.6}
 .gr-pointe{fill:var(--edge)}
@@ -143,6 +145,9 @@
 .pc-tiroir .pc-case-choix select{min-width:0;width:100%}
 .pc-tiroir .pc-case-outils{display:grid;grid-template-columns:1fr;gap:8px}
 .pc-tiroir .pc-case-outils .pc-outils-fin{display:none}
+.pc-temps{margin:0;padding:8px 12px;list-style:none;display:grid;gap:4px;font-size:13px;border-radius:8px;background:var(--bg2)}
+.pc-temps li.stock{color:#1e5aa8}
+.pc-bleu{color:#1e5aa8;font-weight:700}
 .pc-renvoi{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--txt2)}
 .pc-renvoi .ico{color:var(--c-equipes)}
 /* La page se range à gauche de la fenêtre de la case. */

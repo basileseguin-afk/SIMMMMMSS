@@ -301,6 +301,55 @@ trace, sa classe paraîtrait fabriquée par ses autres étapes.
 Le service est **premier arrivé, premier servi** : sans cela un petit lot
 passerait indéfiniment devant un gros.
 
+### Le bouchon à la plonge : la file de sale
+
+Les retours arrivent au rythme des vols, les tunnels lavent au leur. Quand il en
+revient plus qu'ils n'en lavent, **une file se forme**. Le calcul la suit :
+
+- **le sale pas encore lavé**, dans le temps : il monte d'un coup à chaque
+  retour, et baisse au rythme des tunnels pendant qu'ils lavent (ce qui est dans
+  un tunnel compte tant qu'il n'en est pas sorti) ;
+- **l'attente** de chaque unité, de son retour à sa sortie du tunnel, dans
+  l'ordre des retours (premier revenu, premier lavé) : la plus longue et la
+  moyenne ; ce qui n'est jamais lavé attend jusqu'à la fin de la journée ;
+- **les retours heure par heure** face au **débit des tunnels** (ceux qui
+  tournent) : les heures où il revient plus qu'ils ne lavent sont nommées.
+
+Au-delà d'une heure d'attente, un point à regarder le dit (« Bouchon à la
+plonge : jusqu'à 740 u… »), sans bloquer la journée.
+
+## 3 bis. Le temps entre deux ateliers : les stocks
+
+Si la cuisine finit TX BC à 07:10 et que la prépa ne la prend qu'à 09:10, TX BC
+passe **deux heures en stock** entre les deux. Le calcul le lit dans le journal,
+sans rien inventer : pour chaque préparation et chaque commande, la fin de la
+préparation de chaque service d'avant sur son chemin, et le début de celle-ci.
+De même entre la dernière étape et **le chargement de l'avion**. Une mise à
+disposition (le magasin ouvert) n'est pas un stock produit.
+
+C'est l'inverse de l'attente : l'attente, c'est l'aval qui est prêt et attend
+l'amont ; le stock, c'est le produit fini qui attend l'aval.
+
+Pour chaque séjour : d'où, vers où, quelle commande, de quand à quand, combien
+de repas (ses passagers). Par lien : le plus de repas en stock à la fois et
+quand, le séjour le plus long, la moyenne. Devant un service : le niveau du
+stock dans le temps, **une commande comptant une fois** même livrée par deux
+services d'avant (le matériel par la dotation, les produits par le magasin).
+
+Où on le voit :
+
+- sur le **chemin** d'une commande, en bleu sur chaque lien : le temps qu'elle y
+  passe en stock ; et dans la fenêtre de sa case : « Livrée par Cuisine à 07:10,
+  prise à 09:10 : 2 h 00 en stock (32 repas) » ;
+- dans la **frise** d'une commande (« Qui prépare quoi », dernière colonne) : un
+  trait bleu « en stock » avant chaque étape, et la phrase qui résume ;
+- dans **La journée › Stocks et retours** : le tableau des stocks par lien, avec
+  leur niveau au fil de la journée (même échelle pour tous), puis la plonge :
+  cinq chiffres, les retours heure par heure face au débit, et le sale pas encore
+  lavé ; au survol, la valeur de chaque heure ;
+- sur le **plan rejoué** : une pastille au-dessus d'un service, « 32 repas en
+  stock » ou « 540 u à laver », et « En ce moment » qui les liste.
+
 ## 4. Le parcours
 
 Une compagnie × classe n'est pas une ligne mais un **assemblage**, et toutes ne

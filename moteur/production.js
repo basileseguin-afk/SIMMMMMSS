@@ -862,7 +862,7 @@
     }
 
     // Ce qui n'empêche pas de jouer la journée ne doit pas l'empêcher.
-    const NON_BLOQUANTES = new Set(['doublon', 'bareme', 'lots', 'lot-vide', 'poste', 'materiel', 'dispo',
+    const NON_BLOQUANTES = new Set(['doublon', 'bareme', 'lots', 'lot-vide', 'poste', 'materiel', 'dispo', 'bouchon',
       'tunnel-personnes', 'parcours-trou', 'hors-parcours', 'bareme-classe']);
     const bloquant = anomalies.some(a => !NON_BLOQUANTES.has(a.code));
     if (bloquant) return { ok: false, anomalies, classes, lots: [], ateliers: [] };
@@ -960,6 +960,15 @@
     };
     const attenteurs = [];      // lots en attente de matériel propre, dans l'ordre
     const reveilsSale = [];     // processus de lavage en attente d'un retour
+    // La file de sale devant la plonge, pour la montrer dans le temps : son
+    // niveau à chaque changement, et chaque arrivée dans l'ordre (premier
+    // revenu, premier lavé), pour dire combien de temps elle a attendu.
+    // Le sale PAS ENCORE LAVÉ : ce qui attend, plus ce qui est dans un tunnel
+    // et n'en est pas encore sorti (un tunnel lave en continu, à son débit).
+    const file = { serie: [], arrivees: [], attentes: [], retours: [], tunnels: new Set() };
+    const resteAuTunnel = t => [...file.tunnels].reduce((n, b) =>
+      n + b.unites * Math.max(0, Math.min(1, b.fin > b.debut ? (b.fin - t) / (b.fin - b.debut) : 0)), 0);
+    const noterFile = () => file.serie.push([env.maintenant, stock.sale + resteAuTunnel(env.maintenant)]);
 
     function servir() {
       // Premier arrivé, premier servi : sans cela un petit lot passerait devant
@@ -994,7 +1003,11 @@
       for (const r of retoursDeVols(opts.vols, mat)) {
         env.processus(function* () {
           if (env.maintenant < r.t) yield env.delai(r.t - env.maintenant);
+          noterFile();
           stock.sale += r.unites; stock.entrees += r.unites;
+          file.arrivees.push({ t: env.maintenant, u: r.unites });
+          file.retours.push({ t: env.maintenant, u: r.unites, vol: r.vol });
+          noterFile();
           while (reveilsSale.length) { const ev = reveilsSale.shift(); if (!ev.declenche) ev.reussir(env.maintenant); }
         }, 'retour ' + r.vol);
       }
@@ -1049,19 +1062,42 @@
             if (stock.sale <= 0) {
               // Rien \u00e0 laver : on attend le prochain retour, ou la fin du poste.
               const ev = env.evenement('retour'); reveilsSale.push(ev);
-              yield env.unDe([ev, env.delai(Math.max(0, finPoste - env.maintenant))]);
+              // Un poste sans fin (pauses décochées) n'attend que le retour.
+              yield Number.isFinite(finPoste) ? env.unDe([ev, env.delai(Math.max(0, finPoste - env.maintenant))]) : ev;
               continue;
             }
             // On lave tout ce qui est l\u00e0 ; ce qui arrive pendant sera le tour suivant.
             const unites = stock.sale; stock.sale = 0;
+            // Ce qui entre au tunnel, dans l'ordre des retours (premier revenu, premier lavé).
+            const pris = [];
+            for (let pos = 0; pos < unites - 1e-9 && file.arrivees.length;) {
+              const a0 = file.arrivees[0], u = Math.min(a0.u, unites - pos);
+              pris.push({ t: a0.t, u, pos }); pos += u;
+              a0.u -= u; if (a0.u <= 1e-9) file.arrivees.shift();
+            }
             const duree = unites / debitLavage(a) * 60;
             const t = executerTache({ depart: env.maintenant, duree, cumul: cumulL,
               prises: prisesL, pauses, regime, finPoste });
             const debutLot = env.maintenant;
+            const passe = { debut: debutLot, fin: t.fin, unites };
+            file.tunnels.add(passe);
             yield env.delai(t.fin - env.maintenant);
+            file.tunnels.delete(passe);
             cumulL = t.cumul;
             const lavees = t.tronque ? unites * (t.fait / duree) : unites;
             stock.sale += unites - lavees;      // ce qui n'a pas \u00e9t\u00e9 lav\u00e9 reste sale
+            // Chaque unité a attendu depuis son retour jusqu'à sa sortie du tunnel ;
+            // ce qui n'en est pas sorti retourne en tête de file, avec son heure de retour.
+            const rendus = [];
+            for (const c of pris) {
+              const w = Math.max(0, Math.min(c.u, lavees - c.pos));
+              // En moyenne, le milieu du paquet ; au pire, sa dernière unité.
+              const sortie = k => debutLot + k / Math.max(lavees, 1e-9) * (env.maintenant - debutLot) - c.t;
+              if (w > 1e-9) file.attentes.push({ u: w, attente: sortie(c.pos + w / 2), pire: sortie(c.pos + w) });
+              if (c.u - w > 1e-9) rendus.push({ t: c.t, u: c.u - w });
+            }
+            file.arrivees.unshift(...rendus);
+            noterFile();
             crediter(lavees);
             const ligne = { atelier: a.id, service: a.service, nom: Math.round(lavees) + ' u lav\u00e9es',
               classes: [], debut: debutLot, fin: env.maintenant, duree: t.fait, attente: 0,
@@ -1220,6 +1256,16 @@
       };
     }
 
+    const stocks = stocksEntreAteliers(journal, classes, derniers, amontsDe);
+    const plonge = mat.actif ? bilanPlonge(file, stock, ateliers.filter(a => a.type === 'lavage'), env.maintenant) : null;
+    if (plonge && plonge.attenteMax >= 60) {
+      anomalies.push({ code: 'bouchon', service: plonge.services[0] || 'plonge',
+        message: 'Bouchon à la plonge : jusqu’à ' + Math.round(plonge.max) + ' u sales en attente (à ' + hhmm(plonge.maxA) + ') ; '
+          + 'du matériel attend jusqu’à ' + dureeLisible(plonge.attenteMax) + ' avant d’être lavé.'
+          + (plonge.depassements.length ? ' Les retours dépassent son débit (' + Math.round(plonge.capacite) + ' u/h) de '
+            + plonge.depassements.map(d => hhmm(d.de) + ' à ' + hhmm(d.a)).join(', ') + '.' : '') });
+    }
+
     const suivies = Object.values(derniers).filter(c => !c.absente);
     const aHeure = suivies.filter(c => c.aHeure).length;
     const retards = suivies.filter(c => c.retard != null).map(c => c.retard);
@@ -1250,7 +1296,157 @@
         minPropre: Math.round(stock.minPropre), attente: stock.attente,
         enAttente: attenteurs.length
       } : null,
+      stocks,
+      plonge,
       finDe
+    };
+  }
+
+  /* ======================================================================
+   *  7 bis. LE TEMPS ENTRE DEUX ATELIERS
+   *
+   *  Un atelier qui finit TX BC à 07:10 et une prépa qui ne la prend qu'à
+   *  09:10 : pendant deux heures, TX BC est en STOCK entre les deux. Le
+   *  calcul ne l'invente pas, il le lit dans le journal : pour chaque lot et
+   *  chaque classe, la fin du lot de chaque service d'avant, et le début de
+   *  celui-ci. De même entre la dernière étape et le chargement de l'avion.
+   *
+   *  À la plonge, c'est l'inverse : les retours arrivent à leur rythme, les
+   *  tunnels lavent au leur. Quand il en arrive plus qu'ils n'en lavent, une
+   *  FILE de sale se forme : on la suit dans le temps.
+   * ====================================================================*/
+
+  /** « 2 h 05 », « 45 min ». */
+  function dureeLisible(m) {
+    const n = Math.round(m);
+    return n < 60 ? n + ' min' : Math.floor(n / 60) + ' h ' + String(n % 60).padStart(2, '0');
+  }
+
+  /** Le niveau d'une série de points [[t, niveau]…] reliés en ligne droite
+   *  (le sale qui baisse pendant qu'un tunnel lave), à l'instant `t`. */
+  function niveauLineaire(serie, t) {
+    let avant = null;
+    for (const pt of serie || []) {
+      if (pt[0] <= t) { avant = pt; continue; }
+      if (!avant) return 0;
+      return avant[1] + (pt[1] - avant[1]) * (t - avant[0]) / (pt[0] - avant[0]);
+    }
+    return avant ? avant[1] : 0;
+  }
+
+  /** Le niveau d'une série en escalier [[t, niveau]…] à l'instant `t`. */
+  function niveauA(serie, t) {
+    let v = 0;
+    for (const [u, n] of serie || []) { if (u > t) break; v = n; }
+    return v;
+  }
+
+  /** Des séjours [{entree, sortie, repas}] vers une série en escalier. */
+  function serieDe(sejours) {
+    const ev = [];
+    for (const s of sejours) { ev.push([s.entree, s.repas]); ev.push([s.sortie, -s.repas]); }
+    ev.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const serie = []; let n = 0;
+    for (const [t, d] of ev) {
+      n += d;
+      if (serie.length && serie[serie.length - 1][0] === t) serie[serie.length - 1][1] = n;
+      else serie.push([t, n]);
+    }
+    return serie;
+  }
+
+  /** Le plus haut d'une série, et quand. */
+  function sommet(serie) {
+    let max = 0, a = null;
+    for (const [t, n] of serie || []) if (n > max) { max = n; a = t; }
+    return { max, a };
+  }
+
+  /**
+   * Les séjours en stock : entre deux services du chemin d'une classe, et
+   * entre sa dernière étape et le chargement. Une mise à disposition (le
+   * magasin ouvert) n'est pas un stock produit : elle ne compte pas.
+   */
+  function stocksEntreAteliers(journal, classes, derniers, amontsDe) {
+    const parClasse = new Map(classes.map(c => [c.id, c]));
+    const lotDe = new Map();
+    for (const l of journal) if (!l.dispo) for (const c of l.classes || []) lotDe.set(l.service + '|' + c, l);
+    const sejours = [];
+    for (const l of journal) {
+      if (l.dispo || !Number.isFinite(l.debut)) continue;
+      for (const c of l.classes || []) {
+        const k = parClasse.get(c); if (!k) continue;
+        for (const amont of amontsDe(l.service, c)) {
+          const a = lotDe.get(amont + '|' + c);
+          if (!a || a.fin == null || l.debut - a.fin < 1) continue;
+          sejours.push({ de: amont, vers: l.service, classe: c, entree: a.fin, sortie: l.debut,
+            duree: l.debut - a.fin, repas: k.pax || 0 });
+        }
+      }
+    }
+    // Prête avant le chargement : elle attend l'avion.
+    for (const d of Object.values(derniers)) {
+      if (d.fin == null || d.absente || !Number.isFinite(d.echeance) || d.echeance - d.fin < 1) continue;
+      const derniere = journal.find(l => !l.dispo && (l.classes || []).includes(d.id) && l.fin === d.fin);
+      sejours.push({ de: derniere ? derniere.service : null, vers: 'chargement', classe: d.id, entree: d.fin,
+        sortie: d.echeance, duree: d.echeance - d.fin, repas: d.pax || 0 });
+    }
+    const grouper = cle => {
+      const m = new Map();
+      for (const s of sejours) { const k = cle(s); if (!m.has(k)) m.set(k, []); m.get(k).push(s); }
+      return m;
+    };
+    const parLien = [...grouper(s => s.de + '>' + s.vers)].map(([k, ss]) => {
+      const serie = serieDe(ss), h = sommet(serie);
+      const long = ss.reduce((x, y) => (y.duree > x.duree ? y : x));
+      const poids = ss.reduce((n, s) => n + (s.repas || 1), 0);
+      return { id: k, de: ss[0].de, vers: ss[0].vers, sejours: ss.length, repasMax: h.max, a: h.a,
+        dureeMax: long.duree, classeMax: long.classe,
+        dureeMoy: ss.reduce((n, s) => n + s.duree * (s.repas || 1), 0) / poids, serie };
+    }).sort((x, y) => y.dureeMax - x.dureeMax);
+    // Devant un service, une commande compte une fois, même livrée par deux
+    // services (le matériel par la dotation, les produits par le magasin) :
+    // en stock dès la première livraison, jusqu'à ce qu'il la prenne.
+    const parService = {};
+    for (const [v, ss] of grouper(s => s.vers)) {
+      const parCmd = new Map();
+      for (const x of ss) {
+        const y = parCmd.get(x.classe);
+        if (!y) parCmd.set(x.classe, { ...x }); else y.entree = Math.min(y.entree, x.entree);
+      }
+      parService[v] = serieDe([...parCmd.values()]);
+    }
+    return { sejours, parLien, parService };
+  }
+
+  /**
+   * La file de sale devant la plonge : son niveau dans le temps, le temps
+   * qu'une unité y attend, et les heures où les retours dépassent ce que les
+   * tunnels lavent en une heure.
+   */
+  function bilanPlonge(file, stock, lavages, finJournee) {
+    const capacite = lavages.reduce((n, a) => n + debitLavage(a), 0);
+    const h = sommet(file.serie);
+    const lavees = file.attentes.reduce((n, a) => n + a.u, 0);
+    const parHeure = new Map();
+    for (const r of file.retours) { const k = Math.floor(r.t / 60) * 60; parHeure.set(k, (parHeure.get(k) || 0) + r.u); }
+    const heures = [...parHeure].sort((a, b) => a[0] - b[0]).map(([t, u]) => ({ t, u }));
+    // Les heures où il revient plus que la plonge ne lave, regroupées en plages.
+    const depassements = [];
+    for (const x of heures) {
+      if (x.u <= capacite) continue;
+      const d = depassements[depassements.length - 1];
+      if (d && d.a === x.t) d.a = x.t + 60; else depassements.push({ de: x.t, a: x.t + 60 });
+    }
+    return {
+      services: [...new Set(lavages.map(a => a.service))],
+      capacite, serie: file.serie, max: h.max, maxA: h.a,
+      // Ce qui n'a jamais été lavé attend encore à la fin de la journée.
+      attenteMax: Math.max(file.attentes.reduce((n, a) => Math.max(n, a.pire), 0),
+        ...file.arrivees.filter(a => a.u > 1e-9).map(a => finJournee - a.t)),
+      attenteMoy: lavees ? file.attentes.reduce((n, a) => n + a.attente * a.u, 0) / lavees : 0,
+      retours: file.retours, heures, depassements,
+      resteSale: Math.round(stock.sale), fin: finJournee
     };
   }
 
@@ -1268,7 +1464,7 @@
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,
     pausesDe, finAvecPauses,
     UNITES_DEFAUT, unitesDe, retoursDeVols, besoinMateriel,
-    simuler
+    simuler, niveauA, niveauLineaire, dureeLisible
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

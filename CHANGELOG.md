@@ -5,6 +5,50 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-24 — Le temps entre les ateliers : stocks et bouchons
+
+**Stocks** (`moteur/production.js` : `stocksEntreAteliers`)
+- Quand un atelier finit une commande et que le suivant ne la prend que plus
+  tard, elle est **en stock** : chaque séjour est compté (d'où, vers où, de
+  quand à quand, combien de repas), y compris entre la dernière étape et le
+  **chargement de l'avion**. Par lien : le plus de repas à la fois, le séjour le
+  plus long, la moyenne. Devant chaque service : le niveau dans le temps, une
+  commande comptant une fois même livrée par deux services.
+
+**Bouchon à la plonge** (`bilanPlonge`)
+- Le **sale pas encore lavé** est suivi dans le temps : il monte à chaque
+  retour et baisse au rythme des tunnels. L'**attente** de chaque unité, de son
+  retour à sa sortie du tunnel (premier revenu, premier lavé) : la plus longue
+  et la moyenne. Les **heures où il revient plus que les tunnels ne lavent**
+  sont nommées ; au-delà d'une heure d'attente, un point à regarder le signale.
+- Corrigé : une plonge dont le poste n'a pas de fin (pauses décochées) faisait
+  échouer le calcul (délai infini en attendant un retour).
+
+**Où on le voit**
+- **Le chemin** : en bleu sur chaque lien, le temps que la commande y passe en
+  stock ; dans la fenêtre de la case, ce qui l'attendait, son travail, et ce
+  qu'elle attend ensuite (`parcours.js`, `graphe.js`).
+- **La frise** d'une commande : un trait « en stock » avant chaque étape, et la
+  phrase dit le plus long séjour et l'attente avant le chargement.
+- **La journée › Stocks et retours** (nouvel onglet, `temps.js`, `temps.css`) :
+  le tableau des stocks par lien avec leur niveau au fil de la journée ; pour
+  la plonge, cinq chiffres, les retours heure par heure face au débit (les
+  heures en dépassement marquées « ▲ »), et le sale pas encore lavé ; survol
+  sur chaque barre et curseur sur la courbe. Couleurs vérifiées au validateur
+  (le bleu des vols, l'alerte toujours accompagnée de son étiquette).
+- **Le plan rejoué** : une pastille au-dessus d'un service (« 32 repas en
+  stock », « 540 u à laver ») et « En ce moment » qui les liste (`sim.js`).
+
+**Tests** : `temps.test` (séjour entre cuisine et prépa, avant le chargement,
+pas de stock quand l'aval attend, une commande comptée une fois, bouchon et
+file qui se résorbe, pas de bouchon quand le tunnel suit) ; `temps-browser`
+(chemin, case, frise, onglet, survol, plan) ; `histoire-browser` (nouvel onglet).
+
+**Docs** : MODELE_ATELIERS (§ 3 bis et la file de la plonge), README,
+CAHIER_DES_CHARGES (V8).
+
+---
+
 ## 2026-09-24 — La case s'ouvre dans une fenêtre à droite
 
 Retour de test : cliquer « Cuisine » dans le chemin d'AF ne semblait rien

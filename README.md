@@ -146,8 +146,11 @@ droite des onglets.
    ou une grille compagnie par classe) et *Rythme et pauses* (rythme de travail,
    pauses et présence).
 4. **La journée** — onglets *Le plan* (rejouer la journée sur le plan de
-   l’unité, avec « En ce moment » à droite), *Les chiffres* (les indicateurs à
-   l’heure rejouée et le bilan de la journée) et *Comparer deux essais* (A / B).
+   l’unité, avec « En ce moment » à droite et, au-dessus des services, ce qui
+   attend en stock ou à laver), *Les chiffres* (les indicateurs à l’heure
+   rejouée et le bilan de la journée), *Stocks et retours* (ce qui attend entre
+   deux ateliers et avant le chargement ; les retours des vols face au débit de
+   la plonge, et le bouchon qui se forme) et *Comparer deux essais* (A / B).
 
 À part, **L’unité** — onglets *Les liens* (qui livre qui, dessinés dans le même
 diagramme de nœuds ; ces liens ne servent qu’aux commandes qui n’ont pas de chemin), *Ce que le calcul en retient* et

@@ -112,6 +112,7 @@ de relire le cahier des charges initial :
 | V5 | **Robot** et **tunnels de plonge** visibles sur le plan avec leur cadence en direct | CdC §6 | ⏸ | **Reporté le 23/09** avec les animations |
 | V6 | Plan et tableau de bord visibles en même temps | CdC §9 | ✅ | « La journée » : plan + panneau « En ce moment » |
 | V7 | Suivre un repas dans le temps et **expliquer son retard** | Feuille de route étape 6 | ✅ | Frise étape par étape et phrase (« le montage a attendu 25 min la dotation ») |
+| V8 | **Temporalité** : le temps entre la fin d'un atelier et le début du suivant est un **stock** ; les retours plus rapides que la plonge forment un **bouchon** | 24/09 | ✅ | Stocks par séjour, par lien et devant chaque service (et avant le chargement) ; file de sale, attente, heures en dépassement ; affichés sur le chemin, la frise, l'onglet « Stocks et retours » et le plan rejoué |
 
 ## 7. Indicateurs
 

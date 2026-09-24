@@ -222,7 +222,11 @@ function construirePlan() {
         + OrlyIcones.TRAITS[OrlyIcones.icoService(id, z.nom)] + '</g>';
       g.insertBefore(ico, titre);
     }
-    zoneEls[id] = { g, rect, titre, sous, ico, tip:ti, b:boite(z) };
+    // Ce qui attend devant le service à l'heure rejouée : repas en stock, ou sale à laver.
+    const stockG = svgEl('g', { class:'zone-stock', 'aria-hidden':'true' });
+    const stockR = svgEl('rect', { rx:22 }), stockT = svgEl('text', {});
+    stockG.appendChild(stockR); stockG.appendChild(stockT); stockG.style.display='none'; g.appendChild(stockG);
+    zoneEls[id] = { g, rect, titre, sous, ico, tip:ti, b:boite(z), stock:{ g:stockG, r:stockR, t:stockT } };
     g.setAttribute('role','button'); g.setAttribute('tabindex','0'); g.setAttribute('aria-label',nomLisible(z.nom));
     g.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' '){e.preventDefault();selectionner(id);} });
     g.addEventListener('click', e => { e.stopPropagation(); selectionner(id); });
@@ -282,6 +286,12 @@ function zoomService(z){const b=boite(z);return Math.max(.5,Math.min(VUE.w/(b.w+
  * ==========================================================================*/
 /* Le nom d'un service tel qu'on l'affiche : lisible, même s'il est enregistré en capitales. */
 const nomLisible=n=>window.OrlyIcones?OrlyIcones.nomLisible(n):n;
+/* Stocks et retours : ce qui attend entre deux ateliers, et devant la plonge. */
+function majStocks(){
+  if(!window.OrlyTemps)return;
+  const noms=Object.fromEntries(servicesDisponibles().map(s=>[s.id,s.nom]));
+  OrlyTemps.rendre(document.getElementById('journee-stocks'),Sim.ateliers&&Sim.ateliers.resultat,id=>noms[id]);
+}
 function servicesDisponibles(){
   const liste=Object.keys(ZONES).map(id=>({id,nom:nomLisible(ZONES[id].nom)}));
   for(const a of annexes()) liste.push({id:a.id,nom:nomLisible(a.nom)});
@@ -381,7 +391,7 @@ function initAteliers(){
     // Le plan dit « aménagé » d'après les ateliers : il doit suivre leur saisie.
     // La liste du barème marque les services qui portent une équipe : elle doit
     // donc se redessiner quand les ateliers bougent.
-    change:()=>{majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();},
+    change:()=>{majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();},
     // Une case se règle dans le chemin d'une commande : l'ouvrir d'ailleurs y mène.
     onglet:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
     notify:toast
@@ -881,6 +891,18 @@ function majGoulotInfo() {
     if(top)html+='<p class="mini-note">Sur toute la journée, c’est <strong>'+escapeHTML(noms[top[0]]||top[0])+'</strong> qui attend le plus : '
       +Math.round(top[1])+' min en tout.</p>';
   }
+  // Ce qui attend à cette heure : les repas en stock, le sale à laver.
+  if(window.OrlyTemps&&lots.length&&Sim.vue&&t>Sim.vue.debut){
+    const ids=selection?[selection]:Object.keys(noms);
+    const bouts=ids.map(id=>{
+      const sale=r.plonge&&r.plonge.services.includes(id)?OrlyTemps.saleA(r,t):0, n=OrlyTemps.enStockA(r,id,t);
+      return sale>=1?'<strong>'+escapeHTML(noms[id]||id)+'</strong> '+Math.round(sale)+' u à laver'
+        :n>=1?'<strong>'+escapeHTML(noms[id]||id)+'</strong> '+Math.round(n)+' repas en stock':'';
+    }).filter(Boolean);
+    const avion=((r.stocks&&r.stocks.sejours)||[]).filter(x=>x.vers==='chargement'&&x.entree<=t&&t<x.sortie).reduce((n,x)=>n+x.repas,0);
+    if(avion)bouts.push('<strong>prêts pour l’avion</strong> '+avion+' repas');
+    if(bouts.length)html+='<p class="stock-instant">'+(window.OrlyIcones?OrlyIcones.ico('boite'):'')+'<span>À '+hh(t)+', en attente : '+bouts.join(' · ')+'.</span></p>';
+  }
   if(el._detailHTML!==html){el.querySelector('[data-detail-body]').innerHTML=html;el._detailHTML=html;}
   document.body.classList.toggle('journee-vide',!lots.length);
 }
@@ -906,8 +928,27 @@ function reset(data) {
 /* Colorer le plan à l'instant relu. Quatre états, jamais mélangés avec les
  * couleurs de paramétrage : celles-ci disent ce qui reste à renseigner AVANT
  * de lire, celles-là ce qui se passe PENDANT. */
+/* La pastille de stock d'une zone : cachée à zéro, sinon « 120 repas en stock ». */
+function peindreStock(id, texte, sale) {
+  const e = zoneEls[id]; if (!e || !e.stock) return;
+  const st = e.stock;
+  if (!texte) { st.g.style.display = 'none'; return; }
+  st.g.style.display = ''; st.g.classList.toggle('sale', !!sale);
+  st.t.textContent = texte;
+  // Au-dessus de la zone, calée à droite : elle ne cache ni le nom ni le pictogramme.
+  const w = texte.length * 25 + 48, b = e.b, y = b.y - 82;
+  st.r.setAttribute('x', b.x + b.w - w); st.r.setAttribute('y', y);
+  st.r.setAttribute('width', w); st.r.setAttribute('height', 70);
+  st.t.setAttribute('x', b.x + b.w - w + 24); st.t.setAttribute('y', y + 49);
+}
 function peindreInstant(i) {
   document.body.classList.toggle('en-lecture', Sim.vue ? Sim.vue.t > Sim.vue.debut : false);
+  const r = Sim.ateliers && Sim.ateliers.resultat;
+  if (window.OrlyTemps && r) for (const s of servicesDisponibles()) {
+    const n = OrlyTemps.enStockA(r, s.id, i.t);
+    const sale = r.plonge && r.plonge.services.includes(s.id) ? OrlyTemps.saleA(r, i.t) : 0;
+    peindreStock(s.id, sale >= 1 ? Math.round(sale) + ' u à laver' : n >= 1 ? Math.round(n) + ' repas en stock' : '', sale >= 1);
+  }
   for (const s of servicesDisponibles()) {
     const els = zoneEls[s.id]; if (!els) continue;
     const e = i.services[s.id];
@@ -1406,6 +1447,6 @@ construirePlan(); chargerVols(SAMPLE); initControles(); initEdition(); initFlux(
 initVueSimulation();
 initOnglets();
 initDemarrage();
-majHorloge(); majPlan(); majDashboard();
+majHorloge(); majPlan(); majDashboard(); majStocks();
 
 })();

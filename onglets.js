@@ -33,6 +33,7 @@
     plan: [
       { id: 'j-plan', nom: 'Le plan', ico: 'unite' },
       { id: 'j-chiffres', nom: 'Les chiffres', ico: 'check' },
+      { id: 'j-stocks', nom: 'Stocks et retours', ico: 'boite' },
       { id: 'j-comparer', nom: 'Comparer deux essais', ico: 'lecture' }
     ],
     flux: [

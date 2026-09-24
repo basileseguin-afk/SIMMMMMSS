@@ -1,0 +1,51 @@
+/* Stocks et retours (La journée › Stocks et retours). Couleurs : une seule
+ * série par graphique, le bleu des vols ; le dépassement du débit porte la
+ * couleur d'alerte réservée, toujours avec son étiquette « ▲ ». */
+.journee-stocks{--serie:#2a78d6;--serie-fond:rgba(42,120,214,.16);--alerte:#ec835a;
+  display:grid;gap:22px;padding:18px 20px 28px;background:var(--bg3)}
+.tp-sec{display:grid;gap:12px}
+.tp-titre{margin:0;font-size:16px}
+.tp-tuiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.tp-tuile{display:grid;gap:2px;padding:10px 12px;border:1px solid var(--bordure);border-radius:10px;background:var(--bg2)}
+.tp-tuile span{font-size:12px;color:var(--txt2)}
+.tp-tuile b{font-size:20px;font-variant-numeric:tabular-nums}
+.tp-tuile em{font-style:normal;font-size:12px;color:var(--txt2)}
+.tp-tuile.alerte{border-left:4px solid var(--alerte)}
+.tp-phrase{margin:0;font-size:14px}
+.tp-etiquette.alerte{display:inline-block;padding:1px 8px;border-radius:99px;background:color-mix(in srgb,var(--alerte) 22%,var(--bg3));color:var(--txt)}
+.tp-fig{margin:0;display:grid;gap:4px;position:relative}
+.tp-fig figcaption{font-size:13px;font-weight:700;color:var(--txt2)}
+.tp-fig figcaption small{font-weight:500}
+.tp-svg{width:100%;height:auto;max-height:260px;display:block}
+.tp-grille{stroke:var(--bordure);stroke-width:1}
+.tp-base{stroke:var(--txt2);stroke-width:1}
+.tp-axe{font-size:12px;fill:var(--txt2);font-variant-numeric:tabular-nums}
+.tp-barre path{fill:var(--serie)}
+.tp-barre.trop path{fill:var(--alerte)}
+.tp-barre:hover path{opacity:.8}
+.tp-cible,.tp-cible-file{fill:transparent;cursor:crosshair}
+.tp-val{font-size:12px;font-weight:700;fill:var(--txt);font-variant-numeric:tabular-nums}
+.tp-seuil{stroke:var(--txt);stroke-width:2;stroke-dasharray:7 5}
+.tp-seuil-txt{font-size:12px;font-weight:700;fill:var(--txt);paint-order:stroke;stroke:var(--bg3);stroke-width:4px}
+.tp-aire{fill:var(--serie-fond)}
+.tp-ligne{fill:none;stroke:var(--serie);stroke-width:2}
+.tp-pic{fill:var(--serie);stroke:var(--bg3);stroke-width:2}
+.tp-curseur{stroke:var(--txt2);stroke-width:1;stroke-dasharray:3 3}
+.tp-bulle{position:absolute;z-index:5;pointer-events:none;max-width:260px;padding:6px 9px;border-radius:8px;
+  background:var(--txt);color:var(--bg3);font-size:12.5px;box-shadow:0 6px 18px rgba(15,23,42,.2)}
+.tp-scroll{overflow-x:auto}
+.tp-table{border-collapse:collapse;width:100%;font-size:13.5px}
+.tp-table th,.tp-table td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--bordure);vertical-align:middle}
+.tp-table thead th{font-size:12px;color:var(--txt2);font-weight:700}
+.tp-table thead small{font-weight:500}
+.tp-table td small{display:block;font-size:11.5px;color:var(--txt2)}
+.tp-table td b{font-variant-numeric:tabular-nums}
+.tp-spark{width:180px;height:34px;display:block}
+.journee-stocks{position:relative}
+/* Le stock d'un service et le sale de la plonge, sur le plan rejoué. */
+.zone-stock rect{fill:#fff;stroke:var(--serie,#2a78d6);stroke-width:4}
+.zone-stock text{font-size:44px;font-weight:800;fill:#0b0b0b}
+.zone-stock.sale rect{stroke:#ec835a}
+body:not(.en-lecture) .zone-stock{display:none}
+.stock-instant{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:#1e5aa8}
+.stock-instant .ico{flex:none;width:18px;height:18px;margin-top:1px}

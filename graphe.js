@@ -148,7 +148,7 @@
      *   cle                    — le nom de la disposition retenue
      *   titre                  — ce que le diagramme montre (lecteurs d'écran)
      *   noeuds()               — [{ id, nom, ico, sous, ton }]
-     *   liens()                — [{ id, de, vers, couleur, pointille, titre }]
+     *   liens()                — [{ id, de, vers, couleur, pointille, titre, etiquette }]
      *   relier(de, vers)       — crée le lien ; renvoie un message d'erreur, ou rien
      *   retirerLien(id)        — retire le lien
      *   choisir(selection)     — { type:'noeud'|'lien', id } ou null
@@ -212,6 +212,7 @@
               aria-label="${esc(l.titre || '')}. Entrée pour le choisir, Suppr pour le retirer.">
             <title>${esc(l.titre || '')}</title>
             <path class="gr-prise" d="${k.d}"/><path class="gr-trait" d="${k.d}" marker-end="url(#${marque(l.couleur)})"${l.couleur ? ` style="stroke:${esc(l.couleur)}"` : ''}/>
+            ${l.etiquette ? `<text class="gr-etiq" x="${k.mx}" y="${k.my - (sel ? 16 : 7)}" text-anchor="middle">${esc(l.etiquette)}</text>` : ''}
             ${sel ? `<g class="gr-retirer" data-retirer="${esc(l.id)}" transform="translate(${k.mx},${k.my})"><circle r="11"/><path d="M-4,-4 L4,4 M4,-4 L-4,4"/><title>Retirer ce lien</title></g>` : ''}
           </g>`;
         }).join('')}</g>

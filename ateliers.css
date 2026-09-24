@@ -319,3 +319,7 @@ body.ateliers-open .workbench{display:none}
 .at-mm input:not(:placeholder-shown){border-color:var(--accent2);font-weight:700}
 .at-mm-import{color:var(--txt2)}
 .at-lot.ici{border-left:4px solid var(--c-equipes);padding-left:8px;background:color-mix(in srgb,var(--c-equipes) 6%,transparent)}
+
+/* Le temps en stock dans la frise d'une commande. */
+.qf-t-stock{fill:#2a78d6;opacity:.85}
+.qf-l.stock::before{background:#2a78d6}

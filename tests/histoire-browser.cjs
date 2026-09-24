@@ -105,7 +105,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const actif=()=>page.locator('#sous-onglets [aria-selected=true]').getAttribute('data-sous-onglet');
   assert.equal(await page.locator('.context-bar').count(),0,'plus de bandeau de contexte au-dessus de la vue');
   await page.locator('#etapes [data-view=plan]').click();await attendre();
-  assert.deepEqual(await onglets(),['j-plan','j-chiffres','j-comparer']);
+  assert.deepEqual(await onglets(),['j-plan','j-chiffres','j-stocks','j-comparer']);
   assert.equal(await page.locator('#plan').isVisible(),true,'le plan d’abord');
   assert.equal(await page.locator('.kpi-grille').isVisible(),false,'les chiffres attendent leur onglet');
   assert.equal(await page.locator('#snap-a').isVisible(),false,'la comparaison aussi');

@@ -793,8 +793,14 @@
 
     liensDiagramme() {
       const p = this.parcoursActif(this.a.etat()); if (!p) return [];
-      return P.arcsDuParcours(p).map(a => ({ id: a.from + '>' + a.to, de: a.from, vers: a.to,
-        titre: this.nom(a.from) + ' livre ' + this.nom(a.to) }));
+      // Sur le chemin d'une commande : le temps qu'elle passe en stock sur chaque lien.
+      const r = this.cmd && this.a.resultat ? this.a.resultat() : null, T = root.OrlyTemps;
+      return P.arcsDuParcours(p).map(a => {
+        const s = r && T ? T.sejour(r, a.from, a.to, this.cmd) : null;
+        return { id: a.from + '>' + a.to, de: a.from, vers: a.to,
+          titre: this.nom(a.from) + ' livre ' + this.nom(a.to) + (s ? ' — ' + P.dureeLisible(s.duree) + ' en stock' : ''),
+          etiquette: s ? P.dureeLisible(s.duree) : '' };
+      });
     }
 
     diagramme() {
@@ -884,13 +890,14 @@
             <option value="+">+ Nouvelle case « ${esc(this.nom(s) + ' ' + etiquette(this.cmd))} »</option></select></label>` : '';
         const fiche = a && this.a.fiche ? this.a.fiche(a.id, this.cmd) : '';
         return `<p class="pc-pan-tete">${ico}<b>${esc(this.nom(s))}</b><span>${dit}</span></p>
+          ${this.dansLeTemps(s)}
           <div class="row-btns pc-case-outils">${choix}<span class="pc-outils-fin"></span>${gestes}</div>
           ${fiche || (a ? '' : `<p class="mini-note">Choisissez une case existante de ${esc(this.nom(s))} (elle prépare déjà d’autres commandes :
             ${esc(lib)} s’y ajoute à la suite), ou créez-en une.</p>`)}`;
       }
       return `<div class="pc-geste">${I ? I.ico('info') : ''}<span>Cliquez un service pour choisir ou régler sa case.
         Tirez le <b class="pc-rond">+</b> d’un service jusqu’à un autre, ou cliquez-le puis cliquez l’autre, pour les relier ; un service peut en livrer plusieurs.
-        Cliquez un lien pour le retirer.</span></div>`;
+        Cliquez un lien pour le retirer. <span class="pc-bleu">En bleu sur un lien</span> : le temps que la commande y passe en stock.</span></div>`;
     }
 
     /* Un service choisi ouvre sa case dans une fenêtre à droite de l'écran :
@@ -906,6 +913,25 @@
             <button class="pc-tiroir-fermer" data-pc-action="fermer" aria-label="Fermer la case" title="Fermer (Échap)">×</button></div>
           ${this.panneau(etat, classes, p)}
         </aside>`;
+    }
+
+    /* Ce que la commande vit dans ce service, dans le temps : ce qui l'attendait
+     * en stock, son travail, et le temps qu'elle attend ensuite. */
+    dansLeTemps(s) {
+      const r = this.a.resultat ? this.a.resultat() : null, cmd = this.cmd;
+      if (!r || !r.ok || !cmd) return '';
+      const hh = P.hhmm, d = P.dureeLisible, sej = (r.stocks && r.stocks.sejours) || [];
+      const lot = (r.lots || []).find(l => l.service === s && !l.dispo && (l.classes || []).includes(cmd));
+      const lignes = [];
+      for (const x of sej.filter(x => x.vers === s && x.classe === cmd))
+        lignes.push(`<li class="stock">Livrée par <b>${esc(this.nom(x.de))}</b> à ${hh(x.entree)}, prise à ${hh(x.sortie)} :
+          <b>${d(x.duree)} en stock</b> (${x.repas} repas).</li>`);
+      if (lot) lignes.push(`<li>${lot.fin == null ? 'Commence à ' + hh(lot.debut) + ', ne finit pas dans le poste'
+        : 'Travaillée de <b>' + hh(lot.debut) + ' à ' + hh(lot.fin) + '</b>'}${lot.attente >= 1 ? ` après ${d(lot.attente)} à attendre le service d’avant` : ''}.</li>`);
+      for (const x of sej.filter(x => x.de === s && x.classe === cmd))
+        lignes.push(`<li class="stock">Puis <b>${d(x.duree)} en stock</b> avant ${x.vers === 'chargement'
+          ? 'le chargement de l’avion (' + hh(x.sortie) + ')' : `que <b>${esc(this.nom(x.vers))}</b> la prenne (${hh(x.sortie)})`}.</li>`);
+      return lignes.length ? `<ul class="pc-temps" aria-label="Dans le temps">${lignes.join('')}</ul>` : '';
     }
 
     rendrePanneau() {
@@ -1058,6 +1084,12 @@
         + (Number.isFinite(c.echeance) ? ` pour un chargement avant <b>${P.hhmm(c.echeance)}</b>` : '')
         + (v.aHeure ? ' : <span class="qf-etat ok">à l’heure</span>.' : ` : <span class="qf-etat retard">${Math.round(v.retard)} min de retard</span>.`));
       if (goulot) phrases.push(`Le plus long à attendre : <b>${esc(this.nom(goulot.service))}</b> a attendu ${Math.round(goulot.attente)} min que <b>${esc(this.nom(goulot.attendu))}</b> finisse.`);
+      // Le temps en stock : entre deux étapes, et avant le chargement.
+      const sej = ((r && r.stocks && r.stocks.sejours) || []).filter(x => x.classe === c.id);
+      const entre = sej.filter(x => x.vers !== 'chargement').sort((a, b) => b.duree - a.duree)[0];
+      const avion = sej.find(x => x.vers === 'chargement');
+      if (entre) phrases.push(`Le plus long en stock : <b>${P.dureeLisible(entre.duree)}</b> entre ${esc(this.nom(entre.de))} et ${esc(this.nom(entre.vers))}.`);
+      if (avion) phrases.push(`Prête, elle attend <b>${P.dureeLisible(avion.duree)}</b> en stock avant le chargement.`);
       if (sautees.length) phrases.push(`Sans équipe, donc sautée${sautees.length > 1 ? 's' : ''} : ${sautees.map(esc).join(', ')}.`);
       const texte = `<p class="qf-phrase">${phrases.join(' ')}</p>`;
       if (g.debut == null) return texte;
@@ -1072,11 +1104,16 @@
         const lab = `<text class="qf-t-svc${saute ? ' saute' : ''}" x="4" y="${y + 13}">${esc(this.nom(e.service))}</text>
           <text class="qf-t-br" x="4" y="${y + 24}">${esc(this.groupe(e.branche))}${saute ? ' · sautée, sans équipe' : ''}</text>`;
         if (saute) return lab + `<line class="qf-t-vide" x1="${G}" y1="${y + H / 2}" x2="${G + W}" y2="${y + H / 2}"/>`;
+        // Ce qui l'attendait en stock, livré par les étapes d'avant, jusqu'à son début.
+        const stock = sej.filter(x => x.vers === e.service);
+        const depuis = stock.length ? Math.min(...stock.map(x => x.entree)) : null;
+        const barreStock = depuis != null && e.debut > depuis
+          ? `<rect class="qf-t-stock" x="${x(depuis)}" y="${y + H - 7}" width="${Math.max(2, x(e.debut) - x(depuis))}" height="5" rx="2"><title>En stock depuis ${P.hhmm(depuis)} (${stock.map(k => esc(this.nom(k.de))).join(', ')}) : ${P.dureeLisible(e.debut - depuis)}</title></rect>` : '';
         if (e.dispo) return lab + `<rect class="qf-t-dispo" x="${x(e.debut) - 2}" y="${y + 4}" width="4" height="${H - 8}"><title>${esc(this.nom(e.service))} : disponible</title></rect>`;
         const fin = e.fin == null ? t1 : e.fin, w = Math.max(3, x(fin) - x(e.debut));
         const nomAt = (this.atelier(e.atelier) || {}).nom || '';
         const etiquette = nomAt + ' · ' + P.hhmm(e.debut) + '–' + (e.fin == null ? '…' : P.hhmm(e.fin));
-        return lab
+        return lab + barreStock
           + (e.attente > 0 ? `<rect class="qf-t-attente" x="${x(e.debut - e.attente)}" y="${y + 8}" width="${Math.max(1, x(e.debut) - x(e.debut - e.attente))}" height="${H - 16}"><title>Attend ${e.attendu ? esc(this.nom(e.attendu)) : 'ses amonts'} : ${Math.round(e.attente)} min</title></rect>` : '')
           + `<rect class="qf-t-lot${e.fin == null ? ' inacheve' : ''}" x="${x(e.debut)}" y="${y + 2}" width="${w}" height="${H - 4}" rx="4"><title>${esc(this.nom(e.service))} — ${esc(etiquette)}</title></rect>`
           // L'étiquette entière dans la barre si elle y tient, sinon juste après.
@@ -1089,7 +1126,7 @@
       return texte + `<svg class="qf-t" viewBox="0 0 ${L} ${haut + 20}" role="img" aria-label="${esc(P.libelleClasse(c.id))} dans le temps, étape par étape">
         ${heures.map(t => `<line class="qf-t-grille" x1="${x(t)}" y1="16" x2="${x(t)}" y2="${haut}"/><text class="qf-t-heure" x="${x(t) + 2}" y="12">${P.hhmm(t)}</text>`).join('')}
         ${lignes}${ech}</svg>
-        <p class="qf-t-legende"><span class="qf-l ok">travail</span><span class="qf-l attente">attente de l’étape d’avant</span><span class="qf-l echeance">heure de chargement</span></p>`;
+        <p class="qf-t-legende"><span class="qf-l ok">travail</span><span class="qf-l attente">attente de l’étape d’avant</span><span class="qf-l stock">en stock</span><span class="qf-l echeance">heure de chargement</span></p>`;
     }
 
     filtrer() {
