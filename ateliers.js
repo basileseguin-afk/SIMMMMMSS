@@ -30,7 +30,8 @@
   function valider(brut) {
     if (!brut || brut.schema !== 'ory-ateliers' || brut.version !== 1 || !Array.isArray(brut.ateliers))
       throw new Error('Fichier d’ateliers v1 attendu.');
-    if (brut.ateliers.length > 500) throw new Error('Maximum 500 ateliers.');
+    // Une case par service et par commande : plusieurs milliers pour une grosse unité.
+    if (brut.ateliers.length > 5000) throw new Error('Maximum 5000 cases.');
     const ids = new Set();
     const ateliers = brut.ateliers.map(a => {
       if (!a || typeof a !== 'object') throw new Error('Atelier invalide.');
@@ -266,7 +267,7 @@
   <div class="at-actions">
     <button class="btn btn-sm" id="at-undo" title="Annuler" aria-label="Annuler">↶ Annuler</button>
     <button class="btn btn-sm" id="at-redo" title="Rétablir" aria-label="Rétablir">↷</button>
-    <button class="btn btn-sm" id="at-export" title="Les équipes, ce qu’elles préparent et les chemins, dans un classeur Excel">⇩ Excel</button>
+    <button class="btn btn-sm" id="at-export" title="Les cases, ce qu’elles préparent et les chemins, dans un classeur Excel">⇩ Excel</button>
     <button class="btn btn-sm" id="at-import-btn" title="Réimporter un classeur modifié dans Excel">⇧ Importer</button>
     <input id="at-import" type="file" accept=".xlsx,.json" hidden>
   </div>
@@ -442,7 +443,12 @@
     appliquerSaisie(champ, a, el, v) {
       this.changer(() => {
         switch (champ) {
-          case 'nom': a.nom = v; break;
+          case 'nom': {
+            // Le nom est la clé des classeurs Excel : deux cases ne le partagent pas.
+            const pris = this.state.ateliers.some(x => x !== a && String(x.nom).trim().toUpperCase() === String(v).trim().toUpperCase());
+            if (pris) throw new Error('le nom « ' + v + ' » est déjà celui d’une autre case (le nom sert de clé dans Excel).');
+            a.nom = v; break;
+          }
           // Les man-minutes d'une commande dans cette case ; vide = celles de l'import.
           case 'minutes': {
             const cls = el.dataset.classe, m = { ...(a.minutes || {}) };
@@ -592,8 +598,8 @@
             { services: this.a.services(), programme: this.a.classes() || [] });
           etat = valider(r.etat); ajouts = r.ajouteesAuto;
         }
-        if (!confirm('Remplacer les équipes par celles du fichier (' + etat.ateliers.length + (etat.ateliers.length > 1 ? ' équipes' : ' équipe') + ') ? L’action est annulable.')) return;
-        this.changer(() => { this.state = etat; }, 'Équipes importées : ' + etat.ateliers.length + (etat.ateliers.length > 1 ? ' équipes.' : ' équipe.')
+        if (!confirm('Remplacer les cases et les chemins par ceux du fichier (' + etat.ateliers.length + (etat.ateliers.length > 1 ? ' cases' : ' case') + ') ? L’action est annulable.')) return;
+        this.changer(() => { this.state = etat; }, 'Cases importées : ' + etat.ateliers.length + (etat.ateliers.length > 1 ? ' cases.' : ' case.')
           + (ajouts.length ? (ajouts.length > 1 ? ' Commandes ajoutées : ' : ' Commande ajoutée : ') + ajouts.join(', ') + '.' : ''));
       } catch (err) { this.rendre('Import refusé — ' + err.message); }
       finally { e.target.value = ''; }

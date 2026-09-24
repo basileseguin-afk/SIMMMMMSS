@@ -120,7 +120,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(cuisine.personnes,2);
   assert.deepEqual(cuisine.lots,[['AF/BC'],['DL/BC']]);
   assert.ok(etat.parcours.find(p=>p.id==='complet').liens.some(l=>l.de==='armement'&&l.vers==='prepa'));
-  assert.match(await page.locator('#at-status').textContent(),/Équipes importées/);
+  assert.match(await page.locator('#at-status').textContent(),/Cases importées/);
   // Un classeur faux est refusé en bloc, et dit quoi corriger.
   const nAvant=await page.evaluate(()=>Sim.ateliers.state.ateliers.length);
   at.lignes.push(['Fantaisie','GARAGE','manuel','05:00']);

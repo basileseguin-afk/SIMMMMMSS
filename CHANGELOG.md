@@ -5,6 +5,33 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-24 — Contrôle complet : 12 bugs corrigés
+
+Revue complète (voir `BUGS.md`, revue du 24/09 : BUG-017 à BUG-029).
+
+- **Bloquant** : au-delà de 50 chemins (donc 48 commandes avec un chemin
+  chacune) ou de 500 cases, tout l'état était refusé. Plafonds portés à 2 000
+  chemins et 5 000 cases ; vérifié à 200 commandes (1 321 cases).
+- Retirer un service du chemin d'une commande la retire aussi de sa case dans
+  ce service (la case s'en va si elle ne préparait qu'elle).
+- Un chemin lu dans Excel garde sa marque `cases` : une case retirée exprès ne
+  revient plus au rechargement.
+- Deux cases, ou deux chemins, ne peuvent plus porter le même nom (c'est la clé
+  dans Excel) ; un chemin créé reçoit un numéro si son nom est pris.
+- La comparaison A/B tient compte des chemins, du matériel, des commandes et
+  du programme de vols : deux essais qui en diffèrent ne sont plus « identiques ».
+- La fenêtre de la case commence sous la barre des onglets : Annuler, Excel,
+  Importer et le bandeau restent cliquables ; Échap dans un champ ne la ferme
+  plus ; sa position se mesure quand la vue est visible.
+- Petits défauts : l'état d'un service débordait à 1024 px ; « depuis 0 min » ;
+  une barre de retours débordait du graphique ; le rattrapage des cases ne
+  touche plus une commande retirée du programme.
+- Libellés : « Cases importées », « Remplacer les cases et les chemins ».
+
+Reste ouvert : BUG-029, une saisie à 200 commandes prend ≈ 0,9 s.
+
+---
+
 ## 2026-09-24 — Le temps entre les ateliers : stocks et bouchons
 
 **Stocks** (`moteur/production.js` : `stocksEntreAteliers`)

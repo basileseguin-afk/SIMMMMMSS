@@ -131,7 +131,7 @@
 .pc-panneau .at-carte{margin:4px 0 0;box-shadow:none}
 
 /* La case d'un service : une fenêtre à droite, toujours en vue. */
-.pc-tiroir{position:fixed;top:0;right:0;bottom:0;z-index:60;width:var(--tiroir);overflow:auto;
+.pc-tiroir{position:fixed;top:var(--tiroir-haut,0);right:0;bottom:0;z-index:60;width:var(--tiroir);overflow:auto;
   display:grid;align-content:start;gap:10px;padding:0 18px 24px;background:var(--bg3);
   border-left:4px solid var(--c-equipes);box-shadow:-14px 0 40px rgba(15,23,42,.22)}
 .pc-tiroir-tete{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:10px;

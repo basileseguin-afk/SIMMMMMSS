@@ -135,7 +135,8 @@
       et s’entassent. Ajoutez une case de type plonge (« Les cases › + Case hors chemin »).</p></section>`;
     const ts = p.retours.map(x => x.t).concat(p.serie.map(x => x[0]));
     const t0 = Math.floor(Math.min(...ts) / 60) * 60;
-    const t1 = Math.max(Math.ceil(Math.max(...ts, p.maxA || 0) / 60) * 60, t0 + 120);
+    // Jusqu'au bout de la dernière heure de retours : sa barre tient dans le cadre.
+    const t1 = Math.max(Math.ceil(Math.max(...ts, p.maxA || 0) / 60) * 60, ...p.heures.map(h => h.t + 60), t0 + 120);
     const bouchon = p.attenteMax >= 60;
     const phrase = p.depassements.length
       ? `Les retours dépassent ce que la plonge lave de <b>${p.depassements.map(d => P.hhmm(d.de) + ' à ' + P.hhmm(d.a)).join(', ')}</b> : le sale s’accumule, et se résorbe ensuite.`

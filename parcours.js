@@ -119,7 +119,8 @@
     const b = brut || {};
     if (b.parcours === undefined) return { ...parcoursTypes(servicesConnus), crees: true };
     if (!Array.isArray(b.parcours)) throw new Error('Liste de parcours attendue.');
-    if (b.parcours.length > 50) throw new Error('Maximum 50 parcours.');
+    // Un chemin par commande : une unité en porte des centaines (avec de la marge).
+    if (b.parcours.length > 2000) throw new Error('Maximum 2000 chemins.');
     const ids = new Set();
     const parcours = b.parcours.map(p => {
       if (!p || typeof p !== 'object') throw new Error('Parcours invalide.');
@@ -458,7 +459,8 @@
     let base = src ? src.nom.trim() : 'Chemin';
     const fin = srcCmd ? etiquette(srcCmd) : '';
     if (fin && base.toUpperCase().endsWith(fin.toUpperCase())) base = base.slice(0, -fin.length).trim();
-    const chemin = { id: uid(), nom: ((base ? base + ' ' : '') + etiquette(cible)).slice(0, 80),
+    // Le nom d'un chemin est sa clé dans le classeur Excel : il reste unique.
+    const chemin = { id: uid(), nom: nomDeChemin(etat, ((base ? base + ' ' : '') + etiquette(cible)).slice(0, 76)),
       noeuds: src ? P.servicesDuParcours(src).slice() : [],
       liens: src ? P.arcsDuParcours(src).map(a => ({ de: a.from, vers: a.to })) : [], prepa: true };
     etat.parcours.push(chemin);
@@ -515,11 +517,21 @@
    */
   function completerCases(etat, nomDe, classes) {
     let n = 0;
+    // Une commande retirée du programme garde son chemin, mais n'a pas à recevoir de case.
+    const presentes = classes ? new Set(classes.map(c => c.id)) : null;
     for (const [cmd, pid] of Object.entries(etat.parcoursClasse || {})) {
       const p = (etat.parcours || []).find(x => x.id === pid);
-      if (!p || p.cases || commandeDu(etat, pid) !== cmd) continue;
+      if (!p || p.cases || commandeDu(etat, pid) !== cmd || (presentes && !presentes.has(cmd))) continue;
       n += donnerCases(etat, cmd, p, P.servicesDuParcours(p), nomDe, classes);
     }
+    return n;
+  }
+
+  /** Un nom de chemin libre, pour la même raison. */
+  function nomDeChemin(etat, nom) {
+    const pris = new Set((etat.parcours || []).map(p => String(p.nom).trim().toUpperCase()));
+    let n = nom, i = 2;
+    while (pris.has(n.toUpperCase())) n = nom + ' ' + i++;
     return n;
   }
 
@@ -584,8 +596,11 @@
       boite.addEventListener('click', e => this.cliquer(e));
       boite.addEventListener('change', e => this.saisir(e));
       document.addEventListener('keydown', e => {
-        if (e.key === 'Escape' && this.a.boite().querySelector('.pc-tiroir') && !(this.graphe && this.graphe.depuis)) this.fermer();
+        // Échap dans un champ de la case ne ferme pas la fenêtre : on y tapait.
+        if (e.key !== 'Escape' || /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+        if (this.a.boite().querySelector('.pc-tiroir') && !(this.graphe && this.graphe.depuis)) this.fermer();
       });
+      root.addEventListener('resize', () => this.placeTiroir());
       boite.addEventListener('input', e => {
         if (e.target.dataset.qf === 'recherche') { this.recherche = e.target.value; this.filtrer(); }
         if (e.target.dataset.pc === 'cmd-recherche') { this.chercheCmd = e.target.value; this.filtrerCmd(); }
@@ -945,6 +960,14 @@
       if (!root.document) return;
       const ouvert = !!this.a.boite().querySelector('.pc-tiroir');
       document.body.classList.toggle('pc-tiroir-ouvert', ouvert);
+      // Elle commence sous la barre des onglets : le bandeau, les étapes et les
+      // outils de la vue (Annuler, Excel, Importer) restent à portée.
+      if (ouvert) {
+        const barre = document.getElementById('sous-onglets');
+        const bas = barre && !barre.hidden ? barre.getBoundingClientRect().bottom : 0;
+        // Vue cachée : la barre ne se mesure pas ; on garde la dernière mesure.
+        if (bas > 0) document.documentElement.style.setProperty('--tiroir-haut', Math.round(bas) + 'px');
+      }
       // Le service choisi reste en vue, à gauche de la fenêtre.
       if (ouvert && this.graphe && this.svc) this.graphe.montrer(this.svc);
     }
@@ -1218,11 +1241,20 @@
       }
       if (action === 'noeud-retirer') {
         this.sel = null; if (this.svc === s) this.svc = '';
+        const cmd = this.cmd;
         return this.a.changer(x => {
           const q = trouver(x);
           q.noeuds = q.noeuds.filter(y => y !== s);
           q.liens = q.liens.filter(l => l.de !== s && l.vers !== s);
-        }, this.nom(s) + ' quitte ce chemin, avec ses liens. Sa case reste. Vous pouvez annuler.');
+          // Sur le chemin d'une commande, elle quitte aussi sa case dans ce service :
+          // sinon ce travail serait compté sans que personne ne l'attende. Une case
+          // qui ne préparait qu'elle s'en va ; une case partagée reste.
+          if (cmd) {
+            const seule = a => a.service === s && fabrique(a) && a.lots.length && a.lots.every(l => l.every(id => id === cmd));
+            x.ateliers = x.ateliers.filter(a => !seule(a));
+            affecter(x, s, [cmd], null);
+          }
+        }, this.nom(s) + ' quitte ce chemin, avec ses liens' + (cmd ? ' et la case de ' + this.lib(cmd) + ' dans ce service' : '') + '. Vous pouvez annuler.');
       }
     }
 
@@ -1257,7 +1289,12 @@
       setTimeout(() => this.a.changer(etat => {
         const q = etat.parcours.find(x => x.id === pid);
         if (champ === 'cabine') { if (v) etat.parcoursCabine[el.dataset.cabine] = v; else delete etat.parcoursCabine[el.dataset.cabine]; }
-        else if (champ === 'nom') q.nom = v;
+        else if (champ === 'nom') {
+          // Le nom d'un chemin est sa clé dans Excel : deux chemins ne le partagent pas.
+          if (etat.parcours.some(x => x.id !== pid && String(x.nom).trim().toUpperCase() === String(v).trim().toUpperCase()))
+            throw new Error('le nom « ' + v + ' » est déjà celui d’un autre chemin (le nom sert de clé dans Excel).');
+          q.nom = v;
+        }
         else if (champ === 'noeud-ajout' && !q.noeuds.includes(v)) {
           q.noeuds.push(v); this.sel = null; this.svc = '';
           if (this.cmd) donnerCases(etat, this.cmd, q, [v], y => this.nom(y), this.a.classes());

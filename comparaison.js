@@ -33,7 +33,11 @@
       source: ctx.source || '',
       // Ce qui a produit le résultat, en entier : deux empreintes égales
       // garantissent deux journées égales.
-      empreinte: JSON.stringify({ ateliers, reglages, liaisons: ctx.liaisons || [], decalage: ctx.decalage || 0 }),
+      // Les chemins, la boucle du matériel, les commandes retirées ou ajoutées et
+      // le programme de vols en font partie : sans eux, deux essais qui ne
+      // diffèrent que par un chemin seraient déclarés identiques.
+      empreinte: JSON.stringify({ ateliers, reglages, liaisons: ctx.liaisons || [], decalage: ctx.decalage || 0,
+        etat: ctx.etat || null, vols: ctx.vols || null }),
       ateliers: ateliers.length,
       personnes: ateliers.filter(a => a.type !== 'dispo').reduce((n, a) => n + (+a.personnes || 0), 0),
       rendement: reglages.rendement == null ? null : Math.round(reglages.rendement * 100),

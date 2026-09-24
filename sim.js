@@ -459,6 +459,8 @@ function initOnglets(){
       if(vue!==activeView)showView(vue);
       if(id==='v-departs')renderFlights();
       if(id==='u-lecture'&&Sim.flows)Sim.flows.refresh();
+      // La fenêtre d'une case se cale sous la barre des onglets, mesurée une fois visible.
+      if(id==='at-chemins'&&Sim.ateliers)Sim.ateliers.parcours.placeTiroir();
     }
   });
   // Les outils d'une vue (annuler, Excel, importer) montent sur la barre des
@@ -880,8 +882,8 @@ function majGoulotInfo() {
       if(!pire||depuis>pire.depuis)pire={id,depuis,lot:e.lot};
     }
     const I=window.OrlyIcones;
-    if(pire)html='<div class="goulot-tete attente">'+(I?I.ico('sablier'):'')+'<strong>'+escapeHTML(noms[pire.id]||pire.id)+'</strong></div><p>attend le service d’avant depuis '
-      +Math.round(pire.depuis)+' min pour « '+escapeHTML(MoteurProduction.enClair(pire.lot.nom||''))+' » ; il se met au travail à '+hh(pire.lot.debut)+'.</p>';
+    if(pire)html='<div class="goulot-tete attente">'+(I?I.ico('sablier'):'')+'<strong>'+escapeHTML(noms[pire.id]||pire.id)+'</strong></div><p>attend le service d’avant'
+      +(pire.depuis>=1?' depuis '+Math.round(pire.depuis)+' min':'')+' pour « '+escapeHTML(MoteurProduction.enClair(pire.lot.nom||''))+' » ; il se met au travail à '+hh(pire.lot.debut)+'.</p>';
     else html=Sim.vue&&t<=Sim.vue.debut
       ?'Rejouez la journée, ou cliquez un service sur le plan pour voir ce qu’il prépare.'
       :'<div class="goulot-tete ok">'+(I?I.ico('check'):'')+'<span>Personne n’attend à cet instant.</span></div>';
@@ -1014,6 +1016,8 @@ function capturer(slot) {
   snaps[slot] = OrlyComparaison.capturer(r, {
     source: dataSource,
     ateliers: JSON.parse(JSON.stringify(Sim.ateliers.state.ateliers)),
+    etat: (({parcours,parcoursCabine,parcoursClasse,materiel,exclues,ajoutees})=>JSON.parse(JSON.stringify({parcours,parcoursCabine,parcoursClasse,materiel,exclues,ajoutees})))(Sim.ateliers.state),
+    vols: JSON.parse(JSON.stringify(flights)),
     reglages: Sim.reglages ? Sim.reglages.pourMoteur() : { delaiChargement: CFG.loadDelay },
     liaisons: liaisonsServices(),
     decalage: CFG.shift
@@ -1248,6 +1252,8 @@ function showView(name) {
   document.querySelector('.map-footer').hidden=name!=='plan';
   majDemarrage();
   if(name==='vols')renderFlights();
+  // La vue est affichée : la fenêtre d'une case peut mesurer où se caler.
+  if(name==='ateliers'&&Sim.ateliers)Sim.ateliers.parcours.placeTiroir();
 }
 function updateSource() {
   majDemarrage();

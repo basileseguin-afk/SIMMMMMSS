@@ -49,7 +49,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('[data-pc-champ=case]').inputValue(),kase.id,'venue de « Les cases », la case est ouverte');
   // × ou Échap la referment ; cliquer le service la rouvre.
   const box=await page.locator('.pc-tiroir').boundingBox();
-  assert.ok(box&&box.y>=0&&box.y<50&&box.x+box.width<=1440+1,'la fenêtre de la case est à l’écran');
+  const barre=await page.locator('#sous-onglets').boundingBox();
+  assert.ok(box&&Math.abs(box.y-(barre.y+barre.height))<2&&box.y<1000-300&&box.x+box.width<=1440+1,'la fenêtre de la case est à l’écran, sous la barre des onglets');
+  assert.equal(await page.evaluate(()=>{const b=document.getElementById('at-export').getBoundingClientRect();
+    return !!document.elementFromPoint(b.x+b.width/2,b.y+b.height/2).closest('#at-export');}),true,'les outils de la vue restent cliquables');
   await page.keyboard.press('Escape');await attendre();
   assert.equal(await page.locator('.pc-tiroir').count(),0,'Échap la referme');
   await page.locator(`${Z} [data-noeud=prepa]`).click();await attendre();

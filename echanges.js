@@ -369,7 +369,9 @@
           let p = parNom.get(T.cleEntete(nom));
           if (!p) {
             const ancien = (etat.parcours || []).find(x => T.cleEntete(x.nom) === T.cleEntete(nom));
-            p = { id: ancien ? ancien.id : 'pc-' + T.cleEntete(nom).slice(0, 40), nom, noeuds: [], liens: [], prepa: true };
+            // Un chemin lu dans le classeur est pris tel quel : ses cases aussi.
+            // Sans la marque `cases`, une case retirée exprès reviendrait au rechargement.
+            p = { id: ancien ? ancien.id : 'pc-' + T.cleEntete(nom).slice(0, 40), nom, noeuds: [], liens: [], prepa: true, cases: true };
             parNom.set(T.cleEntete(nom), p); liste.push(p);
           }
           const vide = v => v === null || v === undefined || v === '';

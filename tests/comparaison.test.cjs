@@ -62,3 +62,14 @@ test('le jeu de démonstration a le format de l’import', () => {
   assert.ok(VOLS.some(v => v.crew > 0 && v.spml > 0), 'équipage et repas spéciaux présents');
   assert.ok(Object.isFrozen(VOLS) && Object.isFrozen(VOLS[0]), 'on ne modifie pas la démo par mégarde');
 });
+
+test('deux essais qui ne diffèrent que par un chemin ne sont pas « identiques »', () => {
+  const ateliers = [atelier(4)], reglages = { rendement: 1, delaiChargement: 45 };
+  const r = P.simuler({ vols: VOLS, ateliers, liaisons: [], ...reglages });
+  const etat = chemin => ({ parcours: [{ id: 'c', nom: 'C', noeuds: chemin, liens: [] }], parcoursCabine: {}, parcoursClasse: { 'AF/BC': 'c' } });
+  const a = C.capturer(r, { ateliers, reglages, liaisons: [], etat: etat(['cuisine']), vols: VOLS });
+  const b = C.capturer(r, { ateliers, reglages, liaisons: [], etat: etat(['cuisine', 'prepa']), vols: VOLS });
+  assert.doesNotMatch(C.note(a, b), /identiques/, 'le chemin a changé');
+  const c = C.capturer(r, { ateliers, reglages, liaisons: [], etat: etat(['cuisine']), vols: VOLS.slice(1) });
+  assert.doesNotMatch(C.note(a, c), /identiques/, 'le programme de vols a changé');
+});

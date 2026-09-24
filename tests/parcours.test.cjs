@@ -183,8 +183,15 @@ test('créer le chemin d’une commande : chaque service a sa case, reprise ou n
   assert.equal(PC.caseDe(etat, 'cuisine', 'FWI/BC').nom, 'Cuisine FWI BC');
   PC.affecter(etat, 'cuisine', ['FWI/BC'], null);
   assert.equal(PC.completerCases(etat, nomDe), 0, 'une case retirée exprès ne revient pas');
+  // Une commande retirée du programme ne reçoit pas de case.
+  etat.parcours.push({ id: 'retiree', nom: 'Vieux QR BC', noeuds: ['cuisine'], liens: [] });
+  etat.parcoursClasse['QR/BC'] = 'retiree';
+  assert.equal(PC.completerCases(etat, nomDe, [{ id: 'TX/BC' }]), 0);
+  // Un nom de chemin déjà pris reçoit un numéro : c'est sa clé dans Excel.
+  etat.parcours.push({ id: 'pris', nom: 'Complet DL YC', noeuds: [], liens: [] });
+  assert.equal(PC.creerChemin(etat, 'DL/YC', 'complet', false, null, { nomDe }).chemin.nom, 'Complet DL YC 2');
   // Les modèles : les chemins d'une classe, ou ceux d'aucune commande.
-  assert.deepEqual(PC.modeles(etat).map(p => p.id), ['complet']);
+  assert.deepEqual(PC.modeles(etat).map(p => p.id), ['complet', 'pris']);
   assert.equal(PC.commandeDu(etat, a.chemin.id), 'TX/BC');
   assert.equal(PC.cheminDe(etat, 'TX/PC').id, b.chemin.id);
   assert.equal(PC.cheminDe(etat, 'AF/BC'), null, 'AF/BC suit encore son modèle');

@@ -451,3 +451,40 @@ qu'on veut alimenter autrement que son parent n'est pas descriptible.
 **Preuve :** `tests/annexe-browser.cjs` § 6 — l'annexe figure parmi les
 emplacements, une liaison `MAGASIN → ARMEMENT 2` se saisit, et elle remplace
 alors l'héritage sans toucher aux amonts d'`ARMEMENT`.
+
+## Revue du 2026-09-24 — Contrôle complet (chemins par commande, cases, temporalité)
+
+Méthode : tests unitaires et navigateur ; syntaxe de chaque fichier ; parcours
+automatique de chaque vue et de chaque onglet à 1024 et 1440 px (erreurs de
+page et de console, textes « undefined / NaN / null », débordements, boutons
+sans nom) ; un « singe » qui clique chaque bouton visible des 16 onglets
+(≈ 260 commandes, aucune erreur) ; scénarios de bout en bout (chemins, cases,
+Excel, sauvegarde, annuler/rétablir, rechargement) ; noms piégés (`<img
+onerror>`) dans une case et un chemin, parcourus dans toutes les vues (aucune
+injection) ; charge de 200 commandes et 1 321 cases.
+
+| ID | Gravité | Statut | Vérif. | Résumé | Fichier |
+|---|---|---|---|---|---|
+| BUG-017 | Bloquant | Corrigé | Confirmé | Au-delà de 50 chemins (48 commandes) tout l'état était refusé ; au-delà de 500 cases aussi | `parcours.js`, `ateliers.js` |
+| BUG-018 | Majeur | Corrigé | Confirmé | Retirer un service du chemin d'une commande la laissait dans la case de ce service : travail compté, attendu par personne | `parcours.js` |
+| BUG-019 | Majeur | Corrigé | Confirmé | Après un aller-retour Excel, une case retirée exprès revenait au rechargement (marque `cases` perdue à l'import) | `echanges.js` |
+| BUG-020 | Majeur | Corrigé | Confirmé | Deux cases, ou deux chemins, pouvaient porter le même nom : l'import Excel suivant échouait ou fusionnait | `ateliers.js`, `parcours.js` |
+| BUG-021 | Majeur | Corrigé | Confirmé | La comparaison A/B déclarait « identiques » deux essais qui ne différaient que par un chemin, le matériel, les commandes ou le programme de vols | `comparaison.js`, `sim.js` |
+| BUG-022 | Majeur | Corrigé | Confirmé | La fenêtre de la case recouvrait les outils de la vue (Annuler, Excel, Importer) et le bandeau | `parcours.js`, `graphe.css`, `sim.js` |
+| BUG-023 | Majeur | Corrigé | Confirmé | Une plonge sans fin de poste (pauses décochées) faisait échouer tout le calcul (délai infini) | `moteur/production.js` (corrigé la veille, consigné ici) |
+| BUG-024 | Mineur | Corrigé | Confirmé | À 1024 px, l'état d'un service débordait de la colonne « En ce moment » | `histoire.css` |
+| BUG-025 | Mineur | Corrigé | Confirmé | « attend le service d'avant depuis 0 min » | `sim.js` |
+| BUG-026 | Mineur | Corrigé | Confirmé | Échap dans un champ de la case fermait la fenêtre ; sa position se mesurait vue cachée | `parcours.js`, `sim.js` |
+| BUG-027 | Mineur | Corrigé | Confirmé | Une barre de retours pile sur l'heure de fin débordait du graphique | `temps.js` |
+| BUG-028 | Mineur | Corrigé | Confirmé | Le rattrapage des cases pouvait en créer pour une commande retirée du programme | `parcours.js` |
+| BUG-029 | Performance | Ouvert | Confirmé | À 200 commandes, une saisie dans une case redessine toute la vue : ≈ 0,9 s | `ateliers.js` |
+
+**Preuves.** `tests/parcours.test.cjs` (noms de chemins uniques, commande
+retirée), `tests/comparaison.test.cjs` (chemin ou vols différents : pas
+« identiques »), `tests/echanges.test.cjs` (marque `cases` à l'import),
+`tests/graphe-browser.cjs` (fenêtre sous la barre, outils cliquables),
+`tests/temps.test.cjs` (plonge sans fin de poste) ; scénarios rejoués :
+retrait d'un service (plus d'anomalie « hors parcours »), Excel puis
+rechargement (la case retirée ne revient pas), renommage en double
+(« Refusé : le nom … est déjà celui d'une autre case »), 200 commandes
+(1 321 cases, 202 chemins, journée calculée en 71 ms).

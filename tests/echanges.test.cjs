@@ -134,7 +134,9 @@ test('ateliers : l’aller-retour par Excel ne perd rien', async () => {
   }
   assert.deepEqual(lu.exclues, ['TX/SPML']);
   assert.deepEqual(lu.ajoutees, [{ cie: 'ZZ', cabine: 'BC' }]);
-  assert.deepEqual(lu.parcours, etat.parcours);
+  // Un chemin lu dans le classeur est pris tel quel, cases comprises : il porte la marque `cases`.
+  assert.ok(lu.parcours.every(p => p.cases === true));
+  assert.deepEqual(lu.parcours.map(({ cases, ...p }) => p), etat.parcours);
   assert.deepEqual(lu.parcoursCabine, etat.parcoursCabine);
   assert.deepEqual(lu.parcoursClasse, { 'AF/YC': 'complet' });
   assert.equal(lu.materiel.stockInitial, 400);
