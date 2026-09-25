@@ -47,10 +47,10 @@ header{
 }
 .marque{display:flex;align-items:center;gap:9px;font-weight:800;font-size:17px;white-space:nowrap;color:var(--txt)}
 
-.marque small{color:var(--txt3);font-weight:600;font-size:11.5px}
+.marque small{color:var(--txt3);font-weight:600;font-size:12px}
 .horloge-box{display:flex;align-items:center;gap:14px;background:var(--bg2);border:1px solid var(--bordure);border-radius:var(--r2);padding:6px 14px}
 .horloge{font-size:23px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px;color:var(--txt)}
-.horloge .jour{font-size:11px;color:var(--txt3);font-weight:600}
+.horloge .jour{font-size:12px;color:var(--txt3);font-weight:600}
 .transport{display:flex;gap:6px}
 .btn{
   border:1.5px solid var(--bordure2); background:var(--bg3); color:var(--txt);
@@ -64,7 +64,7 @@ header{
 .btn-pause{background:var(--orange);border-color:var(--orange);color:#fff}
 .btn-pause:hover{background:#96460a;border-color:#96460a;color:#fff}
 .entete-droite{margin-left:auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.vitesse-box{display:flex;align-items:center;gap:8px;color:var(--txt2);font-size:12.5px;font-weight:600}
+.vitesse-box{display:flex;align-items:center;gap:8px;color:var(--txt2);font-size:13px;font-weight:600}
 .vitesse-box input{width:110px;accent-color:var(--accent)}
 .vitesse-box b{color:var(--txt);min-width:38px}
 
@@ -76,14 +76,14 @@ header{
 
 /* --- Panneaux -------------------------------------------------------------*/
 .panneau{background:var(--panneau);border:1px solid var(--bordure);border-radius:var(--r);padding:13px;margin-bottom:12px;box-shadow:var(--ombre)}
-.panneau h3{margin:0 0 11px;font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--txt2);font-weight:800;display:flex;align-items:center;gap:6px}
+.panneau h3{margin:0 0 11px;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--txt2);font-weight:800;display:flex;align-items:center;gap:6px}
 .slider-ligne{margin-bottom:12px}
 .slider-ligne label{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;color:var(--txt2);font-weight:600}
 .slider-ligne label b{color:var(--txt);font-variant-numeric:tabular-nums;font-weight:800}
 .slider-ligne input[type=range]{width:100%;accent-color:var(--accent)}
 
 .champ{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
-.champ span{font-size:11.5px;color:var(--txt2);text-transform:uppercase;letter-spacing:.03em;font-weight:700}
+.champ span{font-size:12px;color:var(--txt2);text-transform:uppercase;letter-spacing:.03em;font-weight:700}
 select,input[type=number],input[type=file]{background:var(--bg3);border:1.5px solid var(--bordure2);color:var(--txt);padding:7px 9px;border-radius:var(--r2);font-size:13px;font-family:inherit}
 select:focus,input:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:var(--accent)}
 .pastille{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle;border:1px solid rgba(0,0,0,.18)}
@@ -97,7 +97,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 .plan-tete{display:flex;align-items:center;gap:16px;padding:10px 16px;border-bottom:2px solid var(--bordure);background:var(--bg3)}
 .plan-tete .titre{font-weight:800;font-size:14px}
 
-.legende{display:flex;gap:15px;font-size:12.5px;color:var(--txt2);flex-wrap:wrap;font-weight:600}
+.legende{display:flex;gap:15px;font-size:13px;color:var(--txt2);flex-wrap:wrap;font-weight:600}
 .legende span{display:flex;align-items:center}
 .plan-wrap{flex:1;position:relative;overflow:hidden}
 #plan{width:100%;height:100%;display:block}
@@ -145,47 +145,44 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 /* --- Dashboard ------------------------------------------------------------*/
 .kpi-grille{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
 .kpi{background:var(--panneau);border:1px solid var(--bordure);border-radius:var(--r2);padding:10px 11px;box-shadow:var(--ombre)}
-.kpi .lab{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--txt2);font-weight:700}
+.kpi .lab{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--txt2);font-weight:700}
 .kpi .val{font-size:21px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px;color:var(--txt)}
-.kpi .val small{font-size:11.5px;color:var(--txt3);font-weight:700}
+.kpi .val small{font-size:12px;color:var(--txt3);font-weight:700}
 .val.bon{color:var(--vert)} .val.moyen{color:var(--orange)} .val.mauvais{color:var(--rouge)}
 
 .stat-atelier{margin-bottom:10px}
-.stat-atelier .haut{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px;font-weight:600;color:var(--txt)}
+.stat-atelier .haut{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;font-weight:600;color:var(--txt)}
 .stat-atelier .haut b{font-variant-numeric:tabular-nums;font-weight:800}
 
-.compare-tab{width:100%;border-collapse:collapse;font-size:12.5px}
+.compare-tab{width:100%;border-collapse:collapse;font-size:13px}
 .compare-tab th,.compare-tab td{padding:6px;text-align:right;border-bottom:1px solid var(--bordure);color:var(--txt)}
 .compare-tab td:first-child,.compare-tab th:first-child{text-align:left;color:var(--txt2);font-weight:600}
-.compare-tab thead th{color:var(--txt2);font-size:10.5px;text-transform:uppercase;font-weight:800}
+.compare-tab thead th{color:var(--txt2);font-size:12px;text-transform:uppercase;font-weight:800}
 
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--accent);color:#fff;padding:10px 20px;border-radius:30px;font-weight:700;opacity:0;pointer-events:none;transition:.25s;z-index:50;box-shadow:var(--ombre)}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 
 @media(max-width:1250px){ .app{grid-template-columns:260px 1fr 290px} }
 </style>
-<meta name="ory-version" content="b4205414bc"/>
-<link href="interface.css?v=f1ed3f71" rel="stylesheet"/><link href="editor.css?v=389e4cac" rel="stylesheet"/><link href="flow-center.css?v=27d66f34" rel="stylesheet"/><link href="ateliers.css?v=5a9ef355" rel="stylesheet"/>
-<link href="reglages.css?v=0613d139" rel="stylesheet"/><link href="demarrage.css?v=fb42cdcb" rel="stylesheet"/><link href="aide.css?v=935ab1b2" rel="stylesheet"/><link href="usability.css?v=5063b539" rel="stylesheet"/><link href="graphe.css?v=90ae4d0b" rel="stylesheet"/><link href="histoire.css?v=b62776fe" rel="stylesheet"/><link href="temps.css?v=41871902" rel="stylesheet"/></head>
+<meta name="ory-version" content="7cce5a35cd"/>
+<link href="interface.css?v=fe400f9d" rel="stylesheet"/><link href="editor.css?v=379cd9ed" rel="stylesheet"/><link href="flow-center.css?v=3813941e" rel="stylesheet"/><link href="ateliers.css?v=4b36c017" rel="stylesheet"/>
+<link href="reglages.css?v=d2e43a8d" rel="stylesheet"/><link href="demarrage.css?v=4672dc29" rel="stylesheet"/><link href="aide.css?v=935ab1b2" rel="stylesheet"/><link href="usability.css?v=e4ecf6d5" rel="stylesheet"/><link href="graphe.css?v=90ae4d0b" rel="stylesheet"/><link href="histoire.css?v=b602ab18" rel="stylesheet"/><link href="temps.css?v=dc6ff1cd" rel="stylesheet"/></head>
 <body data-vue="plan"><a class="skip-link" href="#workspace">Aller au contenu</a>
 <header>
-<div class="marque"><span class="brand-mark">N</span><div>Production ORY<small>Simulation d’une journée de repas à bord</small></div></div>
+<button class="marque" data-vers-partie="accueil" id="btn-accueil" title="Revenir à l’accueil" type="button"><span class="brand-mark">N</span><span class="marque-txt">Production ORY<small>Simulation d’une journée de repas à bord</small></span></button>
+<nav aria-label="Menu principal" class="menu-parties" id="menu"></nav>
 <div class="entete-droite">
-
-<button class="btn ctx-exemple" id="btn-limits" title="Ce que le calcul ne sait pas encore faire"><span data-ico="ampoule"></span>Chiffres d’exemple</button>
-<button class="btn" id="btn-comment" data-comment-bouton aria-expanded="false" aria-controls="comment">Comment ça marche ?</button>
-<button class="btn" id="btn-export" title="Enregistrer les résultats de la journée dans un fichier">Exporter la journée</button>
+<button class="btn" data-page="u-sauvegarde" id="btn-sauvegarde" title="Enregistrer tout votre travail dans un fichier, ou le relire" type="button"><span data-ico="boite"></span>Sauvegarde</button>
 </div>
 </header>
-<nav aria-label="Les étapes" class="etapes" id="etapes"></nav>
-<section aria-label="Comment ça marche" class="comment" hidden="" id="comment"></section>
+<main aria-label="Accueil" class="accueil" id="view-accueil" tabindex="-1"></main>
 
 <div class="app" id="workspace" tabindex="-1">
 <!-- ============ LEVIERS WHAT-IF ============ -->
 <!-- ============ PLAN ============ -->
 <div class="colonne col-plan"><div class="workspace-heading"><div><span class="view-ico" id="view-ico" aria-hidden="true"></span><h1 id="view-title">La journée</h1><p class="view-intro" id="view-intro"></p></div></div>
-<div class="sous-onglets" id="sous-onglets"><div class="so-liste" role="tablist" aria-label="Les onglets de cette étape"></div><div class="so-outils" id="so-outils"></div></div>
-<div class="lecteur" id="lecteur" data-sous="j-plan j-chiffres"><div class="horloge-box">
+<div class="sous-onglets" id="sous-onglets"><div class="so-liste" role="tablist" aria-label="Les onglets de cette étape"></div><div class="so-outils" id="so-outils"><div class="res-actions" data-sous="j-chiffres"><button class="btn btn-sm" id="btn-export" title="Enregistrer les résultats de la journée dans un fichier (JSON)" type="button">⇩ Exporter les résultats</button></div></div></div>
+<div class="lecteur" id="lecteur" data-sous="j-plan"><div class="horloge-box">
 <div><div class="horloge" id="horloge">05:00</div><div class="jour">heure de la journée rejouée</div></div>
 <div class="transport">
 <button class="btn btn-play" id="btn-play">▶ Rejouer</button>
@@ -213,13 +210,13 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <span><span class="pastille" style="background:var(--bordure2)"></span>Au curseur</span>
 <span><span class="pastille" style="background:var(--accent)"></span>Aménagé</span>
 <span><span class="pastille" style="background:transparent"></span>Hors calcul</span>
-</div><span class="plan-etat" id="plan-etat"></span><span class="plan-aide">Molette : zoomer · Double-clic : cadrer un service · <kbd>0</kbd> : tout voir</span></div><p class="kpi-quand" id="kpi-quand" data-sous="j-chiffres"></p><div class="kpi-grille" data-sous="j-chiffres"><div class="kpi kpi-anneau"><svg aria-hidden="true" class="anneau" viewBox="0 0 36 36"><circle class="anneau-fond" cx="18" cy="18" r="15.9"></circle><circle class="anneau-plein" cx="18" cy="18" id="kpi-anneau" r="15.9" stroke-dasharray="0 100"></circle></svg><div><div class="lab">Commandes prêtes à l’heure</div><div class="val" id="kpi-ontime">—</div><div class="kpi-note" id="kpi-denom">aucune commande préparée</div></div></div>
+</div><span class="plan-etat" id="plan-etat"></span><span class="plan-aide">Molette : zoomer · Double-clic : cadrer un service · <kbd>0</kbd> : tout voir</span></div><p class="kpi-quand" id="kpi-quand" data-sous="j-plan"></p><div class="kpi-grille" data-sous="j-plan"><div class="kpi kpi-anneau"><svg aria-hidden="true" class="anneau" viewBox="0 0 36 36"><circle class="anneau-fond" cx="18" cy="18" r="15.9"></circle><circle class="anneau-plein" cx="18" cy="18" id="kpi-anneau" r="15.9" stroke-dasharray="0 100"></circle></svg><div><div class="lab">Commandes prêtes à l’heure</div><div class="val" id="kpi-ontime">—</div><div class="kpi-note" id="kpi-denom">aucune commande préparée</div></div></div>
 <div class="kpi kpi-retard"><span class="kpi-ico" data-ico="alerte"></span><div><div class="lab">Commandes en retard</div><div class="val" id="kpi-overdue">0</div><div class="kpi-note" id="kpi-ready">aucun retard à cette heure</div></div></div>
 <div class="kpi kpi-travail"><span class="kpi-ico" data-ico="equipe"></span><div><div class="lab">Services au travail</div><div class="val" id="kpi-wip">0 <small>services</small></div><div class="kpi-note" id="kpi-wip-note">qui préparent en ce moment</div></div></div>
 <div class="kpi kpi-attente"><span class="kpi-ico" data-ico="sablier"></span><div><div class="lab">Services qui attendent</div><div class="val" id="kpi-debit">0 <small>services</small></div><div class="kpi-note" id="kpi-debit-note">le service d’avant n’a pas livré</div></div></div></div>
-<section aria-label="Les chiffres de la journée" class="journee-chiffres" id="journee-chiffres" data-sous="j-chiffres"><div class="vide-carte chiffres-vide"><span data-ico="equipe"></span><b>Rien à compter pour l’instant</b><p>Aucune équipe ne prépare encore de commande.</p><button class="btn" data-aller="ateliers">Qui prépare quoi →</button></div><p class="chiffres-attente mini-note">Les chiffres suivent l’heure rejouée : lancez <b>▶ Rejouer</b> ou avancez le curseur.</p><div class="panneau"><h3>Sur toute la journée</h3><div id="bilan-journee"></div></div></section>
+<section aria-label="Les chiffres de la journée" class="journee-chiffres" id="journee-chiffres" data-sous="j-chiffres"><div class="vide-carte chiffres-vide"><span data-ico="equipe"></span><b>Rien à compter pour l’instant</b><p>Aucune équipe ne prépare encore de commande.</p><button class="btn" data-page="at-chemins">Décrire l’organisation →</button></div><div class="panneau panneau-bilan"><h3>Sur toute la journée</h3><div id="bilan-journee"></div><p class="bilan-suite"><button class="lien-fort" data-page="j-plan" type="button">Rejouer la journée sur le plan →</button></p></div></section>
 <section aria-label="Stocks et retours" class="journee-stocks" id="journee-stocks" data-sous="j-stocks"></section><section aria-label="Comparer deux essais" class="journee-comparer" id="view-comparer" data-sous="j-comparer"></section>
-<section aria-label="Les vols" class="flights-view" hidden="" id="view-vols"><p class="vols-source" data-sous="v-programme"><span class="demo-badge" data-ico="avion"></span><strong id="source-label">Jeu de démonstration</strong><span id="source-count"></span></p><div class="vols-donnees" id="vols-donnees" data-sous="v-programme"></div><h2 class="vols-titre">Les départs de la journée</h2><div class="vols-frise" id="vols-frise" data-sous="v-departs"></div><div class="flight-filters" data-sous="v-departs"><label>Chercher un vol <input id="flight-search" placeholder="Numéro de vol ou compagnie" type="search"/></label><label>Afficher <select id="flight-filter"><option value="all">Tous les départs</option><option value="ontime">Prêts à l’heure</option><option value="late">Prêts en retard</option><option value="overdue">En retard</option><option value="pending">Pas prêts ou sans équipe</option><option value="ready">Prêts</option></select></label></div><details class="inline-help" data-sous="v-departs"><summary>Que veut dire « prêts avant » ?</summary><p class="mini-note">Les repas doivent être prêts avant d’être chargés dans l’avion : « prêts avant » = heure de départ − délai de chargement (45 min par défaut). « En retard » parle de la préparation des repas, pas de l’avion.</p></details><div class="table-scroll" data-sous="v-departs"><table class="flight-table"><caption class="sr-only">Où en sont les repas de chaque départ</caption><thead><tr><th scope="col">Départ</th><th scope="col">Vol</th><th scope="col">Prêts avant</th><th scope="col">Où elles en sont</th><th scope="col">Ses commandes</th></tr></thead><tbody id="flight-rows"></tbody></table></div></section><section id="view-ateliers" aria-label="Ateliers de travail" hidden></section><section id="view-flux" aria-label="Centre des flux" hidden></section><section id="view-reglages" aria-label="Centre des réglages" class="reglages-view" hidden></section></div>
+<section aria-label="Les vols" class="flights-view" hidden="" id="view-vols"><p class="vols-source" data-sous="v-programme"><span class="demo-badge" data-ico="avion"></span><strong id="source-label">Jeu de démonstration</strong><span id="source-count"></span></p><div class="vols-donnees" id="vols-donnees" data-sous="v-programme"></div><div class="vols-donnees" id="vols-horaires" data-sous="v-horaires"></div><h2 class="vols-titre">Les départs de la journée</h2><div class="vols-frise" id="vols-frise" data-sous="v-departs"></div><div class="flight-filters" data-sous="v-departs"><label>Chercher un vol <input id="flight-search" placeholder="Numéro de vol ou compagnie" type="search"/></label><label>Afficher <select id="flight-filter"><option value="all">Tous les départs</option><option value="ontime">Prêts à l’heure</option><option value="late">Prêts en retard</option><option value="overdue">En retard</option><option value="pending">Pas prêts ou sans équipe</option><option value="ready">Prêts</option></select></label></div><details class="inline-help" data-sous="v-departs"><summary>Que veut dire « prêts avant » ?</summary><p class="mini-note">Les repas doivent être prêts avant d’être chargés dans l’avion : « prêts avant » = heure de départ − délai de chargement (45 min par défaut). « En retard » parle de la préparation des repas, pas de l’avion.</p></details><div class="table-scroll" data-sous="v-departs"><table class="flight-table"><caption class="sr-only">Où en sont les repas de chaque départ</caption><thead><tr><th scope="col">Départ</th><th scope="col">Vol</th><th scope="col">Prêts avant</th><th scope="col">Où elles en sont</th><th scope="col">Ses commandes</th></tr></thead><tbody id="flight-rows"></tbody></table></div></section><section id="view-ateliers" aria-label="Ateliers de travail" hidden></section><section id="view-flux" aria-label="Centre des flux" hidden></section><section id="view-reglages" aria-label="Centre des réglages" class="reglages-view" hidden></section></div>
 <!-- ============ DASHBOARD ============ -->
 <aside aria-label="En ce moment" class="workbench" data-sous="j-plan"><div class="panel-content" id="panel-suivi"><div class="panel-heading"><h2>En ce moment</h2></div><div class="panneau">
 <h3>À regarder</h3>
@@ -267,24 +264,24 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <div class="panneau" id="model-limits"><h3>Ce que le calcul ne sait pas faire</h3><p class="mini-note">C’est un prototype : il sert à comparer des essais entre eux, pas à dire combien de personnes embaucher.</p><details class="aide bloc"><summary>Les limites connues</summary><span class="aide-corps"><ul class="limits-list"><li>Barème d’homme-minutes <strong>non calibré</strong> : valeurs de démonstration tant que l’étude de l’unité n’est pas importée.</li><li>Calcul <strong>sans aléa</strong> : pas de panne, d’absence ni de retard de livraison. Une même journée donne toujours le même résultat.</li><li>Un seul compte de matériel propre, consommé et relavé ; les stocks de denrées, les trolleys et les transferts physiques ne sont pas modélisés.</li><li>Les compétences ne sont pas modélisées : une personne d’un atelier ne va pas aider dans un autre.</li><li>L’export Winrest (XLSX et lignes de prestations) n’est pas encore lu : seul le CSV simplifié l’est.</li></ul></span></details></div></div></aside></div>
 <div aria-live="polite" class="toast" id="toast" role="status"></div>
 <script src="vols-demo.js?v=909320b7"></script>
-<script src="onglets.js?v=114e671e"></script>
+<script src="onglets.js?v=8feb00cf"></script>
 <script src="icones.js?v=3f3e14cd"></script>
 <script src="ui-model.js?v=4688387f"></script>
 <script src="moteur/noyau.js?v=c3946d15"></script>
 <script src="moteur/production.js?v=7246f99a"></script>
 <script src="plan-editor.js?v=4c115eef"></script>
-<script src="flow-center.js?v=b3befd54"></script>
+<script src="flow-center.js?v=1972df0f"></script>
 <script src="tableur.js?v=366d65ec"></script>
 <script src="graphe.js?v=df5dc18f"></script>
-<script src="parcours.js?v=35eb0786"></script>
+<script src="parcours.js?v=505af085"></script>
 <script src="echanges.js?v=1a44fd11"></script>
-<script src="ateliers.js?v=c6c3be37"></script>
-<script src="reglages.js?v=a3b1975c"></script>
-<script src="demarrage.js?v=f24c6257"></script>
+<script src="ateliers.js?v=96bad257"></script>
+<script src="reglages.js?v=cd3511ce"></script>
+<script src="demarrage.js?v=499ca572"></script>
 <script src="temps.js?v=cbdd6d63"></script>
 <script src="replay.js?v=016adb42"></script>
-<script src="simulation.js?v=981badbc"></script>
+<script src="simulation.js?v=d5f73782"></script>
 <script src="comparaison.js?v=c0b5d8ef"></script>
-<script src="sim.js?v=dac5bb40"></script>
+<script src="sim.js?v=b39ca1f6"></script>
 </body>
 </html>

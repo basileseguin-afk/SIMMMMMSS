@@ -132,3 +132,40 @@ Sauvegarde et « limites connues » : accessibles depuis l'accueil et l'en-tête
 
 Rien ne se perd : chaque écran existant trouve une place, seule sa porte
 d'entrée change.
+
+---
+
+## Contre-audit, après la refonte (mêmes mesures, même écran)
+
+| Mesure (1440 × 900, première visite) | Avant | Après |
+|---|---|---|
+| Où l'on arrive | étape 2, encart ouvert | l'accueil : 4 tuiles et « à faire ensuite » |
+| Hauteur avant le contenu d'une page | 511 px | **160 px** (201 px à 1 024 px) |
+| Hauteur avant le contenu de l'accueil | — | 59 px |
+| Boutons visibles au premier écran | 57 | **29** |
+| Tailles de texte (hors dessins) | 17 | **7 à 10** |
+| Pages qui mélangent saisie et résultat | 3 (Vols › Le programme, Les départs dans l'étape 1, Qui prépare quoi) | **0** |
+| Parcours page → page vérifiés (contenu présent, bon titre) | — | **272 / 272** |
+
+Ce qui a été fait, changement par changement :
+- **C1** — quatre parties par nature ; chaque ancien sous-onglet a trouvé sa
+  place, aucun écran n'a disparu. « Horaires » (décaler les vols, délai de
+  chargement) a quitté la page des vols pour Réglages.
+- **C2** — accueil à tuiles : l'état de chaque partie, ses pages, « à faire
+  ensuite », l'histoire en quatre images. Plus d'encart en haut des pages.
+- **C3** — un en-tête d'une ligne (accueil, parties, Sauvegarde) ; plus de barre
+  d'étapes ; le titre de page tient sur une ligne.
+- **C4** — un nom par page ; chaque export dit ce qu'il contient (« Cases et
+  chemins », « Temps de travail », « Liens ») ; « ↶ Annuler / ↷ Rétablir »
+  partout ; les renvois « étape 2 » deviennent « Organisation › Chemins ».
+- **C5** — Résultats commence par la Synthèse (la journée entière, en tuiles) ;
+  le lecteur et les chiffres de l'instant accompagnent le plan rejoué.
+- **C6** — l'état exemple / réel est sur les tuiles ; « Chiffres d'exemple »
+  quitte l'en-tête (les limites sont dans Sauvegarde) ; « Exporter les
+  résultats » est dans la Synthèse.
+- **C7** — 116 tailles de texte ramenées sur l'échelle 12 / 13 / 14 ; le tableau
+  des départs prend le style clair commun.
+
+Reste, volontairement : les outils de l'Organisation passent sous les onglets à
+1 024 px ; la page Commandes (Résultats) garde « Ajouter / Retirer une
+commande », faute d'autre endroit où déclarer une commande hors programme.

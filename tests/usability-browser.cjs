@@ -1,5 +1,6 @@
 /* Vérification ciblée des contrastes et de l’aide clavier, pas un audit WCAG exhaustif. */
 const assert=require('node:assert/strict'),path=require('node:path');
+const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
 const lum=c=>{const a=c.match(/[\d.]+/g).slice(0,3).map(Number).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4});return .2126*a[0]+.7152*a[1]+.0722*a[2]};
@@ -8,7 +9,7 @@ const ratio=(a,b)=>{a=lum(a);b=lum(b);return(Math.max(a,b)+.05)/(Math.min(a,b)+.
 try{await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
 const theme='clair';{
  for(const view of ['plan','ateliers','flux','reglages','vols']){
-  await page.locator('[data-view='+view+']').click();if(view==='ateliers'){await page.locator('[data-sous-onglet=at-equipes]').click();await page.locator('#at-new').click();}await page.waitForTimeout(200);
+  await nav.vue(page,view);if(view==='ateliers'){await nav.aller(page,'at-equipes');await page.locator('#at-new').click();}await page.waitForTimeout(200);
   for(const selector of ['.view-tabs .active','.panel-tabs .active','#btn-play','#horloge','#wg-new-item','.wg-tools [aria-pressed=true]','.fc-families [aria-pressed=true]','.so-onglet.actif','.so-onglet:not(.actif) >> nth=0','.so-badge >> nth=0']){
    const el=page.locator(selector);if(!await el.count()||!await el.isVisible()||await el.isDisabled())continue;
    const c=await el.evaluate(e=>{let p=e,b;while(p){b=getComputedStyle(p).backgroundColor;if(b!=='rgba(0, 0, 0, 0)')break;p=p.parentElement}return[getComputedStyle(e).color,b]});assert.ok(ratio(...c)>=4.5,`${theme} ${view} ${selector}: ${ratio(...c)}`);
@@ -18,5 +19,5 @@ const theme='clair';{
   await page.screenshot({path:'/tmp/ory-review-'+theme+'-'+view+'.png'});
  }
 }
-await page.setViewportSize({width:1024,height:700});for(const view of ['plan','ateliers','flux','reglages','vols']){await page.locator('[data-view='+view+']').click();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,view+' à 1024 px');}console.log('Usability passed: key text contrast ≥ 4.5:1 in the light theme, keyboard help, five views without horizontal overflow on desktop/mobile.');
+await page.setViewportSize({width:1024,height:700});for(const view of ['plan','ateliers','flux','reglages','vols']){await nav.vue(page,view);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,view+' à 1024 px');}console.log('Usability passed: key text contrast ≥ 4.5:1 in the light theme, keyboard help, five views without horizontal overflow on desktop/mobile.');
 }finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});

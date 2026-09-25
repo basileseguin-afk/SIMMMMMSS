@@ -425,12 +425,15 @@ function etatDemarrage(){
     ateliers:{ total:ats.length, fabriquent,
                absentes:(r.indicateurs||{}).classesAbsentes||0 },
     bareme:{ calibre },
+    reglages:{ delai:CFG.loadDelay, decalage:CFG.shift,
+               rendement:Sim.reglages?Sim.reglages.etat.rendement:1,
+               pauses:Sim.reglages?((Sim.reglages.etat.regime||{}).seuils||[]).length:0 },
     journee:{ calculee:!!(r.lots&&r.lots.length), suivies:(r.indicateurs||{}).classesSuivies||0,
               aHeure:(r.indicateurs||{}).aHeure||0,
               fin:Number.isFinite((r.indicateurs||{}).finDerniere)?MoteurProduction.hhmm(r.indicateurs.finDerniere):null }
   };
 }
-function majDemarrage(){ if(Sim.demarrage)Sim.demarrage.rendre(); if(Sim.onglets)Sim.onglets.rendre(); }
+function majDemarrage(){ if(Sim.onglets)Sim.onglets.rendre(); if(Sim.demarrage)Sim.demarrage.rendre(); afficherTitre(); }
 /* Un nombre sur un onglet dit qu'il y a quelque chose à y faire, sans l'ouvrir. */
 function badgeOnglet(id){
   const r=(Sim.ateliers&&Sim.ateliers.resultat)||{};
@@ -455,6 +458,8 @@ function initOnglets(){
     hote:()=>document.getElementById('sous-onglets'),
     vue:()=>activeView,
     badge:badgeOnglet,
+    // Une fois la page ouverte : son titre, et le menu qui marque sa partie.
+    apres:()=>{afficherTitre();if(Sim.demarrage)Sim.demarrage.rendreMenu();},
     change:(vue,id)=>{
       if(vue!==activeView)showView(vue);
       if(id==='v-departs')renderFlights();
@@ -469,7 +474,9 @@ function initOnglets(){
   // onglets : ils valent pour toute la vue, ils n'ont pas à prendre une ligne.
   const outils=document.getElementById('so-outils');
   // Ceux des liens ne valent que pour les liens : ils ne suivent pas dans la sauvegarde.
-  for(const [vue,sel,onglet] of [['ateliers','#view-ateliers .at-actions'],['reglages','#rg-bareme-panneau .rg-actions'],
+  // Ceux des cases et des chemins ne suivent pas dans les résultats (planning, commandes).
+  for(const [vue,sel,onglet] of [['ateliers','#view-ateliers .at-actions','at-chemins at-equipes at-grille'],
+                                 ['reglages','#rg-bareme-panneau .rg-actions','rg-minutes rg-rythme'],
                                  ['flux','#view-flux .fc-actions','u-liens']]){
     const e=document.querySelector(sel);if(!e||!outils)continue;
     e.dataset.vueOutils=vue;if(onglet)e.dataset.sous=onglet;outils.appendChild(e);
@@ -480,24 +487,34 @@ function initDemarrage(){
   // Les pictogrammes posés dans la page : un par indicateur, un par panneau.
   if(window.OrlyIcones)document.querySelectorAll('[data-ico]').forEach(e=>{if(!e.firstChild)e.innerHTML=OrlyIcones.ico(e.dataset.ico);});
   if(!window.OrlyDemarrage)return;
-  Sim.demarrage=new OrlyDemarrage.Demarrage({
-    hote:()=>document.getElementById('etapes'),
-    comment:()=>document.getElementById('comment'),
-    etat:etatDemarrage, vue:()=>activeView, aller:onglet=>showView(onglet)
+  Sim.demarrage=new OrlyDemarrage.Accueil({
+    menu:()=>document.getElementById('menu'),
+    accueil:()=>document.getElementById('view-accueil'),
+    etat:etatDemarrage,
+    partie:()=>activeView==='accueil'?'accueil':(document.body.dataset.partie||null)
   });
-  document.getElementById('btn-comment').addEventListener('click',()=>Sim.demarrage.basculer());
-  // On arrive sur l'étape à faire ensuite, pas sur une journée vide.
-  const s=OrlyDemarrage.suite(OrlyDemarrage.etapes(etatDemarrage()));
-  if(s.etape&&s.etape.onglet!==activeView)showView(s.etape.onglet);
-  afficherTitre(activeView);
+  // On arrive sur l'accueil : l'état de chaque partie, et ce qu'il y a à faire.
+  showView('accueil');
 }
-/* Le titre de la vue et la phrase qui dit, en mots simples, ce qu'on y voit. */
-function afficherTitre(name){
-  const v=(window.OrlyDemarrage&&OrlyDemarrage.VUES[name])||{titre:name,intro:''};
-  document.getElementById('view-title').textContent=v.titre;
-  const e=window.OrlyIcones&&OrlyIcones.ETAPES[name], tuile=document.getElementById('view-ico');
-  if(e&&tuile){tuile.innerHTML=OrlyIcones.ico(e.ico);tuile.style.setProperty('--c',e.couleur);}
-  const intro=document.getElementById('view-intro');if(intro)intro.textContent=v.intro;
+/* Le menu : ouvrir une page, une partie, ou revenir à l'accueil. Pendant
+ * l'édition du plan, on ne s'en va pas : il faut d'abord la terminer. */
+function allerPage(id){
+  if(editMode)return;
+  if(Sim.onglets)Sim.onglets.choisir(id);
+}
+function allerPartie(p){
+  if(editMode)return;
+  if(p==='accueil'){showView('accueil');return;}
+  if(Sim.onglets)Sim.onglets.ouvrir(p);
+}
+/* Le titre de la page : sa partie, et une phrase qui dit ce qu'on y voit. */
+function afficherTitre(){
+  const O=window.OrlyOnglets, id=document.body.dataset.sous, pg=O&&id?O.page(id):null;
+  const partie=pg&&O.PARTIES.find(p=>p.id===pg.partie);
+  document.getElementById('view-title').textContent=partie?partie.nom:'';
+  const tuile=document.getElementById('view-ico');
+  if(partie&&tuile&&window.OrlyIcones){tuile.innerHTML=OrlyIcones.ico(partie.ico);tuile.style.setProperty('--c',partie.couleur);}
+  const intro=document.getElementById('view-intro');if(intro)intro.textContent=pg?pg.intro:'';
 }
 function initFlux(){
   Sim.flows=new OrlyFlows.FlowCenter({zones:()=>Sim.editor.state.zones.map(z=>({...z,nom:nomLisible(z.nom)})),legacy:FLUX.concat(FLUX_RETOUR),
@@ -809,7 +826,7 @@ function majLegende(avant, compte) {
     if (etat) {
       const n = compte.vide + compte.partiel;
       etat.textContent = n
-        ? n + (n > 1 ? ' services' : ' service') + ' sans travail — voir l’étape 2, « Qui prépare quoi »'
+        ? n + (n > 1 ? ' services' : ' service') + ' sans travail — voir Organisation › Chemins'
         : 'Chaque service a une équipe au travail.';
       etat.className = 'plan-etat' + (n ? '' : ' complet');
     }
@@ -855,7 +872,7 @@ function majGoulotInfo() {
     const annexe=!z?annexes().find(a=>a.id===id):null;
     if(annexe){const pere=ZONES[annexe.parent];html+='<p>Annexe de <strong>'+escapeHTML(pere?nomLisible(pere.nom):annexe.parent)+'</strong>.</p>';}
     const equipes=((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]).filter(a=>a.service===id);
-    if(!equipes.length)html+='<p>Aucune équipe ici — étape 2, « Qui prépare quoi ».</p>';
+    if(!equipes.length)html+='<p>Aucune équipe ici — voir Organisation › Chemins.</p>';
     else html+='<p>'+equipes.map(a=>'<strong>'+escapeHTML(a.nom)+'</strong>'
       +(a.type==='dispo'?' · mise à disposition':a.type==='lavage'?' · plonge':' · '+a.personnes+' pers.')).join('<br>')+'</p>';
     const e=services[id];
@@ -874,7 +891,7 @@ function majGoulotInfo() {
   } else if(!lots.length){
     html='<div class="vide-carte">'+(window.OrlyIcones?OrlyIcones.ico('equipe'):'')
       +'<b>Pas encore de journée à rejouer</b><p>Donnez une équipe aux commandes : la journée se calcule toute seule.</p>'
-      +'<button class="btn btn-play" data-aller="ateliers">Étape 2 : Qui prépare quoi →</button></div>';
+      +'<button class="btn btn-play" data-page="at-chemins">Décrire l’organisation →</button></div>';
   } else {
     // Qui attend depuis le plus longtemps, à cet instant ?
     let pire=null;
@@ -1211,15 +1228,15 @@ function installerCentreReglages() {
     change:()=>{if(Sim.ateliers)Sim.ateliers.rendre();majDemarrage();if(Sim.vue)Sim.vue.recalculer();},
     notify:toast
   });
-  // Les vols, leur import et leurs horaires vivent à l'étape 1 : c'est là
-  // qu'on les cherche. Le délai de chargement dit quand un repas doit être prêt.
+  // Les vols s'importent dans « Données › Vols » ; leurs horaires (décalage,
+  // délai de chargement) se règlent dans « Réglages › Horaires des vols ».
   const volsDonnees=document.getElementById('vols-donnees');
   const horaires=document.getElementById('panneau-horaires');
 
   // Comparer deux essais : c'est un regard sur la journée, il en est un onglet.
   const comparer=document.getElementById('view-comparer');
   if(comparer)comparer.appendChild(bloc);
-  // Le programme de vols rejoint l'étape 1 ; la sauvegarde et les limites du
+  // Le programme de vols rejoint « Données › Vols » ; la sauvegarde et les limites du
   // calcul, qui valent pour tout le travail, un onglet de « L'unité ».
   if(donnees){
     donnees.hidden=false;donnees.classList.remove('panel-content');donnees.classList.add('reglages-grille');
@@ -1229,7 +1246,8 @@ function installerCentreReglages() {
     const unite=document.getElementById('view-flux');
     if(unite)unite.appendChild(donnees);
   }
-  if(volsDonnees&&horaires)volsDonnees.appendChild(horaires);
+  const volsHoraires=document.getElementById('vols-horaires');
+  if(volsHoraires&&horaires)volsHoraires.appendChild(horaires);
   // La version servie aide à diagnostiquer un cache périmé : elle n'a rien à
   // faire au milieu des réglages, elle rejoint les limites du calcul.
   const version=document.getElementById('rg-version'),limites=document.getElementById('model-limits');
@@ -1239,7 +1257,9 @@ function showView(name) {
   if(editMode && name!=='plan')return;
   activeView=name;
   document.body.dataset.vue=name;
-  afficherTitre(name);
+  const accueil=document.getElementById('view-accueil');
+  if(accueil)accueil.hidden=name!=='accueil';
+  if(name==='accueil'){pause();window.scrollTo(0,0);}
   if(name==='ateliers'){pause();if(Sim.ateliers)Sim.ateliers.rendre();}
   document.body.classList.toggle('ateliers-open',name==='ateliers');
   document.getElementById('view-ateliers').hidden=name!=='ateliers';
@@ -1272,7 +1292,8 @@ function updateRunState() {
     const e = document.getElementById('run-state');
     if (e) e.textContent = 'Édition du plan';
   } else if (Sim.vue) Sim.vue.rendreTransport();
-  document.querySelectorAll('[data-view]').forEach(b => b.disabled = editMode && b.dataset.view !== 'plan');
+  // Pendant l'édition du plan, le menu attend : on termine d'abord l'édition.
+  document.querySelectorAll('[data-vers-partie],#menu [data-page],#btn-sauvegarde').forEach(b => b.disabled = editMode);
 }
 
 /* ==========================================================================
@@ -1411,11 +1432,6 @@ function renderFriseVols(tous, etatDe, mot, icoEtat) {
 }
 
 function initWorkbench() {
-  document.getElementById('btn-limits').addEventListener('click',()=>{
-    if(editMode)basculerEdition();if(Sim.onglets)Sim.onglets.choisir('u-sauvegarde');else showView('flux');
-    const l=document.getElementById('model-limits');l.scrollIntoView({block:'nearest'});
-    const d=l.querySelector('details');if(d)d.open=true;
-  });
   document.getElementById('edit-done').addEventListener('click',()=>{if(editMode)basculerEdition();document.getElementById('btn-edit').focus();});
   const picker=document.getElementById('zone-picker');
   majPicker();
@@ -1423,7 +1439,15 @@ function initWorkbench() {
   document.getElementById('goulot-info').addEventListener('click',e=>{if(e.target.closest('[data-clear-selection]'))selectionner(selection);});
   // Un bouton « aller à l'étape… » posé n'importe où dans la page.
   document.addEventListener('click',e=>{const b=e.target.closest('[data-aller]');if(!b||editMode)return;
-    showView(b.dataset.aller);if(b.dataset.onglet&&Sim.onglets)Sim.onglets.choisir(b.dataset.onglet);});
+    if(b.dataset.onglet&&Sim.onglets)Sim.onglets.choisir(b.dataset.onglet);else showView(b.dataset.aller);});
+  // Le menu : une page ([data-page]) ou une partie ([data-vers-partie]), depuis
+  // l'en-tête, l'accueil ou n'importe quel lien de la page.
+  document.addEventListener('click',e=>{
+    const pg=e.target.closest('[data-page]');
+    if(pg&&!pg.disabled){allerPage(pg.dataset.page);return;}
+    const pa=e.target.closest('[data-vers-partie]');
+    if(pa&&!pa.disabled)allerPartie(pa.dataset.versPartie);
+  });
   document.getElementById('flight-search').addEventListener('input',renderFlights);
   document.getElementById('flight-filter').addEventListener('change',renderFlights);
   document.getElementById('vols-frise').addEventListener('click',e=>{const b=e.target.closest('[data-vf-filtre]');if(!b)return;

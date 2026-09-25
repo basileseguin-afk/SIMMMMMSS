@@ -1,4 +1,5 @@
 const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs'),os=require('node:os');
+const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
 (async()=>{
@@ -13,7 +14,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
   // Le site s'ouvre sur l'étape à faire ensuite : ce parcours travaille sur le plan.
-  const versPlan=async()=>{await page.locator('#etapes [data-view=plan]').click();await page.waitForTimeout(120);};await versPlan();
+  const versPlan=async()=>{await nav.vue(page,'plan');await page.waitForTimeout(120);};await versPlan();
   await page.evaluate(()=>localStorage.setItem('orly-zones',JSON.stringify({cuisine:{x:1880,y:1560,w:280,h:520,approx:true}})));await page.reload();await versPlan();
   await click('#btn-edit');assert.equal(await page.locator('#btn-play').isDisabled(),true);
   const initial=(await state()).zones.length;assert.ok(initial>=11&&initial<30,'storage shapes no longer clutter the plan');

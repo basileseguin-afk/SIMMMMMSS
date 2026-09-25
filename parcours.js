@@ -696,7 +696,7 @@
       return `<aside class="pc-cmds" aria-label="Les commandes">
         <div class="pc-cmds-tete"><b>Les commandes</b><span>${avec} sur ${classes.length} avec leur chemin</span></div>
         <input type="search" class="pc-cmds-cherche" data-pc="cmd-recherche" placeholder="Chercher (TX, BC…)" value="${esc(this.chercheCmd)}" aria-label="Chercher une commande">
-        <ul class="pc-cmds-liste">${items || '<li class="mini-note">Aucune commande : importez un programme de vols (étape 1).</li>'}</ul>
+        <ul class="pc-cmds-liste">${items || '<li class="mini-note">Aucune commande : importez un programme de vols (Données › Vols).</li>'}</ul>
         ${this.blocModeles(etat)}
       </aside>`;
     }
@@ -1006,7 +1006,7 @@
       const titre = `<div class="titre-aide at-titre-aide"><h3 class="at-titre" id="pc-t2">Qui prépare quoi <span class="pc-sous">calculé à partir des chemins</span></h3>
         <details class="aide"><summary aria-label="Comment lire le tableau ?">?</summary><span class="aide-corps">${AIDE_TABLEAU}</span></details></div>`;
       if (!t.lignes.length) return `<section class="qf" aria-labelledby="pc-t2" data-sous="at-grille">${titre}
-        <p class="mini-note">Aucune commande à préparer : importez un programme de vols (étape 1).</p></section>`;
+        <p class="mini-note">Aucune commande à préparer : importez un programme de vols (Données › Vols).</p></section>`;
       // Sans aucune case, deux cents cases vides ne disent rien : on dit par où commencer.
       if (!(etat.ateliers || []).length) return `<section class="qf" aria-labelledby="pc-t2" data-sous="at-grille">${titre}
         <div class="vide-carte qf-vide">${root.OrlyIcones ? root.OrlyIcones.ico('equipe') : ''}<b>Aucune case pour l’instant</b>

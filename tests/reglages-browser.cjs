@@ -2,6 +2,7 @@
  * en minutes par vol (valeur commune et valeurs par compagnie), rendement,
  * régime de poste, et l'échange du barème par Excel. */
 const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs'),os=require('node:os');
+const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
 const T=require('../tableur.js');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
@@ -16,8 +17,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
 
   // 1. Un atelier réel, pour mesurer l'effet des réglages sur quelque chose.
-  await page.locator('[data-view=ateliers]').click();await attendre();
-  await page.locator('[data-sous-onglet=at-equipes]').click();await page.locator('#at-new').click();await attendre();
+  await nav.vue(page,'ateliers');await attendre();
+  await nav.aller(page,'at-equipes');await page.locator('#at-new').click();await attendre();
   const at=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
   await page.selectOption(`[data-at="${at}"] [data-at-champ=service]`,'cuisine');await attendre();
   await page.selectOption(`[data-at="${at}"] [data-at-champ=lot-nouveau]`,'CRL/BC');await attendre();
@@ -25,7 +26,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(avant>0,'l’atelier travaille');
 
   // 2. Le modèle passe AVANT l'ancien moteur, et chacun dit ce qu'il pilote.
-  await page.locator('[data-view=reglages]').click();await attendre();
+  await nav.vue(page,'reglages');await attendre();
   // Le titre porte désormais un « ? » : on ne lit que son propre texte, pas
   // celui de l'aide repliée (textContent ramasse aussi ce qui est caché).
   const ordre=await page.evaluate(()=>[...document.querySelectorAll('#view-reglages .reglages-titre')]
@@ -88,7 +89,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 4. Le rendement allonge la journée sans toucher au barème. Il a son onglet,
   //    avec les pauses : les minutes par vol restent seules sur le leur.
-  await page.locator('[data-sous-onglet=rg-rythme]').click();await attendre();
+  await nav.aller(page,'rg-rythme');await attendre();
   assert.equal(await page.locator('#rg-bareme-panneau').isVisible(),false,'le barème attend derrière son onglet');
   await ecrire('#rg-rendement','0.5');
   assert.ok(Math.abs(await duree()-avant*4)<1e-6,'un rendement de 0,5 double encore');
@@ -135,7 +136,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   bareme.lignes[ligne('CUISINE','CRL','BC')][3]=17.5;
   const modifie=path.join(dossier,'bareme-modifie.xlsx');
   fs.writeFileSync(modifie,T.ecrireClasseur(feuilles));
-  await page.locator('[data-sous-onglet=rg-minutes]').click();await page.locator('#rg-reset').click();await attendre();
+  await nav.aller(page,'rg-minutes');await page.locator('#rg-reset').click();await attendre();
   assert.equal(await valeur('*/BC'),35,'les valeurs de démonstration sont revenues');
   await page.locator('#rg-import').setInputFiles(modifie);await page.waitForTimeout(400);
   assert.equal(await valeur('*/BC'),70,'le fichier a repris la main');
@@ -161,11 +162,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 10. Le délai de chargement n'est pas recopié : un seul champ, avec les vols
   //     dont il fixe l'heure où les repas doivent être prêts.
-  await page.locator('[data-view=vols]').click();await attendre();
+  await nav.vue(page,'vols');await attendre();
   assert.equal(await page.locator('#loadDelay').count(),1,'un seul champ');
   assert.equal(await page.evaluate(()=>document.getElementById('view-vols').contains(document.getElementById('loadDelay'))),true,
     'et il vit à l’étape 1, « Les vols »');
-  await page.locator('[data-view=reglages]').click();await attendre();
+  await nav.vue(page,'reglages');await attendre();
 
   // 11. Rien ne déborde, sur grand écran comme sur le plus petit visé.
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);

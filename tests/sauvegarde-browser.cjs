@@ -1,5 +1,6 @@
 /* Sauvegarde complète : l'aller-retour doit rendre un tracé intact après effacement. */
 const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs');
+const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
 (async()=>{
@@ -12,8 +13,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
 
   // 1. Saisir quelque chose : un atelier de travail, et une zone déplacée.
-  await click('[data-view=ateliers]');
-  await page.locator('[data-sous-onglet=at-equipes]').click();await page.locator('#at-new').click();await page.waitForTimeout(150);
+  await nav.vue(page,'ateliers');
+  await nav.aller(page,'at-equipes');await page.locator('#at-new').click();await page.waitForTimeout(150);
   const at=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
   await page.selectOption(`[data-at="${at}"] [data-at-champ=service]`,'cuisine');await page.waitForTimeout(150);
   await page.fill(`[data-at="${at}"] [data-at-champ=nom]`,'Atelier témoin');
@@ -21,7 +22,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.fill(`[data-at="${at}"] [data-at-champ=personnes]`,'5');
   await page.dispatchEvent(`[data-at="${at}"] [data-at-champ=personnes]`,'change');await page.waitForTimeout(150);
   await page.selectOption(`[data-at="${at}"] [data-at-champ=lot-nouveau]`,'CRL/BC');await page.waitForTimeout(250);
-  await click('[data-view=plan]');await click('#btn-edit');
+  await nav.vue(page,'plan');await click('#btn-edit');
   await page.locator('[data-action=select][data-zone=cuisine]').click();
   await page.locator('#pe-x').fill('1888');await page.locator('#pe-x').press('Tab');await click('#edit-done');
   const avant=await cles();
@@ -30,7 +31,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(avant[0]&&avant[1],'plan et ateliers doivent exister après la saisie');
 
   // 2. Tout sauvegarder en un fichier.
-  await click('[data-view=reglages]');
+  await nav.vue(page,'reglages');
   // Comme le centre des flux, le barème n'écrit sa clé que si on y touche.
   const champBareme='[data-rg-champ=minutes][data-service=cuisine][data-cle="*/BC"]';
   // Le barème se lit un service à la fois : il faut déplier celui qu'on modifie.
@@ -39,7 +40,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.fill(champBareme,'41.5');await page.dispatchEvent(champBareme,'change');
   await page.waitForTimeout(200);
   // La sauvegarde vit dans « L'unité », onglet « Sauvegarde et limites ».
-  await click('[data-view=flux]');await click('[data-sous-onglet=u-sauvegarde]');
+  await nav.vue(page,'flux');await nav.aller(page,'u-sauvegarde');
   const dl=page.waitForEvent('download');await click('#sauvegarde-export');const fichier=await dl;
   assert.match(fichier.suggestedFilename(),/^ory-sauvegarde-\d{4}-\d{2}-\d{2}\.json$/);
   const chemin=await fichier.path(),sauvegarde=JSON.parse(fs.readFileSync(chemin,'utf8'));
@@ -65,16 +66,16 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 4. Tout effacer, comme un navigateur qui vide ses données de site.
   await page.evaluate(()=>localStorage.clear());await page.reload();
-  await click('[data-view=ateliers]');
+  await nav.vue(page,'ateliers');
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.length),0,'tout doit avoir disparu');
 
   // 5. Restaurer : le tracé revient à l'identique.
-  await click('[data-view=flux]');
+  await nav.vue(page,'flux');
   await page.locator('#sauvegarde-import').setInputFiles({name:'ory-sauvegarde.json',mimeType:'application/json',buffer:fs.readFileSync(chemin)});
   await page.waitForFunction(()=>localStorage.getItem('ory-ateliers-v1')!==null,{},{timeout:15000});
   await page.waitForLoadState('load');
   assert.deepEqual(await cles(),avant,'les trois clés doivent être rendues à l’identique');
-  await click('[data-view=ateliers]');
+  await nav.vue(page,'ateliers');
   const rendu=await page.evaluate(()=>Sim.ateliers.state.ateliers[0]);
   assert.equal(rendu.nom,'Atelier témoin');
   assert.equal(rendu.service,'cuisine');

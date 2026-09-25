@@ -5,6 +5,31 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-25 — Refonte de l'interface : accueil à tuiles et menu par nature
+
+Audit sous six points de vue (`docs/AUDIT_INTERFACE_2026-09-25.md`), puis ses
+sept changements communs.
+
+- **Accueil à tuiles** (menu principal) : Données, Organisation, Réglages,
+  Résultats, chacune avec son état (fait, exemple, à faire), ses pages et ce
+  qu'il y a « à faire ensuite ». L'histoire en quatre images y vit.
+- **Menu par nature** : chaque page (ancien sous-onglet) appartient à une
+  seule partie. Les réglages ne sont plus dans les vols, les résultats plus
+  dans les équipes. Nouvelle page Réglages › Horaires des vols.
+- **En-tête d'une ligne** : accueil, parties, Sauvegarde. Plus de barre
+  d'étapes ni d'encart permanent : le contenu commence à 160 px (511 avant).
+- **Résultats › Synthèse** en premier : la journée entière en tuiles, et
+  « Exporter les résultats » ; le lecteur et les chiffres de l'instant vont avec
+  le plan rejoué.
+- **Libellés** : exports nommés (« Cases et chemins », « Temps de travail »,
+  « Liens »), Annuler / Rétablir partout pareils, renvois « Organisation ›
+  Chemins » au lieu de « étape 2 ».
+- **Grammaire visuelle** : tailles de texte ramenées à 12 / 13 / 14 px (116
+  règles), tableau des départs au style clair commun.
+- Tests : `tests/menu-browser.cjs` (remplace `histoire-browser.cjs`), aide
+  partagée `tests/nav.cjs`, menu et tuiles dans `onglets.test.cjs` et
+  `demarrage.test.cjs` ; tous les tests navigateur passent par le menu.
+
 ## 2026-09-24 — Mise à disposition : les man-minutes sont ignorés
 
 - Retiré : le « travail fixe » d'une mise à disposition, ajouté juste avant.

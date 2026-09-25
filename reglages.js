@@ -168,7 +168,7 @@
           <h2 class="reglages-titre">Minutes de travail par vol</h2><details class="aide">
           <summary aria-label="À quoi sert cette page ?">?</summary>
           <span class="aide-corps">Ces chiffres disent combien de temps prend chaque préparation. Ils
-            servent au calcul de la journée qui se rejoue à l’étape 4, « La journée ».</span></details></div>
+            servent au calcul de la journée, dont on lit le résultat dans « Résultats ».</span></details></div>
         <p id="rg-status" role="status" aria-live="polite"></p>
         <div class="panneau" id="rg-bareme-panneau" data-sous="rg-minutes">
           <div class="titre-aide"><h3>Service par service</h3><details class="aide">
@@ -193,10 +193,10 @@
           <p class="rg-codes">${P.CABINES.map(c => `<span><span class="puce-classe" data-cab="${c}"></span>${esc((P.NOM_CABINE || {})[c] || c)}</span>`).join('')}<em>minutes de travail pour un vol</em></p>
           <div id="rg-alerte"></div>
           <div class="rg-actions">
-            <button class="btn btn-sm" id="rg-undo">Annuler</button>
-            <button class="btn btn-sm" id="rg-redo">Rétablir</button>
-            <button class="btn btn-sm" id="rg-export" title="Ces chiffres dans un classeur Excel, prêt à remplir">⇩ Excel</button>
-            <button class="btn btn-sm" id="rg-import-btn" title="Réimporter un classeur (ou un CSV) modifié">⇧ Importer</button>
+            <button class="btn btn-sm" id="rg-undo" title="Annuler la dernière modification">↶ Annuler</button>
+            <button class="btn btn-sm" id="rg-redo" title="Rétablir ce qui a été annulé">↷ Rétablir</button>
+            <button class="btn btn-sm" id="rg-export" title="Les temps de travail (minutes par vol) et les réglages du rythme, dans un classeur Excel prêt à remplir">⇩ Temps de travail</button>
+            <button class="btn btn-sm" id="rg-import-btn" title="Réimporter un classeur (ou un CSV) de temps de travail modifié">⇧ Importer</button>
             <input id="rg-import" type="file" accept=".xlsx,.csv,.json" hidden>
           </div>
           <div id="rg-bareme"></div>
@@ -231,7 +231,7 @@
         </div>
         <p class="rg-version" id="rg-version" data-sous="rg-rythme"></p>
         <p class="mini-note rg-ailleurs" data-sous="rg-rythme">Les <b>tunnels de la plonge</b> et la <b>boucle du matériel</b>
-          se règlent équipe par équipe, à l’étape 2, <b>Qui prépare quoi</b>.</p>`;
+          se règlent équipe par équipe, dans <b>Organisation › Cases</b>.</p>`;
       hote.appendChild(section);
       // Quelle version le navigateur sert-il ? La question revient dès qu'un
       // doute s'installe, et un cache périmé ne se voit autrement pas.

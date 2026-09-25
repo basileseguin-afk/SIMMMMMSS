@@ -1,6 +1,7 @@
 /* L'onglet « Ateliers de travail » : saisie, enchaînement, attente des amonts,
  * robot, planning, couverture par compagnie × classe, persistance. */
 const assert=require('node:assert/strict'),path=require('node:path');
+const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
 (async()=>{
@@ -21,9 +22,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await attendre();
  };
  // Chaque partie de la vue a son onglet : on y va comme on y irait à la main.
- const onglet=async id=>{await page.locator(`[data-sous-onglet=${id}]`).click();await attendre();};
+ const onglet=async id=>{await nav.aller(page,id);await attendre();};
  const creer=async(nom,service,debut,personnes,type)=>{
-   await page.locator('[data-sous-onglet=at-equipes]').click();await page.locator('#at-new').click();await attendre();
+   await nav.aller(page,'at-equipes');await page.locator('#at-new').click();await attendre();
    const id=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
    await champ(id,'service',service);await champ(id,'nom',nom);
    await champ(id,'debut',debut);await champ(id,'personnes',personnes);
@@ -48,7 +49,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  };
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
-  await page.locator('[data-view=ateliers]').click();await attendre();
+  await nav.vue(page,'ateliers');await attendre();
 
   // 1. L'onglet occupe toute la largeur et part d'une page vide qui explique.
   assert.equal(await page.locator('#view-ateliers').isVisible(),true);
@@ -150,7 +151,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator('#at-undo').click();await attendre();
   assert.equal((await etat()).ateliers.length,avantSuppr,'l’annulation rend l’atelier');
   const garde=await etat();
-  await page.reload();await page.locator('[data-view=ateliers]').click();await attendre();
+  await page.reload();await nav.vue(page,'ateliers');await attendre();
   assert.deepEqual(await etat(),garde,'tout est relu du navigateur');
 
   // 11. Un fichier d'ateliers invalide est refusé en entier.
@@ -223,7 +224,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await onglet('at-repas');await page.locator('[data-at-action=classe-nouvelle]').click();await attendre();
   await page.fill('#at-cls-cie','QQ');await page.locator('[data-at-action=classe-valider]').click();await attendre();
   const memoire=await etat();
-  await page.reload();await page.locator('[data-view=ateliers]').click();await attendre();
+  await page.reload();await nav.vue(page,'ateliers');await attendre();
   assert.deepEqual(await etat(),memoire,'exclusions et ajouts sont relus du navigateur');
 
   // 17 bis. La mise à disposition : un service qui ne fabrique pas.

@@ -5,6 +5,7 @@
  * Ce parcours tient la règle : ce qui reste visible guide le geste, le reste
  * est à un clic. Sans lui, les paragraphes reviendraient un par un. */
 const assert=require('node:assert/strict'),path=require('node:path');
+const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
 (async()=>{
@@ -37,14 +38,14 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 1. Aucune vue n'impose un pavé de texte. Vingt-cinq mots, c'est déjà deux
   //    lignes pleines : au-delà, on ne lit plus, on saute.
   for(const vue of ['ateliers','flux','reglages']){
-    await page.locator(`[data-view=${vue}]`).click();await attendre();
+    await nav.vue(page,vue);await attendre();
     const t=await texte(vue);
     assert.deepEqual(t.longs,[],`« ${vue} » ne doit imposer aucun pavé — trouvé : `+t.longs.join(' / '));
     assert.ok(t.mots<260,`« ${vue} » : ${t.mots} mots visibles, c'est trop`);
   }
 
   // 2. Rien n'est perdu : l'explication est derrière le « ? », à un clic.
-  await page.locator('[data-view=reglages]').click();await attendre();
+  await nav.vue(page,'reglages');await attendre();
   const aide=page.locator('#rg-bareme-panneau .aide').first();
   const corps=aide.locator('.aide-corps');
   assert.equal(await corps.isVisible(),false,'repliée au départ');

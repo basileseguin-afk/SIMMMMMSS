@@ -1,6 +1,7 @@
 /* Une zone de production annexe — « Armement 2 » — doit pouvoir être dessinée,
  * rattachée à un atelier du moteur, aménagée, et ses personnes comptées. */
 const assert=require('node:assert/strict'),path=require('node:path');
+const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
 (async()=>{
@@ -11,7 +12,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
   // Le site s'ouvre sur l'étape à faire ensuite : ce parcours travaille sur le plan.
-  const versPlan=async()=>{await page.locator('#etapes [data-view=plan]').click();await page.waitForTimeout(120);};await versPlan();
+  const versPlan=async()=>{await nav.vue(page,'plan');await page.waitForTimeout(120);};await versPlan();
 
   // 1. Dessiner un rectangle libre dans l'éditeur du plan.
   await click('#btn-edit');
@@ -40,8 +41,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(iAnx,iArm+1,'elle est rangée juste sous son atelier');
 
   // 4. Elle accueille des ateliers de travail comme n'importe quel service.
-  await click('[data-view=ateliers]');
-  await page.locator('[data-sous-onglet=at-equipes]').click();await page.locator('#at-new').click();await page.waitForTimeout(150);
+  await nav.vue(page,'ateliers');
+  await nav.aller(page,'at-equipes');await page.locator('#at-new').click();await page.waitForTimeout(150);
   const at=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
   await page.selectOption(`[data-at="${at}"] [data-at-champ=service]`,zone.id);await page.waitForTimeout(150);
   await page.fill(`[data-at="${at}"] [data-at-champ=debut]`,'05:00');
@@ -61,7 +62,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 6. Le Centre des flux la propose comme n'importe quel emplacement, et une
   //    liaison saisie à la main l'emporte sur l'héritage.
-  await click('[data-view=flux]');
+  await nav.vue(page,'flux');
   const emplacements=await page.evaluate(()=>Sim.flows.points.map(p=>p.label));
   assert.ok(emplacements.includes('Armement 2'),'l’annexe figure parmi les emplacements du Centre des flux');
   await click('#fc-new');
@@ -76,7 +77,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     'l’atelier dont elle dépend garde les siens');
 
   // 7. Le plan la montre et la décrit, sans prétendre à une file séparée.
-  await click('[data-view=plan]');
+  await nav.vue(page,'plan');
   await page.locator('#zone-picker').selectOption(zone.id);
   assert.match(await page.locator('#goulot-info').textContent(),/Annexe de/);
   assert.match(await page.locator('#goulot-info').textContent(),/Armement/);

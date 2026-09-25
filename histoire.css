@@ -26,49 +26,7 @@
 .puce-classe[data-cab="YC"]{background:var(--cab-YC)} .puce-classe[data-cab="CREW"]{background:var(--cab-CREW)}
 .puce-classe[data-cab="SPML"]{background:var(--cab-SPML)}
 
-/* --- Les étapes : des tuiles de couleur ---------------------------------- */
-.etapes{display:flex;align-items:stretch;gap:12px;padding:10px 20px;background:var(--bg3);
-  border-bottom:1px solid var(--bordure)}
-.etapes-liste{display:flex;align-items:stretch;gap:2px;list-style:none;margin:0;padding:0;flex:1;min-width:0}
-.etapes-liste>li{display:flex;min-width:0}
-.etapes-liste>li:not(.etape-fleche){flex:1 1 0}
-.etape-fleche{align-items:center;color:var(--bordure2);font-size:28px;line-height:1;padding:0 2px;user-select:none}
-.etape{display:flex;align-items:center;gap:12px;width:100%;text-align:left;font:inherit;cursor:pointer;
-  background:transparent;border:2px solid transparent;border-radius:14px;padding:7px 12px 7px 9px;color:var(--txt);
-  position:relative;min-height:60px;min-width:0;transition:background .15s,border-color .15s}
-.etape:hover{background:color-mix(in srgb,var(--c) 7%,var(--bg3))}
-.etape:focus-visible{outline:3px solid var(--c);outline-offset:1px}
-.etape.active{background:color-mix(in srgb,var(--c) 10%,var(--bg3));border-color:var(--c)}
-.etape-ico{position:relative;flex:none;width:44px;height:44px;border-radius:13px;display:grid;place-items:center;
-  background:color-mix(in srgb,var(--c) 15%,var(--bg3));color:var(--c)}
-.etape-ico .ico{width:25px;height:25px;stroke-width:1.8}
-.etape.active .etape-ico{background:var(--c);color:#fff}
-.etape-num{position:absolute;top:-7px;left:-7px;width:21px;height:21px;border-radius:50%;display:grid;place-items:center;
-  font-size:11.5px;font-weight:800;background:var(--bg3);color:var(--c);border:2px solid var(--c)}
-.etape-txt{display:block;min-width:0}
-.etape-txt b{display:block;font-size:14.5px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.etape-txt em{display:flex;gap:6px;align-items:flex-start;font-style:normal;font-size:12px;color:var(--txt2);
-  margin-top:3px;line-height:1.3}
-.etape-etat{flex:none;width:16px;height:16px;border-radius:50%;display:inline-grid;place-items:center;
-  font-size:10px;font-weight:800;line-height:1;margin-top:0}
-.etape-etat.fait{background:var(--ok);color:#fff}
-.etape-etat.verifier{background:var(--attente);color:#fff}
-.etape-etat.afaire{background:var(--bordure2);color:var(--txt)}
-.etape-etat.provisoire{background:var(--bg2);color:var(--txt2);border:1px solid var(--bordure2)}
-.etape-suite{position:absolute;top:-10px;right:10px;font-size:10px;font-weight:800;text-transform:uppercase;
-  letter-spacing:.04em;background:var(--c);color:#fff;border-radius:99px;padding:2px 9px;white-space:nowrap;
-  box-shadow:0 2px 6px color-mix(in srgb,var(--c) 40%,transparent)}
-.etapes-annexe{display:flex;border-left:1px dashed var(--bordure2);padding-left:12px;flex:0 0 auto}
-.etape.annexe{min-width:170px}
-.etape.annexe .etape-ico{width:38px;height:38px}
-.etape.annexe b{font-size:13.5px}
-body.editing .etapes{opacity:.45;pointer-events:none}
-
 /* --- Comment ça marche : une frise d'images ------------------------------ */
-.comment{background:linear-gradient(180deg,var(--bg3),var(--bg2));border-bottom:1px solid var(--bordure);padding:14px 20px 16px}
-.comment[hidden]{display:none}
-.cm-tete{display:flex;justify-content:space-between;align-items:center;gap:12px}
-.cm-tete h2{margin:0;font-size:18px}
 .cm-liste{list-style:none;margin:6px 0 0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;
   position:relative}
 .cm-liste li{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;position:relative;padding:6px 6px 0}
@@ -80,12 +38,9 @@ body.editing .etapes{opacity:.45;pointer-events:none}
   background:color-mix(in srgb,var(--c) 14%,var(--bg3));color:var(--c);border:3px solid var(--c);margin-bottom:4px}
 .cm-picto.ico{width:40px;height:40px;stroke-width:1.7}
 .cm-num{position:absolute;top:-4px;right:-4px;width:24px;height:24px;border-radius:50%;background:var(--c);color:#fff;
-  font-size:12.5px;font-weight:800;display:grid;place-items:center;border:2px solid var(--bg3)}
-.cm-liste b{font-size:14.5px;line-height:1.25}
-.cm-liste p{margin:0;font-size:12.5px;color:var(--txt2)}
-.cm-pied{margin:12px auto 0;font-size:12.5px;color:var(--txt2);text-align:center;display:flex;gap:6px;justify-content:center;align-items:center}
-.cm-pied .ico{color:var(--attente)}
-.cm-pied b{color:var(--txt)}
+  font-size:13px;font-weight:800;display:grid;place-items:center;border:2px solid var(--bg3)}
+.cm-liste b{font-size:14px;line-height:1.25}
+.cm-liste p{margin:0;font-size:13px;color:var(--txt2)}
 
 /* --- Le titre de chaque vue : une tuile de couleur, un titre, une phrase - */
 .workspace-heading>div{display:grid;grid-template-columns:auto 1fr;column-gap:14px;align-items:center}
@@ -93,20 +48,12 @@ body.editing .etapes{opacity:.45;pointer-events:none}
   background:var(--c,var(--accent));color:#fff}
 .view-ico .ico{width:27px;height:27px}
 .view-ico:empty{display:none}
-.view-intro{margin:2px 0 0;font-size:13.5px;color:var(--txt2);max-width:90ch;line-height:1.4}
+.view-intro{margin:2px 0 0;font-size:14px;color:var(--txt2);max-width:90ch;line-height:1.4}
 .view-intro:empty{display:none}
 
 @media(max-width:1250px){
-  .etapes-liste>.etape-fleche{display:none}
-  .etape{padding:6px 8px;gap:9px}
-  .etape-txt b{font-size:13.5px}
-  .etape-ico{width:38px;height:38px}
 }
 @media(max-width:1000px){
-  .etapes{flex-direction:column;gap:6px}
-  .etapes-liste{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-  .etapes-annexe{border-left:0;padding-left:0}
-  .etape.annexe{min-width:0}
   .cm-liste{grid-template-columns:1fr 1fr;row-gap:16px}
   .cm-liste li::after,.cm-liste li::before{display:none}
 }
@@ -118,7 +65,7 @@ body.editing .etapes{opacity:.45;pointer-events:none}
   border-bottom:1px solid var(--bordure);flex-wrap:wrap}
 .lecteur .horloge-box{flex:1 1 520px;min-width:0;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .lecteur .horloge{font-size:26px;color:var(--txt)}
-.lecteur .jour{font-size:11px;color:var(--txt2)}
+.lecteur .jour{font-size:12px;color:var(--txt2)}
 .lecteur .run-state{max-width:240px;font-size:12px;color:var(--txt2)}
 .lecteur #sim-curseur{flex:1 1 180px;width:auto;min-width:140px}
 .lecteur .vitesse-box{color:var(--txt2)}
@@ -139,11 +86,11 @@ body[data-vue="vols"] .workbench{display:none}
   border-radius:12px;padding:7px 12px}
 .rg-eq .ico{grid-row:span 2;width:26px;height:26px;color:var(--c-temps)}
 .rg-eq b{font-size:18px;line-height:1.1;color:var(--txt)}
-.rg-eq small{font-size:11px;color:var(--txt2)}
+.rg-eq small{font-size:12px;color:var(--txt2)}
 .rg-eq.res{background:var(--c-temps);border-color:var(--c-temps)}
 .rg-eq.res .ico,.rg-eq.res b,.rg-eq.res small{color:#fff}
 .rg-op{font-size:26px;font-weight:300;color:var(--txt2)}
-.rg-codes{margin:-6px 0 10px;font-size:11.5px;color:var(--txt2)}
+.rg-codes{margin:-6px 0 10px;font-size:12px;color:var(--txt2)}
 
 /* --- La journée : des indicateurs qu'on lit sans lire -------------------- */
 .kpi-grille .kpi{display:flex;align-items:center;gap:14px}
@@ -168,8 +115,8 @@ body[data-vue="vols"] .workbench{display:none}
 .stat-ico{flex:none;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:var(--bg3);color:var(--txt2)}
 .stat-ico .ico{width:21px;height:21px}
 .stat-corps{flex:1;min-width:0;display:block}
-.stat-atelier .haut{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 8px;font-size:12.5px;font-weight:700;color:var(--txt)}
-.stat-etat{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;border-radius:99px;padding:2px 8px 2px 6px;white-space:nowrap}
+.stat-atelier .haut{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 8px;font-size:13px;font-weight:700;color:var(--txt)}
+.stat-etat{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:800;border-radius:99px;padding:2px 8px 2px 6px;white-space:nowrap}
 .stat-etat .ico{width:13px;height:13px;stroke-width:2.4}
 .stat-atelier.etat-travail .stat-etat{background:color-mix(in srgb,var(--c-journee) 15%,var(--bg3));color:var(--c-journee)}
 .stat-atelier.etat-attente .stat-etat{background:color-mix(in srgb,var(--attente) 16%,var(--bg3));color:var(--attente)}
@@ -185,7 +132,7 @@ body[data-vue="vols"] .workbench{display:none}
 .vide-carte>.ico{width:46px;height:46px;padding:12px;box-sizing:content-box;border-radius:50%;
   background:color-mix(in srgb,var(--c-equipes) 15%,var(--bg3));color:var(--c-equipes)}
 .vide-carte b{font-size:15px;color:var(--txt)}
-.vide-carte p{margin:0;font-size:12.5px;color:var(--txt2)}
+.vide-carte p{margin:0;font-size:13px;color:var(--txt2)}
 .vide-carte .btn{background:var(--c-equipes);border-color:var(--c-equipes);color:#fff}
 body.journee-vide #panel-suivi .panneau:has(#stats-ateliers),body.journee-vide #panel-suivi .panneau:has(#bilan-journee){display:none}
 body.journee-vide #goulot-info{border:0;background:none;padding:0}
@@ -213,33 +160,33 @@ body.journee-vide #goulot-info{border:0;background:none;padding:0}
 .vf-overdue circle{fill:var(--retard)} .vf-pending circle,.vf-orphan circle{fill:var(--txt3)}
 
 .flights-view .table-scroll{position:relative;border-radius:14px;overflow:auto;border:1px solid #0e1d2e}
-.flight-table{background:#14283e;color:#e8f0f8}
-.flight-table thead th{background:#0e1d2e;color:#9fb6cc;font-size:11px;letter-spacing:.08em}
-.flight-table td,.flight-table th{border-bottom:1px solid #22384f !important}
-.flight-table td small{color:#9fb6cc}
-.flight-table td strong{color:#fff;font-size:14px;letter-spacing:.03em}
+.flight-table{background:var(--bg3);color:var(--txt)}
+.flight-table thead th{background:var(--bg2);color:var(--txt2);font-size:12px;letter-spacing:.04em}
+.flight-table td,.flight-table th{border-bottom:1px solid var(--bordure) !important}
+.flight-table td small{color:var(--txt2)}
+.flight-table td strong{color:var(--txt);font-size:14px;letter-spacing:.03em}
 .vol-heure,.vol-avant{font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
-.flight-table td.vol-heure{font-size:20px;font-weight:800;color:#ffd24a}
-.flight-table td.vol-avant{font-size:14px;color:#cfe0f0}
+.flight-table td.vol-heure{font-size:20px;font-weight:800;color:var(--txt);font-variant-numeric:tabular-nums}
+.flight-table td.vol-avant{font-size:14px;color:var(--txt2)}
 .flight-table .status{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:4px 11px 4px 8px;
   font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
 .flight-table .status .ico{width:15px;height:15px;stroke-width:2.4}
-.flight-table .status.ready{background:#1d6b3a;color:#dcfce7}
-.flight-table .status.late{background:#8a5a0b;color:#fff3d6}
-.flight-table .status.overdue{background:#8f231a;color:#ffe3df}
-.flight-table .status.orphan{background:#33495f;color:#dbe6f0}
-.flight-table .status.pending{background:#33495f;color:#dbe6f0}
+.flight-table .status.ready{background:color-mix(in srgb,var(--ok) 14%,var(--bg3));color:var(--ok)}
+.flight-table .status.late{background:color-mix(in srgb,var(--attente) 14%,var(--bg3));color:var(--attente)}
+.flight-table .status.overdue{background:color-mix(in srgb,var(--retard) 14%,var(--bg3));color:var(--retard)}
+.flight-table .status.orphan{background:var(--bg2);color:var(--txt2)}
+.flight-table .status.pending{background:var(--bg2);color:var(--txt2)}
 .vol-repas{display:flex;flex-wrap:wrap;gap:5px}
-.rc{display:inline-flex;align-items:center;gap:5px;border-radius:99px;padding:3px 9px 3px 6px;font-size:11.5px;font-weight:700;
-  background:#22384f;color:#e8f0f8;border:1.5px solid transparent}
-.rc.ok{border-color:#3fbf73}
-.rc.tard{border-color:#e0a32e}
-.rc.attente{border-style:dashed;border-color:#6d86a0}
-.rc.sans{background:transparent;border:1.5px dashed #8aa0b8;color:#c9d6e3}
+.rc{display:inline-flex;align-items:center;gap:5px;border-radius:99px;padding:3px 9px 3px 6px;font-size:12px;font-weight:700;
+  background:var(--bg2);color:var(--txt);border:1.5px solid var(--bordure)}
+.rc.ok{border-color:var(--ok)}
+.rc.tard{border-color:var(--attente)}
+.rc.attente{border-style:dashed;border-color:var(--bordure2)}
+.rc.sans{background:transparent;border:1.5px dashed var(--bordure2);color:var(--txt2)}
 .rc .puce-classe{width:9px;height:9px;border-radius:50%}
-.flight-table tbody tr,.flight-table tbody tr:nth-child(even),.flight-table tbody tr:hover{background:#14283e}
-.flight-table tbody tr:nth-child(even){background:#172e46}
-.flight-table tbody td{color:#e8f0f8}
+.flight-table tbody tr,.flight-table tbody tr:nth-child(even),.flight-table tbody tr:hover{background:var(--bg3)}
+.flight-table tbody tr:nth-child(even){background:var(--bg3)}
+.flight-table tbody td{color:var(--txt)}
 
 /* --- Les temps de travail : de petites barres, une par classe ------------- */
 .rg-codes{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:12px;color:var(--txt2);margin:0 0 12px}
@@ -254,8 +201,8 @@ body.journee-vide #goulot-info{border:0;background:none;padding:0}
 .rg-barre i[data-cab="BC"]{background:var(--cab-BC)} .rg-barre i[data-cab="PC"]{background:var(--cab-PC)}
 .rg-barre i[data-cab="YC"]{background:var(--cab-YC)} .rg-barre i[data-cab="CREW"]{background:var(--cab-CREW)}
 .rg-barre i[data-cab="SPML"]{background:var(--cab-SPML)}
-.rg-barre em{font-style:normal;font-size:11px;font-weight:700;color:var(--txt);margin-top:3px;font-variant-numeric:tabular-nums}
-.rg-plus{font-style:normal;font-size:11.5px;color:var(--txt2);margin-left:10px}
+.rg-barre em{font-style:normal;font-size:12px;font-weight:700;color:var(--txt);margin-top:3px;font-variant-numeric:tabular-nums}
+.rg-plus{font-style:normal;font-size:12px;color:var(--txt2);margin-left:10px}
 .rg-service>summary .rg-svc-nom{flex:0 0 330px;min-width:0;gap:0}
 
 .qf-col-nom{display:flex;align-items:center;gap:6px}
@@ -329,7 +276,7 @@ body[data-vue="flux"] .sous-onglets{--c:var(--c-unite)}
 .so-liste{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;min-width:0;flex:1 1 auto}
 .so-liste::-webkit-scrollbar{display:none}
 .so-onglet{appearance:none;background:none;border:0;border-bottom:3px solid transparent;border-radius:8px 8px 0 0;
-  padding:10px 14px 9px;display:inline-flex;align-items:center;gap:7px;font:inherit;font-size:13.5px;font-weight:700;
+  padding:10px 14px 9px;display:inline-flex;align-items:center;gap:7px;font:inherit;font-size:14px;font-weight:700;
   color:var(--txt2);cursor:pointer;white-space:nowrap}
 .so-onglet .ico{width:18px;height:18px}
 .so-onglet:hover{color:var(--txt);background:var(--bg2)}
@@ -337,12 +284,12 @@ body[data-vue="flux"] .sous-onglets{--c:var(--c-unite)}
 .so-onglet.actif .ico{color:var(--c)}
 .so-onglet:focus-visible{outline:2px solid var(--c);outline-offset:-3px}
 .so-badge{min-width:20px;height:20px;padding:0 6px;border-radius:99px;display:inline-grid;place-items:center;
-  font-size:11px;font-weight:800;color:#fff;background:var(--txt2)}
+  font-size:12px;font-weight:800;color:#fff;background:var(--txt2)}
 .so-badge.attente{background:var(--attente)}
 .so-badge.retard{background:var(--retard)}
 .so-outils{display:flex;gap:6px;padding:6px 0;flex:none;margin-left:auto}
 .so-outils>[data-vue-outils]{display:flex;gap:6px;flex-wrap:nowrap}
-.so-outils .btn{padding:5px 10px;font-size:12.5px}
+.so-outils .btn{padding:5px 10px;font-size:13px}
 body:not([data-vue="ateliers"]) [data-vue-outils="ateliers"],
 body:not([data-vue="flux"]) [data-vue-outils="flux"]{display:none}
 body.editing .sous-onglets{display:none}
@@ -356,8 +303,7 @@ body:not([data-vue="plan"]) .journee-chiffres,body:not([data-vue="plan"]) .journ
 .journee-chiffres,.journee-comparer{padding:18px 20px;overflow:auto;flex:1 1 auto;min-height:0}
 .journee-stocks{overflow:auto;flex:1 1 auto;min-height:0;align-content:start}
 .col-plan>.kpi-grille{border-top:0}
-.chiffres-attente,.chiffres-vide{display:none}
-body.avant-lancement:not(.journee-vide) .chiffres-attente{display:block;font-size:13.5px}
+.chiffres-vide{display:none}
 body.journee-vide .chiffres-vide{display:flex}
 body.journee-vide .journee-chiffres .panneau,body.journee-vide .col-plan>.kpi-grille{display:none}
 .journee-chiffres .panneau{max-width:1100px}
@@ -373,8 +319,6 @@ body.journee-vide .journee-chiffres .panneau,body.journee-vide .col-plan>.kpi-gr
 .vols-frise{margin-top:0}
 
 /* Le bouton « chiffres d'exemple » dans l'en-tête sombre. */
-header .ctx-exemple{background:#233e59 !important;border:1.5px solid #8298ae !important;color:#fff !important;padding:6px 12px !important}
-header .ctx-exemple .ico{color:#f5c75a}
 
 /* Les points à regarder : repliés, un clic les déplie. */
 details.at-anomalies{padding-top:8px;padding-bottom:8px}
@@ -391,7 +335,7 @@ body:not([data-vue="reglages"]) [data-vue-outils="reglages"]{display:none}
 details.at-anomalies{margin-top:0}
 #view-ateliers .at-titre-aide{margin-top:0;padding-top:0;border-top:0}
 #view-ateliers .at-titre-aide .at-titre{margin:0}
-#view-ateliers h3.at-titre .pc-sous{font-size:13.5px;margin:0;display:inline-block;color:var(--txt2)}
+#view-ateliers h3.at-titre .pc-sous{font-size:14px;margin:0;display:inline-block;color:var(--txt2)}
 #view-ateliers h3.at-titre .pc-sous::first-letter{text-transform:uppercase}
 details.at-anomalies{margin-bottom:12px}
 #view-reglages .titre-aide:has(>.reglages-titre){display:none}
@@ -410,16 +354,16 @@ body{min-width:1024px}
 .at-etat.neutre,.qf-etat.manque{color:var(--txt2);font-weight:600}
 .so-badge.neutre{background:var(--bg2);color:var(--txt);border:1px solid var(--bordure2)}
 /* Une action rare ou destructive : un lien discret, rouge au survol seulement. */
-.lien-discret{appearance:none;border:0;background:none;padding:6px 8px;min-height:32px;font:inherit;font-size:12.5px;
+.lien-discret{appearance:none;border:0;background:none;padding:6px 8px;min-height:32px;font:inherit;font-size:13px;
   color:var(--txt2);text-decoration:underline;text-underline-offset:2px;cursor:pointer;min-height:0}
 .lien-discret:hover,.lien-discret:focus-visible{color:var(--accent2)}
 .lien-discret.danger:hover,.lien-discret.danger:focus-visible,
 [data-at-action="classe-supprimer"].lien-discret:hover{color:var(--rouge)}
 /* Le résumé de la journée, dans l'étape 2 : une phrase, les mêmes mots qu'à l'étape 4. */
-.at-resume{margin:0 0 12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--bordure);border-radius:10px;font-size:13.5px}
+.at-resume{margin:0 0 12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--bordure);border-radius:10px;font-size:14px}
 .at-resume-retard{color:var(--retard);font-weight:700}
 /* L'heure à laquelle valent les indicateurs de « Les chiffres ». */
-.kpi-quand{margin:0;padding:12px 20px 0;background:var(--bg3);font-size:12.5px;font-weight:700;color:var(--c-journee)}
+.kpi-quand{margin:0;padding:12px 20px 0;background:var(--bg3);font-size:13px;font-weight:700;color:var(--c-journee)}
 body.avant-lancement .kpi-quand{display:none}
 .qf-vide{background:var(--bg3);border:1px dashed var(--bordure2);border-radius:14px;padding:28px 20px;max-width:720px;margin:10px auto}
 .qf-vide p{max-width:58ch}
@@ -435,7 +379,7 @@ body.avant-lancement .kpi-quand{display:none}
 .fichier-btn:focus-within{outline:2px solid var(--accent);outline-offset:2px}
 /* Les panneaux du programme de vols : des cartes, sans traits de séparation vides. */
 .vols-donnees .panneau{border:1px solid var(--bordure);border-radius:10px;padding:14px 16px;background:var(--bg3);margin:0}
-.rg-version{margin-top:10px;font-size:11.5px;color:var(--txt3)}
+.rg-version{margin-top:10px;font-size:12px;color:var(--txt3)}
 .rg-reset-ligne{margin:12px 0 0;text-align:right}
 /* Une seule typographie de libellés : en minuscules, comme une phrase. Les
    majuscules sont réservées aux petites pastilles d'état (« À faire ensuite »,
@@ -444,7 +388,7 @@ body.avant-lancement .kpi-quand{display:none}
 .flight-table th,.at-table thead th,.at-mat-table thead th,.fc-table thead th,.rg-table thead th,
 .compare-tab thead th,.compare-tab tr.compare-groupe th,.compare-tab td small,.at-bilan-debit em{
   text-transform:none;letter-spacing:0}
-.champ span,.kpi .lab,.at-kpi .lab,.pc-defauts-lab{font-size:12.5px}
+.champ span,.kpi .lab,.at-kpi .lab,.pc-defauts-lab{font-size:13px}
 .panneau h3,.fc-list-title{font-size:14px;color:var(--txt)}
 .flight-table th,.at-table thead th,.at-mat-table thead th,.fc-table thead th,.rg-table thead th,.compare-tab thead th{font-size:12px}
 .qf-g{font-size:12px}
@@ -459,3 +403,103 @@ body.avant-lancement .kpi-quand{display:none}
 #fc-lecture>.fc-list-title{display:none}
 #at-indicateurs{display:block;background:none;border:0;box-shadow:none;padding:0;overflow:visible}
 button.lien-discret{min-height:32px !important}
+
+/* ==========================================================================
+ *  Le menu principal : l'accueil, les parties, leurs pages
+ * ==========================================================================*/
+body[data-vue="accueil"] .app{display:none}
+body:not([data-vue="accueil"]) #view-accueil{display:none}
+
+/* L'en-tête : la marque (retour à l'accueil), les parties, la sauvegarde. Une
+   seule ligne : le contenu commence tout de suite dessous. */
+body>header{padding:8px 20px;gap:16px}
+header .marque{display:flex;align-items:center;gap:10px;background:none;border:0;color:#fff;font:inherit;font-weight:800;
+  font-size:15px;cursor:pointer;padding:4px 6px 4px 0;border-radius:10px;text-align:left}
+header .marque:hover .brand-mark{background:#0a8a90}
+header .marque small{font-weight:600}
+header .brand-mark{width:34px;height:34px;font-size:19px}
+.marque-txt{display:block;line-height:1.15}
+.menu-parties{display:flex;gap:4px;flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none}
+.menu-partie{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:99px;border:1.5px solid transparent;
+  background:transparent;color:#d3dfec;font:inherit;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap}
+.menu-partie .ico{width:18px;height:18px;color:color-mix(in srgb,var(--c) 45%,#fff)}
+.menu-partie:hover{background:#233e59;color:#fff}
+.menu-partie.actif{background:#fff;color:#14283e;border-color:#fff}
+.menu-partie.actif .ico{color:var(--c)}
+.menu-partie:disabled,header .marque:disabled{opacity:.45;cursor:not-allowed}
+header .entete-droite .btn .ico{width:17px;height:17px}
+
+/* Le titre de la page : sa partie et une phrase, sur une ligne. */
+.workspace-heading{padding:12px 20px 4px !important}
+.workspace-heading>div{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.view-ico{width:34px !important;height:34px !important;border-radius:10px !important}
+.view-ico .ico{width:20px !important;height:20px !important}
+.workspace-heading h1{font-size:20px}
+.view-intro{margin:0;font-size:14px}
+
+/* L'accueil : l'histoire en quatre images, ce qu'il y a à faire, les parties. */
+.accueil{flex:1 1 auto;overflow:auto;background:var(--bg2)}
+.acc{max-width:1180px;margin:0 auto;padding:24px 20px 40px;display:grid;gap:20px}
+.acc-histoire{background:var(--bg3);border:1px solid var(--bordure);border-radius:14px;padding:18px 20px 16px}
+.acc-histoire h1{margin:0 0 6px;font-size:22px}
+.acc-histoire .cm-rond{width:64px;height:64px}
+.acc-histoire .cm-picto.ico{width:32px;height:32px}
+.acc-histoire .cm-liste li:not(:last-child)::after{top:36px;left:calc(50% + 42px);right:calc(-50% + 42px)}
+.acc-histoire .cm-liste li:not(:last-child)::before{top:31px;right:calc(-50% + 38px)}
+.acc-suite{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0;padding:12px 16px;border-radius:12px;font-size:15px;
+  background:color-mix(in srgb,var(--attente) 10%,var(--bg3));border:1px solid color-mix(in srgb,var(--attente) 35%,var(--bordure))}
+.acc-suite .ico{color:var(--attente)}
+.acc-suite.fait{background:color-mix(in srgb,var(--ok) 9%,var(--bg3));border-color:color-mix(in srgb,var(--ok) 35%,var(--bordure))}
+.acc-suite.fait .ico{color:var(--ok)}
+.lien-fort{background:none;border:0;padding:0;font:inherit;font-weight:800;color:var(--accent);cursor:pointer;text-decoration:underline;
+  text-underline-offset:3px}
+.acc-tuiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.acc-tuile{display:flex;flex-direction:column;background:var(--bg3);border:1px solid var(--bordure);border-top:5px solid var(--c);
+  border-radius:14px;overflow:hidden}
+.acc-tuile-tete{display:flex;align-items:center;gap:14px;padding:16px 18px 10px;background:none;border:0;font:inherit;color:inherit;
+  text-align:left;cursor:pointer}
+.acc-tuile-tete:hover .acc-titre b{text-decoration:underline;text-underline-offset:3px}
+.acc-ico{flex:none;width:48px;height:48px;border-radius:13px;display:grid;place-items:center;background:var(--c);color:#fff}
+.acc-ico .ico{width:26px;height:26px}
+.acc-titre{display:grid;gap:2px;flex:1;min-width:0}
+.acc-titre b{font-size:20px}
+.acc-titre em{font-style:normal;font-size:14px;color:var(--txt2)}
+.acc-etat{flex:none;font-size:12px;font-weight:800;padding:3px 10px;border-radius:99px;background:var(--bg2);color:var(--txt2);
+  border:1px solid var(--bordure2)}
+.acc-etat.fait{background:color-mix(in srgb,var(--ok) 12%,var(--bg3));color:var(--ok);border-color:color-mix(in srgb,var(--ok) 40%,var(--bordure))}
+.acc-etat.verifier{background:color-mix(in srgb,var(--attente) 12%,var(--bg3));color:var(--attente);border-color:color-mix(in srgb,var(--attente) 40%,var(--bordure))}
+.acc-lignes{list-style:none;margin:0;padding:0 18px 12px 80px;display:grid;gap:5px;font-size:14px}
+.acc-lignes li{display:flex;gap:8px;align-items:flex-start}
+.acc-lignes .etape-etat{flex:none;width:18px;height:18px;border-radius:50%;display:inline-grid;place-items:center;font-size:12px;font-weight:800;margin-top:1px}
+.etape-etat.fait{background:var(--ok);color:#fff}
+.etape-etat.verifier{background:var(--attente);color:#fff}
+.etape-etat.afaire{background:var(--bordure2);color:var(--txt)}
+.etape-etat.provisoire{background:var(--bg2);color:var(--txt2);border:1px solid var(--bordure2)}
+.acc-pages{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;padding:12px 18px 16px 80px;border-top:1px solid var(--bordure)}
+.acc-page{font:inherit;font-size:13px;font-weight:700;padding:5px 11px;border-radius:99px;cursor:pointer;
+  background:color-mix(in srgb,var(--c) 8%,var(--bg3));color:var(--txt);border:1px solid color-mix(in srgb,var(--c) 30%,var(--bordure))}
+.acc-page:hover{background:color-mix(in srgb,var(--c) 16%,var(--bg3))}
+.acc-pied{margin:0;display:flex;justify-content:center}
+@media(max-width:900px){
+  .acc-tuiles{grid-template-columns:1fr}
+  .acc-lignes,.acc-pages{padding-left:18px}
+  .marque-txt small{display:none}
+}
+
+/* La synthèse : la journée entière d'abord, en tuiles lisibles de loin. */
+.journee-chiffres .panneau-bilan{max-width:none;background:transparent;border:0;padding:0;box-shadow:none}
+.panneau-bilan h3{font-size:16px;margin:0 0 12px}
+.journee-chiffres .bilan{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:0}
+.journee-chiffres .bilan>div,.journee-chiffres .bilan>div:last-child{display:flex;flex-direction:column-reverse;gap:4px;padding:14px 16px;border-radius:12px;background:var(--bg3);
+  border:1px solid var(--bordure);border-left:4px solid var(--c-journee)}
+.journee-chiffres .bilan dt{font-size:14px;color:var(--txt2)}
+.journee-chiffres .bilan dd{margin:0;text-align:left;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+.bilan-suite{margin:14px 0 0}
+
+header .entete-droite .btn{display:inline-flex;align-items:center;gap:7px}
+/* L'en-tête tient sur une ligne jusqu'au plus petit écran visé (1 024 px). */
+body>header{flex-wrap:nowrap}
+@media(max-width:1250px){
+  header .marque small{display:none}
+  .menu-partie{padding:7px 10px}
+}

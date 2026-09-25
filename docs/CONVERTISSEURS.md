@@ -6,8 +6,8 @@ quel**, avec un compte rendu de ce qu'elle a fait.
 
 | Conversation | Reçoit | Rend | S'importe où |
 |---|---|---|---|
-| 1. Vols | l'export du programme de vols | classeur « Départs / Retours » | étape 1, « Les vols » › fichier à importer |
-| 2. Man-hours | l'export des temps de travail + le modèle du barème | classeur « Barème » | étape 3, « Les temps de travail » › `⇧ Importer` |
+| 1. Vols | l'export du programme de vols | classeur « Départs / Retours » | Données › Vols › fichier à importer |
+| 2. Man-hours | l'export des temps de travail + le modèle du barème | classeur « Barème » | Données › Temps de travail › `⇧ Importer` |
 
 ## Mode d'emploi
 
@@ -23,13 +23,12 @@ quel**, avec un compte rendu de ce qu'elle a fait.
   connaissances du projet man-hours.
 - **L'ordre compte.** Les vols d'abord : ils fixent les compagnies × classes
   (les « commandes »). Puis les chemins et les cases dans le simulateur. Ensuite
-  seulement, on exporte le modèle du barème (`⇩ Excel` à l'étape 3) : il porte
+  seulement, on exporte le modèle du barème (Données › Temps de travail › `⇩ Temps de travail`) : il porte
   les noms exacts des services et des compagnies. Le convertisseur le remplit
   et n'invente aucun nom.
 - **Les heures de début des cases se saisissent à la main**, pas depuis les
   planches : dans la case elle-même (« Arrive à », « Jour »), ou toutes d'un
-  coup dans Excel avec `⇩ Horaires` puis `⇧ Importer` (étape 2, « Qui prépare
-  quoi »).
+  coup dans Excel avec `⇩ Horaires` puis `⇧ Importer` (Organisation).
 - **Confidentialité.** Les exports et les classeurs produits restent sur votre
   poste. Le dépôt est public : aucun fichier réel n'y est versé (`.gitignore`
   bloque `*.xlsx`, `*.csv` de vols et `*winrest*`). Vérifiez aussi que la

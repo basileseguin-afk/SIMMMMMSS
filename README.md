@@ -66,7 +66,7 @@ et les **sauvegardes de l’unité** (`ory-sauvegarde*.json`, `plan-ory-*.json`,
 Le plan, les ateliers, les personnes, les flux et la bibliothèque vivent **dans
 le navigateur**, et son stockage est cloisonné par adresse : un tracé fait sur
 GitHub Pages n’apparaît pas dans un fichier ouvert depuis le disque.
-**L’unité › Sauvegarde et limites › Tout sauvegarder** réunit tout dans un seul fichier, relu en
+**Sauvegarde** (en haut à droite) **› Tout sauvegarder** réunit tout dans un seul fichier, relu en
 entier ou refusé en entier. Ce fichier contient le plan réel : il reste hors du
 dépôt.
 
@@ -91,14 +91,22 @@ n'est présent dans ce dépôt.
 Le site raconte une histoire simple, pour qu’une personne qui n’est pas du
 métier de l’informatique comprenne ce qu’elle regarde : **des avions partent,
 chaque vol emporte ses repas, des équipes les préparent de service en service,
-et le site calcule à quelle heure chaque repas est prêt.** L’encart « Comment
-ça marche » la raconte en quatre images à la première visite (il se rouvre
-depuis l’en-tête).
+et le site calcule à quelle heure chaque repas est prêt.** L’accueil la
+raconte en quatre images.
 
-La navigation **est** cette histoire : quatre étapes numérotées, chacune avec
-son état en clair (✓ fait, · à faire, ~ provisoire — des chiffres d’exemple,
-par exemple —, ! à vérifier, réservé aux vrais problèmes) et un repère « à faire
-ensuite ». Le site s’ouvre sur cette étape-là.
+**Le menu.** Le site s’ouvre sur une **page d’accueil à tuiles** : une tuile par
+partie du travail, avec son état en clair (✓ fait, · à faire, ~ provisoire —
+des chiffres d’exemple, par exemple —, ! à vérifier, réservé aux vrais
+problèmes), ses pages, et ce qu’il y a « à faire ensuite ». Les parties sont
+rangées **par nature** : ce qu’on importe, ce qu’on décrit, ce qu’on essaie, ce
+qu’on observe. Une page ne mélange jamais deux natures.
+
+L’en-tête garde, sur une ligne, l’accueil, les quatre parties et la
+**Sauvegarde**. Dans une partie, ses pages sont des **onglets** : un seul est
+affiché ; un nombre sur un onglet dit qu’il y a quelque chose à y faire. La
+dernière page ouverte de chaque partie est retenue ; les outils de la page
+(annuler, rétablir, exporter, importer) se rangent à droite des onglets, et
+chaque export dit ce qu’il contient.
 
 **Le vocabulaire.** Chaque vol **commande** ses repas : une **commande** par
 compagnie et par classe (« AF · Business », 88 passagers), pour la journée.
@@ -106,57 +114,56 @@ Chaque chiffre dit son unité (vols, commandes, services) et son moment (« à
 07:00 », « sur toute la journée »). Ce qui n’est pas encore rempli est gris ;
 le rouge ne sert qu’aux retards.
 
-**Une chose à la fois.** Chaque étape se découpe en quelques **onglets** (sous
-son titre) : un seul est affiché, les autres attendent derrière leur nom. Un
-nombre sur un onglet dit qu’il y a quelque chose à y faire (cases à choisir,
-commandes sans équipe, liens à corriger). Le dernier onglet ouvert de chaque étape
-est retenu ; les outils de l’étape (annuler, Excel, importer) se rangent à
-droite des onglets.
+1. **Données** — ce qu’on importe.
+   - *Vols* : importer le programme en Excel ou CSV simplifié, ou garder les
+     vols d’exemple ; d’où viennent les vols est dit en tête.
+   - *Temps de travail* : les minutes d’un vol, service par service et classe
+     par classe (une valeur commune, des valeurs propres à une compagnie, ou une
+     grille compagnie par classe).
+2. **Organisation** — ce qu’on décrit.
+   - *Chemins* : **un chemin par commande** (« Complet TX BC »), créé à la
+     main — vide, copié d’un modèle, ou copié du chemin d’une autre commande —
+     et « Dupliquer pour… » d’autres commandes. À gauche la liste des
+     commandes, au centre le chemin **en diagramme de nœuds** : on tire le `+`
+     d’un service jusqu’à un autre (ou on clique le `+`, puis l’autre) pour dire
+     qu’il le livre ; un lien ne vaut que pour ce chemin. **Chaque nœud porte
+     une case** : l’équipe qui y prépare la commande, avec son nom, ses
+     personnes, son heure et ses man-minutes (celles de l’import, modifiables
+     pour la case). Une case se partage : « TX BC/PC » en cuisine prépare TX BC
+     puis TX PC, et le chemin de TX BC n’attend que la ligne de TX BC. Une
+     commande sans chemin suit le modèle de sa classe.
+   - *Cases* : chaque case avec ses commandes dans l’ordre, qui mènent à leur
+     chemin ; « + Case hors chemin » pour une plonge ou une mise à disposition
+     qui sert tout le monde.
+   - *Qui prépare quoi* : le tableau calculé, une ligne par commande, une
+     colonne par service, la case et ses heures dans chaque cellule ; un clic
+     ouvre le chemin de la commande sur ce service.
+   - *Liens entre services* : qui livre qui dans l’unité, dans le même diagramme
+     de nœuds ; ces liens ne servent qu’aux commandes qui n’ont pas de chemin.
+   - *Contrôles* : ce que le calcul comprend de l’organisation, et ce qu’il faut
+     corriger.
+3. **Réglages** — ce qu’on essaie.
+   - *Horaires des vols* : décaler tous les vols ; « repas prêts combien de
+     minutes avant le départ ? ».
+   - *Rythme et pauses* : rythme de travail, pauses et temps de présence.
+4. **Résultats** — ce que la journée donne.
+   - *Synthèse* : la journée entière en tuiles (commandes à l’heure, retards,
+     dernière commande prête, attentes, travail fourni) ; « Exporter les
+     résultats ».
+   - *Le plan rejoué* : rejouer la journée sur le plan de l’unité, avec les
+     chiffres de l’instant, « En ce moment » à droite et, au-dessus des
+     services, ce qui attend en stock ou à laver. Le plan des services se
+     modifie d’ici (« Modifier le plan »).
+   - *Planning des équipes* : case par case, qui travaille quand.
+   - *Commandes* : chaque commande, prête à quelle heure, avant quand.
+   - *Départs* : une frise de la journée et un tableau qui dit, vol par vol, si
+     ses commandes sont prêtes à l’heure, en retard, ou sans équipe.
+   - *Stocks et retours* : ce qui attend entre deux ateliers et avant le
+     chargement ; les retours des vols face au débit de la plonge.
+   - *Comparer deux essais* : A / B.
 
-1. **Les vols** — onglets *Les départs* (une frise de la journée et un tableau
-   qui dit, vol par vol, si ses commandes sont prêtes à l’heure, en retard, ou
-   sans équipe) et *Le programme* (importer le programme en Excel ou CSV simplifié,
-   ou garder les vols d’exemple ; le délai de chargement — « repas prêts combien
-   de minutes avant le départ ? » — et le décalage des vols).
-2. **Qui prépare quoi**, en cinq onglets ; tout se règle dans le premier, les
-   autres se calculent :
-   1. **Les chemins** : **un chemin par commande** (« Complet TX BC »), créé à la
-      main — vide, copié d’un modèle, ou copié du chemin d’une autre commande —
-      et « Dupliquer pour… » d’autres commandes. À gauche la liste des
-      commandes, au centre le chemin **en diagramme de nœuds** : on tire le `+`
-      d’un service jusqu’à un autre (ou on clique le `+`, puis l’autre) pour dire
-      qu’il le livre ; un lien ne vaut que pour ce chemin. **Chaque nœud porte
-      une case** : l’équipe qui y prépare la commande, avec son nom, ses
-      personnes, son heure et ses man-minutes (celles de l’import, modifiables
-      pour la case). Une case se partage : « TX BC/PC » en cuisine prépare TX BC
-      puis TX PC, et le chemin de TX BC n’attend que la ligne de TX BC. Une
-      commande sans chemin suit le modèle de sa classe.
-   2. **Qui prépare quoi** : le tableau calculé, une ligne par commande, une
-      colonne par service, la case et ses heures dans chaque cellule ; un clic
-      ouvre le chemin de la commande sur ce service. Chaque ligne dit quand la
-      commande est prête et se déplie dans le temps.
-   3. **Les cases** : chaque case avec ses commandes dans l’ordre, qui mènent à
-      leur chemin ; « + Case hors chemin » pour une plonge ou une mise à
-      disposition qui sert tout le monde.
-   4. **Leur journée** : le planning, case par case, et une phrase qui
-      résume la journée (les indicateurs complets sont à l’étape 4).
-   5. **Les commandes** : la liste des commandes à préparer (compagnie × classe).
-3. **Les temps de travail** — onglets *Minutes par vol* (service par service et
-   classe par classe : une valeur commune, des valeurs propres à une compagnie,
-   ou une grille compagnie par classe) et *Rythme et pauses* (rythme de travail,
-   pauses et présence).
-4. **La journée** — onglets *Le plan* (rejouer la journée sur le plan de
-   l’unité, avec « En ce moment » à droite et, au-dessus des services, ce qui
-   attend en stock ou à laver), *Les chiffres* (les indicateurs à l’heure
-   rejouée et le bilan de la journée), *Stocks et retours* (ce qui attend entre
-   deux ateliers et avant le chargement ; les retours des vols face au débit de
-   la plonge, et le bouchon qui se forme) et *Comparer deux essais* (A / B).
-
-À part, **L’unité** — onglets *Les liens* (qui livre qui, dessinés dans le même
-diagramme de nœuds ; ces liens ne servent qu’aux commandes qui n’ont pas de chemin), *Ce que le calcul en retient* et
-*Sauvegarde et limites*. Le plan des services se modifie depuis « La journée »
-(« Modifier le plan »). Le bouton **Chiffres d’exemple** de l’en-tête mène aux
-limites du calcul.
+**Sauvegarde** (en-tête) : tout le travail dans un fichier, et les limites
+connues du calcul.
 
 **Tout se pilote aussi depuis Excel** : ateliers (avec classes et parcours),
 barème et programme de vols s’exportent en `.xlsx`, se modifient dans le
@@ -165,15 +172,15 @@ tableur et se réimportent. Voir [les formats Excel](docs/FORMATS_EXCEL.md).
 La journée est **calculée d’un coup** par `moteur/production.js` et
 **recalculée à chaque modification** : aucun réglage ne se verrouille.
 
-- **La journée** : rejoue la journée calculée. « ▶ Rejouer », « ⏭ Pas à pas »
+- **Le plan rejoué** : rejoue la journée calculée. « ▶ Rejouer », « ⏭ Pas à pas »
   (saute au prochain changement), « ↺ Début » et un curseur de temps qui va dans
   les deux sens. Le plan montre quatre états par service : au travail, attend le
   service d’avant (pointillé), a fini, pas commencé. Au début de la journée, il
   montre plutôt ce qui reste à décrire (aucune équipe, équipe sans travail,
   équipe au travail).
-- **Les vols** : le bilan de la journée, départ par départ ; un vol dont des
+- **Départs** : le bilan de la journée, départ par départ ; un vol dont des
   repas n’ont pas d’équipe est dit « Des repas sans équipe ».
-- **Exporter** : la journée calculée — départs, classes, journal des lots.
+- **Exporter les résultats** (Synthèse) : la journée calculée — départs, classes, journal des lots.
 
 ## Lire les indicateurs
 
@@ -192,7 +199,7 @@ La journée est **calculée d’un coup** par `moteur/production.js` et
 L’échéance vaut départ moins délai de chargement. Ces états concernent la
 production ; ils ne mesurent pas le retard avion.
 
-**Scénarios A/B** (La journée › Comparer deux essais). La journée étant déjà
+**Scénarios A/B** (Résultats › Comparer deux essais). La journée étant déjà
 calculée, une capture **fige** les réglages et leurs résultats. Changez un
 atelier, le barème ou un horaire, capturez B : le tableau sépare les réglages
 des résultats, fait ressortir les lignes qui diffèrent et écrit, sur chaque
@@ -327,9 +334,9 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `flow-center.js` / `flow-center.css` | Réseau configurable, règles humaines, onglet et affichage des flux |
 | `ateliers.js` / `ateliers.css` | Onglet « Ateliers de travail » : saisie, planning, couverture par classe |
 | `reglages.js` / `reglages.css` | Centre des réglages : barème, rendement, régime de poste |
-| `demarrage.js` / `histoire.css` | Les quatre étapes (navigation et état de chacune), « Comment ça marche », titre de chaque vue ; `histoire.css` porte aussi le graphisme : couleurs par sens, jauges, tableau des départs, plan de métro, barres |
+| `demarrage.js` / `histoire.css` | L’accueil : une tuile par partie avec son état, « à faire ensuite », l’histoire en quatre images, le menu de l’en-tête ; `histoire.css` porte aussi le graphisme : couleurs par sens, jauges, tableau des départs, plan de métro, barres |
 | `graphe.js` / `graphe.css` | Le diagramme de nœuds des chemins et des liens de l’unité : disposition en colonnes avec couloirs, tirer un trait pour relier, clavier, disposition retenue |
-| `onglets.js` | Les sous-onglets de chaque étape : leur liste, la règle qui masque les autres, le clavier, l’onglet retenu |
+| `onglets.js` | Le menu : les quatre parties et leurs pages (chacune est un sous-onglet d’une vue), la règle qui masque les autres, le clavier, la page retenue par partie |
 | `icones.js` | Les pictogrammes (étapes, services, états) et les couleurs d’étape |
 | `demarrage.css` | Ce que montre chaque vue (lecture de la journée seulement dans « La journée ») et couleurs du plan en lecture |
 | `plan-prive/` | Fond de plan **local, non versionné** (voir ci-dessous) |
@@ -342,11 +349,12 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/tableur.test.cjs` | Classeurs Excel : aller-retour, fichier compressé d’un autre logiciel, CSV |
 | `tests/echanges.test.cjs` | Les trois classeurs : aller-retour, ajouts, erreurs regroupées |
 | `tests/excel-browser.cjs` | Chemins et tableau « Qui prépare quoi » dans l’interface, classeurs ateliers et vols de bout en bout |
-| `tests/histoire-browser.cjs` | Les quatre étapes, « Comment ça marche », titres et phrases, repas écrits en clair, pictogrammes, frise des départs, barres, plan de métro, sous-onglets (un à la fois, clavier, onglet retenu, fiche d’équipe, limites du calcul), écran de 1 024 px |
+| `tests/menu-browser.cjs` | L’accueil (tuiles, états, « à faire ensuite »), le menu par parties, la nature de chaque page, les outils qui suivent la page, clavier, page retenue, sauvegarde, menu verrouillé pendant l’édition du plan, hauteur des bandeaux, écran de 1 024 px |
+| `tests/nav.cjs` | Aide partagée des tests navigateur : aller à une page comme à la main (la partie, puis l’onglet) |
 | `tests/icones.test.cjs` | Chaque service reconnaît son pictogramme |
 | `tests/graphe.test.cjs` | Diagramme : colonnes, nœud au milieu de ses amonts, couloirs des longs liens, boucles, dispositions retenues |
 | `tests/graphe-browser.cjs` | Diagrammes dans la page : tirer un trait, clavier, doublon et boucle refusés, équipe créée depuis un nœud, disposition retenue, liens de l’unité |
-| `tests/onglets.test.cjs` | Les sous-onglets : de deux à cinq par étape, identifiants uniques, règle de masquage, pictogrammes |
+| `tests/onglets.test.cjs` | Le menu : chaque page dans une seule partie, rangée par nature ; pages de chaque vue, identifiants uniques, règle de masquage, pictogrammes |
 | `tests/browser-smoke.cjs` | Parcours dans Chromium : relecture, vols, import, export, écran étroit de bureau |
 | `tests/import-browser.cjs` | Import CSV : échec de lecture puis réimport, numéros de ligne, export, scénarios A/B |
 | `tests/sauvegarde-browser.cjs` | Sauvegarde complète : export, refus atomique, effacement et restauration |

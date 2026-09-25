@@ -265,11 +265,11 @@
       this.a.hote().innerHTML = `
 <div class="at-tete">
   <div class="at-actions">
-    <button class="btn btn-sm" id="at-undo" title="Annuler" aria-label="Annuler">↶ Annuler</button>
-    <button class="btn btn-sm" id="at-redo" title="Rétablir" aria-label="Rétablir">↷</button>
-    <button class="btn btn-sm" id="at-export" title="Les cases, ce qu’elles préparent et les chemins, dans un classeur Excel">⇩ Excel</button>
+    <button class="btn btn-sm" id="at-undo" title="Annuler la dernière modification">↶ Annuler</button>
+    <button class="btn btn-sm" id="at-redo" title="Rétablir ce qui a été annulé">↷ Rétablir</button>
+    <button class="btn btn-sm" id="at-export" title="Les cases, ce qu’elles préparent et les chemins, dans un classeur Excel">⇩ Cases et chemins</button>
     <button class="btn btn-sm" id="at-export-horaires" title="L’heure de début de chaque case, dans un petit classeur Excel à modifier puis réimporter">⇩ Horaires</button>
-    <button class="btn btn-sm" id="at-import-btn" title="Réimporter un classeur modifié dans Excel">⇧ Importer</button>
+    <button class="btn btn-sm" id="at-import-btn" title="Réimporter un classeur de cases et chemins, ou d’horaires, modifié dans Excel">⇧ Importer</button>
     <input id="at-import" type="file" accept=".xlsx,.json" hidden>
   </div>
 </div>

@@ -109,3 +109,22 @@ test('« Comment ça marche » raconte l’histoire en quatre images', () => {
   assert.equal(D.COMMENT.length, 4);
   assert.deepEqual(D.COMMENT.map(c => c.picto), ['avion', 'plateau', 'equipe', 'horloge']);
 });
+
+test('les tuiles de l’accueil regroupent les étapes par partie, avec leur état', () => {
+  const t = D.tuiles({ vols: { total: 18, departs: 12, source: 'demo' }, ateliers: { total: 0, fabriquent: 0 },
+    bareme: { calibre: false }, journee: {}, plan: { services: 12, approx: 0 }, flux: { liaisons: 16, alertes: 0 },
+    reglages: { delai: 50, decalage: -10, rendement: 0.9, pauses: 2 } });
+  const par = Object.fromEntries(t.map(x => [x.partie, x]));
+  assert.deepEqual(t.map(x => x.partie), ['donnees', 'organisation', 'reglages', 'resultats']);
+  assert.equal(par.donnees.etat, 'provisoire', 'des exemples, pas une alerte');
+  assert.match(par.donnees.lignes.map(l => l.texte).join(' | '), /Vols : 12 départs · exemple \| Temps de travail : chiffres d’exemple/);
+  assert.equal(par.organisation.etat, 'afaire', 'la pire de ses lignes');
+  assert.match(par.reglages.lignes[0].texte, /Repas prêts 50 min avant le départ · vols décalés de -10 min/);
+  assert.match(par.reglages.lignes[1].texte, /Rythme 0,9 · 2 pauses par poste/);
+  assert.equal(par.resultats.etat, 'afaire');
+});
+
+test('ce qu’il y a à faire ensuite mène à une page qui existe', () => {
+  const O = require('../onglets.js');
+  for (const [vue, page] of Object.entries(D.PAGE_DE_VUE)) assert.equal(O.vueDe(page), vue, page);
+});

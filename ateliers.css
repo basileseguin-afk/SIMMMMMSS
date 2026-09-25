@@ -10,13 +10,13 @@ body.ateliers-open .workbench{display:none}
 .at-indicateurs{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1px;
   background:var(--bordure);border:1px solid var(--bordure);border-radius:10px;overflow:hidden;margin:16px 0}
 .at-kpi{background:var(--bg3);padding:12px 16px}
-.at-kpi .lab{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--txt2);font-weight:700}
+.at-kpi .lab{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--txt2);font-weight:700}
 .at-kpi .val{font-size:26px;font-weight:800;margin:2px 0 2px;color:var(--txt)}
-.at-kpi .note{font-size:11.5px;color:var(--txt2)}
+.at-kpi .note{font-size:12px;color:var(--txt2)}
 
 #at-status:not(:empty){font-size:13px;color:var(--accent2);margin:8px 0;white-space:pre-line}
 .at-anomalies{border-left:3px solid var(--warn-stroke);background:var(--warn-fill);color:var(--txt);
-  padding:10px 14px;border-radius:0 8px 8px 0;font-size:12.5px;line-height:1.5;margin:12px 0}
+  padding:10px 14px;border-radius:0 8px 8px 0;font-size:13px;line-height:1.5;margin:12px 0}
 .at-anomalies ul{margin:6px 0 0;padding-left:18px}
 
 .at-barre{display:flex;align-items:end;gap:14px;flex-wrap:wrap;margin:18px 0 14px}
@@ -49,7 +49,7 @@ body.ateliers-open .workbench{display:none}
   border:1px solid var(--bordure2);border-radius:6px;background:var(--bg2);color:var(--txt);font:inherit}
 #view-ateliers input[type=checkbox]{width:16px;height:16px;flex:none;accent-color:var(--accent)}
 
-.at-sous-titre{padding:12px 14px 6px;font-size:12.5px;font-weight:700;color:var(--txt);
+.at-sous-titre{padding:12px 14px 6px;font-size:13px;font-weight:700;color:var(--txt);
   border-top:1px solid var(--bordure);display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
 .at-sous-titre .mini-note{font-weight:400}
 
@@ -82,10 +82,10 @@ body.ateliers-open .workbench{display:none}
    la dernière colonne est en position absolue. Sans bloc englobant ici, il se
    place dans les coordonnées de la page — à droite d'un tableau large qui
    défile — et rallonge le défilement horizontal de tout le document. */
-.at-table{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--bg3);
+.at-table{width:100%;border-collapse:collapse;font-size:13px;background:var(--bg3);
   border:1px solid var(--bordure);border-radius:10px;overflow:hidden;position:relative}
 .at-table th,.at-table td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--bordure)}
-.at-table thead th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--txt2);background:var(--bg2)}
+.at-table thead th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--txt2);background:var(--bg2)}
 .at-table tbody tr:last-child th,.at-table tbody tr:last-child td{border-bottom:0}
 .at-parcours{color:var(--txt2)}
 .at-etat{font-weight:700}
@@ -100,7 +100,7 @@ body.ateliers-open .workbench{display:none}
 .at-ajout label{display:grid;gap:6px;font-size:12px;color:var(--txt2)}
 .at-ajout-actions{display:flex;gap:8px}
 .at-exclues{font-size:12px;color:var(--txt2);margin:0 0 12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.at-source{font-size:10px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;
+.at-source{font-size:12px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;
   color:var(--accent2);border:1px solid var(--accent);border-radius:4px;padding:1px 5px;margin-left:6px}
 .at-table td:last-child{text-align:right;white-space:nowrap}
 
@@ -114,7 +114,7 @@ body.ateliers-open .workbench{display:none}
 
 /* La boucle du matériel : ce qui part revient. */
 .at-mat{border:1px solid var(--bordure);border-radius:10px;background:var(--bg3);padding:12px 16px;margin-bottom:16px}
-.at-mat-tete{display:flex;align-items:flex-start;gap:10px;font-size:12.5px;line-height:1.5;color:var(--txt2)}
+.at-mat-tete{display:flex;align-items:flex-start;gap:10px;font-size:13px;line-height:1.5;color:var(--txt2)}
 .at-mat-tete input{width:16px;height:16px;flex:none;margin-top:2px;accent-color:var(--accent)}
 .at-mat-tete strong{color:var(--txt)}
 .at-mat-champs{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;align-items:end;margin:12px 0}
@@ -125,7 +125,7 @@ body.ateliers-open .workbench{display:none}
   border-top:1px solid var(--bordure);padding-top:12px}
 .at-mat-chiffre{font-size:12px;color:var(--txt2)}
 .at-mat-chiffre b{display:block;font-size:18px;color:var(--txt);font-weight:800}
-.at-mat-chiffre em{display:block;font-style:normal;font-size:11px}
+.at-mat-chiffre em{display:block;font-style:normal;font-size:12px}
 
 /* Les tunnels d'une plonge : leur somme fait son débit. */
 .at-tunnel{display:flex;align-items:center;gap:8px;margin:0 14px 6px}
@@ -147,7 +147,7 @@ body.ateliers-open .workbench{display:none}
 
 /* L'arrêt programmé n'est pas la pause de l'équipe : il se replie. */
 .at-arrets{border-top:1px solid var(--bordure);padding:10px 14px 4px}
-.at-arrets>summary{cursor:pointer;font-size:12.5px;font-weight:700;color:var(--txt)}
+.at-arrets>summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--txt)}
 .at-arrets .mini-note{margin:8px 0}
 .at-arrets .at-pause,.at-arrets .at-actions-lot{margin-left:0;padding-left:0}
 
@@ -156,7 +156,7 @@ body.ateliers-open .workbench{display:none}
 .at-ajout-note{grid-column:1/-1;margin:0}
 
 /* Un tunnel que personne ne tient ne tourne pas : il se voit. */
-.at-tunnel-etat{font-size:11px;color:var(--txt2);min-width:120px}
+.at-tunnel-etat{font-size:12px;color:var(--txt2);min-width:120px}
 .at-tunnel.sans-personne{border-left:3px solid var(--orange);padding-left:8px;margin-left:11px}
 .at-tunnel.sans-personne .at-tunnel-etat{color:var(--orange);font-weight:700}
 
@@ -166,7 +166,7 @@ body.ateliers-open .workbench{display:none}
 .at-bilan-debit{display:flex;flex-wrap:wrap;gap:18px;align-items:baseline;
   margin:0 14px 10px;padding:10px 12px;border:1px solid var(--bordure);border-radius:8px;background:var(--bg2)}
 .at-bilan-debit span{font-size:12px;color:var(--txt2)}
-.at-bilan-debit em{display:block;font-style:normal;font-size:10.5px;text-transform:uppercase;
+.at-bilan-debit em{display:block;font-style:normal;font-size:12px;text-transform:uppercase;
   letter-spacing:.04em;font-weight:700}
 .at-bilan-debit b{font-size:17px;color:var(--txt);margin-right:3px}
 .at-bilan-debit .retenu b{color:var(--accent2)}
@@ -176,9 +176,9 @@ body.ateliers-open .workbench{display:none}
 .at-bilan-debit.bride .retenu b{color:var(--orange)}
 
 /* Le matériel, classe par classe : par passager et par vol. */
-.at-mat-table{width:100%;max-width:520px;border-collapse:collapse;font-size:12.5px;margin-top:10px}
+.at-mat-table{width:100%;max-width:520px;border-collapse:collapse;font-size:13px;margin-top:10px}
 .at-mat-table th,.at-mat-table td{padding:5px 8px;border-bottom:1px solid var(--bordure);text-align:left}
-.at-mat-table thead th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--txt2)}
+.at-mat-table thead th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--txt2)}
 .at-mat-table tbody th{font-weight:700;white-space:nowrap}
 .at-mat-table input{width:100%;max-width:110px;text-align:right}
 
@@ -190,8 +190,8 @@ body.ateliers-open .workbench{display:none}
  * ==========================================================================*/
 .pc-defauts{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;padding:10px 12px;
   border:1px solid var(--bordure);border-radius:9px;background:var(--bg2)}
-.pc-defauts-lab{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--txt2);align-self:center}
-.pc-defauts label{display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:700;color:var(--txt2)}
+.pc-defauts-lab{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--txt2);align-self:center}
+.pc-defauts label{display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:700;color:var(--txt2)}
 #view-ateliers .pc-defauts select{font-size:12px;padding:5px 7px;max-width:170px}
 .at-titre-aide{margin-top:18px}
 .at-titre-aide .at-titre{margin:0}
@@ -207,15 +207,15 @@ body.ateliers-open .workbench{display:none}
 .pc-sous{font-size:12px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--txt2);margin-left:6px}
 .at-titre .pc-sous{font-size:12px}
 .pc-qui{font-size:12px;color:var(--txt2);flex:1;min-width:160px}
-.pc-cab{display:inline-block;font-size:11px;font-weight:800;border-radius:5px;padding:1px 6px;
+.pc-cab{display:inline-block;font-size:12px;font-weight:800;border-radius:5px;padding:1px 6px;
   background:color-mix(in srgb,var(--accent) 14%,var(--bg3));color:var(--accent2)}
 
 .qf-barre{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .qf-barre-fin{flex:1}
-.qf-progres{display:flex;align-items:center;gap:8px;font-size:12.5px}
+.qf-progres{display:flex;align-items:center;gap:8px;font-size:13px}
 .qf-jauge{width:140px;height:8px;border-radius:99px;background:var(--jauge-bg,var(--bordure));overflow:hidden}
 .qf-jauge span{display:block;height:100%;background:var(--vert);border-radius:99px}
-#view-ateliers .qf-barre input.qf-recherche{width:200px;font-size:12.5px;padding:6px 8px}
+#view-ateliers .qf-barre input.qf-recherche{width:200px;font-size:13px;padding:6px 8px}
 .qf-legende,.qf-t-legende{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--txt2);margin:0}
 .qf-l::before{content:"";display:inline-block;width:16px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px;border:1px solid var(--bordure2)}
 .qf-l.ok::before{background:var(--ok-fill);border-color:var(--vert)}
@@ -232,42 +232,42 @@ body.ateliers-open .workbench{display:none}
 .qf-table thead tr:first-child th{top:0;height:22px}
 .qf-table thead tr:nth-child(2) th{top:22px;border-bottom:2px solid var(--bordure2)}
 .qf-table tbody th,.qf-coin{position:sticky;left:0;background:var(--bg3);z-index:1;min-width:160px}
-.qf-table thead .qf-coin{z-index:3;font-size:11px;color:var(--txt2);font-weight:700}
-.qf-g{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--txt2);
+.qf-table thead .qf-coin{z-index:3;font-size:12px;color:var(--txt2);font-weight:700}
+.qf-g{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--txt2);
   border-bottom:3px solid var(--accent) !important;text-align:center !important}
 .qf-g[data-g="1"]{border-bottom-color:var(--violet) !important}
 .qf-g[data-g="2"]{border-bottom-color:var(--orange) !important}
 .qf-g[data-g="3"]{border-bottom-color:var(--vert) !important}
 .qf-g.jonction{border-bottom-color:var(--txt) !important}
 .qf-col{font:inherit;display:grid;gap:1px;width:100%;min-width:108px;text-align:left;border:1px solid transparent;
-  background:none;border-radius:6px;padding:4px 6px;cursor:pointer;font-weight:800;font-size:11.5px;color:var(--txt);min-height:0}
-.qf-col small{font-weight:500;font-size:10.5px;color:var(--txt2)}
+  background:none;border-radius:6px;padding:4px 6px;cursor:pointer;font-weight:800;font-size:12px;color:var(--txt);min-height:0}
+.qf-col small{font-weight:500;font-size:12px;color:var(--txt2)}
 .qf-col.a-remplir small{color:var(--warn-stroke);font-weight:700}
 .qf-col:hover,.qf-col[aria-expanded]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--bg3))}
 .qf-id{display:grid;line-height:1.2}
-.qf-id b{font-size:12.5px}
-.qf-id small{font-size:10.5px;color:var(--txt2)}
-#view-ateliers .qf-parcours{font:inherit;font-size:11px;cursor:pointer;text-align:left;border:1px solid transparent;border-radius:6px;padding:4px 6px;min-height:32px;margin-top:2px;max-width:150px;border-color:transparent;background:transparent;color:var(--txt2)}
+.qf-id b{font-size:13px}
+.qf-id small{font-size:12px;color:var(--txt2)}
+#view-ateliers .qf-parcours{font:inherit;font-size:12px;cursor:pointer;text-align:left;border:1px solid transparent;border-radius:6px;padding:4px 6px;min-height:32px;margin-top:2px;max-width:150px;border-color:transparent;background:transparent;color:var(--txt2)}
 #view-ateliers .qf-parcours:hover,#view-ateliers .qf-parcours:focus{border-color:var(--bordure2)}
 #view-ateliers .qf-parcours.propre{color:var(--accent2);font-weight:700}
 .qf-c{min-width:108px}
 .qf-c.hors{background:repeating-linear-gradient(135deg,transparent 0 5px,color-mix(in srgb,var(--bordure) 60%,transparent) 5px 6px)}
-.qf-c.auto{color:var(--txt2);font-size:11px;font-style:italic;padding-left:10px}
+.qf-c.auto{color:var(--txt2);font-size:12px;font-style:italic;padding-left:10px}
 .qf-case{font:inherit;display:grid;gap:0;width:100%;text-align:left;border-radius:6px;padding:4px 7px;cursor:pointer;
   min-height:34px;align-content:center;border:1px solid var(--bordure2);background:var(--bg2);color:var(--txt)}
-.qf-case .qf-nom{font-weight:700;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
-.qf-case small{font-size:10.5px;color:var(--txt2);font-variant-numeric:tabular-nums}
+.qf-case .qf-nom{font-weight:700;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
+.qf-case small{font-size:12px;color:var(--txt2);font-variant-numeric:tabular-nums}
 .qf-case.ok{background:var(--ok-fill);border-color:color-mix(in srgb,var(--vert) 55%,var(--bordure2))}
-.qf-case.libre{background:var(--warn-fill);border:1.5px dashed var(--warn-stroke);color:var(--warn-stroke);font-weight:700;font-size:11.5px}
+.qf-case.libre{background:var(--warn-fill);border:1.5px dashed var(--warn-stroke);color:var(--warn-stroke);font-weight:700;font-size:12px}
 .qf-case.alerte{background:var(--bad-fill);border-color:var(--rouge)}
 .qf-case:hover,.qf-case[aria-expanded]{outline:2px solid var(--accent);outline-offset:-1px}
 .qf-fin{white-space:nowrap}
-.qf-fin-tete{font-size:11px;color:var(--txt2)}
+.qf-fin-tete{font-size:12px;color:var(--txt2)}
 .qf-suivre{font:inherit;font-size:12px;display:flex;align-items:center;gap:6px;border:1px solid transparent;background:none;
   border-radius:6px;padding:4px 6px;cursor:pointer;color:var(--txt);min-height:34px;width:100%}
 .qf-suivre:hover,.qf-suivre[aria-expanded="true"]{border-color:var(--bordure2);background:var(--bg2)}
 .qf-chevron{margin-left:auto;color:var(--txt2)}
-.qf-etat{font-size:11px;font-weight:700}
+.qf-etat{font-size:12px;font-weight:700}
 .qf-etat.ok{color:var(--vert)}
 .qf-etat.retard{color:var(--rouge)}
 .qf-etat.manque{color:var(--txt3);font-weight:500}
@@ -293,12 +293,12 @@ body.ateliers-open .workbench{display:none}
   border:1px solid var(--bordure2);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:10px;display:grid;gap:6px}
 .qf-menu-titre{margin:0;font-weight:800;font-size:13px}
 .qf-menu-titre span{font-weight:500;color:var(--txt2)}
-.qf-menu-note{margin:2px 0 0;font-size:11.5px;color:var(--txt2)}
+.qf-menu-note{margin:2px 0 0;font-size:12px;color:var(--txt2)}
 .qf-menu-liste{display:grid;gap:4px}
 .qf-choix{font:inherit;display:grid;grid-template-columns:18px 1fr;gap:6px;align-items:start;text-align:left;width:100%;
   border:1px solid var(--bordure);border-radius:7px;background:var(--bg2);padding:6px 8px;cursor:pointer;color:var(--txt);min-height:0}
-.qf-choix b{display:block;font-size:12.5px}
-.qf-choix small{display:block;font-size:11px;color:var(--txt2)}
+.qf-choix b{display:block;font-size:13px}
+.qf-choix small{display:block;font-size:12px;color:var(--txt2)}
 .qf-choix:hover,.qf-choix:focus-visible{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--bg2))}
 .qf-choix.actuel{border-color:var(--vert);background:var(--ok-fill)}
 .qf-choix.nouveau{border-style:dashed}

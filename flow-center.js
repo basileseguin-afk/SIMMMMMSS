@@ -88,15 +88,15 @@ class FlowCenter{
  }
  status(message){document.getElementById('fc-status').textContent=message;}
  build(){
-  this.host.innerHTML=`<div class="fc-heading"><div><p class="scope-badge">Qui livre qui, entre les services de l’unité</p></div><div class="fc-actions"><button class="btn" id="fc-undo">Annuler</button><button class="btn" id="fc-redo">Rétablir</button><button class="btn" id="fc-export">⇩ Exporter les liens</button><button class="btn" id="fc-import-button">⇧ Importer des liens</button><input id="fc-import" type="file" accept=".json" hidden></div></div>
+  this.host.innerHTML=`<div class="fc-heading"><div><p class="scope-badge">Qui livre qui, entre les services de l’unité</p></div><div class="fc-actions"><button class="btn btn-sm" id="fc-undo" title="Annuler la dernière modification">↶ Annuler</button><button class="btn btn-sm" id="fc-redo" title="Rétablir ce qui a été annulé">↷ Rétablir</button><button class="btn btn-sm" id="fc-export" title="Les liens entre services, dans un fichier">⇩ Liens</button><button class="btn btn-sm" id="fc-import-button" title="Réimporter un fichier de liens">⇧ Importer</button><input id="fc-import" type="file" accept=".json" hidden></div></div>
    <div id="fc-status" role="status" aria-live="polite"></div>
    <section id="fc-lecture" class="fc-lecture" data-sous="u-lecture">
     <h3 class="fc-list-title">Ce que le calcul en retient</h3>
-    <div class="mini-note">Un repas suit d’abord <b>son chemin</b> (étape 2, « Qui prépare quoi ») ; ces
+    <div class="mini-note">Un repas suit d’abord <b>son chemin</b> (Organisation › Chemins) ; ces
      liens ne servent qu’aux repas qui n’en ont pas.<details class="aide"><summary aria-label="Ce que le calcul retient de ces liens">?</summary>
      <span class="aide-corps"><p>Ces liens décrivent l’unité : qui livre qui. Ils ne disent pas le
        chemin de <b>chaque</b> repas — un plateau d’économie ne passe pas par la cuisine. C’est le
-       rôle des <b>chemins</b>, à l’étape 2.</p>
+       rôle des <b>chemins</b>, dans Organisation › Chemins.</p>
        <p>Pour un repas sans chemin, un service ne le prépare que lorsque tous ceux qui le
        livrent ici l’ont fait. Seul compte le <b>sens</b> des liens actifs ; leur type et leur
        précision ne servent qu’à décrire.</p></span></details></div>

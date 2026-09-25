@@ -5,6 +5,7 @@
  * disposition ; le tableau et les cases qui se calculent et mènent au chemin ;
  * les liens de l'unité dessinés de même. */
 const assert=require('node:assert/strict'),path=require('node:path');
+const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
 (async()=>{
@@ -21,7 +22,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const liens=id=>page.evaluate(id=>Sim.ateliers.state.parcours.find(p=>p.id===id).liens.map(l=>l.de+'>'+l.vers),id);
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
-  await page.locator('#etapes [data-view=ateliers]').click();await page.locator('[data-sous-onglet=at-chemins]').click();await attendre();
+  await nav.vue(page,'ateliers');await nav.aller(page,'at-chemins');await attendre();
   const Z='.pc-graphe';
 
   // 1. Chaque commande a son chemin, créé à la main : ici TX · Business, copié du modèle de sa classe.
@@ -40,7 +41,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.lots.some(l=>l.includes('TX/BC'))).length),
     await page.evaluate(id=>Sim.ateliers.state.parcours.find(p=>p.id===id).noeuds.filter(s=>s!=='plonge').length,bc),'une case par service');
   assert.equal(await page.locator(`${Z} [data-noeud=prepa]`).evaluate(n=>n.classList.contains('ton-ok')),true,'le nœud a sa case');
-  await page.locator('[data-sous-onglet=at-equipes]').click();await attendre();
+  await nav.aller(page,'at-equipes');await attendre();
   assert.match(await page.locator('#at-liste').textContent(),/Montage TX BC/,'la case est dans « Les cases »');
   await page.locator(`#at-liste [data-at="${kase.id}"] .at-carte-nom`).click();await attendre();
   assert.equal(await page.locator('[data-sous-onglet=at-chemins]').getAttribute('aria-selected'),'true','elle se règle dans son chemin');
@@ -119,14 +120,14 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator(`${Z} [data-noeud=preparation] .gr-nom`).textContent(),'Prépa');
 
   // 5. Les autres onglets se calculent : le tableau et les cases mènent au chemin.
-  await page.locator('[data-sous-onglet=at-grille]').click();await attendre();
+  await nav.aller(page,'at-grille');await attendre();
   assert.match(await page.locator('[data-qf=aller][data-classe="TX/BC"][data-service=prepa]').textContent(),/Montage TX BC/);
   await page.locator('[data-qf=aller][data-classe="TX/BC"][data-service=prepa]').click();await attendre();
   assert.equal(await page.locator('[data-sous-onglet=at-chemins]').getAttribute('aria-selected'),'true');
   assert.equal(await page.locator('.pc-cmd.actif').getAttribute('data-classe'),'TX/BC');
   assert.equal(await page.locator(`${Z} [data-noeud=prepa]`).evaluate(n=>n.classList.contains('sel')),true,'le service cliqué est choisi');
   assert.equal(await page.locator(fiche).isVisible(),true);
-  await page.locator('[data-sous-onglet=at-equipes]').click();await attendre();
+  await nav.aller(page,'at-equipes');await attendre();
   assert.equal(await page.locator(`#at-liste [data-at="${kase.id}"] [data-at-action=chemin]`).count(),2,'la case dit ses deux commandes');
   await page.locator(`#at-liste [data-at="${kase.id}"] [data-at-action=chemin][data-classe="TX/YC"]`).click();await attendre();
   assert.equal(await page.locator('.pc-cmd.actif').getAttribute('data-classe'),'TX/YC');
@@ -138,14 +139,14 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.mouse.move(b.x+60,b.y+20);await page.mouse.down();await page.mouse.move(b.x+60,b.y+140,{steps:5});await page.mouse.up();await attendre();
   const deplace=await y();
   assert.notEqual(deplace,avantDeplace,'le service a bougé');
-  await page.reload();await attendre();await page.locator('#etapes [data-view=ateliers]').click();await attendre();
+  await page.reload();await attendre();await nav.vue(page,'ateliers');await attendre();
   await page.locator('[data-pc-action=cmd][data-classe="TX/YC"]').click();await attendre();
   assert.equal(await y(),deplace,'la place choisie survit au rechargement');
   await page.locator('[data-pc-action=reorganiser]').click();await attendre();
   assert.notEqual(await y(),deplace);
 
   // 5. Les liens de l'unité : même diagramme, un trait tiré crée un lien du type choisi.
-  await page.locator('#etapes [data-view=flux]').click();await page.locator('[data-sous-onglet=u-liens]').click();await attendre();
+  await nav.vue(page,'flux');await nav.aller(page,'u-liens');await attendre();
   const F='#fc-graphe',nb=()=>page.evaluate(()=>Sim.flows.state.flows.length),n0=await nb();
   assert.ok(await page.locator(`${F} .gr-noeud`).count()>=10,'un nœud par service');
   await page.locator('#fc-graphe-type').selectOption('raw');

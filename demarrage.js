@@ -1,23 +1,21 @@
 /* ==========================================================================
- *  L'HISTOIRE DU SITE — quatre étapes, dans l'ordre où l'on pense
+ *  L'ACCUEIL — le menu principal, et l'état de chaque partie
  *
  *  Quelqu'un qui n'est pas du métier de l'informatique doit comprendre, d'un
- *  coup d'œil, ce que fait ce site et où il en est :
+ *  coup d'œil, ce que fait ce site et où il en est. L'accueil montre quatre
+ *  tuiles, une par partie du travail :
  *
- *      1. Les vols               quels avions partent, et quand
- *      2. Qui prépare quoi       par où passent les repas, quelle équipe
- *      3. Les temps de travail   combien de minutes chaque service y passe
- *      4. La journée             le résultat : à l'heure, ou en retard
+ *      Données        ce qu'on importe : les vols, les temps de travail
+ *      Organisation   ce qu'on décrit : chemins, cases, liens de l'unité
+ *      Réglages       ce qu'on essaie : horaires, rythme, pauses
+ *      Résultats      ce que la journée donne
  *
- *  et, à part, l'unité elle-même (le plan et qui livre qui), qu'on règle une
- *  fois pour toutes.
+ *  Chaque tuile porte son état en clair (fait, exemple, à faire) et ses pages.
+ *  L'histoire « Comment ça marche » y est racontée en quatre images ; elle
+ *  n'encombre plus le haut de chaque page.
  *
- *  Ces étapes SONT la navigation : pas d'onglets d'un côté et d'un fil « par
- *  où commencer » de l'autre, qui disaient deux fois la même chose. Chaque
- *  étape porte son état en clair — fait, à vérifier, à faire.
- *
- *  Un encart « Comment ça marche » raconte l'histoire en quatre images ; il
- *  s'ouvre à la première visite et se rouvre depuis l'en-tête.
+ *  Les « étapes » calculées ici (etapes, suite) restent la mesure de ce qui
+ *  est fait : les tuiles les regroupent par partie.
  * ==========================================================================*/
 (function (root) {
   'use strict';
@@ -122,6 +120,38 @@
     return { etape: null, texte: null };
   }
 
+  /** La page où l'on fait le geste d'une étape. */
+  const PAGE_DE_VUE = { vols: 'v-programme', ateliers: 'at-chemins', reglages: 'rg-minutes', plan: 'j-chiffres', flux: 'u-lecture' };
+
+  const PIRE = ['afaire', 'verifier', 'provisoire', 'fait'];
+  const pire = etats => PIRE.find(x => etats.includes(x)) || 'fait';
+
+  /**
+   * L'état de chaque partie du menu, pour les tuiles de l'accueil.
+   * @param {object} e comme `etapes()`, plus
+   *   reglages — { delai, decalage, rendement, pauses }
+   * @returns {Array} [{ partie, etat, lignes:[{ texte, etat }] }]
+   */
+  function tuiles(e) {
+    const par = Object.fromEntries(etapes(e).map(x => [x.cle, x]));
+    const ligne = (cle, nom) => ({ texte: nom + ' : ' + par[cle].detail, etat: par[cle].etat });
+    const r = e.reglages || {};
+    const donnees = [ligne('vols', 'Vols'), ligne('bareme', 'Temps de travail')];
+    const organisation = [ligne('ateliers', 'Équipes'), ligne('unite', 'Unité')];
+    const reglages = [
+      { texte: 'Repas prêts ' + (r.delai ?? 45) + ' min avant le départ'
+        + (r.decalage ? ' · vols décalés de ' + (r.decalage > 0 ? '+' : '') + r.decalage + ' min' : ''), etat: 'fait' },
+      { texte: 'Rythme ' + String(r.rendement ?? 1).replace('.', ',')
+        + ' · ' + pluriel(r.pauses ?? 0, 'pause') + ' par poste', etat: 'fait' }];
+    const resultats = [ligne('journee', 'Journée')];
+    return [
+      { partie: 'donnees', etat: pire(donnees.map(l => l.etat)), lignes: donnees },
+      { partie: 'organisation', etat: pire(organisation.map(l => l.etat)), lignes: organisation },
+      { partie: 'reglages', etat: 'fait', lignes: reglages },
+      { partie: 'resultats', etat: pire(resultats.map(l => l.etat)), lignes: resultats }
+    ];
+  }
+
   /* Quatre images simples, dessinées au trait : elles portent l'histoire mieux
    * qu'un paragraphe. */
   const PICTOS = {
@@ -145,83 +175,78 @@
   const I = () => root.OrlyIcones;
   const icone = (nom, classe) => I() ? I().ico(nom, classe) : '';
 
-  class Demarrage {
+  const O = () => root.OrlyOnglets;
+
+  class Accueil {
     /**
      * @param {object} a adaptateur :
-     *   hote()        — l'élément <nav> où dessiner les étapes
-     *   comment()     — l'élément où dessiner « Comment ça marche »
-     *   etat()        — l'objet attendu par `etapes()`
-     *   vue()         — la vue affichée
-     *   aller(onglet) — changer de vue
+     *   menu()          — le <nav> de l'en-tête où dessiner les parties
+     *   accueil()       — l'élément où dessiner la page d'accueil
+     *   etat()          — l'objet attendu par `tuiles()`
+     *   partie()        — la partie ouverte ('accueil' sur l'accueil)
+     * Les boutons portent `data-vers-partie` ou `data-page` : c'est la page
+     * qui écoute les clics, pour l'en-tête comme pour l'accueil.
      */
     constructor(a) {
       this.a = a;
-      let vu = false;
-      try { vu = localStorage.getItem('ory-comment-vu') === '1'; } catch (e) { /* sans mémoire */ }
-      this.ouvert = !vu;
-      const hote = a.hote();
-      if (hote) hote.addEventListener('click', ev => {
-        const b = ev.target.closest('[data-view]');
-        if (b && !b.disabled && this.a.aller) this.a.aller(b.dataset.view);
-      });
-      const c = a.comment && a.comment();
-      if (c) c.addEventListener('click', ev => {
-        if (ev.target.closest('[data-comment-fermer]')) this.basculer(false);
-        const b = ev.target.closest('[data-view]');
-        if (b && this.a.aller) { this.basculer(false); this.a.aller(b.dataset.view); }
-      });
       this.rendre();
-      this.rendreComment();
     }
 
-    /** Ouvre ou referme « Comment ça marche ». Refermé une fois, il le reste. */
-    basculer(ouvrir) {
-      this.ouvert = ouvrir === undefined ? !this.ouvert : !!ouvrir;
-      if (!this.ouvert) { try { localStorage.setItem('ory-comment-vu', '1'); } catch (e) { /* sans mémoire */ } }
-      this.rendreComment();
-      return this.ouvert;
-    }
+    rendre() { this.rendreMenu(); this.rendreAccueil(); }
 
-    rendre() {
-      const hote = this.a.hote(); if (!hote) return;
-      const liste = etapes(this.a.etat());
-      const vue = this.a.vue ? this.a.vue() : null;
-      const prochain = suite(liste).etape;
-      const bouton = s => {
-        const actif = s.onglet === vue;
-        const e = (I() && I().ETAPES[s.onglet]) || {};
-        return `<button data-view="${s.onglet}" class="etape ${s.etat}${actif ? ' active' : ''}${s.annexe ? ' annexe' : ''}"
-          style="--c:${e.couleur || 'var(--accent)'}" aria-pressed="${actif}" ${actif ? 'aria-current="page"' : ''}
-          aria-label="${esc((s.num ? 'Étape ' + s.num + ' : ' : '') + s.titre + ' — ' + s.detail + ' (' + MOTS[s.etat] + ')')}">
-          <span class="etape-ico" aria-hidden="true">${icone(e.ico || 'service')}${s.num ? `<span class="etape-num">${s.num}</span>` : ''}</span>
-          <span class="etape-txt"><b>${esc(s.titre)}</b>
-            <em><span class="etape-etat ${s.etat}" aria-hidden="true">${ETATS[s.etat]}</span>${esc(s.detail)}</em></span>
-          ${prochain && prochain.cle === s.cle && !actif ? '<span class="etape-suite">à faire ensuite</span>' : ''}
-        </button>`;
+    /* L'en-tête : l'accueil, puis les quatre parties ; celle qui est ouverte est marquée. */
+    rendreMenu() {
+      const m = this.a.menu && this.a.menu(); if (!m || !O()) return;
+      const ouverte = this.a.partie ? this.a.partie() : null;
+      const bouton = (id, nom, ico, couleur) => {
+        const on = id === ouverte;
+        return `<button type="button" class="menu-partie${on ? ' actif' : ''}" data-vers-partie="${id}" style="--c:${couleur}"
+          ${on ? 'aria-current="page"' : ''}>${icone(ico)}<span>${esc(nom)}</span></button>`;
       };
-      const principales = liste.filter(s => !s.annexe), annexes = liste.filter(s => s.annexe);
-      const html = `<ol class="etapes-liste">${principales.map((s, i) =>
-          `<li>${bouton(s)}</li>${i < principales.length - 1 ? '<li class="etape-fleche" aria-hidden="true">›</li>' : ''}`).join('')}</ol>
-        <div class="etapes-annexe">${annexes.map(bouton).join('')}</div>`;
-      if (hote.innerHTML !== html) hote.innerHTML = html;
+      const html = bouton('accueil', 'Accueil', 'unite', 'var(--accent)')
+        + O().PARTIES.filter(p => !p.cache).map(p => bouton(p.id, p.nom, p.ico, p.couleur)).join('');
+      if (m.innerHTML !== html) m.innerHTML = html;
     }
 
-    rendreComment() {
-      const c = this.a.comment && this.a.comment(); if (!c) return;
-      c.hidden = !this.ouvert;
-      document.querySelectorAll('[data-comment-bouton]').forEach(b => b.setAttribute('aria-expanded', String(this.ouvert)));
-      if (!this.ouvert || c.dataset.rendu) return;
-      c.dataset.rendu = '1';
-      c.innerHTML = `<div class="cm-tete"><h2>Comment ça marche</h2>
-          <button class="btn btn-sm" data-comment-fermer>J’ai compris</button></div>
-        <ol class="cm-liste">${COMMENT.map((x, i) => `<li style="--c:${x.couleur}">
-          <span class="cm-rond">${I() ? I().ico(x.ico, 'cm-picto') : picto(x.picto)}<span class="cm-num">${i + 1}</span></span>
-          <b>${esc(x.titre)}</b><p>${esc(x.texte)}</p></li>`).join('')}</ol>
-        <p class="cm-pied">${icone('ampoule')} Suivez les étapes <b>1 → 4</b>. Les chiffres sont des <b>exemples</b> tant que l’étude de temps n’est pas importée.</p>`;
+    /* La page d'accueil : l'histoire en quatre images, ce qu'il y a à faire
+     * ensuite, puis une tuile par partie avec son état et ses pages. */
+    rendreAccueil() {
+      const h = this.a.accueil && this.a.accueil(); if (!h || !O()) return;
+      const e = this.a.etat(), etat = Object.fromEntries(tuiles(e).map(t => [t.partie, t]));
+      const s = suite(etapes(e));
+      const suiteHtml = s.etape
+        ? `<p class="acc-suite">${icone('ampoule')}<span>À faire ensuite :</span>
+            <button type="button" class="lien-fort" data-page="${PAGE_DE_VUE[s.etape.onglet]}">${esc(s.texte)} →</button></p>`
+        : `<p class="acc-suite fait">${icone('check')}<span>Tout est en place : regardez les <button type="button" class="lien-fort" data-page="j-chiffres">résultats →</button></span></p>`;
+      const tuile = p => {
+        const t = etat[p.id];
+        const pages = O().pagesDe(p.id).map(x => `<button type="button" class="acc-page" data-page="${x.id}">${esc(x.nom)}</button>`).join('');
+        return `<article class="acc-tuile ${t.etat}" style="--c:${p.couleur}">
+          <button type="button" class="acc-tuile-tete" data-vers-partie="${p.id}">
+            <span class="acc-ico" aria-hidden="true">${icone(p.ico)}</span>
+            <span class="acc-titre"><b>${esc(p.nom)}</b><em>${esc(p.resume)}</em></span>
+            <span class="acc-etat ${t.etat}">${esc(MOTS[t.etat])}</span>
+          </button>
+          <ul class="acc-lignes">${t.lignes.map(l => `<li class="${l.etat}"><span class="etape-etat ${l.etat}" aria-hidden="true">${ETATS[l.etat]}</span>${esc(l.texte)}</li>`).join('')}</ul>
+          <nav class="acc-pages" aria-label="Les pages de ${esc(p.nom)}">${pages}</nav>
+        </article>`;
+      };
+      const html = `<div class="acc">
+        <section class="acc-histoire" aria-label="Comment ça marche">
+          <h1>Simuler une journée de repas à bord</h1>
+          <ol class="cm-liste">${COMMENT.map((x, i) => `<li style="--c:${x.couleur}">
+            <span class="cm-rond">${I() ? I().ico(x.ico, 'cm-picto') : picto(x.picto)}<span class="cm-num">${i + 1}</span></span>
+            <b>${esc(x.titre)}</b><p>${esc(x.texte)}</p></li>`).join('')}</ol>
+        </section>
+        ${suiteHtml}
+        <div class="acc-tuiles">${O().PARTIES.filter(p => !p.cache).map(tuile).join('')}</div>
+        <p class="acc-pied"><button type="button" class="btn btn-sm" data-page="u-sauvegarde">${icone('boite')} Sauvegarde et limites du calcul</button></p>
+      </div>`;
+      if (h.innerHTML !== html) h.innerHTML = html;
     }
   }
 
-  const api = { ETATS, MOTS, VUES, COMMENT, etapes, suite, Demarrage };
+  const api = { ETATS, MOTS, VUES, COMMENT, PAGE_DE_VUE, etapes, suite, tuiles, Accueil };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyDemarrage = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

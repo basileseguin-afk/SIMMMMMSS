@@ -2,6 +2,7 @@
  * chemin et dans la case, la frise d'une commande, l'onglet « Stocks et
  * retours » (tableau, tuiles, graphiques et survol), et le plan rejoué. */
 const assert=require('node:assert/strict'),path=require('node:path');
+const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
 (async()=>{
@@ -25,7 +26,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(sej&&sej.sortie===240&&sej.duree>100,'TX BC est en stock entre la cuisine et la prépa');
 
   // 1. Le chemin : le temps en stock sur le lien, et dans la case de la prépa.
-  await page.locator('#etapes [data-view=ateliers]').click();await page.locator('[data-sous-onglet=at-chemins]').click();await attendre();
+  await nav.vue(page,'ateliers');await nav.aller(page,'at-chemins');await attendre();
   await page.locator('[data-pc-action=cmd][data-classe="TX/BC"]').click();await attendre();
   assert.match(await page.locator('.pc-graphe .gr-lien[data-lien="cuisine>preparation"] .gr-etiq').textContent(),/^2 h \d\d$/);
   assert.match(await page.locator('.pc-graphe .gr-lien[data-lien="cuisine>preparation"] title').textContent(),/en stock/);
@@ -34,13 +35,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.keyboard.press('Escape');await attendre();
 
   // 2. La frise de la commande : une barre « en stock », et la phrase le dit.
-  await page.locator('[data-sous-onglet=at-grille]').click();await attendre();
+  await nav.aller(page,'at-grille');await attendre();
   await page.locator('[data-qf=suivre][data-classe="TX/BC"]').click();await attendre();
   assert.ok(await page.locator('.qf-temps .qf-t-stock').count()>=1,'le stock se voit dans la frise');
   assert.match(await page.locator('.qf-temps .qf-phrase').textContent(),/Le plus long en stock/);
 
   // 3. L'onglet « Stocks et retours ».
-  await page.locator('#etapes [data-view=plan]').click();await page.locator('[data-sous-onglet=j-stocks]').click();await attendre();
+  await nav.vue(page,'plan');await nav.aller(page,'j-stocks');await attendre();
   assert.ok(await page.locator('#journee-stocks .tp-table tbody tr').count()>=2,'une ligne par lien où quelque chose attend');
   assert.match(await page.locator('#journee-stocks .tp-table').textContent(),/Cuisine → Prépa/);
   assert.match(await page.locator('#journee-stocks .tp-table').textContent(),/Chargement \(avion\)/);
@@ -62,7 +63,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.deepEqual(await page.locator('#journee-stocks .tp-curseur').evaluate(l=>[l.style.display,+l.getAttribute('x1')>0]),['',true],'le curseur suit la souris');
 
   // 4. Le plan rejoué : à 03:00, TX BC attend devant la prépa, et « En ce moment » le dit.
-  await page.locator('[data-sous-onglet=j-plan]').click();await attendre();
+  await nav.aller(page,'j-plan');await attendre();
   await page.evaluate(()=>Sim.vue.allerA(180));await attendre(300);
   const badge=page.locator('.zone[data-id=preparation] .zone-stock');
   assert.equal(await badge.evaluate(g=>g.style.display),'','la pastille est affichée');

@@ -1,6 +1,7 @@
 /* Import CSV dans le navigateur : BUG-005 (réimport après échec de lecture), vols,
  * export et scénarios A/B sur le modèle par ateliers. */
 const assert=require('node:assert/strict'),path=require('node:path');
+const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
 (async()=>{
@@ -9,13 +10,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
  const click=s=>page.locator(s).click();
  // Comparer deux essais est un onglet de « La journée ».
- const comparer=async()=>{await click('[data-view="plan"]');await click('[data-sous-onglet=j-comparer]');};
+ const comparer=async()=>{await nav.vue(page,'plan');await nav.aller(page,'j-comparer');};
  const setRange=(s,v)=>page.locator(s).evaluate((e,v)=>{e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));},v);
  const header='vol_id,compagnie,type_avion,sens,heure_std,heure_sta,nb_BC,nb_PC,nb_YC\n';
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
   // L'import des vols vit à l'étape 1, « Les vols ».
-  await click('[data-view="vols"]');await click('[data-sous-onglet=v-programme]');
+  await nav.vue(page,'vols');await nav.aller(page,'v-programme');
 
   // BUG-005 : on force un échec de lecture, puis on vérifie qu'un second choix du
   // même fichier est bien pris en compte.
@@ -36,7 +37,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator('#import-report').textContent(),/Ligne 4 /);
   assert.equal(await page.locator('#source-label').textContent(),'vols.csv');
 
-  await click('#restore-demo');await click('[data-sous-onglet=v-departs]');
+  await click('#restore-demo');await nav.aller(page,'v-departs');
   // La vue Vols lit le modèle par équipes : sans équipe décrite, aucun repas
   // n'est préparé, et le tableau le dit plutôt que d'annoncer un retard.
   assert.match(await page.locator('#flight-rows').textContent(),/Commandes sans équipe/);
@@ -44,15 +45,15 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(await page.locator('#flight-rows .rc.sans').count()>0,'chaque commande sans équipe a sa pastille en pointillés');
   assert.equal(await page.locator('#flight-rows .rc.sans').first().evaluate(e=>getComputedStyle(e,'::after').content),'none','sans croix, qui se lirait « supprimer »');
   // L'export suit ce qu'on regarde : la journée calculée.
-  const attendu=page.waitForEvent('download');await click('#btn-export');const dl=await attendu;
+  const attendu=page.waitForEvent('download');await nav.aller(page,'j-chiffres');await click('#btn-export');const dl=await attendu;
   const exp=JSON.parse(require('node:fs').readFileSync(await dl.path(),'utf8'));
   assert.equal(exp.schemaVersion,'0.5');assert.equal(exp.modele,'ateliers');
   assert.ok(exp.departs.length>0,'les départs du programme sont exportés');
   assert.ok(exp.departs.every(d=>d.classes.every(c=>c.absente)),'sans atelier, aucune classe n’est fabriquée');
 
   // Scénarios A/B sur le modèle par ateliers : une cuisine à deux, puis à douze.
-  await click('[data-view="ateliers"]');
-  await page.locator('[data-sous-onglet=at-equipes]').click();await page.locator('#at-new').click();await page.waitForTimeout(150);
+  await nav.vue(page,'ateliers');
+  await nav.aller(page,'at-equipes');await page.locator('#at-new').click();await page.waitForTimeout(150);
   const at=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
   await page.selectOption(`[data-at="${at}"] [data-at-champ=service]`,'cuisine');await page.waitForTimeout(150);
   for(const c of ['AF/BC','AF/YC','DL/YC'])await page.selectOption(`[data-at="${at}"] [data-at-champ=lot-nouveau]`,c);
@@ -77,17 +78,17 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator('#compare-note').textContent(),/Rien n’a changé/);
   assert.equal(await page.locator('#compare tr.diff').count(),0);
   // Le décalage des vols est un réglage comme un autre : il se capture.
-  await click('[data-view="vols"]');await setRange('#shift','30');
+  await nav.vue(page,'vols');await setRange('#shift','30');
   assert.equal(await page.locator('#shift-val').textContent(),'+30 min');
   await comparer();await click('#snap-b');
   assert.deepEqual((await ligne('Décalage des vols')).slice(1),['0 min','+30 min']);
-  await click('[data-view="vols"]');await setRange('#shift','0');
+  await nav.vue(page,'vols');await setRange('#shift','0');
   // Deux programmes de vols différents : la comparaison le signale.
   await page.locator('#imp-vols').setInputFiles({name:'autre.csv',mimeType:'text/csv',buffer:Buffer.from(header+'AF1,AF,A320,DEP,12:00,,4,0,90')});
   await page.waitForFunction(()=>document.getElementById('source-label').textContent==='autre.csv');
   await comparer();
   assert.match(await page.locator('#compare-note').textContent(),/essai A/,'un nouveau programme efface les captures');
-  await click('#snap-a');await click('[data-view="vols"]');await click('[data-sous-onglet=v-programme]');await click('#restore-demo');await comparer();
+  await click('#snap-a');await nav.vue(page,'vols');await nav.aller(page,'v-programme');await click('#restore-demo');await comparer();
   assert.match(await page.locator('#compare-note').textContent(),/essai A/);
   // L'ancien moteur n'a plus de curseurs à offrir.
   for(const id of ['#staff-cuisine','#robot','#vivier','#calendrier','#materiel','#tunnels'])

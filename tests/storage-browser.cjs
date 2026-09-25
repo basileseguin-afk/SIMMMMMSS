@@ -1,4 +1,5 @@
 const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs'),os=require('node:os');
+const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
 (async()=>{
@@ -14,7 +15,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
   // Le site s'ouvre sur l'étape à faire ensuite : ce parcours travaille sur le plan.
-  const versPlan=async()=>{await page.locator('#etapes [data-view=plan]').click();await page.waitForTimeout(120);};await versPlan();
+  const versPlan=async()=>{await nav.vue(page,'plan');await page.waitForTimeout(120);};await versPlan();
   // Real mouse selection, not synthetic dispatch: BUG-002.
   await page.locator('.zone[data-id="cuisine"]').click();
   assert.equal(await page.locator('#zone-picker').inputValue(),'cuisine');

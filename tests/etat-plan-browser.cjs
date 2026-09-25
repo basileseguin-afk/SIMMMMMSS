@@ -2,6 +2,7 @@
  * Ce parcours vérifie les trois états, le basculement de légende quand on
  * relit la journée, et que la bande d'indicateurs se retire hors Simulation. */
 const assert=require('node:assert/strict'),path=require('node:path');
+const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
 (async()=>{
@@ -13,7 +14,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
   // Le site s'ouvre sur l'étape à faire ensuite : ce parcours travaille sur le plan.
-  const versPlan=async()=>{await page.locator('#etapes [data-view=plan]').click();await page.waitForTimeout(120);};await versPlan();
+  const versPlan=async()=>{await nav.vue(page,'plan');await page.waitForTimeout(120);};await versPlan();
 
   // 1. Au repos : rien n'est décrit, donc tout est vide. L'état se lit
   //    désormais dans les ateliers de travail, et plus dans des curseurs —
@@ -27,46 +28,48 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 2. Une équipe sans rien à fabriquer n'est pas un état neutre : elle est
   //    décrite, mais elle ne produira rien.
-  await click('[data-view=reglages]');
+  await nav.vue(page,'reglages');
   assert.equal(await page.locator('.kpi-grille').isVisible(),false,'les indicateurs ne décrivent pas un réglage');
-  await click('[data-view=ateliers]');
-  await page.locator('[data-sous-onglet=at-equipes]').click();await page.locator('#at-new').click();await page.waitForTimeout(150);
+  await nav.vue(page,'ateliers');
+  await nav.aller(page,'at-equipes');await page.locator('#at-new').click();await page.waitForTimeout(150);
   const eq=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
   await page.selectOption(`[data-at="${eq}"] [data-at-champ=service]`,'cuisine');await page.waitForTimeout(200);
-  await click('[data-view=plan]');
+  await nav.vue(page,'plan');
   assert.match(await etat('cuisine'),/\bp-partiel\b/,'décrite, mais elle ne fabrique rien');
   // Ce qu'elle fabrique la rend aménagée.
-  await click('[data-view=ateliers]');
+  await nav.vue(page,'ateliers');
   await page.selectOption(`[data-at="${eq}"] [data-at-champ=lot-nouveau]`,'CRL/BC');await page.waitForTimeout(250);
-  await click('[data-view=plan]');
+  await nav.vue(page,'plan');
   assert.match(await etat('cuisine'),/\bp-pret\b/);
   // Avant le lancement, les quatre indicateurs valent tous « — » ou « 0 » : une
   // bande entière pour ne rien dire, juste au-dessus de ce qu'on vient voir.
   // Tant qu'on est au début de la journée, les quatre indicateurs ne disent
   // rien : une bande entière au-dessus de ce qu'on vient voir.
   assert.equal(await page.locator('.kpi-grille').isVisible(),false,'rien à montrer au début');
-  // Ils ont leur onglet, « Les chiffres » : le plan reste seul avec ce qu'il montre.
+  // Les chiffres « à cette heure » accompagnent le plan rejoué : avancer dans
+  // la journée les fait apparaître, ils ont alors quelque chose à dire.
   await page.evaluate(()=>Sim.vue.allerA(Sim.vue.fin));await page.waitForTimeout(200);
-  assert.equal(await page.locator('.kpi-grille').isVisible(),false,'pas sur l’onglet du plan');
-  await page.locator('[data-sous-onglet=j-chiffres]').click();await page.waitForTimeout(200);
-  // Avancer dans la journée les fait apparaître : ils ont alors quelque chose à dire.
   assert.equal(await page.locator('.kpi-grille').isVisible(),true,'ils apparaissent dès qu’on avance');
-  assert.equal(await page.locator('#bilan-journee').isVisible(),true,'avec le bilan de la journée');
+  // La synthèse, elle, parle de la journée entière, sans lecteur.
+  await nav.aller(page,'j-chiffres');await page.waitForTimeout(200);
+  assert.equal(await page.locator('#bilan-journee').isVisible(),true,'le bilan de la journée');
+  assert.equal(await page.locator('.kpi-grille').isVisible(),false,'pas les chiffres de l’instant');
+  assert.equal(await page.locator('#btn-play').isVisible(),false,'ni le lecteur');
+  await nav.aller(page,'j-plan');
   await page.locator('#btn-reset').click();await page.waitForTimeout(200);
   assert.equal(await page.locator('.kpi-grille').isVisible(),false,'et repartent au début');
-  assert.equal(await page.locator('.chiffres-attente').isVisible(),true,'une phrase dit comment les faire venir');
-  await page.locator('[data-sous-onglet=j-plan]').click();await page.waitForTimeout(150);
+  await nav.aller(page,'j-plan');await page.waitForTimeout(150);
   // 3. Un second service décrit fait baisser le reste à faire.
   const avant=await page.locator('#plan-etat').textContent();
-  await click('[data-view=ateliers]');
-  await page.locator('[data-sous-onglet=at-equipes]').click();await page.locator('#at-new').click();await page.waitForTimeout(150);
+  await nav.vue(page,'ateliers');
+  await nav.aller(page,'at-equipes');await page.locator('#at-new').click();await page.waitForTimeout(150);
   const at=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
   await page.selectOption(`[data-at="${at}"] [data-at-champ=service]`,'prepa');await page.waitForTimeout(150);
-  await click('[data-view=plan]');
+  await nav.vue(page,'plan');
   assert.match(await etat('prepa'),/\bp-partiel\b/,'un atelier vide n’aménage rien');
-  await click('[data-view=ateliers]');
+  await nav.vue(page,'ateliers');
   await page.selectOption(`[data-at="${at}"] [data-at-champ=lot-nouveau]`,'CRL/PC');await page.waitForTimeout(250);
-  await click('[data-view=plan]');
+  await nav.vue(page,'plan');
   assert.match(await etat('prepa'),/\bp-pret\b/,'une fabrication suffit à marquer le service aménagé');
   assert.notEqual(await page.locator('#plan-etat').textContent(),avant,'le reste à faire diminue');
 

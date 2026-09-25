@@ -4,6 +4,7 @@
  *  3. le classeur des vols : départs et retours, aller-retour ;
  *  4. le tableau « Qui prépare quoi » : choisir, créer, vider, remplir, suivre. */
 const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs'),os=require('node:os');
+const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
 const T=require('../tableur.js');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
@@ -25,7 +26,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const lot=(service,classe)=>page.evaluate(([s,c])=>Sim.ateliers.resultat.lots.find(l=>l.service===s&&l.classes.includes(c)),[service,classe]);
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
-  await page.locator('[data-view=ateliers]').click();await attendre();
+  await nav.vue(page,'ateliers');await attendre();
 
   // 1. Deux parcours types, prêts : YC ne passe ni par la cuisine ni par la légumerie.
   assert.equal(await page.locator('.pc-puce').count(),2,'deux chemins, deux pastilles');
@@ -33,7 +34,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await defaut('BC'),'complet');
   assert.equal(await defaut('YC'),'sans-cuisine');
   // Un modèle est un diagramme : un nœud par service, un trait par livraison.
-  await page.locator('[data-sous-onglet=at-chemins]').click();
+  await nav.aller(page,'at-chemins');
   await page.locator('.pc-modeles>summary').click();
   await page.locator('[data-pc-action=modele][data-parcours=complet]').click();await attendre();
   assert.equal(await page.locator('.pc-graphe .gr-lien[data-lien$=">prepa"]').count(),3,'trois traits arrivent au montage');
@@ -43,7 +44,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // Trois équipes : cuisine, dotation, montage. Le montage YC n'attend que la dotation.
   const creer=async(nom,service,lots)=>{
-    await page.locator('[data-sous-onglet=at-equipes]').click();await page.locator('#at-new').click();await attendre();
+    await nav.aller(page,'at-equipes');await page.locator('#at-new').click();await attendre();
     const id=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
     await page.evaluate(([id,nom,service,lots])=>Sim.ateliers.changer(()=>{
       Object.assign(Sim.ateliers.state.ateliers.find(a=>a.id===id),{nom,service,debut:'05:00',personnes:1,lots});
@@ -58,23 +59,23 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator('#at-anomalies').textContent(),/commandes? commencées? sautent? une étape sans équipe[\s\S]*« Qui prépare quoi »/,'les étapes sans équipe renvoient au tableau');
 
   // Une commande peut avoir son propre chemin, copié d'un modèle.
-  await page.locator('[data-sous-onglet=at-chemins]').click();await attendre();
+  await nav.aller(page,'at-chemins');await attendre();
   await page.locator('[data-pc-action=cmd][data-classe="AF/YC"]').click();await attendre();
   await page.selectOption('[data-pc-champ=creer-depuis]','complet');await attendre();
   await page.locator('[data-pc-action=creer]').click();await attendre();
   const propre=await page.evaluate(()=>Sim.ateliers.state.parcoursClasse['AF/YC']);
   assert.equal(await page.evaluate(id=>Sim.ateliers.state.parcours.find(p=>p.id===id).nom,propre),'Complet AF YC');
-  await page.locator('[data-sous-onglet=at-grille]').click();await attendre();
+  await nav.aller(page,'at-grille');await attendre();
   assert.match(await page.locator('[data-qf=aller][data-classe="AF/YC"][data-service=cuisine]').textContent(),/Cuisine AF YC/,
     'la cuisine est désormais sur son chemin, avec sa case, créée d’office');
-  await page.locator('[data-sous-onglet=at-chemins]').click();await attendre();
+  await nav.aller(page,'at-chemins');await attendre();
   await page.locator('[data-pc-action=parcours-retirer]').click();await attendre();
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.parcoursClasse['AF/YC']),undefined,'supprimé, il suit de nouveau le modèle');
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>/AF YC/.test(a.nom)).length),0,'ses cases propres partent avec lui');
 
   // Modifier un modèle dans son diagramme : ajouter un service, le relier en
   // tirant un trait, refuser une boucle, retirer le lien puis le service.
-  await page.locator('[data-sous-onglet=at-chemins]').click();await attendre();
+  await nav.aller(page,'at-chemins');await attendre();
   await page.locator('.pc-modeles>summary').click();
   await page.locator('[data-pc-action=modele][data-parcours=sans-cuisine]').click();await attendre();
   const avant=await liens('sans-cuisine');
@@ -158,7 +159,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 3. Le classeur des vols : départs et retours, aller-retour.
   // L'import et l'export des vols vivent à l'étape 1, « Les vols ».
-  await page.locator('[data-view=vols]').click();await page.locator('[data-sous-onglet=v-programme]').click();await attendre();
+  await nav.vue(page,'vols');await nav.aller(page,'v-programme');await attendre();
   const {f:fVols}=await telecharger('#exp-vols','vols.xlsx');
   const vols=await T.lireClasseur(fs.readFileSync(fVols));
   const dep=T.feuille(vols,'Départs'),ret=T.feuille(vols,'Retours');
@@ -180,7 +181,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 4. « Qui prépare quoi » se calcule : une ligne par commande, une colonne
   //    par service, dans chaque case celle qui la prépare — et un clic mène au chemin.
-  await page.locator('[data-view=ateliers]').click();await page.locator('[data-sous-onglet=at-grille]').click();await attendre();
+  await nav.vue(page,'ateliers');await nav.aller(page,'at-grille');await attendre();
   const kase=(c,s)=>page.locator(`[data-qf=aller][data-classe="${c}"][data-service=${s}]`);
   assert.match(await kase('AF/BC','cuisine').textContent(),/Cuisine/,'la case figure dans sa cellule, avec ses heures');
   assert.match(await kase('AF/BC','cuisine').textContent(),/\d\d:\d\d–\d\d:\d\d/);
@@ -193,7 +194,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('[data-sous-onglet=at-chemins]').getAttribute('aria-selected'),'true');
   assert.equal(await page.locator('.pc-cmd.actif').getAttribute('data-classe'),'DL/BC');
   // Le tableau se relit.
-  await page.locator('[data-sous-onglet=at-grille]').click();await attendre();
+  await nav.aller(page,'at-grille');await attendre();
   // Filtrer : chercher une compagnie.
   await page.fill('[data-qf=recherche]','AF/');
   assert.ok(await page.locator('tr[data-classe]:visible').count()>0);

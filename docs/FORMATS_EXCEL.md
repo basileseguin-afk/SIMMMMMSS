@@ -5,10 +5,10 @@ classeur des horaires tiré de celui des ateliers :
 
 | Classeur | Où | Ce qu'il porte |
 |---|---|---|
-| **Ateliers** | étape 2, « Qui prépare quoi » › `⇩ Excel` / `⇧ Importer` | équipes, horaires, fabrications, tunnels, compagnies × classes, parcours, matériel |
-| **Horaires** | étape 2, « Qui prépare quoi » › `⇩ Horaires` / `⇧ Importer` | l'heure et le jour de début de chaque case, seuls |
-| **Barème** | étape 3, « Les temps de travail » › `⇩ Excel` / `⇧ Importer` | homme-minutes **par vol**, par service et par compagnie × classe ; rendement, poste |
-| **Vols** | étape 1, « Les vols » › `⇩ Exporter (Excel)` / fichier à importer | départs et retours |
+| **Ateliers** | Organisation (Chemins, Cases, Qui prépare quoi) › `⇩ Cases et chemins` / `⇧ Importer` | équipes, horaires, fabrications, tunnels, compagnies × classes, parcours, matériel |
+| **Horaires** | Organisation › `⇩ Horaires` / `⇧ Importer` | l'heure et le jour de début de chaque case, seuls |
+| **Barème** | Données › Temps de travail › `⇩ Temps de travail` / `⇧ Importer` | homme-minutes **par vol**, par service et par compagnie × classe ; rendement, poste |
+| **Vols** | Données › Vols › `⇩ Exporter les vols (Excel)` / fichier à importer | départs et retours |
 
 Pour convertir des exports Winrest dans ces formats avec Claude, voir
 [`CONVERTISSEURS.md`](CONVERTISSEURS.md) (deux prompts prêts à l'emploi : vols et man-hours).

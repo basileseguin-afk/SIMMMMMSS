@@ -32,13 +32,13 @@
 .tp-pic{fill:var(--serie);stroke:var(--bg3);stroke-width:2}
 .tp-curseur{stroke:var(--txt2);stroke-width:1;stroke-dasharray:3 3}
 .tp-bulle{position:absolute;z-index:5;pointer-events:none;max-width:260px;padding:6px 9px;border-radius:8px;
-  background:var(--txt);color:var(--bg3);font-size:12.5px;box-shadow:0 6px 18px rgba(15,23,42,.2)}
+  background:var(--txt);color:var(--bg3);font-size:13px;box-shadow:0 6px 18px rgba(15,23,42,.2)}
 .tp-scroll{overflow-x:auto}
-.tp-table{border-collapse:collapse;width:100%;font-size:13.5px}
+.tp-table{border-collapse:collapse;width:100%;font-size:14px}
 .tp-table th,.tp-table td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--bordure);vertical-align:middle}
 .tp-table thead th{font-size:12px;color:var(--txt2);font-weight:700}
 .tp-table thead small{font-weight:500}
-.tp-table td small{display:block;font-size:11.5px;color:var(--txt2)}
+.tp-table td small{display:block;font-size:12px;color:var(--txt2)}
 .tp-table td b{font-variant-numeric:tabular-nums}
 .tp-spark{width:180px;height:34px;display:block}
 .journee-stocks{position:relative}

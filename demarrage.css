@@ -37,7 +37,7 @@ body.en-lecture #plan .zone.s-avenir .fond{fill-opacity:.25;stroke-opacity:.5}
 .horloge-box .run-state{margin-right:8px}
 
 /* Un service et ce qu'il fait, à l'instant relu. */
-.stat-atelier .stat-quoi{font-size:11px;color:var(--txt2);text-align:left;margin-top:2px;
+.stat-atelier .stat-quoi{font-size:12px;color:var(--txt2);text-align:left;margin-top:2px;
   overflow-wrap:anywhere}
 .stat-atelier.etat-travail b{color:var(--accent2)}
 .stat-atelier.etat-attente b{color:var(--orange)}
@@ -50,7 +50,7 @@ body.en-lecture #plan .zone.s-avenir .fond{fill-opacity:.25;stroke-opacity:.5}
 
 /* Le bilan de la journée : cinq lignes, une question chacune. */
 .bilan{margin:0;display:grid;gap:6px}
-.bilan>div{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;
+.bilan>div{display:flex;justify-content:space-between;gap:12px;font-size:13px;
   border-bottom:1px solid var(--bordure);padding-bottom:5px}
 .bilan>div:last-child{border-bottom:0;padding-bottom:0}
 .bilan dt{color:var(--txt2)}

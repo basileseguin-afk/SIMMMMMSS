@@ -1,4 +1,5 @@
 const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs'),os=require('node:os');
+const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
 (async()=>{
@@ -14,7 +15,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
   const endpoint=(id,stock=null)=>JSON.stringify([id,stock]);
-  await click('[data-view=flux]');assert.equal(await page.locator('#view-flux').isVisible(),true);assert.equal(await page.locator('.workbench').isVisible(),false);
+  await nav.vue(page,'flux');assert.equal(await page.locator('#view-flux').isVisible(),true);assert.equal(await page.locator('.workbench').isVisible(),false);
   const old=await page.evaluate(()=>Sim.flows.state.flows.length);assert.equal(old,16);
   // Le formulaire de création s'ouvre à la demande : il ne traîne plus en
   // permanence en tête de liste, où on le lisait comme la première liaison
@@ -40,26 +41,26 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await click('#fc-undo');assert.equal(await page.evaluate(()=>Sim.flows.state.flows.filter(f=>f.type==='runner'&&f.enabled).length),2);
   await click('#fc-show-map');assert.equal(await page.locator('#flow-edges [data-flow-id]').count(),2);
   await page.locator('#fc-map-filter').selectOption('none');assert.equal(await page.locator('#flow-edges [data-flow-id]').count(),0);
-  await click('[data-view=flux]');await add('of','cuisine','prepa');await add('kanban','prepa','cuisine');
+  await nav.vue(page,'flux');await add('of','cuisine','prepa');await add('kanban','prepa','cuisine');
   await page.locator('#fc-list article').first().locator('[data-field=label]').fill('<img src=x onerror=alert(1)>');await page.locator('#fc-list article').first().locator('[data-action=reverse]').click();
   assert.equal(await page.locator('#fc-list article').count(),3,'blur does not swallow reverse click');assert.equal(await page.locator('#fc-list img').count(),0);
-  await page.reload();await click('[data-view=flux]');assert.equal(await page.evaluate(()=>Sim.flows.state.flows.length),old+8);
+  await page.reload();await nav.vue(page,'flux');assert.equal(await page.evaluate(()=>Sim.flows.state.flows.length),old+8);
   const download=page.waitForEvent('download');await click('#fc-export');const d=await download;const exported=fs.readFileSync(await d.path(),'utf8');
   await page.locator('#fc-import').setInputFiles({name:'bad.json',mimeType:'application/json',buffer:Buffer.from('{"schema":"ory-flows","version":99}')});await page.waitForFunction(()=>document.getElementById('fc-status').textContent.includes('Import refusé'));assert.match(await page.locator('#fc-status').innerText(),/Import refusé/);
   assert.equal(await page.evaluate(()=>Sim.flows.state.flows.length),old+8);
   await page.locator('#fc-import').setInputFiles({name:'good.json',mimeType:'application/json',buffer:Buffer.from(exported)});await page.waitForFunction(()=>document.getElementById('fc-status').textContent.includes('Flux importés'));
   // A service storage becomes an endpoint, rename remains linked, delete is flagged.
-  await click('[data-view=plan]');await page.locator('#zone-picker').selectOption('cuisine');await page.locator('#service-storages [data-stock-action=add]').click();
+  await nav.vue(page,'plan');await page.locator('#zone-picker').selectOption('cuisine');await page.locator('#service-storages [data-stock-action=add]').click();
   const stock=await page.evaluate(()=>Sim.editor.state.zones.find(z=>z.id==='cuisine').storages[0].id);
-  await click('[data-view=flux]');await ouvrir();await page.locator('#fc-type').selectOption('processed');await page.locator('#fc-from').selectOption(endpoint('cuisine',stock));await page.locator('#fc-to').selectOption(endpoint('prepa'));await page.locator('#fc-add button[type=submit]').click();
-  await click('[data-view=plan]');await page.locator('#service-storages [data-stock-action=remove]').click();
-  await click('[data-view=flux]');assert.match(await page.locator('#fc-summary').innerText(),/à réparer/);
-  await click('[data-view=plan]');await page.locator('#service-storages [data-stock-action=undo]').click();await click('[data-view=flux]');assert.doesNotMatch(await page.locator('#fc-summary').innerText(),/à réparer/);
+  await nav.vue(page,'flux');await ouvrir();await page.locator('#fc-type').selectOption('processed');await page.locator('#fc-from').selectOption(endpoint('cuisine',stock));await page.locator('#fc-to').selectOption(endpoint('prepa'));await page.locator('#fc-add button[type=submit]').click();
+  await nav.vue(page,'plan');await page.locator('#service-storages [data-stock-action=remove]').click();
+  await nav.vue(page,'flux');assert.match(await page.locator('#fc-summary').innerText(),/à réparer/);
+  await nav.vue(page,'plan');await page.locator('#service-storages [data-stock-action=undo]').click();await nav.vue(page,'flux');assert.doesNotMatch(await page.locator('#fc-summary').innerText(),/à réparer/);
   await click('[data-family=human]');await page.locator('#fc-internal [data-owner=cuisine]').uncheck();assert.equal(await page.evaluate(()=>Sim.flows.state.internal.cuisine),false);
 
   /* Ce que le modèle en lit : depuis les ateliers de travail, ce graphe n'est
    * plus décoratif — il donne le parcours. La section le dit et le montre. */
-  await click('[data-view=flux]');
+  await nav.vue(page,'flux');
   assert.doesNotMatch(await page.locator('#view-flux .scope-badge').textContent(),/sans effet/,
     'le badge ne peut plus dire que ce graphe ne sert à rien');
   assert.match(await page.locator('#fc-lecture').textContent(),/son chemin/,'le chemin du repas passe avant ces liens');
@@ -67,12 +68,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // Sans aucune équipe décrite, le graphe ne porte aucun parcours, et on le dit.
   assert.match(await page.locator('#fc-parcours').textContent(),/Aucune équipe/);
   // Une équipe au montage met ses fournisseurs sur le chemin.
-  await click('[data-view=ateliers]');
-  await page.locator('[data-sous-onglet=at-equipes]').click();await page.locator('#at-new').click();await page.waitForTimeout(150);
+  await nav.vue(page,'ateliers');
+  await nav.aller(page,'at-equipes');await page.locator('#at-new').click();await page.waitForTimeout(150);
   const eq=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
   await page.selectOption(`[data-at="${eq}"] [data-at-champ=service]`,'prepa');await page.waitForTimeout(150);
   await page.selectOption(`[data-at="${eq}"] [data-at-champ=lot-nouveau]`,'CRL/BC');await page.waitForTimeout(250);
-  await click('[data-view=flux]');await page.waitForTimeout(150);
+  await nav.vue(page,'flux');await page.waitForTimeout(150);
   // Le nom du service est en TÊTE de ligne : le chercher dans toute la ligne
   // attraperait MAGASIN, qui livre à MONTAGE.
   const parcours=nom=>page.evaluate(n=>{
@@ -86,12 +87,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator('#fc-alertes').textContent(),/sans avoir d’équipe/);
   assert.match(await page.locator('#fc-alertes').textContent(),/mise à disposition/);
   // Une mise à disposition sur ce fournisseur fait taire l'alerte le concernant.
-  await click('[data-view=ateliers]');
-  await page.locator('[data-sous-onglet=at-equipes]').click();await page.locator('#at-new').click();await page.waitForTimeout(150);
+  await nav.vue(page,'ateliers');
+  await nav.aller(page,'at-equipes');await page.locator('#at-new').click();await page.waitForTimeout(150);
   const md=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
   await page.selectOption(`[data-at="${md}"] [data-at-champ=service]`,'magasin');await page.waitForTimeout(150);
   await page.selectOption(`[data-at="${md}"] [data-at-champ=type]`,'dispo');await page.waitForTimeout(250);
-  await click('[data-view=flux]');await page.waitForTimeout(150);
+  await nav.vue(page,'flux');await page.waitForTimeout(150);
   assert.doesNotMatch(await page.locator('#fc-alertes').textContent(),/Magasin/,
     'le magasin n’est plus signalé');
   assert.match(await parcours('MAGASIN'),/mise à disposition/i);
