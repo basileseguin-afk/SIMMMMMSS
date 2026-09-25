@@ -52,7 +52,7 @@ test('une page se range selon sa nature, pas selon l’écran qui la porte', () 
   assert.equal(partie('v-programme'), 'donnees');
   assert.equal(partie('rg-minutes'), 'donnees');
   // Ce qu'on décrit.
-  for (const id of ['at-chemins', 'at-equipes', 'at-grille', 'u-liens', 'u-lecture']) assert.equal(partie(id), 'organisation', id);
+  for (const id of ['at-chemins', 'at-equipes', 'at-grille', 'u-services', 'u-liens', 'u-lecture']) assert.equal(partie(id), 'organisation', id);
   // Ce qu'on essaie.
   assert.equal(partie('v-horaires'), 'reglages');
   assert.equal(partie('rg-rythme'), 'reglages');

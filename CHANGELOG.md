@@ -5,6 +5,25 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-25 — Organisation › Services : la porte d'entrée d'un service
+
+Retour d'usage : « il manque une équipe sur Armement EZY/AF, mais je ne sais
+pas accéder au service pour ajouter une équipe ou changer son nom ».
+
+- Nouvelle page **Organisation › Services** : un service par ligne, avec son
+  nom modifiable sur place (le plan, les listes et les chemins suivent), ses
+  équipes (un clic ouvre la fiche), les commandes qui y passent et son état.
+  Ceux à qui il manque une équipe viennent en tête. Boutons « + Une équipe »
+  (la case naît dans ce service et s'ouvre), « Voir sur le plan », « Modifier
+  le plan de l'unité ».
+- **Contrôles** : un service sans équipe porte son bouton « + Une équipe
+  dans… », et « Voir tous les services → ».
+- **Plan rejoué** : un service sans équipe propose « + Ajouter une équipe ».
+- **Correctif** : une plonge était signalée « une équipe est décrite mais ne
+  prépare rien » (elle lave pour tout le monde, sans liste de commandes) ;
+  cette fausse alerte gonflait le « à corriger » de l'accueil.
+- Tests : `tests/services-browser.cjs` ; menu et unitaires mis à jour.
+
 ## 2026-09-25 — Refonte de l'interface : accueil à tuiles et menu par nature
 
 Audit sous six points de vue (`docs/AUDIT_INTERFACE_2026-09-25.md`), puis ses

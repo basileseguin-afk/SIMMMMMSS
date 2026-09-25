@@ -43,6 +43,7 @@
     ],
     flux: [
       { id: 'u-liens', nom: 'Liens entre services', ico: 'fleche' },
+      { id: 'u-services', nom: 'Services', ico: 'service' },
       { id: 'u-lecture', nom: 'Contrôles', ico: 'info' },
       { id: 'u-sauvegarde', nom: 'Sauvegarde et limites', ico: 'boite' }
     ]
@@ -64,6 +65,7 @@
         { id: 'at-chemins', intro: 'Une commande par compagnie et par classe : les services par où elle passe.' },
         { id: 'at-equipes', intro: 'Les cases : une équipe, une heure, des personnes, et les commandes qu’elle prépare dans l’ordre.' },
         { id: 'at-grille', intro: 'Pour chaque commande, la case qui la prépare dans chaque service.' },
+        { id: 'u-services', intro: 'Chaque service de l’unité : son nom, ses équipes, les commandes qui y passent, et sa place sur le plan.' },
         { id: 'u-liens', intro: 'Qui livre qui dans l’unité : ces liens ne servent qu’aux commandes sans chemin.' },
         { id: 'u-lecture', intro: 'Ce que le calcul comprend de votre organisation, et ce qu’il faut corriger.' }
       ] },

@@ -187,7 +187,10 @@ class FlowCenter{
   }
   const nom=id=>esc((lu.noms||{})[id]||id);
   const graves=lu.alertes.filter(a=>a.grave),notes=lu.alertes.filter(a=>!a.grave);
-  alertes.innerHTML=(graves.length?`<div class="fc-alerte grave"><b>${graves.length} ${graves.length>1?'points':'point'} à corriger</b><ul>${graves.map(a=>`<li>${esc(a.texte)}</li>`).join('')}</ul></div>`:'')
+  // Un point à corriger mène au service à corriger : ajouter l'équipe qui
+  // manque d'un clic, ou ouvrir la page des services.
+  const gestes=a=>a.geste==='equipe'&&a.services?`<span class="fc-gestes">${a.services.map(x=>`<button type="button" class="btn btn-sm" data-svc-action="equipe" data-svc="${esc(x.id)}">+ Une équipe dans ${esc(x.nom)}</button>`).join('')}</span>`:'';
+  alertes.innerHTML=(graves.length?`<div class="fc-alerte grave"><b>${graves.length} ${graves.length>1?'points':'point'} à corriger</b><ul>${graves.map(a=>`<li>${esc(a.texte)}${gestes(a)}</li>`).join('')}</ul><button type="button" class="lien-fort" data-page="u-services">Voir tous les services →</button></div>`:'')
    +(notes.length?`<div class="fc-alerte"><ul>${notes.map(a=>`<li>${esc(a.texte)}</li>`).join('')}</ul></div>`:'')
    +(!lu.alertes.length?'<p class="fc-alerte ok">Le parcours se lit de bout en bout.</p>':'');
   box.innerHTML=`<table class="fc-table"><thead><tr>

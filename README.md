@@ -138,10 +138,15 @@ le rouge ne sert qu’aux retards.
    - *Qui prépare quoi* : le tableau calculé, une ligne par commande, une
      colonne par service, la case et ses heures dans chaque cellule ; un clic
      ouvre le chemin de la commande sur ce service.
+   - *Services* : un service par ligne — son nom (qui se change ici), ses
+     équipes, les commandes qui y passent et ce qui lui manque, en tête de liste.
+     « + Une équipe » crée une case dans ce service et l’ouvre ; « Voir sur le
+     plan » ; « Modifier le plan de l’unité » pour la forme et la place.
    - *Liens entre services* : qui livre qui dans l’unité, dans le même diagramme
      de nœuds ; ces liens ne servent qu’aux commandes qui n’ont pas de chemin.
    - *Contrôles* : ce que le calcul comprend de l’organisation, et ce qu’il faut
-     corriger.
+     corriger ; un service sans équipe s’y corrige d’un clic (« + Une équipe
+     dans… »).
 3. **Réglages** — ce qu’on essaie.
    - *Horaires des vols* : décaler tous les vols ; « repas prêts combien de
      minutes avant le départ ? ».
@@ -350,6 +355,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/echanges.test.cjs` | Les trois classeurs : aller-retour, ajouts, erreurs regroupées |
 | `tests/excel-browser.cjs` | Chemins et tableau « Qui prépare quoi » dans l’interface, classeurs ateliers et vols de bout en bout |
 | `tests/menu-browser.cjs` | L’accueil (tuiles, états, « à faire ensuite »), le menu par parties, la nature de chaque page, les outils qui suivent la page, clavier, page retenue, sauvegarde, menu verrouillé pendant l’édition du plan, hauteur des bandeaux, écran de 1 024 px |
+| `tests/services-browser.cjs` | Organisation › Services : une ligne par service, « + Une équipe » (depuis la page, les contrôles, le plan), renommer, voir et modifier sur le plan, pas d’alerte pour une plonge |
 | `tests/nav.cjs` | Aide partagée des tests navigateur : aller à une page comme à la main (la partie, puis l’onglet) |
 | `tests/icones.test.cjs` | Chaque service reconnaît son pictogramme |
 | `tests/graphe.test.cjs` | Diagramme : colonnes, nœud au milieu de ses amonts, couloirs des longs liens, boucles, dispositions retenues |

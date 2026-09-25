@@ -503,3 +503,24 @@ body>header{flex-wrap:nowrap}
   header .marque small{display:none}
   .menu-partie{padding:7px 10px}
 }
+
+/* Organisation › Services : un service par ligne, ce qu'il lui manque en tête. */
+.services-unite{padding:16px 20px 28px;display:grid;gap:12px;align-content:start;overflow:auto;flex:1 1 auto;min-height:0}
+body:not([data-vue="flux"]) .services-unite{display:none}
+.svc-tete{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.svc-tete .mini-note{margin:0;font-size:14px}
+.svc-table{border-collapse:collapse;width:100%;background:var(--bg3);border:1px solid var(--bordure);border-radius:12px;font-size:14px}
+.svc-table th{text-align:left;font-size:12px;color:var(--txt2);font-weight:700;padding:10px 12px;background:var(--bg2);border-bottom:1px solid var(--bordure)}
+.svc-table td{padding:10px 12px;border-bottom:1px solid var(--bordure);vertical-align:top}
+.svc-table tr:last-child td{border-bottom:0}
+.svc-table td small{display:block;font-size:12px;color:var(--txt2)}
+.svc-table td br+small,.svc-table td button+small{display:inline}
+.svc-nom{font:inherit;font-weight:700;width:100%;min-width:180px;padding:6px 8px;border:1px solid var(--bordure);border-radius:8px;background:var(--bg3)}
+.svc-nom:hover{border-color:var(--bordure2)}
+.svc-manque{background:color-mix(in srgb,var(--attente) 5%,var(--bg3))}
+.svc-etat{display:inline-block;font-size:12px;font-weight:800;padding:3px 9px;border-radius:99px;white-space:nowrap;background:var(--bg2);color:var(--txt2)}
+.svc-etat.ok{background:color-mix(in srgb,var(--ok) 12%,var(--bg3));color:var(--ok)}
+.svc-etat.manque{background:color-mix(in srgb,var(--attente) 14%,var(--bg3));color:var(--attente)}
+.svc-actions{white-space:nowrap}
+.svc-actions .btn+.btn{margin-left:6px}
+.fc-gestes{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 4px}

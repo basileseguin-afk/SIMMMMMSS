@@ -333,6 +333,98 @@ function liaisonsServices(){
  *  visible ce que le moteur en retient — et ce qui, dans le graphe, ne
  *  produira rien.
  * ==========================================================================*/
+/* ==========================================================================
+ *  LES SERVICES DE L'UNITÉ — Organisation › Services
+ *  Un service par ligne : son nom (qu'on change ici), ses équipes, les
+ *  commandes qui y passent, et ce qu'il lui manque. C'est la porte d'entrée
+ *  d'un service : « il manque une équipe » doit se corriger d'ici, sans aller
+ *  chercher l'édition du plan.
+ * ==========================================================================*/
+function etatService(id){
+  const cases=((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]).filter(a=>a.service===id);
+  const st=(Sim.ateliers&&Sim.ateliers.state)||{};
+  const classes=(Sim.ateliers&&Sim.ateliers.classes)||[];
+  const cmds=window.OrlyParcours?classes.filter(c=>{const p=OrlyParcours.cheminDe(st,c.id);return p&&MoteurProduction.servicesDuParcours(p).includes(id);}).length:0;
+  const lu=Sim.flows?lectureDuGraphe():{lignes:[],liens:[]};
+  // Il manque une équipe quand une commande passe par ce service, ou quand les
+  // liens de l'unité en attendent quelque chose (le même constat que les Contrôles).
+  const attendu=lu.lignes.some(l=>l.id===id&&!l.equipes);
+  const relie=(lu.liens||[]).some(l=>l.from===id||l.to===id);
+  let etat,texte;
+  if(!cases.length){etat=cmds||attendu?'manque':'libre';texte=cmds||attendu?'il manque une équipe':relie?'relié, sans équipe':'pas utilisé';}
+  else if(cases.some(a=>a.type==='dispo')){etat='ok';texte='mise à disposition';}
+  else if(cases.some(a=>a.type==='lavage')){etat='ok';texte='plonge';}
+  else if(!cases.some(a=>(a.lots||[]).some(l=>l.length))){etat='manque';texte='équipe sans commande';}
+  else {etat='ok';texte=cases.length>1?cases.length+' équipes':'une équipe';}
+  return {cases,cmds,etat,texte};
+}
+function renderServices(){
+  const box=document.getElementById('services-unite');if(!box)return;
+  // On ne redessine pas sous les doigts de quelqu'un qui renomme un service.
+  if(box.contains(document.activeElement)&&document.activeElement.matches('input'))return;
+  const zones=(Sim.editor&&Sim.editor.state.zones)||[];
+  const brut=id=>{const z=zones.find(x=>x.id===id);return z?z.nom:(ZONES[id]||{}).nom||id;};
+  const rang={manque:0,ok:1,libre:2};
+  const lignes=servicesDisponibles().map(s=>({...s,...etatService(s.id)}))
+    .sort((a,b)=>rang[a.etat]-rang[b.etat]||a.nom.localeCompare(b.nom));
+  const manque=lignes.filter(l=>l.etat==='manque').length;
+  const type={dispo:'mise à disposition',lavage:'plonge',robot:'robot',manuel:''};
+  box.innerHTML='<div class="svc-tete"><p class="mini-note">'+(manque
+      ?'<b>'+manque+(manque>1?' services attendent':' service attend')+' une équipe ou du travail</b> : ils sont en tête de liste.'
+      :'Chaque service a ce qu’il lui faut.')+' Le nom se change ici ; la forme et la place, sur le plan.</p>'
+    +'<button class="btn btn-sm" type="button" data-svc-action="plan">Modifier le plan de l’unité</button></div>'
+    +'<div class="table-scroll"><table class="svc-table"><thead><tr><th>Service</th><th>Équipes</th><th>Commandes qui y passent</th><th>État</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>'
+    +lignes.map(l=>{
+      const annexe=!ZONES[l.id]?annexes().find(a=>a.id===l.id):null;
+      const pere=annexe&&ZONES[annexe.parent]?nomLisible(ZONES[annexe.parent].nom):'';
+      return '<tr data-svc="'+escapeHTML(l.id)+'" class="svc-'+l.etat+'">'
+        +'<td><input class="svc-nom" data-svc-nom="'+escapeHTML(l.id)+'" maxlength="120" value="'+escapeHTML(brut(l.id))+'" aria-label="Nom du service '+escapeHTML(l.nom)+'">'
+        +(pere?'<small>annexe de '+escapeHTML(pere)+'</small>':'')+'</td>'
+        +'<td>'+(l.cases.length?l.cases.map(a=>'<button type="button" class="lien-discret" data-svc-case="'+escapeHTML(a.id)+'">'+escapeHTML(a.nom)+'</button>'
+          +(type[a.type]?' <small>'+type[a.type]+'</small>':a.type==='manuel'?' <small>'+a.personnes+' pers.</small>':'')).join('<br>'):'<em>aucune</em>')+'</td>'
+        +'<td>'+(l.cmds?l.cmds+(l.cmds>1?' commandes':' commande'):'—')+'</td>'
+        +'<td><span class="svc-etat '+l.etat+'">'+escapeHTML(l.texte)+'</span></td>'
+        +'<td class="svc-actions"><button class="btn btn-sm'+(l.etat==='manque'&&!l.cases.length?' btn-play':'')+'" type="button" data-svc-action="equipe" data-svc="'+escapeHTML(l.id)+'">+ Une équipe</button>'
+        +'<button class="btn btn-sm" type="button" data-svc-action="voir" data-svc="'+escapeHTML(l.id)+'">Voir sur le plan</button></td></tr>';
+    }).join('')+'</tbody></table></div>';
+}
+/* Les gestes d'un service, d'où qu'ils viennent (sa page, le plan, les contrôles). */
+function actionService(action,id){
+  if(editMode&&action!=='plan')return;
+  if(action==='equipe'){
+    if(Sim.onglets)Sim.onglets.choisir('at-equipes');
+    Sim.ateliers.creer(id);
+    toast('Équipe créée dans '+((servicesDisponibles().find(s=>s.id===id)||{}).nom||id)+' : réglez-la ici, puis rattachez-la à ses commandes dans leur chemin.');
+  } else if(action==='voir'){
+    if(Sim.onglets)Sim.onglets.choisir('j-plan');
+    selection=null;selectionner(id);
+  } else if(action==='plan'){
+    if(!editMode)basculerEdition();
+    if(id&&Sim.editor){Sim.editor.select(id);selectionner(id);}
+  }
+}
+function renommerService(id,valeur){
+  const v=String(valeur||'').trim();
+  if(!v||!Sim.editor){renderServices();toast('Le nom ne peut pas être vide.');return;}
+  Sim.editor.change(()=>{const z=Sim.editor.state.zones.find(x=>x.id===id);if(z)z.nom=v;},'Nom enregistré.');
+  toast('Service renommé : '+v+'.');
+  renderServices();
+}
+function initServices(){
+  const vue=document.getElementById('view-flux');if(!vue)return;
+  const box=document.createElement('section');
+  box.id='services-unite';box.className='services-unite';box.dataset.sous='u-services';box.setAttribute('aria-label','Les services de l’unité');
+  vue.appendChild(box);
+  box.addEventListener('change',e=>{const i=e.target.closest('[data-svc-nom]');if(i)renommerService(i.dataset.svcNom,i.value);});
+  box.addEventListener('keydown',e=>{const i=e.target.closest('[data-svc-nom]');if(i&&e.key==='Enter'){e.preventDefault();i.blur();}});
+  box.addEventListener('click',e=>{
+    const c=e.target.closest('[data-svc-case]');
+    if(c){const id=c.dataset.svcCase;if(!Sim.ateliers.ouvrirFiche(id)){Sim.ateliers.ouvert=id;if(Sim.onglets)Sim.onglets.choisir('at-equipes');Sim.ateliers.rendre();}return;}
+  });
+  // Les boutons d'un service peuvent vivre ailleurs : le panneau du plan, les contrôles.
+  document.addEventListener('click',e=>{const b=e.target.closest('[data-svc-action]');if(b)actionService(b.dataset.svcAction,b.dataset.svc||null);});
+}
+
 function lectureDuGraphe(){
   const liens=liaisonsServices();
   const noms=new Map(servicesDisponibles().map(s=>[s.id,s.nom]));
@@ -342,7 +434,9 @@ function lectureDuGraphe(){
   const equipes=new Map();
   for(const a of ateliers){
     const e=equipes.get(a.service)||{n:0,dispo:false,fabrique:false};
-    e.n++; if(a.type==='dispo')e.dispo=true; if((a.lots||[]).some(l=>l.length))e.fabrique=true;
+    // Une plonge lave pour tout le monde : elle n'a pas de liste de commandes,
+    // et ce n'est pas un oubli.
+    e.n++; if(a.type==='dispo'||a.type==='lavage')e.dispo=true; if((a.lots||[]).some(l=>l.length))e.fabrique=true;
     equipes.set(a.service,e);
   }
   // Un service ne compte dans le parcours que s'il porte une équipe : c'est
@@ -360,12 +454,15 @@ function lectureDuGraphe(){
   // Une alerte par NATURE de problème, pas par service : cinq fois la même
   // phrase ne se lit plus, et ce qu'il y a à faire est le même pour tous.
   const alertes=[];
-  const grouper=(liste,grave,texte)=>{ if(liste.length) alertes.push({grave,texte:texte(liste.map(l=>nom(l.id)))}); };
+  // Chaque alerte garde les services qu'elle nomme : on doit pouvoir agir
+  // dessus d'un clic (ajouter l'équipe qui manque, ouvrir le service).
+  const grouper=(liste,grave,texte,geste)=>{ if(liste.length) alertes.push({grave,texte:texte(liste.map(l=>nom(l.id))),
+    services:liste.map(l=>({id:l.id,nom:nom(l.id)})),geste:geste||null}); };
   grouper(lignes.filter(l=>!l.equipes), true, noms2=>
     noms2.join(', ')+(noms2.length>1?' fournissent':' fournit')+' sans avoir d’équipe : '
     +'rien n’en sort, et personne ne '+(noms2.length>1?'les':'l’')+' attend. '
     +'Donnez-'+(noms2.length>1?'leur':'lui')+' une équipe — une « mise à disposition » '
-    +'suffit pour un magasin, des appros ou tout ce qui ne fait que sortir du matériel.');
+    +'suffit pour un magasin, des appros ou tout ce qui ne fait que sortir du matériel.','equipe');
   grouper(lignes.filter(l=>l.equipes&&!l.produit), true, noms2=>
     noms2.join(', ')+' : une équipe est décrite mais ne prépare rien. Dites ce qu’elle prépare.');
   grouper(lignes.filter(l=>l.produit&&!l.amonts.length&&!l.avals.length), false, noms2=>
@@ -433,7 +530,7 @@ function etatDemarrage(){
               fin:Number.isFinite((r.indicateurs||{}).finDerniere)?MoteurProduction.hhmm(r.indicateurs.finDerniere):null }
   };
 }
-function majDemarrage(){ if(Sim.onglets)Sim.onglets.rendre(); if(Sim.demarrage)Sim.demarrage.rendre(); afficherTitre(); }
+function majDemarrage(){ if(Sim.onglets)Sim.onglets.rendre(); if(Sim.demarrage)Sim.demarrage.rendre(); afficherTitre(); if(document.body.dataset.sous==='u-services')renderServices(); }
 /* Un nombre sur un onglet dit qu'il y a quelque chose à y faire, sans l'ouvrir. */
 function badgeOnglet(id){
   const r=(Sim.ateliers&&Sim.ateliers.resultat)||{};
@@ -459,7 +556,7 @@ function initOnglets(){
     vue:()=>activeView,
     badge:badgeOnglet,
     // Une fois la page ouverte : son titre, et le menu qui marque sa partie.
-    apres:()=>{afficherTitre();if(Sim.demarrage)Sim.demarrage.rendreMenu();},
+    apres:id=>{afficherTitre();if(Sim.demarrage)Sim.demarrage.rendreMenu();if(id==='u-services')renderServices();},
     change:(vue,id)=>{
       if(vue!==activeView)showView(vue);
       if(id==='v-departs')renderFlights();
@@ -872,7 +969,7 @@ function majGoulotInfo() {
     const annexe=!z?annexes().find(a=>a.id===id):null;
     if(annexe){const pere=ZONES[annexe.parent];html+='<p>Annexe de <strong>'+escapeHTML(pere?nomLisible(pere.nom):annexe.parent)+'</strong>.</p>';}
     const equipes=((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]).filter(a=>a.service===id);
-    if(!equipes.length)html+='<p>Aucune équipe ici — voir Organisation › Chemins.</p>';
+    if(!equipes.length)html+='<p>Aucune équipe ici.</p><p class="row-btns"><button class="btn btn-play" data-svc-action="equipe" data-svc="'+escapeHTML(id)+'">+ Ajouter une équipe</button><button class="btn" data-page="u-services">Le service →</button></p>';
     else html+='<p>'+equipes.map(a=>'<strong>'+escapeHTML(a.nom)+'</strong>'
       +(a.type==='dispo'?' · mise à disposition':a.type==='lavage'?' · plonge':' · '+a.personnes+' pers.')).join('<br>')+'</p>';
     const e=services[id];
@@ -1474,7 +1571,7 @@ const Sim = { dataCourante:SAMPLE };
 Sim.cfg = CFG;
 window.Sim = Sim;
 chargerZones();
-construirePlan(); chargerVols(SAMPLE); initControles(); initEdition(); initFlux(); initAteliers(); initWorkbench();
+construirePlan(); chargerVols(SAMPLE); initControles(); initEdition(); initFlux(); initAteliers(); initWorkbench(); initServices();
 // Le fil de mise en route vient en dernier : il relit les autres, il ne peut
 // donc se dresser qu'une fois qu'ils sont là.
 initVueSimulation();

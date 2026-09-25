@@ -322,9 +322,12 @@
 
     /* Une case hors chemin : une plonge, une mise à disposition, ou une case
      * qu'on rattachera ensuite. Elle s'ouvre ici, dans la liste. */
-    creer() {
+    creer(dans) {
       const services = this.a.services();
-      const service = this.filtre || ((services.find(s => P.BAREME_DEMO[s.id]) || services[0] || {}).id);
+      // Depuis la page d'un service : la case naît dans ce service, et la liste
+      // des cases se resserre sur lui.
+      if (dans) this.filtre = dans;
+      const service = dans || this.filtre || ((services.find(s => P.BAREME_DEMO[s.id]) || services[0] || {}).id);
       const nom = (services.find(s => s.id === service) || {}).nom || 'Case';
       const atelier = { id: uid(), nom: PC.nomLibre(this.state, nom), service, type: 'manuel',
         debut: '06:00', jour: 0, personnes: 2, pauses: [], lots: [] };
