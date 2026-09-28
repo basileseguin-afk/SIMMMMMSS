@@ -307,6 +307,7 @@
         if (t === null) throw new Error(a.nom + ' : heure de début manquante (HH:MM)');
         if (t >= 1440) throw new Error(a.nom + ' : ' + hh(t) + ' dépasse 23:59 — écrivez l’heure du jour et changez la colonne Jour');
         const jour = jourDe(o.jour);
+        if (a.type === 'handling' && jour !== 0) throw new Error(a.nom + ' : le handling travaille le jour J des vols, pas ' + jourEcrit(jour));
         if (a.debut !== hh(t) || (a.jour || 0) !== jour) changes.push(a);
         a.debut = hh(t); a.jour = jour;
       });
@@ -562,7 +563,7 @@
         const avant = etat.ateliers.find(x => x.id === String(o.identifiant ?? '').trim())
           || etat.ateliers.find(x => T.cleEntete(x.nom) === k);
         const debut = T.heureDe(o.debut ?? (avant ? avant.debut : '06:00'));
-        const jour = jourDe(o.jour ?? (avant ? avant.jour || 0 : 0));
+        const jour = type === 'handling' ? 0 : jourDe(o.jour ?? (avant ? avant.jour || 0 : 0));
         const personnes = T.nombreDe(o.personnes, type === 'dispo' ? 0 : 1);
         if (!Number.isInteger(personnes) || personnes < 0) throw new Error('personnes : entier positif ou nul');
         const pauses = String(o.pauses ?? '').split(/\s*;\s*/).filter(Boolean).map(t => {

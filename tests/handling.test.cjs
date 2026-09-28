@@ -144,3 +144,17 @@ test('un handling sans effectif saisi ne bloque pas la journée', () => {
   assert.equal(r.ok, true, JSON.stringify(r.anomalies));
   assert.equal(r.indicateurs.volsCharges, 3);
 });
+
+test('le handling travaille le jour J des vols : ni la veille, ni avant 00:00', () => {
+  const tot = [{ id: 'AF0', cie: 'AF', sens: 'DEP', std: h('01:00'), bc: 0, pc: 0, yc: 10 }];
+  const ats = [at('pr', 'prepa', '20:00', [['AF/YC']], { jour: -1 })];
+  // Une case réglée à J-1 par erreur travaille quand même le jour J.
+  const r = jouer(handling({ debut: '22:00', jour: -1, avance: 180 }), ats, tot);
+  const v = r.vols[0];
+  assert.equal(r.parClasse['AF/YC'].fin, -1440 + h('20:30'), 'la commande, elle, est prête la veille');
+  assert.equal(v.debut, h('22:00'), 'l’équipe arrive à 22:00 du jour J, pas de la veille');
+  assert.equal(v.etat, 'retard');
+  const r2 = jouer(handling({ debut: '00:00', avance: 180 }), ats, tot);
+  assert.equal(r2.vols[0].debut, 0, 'pas plus de 3 h avant le départ, mais jamais avant 00:00');
+  assert.equal(r2.vols[0].fin, h('00:30'));
+});

@@ -413,6 +413,9 @@
    *   simultanes  — combien de vols il prépare en même temps (quais, camions)
    *   avance      — il ne commence pas un vol plus de `avance` minutes avant
    *                 son départ (froid, place au quai)
+   *
+   * Il travaille le JOUR J des vols, jamais la veille : sa case est au jour J,
+   * et il ne commence aucun vol avant 00:00 de ce jour.
    *   compagnies  — facultatif : les compagnies qu'il charge ; vide = toutes
    *
    * Les classes doivent être au handling à leur échéance (départ − délai de
@@ -851,7 +854,8 @@
     // fabrique pas, et en ajouter que le programme ne porte pas encore.
     const classes = opts.classes || classesDeVols(opts.vols, { delaiChargement: opts.delaiChargement });
     const parClasse = new Map(classes.map(c => [c.id, c]));
-    const ateliers = (opts.ateliers || []).map(a => ({ ...a, type: a.type || 'manuel' }));
+    // Le handling travaille le jour J des vols : jamais la veille.
+    const ateliers = (opts.ateliers || []).map(a => ({ ...a, type: a.type || 'manuel', ...(a.type === 'handling' ? { jour: 0 } : {}) }));
 
     const services = new Set(ateliers.map(a => a.service));
     const anomalies = validerAteliers(ateliers, { services: opts.services || [...services], classes });
@@ -1184,7 +1188,8 @@
             suspendu.vol = null; suspendu.attendus = [];
             const pret = attendus.length ? Math.max(...attendus.map(x => livreA.get(cle(x.service, x.classe)) ?? env.maintenant)) : null;
             let p = 0; for (let i = 1; i < k; i++) if (pistes[i] < pistes[p]) p = i;
-            const auPlusTot = v.depart - avance;
+            // Pas plus de `avance` avant le départ, et jamais avant 00:00 du jour J.
+            const auPlusTot = Math.max(0, v.depart - avance);
             const debutV = Math.max(env.maintenant, pistes[p], auPlusTot);
             const attente = Math.max(0, env.maintenant - Math.max(t0, pistes[p], auPlusTot));
             const duree = dureeHandling(a, v.cie) ?? 0;

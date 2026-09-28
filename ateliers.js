@@ -60,7 +60,8 @@
       const service = String(a.service ?? '').slice(0, 160);
       const type = ['robot', 'lavage', 'dispo', 'handling'].includes(a.type) ? a.type : 'manuel';
       P.minutes(a.debut ?? '06:00');
-      const jour = Number.isInteger(a.jour) ? Math.max(-7, Math.min(0, a.jour)) : 0;
+      // Le handling travaille le jour J des vols : jamais la veille.
+      const jour = type === 'handling' ? 0 : Number.isInteger(a.jour) ? Math.max(-7, Math.min(0, a.jour)) : 0;
       const personnes = Number.isInteger(a.personnes) ? Math.max(0, Math.min(999, a.personnes)) : 1;
       const pauses = (Array.isArray(a.pauses) ? a.pauses : []).slice(0, 12).map(p => {
         P.minutes(p.de); P.minutes(p.a); return { de: String(p.de), a: String(p.a) };
@@ -494,13 +495,13 @@
             a.service = v; break;
           }
           case 'debut': a.debut = v; break;
-          case 'jour': a.jour = parseInt(v, 10) || 0; break;
+          case 'jour': a.jour = a.type === 'handling' ? 0 : parseInt(v, 10) || 0; break;
           case 'personnes': a.personnes = Math.max(0, parseInt(v, 10) || 0); break;
           case 'debit': a.debit = Math.max(1, parseFloat(v) || 1); break;
           case 'personnesMin': a.personnesMin = Math.max(0, parseInt(v, 10) || 0); break;
           case 'type':
             a.type = v;
-            if (v === 'handling') { delete a.debit; delete a.personnesMin; delete a.tunnels; delete a.minutes; delete a.materiel; a.lots = []; Object.assign(a, handlingDe(a)); break; }
+            if (v === 'handling') { a.jour = 0; delete a.debit; delete a.personnesMin; delete a.tunnels; delete a.minutes; delete a.materiel; a.lots = []; Object.assign(a, handlingDe(a)); break; }
             delete a.durees; delete a.simultanes; delete a.avance; delete a.compagnies;
             if (v === 'robot') { a.debit = a.debit || 320; a.personnesMin = a.personnesMin === undefined ? 1 : a.personnesMin; }
             else if (v === 'lavage') { delete a.debit; delete a.personnesMin; a.lots = []; }
@@ -923,7 +924,8 @@
             <option value="handling" ${handling ? 'selected' : ''}>Handling (par vol)</option></select></label>
           ${dispo ? '' : `
           <label>Arrive à<input type="time" value="${esc(a.debut)}" data-at-champ="debut"></label>
-          <label>Jour<select data-at-champ="jour">${[0, -1, -2, -3].map(j => `<option value="${j}" ${j === a.jour ? 'selected' : ''}>${j === 0 ? 'Jour du départ' : 'J' + j}</option>`).join('')}</select></label>
+          ${handling ? `<label>Jour<input value="Jour J des vols" disabled title="Le handling travaille le jour des vols, jamais la veille"></label>`
+            : `<label>Jour<select data-at-champ="jour">${[0, -1, -2, -3].map(j => `<option value="${j}" ${j === a.jour ? 'selected' : ''}>${j === 0 ? 'Jour du départ' : 'J' + j}</option>`).join('')}</select></label>`}
           <label>Personnes<input type="number" min="0" max="999" value="${a.personnes}" data-at-champ="personnes"></label>`}
           ${a.type === 'robot' ? `
           <label>Débit (plateaux/h)<input type="number" min="1" value="${a.debit}" data-at-champ="debit"></label>
@@ -1045,7 +1047,8 @@
         <div class="at-sous-titre">Chargement des vols</div>
         <p class="mini-note at-regle">Le handling ne prépare pas de commande : il <b>réunit les classes d’un même vol</b>
           et le charge. Il prend les vols <b>strictement dans l’ordre des départs</b> : un vol incomplet retient les suivants.
-          Les commandes doivent être au handling au départ moins le délai de chargement ; le vol doit être chargé à son départ.</p>
+          Il travaille <b>le jour J des vols</b>, jamais la veille. Les commandes doivent être au handling au départ moins le délai
+          de chargement ; le vol doit être chargé à son départ.</p>
         <div class="at-champs at-handling">
           <label>Vols en même temps<input type="number" min="1" max="50" value="${a.simultanes || 1}" data-at-champ="simultanes"
             title="Combien de vols le handling prépare à la fois (quais, camions)"></label>

@@ -40,6 +40,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.evaluate(id=>{Sim.ateliers.ouvert=id;Sim.ateliers.rendre();},id);await attendre();
   const fiche=page.locator(`[data-at="${id}"]`);
   assert.equal(await fiche.locator('[data-at-champ=type]').inputValue(),'handling');
+  assert.equal(await fiche.locator('[data-at-champ=jour]').count(),0,'pas de choix du jour : le handling travaille le jour J');
+  assert.match(await fiche.innerText(),/le jour J des vols/);
   await fiche.locator('[data-at-champ=avance]').fill('2');await fiche.locator('[data-at-champ=avance]').dispatchEvent('change');await attendre();
   assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).avance,id),120,'saisi en heures, gardé en minutes');
   await page.locator(`[data-at="${id}"] [data-at-champ=duree-nouvelle]`).selectOption('AF');await attendre();

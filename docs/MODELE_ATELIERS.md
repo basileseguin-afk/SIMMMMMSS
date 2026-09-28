@@ -275,6 +275,10 @@ Les règles, confirmées :
 - Il n'a **pas de liste de commandes** et n'est jamais un trou sur un chemin : il
   attend, pour chaque classe du vol, les services qui la précèdent sur son
   chemin, ou — si le chemin ne passe pas par lui — tous ceux qui la préparent.
+- **Il travaille le jour J des vols**, jamais la veille : sa case est toujours
+  au jour J (le choix du jour n'est pas proposé, un J-1 dans Excel est refusé),
+  et il ne commence aucun vol avant 00:00 de ce jour, même si « pas avant »
+  le permettrait. Les commandes, elles, peuvent être prêtes dès la veille.
 - Plusieurs handlings : chaque vol va au premier qui charge sa compagnie, sinon
   au premier qui les charge toutes.
 

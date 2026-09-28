@@ -296,6 +296,9 @@ test('ateliers : un handling fait l’aller-retour par Excel, durées par compag
     assert.equal(h.avance, 150);
     assert.deepEqual(h.compagnies, ['AF', 'TX']);
     assert.deepEqual(h.lots, []);
+    // Le handling travaille le jour J : un J-1 dans « Horaires » est refusé, et dit.
+    const veille = modifier(E.ateliersVersClasseur(etat, ctxAteliers()), 'Horaires', l => l.map(r => (r[0] === 'Handling' ? [r[0], 'J-1', ...r.slice(2)] : r)));
+    assert.throws(() => E.classeurVersAteliers(veille, etat, ctxAteliers()), /Handling : le handling travaille le jour J des vols, pas J-1/);
     // Sans la feuille Handling, les durées du site restent.
     const sans = E.ateliersVersClasseur(etat, ctxAteliers()).filter(x => x.nom !== 'Handling');
     assert.deepEqual(E.classeurVersAteliers(await parFichier(sans), etat, ctxAteliers()).etat.ateliers.find(a => a.nom === 'Handling').durees, { '*': 30, AF: 45 });

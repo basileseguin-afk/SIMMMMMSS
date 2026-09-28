@@ -5,6 +5,18 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-28 — Le handling travaille le jour J des vols
+
+Retour d'usage : « le handling travaille à Jour J des vols ».
+
+- Moteur : une case handling est toujours au jour J, et ne commence aucun vol
+  avant 00:00 de ce jour (un vol de 01:00 avec « pas avant 3 h » commence à
+  00:00, pas à 22:00 la veille).
+- Cases : le jour n'est plus proposé pour un handling (« Jour J des vols »).
+- Excel : un handling à `J-1` dans « Horaires » est refusé, avec la raison.
+- Tests : `tests/handling.test.cjs`, `tests/handling-browser.cjs`,
+  `tests/echanges.test.cjs`.
+
 ## 2026-09-28 — Le handling travaille par vol
 
 Retour d'usage : « le handling réunit toutes les compagnie × classes d'un vol,

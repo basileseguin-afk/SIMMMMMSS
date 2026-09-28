@@ -109,7 +109,8 @@ dans « Fabrications » : il charge des vols, pas des commandes.
 | Handling | toutes | 30 |
 | Handling | AF | 45 |
 
-Feuille absente : les durées du site restent.
+Feuille absente : les durées du site restent. Le handling travaille le jour J
+des vols : dans « Horaires », son jour est `J` ; un `J-1` est refusé.
 
 ### Feuille « Classes »
 
