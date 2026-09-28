@@ -466,6 +466,16 @@
     return [...new Set(liste.map(v => minutes(v.debut) + (v.jour || 0) * MINUTES_PAR_JOUR))].sort((a, b) => a - b);
   }
 
+  /**
+   * Le débit d'un robot pour une compagnie × classe, en plateaux par heure :
+   * le sien (`debits['TX/YC']`), sinon celui du robot (`debit`). Comme les
+   * man-minutes d'une équipe, chaque commande peut avoir le sien.
+   */
+  function debitRobot(atelier, classeId) {
+    const propre = atelier && atelier.debits ? +atelier.debits[classeId] : NaN;
+    return Number.isFinite(propre) && propre > 0 ? propre : +((atelier && atelier.debit) || 0);
+  }
+
   /** Heure à partir de laquelle une mise à disposition sert, en minutes : sa première vague. */
   function disponibleDes(atelier) {
     if (atelier.permanent !== false) return -Infinity;   // toujours servi
@@ -575,7 +585,10 @@
           : 'débit attendu, en unités de matériel par heure.');
       }
       if (robot) {
-        if (!(a.debit > 0)) dire('debit', 'débit attendu, en plateaux par heure.');
+        // Un débit pour le robot, ou un pour chacune de ses commandes.
+        const siennes = (a.lots || []).flatMap(l => (Array.isArray(l) ? l : (l && l.classes) || []));
+        if (!(a.debit > 0) && !(siennes.length && siennes.every(id => debitRobot(a, id) > 0)))
+          dire('debit', 'débit attendu, en plateaux par heure.');
         const mini = a.personnesMin === undefined ? 1 : a.personnesMin;
         if (!Number.isInteger(mini) || mini < 0) dire('personnesMin', 'effectif minimum entier attendu.');
         else if (Number.isInteger(gens) && gens < mini)
@@ -1314,10 +1327,12 @@
           const lots = ids.map(id => parClasse.get(id)).filter(Boolean);
           let duree, detail;
           if (a.type === 'robot') {
+            // Chaque commande à son débit : ses plateaux ÷ son débit.
             const plateaux = lots.reduce((n, c) => n + c.pax, 0);
             const mini = a.personnesMin === undefined ? 1 : a.personnesMin;
-            duree = a.personnes >= mini ? (plateaux / a.debit) * 60 : Infinity;
-            detail = { plateaux, debit: a.debit };
+            const heures = lots.reduce((n, c) => n + c.pax / Math.max(1e-9, debitRobot(a, c.id)), 0);
+            duree = a.personnes >= mini ? heures * 60 : Infinity;
+            detail = { plateaux, debit: plateaux && heures ? Math.round(plateaux / heures) : a.debit };
           } else {
             // Chaque ligne ne compte que ses classes : dans une case « TX BC puis
             // TX PC », TX BC sort après ses seules minutes, sans attendre TX PC.
@@ -1762,7 +1777,7 @@
     PAX_TYPE, TOUTES, cleBareme, normaliserBareme, minutesParVol,
     arcsDuParcours, servicesDuParcours, routesDesClasses,
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,
-    pausesDe, finAvecPauses, vaguesDe, disponibleDes,
+    pausesDe, finAvecPauses, vaguesDe, disponibleDes, debitRobot,
     UNITES_DEFAUT, unitesDe, retoursDeVols, besoinMateriel,
     simuler, niveauA, niveauLineaire, dureeLisible
   };

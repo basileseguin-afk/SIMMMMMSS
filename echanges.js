@@ -209,10 +209,12 @@
     const bareme = ctx.bareme || {}, classes = ctx.classes || [], routes = ctx.routes || new Map();
     const sans = ctx.sansBareme || new Set(), ateliers = ctx.ateliers || [];
     const passe = (c, sid) => { const r = routes.get(c.id); return !r || r.services.has(sid); };
+    // Un robot ne lit pas le barème, mais il a sa colonne : son débit par commande.
+    const robots = new Set(ateliers.filter(a => a.type === 'robot').map(a => a.service));
     // Un service où aucune commande ne passe n'a rien à montrer : pas de colonne.
-    const colonnes = (ctx.services || []).filter(sv => !sans.has(sv.id)
+    const colonnes = (ctx.services || []).filter(sv => (!sans.has(sv.id) || robots.has(sv.id))
       && (Object.keys(bareme[sv.id] || {}).length || classes.some(c => routes.get(c.id) && routes.get(c.id).services.has(sv.id)))
-      && classes.some(c => passe(c, sv.id)));
+      && classes.some(c => passe(c, sv.id))).map(sv => (robots.has(sv.id) ? { ...sv, robot: true } : sv));
     const lignes = classes.map(c => {
       const vols = (c.vols || []).length, cellules = {};
       let parVol = 0, jour = 0;
@@ -222,6 +224,14 @@
         const eq = ateliers.find(x => x.service === sv.id && (x.type === 'manuel' || x.type === 'robot') && (x.lots || []).some(l => l.includes(c.id)));
         const equipe = eq ? { id: eq.id, nom: eq.nom, personnes: eq.personnes, type: eq.type,
           commandes: new Set((eq.lots || []).flat()).size } : null;
+        if (eq && eq.type === 'robot') {
+          // Le robot : des plateaux à un débit, pas des man-minutes.
+          const debit = P.debitRobot(eq, c.id), parVolPax = vols ? c.pax / vols : c.pax;
+          cellules[sv.id] = { source: 'robot', parVol: null, jour: null, equipe, debit,
+            debitPropre: !!(eq.debits && Number.isFinite(+eq.debits[c.id])), debitRobot: eq.debit, personnesMin: eq.personnesMin,
+            pax: c.pax, duree: debit > 0 ? parVolPax / debit * 60 : null };
+          continue;
+        }
         const a = eq && eq.type === 'manuel' && eq.minutes && Number.isFinite(eq.minutes[c.id]) ? eq : null;
         const t = bareme[sv.id] || {};
         const propre = t[P.cleBareme(c.cie, c.cabine)], commun = t[P.cleBareme(P.TOUTES, c.cabine)];
@@ -251,7 +261,9 @@
    *   « Toutes compagnies »   — la valeur commune de chaque classe, par service
    */
   function recapVersClasseur(ctx) {
-    const r = recapManMinutes(ctx);
+    const r0 = recapManMinutes(ctx);
+    // Les robots ont leur feuille : leur colonne ne porte pas de man-minutes.
+    const r = { ...r0, colonnes: r0.colonnes.filter(sv => !sv.robot) };
     const noms = r.colonnes.map(sv => sv.nom);
     const lignes = [['Compagnie', 'Classe', 'Vols' + INFO, ...noms]];
     for (const l of r.lignes) {
@@ -272,10 +284,21 @@
       const cmds = [...new Set(a.lots.flat())];
       personnes.push([a.nom, nomSvc.get(a.service) || a.service, cmds.slice(0, 8).join(', ') + (cmds.length > 8 ? '…' : ''), a.personnes]);
     }
+    // Les robots : le débit de chaque commande (plateaux/h) ; « toutes » = celui du robot.
+    const robot = [['Case', 'Compagnie', 'Classe', 'Plateaux sur la journée' + INFO, 'Débit (plateaux/h)']];
+    for (const a of (ctx.ateliers || [])) {
+      if (a.type !== 'robot') continue;
+      robot.push([a.nom, 'toutes', null, null, a.debit]);
+      for (const id of [...new Set((a.lots || []).flat())]) {
+        const c = (ctx.classes || []).find(x => x.id === id), i = id.lastIndexOf('/');
+        robot.push([a.nom, id.slice(0, i), id.slice(i + 1), c ? c.pax : null, a.debits && Number.isFinite(+a.debits[id]) ? +a.debits[id] : null]);
+      }
+    }
     return [
       { nom: 'Man-minutes par vol', lignes },
       { nom: 'Toutes compagnies', lignes: communs },
       { nom: 'Personnes', lignes: personnes },
+      { nom: 'Robot', lignes: robot },
       lisezMoi('Man-minutes — fichier de paramétrage, à modifier dans Excel puis réimporter', [
         'Man-minutes par vol : une ligne par commande (compagnie × classe), une colonne par service.',
         '   Chaque case : les man-minutes d’UN vol de cette commande dans ce service. Pour la journée, le calcul multiplie par le nombre de vols.',
@@ -283,6 +306,8 @@
         '   Une case vidée revient à la valeur « Toutes compagnies ». Une case vide d’un service où la commande ne passe pas est ignorée.',
         'Toutes compagnies : la valeur commune de chaque classe, par service. Vide : aucune.',
         'Personnes : l’effectif de chaque case (équipe) qui prépare ces commandes. Le nom de la case est la clé : ne le changez pas.',
+        'Robot : le débit du robot en plateaux par heure — ligne « toutes » — et celui de chaque commande. Vide : celui du robot.',
+        '   Durée d’une commande sur le robot = ses plateaux ÷ son débit. Le robot tourne s’il a son effectif minimum (Personnes).',
         '   Une case partagée par plusieurs commandes n’a qu’une ligne : son effectif vaut pour toutes. Durée d’un vol = man-minutes ÷ personnes.',
         'Les colonnes sont des services : ajoutez-en ou retirez-en, seules celles présentes sont modifiées.',
         'Les man-minutes fixées dans une case d’équipe ne sont pas ici : elles se règlent dans la case (ou dans le classeur des cases).'
@@ -347,6 +372,32 @@
         if (Number.isFinite(commun) && commun === v) delete t[cle]; else t[cle] = v;
       });
     });
+    // 3 bis. Les débits des robots : seulement ce qui change.
+    const debits = {};
+    const fr = T.feuille(feuilles, 'Robot');
+    if (fr) {
+      const parNom = new Map((ctx.ateliers || []).filter(a => a.type === 'robot').map(a => [T.cleEntete(a.nom), a]));
+      const nouv = new Map();
+      for (const o of T.enObjets(fr.lignes).objets) {
+        err.essayer(fr.nom, o._ligne, () => {
+          const nom = String(o.case ?? '').trim(); if (!nom) return;
+          const a = parNom.get(T.cleEntete(nom));
+          if (!a) throw new Error('robot inconnu « ' + nom + ' » : le nom de la case est la clé');
+          if (!nouv.has(a)) nouv.set(a, { debit: a.debit, debits: {} });
+          const n = nouv.get(a), v = T.nombreDe(o.debit_plateaux_h, null);
+          const cie = String(o.compagnie ?? '').trim();
+          if (v !== null && !(v > 0)) throw new Error(nom + ' : débit positif attendu, en plateaux par heure');
+          if (!cie || T.cleEntete(cie) === 'toutes') { if (v !== null) n.debit = v; return; }
+          const cab = String(o.classe ?? '').trim().toUpperCase();
+          if (!P.CABINES.includes(cab)) throw new Error('classe inconnue « ' + (o.classe ?? '') + ' »');
+          if (v !== null) n.debits[P.idClasse(cie, cab)] = v;
+        });
+      }
+      for (const [a, n] of nouv) {
+        const avant = JSON.stringify([a.debit, a.debits || {}]);
+        if (avant !== JSON.stringify([n.debit, n.debits])) debits[a.id] = n;
+      }
+    }
     // 3. L'effectif des cases : seulement ce qui change.
     const personnes = {};
     const fp = T.feuille(feuilles, 'Personnes');
@@ -372,7 +423,7 @@
     for (const sid of new Set([...Object.keys(a), ...Object.keys(out)])) {
       for (const cle of new Set([...Object.keys(a[sid] || {}), ...Object.keys(out[sid] || {})])) if ((a[sid] || {})[cle] !== (out[sid] || {})[cle]) changes++;
     }
-    return { bareme: out, changes: changes + Object.keys(personnes).length, personnes };
+    return { bareme: out, changes: changes + Object.keys(personnes).length + Object.keys(debits).length, personnes, debits };
   }
 
   /* ======================================================================
@@ -558,6 +609,7 @@
     const handling = [['Atelier', 'Compagnie', 'Minutes par vol']];
     const fab = [['Atelier', 'Ordre', 'Compagnies × classes']];
     const mm = [['Atelier', 'Compagnie × classe', 'Man-minutes']];
+    const debitsRobot = [['Atelier', 'Compagnie × classe', 'Débit (plateaux/h)']];
     const tunnels = [['Atelier', 'Tunnel', 'Débit (u/h)', 'Personnes', 'Actif']];
     for (const a of etat.ateliers) {
       ateliers.push([a.nom, nomDe(a.service), TYPES_FR[a.type] || a.type,
@@ -578,6 +630,7 @@
       if (a.type === 'handling') for (const [cie, v] of Object.entries(a.durees || {})) handling.push([a.nom, cie === P.TOUTES ? 'toutes' : cie, v]);
       (a.lots || []).forEach((l, i) => fab.push([a.nom, i + 1, l.join(' + ')]));
       for (const [id, v] of Object.entries(a.minutes || {})) mm.push([a.nom, id, v]);
+      for (const [id, v] of Object.entries(a.debits || {})) debitsRobot.push([a.nom, id, v]);
       for (const t of (a.tunnels || [])) tunnels.push([a.nom, t.nom, t.debit, t.personnes, t.actif === false ? 'non' : 'oui']);
     }
 
@@ -620,6 +673,7 @@
       feuilleHoraires(etat, ctx),
       { nom: 'Fabrications', lignes: fab },
       { nom: 'Man-minutes', lignes: mm },
+      { nom: 'Débits robot', lignes: debitsRobot },
       { nom: 'Tunnels', lignes: tunnels },
       { nom: 'Handling', lignes: handling },
       { nom: 'Classes', lignes: classes },
@@ -635,6 +689,7 @@
         'Fabrications : ce que fait chaque atelier, DANS L’ORDRE. Une ligne par lot ; plusieurs classes d’un lot se séparent par « + ».',
         '   Pour ajouter une compagnie × classe à un atelier : ajoutez une ligne (Atelier, Ordre, ex. « AF/BC »).',
         'Man-minutes : celles qu’un atelier fixe pour une compagnie × classe, à la place du barème importé. Absente = le barème.',
+        'Débits robot : le débit d’une compagnie × classe sur un robot (plateaux/h). Absente = le débit du robot (feuille Ateliers).',
         'Tunnels : les tunnels d’une plonge, avec leur débit et le personnel qui les tient.',
         'Vagues (Ateliers) : une mise à disposition (légumerie, magasin…) sert toutes les commandes à la fois, par vagues :',
         '   « J-1 14:00; J 04:00 ». Chaque commande prend la vague qui précède son besoin. Permanent = oui : pas de vague.',
@@ -860,6 +915,28 @@
           if (v === null) return;
           if (!Number.isFinite(v) || v < 0) throw new Error('man-minutes : nombre positif attendu');
           (a.minutes || (a.minutes = {}))[P.idClasse(m[1], m[2].toUpperCase())] = v;
+        });
+      }
+    }
+
+    // Les débits d'un robot, commande par commande : sans la feuille, ceux du site restent.
+    const fDR = T.feuille(feuilles, 'Débits robot', 'Debits robot');
+    for (const a of out.ateliers) {
+      if (a.type !== 'robot') continue;
+      const avant = etat.ateliers.find(x => x.id === a.id) || etat.ateliers.find(x => T.cleEntete(x.nom) === T.cleEntete(a.nom));
+      if (!fDR && avant && avant.debits) a.debits = JSON.parse(JSON.stringify(avant.debits));
+    }
+    if (fDR) {
+      for (const o of T.enObjets(fDR.lignes).objets) {
+        const a = atelierNomme(o.atelier, fDR.nom, o._ligne); if (!a) continue;
+        err.essayer(fDR.nom, o._ligne, () => {
+          if (a.type !== 'robot') throw new Error(a.nom + ' n’est pas un robot');
+          const m = /^(.+)\/([a-z]+)$/i.exec(String(o.compagnie_classe ?? '').trim());
+          if (!m || !P.CABINES.includes(m[2].toUpperCase())) throw new Error('compagnie × classe illisible « ' + (o.compagnie_classe ?? '') + ' » (ex. TX/YC)');
+          const v = T.nombreDe(o.debit_plateaux_h, null);
+          if (v === null) return;
+          if (!(v > 0)) throw new Error('débit positif attendu, en plateaux par heure');
+          (a.debits || (a.debits = {}))[P.idClasse(m[1], m[2].toUpperCase())] = v;
         });
       }
     }

@@ -147,3 +147,10 @@
 .rg-recap-table .rgr-pers input{width:46px;font-size:12px;padding:2px 4px}
 .rgr-pers small,.rgr-duree,.rgr-sans{font-size:11px;color:var(--txt2);font-style:normal;font-weight:400}
 .rgr-sans{font-style:italic}
+
+/* Le robot, dans le récap : un débit (plateaux/h), pas des man-minutes. */
+.rgr-debit{display:inline-flex;align-items:center;gap:3px}
+.rg-recap-table .rgr-debit input{width:64px}
+.rgr-debit small,.rgr-mm small{font-size:11px;color:var(--txt2)}
+.rgr.robot{background:color-mix(in srgb,var(--accent) 6%,transparent)}
+.rgr.robot.propre .rgr-debit input{font-weight:700}

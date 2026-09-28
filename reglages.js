@@ -229,7 +229,7 @@
             <input id="rg-recap-import" type="file" accept=".xlsx,.csv" hidden>
           </div>
           <p class="rg-recap-legende" aria-hidden="true"><span class="rgr propre">valeur propre</span><span class="rgr commun">toutes compagnies</span>
-            <span class="rgr case">fixée dans une case</span><span class="rgr manque">à renseigner</span><span class="rgr hors">·</span> ne passe pas par ce service</p>
+            <span class="rgr case">fixée dans une case</span><span class="rgr robot">robot : plateaux / h</span><span class="rgr manque">à renseigner</span><span class="rgr hors">·</span> ne passe pas par ce service</p>
           <div id="rg-recap" class="rg-recap"></div>
         </div>
         <div class="panneau" data-sous="rg-rythme">
@@ -314,6 +314,13 @@
           const n = parseInt(v, 10), id = e.target.dataset.atelier;
           if (!Number.isInteger(n) || n < 0) { this.rendre('Nombre de personnes entier attendu.'); return; }
           setTimeout(() => { if (this.a.personnes && this.a.personnes(id, Math.min(999, n))) this.pile('cases'); }, 0);
+          return;
+        }
+        if (champ === 'recap-debit') {
+          const id = e.target.dataset.atelier, cls = e.target.dataset.classe;
+          const n = v === '' ? null : +String(v).replace(',', '.');
+          if (n !== null && !(n > 0)) { this.rendre('Débit positif attendu, en plateaux par heure.'); return; }
+          setTimeout(() => { if (this.a.debitRobot && this.a.debitRobot(id, cls, n)) this.pile('cases'); }, 0);
           return;
         }
         if (champ === 'recap') this.pile('bareme');
@@ -582,8 +589,20 @@
           : `<span class="rgr-pers" title="Case « ${esc(eq.nom)} »${eq.commandes > 1 ? ' — partagée par ' + eq.commandes + ' commandes : son effectif vaut pour toutes' : ''}"><input type="number" min="0" max="999" step="1"
               value="${eq.personnes}" data-rg-champ="recap-pers" data-atelier="${esc(eq.id)}" aria-label="Personnes de la case ${esc(eq.nom)}"><small>pers.${eq.commandes > 1 ? '*' : ''}</small></span>`;
         const duree = c.duree != null ? (vue === 'jour' ? c.duree * l.vols : c.duree) : null;
-        const dit = eq && eq.type === 'robot' ? '<small class="rgr-duree">robot</small>'
-          : duree != null ? `<small class="rgr-duree" title="${vue === 'jour' ? 'Durée sur la journée' : 'Durée d’un vol'} : man-minutes ÷ personnes">= ${heures(duree)}</small>` : '';
+        const dit = duree != null ? `<small class="rgr-duree" title="${vue === 'jour' ? 'Durée sur la journée' : 'Durée d’un vol'} : man-minutes ÷ personnes">= ${heures(duree)}</small>` : '';
+        if (c.source === 'robot') {
+          // Le robot : un débit (plateaux/h) par commande, pas des man-minutes.
+          const deb = vue === 'jour'
+            ? `<span class="rgr-mm" title="${esc(lib)} : ${c.pax} plateaux sur la journée à ${fr(c.debit)} pl/h">${fr(c.debit)}<small>pl/h</small></span>`
+            : `<span class="rgr-debit"><input type="number" min="1" step="10" value="${c.debitPropre ? c.debit : ''}" placeholder="${c.debitRobot}"
+                data-rg-champ="recap-debit" data-atelier="${esc(eq.id)}" data-classe="${esc(l.classe.id)}"
+                aria-label="Débit de ${esc(lib)} sur le robot, en plateaux par heure (robot : ${c.debitRobot})"
+                title="${esc(lib)} — ${c.debitPropre ? 'débit propre' : 'débit du robot'} ; vide : celui du robot (${c.debitRobot} pl/h)"><small>pl/h</small></span>`;
+          const persR = `<span class="rgr-pers" title="Robot « ${esc(eq.nom)} » : il tourne à partir de ${c.personnesMin ?? 1} ${(c.personnesMin ?? 1) > 1 ? 'personnes' : 'personne'}"><input type="number" min="0" max="999" step="1"
+              value="${eq.personnes}" data-rg-champ="recap-pers" data-atelier="${esc(eq.id)}" aria-label="Personnes sur le robot ${esc(eq.nom)}"><small>pers. (min ${c.personnesMin ?? 1})</small></span>`;
+          const dr = duree != null ? `<small class="rgr-duree" title="Plateaux ÷ débit">= ${heures(duree)}</small>` : '';
+          return `<td class="rgr robot${c.debitPropre ? ' propre' : ''}"><div class="rgr-cel">${deb}${persR}${dr}</div></td>`;
+        }
         let mm;
         if (vue === 'jour') mm = `<span class="rgr-mm" title="${esc(lib)} : ${c.parVol == null ? 'à renseigner' : fr(c.parVol) + ' man-min par vol × ' + l.vols + ' vol' + (l.vols > 1 ? 's' : '')}">${c.jour == null ? '—' : fr(c.jour)}</span>`;
         else if (c.source === 'case') mm = `<span class="rgr-mm" title="Fixée dans la case « ${esc(c.atelier)} » (barème : ${c.bareme == null ? 'rien' : fr(c.bareme)}). Elle se change dans la case.">${fr(c.parVol)}<small>case</small></span>`;
@@ -632,10 +651,12 @@
         const E = root.OrlyEchanges, T = root.OrlyTableur, ctx = this.contexteRecap();
         const r = E.classeurVersRecap(await T.lireFichier(f, 4 * 1024 * 1024), ctx.bareme, ctx);
         if (!r.changes) return this.rendre('Man-minutes lues : aucune valeur ne change.');
-        const np = Object.keys(r.personnes || {}).length, nb = r.changes - np;
+        const np = Object.keys(r.personnes || {}).length, nr = Object.keys(r.debits || {}).length, nb = r.changes - np - nr;
         if (!confirm('Changer ' + r.changes + (r.changes > 1 ? ' valeurs' : ' valeur') + ' d’après le fichier ('
-          + [nb ? nb + ' man-minutes' : '', np ? np + (np > 1 ? ' effectifs de case' : ' effectif de case') : ''].filter(Boolean).join(', ') + ') ? L’action est annulable.')) return;
-        if (np && this.a.personnesToutes && this.a.personnesToutes(r.personnes)) this.pile('cases');
+          + [nb ? nb + ' man-minutes' : '', np ? np + (np > 1 ? ' effectifs de case' : ' effectif de case') : '',
+            nr ? nr + (nr > 1 ? ' robots (débits)' : ' robot (débits)') : ''].filter(Boolean).join(', ') + ') ? L’action est annulable.')) return;
+        const nd = Object.keys(r.debits || {}).length;
+        if ((np || nd) && this.a.casesImportees && this.a.casesImportees(r.personnes || {}, r.debits || {})) this.pile('cases');
         if (nb) {
           const detail = { ...this.etat.detail };
           for (const [sid, t] of Object.entries(r.bareme)) if (Object.keys(t).some(k => !k.startsWith(P.TOUTES + '/'))) detail[sid] = 'compagnie';

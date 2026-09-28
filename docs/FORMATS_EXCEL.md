@@ -118,6 +118,14 @@ Un fichier de **paramétrage** du barème, pour les grosses modifications :
   une case d'équipe ne sont pas dans ce fichier (classeur des cases, feuille
   « Man-minutes »).
 
+### Feuille « Débits robot » (classeur des cases)
+
+Le débit d'une compagnie × classe sur un robot : `Atelier`, `Compagnie × classe`,
+`Débit (plateaux/h)`. Absente : le débit du robot (colonne « Débit robot » de la
+feuille Ateliers). Dans le fichier des man-minutes, la feuille **Robot** dit la
+même chose (`Case`, `Compagnie` — `toutes` pour le débit du robot —, `Classe`,
+`Débit (plateaux/h)`).
+
 ### Feuille « Handling »
 
 Les durées d'un handling, une ligne par compagnie : `Atelier`, `Compagnie`,

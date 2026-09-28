@@ -35,6 +35,8 @@
     gouttes: '<path d="M12 3s5.5 6 5.5 10a5.5 5.5 0 0 1-11 0C6.5 9 12 3 12 3z"/><path d="M9.5 13.5a2.5 2.5 0 0 0 2.5 2.5"/>',
     saladier: '<path d="M3 11h18a9 9 0 0 1-18 0z"/><path d="M8 20.5h8M13.5 3.5 11 11M18.5 5 14 11"/>',
     service: '<rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M8 12h8M12 8v8"/>',
+    // Un bras de robot : un socle, deux segments, une pince.
+    robot: '<path d="M4 21h10M9 21v-3.5"/><circle cx="9" cy="15.5" r="2"/><path d="M10.4 14.1 15 9.5"/><circle cx="16" cy="8.5" r="1.5"/><path d="M17.2 7.4 20 5M19 9.5l1.5 1.5M16.5 11.5l1 2"/>',
     check: '<path d="M4.5 12.5 9.5 17.5 19.5 6.5"/>',
     sablier: '<path d="M6.5 3h11M6.5 21h11M7.5 3c0 5 9 5 9 9s-9 4-9 9M16.5 3c0 5-9 5-9 9s9 4 9 9"/>',
     alerte: '<path d="M12 3.5 2.5 20h19z"/><path d="M12 10v4.5M12 17.2v.3"/>',
@@ -55,7 +57,7 @@
   function icoService(id, nom) {
     const s = (String(id || '') + ' ' + String(nom || '')).toLowerCase();
     const regles = [
-      [/plonge|lavage/, 'gouttes'], [/cuisine/, 'marmite'], [/l[ée]gumerie|decontam/, 'carotte'],
+      [/robot/, 'robot'], [/plonge|lavage/, 'gouttes'], [/cuisine/, 'marmite'], [/l[ée]gumerie|decontam/, 'carotte'],
       [/^prepa\b/, 'plateau'], [/^preparation\b|pr[ée]pa\b(?!.*montage)/, 'saladier'], [/montage|prepa/, 'plateau'], [/dotation/, 'couverts'], [/magasin/, 'etagere'],
       [/armement/, 'trolley'], [/duty|bobduty|boutique/, 'sac'], [/quais|camion/, 'camion'],
       [/d[ée]part|handling/, 'depart'], [/appro|r[ée]ception/, 'boite']

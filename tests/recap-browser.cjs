@@ -52,7 +52,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const [dl]=await Promise.all([page.waitForEvent('download'),page.locator('#rg-recap-export').click()]);
   const fichier=path.join(os.tmpdir(),'recap-'+process.pid+'.xlsx');await dl.saveAs(fichier);
   const feuilles=await T.lireClasseur(fs.readFileSync(fichier));
-  assert.deepEqual(feuilles.map(f=>f.nom),['Man-minutes par vol','Toutes compagnies','Personnes','Lisez-moi']);
+  assert.deepEqual(feuilles.map(f=>f.nom),['Man-minutes par vol','Toutes compagnies','Personnes','Robot','Lisez-moi']);
   const g=feuilles[0].lignes, nomSvc=await page.evaluate(sid=>Sim.reglages.a.services().find(s=>s.id===sid).nom,sid);
   const col=g[0].indexOf(nomSvc), i=g.findIndex(l=>l[0]+'/'+l[1]===cls);
   assert.ok(col>2&&i>0);

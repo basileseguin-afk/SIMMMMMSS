@@ -27,6 +27,13 @@
     return Object.keys(m).length ? { minutes: m } : {};
   }
 
+  /** Les débits propres d'un robot, commande par commande, bornés à ses commandes. */
+  function debitsPropres(a, lots) {
+    const siennes = new Set(lots.flat()), d = {};
+    for (const [k, v] of Object.entries((a && a.debits) || {})) if (siennes.has(k) && Number.isFinite(+v) && +v > 0) d[k] = Math.min(100000, +v);
+    return Object.keys(d).length ? { debits: d } : {};
+  }
+
   /** Les vagues d'une mise à disposition, triées ; sans liste, son heure seule. */
   function vaguesDe(a, jour) {
     const brut = Array.isArray(a.vagues) && a.vagues.length ? a.vagues : [{ debut: a.debut ?? '06:00', jour }];
@@ -96,7 +103,9 @@
         ...minutesPropres(a, lots),
         ...(type === 'robot' ? {
           debit: Number.isFinite(a.debit) ? Math.max(1, a.debit) : 320,
-          personnesMin: Number.isInteger(a.personnesMin) ? Math.max(0, a.personnesMin) : 1
+          personnesMin: Number.isInteger(a.personnesMin) ? Math.max(0, a.personnesMin) : 1,
+          // Le débit de chaque commande sur le robot (plateaux/h) ; sans lui, celui du robot.
+          ...debitsPropres(a, lots)
         } : {}),
         ...(type === 'lavage' ? {
           // Le débit de l'ENSEMBLE : ce qui est partagé entre les lignes les
@@ -145,8 +154,11 @@
     // Le chemin de chaque classe. Une sauvegarde d'avant les parcours reçoit
     // les parcours types ; une liste vidée exprès reste vide.
     const { parcours, parcoursCabine, parcoursClasse } = PC.validerParcours(brut);
+    // Les changements d'organisation déjà faits une fois (ex. « robot-eco ») :
+    // ils ne se refont pas à chaque ouverture.
+    const migrations = [...new Set((Array.isArray(brut.migrations) ? brut.migrations : []).map(String))].slice(0, 50);
     return { schema: 'ory-ateliers', version: 1, ateliers, exclues, ajoutees, materiel,
-      parcours, parcoursCabine, parcoursClasse };
+      parcours, parcoursCabine, parcoursClasse, ...(migrations.length ? { migrations } : {}) };
   }
 
   const vide = () => ({ schema: 'ory-ateliers', version: 1, ateliers: [], exclues: [], ajoutees: [],
@@ -595,6 +607,13 @@
           case 'jour': a.jour = a.type === 'handling' ? 0 : parseInt(v, 10) || 0; break;
           case 'personnes': a.personnes = Math.max(0, parseInt(v, 10) || 0); break;
           case 'debit': a.debit = Math.max(1, parseFloat(v) || 1); break;
+          // Le débit d'une commande sur ce robot ; vide = celui du robot.
+          case 'debit-cmd': {
+            const cls = el.dataset.classe, d = { ...(a.debits || {}) };
+            if (v === '' || !(+v > 0)) delete d[cls]; else d[cls] = +v;
+            if (Object.keys(d).length) a.debits = d; else delete a.debits;
+            break;
+          }
           case 'personnesMin': a.personnesMin = Math.max(0, parseInt(v, 10) || 0); break;
           case 'type':
             a.type = v;
@@ -1026,12 +1045,19 @@
             aria-label="Man-minutes de ${esc(P.libelleClasse(c))} dans cette case (import : ${imp})"><span>man-min</span>${
           propre != null ? `<small class="at-mm-import">import ${imp}</small>` : ''}</label>`;
       };
+      // Un robot : le débit de chaque commande, en plateaux par heure ; vide = celui du robot.
+      const db = c => {
+        const propre = (a.debits || {})[c];
+        return `<label class="at-mm" title="Débit de ${esc(P.libelleClasse(c))} sur ce robot. Vide : celui du robot (${a.debit} pl/h).">
+          <input type="number" min="1" step="10" value="${propre ?? ''}" placeholder="${a.debit}" data-at-champ="debit-cmd" data-classe="${esc(c)}"
+            aria-label="Débit de ${esc(P.libelleClasse(c))} sur ce robot, en plateaux par heure (robot : ${a.debit})"><span>pl/h</span></label>`;
+      };
       const lots = a.lots.map((l, i) => `
         <div class="at-lot${o.cmd && l.includes(o.cmd) ? ' ici' : ''}">
           <div class="at-lot-tete">
             <b>${i + 1}.</b>
             <span class="at-chips">${l.map(c => `<span class="at-lot-cmd"><button class="at-chip" data-at-action="classe-retirer" data-index="${i}" data-classe="${esc(c)}"
-              title="Retirer ${esc(P.libelleClasse(c))} de cette case">${esc(P.libelleClasse(c))} ×</button>${a.type === 'manuel' ? mm(c) : ''}</span>`).join('') || '<em>à renseigner</em>'}</span>
+              title="Retirer ${esc(P.libelleClasse(c))} de cette case">${esc(P.libelleClasse(c))} ×</button>${a.type === 'manuel' ? mm(c) : a.type === 'robot' ? db(c) : ''}</span>`).join('') || '<em>à renseigner</em>'}</span>
             <span class="at-lot-fin">${esc(this.finLot(a.id, i))}</span>
             <button class="btn btn-sm" data-at-action="lot-monter" data-index="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Plus tôt">↑</button>
             <button class="btn btn-sm" data-at-action="lot-descendre" data-index="${i}" ${i === a.lots.length - 1 ? 'disabled' : ''} aria-label="Plus tard">↓</button>
@@ -1066,7 +1092,8 @@
             : `<label>Jour<select data-at-champ="jour">${[0, -1, -2, -3].map(j => `<option value="${j}" ${j === a.jour ? 'selected' : ''}>${j === 0 ? 'Jour du départ' : 'J' + j}</option>`).join('')}</select></label>`}
           <label>Personnes<input type="number" min="0" max="999" value="${a.personnes}" data-at-champ="personnes"></label>`}
           ${a.type === 'robot' ? `
-          <label>Débit (plateaux/h)<input type="number" min="1" value="${a.debit}" data-at-champ="debit"></label>
+          <label>Débit du robot (plateaux/h)<input type="number" min="1" value="${a.debit}" data-at-champ="debit"
+            title="Le débit des commandes qui n’ont pas le leur (réglable à côté de chaque commande)"></label>
           <label>Personnes minimum<input type="number" min="0" value="${a.personnesMin}" data-at-champ="personnesMin"></label>` : ''}
         </div>
         ${dispo ? `

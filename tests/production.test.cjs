@@ -924,3 +924,22 @@ test('une compagnie × classe sans minutes dans un service est nommée, sans blo
   assert.equal(r.lots.find(l => l.classes.includes('CRL/BC')).hommeMinutes, 0);
   assert.equal(r.lots.find(l => l.classes.includes('AF/BC')).hommeMinutes, 30);
 });
+
+test('robot : un débit par compagnie × classe, sinon celui du robot ; un minimum de personnes pour tourner', () => {
+  const vols = [{ id: 'T1', cie: 'TX', sens: 'DEP', std: 10 * 60, bc: 0, pc: 0, yc: 200 },
+    { id: 'C1', cie: 'CRL', sens: 'DEP', std: 11 * 60, bc: 0, pc: 0, yc: 300 }];
+  const robot = p => ({ id: 'rb', nom: 'Robot', service: 'robot', type: 'robot', debut: '05:00', jour: 0, personnes: 2, personnesMin: 2,
+    debit: 300, debits: { 'TX/YC': 400 }, lots: [['TX/YC'], ['CRL/YC']], regime: { actif: false }, ...p });
+  const r = P.simuler({ vols, liaisons: [], rendement: 1, bareme: {}, ateliers: [robot()] });
+  assert.equal(r.ok, true, JSON.stringify(r.anomalies));
+  const l = r.lots.filter(x => x.service === 'robot');
+  assert.equal(Math.round(l[0].fin - l[0].debut), 30, 'TX YC : 200 plateaux à 400/h');
+  assert.equal(Math.round(l[1].fin - l[1].debut), 60, 'CRL YC : 300 plateaux au débit du robot, 300/h');
+  assert.equal(P.debitRobot(robot(), 'CRL/YC'), 300);
+  // Sous le minimum de personnes, il ne tourne pas.
+  const r2 = P.simuler({ vols, liaisons: [], rendement: 1, bareme: {}, ateliers: [robot({ personnes: 1 })] });
+  assert.ok(r2.anomalies.some(a => a.code === 'personnesMin'));
+  // Sans débit du robot, les débits par commande suffisent.
+  const r3 = P.simuler({ vols, liaisons: [], rendement: 1, bareme: {}, ateliers: [robot({ debit: 0, debits: { 'TX/YC': 400, 'CRL/YC': 600 } })] });
+  assert.equal(r3.ok, true, JSON.stringify(r3.anomalies));
+});

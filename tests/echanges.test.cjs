@@ -318,3 +318,17 @@ test('ateliers : les vagues d’une mise à disposition font l’aller-retour pa
   const faux = modifier(E.ateliersVersClasseur(etat, ctxAteliers()), 'Ateliers', l => l.map(r => (r[0] === 'Magasin' ? r.map((v, i) => (i === col ? 'demain matin' : v)) : r)));
   assert.throws(() => E.classeurVersAteliers(faux, etat, ctxAteliers()), /vague illisible « demain matin »/);
 });
+
+test('ateliers : les débits d’un robot, commande par commande, font l’aller-retour par Excel', async () => {
+  const etat = ETAT_ATELIERS();
+  const r = etat.ateliers.find(a => a.nom === 'Robot');
+  r.debits = { 'AF/YC': 450 };
+  let f = E.ateliersVersClasseur(etat, ctxAteliers());
+  assert.deepEqual(f.find(x => x.nom === 'Débits robot').lignes.slice(1), [['Robot', 'AF/YC', 450]]);
+  f = modifier(f, 'Débits robot', l => l.map(x => (x[1] === 'AF/YC' ? ['Robot', 'AF/YC', 500] : x)));
+  const { etat: lu } = E.classeurVersAteliers(await parFichier(f), etat, ctxAteliers());
+  assert.deepEqual(lu.ateliers.find(a => a.nom === 'Robot').debits, { 'AF/YC': 500 });
+  // Sans la feuille, ceux du site restent.
+  const sans = E.ateliersVersClasseur(etat, ctxAteliers()).filter(x => x.nom !== 'Débits robot');
+  assert.deepEqual(E.classeurVersAteliers(await parFichier(sans), etat, ctxAteliers()).etat.ateliers.find(a => a.nom === 'Robot').debits, { 'AF/YC': 450 });
+});

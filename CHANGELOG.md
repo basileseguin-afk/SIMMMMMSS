@@ -5,6 +5,33 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-28 — Le Robot : un service à part, un débit par commande
+
+Retour d'usage : « rajoute une fabrication Robot, avec un débit par heure comme
+les man-minutes et un champ de personnes ; elle remplace les étapes Montage de
+TX, CRL et FBU Économie ». Choix confirmés : plateaux par heure ; un débit par
+compagnie × classe ; un minimum de personnes pour tourner ; un nouveau service
+« Robot », rattaché au Montage.
+
+- Moteur : le débit d'un robot se règle commande par commande
+  (`debits['TX/YC']`), sinon celui du robot ; une commande y dure ses plateaux
+  ÷ son débit. Sous son effectif minimum, il ne tourne pas.
+- Service **Robot**, rattaché au Montage (sur le plan, à côté de lui). Sur les
+  chemins de **TX, CRL et FBU Économie**, il remplace le Montage, avec les mêmes
+  liens ; ces commandes quittent leurs cases de Montage et rejoignent **une
+  seule case Robot**, dans l'ordre des échéances, à l'heure de l'ancienne case.
+  Fait une fois, à l'ouverture, sur une organisation déjà décrite ; « Annuler »
+  revient en arrière. Une commande qui suivait un modèle reçoit son chemin.
+- Un chemin qui passe par le Robot rejoint la case Robot (une machine), il ne
+  crée pas de case par commande.
+- Fiche du robot : débit du robot, effectif minimum, et le débit de chaque
+  commande à côté d'elle (vide = celui du robot).
+- Récap des man-minutes : une colonne Robot — débit par commande et effectif,
+  modifiables, durée qui en découle ; feuille **Robot** dans le fichier de
+  paramétrage. Classeur des cases : feuille **Débits robot**.
+- Pictogramme du robot.
+- Tests : production, parcours, recap, echanges, `tests/robot-browser.cjs`.
+
 ## 2026-09-28 — Récap des man-minutes : l'effectif de chaque équipe
 
 Retour d'usage : « rajoute le nombre de personnes sur le poste, qu'on puisse

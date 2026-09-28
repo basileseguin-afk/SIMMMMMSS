@@ -1451,7 +1451,13 @@ function installerCentreReglages() {
     // L'effectif d'une case, réglé depuis le récap des man-minutes.
     personnes:(id,n)=>{const a=Sim.ateliers&&Sim.ateliers.state.ateliers.find(x=>x.id===id);if(!a)return false;
       return Sim.ateliers.changer(()=>{a.personnes=n;},'« '+a.nom+' » : '+n+(n>1?' personnes.':' personne.'));},
-    personnesToutes:par=>Sim.ateliers&&Sim.ateliers.changer(()=>{for(const a of Sim.ateliers.state.ateliers)if(par[a.id]!=null)a.personnes=par[a.id];},'Effectifs importés.'),
+    // Le débit d'une commande sur un robot ; vide (null) : celui du robot.
+    debitRobot:(id,cls,n)=>{const a=Sim.ateliers&&Sim.ateliers.state.ateliers.find(x=>x.id===id);if(!a)return false;
+      return Sim.ateliers.changer(()=>{const d={...(a.debits||{})};if(n==null)delete d[cls];else d[cls]=n;if(Object.keys(d).length)a.debits=d;else delete a.debits;},
+        '« '+a.nom+' » : '+MoteurProduction.libelleClasse(cls)+(n==null?' reprend le débit du robot.':' à '+n+' plateaux/h.'));},
+    casesImportees:(par,debits)=>Sim.ateliers&&Sim.ateliers.changer(()=>{for(const a of Sim.ateliers.state.ateliers){
+      if(par[a.id]!=null)a.personnes=par[a.id];
+      if(debits[a.id]){a.debit=debits[a.id].debit;if(Object.keys(debits[a.id].debits).length)a.debits=debits[a.id].debits;else delete a.debits;}}},'Cases mises à jour d’après le fichier.'),
     histoireCases:refaire=>Sim.ateliers&&Sim.ateliers.histoire(refaire),
     // Les compagnies × classes du moment, et le parcours de chacune : c'est ce
     // que le classeur du barème propose de renseigner, service par service.
@@ -1641,6 +1647,28 @@ function renderFlights() {
   if (body.innerHTML !== html) body.innerHTML = html;
 }
 
+/* Le Robot (28/09) : un service à part, rattaché au Montage, qui remplace le
+ * Montage sur le chemin de TX, CRL et FBU Économie. Fait une fois : l'état
+ * des cases le retient (« robot-eco »), et « Annuler » le défait. */
+const ROBOT_ECO=['TX/YC','CRL/YC','FBU/YC'];
+function migrerRobot(){
+  const at=Sim.ateliers;if(!at||!Sim.editor)return;
+  if((at.state.migrations||[]).includes('robot-eco'))return;
+  const presentes=ROBOT_ECO.filter(c=>at.classes.some(k=>k.id===c));
+  // Seulement une organisation décrite : l'une de ces commandes a déjà son
+  // chemin, par le Montage. Sinon (première visite, chiffres d'exemple), rien.
+  const decrite=presentes.some(c=>{const p=OrlyParcours.cheminDe(at.state,c);return p&&MoteurProduction.servicesDuParcours(p).includes('prepa');});
+  if(!decrite)return;
+  let z=Sim.editor.state.zones.find(v=>!v.retire&&/^robot$/i.test(nomLisible(v.nom).trim()));
+  if(!z){const id=Sim.editor.nouveauService('Robot','prepa');z=Sim.editor.state.zones.find(v=>v.id===id);}
+  if(!z)return;
+  let faites=[];
+  at.changer(()=>{faites=OrlyParcours.remplacerEtape(at.state,'prepa',z.id,presentes,at.classes,nomLisible(z.nom));
+    at.state.migrations=[...(at.state.migrations||[]),'robot-eco'];},'');
+  if(faites.length)at.rendre('Robot : il remplace le Montage sur le chemin de '+faites.map(MoteurProduction.libelleClasse).join(', ')
+    +'. Une seule case Robot les prépare, à régler (débit par commande, personnes) dans Organisation › Cases ou dans le récap des man-minutes. « Annuler » revient en arrière.');
+}
+
 /* Le handling, là où l'on regarde les vols : s'il n'y en a pas, un vol est
  * « prêt » quand ses commandes le sont ; le mettre en place se fait d'un geste. */
 function renderHandlingVols() {
@@ -1787,7 +1815,7 @@ const Sim = { dataCourante:SAMPLE };
 Sim.cfg = CFG;
 window.Sim = Sim;
 chargerZones();
-construirePlan(); chargerVols(SAMPLE); initControles(); initEdition(); initFlux(); initAteliers(); initWorkbench(); initServices(); initHandlingVols();
+construirePlan(); chargerVols(SAMPLE); initControles(); initEdition(); initFlux(); initAteliers(); initWorkbench(); initServices(); initHandlingVols(); migrerRobot();
 // Le fil de mise en route vient en dernier : il relit les autres, il ne peut
 // donc se dresser qu'une fois qu'ils sont là.
 initVueSimulation();

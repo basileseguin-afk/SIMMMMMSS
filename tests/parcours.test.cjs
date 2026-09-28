@@ -488,3 +488,29 @@ test('une cuisine fondue par erreur retrouve une case par commande', () => {
   const cases = etat.ateliers.filter(a => a.service === 'cuisine');
   assert.deepEqual(cases.map(a => [a.nom, a.type, a.lots, a.debut, a.jour]), [['Cuisine AF BC', 'manuel', [['AF/BC']], '15:00', -1], ['Cuisine TX BC', 'manuel', [['TX/BC']], '15:00', -1]]);
 });
+
+test('le Robot remplace le Montage sur le chemin de TX, CRL et FBU Économie', () => {
+  const classes = ['TX/YC', 'CRL/YC', 'FBU/YC', 'AF/YC'].map((id, i) => ({ id, cie: id.split('/')[0], cabine: 'YC', vols: [{}], echeance: 600 + i }));
+  const chemin = (id, cmd) => ({ id, nom: 'Sans cuisine ' + cmd, noeuds: ['preparation', 'dotation', 'prepa'],
+    liens: [{ de: 'preparation', vers: 'prepa' }, { de: 'dotation', vers: 'prepa' }] });
+  const etat = { ateliers: [
+    { id: 'm1', nom: 'Montage TX YC', service: 'prepa', type: 'manuel', debut: '04:30', jour: 0, personnes: 4, pauses: [], lots: [['TX/YC']], regime: { actif: true } },
+    { id: 'm2', nom: 'Montage YC', service: 'prepa', type: 'manuel', debut: '05:00', jour: 0, personnes: 6, pauses: [], lots: [['CRL/YC'], ['AF/YC']], regime: { actif: true } }
+  ], parcours: [chemin('c1', 'TX YC'), chemin('c2', 'CRL YC'), chemin('c4', 'AF YC'),
+    { id: 'modele', nom: 'Sans cuisine', noeuds: ['preparation', 'prepa'], liens: [{ de: 'preparation', vers: 'prepa' }] }],
+  parcoursCabine: { YC: 'modele' }, parcoursClasse: { 'TX/YC': 'c1', 'CRL/YC': 'c2', 'AF/YC': 'c4' } };
+  const faites = PC.remplacerEtape(etat, 'prepa', 'robot', ['TX/YC', 'CRL/YC', 'FBU/YC'], classes, 'Robot');
+  assert.deepEqual(faites, ['TX/YC', 'CRL/YC', 'FBU/YC'], 'FBU, qui suivait le modèle, reçoit son chemin');
+  const c1 = etat.parcours.find(p => p.id === 'c1');
+  assert.deepEqual(c1.noeuds, ['preparation', 'dotation', 'robot']);
+  assert.deepEqual(c1.liens, [{ de: 'preparation', vers: 'robot' }, { de: 'dotation', vers: 'robot' }]);
+  assert.ok(etat.parcours.find(p => p.id === etat.parcoursClasse['FBU/YC']).noeuds.includes('robot'));
+  assert.ok(etat.parcours.find(p => p.id === 'c4').noeuds.includes('prepa'), 'AF Économie garde son Montage');
+  assert.equal(etat.ateliers.find(a => a.id === 'm1'), undefined, 'la case qui ne préparait que TX YC s’en va');
+  assert.deepEqual(etat.ateliers.find(a => a.id === 'm2').lots, [['AF/YC']], 'CRL YC quitte la case partagée');
+  const r = etat.ateliers.filter(a => a.service === 'robot');
+  assert.equal(r.length, 1, 'un seul robot');
+  assert.equal(r[0].type, 'robot'); assert.equal(r[0].debut, '04:30');
+  assert.deepEqual(r[0].lots, [['TX/YC'], ['CRL/YC'], ['FBU/YC']], 'dans l’ordre des échéances');
+  assert.equal(etat.ateliers.filter(a => a.service === 'prepa' && a.lots.some(l => l.includes('FBU/YC'))).length, 0);
+});

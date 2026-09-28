@@ -510,6 +510,11 @@
         etat.ateliers.push({ id: 'at-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
           nom: nomLibre(etat, nom(s)), service: s, type: 'lavage', debut: '06:00', jour: 0, personnes: 2, pauses: [], lots: [],
           regime: { actif: true }, plafond: 0, tunnels: [{ nom: 'Tunnel 1', debit: 300, personnes: 1, actif: true }] });
+      } else if ((etat.ateliers || []).some(a => a.service === s && a.type === 'robot') || /robot/i.test(nom(s))) {
+        // Un robot est une machine : les commandes le rejoignent, à la suite.
+        let r = (etat.ateliers || []).find(a => a.service === s && a.type === 'robot');
+        if (!r) { r = caseRobot(etat, s, nom(s)); etat.ateliers.push(r); }
+        affecter(etat, s, [cmd], r.id, classes);
       } else {
         const a = nouvelleEquipe(etat, s, nom(s), [], classes);
         a.nom = nomLibre(etat, nom(s) + ' ' + etiquette(cmd));
@@ -652,6 +657,52 @@
     for (const a of arcs) if (!p.liens.some(l => l.de === a.from && l.vers === a.to)) p.liens.push({ de: a.from, vers: a.to });
     if (cmd) donnerCases(etat, cmd, p, [s], nomDe, classes);
     return true;
+  }
+
+  /** Une case robot neuve : un débit (plateaux/h), un effectif minimum pour tourner. */
+  function caseRobot(etat, service, nomService, debut) {
+    return { id: 'at-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
+      nom: nomLibre(etat, nomService || service), service, type: 'robot', debut: debut || '05:00', jour: 0, personnes: 2,
+      personnesMin: 1, debit: 320, pauses: [], lots: [], regime: { actif: true } };
+  }
+
+  /**
+   * Une étape remplacée par une autre sur le chemin de quelques commandes —
+   * le Montage par le Robot pour TX, CRL et FBU Économie (28/09). Les liens
+   * suivent ; la commande quitte ses cases de l'ancienne étape (une case qui ne
+   * préparait qu'elle s'en va) et rejoint le robot, dans l'ordre des échéances.
+   * Une commande qui suivait un modèle reçoit son propre chemin, copié du modèle.
+   * @returns {[id]} les commandes changées
+   */
+  function remplacerEtape(etat, de, vers, cmds, classes, nomVers) {
+    const faites = [];
+    let debut = null;
+    for (const cmd of cmds) {
+      const c = (classes || []).find(x => x.id === cmd); if (!c) continue;
+      let p = cheminDe(etat, cmd);
+      if (!p) {
+        const modele = (etat.parcours || []).find(q => q.id === (etat.parcoursCabine || {})[c.cabine]);
+        if (!modele || !P.servicesDuParcours(modele).includes(de)) continue;
+        p = creerChemin(etat, cmd, modele.id, false, null, { classes }).chemin;
+      }
+      if (!P.servicesDuParcours(p).includes(de)) continue;
+      p.noeuds = [...new Set((p.noeuds || []).map(s => (s === de ? vers : s)))];
+      const vus = new Set();
+      p.liens = (p.liens || []).map(l => ({ de: l.de === de ? vers : l.de, vers: l.vers === de ? vers : l.vers }))
+        .filter(l => l.de !== l.vers && !vus.has(l.de + '>' + l.vers) && vus.add(l.de + '>' + l.vers));
+      const ancienne = (etat.ateliers || []).find(a => a.service === de && fabrique(a) && a.lots.some(l => l.includes(cmd)));
+      if (ancienne && debut == null) debut = ancienne.debut;
+      etat.ateliers = etat.ateliers.filter(a => !(a.service === de && fabrique(a) && a.lots.length && a.lots.every(l => l.every(id => id === cmd))));
+      affecter(etat, de, [cmd], null);
+      // L'ancienne case vers la nouvelle étape, s'il y en avait une par commande, s'efface aussi.
+      etat.ateliers = etat.ateliers.filter(a => !(a.service === vers && a.type !== 'robot' && fabrique(a) && a.lots.length && a.lots.every(l => l.every(id => id === cmd))));
+      faites.push(cmd);
+    }
+    if (!faites.length) return faites;
+    let r = etat.ateliers.find(a => a.service === vers && a.type === 'robot');
+    if (!r) { r = caseRobot(etat, vers, nomVers, debut); etat.ateliers.push(r); }
+    affecter(etat, vers, faites, r.id, classes);
+    return faites;
   }
 
   /** Une case handling neuve : elle charge les vols de toutes les commandes. */
@@ -1572,7 +1623,7 @@
 
 
   const api = { insererPrepa, depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, couverture, confier, nouvelleEquipe,
-    completer, colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, donnerCases, completerCases, nomLibre, caseHandling, anciensHandlings, brancherHandling,
+    completer, colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, donnerCases, completerCases, nomLibre, caseHandling, anciensHandlings, brancherHandling, caseRobot, remplacerEtape,
     SERVICES_DISPO, estDispo, caseDispo, anciensDispos, partagerDispos, separerParCommande, ajouterBesoin, EditeurParcours };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyParcours = api;

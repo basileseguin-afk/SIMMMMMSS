@@ -92,3 +92,23 @@ test('le fichier porte l’effectif des cases ; le changer dans Excel change la 
   p.find(l => l[0] === 'Cuisine BC')[0] = 'Cuisine inconnue';
   assert.throws(() => E.classeurVersRecap(f, c.bareme, c), /case inconnue « Cuisine inconnue »/);
 });
+
+test('le robot a sa colonne : un débit par commande, son effectif, la durée ; et sa feuille Excel', async () => {
+  const c = ctx();
+  c.services = SERVICES.concat([{ id: 'robot', nom: 'ROBOT' }]);
+  c.routes = new Map([...ROUTES, ['AF/YC', route(['robot'])]]);
+  c.classes = CLASSES.map(k => (k.id === 'AF/YC' ? { ...k, pax: 600 } : k));
+  c.sansBareme = new Set(['plonge', 'robot']);
+  c.ateliers = [{ id: 'rb', nom: 'Robot', service: 'robot', type: 'robot', personnes: 2, personnesMin: 1, debit: 300, debits: {}, lots: [['AF/YC']] }];
+  const r = E.recapManMinutes(c);
+  assert.ok(r.colonnes.find(x => x.id === 'robot').robot, 'une colonne robot, même sans barème');
+  const cel = r.lignes.find(l => l.classe.id === 'AF/YC').cellules.robot;
+  assert.deepEqual([cel.source, cel.debit, cel.debitPropre, cel.duree], ['robot', 300, false, 40], '600 plateaux sur 3 vols : 200 par vol à 300/h');
+  const f = E.recapVersClasseur(c);
+  assert.ok(!f[0].lignes[0].includes('ROBOT'), 'pas de man-minutes pour le robot');
+  const rob = f.find(x => x.nom === 'Robot').lignes;
+  assert.deepEqual(rob.slice(1), [['Robot', 'toutes', null, null, 300], ['Robot', 'AF', 'YC', 600, null]]);
+  rob[2][4] = 450; rob[1][4] = 320;
+  const lu = E.classeurVersRecap(await parFichier(f), c.bareme, c);
+  assert.deepEqual(lu.debits, { rb: { debit: 320, debits: { 'AF/YC': 450 } } });
+});

@@ -211,6 +211,23 @@ C'est le résultat le plus utile du modèle — ce qui ne rentre pas dans la
 journée. Le régime se désactive atelier par atelier, et la durée de présence se
 règle, pour une équipe qui ne suit pas la règle commune.
 
+### Le robot
+
+Une machine : un **débit en plateaux par heure** plutôt que des man-minutes, et
+un **effectif minimum** pour tourner (en dessous, il ne tourne pas ; au-dessus,
+le débit ne change pas).
+
+| Champ | Sens |
+|---|---|
+| `type: 'robot'` | |
+| `debit` | le débit du robot, plateaux/h |
+| `debits` | facultatif : `{ 'TX/YC': 450 }`, le débit propre d'une commande (confirmé le 28/09) |
+| `personnesMin` | l'effectif minimum pour tourner |
+
+Une commande y dure **ses plateaux ÷ son débit**. Le service **Robot** est
+rattaché au Montage ; il le remplace sur les chemins de TX, CRL et FBU Économie,
+où une seule case Robot prépare ces commandes, l'une après l'autre.
+
 ### La mise à disposition
 
 Un magasin, des appros, tout service qui se contente de **sortir du matériel ou
