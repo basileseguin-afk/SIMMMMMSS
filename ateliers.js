@@ -58,9 +58,9 @@
 
   /** Les réglages d'un handling, bornés. Sans durée saisie : 30 min par vol. */
   /** Des durées par compagnie (« * » pour toutes), en minutes. */
-  function dureesDe(a, defaut) {
+  function dureesDe(a, defaut, champ = 'durees') {
     const durees = {};
-    const brut = a.durees && typeof a.durees === 'object' && !Array.isArray(a.durees) ? a.durees : { [P.TOUTES]: defaut };
+    const brut = a[champ] && typeof a[champ] === 'object' && !Array.isArray(a[champ]) ? a[champ] : (defaut === undefined ? {} : { [P.TOUTES]: defaut });
     for (const [k, v] of Object.entries(brut).slice(0, 300)) {
       const cie = k === P.TOUTES ? k : String(k).trim().toUpperCase().slice(0, 40);
       if (!cie || v === '' || v === null || !Number.isFinite(+v)) continue;
@@ -84,6 +84,12 @@
       longs: cies(a.longs),
       chauffeurs: { long: entier(ch.long, 2), court: entier(ch.court, 1) },
       creneaux,
+      // Le camion : aller jusqu'à l'avion et retour à l'unité (par compagnie,
+      // « * » pour toutes), combien de vols il charge, combien il y en a.
+      allers: dureesDe(a, undefined, 'allers'),
+      retours: dureesDe(a, undefined, 'retours'),
+      volsParCamion: entier(a.volsParCamion, 1),
+      camions: Math.max(0, Math.min(200, parseInt(a.camions, 10) || 0)),
       simultanes: Number.isInteger(n) && n > 0 ? Math.min(50, n) : 1,
       avance: Number.isFinite(av) ? Math.max(0, Math.min(1440, Math.round(av))) : P.AVANCE_HANDLING,
       compagnies: cies(a.compagnies)
@@ -605,7 +611,7 @@
           return;
         }
         case 'duree-retirer':
-          return this.changer(() => { const d = { ...(a.durees || {}) }; delete d[data.cie]; a.durees = d; },
+          return this.changer(() => { for (const m of ['durees', 'allers', 'retours']) if (a[m]) { const d = { ...a[m] }; delete d[data.cie]; a[m] = d; } },
             'Durée retirée : ' + data.cie + ' prend la durée de toutes les compagnies.');
         case 'classe-supprimer': return this.supprimerClasse(data.classe);
         case 'classe-retablir':  return this.retablirClasse(data.classe);
@@ -731,6 +737,13 @@
           }
           case 'chauffeurs-long': a.chauffeurs = { ...(a.chauffeurs || {}), long: Math.max(1, parseInt(v, 10) || 1) }; break;
           case 'chauffeurs-court': a.chauffeurs = { ...(a.chauffeurs || {}), court: Math.max(1, parseInt(v, 10) || 1) }; break;
+          case 'vols-par-camion': a.volsParCamion = Math.max(1, parseInt(v, 10) || 1); break;
+          case 'camions': a.camions = Math.max(0, parseInt(v, 10) || 0); break;
+          case 'temps': {
+            const m = el.dataset.map, cie = el.dataset.cie, d = { ...(a[m] || {}) };
+            if (v === '' || !Number.isFinite(+v)) delete d[cie]; else d[cie] = Math.max(0, Math.min(1440, +v));
+            a[m] = d; break;
+          }
           case 'creneau-de': a.creneaux[+el.dataset.index].de = v; break;
           case 'creneau-a': a.creneaux[+el.dataset.index].a = v; break;
           case 'creneau-n': a.creneaux[+el.dataset.index].n = Math.max(0, parseInt(v, 10) || 0); break;
@@ -1151,7 +1164,7 @@
           : a.ouverture ? 'ouvert de ' + esc(a.ouverture.de) + ' à ' + esc(a.ouverture.a) + ', chaque jour' : 'disponible en permanence')
         : esc(a.debut) + jour + (handling && (a.creneaux || []).length ? '' : ' · ' + a.personnes + ' pers.')
           + (a.type === 'robot' ? ' · robot ' + a.debit + ' pl/h' : a.type === 'lavage' ? (a.parVol ? ' · lave par vol' : ' · ' + P.debitLavage(a) + ' u/h')
-            : handling ? ((a.creneaux || []).length ? ' · chauffeurs : ' + (a.chauffeurs || {}).long + ' par long courrier, ' + (a.chauffeurs || {}).court + ' par court'
+            : handling ? ((a.creneaux || []).length ? ' · camion : ' + (a.chauffeurs || {}).long + ' chauffeurs en long courrier, ' + (a.chauffeurs || {}).court + ' en court · ' + (a.volsParCamion || 1) + ' vol' + ((a.volsParCamion || 1) > 1 ? 's' : '') + ' par camion'
               : ' · ' + a.simultanes + ' vol' + (a.simultanes > 1 ? 's' : '') + ' à la fois') : '')
           + ' → fin ' + esc(fin) + esc(attente);
 
@@ -1357,19 +1370,25 @@
     }
 
     /* Une ligne par compagnie : ce qu'on règle pour elle, et combien de vols elle a.
-     * `extra(cie)` : les colonnes propres au service (long / court courrier…). */
-    tableCompagnies(a, cies, nbVols, unite, extra) {
-      const durees = a.durees || {};
-      const toutes = durees[P.TOUTES];
-      const liste = [...new Set(cies.concat(Object.keys(durees).filter(k => k !== P.TOUTES)))].sort();
-      const champ = (cie, lib) => `<input type="number" min="0" max="1440" step="1" value="${durees[cie] ?? ''}"
-            placeholder="${cie === P.TOUTES ? 'à saisir' : toutes != null ? String(toutes) : 'à saisir'}"
-            data-at-champ="duree" data-cie="${esc(cie)}" aria-label="${esc(unite)} pour ${esc(lib)}">`;
+     * `colonnes` : les temps réglés par compagnie ({ map, lib } ; `durees` est le
+     * temps principal) ; `extra` : les colonnes propres au service. */
+    tableCompagnies(a, cies, nbVols, colonnes, extra) {
+      const cols = typeof colonnes === 'string' ? [{ map: 'durees', lib: colonnes }] : colonnes;
+      const propres = [...new Set(cols.flatMap(c => Object.keys(a[c.map] || {})).filter(k => k !== P.TOUTES))];
+      const liste = [...new Set(cies.concat(propres))].sort();
+      const champ = (c, cie, lib) => {
+        const m = a[c.map] || {}, toutes = m[P.TOUTES];
+        return `<input type="number" min="0" max="1440" step="1" value="${m[cie] ?? ''}"
+          placeholder="${cie === P.TOUTES ? (c.map === 'durees' ? 'à saisir' : '0') : toutes != null ? String(toutes) : c.map === 'durees' ? 'à saisir' : '0'}"
+          ${c.map === 'durees' ? 'data-at-champ="duree"' : `data-at-champ="temps" data-map="${c.map}"`} data-cie="${esc(cie)}" aria-label="${esc(c.lib)} pour ${esc(lib)}">`;
+      };
+      const propre = cie => cols.some(c => (a[c.map] || {})[cie] != null);
+      const total = extra && extra.total ? extra.total : null;
       return `<div class="at-cies-bloc"><div class="table-scroll"><table class="at-cies">
-        <thead><tr><th scope="col">Compagnie</th><th scope="col">Vols</th>${extra ? extra.tete : ''}<th scope="col">${esc(unite)}</th></tr></thead><tbody>
-        <tr class="at-cies-toutes"><th scope="row">Toutes les compagnies</th><td>—</td>${extra ? extra.toutes : ''}<td>${champ(P.TOUTES, 'toutes les compagnies')}</td></tr>
-        ${liste.map(cie => `<tr><th scope="row">${esc(cie)}</th><td>${nbVols(cie) || '—'}</td>${extra ? extra.ligne(cie) : ''}
-          <td>${champ(cie, cie)}${durees[cie] != null ? ` <button class="lien-discret" data-at-action="duree-retirer" data-cie="${esc(cie)}" title="Revenir au temps de toutes les compagnies">× propre</button>` : ''}</td></tr>`).join('')}
+        <thead><tr><th scope="col">Compagnie</th><th scope="col">Vols</th>${extra ? extra.tete : ''}${cols.map(c => `<th scope="col">${esc(c.lib)}</th>`).join('')}${total ? '<th scope="col">Trajet</th>' : ''}<th></th></tr></thead><tbody>
+        <tr class="at-cies-toutes"><th scope="row">Toutes les compagnies</th><td>—</td>${extra ? extra.toutes : ''}${cols.map(c => `<td>${champ(c, P.TOUTES, 'toutes les compagnies')}</td>`).join('')}${total ? `<td>${total(P.TOUTES)}</td>` : ''}<td></td></tr>
+        ${liste.map(cie => `<tr><th scope="row">${esc(cie)}</th><td>${nbVols(cie) || '—'}</td>${extra ? extra.ligne(cie) : ''}${cols.map(c => `<td>${champ(c, cie, cie)}</td>`).join('')}${total ? `<td>${total(cie)}</td>` : ''}
+          <td>${propre(cie) ? `<button class="lien-discret" data-at-action="duree-retirer" data-cie="${esc(cie)}" title="Revenir aux temps de toutes les compagnies">× propre</button>` : ''}</td></tr>`).join('')}
         </tbody></table></div>
         <p class="mini-note">Vide : le temps de « Toutes les compagnies ».
           <label class="at-inline">Ajouter une compagnie<input data-at-champ="cie-nouvelle" maxlength="40" placeholder="Ex. EZY"
@@ -1390,10 +1409,15 @@
         <div class="at-sous-titre">Chargement des vols</div>
         <p class="mini-note at-regle">Le handling <b>récupère les trolleys prêts dans la CF départ</b> et <b>charge les vols</b>.
           Il réunit les classes d’un même vol, prend les vols <b>strictement dans l’ordre des départs</b> (un vol incomplet retient
-          les suivants) et travaille <b>le jour J des vols</b>, jamais la veille. Un vol occupe ses chauffeurs le temps de son chargement.</p>
+          les suivants) et travaille <b>le jour J des vols</b>, jamais la veille. Un camion part avec ses chauffeurs,
+          <b>va jusqu’à l’avion, le charge et revient à l’unité</b> : ses chauffeurs sont pris tout ce temps ; le vol est chargé à la fin de son chargement.</p>
         <div class="at-champs at-handling">
-          <label>Chauffeurs pour un <b>long courrier</b><input type="number" min="1" max="20" value="${ch.long}" data-at-champ="chauffeurs-long"></label>
-          <label>Chauffeurs pour un <b>court courrier</b><input type="number" min="1" max="20" value="${ch.court}" data-at-champ="chauffeurs-court"></label>
+          <label>Chauffeurs par camion, <b>long courrier</b><input type="number" min="1" max="20" value="${ch.long}" data-at-champ="chauffeurs-long"></label>
+          <label>Chauffeurs par camion, <b>court courrier</b><input type="number" min="1" max="20" value="${ch.court}" data-at-champ="chauffeurs-court"></label>
+          <label>Vols chargés par un camion<input type="number" min="1" max="10" value="${a.volsParCamion || 1}" data-at-champ="vols-par-camion"
+            title="En général 1. Plus : le camion charge aussi les vols suivants de la même catégorie, s’ils sont prêts"></label>
+          <label>Camions disponibles<input type="number" min="0" max="200" value="${a.camions || ''}" placeholder="pas de limite" data-at-champ="camions"
+            title="Vide : autant de camions que les chauffeurs en font partir"></label>
           <label>Pas avant (heures avant le départ)<input type="number" min="0" max="24" step="0.5" value="${String(avance)}" data-at-champ="avance"
             title="Le handling ne commence pas un vol plus tôt que cela avant son départ"></label>
           <label>Compagnies chargées<input value="${esc((a.compagnies || []).join(', '))}" placeholder="toutes" data-at-champ="compagnies"
@@ -1412,14 +1436,16 @@
               <label class="at-inline">Vols en même temps<input type="number" min="1" max="50" value="${a.simultanes || 1}" data-at-champ="simultanes"></label></p>`}
         <div class="at-actions-lot"><button class="btn btn-sm${creneaux.length ? '' : ' btn-play'}" data-at-action="creneau-ajouter">+ Créneau de chauffeurs</button></div>
 
-        <div class="at-sous-titre">Par compagnie : long ou court courrier, et durée d’un vol</div>
-        ${this.tableCompagnies(a, cies, nb, 'min par vol', {
-          tete: '<th scope="col">Courrier</th><th scope="col">Chauffeurs</th>',
+        <div class="at-sous-titre">Par compagnie : long ou court courrier, et le trajet du camion (minutes)</div>
+        ${this.tableCompagnies(a, cies, nb, [{ map: 'allers', lib: 'Aller sur la piste' }, { map: 'durees', lib: 'Charger l’avion' }, { map: 'retours', lib: 'Retour à l’unité' }], {
+          total: cie => { const t = P.trajetHandling(a, cie), d = P.dureeHandling(a, cie);
+            return d == null ? '—' : '<b>' + Math.round(t.aller + d + t.retour) + '</b> min'; },
           toutes: '<td>—</td><td>—</td>',
           ligne: cie => `<td><select data-at-champ="categorie" data-cie="${esc(cie)}" aria-label="${esc(cie)} : long ou court courrier">
               <option value="court" ${longs.has(cie) ? '' : 'selected'}>court</option><option value="long" ${longs.has(cie) ? 'selected' : ''}>long</option></select></td>
-            <td>${longs.has(cie) ? ch.long : ch.court}</td>` })}
-        <p class="mini-note at-regle">Une durée, pas des man-minutes : les chauffeurs d’un vol ne la raccourcissent pas.</p>`;
+            <td>${longs.has(cie) ? ch.long : ch.court}</td>`, tete: '<th scope="col">Courrier</th><th scope="col">Chauffeurs / camion</th>' })}
+        <p class="mini-note at-regle">Des durées, pas des man-minutes : plus de chauffeurs dans le camion ne raccourcissent pas le trajet.
+          Un camion qui charge plusieurs vols fait un seul aller et un seul retour.</p>`;
     }
 
     /* La plonge par vol : un tunnel lave un vol en tant de temps, compagnie par compagnie. */
@@ -1577,7 +1603,8 @@
           const n = vue.lots.filter(l => l.vol).length;
           const cr = a.creneaux || [];
           return `<span class="mini-note">charge ${n} vol${n > 1 ? 's' : ''} dans l’ordre des départs · `
-            + (cr.length ? `chauffeurs ${cr.map(c => c.de + '–' + c.a + ' : ' + c.n).join(', ')} · ${(a.chauffeurs || {}).long} par long courrier (${(a.longs || []).join(', ') || 'aucune compagnie'}), ${(a.chauffeurs || {}).court} par court`
+            + (cr.length ? `chauffeurs ${cr.map(c => c.de + '–' + c.a + ' : ' + c.n).join(', ')} · camion : ${(a.chauffeurs || {}).long} chauffeurs en long courrier (${(a.longs || []).join(', ') || 'aucune compagnie'}), ${(a.chauffeurs || {}).court} en court`
+              + ` · ${a.volsParCamion || 1} vol${(a.volsParCamion || 1) > 1 ? 's' : ''} par camion` + (a.camions ? ` · ${a.camions} camions` : '')
               : `${a.simultanes || 1} à la fois`)
             + ` · pas avant ${String(Math.round((a.avance ?? 180) / 6) / 10).replace('.', ',')} h avant le départ</span>`;
         }

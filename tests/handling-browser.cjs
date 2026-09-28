@@ -76,6 +76,19 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator(`[data-at="${id}"] [data-at-champ=chauffeurs-long]`).dispatchEvent('change');await attendre();
   assert.equal(await page.evaluate(()=>Sim.ateliers.resultat.vols.find(v=>v.cie==='AF'&&v.chauffeurs).chauffeurs),3,'réglable');
   assert.match(await fiche.innerText(),/récupère les trolleys prêts dans la CF départ/);
+  // Le camion (retour d'usage : « chauffeurs par camion, vols par camion, et le temps = aller sur
+  // la piste + charger l'avion + revenir à l'unité ») : chaque partie se règle, le total se lit.
+  const champ=async(sel,v)=>{await page.locator(`[data-at="${id}"] ${sel}`).fill(String(v));await page.locator(`[data-at="${id}"] ${sel}`).dispatchEvent('change');await attendre();};
+  await champ('[data-at-champ=temps][data-map=allers][data-cie="*"]',10);
+  await champ('[data-at-champ=temps][data-map=retours][data-cie="*"]',12);
+  await champ('[data-at-champ=vols-par-camion]',2);
+  await champ('[data-at-champ=camions]',3);
+  const h=await page.evaluate(id=>{const a=Sim.ateliers.state.ateliers.find(x=>x.id===id);return [a.allers,a.retours,a.volsParCamion,a.camions];},id);
+  assert.deepEqual(h,[{'*':10},{'*':12},2,3]);
+  const tr=await page.evaluate(()=>{const l=Sim.ateliers.resultat.lots.find(x=>x.handling&&x.trajet&&x.cie==='AF');return l&&[l.trajet.aller,l.trajet.dureeRetour,l.fin-l.trajet.depart];});
+  assert.deepEqual(tr.slice(0,2),[10,12],'le trajet compte l’aller et le retour');
+  assert.ok(tr[2]>=60,'AF : chargé après 10 min d’aller et 50 min de chargement');
+  assert.match(await page.locator(`[data-at="${id}"] .at-cies-toutes`).innerText(),/\b\d+ min/,'le trajet total se lit');
 
   // 4. Les départs disent « chargé à », la synthèse compte les vols.
   await nav.aller(page,'v-departs');

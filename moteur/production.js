@@ -492,6 +492,30 @@
     return Infinity;
   }
 
+  /** Un trajet de camion pour une compagnie : aller jusqu'à l'avion, retour à l'unité (minutes). */
+  function trajetHandling(atelier, cie) {
+    const lire = (m, k) => { const d = (atelier && atelier[m]) || {}; const v = d[k]; return v === undefined || v === null || v === '' || !Number.isFinite(+v) ? null : Math.max(0, +v); };
+    const c = up(cie);
+    return { aller: lire('allers', c) ?? lire('allers', TOUTES) ?? 0, retour: lire('retours', c) ?? lire('retours', TOUTES) ?? 0 };
+  }
+  /**
+   * Le premier instant, à partir de `t0`, où un camion peut partir : `besoin`
+   * chauffeurs libres (quand il y a des créneaux) et moins de `camionsMax`
+   * camions déjà sortis, pendant tout le trajet.
+   */
+  function debutTrajet(creneaux, occupes, t0, besoin, finDe, camionsMax) {
+    const cr = creneaux || [];
+    const bornes = [...new Set(cr.flatMap(c => [c.de, c.a]).concat(occupes.flatMap(o => [o.de, o.a])))].sort((x, y) => x - y);
+    const dehors = t => occupes.reduce((n, o) => n + (t >= o.de && t < o.a ? 1 : 0), 0);
+    const libres = t => chauffeursPresents(cr, t) - occupes.reduce((n, o) => n + (t >= o.de && t < o.a ? o.n : 0), 0);
+    for (const s of [t0, ...bornes.filter(b => b > t0)]) {
+      const f = finDe(s);
+      if (!Number.isFinite(f)) continue;
+      if ([s, ...bornes.filter(b => b > s && b < f)].every(t => dehors(t) < camionsMax && (!creneaux || libres(t) >= besoin))) return s;
+    }
+    return Infinity;
+  }
+
   /*
    * LA PLONGE PAR VOL (retour d'usage du 28/09).
    *
@@ -1309,70 +1333,84 @@
         const avance = Number.isFinite(+a.avance) && a.avance !== null && a.avance !== '' ? Math.max(0, +a.avance) : AVANCE_HANDLING;
         const suspendu = { vol: null, attendus: [] };
         suspendus.set(a.id, suspendu);
-        // Des créneaux de chauffeurs : chaque vol prend les siens (2 long courrier, 1 court).
+        // Des créneaux de chauffeurs : chaque camion prend les siens (2 long courrier, 1 court).
+        // Sans créneau : « N vols à la fois », N camions sans compter les chauffeurs.
         const creneaux = creneauxDe(a), parChauffeurs = creneaux.length > 0, occupes = [];
+        const camionsMax = parChauffeurs ? (Math.floor(+a.camions) > 0 ? Math.floor(+a.camions) : Infinity) : k;
+        const parCamion = Math.max(1, Math.floor(+a.volsParCamion) || 1);
+        const auPlusTotDe = v => Math.max(0, v.depart - avance);
+        const attendusDe = v => {
+          const out = [];
+          for (const id of v.classes) for (const s of amontsHandling(a.service, id)) out.push({ service: s, classe: id, ev: livraison(s, id) });
+          return out;
+        };
         env.processus(function* () {
           if (env.maintenant < depart) yield env.delai(depart - env.maintenant);
-          const pistes = new Array(k).fill(depart);   // quand chaque quai se libère
           let parti = false;
-          for (const v of mesVols) {
-            const base = { atelier: a.id, service: a.service, nom: 'Vol ' + v.id, vol: v.id, cie: v.cie,
-              classes: v.classes.slice(), pax: { ...v.pax }, depart: v.depart, handling: true, attente: 0, arret: 0 };
+          const faits = new Set();
+          for (let i = 0; i < mesVols.length; i++) {
+            const v = mesVols[i];
+            if (faits.has(v.id)) continue;
+            const base = w => ({ atelier: a.id, service: a.service, nom: 'Vol ' + w.id, vol: w.id, cie: w.cie,
+              classes: w.classes.slice(), pax: { ...w.pax }, depart: w.depart, handling: true, attente: 0, arret: 0 });
             if (parti) {
               // L'équipe est partie : ce vol-ci n'est pas chargé non plus.
-              const ligne = { ...base, debut: finPoste, fin: null, duree: null, impossible: true, horsPoste: true };
+              const ligne = { ...base(v), debut: finPoste, fin: null, duree: null, impossible: true, horsPoste: true };
               journal.push(ligne); vue.lots.push(ligne);
               continue;
             }
             const t0 = env.maintenant;
             // Strictement dans l'ordre des départs : on attend ce vol-ci, complet.
-            const attendus = [];
-            for (const id of v.classes) for (const s of amontsHandling(a.service, id)) attendus.push({ service: s, classe: id, ev: livraison(s, id) });
+            const attendus = attendusDe(v);
             suspendu.vol = v; suspendu.attendus = attendus;
             if (attendus.some(x => !x.ev.declenche)) yield env.tousDe(attendus.map(x => x.ev));
             suspendu.vol = null; suspendu.attendus = [];
             const pret = attendus.length ? Math.max(...attendus.map(x => livreA.get(cle(x.service, x.classe)) ?? env.maintenant)) : null;
             // Pas plus de `avance` avant le départ, et jamais avant 00:00 du jour J.
-            const auPlusTot = Math.max(0, v.depart - avance);
-            if (parChauffeurs) {
-              const besoin = chauffeursDe(a, v.cie), categorie = categorieVol(a, v.cie);
-              const duree = dureeHandling(a, v.cie) ?? 0;
-              const tPret = Math.max(env.maintenant, auPlusTot);
-              const attente = Math.max(0, env.maintenant - Math.max(t0, auPlusTot));
-              const debutV = debutAvecChauffeurs(creneaux, occupes, tPret, besoin, x => finAvecPauses(x, duree, pauses).fin);
-              if (!Number.isFinite(debutV)) {
-                const ligne = { ...base, debut: tPret, fin: null, duree, attente, pret, impossible: true, sansChauffeur: true, chauffeurs: besoin, categorie };
-                journal.push(ligne); vue.lots.push(ligne);
-                continue;
-              }
-              if (env.maintenant < debutV) yield env.delai(debutV - env.maintenant);
-              const f = finAvecPauses(debutV, duree, pauses);
-              occupes.push({ de: debutV, a: f.fin, n: besoin });
-              const ligne = { ...base, debut: debutV, fin: f.fin, duree, attente, arret: f.arret, pret, impossible: false,
-                chauffeurs: besoin, categorie, attenteChauffeurs: Math.max(0, debutV - tPret),
-                retard: Math.max(0, f.fin - v.depart), aHeure: f.fin <= v.depart };
-              journal.push(ligne); vue.lots.push(ligne);
-              vue.travail += duree; vue.attente += attente + ligne.attenteChauffeurs; vue.arret += f.arret;
-              vue.fin = Math.max(vue.fin ?? -Infinity, f.fin);
-              continue;
+            const tPret = Math.max(env.maintenant, auPlusTotDe(v));
+            const attente = Math.max(0, env.maintenant - Math.max(t0, auPlusTotDe(v)));
+            const categorie = categorieVol(a, v.cie), besoin = parChauffeurs ? chauffeursDe(a, v.cie) : 0;
+            // Un camion peut charger plusieurs vols : les suivants dans l'ordre des
+            // départs, de la même catégorie, déjà complets et qu'on a le droit de charger.
+            // « Pas avant » vaut pour le chargement de chaque vol : le camion y arrive
+            // après l'aller et les vols chargés avant lui.
+            const groupe = [v];
+            let arrivee = tPret + trajetHandling(a, v.cie).aller + (dureeHandling(a, v.cie) ?? 0);
+            for (let j = i + 1; j < mesVols.length && groupe.length < parCamion; j++) {
+              const w = mesVols[j];
+              if (categorieVol(a, w.cie) !== categorie || auPlusTotDe(w) > arrivee || attendusDe(w).some(x => !x.ev.declenche)) break;
+              groupe.push(w);
+              arrivee += dureeHandling(a, w.cie) ?? 0;
             }
-            let p = 0; for (let i = 1; i < k; i++) if (pistes[i] < pistes[p]) p = i;
-            const debutV = Math.max(env.maintenant, pistes[p], auPlusTot);
-            const attente = Math.max(0, env.maintenant - Math.max(t0, pistes[p], auPlusTot));
-            const duree = dureeHandling(a, v.cie) ?? 0;
-            const f = debutV < finPoste ? finAvecPauses(debutV, duree, pauses) : null;
-            if (!f || f.fin > finPoste) {
-              parti = true;
-              const ligne = { ...base, debut: Math.min(debutV, finPoste), fin: null, duree, attente, pret, impossible: true, horsPoste: true };
+            // Le trajet : aller jusqu'à l'avion, charger chaque vol, revenir à l'unité.
+            const aller = trajetHandling(a, v.cie).aller, retour = trajetHandling(a, groupe[groupe.length - 1].cie).retour;
+            const charges = groupe.map(w => dureeHandling(a, w.cie) ?? 0);
+            const total = aller + charges.reduce((x, y) => x + y, 0) + retour;
+            const finDe = x => finAvecPauses(x, total, pauses).fin;
+            const debutV = debutTrajet(parChauffeurs ? creneaux : null, occupes, tPret, besoin, finDe, camionsMax);
+            if (!Number.isFinite(debutV) || (!parChauffeurs && (debutV >= finPoste || finDe(debutV) > finPoste))) {
+              if (!parChauffeurs) parti = true;
+              const ligne = { ...base(v), debut: Number.isFinite(debutV) ? Math.min(debutV, finPoste) : tPret, fin: null, duree: charges[0], attente, pret,
+                impossible: true, ...(parChauffeurs ? { sansChauffeur: true, chauffeurs: besoin, categorie } : { horsPoste: true }) };
               journal.push(ligne); vue.lots.push(ligne);
               continue;
             }
             if (env.maintenant < debutV) yield env.delai(debutV - env.maintenant);
-            pistes[p] = f.fin;
-            const ligne = { ...base, debut: debutV, fin: f.fin, duree, attente, arret: f.arret, pret, impossible: false,
-              retard: Math.max(0, f.fin - v.depart), aHeure: f.fin <= v.depart };
-            journal.push(ligne); vue.lots.push(ligne);
-            vue.travail += duree; vue.attente += attente; vue.arret += f.arret;
+            const f = finAvecPauses(debutV, total, pauses);
+            occupes.push({ de: debutV, a: f.fin, n: besoin });
+            const trajet = { depart: debutV, retour: f.fin, vols: groupe.map(w => w.id), aller, dureeRetour: retour };
+            let cumul = aller;
+            groupe.forEach((w, g) => {
+              cumul += charges[g];
+              const charge = finAvecPauses(debutV, cumul, pauses).fin;
+              faits.add(w.id);
+              const ligne = { ...base(w), debut: debutV, fin: charge, duree: charges[g], attente: g ? 0 : attente, arret: g ? 0 : f.arret,
+                pret: g ? null : pret, impossible: false, trajet, camion: occupes.length,
+                ...(parChauffeurs ? { chauffeurs: besoin, categorie, attenteChauffeurs: g ? 0 : Math.max(0, debutV - tPret) } : {}),
+                retard: Math.max(0, charge - w.depart), aHeure: charge <= w.depart };
+              journal.push(ligne); vue.lots.push(ligne);
+            });
+            vue.travail += total; vue.attente += attente + Math.max(0, debutV - tPret); vue.arret += f.arret;
             vue.fin = Math.max(vue.fin ?? -Infinity, f.fin);
           }
         }, a.nom);
@@ -1983,7 +2021,7 @@
     arcsDuParcours, servicesDuParcours, routesDesClasses,
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,
     pausesDe, finAvecPauses, vaguesDe, disponibleDes, debitRobot, ouvertureDe, prochaineOuverture,
-    categorieVol, chauffeursDe, creneauxDe, chauffeursPresents, debutAvecChauffeurs, dureeLavageVol,
+    categorieVol, chauffeursDe, creneauxDe, chauffeursPresents, debutAvecChauffeurs, dureeLavageVol, trajetHandling, debutTrajet,
     UNITES_DEFAUT, unitesDe, retoursDeVols, besoinMateriel,
     simuler, niveauA, niveauLineaire, dureeLisible
   };

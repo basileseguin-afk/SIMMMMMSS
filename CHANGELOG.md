@@ -5,6 +5,26 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-28 — Le camion du handling : chauffeurs, vols, aller + charger + retour
+
+Retour d'usage : « nombre de chauffeurs par camion, combien de vols charge un
+seul camion (en général 1), et le temps = aller sur la piste + charger l'avion
++ revenir à l'unité ».
+
+- **Moteur** : le handling travaille par trajets de camion. Un trajet prend
+  ses chauffeurs (par camion : 2 en long courrier, 1 en court, réglables) et
+  dure aller + chargement de chaque vol + retour. Le vol est chargé à la fin
+  de son chargement ; chauffeurs et camion sont pris jusqu'au retour. Un
+  camion peut charger plusieurs vols (les suivants, même catégorie, prêts) ;
+  un nombre de camions peut limiter les sorties.
+- **Fiche** : « Chauffeurs par camion » (long / court), « Vols chargés par un
+  camion », « Camions disponibles » ; le tableau par compagnie a trois temps —
+  aller sur la piste, charger l'avion, retour à l'unité — et le trajet total.
+- **Excel** : colonnes « Aller (min) » et « Retour (min) » (feuille Handling),
+  « Vols par camion » et « Camions disponibles » (feuille Ateliers).
+- Tests : `tests/handling.test.cjs`, `tests/echanges.test.cjs`,
+  `tests/handling-browser.cjs`.
+
 ## 2026-09-28 — Ajouter une compagnie, ou les classes qui lui manquent
 
 Retour d'usage : « je ne peux plus rajouter de compagnie ni de compagnie ×

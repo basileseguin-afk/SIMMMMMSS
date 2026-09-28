@@ -154,6 +154,11 @@ dans « Fabrications » : il charge des vols, pas des commandes.
 Feuille absente : les durées du site restent. Le handling travaille le jour J
 des vols : dans « Horaires », son jour est `J` ; un `J-1` est refusé.
 
+Colonnes `Aller (min)` (du quai à l'avion) et `Retour (min)` (de l'avion à
+l'unité) : le trajet du camion, autour de `Minutes par vol` (charger l'avion).
+Feuille Ateliers : `Vols par camion` (1 en général) et `Camions disponibles`
+(vide : pas de limite).
+
 Colonne `Courrier` (`long` ou `court`) : une compagnie long courrier prend
 « Chauffeurs long courrier » chauffeurs par vol (2 par défaut), une court
 courrier « Chauffeurs court courrier » (1) — deux colonnes de la feuille

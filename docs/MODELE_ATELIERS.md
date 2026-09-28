@@ -300,6 +300,21 @@ l'ordre des départs. Un vol qui demande plus de chauffeurs qu'aucun créneau
 n'en offre n'est pas chargé (`handling-chauffeurs`). La durée d'un vol reste
 celle de sa compagnie.
 
+### Le camion du handling (retour d'usage du 28/09)
+
+« Nombre de chauffeurs par camion, combien de vols charge un camion (en
+général 1), et le temps = aller sur la piste + charger l'avion + revenir à
+l'unité. » Un trajet part avec `chauffeurs.long` ou `chauffeurs.court`
+chauffeurs (selon la catégorie de la compagnie) ; il dure `allers[cie]` (du
+quai à l'avion) + `durees[cie]` (charger l'avion, pour chaque vol du camion) +
+`retours[cie]` (revenir à l'unité), `*` pour toutes. Le vol est chargé à la
+fin de SON chargement ; les chauffeurs et le camion sont pris jusqu'au retour.
+`volsParCamion` (1 par défaut) : le camion prend aussi les vols suivants dans
+l'ordre des départs, de la même catégorie, déjà complets et dont le « pas
+avant » est passé quand il y arrive — un seul aller, un seul retour.
+`camions` : combien de camions peuvent être dehors en même temps (0 : pas de
+limite). Sans créneau de chauffeurs, « vols en même temps » compte les camions.
+
 ### Le handling : le vol redevient l'unité
 
 Tous les autres services préparent une compagnie × classe **une fois pour tous

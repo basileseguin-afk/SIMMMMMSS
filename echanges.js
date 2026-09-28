@@ -752,8 +752,8 @@
       'Poste réglementaire', 'Présence (min)', 'Emporte du matériel', 'Débit robot (plateaux/h)',
       'Effectif mini robot', 'Plafond plonge (u/h)', 'Permanent', 'Identifiant',
       'Vols en même temps', 'Pas avant départ (h)', 'Compagnies chargées', 'Vagues',
-      'Chauffeurs long courrier', 'Chauffeurs court courrier', 'Plonge par vol']];
-    const handling = [['Atelier', 'Compagnie', 'Minutes par vol', 'Courrier']];
+      'Chauffeurs long courrier', 'Chauffeurs court courrier', 'Plonge par vol', 'Vols par camion', 'Camions disponibles']];
+    const handling = [['Atelier', 'Compagnie', 'Aller (min)', 'Minutes par vol', 'Retour (min)', 'Courrier']];
     const chauffeurs = [['Atelier', 'Début', 'Fin', 'Chauffeurs']];
     const plongeVol = [['Atelier', 'Compagnie', 'Minutes par vol']];
     const fab = [['Atelier', 'Ordre', 'Compagnies × classes']];
@@ -777,13 +777,14 @@
         a.type === 'dispo' && a.permanent === false ? (a.vagues && a.vagues.length ? a.vagues : [{ debut: a.debut, jour: a.jour }])
           .map(v => jourEcrit(v.jour || 0) + ' ' + v.debut).join('; ') : a.type === 'dispo' && a.ouverture ? ecrireOuverture(a) : null,
         a.type === 'handling' ? (a.chauffeurs || {}).long ?? 2 : null, a.type === 'handling' ? (a.chauffeurs || {}).court ?? 1 : null,
-        a.type === 'lavage' ? (a.parVol ? 'oui' : 'non') : null]);
+        a.type === 'lavage' ? (a.parVol ? 'oui' : 'non') : null,
+        a.type === 'handling' ? a.volsParCamion || 1 : null, a.type === 'handling' ? a.camions || null : null]);
       if (a.type === 'handling') {
         // Une ligne par compagnie réglée : sa durée, et si elle est long courrier.
-        const longs = new Set(a.longs || []), d = a.durees || {};
-        if (d[P.TOUTES] !== undefined) handling.push([a.nom, 'toutes', d[P.TOUTES], null]);
-        for (const cie of [...new Set(Object.keys(d).filter(k => k !== P.TOUTES).concat([...longs]))].sort())
-          handling.push([a.nom, cie, d[cie] ?? null, longs.has(cie) ? 'long' : 'court']);
+        const longs = new Set(a.longs || []), d = a.durees || {}, al = a.allers || {}, re = a.retours || {};
+        if ([d, al, re].some(m => m[P.TOUTES] !== undefined)) handling.push([a.nom, 'toutes', al[P.TOUTES] ?? null, d[P.TOUTES] ?? null, re[P.TOUTES] ?? null, null]);
+        for (const cie of [...new Set([d, al, re].flatMap(m => Object.keys(m)).filter(k => k !== P.TOUTES).concat([...longs]))].sort())
+          handling.push([a.nom, cie, al[cie] ?? null, d[cie] ?? null, re[cie] ?? null, longs.has(cie) ? 'long' : 'court']);
         for (const c of (a.creneaux || [])) chauffeurs.push([a.nom, c.de, c.a, c.n]);
       }
       if (a.type === 'lavage' && a.parVol) for (const [cie, v] of Object.entries(a.durees || {})) plongeVol.push([a.nom, cie === P.TOUTES ? 'toutes' : cie, v]);
@@ -858,7 +859,10 @@
         'Handling : il charge les vols un par un, dans l’ordre des départs. Une ligne par compagnie : ses minutes par vol ;',
         '   « toutes » pour les compagnies sans ligne. Dans Ateliers : vols en même temps, pas avant (heures avant le départ),',
         '   compagnies chargées (« toutes », ou « AF, TX »). Courrier : long ou court ; un vol long courrier prend',
-        '   « Chauffeurs long courrier » chauffeurs (2 par défaut), un court « Chauffeurs court courrier » (1).',
+        '   « Chauffeurs long courrier » chauffeurs par camion (2 par défaut), un court « Chauffeurs court courrier » (1).',
+        '   Aller (min) : du quai à l’avion ; Minutes par vol : charger l’avion ; Retour (min) : revenir à l’unité. Le camion part',
+        '   avec ses chauffeurs pour tout le trajet. Vols par camion (Ateliers) : en général 1 ; plus, il charge aussi les vols',
+        '   suivants de la même catégorie s’ils sont prêts. Camions disponibles : vide = pas de limite.',
         'Chauffeurs : les créneaux du handling, le jour J (Début, Fin, nombre de chauffeurs). Un vol attend d’avoir ses chauffeurs libres.',
         '   Sans créneau : « Vols en même temps » (Ateliers). Un créneau qui finit avant son début passe minuit.',
         'Plonge par vol : Plonge par vol = oui (Ateliers), puis une ligne par compagnie : le temps qu’un tunnel met à laver un de ses vols ;',
@@ -1036,6 +1040,9 @@
             court: Math.max(1, Math.round(T.nombreDe(o.chauffeurs_court_courrier, (ah.chauffeurs || {}).court ?? 1)) || 1) };
           a.longs = (ah.longs || []).slice();
           a.creneaux = JSON.parse(JSON.stringify(ah.creneaux || []));
+          a.allers = { ...(ah.allers || {}) }; a.retours = { ...(ah.retours || {}) };
+          a.volsParCamion = Math.max(1, Math.round(T.nombreDe(o.vols_par_camion, ah.volsParCamion ?? 1)) || 1);
+          a.camions = Math.max(0, Math.round(T.nombreDe(o.camions_disponibles, ah.camions ?? 0)) || 0);
         }
         a._ligne = o._ligne;
         parNom.set(k, a); out.ateliers.push(a);
@@ -1147,13 +1154,25 @@
         const a = atelierNomme(o.atelier, fHa.nom, o._ligne); if (!a) continue;
         err.essayer(fHa.nom, o._ligne, () => {
           if (a.type !== 'handling') throw new Error(a.nom + ' n’est pas un handling');
-          if (!lus.has(a)) { lus.add(a); a.durees = {}; if (fHa.lignes[0] && fHa.lignes[0].some(h => T.cleEntete(h) === 'courrier')) a.longs = []; }
+          const entetes = (fHa.lignes[0] || []).map(h => T.cleEntete(h));
+          if (!lus.has(a)) {
+            lus.add(a); a.durees = {};
+            if (entetes.includes('courrier')) a.longs = [];
+            if (entetes.includes('aller_min')) a.allers = {};
+            if (entetes.includes('retour_min')) a.retours = {};
+          }
           const c = String(o.compagnie ?? '').trim();
           const cie = !c || T.cleEntete(c) === 'toutes' ? P.TOUTES : c.toUpperCase();
           const courrier = T.cleEntete(o.courrier ?? '');
           if (courrier && cie !== P.TOUTES) {
             if (!['long', 'court'].includes(courrier)) throw new Error('courrier : « long » ou « court »');
             if (courrier === 'long' && !a.longs.includes(cie)) a.longs.push(cie);
+          }
+          for (const [col, m] of [['aller_min', 'allers'], ['retour_min', 'retours']]) {
+            const x = T.nombreDe(o[col], null);
+            if (x === null) continue;
+            if (!Number.isFinite(x) || x < 0) throw new Error(col.replace('_min', '') + ' : nombre positif attendu');
+            a[m] = { ...(a[m] || {}), [cie]: x };
           }
           const v = T.nombreDe(o.minutes_par_vol, null);
           if (v === null) return;

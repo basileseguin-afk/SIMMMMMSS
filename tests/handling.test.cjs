@@ -197,3 +197,39 @@ test('un vol attend d’avoir ses chauffeurs ; sans assez de chauffeurs, il n’
   assert.deepEqual(r3.vols.map(x => P.hhmm(x.debut)), ['05:00', '05:00', '06:00'], 'le 3e attend le créneau de 06:00');
   assert.equal(r3.vols[2].attenteChauffeurs, 60);
 });
+
+/* Le camion (retour d'usage du 28/09) : des chauffeurs par camion, un ou
+ * plusieurs vols par camion, et le temps d'un trajet = aller sur la piste +
+ * charger l'avion + revenir à l'unité. */
+test('un trajet : aller, charger, revenir ; le vol est chargé avant le retour du camion', () => {
+  const pret = [at('pr', 'prepa', '00:00', [['AF/BC'], ['AF/YC'], ['TX/YC']], { personnes: 99 })];
+  assert.deepEqual(P.trajetHandling({ allers: { '*': 10, AF: 15 }, retours: { '*': 12 } }, 'af'), { aller: 15, retour: 12 });
+  assert.deepEqual(P.trajetHandling({}, 'TX'), { aller: 0, retour: 0 }, 'sans trajet : 0');
+  // Un seul camion (1 chauffeur, court courrier partout) : AF1 part 06:00, aller 15, charge 30, retour 15.
+  const r = jouer(handling({ creneaux: [{ de: '05:00', a: '14:00', n: 1 }], durees: { '*': 30 }, allers: { '*': 15 }, retours: { '*': 15 } }), pret);
+  assert.equal(r.ok, true, JSON.stringify(r.anomalies));
+  const v = id => r.vols.find(x => x.id === id);
+  assert.deepEqual([P.hhmm(v('AF1').debut), P.hhmm(v('AF1').fin)], ['06:00', '06:45'], 'chargé à 06:45, avant le retour du camion');
+  const l = r.lots.find(x => x.vol === 'AF1');
+  assert.equal(P.hhmm(l.trajet.retour), '07:00', 'le camion est de retour à 07:00');
+  assert.equal(P.hhmm(v('TX1').debut), '07:00', 'TX1 attend le retour du seul chauffeur');
+});
+
+test('plusieurs vols par camion : les suivants, même catégorie, déjà prêts ; et un nombre de camions', () => {
+  const vols = [{ id: 'TX1', cie: 'TX', sens: 'DEP', std: h('08:00'), yc: 50 }, { id: 'TX2', cie: 'TX', sens: 'DEP', std: h('08:10'), yc: 50 },
+    { id: 'AF1', cie: 'AF', sens: 'DEP', std: h('08:20'), yc: 50 }, { id: 'TX3', cie: 'TX', sens: 'DEP', std: h('08:30'), yc: 50 }];
+  const pret = [at('pr', 'prepa', '00:00', [['TX/YC'], ['AF/YC']], { personnes: 99 })];
+  const ha = p => handling({ longs: ['AF'], creneaux: [{ de: '04:00', a: '12:00', n: 10 }], durees: { '*': 20 }, allers: { '*': 10 }, retours: { '*': 10 }, ...p });
+  const r = jouer(ha({ volsParCamion: 2 }), pret, vols);
+  assert.equal(r.ok, true, JSON.stringify(r.anomalies));
+  const t = id => r.lots.find(x => x.vol === id).trajet;
+  assert.deepEqual(t('TX1').vols, ['TX1', 'TX2'], 'TX1 et TX2 dans le même camion');
+  assert.deepEqual(t('AF1').vols, ['AF1'], 'AF1 est long courrier : son propre camion');
+  assert.deepEqual(t('TX3').vols, ['TX3']);
+  const tx2 = r.vols.find(x => x.id === 'TX2');
+  assert.equal(tx2.fin - r.vols.find(x => x.id === 'TX1').fin, 20, 'TX2 est chargé après TX1, dans le même trajet');
+  // Un seul camion disponible : les trajets se suivent, même avec des chauffeurs en trop.
+  const r1 = jouer(ha({ camions: 1 }), pret, vols);
+  const d = r1.lots.filter(x => x.handling).map(x => [x.trajet.depart, x.trajet.retour]);
+  for (let i = 1; i < d.length; i++) assert.ok(d[i][0] >= d[i - 1][1], 'un camion à la fois');
+});
