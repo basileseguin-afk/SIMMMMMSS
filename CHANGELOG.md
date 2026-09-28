@@ -5,6 +5,29 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-28 — Données › Récap des man-minutes
+
+Retour d'usage : « c'est trop dur d'avoir un point de vue sur l'ensemble des
+man-minutes ». Choix confirmés : commandes × services, par vol ou sur la
+journée, modifiable, et un fichier Excel de paramétrage pour les grosses
+modifications.
+
+- Nouvelle page **Données › Récap des man-minutes** : une ligne par commande
+  (compagnie × classe), une colonne par service qui lit le barème. Chaque case
+  dit d'où vient sa valeur : propre à la compagnie, « toutes compagnies »,
+  fixée dans une case d'équipe (elle prime), à renseigner, ou hors chemin.
+- **Par vol** : modifiable ; une case changée devient propre à cette
+  compagnie × classe, vidée (ou égale à la commune) elle suit la valeur
+  « toutes compagnies ». **Sur la journée** : par vol × nombre de vols,
+  totaux par commande et par service, en heures.
+- Chercher une compagnie ; ↶ Annuler / ↷ Rétablir.
+- **⇩ Man-minutes / ⇧ Importer** : un fichier de paramétrage — la feuille
+  « Man-minutes par vol » (le tableau de l'écran) et « Toutes compagnies »
+  (la valeur commune de chaque classe). Seuls les services présents en colonne
+  changent ; l'import dit combien de valeurs changent, et toutes les erreurs.
+- `echanges.js` : `recapManMinutes`, `recapVersClasseur`, `classeurVersRecap`.
+  Tests : `tests/recap.test.cjs`, `tests/recap-browser.cjs`.
+
 ## 2026-09-28 — Correctif : la cuisine n'est jamais fondue comme la légumerie
 
 Retour d'usage : « la cuisine se fait par compagnie × classe, ce n'est pas

@@ -98,6 +98,22 @@ Feuille absente : les valeurs du site restent.
 Les tunnels d'une plonge : `Atelier`, `Tunnel`, `Débit (u/h)`, `Personnes`,
 `Actif`.
 
+### Le fichier des man-minutes (Données › Récap des man-minutes)
+
+Un fichier de **paramétrage** du barème, pour les grosses modifications :
+« ⇩ Man-minutes », modifier dans Excel, « ⇧ Importer ».
+
+- **Man-minutes par vol** : `Compagnie`, `Classe`, `Vols (info)`, puis une
+  colonne par service (son nom). Chaque case : les man-minutes d'un vol de
+  cette commande dans ce service. Égale à la valeur « Toutes compagnies » de sa
+  classe, ou vide : elle la suit ; une autre valeur devient propre à la
+  compagnie.
+- **Toutes compagnies** : `Classe`, puis une colonne par service : la valeur
+  commune de chaque classe. Vide : aucune.
+- Seuls les services présents en colonne changent. Les man-minutes fixées dans
+  une case d'équipe ne sont pas dans ce fichier (classeur des cases, feuille
+  « Man-minutes »).
+
 ### Feuille « Handling »
 
 Les durées d'un handling, une ligne par compagnie : `Atelier`, `Compagnie`,

@@ -31,6 +31,7 @@
     ],
     reglages: [
       { id: 'rg-minutes', nom: 'Temps de travail', ico: 'chrono' },
+      { id: 'rg-recap', nom: 'Récap des man-minutes', ico: 'journee' },
       { id: 'rg-rythme', nom: 'Rythme et pauses', ico: 'sablier' }
     ],
     // Arriver « sur le plan » (un lien, « voir sur le plan »), c'est arriver
@@ -57,7 +58,8 @@
       resume: 'Ce que vous importez',
       pages: [
         { id: 'v-programme', intro: 'Le programme de vols de la journée : importez le vôtre, en Excel ou en CSV.' },
-        { id: 'rg-minutes', intro: 'Les minutes de travail d’un vol, service par service : l’étude de temps.' }
+        { id: 'rg-minutes', intro: 'Les minutes de travail d’un vol, service par service : l’étude de temps.' },
+        { id: 'rg-recap', intro: 'Toutes les man-minutes d’un coup d’œil : une ligne par commande, une colonne par service ; à modifier ici ou dans Excel.' }
       ] },
     { id: 'organisation', nom: 'Organisation', ico: 'equipe', couleur: 'var(--c-equipes)',
       resume: 'Ce que vous décrivez',

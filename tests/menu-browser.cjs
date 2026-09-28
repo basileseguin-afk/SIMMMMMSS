@@ -42,7 +42,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await actif(),'at-chemins','« Décrire une première équipe » ouvre les chemins');
 
   // 2. Le menu de l'en-tête : une partie ouvre ses pages, et seulement elles.
-  const attendues={donnees:['v-programme','rg-minutes'],
+  const attendues={donnees:['v-programme','rg-minutes','rg-recap'],
     organisation:['at-chemins','at-equipes','at-grille','u-services','u-liens','u-lecture'],
     reglages:['v-horaires','rg-rythme'],
     resultats:['j-chiffres','j-plan','at-planning','at-repas','v-departs','j-stocks','j-comparer']};

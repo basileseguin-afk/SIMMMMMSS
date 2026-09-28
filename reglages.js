@@ -202,6 +202,36 @@
           <div id="rg-bareme"></div>
           <p class="rg-reset-ligne"><button class="lien-discret danger" id="rg-reset">Remettre les chiffres d’exemple</button></p>
         </div>
+        <div class="panneau" id="rg-recap-panneau" data-sous="rg-recap">
+          <div class="titre-aide"><h3>Toutes les man-minutes, d’un coup d’œil</h3><details class="aide">
+            <summary aria-label="Comment lire ce tableau ?">?</summary>
+            <span class="aide-corps">
+              <p>Une ligne par commande (compagnie × classe), une colonne par service. <b>Par vol</b> : les
+                man-minutes d’un vol de cette commande dans ce service — c’est le barème, modifiable ici.
+                <b>Sur la journée</b> : par vol × nombre de vols, pour voir où part le travail.</p>
+              <p>Changer une case donne à cette compagnie × classe sa valeur propre ; la vider la ramène à la
+                valeur « toutes compagnies » de sa classe. Une valeur fixée dans une case d’équipe prime pour
+                cette équipe : elle se change dans la case.</p>
+              <p><b>⇩ Man-minutes</b> donne ce même tableau dans Excel, pour les grosses modifications ;
+                <b>⇧ Importer</b> le reprend.</p>
+            </span></details></div>
+          <div class="rg-actions rg-recap-outils">
+            <div class="rg-mode" role="group" aria-label="Valeurs montrées">
+              <button class="btn btn-sm" data-rg-action="recap-vue" data-vue="vol" aria-pressed="true">Par vol</button>
+              <button class="btn btn-sm" data-rg-action="recap-vue" data-vue="jour" aria-pressed="false">Sur la journée</button>
+            </div>
+            <label class="rg-recap-cherche">Chercher <input id="rg-recap-filtre" type="search" placeholder="Compagnie : AF, TX…"></label>
+            <span class="rg-recap-fin"></span>
+            <button class="btn btn-sm" id="rg-recap-undo" title="Annuler la dernière modification">↶ Annuler</button>
+            <button class="btn btn-sm" id="rg-recap-redo" title="Rétablir ce qui a été annulé">↷ Rétablir</button>
+            <button class="btn btn-sm" id="rg-recap-export" title="Le tableau des man-minutes dans un classeur Excel, à modifier puis réimporter">⇩ Man-minutes</button>
+            <button class="btn btn-sm" id="rg-recap-import-btn" title="Réimporter le classeur des man-minutes modifié">⇧ Importer</button>
+            <input id="rg-recap-import" type="file" accept=".xlsx,.csv" hidden>
+          </div>
+          <p class="rg-recap-legende" aria-hidden="true"><span class="rgr propre">valeur propre</span><span class="rgr commun">toutes compagnies</span>
+            <span class="rgr case">fixée dans une case</span><span class="rgr manque">à renseigner</span><span class="rgr hors">·</span> ne passe pas par ce service</p>
+          <div id="rg-recap" class="rg-recap"></div>
+        </div>
         <div class="panneau" data-sous="rg-rythme">
           <div class="titre-aide"><h3>Rythme de travail</h3><details class="aide">
             <summary aria-label="À quoi sert le rythme ?">?</summary>
@@ -252,6 +282,12 @@
         this.changer(() => { this.etat.bareme = clone(P.BAREME_DEMO); }, 'Barème de démonstration rétabli.');
       });
       sur('rg-export', 'click', () => this.exporter());
+      sur('rg-recap-undo', 'click', () => this.histoire(false));
+      sur('rg-recap-redo', 'click', () => this.histoire(true));
+      sur('rg-recap-export', 'click', () => this.exporterRecap());
+      sur('rg-recap-import-btn', 'click', () => document.getElementById('rg-recap-import').click());
+      sur('rg-recap-import', 'change', e => this.importerRecap(e));
+      sur('rg-recap-filtre', 'input', e => { this.recapFiltre = e.target.value.trim().toUpperCase(); this.rendreRecap(); });
       sur('rg-import-btn', 'click', () => document.getElementById('rg-import').click());
       sur('rg-import', 'change', e => this.importer(e));
       sur('rg-seuil-ajouter', 'click', () => this.changer(() => {
@@ -286,6 +322,16 @@
             const cabine = v.slice(v.lastIndexOf('/') + 1);
             // Elle naît à la valeur commune : on part de ce qui s'appliquait.
             ligne[v] = ligne[P.cleBareme(P.TOUTES, cabine)] || 0;
+          } else if (champ === 'recap') {
+            // Une case du récap : la valeur de cette compagnie × classe dans ce
+            // service. Égale à la valeur commune, ou vidée : elle suit la commune.
+            const { classe } = e.target.dataset, i = classe.lastIndexOf('/');
+            const cab = classe.slice(i + 1), cle2 = P.cleBareme(classe.slice(0, i), cab);
+            const ligne = this.etat.bareme[service] || (this.etat.bareme[service] = clone(this.baremeComplet()[service] || {}));
+            const commun = ligne[P.cleBareme(P.TOUTES, cab)];
+            if (v === '') delete ligne[cle2];
+            else { const n = min(v.replace(',', '.'), 0); if (Number.isFinite(commun) && n === commun) delete ligne[cle2]; else ligne[cle2] = n; }
+            if (Object.keys(ligne).some(k => !k.startsWith(P.TOUTES + '/'))) this.etat.detail[service] = 'compagnie';
           } else if (champ === 'seuil-apres') this.etat.regime.seuils[+index].apres = min(v, 0);
           else if (champ === 'seuil-duree') this.etat.regime.seuils[+index].duree = min(v, 0);
         }, 'Enregistré.'), 0);
@@ -297,6 +343,8 @@
           this.serviceOuvert = d.open ? null : d.dataset.service;
           return;   // le navigateur fait le reste : on ne redessine pas
         }
+        const rv = e.target.closest('[data-rg-action="recap-vue"]');
+        if (rv) { this.recapVue = rv.dataset.vue; return this.rendreRecap(); }
         const m = e.target.closest('[data-rg-action="mode"]');
         if (m) return this.changer(() => {
           if (m.dataset.mode === 'compagnie') this.etat.detail[m.dataset.service] = 'compagnie';
@@ -319,11 +367,11 @@
         const s = document.getElementById('rg-status'); if (s) s.textContent = message || '';
       }
       this.rendreBareme();
+      this.rendreRecap();
       this.rendreRendement();
       this.rendreRegime();
-      const u = document.getElementById('rg-undo'), r = document.getElementById('rg-redo');
-      if (u) u.disabled = !this.undo.length;
-      if (r) r.disabled = !this.redo.length;
+      for (const id of ['rg-undo', 'rg-recap-undo']) { const b = document.getElementById(id); if (b) b.disabled = !this.undo.length; }
+      for (const id of ['rg-redo', 'rg-recap-redo']) { const b = document.getElementById(id); if (b) b.disabled = !this.redo.length; }
     }
 
     /*
@@ -479,6 +527,87 @@
              bouton <b>Importer</b>. D’ici là, les durées montrent comment les services s’enchaînent,
              pas combien de personnes il faut.</span></details></div>`
         : '');
+    }
+
+    /* Le contexte du récap : le barème complet, les commandes, leurs chemins, les cases. */
+    contexteRecap() {
+      const classes = this.a.classes ? this.a.classes() : [];
+      return { bareme: this.baremeComplet(), services: this.a.services ? this.a.services() : [], classes,
+        routes: this.a.routes ? this.a.routes(classes) : new Map(), ateliers: this.a.ateliers ? this.a.ateliers() : [],
+        sansBareme: new Set(this.a.sansBareme ? this.a.sansBareme() : []) };
+    }
+
+    /*
+     * Le récap : tout le barème d'un coup d'œil. Une ligne par commande, une
+     * colonne par service ; par vol (modifiable) ou sur la journée.
+     */
+    rendreRecap() {
+      const box = document.getElementById('rg-recap'); if (!box || !root.OrlyEchanges) return;
+      const vue = this.recapVue === 'jour' ? 'jour' : 'vol';
+      for (const b of document.querySelectorAll('[data-rg-action="recap-vue"]')) b.setAttribute('aria-pressed', String(b.dataset.vue === vue));
+      const r = root.OrlyEchanges.recapManMinutes(this.contexteRecap());
+      const filtre = this.recapFiltre || '';
+      const lignes = r.lignes.filter(l => !filtre || l.classe.id.includes(filtre));
+      // Redessiner le tableau arrache le champ qu'on quitte : seulement s'il a changé.
+      const signature = JSON.stringify([vue, filtre, r.colonnes.map(c => [c.id, c.nom]), lignes.map(l => [l.classe.id, l.vols, l.cellules])]);
+      if (box._signature === signature) return;
+      box._signature = signature;
+      if (!r.colonnes.length || !r.lignes.length) {
+        box.innerHTML = '<p class="mini-note">Rien à montrer : importez des vols et le barème, ou décrivez les chemins des commandes.</p>';
+        return;
+      }
+      const fr = n => String(Math.round(n * 10) / 10).replace('.', ',');
+      const heures = n => (n >= 60 ? fr(n / 60) + ' h' : fr(n) + ' min');
+      const I = root.OrlyIcones;
+      const cellule = (l, sv) => {
+        const c = l.cellules[sv.id], lib = P.libelleClasse(l.classe.id) + ' · ' + sv.nom;
+        if (c.source === 'hors') return `<td class="rgr hors" title="${esc(P.libelleClasse(l.classe.id))} ne passe pas par ${esc(sv.nom)}">·</td>`;
+        if (vue === 'jour') {
+          return `<td class="rgr ${c.source}" title="${esc(lib)} : ${c.parVol == null ? 'à renseigner' : fr(c.parVol) + ' man-min par vol × ' + l.vols + ' vol' + (l.vols > 1 ? 's' : '')}">${c.jour == null ? '—' : fr(c.jour)}</td>`;
+        }
+        if (c.source === 'case') {
+          return `<td class="rgr case" title="Fixée dans la case « ${esc(c.atelier)} » (barème : ${c.bareme == null ? 'rien' : fr(c.bareme)}). Elle se change dans la case.">${fr(c.parVol)}<small>case</small></td>`;
+        }
+        return `<td class="rgr ${c.source}"><input type="number" min="0" step="0.1" value="${c.parVol == null ? '' : c.parVol}"
+          placeholder="${c.source === 'manque' ? 'à saisir' : ''}" data-rg-champ="recap" data-service="${esc(sv.id)}" data-classe="${esc(l.classe.id)}"
+          aria-label="Man-minutes par vol : ${esc(lib)}" title="${esc(lib)} — ${c.source === 'propre' ? 'valeur propre' : c.source === 'commun' ? 'valeur toutes compagnies' : 'à renseigner'}"></td>`;
+      };
+      const manque = r.lignes.reduce((n, l) => n + Object.values(l.cellules).filter(c => c.source === 'manque').length, 0);
+      box.innerHTML = `<p class="rg-recap-resume">${r.lignes.length} commandes · ${r.colonnes.length} services · <b>${heures(r.totaux.jourTotal)}</b> de travail sur la journée${
+        manque ? ` · <b class="rg-manque-txt">${manque} ${manque > 1 ? 'valeurs' : 'valeur'} à renseigner</b>` : ''}</p>
+        <div class="rg-recap-scroll"><table class="rg-recap-table">
+        <thead><tr><th scope="col">Commande</th><th scope="col" title="Nombre de vols de la journée">Vols</th>
+          ${r.colonnes.map(sv => `<th scope="col"><span class="rg-recap-svc">${I ? I.ico(I.icoService(sv.id, sv.nom)) : ''}${esc(sv.nom)}</span></th>`).join('')}
+          <th scope="col">${vue === 'jour' ? 'Total journée' : 'Total par vol'}</th></tr></thead>
+        <tbody>${lignes.map(l => `<tr data-classe="${esc(l.classe.id)}"><th scope="row"><span class="puce-classe" data-cab="${esc(l.classe.cabine)}"></span>${esc(P.libelleClasse(l.classe.id))}</th>
+          <td class="rg-recap-vols">${l.vols}</td>${r.colonnes.map(sv => cellule(l, sv)).join('')}<td class="rg-recap-total">${vue === 'jour' ? heures(l.jour) : fr(l.parVol)}</td></tr>`).join('')}
+        ${lignes.length ? '' : `<tr><td colspan="${r.colonnes.length + 3}" class="mini-note">Aucune commande ne correspond à « ${esc(filtre)} ».</td></tr>`}</tbody>
+        ${vue === 'jour' ? `<tfoot><tr><th scope="row">Total journée</th><td></td>${r.colonnes.map(sv => `<td>${heures(r.totaux.jour[sv.id])}</td>`).join('')}<td class="rg-recap-total">${heures(r.totaux.jourTotal)}</td></tr></tfoot>` : ''}
+        </table></div>
+        <p class="mini-note">${vue === 'jour' ? 'Man-minutes sur la journée : par vol × nombre de vols. Totaux en heures de travail.'
+          : 'Man-minutes pour un vol. Changer une case la rend propre à cette compagnie × classe ; la vider la ramène à la valeur « toutes compagnies ».'}</p>`;
+    }
+
+    exporterRecap() {
+      const E = root.OrlyEchanges, T = root.OrlyTableur;
+      T.telecharger('ory-man-minutes-' + new Date().toISOString().slice(0, 10) + '.xlsx', T.ecrireClasseur(E.recapVersClasseur(this.contexteRecap())));
+      this.rendre('Man-minutes exportées : modifiez-les dans Excel, puis « ⇧ Importer ».');
+    }
+
+    async importerRecap(e) {
+      const f = e.target.files[0]; if (!f) return;
+      try {
+        const E = root.OrlyEchanges, T = root.OrlyTableur, ctx = this.contexteRecap();
+        const r = E.classeurVersRecap(await T.lireFichier(f, 4 * 1024 * 1024), ctx.bareme, ctx);
+        if (!r.changes) return this.rendre('Man-minutes lues : aucune valeur ne change.');
+        if (!confirm('Changer ' + r.changes + (r.changes > 1 ? ' valeurs' : ' valeur') + ' du barème d’après le fichier ? L’action est annulable.')) return;
+        const detail = { ...this.etat.detail };
+        for (const [sid, t] of Object.entries(r.bareme)) if (Object.keys(t).some(k => !k.startsWith(P.TOUTES + '/'))) detail[sid] = 'compagnie';
+        this.changer(() => { this.etat.bareme = r.bareme; this.etat.detail = detail; },
+          'Man-minutes importées : ' + r.changes + (r.changes > 1 ? ' valeurs changées.' : ' valeur changée.'));
+      } catch (err) {
+        this.rendre('Import refusé — ' + err.message + '\nLes man-minutes en place sont conservées.');
+      } finally { e.target.value = ''; }
     }
 
     rendreRendement() {

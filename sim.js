@@ -1446,6 +1446,8 @@ function installerCentreReglages() {
     // Les services qui portent une équipe : ce sont leurs lignes de barème qui
     // comptent d'abord, et il faut pouvoir les repérer dans la liste.
     occupes:()=>[...new Set(((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]).map(a=>a.service))],
+    // Les cases : une man-minute fixée dans une case prime, le récap le montre.
+    ateliers:()=>(Sim.ateliers&&Sim.ateliers.state.ateliers)||[],
     // Les compagnies × classes du moment, et le parcours de chacune : c'est ce
     // que le classeur du barème propose de renseigner, service par service.
     classes:()=>Sim.ateliers?Sim.ateliers.classes:[],

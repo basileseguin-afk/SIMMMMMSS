@@ -186,6 +186,161 @@
   }
 
   /* ======================================================================
+   *  1 bis. RÉCAP DES MAN-MINUTES — tout le barème d'un coup d'œil
+   *
+   *  Une ligne par commande (compagnie × classe), une colonne par service.
+   *  Dans chaque case, les man-minutes d'UN VOL de cette commande dans ce
+   *  service, et d'où elles viennent :
+   *    propre  — la valeur de cette compagnie × classe dans le barème
+   *    commun  — la valeur « toutes compagnies » de sa classe
+   *    case    — fixée dans une case d'équipe (elle prime, pour cette case)
+   *    manque  — rien : elle y travaillerait en temps nul
+   *    hors    — son chemin ne passe pas par ce service
+   *  Sur la journée : par vol × nombre de ses vols.
+   * ====================================================================*/
+
+  /**
+   * @param ctx { bareme (complet), services:[{id,nom}], classes, routes: Map,
+   *              ateliers:[…], sansBareme?: Set }
+   * @returns {{ colonnes:[{id,nom}], lignes:[{ classe, vols, cellules:{sid:{parVol,jour,source,atelier}}, parVol, jour }],
+   *             totaux:{ parVol:{sid}, jour:{sid}, jourTotal } }}
+   */
+  function recapManMinutes(ctx) {
+    const bareme = ctx.bareme || {}, classes = ctx.classes || [], routes = ctx.routes || new Map();
+    const sans = ctx.sansBareme || new Set(), ateliers = ctx.ateliers || [];
+    const passe = (c, sid) => { const r = routes.get(c.id); return !r || r.services.has(sid); };
+    // Un service où aucune commande ne passe n'a rien à montrer : pas de colonne.
+    const colonnes = (ctx.services || []).filter(sv => !sans.has(sv.id)
+      && (Object.keys(bareme[sv.id] || {}).length || classes.some(c => routes.get(c.id) && routes.get(c.id).services.has(sv.id)))
+      && classes.some(c => passe(c, sv.id)));
+    const lignes = classes.map(c => {
+      const vols = (c.vols || []).length, cellules = {};
+      let parVol = 0, jour = 0;
+      for (const sv of colonnes) {
+        if (!passe(c, sv.id)) { cellules[sv.id] = { source: 'hors', parVol: null, jour: null }; continue; }
+        const a = ateliers.find(x => x.service === sv.id && x.type === 'manuel' && (x.lots || []).some(l => l.includes(c.id))
+          && x.minutes && Number.isFinite(x.minutes[c.id]));
+        const t = bareme[sv.id] || {};
+        const propre = t[P.cleBareme(c.cie, c.cabine)], commun = t[P.cleBareme(P.TOUTES, c.cabine)];
+        const v = a ? a.minutes[c.id] : Number.isFinite(propre) ? propre : Number.isFinite(commun) ? commun : null;
+        const source = a ? 'case' : Number.isFinite(propre) ? 'propre' : Number.isFinite(commun) ? 'commun' : 'manque';
+        cellules[sv.id] = { source, parVol: v, jour: v == null ? null : v * vols, atelier: a ? a.nom : null,
+          bareme: Number.isFinite(propre) ? propre : Number.isFinite(commun) ? commun : null };
+        if (v != null) { parVol += v; jour += v * vols; }
+      }
+      return { classe: c, vols, cellules, parVol, jour };
+    });
+    const totaux = { parVol: {}, jour: {}, jourTotal: 0 };
+    for (const sv of colonnes) {
+      totaux.parVol[sv.id] = lignes.reduce((n, l) => n + (l.cellules[sv.id].parVol || 0), 0);
+      totaux.jour[sv.id] = lignes.reduce((n, l) => n + (l.cellules[sv.id].jour || 0), 0);
+      totaux.jourTotal += totaux.jour[sv.id];
+    }
+    return { colonnes, lignes, totaux };
+  }
+
+  /**
+   * Le fichier de paramétrage des man-minutes : le tableau de l'écran, à
+   * remplir dans Excel pour les grosses modifications, puis à réimporter.
+   *   « Man-minutes par vol » — une ligne par commande, une colonne par service
+   *   « Toutes compagnies »   — la valeur commune de chaque classe, par service
+   */
+  function recapVersClasseur(ctx) {
+    const r = recapManMinutes(ctx);
+    const noms = r.colonnes.map(sv => sv.nom);
+    const lignes = [['Compagnie', 'Classe', 'Vols' + INFO, ...noms]];
+    for (const l of r.lignes) {
+      lignes.push([l.classe.cie, l.classe.cabine, l.vols, ...r.colonnes.map(sv => {
+        const c = l.cellules[sv.id];
+        return c.source === 'hors' ? null : c.bareme;     // le barème, pas la valeur fixée dans une case
+      })]);
+    }
+    const communs = [['Classe', ...noms]];
+    for (const cab of P.CABINES) communs.push([cab, ...r.colonnes.map(sv => { const v = ((ctx.bareme || {})[sv.id] || {})[P.cleBareme(P.TOUTES, cab)]; return Number.isFinite(v) ? v : null; })]);
+    return [
+      { nom: 'Man-minutes par vol', lignes },
+      { nom: 'Toutes compagnies', lignes: communs },
+      lisezMoi('Man-minutes — fichier de paramétrage, à modifier dans Excel puis réimporter', [
+        'Man-minutes par vol : une ligne par commande (compagnie × classe), une colonne par service.',
+        '   Chaque case : les man-minutes d’UN vol de cette commande dans ce service. Pour la journée, le calcul multiplie par le nombre de vols.',
+        '   Une case égale à la valeur « Toutes compagnies » de sa classe la suit ; une autre valeur devient propre à cette compagnie.',
+        '   Une case vidée revient à la valeur « Toutes compagnies ». Une case vide d’un service où la commande ne passe pas est ignorée.',
+        'Toutes compagnies : la valeur commune de chaque classe, par service. Vide : aucune.',
+        'Les colonnes sont des services : ajoutez-en ou retirez-en, seules celles présentes sont modifiées.',
+        'Les man-minutes fixées dans une case d’équipe ne sont pas ici : elles se règlent dans la case (ou dans le classeur des cases).'
+      ])
+    ];
+  }
+
+  /**
+   * Relit le fichier de paramétrage. Seuls les services présents en colonne
+   * changent ; les autres gardent leur barème.
+   * @param bareme le barème en place (complet)
+   * @returns {{ bareme, changes:number }}
+   */
+  function classeurVersRecap(feuilles, bareme, ctx) {
+    const err = new Erreurs();
+    const f = T.feuille(feuilles, 'Man-minutes par vol', 'Man minutes par vol');
+    if (!f) throw new Error('Feuille « Man-minutes par vol » introuvable : exportez le fichier depuis le récap des man-minutes.');
+    const service = T.correspondance(ctx.services || []);
+    const out = JSON.parse(JSON.stringify(bareme || {}));
+    const avant = JSON.stringify(out);
+    const colonnesDe = (feuille, depuis) => (feuille.lignes[0] || []).map((h, i) => {
+      if (i < depuis || h == null || String(h).trim() === '' || /\(info\)$/.test(String(h).trim())) return null;
+      const sid = service(String(h).trim());
+      if (!sid) err.ajouter(feuille.nom, 1, 'service inconnu en colonne : « ' + h + ' »');
+      return sid;
+    });
+    const nombre = (feuille, ligne, v) => {
+      if (v === null || v === undefined || String(v).trim() === '' || /^[—·-]$/.test(String(v).trim())) return null;
+      let n; try { n = T.nombreDe(v, NaN); } catch (e) { n = NaN; }
+      if (!(n >= 0)) { err.ajouter(feuille.nom, ligne, 'man-minutes positives ou nulles attendues, pas « ' + v + ' »'); return undefined; }
+      return Math.round(n * 100) / 100;
+    };
+    // 1. Les valeurs communes d'abord : une case égale à la sienne la suit.
+    const fc = T.feuille(feuilles, 'Toutes compagnies');
+    if (fc) {
+      const cols = colonnesDe(fc, 1);
+      fc.lignes.slice(1).forEach((row, k) => {
+        const cab = String(row[0] ?? '').trim().toUpperCase(); if (!cab) return;
+        if (!P.CABINES.includes(cab)) { err.ajouter(fc.nom, k + 2, 'classe inconnue « ' + row[0] + ' »'); return; }
+        cols.forEach((sid, i) => {
+          if (!sid) return;
+          const v = nombre(fc, k + 2, row[i]); if (v === undefined) return;
+          const t = out[sid] || (out[sid] = {}), cle = P.cleBareme(P.TOUTES, cab);
+          if (v === null) delete t[cle]; else t[cle] = v;
+        });
+      });
+    }
+    // 2. Les commandes : propre si elle diffère de la valeur commune.
+    const cols = colonnesDe(f, 2);
+    const routes = ctx.routes || new Map();
+    f.lignes.slice(1).forEach((row, k) => {
+      const cie = String(row[0] ?? '').trim().toUpperCase(), cab = String(row[1] ?? '').trim().toUpperCase();
+      if (!cie && !cab) return;
+      if (!cie || cie.includes('/') || cie.length > 40) { err.ajouter(f.nom, k + 2, 'compagnie illisible « ' + (row[0] ?? '') + ' »'); return; }
+      if (!P.CABINES.includes(cab)) { err.ajouter(f.nom, k + 2, 'classe inconnue « ' + (row[1] ?? '') + ' » (BC, PC, YC, CREW ou SPML)'); return; }
+      const r = routes.get(P.idClasse(cie, cab));
+      cols.forEach((sid, i) => {
+        if (!sid) return;
+        const v = nombre(f, k + 2, row[i]); if (v === undefined) return;
+        const t = out[sid] || (out[sid] = {}), cle = P.cleBareme(cie, cab), commun = t[P.cleBareme(P.TOUTES, cab)];
+        if (v === null) { if (!r || r.services.has(sid)) delete t[cle]; return; }
+        if (Number.isFinite(commun) && commun === v) delete t[cle]; else t[cle] = v;
+      });
+    });
+    err.lever();
+    for (const k of Object.keys(out)) if (!Object.keys(out[k]).length && !(bareme || {})[k]) delete out[k];
+    // Le nombre de valeurs qui changent, pour le dire avant de remplacer.
+    let changes = 0;
+    const a = JSON.parse(avant);
+    for (const sid of new Set([...Object.keys(a), ...Object.keys(out)])) {
+      for (const cle of new Set([...Object.keys(a[sid] || {}), ...Object.keys(out[sid] || {})])) if ((a[sid] || {})[cle] !== (out[sid] || {})[cle]) changes++;
+    }
+    return { bareme: out, changes };
+  }
+
+  /* ======================================================================
    *  2. VOLS
    * ====================================================================*/
 
@@ -752,7 +907,7 @@
     return { etat: out, ajouteesAuto: notes };
   }
 
-  const api = { baremeVersClasseur, classeurVersBareme, volsVersClasseur, classeurVersVols,
+  const api = { baremeVersClasseur, classeurVersBareme, recapManMinutes, recapVersClasseur, classeurVersRecap, volsVersClasseur, classeurVersVols,
     ateliersVersClasseur, classeurVersAteliers, horairesVersClasseur, classeurVersHoraires, estClasseurHoraires, jourDe };
   if (enNode && module.exports) module.exports = api;
   else root.OrlyEchanges = api;

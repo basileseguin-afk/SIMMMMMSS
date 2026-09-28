@@ -120,6 +120,12 @@ le rouge ne sert qu’aux retards.
    - *Temps de travail* : les minutes d’un vol, service par service et classe
      par classe (une valeur commune, des valeurs propres à une compagnie, ou une
      grille compagnie par classe).
+   - *Récap des man-minutes* : tout le barème d’un coup d’œil — une ligne
+     par commande, une colonne par service, d’où vient chaque valeur (propre,
+     toutes compagnies, fixée dans une case, à renseigner). Par vol
+     (modifiable) ou sur la journée (× vols, totaux en heures).
+     « ⇩ Man-minutes / ⇧ Importer » : le même tableau en fichier Excel de
+     paramétrage, pour les grosses modifications.
 2. **Organisation** — ce qu’on décrit.
    - *Chemins* : **un chemin par commande** (« Complet TX BC »), créé à la
      main — vide, copié d’un modèle, ou copié du chemin d’une autre commande —
@@ -385,6 +391,8 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/echanges.test.cjs` | Les trois classeurs : aller-retour, ajouts, erreurs regroupées |
 | `tests/excel-browser.cjs` | Chemins et tableau « Qui prépare quoi » dans l’interface, classeurs ateliers et vols de bout en bout |
 | `tests/menu-browser.cjs` | L’accueil (tuiles, états, « à faire ensuite »), le menu par parties, la nature de chaque page, les outils qui suivent la page, clavier, page retenue, sauvegarde, menu verrouillé pendant l’édition du plan, hauteur des bandeaux, écran de 1 024 px |
+| `tests/recap.test.cjs` | Récap des man-minutes : d’où vient chaque valeur, totaux, fichier de paramétrage (aller-retour sans changement, grosses modifications, erreurs) |
+| `tests/recap-browser.cjs` | Données › Récap des man-minutes : une ligne par commande, modifier / vider une case, sur la journée, chercher, export puis import |
 | `tests/vagues.test.cjs` | Mise à disposition par vagues : chaque commande prend la vague qui précède son besoin, attente avant la première |
 | `tests/partage-browser.cjs` | Légumerie partagée : une case pour toutes les commandes, « Besoin de légumerie ? » sur le chemin, vagues dans le tableau, fusion des cases d’avant |
 | `tests/handling.test.cjs` | Le handling par vol : classes d’un même vol réunies, ordre strict des départs, pas avant départ − X h, plusieurs quais, vol bloqué, poste fini, durée par compagnie, stocks devant le handling |
