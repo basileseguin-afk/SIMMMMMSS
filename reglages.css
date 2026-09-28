@@ -141,16 +141,28 @@
 .rgr.manque input,.rg-recap-legende .rgr.manque{border-color:#c0392b;outline:1px solid #c0392b}
 .rgr.hors{color:var(--txt2);text-align:center;opacity:.6}
 
-/* Dans chaque case du récap : man-minutes, effectif de l'équipe, durée. */
-.rgr-cel{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
-.rgr-pers{display:inline-flex;align-items:center;gap:3px}
-.rg-recap-table .rgr-pers input{width:46px;font-size:12px;padding:2px 4px}
-.rgr-pers small,.rgr-duree,.rgr-sans{font-size:11px;color:var(--txt2);font-style:normal;font-weight:400}
-.rgr-sans{font-style:italic}
-
-/* Le robot, dans le récap : un débit (plateaux/h), pas des man-minutes. */
-.rgr-debit{display:inline-flex;align-items:center;gap:3px}
-.rg-recap-table .rgr-debit input{width:64px}
-.rgr-debit small,.rgr-mm small{font-size:11px;color:var(--txt2)}
-.rgr.robot{background:color-mix(in srgb,var(--accent) 6%,transparent)}
-.rgr.robot.propre .rgr-debit input{font-weight:700}
+/* Le récap en grille : trois sous-colonnes par service (valeur · pers. · durée),
+ * alignées ; un filet entre deux services ; des champs qui ressemblent à des
+ * nombres, encadrés seulement au survol ou pendant la saisie. */
+.rg-recap-table{font-variant-numeric:tabular-nums}
+.rg-recap-table th,.rg-recap-table td{padding:5px 6px}
+.rg-recap-table .g{border-left:1px solid var(--bordure)}
+.rg-recap-table tbody tr:nth-child(even) td,.rg-recap-table tbody tr:nth-child(even) th{background:color-mix(in srgb,var(--txt2) 5%,var(--bg3,#fff))}
+.rg-recap-table tbody tr:hover td,.rg-recap-table tbody tr:hover th{background:color-mix(in srgb,var(--accent) 7%,var(--bg3,#fff))}
+.rg-recap-t1 th{border-bottom:0;padding-bottom:2px}
+.rg-recap-t2 th{top:44px;font-size:11px;font-weight:500;color:var(--txt2);text-transform:none;padding-top:0}
+.rg-recap-t1 th small{display:block;font-size:11px;font-weight:500;color:var(--txt2)}
+.rg-recap-svc{flex-direction:row;gap:6px;max-width:none;font-size:13px;white-space:nowrap}
+.rg-recap-table input{border:1px solid transparent;background:transparent;border-radius:6px;box-shadow:none;width:58px;padding:3px 5px}
+.rg-recap-table input:hover{border-color:var(--bordure)}
+.rg-recap-table input:focus{border-color:var(--accent);background:var(--bg3,#fff);outline:none}
+.rg-recap-table .rgr-p input{width:40px;color:var(--txt2)}
+.rgr-p.partage input{text-decoration:underline dotted;text-underline-offset:3px}
+.rgr-p.sans{color:var(--txt2);text-align:center}
+.rgr-p.partage>span{text-decoration:underline dotted;text-underline-offset:3px}
+.rgr-d{color:var(--txt2);font-size:12px;min-width:52px}
+.rgr.robot{background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.rgr.robot.propre input{font-weight:700}
+.rgr.case{font-weight:600}
+.rgr.manque input{border-color:#c0392b;outline:0}
+.rgr.hors{text-align:center}

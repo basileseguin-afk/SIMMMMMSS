@@ -580,53 +580,57 @@
       const fr = n => String(Math.round(n * 10) / 10).replace('.', ',');
       const heures = n => (n >= 60 ? fr(n / 60) + ' h' : fr(n) + ' min');
       const I = root.OrlyIcones;
+      // Trois sous-colonnes par service, alignées d'une ligne à l'autre :
+      // la valeur (man-min, ou débit du robot), l'effectif, la durée.
       const cellule = (l, sv) => {
         const c = l.cellules[sv.id], lib = P.libelleClasse(l.classe.id) + ' · ' + sv.nom;
-        if (c.source === 'hors') return `<td class="rgr hors" title="${esc(P.libelleClasse(l.classe.id))} ne passe pas par ${esc(sv.nom)}">·</td>`;
-        // L'équipe qui prépare : son effectif, modifiable ici, et ce que dure un vol.
+        if (c.source === 'hors') return `<td class="rgr hors g" colspan="3" title="${esc(P.libelleClasse(l.classe.id))} ne passe pas par ${esc(sv.nom)}">·</td>`;
         const eq = c.equipe;
-        const pers = !eq ? `<small class="rgr-sans" title="Aucune case ne prépare ${esc(P.libelleClasse(l.classe.id))} dans ${esc(sv.nom)}">pas de case</small>`
-          : `<span class="rgr-pers" title="Case « ${esc(eq.nom)} »${eq.commandes > 1 ? ' — partagée par ' + eq.commandes + ' commandes : son effectif vaut pour toutes' : ''}"><input type="number" min="0" max="999" step="1"
-              value="${eq.personnes}" data-rg-champ="recap-pers" data-atelier="${esc(eq.id)}" aria-label="Personnes de la case ${esc(eq.nom)}"><small>pers.${eq.commandes > 1 ? '*' : ''}</small></span>`;
         const duree = c.duree != null ? (vue === 'jour' ? c.duree * l.vols : c.duree) : null;
-        const dit = duree != null ? `<small class="rgr-duree" title="${vue === 'jour' ? 'Durée sur la journée' : 'Durée d’un vol'} : man-minutes ÷ personnes">= ${heures(duree)}</small>` : '';
+        const tdDuree = `<td class="rgr-d"${duree != null ? ` title="${c.source === 'robot' ? 'Plateaux ÷ débit' : 'Man-minutes ÷ personnes'}${vue === 'jour' ? ', sur la journée' : ', pour un vol'}"` : ''}>${duree != null ? heures(duree) : ''}</td>`;
+        const partage = eq && eq.commandes > 1;
+        const tdPers = !eq
+          ? `<td class="rgr-p sans" title="Aucune case ne prépare ${esc(P.libelleClasse(l.classe.id))} dans ${esc(sv.nom)}">—</td>`
+          : `<td class="rgr-p${partage ? ' partage' : ''}" title="${c.source === 'robot' ? 'Robot' : 'Case'} « ${esc(eq.nom)} »${c.source === 'robot' ? ' — tourne à partir de ' + (c.personnesMin ?? 1) : ''}${partage ? ' — partagée par ' + eq.commandes + ' commandes : son effectif vaut pour toutes' : ''}">`
+            + `<input type="number" min="0" max="999" step="1" value="${eq.personnes}" data-rg-champ="recap-pers" data-atelier="${esc(eq.id)}" aria-label="Personnes de ${esc(eq.nom)}"></td>`;
+        let tdVal;
         if (c.source === 'robot') {
-          // Le robot : un débit (plateaux/h) par commande, pas des man-minutes.
-          const deb = vue === 'jour'
-            ? `<span class="rgr-mm" title="${esc(lib)} : ${c.pax} plateaux sur la journée à ${fr(c.debit)} pl/h">${fr(c.debit)}<small>pl/h</small></span>`
-            : `<span class="rgr-debit"><input type="number" min="1" step="10" value="${c.debitPropre ? c.debit : ''}" placeholder="${c.debitRobot}"
+          tdVal = vue === 'jour'
+            ? `<td class="rgr robot g" title="${esc(lib)} : ${c.pax} plateaux sur la journée">${fr(c.debit)}</td>`
+            : `<td class="rgr robot g${c.debitPropre ? ' propre' : ''}"><input type="number" min="1" step="10" value="${c.debitPropre ? c.debit : ''}" placeholder="${c.debitRobot}"
                 data-rg-champ="recap-debit" data-atelier="${esc(eq.id)}" data-classe="${esc(l.classe.id)}"
                 aria-label="Débit de ${esc(lib)} sur le robot, en plateaux par heure (robot : ${c.debitRobot})"
-                title="${esc(lib)} — ${c.debitPropre ? 'débit propre' : 'débit du robot'} ; vide : celui du robot (${c.debitRobot} pl/h)"><small>pl/h</small></span>`;
-          const persR = `<span class="rgr-pers" title="Robot « ${esc(eq.nom)} » : il tourne à partir de ${c.personnesMin ?? 1} ${(c.personnesMin ?? 1) > 1 ? 'personnes' : 'personne'}"><input type="number" min="0" max="999" step="1"
-              value="${eq.personnes}" data-rg-champ="recap-pers" data-atelier="${esc(eq.id)}" aria-label="Personnes sur le robot ${esc(eq.nom)}"><small>pers. (min ${c.personnesMin ?? 1})</small></span>`;
-          const dr = duree != null ? `<small class="rgr-duree" title="Plateaux ÷ débit">= ${heures(duree)}</small>` : '';
-          return `<td class="rgr robot${c.debitPropre ? ' propre' : ''}"><div class="rgr-cel">${deb}${persR}${dr}</div></td>`;
+                title="${esc(lib)} — ${c.debitPropre ? 'débit propre' : 'débit du robot'} ; vide : celui du robot (${c.debitRobot} pl/h)"></td>`;
+        } else if (vue === 'jour') {
+          tdVal = `<td class="rgr ${c.source} g" title="${esc(lib)} : ${c.parVol == null ? 'à renseigner' : fr(c.parVol) + ' man-min par vol × ' + l.vols + ' vol' + (l.vols > 1 ? 's' : '')}">${c.jour == null ? '—' : fr(c.jour)}</td>`;
+        } else if (c.source === 'case') {
+          tdVal = `<td class="rgr case g" title="Fixée dans la case « ${esc(c.atelier)} » (barème : ${c.bareme == null ? 'rien' : fr(c.bareme)}). Elle se change dans la case.">${fr(c.parVol)}</td>`;
+        } else {
+          tdVal = `<td class="rgr ${c.source} g"><input type="number" min="0" step="0.1" value="${c.parVol == null ? '' : c.parVol}"
+            placeholder="${c.source === 'manque' ? 'à saisir' : ''}" data-rg-champ="recap" data-service="${esc(sv.id)}" data-classe="${esc(l.classe.id)}"
+            aria-label="Man-minutes par vol : ${esc(lib)}" title="${esc(lib)} — ${c.source === 'propre' ? 'valeur propre' : c.source === 'commun' ? 'valeur toutes compagnies' : 'à renseigner'}"></td>`;
         }
-        let mm;
-        if (vue === 'jour') mm = `<span class="rgr-mm" title="${esc(lib)} : ${c.parVol == null ? 'à renseigner' : fr(c.parVol) + ' man-min par vol × ' + l.vols + ' vol' + (l.vols > 1 ? 's' : '')}">${c.jour == null ? '—' : fr(c.jour)}</span>`;
-        else if (c.source === 'case') mm = `<span class="rgr-mm" title="Fixée dans la case « ${esc(c.atelier)} » (barème : ${c.bareme == null ? 'rien' : fr(c.bareme)}). Elle se change dans la case.">${fr(c.parVol)}<small>case</small></span>`;
-        else mm = `<input type="number" min="0" step="0.1" value="${c.parVol == null ? '' : c.parVol}"
-          placeholder="${c.source === 'manque' ? 'à saisir' : ''}" data-rg-champ="recap" data-service="${esc(sv.id)}" data-classe="${esc(l.classe.id)}"
-          aria-label="Man-minutes par vol : ${esc(lib)}" title="${esc(lib)} — ${c.source === 'propre' ? 'valeur propre' : c.source === 'commun' ? 'valeur toutes compagnies' : 'à renseigner'}">`;
-        return `<td class="rgr ${c.source}"><div class="rgr-cel">${mm}${pers}${dit}</div></td>`;
+        return tdVal + tdPers + tdDuree;
       };
       const manque = r.lignes.reduce((n, l) => n + Object.values(l.cellules).filter(c => c.source === 'manque').length, 0);
       box.innerHTML = `<p class="rg-recap-resume">${r.lignes.length} commandes · ${r.colonnes.length} services · <b>${heures(r.totaux.jourTotal)}</b> de travail sur la journée${
         manque ? ` · <b class="rg-manque-txt">${manque} ${manque > 1 ? 'valeurs' : 'valeur'} à renseigner</b>` : ''}</p>
         <div class="rg-recap-scroll"><table class="rg-recap-table">
-        <thead><tr><th scope="col">Commande</th><th scope="col" title="Nombre de vols de la journée">Vols</th>
-          ${r.colonnes.map(sv => `<th scope="col"><span class="rg-recap-svc">${I ? I.ico(I.icoService(sv.id, sv.nom)) : ''}${esc(sv.nom)}</span></th>`).join('')}
-          <th scope="col">${vue === 'jour' ? 'Total journée' : 'Total par vol'}</th></tr></thead>
+        <thead><tr class="rg-recap-t1"><th scope="col" rowspan="2">Commande</th><th scope="col" rowspan="2" title="Nombre de vols de la journée">Vols</th>
+          ${r.colonnes.map(sv => `<th scope="colgroup" colspan="3" class="g"><span class="rg-recap-svc">${I ? I.ico(I.icoService(sv.id, sv.nom)) : ''}${esc(sv.nom)}</span></th>`).join('')}
+          <th scope="col" rowspan="2" class="g">${vue === 'jour' ? 'Total journée' : 'Total par vol'}<small>man-min</small></th></tr>
+          <tr class="rg-recap-t2">${r.colonnes.map(sv => `<th scope="col" class="g" title="${sv.robot ? 'Débit en plateaux par heure' : vue === 'jour' ? 'Man-minutes sur la journée' : 'Man-minutes pour un vol'}">${sv.robot ? 'pl/h' : vue === 'jour' ? 'min/jour' : 'min/vol'}</th>
+            <th scope="col" title="Personnes de l’équipe qui prépare">pers.</th><th scope="col" title="${vue === 'jour' ? 'Durée sur la journée' : 'Durée d’un vol'}">durée</th>`).join('')}</tr></thead>
         <tbody>${lignes.map(l => `<tr data-classe="${esc(l.classe.id)}"><th scope="row"><span class="puce-classe" data-cab="${esc(l.classe.cabine)}"></span>${esc(P.libelleClasse(l.classe.id))}</th>
-          <td class="rg-recap-vols">${l.vols}</td>${r.colonnes.map(sv => cellule(l, sv)).join('')}<td class="rg-recap-total">${vue === 'jour' ? heures(l.jour) : fr(l.parVol)}</td></tr>`).join('')}
-        ${lignes.length ? '' : `<tr><td colspan="${r.colonnes.length + 3}" class="mini-note">Aucune commande ne correspond à « ${esc(filtre)} ».</td></tr>`}</tbody>
-        ${vue === 'jour' ? `<tfoot><tr><th scope="row">Total journée</th><td></td>${r.colonnes.map(sv => `<td>${heures(r.totaux.jour[sv.id])}</td>`).join('')}<td class="rg-recap-total">${heures(r.totaux.jourTotal)}</td></tr></tfoot>` : ''}
+          <td class="rg-recap-vols">${l.vols}</td>${r.colonnes.map(sv => cellule(l, sv)).join('')}<td class="rg-recap-total g">${vue === 'jour' ? heures(l.jour) : fr(l.parVol)}</td></tr>`).join('')}
+        ${lignes.length ? '' : `<tr><td colspan="${r.colonnes.length * 3 + 3}" class="mini-note">Aucune commande ne correspond à « ${esc(filtre)} ».</td></tr>`}</tbody>
+        ${vue === 'jour' ? `<tfoot><tr><th scope="row">Total journée</th><td></td>${r.colonnes.map(sv => `<td class="g">${sv.robot ? '' : heures(r.totaux.jour[sv.id])}</td><td></td><td></td>`).join('')}<td class="rg-recap-total g">${heures(r.totaux.jourTotal)}</td></tr></tfoot>` : ''}
         </table></div>
         <p class="mini-note">${vue === 'jour' ? 'Man-minutes sur la journée : par vol × nombre de vols. Totaux en heures de travail.'
           : 'Man-minutes pour un vol. Changer une case la rend propre à cette compagnie × classe ; la vider la ramène à la valeur « toutes compagnies ».'}
-          Dans chaque case : l’effectif de l’équipe qui prépare (modifiable), et la durée = man-minutes ÷ personnes.
-          <b>pers.*</b> : une case partagée par plusieurs commandes — son effectif vaut pour toutes.</p>`;
+          Pour chaque service : la valeur, l’effectif de l’équipe qui prépare (modifiable) et la durée = man-minutes ÷ personnes
+          (robot : plateaux ÷ débit). Un effectif <span class="rgr-p partage"><span>souligné en pointillé</span></span> est celui d’une case partagée par
+          plusieurs commandes : il vaut pour toutes.</p>`;
     }
 
     /* Ce que le récap a changé, dans l'ordre : 'bareme' ou 'cases'. */

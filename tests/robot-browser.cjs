@@ -56,7 +56,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await deb.getAttribute('placeholder'),'300','vide : celui du robot');
   await deb.fill('450');await deb.dispatchEvent('change');await attendre();
   assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).debits['CRL/YC'],at),450);
-  assert.match(await page.locator(`.rg-recap-table tr[data-classe="CRL/YC"] td.robot`).innerText(),/min 2/);
+  assert.match(await page.locator(`.rg-recap-table tr[data-classe="CRL/YC"] td.robot + td.rgr-p`).getAttribute('title'),/tourne à partir de 2/);
+  assert.match(await page.locator(`.rg-recap-table tr[data-classe="CRL/YC"] td.robot + td.rgr-p + td.rgr-d`).innerText(),/\d/,'la durée : plateaux ÷ débit');
   // La fiche du robot le montre aussi.
   await nav.aller(page,'at-equipes');
   await page.evaluate(id=>{Sim.ateliers.ouvert=id;Sim.ateliers.rendre();},at);await attendre();

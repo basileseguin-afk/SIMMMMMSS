@@ -5,6 +5,20 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-28 — Récap des man-minutes : une vraie grille
+
+Retour d'usage : « le tableau man-minutes + personnes n'est pas très beau ; le
+nombre de personnes sous les man-minutes, tu peux faire mieux ».
+
+- Chaque service a **trois sous-colonnes alignées** — la valeur (min/vol,
+  min/jour, ou pl/h pour le robot), **pers.**, **durée** — sous un en-tête à
+  deux niveaux ; un filet sépare les services, les lignes sont alternées et la
+  ligne survolée ressort.
+- Les champs ressemblent à des nombres : encadrés seulement au survol et à la
+  saisie ; chiffres alignés (tabulaires). Un effectif souligné en pointillé est
+  celui d'une case partagée par plusieurs commandes.
+- Tests : recap-browser, robot-browser mis à jour.
+
 ## 2026-09-28 — Le Robot : un service à part, un débit par commande
 
 Retour d'usage : « rajoute une fabrication Robot, avec un débit par heure comme
