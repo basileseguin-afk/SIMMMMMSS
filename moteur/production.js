@@ -536,6 +536,8 @@
     const c = contexte || {};
     const services = new Set(c.services || []);
     const classes = new Set((c.classes || []).map(x => (typeof x === 'string' ? x : x.id)));
+    // Un service se dit par son nom, pas par son identifiant.
+    const nomSvc = id => (c.noms && c.noms[id]) || id;
     const anomalies = [], ids = new Set();
 
     if (!Array.isArray(ateliers)) return [{ code: 'liste', message: 'Liste d’ateliers attendue.' }];
@@ -548,7 +550,7 @@
       if (typeof a.id !== 'string' || !a.id) dire('id', 'identifiant manquant.');
       else if (ids.has(a.id)) dire('id', 'identifiant en double.'); else ids.add(a.id);
       if (typeof a.nom !== 'string' || !a.nom.trim()) dire('nom', 'nommez-le : c’est ce qui le rend lisible.');
-      if (services.size && !services.has(a.service)) dire('service', 'service inconnu « ' + a.service + ' ».');
+      if (services.size && !services.has(a.service)) dire('service', 'service inconnu « ' + nomSvc(a.service) + ' ».');
       if (a.type !== undefined && !TYPES.includes(a.type)) dire('type', 'type inconnu « ' + a.type + ' ».');
 
       const robot = a.type === 'robot', lavage = a.type === 'lavage', dispo = a.type === 'dispo', handling = a.type === 'handling';
@@ -620,7 +622,7 @@
     for (const a of ateliers) {
       if (!a || a.type === 'dispo' || !avecDispo.has(a.service)) continue;
       anomalies.push({ code: 'dispo', atelier: a.id,
-        message: (a.nom || a.id) + ' : « ' + a.service + ' » est déjà une mise à disposition. '
+        message: (a.nom || a.id) + ' : « ' + nomSvc(a.service) + ' » est déjà une mise à disposition. '
           + 'Elle sert tout, tout de suite : ce que fabrique cet atelier ne serait attendu par personne.' });
     }
 
@@ -634,7 +636,7 @@
           const cle = a.service + '|' + id, premier = vu.get(cle);
           if (premier && premier !== a.id) {
             anomalies.push({ code: 'doublon', atelier: a.id,
-              message: id + ' est fabriqué deux fois dans « ' + a.service + ' ». Un service, une classe, un atelier.' });
+              message: enClair(id) + ' est préparée deux fois dans « ' + nomSvc(a.service) + ' ». Un service, une commande, une case.' });
           } else vu.set(cle, a.id);
         }
       }
@@ -891,7 +893,7 @@
     const ateliers = (opts.ateliers || []).map(a => ({ ...a, type: a.type || 'manuel', ...(a.type === 'handling' ? { jour: 0 } : {}) }));
 
     const services = new Set(ateliers.map(a => a.service));
-    const anomalies = validerAteliers(ateliers, { services: opts.services || [...services], classes });
+    const anomalies = validerAteliers(ateliers, { services: opts.services || [...services], classes, noms: opts.noms });
     const fourn = fournisseurs(opts.liaisons);
     const routes = routesDesClasses(classes, opts);
     const nom = id => (opts.noms && opts.noms[id]) || id;

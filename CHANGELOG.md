@@ -5,6 +5,23 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-28 — Un service renommé : ses cases suivent, partout
+
+Retour d'usage : « dans Services on voit “Armement” tout court, mais en
+cliquant on se rend compte que c'est “Armement AF Équipage” : un problème de
+transfert de nom entre les onglets ». Vérification complète : BUGS.md,
+BUG-043 à 045.
+
+- Un service renommé (page Services, édition du plan, ou « Annuler ») : ses
+  cases qui portent son nom le suivent — « Montage », « Montage TX BC »
+  deviennent « Montage Nord », « Montage Nord TX BC ». Un nom choisi à la main
+  reste.
+- Le barème, le récap des man-minutes et l'accueil prennent le nouveau nom
+  tout de suite.
+- Les messages du calcul nomment les services par leur nom, plus par leur
+  identifiant.
+- Tests : services-browser § 10, production.
+
 ## 2026-09-28 — Récap des man-minutes : une vraie grille
 
 Retour d'usage : « le tableau man-minutes + personnes n'est pas très beau ; le

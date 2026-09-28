@@ -943,3 +943,14 @@ test('robot : un débit par compagnie × classe, sinon celui du robot ; un minim
   const r3 = P.simuler({ vols, liaisons: [], rendement: 1, bareme: {}, ateliers: [robot({ debit: 0, debits: { 'TX/YC': 400, 'CRL/YC': 600 } })] });
   assert.equal(r3.ok, true, JSON.stringify(r3.anomalies));
 });
+
+test('les messages disent un service par son nom, pas par son identifiant', () => {
+  const vols = [{ id: 'T1', cie: 'TX', sens: 'DEP', std: 10 * 60, bc: 5, pc: 0, yc: 0 }];
+  const at = (id, service, p) => ({ id, nom: id, service, type: 'manuel', debut: '05:00', jour: 0, personnes: 1, lots: [['TX/BC']], regime: { actif: false }, ...p });
+  const r = P.simuler({ vols, liaisons: [], rendement: 1, bareme: { armement: { '*/BC': 5 } }, noms: { armement: 'Armement AF Équipage' },
+    ateliers: [at('a1', 'armement'), at('a2', 'armement'), { id: 'd', nom: 'Dispo', service: 'armement', type: 'dispo', debut: '04:00', jour: 0, personnes: 0, lots: [] }] });
+  const txt = r.anomalies.map(a => a.message).join(' | ');
+  assert.match(txt, /préparée deux fois dans «\s*Armement AF Équipage\s*»/);
+  assert.match(txt, /«\s*Armement AF Équipage\s*» est déjà une mise à disposition/);
+  assert.doesNotMatch(txt, /«\s*armement\s*»/);
+});

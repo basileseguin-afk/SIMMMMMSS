@@ -445,6 +445,28 @@ function actionService(action,id){
     if(id&&Sim.editor){Sim.editor.select(id);selectionner(id);}
   }
 }
+/* Un service renommé (page Services, édition du plan, Annuler…) : ses cases
+ * qui portent son nom le suivent — « Montage », « Montage TX BC » deviennent
+ * « Montage Nord », « Montage Nord TX BC ». Sans cela, le service et ses cases
+ * portaient deux noms, et l'on ne savait plus de quoi l'on parlait. Un nom
+ * choisi à la main, qui ne commence pas par celui du service, reste. */
+let nomsServices=null;
+function suivreNomsServices(){
+  const actuels=new Map(servicesDisponibles().map(s=>[s.id,s.nom]));
+  const avant=nomsServices;nomsServices=actuels;
+  if(!avant||!Sim.ateliers)return;
+  const change=[...actuels].filter(([id,n])=>avant.has(id)&&avant.get(id)!==n);
+  if(!change.length)return;
+  const suivre=(nom,de,vers)=>{const N=String(nom).toUpperCase(),D=String(de).toUpperCase();
+    return N===D?vers:N.startsWith(D+' ')?vers+String(nom).slice(de.length):null;};
+  const touchees=[];
+  for(const [id,vers] of change){const de=avant.get(id);
+    for(const a of Sim.ateliers.state.ateliers){if(a.service!==id)continue;const n=suivre(a.nom,de,vers);if(n&&n!==a.nom)touchees.push([a.id,n]);}}
+  if(!touchees.length)return;
+  Sim.ateliers.changer(()=>{for(const [aid,n] of touchees){const a=Sim.ateliers.state.ateliers.find(x=>x.id===aid);
+    if(a)a.nom=OrlyParcours.nomLibre({ateliers:Sim.ateliers.state.ateliers.filter(x=>x!==a)},n);}},
+    touchees.length+(touchees.length>1?' cases suivent':' case suit')+' le nouveau nom de leur service.');
+}
 function renommerService(id,valeur){
   const v=String(valeur||'').trim();
   if(!v||!Sim.editor){renderServices();toast('Le nom ne peut pas être vide.');return;}
@@ -930,7 +952,8 @@ function initEdition() {
       e.g.classList.toggle('couleur-perso',!!c);
       if(c)e.g.style.setProperty('--zone-perso',c);else e.g.style.removeProperty('--zone-perso');
     },
-    refresh(){if(Sim.flows)Sim.flows.refresh();redessinerEdges();majPicker();if(Sim.ateliers)Sim.ateliers.rendre();},
+    refresh(){suivreNomsServices();if(Sim.flows)Sim.flows.refresh();redessinerEdges();majPicker();if(Sim.ateliers)Sim.ateliers.rendre();
+      if(Sim.reglages)Sim.reglages.rendre();majDemarrage();},
     pick(id){selectionner(id);},
     // Une zone de production supprimée ne laisse pas d'équipes orphelines : on
     // prévient, puis ses équipes et ses étapes de chemin passent dans son parent.

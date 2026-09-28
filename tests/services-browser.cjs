@@ -163,6 +163,30 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.evaluate(()=>Sim.ateliers.a.services().some(s=>s.id==='bobduty')),true,'remis dans l’unité');
   assert.ok(await page.evaluate(()=>Sim.ateliers.a.liaisons().some(l=>l.from==='bobduty'||l.to==='bobduty')),'avec ses liens');
 
+  // 10. Un service renommé : ses cases qui portent son nom le suivent, partout
+  //     (retour d'usage : « Armement » d'un côté, « Armement AF Équipage » de l'autre).
+  await page.evaluate(()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
+    st.ateliers.push({id:'dt1',nom:'Dotation',service:'dotation',type:'manuel',debut:'05:00',jour:0,personnes:2,pauses:[],lots:[['AF/BC']],regime:{actif:true}});
+    st.ateliers.push({id:'dt2',nom:'Dotation AF CREW',service:'dotation',type:'manuel',debut:'05:00',jour:0,personnes:2,pauses:[],lots:[['AF/CREW']],regime:{actif:true}});
+    st.ateliers.push({id:'dt3',nom:'Équipe du matin',service:'dotation',type:'manuel',debut:'05:00',jour:0,personnes:2,pauses:[],lots:[['TX/BC']],regime:{actif:true}});},''));
+  await nav.aller(page,'u-services');
+  const nomDot=page.locator('[data-svc-nom=dotation]');
+  await nomDot.fill('Dotation Sud');await nomDot.press('Enter');await attendre();
+  const noms=await page.evaluate(()=>['dt1','dt2','dt3'].map(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).nom));
+  assert.deepEqual(noms,['Dotation Sud','Dotation Sud AF CREW','Équipe du matin'],'les cases au nom du service le suivent ; un nom choisi reste');
+  assert.match(await ligne('dotation').textContent(),/Dotation Sud AF CREW/,'la page Services le montre');
+  // Par l'édition du plan aussi, et « Annuler » du plan les ramène.
+  await page.evaluate(()=>Sim.editor.change(()=>{Sim.editor.state.zones.find(z=>z.id==='dotation').nom='Dotation Est';},'x'));await attendre();
+  assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.id==='dt2').nom),'Dotation Est AF CREW');
+  await page.evaluate(()=>Sim.editor.undo());await attendre();
+  assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.id==='dt2').nom),'Dotation Sud AF CREW');
+  // Les pages qui listent les services le disent toutes.
+  await nav.aller(page,'at-grille');
+  assert.match(await page.locator('#at-grille, .qf').first().innerText(),/Dotation Sud/);
+  await nav.aller(page,'rg-minutes');
+  assert.match(await page.locator('#rg-bareme').innerText(),/Dotation Sud/,'le barème suit sans attendre');
+  assert.doesNotMatch(await page.locator('#rg-bareme').innerText(),/Dotation\b(?! Sud)/);
+
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('services-browser : ok');
  }finally{await browser.close();}

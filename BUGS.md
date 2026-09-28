@@ -567,3 +567,26 @@ disposition n'est pas fondue ; une cuisine fondue retrouve une case par
 commande dont le chemin y passe. `tests/partage-browser.cjs` § 6–7 : retour à
 l'organisation d'avant la fusion ; cuisine intacte à l'ouverture ; « Une case
 par commande dans Cuisine ».
+
+## Revue du 2026-09-28 — Le nom d'un service d'un onglet à l'autre
+
+Retour d'usage : « dans Services, on voit “Armement” tout court, mais en
+cliquant dessus on se rend compte que c'est “Armement AF Équipage” ». Méthode :
+un service renommé (depuis Services, puis depuis l'édition du plan), puis
+chaque page de l'application parcourue et son texte relu, à la recherche de
+l'ancien nom ; puis un service créé sous un autre (« Armement AF Équipage »
+sous l'Armement), cherché dans chaque liste de chaque page.
+
+| ID | Gravité | Statut | Vérif. | Résumé | Fichier |
+|---|---|---|---|---|---|
+| BUG-043 | Majeur | Corrigé | Confirmé | Renommer un service ne renommait pas ses **cases**, qui portent son nom (« Montage », « Montage TX BC ») : le service disait un nom, ses cases un autre, dans les chemins, les cases, « Qui prépare quoi », le planning et la page Services. Les cases au nom du service le suivent désormais, quel que soit le chemin du renommage (Services, plan, Annuler) ; un nom choisi à la main reste | `sim.js` |
+| BUG-044 | Moyen | Corrigé | Confirmé | Après un renommage, le barème, le récap des man-minutes et l'accueil gardaient l'ancien nom jusqu'au prochain calcul : ils se redessinent aussitôt | `sim.js` |
+| BUG-045 | Mineur | Corrigé | Confirmé | Trois messages du calcul désignaient un service par son identifiant (« armement ») au lieu de son nom : case en double, mise à disposition doublée, service inconnu | `moteur/production.js` |
+
+**Vérifié sans défaut.** Un service créé sous un autre (« Armement AF
+Équipage ») porte son nom dans les onze pages qui listent des services
+(barème, récap, chemins, cases, « Qui prépare quoi », services, liens,
+contrôles, plan, planning, stocks).
+
+**Preuves.** `tests/services-browser.cjs` § 10 ; `tests/production.test.cjs`
+(messages par le nom).
