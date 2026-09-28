@@ -528,7 +528,10 @@
    *  chemin une seule question — « besoin de légumerie ? ».
    * --------------------------------------------------------------------*/
   const SERVICES_DISPO = ['decontam', 'magasin', 'appros'];
-  const estDispo = (etat, s) => SERVICES_DISPO.includes(s) || (etat.ateliers || []).some(a => a.service === s && a.type === 'dispo');
+  // Seuls ces postes-là. La cuisine, la prépa, le montage préparent commande
+  // par commande, même si une de leurs cases est réglée en mise à disposition :
+  // on ne les fond jamais.
+  const estDispo = (etat, s) => SERVICES_DISPO.includes(s);
 
   /** Une case de mise à disposition neuve : elle sert toutes les commandes. */
   function caseDispo(etat, service, nomService) {
@@ -589,6 +592,30 @@
       etat.ateliers.push(d);
     }
     return { converties, services: [...par.keys()] };
+  }
+
+  /**
+   * L'inverse, pour un service qui prépare commande par commande (la cuisine)
+   * et qu'une mise à disposition a remplacé : une case par commande dont le
+   * chemin passe par lui, à l'heure de sa première vague. Effectif, man-minutes
+   * et heures propres sont à reprendre (ou à réimporter : ⇧ Horaires).
+   * @returns {number} le nombre de cases créées
+   */
+  function separerParCommande(etat, service, nomService, classes) {
+    const dispos = (etat.ateliers || []).filter(a => a.service === service && a.type === 'dispo');
+    if (!dispos.length) return 0;
+    const d = dispos[0];
+    const v = d.permanent === false && Array.isArray(d.vagues) && d.vagues.length ? d.vagues[0] : { debut: d.debut || '06:00', jour: d.jour || 0 };
+    const cheminDeLa = c => cheminDe(etat, c.id) || (etat.parcours || []).find(p => p.id === (etat.parcoursCabine || {})[c.cabine]) || null;
+    const cmds = (classes || []).filter(c => { const p = cheminDeLa(c); return p && P.servicesDuParcours(p).includes(service); }).map(c => c.id);
+    etat.ateliers = etat.ateliers.filter(a => !dispos.includes(a));
+    for (const cmd of cmds) {
+      const a = nouvelleEquipe(etat, service, nomService, [], classes);
+      a.nom = nomLibre(etat, (nomService || service) + ' ' + etiquette(cmd));
+      a.debut = v.debut; a.jour = v.jour || 0;
+      affecter(etat, service, [cmd], a.id, classes);
+    }
+    return cmds.length;
   }
 
   /**
@@ -1546,7 +1573,7 @@
 
   const api = { insererPrepa, depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, couverture, confier, nouvelleEquipe,
     completer, colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, donnerCases, completerCases, nomLibre, caseHandling, anciensHandlings, brancherHandling,
-    SERVICES_DISPO, estDispo, caseDispo, anciensDispos, partagerDispos, ajouterBesoin, EditeurParcours };
+    SERVICES_DISPO, estDispo, caseDispo, anciensDispos, partagerDispos, separerParCommande, ajouterBesoin, EditeurParcours };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyParcours = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

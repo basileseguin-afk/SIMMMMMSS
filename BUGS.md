@@ -552,3 +552,18 @@ aucun cassé.
 dans les six listes ; masquée, encore ; supprimée avec une équipe, l'équipe
 passe dans le service parent ; un local n'y figure pas, puis y figure une fois
 devenu service ; une équipe orpheline est signalée puis rattachée.
+
+## Revue du 2026-09-28 — La fonte des mises à disposition touchait la cuisine
+
+Retour d'usage : « la cuisine se fait par compagnie × classe, ce n'est pas
+comme la légumerie ».
+
+| ID | Gravité | Statut | Vérif. | Résumé | Fichier |
+|---|---|---|---|---|---|
+| BUG-042 | Majeur | Corrigé | Confirmé | La fonte automatique des postes de mise à disposition (une case par poste) prenait pour tel **tout service portant au moins une case en mise à disposition**. Une cuisine dont une case l'était voyait toutes ses cases, une par commande, fondues en une seule à l'ouverture — et « Annuler » ne survivait pas au rechargement. Seuls la légumerie, le magasin et la réception se fondent ; une copie d'avant la fonte est gardée ; une cuisine fondue se rend une case par commande d'un clic | `parcours.js`, `ateliers.js` |
+
+**Preuves.** `tests/parcours.test.cjs` : une cuisine avec une case en mise à
+disposition n'est pas fondue ; une cuisine fondue retrouve une case par
+commande dont le chemin y passe. `tests/partage-browser.cjs` § 6–7 : retour à
+l'organisation d'avant la fusion ; cuisine intacte à l'ouverture ; « Une case
+par commande dans Cuisine ».

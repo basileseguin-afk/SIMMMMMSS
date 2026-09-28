@@ -5,6 +5,25 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-28 — Correctif : la cuisine n'est jamais fondue comme la légumerie
+
+Retour d'usage : « la cuisine se fait par compagnie × classe, ce n'est pas
+comme la légumerie ». Défaut : la fonte automatique prenait pour un poste de
+mise à disposition **tout service portant au moins une case en mise à
+disposition** — une cuisine dont une case l'était voyait toutes ses cases,
+une par commande, fondues en une à l'ouverture.
+
+- Seuls la légumerie, le magasin et la réception / appros se fondent. La
+  cuisine, la prépa, le montage ne sont jamais touchés.
+- Avant toute fonte, une copie de l'organisation est gardée dans le
+  navigateur : « Revenir à l'organisation d'avant la fusion » (points à
+  regarder), ou « Oublier cette copie ».
+- Une cuisine (ou tout service qui prépare) devenue mise à disposition est
+  signalée : « Une case par commande dans Cuisine » recrée une case par
+  commande dont le chemin y passe, à l'heure de sa première vague — effectifs
+  et heures à reprendre, ou à réimporter (⇧ Importer, horaires).
+- Tests : parcours, partage-browser. Voir BUGS.md, BUG-042.
+
 ## 2026-09-28 — Les cases par commande de la légumerie et du magasin se fondent d'elles-mêmes
 
 Retour d'usage : « dans les chemins, les cases de magasin et de légumerie

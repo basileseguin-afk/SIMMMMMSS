@@ -76,6 +76,31 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await p2.locator('#at-undo').click();await p2.waitForTimeout(300);
   assert.equal(await p2.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service==='decontam').length),2);
 
+  // 6. Une copie de l'organisation d'avant la fusion est gardée : on peut y revenir.
+  assert.match(await page.locator('#at-anomalies').innerText(),/copie de l’organisation d’avant la fusion/);
+  await page.locator('#at-anomalies [data-at-action=avant-fonte]').click();await attendre();
+  assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service==='magasin').length),2,'l’organisation d’avant est rétablie');
+  assert.equal(await page.evaluate(()=>localStorage.getItem('ory-ateliers-v1-avant-fonte')),null,'la copie a servi');
+
+  // 7. La cuisine prépare commande par commande : jamais fondue. Une cuisine
+  //    fondue par erreur (avant ce correctif) se rend une case par commande.
+  const avecCuisine=await page.evaluate(()=>{const st=JSON.parse(JSON.stringify(Sim.ateliers.state));
+    st.ateliers=st.ateliers.filter(a=>a.service!=='cuisine');
+    st.ateliers.push({id:'cu1',nom:'Cuisine AF BC',service:'cuisine',type:'manuel',debut:'16:00',jour:-1,personnes:3,pauses:[],lots:[['AF/BC']],regime:{actif:true}});
+    st.ateliers.push({id:'cu2',nom:'Cuisine TX BC',service:'cuisine',type:'dispo',debut:'16:00',jour:-1,personnes:0,pauses:[],lots:[],regime:{actif:true},permanent:true});
+    return st;});
+  await page.evaluate(e=>localStorage.setItem('ory-ateliers-v1',e),JSON.stringify(avecCuisine));
+  await page.reload();await page.waitForTimeout(600);
+  assert.deepEqual(await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service==='cuisine').map(a=>a.id).sort()),['cu1','cu2'],'la cuisine n’est pas fondue');
+  // La cuisine fondue par erreur : une seule mise à disposition.
+  await page.evaluate(()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;st.ateliers=st.ateliers.filter(a=>a.service!=='cuisine');
+    st.ateliers.push({id:'cuF',nom:'Cuisine',service:'cuisine',type:'dispo',debut:'15:00',jour:-1,personnes:0,pauses:[],lots:[],regime:{actif:true},permanent:false,vagues:[{debut:'15:00',jour:-1}]});},''));
+  await nav.aller(page,'at-chemins');
+  assert.match(await page.locator('#at-anomalies').innerText(),/« Cuisine » est une mise à disposition/);
+  await page.locator('#at-anomalies [data-at-action=separer][data-service=cuisine]').click();await attendre();
+  const cui=await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service==='cuisine').map(a=>({type:a.type,lots:a.lots,debut:a.debut})));
+  assert.ok(cui.length>=2&&cui.every(a=>a.type==='manuel'&&a.lots.length===1&&a.debut==='15:00'),'une case par commande : '+JSON.stringify(cui));
+
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('partage-browser : ok');
  }finally{await browser.close();}

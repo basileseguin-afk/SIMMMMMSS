@@ -212,6 +212,9 @@
         const avant = clone(this.state);
         const r = this.fondreDispos(this.state);
         if (r.converties) {
+          // Une copie de l'organisation d'avant, gardée dans ce navigateur :
+          // « Annuler » ne survit pas à un rechargement de la page.
+          try { localStorage.setItem(CLE + '-avant-fonte', JSON.stringify({ le: new Date().toISOString(), etat: avant })); } catch (e) { /* plein */ }
           this.state = valider(this.state); this.undo.push(avant); this.enregistrer();
           alerte = this.messageFonte(r) + ' « Annuler » revient en arrière.';
         }
@@ -495,6 +498,26 @@
           }, 'Vague ajoutée : chaque commande prend la vague qui précède son besoin.');
         case 'vague-retirer':
           return this.changer(() => { if (a.vagues.length > 1) a.vagues.splice(+data.index, 1); }, 'Vague retirée.');
+        case 'separer': {
+          const sv = data.service, nomSv = (this.a.services().find(x => x.id === sv) || {}).nom || sv;
+          let n = 0;
+          this.changer(() => { n = PC.separerParCommande(this.state, sv, nomSv, this.classes); }, '');
+          return this.rendre(nomSv + ' : ' + n + (n > 1 ? ' cases, une par commande' : ' case') + ', à l’heure de sa première vague. '
+            + 'Reprenez leurs effectifs et leurs heures (ou réimportez vos horaires : ⇧ Importer). « Annuler » revient en arrière.');
+        }
+        case 'avant-fonte': {
+          let copie = null;
+          try { copie = JSON.parse(localStorage.getItem(CLE + '-avant-fonte') || 'null'); } catch (e) { copie = null; }
+          if (!copie || !copie.etat) return this.rendre('Aucune copie d’avant la fusion.');
+          if (!confirm('Remplacer les cases et les chemins par ceux d’avant la fusion (' + String(copie.le || '').slice(0, 16).replace('T', ' ') + ') ? L’action est annulable.')) return;
+          this.changer(() => { this.state = valider(copie.etat); }, 'Organisation d’avant la fusion rétablie. La légumerie et le magasin ne sont plus fondus : '
+            + 'utilisez « Passer à une case partagée » dans les points à regarder, si besoin.');
+          try { localStorage.removeItem(CLE + '-avant-fonte'); } catch (e) { /* rien */ }
+          return this.rendre();
+        }
+        case 'oublier-copie':
+          try { localStorage.removeItem(CLE + '-avant-fonte'); } catch (e) { /* rien */ }
+          return this.rendre('Copie d’avant la fusion oubliée.');
         case 'dispo-partager': {
           let r;
           this.changer(() => { r = this.fondreDispos(this.state); }, '');
@@ -836,8 +859,28 @@
           + (dispos.length > 1 ? 'elles deviennent' : 'elle devient') + ' une seule case par poste, et leurs heures de début deviennent ses vagues. '
           + '<button class="btn btn-sm btn-play" data-at-action="dispo-partager">Passer à une case partagée</button>');
       }
+      // Un service qui prépare commande par commande (la cuisine…) remplacé par
+      // une mise à disposition : on propose de lui rendre une case par commande.
+      const remplaces = [...new Set(this.state.ateliers.filter(a => a.type === 'dispo' && !PC.SERVICES_DISPO.includes(a.service)).map(a => a.service))]
+        .filter(sv => (r.classes || []).filter(c => (c.vols || []).length).some(c => {
+          const p = PC.cheminDe(this.state, c.id) || (this.state.parcours || []).find(q => q.id === (this.state.parcoursCabine || {})[c.cabine]);
+          return p && P.servicesDuParcours(p).includes(sv);
+        }));
+      for (const sv of remplaces) {
+        const nomSv = (this.a.services().find(x => x.id === sv) || {}).nom || sv;
+        list.unshift('<b>« ' + esc(nomSv) + ' » est une mise à disposition</b> : elle sert toutes les commandes à la fois, comme la légumerie. '
+          + 'Si ce service prépare commande par commande, rendez-lui une case par commande. '
+          + '<button class="btn btn-sm btn-play" data-at-action="separer" data-service="' + esc(sv) + '">Une case par commande dans ' + esc(nomSv) + '</button>');
+      }
+      let copie = null;
+      try { copie = JSON.parse(localStorage.getItem(CLE + '-avant-fonte') || 'null'); } catch (e) { copie = null; }
+      if (copie && copie.etat) {
+        list.push('Une copie de l’organisation d’avant la fusion (légumerie, magasin…) est gardée dans ce navigateur. '
+          + '<button class="btn btn-sm" data-at-action="avant-fonte">Revenir à l’organisation d’avant la fusion</button> '
+          + '<button class="lien-discret" data-at-action="oublier-copie">Oublier cette copie</button>');
+      }
       box.hidden = !list.length;
-      if (vieilles.length || dispos.length) box.open = true;
+      if (vieilles.length || dispos.length || remplaces.length) box.open = true;
       // Replié par défaut : le nombre suffit à savoir qu'il y a à faire.
       box.innerHTML = list.length
         ? '<summary><strong>' + list.length + (list.length > 1 ? ' points' : ' point') + ' à regarder</strong></summary><ul>' +

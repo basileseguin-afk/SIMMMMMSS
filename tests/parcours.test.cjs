@@ -468,3 +468,23 @@ test('magasin : plusieurs mises à disposition, une par commande, se fondent aus
   // Une seule mise à disposition : rien à fondre.
   assert.deepEqual(PC.anciensDispos(e2), []);
 });
+
+test('la cuisine prépare commande par commande : jamais fondue, même avec une case en mise à disposition', () => {
+  const cu = (id, cmd, p) => ({ id, nom: 'Cuisine ' + cmd, service: 'cuisine', type: 'manuel', debut: '16:00', jour: -1, personnes: 3, pauses: [], lots: [[cmd]], regime: { actif: true }, ...p });
+  const etat = { ateliers: [cu('c1', 'AF/BC'), cu('c2', 'TX/BC'), cu('c3', 'DL/BC', { type: 'dispo', lots: [], permanent: true })], parcours: [] };
+  assert.equal(PC.estDispo(etat, 'cuisine'), false);
+  assert.deepEqual(PC.anciensDispos(etat), []);
+  assert.equal(PC.partagerDispos(etat, () => 'Cuisine').converties, 0);
+  assert.equal(etat.ateliers.length, 3, 'rien de touché');
+});
+
+test('une cuisine fondue par erreur retrouve une case par commande', () => {
+  const chemin = { id: 'c', nom: 'Complet', noeuds: ['decontam', 'cuisine', 'prepa'], liens: [{ de: 'decontam', vers: 'cuisine' }, { de: 'cuisine', vers: 'prepa' }] };
+  const classes = [{ id: 'AF/BC', cie: 'AF', cabine: 'BC', vols: [{}] }, { id: 'TX/BC', cie: 'TX', cabine: 'BC', vols: [{}] }, { id: 'TX/YC', cie: 'TX', cabine: 'YC', vols: [{}] }];
+  const etat = { ateliers: [{ id: 'd', nom: 'Cuisine', service: 'cuisine', type: 'dispo', debut: '15:00', jour: -1, personnes: 0, pauses: [], lots: [],
+    regime: { actif: true }, permanent: false, vagues: [{ debut: '15:00', jour: -1 }, { debut: '16:00', jour: -1 }] }],
+    parcours: [chemin], parcoursCabine: { BC: 'c' }, parcoursClasse: {} };
+  assert.equal(PC.separerParCommande(etat, 'cuisine', 'Cuisine', classes), 2, 'AF BC et TX BC passent par la cuisine ; TX YC non');
+  const cases = etat.ateliers.filter(a => a.service === 'cuisine');
+  assert.deepEqual(cases.map(a => [a.nom, a.type, a.lots, a.debut, a.jour]), [['Cuisine AF BC', 'manuel', [['AF/BC']], '15:00', -1], ['Cuisine TX BC', 'manuel', [['TX/BC']], '15:00', -1]]);
+});
