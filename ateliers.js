@@ -270,6 +270,7 @@
         resultat: () => this.resultat,
         // La fiche d'une case s'ouvre dans le chemin, sous le service choisi.
         fiche: (id, cmd) => this.ficheCase(id, cmd),
+        ajout: () => this.formAjout('chemins'),
         onglet: id => { if (this.a.onglet) this.a.onglet(id); }
       });
       this.rendre(alerte);
@@ -608,9 +609,9 @@
             'Durée retirée : ' + data.cie + ' prend la durée de toutes les compagnies.');
         case 'classe-supprimer': return this.supprimerClasse(data.classe);
         case 'classe-retablir':  return this.retablirClasse(data.classe);
-        case 'classe-nouvelle':  return this.ouvrirAjout();
+        case 'classe-nouvelle':  return this.ouvrirAjout(data.lieu);
         case 'classe-annuler':   { this.ajout = null; return this.rendre(''); }
-        case 'classe-valider':   return this.validerAjout();
+        case 'classe-valider':   return this.validerAjout(data.lieu);
       }
     }
 
@@ -738,6 +739,12 @@
             if (v === 'vol') { a.parVol = true; if (!a.durees || !Object.keys(a.durees).length) a.durees = { [P.TOUTES]: 30 }; }
             else { delete a.parVol; delete a.durees; }
             break;
+          // Une compagnie absente des vols du jour : sa ligne, au temps de toutes.
+          case 'cie-nouvelle': {
+            const cie = String(v).trim().toUpperCase().slice(0, 40); if (!cie) break;
+            a.durees = { ...(a.durees || {}), [cie]: (a.durees || {})[cie] ?? (a.durees || {})[P.TOUTES] ?? 30 };
+            break;
+          }
           case 'duree-nouvelle':
             if (v) a.durees = { ...(a.durees || {}), [v]: (a.durees || {})[P.TOUTES] ?? 30 };
             el.value = '';
@@ -807,23 +814,48 @@
         id + ' rétablie. Elle est à fabriquer de nouveau.');
     }
 
-    ouvrirAjout() { this.ajout = { cie: '', cabine: 'YC' }; this.rendre(''); }
+    ouvrirAjout(lieu) { this.ajout = { lieu: lieu || 'commandes' }; this.rendre(''); }
 
-    validerAjout() {
-      const lire = id => (document.getElementById(id) || {}).value;
-      const brouillon = { cie: lire('at-cls-cie'), cabine: lire('at-cls-cabine') };
-      if (!String(brouillon.cie || '').trim()) return this.rendre('Nommez la compagnie.');
-      const id = P.idClasse(brouillon.cie, brouillon.cabine);
-      if ((this.state.ajoutees || []).some(c => P.idClasse(c.cie, c.cabine) === id))
-        return this.rendre(P.libelleClasse(id) + ' est déjà ajouté.');
-      const connue = this.classes.some(c => c.id === id && c.origine === 'programme');
+    /* Ajouter une compagnie, ou les classes qui lui manquent (retour d'usage :
+     * « je ne peux plus rajouter de compagnie ni de compagnie × classe ») : une
+     * compagnie, et ses classes cochées d'un coup. Le formulaire vit là où
+     * l'on regarde les commandes : les chemins, et la page des commandes. */
+    formAjout(lieu) {
+      if (!this.ajout || this.ajout.lieu !== lieu)
+        return `<button class="btn btn-sm at-ajout-ouvrir" data-at-action="classe-nouvelle" data-lieu="${esc(lieu)}">+ Ajouter une compagnie ou une classe</button>`;
+      const cies = [...new Set(this.classes.map(c => c.cie))].sort();
+      return `<div class="at-ajout" data-lieu="${esc(lieu)}">
+        <label>Compagnie<input data-ajout="cie" maxlength="40" placeholder="Ex. EZY" list="at-ajout-cies-${esc(lieu)}" autocomplete="off"></label>
+        <datalist id="at-ajout-cies-${esc(lieu)}">${cies.map(c => `<option value="${esc(c)}">`).join('')}</datalist>
+        <fieldset class="at-ajout-cabs"><legend>Classes</legend>${P.CABINES.map(c => `<label class="chk chk-mini"><input type="checkbox" data-ajout-cab="${c}"
+          ${c === 'YC' ? 'checked' : ''}> ${esc((P.NOM_CABINE || {})[c] || c)}</label>`).join('')}</fieldset>
+        <div class="at-ajout-actions">
+          <button class="btn btn-play btn-sm" data-at-action="classe-valider" data-lieu="${esc(lieu)}">Ajouter</button>
+          <button class="btn btn-sm" data-at-action="classe-annuler">Annuler</button>
+        </div>
+        <p class="mini-note at-ajout-note">Une compagnie déjà là : cochez les classes qui lui manquent. Passagers, nombre de vols et
+          heure viennent de l’<b>import des vols</b> ; une commande absente des vols reste ajoutée, sans volume, jusqu’au prochain import.</p>
+      </div>`;
+    }
+
+    validerAjout(lieu) {
+      const f = document.querySelector('.at-ajout[data-lieu="' + (lieu || 'commandes') + '"]'); if (!f) return;
+      const cie = String((f.querySelector('[data-ajout=cie]') || {}).value || '').trim().toUpperCase();
+      const cabs = [...f.querySelectorAll('[data-ajout-cab]:checked')].map(x => x.dataset.ajoutCab);
+      if (!cie) return this.rendre('Nommez la compagnie.');
+      if (!cabs.length) return this.rendre('Cochez au moins une classe.');
+      const ids = cabs.map(c => P.idClasse(cie, c));
+      const deja = ids.filter(id => this.classes.some(c => c.id === id));
+      const nouvelles = cabs.filter(c => !deja.includes(P.idClasse(cie, c)));
+      if (!nouvelles.length) return this.rendre(deja.map(P.libelleClasse).join(', ') + (deja.length > 1 ? ' existent' : ' existe') + ' déjà.');
       this.ajout = null;
+      const libs = nouvelles.map(c => (P.NOM_CABINE || {})[c] || c);
       this.changer(() => {
-        this.state.exclues = (this.state.exclues || []).filter(x => x !== id);
-        this.state.ajoutees = [...(this.state.ajoutees || []), brouillon];
-      }, P.libelleClasse(id) + (connue
-        ? ' était déjà dans les vols : ce sont leurs chiffres qui comptent.'
-        : ' ajouté. Ses passagers viendront de l’import des vols.'));
+        this.state.exclues = (this.state.exclues || []).filter(x => !ids.includes(x));
+        this.state.ajoutees = [...(this.state.ajoutees || []), ...nouvelles.map(cabine => ({ cie, cabine }))];
+      }, (nouvelles.length > 1 ? cie + ' : ' + libs.join(', ') + ' ajoutées.' : P.libelleClasse(P.idClasse(cie, nouvelles[0])) + ' ajouté.')
+        + (deja.length ? ' (' + deja.map(P.libelleClasse).join(', ') + ' : déjà là.)' : '')
+        + ' Donnez-leur un chemin ; leurs passagers viendront de l’import des vols.');
     }
 
     /* Le classeur Excel : c'est lui qu'on modifie hors du site, puis qu'on
@@ -1339,7 +1371,9 @@
         ${liste.map(cie => `<tr><th scope="row">${esc(cie)}</th><td>${nbVols(cie) || '—'}</td>${extra ? extra.ligne(cie) : ''}
           <td>${champ(cie, cie)}${durees[cie] != null ? ` <button class="lien-discret" data-at-action="duree-retirer" data-cie="${esc(cie)}" title="Revenir au temps de toutes les compagnies">× propre</button>` : ''}</td></tr>`).join('')}
         </tbody></table></div>
-        <p class="mini-note">Vide : le temps de « Toutes les compagnies ».</p></div>`;
+        <p class="mini-note">Vide : le temps de « Toutes les compagnies ».
+          <label class="at-inline">Ajouter une compagnie<input data-at-champ="cie-nouvelle" maxlength="40" placeholder="Ex. EZY"
+            aria-label="Ajouter une compagnie à ce tableau"></label></p></div>`;
     }
 
     /* Le handling : il récupère les trolleys prêts dans la CF départ et charge les vols. */
@@ -1609,22 +1643,9 @@
       const classes = this.classes, retirees = this.retirees;
       const par = (r && r.parClasse) || {};
 
-      const ajout = this.ajout ? `<div class="at-ajout">
-        <label>Compagnie<input id="at-cls-cie" maxlength="40" placeholder="Ex. CRL" value="${esc(this.ajout.cie)}"></label>
-        <label>Classe<select id="at-cls-cabine">${P.CABINES.map(c => `<option value="${c}" ${c === this.ajout.cabine ? 'selected' : ''}>${esc((P.NOM_CABINE || {})[c] || c)}</option>`).join('')}</select></label>
-        <div class="at-ajout-actions">
-          <button class="btn btn-play btn-sm" data-at-action="classe-valider">Ajouter</button>
-          <button class="btn btn-sm" data-at-action="classe-annuler">Annuler</button>
-        </div>
-        <p class="mini-note at-ajout-note">Passagers, nombre de vols et heure viennent de
-          l’<b>import des vols</b> — on ne les saisit pas deux fois. Une commande absente des vols
-          reste ajoutée, sans volume, jusqu’au prochain import.</p>
-      </div>` : '';
-
-      const barre = `<div class="at-barre">
-        <span class="at-barre-fin"></span>
-        <button class="btn btn-sm" data-at-action="classe-nouvelle" ${this.ajout ? 'disabled' : ''}>+ Ajouter une commande</button>
-      </div>`;
+      const ouvert = this.ajout && this.ajout.lieu === 'commandes';
+      const ajout = ouvert ? this.formAjout('commandes') : '';
+      const barre = ouvert ? '' : `<div class="at-barre"><span class="at-barre-fin"></span>${this.formAjout('commandes')}</div>`;
 
       const exclues = retirees.length ? `<p class="at-exclues">Retirées du programme :
         ${retirees.map(c => `<button class="at-chip" data-at-action="classe-retablir" data-classe="${esc(c.id)}">${esc(c.id)} ↺</button>`).join(' ')}</p>` : '';

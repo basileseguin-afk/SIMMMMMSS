@@ -5,6 +5,22 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-28 — Ajouter une compagnie, ou les classes qui lui manquent
+
+Retour d'usage : « je ne peux plus rajouter de compagnie ni de compagnie ×
+classe ; on n'a qu'une partie des compagnies ». Le geste existait, mais caché
+dans Résultats › Commandes, une classe à la fois.
+
+- **Organisation › Chemins** : « + Ajouter une compagnie ou une classe » en
+  tête de la liste des commandes. Une compagnie (proposée parmi celles déjà
+  là, ou nouvelle), ses classes cochées d'un coup ; une classe qui existe déjà
+  est dite, pas doublée. La nouvelle commande apparaît aussitôt, prête à
+  recevoir son chemin.
+- **Résultats › Commandes** : le même formulaire.
+- **Handling et plonge** : sous le tableau par compagnie, « Ajouter une
+  compagnie » donne une ligne à une compagnie absente des vols du jour.
+- Test : `tests/ajout-cie-browser.cjs`.
+
 ## 2026-09-28 — Handling par chauffeurs, plonge par vol
 
 Retour d'usage : « le handling récupère les trolleys prêts dans la CF départ et

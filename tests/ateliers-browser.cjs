@@ -193,11 +193,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 15. On déclare une compagnie × classe que le programme de vols ne porte pas.
   //     On ne lui saisit QUE son identité : passagers, vols et échéance viennent
   //     de l'import, et les redemander ouvrirait deux vérités.
-  await onglet('at-repas');await page.locator('[data-at-action=classe-nouvelle]').click();await attendre();
+  await onglet('at-repas');await page.locator('#at-classes [data-at-action=classe-nouvelle]').click();await attendre();
   assert.equal(await page.locator('#at-cls-pax').count(),0,'plus de champ Passagers');
   assert.equal(await page.locator('#at-cls-vols').count(),0,'plus de champ Vols');
   assert.equal(await page.locator('#at-cls-echeance').count(),0,'plus de champ Échéance');
-  await page.fill('#at-cls-cie','zz');await page.selectOption('#at-cls-cabine','BC');
+  const form='.at-ajout[data-lieu=commandes]';
+  await page.fill(`${form} [data-ajout=cie]`,'zz');
+  await page.uncheck(`${form} [data-ajout-cab=YC]`);await page.check(`${form} [data-ajout-cab=BC]`);
   await page.locator('[data-at-action=classe-valider]').click();await attendre();
   assert.match(await page.locator('#at-status').textContent(),/ZZ · Business ajouté/);
   const ajoutee=(await etat()).ajoutees[0];
@@ -221,8 +223,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.deepEqual((await etat()).ateliers.find(a=>a.id===cui2).lots,[['CRL/BC']]);
 
   // 17. Retraits et ajouts survivent au rechargement.
-  await onglet('at-repas');await page.locator('[data-at-action=classe-nouvelle]').click();await attendre();
-  await page.fill('#at-cls-cie','QQ');await page.locator('[data-at-action=classe-valider]').click();await attendre();
+  await onglet('at-repas');await page.locator('#at-classes [data-at-action=classe-nouvelle]').click();await attendre();
+  await page.fill('.at-ajout[data-lieu=commandes] [data-ajout=cie]','QQ');await page.locator('[data-at-action=classe-valider]').click();await attendre();
   const memoire=await etat();
   await page.reload();await nav.vue(page,'ateliers');await attendre();
   assert.deepEqual(await etat(),memoire,'exclusions et ajouts sont relus du navigateur');

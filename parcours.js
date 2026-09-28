@@ -951,6 +951,7 @@
       }).join('');
       return `<aside class="pc-cmds" aria-label="Les commandes">
         <div class="pc-cmds-tete"><b>Les commandes</b><span>${avec} sur ${classes.length} avec leur chemin</span></div>
+        ${this.a.ajout ? '<div class="pc-cmds-ajout">' + this.a.ajout() + '</div>' : ''}
         <input type="search" class="pc-cmds-cherche" data-pc="cmd-recherche" placeholder="Chercher (TX, BC…)" value="${esc(this.chercheCmd)}" aria-label="Chercher une commande">
         <ul class="pc-cmds-liste">${items || '<li class="mini-note">Aucune commande : importez un programme de vols (Données › Vols).</li>'}</ul>
         ${this.blocModeles(etat)}

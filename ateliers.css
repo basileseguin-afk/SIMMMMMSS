@@ -396,3 +396,11 @@ body.ateliers-open .workbench{display:none}
 .at-cies-bloc .mini-note{margin:2px 0 0}
 .at-mode-plonge{display:grid;gap:4px;margin:10px 14px 4px;font-size:13px;font-weight:700;max-width:560px}
 .at-tunnels-n{flex:1 1 320px}
+/* Ajouter une compagnie, ou les classes qui lui manquent. */
+.at-ajout-cabs{display:flex;flex-wrap:wrap;gap:6px 14px;border:0;padding:0;margin:0;grid-column:span 2}
+.at-ajout-cabs legend{font-size:12px;color:var(--txt2);padding:0;margin-bottom:6px}
+.at-ajout-cabs .chk{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--txt)}
+.pc-cmds-ajout{padding:4px 0 8px}
+.pc-cmds-ajout .at-ajout{grid-template-columns:1fr;margin:0;padding:10px}
+.pc-cmds-ajout .at-ajout-cabs{grid-column:auto}
+.pc-cmds-ajout .at-ajout-ouvrir{width:100%}
