@@ -124,6 +124,45 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.id==='orph1').service),'cuisine');
   assert.equal(await page.locator('[data-svc-orpheline]').count(),0);
 
+  // 9. Le cycle de vie d'un service, tout depuis cette page (retour d'usage :
+  //    « comment je supprime un service, le renommer etc. »).
+  //    a. Créer : un nom, un service de rattachement ; il est partout.
+  await nav.aller(page,'u-services');
+  await page.fill('[data-svc-nouveau] input[name=nom]','Froid EZY');await page.selectOption('[data-svc-nouveau] select','prepa');
+  await page.locator('[data-svc-nouveau] button[type=submit]').click();await attendre();
+  const cree=await page.evaluate(()=>(Sim.editor.state.zones.find(z=>z.nom==='Froid EZY')||{}).id);
+  assert.ok(cree,'le service est créé');
+  assert.equal(await page.evaluate(id=>Sim.editor.state.zones.find(z=>z.id===id).kind,cree),'annexe','une zone de production');
+  assert.deepEqual(await listes(cree),partout,'un service créé ici est partout');
+  //    b. Un nom déjà pris est refusé.
+  await nav.aller(page,'u-services');
+  const nZones=await page.evaluate(()=>Sim.editor.state.zones.length);
+  await page.fill('[data-svc-nouveau] input[name=nom]','froid ezy');await page.locator('[data-svc-nouveau] button[type=submit]').click();await attendre();
+  assert.equal(await page.evaluate(()=>Sim.editor.state.zones.length),nZones,'pas de doublon');
+  //    c. Changer de rattachement : il reprend les liens de son nouveau service.
+  await page.selectOption(`[data-svc-reparent="${cree}"]`,'cuisine');await attendre();
+  assert.equal(await page.evaluate(id=>Sim.editor.state.zones.find(z=>z.id===id).parent,cree),'cuisine');
+  assert.ok(await page.evaluate(id=>Sim.ateliers.a.liaisons().some(l=>l.from===id||l.to===id),cree),'il hérite des liens de la cuisine');
+  //    d. Supprimer : son équipe passe dans le service de rattachement.
+  await page.evaluate(id=>Sim.ateliers.creer(id),cree);await attendre();
+  await nav.aller(page,'u-services');
+  await page.locator(`[data-svc-supprimer="${cree}"]`).click();await attendre();
+  assert.equal(await page.evaluate(id=>Sim.editor.state.zones.some(z=>z.id===id),cree),false,'le service est supprimé');
+  assert.equal((await cases(cree)).length,0,'pas d’équipe orpheline');
+  assert.equal(await page.locator(`tr[data-svc="${cree}"]`).count(),0,'plus de ligne');
+  //    e. Un service du plan d'origine ne se supprime pas : il se retire, et se remet.
+  assert.equal(await ligne('bobduty').locator('[data-svc-supprimer]').count(),0);
+  assert.ok(await page.evaluate(()=>Sim.ateliers.a.liaisons().some(l=>l.from==='bobduty'||l.to==='bobduty')),'Duty free est relié');
+  await ligne('bobduty').locator('[data-svc-retirer]').click();await attendre();
+  assert.equal(await page.evaluate(()=>Sim.ateliers.a.services().some(s=>s.id==='bobduty')),false,'hors des listes');
+  assert.equal(await page.evaluate(()=>Sim.ateliers.a.liaisons().some(l=>l.from==='bobduty'||l.to==='bobduty')),false,'le calcul ne lit plus ses liens');
+  assert.equal(await page.evaluate(()=>[...document.querySelectorAll('#zone-picker option')].some(o=>o.value==='bobduty')),false,'hors du plan');
+  assert.equal(await page.evaluate(()=>Sim.flows.points.some(x=>x.owner==='bobduty')),false,'hors des liens');
+  assert.match(await page.locator('.svc-bloc').last().textContent(),/Services retirés[\s\S]*Duty free/);
+  await page.locator('[data-svc-remettre=bobduty]').click();await attendre();
+  assert.equal(await page.evaluate(()=>Sim.ateliers.a.services().some(s=>s.id==='bobduty')),true,'remis dans l’unité');
+  assert.ok(await page.evaluate(()=>Sim.ateliers.a.liaisons().some(l=>l.from==='bobduty'||l.to==='bobduty')),'avec ses liens');
+
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('services-browser : ok');
  }finally{await browser.close();}

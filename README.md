@@ -146,6 +146,13 @@ le rouge ne sert qu’aux retards.
      « locaux »), avec « En faire un service », et les équipes dont le service
      a disparu, à rattacher. Un service, c’est un service du plan ou une zone
      de production — masquée ou non sur le plan, elle est partout.
+     Tout le cycle de vie d’un service se fait ici : **créer** (« Nouveau
+     service » : un nom, un service de rattachement dont il reprend les liens) ;
+     **renommer** (le champ du nom) ; **changer de rattachement** (« rattaché
+     à ») ; **supprimer** un service créé (ses équipes et ses étapes de chemin
+     passent dans son service de rattachement) ; **retirer** un service du plan
+     d’origine, qui sort des listes, des liens, du calcul et du plan, puis le
+     **remettre** (« Services retirés de l’unité », en bas de page).
    - *Liens entre services* : qui livre qui dans l’unité, dans le même diagramme
      de nœuds ; ces liens ne servent qu’aux commandes qui n’ont pas de chemin.
    - *Contrôles* : ce que le calcul comprend de l’organisation, et ce qu’il faut
@@ -359,7 +366,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/echanges.test.cjs` | Les trois classeurs : aller-retour, ajouts, erreurs regroupées |
 | `tests/excel-browser.cjs` | Chemins et tableau « Qui prépare quoi » dans l’interface, classeurs ateliers et vols de bout en bout |
 | `tests/menu-browser.cjs` | L’accueil (tuiles, états, « à faire ensuite »), le menu par parties, la nature de chaque page, les outils qui suivent la page, clavier, page retenue, sauvegarde, menu verrouillé pendant l’édition du plan, hauteur des bandeaux, écran de 1 024 px |
-| `tests/services-browser.cjs` | Organisation › Services : une ligne par service, « + Une équipe » (depuis la page, les contrôles, le plan), renommer, voir et modifier sur le plan, pas d’alerte pour une plonge |
+| `tests/services-browser.cjs` | Organisation › Services : une ligne par service, « + Une équipe » (depuis la page, les contrôles, le plan), renommer, voir et modifier sur le plan, pas d’alerte pour une plonge ; cycle de vie : créer, doublon refusé, changer de rattachement, supprimer, retirer et remettre |
 | `tests/nav.cjs` | Aide partagée des tests navigateur : aller à une page comme à la main (la partie, puis l’onglet) |
 | `tests/icones.test.cjs` | Chaque service reconnaît son pictogramme |
 | `tests/graphe.test.cjs` | Diagramme : colonnes, nœud au milieu de ses amonts, couloirs des longs liens, boucles, dispositions retenues |

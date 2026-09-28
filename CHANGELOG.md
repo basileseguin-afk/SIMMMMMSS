@@ -5,6 +5,25 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-28 — Créer, renommer, rattacher, supprimer un service
+
+Retour d'usage : « comment je supprime un service, le renommer, etc. ».
+Tout se fait maintenant dans **Organisation › Services**, sans ouvrir
+l'édition du plan.
+
+- **Nouveau service** : un nom et un service de rattachement. C'est une zone de
+  production, posée sur le plan à côté de son parent, dont elle reprend les
+  liens. Un nom déjà pris est refusé.
+- **Rattaché à** : chaque service créé change de parent d'un choix.
+- **Supprimer** (services créés) : ses équipes et ses étapes de chemin passent
+  dans son service de rattachement.
+- **Retirer / Remettre** (services du plan d'origine, qui ne se suppriment
+  pas) : un service retiré sort des listes, des liens, du plan et du calcul ;
+  ses liens sont gardés et reviennent quand on le remet.
+- `plan-editor.js` : `nouveauService`, `supprimer`, `retirer` ; le drapeau
+  `retire` est gardé dans la sauvegarde du plan.
+- Tests : `tests/services-browser.cjs` (le cycle complet).
+
 ## 2026-09-28 — Toutes les listes de services disent la même chose
 
 Retour d'usage : « Armement EZY/AF n'apparaît pas dans la liste des chemins ».

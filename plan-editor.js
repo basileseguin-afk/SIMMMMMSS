@@ -31,7 +31,7 @@ function validZone(z){
  if(z.pts!==undefined){if(!Array.isArray(z.pts)||z.pts.length<3||z.pts.length>500||!z.pts.every(p=>Array.isArray(p)&&p.length===2&&p.every(n=>typeof n==='number'&&Number.isFinite(n)&&Math.abs(n)<1e7))||area(z.pts)<1)throw new Error('Polygone invalide pour '+z.nom+'.');Object.assign(z,bounds(z));}
  if(z.color!==undefined&&!/^#[0-9a-f]{6}$/i.test(z.color))throw new Error('Couleur invalide.');
  if(z.kind==='annexe'&&(typeof z.parent!=='string'||!z.parent.trim()||z.parent.length>160))throw new Error('L’annexe '+z.nom+' doit indiquer l’atelier dont elle dépend.');
- return{id:z.id,nom:z.nom.trim(),kind:z.kind,...(z.kind==='service'?{storages:validStorages(z.storages)}:{}),...(z.kind==='annexe'?{parent:z.parent.trim()}:{}),...bounds(z),...(z.pts?{pts:clone(z.pts)}:{}),color:z.color||COLORS[z.kind],locked:z.locked===true,visible:z.visible!==false,approx:z.approx===true};
+ return{id:z.id,nom:z.nom.trim(),kind:z.kind,...(z.kind==='service'?{storages:validStorages(z.storages)}:{}),...(z.kind==='annexe'?{parent:z.parent.trim()}:{}),...bounds(z),...(z.pts?{pts:clone(z.pts)}:{}),color:z.color||COLORS[z.kind],locked:z.locked===true,visible:z.visible!==false,approx:z.approx===true,...(z.kind==='service'&&z.retire===true?{retire:true}:{})};
 }
 function validatePlan(raw,originals){
  const base=clone(originals);let zones,opacity=.85,pending=[];
@@ -233,7 +233,16 @@ class PlanEditor{
   },seconde?'Seconde salle créée : déplacez-la, puis décrivez ses équipes dans l’onglet « Ateliers ».'
           :'Copie créée comme annotation : elle ne crée aucun service.');
  }
- remove(){if(!this.zone)return;if(this.zone.kind==='service'){this.status('Cet atelier est relié au moteur. Utilisez l’œil pour le masquer ; il ne peut pas être supprimé.');return;}if(this.zone.locked){this.status('Déverrouillez la zone avant de la supprimer.');return;}const zone=clone(this.zone);if(this.a.avantSuppression&&this.a.avantSuppression(zone)===false){this.status('Suppression annulée.');return;}this.change(()=>{this.state.zones=this.state.zones.filter(z=>z.id!==zone.id);this.selected=null;},'Zone supprimée. Annuler permet de la retrouver.');if(this.a.apresSuppression)this.a.apresSuppression(zone);}
+ remove(){if(!this.zone)return;if(this.zone.kind==='service'){this.status('Un service du plan d’origine ne se supprime pas : retirez-le de l’unité depuis Organisation › Services (on peut l’y remettre).');return;}if(this.zone.locked){this.status('Déverrouillez la zone avant de la supprimer.');return;}this.supprimer(this.zone.id);}
+ /* Supprimer une zone (pas un service du plan d'origine). La page prévient
+    d'abord si elle porte des équipes, puis les fait passer dans son parent. */
+ supprimer(id){const z=this.state.zones.find(v=>v.id===id);if(!z||z.kind==='service')return false;const zone=clone(z);if(this.a.avantSuppression&&this.a.avantSuppression(zone)===false){this.status('Suppression annulée.');return false;}this.change(()=>{this.state.zones=this.state.zones.filter(v=>v.id!==zone.id);if(this.selected===zone.id)this.selected=null;},'Zone supprimée. Annuler permet de la retrouver.');if(this.a.apresSuppression)this.a.apresSuppression(zone);return true;}
+ /* Retirer un service du plan d'origine de l'unité, ou l'y remettre : il sort
+    de toutes les listes et du plan, sans être effacé. */
+ retirer(id,oui){const z=this.state.zones.find(v=>v.id===id);if(!z||z.kind!=='service')return false;const zone=clone(z);if(oui&&this.a.avantSuppression&&this.a.avantSuppression(zone,'retirer')===false)return false;this.change(()=>{z.retire=!!oui;z.visible=!oui;},oui?'Service retiré de l’unité.':'Service remis dans l’unité.');if(oui&&this.a.apresSuppression)this.a.apresSuppression(zone);return true;}
+ /* Un nouveau service : une zone de production posée à côté de son service
+    parent, à déplacer ensuite sur le plan. */
+ nouveauService(nom,parent){const p=this.state.zones.find(v=>v.id===parent&&v.kind==='service');const n=String(nom||'').trim().slice(0,120);if(!p||!n)return null;const id='local-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7);const b=bounds(p);this.change(()=>{this.state.zones.push(validZone({id,nom:n,kind:'annexe',parent,x:b.x+b.w*0.25,y:b.y+b.h*0.25,w:Math.max(20,b.w*0.5),h:Math.max(20,b.h*0.5),approx:true}));},'Service créé : placez-le sur le plan quand vous voudrez.');return id;}
  /* Un local dessiné devient une zone de production : un service à part entière,
     rattaché à un service du plan. */
  convertir(id,parent){const z=this.state.zones.find(v=>v.id===id);if(!z||z.kind==='service'||z.kind==='annexe')return false;this.change(()=>{z.kind='annexe';z.parent=parent||this.originals[0].id;z.color=COLORS.annexe;},'Zone de production : c’est maintenant un service.');return true;}
