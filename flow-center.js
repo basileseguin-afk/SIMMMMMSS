@@ -189,9 +189,13 @@ class FlowCenter{
   const graves=lu.alertes.filter(a=>a.grave),notes=lu.alertes.filter(a=>!a.grave);
   // Un point à corriger mène au service à corriger : ajouter l'équipe qui
   // manque d'un clic, ou ouvrir la page des services.
-  const gestes=a=>a.geste==='equipe'&&a.services?`<span class="fc-gestes">${a.services.map(x=>`<button type="button" class="btn btn-sm" data-svc-action="equipe" data-svc="${esc(x.id)}">+ Une équipe dans ${esc(x.nom)}</button>`).join('')}</span>`:'';
+  // Un service qui n'existe pas dans l'unité se supprime d'ici aussi : on ne
+  // doit pas avoir à le chercher ailleurs.
+  const gestes=a=>(a.geste==='equipe'||a.geste==='supprimer')&&a.services?`<span class="fc-gestes">${a.services.map(x=>
+    (a.geste==='equipe'?`<button type="button" class="btn btn-sm" data-svc-action="equipe" data-svc="${esc(x.id)}">+ Une équipe dans ${esc(x.nom)}</button>`:'')
+    +`<button type="button" class="btn btn-sm svc-danger" data-svc-action="supprimer" data-svc="${esc(x.id)}">Supprimer ${esc(x.nom)}</button>`).join('')}</span>`:'';
   alertes.innerHTML=(graves.length?`<div class="fc-alerte grave"><b>${graves.length} ${graves.length>1?'points':'point'} à corriger</b><ul>${graves.map(a=>`<li>${esc(a.texte)}${gestes(a)}</li>`).join('')}</ul><button type="button" class="lien-fort" data-page="u-services">Voir tous les services →</button></div>`:'')
-   +(notes.length?`<div class="fc-alerte"><ul>${notes.map(a=>`<li>${esc(a.texte)}</li>`).join('')}</ul></div>`:'')
+   +(notes.length?`<div class="fc-alerte"><ul>${notes.map(a=>`<li>${esc(a.texte)}${gestes(a)}</li>`).join('')}</ul></div>`:'')
    +(!lu.alertes.length?'<p class="fc-alerte ok">Le parcours se lit de bout en bout.</p>':'');
   box.innerHTML=`<table class="fc-table"><thead><tr>
     <th scope="col">Service</th><th scope="col">Ce qu’il est</th>

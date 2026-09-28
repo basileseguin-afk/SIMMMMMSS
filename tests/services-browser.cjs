@@ -158,7 +158,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.evaluate(()=>Sim.ateliers.a.liaisons().some(l=>l.from==='bobduty'||l.to==='bobduty')),false,'le calcul ne lit plus ses liens');
   assert.equal(await page.evaluate(()=>[...document.querySelectorAll('#zone-picker option')].some(o=>o.value==='bobduty')),false,'hors du plan');
   assert.equal(await page.evaluate(()=>Sim.flows.points.some(x=>x.owner==='bobduty')),false,'hors des liens');
-  assert.match(await page.locator('.svc-bloc').last().textContent(),/Services retirés[\s\S]*Duty free/);
+  assert.match(await page.locator('.svc-bloc').last().textContent(),/Services supprimés de l’unité[\s\S]*Duty free/);
   await page.locator('[data-svc-remettre=bobduty]').click();await attendre();
   assert.equal(await page.evaluate(()=>Sim.ateliers.a.services().some(s=>s.id==='bobduty')),true,'remis dans l’unité');
   assert.ok(await page.evaluate(()=>Sim.ateliers.a.liaisons().some(l=>l.from==='bobduty'||l.to==='bobduty')),'avec ses liens');

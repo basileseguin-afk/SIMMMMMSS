@@ -307,13 +307,15 @@ function servicesDisponibles(){
 function liaisonsServices(){
   const f=Sim.flows; if(!f) return FLUX.map(([from,to])=>({from,to}));
   const service=point=>{try{return JSON.parse(point)[0];}catch(e){return null;}};
-  const out=[];
+  const out=[],tous=[];
   for(const l of f.state.flows){
     if(!l.enabled) continue;
     const from=service(l.from),to=service(l.to);
+    if(!from||!to||from===to) continue;
+    tous.push({from,to});
     // Un service retiré de l'unité garde ses liens (Remettre les retrouve),
     // mais le calcul ne les lit plus.
-    if(from&&to&&from!==to&&!estRetire(from)&&!estRetire(to)) out.push({from,to});
+    if(!estRetire(from)&&!estRetire(to)) out.push({from,to});
   }
   // Une annexe est une seconde salle de son atelier : elle en hérite les
   // fournisseurs et les clients. Sans cela, un atelier posé dans « Armement 2 »
@@ -324,7 +326,11 @@ function liaisonsServices(){
     // explicite l'emporte sur l'héritage, sinon on ne pourrait jamais donner
     // à une annexe un parcours qui lui soit propre.
     if(liens.some(l=>l.from===a.id||l.to===a.id))continue;
-    for(const l of liens){
+    // Le service de rattachement peut avoir été supprimé de l'unité (« Armement »
+    // tout court, quand tout se fait dans « Armement AF Équipage ») : ses salles
+    // gardent ses liens, sans quoi elles n'attendraient plus personne.
+    const source=estRetire(a.parent)?tous.filter(l=>!estRetire(l.from===a.parent?l.to:l.from)):liens;
+    for(const l of source){
       if(l.to===a.parent) out.push({from:l.from,to:a.id});
       if(l.from===a.parent) out.push({from:a.id,to:l.to});
     }
@@ -376,10 +382,14 @@ function renderServices(){
     .sort((a,b)=>rang[a.etat]-rang[b.etat]||a.nom.localeCompare(b.nom));
   const manque=lignes.filter(l=>l.etat==='manque').length;
   const type={dispo:'mise à disposition',lavage:'plonge',robot:'robot',handling:'par vol',manuel:''};
+  const cherche=(box.querySelector('[data-svc-chercher]')||{}).value||'';
   box.innerHTML='<div class="svc-tete"><p class="mini-note">'+(manque
       ?'<b>'+manque+(manque>1?' services attendent':' service attend')+' une équipe ou du travail</b> : ils sont en tête de liste.'
       :'Chaque service a ce qu’il lui faut.')+' Le nom se change ici ; la forme et la place, sur le plan.</p>'
     +'<button class="btn btn-sm" type="button" data-svc-action="plan">Modifier le plan de l’unité</button></div>'
+    +sectionFantomes()
+    +'<div class="svc-chercher"><label>Chercher un service <input type="search" data-svc-chercher value="'+escapeHTML(cherche)+'" placeholder="ex. armement" autocomplete="off"></label>'
+    +'<span class="mini-note" data-svc-compte aria-live="polite"></span></div>'
     +'<form class="svc-nouveau" data-svc-nouveau><b>Nouveau service</b><label>Nom <input name="nom" maxlength="120" placeholder="ex. Armement EZY/AF" required></label>'
     +'<label>Rattaché à <select name="parent">'+servicesDuPlan().map(id=>'<option value="'+escapeHTML(id)+'">'+escapeHTML(nomLisible(ZONES[id].nom))+'</option>').join('')+'</select></label>'
     +'<button class="btn btn-sm btn-play" type="submit">+ Créer le service</button>'
@@ -391,6 +401,9 @@ function renderServices(){
       return '<tr data-svc="'+escapeHTML(l.id)+'" class="svc-'+l.etat+'">'
         +'<td><input class="svc-nom" data-svc-nom="'+escapeHTML(l.id)+'" maxlength="120" value="'+escapeHTML(brut(l.id))+'" aria-label="Nom du service '+escapeHTML(l.nom)+'">'
         +(annexe?'<label class="svc-parent">rattaché à <select data-svc-reparent="'+escapeHTML(l.id)+'">'
+            // Son service de rattachement a pu être supprimé : on le montre tel
+            // quel, sans quoi la liste afficherait un autre service que le sien.
+            +(estRetire(annexe.parent)&&ZONES[annexe.parent]?'<option value="'+escapeHTML(annexe.parent)+'" selected>'+escapeHTML(nomDeService(annexe.parent))+'</option>':'')
             +servicesDuPlan().map(id=>'<option value="'+escapeHTML(id)+'"'+(id===annexe.parent?' selected':'')+'>'+escapeHTML(nomLisible(ZONES[id].nom))+'</option>').join('')+'</select></label>'
           :'<small>service du plan</small>')+'</td>'
         +'<td>'+(l.cases.length?l.cases.map(a=>'<button type="button" class="lien-discret" data-svc-case="'+escapeHTML(a.id)+'">'+escapeHTML(a.nom)+'</button>'
@@ -399,16 +412,64 @@ function renderServices(){
         +'<td><span class="svc-etat '+l.etat+'">'+escapeHTML(l.texte)+'</span></td>'
         +'<td class="svc-actions"><button class="btn btn-sm'+(l.etat==='manque'&&!l.cases.length?' btn-play':'')+'" type="button" data-svc-action="equipe" data-svc="'+escapeHTML(l.id)+'">+ Une équipe</button>'
         +'<button class="btn btn-sm" type="button" data-svc-action="voir" data-svc="'+escapeHTML(l.id)+'">Voir sur le plan</button>'
+        // Un service du plan d'origine se « supprime » comme les autres : il sort
+        // de l'unité, et se remet d'un clic en bas de la page. « Retirer » ne
+        // se lisait pas comme une suppression : on cherchait le bouton.
         +(annexe?'<button class="btn btn-sm svc-danger" type="button" data-svc-supprimer="'+escapeHTML(l.id)+'">Supprimer</button>'
-          :'<button class="btn btn-sm svc-danger" type="button" data-svc-retirer="'+escapeHTML(l.id)+'" title="Le retirer de l’unité : il sort des listes et du plan ; on peut l’y remettre">Retirer</button>')+'</td></tr>';
+          :'<button class="btn btn-sm svc-danger" type="button" data-svc-retirer="'+escapeHTML(l.id)+'" title="Il sort des listes, des liens et du plan ; on peut le remettre en bas de la page">Supprimer</button>')+'</td></tr>';
     }).join('')+'</tbody></table></div>'
     +sectionOrphelines()+sectionLocaux()+sectionRetires();
+  filtrerServices(box);
 }
-/* Les services du plan d'origine retirés de l'unité : on peut les remettre. */
+/* Chercher un service par son nom : la liste est longue, et un service sans
+ * équipe se range en tête, loin de l'ordre alphabétique. */
+function filtrerServices(box){
+  const q=box.querySelector('[data-svc-chercher]');if(!q)return;
+  const t=q.value.trim().toLowerCase();let n=0;
+  for(const tr of box.querySelectorAll('.svc-table tbody tr')){
+    const i=tr.querySelector('.svc-nom'),ok=!t||(i?i.value:tr.textContent).toLowerCase().includes(t);
+    tr.hidden=!ok;if(ok)n++;
+  }
+  const note=box.querySelector('[data-svc-compte]');
+  if(note)note.textContent=t?(n?n+(n>1?' services':' service'):'Aucun service de l’unité ne porte ce nom. Regardez les services supprimés, en bas de la page.'):'';
+}
+/* Les services du plan d'origine supprimés de l'unité : on peut les remettre. */
 function sectionRetires(){
   const r=Object.keys(ZONES).filter(estRetire);if(!r.length)return '';
-  return '<section class="svc-bloc"><h3>Services retirés de l’unité</h3><p class="mini-note">Ils ne figurent plus dans les listes, les liens ni le plan.</p><ul class="svc-liste">'
+  return '<section class="svc-bloc"><h3>Services supprimés de l’unité</h3><p class="mini-note">Ils ne figurent plus dans les listes, les liens ni le plan. On peut les y remettre.</p><ul class="svc-liste">'
     +r.map(id=>'<li><b>'+escapeHTML(nomLisible(ZONES[id].nom))+'</b><button class="btn btn-sm" type="button" data-svc-remettre="'+escapeHTML(id)+'">Remettre dans l’unité</button></li>').join('')+'</ul></section>';
+}
+/* Le nom d'un service, même supprimé : « Armement (supprimé) » se comprend,
+ * « armement » tout court se cherche en vain dans les listes. */
+function nomDeService(id){
+  const s=servicesDisponibles().find(x=>x.id===id);if(s)return s.nom;
+  const z=ZONES[id]||((Sim.editor&&Sim.editor.state.zones)||[]).find(x=>x.id===id);
+  return (z?nomLisible(z.nom):id)+' (supprimé)';
+}
+/* Les services supprimés (de l'unité ou du plan) que des cases ou des chemins
+ * citent encore — après un « Annuler » des cases, un vieil import… Ils font
+ * des alertes qu'aucune liste ne permet de retrouver : on les montre ici. */
+function servicesFantomes(){
+  const at=Sim.ateliers;if(!at||!window.MoteurProduction)return [];
+  const connus=new Set(servicesDisponibles().map(s=>s.id)),par=new Map();
+  const noter=(id,champ)=>{if(!id||connus.has(id))return;
+    const f=par.get(id)||{id,nom:nomDeService(id),cases:0,chemins:0,retire:estRetire(id)};f[champ]++;par.set(id,f);};
+  for(const a of at.state.ateliers)noter(a.service,'cases');
+  for(const p of at.state.parcours||[])for(const s of MoteurProduction.servicesDuParcours(p))noter(s,'chemins');
+  return [...par.values()];
+}
+function sectionFantomes(){
+  const f=servicesFantomes();if(!f.length)return '';
+  const pl=(n,s,p)=>n+' '+(n>1?p:s);
+  return '<section class="svc-bloc svc-alerte" data-svc-fantomes><h3>'+(f.length>1?f.length+' services supprimés sont encore utilisés':'Un service supprimé est encore utilisé')+'</h3>'
+    +'<p class="mini-note">Ils ne sont plus dans l’unité, mais des cases ou des chemins y passent encore : ce sont eux qui font les alertes. '
+    +'Effacez-les partout, ou faites passer leur travail dans un autre service.</p><ul class="svc-liste">'
+    +f.map(x=>'<li><b>'+escapeHTML(x.nom)+'</b><span>'+[x.cases?pl(x.cases,'case','cases'):'',x.chemins?pl(x.chemins,'chemin','chemins'):''].filter(Boolean).join(' · ')+'</span>'
+      +'<button class="btn btn-sm svc-danger" type="button" data-svc-effacer="'+escapeHTML(x.id)+'">Effacer partout</button>'
+      +'<label>ou passer dans <select data-svc-vers="'+escapeHTML(x.id)+'">'+optionsServices(null)+'</select></label>'
+      +'<button class="btn btn-sm" type="button" data-svc-remplacer="'+escapeHTML(x.id)+'">Passer</button>'
+      +(x.retire?'<button class="btn btn-sm" type="button" data-svc-remettre="'+escapeHTML(x.id)+'">Remettre dans l’unité</button>':'')+'</li>').join('')
+    +'</ul></section>';
 }
 const optionsServices=(choisi)=>servicesDisponibles().map(x=>'<option value="'+escapeHTML(x.id)+'"'+(x.id===choisi?' selected':'')+'>'+escapeHTML(x.nom)+'</option>').join('');
 /* Des équipes rattachées à un service qui n'existe plus : on les rattache ailleurs. */
@@ -443,7 +504,26 @@ function actionService(action,id){
   } else if(action==='plan'){
     if(!editMode)basculerEdition();
     if(id&&Sim.editor){Sim.editor.select(id);selectionner(id);}
+  } else if(action==='supprimer'&&id&&Sim.editor){
+    // Depuis une alerte : un service qui n'existe pas dans l'unité se supprime
+    // là où on le voit (un service du plan d'origine se retire, et se remet).
+    const z=Sim.editor.state.zones.find(v=>v.id===id);if(!z)return;
+    const fait=z.kind==='service'?Sim.editor.retirer(id,true):Sim.editor.supprimer(id);
+    if(fait)toast('« '+nomLisible(z.nom)+' » supprimé'+(z.kind==='service'?' : on peut le remettre en bas de Organisation › Services.':'.'));
+    if(document.body.dataset.sous==='u-services')renderServices();
   }
+}
+/* Un service supprimé encore cité : ses cases et ses étapes de chemin passent
+ * dans un autre service, ou disparaissent. Annuler (dans les cases) les rend. */
+function effacerService(id,vers){
+  const nom=nomDeService(id);
+  const f=servicesFantomes().find(x=>x.id===id)||{cases:0,chemins:0};
+  const cible=vers?nomDeService(vers):'';
+  const quoi=[f.cases?f.cases+(f.cases>1?' cases':' case'):'',f.chemins?f.chemins+(f.chemins>1?' chemins':' chemin'):''].filter(Boolean).join(' et ');
+  if(!confirm(vers?'Faire passer '+quoi+' de « '+nom+' » dans « '+cible+' » ?':'Effacer « '+nom+' » de '+quoi+' ? Ses cases sont supprimées et ses étapes de chemin retirées. « Annuler » dans les cases les rétablit.'))return;
+  reaffecterService(id,vers,nom.replace(/ \(supprimé\)$/,''));
+  toast(vers?'« '+nom+' » : son travail passe dans « '+cible+' ».':'« '+nom+' » est effacé partout.');
+  renderServices();
 }
 /* Un service renommé (page Services, édition du plan, Annuler…) : ses cases
  * qui portent son nom le suivent — « Montage », « Montage TX BC » deviennent
@@ -481,6 +561,7 @@ function initServices(){
   vue.appendChild(box);
   box.addEventListener('change',e=>{const i=e.target.closest('[data-svc-nom]');if(i)renommerService(i.dataset.svcNom,i.value);});
   box.addEventListener('keydown',e=>{const i=e.target.closest('[data-svc-nom]');if(i&&e.key==='Enter'){e.preventDefault();i.blur();}});
+  box.addEventListener('input',e=>{if(e.target.closest('[data-svc-chercher]'))filtrerServices(box);});
   box.addEventListener('submit',e=>{
     const f=e.target.closest('[data-svc-nouveau]');if(!f)return;e.preventDefault();
     const nom=f.elements.nom.value.trim();if(!nom){toast('Donnez un nom au service.');return;}
@@ -501,6 +582,10 @@ function initServices(){
     if(rt){if(Sim.editor.retirer(rt.dataset.svcRetirer,true))toast('Service retiré de l’unité : « Remettre » en bas de la page.');renderServices();return;}
     const rm=e.target.closest('[data-svc-remettre]');
     if(rm){Sim.editor.retirer(rm.dataset.svcRemettre,false);toast('Service remis dans l’unité.');renderServices();return;}
+    const ef=e.target.closest('[data-svc-effacer]');
+    if(ef){effacerService(ef.dataset.svcEffacer,null);return;}
+    const rp=e.target.closest('[data-svc-remplacer]');
+    if(rp){const sel=box.querySelector('[data-svc-vers="'+CSS.escape(rp.dataset.svcRemplacer)+'"]');if(sel&&sel.value)effacerService(rp.dataset.svcRemplacer,sel.value);return;}
     const cv=e.target.closest('[data-svc-convertir]');
     if(cv){const id=cv.dataset.svcConvertir,sel=box.querySelector('[data-svc-parent="'+CSS.escape(id)+'"]');
       if(Sim.editor.convertir(id,sel?sel.value:null)){toast('« '+Sim.editor.state.zones.find(z=>z.id===id).nom+' » est maintenant un service : il apparaît dans les chemins et les cases.');renderServices();}
@@ -568,7 +653,7 @@ function parentProbable(nom){
 function lectureDuGraphe(){
   const liens=liaisonsServices();
   const noms=new Map(servicesDisponibles().map(s=>[s.id,s.nom]));
-  const nom=id=>noms.get(id)||id;
+  const nom=id=>noms.get(id)||nomDeService(id);
   const ateliers=(Sim.ateliers&&Sim.ateliers.state.ateliers)||[];
 
   const equipes=new Map();
@@ -598,11 +683,21 @@ function lectureDuGraphe(){
   // dessus d'un clic (ajouter l'équipe qui manque, ouvrir le service).
   const grouper=(liste,grave,texte,geste)=>{ if(liste.length) alertes.push({grave,texte:texte(liste.map(l=>nom(l.id))),
     services:liste.map(l=>({id:l.id,nom:nom(l.id)})),geste:geste||null}); };
-  grouper(lignes.filter(l=>!l.equipes), true, noms2=>
+  // Un service dont le travail se fait dans ses propres salles (« Armement »,
+  // quand tout se prépare dans « Armement AF Équipage ») n'a pas à avoir
+  // d'équipe : ses salles reprennent ses liens. Ce n'est pas un point à
+  // corriger, et s'il n'existe plus comme salle, on le supprime d'ici.
+  const salles=id=>annexes().filter(a=>a.parent===id&&equipes.has(a.id));
+  grouper(lignes.filter(l=>!l.equipes&&!salles(l.id).length), true, noms2=>
     noms2.join(', ')+(noms2.length>1?' fournissent':' fournit')+' sans avoir d’équipe : '
     +'rien n’en sort, et personne ne '+(noms2.length>1?'les':'l’')+' attend. '
     +'Donnez-'+(noms2.length>1?'leur':'lui')+' une équipe — une « mise à disposition » '
-    +'suffit pour un magasin, des appros ou tout ce qui ne fait que sortir du matériel.','equipe');
+    +'suffit pour un magasin, des appros ou tout ce qui ne fait que sortir du matériel. '
+    +'S’'+(noms2.length>1?'ils n’existent':'il n’existe')+' pas dans votre unité, '+(noms2.length>1?'supprimez-les':'supprimez-le')+'.','equipe');
+  for(const l of lignes.filter(l=>!l.equipes&&salles(l.id).length))
+    alertes.push({grave:false,geste:'supprimer',services:[{id:l.id,nom:l.nom}],
+      texte:l.nom+' n’a pas d’équipe : son travail se fait dans '+salles(l.id).map(a=>nomLisible(a.nom)).join(', ')
+        +', qui en reprennent les liens. S’il n’existe plus comme salle, supprimez-le : elles les garderont.'});
   grouper(lignes.filter(l=>l.equipes&&!l.produit), true, noms2=>
     noms2.join(', ')+' : une équipe est décrite mais ne prépare rien. Dites ce qu’elle prépare.');
   grouper(lignes.filter(l=>l.produit&&!l.amonts.length&&!l.avals.length), false, noms2=>
@@ -613,6 +708,14 @@ function lectureDuGraphe(){
   if(orphelines.length)alertes.push({grave:true,orphelines:true,
     texte:orphelines.map(a=>a.nom).join(', ')+(orphelines.length>1?' travaillent':' travaille')+' dans un service qui n’existe plus sur le plan. '
       +'Rattachez '+(orphelines.length>1?'ces équipes':'cette équipe')+' à un service (Organisation › Services).'});
+  // Un service supprimé qui reste une étape de chemins : l'étape est sautée,
+  // et l'alerte du calcul le nomme sans qu'on puisse le retrouver nulle part.
+  const fantomes=servicesFantomes().filter(f=>f.chemins);
+  const nChemins=fantomes.reduce((n,f)=>n+f.chemins,0);
+  if(fantomes.length)alertes.push({grave:true,
+    texte:fantomes.map(f=>f.nom).join(', ')+(fantomes.length>1?' restent des étapes':' reste une étape')+' de '
+      +nChemins+(nChemins>1?' chemins':' chemin')+'. Effacez-'+(fantomes.length>1?'les':'le')+' partout, ou faites passer '
+      +(fantomes.length>1?'leur':'son')+' travail dans un autre service (Organisation › Services, en tête de page).'});
   // Un cycle bloquerait la fabrication sans jamais rien dire.
   const fourn=MoteurProduction.fournisseurs(liens);
   for(const c of MoteurProduction.cycles(fourn,new Set(lignes.filter(l=>l.produit).map(l=>l.id))))
@@ -635,6 +738,10 @@ function initAteliers(){
     change:()=>{majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();},
     // Une case se règle dans le chemin d'une commande : l'ouvrir d'ailleurs y mène.
     onglet:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
+    // Un service supprimé encore cité : son nom, pour que les alertes le
+    // disent lisiblement, et le geste qui l'efface.
+    fantomes:servicesFantomes,
+    effacerService:(id,vers)=>effacerService(id,vers),
     notify:toast
   });
 }

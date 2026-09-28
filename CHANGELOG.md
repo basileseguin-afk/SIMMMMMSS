@@ -5,6 +5,28 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-28 — Supprimer un service qu'on ne retrouvait pas
+
+Retour d'usage : « le service "armement" tout court crée des alertes, je le
+cherche mais je n'arrive pas à le supprimer » (BUGS.md, BUG-047 à 049).
+
+- **Contrôles** : un service sans équipe dont les salles travaillent
+  (« Armement », quand tout se fait dans « Armement AF Équipage ») n'est plus
+  un point à corriger ; une note le dit, avec **Supprimer Armement**. Chaque
+  point « fournit sans avoir d'équipe » porte, à côté de « + Une équipe »,
+  **Supprimer …**.
+- **Services** : le bouton d'un service du plan d'origine s'appelle
+  **Supprimer** (il se remet en bas de la page, « Services supprimés de
+  l'unité ») ; une **recherche par nom** ; en tête, les **services supprimés
+  encore utilisés** par des cases ou des chemins, avec « Effacer partout »,
+  « Passer dans… » et « Remettre dans l'unité ».
+- Un service supprimé se nomme « Armement (supprimé) » dans les alertes, plus
+  jamais par son identifiant ; les points à regarder des cases portent
+  « Effacer partout ».
+- Les salles d'un service supprimé **gardent ses liens** (elles les
+  perdaient).
+- Test : `tests/fantome-browser.cjs`.
+
 ## 2026-09-28 — Récaps et reste du site : une donnée, partout la même
 
 Retour d'usage : « tu as bien lié les man-minutes et le récap des cases à tout

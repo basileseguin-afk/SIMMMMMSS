@@ -290,7 +290,8 @@
           bareme: r.bareme, rendement: r.rendement, regime: r.regime, delaiChargement: r.delaiChargement,
           parcours: this.state.parcours, parcoursCabine: this.state.parcoursCabine,
           parcoursClasse: this.state.parcoursClasse,
-          noms: Object.fromEntries(this.a.services().map(s => [s.id, s.nom]))
+          noms: Object.fromEntries((this.a.fantomes ? this.a.fantomes() : []).map(f => [f.id, f.nom])
+            .concat(this.a.services().map(s => [s.id, s.nom])))
         });
       } catch (e) {
         this.resultat = { ok: false, anomalies: [{ code: 'moteur', message: e.message }], lots: [], ateliers: [], classes: [], parClasse: {} };
@@ -548,6 +549,9 @@
           try { localStorage.removeItem(CLE + '-avant-fonte'); } catch (e) { /* rien */ }
           return this.rendre();
         }
+        case 'fantome-effacer':
+          if (this.a.effacerService) this.a.effacerService(data.service, null);
+          return;
         case 'oublier-copie':
           try { localStorage.removeItem(CLE + '-avant-fonte'); } catch (e) { /* rien */ }
           return this.rendre('Copie d’avant la fusion oubliée.');
@@ -876,6 +880,8 @@
       const box = document.getElementById('at-anomalies');
       // Une étape de parcours sans équipe se lit mieux dans le tableau « Qui
       // fabrique quoi » (ses cases « à choisir ») qu'en une phrase par service.
+      const fantomes = this.a.fantomes ? this.a.fantomes() : [];
+      const nomSv = id => ((this.a.services().find(x => x.id === id) || fantomes.find(x => x.id === id)) || {}).nom || id;
       const trous = (r.anomalies || []).filter(a => a.code === 'parcours-trou');
       const list = (r.anomalies || []).filter(a => a.code !== 'parcours-trou').map(a => esc(a.message));
       if (trous.length) {
@@ -884,7 +890,16 @@
         // des commandes pas encore commencées) : on le dit autrement.
         const cmd = new Set(trous.flatMap(a => a.classes || [])).size;
         list.push((cmd > 1 ? cmd + ' commandes commencées sautent' : '1 commande commencée saute') + ' une étape sans équipe ('
-          + trous.map(a => esc((this.a.services().find(x => x.id === a.service) || {}).nom || a.service)).join(', ') + ') : à compléter dans l’onglet « Qui prépare quoi ».');
+          + trous.map(a => esc(nomSv(a.service))).join(', ') + ') : à compléter dans l’onglet « Qui prépare quoi ».');
+      }
+      // Un service supprimé que des cases ou des chemins citent encore : il fait
+      // des alertes, et aucune liste ne le montre. Le geste qui l'efface est ici.
+      for (const f of fantomes) {
+        list.unshift('<b>« ' + esc(f.nom) + ' » n’existe plus dans l’unité</b>, mais '
+          + [f.cases ? f.cases + (f.cases > 1 ? ' cases' : ' case') : '', f.chemins ? f.chemins + (f.chemins > 1 ? ' chemins' : ' chemin') : ''].filter(Boolean).join(' et ')
+          + (f.cases + f.chemins > 1 ? ' y passent' : ' y passe') + ' encore. '
+          + '<button class="btn btn-sm svc-danger" data-at-action="fantome-effacer" data-service="' + esc(f.id) + '">Effacer partout</button> '
+          + '<button class="lien-discret" data-page="u-services">Ou le remplacer, dans Organisation › Services →</button>');
       }
       // Des cases de handling d'avant (une par commande) : le handling travaille
       // désormais par vol. On le dit en tête, avec le geste qui convertit.
@@ -921,7 +936,7 @@
           + '<button class="lien-discret" data-at-action="oublier-copie">Oublier cette copie</button>');
       }
       box.hidden = !list.length;
-      if (vieilles.length || dispos.length || remplaces.length) box.open = true;
+      if (vieilles.length || dispos.length || remplaces.length || fantomes.length) box.open = true;
       // Replié par défaut : le nombre suffit à savoir qu'il y a à faire.
       box.innerHTML = list.length
         ? '<summary><strong>' + list.length + (list.length > 1 ? ' points' : ' point') + ' à regarder</strong></summary><ul>' +

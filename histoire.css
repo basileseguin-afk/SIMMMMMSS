@@ -536,7 +536,7 @@ body:not([data-vue="flux"]) .services-unite{display:none}
 .svc-liste{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:8px}
 .svc-liste li{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .svc-liste li b{min-width:200px}
-.svc-liste label{display:flex;align-items:center;gap:6px;font-size:14px}
+.svc-liste label{display:flex;align-items:center;gap:6px;font-size:14px;white-space:nowrap}
 .svc-nouveau{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--bg3);border:1px solid var(--bordure);
   border-left:4px solid var(--c-equipes);border-radius:12px;padding:12px 16px;font-size:14px}
 .svc-nouveau label{display:flex;align-items:center;gap:6px}
@@ -544,6 +544,10 @@ body:not([data-vue="flux"]) .services-unite{display:none}
 .svc-nouveau .mini-note{flex-basis:100%;margin:0}
 .svc-parent{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:var(--txt2)}
 .svc-parent select{font-size:12px}
+.svc-chercher{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:14px}
+.svc-chercher label{display:flex;align-items:center;gap:8px;font-weight:700;white-space:nowrap}
+.svc-chercher input{font:inherit;font-weight:400;padding:6px 10px;border:1px solid var(--bordure2);border-radius:8px;min-width:240px;background:var(--bg3)}
+.svc-chercher .mini-note{margin:0}
 .svc-danger{color:var(--retard);border-color:color-mix(in srgb,var(--retard) 40%,var(--bordure))}
 .svc-actions .btn{margin-bottom:4px}
 .svc-nouveau-ligne td{animation:svc-flash 1.6s ease-out}

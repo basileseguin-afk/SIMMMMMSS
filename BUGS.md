@@ -609,3 +609,11 @@ man-minutes, l'état des cases pour le reste) et se redessine quand l'autre
 change : barème ↔ récap man-minutes ↔ fiche ; effectif récap ↔ fiche ↔ récap
 des cases ↔ calcul ; départ récap des cases ↔ fiche ↔ chemin ↔ « Qui prépare
 quoi » ↔ Excel Horaires ; « ensemble » ; renommage d'un service ; Annuler.
+
+### Un service qu'on ne retrouve pas pour le supprimer (retour d'usage : « le service "armement" tout court crée des alertes, je le cherche mais je n'arrive pas à le supprimer »)
+
+| ID | Gravité | Statut | Vérification | Constat | Fichiers |
+|---|---|---|---|---|---|
+| BUG-047 | Majeur | Corrigé | Confirmé | Le travail de l'armement se fait dans ses salles (« Armement AF Équipage »…) ; l'« Armement » d'origine n'a pas d'équipe. Les Contrôles en faisaient un **point à corriger** (« fournit sans avoir d'équipe ») sans proposer de le supprimer, et sa ligne dans Services portait un bouton « Retirer », qu'on ne lisait pas comme une suppression. Un service dont les salles travaillent n'est plus un point à corriger : une note le dit, avec « Supprimer Armement » ; chaque point « sans équipe » porte aussi ce bouton ; « Retirer » s'appelle « Supprimer » ; la page Services a une recherche par nom | `sim.js`, `flow-center.js`, `histoire.css` |
+| BUG-048 | Majeur | Corrigé | Confirmé | Supprimer (retirer) le service de rattachement coupait les liens de ses salles : elles héritaient des liens de l'Armement, qui ne comptaient plus. Elles gardent maintenant les liens de leur service supprimé | `sim.js` |
+| BUG-049 | Majeur | Corrigé | Confirmé | Un service supprimé que des cases ou des chemins citent encore (après un « Annuler » des cases, un vieil import) faisait des alertes au nom de son identifiant brut, « armement », qu'aucune liste ne montrait. Il s'appelle « Armement (supprimé) » partout ; Services le montre en tête, avec « Effacer partout », « Passer dans… » et « Remettre dans l'unité » ; les points à regarder des cases portent « Effacer partout » | `sim.js`, `ateliers.js` |
