@@ -240,6 +240,16 @@ dans l'instant.
 | `permanent` | **vrai par défaut** : personne ne l'attend |
 | `vagues` | quand `permanent` est faux : `[{ debut, jour }]`, ses vagues dans la journée |
 | `debut` / `jour` | sa première vague (lue seule quand il n'y a pas de liste) |
+| `ouverture` | quand `permanent` est vrai : `{ de: '07:00', a: '18:00' }`, ses heures d'ouverture chaque jour (une boutique) |
+
+**Comme une boutique (confirmé le 28/09).** « La légumerie, les appros et le
+magasin sont libres en permanence entre une heure et une heure. » Chaque jour
+(J-1, J…), de `ouverture.de` à `ouverture.a`, on y est servi à l'instant où
+l'on vient ; en dehors, l'étape qui en a besoin **attend l'ouverture**, et
+cette attente compte dans la sienne (« attend 180 min »). Une plage qui passe
+minuit (22:00–06:00) est permise ; ouverture = fermeture est refusé. Trois
+façons de servir, au choix dans la fiche (« Quand sert-il ? ») : ouvert de …
+à … (boutique), toujours ouvert, à heures fixes (vagues).
 
 **Par vagues (confirmé le 28/09).** La légumerie, le magasin, la réception
 travaillent **pour toutes les commandes à la fois**, en plusieurs vagues (ex.

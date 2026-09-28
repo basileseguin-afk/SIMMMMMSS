@@ -5,6 +5,29 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-28 — La légumerie, les appros et le magasin comme des boutiques
+
+Retour d'usage : « le système de vagues, je ne le comprends pas » ; « la
+légumerie, les appros et le magasin sont libres en permanence entre un horaire
+et un horaire, ce sont comme des boutiques ».
+
+- **Moteur** (`moteur/production.js`) : une mise à disposition peut avoir des
+  heures d'ouverture (`ouverture: { de, a }`), chaque jour. Ouverte, on y est
+  servi tout de suite ; fermée, l'étape d'après attend l'ouverture, et
+  l'attente se voit. `ouvertureDe`, `prochaineOuverture`.
+- **Fiche** : « Quand sert-il ? » — ouvert de … à … (comme une boutique),
+  toujours ouvert, ou à heures fixes (vagues). La carte dit « ouvert de 07:00
+  à 18:00, chaque jour ».
+- **Récap des cases** : « boutique », avec ses deux heures réglables sur place.
+  **Qui prépare quoi** : « ouvert 07:00–18:00 ».
+- **Points à regarder** : une légumerie, un magasin, une réception encore par
+  vagues → « Ouvrir comme des boutiques, de 07:00 à 18:00 », d'un clic
+  (annulable).
+- **Excel** : colonne Vagues, `ouvert 07:00-18:00` (fichier des cases et
+  classeur complet).
+- Tests : `tests/vagues.test.cjs`, `tests/echanges.test.cjs`,
+  `tests/ateliers-browser.cjs`, `tests/boutique-browser.cjs`.
+
 ## 2026-09-28 — Récap des cases : une commande mène à son chemin
 
 Retour d'usage : « quand je clique sur CRL BC, ça m'emmène sur CRL BC ». Dans

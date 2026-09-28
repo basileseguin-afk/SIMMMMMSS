@@ -1027,7 +1027,7 @@
         ${dispos.map(x => { const oui = dedans.has(x.id);
           return `<button class="pc-besoin${oui ? ' oui' : ''}" data-pc-action="besoin" data-service="${esc(x.id)}" aria-pressed="${oui}"
             title="${oui ? 'Oui : ' + esc(x.nom) + ' sert cette commande. Cliquer pour retirer.' : 'Non. Cliquer pour qu’' + esc(x.nom) + ' serve cette commande.'}">${oui ? '✓ ' : ''}${esc(x.nom)}</button>`; }).join('')}
-        <span class="mini-note">une seule case par poste, qui sert toutes les commandes à la fois, par vagues</span></div>`;
+        <span class="mini-note">une seule case par poste, qui sert toutes les commandes à la fois, comme une boutique</span></div>`;
     }
 
     /** Une commande sans chemin : on lui en crée un, vide ou copié d'un autre. */
@@ -1344,7 +1344,9 @@
           if (k.etat === 'auto') {
             // Une mise à disposition par vagues : la vague qui sert cette commande.
             const v = ((r && r.lots) || []).find(x => x.dispo && x.atelier === k.ateliers[0] && (x.classes || []).includes(c.id));
-            const dit = v && v.vagues > 1 ? 'vague ' + v.vague + ' · ' + P.hhmm(v.debut) : v && v.vagues === 1 ? 'dès ' + P.hhmm(v.debut) : '';
+            const at = etat.ateliers.find(x => x.id === k.ateliers[0]);
+            const dit = at && at.permanent !== false && at.ouverture ? 'ouvert ' + at.ouverture.de + '–' + at.ouverture.a
+              : v && v.vagues > 1 ? 'vague ' + v.vague + ' · ' + P.hhmm(v.debut) : v && v.vagues === 1 ? 'dès ' + P.hhmm(v.debut) : '';
             return `<td class="qf-c auto" title="${esc(nomAt(k.ateliers[0]))} sert toutes les commandes à la fois${dit ? ' — ' + esc(dit) : ''}">${esc(nomAt(k.ateliers[0]))}${
               dit ? '<small class="qf-vague">' + esc(dit) + '</small>' : ''}</td>`;
           }

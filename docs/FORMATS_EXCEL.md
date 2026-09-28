@@ -64,7 +64,7 @@ Une ligne par équipe. **Le nom est la clé** : les autres feuilles s'y réfère
 | Vols en même temps | handling seulement : combien de vols il prépare à la fois (1 par défaut) |
 | Pas avant départ (h) | handling seulement : il ne commence pas un vol plus tôt (3 h par défaut) |
 | Compagnies chargées | handling seulement : `toutes`, ou `AF, TX` |
-| Vagues | mise à disposition non permanente : `J-1 14:00; J 04:00` ; vide = celles du site. Elle prime sur « Horaires », qui ne donne que la première |
+| Vagues | mise à disposition non permanente : `J-1 14:00; J 04:00` ; vide = celles du site. Elle prime sur « Horaires », qui ne donne que la première. Ouverte comme une boutique (Permanent = oui) : `ouvert 07:00-18:00` |
 
 ### Feuille « Fabrications »
 
@@ -128,7 +128,7 @@ Une feuille **Cases**, une ligne par case : `Case` (la clé), `Service (info)`,
   TX PC et AF PC **ensemble**. Seules les équipes et les robots en ont. Une
   commande écrite dans deux cases du même service va à celle où elle est
   nouvelle ; nouvelle dans les deux, c'est une erreur.
-- `Vagues` : pour une mise à disposition, `J-1 14:00; J 04:00`, ou `permanente`.
+- `Vagues` : pour une mise à disposition, `ouvert 07:00-18:00` (ouverte chaque jour, comme une boutique ; « ouverte de 7h à 18h » se lit aussi), `J-1 14:00; J 04:00` (à heures fixes), ou `permanente` (toujours ouverte).
 - Le handling reste au jour `J`.
 
 ### Feuille « Débits robot » (classeur des cases)

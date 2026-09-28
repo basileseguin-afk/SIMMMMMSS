@@ -439,6 +439,16 @@
   const TYPE_LU = { manuel: 'équipe', robot: 'robot', lavage: 'plonge', dispo: 'mise à disposition', handling: 'handling' };
   const ecrireLots = lots => (lots || []).filter(l => l.length).map(l => l.join(' + ')).join(' → ');
 
+  /* Une mise à disposition ouverte comme une boutique s'écrit « ouvert 07:00-18:00 » dans la colonne Vagues. */
+  const RE_OUVERT = /^ouvert(?:e)?\s+(?:de\s+)?(\d{1,2}[:h]\d{2})\s*(?:-|–|—|à|a)\s*(\d{1,2}[:h]\d{2})$/i;
+  const ecrireOuverture = a => 'ouvert ' + a.ouverture.de + '-' + a.ouverture.a;
+  /** « ouvert 07:00-18:00 » → { de, a } ; autre chose → null. */
+  function lireOuverture(texte) {
+    const m = RE_OUVERT.exec(String(texte ?? '').trim()); if (!m) return null;
+    const hm = x => { const t = T.heureDe(x.replace('h', ':')); return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); };
+    return { de: hm(m[1]), a: hm(m[2]) };
+  }
+
   function recapCasesVersClasseur(etat, ctx) {
     const services = ctx.services || [];
     const nomDe = id => (services.find(s => s.id === id) || {}).nom || id;
@@ -453,7 +463,8 @@
         a.type === 'dispo' ? null : jourEcrit(a.jour || 0), a.type === 'dispo' ? null : a.debut,
         a.type === 'dispo' ? null : a.personnes,
         fabrique ? ecrireLots(a.lots) || null : null,
-        a.type === 'dispo' ? (a.permanent === false ? (a.vagues && a.vagues.length ? a.vagues : [{ debut: a.debut, jour: a.jour }]).map(v => jourEcrit(v.jour || 0) + ' ' + v.debut).join('; ') : 'permanente') : null,
+        a.type === 'dispo' ? (a.permanent === false ? (a.vagues && a.vagues.length ? a.vagues : [{ debut: a.debut, jour: a.jour }]).map(v => jourEcrit(v.jour || 0) + ' ' + v.debut).join('; ')
+          : a.ouverture ? ecrireOuverture(a) : 'permanente') : null,
         Number.isFinite(fin) && a.type !== 'dispo' ? P.hhmm(fin) : null]);
     }
     return [
@@ -464,7 +475,8 @@
         'Commandes, dans l’ordre : « TX/BC → TX/PC + AF/PC » = TX BC d’abord, puis TX PC et AF PC ensemble (elles sortent ensemble).',
         '   Une commande ajoutée à une case quitte les autres cases de ce service. Vide : la case ne prépare plus rien.',
         '   Seules les équipes et les robots ont des commandes : une plonge, une mise à disposition, un handling servent tout le monde.',
-        'Vagues : pour une mise à disposition, « J-1 14:00; J 04:00 », ou « permanente ».',
+        'Vagues : pour une mise à disposition, « ouvert 07:00-18:00 » (ouverte chaque jour, comme une boutique),',
+        '   « J-1 14:00; J 04:00 » (à heures fixes), ou « permanente » (toujours ouverte).',
         'Le handling travaille le jour J des vols : son jour reste J.'
       ])
     ];
@@ -484,7 +496,8 @@
     // Ce qui compte d'une case, tel que le calcul le lit : sans liste de vagues,
     // une mise à disposition a une vague, à son heure.
     const sig = a => JSON.stringify([a.jour || 0, a.debut, a.personnes, a.lots,
-      a.type === 'dispo' ? (a.permanent === false ? ((a.vagues && a.vagues.length ? a.vagues : [{ debut: a.debut, jour: a.jour || 0 }]).map(v => [v.debut, v.jour || 0])) : 'permanente') : null]);
+      a.type === 'dispo' ? (a.permanent === false ? ((a.vagues && a.vagues.length ? a.vagues : [{ debut: a.debut, jour: a.jour || 0 }]).map(v => [v.debut, v.jour || 0]))
+        : a.ouverture ? [a.ouverture.de, a.ouverture.a] : 'permanente') : null]);
     const avant = new Map(out.ateliers.map(a => [a.id, sig(a)]));
     const nouveauxLots = new Map();
     for (const o of T.enObjets(f.lignes).objets) {
@@ -518,12 +531,15 @@
           nouveauxLots.set(a, lots);
         } else if (a.type === 'dispo') {
           const vv = String(o.vagues ?? '').trim();
-          if (/^permanente?$/i.test(vv)) a.permanent = true;
+          const ouv = lireOuverture(vv);
+          if (ouv) { a.permanent = true; a.ouverture = ouv; }
+          else if (/^permanente?$/i.test(vv)) { a.permanent = true; delete a.ouverture; }
           else if (vv) {
+            delete a.ouverture;
             a.permanent = false;
             a.vagues = vv.split(/\s*;\s*/).filter(Boolean).map(t => {
               const m = /^(?:(J(?:\s*[-−–]\s*\d+)?)\s+)?(\d{1,2}[:h]\d{2})$/i.exec(t.trim());
-              if (!m) throw new Error(nom + ' : vague illisible « ' + t + ' » (ex. « J-1 14:00; J 04:00 »)');
+              if (!m) throw new Error(nom + ' : vague illisible « ' + t + ' » (ex. « J-1 14:00; J 04:00 », ou « ouvert 07:00-18:00 »)');
               return { debut: hh(T.heureDe(m[2].replace('h', ':'))), jour: jourDe((m[1] || 'J').replace(/\s+/g, '')) };
             });
           }
@@ -756,7 +772,7 @@
         a.type === 'handling' ? Math.round((a.avance ?? P.AVANCE_HANDLING) / 6) / 10 : null,
         a.type === 'handling' ? (a.compagnies || []).join(', ') || 'toutes' : null,
         a.type === 'dispo' && a.permanent === false ? (a.vagues && a.vagues.length ? a.vagues : [{ debut: a.debut, jour: a.jour }])
-          .map(v => jourEcrit(v.jour || 0) + ' ' + v.debut).join('; ') : null]);
+          .map(v => jourEcrit(v.jour || 0) + ' ' + v.debut).join('; ') : a.type === 'dispo' && a.ouverture ? ecrireOuverture(a) : null]);
       if (a.type === 'handling') for (const [cie, v] of Object.entries(a.durees || {})) handling.push([a.nom, cie === P.TOUTES ? 'toutes' : cie, v]);
       (a.lots || []).forEach((l, i) => fab.push([a.nom, i + 1, l.join(' + ')]));
       for (const [id, v] of Object.entries(a.minutes || {})) mm.push([a.nom, id, v]);
@@ -823,6 +839,7 @@
         'Tunnels : les tunnels d’une plonge, avec leur débit et le personnel qui les tient.',
         'Vagues (Ateliers) : une mise à disposition (légumerie, magasin…) sert toutes les commandes à la fois, par vagues :',
         '   « J-1 14:00; J 04:00 ». Chaque commande prend la vague qui précède son besoin. Permanent = oui : pas de vague.',
+        '   Ouverte comme une boutique : Permanent = oui et Vagues « ouvert 07:00-18:00 » ; fermée, l’étape d’après attend l’ouverture.',
         'Handling : il charge les vols un par un, dans l’ordre des départs. Une ligne par compagnie : ses minutes par vol ;',
         '   « toutes » pour les compagnies sans ligne. Dans Ateliers : vols en même temps, pas avant (heures avant le départ),',
         '   compagnies chargées (« toutes », ou « AF, TX »).',
@@ -969,8 +986,11 @@
           a.permanent = T.ouiNon(o.permanent, true);
           // « J-1 14:00; J 04:00 » : les vagues. Vide : celles du site, sinon son heure.
           const vv = String(o.vagues ?? '').trim();
-          if (vv) a._vaguesLues = true;
-          if (vv) a.vagues = vv.split(/\s*;\s*/).filter(Boolean).map(t => {
+          const ouv = lireOuverture(vv);
+          if (ouv) { a.permanent = true; a.ouverture = ouv; }
+          else if (!vv && a.permanent && avant && avant.type === 'dispo' && avant.ouverture) a.ouverture = { ...avant.ouverture };
+          if (vv && !ouv) a._vaguesLues = true;
+          if (vv && !ouv) a.vagues = vv.split(/\s*;\s*/).filter(Boolean).map(t => {
             const m = /^(?:(J(?:\s*[-−–]\s*\d+)?)\s+)?(\d{1,2}[:h]\d{2})$/i.exec(t.trim());
             if (!m) throw new Error('vague illisible « ' + t + ' » (ex. « J-1 14:00; J 04:00 »)');
             return { debut: hh(T.heureDe(m[2].replace('h', ':'))), jour: jourDe((m[1] || 'J').replace(/\s+/g, '')) };

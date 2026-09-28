@@ -34,6 +34,16 @@
     return Object.keys(d).length ? { debits: d } : {};
   }
 
+  /** Les heures d'une mise à disposition ouverte comme une boutique (07:00–18:00), s'il y en a. */
+  function ouvertureDe(a) {
+    const o = a.permanent !== false && a.ouverture;
+    if (!o) return {};
+    const de = String(o.de ?? ''), fin = String(o.a ?? '');
+    P.minutes(de); P.minutes(fin);
+    if (P.minutes(de) === P.minutes(fin)) throw new Error((a.nom || 'Case') + ' : ouverture et fermeture à la même heure.');
+    return { ouverture: { de, a: fin } };
+  }
+
   /** Les vagues d'une mise à disposition, triées ; sans liste, son heure seule. */
   function vaguesDe(a, jour) {
     const brut = Array.isArray(a.vagues) && a.vagues.length ? a.vagues : [{ debut: a.debut ?? '06:00', jour }];
@@ -124,7 +134,7 @@
             }))
         } : {}),
         // Une mise à disposition est permanente sauf si on lui donne une heure.
-        ...(type === 'dispo' ? { permanent: a.permanent !== false, vagues: vaguesDe(a, jour) } : {}),
+        ...(type === 'dispo' ? { permanent: a.permanent !== false, vagues: vaguesDe(a, jour), ...ouvertureDe(a) } : {}),
         // Le handling : une durée par vol et par compagnie, combien de vols à la
         // fois, et pas plus de `avance` minutes avant le départ.
         ...(type === 'handling' ? handlingDe(a) : {})
@@ -549,6 +559,11 @@
           try { localStorage.removeItem(CLE + '-avant-fonte'); } catch (e) { /* rien */ }
           return this.rendre();
         }
+        case 'boutiques': {
+          const ids = this.state.ateliers.filter(x => x.type === 'dispo' && x.permanent === false && PC.SERVICES_DISPO.includes(x.service)).map(x => x.id);
+          return this.changer(() => { for (const x of this.state.ateliers) if (ids.includes(x.id)) { x.permanent = true; x.ouverture = { de: '07:00', a: '18:00' }; } },
+            ids.length + (ids.length > 1 ? ' cases ouvertes' : ' case ouverte') + ' comme des boutiques, de 07:00 à 18:00, chaque jour. « Annuler » revient aux vagues.');
+        }
         case 'fantome-effacer':
           if (this.a.effacerService) this.a.effacerService(data.service, null);
           return;
@@ -661,7 +676,14 @@
           case 'tunnel-actif': a.tunnels[+el.dataset.index].actif = el.checked; break;
           case 'tunnel-personnes': a.tunnels[+el.dataset.index].personnes = Math.max(0, parseInt(v, 10) || 0); break;
           case 'plafond': a.plafond = Math.max(0, parseFloat(v) || 0); break;
-          case 'permanent': a.permanent = el.checked; break;
+          case 'permanent': a.permanent = el.checked; if (!el.checked) delete a.ouverture; break;
+          // Quand elle sert : toujours, aux heures d'ouverture (une boutique), ou par vagues.
+          case 'mode-dispo':
+            if (v === 'vagues') { a.permanent = false; delete a.ouverture; }
+            else { a.permanent = true; if (v === 'boutique') a.ouverture = a.ouverture || { de: '07:00', a: '18:00' }; else delete a.ouverture; }
+            break;
+          case 'ouverture-de': a.ouverture = { ...(a.ouverture || { a: '18:00' }), de: v }; break;
+          case 'ouverture-a': a.ouverture = { ...(a.ouverture || { de: '07:00' }), a: v }; break;
           // Les vagues d'une mise à disposition : l'heure et le jour de chacune.
           case 'vague-debut': a.vagues[+el.dataset.index].debut = v; break;
           case 'vague-jour': a.vagues[+el.dataset.index].jour = parseInt(v, 10) || 0; break;
@@ -928,6 +950,15 @@
           + 'Si ce service prépare commande par commande, rendez-lui une case par commande. '
           + '<button class="btn btn-sm btn-play" data-at-action="separer" data-service="' + esc(sv) + '">Une case par commande dans ' + esc(nomSv) + '</button>');
       }
+      // La légumerie, le magasin, la réception par vagues : ce sont plutôt des
+      // boutiques, ouvertes de telle à telle heure (retour d'usage du 28/09).
+      const parVagues = this.state.ateliers.filter(a => a.type === 'dispo' && a.permanent === false && PC.SERVICES_DISPO.includes(a.service));
+      if (parVagues.length) {
+        list.push('<b>' + esc(parVagues.map(a => a.nom).join(', ')) + (parVagues.length > 1 ? ' servent' : ' sert') + ' par vagues.</b> '
+          + 'Ouverts de telle à telle heure, comme une boutique, ils servent à l’instant où l’on vient ; fermés, l’étape d’après attend l’ouverture. '
+          + '<button class="btn btn-sm btn-play" data-at-action="boutiques">Ouvrir comme des boutiques, de 07:00 à 18:00</button> '
+          + '<span class="mini-note">(les heures se changent ensuite dans chaque case, ou dans le récap des cases)</span>');
+      }
       let copie = null;
       try { copie = JSON.parse(localStorage.getItem(CLE + '-avant-fonte') || 'null'); } catch (e) { copie = null; }
       if (copie && copie.etat) {
@@ -1042,7 +1073,8 @@
       // dirait trois fois « — ». Elle dit ce qu'elle est.
       const sous = dispo
         ? (a.permanent === false ? (a.vagues.length > 1 ? a.vagues.length + ' vagues : ' : 'une vague : ')
-            + a.vagues.map(v => (v.jour ? 'J' + v.jour + ' ' : '') + v.debut).map(esc).join(' · ') : 'disponible en permanence')
+            + a.vagues.map(v => (v.jour ? 'J' + v.jour + ' ' : '') + v.debut).map(esc).join(' · ')
+          : a.ouverture ? 'ouvert de ' + esc(a.ouverture.de) + ' à ' + esc(a.ouverture.a) + ', chaque jour' : 'disponible en permanence')
         : esc(a.debut) + jour + ' · ' + a.personnes + ' pers.'
           + (a.type === 'robot' ? ' · robot ' + a.debit + ' pl/h' : a.type === 'lavage' ? ' · ' + P.debitLavage(a) + ' u/h'
             : handling ? ' · ' + a.simultanes + ' vol' + (a.simultanes > 1 ? 's' : '') + ' à la fois' : '')
@@ -1134,13 +1166,21 @@
           <label>Personnes minimum<input type="number" min="0" value="${a.personnesMin}" data-at-champ="personnesMin"></label>` : ''}
         </div>
         ${dispo ? `
-        <p class="mini-note at-regle">Ce service <b>ne prépare pas une commande après l’autre</b> : il travaille pour
-          <b>toutes les commandes à la fois</b> (légumerie, magasin, réception…), <b>par vagues</b>. Chaque commande prend
-          la vague qui précède son besoin ; avant la première, on l’attend. Ni effectif, ni man-minutes, ni durée.
+        <p class="mini-note at-regle">Ce service <b>ne prépare pas une commande après l’autre</b> : il sert
+          <b>toutes les commandes à la fois</b> (légumerie, magasin, réception…), comme une boutique où l’on vient se servir.
+          Ni effectif, ni man-minutes, ni durée.
           Sur chaque chemin, une seule question : « Besoin de ${esc((services.find(x => x.id === a.service) || {}).nom || a.service)} ? ».</p>
         <div class="at-cases">
-          <label class="chk chk-mini"><input type="checkbox" data-at-champ="permanent" ${a.permanent !== false ? 'checked' : ''}>
-            Disponible en permanence — personne ne l’attend</label>
+          ${(() => { const mode = a.permanent === false ? 'vagues' : a.ouverture ? 'boutique' : 'toujours';
+            return `<label class="at-mode-dispo">Quand sert-il ?<select data-at-champ="mode-dispo">
+              <option value="boutique" ${mode === 'boutique' ? 'selected' : ''}>Ouvert tous les jours, de … à … (comme une boutique)</option>
+              <option value="toujours" ${mode === 'toujours' ? 'selected' : ''}>Toujours ouvert — personne ne l’attend</option>
+              <option value="vagues" ${mode === 'vagues' ? 'selected' : ''}>À heures fixes (vagues)</option></select></label>
+            ${mode === 'boutique' ? `<div class="at-pause at-ouverture">
+              <label>Ouvre à<input type="time" value="${esc(a.ouverture.de)}" data-at-champ="ouverture-de"></label>
+              <label>Ferme à<input type="time" value="${esc(a.ouverture.a)}" data-at-champ="ouverture-a"></label>
+              <span class="mini-note">Chaque jour (J-1, J…). Ouvert : on est servi tout de suite. Fermé : l’étape d’après attend l’ouverture.</span></div>` : ''}
+            ${mode === 'vagues' ? '<p class="mini-note">Chaque commande prend la vague qui précède son besoin ; avant la première, on l’attend.</p>' : ''}`; })()}
           ${a.permanent === false ? `<div class="at-sous-titre">Vagues</div>
           ${a.vagues.map((v, i) => `<div class="at-pause at-vague">
             <b>${i + 1}.</b>
@@ -1363,7 +1403,7 @@
       // c'est là qu'on la voit et qu'on la règle.
       const chip = c => `<button type="button" class="rc-cmd" data-at-action="chemin" data-classe="${esc(c)}" title="Ouvrir le chemin de ${esc(P.libelleClasse(c))}"><span class="puce-classe" data-cab="${esc(c.slice(c.lastIndexOf('/') + 1))}"></span>${esc(PC.etiquette(c))}</button>`;
       const deroule = a => {
-        if (a.type === 'dispo') return `<span class="rc-deroule dispo">${a.permanent !== false ? 'en permanence' : (a.vagues || []).length > 1 ? a.vagues.length + ' vagues' : 'une vague'}</span>`;
+        if (a.type === 'dispo') return `<span class="rc-deroule dispo">${a.permanent !== false ? (a.ouverture ? 'boutique' : 'en permanence') : (a.vagues || []).length > 1 ? a.vagues.length + ' vagues' : 'une vague'}</span>`;
         if (a.type === 'lavage') return '<span class="rc-deroule autre">plonge</span>';
         if (a.type === 'handling') return '<span class="rc-deroule autre">par vol</span>';
         const lignes = (a.lots || []).filter(l => l.length), ens = lignes.filter(l => l.length > 1).length;
@@ -1374,6 +1414,10 @@
       const traite = a => {
         const vue = calc.get(a.id) || { lots: [] };
         if (a.type === 'dispo') {
+          if (a.permanent !== false && a.ouverture) return `<span class="rc-vagues"><span class="rc-vague">de
+            <input type="time" value="${esc(a.ouverture.de)}" data-at-champ="ouverture-de" aria-label="Heure d’ouverture de ${esc(a.nom)}"> à
+            <input type="time" value="${esc(a.ouverture.a)}" data-at-champ="ouverture-a" aria-label="Heure de fermeture de ${esc(a.nom)}"></span></span>
+            <span class="mini-note">chaque jour, comme une boutique : ouvert, on est servi ; fermé, on attend l’ouverture</span>`;
           if (a.permanent !== false) return '<span class="mini-note">sert toutes les commandes, à tout moment</span>';
           return `<span class="rc-vagues">${(a.vagues || []).map((v, i) => `<span class="rc-vague"><b>${i + 1}</b>
             ${jours(v.jour, `data-at-champ="vague-jour" data-index="${i}" aria-label="Jour de la vague ${i + 1}"`)}

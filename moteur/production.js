@@ -476,6 +476,36 @@
     return Number.isFinite(propre) && propre > 0 ? propre : +((atelier && atelier.debit) || 0);
   }
 
+  /*
+   * UNE MISE À DISPOSITION OUVERTE COMME UNE BOUTIQUE (retour d'usage du 28/09).
+   *
+   * « La légumerie, les appros et le magasin sont libres en permanence entre
+   * une heure et une heure : ce sont comme des boutiques. » Chaque jour, de
+   * `ouverture.de` à `ouverture.a` (ex. 07:00–18:00), on y est servi à l'instant
+   * où on vient ; en dehors, l'étape qui en a besoin attend l'ouverture. Une
+   * plage qui passe minuit (22:00–06:00) est permise.
+   */
+  function ouvertureDe(atelier) {
+    const o = atelier && atelier.type === 'dispo' && atelier.permanent !== false && atelier.ouverture;
+    if (!o) return null;
+    const de = minutes(o.de), a = minutes(o.a);
+    return de === a ? null : { de, a };
+  }
+
+  /** L'instant où une boutique sert, à partir de `t` : `t` si elle est ouverte, sinon son ouverture suivante. */
+  function prochaineOuverture(atelier, t) {
+    const o = ouvertureDe(atelier); if (!o) return t;
+    const d = Math.floor(t / MINUTES_PAR_JOUR);
+    let mieux = Infinity;
+    for (let k = d - 1; k <= d + 1; k++) {
+      const debut = k * MINUTES_PAR_JOUR + o.de;
+      const fin = k * MINUTES_PAR_JOUR + o.a + (o.a < o.de ? MINUTES_PAR_JOUR : 0);
+      if (t >= debut && t < fin) return t;
+      if (debut > t) mieux = Math.min(mieux, debut);
+    }
+    return mieux;
+  }
+
   /** Heure à partir de laquelle une mise à disposition sert, en minutes : sa première vague. */
   function disponibleDes(atelier) {
     if (atelier.permanent !== false) return -Infinity;   // toujours servi
@@ -561,6 +591,10 @@
       }
       if (dispo && a.permanent === false && Array.isArray(a.vagues)) {
         for (const v of a.vagues) { try { minutes(v && v.debut); } catch (e) { dire('vague', 'vague : ' + e.message); } }
+      }
+      if (dispo && a.permanent !== false && a.ouverture) {
+        try { if (minutes(a.ouverture.de) === minutes(a.ouverture.a)) dire('ouverture', 'l’ouverture et la fermeture sont à la même heure.'); }
+        catch (e) { dire('ouverture', 'heures d’ouverture : ' + e.message); }
       }
       const gens = a.personnes;
       // Une mise à disposition n'a pas d'effectif : elle ne fabrique pas.
@@ -1000,6 +1034,19 @@
     // et il n'est pas un trou sur le chemin d'une commande.
     const handlings = ateliers.filter(a => a.type === 'handling');
     const servicesHandling = new Set(handlings.map(a => a.service));
+    // Les boutiques (légumerie, magasin… ouverts de telle à telle heure) : on
+    // n'y est servi qu'aux heures d'ouverture.
+    const boutiques = new Map(ateliers.filter(a => ouvertureDe(a)).map(a => [a.service, a]));
+    /** L'instant où toutes les boutiques dont on a besoin sont ouvertes ensemble, à partir de `t`. */
+    const servi = (services, t) => {
+      const b = [...new Set(services)].map(s => boutiques.get(s)).filter(Boolean);
+      for (let k = 0; k < 8 && b.length; k++) {
+        const u = Math.max(...b.map(x => prochaineOuverture(x, t)));
+        if (u === t) return t;
+        t = u;
+      }
+      return t;
+    };
 
     /**
      * Les livraisons qu'un lot doit attendre, pour une classe, dans un service.
@@ -1321,6 +1368,11 @@
           }
           const debutAttente = env.maintenant;
           if (attendus.length) yield env.tousDe(attendus);
+          // Une boutique fermée : on attend qu'elle ouvre.
+          if (boutiques.size) {
+            const ouvert = servi(ids.flatMap(id => amontsDe(a.service, id)), env.maintenant);
+            if (ouvert > env.maintenant && Number.isFinite(ouvert)) yield env.delai(ouvert - env.maintenant);
+          }
           const attente = env.maintenant - debutAttente;
           horloge = Math.max(horloge, env.maintenant);
           if (env.maintenant < horloge) yield env.delai(horloge - env.maintenant);
@@ -1779,7 +1831,7 @@
     PAX_TYPE, TOUTES, cleBareme, normaliserBareme, minutesParVol,
     arcsDuParcours, servicesDuParcours, routesDesClasses,
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,
-    pausesDe, finAvecPauses, vaguesDe, disponibleDes, debitRobot,
+    pausesDe, finAvecPauses, vaguesDe, disponibleDes, debitRobot, ouvertureDe, prochaineOuverture,
     UNITES_DEFAUT, unitesDe, retoursDeVols, besoinMateriel,
     simuler, niveauA, niveauLineaire, dureeLisible
   };

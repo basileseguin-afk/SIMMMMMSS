@@ -373,3 +373,25 @@ test('récap des cases : une commande ajoutée quitte les autres cases du servic
   assert.throws(() => E.classeurVersRecapCases(f, etat, ctx), e => /25:99/.test(e.message)
     && /commande illisible « AF\/XX »/.test(e.message) && /case inconnue « Case fantôme »/.test(e.message) && /Rien n’a été importé/.test(e.message));
 });
+
+/* Une mise à disposition ouverte comme une boutique : « ouvert 07:00-18:00 »,
+ * dans le fichier des cases comme dans le classeur complet. */
+test('boutique : ses heures d’ouverture font l’aller-retour par Excel', async () => {
+  const boutique = { id: 'lg', nom: 'Légumerie', service: 'decontam', type: 'dispo', debut: '07:00', jour: 0, personnes: 0, pauses: [], lots: [],
+    regime: { actif: true }, permanent: true, ouverture: { de: '07:00', a: '18:00' } };
+  const etat = { ...ETAT_ATELIERS() };
+  etat.ateliers = etat.ateliers.filter(a => a.service !== 'decontam').concat([boutique]);
+  // Le classeur complet : Permanent = oui, Vagues = « ouvert 07:00-18:00 ».
+  const { etat: lu } = E.classeurVersAteliers(await parFichier(E.ateliersVersClasseur(etat, ctxAteliers())), etat, ctxAteliers());
+  assert.deepEqual(lu.ateliers.find(a => a.nom === 'Légumerie').ouverture, { de: '07:00', a: '18:00' });
+  // Le fichier des cases : la colonne Vagues le dit, et se modifie.
+  const ctx = { services: SERVICES, classes: ctxAteliers().classes };
+  const f = await parFichier(E.recapCasesVersClasseur(etat, ctx));
+  const ligne = f.find(x => x.nom === 'Cases').lignes.find(l => l[0] === 'Légumerie');
+  assert.equal(ligne[7], 'ouvert 07:00-18:00');
+  const r = E.classeurVersRecapCases(modifier(f, 'Cases', l => l.map(x => (x[0] === 'Légumerie' ? Object.assign(x, { 7: 'ouverte de 6h30 à 17:00' }) : x))), etat, ctx);
+  assert.deepEqual(r.changes, ['Légumerie']);
+  assert.deepEqual(r.etat.ateliers.find(a => a.id === 'lg').ouverture, { de: '06:30', a: '17:00' });
+  const r2 = E.classeurVersRecapCases(modifier(f, 'Cases', l => l.map(x => (x[0] === 'Légumerie' ? Object.assign(x, { 7: 'permanente' }) : x))), etat, ctx);
+  assert.equal(r2.etat.ateliers.find(a => a.id === 'lg').ouverture, undefined, '« permanente » : toujours ouverte');
+});

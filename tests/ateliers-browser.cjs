@@ -235,7 +235,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator(`${fiche} [data-at-champ=personnes]`).count(),0,'aucun effectif à saisir');
   assert.equal(await page.locator(`${fiche} [data-at-champ=lot-nouveau]`).count(),0,'rien à fabriquer');
   assert.equal(await page.locator(`${fiche} .at-arrets`).count(),0,'aucun arrêt programmé');
-  assert.equal(await page.locator(`${fiche} [data-at-champ=permanent]`).isChecked(),true,'permanente par défaut');
+  assert.equal(await page.locator(`${fiche} [data-at-champ=mode-dispo]`).inputValue(),'toujours','toujours ouverte par défaut');
   assert.equal(await page.locator(`${fiche} [data-at-champ=debut]`).count(),0,'permanente, elle n’a pas d’heure');
   const apresDispo=await resultat();
   assert.equal(apresDispo.ok,true,JSON.stringify(apresDispo.anomalies));
@@ -243,7 +243,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(mise.fin,mise.debut,'elle ne dure pas');
   assert.ok(apresDispo.parClasse['CRL/BC'].services.includes('magasin'),'elle figure au parcours');
   // Décochée, elle prend une heure — et son aval l'attend.
-  await page.locator(`${fiche} [data-at-champ=permanent]`).uncheck();await attendre();
+  await page.selectOption(`${fiche} [data-at-champ=mode-dispo]`,'vagues');await attendre();
   // Elle travaille alors par vagues (retour d'usage du 28/09) : une d'abord.
   assert.equal(await page.locator(`${fiche} [data-at-champ=vague-debut]`).count(),1,'l’heure de sa vague apparaît');
   await page.fill(`${fiche} [data-at-champ=vague-debut]`,'09:00');await page.locator(`${fiche} [data-at-champ=vague-debut]`).dispatchEvent('change');await attendre();
@@ -254,6 +254,14 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator(`${fiche} [data-at-champ=vague-debut]`).count(),2);
   assert.deepEqual(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).vagues,mag),[{debut:'09:00',jour:0},{debut:'15:00',jour:0}]);
   assert.match(await page.locator(`${fiche} .at-carte-nom span, ${fiche} .at-carte-tete span`).first().textContent(),/2 vagues : 09:00 · 15:00/);
+  // Ouverte comme une boutique (retour d'usage : « libre en permanence entre une heure et une heure ») :
+  // de 07:00 à 18:00 par défaut, réglable.
+  await page.selectOption(`${fiche} [data-at-champ=mode-dispo]`,'boutique');await attendre();
+  assert.deepEqual(await page.evaluate(id=>{const a=Sim.ateliers.state.ateliers.find(x=>x.id===id);return [a.permanent,a.ouverture];},mag),[true,{de:'07:00',a:'18:00'}]);
+  await page.fill(`${fiche} [data-at-champ=ouverture-a]`,'17:30');await page.locator(`${fiche} [data-at-champ=ouverture-a]`).dispatchEvent('change');await attendre();
+  assert.match(await page.locator(`${fiche} .at-carte-tete span`).first().textContent(),/ouvert de 07:00 à 17:30, chaque jour/);
+  await page.selectOption(`${fiche} [data-at-champ=mode-dispo]`,'toujours');await attendre();
+  assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(x=>x.id===id).ouverture,mag),undefined,'toujours ouverte : plus d’heures');
 
 
   // 18. Le poste : pauses automatiques et heure de fin, visibles et r\u00e9glables.

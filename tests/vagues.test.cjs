@@ -47,3 +47,33 @@ test('une mise à disposition permanente reste une seule ligne', () => {
   const r = jouer([leg({ permanent: true }), at('c1', 'cuisine', '06:00', [['AF/BC'], ['TX/BC']])]);
   assert.equal(r.lots.filter(l => l.dispo).length, 1);
 });
+
+/* Une boutique : ouverte chaque jour de telle à telle heure ; on y est servi à
+ * l'instant où l'on vient, sinon on attend qu'elle ouvre (retour d'usage :
+ * « la légumerie, les appros et le magasin sont comme des boutiques »). */
+const boutique = (de, a) => leg({ permanent: true, vagues: undefined, ouverture: { de, a } });
+
+test('une boutique : ouverte, on est servi tout de suite ; fermée, on attend l’ouverture', () => {
+  const b = boutique('07:00', '18:00');
+  assert.equal(P.prochaineOuverture(b, h('10:00')), h('10:00'), 'ouverte');
+  assert.equal(P.prochaineOuverture(b, h('04:00')), h('07:00'), 'avant l’ouverture : 07:00');
+  assert.equal(P.prochaineOuverture(b, h('19:00') - 1440), h('07:00'), 'la veille au soir : le lendemain 07:00');
+  assert.equal(P.prochaineOuverture(b, h('18:00')), h('07:00') + 1440, 'fermée à 18:00 pile');
+  const nuit = boutique('22:00', '06:00');
+  assert.equal(P.prochaineOuverture(nuit, h('02:00')), h('02:00'), 'une plage qui passe minuit');
+  assert.equal(P.prochaineOuverture(nuit, h('12:00')), h('22:00'));
+  assert.equal(P.ouvertureDe(leg()), null, 'par vagues : pas une boutique');
+});
+
+test('la cuisine attend l’ouverture de la boutique, et seulement elle', () => {
+  const r = jouer([boutique('07:00', '18:00'), at('c1', 'cuisine', '04:00', [['AF/BC'], ['TX/BC']]), at('c2', 'cuisine', '16:00', [], { jour: -1 })]);
+  assert.equal(r.ok, true, JSON.stringify(r.anomalies));
+  const c = r.lots.filter(l => l.atelier === 'c1');
+  assert.equal(c[0].debut, h('07:00'), 'fermée à 04:00 : la cuisine attend 07:00');
+  assert.equal(c[0].attente, 180, 'l’attente se voit');
+  assert.equal(c[1].attente, 0, 'ouverte ensuite : servie sans attendre');
+  const r2 = jouer([boutique('07:00', '18:00'), at('c1', 'cuisine', '16:00', [['AF/BC']], { jour: -1 })]);
+  assert.equal(r2.lots.find(l => l.atelier === 'c1').debut, h('16:00') - 1440, 'la veille à 16:00, elle est ouverte');
+  const r3 = jouer([boutique('07:00', '07:00'), at('c1', 'cuisine', '04:00', [['AF/BC']])]);
+  assert.ok(r3.anomalies.some(a => a.code === 'ouverture'), 'ouverture = fermeture : refusé');
+});
