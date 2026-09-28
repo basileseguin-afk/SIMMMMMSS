@@ -38,10 +38,23 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 3. Le récap des cases montre ses heures, et les règle.
   await nav.aller(page,'at-recap');
   const ligne=page.locator('tr.rc-case[data-at="lg"]');
-  assert.match(await ligne.innerText(),/boutique[\s\S]*chaque jour/);
+  assert.equal(await ligne.locator('select[data-at-champ=mode-dispo]').inputValue(),'boutique');
+  assert.match(await ligne.innerText(),/chaque jour/);
   await ligne.locator('[data-at-champ=ouverture-de]').fill('03:00');await ligne.locator('[data-at-champ=ouverture-de]').dispatchEvent('change');await attendre();
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(x=>x.id==='lg').ouverture.de),'03:00');
   assert.deepEqual(await cuisine(),{debut:4*60,attente:0},'ouverte dès 03:00 : servie sans attendre');
+
+  // 3 bis. Une case « toujours ouverte » devient une boutique depuis le récap aussi
+  //        (retour d'usage : « cela n'a pas modifié dans le récap des cases »).
+  await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'mg',nom:'Magasin',service:'magasin',type:'dispo',debut:'06:00',jour:0,
+    personnes:0,pauses:[],lots:[],regime:{actif:true},permanent:true});},''));await attendre();
+  const mag=page.locator('tr.rc-case[data-at="mg"]');
+  assert.equal(await mag.locator('select[data-at-champ=mode-dispo]').inputValue(),'toujours');
+  await mag.locator('select[data-at-champ=mode-dispo]').selectOption('boutique');await attendre();
+  assert.deepEqual(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(x=>x.id==='mg').ouverture),{de:'07:00',a:'18:00'});
+  assert.equal(await mag.locator('[data-at-champ=ouverture-a]').inputValue(),'18:00','ses heures apparaissent aussitôt');
+  await mag.locator('[data-at-champ=ouverture-a]').fill('16:00');await mag.locator('[data-at-champ=ouverture-a]').dispatchEvent('change');await attendre();
+  assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(x=>x.id==='mg').ouverture.a),'16:00');
 
   // 4. « Qui prépare quoi » dit ses heures, pas une vague.
   await nav.aller(page,'at-grille');
@@ -49,7 +62,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 5. La fiche le règle aussi, et « Annuler » revient en arrière.
   await page.evaluate(()=>Sim.ateliers.histoire(false));await attendre();
-  assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(x=>x.id==='lg').ouverture.de),'07:00');
+  assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(x=>x.id==='mg').ouverture.a),'18:00','la dernière heure changée revient');
 
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('boutique-browser : ok');

@@ -18,7 +18,10 @@ et un horaire, ce sont comme des boutiques ».
 - **Fiche** : « Quand sert-il ? » — ouvert de … à … (comme une boutique),
   toujours ouvert, ou à heures fixes (vagues). La carte dit « ouvert de 07:00
   à 18:00, chaque jour ».
-- **Récap des cases** : « boutique », avec ses deux heures réglables sur place.
+- **Récap des cases** : pour chaque mise à disposition, un choix « boutique (de … à …) /
+  toujours ouvert / par vagues » dans la colonne Déroulé (retour d'usage : « cela n'a pas
+  modifié dans le récap des cases » — une case « toujours ouverte » ne s'y changeait pas) ;
+  en boutique, ses deux heures se règlent sur place.
   **Qui prépare quoi** : « ouvert 07:00–18:00 ».
 - **Points à regarder** : une légumerie, un magasin, une réception encore par
   vagues → « Ouvrir comme des boutiques, de 07:00 à 18:00 », d'un clic

@@ -378,3 +378,4 @@ body.ateliers-open .workbench{display:none}
 #view-ateliers .rc-table select:hover,#view-ateliers .rc-table input[type=time]:hover{border-color:var(--bordure)}
 #view-ateliers .rc-table select:focus,#view-ateliers .rc-table input[type=time]:focus{border-color:var(--accent);background:var(--bg3,#fff)}
 #view-ateliers .rc-cherche input{width:220px}
+#view-ateliers .rc-table select.rc-mode{min-width:170px;border-color:var(--bordure);background:var(--bg3,#fff);font-weight:600}

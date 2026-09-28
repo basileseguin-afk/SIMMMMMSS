@@ -1403,7 +1403,14 @@
       // c'est là qu'on la voit et qu'on la règle.
       const chip = c => `<button type="button" class="rc-cmd" data-at-action="chemin" data-classe="${esc(c)}" title="Ouvrir le chemin de ${esc(P.libelleClasse(c))}"><span class="puce-classe" data-cab="${esc(c.slice(c.lastIndexOf('/') + 1))}"></span>${esc(PC.etiquette(c))}</button>`;
       const deroule = a => {
-        if (a.type === 'dispo') return `<span class="rc-deroule dispo">${a.permanent !== false ? (a.ouverture ? 'boutique' : 'en permanence') : (a.vagues || []).length > 1 ? a.vagues.length + ' vagues' : 'une vague'}</span>`;
+        // Une mise à disposition : quand elle sert se choisit ici aussi.
+        if (a.type === 'dispo') {
+          const mode = a.permanent === false ? 'vagues' : a.ouverture ? 'boutique' : 'toujours';
+          return `<select class="rc-mode" data-at-champ="mode-dispo" aria-label="Quand ${esc(a.nom)} sert-il ?">
+            <option value="boutique" ${mode === 'boutique' ? 'selected' : ''}>boutique (de … à …)</option>
+            <option value="toujours" ${mode === 'toujours' ? 'selected' : ''}>toujours ouvert</option>
+            <option value="vagues" ${mode === 'vagues' ? 'selected' : ''}>${(a.vagues || []).length > 1 ? a.vagues.length + ' vagues' : 'par vagues'}</option></select>`;
+        }
         if (a.type === 'lavage') return '<span class="rc-deroule autre">plonge</span>';
         if (a.type === 'handling') return '<span class="rc-deroule autre">par vol</span>';
         const lignes = (a.lots || []).filter(l => l.length), ens = lignes.filter(l => l.length > 1).length;
