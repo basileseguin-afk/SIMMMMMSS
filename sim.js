@@ -1641,9 +1641,19 @@ function renderHandlingVols() {
   const at = Sim.ateliers; if (!at) { box.innerHTML = ''; return; }
   const h = at.state.ateliers.filter(a => a.type === 'handling');
   const r = at.resultat || {}, k = r.indicateurs || {};
-  const hh = MoteurProduction.hhmm;
+  const vieilles = at.anciensHandlings();
   let html;
-  if (!h.length) {
+  if (vieilles.length) {
+    // Des cases de handling d'avant : une par commande, qui préparent comme un
+    // service. Elles se convertissent en une seule case qui charge les vols.
+    html = '<p><b>Vos chemins passent déjà par le handling, mais avec l’ancienne logique</b> : '
+      + vieilles.length + (vieilles.length > 1 ? ' cases le préparent' : ' case le prépare') + ' commande par commande ('
+      + escapeHTML(vieilles.slice(0, 3).map(a => a.nom).join(', ')) + (vieilles.length > 3 ? '…' : '') + '). '
+      + 'Le handling travaille par vol : ' + (vieilles.length > 1 ? 'elles deviennent' : 'elle devient') + ' une seule case Handling, '
+      + 'qui réunit les classes de chaque vol et le charge, le jour J. Vos chemins ne changent pas.</p>'
+      + '<p class="row-btns"><button class="btn btn-play" type="button" data-vh-action="brancher">Passer au handling par vol</button>'
+      + '<span class="mini-note">Leurs man-minutes ne servent plus : le handling a une durée par vol et par compagnie. Annuler (Organisation) revient en arrière.</span></p>';
+  } else if (!h.length) {
     html = '<p><b>Pas de handling pour l’instant.</b> Un vol est donc « prêt » dès que ses commandes le sont. '
       + 'Le handling réunit les classes d’un même vol et le charge, dans l’ordre des départs, le jour J : '
       + 'le vol doit être chargé à son départ.</p>'
@@ -1669,7 +1679,9 @@ function initHandlingVols() {
     const b = e.target.closest('[data-vh-action]'); if (!b) return;
     if (b.dataset.vhAction === 'brancher') {
       const r = Sim.ateliers.brancherHandling();
-      if (r) toast((r.cree ? 'Case Handling créée' : 'Handling') + ' ajouté' + (r.chemins ? ' à ' + r.chemins + (r.chemins > 1 ? ' chemins.' : ' chemin.') : '.'));
+      if (r) toast(r.converties ? r.converties + (r.converties > 1 ? ' anciennes cases deviennent' : ' ancienne case devient') + ' une case Handling par vol'
+          + (r.chemins ? ', ajoutée à ' + r.chemins + (r.chemins > 1 ? ' autres chemins.' : ' autre chemin.') : '.')
+        : (r.cree ? 'Case Handling créée' : 'Handling') + ' ajouté' + (r.chemins ? ' à ' + r.chemins + (r.chemins > 1 ? ' chemins.' : ' chemin.') : '.'));
       renderFlights();
     } else if (b.dataset.vhAction === 'regler') {
       Sim.ateliers.ouvert = b.dataset.vhAtelier;

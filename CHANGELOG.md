@@ -5,6 +5,21 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-28 — Les cases de handling d'avant passent au handling par vol
+
+Retour d'usage : « j'avais déjà ajouté du handling sur les chemins, ils y sont
+encore ». Ces cases, une par commande (« CF départ food AF BC »…), préparaient
+comme n'importe quel service : l'ancienne logique.
+
+- Résultats › Départs et Organisation (points à regarder, ouvert d'office) :
+  « Passer au handling par vol ». Les cases d'avant deviennent **une seule
+  case Handling** par service : l'heure de la plus matinale (au plus tôt 00:00
+  du jour J), l'effectif le plus grand ; les chemins ne changent pas. Annuler
+  revient en arrière.
+- Un service créé sous le nom « Handling » compte aussi comme handling.
+- `parcours.js` : `anciensHandlings`, conversion dans `brancherHandling`.
+  Tests : parcours, handling-browser.
+
 ## 2026-09-28 — Le handling se met en place d'un geste, et se voit
 
 Retour d'usage : « je ne vois pas les changements sur le visuel ». Le site

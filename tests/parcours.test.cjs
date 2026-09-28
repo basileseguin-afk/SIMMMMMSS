@@ -378,3 +378,41 @@ test('le handling en un geste : une case, au bout de chaque chemin qui n’y pas
   const encore = PC.brancherHandling(etat, 'handling', 'CF départ food');
   assert.equal(encore.cree, false); assert.equal(encore.chemins, 0, 'deux fois de suite : rien de plus');
 });
+
+test('les cases de handling d’avant, une par commande, deviennent une seule case par vol', () => {
+  const vieille = (id, cmd, debut, jour, personnes) => ({ id, nom: 'CF départ food ' + cmd, service: 'handling', type: 'manuel', debut, jour, personnes,
+    pauses: [], lots: [[cmd]], minutes: { [cmd]: 12 }, regime: { actif: true } });
+  const etat = { ateliers: [
+    { id: 'pr', nom: 'Prépa', service: 'prepa', type: 'manuel', debut: '05:00', jour: 0, personnes: 3, pauses: [], lots: [['AF/BC'], ['AF/YC']], regime: { actif: true } },
+    vieille('h1', 'AF BC', '05:30', 0, 2), vieille('h2', 'AF YC', '04:15', 0, 5), vieille('h3', 'TX YC', '06:00', 0, 1)
+  ], parcours: [
+    { id: 'a', nom: 'A', noeuds: ['prepa', 'handling'], liens: [{ de: 'prepa', vers: 'handling' }] },
+    { id: 'b', nom: 'B', noeuds: ['prepa'], liens: [] }
+  ] };
+  assert.equal(PC.anciensHandlings(etat).length, 3);
+  const r = PC.brancherHandling(etat, 'handling', 'CF départ food');
+  assert.equal(r.converties, 3);
+  assert.equal(r.cree, false, 'converties, pas créée à côté');
+  const h = etat.ateliers.filter(a => a.service === 'handling');
+  assert.equal(h.length, 1, 'une seule case');
+  assert.equal(h[0].type, 'handling');
+  assert.equal(h[0].debut, '04:15', 'l’heure de la plus matinale');
+  assert.equal(h[0].personnes, 5, 'l’effectif le plus grand');
+  assert.deepEqual(h[0].lots, []); assert.equal(h[0].minutes, undefined);
+  assert.equal(h[0].nom, 'CF départ food');
+  assert.equal(r.chemins, 1, 'B n’y passait pas : il le reçoit');
+  assert.deepEqual(PC.anciensHandlings(etat), []);
+  // Et le calcul charge bien les vols.
+  const vols = [{ id: 'AF1', cie: 'AF', sens: 'DEP', std: 9 * 60, bc: 5, pc: 0, yc: 50 }];
+  const res = P.simuler({ vols, liaisons: [], rendement: 1, bareme: { prepa: { '*/BC': 30, '*/YC': 30 } },
+    ateliers: etat.ateliers, parcours: etat.parcours, parcoursCabine: { BC: 'a', YC: 'a' } });
+  assert.equal(res.vols.length, 1);
+  assert.equal(res.vols[0].etat, 'ok');
+});
+
+test('une ancienne case de handling la veille devient un handling du jour J, dès 00:00', () => {
+  const etat = { ateliers: [{ id: 'h1', nom: 'H AF', service: 'handling', type: 'manuel', debut: '22:00', jour: -1, personnes: 2, pauses: [], lots: [['AF/BC']], regime: { actif: true } }], parcours: [] };
+  PC.brancherHandling(etat, 'handling', 'Handling');
+  assert.equal(etat.ateliers[0].jour, 0);
+  assert.equal(etat.ateliers[0].debut, '00:00');
+});

@@ -142,7 +142,9 @@ le rouge ne sert qu’aux retards.
      seule pour toutes les commandes. Plus simple : **Résultats › Départs ›
      « Mettre en place le handling »** crée la case et l’ajoute au bout de
      tous les chemins d’un coup ; le même bandeau dit ensuite combien de vols
-     sont chargés à l’heure et ouvre la fiche (« Régler le handling »). Les commandes doivent être au handling
+     sont chargés à l’heure et ouvre la fiche (« Régler le handling »). Des cases de handling d’avant, une par
+     commande, sont signalées (Départs, et points à regarder de
+     l’Organisation) : « Passer au handling par vol » les fond en une seule. Les commandes doivent être au handling
      au départ moins le délai de chargement ; le vol doit être chargé à son
      départ.
    - *Qui prépare quoi* : le tableau calculé, une ligne par commande, une

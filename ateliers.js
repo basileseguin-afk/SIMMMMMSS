@@ -365,9 +365,17 @@
     brancherHandling() {
       const nom = (this.a.services().find(s => s.id === 'handling') || {}).nom || 'Handling';
       let r;
-      this.changer(() => { r = PC.brancherHandling(this.state, 'handling', nom); }, 'Handling en place.');
+      this.changer(() => { r = PC.brancherHandling(this.state, 'handling', nom, this.servicesHandling()); }, 'Handling en place.');
       return r;
     }
+
+    /* Les services de handling : celui du plan, et ceux créés sous ce nom. */
+    servicesHandling() {
+      return ['handling'].concat(this.a.services().filter(s => s.id !== 'handling' && /handling/i.test(s.nom)).map(s => s.id));
+    }
+
+    /* Les cases de handling d'avant, une par commande. */
+    anciensHandlings() { return PC.anciensHandlings(this.state, this.servicesHandling()); }
 
     /* Une case se règle dans le chemin d'une de ses commandes, sous son service.
      * Une plonge ou une mise à disposition sert tout le monde : on prend la
@@ -392,6 +400,12 @@
     action(quoi, id, data) {
       const a = this.state.ateliers.find(x => x.id === id);
       switch (quoi) {
+        case 'handling-convertir': {
+          const r = this.brancherHandling();
+          if (r) this.rendre(r.converties + (r.converties > 1 ? ' cases de handling deviennent' : ' case de handling devient')
+            + ' une seule case Handling, qui charge les vols' + (r.chemins ? ' ; ajoutée à ' + r.chemins + (r.chemins > 1 ? ' autres chemins.' : ' autre chemin.') : '.'));
+          return;
+        }
         case 'chemin': return this.parcours.ouvrir(data.classe, a ? a.service : '');
         // Dans la liste des cases : aller la régler dans un chemin ; faute de
         // chemin qui passe par elle, elle se déplie sur place.
@@ -753,7 +767,14 @@
         list.push((cmd > 1 ? cmd + ' commandes commencées sautent' : '1 commande commencée saute') + ' une étape sans équipe ('
           + trous.map(a => esc((this.a.services().find(x => x.id === a.service) || {}).nom || a.service)).join(', ') + ') : à compléter dans l’onglet « Qui prépare quoi ».');
       }
+      // Des cases de handling d'avant (une par commande) : le handling travaille
+      // désormais par vol. On le dit en tête, avec le geste qui convertit.
+      const vieilles = this.anciensHandlings();
+      if (vieilles.length) list.unshift('<b>Handling : ' + vieilles.length + (vieilles.length > 1 ? ' cases le préparent' : ' case le prépare')
+        + ' commande par commande (ancienne logique).</b> Le handling travaille par vol : il réunit les classes de chaque vol et le charge, le jour J. '
+        + '<button class="btn btn-sm btn-play" data-at-action="handling-convertir">Passer au handling par vol</button>');
       box.hidden = !list.length;
+      if (vieilles.length) box.open = true;
       // Replié par défaut : le nombre suffit à savoir qu'il y a à faire.
       box.innerHTML = list.length
         ? '<summary><strong>' + list.length + (list.length > 1 ? ' points' : ' point') + ' à regarder</strong></summary><ul>' +

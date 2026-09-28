@@ -525,20 +525,54 @@
       regime: { actif: true }, durees: { [P.TOUTES]: 30 }, simultanes: 3, avance: P.AVANCE_HANDLING, compagnies: [] };
   }
 
+  /** Les cases de handling d'avant (28/09) : une par commande, qui préparaient
+   *  comme n'importe quel service. `services` : les services de handling. */
+  function anciensHandlings(etat, services) {
+    const s = new Set(services || ['handling']);
+    return (etat.ateliers || []).filter(a => s.has(a.service) && (a.type === 'manuel' || a.type === 'robot'));
+  }
+
   /**
-   * Le handling en un geste : sa case (s'il n'y en a pas), et au bout de chaque
-   * chemin qui ne passe pas encore par lui. Il est relié à la DERNIÈRE étape
-   * de chaque chemin — celles qui livrent sans être livrées à leur tour.
-   * @returns {{ cree:boolean, chemins:number, atelier }}
+   * Le handling en un geste.
+   *
+   *   1. Les cases de handling d'avant, une par commande, deviennent UNE case
+   *      Handling par service : elle arrive à l'heure de la plus matinale
+   *      (au plus tôt 00:00 du jour J), avec l'effectif le plus grand. Les
+   *      chemins qui passaient par elles n'ont pas à changer.
+   *   2. Sans aucun handling : sa case est créée.
+   *   3. Chaque chemin qui ne passe par aucun handling le reçoit à son bout,
+   *      relié à sa DERNIÈRE étape — celles qui livrent sans être livrées.
+   *
+   * @param services les services de handling (le service du plan, et ceux que
+   *   l'utilisateur a créés sous ce nom) ; `service` d'abord.
+   * @returns {{ cree:boolean, converties:number, chemins:number, atelier }}
    */
-  function brancherHandling(etat, service, nomService) {
+  function brancherHandling(etat, service, nomService, services) {
+    const tous = [...new Set([service].concat(services || []))];
+    const debutDe = a => (a.jour || 0) * 1440 + P.minutes(a.debut || '06:00');
+    let converties = 0;
+    for (const s of tous) {
+      const vieilles = anciensHandlings(etat, [s]).sort((x, y) => debutDe(x) - debutDe(y));
+      if (!vieilles.length) continue;
+      converties += vieilles.length;
+      const deja = etat.ateliers.find(a => a.service === s && a.type === 'handling');
+      const retirer = new Set((deja ? vieilles : vieilles.slice(1)).map(a => a.id));
+      etat.ateliers = etat.ateliers.filter(a => !retirer.has(a.id));
+      if (deja) continue;
+      const garde = vieilles[0], neuve = caseHandling(etat, s, nomService);
+      const personnes = Math.max(...vieilles.map(a => +a.personnes || 0), 1);
+      for (const k of ['lots', 'minutes', 'materiel', 'debit', 'personnesMin']) delete garde[k];
+      Object.assign(garde, { type: 'handling', lots: [], jour: 0, debut: (garde.jour || 0) < 0 ? '00:00' : garde.debut, personnes,
+        durees: neuve.durees, simultanes: neuve.simultanes, avance: neuve.avance, compagnies: [] });
+      garde.nom = nomLibre({ ateliers: etat.ateliers.filter(a => a !== garde) }, nomService || s);
+    }
     let atelier = (etat.ateliers || []).find(a => a.type === 'handling');
     const cree = !atelier;
     if (cree) { atelier = caseHandling(etat, service, nomService); etat.ateliers.push(atelier); }
     const s = atelier.service;
     let chemins = 0;
     for (const p of (etat.parcours || [])) {
-      if (!Array.isArray(p.noeuds) || p.noeuds.includes(s)) continue;
+      if (!Array.isArray(p.noeuds) || tous.some(x => p.noeuds.includes(x))) continue;
       const arcs = P.arcsDuParcours(p);
       const fins = p.noeuds.filter(n => arcs.some(a => a.to === n) && !arcs.some(a => a.from === n));
       p.noeuds.push(s);
@@ -546,7 +580,7 @@
       for (const f of fins) p.liens.push({ de: f, vers: s });
       chemins++;
     }
-    return { cree, chemins, atelier };
+    return { cree, converties, chemins, atelier };
   }
 
   /**
@@ -1376,7 +1410,7 @@
 
 
   const api = { insererPrepa, depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, couverture, confier, nouvelleEquipe,
-    completer, colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, donnerCases, completerCases, nomLibre, caseHandling, brancherHandling, EditeurParcours };
+    completer, colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, donnerCases, completerCases, nomLibre, caseHandling, anciensHandlings, brancherHandling, EditeurParcours };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyParcours = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

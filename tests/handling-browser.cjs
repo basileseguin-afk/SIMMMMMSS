@@ -81,6 +81,29 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(a.durees,undefined);assert.equal(a.simultanes,undefined);
   assert.deepEqual(await page.evaluate(()=>Sim.ateliers.resultat.vols),[]);
 
+  // 6. Des cases de handling d'avant, une par commande (retour d'usage : « j'avais
+  //    déjà ajouté du handling sur les chemins ») : le bandeau le dit, et les
+  //    convertit en une seule case par vol.
+  await page.evaluate(id=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;st.ateliers=st.ateliers.filter(a=>a.id!==id);
+    for(const c of ['AF/BC','AF/YC'])st.ateliers.push({id:'vieux-'+c.replace('/',''),nom:'CF départ food '+c,service:'handling',type:'manuel',debut:c==='AF/BC'?'05:00':'04:30',
+      jour:0,personnes:3,pauses:[],lots:[[c]],regime:{actif:true}});},''),id);
+  await nav.aller(page,'v-departs');
+  assert.match(await page.locator('#vols-handling').innerText(),/l’ancienne logique[\s\S]*2 cases le préparent commande par commande/);
+  await page.locator('[data-vh-action=brancher]').click();await attendre();
+  const apres=await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service==='handling').map(a=>({type:a.type,debut:a.debut,lots:a.lots})));
+  assert.deepEqual(apres,[{type:'handling',debut:'04:30',lots:[]}]);
+  assert.match(await page.locator('#vols-handling').innerText(),/Handling : « .+ »/);
+  assert.ok(await page.evaluate(()=>Sim.ateliers.resultat.vols.length>0),'les vols sont suivis');
+  // 7. Même chose depuis l'Organisation, là où l'on travaille les chemins.
+  await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'vieux-TX',nom:'CF départ food TX',service:'handling',type:'manuel',
+    debut:'05:00',jour:0,personnes:2,pauses:[],lots:[['TX/YC']],regime:{actif:true}});},''));
+  await nav.aller(page,'at-chemins');
+  assert.equal(await page.locator('#at-anomalies').evaluate(d=>d.open),true,'ouvert d’office');
+  assert.match(await page.locator('#at-anomalies').innerText(),/1 case le prépare commande par commande/);
+  await page.locator('#at-anomalies [data-at-action=handling-convertir]').click();await attendre();
+  assert.deepEqual(await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service==='handling').map(a=>a.type)),['handling'],'l’ancienne case rejoint le handling existant');
+  assert.doesNotMatch(await page.locator('#at-anomalies').innerText(),/ancienne logique/);
+
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('handling-browser : ok');
  }finally{await browser.close();}
