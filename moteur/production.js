@@ -449,10 +449,27 @@
     return l.length ? new Set(l) : null;
   }
 
-  /** Heure à partir de laquelle une mise à disposition sert, en minutes. */
+  /*
+   * LES VAGUES D'UNE MISE À DISPOSITION (retour d'usage du 28/09).
+   *
+   * La légumerie, le magasin, la réception travaillent POUR TOUTES LES
+   * COMMANDES À LA FOIS, en plusieurs vagues dans la journée (ex. J-1 14:00,
+   * puis J 04:00). Chaque commande prend la vague qui précède son besoin —
+   * l'heure où l'étape d'après commence à l'attendre ; faute de vague avant,
+   * la première, et l'étape d'après l'attend.
+   *
+   *   vagues — [{ debut: 'HH:MM', jour: 0 | -1 … }] ; sans elles, `debut`/`jour`
+   */
+  function vaguesDe(atelier) {
+    if (!atelier || atelier.permanent !== false) return [];
+    const liste = Array.isArray(atelier.vagues) && atelier.vagues.length ? atelier.vagues : [{ debut: atelier.debut, jour: atelier.jour }];
+    return [...new Set(liste.map(v => minutes(v.debut) + (v.jour || 0) * MINUTES_PAR_JOUR))].sort((a, b) => a - b);
+  }
+
+  /** Heure à partir de laquelle une mise à disposition sert, en minutes : sa première vague. */
   function disponibleDes(atelier) {
     if (atelier.permanent !== false) return -Infinity;   // toujours servi
-    return minutes(atelier.debut) + (atelier.jour || 0) * MINUTES_PAR_JOUR;
+    return vaguesDe(atelier)[0];
   }
 
   /**
@@ -529,6 +546,9 @@
       // serait inventer une contrainte qu'elle n'a pas.
       if (!(dispo && a.permanent !== false)) {
         try { minutes(a.debut); } catch (e) { dire('debut', e.message); }
+      }
+      if (dispo && a.permanent === false && Array.isArray(a.vagues)) {
+        for (const v of a.vagues) { try { minutes(v && v.debut); } catch (e) { dire('vague', 'vague : ' + e.message); } }
       }
       const gens = a.personnes;
       // Une mise à disposition n'a pas d'effectif : elle ne fabrique pas.
@@ -929,7 +949,7 @@
     // Une mise à disposition permanente n'a pas d'heure : elle ne doit pas
     // tirer le début de la journée en arrière.
     const debuts = ateliers.filter(a => a.type !== 'dispo' || a.permanent === false)
-      .map(a => minutes(a.debut) + (a.jour || 0) * MINUTES_PAR_JOUR);
+      .map(a => (a.type === 'dispo' ? disponibleDes(a) : minutes(a.debut) + (a.jour || 0) * MINUTES_PAR_JOUR));
     const env = new Environnement(debuts.length ? Math.min(...debuts) : 0);
 
     // Livraisons : un événement par (service, classe), créé à la demande, et
@@ -1125,8 +1145,7 @@
     const journal = [];   // une ligne par lot : ce que l'on affichera
     const suspendus = new Map();   // handling → le vol qu'il attend encore
     const suivi = ateliers.map(a => ({ id: a.id, nom: a.nom, service: a.service, type: a.type,
-      debut: a.type === 'dispo' && a.permanent !== false
-        ? env.maintenant : minutes(a.debut) + (a.jour || 0) * MINUTES_PAR_JOUR,
+      debut: a.type === 'dispo' ? (a.permanent !== false ? env.maintenant : disponibleDes(a)) : minutes(a.debut) + (a.jour || 0) * MINUTES_PAR_JOUR,
       personnes: a.personnes,
       fin: null, travail: 0, attente: 0, arret: 0, lots: [] }));
     const parId = new Map(suivi.map(s => [s.id, s]));
@@ -1364,6 +1383,29 @@
     }
 
     env.executer();
+
+    // Les vagues : chaque commande servie par une mise à disposition prend la
+    // vague qui précède son besoin. Une ligne de journal par vague, avec ses
+    // commandes : c'est ce que montrent le chemin, le planning et le tableau.
+    for (const a of ateliers) {
+      if (a.type !== 'dispo' || a.permanent !== false) continue;
+      const vs = vaguesDe(a), ligne = journal.find(l => l.dispo && l.atelier === a.id);
+      if (!ligne || !vs.length) continue;
+      const parVague = new Map(vs.map(t => [t, []]));
+      for (const id of ligne.classes) {
+        const suites = journal.filter(l => !l.dispo && !l.handling && Number.isFinite(l.debut) && (l.classes || []).includes(id)
+          && amontsDe(l.service, id).includes(a.service));
+        const besoin = suites.length ? Math.min(...suites.map(l => l.debut - (l.attente || 0))) : null;
+        let v = vs[0];
+        if (besoin != null) for (const t of vs) if (t <= besoin + 1e-9) v = t;
+        parVague.get(v).push(id);
+      }
+      const lignes = vs.map((t, i) => ({ ...ligne, classes: parVague.get(t), debut: t, fin: t, vague: i + 1, vagues: vs.length }))
+        .filter(l => l.classes.length);
+      const vue = parId.get(a.id);
+      journal.splice(journal.indexOf(ligne), 1, ...lignes);
+      if (vue) { vue.lots.splice(vue.lots.indexOf(ligne), 1, ...lignes); vue.vagues = vs; }
+    }
 
     // Un lot encore en attente de matériel à la fin de la journée ne produit
     // aucune ligne de journal : son processus est resté suspendu. Sans cette
@@ -1720,7 +1762,7 @@
     PAX_TYPE, TOUTES, cleBareme, normaliserBareme, minutesParVol,
     arcsDuParcours, servicesDuParcours, routesDesClasses,
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,
-    pausesDe, finAvecPauses,
+    pausesDe, finAvecPauses, vaguesDe, disponibleDes,
     UNITES_DEFAUT, unitesDe, retoursDeVols, besoinMateriel,
     simuler, niveauA, niveauLineaire, dureeLisible
   };

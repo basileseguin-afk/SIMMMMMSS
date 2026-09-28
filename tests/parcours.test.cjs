@@ -416,3 +416,39 @@ test('une ancienne case de handling la veille devient un handling du jour J, dè
   assert.equal(etat.ateliers[0].jour, 0);
   assert.equal(etat.ateliers[0].debut, '00:00');
 });
+
+test('légumerie : les cases d’avant, une par commande, deviennent une case partagée par vagues', () => {
+  const vieille = (id, cmd, debut, jour) => ({ id, nom: 'Légumerie ' + cmd, service: 'decontam', type: 'manuel', debut, jour, personnes: 2,
+    pauses: [], lots: [[cmd]], regime: { actif: true } });
+  const etat = { ateliers: [vieille('l1', 'AF/BC', '15:00', -1), vieille('l2', 'TX/BC', '15:00', -1), vieille('l3', 'AF/YC', '04:00', 0),
+    { id: 'cu', nom: 'Cuisine', service: 'cuisine', type: 'manuel', debut: '16:00', jour: -1, personnes: 4, pauses: [], lots: [['AF/BC']], regime: { actif: true } }], parcours: [] };
+  assert.equal(PC.anciensDispos(etat).length, 3);
+  const r = PC.partagerDispos(etat, () => 'Légumerie');
+  assert.equal(r.converties, 3);
+  assert.deepEqual(r.services, ['decontam']);
+  const l = etat.ateliers.filter(a => a.service === 'decontam');
+  assert.equal(l.length, 1);
+  assert.equal(l[0].type, 'dispo'); assert.equal(l[0].permanent, false);
+  assert.deepEqual(l[0].vagues, [{ debut: '15:00', jour: -1 }, { debut: '04:00', jour: 0 }], 'leurs heures deviennent ses vagues');
+  assert.equal(l[0].nom, 'Légumerie');
+  assert.equal(etat.ateliers.find(a => a.id === 'cu').type, 'manuel', 'la cuisine n’est pas touchée');
+});
+
+test('« besoin de légumerie » : le service entre dans le chemin, relié comme ailleurs, servi par la case partagée', () => {
+  const etat = { ateliers: [], parcours: [
+    { id: 'a', nom: 'A', noeuds: ['appros', 'decontam', 'cuisine'], liens: [{ de: 'appros', vers: 'decontam' }, { de: 'decontam', vers: 'cuisine' }] },
+    { id: 'b', nom: 'B', noeuds: ['appros', 'cuisine', 'prepa'], liens: [{ de: 'appros', vers: 'cuisine' }, { de: 'cuisine', vers: 'prepa' }] }
+  ], parcoursClasse: { 'TX/BC': 'b' } };
+  const p = etat.parcours[1];
+  assert.equal(PC.ajouterBesoin(etat, p, 'decontam', 'TX/BC', s => s, []), true);
+  assert.ok(p.noeuds.includes('decontam'));
+  assert.deepEqual(p.liens.filter(l => l.de === 'decontam' || l.vers === 'decontam'),
+    [{ de: 'appros', vers: 'decontam' }, { de: 'decontam', vers: 'cuisine' }], 'relié comme sur le chemin A');
+  const d = etat.ateliers.filter(a => a.service === 'decontam');
+  assert.equal(d.length, 1); assert.equal(d[0].type, 'dispo'); assert.deepEqual(d[0].lots, []);
+  // Une seconde commande : la même case.
+  const q = { id: 'c', nom: 'C', noeuds: ['cuisine'], liens: [] }; etat.parcours.push(q);
+  PC.ajouterBesoin(etat, q, 'decontam', 'AF/BC', s => s, []);
+  assert.equal(etat.ateliers.filter(a => a.service === 'decontam').length, 1, 'une seule case, partagée');
+  assert.equal(PC.ajouterBesoin(etat, q, 'decontam', 'AF/BC', s => s, []), false, 'déjà là');
+});

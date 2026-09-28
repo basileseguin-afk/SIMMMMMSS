@@ -27,6 +27,18 @@
     return Object.keys(m).length ? { minutes: m } : {};
   }
 
+  /** Les vagues d'une mise à disposition, triées ; sans liste, son heure seule. */
+  function vaguesDe(a, jour) {
+    const brut = Array.isArray(a.vagues) && a.vagues.length ? a.vagues : [{ debut: a.debut ?? '06:00', jour }];
+    const vues = new Map();
+    for (const v of brut.slice(0, 12)) {
+      const debut = String((v && v.debut) ?? '06:00'); P.minutes(debut);
+      const j = Number.isInteger(+v.jour) ? Math.max(-7, Math.min(0, +v.jour)) : 0;
+      vues.set(j * 1440 + P.minutes(debut), { debut, jour: j });
+    }
+    return [...vues].sort((x, y) => x[0] - y[0]).map(x => x[1]);
+  }
+
   /** Les réglages d'un handling, bornés. Sans durée saisie : 30 min par vol. */
   function handlingDe(a) {
     const durees = {};
@@ -103,12 +115,12 @@
             }))
         } : {}),
         // Une mise à disposition est permanente sauf si on lui donne une heure.
-        ...(type === 'dispo' ? { permanent: a.permanent !== false } : {}),
+        ...(type === 'dispo' ? { permanent: a.permanent !== false, vagues: vaguesDe(a, jour) } : {}),
         // Le handling : une durée par vol et par compagnie, combien de vols à la
         // fois, et pas plus de `avance` minutes avant le départ.
         ...(type === 'handling' ? handlingDe(a) : {})
       };
-    });
+    }).map(a => (a.type === 'dispo' && a.vagues.length ? { ...a, debut: a.vagues[0].debut, jour: a.vagues[0].jour } : a));
     // Ce que l'utilisateur retire du programme, et ce qu'il y ajoute. Le
     // programme de vols reste la source ; ces deux listes le corrigent.
     const exclues = [...new Set((Array.isArray(brut.exclues) ? brut.exclues : []).map(String))].slice(0, 500);
@@ -353,7 +365,10 @@
       const service = dans || this.filtre || ((services.find(s => P.BAREME_DEMO[s.id]) || services[0] || {}).id);
       const nom = (services.find(s => s.id === service) || {}).nom || 'Case';
       // Dans le handling, la case née est un handling : elle charge des vols.
-      const atelier = service === 'handling' ? PC.caseHandling(this.state, service, nom)
+      // Seulement quand on la crée DANS ce service (page Services) : une case
+      // neuve sans service choisi reste une équipe qui prépare.
+      const atelier = dans === 'handling' ? PC.caseHandling(this.state, service, nom)
+        : dans && PC.SERVICES_DISPO.includes(dans) ? PC.caseDispo(this.state, service, nom)
         : { id: uid(), nom: PC.nomLibre(this.state, nom), service, type: 'manuel',
           debut: '06:00', jour: 0, personnes: 2, pauses: [], lots: [] };
       this.changer(() => this.state.ateliers.push(atelier),
@@ -451,6 +466,21 @@
             'Tunnel ajouté. Le débit de la plonge est la somme des tunnels qui tournent.');
         case 'tunnel-retirer':
           return this.changer(() => a.tunnels.splice(+data.index, 1), 'Tunnel retiré.');
+        case 'vague-ajouter':
+          return this.changer(() => {
+            const d = a.vagues[a.vagues.length - 1] || { debut: '06:00', jour: 0 };
+            const t = Math.min(23 * 60 + 59, P.minutes(d.debut) + 6 * 60);
+            a.vagues.push({ debut: String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'), jour: d.jour || 0 });
+          }, 'Vague ajoutée : chaque commande prend la vague qui précède son besoin.');
+        case 'vague-retirer':
+          return this.changer(() => { if (a.vagues.length > 1) a.vagues.splice(+data.index, 1); }, 'Vague retirée.');
+        case 'dispo-partager': {
+          let r;
+          this.changer(() => { r = PC.partagerDispos(this.state, id2 => (this.a.services().find(x => x.id === id2) || {}).nom || id2); }, '');
+          if (r) this.rendre(r.converties + (r.converties > 1 ? ' cases deviennent ' : ' case devient ') + r.services.length
+            + (r.services.length > 1 ? ' cases partagées' : ' case partagée') + ' : leurs heures sont maintenant des vagues.');
+          return;
+        }
         case 'duree-retirer':
           return this.changer(() => { const d = { ...(a.durees || {}) }; delete d[data.cie]; a.durees = d; },
             'Durée retirée : ' + data.cie + ' prend la durée de toutes les compagnies.');
@@ -545,6 +575,9 @@
           case 'tunnel-personnes': a.tunnels[+el.dataset.index].personnes = Math.max(0, parseInt(v, 10) || 0); break;
           case 'plafond': a.plafond = Math.max(0, parseFloat(v) || 0); break;
           case 'permanent': a.permanent = el.checked; break;
+          // Les vagues d'une mise à disposition : l'heure et le jour de chacune.
+          case 'vague-debut': a.vagues[+el.dataset.index].debut = v; break;
+          case 'vague-jour': a.vagues[+el.dataset.index].jour = parseInt(v, 10) || 0; break;
           case 'simultanes': a.simultanes = Math.max(1, Math.min(50, parseInt(v, 10) || 1)); break;
           // Saisi en heures, gardé en minutes.
           case 'avance': a.avance = Math.max(0, Math.min(1440, Math.round((parseFloat(String(v).replace(',', '.')) || 0) * 60))); break;
@@ -773,8 +806,16 @@
       if (vieilles.length) list.unshift('<b>Handling : ' + vieilles.length + (vieilles.length > 1 ? ' cases le préparent' : ' case le prépare')
         + ' commande par commande (ancienne logique).</b> Le handling travaille par vol : il réunit les classes de chaque vol et le charge, le jour J. '
         + '<button class="btn btn-sm btn-play" data-at-action="handling-convertir">Passer au handling par vol</button>');
+      const dispos = PC.anciensDispos(this.state);
+      if (dispos.length) {
+        const noms = [...new Set(dispos.map(a => (this.a.services().find(x => x.id === a.service) || {}).nom || a.service))];
+        list.unshift('<b>' + esc(noms.join(', ')) + ' : ' + dispos.length + (dispos.length > 1 ? ' cases préparent' : ' case prépare')
+          + ' commande par commande.</b> Ces postes travaillent pour toutes les commandes à la fois, par vagues : '
+          + (dispos.length > 1 ? 'elles deviennent' : 'elle devient') + ' une seule case par poste, et leurs heures de début deviennent ses vagues. '
+          + '<button class="btn btn-sm btn-play" data-at-action="dispo-partager">Passer à une case partagée</button>');
+      }
       box.hidden = !list.length;
-      if (vieilles.length) box.open = true;
+      if (vieilles.length || dispos.length) box.open = true;
       // Replié par défaut : le nombre suffit à savoir qu'il y a à faire.
       box.innerHTML = list.length
         ? '<summary><strong>' + list.length + (list.length > 1 ? ' points' : ' point') + ' à regarder</strong></summary><ul>' +
@@ -870,7 +911,7 @@
       // Ses commandes dans l'ordre ; chacune ouvre son chemin sur cette case.
       const handling = a.type === 'handling';
       const nVols = handling && calcul ? calcul.lots.filter(l => l.vol).length : 0;
-      const resume = dispo ? 'sert toutes les commandes'
+      const resume = dispo ? 'sert toutes les commandes à la fois'
         : a.type === 'lavage' ? 'lave pour toutes les commandes'
         : handling ? 'charge les vols dans l’ordre des départs' + (nVols ? ' · ' + nVols + ' vol' + (nVols > 1 ? 's' : '') : '')
         : !a.lots.length ? 'rattachée à aucune commande'
@@ -879,7 +920,8 @@
       // Une mise à disposition n'a ni effectif ni heure de fin : son en-tête
       // dirait trois fois « — ». Elle dit ce qu'elle est.
       const sous = dispo
-        ? (a.permanent === false ? 'disponible à partir de ' + esc(a.debut) + jour : 'disponible en permanence')
+        ? (a.permanent === false ? (a.vagues.length > 1 ? a.vagues.length + ' vagues : ' : 'une vague : ')
+            + a.vagues.map(v => (v.jour ? 'J' + v.jour + ' ' : '') + v.debut).map(esc).join(' · ') : 'disponible en permanence')
         : esc(a.debut) + jour + ' · ' + a.personnes + ' pers.'
           + (a.type === 'robot' ? ' · robot ' + a.debit + ' pl/h' : a.type === 'lavage' ? ' · ' + P.debitLavage(a) + ' u/h'
             : handling ? ' · ' + a.simultanes + ' vol' + (a.simultanes > 1 ? 's' : '') + ' à la fois' : '')
@@ -963,16 +1005,22 @@
           <label>Personnes minimum<input type="number" min="0" value="${a.personnesMin}" data-at-champ="personnesMin"></label>` : ''}
         </div>
         ${dispo ? `
-        <p class="mini-note at-regle">Ce service <b>ne prépare pas</b> de commande : il sort du matériel ou des
-          matières premières (magasin, légumerie…). Il travaille à la demande : ni effectif, ni man-minutes,
-          ni durée — seulement l’heure à partir de laquelle il sert <b>toutes</b> les commandes.</p>
+        <p class="mini-note at-regle">Ce service <b>ne prépare pas une commande après l’autre</b> : il travaille pour
+          <b>toutes les commandes à la fois</b> (légumerie, magasin, réception…), <b>par vagues</b>. Chaque commande prend
+          la vague qui précède son besoin ; avant la première, on l’attend. Ni effectif, ni man-minutes, ni durée.
+          Sur chaque chemin, une seule question : « Besoin de ${esc((services.find(x => x.id === a.service) || {}).nom || a.service)} ? ».</p>
         <div class="at-cases">
           <label class="chk chk-mini"><input type="checkbox" data-at-champ="permanent" ${a.permanent !== false ? 'checked' : ''}>
             Disponible en permanence — personne ne l’attend</label>
-          ${a.permanent === false ? `<div class="at-pause">
-            <label>À partir de<input type="time" value="${esc(a.debut)}" data-at-champ="debut"></label>
-            <label>Jour<select data-at-champ="jour">${[0, -1, -2, -3].map(j => `<option value="${j}" ${j === a.jour ? 'selected' : ''}>${j === 0 ? 'Jour du départ' : 'J' + j}</option>`).join('')}</select></label>
-          </div>` : ''}
+          ${a.permanent === false ? `<div class="at-sous-titre">Vagues</div>
+          ${a.vagues.map((v, i) => `<div class="at-pause at-vague">
+            <b>${i + 1}.</b>
+            <label>À<input type="time" value="${esc(v.debut)}" data-at-champ="vague-debut" data-index="${i}"></label>
+            <label>Jour<select data-at-champ="vague-jour" data-index="${i}">${[0, -1, -2, -3].map(j => `<option value="${j}" ${j === (v.jour || 0) ? 'selected' : ''}>${j === 0 ? 'Jour du départ' : 'J' + j}</option>`).join('')}</select></label>
+            <span class="mini-note">${esc(this.servisParVague(a.id, i))}</span>
+            ${a.vagues.length > 1 ? `<button class="btn btn-sm" data-at-action="vague-retirer" data-index="${i}">Retirer</button>` : ''}
+          </div>`).join('')}
+          <div class="at-actions-lot"><button class="btn btn-sm" data-at-action="vague-ajouter">+ Vague</button></div>` : ''}
         </div>` : `
         <div class="at-cases">
           <label class="chk chk-mini"><input type="checkbox" data-at-champ="regime" ${a.regime.actif ? 'checked' : ''}>
@@ -1095,6 +1143,16 @@
           <option value="">+ Durée propre à une compagnie…</option>
           ${libres.map(c => `<option value="${esc(c)}">${esc(c)} · ${nb(c)} vol${nb(c) > 1 ? 's' : ''}</option>`).join('')}</select></div>` : ''}
         <p class="mini-note at-tunnel-note">Une durée, pas des man-minutes : l’effectif ne la raccourcit pas.</p>`;
+    }
+
+    /* Les commandes qu'une vague a servies, d'après le dernier calcul. */
+    servisParVague(atelierId, i) {
+      const r = this.resultat; if (!r || !r.ok) return '';
+      const a = this.state.ateliers.find(x => x.id === atelierId);
+      const vs = a ? P.vaguesDe(a) : [];
+      const l = (r.lots || []).find(x => x.dispo && x.atelier === atelierId && x.debut === vs[i]);
+      const n = l ? l.classes.length : 0;
+      return n ? 'sert ' + n + (n > 1 ? ' commandes' : ' commande') : 'ne sert aucune commande';
     }
 
     finLot(atelierId, index) {

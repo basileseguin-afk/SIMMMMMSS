@@ -503,6 +503,9 @@
       if (s === 'handling') {
         // Le handling charge les vols de toutes les commandes : un seul, partagé.
         etat.ateliers.push(caseHandling(etat, s, nom(s)));
+      } else if (estDispo(etat, s)) {
+        // La légumerie, le magasin : une seule case, qui sert toutes les commandes.
+        etat.ateliers.push(caseDispo(etat, s, nom(s)));
       } else if (s === 'plonge') {
         etat.ateliers.push({ id: 'at-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
           nom: nomLibre(etat, nom(s)), service: s, type: 'lavage', debut: '06:00', jour: 0, personnes: 2, pauses: [], lots: [],
@@ -516,6 +519,97 @@
     }
     chemin.cases = true;
     return n;
+  }
+
+  /* ----------------------------------------------------------------------
+   *  LES POSTES QUI METTENT À DISPOSITION (retour d'usage du 28/09)
+   *  La légumerie, le magasin, la réception travaillent pour TOUTES les
+   *  commandes à la fois, par vagues : une seule case, partagée, et sur chaque
+   *  chemin une seule question — « besoin de légumerie ? ».
+   * --------------------------------------------------------------------*/
+  const SERVICES_DISPO = ['decontam', 'magasin', 'appros'];
+  const estDispo = (etat, s) => SERVICES_DISPO.includes(s) || (etat.ateliers || []).some(a => a.service === s && a.type === 'dispo');
+
+  /** Une case de mise à disposition neuve : elle sert toutes les commandes. */
+  function caseDispo(etat, service, nomService) {
+    return { id: 'at-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
+      nom: nomLibre(etat, nomService || service), service, type: 'dispo', debut: '06:00', jour: 0, personnes: 0, pauses: [], lots: [],
+      regime: { actif: true }, permanent: true };
+  }
+
+  /** Les cases d'avant dans un poste de mise à disposition : une par commande. */
+  function anciensDispos(etat) {
+    return (etat.ateliers || []).filter(a => fabrique(a) && estDispo(etat, a.service));
+  }
+
+  /**
+   * Les cases d'avant d'un poste de mise à disposition (« Légumerie AF BC »,
+   * « Légumerie TX YC »…) deviennent UNE case partagée. Leurs heures de début
+   * deviennent ses vagues. Les chemins ne changent pas.
+   * @returns {{ converties:number, services:[id] }}
+   */
+  function partagerDispos(etat, nomDe) {
+    const cle = v => (v.jour || 0) * 1440 + P.minutes(v.debut);
+    const par = new Map();
+    for (const a of anciensDispos(etat)) { if (!par.has(a.service)) par.set(a.service, []); par.get(a.service).push(a); }
+    let converties = 0;
+    for (const [s, vieilles] of par) {
+      converties += vieilles.length;
+      etat.ateliers = etat.ateliers.filter(a => !vieilles.includes(a));
+      const vues = new Map();
+      for (const a of vieilles) { const v = { debut: a.debut, jour: a.jour || 0 }; vues.set(cle(v), v); }
+      let d = etat.ateliers.find(a => a.service === s && a.type === 'dispo');
+      if (d) {
+        if (d.permanent === false) {
+          for (const v of (d.vagues && d.vagues.length ? d.vagues : [{ debut: d.debut, jour: d.jour || 0 }])) vues.set(cle(v), v);
+          d.vagues = [...vues.values()].sort((x, y) => cle(x) - cle(y));
+          d.debut = d.vagues[0].debut; d.jour = d.vagues[0].jour;
+        }
+        continue;
+      }
+      d = caseDispo(etat, s, nomDe ? nomDe(s) : s);
+      d.permanent = false;
+      d.vagues = [...vues.values()].sort((x, y) => cle(x) - cle(y));
+      d.debut = d.vagues[0].debut; d.jour = d.vagues[0].jour;
+      etat.ateliers.push(d);
+    }
+    return { converties, services: [...par.keys()] };
+  }
+
+  /**
+   * « Besoin de légumerie » sur un chemin : le service y entre, relié comme sur
+   * les autres chemins qui passent par lui (sinon comme sur les modèles types),
+   * et la commande est servie par la case partagée.
+   */
+  function ajouterBesoin(etat, p, s, cmd, nomDe, classes) {
+    if (!Array.isArray(p.noeuds) || p.noeuds.includes(s)) return false;
+    const dedans = new Set(P.servicesDuParcours(p));
+    // Le graphe de référence : les autres chemins, puis les modèles types. On y
+    // cherche, dans chaque sens, les premiers services présents sur CE chemin —
+    // en enjambant ceux qui n'y sont pas (la légumerie livre la cuisine ; sans
+    // cuisine sur le chemin, elle livre ce qui vient après).
+    const tous = (etat.parcours || []).filter(q => q !== p).flatMap(q => P.arcsDuParcours(q))
+      .concat(parcoursTypes().parcours.flatMap(q => P.arcsDuParcours(q)));
+    const proches = (sens) => {
+      const vus = new Set([s]), trouves = new Set();
+      let front = [s];
+      while (front.length) {
+        const suite = [];
+        for (const x of front) for (const a of tous) {
+          const y = sens > 0 ? (a.from === x ? a.to : null) : (a.to === x ? a.from : null);
+          if (!y || vus.has(y)) continue; vus.add(y);
+          if (dedans.has(y)) trouves.add(y); else suite.push(y);
+        }
+        front = suite;
+      }
+      return [...trouves];
+    };
+    const arcs = proches(-1).map(x => ({ from: x, to: s })).concat(proches(1).map(x => ({ from: s, to: x })));
+    p.noeuds.push(s);
+    p.liens = Array.isArray(p.liens) ? p.liens : [];
+    for (const a of arcs) if (!p.liens.some(l => l.de === a.from && l.vers === a.to)) p.liens.push({ de: a.from, vers: a.to });
+    if (cmd) donnerCases(etat, cmd, p, [s], nomDe, classes);
+    return true;
   }
 
   /** Une case handling neuve : elle charge les vols de toutes les commandes. */
@@ -828,7 +922,19 @@
         ${dup}
         <button class="btn btn-sm" data-pc-action="reorganiser" title="Ranger les services d’eux-mêmes, de gauche à droite dans le sens du flux">Réorganiser</button>
         <button class="lien-discret danger" data-pc-action="parcours-retirer">Supprimer ce chemin</button>
-      </div>`;
+      </div>${this.besoins(etat, dedans)}`;
+    }
+
+    /* Les postes qui mettent à disposition : une question par chemin, oui ou non.
+     * Leur case est partagée : elle sert toutes les commandes à la fois, par vagues. */
+    besoins(etat, dedans) {
+      const dispos = this.a.services().filter(x => estDispo(etat, x.id));
+      if (!dispos.length) return '';
+      return `<div class="pc-besoins" role="group" aria-label="Ce dont ce chemin a besoin"><span class="pc-besoins-lab">Besoin de</span>
+        ${dispos.map(x => { const oui = dedans.has(x.id);
+          return `<button class="pc-besoin${oui ? ' oui' : ''}" data-pc-action="besoin" data-service="${esc(x.id)}" aria-pressed="${oui}"
+            title="${oui ? 'Oui : ' + esc(x.nom) + ' sert cette commande. Cliquer pour retirer.' : 'Non. Cliquer pour qu’' + esc(x.nom) + ' serve cette commande.'}">${oui ? '✓ ' : ''}${esc(x.nom)}</button>`; }).join('')}
+        <span class="mini-note">une seule case par poste, qui sert toutes les commandes à la fois, par vagues</span></div>`;
     }
 
     /** Une commande sans chemin : on lui en crée un, vide ou copié d'un autre. */
@@ -1142,7 +1248,13 @@
           const k = l.cases[col.service], s = col.service;
           const attrs = `data-qf="aller" data-classe="${esc(c.id)}" data-service="${esc(s)}"`;
           if (k.etat === 'hors') return `<td class="qf-c hors" title="${esc(P.libelleClasse(c.id))} ne passe pas par ${esc(this.nom(s))}"></td>`;
-          if (k.etat === 'auto') return `<td class="qf-c auto" title="${esc(nomAt(k.ateliers[0]))} sert tout le monde">${esc(nomAt(k.ateliers[0]))}</td>`;
+          if (k.etat === 'auto') {
+            // Une mise à disposition par vagues : la vague qui sert cette commande.
+            const v = ((r && r.lots) || []).find(x => x.dispo && x.atelier === k.ateliers[0] && (x.classes || []).includes(c.id));
+            const dit = v && v.vagues > 1 ? 'vague ' + v.vague + ' · ' + P.hhmm(v.debut) : v && v.vagues === 1 ? 'dès ' + P.hhmm(v.debut) : '';
+            return `<td class="qf-c auto" title="${esc(nomAt(k.ateliers[0]))} sert toutes les commandes à la fois${dit ? ' — ' + esc(dit) : ''}">${esc(nomAt(k.ateliers[0]))}${
+              dit ? '<small class="qf-vague">' + esc(dit) + '</small>' : ''}</td>`;
+          }
           if (k.etat === 'libre') return `<td class="qf-c"><button class="qf-case libre" ${attrs}
             title="Ouvrir le chemin de ${esc(P.libelleClasse(c.id))} sur ${esc(this.nom(s))}">à faire</button></td>`;
           const lot = lots.get(k.ateliers[0] + '|' + c.id);
@@ -1256,9 +1368,12 @@
       const q = e.target.closest('[data-qf]');
       if (q && q.tagName !== 'INPUT') return this.geste(q);
       const b = e.target.closest('[data-pc-action]'); if (!b) return;
-      const action = b.dataset.pcAction, s = b.dataset.service;
+      let action = b.dataset.pcAction;
+      const s = b.dataset.service;
       const etat = this.a.etat(), classes = this.a.classes();
       const p = this.parcoursActif(etat), pid = p && p.id;
+      // « Besoin de légumerie » déjà coché : le décocher, c'est la retirer du chemin.
+      if (action === 'besoin' && p && P.servicesDuParcours(p).includes(s)) action = 'noeud-retirer';
       const trouver = x => x.parcours.find(y => y.id === pid);
       if (action === 'cmd') { this.cmd = b.dataset.classe; this.actif = null; this.sel = null; this.svc = ''; this.depuis = undefined; return this.rendre(); }
       if (action === 'modele') { this.cmd = null; this.actif = b.dataset.parcours; this.sel = null; this.svc = ''; return this.rendre(); }
@@ -1323,6 +1438,11 @@
           for (const c of Object.keys(x.parcoursCabine)) if (x.parcoursCabine[c] === pid) delete x.parcoursCabine[c];
           for (const c of Object.keys(x.parcoursClasse)) if (x.parcoursClasse[c] === pid) delete x.parcoursClasse[c];
         }, this.cmd ? 'Chemin de ' + this.lib(this.cmd) + ' supprimé.' : 'Modèle supprimé.');
+      }
+      if (action === 'besoin') {
+        const cmd = this.cmd;
+        return this.a.changer(x => { ajouterBesoin(x, trouver(x), s, cmd, y => this.nom(y), classes); },
+          this.nom(s) + ' sert ' + (cmd ? this.lib(cmd) : 'ce modèle') + ' : sa case est partagée par toutes les commandes.');
       }
       if (action === 'noeud-retirer') {
         this.sel = null; if (this.svc === s) this.svc = '';
@@ -1410,7 +1530,8 @@
 
 
   const api = { insererPrepa, depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, couverture, confier, nouvelleEquipe,
-    completer, colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, donnerCases, completerCases, nomLibre, caseHandling, anciensHandlings, brancherHandling, EditeurParcours };
+    completer, colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, donnerCases, completerCases, nomLibre, caseHandling, anciensHandlings, brancherHandling,
+    SERVICES_DISPO, estDispo, caseDispo, anciensDispos, partagerDispos, ajouterBesoin, EditeurParcours };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyParcours = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

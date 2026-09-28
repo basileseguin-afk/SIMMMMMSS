@@ -5,6 +5,31 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-28 — Légumerie, magasin, réception : une case partagée, par vagues
+
+Retour d'usage : « la légumerie travaille en même temps pour toutes les
+compagnies × classes qui en ont besoin ; le visuel ne le montre pas du tout ».
+Chemins, planning et « Qui prépare quoi » la montraient commande par commande.
+Règles confirmées : plusieurs vagues dans la journée ; même traitement pour le
+magasin et la réception ; sur le chemin, un simple « besoin de légumerie ? ».
+
+- Moteur : une mise à disposition a des **vagues** ; chaque commande prend la
+  vague qui précède son besoin (avant la première, l'étape d'après l'attend).
+  Une ligne de journal par vague, avec ses commandes.
+- Chemins : « Besoin de Légumerie / Magasin / Réception » — oui ou non. Oui :
+  le service entre, relié comme sur les autres chemins (en enjambant ce qui
+  n'y est pas), servi par l'unique case partagée. Un chemin créé ou un nœud
+  ajouté ne crée plus de case par commande dans ces postes.
+- Cases : la fiche d'une mise à disposition liste ses vagues (heure, jour,
+  « sert N commandes »), « + Vague ».
+- « Qui prépare quoi » : la cellule dit la vague (« vague 2 · 04:00 »).
+- Cases d'avant, une par commande : signalées dans les points à regarder,
+  « Passer à une case partagée » — leurs heures deviennent les vagues.
+- Excel : colonne « Vagues » (« J-1 14:00; J 04:00 »), qui prime sur
+  « Horaires ».
+- Tests : `tests/vagues.test.cjs`, `tests/partage-browser.cjs`, parcours,
+  aller-retour Excel ; graphe-browser et ateliers-browser mis à jour.
+
 ## 2026-09-28 — Les cases de handling d'avant passent au handling par vol
 
 Retour d'usage : « j'avais déjà ajouté du handling sur les chemins, ils y sont

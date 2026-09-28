@@ -310,6 +310,9 @@
         if (a.type === 'handling' && jour !== 0) throw new Error(a.nom + ' : le handling travaille le jour J des vols, pas ' + jourEcrit(jour));
         if (a.debut !== hh(t) || (a.jour || 0) !== jour) changes.push(a);
         a.debut = hh(t); a.jour = jour;
+        // Une mise à disposition par vagues : l'horaire est celui de sa première.
+        // (sauf si la colonne « Vagues » de la feuille Ateliers les donne : elle prime).
+        if (a.type === 'dispo' && Array.isArray(a.vagues) && a.vagues.length && !a._vaguesLues) a.vagues[0] = { debut: a.debut, jour };
       });
     }
     return changes;
@@ -361,7 +364,7 @@
     const ateliers = [['Atelier', 'Service', 'Type', 'Personnes', 'Pauses',
       'Poste réglementaire', 'Présence (min)', 'Emporte du matériel', 'Débit robot (plateaux/h)',
       'Effectif mini robot', 'Plafond plonge (u/h)', 'Permanent', 'Identifiant',
-      'Vols en même temps', 'Pas avant départ (h)', 'Compagnies chargées']];
+      'Vols en même temps', 'Pas avant départ (h)', 'Compagnies chargées', 'Vagues']];
     const handling = [['Atelier', 'Compagnie', 'Minutes par vol']];
     const fab = [['Atelier', 'Ordre', 'Compagnies × classes']];
     const mm = [['Atelier', 'Compagnie × classe', 'Man-minutes']];
@@ -379,7 +382,9 @@
         a.id,
         a.type === 'handling' ? a.simultanes || 1 : null,
         a.type === 'handling' ? Math.round((a.avance ?? P.AVANCE_HANDLING) / 6) / 10 : null,
-        a.type === 'handling' ? (a.compagnies || []).join(', ') || 'toutes' : null]);
+        a.type === 'handling' ? (a.compagnies || []).join(', ') || 'toutes' : null,
+        a.type === 'dispo' && a.permanent === false ? (a.vagues && a.vagues.length ? a.vagues : [{ debut: a.debut, jour: a.jour }])
+          .map(v => jourEcrit(v.jour || 0) + ' ' + v.debut).join('; ') : null]);
       if (a.type === 'handling') for (const [cie, v] of Object.entries(a.durees || {})) handling.push([a.nom, cie === P.TOUTES ? 'toutes' : cie, v]);
       (a.lots || []).forEach((l, i) => fab.push([a.nom, i + 1, l.join(' + ')]));
       for (const [id, v] of Object.entries(a.minutes || {})) mm.push([a.nom, id, v]);
@@ -441,6 +446,8 @@
         '   Pour ajouter une compagnie × classe à un atelier : ajoutez une ligne (Atelier, Ordre, ex. « AF/BC »).',
         'Man-minutes : celles qu’un atelier fixe pour une compagnie × classe, à la place du barème importé. Absente = le barème.',
         'Tunnels : les tunnels d’une plonge, avec leur débit et le personnel qui les tient.',
+        'Vagues (Ateliers) : une mise à disposition (légumerie, magasin…) sert toutes les commandes à la fois, par vagues :',
+        '   « J-1 14:00; J 04:00 ». Chaque commande prend la vague qui précède son besoin. Permanent = oui : pas de vague.',
         'Handling : il charge les vols un par un, dans l’ordre des départs. Une ligne par compagnie : ses minutes par vol ;',
         '   « toutes » pour les compagnies sans ligne. Dans Ateliers : vols en même temps, pas avant (heures avant le départ),',
         '   compagnies chargées (« toutes », ou « AF, TX »).',
@@ -583,7 +590,18 @@
           a.personnesMin = T.nombreDe(o.effectif_mini_robot, 1);
         }
         if (type === 'lavage') { a.plafond = T.nombreDe(o.plafond_plonge_u_h, 0); a.tunnels = []; }
-        if (type === 'dispo') a.permanent = T.ouiNon(o.permanent, true);
+        if (type === 'dispo') {
+          a.permanent = T.ouiNon(o.permanent, true);
+          // « J-1 14:00; J 04:00 » : les vagues. Vide : celles du site, sinon son heure.
+          const vv = String(o.vagues ?? '').trim();
+          if (vv) a._vaguesLues = true;
+          if (vv) a.vagues = vv.split(/\s*;\s*/).filter(Boolean).map(t => {
+            const m = /^(?:(J(?:\s*[-−–]\s*\d+)?)\s+)?(\d{1,2}[:h]\d{2})$/i.exec(t.trim());
+            if (!m) throw new Error('vague illisible « ' + t + ' » (ex. « J-1 14:00; J 04:00 »)');
+            return { debut: hh(T.heureDe(m[2].replace('h', ':'))), jour: jourDe((m[1] || 'J').replace(/\s+/g, '')) };
+          });
+          else if (avant && avant.type === 'dispo' && avant.vagues) a.vagues = JSON.parse(JSON.stringify(avant.vagues));
+        }
         if (type === 'handling') {
           const av = T.nombreDe(o.pas_avant_depart_h, null);
           const cies = String(o.compagnies_chargees ?? '').trim();
@@ -691,7 +709,7 @@
       }
     }
     for (const a of out.ateliers) {
-      delete a._ligne;
+      delete a._ligne; delete a._vaguesLues;
       if (a.type === 'lavage' && !a.tunnels.length) a.tunnels = [{ nom: 'Tunnel 1', debit: 300, personnes: 1, actif: true }];
     }
 

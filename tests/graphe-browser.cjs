@@ -38,8 +38,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // Chaque service du chemin a sa case dès la création : elle figure dans « Les cases ».
   const kase=await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.service==='prepa'&&a.lots.some(l=>l.includes('TX/BC'))));
   assert.equal(kase.nom,'Montage TX BC');assert.deepEqual(kase.lots,[['TX/BC']]);
+  // Les postes qui mettent à disposition (réception, légumerie, magasin) ont UNE case, partagée : pas de lot.
+  const partages=['appros','decontam','magasin'];
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.lots.some(l=>l.includes('TX/BC'))).length),
-    await page.evaluate(id=>Sim.ateliers.state.parcours.find(p=>p.id===id).noeuds.filter(s=>s!=='plonge').length,bc),'une case par service');
+    await page.evaluate(([id,partages])=>Sim.ateliers.state.parcours.find(p=>p.id===id).noeuds.filter(s=>s!=='plonge'&&!partages.includes(s)).length,[bc,partages]),'une case par service qui prépare');
+  assert.deepEqual(await page.evaluate(partages=>partages.map(s=>Sim.ateliers.state.ateliers.filter(a=>a.service===s).map(a=>a.type)),partages),
+    [['dispo'],['dispo'],['dispo']],'une case partagée par poste de mise à disposition');
   assert.equal(await page.locator(`${Z} [data-noeud=prepa]`).evaluate(n=>n.classList.contains('ton-ok')),true,'le nœud a sa case');
   await nav.aller(page,'at-equipes');await attendre();
   assert.match(await page.locator('#at-liste').textContent(),/Montage TX BC/,'la case est dans « Les cases »');

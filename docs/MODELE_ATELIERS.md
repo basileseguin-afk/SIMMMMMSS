@@ -221,7 +221,23 @@ dans l'instant.
 |---|---|
 | `type: 'dispo'` | |
 | `permanent` | **vrai par défaut** : personne ne l'attend |
-| `debut` / `jour` | l'heure d'ouverture, quand `permanent` est faux |
+| `vagues` | quand `permanent` est faux : `[{ debut, jour }]`, ses vagues dans la journée |
+| `debut` / `jour` | sa première vague (lue seule quand il n'y a pas de liste) |
+
+**Par vagues (confirmé le 28/09).** La légumerie, le magasin, la réception
+travaillent **pour toutes les commandes à la fois**, en plusieurs vagues (ex.
+J-1 14:00 puis J 04:00). Chaque commande prend **la vague qui précède son
+besoin** — l'heure où l'étape d'après commence à l'attendre ; avant la
+première, elle l'attend. Le journal porte une ligne par vague, avec les
+commandes qu'elle sert : c'est ce que montrent le chemin, le planning et le
+tableau « Qui prépare quoi » (« vague 2 · 04:00 »).
+
+**Une seule case par poste, partagée.** Sur un chemin, ces postes ne se
+règlent pas commande par commande : une seule question, « Besoin de
+légumerie ? ». Oui : le service entre dans le chemin, relié comme sur les
+autres chemins (en enjambant ce qui n'y est pas), et la case partagée le sert.
+Des cases d'avant, une par commande, se fondent en une (« Passer à une case
+partagée ») : leurs heures de début deviennent ses vagues.
 
 Ni effectif, ni barème, ni durée — et **aucune liste** : elle sert **toutes**
 les compagnies × classes, sans qu'on les énumère. Le magasin sort du matériel

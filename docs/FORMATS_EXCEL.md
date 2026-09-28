@@ -64,6 +64,7 @@ Une ligne par équipe. **Le nom est la clé** : les autres feuilles s'y réfère
 | Vols en même temps | handling seulement : combien de vols il prépare à la fois (1 par défaut) |
 | Pas avant départ (h) | handling seulement : il ne commence pas un vol plus tôt (3 h par défaut) |
 | Compagnies chargées | handling seulement : `toutes`, ou `AF, TX` |
+| Vagues | mise à disposition non permanente : `J-1 14:00; J 04:00` ; vide = celles du site. Elle prime sur « Horaires », qui ne donne que la première |
 
 ### Feuille « Fabrications »
 

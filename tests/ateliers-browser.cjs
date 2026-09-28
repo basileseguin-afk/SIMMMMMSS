@@ -244,10 +244,16 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(apresDispo.parClasse['CRL/BC'].services.includes('magasin'),'elle figure au parcours');
   // Décochée, elle prend une heure — et son aval l'attend.
   await page.locator(`${fiche} [data-at-champ=permanent]`).uncheck();await attendre();
-  assert.equal(await page.locator(`${fiche} [data-at-champ=debut]`).count(),1,'l’heure apparaît');
-  await champ(mag,'debut','09:00');
+  // Elle travaille alors par vagues (retour d'usage du 28/09) : une d'abord.
+  assert.equal(await page.locator(`${fiche} [data-at-champ=vague-debut]`).count(),1,'l’heure de sa vague apparaît');
+  await page.fill(`${fiche} [data-at-champ=vague-debut]`,'09:00');await page.locator(`${fiche} [data-at-champ=vague-debut]`).dispatchEvent('change');await attendre();
   const tard=(await resultat()).lots.find(l=>l.service==='magasin');
   assert.equal(tard.debut,9*60,'elle ouvre à l’heure dite');
+  // Une seconde vague : elle sert toutes les commandes à la fois, chacune prenant la vague d'avant son besoin.
+  await page.locator(`${fiche} [data-at-action=vague-ajouter]`).click();await attendre();
+  assert.equal(await page.locator(`${fiche} [data-at-champ=vague-debut]`).count(),2);
+  assert.deepEqual(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).vagues,mag),[{debut:'09:00',jour:0},{debut:'15:00',jour:0}]);
+  assert.match(await page.locator(`${fiche} .at-carte-nom span, ${fiche} .at-carte-tete span`).first().textContent(),/2 vagues : 09:00 · 15:00/);
 
 
   // 18. Le poste : pauses automatiques et heure de fin, visibles et r\u00e9glables.

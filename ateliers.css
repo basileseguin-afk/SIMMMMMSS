@@ -258,6 +258,7 @@ body.ateliers-open .workbench{display:none}
 .qf-c{min-width:108px}
 .qf-c.hors{background:repeating-linear-gradient(135deg,transparent 0 5px,color-mix(in srgb,var(--bordure) 60%,transparent) 5px 6px)}
 .qf-c.auto{color:var(--txt2);font-size:12px;font-style:italic;padding-left:10px}
+.qf-vague{display:block;font-style:normal;font-size:12px;color:var(--txt2)}
 .qf-case{font:inherit;display:grid;gap:0;width:100%;text-align:left;border-radius:6px;padding:4px 7px;cursor:pointer;
   min-height:34px;align-content:center;border:1px solid var(--bordure2);background:var(--bg2);color:var(--txt)}
 .qf-case .qf-nom{font-weight:700;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}

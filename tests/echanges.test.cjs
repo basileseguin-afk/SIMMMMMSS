@@ -304,3 +304,17 @@ test('ateliers : un handling fait l’aller-retour par Excel, durées par compag
     assert.deepEqual(E.classeurVersAteliers(await parFichier(sans), etat, ctxAteliers()).etat.ateliers.find(a => a.nom === 'Handling').durees, { '*': 30, AF: 45 });
   } finally { SERVICES.pop(); }
 });
+
+test('ateliers : les vagues d’une mise à disposition font l’aller-retour par Excel', async () => {
+  const etat = ETAT_ATELIERS();
+  const m = etat.ateliers.find(a => a.nom === 'Magasin');
+  m.vagues = [{ debut: '14:00', jour: -1 }, { debut: '04:00', jour: 0 }]; m.debut = '14:00'; m.jour = -1;
+  let f = E.ateliersVersClasseur(etat, ctxAteliers());
+  const fa = f.find(x => x.nom === 'Ateliers'), col = fa.lignes[0].indexOf('Vagues');
+  assert.equal(fa.lignes.find(l => l[0] === 'Magasin')[col], 'J-1 14:00; J 04:00');
+  f = modifier(f, 'Ateliers', l => l.map(r => (r[0] === 'Magasin' ? r.map((v, i) => (i === col ? 'J-1 13:30; J 05:00; J 11:00' : v)) : r)));
+  const { etat: lu } = E.classeurVersAteliers(await parFichier(f), etat, ctxAteliers());
+  assert.deepEqual(lu.ateliers.find(a => a.nom === 'Magasin').vagues, [{ debut: '13:30', jour: -1 }, { debut: '05:00', jour: 0 }, { debut: '11:00', jour: 0 }]);
+  const faux = modifier(E.ateliersVersClasseur(etat, ctxAteliers()), 'Ateliers', l => l.map(r => (r[0] === 'Magasin' ? r.map((v, i) => (i === col ? 'demain matin' : v)) : r)));
+  assert.throws(() => E.classeurVersAteliers(faux, etat, ctxAteliers()), /vague illisible « demain matin »/);
+});
