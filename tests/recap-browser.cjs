@@ -52,7 +52,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const [dl]=await Promise.all([page.waitForEvent('download'),page.locator('#rg-recap-export').click()]);
   const fichier=path.join(os.tmpdir(),'recap-'+process.pid+'.xlsx');await dl.saveAs(fichier);
   const feuilles=await T.lireClasseur(fs.readFileSync(fichier));
-  assert.deepEqual(feuilles.map(f=>f.nom),['Man-minutes par vol','Toutes compagnies','Lisez-moi']);
+  assert.deepEqual(feuilles.map(f=>f.nom),['Man-minutes par vol','Toutes compagnies','Personnes','Lisez-moi']);
   const g=feuilles[0].lignes, nomSvc=await page.evaluate(sid=>Sim.reglages.a.services().find(s=>s.id===sid).nom,sid);
   const col=g[0].indexOf(nomSvc), i=g.findIndex(l=>l[0]+'/'+l[1]===cls);
   assert.ok(col>2&&i>0);
@@ -62,6 +62,23 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal((await bareme())[sid][cle],99,'réimporté');
   assert.match(await page.locator('#rg-status').innerText(),/1 valeur changée/);
   fs.unlinkSync(fichier);
+
+  // 5. L'effectif de l'équipe qui prépare, dans chaque case, modifiable ; la durée suit.
+  await nav.aller(page,'at-chemins');
+  await page.locator('[data-pc-action=cmd][data-classe="AF/BC"]').click();await attendre();
+  if(await page.locator('[data-pc-action=creer][data-classe="AF/BC"]').count()){await page.locator('[data-pc-action=creer][data-classe="AF/BC"]').click();await attendre();}
+  await nav.aller(page,'rg-recap');
+  const pers=page.locator('.rg-recap-table tr[data-classe="AF/BC"] input[data-rg-champ=recap-pers]').first();
+  assert.equal(await pers.count(),1,'l’effectif de la case est là');
+  const at=await pers.getAttribute('data-atelier');
+  const avant=await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).personnes,at);
+  await pers.fill(String(avant+2));await pers.dispatchEvent('change');await attendre();
+  assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).personnes,at),avant+2,'la case a son nouvel effectif');
+  const cel=page.locator(`.rg-recap-table input[data-atelier="${at}"]`).first().locator('xpath=ancestor::td');
+  assert.match(await cel.innerText(),/= \d/,'la durée d’un vol est dite');
+  // « Annuler » du récap défait aussi un effectif.
+  await page.locator('#rg-recap-undo').click();await attendre();
+  assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).personnes,at),avant,'annulé');
 
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('recap-browser : ok');

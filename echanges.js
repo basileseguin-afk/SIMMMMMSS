@@ -218,13 +218,18 @@
       let parVol = 0, jour = 0;
       for (const sv of colonnes) {
         if (!passe(c, sv.id)) { cellules[sv.id] = { source: 'hors', parVol: null, jour: null }; continue; }
-        const a = ateliers.find(x => x.service === sv.id && x.type === 'manuel' && (x.lots || []).some(l => l.includes(c.id))
-          && x.minutes && Number.isFinite(x.minutes[c.id]));
+        // L'équipe qui prépare cette commande ici : son effectif se règle aussi dans le récap.
+        const eq = ateliers.find(x => x.service === sv.id && (x.type === 'manuel' || x.type === 'robot') && (x.lots || []).some(l => l.includes(c.id)));
+        const equipe = eq ? { id: eq.id, nom: eq.nom, personnes: eq.personnes, type: eq.type,
+          commandes: new Set((eq.lots || []).flat()).size } : null;
+        const a = eq && eq.type === 'manuel' && eq.minutes && Number.isFinite(eq.minutes[c.id]) ? eq : null;
         const t = bareme[sv.id] || {};
         const propre = t[P.cleBareme(c.cie, c.cabine)], commun = t[P.cleBareme(P.TOUTES, c.cabine)];
         const v = a ? a.minutes[c.id] : Number.isFinite(propre) ? propre : Number.isFinite(commun) ? commun : null;
         const source = a ? 'case' : Number.isFinite(propre) ? 'propre' : Number.isFinite(commun) ? 'commun' : 'manque';
-        cellules[sv.id] = { source, parVol: v, jour: v == null ? null : v * vols, atelier: a ? a.nom : null,
+        cellules[sv.id] = { source, parVol: v, jour: v == null ? null : v * vols, atelier: a ? a.nom : null, equipe,
+          // Ce que dure un vol dans cette équipe : man-minutes ÷ personnes.
+          duree: v != null && equipe && equipe.type === 'manuel' && equipe.personnes > 0 ? v / equipe.personnes : null,
           bareme: Number.isFinite(propre) ? propre : Number.isFinite(commun) ? commun : null };
         if (v != null) { parVol += v; jour += v * vols; }
       }
@@ -257,15 +262,28 @@
     }
     const communs = [['Classe', ...noms]];
     for (const cab of P.CABINES) communs.push([cab, ...r.colonnes.map(sv => { const v = ((ctx.bareme || {})[sv.id] || {})[P.cleBareme(P.TOUTES, cab)]; return Number.isFinite(v) ? v : null; })]);
+    // L'effectif de chaque équipe qui prépare ces commandes : une ligne par case
+    // (une case partagée n'apparaît qu'une fois, avec ses commandes).
+    const personnes = [['Case', 'Service' + INFO, 'Commandes' + INFO, 'Personnes']];
+    const nomSvc = new Map((ctx.services || []).map(sv => [sv.id, sv.nom]));
+    const vues = new Set(r.colonnes.map(sv => sv.id));
+    for (const a of (ctx.ateliers || [])) {
+      if (!vues.has(a.service) || (a.type !== 'manuel' && a.type !== 'robot') || !(a.lots || []).some(l => l.length)) continue;
+      const cmds = [...new Set(a.lots.flat())];
+      personnes.push([a.nom, nomSvc.get(a.service) || a.service, cmds.slice(0, 8).join(', ') + (cmds.length > 8 ? '…' : ''), a.personnes]);
+    }
     return [
       { nom: 'Man-minutes par vol', lignes },
       { nom: 'Toutes compagnies', lignes: communs },
+      { nom: 'Personnes', lignes: personnes },
       lisezMoi('Man-minutes — fichier de paramétrage, à modifier dans Excel puis réimporter', [
         'Man-minutes par vol : une ligne par commande (compagnie × classe), une colonne par service.',
         '   Chaque case : les man-minutes d’UN vol de cette commande dans ce service. Pour la journée, le calcul multiplie par le nombre de vols.',
         '   Une case égale à la valeur « Toutes compagnies » de sa classe la suit ; une autre valeur devient propre à cette compagnie.',
         '   Une case vidée revient à la valeur « Toutes compagnies ». Une case vide d’un service où la commande ne passe pas est ignorée.',
         'Toutes compagnies : la valeur commune de chaque classe, par service. Vide : aucune.',
+        'Personnes : l’effectif de chaque case (équipe) qui prépare ces commandes. Le nom de la case est la clé : ne le changez pas.',
+        '   Une case partagée par plusieurs commandes n’a qu’une ligne : son effectif vaut pour toutes. Durée d’un vol = man-minutes ÷ personnes.',
         'Les colonnes sont des services : ajoutez-en ou retirez-en, seules celles présentes sont modifiées.',
         'Les man-minutes fixées dans une case d’équipe ne sont pas ici : elles se règlent dans la case (ou dans le classeur des cases).'
       ])
@@ -276,7 +294,7 @@
    * Relit le fichier de paramétrage. Seuls les services présents en colonne
    * changent ; les autres gardent leur barème.
    * @param bareme le barème en place (complet)
-   * @returns {{ bareme, changes:number }}
+   * @returns {{ bareme, changes:number, personnes:{ atelierId: n } }}
    */
   function classeurVersRecap(feuilles, bareme, ctx) {
     const err = new Erreurs();
@@ -329,6 +347,23 @@
         if (Number.isFinite(commun) && commun === v) delete t[cle]; else t[cle] = v;
       });
     });
+    // 3. L'effectif des cases : seulement ce qui change.
+    const personnes = {};
+    const fp = T.feuille(feuilles, 'Personnes');
+    if (fp) {
+      const parNom = new Map((ctx.ateliers || []).map(a => [T.cleEntete(a.nom), a]));
+      const { objets } = T.enObjets(fp.lignes);
+      for (const o of objets) {
+        err.essayer(fp.nom, o._ligne, () => {
+          const nom = String(o.case ?? '').trim(); if (!nom) return;
+          const a = parNom.get(T.cleEntete(nom));
+          if (!a) throw new Error('case inconnue « ' + nom + ' » : le nom est la clé, il doit être celui du site');
+          const v = T.nombreDe(o.personnes, null); if (v === null) return;
+          if (!Number.isInteger(v) || v < 0 || v > 999) throw new Error(nom + ' : nombre de personnes entier attendu (0 à 999)');
+          if (v !== a.personnes) personnes[a.id] = v;
+        });
+      }
+    }
     err.lever();
     for (const k of Object.keys(out)) if (!Object.keys(out[k]).length && !(bareme || {})[k]) delete out[k];
     // Le nombre de valeurs qui changent, pour le dire avant de remplacer.
@@ -337,7 +372,7 @@
     for (const sid of new Set([...Object.keys(a), ...Object.keys(out)])) {
       for (const cle of new Set([...Object.keys(a[sid] || {}), ...Object.keys(out[sid] || {})])) if ((a[sid] || {})[cle] !== (out[sid] || {})[cle]) changes++;
     }
-    return { bareme: out, changes };
+    return { bareme: out, changes: changes + Object.keys(personnes).length, personnes };
   }
 
   /* ======================================================================

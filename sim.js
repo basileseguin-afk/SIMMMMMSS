@@ -1448,6 +1448,11 @@ function installerCentreReglages() {
     occupes:()=>[...new Set(((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]).map(a=>a.service))],
     // Les cases : une man-minute fixée dans une case prime, le récap le montre.
     ateliers:()=>(Sim.ateliers&&Sim.ateliers.state.ateliers)||[],
+    // L'effectif d'une case, réglé depuis le récap des man-minutes.
+    personnes:(id,n)=>{const a=Sim.ateliers&&Sim.ateliers.state.ateliers.find(x=>x.id===id);if(!a)return false;
+      return Sim.ateliers.changer(()=>{a.personnes=n;},'« '+a.nom+' » : '+n+(n>1?' personnes.':' personne.'));},
+    personnesToutes:par=>Sim.ateliers&&Sim.ateliers.changer(()=>{for(const a of Sim.ateliers.state.ateliers)if(par[a.id]!=null)a.personnes=par[a.id];},'Effectifs importés.'),
+    histoireCases:refaire=>Sim.ateliers&&Sim.ateliers.histoire(refaire),
     // Les compagnies × classes du moment, et le parcours de chacune : c'est ce
     // que le classeur du barème propose de renseigner, service par service.
     classes:()=>Sim.ateliers?Sim.ateliers.classes:[],

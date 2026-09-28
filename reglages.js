@@ -282,8 +282,10 @@
         this.changer(() => { this.etat.bareme = clone(P.BAREME_DEMO); }, 'Barème de démonstration rétabli.');
       });
       sur('rg-export', 'click', () => this.exporter());
-      sur('rg-recap-undo', 'click', () => this.histoire(false));
-      sur('rg-recap-redo', 'click', () => this.histoire(true));
+      // Le récap touche deux choses : le barème et l'effectif des cases.
+      // « Annuler » y défait la dernière, quelle qu'elle soit.
+      sur('rg-recap-undo', 'click', () => this.annulerRecap(false));
+      sur('rg-recap-redo', 'click', () => this.annulerRecap(true));
       sur('rg-recap-export', 'click', () => this.exporterRecap());
       sur('rg-recap-import-btn', 'click', () => document.getElementById('rg-recap-import').click());
       sur('rg-recap-import', 'change', e => this.importerRecap(e));
@@ -307,6 +309,14 @@
         const champ = e.target.dataset.rgChamp; if (!champ) return;
         const { service, cle, index } = e.target.dataset;
         const v = e.target.value;
+        // L'effectif d'une équipe : il vit dans ses cases, pas dans le barème.
+        if (champ === 'recap-pers') {
+          const n = parseInt(v, 10), id = e.target.dataset.atelier;
+          if (!Number.isInteger(n) || n < 0) { this.rendre('Nombre de personnes entier attendu.'); return; }
+          setTimeout(() => { if (this.a.personnes && this.a.personnes(id, Math.min(999, n))) this.pile('cases'); }, 0);
+          return;
+        }
+        if (champ === 'recap') this.pile('bareme');
         // Le rendu remplace le tableau : le faire PENDANT le `change` arrache
         // le champ qu'on vient de quitter, et le navigateur refuse. On laisse
         // l'événement se terminer d'abord.
@@ -370,8 +380,12 @@
       this.rendreRecap();
       this.rendreRendement();
       this.rendreRegime();
-      for (const id of ['rg-undo', 'rg-recap-undo']) { const b = document.getElementById(id); if (b) b.disabled = !this.undo.length; }
-      for (const id of ['rg-redo', 'rg-recap-redo']) { const b = document.getElementById(id); if (b) b.disabled = !this.redo.length; }
+      const b1 = document.getElementById('rg-undo'), b2 = document.getElementById('rg-redo');
+      if (b1) b1.disabled = !this.undo.length;
+      if (b2) b2.disabled = !this.redo.length;
+      const r1 = document.getElementById('rg-recap-undo'), r2 = document.getElementById('rg-recap-redo');
+      if (r1) r1.disabled = !this.undo.length && !(this.pileRecap || []).includes('cases');
+      if (r2) r2.disabled = !this.redo.length && !(this.pileRedo || []).includes('cases');
     }
 
     /*
@@ -562,15 +576,21 @@
       const cellule = (l, sv) => {
         const c = l.cellules[sv.id], lib = P.libelleClasse(l.classe.id) + ' · ' + sv.nom;
         if (c.source === 'hors') return `<td class="rgr hors" title="${esc(P.libelleClasse(l.classe.id))} ne passe pas par ${esc(sv.nom)}">·</td>`;
-        if (vue === 'jour') {
-          return `<td class="rgr ${c.source}" title="${esc(lib)} : ${c.parVol == null ? 'à renseigner' : fr(c.parVol) + ' man-min par vol × ' + l.vols + ' vol' + (l.vols > 1 ? 's' : '')}">${c.jour == null ? '—' : fr(c.jour)}</td>`;
-        }
-        if (c.source === 'case') {
-          return `<td class="rgr case" title="Fixée dans la case « ${esc(c.atelier)} » (barème : ${c.bareme == null ? 'rien' : fr(c.bareme)}). Elle se change dans la case.">${fr(c.parVol)}<small>case</small></td>`;
-        }
-        return `<td class="rgr ${c.source}"><input type="number" min="0" step="0.1" value="${c.parVol == null ? '' : c.parVol}"
+        // L'équipe qui prépare : son effectif, modifiable ici, et ce que dure un vol.
+        const eq = c.equipe;
+        const pers = !eq ? `<small class="rgr-sans" title="Aucune case ne prépare ${esc(P.libelleClasse(l.classe.id))} dans ${esc(sv.nom)}">pas de case</small>`
+          : `<span class="rgr-pers" title="Case « ${esc(eq.nom)} »${eq.commandes > 1 ? ' — partagée par ' + eq.commandes + ' commandes : son effectif vaut pour toutes' : ''}"><input type="number" min="0" max="999" step="1"
+              value="${eq.personnes}" data-rg-champ="recap-pers" data-atelier="${esc(eq.id)}" aria-label="Personnes de la case ${esc(eq.nom)}"><small>pers.${eq.commandes > 1 ? '*' : ''}</small></span>`;
+        const duree = c.duree != null ? (vue === 'jour' ? c.duree * l.vols : c.duree) : null;
+        const dit = eq && eq.type === 'robot' ? '<small class="rgr-duree">robot</small>'
+          : duree != null ? `<small class="rgr-duree" title="${vue === 'jour' ? 'Durée sur la journée' : 'Durée d’un vol'} : man-minutes ÷ personnes">= ${heures(duree)}</small>` : '';
+        let mm;
+        if (vue === 'jour') mm = `<span class="rgr-mm" title="${esc(lib)} : ${c.parVol == null ? 'à renseigner' : fr(c.parVol) + ' man-min par vol × ' + l.vols + ' vol' + (l.vols > 1 ? 's' : '')}">${c.jour == null ? '—' : fr(c.jour)}</span>`;
+        else if (c.source === 'case') mm = `<span class="rgr-mm" title="Fixée dans la case « ${esc(c.atelier)} » (barème : ${c.bareme == null ? 'rien' : fr(c.bareme)}). Elle se change dans la case.">${fr(c.parVol)}<small>case</small></span>`;
+        else mm = `<input type="number" min="0" step="0.1" value="${c.parVol == null ? '' : c.parVol}"
           placeholder="${c.source === 'manque' ? 'à saisir' : ''}" data-rg-champ="recap" data-service="${esc(sv.id)}" data-classe="${esc(l.classe.id)}"
-          aria-label="Man-minutes par vol : ${esc(lib)}" title="${esc(lib)} — ${c.source === 'propre' ? 'valeur propre' : c.source === 'commun' ? 'valeur toutes compagnies' : 'à renseigner'}"></td>`;
+          aria-label="Man-minutes par vol : ${esc(lib)}" title="${esc(lib)} — ${c.source === 'propre' ? 'valeur propre' : c.source === 'commun' ? 'valeur toutes compagnies' : 'à renseigner'}">`;
+        return `<td class="rgr ${c.source}"><div class="rgr-cel">${mm}${pers}${dit}</div></td>`;
       };
       const manque = r.lignes.reduce((n, l) => n + Object.values(l.cellules).filter(c => c.source === 'manque').length, 0);
       box.innerHTML = `<p class="rg-recap-resume">${r.lignes.length} commandes · ${r.colonnes.length} services · <b>${heures(r.totaux.jourTotal)}</b> de travail sur la journée${
@@ -585,7 +605,19 @@
         ${vue === 'jour' ? `<tfoot><tr><th scope="row">Total journée</th><td></td>${r.colonnes.map(sv => `<td>${heures(r.totaux.jour[sv.id])}</td>`).join('')}<td class="rg-recap-total">${heures(r.totaux.jourTotal)}</td></tr></tfoot>` : ''}
         </table></div>
         <p class="mini-note">${vue === 'jour' ? 'Man-minutes sur la journée : par vol × nombre de vols. Totaux en heures de travail.'
-          : 'Man-minutes pour un vol. Changer une case la rend propre à cette compagnie × classe ; la vider la ramène à la valeur « toutes compagnies ».'}</p>`;
+          : 'Man-minutes pour un vol. Changer une case la rend propre à cette compagnie × classe ; la vider la ramène à la valeur « toutes compagnies ».'}
+          Dans chaque case : l’effectif de l’équipe qui prépare (modifiable), et la durée = man-minutes ÷ personnes.
+          <b>pers.*</b> : une case partagée par plusieurs commandes — son effectif vaut pour toutes.</p>`;
+    }
+
+    /* Ce que le récap a changé, dans l'ordre : 'bareme' ou 'cases'. */
+    pile(quoi) { (this.pileRecap || (this.pileRecap = [])).push(quoi); this.pileRedo = []; }
+    annulerRecap(refaire) {
+      const de = refaire ? (this.pileRedo || []) : (this.pileRecap || []);
+      const vers = refaire ? (this.pileRecap || (this.pileRecap = [])) : (this.pileRedo || (this.pileRedo = []));
+      const quoi = de.pop() || 'bareme';
+      if (quoi === 'cases' && this.a.histoireCases) this.a.histoireCases(refaire); else this.histoire(refaire);
+      vers.push(quoi);
     }
 
     exporterRecap() {
@@ -600,11 +632,17 @@
         const E = root.OrlyEchanges, T = root.OrlyTableur, ctx = this.contexteRecap();
         const r = E.classeurVersRecap(await T.lireFichier(f, 4 * 1024 * 1024), ctx.bareme, ctx);
         if (!r.changes) return this.rendre('Man-minutes lues : aucune valeur ne change.');
-        if (!confirm('Changer ' + r.changes + (r.changes > 1 ? ' valeurs' : ' valeur') + ' du barème d’après le fichier ? L’action est annulable.')) return;
-        const detail = { ...this.etat.detail };
-        for (const [sid, t] of Object.entries(r.bareme)) if (Object.keys(t).some(k => !k.startsWith(P.TOUTES + '/'))) detail[sid] = 'compagnie';
-        this.changer(() => { this.etat.bareme = r.bareme; this.etat.detail = detail; },
-          'Man-minutes importées : ' + r.changes + (r.changes > 1 ? ' valeurs changées.' : ' valeur changée.'));
+        const np = Object.keys(r.personnes || {}).length, nb = r.changes - np;
+        if (!confirm('Changer ' + r.changes + (r.changes > 1 ? ' valeurs' : ' valeur') + ' d’après le fichier ('
+          + [nb ? nb + ' man-minutes' : '', np ? np + (np > 1 ? ' effectifs de case' : ' effectif de case') : ''].filter(Boolean).join(', ') + ') ? L’action est annulable.')) return;
+        if (np && this.a.personnesToutes && this.a.personnesToutes(r.personnes)) this.pile('cases');
+        if (nb) {
+          const detail = { ...this.etat.detail };
+          for (const [sid, t] of Object.entries(r.bareme)) if (Object.keys(t).some(k => !k.startsWith(P.TOUTES + '/'))) detail[sid] = 'compagnie';
+          this.changer(() => { this.etat.bareme = r.bareme; this.etat.detail = detail; }, '');
+          this.pile('bareme');
+        }
+        this.rendre('Man-minutes importées : ' + r.changes + (r.changes > 1 ? ' valeurs changées.' : ' valeur changée.'));
       } catch (err) {
         this.rendre('Import refusé — ' + err.message + '\nLes man-minutes en place sont conservées.');
       } finally { e.target.value = ''; }

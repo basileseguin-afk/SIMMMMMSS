@@ -66,3 +66,29 @@ test('les erreurs sont toutes dites, et rien n’est importé', async () => {
     && /pas « beaucoup »/.test(e.message) && /classe inconnue « XX »/.test(e.message) && /Rien n’a été importé/.test(e.message));
   assert.throws(() => E.classeurVersRecap([{ nom: 'Autre', lignes: [['x']] }], c.bareme, c), /Feuille « Man-minutes par vol » introuvable/);
 });
+
+test('l’équipe de chaque case : son effectif, et la durée d’un vol', () => {
+  const c = ctx();
+  c.ateliers.push({ id: 'cu', nom: 'Cuisine BC', service: 'cuisine', type: 'manuel', personnes: 3, lots: [['AF/BC'], ['TX/BC']] });
+  const r = E.recapManMinutes(c);
+  const afbc = r.lignes[0].cellules.cuisine;
+  assert.deepEqual(afbc.equipe, { id: 'cu', nom: 'Cuisine BC', personnes: 3, type: 'manuel', commandes: 2 });
+  assert.equal(afbc.duree, 10, '30 man-min ÷ 3 personnes');
+  assert.equal(r.lignes[0].cellules.prepa.equipe, null, 'pas de case au montage pour AF BC');
+});
+
+test('le fichier porte l’effectif des cases ; le changer dans Excel change la case', async () => {
+  const c = ctx();
+  c.ateliers.push({ id: 'cu', nom: 'Cuisine BC', service: 'cuisine', type: 'manuel', personnes: 3, lots: [['AF/BC'], ['TX/BC']] });
+  const f = E.recapVersClasseur(c);
+  const p = f.find(x => x.nom === 'Personnes').lignes;
+  assert.ok(p.some(l => l[0] === 'Cuisine BC' && l[3] === 3));
+  const sans = E.classeurVersRecap(await parFichier(f), c.bareme, c);
+  assert.deepEqual(sans.personnes, {}, 'rien ne change');
+  p.find(l => l[0] === 'Cuisine BC')[3] = 5;
+  const r = E.classeurVersRecap(await parFichier(f), c.bareme, c);
+  assert.deepEqual(r.personnes, { cu: 5 });
+  assert.equal(r.changes, 1);
+  p.find(l => l[0] === 'Cuisine BC')[0] = 'Cuisine inconnue';
+  assert.throws(() => E.classeurVersRecap(f, c.bareme, c), /case inconnue « Cuisine inconnue »/);
+});

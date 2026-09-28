@@ -110,6 +110,10 @@ Un fichier de **paramétrage** du barème, pour les grosses modifications :
   compagnie.
 - **Toutes compagnies** : `Classe`, puis une colonne par service : la valeur
   commune de chaque classe. Vide : aucune.
+- **Personnes** : `Case`, `Service (info)`, `Commandes (info)`, `Personnes` :
+  l'effectif de chaque case qui prépare ces commandes. Le nom de la case est la
+  clé. Une case partagée n'a qu'une ligne : son effectif vaut pour toutes ses
+  commandes.
 - Seuls les services présents en colonne changent. Les man-minutes fixées dans
   une case d'équipe ne sont pas dans ce fichier (classeur des cases, feuille
   « Man-minutes »).

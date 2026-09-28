@@ -123,7 +123,9 @@ le rouge ne sert qu’aux retards.
    - *Récap des man-minutes* : tout le barème d’un coup d’œil — une ligne
      par commande, une colonne par service, d’où vient chaque valeur (propre,
      toutes compagnies, fixée dans une case, à renseigner). Par vol
-     (modifiable) ou sur la journée (× vols, totaux en heures).
+     (modifiable) ou sur la journée (× vols, totaux en heures). Dans chaque
+     case aussi, l’effectif de l’équipe qui prépare (modifiable sur place) et
+     la durée qui en découle (man-minutes ÷ personnes).
      « ⇩ Man-minutes / ⇧ Importer » : le même tableau en fichier Excel de
      paramétrage, pour les grosses modifications.
 2. **Organisation** — ce qu’on décrit.

@@ -5,6 +5,22 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-28 — Récap des man-minutes : l'effectif de chaque équipe
+
+Retour d'usage : « rajoute le nombre de personnes sur le poste, qu'on puisse
+le modifier : c'est bien plus simple pour la visu et pour l'utilisation ».
+
+- Dans chaque case du récap : les man-minutes, **l'effectif de l'équipe (la
+  case) qui prépare cette commande dans ce service** — modifiable sur place —,
+  et la durée qui en découle (man-minutes ÷ personnes ; par vol, ou sur la
+  journée). « pers.* » : une case partagée par plusieurs commandes, dont
+  l'effectif vaut pour toutes. « pas de case » : personne ne la prépare là.
+- « ↶ Annuler / ↷ Rétablir » du récap défont aussi un effectif.
+- Fichier de paramétrage : nouvelle feuille **Personnes** (une ligne par case,
+  le nom est la clé) ; l'import dit combien de man-minutes et d'effectifs
+  changent.
+- Tests : `tests/recap.test.cjs`, `tests/recap-browser.cjs`.
+
 ## 2026-09-28 — Données › Récap des man-minutes
 
 Retour d'usage : « c'est trop dur d'avoir un point de vue sur l'ensemble des
