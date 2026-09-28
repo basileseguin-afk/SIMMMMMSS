@@ -332,3 +332,44 @@ test('ateliers : les débits d’un robot, commande par commande, font l’aller
   const sans = E.ateliersVersClasseur(etat, ctxAteliers()).filter(x => x.nom !== 'Débits robot');
   assert.deepEqual(E.classeurVersAteliers(await parFichier(sans), etat, ctxAteliers()).etat.ateliers.find(a => a.nom === 'Robot').debits, { 'AF/YC': 450 });
 });
+
+/* ---- récap des cases ------------------------------------------------- */
+
+test('récap des cases : le fichier de paramétrage fait l’aller-retour, ordre et « ensemble » compris', async () => {
+  const etat = ETAT_ATELIERS();
+  const ctx = { services: SERVICES, classes: ctxAteliers().classes };
+  let f = E.recapCasesVersClasseur(etat, ctx);
+  const g = f.find(x => x.nom === 'Cases').lignes;
+  const ligne = nom => g.find(l => l[0] === nom);
+  assert.deepEqual(ligne('Cuisine matin').slice(3, 8), ['J', '04:30', 6, 'AF/BC → DL/BC + DL/PC', null]);
+  assert.deepEqual(ligne('Magasin').slice(3, 8), [null, null, null, null, 'J 06:00'], 'une mise à disposition : ses vagues');
+  const sans = E.classeurVersRecapCases(await parFichier(f), etat, ctx);
+  assert.deepEqual(sans.changes, [], 'rien ne change');
+  // Dans Excel : la cuisine part à 04:00 la veille, à 7, et prépare DL BC d'abord, puis AF BC et DL PC ensemble.
+  const l = ligne('Cuisine matin'); l[3] = 'J-1'; l[4] = '04:00'; l[5] = 7; l[6] = 'DL/BC → AF/BC + DL/PC';
+  ligne('Magasin')[7] = 'J-1 14:00; J 04:00';
+  const r = E.classeurVersRecapCases(await parFichier(f), etat, ctx);
+  assert.deepEqual(r.changes.sort(), ['Cuisine matin', 'Magasin']);
+  const cu = r.etat.ateliers.find(a => a.nom === 'Cuisine matin');
+  assert.deepEqual([cu.jour, cu.debut, cu.personnes, cu.lots], [-1, '04:00', 7, [['DL/BC'], ['AF/BC', 'DL/PC']]]);
+  const ma = r.etat.ateliers.find(a => a.nom === 'Magasin');
+  assert.deepEqual([ma.permanent, ma.vagues], [false, [{ debut: '14:00', jour: -1 }, { debut: '04:00', jour: 0 }]]);
+});
+
+test('récap des cases : une commande ajoutée quitte les autres cases du service ; les erreurs sont toutes dites', async () => {
+  const etat = ETAT_ATELIERS();
+  etat.ateliers.push({ id: 'a5', nom: 'Cuisine soir', service: 'cuisine', type: 'manuel', debut: '14:00', jour: -1, personnes: 3, pauses: [], lots: [['TX/BC']], regime: { actif: true } });
+  const ctx = { services: SERVICES, classes: ctxAteliers().classes };
+  const f = E.recapCasesVersClasseur(etat, ctx);
+  const g = f.find(x => x.nom === 'Cases').lignes;
+  g.find(l => l[0] === 'Cuisine soir')[6] = 'TX/BC → AF/BC';
+  const r = E.classeurVersRecapCases(await parFichier(f), etat, ctx);
+  assert.deepEqual(r.etat.ateliers.find(a => a.nom === 'Cuisine matin').lots, [['DL/BC', 'DL/PC']], 'AF BC a quitté la cuisine du matin');
+  // Erreurs.
+  g.find(l => l[0] === 'Cuisine soir')[4] = '25:99';
+  g.find(l => l[0] === 'Cuisine matin')[6] = 'AF/XX';
+  g.push(['Case fantôme', null, null, 'J', '05:00', 1, null, null, null]);
+  g.find(l => l[0] === 'Plonge')[3] = 'J';
+  assert.throws(() => E.classeurVersRecapCases(f, etat, ctx), e => /25:99/.test(e.message)
+    && /commande illisible « AF\/XX »/.test(e.message) && /case inconnue « Case fantôme »/.test(e.message) && /Rien n’a été importé/.test(e.message));
+});

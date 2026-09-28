@@ -5,6 +5,32 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-28 — Données › Récap des cases
+
+Retour d'usage : « un tableau récap des ateliers et de ce que traite chacun,
+où l'on règle l'heure de départ ». Choix confirmés : dans Données ; l'heure et
+le jour de départ modifiables ; toutes les cases ; un fichier Excel de
+paramétrage complet.
+
+- Nouvelle page **Données › Récap des cases** : une ligne par case, service
+  par service (dans l'ordre des services, puis de l'heure de départ). Pour
+  chacune : son **déroulé** — *tâche unique*, *N à la suite*, et les lignes
+  *ensemble* (plusieurs commandes préparées en même temps, qui sortent
+  ensemble) —, son **jour** et son **heure de départ** (modifiables sur
+  place), **ce qu'elle traite dans l'ordre**, avec les heures de chaque ligne
+  et l'attente éventuelle, et sa **fin**. Une mise à disposition montre ses
+  vagues (modifiables), une plonge son débit, un handling ses vols.
+- Chercher une case, un service ou une compagnie ; ↶ Annuler / ↷ Rétablir ;
+  le nom d'une case ouvre sa fiche.
+- **⇩ Cases / ⇧ Importer** : un fichier de paramétrage — une ligne par case :
+  jour, départ, personnes, commandes dans l'ordre (« TX/BC → TX/PC + AF/PC » :
+  TX BC d'abord, puis TX PC et AF PC ensemble), vagues. Une commande déplacée
+  dans Excel va à la case où elle est nouvelle et quitte l'ancienne.
+- Menu : la limite de pages porte désormais sur les parties du menu (sept au
+  plus), plus sur les vues internes.
+- Tests : echanges (fichier de paramétrage), `tests/recap-cases-browser.cjs`,
+  menu-browser, onglets.
+
 ## 2026-09-28 — Un service renommé : ses cases suivent, partout
 
 Retour d'usage : « dans Services on voit “Armement” tout court, mais en

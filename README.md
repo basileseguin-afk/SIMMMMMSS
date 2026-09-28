@@ -120,6 +120,12 @@ le rouge ne sert qu’aux retards.
    - *Temps de travail* : les minutes d’un vol, service par service et classe
      par classe (une valeur commune, des valeurs propres à une compagnie, ou une
      grille compagnie par classe).
+   - *Récap des cases* : toutes les cases d’un coup d’œil, service par
+     service — déroulé (tâche unique, à la suite, ensemble), jour et heure de
+     départ (modifiables sur place), ce qu’elle traite dans l’ordre avec les
+     heures de chaque ligne, sa fin. « ⇩ Cases / ⇧ Importer » : un fichier
+     Excel de paramétrage (jour, départ, personnes, commandes dans l’ordre,
+     vagues).
    - *Le Robot* : un service à part, rattaché au Montage, qui prépare TX, CRL
      et FBU Économie à la place du Montage. Une case Robot : un débit en
      plateaux par heure — le sien pour chaque commande, sinon celui du robot —
@@ -398,6 +404,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/echanges.test.cjs` | Les trois classeurs : aller-retour, ajouts, erreurs regroupées |
 | `tests/excel-browser.cjs` | Chemins et tableau « Qui prépare quoi » dans l’interface, classeurs ateliers et vols de bout en bout |
 | `tests/menu-browser.cjs` | L’accueil (tuiles, états, « à faire ensuite »), le menu par parties, la nature de chaque page, les outils qui suivent la page, clavier, page retenue, sauvegarde, menu verrouillé pendant l’édition du plan, hauteur des bandeaux, écran de 1 024 px |
+| `tests/recap-cases-browser.cjs` | Récap des cases : une ligne par case, tâche unique / à la suite / ensemble, départ et jour modifiables, chercher, fichier de paramétrage exporté puis réimporté |
 | `tests/robot-browser.cjs` | Le Robot : service créé et rattaché au Montage, remplace le Montage sur TX, CRL et FBU Économie (une fois), une case Robot, plateaux ÷ débit, débit et effectif dans le récap et la fiche |
 | `tests/recap.test.cjs` | Récap des man-minutes : d’où vient chaque valeur, totaux, fichier de paramétrage (aller-retour sans changement, grosses modifications, erreurs) |
 | `tests/recap-browser.cjs` | Données › Récap des man-minutes : une ligne par commande, modifier / vider une case, sur la journée, chercher, export puis import |

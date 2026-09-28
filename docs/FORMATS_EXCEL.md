@@ -118,6 +118,19 @@ Un fichier de **paramétrage** du barème, pour les grosses modifications :
   une case d'équipe ne sont pas dans ce fichier (classeur des cases, feuille
   « Man-minutes »).
 
+### Le fichier des cases (Données › Récap des cases)
+
+Une feuille **Cases**, une ligne par case : `Case` (la clé), `Service (info)`,
+`Type (info)`, `Jour` (`J`, `J-1`…), `Départ` (HH:MM), `Personnes`,
+`Commandes, dans l’ordre`, `Vagues`, `Fin prévue (info)`.
+
+- `Commandes, dans l’ordre` : `TX/BC → TX/PC + AF/PC` — TX BC d'abord, puis
+  TX PC et AF PC **ensemble**. Seules les équipes et les robots en ont. Une
+  commande écrite dans deux cases du même service va à celle où elle est
+  nouvelle ; nouvelle dans les deux, c'est une erreur.
+- `Vagues` : pour une mise à disposition, `J-1 14:00; J 04:00`, ou `permanente`.
+- Le handling reste au jour `J`.
+
 ### Feuille « Débits robot » (classeur des cases)
 
 Le débit d'une compagnie × classe sur un robot : `Atelier`, `Compagnie × classe`,

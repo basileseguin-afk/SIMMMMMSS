@@ -427,6 +427,134 @@
   }
 
   /* ======================================================================
+   *  1 ter. RÉCAP DES CASES — le fichier de paramétrage des cases
+   *
+   *  Une ligne par case : son jour, son heure de départ, ses personnes et ses
+   *  commandes dans l'ordre. « TX/BC → TX/PC + AF/PC » : TX BC d'abord, puis
+   *  TX PC et AF PC ensemble. Le nom de la case est la clé.
+   * ====================================================================*/
+
+  const TYPE_LU = { manuel: 'équipe', robot: 'robot', lavage: 'plonge', dispo: 'mise à disposition', handling: 'handling' };
+  const ecrireLots = lots => (lots || []).filter(l => l.length).map(l => l.join(' + ')).join(' → ');
+
+  function recapCasesVersClasseur(etat, ctx) {
+    const services = ctx.services || [];
+    const nomDe = id => (services.find(s => s.id === id) || {}).nom || id;
+    const fins = new Map((((ctx.resultat || {}).ateliers) || []).map(a => [a.id, a.fin]));
+    const rang = new Map(services.map((s, i) => [s.id, i]));
+    const lignes = [['Case', 'Service' + INFO, 'Type' + INFO, 'Jour', 'Départ', 'Personnes', 'Commandes, dans l’ordre', 'Vagues', 'Fin prévue' + INFO]];
+    const debutDe = a => (a.jour || 0) * 1440 + (T.heureDe(a.debut) || 0);
+    for (const a of [...etat.ateliers].sort((x, y) => (rang.get(x.service) ?? 999) - (rang.get(y.service) ?? 999) || debutDe(x) - debutDe(y))) {
+      const fabrique = a.type === 'manuel' || a.type === 'robot';
+      const fin = fins.get(a.id);
+      lignes.push([a.nom, nomDe(a.service), TYPE_LU[a.type] || a.type,
+        a.type === 'dispo' ? null : jourEcrit(a.jour || 0), a.type === 'dispo' ? null : a.debut,
+        a.type === 'dispo' ? null : a.personnes,
+        fabrique ? ecrireLots(a.lots) || null : null,
+        a.type === 'dispo' ? (a.permanent === false ? (a.vagues && a.vagues.length ? a.vagues : [{ debut: a.debut, jour: a.jour }]).map(v => jourEcrit(v.jour || 0) + ' ' + v.debut).join('; ') : 'permanente') : null,
+        Number.isFinite(fin) && a.type !== 'dispo' ? P.hhmm(fin) : null]);
+    }
+    return [
+      { nom: 'Cases', lignes },
+      lisezMoi('Cases — fichier de paramétrage, à modifier dans Excel puis réimporter', [
+        'Une ligne par case. Le nom de la case est la clé : ne le changez pas (les colonnes « (info) » ne sont pas lues).',
+        'Jour : J le jour du départ des vols, J-1 la veille… Départ : l’heure d’arrivée de l’équipe (HH:MM). Personnes : son effectif.',
+        'Commandes, dans l’ordre : « TX/BC → TX/PC + AF/PC » = TX BC d’abord, puis TX PC et AF PC ensemble (elles sortent ensemble).',
+        '   Une commande ajoutée à une case quitte les autres cases de ce service. Vide : la case ne prépare plus rien.',
+        '   Seules les équipes et les robots ont des commandes : une plonge, une mise à disposition, un handling servent tout le monde.',
+        'Vagues : pour une mise à disposition, « J-1 14:00; J 04:00 », ou « permanente ».',
+        'Le handling travaille le jour J des vols : son jour reste J.'
+      ])
+    ];
+  }
+
+  /**
+   * Relit le fichier de paramétrage des cases.
+   * @returns {{ etat, changes:[nom de case] }}
+   */
+  function classeurVersRecapCases(feuilles, etat, ctx) {
+    const err = new Erreurs();
+    const f = T.feuille(feuilles, 'Cases');
+    if (!f) throw new Error('Feuille « Cases » introuvable : exportez le fichier depuis le récap des cases.');
+    const out = JSON.parse(JSON.stringify(etat));
+    const parNom = new Map(out.ateliers.map(a => [T.cleEntete(a.nom), a]));
+    const connues = new Set((ctx.classes || []).map(c => c.id));
+    // Ce qui compte d'une case, tel que le calcul le lit : sans liste de vagues,
+    // une mise à disposition a une vague, à son heure.
+    const sig = a => JSON.stringify([a.jour || 0, a.debut, a.personnes, a.lots,
+      a.type === 'dispo' ? (a.permanent === false ? ((a.vagues && a.vagues.length ? a.vagues : [{ debut: a.debut, jour: a.jour || 0 }]).map(v => [v.debut, v.jour || 0])) : 'permanente') : null]);
+    const avant = new Map(out.ateliers.map(a => [a.id, sig(a)]));
+    const nouveauxLots = new Map();
+    for (const o of T.enObjets(f.lignes).objets) {
+      err.essayer(f.nom, o._ligne, () => {
+        const nom = String(o.case ?? '').trim(); if (!nom) return;
+        const a = parNom.get(T.cleEntete(nom));
+        if (!a) throw new Error('case inconnue « ' + nom + ' » : le nom est la clé, il doit être celui du site');
+        if (a.type !== 'dispo') {
+          if (o.jour !== undefined && o.jour !== null && String(o.jour).trim() !== '') {
+            const j = jourDe(o.jour);
+            if (a.type === 'handling' && j !== 0) throw new Error(nom + ' : le handling travaille le jour J des vols, pas ' + jourEcrit(j));
+            a.jour = j;
+          }
+          if (o.depart !== undefined && o.depart !== null && String(o.depart).trim() !== '') {
+            const t = T.heureDe(o.depart);
+            if (t === null || t >= 1440) throw new Error(nom + ' : heure de départ illisible « ' + o.depart + ' » (HH:MM)');
+            a.debut = hh(t);
+          }
+          const p = T.nombreDe(o.personnes, null);
+          if (p !== null) { if (!Number.isInteger(p) || p < 0 || p > 999) throw new Error(nom + ' : personnes, entier de 0 à 999'); a.personnes = p; }
+        }
+        if (a.type === 'manuel' || a.type === 'robot') {
+          const brut = String(o.commandes_dans_l_ordre ?? o.commandes ?? '').trim();
+          const lots = !brut ? [] : brut.split(SEP_ETAPES).filter(Boolean).map(l => [...new Set(l.split(/\s*\+\s*/).filter(Boolean).map(x => {
+            const m = /^(.+)\/([a-z]+)$/i.exec(x.trim());
+            if (!m || !P.CABINES.includes(m[2].toUpperCase())) throw new Error(nom + ' : commande illisible « ' + x + ' » (ex. TX/BC)');
+            const id = P.idClasse(m[1], m[2].toUpperCase());
+            if (connues.size && !connues.has(id)) throw new Error(nom + ' : commande inconnue « ' + id + ' » (absente du programme)');
+            return id;
+          }))]).filter(l => l.length);
+          nouveauxLots.set(a, lots);
+        } else if (a.type === 'dispo') {
+          const vv = String(o.vagues ?? '').trim();
+          if (/^permanente?$/i.test(vv)) a.permanent = true;
+          else if (vv) {
+            a.permanent = false;
+            a.vagues = vv.split(/\s*;\s*/).filter(Boolean).map(t => {
+              const m = /^(?:(J(?:\s*[-−–]\s*\d+)?)\s+)?(\d{1,2}[:h]\d{2})$/i.exec(t.trim());
+              if (!m) throw new Error(nom + ' : vague illisible « ' + t + ' » (ex. « J-1 14:00; J 04:00 »)');
+              return { debut: hh(T.heureDe(m[2].replace('h', ':'))), jour: jourDe((m[1] || 'J').replace(/\s+/g, '')) };
+            });
+          }
+        }
+      });
+    }
+    // Un service, une commande, une case. Une commande écrite dans deux cases
+    // du même service va à celle où elle est NOUVELLE — on l'a déplacée dans
+    // Excel sans l'effacer de l'ancienne ; nouvelle dans les deux, on ne choisit pas.
+    const lotsAvant = new Map(etat.ateliers.map(a => [a.id, new Set((a.lots || []).flat())]));
+    const tous = new Map();   // service|commande → [cases]
+    for (const [a, lots] of nouveauxLots) for (const id of new Set(lots.flat())) {
+      const k = a.service + '|' + id; if (!tous.has(k)) tous.set(k, []); tous.get(k).push(a);
+    }
+    for (const [k, cs] of tous) {
+      const id = k.slice(k.indexOf('|') + 1);
+      // Une case de ce service hors du fichier qui la prépare compte aussi.
+      const autres = out.ateliers.filter(b => !nouveauxLots.has(b) && b.service === cs[0].service && (b.lots || []).some(l => l.includes(id)));
+      if (cs.length + autres.length < 2) continue;
+      const neuves = cs.filter(a => !lotsAvant.get(a.id).has(id));
+      if (neuves.length !== 1) { err.ajouter(f.nom, null, id + ' est dans plusieurs cases du même service (' + cs.concat(autres).map(a => '« ' + a.nom + ' »').join(', ') + ') : laissez-la dans une seule'); continue; }
+      for (const a of cs.concat(autres)) if (a !== neuves[0]) {
+        if (nouveauxLots.has(a)) nouveauxLots.set(a, nouveauxLots.get(a).map(l => l.filter(x => x !== id)).filter(l => l.length));
+        else a.lots = (a.lots || []).map(l => l.filter(x => x !== id)).filter(l => l.length);
+      }
+    }
+    for (const [a, lots] of nouveauxLots) a.lots = lots;
+    err.lever();
+    const changes = out.ateliers.filter(a => avant.get(a.id) !== sig(a)).map(a => a.nom);
+    return { etat: out, changes };
+  }
+
+  /* ======================================================================
    *  2. VOLS
    * ====================================================================*/
 
@@ -1019,7 +1147,8 @@
     return { etat: out, ajouteesAuto: notes };
   }
 
-  const api = { baremeVersClasseur, classeurVersBareme, recapManMinutes, recapVersClasseur, classeurVersRecap, volsVersClasseur, classeurVersVols,
+  const api = { baremeVersClasseur, classeurVersBareme, recapManMinutes, recapVersClasseur, classeurVersRecap,
+    recapCasesVersClasseur, classeurVersRecapCases, volsVersClasseur, classeurVersVols,
     ateliersVersClasseur, classeurVersAteliers, horairesVersClasseur, classeurVersHoraires, estClasseurHoraires, jourDe };
   if (enNode && module.exports) module.exports = api;
   else root.OrlyEchanges = api;

@@ -27,7 +27,8 @@
       { id: 'at-equipes', nom: 'Cases', ico: 'service' },
       { id: 'at-grille', nom: 'Qui prépare quoi', ico: 'equipe' },
       { id: 'at-planning', nom: 'Planning des équipes', ico: 'journee' },
-      { id: 'at-repas', nom: 'Commandes', ico: 'plateau' }
+      { id: 'at-repas', nom: 'Commandes', ico: 'plateau' },
+      { id: 'at-recap', nom: 'Récap des cases', ico: 'service' }
     ],
     reglages: [
       { id: 'rg-minutes', nom: 'Temps de travail', ico: 'chrono' },
@@ -59,7 +60,8 @@
       pages: [
         { id: 'v-programme', intro: 'Le programme de vols de la journée : importez le vôtre, en Excel ou en CSV.' },
         { id: 'rg-minutes', intro: 'Les minutes de travail d’un vol, service par service : l’étude de temps.' },
-        { id: 'rg-recap', intro: 'Toutes les man-minutes d’un coup d’œil : une ligne par commande, une colonne par service ; à modifier ici ou dans Excel.' }
+        { id: 'rg-recap', intro: 'Toutes les man-minutes d’un coup d’œil : une ligne par commande, une colonne par service ; à modifier ici ou dans Excel.' },
+        { id: 'at-recap', intro: 'Toutes les cases d’un coup d’œil : ce que chacune traite, dans l’ordre, et son heure de départ ; à régler ici ou dans Excel.' }
       ] },
     { id: 'organisation', nom: 'Organisation', ico: 'equipe', couleur: 'var(--c-equipes)',
       resume: 'Ce que vous décrivez',

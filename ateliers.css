@@ -329,3 +329,49 @@ body.ateliers-open .workbench{display:none}
 /* Le temps en stock dans la frise d'une commande. */
 .qf-t-stock{fill:#2a78d6;opacity:.85}
 .qf-l.stock::before{background:#2a78d6}
+
+/* Récap des cases : une ligne par case, service par service. */
+.rc-outils{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:4px 0 8px}
+.rc-fin{flex:1}
+.rc-cherche{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--txt2)}
+.rc-cherche input{width:220px}
+.rc-legende{font-size:12px;color:var(--txt2);margin:0 0 10px;line-height:1.9}
+.rc-scroll{overflow:auto;max-height:75vh;border:1px solid var(--bordure);border-radius:10px}
+.rc-table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+.rc-table th,.rc-table td{padding:6px 8px;border-bottom:1px solid var(--bordure);text-align:left;vertical-align:middle;background:var(--bg3,#fff)}
+.rc-table thead th{position:sticky;top:0;z-index:2;font-size:12px;font-weight:600;color:var(--txt2)}
+.rc-svc th{background:color-mix(in srgb,var(--accent) 7%,var(--bg3,#fff));font-size:13px;font-weight:700;padding-top:9px}
+.rc-svc th span{display:inline-flex;align-items:center;gap:6px}
+.rc-svc small{margin-left:8px;font-weight:500;color:var(--txt2)}
+.rc-case th{font-weight:600;min-width:170px}
+.rc-case th small{display:block;font-weight:400;color:var(--txt2);font-size:11px}
+.rc-case th .lien-discret{font-weight:600;text-align:left}
+.rc-case:hover td,.rc-case:hover th{background:color-mix(in srgb,var(--accent) 5%,var(--bg3,#fff))}
+.rc-table input[type=time]{border:1px solid transparent;background:transparent;border-radius:6px;font:inherit;padding:3px 4px}
+.rc-table select{border:1px solid transparent;background:transparent;border-radius:6px;font:inherit;padding:3px 2px}
+.rc-table input[type=time]:hover,.rc-table select:hover{border-color:var(--bordure)}
+.rc-table input[type=time]:focus,.rc-table select:focus{border-color:var(--accent);background:var(--bg3,#fff);outline:none}
+.rc-heure input{font-weight:700}
+.rc-fin-h{color:var(--txt2);white-space:nowrap}
+.rc-deroule{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid var(--bordure);white-space:nowrap}
+.rc-deroule.unique{border-color:#6b8f71;color:#3d6b45}
+.rc-deroule.suite{border-color:var(--accent);color:var(--accent)}
+.rc-deroule.dispo,.rc-deroule.autre{color:var(--txt2)}
+.rc-deroule.vide{color:#b0413e;border-color:#e3b3b1}
+.rc-ensemble-lab{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:color-mix(in srgb,#c28a1b 16%,transparent);color:#8a5d0a;white-space:nowrap}
+.rc-seq{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.rc-seq li{display:inline-flex;flex-direction:column;align-items:flex-start;gap:2px;padding:4px 7px;border-radius:8px;border:1px solid var(--bordure)}
+.rc-seq li.ens{border-color:#d7b36a;background:color-mix(in srgb,#c28a1b 8%,transparent)}
+.rc-seq li.rc-fleche{border:0;padding:0;color:var(--txt2);font-weight:700}
+.rc-ens-tete{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#8a5d0a;font-weight:700}
+.rc-cmds{display:inline-flex;flex-wrap:wrap;gap:4px}
+.rc-cmd{display:inline-flex;align-items:center;gap:4px;font-weight:600;white-space:nowrap}
+.rc-quand{font-size:11px;color:var(--txt2);white-space:nowrap}
+.rc-quand.ko{color:#b0413e}
+.rc-vagues{display:inline-flex;flex-wrap:wrap;gap:6px;margin-right:8px}
+.rc-vague{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--bordure);border-radius:8px;padding:1px 4px}
+#view-ateliers .rc-table select{width:auto;min-width:64px;padding:3px 4px;border-color:transparent;background:transparent}
+#view-ateliers .rc-table input[type=time]{width:auto;min-width:96px;padding:3px 4px;border-color:transparent;background:transparent}
+#view-ateliers .rc-table select:hover,#view-ateliers .rc-table input[type=time]:hover{border-color:var(--bordure)}
+#view-ateliers .rc-table select:focus,#view-ateliers .rc-table input[type=time]:focus{border-color:var(--accent);background:var(--bg3,#fff)}
+#view-ateliers .rc-cherche input{width:220px}

@@ -4,10 +4,13 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const O = require('../onglets.js');
 
-test('chaque vue a entre deux et cinq onglets, le premier par défaut', () => {
+test('chaque vue a au moins deux onglets, le premier par défaut ; une partie du menu, sept pages au plus', () => {
+  // Ce qu'on voit, ce sont les pages d'une PARTIE du menu, pas les onglets d'une
+  // vue : c'est sur elles que porte la limite.
+  for (const p of O.PARTIES.filter(x => !x.cache)) assert.ok(p.pages.length <= 7, p.id + ' : ' + p.pages.length + ' pages');
   for (const vue of ['vols', 'ateliers', 'reglages', 'plan', 'flux']) {
     const l = O.ONGLETS[vue];
-    assert.ok(l && l.length >= 2 && l.length <= 5, vue + ' : ' + (l || []).length + ' onglets');
+    assert.ok(l && l.length >= 2, vue + ' : ' + (l || []).length + ' onglets');
     assert.equal(O.defaut(vue), l[0].id);
     for (const o of l) assert.ok(o.nom && o.ico, o.id + ' a un nom et un pictogramme');
   }

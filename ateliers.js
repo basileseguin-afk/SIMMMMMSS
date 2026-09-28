@@ -349,6 +349,21 @@
 <div id="at-indicateurs" class="at-indicateurs" data-sous="at-planning"></div>
 <div id="at-planning" class="at-planning" data-sous="at-planning"></div>
 
+<section class="recap-cases" data-sous="at-recap" aria-label="Récap des cases">
+  <div class="rc-outils">
+    <label class="rc-cherche">Chercher <input id="rc-filtre" type="search" placeholder="Case, service ou compagnie"></label>
+    <span class="rc-fin"></span>
+    <button class="btn btn-sm" id="rc-undo" title="Annuler la dernière modification">↶ Annuler</button>
+    <button class="btn btn-sm" id="rc-redo" title="Rétablir ce qui a été annulé">↷ Rétablir</button>
+    <button class="btn btn-sm" id="rc-export" title="Toutes les cases dans un classeur Excel de paramétrage : jour, heure de départ, personnes, commandes dans l’ordre">⇩ Cases</button>
+    <button class="btn btn-sm" id="rc-import-btn" title="Réimporter le classeur des cases modifié">⇧ Importer</button>
+    <input id="rc-import" type="file" accept=".xlsx" hidden>
+  </div>
+  <p class="rc-legende"><span class="rc-deroule unique">tâche unique</span> une seule préparation, de son départ à sa fin ·
+    <span class="rc-deroule suite">à la suite</span> les lignes s’enchaînent, chacune quand la précédente est finie ·
+    <span class="rc-ensemble-lab">ensemble</span> plusieurs commandes préparées en même temps, qui sortent ensemble.</p>
+  <div id="rc-liste"></div>
+</section>
 <h3 class="at-titre" data-sous="at-repas">Les commandes à préparer <span class="pc-sous">une par compagnie et par classe, pour la journée</span></h3>
 <div id="at-classes" data-sous="at-repas"></div>`;
     }
@@ -364,6 +379,12 @@
       on('at-export-horaires', 'click', () => this.exporterHoraires());
       on('at-import-btn', 'click', () => document.getElementById('at-import').click());
       on('at-import', 'change', e => this.importer(e));
+      on('rc-undo', 'click', () => this.histoire(false));
+      on('rc-redo', 'click', () => this.histoire(true));
+      on('rc-export', 'click', () => this.exporterRecapCases());
+      on('rc-import-btn', 'click', () => document.getElementById('rc-import').click());
+      on('rc-import', 'change', e => this.importerRecapCases(e));
+      on('rc-filtre', 'input', e => { this.rcFiltre = e.target.value.trim().toLowerCase(); this.rendreRecapCases(this.resultat || {}); });
 
       // Un seul écouteur pour toute la liste : les cartes sont redessinées à
       // chaque changement, des écouteurs par carte fuiraient.
@@ -803,12 +824,12 @@
       // Seul l'onglet affiché se redessine : à deux cents commandes, la liste
       // des cases, le planning, les commandes et le tableau coûtent cher, et
       // personne ne les regarde. Les autres attendent qu'on les ouvre.
-      this.aDessiner = new Set(['at-equipes', 'at-planning', 'at-repas', 'at-grille']);
+      this.aDessiner = new Set(['at-equipes', 'at-planning', 'at-repas', 'at-grille', 'at-recap']);
       const visible = this.ongletVisible();
       if (visible !== 'at-grille') this.parcours.rendre();
       this.surOnglet(visible);
-      document.getElementById('at-undo').disabled = !this.undo.length;
-      document.getElementById('at-redo').disabled = !this.redo.length;
+      for (const id of ['at-undo', 'rc-undo']) document.getElementById(id).disabled = !this.undo.length;
+      for (const id of ['at-redo', 'rc-redo']) document.getElementById(id).disabled = !this.redo.length;
       if (this.a.change) this.a.change(r);
     }
 
@@ -828,6 +849,7 @@
       if (id === 'at-equipes') { this.rendreMateriel(r); this.rendreListe(r); }
       if (id === 'at-planning') this.rendrePlanning(r);
       if (id === 'at-repas') this.rendreClasses(r);
+      if (id === 'at-recap') this.rendreRecapCases(r);
       if (id === 'at-grille') this.parcours.rendre();
     }
 
@@ -1299,6 +1321,109 @@
     }
 
     /* ---- couverture par classe --------------------------------------- */
+
+    /* ---- récap des cases ---------------------------------------------- */
+
+    /*
+     * Toutes les cases d'un coup d'œil, service par service : ce que chacune
+     * traite, dans l'ordre, et son heure de départ (modifiable ici). Trois
+     * déroulés : une tâche unique, des lignes à la suite, et plusieurs
+     * commandes sur une même ligne, préparées ensemble.
+     */
+    rendreRecapCases(r) {
+      const box = document.getElementById('rc-liste'); if (!box) return;
+      const services = this.a.services();
+      const nomSvc = id => (services.find(s => s.id === id) || {}).nom || id;
+      const ordre = new Map(services.map((s, i) => [s.id, i]));
+      const calc = new Map(((r && r.ateliers) || []).map(a => [a.id, a]));
+      const minDe = a => (a.jour || 0) * 1440 + (a.type === 'dispo' && a.permanent !== false ? -1e9 : P.minutes(a.debut || '00:00'));
+      const filtre = this.rcFiltre || '';
+      const cases = this.state.ateliers.slice()
+        .filter(a => !filtre || (a.nom + ' ' + nomSvc(a.service) + ' ' + (a.lots || []).flat().map(c => c + ' ' + P.libelleClasse(c)).join(' ')).toLowerCase().includes(filtre))
+        .sort((x, y) => (ordre.get(x.service) ?? 999) - (ordre.get(y.service) ?? 999) || minDe(x) - minDe(y) || x.nom.localeCompare(y.nom));
+      if (!this.state.ateliers.length) { box.innerHTML = '<p class="mini-note">Aucune case pour l’instant : décrivez les chemins des commandes (Organisation › Chemins).</p>'; return; }
+      const I = root.OrlyIcones, hh = P.hhmm;
+      const jours = (v, attrs) => `<select ${attrs}>${[0, -1, -2, -3].map(j => `<option value="${j}" ${j === (v || 0) ? 'selected' : ''}>${j === 0 ? 'J' : 'J' + j}</option>`).join('')}</select>`;
+      const chip = c => `<span class="rc-cmd" title="${esc(P.libelleClasse(c))}"><span class="puce-classe" data-cab="${esc(c.slice(c.lastIndexOf('/') + 1))}"></span>${esc(PC.etiquette(c))}</span>`;
+      const deroule = a => {
+        if (a.type === 'dispo') return `<span class="rc-deroule dispo">${a.permanent !== false ? 'en permanence' : (a.vagues || []).length > 1 ? a.vagues.length + ' vagues' : 'une vague'}</span>`;
+        if (a.type === 'lavage') return '<span class="rc-deroule autre">plonge</span>';
+        if (a.type === 'handling') return '<span class="rc-deroule autre">par vol</span>';
+        const lignes = (a.lots || []).filter(l => l.length), ens = lignes.filter(l => l.length > 1).length;
+        if (!lignes.length) return '<span class="rc-deroule vide">rien</span>';
+        return (lignes.length === 1 ? '<span class="rc-deroule unique">tâche unique</span>' : `<span class="rc-deroule suite">${lignes.length} à la suite</span>`)
+          + (ens ? ` <span class="rc-ensemble-lab">${ens > 1 ? ens + ' lignes' : 'dont 1 ligne'} ensemble</span>` : '');
+      };
+      const traite = a => {
+        const vue = calc.get(a.id) || { lots: [] };
+        if (a.type === 'dispo') {
+          if (a.permanent !== false) return '<span class="mini-note">sert toutes les commandes, à tout moment</span>';
+          return `<span class="rc-vagues">${(a.vagues || []).map((v, i) => `<span class="rc-vague"><b>${i + 1}</b>
+            ${jours(v.jour, `data-at-champ="vague-jour" data-index="${i}" aria-label="Jour de la vague ${i + 1}"`)}
+            <input type="time" value="${esc(v.debut)}" data-at-champ="vague-debut" data-index="${i}" aria-label="Heure de la vague ${i + 1}"></span>`).join('')}</span>
+            <span class="mini-note">sert toutes les commandes, chacune à la vague qui précède son besoin</span>`;
+        }
+        if (a.type === 'lavage') return `<span class="mini-note">lave les retours de vols, à mesure qu’ils arrivent · ${P.debitLavage(a)} u/h</span>`;
+        if (a.type === 'handling') {
+          const n = vue.lots.filter(l => l.vol).length;
+          return `<span class="mini-note">charge ${n} vol${n > 1 ? 's' : ''} dans l’ordre des départs · ${a.simultanes || 1} à la fois · pas avant ${String(Math.round((a.avance ?? 180) / 6) / 10).replace('.', ',')} h avant le départ</span>`;
+        }
+        const lignes = (a.lots || []).filter(l => l.length);
+        if (!lignes.length) return '<span class="mini-note">aucune commande : rattachez-la dans un chemin</span>';
+        let k = 0;
+        return `<ol class="rc-seq">${(a.lots || []).map(l => {
+          if (!l.length) return '';
+          const lot = vue.lots[k++];
+          const quand = !lot ? '' : lot.impossible ? '<small class="rc-quand ko">ne se fait pas</small>'
+            : `<small class="rc-quand">${hh(lot.debut)}–${hh(lot.fin)}${lot.attente >= 1 ? ` <span title="Attente du service d’avant">· attend ${Math.round(lot.attente)} min</span>` : ''}</small>`;
+          return `<li class="${l.length > 1 ? 'ens' : ''}">${l.length > 1 ? '<span class="rc-ens-tete">ensemble</span>' : ''}<span class="rc-cmds">${l.map(chip).join('')}</span>${quand}</li>`;
+        }).join('<li class="rc-fleche" aria-hidden="true">→</li>')}</ol>`;
+      };
+      const depart = a => {
+        if (a.type === 'dispo') return '<td class="rc-jour">—</td><td class="rc-heure">—</td>';
+        const jourFixe = a.type === 'handling';
+        return `<td class="rc-jour">${jourFixe ? '<span title="Le handling travaille le jour J des vols">J</span>' : jours(a.jour, `data-at-champ="jour" aria-label="Jour de départ de ${esc(a.nom)}"`)}</td>
+          <td class="rc-heure"><input type="time" value="${esc(a.debut)}" data-at-champ="debut" aria-label="Heure de départ de ${esc(a.nom)}"></td>`;
+      };
+      let service = null;
+      const lignes = cases.map(a => {
+        const vue = calc.get(a.id) || {};
+        const tete = a.service !== service ? (service = a.service, `<tr class="rc-svc"><th colspan="6"><span>${I ? I.ico(I.icoService(a.service, nomSvc(a.service))) : ''}${esc(nomSvc(a.service))}</span>
+          <small>${this.state.ateliers.filter(x => x.service === a.service).length} case${this.state.ateliers.filter(x => x.service === a.service).length > 1 ? 's' : ''}</small></th></tr>`) : '';
+        return tete + `<tr data-at="${esc(a.id)}" class="rc-case">
+          <th scope="row"><button class="lien-discret" data-at-action="ouvrir" title="Régler « ${esc(a.nom)} » dans sa fiche">${esc(a.nom)}</button>
+            <small>${a.type === 'dispo' ? 'mise à disposition' : a.type === 'lavage' ? 'plonge' : a.type === 'handling' ? 'handling' : a.type === 'robot' ? 'robot · ' + a.personnes + ' pers.' : a.personnes + ' pers.'}</small></th>
+          <td class="rc-type">${deroule(a)}</td>
+          ${depart(a)}
+          <td class="rc-traite">${traite(a)}</td>
+          <td class="rc-fin-h">${vue.fin != null && a.type !== 'dispo' ? hh(vue.fin) : '—'}</td>
+        </tr>`;
+      }).join('');
+      box.innerHTML = `<div class="rc-scroll"><table class="rc-table">
+        <thead><tr><th scope="col">Case</th><th scope="col">Déroulé</th><th scope="col">Jour</th><th scope="col">Départ</th>
+          <th scope="col">Ce qu’elle traite, dans l’ordre</th><th scope="col">Fin</th></tr></thead>
+        <tbody>${lignes || `<tr><td colspan="6" class="mini-note">Aucune case ne correspond à « ${esc(filtre)} ».</td></tr>`}</tbody></table></div>`;
+    }
+
+    exporterRecapCases() {
+      const E = root.OrlyEchanges, T = root.OrlyTableur;
+      T.telecharger('ory-cases-' + new Date().toISOString().slice(0, 10) + '.xlsx',
+        T.ecrireClasseur(E.recapCasesVersClasseur(this.state, { services: this.a.services(), classes: this.classes, resultat: this.resultat })));
+      this.rendre('Cases exportées : modifiez jour, heure, personnes ou commandes dans Excel, puis « ⇧ Importer ».');
+    }
+
+    async importerRecapCases(e) {
+      const f = e.target.files[0]; if (!f) return;
+      try {
+        const E = root.OrlyEchanges, T = root.OrlyTableur;
+        const r = E.classeurVersRecapCases(await T.lireFichier(f, 4 * 1024 * 1024), this.state, { services: this.a.services(), classes: this.classes });
+        if (!r.changes.length) return this.rendre('Cases lues : rien ne change.');
+        const liste = r.changes.slice(0, 6).join(', ') + (r.changes.length > 6 ? '…' : '');
+        if (!confirm('Changer ' + r.changes.length + (r.changes.length > 1 ? ' cases' : ' case') + ' (' + liste + ') d’après le fichier ? L’action est annulable.')) return;
+        this.changer(() => { this.state = valider(r.etat); }, 'Cases importées : ' + r.changes.length + (r.changes.length > 1 ? ' cases changées' : ' case changée') + ' (' + liste + ').');
+      } catch (err) { this.rendre('Import refusé — ' + err.message); }
+      finally { e.target.value = ''; }
+    }
 
     rendreClasses(r) {
       const box = document.getElementById('at-classes');
