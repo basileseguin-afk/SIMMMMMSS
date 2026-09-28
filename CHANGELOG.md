@@ -5,6 +5,20 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-28 — Toutes les listes de services disent la même chose
+
+Retour d'usage : « Armement EZY/AF n'apparaît pas dans la liste des chemins ».
+Voir `BUGS.md`, BUG-038 à BUG-041.
+
+- Une zone de production masquée sur le plan reste un service partout
+  (chemins, cases, services, liens, plan, barème, Excel).
+- Supprimer une zone qui porte des équipes : on prévient, puis ses équipes et
+  ses étapes de chemin passent dans son service parent — plus d'orphelines.
+- Une zone dessinée est un « Local » (annotation) : l'éditeur le dit, et
+  Organisation › Services propose « En faire un service ».
+- Équipes sans service (anciennes sauvegardes) : signalées, puis rattachées.
+- Tests : `tests/services-browser.cjs` (cohérence des six listes).
+
 ## 2026-09-25 — Organisation › Services : la porte d'entrée d'un service
 
 Retour d'usage : « il manque une équipe sur Armement EZY/AF, mais je ne sais

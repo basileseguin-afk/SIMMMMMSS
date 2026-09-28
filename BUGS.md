@@ -530,3 +530,25 @@ commande non montée nommée.
 - Une case prépare ses commandes dans l'ordre : un retard ou un blocage sur
   l'une se répercute sur toutes les suivantes et sur le reste de leurs
   chemins. C'est la réalité de l'unité.
+
+## Revue du 2026-09-28 — Les listes de services ne disaient pas la même chose
+
+Retour d'usage : « j'avais créé l'opération Armement EZY/AF, mais elle
+n'apparaît pas dans la liste des chemins ». Méthode : toutes les listes de
+services de l'application (chemins « Ajouter un service », filtre des cases,
+Organisation › Services, liens entre services, choix d'un service sur le plan,
+barème, Excel) comparées dans cinq situations ; et chaque lien interne
+(`data-page`, `data-onglet`, `data-aller`, `choisir(…)`) vérifié : 25 liens,
+aucun cassé.
+
+| ID | Gravité | Statut | Vérif. | Résumé | Fichier |
+|---|---|---|---|---|---|
+| BUG-038 | Majeur | Corrigé | Confirmé | Une zone de production **masquée** sur le plan (l'œil de l'éditeur) disparaissait des chemins, des cases, des services et du plan, alors que ses équipes et ses liens continuaient de tourner — les messages donnaient alors son code (« local-… ») au lieu de son nom. « Masquer » ne vaut plus que pour le dessin | `sim.js` |
+| BUG-039 | Majeur | Corrigé | Confirmé | Supprimer une zone de production qui porte des équipes laissait ces équipes **orphelines**, dans un service disparu, sans aucun écran pour les retrouver. On prévient, puis ses équipes et ses étapes de chemin passent dans son service parent | `plan-editor.js`, `sim.js` |
+| BUG-040 | Moyen | Corrigé | Confirmé | Une zone dessinée sur le plan est un **« Local »** (une annotation) : elle n'était nulle part, sans que rien ne le dise. L'éditeur le dit (« pas un service »), les types s'appellent « Zone de production (un service) » / « Local (annotation) », et Organisation › Services liste ces zones avec « En faire un service » (service parent proposé d'après le nom) | `plan-editor.js`, `sim.js` |
+| BUG-041 | Moyen | Corrigé | Confirmé | Des équipes rattachées à un service qui n'existe plus (anciennes sauvegardes) : signalées dans les Contrôles, et rattachées à un service depuis Organisation › Services | `sim.js` |
+
+**Preuves.** `tests/services-browser.cjs` § 8 : une zone de production figure
+dans les six listes ; masquée, encore ; supprimée avec une équipe, l'équipe
+passe dans le service parent ; un local n'y figure pas, puis y figure une fois
+devenu service ; une équipe orpheline est signalée puis rattachée.

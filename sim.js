@@ -386,7 +386,28 @@ function renderServices(){
         +'<td><span class="svc-etat '+l.etat+'">'+escapeHTML(l.texte)+'</span></td>'
         +'<td class="svc-actions"><button class="btn btn-sm'+(l.etat==='manque'&&!l.cases.length?' btn-play':'')+'" type="button" data-svc-action="equipe" data-svc="'+escapeHTML(l.id)+'">+ Une équipe</button>'
         +'<button class="btn btn-sm" type="button" data-svc-action="voir" data-svc="'+escapeHTML(l.id)+'">Voir sur le plan</button></td></tr>';
-    }).join('')+'</tbody></table></div>';
+    }).join('')+'</tbody></table></div>'
+    +sectionOrphelines()+sectionLocaux();
+}
+const optionsServices=(choisi)=>servicesDisponibles().map(x=>'<option value="'+escapeHTML(x.id)+'"'+(x.id===choisi?' selected':'')+'>'+escapeHTML(x.nom)+'</option>').join('');
+/* Des équipes rattachées à un service qui n'existe plus : on les rattache ailleurs. */
+function sectionOrphelines(){
+  const o=equipesOrphelines();if(!o.length)return '';
+  return '<section class="svc-bloc svc-alerte"><h3>'+(o.length>1?o.length+' équipes n’ont plus de service':'Une équipe n’a plus de service')+'</h3>'
+    +'<p class="mini-note">Leur service a disparu du plan. Choisissez où elles travaillent.</p><ul class="svc-liste">'
+    +o.map(a=>'<li><b>'+escapeHTML(a.nom)+'</b><label>Rattacher à <select data-svc-orpheline="'+escapeHTML(a.id)+'">'+optionsServices(null)+'</select></label>'
+      +'<button class="btn btn-sm" type="button" data-svc-rattacher="'+escapeHTML(a.id)+'">Rattacher</button></li>').join('')+'</ul></section>';
+}
+/* Les zones dessinées qui ne sont pas des services : on peut en faire un service. */
+function sectionLocaux(){
+  const l=locauxDuPlan();if(!l.length)return '';
+  const racines=Object.keys(ZONES).map(id=>'<option value="'+escapeHTML(id)+'">'+escapeHTML(nomLisible(ZONES[id].nom))+'</option>').join('');
+  return '<section class="svc-bloc"><h3>Zones du plan qui ne sont pas des services</h3>'
+    +'<p class="mini-note">Un <b>local</b> dessiné sur le plan est une annotation : il n’apparaît ni dans les chemins ni dans les cases. '
+    +'Pour y faire travailler une équipe, faites-en un service (une zone de production, rattachée à un service du plan dont elle reprend les liens).</p><ul class="svc-liste">'
+    +l.map(z=>{const pere=parentProbable(z.nom);return '<li><b>'+escapeHTML(z.nom)+'</b><label>Rattachée à <select data-svc-parent="'+escapeHTML(z.id)+'">'
+      +racines.replace('value="'+escapeHTML(pere)+'"','value="'+escapeHTML(pere)+'" selected')+'</select></label>'
+      +'<button class="btn btn-sm btn-play" type="button" data-svc-convertir="'+escapeHTML(z.id)+'">En faire un service</button></li>';}).join('')+'</ul></section>';
 }
 /* Les gestes d'un service, d'où qu'ils viennent (sa page, le plan, les contrôles). */
 function actionService(action,id){
@@ -418,11 +439,68 @@ function initServices(){
   box.addEventListener('change',e=>{const i=e.target.closest('[data-svc-nom]');if(i)renommerService(i.dataset.svcNom,i.value);});
   box.addEventListener('keydown',e=>{const i=e.target.closest('[data-svc-nom]');if(i&&e.key==='Enter'){e.preventDefault();i.blur();}});
   box.addEventListener('click',e=>{
+    const cv=e.target.closest('[data-svc-convertir]');
+    if(cv){const id=cv.dataset.svcConvertir,sel=box.querySelector('[data-svc-parent="'+CSS.escape(id)+'"]');
+      if(Sim.editor.convertir(id,sel?sel.value:null)){toast('« '+Sim.editor.state.zones.find(z=>z.id===id).nom+' » est maintenant un service : il apparaît dans les chemins et les cases.');renderServices();}
+      return;}
+    const ra=e.target.closest('[data-svc-rattacher]');
+    if(ra){const id=ra.dataset.svcRattacher,sel=box.querySelector('[data-svc-orpheline="'+CSS.escape(id)+'"]');
+      const a=Sim.ateliers.state.ateliers.find(x=>x.id===id);if(!a||!sel)return;
+      const vieux=a.service;reaffecterEquipe(id,sel.value,vieux);renderServices();return;}
     const c=e.target.closest('[data-svc-case]');
     if(c){const id=c.dataset.svcCase;if(!Sim.ateliers.ouvrirFiche(id)){Sim.ateliers.ouvert=id;if(Sim.onglets)Sim.onglets.choisir('at-equipes');Sim.ateliers.rendre();}return;}
   });
   // Les boutons d'un service peuvent vivre ailleurs : le panneau du plan, les contrôles.
   document.addEventListener('click',e=>{const b=e.target.closest('[data-svc-action]');if(b)actionService(b.dataset.svcAction,b.dataset.svc||null);});
+}
+
+/* Un service disparu (zone supprimée) : ses équipes et les étapes des chemins
+ * passent dans le service qui le remplace, ou sont retirées s'il n'y en a pas. */
+function reaffecterService(de,vers,nomDe){
+  const at=Sim.ateliers;if(!at)return;
+  const st=at.state;
+  const touche=st.ateliers.some(a=>a.service===de)||(st.parcours||[]).some(p=>MoteurProduction.servicesDuParcours(p).includes(de));
+  if(!touche)return;
+  const nomVers=vers?((servicesDisponibles().find(x=>x.id===vers)||{}).nom||vers):'';
+  at.changer(()=>{
+    if(vers)for(const a of st.ateliers){if(a.service===de)a.service=vers;}
+    else st.ateliers=st.ateliers.filter(a=>a.service!==de);
+    for(const p of st.parcours||[]){
+      if(!Array.isArray(p.noeuds))continue;
+      if(!p.noeuds.includes(de))continue;
+      if(vers&&!p.noeuds.includes(vers))p.noeuds=p.noeuds.map(x=>x===de?vers:x);
+      else p.noeuds=p.noeuds.filter(x=>x!==de);
+      const vus=new Set();
+      p.liens=(p.liens||[]).map(l=>({de:l.de===de?vers:l.de,vers:l.vers===de?vers:l.vers}))
+        .filter(l=>l.de&&l.vers&&l.de!==l.vers&&!vus.has(l.de+'>'+l.vers)&&vus.add(l.de+'>'+l.vers));
+    }
+  },vers?'« '+(nomDe||de)+' » supprimé : ses équipes et ses étapes de chemin passent dans « '+nomVers+' ».'
+       :'« '+(nomDe||de)+' » supprimé : ses équipes et ses étapes de chemin sont retirées.');
+}
+/* Une équipe orpheline rattachée à un service : ses étapes de chemin suivent. */
+function reaffecterEquipe(id,vers,de){
+  const at=Sim.ateliers;const a=at.state.ateliers.find(x=>x.id===id);if(!a)return;
+  const reste=at.state.ateliers.filter(x=>x.service===de&&x.id!==id).length;
+  if(reste){at.changer(()=>{a.service=vers;},a.nom+' rattachée à « '+((servicesDisponibles().find(x=>x.id===vers)||{}).nom||vers)+' ».');return;}
+  // La dernière équipe du service disparu : les chemins qui y passaient suivent aussi.
+  at.changer(()=>{a.service=vers;},'');reaffecterService(de,vers,de);
+}
+/* Des équipes dont le service n'existe plus (d'anciennes sauvegardes). */
+function equipesOrphelines(){
+  const ids=new Set(servicesDisponibles().map(s=>s.id));
+  return ((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]).filter(a=>!ids.has(a.service));
+}
+/* Les zones dessinées qui ne sont pas des services : des locaux, des équipements. */
+function locauxDuPlan(){
+  return ((Sim.editor&&Sim.editor.state.zones)||[]).filter(z=>z.kind!=='service'&&z.kind!=='annexe');
+}
+/* Le service dont un local dépend le plus probablement : celui dont le nom
+ * commence le sien (« Armement EZY/AF » → Armement), sinon le premier. */
+function parentProbable(nom){
+  const n=String(nom||'').toLowerCase();
+  const s=Object.keys(ZONES).map(id=>({id,nom:nomLisible(ZONES[id].nom).toLowerCase()}))
+    .filter(x=>n.startsWith(x.nom.split(/[ ·/]/)[0])).sort((a,b)=>b.nom.length-a.nom.length)[0];
+  return s?s.id:Object.keys(ZONES)[0];
 }
 
 function lectureDuGraphe(){
@@ -469,6 +547,10 @@ function lectureDuGraphe(){
     noms2.join(', ')+' n’est relié à personne : ce qui y est préparé ne sert à aucun autre service.');
   grouper(lignes.filter(l=>l.produit&&l.avals.length===0&&l.amonts.length), false, noms2=>
     noms2.join(', ')+' ne livre à personne. Normal en bout de chaîne.');
+  const orphelines=equipesOrphelines();
+  if(orphelines.length)alertes.push({grave:true,orphelines:true,
+    texte:orphelines.map(a=>a.nom).join(', ')+(orphelines.length>1?' travaillent':' travaille')+' dans un service qui n’existe plus sur le plan. '
+      +'Rattachez '+(orphelines.length>1?'ces équipes':'cette équipe')+' à un service (Organisation › Services).'});
   // Un cycle bloquerait la fabrication sans jamais rien dire.
   const fourn=MoteurProduction.fournisseurs(liens);
   for(const c of MoteurProduction.cycles(fourn,new Set(lignes.filter(l=>l.produit).map(l=>l.id))))
@@ -810,6 +892,18 @@ function initEdition() {
     },
     refresh(){if(Sim.flows)Sim.flows.refresh();redessinerEdges();majPicker();if(Sim.ateliers)Sim.ateliers.rendre();},
     pick(id){selectionner(id);},
+    // Une zone de production supprimée ne laisse pas d'équipes orphelines : on
+    // prévient, puis ses équipes et ses étapes de chemin passent dans son parent.
+    avantSuppression(z){
+      const n=((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]).filter(a=>a.service===z.id).length;
+      const pere=z.kind==='annexe'&&ZONES[z.parent]?z.parent:null;
+      const dansChemins=((Sim.ateliers&&Sim.ateliers.state.parcours)||[]).some(p=>MoteurProduction.servicesDuParcours(p).includes(z.id));
+      if(!n&&!dansChemins)return true;
+      const nomPere=pere?nomLisible(ZONES[pere].nom):'';
+      return confirm('« '+z.nom+' » porte '+(n?n+(n>1?' équipes':' équipe'):'des étapes de chemins')+'. '
+        +(pere?'Elles passeront dans « '+nomPere+' ».':'Elles seront retirées.')+' Supprimer la zone ?');
+    },
+    apresSuppression(z){reaffecterService(z.id,z.kind==='annexe'&&ZONES[z.parent]?z.parent:null,z.nom);},
     getView(){return {vk,vtx,vty};},
     pan(v,dx,dy){const m=svg.getScreenCTM();vtx=v.vtx+dx/m.a;vty=v.vty+dy/m.d;vk=v.vk;appliquerVue();},
     focus(b){vk=Math.min(8,Math.max(.5,Math.min(VUE.w/(b.w+150),VUE.h/(b.h+150))*.8));vtx=VUE.x+VUE.w/2-(b.x+b.w/2)*vk;vty=VUE.y+VUE.h/2-(b.y+b.h/2)*vk;appliquerVue();}
@@ -833,9 +927,12 @@ const ETATS_PARAM = {
   pret:    { lib:'Équipe au travail',  aide:'Une équipe y prépare au moins une commande.' }
 };
 
+/* Les zones de production : des services à part entière. « Masquer » une zone
+ * ne vaut que pour le dessin du plan — elle reste un service partout ailleurs,
+ * sinon ses équipes tourneraient sans qu'aucune liste ne les montre. */
 function annexes() {
   const e = Sim.editor; if (!e) return [];
-  return e.state.zones.filter(z => z.kind === 'annexe' && z.visible !== false);
+  return e.state.zones.filter(z => z.kind === 'annexe');
 }
 /* La liste des services suit le plan : les annexes y figurent sous leur parent. */
 function majPicker() {

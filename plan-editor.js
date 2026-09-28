@@ -76,7 +76,7 @@ class PlanEditor{
    <div class="pe-heading"><div><span class="eyebrow">ÉDITEUR DU PLAN</span><h2>Construire l’unité</h2></div><button class="btn" id="edit-done">Terminer</button></div>
    <div id="pe-status" role="status" aria-live="polite"></div>
    <div class="pe-section"><div class="pe-section-title"><h3>Zones & locaux <span id="pe-count"></span></h3><button class="text-button" id="pe-focus">Centrer la sélection</button></div><label class="sr-only" for="pe-search">Rechercher une zone</label><input type="search" id="pe-search" placeholder="Rechercher une zone…"><div id="pe-list" aria-label="Liste des zones"></div></div>
-   <div class="pe-section" id="pe-properties" hidden><h3>Zone sélectionnée</h3><label>Nom<input id="pe-name" maxlength="120" type="text"></label><div class="pe-two"><label>Type<select id="pe-kind"><option value="service">Service du plan</option><option value="annexe">Zone de production (annexe)</option><option value="room">Local / zone</option><option value="equipment">Équipement</option><option value="path">Circulation</option></select></label><label>Couleur<input type="color" id="pe-color"><button class="text-button" id="pe-color-reset" type="button">Couleur du type</button></label></div>
+   <div class="pe-section" id="pe-properties" hidden><h3>Zone sélectionnée</h3><label>Nom<input id="pe-name" maxlength="120" type="text"></label><div class="pe-two"><label>Type<select id="pe-kind"><option value="service">Service du plan</option><option value="annexe">Zone de production (un service)</option><option value="room">Local (annotation)</option><option value="equipment">Équipement</option><option value="path">Circulation</option></select></label><label>Couleur<input type="color" id="pe-color"><button class="text-button" id="pe-color-reset" type="button">Couleur du type</button></label></div>
    <label id="pe-parent-champ" hidden>Atelier dont elle dépend<select id="pe-parent"></select></label>
    <p id="pe-kind-note" class="mini-note"></p><div class="pe-two pe-dimensions">${[['x','X'],['y','Y'],['w','Largeur'],['h','Hauteur']].map(([k,label])=>`<label>${label}<input id="pe-${k}" type="number" step="1" ${k==='w'||k==='h'?'min="1"':''}></label>`).join('')}</div><p class="mini-note">Coordonnées du dessin, pas des mètres.</p>
    <label class="chk"><input id="pe-locked" type="checkbox">Verrouiller la géométrie</label><label class="chk"><input id="pe-confirmed" type="checkbox">Emplacement confirmé sur le terrain</label>
@@ -233,7 +233,10 @@ class PlanEditor{
   },seconde?'Seconde salle créée : déplacez-la, puis décrivez ses équipes dans l’onglet « Ateliers ».'
           :'Copie créée comme annotation : elle ne crée aucun service.');
  }
- remove(){if(!this.zone)return;if(this.zone.kind==='service'){this.status('Cet atelier est relié au moteur. Utilisez l’œil pour le masquer ; il ne peut pas être supprimé.');return;}if(this.zone.locked){this.status('Déverrouillez la zone avant de la supprimer.');return;}this.change(()=>{this.state.zones=this.state.zones.filter(z=>z.id!==this.selected);this.selected=null;},'Zone supprimée. Annuler permet de la retrouver.');}
+ remove(){if(!this.zone)return;if(this.zone.kind==='service'){this.status('Cet atelier est relié au moteur. Utilisez l’œil pour le masquer ; il ne peut pas être supprimé.');return;}if(this.zone.locked){this.status('Déverrouillez la zone avant de la supprimer.');return;}const zone=clone(this.zone);if(this.a.avantSuppression&&this.a.avantSuppression(zone)===false){this.status('Suppression annulée.');return;}this.change(()=>{this.state.zones=this.state.zones.filter(z=>z.id!==zone.id);this.selected=null;},'Zone supprimée. Annuler permet de la retrouver.');if(this.a.apresSuppression)this.a.apresSuppression(zone);}
+ /* Un local dessiné devient une zone de production : un service à part entière,
+    rattaché à un service du plan. */
+ convertir(id,parent){const z=this.state.zones.find(v=>v.id===id);if(!z||z.kind==='service'||z.kind==='annexe')return false;this.change(()=>{z.kind='annexe';z.parent=parent||this.originals[0].id;z.color=COLORS.annexe;},'Zone de production : c’est maintenant un service.');return true;}
  removeVertex(){if(!this.zone?.pts||this.vertex==null||this.zone.locked)return;if(this.zone.pts.length<=3){this.status('Un polygone doit conserver au moins trois sommets.');return;}this.change(()=>{this.zone.pts.splice(this.vertex,1);Object.assign(this.zone,bounds(this.zone));this.vertex=null;},'Sommet supprimé.');}
  key(e){
   if(!this.active||e.target.closest('input,textarea,select,[contenteditable=true]'))return;
@@ -308,8 +311,8 @@ class PlanEditor{
   document.getElementById('pe-kind-note').textContent=z.kind==='service'
    ?'Service du plan : vous pouvez corriger son contour et son nom.'
    :z.kind==='annexe'
-    ?'Seconde salle d’un service : on y pose des équipes dans l’onglet « Ateliers », comme dans le service dont elle dépend.'
-    :'Annotation du plan : elle ne crée aucun service.';
+    ?'Zone de production : un service à part entière. Elle apparaît dans les chemins, les cases et Organisation › Services ; elle hérite des liens du service dont elle dépend.'
+    :'Local : une annotation du plan, pas un service — il n’apparaît ni dans les chemins ni dans les cases. Pour y faire travailler une équipe, choisissez le type « Zone de production ».';
   for(const k of ['x','y','w','h']){assign('pe-'+k,Math.round(bounds(z)[k]));document.getElementById('pe-'+k).disabled=z.locked;}
   document.getElementById('pe-locked').checked=z.locked;document.getElementById('pe-confirmed').checked=!z.approx;
   document.getElementById('pe-delete').disabled=z.kind==='service'||z.locked;

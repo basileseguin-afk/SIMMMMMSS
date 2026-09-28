@@ -142,6 +142,10 @@ le rouge ne sert qu’aux retards.
      équipes, les commandes qui y passent et ce qui lui manque, en tête de liste.
      « + Une équipe » crée une case dans ce service et l’ouvre ; « Voir sur le
      plan » ; « Modifier le plan de l’unité » pour la forme et la place.
+     En dessous : les zones dessinées qui ne sont pas des services (des
+     « locaux »), avec « En faire un service », et les équipes dont le service
+     a disparu, à rattacher. Un service, c’est un service du plan ou une zone
+     de production — masquée ou non sur le plan, elle est partout.
    - *Liens entre services* : qui livre qui dans l’unité, dans le même diagramme
      de nœuds ; ces liens ne servent qu’aux commandes qui n’ont pas de chemin.
    - *Contrôles* : ce que le calcul comprend de l’organisation, et ce qu’il faut

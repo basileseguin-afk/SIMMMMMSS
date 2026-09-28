@@ -75,6 +75,55 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.evaluate(()=>document.body.classList.contains('plan-editing')),true);
   await page.locator('#edit-done').click();await attendre();
 
+  // 8. Toutes les listes de services disent la même chose (retour d'usage :
+  //    « Armement EZY/AF n'apparaît pas dans les chemins »).
+  const listes=async id=>{const r={};
+    r.services=await page.evaluate(id=>Sim.ateliers.a.services().some(s=>s.id===id),id);
+    r.plan=await page.evaluate(id=>[...document.querySelectorAll('#zone-picker option')].some(o=>o.value===id),id);
+    r.liens=await page.evaluate(id=>Sim.flows.points.some(x=>x.owner===id),id);
+    await nav.aller(page,'u-services');r.page=await page.locator(`tr[data-svc="${id}"]`).count()===1;
+    await nav.aller(page,'at-equipes');r.cases=await page.locator(`#at-filtre option[value="${id}"]`).count()===1;
+    await nav.aller(page,'at-chemins');await page.locator('[data-pc-action=cmd][data-classe="AF/BC"]').click();await attendre();
+    // Sans chemin, on le crée : c'est dans son « Ajouter un service » que le service doit figurer.
+    if(await page.locator('[data-pc-action=creer][data-classe="AF/BC"]').count()){await page.locator('[data-pc-action=creer][data-classe="AF/BC"]').click();await attendre();}
+    r.chemin=await page.locator(`[data-pc-champ=noeud-ajout] option[value="${id}"], .pc-graphe [data-noeud="${id}"]`).count()>0;
+    return r;};
+  const partout={services:true,plan:true,liens:true,page:true,cases:true,chemin:true};
+  const editer=async fn=>{await nav.aller(page,'j-plan');await page.locator('#btn-edit').click();await attendre();await fn();await page.locator('#edit-done').click();await attendre();};
+  //    a. Une zone de production (« Dupliquer » un service) : partout.
+  await editer(async()=>{await page.evaluate(()=>Sim.editor.select('dotation'));await page.locator('#pe-duplicate').click();await attendre();
+    await page.locator('#pe-name').fill('Dotation EZY');await page.locator('#pe-name').dispatchEvent('change');await attendre();});
+  const annexe=await page.evaluate(()=>Sim.editor.state.zones.find(z=>z.nom==='Dotation EZY').id);
+  assert.deepEqual(await listes(annexe),partout,'une zone de production est un service partout');
+  //    b. Masquée sur le plan : toujours un service (« masquer » ne vaut que pour le dessin).
+  await page.evaluate(id=>Sim.ateliers.creer(id),annexe);await attendre();
+  await editer(async()=>{await page.evaluate(id=>Sim.editor.change(()=>{Sim.editor.state.zones.find(z=>z.id===id).visible=false;},'x'),annexe);});
+  assert.deepEqual(await listes(annexe),partout,'masquée, elle reste dans toutes les listes');
+  //    c. Supprimée alors qu'elle porte une équipe : l'équipe passe dans son service parent.
+  await editer(async()=>{await page.evaluate(id=>Sim.editor.select(id),annexe);await page.locator('#pe-delete').click();await attendre();});
+  assert.equal((await cases(annexe)).length,0,'pas d’équipe orpheline');
+  assert.ok((await cases('dotation')).some(a=>/Dotation EZY/.test(a.nom)),'elle travaille maintenant en Dotation');
+  //    d. Un local dessiné n'est pas un service : la page des services le dit, et en fait un service.
+  await editer(async()=>{await page.evaluate(()=>Sim.editor.change(()=>Sim.editor.addZone({x:300,y:100,w:80,h:60}),'x'));
+    await page.locator('#pe-name').fill('Armement EZY/AF 2');await page.locator('#pe-name').dispatchEvent('change');await attendre();
+    assert.match(await page.locator('#pe-kind-note').textContent(),/pas un service/,'l’éditeur le dit');});
+  const local=await page.evaluate(()=>Sim.editor.state.zones.find(z=>z.nom==='Armement EZY/AF 2').id);
+  assert.equal((await listes(local)).chemin,false);
+  await nav.aller(page,'u-services');
+  assert.match(await page.locator('.svc-bloc').last().textContent(),/Zones du plan qui ne sont pas des services[\s\S]*Armement EZY\/AF 2/);
+  assert.equal(await page.locator(`[data-svc-parent="${local}"]`).inputValue(),'armement','rattachée au service dont elle porte le nom');
+  await page.locator(`[data-svc-convertir="${local}"]`).click();await attendre();
+  assert.deepEqual(await listes(local),partout,'devenu service, il est partout');
+  //    e. Une équipe dont le service n'existe plus (ancienne sauvegarde) : signalée, puis rattachée.
+  await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'orph1',nom:'Équipe perdue',service:'zone-disparue',
+    type:'manuel',debut:'05:00',jour:0,personnes:2,pauses:[],lots:[],regime:{actif:true}});},''));
+  await nav.aller(page,'u-lecture');
+  assert.match(await page.locator('#fc-alertes').textContent(),/Équipe perdue travaille dans un service qui n’existe plus/);
+  await nav.aller(page,'u-services');
+  await page.selectOption('[data-svc-orpheline=orph1]','cuisine');await page.locator('[data-svc-rattacher=orph1]').click();await attendre();
+  assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.id==='orph1').service),'cuisine');
+  assert.equal(await page.locator('[data-svc-orpheline]').count(),0);
+
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('services-browser : ok');
  }finally{await browser.close();}
