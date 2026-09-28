@@ -156,3 +156,7 @@ body.pc-tiroir-ouvert[data-vue="ateliers"][data-sous="at-chemins"] #view-atelier
 /* Le temps de régler une case, la liste des commandes s'efface : le chemin garde la place. */
 body.pc-tiroir-ouvert .pc-cadre{grid-template-columns:minmax(0,1fr)}
 body.pc-tiroir-ouvert .pc-cmds{display:none}
+
+/* Un chemin plus large que l'écran : une ombre au bord droit, et un mot. */
+.gr-cadre.gr-deborde{box-shadow:inset -28px 0 18px -18px rgba(15,40,60,.35)}
+.gr-suite{margin:6px 2px 0;font-size:12px;color:var(--txt2)}

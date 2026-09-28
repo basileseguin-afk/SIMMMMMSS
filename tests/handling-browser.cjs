@@ -12,6 +12,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
 
+  // 0. Sans handling, la page des départs le dit, et propose de le mettre en place.
+  await nav.aller(page,'v-departs');
+  assert.match(await page.locator('#vols-handling').innerText(),/Pas de handling pour l’instant/);
+  assert.equal(await page.locator('[data-vh-action=brancher]').count(),1);
+
   // 1. Sur le chemin d'AF · Business, on ajoute le handling : sa case est un handling, partagé.
   await nav.aller(page,'at-chemins');
   await page.locator('[data-pc-action=cmd][data-classe="AF/BC"]').click();await attendre();
@@ -52,6 +57,17 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(af&&Math.round(af.fin-af.debut)>=50,'un vol AF dure 50 min');
 
   // 4. Les départs disent « chargé à », la synthèse compte les vols.
+  await nav.aller(page,'v-departs');
+  assert.match(await page.locator('#vols-handling').innerText(),/Handling : « .+ »[\s\S]*chargés? à l’heure sur/);
+  // Les chemins qui n'y passent pas encore le reçoivent d'un geste, sans seconde case.
+  const sans=await page.evaluate(()=>Sim.ateliers.state.parcours.filter(p=>!p.noeuds.includes('handling')).length);
+  if(sans){await page.locator('[data-vh-action=brancher]').click();await attendre();}
+  assert.equal(await page.evaluate(()=>Sim.ateliers.state.parcours.filter(p=>!p.noeuds.includes('handling')).length),0);
+  assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.type==='handling').length),1);
+  // « Régler le handling » ouvre sa fiche.
+  await page.locator('[data-vh-action=regler]').click();await attendre();
+  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'at-equipes');
+  assert.equal(await page.evaluate(()=>Sim.ateliers.ouvert),id);
   await nav.aller(page,'v-departs');
   assert.match(await page.locator('#flight-rows').innerText(),/chargé à \d\d:\d\d/);
   await nav.aller(page,'j-chiffres');

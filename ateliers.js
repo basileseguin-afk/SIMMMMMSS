@@ -352,11 +352,21 @@
       if (dans) this.filtre = dans;
       const service = dans || this.filtre || ((services.find(s => P.BAREME_DEMO[s.id]) || services[0] || {}).id);
       const nom = (services.find(s => s.id === service) || {}).nom || 'Case';
-      const atelier = { id: uid(), nom: PC.nomLibre(this.state, nom), service, type: 'manuel',
-        debut: '06:00', jour: 0, personnes: 2, pauses: [], lots: [] };
+      // Dans le handling, la case née est un handling : elle charge des vols.
+      const atelier = service === 'handling' ? PC.caseHandling(this.state, service, nom)
+        : { id: uid(), nom: PC.nomLibre(this.state, nom), service, type: 'manuel',
+          debut: '06:00', jour: 0, personnes: 2, pauses: [], lots: [] };
       this.changer(() => this.state.ateliers.push(atelier),
         'Case créée, hors chemin. Donnez-lui son type (plonge, mise à disposition…) ; une case qui prépare se rattache à une commande dans son chemin.');
       this.ouvert = atelier.id; this.rendre();
+    }
+
+    /* Le handling en un geste : sa case, et au bout de chaque chemin. */
+    brancherHandling() {
+      const nom = (this.a.services().find(s => s.id === 'handling') || {}).nom || 'Handling';
+      let r;
+      this.changer(() => { r = PC.brancherHandling(this.state, 'handling', nom); }, 'Handling en place.');
+      return r;
     }
 
     /* Une case se règle dans le chemin d'une de ses commandes, sous son service.

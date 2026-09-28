@@ -139,7 +139,10 @@ le rouge ne sert qu’aux retards.
      strictement dans l’ordre des départs, avec une durée par compagnie, un
      nombre de vols en même temps et une heure au plus tôt (« pas avant 3 h
      avant le départ »). Il travaille le jour J des vols, jamais la veille. Ajouter le handling à un chemin crée cette case, une
-     seule pour toutes les commandes. Les commandes doivent être au handling
+     seule pour toutes les commandes. Plus simple : **Résultats › Départs ›
+     « Mettre en place le handling »** crée la case et l’ajoute au bout de
+     tous les chemins d’un coup ; le même bandeau dit ensuite combien de vols
+     sont chargés à l’heure et ouvre la fiche (« Régler le handling »). Les commandes doivent être au handling
      au départ moins le délai de chargement ; le vol doit être chargé à son
      départ.
    - *Qui prépare quoi* : le tableau calculé, une ligne par commande, une

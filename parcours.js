@@ -502,9 +502,7 @@
       if (caseDe(etat, s, cmd)) continue;
       if (s === 'handling') {
         // Le handling charge les vols de toutes les commandes : un seul, partagé.
-        etat.ateliers.push({ id: 'at-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
-          nom: nomLibre(etat, nom(s)), service: s, type: 'handling', debut: '04:00', jour: 0, personnes: 4, pauses: [], lots: [],
-          regime: { actif: true }, durees: { [P.TOUTES]: 30 }, simultanes: 3, avance: P.AVANCE_HANDLING, compagnies: [] });
+        etat.ateliers.push(caseHandling(etat, s, nom(s)));
       } else if (s === 'plonge') {
         etat.ateliers.push({ id: 'at-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
           nom: nomLibre(etat, nom(s)), service: s, type: 'lavage', debut: '06:00', jour: 0, personnes: 2, pauses: [], lots: [],
@@ -518,6 +516,37 @@
     }
     chemin.cases = true;
     return n;
+  }
+
+  /** Une case handling neuve : elle charge les vols de toutes les commandes. */
+  function caseHandling(etat, service, nomService) {
+    return { id: 'at-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
+      nom: nomLibre(etat, nomService || service), service, type: 'handling', debut: '04:00', jour: 0, personnes: 4, pauses: [], lots: [],
+      regime: { actif: true }, durees: { [P.TOUTES]: 30 }, simultanes: 3, avance: P.AVANCE_HANDLING, compagnies: [] };
+  }
+
+  /**
+   * Le handling en un geste : sa case (s'il n'y en a pas), et au bout de chaque
+   * chemin qui ne passe pas encore par lui. Il est relié à la DERNIÈRE étape
+   * de chaque chemin — celles qui livrent sans être livrées à leur tour.
+   * @returns {{ cree:boolean, chemins:number, atelier }}
+   */
+  function brancherHandling(etat, service, nomService) {
+    let atelier = (etat.ateliers || []).find(a => a.type === 'handling');
+    const cree = !atelier;
+    if (cree) { atelier = caseHandling(etat, service, nomService); etat.ateliers.push(atelier); }
+    const s = atelier.service;
+    let chemins = 0;
+    for (const p of (etat.parcours || [])) {
+      if (!Array.isArray(p.noeuds) || p.noeuds.includes(s)) continue;
+      const arcs = P.arcsDuParcours(p);
+      const fins = p.noeuds.filter(n => arcs.some(a => a.to === n) && !arcs.some(a => a.from === n));
+      p.noeuds.push(s);
+      p.liens = Array.isArray(p.liens) ? p.liens : [];
+      for (const f of fins) p.liens.push({ de: f, vers: s });
+      chemins++;
+    }
+    return { cree, chemins, atelier };
   }
 
   /**
@@ -1347,7 +1376,7 @@
 
 
   const api = { insererPrepa, depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, couverture, confier, nouvelleEquipe,
-    completer, colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, donnerCases, completerCases, nomLibre, EditeurParcours };
+    completer, colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, donnerCases, completerCases, nomLibre, caseHandling, brancherHandling, EditeurParcours };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyParcours = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

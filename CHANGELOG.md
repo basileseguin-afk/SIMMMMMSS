@@ -5,6 +5,24 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-28 — Le handling se met en place d'un geste, et se voit
+
+Retour d'usage : « je ne vois pas les changements sur le visuel ». Le site
+était à jour ; rien ne changeait tant qu'aucune case Handling n'existait, et
+l'ajouter chemin par chemin (34 commandes) n'était pas praticable.
+
+- Résultats › Départs : un bandeau. Sans handling, il le dit et propose
+  « Mettre en place le handling » : la case est créée et le handling ajouté au
+  bout de chaque chemin (relié à sa dernière étape). Avec un handling : son
+  réglage en une ligne, les vols chargés à l'heure, « Régler le handling → »
+  et, s'il en reste, « L'ajouter aux N chemins qui n'y passent pas ».
+- « + Une équipe » dans le service Handling crée une case Handling.
+- Chemins : un diagramme plus large que l'écran le montre (ombre au bord droit
+  et « faites défiler vers la droite ») — la fin du chemin, où se pose le
+  handling, passait inaperçue.
+- `parcours.js` : `caseHandling`, `brancherHandling`. Tests : parcours,
+  handling-browser.
+
 ## 2026-09-28 — Le handling travaille le jour J des vols
 
 Retour d'usage : « le handling travaille à Jour J des vols ».

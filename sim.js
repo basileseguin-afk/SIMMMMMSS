@@ -1628,9 +1628,55 @@ function renderFlights() {
       + '</td><td><div class="vol-repas">' + d.classes.map(pastille).join('') + '</div></td></tr>';
   }).join('') || '<tr><td colspan="5" class="empty-state">Aucun départ ne correspond à ces filtres.</td></tr>';
   renderFriseVols(departsSuivis(), etatDe, mot, icoEtat);
+  renderHandlingVols();
 
   const body = document.getElementById('flight-rows');
   if (body.innerHTML !== html) body.innerHTML = html;
+}
+
+/* Le handling, là où l'on regarde les vols : s'il n'y en a pas, un vol est
+ * « prêt » quand ses commandes le sont ; le mettre en place se fait d'un geste. */
+function renderHandlingVols() {
+  const box = document.getElementById('vols-handling'); if (!box) return;
+  const at = Sim.ateliers; if (!at) { box.innerHTML = ''; return; }
+  const h = at.state.ateliers.filter(a => a.type === 'handling');
+  const r = at.resultat || {}, k = r.indicateurs || {};
+  const hh = MoteurProduction.hhmm;
+  let html;
+  if (!h.length) {
+    html = '<p><b>Pas de handling pour l’instant.</b> Un vol est donc « prêt » dès que ses commandes le sont. '
+      + 'Le handling réunit les classes d’un même vol et le charge, dans l’ordre des départs, le jour J : '
+      + 'le vol doit être chargé à son départ.</p>'
+      + '<p class="row-btns"><button class="btn btn-play" type="button" data-vh-action="brancher">Mettre en place le handling</button>'
+      + '<span class="mini-note">Crée la case Handling et l’ajoute au bout de chaque chemin. Annuler (Organisation) le retire.</span></p>';
+  } else {
+    const a = h[0], vus = (r.vols || []).length;
+    const sans = (at.state.parcours || []).filter(p => Array.isArray(p.noeuds) && !p.noeuds.includes(a.service)).length;
+    html = '<p><b>Handling : « ' + escapeHTML(a.nom) + ' »</b> — ' + (h.length > 1 ? h.length + ' cases · ' : '')
+      + 'arrive à ' + escapeHTML(a.debut) + ' (jour J), ' + a.simultanes + (a.simultanes > 1 ? ' vols' : ' vol') + ' à la fois, '
+      + 'pas avant ' + String(Math.round((a.avance ?? 180) / 6) / 10).replace('.', ',') + ' h avant le départ. '
+      + (vus ? '<b>' + (k.volsAHeure || 0) + ' vol' + (k.volsAHeure > 1 ? 's' : '') + ' chargé' + (k.volsAHeure > 1 ? 's' : '') + ' à l’heure sur ' + vus + '</b>'
+        + (vus - (k.volsCharges || 0) ? ', ' + (vus - k.volsCharges) + ' non chargé' + (vus - k.volsCharges > 1 ? 's' : '') : '') + '.' : 'Aucun vol suivi.')
+      + '</p><p class="row-btns"><button class="btn btn-sm" type="button" data-vh-action="regler" data-vh-atelier="' + escapeHTML(a.id) + '">Régler le handling →</button>'
+      + (sans ? '<button class="btn btn-sm" type="button" data-vh-action="brancher">L’ajouter aux ' + sans + ' chemin' + (sans > 1 ? 's' : '') + ' qui n’y passent pas</button>' : '')
+      + '</p>';
+  }
+  if (box.innerHTML !== html) box.innerHTML = html;
+}
+function initHandlingVols() {
+  const box = document.getElementById('vols-handling'); if (!box) return;
+  box.addEventListener('click', e => {
+    const b = e.target.closest('[data-vh-action]'); if (!b) return;
+    if (b.dataset.vhAction === 'brancher') {
+      const r = Sim.ateliers.brancherHandling();
+      if (r) toast((r.cree ? 'Case Handling créée' : 'Handling') + ' ajouté' + (r.chemins ? ' à ' + r.chemins + (r.chemins > 1 ? ' chemins.' : ' chemin.') : '.'));
+      renderFlights();
+    } else if (b.dataset.vhAction === 'regler') {
+      Sim.ateliers.ouvert = b.dataset.vhAtelier;
+      allerPage('at-equipes');
+      Sim.ateliers.rendre();
+    }
+  });
 }
 
 /* La journée des vols en un coup d'œil : trois compteurs qui filtrent, et une
@@ -1722,7 +1768,7 @@ const Sim = { dataCourante:SAMPLE };
 Sim.cfg = CFG;
 window.Sim = Sim;
 chargerZones();
-construirePlan(); chargerVols(SAMPLE); initControles(); initEdition(); initFlux(); initAteliers(); initWorkbench(); initServices();
+construirePlan(); chargerVols(SAMPLE); initControles(); initEdition(); initFlux(); initAteliers(); initWorkbench(); initServices(); initHandlingVols();
 // Le fil de mise en route vient en dernier : il relit les autres, il ne peut
 // donc se dresser qu'une fois qu'ils sont là.
 initVueSimulation();

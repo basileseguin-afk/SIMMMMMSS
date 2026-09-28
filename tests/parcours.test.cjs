@@ -360,3 +360,21 @@ test('le chronogramme suit une classe étape par étape et dit qui l’a fait at
   assert.equal(e('prepa').attendu, dernier, 'le montage a attendu la branche la plus lente');
   assert.equal(g.debut, 5 * 60);
 });
+
+test('le handling en un geste : une case, au bout de chaque chemin qui n’y passe pas', () => {
+  const etat = { ateliers: [], parcours: [
+    { id: 'a', nom: 'A', noeuds: ['cuisine', 'prepa', 'magasin'], liens: [{ de: 'cuisine', vers: 'prepa' }, { de: 'magasin', vers: 'prepa' }] },
+    { id: 'b', nom: 'B', noeuds: ['prepa', 'handling'], liens: [{ de: 'prepa', vers: 'handling' }] },
+    { id: 'c', nom: 'C', noeuds: ['dotation'], liens: [] }
+  ] };
+  const r = PC.brancherHandling(etat, 'handling', 'CF départ food');
+  assert.equal(r.cree, true);
+  assert.equal(r.chemins, 2, 'B y passait déjà');
+  assert.equal(etat.ateliers.length, 1);
+  assert.equal(etat.ateliers[0].type, 'handling');
+  assert.equal(etat.ateliers[0].jour, 0);
+  assert.deepEqual(etat.parcours[0].liens.filter(l => l.vers === 'handling'), [{ de: 'prepa', vers: 'handling' }], 'relié à la dernière étape');
+  assert.deepEqual(etat.parcours[2].noeuds, ['dotation', 'handling'], 'un chemin sans lien reçoit le nœud, sans lien inventé');
+  const encore = PC.brancherHandling(etat, 'handling', 'CF départ food');
+  assert.equal(encore.cree, false); assert.equal(encore.chemins, 0, 'deux fois de suite : rien de plus');
+});

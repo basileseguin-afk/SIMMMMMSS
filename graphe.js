@@ -200,6 +200,16 @@
       this.cadre = { x0, y0, w: x1 - x0, h: y1 - y0 };
       svg.setAttribute('viewBox', `${x0} ${y0} ${x1 - x0} ${y1 - y0}`);
       svg.setAttribute('width', x1 - x0); svg.setAttribute('height', y1 - y0);
+      // Un diagramme plus large que son cadre : on le montre (ombre au bord
+      // droit, invitation à faire défiler), sinon la fin du chemin passe inaperçue.
+      const cadreEl = hote.querySelector('.gr-cadre');
+      if (cadreEl) root.requestAnimationFrame(() => {
+        const deborde = cadreEl.scrollWidth > cadreEl.clientWidth + 4;
+        cadreEl.classList.toggle('gr-deborde', deborde && cadreEl.scrollLeft + cadreEl.clientWidth < cadreEl.scrollWidth - 4);
+        let suite = hote.querySelector('.gr-suite');
+        if (deborde && !suite) { suite = root.document.createElement('p'); suite.className = 'gr-suite mini-note'; hote.appendChild(suite); }
+        if (suite) { suite.hidden = !deborde; suite.textContent = 'Le chemin est plus large que l’écran : faites défiler vers la droite pour voir la suite →'; }
+      });
       const couleurs = [...new Set(liens.map(l => l.couleur || ''))];
       const marque = c => 'gr-f-' + this.a.cle.replace(/[^a-z0-9]/gi, '') + '-' + couleurs.indexOf(c || '');
       const I = root.OrlyIcones;
@@ -247,6 +257,8 @@
 
     installer(hote) {
       hote.innerHTML = `<div class="gr-cadre"><svg class="gr-svg" role="group" aria-label="${esc(this.a.titre || 'Diagramme')}"></svg></div>`;
+      const cadre = hote.querySelector('.gr-cadre');
+      cadre.addEventListener('scroll', () => cadre.classList.toggle('gr-deborde', cadre.scrollLeft + cadre.clientWidth < cadre.scrollWidth - 4));
       const svg = hote.querySelector('.gr-svg');
       svg.addEventListener('pointerdown', e => this.appui(e));
       svg.addEventListener('pointermove', e => this.glisser(e));
