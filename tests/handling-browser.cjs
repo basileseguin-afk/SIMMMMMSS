@@ -49,12 +49,33 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await fiche.innerText(),/le jour J des vols/);
   await fiche.locator('[data-at-champ=avance]').fill('2');await fiche.locator('[data-at-champ=avance]').dispatchEvent('change');await attendre();
   assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).avance,id),120,'saisi en heures, gardé en minutes');
-  await page.locator(`[data-at="${id}"] [data-at-champ=duree-nouvelle]`).selectOption('AF');await attendre();
+  // Chaque compagnie des vols a sa ligne : sa durée se saisit directement.
   await page.locator(`[data-at="${id}"] [data-at-champ=duree][data-cie=AF]`).fill('50');
   await page.locator(`[data-at="${id}"] [data-at-champ=duree][data-cie=AF]`).dispatchEvent('change');await attendre();
   assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).durees.AF,id),50);
   const af=await page.evaluate(()=>Sim.ateliers.resultat.vols.find(v=>v.cie==='AF'&&v.fin!=null));
   assert.ok(af&&Math.round(af.fin-af.debut)>=50,'un vol AF dure 50 min');
+  // Les chauffeurs (retour d'usage : « 2 chauffeurs pour les long courrier, 1 pour les court ») :
+  // un créneau, AF en long courrier ; un vol AF prend 2 chauffeurs, un TX 1.
+  await page.locator(`[data-at="${id}"] [data-at-action=creneau-ajouter]`).click();await attendre();
+  const cr=await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).creneaux,id);
+  assert.equal(cr.length,1,'un créneau de chauffeurs');
+  await page.locator(`[data-at="${id}"] [data-at-champ=creneau-de][data-index="0"]`).fill('00:00');
+  await page.locator(`[data-at="${id}"] [data-at-champ=creneau-de][data-index="0"]`).dispatchEvent('change');await attendre();
+  await page.locator(`[data-at="${id}"] [data-at-champ=creneau-a][data-index="0"]`).fill('23:59');
+  await page.locator(`[data-at="${id}"] [data-at-champ=creneau-a][data-index="0"]`).dispatchEvent('change');await attendre();
+  await page.locator(`[data-at="${id}"] [data-at-champ=creneau-n][data-index="0"]`).fill('6');
+  await page.locator(`[data-at="${id}"] [data-at-champ=creneau-n][data-index="0"]`).dispatchEvent('change');await attendre();
+  await page.locator(`[data-at="${id}"] select[data-at-champ=categorie][data-cie=AF]`).selectOption('long');await attendre();
+  assert.deepEqual(await page.evaluate(id=>{const a=Sim.ateliers.state.ateliers.find(x=>x.id===id);return [a.longs,a.creneaux[0]];},id),[['AF'],{de:'00:00',a:'23:59',n:6}]);
+  const parCie=await page.evaluate(()=>Object.fromEntries(Sim.ateliers.resultat.vols.filter(v=>v.chauffeurs).map(v=>[v.cie,[v.chauffeurs,v.categorie]])));
+  assert.deepEqual(parCie.AF,[2,'long'],'un long courrier prend 2 chauffeurs');
+  const court=Object.entries(parCie).find(([c])=>c!=='AF');
+  assert.ok(court&&court[1][0]===1&&court[1][1]==='court','un court courrier en prend 1');
+  await page.locator(`[data-at="${id}"] [data-at-champ=chauffeurs-long]`).fill('3');
+  await page.locator(`[data-at="${id}"] [data-at-champ=chauffeurs-long]`).dispatchEvent('change');await attendre();
+  assert.equal(await page.evaluate(()=>Sim.ateliers.resultat.vols.find(v=>v.cie==='AF'&&v.chauffeurs).chauffeurs),3,'réglable');
+  assert.match(await fiche.innerText(),/récupère les trolleys prêts dans la CF départ/);
 
   // 4. Les départs disent « chargé à », la synthèse compte les vols.
   await nav.aller(page,'v-departs');

@@ -407,6 +407,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/liaisons-browser.cjs` | Une donnée, partout la même : barème, récap des man-minutes, récap des cases, fiches, chemin, « Qui prépare quoi », calcul, Excel, renommage, Annuler — changée à un endroit, vérifiée à tous les autres |
 | `tests/fantome-browser.cjs` | Un service qu'on ne retrouve pas : « Armement » sans équipe, ses salles au travail — la note des Contrôles et « Supprimer », la recherche, les salles qui gardent ses liens, un service supprimé encore cité (« Effacer partout », « Passer dans… », « Remettre ») |
 | `tests/boutique-browser.cjs` | La légumerie comme une boutique : d'un clic depuis les vagues, fermée la cuisine attend l'ouverture, les heures dans le récap des cases et « Qui prépare quoi », Annuler |
+| `tests/plonge-vol-browser.cjs` | La plonge par vol : une ligne par compagnie des vols revenus, un vol par tunnel qui tourne, au temps de sa compagnie ; retour au débit |
 | `tests/recap-cases-browser.cjs` | Récap des cases : une ligne par case, tâche unique / à la suite / ensemble, départ et jour modifiables, chercher, fichier de paramétrage exporté puis réimporté |
 | `tests/robot-browser.cjs` | Le Robot : service créé et rattaché au Montage, remplace le Montage sur TX, CRL et FBU Économie (une fois), une case Robot, plateaux ÷ débit, débit et effectif dans le récap et la fiche |
 | `tests/recap.test.cjs` | Récap des man-minutes : d’où vient chaque valeur, totaux, fichier de paramétrage (aller-retour sans changement, grosses modifications, erreurs) |

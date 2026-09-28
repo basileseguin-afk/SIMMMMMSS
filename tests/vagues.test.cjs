@@ -77,3 +77,25 @@ test('la cuisine attend l’ouverture de la boutique, et seulement elle', () => 
   const r3 = jouer([boutique('07:00', '07:00'), at('c1', 'cuisine', '04:00', [['AF/BC']])]);
   assert.ok(r3.anomalies.some(a => a.code === 'ouverture'), 'ouverture = fermeture : refusé');
 });
+
+/* La plonge par vol (retour d'usage : « un tunnel lave un vol en tant de temps »). */
+test('plonge par vol : chaque tunnel lave un vol revenu, dans l’ordre des retours, au temps de sa compagnie', () => {
+  const vols = [{ id: 'AF9', cie: 'AF', sens: 'RET', sta: h('06:00'), bc: 10, yc: 100 }, { id: 'TX9', cie: 'TX', sens: 'RET', sta: h('06:10'), yc: 80 },
+    { id: 'DL9', cie: 'DL', sens: 'RET', sta: h('06:20'), yc: 200 }];
+  const plonge = p => ({ id: 'pl', nom: 'Plonge', service: 'plonge', type: 'lavage', debut: '05:00', jour: 0, personnes: 2, lots: [], regime: { actif: false },
+    parVol: true, durees: { AF: 40, '*': 30 }, tunnels: [{ nom: 'T1', personnes: 1, actif: true }, { nom: 'T2', personnes: 1, actif: true }], ...p });
+  const jouerP = pl => P.simuler({ vols, liaisons: [], rendement: 1, bareme: {}, ateliers: [pl], materiel: { actif: true, delaiRetour: 30 } });
+  const r = jouerP(plonge());
+  assert.equal(r.ok, true, JSON.stringify(r.anomalies));
+  const l = r.lots.filter(x => x.retourVol);
+  // Retours : AF 06:30, TX 06:40, DL 06:50. Deux tunnels.
+  assert.deepEqual(l.map(x => [x.vol, P.hhmm(x.debut), P.hhmm(x.fin), x.tunnel]), [['AF9', '06:30', '07:10', 1], ['TX9', '06:40', '07:10', 2], ['DL9', '07:10', '07:40', 1]]);
+  assert.equal(l[2].attente, 20, 'DL attend qu’un tunnel se libère');
+  assert.ok(r.materiel.lavees > 0, 'le matériel lavé revient propre');
+  // Un seul tunnel tenu (une personne) : les vols passent l'un après l'autre.
+  const r1 = jouerP(plonge({ personnes: 1 }));
+  assert.deepEqual(r1.lots.filter(x => x.retourVol).map(x => P.hhmm(x.debut)), ['06:30', '07:10', '07:40']);
+  // Une compagnie sans temps : dit.
+  const r2 = jouerP(plonge({ durees: { AF: 40 } }));
+  assert.ok(r2.anomalies.some(x => x.code === 'plonge-duree' && /TX/.test(x.message)));
+});

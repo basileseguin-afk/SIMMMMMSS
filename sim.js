@@ -1765,7 +1765,10 @@ function renderFlights() {
       + '<td class="vol-avant">' + hh(d.echeance) + '</td>'
       + '<td><span class="status ' + e + '">' + (I ? I.ico(icoEtat[e]) : '') + mot[e] + '</span>'
       + (d.fin != null && d.fin <= t ? '<small>' + (d.handling ? 'chargé à ' : 'prêt à ') + hh(d.fin)
-          + (d.retard ? ' · +' + d.retard + ' min' : '') + '</small>'
+          + (d.retard ? ' · +' + d.retard + ' min' : '')
+          + (d.handling && d.handling.chauffeurs ? ' · ' + d.handling.chauffeurs + (d.handling.chauffeurs > 1 ? ' chauffeurs' : ' chauffeur')
+            + (d.handling.attenteChauffeurs >= 1 ? ' (attendus ' + Math.round(d.handling.attenteChauffeurs) + ' min)' : '') : '') + '</small>'
+        : d.handling && d.handling.etat === 'chauffeurs' ? '<small>pas assez de chauffeurs (' + d.handling.chauffeurs + ' pour un ' + (d.handling.categorie === 'long' ? 'long' : 'court') + ' courrier)</small>'
         : d.handling && d.handling.etat === 'bloque' ? '<small>le handling attend ' + escapeHTML((d.handling.attendu || []).map(x => MoteurProduction.libelleClasse(x.classe)).join(', ') || 'un vol précédent') + '</small>'
         : d.handling && d.handling.etat === 'poste' ? '<small>poste du handling fini</small>' : '')
       + '</td><td><div class="vol-repas">' + d.classes.map(pastille).join('') + '</div></td></tr>';

@@ -154,6 +154,32 @@ dans « Fabrications » : il charge des vols, pas des commandes.
 Feuille absente : les durées du site restent. Le handling travaille le jour J
 des vols : dans « Horaires », son jour est `J` ; un `J-1` est refusé.
 
+Colonne `Courrier` (`long` ou `court`) : une compagnie long courrier prend
+« Chauffeurs long courrier » chauffeurs par vol (2 par défaut), une court
+courrier « Chauffeurs court courrier » (1) — deux colonnes de la feuille
+Ateliers. Une compagnie long courrier sans durée propre a une ligne, minutes
+vides.
+
+### Feuille « Chauffeurs »
+
+Les créneaux de chauffeurs d'un handling, le jour J : `Atelier`, `Début`,
+`Fin`, `Chauffeurs`. Deux créneaux qui se chevauchent s'additionnent ; un
+créneau qui finit avant son début passe minuit. Un vol attend d'avoir ses
+chauffeurs libres ; sans créneau, le handling charge « Vols en même temps »
+vols à la fois (feuille Ateliers). Feuille absente : les créneaux du site restent.
+
+| Atelier | Début | Fin | Chauffeurs |
+|---|---|---|---|
+| Handling | 03:00 | 11:00 | 6 |
+| Handling | 11:00 | 20:00 | 3 |
+
+### Feuille « Plonge par vol »
+
+Une plonge dont la colonne `Plonge par vol` vaut `oui` (feuille Ateliers) lave
+les vols qui reviennent, un par tunnel qui tourne, dans l'ordre des retours.
+Une ligne par compagnie : `Atelier`, `Compagnie`, `Minutes par vol` — le temps
+qu'un tunnel met à laver un de ses vols ; `toutes` pour les autres.
+
 ### Feuille « Classes »
 
 Les compagnies × classes : `Compagnie`, `Classe`, `Parcours`, `Retirée`, puis

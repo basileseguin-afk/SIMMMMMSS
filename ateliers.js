@@ -57,20 +57,36 @@
   }
 
   /** Les réglages d'un handling, bornés. Sans durée saisie : 30 min par vol. */
-  function handlingDe(a) {
+  /** Des durées par compagnie (« * » pour toutes), en minutes. */
+  function dureesDe(a, defaut) {
     const durees = {};
-    const brut = a.durees && typeof a.durees === 'object' && !Array.isArray(a.durees) ? a.durees : { [P.TOUTES]: 30 };
+    const brut = a.durees && typeof a.durees === 'object' && !Array.isArray(a.durees) ? a.durees : { [P.TOUTES]: defaut };
     for (const [k, v] of Object.entries(brut).slice(0, 300)) {
       const cie = k === P.TOUTES ? k : String(k).trim().toUpperCase().slice(0, 40);
       if (!cie || v === '' || v === null || !Number.isFinite(+v)) continue;
       durees[cie] = Math.max(0, Math.min(1440, Math.round(+v * 10) / 10));
     }
+    return durees;
+  }
+  const cies = l => [...new Set((Array.isArray(l) ? l : []).map(x => String(x).trim().toUpperCase().slice(0, 40)).filter(Boolean))].slice(0, 100);
+
+  function handlingDe(a) {
+    const durees = dureesDe(a, 30);
     const n = parseInt(a.simultanes, 10), av = a.avance === '' || a.avance === null || a.avance === undefined ? NaN : +a.avance;
+    const ch = a.chauffeurs || {}, entier = (v, d) => { const x = parseInt(v, 10); return Number.isInteger(x) && x > 0 ? Math.min(20, x) : d; };
+    // Les chauffeurs, par créneaux horaires du jour J (retour d'usage du 28/09).
+    const creneaux = (Array.isArray(a.creneaux) ? a.creneaux : []).slice(0, 24).map(c => {
+      const de = String((c && c.de) ?? '04:00'), fin = String((c && c.a) ?? '12:00'); P.minutes(de); P.minutes(fin);
+      return { de, a: fin, n: Math.max(0, Math.min(200, parseInt(c && c.n, 10) || 0)) };
+    });
     return {
       durees,
+      longs: cies(a.longs),
+      chauffeurs: { long: entier(ch.long, 2), court: entier(ch.court, 1) },
+      creneaux,
       simultanes: Number.isInteger(n) && n > 0 ? Math.min(50, n) : 1,
       avance: Number.isFinite(av) ? Math.max(0, Math.min(1440, Math.round(av))) : P.AVANCE_HANDLING,
-      compagnies: [...new Set((Array.isArray(a.compagnies) ? a.compagnies : []).map(x => String(x).trim().toUpperCase().slice(0, 40)).filter(Boolean))].slice(0, 100)
+      compagnies: cies(a.compagnies)
     };
   }
 
@@ -121,6 +137,8 @@
           // Le débit de l'ENSEMBLE : ce qui est partagé entre les lignes les
           // bride toutes. Zéro ou absent = aucun plafond.
           plafond: Number.isFinite(+a.plafond) ? Math.max(0, +a.plafond) : 0,
+          // Par vol (retour d'usage du 28/09) : un tunnel lave un vol en la durée de sa compagnie.
+          ...(a.parVol ? { parVol: true, durees: dureesDe(a, 30) } : {}),
           // Le débit d'une plonge est la somme de ses tunnels : on garde la
           // liste, pas le total, sinon on ne saurait plus d'où il vient.
           tunnels: (Array.isArray(a.tunnels) ? a.tunnels : [{ nom: 'Tunnel 1', debit: 300 }])
@@ -529,6 +547,15 @@
           return this.changer(() => a.pauses.push({ de: '12:00', a: '12:45' }), 'Arrêt ajouté.');
         case 'pause-retirer':
           return this.changer(() => a.pauses.splice(+data.index, 1), 'Arrêt retiré.');
+        case 'creneau-ajouter':
+          return this.changer(() => {
+            const d = (a.creneaux || [])[(a.creneaux || []).length - 1];
+            a.creneaux = (a.creneaux || []).concat([d ? { de: d.a, a: d.a < '20:00' ? String(Math.min(23, +d.a.slice(0, 2) + 8)).padStart(2, '0') + ':00' : '23:59', n: d.n }
+              : { de: a.debut || '04:00', a: '14:00', n: Math.max(2, (a.simultanes || 1) * 2) }]);
+          }, 'Créneau ajouté : chaque vol attend d’avoir ses chauffeurs (2 pour un long courrier, 1 pour un court).');
+        case 'creneau-retirer':
+          return this.changer(() => { a.creneaux.splice(+data.index, 1); },
+            a.creneaux.length > 1 ? 'Créneau retiré.' : 'Dernier créneau retiré : le handling revient à « N vols à la fois ».');
         case 'tunnel-ajouter':
           return this.changer(() => a.tunnels.push({ nom: 'Tunnel ' + (a.tunnels.length + 1), debit: 300, personnes: 1, actif: true }),
             'Tunnel ajouté. Le débit de la plonge est la somme des tunnels qui tournent.');
@@ -696,6 +723,21 @@
             if (v === '' || !Number.isFinite(+v)) { if (cie !== P.TOUTES) delete d[cie]; } else d[cie] = Math.max(0, Math.min(1440, +v));
             a.durees = d; break;
           }
+          // Le handling : long ou court courrier, chauffeurs par vol, créneaux.
+          case 'categorie': {
+            const l = new Set(a.longs || []); if (v === 'long') l.add(el.dataset.cie); else l.delete(el.dataset.cie);
+            a.longs = [...l].sort(); break;
+          }
+          case 'chauffeurs-long': a.chauffeurs = { ...(a.chauffeurs || {}), long: Math.max(1, parseInt(v, 10) || 1) }; break;
+          case 'chauffeurs-court': a.chauffeurs = { ...(a.chauffeurs || {}), court: Math.max(1, parseInt(v, 10) || 1) }; break;
+          case 'creneau-de': a.creneaux[+el.dataset.index].de = v; break;
+          case 'creneau-a': a.creneaux[+el.dataset.index].a = v; break;
+          case 'creneau-n': a.creneaux[+el.dataset.index].n = Math.max(0, parseInt(v, 10) || 0); break;
+          // La plonge : par vol, ou par débit.
+          case 'plonge-mode':
+            if (v === 'vol') { a.parVol = true; if (!a.durees || !Object.keys(a.durees).length) a.durees = { [P.TOUTES]: 30 }; }
+            else { delete a.parVol; delete a.durees; }
+            break;
           case 'duree-nouvelle':
             if (v) a.durees = { ...(a.durees || {}), [v]: (a.durees || {})[P.TOUTES] ?? 30 };
             el.value = '';
@@ -1075,9 +1117,10 @@
         ? (a.permanent === false ? (a.vagues.length > 1 ? a.vagues.length + ' vagues : ' : 'une vague : ')
             + a.vagues.map(v => (v.jour ? 'J' + v.jour + ' ' : '') + v.debut).map(esc).join(' · ')
           : a.ouverture ? 'ouvert de ' + esc(a.ouverture.de) + ' à ' + esc(a.ouverture.a) + ', chaque jour' : 'disponible en permanence')
-        : esc(a.debut) + jour + ' · ' + a.personnes + ' pers.'
-          + (a.type === 'robot' ? ' · robot ' + a.debit + ' pl/h' : a.type === 'lavage' ? ' · ' + P.debitLavage(a) + ' u/h'
-            : handling ? ' · ' + a.simultanes + ' vol' + (a.simultanes > 1 ? 's' : '') + ' à la fois' : '')
+        : esc(a.debut) + jour + (handling && (a.creneaux || []).length ? '' : ' · ' + a.personnes + ' pers.')
+          + (a.type === 'robot' ? ' · robot ' + a.debit + ' pl/h' : a.type === 'lavage' ? (a.parVol ? ' · lave par vol' : ' · ' + P.debitLavage(a) + ' u/h')
+            : handling ? ((a.creneaux || []).length ? ' · chauffeurs : ' + (a.chauffeurs || {}).long + ' par long courrier, ' + (a.chauffeurs || {}).court + ' par court'
+              : ' · ' + a.simultanes + ' vol' + (a.simultanes > 1 ? 's' : '') + ' à la fois') : '')
           + ' → fin ' + esc(fin) + esc(attente);
 
       const entete = dansChemin
@@ -1159,7 +1202,7 @@
           <label>Arrive à<input type="time" value="${esc(a.debut)}" data-at-champ="debut"></label>
           ${handling ? `<label>Jour<input value="Jour J des vols" disabled title="Le handling travaille le jour des vols, jamais la veille"></label>`
             : `<label>Jour<select data-at-champ="jour">${[0, -1, -2, -3].map(j => `<option value="${j}" ${j === a.jour ? 'selected' : ''}>${j === 0 ? 'Jour du départ' : 'J' + j}</option>`).join('')}</select></label>`}
-          <label>Personnes<input type="number" min="0" max="999" value="${a.personnes}" data-at-champ="personnes"></label>`}
+          ${handling && (a.creneaux || []).length ? '' : `<label>Personnes<input type="number" min="0" max="999" value="${a.personnes}" data-at-champ="personnes"></label>`}`}
           ${a.type === 'robot' ? `
           <label>Débit du robot (plateaux/h)<input type="number" min="1" value="${a.debit}" data-at-champ="debit"
             title="Le débit des commandes qui n’ont pas le leur (réglable à côté de chaque commande)"></label>
@@ -1205,6 +1248,10 @@
         </div>`}
 
         ${dispo ? '' : handling ? this.ficheHandling(a) : a.type === 'lavage' ? `
+        <label class="at-mode-dispo at-mode-plonge">Comment se compte le lavage ?<select data-at-champ="plonge-mode">
+          <option value="vol" ${a.parVol ? 'selected' : ''}>Par vol : un tunnel lave un vol en tant de minutes</option>
+          <option value="debit" ${a.parVol ? '' : 'selected'}>Par débit : unités de matériel par heure</option></select></label>
+        ${a.parVol ? this.fichePlongeParVol(a, etatTunnels) : `
         <div class="at-sous-titre">Tunnels de lavage
           <span class="mini-note">un débit par ligne, un plafond pour l’ensemble</span></div>
         ${a.tunnels.map((t, i) => `<div class="at-tunnel ${t.actif ? '' : 'arret'}${
@@ -1245,7 +1292,7 @@
               séchage et le retour des paniers sont partagés entre les lignes et les brident
               toutes.</p>
           </span></details></div>
-        <p class="mini-note at-lavage-note">Cette équipe ne prépare pas de commande : son travail vient des retours de vols, à mesure qu’ils arrivent.</p>` : `
+        <p class="mini-note at-lavage-note">Cette équipe ne prépare pas de commande : son travail vient des retours de vols, à mesure qu’ils arrivent.</p>`}` : `
         <div class="at-sous-titre">Ce que cette case prépare, dans l’ordre</div>
         <p class="mini-note at-regle">Une ligne = une préparation. Plusieurs sur la même ligne sortent <b>ensemble</b> ;
           sur deux lignes, <b>l’une après l’autre</b>. La première part à l’heure de début.</p>
@@ -1277,41 +1324,95 @@
       </article>`;
     }
 
-    /* Le handling : il ne prépare pas de commande, il charge des vols. */
-    ficheHandling(a) {
+    /* Une ligne par compagnie : ce qu'on règle pour elle, et combien de vols elle a.
+     * `extra(cie)` : les colonnes propres au service (long / court courrier…). */
+    tableCompagnies(a, cies, nbVols, unite, extra) {
       const durees = a.durees || {};
+      const toutes = durees[P.TOUTES];
+      const liste = [...new Set(cies.concat(Object.keys(durees).filter(k => k !== P.TOUTES)))].sort();
+      const champ = (cie, lib) => `<input type="number" min="0" max="1440" step="1" value="${durees[cie] ?? ''}"
+            placeholder="${cie === P.TOUTES ? 'à saisir' : toutes != null ? String(toutes) : 'à saisir'}"
+            data-at-champ="duree" data-cie="${esc(cie)}" aria-label="${esc(unite)} pour ${esc(lib)}">`;
+      return `<div class="at-cies-bloc"><div class="table-scroll"><table class="at-cies">
+        <thead><tr><th scope="col">Compagnie</th><th scope="col">Vols</th>${extra ? extra.tete : ''}<th scope="col">${esc(unite)}</th></tr></thead><tbody>
+        <tr class="at-cies-toutes"><th scope="row">Toutes les compagnies</th><td>—</td>${extra ? extra.toutes : ''}<td>${champ(P.TOUTES, 'toutes les compagnies')}</td></tr>
+        ${liste.map(cie => `<tr><th scope="row">${esc(cie)}</th><td>${nbVols(cie) || '—'}</td>${extra ? extra.ligne(cie) : ''}
+          <td>${champ(cie, cie)}${durees[cie] != null ? ` <button class="lien-discret" data-at-action="duree-retirer" data-cie="${esc(cie)}" title="Revenir au temps de toutes les compagnies">× propre</button>` : ''}</td></tr>`).join('')}
+        </tbody></table></div>
+        <p class="mini-note">Vide : le temps de « Toutes les compagnies ».</p></div>`;
+    }
+
+    /* Le handling : il récupère les trolleys prêts dans la CF départ et charge les vols. */
+    ficheHandling(a) {
       const cies = [...new Set(this.classes.map(c => c.cie))].sort();
-      const propres = Object.keys(durees).filter(k => k !== P.TOUTES).sort();
-      const libres = cies.filter(c => !propres.includes(c));
       const nb = cie => new Set(this.classes.filter(c => c.cie === cie).flatMap(c => c.vols.map(v => v.id))).size;
-      const ligne = (cie, lib) => `<div class="at-duree">
-          <span class="at-duree-cie">${esc(lib)}</span>
-          <input type="number" min="0" max="1440" step="1" value="${durees[cie] ?? ''}" placeholder="${cie === P.TOUTES ? 'à saisir' : ''}"
-            data-at-champ="duree" data-cie="${esc(cie)}" aria-label="Minutes par vol pour ${esc(lib)}"><span class="at-tunnel-unite">min par vol</span>
-          ${cie === P.TOUTES ? '' : `<button class="btn btn-sm" data-at-action="duree-retirer" data-cie="${esc(cie)}">Retirer</button>`}
-        </div>`;
       const avance = Math.round((a.avance ?? P.AVANCE_HANDLING) / 6) / 10;
+      const ch = a.chauffeurs || { long: 2, court: 1 };
+      const longs = new Set(a.longs || []);
+      const creneaux = a.creneaux || [];
+      const presents = P.creneauxDe(a);
+      const maxi = presents.length ? Math.max(...presents.flatMap(c => [c.de, c.a]).map(t => P.chauffeursPresents(presents, t))) : 0;
       return `
         <div class="at-sous-titre">Chargement des vols</div>
-        <p class="mini-note at-regle">Le handling ne prépare pas de commande : il <b>réunit les classes d’un même vol</b>
-          et le charge. Il prend les vols <b>strictement dans l’ordre des départs</b> : un vol incomplet retient les suivants.
-          Il travaille <b>le jour J des vols</b>, jamais la veille. Les commandes doivent être au handling au départ moins le délai
-          de chargement ; le vol doit être chargé à son départ.</p>
+        <p class="mini-note at-regle">Le handling <b>récupère les trolleys prêts dans la CF départ</b> et <b>charge les vols</b>.
+          Il réunit les classes d’un même vol, prend les vols <b>strictement dans l’ordre des départs</b> (un vol incomplet retient
+          les suivants) et travaille <b>le jour J des vols</b>, jamais la veille. Un vol occupe ses chauffeurs le temps de son chargement.</p>
         <div class="at-champs at-handling">
-          <label>Vols en même temps<input type="number" min="1" max="50" value="${a.simultanes || 1}" data-at-champ="simultanes"
-            title="Combien de vols le handling prépare à la fois (quais, camions)"></label>
+          <label>Chauffeurs pour un <b>long courrier</b><input type="number" min="1" max="20" value="${ch.long}" data-at-champ="chauffeurs-long"></label>
+          <label>Chauffeurs pour un <b>court courrier</b><input type="number" min="1" max="20" value="${ch.court}" data-at-champ="chauffeurs-court"></label>
           <label>Pas avant (heures avant le départ)<input type="number" min="0" max="24" step="0.5" value="${String(avance)}" data-at-champ="avance"
             title="Le handling ne commence pas un vol plus tôt que cela avant son départ"></label>
           <label>Compagnies chargées<input value="${esc((a.compagnies || []).join(', '))}" placeholder="toutes" data-at-champ="compagnies"
             title="Vide : toutes les compagnies. Sinon, par exemple : AF, TX"></label>
         </div>
-        <div class="at-sous-titre">Durée d’un vol, par compagnie</div>
-        ${ligne(P.TOUTES, 'Toutes les compagnies')}
-        ${propres.map(c => ligne(c, c + (nb(c) ? ' · ' + nb(c) + ' vol' + (nb(c) > 1 ? 's' : '') : ''))).join('')}
-        ${libres.length ? `<div class="at-actions-lot"><select data-at-champ="duree-nouvelle" aria-label="Donner une durée propre à une compagnie">
-          <option value="">+ Durée propre à une compagnie…</option>
-          ${libres.map(c => `<option value="${esc(c)}">${esc(c)} · ${nb(c)} vol${nb(c) > 1 ? 's' : ''}</option>`).join('')}</select></div>` : ''}
-        <p class="mini-note at-tunnel-note">Une durée, pas des man-minutes : l’effectif ne la raccourcit pas.</p>`;
+
+        <div class="at-sous-titre">Chauffeurs présents, par créneau (jour J)</div>
+        ${creneaux.length ? creneaux.map((c, i) => `<div class="at-pause at-creneau">
+            <label>De<input type="time" value="${esc(c.de)}" data-at-champ="creneau-de" data-index="${i}"></label>
+            <label>À<input type="time" value="${esc(c.a)}" data-at-champ="creneau-a" data-index="${i}"></label>
+            <label><input type="number" min="0" max="200" value="${c.n}" data-at-champ="creneau-n" data-index="${i}" aria-label="Chauffeurs de ce créneau"> chauffeurs</label>
+            <button class="btn btn-sm" data-at-action="creneau-retirer" data-index="${i}">Retirer</button></div>`).join('')
+          + `<p class="mini-note at-regle">Jusqu’à <b>${maxi}</b> chauffeurs en même temps. Deux créneaux qui se chevauchent s’additionnent ;
+              un créneau qui finit avant son début passe minuit. Un vol attend d’avoir ses chauffeurs libres.</p>`
+          : `<p class="mini-note at-regle">Aucun créneau : le handling charge <b>${a.simultanes || 1} vol${(a.simultanes || 1) > 1 ? 's' : ''} à la fois</b>, sans compter les chauffeurs.
+              <label class="at-inline">Vols en même temps<input type="number" min="1" max="50" value="${a.simultanes || 1}" data-at-champ="simultanes"></label></p>`}
+        <div class="at-actions-lot"><button class="btn btn-sm${creneaux.length ? '' : ' btn-play'}" data-at-action="creneau-ajouter">+ Créneau de chauffeurs</button></div>
+
+        <div class="at-sous-titre">Par compagnie : long ou court courrier, et durée d’un vol</div>
+        ${this.tableCompagnies(a, cies, nb, 'min par vol', {
+          tete: '<th scope="col">Courrier</th><th scope="col">Chauffeurs</th>',
+          toutes: '<td>—</td><td>—</td>',
+          ligne: cie => `<td><select data-at-champ="categorie" data-cie="${esc(cie)}" aria-label="${esc(cie)} : long ou court courrier">
+              <option value="court" ${longs.has(cie) ? '' : 'selected'}>court</option><option value="long" ${longs.has(cie) ? 'selected' : ''}>long</option></select></td>
+            <td>${longs.has(cie) ? ch.long : ch.court}</td>` })}
+        <p class="mini-note at-regle">Une durée, pas des man-minutes : les chauffeurs d’un vol ne la raccourcissent pas.</p>`;
+    }
+
+    /* La plonge par vol : un tunnel lave un vol en tant de temps, compagnie par compagnie. */
+    fichePlongeParVol(a, etatTunnels) {
+      const retours = (this.a.vols ? this.a.vols() : []).filter(v => v.sens === 'RET');
+      const cies = [...new Set(retours.map(v => v.cie))].sort();
+      const nb = cie => retours.filter(v => v.cie === cie).length;
+      const n = Array.isArray(a.tunnels) && a.tunnels.length ? etatTunnels.tournent.length : (a.personnes > 0 ? 1 : 0);
+      return `
+        <div class="at-sous-titre">Tunnels de lavage</div>
+        ${a.tunnels.map((t, i) => `<div class="at-tunnel ${t.actif ? '' : 'arret'}${etatTunnels.sansPersonne.includes(t) ? ' sans-personne' : ''}">
+          <label class="chk chk-mini"><input type="checkbox" data-at-champ="tunnel-actif" data-index="${i}" ${t.actif ? 'checked' : ''}>
+            <span class="sr-only">${esc(t.nom)} en service</span></label>
+          <input value="${esc(t.nom)}" data-at-champ="tunnel-nom" data-index="${i}" maxlength="80" aria-label="Nom du tunnel">
+          <input type="number" min="0" max="99" value="${t.personnes}" data-at-champ="tunnel-personnes" data-index="${i}" aria-label="Personnes pour tenir ${esc(t.nom)}">
+          <span class="at-tunnel-unite">pers.</span>
+          <span class="at-tunnel-etat">${!t.actif ? 'à l’arrêt' : etatTunnels.sansPersonne.includes(t) ? 'personne pour le tenir' : 'tourne'}</span>
+          <button class="btn btn-sm" data-at-action="tunnel-retirer" data-index="${i}">Retirer</button>
+        </div>`).join('')}
+        <div class="at-actions-lot"><button class="btn btn-sm" data-at-action="tunnel-ajouter">+ Tunnel</button>
+          <span class="mini-note at-tunnels-n"><b>${n}</b> tunnel${n > 1 ? 's' : ''} tourne${n > 1 ? 'nt' : ''} : autant de vols lavés en même temps.
+            Un tunnel ne tourne que si l’équipe a les gens pour le tenir, dans l’ordre de la liste.</span></div>
+        <div class="at-sous-titre">Temps pour laver un vol, par compagnie</div>
+        ${this.tableCompagnies(a, cies, nb, 'min par vol et par tunnel')}
+        <p class="mini-note at-lavage-note">La plonge lave les vols qui reviennent, dans l’ordre de leur retour (arrivée + le délai
+          de la boucle du matériel). Chaque tunnel qui tourne prend le vol suivant. Si la boucle du matériel est active, le matériel
+          d’un vol redevient propre à sa sortie du tunnel.</p>`;
     }
 
     /* Les commandes qu'une vague a servies, d'après le dernier calcul. */
@@ -1431,10 +1532,20 @@
             <input type="time" value="${esc(v.debut)}" data-at-champ="vague-debut" data-index="${i}" aria-label="Heure de la vague ${i + 1}"></span>`).join('')}</span>
             <span class="mini-note">sert toutes les commandes, chacune à la vague qui précède son besoin</span>`;
         }
-        if (a.type === 'lavage') return `<span class="mini-note">lave les retours de vols, à mesure qu’ils arrivent · ${P.debitLavage(a)} u/h</span>`;
+        if (a.type === 'lavage') {
+          if (!a.parVol) return `<span class="mini-note">lave les retours de vols, à mesure qu’ils arrivent · ${P.debitLavage(a)} u/h</span>`;
+          const lav = vue.lots.filter(l => l.retourVol), faits = lav.filter(l => !l.impossible);
+          return `<span class="mini-note">lave ${faits.length} vol${faits.length > 1 ? 's' : ''} revenu${faits.length > 1 ? 's' : ''}, dans l’ordre des retours`
+            + (lav.length > faits.length ? ` · <b>${lav.length - faits.length} non lavé${lav.length - faits.length > 1 ? 's' : ''}</b>` : '')
+            + ` · ${(a.durees || {})[P.TOUTES] ?? '—'} min par vol (toutes compagnies)</span>`;
+        }
         if (a.type === 'handling') {
           const n = vue.lots.filter(l => l.vol).length;
-          return `<span class="mini-note">charge ${n} vol${n > 1 ? 's' : ''} dans l’ordre des départs · ${a.simultanes || 1} à la fois · pas avant ${String(Math.round((a.avance ?? 180) / 6) / 10).replace('.', ',')} h avant le départ</span>`;
+          const cr = a.creneaux || [];
+          return `<span class="mini-note">charge ${n} vol${n > 1 ? 's' : ''} dans l’ordre des départs · `
+            + (cr.length ? `chauffeurs ${cr.map(c => c.de + '–' + c.a + ' : ' + c.n).join(', ')} · ${(a.chauffeurs || {}).long} par long courrier (${(a.longs || []).join(', ') || 'aucune compagnie'}), ${(a.chauffeurs || {}).court} par court`
+              : `${a.simultanes || 1} à la fois`)
+            + ` · pas avant ${String(Math.round((a.avance ?? 180) / 6) / 10).replace('.', ',')} h avant le départ</span>`;
         }
         const lignes = (a.lots || []).filter(l => l.length);
         if (!lignes.length) return '<span class="mini-note">aucune commande : rattachez-la dans un chemin</span>';

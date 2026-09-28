@@ -5,6 +5,38 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-28 — Handling par chauffeurs, plonge par vol
+
+Retour d'usage : « le handling récupère les trolleys prêts dans la CF départ et
+charge les vols : 2 chauffeurs pour les long courrier, 1 pour les court
+courrier » ; « le débit de tunnel se parle en vol : un tunnel lave un vol en
+tant de temps » ; « que tout soit le mieux paramétrable possible ». Choix
+confirmés : long / court courrier par compagnie ; durée de chargement par
+compagnie ; chauffeurs par créneaux horaires ; temps de lavage par compagnie.
+
+- **Handling** (`moteur/production.js`) : créneaux de chauffeurs du jour J ;
+  chaque vol prend 2 chauffeurs (long courrier) ou 1 (court), réglables, et
+  attend qu'ils soient libres ; toujours dans l'ordre des départs. Un vol qui
+  n'a jamais assez de chauffeurs est signalé (`handling-chauffeurs`).
+- **Plonge par vol** : chaque tunnel qui tourne lave un vol revenu, dans
+  l'ordre des retours, au temps de sa compagnie ; le matériel redevient propre
+  à la sortie du tunnel. Compagnie sans temps, vols non lavés, longue attente :
+  signalés (`plonge-duree`, `plonge-vol`).
+- **Fiche du handling** : chauffeurs par long / court courrier, créneaux
+  (+ Créneau), et un tableau avec une ligne par compagnie des vols : courrier
+  (long / court), chauffeurs, minutes par vol.
+- **Fiche de la plonge** : « Comment se compte le lavage ? » — par vol, ou par
+  débit (l'ancien réglage) ; par vol, les tunnels et une ligne par compagnie
+  des vols revenus.
+- **Récap des cases** et **Départs** : chauffeurs, créneaux, vols lavés ;
+  « chargé à 07:10 · 2 chauffeurs (attendus 20 min) ».
+- **Excel** (classeur complet) : colonnes « Chauffeurs long courrier »,
+  « Chauffeurs court courrier », « Plonge par vol » ; feuille Handling avec la
+  colonne « Courrier » ; nouvelles feuilles « Chauffeurs » et « Plonge par vol ».
+- Tests : `tests/handling.test.cjs`, `tests/vagues.test.cjs`,
+  `tests/echanges.test.cjs`, `tests/handling-browser.cjs`,
+  `tests/plonge-vol-browser.cjs`.
+
 ## 2026-09-28 — La légumerie, les appros et le magasin comme des boutiques
 
 Retour d'usage : « le système de vagues, je ne le comprends pas » ; « la

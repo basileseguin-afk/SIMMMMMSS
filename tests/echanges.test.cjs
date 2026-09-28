@@ -285,7 +285,7 @@ test('ateliers : un handling fait l’aller-retour par Excel, durées par compag
       regime: { actif: true }, durees: { '*': 30, AF: 45 }, simultanes: 3, avance: 150, compagnies: ['AF', 'TX'] });
     let f = E.ateliersVersClasseur(etat, ctxAteliers());
     const fH = f.find(x => x.nom === 'Handling');
-    assert.deepEqual(fH.lignes.slice(1), [['Handling', 'toutes', 30], ['Handling', 'AF', 45]]);
+    assert.deepEqual(fH.lignes.slice(1), [['Handling', 'toutes', 30, null], ['Handling', 'AF', 45, 'court']]);
     // Dans Excel, on change la durée d'AF et on en donne une à TX.
     f = modifier(f, 'Handling', l => l.map(r => (r[1] === 'AF' ? [r[0], r[1], 50] : r)).concat([['Handling', 'TX', 20]]));
     const { etat: lu } = E.classeurVersAteliers(await parFichier(f), etat, ctxAteliers());
@@ -394,4 +394,30 @@ test('boutique : ses heures d’ouverture font l’aller-retour par Excel', asyn
   assert.deepEqual(r.etat.ateliers.find(a => a.id === 'lg').ouverture, { de: '06:30', a: '17:00' });
   const r2 = E.classeurVersRecapCases(modifier(f, 'Cases', l => l.map(x => (x[0] === 'Légumerie' ? Object.assign(x, { 7: 'permanente' }) : x))), etat, ctx);
   assert.equal(r2.etat.ateliers.find(a => a.id === 'lg').ouverture, undefined, '« permanente » : toujours ouverte');
+});
+
+/* Les chauffeurs du handling et la plonge par vol font l'aller-retour par Excel. */
+test('handling par chauffeurs et plonge par vol : l’aller-retour par Excel ne perd rien', async () => {
+  const etat = ETAT_ATELIERS();
+  etat.ateliers.push(
+    { id: 'hx', nom: 'Handling', service: 'prepa', type: 'handling', debut: '04:00', jour: 0, personnes: 0, pauses: [], lots: [], regime: { actif: true },
+      durees: { '*': 30, AF: 50 }, simultanes: 1, avance: 180, compagnies: [], longs: ['AF', 'DL'], chauffeurs: { long: 2, court: 1 },
+      creneaux: [{ de: '03:00', a: '11:00', n: 6 }, { de: '11:00', a: '20:00', n: 3 }] },
+    { id: 'px', nom: 'Plonge vol', service: 'plonge', type: 'lavage', debut: '05:00', jour: 0, personnes: 2, pauses: [], lots: [], regime: { actif: true },
+      plafond: 0, parVol: true, durees: { '*': 30, DL: 45 }, tunnels: [{ nom: 'T1', debit: 300, personnes: 1, actif: true }] });
+  const f = await parFichier(E.ateliersVersClasseur(etat, ctxAteliers()));
+  assert.deepEqual(f.find(x => x.nom === 'Chauffeurs').lignes.slice(1), [['Handling', '03:00', '11:00', 6], ['Handling', '11:00', '20:00', 3]]);
+  const { etat: lu } = E.classeurVersAteliers(f, etat, ctxAteliers());
+  const h = lu.ateliers.find(a => a.nom === 'Handling'), p = lu.ateliers.find(a => a.nom === 'Plonge vol');
+  assert.deepEqual([h.longs.sort(), h.chauffeurs, h.creneaux, h.durees], [['AF', 'DL'], { long: 2, court: 1 },
+    [{ de: '03:00', a: '11:00', n: 6 }, { de: '11:00', a: '20:00', n: 3 }], { '*': 30, AF: 50 }]);
+  assert.deepEqual([p.parVol, p.durees], [true, { '*': 30, DL: 45 }]);
+  // Modifié dans Excel : DL passe court, 3 chauffeurs par long courrier, un créneau de moins, DL lavé en 60 min.
+  const g = modifier(modifier(modifier(modifier(f, 'Handling', l => l.map(x => (x[1] === 'DL' ? [x[0], x[1], x[2], 'court'] : x))),
+    'Ateliers', l => { const i = l[0].indexOf('Chauffeurs long courrier'); return l.map(x => (x[0] === 'Handling' ? Object.assign(x, { [i]: 3 }) : x)); }),
+    'Chauffeurs', l => l.slice(0, 2)), 'Plonge par vol', l => l.map(x => (x[1] === 'DL' ? [x[0], x[1], 60] : x)));
+  const { etat: lu2 } = E.classeurVersAteliers(g, etat, ctxAteliers());
+  const h2 = lu2.ateliers.find(a => a.nom === 'Handling');
+  assert.deepEqual([h2.longs, h2.chauffeurs.long, h2.creneaux.length], [['AF'], 3, 1]);
+  assert.equal(lu2.ateliers.find(a => a.nom === 'Plonge vol').durees.DL, 60);
 });

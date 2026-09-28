@@ -443,6 +443,66 @@
     return [...par.values()].sort((a, b) => a.depart - b.depart || String(a.id).localeCompare(String(b.id)));
   }
 
+  /*
+   * LES CHAUFFEURS DU HANDLING (retour d'usage du 28/09).
+   *
+   * « Le handling récupère les trolleys prêts dans la CF départ et charge les
+   * vols : 2 chauffeurs pour les compagnies long courrier, 1 pour les court
+   * courrier. » Un handling qui a des créneaux de chauffeurs (`creneaux` :
+   * [{ de: '03:00', a: '11:00', n: 6 }], le jour J) ne charge plus « N vols à
+   * la fois » : chaque vol prend ses chauffeurs (`chauffeurs.long` pour une
+   * compagnie de `longs`, sinon `chauffeurs.court`) pour sa durée, et attend
+   * qu'il y en ait assez de libres. Sans créneau : l'ancien réglage.
+   */
+  const up = x => String(x ?? '').trim().toUpperCase();
+  /** 'long' ou 'court' : une compagnie est long courrier si elle est dans la liste du handling. */
+  function categorieVol(atelier, cie) {
+    return ((atelier && atelier.longs) || []).map(up).includes(up(cie)) ? 'long' : 'court';
+  }
+  /** Les chauffeurs qu'un vol de cette compagnie occupe. */
+  function chauffeursDe(atelier, cie) {
+    const cat = categorieVol(atelier, cie), n = +(((atelier && atelier.chauffeurs) || {})[cat]);
+    return Number.isInteger(n) && n > 0 ? n : (cat === 'long' ? 2 : 1);
+  }
+  /** Les créneaux de chauffeurs, en minutes du jour J ; un créneau qui passe minuit finit le lendemain. */
+  function creneauxDe(atelier) {
+    return ((atelier && atelier.creneaux) || []).map(c => {
+      const de = minutes(c.de); let a = minutes(c.a); if (a <= de) a += MINUTES_PAR_JOUR;
+      return { de, a, n: Math.max(0, Math.floor(+c.n) || 0) };
+    }).filter(c => c.n > 0);
+  }
+  /** Les chauffeurs présents à l'instant `t`. */
+  function chauffeursPresents(creneaux, t) {
+    return creneaux.reduce((n, c) => n + (t >= c.de && t < c.a ? c.n : 0), 0);
+  }
+  /**
+   * Le premier instant, à partir de `t0`, où `besoin` chauffeurs sont libres
+   * pendant tout le chargement. `occupes` : les chargements déjà décidés
+   * ({ de, a, n }) ; `finDe(s)` : la fin d'un chargement qui commencerait à `s`.
+   * Infinity : jamais (pas assez de chauffeurs dans aucun créneau).
+   */
+  function debutAvecChauffeurs(creneaux, occupes, t0, besoin, finDe) {
+    const bornes = [...new Set(creneaux.flatMap(c => [c.de, c.a]).concat(occupes.flatMap(o => [o.de, o.a])))].sort((x, y) => x - y);
+    const libres = t => chauffeursPresents(creneaux, t) - occupes.reduce((n, o) => n + (t >= o.de && t < o.a ? o.n : 0), 0);
+    for (const s of [t0, ...bornes.filter(b => b > t0)]) {
+      const f = finDe(s);
+      if (!Number.isFinite(f)) continue;
+      if ([s, ...bornes.filter(b => b > s && b < f)].every(t => libres(t) >= besoin)) return s;
+    }
+    return Infinity;
+  }
+
+  /*
+   * LA PLONGE PAR VOL (retour d'usage du 28/09).
+   *
+   * « Le débit d'un tunnel se parle en vol : un tunnel lave un vol en tant de
+   * temps. » Une plonge `parVol` lave les vols qui reviennent (sens RET), dans
+   * l'ordre de leur retour ; chaque tunnel qui tourne en prend un, pour la
+   * durée de sa compagnie (`durees`, « * » pour toutes). Le matériel du vol
+   * est propre quand il sort du tunnel.
+   */
+  function dureeLavageVol(atelier, cie) { return dureeHandling(atelier, cie); }
+
   /** Les compagnies qu'un handling charge, ou null pour toutes. */
   function compagniesDe(atelier) {
     const l = Array.isArray(atelier && atelier.compagnies) ? atelier.compagnies.map(x => String(x).trim().toUpperCase()).filter(Boolean) : [];
@@ -605,7 +665,7 @@
 
       if (lavage) {
         const tunnels = Array.isArray(a.tunnels) ? a.tunnels : null;
-        if (tunnels && tunnels.some(t => !(+t.debit > 0)))
+        if (!a.parVol && tunnels && tunnels.some(t => !(+t.debit > 0)))
           dire('tunnel', 'chaque tunnel attend un débit, en unités par heure.');
         // Un tunnel sans personne pour le tenir ne tourne pas. Additionner
         // les débits sans se demander s'il y a les gens donnerait une plonge
@@ -616,7 +676,8 @@
             + etat.sansPersonne.map(t => t.nom || 'sans nom').join(', ')
             + '. Ils ne tournent pas. Ajoutez du monde ou arrêtez-les.');
         }
-        if (!(etat.debit > 0)) dire('debit', tunnels && tunnels.length
+        if (a.parVol) { if (tunnels && tunnels.length && !etat.tournent.length) dire('debit', 'aucun tunnel ne tourne : rien n’est lavé.'); }
+        else if (!(etat.debit > 0)) dire('debit', tunnels && tunnels.length
           ? 'aucun tunnel ne tourne : rien n’est lavé.'
           : 'débit attendu, en unités de matériel par heure.');
       }
@@ -871,7 +932,7 @@
   }
 
   /** Ce que les vols retour ramènent de sale, et quand. */
-  function retoursDeVols(vols, materiel) {
+  function retoursDeVols(vols, materiel, tous) {
     const m = { ...MATERIEL_DEFAUT, ...(materiel || {}) };
     const unites = unitesDe(materiel);
     const out = [];
@@ -880,8 +941,8 @@
       const arrivee = v.sta === undefined ? v.heure : v.sta;
       if (!Number.isFinite(arrivee)) continue;
       const n = unitesDuVol(v, unites);
-      if (n <= 0) continue;
-      out.push({ vol: v.id, t: arrivee + m.delaiRetour, unites: n });
+      if (n <= 0 && !tous) continue;
+      out.push({ vol: v.id, cie: v.cie, t: arrivee + m.delaiRetour, unites: n });
     }
     return out.sort((a, b) => a.t - b.t);
   }
@@ -991,7 +1052,8 @@
     // Ce qui n'empêche pas de jouer la journée ne doit pas l'empêcher.
     const NON_BLOQUANTES = new Set(['doublon', 'bareme', 'lots', 'lot-vide', 'poste', 'materiel', 'dispo', 'bouchon', 'inacheve', 'plonge-fermee',
       'tunnel-personnes', 'parcours-trou', 'hors-parcours', 'bareme-classe',
-      'handling-duree', 'handling-sans', 'handling-bloque', 'handling-poste', 'handling-retard']);
+      'handling-duree', 'handling-sans', 'handling-bloque', 'handling-poste', 'handling-retard', 'handling-chauffeurs',
+      'plonge-duree', 'plonge-vol']);
     const bloquant = anomalies.some(a => !NON_BLOQUANTES.has(a.code));
     if (bloquant) return { ok: false, anomalies, classes, lots: [], ateliers: [] };
 
@@ -1196,7 +1258,7 @@
           if (env.maintenant < r.t) yield env.delai(r.t - env.maintenant);
           noterFile();
           stock.sale += r.unites; stock.entrees += r.unites;
-          file.arrivees.push({ t: env.maintenant, u: r.unites });
+          file.arrivees.push({ t: env.maintenant, u: r.unites, vol: r.vol });
           file.retours.push({ t: env.maintenant, u: r.unites, vol: r.vol });
           noterFile();
           while (reveilsSale.length) { const ev = reveilsSale.shift(); if (!ev.declenche) ev.reussir(env.maintenant); }
@@ -1247,6 +1309,8 @@
         const avance = Number.isFinite(+a.avance) && a.avance !== null && a.avance !== '' ? Math.max(0, +a.avance) : AVANCE_HANDLING;
         const suspendu = { vol: null, attendus: [] };
         suspendus.set(a.id, suspendu);
+        // Des créneaux de chauffeurs : chaque vol prend les siens (2 long courrier, 1 court).
+        const creneaux = creneauxDe(a), parChauffeurs = creneaux.length > 0, occupes = [];
         env.processus(function* () {
           if (env.maintenant < depart) yield env.delai(depart - env.maintenant);
           const pistes = new Array(k).fill(depart);   // quand chaque quai se libère
@@ -1268,9 +1332,31 @@
             if (attendus.some(x => !x.ev.declenche)) yield env.tousDe(attendus.map(x => x.ev));
             suspendu.vol = null; suspendu.attendus = [];
             const pret = attendus.length ? Math.max(...attendus.map(x => livreA.get(cle(x.service, x.classe)) ?? env.maintenant)) : null;
-            let p = 0; for (let i = 1; i < k; i++) if (pistes[i] < pistes[p]) p = i;
             // Pas plus de `avance` avant le départ, et jamais avant 00:00 du jour J.
             const auPlusTot = Math.max(0, v.depart - avance);
+            if (parChauffeurs) {
+              const besoin = chauffeursDe(a, v.cie), categorie = categorieVol(a, v.cie);
+              const duree = dureeHandling(a, v.cie) ?? 0;
+              const tPret = Math.max(env.maintenant, auPlusTot);
+              const attente = Math.max(0, env.maintenant - Math.max(t0, auPlusTot));
+              const debutV = debutAvecChauffeurs(creneaux, occupes, tPret, besoin, x => finAvecPauses(x, duree, pauses).fin);
+              if (!Number.isFinite(debutV)) {
+                const ligne = { ...base, debut: tPret, fin: null, duree, attente, pret, impossible: true, sansChauffeur: true, chauffeurs: besoin, categorie };
+                journal.push(ligne); vue.lots.push(ligne);
+                continue;
+              }
+              if (env.maintenant < debutV) yield env.delai(debutV - env.maintenant);
+              const f = finAvecPauses(debutV, duree, pauses);
+              occupes.push({ de: debutV, a: f.fin, n: besoin });
+              const ligne = { ...base, debut: debutV, fin: f.fin, duree, attente, arret: f.arret, pret, impossible: false,
+                chauffeurs: besoin, categorie, attenteChauffeurs: Math.max(0, debutV - tPret),
+                retard: Math.max(0, f.fin - v.depart), aHeure: f.fin <= v.depart };
+              journal.push(ligne); vue.lots.push(ligne);
+              vue.travail += duree; vue.attente += attente + ligne.attenteChauffeurs; vue.arret += f.arret;
+              vue.fin = Math.max(vue.fin ?? -Infinity, f.fin);
+              continue;
+            }
+            let p = 0; for (let i = 1; i < k; i++) if (pistes[i] < pistes[p]) p = i;
             const debutV = Math.max(env.maintenant, pistes[p], auPlusTot);
             const attente = Math.max(0, env.maintenant - Math.max(t0, pistes[p], auPlusTot));
             const duree = dureeHandling(a, v.cie) ?? 0;
@@ -1290,6 +1376,46 @@
             vue.fin = Math.max(vue.fin ?? -Infinity, f.fin);
           }
         }, a.nom);
+        continue;
+      }
+
+      // La plonge par vol : chaque tunnel qui tourne lave un vol revenu, dans
+      // l'ordre des retours, en la durée de sa compagnie.
+      if (a.type === 'lavage' && a.parVol) {
+        // Sans liste de tunnels : un seul, s'il y a quelqu'un pour le tenir.
+        const actifs = Array.isArray(a.tunnels) && a.tunnels.length ? tunnelsQuiTournent(a).tournent.length : (a.personnes > 0 ? 1 : 0);
+        const n = Math.max(1, actifs);
+        const retours = retoursDeVols(opts.vols, { ...mat, unites: mat.unites }, true);
+        const pistes = new Array(n).fill(depart);
+        for (const r of retours) {
+          const base = { atelier: a.id, service: a.service, nom: 'Vol ' + r.vol, vol: r.vol, cie: r.cie, classes: [], retourVol: true,
+            arrivee: r.t, unites: r.unites, arret: 0 };
+          const duree = dureeLavageVol(a, r.cie) ?? 0;
+          let p = 0; for (let i = 1; i < n; i++) if (pistes[i] < pistes[p]) p = i;
+          const debutV = Math.max(r.t, pistes[p], depart);
+          const f = actifs && debutV < finPoste ? finAvecPauses(debutV, duree, pauses) : null;
+          if (!f || f.fin > finPoste) {
+            const ligne = { ...base, debut: Math.min(debutV, finPoste), fin: null, duree, attente: 0, impossible: true, horsPoste: true };
+            journal.push(ligne); vue.lots.push(ligne);
+            continue;
+          }
+          pistes[p] = f.fin;
+          const ligne = { ...base, debut: debutV, fin: f.fin, duree, attente: debutV - r.t, arret: f.arret, impossible: false, tunnel: p + 1 };
+          journal.push(ligne); vue.lots.push(ligne);
+          vue.travail += duree; vue.attente += ligne.attente; vue.arret += f.arret;
+          vue.fin = Math.max(vue.fin ?? -Infinity, f.fin);
+          // Le matériel du vol est propre à sa sortie du tunnel.
+          if (mat.actif && r.unites > 0) env.processus(function* () {
+            if (env.maintenant < f.fin) yield env.delai(f.fin - env.maintenant);
+            noterFile();
+            stock.sale = Math.max(0, stock.sale - r.unites);
+            const i = file.arrivees.findIndex(x => x.vol === r.vol);
+            if (i >= 0) file.arrivees.splice(i, 1);
+            file.attentes.push({ u: r.unites, attente: f.fin - r.t, pire: f.fin - r.t });
+            noterFile();
+            crediter(r.unites);
+          }, 'lavage ' + r.vol);
+        }
         continue;
       }
 
@@ -1570,11 +1696,12 @@
       for (const v of mesVols) {
         const l = lignes.find(x => x.vol === v.id);
         if (!l && s.vol && s.vol.id === v.id) bloque = v;
-        const etat = l ? (l.fin == null ? 'poste' : l.fin <= v.depart ? 'ok' : 'retard') : 'bloque';
+        const etat = l ? (l.fin == null ? (l.sansChauffeur ? 'chauffeurs' : 'poste') : l.fin <= v.depart ? 'ok' : 'retard') : 'bloque';
         vols.push({ id: v.id, cie: v.cie, depart: v.depart, classes: v.classes, pax: v.pax, atelier: a.id, service: a.service,
           debut: l && l.fin != null ? l.debut : null, fin: l ? l.fin : null, pret: l ? (l.pret ?? null) : null,
           attente: l ? l.attente : 0, retard: l && l.fin != null ? Math.max(0, l.fin - v.depart) : null,
           aHeure: !!(l && l.fin != null && l.fin <= v.depart), etat,
+          ...(l && l.chauffeurs ? { chauffeurs: l.chauffeurs, categorie: l.categorie, attenteChauffeurs: l.attenteChauffeurs || 0 } : {}),
           attendu: bloque === v ? (s.attendus || []).filter(x => !x.ev.declenche).map(x => ({ service: x.service, classe: x.classe })) : null });
       }
       if (bloque) {
@@ -1585,6 +1712,14 @@
             + manque.slice(0, 3).map(x => enClair(x.classe) + ' n’arrive jamais de « ' + nom(x.service) + ' »').join(', ')
             + (manque.length > 3 ? '…' : '') + '. Il charge dans l’ordre des départs : '
             + (derriere ? derriere + (derriere > 1 ? ' vols suivants ne sont pas chargés.' : ' vol suivant n’est pas chargé.') : 'c’était le dernier vol.') });
+      }
+      const sansChauffeur = lignes.filter(l => l.sansChauffeur);
+      if (sansChauffeur.length) {
+        anomalies.push({ code: 'handling-chauffeurs', atelier: a.id,
+          message: (a.nom || a.id) + ' : ' + sansChauffeur.length + (sansChauffeur.length > 1 ? ' vols ne sont pas chargés' : ' vol n’est pas chargé')
+            + ' faute de chauffeurs (premier : ' + sansChauffeur[0].vol + ' de ' + hhmm(sansChauffeur[0].depart) + ', ' + sansChauffeur[0].chauffeurs
+            + (sansChauffeur[0].chauffeurs > 1 ? ' chauffeurs' : ' chauffeur') + ' pour ' + (sansChauffeur[0].categorie === 'long' ? 'un long' : 'un court') + ' courrier). '
+            + 'Ajoutez des chauffeurs dans un créneau qui couvre ces départs.' });
       }
       const nonCharges = lignes.filter(l => l.horsPoste);
       if (nonCharges.length) {
@@ -1603,6 +1738,20 @@
       }
     }
     vols.sort((x, y) => x.depart - y.depart || String(x.id).localeCompare(String(y.id)));
+    // La plonge par vol : les compagnies sans durée, les vols non lavés, l'attente.
+    for (const a of ateliers.filter(x => x.type === 'lavage' && x.parVol)) {
+      const lignes = journal.filter(l => l.retourVol && l.atelier === a.id);
+      const sansDuree = [...new Set(lignes.filter(l => dureeLavageVol(a, l.cie) == null).map(l => l.cie))];
+      if (sansDuree.length) anomalies.push({ code: 'plonge-duree', atelier: a.id,
+        message: (a.nom || a.id) + ' : aucun temps de lavage pour ' + sansDuree.slice(0, 6).join(', ') + (sansDuree.length > 6 ? '…' : '')
+          + ' : ces vols sont lavés en temps nul. Donnez un temps à la compagnie, ou un temps pour toutes.' });
+      const non = lignes.filter(l => l.impossible);
+      const pire = lignes.filter(l => !l.impossible).reduce((m, l) => (l.attente > (m ? m.attente : 0) ? l : m), null);
+      if (non.length || (pire && pire.attente >= 60)) anomalies.push({ code: 'plonge-vol', atelier: a.id,
+        message: (a.nom || a.id) + ' : ' + (non.length ? non.length + (non.length > 1 ? ' vols revenus ne sont pas lavés' : ' vol revenu n’est pas lavé')
+          + ' (le poste finit, ou aucun tunnel ne tourne)' + (pire && pire.attente >= 60 ? ' ; ' : '.') : '')
+          + (pire && pire.attente >= 60 ? 'le vol ' + pire.vol + ' attend ' + dureeLisible(pire.attente) + ' avant d’entrer au tunnel. Ajoutez un tunnel ou du monde.' : '') });
+    }
     const plongeurs = ateliers.filter(a => a.type === 'lavage');
     const plonge = mat.actif ? bilanPlonge(file, stock, plongeurs, env.maintenant,
       plongeurs.map(a => (parId.get(a.id) || {}).finPoste).filter(Number.isFinite)) : null;
@@ -1789,7 +1938,9 @@
    * tunnels lavent en une heure.
    */
   function bilanPlonge(file, stock, lavages, finJournee, finsDePoste) {
-    const capacite = lavages.reduce((n, a) => n + debitLavage(a), 0);
+    // Une plonge par vol n'a pas de débit en unités par heure : pas de dépassement à calculer.
+    const parVol = lavages.length && lavages.every(a => a.parVol);
+    const capacite = parVol ? Infinity : lavages.reduce((n, a) => n + debitLavage(a), 0);
     // La plonge ferme à la dernière fin de poste de ses équipes (sans fin : jamais).
     const fins = finsDePoste || [];
     const fermeture = lavages.length && fins.length === lavages.length ? Math.max(...fins) : null;
@@ -1832,6 +1983,7 @@
     arcsDuParcours, servicesDuParcours, routesDesClasses,
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,
     pausesDe, finAvecPauses, vaguesDe, disponibleDes, debitRobot, ouvertureDe, prochaineOuverture,
+    categorieVol, chauffeursDe, creneauxDe, chauffeursPresents, debutAvecChauffeurs, dureeLavageVol,
     UNITES_DEFAUT, unitesDe, retoursDeVols, besoinMateriel,
     simuler, niveauA, niveauLineaire, dureeLisible
   };

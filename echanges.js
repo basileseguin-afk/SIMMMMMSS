@@ -751,8 +751,11 @@
     const ateliers = [['Atelier', 'Service', 'Type', 'Personnes', 'Pauses',
       'Poste réglementaire', 'Présence (min)', 'Emporte du matériel', 'Débit robot (plateaux/h)',
       'Effectif mini robot', 'Plafond plonge (u/h)', 'Permanent', 'Identifiant',
-      'Vols en même temps', 'Pas avant départ (h)', 'Compagnies chargées', 'Vagues']];
-    const handling = [['Atelier', 'Compagnie', 'Minutes par vol']];
+      'Vols en même temps', 'Pas avant départ (h)', 'Compagnies chargées', 'Vagues',
+      'Chauffeurs long courrier', 'Chauffeurs court courrier', 'Plonge par vol']];
+    const handling = [['Atelier', 'Compagnie', 'Minutes par vol', 'Courrier']];
+    const chauffeurs = [['Atelier', 'Début', 'Fin', 'Chauffeurs']];
+    const plongeVol = [['Atelier', 'Compagnie', 'Minutes par vol']];
     const fab = [['Atelier', 'Ordre', 'Compagnies × classes']];
     const mm = [['Atelier', 'Compagnie × classe', 'Man-minutes']];
     const debitsRobot = [['Atelier', 'Compagnie × classe', 'Débit (plateaux/h)']];
@@ -772,8 +775,18 @@
         a.type === 'handling' ? Math.round((a.avance ?? P.AVANCE_HANDLING) / 6) / 10 : null,
         a.type === 'handling' ? (a.compagnies || []).join(', ') || 'toutes' : null,
         a.type === 'dispo' && a.permanent === false ? (a.vagues && a.vagues.length ? a.vagues : [{ debut: a.debut, jour: a.jour }])
-          .map(v => jourEcrit(v.jour || 0) + ' ' + v.debut).join('; ') : a.type === 'dispo' && a.ouverture ? ecrireOuverture(a) : null]);
-      if (a.type === 'handling') for (const [cie, v] of Object.entries(a.durees || {})) handling.push([a.nom, cie === P.TOUTES ? 'toutes' : cie, v]);
+          .map(v => jourEcrit(v.jour || 0) + ' ' + v.debut).join('; ') : a.type === 'dispo' && a.ouverture ? ecrireOuverture(a) : null,
+        a.type === 'handling' ? (a.chauffeurs || {}).long ?? 2 : null, a.type === 'handling' ? (a.chauffeurs || {}).court ?? 1 : null,
+        a.type === 'lavage' ? (a.parVol ? 'oui' : 'non') : null]);
+      if (a.type === 'handling') {
+        // Une ligne par compagnie réglée : sa durée, et si elle est long courrier.
+        const longs = new Set(a.longs || []), d = a.durees || {};
+        if (d[P.TOUTES] !== undefined) handling.push([a.nom, 'toutes', d[P.TOUTES], null]);
+        for (const cie of [...new Set(Object.keys(d).filter(k => k !== P.TOUTES).concat([...longs]))].sort())
+          handling.push([a.nom, cie, d[cie] ?? null, longs.has(cie) ? 'long' : 'court']);
+        for (const c of (a.creneaux || [])) chauffeurs.push([a.nom, c.de, c.a, c.n]);
+      }
+      if (a.type === 'lavage' && a.parVol) for (const [cie, v] of Object.entries(a.durees || {})) plongeVol.push([a.nom, cie === P.TOUTES ? 'toutes' : cie, v]);
       (a.lots || []).forEach((l, i) => fab.push([a.nom, i + 1, l.join(' + ')]));
       for (const [id, v] of Object.entries(a.minutes || {})) mm.push([a.nom, id, v]);
       for (const [id, v] of Object.entries(a.debits || {})) debitsRobot.push([a.nom, id, v]);
@@ -822,6 +835,8 @@
       { nom: 'Débits robot', lignes: debitsRobot },
       { nom: 'Tunnels', lignes: tunnels },
       { nom: 'Handling', lignes: handling },
+      { nom: 'Chauffeurs', lignes: chauffeurs },
+      { nom: 'Plonge par vol', lignes: plongeVol },
       { nom: 'Classes', lignes: classes },
       { nom: 'Parcours', lignes: parcours },
       { nom: 'Parcours par classe', lignes: defauts },
@@ -842,7 +857,12 @@
         '   Ouverte comme une boutique : Permanent = oui et Vagues « ouvert 07:00-18:00 » ; fermée, l’étape d’après attend l’ouverture.',
         'Handling : il charge les vols un par un, dans l’ordre des départs. Une ligne par compagnie : ses minutes par vol ;',
         '   « toutes » pour les compagnies sans ligne. Dans Ateliers : vols en même temps, pas avant (heures avant le départ),',
-        '   compagnies chargées (« toutes », ou « AF, TX »).',
+        '   compagnies chargées (« toutes », ou « AF, TX »). Courrier : long ou court ; un vol long courrier prend',
+        '   « Chauffeurs long courrier » chauffeurs (2 par défaut), un court « Chauffeurs court courrier » (1).',
+        'Chauffeurs : les créneaux du handling, le jour J (Début, Fin, nombre de chauffeurs). Un vol attend d’avoir ses chauffeurs libres.',
+        '   Sans créneau : « Vols en même temps » (Ateliers). Un créneau qui finit avant son début passe minuit.',
+        'Plonge par vol : Plonge par vol = oui (Ateliers), puis une ligne par compagnie : le temps qu’un tunnel met à laver un de ses vols ;',
+        '   « toutes » pour les compagnies sans ligne. Chaque tunnel qui tourne lave un vol revenu à la fois, dans l’ordre des retours.',
         'Classes : les compagnies × classes. Parcours vide = celui de sa classe. Retirée = oui pour ne plus la fabriquer.',
         '   Une compagnie × classe absente du programme de vols est ajoutée : ses volumes viendront du prochain import des vols.',
         'Parcours : une ligne par lien du diagramme. « De » livre « Vers » (ex. PLONGE → DOTATION).',
@@ -981,7 +1001,14 @@
           a.debit = T.nombreDe(o.debit_robot_plateaux_h, 320);
           a.personnesMin = T.nombreDe(o.effectif_mini_robot, 1);
         }
-        if (type === 'lavage') { a.plafond = T.nombreDe(o.plafond_plonge_u_h, 0); a.tunnels = []; }
+        if (type === 'lavage') {
+          a.plafond = T.nombreDe(o.plafond_plonge_u_h, 0); a.tunnels = [];
+          const pv = String(o.plonge_par_vol ?? '').trim();
+          if (pv ? T.ouiNon(pv, false) : !!(avant && avant.parVol)) {
+            a.parVol = true;
+            a.durees = avant && avant.type === 'lavage' && avant.durees ? JSON.parse(JSON.stringify(avant.durees)) : { [P.TOUTES]: 30 };
+          }
+        }
         if (type === 'dispo') {
           a.permanent = T.ouiNon(o.permanent, true);
           // « J-1 14:00; J 04:00 » : les vagues. Vide : celles du site, sinon son heure.
@@ -1004,6 +1031,11 @@
           a.avance = av === null ? (avant && avant.type === 'handling' ? avant.avance : P.AVANCE_HANDLING) : Math.max(0, Math.round(av * 60));
           a.compagnies = !cies || T.cleEntete(cies) === 'toutes' ? [] : [...new Set(cies.split(/[\s,;+]+/).map(x => x.trim().toUpperCase()).filter(Boolean))];
           a.durees = avant && avant.type === 'handling' ? JSON.parse(JSON.stringify(avant.durees || {})) : { [P.TOUTES]: 30 };
+          const ah = avant && avant.type === 'handling' ? avant : {};
+          a.chauffeurs = { long: Math.max(1, Math.round(T.nombreDe(o.chauffeurs_long_courrier, (ah.chauffeurs || {}).long ?? 2)) || 2),
+            court: Math.max(1, Math.round(T.nombreDe(o.chauffeurs_court_courrier, (ah.chauffeurs || {}).court ?? 1)) || 1) };
+          a.longs = (ah.longs || []).slice();
+          a.creneaux = JSON.parse(JSON.stringify(ah.creneaux || []));
         }
         a._ligne = o._ligne;
         parNom.set(k, a); out.ateliers.push(a);
@@ -1115,13 +1147,50 @@
         const a = atelierNomme(o.atelier, fHa.nom, o._ligne); if (!a) continue;
         err.essayer(fHa.nom, o._ligne, () => {
           if (a.type !== 'handling') throw new Error(a.nom + ' n’est pas un handling');
-          if (!lus.has(a)) { lus.add(a); a.durees = {}; }
+          if (!lus.has(a)) { lus.add(a); a.durees = {}; if (fHa.lignes[0] && fHa.lignes[0].some(h => T.cleEntete(h) === 'courrier')) a.longs = []; }
           const c = String(o.compagnie ?? '').trim();
           const cie = !c || T.cleEntete(c) === 'toutes' ? P.TOUTES : c.toUpperCase();
+          const courrier = T.cleEntete(o.courrier ?? '');
+          if (courrier && cie !== P.TOUTES) {
+            if (!['long', 'court'].includes(courrier)) throw new Error('courrier : « long » ou « court »');
+            if (courrier === 'long' && !a.longs.includes(cie)) a.longs.push(cie);
+          }
           const v = T.nombreDe(o.minutes_par_vol, null);
           if (v === null) return;
           if (!Number.isFinite(v) || v < 0) throw new Error('minutes par vol : nombre positif attendu');
           a.durees[cie] = v;
+        });
+      }
+    }
+    // Les créneaux de chauffeurs du handling : sans la feuille, ceux du site restent.
+    const fCh = T.feuille(feuilles, 'Chauffeurs');
+    if (fCh) {
+      const lus = new Set();
+      for (const o of T.enObjets(fCh.lignes).objets) {
+        const a = atelierNomme(o.atelier, fCh.nom, o._ligne); if (!a) continue;
+        err.essayer(fCh.nom, o._ligne, () => {
+          if (a.type !== 'handling') throw new Error(a.nom + ' n’est pas un handling');
+          if (!lus.has(a)) { lus.add(a); a.creneaux = []; }
+          const n = T.nombreDe(o.chauffeurs, null);
+          if (n === null || !Number.isFinite(n) || n < 0) throw new Error('chauffeurs : nombre positif attendu');
+          a.creneaux.push({ de: hh(T.heureDe(o.debut)), a: hh(T.heureDe(o.fin)), n: Math.round(n) });
+        });
+      }
+    }
+    // Le temps de lavage d'un vol, par compagnie, pour une plonge par vol.
+    const fPv = T.feuille(feuilles, 'Plonge par vol');
+    if (fPv) {
+      const lus = new Set();
+      for (const o of T.enObjets(fPv.lignes).objets) {
+        const a = atelierNomme(o.atelier, fPv.nom, o._ligne); if (!a) continue;
+        err.essayer(fPv.nom, o._ligne, () => {
+          if (a.type !== 'lavage') throw new Error(a.nom + ' n’est pas une plonge');
+          if (!lus.has(a)) { lus.add(a); a.durees = {}; a.parVol = true; }
+          const c = String(o.compagnie ?? '').trim();
+          const v = T.nombreDe(o.minutes_par_vol, null);
+          if (v === null) return;
+          if (!Number.isFinite(v) || v < 0) throw new Error('minutes par vol : nombre positif attendu');
+          a.durees[!c || T.cleEntete(c) === 'toutes' ? P.TOUTES : c.toUpperCase()] = v;
         });
       }
     }

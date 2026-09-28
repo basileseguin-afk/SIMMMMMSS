@@ -158,3 +158,42 @@ test('le handling travaille le jour J des vols : ni la veille, ni avant 00:00', 
   assert.equal(r2.vols[0].debut, 0, 'pas plus de 3 h avant le départ, mais jamais avant 00:00');
   assert.equal(r2.vols[0].fin, h('00:30'));
 });
+
+/* Les chauffeurs (retour d'usage du 28/09) : 2 pour une compagnie long
+ * courrier, 1 pour un court courrier, présents par créneaux horaires. */
+test('chauffeurs : long courrier 2, court 1, réglables ; présents par créneaux', () => {
+  const a = { longs: ['af'], chauffeurs: { long: 3, court: 1 }, creneaux: [{ de: '04:00', a: '11:00', n: 4 }, { de: '10:00', a: '02:00', n: 1 }] };
+  assert.equal(P.categorieVol(a, 'AF'), 'long');
+  assert.equal(P.categorieVol(a, 'TX'), 'court');
+  assert.equal(P.chauffeursDe(a, 'AF'), 3);
+  assert.equal(P.chauffeursDe({ longs: ['AF'] }, 'AF'), 2, 'par défaut : 2 pour un long courrier');
+  assert.equal(P.chauffeursDe({}, 'TX'), 1, 'et 1 pour un court');
+  const c = P.creneauxDe(a);
+  assert.equal(P.chauffeursPresents(c, h('05:00')), 4);
+  assert.equal(P.chauffeursPresents(c, h('10:30')), 5, 'deux créneaux qui se chevauchent');
+  assert.equal(P.chauffeursPresents(c, h('01:00') + 1440), 1, 'un créneau qui passe minuit');
+  assert.equal(P.chauffeursPresents(c, h('03:00')), 0);
+});
+
+test('un vol attend d’avoir ses chauffeurs ; sans assez de chauffeurs, il n’est pas chargé', () => {
+  const pret = [at('pr', 'prepa', '00:00', [['AF/BC'], ['AF/YC'], ['TX/YC']], { personnes: 99 })];
+  // 2 chauffeurs : AF (long, 2) puis TX (court, 1) doit attendre qu'AF les rende.
+  const r = jouer(handling({ longs: ['AF'], creneaux: [{ de: '05:00', a: '14:00', n: 2 }], durees: { AF: 60, TX: 20 } }), pret);
+  assert.equal(r.ok, true, JSON.stringify(r.anomalies));
+  const v = id => r.vols.find(x => x.id === id);
+  assert.deepEqual([v('AF1').chauffeurs, v('AF1').categorie, P.hhmm(v('AF1').debut)], [2, 'long', '06:00'], 'AF1 : 09:00 − 3 h, deux chauffeurs');
+  assert.equal(P.hhmm(v('TX1').debut), '07:00', 'TX1 attend qu’AF1 rende ses chauffeurs');
+  assert.equal(v('TX1').attenteChauffeurs, 0, 'TX1 ne peut pas partir avant 07:00 (10:00 − 3 h) : il n’attend pas de chauffeur');
+  // Un seul chauffeur : un long courrier ne peut jamais partir.
+  const r2 = jouer(handling({ longs: ['AF'], creneaux: [{ de: '05:00', a: '14:00', n: 1 }], durees: { '*': 20 } }), pret);
+  assert.equal(r2.vols.find(x => x.id === 'AF1').etat, 'chauffeurs');
+  assert.ok(r2.anomalies.some(x => x.code === 'handling-chauffeurs' && /2 chauffeurs pour un long courrier/.test(x.message)));
+  assert.equal(r2.vols.find(x => x.id === 'TX1').etat, 'ok', 'le court courrier, lui, part');
+  // Deux courts en même temps quand il y a deux chauffeurs ; le créneau suivant en ajoute.
+  const vols = [{ id: 'TX1', cie: 'TX', sens: 'DEP', std: h('08:00'), yc: 50 }, { id: 'TX2', cie: 'TX', sens: 'DEP', std: h('08:00'), yc: 50 },
+    { id: 'TX3', cie: 'TX', sens: 'DEP', std: h('08:00'), yc: 50 }];
+  const r3 = jouer(handling({ creneaux: [{ de: '05:00', a: '06:00', n: 2 }, { de: '06:00', a: '12:00', n: 3 }], durees: { '*': 90 } }),
+    [at('pr', 'prepa', '00:00', [['TX/YC']], { personnes: 99 })], vols);
+  assert.deepEqual(r3.vols.map(x => P.hhmm(x.debut)), ['05:00', '05:00', '06:00'], 'le 3e attend le créneau de 06:00');
+  assert.equal(r3.vols[2].attenteChauffeurs, 60);
+});

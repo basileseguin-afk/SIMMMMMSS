@@ -288,6 +288,18 @@ de voir d'où vient le matériel. Sur le planning, c'est un repère, pas une bar
 Deux mises à disposition ne se cumulent pas : un service qui en porte une **et**
 un autre atelier est signalé, car le second ne serait jamais attendu.
 
+### Le handling : les chauffeurs (retour d'usage du 28/09)
+
+« Le handling récupère les trolleys prêts dans la CF départ et charge les vols :
+2 chauffeurs pour les compagnies long courrier, 1 pour les court courrier. »
+Un handling avec des **créneaux** (`creneaux: [{ de, a, n }]`, le jour J) ne
+charge plus « N vols à la fois » : chaque vol occupe `chauffeurs.long` (compagnie
+de `longs`) ou `chauffeurs.court` chauffeurs pendant son chargement, et attend
+qu'il y en ait assez de libres (`attenteChauffeurs`). Les vols restent pris dans
+l'ordre des départs. Un vol qui demande plus de chauffeurs qu'aucun créneau
+n'en offre n'est pas chargé (`handling-chauffeurs`). La durée d'un vol reste
+celle de sa compagnie.
+
 ### Le handling : le vol redevient l'unité
 
 Tous les autres services préparent une compagnie × classe **une fois pour tous
@@ -362,6 +374,19 @@ vol sur la base des mêmes passagers types que le barème.
 Un atelier de type **Lavage** ne fabrique rien : son travail vient des retours, à
 mesure qu'ils arrivent. Il suit le même régime de poste que les autres — ce qui
 arrive après la fin de son poste reste sale.
+
+### La plonge par vol (retour d'usage du 28/09)
+
+« Le débit de tunnel se parle en vol : un tunnel lave un vol en tant de
+temps. » Une plonge `parVol` lave les vols revenus (sens RET), dans l'ordre de
+leur retour (arrivée + `delaiRetour`) ; **chaque tunnel qui tourne** (tenu par
+quelqu'un, dans l'ordre de la liste) en prend un, pour la durée de sa
+compagnie (`durees`, `*` pour toutes). Un vol qui arrive quand tous les
+tunnels sont pris attend ; un vol qui ne peut pas être lavé avant la fin du
+poste ne l'est pas (`plonge-vol`) ; une compagnie sans temps est signalée
+(`plonge-duree`). Avec la boucle du matériel, les unités du vol redeviennent
+propres à sa sortie du tunnel. Le mode « par débit » ci-dessous reste au choix
+dans la fiche.
 
 ### La plonge : un débit par ligne, un plafond pour l'ensemble
 
