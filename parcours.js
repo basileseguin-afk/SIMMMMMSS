@@ -204,7 +204,7 @@
       const etapes = etapesOrdonnees(p).map(service => {
         const equipes = ateliers.filter(a => a.service === service);
         const fab = equipes.filter(fabrique);
-        const lavage = equipes.some(a => a.type === 'lavage'), dispo = equipes.some(a => a.type === 'dispo');
+        const lavage = equipes.some(a => a.type === 'lavage'), dispo = equipes.some(a => a.type === 'dispo' || a.type === 'handling');
         const parClasse = cls.map(c => ({ id: c.id,
           atelier: (fab.find(a => (a.lots || []).some(l => l.includes(c.id))) || {}).id || null }));
         // Une plonge lave les retours, une mise à disposition sert tout le
@@ -386,6 +386,7 @@
     // commande, mais elle n'est pas « sautée » pour autant.
     const lavage = new Set(((resultat && resultat.ateliers) || []).filter(a => a.type === 'lavage').map(a => a.service));
     const etapes = colonnes([parcours]).map(({ service: s, groupe }) => {
+      // Au handling, la commande part avec son premier vol : c'est lui qu'on montre.
       const l = lots.find(x => x.service === s && (x.classes || []).includes(classeId));
       return { service: s, branche: groupe,
         debut: l ? l.debut : null, fin: l ? l.fin : null, attente: l ? (l.attente || 0) : 0,
@@ -499,7 +500,12 @@
     let n = 0;
     for (const s of services || []) {
       if (caseDe(etat, s, cmd)) continue;
-      if (s === 'plonge') {
+      if (s === 'handling') {
+        // Le handling charge les vols de toutes les commandes : un seul, partagé.
+        etat.ateliers.push({ id: 'at-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
+          nom: nomLibre(etat, nom(s)), service: s, type: 'handling', debut: '04:00', jour: 0, personnes: 4, pauses: [], lots: [],
+          regime: { actif: true }, durees: { [P.TOUTES]: 30 }, simultanes: 3, avance: P.AVANCE_HANDLING, compagnies: [] });
+      } else if (s === 'plonge') {
         etat.ateliers.push({ id: 'at-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
           nom: nomLibre(etat, nom(s)), service: s, type: 'lavage', debut: '06:00', jour: 0, personnes: 2, pauses: [], lots: [],
           regime: { actif: true }, plafond: 0, tunnels: [{ nom: 'Tunnel 1', debit: 300, personnes: 1, actif: true }] });
@@ -808,6 +814,7 @@
         const sous = !a ? 'aucune case'
           : a.type === 'dispo' ? court + ' · à disposition'
           : a.type === 'lavage' ? court + ' · plonge'
+          : a.type === 'handling' ? court + ' · par vol'
           : court + ' · ' + a.personnes + ' p. · ' + a.debut;
         return { id: s, nom: this.nom(s), ico: ico(s), sous, ton: a ? 'ok' : 'neutre' };
       });
@@ -904,6 +911,7 @@
         const dit = !a ? `aucune case : ${esc(lib)} saute cette étape`
           : a.type === 'dispo' ? `« ${esc(a.nom)} » est une mise à disposition : elle sert toutes les commandes`
           : a.type === 'lavage' ? `« ${esc(a.nom)} » lave pour toutes les commandes`
+          : a.type === 'handling' ? `« ${esc(a.nom)} » charge les vols de toutes les commandes, vol par vol dans l’ordre des départs`
           : `case « ${esc(a.nom)} »${autres.length ? ' — partagée avec ' + esc(autres.map(etiquette).join(', ')) : ''}`;
         const choix = !a || fabrique(a) ? `<label class="pc-case-choix">Case de ${esc(lib)} ici
           <select data-pc-champ="case" data-service="${esc(s)}" aria-label="Case de ${esc(lib)} dans ${esc(this.nom(s))}">

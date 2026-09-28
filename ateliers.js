@@ -27,6 +27,24 @@
     return Object.keys(m).length ? { minutes: m } : {};
   }
 
+  /** Les réglages d'un handling, bornés. Sans durée saisie : 30 min par vol. */
+  function handlingDe(a) {
+    const durees = {};
+    const brut = a.durees && typeof a.durees === 'object' && !Array.isArray(a.durees) ? a.durees : { [P.TOUTES]: 30 };
+    for (const [k, v] of Object.entries(brut).slice(0, 300)) {
+      const cie = k === P.TOUTES ? k : String(k).trim().toUpperCase().slice(0, 40);
+      if (!cie || v === '' || v === null || !Number.isFinite(+v)) continue;
+      durees[cie] = Math.max(0, Math.min(1440, Math.round(+v * 10) / 10));
+    }
+    const n = parseInt(a.simultanes, 10), av = a.avance === '' || a.avance === null || a.avance === undefined ? NaN : +a.avance;
+    return {
+      durees,
+      simultanes: Number.isInteger(n) && n > 0 ? Math.min(50, n) : 1,
+      avance: Number.isFinite(av) ? Math.max(0, Math.min(1440, Math.round(av))) : P.AVANCE_HANDLING,
+      compagnies: [...new Set((Array.isArray(a.compagnies) ? a.compagnies : []).map(x => String(x).trim().toUpperCase().slice(0, 40)).filter(Boolean))].slice(0, 100)
+    };
+  }
+
   function valider(brut) {
     if (!brut || brut.schema !== 'ory-ateliers' || brut.version !== 1 || !Array.isArray(brut.ateliers))
       throw new Error('Fichier d’ateliers v1 attendu.');
@@ -40,14 +58,15 @@
       ids.add(id);
       const nom = String(a.nom ?? '').slice(0, 160);
       const service = String(a.service ?? '').slice(0, 160);
-      const type = ['robot', 'lavage', 'dispo'].includes(a.type) ? a.type : 'manuel';
+      const type = ['robot', 'lavage', 'dispo', 'handling'].includes(a.type) ? a.type : 'manuel';
       P.minutes(a.debut ?? '06:00');
       const jour = Number.isInteger(a.jour) ? Math.max(-7, Math.min(0, a.jour)) : 0;
       const personnes = Number.isInteger(a.personnes) ? Math.max(0, Math.min(999, a.personnes)) : 1;
       const pauses = (Array.isArray(a.pauses) ? a.pauses : []).slice(0, 12).map(p => {
         P.minutes(p.de); P.minutes(p.a); return { de: String(p.de), a: String(p.a) };
       });
-      const lots = (Array.isArray(a.lots) ? a.lots : []).slice(0, 200)
+      // Le handling charge des vols : il n'a pas de liste de commandes.
+      const lots = (Array.isArray(a.lots) && type !== 'handling' ? a.lots : []).slice(0, 200)
         .map(l => (Array.isArray(l) ? l : l && l.classes) || [])
         .map(l => [...new Set(l.map(String))].slice(0, 200));
       return {
@@ -83,7 +102,10 @@
             }))
         } : {}),
         // Une mise à disposition est permanente sauf si on lui donne une heure.
-        ...(type === 'dispo' ? { permanent: a.permanent !== false } : {})
+        ...(type === 'dispo' ? { permanent: a.permanent !== false } : {}),
+        // Le handling : une durée par vol et par compagnie, combien de vols à la
+        // fois, et pas plus de `avance` minutes avant le départ.
+        ...(type === 'handling' ? handlingDe(a) : {})
       };
     });
     // Ce que l'utilisateur retire du programme, et ce qu'il y ajoute. Le
@@ -404,6 +426,9 @@
             'Tunnel ajouté. Le débit de la plonge est la somme des tunnels qui tournent.');
         case 'tunnel-retirer':
           return this.changer(() => a.tunnels.splice(+data.index, 1), 'Tunnel retiré.');
+        case 'duree-retirer':
+          return this.changer(() => { const d = { ...(a.durees || {}) }; delete d[data.cie]; a.durees = d; },
+            'Durée retirée : ' + data.cie + ' prend la durée de toutes les compagnies.');
         case 'classe-supprimer': return this.supprimerClasse(data.classe);
         case 'classe-retablir':  return this.retablirClasse(data.classe);
         case 'classe-nouvelle':  return this.ouvrirAjout();
@@ -475,6 +500,8 @@
           case 'personnesMin': a.personnesMin = Math.max(0, parseInt(v, 10) || 0); break;
           case 'type':
             a.type = v;
+            if (v === 'handling') { delete a.debit; delete a.personnesMin; delete a.tunnels; delete a.minutes; delete a.materiel; a.lots = []; Object.assign(a, handlingDe(a)); break; }
+            delete a.durees; delete a.simultanes; delete a.avance; delete a.compagnies;
             if (v === 'robot') { a.debit = a.debit || 320; a.personnesMin = a.personnesMin === undefined ? 1 : a.personnesMin; }
             else if (v === 'lavage') { delete a.debit; delete a.personnesMin; a.lots = []; }
             // Une mise à disposition ne fabrique rien : ses lignes, son
@@ -493,6 +520,19 @@
           case 'tunnel-personnes': a.tunnels[+el.dataset.index].personnes = Math.max(0, parseInt(v, 10) || 0); break;
           case 'plafond': a.plafond = Math.max(0, parseFloat(v) || 0); break;
           case 'permanent': a.permanent = el.checked; break;
+          case 'simultanes': a.simultanes = Math.max(1, Math.min(50, parseInt(v, 10) || 1)); break;
+          // Saisi en heures, gardé en minutes.
+          case 'avance': a.avance = Math.max(0, Math.min(1440, Math.round((parseFloat(String(v).replace(',', '.')) || 0) * 60))); break;
+          case 'compagnies': a.compagnies = [...new Set(String(v).split(/[\s,;]+/).map(x => x.trim().toUpperCase()).filter(Boolean))].slice(0, 100); break;
+          case 'duree': {
+            const cie = el.dataset.cie, d = { ...(a.durees || {}) };
+            if (v === '' || !Number.isFinite(+v)) { if (cie !== P.TOUTES) delete d[cie]; } else d[cie] = Math.max(0, Math.min(1440, +v));
+            a.durees = d; break;
+          }
+          case 'duree-nouvelle':
+            if (v) a.durees = { ...(a.durees || {}), [v]: (a.durees || {})[P.TOUTES] ?? 30 };
+            el.value = '';
+            break;
           case 'regime': a.regime = { ...a.regime, actif: el.checked }; break;
           case 'presence': {
             // Vider le champ, c'est revenir au réglage général.
@@ -683,6 +723,8 @@
         + (retard ? ' · <span class="at-resume-retard">' + pl(retard, 'en retard', 'en retard') + '</span>' : '')
         + (i.classesAbsentes ? ' · ' + pl(i.classesAbsentes, 'commande', 'commandes') + ' sans équipe' : '')
         + (Number.isFinite(i.finDerniere) ? ' · dernière prête à ' + P.hhmm(i.finDerniere) : '')
+        + (i.volsSuivis ? ' · <b>' + pl(i.volsAHeure, 'vol chargé', 'vols chargés') + ' à l’heure sur ' + i.volsSuivis + '</b>'
+          + (i.volsSuivis - i.volsCharges ? ' · <span class="at-resume-retard">' + pl(i.volsSuivis - i.volsCharges, 'vol non chargé', 'vols non chargés') + '</span>' : '') : '')
         + ' <button class="lien-discret" data-aller="plan" data-onglet="j-chiffres">Les chiffres de la journée →</button></p>';
     }
 
@@ -794,8 +836,11 @@
       const attente = calcul && calcul.attente ? ' · ' + Math.round(calcul.attente) + ' min d’attente' : '';
       const jour = a.jour ? ' (J' + a.jour + ')' : '';
       // Ses commandes dans l'ordre ; chacune ouvre son chemin sur cette case.
+      const handling = a.type === 'handling';
+      const nVols = handling && calcul ? calcul.lots.filter(l => l.vol).length : 0;
       const resume = dispo ? 'sert toutes les commandes'
         : a.type === 'lavage' ? 'lave pour toutes les commandes'
+        : handling ? 'charge les vols dans l’ordre des départs' + (nVols ? ' · ' + nVols + ' vol' + (nVols > 1 ? 's' : '') : '')
         : !a.lots.length ? 'rattachée à aucune commande'
         : a.lots.map(l => l.map(c => `<button class="at-cmd-chip" data-at-action="chemin" data-classe="${esc(c)}"
             title="Ouvrir le chemin de ${esc(P.libelleClasse(c))}">${esc(PC.etiquette(c))}</button>`).join(' + ')).join(' <span aria-hidden="true">→</span> ');
@@ -804,7 +849,8 @@
       const sous = dispo
         ? (a.permanent === false ? 'disponible à partir de ' + esc(a.debut) + jour : 'disponible en permanence')
         : esc(a.debut) + jour + ' · ' + a.personnes + ' pers.'
-          + (a.type === 'robot' ? ' · robot ' + a.debit + ' pl/h' : a.type === 'lavage' ? ' · ' + P.debitLavage(a) + ' u/h' : '')
+          + (a.type === 'robot' ? ' · robot ' + a.debit + ' pl/h' : a.type === 'lavage' ? ' · ' + P.debitLavage(a) + ' u/h'
+            : handling ? ' · ' + a.simultanes + ' vol' + (a.simultanes > 1 ? 's' : '') + ' à la fois' : '')
           + ' → fin ' + esc(fin) + esc(attente);
 
       const entete = dansChemin
@@ -873,7 +919,8 @@
             <option value="manuel" ${a.type === 'manuel' ? 'selected' : ''}>Équipe qui prépare</option>
             <option value="robot" ${a.type === 'robot' ? 'selected' : ''}>Robot</option>
             <option value="lavage" ${a.type === 'lavage' ? 'selected' : ''}>Lavage (plonge)</option>
-            <option value="dispo" ${dispo ? 'selected' : ''}>Mise à disposition</option></select></label>
+            <option value="dispo" ${dispo ? 'selected' : ''}>Mise à disposition</option>
+            <option value="handling" ${handling ? 'selected' : ''}>Handling (par vol)</option></select></label>
           ${dispo ? '' : `
           <label>Arrive à<input type="time" value="${esc(a.debut)}" data-at-champ="debut"></label>
           <label>Jour<select data-at-champ="jour">${[0, -1, -2, -3].map(j => `<option value="${j}" ${j === a.jour ? 'selected' : ''}>${j === 0 ? 'Jour du départ' : 'J' + j}</option>`).join('')}</select></label>
@@ -902,12 +949,12 @@
             <span class="mini-note">${a.regime.presence === undefined
               ? 'réglage général · ' + defaut.presence + ' min' : 'propre à cette équipe'}
               — soit ${String(Math.round(((a.regime.presence ?? defaut.presence) - defaut.arret) / 6) / 10).replace('.', ',')} h de travail</span>` : ''}
-          ${a.type !== 'lavage' && this.state.materiel.actif ? `<label class="chk chk-mini"><input type="checkbox" data-at-champ="consomme"
+          ${a.type !== 'lavage' && !handling && this.state.materiel.actif ? `<label class="chk chk-mini"><input type="checkbox" data-at-champ="consomme"
             ${a.materiel === 'consomme' ? 'checked' : ''}>
             Emporte du matériel propre (trolleys, porcelaine)</label>` : ''}
         </div>`}
 
-        ${dispo ? '' : a.type === 'lavage' ? `
+        ${dispo ? '' : handling ? this.ficheHandling(a) : a.type === 'lavage' ? `
         <div class="at-sous-titre">Tunnels de lavage
           <span class="mini-note">un débit par ligne, un plafond pour l’ensemble</span></div>
         ${a.tunnels.map((t, i) => `<div class="at-tunnel ${t.actif ? '' : 'arret'}${
@@ -978,6 +1025,42 @@
           <button class="btn btn-sm at-danger" data-at-action="supprimer">Supprimer</button>`}
         </div>
       </article>`;
+    }
+
+    /* Le handling : il ne prépare pas de commande, il charge des vols. */
+    ficheHandling(a) {
+      const durees = a.durees || {};
+      const cies = [...new Set(this.classes.map(c => c.cie))].sort();
+      const propres = Object.keys(durees).filter(k => k !== P.TOUTES).sort();
+      const libres = cies.filter(c => !propres.includes(c));
+      const nb = cie => new Set(this.classes.filter(c => c.cie === cie).flatMap(c => c.vols.map(v => v.id))).size;
+      const ligne = (cie, lib) => `<div class="at-duree">
+          <span class="at-duree-cie">${esc(lib)}</span>
+          <input type="number" min="0" max="1440" step="1" value="${durees[cie] ?? ''}" placeholder="${cie === P.TOUTES ? 'à saisir' : ''}"
+            data-at-champ="duree" data-cie="${esc(cie)}" aria-label="Minutes par vol pour ${esc(lib)}"><span class="at-tunnel-unite">min par vol</span>
+          ${cie === P.TOUTES ? '' : `<button class="btn btn-sm" data-at-action="duree-retirer" data-cie="${esc(cie)}">Retirer</button>`}
+        </div>`;
+      const avance = Math.round((a.avance ?? P.AVANCE_HANDLING) / 6) / 10;
+      return `
+        <div class="at-sous-titre">Chargement des vols</div>
+        <p class="mini-note at-regle">Le handling ne prépare pas de commande : il <b>réunit les classes d’un même vol</b>
+          et le charge. Il prend les vols <b>strictement dans l’ordre des départs</b> : un vol incomplet retient les suivants.
+          Les commandes doivent être au handling au départ moins le délai de chargement ; le vol doit être chargé à son départ.</p>
+        <div class="at-champs at-handling">
+          <label>Vols en même temps<input type="number" min="1" max="50" value="${a.simultanes || 1}" data-at-champ="simultanes"
+            title="Combien de vols le handling prépare à la fois (quais, camions)"></label>
+          <label>Pas avant (heures avant le départ)<input type="number" min="0" max="24" step="0.5" value="${String(avance)}" data-at-champ="avance"
+            title="Le handling ne commence pas un vol plus tôt que cela avant son départ"></label>
+          <label>Compagnies chargées<input value="${esc((a.compagnies || []).join(', '))}" placeholder="toutes" data-at-champ="compagnies"
+            title="Vide : toutes les compagnies. Sinon, par exemple : AF, TX"></label>
+        </div>
+        <div class="at-sous-titre">Durée d’un vol, par compagnie</div>
+        ${ligne(P.TOUTES, 'Toutes les compagnies')}
+        ${propres.map(c => ligne(c, c + (nb(c) ? ' · ' + nb(c) + ' vol' + (nb(c) > 1 ? 's' : '') : ''))).join('')}
+        ${libres.length ? `<div class="at-actions-lot"><select data-at-champ="duree-nouvelle" aria-label="Donner une durée propre à une compagnie">
+          <option value="">+ Durée propre à une compagnie…</option>
+          ${libres.map(c => `<option value="${esc(c)}">${esc(c)} · ${nb(c)} vol${nb(c) > 1 ? 's' : ''}</option>`).join('')}</select></div>` : ''}
+        <p class="mini-note at-tunnel-note">Une durée, pas des man-minutes : l’effectif ne la raccourcit pas.</p>`;
     }
 
     finLot(atelierId, index) {

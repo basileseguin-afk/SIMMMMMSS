@@ -50,7 +50,7 @@ Une ligne par équipe. **Le nom est la clé** : les autres feuilles s'y réfère
 |---|---|
 | Atelier | nom, unique |
 | Service | nom ou identifiant du service |
-| Type | `manuel`, `robot`, `plonge` ou `mise à disposition` |
+| Type | `manuel`, `robot`, `plonge`, `mise à disposition` ou `handling` |
 | Personnes | effectif (vide pour une mise à disposition) |
 | Pauses | `10:00-10:15; 12:00-12:30` |
 | Poste réglementaire | `oui` : pauses de régime et durée de présence s'appliquent |
@@ -61,6 +61,9 @@ Une ligne par équipe. **Le nom est la clé** : les autres feuilles s'y réfère
 | Plafond plonge (u/h) | plonge seulement ; vide = aucun plafond |
 | Permanent | mise à disposition seulement : `oui` = toujours servie |
 | Identifiant | facultatif ; garde la trace de l'atelier d'un import à l'autre |
+| Vols en même temps | handling seulement : combien de vols il prépare à la fois (1 par défaut) |
+| Pas avant départ (h) | handling seulement : il ne commence pas un vol plus tôt (3 h par défaut) |
+| Compagnies chargées | handling seulement : `toutes`, ou `AF, TX` |
 
 ### Feuille « Fabrications »
 
@@ -93,6 +96,20 @@ Feuille absente : les valeurs du site restent.
 
 Les tunnels d'une plonge : `Atelier`, `Tunnel`, `Débit (u/h)`, `Personnes`,
 `Actif`.
+
+### Feuille « Handling »
+
+Les durées d'un handling, une ligne par compagnie : `Atelier`, `Compagnie`,
+`Minutes par vol`. `toutes` : la durée des compagnies sans ligne. Une durée, pas
+des man-minutes : l'effectif ne la raccourcit pas. Un handling n'a pas de ligne
+dans « Fabrications » : il charge des vols, pas des commandes.
+
+| Atelier | Compagnie | Minutes par vol |
+|---|---|---|
+| Handling | toutes | 30 |
+| Handling | AF | 45 |
+
+Feuille absente : les durées du site restent.
 
 ### Feuille « Classes »
 

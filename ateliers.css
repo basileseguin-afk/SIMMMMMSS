@@ -133,6 +133,11 @@ body.ateliers-open .workbench{display:none}
 .at-tunnel input[type=number]{max-width:110px}
 .at-tunnel .chk{margin:0}
 .at-tunnel-unite{font-size:12px;color:var(--txt2)}
+/* Le handling : une durée par vol, par compagnie. */
+.at-duree{display:flex;align-items:center;gap:8px;margin:0 14px 6px}
+.at-duree-cie{min-width:200px;font-size:13px;font-weight:600}
+.at-duree input[type=number]{max-width:110px}
+.at-handling{padding-top:0}
 .at-tunnel.arret input:not([type=checkbox]),.at-tunnel.arret .at-tunnel-unite{opacity:.5}
 .at-tunnel-total{font-size:12px;color:var(--txt2);align-self:center}
 .at-tunnel-total b{color:var(--txt);font-size:14px}

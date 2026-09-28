@@ -243,14 +243,15 @@
    *  3. ATELIERS, CLASSES ET PARCOURS
    * ====================================================================*/
 
-  const TYPES_FR = { manuel: 'manuel', robot: 'robot', lavage: 'plonge', dispo: 'mise à disposition' };
+  const TYPES_FR = { manuel: 'manuel', robot: 'robot', lavage: 'plonge', dispo: 'mise à disposition', handling: 'handling' };
   const typeDe = v => {
     const k = T.cleEntete(v || 'manuel');
     if (['manuel', 'equipe'].includes(k)) return 'manuel';
     if (k === 'robot') return 'robot';
     if (['plonge', 'lavage'].includes(k)) return 'lavage';
     if (['mise_a_disposition', 'dispo', 'disposition'].includes(k)) return 'dispo';
-    throw new Error('type inconnu « ' + v + ' » (manuel, robot, plonge ou mise à disposition)');
+    if (['handling', 'chargement', 'par_vol'].includes(k)) return 'handling';
+    throw new Error('type inconnu « ' + v + ' » (manuel, robot, plonge, mise à disposition ou handling)');
   };
   const SEP_CLASSES = /\s*[+,;]\s*/;
   const SEP_ETAPES = /\s*(?:→|->|>)\s*/;
@@ -358,7 +359,9 @@
     const nomDe = id => (services.find(s => s.id === id) || {}).nom || id;
     const ateliers = [['Atelier', 'Service', 'Type', 'Personnes', 'Pauses',
       'Poste réglementaire', 'Présence (min)', 'Emporte du matériel', 'Débit robot (plateaux/h)',
-      'Effectif mini robot', 'Plafond plonge (u/h)', 'Permanent', 'Identifiant']];
+      'Effectif mini robot', 'Plafond plonge (u/h)', 'Permanent', 'Identifiant',
+      'Vols en même temps', 'Pas avant départ (h)', 'Compagnies chargées']];
+    const handling = [['Atelier', 'Compagnie', 'Minutes par vol']];
     const fab = [['Atelier', 'Ordre', 'Compagnies × classes']];
     const mm = [['Atelier', 'Compagnie × classe', 'Man-minutes']];
     const tunnels = [['Atelier', 'Tunnel', 'Débit (u/h)', 'Personnes', 'Actif']];
@@ -372,7 +375,11 @@
         a.type === 'robot' ? a.debit : null, a.type === 'robot' ? a.personnesMin : null,
         a.type === 'lavage' ? a.plafond || null : null,
         a.type === 'dispo' ? (a.permanent === false ? 'non' : 'oui') : null,
-        a.id]);
+        a.id,
+        a.type === 'handling' ? a.simultanes || 1 : null,
+        a.type === 'handling' ? Math.round((a.avance ?? P.AVANCE_HANDLING) / 6) / 10 : null,
+        a.type === 'handling' ? (a.compagnies || []).join(', ') || 'toutes' : null]);
+      if (a.type === 'handling') for (const [cie, v] of Object.entries(a.durees || {})) handling.push([a.nom, cie === P.TOUTES ? 'toutes' : cie, v]);
       (a.lots || []).forEach((l, i) => fab.push([a.nom, i + 1, l.join(' + ')]));
       for (const [id, v] of Object.entries(a.minutes || {})) mm.push([a.nom, id, v]);
       for (const t of (a.tunnels || [])) tunnels.push([a.nom, t.nom, t.debit, t.personnes, t.actif === false ? 'non' : 'oui']);
@@ -418,6 +425,7 @@
       { nom: 'Fabrications', lignes: fab },
       { nom: 'Man-minutes', lignes: mm },
       { nom: 'Tunnels', lignes: tunnels },
+      { nom: 'Handling', lignes: handling },
       { nom: 'Classes', lignes: classes },
       { nom: 'Parcours', lignes: parcours },
       { nom: 'Parcours par classe', lignes: defauts },
@@ -432,6 +440,9 @@
         '   Pour ajouter une compagnie × classe à un atelier : ajoutez une ligne (Atelier, Ordre, ex. « AF/BC »).',
         'Man-minutes : celles qu’un atelier fixe pour une compagnie × classe, à la place du barème importé. Absente = le barème.',
         'Tunnels : les tunnels d’une plonge, avec leur débit et le personnel qui les tient.',
+        'Handling : il charge les vols un par un, dans l’ordre des départs. Une ligne par compagnie : ses minutes par vol ;',
+        '   « toutes » pour les compagnies sans ligne. Dans Ateliers : vols en même temps, pas avant (heures avant le départ),',
+        '   compagnies chargées (« toutes », ou « AF, TX »).',
         'Classes : les compagnies × classes. Parcours vide = celui de sa classe. Retirée = oui pour ne plus la fabriquer.',
         '   Une compagnie × classe absente du programme de vols est ajoutée : ses volumes viendront du prochain import des vols.',
         'Parcours : une ligne par lien du diagramme. « De » livre « Vers » (ex. PLONGE → DOTATION).',
@@ -572,6 +583,14 @@
         }
         if (type === 'lavage') { a.plafond = T.nombreDe(o.plafond_plonge_u_h, 0); a.tunnels = []; }
         if (type === 'dispo') a.permanent = T.ouiNon(o.permanent, true);
+        if (type === 'handling') {
+          const av = T.nombreDe(o.pas_avant_depart_h, null);
+          const cies = String(o.compagnies_chargees ?? '').trim();
+          a.simultanes = Math.max(1, Math.round(T.nombreDe(o.vols_en_meme_temps, 1)) || 1);
+          a.avance = av === null ? (avant && avant.type === 'handling' ? avant.avance : P.AVANCE_HANDLING) : Math.max(0, Math.round(av * 60));
+          a.compagnies = !cies || T.cleEntete(cies) === 'toutes' ? [] : [...new Set(cies.split(/[\s,;+]+/).map(x => x.trim().toUpperCase()).filter(Boolean))];
+          a.durees = avant && avant.type === 'handling' ? JSON.parse(JSON.stringify(avant.durees || {})) : { [P.TOUTES]: 30 };
+        }
         a._ligne = o._ligne;
         parNom.set(k, a); out.ateliers.push(a);
       });
@@ -598,6 +617,7 @@
         const a = atelierNomme(o.atelier, fF.nom, o._ligne); if (!a) continue;
         err.essayer(fF.nom, o._ligne, () => {
           if (a.type === 'lavage' || a.type === 'dispo') throw new Error(a.nom + ' : une ' + TYPES_FR[a.type] + ' ne fabrique pas de lot');
+          if (a.type === 'handling') throw new Error(a.nom + ' : un handling charge des vols, il n’a pas de liste de commandes');
           const ordre = T.nombreDe(o.ordre, Infinity);
           const cls = String(o.compagnies_classes ?? '').split(SEP_CLASSES).filter(Boolean).map(x => {
             const m = /^(.+)\/([a-z]+)$/i.exec(x.trim());
@@ -648,6 +668,24 @@
           if (a.type !== 'lavage') throw new Error(a.nom + ' n’est pas une plonge');
           a.tunnels.push({ nom: String(o.tunnel ?? '').trim() || 'Tunnel ' + (a.tunnels.length + 1),
             debit: T.nombreDe(o.debit_u_h, 300), personnes: T.nombreDe(o.personnes, 1), actif: T.ouiNon(o.actif, true) });
+        });
+      }
+    }
+    // Les durées du handling : sans la feuille, celles du site restent.
+    const fHa = T.feuille(feuilles, 'Handling');
+    if (fHa) {
+      const lus = new Set();
+      for (const o of T.enObjets(fHa.lignes).objets) {
+        const a = atelierNomme(o.atelier, fHa.nom, o._ligne); if (!a) continue;
+        err.essayer(fHa.nom, o._ligne, () => {
+          if (a.type !== 'handling') throw new Error(a.nom + ' n’est pas un handling');
+          if (!lus.has(a)) { lus.add(a); a.durees = {}; }
+          const c = String(o.compagnie ?? '').trim();
+          const cie = !c || T.cleEntete(c) === 'toutes' ? P.TOUTES : c.toUpperCase();
+          const v = T.nombreDe(o.minutes_par_vol, null);
+          if (v === null) return;
+          if (!Number.isFinite(v) || v < 0) throw new Error('minutes par vol : nombre positif attendu');
+          a.durees[cie] = v;
         });
       }
     }

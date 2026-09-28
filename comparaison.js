@@ -52,7 +52,11 @@
       attente: arrondi(k.attenteTotale),
       attenteMateriel: arrondi(k.attenteMateriel),
       hommeHeures: k.hommeHeures == null ? null : Math.round(k.hommeHeures * 10) / 10,
-      absentes: k.classesAbsentes || 0
+      absentes: k.classesAbsentes || 0,
+      // Avec un handling : les vols chargés à leur départ.
+      vols: k.volsSuivis || 0,
+      volsAHeure: k.volsAHeure || 0,
+      partVols: k.partVolsAHeure == null ? null : k.partVolsAHeure
     };
   }
 
@@ -66,6 +70,9 @@
     { groupe: 'Ce qui a changé', lib: 'Rythme de travail', val: s => s.rendement == null ? '—' : s.rendement + ' %', sens: 0 },
     { groupe: 'Ce qui a changé', lib: 'Commandes prêtes avant le départ', val: s => s.delai == null ? '—' : s.delai + ' min', sens: 0 },
     { groupe: 'Ce qui a changé', lib: 'Décalage des vols', val: s => (s.decalage > 0 ? '+' : '') + s.decalage + ' min', sens: 0 },
+    { groupe: 'Ce que ça donne', lib: 'Vols chargés à l’heure (handling)',
+      val: s => s.vols ? s.volsAHeure + ' / ' + s.vols + (s.partVols != null ? ' · ' + s.partVols + ' %' : '') : '—',
+      num: s => s.partVols, sens: 1 },
     { groupe: 'Ce que ça donne', lib: 'Commandes prêtes à l’heure',
       val: s => s.suivies ? s.aHeure + ' / ' + s.suivies + (s.part != null ? ' · ' + s.part + ' %' : '') : '—',
       num: s => s.part, sens: 1 },

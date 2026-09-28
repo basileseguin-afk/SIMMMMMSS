@@ -360,6 +360,7 @@ function etatService(id){
   if(!cases.length){etat=cmds||attendu?'manque':'libre';texte=cmds||attendu?'il manque une équipe':relie?'relié, sans équipe':'pas utilisé';}
   else if(cases.some(a=>a.type==='dispo')){etat='ok';texte='mise à disposition';}
   else if(cases.some(a=>a.type==='lavage')){etat='ok';texte='plonge';}
+  else if(cases.some(a=>a.type==='handling')){etat='ok';texte='charge les vols';}
   else if(!cases.some(a=>(a.lots||[]).some(l=>l.length))){etat='manque';texte='équipe sans commande';}
   else {etat='ok';texte=cases.length>1?cases.length+' équipes':'une équipe';}
   return {cases,cmds,etat,texte};
@@ -374,7 +375,7 @@ function renderServices(){
   const lignes=servicesDisponibles().map(s=>({...s,...etatService(s.id)}))
     .sort((a,b)=>rang[a.etat]-rang[b.etat]||a.nom.localeCompare(b.nom));
   const manque=lignes.filter(l=>l.etat==='manque').length;
-  const type={dispo:'mise à disposition',lavage:'plonge',robot:'robot',manuel:''};
+  const type={dispo:'mise à disposition',lavage:'plonge',robot:'robot',handling:'par vol',manuel:''};
   box.innerHTML='<div class="svc-tete"><p class="mini-note">'+(manque
       ?'<b>'+manque+(manque>1?' services attendent':' service attend')+' une équipe ou du travail</b> : ils sont en tête de liste.'
       :'Chaque service a ce qu’il lui faut.')+' Le nom se change ici ; la forme et la place, sur le plan.</p>'
@@ -553,7 +554,7 @@ function lectureDuGraphe(){
     const e=equipes.get(a.service)||{n:0,dispo:false,fabrique:false};
     // Une plonge lave pour tout le monde : elle n'a pas de liste de commandes,
     // et ce n'est pas un oubli.
-    e.n++; if(a.type==='dispo'||a.type==='lavage')e.dispo=true; if((a.lots||[]).some(l=>l.length))e.fabrique=true;
+    e.n++; if(a.type==='dispo'||a.type==='lavage'||a.type==='handling')e.dispo=true; if((a.lots||[]).some(l=>l.length))e.fabrique=true;
     equipes.set(a.service,e);
   }
   // Un service ne compte dans le parcours que s'il porte une équipe : c'est
@@ -626,7 +627,7 @@ function etatDemarrage(){
   const lu=Sim.flows?lectureDuGraphe():{lignes:[],alertes:[]};
   const r=(Sim.ateliers&&Sim.ateliers.resultat)||{};
   const ats=(Sim.ateliers&&Sim.ateliers.state.ateliers)||[];
-  const fabriquent=ats.filter(a=>a.type==='dispo'||a.type==='lavage'||(a.lots||[]).some(l=>l.length)).length;
+  const fabriquent=ats.filter(a=>a.type==='dispo'||a.type==='lavage'||a.type==='handling'||(a.lots||[]).some(l=>l.length)).length;
   // « Calibré » ne veut pas dire « juste » : seulement que ce ne sont plus les
   // valeurs de démonstration. C'est tout ce qu'on peut honnêtement constater.
   let calibre=false;
@@ -1003,7 +1004,7 @@ function amenagementParService() {
     e.ateliers++; e.lots += a.lots.filter(l => l.length).length; e.personnes += a.personnes;
     // Une plonge et une mise à disposition ne portent pas de lots, et pourtant
     // elles produisent : les compter comme « rien à fabriquer » serait faux.
-    if (a.type === 'lavage' || a.type === 'dispo') e.sansLots = true;
+    if (a.type === 'lavage' || a.type === 'dispo' || a.type === 'handling') e.sansLots = true;
   }
   return par;
 }
@@ -1108,7 +1109,7 @@ function majGoulotInfo() {
     const equipes=((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]).filter(a=>a.service===id);
     if(!equipes.length)html+='<p>Aucune équipe ici.</p><p class="row-btns"><button class="btn btn-play" data-svc-action="equipe" data-svc="'+escapeHTML(id)+'">+ Ajouter une équipe</button><button class="btn" data-page="u-services">Le service →</button></p>';
     else html+='<p>'+equipes.map(a=>'<strong>'+escapeHTML(a.nom)+'</strong>'
-      +(a.type==='dispo'?' · mise à disposition':a.type==='lavage'?' · plonge':' · '+a.personnes+' pers.')).join('<br>')+'</p>';
+      +(a.type==='dispo'?' · mise à disposition':a.type==='lavage'?' · plonge':a.type==='handling'?' · charge les vols':' · '+a.personnes+' pers.')).join('<br>')+'</p>';
     const e=services[id];
     if(e&&!Sim.vue.vide)html+='<p>À '+hh(t)+' : <strong>'+escapeHTML(OrlySimulation.LIBELLE[e.etat])+'</strong>'
       +(e.etat!=='avenir'&&e.nom?' — '+escapeHTML(MoteurProduction.enClair(e.nom)):'')+'.</p>';
@@ -1552,9 +1553,20 @@ function departsSuivis() {
       d.classes.push({ id: c.id, cabine: c.cabine, pax: v.pax, etat: par[c.id] || {} });
     }
   }
+  // Avec un handling, un vol est prêt quand il est CHARGÉ, et il doit l'être
+  // à son départ ; ses classes, elles, devaient être au handling avant.
+  const charges = new Map((r.vols || []).map(v => [v.id, v]));
   for (const d of out.values()) {
     const fins = d.classes.map(c => c.etat.fin);
     d.fin = fins.every(f => f != null) ? Math.max(...fins) : null;
+    const h = charges.get(d.id);
+    if (h) {
+      d.handling = h; d.complet = d.fin;
+      d.fin = h.fin; d.echeance = d.depart;
+      d.dernier = h.fin == null ? d.classes.find(c => c.etat.fin == null) || null : d.classes.find(c => c.etat.fin === d.complet) || null;
+      d.retard = h.fin == null ? null : Math.max(0, Math.round(h.fin - d.depart));
+      continue;
+    }
     // La dernière classe fixe l'heure du vol : c'est elle qu'il faut regarder.
     d.dernier = d.fin == null
       ? d.classes.find(c => c.etat.fin == null)
@@ -1609,8 +1621,10 @@ function renderFlights() {
       + ' · ' + d.classes.length + ' classe' + (d.classes.length > 1 ? 's' : '') + '</small></td>'
       + '<td class="vol-avant">' + hh(d.echeance) + '</td>'
       + '<td><span class="status ' + e + '">' + (I ? I.ico(icoEtat[e]) : '') + mot[e] + '</span>'
-      + (d.fin != null && d.fin <= t ? '<small>prêt à ' + hh(d.fin)
-          + (d.retard ? ' · +' + d.retard + ' min' : '') + '</small>' : '')
+      + (d.fin != null && d.fin <= t ? '<small>' + (d.handling ? 'chargé à ' : 'prêt à ') + hh(d.fin)
+          + (d.retard ? ' · +' + d.retard + ' min' : '') + '</small>'
+        : d.handling && d.handling.etat === 'bloque' ? '<small>le handling attend ' + escapeHTML((d.handling.attendu || []).map(x => MoteurProduction.libelleClasse(x.classe)).join(', ') || 'un vol précédent') + '</small>'
+        : d.handling && d.handling.etat === 'poste' ? '<small>poste du handling fini</small>' : '')
       + '</td><td><div class="vol-repas">' + d.classes.map(pastille).join('') + '</div></td></tr>';
   }).join('') || '<tr><td colspan="5" class="empty-state">Aucun départ ne correspond à ces filtres.</td></tr>';
   renderFriseVols(departsSuivis(), etatDe, mot, icoEtat);

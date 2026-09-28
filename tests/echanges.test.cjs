@@ -276,3 +276,28 @@ test('horaires : un ancien classeur, heures dans « Ateliers », est encore lu',
   const lu = E.classeurVersAteliers(await parFichier(ancien), etat, ctxAteliers()).etat;
   assert.deepEqual([lu.ateliers[0].debut, lu.ateliers[0].jour], ['03:45', -1]);
 });
+
+test('ateliers : un handling fait l’aller-retour par Excel, durées par compagnie comprises', async () => {
+  const etat = ETAT_ATELIERS();
+  SERVICES.push({ id: 'handling', nom: 'CF DÉPART FOOD' });
+  try {
+    etat.ateliers.push({ id: 'h1', nom: 'Handling', service: 'handling', type: 'handling', debut: '04:00', jour: 0, personnes: 6, pauses: [], lots: [],
+      regime: { actif: true }, durees: { '*': 30, AF: 45 }, simultanes: 3, avance: 150, compagnies: ['AF', 'TX'] });
+    let f = E.ateliersVersClasseur(etat, ctxAteliers());
+    const fH = f.find(x => x.nom === 'Handling');
+    assert.deepEqual(fH.lignes.slice(1), [['Handling', 'toutes', 30], ['Handling', 'AF', 45]]);
+    // Dans Excel, on change la durée d'AF et on en donne une à TX.
+    f = modifier(f, 'Handling', l => l.map(r => (r[1] === 'AF' ? [r[0], r[1], 50] : r)).concat([['Handling', 'TX', 20]]));
+    const { etat: lu } = E.classeurVersAteliers(await parFichier(f), etat, ctxAteliers());
+    const h = lu.ateliers.find(a => a.nom === 'Handling');
+    assert.equal(h.type, 'handling');
+    assert.deepEqual(h.durees, { '*': 30, AF: 50, TX: 20 });
+    assert.equal(h.simultanes, 3);
+    assert.equal(h.avance, 150);
+    assert.deepEqual(h.compagnies, ['AF', 'TX']);
+    assert.deepEqual(h.lots, []);
+    // Sans la feuille Handling, les durées du site restent.
+    const sans = E.ateliersVersClasseur(etat, ctxAteliers()).filter(x => x.nom !== 'Handling');
+    assert.deepEqual(E.classeurVersAteliers(await parFichier(sans), etat, ctxAteliers()).etat.ateliers.find(a => a.nom === 'Handling').durees, { '*': 30, AF: 45 });
+  } finally { SERVICES.pop(); }
+});

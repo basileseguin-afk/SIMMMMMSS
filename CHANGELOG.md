@@ -5,6 +5,32 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-28 — Le handling travaille par vol
+
+Retour d'usage : « le handling réunit toutes les compagnie × classes d'un vol,
+puis le vol part ; il ne travaille pas par classes ». Règles confirmées :
+durée par compagnie, ordre strict des départs, pas avant départ − X h,
+commandes au handling à départ − délai et vol chargé au départ.
+
+- Moteur (`moteur/production.js`) : nouveau type de case `handling`. Il prend
+  les départs dans l'ordre, attend que toutes les classes du vol soient là, ne
+  commence pas plus de `avance` minutes avant le départ, dure le temps de la
+  compagnie, et peut préparer plusieurs vols à la fois. Le résultat porte
+  `vols` (complet, chargé, retard, état) et de nouveaux indicateurs (vols
+  chargés à l'heure). Alertes : vol qui retient les suivants, vols non chargés
+  en fin de poste, vols chargés après leur départ, compagnie sans durée ou sans
+  handling. Une commande est prête quand elle arrive au handling ; le séjour en
+  stock devant le handling se compte vol par vol.
+- Cases : type « Handling (par vol) » — vols en même temps, pas avant (heures
+  avant le départ), compagnies chargées, durée par compagnie.
+- Chemins : ajouter le handling à un chemin crée une seule case, partagée.
+- Départs : avec un handling, un vol est « chargé à », à l'heure s'il l'est à
+  son départ ; un vol retenu dit quelle commande il attend.
+- Synthèse, Planning, Comparer deux essais : les vols chargés à l'heure.
+- Excel : colonnes du handling dans « Ateliers », feuille « Handling ».
+- Tests : `tests/handling.test.cjs`, `tests/handling-browser.cjs`, aller-retour
+  Excel.
+
 ## 2026-09-28 — Créer, renommer, rattacher, supprimer un service
 
 Retour d'usage : « comment je supprime un service, le renommer, etc. ».

@@ -383,19 +383,68 @@
    * ====================================================================*/
 
   /*
-   * Quatre natures d'atelier, et quatre seulement.
+   * Cinq natures d'atelier, et cinq seulement.
    *
-   *   manuel  — une équipe, un barème d'homme-minutes
-   *   robot   — une machine, un débit
-   *   lavage  — la plonge : son travail vient des retours, pas d'une liste
-   *   dispo   — une mise à disposition : magasin, appros…
+   *   manuel   — une équipe, un barème d'homme-minutes
+   *   robot    — une machine, un débit
+   *   lavage   — la plonge : son travail vient des retours, pas d'une liste
+   *   dispo    — une mise à disposition : magasin, appros…
+   *   handling — le chargement : il travaille PAR VOL, pas par commande
    *
    * Le dernier ne fabrique rien. Un service qui se contente de **sortir du
    * matériel ou des matières premières** ne consomme ni homme-minutes ni
    * temps de production : il a préparé à l'avance, ou il sert dans l'instant.
    * Lui demander un effectif et une durée serait inventer du travail.
    */
-  const TYPES = ['manuel', 'robot', 'lavage', 'dispo'];
+  const TYPES = ['manuel', 'robot', 'lavage', 'dispo', 'handling'];
+
+  /*
+   * LE HANDLING, OU LE VOL REDEVIENT L'UNITÉ.
+   *
+   * Tous les autres services préparent une compagnie × classe une fois pour
+   * tous ses vols de la journée. Le handling, lui, réunit les classes d'UN
+   * vol (AF1234 : sa Business, son Économie, ses plateaux équipage) et le
+   * charge. Il ne suit donc pas de liste de commandes : il prend les vols
+   * STRICTEMENT dans l'ordre des départs ; si celui de 08:00 n'est pas
+   * complet, il l'attend, même si celui de 08:30 l'est déjà.
+   *
+   *   durees      — minutes par vol, par compagnie ({ AF: 40, '*': 30 }) :
+   *                 une durée, pas des man-minutes, l'effectif ne la raccourcit pas
+   *   simultanes  — combien de vols il prépare en même temps (quais, camions)
+   *   avance      — il ne commence pas un vol plus de `avance` minutes avant
+   *                 son départ (froid, place au quai)
+   *   compagnies  — facultatif : les compagnies qu'il charge ; vide = toutes
+   *
+   * Les classes doivent être au handling à leur échéance (départ − délai de
+   * chargement) ; le vol, lui, doit être chargé à son heure de départ.
+   */
+  const AVANCE_HANDLING = 180;
+
+  /** Minutes de handling d'un vol de cette compagnie, ou null s'il n'en a pas. */
+  function dureeHandling(atelier, cie) {
+    const d = (atelier && atelier.durees) || {};
+    const lire = k => (d[k] === undefined || d[k] === null || d[k] === '' || !Number.isFinite(+d[k]) ? null : Math.max(0, +d[k]));
+    return lire(String(cie).trim().toUpperCase()) ?? lire(TOUTES);
+  }
+
+  /** Les départs de la journée, chacun avec ses classes, dans l'ordre des départs. */
+  function volsDesClasses(classes) {
+    const par = new Map();
+    for (const c of classes || []) for (const v of (c.vols || [])) {
+      let x = par.get(v.id);
+      if (!x) { x = { id: v.id, cie: c.cie, depart: v.depart, classes: [], pax: {} }; par.set(v.id, x); }
+      x.depart = Math.min(x.depart, v.depart);
+      if (!x.classes.includes(c.id)) x.classes.push(c.id);
+      x.pax[c.id] = (x.pax[c.id] || 0) + (v.pax || 0);
+    }
+    return [...par.values()].sort((a, b) => a.depart - b.depart || String(a.id).localeCompare(String(b.id)));
+  }
+
+  /** Les compagnies qu'un handling charge, ou null pour toutes. */
+  function compagniesDe(atelier) {
+    const l = Array.isArray(atelier && atelier.compagnies) ? atelier.compagnies.map(x => String(x).trim().toUpperCase()).filter(Boolean) : [];
+    return l.length ? new Set(l) : null;
+  }
 
   /** Heure à partir de laquelle une mise à disposition sert, en minutes. */
   function disponibleDes(atelier) {
@@ -472,7 +521,7 @@
       if (services.size && !services.has(a.service)) dire('service', 'service inconnu « ' + a.service + ' ».');
       if (a.type !== undefined && !TYPES.includes(a.type)) dire('type', 'type inconnu « ' + a.type + ' ».');
 
-      const robot = a.type === 'robot', lavage = a.type === 'lavage', dispo = a.type === 'dispo';
+      const robot = a.type === 'robot', lavage = a.type === 'lavage', dispo = a.type === 'dispo', handling = a.type === 'handling';
       // Une mise à disposition permanente n'a pas d'heure : lui en réclamer une
       // serait inventer une contrainte qu'elle n'a pas.
       if (!(dispo && a.permanent !== false)) {
@@ -482,7 +531,8 @@
       // Une mise à disposition n'a pas d'effectif : elle ne fabrique pas.
       if (dispo) { /* ni personnes, ni lots, ni barème */ }
       else if (!Number.isInteger(gens) || gens < 0) dire('personnes', 'nombre de personnes entier attendu.');
-      else if (!robot && gens === 0) dire('personnes', 'sans personne, rien n’est fabriqué.');
+      // Le handling a une durée par vol, pas des man-minutes : son effectif ne compte pas.
+      else if (!robot && !handling && gens === 0) dire('personnes', 'sans personne, rien n’est fabriqué.');
 
       if (lavage) {
         const tunnels = Array.isArray(a.tunnels) ? a.tunnels : null;
@@ -518,7 +568,7 @@
       // Un atelier sans lot, ou un lot encore vide, c'est une saisie en cours :
       // on le signale sans empêcher le reste de la journée d'être calculé. Un
       // atelier de lavage, lui, n'a pas de lots : son travail vient des retours.
-      if (lavage || dispo) { /* rien à exiger : ni l'un ni l'autre ne suit une liste */ }
+      if (lavage || dispo || handling) { /* rien à exiger : aucun ne suit une liste de commandes */ }
       else if (!Array.isArray(a.lots) || !a.lots.length) dire('lots', 'ne fabrique rien pour l’instant.');
       else for (const lot of (a.lots || [])) {
         const liste = Array.isArray(lot) ? lot : (lot && lot.classes);
@@ -844,7 +894,7 @@
     for (const a of ateliers) {
       // Un robot va à son débit, une plonge à celui de ses tunnels, une mise à
       // disposition ne travaille pas : aucun n'a besoin de barème.
-      if (a.type === 'robot' || a.type === 'lavage' || a.type === 'dispo') continue;
+      if (a.type === 'robot' || a.type === 'lavage' || a.type === 'dispo' || a.type === 'handling') continue;
       if (!bareme[a.service]) anomalies.push({ code: 'bareme', atelier: a.id,
         message: a.nom + ' : aucun barème pour « ' + nom(a.service) + ' », sa durée est nulle tant qu’il n’est pas renseigné.' });
     }
@@ -867,7 +917,8 @@
 
     // Ce qui n'empêche pas de jouer la journée ne doit pas l'empêcher.
     const NON_BLOQUANTES = new Set(['doublon', 'bareme', 'lots', 'lot-vide', 'poste', 'materiel', 'dispo', 'bouchon', 'inacheve', 'plonge-fermee',
-      'tunnel-personnes', 'parcours-trou', 'hors-parcours', 'bareme-classe']);
+      'tunnel-personnes', 'parcours-trou', 'hors-parcours', 'bareme-classe',
+      'handling-duree', 'handling-sans', 'handling-bloque', 'handling-poste', 'handling-retard']);
     const bloquant = anomalies.some(a => !NON_BLOQUANTES.has(a.code));
     if (bloquant) return { ok: false, anomalies, classes, lots: [], ateliers: [] };
 
@@ -877,14 +928,21 @@
       .map(a => minutes(a.debut) + (a.jour || 0) * MINUTES_PAR_JOUR);
     const env = new Environnement(debuts.length ? Math.min(...debuts) : 0);
 
-    // Livraisons : un événement par (service, classe), créé à la demande.
-    const livraisons = new Map();
+    // Livraisons : un événement par (service, classe), créé à la demande, et
+    // l'heure où il a eu lieu (le handling dit quand un vol a été complet).
+    const livraisons = new Map(), livreA = new Map();
     const cle = (service, classe) => service + '|' + classe;
     const livraison = (service, classe) => {
       const k = cle(service, classe);
       let ev = livraisons.get(k);
       if (!ev) { ev = env.evenement('livre ' + k); livraisons.set(k, ev); }
       return ev;
+    };
+    const livrer = (service, classe) => {
+      const ev = livraison(service, classe);
+      if (ev.declenche) return;
+      livreA.set(cle(service, classe), env.maintenant);
+      ev.reussir(env.maintenant);
     };
 
     // Un service ne produit une classe que si un atelier la lui a confiée :
@@ -899,6 +957,10 @@
     // boucle du matériel porte cette contrainte. Sur un parcours, elle est une
     // étape franchie, jamais un trou.
     const lavages = new Set(ateliers.filter(a => a.type === 'lavage').map(a => a.service));
+    // Le handling charge des vols : il n'a pas de commande à se voir confier,
+    // et il n'est pas un trou sur le chemin d'une commande.
+    const handlings = ateliers.filter(a => a.type === 'handling');
+    const servicesHandling = new Set(handlings.map(a => a.service));
 
     /**
      * Les livraisons qu'un lot doit attendre, pour une classe, dans un service.
@@ -924,6 +986,45 @@
       return [...out];
     }
 
+    /**
+     * Ce que le handling attend d'une commande avant de charger un vol : les
+     * services qui la précèdent sur son chemin ; si le chemin ne passe pas par
+     * le handling, tous ceux qui la préparent. Une commande que personne ne
+     * prépare n'est pas attendue : le vol part sans elle, et on le dit.
+     */
+    function amontsHandling(service, id) {
+      const avant = amontsDe(service, id);
+      if (avant.length) return avant;
+      const out = [];
+      for (const a of ateliers) {
+        if (a.service === service || a.type === 'lavage' || a.type === 'handling' || out.includes(a.service)) continue;
+        if (produit.has(cle(a.service, id))) out.push(a.service);
+      }
+      return out;
+    }
+
+    // Chaque départ va au premier handling qui charge sa compagnie, sinon au
+    // premier qui les charge toutes.
+    const volsJour = volsDesClasses(classes);
+    const volsDe = new Map(handlings.map(a => [a.id, []]));
+    if (handlings.length) {
+      const sans = new Map();
+      for (const v of volsJour) {
+        const h = handlings.find(a => { const s = compagniesDe(a); return s && s.has(v.cie); })
+          || handlings.find(a => !compagniesDe(a));
+        if (h) volsDe.get(h.id).push(v);
+        else sans.set(v.cie, (sans.get(v.cie) || 0) + 1);
+      }
+      for (const [cie, n] of sans) anomalies.push({ code: 'handling-sans', compagnie: cie,
+        message: n + (n > 1 ? ' vols ' : ' vol ') + cie + ' : aucun handling ne charge cette compagnie. Ajoutez-la à un handling, ou videz sa liste de compagnies.' });
+      for (const a of handlings) {
+        const manque = [...new Set((volsDe.get(a.id) || []).filter(v => dureeHandling(a, v.cie) == null).map(v => v.cie))];
+        if (manque.length) anomalies.push({ code: 'handling-duree', atelier: a.id,
+          message: (a.nom || a.id) + ' : aucune durée par vol pour ' + manque.slice(0, 6).join(', ') + (manque.length > 6 ? '…' : '')
+            + ' : ces vols sont chargés en temps nul. Donnez une durée à la compagnie, ou une durée pour toutes.' });
+      }
+    }
+
     // Ce que les parcours disent et que les ateliers ne font pas — dans les
     // deux sens. On le nomme sans bloquer : c'est une saisie en cours.
     if (routes.size) {
@@ -931,7 +1032,7 @@
       for (const [id] of producteurs) {
         const route = routes.get(id); if (!route) continue;
         for (const s of route.services) {
-          if (produit.has(cle(s, id)) || lavages.has(s)) continue;
+          if (produit.has(cle(s, id)) || lavages.has(s) || servicesHandling.has(s)) continue;
           if (!trous.has(s)) trous.set(s, []);
           trous.get(s).push(id);
         }
@@ -1018,6 +1119,7 @@
     }
 
     const journal = [];   // une ligne par lot : ce que l'on affichera
+    const suspendus = new Map();   // handling → le vol qu'il attend encore
     const suivi = ateliers.map(a => ({ id: a.id, nom: a.nom, service: a.service, type: a.type,
       debut: a.type === 'dispo' && a.permanent !== false
         ? env.maintenant : minutes(a.debut) + (a.jour || 0) * MINUTES_PAR_JOUR,
@@ -1045,14 +1147,62 @@
         env.processus(function* () {
           if (env.maintenant < ouverture) yield env.delai(ouverture - env.maintenant);
           const ids = classes.map(c => c.id);
-          for (const id of ids) {
-            const ev = livraison(a.service, id);
-            if (!ev.declenche) ev.reussir(env.maintenant);
-          }
+          for (const id of ids) livrer(a.service, id);
           const ligne = { atelier: a.id, service: a.service, nom: 'mise à disposition',
             classes: ids, debut: env.maintenant, fin: env.maintenant, duree: 0,
             attente: 0, arret: 0, impossible: false, dispo: true };
           journal.push(ligne); vue.lots.push(ligne); vue.fin = env.maintenant;
+        }, a.nom);
+        continue;
+      }
+
+      if (a.type === 'handling') {
+        const mesVols = volsDe.get(a.id) || [];
+        const k = Math.max(1, Math.floor(+a.simultanes) || 1);
+        const avance = Number.isFinite(+a.avance) && a.avance !== null && a.avance !== '' ? Math.max(0, +a.avance) : AVANCE_HANDLING;
+        const suspendu = { vol: null, attendus: [] };
+        suspendus.set(a.id, suspendu);
+        env.processus(function* () {
+          if (env.maintenant < depart) yield env.delai(depart - env.maintenant);
+          const pistes = new Array(k).fill(depart);   // quand chaque quai se libère
+          let parti = false;
+          for (const v of mesVols) {
+            const base = { atelier: a.id, service: a.service, nom: 'Vol ' + v.id, vol: v.id, cie: v.cie,
+              classes: v.classes.slice(), pax: { ...v.pax }, depart: v.depart, handling: true, attente: 0, arret: 0 };
+            if (parti) {
+              // L'équipe est partie : ce vol-ci n'est pas chargé non plus.
+              const ligne = { ...base, debut: finPoste, fin: null, duree: null, impossible: true, horsPoste: true };
+              journal.push(ligne); vue.lots.push(ligne);
+              continue;
+            }
+            const t0 = env.maintenant;
+            // Strictement dans l'ordre des départs : on attend ce vol-ci, complet.
+            const attendus = [];
+            for (const id of v.classes) for (const s of amontsHandling(a.service, id)) attendus.push({ service: s, classe: id, ev: livraison(s, id) });
+            suspendu.vol = v; suspendu.attendus = attendus;
+            if (attendus.some(x => !x.ev.declenche)) yield env.tousDe(attendus.map(x => x.ev));
+            suspendu.vol = null; suspendu.attendus = [];
+            const pret = attendus.length ? Math.max(...attendus.map(x => livreA.get(cle(x.service, x.classe)) ?? env.maintenant)) : null;
+            let p = 0; for (let i = 1; i < k; i++) if (pistes[i] < pistes[p]) p = i;
+            const auPlusTot = v.depart - avance;
+            const debutV = Math.max(env.maintenant, pistes[p], auPlusTot);
+            const attente = Math.max(0, env.maintenant - Math.max(t0, pistes[p], auPlusTot));
+            const duree = dureeHandling(a, v.cie) ?? 0;
+            const f = debutV < finPoste ? finAvecPauses(debutV, duree, pauses) : null;
+            if (!f || f.fin > finPoste) {
+              parti = true;
+              const ligne = { ...base, debut: Math.min(debutV, finPoste), fin: null, duree, attente, pret, impossible: true, horsPoste: true };
+              journal.push(ligne); vue.lots.push(ligne);
+              continue;
+            }
+            if (env.maintenant < debutV) yield env.delai(debutV - env.maintenant);
+            pistes[p] = f.fin;
+            const ligne = { ...base, debut: debutV, fin: f.fin, duree, attente, arret: f.arret, pret, impossible: false,
+              retard: Math.max(0, f.fin - v.depart), aHeure: f.fin <= v.depart };
+            journal.push(ligne); vue.lots.push(ligne);
+            vue.travail += duree; vue.attente += attente; vue.arret += f.arret;
+            vue.fin = Math.max(vue.fin ?? -Infinity, f.fin);
+          }
         }, a.nom);
         continue;
       }
@@ -1195,10 +1345,7 @@
           // Si deux ateliers du même service fabriquent la même classe — une
           // anomalie déjà signalée — c'est la première livraison qui fait foi.
           // Le modèle ne se bloque pas sur une saisie que l'utilisateur corrigera.
-          for (const id of ids) {
-            const ev = livraison(a.service, id);
-            if (!ev.declenche) ev.reussir(env.maintenant);
-          }
+          for (const id of ids) livrer(a.service, id);
 
           const ligne = { atelier: a.id, service: a.service, nom, classes: ids,
             debut: debutLot, fin: env.maintenant, duree, attente, attenteMateriel: attenteMat,
@@ -1229,7 +1376,7 @@
 
     // Un lot que le poste n'a pas pu finir n'est pas une erreur de saisie :
     // c'est le résultat, et le plus utile. On le nomme sans bloquer.
-    for (const l of journal.filter(l => l.horsPoste)) {
+    for (const l of journal.filter(l => l.horsPoste && !l.handling)) {
       anomalies.push({ code: 'poste', atelier: l.atelier,
         message: l.nom + ' dans « ' + nom(l.service) + ' » : le poste se termine avant la fin. '
           + 'Commencez plus tôt, ajoutez du monde, ou confiez-le à une autre équipe.' });
@@ -1274,7 +1421,9 @@
 
     const derniers = {};   // dernier service du parcours de chaque classe
     for (const c of classes) {
-      const etapes = journal.filter(l => l.classes.includes(c.id));
+      // Le handling charge des vols : une commande est prête quand elle est au
+      // handling, c'est-à-dire quand ses étapes à elle sont finies.
+      const etapes = journal.filter(l => !l.handling && l.classes.includes(c.id));
       // Une mise à disposition figure au parcours mais ne fabrique rien : si
       // c'est la seule étape d'une classe, cette classe n'est pas faite. Sans
       // cette distinction, un magasin ouvert suffirait à dire « 100 % à l'heure ».
@@ -1292,7 +1441,52 @@
       };
     }
 
-    const stocks = stocksEntreAteliers(journal, classes, derniers, amontsDe);
+    const stocks = stocksEntreAteliers(journal, classes, derniers,
+      (s, id) => (servicesHandling.has(s) ? amontsHandling(s, id) : amontsDe(s, id)));
+
+    /* ---- les vols, au handling ----------------------------------------- */
+    const vols = [];
+    for (const a of handlings) {
+      const s = suspendus.get(a.id) || {};
+      const lignes = journal.filter(l => l.handling && l.atelier === a.id);
+      const mesVols = volsDe.get(a.id) || [];
+      let bloque = null;
+      for (const v of mesVols) {
+        const l = lignes.find(x => x.vol === v.id);
+        if (!l && s.vol && s.vol.id === v.id) bloque = v;
+        const etat = l ? (l.fin == null ? 'poste' : l.fin <= v.depart ? 'ok' : 'retard') : 'bloque';
+        vols.push({ id: v.id, cie: v.cie, depart: v.depart, classes: v.classes, pax: v.pax, atelier: a.id, service: a.service,
+          debut: l && l.fin != null ? l.debut : null, fin: l ? l.fin : null, pret: l ? (l.pret ?? null) : null,
+          attente: l ? l.attente : 0, retard: l && l.fin != null ? Math.max(0, l.fin - v.depart) : null,
+          aHeure: !!(l && l.fin != null && l.fin <= v.depart), etat,
+          attendu: bloque === v ? (s.attendus || []).filter(x => !x.ev.declenche).map(x => ({ service: x.service, classe: x.classe })) : null });
+      }
+      if (bloque) {
+        const manque = (s.attendus || []).filter(x => !x.ev.declenche);
+        const derriere = mesVols.length - mesVols.indexOf(bloque) - 1;
+        anomalies.push({ code: 'handling-bloque', atelier: a.id, vol: bloque.id,
+          message: (a.nom || a.id) + ' attend toujours le vol ' + bloque.id + ' (' + hhmm(bloque.depart) + ') : '
+            + manque.slice(0, 3).map(x => enClair(x.classe) + ' n’arrive jamais de « ' + nom(x.service) + ' »').join(', ')
+            + (manque.length > 3 ? '…' : '') + '. Il charge dans l’ordre des départs : '
+            + (derriere ? derriere + (derriere > 1 ? ' vols suivants ne sont pas chargés.' : ' vol suivant n’est pas chargé.') : 'c’était le dernier vol.') });
+      }
+      const nonCharges = lignes.filter(l => l.horsPoste);
+      if (nonCharges.length) {
+        const vue = parId.get(a.id);
+        anomalies.push({ code: 'handling-poste', atelier: a.id,
+          message: (a.nom || a.id) + ' : ' + nonCharges.length + (nonCharges.length > 1 ? ' vols ne sont pas chargés' : ' vol n’est pas chargé')
+            + ', le poste finit' + (vue && vue.finPoste != null ? ' à ' + hhmm(vue.finPoste) : '') + ' (premier : ' + nonCharges[0].vol + ' de ' + hhmm(nonCharges[0].depart)
+            + '). Ajoutez une équipe de handling plus tard, ou allongez sa présence.' });
+      }
+      const tard = lignes.filter(l => l.fin != null && l.fin > l.depart);
+      if (tard.length) {
+        const pire = tard.reduce((x, y) => (y.fin - y.depart > x.fin - x.depart ? y : x));
+        anomalies.push({ code: 'handling-retard', atelier: a.id,
+          message: (a.nom || a.id) + ' : ' + tard.length + (tard.length > 1 ? ' vols chargés' : ' vol chargé') + ' après leur départ (le plus en retard : '
+            + pire.vol + ', +' + Math.round(pire.fin - pire.depart) + ' min).' });
+      }
+    }
+    vols.sort((x, y) => x.depart - y.depart || String(x.id).localeCompare(String(y.id)));
     const plongeurs = ateliers.filter(a => a.type === 'lavage');
     const plonge = mat.actif ? bilanPlonge(file, stock, plongeurs, env.maintenant,
       plongeurs.map(a => (parId.get(a.id) || {}).finPoste).filter(Number.isFinite)) : null;
@@ -1332,8 +1526,15 @@
         finDerniere: suivies.some(c => c.fin != null) ? Math.max(...suivies.filter(c => c.fin != null).map(c => c.fin)) : null,
         attenteTotale: journal.reduce((n, l) => n + l.attente, 0),
         attenteMateriel: journal.reduce((n, l) => n + (l.attenteMateriel || 0), 0),
-        hommeHeures: journal.reduce((n, l) => n + (l.hommeMinutes || 0), 0) / 60
+        hommeHeures: journal.reduce((n, l) => n + (l.hommeMinutes || 0), 0) / 60,
+        // Les vols, quand un handling les charge.
+        volsSuivis: vols.length,
+        volsCharges: vols.filter(v => v.fin != null).length,
+        volsAHeure: vols.filter(v => v.aHeure).length,
+        partVolsAHeure: vols.length ? Math.round(vols.filter(v => v.aHeure).length / vols.length * 100) : null,
+        retardVolMax: vols.some(v => v.retard != null) ? Math.max(...vols.filter(v => v.retard != null).map(v => v.retard)) : null
       },
+      vols,
       materiel: mat.actif ? {
         unites: unitesDe(mat), stockInitial: mat.stockInitial,
         entrees: stock.entrees, lavees: Math.round(stock.lavees), consommees: stock.consommees,
@@ -1415,7 +1616,9 @@
   function stocksEntreAteliers(journal, classes, derniers, amontsDe) {
     const parClasse = new Map(classes.map(c => [c.id, c]));
     const lotDe = new Map();
-    for (const l of journal) if (!l.dispo) for (const c of l.classes || []) lotDe.set(l.service + '|' + c, l);
+    for (const l of journal) if (!l.dispo && !l.handling) for (const c of l.classes || []) lotDe.set(l.service + '|' + c, l);
+    // Au handling, une commande ne séjourne que pour un vol : ses repas à bord de ce vol.
+    const auHandling = new Set(journal.filter(l => l.handling).flatMap(l => l.classes || []));
     const sejours = [];
     for (const l of journal) {
       if (l.dispo || !Number.isFinite(l.debut)) continue;
@@ -1425,13 +1628,13 @@
           const a = lotDe.get(amont + '|' + c);
           if (!a || a.fin == null || l.debut - a.fin < 1) continue;
           sejours.push({ de: amont, vers: l.service, classe: c, entree: a.fin, sortie: l.debut,
-            duree: l.debut - a.fin, repas: k.pax || 0 });
+            duree: l.debut - a.fin, repas: (l.handling && l.pax ? l.pax[c] : k.pax) || 0, ...(l.vol ? { vol: l.vol } : {}) });
         }
       }
     }
     // Prête avant le chargement : elle attend l'avion.
     for (const d of Object.values(derniers)) {
-      if (d.fin == null || d.absente || !Number.isFinite(d.echeance) || d.echeance - d.fin < 1) continue;
+      if (d.fin == null || d.absente || auHandling.has(d.id) || !Number.isFinite(d.echeance) || d.echeance - d.fin < 1) continue;
       const derniere = journal.find(l => !l.dispo && (l.classes || []).includes(d.id) && l.fin === d.fin);
       sejours.push({ de: derniere ? derniere.service : null, vers: 'chargement', classe: d.id, entree: d.fin,
         sortie: d.echeance, duree: d.echeance - d.fin, repas: d.pax || 0 });
@@ -1508,7 +1711,7 @@
     MINUTES_PAR_JOUR, CABINES, TYPES,
     minutes, hhmm, idClasse, libelleClasse, enClair,
     REGIME_DEFAUT, normaliserRegime, travailDuPoste, executerTache,
-    classesDeVols, BAREME_DEMO, RENDEMENT_DEMO, travailClasse, travailDans,
+    classesDeVols, volsDesClasses, dureeHandling, compagniesDe, AVANCE_HANDLING, BAREME_DEMO, RENDEMENT_DEMO, travailClasse, travailDans,
     PAX_TYPE, TOUTES, cleBareme, normaliserBareme, minutesParVol,
     arcsDuParcours, servicesDuParcours, routesDesClasses,
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,

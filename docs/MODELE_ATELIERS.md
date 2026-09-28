@@ -245,6 +245,44 @@ de voir d'où vient le matériel. Sur le planning, c'est un repère, pas une bar
 Deux mises à disposition ne se cumulent pas : un service qui en porte une **et**
 un autre atelier est signalé, car le second ne serait jamais attendu.
 
+### Le handling : le vol redevient l'unité
+
+Tous les autres services préparent une compagnie × classe **une fois pour tous
+ses vols** de la journée. Le handling, lui, **réunit les classes d'un même vol**
+(AF1234 : sa Business, son Économie, ses plateaux équipage) et le charge
+(retour d'usage du 28/09).
+
+| Champ | Sens |
+|---|---|
+| `type: 'handling'` | |
+| `durees` | minutes par vol et par compagnie, `{ AF: 45, '*': 30 }` ; `*` pour les autres |
+| `simultanes` | combien de vols il prépare à la fois (quais, camions) |
+| `avance` | il ne commence pas un vol plus de `avance` minutes avant son départ (180) |
+| `compagnies` | facultatif : celles qu'il charge ; vide = toutes |
+
+Les règles, confirmées :
+
+- **Strictement dans l'ordre des départs.** Si le vol de 08:00 n'est pas
+  complet, le handling l'attend, même si celui de 08:30 l'est déjà. Un vol
+  jamais complet retient tous les suivants, et c'est dit (`handling-bloque`).
+- **Une durée par compagnie**, pas des man-minutes : l'effectif ne la raccourcit
+  pas. Avec `simultanes` > 1, chaque quai prend le vol suivant, toujours dans
+  l'ordre.
+- **Deux échéances.** Une commande doit être **au handling** au départ moins le
+  délai de chargement (son échéance ne change pas) ; le **vol** doit être chargé
+  à son heure de départ. Une commande est donc « prête » quand ses étapes à elle
+  sont finies — le handling de ses vols n'entre pas dans son heure.
+- Il n'a **pas de liste de commandes** et n'est jamais un trou sur un chemin : il
+  attend, pour chaque classe du vol, les services qui la précèdent sur son
+  chemin, ou — si le chemin ne passe pas par lui — tous ceux qui la préparent.
+- Plusieurs handlings : chaque vol va au premier qui charge sa compagnie, sinon
+  au premier qui les charge toutes.
+
+Le résultat porte `vols` : pour chaque départ, l'heure où il était complet, le
+début et la fin du chargement, le retard sur le départ et son état (`ok`,
+`retard`, `bloque`, `poste`). La page Départs, la Synthèse, le Planning et la
+comparaison des essais les montrent.
+
 ## 3. La boucle du matériel
 
 Les trolleys, la porcelaine, les couverts ne s'achètent pas : ils reviennent.

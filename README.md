@@ -134,7 +134,14 @@ le rouge ne sert qu’aux retards.
      commande sans chemin suit le modèle de sa classe.
    - *Cases* : chaque case avec ses commandes dans l’ordre, qui mènent à leur
      chemin ; « + Case hors chemin » pour une plonge ou une mise à disposition
-     qui sert tout le monde.
+     qui sert tout le monde. Une case **Handling (par vol)** ne prépare pas de
+     commande : elle réunit les classes d’un même vol et le charge,
+     strictement dans l’ordre des départs, avec une durée par compagnie, un
+     nombre de vols en même temps et une heure au plus tôt (« pas avant 3 h
+     avant le départ »). Ajouter le handling à un chemin crée cette case, une
+     seule pour toutes les commandes. Les commandes doivent être au handling
+     au départ moins le délai de chargement ; le vol doit être chargé à son
+     départ.
    - *Qui prépare quoi* : le tableau calculé, une ligne par commande, une
      colonne par service, la case et ses heures dans chaque cellule ; un clic
      ouvre le chemin de la commande sur ce service.
@@ -366,6 +373,8 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/echanges.test.cjs` | Les trois classeurs : aller-retour, ajouts, erreurs regroupées |
 | `tests/excel-browser.cjs` | Chemins et tableau « Qui prépare quoi » dans l’interface, classeurs ateliers et vols de bout en bout |
 | `tests/menu-browser.cjs` | L’accueil (tuiles, états, « à faire ensuite »), le menu par parties, la nature de chaque page, les outils qui suivent la page, clavier, page retenue, sauvegarde, menu verrouillé pendant l’édition du plan, hauteur des bandeaux, écran de 1 024 px |
+| `tests/handling.test.cjs` | Le handling par vol : classes d’un même vol réunies, ordre strict des départs, pas avant départ − X h, plusieurs quais, vol bloqué, poste fini, durée par compagnie, stocks devant le handling |
+| `tests/handling-browser.cjs` | Le handling dans l’interface : une case partagée posée depuis un chemin, sa fiche, les départs « chargé à », la synthèse |
 | `tests/services-browser.cjs` | Organisation › Services : une ligne par service, « + Une équipe » (depuis la page, les contrôles, le plan), renommer, voir et modifier sur le plan, pas d’alerte pour une plonge ; cycle de vie : créer, doublon refusé, changer de rattachement, supprimer, retirer et remettre |
 | `tests/nav.cjs` | Aide partagée des tests navigateur : aller à une page comme à la main (la partie, puis l’onglet) |
 | `tests/icones.test.cjs` | Chaque service reconnaît son pictogramme |

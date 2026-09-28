@@ -217,6 +217,11 @@
         ['Temps passé à attendre', Math.round(k.attenteTotale || 0) + ' min, tous services'],
         ['Travail fourni', (k.hommeHeures || 0).toFixed(1).replace('.', ',') + ' heures de travail']
       ];
+      // Avec un handling, c'est le vol chargé qui compte : on le dit en tête.
+      if (k.volsSuivis) lignes.unshift(
+        ['Vols chargés à l’heure', k.volsAHeure + ' sur ' + k.volsSuivis + (k.partVolsAHeure != null ? ' · ' + k.partVolsAHeure + ' %' : '')],
+        ['Vols non chargés', String(k.volsSuivis - k.volsCharges)],
+        ['Vol le plus en retard', k.retardVolMax ? '+' + Math.round(k.retardVolMax) + ' min après son départ' : 'aucun']);
       if (k.classesAbsentes) lignes.push(['Sans équipe', k.classesAbsentes + (k.classesAbsentes > 1 ? ' commandes que personne ne prépare' : ' commande que personne ne prépare')]);
       box.innerHTML = '<dl class="bilan">' + lignes.map(([q, v]) =>
         '<div><dt>' + esc(q) + '</dt><dd>' + esc(v) + '</dd></div>').join('') + '</dl>';
