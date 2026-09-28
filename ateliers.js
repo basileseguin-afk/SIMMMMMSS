@@ -1062,9 +1062,9 @@
       const importees = c => { const k = this.classes.find(x => x.id === c); return k ? Math.round(P.travailClasse(a.service, k, bareme) * 10) / 10 : 0; };
       const mm = c => {
         const imp = importees(c), propre = (a.minutes || {})[c];
-        return `<label class="at-mm" title="Man-minutes de ${esc(P.libelleClasse(c))} dans cette case. Vide : celles de l’import (${imp}).">
+        return `<label class="at-mm" title="Man-minutes de ${esc(P.libelleClasse(c))} dans cette case, pour toute sa journée (tous ses vols). Vide : celles du barème (${imp}).">
           <input type="number" min="0" step="1" value="${propre ?? ''}" placeholder="${imp}" data-at-champ="minutes" data-classe="${esc(c)}"
-            aria-label="Man-minutes de ${esc(P.libelleClasse(c))} dans cette case (import : ${imp})"><span>man-min</span>${
+            aria-label="Man-minutes de ${esc(P.libelleClasse(c))} dans cette case, pour la journée (barème : ${imp})"><span>man-min / jour</span>${
           propre != null ? `<small class="at-mm-import">import ${imp}</small>` : ''}</label>`;
       };
       // Un robot : le débit de chaque commande, en plateaux par heure ; vide = celui du robot.

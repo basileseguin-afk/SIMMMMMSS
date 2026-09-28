@@ -27,10 +27,11 @@ test('une ligne par commande, une colonne par service, d’où vient chaque vale
   assert.deepEqual([afbc.cellules.cuisine.source, afbc.cellules.cuisine.parVol, afbc.cellules.cuisine.jour], ['commun', 30, 60]);
   assert.deepEqual([txbc.cellules.cuisine.source, txbc.cellules.cuisine.parVol], ['propre', 45]);
   assert.equal(afyc.cellules.cuisine.source, 'hors', 'AF YC ne passe pas par la cuisine');
-  assert.deepEqual([afyc.cellules.prepa.source, afyc.cellules.prepa.parVol, afyc.cellules.prepa.atelier, afyc.cellules.prepa.bareme], ['case', 12, 'Montage AF YC', 10]);
+  // 12 man-min fixées dans la case pour la journée d'AF YC (3 vols) : 4 par vol, comme le calcul les lit.
+  assert.deepEqual([afyc.cellules.prepa.source, afyc.cellules.prepa.parVol, afyc.cellules.prepa.jour, afyc.cellules.prepa.atelier, afyc.cellules.prepa.bareme], ['case', 4, 12, 'Montage AF YC', 10]);
   assert.equal(afbc.parVol, 50); assert.equal(afbc.jour, 100);
   assert.equal(r.totaux.jour.cuisine, 60 + 45);
-  assert.equal(r.totaux.jourTotal, 60 + 45 + 40 + 20 + 36);
+  assert.equal(r.totaux.jourTotal, 60 + 45 + 40 + 20 + 12);
 });
 
 test('le fichier de paramétrage fait l’aller-retour sans rien changer', async () => {

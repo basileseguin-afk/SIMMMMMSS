@@ -5,6 +5,16 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-28 — Récaps et reste du site : une donnée, partout la même
+
+Retour d'usage : « tu as bien lié les man-minutes et le récap des cases à tout
+le reste du site ? ». Vérifié par un test qui change une donnée à un endroit et
+contrôle tous les autres, dans les deux sens (`tests/liaisons-browser.cjs`,
+seize liaisons). Un défaut trouvé et corrigé (BUGS.md, BUG-046) : les
+man-minutes fixées dans une case valent pour la journée de la commande, le
+récap les montrait par vol ; il les ramène à un vol, et la fiche dit
+« man-min / jour ».
+
 ## 2026-09-28 — Données › Récap des cases
 
 Retour d'usage : « un tableau récap des ateliers et de ce que traite chacun,

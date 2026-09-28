@@ -235,9 +235,11 @@
         const a = eq && eq.type === 'manuel' && eq.minutes && Number.isFinite(eq.minutes[c.id]) ? eq : null;
         const t = bareme[sv.id] || {};
         const propre = t[P.cleBareme(c.cie, c.cabine)], commun = t[P.cleBareme(P.TOUTES, c.cabine)];
-        const v = a ? a.minutes[c.id] : Number.isFinite(propre) ? propre : Number.isFinite(commun) ? commun : null;
+        // Les man-minutes fixées dans une case valent pour TOUTE la journée de la
+        // commande (tous ses vols), comme le calcul les lit : ramenées ici à un vol.
+        const v = a ? (vols ? a.minutes[c.id] / vols : a.minutes[c.id]) : Number.isFinite(propre) ? propre : Number.isFinite(commun) ? commun : null;
         const source = a ? 'case' : Number.isFinite(propre) ? 'propre' : Number.isFinite(commun) ? 'commun' : 'manque';
-        cellules[sv.id] = { source, parVol: v, jour: v == null ? null : v * vols, atelier: a ? a.nom : null, equipe,
+        cellules[sv.id] = { source, parVol: v, jour: v == null ? null : (a ? a.minutes[c.id] : v * vols), atelier: a ? a.nom : null, equipe,
           // Ce que dure un vol dans cette équipe : man-minutes ÷ personnes.
           duree: v != null && equipe && equipe.type === 'manuel' && equipe.personnes > 0 ? v / equipe.personnes : null,
           bareme: Number.isFinite(propre) ? propre : Number.isFinite(commun) ? commun : null };
@@ -816,7 +818,7 @@
         '   Pauses : « 10:00-10:15; 12:00-12:30 ». Présence vide : celle du réglage général.',
         'Fabrications : ce que fait chaque atelier, DANS L’ORDRE. Une ligne par lot ; plusieurs classes d’un lot se séparent par « + ».',
         '   Pour ajouter une compagnie × classe à un atelier : ajoutez une ligne (Atelier, Ordre, ex. « AF/BC »).',
-        'Man-minutes : celles qu’un atelier fixe pour une compagnie × classe, à la place du barème importé. Absente = le barème.',
+        'Man-minutes : celles qu’un atelier fixe pour une compagnie × classe, POUR TOUTE SA JOURNÉE (tous ses vols), à la place du barème. Absente = le barème.',
         'Débits robot : le débit d’une compagnie × classe sur un robot (plateaux/h). Absente = le débit du robot (feuille Ateliers).',
         'Tunnels : les tunnels d’une plonge, avec leur débit et le personnel qui les tient.',
         'Vagues (Ateliers) : une mise à disposition (légumerie, magasin…) sert toutes les commandes à la fois, par vagues :',

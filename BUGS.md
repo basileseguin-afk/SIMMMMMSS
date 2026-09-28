@@ -590,3 +590,22 @@ contrôles, plan, planning, stocks).
 
 **Preuves.** `tests/services-browser.cjs` § 10 ; `tests/production.test.cjs`
 (messages par le nom).
+
+## Revue du 2026-09-28 — Les récaps et le reste du site : une donnée, partout la même
+
+Retour d'usage : « si je modifie les données, il faut que ce soit pris en compte
+partout, et inversement ». Méthode : `tests/liaisons-browser.cjs` change une
+donnée à un endroit et vérifie tous les autres, dans les deux sens — barème
+(Temps de travail), récap des man-minutes, récap des cases, fiche d'une case,
+chemin, « Qui prépare quoi », calcul, Excel Horaires, renommage, Annuler.
+Seize liaisons vérifiées.
+
+| ID | Gravité | Statut | Vérif. | Résumé | Fichier |
+|---|---|---|---|---|---|
+| BUG-046 | Majeur | Corrigé | Confirmé | Les man-minutes fixées **dans une case** valent pour toute la journée de la commande (tous ses vols) — c'est ainsi que le calcul les lit ; le récap des man-minutes les montrait comme des man-minutes **par vol**. Une commande de 4 vols avec 45 man-min fixées dans sa case s'affichait « 45 par vol » au lieu de 11,25. Le récap les ramène à un vol ; la fiche dit « man-min / jour » | `echanges.js`, `ateliers.js`, `reglages.js` |
+
+**Vérifié sans défaut.** Chaque page lit la même source (le barème pour les
+man-minutes, l'état des cases pour le reste) et se redessine quand l'autre
+change : barème ↔ récap man-minutes ↔ fiche ; effectif récap ↔ fiche ↔ récap
+des cases ↔ calcul ; départ récap des cases ↔ fiche ↔ chemin ↔ « Qui prépare
+quoi » ↔ Excel Horaires ; « ensemble » ; renommage d'un service ; Annuler.

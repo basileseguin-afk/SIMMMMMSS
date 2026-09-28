@@ -604,7 +604,7 @@
         } else if (vue === 'jour') {
           tdVal = `<td class="rgr ${c.source} g" title="${esc(lib)} : ${c.parVol == null ? 'à renseigner' : fr(c.parVol) + ' man-min par vol × ' + l.vols + ' vol' + (l.vols > 1 ? 's' : '')}">${c.jour == null ? '—' : fr(c.jour)}</td>`;
         } else if (c.source === 'case') {
-          tdVal = `<td class="rgr case g" title="Fixée dans la case « ${esc(c.atelier)} » (barème : ${c.bareme == null ? 'rien' : fr(c.bareme)}). Elle se change dans la case.">${fr(c.parVol)}</td>`;
+          tdVal = `<td class="rgr case g" title="Fixée dans la case « ${esc(c.atelier)} » : ${fr(c.jour)} man-min pour la journée, soit ${fr(c.parVol)} par vol (barème : ${c.bareme == null ? 'rien' : fr(c.bareme)}). Elle se change dans la case.">${fr(c.parVol)}</td>`;
         } else {
           tdVal = `<td class="rgr ${c.source} g"><input type="number" min="0" step="0.1" value="${c.parVol == null ? '' : c.parVol}"
             placeholder="${c.source === 'manque' ? 'à saisir' : ''}" data-rg-champ="recap" data-service="${esc(sv.id)}" data-classe="${esc(l.classe.id)}"
