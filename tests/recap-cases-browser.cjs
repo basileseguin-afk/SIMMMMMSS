@@ -63,6 +63,18 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.deepEqual([k.debut,k.personnes,k.lots],['01:45',5,[['TX/BC'],['AF/BC','DL/BC']]]);
   fs.unlinkSync(fichier);
 
+  // 5. Une commande mène à son chemin, ouvert sur le service de la case
+  //    (retour d'usage : « quand je clique sur CRL BC, ça m'emmène sur CRL BC »).
+  await nav.aller(page,'at-recap');
+  await ligne('s1').locator('.rc-cmd[data-classe="TX/BC"]').click();await attendre();
+  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'at-chemins','on arrive sur les chemins');
+  assert.deepEqual(await page.evaluate(()=>[Sim.ateliers.parcours.cmd,Sim.ateliers.parcours.svc]),['TX/BC','dotation'],
+    'sur le chemin de TX BC, à la dotation');
+  assert.equal(await page.locator('#at-parcours .pc-cmd.actif[data-classe="TX/BC"]').count(),1,'TX BC est la commande choisie');
+  await nav.aller(page,'at-recap');
+  await ligne('e1').locator('.rc-cmd[data-classe="DL/PC"]').click();await attendre();
+  assert.deepEqual(await page.evaluate(()=>[document.body.dataset.sous,Sim.ateliers.parcours.cmd]),['at-chemins','DL/PC'],'une commande « ensemble » aussi');
+
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('recap-cases-browser : ok');
  }finally{await browser.close();}

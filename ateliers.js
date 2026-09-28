@@ -1359,7 +1359,9 @@
       if (!this.state.ateliers.length) { box.innerHTML = '<p class="mini-note">Aucune case pour l’instant : décrivez les chemins des commandes (Organisation › Chemins).</p>'; return; }
       const I = root.OrlyIcones, hh = P.hhmm;
       const jours = (v, attrs) => `<select ${attrs}>${[0, -1, -2, -3].map(j => `<option value="${j}" ${j === (v || 0) ? 'selected' : ''}>${j === 0 ? 'J' : 'J' + j}</option>`).join('')}</select>`;
-      const chip = c => `<span class="rc-cmd" title="${esc(P.libelleClasse(c))}"><span class="puce-classe" data-cab="${esc(c.slice(c.lastIndexOf('/') + 1))}"></span>${esc(PC.etiquette(c))}</span>`;
+      // Une commande mène à son chemin, ouvert sur le service de cette case :
+      // c'est là qu'on la voit et qu'on la règle.
+      const chip = c => `<button type="button" class="rc-cmd" data-at-action="chemin" data-classe="${esc(c)}" title="Ouvrir le chemin de ${esc(P.libelleClasse(c))}"><span class="puce-classe" data-cab="${esc(c.slice(c.lastIndexOf('/') + 1))}"></span>${esc(PC.etiquette(c))}</button>`;
       const deroule = a => {
         if (a.type === 'dispo') return `<span class="rc-deroule dispo">${a.permanent !== false ? 'en permanence' : (a.vagues || []).length > 1 ? a.vagues.length + ' vagues' : 'une vague'}</span>`;
         if (a.type === 'lavage') return '<span class="rc-deroule autre">plonge</span>';

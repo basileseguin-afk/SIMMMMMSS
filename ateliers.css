@@ -365,7 +365,10 @@ body.ateliers-open .workbench{display:none}
 .rc-seq li.rc-fleche{border:0;padding:0;color:var(--txt2);font-weight:700}
 .rc-ens-tete{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#8a5d0a;font-weight:700}
 .rc-cmds{display:inline-flex;flex-wrap:wrap;gap:4px}
-.rc-cmd{display:inline-flex;align-items:center;gap:4px;font-weight:600;white-space:nowrap}
+.rc-cmd{display:inline-flex;align-items:center;gap:4px;font:inherit;font-weight:600;white-space:nowrap;color:inherit;
+  background:var(--bg3);border:1px solid var(--bordure);border-radius:99px;padding:2px 9px;cursor:pointer}
+.rc-cmd:hover{border-color:var(--c-equipes);text-decoration:underline}
+.rc-cmd:focus-visible{outline:2px solid var(--c-equipes);outline-offset:1px}
 .rc-quand{font-size:11px;color:var(--txt2);white-space:nowrap}
 .rc-quand.ko{color:#b0413e}
 .rc-vagues{display:inline-flex;flex-wrap:wrap;gap:6px;margin-right:8px}

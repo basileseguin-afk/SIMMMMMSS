@@ -5,6 +5,14 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-28 — Récap des cases : une commande mène à son chemin
+
+Retour d'usage : « quand je clique sur CRL BC, ça m'emmène sur CRL BC ». Dans
+Données › Récap des cases, chaque commande de la colonne « Ce qu'elle traite »
+est un bouton : il ouvre **le chemin de cette commande**, sur le service de la
+case, là où elle se voit et se règle (`ateliers.js`, `ateliers.css`). Test :
+`tests/recap-cases-browser.cjs` (§5).
+
 ## 2026-09-28 — Supprimer un service qu'on ne retrouvait pas
 
 Retour d'usage : « le service "armement" tout court crée des alertes, je le
