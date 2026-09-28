@@ -452,3 +452,19 @@ test('« besoin de légumerie » : le service entre dans le chemin, relié comme
   assert.equal(etat.ateliers.filter(a => a.service === 'decontam').length, 1, 'une seule case, partagée');
   assert.equal(PC.ajouterBesoin(etat, q, 'decontam', 'AF/BC', s => s, []), false, 'déjà là');
 });
+
+test('magasin : plusieurs mises à disposition, une par commande, se fondent aussi en une', () => {
+  const dispo = (id, cmd, p) => ({ id, nom: 'Magasin ' + cmd, service: 'magasin', type: 'dispo', debut: '06:00', jour: 0, personnes: 0, pauses: [], lots: [], regime: { actif: true }, ...p });
+  const etat = { ateliers: [dispo('m1', 'AF BC', { permanent: true }), dispo('m2', 'TX BC', { permanent: true })], parcours: [] };
+  assert.equal(PC.anciensDispos(etat).length, 2, 'deux cases dans le même poste');
+  PC.partagerDispos(etat, () => 'Magasin');
+  assert.equal(etat.ateliers.length, 1);
+  assert.equal(etat.ateliers[0].id, 'm1', 'la case gardée garde son identifiant');
+  assert.equal(etat.ateliers[0].permanent, true, 'toutes permanentes : elle l’est');
+  // Des vagues, d'une case à l'autre : elles s'additionnent.
+  const e2 = { ateliers: [dispo('a', 'AF', { permanent: false, vagues: [{ debut: '04:00', jour: 0 }] }), dispo('b', 'TX', { permanent: false, debut: '14:00', jour: -1 })], parcours: [] };
+  PC.partagerDispos(e2, () => 'Magasin');
+  assert.deepEqual(e2.ateliers[0].vagues, [{ debut: '14:00', jour: -1 }, { debut: '04:00', jour: 0 }]);
+  // Une seule mise à disposition : rien à fondre.
+  assert.deepEqual(PC.anciensDispos(e2), []);
+});

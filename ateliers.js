@@ -205,6 +205,17 @@
           alerte = (n > 1 ? n + ' cases créées' : '1 case créée') + ' dans les chemins déjà dessinés : chaque service a maintenant la sienne, à régler dans « Les chemins » ou « Les cases ».';
         }
       } catch (e) { /* un état illisible est déjà signalé plus haut */ }
+      // La légumerie, le magasin, la réception : une seule case par poste
+      // (28/09). Les cases d'avant, une par commande, se fondent d'elles-mêmes à
+      // l'ouverture — « Annuler » revient en arrière.
+      try {
+        const avant = clone(this.state);
+        const r = this.fondreDispos(this.state);
+        if (r.converties) {
+          this.state = valider(this.state); this.undo.push(avant); this.enregistrer();
+          alerte = this.messageFonte(r) + ' « Annuler » revient en arrière.';
+        }
+      } catch (e) { /* un état illisible est déjà signalé plus haut */ }
       this.construire();
       this.lier();
       this.parcours = new PC.EditeurParcours({
@@ -392,6 +403,16 @@
     /* Les cases de handling d'avant, une par commande. */
     anciensHandlings() { return PC.anciensHandlings(this.state, this.servicesHandling()); }
 
+    /* Un poste de mise à disposition, une case : fond les cases d'avant. */
+    fondreDispos(etat) {
+      return PC.partagerDispos(etat, id => (this.a.services().find(x => x.id === id) || {}).nom || id);
+    }
+    messageFonte(r) {
+      const noms = r.services.map(id => (this.a.services().find(x => x.id === id) || {}).nom || id).join(', ');
+      return noms + ' : ' + r.converties + (r.converties > 1 ? ' cases deviennent ' : ' case devient ')
+        + (r.services.length > 1 ? 'une case par poste' : 'une seule case') + ', partagée par toutes les commandes ; leurs heures sont ses vagues.';
+    }
+
     /* Une case se règle dans le chemin d'une de ses commandes, sous son service.
      * Une plonge ou une mise à disposition sert tout le monde : on prend la
      * première commande dont le chemin passe par son service. Sans chemin qui
@@ -476,9 +497,8 @@
           return this.changer(() => { if (a.vagues.length > 1) a.vagues.splice(+data.index, 1); }, 'Vague retirée.');
         case 'dispo-partager': {
           let r;
-          this.changer(() => { r = PC.partagerDispos(this.state, id2 => (this.a.services().find(x => x.id === id2) || {}).nom || id2); }, '');
-          if (r) this.rendre(r.converties + (r.converties > 1 ? ' cases deviennent ' : ' case devient ') + r.services.length
-            + (r.services.length > 1 ? ' cases partagées' : ' case partagée') + ' : leurs heures sont maintenant des vagues.');
+          this.changer(() => { r = this.fondreDispos(this.state); }, '');
+          if (r) this.rendre(this.messageFonte(r));
           return;
         }
         case 'duree-retirer':
@@ -704,6 +724,7 @@
           // L'ancien format d'échange reste lu : une sauvegarde d'hier s'ouvre.
           if (f.size > 4 * 1024 * 1024) throw new Error('Fichier trop grand.');
           etat = valider(JSON.parse(await f.text()));
+          this.fondreDispos(etat); etat = valider(etat);
         } else {
           const E = root.OrlyEchanges, T = root.OrlyTableur;
           const feuilles = await T.lireFichier(f, 8 * 1024 * 1024);
@@ -712,6 +733,7 @@
           const r = E.classeurVersAteliers(feuilles, this.state,
             { services: this.a.services(), programme: this.a.classes() || [] });
           etat = valider(r.etat); ajouts = r.ajouteesAuto;
+          this.fondreDispos(etat); etat = valider(etat);
         }
         if (!confirm('Remplacer les cases et les chemins par ceux du fichier (' + etat.ateliers.length + (etat.ateliers.length > 1 ? ' cases' : ' case') + ') ? L’action est annulable.')) return;
         this.changer(() => { this.state = etat; }, 'Cases importées : ' + etat.ateliers.length + (etat.ateliers.length > 1 ? ' cases.' : ' case.')

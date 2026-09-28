@@ -537,40 +537,55 @@
       regime: { actif: true }, permanent: true };
   }
 
-  /** Les cases d'avant dans un poste de mise à disposition : une par commande. */
-  function anciensDispos(etat) {
-    return (etat.ateliers || []).filter(a => fabrique(a) && estDispo(etat, a.service));
+  /**
+   * Ce qu'il reste à fondre, poste par poste : des cases qui préparent
+   * commande par commande (« Légumerie AF BC »…), ou plusieurs mises à
+   * disposition dans le même poste. Un poste = une case.
+   * @returns Map service → [cases]
+   */
+  function aFondre(etat) {
+    const par = new Map();
+    for (const a of etat.ateliers || []) {
+      if (!estDispo(etat, a.service) || !(fabrique(a) || a.type === 'dispo')) continue;
+      if (!par.has(a.service)) par.set(a.service, []);
+      par.get(a.service).push(a);
+    }
+    for (const [s, l] of [...par]) if (!l.some(fabrique) && l.length < 2) par.delete(s);
+    return par;
   }
 
+  /** Les cases d'avant dans les postes de mise à disposition. */
+  function anciensDispos(etat) { return [...aFondre(etat).values()].flat(); }
+
   /**
-   * Les cases d'avant d'un poste de mise à disposition (« Légumerie AF BC »,
-   * « Légumerie TX YC »…) deviennent UNE case partagée. Leurs heures de début
-   * deviennent ses vagues. Les chemins ne changent pas.
+   * Chaque poste de mise à disposition (légumerie, magasin, réception…) n'a
+   * plus qu'UNE case, partagée. Les heures de début des cases qui préparaient
+   * commande par commande, et les vagues des mises à disposition, deviennent
+   * ses vagues ; si toutes étaient permanentes, elle l'est. Les chemins ne
+   * changent pas : leur nœud est servi par cette case.
    * @returns {{ converties:number, services:[id] }}
    */
   function partagerDispos(etat, nomDe) {
     const cle = v => (v.jour || 0) * 1440 + P.minutes(v.debut);
-    const par = new Map();
-    for (const a of anciensDispos(etat)) { if (!par.has(a.service)) par.set(a.service, []); par.get(a.service).push(a); }
+    const par = aFondre(etat);
     let converties = 0;
-    for (const [s, vieilles] of par) {
-      converties += vieilles.length;
-      etat.ateliers = etat.ateliers.filter(a => !vieilles.includes(a));
+    for (const [s, liste] of par) {
+      converties += liste.length;
       const vues = new Map();
-      for (const a of vieilles) { const v = { debut: a.debut, jour: a.jour || 0 }; vues.set(cle(v), v); }
-      let d = etat.ateliers.find(a => a.service === s && a.type === 'dispo');
-      if (d) {
-        if (d.permanent === false) {
-          for (const v of (d.vagues && d.vagues.length ? d.vagues : [{ debut: d.debut, jour: d.jour || 0 }])) vues.set(cle(v), v);
-          d.vagues = [...vues.values()].sort((x, y) => cle(x) - cle(y));
-          d.debut = d.vagues[0].debut; d.jour = d.vagues[0].jour;
-        }
-        continue;
+      for (const a of liste) {
+        const vs = fabrique(a) ? [{ debut: a.debut, jour: a.jour || 0 }]
+          : a.permanent === false ? (a.vagues && a.vagues.length ? a.vagues : [{ debut: a.debut, jour: a.jour || 0 }]) : [];
+        for (const v of vs) vues.set(cle(v), { debut: v.debut, jour: v.jour || 0 });
       }
-      d = caseDispo(etat, s, nomDe ? nomDe(s) : s);
-      d.permanent = false;
-      d.vagues = [...vues.values()].sort((x, y) => cle(x) - cle(y));
-      d.debut = d.vagues[0].debut; d.jour = d.vagues[0].jour;
+      const garde = liste.find(a => a.type === 'dispo');
+      etat.ateliers = etat.ateliers.filter(a => !liste.includes(a));
+      const d = caseDispo(etat, s, nomDe ? nomDe(s) : s);
+      if (garde) d.id = garde.id;
+      if (vues.size) {
+        d.permanent = false;
+        d.vagues = [...vues.values()].sort((x, y) => cle(x) - cle(y));
+        d.debut = d.vagues[0].debut; d.jour = d.vagues[0].jour;
+      }
       etat.ateliers.push(d);
     }
     return { converties, services: [...par.keys()] };

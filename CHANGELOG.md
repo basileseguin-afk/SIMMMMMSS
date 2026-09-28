@@ -5,6 +5,21 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-28 — Les cases par commande de la légumerie et du magasin se fondent d'elles-mêmes
+
+Retour d'usage : « dans les chemins, les cases de magasin et de légumerie
+restent comme avant ». Deux raisons : il fallait cliquer « Passer à une case
+partagée », et des cases par commande déjà réglées en **mise à disposition**
+(« Magasin AF BC », « Magasin TX BC »…) n'étaient pas vues.
+
+- Un poste de mise à disposition = une case : plusieurs mises à disposition
+  dans le même poste se fondent aussi (celle gardée garde son identifiant ;
+  vagues additionnées ; permanente si toutes l'étaient).
+- La fonte se fait **d'elle-même à l'ouverture** et **à l'import** d'un
+  classeur ou d'un fichier ; un message le dit, « Annuler » revient en arrière.
+- Tests : parcours (mises à disposition multiples), partage-browser (une
+  organisation enregistrée, fondue à l'ouverture, puis annulée).
+
 ## 2026-09-28 — Légumerie, magasin, réception : une case partagée, par vagues
 
 Retour d'usage : « la légumerie travaille en même temps pour toutes les

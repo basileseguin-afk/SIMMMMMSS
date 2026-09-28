@@ -55,6 +55,27 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.deepEqual(leg,[{type:'dispo',vagues:[{debut:'14:00',jour:-1},{debut:'15:00',jour:-1}]}],'leurs heures deviennent ses vagues');
   assert.doesNotMatch(await page.locator('#at-anomalies').innerText(),/commande par commande/);
 
+  // 5. Une organisation enregistrée avec une case par commande (légumerie qui
+  //    prépare, magasin en mises à disposition) : à l'ouverture, elles se fondent.
+  const etat=await page.evaluate(()=>{const st=JSON.parse(JSON.stringify(Sim.ateliers.state));
+    st.ateliers=st.ateliers.filter(a=>!['decontam','magasin'].includes(a.service));
+    for(const c of ['AF/BC','TX/BC']){const k=c.replace('/',' ');
+      st.ateliers.push({id:'L'+k,nom:'Légumerie '+k,service:'decontam',type:'manuel',debut:c==='AF/BC'?'14:00':'16:00',jour:-1,personnes:2,pauses:[],lots:[[c]],regime:{actif:true}});
+      st.ateliers.push({id:'M'+k,nom:'Magasin '+k,service:'magasin',type:'dispo',debut:'06:00',jour:0,personnes:0,pauses:[],lots:[],regime:{actif:true},permanent:true});}
+    return st;});
+  const p2=page;
+  await page.evaluate(e=>localStorage.setItem('ory-ateliers-v1',e),JSON.stringify(etat));
+  await page.reload();await page.waitForTimeout(600);
+  const fondu=await p2.evaluate(()=>['decontam','magasin'].map(s=>Sim.ateliers.state.ateliers.filter(a=>a.service===s).map(a=>({type:a.type,permanent:a.permanent,vagues:a.permanent?undefined:a.vagues}))));
+  assert.deepEqual(fondu,[[{type:'dispo',permanent:false,vagues:[{debut:'14:00',jour:-1},{debut:'16:00',jour:-1}]}],[{type:'dispo',permanent:true,vagues:undefined}]],'une case par poste, dès l’ouverture');
+  await nav.aller(p2,'at-chemins');
+  assert.match(await p2.locator('#at-status').innerText(),/deviennent une case par poste[\s\S]*Annuler/);
+  await p2.locator('[data-pc-action=cmd][data-classe="AF/BC"]').click();await p2.waitForTimeout(300);
+  assert.match(await p2.locator('.pc-graphe [data-noeud=decontam]').textContent(),/à disposition/,'le nœud du chemin est servi par la case partagée');
+  // « Annuler » revient à l'organisation d'avant.
+  await p2.locator('#at-undo').click();await p2.waitForTimeout(300);
+  assert.equal(await p2.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service==='decontam').length),2);
+
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('partage-browser : ok');
  }finally{await browser.close();}
