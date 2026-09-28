@@ -138,9 +138,10 @@ le rouge ne sert qu’aux retards.
      ont **une seule case, partagée**, qui sert toutes les commandes à la
      fois **par vagues** (ex. J-1 14:00, puis J 04:00) : chaque commande prend
      la vague qui précède son besoin. Sur chaque chemin, une seule question :
-     « Besoin de Légumerie / Magasin / Réception ? ». Des cases d’avant, une
-     par commande, se fondent en une (« Passer à une case partagée », dans
-     les points à regarder) : leurs heures deviennent ses vagues. Une case **Handling (par vol)** ne prépare pas de
+     « Besoin de Légumerie / Magasin / Réception ? ». Des cases d’avant, une par
+     commande (qui préparent, ou déjà en mise à disposition), se fondent en
+     une d’elles-mêmes à l’ouverture et à l’import — « Annuler » revient en
+     arrière : leurs heures deviennent ses vagues. Une case **Handling (par vol)** ne prépare pas de
      commande : elle réunit les classes d’un même vol et le charge,
      strictement dans l’ordre des départs, avec une durée par compagnie, un
      nombre de vols en même temps et une heure au plus tôt (« pas avant 3 h
