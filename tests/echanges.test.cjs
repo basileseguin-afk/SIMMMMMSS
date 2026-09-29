@@ -438,3 +438,13 @@ test('handling : le trajet du camion (aller, charger, retour) et les vols par ca
   const h2 = E.classeurVersAteliers(await parFichier(g), etat, ctxAteliers()).etat.ateliers.find(a => a.nom === 'Handling');
   assert.deepEqual([h2.allers, h2.retours, h2.durees.TX, h2.volsCamion], [{ '*': 10, TX: 20 }, { '*': 12, TX: 20 }, 25, { TX: 2 }]);
 });
+
+test('plonge : la vitesse d’un tunnel fait l’aller-retour par Excel', async () => {
+  const etat = ETAT_ATELIERS();
+  etat.ateliers.push({ id: 'pv', nom: 'Plonge rapide', service: 'plonge', type: 'lavage', debut: '05:00', jour: 0, personnes: 2, pauses: [], lots: [],
+    regime: { actif: true }, plafond: 0, parVol: true, durees: { '*': 30 },
+    tunnels: [{ nom: 'T1', debit: 300, personnes: 1, actif: true }, { nom: 'T2', debit: 300, personnes: 1, actif: true, vitesse: 2 }] });
+  const f = await parFichier(E.ateliersVersClasseur(etat, ctxAteliers()));
+  const t = E.classeurVersAteliers(f, etat, ctxAteliers()).etat.ateliers.find(a => a.nom === 'Plonge rapide').tunnels;
+  assert.deepEqual(t.map(x => x.vitesse ?? 1), [1, 2]);
+});

@@ -759,7 +759,7 @@
     const fab = [['Atelier', 'Ordre', 'Compagnies × classes']];
     const mm = [['Atelier', 'Compagnie × classe', 'Man-minutes']];
     const debitsRobot = [['Atelier', 'Compagnie × classe', 'Débit (plateaux/h)']];
-    const tunnels = [['Atelier', 'Tunnel', 'Débit (u/h)', 'Personnes', 'Actif']];
+    const tunnels = [['Atelier', 'Tunnel', 'Débit (u/h)', 'Personnes', 'Actif', 'Vitesse (×)']];
     for (const a of etat.ateliers) {
       ateliers.push([a.nom, nomDe(a.service), TYPES_FR[a.type] || a.type,
         a.type === 'dispo' ? null : a.personnes,
@@ -791,7 +791,7 @@
       (a.lots || []).forEach((l, i) => fab.push([a.nom, i + 1, l.join(' + ')]));
       for (const [id, v] of Object.entries(a.minutes || {})) mm.push([a.nom, id, v]);
       for (const [id, v] of Object.entries(a.debits || {})) debitsRobot.push([a.nom, id, v]);
-      for (const t of (a.tunnels || [])) tunnels.push([a.nom, t.nom, t.debit, t.personnes, t.actif === false ? 'non' : 'oui']);
+      for (const t of (a.tunnels || [])) tunnels.push([a.nom, t.nom, t.debit, t.personnes, t.actif === false ? 'non' : 'oui', t.vitesse || 1]);
     }
 
     const exclues = new Set(etat.exclues || []);
@@ -852,7 +852,8 @@
         '   Pour ajouter une compagnie × classe à un atelier : ajoutez une ligne (Atelier, Ordre, ex. « AF/BC »).',
         'Man-minutes : celles qu’un atelier fixe pour une compagnie × classe, POUR TOUTE SA JOURNÉE (tous ses vols), à la place du barème. Absente = le barème.',
         'Débits robot : le débit d’une compagnie × classe sur un robot (plateaux/h). Absente = le débit du robot (feuille Ateliers).',
-        'Tunnels : les tunnels d’une plonge, avec leur débit et le personnel qui les tient.',
+        'Tunnels : les tunnels d’une plonge, avec leur débit et le personnel qui les tient. Vitesse (×) : pour une plonge par vol,',
+        '   combien de fois plus vite qu’un tunnel normal (2 : deux fois plus vite) ; les temps par compagnie sont ceux d’un tunnel normal.',
         'Vagues (Ateliers) : une mise à disposition (légumerie, magasin…) sert toutes les commandes à la fois, par vagues :',
         '   « J-1 14:00; J 04:00 ». Chaque commande prend la vague qui précède son besoin. Permanent = oui : pas de vague.',
         '   Ouverte comme une boutique : Permanent = oui et Vagues « ouvert 07:00-18:00 » ; fermée, l’étape d’après attend l’ouverture.',
@@ -1143,7 +1144,8 @@
         err.essayer(fT.nom, o._ligne, () => {
           if (a.type !== 'lavage') throw new Error(a.nom + ' n’est pas une plonge');
           a.tunnels.push({ nom: String(o.tunnel ?? '').trim() || 'Tunnel ' + (a.tunnels.length + 1),
-            debit: T.nombreDe(o.debit_u_h, 300), personnes: T.nombreDe(o.personnes, 1), actif: T.ouiNon(o.actif, true) });
+            debit: T.nombreDe(o.debit_u_h, 300), personnes: T.nombreDe(o.personnes, 1), actif: T.ouiNon(o.actif, true),
+            ...(T.nombreDe(o.vitesse, 1) > 0 && T.nombreDe(o.vitesse, 1) !== 1 ? { vitesse: T.nombreDe(o.vitesse, 1) } : {}) });
         });
       }
     }

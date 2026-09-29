@@ -5,6 +5,17 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-29 — Plonge par vol : un tunnel peut laver plus vite
+
+Retour d'usage : « une case pour dire qu'un tunnel peut nettoyer 2 fois plus
+vite ; les chiffres de lavage sont rentrés pour un tunnel ». Chaque tunnel a
+une vitesse (×1 par défaut, ×2 : deux fois plus vite) ; les temps par
+compagnie sont ceux d'un tunnel normal. Chaque vol revenu va au tunnel qui le
+rend propre le plus tôt : un tunnel rapide qui se libère un peu plus tard
+peut valoir la peine d'être attendu ; à égalité, celui qui est libre depuis
+le plus longtemps. Excel : colonne « Vitesse (×) » de la feuille Tunnels.
+Tests moteur, Excel et navigateur.
+
 ## 2026-09-29 — Page de secours, et un démarrage qui ne peut plus tout bloquer
 
 Retour d'usage : « ça bug encore, je ne peux pas naviguer sur le site ». Le

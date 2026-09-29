@@ -40,6 +40,15 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(lav.some(l=>l.tunnel===2),'le second tunnel sert');
   if(lav.some(l=>l.fin==null))assert.ok(await page.evaluate(()=>Sim.ateliers.resultat.anomalies.some(a=>a.code==='plonge-vol')),'les vols non lavés sont signalés');
 
+  // 2 bis. Un tunnel deux fois plus rapide : les temps saisis sont ceux d'un tunnel normal.
+  await fiche.locator('[data-at-champ=tunnel-vitesse][data-index="1"]').fill('2');
+  await fiche.locator('[data-at-champ=tunnel-vitesse][data-index="1"]').dispatchEvent('change');await attendre();
+  assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(x=>x.id==='pl').tunnels[1].vitesse),2);
+  const rapides=await page.evaluate(()=>Sim.ateliers.resultat.lots.filter(l=>l.retourVol&&l.vitesse===2).map(l=>[l.cie,l.duree]));
+  assert.ok(rapides.length,'le tunnel rapide lave des vols');
+  for(const [cie,d] of rapides)assert.equal(d,(cie===c0?45:30)/2,'en deux fois moins de temps');
+  assert.match(await fiche.innerText(),/dans un tunnel normal \(×1\)/);
+
   // 3. Le récap des cases le dit.
   await nav.aller(page,'at-recap');
   assert.match(await page.locator('tr.rc-case[data-at="pl"]').innerText(),/lave \d+ vols? revenus?, dans l’ordre des retours/);

@@ -99,3 +99,22 @@ test('plonge par vol : chaque tunnel lave un vol revenu, dans l’ordre des reto
   const r2 = jouerP(plonge({ durees: { AF: 40 } }));
   assert.ok(r2.anomalies.some(x => x.code === 'plonge-duree' && /TX/.test(x.message)));
 });
+
+/* Un tunnel qui lave plus vite (retour d'usage : « une case pour dire qu'un
+ * tunnel peut nettoyer 2 fois plus vite ; les chiffres de lavage sont ceux
+ * d'un tunnel »). */
+test('plonge par vol : un tunnel ×2 lave en deux fois moins de temps, et prend le vol s’il le rend propre plus tôt', () => {
+  const vols = [{ id: 'AF9', cie: 'AF', sens: 'RET', sta: h('06:00'), yc: 100 }, { id: 'TX9', cie: 'TX', sens: 'RET', sta: h('06:00'), yc: 80 },
+    { id: 'DL9', cie: 'DL', sens: 'RET', sta: h('06:05'), yc: 200 }];
+  const plonge = t => ({ id: 'pl', nom: 'Plonge', service: 'plonge', type: 'lavage', debut: '05:00', jour: 0, personnes: 2, lots: [], regime: { actif: false },
+    parVol: true, durees: { '*': 40 }, tunnels: t });
+  const jouerP = pl => P.simuler({ vols, liaisons: [], rendement: 1, bareme: {}, ateliers: [pl], materiel: { actif: true, delaiRetour: 30 } });
+  assert.equal(P.vitesseTunnel({ vitesse: 2 }), 2);
+  assert.equal(P.vitesseTunnel({}), 1);
+  const r = jouerP(plonge([{ nom: 'Normal', personnes: 1, actif: true }, { nom: 'Rapide', personnes: 1, actif: true, vitesse: 2 }]));
+  assert.equal(r.ok, true, JSON.stringify(r.anomalies));
+  const l = r.lots.filter(x => x.retourVol).map(x => [x.vol, x.nomTunnel, P.hhmm(x.debut), P.hhmm(x.fin), x.duree]);
+  // AF et TX arrivent à 06:30 : le rapide rend AF propre à 06:50, le normal TX à 07:10 ;
+  // DL (06:35) attend le rapide, libre à 06:50, plutôt que le normal libre à 07:10.
+  assert.deepEqual(l, [['AF9', 'Rapide', '06:30', '06:50', 20], ['TX9', 'Normal', '06:30', '07:10', 40], ['DL9', 'Rapide', '06:50', '07:10', 20]]);
+});

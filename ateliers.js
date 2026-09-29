@@ -156,7 +156,9 @@
               // Un tunnel que personne ne tient ne tourne pas : l'effectif de
               // l'équipe décide combien tournent vraiment.
               personnes: Number.isInteger(+t.personnes) ? Math.max(0, Math.min(99, +t.personnes)) : 1,
-              actif: t.actif !== false
+              actif: t.actif !== false,
+              // Plonge par vol : combien de fois plus vite qu'un tunnel normal (1 : pas retenu).
+              ...(Number.isFinite(+t.vitesse) && +t.vitesse > 0 && +t.vitesse !== 1 ? { vitesse: Math.min(10, Math.round(+t.vitesse * 100) / 100) } : {})
             }))
         } : {}),
         // Une mise à disposition est permanente sauf si on lui donne une heure.
@@ -711,6 +713,11 @@
           case 'tunnel-debit': a.tunnels[+el.dataset.index].debit = Math.max(0, parseFloat(v) || 0); break;
           case 'tunnel-actif': a.tunnels[+el.dataset.index].actif = el.checked; break;
           case 'tunnel-personnes': a.tunnels[+el.dataset.index].personnes = Math.max(0, parseInt(v, 10) || 0); break;
+          case 'tunnel-vitesse': {
+            const x = parseFloat(String(v).replace(',', '.'));
+            if (Number.isFinite(x) && x > 0 && x !== 1) a.tunnels[+el.dataset.index].vitesse = Math.min(10, x); else delete a.tunnels[+el.dataset.index].vitesse;
+            break;
+          }
           case 'plafond': a.plafond = Math.max(0, parseFloat(v) || 0); break;
           case 'permanent': a.permanent = el.checked; if (!el.checked) delete a.ouverture; break;
           // Quand elle sert : toujours, aux heures d'ouverture (une boutique), ou par vagues.
@@ -1469,16 +1476,20 @@
           <input value="${esc(t.nom)}" data-at-champ="tunnel-nom" data-index="${i}" maxlength="80" aria-label="Nom du tunnel">
           <input type="number" min="0" max="99" value="${t.personnes}" data-at-champ="tunnel-personnes" data-index="${i}" aria-label="Personnes pour tenir ${esc(t.nom)}">
           <span class="at-tunnel-unite">pers.</span>
+          <label class="at-vitesse" title="Par rapport à un tunnel normal : 2 = lave deux fois plus vite. Les temps par compagnie sont ceux d’un tunnel normal.">×<input type="number" min="0.1" max="10" step="0.5"
+            value="${String(t.vitesse || 1)}" data-at-champ="tunnel-vitesse" data-index="${i}" aria-label="Vitesse de ${esc(t.nom)} par rapport à un tunnel normal"></label>
+          <span class="at-tunnel-unite">plus vite</span>
           <span class="at-tunnel-etat">${!t.actif ? 'à l’arrêt' : etatTunnels.sansPersonne.includes(t) ? 'personne pour le tenir' : 'tourne'}</span>
           <button class="btn btn-sm" data-at-action="tunnel-retirer" data-index="${i}">Retirer</button>
         </div>`).join('')}
         <div class="at-actions-lot"><button class="btn btn-sm" data-at-action="tunnel-ajouter">+ Tunnel</button>
           <span class="mini-note at-tunnels-n"><b>${n}</b> tunnel${n > 1 ? 's' : ''} tourne${n > 1 ? 'nt' : ''} : autant de vols lavés en même temps.
             Un tunnel ne tourne que si l’équipe a les gens pour le tenir, dans l’ordre de la liste.</span></div>
-        <div class="at-sous-titre">Temps pour laver un vol, par compagnie</div>
+        <div class="at-sous-titre">Temps pour laver un vol, par compagnie <span class="mini-note">dans un tunnel normal (×1) ; un tunnel ×2 le lave en deux fois moins de temps</span></div>
         ${this.tableCompagnies(a, cies, nb, 'min par vol et par tunnel')}
         <p class="mini-note at-lavage-note">La plonge lave les vols qui reviennent, dans l’ordre de leur retour (arrivée + le délai
-          de la boucle du matériel). Chaque tunnel qui tourne prend le vol suivant. Si la boucle du matériel est active, le matériel
+          de la boucle du matériel). Chaque vol va au tunnel qui le rend propre le plus tôt — un tunnel plus rapide peut valoir la peine
+          d’être attendu. Si la boucle du matériel est active, le matériel
           d’un vol redevient propre à sa sortie du tunnel.</p>`;
     }
 

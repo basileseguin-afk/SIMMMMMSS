@@ -409,3 +409,5 @@ body.ateliers-open .workbench{display:none}
 .at-creneau{flex-wrap:wrap}
 #view-ateliers .at-creneau input[type=time]{width:auto;min-width:0}
 .at-intro-aide{padding:0 14px 8px;margin:0}
+.at-vitesse{display:inline-flex;align-items:center;gap:3px;font-weight:700;color:var(--txt2)}
+#view-ateliers .at-vitesse input{width:58px;min-width:0}

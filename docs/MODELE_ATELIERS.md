@@ -401,7 +401,10 @@ compagnie (`durees`, `*` pour toutes). Un vol qui arrive quand tous les
 tunnels sont pris attend ; un vol qui ne peut pas être lavé avant la fin du
 poste ne l'est pas (`plonge-vol`) ; une compagnie sans temps est signalée
 (`plonge-duree`). Avec la boucle du matériel, les unités du vol redeviennent
-propres à sa sortie du tunnel. Le mode « par débit » ci-dessous reste au choix
+propres à sa sortie du tunnel. Un tunnel peut aller plus vite qu'un tunnel
+normal (`vitesse`, 2 = deux fois plus vite) : les temps par compagnie sont
+ceux d'un tunnel normal, et chaque vol va au tunnel qui le rend propre le plus
+tôt (à égalité, celui qui est libre depuis le plus longtemps). Le mode « par débit » ci-dessous reste au choix
 dans la fiche.
 
 ### La plonge : un débit par ligne, un plafond pour l'ensemble

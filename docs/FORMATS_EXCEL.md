@@ -184,7 +184,9 @@ vols à la fois (feuille Ateliers). Feuille absente : les créneaux du site rest
 Une plonge dont la colonne `Plonge par vol` vaut `oui` (feuille Ateliers) lave
 les vols qui reviennent, un par tunnel qui tourne, dans l'ordre des retours.
 Une ligne par compagnie : `Atelier`, `Compagnie`, `Minutes par vol` — le temps
-qu'un tunnel met à laver un de ses vols ; `toutes` pour les autres.
+qu'un tunnel normal met à laver un de ses vols ; `toutes` pour les autres.
+Feuille Tunnels, colonne `Vitesse (×)` : combien de fois plus vite qu'un
+tunnel normal (2 : deux fois plus vite ; 1 ou vide : normal).
 
 ### Feuille « Classes »
 
