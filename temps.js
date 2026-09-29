@@ -53,9 +53,12 @@
 
   /** Des graduations rondes pour un axe de 0 à `max`. */
   function graduations(max) {
+    // Un maximum infini ou absent ne doit jamais faire tourner la boucle sans fin :
+    // c'est ce qui figeait la page (plonge par vol, sans débit en unités par heure).
+    if (!(max > 0) || !Number.isFinite(max)) return [0];
     const brut = max / 4, p = Math.pow(10, Math.floor(Math.log10(Math.max(1, brut))));
     const pas = [1, 2, 2.5, 5, 10].map(k => k * p).find(k => k >= brut) || p * 10;
-    const out = []; for (let v = 0; v <= max + 1e-9; v += pas) out.push(v);
+    const out = []; for (let v = 0; v <= max + 1e-9 && out.length < 50; v += pas) out.push(v);
     return out;
   }
 
@@ -66,7 +69,7 @@
   }
 
   function axes(t0, t1, ymax, sc) {
-    const heures = []; for (let t = Math.ceil(t0 / 60) * 60; t <= t1; t += 60) heures.push(t);
+    const heures = []; if (Number.isFinite(t0) && Number.isFinite(t1)) for (let t = Math.ceil(t0 / 60) * 60; t <= t1 && heures.length < 200; t += 60) heures.push(t);
     const pasH = heures.length > 14 ? 2 : 1, vues = heures.filter((t, i) => i % pasH === 0);
     // L'heure du bord droit s'aligne sur lui : elle ne déborde pas du cadre.
     return graduations(ymax).map(v => `<line class="tp-grille" x1="${G}" x2="${W - D}" y1="${sc.y(v)}" y2="${sc.y(v)}"/>
@@ -83,10 +86,12 @@
 
   /** Les retours heure par heure, face à ce que la plonge lave en une heure. */
   function graphiqueRetours(p, t0, t1) {
-    const ymax = Math.max(p.capacite, ...p.heures.map(h => h.u)) * 1.18 || 1;
+    // Une plonge par vol n'a pas de débit en unités par heure : pas de seuil à tracer.
+    const seuil = Number.isFinite(p.capacite) && p.capacite > 0 ? p.capacite : null;
+    const ymax = Math.max(seuil || 0, ...p.heures.map(h => h.u)) * 1.18 || 1;
     const sc = echelles(t0, t1, ymax), yb = H - BAS;
     const barres = p.heures.map(h => {
-      const trop = h.u > p.capacite, x0 = sc.x(h.t) + 1, x1 = sc.x(h.t + 60) - 1, y0 = sc.y(h.u);
+      const trop = seuil != null && h.u > seuil, x0 = sc.x(h.t) + 1, x1 = sc.x(h.t + 60) - 1, y0 = sc.y(h.u);
       const titre = P.hhmm(h.t) + '–' + P.hhmm(h.t + 60) + ' : ' + nombre(h.u) + ' u revenues'
         + (trop ? ', ' + nombre(h.u - p.capacite) + ' de plus que la plonge n’en lave' : '');
       return `<g class="tp-barre${trop ? ' trop' : ''}" data-info="${esc(titre)}">
@@ -94,11 +99,13 @@
           <path d="${barre(x0, x1, y0, yb)}"/>
           ${trop ? `<text class="tp-val" x="${(x0 + x1) / 2}" y="${y0 - 6}" text-anchor="middle">▲ ${nombre(h.u)}</text>` : ''}</g>`;
     }).join('');
-    const yc = sc.y(p.capacite);
-    return `<svg class="tp-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Retours des vols heure par heure, face au débit de la plonge (${nombre(p.capacite)} unités par heure)">
+    if (seuil == null) return `<svg class="tp-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Retours des vols heure par heure">
+      ${axes(t0, t1, ymax, sc)}${barres}</svg>`;
+    const yc = sc.y(seuil);
+    return `<svg class="tp-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Retours des vols heure par heure, face au débit de la plonge (${nombre(seuil)} unités par heure)">
       ${axes(t0, t1, ymax, sc)}${barres}
       <line class="tp-seuil" x1="${G}" x2="${W - D}" y1="${yc}" y2="${yc}"/>
-      <text class="tp-seuil-txt" x="${W - D}" y="${yc - 6}" text-anchor="end">ce que la plonge lave : ${nombre(p.capacite)} u/h</text></svg>`;
+      <text class="tp-seuil-txt" x="${W - D}" y="${yc - 6}" text-anchor="end">ce que la plonge lave : ${nombre(seuil)} u/h</text></svg>`;
   }
 
   /** Le sale pas encore lavé : il monte d'un coup à chaque retour, et baisse au rythme du tunnel. */
@@ -131,14 +138,15 @@
       <p>Sans elle, les retours des vols ne sont pas suivis. Cochez « Matériel en boucle » dans « Qui prépare quoi › Les cases ».</p>
       <button class="btn" data-aller="ateliers" data-onglet="at-equipes">Les cases →</button></div></section>`;
     if (!p.retours.length) return `<section class="tp-sec">${titre}<p class="mini-note">Aucun retour de vol dans le programme : rien ne revient à laver.</p></section>`;
-    if (!p.capacite) return `<section class="tp-sec">${titre}<p class="mini-note"><b>Aucune plonge</b> : ${nombre(p.retours.reduce((n, x) => n + x.u, 0))} u reviennent
+    if (!p.capacite && !p.parVol) return `<section class="tp-sec">${titre}<p class="mini-note"><b>Aucune plonge</b> : ${nombre(p.retours.reduce((n, x) => n + x.u, 0))} u reviennent
       et s’entassent. Ajoutez une case de type plonge (« Les cases › + Case hors chemin »).</p></section>`;
     const ts = p.retours.map(x => x.t).concat(p.serie.map(x => x[0]));
     const t0 = Math.floor(Math.min(...ts) / 60) * 60;
     // Jusqu'au bout de la dernière heure de retours : sa barre tient dans le cadre.
     const t1 = Math.max(Math.ceil(Math.max(...ts, p.maxA || 0) / 60) * 60, ...p.heures.map(h => h.t + 60), t0 + 120);
     const bouchon = p.attenteMax >= 60;
-    const phrase = p.depassements.length
+    const phrase = p.parVol ? 'La plonge lave par vol : chaque tunnel qui tourne prend un vol revenu, dans l’ordre des retours.'
+      : p.depassements.length
       ? `Les retours dépassent ce que la plonge lave de <b>${p.depassements.map(d => P.hhmm(d.de) + ' à ' + P.hhmm(d.a)).join(', ')}</b> : le sale s’accumule, et se résorbe ensuite.`
       : 'Heure par heure, la plonge lave au moins autant qu’il ne revient.';
     return `<section class="tp-sec">${titre}
@@ -146,7 +154,8 @@
         ${tuile('Le plus de sale pas encore lavé', nombre(p.max) + ' u', p.maxA != null ? 'à ' + P.hhmm(p.maxA) : '', bouchon ? 'alerte' : '')}
         ${tuile('Attente la plus longue', duree(p.attenteMax), 'du retour à la sortie du tunnel', bouchon ? 'alerte' : '')}
         ${tuile('Attente moyenne', duree(p.attenteMoy), 'par unité lavée')}
-        ${tuile('Débit de la plonge', nombre(p.capacite) + ' u/h', 'tunnels qui tournent')}
+        ${p.parVol ? tuile('Tunnels qui tournent', nombre(p.tunnels || 0), 'un vol à la fois chacun')
+          : tuile('Débit de la plonge', nombre(p.capacite) + ' u/h', 'tunnels qui tournent')}
         ${tuile('Reste sale le soir', nombre(p.resteSale) + ' u', p.resteSale ? 'jamais lavé' : 'tout est lavé', p.resteSale ? 'alerte' : '')}
       </div>
       <p class="tp-phrase">${bouchon ? '<b class="tp-etiquette alerte">▲ Bouchon</b> ' : ''}${phrase}</p>

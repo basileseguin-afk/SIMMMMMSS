@@ -44,12 +44,26 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await nav.aller(page,'at-recap');
   assert.match(await page.locator('tr.rc-case[data-at="pl"]').innerText(),/lave \d+ vols? revenus?, dans l’ordre des retours/);
 
+  // 3 bis. Avec la boucle du matériel (retour d'usage : « j'ai essayé d'ajouter des tunnels et ça
+  //        fait que crasher ») : un débit « infini » faisait tourner sans fin le graphique de la
+  //        plonge. Chaque ajout de tunnel doit rester instantané, et la page des stocks s'afficher.
+  await nav.aller(page,'at-equipes');
+  await page.evaluate(()=>{Sim.ateliers.changer(()=>{Sim.ateliers.state.materiel.actif=true;},'');Sim.ateliers.ouvert='pl';Sim.ateliers.aDessiner.add('at-equipes');Sim.ateliers.rendre();});await attendre();
+  for(let i=0;i<3;i++){const t=Date.now();
+    await fiche.locator('[data-at-action=tunnel-ajouter]').click({timeout:5000});
+    assert.ok(Date.now()-t<3000,'ajouter un tunnel reste instantané ('+(Date.now()-t)+' ms)');}
+  assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(x=>x.id==='pl').tunnels.length),5);
+  await nav.aller(page,'j-stocks');
+  const stocks=await page.locator('#journee-stocks').innerText({timeout:5000});
+  assert.match(stocks,/Tunnels qui tournent/,'la page des stocks s’affiche, en tunnels et non en u/h');
+  assert.doesNotMatch(stocks,/Infinity|NaN/);
+
   // 4. Retour au débit : l'ancien réglage revient.
   await nav.aller(page,'at-equipes');
   await page.evaluate(()=>{Sim.ateliers.ouvert='pl';Sim.ateliers.aDessiner.add('at-equipes');Sim.ateliers.rendre();});await attendre();
   await fiche.locator('[data-at-champ=plonge-mode]').selectOption('debit');await attendre();
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(x=>x.id==='pl').parVol),undefined);
-  assert.equal(await fiche.locator('[data-at-champ=tunnel-debit]').count(),2);
+  assert.equal(await fiche.locator('[data-at-champ=tunnel-debit]').count(),5);
 
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('plonge-vol-browser : ok');

@@ -5,6 +5,18 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-29 — Le site ne plante plus en ajoutant des tunnels (BUG-050)
+
+Retour d'usage : « le site fait que de crasher, j'ai essayé d'ajouter des
+tunnels ». Avec une plonge par vol et la boucle du matériel, le bilan de la
+plonge avait un débit infini ; le graphique des retours en faisait son
+échelle et sa boucle de graduations ne s'arrêtait plus (3 Go de mémoire,
+onglet planté) à chaque modification. Le bilan d'une plonge par vol n'a plus
+de débit en u/h (il compte ses tunnels), et les axes des graphiques refusent
+un maximum infini. Tests : `tests/temps.test.cjs`, `tests/plonge-vol-browser.cjs`
+(ajouter des tunnels reste instantané, la page des stocks s'affiche) ; tour
+de toutes les pages avec un état chargé : chacune en moins de 0,4 s.
+
 ## 2026-09-29 — Vols par camion, compagnie par compagnie
 
 Retour d'usage : « les vols chargés par un camion, cela dépend de la

@@ -90,3 +90,31 @@ test('sans boucle du matériel, pas de file à suivre', () => {
   const r = jouer([at('cu', 'cuisine', '05:00')]);
   assert.equal(r.plonge, null);
 });
+
+/* Retour d'usage : « j'ai essayé d'ajouter des tunnels et ça fait que crasher ». Une
+ * plonge par vol n'a pas de débit en u/h ; le débit « infini » d'alors faisait
+ * tourner la boucle des graduations sans fin. Plus jamais : ni dans le moteur, ni
+ * dans le graphique. */
+test('graduations : un maximum infini ou absent ne boucle jamais', () => {
+  const T = require('../temps.js');
+  assert.deepEqual(T.graduations(Infinity), [0]);
+  assert.deepEqual(T.graduations(NaN), [0]);
+  assert.deepEqual(T.graduations(0), [0]);
+  assert.ok(T.graduations(1e12).length <= 50);
+  assert.deepEqual(T.graduations(100), [0, 25, 50, 75, 100]);
+});
+
+test('plonge par vol : son bilan n’a pas de débit en u/h, et dit ses tunnels', () => {
+  const P = require('../moteur/production.js');
+  const h = P.minutes;
+  const vols = [{ id: 'AF9', cie: 'AF', sens: 'RET', sta: h('06:00'), yc: 100 }, { id: 'AF1', cie: 'AF', sens: 'DEP', std: h('09:00'), yc: 100 }];
+  const r = P.simuler({ vols, liaisons: [], rendement: 1, bareme: {}, materiel: { actif: true, delaiRetour: 30 },
+    ateliers: [{ id: 'pl', nom: 'Plonge', service: 'plonge', type: 'lavage', debut: '05:00', jour: 0, personnes: 3, lots: [], regime: { actif: false },
+      parVol: true, durees: { '*': 30 }, tunnels: [1, 2, 3].map(i => ({ nom: 'T' + i, personnes: 1, actif: true })) }] });
+  assert.equal(r.plonge.parVol, true);
+  assert.equal(r.plonge.capacite, null, 'pas de débit infini');
+  assert.equal(r.plonge.tunnels, 3);
+  assert.deepEqual(r.plonge.depassements, []);
+  const T = require('../temps.js');
+  assert.ok(Number.isFinite(Math.max(...T.graduations(Math.max(r.plonge.capacite || 0, 100)))));
+});

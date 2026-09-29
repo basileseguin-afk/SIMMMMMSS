@@ -1985,9 +1985,11 @@
    * tunnels lavent en une heure.
    */
   function bilanPlonge(file, stock, lavages, finJournee, finsDePoste) {
-    // Une plonge par vol n'a pas de débit en unités par heure : pas de dépassement à calculer.
-    const parVol = lavages.length && lavages.every(a => a.parVol);
-    const capacite = parVol ? Infinity : lavages.reduce((n, a) => n + debitLavage(a), 0);
+    // Une plonge par vol n'a pas de débit en unités par heure : pas de dépassement
+    // à calculer, et surtout pas de débit « infini », qu'un graphique mettrait à l'échelle.
+    const parVol = !!lavages.length && lavages.every(a => a.parVol);
+    const capacite = parVol ? null : lavages.reduce((n, a) => n + debitLavage(a), 0);
+    const tunnels = lavages.reduce((n, a) => n + (Array.isArray(a.tunnels) && a.tunnels.length ? tunnelsQuiTournent(a).tournent.length : (a.personnes > 0 ? 1 : 0)), 0);
     // La plonge ferme à la dernière fin de poste de ses équipes (sans fin : jamais).
     const fins = finsDePoste || [];
     const fermeture = lavages.length && fins.length === lavages.length ? Math.max(...fins) : null;
@@ -1999,14 +2001,14 @@
     const heures = [...parHeure].sort((a, b) => a[0] - b[0]).map(([t, u]) => ({ t, u }));
     // Les heures où il revient plus que la plonge ne lave, regroupées en plages.
     const depassements = [];
-    for (const x of heures) {
+    for (const x of parVol ? [] : heures) {
       if (x.u <= capacite) continue;
       const d = depassements[depassements.length - 1];
       if (d && d.a === x.t) d.a = x.t + 60; else depassements.push({ de: x.t, a: x.t + 60 });
     }
     return {
       services: [...new Set(lavages.map(a => a.service))],
-      capacite, serie: file.serie, max: h.max, maxA: h.a,
+      capacite, parVol, tunnels, serie: file.serie, max: h.max, maxA: h.a,
       // Le bouchon se mesure sur ce qui a été lavé : ce qui revient une fois
       // la plonge fermée n'attend pas dans une file, il n'est pas lavé du tout.
       attenteMax: file.attentes.reduce((n, a) => Math.max(n, a.pire), 0),
