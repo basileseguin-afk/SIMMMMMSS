@@ -968,17 +968,19 @@
    * D'OÙ VIENNENT LES RETOURS À LA PLONGE (retour d'usage du 29/09).
    *
    *   programme — les lignes « RET » du programme de vols (arrivée + délai) ;
-   *   j2        — « le retour des vols se fait deux jours après leur départ » :
-   *               le programme se répète, donc le matériel des vols partis J-2
-   *               revient le jour J à l'heure de leur départ, plus le délai ;
+   *   j1        — « le retour des vols se fait le lendemain de leur départ » :
+   *               le programme se répète, donc le matériel des vols partis la
+   *               veille revient le jour J à l'heure de leur départ (+ 24 h),
+   *               plus le délai. (« j2 », 48 h, a vécu un jour : lu comme j1.) ;
    *   planche   — la planche retour du handling (saisie ou importée) : chaque
    *               ligne dit quand le vol revient à l'unité — pas de délai à
    *               ajouter. Sans détail des classes, celles que la compagnie
    *               emporte au départ.
    */
-  const SOURCES_RETOURS = ['programme', 'j2', 'planche'];
+  const SOURCES_RETOURS = ['programme', 'j1', 'planche'];
   function sourceRetours(materiel) {
     const s = materiel && materiel.retours;
+    if (s === 'j2') return 'j1';
     return SOURCES_RETOURS.includes(s) ? s : 'programme';
   }
 
@@ -995,11 +997,11 @@
         const arrivee = v.sta === undefined ? v.heure : v.sta;
         pousser(v.id, v.cie, arrivee + m.delaiRetour, unitesDuVol(v, unites));
       }
-    } else if (source === 'j2') {
+    } else if (source === 'j1') {
       for (const v of vols || []) {
         if (v.sens !== 'DEP') continue;
         const depart = v.std === undefined ? v.heure : v.std;
-        pousser(v.id + ' (J-2)', v.cie, depart + m.delaiRetour, unitesDuVol(v, unites));
+        pousser(v.id + ' (J-1)', v.cie, depart + m.delaiRetour, unitesDuVol(v, unites));
       }
     } else {
       // Les classes qu'une compagnie emporte au départ : celles qu'elle ramène.

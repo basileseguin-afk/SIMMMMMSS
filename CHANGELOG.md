@@ -5,6 +5,28 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-29 — Retours le lendemain (J+1), et J+1 comparé à la planche retour
+
+Retour d'usage : « en fait c'est J+1, pas J+2 », et « c'est intéressant de
+pouvoir choisir si on simule avec la planche retour ou en J+1 ».
+
+- La source automatique devient **J+1** (`materiel.retours = 'j1'`) : chaque
+  départ revient le lendemain, à son heure de départ (+ 24 h), plus le délai
+  après atterrissage ; les retours se nomment « AF1080 (J-1) ». Un réglage
+  `j2` enregistré se lit `j1` (site, sauvegarde et Excel : « J+2 » comme
+  « J+1 » ou « lendemain »).
+- **⇄ Comparer J+1 et planche retour** : sur Réglages › Réglages de la
+  simulation, Données › Planche retour et Résultats › Comparer. La même journée
+  est calculée deux fois (A : J+1, B : planche retour) et retenue dans la
+  comparaison ; le réglage choisi n'est pas modifié.
+- La comparaison porte désormais la source des retours (« Ce qui a changé »)
+  et la plonge (« Ce que ça donne ») : matériel revenu des vols, plus longue
+  attente à la plonge, sale non lavé en fin de journée.
+- Tests : moteur, Excel, comparaison et `tests/planche-browser.cjs`.
+
+Fichiers : `moteur/production.js`, `ateliers.js`, `sim.js`, `comparaison.js`,
+`echanges.js`, `index.html`, tests, docs.
+
 ## 2026-09-29 — Retours à la plonge : J+2 ou planche retour ; un onglet pour tous les réglages
 
 Retour d'usage : « deux options pour la temporalité de la plonge : le retour

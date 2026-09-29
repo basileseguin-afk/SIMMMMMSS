@@ -773,8 +773,9 @@ function renderPlanche(){
     +'<input type="file" accept=".xlsx,.csv" hidden data-pl-fichier>'
     +(planche.length?'<button class="btn btn-sm svc-danger" data-pl-action="vider">Vider</button>':'')+'</div>'
     +(src==='planche'?'<p class="mini-note planche-etat ok">La simulation lit cette planche : chaque vol revient à la plonge à son heure d’arrivée à l’unité.</p>'
-      :'<p class="mini-note planche-etat">La simulation ne lit pas cette planche : ses retours viennent '+(src==='j2'?'des départs d’il y a deux jours':'des lignes « retour » du programme de vols')
+      :'<p class="mini-note planche-etat">La simulation ne lit pas cette planche : ses retours viennent '+(src==='j1'?'des départs de la veille (J+1)':'des lignes « retour » du programme de vols')
         +'. <button class="btn btn-sm btn-play" data-pl-action="utiliser">Utiliser la planche retour</button> <button class="lien-discret" data-page="rg-simulation">Réglages de la simulation →</button></p>')
+    +(planche.length?'<p class="mini-note planche-comparer">Laquelle donne la meilleure journée ? <button class="btn btn-sm" data-comparer-retours>⇄ Comparer J+1 et planche retour</button></p>':'')
     +'<div class="table-scroll"><table class="planche-table"><thead><tr><th>Vol</th><th>Compagnie</th><th>Arrivée à l’unité</th><th>Jour</th>'
     +CLASSES_PLANCHE.map(([,c])=>'<th title="Passagers de cette classe à bord (facultatif)">'+c+'</th>').join('')+'<th></th></tr></thead><tbody>'
     +(lignes||'<tr><td colspan="10" class="mini-note">Aucune ligne. « + Ligne » pour saisir, ou « ⇧ Importer » un classeur (« ⇩ Excel » donne le modèle).</td></tr>')
@@ -1446,6 +1447,8 @@ function initControles() {
   document.getElementById('snap-a').addEventListener('click', () => capturer('A'));
   document.getElementById('snap-b').addEventListener('click', () => capturer('B'));
   document.getElementById('snap-clear').addEventListener('click', () => { snaps = {}; majCompare(); });
+  // « Comparer J+1 et planche retour » : ici, dans les réglages et sur la planche.
+  document.addEventListener('click', e => { if (e.target.closest('[data-comparer-retours]')) comparerRetours(); });
   document.getElementById('imp-vols').addEventListener('change', importVols);
   document.getElementById('exp-vols').addEventListener('click', exporterVols);
   document.getElementById('sauvegarde-export').addEventListener('click', sauvegardeComplete);
@@ -1469,7 +1472,7 @@ function initControles() {
  *  relance rien, cela fige ce qu'on a sous les yeux (`comparaison.js`).
  * ------------------------------------------------------------------------- */
 let snaps = {};
-function capturer(slot) {
+function capturer(slot, silencieux) {
   const r = Sim.ateliers && Sim.ateliers.resultat;
   if (!r) { toast('Aucune journée à photographier.'); return; }
   snaps[slot] = OrlyComparaison.capturer(r, {
@@ -1481,8 +1484,23 @@ function capturer(slot) {
     liaisons: liaisonsServices(),
     decalage: CFG.shift
   });
+  if (silencieux) return;
   majCompare();
   toast('Scénario ' + slot + ' capturé');
+}
+/* J+1 contre planche retour, d'un geste (retour d'usage du 29/09) : la même
+ * journée calculée deux fois, A avec les retours du lendemain, B avec la
+ * planche. Le réglage choisi n'est pas touché : rien à annuler après. */
+function comparerRetours() {
+  const sa = Sim.ateliers; if (!sa) return;
+  const m = sa.state.materiel;
+  if (!(m.planche || []).length) { toast('La planche retour est vide : saisissez-la ou importez-la d’abord (Données › Planche retour).'); allerPage('v-planche'); return; }
+  try {
+    for (const [slot, src] of [['A', 'j1'], ['B', 'planche']]) { sa.state.materiel = { ...m, retours: src }; sa.calculer(); capturer(slot, true); }
+  } finally { sa.state.materiel = m; sa.calculer(); }
+  majCompare();
+  allerPage('j-comparer');
+  toast(m.actif ? 'Essai A : retours J+1 · essai B : planche retour' : 'Essais retenus — cochez « Matériel en boucle » pour suivre ce que lave la plonge');
 }
 function majCompare() {
   const lignes = OrlyComparaison.lignes(snaps.A, snaps.B);

@@ -258,7 +258,7 @@ un jour ou une heure illisible : l'import est refusé en entier.
 ### Feuille « Matériel »
 
 `Boucle du matériel active`, `Stock propre à l'ouverture`, `Délai après
-atterrissage (min)`, `Retours à la plonge` (`programme`, `J+2` ou `planche`)
+atterrissage (min)`, `Retours à la plonge` (`programme`, `J+1` ou `planche` ; « J+2 » ou « lendemain » sont lus J+1)
 et `Unités par vol` pour chaque classe. La planche elle-même a son fichier
 (ci-dessous).
 

@@ -1240,8 +1240,8 @@
           else if (k === 'delai_apres_atterrissage_min') m.delaiRetour = T.nombreDe(o.valeur, 30);
           else if (k === 'retours_a_la_plonge') {
             const v = T.cleEntete(o.valeur ?? '');
-            const src = !v ? 'programme' : /^(programme|ret|lignes_retour)/.test(v) ? 'programme' : /^(j_?2|48)/.test(v) ? 'j2' : /^planche/.test(v) ? 'planche' : null;
-            if (!src) throw new Error('retours à la plonge : « programme », « J+2 » ou « planche »');
+            const src = !v ? 'programme' : /^(programme|ret|lignes_retour)/.test(v) ? 'programme' : /^(j_?[12]|24|48|lendemain)/.test(v) ? 'j1' : /^planche/.test(v) ? 'planche' : null;
+            if (!src) throw new Error('retours à la plonge : « programme », « J+1 » ou « planche »');
             m.retours = src;
           } else {
             const u = /^unites_par_vol_([a-z]+)$/.exec(k);
@@ -1278,7 +1278,7 @@
    * si on les connaît, les classes à bord (sinon, celles que la compagnie
    * emporte au départ). */
   const CLASSES_PLANCHE = [['bc', 'BC'], ['pc', 'PC'], ['yc', 'YC'], ['crew', 'CREW'], ['spml', 'SPML']];
-  const RETOURS_ECRITS = { programme: 'programme', j2: 'J+2', planche: 'planche' };
+  const RETOURS_ECRITS = { programme: 'programme', j1: 'J+1', planche: 'planche' };
   function plancheVersClasseur(planche) {
     const lignes = [['Vol', 'Compagnie', 'Arrivée à l’unité', 'Jour', ...CLASSES_PLANCHE.map(([, c]) => c)]];
     for (const l of planche || []) lignes.push([l.vol || null, l.cie || null, l.heure, jourEcrit(l.jour || 0), ...CLASSES_PLANCHE.map(([k]) => l[k] ?? null)]);

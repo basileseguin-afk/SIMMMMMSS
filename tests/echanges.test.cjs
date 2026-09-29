@@ -470,16 +470,16 @@ test('planche retour : une heure Excel et une colonne « Arrivée » sont compri
 });
 
 test('matériel : la source des retours à la plonge fait l’aller-retour par Excel, sans toucher à la planche', async () => {
-  const etat = { ...ETAT_ATELIERS(), materiel: { actif: true, retours: 'j2', planche: [{ vol: 'AF1', cie: 'AF', heure: '09:00', jour: 0 }] } };
+  const etat = { ...ETAT_ATELIERS(), materiel: { actif: true, retours: 'j1', planche: [{ vol: 'AF1', cie: 'AF', heure: '09:00', jour: 0 }] } };
   const f = await parFichier(E.ateliersVersClasseur(etat, ctxAteliers()));
-  assert.deepEqual(T.feuille(f, 'Matériel').lignes.find(l => l[0] === 'Retours à la plonge'), ['Retours à la plonge', 'J+2']);
+  assert.deepEqual(T.feuille(f, 'Matériel').lignes.find(l => l[0] === 'Retours à la plonge'), ['Retours à la plonge', 'J+1']);
   const lu = E.classeurVersAteliers(f, etat, ctxAteliers()).etat.materiel;
-  assert.equal(lu.retours, 'j2');
+  assert.equal(lu.retours, 'j1');
   assert.deepEqual(lu.planche, etat.materiel.planche, 'la planche vit dans son propre fichier');
-  for (const [ecrit, src] of [['planche', 'planche'], ['Programme', 'programme'], ['', 'programme']]) {
+  for (const [ecrit, src] of [['J+2', 'j1'], ['lendemain', 'j1'], ['planche', 'planche'], ['Programme', 'programme'], ['', 'programme']]) {
     const g = modifier(f, 'Matériel', l => l.map(x => (x[0] === 'Retours à la plonge' ? [x[0], ecrit] : x)));
     assert.equal(E.classeurVersAteliers(g, etat, ctxAteliers()).etat.materiel.retours, src, ecrit);
   }
   const g = modifier(f, 'Matériel', l => l.map(x => (x[0] === 'Retours à la plonge' ? [x[0], 'demain'] : x)));
-  assert.throws(() => E.classeurVersAteliers(g, etat, ctxAteliers()), /programme », « J\+2 » ou « planche/);
+  assert.throws(() => E.classeurVersAteliers(g, etat, ctxAteliers()), /programme », « J\+1 » ou « planche/);
 });

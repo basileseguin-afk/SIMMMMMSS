@@ -75,11 +75,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('[data-at-champ=mat-retours]').inputValue(),'planche');
   assert.match(await page.locator('#rg-sim-materiel').textContent(),/2 lignes/);
   assert.equal(await page.locator('[data-at-champ=mat-delai]').isDisabled(),true,'pas de délai : la planche donne l’arrivée à l’unité');
-  // Le choix « J+2 » : chaque départ revient 48 h plus tard ; le délai se règle à nouveau.
-  await page.selectOption('[data-at-champ=mat-retours]','j2');await attendre();
-  assert.equal((await etat()).retours,'j2');
+  // Le choix « J+1 » : chaque départ revient le lendemain ; le délai se règle à nouveau.
+  await page.selectOption('[data-at-champ=mat-retours]','j1');await attendre();
+  assert.equal((await etat()).retours,'j1');
   assert.equal(await page.locator('[data-at-champ=mat-delai]').isDisabled(),false);
-  assert.match(await page.locator('#rg-sim-materiel').textContent(),/deux jours|48/);
+  assert.match(await page.locator('#rg-sim-materiel').textContent(),/la veille|\+ 24 h/);
   // Le lien vers la planche y ramène.
   await page.selectOption('[data-at-champ=mat-retours]','planche');await attendre();
   await page.locator('#rg-sim-materiel [data-page=v-planche]').click();await attendre();
@@ -91,7 +91,23 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(relu.retours,'planche');
   assert.equal(relu.planche.length,2,'la planche est enregistrée');
 
-  // 7. Rien ne déborde, même sur un petit écran.
+  // 7. J+1 contre planche retour, d'un geste : A et B retenus, le réglage intact.
+  await nav.aller(page,'v-planche');
+  await page.locator('#vols-planche [data-comparer-retours]').click();await attendre();
+  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'j-comparer','on arrive sur la comparaison');
+  const ligne=lib=>page.evaluate(lib=>{const tr=[...document.querySelectorAll('#compare tr')].find(t=>t.cells[0]&&t.cells[0].textContent===lib);
+    return tr?[tr.cells[1].textContent,tr.cells[2].textContent]:null;},lib);
+  assert.deepEqual(await ligne('Retours à la plonge'),['J+1 (lendemain du départ)','Planche retour']);
+  assert.ok(await ligne('Plus longue attente à la plonge'),'la plonge se compare');
+  assert.equal((await etat()).retours,'planche','le réglage choisi n’a pas bougé');
+  assert.equal(await page.locator('#snap-clear').isVisible(),true);
+  // Le même bouton, depuis les réglages de la simulation ; la comparaison est aussi sur sa page.
+  await nav.aller(page,'rg-simulation');
+  assert.equal(await page.locator('#rg-sim-materiel [data-comparer-retours]').isEnabled(),true);
+  await nav.aller(page,'j-comparer');
+  assert.equal(await page.locator('.panneau-compare [data-comparer-retours]').isVisible(),true);
+
+  // 8. Rien ne déborde, même sur un petit écran.
   await nav.aller(page,'v-planche');
   await page.setViewportSize({width:1024,height:700});await attendre();
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'pas de débordement à 1 024 px');

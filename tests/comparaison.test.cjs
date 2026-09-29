@@ -73,3 +73,25 @@ test('deux essais qui ne diffèrent que par un chemin ne sont pas « identiques 
   const c = C.capturer(r, { ateliers, reglages, liaisons: [], etat: etat(['cuisine']), vols: VOLS.slice(1) });
   assert.doesNotMatch(C.note(a, c), /identiques/, 'le programme de vols a changé');
 });
+
+/* J+1 contre planche retour (retour d'usage du 29/09) : la source des retours
+ * est un réglage du tableau, et la plonge dit ce qu'elle en a fait. */
+test('retours J+1 contre planche retour : la source et la plonge se comparent', () => {
+  const plonge = { id: 'pl', nom: 'Plonge', service: 'plonge', type: 'lavage', debut: '00:00', jour: -1, personnes: 1, lots: [],
+    regime: { actif: false }, parVol: true, durees: { '*': 40 }, tunnels: [{ nom: 'T1', personnes: 1, actif: true }] };
+  const planche = VOLS.filter(v => v.sens === 'DEP').slice(0, 3).map(v => ({ vol: v.id, cie: v.cie, heure: '23:00', jour: 0 }));
+  const essai = retours => {
+    const materiel = { actif: true, delaiRetour: 30, retours, planche };
+    const r = P.simuler({ vols: VOLS, ateliers: [plonge], liaisons: [], rendement: 1, materiel });
+    return C.capturer(r, { source: 'démo', ateliers: [plonge], reglages: {}, liaisons: [], etat: { materiel } });
+  };
+  const a = essai('j1'), b = essai('planche');
+  const par = Object.fromEntries(C.lignes(a, b).map(l => [l.lib, l]));
+  assert.deepEqual([par['Retours à la plonge'].a, par['Retours à la plonge'].b], ['J+1 (lendemain du départ)', 'Planche retour']);
+  assert.equal(par['Retours à la plonge'].verdict, '', 'un réglage, pas un résultat');
+  assert.ok(a.revenu > b.revenu, 'tous les départs reviennent en J+1, trois vols sur la planche');
+  assert.notEqual(par['Matériel revenu des vols'].a, '—');
+  assert.ok(Number.isFinite(a.attentePlonge) && Number.isFinite(b.attentePlonge));
+  assert.match(C.note(a, b), /seul ce que vous avez changé/);
+  assert.equal(C.capturer(null, { etat: { materiel: { retours: 'j2' } } }).retours, 'J+1 (lendemain du départ)', 'l’ancien J+2 se lit J+1');
+});

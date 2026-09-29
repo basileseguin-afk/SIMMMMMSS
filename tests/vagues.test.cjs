@@ -120,16 +120,17 @@ test('plonge par vol : un tunnel ×2 lave en deux fois moins de temps, et prend 
 });
 
 /* D'où viennent les retours à la plonge (retour d'usage du 29/09) : le
- * programme (lignes RET), les départs de J-2 (même heure, 48 h plus tard), ou
+ * programme (lignes RET), les départs de la veille (J+1 : même heure, 24 h plus tard), ou
  * la planche retour du handling. */
-test('retours à la plonge : programme, J+2 ou planche retour', () => {
+test('retours à la plonge : programme, J+1 ou planche retour', () => {
   const vols = [{ id: 'AF1', cie: 'AF', sens: 'DEP', std: h('07:05'), bc: 10, yc: 100 }, { id: 'TX1', cie: 'TX', sens: 'DEP', std: h('09:00'), yc: 80 },
     { id: 'AF9', cie: 'AF', sens: 'RET', sta: h('06:00'), yc: 100 }];
   const unites = { BC: { parVol: 5 }, PC: { parVol: 0 }, YC: { parVol: 20 }, CREW: { parVol: 0 }, SPML: { parVol: 0 } };
   const m = p => ({ actif: true, delaiRetour: 30, unites, ...p });
   const r = (p) => P.retoursDeVols(vols, m(p)).map(x => [x.vol, P.hhmm(x.t), x.unites]);
   assert.deepEqual(r({}), [['AF9', '06:30', 20]], 'par défaut : les lignes RET du programme');
-  assert.deepEqual(r({ retours: 'j2' }), [['AF1 (J-2)', '07:35', 25], ['TX1 (J-2)', '09:30', 20]], 'J+2 : l’heure du départ, plus le délai');
+  assert.deepEqual(r({ retours: 'j1' }), [['AF1 (J-1)', '07:35', 25], ['TX1 (J-1)', '09:30', 20]], 'J+1 : l’heure du départ, plus le délai');
+  assert.equal(P.sourceRetours({ retours: 'j2' }), 'j1', 'l’ancien « J+2 » se lit J+1');
   const planche = [{ vol: 'AF1', cie: 'AF', heure: '10:15', jour: 0 }, { vol: 'TX7', cie: 'tx', heure: '23:30', jour: -1, yc: 50 }, { vol: 'ZZ1', cie: 'ZZ', heure: '12:00' }];
   assert.deepEqual(r({ retours: 'planche', planche }), [['TX7', 'J-1 23:30', 20], ['AF1', '10:15', 25], ['ZZ1', '12:00', 20]],
     'planche : l’heure d’arrivée à l’unité, sans délai ; sans classes, celles que la compagnie emporte');
@@ -138,6 +139,6 @@ test('retours à la plonge : programme, J+2 ou planche retour', () => {
   const pl = { id: 'pl', nom: 'Plonge', service: 'plonge', type: 'lavage', debut: '00:00', jour: -1, personnes: 1, lots: [], regime: { actif: false },
     parVol: true, durees: { '*': 20 }, tunnels: [{ nom: 'T1', personnes: 1, actif: true }] };
   const sim = p => P.simuler({ vols, liaisons: [], rendement: 1, bareme: {}, ateliers: [pl], materiel: m(p) }).lots.filter(x => x.retourVol).map(x => x.vol);
-  assert.deepEqual(sim({ retours: 'j2' }), ['AF1 (J-2)', 'TX1 (J-2)']);
+  assert.deepEqual(sim({ retours: 'j1' }), ['AF1 (J-1)', 'TX1 (J-1)']);
   assert.deepEqual(sim({ retours: 'planche', planche }), ['TX7', 'AF1', 'ZZ1']);
 });

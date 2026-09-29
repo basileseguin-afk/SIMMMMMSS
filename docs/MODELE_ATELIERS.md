@@ -392,14 +392,19 @@ simulation :
 | Source | Chaque retour | Heure à la plonge |
 |---|---|---|
 | `programme` (défaut) | une ligne RET du programme de vols | arrivée + délai après atterrissage |
-| `j2` | chaque départ du programme, revenu deux jours plus tard | heure de départ + délai (le départ de J-2 à la même heure : +48 h) |
+| `j1` | chaque départ du programme, revenu le lendemain | heure de départ + délai (le départ de la veille à la même heure : +24 h) |
 | `planche` | une ligne de `materiel.planche` (planche retour du handling) | `heure` + `jour` × 1 440, **sans délai** : c'est l'arrivée à l'unité |
 
 Une ligne de planche porte `vol`, `cie`, `heure`, `jour` (0, -1… -3) et,
 facultatifs, les passagers `bc`, `pc`, `yc`, `crew`, `spml`. Sans classes, le
 vol ramène les unités des classes que sa compagnie emporte au départ (YC si la
 compagnie ne part pas ce jour-là). Les deux plonges, au débit comme par vol,
-lisent la même source (`retoursDeVols`).
+lisent la même source (`retoursDeVols`). Un ancien réglage `j2` (48 h, un
+jour en service) se lit `j1`.
+
+« ⇄ Comparer J+1 et planche retour » calcule la journée deux fois sans toucher
+au réglage et remplit les essais A (J+1) et B (planche) de la comparaison, qui
+compare aussi la plonge : matériel revenu, plus longue attente, sale restant.
 
 Une saisie d'hier, qui comptait aussi par passager, est convertie en unités par
 vol sur la base des mêmes passagers types que le barème.

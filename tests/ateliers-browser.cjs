@@ -372,12 +372,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(rm.entrees>0,'les retours du programme ram\u00e8nent du mat\u00e9riel');
   assert.ok(rm.lavees>0,'la plonge en lave une partie');
   assert.match(await page.locator('.at-mat-bilan').textContent(),/Revenu des vols/);
-  // Les retours peuvent aussi venir des départs : chaque vol revient 48 h après.
+  // Les retours peuvent aussi venir des départs : chaque vol revient le lendemain.
   await onglet('rg-simulation');
   assert.equal(await page.locator('[data-at-champ=mat-retours]').inputValue(),'programme','par défaut, les arrivées du programme');
-  await page.locator('[data-at-champ=mat-retours]').selectOption('j2');await attendre();
-  assert.equal(await page.evaluate(()=>Sim.ateliers.state.materiel.retours),'j2');
-  assert.ok(await page.evaluate(()=>Sim.ateliers.resultat.materiel.entrees)>0,'les départs de l’avant-veille reviennent');
+  await page.locator('[data-at-champ=mat-retours]').selectOption('j1');await attendre();
+  assert.equal(await page.evaluate(()=>Sim.ateliers.state.materiel.retours),'j1');
+  assert.ok(await page.evaluate(()=>Sim.ateliers.resultat.materiel.entrees)>0,'les départs de la veille reviennent');
   // La planche retour : vide, elle ne ramène rien, et le dit.
   await page.locator('[data-at-champ=mat-retours]').selectOption('planche');await attendre();
   assert.equal(await page.locator('[data-at-champ=mat-delai]').isDisabled(),true,'la planche donne l’arrivée à l’unité : pas de délai');

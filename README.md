@@ -201,8 +201,10 @@ le rouge ne sert qu’aux retards.
    - *Horaires des vols* : décaler tous les vols ; « repas prêts combien de
      minutes avant le départ ? ».
    - *Retours des vols à la plonge* : d’où ils viennent — les lignes
-     « retour » du programme, chaque départ 48 h après (J+2), ou la planche
+     « retour » du programme, chaque départ le lendemain (J+1), ou la planche
      retour du handling ; le délai après atterrissage ; la boucle du matériel.
+     « ⇄ Comparer J+1 et planche retour » calcule les deux et les met côte à
+     côte dans Résultats › Comparer.
    - *Rythme et pauses* : rythme de travail, pauses et temps de présence.
 4. **Résultats** — ce que la journée donne.
    - *Synthèse* : la journée entière en tuiles (commandes à l’heure, retards,
@@ -413,7 +415,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/boutique-browser.cjs` | La légumerie comme une boutique : d'un clic depuis les vagues, fermée la cuisine attend l'ouverture, les heures dans le récap des cases et « Qui prépare quoi », Annuler |
 | `tests/plonge-vol-browser.cjs` | La plonge par vol : une ligne par compagnie des vols revenus, un vol par tunnel qui tourne, au temps de sa compagnie ; retour au débit |
 | `tests/ajout-cie-browser.cjs` | Ajouter une compagnie et ses classes d'un coup depuis les chemins, la classe qui manque à une compagnie existante, une compagnie dans le tableau du handling |
-| `tests/planche-browser.cjs` | Données › Planche retour : saisir une ligne, export Excel modifié puis réimporté, classeur faux refusé, « Utiliser la planche retour », les réglages de la simulation (J+2, délai), rechargement |
+| `tests/planche-browser.cjs` | Données › Planche retour : saisir une ligne, export Excel modifié puis réimporté, classeur faux refusé, « Utiliser la planche retour », les réglages de la simulation (J+1, délai), rechargement, « ⇄ Comparer J+1 et planche retour » |
 | `tests/secours-browser.cjs` | Un démarrage resté en plan ouvre la page de secours ; elle rend les données en sauvegarde, repart sans les cases, puis les remet |
 | `tests/recap-cases-browser.cjs` | Récap des cases : une ligne par case, tâche unique / à la suite / ensemble, départ et jour modifiables, chercher, fichier de paramétrage exporté puis réimporté |
 | `tests/robot-browser.cjs` | Le Robot : service créé et rattaché au Montage, remplace le Montage sur TX, CRL et FBU Économie (une fois), une case Robot, plateaux ÷ débit, débit et effectif dans le récap et la fiche |

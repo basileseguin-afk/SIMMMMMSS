@@ -201,8 +201,8 @@
       stockInitial: Number.isFinite(+m.stockInitial) ? Math.max(0, Math.round(+m.stockInitial)) : 0,
       delaiRetour: Number.isFinite(+m.delaiRetour) ? Math.max(0, Math.round(+m.delaiRetour)) : 30,
       // D'où viennent les retours à la plonge : les lignes RET du programme, les
-      // départs de J-2, ou la planche retour du handling (Données › Planche retour).
-      retours: P.SOURCES_RETOURS.includes(m.retours) ? m.retours : 'programme',
+      // départs de la veille (J+1), ou la planche retour du handling (Données › Planche retour).
+      retours: P.sourceRetours(m),
       planche: plancheDe(m.planche)
     };
     // Le chemin de chaque classe. Une sauvegarde d'avant les parcours reçoit
@@ -677,7 +677,7 @@
         if (champ === 'mat-delai') m.delaiRetour = Math.max(0, parseInt(v, 10) || 0);
         if (champ === 'mat-retours' && P.SOURCES_RETOURS.includes(v)) m.retours = v;
       }, champ === 'mat-retours'
-        ? (v === 'j2' ? 'Retours : deux jours après le départ, à la même heure.' : v === 'planche' ? 'Retours : la planche retour du handling.' : 'Retours : les lignes retour du programme de vols.')
+        ? (v === 'j1' ? 'Retours : le lendemain du départ, à la même heure.' : v === 'planche' ? 'Retours : la planche retour du handling.' : 'Retours : les lignes retour du programme de vols.')
         : champ === 'mat-actif'
         ? (v ? 'Le compte du matériel est tenu : déclarez la plonge et les équipes qui en emportent.'
              : 'Compte du matériel abandonné.')
@@ -1122,13 +1122,15 @@
       const retours = `<div class="at-retours">
   <h3>Retours des vols à la plonge</h3>
   <label class="at-mode-dispo">D’où viennent les retours ?<select data-at-champ="mat-retours">
-    <option value="j2" ${src === 'j2' ? 'selected' : ''}>Automatiques : 2 jours après le départ (même heure)</option>
+    <option value="j1" ${src === 'j1' ? 'selected' : ''}>Automatiques : le lendemain du départ, J+1 (même heure)</option>
     <option value="planche" ${src === 'planche' ? 'selected' : ''}>La planche retour du handling</option>
     <option value="programme" ${src === 'programme' ? 'selected' : ''}>Les lignes « retour » du programme de vols</option></select></label>
-  <p class="mini-note">${src === 'j2' ? 'Le programme se répète d’un jour à l’autre : le matériel des vols partis il y a deux jours revient aujourd’hui à l’heure de leur départ, plus le délai après atterrissage. Autant de retours que de départs.'
+  <p class="mini-note">${src === 'j1' ? 'Le programme se répète d’un jour à l’autre : le matériel des vols partis la veille revient aujourd’hui à l’heure de leur départ (+ 24 h), plus le délai après atterrissage. Autant de retours que de départs.'
     : src === 'planche' ? `Chaque ligne de la planche dit quand le vol revient à l’unité (sans délai ajouté). <b>${n} ligne${n > 1 ? 's' : ''}</b>
       <button class="lien-discret" data-page="v-planche">Ouvrir la planche retour (Données) →</button>`
     : 'Les vols « RET » du programme importé, à leur heure d’arrivée, plus le délai après atterrissage.'}</p>
+  <p class="mini-note at-retours-comparer">Pour choisir en connaissance de cause :
+    <button class="btn btn-sm" data-comparer-retours ${n ? '' : 'disabled title="Saisissez d’abord la planche retour (Données › Planche retour)"'}>⇄ Comparer J+1 et planche retour</button></p>
   <label class="at-inline-champ">Délai après atterrissage (min)<input type="number" min="0" value="${m.delaiRetour}" data-at-champ="mat-delai"
     ${src === 'planche' ? 'disabled title="La planche donne déjà l’heure d’arrivée à l’unité"' : ''}></label>
 </div>`;

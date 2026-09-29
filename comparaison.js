@@ -18,6 +18,9 @@
     return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
   };
   const arrondi = v => (v == null || !Number.isFinite(v) ? null : Math.round(v));
+  // D'où viennent les retours à la plonge (retour d'usage du 29/09) : un réglage
+  // qu'on veut pouvoir comparer, J+1 contre planche retour.
+  const RETOURS = { programme: 'Programme de vols', j1: 'J+1 (lendemain du départ)', j2: 'J+1 (lendemain du départ)', planche: 'Planche retour' };
 
   /**
    * Fige un scénario.
@@ -27,6 +30,7 @@
   function capturer(resultat, c) {
     const ctx = c || {};
     const k = (resultat && resultat.indicateurs) || {};
+    const mat = (resultat && resultat.materiel) || null, plonge = (resultat && resultat.plonge) || null;
     const ateliers = ctx.ateliers || [];
     const reglages = ctx.reglages || {};
     return {
@@ -43,6 +47,7 @@
       rendement: reglages.rendement == null ? null : Math.round(reglages.rendement * 100),
       delai: reglages.delaiChargement == null ? null : reglages.delaiChargement,
       decalage: ctx.decalage || 0,
+      retours: RETOURS[((ctx.etat || {}).materiel || {}).retours] || RETOURS.programme,
       suivies: k.classesSuivies || 0,
       aHeure: k.aHeure || 0,
       part: k.partAHeure == null ? null : k.partAHeure,
@@ -53,6 +58,11 @@
       attenteMateriel: arrondi(k.attenteMateriel),
       hommeHeures: k.hommeHeures == null ? null : Math.round(k.hommeHeures * 10) / 10,
       absentes: k.classesAbsentes || 0,
+      // La plonge : ce qui est revenu, l'attente la plus longue avant d'être lavé,
+      // et le sale qui reste en fin de journée (la boucle du matériel tenue).
+      revenu: mat ? Math.round(mat.entrees) : null,
+      attentePlonge: plonge ? arrondi(plonge.attenteMax) : null,
+      resteSale: mat ? mat.resteSale : null,
       // Avec un handling : les vols chargés à leur départ.
       vols: k.volsSuivis || 0,
       volsAHeure: k.volsAHeure || 0,
@@ -69,6 +79,7 @@
     { groupe: 'Ce qui a changé', lib: 'Personnes au travail', val: s => String(s.personnes), sens: 0 },
     { groupe: 'Ce qui a changé', lib: 'Rythme de travail', val: s => s.rendement == null ? '—' : s.rendement + ' %', sens: 0 },
     { groupe: 'Ce qui a changé', lib: 'Commandes prêtes avant le départ', val: s => s.delai == null ? '—' : s.delai + ' min', sens: 0 },
+    { groupe: 'Ce qui a changé', lib: 'Retours à la plonge', val: s => s.retours || RETOURS.programme, sens: 0 },
     { groupe: 'Ce qui a changé', lib: 'Décalage des vols', val: s => (s.decalage > 0 ? '+' : '') + s.decalage + ' min', sens: 0 },
     { groupe: 'Ce que ça donne', lib: 'Vols chargés à l’heure (handling)',
       val: s => s.vols ? s.volsAHeure + ' / ' + s.vols + (s.partVols != null ? ' · ' + s.partVols + ' %' : '') : '—',
@@ -85,6 +96,11 @@
       num: s => s.attente, sens: -1 },
     { groupe: 'Ce que ça donne', lib: 'Attente de matériel propre', val: s => s.attenteMateriel == null ? '—' : s.attenteMateriel + ' min',
       num: s => s.attenteMateriel, sens: -1 },
+    { groupe: 'Ce que ça donne', lib: 'Matériel revenu des vols', val: s => s.revenu == null ? '—' : s.revenu + ' u', sens: 0 },
+    { groupe: 'Ce que ça donne', lib: 'Plus longue attente à la plonge', val: s => s.attentePlonge == null ? '—' : s.attentePlonge + ' min',
+      num: s => s.attentePlonge, sens: -1 },
+    { groupe: 'Ce que ça donne', lib: 'Sale non lavé en fin de journée', val: s => s.resteSale == null ? '—' : s.resteSale + ' u',
+      num: s => s.resteSale, sens: -1 },
     { groupe: 'Ce que ça donne', lib: 'Heures de travail', val: s => s.hommeHeures == null ? '—' : String(s.hommeHeures).replace('.', ',') + ' h',
       num: s => s.hommeHeures, sens: 0 },
     { groupe: 'Ce que ça donne', lib: 'Commandes sans équipe', val: s => String(s.absentes), num: s => s.absentes, sens: -1 }
