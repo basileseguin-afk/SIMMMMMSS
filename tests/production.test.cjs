@@ -174,8 +174,21 @@ test('sous son effectif minimum, le robot ne tourne pas et le dit', () => {
     ateliers: [{ id: 'r', nom: 'Robot', service: 'prepa', type: 'robot', debut: '06:00',
       personnes: 1, personnesMin: 2, debit: 300, lots: [['CRL/YC']] }]
   });
-  assert.equal(r.ok, false);
+  // La journée se calcule quand même (audit du 29/09) : le robot ne produit rien, et on le dit.
+  assert.equal(r.ok, true);
   assert.match(r.anomalies.map(a => a.message).join(' '), /le robot ne tourne pas/);
+  assert.ok(r.anomalies.some(a => a.code === 'robot-arret'));
+  assert.equal(r.parClasse['CRL/YC'].fin, null, 'CRL YC n’est pas prête');
+});
+
+test('une case sans personne ne produit rien, mais le reste de la journée se calcule', () => {
+  const r = P.simuler({ vols: VOLS, liaisons: [], rendement: 1,
+    ateliers: [{ id: 'a', nom: 'Vide', service: 'cuisine', type: 'manuel', debut: '04:00', personnes: 0, lots: [['AF/BC']] },
+      { id: 'b', nom: 'Pleine', service: 'cuisine', type: 'manuel', debut: '04:00', personnes: 2, lots: [['CRL/BC']] }] });
+  assert.equal(r.ok, true, 'mettre une case à 0 n’efface plus tous les résultats');
+  assert.ok(r.anomalies.some(a => a.code === 'sans-personne' && /sans personne/.test(a.message)));
+  assert.equal(r.parClasse['AF/BC'].fin, null);
+  assert.ok(r.parClasse['CRL/BC'].fin != null, 'l’autre case travaille');
 });
 
 test('les pauses arrêtent le robot et repoussent sa fin d’autant', () => {
@@ -615,7 +628,9 @@ test('une plonge dont tous les tunnels sont à l’arrêt le dit', () => {
       debut: '05:00', personnes: 3, jour: 0, lots: [],
       tunnels: [{ debit: 300, actif: false }, { debit: 300, actif: false }] }]
   });
-  assert.equal(r.ok, false);
+  // Rien n'est lavé, on le dit — sans effacer le reste de la journée.
+  assert.equal(r.ok, true);
+  assert.ok(r.anomalies.some(a => a.code === 'plonge-arret'));
   assert.match(r.anomalies.map(a => a.message).join(' '), /aucun tunnel ne tourne/);
 });
 
@@ -938,7 +953,7 @@ test('robot : un débit par compagnie × classe, sinon celui du robot ; un minim
   assert.equal(P.debitRobot(robot(), 'CRL/YC'), 300);
   // Sous le minimum de personnes, il ne tourne pas.
   const r2 = P.simuler({ vols, liaisons: [], rendement: 1, bareme: {}, ateliers: [robot({ personnes: 1 })] });
-  assert.ok(r2.anomalies.some(a => a.code === 'personnesMin'));
+  assert.ok(r2.anomalies.some(a => a.code === 'robot-arret'));
   // Sans débit du robot, les débits par commande suffisent.
   const r3 = P.simuler({ vols, liaisons: [], rendement: 1, bareme: {}, ateliers: [robot({ debit: 0, debits: { 'TX/YC': 400, 'CRL/YC': 600 } })] });
   assert.equal(r3.ok, true, JSON.stringify(r3.anomalies));

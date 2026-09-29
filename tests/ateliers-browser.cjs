@@ -107,7 +107,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(Math.abs((lrob.fin-lrob.debut)-340/300*60)<1e-6);
   await champ(rob,'personnes',1);
   r=await resultat();
-  assert.ok(r.anomalies.includes('personnesMin'),'l’effectif insuffisant est signalé');
+  assert.ok(r.anomalies.includes('robot-arret'),'l’effectif insuffisant est signalé');
   await champ(rob,'personnes',3);
 
   // 6. Une pause repousse la fin sans changer le travail.

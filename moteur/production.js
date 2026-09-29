@@ -719,7 +719,7 @@
       if (dispo) { /* ni personnes, ni lots, ni barème */ }
       else if (!Number.isInteger(gens) || gens < 0) dire('personnes', 'nombre de personnes entier attendu.');
       // Le handling a une durée par vol, pas des man-minutes : son effectif ne compte pas.
-      else if (!robot && !handling && gens === 0) dire('personnes', 'sans personne, rien n’est fabriqué.');
+      else if (!robot && !handling && gens === 0) dire('sans-personne', 'sans personne, rien n’est fabriqué.');
 
       if (lavage) {
         const tunnels = Array.isArray(a.tunnels) ? a.tunnels : null;
@@ -734,8 +734,8 @@
             + etat.sansPersonne.map(t => t.nom || 'sans nom').join(', ')
             + '. Ils ne tournent pas. Ajoutez du monde ou arrêtez-les.');
         }
-        if (a.parVol) { if (tunnels && tunnels.length && !etat.tournent.length) dire('debit', 'aucun tunnel ne tourne : rien n’est lavé.'); }
-        else if (!(etat.debit > 0)) dire('debit', tunnels && tunnels.length
+        if (a.parVol) { if (tunnels && tunnels.length && !etat.tournent.length) dire('plonge-arret', 'aucun tunnel ne tourne : rien n’est lavé.'); }
+        else if (!(etat.debit > 0)) dire(tunnels && tunnels.length ? 'plonge-arret' : 'debit', tunnels && tunnels.length
           ? 'aucun tunnel ne tourne : rien n’est lavé.'
           : 'débit attendu, en unités de matériel par heure.');
       }
@@ -747,7 +747,7 @@
         const mini = a.personnesMin === undefined ? 1 : a.personnesMin;
         if (!Number.isInteger(mini) || mini < 0) dire('personnesMin', 'effectif minimum entier attendu.');
         else if (Number.isInteger(gens) && gens < mini)
-          dire('personnesMin', gens + (gens > 1 ? ' personnes' : ' personne') + ' pour un minimum de ' + mini + ' : le robot ne tourne pas.');
+          dire('robot-arret', gens + (gens > 1 ? ' personnes' : ' personne') + ' pour un minimum de ' + mini + ' : le robot ne tourne pas.');
       }
 
       for (const p of (a.pauses || [])) {
@@ -1187,7 +1187,11 @@
     const NON_BLOQUANTES = new Set(['doublon', 'bareme', 'lots', 'lot-vide', 'poste', 'materiel', 'dispo', 'bouchon', 'inacheve', 'plonge-fermee',
       'tunnel-personnes', 'parcours-trou', 'hors-parcours', 'bareme-classe',
       'handling-duree', 'handling-sans', 'handling-bloque', 'handling-poste', 'handling-retard', 'handling-chauffeurs',
-      'plonge-duree', 'plonge-vol']);
+      'plonge-duree', 'plonge-vol',
+      // Une case sans personne, un robot sous son effectif, une plonge dont aucun
+      // tunnel ne tourne : cette case ne produit rien, et on le dit — mais le reste
+      // de la journée se calcule. Mettre une case à 0 effaçait tous les résultats.
+      'sans-personne', 'robot-arret', 'plonge-arret']);
     const bloquant = anomalies.some(a => !NON_BLOQUANTES.has(a.code));
     if (bloquant) return { ok: false, anomalies, classes, lots: [], ateliers: [] };
 
@@ -1613,6 +1617,10 @@
       }
 
       if (a.type === 'lavage') {
+        // Aucun tunnel ne tourne (personne pour les tenir) : cette plonge ne lave
+        // rien, et on le dit (« plonge-arret »). Laver « en un temps infini »
+        // faisait planter toute la journée (trouvé par tirage au hasard, 29/09).
+        if (!(debitLavage(a) > 0)) continue;
         env.processus(function* () {
           if (env.maintenant < depart) yield env.delai(depart - env.maintenant);
           const prisesL = new Set(); let cumulL = 0;

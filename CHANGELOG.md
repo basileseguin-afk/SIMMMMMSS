@@ -5,6 +5,31 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-29 — Améliorer l'existant, lot 2 : un moteur vérifié au hasard (BUG-052, BUG-053)
+
+Des règles qui doivent toujours tenir, vérifiées sur 2 000 organisations tirées
+au hasard (cases, effectifs, heures, jours, robot partagé ou non, cases à la
+chaîne, plonge au débit ou par vol, boucle du matériel) :
+
+- aucune exception, aucun nombre impossible ;
+- les lots d'une case l'un après l'autre ; une ligne robot, un lot à la fois ;
+- personne ne commence avant son amont ; rien ne finit après le poste ;
+- à l'heure + en retard + pas finies = commandes suivies ; aucun stock négatif.
+
+Ce que le tirage a trouvé :
+
+- **BUG-052** — une seule case à 0 personne, un robot sous son effectif ou une
+  plonge dont aucun tunnel ne tourne **effaçait tous les résultats** de la
+  journée. Désormais la case ne produit rien, c'est dit dans les Contrôles, et
+  le reste se calcule (codes `sans-personne`, `robot-arret`, `plonge-arret`).
+- **BUG-053** — une plonge au débit sans personne faisait planter la journée
+  (« durée infinie »). Elle ne lave plus rien.
+
+Après correction : 2 000 journées, 0 règle enfreinte. Le tirage devient un
+test permanent, `tests/invariants.test.cjs` (150 journées, graine fixe).
+
+Fichiers : `moteur/production.js`, tests, `BUGS.md`.
+
 ## 2026-09-29 — Améliorer l'existant, lot 1 : ce que le site montrait de travers
 
 Retour d'usage : « on perfectionne ce que l'on a ». Audit sur un état
