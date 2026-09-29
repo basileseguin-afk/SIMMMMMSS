@@ -964,18 +964,61 @@
     return n;
   }
 
-  /** Ce que les vols retour ramènent de sale, et quand. */
+  /*
+   * D'OÙ VIENNENT LES RETOURS À LA PLONGE (retour d'usage du 29/09).
+   *
+   *   programme — les lignes « RET » du programme de vols (arrivée + délai) ;
+   *   j2        — « le retour des vols se fait deux jours après leur départ » :
+   *               le programme se répète, donc le matériel des vols partis J-2
+   *               revient le jour J à l'heure de leur départ, plus le délai ;
+   *   planche   — la planche retour du handling (saisie ou importée) : chaque
+   *               ligne dit quand le vol revient à l'unité — pas de délai à
+   *               ajouter. Sans détail des classes, celles que la compagnie
+   *               emporte au départ.
+   */
+  const SOURCES_RETOURS = ['programme', 'j2', 'planche'];
+  function sourceRetours(materiel) {
+    const s = materiel && materiel.retours;
+    return SOURCES_RETOURS.includes(s) ? s : 'programme';
+  }
+
+  /** Ce que les vols retour ramènent de sale, et quand, selon la source choisie. */
   function retoursDeVols(vols, materiel, tous) {
     const m = { ...MATERIEL_DEFAUT, ...(materiel || {}) };
     const unites = unitesDe(materiel);
     const out = [];
-    for (const v of vols || []) {
-      if (v.sens !== 'RET') continue;
-      const arrivee = v.sta === undefined ? v.heure : v.sta;
-      if (!Number.isFinite(arrivee)) continue;
-      const n = unitesDuVol(v, unites);
-      if (n <= 0 && !tous) continue;
-      out.push({ vol: v.id, cie: v.cie, t: arrivee + m.delaiRetour, unites: n });
+    const source = sourceRetours(m);
+    const pousser = (vol, cie, t, n) => { if (Number.isFinite(t) && (n > 0 || tous)) out.push({ vol, cie, t, unites: n }); };
+    if (source === 'programme') {
+      for (const v of vols || []) {
+        if (v.sens !== 'RET') continue;
+        const arrivee = v.sta === undefined ? v.heure : v.sta;
+        pousser(v.id, v.cie, arrivee + m.delaiRetour, unitesDuVol(v, unites));
+      }
+    } else if (source === 'j2') {
+      for (const v of vols || []) {
+        if (v.sens !== 'DEP') continue;
+        const depart = v.std === undefined ? v.heure : v.std;
+        pousser(v.id + ' (J-2)', v.cie, depart + m.delaiRetour, unitesDuVol(v, unites));
+      }
+    } else {
+      // Les classes qu'une compagnie emporte au départ : celles qu'elle ramène.
+      const cabinesDe = new Map();
+      for (const v of vols || []) {
+        if (v.sens !== 'DEP') continue;
+        const k = String(v.cie || '').toUpperCase(), set = cabinesDe.get(k) || new Set();
+        for (const c of CABINES) if ((v[CHAMP_PAX[c]] || 0) > 0) set.add(c);
+        cabinesDe.set(k, set);
+      }
+      for (const l of (Array.isArray(m.planche) ? m.planche : [])) {
+        let t;
+        try { t = minutes(l.heure) + (Number.isFinite(+l.jour) ? +l.jour : 0) * MINUTES_PAR_JOUR; } catch (e) { continue; }
+        const cie = String(l.cie || '').toUpperCase();
+        const detail = CABINES.some(c => Number.isFinite(+l[CHAMP_PAX[c]]) && +l[CHAMP_PAX[c]] > 0);
+        const n = detail ? unitesDuVol(l, unites)
+          : [...(cabinesDe.get(cie) || new Set(['YC']))].reduce((x, c) => x + (unites[c] ? unites[c].parVol : 0), 0);
+        pousser(String(l.vol || cie || 'retour'), cie, t, n);
+      }
     }
     return out.sort((a, b) => a.t - b.t);
   }
@@ -2046,7 +2089,7 @@
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,
     pausesDe, finAvecPauses, vaguesDe, disponibleDes, debitRobot, ouvertureDe, prochaineOuverture,
     categorieVol, chauffeursDe, creneauxDe, chauffeursPresents, debutAvecChauffeurs, dureeLavageVol, trajetHandling, debutTrajet, volsParCamionDe, vitesseTunnel,
-    UNITES_DEFAUT, unitesDe, retoursDeVols, besoinMateriel,
+    UNITES_DEFAUT, unitesDe, retoursDeVols, besoinMateriel, sourceRetours, SOURCES_RETOURS,
     simuler, niveauA, niveauLineaire, dureeLisible
   };
 

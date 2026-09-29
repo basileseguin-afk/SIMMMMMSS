@@ -31,7 +31,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator('#run-state').textContent(),/Rien à relire/);
   // Les réglages ne se verrouillent plus : la journée se recalcule à chaque frappe.
   // Le délai de chargement est un réglage ; les départs, un résultat.
-  await nav.aller(page,'v-horaires');
+  await nav.aller(page,'rg-simulation');
   assert.equal(await page.locator('#loadDelay').isVisible(),true);
   assert.equal(await page.locator('#loadDelay').isDisabled(),false);
   await nav.aller(page,'v-departs');assert.equal(await page.locator('#flight-rows tr').count(),12);

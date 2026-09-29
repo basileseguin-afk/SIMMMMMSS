@@ -89,7 +89,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 4. Le rendement allonge la journée sans toucher au barème. Il a son onglet,
   //    avec les pauses : les minutes par vol restent seules sur le leur.
-  await nav.aller(page,'rg-rythme');await attendre();
+  await nav.aller(page,'rg-simulation');await attendre();
   assert.equal(await page.locator('#rg-bareme-panneau').isVisible(),false,'le barème attend derrière son onglet');
   await ecrire('#rg-rendement','0.5');
   assert.ok(Math.abs(await duree()-avant*4)<1e-6,'un rendement de 0,5 double encore');
@@ -160,13 +160,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.reload();await page.waitForTimeout(500);
   assert.equal(await valeur('CRL/BC'),17.5);
 
-  // 10. Le délai de chargement n'est pas recopié : un seul champ, avec les vols
-  //     dont il fixe l'heure où les repas doivent être prêts.
-  await nav.vue(page,'vols');await attendre();
+  // 10. Le délai de chargement n'est pas recopié : un seul champ, avec les autres
+  //     réglages de la simulation (les horaires des vols).
+  await nav.aller(page,'rg-simulation');await attendre();
   assert.equal(await page.locator('#loadDelay').count(),1,'un seul champ');
-  assert.equal(await page.evaluate(()=>document.getElementById('view-vols').contains(document.getElementById('loadDelay'))),true,
-    'et il vit à l’étape 1, « Les vols »');
-  await nav.vue(page,'reglages');await attendre();
+  assert.equal(await page.evaluate(()=>document.getElementById('rg-sim-horaires').contains(document.getElementById('loadDelay'))),true,
+    'et il vit dans Réglages › Réglages de la simulation');
+  assert.equal(await page.locator('#loadDelay').isVisible(),true);
 
   // 11. Rien ne déborde, sur grand écran comme sur le plus petit visé.
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);

@@ -42,9 +42,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await actif(),'at-chemins','« Décrire une première équipe » ouvre les chemins');
 
   // 2. Le menu de l'en-tête : une partie ouvre ses pages, et seulement elles.
-  const attendues={donnees:['v-programme','rg-minutes','rg-recap','at-recap'],
+  const attendues={donnees:['v-programme','v-planche','rg-minutes','rg-recap','at-recap'],
     organisation:['at-chemins','at-equipes','at-grille','u-services','u-liens','u-lecture'],
-    reglages:['v-horaires','rg-rythme'],
+    reglages:['rg-simulation'],
     resultats:['j-chiffres','j-plan','at-planning','at-repas','v-departs','j-stocks','j-comparer']};
   const noms={donnees:'Données',organisation:'Organisation',reglages:'Réglages',resultats:'Résultats'};
   for(const [p,pages] of Object.entries(attendues)){
@@ -66,10 +66,14 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('#imp-vols').isVisible(),true,'les vols s’importent dans Données');
   assert.equal(await page.locator('#shift').isVisible(),false,'le décalage des vols n’y est plus');
   assert.match(await page.locator('.vols-source').textContent(),/Jeu de démonstration/,'d’où viennent les vols, dit là où on les change');
-  await nav.aller(page,'v-horaires');
+  await nav.aller(page,'rg-simulation');
   assert.equal(await page.locator('#shift').isVisible(),true,'c’est un réglage');
   assert.equal(await page.locator('#loadDelay').isVisible(),true);
   assert.equal(await page.locator('#imp-vols').isVisible(),false);
+  // Tous les réglages de la simulation sur une seule page : horaires, retours, rythme.
+  assert.equal(await page.locator('[data-at-champ=mat-retours]').isVisible(),true,'les retours à la plonge se règlent ici');
+  assert.equal(await page.locator('#rg-rendement').isVisible(),true,'le rythme aussi');
+  assert.equal(await page.locator('#rg-bareme-panneau').isVisible(),false,'mais pas le barème, qui est une donnée');
   await nav.aller(page,'v-departs');
   assert.equal(await courant(),'resultats','les départs prêts ou en retard sont un résultat');
   assert.equal(await page.locator('#vols-frise .vf-vol').count(),12,'un avion par départ');
@@ -99,7 +103,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await nav.aller(page,'at-planning');
   assert.equal(await page.locator('#at-export').isVisible(),false,'pas d’import ni d’export des cases dans les résultats');
   assert.equal(await page.locator('#at-planning').isVisible(),true);
-  await nav.aller(page,'rg-rythme');
+  await nav.aller(page,'rg-simulation');
   assert.match(await page.locator('#rg-export').textContent(),/Temps de travail/);
 
   // 5. Au clavier : les flèches passent d'une page à l'autre de la partie.
@@ -116,8 +120,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await actif(),'j-comparer','la page choisie est retenue');
   // Une tuile ouvre sa partie ; ses pages y sont listées, chacune ouvre la sienne.
   await nav.accueil(page);
-  await tuile('reglages').locator('[data-page=rg-rythme]').click();await attendre();
-  assert.equal(await actif(),'rg-rythme');
+  await tuile('reglages').locator('[data-page=rg-simulation]').click();await attendre();
+  assert.equal(await actif(),'rg-simulation');
   await nav.accueil(page);
   await tuile('donnees').locator('.acc-tuile-tete').click();await attendre();
   assert.equal(await courant(),'donnees');

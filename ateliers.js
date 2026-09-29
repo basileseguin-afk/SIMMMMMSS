@@ -57,6 +57,18 @@
   }
 
   /** Les réglages d'un handling, bornés. Sans durée saisie : 30 min par vol. */
+  /** Les lignes de la planche retour : vol, compagnie, heure d'arrivée à l'unité, jour, et le détail des classes s'il est connu. */
+  function plancheDe(brut) {
+    return (Array.isArray(brut) ? brut : []).slice(0, 2000).map(l => {
+      const heure = String((l && l.heure) ?? '').trim();
+      P.minutes(heure);   // une heure illisible refuse la saisie, plutôt que d'être oubliée en silence
+      const out = { vol: String((l && l.vol) ?? '').trim().slice(0, 40), cie: String((l && l.cie) ?? '').trim().toUpperCase().slice(0, 40),
+        heure, jour: Number.isInteger(+l.jour) ? Math.max(-3, Math.min(0, +l.jour)) : 0 };
+      for (const k of ['bc', 'pc', 'yc', 'crew', 'spml']) if (Number.isFinite(+l[k]) && +l[k] > 0 && l[k] !== '' && l[k] !== null) out[k] = Math.round(+l[k]);
+      return out;
+    });
+  }
+
   /** Des durées par compagnie (« * » pour toutes), en minutes. */
   function dureesDe(a, defaut, champ = 'durees') {
     const durees = {};
@@ -187,7 +199,11 @@
       // saisie, qui comptait par passager.
       unites: P.unitesDe(m),
       stockInitial: Number.isFinite(+m.stockInitial) ? Math.max(0, Math.round(+m.stockInitial)) : 0,
-      delaiRetour: Number.isFinite(+m.delaiRetour) ? Math.max(0, Math.round(+m.delaiRetour)) : 30
+      delaiRetour: Number.isFinite(+m.delaiRetour) ? Math.max(0, Math.round(+m.delaiRetour)) : 30,
+      // D'où viennent les retours à la plonge : les lignes RET du programme, les
+      // départs de J-2, ou la planche retour du handling (Données › Planche retour).
+      retours: P.SOURCES_RETOURS.includes(m.retours) ? m.retours : 'programme',
+      planche: plancheDe(m.planche)
     };
     // Le chemin de chaque classe. Une sauvegarde d'avant les parcours reçoit
     // les parcours types ; une liste vidée exprès reste vide.
@@ -384,7 +400,8 @@
   <button class="btn" id="at-new" title="Une case qui ne suit pas une commande : une plonge, une mise à disposition qui sert tout le monde">+ Case hors chemin</button>
 </div>
 <div id="at-liste" data-sous="at-equipes"></div>
-<div id="at-materiel" class="at-materiel" data-sous="at-equipes"></div>
+<p class="mini-note at-materiel-renvoi" data-sous="at-equipes">La boucle du matériel et les retours des vols à la plonge se règlent dans
+  <button class="lien-discret" data-page="rg-simulation">Réglages › Réglages de la simulation →</button></p>
 <h3 class="at-titre" data-sous="at-planning">La journée des équipes <span class="pc-sous">qui travaille quand</span></h3>
 <div id="at-indicateurs" class="at-indicateurs" data-sous="at-planning"></div>
 <div id="at-planning" class="at-planning" data-sous="at-planning"></div>
@@ -432,6 +449,12 @@
         const b = e.target.closest('[data-at-action]'); if (!b) return;
         const id = b.closest('[data-at]')?.dataset.at;
         this.action(b.dataset.atAction, id, b.dataset);
+      });
+      // Le matériel se règle dans une autre vue (Réglages de la simulation) : on
+      // l'écoute là où il est, quel que soit l'ordre de construction des vues.
+      document.addEventListener('change', e => {
+        if (!e.target.closest('#rg-sim-materiel')) return;
+        const champ = e.target.dataset.atChamp; if (champ) this.saisir(champ, null, e.target);
       });
       hote.addEventListener('change', e => {
         const champ = e.target.dataset.atChamp; if (!champ) return;
@@ -652,7 +675,10 @@
         }
         if (champ === 'mat-stock') m.stockInitial = Math.max(0, parseInt(v, 10) || 0);
         if (champ === 'mat-delai') m.delaiRetour = Math.max(0, parseInt(v, 10) || 0);
-      }, champ === 'mat-actif'
+        if (champ === 'mat-retours' && P.SOURCES_RETOURS.includes(v)) m.retours = v;
+      }, champ === 'mat-retours'
+        ? (v === 'j2' ? 'Retours : deux jours après le départ, à la même heure.' : v === 'planche' ? 'Retours : la planche retour du handling.' : 'Retours : les lignes retour du programme de vols.')
+        : champ === 'mat-actif'
         ? (v ? 'Le compte du matériel est tenu : déclarez la plonge et les équipes qui en emportent.'
              : 'Compte du matériel abandonné.')
         : 'Enregistré.');
@@ -945,6 +971,7 @@
       const r = this.calculer();
       this.rendreIndicateurs(r);
       this.rendreAnomalies(r);
+      this.rendreMateriel(r);
       this.rendreFiltre();
       // Seul l'onglet affiché se redessine : à deux cents commandes, la liste
       // des cases, le planning, les commandes et le tableau coûtent cher, et
@@ -971,7 +998,7 @@
       if (id === 'at-grille' && document.querySelector('#at-parcours .qf[data-a-dessiner]')) this.aDessiner.add(id);
       if (!this.aDessiner.has(id)) return;
       this.aDessiner.delete(id);
-      if (id === 'at-equipes') { this.rendreMateriel(r); this.rendreListe(r); }
+      if (id === 'at-equipes') this.rendreListe(r);
       if (id === 'at-planning') this.rendrePlanning(r);
       if (id === 'at-repas') this.rendreClasses(r);
       if (id === 'at-recap') this.rendreRecapCases(r);
@@ -1087,9 +1114,27 @@
       const m = this.state.materiel, bilan = r && r.materiel;
       const chiffre = (lab, val, note) =>
         `<div class="at-mat-chiffre"><span>${esc(lab)}</span><b>${esc(String(val))}</b>${note ? '<em>' + esc(note) + '</em>' : ''}</div>`;
+      // Les retours et la boucle du matériel sont des réglages de la simulation :
+      // ils vivent dans « Réglages › Réglages de la simulation » (retour d'usage du 29/09).
+      const boite = document.getElementById('rg-sim-materiel') || document.getElementById('at-materiel');
+      if (!boite) return;
+      const src = P.sourceRetours(m), n = (m.planche || []).length;
+      const retours = `<div class="at-retours">
+  <h3>Retours des vols à la plonge</h3>
+  <label class="at-mode-dispo">D’où viennent les retours ?<select data-at-champ="mat-retours">
+    <option value="j2" ${src === 'j2' ? 'selected' : ''}>Automatiques : 2 jours après le départ (même heure)</option>
+    <option value="planche" ${src === 'planche' ? 'selected' : ''}>La planche retour du handling</option>
+    <option value="programme" ${src === 'programme' ? 'selected' : ''}>Les lignes « retour » du programme de vols</option></select></label>
+  <p class="mini-note">${src === 'j2' ? 'Le programme se répète d’un jour à l’autre : le matériel des vols partis il y a deux jours revient aujourd’hui à l’heure de leur départ, plus le délai après atterrissage. Autant de retours que de départs.'
+    : src === 'planche' ? `Chaque ligne de la planche dit quand le vol revient à l’unité (sans délai ajouté). <b>${n} ligne${n > 1 ? 's' : ''}</b>
+      <button class="lien-discret" data-page="v-planche">Ouvrir la planche retour (Données) →</button>`
+    : 'Les vols « RET » du programme importé, à leur heure d’arrivée, plus le délai après atterrissage.'}</p>
+  <label class="at-inline-champ">Délai après atterrissage (min)<input type="number" min="0" value="${m.delaiRetour}" data-at-champ="mat-delai"
+    ${src === 'planche' ? 'disabled title="La planche donne déjà l’heure d’arrivée à l’unité"' : ''}></label>
+</div>`;
       // La case qui active le compte ne doit pas être enfermée dans le bloc
       // qu'elle ouvre : elle reste visible, le reste suit.
-      document.getElementById('at-materiel').innerHTML = `
+      boite.innerHTML = retours + `
 <section class="at-mat">
   <label class="chk chk-mini at-mat-tete"><input type="checkbox" data-at-champ="mat-actif" ${m.actif ? 'checked' : ''}>
     <span><strong>Matériel en boucle</strong> — ce qui part revient.<details class="aide">
@@ -1099,7 +1144,6 @@
         trolley de CRL et un trolley d’AF ne s’y distinguent pas.</span></details></span></label>
   ${m.actif ? `<div class="at-mat-champs">
     <label>Propre à l'ouverture<input type="number" min="0" value="${m.stockInitial}" data-at-champ="mat-stock"></label>
-    <label>Délai après atterrissage (min)<input type="number" min="0" value="${m.delaiRetour}" data-at-champ="mat-delai"></label>
   </div>
   <div class="mini-note">Ce qu’un vol emporte, classe par classe présente à bord.<details class="aide">
     <summary aria-label="Pourquoi par vol ?">?</summary>

@@ -5,6 +5,40 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-29 — Retours à la plonge : J+2 ou planche retour ; un onglet pour tous les réglages
+
+Retour d'usage : « deux options pour la temporalité de la plonge : le retour
+des vols se fait automatiquement 2 jours après leur départ ; ou il se prévoit
+grâce à la planche retour du handling », et « un onglet regroupant tous les
+réglages de la simulation ».
+
+- **D'où viennent les retours ?** (`materiel.retours`, moteur `sourceRetours`)
+  - `programme` (par défaut, comme avant) : les lignes « retour » du programme
+    de vols, à leur arrivée plus le délai après atterrissage ;
+  - `j2` : chaque départ revient **48 h après son heure de départ** (plus le
+    délai après atterrissage), avec ses classes ;
+  - `planche` : la planche retour du handling. Chaque ligne donne l'heure
+    d'**arrivée à l'unité** et le jour (J, J-1…), sans délai ajouté ; les
+    passagers par classe sont facultatifs (vides : les classes que la compagnie
+    emporte au départ). Les deux plonges (au débit et par vol) lisent la même
+    source.
+- **Données › Planche retour** : saisie dans le site (une ligne par vol) et
+  échange Excel (feuille « Planche retour », `⇩ Excel` donne le modèle vide ;
+  import refusé en bloc sur une erreur, annulable). « Utiliser la planche
+  retour » la fait lire à la simulation.
+- **Réglages › Réglages de la simulation** remplace « Horaires des vols » et
+  « Rythme et pauses » : horaires des vols, retours à la plonge et boucle du
+  matériel (sortie de la page des cases, qui y renvoie), rythme, pauses et
+  présence. Les données (vols, planche, man-minutes) restent dans Données.
+- Classeur des cases, feuille « Matériel » : ligne « Retours à la plonge »
+  (`programme`, `J+2` ou `planche`).
+- Tests : moteur (trois sources), Excel (planche, feuille Matériel),
+  `tests/planche-browser.cjs` ; menu, réglages, ateliers et fumée suivent les
+  nouvelles pages.
+
+Fichiers : `moteur/production.js`, `ateliers.js`, `reglages.js`, `sim.js`,
+`onglets.js`, `echanges.js`, `index.html`, `histoire.css`, tests, docs.
+
 ## 2026-09-29 — Plonge par vol : un tunnel peut laver plus vite
 
 Retour d'usage : « une case pour dire qu'un tunnel peut nettoyer 2 fois plus

@@ -258,7 +258,9 @@ un jour ou une heure illisible : l'import est refusé en entier.
 ### Feuille « Matériel »
 
 `Boucle du matériel active`, `Stock propre à l'ouverture`, `Délai après
-atterrissage (min)`, et `Unités par vol` pour chaque classe.
+atterrissage (min)`, `Retours à la plonge` (`programme`, `J+2` ou `planche`)
+et `Unités par vol` pour chaque classe. La planche elle-même a son fichier
+(ci-dessous).
 
 ### Feuille absente, partie conservée
 
@@ -326,6 +328,24 @@ DEMO-RET001,DEMO,A320,RET,,08:00,0,0,100,4,0
 ```
 
 **L'import remplace le programme entier** et efface les scénarios A/B capturés.
+
+### La planche retour (Données › Planche retour)
+
+Feuille « Planche retour » (ou « Planche », « Retours », sinon la première) :
+
+| Vol | Compagnie | Arrivée à l’unité | Jour | BC | PC | YC | CREW | SPML |
+|---|---|---|---|---|---|---|---|---|
+| AF1080 | AF | 09:30 | J-1 | | | 150 | | |
+
+- `Arrivée à l’unité` (ou `Arrivée`, `Heure`, `STA`) : HH:MM ou heure Excel.
+  Le matériel est à la plonge à cette heure, **sans délai ajouté**.
+- `Jour` : `J` le jour simulé, `J-1` la veille (vide : J).
+- Classes : facultatives ; vides, le vol ramène les classes que sa compagnie
+  emporte au départ.
+- Un vol ou une compagnie par ligne au moins. Une erreur refuse le fichier en
+  entier ; l'import remplace la planche et s'annule.
+- La simulation ne la lit que si « Retours à la plonge » vaut `planche`
+  (Réglages › Réglages de la simulation).
 
 ---
 

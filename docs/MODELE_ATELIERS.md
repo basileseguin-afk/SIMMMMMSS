@@ -384,6 +384,23 @@ Un vol retour ramène la même quantité, classe par classe.
 | Propre à l'ouverture | le stock de départ, souvent nul |
 | Délai après atterrissage | minutes avant que le sale soit à la plonge |
 
+### D'où viennent les retours (retour d'usage du 29/09)
+
+`materiel.retours` choisit la source, dans Réglages › Réglages de la
+simulation :
+
+| Source | Chaque retour | Heure à la plonge |
+|---|---|---|
+| `programme` (défaut) | une ligne RET du programme de vols | arrivée + délai après atterrissage |
+| `j2` | chaque départ du programme, revenu deux jours plus tard | heure de départ + délai (le départ de J-2 à la même heure : +48 h) |
+| `planche` | une ligne de `materiel.planche` (planche retour du handling) | `heure` + `jour` × 1 440, **sans délai** : c'est l'arrivée à l'unité |
+
+Une ligne de planche porte `vol`, `cie`, `heure`, `jour` (0, -1… -3) et,
+facultatifs, les passagers `bc`, `pc`, `yc`, `crew`, `spml`. Sans classes, le
+vol ramène les unités des classes que sa compagnie emporte au départ (YC si la
+compagnie ne part pas ce jour-là). Les deux plonges, au débit comme par vol,
+lisent la même source (`retoursDeVols`).
+
 Une saisie d'hier, qui comptait aussi par passager, est convertie en unités par
 vol sur la base des mêmes passagers types que le barème.
 

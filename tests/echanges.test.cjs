@@ -448,3 +448,38 @@ test('plonge : la vitesse d’un tunnel fait l’aller-retour par Excel', async 
   const t = E.classeurVersAteliers(f, etat, ctxAteliers()).etat.ateliers.find(a => a.nom === 'Plonge rapide').tunnels;
   assert.deepEqual(t.map(x => x.vitesse ?? 1), [1, 2]);
 });
+
+/* ---- planche retour --------------------------------------------------- */
+
+test('planche retour : l’aller-retour par Excel ne perd rien, classes facultatives comprises', async () => {
+  const planche = [{ vol: 'AF1234', cie: 'AF', heure: '09:40', jour: 0, bc: 12, yc: 150 },
+    { vol: 'TO3000', cie: 'TO', heure: '22:15', jour: -1 }];
+  const f = await parFichier(E.plancheVersClasseur(planche));
+  assert.deepEqual(f.map(x => x.nom), ['Planche retour', 'Lisez-moi']);
+  assert.deepEqual(E.classeurVersPlanche(f), planche);
+  // Vide, le classeur est un modèle à remplir : il se relit sans ligne.
+  assert.deepEqual(E.classeurVersPlanche(await parFichier(E.plancheVersClasseur([]))), []);
+});
+
+test('planche retour : une heure Excel et une colonne « Arrivée » sont comprises ; les erreurs sont dites ensemble', () => {
+  const f = [{ nom: 'Retours', lignes: [['Vol', 'Cie', 'Arrivée', 'Jour', 'YC'], ['AF1', 'af', 10 / 24 + 5 / 1440, 'J-1', 0]] }];
+  assert.deepEqual(E.classeurVersPlanche(f), [{ vol: 'AF1', cie: 'AF', heure: '10:05', jour: -1 }], 'une classe à 0 est tue');
+  const mauvais = [{ nom: 'Planche retour', lignes: [['Vol', 'Compagnie', 'Arrivée à l’unité', 'Jour'],
+    ['AF1', 'AF', '', 'J'], [null, null, '08:00', 'J'], ['AF2', 'AF', '08:00', 'demain']] }];
+  assert.throws(() => E.classeurVersPlanche(mauvais), e => /manquante/.test(e.message) && /ni vol ni compagnie/.test(e.message) && /illisible/.test(e.message));
+});
+
+test('matériel : la source des retours à la plonge fait l’aller-retour par Excel, sans toucher à la planche', async () => {
+  const etat = { ...ETAT_ATELIERS(), materiel: { actif: true, retours: 'j2', planche: [{ vol: 'AF1', cie: 'AF', heure: '09:00', jour: 0 }] } };
+  const f = await parFichier(E.ateliersVersClasseur(etat, ctxAteliers()));
+  assert.deepEqual(T.feuille(f, 'Matériel').lignes.find(l => l[0] === 'Retours à la plonge'), ['Retours à la plonge', 'J+2']);
+  const lu = E.classeurVersAteliers(f, etat, ctxAteliers()).etat.materiel;
+  assert.equal(lu.retours, 'j2');
+  assert.deepEqual(lu.planche, etat.materiel.planche, 'la planche vit dans son propre fichier');
+  for (const [ecrit, src] of [['planche', 'planche'], ['Programme', 'programme'], ['', 'programme']]) {
+    const g = modifier(f, 'Matériel', l => l.map(x => (x[0] === 'Retours à la plonge' ? [x[0], ecrit] : x)));
+    assert.equal(E.classeurVersAteliers(g, etat, ctxAteliers()).etat.materiel.retours, src, ecrit);
+  }
+  const g = modifier(f, 'Matériel', l => l.map(x => (x[0] === 'Retours à la plonge' ? [x[0], 'demain'] : x)));
+  assert.throws(() => E.classeurVersAteliers(g, etat, ctxAteliers()), /programme », « J\+2 » ou « planche/);
+});

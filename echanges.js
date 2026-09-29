@@ -826,6 +826,7 @@
     const m = etat.materiel || {};
     const materiel = [['Paramètre', 'Valeur'], ['Boucle du matériel active', m.actif ? 'oui' : 'non'],
       ['Stock propre à l’ouverture', m.stockInitial || 0], ['Délai après atterrissage (min)', m.delaiRetour ?? 30],
+      ['Retours à la plonge', RETOURS_ECRITS[P.sourceRetours(m)]],
       ...P.CABINES.map(c => ['Unités par vol ' + c, ((m.unites || {})[c] || {}).parVol || 0])];
 
     return [
@@ -1237,7 +1238,12 @@
           if (k === 'boucle_du_materiel_active') m.actif = T.ouiNon(o.valeur, false);
           else if (k === 'stock_propre_a_l_ouverture') m.stockInitial = T.nombreDe(o.valeur, 0);
           else if (k === 'delai_apres_atterrissage_min') m.delaiRetour = T.nombreDe(o.valeur, 30);
-          else {
+          else if (k === 'retours_a_la_plonge') {
+            const v = T.cleEntete(o.valeur ?? '');
+            const src = !v ? 'programme' : /^(programme|ret|lignes_retour)/.test(v) ? 'programme' : /^(j_?2|48)/.test(v) ? 'j2' : /^planche/.test(v) ? 'planche' : null;
+            if (!src) throw new Error('retours à la plonge : « programme », « J+2 » ou « planche »');
+            m.retours = src;
+          } else {
             const u = /^unites_par_vol_([a-z]+)$/.exec(k);
             if (!u || !P.CABINES.includes(u[1].toUpperCase())) throw new Error('paramètre inconnu « ' + o.parametre + ' »');
             m.unites[u[1].toUpperCase()] = { parVol: T.nombreDe(o.valeur, 0) };
@@ -1266,7 +1272,44 @@
     return { etat: out, ajouteesAuto: notes };
   }
 
-  const api = { baremeVersClasseur, classeurVersBareme, recapManMinutes, recapVersClasseur, classeurVersRecap,
+  /* ---- Planche retour du handling ---------------------------------------
+   * Quand chaque vol revient à l'unité, pour la plonge (retour d'usage du
+   * 29/09). Une ligne par vol : Vol, Compagnie, Arrivée à l'unité, Jour, et,
+   * si on les connaît, les classes à bord (sinon, celles que la compagnie
+   * emporte au départ). */
+  const CLASSES_PLANCHE = [['bc', 'BC'], ['pc', 'PC'], ['yc', 'YC'], ['crew', 'CREW'], ['spml', 'SPML']];
+  const RETOURS_ECRITS = { programme: 'programme', j2: 'J+2', planche: 'planche' };
+  function plancheVersClasseur(planche) {
+    const lignes = [['Vol', 'Compagnie', 'Arrivée à l’unité', 'Jour', ...CLASSES_PLANCHE.map(([, c]) => c)]];
+    for (const l of planche || []) lignes.push([l.vol || null, l.cie || null, l.heure, jourEcrit(l.jour || 0), ...CLASSES_PLANCHE.map(([k]) => l[k] ?? null)]);
+    return [{ nom: 'Planche retour', lignes }, lisezMoi('Planche retour du handling — quand chaque vol revient à l’unité', [
+      'Une ligne par vol qui revient : son matériel sale arrive à la plonge à l’heure « Arrivée à l’unité » (HH:MM), sans délai ajouté.',
+      'Jour : J le jour simulé, J-1 la veille (un retour du soir d’avant, encore à laver).',
+      'BC, PC, YC, CREW, SPML : facultatif. Les passagers (ou 1) des classes à bord ; vide : les classes que la compagnie emporte au départ.',
+      'Pour que la simulation l’utilise : Réglages › Réglages de la simulation › « D’où viennent les retours ? » = la planche retour.'
+    ])];
+  }
+  function classeurVersPlanche(feuilles) {
+    const f = T.feuille(feuilles, 'Planche retour', 'Planche', 'Retours') || (feuilles || [])[0];
+    if (!f) throw new Error('aucune feuille « Planche retour »');
+    const err = new Erreurs(), out = [];
+    for (const o of T.enObjets(f.lignes).objets) {
+      err.essayer(f.nom, o._ligne, () => {
+        const brute = o.arrivee_a_l_unite ?? o.arrivee ?? o.heure ?? o.sta;
+        if (brute === undefined || brute === null || brute === '') throw new Error('heure d’arrivée manquante');
+        const l = { vol: String(o.vol ?? '').trim(), cie: String(o.compagnie ?? o.cie ?? '').trim().toUpperCase(),
+          heure: hh(T.heureDe(brute)), jour: jourDe(o.jour) };
+        if (!l.vol && !l.cie) throw new Error('ni vol ni compagnie');
+        if (l.jour < -3) throw new Error('jour : de J-3 à J');
+        for (const [k] of CLASSES_PLANCHE) { const v = T.nombreDe(o[k], null); if (v !== null && v > 0) l[k] = Math.round(v); }
+        out.push(l);
+      });
+    }
+    err.lever();
+    return out;
+  }
+
+  const api = { plancheVersClasseur, classeurVersPlanche, baremeVersClasseur, classeurVersBareme, recapManMinutes, recapVersClasseur, classeurVersRecap,
     recapCasesVersClasseur, classeurVersRecapCases, volsVersClasseur, classeurVersVols,
     ateliersVersClasseur, classeurVersAteliers, horairesVersClasseur, classeurVersHoraires, estClasseurHoraires, jourDe };
   if (enNode && module.exports) module.exports = api;

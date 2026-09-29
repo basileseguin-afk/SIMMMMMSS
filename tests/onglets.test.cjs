@@ -54,11 +54,11 @@ test('une page se range selon sa nature, pas selon l’écran qui la porte', () 
   // Ce qu'on importe.
   assert.equal(partie('v-programme'), 'donnees');
   assert.equal(partie('rg-minutes'), 'donnees');
+  assert.equal(partie('v-planche'), 'donnees');
   // Ce qu'on décrit.
   for (const id of ['at-chemins', 'at-equipes', 'at-grille', 'u-services', 'u-liens', 'u-lecture']) assert.equal(partie(id), 'organisation', id);
   // Ce qu'on essaie.
-  assert.equal(partie('v-horaires'), 'reglages');
-  assert.equal(partie('rg-rythme'), 'reglages');
+  assert.equal(partie('rg-simulation'), 'reglages');
   // Ce qu'on observe : même quand l'écran vit dans la vue des vols ou des équipes.
   for (const id of ['j-chiffres', 'j-plan', 'at-planning', 'at-repas', 'v-departs', 'j-stocks', 'j-comparer'])
     assert.equal(partie(id), 'resultats', id);

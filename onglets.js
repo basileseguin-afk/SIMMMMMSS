@@ -19,7 +19,7 @@
   const ONGLETS = {
     vols: [
       { id: 'v-programme', nom: 'Vols', ico: 'avion' },
-      { id: 'v-horaires', nom: 'Horaires des vols', ico: 'depart' },
+      { id: 'v-planche', nom: 'Planche retour', ico: 'camion' },
       { id: 'v-departs', nom: 'Départs', ico: 'depart' }
     ],
     ateliers: [
@@ -33,7 +33,7 @@
     reglages: [
       { id: 'rg-minutes', nom: 'Temps de travail', ico: 'chrono' },
       { id: 'rg-recap', nom: 'Récap des man-minutes', ico: 'journee' },
-      { id: 'rg-rythme', nom: 'Rythme et pauses', ico: 'sablier' }
+      { id: 'rg-simulation', nom: 'Réglages de la simulation', ico: 'sablier' }
     ],
     // Arriver « sur le plan » (un lien, « voir sur le plan »), c'est arriver
     // sur la carte ; le menu, lui, ouvre les Résultats par leur synthèse.
@@ -59,6 +59,7 @@
       resume: 'Ce que vous importez',
       pages: [
         { id: 'v-programme', intro: 'Le programme de vols de la journée : importez le vôtre, en Excel ou en CSV.' },
+        { id: 'v-planche', intro: 'La planche retour du handling : quand chaque vol revient à l’unité, pour la plonge. À saisir ici ou à importer en Excel.' },
         { id: 'rg-minutes', intro: 'Les minutes de travail d’un vol, service par service : l’étude de temps.' },
         { id: 'rg-recap', intro: 'Toutes les man-minutes d’un coup d’œil : une ligne par commande, une colonne par service ; à modifier ici ou dans Excel.' },
         { id: 'at-recap', intro: 'Toutes les cases d’un coup d’œil : ce que chacune traite, dans l’ordre, et son heure de départ ; à régler ici ou dans Excel.' }
@@ -76,8 +77,7 @@
     { id: 'reglages', nom: 'Réglages', ico: 'sablier', couleur: 'var(--c-temps)',
       resume: 'Ce que vous essayez',
       pages: [
-        { id: 'v-horaires', intro: 'Décaler tous les vols, et combien de minutes avant le départ les repas doivent être prêts.' },
-        { id: 'rg-rythme', intro: 'Le rythme de travail, les pauses et le temps de présence d’une équipe.' }
+        { id: 'rg-simulation', intro: 'Tous les réglages de la simulation, au même endroit : horaires des vols, retours à la plonge et boucle du matériel, rythme et pauses.' }
       ] },
     { id: 'resultats', nom: 'Résultats', ico: 'journee', couleur: 'var(--c-journee)',
       resume: 'Ce que la journée donne',

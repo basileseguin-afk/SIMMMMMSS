@@ -77,6 +77,7 @@ body[data-vue="vols"] .app{grid-template-columns:minmax(0,1fr)}
 body[data-vue="vols"] .workbench{display:none}
 .vols-donnees{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:14px;margin-bottom:6px}
 .vols-donnees .panneau{margin:0}
+#vols-planche{grid-template-columns:minmax(0,1fr)}
 .vols-titre{font-size:16px;margin:14px 0 8px}
 
 /* --- Les temps de travail : un exemple plutôt qu'une formule ------------- */
@@ -554,3 +555,15 @@ body:not([data-vue="flux"]) .services-unite{display:none}
 @keyframes svc-flash{from{background:color-mix(in srgb,var(--ok) 20%,var(--bg3))}to{background:transparent}}
 .panne-demarrage{position:relative;z-index:200;background:#fff7ed;border-bottom:2px solid #d97706;padding:10px 16px;font-size:14px}
 .panne-demarrage a{font-weight:700;margin-left:6px}
+/* Données › Planche retour. */
+.planche{display:grid;gap:10px}
+.planche-tete{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.planche-tete h3{margin:0}
+.planche-fin{flex:1}
+.planche-etat{margin:0}
+.planche-etat.ok{color:var(--ok)}
+.planche-table{border-collapse:collapse;font-size:13px}
+.planche-table th,.planche-table td{padding:4px 6px;border-bottom:1px solid var(--bordure);text-align:left}
+.planche-table input,.planche-table select{font:inherit;padding:4px 6px;border:1px solid var(--bordure);border-radius:6px;background:var(--bg3);width:auto}
+.planche-table input[data-pl-champ=vol],.planche-table input[data-pl-champ=cie]{width:90px}
+.planche-table input[type=number]{width:62px}

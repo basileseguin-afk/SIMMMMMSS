@@ -735,7 +735,7 @@ function initAteliers(){
     // Le plan dit « aménagé » d'après les ateliers : il doit suivre leur saisie.
     // La liste du barème marque les services qui portent une équipe : elle doit
     // donc se redessiner quand les ateliers bougent.
-    change:()=>{majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();},
+    change:()=>{majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();},
     // Une case se règle dans le chemin d'une commande : l'ouvrir d'ailleurs y mène.
     onglet:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
     // Un service supprimé encore cité : son nom, pour que les alertes le
@@ -745,6 +745,79 @@ function initAteliers(){
     notify:toast
   });
 }
+/* ==========================================================================
+ *  DONNÉES › PLANCHE RETOUR (retour d'usage du 29/09)
+ *  La planche retour du handling : quand chaque vol revient à l'unité, pour la
+ *  plonge. C'est une donnée : elle se saisit ici ou s'importe en Excel. La
+ *  simulation ne la lit que si « D'où viennent les retours ? » (Réglages de la
+ *  simulation) le dit. Elle vit dans l'état des ateliers (materiel.planche).
+ * ==========================================================================*/
+const CLASSES_PLANCHE=[['bc','BC'],['pc','PC'],['yc','YC'],['crew','CREW'],['spml','SPML']];
+function renderPlanche(){
+  const box=document.getElementById('vols-planche');if(!box||!Sim.ateliers)return;
+  if(box.contains(document.activeElement)&&document.activeElement.matches('input'))return;
+  const m=Sim.ateliers.state.materiel,planche=m.planche||[],src=MoteurProduction.sourceRetours(m);
+  const jours=j=>[0,-1,-2,-3].map(k=>'<option value="'+k+'"'+(k===(j||0)?' selected':'')+'>'+(k?'J'+k:'J')+'</option>').join('');
+  const lignes=planche.map((l,i)=>'<tr data-index="'+i+'">'
+    +'<td><input data-pl-champ="vol" value="'+escapeHTML(l.vol||'')+'" maxlength="40" aria-label="Vol, ligne '+(i+1)+'"></td>'
+    +'<td><input data-pl-champ="cie" value="'+escapeHTML(l.cie||'')+'" maxlength="40" aria-label="Compagnie, ligne '+(i+1)+'"></td>'
+    +'<td><input type="time" data-pl-champ="heure" value="'+escapeHTML(l.heure)+'" aria-label="Arrivée à l’unité, ligne '+(i+1)+'"></td>'
+    +'<td><select data-pl-champ="jour" aria-label="Jour, ligne '+(i+1)+'">'+jours(l.jour)+'</select></td>'
+    +CLASSES_PLANCHE.map(([k,c])=>'<td><input type="number" min="0" data-pl-champ="'+k+'" value="'+(l[k]??'')+'" placeholder="—" aria-label="'+c+', ligne '+(i+1)+'"></td>').join('')
+    +'<td><button class="lien-discret" data-pl-action="retirer" aria-label="Retirer la ligne '+(i+1)+'">×</button></td></tr>').join('');
+  box.innerHTML='<div class="panneau planche">'
+    +'<div class="planche-tete"><h3>Planche retour du handling</h3><span class="planche-fin"></span>'
+    +'<button class="btn btn-sm" data-pl-action="ajouter">+ Ligne</button>'
+    +'<button class="btn btn-sm" data-pl-action="exporter" title="La planche dans un classeur Excel (vide : un modèle à remplir)">⇩ Excel</button>'
+    +'<button class="btn btn-sm" data-pl-action="importer" title="Remplacer la planche par un classeur Excel">⇧ Importer</button>'
+    +'<input type="file" accept=".xlsx,.csv" hidden data-pl-fichier>'
+    +(planche.length?'<button class="btn btn-sm svc-danger" data-pl-action="vider">Vider</button>':'')+'</div>'
+    +(src==='planche'?'<p class="mini-note planche-etat ok">La simulation lit cette planche : chaque vol revient à la plonge à son heure d’arrivée à l’unité.</p>'
+      :'<p class="mini-note planche-etat">La simulation ne lit pas cette planche : ses retours viennent '+(src==='j2'?'des départs d’il y a deux jours':'des lignes « retour » du programme de vols')
+        +'. <button class="btn btn-sm btn-play" data-pl-action="utiliser">Utiliser la planche retour</button> <button class="lien-discret" data-page="rg-simulation">Réglages de la simulation →</button></p>')
+    +'<div class="table-scroll"><table class="planche-table"><thead><tr><th>Vol</th><th>Compagnie</th><th>Arrivée à l’unité</th><th>Jour</th>'
+    +CLASSES_PLANCHE.map(([,c])=>'<th title="Passagers de cette classe à bord (facultatif)">'+c+'</th>').join('')+'<th></th></tr></thead><tbody>'
+    +(lignes||'<tr><td colspan="10" class="mini-note">Aucune ligne. « + Ligne » pour saisir, ou « ⇧ Importer » un classeur (« ⇩ Excel » donne le modèle).</td></tr>')
+    +'</tbody></table></div>'
+    +'<p class="mini-note">Classes : facultatif. Vides, le vol ramène le matériel des classes que sa compagnie emporte au départ. '
+    +planche.length+(planche.length>1?' lignes.':' ligne.')+'</p></div>';
+}
+function changerPlanche(fn,message){if(Sim.ateliers)Sim.ateliers.changer(()=>{const m=Sim.ateliers.state.materiel;m.planche=(m.planche||[]).slice();fn(m);},message);renderPlanche();}
+function initPlanche(){
+  const box=document.getElementById('vols-planche');if(!box)return;
+  box.addEventListener('change',e=>{
+    const el=e.target;
+    if(el.matches('[data-pl-fichier]'))return importerPlanche(el);
+    const champ=el.dataset.plChamp;if(!champ)return;
+    const i=+el.closest('tr').dataset.index,v=el.value;
+    setTimeout(()=>changerPlanche(m=>{const l={...m.planche[i]};
+      if(champ==='jour')l.jour=parseInt(v,10)||0;
+      else if(CLASSES_PLANCHE.some(([k])=>k===champ)){if(v===''||!(+v>0))delete l[champ];else l[champ]=Math.round(+v);}
+      else l[champ]=champ==='cie'?v.trim().toUpperCase():v.trim();
+      m.planche[i]=l;},'Planche retour enregistrée.'),0);
+  });
+  box.addEventListener('click',e=>{
+    const b=e.target.closest('[data-pl-action]');if(!b)return;
+    const a=b.dataset.plAction;
+    if(a==='ajouter'){const d=(Sim.ateliers.state.materiel.planche||[]).slice(-1)[0];changerPlanche(m=>m.planche.push({vol:'',cie:d?d.cie:'',heure:d?d.heure:'12:00',jour:0}),'Ligne ajoutée.');}
+    else if(a==='retirer'){const i=+b.closest('tr').dataset.index;changerPlanche(m=>m.planche.splice(i,1),'Ligne retirée.');}
+    else if(a==='vider'){if(confirm('Vider la planche retour ? « Annuler » (Organisation) la rétablit.'))changerPlanche(m=>{m.planche=[];},'Planche vidée.');}
+    else if(a==='utiliser'){changerPlanche(m=>{m.retours='planche';},'La simulation lit maintenant la planche retour.');}
+    else if(a==='exporter'){OrlyTableur.telecharger('ory-planche-retour.xlsx',OrlyTableur.ecrireClasseur(OrlyEchanges.plancheVersClasseur(Sim.ateliers.state.materiel.planche||[])));}
+    else if(a==='importer')box.querySelector('[data-pl-fichier]').click();
+  });
+}
+async function importerPlanche(input){
+  const f=input.files[0];if(!f)return;
+  try{
+    const lignes=OrlyEchanges.classeurVersPlanche(await OrlyTableur.lireFichier(f,4*1024*1024));
+    if(!confirm('Remplacer la planche retour par ce fichier ('+lignes.length+(lignes.length>1?' lignes':' ligne')+') ? L’action est annulable.'))return;
+    changerPlanche(m=>{m.planche=lignes;},'Planche retour importée : '+lignes.length+(lignes.length>1?' lignes.':' ligne.'));
+    toast('Planche retour importée : '+lignes.length+(lignes.length>1?' lignes':' ligne'));
+  }catch(err){toast('Import refusé — '+err.message);}
+  finally{input.value='';}
+}
+
 /* ==========================================================================
  *  PAR OÙ COMMENCER
  *  Ce que le fil de mise en route relit. Rien n'est calculé ici : chaque
@@ -811,6 +884,8 @@ function initOnglets(){
     change:(vue,id)=>{
       if(vue!==activeView)showView(vue);
       if(id==='v-departs')renderFlights();
+      if(id==='v-planche')renderPlanche();
+      if(id==='rg-simulation'&&Sim.ateliers)Sim.ateliers.rendreMateriel(Sim.ateliers.resultat);
       if(id==='u-lecture'&&Sim.flows)Sim.flows.refresh();
       // La fenêtre d'une case se cale sous la barre des onglets, mesurée une fois visible.
       if(id==='at-chemins'&&Sim.ateliers)Sim.ateliers.parcours.placeTiroir();
@@ -824,7 +899,7 @@ function initOnglets(){
   // Ceux des liens ne valent que pour les liens : ils ne suivent pas dans la sauvegarde.
   // Ceux des cases et des chemins ne suivent pas dans les résultats (planning, commandes).
   for(const [vue,sel,onglet] of [['ateliers','#view-ateliers .at-actions','at-chemins at-equipes at-grille'],
-                                 ['reglages','#rg-bareme-panneau .rg-actions','rg-minutes rg-rythme'],
+                                 ['reglages','#rg-bareme-panneau .rg-actions','rg-minutes rg-simulation'],
                                  ['flux','#view-flux .fc-actions','u-liens']]){
     const e=document.querySelector(sel);if(!e||!outils)continue;
     e.dataset.vueOutils=vue;if(onglet)e.dataset.sous=onglet;outils.appendChild(e);
@@ -1607,7 +1682,7 @@ function installerCentreReglages() {
     notify:toast
   });
   // Les vols s'importent dans « Données › Vols » ; leurs horaires (décalage,
-  // délai de chargement) se règlent dans « Réglages › Horaires des vols ».
+  // délai de chargement) se règlent dans « Réglages › Réglages de la simulation ».
   const volsDonnees=document.getElementById('vols-donnees');
   const horaires=document.getElementById('panneau-horaires');
 
@@ -1624,8 +1699,10 @@ function installerCentreReglages() {
     const unite=document.getElementById('view-flux');
     if(unite)unite.appendChild(donnees);
   }
-  const volsHoraires=document.getElementById('vols-horaires');
-  if(volsHoraires&&horaires)volsHoraires.appendChild(horaires);
+  // Les horaires des vols (délai de chargement, décalage) sont un réglage de la
+  // simulation : ils rejoignent « Réglages › Réglages de la simulation ».
+  const simHoraires=document.getElementById('rg-sim-horaires');
+  if(simHoraires&&horaires)simHoraires.appendChild(horaires);
   // La version servie aide à diagnostiquer un cache périmé : elle n'a rien à
   // faire au milieu des réglages, elle rejoint les limites du calcul.
   const version=document.getElementById('rg-version'),limites=document.getElementById('model-limits');
@@ -1964,6 +2041,9 @@ etape('vols',()=>chargerVols(SAMPLE));
 etape('contrôles',initControles); etape('édition du plan',initEdition); etape('liens',initFlux);
 etape('cases et chemins',initAteliers); etape('réglages',initWorkbench); etape('services',initServices);
 etape('handling',initHandlingVols); etape('robot',migrerRobot);
+etape('planche retour',()=>{initPlanche();renderPlanche();});
+// Les retours et le matériel se règlent dans les Réglages : leur panneau existe maintenant.
+etape('réglages de la simulation',()=>{if(Sim.ateliers)Sim.ateliers.rendreMateriel(Sim.ateliers.resultat);});
 // Le fil de mise en route vient en dernier : il relit les autres, il ne peut
 // donc se dresser qu'une fois qu'ils sont là.
 etape('simulation',initVueSimulation);

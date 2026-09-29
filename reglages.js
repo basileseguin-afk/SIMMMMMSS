@@ -232,18 +232,20 @@
             <span class="rgr case">fixée dans une case</span><span class="rgr robot">robot : plateaux / h</span><span class="rgr manque">à renseigner</span><span class="rgr hors">·</span> ne passe pas par ce service</p>
           <div id="rg-recap" class="rg-recap"></div>
         </div>
-        <div class="panneau" data-sous="rg-rythme">
+        <div class="rg-sim-horaires" id="rg-sim-horaires" data-sous="rg-simulation"></div>
+        <div class="panneau rg-sim-materiel" id="rg-sim-materiel" data-sous="rg-simulation"></div>
+        <div class="panneau" data-sous="rg-simulation">
           <div class="titre-aide"><h3>Rythme de travail</h3><details class="aide">
             <summary aria-label="À quoi sert le rythme ?">?</summary>
             <span class="aide-corps">Un seul chiffre pour tous les services. À 1, les équipes tiennent
               exactement les minutes ci-dessus ; à 0,8, tout prend un quart de temps en plus. S’il doit
               varier d’un service à l’autre, ce sont les minutes du service qu’il faut changer.</span></details></div>
           <div class="slider-ligne">
-            <label for="rg-rendement">Rythme (1 = les minutes ci-dessus) <b id="rg-rendement-val"></b></label>
+            <label for="rg-rendement">Rythme (1 = les minutes de Données › Temps de travail) <b id="rg-rendement-val"></b></label>
             <input id="rg-rendement" type="range" min="0.5" max="1.2" step="0.01">
           </div>
         </div>
-        <div class="panneau" data-sous="rg-rythme">
+        <div class="panneau" data-sous="rg-simulation">
           <div class="titre-aide"><h3>Pauses et présence</h3><details class="aide">
             <summary aria-label="Comment sont comptées les pauses ?">?</summary>
             <span class="aide-corps">Une pause vient après un temps de <b>travail</b>, pas à une heure
@@ -259,9 +261,9 @@
           </div>
           <p class="mini-note" id="rg-presence-note"></p>
         </div>
-        <p class="rg-version" id="rg-version" data-sous="rg-rythme"></p>
-        <p class="mini-note rg-ailleurs" data-sous="rg-rythme">Les <b>tunnels de la plonge</b> et la <b>boucle du matériel</b>
-          se règlent équipe par équipe, dans <b>Organisation › Cases</b>.</p>`;
+        <p class="rg-version" id="rg-version" data-sous="rg-simulation"></p>
+        <p class="mini-note rg-ailleurs" data-sous="rg-simulation">Ce qui est propre à une équipe (ses tunnels, ses chauffeurs, ses horaires)
+          se règle dans sa case, <b>Organisation › Cases</b>. Les données — vols, planche retour, man-minutes — sont dans <b>Données</b>.</p>`;
       hote.appendChild(section);
       // Quelle version le navigateur sert-il ? La question revient dès qu'un
       // doute s'installe, et un cache périmé ne se voit autrement pas.

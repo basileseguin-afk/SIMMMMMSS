@@ -291,6 +291,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator(`[data-at="${cui2}"] [data-at-champ=regime]`).check();await attendre();
 
   // 19. La boucle du mat\u00e9riel : la plonge lave ce qui revient, la prod l'emporte.
+  //     Elle se r\u00e8gle avec les autres r\u00e9glages de la simulation, plus parmi les cases.
+  assert.equal(await page.locator('.at-materiel-renvoi [data-page=rg-simulation]').isVisible(),true,'les cases renvoient vers le réglage');
+  await onglet('rg-simulation');
   assert.equal(await page.locator('[data-at-champ=mat-unite]').count(),0,'rien à régler tant que le compte n’est pas tenu');
   await page.locator('[data-at-champ=mat-actif]').check();await attendre();
   // Le matériel se compte PAR CLASSE et PAR VOL : un trolley part avec le vol et
@@ -369,6 +372,18 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(rm.entrees>0,'les retours du programme ram\u00e8nent du mat\u00e9riel');
   assert.ok(rm.lavees>0,'la plonge en lave une partie');
   assert.match(await page.locator('.at-mat-bilan').textContent(),/Revenu des vols/);
+  // Les retours peuvent aussi venir des départs : chaque vol revient 48 h après.
+  await onglet('rg-simulation');
+  assert.equal(await page.locator('[data-at-champ=mat-retours]').inputValue(),'programme','par défaut, les arrivées du programme');
+  await page.locator('[data-at-champ=mat-retours]').selectOption('j2');await attendre();
+  assert.equal(await page.evaluate(()=>Sim.ateliers.state.materiel.retours),'j2');
+  assert.ok(await page.evaluate(()=>Sim.ateliers.resultat.materiel.entrees)>0,'les départs de l’avant-veille reviennent');
+  // La planche retour : vide, elle ne ramène rien, et le dit.
+  await page.locator('[data-at-champ=mat-retours]').selectOption('planche');await attendre();
+  assert.equal(await page.locator('[data-at-champ=mat-delai]').isDisabled(),true,'la planche donne l’arrivée à l’unité : pas de délai');
+  assert.match(await page.locator('#rg-sim-materiel').textContent(),/0 ligne\b/);
+  assert.equal(await page.evaluate(()=>Sim.ateliers.resultat.materiel.entrees),0);
+  await page.locator('[data-at-champ=mat-retours]').selectOption('programme');await attendre();
 
   // Sans plonge, rien ne revient propre : la production attend pour de bon.
   await ouvrir(plonge);
