@@ -452,14 +452,31 @@
       });
       // Le matériel se règle dans une autre vue (Réglages de la simulation) : on
       // l'écoute là où il est, quel que soit l'ordre de construction des vues.
+      const ou = el => (el.closest('#rg-sim-materiel') ? { id: null } : hote.contains(el) ? { id: el.closest('[data-at]')?.dataset.at } : null);
+      // Un champ d'heure envoie « change » dès que ses chiffres font une heure
+      // valide : taper « 14 » passe par 01:00. Enregistrer là redessinait tout
+      // et arrachait le champ sous les doigts — on ne pouvait taper qu'un
+      // chiffre. Une heure TAPÉE s'enregistre donc quand on quitte le champ, ou
+      // sur Entrée (retour d'usage du 29/09). Une saisie par programme (import,
+      // tests) n'est pas « de confiance » et s'enregistre tout de suite.
+      let enAttente = null;
+      const valider = () => {
+        const x = enAttente; enAttente = null;
+        if (x) this.saisir(x.el.dataset.atChamp, x.id, x.el);
+      };
       document.addEventListener('change', e => {
-        if (!e.target.closest('#rg-sim-materiel')) return;
-        const champ = e.target.dataset.atChamp; if (champ) this.saisir(champ, null, e.target);
+        const el = e.target; if (!el.dataset || !el.dataset.atChamp) return;
+        const lieu = ou(el); if (!lieu) return;
+        if (e.isTrusted && el.matches('input[type=time]')) {
+          if (enAttente && enAttente.el !== el) valider();
+          enAttente = { el, id: lieu.id }; return;
+        }
+        this.saisir(el.dataset.atChamp, lieu.id, el);
       });
-      hote.addEventListener('change', e => {
-        const champ = e.target.dataset.atChamp; if (!champ) return;
-        const id = e.target.closest('[data-at]')?.dataset.at;
-        this.saisir(champ, id, e.target);
+      // Après le focus du champ suivant : le rendu le retrouve et le lui rend.
+      document.addEventListener('focusout', e => { if (enAttente && e.target === enAttente.el) setTimeout(valider, 0); });
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && enAttente && e.target === enAttente.el) { e.preventDefault(); valider(); }
       });
     }
 
@@ -1704,10 +1721,22 @@
           <td class="rc-fin-h">${vue.fin != null && a.type !== 'dispo' ? hh(vue.fin) : '—'}</td>
         </tr>`;
       }).join('');
+      // Redessiner ne doit ni ramener le tableau en haut, ni faire perdre le
+      // champ où l'on est : on garde le défilement et le focus.
+      const avant = box.querySelector('.rc-scroll'), haut = avant ? avant.scrollTop : 0, gauche = avant ? avant.scrollLeft : 0;
+      const actif = box.contains(document.activeElement) && document.activeElement.dataset.atChamp ? document.activeElement : null;
+      const cle = actif && { at: actif.closest('[data-at]')?.dataset.at, champ: actif.dataset.atChamp, index: actif.dataset.index };
       box.innerHTML = `<div class="rc-scroll"><table class="rc-table">
         <thead><tr><th scope="col">Case</th><th scope="col">Déroulé</th><th scope="col">Jour</th><th scope="col">Départ</th>
           <th scope="col">Ce qu’elle traite, dans l’ordre</th><th scope="col">Fin</th></tr></thead>
         <tbody>${lignes || `<tr><td colspan="6" class="mini-note">Aucune case ne correspond à « ${esc(filtre)} ».</td></tr>`}</tbody></table></div>`;
+      const apres = box.querySelector('.rc-scroll');
+      if (apres) { apres.scrollTop = haut; apres.scrollLeft = gauche; }
+      if (cle && cle.at) {
+        const el = [...box.querySelectorAll(`[data-at="${CSS.escape(cle.at)}"] [data-at-champ="${CSS.escape(cle.champ)}"]`)]
+          .find(x => x.dataset.index === cle.index);
+        if (el) el.focus({ preventScroll: true });
+      }
     }
 
     exporterRecapCases() {

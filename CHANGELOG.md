@@ -5,6 +5,25 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-29 — On peut de nouveau taper une heure dans le Récap des cases (BUG-051)
+
+Retour d'usage : « quand j'essaie de modifier les horaires dans le récap des
+cases, ça rentre le premier chiffre, puis la page revient en haut : je ne
+peux pas entrer 14, ça garde le 1 ».
+
+- Un champ d'heure envoie « change » dès le premier chiffre (« 1 » → 01:00).
+  L'enregistrement redessinait le tableau et arrachait le champ. Une heure
+  **tapée** s'enregistre maintenant en quittant le champ, ou sur Entrée ; une
+  heure posée par programme (import, tests) s'enregistre tout de suite, comme
+  avant. Vaut pour tous les champs d'heure des cases.
+- Le Récap des cases garde son défilement et le champ où l'on est quand il se
+  redessine.
+- `tests/saisie-heure-browser.cjs` : frappe touche par touche dans le récap
+  (en bas d'un tableau de 30 cases) et dans une fiche, Entrée, passage d'une
+  heure à l'autre, défilement conservé.
+
+Fichiers : `ateliers.js`, tests, `BUGS.md`.
+
 ## 2026-09-29 — Retours le lendemain (J+1), et J+1 comparé à la planche retour
 
 Retour d'usage : « en fait c'est J+1, pas J+2 », et « c'est intéressant de
