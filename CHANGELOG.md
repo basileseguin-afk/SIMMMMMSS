@@ -5,6 +5,25 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-29 — Page de secours, et un démarrage qui ne peut plus tout bloquer
+
+Retour d'usage : « ça bug encore, je ne peux pas naviguer sur le site ». Le
+correctif du BUG-050 était publié (GitHub Pages, 07:45), mais un navigateur
+peut garder l'ancienne page quelques minutes, et des données enregistrées
+qu'il ne sait pas relire le figent à chaque chargement.
+
+- **`secours.html`** : une page sans aucun script du site. Elle liste les
+  données enregistrées dans le navigateur, les télécharge en sauvegarde
+  complète (réimportable depuis Sauvegarde › Restaurer), met de côté les cases
+  et chemins — ou tout — pour rouvrir le site sans elles, et les remet.
+- **Démarrage** : un chargement qui ne va pas au bout laisse une marque ; le
+  suivant ouvre la page de secours au lieu de se figer encore. Chaque étape du
+  démarrage est isolée : une erreur dans l'une s'affiche en haut de la page
+  (avec le lien vers le secours) sans empêcher les autres ni la navigation.
+- Les boucles des repères horaires (planning, chronogramme d'une commande,
+  frise des départs) refusent une heure infinie et sont bornées.
+- Test : `tests/secours-browser.cjs`.
+
 ## 2026-09-29 — Le site ne plante plus en ajoutant des tunnels (BUG-050)
 
 Retour d'usage : « le site fait que de crasher, j'ai essayé d'ajouter des

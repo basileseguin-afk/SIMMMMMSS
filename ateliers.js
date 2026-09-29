@@ -1518,7 +1518,8 @@
       // Repères horaires : une heure ronde toutes les heures, deux si c'est trop dense.
       const pas = (t1 - t0) > 12 * 60 ? 120 : 60;
       const reperes = [];
-      for (let t = Math.ceil(t0 / pas) * pas; t <= t1; t += pas) reperes.push(t);
+      // Borné : une heure infinie ne doit jamais figer la page (BUG-050).
+      if (Number.isFinite(t0) && Number.isFinite(t1)) for (let t = Math.ceil(t0 / pas) * pas; t <= t1 && reperes.length < 400; t += pas) reperes.push(t);
 
       const barres = lignes.map((a, i) => {
         const y = 28 + i * H;

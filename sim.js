@@ -1884,7 +1884,7 @@ function renderFriseVols(tous, etatDe, mot, icoEtat) {
     return { d, c, e: etatDe(d) };
   });
   const H = 20 + couloirs.length * 32 + 22;
-  const heures = []; for (let h = t0; h <= t1; h += 60) heures.push(h);
+  const heures = []; if (Number.isFinite(t0) && Number.isFinite(t1)) for (let h = t0; h <= t1 && heures.length < 400; h += 60) heures.push(h);
   const pas = heures.length > 14 ? 2 : 1;
   box.innerHTML = '<div class="vf-comptes">'
     + compteur('ok', 'ontime', n.ready, (n.ready > 1 ? 'vols prêts' : 'vol prêt') + ' à l’heure', 'check')
@@ -1947,13 +1947,36 @@ const Sim = { dataCourante:SAMPLE };
 // au même titre que Sim.editor et Sim.ateliers : lecture seule côté appelant.
 Sim.cfg = CFG;
 window.Sim = Sim;
-chargerZones();
-construirePlan(); chargerVols(SAMPLE); initControles(); initEdition(); initFlux(); initAteliers(); initWorkbench(); initServices(); initHandlingVols(); migrerRobot();
+/* Un démarrage qui ne va pas au bout (des données enregistrées que le calcul
+ * ne sait pas relire, une boucle sans fin) laisse sa marque : au chargement
+ * suivant, on propose la page de secours au lieu de se figer encore. Chaque
+ * étape est isolée : une erreur dans l'une n'empêche plus les autres, ni la
+ * navigation (retour d'usage : « ça bug encore, je ne peux pas naviguer »). */
+const CLE_DEMARRAGE='ory-demarrage-en-cours';
+const lireCle=k=>{try{return localStorage.getItem(k);}catch(e){return null;}};
+const continuer=/[?&]continuer=1/.test(location.search);
+if(lireCle(CLE_DEMARRAGE)==='1'&&!continuer){location.replace('secours.html?bloque=1');return;}
+try{localStorage.setItem(CLE_DEMARRAGE,'1');}catch(e){/* stockage indisponible */}
+const pannes=[];
+const etape=(nom,fn)=>{try{fn();}catch(e){pannes.push(nom+' : '+(e&&e.message||e));console.error('Démarrage — '+nom,e);}};
+etape('plan',()=>{chargerZones();construirePlan();});
+etape('vols',()=>chargerVols(SAMPLE));
+etape('contrôles',initControles); etape('édition du plan',initEdition); etape('liens',initFlux);
+etape('cases et chemins',initAteliers); etape('réglages',initWorkbench); etape('services',initServices);
+etape('handling',initHandlingVols); etape('robot',migrerRobot);
 // Le fil de mise en route vient en dernier : il relit les autres, il ne peut
 // donc se dresser qu'une fois qu'ils sont là.
-initVueSimulation();
-initOnglets();
-initDemarrage();
-majHorloge(); majPlan(); majDashboard(); majStocks();
+etape('simulation',initVueSimulation);
+etape('menu',initOnglets);
+etape('accueil',initDemarrage);
+etape('affichage',()=>{majHorloge();majPlan();majDashboard();majStocks();});
+// Le démarrage est allé au bout : la marque s'efface.
+try{localStorage.removeItem(CLE_DEMARRAGE);}catch(e){/* rien */}
+if(pannes.length){
+  const b=document.createElement('div');b.className='panne-demarrage';b.setAttribute('role','alert');
+  b.innerHTML='<b>Une partie du site n’a pas pu se charger</b> ('+escapeHTML(pannes.join(' ; '))+'). Le reste fonctionne. '
+    +'<a href="secours.html">Page de secours : récupérer vos données, repartir sans elles</a>';
+  document.body.prepend(b);
+}
 
 })();

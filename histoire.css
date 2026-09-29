@@ -552,3 +552,5 @@ body:not([data-vue="flux"]) .services-unite{display:none}
 .svc-actions .btn{margin-bottom:4px}
 .svc-nouveau-ligne td{animation:svc-flash 1.6s ease-out}
 @keyframes svc-flash{from{background:color-mix(in srgb,var(--ok) 20%,var(--bg3))}to{background:transparent}}
+.panne-demarrage{position:relative;z-index:200;background:#fff7ed;border-bottom:2px solid #d97706;padding:10px 16px;font-size:14px}
+.panne-demarrage a{font-weight:700;margin-left:6px}

@@ -1413,7 +1413,7 @@
       // de J-1, une étiquette par heure se chevauchait. Le jour n'est écrit
       // qu'au premier repère et au changement de jour.
       const pas = [60, 120, 180, 240, 360, 720].find(p => W * p / Math.max(1, t1 - t0) >= 70) || 720;
-      const heures = []; for (let t = Math.ceil(t0 / pas) * pas; t <= t1; t += pas) heures.push(t);
+      const heures = []; if (Number.isFinite(t0) && Number.isFinite(t1)) for (let t = Math.ceil(t0 / pas) * pas; t <= t1 && heures.length < 400; t += pas) heures.push(t);
       const jourDe = t => Math.floor(t / 1440);
       const repere = (t, i) => i === 0 || jourDe(t) !== jourDe(heures[i - 1]) ? P.hhmm(t) : P.hhmm(t - jourDe(t) * 1440);
       const lignes = g.etapes.map((e, i) => {
