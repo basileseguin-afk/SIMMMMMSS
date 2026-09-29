@@ -91,7 +91,8 @@ class FlowCenter{
   this.host.innerHTML=`<div class="fc-heading"><div><p class="scope-badge">Qui livre qui, entre les services de l’unité</p></div><div class="fc-actions"><button class="btn btn-sm" id="fc-undo" title="Annuler la dernière modification">↶ Annuler</button><button class="btn btn-sm" id="fc-redo" title="Rétablir ce qui a été annulé">↷ Rétablir</button><button class="btn btn-sm" id="fc-export" title="Les liens entre services, dans un fichier">⇩ Liens</button><button class="btn btn-sm" id="fc-import-button" title="Réimporter un fichier de liens">⇧ Importer</button><input id="fc-import" type="file" accept=".json" hidden></div></div>
    <div id="fc-status" role="status" aria-live="polite"></div>
    <section id="fc-lecture" class="fc-lecture" data-sous="u-lecture">
-    <h3 class="fc-list-title">Ce que le calcul en retient</h3>
+    <div id="fc-calcul" class="fc-calcul"></div>
+    <h3 class="fc-list-title">Les liens entre services, tels que le calcul les lit</h3>
     <div class="mini-note">Un repas suit d’abord <b>son chemin</b> (Organisation › Chemins) ; ces
      liens ne servent qu’aux repas qui n’en ont pas.<details class="aide"><summary aria-label="Ce que le calcul retient de ces liens">?</summary>
      <span class="aide-corps"><p>Ces liens décrivent l’unité : qui livre qui. Ils ne disent pas le
@@ -186,7 +187,10 @@ class FlowCenter{
    return;
   }
   const nom=id=>esc((lu.noms||{})[id]||id);
-  const graves=lu.alertes.filter(a=>a.grave),notes=lu.alertes.filter(a=>!a.grave);
+  // Quand chaque commande a son chemin, un défaut des liens ne gêne pas le
+  // calcul : il reste dit, mais sans l'alarme d'un « point à corriger ».
+  const utiles=!this.a.liensUtiles||this.a.liensUtiles();
+  const graves=utiles?lu.alertes.filter(a=>a.grave):[],notes=utiles?lu.alertes.filter(a=>!a.grave):lu.alertes;
   // Un point à corriger mène au service à corriger : ajouter l'équipe qui
   // manque d'un clic, ou ouvrir la page des services.
   // Un service qui n'existe pas dans l'unité se supprime d'ici aussi : on ne

@@ -735,7 +735,7 @@ function initAteliers(){
     // Le plan dit « aménagé » d'après les ateliers : il doit suivre leur saisie.
     // La liste du barème marque les services qui portent une équipe : elle doit
     // donc se redessiner quand les ateliers bougent.
-    change:()=>{majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();},
+    change:()=>{majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();},
     // Une case se règle dans le chemin d'une commande : l'ouvrir d'ailleurs y mène.
     onglet:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
     // Un service supprimé encore cité : son nom, pour que les alertes le
@@ -857,6 +857,33 @@ function etatDemarrage(){
 }
 function majDemarrage(){ if(Sim.onglets)Sim.onglets.rendre(); if(Sim.demarrage)Sim.demarrage.rendre(); afficherTitre(); if(document.body.dataset.sous==='u-services')renderServices(); }
 /* Un nombre sur un onglet dit qu'il y a quelque chose à y faire, sans l'ouvrir. */
+/* Les contrôles du calcul (audit du 29/09) : la page Contrôles ne parlait que
+ * des liens entre services, qui ne servent plus quand chaque commande a son
+ * chemin — et taisait ce que le calcul signale. On sépare ce qui est à
+ * CORRIGER dans l'organisation de ce que la journée MONTRE (des résultats). */
+const CODES_JOURNEE=new Set(['poste','materiel','bouchon','inacheve','plonge-fermee','plonge-vol',
+  'handling-bloque','handling-poste','handling-retard','handling-chauffeurs']);
+function controlesDuCalcul(){
+  const an=((Sim.ateliers&&Sim.ateliers.resultat)||{}).anomalies||[];
+  return {corriger:an.filter(a=>!CODES_JOURNEE.has(a.code)),journee:an.filter(a=>CODES_JOURNEE.has(a.code))};
+}
+function sansChemin(){
+  return Sim.ateliers&&window.OrlyParcours?Sim.ateliers.classes.filter(c=>!OrlyParcours.cheminDe(Sim.ateliers.state,c.id)).length:0;
+}
+function renderControles(){
+  const box=document.getElementById('fc-calcul');if(!box)return;
+  const {corriger,journee}=controlesDuCalcul(),n=sansChemin();
+  const liste=l=>'<ul>'+l.slice(0,40).map(a=>'<li>'+escapeHTML(a.message||a.code)+'</li>').join('')+(l.length>40?'<li>… et '+(l.length-40)+' autres</li>':'')+'</ul>';
+  box.innerHTML=(corriger.length
+      ?'<div class="fc-alerte grave"><b>'+corriger.length+(corriger.length>1?' points':' point')+' à corriger dans l’organisation</b>'+liste(corriger)
+        +'<button type="button" class="lien-fort" data-page="at-chemins">Ouvrir les chemins →</button></div>'
+      :'<p class="fc-alerte ok">L’organisation se lit de bout en bout : chaque étape a sa case, chaque case sait quoi préparer.</p>')
+    +(journee.length?'<details class="fc-alerte"><summary><b>'+journee.length+(journee.length>1?' choses que la journée montre':' chose que la journée montre')
+        +'</b> — retards, postes trop courts, attentes : ce sont des résultats, pas des erreurs de saisie.</summary>'+liste(journee)
+        +'<button type="button" class="lien-fort" data-page="j-chiffres">Voir les résultats →</button></details>':'')
+    +'<p class="mini-note fc-liens-note">'+(n?'<b>'+n+(n>1?' commandes n’ont pas':' commande n’a pas')+' de chemin</b> : pour elles, le calcul suit les liens entre services ci-dessous.'
+      :'Toutes les commandes ont leur chemin : les liens ci-dessous ne servent pas au calcul, ils décrivent l’unité.')+'</p>';
+}
 function badgeOnglet(id){
   const r=(Sim.ateliers&&Sim.ateliers.resultat)||{};
   // Les commandes qui n'ont pas encore leur chemin : ce qui reste à dessiner.
@@ -869,7 +896,8 @@ function badgeOnglet(id){
     return n?{n,ton:'neutre',titre:n+(n>1?' commandes':' commande')+' sans équipe'}:null;
   }
   if(id==='u-lecture'&&Sim.flows){
-    const n=lectureDuGraphe().alertes.filter(a=>a.grave).length;
+    // Ce qui est à corriger dans l'organisation ; les liens seulement s'ils servent encore.
+    const n=controlesDuCalcul().corriger.length+(sansChemin()?lectureDuGraphe().alertes.filter(a=>a.grave).length:0);
     return n?{n,ton:'attente',titre:n+(n>1?' points':' point')+' à corriger'}:null;
   }
   return null;
@@ -887,7 +915,7 @@ function initOnglets(){
       if(id==='v-departs')renderFlights();
       if(id==='v-planche')renderPlanche();
       if(id==='rg-simulation'&&Sim.ateliers)Sim.ateliers.rendreMateriel(Sim.ateliers.resultat);
-      if(id==='u-lecture'&&Sim.flows)Sim.flows.refresh();
+      if(id==='u-lecture'&&Sim.flows){Sim.flows.refresh();renderControles();}
       // La fenêtre d'une case se cale sous la barre des onglets, mesurée une fois visible.
       if(id==='at-chemins'&&Sim.ateliers)Sim.ateliers.parcours.placeTiroir();
       // Un onglet des ateliers se dessine à son ouverture, s'il a changé depuis.
@@ -943,6 +971,8 @@ function afficherTitre(){
 function initFlux(){
   Sim.flows=new OrlyFlows.FlowCenter({zones:()=>Sim.editor.state.zones.filter(z=>!z.retire).map(z=>({...z,nom:nomLisible(z.nom)})),legacy:FLUX.concat(FLUX_RETOUR),
     lecture:lectureDuGraphe,
+    // Les liens ne servent au calcul que pour une commande sans chemin.
+    liensUtiles:()=>sansChemin()>0,
     changed:()=>{if(Sim.flows)redessinerEdges();if(Sim.ateliers)Sim.ateliers.rendre();majDemarrage();},
     showMap:()=>showView('plan'),notify:toast});
   redessinerEdges();

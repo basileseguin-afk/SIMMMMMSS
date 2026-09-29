@@ -171,6 +171,19 @@
    * ====================================================================*/
 
   const fabrique = a => a.type === 'manuel' || a.type === 'robot';
+  /* Ce qui vient de se passer (« Enregistré. », « Case créée… ») : dans la
+   * ligne d'état de la vue et au-dessus du diagramme des chemins. Un message
+   * s'efface de lui-même : resté affiché, il se lisait encore des pages plus
+   * loin, dans les résultats, comme s'il parlait d'eux (audit du 29/09). */
+  let minuterie = null;
+  function annoncer(t) {
+    if (typeof document === 'undefined') return;
+    const texte = t || '';
+    const s = document.getElementById('at-status'); if (s) s.textContent = texte;
+    for (const m of document.querySelectorAll('.pc-message')) m.textContent = texte;
+    clearTimeout(minuterie);
+    if (texte) minuterie = setTimeout(() => annoncer(''), Math.min(10000, 5000 + texte.length * 20));
+  }
   /* Deux étapes fusionnées, à la chaîne (retour d'usage du 29/09) : la case
    * d'un service (le Montage) fait aussi l'étape d'avant (la Prépa) pour ses
    * commandes. Pour ces commandes, l'étape d'avant n'est pas « à faire » :
@@ -1155,10 +1168,7 @@
 
     /* Ce qui vient de se passer se dit deux fois : dans la ligne d'état de la
      * vue, et juste au-dessus du diagramme, là où l'on regarde. */
-    dire(t) {
-      const s = document.getElementById('at-status'); if (s) s.textContent = t || '';
-      const m = this.a.boite().querySelector('.pc-message'); if (m) m.textContent = t || '';
-    }
+    dire(t) { annoncer(t); }
 
     /** Les commandes d'une case, en bref : « TX BC, TX PC ». */
     resumeCase(a) {
@@ -1651,7 +1661,7 @@
   }
 
 
-  const api = { fusionneePar, insererPrepa, depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, couverture, confier, nouvelleEquipe,
+  const api = { annoncer, fusionneePar, insererPrepa, depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, couverture, confier, nouvelleEquipe,
     completer, colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, donnerCases, completerCases, nomLibre, caseHandling, anciensHandlings, brancherHandling, caseRobot, remplacerEtape,
     SERVICES_DISPO, estDispo, caseDispo, anciensDispos, partagerDispos, separerParCommande, ajouterBesoin, EditeurParcours };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

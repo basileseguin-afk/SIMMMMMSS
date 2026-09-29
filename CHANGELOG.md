@@ -5,6 +5,41 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-29 — Améliorer l'existant, lot 1 : ce que le site montrait de travers
+
+Retour d'usage : « on perfectionne ce que l'on a ». Audit sur un état
+réaliste (34 commandes, un chemin chacune, 33 cases, handling, plonge par vol,
+boutique, robot, case à la chaîne), page par page : aucune erreur, calcul en
+8 ms, une modification en 45–65 ms. Ce qui a été corrigé :
+
+- **Les messages s'effacent** (« Robot : il remplace… », « Enregistré. ») :
+  ils restaient affichés de page en page, jusque dans les résultats. Sur les
+  chemins, ils ne s'affichent plus deux fois.
+- **Planning des équipes** : les heures se chevauchaient (« J-1 04:00J-1 06:00 »).
+  Elles sont espacées d'au moins 64 px, le jour ne s'écrit qu'une fois par jour,
+  minuit est marqué en pointillé.
+- **Commandes « pas finie »** : la cause s'écrit dessous — « le poste de « X »
+  finit avant », « « X » manque de matériel propre », « attend « S » ».
+- **« En retard » et « pas finie » ne se confondent plus** : la synthèse disait
+  « 3 commandes en retard » et « retard le plus long : aucun ». Deux lignes
+  distinctes désormais (moteur : `enRetard`, `pasFinies`).
+- **Synthèse** : durées longues en heures (« 22 h 09 » au lieu de « 1329 min ») ;
+  « Vol le plus en retard : — aucun vol chargé » au lieu d'un « aucun » rassurant.
+- **Plan rejoué** : l'horloge dit « J 00:00 » sur une journée qui commence la veille.
+- **Temps de travail** : « à remplir » seulement pour un service dont une case
+  lit le barème (plus de fausse alerte sur le handling ou les quais) ; badges
+  décollés du nom.
+- **Contrôles** : la page dit d'abord ce que le calcul signale, en séparant
+  « à corriger dans l'organisation » (compté dans le badge) de « ce que la
+  journée montre » (retards, postes trop courts : des résultats). Quand chaque
+  commande a son chemin, les défauts des liens entre services ne sont plus des
+  alertes : ils ne servent pas au calcul, et c'est dit.
+- Tests : `tests/lisibilite-browser.cjs` ; réglages mis à jour.
+
+Fichiers : `moteur/production.js`, `ateliers.js`, `ateliers.css`, `parcours.js`,
+`simulation.js`, `reglages.js`, `reglages.css`, `sim.js`, `flow-center.js`,
+`flow-center.css`, tests.
+
 ## 2026-09-29 — Une seule ligne robot, partagée par le matin et l'après-midi
 
 Retour d'usage (après l'analyse d'Astra) : « le robot est une seule ligne

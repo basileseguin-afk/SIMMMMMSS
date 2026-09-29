@@ -70,3 +70,7 @@ body.flows-open .workbench{display:none}
   border:1px solid var(--bordure2);border-radius:4px;padding:1px 6px;white-space:nowrap}
 .fc-nature.dispo{color:var(--accent2);border-color:var(--accent)}
 .fc-nature.vide{color:var(--txt2);border-color:var(--bordure2);border-style:dashed}
+/* Les contrôles du calcul (audit du 29/09) : un résumé qui se lit sur une ligne. */
+.fc-calcul summary{cursor:pointer}
+.fc-calcul summary b{display:inline}
+.fc-calcul .lien-fort{margin-top:6px}

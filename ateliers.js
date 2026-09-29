@@ -1023,7 +1023,7 @@
     /* ---- rendu ------------------------------------------------------- */
 
     rendre(message) {
-      if (message !== undefined) document.getElementById('at-status').textContent = message || '';
+      if (message !== undefined) PC.annoncer(message || '');
       const r = this.calculer();
       this.rendreIndicateurs(r);
       this.rendreAnomalies(r);
@@ -1069,10 +1069,11 @@
       const pl = (n, s, p) => n + ' ' + (n > 1 ? p : s);
       const box = document.getElementById('at-indicateurs');
       if (!r.ok || !i.classesSuivies && !i.classesAbsentes) { box.innerHTML = ''; return; }
-      const retard = (i.classesSuivies || 0) - (i.aHeure || 0);
+      const retard = i.enRetard ?? ((i.classesSuivies || 0) - (i.aHeure || 0)), pasFinies = i.pasFinies || 0;
       box.innerHTML = '<p class="at-resume"><b>Sur la journée :</b> '
         + pl(i.aHeure || 0, 'commande prête', 'commandes prêtes') + ' à l’heure sur ' + (i.classesSuivies || 0)
         + (retard ? ' · <span class="at-resume-retard">' + pl(retard, 'en retard', 'en retard') + '</span>' : '')
+        + (pasFinies ? ' · <span class="at-resume-retard">' + pl(pasFinies, 'pas finie', 'pas finies') + '</span>' : '')
         + (i.classesAbsentes ? ' · ' + pl(i.classesAbsentes, 'commande', 'commandes') + ' sans équipe' : '')
         + (Number.isFinite(i.finDerniere) ? ' · dernière prête à ' + P.hhmm(i.finDerniere) : '')
         + (i.volsSuivis ? ' · <b>' + pl(i.volsAHeure, 'vol chargé', 'vols chargés') + ' à l’heure sur ' + i.volsSuivis + '</b>'
@@ -1629,11 +1630,20 @@
       const H = 26, marge = 190, L = 900, haut = lignes.length * H + 34;
       const x = t => marge + (t - t0) / (t1 - t0) * (L - marge - 16);
 
-      // Repères horaires : une heure ronde toutes les heures, deux si c'est trop dense.
-      const pas = (t1 - t0) > 12 * 60 ? 120 : 60;
+      // Repères horaires : assez espacés pour se lire (64 px au moins entre deux),
+      // sur deux jours comme sur un seul. Ils se chevauchaient (« J-1 04:00J-1 06:00 »).
+      const largeur = L - marge - 16, span = Math.max(60, t1 - t0);
+      const pas = [60, 120, 180, 240, 360, 480, 720, 1440].find(k => largeur * k / span >= 64) || 1440;
       const reperes = [];
       // Borné : une heure infinie ne doit jamais figer la page (BUG-050).
       if (Number.isFinite(t0) && Number.isFinite(t1)) for (let t = Math.ceil(t0 / pas) * pas; t <= t1 && reperes.length < 400; t += pas) reperes.push(t);
+      // Le jour ne s'écrit qu'au premier repère de chaque jour, et à minuit.
+      const jourDe = t => Math.floor(t / 1440);
+      const heureSeule = t => P.hhmm(t - jourDe(t) * 1440);
+      const etiquette = (t, i) => {
+        const j = jourDe(t), neuf = i === 0 || jourDe(reperes[i - 1]) !== j;
+        return neuf && (j !== 0 || jourDe(t0) !== 0) ? (j ? 'J' + j : 'J') + ' ' + heureSeule(t) : heureSeule(t);
+      };
 
       const barres = lignes.map((a, i) => {
         const y = 28 + i * H;
@@ -1652,7 +1662,7 @@
       }).join('');
 
       box.innerHTML = `<svg viewBox="0 0 ${L} ${haut}" role="img" aria-label="La journée des équipes">
-        ${reperes.map(t => `<g><line class="at-pl-grille" x1="${x(t)}" y1="20" x2="${x(t)}" y2="${haut}"/><text class="at-pl-heure" x="${x(t)}" y="14">${P.hhmm(t)}</text></g>`).join('')}
+        ${reperes.map((t, i) => `<g><line class="at-pl-grille${t % 1440 === 0 ? ' minuit' : ''}" x1="${x(t)}" y1="20" x2="${x(t)}" y2="${haut}"/><text class="at-pl-heure" x="${x(t)}" y="14">${etiquette(t, i)}</text></g>`).join('')}
         ${barres}
       </svg>
       <p class="mini-note">Barre pleine : l’équipe prépare. Barre fine devant : elle attend le service d’avant.</p>`;
@@ -1887,6 +1897,17 @@
         return;
       }
 
+      // Pourquoi une commande n'est pas finie, en quelques mots (audit du 29/09) :
+      // « pas finie » seul ne disait pas où regarder.
+      const pourquoi = new Map();
+      for (const an of (r && r.anomalies) || []) {
+        if (an.code !== 'inacheve' && an.code !== 'poste' && an.code !== 'materiel') continue;
+        const t = an.cause === 'materiel' ? '« ' + an.case + ' » manque de matériel propre'
+          : an.cause === 'amont' ? 'attend ' + (an.attend || []).map(x => '« ' + x + ' »').join(', ')
+          : an.cause === 'bloque' ? '« ' + an.case + ' » reste bloquée' + (an.bloquePar ? ' sur ' + an.bloquePar : '')
+          : 'le poste de « ' + an.case + ' » finit avant';
+        for (const id of an.classes || []) if (!pourquoi.has(id)) pourquoi.set(id, t);
+      }
       box.innerHTML = barre + ajout + exclues + `<table class="at-table"><thead><tr>
         <th scope="col">Commande</th><th scope="col">Passagers</th><th scope="col">Vols</th>
         <th scope="col">Prête avant</th><th scope="col">Prête à</th><th scope="col">Où elle en est</th>
@@ -1895,7 +1916,7 @@
         classes.map(c => {
           const v = par[c.id] || {};
           const etat = v.absente ? '<span class="at-etat neutre">pas encore d’équipe</span>'
-            : v.fin == null ? '<span class="at-etat neutre">pas finie</span>'
+            : v.fin == null ? '<span class="at-etat neutre">pas finie</span>' + (pourquoi.has(c.id) ? '<small class="at-pourquoi">' + esc(pourquoi.get(c.id)) + '</small>' : '')
             : v.aHeure ? '<span class="at-etat ok">à l’heure</span>'
             : '<span class="at-etat retard">+' + Math.round(v.retard) + ' min</span>';
           // Une classe déclarée que l'import ne porte pas n'a ni volume ni

@@ -109,10 +109,17 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await seuils(),n);
   await ecrire('#rg-presence','495');
 
-  // 6. Un service que le barème ne connaît pas est signalé : sans cela il
-  //    travaillerait en temps nul sans rien dire.
-  assert.ok(await page.locator('.rg-service.vide .rg-zero').count()>0,
-    'un service sans barème se voit sans qu’on ait à l’ouvrir');
+  // 6. Un service que le barème ne connaît pas est signalé — seulement si une
+  //    case y lit le barème : sinon il travaillerait en temps nul sans rien dire.
+  //    Un service sans équipe qui prépare (handling, quais…) n'est pas une alerte.
+  assert.equal(await page.locator('.rg-service.vide .rg-zero').count(),0,'aucune fausse alerte');
+  const sans=await page.locator('.rg-service.inutile').first().getAttribute('data-service');
+  assert.ok(sans,'des services sans barème, mais que personne ne lit');
+  await page.evaluate(s=>Sim.ateliers.changer(()=>Sim.ateliers.state.ateliers.push({id:'x-vide',nom:'Équipe sans barème',service:s,type:'manuel',
+    debut:'06:00',jour:0,personnes:1,pauses:[],lots:[],regime:{actif:true}})),sans);await attendre();
+  assert.equal(await page.locator(`.rg-service.vide[data-service="${sans}"] .rg-zero`).count(),1,
+    'une équipe y travaille : le service sans barème se voit sans qu’on ait à l’ouvrir');
+  await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers=Sim.ateliers.state.ateliers.filter(a=>a.id!=='x-vide');}));await attendre();
 
   // 7. Annuler et rétablir.
   await page.locator('#rg-undo').click();await attendre();

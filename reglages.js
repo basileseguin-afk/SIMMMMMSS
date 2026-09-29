@@ -411,11 +411,16 @@
       const services = (this.a.services ? this.a.services() : []);
       const complet = this.baremeComplet();
       const occupes = new Set(this.a.occupes ? this.a.occupes() : []);
+      // Les services dont une case lit le barème : une équipe qui prépare, ou
+      // l'étape qu'une case fait à la chaîne. Le handling, une plonge, une mise
+      // à disposition ne le lisent pas : « à remplir » y était une fausse alerte.
+      const cases = this.a.ateliers ? this.a.ateliers() : [];
+      const lisent = new Set(cases.filter(a => a.type === 'manuel' || !a.type).flatMap(a => [a.service].concat(a.fusion ? [a.fusion] : [])));
       // Remplacer la liste détruit ses champs. Si rien n'a bougé, on n'y
       // touche pas : sinon un rendu déclenché par la sortie d'un champ
       // arrache le bouton qu'on était en train de cliquer, et le clic se perd.
       const signature = JSON.stringify([services.map(s => [s.id, s.nom]), complet,
-        this.etat.bareme, this.etat.detail, [...occupes], (this.a.classes ? this.a.classes() : []).map(c => c.id),
+        this.etat.bareme, this.etat.detail, [...occupes], [...lisent], (this.a.classes ? this.a.classes() : []).map(c => c.id),
         this.a.routesSignature ? this.a.routesSignature() : '']);
       if (box._signature !== signature) {
         box._signature = signature;
@@ -438,10 +443,10 @@
           const ligne = propre || complet[s.id] || {};
           const communes = P.CABINES.map(c => ligne[P.cleBareme(P.TOUTES, c)]);
           const renseigne = communes.some(Number.isFinite) || Object.keys(ligne).length;
-          const etat = herite ? 'herite' : renseigne ? 'ok' : 'vide';
+          const etat = herite ? 'herite' : renseigne ? 'ok' : !cases.length || lisent.has(s.id) ? 'vide' : 'inutile';
           const marque = herite
             ? '<span class="rg-herite" title="Mêmes chiffres que le service dont elle dépend">repris</span>'
-            : renseigne ? '' : '<span class="rg-zero">à remplir</span>';
+            : renseigne ? '' : !cases.length || lisent.has(s.id) ? '<span class="rg-zero">à remplir</span>' : '';
           const propres = Object.entries(ligne).filter(([k]) => !k.startsWith(P.TOUTES + '/'))
             .sort(([x], [y]) => x.localeCompare(y));
           const parCompagnie = this.etat.detail[s.id] === 'compagnie';

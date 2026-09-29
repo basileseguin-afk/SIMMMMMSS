@@ -135,13 +135,16 @@
     }
 
     rendreHorloge() {
+      // Sur une journée qui commence la veille, « 00:00 » seul ne dit pas de
+      // quel jour il s'agit : le jour J s'écrit aussi (audit du 29/09).
+      const hj = t => (this.debut < 0 && t >= 0 ? 'J ' : '') + P.hhmm(t);
       const h = document.getElementById('horloge');
-      if (h) h.textContent = this.vide ? '—' : P.hhmm(this.t);
+      if (h) h.textContent = this.vide ? '—' : hj(this.t);
       const j = document.querySelector('.jour');
       if (j) {
         j.textContent = this.vide
           ? 'Aucune journée à rejouer'
-          : 'journée de ' + P.hhmm(this.debut) + ' à ' + P.hhmm(this.fin);
+          : 'journée de ' + hj(this.debut) + ' à ' + hj(this.fin);
       }
       const c = document.getElementById('sim-curseur');
       if (c) {
@@ -191,7 +194,7 @@
       // Ces quatre chiffres suivent l'heure rejouée : on la dit, pour qu'ils ne
       // se confondent pas avec le bilan de la journée entière.
       const quand = document.getElementById('kpi-quand');
-      if (quand) quand.textContent = 'À ' + P.hhmm(this.t) + ', heure rejouée';
+      if (quand) quand.textContent = 'À ' + (this.debut < 0 && this.t >= 0 ? 'J ' : '') + P.hhmm(this.t) + ', heure rejouée';
       mettre('kpi-wip', c.auTravail + ' <small>services</small>', '', 'kpi-wip-note', 'qui préparent en ce moment');
       mettre('kpi-debit', c.enAttente + ' <small>services</small>', c.enAttente ? 'moyen' : '',
         'kpi-debit-note', 'le service d’avant n’a pas livré');
@@ -211,17 +214,19 @@
       }
       const lignes = [
         ['Commandes prêtes à l’heure', k.classesSuivies ? k.aHeure + ' sur ' + k.classesSuivies + (k.partAHeure != null ? ' · ' + k.partAHeure + ' %' : '') : '—'],
-        ['Commandes en retard', String((k.classesSuivies || 0) - (k.aHeure || 0))],
-        ['Retard le plus long', k.retardMax ? Math.round(k.retardMax) + ' min' : 'aucun'],
+        ['Commandes en retard', String(k.enRetard ?? ((k.classesSuivies || 0) - (k.aHeure || 0)))],
+        ...(k.pasFinies ? [['Commandes pas finies', String(k.pasFinies)]] : []),
+        ['Retard le plus long', k.retardMax ? P.dureeLisible(k.retardMax) : k.classesSuivies ? 'aucun' : '—'],
         ['Dernière commande prête à', k.finDerniere != null && Number.isFinite(k.finDerniere) ? P.hhmm(k.finDerniere) : '—'],
-        ['Temps passé à attendre', Math.round(k.attenteTotale || 0) + ' min, tous services'],
+        ['Temps passé à attendre', (k.attenteTotale >= 1 ? P.dureeLisible(k.attenteTotale) : 'aucun') + ', tous services'],
         ['Travail fourni', (k.hommeHeures || 0).toFixed(1).replace('.', ',') + ' heures de travail']
       ];
       // Avec un handling, c'est le vol chargé qui compte : on le dit en tête.
       if (k.volsSuivis) lignes.unshift(
         ['Vols chargés à l’heure', k.volsAHeure + ' sur ' + k.volsSuivis + (k.partVolsAHeure != null ? ' · ' + k.partVolsAHeure + ' %' : '')],
         ['Vols non chargés', String(k.volsSuivis - k.volsCharges)],
-        ['Vol le plus en retard', k.retardVolMax ? '+' + Math.round(k.retardVolMax) + ' min après son départ' : 'aucun']);
+        // « aucun » alors qu'aucun vol n'est chargé laissait croire que tout allait bien.
+        ['Vol le plus en retard', k.retardVolMax ? '+' + P.dureeLisible(k.retardVolMax) + ' après son départ' : k.volsCharges ? 'aucun' : '— aucun vol chargé']);
       if (k.classesAbsentes) lignes.push(['Sans équipe', k.classesAbsentes + (k.classesAbsentes > 1 ? ' commandes que personne ne prépare' : ' commande que personne ne prépare')]);
       box.innerHTML = '<dl class="bilan">' + lignes.map(([q, v]) =>
         '<div><dt>' + esc(q) + '</dt><dd>' + esc(v) + '</dd></div>').join('') + '</dl>';

@@ -1829,7 +1829,8 @@
         impossible: true, sansMateriel: true, besoin: a.besoin };
       journal.push(ligne);
       const vue = parId.get(a.atelier); if (vue) vue.lots.push(ligne);
-      anomalies.push({ code: 'materiel', atelier: a.atelier,
+      anomalies.push({ code: 'materiel', atelier: a.atelier, classes: a.classes || [], cause: 'materiel',
+        case: (ateliers.find(x => x.id === a.atelier) || {}).nom,
         message: a.nom + ' dans « ' + nom(a.service) + ' » : ' + Math.round(a.besoin)
           + ' unités de matériel propre manquent et ne sont jamais arrivées.' });
     }
@@ -1837,7 +1838,7 @@
     // Un lot que le poste n'a pas pu finir n'est pas une erreur de saisie :
     // c'est le résultat, et le plus utile. On le nomme sans bloquer.
     for (const l of journal.filter(l => l.horsPoste && !l.handling)) {
-      anomalies.push({ code: 'poste', atelier: l.atelier,
+      anomalies.push({ code: 'poste', atelier: l.atelier, classes: l.classes || [], cause: 'poste', case: (ateliers.find(a => a.id === l.atelier) || {}).nom,
         message: l.nom + ' dans « ' + nom(l.service) + ' » : le poste se termine avant la fin. '
           + 'Commencez plus tôt, ajoutez du monde, ou confiez-le à une autre équipe.' });
     }
@@ -1872,7 +1873,10 @@
       // Sinon, l'équipe attend encore la première : quel service d'avant ne la livre jamais ?
       const premiere = ids[0], attendus = bloque ? [] : amontsDe(a.service, premiere)
         .filter(s => !journal.some(l => l.service === s && (l.classes || []).includes(premiere) && l.fin != null));
-      anomalies.push({ code: 'inacheve', atelier: a.id, classes: ids,
+      // La cause en bref, pour la dire à côté de chaque commande (audit du 29/09).
+      const cause = bloque ? (bloque.sansMateriel ? 'materiel' : bloque.horsPoste ? 'poste' : 'bloque') : attendus.length ? 'amont' : 'poste';
+      anomalies.push({ code: 'inacheve', atelier: a.id, classes: ids, cause, case: a.nom || a.id,
+        ...(bloque ? { bloquePar: enClair(bloque.nom) } : {}), ...(attendus.length ? { attend: attendus.map(nom) } : {}),
         message: (a.nom || a.id) + ' ne prépare jamais ' + ids.slice(0, 6).map(enClair).join(', ') + (ids.length > 6 ? '… (' + ids.length + ')' : '') + ' : '
           + (bloque ? 'l’équipe reste bloquée sur ' + enClair(bloque.nom) + (bloque.sansMateriel ? ', faute de matériel propre' : bloque.horsPoste ? ', son poste finit avant' : '') + '.'
             : attendus.length ? 'l’équipe attend toujours ' + enClair(premiere) + ' de « ' + attendus.map(nom).join(' », « ') + ' », qui ne la livre jamais.'
@@ -2001,6 +2005,10 @@
         classesSuivies: suivies.length,
         classesAbsentes: Object.values(derniers).filter(c => c.absente).length,
         aHeure,
+        // En retard = prête, mais après son échéance ; pas finie = jamais prête.
+        // Les confondre faisait dire « 3 en retard » avec « retard le plus long : aucun ».
+        enRetard: suivies.filter(c => c.fin != null && !c.aHeure).length,
+        pasFinies: suivies.filter(c => c.fin == null).length,
         partAHeure: suivies.length ? Math.round(aHeure / suivies.length * 100) : null,
         retardMoyen: retards.length ? retards.reduce((a, b) => a + b, 0) / retards.length : null,
         retardMax: retards.length ? Math.max(...retards) : null,
