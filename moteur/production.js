@@ -1423,6 +1423,13 @@
       fin: null, travail: 0, attente: 0, arret: 0, lots: [] }));
     const parId = new Map(suivi.map(s => [s.id, s]));
 
+    // Les équipes d'une plonge par vol, service par service : elles se partagent les retours.
+    const plongesParVol = new Map();
+    for (const a of ateliers) if (a.type === 'lavage' && a.parVol) {
+      if (!plongesParVol.has(a.service)) plongesParVol.set(a.service, []);
+      plongesParVol.get(a.service).push(a);
+    }
+
     // Les lignes robot : un lot à la fois sur chaque machine, dans l'ordre des demandes.
     const lignes = new Map();
     for (const a of ateliers) if (a.type === 'robot') {
@@ -1568,39 +1575,58 @@
       // La plonge par vol : chaque tunnel qui tourne lave un vol revenu, dans
       // l'ordre des retours, en la durée de sa compagnie.
       if (a.type === 'lavage' && a.parVol) {
-        // Sans liste de tunnels : un seul, s'il y a quelqu'un pour le tenir.
-        const tournent = Array.isArray(a.tunnels) && a.tunnels.length ? tunnelsQuiTournent(a).tournent : (a.personnes > 0 ? [{ nom: 'Tunnel' }] : []);
-        const actifs = tournent.length;
-        const n = Math.max(1, actifs);
-        // Les temps saisis sont ceux d'un tunnel normal ; un tunnel « ×2 » lave
-        // en deux fois moins de temps (retour d'usage du 29/09).
-        const vitesses = Array.from({ length: n }, (_, i) => vitesseTunnel(tournent[i]));
+        // Les équipes d'une même plonge (matin, après-midi…) se partagent les vols
+        // revenus : un vol n'est lavé qu'UNE fois, par le tunnel — de n'importe
+        // quelle équipe au travail — qui le rend propre le plus tôt. Chaque équipe
+        // lavait tous les vols : le travail et le propre étaient comptés deux fois
+        // (trouvé avec le jeu d'essai, 29/09). La première équipe mène le groupe.
+        const groupe = plongesParVol.get(a.service) || [a];
+        if (groupe[0] !== a) continue;
+        const pistes = [];
+        for (const x of groupe) {
+          const vx = parId.get(x.id), rx = normaliserRegime(x.regime, opts.regime);
+          const dx = vx.debut, fx = rx.actif ? dx + rx.presence : Infinity, px = pausesDe(x);
+          // Sans liste de tunnels : un seul, s'il y a quelqu'un pour le tenir.
+          const tournent = Array.isArray(x.tunnels) && x.tunnels.length ? tunnelsQuiTournent(x).tournent : (x.personnes > 0 ? [{ nom: 'Tunnel' }] : []);
+          // Les temps saisis sont ceux d'un tunnel normal ; un tunnel « ×2 » lave
+          // en deux fois moins de temps (retour d'usage du 29/09).
+          tournent.forEach((t, i) => pistes.push({ a: x, vue: vx, depart: dx, finPoste: fx, pauses: px, vitesse: vitesseTunnel(t),
+            libre: dx, numero: i + 1, nom: (t && t.nom) || 'Tunnel ' + (i + 1) }));
+        }
         const retours = retoursDeVols(opts.vols, { ...mat, unites: mat.unites }, true);
-        const pistes = new Array(n).fill(depart);
         for (const r of retours) {
-          const base = { atelier: a.id, service: a.service, nom: 'Vol ' + r.vol, vol: r.vol, cie: r.cie, classes: [], retourVol: true,
+          const base = { service: a.service, nom: 'Vol ' + r.vol, vol: r.vol, cie: r.cie, classes: [], retourVol: true,
             arrivee: r.t, unites: r.unites, arret: 0 };
-          const reference = dureeLavageVol(a, r.cie) ?? 0;
           // Le tunnel qui rend ce vol propre le plus tôt : le premier libre, ou
-          // un plus rapide qui se libère un peu plus tard.
-          const finSur = i => { const d0 = Math.max(r.t, pistes[i], depart); return finAvecPauses(d0, reference / vitesses[i], pauses).fin; };
-          // À égalité, celui qui est libre depuis le plus longtemps : le travail se répartit.
-          let p = 0;
-          for (let i = 1; i < n; i++) { const d = finSur(i) - finSur(p); if (d < -1e-9 || (Math.abs(d) <= 1e-9 && pistes[i] < pistes[p])) p = i; }
-          const duree = reference / vitesses[p];
-          const debutV = Math.max(r.t, pistes[p], depart);
-          const f = actifs && debutV < finPoste ? finAvecPauses(debutV, duree, pauses) : null;
-          if (!f || f.fin > finPoste) {
-            const ligne = { ...base, debut: Math.min(debutV, finPoste), fin: null, duree, attente: 0, impossible: true, horsPoste: true };
-            journal.push(ligne); vue.lots.push(ligne);
+          // un plus rapide qui se libère un peu plus tard. À égalité, celui qui
+          // est libre depuis le plus longtemps : le travail se répartit.
+          let p = null, fin = Infinity;
+          for (const q of pistes) {
+            const d0 = Math.max(r.t, q.libre, q.depart);
+            if (d0 >= q.finPoste) continue;
+            const f = finAvecPauses(d0, (dureeLavageVol(q.a, r.cie) ?? 0) / q.vitesse, q.pauses).fin;
+            if (f > q.finPoste) continue;
+            if (f < fin - 1e-9 || (Math.abs(f - fin) <= 1e-9 && q.libre < p.libre)) { p = q; fin = f; }
+          }
+          if (!p) {
+            // Aucune équipe au travail ne peut le laver avant la fin de son poste :
+            // on le dit à celle qui finit le plus tard (le soir), pas à celle du matin.
+            const der = groupe.map(x => pistes.find(q => q.a === x) || { a: x, vue: parId.get(x.id), depart: parId.get(x.id).debut, finPoste: parId.get(x.id).finPoste ?? Infinity })
+              .reduce((m, q) => ((q.finPoste ?? Infinity) >= (m.finPoste ?? Infinity) ? q : m));
+            const debut = Math.min(Math.max(r.t, der.depart), der.finPoste ?? Infinity);
+            const ligne = { ...base, atelier: der.a.id, debut, fin: null, duree: dureeLavageVol(der.a, r.cie) ?? 0, attente: 0, impossible: true, horsPoste: true };
+            journal.push(ligne); der.vue.lots.push(ligne);
             continue;
           }
-          pistes[p] = f.fin;
-          const ligne = { ...base, debut: debutV, fin: f.fin, duree, attente: debutV - r.t, arret: f.arret, impossible: false, tunnel: p + 1,
-            nomTunnel: (tournent[p] || {}).nom || 'Tunnel ' + (p + 1), vitesse: vitesses[p] };
-          journal.push(ligne); vue.lots.push(ligne);
-          vue.travail += duree; vue.attente += ligne.attente; vue.arret += f.arret;
-          vue.fin = Math.max(vue.fin ?? -Infinity, f.fin);
+          const duree = (dureeLavageVol(p.a, r.cie) ?? 0) / p.vitesse;
+          const debutV = Math.max(r.t, p.libre, p.depart);
+          const f = finAvecPauses(debutV, duree, p.pauses);
+          p.libre = f.fin;
+          const ligne = { ...base, atelier: p.a.id, debut: debutV, fin: f.fin, duree, attente: debutV - r.t, arret: f.arret, impossible: false,
+            tunnel: p.numero, nomTunnel: p.nom, vitesse: p.vitesse };
+          journal.push(ligne); p.vue.lots.push(ligne);
+          p.vue.travail += duree; p.vue.attente += ligne.attente; p.vue.arret += f.arret;
+          p.vue.fin = Math.max(p.vue.fin ?? -Infinity, f.fin);
           // Le matériel du vol est propre à sa sortie du tunnel.
           if (mat.actif && r.unites > 0) env.processus(function* () {
             if (env.maintenant < f.fin) yield env.delai(f.fin - env.maintenant);

@@ -5,6 +5,24 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-29 — Jeu d'essai complet et campagne de simulations (BUG-054)
+
+Retour d'usage : « ajouter toutes les valeurs possibles et cohérentes pour
+tester le modèle, récupérer les résultats, regarder s'ils sont cohérents ».
+
+- Un jeu d'essai d'une journée type (29 vols, 24 cases, 2 chemins, barème tiré
+  des coefficients du classeur, robot à une ligne, handling, plonge à deux
+  équipes, boucle du matériel) — gardé hors du dépôt (données de l'unité).
+  Chargé dans le site, il donne exactement le calcul direct du moteur.
+- 26 essais, un réglage à la fois, avec le sens attendu de chaque effet :
+  tous cohérents une fois lus correctement (« travail fourni » ne compte que
+  le travail fini).
+- **BUG-054** — une plonge par vol à deux équipes (matin, soir) lavait chaque
+  vol deux fois : travail et matériel propre doublés. Les équipes se
+  partagent maintenant les retours. Test : `tests/plonge-equipes.test.cjs`.
+
+Fichiers : `moteur/production.js`, tests, `BUGS.md`.
+
 ## 2026-09-29 — Améliorer l'existant, lot 2 : un moteur vérifié au hasard (BUG-052, BUG-053)
 
 Des règles qui doivent toujours tenir, vérifiées sur 2 000 organisations tirées
