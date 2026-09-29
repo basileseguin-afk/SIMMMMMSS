@@ -6,9 +6,9 @@ classeur des horaires tiré de celui des ateliers :
 | Classeur | Où | Ce qu'il porte |
 |---|---|---|
 | **Ateliers** | Organisation (Chemins, Cases, Qui prépare quoi) › `⇩ Cases et chemins` / `⇧ Importer` | équipes, horaires, fabrications, tunnels, compagnies × classes, parcours, matériel |
-| **Horaires** | Organisation › `⇩ Horaires` / `⇧ Importer` | l'heure et le jour de début de chaque case, seuls |
-| **Barème** | Données › Temps de travail › `⇩ Temps de travail` / `⇧ Importer` | homme-minutes **par vol**, par service et par compagnie × classe ; rendement, poste |
-| **Vols** | Données › Vols › `⇩ Exporter les vols (Excel)` / fichier à importer | départs et retours |
+| **Horaires** | Mon unité › Services et équipes › `⇩ Horaires` / `⇧ Importer` | l'heure et le jour de début de chaque case, seuls |
+| **Barème** | Outils avancés › Temps de travail › `⇩ Temps de travail` / `⇧ Importer` (ou la fiche de chaque service) | homme-minutes **par vol**, par service et par compagnie × classe ; rendement, poste |
+| **Vols** | Vols › Vols › `⇩ Exporter les vols (Excel)` / fichier à importer | départs et retours |
 
 Pour convertir des exports Winrest dans ces formats avec Claude, voir
 [`CONVERTISSEURS.md`](CONVERTISSEURS.md) (deux prompts prêts à l'emploi : vols et man-hours).
@@ -101,7 +101,7 @@ Feuille absente : les valeurs du site restent.
 Les tunnels d'une plonge : `Atelier`, `Tunnel`, `Débit (u/h)`, `Personnes`,
 `Actif`.
 
-### Le fichier des man-minutes (Données › Récap des man-minutes)
+### Le fichier des man-minutes (Mon unité › Tableau des minutes)
 
 Un fichier de **paramétrage** du barème, pour les grosses modifications :
 « ⇩ Man-minutes », modifier dans Excel, « ⇧ Importer ».
@@ -121,7 +121,7 @@ Un fichier de **paramétrage** du barème, pour les grosses modifications :
   une case d'équipe ne sont pas dans ce fichier (classeur des cases, feuille
   « Man-minutes »).
 
-### Le fichier des cases (Données › Récap des cases)
+### Le fichier des cases (Mon unité › Tableau des équipes)
 
 Une feuille **Cases**, une ligne par case : `Case` (la clé), `Service (info)`,
 `Type (info)`, `Jour` (`J`, `J-1`…), `Départ` (HH:MM), `Personnes`,
@@ -332,7 +332,7 @@ DEMO-RET001,DEMO,A320,RET,,08:00,0,0,100,4,0
 
 **L'import remplace le programme entier** et efface les scénarios A/B capturés.
 
-### La planche retour (Données › Planche retour)
+### La planche retour (Vols › Planche retour)
 
 Feuille « Planche retour » (ou « Planche », « Retours », sinon la première) :
 

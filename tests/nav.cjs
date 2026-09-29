@@ -8,7 +8,14 @@ const PREMIERE = { vols: 'v-departs', ateliers: 'at-chemins', reglages: 'rg-minu
 async function aller(page, id) {
   const partie = await page.evaluate(id => (OrlyOnglets.partieDe(id) || {}).id, id);
   if (!partie) throw new Error('page inconnue : ' + id);
-  if (partie !== 'fichier') {
+  if (partie === 'avance') {
+    // Les outils avancés : par le lien discret de Mon unité › Services.
+    const actif = await page.evaluate(() => document.body.dataset.partie);
+    if (actif !== 'avance') {
+      await aller(page, 'mu-services');
+      await page.locator('#mu-services [data-page=at-chemins]').click(); await page.waitForTimeout(120);
+    }
+  } else if (partie !== 'fichier') {
     const actif = await page.evaluate(() => document.body.dataset.partie);
     if (actif !== partie) { await page.locator(`#menu [data-vers-partie=${partie}]`).click(); await page.waitForTimeout(120); }
   } else {

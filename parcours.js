@@ -827,6 +827,225 @@
   }
 
   /* ======================================================================
+   *  LA GRILLE À COCHER (Mon unité › Services, 29/09)
+   *
+   *  Quelqu'un qui connaît l'unité ne pense pas en « chemins » : il sait
+   *  quelle équipe prépare quoi. On coche donc, équipe par équipe, les
+   *  commandes qu'elle prépare ; le chemin de chaque commande suit tout seul.
+   *  Cocher fait entrer le service dans le chemin, à sa place (entre ceux qui
+   *  le livrent et ceux qu'il livre, lus sur les autres chemins, les modèles
+   *  types puis les liens de l'unité) ; décocher la dernière équipe l'en fait
+   *  sortir, et ceux qui le livraient livrent ceux qu'il livrait.
+   * ====================================================================*/
+
+  /** Le chemin propre d'une commande, créé au besoin : une copie de son modèle, sans créer de case. */
+  function cheminPropre(etat, cmd, classes) {
+    const deja = cheminDe(etat, cmd); if (deja) return deja;
+    etat.parcours = etat.parcours || []; etat.parcoursClasse = etat.parcoursClasse || {};
+    const c = (classes || []).find(x => x.id === cmd) || { id: cmd, cabine: String(cmd).slice(String(cmd).lastIndexOf('/') + 1) };
+    const modele = parcoursDe(etat, c);
+    // `cases` : les cases viennent des coches, pas de la création du chemin.
+    const p = { id: uid(), nom: nomDeChemin(etat, etiquette(cmd)),
+      noeuds: modele ? P.servicesDuParcours(modele).slice() : [],
+      liens: modele ? P.arcsDuParcours(modele).map(a => ({ de: a.from, vers: a.to })) : [], prepa: true, cases: true };
+    etat.parcours.push(p);
+    etat.parcoursClasse[cmd] = p.id;
+    return p;
+  }
+
+  /* Ceux qui livrent `s` et ceux qu'il livre, parmi les services du chemin,
+   * d'après un graphe de référence : on enjambe ceux qui n'y sont pas. */
+  function voisinsDans(arcs, s, dedans) {
+    const cherche = sens => {
+      const vus = new Set([s]), trouves = [];
+      let front = [s];
+      while (front.length) {
+        const suite = [];
+        for (const x of front) for (const a of arcs) {
+          const y = sens > 0 ? (a.from === x ? a.to : null) : (a.to === x ? a.from : null);
+          if (!y || vus.has(y)) continue; vus.add(y);
+          if (dedans.has(y)) trouves.push(y); else suite.push(y);
+        }
+        front = suite;
+      }
+      return trouves;
+    };
+    return { avant: cherche(-1), apres: cherche(1) };
+  }
+
+  /**
+   * Fait entrer un service dans un chemin, à sa place. `o.liaisons` : les liens
+   * de l'unité ({from,to}) ; `o.parent(id)` : le service dont une salle annexe
+   * dépend (elle se place comme lui). Jamais de boucle.
+   * @returns {boolean} le chemin a changé
+   */
+  function insererService(etat, p, s, o = {}) {
+    p.noeuds = Array.isArray(p.noeuds) ? p.noeuds : [];
+    p.liens = Array.isArray(p.liens) ? p.liens : [];
+    if (P.servicesDuParcours(p).includes(s)) return false;
+    const dedans = new Set(P.servicesDuParcours(p));
+    const references = [
+      (etat.parcours || []).filter(q => q !== p).flatMap(q => P.arcsDuParcours(q)),
+      parcoursTypes().parcours.flatMap(q => P.arcsDuParcours(q)),
+      (o.liaisons || []).map(l => ({ from: l.from ?? l.de, to: l.to ?? l.vers }))
+    ];
+    const pere = o.parent ? o.parent(s) : null;
+    // Chaque sens a sa première référence qui en sait quelque chose : les
+    // modèles types ignorent le handling, les liens de l'unité le connaissent.
+    const v = { avant: [], apres: [] }, rang = { avant: 9, apres: 9 };
+    for (const sens of ['avant', 'apres']) {
+      for (const ref of [s].concat(pere && pere !== s ? [pere] : [])) {
+        references.some((arcs, i) => {
+          const w = voisinsDans(arcs, ref, new Set([...dedans].filter(x => x !== ref)));
+          if (w[sens].length) { v[sens] = w[sens]; rang[sens] = i; }
+          return w[sens].length;
+        });
+        if (v[sens].length) break;
+      }
+    }
+    // Un service dont on ne sait rien : il prépare pour la fin du chemin.
+    if (!v.avant.length && !v.apres.length) {
+      const arcs = P.arcsDuParcours(p);
+      v.apres = [...dedans].filter(x => !arcs.some(a => a.from === x));
+    }
+    p.noeuds.push(s);
+    const ajouter = (de, vers) => {
+      if (p.liens.some(l => l.de === de && l.vers === vers) || creeBoucle(p, de, vers)) return;
+      p.liens.push({ de, vers });
+    };
+    // La référence la plus sûre d'abord : sur une boucle (les retours des vols
+    // vers la plonge, dans les liens de l'unité), c'est elle qui l'emporte.
+    const poser = { avant: () => v.avant.forEach(a => ajouter(a, s)), apres: () => v.apres.forEach(b => ajouter(s, b)) };
+    for (const sens of rang.apres < rang.avant ? ['apres', 'avant'] : ['avant', 'apres']) poser[sens]();
+    // Il s'intercale : « cuisine → montage » devient « cuisine → prépa → montage ».
+    const avant = new Set(v.avant.filter(a => p.liens.some(l => l.de === a && l.vers === s)));
+    const apres = new Set(v.apres.filter(b => p.liens.some(l => l.de === s && l.vers === b)));
+    p.liens = p.liens.filter(l => !(avant.has(l.de) && apres.has(l.vers)));
+    return true;
+  }
+
+  /** Fait sortir un service d'un chemin : ceux qui le livraient livrent ceux qu'il livrait. */
+  function retirerService(p, s) {
+    if (!P.servicesDuParcours(p).includes(s)) return false;
+    const arcs = P.arcsDuParcours(p);
+    const avant = arcs.filter(a => a.to === s).map(a => a.from), apres = arcs.filter(a => a.from === s).map(a => a.to);
+    p.noeuds = (p.noeuds || []).filter(x => x !== s);
+    p.liens = (p.liens || []).filter(l => l.de !== s && l.vers !== s);
+    for (const a of avant) for (const b of apres) {
+      if (!p.liens.some(l => l.de === a && l.vers === b) && !creeBoucle(p, a, b)) p.liens.push({ de: a, vers: b });
+    }
+    return true;
+  }
+
+  /** Une commande rejoint les lignes d'une équipe à sa place dans l'ordre des départs (la plus pressée d'abord). */
+  function insererParEcheance(a, cmd, classes) {
+    const ech = new Map((classes || []).map(c => [c.id, c.echeance]));
+    const e = ech.get(cmd) ?? Infinity;
+    const i = a.lots.findIndex(l => Math.min(...l.map(x => ech.get(x) ?? Infinity)) > e);
+    a.lots.splice(i < 0 ? a.lots.length : i, 0, [cmd]);
+  }
+
+  /**
+   * La grille d'une équipe : cocher, c'est « cette équipe prépare cette
+   * commande ». Elle quitte les autres équipes du même service (une commande,
+   * une équipe par service), et le service entre dans son chemin. Décocher :
+   * si plus personne ne la prépare dans ce service, il sort de son chemin.
+   * `o` : { classes, liaisons, parent }. Modifie `etat`.
+   * @returns {number} le nombre de commandes changées
+   */
+  function cocher(etat, atelierId, cmds, oui, o = {}) {
+    const a = (etat.ateliers || []).find(x => x.id === atelierId);
+    if (!a || !fabrique(a)) throw new Error('Cette équipe ne prépare pas commande par commande.');
+    const s = a.service;
+    let n = 0;
+    for (const cmd of [].concat(cmds)) {
+      const chez = a.lots.some(l => l.includes(cmd));
+      if (oui) {
+        for (const x of etat.ateliers) {
+          if (x === a || x.service !== s || !fabrique(x)) continue;
+          x.lots = x.lots.map(l => l.filter(id => id !== cmd)).filter(l => l.length);
+        }
+        if (!chez) insererParEcheance(a, cmd, o.classes);
+        const p = cheminPropre(etat, cmd, o.classes);
+        insererService(etat, p, s, o);
+        if (!chez) n++;
+      } else if (chez) {
+        a.lots = a.lots.map(l => l.filter(id => id !== cmd)).filter(l => l.length);
+        const encore = etat.ateliers.some(x => x.service === s && fabrique(x) && x.lots.some(l => l.includes(cmd)));
+        if (!encore && !fusionneePar(etat, s, cmd)) retirerService(cheminPropre(etat, cmd, o.classes), s);
+        n++;
+      }
+    }
+    return n;
+  }
+
+  /**
+   * Un service qui sert tout le monde (plonge, légumerie, magasin, handling) :
+   * on coche les commandes qui passent par lui. Modifie `etat`.
+   * @returns {number} le nombre de chemins changés
+   */
+  function passerPar(etat, service, cmds, oui, o = {}) {
+    let n = 0;
+    for (const cmd of [].concat(cmds)) {
+      const p = oui ? cheminPropre(etat, cmd, o.classes) : cheminDe(etat, cmd) || cheminPropre(etat, cmd, o.classes);
+      if (oui ? insererService(etat, p, service, o) : retirerService(p, service)) n++;
+    }
+    return n;
+  }
+
+  /**
+   * Ce que la grille d'un service montre, commande par commande :
+   *   ici       — cette équipe la prépare (cochée)
+   *   ailleurs  — une autre équipe du service la prépare (`par`)
+   *   chaine    — une case d'un autre service la fait à la chaîne (`par`)
+   *   attendue  — son chemin passe par ce service, et personne ne l'y prépare
+   *   passe     — (service qui sert tout le monde) son chemin passe par lui
+   *   hors      — elle ne passe pas par ce service
+   * @returns Map id de commande → { etat, par }
+   */
+  function grille(etat, service, atelierId, classes) {
+    const routes = P.routesDesClasses(classes, etat);
+    const equipes = (etat.ateliers || []).filter(a => a.service === service);
+    const out = new Map();
+    for (const c of classes || []) {
+      const r = routes.get(c.id), passe = !!(r && r.services.has(service));
+      const qui = equipes.find(a => fabrique(a) && a.lots.some(l => l.includes(c.id)));
+      const fu = fusionneePar(etat, service, c.id);
+      out.set(c.id, !atelierId ? { etat: passe ? 'passe' : 'hors', par: null }
+        : qui && qui.id === atelierId ? { etat: 'ici', par: qui }
+        : qui ? { etat: 'ailleurs', par: qui }
+        : fu ? { etat: 'chaine', par: fu }
+        : passe ? { etat: 'attendue', par: null } : { etat: 'hors', par: null });
+    }
+    return out;
+  }
+
+  /** La nature d'un service : celle de ses équipes, sinon devinée d'après ce qu'il est. */
+  function natureService(etat, service, nomService) {
+    const types = (etat.ateliers || []).filter(a => a.service === service).map(a => a.type || 'manuel');
+    for (const t of ['handling', 'lavage', 'dispo', 'robot', 'manuel']) if (types.includes(t)) return t;
+    if (service === 'handling' || /handling|chargement/i.test(nomService || '')) return 'handling';
+    if (service === 'plonge' || /plonge|lavage/i.test(nomService || '')) return 'lavage';
+    if (SERVICES_DISPO.includes(service)) return 'dispo';
+    if (/robot/i.test(nomService || '')) return 'robot';
+    return 'manuel';
+  }
+
+  /** Une équipe neuve dans un service, de la nature du service. */
+  function equipeNeuve(etat, service, nomService, nature) {
+    const nom = nomService || service;
+    if (nature === 'handling') return caseHandling(etat, service, nom);
+    if (nature === 'dispo') return caseDispo(etat, service, nom);
+    if (nature === 'robot') return caseRobot(etat, service, nom);
+    const n = (etat.ateliers || []).filter(a => a.service === service).length;
+    const base = { id: 'at-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
+      nom: nomLibre(etat, nom + (n ? ' ' + (n + 1) : '')), service, debut: '06:00', jour: 0, personnes: 2, pauses: [], lots: [],
+      regime: { actif: true } };
+    if (nature === 'lavage') return { ...base, type: 'lavage', plafond: 0, tunnels: [{ nom: 'Tunnel 1', debit: 300, personnes: 1, actif: true }] };
+    return { ...base, type: 'manuel' };
+  }
+
+  /* ======================================================================
    *  L'ÉDITEUR
    *
    *  « Les chemins » : à gauche les commandes, au centre le chemin de celle
@@ -1663,7 +1882,8 @@
 
   const api = { annoncer, fusionneePar, insererPrepa, depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, couverture, confier, nouvelleEquipe,
     completer, colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, donnerCases, completerCases, nomLibre, caseHandling, anciensHandlings, brancherHandling, caseRobot, remplacerEtape,
-    SERVICES_DISPO, estDispo, caseDispo, anciensDispos, partagerDispos, separerParCommande, ajouterBesoin, EditeurParcours };
+    SERVICES_DISPO, estDispo, caseDispo, anciensDispos, partagerDispos, separerParCommande, ajouterBesoin,
+    cheminPropre, insererService, retirerService, insererParEcheance, cocher, passerPar, grille, natureService, equipeNeuve, EditeurParcours };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyParcours = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

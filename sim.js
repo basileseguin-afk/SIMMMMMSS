@@ -495,6 +495,8 @@ function sectionLocaux(){
 function actionService(action,id){
   if(editMode&&action!=='plan')return;
   if(action==='equipe'){
+    // La fiche du service : l'équipe y naît, avec sa grille à cocher.
+    if(Sim.unite){Sim.unite.ouvrir(id);Sim.unite.ajouterEquipe(id);return;}
     if(Sim.onglets)Sim.onglets.choisir('at-equipes');
     Sim.ateliers.creer(id);
     toast('Équipe créée dans '+((servicesDisponibles().find(s=>s.id===id)||{}).nom||id)+' : réglez-la ici, puis rattachez-la à ses commandes dans leur chemin.');
@@ -615,7 +617,10 @@ function reaffecterService(de,vers,nomDe){
     for(const p of st.parcours||[]){
       if(!Array.isArray(p.noeuds))continue;
       if(!p.noeuds.includes(de))continue;
-      if(vers&&!p.noeuds.includes(vers))p.noeuds=p.noeuds.map(x=>x===de?vers:x);
+      // Sans service qui le remplace : ceux qui le livraient livrent ceux qu'il
+      // livrait (le chemin ne se coupe pas en deux).
+      if(!vers){OrlyParcours.retirerService(p,de);continue;}
+      if(!p.noeuds.includes(vers))p.noeuds=p.noeuds.map(x=>x===de?vers:x);
       else p.noeuds=p.noeuds.filter(x=>x!==de);
       const vus=new Set();
       p.liens=(p.liens||[]).map(l=>({de:l.de===de?vers:l.de,vers:l.vers===de?vers:l.vers}))
@@ -735,7 +740,7 @@ function initAteliers(){
     // Le plan dit « aménagé » d'après les ateliers : il doit suivre leur saisie.
     // La liste du barème marque les services qui portent une équipe : elle doit
     // donc se redessiner quand les ateliers bougent.
-    change:()=>{majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();},
+    change:()=>{majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();},
     // Une case se règle dans le chemin d'une commande : l'ouvrir d'ailleurs y mène.
     onglet:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
     // Un service supprimé encore cité : son nom, pour que les alertes le
@@ -843,7 +848,7 @@ function etatDemarrage(){
     plan:{ services:servicesDuPlan().length+annexes().length,
            approx:zones.filter(z=>z.approx&&z.visible!==false).length },
     flux:{ liaisons:Sim.flows?Sim.flows.state.flows.filter(f=>f.enabled).length:0,
-           alertes:lu.alertes.filter(a=>a.grave).length },
+           alertes:sansChemin()?lu.alertes.filter(a=>a.grave).length:0 },
     ateliers:{ total:ats.length, fabriquent,
                absentes:(r.indicateurs||{}).classesAbsentes||0 },
     bareme:{ calibre },
@@ -886,6 +891,7 @@ function renderControles(){
 }
 function badgeOnglet(id){
   const r=(Sim.ateliers&&Sim.ateliers.resultat)||{};
+  if(id==='mu-pas'&&Sim.unite){const n=Sim.unite.aFaire();return n?{n,ton:'neutre',titre:n+(n>1?' étapes':' étape')+' à faire'}:null;}
   // Les commandes qui n'ont pas encore leur chemin : ce qui reste à dessiner.
   if(id==='at-chemins'&&window.OrlyParcours&&Sim.ateliers){
     const n=Sim.ateliers.classes.filter(c=>!OrlyParcours.cheminDe(Sim.ateliers.state,c.id)).length;
@@ -901,6 +907,43 @@ function badgeOnglet(id){
     return n?{n,ton:'attente',titre:n+(n>1?' points':' point')+' à corriger'}:null;
   }
   return null;
+}
+/* ==========================================================================
+ *  MON UNITÉ (unite.js) — tout le paramétrage, service par service
+ * ==========================================================================*/
+function supprimerServiceUnite(id){
+  const z=Sim.editor&&Sim.editor.state.zones.find(v=>v.id===id);if(!z)return false;
+  const nom=nomLisible(z.nom),cases=Sim.ateliers.state.ateliers.filter(a=>a.service===id).length;
+  if(!confirm('Supprimer le service « '+nom+' »'+(cases?' et ses '+cases+(cases>1?' équipes':' équipe'):'')+' ?'
+    +(z.kind==='service'?' (Un service du plan d’origine se remet depuis Outils avancés › Services.)':'')))return false;
+  if(cases||(Sim.ateliers.state.parcours||[]).some(p=>MoteurProduction.servicesDuParcours(p).includes(id)))reaffecterService(id,null,nom);
+  const fait=z.kind==='service'?Sim.editor.retirer(id,true):Sim.editor.supprimer(id);
+  if(fait)toast('« '+nom+' » supprimé.');
+  return !!fait;
+}
+function initUnite(){
+  if(!window.OrlyUnite||!Sim.ateliers)return;
+  Sim.unite=new OrlyUnite.MonUnite({
+    at:()=>Sim.ateliers, rg:()=>Sim.reglages,
+    services:servicesDisponibles,
+    parent:id=>{const a=annexes().find(z=>z.id===id);return a?a.parent:null;},
+    racines:()=>servicesDuPlan().map(id=>({id,nom:nomLisible(ZONES[id].nom)})),
+    // Les retours des vols (quais → plonge) ne placent aucun service : ils
+    // refermeraient la boucle du chemin.
+    liaisons:()=>liaisonsServices().filter(l=>l.from!=='quais'),
+    brut:id=>{const z=((Sim.editor&&Sim.editor.state.zones)||[]).find(x=>x.id===id);return z?z.nom:nomDeService(id);},
+    renommer:renommerService,
+    creer:(nom,parent)=>Sim.editor?Sim.editor.nouveauService(nom,parent):null,
+    supprimer:supprimerServiceUnite,
+    voir:id=>actionService('voir',id),
+    plan:id=>actionService('plan',id),
+    vols:()=>({departs:flights.filter(f=>f.sens==='DEP').length,importes:dataSource!=='Jeu de démonstration'}),
+    page:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
+    notify:toast
+  });
+  // Le temps de travail d'un service se règle aussi dans sa fiche.
+  const box=document.getElementById('mu-services');
+  if(box&&Sim.reglages)Sim.reglages.ecouter(box);
 }
 function initOnglets(){
   if(!window.OrlyOnglets)return;
@@ -920,6 +963,7 @@ function initOnglets(){
       if(id==='at-chemins'&&Sim.ateliers)Sim.ateliers.parcours.placeTiroir();
       // Un onglet des ateliers se dessine à son ouverture, s'il a changé depuis.
       if(vue==='ateliers'&&Sim.ateliers)Sim.ateliers.surOnglet(id);
+      if((id==='mu-services'||id==='mu-pas')&&Sim.unite)Sim.unite.rendre();
     }
   });
   // Les outils d'une vue (annuler, Excel, importer) montent sur la barre des
@@ -927,7 +971,7 @@ function initOnglets(){
   const outils=document.getElementById('so-outils');
   // Ceux des liens ne valent que pour les liens : ils ne suivent pas dans la sauvegarde.
   // Ceux des cases et des chemins ne suivent pas dans les résultats (planning, commandes).
-  for(const [vue,sel,onglet] of [['ateliers','#view-ateliers .at-actions','at-chemins at-equipes at-grille'],
+  for(const [vue,sel,onglet] of [['ateliers','#view-ateliers .at-actions','mu-services at-chemins at-equipes at-grille'],
                                  ['reglages','#rg-bareme-panneau .rg-actions','rg-minutes rg-simulation'],
                                  ['flux','#view-flux .fc-actions','u-liens']]){
     const e=document.querySelector(sel);if(!e||!outils)continue;
@@ -1343,7 +1387,7 @@ function majGoulotInfo() {
     const annexe=!z?annexes().find(a=>a.id===id):null;
     if(annexe){const pere=ZONES[annexe.parent];html+='<p>Annexe de <strong>'+escapeHTML(pere?nomLisible(pere.nom):annexe.parent)+'</strong>.</p>';}
     const equipes=((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]).filter(a=>a.service===id);
-    if(!equipes.length)html+='<p>Aucune équipe ici.</p><p class="row-btns"><button class="btn btn-play" data-svc-action="equipe" data-svc="'+escapeHTML(id)+'">+ Ajouter une équipe</button><button class="btn" data-page="u-services">Le service →</button></p>';
+    if(!equipes.length)html+='<p>Aucune équipe ici.</p><p class="row-btns"><button class="btn btn-play" data-svc-action="equipe" data-svc="'+escapeHTML(id)+'">+ Ajouter une équipe</button><button class="btn" data-mu-ouvrir="'+escapeHTML(id)+'">Le service →</button></p>';
     else html+='<p>'+equipes.map(a=>'<strong>'+escapeHTML(a.nom)+'</strong>'
       +(a.type==='dispo'?' · mise à disposition':a.type==='lavage'?' · plonge':a.type==='handling'?' · charge les vols':' · '+a.personnes+' pers.')).join('<br>')+'</p>';
     const e=services[id];
@@ -1362,7 +1406,7 @@ function majGoulotInfo() {
   } else if(!lots.length){
     html='<div class="vide-carte">'+(window.OrlyIcones?OrlyIcones.ico('equipe'):'')
       +'<b>Pas encore de journée à rejouer</b><p>Donnez une équipe aux commandes : la journée se calcule toute seule.</p>'
-      +'<button class="btn btn-play" data-page="at-chemins">Décrire l’organisation →</button></div>';
+      +'<button class="btn btn-play" data-page="mu-pas">Décrire votre unité →</button></div>';
   } else {
     // Qui attend depuis le plus longtemps, à cet instant ?
     let pire=null;
@@ -2090,6 +2134,7 @@ etape('contrôles',initControles); etape('édition du plan',initEdition); etape(
 etape('cases et chemins',initAteliers); etape('réglages',initWorkbench); etape('services',initServices);
 etape('handling',initHandlingVols); etape('robot',migrerRobot);
 etape('planche retour',()=>{initPlanche();renderPlanche();});
+etape('mon unité',initUnite);
 // Les retours et le matériel se règlent dans les Réglages : leur panneau existe maintenant.
 etape('réglages de la simulation',()=>{if(Sim.ateliers)Sim.ateliers.rendreMateriel(Sim.ateliers.resultat);});
 // Le fil de mise en route vient en dernier : il relit les autres, il ne peut

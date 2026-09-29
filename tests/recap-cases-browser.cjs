@@ -21,9 +21,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
       c('e1','Montage PC','prepa','05:00',[['AF/PC','DL/PC']]),
       {id:'pl',nom:'Plonge',service:'plonge',type:'lavage',debut:'06:00',jour:0,personnes:2,pauses:[],lots:[],regime:{actif:true},plafond:0,tunnels:[{nom:'T1',debit:300,personnes:1,actif:true}]});},''));
 
-  // 1. Dans Données : une ligne par case, service par service.
+  // 1. Dans Mon unité (Tableau des équipes) : une ligne par case, service par service.
   await nav.aller(page,'at-recap');
-  assert.equal(await page.evaluate(()=>document.body.dataset.partie),'donnees');
+  assert.equal(await page.evaluate(()=>document.body.dataset.partie),'organisation');
   assert.equal(await page.locator('.rc-case').count(),await page.evaluate(()=>Sim.ateliers.state.ateliers.length));
   assert.ok(await page.locator('.rc-svc').count()>=4,'un en-tête par service');
   const ligne=id=>page.locator(`tr.rc-case[data-at="${id}"]`);

@@ -6,8 +6,8 @@ quel**, avec un compte rendu de ce qu'elle a fait.
 
 | Conversation | Reçoit | Rend | S'importe où |
 |---|---|---|---|
-| 1. Vols | l'export du programme de vols | classeur « Départs / Retours » | Données › Vols › fichier à importer |
-| 2. Man-hours | l'export des temps de travail + le modèle du barème | classeur « Barème » | Données › Temps de travail › `⇧ Importer` |
+| 1. Vols | l'export du programme de vols | classeur « Départs / Retours » | Vols › Vols › fichier à importer |
+| 2. Man-hours | l'export des temps de travail + le modèle du barème | classeur « Barème » | Outils avancés › Temps de travail › `⇧ Importer` |
 
 ## Mode d'emploi
 
@@ -23,7 +23,7 @@ quel**, avec un compte rendu de ce qu'elle a fait.
   connaissances du projet man-hours.
 - **L'ordre compte.** Les vols d'abord : ils fixent les compagnies × classes
   (les « commandes »). Puis les chemins et les cases dans le simulateur. Ensuite
-  seulement, on exporte le modèle du barème (Données › Temps de travail › `⇩ Temps de travail`) : il porte
+  seulement, on exporte le modèle du barème (Outils avancés › Temps de travail › `⇩ Temps de travail`) : il porte
   les noms exacts des services et des compagnies. Le convertisseur le remplit
   et n'invente aucun nom.
 - **Les heures de début des cases se saisissent à la main**, pas depuis les

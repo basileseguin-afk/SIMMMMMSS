@@ -718,6 +718,34 @@ pas descriptible.
 
 ---
 
+### Le parcours se déduit des coches (Mon unité, 29/09)
+
+Dans *Mon unité › Services et équipes*, on ne dessine plus de chemin : on
+coche, équipe par équipe, les commandes qu'elle prépare. `parcours.js` en
+déduit le chemin de chaque commande :
+
+- **cocher** (`cocher`) : la commande rejoint les lignes de l'équipe à sa place
+  dans l'ordre des départs, quitte les autres équipes du même service, et le
+  service entre dans son chemin (`cheminPropre` crée au besoin le chemin propre,
+  copie du modèle de sa classe, **sans créer de case**) ;
+- **à sa place** (`insererService`) : ceux qui le livrent et ceux qu'il livre,
+  parmi les services du chemin, lus sur trois références dans l'ordre — les
+  autres chemins, les modèles types, les liens de l'unité (sans les retours
+  des vols, qui fermeraient une boucle) ; chaque sens prend la première
+  référence qui sait quelque chose. Une salle annexe se place comme son
+  service. Il s'intercale (« cuisine → montage » devient « cuisine → prépa →
+  montage ») et ne ferme jamais de boucle. Un service inconnu de tous prépare
+  pour la fin du chemin ;
+- **décocher** la dernière équipe du service : il sort du chemin
+  (`retirerService`), et ceux qui le livraient livrent ceux qu'il livrait ;
+- un service qui **sert tout le monde** (légumerie, magasin) : « Qui en a
+  besoin ? » (`passerPar`) ; la plonge et le handling n'ont rien à cocher (le
+  moteur les franchit ou charge tous les vols).
+
+`grille` dit, pour chaque commande, ce que montre la case de la grille :
+préparée ici, par une autre équipe, à la chaîne ailleurs, attendue (son
+chemin passe par le service et personne ne l'y prépare) ou hors du service.
+
 ## Ce que le modèle ne fait pas — délibérément
 
 - **Il ne choisit pas les heures de début.** Vous décidez ; il calcule les

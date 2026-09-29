@@ -110,6 +110,23 @@
     };
   }
 
+  /* La nature d'une case change : ce qui n'a plus de sens s'efface. */
+  function typer(a, v) {
+    a.type = v;
+    if (v === 'handling') { a.jour = 0; delete a.debit; delete a.personnesMin; delete a.tunnels; delete a.minutes; delete a.materiel; a.lots = []; Object.assign(a, handlingDe(a)); return; }
+    delete a.durees; delete a.simultanes; delete a.avance; delete a.compagnies;
+    if (v === 'robot') { a.debit = a.debit || 320; a.personnesMin = a.personnesMin === undefined ? 1 : a.personnesMin; }
+    else if (v === 'lavage') { delete a.debit; delete a.personnesMin; a.lots = []; }
+    // Une mise à disposition ne fabrique rien : ses lignes, son
+    // effectif et ses arrêts n'ont plus de sens, on les efface.
+    else if (v === 'dispo') {
+      delete a.debit; delete a.personnesMin; delete a.tunnels;
+      a.lots = []; a.pauses = []; a.personnes = 0;
+      if (a.permanent === undefined) a.permanent = true;
+    }
+    else { delete a.debit; delete a.personnesMin; }
+  }
+
   function valider(brut) {
     if (!brut || brut.schema !== 'ory-ateliers' || brut.version !== 1 || !Array.isArray(brut.ateliers))
       throw new Error('Fichier d’ateliers v1 attendu.');
@@ -400,7 +417,9 @@
   </div>
 </div>
 <p id="at-status" role="status" aria-live="polite"></p>
-<details id="at-anomalies" class="at-anomalies" hidden></details>
+<details id="at-anomalies" class="at-anomalies" data-sous="at-chemins at-equipes at-grille at-planning at-repas at-recap" hidden></details>
+<section id="mu-pas" class="mu mu-pas" data-sous="mu-pas" aria-label="Pas à pas"></section>
+<section id="mu-services" class="mu mu-services" data-sous="mu-services" aria-label="Les services de l’unité"></section>
 <div id="at-parcours" class="pc"></div>
 <h3 class="at-titre" data-sous="at-equipes">Les cases <span class="pc-sous">calculées à partir des chemins : cliquez une commande pour régler sa case</span></h3>
 <div class="at-barre" data-sous="at-equipes">
@@ -537,6 +556,9 @@
       return noms + ' : ' + r.converties + (r.converties > 1 ? ' cases deviennent ' : ' case devient ')
         + (r.services.length > 1 ? 'une case par poste' : 'une seule case') + ', partagée par toutes les commandes ; leurs heures sont ses vagues.';
     }
+
+    /** Changer la nature d'une case (Mon unité › Services : ce que fait le service). */
+    typer(a, v) { typer(a, v); }
 
     /* Une case se règle dans le chemin d'une de ses commandes, sous son service.
      * Une plonge ou une mise à disposition sert tout le monde : on prend la
@@ -751,21 +773,7 @@
             break;
           }
           case 'personnesMin': a.personnesMin = Math.max(0, parseInt(v, 10) || 0); break;
-          case 'type':
-            a.type = v;
-            if (v === 'handling') { a.jour = 0; delete a.debit; delete a.personnesMin; delete a.tunnels; delete a.minutes; delete a.materiel; a.lots = []; Object.assign(a, handlingDe(a)); break; }
-            delete a.durees; delete a.simultanes; delete a.avance; delete a.compagnies;
-            if (v === 'robot') { a.debit = a.debit || 320; a.personnesMin = a.personnesMin === undefined ? 1 : a.personnesMin; }
-            else if (v === 'lavage') { delete a.debit; delete a.personnesMin; a.lots = []; }
-            // Une mise à disposition ne fabrique rien : ses lignes, son
-            // effectif et ses arrêts n'ont plus de sens, on les efface.
-            else if (v === 'dispo') {
-              delete a.debit; delete a.personnesMin; delete a.tunnels;
-              a.lots = []; a.pauses = []; a.personnes = 0;
-              if (a.permanent === undefined) a.permanent = true;
-            }
-            else { delete a.debit; delete a.personnesMin; }
-            break;
+          case 'type': typer(a, v); break;
           case 'consomme': a.materiel = el.checked ? 'consomme' : undefined; break;
           // Fait aussi l'étape d'avant, à la chaîne : ses commandes quittent les
           // cases de cette étape — la case les fait désormais (« fusion des 2 cases »).
@@ -1104,7 +1112,7 @@
           + [f.cases ? f.cases + (f.cases > 1 ? ' cases' : ' case') : '', f.chemins ? f.chemins + (f.chemins > 1 ? ' chemins' : ' chemin') : ''].filter(Boolean).join(' et ')
           + (f.cases + f.chemins > 1 ? ' y passent' : ' y passe') + ' encore. '
           + '<button class="btn btn-sm svc-danger" data-at-action="fantome-effacer" data-service="' + esc(f.id) + '">Effacer partout</button> '
-          + '<button class="lien-discret" data-page="u-services">Ou le remplacer, dans Organisation › Services →</button>');
+          + '<button class="lien-discret" data-page="u-services">Ou le remplacer, dans Outils avancés › Services →</button>');
       }
       // Des cases de handling d'avant (une par commande) : le handling travaille
       // désormais par vol. On le dit en tête, avec le geste qui convertit.
@@ -1350,22 +1358,22 @@
 
       return `<article class="at-carte ouverte" data-at="${esc(a.id)}">${entete}
         <div class="at-champs">
-          <label>Nom<input value="${esc(a.nom)}" data-at-champ="nom" maxlength="160"></label>
-          <label>Service<select data-at-champ="service">${services.map(s => `<option value="${esc(s.id)}" ${s.id === a.service ? 'selected' : ''}>${esc(s.nom)}</option>`).join('')}</select></label>
+          ${o.compact ? '' : `<label>Nom<input value="${esc(a.nom)}" data-at-champ="nom" maxlength="160"></label>`}
+          ${o.compact ? '' : `<label>Service<select data-at-champ="service">${services.map(s => `<option value="${esc(s.id)}" ${s.id === a.service ? 'selected' : ''}>${esc(s.nom)}</option>`).join('')}</select></label>
           <label>Type<select data-at-champ="type">
             <option value="manuel" ${a.type === 'manuel' ? 'selected' : ''}>Équipe qui prépare</option>
             <option value="robot" ${a.type === 'robot' ? 'selected' : ''}>Robot</option>
             <option value="lavage" ${a.type === 'lavage' ? 'selected' : ''}>Lavage (plonge)</option>
             <option value="dispo" ${dispo ? 'selected' : ''}>Mise à disposition</option>
-            <option value="handling" ${handling ? 'selected' : ''}>Handling (par vol)</option></select></label>
-          ${dispo ? '' : `
+            <option value="handling" ${handling ? 'selected' : ''}>Handling (par vol)</option></select></label>`}
+          ${dispo || o.compact ? '' : `
           <label>Arrive à<input type="time" value="${esc(a.debut)}" data-at-champ="debut"></label>
           ${handling ? `<label>Jour<input value="Jour J des vols" disabled title="Le handling travaille le jour des vols, jamais la veille"></label>`
             : `<label>Jour<select data-at-champ="jour">${[0, -1, -2, -3].map(j => `<option value="${j}" ${j === a.jour ? 'selected' : ''}>${j === 0 ? 'Jour du départ' : 'J' + j}</option>`).join('')}</select></label>`}
           ${handling && (a.creneaux || []).length ? '' : `<label>Personnes<input type="number" min="0" max="999" value="${a.personnes}" data-at-champ="personnes"></label>`}`}
           ${a.type === 'robot' ? `
-          <label>Débit du robot (plateaux/h)<input type="number" min="1" value="${a.debit}" data-at-champ="debit"
-            title="Le débit des commandes qui n’ont pas le leur (réglable à côté de chaque commande)"></label>
+          ${o.compact ? '' : `<label>Débit du robot (plateaux/h)<input type="number" min="1" value="${a.debit}" data-at-champ="debit"
+            title="Le débit des commandes qui n’ont pas le leur (réglable à côté de chaque commande)"></label>`}
           <label>Personnes minimum<input type="number" min="0" value="${a.personnesMin}" data-at-champ="personnesMin"></label>` : ''}
         </div>
         ${dispo ? `

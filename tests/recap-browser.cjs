@@ -14,9 +14,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
 
-  // 1. Dans Données, à côté du barème : une ligne par commande, une colonne par service.
+  // 1. Dans Mon unité (Tableau des minutes) : une ligne par commande, une colonne par service.
   await nav.aller(page,'rg-recap');
-  assert.equal(await page.evaluate(()=>document.body.dataset.partie),'donnees');
+  assert.equal(await page.evaluate(()=>document.body.dataset.partie),'organisation');
   const n=await page.evaluate(()=>Sim.ateliers.classes.length);
   assert.equal(await page.locator('.rg-recap-table tbody tr').count(),n,'une ligne par commande');
   assert.ok(await page.locator('.rg-recap-table thead th').count()>=4,'des colonnes de services');

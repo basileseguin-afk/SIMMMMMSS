@@ -42,7 +42,7 @@ test('chaque page est dans une seule partie, et toutes les pages ont une partie'
   const pages = O.PARTIES.flatMap(p => p.pages.map(x => x.id));
   assert.equal(new Set(pages).size, pages.length, 'aucune page en double');
   assert.deepEqual([...pages].sort(), Object.values(O.ONGLETS).flat().map(o => o.id).sort(), 'aucune page oubliée');
-  assert.deepEqual(O.PARTIES.filter(p => !p.cache).map(p => p.nom), ['Données', 'Organisation', 'Réglages', 'Résultats']);
+  assert.deepEqual(O.PARTIES.filter(p => !p.cache).map(p => p.nom), ['Vols', 'Mon unité', 'Réglages', 'Résultats']);
   for (const p of O.PARTIES) for (const x of O.pagesDe(p.id)) {
     assert.ok(x.nom && x.ico && x.vue, x.id);
     assert.ok(x.intro && x.intro.length > 20, x.id + ' : une phrase');
@@ -53,10 +53,13 @@ test('une page se range selon sa nature, pas selon l’écran qui la porte', () 
   const partie = id => O.partieDe(id).id;
   // Ce qu'on importe.
   assert.equal(partie('v-programme'), 'donnees');
-  assert.equal(partie('rg-minutes'), 'donnees');
   assert.equal(partie('v-planche'), 'donnees');
-  // Ce qu'on décrit.
-  for (const id of ['at-chemins', 'at-equipes', 'at-grille', 'u-services', 'u-liens', 'u-lecture']) assert.equal(partie(id), 'organisation', id);
+  // Ce qu'on décrit : Mon unité, service par service (29/09).
+  for (const id of ['mu-pas', 'mu-services', 'at-recap', 'rg-recap']) assert.equal(partie(id), 'organisation', id);
+  assert.equal(O.pagesDe('organisation')[0].id, 'mu-pas', 'Mon unité commence par le pas à pas');
+  // Les outils d'avant : une partie cachée, hors du menu.
+  for (const id of ['at-chemins', 'at-equipes', 'at-grille', 'rg-minutes', 'u-services', 'u-liens', 'u-lecture']) assert.equal(partie(id), 'avance', id);
+  assert.ok(O.PARTIES.find(p => p.id === 'avance').cache);
   // Ce qu'on essaie.
   assert.equal(partie('rg-simulation'), 'reglages');
   // Ce qu'on observe : même quand l'écran vit dans la vue des vols ou des équipes.

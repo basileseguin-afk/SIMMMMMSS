@@ -307,7 +307,9 @@
         this.changer(() => { this.etat.regime.presence = +e.target.value; }, 'Présence enregistrée.'));
 
       const section = document.getElementById('rg-modele');
-      section.addEventListener('change', e => {
+      // Les mêmes écouteurs servent la fiche d'un service (Mon unité ›
+      // Services), où le temps de travail se règle aussi : `ecouter(el)`.
+      this.surChange = e => {
         const champ = e.target.dataset.rgChamp; if (!champ) return;
         const { service, cle, index } = e.target.dataset;
         const v = e.target.value;
@@ -354,8 +356,8 @@
           } else if (champ === 'seuil-apres') this.etat.regime.seuils[+index].apres = min(v, 0);
           else if (champ === 'seuil-duree') this.etat.regime.seuils[+index].duree = min(v, 0);
         }, 'Enregistré.'), 0);
-      });
-      section.addEventListener('click', e => {
+      };
+      this.surClic = e => {
         const tete = e.target.closest('.rg-service > summary');
         if (tete) {
           const d = tete.parentElement;
@@ -376,7 +378,16 @@
           p.dataset.cle + ' : retour à la valeur commune.');
         const b = e.target.closest('[data-rg-action="seuil-retirer"]'); if (!b) return;
         this.changer(() => { this.etat.regime.seuils.splice(+b.dataset.index, 1); }, 'Pause retirée.');
-      });
+      };
+      this.ecouter(section);
+    }
+
+    /** Les champs du temps de travail posés ailleurs (la fiche d'un service) s'écoutent comme ici. */
+    ecouter(el) {
+      if (!el || el._rgEcoute) return;
+      el._rgEcoute = true;
+      el.addEventListener('change', this.surChange);
+      el.addEventListener('click', this.surClic);
     }
 
     /* ---- rendu ---------------------------------------------------------- */
@@ -428,15 +439,58 @@
         // laisse vide, et le barème semble ne rien contenir.
         const fr = n => String(n).replace('.', ',');
 
-        const classes = this.a.classes ? this.a.classes() : [];
-        const routes = this.a.routes ? this.a.routes(classes) : new Map();
         const I = root.OrlyIcones;
-        // Une même échelle pour tous les services : on compare d'un coup d'œil.
-        const maxi = Math.max(1, ...services.flatMap(s => {
-          const l = this.etat.bareme[s.id] || complet[s.id] || {};
-          return P.CABINES.map(c => l[P.cleBareme(P.TOUTES, c)]).filter(Number.isFinite);
-        }));
         box.innerHTML = services.map(s => {
+          const { etat, marque, digest, mode, corps, manquent, parCompagnie } = this.blocService(s, { complet, cases, lisent, fr, services });
+          return `<details class="rg-service ${etat}${manquent.length && parCompagnie ? ' manque' : ''}" name="rg-bareme" data-service="${esc(s.id)}">
+            <summary>
+              <span class="rg-svc-nom">${I ? `<span class="rg-svc-ico">${I.ico(I.icoService(s.id, s.nom))}</span>` : ''}${esc(s.nom)}${occupes.has(s.id)
+                ? '<span class="rg-occupe" title="Une équipe travaille dans ce service">a une équipe</span>' : ''}${marque}</span>
+              <span class="rg-svc-digest">${digest}</span>
+            </summary>
+            ${mode}
+            ${corps}
+          </details>`;
+        }).join('');
+      }
+      // Le service ouvert survit à un rendu : sans cela, saisir une valeur
+      // refermait la fiche qu'on était en train de remplir.
+      for (const d of box.querySelectorAll('.rg-service')) {
+        d.open = d.dataset.service === this.serviceOuvert;
+      }
+
+      // Le barème n'est pas calibré : le dire ici, là où on le modifie.
+      const alerte = document.getElementById('rg-alerte');
+      const memeQueDemo = JSON.stringify(this.etat.bareme) === JSON.stringify(P.BAREME_DEMO);
+      const conversion = this.converti ? `<div class="rg-avertissement"><b>Barème converti en minutes par vol.</b>
+           Il comptait par passager ; chaque valeur a été multipliée par un nombre de passagers types
+           (BC ${P.PAX_TYPE.BC}, PC ${P.PAX_TYPE.PC}, YC ${P.PAX_TYPE.YC}, CREW ${P.PAX_TYPE.CREW}, SPML ${P.PAX_TYPE.SPML}).
+           Vérifiez-le, ou importez votre étude.</div>` : '';
+      alerte.innerHTML = conversion + (memeQueDemo
+        ? `<div class="rg-avertissement"><b>Ce sont des chiffres d’exemple.</b>
+           Ils montrent comment le calcul fonctionne, pas la réalité de l’unité.<details class="aide">
+           <summary aria-label="Pourquoi des chiffres d’exemple ?">?</summary>
+           <span class="aide-corps">Ils seront remplacés d’un coup par l’étude de temps de l’unité —
+             bouton <b>Importer</b>. D’ici là, les durées montrent comment les services s’enchaînent,
+             pas combien de personnes il faut.</span></details></div>`
+        : '');
+    }
+
+    /* Un service du barème : son état, son résumé, et ses champs. Sert la
+     * liste des services (Temps de travail) et la fiche d'un service. */
+    blocService(s, ctx = {}) {
+      const services = ctx.services || (this.a.services ? this.a.services() : []);
+      const complet = ctx.complet || this.baremeComplet();
+      const cases = ctx.cases || (this.a.ateliers ? this.a.ateliers() : []);
+      const lisent = ctx.lisent || new Set(cases.filter(a => a.type === 'manuel' || !a.type).flatMap(a => [a.service].concat(a.fusion ? [a.fusion] : [])));
+      const fr = n => String(n).replace('.', ',');
+      const classes = this.a.classes ? this.a.classes() : [];
+      const routes = this.a.routes ? this.a.routes(classes) : new Map();
+      // Une même échelle pour tous les services : on compare d'un coup d'œil.
+      const maxi = Math.max(1, ...services.flatMap(x => {
+        const l = this.etat.bareme[x.id] || complet[x.id] || {};
+        return P.CABINES.map(c => l[P.cleBareme(P.TOUTES, c)]).filter(Number.isFinite);
+      }));
           const propre = this.etat.bareme[s.id];
           const pere = this.a.parent ? this.a.parent(s.id) : null;
           const herite = !propre && pere && complet[s.id];
@@ -523,38 +577,14 @@
             </div>`;
           }
 
-          return `<details class="rg-service ${etat}${manquent.length && parCompagnie ? ' manque' : ''}" name="rg-bareme" data-service="${esc(s.id)}">
-            <summary>
-              <span class="rg-svc-nom">${I ? `<span class="rg-svc-ico">${I.ico(I.icoService(s.id, s.nom))}</span>` : ''}${esc(s.nom)}${occupes.has(s.id)
-                ? '<span class="rg-occupe" title="Une équipe travaille dans ce service">a une équipe</span>' : ''}${marque}</span>
-              <span class="rg-svc-digest">${digest}</span>
-            </summary>
-            ${mode}
-            ${corps}
-          </details>`;
-        }).join('');
-      }
-      // Le service ouvert survit à un rendu : sans cela, saisir une valeur
-      // refermait la fiche qu'on était en train de remplir.
-      for (const d of box.querySelectorAll('.rg-service')) {
-        d.open = d.dataset.service === this.serviceOuvert;
-      }
+      return { etat, marque, digest, mode, corps, manquent, parCompagnie };
+    }
 
-      // Le barème n'est pas calibré : le dire ici, là où on le modifie.
-      const alerte = document.getElementById('rg-alerte');
-      const memeQueDemo = JSON.stringify(this.etat.bareme) === JSON.stringify(P.BAREME_DEMO);
-      const conversion = this.converti ? `<div class="rg-avertissement"><b>Barème converti en minutes par vol.</b>
-           Il comptait par passager ; chaque valeur a été multipliée par un nombre de passagers types
-           (BC ${P.PAX_TYPE.BC}, PC ${P.PAX_TYPE.PC}, YC ${P.PAX_TYPE.YC}, CREW ${P.PAX_TYPE.CREW}, SPML ${P.PAX_TYPE.SPML}).
-           Vérifiez-le, ou importez votre étude.</div>` : '';
-      alerte.innerHTML = conversion + (memeQueDemo
-        ? `<div class="rg-avertissement"><b>Ce sont des chiffres d’exemple.</b>
-           Ils montrent comment le calcul fonctionne, pas la réalité de l’unité.<details class="aide">
-           <summary aria-label="Pourquoi des chiffres d’exemple ?">?</summary>
-           <span class="aide-corps">Ils seront remplacés d’un coup par l’étude de temps de l’unité —
-             bouton <b>Importer</b>. D’ici là, les durées montrent comment les services s’enchaînent,
-             pas combien de personnes il faut.</span></details></div>`
-        : '');
+    /** Le temps de travail d'un service, pour sa fiche (Mon unité › Services). */
+    ficheTemps(id) {
+      const s = (this.a.services ? this.a.services() : []).find(x => x.id === id); if (!s) return '';
+      const b = this.blocService(s);
+      return `<div class="rg-fiche" data-service="${esc(s.id)}">${b.mode}${b.corps}</div>`;
     }
 
     /* Le contexte du récap : le barème complet, les commandes, leurs chemins, les cases. */

@@ -5,6 +5,41 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-29 — Mon unité : tout le paramétrage, service par service
+
+Retour d'usage : « simplifier au maximum le paramétrage des services et des
+ateliers, pour que quelqu'un qui connaît uniquement l'unité puisse paramétrer
+entièrement la simulation ». Choix : tout refondre, avec une grille à cocher.
+
+- **Le menu** : Accueil · Vols · **Mon unité** · Réglages · Résultats. Plus de
+  « Chemins », « Cases », « Qui prépare quoi », « Liens entre services » dans
+  le menu : ils restent, pour les cas rares, dans **Outils avancés** (un lien
+  discret en bas de la liste des services).
+- **Mon unité › Pas à pas** : ce qu'il reste à faire avant de simuler, dans
+  l'ordre, chaque service avec ce qui lui manque ; chaque point mène à sa fiche.
+- **Mon unité › Services et équipes** : la liste des services, et la fiche de
+  celui qu'on choisit — ce qu'il fait (équipes, robot, sert tout le monde,
+  plonge, chargement), ses équipes (nom, heure, jour, personnes) et, pour
+  chacune, une **grille compagnies × classes à cocher** ; ses minutes de
+  travail par vol. Créer, renommer, placer sur le plan, supprimer un service :
+  au même endroit.
+- **Les chemins suivent les coches** (`parcours.js`, « la grille à cocher ») :
+  cocher fait entrer le service dans le chemin de la commande, à sa place
+  (d'après les autres chemins, les modèles types, puis les liens de l'unité,
+  sans jamais fermer de boucle ; une salle annexe se place comme son service) ;
+  décocher la dernière équipe l'en fait sortir. Une commande se prépare une
+  fois par service : la cocher ailleurs l'y déplace. L'ordre suit les départs.
+- La fiche d'une case s'intègre à la fiche du service (« Plus de réglages »),
+  sans répéter le nom, l'heure ni les personnes ; le barème d'un service se
+  règle dans sa fiche (`reglages.js` : `blocService`, `ficheTemps`, `ecouter`).
+- Les liens « Décrire l'organisation », « + Une équipe » (plan, contrôles)
+  mènent à Mon unité.
+
+Fichiers : `unite.js`, `unite.css` (nouveaux), `parcours.js`, `ateliers.js`,
+`reglages.js`, `onglets.js`, `demarrage.js`, `sim.js`, `index.html`, tests
+(`grille-services.test.cjs`, `mon-unite-browser.cjs`, `nav.cjs`, menu),
+`README.md`.
+
 ## 2026-09-29 — Jeu d'essai complet et campagne de simulations (BUG-054)
 
 Retour d'usage : « ajouter toutes les valeurs possibles et cohérentes pour

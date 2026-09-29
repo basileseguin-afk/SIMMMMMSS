@@ -5,8 +5,8 @@
  *  coup d'œil, ce que fait ce site et où il en est. L'accueil montre quatre
  *  tuiles, une par partie du travail :
  *
- *      Données        ce qu'on importe : les vols, les temps de travail
- *      Organisation   ce qu'on décrit : chemins, cases, liens de l'unité
+ *      Vols           ce qu'on importe : le programme, la planche retour
+ *      Mon unité      ce qu'on décrit : services, équipes, minutes de travail
  *      Réglages       ce qu'on essaie : horaires, rythme, pauses
  *      Résultats      ce que la journée donne
  *
@@ -121,7 +121,7 @@
   }
 
   /** La page où l'on fait le geste d'une étape. */
-  const PAGE_DE_VUE = { vols: 'v-programme', ateliers: 'at-chemins', reglages: 'rg-minutes', plan: 'j-chiffres', flux: 'u-lecture' };
+  const PAGE_DE_VUE = { vols: 'v-programme', ateliers: 'mu-services', reglages: 'mu-services', plan: 'j-chiffres', flux: 'mu-pas' };
 
   const PIRE = ['afaire', 'verifier', 'provisoire', 'fait'];
   const pire = etats => PIRE.find(x => etats.includes(x)) || 'fait';
@@ -136,8 +136,8 @@
     const par = Object.fromEntries(etapes(e).map(x => [x.cle, x]));
     const ligne = (cle, nom) => ({ texte: nom + ' : ' + par[cle].detail, etat: par[cle].etat });
     const r = e.reglages || {};
-    const donnees = [ligne('vols', 'Vols'), ligne('bareme', 'Temps de travail')];
-    const organisation = [ligne('ateliers', 'Équipes'), ligne('unite', 'Unité')];
+    const donnees = [ligne('vols', 'Vols')];
+    const organisation = [ligne('ateliers', 'Équipes'), ligne('bareme', 'Minutes de travail'), ligne('unite', 'Unité')];
     const reglages = [
       { texte: 'Repas prêts ' + (r.delai ?? 45) + ' min avant le départ'
         + (r.decalage ? ' · vols décalés de ' + (r.decalage > 0 ? '+' : '') + r.decalage + ' min' : ''), etat: 'fait' },

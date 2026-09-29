@@ -15,21 +15,22 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
 
-  // 1. Une ligne par service de l'unité, dans l'Organisation.
+  // 1. Une ligne par service de l'unité, dans les outils avancés (Mon unité a sa fiche par service).
   await nav.aller(page,'u-services');
-  assert.equal(await page.evaluate(()=>document.body.dataset.partie),'organisation');
+  assert.equal(await page.evaluate(()=>document.body.dataset.partie),'avance');
   assert.equal(await page.locator('.svc-table tbody tr').count(),await page.evaluate(()=>Sim.ateliers.a.services().length),'tous les services');
   assert.match(await ligne('plonge').textContent(),/aucune/);
   assert.equal(await page.locator('#fc-export').isVisible(),false,'les outils des liens restent sur leur page');
 
-  // 2. « + Une équipe » : la case naît dans ce service, et s'ouvre pour être réglée.
+  // 2. « + Une équipe » : l'équipe naît dans ce service, de sa nature (une
+  //    plonge lave), et se règle dans la fiche du service (Mon unité).
   await ligne('plonge').locator('[data-svc-action=equipe]').click();await attendre();
-  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'at-equipes','on la règle dans les cases');
+  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-services','on la règle dans la fiche du service');
+  assert.equal(await page.locator('.mu-fiche').getAttribute('data-mu-fiche'),'plonge');
   const pl=(await cases('plonge'))[0];
   assert.ok(pl,'une case dans la plonge');
-  assert.equal(await page.evaluate(()=>Sim.ateliers.filtre),'plonge','la liste se resserre sur ce service');
-  assert.equal(await page.locator(`[data-at="${pl.id}"] [data-at-champ=type]`).isVisible(),true,'sa fiche est ouverte');
-  await page.selectOption(`[data-at="${pl.id}"] [data-at-champ=type]`,'lavage');await attendre();
+  assert.equal(pl.type,'lavage','une plonge lave');
+  assert.equal(await page.locator(`.mu-fiche [data-at="${pl.id}"]`).isVisible(),true,'sa fiche est ouverte');
 
   // 3. Les contrôles : les quais livrent la plonge sans équipe. Le point à
   //    corriger porte son geste, et une plonge n'est plus « une équipe qui ne prépare rien ».
@@ -39,7 +40,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     'une plonge lave pour tout le monde : pas d’alerte');
   await page.locator('#fc-alertes [data-svc-action=equipe][data-svc=quais]').click();await attendre();
   assert.equal((await cases('quais')).length,1,'l’équipe qui manquait est créée d’un clic');
-  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'at-equipes');
+  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-services');
 
   // 4. Retour aux services : la ligne dit ce qui a changé.
   await nav.aller(page,'u-services');

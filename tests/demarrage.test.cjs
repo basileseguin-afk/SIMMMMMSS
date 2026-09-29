@@ -117,7 +117,9 @@ test('les tuiles de l’accueil regroupent les étapes par partie, avec leur ét
   const par = Object.fromEntries(t.map(x => [x.partie, x]));
   assert.deepEqual(t.map(x => x.partie), ['donnees', 'organisation', 'reglages', 'resultats']);
   assert.equal(par.donnees.etat, 'provisoire', 'des exemples, pas une alerte');
-  assert.match(par.donnees.lignes.map(l => l.texte).join(' | '), /Vols : 12 départs · exemple \| Temps de travail : chiffres d’exemple/);
+  assert.match(par.donnees.lignes.map(l => l.texte).join(' | '), /Vols : 12 départs · exemple/);
+  // Les minutes de travail se règlent dans la fiche de chaque service : Mon unité.
+  assert.match(par.organisation.lignes.map(l => l.texte).join(' | '), /Minutes de travail : chiffres d’exemple/);
   assert.equal(par.organisation.etat, 'afaire', 'la pire de ses lignes');
   assert.match(par.reglages.lignes[0].texte, /Repas prêts 50 min avant le départ · vols décalés de -10 min/);
   assert.match(par.reglages.lignes[1].texte, /Rythme 0,9 · 2 pauses par poste/);
@@ -126,5 +128,7 @@ test('les tuiles de l’accueil regroupent les étapes par partie, avec leur ét
 
 test('ce qu’il y a à faire ensuite mène à une page qui existe', () => {
   const O = require('../onglets.js');
-  for (const [vue, page] of Object.entries(D.PAGE_DE_VUE)) assert.equal(O.vueDe(page), vue, page);
+  for (const page of Object.values(D.PAGE_DE_VUE)) assert.ok(O.page(page), page);
+  // Tout ce qu'on décrit mène à Mon unité, jamais aux outils avancés.
+  for (const v of ['ateliers', 'reglages', 'flux']) assert.equal(O.partieDe(D.PAGE_DE_VUE[v]).id, 'organisation', v);
 });

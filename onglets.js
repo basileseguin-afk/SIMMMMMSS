@@ -1,9 +1,9 @@
-/* Le menu : quatre parties, et dans chacune quelques pages.
+/* Le menu : Accueil, puis quatre parties, et dans chacune quelques pages.
  *
- * Données (ce qu'on importe), Organisation (ce qu'on décrit), Réglages (ce
- * qu'on essaie), Résultats (ce qu'on observe). Avant, chaque étape mélangeait
- * les quatre : un réglage dans les vols, un résultat dans les équipes. Une
- * page ne change pas de nature selon l'endroit d'où l'on vient.
+ * Vols (ce qu'on importe), Mon unité (ce qu'on décrit, service par service),
+ * Réglages (ce qu'on essaie), Résultats (ce qu'on observe). Une page ne change
+ * pas de nature selon l'endroit d'où l'on vient. Les outils d'avant (chemins,
+ * cases, liens) restent dans une partie cachée, « Outils avancés ».
  *
  * Une page EST un sous-onglet d'une vue : les éléments d'une vue portent
  * `data-sous="<page>"` (ou plusieurs, séparés par des espaces), et une règle
@@ -23,16 +23,18 @@
       { id: 'v-departs', nom: 'Départs', ico: 'depart' }
     ],
     ateliers: [
+      { id: 'mu-pas', nom: 'Pas à pas', ico: 'check' },
+      { id: 'mu-services', nom: 'Services et équipes', ico: 'service' },
       { id: 'at-chemins', nom: 'Chemins', ico: 'fleche' },
       { id: 'at-equipes', nom: 'Cases', ico: 'service' },
-      { id: 'at-grille', nom: 'Qui prépare quoi', ico: 'equipe' },
+      { id: 'at-grille', nom: 'Tableau', ico: 'equipe' },
       { id: 'at-planning', nom: 'Planning des équipes', ico: 'journee' },
       { id: 'at-repas', nom: 'Commandes', ico: 'plateau' },
-      { id: 'at-recap', nom: 'Récap des cases', ico: 'service' }
+      { id: 'at-recap', nom: 'Tableau des équipes', ico: 'service' }
     ],
     reglages: [
-      { id: 'rg-minutes', nom: 'Temps de travail', ico: 'chrono' },
-      { id: 'rg-recap', nom: 'Récap des man-minutes', ico: 'journee' },
+      { id: 'rg-minutes', nom: 'Minutes', ico: 'chrono' },
+      { id: 'rg-recap', nom: 'Tableau des minutes', ico: 'journee' },
       { id: 'rg-simulation', nom: 'Réglages de la simulation', ico: 'sablier' }
     ],
     // Arriver « sur le plan » (un lien, « voir sur le plan »), c'est arriver
@@ -44,7 +46,7 @@
       { id: 'j-comparer', nom: 'Comparer deux essais', ico: 'lecture' }
     ],
     flux: [
-      { id: 'u-liens', nom: 'Liens entre services', ico: 'fleche' },
+      { id: 'u-liens', nom: 'Liens', ico: 'fleche' },
       { id: 'u-services', nom: 'Services', ico: 'service' },
       { id: 'u-lecture', nom: 'Contrôles', ico: 'info' },
       { id: 'u-sauvegarde', nom: 'Sauvegarde et limites', ico: 'boite' }
@@ -55,24 +57,21 @@
    * un paragraphe. `cache` : une partie qu'on ouvre depuis l'en-tête ou
    * l'accueil, sans tuile. */
   const PARTIES = [
-    { id: 'donnees', nom: 'Données', ico: 'boite', couleur: 'var(--c-vols)',
+    { id: 'donnees', nom: 'Vols', ico: 'avion', couleur: 'var(--c-vols)',
       resume: 'Ce que vous importez',
       pages: [
         { id: 'v-programme', intro: 'Le programme de vols de la journée : importez le vôtre, en Excel ou en CSV.' },
-        { id: 'v-planche', intro: 'La planche retour du handling : quand chaque vol revient à l’unité, pour la plonge. À saisir ici ou à importer en Excel.' },
-        { id: 'rg-minutes', intro: 'Les minutes de travail d’un vol, service par service : l’étude de temps.' },
-        { id: 'rg-recap', intro: 'Toutes les man-minutes d’un coup d’œil : une ligne par commande, une colonne par service ; à modifier ici ou dans Excel.' },
-        { id: 'at-recap', intro: 'Toutes les cases d’un coup d’œil : ce que chacune traite, dans l’ordre, et son heure de départ ; à régler ici ou dans Excel.' }
+        { id: 'v-planche', intro: 'La planche retour du handling : quand chaque vol revient à l’unité, pour la plonge. À saisir ici ou à importer en Excel.' }
       ] },
-    { id: 'organisation', nom: 'Organisation', ico: 'equipe', couleur: 'var(--c-equipes)',
-      resume: 'Ce que vous décrivez',
+    // Tout le paramétrage de l'unité, service par service (29/09) : ce que fait
+    // chaque service, ses équipes, ce que chacune prépare, ses minutes.
+    { id: 'organisation', nom: 'Mon unité', ico: 'equipe', couleur: 'var(--c-equipes)',
+      resume: 'Vos services et vos équipes',
       pages: [
-        { id: 'at-chemins', intro: 'Une commande par compagnie et par classe : les services par où elle passe.' },
-        { id: 'at-equipes', intro: 'Les cases : une équipe, une heure, des personnes, et les commandes qu’elle prépare dans l’ordre.' },
-        { id: 'at-grille', intro: 'Pour chaque commande, la case qui la prépare dans chaque service.' },
-        { id: 'u-services', intro: 'Chaque service de l’unité : son nom, ses équipes, les commandes qui y passent, et sa place sur le plan.' },
-        { id: 'u-liens', intro: 'Qui livre qui dans l’unité : ces liens ne servent qu’aux commandes sans chemin.' },
-        { id: 'u-lecture', intro: 'Ce que le calcul comprend de votre organisation, et ce qu’il faut corriger.' }
+        { id: 'mu-pas', intro: 'Ce qu’il reste à faire avant de simuler, dans l’ordre : chaque point mène là où il se règle.' },
+        { id: 'mu-services', intro: 'Chaque service : ce qu’il fait, ses équipes, ce que chacune prépare, ses minutes.' },
+        { id: 'at-recap', intro: 'Toutes les équipes d’un coup d’œil, avec leurs heures : à régler ici ou dans Excel.' },
+        { id: 'rg-recap', intro: 'Toutes les minutes de travail d’un coup d’œil : une ligne par commande, une colonne par service ; à modifier ici ou dans Excel.' }
       ] },
     { id: 'reglages', nom: 'Réglages', ico: 'sablier', couleur: 'var(--c-temps)',
       resume: 'Ce que vous essayez',
@@ -84,11 +83,25 @@
       pages: [
         { id: 'j-chiffres', intro: 'La journée en chiffres : commandes à l’heure, retards, attentes, travail fourni.' },
         { id: 'j-plan', intro: 'Rejouez la journée sur le plan de l’unité : qui travaille, qui attend, ce qui est prêt.' },
-        { id: 'at-planning', intro: 'Qui travaille quand : chaque case, ses préparations et ses attentes.' },
+        { id: 'at-planning', intro: 'Qui travaille quand : chaque équipe, ses préparations et ses attentes.' },
         { id: 'at-repas', intro: 'Chaque commande : à quelle heure elle est prête, et avant quand elle devait l’être.' },
         { id: 'v-departs', intro: 'Chaque vol : ses repas sont-ils prêts avant son départ ?' },
         { id: 'j-stocks', intro: 'Ce qui attend entre deux services, et les retours des vols à la plonge.' },
         { id: 'j-comparer', intro: 'Retenez deux essais et voyez ce qui a bougé.' }
+      ] },
+    // Les outils d'avant, pour les cas rares : un chemin dessiné à la main, une
+    // case réglée hors de sa fiche, les liens entre services. On y vient par un
+    // lien discret de Mon unité ; ils ne sont plus dans le menu.
+    { id: 'avance', nom: 'Outils avancés', ico: 'fleche', couleur: 'var(--c-equipes)', cache: true,
+      resume: 'Chemins, cases et liens, à la main',
+      pages: [
+        { id: 'at-chemins', intro: 'Le chemin de chaque commande, à la main (Mon unité le déduit des coches).' },
+        { id: 'at-equipes', intro: 'Toutes les cases (équipes), une par une.' },
+        { id: 'at-grille', intro: 'Pour chaque commande, la case qui la prépare dans chaque service.' },
+        { id: 'rg-minutes', intro: 'Les minutes de travail d’un vol, service par service.' },
+        { id: 'u-services', intro: 'Les services de l’unité : nom, équipes, place sur le plan, services supprimés.' },
+        { id: 'u-liens', intro: 'Qui livre qui dans l’unité : ces liens ne servent qu’aux commandes sans chemin.' },
+        { id: 'u-lecture', intro: 'Ce que le calcul comprend de votre organisation, et ce qu’il faut corriger.' }
       ] },
     { id: 'fichier', nom: 'Sauvegarde', ico: 'boite', couleur: 'var(--c-unite)', cache: true,
       resume: 'Votre travail dans un fichier',
@@ -133,6 +146,7 @@
       this.a = a;
       this.choix = {};   // partie → dernière page ouverte
       try { this.choix = JSON.parse(localStorage.getItem(CLE) || '{}') || {}; } catch (e) { this.choix = {}; }
+      try { this.parVue = JSON.parse(localStorage.getItem(CLE + '-vues') || '{}') || {}; } catch (e) { this.parVue = {}; }
       if (root.document && !document.getElementById('sous-onglets-regles')) {
         const st = document.createElement('style'); st.id = 'sous-onglets-regles';
         st.textContent = regles(); document.head.appendChild(st);
@@ -158,8 +172,10 @@
     actif(vue = this.a.vue()) {
       if (this.page && vueDe(this.page) === vue) return this.page;
       if (!ONGLETS[vue]) return null;
-      // Arrivé par un lien vers la vue : la dernière page ouverte de cette vue.
-      const deja = Object.values(this.choix).find(id => vueDe(id) === vue);
+      // Arrivé par un lien vers la vue : la dernière page ouverte de cette vue
+      // (une vue porte des pages de plusieurs parties : Mon unité, Outils avancés).
+      const pv = (this.parVue || {})[vue];
+      const deja = (pv && vueDe(pv) === vue ? pv : null) || Object.values(this.choix).find(id => vueDe(id) === vue);
       return deja || defaut(vue);
     }
 
@@ -171,7 +187,8 @@
       const vue = vueDe(id), p = partieDe(id); if (!vue || !p) return;
       this.page = id;
       this.choix[p.id] = id;
-      try { localStorage.setItem(CLE, JSON.stringify(this.choix)); } catch (e) { /* stockage indisponible */ }
+      (this.parVue || (this.parVue = {}))[vue] = id;
+      try { localStorage.setItem(CLE, JSON.stringify(this.choix)); localStorage.setItem(CLE + '-vues', JSON.stringify(this.parVue)); } catch (e) { /* stockage indisponible */ }
       // La page est connue AVANT qu'on prévienne : ce qui se dessine à
       // l'ouverture (le tableau, le planning) regarde quelle page est affichée.
       if (root.document) { document.body.dataset.sous = id; document.body.dataset.partie = p.id; }

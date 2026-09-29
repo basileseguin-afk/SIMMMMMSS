@@ -114,32 +114,53 @@ Chaque chiffre dit son unité (vols, commandes, services) et son moment (« à
 07:00 », « sur toute la journée »). Ce qui n’est pas encore rempli est gris ;
 le rouge ne sert qu’aux retards.
 
-1. **Données** — ce qu’on importe.
+1. **Vols** — ce qu’on importe.
    - *Vols* : importer le programme en Excel ou CSV simplifié, ou garder les
      vols d’exemple ; d’où viennent les vols est dit en tête.
+   - *Planche retour* : quand chaque vol revient à l’unité, pour la plonge.
+2. **Mon unité** — tout le paramétrage, **service par service**, pour
+   quelqu’un qui connaît l’unité sans connaître le site (29/09). Ni
+   « chemins », ni « cases », ni « liens » : des services, des équipes, et ce
+   que chacune prépare.
+   - *Pas à pas* : ce qu’il reste à faire avant de simuler, dans l’ordre
+     (vols, services et équipes, commandes que personne ne prépare, réglages,
+     résultats) ; chaque point mène là où il se règle, chaque service à sa
+     fiche.
+   - *Services et équipes* : la liste des services à gauche (utilisés, avec
+     un point orange s’il manque quelque chose ; pas utilisés), la **fiche**
+     du service choisi à droite :
+     1. *Ce qu’il fait* : des équipes préparent les commandes, un robot, il
+        sert tout le monde (légumerie, magasin, réception), plonge, ou il
+        charge les vols (handling) ;
+     2. *Ses équipes* : pour chacune, son nom, son heure d’arrivée, le jour
+        (du vol ou la veille), ses personnes, et une **grille à cocher**
+        compagnies × classes : ce qu’elle prépare. L’ordre suit les départs
+        (la plus pressée d’abord) ; un clic sur une compagnie ou une classe
+        coche toute la ligne ou la colonne. Une commande ne se prépare qu’une
+        fois par service : la cocher dans une autre équipe l’y déplace. Une
+        case orange pointillée : la commande passe par ce service et personne
+        ne l’y prépare. « Plus de réglages » : l’ordre à la main, les pauses,
+        les arrêts, les man-minutes propres, l’étape faite à la chaîne, la
+        ligne robot. Un service qui sert tout le monde se règle en une fiche
+        (horaires, vagues) et une grille « Qui en a besoin ? » ; la plonge et
+        le handling n’ont rien à cocher ;
+     3. *Minutes de travail pour un vol* : le barème du service.
+     Créer un service (un nom, près de quel service du plan), le renommer, le
+     voir ou le déplacer sur le plan, le supprimer : tout se fait ici. **Les
+     chemins des commandes se déduisent des coches** : cocher fait entrer le
+     service dans le chemin de la commande, à sa place (entre ceux qui le
+     livrent et ceux qu’il livre, d’après les autres chemins, les modèles
+     types, puis les liens de l’unité ; une salle annexe se place comme son
+     service) ; décocher la dernière équipe l’en fait sortir.
+   - *Tableau des équipes* et *Tableau des minutes* : toutes les équipes (et
+     leurs heures), toutes les minutes, d’un coup d’œil, modifiables sur place
+     ou dans Excel.
+   - *Outils avancés* (un lien discret en bas de la liste des services, hors
+     du menu) : les outils d’avant, pour les cas rares.
+   Les outils avancés en détail :
    - *Temps de travail* : les minutes d’un vol, service par service et classe
      par classe (une valeur commune, des valeurs propres à une compagnie, ou une
      grille compagnie par classe).
-   - *Récap des cases* : toutes les cases d’un coup d’œil, service par
-     service — déroulé (tâche unique, à la suite, ensemble), jour et heure de
-     départ (modifiables sur place), ce qu’elle traite dans l’ordre avec les
-     heures de chaque ligne, sa fin. « ⇩ Cases / ⇧ Importer » : un fichier
-     Excel de paramétrage (jour, départ, personnes, commandes dans l’ordre,
-     vagues).
-   - *Le Robot* : un service à part, rattaché au Montage, qui prépare TX, CRL
-     et FBU Économie à la place du Montage. Une case Robot : un débit en
-     plateaux par heure — le sien pour chaque commande, sinon celui du robot —
-     et un effectif minimum pour tourner. Réglable dans sa fiche ou dans le
-     récap des man-minutes.
-   - *Récap des man-minutes* : tout le barème d’un coup d’œil — une ligne
-     par commande, une colonne par service, d’où vient chaque valeur (propre,
-     toutes compagnies, fixée dans une case, à renseigner). Par vol
-     (modifiable) ou sur la journée (× vols, totaux en heures). Dans chaque
-     case aussi, l’effectif de l’équipe qui prépare (modifiable sur place) et
-     la durée qui en découle (man-minutes ÷ personnes).
-     « ⇩ Man-minutes / ⇧ Importer » : le même tableau en fichier Excel de
-     paramétrage, pour les grosses modifications.
-2. **Organisation** — ce qu’on décrit.
    - *Chemins* : **un chemin par commande** (« Complet TX BC »), créé à la
      main — vide, copié d’un modèle, ou copié du chemin d’une autre commande —
      et « Dupliquer pour… » d’autres commandes. À gauche la liste des
@@ -402,6 +423,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `plan-prive/` | Fond de plan **local, non versionné** (voir ci-dessous) |
 | `tests/ui-model.test.cjs` | Régressions de l’import CSV |
 | `tests/noyau.test.cjs` | Régressions du noyau : ordre, horloge, conditions, interruptions, erreurs |
+| `tests/grille-services.test.cjs` | La grille à cocher de Mon unité : cocher fait entrer le service dans le chemin à sa place (s’intercale, sans raccourci), décocher l’en fait sortir, une équipe par service, l’ordre des départs, le modèle gardé sans créer de case, les liens de l’unité sans boucle (retours des vols), une salle annexe placée comme son service, le calcul, la nature d’un service |
 | `tests/production.test.cjs` | Régressions du modèle par ateliers : enchaînement des lots, attente des amonts, robot, pauses, validation |
 | `tests/replay.test.cjs` | Relecture : états d’un service, ponctualité à l’instant t, pas suivant |
 | `tests/comparaison.test.cjs` | Scénarios A/B : capture, déterminisme, verdicts, jeu de démonstration |
@@ -415,21 +437,22 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/boutique-browser.cjs` | La légumerie comme une boutique : d'un clic depuis les vagues, fermée la cuisine attend l'ouverture, les heures dans le récap des cases et « Qui prépare quoi », Annuler |
 | `tests/plonge-vol-browser.cjs` | La plonge par vol : une ligne par compagnie des vols revenus, un vol par tunnel qui tourne, au temps de sa compagnie ; retour au débit |
 | `tests/ajout-cie-browser.cjs` | Ajouter une compagnie et ses classes d'un coup depuis les chemins, la classe qui manque à une compagnie existante, une compagnie dans le tableau du handling |
-| `tests/planche-browser.cjs` | Données › Planche retour : saisir une ligne, export Excel modifié puis réimporté, classeur faux refusé, « Utiliser la planche retour », les réglages de la simulation (J+1, délai), rechargement, « ⇄ Comparer J+1 et planche retour » |
+| `tests/planche-browser.cjs` | Vols › Planche retour : saisir une ligne, export Excel modifié puis réimporté, classeur faux refusé, « Utiliser la planche retour », les réglages de la simulation (J+1, délai), rechargement, « ⇄ Comparer J+1 et planche retour » |
 | `tests/lisibilite-browser.cjs` | Ce qui se lisait mal : message qui s’efface, heures du planning espacées (jour écrit une fois), cause d’une commande pas finie, « en retard » ≠ « pas finie », durées en heures, horloge « J 00:00 », Contrôles (à corriger / ce que la journée montre, badge) |
 | `tests/robot-ligne-browser.cjs` | La ligne robot : matin et après-midi sur une seule ligne (l’après-midi attend), arrêt 12:15–13:00 valable pour les deux équipes, second robot à sa propre ligne, récap, rechargement |
+| `tests/mon-unite-browser.cjs` | Mon unité : le menu à quatre parties, le pas à pas, un service ouvert depuis lui, deux équipes, toute une ligne / une colonne cochée sans rien prendre à l’autre équipe, l’ordre des départs, une commande déplacée, l’heure tapée et les personnes, décocher sort le service du chemin, les minutes dans la fiche, « Qui en a besoin ? » de la légumerie, un nouveau service placé dans le chemin, le calcul, les outils avancés, rechargement |
 | `tests/fusion-browser.cjs` | Deux étapes à la chaîne : « Montage AF » fait aussi la Prépa depuis sa fiche, AF quitte la case de la Prépa, durée à 1 et 2 personnes, récap, « Qui prépare quoi », chemin, retour à deux cases, rechargement |
 | `tests/saisie-heure-browser.cjs` | Taper une heure touche par touche (Récap des cases, fiche d’une case) : rien n’est arraché, Entrée ou quitter le champ enregistre, le tableau garde son défilement |
 | `tests/secours-browser.cjs` | Un démarrage resté en plan ouvre la page de secours ; elle rend les données en sauvegarde, repart sans les cases, puis les remet |
 | `tests/recap-cases-browser.cjs` | Récap des cases : une ligne par case, tâche unique / à la suite / ensemble, départ et jour modifiables, chercher, fichier de paramétrage exporté puis réimporté |
 | `tests/robot-browser.cjs` | Le Robot : service créé et rattaché au Montage, remplace le Montage sur TX, CRL et FBU Économie (une fois), une case Robot, plateaux ÷ débit, débit et effectif dans le récap et la fiche |
 | `tests/recap.test.cjs` | Récap des man-minutes : d’où vient chaque valeur, totaux, fichier de paramétrage (aller-retour sans changement, grosses modifications, erreurs) |
-| `tests/recap-browser.cjs` | Données › Récap des man-minutes : une ligne par commande, modifier / vider une case, sur la journée, chercher, export puis import |
+| `tests/recap-browser.cjs` | Mon unité › Tableau des minutes : une ligne par commande, modifier / vider une case, sur la journée, chercher, export puis import |
 | `tests/vagues.test.cjs` | Mise à disposition par vagues : chaque commande prend la vague qui précède son besoin, attente avant la première |
 | `tests/partage-browser.cjs` | Légumerie partagée : une case pour toutes les commandes, « Besoin de légumerie ? » sur le chemin, vagues dans le tableau, fusion des cases d’avant |
 | `tests/handling.test.cjs` | Le handling par vol : classes d’un même vol réunies, ordre strict des départs, pas avant départ − X h, plusieurs quais, vol bloqué, poste fini, durée par compagnie, stocks devant le handling |
 | `tests/handling-browser.cjs` | Le handling dans l’interface : une case partagée posée depuis un chemin, sa fiche, les départs « chargé à », la synthèse |
-| `tests/services-browser.cjs` | Organisation › Services : une ligne par service, « + Une équipe » (depuis la page, les contrôles, le plan), renommer, voir et modifier sur le plan, pas d’alerte pour une plonge ; cycle de vie : créer, doublon refusé, changer de rattachement, supprimer, retirer et remettre |
+| `tests/services-browser.cjs` | Outils avancés › Services : une ligne par service, « + Une équipe » (depuis la page, les contrôles, le plan), renommer, voir et modifier sur le plan, pas d’alerte pour une plonge ; cycle de vie : créer, doublon refusé, changer de rattachement, supprimer, retirer et remettre |
 | `tests/nav.cjs` | Aide partagée des tests navigateur : aller à une page comme à la main (la partie, puis l’onglet) |
 | `tests/icones.test.cjs` | Chaque service reconnaît son pictogramme |
 | `tests/graphe.test.cjs` | Diagramme : colonnes, nœud au milieu de ses amonts, couloirs des longs liens, boucles, dispositions retenues |

@@ -1,5 +1,5 @@
 /* Le menu principal : une page d'accueil à tuiles, quatre parties rangées par
- * nature (Données, Organisation, Réglages, Résultats), et dans chacune ses
+ * nature (Vols, Mon unité, Réglages, Résultats), et dans chacune ses
  * pages. On arrive sur l'accueil ; chaque page a un titre et une phrase en
  * mots de tous les jours. C'est ce qui permet à quelqu'un qui n'est pas du
  * métier de comprendre où il est et ce qu'il regarde. */
@@ -29,7 +29,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.deepEqual(await page.locator('.acc-tuile-tete').evaluateAll(bs=>bs.map(b=>b.dataset.versPartie)),
     ['donnees','organisation','reglages','resultats'],'quatre parties, dans l’ordre du travail');
   // Chaque tuile dit son état en clair : ce qui est réel, ce qui est un exemple, ce qui reste à faire.
-  assert.match(await tuile('donnees').textContent(),/Vols : 12 départs · exemple[\s\S]*Temps de travail : chiffres d’exemple/);
+  assert.match(await tuile('donnees').textContent(),/Vols : 12 départs · exemple/);
+  assert.match(await tuile('organisation').textContent(),/Minutes de travail : chiffres d’exemple/);
   assert.match(await tuile('donnees').locator('.acc-etat').textContent(),/provisoire/);
   assert.match(await tuile('organisation').textContent(),/aucune équipe/);
   assert.match(await tuile('reglages').textContent(),/Repas prêts 45 min avant le départ/);
@@ -39,14 +40,14 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator('.acc-suite').textContent(),/À faire ensuite/);
   await page.locator('.acc-suite [data-page]').click();await attendre();
   assert.equal(await courant(),'organisation');
-  assert.equal(await actif(),'at-chemins','« Décrire une première équipe » ouvre les chemins');
+  assert.equal(await actif(),'mu-services','« Décrire une première équipe » ouvre les services de Mon unité');
 
   // 2. Le menu de l'en-tête : une partie ouvre ses pages, et seulement elles.
-  const attendues={donnees:['v-programme','v-planche','rg-minutes','rg-recap','at-recap'],
-    organisation:['at-chemins','at-equipes','at-grille','u-services','u-liens','u-lecture'],
+  const attendues={donnees:['v-programme','v-planche'],
+    organisation:['mu-pas','mu-services','at-recap','rg-recap'],
     reglages:['rg-simulation'],
     resultats:['j-chiffres','j-plan','at-planning','at-repas','v-departs','j-stocks','j-comparer']};
-  const noms={donnees:'Données',organisation:'Organisation',reglages:'Réglages',resultats:'Résultats'};
+  const noms={donnees:'Vols',organisation:'Mon unité',reglages:'Réglages',resultats:'Résultats'};
   for(const [p,pages] of Object.entries(attendues)){
     await page.locator(`#menu [data-vers-partie=${p}]`).click();await attendre();
     assert.equal(await courant(),p);
@@ -82,7 +83,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator('.vf-compte.vf-sans').click();await attendre();
   await nav.aller(page,'j-chiffres');
   assert.equal(await page.locator('.chiffres-vide').isVisible(),true,'rien à compter : la synthèse dit par où commencer');
-  assert.equal(await page.locator('.chiffres-vide [data-page=at-chemins]').count(),1);
+  assert.equal(await page.locator('.chiffres-vide [data-page=mu-pas]').count(),1);
   assert.equal(await page.locator('#btn-play').isVisible(),false,'sans lecteur');
   assert.equal(await page.locator('#btn-export').isVisible(),true,'les résultats s’exportent depuis la synthèse');
   await nav.aller(page,'j-plan');
@@ -96,10 +97,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await nav.aller(page,'rg-minutes');
   assert.ok(await page.locator('.rg-barres .rg-barre i[data-cab=BC]').count()>5,'les minutes se lisent en barres');
 
-  // 4. Les outils suivent la page : ceux des cases en Organisation, pas dans les résultats.
+  // 4. Les outils suivent la page : ceux des cases dans Mon unité, pas dans les résultats.
   await nav.aller(page,'at-grille');
   assert.equal(await page.locator('#at-export').isVisible(),true,'les outils restent à portée, sur la barre des onglets');
   assert.match(await page.locator('#at-export').textContent(),/Cases et chemins/,'un export dit ce qu’il contient');
+  await nav.aller(page,'mu-services');
+  assert.equal(await page.locator('#at-export').isVisible(),true,'et dans la fiche des services');
   await nav.aller(page,'at-planning');
   assert.equal(await page.locator('#at-export').isVisible(),false,'pas d’import ni d’export des cases dans les résultats');
   assert.equal(await page.locator('#at-planning').isVisible(),true);
