@@ -144,6 +144,9 @@
         regime: { actif: a.regime ? a.regime.actif !== false : true,
                   ...(Number.isFinite(+(a.regime || {}).presence) ? { presence: +a.regime.presence } : {}) },
         ...(a.materiel === 'consomme' ? { materiel: 'consomme' } : {}),
+        // Fait aussi l'étape d'avant, à la chaîne (retour d'usage du 29/09) : le
+        // service de cette étape. Une équipe qui prépare seulement, et pas le sien.
+        ...(type === 'manuel' && typeof a.fusion === 'string' && a.fusion && a.fusion.length <= 160 && a.fusion !== service ? { fusion: a.fusion } : {}),
         // Les homme-minutes fixées dans la case, commande par commande ; sans
         // elles, celles du barème importé. Seules les commandes qu'elle prépare.
         ...minutesPropres(a, lots),
@@ -752,6 +755,18 @@
             else { delete a.debit; delete a.personnesMin; }
             break;
           case 'consomme': a.materiel = el.checked ? 'consomme' : undefined; break;
+          // Fait aussi l'étape d'avant, à la chaîne : ses commandes quittent les
+          // cases de cette étape — la case les fait désormais (« fusion des 2 cases »).
+          case 'fusion': {
+            if (!v) { delete a.fusion; break; }
+            a.fusion = v;
+            const miennes = new Set(a.lots.flat());
+            for (const x of this.state.ateliers) {
+              if (x === a || x.service !== v || !(x.type === 'manuel' || x.type === 'robot')) continue;
+              x.lots = x.lots.map(l => l.filter(c => !miennes.has(c))).filter(l => l.length);
+            }
+            break;
+          }
           case 'tunnel-nom': a.tunnels[+el.dataset.index].nom = v; break;
           case 'tunnel-debit': a.tunnels[+el.dataset.index].debit = Math.max(0, parseFloat(v) || 0); break;
           case 'tunnel-actif': a.tunnels[+el.dataset.index].actif = el.checked; break;
@@ -1354,6 +1369,7 @@
           </div>`).join('')}
           <div class="at-actions-lot"><button class="btn btn-sm" data-at-action="vague-ajouter">+ Vague</button></div>` : ''}
         </div>` : `
+        ${a.type === 'manuel' ? this.blocFusion(a) : ''}
         <div class="at-cases">
           <label class="chk chk-mini"><input type="checkbox" data-at-champ="regime" ${a.regime.actif ? 'checked' : ''}>
             Poste avec pauses — 15 min après 3 h, 30 min après 6 h</label>
@@ -1628,6 +1644,44 @@
      * déroulés : une tâche unique, des lignes à la suite, et plusieurs
      * commandes sur une même ligne, préparées ensemble.
      */
+    /* Deux étapes fusionnées, à la chaîne (retour d'usage du 29/09) : « une
+     * personne dresse un plat puis le passe, l'autre fait le montage
+     * directement ». La case fait aussi l'étape d'avant pour SES commandes. */
+    blocFusion(a) {
+      const services = this.a.services(), nom = id => (services.find(s => s.id === id) || {}).nom || id;
+      const ids = [...new Set(a.lots.flat())];
+      // Les étapes juste avant celle-ci, sur les chemins de ses commandes.
+      const routes = P.routesDesClasses(this.classes, this.state);
+      const avant = new Set(a.fusion ? [a.fusion] : []);
+      for (const id of ids) for (const s of ((routes.get(id) || {}).amonts || {})[a.service] || []) avant.add(s);
+      if (!avant.size) return '';
+      const f = a.fusion;
+      let bilan = '';
+      if (f && ids.length) {
+        const bareme = (this.a.reglages ? this.a.reglages() : {}).bareme;
+        const cls = ids.map(id => this.classes.find(c => c.id === id)).filter(Boolean);
+        const pm = cls.reduce((n, c) => n + P.travailClasse(f, c, bareme), 0);
+        const mm = cls.reduce((n, c) => n + P.travailDans(a, c, bareme), 0);
+        const n = a.personnes, d = P.dureeFusion(pm, mm, n);
+        let k = 0;
+        if (n > 1 && pm && mm) { let mieux = Infinity; for (let i = 1; i < n; i++) { const x = Math.max(pm / i, mm / (n - i)); if (x < mieux) { mieux = x; k = i; } } }
+        const min = x => Math.round(x) + ' min';
+        bilan = `<p class="mini-note at-fusion-bilan">${esc(nom(f))} ${min(pm)} + ${esc(nom(a.service))} ${min(mm)} de travail →
+          <b>${Number.isFinite(d) ? min(d) : 'rien ne se fait sans personne'}</b>${n === 1 ? ' : seule, la personne fait les deux, l’un après l’autre'
+            : k ? ` : ${k} au ${esc(nom(f))}, ${n - k} au ${esc(nom(a.service))} — le poste le plus lent donne le rythme` : ''}.</p>`;
+        const ailleurs = this.state.ateliers.filter(x => x.service === f && x.id !== a.id && (x.lots || []).some(l => l.some(c => ids.includes(c))));
+        if (ailleurs.length) bilan += `<p class="mini-note at-alerte">Encore dans ${ailleurs.map(x => '« ' + esc(x.nom) + ' »').join(', ')} : ces commandes y sont faites à part.
+          Rechoisissez « à la chaîne » pour les en retirer.</p>`;
+      }
+      return `<div class="at-fusion">
+        <label class="at-mode-dispo">À la chaîne avec l’étape d’avant ?<select data-at-champ="fusion" aria-label="Cette case fait-elle aussi l’étape d’avant, à la chaîne ?">
+          <option value="" ${f ? '' : 'selected'}>Non — l’étape d’avant a sa propre case</option>
+          ${[...avant].map(s => `<option value="${esc(s)}" ${s === f ? 'selected' : ''}>Oui, avec ${esc(nom(s))} : ${esc(nom(s))} + ${esc(nom(a.service))} dans cette case</option>`).join('')}</select></label>
+        <span class="mini-note">Pour les commandes de cette case seulement : une personne dresse et passe le plat, l’autre monte directement.
+          Seule, une personne fait les deux ; à plusieurs, elles se répartissent entre les deux postes.</span>
+        ${bilan}</div>`;
+    }
+
     rendreRecapCases(r) {
       const box = document.getElementById('rc-liste'); if (!box) return;
       const services = this.a.services();
@@ -1658,7 +1712,8 @@
         if (a.type === 'handling') return '<span class="rc-deroule autre">par vol</span>';
         const lignes = (a.lots || []).filter(l => l.length), ens = lignes.filter(l => l.length > 1).length;
         if (!lignes.length) return '<span class="rc-deroule vide">rien</span>';
-        return (lignes.length === 1 ? '<span class="rc-deroule unique">tâche unique</span>' : `<span class="rc-deroule suite">${lignes.length} à la suite</span>`)
+        const chaine = a.fusion && a.type === 'manuel' ? ` <span class="rc-chaine" title="Fait aussi ${esc(nomSvc(a.fusion))}, à la chaîne">+ ${esc(nomSvc(a.fusion))} à la chaîne</span>` : '';
+        return (chaine ? chaine.trim() + ' ' : '') + (lignes.length === 1 ? '<span class="rc-deroule unique">tâche unique</span>' : `<span class="rc-deroule suite">${lignes.length} à la suite</span>`)
           + (ens ? ` <span class="rc-ensemble-lab">${ens > 1 ? ens + ' lignes' : 'dont 1 ligne'} ensemble</span>` : '');
       };
       const traite = a => {

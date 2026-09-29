@@ -168,6 +168,27 @@ Le **rendement** et les **règles de poste** sont réglés au même endroit. Une
 équipe qui ne fixe pas sa présence suit celle de la maison : changer la règle
 commune les déplace toutes.
 
+### Deux étapes à la chaîne dans une case (retour d'usage du 29/09)
+
+« Une personne dresse un plat puis le passe, l'autre fait le montage
+directement » — et seulement pour certaines compagnies. Une case qui prépare
+peut faire **aussi l'étape d'avant** (`fusion` : le service de cette étape, par
+ex. la Prépa dans une case de Montage), pour **ses** commandes seulement :
+
+- ses commandes quittent les cases de l'étape d'avant (les deux cases n'en font
+  qu'une) ; pour elles, cette étape n'est pas un trou, et ce qui la suivait
+  (une autre branche du chemin) attend la case qui l'a faite ;
+- la case attend ce qui précède l'étape qu'elle absorbe (la cuisine) ;
+- sa durée, pour `P` minutes de l'étape d'avant (barème de ce service), `M`
+  minutes de la sienne et `n` personnes :
+  - `n = 1` : **P + M** — la personne fait les deux, l'un après l'autre ;
+  - `n ≥ 2` : **min sur k de max(P ÷ k, M ÷ (n − k))** — k personnes au premier
+    poste, n − k au second ; le plus lent donne le rythme ;
+- les autres compagnies gardent leurs deux cases.
+
+Réglage : fiche de la case, « À la chaîne avec l'étape d'avant ? ». Excel :
+colonne « À la chaîne avec » de la feuille Ateliers.
+
 ### L'atelier robot
 
 | Champ | Sens |

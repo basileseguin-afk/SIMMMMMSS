@@ -411,3 +411,11 @@ body.ateliers-open .workbench{display:none}
 .at-intro-aide{padding:0 14px 8px;margin:0}
 .at-vitesse{display:inline-flex;align-items:center;gap:3px;font-weight:700;color:var(--txt2)}
 #view-ateliers .at-vitesse input{width:58px;min-width:0}
+
+/* Deux étapes fusionnées, à la chaîne (retour d'usage du 29/09). */
+.at-fusion{display:grid;gap:4px;margin:8px 0;padding:8px 10px;border:1px dashed var(--bordure);border-radius:10px}
+.at-fusion select{max-width:100%}
+.at-fusion-bilan{margin:2px 0 0}
+.at-fusion .at-alerte{color:#9a3412;margin:0}
+.rc-chaine,.qf-chaine{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:color-mix(in srgb,#0f766e 14%,transparent);color:#0f5f58;white-space:nowrap}
+.qf-chaine{padding:0 6px}

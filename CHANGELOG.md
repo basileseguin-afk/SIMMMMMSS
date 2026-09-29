@@ -5,6 +5,30 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-29 — Deux étapes à la chaîne dans une case (Prépa + Montage)
+
+Retour d'usage : « l'étape prépa et montage faite en même temps : une personne
+dresse un plat puis le passe et l'autre fait le montage directement », « une
+fusion des 2 cases, uniquement sur certaines compagnies », et pour le temps :
+« si c'est 1 personne, la somme des 2 ; à 2 ou 3, le max ».
+
+- Une case qui prépare peut faire **aussi l'étape d'avant**, pour ses
+  commandes seulement (`fusion`). Ses commandes quittent les cases de cette
+  étape ; les autres compagnies gardent leurs deux cases.
+- Durée : seule, une personne fait **Prépa + Montage** ; à plusieurs, elles se
+  répartissent entre les deux postes (au moins une à chacun) et le plus lent
+  donne le rythme : min sur k de max(Prépa ÷ k, Montage ÷ (n − k)). La fiche le
+  chiffre (« 1 au Prépa, 1 au Montage »).
+- La case attend la cuisine, pas une prépa qui n'existe plus ; l'étape n'est
+  pas un « trou » ; ce qui suivait la Prépa attend la case qui l'a faite.
+- Partout : fiche de la case (« À la chaîne avec l'étape d'avant ? »), récap
+  des cases (« + Prépa à la chaîne »), « Qui prépare quoi », chemin (nœud
+  « à la chaîne · Montage AF »), Excel (colonne « À la chaîne avec »).
+- Tests : `tests/fusion.test.cjs` (moteur), Excel, `tests/fusion-browser.cjs`.
+
+Fichiers : `moteur/production.js`, `ateliers.js`, `parcours.js`, `echanges.js`,
+`ateliers.css`, tests, docs.
+
 ## 2026-09-29 — On peut de nouveau taper une heure dans le Récap des cases (BUG-051)
 
 Retour d'usage : « quand j'essaie de modifier les horaires dans le récap des

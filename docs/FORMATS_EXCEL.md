@@ -56,6 +56,7 @@ Une ligne par équipe. **Le nom est la clé** : les autres feuilles s'y réfère
 | Poste réglementaire | `oui` : pauses de régime et durée de présence s'appliquent |
 | Présence (min) | vide = celle du réglage général |
 | Emporte du matériel | `oui` si l'atelier consomme du matériel propre |
+| À la chaîne avec | équipe qui prépare seulement : le service de l'étape d'avant qu'elle fait aussi, pour ses commandes (ex. `PRÉPA` dans une case de Montage) ; vide = chacune sa case |
 | Débit robot (plateaux/h) | robot seulement |
 | Effectif mini robot | robot seulement |
 | Plafond plonge (u/h) | plonge seulement ; vide = aucun plafond |

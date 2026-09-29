@@ -171,6 +171,14 @@
    * ====================================================================*/
 
   const fabrique = a => a.type === 'manuel' || a.type === 'robot';
+  /* Deux étapes fusionnées, à la chaîne (retour d'usage du 29/09) : la case
+   * d'un service (le Montage) fait aussi l'étape d'avant (la Prépa) pour ses
+   * commandes. Pour ces commandes, l'étape d'avant n'est pas « à faire » :
+   * elle est faite, par cette case. */
+  function fusionneePar(etat, service, cmd) {
+    return (etat.ateliers || []).find(a => (a.type === 'manuel' || !a.type) && a.fusion === service && a.service !== service
+      && (a.lots || []).some(l => l.includes(cmd))) || null;
+  }
 
   /** Les services d'un parcours dans l'ordre du flux : sources d'abord, jonction à la fin. */
   function etapesOrdonnees(p) {
@@ -206,7 +214,7 @@
         const fab = equipes.filter(fabrique);
         const lavage = equipes.some(a => a.type === 'lavage'), dispo = equipes.some(a => a.type === 'dispo' || a.type === 'handling');
         const parClasse = cls.map(c => ({ id: c.id,
-          atelier: (fab.find(a => (a.lots || []).some(l => l.includes(c.id))) || {}).id || null }));
+          atelier: (fab.find(a => (a.lots || []).some(l => l.includes(c.id))) || fusionneePar(etat, service, c.id) || {}).id || null }));
         // Une plonge lave les retours, une mise à disposition sert tout le
         // monde : ni l'une ni l'autre n'a de classe à se voir confier.
         const manquantes = lavage || dispo ? [] : parClasse.filter(x => !x.atelier).map(x => x.id);
@@ -338,8 +346,10 @@
         const font = equipes.filter(a => fabrique(a) && (a.lots || []).some(l => l.includes(c.id))).map(a => a.id);
         const auto = equipes.find(a => !fabrique(a));
         const passe = r ? r.services.has(s) : font.length > 0;
+        const fu = !font.length && passe ? fusionneePar(etat, s, c.id) : null;
         cases[s] = !passe ? { etat: font.length ? 'hors-fait' : 'hors', ateliers: font }
           : font.length ? { etat: 'equipe', ateliers: font }
+          : fu ? { etat: 'equipe', ateliers: [fu.id], fusion: fu.service }
           : auto ? { etat: 'auto', ateliers: [auto.id] }
           : { etat: 'libre', ateliers: [] };
       }
@@ -499,7 +509,7 @@
     const nom = s => (nomDe ? nomDe(s) : s);
     let n = 0;
     for (const s of services || []) {
-      if (caseDe(etat, s, cmd)) continue;
+      if (caseDe(etat, s, cmd) || fusionneePar(etat, s, cmd)) continue;
       if (s === 'handling') {
         // Le handling charge les vols de toutes les commandes : un seul, partagé.
         etat.ateliers.push(caseHandling(etat, s, nom(s)));
@@ -1072,6 +1082,8 @@
       if (!this.cmd) return P.servicesDuParcours(p).map(s => ({ id: s, nom: this.nom(s), ico: ico(s), sous: 'modèle', ton: 'neutre' }));
       return P.servicesDuParcours(p).map(s => {
         const a = caseDe(etat, s, this.cmd);
+        const fu = !a || !fabrique(a) ? fusionneePar(etat, s, this.cmd) : null;
+        if (fu) return { id: s, nom: this.nom(s), ico: ico(s), sous: 'à la chaîne · ' + fu.nom, ton: 'ok' };
         // « Cuisine TX BC » dans le nœud Cuisine : le service s'y lit déjà.
         const court = a ? (a.nom.toUpperCase().startsWith(this.nom(s).toUpperCase() + ' ') ? a.nom.slice(this.nom(s).length + 1) : a.nom) : '';
         const sous = !a ? 'aucune case'
@@ -1168,7 +1180,17 @@
           <button class="lien-discret danger" data-pc-action="noeud-retirer" data-service="${esc(s)}">Retirer du chemin</button>`;
         if (!this.cmd) return `<p class="pc-pan-tete">${ico}<b>${esc(this.nom(s))}</b><span>dans un modèle, un nœud n’a pas de case :
           chaque commande a la sienne, sur son propre chemin.</span></p><div class="row-btns">${gestes}</div>`;
-        const lib = this.lib(this.cmd), a = caseDe(etat, s, this.cmd);
+        const lib = this.lib(this.cmd), a0 = caseDe(etat, s, this.cmd);
+        const fu = !a0 || !fabrique(a0) ? fusionneePar(etat, s, this.cmd) : null;
+        if (fu) {
+          const fiche = this.a.fiche ? this.a.fiche(fu.id, this.cmd) : '';
+          return `<p class="pc-pan-tete">${ico}<b>${esc(this.nom(s))}</b><span>faite <b>à la chaîne</b> par la case « ${esc(fu.nom)} » de ${esc(this.nom(fu.service))} :
+            une personne dresse et passe le plat, l’autre monte directement.</span></p>
+            ${this.dansLeTemps(s)}
+            <div class="row-btns pc-case-outils"><span class="mini-note">Pour la faire à part, décochez « à la chaîne » dans cette case.</span><span class="pc-outils-fin"></span>${gestes}</div>
+            ${fiche}`;
+        }
+        const a = a0;
         const cases = (etat.ateliers || []).filter(x => x.service === s && fabrique(x));
         const autres = a && fabrique(a) ? [...new Set(a.lots.flat())].filter(id => id !== this.cmd) : [];
         const dit = !a ? `aucune case : ${esc(lib)} saute cette étape`
@@ -1361,8 +1383,9 @@
           const plus = k.ateliers.length > 1 ? ' +' + (k.ateliers.length - 1) : '';
           const hors = k.etat === 'hors-fait';
           return `<td class="qf-c${hors ? ' hors' : ''}"><button class="qf-case ${hors ? 'alerte' : 'ok'}" ${attrs}
-            title="${hors ? esc(P.libelleClasse(c.id)) + ' ne passe pas par ' + esc(this.nom(s)) + ' selon son chemin : ce travail n’est attendu par personne' : esc(nomAt(k.ateliers[0])) + (h ? ' · ' + h : '')}">
-            <span class="qf-nom">${hors ? '⚠ ' : ''}${esc(nomAt(k.ateliers[0]))}${plus}</span>${h ? `<small>${h}</small>` : ''}</button></td>`;
+            title="${hors ? esc(P.libelleClasse(c.id)) + ' ne passe pas par ' + esc(this.nom(s)) + ' selon son chemin : ce travail n’est attendu par personne'
+              : k.fusion ? 'Faite à la chaîne par ' + esc(nomAt(k.ateliers[0])) + ' (' + esc(this.nom(k.fusion)) + ')' + (h ? ' · ' + h : '') : esc(nomAt(k.ateliers[0])) + (h ? ' · ' + h : '')}">
+            <span class="qf-nom">${hors ? '⚠ ' : ''}${esc(nomAt(k.ateliers[0]))}${plus}</span>${k.fusion ? '<small class="qf-chaine">à la chaîne</small>' : h ? `<small>${h}</small>` : ''}</button></td>`;
         }).join('');
         const v = par[c.id] || {};
         const fin = v.absente || v.fin == null ? '<span class="qf-etat manque">pas encore prête</span>'
@@ -1628,7 +1651,7 @@
   }
 
 
-  const api = { insererPrepa, depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, couverture, confier, nouvelleEquipe,
+  const api = { fusionneePar, insererPrepa, depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, couverture, confier, nouvelleEquipe,
     completer, colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, donnerCases, completerCases, nomLibre, caseHandling, anciensHandlings, brancherHandling, caseRobot, remplacerEtape,
     SERVICES_DISPO, estDispo, caseDispo, anciensDispos, partagerDispos, separerParCommande, ajouterBesoin, EditeurParcours };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

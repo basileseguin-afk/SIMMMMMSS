@@ -752,7 +752,8 @@
       'Poste réglementaire', 'Présence (min)', 'Emporte du matériel', 'Débit robot (plateaux/h)',
       'Effectif mini robot', 'Plafond plonge (u/h)', 'Permanent', 'Identifiant',
       'Vols en même temps', 'Pas avant départ (h)', 'Compagnies chargées', 'Vagues',
-      'Chauffeurs long courrier', 'Chauffeurs court courrier', 'Plonge par vol', 'Vols par camion', 'Camions disponibles']];
+      'Chauffeurs long courrier', 'Chauffeurs court courrier', 'Plonge par vol', 'Vols par camion', 'Camions disponibles',
+      'À la chaîne avec']];
     const handling = [['Atelier', 'Compagnie', 'Aller (min)', 'Minutes par vol', 'Retour (min)', 'Courrier', 'Vols par camion']];
     const chauffeurs = [['Atelier', 'Début', 'Fin', 'Chauffeurs']];
     const plongeVol = [['Atelier', 'Compagnie', 'Minutes par vol']];
@@ -778,7 +779,9 @@
           .map(v => jourEcrit(v.jour || 0) + ' ' + v.debut).join('; ') : a.type === 'dispo' && a.ouverture ? ecrireOuverture(a) : null,
         a.type === 'handling' ? (a.chauffeurs || {}).long ?? 2 : null, a.type === 'handling' ? (a.chauffeurs || {}).court ?? 1 : null,
         a.type === 'lavage' ? (a.parVol ? 'oui' : 'non') : null,
-        a.type === 'handling' ? a.volsParCamion || 1 : null, a.type === 'handling' ? a.camions || null : null]);
+        a.type === 'handling' ? a.volsParCamion || 1 : null, a.type === 'handling' ? a.camions || null : null,
+        // Fait aussi l'étape d'avant, à la chaîne : le nom de ce service.
+        a.type === 'manuel' && a.fusion ? nomDe(a.fusion) : null]);
       if (a.type === 'handling') {
         // Une ligne par compagnie réglée : sa durée, et si elle est long courrier.
         const longs = new Set(a.longs || []), d = a.durees || {}, al = a.allers || {}, re = a.retours || {}, vc = a.volsCamion || {};
@@ -849,6 +852,9 @@
         'Horaires : l’heure de début de chaque atelier, et son jour (J le jour du départ, J-1 la veille).',
         '   Un atelier sans ligne ici garde son heure du site ; un nouvel atelier commence à 06:00, jour J.',
         '   Pauses : « 10:00-10:15; 12:00-12:30 ». Présence vide : celle du réglage général.',
+        '   À la chaîne avec : une équipe qui fait AUSSI l’étape d’avant (ex. « PRÉPA » dans une case de Montage), pour ses',
+        '   commandes seulement : une personne dresse et passe le plat, l’autre monte. Seule, elle fait les deux ; à plusieurs,',
+        '   le poste le plus lent donne le rythme. Vide : chaque étape a sa case.',
         'Fabrications : ce que fait chaque atelier, DANS L’ORDRE. Une ligne par lot ; plusieurs classes d’un lot se séparent par « + ».',
         '   Pour ajouter une compagnie × classe à un atelier : ajoutez une ligne (Atelier, Ordre, ex. « AF/BC »).',
         'Man-minutes : celles qu’un atelier fixe pour une compagnie × classe, POUR TOUTE SA JOURNÉE (tous ses vols), à la place du barème. Absente = le barème.',
@@ -1004,6 +1010,15 @@
         const a = { id, nom, service: sid, type, debut: hh(debut), jour, personnes, pauses, lots: [],
           regime: { actif: T.ouiNon(o.poste_reglementaire, true), ...(presence !== null ? { presence } : {}) } };
         if (T.ouiNon(o.emporte_du_materiel, false)) a.materiel = 'consomme';
+        // À la chaîne avec l'étape d'avant : un nom de service. Vide = chacune sa case.
+        const chaine = String(o.a_la_chaine_avec ?? '').trim();
+        if (chaine && !/^(non|aucun|aucune|-)$/i.test(chaine)) {
+          if (type !== 'manuel') throw new Error('« à la chaîne avec » : pour une équipe qui prépare seulement');
+          const f = service(chaine);
+          if (!f) throw new Error('« à la chaîne avec » : service inconnu « ' + chaine + ' »');
+          if (f === sid) throw new Error('« à la chaîne avec » : un autre service que le sien');
+          a.fusion = f;
+        }
         if (type === 'robot') {
           a.debit = T.nombreDe(o.debit_robot_plateaux_h, 320);
           a.personnesMin = T.nombreDe(o.effectif_mini_robot, 1);

@@ -244,6 +244,31 @@
     return Number.isFinite(propre) ? propre : travailClasse(a.service, classe, bareme);
   }
 
+  /*
+   * DEUX ÉTAPES FUSIONNÉES, À LA CHAÎNE (retour d'usage du 29/09) : « une
+   * personne dresse un plat puis le passe, l'autre fait le montage
+   * directement ». Une case de Montage peut faire AUSSI l'étape d'avant
+   * (`fusion` : la Prépa) pour ses commandes — seulement celles-là : les
+   * autres compagnies gardent leurs deux cases.
+   *
+   * Sa durée, pour `avant` et `ici` minutes de travail et `n` personnes :
+   *   - seule, une personne fait tout : avant + ici ;
+   *   - à plusieurs, les personnes se répartissent entre les deux postes (au
+   *     moins une à chacun) et le plat passe de l'un à l'autre : c'est le poste
+   *     le plus lent qui donne le rythme, max(avant ÷ k, ici ÷ (n − k)), avec la
+   *     meilleure répartition k.
+   */
+  function dureeFusion(avant, ici, n) {
+    const p = Math.max(0, +avant || 0), m = Math.max(0, +ici || 0), k0 = Math.floor(+n || 0);
+    if (k0 < 1) return Infinity;
+    if (k0 === 1 || !p || !m) return (p + m) / k0;
+    let mieux = Infinity;
+    for (let k = 1; k < k0; k++) mieux = Math.min(mieux, Math.max(p / k, m / (k0 - k)));
+    return mieux;
+  }
+  /** Le service d'avant qu'une case fait aussi, s'il y en a un. */
+  const fusionDe = a => (a && (a.type === 'manuel' || !a.type) && typeof a.fusion === 'string' && a.fusion && a.fusion !== a.service ? a.fusion : null);
+
   /* ======================================================================
    *  4. PARCOURS — lu dans le graphe des liaisons
    * ====================================================================*/
@@ -1163,6 +1188,13 @@
     // attendu. C'est ce qui permet à un parcours d'être différent par classe.
     const produit = new Set();
     for (const a of ateliers) for (const lot of (a.lots || [])) for (const id of classesDuLot(lot)) produit.add(cle(a.service, id));
+    // Une étape fusionnée : la case d'aval la fait pour ses commandes. Elle n'est
+    // pas un trou, et qui l'attendrait attend la case qui la fait.
+    const fusionPar = new Map();       // « service|classe » → service de la case qui la fait
+    for (const a of ateliers) {
+      const f = fusionDe(a); if (!f) continue;
+      for (const lot of (a.lots || [])) for (const id of classesDuLot(lot)) if (!produit.has(cle(f, id))) fusionPar.set(cle(f, id), a.service);
+    }
     // Une mise à disposition sert TOUT : on ne lui fait pas énumérer les
     // classes. Le magasin sort du matériel pour qui en demande.
     for (const a of ateliers) if (a.type === 'dispo') for (const c of classes) produit.add(cle(a.service, c.id));
@@ -1204,7 +1236,11 @@
       const remonter = s => {
         for (const amont of (route.amonts[s] || [])) {
           if (vus.has(amont)) continue; vus.add(amont);
+          const fait = fusionPar.get(cle(amont, id));
           if (produit.has(cle(amont, id))) out.add(amont);
+          // Fusionnée : la case qui la fait est l'amont — sauf pour elle-même,
+          // qui attend ce qui précède l'étape qu'elle absorbe.
+          else if (fait && fait !== service) out.add(fait);
           else remonter(amont);
         }
       };
@@ -1258,7 +1294,7 @@
       for (const [id] of producteurs) {
         const route = routes.get(id); if (!route) continue;
         for (const s of route.services) {
-          if (produit.has(cle(s, id)) || lavages.has(s) || servicesHandling.has(s)) continue;
+          if (produit.has(cle(s, id)) || fusionPar.has(cle(s, id)) || lavages.has(s) || servicesHandling.has(s)) continue;
           if (!trous.has(s)) trous.set(s, []);
           trous.get(s).push(id);
         }
@@ -1622,8 +1658,18 @@
             // Chaque ligne ne compte que ses classes : dans une case « TX BC puis
             // TX PC », TX BC sort après ses seules minutes, sans attendre TX PC.
             const hommeMinutes = lots.reduce((n, c) => n + travailDans(a, c, bareme), 0);
-            duree = hommeMinutes / a.personnes / rendement;
-            detail = { hommeMinutes };
+            const f = fusionDe(a);
+            if (f) {
+              // L'étape d'avant, faite à la chaîne par la même case.
+              // Seules les commandes dont elle fait vraiment l'étape d'avant : une
+              // commande qu'une case de la Prépa fait encore n'est pas comptée deux fois.
+              const avant = lots.filter(c => fusionPar.get(cle(f, c.id)) === a.service).reduce((n, c) => n + travailClasse(f, c, bareme), 0);
+              duree = dureeFusion(avant, hommeMinutes, a.personnes) / rendement;
+              detail = { hommeMinutes: hommeMinutes + avant, fusion: f, minutesFusion: avant, minutesIci: hommeMinutes };
+            } else {
+              duree = hommeMinutes / a.personnes / rendement;
+              detail = { hommeMinutes };
+            }
           }
           if (!Number.isFinite(duree)) {
             journal.push({ atelier: a.id, service: a.service, nom, classes: ids, debut: env.maintenant,
@@ -1670,6 +1716,8 @@
           // anomalie déjà signalée — c'est la première livraison qui fait foi.
           // Le modèle ne se bloque pas sur une saisie que l'utilisateur corrigera.
           for (const id of ids) livrer(a.service, id);
+          const fl = fusionDe(a);
+          if (fl) for (const id of ids) if (fusionPar.get(cle(fl, id)) === a.service) livrer(fl, id);
 
           const ligne = { atelier: a.id, service: a.service, nom, classes: ids,
             debut: debutLot, fin: env.maintenant, duree, attente, attenteMateriel: attenteMat,
@@ -2085,7 +2133,7 @@
     MINUTES_PAR_JOUR, CABINES, TYPES,
     minutes, hhmm, idClasse, libelleClasse, enClair,
     REGIME_DEFAUT, normaliserRegime, travailDuPoste, executerTache,
-    classesDeVols, volsDesClasses, dureeHandling, compagniesDe, AVANCE_HANDLING, BAREME_DEMO, RENDEMENT_DEMO, travailClasse, travailDans,
+    classesDeVols, volsDesClasses, dureeHandling, compagniesDe, AVANCE_HANDLING, BAREME_DEMO, RENDEMENT_DEMO, travailClasse, travailDans, dureeFusion,
     PAX_TYPE, TOUTES, cleBareme, normaliserBareme, minutesParVol,
     arcsDuParcours, servicesDuParcours, routesDesClasses,
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,

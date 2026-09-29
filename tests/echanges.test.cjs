@@ -483,3 +483,19 @@ test('matériel : la source des retours à la plonge fait l’aller-retour par E
   const g = modifier(f, 'Matériel', l => l.map(x => (x[0] === 'Retours à la plonge' ? [x[0], 'demain'] : x)));
   assert.throws(() => E.classeurVersAteliers(g, etat, ctxAteliers()), /programme », « J\+1 » ou « planche/);
 });
+
+test('à la chaîne : une case qui fait aussi l’étape d’avant fait l’aller-retour par Excel', async () => {
+  const etat = ETAT_ATELIERS();
+  etat.ateliers.push({ id: 'a5', nom: 'Montage AF', service: 'prepa', type: 'manuel', debut: '06:00', jour: 0, personnes: 2,
+    pauses: [], lots: [['AF/BC']], regime: { actif: true }, fusion: 'preparation' });
+  const f = await parFichier(E.ateliersVersClasseur(etat, ctxAteliers()));
+  const tete = T.feuille(f, 'Ateliers').lignes[0], i = tete.indexOf('À la chaîne avec');
+  assert.ok(i > 0, 'une colonne');
+  assert.equal(T.feuille(f, 'Ateliers').lignes.find(l => l[0] === 'Montage AF')[i], 'PRÉPA', 'le nom du service');
+  const lu = E.classeurVersAteliers(f, etat, ctxAteliers()).etat;
+  assert.equal(lu.ateliers.find(a => a.nom === 'Montage AF').fusion, 'preparation');
+  assert.equal(lu.ateliers.find(a => a.nom === 'Cuisine matin').fusion, undefined, 'vide : chacune sa case');
+  // Un service inconnu, ou sur un robot : refusé, et dit.
+  const g = modifier(f, 'Ateliers', l => l.map(x => (x[0] === 'Montage AF' ? Object.assign(x.slice(), { [i]: 'NULLE PART' }) : x[0] === 'Robot' ? Object.assign(x.slice(), { [i]: 'PRÉPA' }) : x)));
+  assert.throws(() => E.classeurVersAteliers(g, etat, ctxAteliers()), e => /service inconnu « NULLE PART »/.test(e.message) && /équipe qui prépare/.test(e.message));
+});
