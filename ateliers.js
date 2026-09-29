@@ -153,6 +153,12 @@
         ...(type === 'robot' ? {
           debit: Number.isFinite(a.debit) ? Math.max(1, a.debit) : 320,
           personnesMin: Number.isInteger(a.personnesMin) ? Math.max(0, a.personnesMin) : 1,
+          // La ligne robot est partagée par les cases Robot du service ; une case
+          // « ligne propre » a sa machine. Les arrêts de la ligne (12:15–13:00…).
+          ...(a.lignePropre ? { lignePropre: true } : {}),
+          ...(Array.isArray(a.arretsLigne) && a.arretsLigne.length ? { arretsLigne: a.arretsLigne.slice(0, 12).map(x => {
+            P.minutes(x.de); P.minutes(x.a); return { de: String(x.de), a: String(x.a) };
+          }) } : {}),
           // Le débit de chaque commande sur le robot (plateaux/h) ; sans lui, celui du robot.
           ...debitsPropres(a, lots)
         } : {}),
@@ -597,6 +603,12 @@
         case 'lot-separer':
           return this.changer(() => { a.lots = this.classes.map(c => [c.id]); },
             'Une ligne par classe, dans l’ordre des échéances.');
+        // Les arrêts de la ligne robot : une seule ligne, les mêmes arrêts pour
+        // toutes les cases qui y travaillent.
+        case 'arret-ligne-ajouter':
+          return this.changer(() => { const l = this.robotsDeLigne(a); const arr = (a.arretsLigne || []).concat([{ de: '12:15', a: '13:00' }]); for (const x of l) x.arretsLigne = arr.map(y => ({ ...y })); }, 'Arrêt de la ligne ajouté.');
+        case 'arret-ligne-retirer':
+          return this.changer(() => { const l = this.robotsDeLigne(a); const arr = (a.arretsLigne || []).filter((_, i) => i !== +data.index); for (const x of l) { if (arr.length) x.arretsLigne = arr.map(y => ({ ...y })); else delete x.arretsLigne; } }, 'Arrêt de la ligne retiré.');
         case 'pause-ajouter':
           return this.changer(() => a.pauses.push({ de: '12:00', a: '12:45' }), 'Arrêt ajouté.');
         case 'pause-retirer':
@@ -853,6 +865,18 @@
           case 'lot-nouveau':
             if (v && !a.lots.some(l => l.includes(v))) a.lots.push([v]);
             el.value = '';
+            break;
+          case 'arret-ligne-de': case 'arret-ligne-a': {
+            const arr = (a.arretsLigne || []).map(y => ({ ...y })), i = +el.dataset.index;
+            if (!arr[i]) break;
+            arr[i][champ === 'arret-ligne-de' ? 'de' : 'a'] = v;
+            for (const x of this.robotsDeLigne(a)) x.arretsLigne = arr.map(y => ({ ...y }));
+            break;
+          }
+          // Un second robot : sa propre ligne, ses propres arrêts.
+          case 'ligne-propre':
+            if (el.checked) a.lignePropre = true;
+            else { delete a.lignePropre; const autre = this.robotsDeLigne(a).find(x => x !== a && x.arretsLigne); if (autre) a.arretsLigne = autre.arretsLigne.map(y => ({ ...y })); }
             break;
           case 'pause-de': a.pauses[+el.dataset.index].de = v; break;
           case 'pause-a':  a.pauses[+el.dataset.index].a = v; break;
@@ -1369,7 +1393,7 @@
           </div>`).join('')}
           <div class="at-actions-lot"><button class="btn btn-sm" data-at-action="vague-ajouter">+ Vague</button></div>` : ''}
         </div>` : `
-        ${a.type === 'manuel' ? this.blocFusion(a) : ''}
+        ${a.type === 'manuel' ? this.blocFusion(a) : a.type === 'robot' ? this.blocLigne(a) : ''}
         <div class="at-cases">
           <label class="chk chk-mini"><input type="checkbox" data-at-champ="regime" ${a.regime.actif ? 'checked' : ''}>
             Poste avec pauses — 15 min après 3 h, 30 min après 6 h</label>
@@ -1644,6 +1668,36 @@
      * déroulés : une tâche unique, des lignes à la suite, et plusieurs
      * commandes sur une même ligne, préparées ensemble.
      */
+    /** Les cases Robot qui tournent sur la même ligne que `a` (elle comprise). */
+    robotsDeLigne(a) {
+      if (a.lignePropre) return [a];
+      return this.state.ateliers.filter(x => x.type === 'robot' && x.service === a.service && !x.lignePropre);
+    }
+
+    /* La ligne robot (retour d'usage du 29/09) : une seule ligne physique,
+     * partagée par l'équipe du matin et celle de l'après-midi. */
+    blocLigne(a) {
+      const autres = this.robotsDeLigne(a).filter(x => x !== a);
+      const vue = ((this.resultat || {}).lots || []).filter(l => l.atelier === a.id && l.attenteLigne > 0);
+      const attend = vue.reduce((n, l) => n + l.attenteLigne, 0);
+      const arrets = a.arretsLigne || [];
+      return `<div class="at-ligne-robot">
+        <div class="at-sous-titre">La ligne robot</div>
+        <p class="mini-note">${a.lignePropre ? 'Cette case a <b>sa propre machine</b> : elle tourne en même temps que les autres robots.'
+          : autres.length ? `Une seule ligne, partagée avec ${autres.map(x => '« ' + esc(x.nom) + ' »').join(', ')} : un lot à la fois, quelle que soit l’équipe.`
+          : 'Une seule ligne : une autre case Robot de ce service (l’équipe de l’après-midi…) la partagera.'}
+          ${attend >= 1 ? ` <b>Attend la ligne ${Math.round(attend)} min</b> aujourd’hui.` : ''}</p>
+        <label class="chk chk-mini"><input type="checkbox" data-at-champ="ligne-propre" ${a.lignePropre ? 'checked' : ''}> Un second robot : sa propre ligne</label>
+        ${arrets.map((x, i) => `<div class="at-pause">
+          <span class="mini-note">Arrêt de la ligne</span>
+          <input type="time" value="${esc(x.de)}" data-at-champ="arret-ligne-de" data-index="${i}" aria-label="Début de l’arrêt ${i + 1} de la ligne">
+          <input type="time" value="${esc(x.a)}" data-at-champ="arret-ligne-a" data-index="${i}" aria-label="Fin de l’arrêt ${i + 1} de la ligne">
+          <button class="btn btn-sm" data-at-action="arret-ligne-retirer" data-index="${i}">Retirer</button></div>`).join('')}
+        <div class="at-actions-lot"><button class="btn btn-sm" data-at-action="arret-ligne-ajouter">+ Arrêt de la ligne</button>
+          <span class="mini-note">chaque jour, pour toutes les équipes de la ligne (ex. 12:15–13:00)</span></div>
+      </div>`;
+    }
+
     /* Deux étapes fusionnées, à la chaîne (retour d'usage du 29/09) : « une
      * personne dresse un plat puis le passe, l'autre fait le montage
      * directement ». La case fait aussi l'étape d'avant pour SES commandes. */
@@ -1712,7 +1766,8 @@
         if (a.type === 'handling') return '<span class="rc-deroule autre">par vol</span>';
         const lignes = (a.lots || []).filter(l => l.length), ens = lignes.filter(l => l.length > 1).length;
         if (!lignes.length) return '<span class="rc-deroule vide">rien</span>';
-        const chaine = a.fusion && a.type === 'manuel' ? ` <span class="rc-chaine" title="Fait aussi ${esc(nomSvc(a.fusion))}, à la chaîne">+ ${esc(nomSvc(a.fusion))} à la chaîne</span>` : '';
+        const chaine = a.fusion && a.type === 'manuel' ? ` <span class="rc-chaine" title="Fait aussi ${esc(nomSvc(a.fusion))}, à la chaîne">+ ${esc(nomSvc(a.fusion))} à la chaîne</span>`
+          : a.type === 'robot' && this.robotsDeLigne(a).length > 1 ? ` <span class="rc-chaine" title="Une seule ligne robot, partagée avec ${esc(this.robotsDeLigne(a).filter(x => x !== a).map(x => x.nom).join(', '))}">ligne partagée</span>` : '';
         return (chaine ? chaine.trim() + ' ' : '') + (lignes.length === 1 ? '<span class="rc-deroule unique">tâche unique</span>' : `<span class="rc-deroule suite">${lignes.length} à la suite</span>`)
           + (ens ? ` <span class="rc-ensemble-lab">${ens > 1 ? ens + ' lignes' : 'dont 1 ligne'} ensemble</span>` : '');
       };

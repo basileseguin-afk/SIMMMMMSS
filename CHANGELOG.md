@@ -5,6 +5,27 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-29 — Une seule ligne robot, partagée par le matin et l'après-midi
+
+Retour d'usage (après l'analyse d'Astra) : « le robot est une seule ligne
+physique, partagée par l'équipe robot du matin et l'équipe de l'après-midi,
+avec une pause entre 12:15 et 13:00 ». Jusqu'ici, deux cases Robot faisaient
+deux robots : la capacité était comptée deux fois.
+
+- Les cases Robot d'un même service tournent sur **une seule ligne** : un lot
+  à la fois, dans l'ordre des demandes. L'attente de la ligne est comptée et
+  dite dans la fiche.
+- **Arrêts de la ligne** (12:15–13:00 par défaut), chaque jour, pour toutes
+  les équipes de la ligne : saisis dans une fiche, recopiés sur les autres.
+- « Un second robot : sa propre ligne » pour une vraie deuxième machine.
+- Récap des cases (« ligne partagée ») ; Excel : colonnes « Ligne robot » et
+  « Arrêts de la ligne » de la feuille Ateliers.
+- Tests : `tests/robot-ligne.test.cjs` (moteur), Excel,
+  `tests/robot-ligne-browser.cjs`.
+
+Fichiers : `moteur/production.js`, `ateliers.js`, `echanges.js`,
+`ateliers.css`, tests, docs.
+
 ## 2026-09-29 — Deux étapes à la chaîne dans une case (Prépa + Montage)
 
 Retour d'usage : « l'étape prépa et montage faite en même temps : une personne

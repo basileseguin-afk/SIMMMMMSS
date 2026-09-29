@@ -249,6 +249,20 @@ Une commande y dure **ses plateaux ÷ son débit**. Le service **Robot** est
 rattaché au Montage ; il le remplace sur les chemins de TX, CRL et FBU Économie,
 où une seule case Robot prépare ces commandes, l'une après l'autre.
 
+**Une seule ligne physique** (retour d'usage du 29/09) : « le robot est une
+seule ligne, partagée par l'équipe du matin et celle de l'après-midi, avec une
+pause entre 12:15 et 13:00 ». Les cases Robot d'un même service tournent sur
+UNE ligne : un lot à la fois, dans l'ordre des demandes, quelle que soit
+l'équipe. Deux équipes ne font pas deux robots.
+
+| Champ | Sens |
+|---|---|
+| `lignePropre` | `true` : un second robot, sa propre machine |
+| `arretsLigne` | `[{ de: '12:15', a: '13:00' }]` : les arrêts de la machine, chaque jour ; ceux de toutes les cases de la ligne valent pour toutes |
+
+Le temps passé à attendre la ligne s'ajoute à l'attente du lot
+(`attenteLigne`) ; la fiche le dit (« Attend la ligne 60 min »).
+
 ### La mise à disposition
 
 Un magasin, des appros, tout service qui se contente de **sortir du matériel ou

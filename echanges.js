@@ -753,7 +753,7 @@
       'Effectif mini robot', 'Plafond plonge (u/h)', 'Permanent', 'Identifiant',
       'Vols en même temps', 'Pas avant départ (h)', 'Compagnies chargées', 'Vagues',
       'Chauffeurs long courrier', 'Chauffeurs court courrier', 'Plonge par vol', 'Vols par camion', 'Camions disponibles',
-      'À la chaîne avec']];
+      'À la chaîne avec', 'Ligne robot', 'Arrêts de la ligne']];
     const handling = [['Atelier', 'Compagnie', 'Aller (min)', 'Minutes par vol', 'Retour (min)', 'Courrier', 'Vols par camion']];
     const chauffeurs = [['Atelier', 'Début', 'Fin', 'Chauffeurs']];
     const plongeVol = [['Atelier', 'Compagnie', 'Minutes par vol']];
@@ -781,7 +781,10 @@
         a.type === 'lavage' ? (a.parVol ? 'oui' : 'non') : null,
         a.type === 'handling' ? a.volsParCamion || 1 : null, a.type === 'handling' ? a.camions || null : null,
         // Fait aussi l'étape d'avant, à la chaîne : le nom de ce service.
-        a.type === 'manuel' && a.fusion ? nomDe(a.fusion) : null]);
+        a.type === 'manuel' && a.fusion ? nomDe(a.fusion) : null,
+        // La ligne robot : partagée par les robots du service, ou propre ; ses arrêts.
+        a.type === 'robot' ? (a.lignePropre ? 'propre' : 'partagée') : null,
+        a.type === 'robot' ? (a.arretsLigne || []).map(x => x.de + '-' + x.a).join('; ') || null : null]);
       if (a.type === 'handling') {
         // Une ligne par compagnie réglée : sa durée, et si elle est long courrier.
         const longs = new Set(a.longs || []), d = a.durees || {}, al = a.allers || {}, re = a.retours || {}, vc = a.volsCamion || {};
@@ -855,6 +858,8 @@
         '   À la chaîne avec : une équipe qui fait AUSSI l’étape d’avant (ex. « PRÉPA » dans une case de Montage), pour ses',
         '   commandes seulement : une personne dresse et passe le plat, l’autre monte. Seule, elle fait les deux ; à plusieurs,',
         '   le poste le plus lent donne le rythme. Vide : chaque étape a sa case.',
+        '   Ligne robot : « partagée » (défaut) — les robots d’un service tournent sur UNE ligne, un lot à la fois, matin et',
+        '   après-midi ; « propre » — un second robot. Arrêts de la ligne : « 12:15-13:00 », chaque jour, pour toute la ligne.',
         'Fabrications : ce que fait chaque atelier, DANS L’ORDRE. Une ligne par lot ; plusieurs classes d’un lot se séparent par « + ».',
         '   Pour ajouter une compagnie × classe à un atelier : ajoutez une ligne (Atelier, Ordre, ex. « AF/BC »).',
         'Man-minutes : celles qu’un atelier fixe pour une compagnie × classe, POUR TOUTE SA JOURNÉE (tous ses vols), à la place du barème. Absente = le barème.',
@@ -1022,6 +1027,15 @@
         if (type === 'robot') {
           a.debit = T.nombreDe(o.debit_robot_plateaux_h, 320);
           a.personnesMin = T.nombreDe(o.effectif_mini_robot, 1);
+          const lg = T.cleEntete(String(o.ligne_robot ?? ''));
+          if (lg && !/^(partagee|commune|propre|seule|a_part)$/.test(lg)) throw new Error('ligne robot : « partagée » ou « propre »');
+          if (/^(propre|seule|a_part)$/.test(lg)) a.lignePropre = true;
+          const arrets = String(o.arrets_de_la_ligne ?? '').split(/\s*;\s*/).filter(Boolean).map(t => {
+            const m = /^(.+?)\s*[-–]\s*(.+)$/.exec(t);
+            if (!m) throw new Error('arrêt de ligne illisible « ' + t + ' » (ex. 12:15-13:00)');
+            return { de: hh(T.heureDe(m[1])), a: hh(T.heureDe(m[2])) };
+          });
+          if (arrets.length) a.arretsLigne = arrets;
         }
         if (type === 'lavage') {
           a.plafond = T.nombreDe(o.plafond_plonge_u_h, 0); a.tunnels = [];

@@ -817,6 +817,37 @@
     return out;
   }
 
+  /*
+   * LA LIGNE ROBOT (retour d'usage du 29/09) : « le robot est une seule ligne
+   * physique, partagée par l'équipe du matin et celle de l'après-midi, avec
+   * une pause entre 12:15 et 13:00 ». Les cases Robot d'un même service
+   * tournent sur UNE ligne : un lot à la fois, quelle que soit l'équipe. Une
+   * case `lignePropre` a sa propre machine (un second robot).
+   * `arretsLigne` : les arrêts de la machine ([{de, a}], chaque jour) ; ceux
+   * de toutes les cases de la ligne s'appliquent à toutes.
+   */
+  const cleLigne = a => (a.lignePropre ? 'robot:' + a.id : 'robot:' + a.service);
+  function arretsDeLigne(robots) {
+    const out = [];
+    for (const r of robots) for (const x of (Array.isArray(r.arretsLigne) ? r.arretsLigne : [])) {
+      let de, fin;
+      try { de = minutes(x.de); fin = minutes(x.a); } catch (e) { continue; }
+      if (!(fin > de)) continue;
+      // Chaque jour où une équipe peut travailler (J-3 … J).
+      for (let j = -3; j <= 0; j++) out.push({ de: de + j * MINUTES_PAR_JOUR, a: fin + j * MINUTES_PAR_JOUR });
+    }
+    return out;
+  }
+  /** Des pauses triées et fusionnées, quelle que soit leur provenance. */
+  function fusionnerPauses(listes) {
+    const out = [];
+    for (const p of listes.flat().filter(p => p.a > p.de).sort((x, y) => x.de - y.de)) {
+      const d = out[out.length - 1];
+      if (d && p.de <= d.a) d.a = Math.max(d.a, p.a); else out.push({ ...p });
+    }
+    return out;
+  }
+
   /**
    * Instant d'achèvement d'une tâche de `duree` minutes de travail effectif
    * commencée à `depart`, en sautant les pauses. Retourne aussi le temps passé
@@ -1388,9 +1419,30 @@
       fin: null, travail: 0, attente: 0, arret: 0, lots: [] }));
     const parId = new Map(suivi.map(s => [s.id, s]));
 
+    // Les lignes robot : un lot à la fois sur chaque machine, dans l'ordre des demandes.
+    const lignes = new Map();
+    for (const a of ateliers) if (a.type === 'robot') {
+      const k = cleLigne(a);
+      if (!lignes.has(k)) lignes.set(k, { libre: true, file: [], robots: [] });
+      lignes.get(k).robots.push(a);
+    }
+    for (const l of lignes.values()) l.arrets = arretsDeLigne(l.robots);
+    function* prendreLigne(k) {
+      const l = lignes.get(k);
+      if (l.libre) { l.libre = false; return; }
+      const ev = env.evenement('ligne ' + k); l.file.push(ev);
+      yield ev;
+    }
+    function rendreLigne(k) {
+      const l = lignes.get(k);
+      const ev = l.file.shift();
+      if (ev) ev.reussir(env.maintenant); else l.libre = true;
+    }
+
     for (const a of ateliers) {
       const vue = parId.get(a.id);
-      const pauses = pausesDe(a);
+      // Un robot s'arrête aussi quand sa ligne s'arrête.
+      const pauses = a.type === 'robot' ? fusionnerPauses([pausesDe(a), lignes.get(cleLigne(a)).arrets]) : pausesDe(a);
       const depart = vue.debut;
       const regime = normaliserRegime(a.regime, opts.regime);
       const finPoste = regime.actif ? depart + regime.presence : Infinity;
@@ -1640,7 +1692,7 @@
             const ouvert = servi(ids.flatMap(id => amontsDe(a.service, id)), env.maintenant);
             if (ouvert > env.maintenant && Number.isFinite(ouvert)) yield env.delai(ouvert - env.maintenant);
           }
-          const attente = env.maintenant - debutAttente;
+          let attente = env.maintenant - debutAttente;
           horloge = Math.max(horloge, env.maintenant);
           if (env.maintenant < horloge) yield env.delai(horloge - env.maintenant);
 
@@ -1688,10 +1740,21 @@
             horloge = Math.max(horloge, env.maintenant);
           }
 
+          // Un robot attend que SA LIGNE soit libre : l'autre équipe peut y être.
+          const k = a.type === 'robot' ? cleLigne(a) : null;
+          let attenteLigne = 0, tient = false;
+          if (k && env.maintenant < finPoste) {
+            const t0 = env.maintenant;
+            yield* prendreLigne(k); tient = true;
+            attenteLigne = env.maintenant - t0;
+            if (attenteLigne > 0) detail.attenteLigne = attenteLigne;
+          }
+
           // Le poste s'arrête : ce qui reste ne sera pas fait aujourd'hui.
           if (env.maintenant >= finPoste) {
+            if (tient) rendreLigne(k);
             const ligne = { atelier: a.id, service: a.service, nom, classes: ids,
-              debut: env.maintenant, fin: null, duree: null, attente, arret: 0,
+              debut: env.maintenant, fin: null, duree: null, attente: attente + attenteLigne, arret: 0,
               impossible: true, horsPoste: true, ...detail };
             journal.push(ligne); vue.lots.push(ligne);
             return;
@@ -1700,8 +1763,10 @@
           const t = executerTache({ depart: env.maintenant, duree, cumul, prises, pauses, regime, finPoste });
           const debutLot = env.maintenant;
           yield env.delai(t.fin - env.maintenant);
+          if (tient) rendreLigne(k);
           cumul = t.cumul;
           const { arret } = t;
+          attente += attenteLigne;
 
           if (t.tronque) {
             const ligne = { atelier: a.id, service: a.service, nom, classes: ids,
@@ -2137,7 +2202,7 @@
     PAX_TYPE, TOUTES, cleBareme, normaliserBareme, minutesParVol,
     arcsDuParcours, servicesDuParcours, routesDesClasses,
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,
-    pausesDe, finAvecPauses, vaguesDe, disponibleDes, debitRobot, ouvertureDe, prochaineOuverture,
+    pausesDe, fusionnerPauses, arretsDeLigne, finAvecPauses, vaguesDe, disponibleDes, debitRobot, ouvertureDe, prochaineOuverture,
     categorieVol, chauffeursDe, creneauxDe, chauffeursPresents, debutAvecChauffeurs, dureeLavageVol, trajetHandling, debutTrajet, volsParCamionDe, vitesseTunnel,
     UNITES_DEFAUT, unitesDe, retoursDeVols, besoinMateriel, sourceRetours, SOURCES_RETOURS,
     simuler, niveauA, niveauLineaire, dureeLisible

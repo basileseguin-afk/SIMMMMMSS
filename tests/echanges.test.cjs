@@ -499,3 +499,21 @@ test('à la chaîne : une case qui fait aussi l’étape d’avant fait l’alle
   const g = modifier(f, 'Ateliers', l => l.map(x => (x[0] === 'Montage AF' ? Object.assign(x.slice(), { [i]: 'NULLE PART' }) : x[0] === 'Robot' ? Object.assign(x.slice(), { [i]: 'PRÉPA' }) : x)));
   assert.throws(() => E.classeurVersAteliers(g, etat, ctxAteliers()), e => /service inconnu « NULLE PART »/.test(e.message) && /équipe qui prépare/.test(e.message));
 });
+
+test('ligne robot : partagée ou propre, et ses arrêts, font l’aller-retour par Excel', async () => {
+  const etat = ETAT_ATELIERS();
+  Object.assign(etat.ateliers.find(a => a.id === 'a2'), { arretsLigne: [{ de: '12:15', a: '13:00' }] });
+  etat.ateliers.push({ id: 'a6', nom: 'Robot 2', service: 'prepa', type: 'robot', debut: '13:00', jour: 0, personnes: 2, debit: 300,
+    personnesMin: 1, pauses: [], lots: [], regime: { actif: false }, lignePropre: true });
+  const f = await parFichier(E.ateliersVersClasseur(etat, ctxAteliers()));
+  const tete = T.feuille(f, 'Ateliers').lignes[0], li = tete.indexOf('Ligne robot'), ar = tete.indexOf('Arrêts de la ligne');
+  const ligne = nom => T.feuille(f, 'Ateliers').lignes.find(l => l[0] === nom);
+  assert.deepEqual([ligne('Robot')[li], ligne('Robot')[ar]], ['partagée', '12:15-13:00']);
+  assert.equal(ligne('Robot 2')[li], 'propre');
+  const lu = E.classeurVersAteliers(f, etat, ctxAteliers()).etat;
+  assert.deepEqual(lu.ateliers.find(a => a.nom === 'Robot').arretsLigne, [{ de: '12:15', a: '13:00' }]);
+  assert.equal(lu.ateliers.find(a => a.nom === 'Robot').lignePropre, undefined);
+  assert.equal(lu.ateliers.find(a => a.nom === 'Robot 2').lignePropre, true);
+  const g = modifier(f, 'Ateliers', l => l.map(x => (x[0] === 'Robot' ? Object.assign(x.slice(), { [li]: 'double' }) : x[0] === 'Robot 2' ? Object.assign(x.slice(), { [ar]: 'midi' }) : x)));
+  assert.throws(() => E.classeurVersAteliers(g, etat, ctxAteliers()), e => /« partagée » ou « propre »/.test(e.message) && /arrêt de ligne illisible/.test(e.message));
+});
