@@ -1388,7 +1388,7 @@
         <thead><tr><th scope="col">Compagnie</th><th scope="col">Vols</th>${extra ? extra.tete : ''}${cols.map(c => `<th scope="col">${esc(c.lib)}</th>`).join('')}${total ? '<th scope="col">Trajet</th>' : ''}<th></th></tr></thead><tbody>
         <tr class="at-cies-toutes"><th scope="row">Toutes les compagnies</th><td>—</td>${extra ? extra.toutes : ''}${cols.map(c => `<td>${champ(c, P.TOUTES, 'toutes les compagnies')}</td>`).join('')}${total ? `<td>${total(P.TOUTES)}</td>` : ''}<td></td></tr>
         ${liste.map(cie => `<tr><th scope="row">${esc(cie)}</th><td>${nbVols(cie) || '—'}</td>${extra ? extra.ligne(cie) : ''}${cols.map(c => `<td>${champ(c, cie, cie)}</td>`).join('')}${total ? `<td>${total(cie)}</td>` : ''}
-          <td>${propre(cie) ? `<button class="lien-discret" data-at-action="duree-retirer" data-cie="${esc(cie)}" title="Revenir aux temps de toutes les compagnies">× propre</button>` : ''}</td></tr>`).join('')}
+          <td>${propre(cie) ? `<button class="lien-discret" data-at-action="duree-retirer" data-cie="${esc(cie)}" title="Revenir aux temps de toutes les compagnies" aria-label="Revenir aux temps de toutes les compagnies pour ${esc(cie)}">×</button>` : ''}</td></tr>`).join('')}
         </tbody></table></div>
         <p class="mini-note">Vide : le temps de « Toutes les compagnies ».
           <label class="at-inline">Ajouter une compagnie<input data-at-champ="cie-nouvelle" maxlength="40" placeholder="Ex. EZY"
@@ -1407,10 +1407,13 @@
       const maxi = presents.length ? Math.max(...presents.flatMap(c => [c.de, c.a]).map(t => P.chauffeursPresents(presents, t))) : 0;
       return `
         <div class="at-sous-titre">Chargement des vols</div>
-        <p class="mini-note at-regle">Le handling <b>récupère les trolleys prêts dans la CF départ</b> et <b>charge les vols</b>.
-          Il réunit les classes d’un même vol, prend les vols <b>strictement dans l’ordre des départs</b> (un vol incomplet retient
-          les suivants) et travaille <b>le jour J des vols</b>, jamais la veille. Un camion part avec ses chauffeurs,
-          <b>va jusqu’à l’avion, le charge et revient à l’unité</b> : ses chauffeurs sont pris tout ce temps ; le vol est chargé à la fin de son chargement.</p>
+        <div class="mini-note at-regle">Le handling <b>récupère les trolleys prêts dans la CF départ</b> et <b>charge les vols</b>,
+          dans l’ordre des départs, le jour J des vols.
+          <details class="aide"><summary aria-label="Comment le handling charge les vols">?</summary><span class="aide-corps">
+            Il réunit les classes d’un même vol et prend les vols <b>strictement dans l’ordre des départs</b> : un vol incomplet retient
+            les suivants. Il travaille <b>le jour J des vols</b>, jamais la veille. Un camion part avec ses chauffeurs,
+            <b>va jusqu’à l’avion, le charge et revient à l’unité</b> : ses chauffeurs sont pris tout ce temps ; le vol est chargé
+            à la fin de son chargement.</span></details></div>
         <div class="at-champs at-handling">
           <label>Chauffeurs par camion, <b>long courrier</b><input type="number" min="1" max="20" value="${ch.long}" data-at-champ="chauffeurs-long"></label>
           <label>Chauffeurs par camion, <b>court courrier</b><input type="number" min="1" max="20" value="${ch.court}" data-at-champ="chauffeurs-court"></label>
@@ -1436,14 +1439,14 @@
               <label class="at-inline">Vols en même temps<input type="number" min="1" max="50" value="${a.simultanes || 1}" data-at-champ="simultanes"></label></p>`}
         <div class="at-actions-lot"><button class="btn btn-sm${creneaux.length ? '' : ' btn-play'}" data-at-action="creneau-ajouter">+ Créneau de chauffeurs</button></div>
 
-        <div class="at-sous-titre">Par compagnie : long ou court courrier, et le trajet du camion (minutes)</div>
-        ${this.tableCompagnies(a, cies, nb, [{ map: 'allers', lib: 'Aller sur la piste' }, { map: 'durees', lib: 'Charger l’avion' }, { map: 'retours', lib: 'Retour à l’unité' }], {
+        <div class="at-sous-titre">Par compagnie : courrier et trajet du camion, en minutes (aller + charger + retour)</div>
+        ${this.tableCompagnies(a, cies, nb, [{ map: 'allers', lib: 'Aller piste' }, { map: 'durees', lib: 'Charger' }, { map: 'retours', lib: 'Retour unité' }], {
           total: cie => { const t = P.trajetHandling(a, cie), d = P.dureeHandling(a, cie);
             return d == null ? '—' : '<b>' + Math.round(t.aller + d + t.retour) + '</b> min'; },
           toutes: '<td>—</td><td>—</td>',
           ligne: cie => `<td><select data-at-champ="categorie" data-cie="${esc(cie)}" aria-label="${esc(cie)} : long ou court courrier">
               <option value="court" ${longs.has(cie) ? '' : 'selected'}>court</option><option value="long" ${longs.has(cie) ? 'selected' : ''}>long</option></select></td>
-            <td>${longs.has(cie) ? ch.long : ch.court}</td>`, tete: '<th scope="col">Courrier</th><th scope="col">Chauffeurs / camion</th>' })}
+            <td>${longs.has(cie) ? ch.long : ch.court}</td>`, tete: '<th scope="col">Courrier</th><th scope="col" title="Chauffeurs par camion">Chauff.</th>' })}
         <p class="mini-note at-regle">Des durées, pas des man-minutes : plus de chauffeurs dans le camion ne raccourcissent pas le trajet.
           Un camion qui charge plusieurs vols fait un seul aller et un seul retour.</p>`;
     }

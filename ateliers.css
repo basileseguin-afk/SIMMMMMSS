@@ -381,13 +381,15 @@ body.ateliers-open .workbench{display:none}
 #view-ateliers .rc-table select.rc-mode{min-width:170px;border-color:var(--bordure);background:var(--bg3,#fff);font-weight:600}
 
 /* Handling et plonge : une ligne par compagnie (retour d'usage du 28/09). */
-.at-cies{border-collapse:collapse;width:auto;min-width:420px;font-size:13px;margin:4px 0}
-.at-cies th,.at-cies td{padding:5px 10px;border-bottom:1px solid var(--bordure);text-align:left;vertical-align:middle}
+.at-cies-bloc .table-scroll{overflow-x:auto;max-width:100%}
+.at-cies{border-collapse:collapse;width:auto;font-size:13px;margin:4px 0}
+.at-cies th,.at-cies td{padding:4px 8px;border-bottom:1px solid var(--bordure);text-align:left;vertical-align:middle;white-space:nowrap}
+.at-cies thead th{white-space:normal;line-height:1.2;vertical-align:bottom}
 .at-cies thead th{font-size:12px;color:var(--txt2);font-weight:700;background:var(--bg2)}
 .at-cies tbody th{font-weight:700;white-space:nowrap}
 .at-cies-toutes th,.at-cies-toutes td{background:color-mix(in srgb,var(--c-equipes) 6%,transparent)}
-#view-ateliers .at-cies input[type=number]{width:90px;min-width:0}
-#view-ateliers .at-cies select{width:auto;min-width:90px}
+#view-ateliers .at-cies input[type=number]{width:64px;min-width:0;padding:5px 6px}
+#view-ateliers .at-cies select{width:auto;min-width:0;padding:5px 6px}
 .at-creneau label{display:inline-flex;align-items:center;gap:6px}
 #view-ateliers .at-creneau input[type=number]{width:70px;min-width:0}
 .at-inline{display:inline-flex;align-items:center;gap:6px;margin-left:8px}
@@ -404,3 +406,6 @@ body.ateliers-open .workbench{display:none}
 .pc-cmds-ajout .at-ajout{grid-template-columns:1fr;margin:0;padding:10px}
 .pc-cmds-ajout .at-ajout-cabs{grid-column:auto}
 .pc-cmds-ajout .at-ajout-ouvrir{width:100%}
+.at-creneau{flex-wrap:wrap}
+#view-ateliers .at-creneau input[type=time]{width:auto;min-width:0}
+.at-intro-aide{padding:0 14px 8px;margin:0}

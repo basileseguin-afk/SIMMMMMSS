@@ -138,6 +138,18 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.deepEqual(await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service==='handling').map(a=>a.type)),['handling'],'l’ancienne case rejoint le handling existant');
   assert.doesNotMatch(await page.locator('#at-anomalies').innerText(),/ancienne logique/);
 
+  // La fenêtre de la case dans un chemin tient dans l'écran (retour d'usage : « la page est
+  // beaucoup trop grande pour la taille de la fenêtre ») : rien ne dépasse, même à 1280 px.
+  await page.setViewportSize({width:1280,height:720});
+  await nav.aller(page,'at-chemins');
+  const cmd=await page.evaluate(()=>Sim.ateliers.classes.find(c=>c.vols.length).id);
+  await page.evaluate(cmd=>Sim.ateliers.parcours.ouvrir(cmd,'handling'),cmd);await attendre();
+  assert.equal(await page.locator('.pc-tiroir').count(),1,'la case du handling s’ouvre dans le chemin');
+  {
+    const debord=await page.evaluate(()=>{const t=document.querySelector('.pc-tiroir');return {t:t.scrollWidth-t.clientWidth,doc:document.documentElement.scrollWidth-innerWidth};});
+    assert.ok(debord.t<=1&&debord.doc<=1,'rien ne dépasse de la fenêtre de la case : '+JSON.stringify(debord));
+    assert.equal(await page.evaluate(()=>document.body.classList.contains('pc-tiroir-large')),true,'la fenêtre s’élargit pour le handling');
+  }
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('handling-browser : ok');
  }finally{await browser.close();}

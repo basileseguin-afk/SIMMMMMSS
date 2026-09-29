@@ -158,6 +158,10 @@
 .pc-renvoi .ico{color:var(--c-equipes)}
 /* La page se range à gauche de la fenêtre de la case. */
 :root{--tiroir:min(460px,40vw)}
+body.pc-tiroir-large{--tiroir:min(760px,60vw)}
+/* Le contenu ne l'élargit jamais : ce qui est trop large défile sur place. */
+.pc-tiroir{grid-template-columns:minmax(0,1fr)}
+.pc-tiroir .at-carte{min-width:0}
 body.pc-tiroir-ouvert[data-vue="ateliers"][data-sous="at-chemins"] #view-ateliers{padding-right:calc(var(--tiroir) + 16px)}
 /* Le temps de régler une case, la liste des commandes s'efface : le chemin garde la place. */
 body.pc-tiroir-ouvert .pc-cadre{grid-template-columns:minmax(0,1fr)}

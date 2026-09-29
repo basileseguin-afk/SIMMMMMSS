@@ -1238,6 +1238,9 @@
       if (!root.document) return;
       const ouvert = !!this.a.boite().querySelector('.pc-tiroir');
       document.body.classList.toggle('pc-tiroir-ouvert', ouvert);
+      // Une case qui se règle compagnie par compagnie (handling, plonge par vol)
+      // a besoin d'une fenêtre plus large : ses tableaux ne tiendraient pas.
+      document.body.classList.toggle('pc-tiroir-large', ouvert && !!this.a.boite().querySelector('.pc-tiroir .at-cies'));
       // Elle commence sous la barre des onglets : le bandeau, les étapes et les
       // outils de la vue (Annuler, Excel, Importer) restent à portée.
       if (ouvert) {

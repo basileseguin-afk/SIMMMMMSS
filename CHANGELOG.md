@@ -5,6 +5,21 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-29 — La fenêtre du handling tient dans l'écran
+
+Retour d'usage : « la page du handling est beaucoup trop grande pour la taille
+de la fenêtre ». Dans un chemin, la case s'ouvre dans une fenêtre à droite,
+large de 460 px ; le tableau par compagnie du handling (neuf colonnes) et ses
+créneaux la faisaient déborder jusqu'à 1 700 px, à faire défiler de côté.
+
+- La fenêtre s'élargit (jusqu'à 760 px, 60 % de l'écran) quand la case se
+  règle compagnie par compagnie (handling, plonge par vol) ; son contenu ne
+  peut plus l'élargir, ce qui reste trop large défile sur place.
+- Tableau plus compact : champs plus étroits, en-têtes courts (Aller piste,
+  Charger, Retour unité, Chauff.), « × » pour revenir aux temps communs.
+- L'explication du handling tient en une ligne, le détail derrière « ? ».
+- Test : `tests/handling-browser.cjs` vérifie qu'à 1 280 px rien ne dépasse.
+
 ## 2026-09-28 — Le camion du handling : chauffeurs, vols, aller + charger + retour
 
 Retour d'usage : « nombre de chauffeurs par camion, combien de vols charge un
