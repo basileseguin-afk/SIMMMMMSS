@@ -309,8 +309,9 @@ chauffeurs (selon la catégorie de la compagnie) ; il dure `allers[cie]` (du
 quai à l'avion) + `durees[cie]` (charger l'avion, pour chaque vol du camion) +
 `retours[cie]` (revenir à l'unité), `*` pour toutes. Le vol est chargé à la
 fin de SON chargement ; les chauffeurs et le camion sont pris jusqu'au retour.
-`volsParCamion` (1 par défaut) : le camion prend aussi les vols suivants dans
-l'ordre des départs, de la même catégorie, déjà complets et dont le « pas
+`volsCamion[cie]` (sinon `volsParCamion`, 1 par défaut) : combien de vols de
+cette compagnie un camion charge ; il prend aussi les vols suivants dans
+l'ordre des départs, **de la même compagnie**, déjà complets et dont le « pas
 avant » est passé quand il y arrive — un seul aller, un seul retour.
 `camions` : combien de camions peuvent être dehors en même temps (0 : pas de
 limite). Sans créneau de chauffeurs, « vols en même temps » compte les camions.

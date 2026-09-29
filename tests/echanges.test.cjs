@@ -285,7 +285,7 @@ test('ateliers : un handling fait l’aller-retour par Excel, durées par compag
       regime: { actif: true }, durees: { '*': 30, AF: 45 }, simultanes: 3, avance: 150, compagnies: ['AF', 'TX'] });
     let f = E.ateliersVersClasseur(etat, ctxAteliers());
     const fH = f.find(x => x.nom === 'Handling');
-    assert.deepEqual(fH.lignes.slice(1), [['Handling', 'toutes', null, 30, null, null], ['Handling', 'AF', null, 45, null, 'court']]);
+    assert.deepEqual(fH.lignes.slice(1), [['Handling', 'toutes', null, 30, null, null, null], ['Handling', 'AF', null, 45, null, 'court', null]]);
     // Dans Excel, on change la durée d'AF et on en donne une à TX.
     f = modifier(f, 'Handling', l => l.map(r => (r[1] === 'AF' ? [r[0], r[1], null, 50] : r)).concat([['Handling', 'TX', null, 20]]));
     const { etat: lu } = E.classeurVersAteliers(await parFichier(f), etat, ctxAteliers());
@@ -428,13 +428,13 @@ test('handling : le trajet du camion (aller, charger, retour) et les vols par ca
     regime: { actif: true }, durees: { '*': 30, AF: 50 }, allers: { '*': 10, AF: 15 }, retours: { '*': 12 }, simultanes: 1, avance: 180, compagnies: [],
     longs: ['AF'], chauffeurs: { long: 2, court: 1 }, creneaux: [{ de: '03:00', a: '11:00', n: 6 }], volsParCamion: 2, camions: 4 });
   const f = await parFichier(E.ateliersVersClasseur(etat, ctxAteliers()));
-  const complet = l => [...l, ...Array(Math.max(0, 6 - l.length)).fill(null)];   // une cellule vide en fin de ligne ne s'écrit pas
-  assert.deepEqual(f.find(x => x.nom === 'Handling').lignes.slice(1).map(complet), [['Handling', 'toutes', 10, 30, 12, null], ['Handling', 'AF', 15, 50, null, 'long']]);
+  const complet = l => [...l, ...Array(Math.max(0, 7 - l.length)).fill(null)];   // une cellule vide en fin de ligne ne s'écrit pas
+  assert.deepEqual(f.find(x => x.nom === 'Handling').lignes.slice(1).map(complet), [['Handling', 'toutes', 10, 30, 12, null, null], ['Handling', 'AF', 15, 50, null, 'long', null]]);
   const { etat: lu } = E.classeurVersAteliers(f, etat, ctxAteliers());
   const h = lu.ateliers.find(a => a.nom === 'Handling');
   assert.deepEqual([h.allers, h.retours, h.durees, h.volsParCamion, h.camions], [{ '*': 10, AF: 15 }, { '*': 12 }, { '*': 30, AF: 50 }, 2, 4]);
   // Dans Excel : TX a son trajet, AF perd son aller propre.
-  const g = modifier(f, 'Handling', l => l.map(x => (x[1] === 'AF' ? [x[0], x[1], null, 50, null, 'long'] : x)).concat([['Handling', 'TX', 20, 25, 20, 'court']]));
+  const g = modifier(f, 'Handling', l => l.map(x => (x[1] === 'AF' ? [x[0], x[1], null, 50, null, 'long'] : x)).concat([['Handling', 'TX', 20, 25, 20, 'court', 2]]));
   const h2 = E.classeurVersAteliers(await parFichier(g), etat, ctxAteliers()).etat.ateliers.find(a => a.nom === 'Handling');
-  assert.deepEqual([h2.allers, h2.retours, h2.durees.TX], [{ '*': 10, TX: 20 }, { '*': 12, TX: 20 }, 25]);
+  assert.deepEqual([h2.allers, h2.retours, h2.durees.TX, h2.volsCamion], [{ '*': 10, TX: 20 }, { '*': 12, TX: 20 }, 25, { TX: 2 }]);
 });

@@ -89,6 +89,8 @@
       allers: dureesDe(a, undefined, 'allers'),
       retours: dureesDe(a, undefined, 'retours'),
       volsParCamion: entier(a.volsParCamion, 1),
+      // Par compagnie (« * » : toutes) ; sans valeur propre, « vols par camion ».
+      volsCamion: Object.fromEntries(Object.entries(dureesDe(a, undefined, 'volsCamion')).map(([k, v]) => [k, Math.max(1, Math.min(10, Math.round(v)))])),
       camions: Math.max(0, Math.min(200, parseInt(a.camions, 10) || 0)),
       simultanes: Number.isInteger(n) && n > 0 ? Math.min(50, n) : 1,
       avance: Number.isFinite(av) ? Math.max(0, Math.min(1440, Math.round(av))) : P.AVANCE_HANDLING,
@@ -611,7 +613,7 @@
           return;
         }
         case 'duree-retirer':
-          return this.changer(() => { for (const m of ['durees', 'allers', 'retours']) if (a[m]) { const d = { ...a[m] }; delete d[data.cie]; a[m] = d; } },
+          return this.changer(() => { for (const m of ['durees', 'allers', 'retours', 'volsCamion']) if (a[m]) { const d = { ...a[m] }; delete d[data.cie]; a[m] = d; } },
             'Durée retirée : ' + data.cie + ' prend la durée de toutes les compagnies.');
         case 'classe-supprimer': return this.supprimerClasse(data.classe);
         case 'classe-retablir':  return this.retablirClasse(data.classe);
@@ -737,12 +739,15 @@
           }
           case 'chauffeurs-long': a.chauffeurs = { ...(a.chauffeurs || {}), long: Math.max(1, parseInt(v, 10) || 1) }; break;
           case 'chauffeurs-court': a.chauffeurs = { ...(a.chauffeurs || {}), court: Math.max(1, parseInt(v, 10) || 1) }; break;
-          case 'vols-par-camion': a.volsParCamion = Math.max(1, parseInt(v, 10) || 1); break;
           case 'camions': a.camions = Math.max(0, parseInt(v, 10) || 0); break;
           case 'temps': {
             const m = el.dataset.map, cie = el.dataset.cie, d = { ...(a[m] || {}) };
-            if (v === '' || !Number.isFinite(+v)) delete d[cie]; else d[cie] = Math.max(0, Math.min(1440, +v));
-            a[m] = d; break;
+            if (v === '' || !Number.isFinite(+v)) delete d[cie];
+            else d[cie] = m === 'volsCamion' ? Math.max(1, Math.min(10, Math.round(+v))) : Math.max(0, Math.min(1440, +v));
+            a[m] = d;
+            // « Toutes les compagnies » : c'est aussi le nombre de vols par camion du handling.
+            if (m === 'volsCamion' && cie === P.TOUTES) { a.volsParCamion = d[cie] || 1; delete d[cie]; }
+            break;
           }
           case 'creneau-de': a.creneaux[+el.dataset.index].de = v; break;
           case 'creneau-a': a.creneaux[+el.dataset.index].a = v; break;
@@ -1164,7 +1169,7 @@
           : a.ouverture ? 'ouvert de ' + esc(a.ouverture.de) + ' à ' + esc(a.ouverture.a) + ', chaque jour' : 'disponible en permanence')
         : esc(a.debut) + jour + (handling && (a.creneaux || []).length ? '' : ' · ' + a.personnes + ' pers.')
           + (a.type === 'robot' ? ' · robot ' + a.debit + ' pl/h' : a.type === 'lavage' ? (a.parVol ? ' · lave par vol' : ' · ' + P.debitLavage(a) + ' u/h')
-            : handling ? ((a.creneaux || []).length ? ' · camion : ' + (a.chauffeurs || {}).long + ' chauffeurs en long courrier, ' + (a.chauffeurs || {}).court + ' en court · ' + (a.volsParCamion || 1) + ' vol' + ((a.volsParCamion || 1) > 1 ? 's' : '') + ' par camion'
+            : handling ? ((a.creneaux || []).length ? ' · camion : ' + (a.chauffeurs || {}).long + ' chauffeurs en long courrier, ' + (a.chauffeurs || {}).court + ' en court · ' + (a.volsParCamion || 1) + ' vol' + ((a.volsParCamion || 1) > 1 ? 's' : '') + ' par camion' + (Object.keys(a.volsCamion || {}).length ? ' (sauf ' + Object.entries(a.volsCamion).map(([c, n]) => c + ' : ' + n).join(', ') + ')' : '')
               : ' · ' + a.simultanes + ' vol' + (a.simultanes > 1 ? 's' : '') + ' à la fois') : '')
           + ' → fin ' + esc(fin) + esc(attente);
 
@@ -1377,9 +1382,10 @@
       const propres = [...new Set(cols.flatMap(c => Object.keys(a[c.map] || {})).filter(k => k !== P.TOUTES))];
       const liste = [...new Set(cies.concat(propres))].sort();
       const champ = (c, cie, lib) => {
-        const m = a[c.map] || {}, toutes = m[P.TOUTES];
-        return `<input type="number" min="0" max="1440" step="1" value="${m[cie] ?? ''}"
-          placeholder="${cie === P.TOUTES ? (c.map === 'durees' ? 'à saisir' : '0') : toutes != null ? String(toutes) : c.map === 'durees' ? 'à saisir' : '0'}"
+        const m = a[c.map] || {}, toutes = m[P.TOUTES] ?? c.defaut;
+        const vide = c.map === 'durees' ? 'à saisir' : String(c.defaut ?? 0);
+        return `<input type="number" min="${c.defaut !== undefined ? 1 : 0}" max="${c.max || 1440}" step="1" value="${m[cie] ?? (cie === P.TOUTES && c.defaut !== undefined ? c.defaut : '')}"
+          placeholder="${cie === P.TOUTES ? vide : toutes != null ? String(toutes) : vide}"
           ${c.map === 'durees' ? 'data-at-champ="duree"' : `data-at-champ="temps" data-map="${c.map}"`} data-cie="${esc(cie)}" aria-label="${esc(c.lib)} pour ${esc(lib)}">`;
       };
       const propre = cie => cols.some(c => (a[c.map] || {})[cie] != null);
@@ -1417,8 +1423,6 @@
         <div class="at-champs at-handling">
           <label>Chauffeurs par camion, <b>long courrier</b><input type="number" min="1" max="20" value="${ch.long}" data-at-champ="chauffeurs-long"></label>
           <label>Chauffeurs par camion, <b>court courrier</b><input type="number" min="1" max="20" value="${ch.court}" data-at-champ="chauffeurs-court"></label>
-          <label>Vols chargés par un camion<input type="number" min="1" max="10" value="${a.volsParCamion || 1}" data-at-champ="vols-par-camion"
-            title="En général 1. Plus : le camion charge aussi les vols suivants de la même catégorie, s’ils sont prêts"></label>
           <label>Camions disponibles<input type="number" min="0" max="200" value="${a.camions || ''}" placeholder="pas de limite" data-at-champ="camions"
             title="Vide : autant de camions que les chauffeurs en font partir"></label>
           <label>Pas avant (heures avant le départ)<input type="number" min="0" max="24" step="0.5" value="${String(avance)}" data-at-champ="avance"
@@ -1440,7 +1444,7 @@
         <div class="at-actions-lot"><button class="btn btn-sm${creneaux.length ? '' : ' btn-play'}" data-at-action="creneau-ajouter">+ Créneau de chauffeurs</button></div>
 
         <div class="at-sous-titre">Par compagnie : courrier et trajet du camion, en minutes (aller + charger + retour)</div>
-        ${this.tableCompagnies(a, cies, nb, [{ map: 'allers', lib: 'Aller piste' }, { map: 'durees', lib: 'Charger' }, { map: 'retours', lib: 'Retour unité' }], {
+        ${this.tableCompagnies(a, cies, nb, [{ map: 'volsCamion', lib: 'Vols / camion', defaut: a.volsParCamion || 1, max: 10 }, { map: 'allers', lib: 'Aller piste' }, { map: 'durees', lib: 'Charger' }, { map: 'retours', lib: 'Retour unité' }], {
           total: cie => { const t = P.trajetHandling(a, cie), d = P.dureeHandling(a, cie);
             return d == null ? '—' : '<b>' + Math.round(t.aller + d + t.retour) + '</b> min'; },
           toutes: '<td>—</td><td>—</td>',
@@ -1607,7 +1611,7 @@
           const cr = a.creneaux || [];
           return `<span class="mini-note">charge ${n} vol${n > 1 ? 's' : ''} dans l’ordre des départs · `
             + (cr.length ? `chauffeurs ${cr.map(c => c.de + '–' + c.a + ' : ' + c.n).join(', ')} · camion : ${(a.chauffeurs || {}).long} chauffeurs en long courrier (${(a.longs || []).join(', ') || 'aucune compagnie'}), ${(a.chauffeurs || {}).court} en court`
-              + ` · ${a.volsParCamion || 1} vol${(a.volsParCamion || 1) > 1 ? 's' : ''} par camion` + (a.camions ? ` · ${a.camions} camions` : '')
+              + ` · ${a.volsParCamion || 1} vol${(a.volsParCamion || 1) > 1 ? 's' : ''} par camion` + (Object.keys(a.volsCamion || {}).length ? ` (${Object.entries(a.volsCamion).map(([c, n]) => c + ' : ' + n).join(', ')})` : '') + (a.camions ? ` · ${a.camions} camions` : '')
               : `${a.simultanes || 1} à la fois`)
             + ` · pas avant ${String(Math.round((a.avance ?? 180) / 6) / 10).replace('.', ',')} h avant le départ</span>`;
         }

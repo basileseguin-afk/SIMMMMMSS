@@ -753,7 +753,7 @@
       'Effectif mini robot', 'Plafond plonge (u/h)', 'Permanent', 'Identifiant',
       'Vols en même temps', 'Pas avant départ (h)', 'Compagnies chargées', 'Vagues',
       'Chauffeurs long courrier', 'Chauffeurs court courrier', 'Plonge par vol', 'Vols par camion', 'Camions disponibles']];
-    const handling = [['Atelier', 'Compagnie', 'Aller (min)', 'Minutes par vol', 'Retour (min)', 'Courrier']];
+    const handling = [['Atelier', 'Compagnie', 'Aller (min)', 'Minutes par vol', 'Retour (min)', 'Courrier', 'Vols par camion']];
     const chauffeurs = [['Atelier', 'Début', 'Fin', 'Chauffeurs']];
     const plongeVol = [['Atelier', 'Compagnie', 'Minutes par vol']];
     const fab = [['Atelier', 'Ordre', 'Compagnies × classes']];
@@ -781,10 +781,10 @@
         a.type === 'handling' ? a.volsParCamion || 1 : null, a.type === 'handling' ? a.camions || null : null]);
       if (a.type === 'handling') {
         // Une ligne par compagnie réglée : sa durée, et si elle est long courrier.
-        const longs = new Set(a.longs || []), d = a.durees || {}, al = a.allers || {}, re = a.retours || {};
-        if ([d, al, re].some(m => m[P.TOUTES] !== undefined)) handling.push([a.nom, 'toutes', al[P.TOUTES] ?? null, d[P.TOUTES] ?? null, re[P.TOUTES] ?? null, null]);
-        for (const cie of [...new Set([d, al, re].flatMap(m => Object.keys(m)).filter(k => k !== P.TOUTES).concat([...longs]))].sort())
-          handling.push([a.nom, cie, al[cie] ?? null, d[cie] ?? null, re[cie] ?? null, longs.has(cie) ? 'long' : 'court']);
+        const longs = new Set(a.longs || []), d = a.durees || {}, al = a.allers || {}, re = a.retours || {}, vc = a.volsCamion || {};
+        if ([d, al, re].some(m => m[P.TOUTES] !== undefined)) handling.push([a.nom, 'toutes', al[P.TOUTES] ?? null, d[P.TOUTES] ?? null, re[P.TOUTES] ?? null, null, null]);
+        for (const cie of [...new Set([d, al, re, vc].flatMap(m => Object.keys(m)).filter(k => k !== P.TOUTES).concat([...longs]))].sort())
+          handling.push([a.nom, cie, al[cie] ?? null, d[cie] ?? null, re[cie] ?? null, longs.has(cie) ? 'long' : 'court', vc[cie] ?? null]);
         for (const c of (a.creneaux || [])) chauffeurs.push([a.nom, c.de, c.a, c.n]);
       }
       if (a.type === 'lavage' && a.parVol) for (const [cie, v] of Object.entries(a.durees || {})) plongeVol.push([a.nom, cie === P.TOUTES ? 'toutes' : cie, v]);
@@ -861,8 +861,9 @@
         '   compagnies chargées (« toutes », ou « AF, TX »). Courrier : long ou court ; un vol long courrier prend',
         '   « Chauffeurs long courrier » chauffeurs par camion (2 par défaut), un court « Chauffeurs court courrier » (1).',
         '   Aller (min) : du quai à l’avion ; Minutes par vol : charger l’avion ; Retour (min) : revenir à l’unité. Le camion part',
-        '   avec ses chauffeurs pour tout le trajet. Vols par camion (Ateliers) : en général 1 ; plus, il charge aussi les vols',
-        '   suivants de la même catégorie s’ils sont prêts. Camions disponibles : vide = pas de limite.',
+        '   avec ses chauffeurs pour tout le trajet. Vols par camion : en général 1 ; plus, il charge aussi les vols suivants',
+        '   de la même compagnie s’ils sont prêts. Feuille Ateliers : pour toutes ; feuille Handling : propre à une compagnie.',
+        '   Camions disponibles : vide = pas de limite.',
         'Chauffeurs : les créneaux du handling, le jour J (Début, Fin, nombre de chauffeurs). Un vol attend d’avoir ses chauffeurs libres.',
         '   Sans créneau : « Vols en même temps » (Ateliers). Un créneau qui finit avant son début passe minuit.',
         'Plonge par vol : Plonge par vol = oui (Ateliers), puis une ligne par compagnie : le temps qu’un tunnel met à laver un de ses vols ;',
@@ -1040,7 +1041,7 @@
             court: Math.max(1, Math.round(T.nombreDe(o.chauffeurs_court_courrier, (ah.chauffeurs || {}).court ?? 1)) || 1) };
           a.longs = (ah.longs || []).slice();
           a.creneaux = JSON.parse(JSON.stringify(ah.creneaux || []));
-          a.allers = { ...(ah.allers || {}) }; a.retours = { ...(ah.retours || {}) };
+          a.allers = { ...(ah.allers || {}) }; a.retours = { ...(ah.retours || {}) }; a.volsCamion = { ...(ah.volsCamion || {}) };
           a.volsParCamion = Math.max(1, Math.round(T.nombreDe(o.vols_par_camion, ah.volsParCamion ?? 1)) || 1);
           a.camions = Math.max(0, Math.round(T.nombreDe(o.camions_disponibles, ah.camions ?? 0)) || 0);
         }
@@ -1160,6 +1161,7 @@
             if (entetes.includes('courrier')) a.longs = [];
             if (entetes.includes('aller_min')) a.allers = {};
             if (entetes.includes('retour_min')) a.retours = {};
+            if (entetes.includes('vols_par_camion')) a.volsCamion = {};
           }
           const c = String(o.compagnie ?? '').trim();
           const cie = !c || T.cleEntete(c) === 'toutes' ? P.TOUTES : c.toUpperCase();
@@ -1173,6 +1175,11 @@
             if (x === null) continue;
             if (!Number.isFinite(x) || x < 0) throw new Error(col.replace('_min', '') + ' : nombre positif attendu');
             a[m] = { ...(a[m] || {}), [cie]: x };
+          }
+          const vc = T.nombreDe(o.vols_par_camion, null);
+          if (vc !== null) {
+            if (!Number.isFinite(vc) || vc < 1) throw new Error('vols par camion : 1 ou plus');
+            if (cie === P.TOUTES) a.volsParCamion = Math.round(vc); else a.volsCamion = { ...(a.volsCamion || {}), [cie]: Math.round(vc) };
           }
           const v = T.nombreDe(o.minutes_par_vol, null);
           if (v === null) return;

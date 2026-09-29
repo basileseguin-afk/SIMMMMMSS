@@ -81,7 +81,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const champ=async(sel,v)=>{await page.locator(`[data-at="${id}"] ${sel}`).fill(String(v));await page.locator(`[data-at="${id}"] ${sel}`).dispatchEvent('change');await attendre();};
   await champ('[data-at-champ=temps][data-map=allers][data-cie="*"]',10);
   await champ('[data-at-champ=temps][data-map=retours][data-cie="*"]',12);
-  await champ('[data-at-champ=vols-par-camion]',2);
+  await champ('[data-at-champ=temps][data-map=volsCamion][data-cie="*"]',2);
+  // Propre à une compagnie (retour d'usage : « cela dépend de la compagnie »).
+  const autre=await page.evaluate(id=>[...document.querySelectorAll(`[data-at="${id}"] [data-at-champ=temps][data-map=volsCamion]`)].map(i=>i.dataset.cie).find(c=>c!=='*'),id);
+  await champ(`[data-at-champ=temps][data-map=volsCamion][data-cie="${autre}"]`,3);
+  assert.deepEqual(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(x=>x.id===id).volsCamion,id),{[autre]:3});
   await champ('[data-at-champ=camions]',3);
   const h=await page.evaluate(id=>{const a=Sim.ateliers.state.ateliers.find(x=>x.id===id);return [a.allers,a.retours,a.volsParCamion,a.camions];},id);
   assert.deepEqual(h,[{'*':10},{'*':12},2,3]);
@@ -146,8 +150,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.evaluate(cmd=>Sim.ateliers.parcours.ouvrir(cmd,'handling'),cmd);await attendre();
   assert.equal(await page.locator('.pc-tiroir').count(),1,'la case du handling s’ouvre dans le chemin');
   {
-    const debord=await page.evaluate(()=>{const t=document.querySelector('.pc-tiroir');return {t:t.scrollWidth-t.clientWidth,doc:document.documentElement.scrollWidth-innerWidth};});
-    assert.ok(debord.t<=1&&debord.doc<=1,'rien ne dépasse de la fenêtre de la case : '+JSON.stringify(debord));
+    const debord=await page.evaluate(()=>{const t=document.querySelector('.pc-tiroir'),ts=t.querySelector('.at-cies-bloc .table-scroll');
+      return {t:t.scrollWidth-t.clientWidth,doc:document.documentElement.scrollWidth-innerWidth,table:ts?ts.scrollWidth-ts.clientWidth:0};});
+    assert.ok(debord.t<=1&&debord.doc<=1&&debord.table<=1,'rien ne dépasse de la fenêtre de la case : '+JSON.stringify(debord));
     assert.equal(await page.evaluate(()=>document.body.classList.contains('pc-tiroir-large')),true,'la fenêtre s’élargit pour le handling');
   }
   assert.deepEqual(errors,[],'aucune erreur de page');

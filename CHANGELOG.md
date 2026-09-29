@@ -5,6 +5,16 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-29 — Vols par camion, compagnie par compagnie
+
+Retour d'usage : « les vols chargés par un camion, cela dépend de la
+compagnie ». Le champ unique devient une colonne « Vols / camion » du tableau
+par compagnie du handling : la ligne « Toutes les compagnies » donne la valeur
+commune, chaque compagnie peut avoir la sienne. Un camion ne charge ensemble
+que des vols de la même compagnie. Excel : colonne « Vols par camion » de la
+feuille Handling. Tests moteur, Excel et navigateur (le tableau tient dans la
+fenêtre à 1 280 px).
+
 ## 2026-09-29 — La fenêtre du handling tient dans l'écran
 
 Retour d'usage : « la page du handling est beaucoup trop grande pour la taille

@@ -156,8 +156,9 @@ des vols : dans « Horaires », son jour est `J` ; un `J-1` est refusé.
 
 Colonnes `Aller (min)` (du quai à l'avion) et `Retour (min)` (de l'avion à
 l'unité) : le trajet du camion, autour de `Minutes par vol` (charger l'avion).
-Feuille Ateliers : `Vols par camion` (1 en général) et `Camions disponibles`
-(vide : pas de limite).
+Colonne `Vols par camion` : propre à une compagnie (ligne `toutes` : celui de
+toutes). Feuille Ateliers : `Vols par camion` (celui de toutes, 1 en général)
+et `Camions disponibles` (vide : pas de limite).
 
 Colonne `Courrier` (`long` ou `court`) : une compagnie long courrier prend
 « Chauffeurs long courrier » chauffeurs par vol (2 par défaut), une court

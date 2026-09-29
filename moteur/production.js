@@ -492,6 +492,13 @@
     return Infinity;
   }
 
+  /** Combien de vols d'une compagnie un camion charge en un trajet : le sien, sinon celui de toutes, sinon 1. */
+  function volsParCamionDe(atelier, cie) {
+    const m = (atelier && atelier.volsCamion) || {};
+    const lire = k => { const v = Math.floor(+m[k]); return m[k] !== undefined && m[k] !== null && m[k] !== '' && v >= 1 ? v : null; };
+    return lire(up(cie)) ?? lire(TOUTES) ?? Math.max(1, Math.floor(+(atelier && atelier.volsParCamion)) || 1);
+  }
+
   /** Un trajet de camion pour une compagnie : aller jusqu'à l'avion, retour à l'unité (minutes). */
   function trajetHandling(atelier, cie) {
     const lire = (m, k) => { const d = (atelier && atelier[m]) || {}; const v = d[k]; return v === undefined || v === null || v === '' || !Number.isFinite(+v) ? null : Math.max(0, +v); };
@@ -1337,7 +1344,8 @@
         // Sans créneau : « N vols à la fois », N camions sans compter les chauffeurs.
         const creneaux = creneauxDe(a), parChauffeurs = creneaux.length > 0, occupes = [];
         const camionsMax = parChauffeurs ? (Math.floor(+a.camions) > 0 ? Math.floor(+a.camions) : Infinity) : k;
-        const parCamion = Math.max(1, Math.floor(+a.volsParCamion) || 1);
+        // Combien de vols un camion charge : propre à la compagnie (retour d'usage : « cela dépend de la compagnie »).
+        const parCamionDe = cie => volsParCamionDe(a, cie);
         const auPlusTotDe = v => Math.max(0, v.depart - avance);
         const attendusDe = v => {
           const out = [];
@@ -1376,9 +1384,10 @@
             // après l'aller et les vols chargés avant lui.
             const groupe = [v];
             let arrivee = tPret + trajetHandling(a, v.cie).aller + (dureeHandling(a, v.cie) ?? 0);
+            const parCamion = parCamionDe(v.cie);
             for (let j = i + 1; j < mesVols.length && groupe.length < parCamion; j++) {
               const w = mesVols[j];
-              if (categorieVol(a, w.cie) !== categorie || auPlusTotDe(w) > arrivee || attendusDe(w).some(x => !x.ev.declenche)) break;
+              if (up(w.cie) !== up(v.cie) || auPlusTotDe(w) > arrivee || attendusDe(w).some(x => !x.ev.declenche)) break;
               groupe.push(w);
               arrivee += dureeHandling(a, w.cie) ?? 0;
             }
@@ -2021,7 +2030,7 @@
     arcsDuParcours, servicesDuParcours, routesDesClasses,
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,
     pausesDe, finAvecPauses, vaguesDe, disponibleDes, debitRobot, ouvertureDe, prochaineOuverture,
-    categorieVol, chauffeursDe, creneauxDe, chauffeursPresents, debutAvecChauffeurs, dureeLavageVol, trajetHandling, debutTrajet,
+    categorieVol, chauffeursDe, creneauxDe, chauffeursPresents, debutAvecChauffeurs, dureeLavageVol, trajetHandling, debutTrajet, volsParCamionDe,
     UNITES_DEFAUT, unitesDe, retoursDeVols, besoinMateriel,
     simuler, niveauA, niveauLineaire, dureeLisible
   };

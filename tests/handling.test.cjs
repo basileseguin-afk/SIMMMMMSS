@@ -233,3 +233,16 @@ test('plusieurs vols par camion : les suivants, même catégorie, déjà prêts 
   const d = r1.lots.filter(x => x.handling).map(x => [x.trajet.depart, x.trajet.retour]);
   for (let i = 1; i < d.length; i++) assert.ok(d[i][0] >= d[i - 1][1], 'un camion à la fois');
 });
+
+test('vols par camion : propre à la compagnie, et un camion ne mélange pas les compagnies', () => {
+  const vols = [{ id: 'TX1', cie: 'TX', sens: 'DEP', std: h('08:00'), yc: 50 }, { id: 'TX2', cie: 'TX', sens: 'DEP', std: h('08:05'), yc: 50 },
+    { id: 'QR1', cie: 'QR', sens: 'DEP', std: h('08:10'), yc: 50 }, { id: 'QR2', cie: 'QR', sens: 'DEP', std: h('08:15'), yc: 50 }];
+  const pret = [at('pr', 'prepa', '00:00', [['TX/YC'], ['QR/YC']], { personnes: 99 })];
+  const r = jouer(handling({ creneaux: [{ de: '04:00', a: '12:00', n: 10 }], durees: { '*': 20 }, volsParCamion: 1, volsCamion: { TX: 2 } }), pret, vols);
+  assert.equal(r.ok, true, JSON.stringify(r.anomalies));
+  const t = id => r.lots.find(x => x.vol === id).trajet.vols;
+  assert.deepEqual([t('TX1'), t('QR1'), t('QR2')], [['TX1', 'TX2'], ['QR1'], ['QR2']], 'TX : 2 vols par camion ; QR : 1, celui de toutes');
+  assert.equal(P.volsParCamionDe({ volsParCamion: 3, volsCamion: { TX: 2 } }, 'tx'), 2);
+  assert.equal(P.volsParCamionDe({ volsParCamion: 3 }, 'QR'), 3);
+  assert.equal(P.volsParCamionDe({}, 'QR'), 1);
+});
