@@ -162,7 +162,7 @@
       }
       const e = document.getElementById('run-state');
       if (e) {
-        e.textContent = this.vide ? 'Rien à relire : donnez d’abord une équipe aux commandes (Organisation › Chemins)'
+        e.textContent = this.vide ? 'Rien à relire : donnez d’abord une équipe aux commandes (Mon unité)'
           : this.enMarche ? 'La journée défile…'
           : this.t >= this.fin ? 'Fin de journée'
           : this.t <= this.debut ? 'Appuyez sur « Rejouer » pour voir la journée défiler' : 'En pause'; 
@@ -238,7 +238,7 @@
       const services = this.a.services();
       const vus = services.filter(s => i.services[s.id]);
       if (!vus.length) {
-        box.innerHTML = '<p class="mini-note">Aucun service ne travaille : donnez une équipe aux commandes (Organisation › Chemins).</p>';
+        box.innerHTML = '<p class="mini-note">Aucun service ne travaille : donnez une équipe aux commandes (Mon unité).</p>';
         return;
       }
       const selection = this.a.selection ? this.a.selection() : '';

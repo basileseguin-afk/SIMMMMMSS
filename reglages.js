@@ -241,7 +241,7 @@
               exactement les minutes ci-dessus ; à 0,8, tout prend un quart de temps en plus. S’il doit
               varier d’un service à l’autre, ce sont les minutes du service qu’il faut changer.</span></details></div>
           <div class="slider-ligne">
-            <label for="rg-rendement">Rythme (1 = les minutes de Données › Temps de travail) <b id="rg-rendement-val"></b></label>
+            <label for="rg-rendement">Rythme (1 = les minutes de travail de chaque service) <b id="rg-rendement-val"></b></label>
             <input id="rg-rendement" type="range" min="0.5" max="1.2" step="0.01">
           </div>
         </div>
@@ -263,7 +263,7 @@
         </div>
         <p class="rg-version" id="rg-version" data-sous="rg-simulation"></p>
         <p class="mini-note rg-ailleurs" data-sous="rg-simulation">Ce qui est propre à une équipe (ses tunnels, ses chauffeurs, ses horaires)
-          se règle dans sa case, <b>Organisation › Cases</b>. Les données — vols, planche retour, man-minutes — sont dans <b>Données</b>.</p>`;
+          se règle dans la fiche de son service, <b>Mon unité › Services et équipes</b>. Les vols et la planche retour sont dans <b>Vols</b>.</p>`;
       hote.appendChild(section);
       // Quelle version le navigateur sert-il ? La question revient dès qu'un
       // doute s'installe, et un cache périmé ne se voit autrement pas.

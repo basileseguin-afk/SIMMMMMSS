@@ -5,6 +5,31 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-30 — Un habillage d'aujourd'hui
+
+Retour d'usage : « le visuel fait trop brut de décoffrage ». Une feuille
+`theme.css`, posée en dernier, change la matière sans toucher à la mise en
+page :
+
+- la police **Inter**, embarquée dans `polices/` (licence OFL jointe) : aucun
+  appel à un site extérieur, le rendu est le même partout ;
+- des gris doux, des bordures d'un pixel, des coins plus ronds, des ombres
+  légères ; moins de gras ;
+- un **en-tête clair** sur un voile, le menu en commande segmentée ;
+- des onglets soulignés, des boutons et des champs modernes (anneau de focus,
+  survol, bouton principal plein) ;
+- l'accueil, la synthèse, les réglages, Mon unité et les départs en cartes ;
+  les heures en chiffres alignés plutôt qu'en police machine ;
+- la page `accueil.html` suit le même habillage.
+
+Les couleurs qui ont un sens (étapes, classes, à l'heure / attente / retard)
+gardent leur sens. Au passage, les messages qui citaient encore l'ancien
+menu (« Organisation › Chemins », « Données › … ») disent Mon unité et Vols.
+
+Fichiers : `theme.css`, `polices/` (nouveaux), `index.html`, `accueil.html`,
+`ateliers.js`, `flow-center.js`, `parcours.js`, `plan-editor.js`,
+`reglages.js`, `sim.js`, `simulation.js`.
+
 ## 2026-09-29 — Mon unité : tout le paramétrage, service par service
 
 Retour d'usage : « simplifier au maximum le paramétrage des services et des

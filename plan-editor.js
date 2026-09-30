@@ -233,7 +233,7 @@ class PlanEditor{
   },seconde?'Seconde salle créée : déplacez-la, puis décrivez ses équipes dans l’onglet « Ateliers ».'
           :'Copie créée comme annotation : elle ne crée aucun service.');
  }
- remove(){if(!this.zone)return;if(this.zone.kind==='service'){this.status('Un service du plan d’origine ne se supprime pas : retirez-le de l’unité depuis Organisation › Services (on peut l’y remettre).');return;}if(this.zone.locked){this.status('Déverrouillez la zone avant de la supprimer.');return;}this.supprimer(this.zone.id);}
+ remove(){if(!this.zone)return;if(this.zone.kind==='service'){this.status('Un service du plan d’origine ne se supprime pas : retirez-le de l’unité depuis Mon unité › Services et équipes (on peut l’y remettre).');return;}if(this.zone.locked){this.status('Déverrouillez la zone avant de la supprimer.');return;}this.supprimer(this.zone.id);}
  /* Supprimer une zone (pas un service du plan d'origine). La page prévient
     d'abord si elle porte des équipes, puis les fait passer dans son parent. */
  supprimer(id){const z=this.state.zones.find(v=>v.id===id);if(!z||z.kind==='service')return false;const zone=clone(z);if(this.a.avantSuppression&&this.a.avantSuppression(zone)===false){this.status('Suppression annulée.');return false;}this.change(()=>{this.state.zones=this.state.zones.filter(v=>v.id!==zone.id);if(this.selected===zone.id)this.selected=null;},'Zone supprimée. Annuler permet de la retrouver.');if(this.a.apresSuppression)this.a.apresSuppression(zone);return true;}
@@ -320,7 +320,7 @@ class PlanEditor{
   document.getElementById('pe-kind-note').textContent=z.kind==='service'
    ?'Service du plan : vous pouvez corriger son contour et son nom.'
    :z.kind==='annexe'
-    ?'Zone de production : un service à part entière. Elle apparaît dans les chemins, les cases et Organisation › Services ; elle hérite des liens du service dont elle dépend.'
+    ?'Zone de production : un service à part entière. Elle apparaît dans les chemins, les cases et Mon unité ; elle hérite des liens du service dont elle dépend.'
     :'Local : une annotation du plan, pas un service — il n’apparaît ni dans les chemins ni dans les cases. Pour y faire travailler une équipe, choisissez le type « Zone de production ».';
   for(const k of ['x','y','w','h']){assign('pe-'+k,Math.round(bounds(z)[k]));document.getElementById('pe-'+k).disabled=z.locked;}
   document.getElementById('pe-locked').checked=z.locked;document.getElementById('pe-confirmed').checked=!z.approx;

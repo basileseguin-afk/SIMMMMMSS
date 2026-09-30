@@ -227,7 +227,7 @@
       stockInitial: Number.isFinite(+m.stockInitial) ? Math.max(0, Math.round(+m.stockInitial)) : 0,
       delaiRetour: Number.isFinite(+m.delaiRetour) ? Math.max(0, Math.round(+m.delaiRetour)) : 30,
       // D'où viennent les retours à la plonge : les lignes RET du programme, les
-      // départs de la veille (J+1), ou la planche retour du handling (Données › Planche retour).
+      // départs de la veille (J+1), ou la planche retour du handling (Vols › Planche retour).
       retours: P.sourceRetours(m),
       planche: plancheDe(m.planche)
     };
@@ -1195,7 +1195,7 @@
       <button class="lien-discret" data-page="v-planche">Ouvrir la planche retour (Données) →</button>`
     : 'Les vols « RET » du programme importé, à leur heure d’arrivée, plus le délai après atterrissage.'}</p>
   <p class="mini-note at-retours-comparer">Pour choisir en connaissance de cause :
-    <button class="btn btn-sm" data-comparer-retours ${n ? '' : 'disabled title="Saisissez d’abord la planche retour (Données › Planche retour)"'}>⇄ Comparer J+1 et planche retour</button></p>
+    <button class="btn btn-sm" data-comparer-retours ${n ? '' : 'disabled title="Saisissez d’abord la planche retour (Vols › Planche retour)"'}>⇄ Comparer J+1 et planche retour</button></p>
   <label class="at-inline-champ">Délai après atterrissage (min)<input type="number" min="0" value="${m.delaiRetour}" data-at-champ="mat-delai"
     ${src === 'planche' ? 'disabled title="La planche donne déjà l’heure d’arrivée à l’unité"' : ''}></label>
 </div>`;
@@ -1765,7 +1765,7 @@
       const cases = this.state.ateliers.slice()
         .filter(a => !filtre || (a.nom + ' ' + nomSvc(a.service) + ' ' + (a.lots || []).flat().map(c => c + ' ' + P.libelleClasse(c)).join(' ')).toLowerCase().includes(filtre))
         .sort((x, y) => (ordre.get(x.service) ?? 999) - (ordre.get(y.service) ?? 999) || minDe(x) - minDe(y) || x.nom.localeCompare(y.nom));
-      if (!this.state.ateliers.length) { box.innerHTML = '<p class="mini-note">Aucune case pour l’instant : décrivez les chemins des commandes (Organisation › Chemins).</p>'; return; }
+      if (!this.state.ateliers.length) { box.innerHTML = '<p class="mini-note">Aucune case pour l’instant : décrivez vos équipes (Mon unité › Services et équipes).</p>'; return; }
       const I = root.OrlyIcones, hh = P.hhmm;
       const jours = (v, attrs) => `<select ${attrs}>${[0, -1, -2, -3].map(j => `<option value="${j}" ${j === (v || 0) ? 'selected' : ''}>${j === 0 ? 'J' : 'J' + j}</option>`).join('')}</select>`;
       // Une commande mène à son chemin, ouvert sur le service de cette case :

@@ -401,6 +401,8 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 |---|---|
 | `index.html` | Structure et contrôles |
 | `interface.css` | Disposition et hiérarchie visuelle |
+| `theme.css` / `polices/` | L’habillage, posé en dernier : police Inter embarquée (licence OFL), couleurs, cartes, boutons, champs, en-tête |
+| `unite.js` / `unite.css` | Mon unité : le pas à pas et la fiche de chaque service (équipes, grille à cocher, minutes) |
 | `sim.js` | Interface, plan, interactions, glue entre les centres |
 | **`moteur/production.js`** | **Modèle par ateliers de travail** — compagnie × classe, lots ordonnés, robot, plonge, parcours lu des flux. Voir [la note de modèle](docs/MODELE_ATELIERS.md) |
 | `moteur/noyau.js` | Noyau à événements discrets sur lequel tourne le modèle par ateliers |

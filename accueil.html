@@ -6,34 +6,37 @@
 <title>ORY — Applications</title>
 <meta name="description" content="Point d'entrée des applications du projet de simulation de l'unité ORY." />
 <style>
+@font-face{font-family:'Inter Variable';font-style:normal;font-display:swap;font-weight:100 900;
+  src:url(polices/inter-latin.woff2) format('woff2-variations'),url(polices/inter-latin.woff2) format('woff2')}
 :root{
-  --bg:#e9eef4; --carte:#fff; --bordure:#c8d3e0; --bordure2:#9fb2c7;
-  --txt:#132030; --txt2:#41566e; --txt3:#63788f; --accent:#0b6fa4; --orange:#b45309;
-  --ombre:0 1px 3px rgba(19,32,48,.10), 0 4px 14px rgba(19,32,48,.07);
+  --bg:#f5f6f8; --carte:#fff; --bordure:#e4e7ec; --bordure2:#d0d5dd;
+  --txt:#101828; --txt2:#475467; --txt3:#667085; --accent:#0f766e; --orange:#b54708;
+  --ombre:0 1px 2px rgba(16,24,40,.04),0 1px 3px rgba(16,24,40,.06);
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--txt);
-  font-family:'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif;
+  font-family:'Inter Variable',Inter,system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;
   font-size:15px;line-height:1.6;padding:32px 16px}
 .page{max-width:760px;margin:0 auto}
-h1{font-size:26px;margin:0 0 4px}
-.sous{color:var(--txt3);margin:0 0 26px;font-weight:600}
+h1{font-size:28px;margin:0 0 4px;letter-spacing:-.025em}
+.sous{color:var(--txt3);margin:0 0 26px;font-weight:500}
 .apps{display:grid;gap:14px;margin-bottom:26px}
 a.app{display:flex;gap:15px;align-items:flex-start;text-decoration:none;color:inherit;
-  background:var(--carte);border:1.5px solid var(--bordure);border-radius:12px;
-  padding:16px 18px;box-shadow:var(--ombre);transition:border-color .12s,transform .12s}
-a.app:hover{border-color:var(--accent);transform:translateY(-1px)}
+  background:var(--carte);border:1px solid var(--bordure);border-radius:16px;
+  padding:18px 20px;box-shadow:var(--ombre);transition:border-color .15s,transform .15s,box-shadow .15s}
+a.app:hover{border-color:color-mix(in srgb,var(--accent) 40%,var(--bordure));transform:translateY(-2px);
+  box-shadow:0 12px 24px -6px rgba(16,24,40,.10),0 4px 8px -4px rgba(16,24,40,.06)}
 a.app:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .ico{font-size:30px;line-height:1}
-.app h2{margin:0 0 3px;font-size:17px;color:var(--accent)}
+.app h2{margin:0 0 3px;font-size:17px;color:var(--txt);font-weight:650}
 .app p{margin:0;color:var(--txt2);font-size:13.5px}
-.bloc{background:var(--carte);border:1px solid var(--bordure);border-radius:12px;
+.bloc{background:var(--carte);border:1px solid var(--bordure);border-radius:16px;box-shadow:var(--ombre);
   padding:16px 18px;margin-bottom:14px}
 .bloc h3{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;
-  color:var(--txt2)}
+  color:var(--txt3);font-weight:600}
 code{background:#eef2f7;border:1px solid var(--bordure);border-radius:4px;
   padding:1px 5px;font-size:12.5px;word-break:break-all}
-.avert{border-left:4px solid var(--orange)}
+.avert{box-shadow:inset 3px 0 0 var(--orange),var(--ombre)}
 .avert h3{color:var(--orange)}
 p.fin{color:var(--txt3);font-size:13px}
 </style>
