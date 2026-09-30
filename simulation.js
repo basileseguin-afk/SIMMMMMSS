@@ -228,8 +228,13 @@
         // « aucun » alors qu'aucun vol n'est chargé laissait croire que tout allait bien.
         ['Vol le plus en retard', k.retardVolMax ? '+' + P.dureeLisible(k.retardVolMax) + ' après son départ' : k.volsCharges ? 'aucun' : '— aucun vol chargé']);
       if (k.classesAbsentes) lignes.push(['Sans équipe', k.classesAbsentes + (k.classesAbsentes > 1 ? ' commandes que personne ne prépare' : ' commande que personne ne prépare')]);
+      // Chaque tuile porte la couleur de ce qu'elle dit : à l'heure, en retard,
+      // attente, heure, travail, manque.
+      const TON = { 'Commandes prêtes à l’heure': 'ok', 'Vols chargés à l’heure': 'ok', 'Commandes en retard': 'retard',
+        'Vols non chargés': 'retard', 'Commandes pas finies': 'retard', 'Retard le plus long': 'retard', 'Vol le plus en retard': 'retard',
+        'Dernière commande prête à': 'heure', 'Temps passé à attendre': 'attente', 'Travail fourni': 'travail', 'Sans équipe': 'manque' };
       box.innerHTML = '<dl class="bilan">' + lignes.map(([q, v]) =>
-        '<div><dt>' + esc(q) + '</dt><dd>' + esc(v) + '</dd></div>').join('') + '</dl>';
+        '<div data-ton="' + (TON[q] || 'heure') + '"><dt>' + esc(q) + '</dt><dd>' + esc(v) + '</dd></div>').join('') + '</dl>';
     }
 
     /** La liste de droite : un service, son état, ce qu'il fait. */

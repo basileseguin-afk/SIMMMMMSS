@@ -5,6 +5,23 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-30 — De la couleur, avec retenue
+
+Retour d'usage : « bien mieux, mais trop monochrome ; sobre, pas monochrome ».
+
+- Chaque partie a sa couleur (Vols bleu, Mon unité vert, Réglages violet,
+  Résultats framboise) : elle teinte légèrement l'en-tête de page, le
+  pictogramme, les onglets, les pastilles, les en-têtes de tableaux et les
+  titres de section ; le menu montre les quatre couleurs, la partie ouverte
+  s'en teinte ; un filet aux quatre couleurs signe le haut de l'écran.
+- L'accueil : tuiles et pictogrammes dans la couleur de leur partie.
+- La synthèse : chaque tuile prend la couleur de ce qu'elle dit (à l'heure
+  vert, retard rouge, attente orange, heure bleu, travail violet, manque gris)
+  — `simulation.js` pose `data-ton` sur chaque tuile.
+- Mon unité : pictogrammes des services et fiche en vert.
+
+Fichiers : `theme.css`, `simulation.js`.
+
 ## 2026-09-30 — Un habillage d'aujourd'hui
 
 Retour d'usage : « le visuel fait trop brut de décoffrage ». Une feuille

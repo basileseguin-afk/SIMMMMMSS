@@ -256,3 +256,98 @@ table th{font-weight:600}
 .rg-herite,.rg-zero,.rg-occupe,.at-source,.qf-g,.pc-defauts-lab,.at-kpi .lab,.at-titre,.fc-list-title,.rc-ens-tete,.demo-badge{font-weight:600}
 .at-titre{color:var(--txt3)}
 .at-chip,.at-cmd-chip,.rc-cmd,.pc-cmd{font-weight:550}
+
+/* ==========================================================================
+ *  DE LA COULEUR, AVEC RETENUE (30/09 : « sobre, mais pas monochrome »)
+ *  Chaque partie a sa couleur (Vols bleu, Mon unité vert, Réglages violet,
+ *  Résultats framboise) : elle teinte légèrement l'en-tête de page, ses
+ *  onglets, ses pastilles et ses titres. Les tuiles de la synthèse prennent
+ *  la couleur de ce qu'elles disent.
+ * ==========================================================================*/
+body{--cp:var(--accent)}
+body[data-partie="donnees"]{--cp:var(--c-vols)}
+body[data-partie="organisation"]{--cp:var(--c-equipes)}
+body[data-partie="reglages"]{--cp:var(--c-temps)}
+body[data-partie="resultats"]{--cp:var(--c-journee)}
+body[data-partie="avance"],body[data-partie="fichier"]{--cp:var(--c-unite)}
+body[data-vue="accueil"]{--cp:var(--accent)}
+
+/* Une signature : un filet aux quatre couleurs, en haut de l'écran. */
+body>header::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;
+  background:linear-gradient(90deg,var(--c-vols) 0 25%,var(--c-equipes) 25% 50%,var(--c-temps) 50% 75%,var(--c-journee) 75% 100%)}
+
+/* Le menu : chaque partie montre sa couleur ; l'ouverte s'en teinte. */
+.menu-partie .ico{color:var(--c)}
+.menu-partie:hover .ico{color:var(--c)}
+.menu-partie.actif{background:color-mix(in srgb,var(--c) 11%,#fff);color:color-mix(in srgb,var(--c) 55%,#101828);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 28%,transparent),0 1px 2px rgba(16,24,40,.06)}
+
+/* L'en-tête de page : un voile de la couleur de la partie. */
+.workspace-heading{background:linear-gradient(100deg,color-mix(in srgb,var(--cp) 9%,#fff) 0%,#fff 55%)}
+.sous-onglets{background:linear-gradient(100deg,color-mix(in srgb,var(--cp) 9%,#fff) 0%,#fff 55%);--c:var(--cp)}
+.view-ico{background:linear-gradient(145deg,color-mix(in srgb,var(--cp) 80%,#fff),var(--cp)) !important;color:#fff !important;
+  box-shadow:0 4px 10px -2px color-mix(in srgb,var(--cp) 45%,transparent) !important}
+.so-onglet:hover{color:color-mix(in srgb,var(--cp) 60%,#101828)}
+.so-onglet:hover .ico{color:var(--cp)}
+.so-onglet.actif{color:color-mix(in srgb,var(--cp) 45%,#101828)}
+.so-onglet.actif .ico{color:var(--cp)}
+.so-badge{background:color-mix(in srgb,var(--cp) 10%,#fff);color:color-mix(in srgb,var(--cp) 70%,#101828);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--cp) 22%,transparent)}
+/* Le fond des pages, à peine teinté. */
+.app{background:color-mix(in srgb,var(--cp) 3%,var(--bg))}
+#view-reglages{background:transparent}
+
+/* Les titres de section : un petit repère de couleur. */
+#view-reglages .panneau h3::before,.mu-etape>h3 .mu-num{background:var(--cp)}
+#view-reglages .panneau h3{display:flex;align-items:center;gap:9px}
+#view-reglages .panneau h3::before{content:"";width:4px;height:16px;border-radius:4px;flex:none}
+#view-reglages .panneau{border-top:3px solid color-mix(in srgb,var(--cp) 55%,#fff)}
+.mu-num{color:#fff;box-shadow:0 2px 6px -1px color-mix(in srgb,var(--cp) 50%,transparent)}
+.mu-etape>h3 .mu-num{background:var(--cp)}
+
+/* Les en-têtes de tableaux : la couleur de la partie, très pâle. */
+.flight-table thead th,.svc-table th,.rc-table thead th,.planche-table th,.rg-table thead th,.qf-table thead th{
+  background:color-mix(in srgb,var(--cp) 6%,#fff);color:color-mix(in srgb,var(--cp) 45%,#475467)}
+
+/* ---- L'accueil : des tuiles qui ont leur couleur ------------------------- */
+.acc-histoire{background:linear-gradient(120deg,#fff 0%,#fff 55%,color-mix(in srgb,var(--c-equipes) 6%,#fff) 80%,color-mix(in srgb,var(--c-vols) 8%,#fff) 100%)}
+.acc-histoire h1{background:linear-gradient(90deg,#0f766e,#2563eb 60%,#7c3aed);-webkit-background-clip:text;background-clip:text;color:transparent}
+.cm-rond{background:linear-gradient(150deg,color-mix(in srgb,var(--c) 16%,#fff),color-mix(in srgb,var(--c) 6%,#fff))}
+.acc-tuile{border-top:1px solid color-mix(in srgb,var(--c) 22%,var(--bordure))}
+.acc-tuile-tete{background:linear-gradient(180deg,color-mix(in srgb,var(--c) 7%,#fff),#fff)}
+.acc-ico{background:linear-gradient(145deg,color-mix(in srgb,var(--c) 78%,#fff),var(--c));color:#fff;
+  box-shadow:0 6px 14px -4px color-mix(in srgb,var(--c) 55%,transparent)}
+.acc-page{background:color-mix(in srgb,var(--c) 6%,#fff);border-color:color-mix(in srgb,var(--c) 22%,var(--bordure));color:color-mix(in srgb,var(--c) 55%,#101828)}
+.acc-page:hover{background:color-mix(in srgb,var(--c) 13%,#fff)}
+.acc-suite{background:linear-gradient(90deg,#fffaeb,#fff 60%);border-color:#fedf89}
+.acc-suite.fait{background:linear-gradient(90deg,var(--ok-fill),#fff 60%);border-color:#abefc6}
+
+/* ---- La synthèse : chaque tuile a la couleur de ce qu'elle dit ------------- */
+.journee-chiffres .bilan>div{--t:var(--c-journee);background:linear-gradient(160deg,color-mix(in srgb,var(--t) 8%,#fff) 0%,#fff 55%);
+  border-color:color-mix(in srgb,var(--t) 20%,var(--bordure))}
+.journee-chiffres .bilan>div[data-ton="ok"]{--t:#12b76a}
+.journee-chiffres .bilan>div[data-ton="retard"]{--t:#f04438}
+.journee-chiffres .bilan>div[data-ton="attente"]{--t:#f79009}
+.journee-chiffres .bilan>div[data-ton="heure"]{--t:#2e90fa}
+.journee-chiffres .bilan>div[data-ton="travail"]{--t:#7a5af8}
+.journee-chiffres .bilan>div[data-ton="manque"]{--t:#667085}
+.journee-chiffres .bilan dt::before{background:var(--t);box-shadow:0 0 0 3px color-mix(in srgb,var(--t) 18%,transparent)}
+.journee-chiffres .bilan dd{color:color-mix(in srgb,var(--t) 35%,#101828)}
+
+/* ---- Mon unité ------------------------------------------------------------- */
+.mu-svc-ico{width:30px;height:30px;border-radius:9px;display:inline-grid;place-items:center;
+  background:color-mix(in srgb,var(--c-equipes) 10%,#fff);color:var(--c-equipes)}
+.mu-svc-ico svg{width:18px;height:18px}
+.mu-svc.libre .mu-svc-ico{background:#f2f4f7;color:var(--txt3)}
+.mu-svc.actif{background:linear-gradient(90deg,color-mix(in srgb,var(--c-equipes) 9%,#fff),#fff)}
+.mu-svc.actif .mu-svc-ico{background:var(--c-equipes);color:#fff}
+.mu-tete-ico{width:44px;height:44px;border-radius:12px;display:inline-grid;place-items:center;
+  background:linear-gradient(145deg,color-mix(in srgb,var(--c-equipes) 78%,#fff),var(--c-equipes));color:#fff;
+  box-shadow:0 6px 14px -4px color-mix(in srgb,var(--c-equipes) 55%,transparent)}
+.mu-tete-ico svg{width:24px;height:24px}
+.mu-equipe{border-top:3px solid color-mix(in srgb,var(--c-equipes) 45%,#fff)}
+.mu-pas-etape.afaire .mu-pas-num{background:#fffaeb}
+.mu-grille thead .puce-classe{width:9px;height:9px}
+
+/* ---- Les départs : l'horaire en couleur de sa partie ----------------------- */
+.flight-table td.vol-heure{color:color-mix(in srgb,var(--c-vols) 55%,#101828)}
