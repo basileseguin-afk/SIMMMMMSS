@@ -130,8 +130,10 @@ le rouge ne sert qu’aux retards.
      Business…), partagé par ses commandes. À gauche les flux et leurs
      variantes ; à droite, **par où passe** celui qu'on choisit (un diagramme :
      on tire une flèche d’un service à l’autre, on ajoute ou retire un service)
-     et **les commandes qui le suivent** (une grille compagnies × classes ;
-     « ★ flux de la classe » le donne à toute la classe). Une commande qui
+     et **qui le suit** : les classes (une case par classe, qui se coche et
+     se décoche), puis les exceptions en clair (« TX · Économie suit … »),
+     chacune avec son bouton pour revenir en arrière, et une liste pour faire
+     suivre ce flux à une autre commande. Une commande qui
      s’écarte du flux de sa classe suit une variante (« Sans cuisine + Robot
      sans Montage »), partagée par celles qui s’écartent pareil. « Regrouper »
      range d’un clic les commandes qui avaient chacune leur chemin.

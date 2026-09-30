@@ -117,14 +117,26 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await nav.aller(page,'mu-flux');
   const v=await page.evaluate(()=>OrlyParcours.fluxDe(Sim.ateliers.state,'QR/BC'));
   assert.ok(v.type&&v.auto,'une variante partagée');
-  await page.locator(`[data-mu-flux-choisir="${v.id}"]`).click();await attendre();
+  await page.locator(`.mu-liste [data-mu-flux-choisir="${v.id}"]`).click();await attendre();
   assert.ok(await page.locator('#mu-flux .gr-noeud[data-noeud="'+apm+'"]').count(),'le diagramme montre le nouveau service');
-  assert.equal(await page.locator('#mu-flux [data-mu-flux-cmd="QR/BC"]').isChecked(),true);
+  assert.match(await page.locator('#mu-flux .mu-exceptions').innerText(),/QR · Business suit ce flux, alors que les Business suivent « Complet »/);
   await page.locator(`[data-mu-flux-nom="${v.id}"]`).fill('Business APM');await page.locator(`[data-mu-flux-nom="${v.id}"]`).press('Tab');await attendre();
   assert.equal(await page.evaluate(id=>Sim.ateliers.state.parcours.find(p=>p.id===id).nom,v.id),'Business APM');
-  // TX Business suit aussi ce flux : une coche.
-  await page.locator('#mu-flux [data-mu-flux-cmd="TX/BC"]').check();await attendre();
+  // TX Business suit aussi ce flux : on la choisit dans la liste.
+  await page.locator('#mu-flux [data-mu-flux-ajouter-cmd]').selectOption('TX/BC');await attendre();
   assert.equal(await page.evaluate(()=>OrlyParcours.fluxDe(Sim.ateliers.state,'TX/BC').nom),'Business APM');
+  // Et on défait l'exception d'un clic : elle reprend le flux de sa classe.
+  await page.locator('#mu-flux [data-mu-flux-retour="TX/BC"]').click();await attendre();
+  assert.equal(await page.evaluate(()=>OrlyParcours.fluxDe(Sim.ateliers.state,'TX/BC').nom),'Complet');
+  // Une classe se coche… et se décoche.
+  const cf=await page.evaluate(()=>Sim.ateliers.state.parcoursCabine.BC);
+  await page.locator('#mu-flux [data-mu-flux-classe="BC"]').check();await attendre();
+  assert.equal(await page.evaluate(()=>OrlyParcours.fluxDe(Sim.ateliers.state,'AF/BC').nom),'Business APM','toutes les Business le suivent');
+  await page.locator('#mu-flux [data-mu-flux-classe="BC"]').uncheck();await attendre();
+  assert.equal(await page.evaluate(()=>OrlyParcours.fluxDe(Sim.ateliers.state,'AF/BC')),null,'décochée : la classe n’a plus de flux');
+  await page.locator(`.mu-liste [data-mu-flux-choisir="${cf}"]`).click();await attendre();
+  await page.locator('#mu-flux [data-mu-flux-classe="BC"]').check();await attendre();
+  assert.equal(await page.evaluate(()=>OrlyParcours.fluxDe(Sim.ateliers.state,'AF/BC').nom),'Complet');
 
   // 12. Les outils d'avant restent à portée, hors du menu.
   await nav.aller(page,'mu-services');

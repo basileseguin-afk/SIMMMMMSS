@@ -5,6 +5,22 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-30 — « Qui suit ce flux » : des classes et des exceptions, en clair
+
+Retour d'usage : la grille « les commandes qui le suivent » n'était pas
+claire, et une case qu'on ne peut pas décocher déconcerte.
+
+- La grille compagnies × classes (cases grisées, abréviations) disparaît.
+- **Les classes qui le suivent** : une case par classe, qui se coche et se
+  décoche ; décochée, la classe n'a plus de flux (le pas à pas le signale).
+- **Les exceptions**, une par ligne, en clair : « QR · Business suit ce
+  flux, alors que les Business suivent « Complet » » [La remettre sur le flux
+  de sa classe] ; « TX · Économie suit « Sans cuisine + Robot » » [Voir ce
+  flux] [La remettre sur ce flux].
+- « Une autre commande suit ce flux : » une liste pour en ajouter une.
+
+Fichiers : `unite.js`, `unite.css`, `tests/mon-unite-browser.cjs`, `README.md`.
+
 ## 2026-09-30 — Les flux de production : un par type, partagé
 
 Retour d'usage : « l'outil Chemins est particulièrement utile, il permet de

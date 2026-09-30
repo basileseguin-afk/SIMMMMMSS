@@ -498,41 +498,66 @@
         </div>
         <div class="pc-graphe mu-graphe" data-mu-graphe></div>
         <p class="mini-note mu-flux-message" aria-live="polite">${esc(this.fluxMessage || '')}</p>`;
-      const aide = cabs.length ? 'C’est le flux des ' + cabs.map(c => (P.NOM_CABINE || {})[c] || c).join(', ') + ' : leurs commandes le suivent, sauf celles qui ont une variante.'
-        : 'Cochez les commandes qui suivent ce flux ; « flux de la classe » en haut d’une colonne le donne à toute la classe.';
       const etape = (num, titre, corps, note) => `<section class="mu-etape"><h3><span class="mu-num">${num}</span>${esc(titre)}${note ? `<small>${note}</small>` : ''}</h3>${corps}</section>`;
       return tete
         + etape(1, 'Par où il passe', diagramme, 'un rond par service, une flèche pour « livre » ; un changement vaut pour toutes ses commandes')
-        + etape(2, 'Les commandes qui le suivent', `<p class="mini-note">${esc(aide)} ${pl(n, 'commande')} aujourd’hui.</p>` + this.grilleFlux(t, classes));
+        + etape(2, 'Qui le suit', this.quiSuit(t, classes), pl(n, 'commande') + ' aujourd’hui');
     }
 
-    /** Les commandes qui suivent un flux : une grille compagnies × classes. */
-    grilleFlux(t, classes) {
+    /* Qui suit un flux : des classes entières, et quelques exceptions — tout
+     * se coche et se décoche, chaque exception se défait d'un clic. */
+    quiSuit(t, classes) {
       if (!classes.length) return '<p class="mini-note">Aucune commande : importez d’abord vos vols (Vols).</p>';
-      const st = this.etat, par = new Map(classes.map(c => [c.id, c]));
-      const cies = [...new Set(classes.map(c => c.cie))].sort((x, y) => x.localeCompare(y));
+      const st = this.etat, nomCab = c => (P.NOM_CABINE || {})[c] || c;
+      const flux = id => (st.parcours || []).find(p => p.id === id);
       const cabs = P.CABINES.filter(c => classes.some(k => k.cabine === c));
-      const cellule = (cie, cab) => {
-        const id = P.idClasse(cie, cab), c = par.get(id);
-        if (!c) return '<td class="mu-rien" aria-hidden="true">·</td>';
-        const propre = PC.cheminDe(st, id), f = propre || PC.typeSuivi(st, c);
-        const ici = !propre && f && f.id === t.id, defaut = (st.parcoursCabine || {})[cab] === t.id;
-        const etat = ici ? 'ici' : propre ? 'ailleurs' : f ? 'ailleurs' : 'hors';
-        const titre = P.libelleClasse(id) + ' — ' + (ici ? 'suit ce flux' + (defaut ? ' (flux de sa classe)' : '') : propre ? 'a son propre chemin (cocher : elle suit ce flux)'
-          : f ? 'suit « ' + f.nom + ' » (cocher : elle suit ce flux)' : 'n’a pas encore de flux');
-        const marque = propre ? '<i class="mu-chez">◆</i>' : !ici && f ? `<i class="mu-chez">${esc(initiales(f.nom))}</i>` : '';
-        return `<td class="mu-c ${etat}"><label title="${esc(titre)}"><input type="checkbox" data-mu-flux-cmd="${esc(id)}"${ici ? ' checked' : ''}${ici && defaut ? ' disabled' : ''}
-          aria-label="${esc(titre)}">${marque}</label></td>`;
+      // 1. Les classes.
+      const puces = cabs.map(cab => {
+        const def = (st.parcoursCabine || {})[cab], ici = def === t.id, autre = def && !ici ? flux(def) : null;
+        const nb = classes.filter(c => c.cabine === cab && (PC.fluxDe(st, c) || {}).id === t.id).length;
+        const sous = ici ? pl(nb, 'commande') : autre ? 'suit « ' + autre.nom + ' »' : 'aucun flux';
+        return `<label class="mu-classe${ici ? ' on' : ''}"><input type="checkbox" data-mu-flux-classe="${cab}"${ici ? ' checked' : ''}>
+          <span class="puce-classe" data-cab="${cab}"></span><b>${esc(nomCab(cab))}</b><small>${esc(sous)}</small></label>`;
+      }).join('');
+      // 2. Les exceptions.
+      const lib = c => P.libelleClasse(c.id);
+      const suitAussi = classes.filter(c => !PC.cheminDe(st, c.id) && (st.parcoursClasse || {})[c.id] === t.id && (st.parcoursCabine || {})[c.cabine] !== t.id);
+      const partent = classes.filter(c => (st.parcoursCabine || {})[c.cabine] === t.id && (PC.fluxDe(st, c) || {}).id !== t.id);
+      const ligneAussi = c => {
+        const def = flux((st.parcoursCabine || {})[c.cabine]);
+        return `<li><span><b>${esc(lib(c))}</b> suit ce flux${def ? ', alors que les ' + esc(nomCab(c.cabine)) + ' suivent « ' + esc(def.nom) + ' »' : ''}.</span>
+          <button class="btn btn-sm" type="button" data-mu-flux-retour="${esc(c.id)}">${def ? 'La remettre sur le flux de sa classe' : 'Retirer'}</button></li>`;
       };
-      return `<div class="mu-grille-scroll"><table class="mu-grille mu-grille-flux">
-        <thead><tr><th scope="col"><span class="sr-only">Compagnie</span></th>${cabs.map(c => {
-          const defaut = (st.parcoursCabine || {})[c] === t.id;
-          return `<th scope="col"><span class="mu-col-tete"><span class="puce-classe" data-cab="${c}"></span>${c}</span>
-            <button type="button" class="mu-defaut${defaut ? ' on' : ''}" data-mu-flux-defaut="${c}" ${defaut ? 'disabled' : ''}
-              title="${defaut ? 'C’est le flux des ' + esc((P.NOM_CABINE || {})[c] || c) : 'En faire le flux de toutes les ' + esc((P.NOM_CABINE || {})[c] || c)}">${defaut ? '★ flux de la classe' : '☆ flux de la classe'}</button></th>`;
-        }).join('')}</tr></thead>
-        <tbody>${cies.map(cie => `<tr><th scope="row">${esc(cie)}</th>${cabs.map(cab => cellule(cie, cab)).join('')}</tr>`).join('')}</tbody>
-      </table></div>`;
+      const lignePart = c => {
+        const f = PC.fluxDe(st, c), propre = f && !f.type;
+        return `<li><span><b>${esc(lib(c))}</b> ${propre ? 'a son propre chemin (outil Chemins)' : 'suit « ' + esc(f ? f.nom : '?') + ' »'}.</span>
+          ${f && f.type ? `<button class="btn btn-sm" type="button" data-mu-flux-choisir="${esc(f.id)}">Voir ce flux</button>` : ''}
+          <button class="btn btn-sm" type="button" data-mu-flux-suivre="${esc(c.id)}">La remettre sur ce flux</button></li>`;
+      };
+      const autres = classes.filter(c => (PC.fluxDe(st, c) || {}).id !== t.id);
+      const ajout = autres.length ? `<label class="mu-flux-ajout-cmd">Une autre commande suit ce flux :
+        <select data-mu-flux-ajouter-cmd><option value="">choisir…</option>${autres.map(c => {
+          const f = PC.fluxDe(st, c);
+          return `<option value="${esc(c.id)}">${esc(lib(c))}${f ? ' — suit « ' + esc(f.nom) + ' »' : ' — sans flux'}</option>`;
+        }).join('')}</select></label>` : '';
+      return `<p class="mu-sous-titre">Les classes qui le suivent <small>cochez une classe : toutes ses commandes suivent ce flux</small></p>
+        <div class="mu-classes">${puces}</div>
+        <p class="mu-sous-titre">Les exceptions <small>une compagnie qui ne fait pas comme sa classe</small></p>
+        ${suitAussi.length || partent.length ? `<ul class="mu-exceptions">${suitAussi.map(ligneAussi).join('')}${partent.map(lignePart).join('')}</ul>`
+          : '<p class="mini-note">Aucune : chaque commande suit le flux de sa classe.</p>'}
+        ${ajout}`;
+    }
+
+    /* Une commande revient au flux de sa classe (ou n'en a plus, si sa classe n'en a pas). */
+    revenirClasse(st, cmd) {
+      const cab = cmd.slice(cmd.lastIndexOf('/') + 1), def = (st.parcoursCabine || {})[cab];
+      if (def) PC.assignerType(st, cmd, def);
+      else {
+        const propre = PC.cheminDe(st, cmd);
+        delete st.parcoursClasse[cmd];
+        if (propre) st.parcours = st.parcours.filter(p => p !== propre);
+      }
+      PC.nettoyerTypes(st);
     }
 
     grapheFlux() {
@@ -619,25 +644,28 @@
         if (a) return this.actionFlux(a.dataset.muFluxAction, a);
         const s = e.target.closest('[data-mu-ouvrir-svc]');
         if (s) return this.ouvrir(s.dataset.muOuvrirSvc);
-        const def = e.target.closest('[data-mu-flux-defaut]');
-        if (def) {
-          const cab = def.dataset.muFluxDefaut, st = this.at.state, t = PC.types(st).find(x => x.id === this.fluxChoisi); if (!t) return;
-          const nom = (P.NOM_CABINE || {})[cab] || cab;
-          this.at.changer(() => {
-            st.parcoursCabine[cab] = t.id;
-            for (const [k, v] of Object.entries(st.parcoursClasse)) if (v === t.id && k.endsWith('/' + cab)) delete st.parcoursClasse[k];
-            PC.nettoyerTypes(st);
-          }, '« ' + t.nom + ' » devient le flux des ' + nom + ' : celles qui n’ont pas de variante le suivent.');
-        }
+        const st = this.at.state, t = PC.types(st).find(x => x.id === this.fluxChoisi);
+        const r = e.target.closest('[data-mu-flux-retour]');
+        if (r && t) { const cmd = r.dataset.muFluxRetour; return this.at.changer(() => this.revenirClasse(st, cmd), PC.etiquette(cmd) + ' reprend le flux de sa classe.'); }
+        const sv = e.target.closest('[data-mu-flux-suivre]');
+        if (sv && t) { const cmd = sv.dataset.muFluxSuivre; return this.at.changer(() => { PC.assignerType(st, cmd, t.id); PC.nettoyerTypes(st); }, PC.etiquette(cmd) + ' suit de nouveau « ' + t.nom + ' ».'); }
       });
       d.addEventListener('change', e => {
         const el = e.target; if (!dans(el)) return;
         const st = this.at.state, t = PC.types(st).find(x => x.id === this.fluxChoisi);
-        if (el.dataset.muFluxCmd && t) {
-          const cmd = el.dataset.muFluxCmd, cab = cmd.slice(cmd.lastIndexOf('/') + 1);
-          if (el.checked) this.at.changer(() => { PC.assignerType(st, cmd, t.id); PC.nettoyerTypes(st); }, PC.etiquette(cmd) + ' suit maintenant « ' + t.nom + ' ».');
-          else this.at.changer(() => { delete st.parcoursClasse[cmd]; PC.nettoyerTypes(st); },
-            PC.etiquette(cmd) + ' reprend le flux de sa classe' + ((st.parcoursCabine || {})[cab] ? '' : ' (elle n’en a pas encore)') + '.');
+        if (el.dataset.muFluxClasse && t) {
+          const cab = el.dataset.muFluxClasse, nom = (P.NOM_CABINE || {})[cab] || cab;
+          if (el.checked) this.at.changer(() => {
+            st.parcoursCabine[cab] = t.id;
+            // Celles de la classe désignées une à une sur ce flux le suivent désormais par leur classe.
+            for (const [k, v] of Object.entries(st.parcoursClasse)) if (v === t.id && k.endsWith('/' + cab)) delete st.parcoursClasse[k];
+            PC.nettoyerTypes(st);
+          }, 'Les ' + nom + ' suivent maintenant « ' + t.nom + ' » (sauf leurs exceptions).');
+          else this.at.changer(() => { delete st.parcoursCabine[cab]; PC.nettoyerTypes(st); },
+            'Les ' + nom + ' ne suivent plus aucun flux : ouvrez celui qu’elles doivent suivre (à gauche) et cochez « ' + nom + ' ».');
+        } else if (el.dataset.muFluxAjouterCmd !== undefined && el.value && t) {
+          const cmd = el.value;
+          this.at.changer(() => { PC.assignerType(st, cmd, t.id); PC.nettoyerTypes(st); }, PC.etiquette(cmd) + ' suit maintenant « ' + t.nom + ' ».');
         } else if (el.dataset.muFluxAjout !== undefined && el.value && t) {
           const s = el.value, o = this.options();
           this.changerFlux(x => { PC.insererService(st, x, s, o); }, this.nom(s) + ' entre dans « ' + t.nom + ' », à sa place ; ajustez les flèches si besoin.');

@@ -121,11 +121,6 @@
 .mu-graphe{border:1px solid var(--bordure);border-radius:12px;background:var(--bg2);min-height:220px;max-height:520px;overflow:auto}
 .mu-flux-message{min-height:1.2em;margin:6px 0 0}
 .mu-col-tete{display:inline-flex;align-items:center;gap:5px;font-weight:700;color:var(--txt)}
-.mu-grille-flux th[scope=col]{vertical-align:bottom;padding:0 2px 4px}
-.mu-defaut{display:block;margin:3px auto 0;font:inherit;font-size:10.5px;font-weight:600;color:var(--txt3);background:none;border:1px dashed var(--bordure2);
-  border-radius:99px;padding:1px 7px;cursor:pointer;white-space:nowrap}
-.mu-defaut:hover:not(:disabled){color:var(--accent);border-color:var(--accent)}
-.mu-defaut.on{color:#b54708;border:1px solid #fedf89;background:#fffaeb;cursor:default}
 .mu-q{margin:10px 0 0;padding:10px 14px;border:1px solid #fedf89;background:#fffaeb;border-radius:12px;font-size:13px}
 .mu-q p{margin:0 0 8px}
 .mu-q-gestes{display:flex;flex-wrap:wrap;gap:8px}
@@ -133,3 +128,19 @@
 .mu-besoins .chk{display:flex;align-items:center;gap:8px;font-size:14px}
 .mu-besoins small{color:var(--txt3)}
 .mu-tete-flux{background:linear-gradient(145deg,color-mix(in srgb,var(--c-equipes) 78%,#fff),var(--c-equipes));color:#fff;border-radius:12px;width:44px;height:44px;display:inline-grid;place-items:center}
+
+.mu-sous-titre{margin:14px 0 8px;font-size:13px;font-weight:650;color:var(--txt)}
+.mu-sous-titre small{font-weight:400;color:var(--txt3);margin-left:6px}
+.mu-classes{display:flex;flex-wrap:wrap;gap:8px}
+.mu-classe{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border:1px solid var(--bordure2);border-radius:12px;background:var(--bg3);cursor:pointer;
+  box-shadow:0 1px 2px rgba(16,24,40,.04);transition:border-color .15s,background .15s}
+.mu-classe:hover{border-color:var(--accent)}
+.mu-classe.on{border-color:color-mix(in srgb,var(--accent) 55%,#fff);background:color-mix(in srgb,var(--accent) 8%,#fff)}
+.mu-classe input{width:17px;height:17px;margin:0;accent-color:var(--accent)}
+.mu-classe b{font-size:14px;font-weight:600}
+.mu-classe small{font-size:12px;color:var(--txt3)}
+.mu-exceptions{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.mu-exceptions li{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;border:1px solid var(--bordure);border-radius:10px;background:var(--bg2);font-size:13px}
+.mu-exceptions li>span{flex:1;min-width:240px}
+.mu-flux-ajout-cmd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--txt2)}
+.mu-flux-ajout-cmd select{min-height:32px;max-width:420px}
