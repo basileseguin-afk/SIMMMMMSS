@@ -88,7 +88,7 @@
     const garder = liste => (connus ? liste.filter(s => connus.has(s)) : liste);
     const branche = (nom, services) => ({ nom, services: garder(services) });
     // Écrits en chaînes, lus en graphe : un service absent du plan est enjambé.
-    const nettoyer = ({ branches, ...p }) => ({ ...p, ...depuisBranches(branches.filter(b => b.services.length >= 2)), prepa: true });
+    const nettoyer = ({ branches, ...p }) => ({ ...p, ...depuisBranches(branches.filter(b => b.services.length >= 2)), prepa: true, type: true });
     const parcours = [
       nettoyer({ id: 'complet', nom: 'Complet', branches: [
         branche('Agro', ['appros', 'decontam', 'cuisine', 'preparation', 'prepa']),
@@ -139,7 +139,8 @@
         if (!de || !vers || de === vers || vus.has(de + '>' + vers)) continue;
         vus.add(de + '>' + vers); liens.push({ de, vers });
       }
-      return { id, nom: texte(p.nom, 80) || 'Parcours', noeuds, liens, ...(p.prepa ? { prepa: true } : {}), ...(p.cases ? { cases: true } : {}) };
+      return { id, nom: texte(p.nom, 80) || 'Parcours', noeuds, liens, ...(p.prepa ? { prepa: true } : {}), ...(p.cases ? { cases: true } : {}),
+        ...(p.type ? { type: true } : {}), ...(p.auto ? { auto: true } : {}) };
     });
     const parcoursCabine = {};
     for (const c of P.CABINES) {
@@ -150,7 +151,26 @@
     for (const [k, v] of Object.entries(b.parcoursClasse || {}).slice(0, 2000)) {
       if (typeof v === 'string' && ids.has(v) && /^[^/]{1,40}\/[A-Z]+$/.test(k)) parcoursClasse[k] = v;
     }
+    marquerTypes({ parcours, parcoursCabine, parcoursClasse });
     return { parcours, parcoursCabine, parcoursClasse, crees: false };
+  }
+
+  /**
+   * Un flux de production (« type ») est partagé : c'est le flux d'une classe,
+   * celui de plusieurs commandes, ou celui d'aucune (un modèle en réserve). Un
+   * chemin désigné par une seule commande est son chemin propre, une exception.
+   * Modifie les parcours ; renvoie le nombre de flux.
+   */
+  function marquerTypes(etat) {
+    const par = new Map();
+    for (const v of Object.values(etat.parcoursClasse || {})) par.set(v, (par.get(v) || 0) + 1);
+    const classe = new Set(Object.values(etat.parcoursCabine || {}));
+    let n = 0;
+    for (const p of etat.parcours || []) {
+      if (classe.has(p.id) || (par.get(p.id) || 0) !== 1) p.type = true;
+      if (p.type) n++;
+    }
+    return n;
   }
 
   /** Le parcours d'une classe : le sien, sinon celui de sa cabine. */
@@ -452,11 +472,32 @@
   /** Le chemin propre d'une commande, ou rien. */
   function cheminDe(etat, cmd) {
     const id = (etat.parcoursClasse || {})[cmd];
-    return id ? (etat.parcours || []).find(p => p.id === id) || null : null;
+    const p = id ? (etat.parcours || []).find(x => x.id === id) || null : null;
+    // Un flux partagé n'est le chemin propre de personne : le modifier pour une
+    // commande le modifierait pour toutes.
+    return p && !p.type ? p : null;
+  }
+
+  /** Le flux de production qu'une commande suit : le sien désigné, sinon celui de sa classe. */
+  function typeSuivi(etat, c) {
+    const id = typeof c === 'string' ? c : c.id;
+    const cab = typeof c === 'string' ? c.slice(c.lastIndexOf('/') + 1) : c.cabine;
+    const trouve = x => (x ? (etat.parcours || []).find(p => p.id === x) || null : null);
+    const propre = trouve((etat.parcoursClasse || {})[id]);
+    if (propre && propre.type) return propre;
+    return trouve((etat.parcoursCabine || {})[cab]);
+  }
+
+  /** Par où passe une commande : son chemin propre s'il en a un, sinon son flux. */
+  function fluxDe(etat, c) {
+    const id = typeof c === 'string' ? c : c.id;
+    return cheminDe(etat, id) || typeSuivi(etat, c);
   }
 
   /** La commande dont ce chemin est le chemin propre, ou rien. */
   function commandeDu(etat, pid) {
+    const p = (etat.parcours || []).find(x => x.id === pid);
+    if (p && p.type) return null;
     return Object.keys(etat.parcoursClasse || {}).find(k => etat.parcoursClasse[k] === pid) || null;
   }
 
@@ -464,7 +505,7 @@
   function modeles(etat) {
     const pris = new Set(Object.values(etat.parcoursClasse || {}));
     const classe = new Set(Object.values(etat.parcoursCabine || {}));
-    return (etat.parcours || []).filter(p => classe.has(p.id) || !pris.has(p.id));
+    return (etat.parcours || []).filter(p => p.type || classe.has(p.id) || !pris.has(p.id));
   }
 
   /** La case d'une commande dans un service : l'équipe qui l'y prépare, sinon celle qui y sert tout le monde. */
@@ -634,7 +675,7 @@
     if (!dispos.length) return 0;
     const d = dispos[0];
     const v = d.permanent === false && Array.isArray(d.vagues) && d.vagues.length ? d.vagues[0] : { debut: d.debut || '06:00', jour: d.jour || 0 };
-    const cheminDeLa = c => cheminDe(etat, c.id) || (etat.parcours || []).find(p => p.id === (etat.parcoursCabine || {})[c.cabine]) || null;
+    const cheminDeLa = c => fluxDe(etat, c);
     const cmds = (classes || []).filter(c => { const p = cheminDeLa(c); return p && P.servicesDuParcours(p).includes(service); }).map(c => c.id);
     etat.ateliers = etat.ateliers.filter(a => !dispos.includes(a));
     for (const cmd of cmds) {
@@ -697,22 +738,34 @@
    * Une commande qui suivait un modèle reçoit son propre chemin, copié du modèle.
    * @returns {[id]} les commandes changées
    */
-  function remplacerEtape(etat, de, vers, cmds, classes, nomVers) {
+  function remplacerEtape(etat, de, vers, cmds, classes, nomVers, nomDe) {
     const faites = [];
     let debut = null;
     for (const cmd of cmds) {
       const c = (classes || []).find(x => x.id === cmd); if (!c) continue;
-      let p = cheminDe(etat, cmd);
-      if (!p) {
-        const modele = (etat.parcours || []).find(q => q.id === (etat.parcoursCabine || {})[c.cabine]);
-        if (!modele || !P.servicesDuParcours(modele).includes(de)) continue;
-        p = creerChemin(etat, cmd, modele.id, false, null, { classes }).chemin;
+      const remplacer = p => {
+        p.noeuds = [...new Set((p.noeuds || []).map(s => (s === de ? vers : s)))];
+        const vus = new Set();
+        p.liens = (p.liens || []).map(l => ({ de: l.de === de ? vers : l.de, vers: l.vers === de ? vers : l.vers }))
+          .filter(l => l.de !== l.vers && !vus.has(l.de + '>' + l.vers) && vus.add(l.de + '>' + l.vers));
+      };
+      const p = cheminDe(etat, cmd);
+      if (p) {
+        if (!P.servicesDuParcours(p).includes(de)) continue;
+        remplacer(p);
+      } else {
+        // Elle suit un flux partagé : elle passe à sa variante (« Sans cuisine
+        // + Robot sans Montage »), la même pour toutes celles qui s'écartent pareil.
+        marquerTypes(etat);
+        const t = typeSuivi(etat, c);
+        if (!t || !P.servicesDuParcours(t).includes(de)) continue;
+        const essai = { noeuds: P.servicesDuParcours(t).slice(), liens: P.arcsDuParcours(t).map(a => ({ de: a.from, vers: a.to })) };
+        remplacer(essai);
+        const sig = signature(essai);
+        let v = types(etat).find(x => signature(x) === sig);
+        if (!v) v = nouveauType(etat, nomVariante(etat, t, essai, s => (s === vers ? (nomVers || s) : nomDe ? nomDe(s) : s)), essai, { auto: true });
+        assignerType(etat, cmd, v.id);
       }
-      if (!P.servicesDuParcours(p).includes(de)) continue;
-      p.noeuds = [...new Set((p.noeuds || []).map(s => (s === de ? vers : s)))];
-      const vus = new Set();
-      p.liens = (p.liens || []).map(l => ({ de: l.de === de ? vers : l.de, vers: l.vers === de ? vers : l.vers }))
-        .filter(l => l.de !== l.vers && !vus.has(l.de + '>' + l.vers) && vus.add(l.de + '>' + l.vers));
       const ancienne = (etat.ateliers || []).find(a => a.service === de && fabrique(a) && a.lots.some(l => l.includes(cmd)));
       if (ancienne && debut == null) debut = ancienne.debut;
       etat.ateliers = etat.ateliers.filter(a => !(a.service === de && fabrique(a) && a.lots.length && a.lots.every(l => l.every(id => id === cmd))));
@@ -945,19 +998,179 @@
     a.lots.splice(i < 0 ? a.lots.length : i, 0, [cmd]);
   }
 
+  /* ======================================================================
+   *  LES FLUX DE PRODUCTION (30/09)
+   *  « Les éco sont pratiquement tous identiques, pareil pour les business ;
+   *  ce qui change, ce sont les ateliers qui les font, les man-hours, les
+   *  personnes, le matériel — mais ce n'est pas une science exacte. » Un flux
+   *  par type de production, partagé ; une commande peut s'en écarter : elle
+   *  suit alors une variante (« Économie + Robot sans Montage »), elle aussi
+   *  partagée par les commandes qui s'écartent de la même façon.
+   * ====================================================================*/
+
+  /** L'empreinte d'un flux : ses services et ses liens, dans un ordre fixe. */
+  function signature(p) {
+    return JSON.stringify([P.servicesDuParcours(p).slice().sort(), P.arcsDuParcours(p).map(a => a.from + '>' + a.to).sort()]);
+  }
+
+  /** Les flux de production. */
+  const types = etat => (etat.parcours || []).filter(p => p.type);
+
+  /** Les commandes qui suivent un flux (sans chemin propre). */
+  function commandesDuType(etat, typeId, classes) {
+    return (classes || []).filter(c => !cheminDe(etat, c.id) && (typeSuivi(etat, c) || {}).id === typeId);
+  }
+
+  /** Un flux neuf : vide, ou copie d'un autre. */
+  function nouveauType(etat, nom, source, o = {}) {
+    etat.parcours = etat.parcours || [];
+    const p = { id: uid(), nom: nomDeChemin(etat, texte(nom, 76) || 'Flux'),
+      noeuds: source ? P.servicesDuParcours(source).slice() : [],
+      liens: source ? P.arcsDuParcours(source).map(a => ({ de: a.from, vers: a.to })) : [],
+      prepa: true, cases: true, type: true, ...(o.auto ? { auto: true } : {}) };
+    etat.parcours.push(p);
+    return p;
+  }
+
+  /** Une commande suit ce flux (et quitte son chemin propre, s'il en avait un). */
+  function assignerType(etat, cmd, typeId) {
+    etat.parcoursClasse = etat.parcoursClasse || {};
+    const propre = cheminDe(etat, cmd);
+    const cab = String(cmd).slice(String(cmd).lastIndexOf('/') + 1);
+    if ((etat.parcoursCabine || {})[cab] === typeId) delete etat.parcoursClasse[cmd];
+    else etat.parcoursClasse[cmd] = typeId;
+    if (propre && !Object.values(etat.parcoursClasse).includes(propre.id)) etat.parcours = etat.parcours.filter(p => p !== propre);
+  }
+
+  /** Les variantes créées d'elles-mêmes, que plus aucune commande ne suit, s'en vont. */
+  function nettoyerTypes(etat) {
+    const pris = new Set(Object.values(etat.parcoursClasse || {}).concat(Object.values(etat.parcoursCabine || {})));
+    const avant = (etat.parcours || []).length;
+    etat.parcours = (etat.parcours || []).filter(p => !(p.type && p.auto && !pris.has(p.id)));
+    return avant - etat.parcours.length;
+  }
+
+  /* Le nom d'une variante : ce qui la distingue du flux de sa classe. */
+  function nomVariante(etat, base, p, nomDe) {
+    const nom = s => (nomDe ? nomDe(s) : s);
+    const a = new Set(P.servicesDuParcours(base)), b = new Set(P.servicesDuParcours(p));
+    const plus = [...b].filter(x => !a.has(x)), moins = [...a].filter(x => !b.has(x));
+    const nomBase = String(base.nom).replace(/\s*[(+].*$/, '').replace(/ sans .*$/, '').trim() || base.nom;
+    const suite = (plus.length ? ' + ' + plus.map(nom).join(' + ') : '') + (moins.length ? ' sans ' + moins.map(nom).join(', ') : '');
+    return nomBase + (suite || ' (variante)');
+  }
+
+  /**
+   * « Seulement pour cette commande » : elle suit le flux de son type, avec
+   * ce service en plus (`oui`) ou en moins. Une variante identique existe ?
+   * elle la rejoint ; sinon une variante naît. Une commande qui a son propre
+   * chemin le voit changer, lui. `o` : { classes, liaisons, parent, nomDe }.
+   * @returns {number} le nombre de commandes changées
+   */
+  function adapter(etat, cmds, service, oui, o = {}) {
+    marquerTypes(etat);
+    let n = 0;
+    for (const cmd of [].concat(cmds)) {
+      const propre = cheminDe(etat, cmd);
+      if (propre) { if (oui ? insererService(etat, propre, service, o) : retirerService(propre, service)) n++; continue; }
+      const t = typeSuivi(etat, cmd);
+      if (!t) { if (oui) { const c = baseDeClasse(etat, cmd, service, o); if (c) n++; } continue; }
+      const dedans = P.servicesDuParcours(t).includes(service);
+      if (oui === dedans) continue;
+      const essai = { noeuds: P.servicesDuParcours(t).slice(), liens: P.arcsDuParcours(t).map(a => ({ de: a.from, vers: a.to })) };
+      if (oui) insererService(etat, essai, service, o); else retirerService(essai, service);
+      const sig = signature(essai);
+      let v = types(etat).find(x => signature(x) === sig);
+      if (!v) {
+        const cab = String(cmd).slice(String(cmd).lastIndexOf('/') + 1);
+        const base = (etat.parcours || []).find(x => x.id === (etat.parcoursCabine || {})[cab]) || t;
+        v = nouveauType(etat, nomVariante(etat, base, essai, o.nomDe), essai, { auto: true });
+      }
+      assignerType(etat, cmd, v.id); n++;
+    }
+    nettoyerTypes(etat);
+    return n;
+  }
+
+  /* Une commande sans aucun flux : le flux de sa classe naît, avec ce service. */
+  function baseDeClasse(etat, cmd, service, o = {}) {
+    const cab = String(cmd).slice(String(cmd).lastIndexOf('/') + 1);
+    etat.parcoursCabine = etat.parcoursCabine || {};
+    let t = (etat.parcours || []).find(x => x.id === etat.parcoursCabine[cab]);
+    if (!t) { t = nouveauType(etat, (P.NOM_CABINE || {})[cab] || cab); etat.parcoursCabine[cab] = t.id; }
+    insererService(etat, t, service, o);
+    return t;
+  }
+
+  /** « Pour tout le flux » : le service entre dans (ou sort de) ce flux, pour toutes ses commandes. */
+  function changerFlux(etat, typeId, service, oui, o = {}) {
+    const t = (etat.parcours || []).find(x => x.id === typeId); if (!t) return false;
+    return oui ? insererService(etat, t, service, o) : retirerService(t, service);
+  }
+
+  /**
+   * Regrouper les chemins propres identiques en flux de production. Pour
+   * chaque classe, le flux suivi par le plus de commandes devient son flux ;
+   * les autres commandes suivent le leur. Les chemins propres s'en vont.
+   * @returns {{ types:number, commandes:number }}
+   */
+  function regrouper(etat, classes, nomDe) {
+    marquerTypes(etat);
+    const propres = (classes || []).map(c => ({ c, p: cheminDe(etat, c.id) })).filter(x => x.p);
+    if (!propres.length) return { types: 0, commandes: 0 };
+    const groupes = new Map();
+    for (const x of propres) {
+      const k = signature(x.p);
+      if (!groupes.has(k)) groupes.set(k, []);
+      groupes.get(k).push(x);
+    }
+    // Le flux de chaque commande : celui de son groupe (un flux identique déjà là est repris).
+    const flux = new Map(), crees = [];
+    for (const [k, liste] of groupes) {
+      let t = types(etat).find(x => signature(x) === k);
+      if (!t) { t = nouveauType(etat, 'Flux', liste[0].p); crees.push({ t, liste }); }
+      for (const x of liste) flux.set(x.c.id, t);
+    }
+    // Pour chaque classe : le flux le plus suivi en devient le flux.
+    for (const cab of P.CABINES) {
+      const ici = (classes || []).filter(c => c.cabine === cab);
+      if (!ici.length) continue;
+      const compte = new Map();
+      for (const c of ici) { const t = flux.get(c.id) || typeSuivi(etat, c); if (t) compte.set(t, (compte.get(t) || 0) + 1); }
+      const [premier] = [...compte].sort((a, b) => b[1] - a[1]);
+      if (!premier) continue;
+      etat.parcoursCabine = etat.parcoursCabine || {};
+      etat.parcoursCabine[cab] = premier[0].id;
+    }
+    // Les noms : le flux d'une classe porte son nom ; les autres, leur écart.
+    const nomsDe = t => P.CABINES.filter(c => etat.parcoursCabine[c] === t.id).map(c => (P.NOM_CABINE || {})[c] || c);
+    for (const { t, liste } of crees) {
+      const noms = nomsDe(t);
+      if (noms.length) { t.nom = nomDeChemin({ parcours: etat.parcours.filter(x => x !== t) }, noms.join(' · ')); continue; }
+      const cab = liste[0].c.cabine, base = etat.parcours.find(x => x.id === etat.parcoursCabine[cab]);
+      t.nom = nomDeChemin({ parcours: etat.parcours.filter(x => x !== t) }, base ? nomVariante(etat, base, t, nomDe) : liste[0].p.nom);
+    }
+    for (const x of propres) assignerType(etat, x.c.id, flux.get(x.c.id).id);
+    return { types: crees.length, commandes: propres.length };
+  }
+
   /**
    * La grille d'une équipe : cocher, c'est « cette équipe prépare cette
    * commande ». Elle quitte les autres équipes du même service (une commande,
-   * une équipe par service), et le service entre dans son chemin. Décocher :
-   * si plus personne ne la prépare dans ce service, il sort de son chemin.
-   * `o` : { classes, liaisons, parent }. Modifie `etat`.
-   * @returns {number} le nombre de commandes changées
+   * une équipe par service). Le flux ne change pas ici : ce qui manque est
+   * renvoyé, pour qu'on choisisse (tout le flux, ou seulement ces commandes).
+   * Une commande sans aucun flux reçoit celui de sa classe, avec ce service.
+   * `o` : { classes, liaisons, parent, nomDe }. Modifie `etat`.
+   * @returns {{ n, horsFlux:[cmd], orphelines:[cmd] }} horsFlux : cochées alors
+   *   que leur flux ne passe pas par ce service ; orphelines : décochées alors
+   *   que leur flux y passe et que plus personne ne les y prépare.
    */
   function cocher(etat, atelierId, cmds, oui, o = {}) {
     const a = (etat.ateliers || []).find(x => x.id === atelierId);
     if (!a || !fabrique(a)) throw new Error('Cette équipe ne prépare pas commande par commande.');
     const s = a.service;
     let n = 0;
+    const horsFlux = [], orphelines = [];
     for (const cmd of [].concat(cmds)) {
       const chez = a.lots.some(l => l.includes(cmd));
       if (oui) {
@@ -965,31 +1178,28 @@
           if (x === a || x.service !== s || !fabrique(x)) continue;
           x.lots = x.lots.map(l => l.filter(id => id !== cmd)).filter(l => l.length);
         }
-        if (!chez) insererParEcheance(a, cmd, o.classes);
-        const p = cheminPropre(etat, cmd, o.classes);
-        insererService(etat, p, s, o);
-        if (!chez) n++;
+        if (!chez) { insererParEcheance(a, cmd, o.classes); n++; }
+        const f = fluxDe(etat, cmd);
+        if (!f) baseDeClasse(etat, cmd, s, o);
+        else if (!P.servicesDuParcours(f).includes(s)) horsFlux.push(cmd);
       } else if (chez) {
         a.lots = a.lots.map(l => l.filter(id => id !== cmd)).filter(l => l.length);
-        const encore = etat.ateliers.some(x => x.service === s && fabrique(x) && x.lots.some(l => l.includes(cmd)));
-        if (!encore && !fusionneePar(etat, s, cmd)) retirerService(cheminPropre(etat, cmd, o.classes), s);
         n++;
+        const encore = etat.ateliers.some(x => x.service === s && fabrique(x) && x.lots.some(l => l.includes(cmd)));
+        const f = fluxDe(etat, cmd);
+        if (!encore && !fusionneePar(etat, s, cmd) && f && P.servicesDuParcours(f).includes(s)) orphelines.push(cmd);
       }
     }
-    return n;
+    return { n, horsFlux, orphelines };
   }
 
   /**
-   * Un service qui sert tout le monde (plonge, légumerie, magasin, handling) :
-   * on coche les commandes qui passent par lui. Modifie `etat`.
-   * @returns {number} le nombre de chemins changés
+   * Un service qui sert tout le monde (légumerie, magasin) : « qui en a
+   * besoin ? », flux par flux. Modifie `etat`.
    */
-  function passerPar(etat, service, cmds, oui, o = {}) {
+  function passerPar(etat, service, typeIds, oui, o = {}) {
     let n = 0;
-    for (const cmd of [].concat(cmds)) {
-      const p = oui ? cheminPropre(etat, cmd, o.classes) : cheminDe(etat, cmd) || cheminPropre(etat, cmd, o.classes);
-      if (oui ? insererService(etat, p, service, o) : retirerService(p, service)) n++;
-    }
+    for (const id of [].concat(typeIds)) if (changerFlux(etat, id, service, oui, o)) n++;
     return n;
   }
 
@@ -1181,7 +1391,7 @@
         const tete = c.cie !== cie ? `<li class="pc-cie" data-cie="${esc(c.cie)}">${esc(c.cie)}</li>` : '';
         cie = c.cie;
         const p = cheminDe(etat, c.id), on = this.cmd === c.id, v = par[c.id] || {};
-        const modele = !p && (etat.parcours || []).find(x => x.id === (etat.parcoursCabine || {})[c.cabine]);
+        const modele = !p && typeSuivi(etat, c);
         const marque = !p ? '' : v.fin == null ? '<span class="pc-cmd-etat afaire" title="Pas encore prête">·</span>'
           : v.aHeure ? '<span class="pc-cmd-etat ok" title="Prête à l’heure">✓</span>'
           : `<span class="pc-cmd-etat retard" title="${Math.round(v.retard)} min de retard">!</span>`;
@@ -1238,7 +1448,7 @@
       const p = this.parcoursActif(etat);
       if (!p) return '<p class="mini-note">Choisissez une commande à gauche.</p>';
       const suivi = P.CABINES.filter(c => (etat.parcoursCabine || {})[c] === p.id).map(c => (P.NOM_CABINE || {})[c] || c);
-      const sans = classes.filter(c => !cheminDe(etat, c.id) && (etat.parcoursCabine || {})[c.cabine] === p.id).length;
+      const sans = classes.filter(c => !cheminDe(etat, c.id) && (typeSuivi(etat, c) || {}).id === p.id).length;
       return `<div class="pc-cmd-tete"><b>Modèle « ${esc(p.nom)} »</b><span>${suivi.length ? 'classe' + (suivi.length > 1 ? 's ' : ' ') + esc(suivi.join(', ')) : 'suivi par aucune classe'}
           · ${sans} ${sans > 1 ? 'commandes le suivent' : 'commande le suit'} faute de chemin à elles</span></div>`
         + this.outils(etat, p, '')
@@ -1276,7 +1486,7 @@
     /** Une commande sans chemin : on lui en crée un, vide ou copié d'un autre. */
     creation(etat, classes, c) {
       const mods = modeles(etat), autres = (etat.parcours || []).filter(p => !mods.includes(p));
-      const modele = (etat.parcours || []).find(x => x.id === (etat.parcoursCabine || {})[c.cabine]);
+      const modele = typeSuivi(etat, c);
       const choisi = this.depuis !== undefined ? this.depuis : (modele ? modele.id : '');
       const src = (etat.parcours || []).find(p => p.id === choisi), srcCmd = src ? commandeDu(etat, src.id) : null;
       const opt = p => `<option value="${esc(p.id)}" ${p.id === choisi ? 'selected' : ''}>${esc(p.nom)}</option>`;
@@ -1743,7 +1953,7 @@
         return this.a.changer(x => { Object.assign(x, t); }, 'Modèles types créés.');
       }
       if (action === 'creer') {
-        const cible = b.dataset.classe, modele = (etat.parcours || []).find(x => x.id === (etat.parcoursCabine || {})[cible.split('/').pop()]);
+        const cible = b.dataset.classe, modele = typeSuivi(etat, cible);
         const source = this.depuis !== undefined ? this.depuis : (modele ? modele.id : '');
         const memes = !!(this.a.boite().querySelector('[data-pc="memes-cases"]') || {}).checked;
         let res = null;
@@ -1883,7 +2093,9 @@
   const api = { annoncer, fusionneePar, insererPrepa, depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, couverture, confier, nouvelleEquipe,
     completer, colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, donnerCases, completerCases, nomLibre, caseHandling, anciensHandlings, brancherHandling, caseRobot, remplacerEtape,
     SERVICES_DISPO, estDispo, caseDispo, anciensDispos, partagerDispos, separerParCommande, ajouterBesoin,
-    cheminPropre, insererService, retirerService, insererParEcheance, cocher, passerPar, grille, natureService, equipeNeuve, EditeurParcours };
+    cheminPropre, insererService, retirerService, insererParEcheance, cocher, passerPar, grille, natureService, equipeNeuve,
+    marquerTypes, typeSuivi, fluxDe, signature, types, commandesDuType, nouveauType, assignerType, nettoyerTypes, nomVariante, adapter,
+    changerFlux, regrouper, EditeurParcours };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyParcours = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

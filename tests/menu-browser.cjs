@@ -44,7 +44,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 2. Le menu de l'en-tête : une partie ouvre ses pages, et seulement elles.
   const attendues={donnees:['v-programme','v-planche'],
-    organisation:['mu-pas','mu-services','at-recap','rg-recap'],
+    organisation:['mu-pas','mu-flux','mu-services','at-recap','rg-recap'],
     reglages:['rg-simulation'],
     resultats:['j-chiffres','j-plan','at-planning','at-repas','at-grille','v-departs','j-stocks','j-comparer']};
   const noms={donnees:'Vols',organisation:'Mon unité',reglages:'Réglages',resultats:'Résultats'};

@@ -52,6 +52,7 @@
     constructor(a) {
       this.a = a;
       this.natures = {};   // la nature choisie d'un service qui n'a pas encore d'équipe
+      this.lierFlux();
       try { this.choisi = localStorage.getItem(CLE) || null; } catch (e) { this.choisi = null; }
       this.lier();
     }
@@ -59,7 +60,7 @@
     get at() { return this.a.at(); }
     get etat() { return this.at.state; }
     nom(id) { return (this.a.services().find(s => s.id === id) || {}).nom || id; }
-    options() { return { classes: this.at.classes, liaisons: this.a.liaisons ? this.a.liaisons() : [], parent: this.a.parent }; }
+    options() { return { classes: this.at.classes, liaisons: this.a.liaisons ? this.a.liaisons() : [], parent: this.a.parent, nomDe: s => this.nom(s) }; }
 
     /* ---- ce qu'on sait d'un service ------------------------------------ */
 
@@ -96,6 +97,7 @@
       const p = this.page();
       if (p === 'mu-services') this.rendreServices();
       if (p === 'mu-pas') this.rendrePas();
+      if (p === 'mu-flux') this.rendreFlux();
     }
 
     /* Remplacer le HTML sans perdre le champ où l'on est, ni le défilement. */
@@ -190,7 +192,7 @@
         equipes = `<p class="mini-note">${esc(phrase)}</p>`
           + b.cases.map(a => `<div class="mu-carte">${this.at.carte(a, calc.get(a.id), { cmd: null })}</div>`).join('')
           + (b.cases.length ? '' : `<p class="mu-ajout"><button class="btn btn-play btn-sm" type="button" data-mu-action="equipe">+ ${nature === 'lavage' ? 'Ajouter une équipe de plonge' : nature === 'dispo' ? 'Mettre ce service en place' : 'Ajouter une équipe de chargement'}</button></p>`)
-          + (nature === 'dispo' ? `<div class="mu-besoin"><h4>Qui en a besoin ?</h4>${this.grille(s.id, null, classes)}</div>` : '');
+          + (nature === 'dispo' ? `<div class="mu-besoin"><h4>Quels flux en ont besoin ?</h4>${this.besoinFlux(s.id, classes)}</div>` : '');
       }
 
       const rg = this.a.rg ? this.a.rg() : null;
@@ -220,6 +222,7 @@
         </div>
         <p class="mu-question">Ce qu’elle prépare <small>cochez ; l’ordre suit les départs, la plus pressée d’abord</small></p>
         ${this.grille(a.service, a, classes)}
+        ${this.questionHTML(a)}
         ${ordre ? `<p class="mu-ordre"><span>Dans l’ordre :</span>${ordre}</p>` : ''}
         <details class="mu-plus"${this.ouvertes && this.ouvertes.has(a.id) ? ' open' : ''} data-mu-plus="${esc(a.id)}"><summary>Plus de réglages : changer l’ordre, pauses, arrêts, minutes propres, à la chaîne…</summary>
           ${this.at.carte(a, calc, { cmd: null, compact: true })}</details>
@@ -271,17 +274,27 @@
         texte: !vols.departs ? 'Aucun vol : importez votre programme.' : pl(vols.departs, 'départ') + ' · ' + pl(classes.length, 'commande') + ' (une par compagnie et par classe)'
           + (vols.importes ? '' : ' — ce sont les vols d’exemple : importez les vôtres.'),
         geste: { page: 'v-programme', texte: vols.importes ? 'Voir les vols' : 'Importer vos vols' } });
-      out.push({ num: 2, titre: 'Vos services et leurs équipes', etat: !utilises.length ? 'afaire' : utilises.some(x => x.b.etat === 'afaire') ? 'afaire' : 'ok',
+      // Les flux de production : chaque commande passe quelque part.
+      const st = this.etat, types = PC.types(st);
+      const propres = classes.filter(c => PC.cheminDe(st, c.id)).length, sansFlux = classes.filter(c => !PC.fluxDe(st, c)).length;
+      const principaux = types.filter(t => !t.auto && PC.commandesDuType(st, t.id, classes).length), variantes = types.filter(t => t.auto);
+      out.push({ num: 2, titre: 'Les flux de production', etat: !types.length || sansFlux || propres ? 'afaire' : 'ok',
+        texte: !types.length ? 'Aucun flux : dessinez par où passe chaque type de production (Économie, Business…).'
+          : propres ? pl(propres, 'commande a', 'commandes ont') + ' encore leur propre chemin : regroupez-les en flux.'
+          : sansFlux ? pl(sansFlux, 'commande n’a', 'commandes n’ont') + ' pas de flux : donnez-en un à leur classe.'
+          : pl(principaux.length, 'flux', 'flux') + ' : ' + principaux.map(t => t.nom).join(' · ') + (variantes.length ? ' — et ' + pl(variantes.length, 'variante') : ''),
+        geste: { page: 'mu-flux', texte: 'Ouvrir les flux' } });
+      out.push({ num: 3, titre: 'Vos services et leurs équipes', etat: !utilises.length ? 'afaire' : utilises.some(x => x.b.etat === 'afaire') ? 'afaire' : 'ok',
         texte: !utilises.length ? 'Aucun service n’a d’équipe : ouvrez un service, dites ce qu’il fait, ajoutez ses équipes.'
           : pl(utilises.length, 'service utilisé', 'services utilisés') + ', ' + pl(utilises.reduce((n, x) => n + x.b.cases.length, 0), 'équipe'),
         services: utilises.map(x => ({ id: x.s.id, nom: x.s.nom, etat: x.b.etat, points: x.b.points })),
         geste: { page: 'mu-services', texte: 'Ouvrir les services' } });
-      out.push({ num: 3, titre: 'Chaque commande a quelqu’un pour la préparer', etat: absentes.length ? 'afaire' : 'ok',
+      out.push({ num: 4, titre: 'Chaque commande a quelqu’un pour la préparer', etat: absentes.length ? 'afaire' : 'ok',
         texte: absentes.length ? pl(absentes.length, 'commande n’est préparée', 'commandes ne sont préparées') + ' par aucune équipe : cochez-les dans l’équipe qui les prépare.'
           : 'Toutes les commandes sont préparées.',
         commandes: absentes.slice(0, 16).map(id => PC.etiquette(id)).concat(absentes.length > 16 ? ['+ ' + (absentes.length - 16)] : []),
         geste: absentes.length ? { page: 'mu-services', texte: 'Cocher dans un service' } : null });
-      if (corriger.length) out.push({ num: 4, titre: 'Autres points à corriger', etat: 'afaire',
+      if (corriger.length) out.push({ num: 5, titre: 'Autres points à corriger', etat: 'afaire',
         texte: corriger.slice(0, 6).map(x => P.enClair ? P.enClair(x.message || x.code) : x.message).join(' · '),
         geste: { page: 'at-chemins', texte: 'Outils avancés' } });
       const num = out.length + 1;
@@ -324,15 +337,72 @@
     cocher(atelierId, cmds, oui) {
       const a = this.etat.ateliers.find(x => x.id === atelierId); if (!a) return;
       const noms = cmds.map(c => PC.etiquette(c)).join(', ');
-      let n = 0;
-      this.at.changer(() => { n = PC.cocher(this.at.state, atelierId, cmds, oui, this.options()); },
+      let r = { n: 0, horsFlux: [], orphelines: [] };
+      this.question = null;
+      this.at.changer(() => { r = PC.cocher(this.at.state, atelierId, cmds, oui, this.options()); },
         oui ? '« ' + a.nom + ' » prépare ' + noms + '.' : '« ' + a.nom + ' » ne prépare plus ' + noms + '.');
-      return n;
+      // Le flux ne change pas tout seul : on demande (tout le flux, ou seulement ces commandes).
+      const liste = oui ? r.horsFlux : r.orphelines;
+      if (liste.length) { this.question = { atelier: a.id, service: a.service, oui, cmds: liste }; this.rendreServices(); }
+      return r.n;
     }
 
-    passer(service, cmds, oui) {
-      this.at.changer(() => { PC.passerPar(this.at.state, service, cmds, oui, this.options()); },
-        cmds.map(c => PC.etiquette(c)).join(', ') + (oui ? ' passe' + (cmds.length > 1 ? 'nt' : '') + ' par ' : ' ne passe' + (cmds.length > 1 ? 'nt' : '') + ' plus par ') + this.nom(service) + '.');
+    /** La question sous la grille d'une équipe : que faire du flux de ces commandes ? */
+    questionHTML(a) {
+      const q = this.question; if (!q || q.atelier !== a.id) return '';
+      const st = this.etat, svc = this.nom(q.service);
+      const flux = new Map();
+      for (const c of q.cmds) {
+        const f = PC.fluxDe(st, c); if (!f) continue;
+        if (!flux.has(f.id)) flux.set(f.id, { f, cmds: [], propre: !f.type });
+        flux.get(f.id).cmds.push(c);
+      }
+      const partages = [...flux.values()].filter(x => !x.propre);
+      const lib = q.cmds.map(c => PC.etiquette(c)).join(', ');
+      const qui = (f) => pl(PC.commandesDuType(st, f.id, this.at.classes).length, 'commande');
+      const texte = q.oui
+        ? (q.cmds.length > 1 ? 'Le flux de ' + lib + ' ne passe pas par ' : 'Le flux de ' + lib + ' ne passe pas par ') + svc + '.'
+        : svc + ' reste sur le flux de ' + lib + ', et plus personne ne l’y prépare.';
+      const tout = partages.length ? `<button class="btn btn-sm btn-play" type="button" data-mu-q="flux">${q.oui ? 'Ajouter ' + esc(svc) + ' à ' : 'Retirer ' + esc(svc) + ' de '}${
+        partages.map(x => '« ' + esc(x.f.nom) + ' » (' + qui(x.f) + ')').join(', ')}</button>` : '';
+      const seul = `<button class="btn btn-sm" type="button" data-mu-q="seul">${q.oui ? 'Seulement pour ' : 'Retirer seulement pour '}${esc(lib)}</button>`;
+      return `<div class="mu-q" role="alert"><p>${esc(texte)} ${q.oui ? 'Pour tout le flux, ou seulement pour cette commande ?' : 'Que faire ?'}</p>
+        <div class="mu-q-gestes">${tout}${seul}<button class="btn btn-sm" type="button" data-mu-q="rien">${q.oui ? 'Ne rien changer' : 'Laisser : une autre équipe la prendra'}</button></div></div>`;
+    }
+
+    repondre(quoi) {
+      const q = this.question; this.question = null;
+      if (!q || quoi === 'rien') return this.rendreServices();
+      const st = this.at.state, o = this.options(), svc = this.nom(q.service);
+      if (quoi === 'flux') {
+        const faits = new Set();
+        this.at.changer(() => {
+          for (const c of q.cmds) {
+            const f = PC.fluxDe(st, c); if (!f) continue;
+            if (!f.type) PC.adapter(st, [c], q.service, q.oui, o);
+            else if (!faits.has(f.id)) { faits.add(f.id); PC.changerFlux(st, f.id, q.service, q.oui, o); }
+          }
+        }, svc + (q.oui ? ' entre dans ' : ' sort de ') + (faits.size > 1 ? 'ces flux.' : 'ce flux, pour toutes ses commandes.'));
+      } else {
+        this.at.changer(() => { PC.adapter(st, q.cmds, q.service, q.oui, o); },
+          q.cmds.map(c => PC.etiquette(c)).join(', ') + (q.oui ? ' passe' : ' ne passe plus') + ' par ' + svc + ' : une variante de son flux.');
+      }
+    }
+
+    /** Un service qui sert tout le monde : les flux qui passent par lui. */
+    besoinFlux(service, classes) {
+      const st = this.etat, types = PC.types(st);
+      if (!types.length) return '<p class="mini-note">Aucun flux de production pour l’instant : dessinez-les dans Mon unité › Flux de production.</p>';
+      return `<ul class="mu-besoins">${types.map(t => {
+        const dedans = P.servicesDuParcours(t).includes(service), n = PC.commandesDuType(st, t.id, classes).length;
+        return `<li><label class="chk"><input type="checkbox" data-mu-besoin="${esc(t.id)}" data-service="${esc(service)}"${dedans ? ' checked' : ''}>
+          <b>${esc(t.nom)}</b> <small>${pl(n, 'commande')}</small></label></li>`;
+      }).join('')}</ul>`;
+    }
+
+    passer(service, typeIds, oui) {
+      this.at.changer(() => { PC.passerPar(this.at.state, service, typeIds, oui, this.options()); },
+        this.nom(service) + (oui ? ' sert maintenant ' : ' ne sert plus ') + (typeIds.length > 1 ? 'ces flux.' : 'ce flux.'));
     }
 
     /* Toute une ligne (une compagnie) ou toute une colonne (une classe). */
@@ -345,9 +415,6 @@
         const libres = cmds.filter(c => g.get(c).etat === 'hors' || g.get(c).etat === 'attendue');
         if (libres.length) this.cocher(table.dataset.muEquipe, libres, true);
         else if (ici.length) this.cocher(table.dataset.muEquipe, ici, false);
-      } else {
-        const non = cmds.filter(c => g.get(c).etat !== 'passe');
-        this.passer(table.dataset.muService, non.length ? non : cmds, !!non.length);
       }
     }
 
@@ -368,6 +435,227 @@
       if (el) el.focus();
     }
 
+    /* ---- flux de production (30/09) ---------------------------------------
+     * Un flux par type de production : par où il passe (un diagramme), et
+     * les commandes qui le suivent (une grille). Les variantes — une commande
+     * qui s'écarte du flux de sa classe — sont des flux comme les autres. */
+
+    rendreFlux() {
+      const box = root.document.getElementById('mu-flux'); if (!box) return;
+      const st = this.etat, classes = this.at.classes, types = PC.types(st);
+      if (!types.some(t => t.id === this.fluxChoisi)) {
+        const suivi = types.map(t => [t, PC.commandesDuType(st, t.id, classes).length]).sort((a, b) => b[1] - a[1])[0];
+        this.fluxChoisi = suivi ? suivi[0].id : null;
+      }
+      const propres = classes.filter(c => PC.cheminDe(st, c.id));
+      const nbPropres = new Set(propres.map(c => PC.signature(PC.cheminDe(st, c.id)))).size;
+      const regroupe = propres.length ? `<div class="mu-q mu-regrouper"><p><b>${pl(propres.length, 'commande a', 'commandes ont')} chacune ${propres.length > 1 ? 'leur' : 'son'} propre chemin</b>,
+        qui se ${nbPropres > 1 ? 'résument à ' + nbPropres + ' flux différents' : 'résument à un seul flux'}. Regroupez-les : chaque classe aura son flux, et les commandes qui s’en écartent, leur variante.</p>
+        <div class="mu-q-gestes"><button class="btn btn-sm btn-play" type="button" data-mu-flux-action="regrouper">Regrouper en ${pl(nbPropres, 'flux', 'flux')}</button></div></div>` : '';
+      const defautDe = t => P.CABINES.filter(c => (st.parcoursCabine || {})[c] === t.id);
+      const I = root.OrlyIcones;
+      const ligne = t => {
+        const n = PC.commandesDuType(st, t.id, classes).length, cabs = defautDe(t);
+        return `<button type="button" class="mu-svc ${n ? 'ok' : 'libre'}${t.id === this.fluxChoisi ? ' actif' : ''}" data-mu-flux-choisir="${esc(t.id)}" aria-current="${t.id === this.fluxChoisi}">
+          <span class="mu-svc-ico" aria-hidden="true">${I ? I.ico('fleche') : ''}</span>
+          <span class="mu-svc-txt"><b>${esc(t.nom)}</b><small>${pl(n, 'commande')}${cabs.length ? ' · flux des ' + cabs.map(c => (P.NOM_CABINE || {})[c] || c).join(', ') : t.auto ? ' · variante' : ''}</small></span></button>`;
+      };
+      const principaux = types.filter(t => !t.auto), variantes = types.filter(t => t.auto);
+      const liste = `<nav class="mu-liste" aria-label="Les flux de production">
+        ${principaux.length ? '<p class="mu-groupe">Flux</p>' + principaux.map(ligne).join('') : ''}
+        ${variantes.length ? '<p class="mu-groupe">Variantes</p>' + variantes.map(ligne).join('') : ''}
+        <form class="mu-nouveau" data-mu-flux-nouveau><b>Nouveau flux</b>
+          <label>Nom <input name="nom" maxlength="76" placeholder="ex. Économie robot" required></label>
+          <label>Partir de <select name="source"><option value="">rien (vide)</option>${types.map(t => `<option value="${esc(t.id)}"${t.id === this.fluxChoisi ? ' selected' : ''}>${esc(t.nom)}</option>`).join('')}</select></label>
+          <button class="btn btn-sm btn-play" type="submit">+ Créer</button></form>
+      </nav>`;
+      const t = types.find(x => x.id === this.fluxChoisi);
+      this.poser(box, regroupe + `<div class="mu-cadre">${liste}<div class="mu-fiche" data-mu-flux-fiche="${esc(t ? t.id : '')}">${t ? this.ficheFlux(t, classes) : '<p class="mini-note">Aucun flux de production : créez-en un (à gauche).</p>'}</div></div>`);
+      const g = this.grapheFlux(); if (g && t) g.rendre();
+    }
+
+    ficheFlux(t, classes) {
+      const st = this.etat, dedans = P.servicesDuParcours(t);
+      const cabs = P.CABINES.filter(c => (st.parcoursCabine || {})[c] === t.id);
+      const n = PC.commandesDuType(st, t.id, classes).length;
+      const hors = this.a.services().filter(s => !dedans.includes(s.id));
+      const tete = `<div class="mu-tete">
+        <span class="mu-tete-ico mu-tete-flux" aria-hidden="true">${root.OrlyIcones ? root.OrlyIcones.ico('fleche') : ''}</span>
+        <label class="mu-nom">Nom du flux<input data-mu-flux-nom="${esc(t.id)}" maxlength="76" value="${esc(t.nom)}"></label>
+        <span class="mu-tete-fin"></span>
+        <button class="btn btn-sm" type="button" data-mu-flux-action="dupliquer">Dupliquer</button>
+        <button class="btn btn-sm svc-danger" type="button" data-mu-flux-action="supprimer"${cabs.length ? ' disabled title="C’est le flux d’une classe : donnez d’abord un autre flux à la classe"' : ''}>Supprimer</button>
+      </div>`;
+      const sel = this.fluxSel;
+      const actionSel = !sel ? '<span class="mini-note">Cliquez un service ou un lien pour le modifier. Tirez le rond d’un service jusqu’à un autre pour dire qu’il le livre.</span>'
+        : sel.type === 'noeud' ? `<b>${esc(this.nom(sel.id))}</b> <button class="btn btn-sm svc-danger" type="button" data-mu-flux-action="retirer-service" data-service="${esc(sel.id)}">Retirer du flux</button>
+          <button class="btn btn-sm" type="button" data-mu-ouvrir-svc="${esc(sel.id)}">Ses équipes →</button>`
+        : `<b>${esc(this.nom(sel.id.split('>')[0]))} → ${esc(this.nom(sel.id.split('>')[1]))}</b> <button class="btn btn-sm svc-danger" type="button" data-mu-flux-action="retirer-lien" data-lien="${esc(sel.id)}">Retirer ce lien</button>`;
+      const diagramme = `<div class="mu-flux-outils">
+          <label>Ajouter un service <select data-mu-flux-ajout><option value="">choisir…</option>${hors.map(s => `<option value="${esc(s.id)}">${esc(s.nom)}</option>`).join('')}</select></label>
+          <span class="mu-flux-sel">${actionSel}</span>
+          <button class="btn btn-sm" type="button" data-mu-flux-action="reorganiser" title="Ranger les services de gauche à droite, dans le sens du flux">Réorganiser</button>
+        </div>
+        <div class="pc-graphe mu-graphe" data-mu-graphe></div>
+        <p class="mini-note mu-flux-message" aria-live="polite">${esc(this.fluxMessage || '')}</p>`;
+      const aide = cabs.length ? 'C’est le flux des ' + cabs.map(c => (P.NOM_CABINE || {})[c] || c).join(', ') + ' : leurs commandes le suivent, sauf celles qui ont une variante.'
+        : 'Cochez les commandes qui suivent ce flux ; « flux de la classe » en haut d’une colonne le donne à toute la classe.';
+      const etape = (num, titre, corps, note) => `<section class="mu-etape"><h3><span class="mu-num">${num}</span>${esc(titre)}${note ? `<small>${note}</small>` : ''}</h3>${corps}</section>`;
+      return tete
+        + etape(1, 'Par où il passe', diagramme, 'un rond par service, une flèche pour « livre » ; un changement vaut pour toutes ses commandes')
+        + etape(2, 'Les commandes qui le suivent', `<p class="mini-note">${esc(aide)} ${pl(n, 'commande')} aujourd’hui.</p>` + this.grilleFlux(t, classes));
+    }
+
+    /** Les commandes qui suivent un flux : une grille compagnies × classes. */
+    grilleFlux(t, classes) {
+      if (!classes.length) return '<p class="mini-note">Aucune commande : importez d’abord vos vols (Vols).</p>';
+      const st = this.etat, par = new Map(classes.map(c => [c.id, c]));
+      const cies = [...new Set(classes.map(c => c.cie))].sort((x, y) => x.localeCompare(y));
+      const cabs = P.CABINES.filter(c => classes.some(k => k.cabine === c));
+      const cellule = (cie, cab) => {
+        const id = P.idClasse(cie, cab), c = par.get(id);
+        if (!c) return '<td class="mu-rien" aria-hidden="true">·</td>';
+        const propre = PC.cheminDe(st, id), f = propre || PC.typeSuivi(st, c);
+        const ici = !propre && f && f.id === t.id, defaut = (st.parcoursCabine || {})[cab] === t.id;
+        const etat = ici ? 'ici' : propre ? 'ailleurs' : f ? 'ailleurs' : 'hors';
+        const titre = P.libelleClasse(id) + ' — ' + (ici ? 'suit ce flux' + (defaut ? ' (flux de sa classe)' : '') : propre ? 'a son propre chemin (cocher : elle suit ce flux)'
+          : f ? 'suit « ' + f.nom + ' » (cocher : elle suit ce flux)' : 'n’a pas encore de flux');
+        const marque = propre ? '<i class="mu-chez">◆</i>' : !ici && f ? `<i class="mu-chez">${esc(initiales(f.nom))}</i>` : '';
+        return `<td class="mu-c ${etat}"><label title="${esc(titre)}"><input type="checkbox" data-mu-flux-cmd="${esc(id)}"${ici ? ' checked' : ''}${ici && defaut ? ' disabled' : ''}
+          aria-label="${esc(titre)}">${marque}</label></td>`;
+      };
+      return `<div class="mu-grille-scroll"><table class="mu-grille mu-grille-flux">
+        <thead><tr><th scope="col"><span class="sr-only">Compagnie</span></th>${cabs.map(c => {
+          const defaut = (st.parcoursCabine || {})[c] === t.id;
+          return `<th scope="col"><span class="mu-col-tete"><span class="puce-classe" data-cab="${c}"></span>${c}</span>
+            <button type="button" class="mu-defaut${defaut ? ' on' : ''}" data-mu-flux-defaut="${c}" ${defaut ? 'disabled' : ''}
+              title="${defaut ? 'C’est le flux des ' + esc((P.NOM_CABINE || {})[c] || c) : 'En faire le flux de toutes les ' + esc((P.NOM_CABINE || {})[c] || c)}">${defaut ? '★ flux de la classe' : '☆ flux de la classe'}</button></th>`;
+        }).join('')}</tr></thead>
+        <tbody>${cies.map(cie => `<tr><th scope="row">${esc(cie)}</th>${cabs.map(cab => cellule(cie, cab)).join('')}</tr>`).join('')}</tbody>
+      </table></div>`;
+    }
+
+    grapheFlux() {
+      if (this.graphe || !root.OrlyGraphe) return this.graphe;
+      const u = this;
+      const flux = () => PC.types(u.etat).find(x => x.id === u.fluxChoisi);
+      this.graphe = new root.OrlyGraphe.Diagramme({
+        hote: () => root.document.querySelector('#mu-flux [data-mu-graphe]'),
+        get cle() { return 'flux:' + (u.fluxChoisi || ''); },
+        titre: 'Le flux de production : un nœud par service, une flèche par livraison',
+        noeuds: () => {
+          const t = flux(); if (!t) return [];
+          const I = root.OrlyIcones, cmds = PC.commandesDuType(u.etat, t.id, u.at.classes);
+          return P.servicesDuParcours(t).map(s => {
+            const eq = u.etat.ateliers.filter(a => a.service === s);
+            const fab = eq.filter(a => a.type === 'manuel' || a.type === 'robot');
+            const prep = fab.length ? cmds.filter(c => fab.some(a => a.lots.some(l => l.includes(c.id))) || PC.fusionneePar(u.etat, s, c.id)).length : null;
+            const sous = !eq.length ? 'aucune équipe' : fab.length ? prep + '/' + cmds.length + ' préparées' : eq[0].type === 'dispo' ? 'sert tout le monde' : eq[0].type === 'lavage' ? 'plonge' : 'par vol';
+            return { id: s, nom: u.nom(s), ico: I ? I.icoService(s, u.nom(s)) : 'service', sous, ton: !eq.length || (fab.length && prep < cmds.length) ? 'neutre' : 'ok' };
+          });
+        },
+        liens: () => { const t = flux(); return t ? P.arcsDuParcours(t).map(a => ({ id: a.from + '>' + a.to, de: a.from, vers: a.to, titre: u.nom(a.from) + ' livre ' + u.nom(a.to) })) : []; },
+        relier: (de, vers) => {
+          const t = flux(); if (!t) return 'Aucun flux choisi.';
+          if (P.arcsDuParcours(t).some(a => a.from === de && a.to === vers)) return u.nom(de) + ' livre déjà ' + u.nom(vers) + '.';
+          if (PC.creeBoucle(t, de, vers)) return 'Impossible : ' + u.nom(vers) + ' livre déjà ' + u.nom(de) + ' (directement ou par d’autres services).';
+          u.changerFlux(x => { x.liens.push({ de, vers }); }, u.nom(de) + ' livre maintenant ' + u.nom(vers) + ', dans « ' + t.nom + ' ».');
+          return '';
+        },
+        retirerLien: id => { const [de, vers] = id.split('>'); u.changerFlux(x => { x.liens = x.liens.filter(l => !(l.de === de && l.vers === vers)); }, 'Lien retiré.'); },
+        choisir: sel => { u.fluxSel = sel; const b = root.document.querySelector('#mu-flux .mu-flux-sel'); if (b) { u.rendreFlux(); } },
+        message: t => { u.fluxMessage = t; const m = root.document.querySelector('#mu-flux .mu-flux-message'); if (m) m.textContent = t; }
+      });
+      return this.graphe;
+    }
+
+    /* Modifier le flux choisi (tout le flux : toutes ses commandes). */
+    changerFlux(fn, message) {
+      const id = this.fluxChoisi;
+      this.at.changer(() => { const x = this.at.state.parcours.find(p => p.id === id); if (x) { x.liens = x.liens || []; x.noeuds = x.noeuds || []; fn(x); } }, message);
+    }
+
+    actionFlux(quoi, el) {
+      const st = this.at.state, id = this.fluxChoisi, t = PC.types(st).find(x => x.id === id), o = this.options();
+      switch (quoi) {
+        case 'regrouper': {
+          let r;
+          this.at.changer(() => { r = PC.regrouper(st, this.at.classes, o.nomDe); }, '');
+          this.fluxChoisi = null;
+          PC.annoncer(r ? pl(r.commandes, 'commande') + ' regroupées : ' + pl(r.types, 'flux créé', 'flux créés') + '. Chaque classe a son flux ; « Annuler » revient en arrière.' : '');
+          return this.rendreFlux();
+        }
+        case 'dupliquer': {
+          if (!t) return;
+          let n;
+          this.at.changer(() => { n = PC.nouveauType(st, t.nom + ' (copie)', t); }, 'Flux dupliqué : donnez-lui ses commandes.');
+          this.fluxChoisi = n.id; return this.rendreFlux();
+        }
+        case 'supprimer': {
+          if (!t) return;
+          const cmds = PC.commandesDuType(st, t.id, this.at.classes);
+          if (!confirm('Supprimer le flux « ' + t.nom + ' » ?' + (cmds.length ? ' Ses ' + pl(cmds.length, 'commande') + ' reprendront le flux de leur classe.' : ''))) return;
+          this.at.changer(() => {
+            for (const c of cmds) delete st.parcoursClasse[c.id];
+            st.parcours = st.parcours.filter(p => p.id !== t.id);
+          }, 'Flux « ' + t.nom + ' » supprimé.');
+          this.fluxChoisi = null; return this.rendreFlux();
+        }
+        case 'retirer-service':
+          this.fluxSel = null;
+          return this.changerFlux(x => { PC.retirerService(x, el.dataset.service); }, this.nom(el.dataset.service) + ' sort du flux : ceux qui le livraient livrent ceux qu’il livrait.');
+        case 'retirer-lien': { this.fluxSel = null; const [de, vers] = el.dataset.lien.split('>'); return this.changerFlux(x => { x.liens = x.liens.filter(l => !(l.de === de && l.vers === vers)); }, 'Lien retiré.'); }
+        case 'reorganiser': if (this.graphe) this.graphe.reorganiser(); return;
+      }
+    }
+
+    lierFlux() {
+      const d = root.document, dans = el => el && el.closest && el.closest('#mu-flux');
+      d.addEventListener('click', e => {
+        if (!dans(e.target)) return;
+        const c = e.target.closest('[data-mu-flux-choisir]');
+        if (c) { this.fluxChoisi = c.dataset.muFluxChoisir; this.fluxSel = null; this.fluxMessage = ''; return this.rendreFlux(); }
+        const a = e.target.closest('[data-mu-flux-action]');
+        if (a) return this.actionFlux(a.dataset.muFluxAction, a);
+        const s = e.target.closest('[data-mu-ouvrir-svc]');
+        if (s) return this.ouvrir(s.dataset.muOuvrirSvc);
+        const def = e.target.closest('[data-mu-flux-defaut]');
+        if (def) {
+          const cab = def.dataset.muFluxDefaut, st = this.at.state, t = PC.types(st).find(x => x.id === this.fluxChoisi); if (!t) return;
+          const nom = (P.NOM_CABINE || {})[cab] || cab;
+          this.at.changer(() => {
+            st.parcoursCabine[cab] = t.id;
+            for (const [k, v] of Object.entries(st.parcoursClasse)) if (v === t.id && k.endsWith('/' + cab)) delete st.parcoursClasse[k];
+            PC.nettoyerTypes(st);
+          }, '« ' + t.nom + ' » devient le flux des ' + nom + ' : celles qui n’ont pas de variante le suivent.');
+        }
+      });
+      d.addEventListener('change', e => {
+        const el = e.target; if (!dans(el)) return;
+        const st = this.at.state, t = PC.types(st).find(x => x.id === this.fluxChoisi);
+        if (el.dataset.muFluxCmd && t) {
+          const cmd = el.dataset.muFluxCmd, cab = cmd.slice(cmd.lastIndexOf('/') + 1);
+          if (el.checked) this.at.changer(() => { PC.assignerType(st, cmd, t.id); PC.nettoyerTypes(st); }, PC.etiquette(cmd) + ' suit maintenant « ' + t.nom + ' ».');
+          else this.at.changer(() => { delete st.parcoursClasse[cmd]; PC.nettoyerTypes(st); },
+            PC.etiquette(cmd) + ' reprend le flux de sa classe' + ((st.parcoursCabine || {})[cab] ? '' : ' (elle n’en a pas encore)') + '.');
+        } else if (el.dataset.muFluxAjout !== undefined && el.value && t) {
+          const s = el.value, o = this.options();
+          this.changerFlux(x => { PC.insererService(st, x, s, o); }, this.nom(s) + ' entre dans « ' + t.nom + ' », à sa place ; ajustez les flèches si besoin.');
+        } else if (el.dataset.muFluxNom && t) {
+          const v = el.value.trim(); if (!v) { this.rendreFlux(); return; }
+          this.changerFlux(x => { x.nom = v.slice(0, 76); delete x.auto; }, 'Flux renommé.');
+        }
+      });
+      d.addEventListener('submit', e => {
+        const f = e.target.closest && e.target.closest('[data-mu-flux-nouveau]'); if (!f) return;
+        e.preventDefault();
+        const st = this.at.state, src = PC.types(st).find(x => x.id === f.elements.source.value) || null;
+        let n;
+        this.at.changer(() => { n = PC.nouveauType(st, f.elements.nom.value.trim() || 'Flux', src); }, 'Flux créé : dessinez-le, puis cochez les commandes qui le suivent.');
+        this.fluxChoisi = n.id; this.rendreFlux();
+      });
+    }
+
     lier() {
       const d = root.document;
       d.addEventListener('change', e => {
@@ -376,8 +664,8 @@
         if (el.dataset.muCocher) {
           const t = el.closest('table');
           if (t.dataset.muEquipe) this.cocher(t.dataset.muEquipe, [el.dataset.muCocher], el.checked);
-          else this.passer(t.dataset.muService, [el.dataset.muCocher], el.checked);
-        } else if (el.dataset.muNature) this.nature(el.dataset.muNature, el.value);
+        } else if (el.dataset.muBesoin) this.passer(el.dataset.service, [el.dataset.muBesoin], el.checked);
+        else if (el.dataset.muNature) this.nature(el.dataset.muNature, el.value);
         else if (el.dataset.muNom) {
           const v = el.value.trim();
           if (!v) { this.a.notify('Le nom ne peut pas être vide.'); this.rendreServices(); return; }
@@ -399,8 +687,10 @@
         if (id) { this.a.notify('Service « ' + nom + ' » créé : dites ce qu’il fait, puis ajoutez ses équipes.'); this.ouvrir(id); }
       });
       d.addEventListener('click', e => {
+        const q = e.target.closest && e.target.closest('[data-mu-q]');
+        if (q) return this.repondre(q.dataset.muQ);
         const t = e.target.closest && e.target.closest('[data-mu-choisir], [data-mu-ouvrir], [data-mu-action], [data-mu-ligne], [data-mu-col]');
-        if (!t) return;
+        if (!t || t.closest('#mu-flux')) return;
         if (t.dataset.muChoisir) return this.ouvrir(t.dataset.muChoisir);
         if (t.dataset.muOuvrir) return this.ouvrir(t.dataset.muOuvrir);
         const table = t.closest('table');

@@ -1298,6 +1298,8 @@
     }
 
     err.lever();
+    // Un chemin que suit une classe, ou plusieurs commandes, est un flux partagé.
+    if (PC && PC.marquerTypes && Array.isArray(out.parcours)) PC.marquerTypes(out);
     return { etat: out, ajouteesAuto: notes };
   }
 

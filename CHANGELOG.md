@@ -5,6 +5,41 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-30 — Les flux de production : un par type, partagé
+
+Retour d'usage : « l'outil Chemins est particulièrement utile, il permet de
+dessiner les flux de chaque type de production » ; « les éco sont
+pratiquement tous identiques, pareil pour les business ; ce qui change, ce
+sont les ateliers, les man-hours, les personnes, le matériel — mais ce n'est
+pas une science exacte ».
+
+- **Mon unité › Flux de production** (nouvel onglet, après le pas à pas) : la
+  liste des flux et, pour celui qu'on choisit, **par où il passe** — un
+  diagramme où l'on tire une flèche d'un service à l'autre, ajoute ou retire
+  un service — et **les commandes qui le suivent** (une grille compagnies ×
+  classes ; « ★ flux de la classe » le donne à toute une classe). Un
+  changement vaut pour toutes ses commandes.
+- **Les variantes** : une commande qui s'écarte du flux de sa classe suit une
+  variante (« Sans cuisine + Robot sans Montage »), partagée par celles qui
+  s'écartent pareil, et qui s'en va quand plus personne ne la suit.
+- **La grille des équipes ne devine plus l'ordre** : cocher une commande
+  dans un service que son flux ne traverse pas pose la question — *ajouter
+  ce service à tout le flux*, *seulement pour cette commande*, ou ne rien
+  changer. Décocher la dernière équipe demande de même s'il faut retirer le
+  service du flux.
+- **Regrouper** : les commandes qui avaient chacune leur chemin (outil
+  Chemins, ancienne grille) se regroupent d'un clic en flux — le plus suivi
+  d'une classe devient son flux, les autres des variantes. Le calcul voit
+  exactement les mêmes chemins.
+- Légumerie, magasin : « Quels flux en ont besoin ? ».
+- Le remplacement du Montage par le Robot passe par une variante partagée.
+- Pas à pas : une étape « Les flux de production ».
+
+Fichiers : `parcours.js` (flux, variantes, regroupement), `unite.js`,
+`unite.css`, `ateliers.js`, `onglets.js`, `sim.js`, `echanges.js`, tests
+(`grille-services.test.cjs` réécrit, `mon-unite-browser.cjs`, et quelques
+tests qui supposaient un chemin partagé), `README.md`, `docs/MODELE_ATELIERS.md`.
+
 ## 2026-09-30 — Outils avancés visibles, parcours des commandes dans Résultats
 
 Retour d'usage : « je ne trouve pas Outils avancés ». Le lien était en bas

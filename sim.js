@@ -356,7 +356,7 @@ function etatService(id){
   const cases=((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]).filter(a=>a.service===id);
   const st=(Sim.ateliers&&Sim.ateliers.state)||{};
   const classes=(Sim.ateliers&&Sim.ateliers.classes)||[];
-  const cmds=window.OrlyParcours?classes.filter(c=>{const p=OrlyParcours.cheminDe(st,c.id);return p&&MoteurProduction.servicesDuParcours(p).includes(id);}).length:0;
+  const cmds=window.OrlyParcours?classes.filter(c=>{const p=OrlyParcours.fluxDe(st,c);return p&&MoteurProduction.servicesDuParcours(p).includes(id);}).length:0;
   const lu=Sim.flows?lectureDuGraphe():{lignes:[],liens:[]};
   // Il manque une équipe quand une commande passe par ce service, ou quand les
   // liens de l'unité en attendent quelque chose (le même constat que les Contrôles).
@@ -873,7 +873,7 @@ function controlesDuCalcul(){
   return {corriger:an.filter(a=>!CODES_JOURNEE.has(a.code)),journee:an.filter(a=>CODES_JOURNEE.has(a.code))};
 }
 function sansChemin(){
-  return Sim.ateliers&&window.OrlyParcours?Sim.ateliers.classes.filter(c=>!OrlyParcours.cheminDe(Sim.ateliers.state,c.id)).length:0;
+  return Sim.ateliers&&window.OrlyParcours?Sim.ateliers.classes.filter(c=>!OrlyParcours.fluxDe(Sim.ateliers.state,c)).length:0;
 }
 function renderControles(){
   const box=document.getElementById('fc-calcul');if(!box)return;
@@ -894,8 +894,8 @@ function badgeOnglet(id){
   if(id==='mu-pas'&&Sim.unite){const n=Sim.unite.aFaire();return n?{n,ton:'neutre',titre:n+(n>1?' étapes':' étape')+' à faire'}:null;}
   // Les commandes qui n'ont pas encore leur chemin : ce qui reste à dessiner.
   if(id==='at-chemins'&&window.OrlyParcours&&Sim.ateliers){
-    const n=Sim.ateliers.classes.filter(c=>!OrlyParcours.cheminDe(Sim.ateliers.state,c.id)).length;
-    return n?{n,ton:'neutre',titre:n+(n>1?' commandes sans chemin':' commande sans chemin')}:null;
+    const n=Sim.ateliers.classes.filter(c=>!OrlyParcours.fluxDe(Sim.ateliers.state,c)).length;
+    return n?{n,ton:'neutre',titre:n+(n>1?' commandes sans flux':' commande sans flux')}:null;
   }
   if(id==='at-repas'){
     const n=(r.indicateurs||{}).classesAbsentes||0;
@@ -963,7 +963,7 @@ function initOnglets(){
       if(id==='at-chemins'&&Sim.ateliers)Sim.ateliers.parcours.placeTiroir();
       // Un onglet des ateliers se dessine à son ouverture, s'il a changé depuis.
       if(vue==='ateliers'&&Sim.ateliers)Sim.ateliers.surOnglet(id);
-      if((id==='mu-services'||id==='mu-pas')&&Sim.unite)Sim.unite.rendre();
+      if((id==='mu-services'||id==='mu-pas'||id==='mu-flux')&&Sim.unite)Sim.unite.rendre();
     }
   });
   // Les outils d'une vue (annuler, Excel, importer) montent sur la barre des
@@ -1965,7 +1965,7 @@ function migrerRobot(){
   if(!z){const id=Sim.editor.nouveauService('Robot','prepa');z=Sim.editor.state.zones.find(v=>v.id===id);}
   if(!z)return;
   let faites=[];
-  at.changer(()=>{faites=OrlyParcours.remplacerEtape(at.state,'prepa',z.id,presentes,at.classes,nomLisible(z.nom));
+  at.changer(()=>{faites=OrlyParcours.remplacerEtape(at.state,'prepa',z.id,presentes,at.classes,nomLisible(z.nom),nomDeService);
     at.state.migrations=[...(at.state.migrations||[]),'robot-eco'];},'');
   if(faites.length)at.rendre('Robot : il remplace le Montage sur le chemin de '+faites.map(MoteurProduction.libelleClasse).join(', ')
     +'. Une seule case Robot les prépare, à régler (débit par commande, personnes) dans Mon unité › Services et équipes ou dans le tableau des minutes. « Annuler » revient en arrière.');

@@ -126,6 +126,15 @@ le rouge ne sert qu’aux retards.
      (vols, services et équipes, commandes que personne ne prépare, réglages,
      résultats) ; chaque point mène là où il se règle, chaque service à sa
      fiche.
+   - *Flux de production* : un flux par type de production (Économie,
+     Business…), partagé par ses commandes. À gauche les flux et leurs
+     variantes ; à droite, **par où passe** celui qu'on choisit (un diagramme :
+     on tire une flèche d’un service à l’autre, on ajoute ou retire un service)
+     et **les commandes qui le suivent** (une grille compagnies × classes ;
+     « ★ flux de la classe » le donne à toute la classe). Une commande qui
+     s’écarte du flux de sa classe suit une variante (« Sans cuisine + Robot
+     sans Montage »), partagée par celles qui s’écartent pareil. « Regrouper »
+     range d’un clic les commandes qui avaient chacune leur chemin.
    - *Services et équipes* : la liste des services à gauche (utilisés, avec
      un point orange s’il manque quelque chose ; pas utilisés), la **fiche**
      du service choisi à droite :
@@ -146,12 +155,13 @@ le rouge ne sert qu’aux retards.
         le handling n’ont rien à cocher ;
      3. *Minutes de travail pour un vol* : le barème du service.
      Créer un service (un nom, près de quel service du plan), le renommer, le
-     voir ou le déplacer sur le plan, le supprimer : tout se fait ici. **Les
-     chemins des commandes se déduisent des coches** : cocher fait entrer le
-     service dans le chemin de la commande, à sa place (entre ceux qui le
-     livrent et ceux qu’il livre, d’après les autres chemins, les modèles
-     types, puis les liens de l’unité ; une salle annexe se place comme son
-     service) ; décocher la dernière équipe l’en fait sortir.
+     voir ou le déplacer sur le plan, le supprimer : tout se fait ici. **La
+     grille ne change pas le flux d’elle-même** : cocher une commande dans un
+     service que son flux ne traverse pas demande s’il faut l’ajouter à tout
+     le flux, seulement pour cette commande (une variante), ou ne rien
+     changer ; le service se place alors entre ceux qui le livrent et ceux
+     qu’il livre (d’après les autres flux, les modèles types, puis les liens
+     de l’unité ; une salle annexe se place comme son service).
    - *Tableau des équipes* et *Tableau des minutes* : toutes les équipes (et
      leurs heures), toutes les minutes, d’un coup d’œil, modifiables sur place
      ou dans Excel.
@@ -428,7 +438,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `plan-prive/` | Fond de plan **local, non versionné** (voir ci-dessous) |
 | `tests/ui-model.test.cjs` | Régressions de l’import CSV |
 | `tests/noyau.test.cjs` | Régressions du noyau : ordre, horloge, conditions, interruptions, erreurs |
-| `tests/grille-services.test.cjs` | La grille à cocher de Mon unité : cocher fait entrer le service dans le chemin à sa place (s’intercale, sans raccourci), décocher l’en fait sortir, une équipe par service, l’ordre des départs, le modèle gardé sans créer de case, les liens de l’unité sans boucle (retours des vols), une salle annexe placée comme son service, le calcul, la nature d’un service |
+| `tests/grille-services.test.cjs` | Les flux de production et la grille des équipes : le flux d’une classe naît au premier coche, cocher renvoie ce que le flux ne traverse pas, « tout le flux » (s’intercale, sans raccourci), « seulement pour cette commande » (une variante partagée, nommée par son écart, retirée quand plus personne ne la suit), une équipe par service, l’ordre des départs, les liens de l’unité sans boucle, une salle annexe, regrouper les chemins identiques (le calcul voit les mêmes chemins), le calcul |
 | `tests/production.test.cjs` | Régressions du modèle par ateliers : enchaînement des lots, attente des amonts, robot, pauses, validation |
 | `tests/replay.test.cjs` | Relecture : états d’un service, ponctualité à l’instant t, pas suivant |
 | `tests/comparaison.test.cjs` | Scénarios A/B : capture, déterminisme, verdicts, jeu de démonstration |

@@ -17,8 +17,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
   // Un chemin Cuisine → Prépa → Montage pour l'économie ; AF et TX y passent.
   await page.evaluate(()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
-    st.parcours.push({id:'ch',nom:'Chaîne',noeuds:['cuisine','preparation','prepa'],liens:[{de:'cuisine',vers:'preparation'},{de:'preparation',vers:'prepa'}]});
-    st.parcoursClasse['AF/YC']='ch';st.parcoursClasse['TX/YC']='ch';
+    // Un chemin propre à chacune : un chemin partagé serait un flux de production.
+    const ch=id=>({id,nom:'Chaîne '+id,noeuds:['cuisine','preparation','prepa'],liens:[{de:'cuisine',vers:'preparation'},{de:'preparation',vers:'prepa'}]});
+    st.parcours.push(ch('ch'),ch('ch2'));
+    st.parcoursClasse['AF/YC']='ch';st.parcoursClasse['TX/YC']='ch2';
     const c=(id,nom,service,lots,p)=>({id,nom,service,type:'manuel',debut:'04:00',jour:0,personnes:1,pauses:[],lots,regime:{actif:false},...p});
     st.ateliers.push(c('cu','Cuisine eco','cuisine',[['AF/YC'],['TX/YC']],{personnes:4}),c('pr','Prépa eco','preparation',[['AF/YC'],['TX/YC']]),
       c('mo','Montage AF','prepa',[['AF/YC']],{personnes:2}),c('mt','Montage TX','prepa',[['TX/YC']]));},''));

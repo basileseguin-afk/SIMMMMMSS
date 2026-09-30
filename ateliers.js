@@ -419,6 +419,7 @@
 <p id="at-status" role="status" aria-live="polite"></p>
 <details id="at-anomalies" class="at-anomalies" data-sous="at-chemins at-equipes at-grille at-planning at-repas at-recap" hidden></details>
 <section id="mu-pas" class="mu mu-pas" data-sous="mu-pas" aria-label="Pas à pas"></section>
+<section id="mu-flux" class="mu mu-flux" data-sous="mu-flux" aria-label="Les flux de production"></section>
 <section id="mu-services" class="mu mu-services" data-sous="mu-services" aria-label="Les services de l’unité"></section>
 <div id="at-parcours" class="pc"></div>
 <h3 class="at-titre" data-sous="at-equipes">Les cases <span class="pc-sous">calculées à partir des chemins : cliquez une commande pour régler sa case</span></h3>
@@ -566,6 +567,8 @@
      * passe par elle, elle se règle sur place. */
     ouvrirFiche(id) {
       const a = this.state.ateliers.find(x => x.id === id); if (!a) return false;
+      // Seul un chemin propre s'ouvre dans l'éditeur des chemins : un flux partagé
+      // se règle dans Mon unité › Flux de production ; la case s'ouvre alors sur place.
       const passe = c => { const p = PC.cheminDe(this.state, c); return !!p && P.servicesDuParcours(p).includes(a.service); };
       const cmd = [...new Set((a.lots || []).flat())].find(passe) || this.classes.map(c => c.id).find(passe);
       if (!cmd) return false;
@@ -1132,7 +1135,7 @@
       // une mise à disposition : on propose de lui rendre une case par commande.
       const remplaces = [...new Set(this.state.ateliers.filter(a => a.type === 'dispo' && !PC.SERVICES_DISPO.includes(a.service)).map(a => a.service))]
         .filter(sv => (r.classes || []).filter(c => (c.vols || []).length).some(c => {
-          const p = PC.cheminDe(this.state, c.id) || (this.state.parcours || []).find(q => q.id === (this.state.parcoursCabine || {})[c.cabine]);
+          const p = PC.fluxDe(this.state, c);
           return p && P.servicesDuParcours(p).includes(sv);
         }));
       for (const sv of remplaces) {

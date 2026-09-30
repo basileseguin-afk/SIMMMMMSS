@@ -216,7 +216,8 @@ test('un parcours est un graphe : des nœuds et des liens « A livre B »', () =
 
 test('un parcours en branches est converti en graphe à la lecture', () => {
   const v = PC.validerParcours({ parcours: [COMPLET], parcoursCabine: { BC: 'complet' } });
-  assert.deepEqual(Object.keys(v.parcours[0]).sort(), ['id', 'liens', 'noeuds', 'nom']);
+  // Le chemin d'une classe est un flux partagé : il en porte la marque.
+  assert.deepEqual(Object.keys(v.parcours[0]).sort(), ['id', 'liens', 'noeuds', 'nom', 'type']);
   assert.deepEqual(v.parcours[0].liens.map(l => l.de + '>' + l.vers), P.arcsDuParcours(COMPLET).map(a => a.from + '>' + a.to));
   // Les liens en double, les boucles sur soi et les champs vides sont écartés.
   const w = PC.validerParcours({ parcours: [{ id: 'x', nom: 'X', noeuds: ['a'], liens: [{ de: 'a', vers: 'b' }, { de: 'a', vers: 'b' }, { de: 'b', vers: 'b' }, { de: '', vers: 'a' }] }] });
