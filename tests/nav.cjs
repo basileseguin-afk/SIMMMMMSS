@@ -32,4 +32,13 @@ async function vue(page, v) {
 }
 const accueil = async page => { await page.locator('#btn-accueil').click(); await page.waitForTimeout(150); };
 
-module.exports = { aller, vue, accueil, PREMIERE };
+/* Un chemin à elle pour une commande (Mon unité › Une commande) : si elle
+ * suit un flux, le formulaire est replié sous « Ou bien : un chemin à elle… ». */
+async function creerChemin(page, c) {
+  const b = page.locator(`[data-pc-action=creer][data-classe="${c}"]`);
+  if (!(await b.count())) return false;
+  if (!(await b.isVisible())) await page.locator('.pc-creer-plus>summary').click();
+  await b.click(); await page.waitForTimeout(250);
+  return true;
+}
+module.exports = { aller, vue, accueil, creerChemin, PREMIERE };

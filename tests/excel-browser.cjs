@@ -58,17 +58,15 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok((await lot('prepa','AF/BC')).debut>=(await lot('cuisine','AF/BC')).fin,'BC : le montage attend la cuisine');
   assert.match(await page.locator('#at-anomalies').textContent(),/commandes? commencées? sautent? une étape sans équipe[\s\S]*Mon unité › Services et équipes/,'les étapes sans équipe renvoient au tableau');
 
-  // Une commande peut avoir son propre chemin, copié d'un modèle.
+  // Une commande qui suit le flux de sa classe peut avoir sa variante, copiée du flux.
   await nav.aller(page,'at-chemins');await attendre();
   await page.locator('[data-pc-action=cmd][data-classe="AF/YC"]').click();await attendre();
-  await page.selectOption('[data-pc-champ=creer-depuis]','complet');await attendre();
-  await page.locator('[data-pc-action=creer]').click();await attendre();
+  assert.match(await page.locator('.pc-flux-bandeau').innerText(),/suit le flux « Sans cuisine »/);
+  await page.locator('[data-pc-action=flux-variante]').click();await attendre();
   const propre=await page.evaluate(()=>Sim.ateliers.state.parcoursClasse['AF/YC']);
-  assert.equal(await page.evaluate(id=>Sim.ateliers.state.parcours.find(p=>p.id===id).nom,propre),'Complet AF YC');
-  await nav.aller(page,'at-grille');await attendre();
-  assert.match(await page.locator('[data-qf=aller][data-classe="AF/YC"][data-service=cuisine]').textContent(),/Cuisine AF YC/,
-    'la cuisine est désormais sur son chemin, avec sa case, créée d’office');
-  await nav.aller(page,'at-chemins');await attendre();
+  assert.equal(await page.evaluate(id=>Sim.ateliers.state.parcours.find(p=>p.id===id).nom,propre),'Sans cuisine · AF YC');
+  assert.equal(await page.evaluate(()=>OrlyParcours.fluxDe(Sim.ateliers.state,'TX/YC').id),'sans-cuisine','les autres gardent le flux');
+  assert.equal(await page.locator('#at-parcours .pc-outils').count(),1,'la variante se modifie sur place');
   await page.locator('[data-pc-action=parcours-retirer]').click();await attendre();
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.parcoursClasse['AF/YC']),undefined,'supprimé, il suit de nouveau le modèle');
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>/AF YC/.test(a.nom)).length),0,'ses cases propres partent avec lui');

@@ -18,12 +18,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 1. Un chemin créé depuis le modèle : la légumerie y a UNE case, partagée.
   await nav.aller(page,'at-chemins');
   await page.locator('[data-pc-action=cmd][data-classe="AF/BC"]').click();await attendre();
-  await page.locator('[data-pc-action=creer][data-classe="AF/BC"]').click();await attendre();
+  await nav.creerChemin(page,'AF/BC');
   assert.deepEqual(await dans('decontam'),[{type:'dispo',lots:[]}]);
   assert.equal(await page.locator('[data-pc-action=besoin][data-service=decontam]').getAttribute('aria-pressed'),'true','« besoin de légumerie » : oui');
   // Une seconde commande qui en a besoin : toujours une seule case.
   await page.locator('[data-pc-action=cmd][data-classe="TX/BC"]').click();await attendre();
-  await page.locator('[data-pc-action=creer][data-classe="TX/BC"]').click();await attendre();
+  await nav.creerChemin(page,'TX/BC');
   assert.equal((await dans('decontam')).length,1,'une seule légumerie pour toutes les commandes');
 
   // 2. « Besoin de légumerie ? » non, puis oui : le service quitte le chemin, puis y revient relié.

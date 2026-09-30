@@ -26,7 +26,7 @@
       { id: 'mu-pas', nom: 'Pas à pas', ico: 'check' },
       { id: 'mu-flux', nom: 'Flux de production', ico: 'fleche' },
       { id: 'mu-services', nom: 'Services et équipes', ico: 'service' },
-      { id: 'at-chemins', nom: 'Chemins', ico: 'fleche' },
+      { id: 'at-chemins', nom: 'Une commande', ico: 'fleche' },
       { id: 'at-equipes', nom: 'Cases', ico: 'service' },
       { id: 'at-grille', nom: 'Parcours des commandes', ico: 'fleche' },
       { id: 'at-planning', nom: 'Planning des équipes', ico: 'journee' },
@@ -72,6 +72,7 @@
         { id: 'mu-pas', intro: 'Ce qu’il reste à faire avant de simuler, dans l’ordre : chaque point mène là où il se règle.' },
         { id: 'mu-flux', intro: 'Par où passe chaque type de production, et quelles commandes le suivent.' },
         { id: 'mu-services', intro: 'Chaque service : ce qu’il fait, ses équipes, ce que chacune prépare, ses minutes.' },
+        { id: 'at-chemins', intro: 'Une commande de bout en bout : le flux qu’elle suit, et sur chaque service l’équipe qui la prépare.' },
         { id: 'at-recap', intro: 'Toutes les équipes d’un coup d’œil, avec leurs heures : à régler ici ou dans Excel.' },
         { id: 'rg-recap', intro: 'Toutes les minutes de travail d’un coup d’œil : une ligne par commande, une colonne par service ; à modifier ici ou dans Excel.' }
       ] },
@@ -92,13 +93,12 @@
         { id: 'j-stocks', intro: 'Ce qui attend entre deux services, et les retours des vols à la plonge.' },
         { id: 'j-comparer', intro: 'Retenez deux essais et voyez ce qui a bougé.' }
       ] },
-    // Les outils d'avant, pour les cas rares : un chemin dessiné à la main, une
-    // case réglée hors de sa fiche, les liens entre services. On y vient par un
+    // Les outils d'avant, pour les cas rares : une case réglée hors de sa
+    // fiche, les liens entre services. On y vient par un
     // lien discret de Mon unité ; ils ne sont plus dans le menu.
     { id: 'avance', nom: 'Outils avancés', ico: 'curseurs', couleur: 'var(--c-equipes)', cache: true,
-      resume: 'Chemins, cases et liens, à la main',
+      resume: 'Cases, minutes et liens, à la main',
       pages: [
-        { id: 'at-chemins', intro: 'Le chemin de chaque commande, à la main (Mon unité le déduit des coches).' },
         { id: 'at-equipes', intro: 'Toutes les cases (équipes), une par une.' },
         { id: 'rg-minutes', intro: 'Les minutes de travail d’un vol, service par service.' },
         { id: 'u-services', intro: 'Les services de l’unité : nom, équipes, place sur le plan, services supprimés.' },

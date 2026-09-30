@@ -87,8 +87,8 @@ header .jour,header .run-state,header .vitesse-box{color:var(--txt3)}
   box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c,var(--accent)) 22%,transparent)}
 .view-intro{color:var(--txt3)}
 .sous-onglets{background:var(--bg3);border-bottom:1px solid var(--bordure);gap:0 8px}
-.so-liste{gap:4px}
-.so-onglet{font-weight:550;color:var(--txt3);border-radius:0;border-bottom:2px solid transparent;padding:11px 10px 10px;
+.so-liste{gap:2px}
+.so-onglet{font-weight:550;color:var(--txt3);border-radius:0;border-bottom:2px solid transparent;padding:11px 7px 10px;gap:6px;
   transition:color .15s,border-color .15s}
 .so-onglet .ico{color:var(--txt3)}
 .so-onglet:hover{background:none;color:var(--txt)}
@@ -116,7 +116,7 @@ header .jour,header .run-state,header .vitesse-box{color:var(--txt3)}
 .btn-play:hover:not(:disabled),.btn.btn-play:hover:not(:disabled){background:var(--accent2);border-color:var(--accent2);color:#fff}
 .svc-danger,.btn.svc-danger,.btn.at-danger{color:var(--retard);border-color:#fecdca;background:#fff}
 .svc-danger:hover:not(:disabled),.btn.svc-danger:hover:not(:disabled),.btn.at-danger:hover:not(:disabled){background:#fef3f2;border-color:#fda29b;color:#b42318}
-.so-outils .btn{padding:5px 11px;font-size:12.5px;min-height:32px}
+.so-outils .btn{padding:5px 9px;font-size:12.5px;min-height:32px}
 .lien-fort{font-weight:600;color:var(--accent);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;
   text-decoration-color:color-mix(in srgb,var(--accent) 40%,transparent)}
 .lien-fort:hover{text-decoration-color:currentColor}
@@ -357,3 +357,8 @@ header .entete-droite{display:flex;gap:8px}
 header .btn-avance{color:var(--txt2)}
 body[data-partie="avance"] header .btn-avance{background:color-mix(in srgb,var(--c-unite) 12%,#fff);color:var(--txt);
   border-color:color-mix(in srgb,var(--c-unite) 35%,var(--bordure))}
+
+/* Dans la barre des onglets, Annuler / Rétablir se réduisent à leur flèche
+   (le mot reste lu et dans l'infobulle) : six onglets et les outils tiennent sur une ligne. */
+.so-outils .mot-outil{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.so-outils #at-undo,.so-outils #at-redo{min-width:34px;justify-content:center;font-size:15px}

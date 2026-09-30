@@ -20,7 +20,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 1. Sur le chemin d'AF · Business, on ajoute le handling : sa case est un handling, partagé.
   await nav.aller(page,'at-chemins');
   await page.locator('[data-pc-action=cmd][data-classe="AF/BC"]').click();await attendre();
-  if(await page.locator('[data-pc-action=creer][data-classe="AF/BC"]').count()){await page.locator('[data-pc-action=creer][data-classe="AF/BC"]').click();await attendre();}
+  // Elle suit un flux partagé : on lui fait sa variante, modifiable sur place.
+  if(await page.locator('[data-pc-action=flux-variante]').count()){await page.locator('[data-pc-action=flux-variante]').click();await attendre();}
   await page.selectOption('[data-pc-champ=noeud-ajout]','handling');await attendre();
   const cases=await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service==='handling'));
   assert.equal(cases.length,1);
@@ -29,7 +30,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const id=cases[0].id;
   // Une seconde commande qui passe par le handling ne crée pas de seconde case.
   await page.locator('[data-pc-action=cmd][data-classe="AF/YC"]').click();await attendre();
-  if(await page.locator('[data-pc-action=creer][data-classe="AF/YC"]').count()){await page.locator('[data-pc-action=creer][data-classe="AF/YC"]').click();await attendre();}
+  // Elle suit un flux partagé : on lui fait sa variante, modifiable sur place.
+  if(await page.locator('[data-pc-action=flux-variante]').count()){await page.locator('[data-pc-action=flux-variante]').click();await attendre();}
   await page.selectOption('[data-pc-champ=noeud-ajout]','handling');await attendre();
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service==='handling').length),1,'un seul handling, partagé');
 

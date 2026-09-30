@@ -153,7 +153,7 @@
           <label>Nom <input name="nom" maxlength="120" placeholder="ex. Atelier APM" required></label>
           <label>Sur le plan, près de <select name="parent">${this.a.racines().map(x => `<option value="${esc(x.id)}">${esc(x.nom)}</option>`).join('')}</select></label>
           <button class="btn btn-sm btn-play" type="submit">+ Créer</button></form>
-        <p class="mu-avance"><button type="button" class="lien-discret" data-page="at-chemins">Outils avancés : chemins, cases, liens →</button></p>
+        <p class="mu-avance"><button type="button" class="lien-discret" data-page="at-equipes">Outils avancés : cases, minutes, liens →</button></p>
       </nav>`;
       const s = services.find(x => x.id === this.choisi);
       this.poser(box, `<div class="mu-cadre">${liste}<div class="mu-fiche" data-mu-fiche="${esc(this.choisi || '')}">${s ? this.fiche(s, bilans.get(s.id), classes, r) : '<p class="mini-note">Aucun service.</p>'}</div></div>`);
@@ -172,6 +172,10 @@
         <button class="btn btn-sm" type="button" data-mu-action="plan">Le déplacer sur le plan</button>
         <button class="btn btn-sm svc-danger" type="button" data-mu-action="supprimer">Supprimer</button>
       </div>`;
+      const passent = PC.types(st).filter(t => P.servicesDuParcours(t).includes(s.id));
+      const lesFlux = `<p class="mu-flux-passent"><span>${passent.length ? 'Flux qui passent ici :' : 'Aucun flux ne passe ici.'}</span>
+        ${passent.map(t => `<button type="button" class="mu-flux-lien" data-mu-voir-flux="${esc(t.id)}">${esc(t.nom)}</button>`).join('')}
+        <button type="button" class="lien-discret" data-page="mu-flux">${passent.length ? 'Tous les flux' : 'Les flux de production'} →</button></p>`;
       const aFaire = b.points.length ? `<ul class="mu-afaire">${b.points.map(p => `<li>${esc(P.enClair ? P.enClair(p) : p)}</li>`).join('')}</ul>` : '';
       const etape = (num, titre, corps, note) => `<section class="mu-etape"><h3><span class="mu-num">${num}</span>${esc(titre)}${note ? `<small>${note}</small>` : ''}</h3>${corps}</section>`;
 
@@ -200,7 +204,7 @@
         ? etape(3, 'Minutes de travail pour un vol', rg.ficheTemps(s.id), 'pour une compagnie dans une classe : la durée se déduit des personnes de l’équipe')
         : nature === 'robot' ? etape(3, 'Débit du robot', '<p class="mini-note">Le débit (plateaux par heure) se règle dans la fiche de chaque équipe robot, plus haut : « Plus de réglages ».</p>') : '';
 
-      return tete + aFaire
+      return tete + lesFlux + aFaire
         + etape(1, 'Ce qu’il fait', choixNature)
         + etape(2, preparent(nature) ? 'Ses équipes, et ce que chacune prépare' : 'Ses horaires et ses réglages', equipes)
         + temps;
@@ -210,7 +214,8 @@
     equipe(a, calc, classes) {
       const fin = calc && calc.fin != null ? P.hhmm(calc.fin) : null;
       const jours = [0, -1, -2, -3].map(j => `<option value="${j}"${j === (a.jour || 0) ? ' selected' : ''}>${j === 0 ? 'jour du vol' : 'la veille' + (j < -1 ? ' (J' + j + ')' : '')}</option>`).join('');
-      const ordre = a.lots.filter(l => l.length).map((l, i) => `<span class="mu-ordre-cmd"><b>${i + 1}</b>${l.map(c => esc(PC.etiquette(c))).join(' + ')}</span>`).join('');
+      const ordre = a.lots.filter(l => l.length).map((l, i) => `<span class="mu-ordre-cmd"><b>${i + 1}</b>${l.map(c =>
+        `<button type="button" data-mu-chemin="${esc(c)}" data-service="${esc(a.service)}" title="Voir le chemin de ${esc(PC.etiquette(c))}">${esc(PC.etiquette(c))}</button>`).join(' + ')}</span>`).join('');
       return `<article class="mu-equipe" data-at="${esc(a.id)}">
         <div class="mu-equipe-tete">
           <label class="mu-eq-nom">Équipe<input value="${esc(a.nom)}" data-at-champ="nom" maxlength="160"></label>
@@ -223,7 +228,7 @@
         <p class="mu-question">Ce qu’elle prépare <small>cochez ; l’ordre suit les départs, la plus pressée d’abord</small></p>
         ${this.grille(a.service, a, classes)}
         ${this.questionHTML(a)}
-        ${ordre ? `<p class="mu-ordre"><span>Dans l’ordre :</span>${ordre}</p>` : ''}
+        ${ordre ? `<p class="mu-ordre"><span>Dans l’ordre :</span>${ordre}<small>cliquez une commande pour voir son chemin</small></p>` : ''}
         <details class="mu-plus"${this.ouvertes && this.ouvertes.has(a.id) ? ' open' : ''} data-mu-plus="${esc(a.id)}"><summary>Plus de réglages : changer l’ordre, pauses, arrêts, minutes propres, à la chaîne…</summary>
           ${this.at.carte(a, calc, { cmd: null, compact: true })}</details>
       </article>`;
@@ -296,7 +301,7 @@
         geste: absentes.length ? { page: 'mu-services', texte: 'Cocher dans un service' } : null });
       if (corriger.length) out.push({ num: 5, titre: 'Autres points à corriger', etat: 'afaire',
         texte: corriger.slice(0, 6).map(x => P.enClair ? P.enClair(x.message || x.code) : x.message).join(' · '),
-        geste: { page: 'at-chemins', texte: 'Outils avancés' } });
+        geste: { page: 'at-chemins', texte: 'Voir le chemin des commandes' } });
       const num = out.length + 1;
       out.push({ num, titre: 'Les réglages de la simulation', etat: 'ok',
         texte: 'Délai de chargement, retours à la plonge, rythme, pauses : des valeurs par défaut sont en place.',
@@ -331,8 +336,17 @@
       this.choisi = id;
       try { localStorage.setItem(CLE, id); } catch (e) { /* stockage indisponible */ }
       if (this.page() !== 'mu-services') this.a.page('mu-services'); else this.rendreServices();
-      const f = root.document.querySelector('.mu-fiche'); if (f && f.scrollIntoView) f.scrollIntoView({ block: 'nearest' });
+      const f = root.document.querySelector('#mu-services .mu-fiche'); if (f && f.scrollIntoView) f.scrollIntoView({ block: 'nearest' });
     }
+
+    /** Ouvre un flux dans Flux de production (depuis le chemin d'une commande ou une fiche de service). */
+    ouvrirFlux(id) {
+      this.fluxChoisi = id; this.fluxSel = null; this.fluxMessage = '';
+      if (this.page() !== 'mu-flux') this.a.page('mu-flux'); else this.rendreFlux();
+    }
+
+    /** Ouvre le chemin d'une commande (Mon unité › Une commande), sur un service. */
+    chemin(cmd, service) { if (this.a.chemin) this.a.chemin(cmd, service); }
 
     cocher(atelierId, cmds, oui) {
       const a = this.etat.ateliers.find(x => x.id === atelierId); if (!a) return;
@@ -530,8 +544,9 @@
       };
       const lignePart = c => {
         const f = PC.fluxDe(st, c), propre = f && !f.type;
-        return `<li><span><b>${esc(lib(c))}</b> ${propre ? 'a son propre chemin (outil Chemins)' : 'suit « ' + esc(f ? f.nom : '?') + ' »'}.</span>
+        return `<li><span><b>${esc(lib(c))}</b> ${propre ? 'a son propre chemin' : 'suit « ' + esc(f ? f.nom : '?') + ' »'}.</span>
           ${f && f.type ? `<button class="btn btn-sm" type="button" data-mu-flux-choisir="${esc(f.id)}">Voir ce flux</button>` : ''}
+          ${propre ? `<button class="btn btn-sm" type="button" data-mu-chemin="${esc(c.id)}">Voir son chemin</button>` : ''}
           <button class="btn btn-sm" type="button" data-mu-flux-suivre="${esc(c.id)}">La remettre sur ce flux</button></li>`;
       };
       const autres = classes.filter(c => (PC.fluxDe(st, c) || {}).id !== t.id);
@@ -540,12 +555,15 @@
           const f = PC.fluxDe(st, c);
           return `<option value="${esc(c.id)}">${esc(lib(c))}${f ? ' — suit « ' + esc(f.nom) + ' »' : ' — sans flux'}</option>`;
         }).join('')}</select></label>` : '';
+      const suivent = classes.filter(c => (PC.fluxDe(st, c) || {}).id === t.id);
+      const voir = suivent.length ? `<label class="mu-flux-ajout-cmd">Voir le chemin d’une de ses commandes, avec ses équipes :
+        <select data-mu-flux-chemin><option value="">choisir…</option>${suivent.map(c => `<option value="${esc(c.id)}">${esc(lib(c))}</option>`).join('')}</select></label>` : '';
       return `<p class="mu-sous-titre">Les classes qui le suivent <small>cochez une classe : toutes ses commandes suivent ce flux</small></p>
         <div class="mu-classes">${puces}</div>
         <p class="mu-sous-titre">Les exceptions <small>une compagnie qui ne fait pas comme sa classe</small></p>
         ${suitAussi.length || partent.length ? `<ul class="mu-exceptions">${suitAussi.map(ligneAussi).join('')}${partent.map(lignePart).join('')}</ul>`
           : '<p class="mini-note">Aucune : chaque commande suit le flux de sa classe.</p>'}
-        ${ajout}`;
+        ${ajout}${voir}`;
     }
 
     /* Une commande revient au flux de sa classe (ou n'en a plus, si sa classe n'en a pas). */
@@ -663,6 +681,8 @@
           }, 'Les ' + nom + ' suivent maintenant « ' + t.nom + ' » (sauf leurs exceptions).');
           else this.at.changer(() => { delete st.parcoursCabine[cab]; PC.nettoyerTypes(st); },
             'Les ' + nom + ' ne suivent plus aucun flux : ouvrez celui qu’elles doivent suivre (à gauche) et cochez « ' + nom + ' ».');
+        } else if (el.dataset.muFluxChemin !== undefined && el.value) {
+          this.chemin(el.value);
         } else if (el.dataset.muFluxAjouterCmd !== undefined && el.value && t) {
           const cmd = el.value;
           this.at.changer(() => { PC.assignerType(st, cmd, t.id); PC.nettoyerTypes(st); }, PC.etiquette(cmd) + ' suit maintenant « ' + t.nom + ' ».');
@@ -715,6 +735,9 @@
         if (id) { this.a.notify('Service « ' + nom + ' » créé : dites ce qu’il fait, puis ajoutez ses équipes.'); this.ouvrir(id); }
       });
       d.addEventListener('click', e => {
+        // Les passerelles entre Services, Flux et Une commande.
+        const pont = e.target.closest && e.target.closest('#mu-services [data-mu-voir-flux], #mu-services [data-mu-chemin], #mu-flux [data-mu-chemin]');
+        if (pont) return pont.dataset.muVoirFlux ? this.ouvrirFlux(pont.dataset.muVoirFlux) : this.chemin(pont.dataset.muChemin, pont.dataset.service);
         const q = e.target.closest && e.target.closest('[data-mu-q]');
         if (q) return this.repondre(q.dataset.muQ);
         const t = e.target.closest && e.target.closest('[data-mu-choisir], [data-mu-ouvrir], [data-mu-action], [data-mu-ligne], [data-mu-col]');

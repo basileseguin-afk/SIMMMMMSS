@@ -212,7 +212,8 @@
       });
       const couleurs = [...new Set(liens.map(l => l.couleur || ''))];
       const marque = c => 'gr-f-' + this.a.cle.replace(/[^a-z0-9]/gi, '') + '-' + couleurs.indexOf(c || '');
-      const I = root.OrlyIcones;
+      // Figé (un flux partagé vu depuis une commande) : ni prise pour relier, ni croix pour retirer.
+      const I = root.OrlyIcones, fige = !!(this.a.fige && this.a.fige());
       svg.innerHTML = `<defs>${couleurs.map(c => `<marker id="${marque(c)}" viewBox="0 0 10 10" refX="8" refY="5"
           markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="gr-pointe"${c ? ` style="fill:${esc(c)}"` : ''}/></marker>`).join('')}</defs>
         <g class="gr-liens">${liens.slice().sort((x, y) => this.estChoisi(x) - this.estChoisi(y)).map(l => {
@@ -223,7 +224,7 @@
             <title>${esc(l.titre || '')}</title>
             <path class="gr-prise" d="${k.d}"/><path class="gr-trait" d="${k.d}" marker-end="url(#${marque(l.couleur)})"${l.couleur ? ` style="stroke:${esc(l.couleur)}"` : ''}/>
             ${l.etiquette ? `<text class="gr-etiq" x="${k.mx}" y="${k.my - (sel ? 16 : 7)}" text-anchor="middle">${esc(l.etiquette)}</text>` : ''}
-            ${sel ? `<g class="gr-retirer" data-retirer="${esc(l.id)}" transform="translate(${k.mx},${k.my})"><circle r="11"/><path d="M-4,-4 L4,4 M4,-4 L-4,4"/><title>Retirer ce lien</title></g>` : ''}
+            ${sel && !fige ? `<g class="gr-retirer" data-retirer="${esc(l.id)}" transform="translate(${k.mx},${k.my})"><circle r="11"/><path d="M-4,-4 L4,4 M4,-4 L-4,4"/><title>Retirer ce lien</title></g>` : ''}
           </g>`;
         }).join('')}</g>
         <path class="gr-brouillon" d="" hidden/>
@@ -239,8 +240,8 @@
             ${I ? `<g class="gr-ico" transform="translate(12,${(H - 22) / 2}) scale(.92)">${I.TRAITS[n.ico] || I.TRAITS.service}</g>` : ''}
             <text class="gr-nom" x="44" y="${n.sous ? 22 : 31}">${esc(court(n.nom, 19))}</text>
             ${n.sous ? `<text class="gr-sous" x="44" y="39">${esc(court(n.sous, 26))}</text>` : ''}
-            <g class="gr-port" data-port="${esc(n.id)}" transform="translate(${L},${H / 2})"><circle r="9"/><path d="M-4,0 H4 M0,-4 V4"/>
-              <title>Tirer vers un autre service, ou cliquer ici puis sur lui, pour les relier</title></g>
+            ${fige ? '' : `<g class="gr-port" data-port="${esc(n.id)}" transform="translate(${L},${H / 2})"><circle r="9"/><path d="M-4,0 H4 M0,-4 V4"/>
+              <title>Tirer vers un autre service, ou cliquer ici puis sur lui, pour les relier</title></g>`}
           </g>`;
         }).join('')}</g>`;
       if (this.focus) {

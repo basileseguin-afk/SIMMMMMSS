@@ -20,7 +20,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await nav.aller(page,'at-chemins');
   for(const c of ['TX/YC','CRL/YC']){
     await page.locator(`[data-pc-action=cmd][data-classe="${c}"]`).click();await attendre();
-    await page.locator(`[data-pc-action=creer][data-classe="${c}"]`).click();await attendre();
+    await nav.creerChemin(page,c);
   }
   assert.ok(await page.evaluate(()=>{const st=Sim.ateliers.state;return st.parcours.find(p=>p.id===st.parcoursClasse['TX/YC']).noeuds.includes('prepa');}));
   // 3. À l'ouverture suivante, le Robot remplace le Montage pour TX, CRL et FBU Économie.

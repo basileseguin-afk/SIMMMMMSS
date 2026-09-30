@@ -323,7 +323,10 @@
         // La fiche d'une case s'ouvre dans le chemin, sous le service choisi.
         fiche: (id, cmd) => this.ficheCase(id, cmd),
         ajout: () => this.formAjout('chemins'),
-        onglet: id => { if (this.a.onglet) this.a.onglet(id); }
+        onglet: id => { if (this.a.onglet) this.a.onglet(id); },
+        // Un flux partagé se modifie dans Flux de production ; un service, dans Services et équipes.
+        flux: this.a.flux ? id => this.a.flux(id) : null,
+        service: this.a.ouvrirService ? id => this.a.ouvrirService(id) : null
       });
       this.rendre(alerte);
     }
@@ -408,8 +411,8 @@
       this.a.hote().innerHTML = `
 <div class="at-tete">
   <div class="at-actions">
-    <button class="btn btn-sm" id="at-undo" title="Annuler la dernière modification">↶ Annuler</button>
-    <button class="btn btn-sm" id="at-redo" title="Rétablir ce qui a été annulé">↷ Rétablir</button>
+    <button class="btn btn-sm" id="at-undo" title="Annuler la dernière modification">↶<span class="mot-outil"> Annuler</span></button>
+    <button class="btn btn-sm" id="at-redo" title="Rétablir ce qui a été annulé">↷<span class="mot-outil"> Rétablir</span></button>
     <button class="btn btn-sm" id="at-export" title="Les cases, ce qu’elles préparent et les chemins, dans un classeur Excel">⇩ Cases et chemins</button>
     <button class="btn btn-sm" id="at-export-horaires" title="L’heure de début de chaque case, dans un petit classeur Excel à modifier puis réimporter">⇩ Horaires</button>
     <button class="btn btn-sm" id="at-import-btn" title="Réimporter un classeur de cases et chemins, ou d’horaires, modifié dans Excel">⇧ Importer</button>
@@ -1248,8 +1251,8 @@
       const box = document.getElementById('at-liste');
       if (!montrer.length) {
         box.innerHTML = '<p class="at-vide">Aucune case' + (this.filtre ? ' dans ' + esc(nom(this.filtre)) : '')
-          + '. Les cases se créent dans « Les chemins » : choisissez une commande, puis cliquez un service de son chemin.'
-          + ' <button class="lien-discret" data-aller="ateliers" data-onglet="at-chemins">Ouvrir « Les chemins » →</button></p>';
+          + '. Les cases se créent dans Mon unité › Services et équipes, ou dans « Une commande » : choisissez une commande, puis cliquez un service de son chemin.'
+          + ' <button class="lien-discret" data-aller="ateliers" data-onglet="at-chemins">Ouvrir « Une commande » →</button></p>';
         return;
       }
       const groupes = {};

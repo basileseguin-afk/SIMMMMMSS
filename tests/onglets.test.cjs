@@ -55,10 +55,10 @@ test('une page se range selon sa nature, pas selon l’écran qui la porte', () 
   assert.equal(partie('v-programme'), 'donnees');
   assert.equal(partie('v-planche'), 'donnees');
   // Ce qu'on décrit : Mon unité, service par service (29/09).
-  for (const id of ['mu-pas', 'mu-services', 'at-recap', 'rg-recap']) assert.equal(partie(id), 'organisation', id);
+  for (const id of ['mu-pas', 'mu-flux', 'mu-services', 'at-chemins', 'at-recap', 'rg-recap']) assert.equal(partie(id), 'organisation', id);
   assert.equal(O.pagesDe('organisation')[0].id, 'mu-pas', 'Mon unité commence par le pas à pas');
   // Les outils d'avant : une partie cachée, hors du menu.
-  for (const id of ['at-chemins', 'at-equipes', 'rg-minutes', 'u-services', 'u-liens', 'u-lecture']) assert.equal(partie(id), 'avance', id);
+  for (const id of ['at-equipes', 'rg-minutes', 'u-services', 'u-liens', 'u-lecture']) assert.equal(partie(id), 'avance', id);
   // Suivre une commande étape par étape est un résultat : il est dans le menu.
   assert.equal(partie('at-grille'), 'resultats');
   assert.ok(O.PARTIES.find(p => p.id === 'avance').cache);

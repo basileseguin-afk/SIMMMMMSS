@@ -5,6 +5,39 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-30 — Une commande : son chemin, relié aux flux et aux services
+
+Retour d'usage : « Chemins n'est pas très bien lié aux parties Flux de
+production et Services et équipes ».
+
+- **Chemins** devient **Une commande** et entre dans Mon unité, après
+  Services et équipes (le bouton Outils avancés ouvre désormais les Cases).
+  Pour que les six onglets et les outils tiennent sur une ligne, Annuler /
+  Rétablir s'y réduisent à leur flèche (le mot reste dans l'infobulle).
+- Une commande qui suit un flux garde la possibilité d'un chemin à elle,
+  avec ses propres cases (« Ou bien : un chemin à elle… », replié).
+- Une commande qui suit un **flux partagé** : un bandeau le dit (« AF ·
+  Business suit le flux « Complet », comme N autres commandes ») avec
+  « Modifier ce flux » (ouvre Flux de production) et « Seulement pour AF ·
+  Business : lui faire sa variante ». Le flux n'y est plus modifiable par
+  mégarde : relier, retirer un lien ou un service renvoie à ces deux gestes.
+- Sur chaque service du chemin : « Ouvrir le service X → » (sa fiche, ses
+  équipes).
+- Liste des commandes : « flux NOM », « chemin à elle » ou « pas de flux »
+  sous chacune.
+- Fiche d'un service : **Flux qui passent ici**, un clic ouvre le flux.
+  Dans une équipe, chaque commande de « Dans l'ordre » ouvre son chemin sur
+  ce service.
+- Flux de production : « Voir le chemin d'une de ses commandes, avec ses
+  équipes » ; une exception à chemin propre a « Voir son chemin ».
+- Le diagramme d'un flux garde la même disposition dans les deux pages.
+
+Fichiers : `parcours.js`, `unite.js`, `ateliers.js`, `sim.js`, `onglets.js`,
+`index.html`, `graphe.js`, `graphe.css`, `unite.css`, `theme.css`,
+`tests/onglets.test.cjs`, `tests/menu-browser.cjs`, `tests/mon-unite-browser.cjs`,
+`tests/excel-browser.cjs`, `tests/graphe-browser.cjs`, `tests/handling-browser.cjs`, `README.md`,
+`docs/MODELE_ATELIERS.md`.
+
 ## 2026-09-30 — « Qui suit ce flux » : des classes et des exceptions, en clair
 
 Retour d'usage : la grille « les commandes qui le suivent » n'était pas

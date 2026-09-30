@@ -121,6 +121,14 @@
 .pc-modeles .pc-defauts select{min-width:0}
 .pc-cmd-tete{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:17px}
 .pc-cmd-tete span:last-child{font-size:13px;color:var(--txt2)}
+/* Une commande qui suit un flux partagé : le dire, et où le modifier. */
+.pc-flux-bandeau{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:10px 0 4px;padding:10px 12px;border:1px solid var(--bordure);border-radius:10px;background:var(--bg3);font-size:13px}
+.pc-flux-bandeau>svg{flex:none;width:18px;height:18px;color:var(--accent)}
+.pc-flux-bandeau>span{flex:1 1 320px}
+.pc-flux-bandeau .pc-flux-gestes{flex:0 1 auto;display:flex;flex-wrap:wrap;gap:6px}
+.pc-creer-plus{margin-top:10px;font-size:13px}
+.pc-creer-plus>summary{cursor:pointer;color:var(--txt2)}
+.pc-creer-plus .pc-creer.court{margin-top:8px;text-align:left}
 .pc-creer{justify-items:start;text-align:left}
 .pc-creer-choix{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:end}
 .pc-creer-choix label:not(.chk){display:grid;gap:4px;font-size:12px;color:var(--txt2)}

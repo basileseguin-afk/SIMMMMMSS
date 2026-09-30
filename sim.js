@@ -743,6 +743,9 @@ function initAteliers(){
     change:()=>{majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();},
     // Une case se règle dans le chemin d'une commande : l'ouvrir d'ailleurs y mène.
     onglet:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
+    // Le chemin d'une commande mène à son flux et à ses services (Mon unité).
+    flux:id=>{if(Sim.unite)Sim.unite.ouvrirFlux(id);},
+    ouvrirService:id=>{if(Sim.unite)Sim.unite.ouvrir(id);},
     // Un service supprimé encore cité : son nom, pour que les alertes le
     // disent lisiblement, et le geste qui l'efface.
     fantomes:servicesFantomes,
@@ -939,6 +942,8 @@ function initUnite(){
     plan:id=>actionService('plan',id),
     vols:()=>({departs:flights.filter(f=>f.sens==='DEP').length,importes:dataSource!=='Jeu de démonstration'}),
     page:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
+    // Le chemin d'une commande, ouvert sur un service.
+    chemin:(cmd,s)=>{if(Sim.ateliers&&Sim.ateliers.parcours)Sim.ateliers.parcours.ouvrir(cmd,s);},
     notify:toast
   });
   // Le temps de travail d'un service se règle aussi dans sa fiche.

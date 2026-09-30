@@ -44,7 +44,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 2. Le menu de l'en-tête : une partie ouvre ses pages, et seulement elles.
   const attendues={donnees:['v-programme','v-planche'],
-    organisation:['mu-pas','mu-flux','mu-services','at-recap','rg-recap'],
+    organisation:['mu-pas','mu-flux','mu-services','at-chemins','at-recap','rg-recap'],
     reglages:['rg-simulation'],
     resultats:['j-chiffres','j-plan','at-planning','at-repas','at-grille','v-departs','j-stocks','j-comparer']};
   const noms={donnees:'Vols',organisation:'Mon unité',reglages:'Réglages',resultats:'Résultats'};
@@ -153,7 +153,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('#btn-avance').isVisible(),true,'on le voit sans chercher');
   await page.locator('#btn-avance').click();await attendre();
   assert.equal(await page.evaluate(()=>document.body.dataset.partie),'avance');
-  assert.equal(await actif(),'at-chemins');
+  assert.equal(await actif(),'at-equipes');
 
   // 7. Le sens passe par l'image.
   assert.equal(await page.locator('#menu .menu-partie svg.ico').count(),5,'un pictogramme par partie, et l’accueil');

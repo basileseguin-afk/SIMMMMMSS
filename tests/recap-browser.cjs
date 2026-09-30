@@ -66,7 +66,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 5. L'effectif de l'équipe qui prépare, dans chaque case, modifiable ; la durée suit.
   await nav.aller(page,'at-chemins');
   await page.locator('[data-pc-action=cmd][data-classe="AF/BC"]').click();await attendre();
-  if(await page.locator('[data-pc-action=creer][data-classe="AF/BC"]').count()){await page.locator('[data-pc-action=creer][data-classe="AF/BC"]').click();await attendre();}
+  await nav.creerChemin(page,'AF/BC');
   await nav.aller(page,'rg-recap');
   const pers=page.locator('.rg-recap-table tr[data-classe="AF/BC"] input[data-rg-champ=recap-pers]').first();
   assert.equal(await pers.count(),1,'l’effectif de la case est là');

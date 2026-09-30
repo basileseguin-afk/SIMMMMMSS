@@ -1335,7 +1335,8 @@
     }
 
     parcoursActif(etat) {
-      if (this.cmd) return cheminDe(etat, this.cmd);
+      // Le chemin d'une commande : le sien, sinon le flux qu'elle suit.
+      if (this.cmd) return fluxDe(etat, this.cmd);
       return (etat.parcours || []).find(p => p.id === this.actif) || null;
     }
 
@@ -1385,24 +1386,25 @@
 
     listeCommandes(etat, classes) {
       const r = this.a.resultat ? this.a.resultat() : null, par = (r && r.parClasse) || {};
-      const avec = classes.filter(c => cheminDe(etat, c.id)).length;
+      const nbFlux = new Set(classes.map(c => (typeSuivi(etat, c) || {}).id).filter(Boolean)).size;
+      const propres = classes.filter(c => cheminDe(etat, c.id)).length;
       let cie = null;
       const items = this.ordreCommandes(classes).map(c => {
         const tete = c.cie !== cie ? `<li class="pc-cie" data-cie="${esc(c.cie)}">${esc(c.cie)}</li>` : '';
         cie = c.cie;
-        const p = cheminDe(etat, c.id), on = this.cmd === c.id, v = par[c.id] || {};
-        const modele = !p && typeSuivi(etat, c);
+        const p = fluxDe(etat, c), on = this.cmd === c.id, v = par[c.id] || {};
+        const propre = !!cheminDe(etat, c.id);
         const marque = !p ? '' : v.fin == null ? '<span class="pc-cmd-etat afaire" title="Pas encore prête">·</span>'
           : v.aHeure ? '<span class="pc-cmd-etat ok" title="Prête à l’heure">✓</span>'
           : `<span class="pc-cmd-etat retard" title="${Math.round(v.retard)} min de retard">!</span>`;
         return tete + `<li data-cmd="${esc(c.id)}" data-cie="${esc(c.cie)}"><button class="pc-cmd${on ? ' actif' : ''}${p ? '' : ' sans'}" data-pc-action="cmd"
           data-classe="${esc(c.id)}"${on ? ' aria-current="true"' : ''}>
           <span class="puce-classe" data-cab="${esc(c.cabine)}"></span>
-          <span class="pc-cmd-nom">${esc((P.NOM_CABINE || {})[c.cabine] || c.cabine)}<small>${p ? esc(p.nom) : modele ? 'modèle ' + esc(modele.nom) : 'pas de chemin'}</small></span>
+          <span class="pc-cmd-nom">${esc((P.NOM_CABINE || {})[c.cabine] || c.cabine)}<small>${!p ? 'pas de flux' : propre ? 'à elle : ' + esc(p.nom) : 'flux ' + esc(p.nom)}</small></span>
           ${marque}</button></li>`;
       }).join('');
       return `<aside class="pc-cmds" aria-label="Les commandes">
-        <div class="pc-cmds-tete"><b>Les commandes</b><span>${avec} sur ${classes.length} avec leur chemin</span></div>
+        <div class="pc-cmds-tete"><b>Les commandes</b><span>${classes.length} commandes · ${nbFlux} flux${propres ? ' · ' + propres + (propres > 1 ? ' chemins à part' : ' chemin à part') : ''}</span></div>
         ${this.a.ajout ? '<div class="pc-cmds-ajout">' + this.a.ajout() + '</div>' : ''}
         <input type="search" class="pc-cmds-cherche" data-pc="cmd-recherche" placeholder="Chercher (TX, BC…)" value="${esc(this.chercheCmd)}" aria-label="Chercher une commande">
         <ul class="pc-cmds-liste">${items || '<li class="mini-note">Aucune commande : importez un programme de vols (Vols).</li>'}</ul>
@@ -1425,6 +1427,12 @@
         </div></details>`;
     }
 
+    /** Un flux partagé : celui d'une classe, ou suivi par plusieurs commandes. Il se modifie dans Flux de production. */
+    partage(etat, p) {
+      if (!p || !p.type) return false;
+      return Object.values(etat.parcoursCabine || {}).includes(p.id) || commandesDuType(etat, p.id, this.a.classes()).length > 1;
+    }
+
     /** L'en-tête d'une commande : qui elle est, quand elle part, quand elle est prête. */
     teteCommande(c, avecChemin) {
       const r = this.a.resultat ? this.a.resultat() : null, v = ((r && r.parClasse) || {})[c.id] || {};
@@ -1436,8 +1444,22 @@
     }
 
     corpsCommande(etat, classes) {
-      const c = classes.find(x => x.id === this.cmd), p = cheminDe(etat, this.cmd);
+      const c = classes.find(x => x.id === this.cmd), p = fluxDe(etat, this.cmd);
       if (!p) return this.teteCommande(c, false) + this.creation(etat, classes, c);
+      if (this.partage(etat, p)) {
+        // Elle suit un flux partagé : on le montre, avec SES équipes à chaque étape.
+        const n = commandesDuType(etat, p.id, classes).length, lib = this.lib(this.cmd), I = root.OrlyIcones;
+        return this.teteCommande(c, true)
+          + `<div class="pc-flux-bandeau">${I ? I.ico('fleche') : ''}<span><b>${esc(lib)}</b> suit le flux <b>« ${esc(p.nom)} »</b>${n > 1 ? ', comme ' + (n - 1) + (n > 2 ? ' autres commandes' : ' autre commande') : ''}.
+            Ci-dessous, ce flux ; sur chaque service, l’équipe qui prépare ${esc(lib)}.</span>
+            <span class="pc-flux-gestes"><button class="btn btn-sm" data-pc-action="flux-ouvrir">Modifier ce flux${n > 1 ? ' (ses ' + n + ' commandes)' : ''}</button>
+            <button class="btn btn-sm" data-pc-action="flux-variante">Seulement pour ${esc(lib)} : lui faire sa variante</button></span></div>`
+          + `<p class="pc-message" role="status" aria-live="polite"></p>
+          <div class="pc-graphe" data-parcours="${esc(p.id)}"></div>
+          <div class="pc-bas">${this.blocPanneau(etat, classes, p)}</div>
+          <details class="pc-creer-plus"${this.depuis !== undefined ? ' open' : ''}><summary>Ou bien : un chemin à elle, avec une case à elle sur chaque service…</summary>
+            ${this.creation(etat, classes, c, true)}</details>`;
+      }
       return this.teteCommande(c, true) + this.outils(etat, p, this.duplication(etat, classes, c))
         + `<p class="pc-message" role="status" aria-live="polite"></p>
         <div class="pc-graphe" data-parcours="${esc(p.id)}"></div>
@@ -1484,15 +1506,17 @@
     }
 
     /** Une commande sans chemin : on lui en crée un, vide ou copié d'un autre. */
-    creation(etat, classes, c) {
+    creation(etat, classes, c, court) {
       const mods = modeles(etat), autres = (etat.parcours || []).filter(p => !mods.includes(p));
       const modele = typeSuivi(etat, c);
       const choisi = this.depuis !== undefined ? this.depuis : (modele ? modele.id : '');
       const src = (etat.parcours || []).find(p => p.id === choisi), srcCmd = src ? commandeDu(etat, src.id) : null;
       const opt = p => `<option value="${esc(p.id)}" ${p.id === choisi ? 'selected' : ''}>${esc(p.nom)}</option>`;
       const I = root.OrlyIcones, lib = this.lib(c.id);
-      return `<div class="vide-carte pc-creer">${I ? I.ico('fleche') : ''}<b>${esc(lib)} n’a pas encore son chemin</b>
-        <p>${modele ? `En attendant, elle suit le modèle « ${esc(modele.nom)} » de sa classe.` : 'En attendant, elle suit les liens de l’unité.'}</p>
+      const tete = court ? `<p>Copiez un flux ou le chemin d’une autre commande : ${esc(lib)} le quitte, et chaque service lui donne une case à elle, à régler une par une.</p>`
+        : `${I ? I.ico('fleche') : ''}<b>${esc(lib)} n’a pas encore son chemin</b>
+        <p>${modele ? `En attendant, elle suit le modèle « ${esc(modele.nom)} » de sa classe.` : 'En attendant, elle suit les liens de l’unité.'}</p>`;
+      return `<div class="vide-carte pc-creer${court ? ' court' : ''}">${tete}
         <div class="pc-creer-choix">
           <label>Partir de <select data-pc-champ="creer-depuis" aria-label="Chemin à copier">
             <option value="" ${choisi ? '' : 'selected'}>un chemin vide</option>
@@ -1554,12 +1578,14 @@
       const ed = this;
       this.graphe = new root.OrlyGraphe.Diagramme({
         hote: () => ed.a.boite().querySelector('.pc-graphe'),
-        get cle() { const p = ed.parcoursActif(ed.a.etat()); return 'chemin:' + (p ? p.id : ''); },
+        // Un flux garde la même disposition ici et dans Flux de production.
+        get cle() { const p = ed.parcoursActif(ed.a.etat()); return (p && p.type ? 'flux:' : 'chemin:') + (p ? p.id : ''); },
         titre: 'Le chemin : un nœud par service, avec sa case ; un lien par livraison',
         noeuds: () => ed.noeudsDiagramme(),
         liens: () => ed.liensDiagramme(),
         relier: (de, vers) => ed.relier(de, vers),
         retirerLien: id => ed.retirerLien(id),
+        fige: () => { const e = ed.a.etat(); return !!ed.cmd && ed.partage(e, ed.parcoursActif(e)); },
         choisir: sel => {
           ed.sel = sel && sel.type === 'lien' ? sel : null;
           ed.svc = sel && sel.type === 'noeud' ? sel.id : '';
@@ -1573,7 +1599,8 @@
     }
 
     relier(de, vers) {
-      const p = this.parcoursActif(this.a.etat()); if (!p) return 'Aucun chemin choisi.';
+      const etat = this.a.etat(), p = this.parcoursActif(etat); if (!p) return 'Aucun chemin choisi.';
+      if (this.cmd && this.partage(etat, p)) return this.refusPartage(p);
       if (P.arcsDuParcours(p).some(a => a.from === de && a.to === vers)) return this.nom(de) + ' livre déjà ' + this.nom(vers) + '.';
       if (creeBoucle(p, de, vers)) return 'Impossible : ' + this.nom(vers) + ' livre déjà ' + this.nom(de)
         + ' (directement ou par d’autres services). Une commande tournerait en rond.';
@@ -1586,13 +1613,18 @@
     }
 
     retirerLien(id) {
-      const p = this.parcoursActif(this.a.etat()); if (!p) return;
+      const etat = this.a.etat(), p = this.parcoursActif(etat); if (!p) return;
+      if (this.cmd && this.partage(etat, p)) return this.dire(this.refusPartage(p));
       const [de, vers] = id.split('>');
       this.sel = null;
       this.a.changer(etat => {
         const q = etat.parcours.find(x => x.id === p.id);
         q.liens = q.liens.filter(l => !(l.de === de && l.vers === vers));
       }, 'Lien retiré : ' + this.nom(de) + ' ne livre plus ' + this.nom(vers) + '. Vous pouvez annuler.');
+    }
+
+    refusPartage(p) {
+      return 'C’est le flux « ' + p.nom + ' », partagé : « Modifier ce flux » (pour toutes ses commandes) ou « lui faire sa variante ».';
     }
 
     /* Ce qui vient de se passer se dit deux fois : dans la ligne d'état de la
@@ -1615,8 +1647,10 @@
       }
       if (sel && sel.type === 'noeud') {
         const s = sel.id, ico = I ? I.ico(I.icoService(s, this.nom(s))) : '';
-        const gestes = `<button class="btn btn-sm" data-pc-action="relier-depuis" data-service="${esc(s)}">Relier à…</button>
-          <button class="lien-discret danger" data-pc-action="noeud-retirer" data-service="${esc(s)}">Retirer du chemin</button>`;
+        const verService = this.a.service ? `<button class="btn btn-sm" data-pc-action="service-ouvrir" data-service="${esc(s)}">Ouvrir le service ${esc(this.nom(s))} →</button>` : '';
+        const gestes = this.cmd && this.partage(etat, p) ? verService
+          : `<button class="btn btn-sm" data-pc-action="relier-depuis" data-service="${esc(s)}">Relier à…</button>
+          <button class="lien-discret danger" data-pc-action="noeud-retirer" data-service="${esc(s)}">Retirer du chemin</button>${verService}`;
         if (!this.cmd) return `<p class="pc-pan-tete">${ico}<b>${esc(this.nom(s))}</b><span>dans un modèle, un nœud n’a pas de case :
           chaque commande a la sienne, sur son propre chemin.</span></p><div class="row-btns">${gestes}</div>`;
         const lib = this.lib(this.cmd), a0 = caseDe(etat, s, this.cmd);
@@ -1936,6 +1970,19 @@
       // « Besoin de légumerie » déjà coché : le décocher, c'est la retirer du chemin.
       if (action === 'besoin' && p && P.servicesDuParcours(p).includes(s)) action = 'noeud-retirer';
       const trouver = x => x.parcours.find(y => y.id === pid);
+      if (action === 'flux-ouvrir') return this.a.flux && this.a.flux(pid);
+      if (action === 'service-ouvrir') return this.a.service && this.a.service(s);
+      if (action === 'flux-variante' && p && this.cmd) {
+        const cmd = this.cmd, lib = this.lib(cmd);
+        return this.a.changer(x => {
+          const v = nouveauType(x, p.nom + ' · ' + etiquette(cmd), p);
+          assignerType(x, cmd, v.id);
+          this.copierDisposition(pid, v.id);
+        }, lib + ' a sa variante du flux « ' + p.nom + ' » : modifiez-la ici, elle ne touche qu’elle.');
+      }
+      // Un flux partagé ne se modifie pas depuis le chemin d'une commande.
+      if (this.cmd && this.partage(etat, p) && ['relier-depuis', 'lien-retirer', 'noeud-retirer', 'besoin', 'parcours-retirer'].includes(action))
+        return this.dire(this.refusPartage(p));
       if (action === 'cmd') { this.cmd = b.dataset.classe; this.actif = null; this.sel = null; this.svc = ''; this.depuis = undefined; return this.rendre(); }
       if (action === 'modele') { this.cmd = null; this.actif = b.dataset.parcours; this.sel = null; this.svc = ''; return this.rendre(); }
       if (action === 'fermer') return this.fermer();
@@ -2027,8 +2074,8 @@
     /** Un chemin copié garde la disposition de son modèle : on s'y retrouve. */
     copierDisposition(de, vers) {
       const G = root.OrlyGraphe; if (!G || !de) return;
-      const pos = G.lirePositions()['chemin:' + de];
-      if (pos) G.ecrirePositions('chemin:' + vers, pos);
+      const tout = G.lirePositions(), pos = tout['flux:' + de] || tout['chemin:' + de];
+      if (pos) for (const k of ['flux:', 'chemin:']) G.ecrirePositions(k + vers, pos);
     }
 
     geste(q) {

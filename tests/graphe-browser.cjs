@@ -25,10 +25,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await nav.vue(page,'ateliers');await nav.aller(page,'at-chemins');await attendre();
   const Z='.pc-graphe';
 
-  // 1. Chaque commande a son chemin, créé à la main : ici TX · Business, copié du modèle de sa classe.
+  // 1. Une commande suit le flux de sa classe ; elle peut aussi avoir un chemin
+  // à elle, avec ses propres cases : ici TX · Business, copié de son flux.
   assert.ok(await page.locator('.pc-cmds [data-pc-action=cmd]').count()>=30,'une ligne par commande');
   await page.locator('[data-pc-action=cmd][data-classe="TX/BC"]').click();await attendre();
-  assert.match(await page.locator('.pc-creer').textContent(),/TX · Business n’a pas encore son chemin[\s\S]*modèle « Complet »/);
+  assert.match(await page.locator('.pc-flux-bandeau').textContent(),/TX · Business suit le flux « Complet »/);
+  await page.locator('.pc-creer-plus>summary').click();
   assert.equal(await page.locator('[data-pc-champ=creer-depuis]').inputValue(),'complet','son modèle est proposé');
   await page.locator('[data-pc-action=creer]').click();await attendre();
   const bc=await page.evaluate(()=>Sim.ateliers.state.parcoursClasse['TX/BC']);

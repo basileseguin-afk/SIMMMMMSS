@@ -723,7 +723,7 @@ pas descriptible.
 Un **flux** est un parcours partagé (`type: true`) : celui d'une classe
 (`parcoursCabine`), celui de plusieurs commandes, ou un modèle en réserve. Un
 parcours désigné par une seule commande reste son **chemin propre** (une
-exception, réglée dans l'outil Chemins). `marquerTypes` pose la marque à la
+exception, réglée dans Mon unité › Une commande). `marquerTypes` pose la marque à la
 lecture ; `cheminDe` ne renvoie jamais un flux (le modifier pour une commande
 le modifierait pour toutes) ; `typeSuivi` donne le flux qu'une commande suit,
 `fluxDe` ce par où elle passe.

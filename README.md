@@ -164,6 +164,20 @@ le rouge ne sert qu’aux retards.
      changer ; le service se place alors entre ceux qui le livrent et ceux
      qu’il livre (d’après les autres flux, les modèles types, puis les liens
      de l’unité ; une salle annexe se place comme son service).
+   - *Une commande* : son chemin de bout en bout. Si elle suit un
+     flux partagé, un bandeau le dit (« AF · Business suit le flux
+     « Complet », comme 12 autres commandes ») avec deux gestes : **Modifier
+     ce flux** (ouvre Flux de production, pour toutes ses commandes) ou
+     **lui faire sa variante** (une copie à elle, modifiable sur place). Le
+     diagramme montre, sur chaque service, l’équipe qui la prépare ; un clic
+     sur un service, puis « Ouvrir le service → », mène à sa fiche. Le
+     diagramme d’un flux garde la même disposition ici et dans Flux de
+     production.
+     Les trois pages se répondent : la fiche d’un service liste les **flux
+     qui y passent** (un clic ouvre le flux) ; dans une équipe, chaque
+     commande de « Dans l’ordre » ouvre son chemin sur ce service ; un flux
+     propose « Voir le chemin d’une de ses commandes » et, sur un service
+     choisi, « Ses équipes → ».
    - *Tableau des équipes* et *Tableau des minutes* : toutes les équipes (et
      leurs heures), toutes les minutes, d’un coup d’œil, modifiables sur place
      ou dans Excel.
@@ -176,7 +190,8 @@ le rouge ne sert qu’aux retards.
    - *Temps de travail* : les minutes d’un vol, service par service et classe
      par classe (une valeur commune, des valeurs propres à une compagnie, ou une
      grille compagnie par classe).
-   - *Chemins* : **un chemin par commande** (« Complet TX BC »), créé à la
+   - *Une commande* (dans Mon unité), pour une commande qui a son
+     **chemin à elle** (« Complet TX BC »), créé à la
      main — vide, copié d’un modèle, ou copié du chemin d’une autre commande —
      et « Dupliquer pour… » d’autres commandes. À gauche la liste des
      commandes, au centre le chemin **en diagramme de nœuds** : on tire le `+`

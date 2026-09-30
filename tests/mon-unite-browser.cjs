@@ -17,12 +17,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
 
-  // 1. Le menu : quatre parties, sans chemins ni cases ni liens.
+  // 1. Le menu : quatre parties, sans cases ni liens ; le chemin d'une commande est dans Mon unité.
   assert.deepEqual(await page.locator('#menu [data-vers-partie]').allInnerTexts(),['Accueil','Vols','Mon unité','Réglages','Résultats']);
   await page.locator('#menu [data-vers-partie=organisation]').click();await attendre();
   assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-pas','Mon unité s’ouvre sur le pas à pas');
   const onglets=await page.locator('#sous-onglets [data-sous-onglet]').allInnerTexts();
-  assert.ok(!onglets.some(t=>/Chemins|Cases|Qui prépare quoi|Liens/.test(t)),onglets.join(', '));
+  assert.ok(!onglets.some(t=>/Cases|Qui prépare quoi|Liens/.test(t)),onglets.join(', '));
+  assert.ok(onglets.includes('Une commande'),onglets.join(', '));
 
   // 2. Le pas à pas : les vols d'exemple, puis les services sans équipe.
   const pas=await page.locator('#mu-pas').innerText();
@@ -138,13 +139,51 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator('#mu-flux [data-mu-flux-classe="BC"]').check();await attendre();
   assert.equal(await page.evaluate(()=>OrlyParcours.fluxDe(Sim.ateliers.state,'AF/BC').nom),'Complet');
 
-  // 12. Les outils d'avant restent à portée, hors du menu.
+  // 12. Flux, services et chemin d'une commande se répondent.
+  const sous=()=>page.evaluate(()=>document.body.dataset.sous);
   await nav.aller(page,'mu-services');
-  await page.locator('#mu-services [data-page=at-chemins]').click();await attendre();
+  await page.locator('.mu-liste [data-mu-choisir=prepa]').click();await attendre();
+  // La fiche d'un service dit les flux qui y passent, et y mène.
+  await page.locator(`.mu-fiche [data-mu-voir-flux="${cf}"]`).click();await attendre();
+  assert.equal(await sous(),'mu-flux');
+  assert.equal(await page.evaluate(()=>Sim.unite.fluxChoisi),cf,'le flux cliqué est ouvert');
+  // Un flux mène au chemin d'une de ses commandes…
+  await page.locator('#mu-flux [data-mu-flux-chemin]').selectOption('AF/BC');await attendre();
+  assert.equal(await sous(),'at-chemins');
+  assert.equal(await page.locator('.pc-cmd.actif').getAttribute('data-classe'),'AF/BC');
+  assert.match(await page.locator('.pc-flux-bandeau').innerText(),/AF · Business suit le flux « Complet »/);
+  assert.equal(await page.locator('#at-parcours .pc-outils').count(),0,'un flux partagé ne se modifie pas ici');
+  // … qui montre, sur chaque service, l'équipe qui la prépare, et y mène.
+  await page.locator('#at-parcours [data-noeud=prepa]').click();await attendre();
+  await page.locator('#at-parcours [data-pc-action=service-ouvrir]').click();await attendre();
+  assert.equal(await sous(),'mu-services');
+  assert.equal(await page.locator('#mu-services .mu-fiche').getAttribute('data-mu-fiche'),'prepa');
+  // Dans une équipe, une commande de « Dans l'ordre » ouvre son chemin.
+  await page.locator(`.mu-equipe[data-at="${e1}"] [data-mu-chemin="AF/BC"]`).click();await attendre();
+  assert.equal(await sous(),'at-chemins');
+  // Le bandeau renvoie au flux, pour toutes ses commandes.
+  await page.locator('[data-pc-action=flux-ouvrir]').click();await attendre();
+  assert.equal(await sous(),'mu-flux');
+  assert.equal(await page.evaluate(()=>Sim.unite.fluxChoisi),cf);
+  // Ou fait à la commande sa variante, qu'on modifie alors sur place.
+  await nav.aller(page,'at-chemins');
+  await page.locator('[data-pc-action=flux-variante]').click();await attendre();
+  const va=await page.evaluate(()=>OrlyParcours.fluxDe(Sim.ateliers.state,'AF/BC'));
+  assert.ok(va.type&&va.id!==cf,'une variante à elle');
+  assert.equal(await page.evaluate(()=>OrlyParcours.fluxDe(Sim.ateliers.state,'TX/BC').id),cf,'les autres gardent le flux');
+  assert.equal(await page.locator('.pc-flux-bandeau').count(),0);
+  await nav.aller(page,'mu-flux');
+  assert.equal(await page.evaluate(()=>Sim.unite.fluxChoisi),cf);
+  await page.locator('#mu-flux [data-mu-flux-suivre="AF/BC"]').click();await attendre();
+  assert.equal(await page.evaluate(()=>OrlyParcours.fluxDe(Sim.ateliers.state,'AF/BC').id),cf,'elle reprend le flux de sa classe');
+
+  // 13. Les outils d'avant restent à portée, hors du menu.
+  await nav.aller(page,'mu-services');
+  await page.locator('#mu-services [data-page=at-equipes]').click();await attendre();
   assert.equal(await page.evaluate(()=>document.body.dataset.partie),'avance');
   assert.equal(await page.locator('#menu .menu-partie.actif').count(),0,'aucune partie du menu n’est marquée');
 
-  // 13. Tout survit au rechargement.
+  // 14. Tout survit au rechargement.
   await page.reload();await attendre();
   s=await st();
   assert.equal(s.ateliers.find(a=>a.id===e1).personnes,6);

@@ -86,7 +86,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     await nav.aller(page,'at-equipes');r.cases=await page.locator(`#at-filtre option[value="${id}"]`).count()===1;
     await nav.aller(page,'at-chemins');await page.locator('[data-pc-action=cmd][data-classe="AF/BC"]').click();await attendre();
     // Sans chemin, on le crée : c'est dans son « Ajouter un service » que le service doit figurer.
-    if(await page.locator('[data-pc-action=creer][data-classe="AF/BC"]').count()){await page.locator('[data-pc-action=creer][data-classe="AF/BC"]').click();await attendre();}
+    await nav.creerChemin(page,'AF/BC');
     r.chemin=await page.locator(`[data-pc-champ=noeud-ajout] option[value="${id}"], .pc-graphe [data-noeud="${id}"]`).count()>0;
     return r;};
   const partout={services:true,plan:true,liens:true,page:true,cases:true,chemin:true};
