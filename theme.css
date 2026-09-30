@@ -351,3 +351,9 @@ body>header::before{content:"";position:absolute;left:0;right:0;top:0;height:3px
 
 /* ---- Les départs : l'horaire en couleur de sa partie ----------------------- */
 .flight-table td.vol-heure{color:color-mix(in srgb,var(--c-vols) 55%,#101828)}
+
+/* ---- « Outils avancés » : toujours visible, en haut à droite -------------------- */
+header .entete-droite{display:flex;gap:8px}
+header .btn-avance{color:var(--txt2)}
+body[data-partie="avance"] header .btn-avance{background:color-mix(in srgb,var(--c-unite) 12%,#fff);color:var(--txt);
+  border-color:color-mix(in srgb,var(--c-unite) 35%,var(--bordure))}

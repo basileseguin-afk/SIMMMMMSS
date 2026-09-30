@@ -4,10 +4,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const O = require('../onglets.js');
 
-test('chaque vue a au moins deux onglets, le premier par défaut ; une partie du menu, sept pages au plus', () => {
+test('chaque vue a au moins deux onglets, le premier par défaut ; une partie du menu, huit pages au plus', () => {
   // Ce qu'on voit, ce sont les pages d'une PARTIE du menu, pas les onglets d'une
   // vue : c'est sur elles que porte la limite.
-  for (const p of O.PARTIES.filter(x => !x.cache)) assert.ok(p.pages.length <= 7, p.id + ' : ' + p.pages.length + ' pages');
+  for (const p of O.PARTIES.filter(x => !x.cache)) assert.ok(p.pages.length <= 8, p.id + ' : ' + p.pages.length + ' pages');
   for (const vue of ['vols', 'ateliers', 'reglages', 'plan', 'flux']) {
     const l = O.ONGLETS[vue];
     assert.ok(l && l.length >= 2, vue + ' : ' + (l || []).length + ' onglets');
@@ -58,12 +58,14 @@ test('une page se range selon sa nature, pas selon l’écran qui la porte', () 
   for (const id of ['mu-pas', 'mu-services', 'at-recap', 'rg-recap']) assert.equal(partie(id), 'organisation', id);
   assert.equal(O.pagesDe('organisation')[0].id, 'mu-pas', 'Mon unité commence par le pas à pas');
   // Les outils d'avant : une partie cachée, hors du menu.
-  for (const id of ['at-chemins', 'at-equipes', 'at-grille', 'rg-minutes', 'u-services', 'u-liens', 'u-lecture']) assert.equal(partie(id), 'avance', id);
+  for (const id of ['at-chemins', 'at-equipes', 'rg-minutes', 'u-services', 'u-liens', 'u-lecture']) assert.equal(partie(id), 'avance', id);
+  // Suivre une commande étape par étape est un résultat : il est dans le menu.
+  assert.equal(partie('at-grille'), 'resultats');
   assert.ok(O.PARTIES.find(p => p.id === 'avance').cache);
   // Ce qu'on essaie.
   assert.equal(partie('rg-simulation'), 'reglages');
   // Ce qu'on observe : même quand l'écran vit dans la vue des vols ou des équipes.
-  for (const id of ['j-chiffres', 'j-plan', 'at-planning', 'at-repas', 'v-departs', 'j-stocks', 'j-comparer'])
+  for (const id of ['j-chiffres', 'j-plan', 'at-planning', 'at-repas', 'at-grille', 'v-departs', 'j-stocks', 'j-comparer'])
     assert.equal(partie(id), 'resultats', id);
   assert.equal(O.pagesDe('resultats')[0].id, 'j-chiffres', 'les résultats commencent par la synthèse');
   assert.equal(O.defaut('plan'), 'j-plan', 'arriver « sur le plan », c’est arriver sur la carte');

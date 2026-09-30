@@ -11,10 +11,7 @@ async function aller(page, id) {
   if (partie === 'avance') {
     // Les outils avancés : par le lien discret de Mon unité › Services.
     const actif = await page.evaluate(() => document.body.dataset.partie);
-    if (actif !== 'avance') {
-      await aller(page, 'mu-services');
-      await page.locator('#mu-services [data-page=at-chemins]').click(); await page.waitForTimeout(120);
-    }
+    if (actif !== 'avance') { await page.locator('#btn-avance').click(); await page.waitForTimeout(120); }
   } else if (partie !== 'fichier') {
     const actif = await page.evaluate(() => document.body.dataset.partie);
     if (actif !== partie) { await page.locator(`#menu [data-vers-partie=${partie}]`).click(); await page.waitForTimeout(120); }

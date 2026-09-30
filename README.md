@@ -155,8 +155,11 @@ le rouge ne sert qu’aux retards.
    - *Tableau des équipes* et *Tableau des minutes* : toutes les équipes (et
      leurs heures), toutes les minutes, d’un coup d’œil, modifiables sur place
      ou dans Excel.
-   - *Outils avancés* (un lien discret en bas de la liste des services, hors
-     du menu) : les outils d’avant, pour les cas rares.
+   - *Outils avancés* (le bouton en haut à droite, à côté de Sauvegarde) :
+     les outils d’avant, pour les cas rares.
+   - Suivre une commande étape par étape : **Résultats › Parcours des
+     commandes** (une ligne par commande, un clic sur « Prête à » la déplie
+     dans le temps).
    Les outils avancés en détail :
    - *Temps de travail* : les minutes d’un vol, service par service et classe
      par classe (une valeur commune, des valeurs propres à une compagnie, ou une

@@ -971,7 +971,7 @@ function initOnglets(){
   const outils=document.getElementById('so-outils');
   // Ceux des liens ne valent que pour les liens : ils ne suivent pas dans la sauvegarde.
   // Ceux des cases et des chemins ne suivent pas dans les résultats (planning, commandes).
-  for(const [vue,sel,onglet] of [['ateliers','#view-ateliers .at-actions','mu-services at-chemins at-equipes at-grille'],
+  for(const [vue,sel,onglet] of [['ateliers','#view-ateliers .at-actions','mu-services at-chemins at-equipes'],
                                  ['reglages','#rg-bareme-panneau .rg-actions','rg-minutes rg-simulation'],
                                  ['flux','#view-flux .fc-actions','u-liens']]){
     const e=document.querySelector(sel);if(!e||!outils)continue;

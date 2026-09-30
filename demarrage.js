@@ -32,7 +32,7 @@
   const VUES = {
     vols: { titre: 'Les vols',
       intro: 'Les avions qui partent aujourd’hui, et si leurs repas sont prêts à temps.' },
-    ateliers: { titre: 'Qui prépare quoi',
+    ateliers: { titre: 'Mon unité',
       intro: 'Une commande par compagnie et par classe : par où elle passe, et quelle équipe la prépare.' },
     reglages: { titre: 'Les temps de travail',
       intro: 'Combien de minutes chaque service passe sur un vol : c’est ce qui fait durer chaque préparation.' },

@@ -5,6 +5,23 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-30 — Outils avancés visibles, parcours des commandes dans Résultats
+
+Retour d'usage : « je ne trouve pas Outils avancés ». Le lien était en bas
+d'une longue liste, hors de l'écran.
+
+- Un bouton **Outils avancés** dans l'en-tête, toujours visible, à côté de
+  Sauvegarde ; il se colore quand on y est.
+- **Résultats › Parcours des commandes** : l'ancien tableau « Qui prépare
+  quoi » quitte les outils avancés. Une ligne par commande, une colonne par
+  service (équipe et heures) ; un clic sur « Prête à » la déplie en frise,
+  étape par étape, avec la phrase qui dit pourquoi elle est à l'heure ou en
+  retard. Ses messages vides renvoient à Mon unité.
+- Les messages qui citaient encore « Qui prépare quoi » disent où aller.
+
+Fichiers : `index.html`, `onglets.js`, `icones.js`, `parcours.js`,
+`ateliers.js`, `demarrage.js`, `temps.js`, `sim.js`, `theme.css`, tests.
+
 ## 2026-09-30 — De la couleur, avec retenue
 
 Retour d'usage : « bien mieux, mais trop monochrome ; sobre, pas monochrome ».

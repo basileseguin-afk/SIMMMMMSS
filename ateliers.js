@@ -1103,7 +1103,7 @@
         // des commandes pas encore commencées) : on le dit autrement.
         const cmd = new Set(trous.flatMap(a => a.classes || [])).size;
         list.push((cmd > 1 ? cmd + ' commandes commencées sautent' : '1 commande commencée saute') + ' une étape sans équipe ('
-          + trous.map(a => esc(nomSv(a.service))).join(', ') + ') : à compléter dans l’onglet « Qui prépare quoi ».');
+          + trous.map(a => esc(nomSv(a.service))).join(', ') + ') : à compléter dans Mon unité › Services et équipes (cochez-les dans une équipe) ; « Parcours des commandes », dans Résultats, montre les étapes sautées.');
       }
       // Un service supprimé que des cases ou des chemins citent encore : il fait
       // des alertes, et aucune liste ne le montre. Le geste qui l'efface est ici.

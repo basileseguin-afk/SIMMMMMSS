@@ -43,6 +43,7 @@
     croix: '<path d="M6 6l12 12M18 6 6 18"/>',
     lecture: '<path d="M7 4.5v15l12-7.5z"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.8v.4"/>',
+    curseurs: '<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
     fleche: '<path d="M4 12h15M13 6l6 6-6 6"/>',
     ampoule: '<path d="M9 18h6M10 21h4M8.5 14.5C7 13.4 6 11.6 6 9.5a6 6 0 0 1 12 0c0 2.1-1 3.9-2.5 5V16h-7z"/>'
   };

@@ -27,7 +27,7 @@
       { id: 'mu-services', nom: 'Services et équipes', ico: 'service' },
       { id: 'at-chemins', nom: 'Chemins', ico: 'fleche' },
       { id: 'at-equipes', nom: 'Cases', ico: 'service' },
-      { id: 'at-grille', nom: 'Tableau', ico: 'equipe' },
+      { id: 'at-grille', nom: 'Parcours des commandes', ico: 'fleche' },
       { id: 'at-planning', nom: 'Planning des équipes', ico: 'journee' },
       { id: 'at-repas', nom: 'Commandes', ico: 'plateau' },
       { id: 'at-recap', nom: 'Tableau des équipes', ico: 'service' }
@@ -85,6 +85,7 @@
         { id: 'j-plan', intro: 'Rejouez la journée sur le plan de l’unité : qui travaille, qui attend, ce qui est prêt.' },
         { id: 'at-planning', intro: 'Qui travaille quand : chaque équipe, ses préparations et ses attentes.' },
         { id: 'at-repas', intro: 'Chaque commande : à quelle heure elle est prête, et avant quand elle devait l’être.' },
+        { id: 'at-grille', intro: 'Chaque commande, étape par étape : cliquez « Prête à » pour la suivre dans le temps.' },
         { id: 'v-departs', intro: 'Chaque vol : ses repas sont-ils prêts avant son départ ?' },
         { id: 'j-stocks', intro: 'Ce qui attend entre deux services, et les retours des vols à la plonge.' },
         { id: 'j-comparer', intro: 'Retenez deux essais et voyez ce qui a bougé.' }
@@ -92,12 +93,11 @@
     // Les outils d'avant, pour les cas rares : un chemin dessiné à la main, une
     // case réglée hors de sa fiche, les liens entre services. On y vient par un
     // lien discret de Mon unité ; ils ne sont plus dans le menu.
-    { id: 'avance', nom: 'Outils avancés', ico: 'fleche', couleur: 'var(--c-equipes)', cache: true,
+    { id: 'avance', nom: 'Outils avancés', ico: 'curseurs', couleur: 'var(--c-equipes)', cache: true,
       resume: 'Chemins, cases et liens, à la main',
       pages: [
         { id: 'at-chemins', intro: 'Le chemin de chaque commande, à la main (Mon unité le déduit des coches).' },
         { id: 'at-equipes', intro: 'Toutes les cases (équipes), une par une.' },
-        { id: 'at-grille', intro: 'Pour chaque commande, la case qui la prépare dans chaque service.' },
         { id: 'rg-minutes', intro: 'Les minutes de travail d’un vol, service par service.' },
         { id: 'u-services', intro: 'Les services de l’unité : nom, équipes, place sur le plan, services supprimés.' },
         { id: 'u-liens', intro: 'Qui livre qui dans l’unité : ces liens ne servent qu’aux commandes sans chemin.' },

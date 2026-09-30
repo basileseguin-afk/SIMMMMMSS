@@ -1528,18 +1528,18 @@
     sectionTableau(etat, classes) {
       const t = tableau(etat, classes);
       const r = this.a.resultat ? this.a.resultat() : null;
-      const titre = `<div class="titre-aide at-titre-aide"><h3 class="at-titre" id="pc-t2">Qui prépare quoi <span class="pc-sous">calculé à partir des chemins</span></h3>
+      const titre = `<div class="titre-aide at-titre-aide"><h3 class="at-titre" id="pc-t2">Parcours des commandes <span class="pc-sous">qui prépare chaque commande, service par service, et quand</span></h3>
         <details class="aide"><summary aria-label="Comment lire le tableau ?">?</summary><span class="aide-corps">${AIDE_TABLEAU}</span></details></div>`;
       if (!t.lignes.length) return `<section class="qf" aria-labelledby="pc-t2" data-sous="at-grille">${titre}
         <p class="mini-note">Aucune commande à préparer : importez un programme de vols (Vols).</p></section>`;
       // Sans aucune case, deux cents cases vides ne disent rien : on dit par où commencer.
       if (!(etat.ateliers || []).length) return `<section class="qf" aria-labelledby="pc-t2" data-sous="at-grille">${titre}
         <div class="vide-carte qf-vide">${root.OrlyIcones ? root.OrlyIcones.ico('equipe') : ''}<b>Aucune case pour l’instant</b>
-          <p>Ce tableau se remplit tout seul, à partir des chemins : quelle case prépare chaque commande, service par service.</p>
-          <p>Pour commencer : dans « Les chemins », choisissez une commande, créez son chemin, puis cliquez un service pour lui donner sa case.</p>
-          <div class="row-btns"><button class="btn btn-play" data-aller="ateliers" data-onglet="at-chemins">Ouvrir « Les chemins »</button></div></div></section>`;
+          <p>Ce tableau se remplit tout seul : quelle équipe prépare chaque commande, service par service, et à quelle heure.</p>
+          <p>Pour commencer : dans Mon unité › Services et équipes, cochez ce que prépare chaque équipe.</p>
+          <div class="row-btns"><button class="btn btn-play" data-page="mu-services">Ouvrir Mon unité</button></div></div></section>`;
       if (!t.colonnes.length) return `<section class="qf" aria-labelledby="pc-t2" data-sous="at-grille">${titre}
-        <p class="mini-note">Aucun chemin : créez celui d’une commande dans « Les chemins » pour que le tableau ait des colonnes.</p></section>`;
+        <p class="mini-note">Aucune commande ne passe encore par un service : cochez ce que prépare chaque équipe dans Mon unité › Services et équipes.</p></section>`;
 
       // Les heures d'un lot, pour lire le tableau comme un planning.
       const lots = new Map();

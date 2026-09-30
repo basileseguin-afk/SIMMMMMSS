@@ -46,7 +46,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const attendues={donnees:['v-programme','v-planche'],
     organisation:['mu-pas','mu-services','at-recap','rg-recap'],
     reglages:['rg-simulation'],
-    resultats:['j-chiffres','j-plan','at-planning','at-repas','v-departs','j-stocks','j-comparer']};
+    resultats:['j-chiffres','j-plan','at-planning','at-repas','at-grille','v-departs','j-stocks','j-comparer']};
   const noms={donnees:'Vols',organisation:'Mon unité',reglages:'Réglages',resultats:'Résultats'};
   for(const [p,pages] of Object.entries(attendues)){
     await page.locator(`#menu [data-vers-partie=${p}]`).click();await attendre();
@@ -98,7 +98,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(await page.locator('.rg-barres .rg-barre i[data-cab=BC]').count()>5,'les minutes se lisent en barres');
 
   // 4. Les outils suivent la page : ceux des cases dans Mon unité, pas dans les résultats.
-  await nav.aller(page,'at-grille');
+  await nav.aller(page,'at-chemins');
   assert.equal(await page.locator('#at-export').isVisible(),true,'les outils restent à portée, sur la barre des onglets');
   assert.match(await page.locator('#at-export').textContent(),/Cases et chemins/,'un export dit ce qu’il contient');
   await nav.aller(page,'mu-services');
@@ -147,6 +147,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator(`[data-qf=aller][data-classe="AF/BC"][data-service=prepa]`).click();await attendre();
   assert.equal(await actif(),'at-chemins');
   assert.equal(await page.locator('.pc-cmd.actif').getAttribute('data-classe'),'AF/BC');
+
+  // Les outils avancés : un bouton toujours visible dans l'en-tête.
+  await nav.accueil(page);
+  assert.equal(await page.locator('#btn-avance').isVisible(),true,'on le voit sans chercher');
+  await page.locator('#btn-avance').click();await attendre();
+  assert.equal(await page.evaluate(()=>document.body.dataset.partie),'avance');
+  assert.equal(await actif(),'at-chemins');
 
   // 7. Le sens passe par l'image.
   assert.equal(await page.locator('#menu .menu-partie svg.ico').count(),5,'un pictogramme par partie, et l’accueil');
