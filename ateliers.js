@@ -1408,7 +1408,7 @@
           </div>`).join('')}
           <div class="at-actions-lot"><button class="btn btn-sm" data-at-action="vague-ajouter">+ Vague</button></div>` : ''}
         </div>` : `
-        ${a.type === 'manuel' ? this.blocFusion(a) : a.type === 'robot' ? this.blocLigne(a) : ''}
+        ${a.type === 'manuel' ? (o.compact ? '' : this.blocFusion(a)) : a.type === 'robot' ? this.blocLigne(a) : ''}
         <div class="at-cases">
           <label class="chk chk-mini"><input type="checkbox" data-at-champ="regime" ${a.regime.actif ? 'checked' : ''}>
             Poste avec pauses — 15 min après 3 h, 30 min après 6 h</label>
@@ -1659,9 +1659,13 @@
         return neuf && (j !== 0 || jourDe(t0) !== 0) ? (j ? 'J' + j : 'J') + ' ' + heureSeule(t) : heureSeule(t);
       };
 
+      const services = this.a.services(), nomSvc = id => (services.find(s => s.id === id) || {}).nom || id;
       const barres = lignes.map((a, i) => {
         const y = 28 + i * H;
-        const nom = `<text class="at-pl-nom" x="8" y="${y + 13}">${esc(a.nom)}</text>`;
+        // Une équipe qui fait aussi l'étape d'avant, à la chaîne : son nom le dit, ses barres ont la teinte de la chaîne.
+        const fu = (a.lots.find(l => l.fusion) || {}).fusion;
+        const court = (t, n) => (t.length > n ? t.slice(0, n - 1) + '…' : t);
+        const nom = `<text class="at-pl-nom" x="8" y="${y + 13}">${esc(fu ? court(a.nom, 15) : a.nom)}${fu ? `<tspan class="at-pl-chaine"> ⛓ +${esc(court(nomSvc(fu), 9))}</tspan>` : ''}<title>${esc(a.nom)}${fu ? ' — fait aussi ' + esc(nomSvc(fu)) + ', à la chaîne' : ''}</title></text>`;
         const lots = a.lots.map(l => {
           // Une mise à disposition n'a pas de durée : une barre de deux pixels
           // se lirait comme une fabrication minuscule. C'est un repère.
@@ -1669,8 +1673,9 @@
           if (l.fin == null) return `<rect class="at-pl-bloque" x="${x(l.debut)}" y="${y + 3}" width="10" height="14" rx="3"><title>${esc(l.nom)} : ne tourne pas</title></rect>`;
           const att = l.attente ? `<rect class="at-pl-attente" x="${x(l.debut - l.attente)}" y="${y + 6}" width="${Math.max(1, x(l.debut) - x(l.debut - l.attente))}" height="8" rx="2"><title>Attente des amonts : ${Math.round(l.attente)} min</title></rect>` : '';
           const w = Math.max(2, x(l.fin) - x(l.debut));
-          return att + `<rect class="at-pl-lot ${a.type === 'robot' ? 'robot' : ''}" x="${x(l.debut)}" y="${y + 3}" width="${w}" height="14" rx="3">
-            <title>${esc(l.nom)}\n${P.hhmm(l.debut)} → ${P.hhmm(l.fin)} (${Math.round(l.duree)} min${l.arret ? ', dont ' + Math.round(l.arret) + ' min d’arrêt' : ''})</title></rect>`;
+          return att + `<rect class="at-pl-lot ${a.type === 'robot' ? 'robot' : ''}${l.fusion ? ' chaine' : ''}" x="${x(l.debut)}" y="${y + 3}" width="${w}" height="14" rx="3">
+            <title>${esc(l.nom)}\n${P.hhmm(l.debut)} → ${P.hhmm(l.fin)} (${Math.round(l.duree)} min${l.arret ? ', dont ' + Math.round(l.arret) + ' min d’arrêt' : ''})${l.fusion
+              ? '\n⛓ À la chaîne : ' + esc(nomSvc(l.fusion)) + ' ' + Math.round(l.minutesFusion || 0) + ' min + ' + esc(nomSvc(a.service)) + ' ' + Math.round(l.minutesIci || 0) + ' min de travail' : ''}</title></rect>`;
         }).join('');
         return nom + lots;
       }).join('');
@@ -1679,7 +1684,8 @@
         ${reperes.map((t, i) => `<g><line class="at-pl-grille${t % 1440 === 0 ? ' minuit' : ''}" x1="${x(t)}" y1="20" x2="${x(t)}" y2="${haut}"/><text class="at-pl-heure" x="${x(t)}" y="14">${etiquette(t, i)}</text></g>`).join('')}
         ${barres}
       </svg>
-      <p class="mini-note">Barre pleine : l’équipe prépare. Barre fine devant : elle attend le service d’avant.</p>`;
+      <p class="mini-note">Barre pleine : l’équipe prépare. Barre fine devant : elle attend le service d’avant.${r.lots.some(l => l.fusion)
+        ? ' <span class="at-pl-legende-chaine">Barre rose ⛓ : deux étapes faites d’un bloc, à la chaîne.</span>' : ''}</p>`;
     }
 
     /* ---- couverture par classe --------------------------------------- */

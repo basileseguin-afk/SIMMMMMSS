@@ -67,6 +67,29 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await cellule.click();await attendre();
   assert.equal(await page.evaluate(()=>document.body.dataset.sous),'at-chemins');
   assert.match(await page.locator('#view-ateliers').innerText(),/à la chaîne · Montage AF/);
+  // Et le diagramme les montre d'un bloc : un halo sur chacun, un mot au-dessus.
+  assert.equal(await page.locator('#at-parcours .gr-groupe').count(),1,'Prépa et Montage liés');
+  assert.equal(await page.locator('#at-parcours .gr-noeud.en-chaine').count(),2);
+  assert.match(await page.locator('#at-parcours .gr-groupe').textContent(),/\+ PRÉPA à la chaîne/i);
+  assert.equal(await page.locator('#at-parcours .gr-lien.en-chaine[data-lien="preparation>prepa"]').count(),1,'le lien entre eux s’épaissit');
+  // TX garde ses deux cases : rien de lié sur son chemin.
+  await page.evaluate(()=>Sim.ateliers.parcours.ouvrir('TX/YC'));await attendre();
+  assert.equal(await page.locator('#at-parcours .gr-groupe').count(),0);
+
+  // 4 bis. Mon unité le dit sans rien ouvrir : la liste, les deux fiches, l'équipe.
+  await nav.aller(page,'mu-services');
+  assert.match(await page.locator('.mu-liste [data-mu-choisir=preparation] .mu-svc-chaine').innerText(),/avec MONTAGE/i);
+  assert.match(await page.locator('.mu-liste [data-mu-choisir=prepa] .mu-svc-chaine').innerText(),/\+ PRÉPA/i);
+  await page.locator('.mu-liste [data-mu-choisir=preparation]').click();await attendre();
+  assert.match(await page.locator('#mu-services .mu-chaine-bloc').innerText(),/est fait par « Montage AF »[\s\S]*pas besoin d’équipe ici/);
+  await page.locator('#mu-services .mu-chaine-bloc [data-mu-ouvrir=prepa]').click();await attendre();
+  assert.equal(await page.locator('#mu-services .mu-fiche').getAttribute('data-mu-fiche'),'prepa');
+  assert.match(await page.locator('#mu-services .mu-equipe[data-at="mo"] .mu-badge.chaine').innerText(),/\+ PRÉPA à la chaîne/i);
+  assert.equal(await page.locator('#mu-services .mu-equipe[data-at="mo"] .mu-chaine-reglage [data-at-champ=fusion]').isVisible(),true,'le réglage est à la vue, pas replié');
+  // Le planning : la barre de la case a la teinte de la chaîne.
+  await nav.aller(page,'at-planning');
+  assert.ok(await page.locator('#at-planning .at-pl-lot.chaine').count()>=1);
+  assert.match(await page.locator('#at-planning').textContent(),/Montage AF ⛓ \+PRÉPA/i);
 
   // 5. Revenir à deux cases : la Prépa d'AF est de nouveau « à faire ».
   await nav.aller(page,'at-equipes');

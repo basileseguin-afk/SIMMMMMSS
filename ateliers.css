@@ -76,6 +76,9 @@ body.ateliers-open .workbench{display:none}
 .at-pl-nom{fill:var(--txt);font-size:11px;font-weight:600}
 .at-pl-lot{fill:var(--accent)}
 .at-pl-lot.robot{fill:var(--violet)}
+.at-pl-lot.chaine{fill:var(--chaine,#c026d3)}
+.at-pl-chaine{fill:var(--chaine,#c026d3);font-weight:700}
+.at-pl-legende-chaine{color:var(--chaine,#c026d3);font-weight:600}
 .at-pl-attente{fill:var(--warn-stroke);opacity:.55}
 .at-pl-bloque{fill:var(--rouge)}
 
@@ -418,7 +421,7 @@ body.ateliers-open .workbench{display:none}
 .at-fusion select{max-width:100%}
 .at-fusion-bilan{margin:2px 0 0}
 .at-fusion .at-alerte{color:#9a3412;margin:0}
-.rc-chaine,.qf-chaine{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:color-mix(in srgb,#0f766e 14%,transparent);color:#0f5f58;white-space:nowrap}
+.rc-chaine,.qf-chaine{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--chaine-doux,#f3efff);color:var(--chaine,#7c3aed);white-space:nowrap}
 .qf-chaine{padding:0 6px}
 
 /* La ligne robot partagée (retour d'usage du 29/09). */

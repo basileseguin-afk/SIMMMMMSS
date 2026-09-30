@@ -1020,6 +1020,8 @@ function afficherTitre(){
 function initFlux(){
   Sim.flows=new OrlyFlows.FlowCenter({zones:()=>Sim.editor.state.zones.filter(z=>!z.retire).map(z=>({...z,nom:nomLisible(z.nom)})),legacy:FLUX.concat(FLUX_RETOUR),
     lecture:lectureDuGraphe,
+    // Deux étapes faites à la chaîne par une même équipe : le diagramme les montre d'un bloc.
+    chaines:()=>Sim.ateliers&&window.OrlyParcours?OrlyParcours.chaines(Sim.ateliers.state,null,null).map(g=>({id:g.id,avant:g.avant,service:g.service,equipes:g.equipes.map(a=>a.nom),commandes:g.commandes.length})):[],
     // Les liens ne servent au calcul que pour une commande sans chemin.
     liensUtiles:()=>sansChemin()>0,
     changed:()=>{if(Sim.flows)redessinerEdges();if(Sim.ateliers)Sim.ateliers.rendre();majDemarrage();},

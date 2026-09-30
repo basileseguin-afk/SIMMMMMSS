@@ -64,6 +64,11 @@ class FlowCenter{
     const nom=id=>(fc.points.find(x=>x.owner===id&&x.service)||{}).label||id;
     return{id:p.id,de:p.de,vers:p.vers,couleur:types.length===1?TYPES[types[0]].color:'',pointille:!ok,
      titre:nom(p.de)+' → '+nom(p.vers)+' : '+types.map(t=>TYPES[t].label).join(', ')+(p.flows.length>1?' ('+p.flows.length+' liens)':'')+(ok?'':' — à classer ou désactivé')};}),
+   // Deux étapes faites à la chaîne par une même équipe : un seul bloc.
+   groupes:()=>{const nom=id=>(fc.points.find(x=>x.owner===id&&x.service)||{}).label||id;
+    return(fc.a.chaines?fc.a.chaines():[]).map(g=>({id:g.id,ids:[g.avant,g.service],
+     etiquettes:{[g.avant]:'⛓ à la chaîne → '+nom(g.service),[g.service]:'⛓ + '+nom(g.avant)+' à la chaîne · '+g.commandes+(g.commandes>1?' commandes':' commande')},
+     titre:g.equipes.map(n=>'« '+n+' »').join(', ')+' : '+nom(g.avant)+' + '+nom(g.service)+' d’un bloc.'}));},
    relier:(de,vers)=>{const type=document.getElementById('fc-graphe-type').value;
     const flow={id:uid(),type,from:endpointId(de),to:endpointId(vers),enabled:true,label:''};
     const ok=fc.change(()=>fc.state.flows.push(flow),'Lien ajouté : '+TYPES[type].label.toLowerCase()+'.');

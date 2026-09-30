@@ -213,6 +213,26 @@
       && (a.lots || []).some(l => l.includes(cmd))) || null;
   }
 
+  /* Les étapes faites à la chaîne, pour les montrer d'un bloc : pour chaque
+   * couple (étape d'avant, service de la case), les équipes qui les font
+   * ensemble et leurs commandes. Sur un parcours `p` : les deux services y
+   * sont ; `cmds` : seulement ces commandes (sinon toutes). */
+  function chaines(etat, p, cmds) {
+    const dans = p ? new Set(P.servicesDuParcours(p)) : null, garde = cmds ? new Set(cmds) : null, m = new Map();
+    for (const a of etat.ateliers || []) {
+      if (!(a.type === 'manuel' || !a.type) || typeof a.fusion !== 'string' || !a.fusion || a.fusion === a.service) continue;
+      if (dans && !(dans.has(a.fusion) && dans.has(a.service))) continue;
+      const ids = [...new Set((a.lots || []).flat())].filter(c => !garde || garde.has(c));
+      if (!ids.length) continue;
+      const k = a.fusion + '>' + a.service;
+      if (!m.has(k)) m.set(k, { id: k, avant: a.fusion, service: a.service, equipes: [], commandes: [] });
+      const g = m.get(k);
+      g.equipes.push(a);
+      for (const c of ids) if (!g.commandes.includes(c)) g.commandes.push(c);
+    }
+    return [...m.values()];
+  }
+
   /** Les services d'un parcours dans l'ordre du flux : sources d'abord, jonction à la fin. */
   function etapesOrdonnees(p) {
     const arcs = P.arcsDuParcours(p), services = P.servicesDuParcours(p);
@@ -1561,6 +1581,20 @@
       });
     }
 
+    /* Deux étapes faites à la chaîne par une même équipe : un seul bloc. */
+    groupesDiagramme() {
+      const etat = this.a.etat(), p = this.parcoursActif(etat); if (!p) return [];
+      const noms = g => this.nom(g.avant) + ' + ' + this.nom(g.service);
+      const etiquettes = (g, fin) => ({ [g.avant]: '⛓ à la chaîne → ' + this.nom(g.service), [g.service]: '⛓ + ' + this.nom(g.avant) + ' à la chaîne' + fin });
+      if (this.cmd) return chaines(etat, p, [this.cmd]).map(g => ({ id: g.id, ids: [g.avant, g.service],
+        etiquettes: etiquettes(g, ' · « ' + g.equipes[0].nom + ' »'),
+        titre: 'Pour ' + this.lib(this.cmd) + ', l’équipe « ' + g.equipes[0].nom + ' » fait ' + noms(g) + ' d’un bloc : pas de case à part pour ' + this.nom(g.avant) + '.' }));
+      const cmds = this.a.classes().filter(c => (fluxDe(etat, c) || {}).id === p.id).map(c => c.id);
+      return chaines(etat, p, cmds).map(g => ({ id: g.id, ids: [g.avant, g.service],
+        etiquettes: etiquettes(g, ' · ' + g.commandes.length + '/' + cmds.length),
+        titre: g.equipes.map(a => '« ' + a.nom + ' »').join(', ') + ' : ' + noms(g) + ' d’un bloc, pour ' + g.commandes.map(etiquette).join(', ') + '.' }));
+    }
+
     liensDiagramme() {
       const p = this.parcoursActif(this.a.etat()); if (!p) return [];
       // Sur le chemin d'une commande : le temps qu'elle passe en stock sur chaque lien.
@@ -1586,6 +1620,7 @@
         relier: (de, vers) => ed.relier(de, vers),
         retirerLien: id => ed.retirerLien(id),
         fige: () => { const e = ed.a.etat(); return !!ed.cmd && ed.partage(e, ed.parcoursActif(e)); },
+        groupes: () => ed.groupesDiagramme(),
         choisir: sel => {
           ed.sel = sel && sel.type === 'lien' ? sel : null;
           ed.svc = sel && sel.type === 'noeud' ? sel.id : '';
@@ -1657,7 +1692,7 @@
         const fu = !a0 || !fabrique(a0) ? fusionneePar(etat, s, this.cmd) : null;
         if (fu) {
           const fiche = this.a.fiche ? this.a.fiche(fu.id, this.cmd) : '';
-          return `<p class="pc-pan-tete">${ico}<b>${esc(this.nom(s))}</b><span>faite <b>à la chaîne</b> par la case « ${esc(fu.nom)} » de ${esc(this.nom(fu.service))} :
+          return `<p class="pc-pan-tete pc-pan-chaine">${ico}<b>${esc(this.nom(s))}</b><span>⛓ faite <b>à la chaîne</b> par la case « ${esc(fu.nom)} » de ${esc(this.nom(fu.service))} :
             une personne dresse et passe le plat, l’autre monte directement.</span></p>
             ${this.dansLeTemps(s)}
             <div class="row-btns pc-case-outils"><span class="mini-note">Pour la faire à part, décochez « à la chaîne » dans cette case.</span><span class="pc-outils-fin"></span>${gestes}</div>
@@ -1670,7 +1705,8 @@
           : a.type === 'dispo' ? `« ${esc(a.nom)} » est une mise à disposition : elle sert toutes les commandes`
           : a.type === 'lavage' ? `« ${esc(a.nom)} » lave pour toutes les commandes`
           : a.type === 'handling' ? `« ${esc(a.nom)} » charge les vols de toutes les commandes, vol par vol dans l’ordre des départs`
-          : `case « ${esc(a.nom)} »${autres.length ? ' — partagée avec ' + esc(autres.map(etiquette).join(', ')) : ''}`;
+          : `case « ${esc(a.nom)} »${autres.length ? ' — partagée avec ' + esc(autres.map(etiquette).join(', ')) : ''}`
+            + ((a.type === 'manuel' || !a.type) && a.fusion && a.fusion !== s ? ` <b class="pc-chaine-mot">⛓ fait aussi ${esc(this.nom(a.fusion))}, à la chaîne</b>` : '');
         const choix = !a || fabrique(a) ? `<label class="pc-case-choix">Case de ${esc(lib)} ici
           <select data-pc-champ="case" data-service="${esc(s)}" aria-label="Case de ${esc(lib)} dans ${esc(this.nom(s))}">
             <option value="" ${a ? '' : 'selected'}>— aucune —</option>
@@ -2137,7 +2173,7 @@
   }
 
 
-  const api = { annoncer, fusionneePar, insererPrepa, depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, couverture, confier, nouvelleEquipe,
+  const api = { annoncer, fusionneePar, chaines, insererPrepa, depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, couverture, confier, nouvelleEquipe,
     completer, colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, donnerCases, completerCases, nomLibre, caseHandling, anciensHandlings, brancherHandling, caseRobot, remplacerEtape,
     SERVICES_DISPO, estDispo, caseDispo, anciensDispos, partagerDispos, separerParCommande, ajouterBesoin,
     cheminPropre, insererService, retirerService, insererParEcheance, cocher, passerPar, grille, natureService, equipeNeuve,

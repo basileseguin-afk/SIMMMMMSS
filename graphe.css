@@ -40,6 +40,14 @@
 .gr-trait{fill:none;stroke:var(--edge);stroke-width:2.6}
 .gr-pointe{fill:var(--edge)}
 .gr-lien.pointille .gr-trait{stroke-dasharray:7 5}
+/* Deux services faits à la chaîne par la même équipe : un seul bloc. */
+.gr-groupe-halo{fill:color-mix(in srgb,var(--chaine) 10%,transparent);stroke:var(--chaine);stroke-width:2;stroke-dasharray:7 4}
+.gr-groupe-trait{fill:none;stroke:var(--chaine);stroke-width:10;stroke-linecap:round;opacity:.28}
+.gr-groupe-etiq{font-size:11.5px;font-weight:700;fill:var(--chaine);paint-order:stroke;stroke:var(--bg3,#fff);stroke-width:3px;stroke-linejoin:round}
+.gr-lien.en-chaine .gr-trait{stroke:var(--chaine) !important;stroke-width:4.5}
+.gr-noeud.en-chaine:not(.sel):not(.survol):not(:hover) .gr-fond{stroke:var(--chaine);stroke-width:2}
+.pc-pan-chaine>span,.pc-chaine-mot{color:var(--chaine,#c026d3)}
+.pc-chaine-mot{font-weight:700;margin-left:4px}
 .gr-lien:hover .gr-trait,.gr-lien:focus-visible .gr-trait{stroke-width:4}
 .gr-lien:focus-visible{outline:none}
 .gr-lien.sel .gr-trait{stroke:var(--c,var(--accent)) !important;stroke-width:4.2}

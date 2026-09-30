@@ -22,6 +22,8 @@
   /* texte */
   --txt:#101828; --txt2:#475467; --txt3:#667085;
   /* marque */
+  /* à la chaîne : deux étapes faites d'un bloc par une même équipe */
+  --chaine:#c026d3; --chaine-doux:#fdf4ff;
   --accent:#0f766e; --accent2:#115e59; --accent-doux:#ecfdf8;
   --on-accent:#ffffff;
   /* étapes : les mêmes teintes, plus nettes */

@@ -154,6 +154,11 @@
      *   choisir(selection)     — { type:'noeud'|'lien', id } ou null
      *   message(texte)         — facultatif : dire ce qui se passe
      *   relierDebut(id)        — facultatif : « relier à… » commence
+     *   groupes()              — facultatif : [{ id, ids:[noeud], etiquette, titre }]
+     *                            des services qui ne font qu'un (deux étapes
+     *                            faites à la chaîne par la même équipe) : un
+     *                            cadre les entoure, le lien entre eux s'épaissit
+     *   fige()                 — facultatif : ni prise pour relier, ni croix pour retirer
      * } */
     constructor(a) {
       this.a = a;
@@ -164,6 +169,32 @@
     }
 
     /* ---- dessin ------------------------------------------------------ */
+
+    /** Les groupes dont les nœuds sont dessinés, avec la place de chacun. */
+    cadresGroupes() {
+      const gs = this.a.groupes ? this.a.groupes() || [] : [];
+      return gs.map(g => {
+        const ids = (g.ids || []).filter(id => this.pos[id]);
+        if (ids.length < 2) return null;
+        return { ...g, ids, x: Math.min(...ids.map(id => this.pos[id].x)) - 7, y: Math.min(...ids.map(id => this.pos[id].y)) - 22 };
+      }).filter(Boolean);
+    }
+
+    /* Un groupe se lit où que soient ses nœuds : un halo autour de chacun, un
+     * trait épais de l'un à l'autre, et au-dessus de chacun ce qu'il fait avec
+     * l'autre (« ⛓ + Prépa à la chaîne »). Un grand cadre couvrirait aussi les
+     * services d'entre les deux. */
+    groupesSVG(groupes) {
+      return groupes.map(g => {
+        const traits = g.ids.slice(1).map((id, i) => `<path class="gr-groupe-trait" d="${courbe(this.pos[g.ids[i]], this.pos[id]).d}"/>`).join('');
+        const halos = g.ids.map((id, i) => {
+          const p = this.pos[id], t = (g.etiquettes || {})[id] || (i === 0 ? g.etiquette : '') || '';
+          return `<rect class="gr-groupe-halo" x="${p.x - 7}" y="${p.y - 7}" width="${L + 14}" height="${H + 14}" rx="16"/>
+            ${t ? `<text class="gr-groupe-etiq" x="${p.x + 2}" y="${p.y - 11}">${esc(court(t, 38))}</text>` : ''}`;
+        }).join('');
+        return `<g class="gr-groupe" data-groupe="${esc(g.id)}"><title>${esc(g.titre || g.etiquette || '')}</title>${traits}${halos}</g>`;
+      }).join('');
+    }
 
     positions() {
       const noeuds = this.a.noeuds(), liens = this.a.liens();
@@ -194,8 +225,12 @@
       if (this.depuis && !noeuds.some(n => n.id === this.depuis)) this.depuis = null;
       if (!hote.querySelector('.gr-svg')) this.installer(hote);
       const svg = hote.querySelector('.gr-svg');
-      const xs = Object.values(this.pos);
-      const x0 = Math.min(0, ...xs.map(p => p.x)) - MARGE, y0 = Math.min(0, ...xs.map(p => p.y)) - MARGE;
+      const xs = Object.values(this.pos), cadres = this.cadresGroupes();
+      // Les membres d'un groupe, et les liens qui les unissent.
+      const membre = new Map();
+      for (const g of cadres) for (const id of g.ids) membre.set(id, g.id);
+      const uni = l => membre.has(l.de) && membre.get(l.de) === membre.get(l.vers);
+      const x0 = Math.min(0, ...xs.map(p => p.x), ...cadres.map(g => g.x)) - MARGE, y0 = Math.min(0, ...xs.map(p => p.y), ...cadres.map(g => g.y)) - MARGE;
       const x1 = Math.max(L, ...xs.map(p => p.x + L)) + MARGE + 30, y1 = Math.max(H, ...xs.map(p => p.y + H)) + MARGE;
       this.cadre = { x0, y0, w: x1 - x0, h: y1 - y0 };
       svg.setAttribute('viewBox', `${x0} ${y0} ${x1 - x0} ${y1 - y0}`);
@@ -216,10 +251,11 @@
       const I = root.OrlyIcones, fige = !!(this.a.fige && this.a.fige());
       svg.innerHTML = `<defs>${couleurs.map(c => `<marker id="${marque(c)}" viewBox="0 0 10 10" refX="8" refY="5"
           markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="gr-pointe"${c ? ` style="fill:${esc(c)}"` : ''}/></marker>`).join('')}</defs>
+        <g class="gr-groupes">${this.groupesSVG(cadres)}</g>
         <g class="gr-liens">${liens.slice().sort((x, y) => this.estChoisi(x) - this.estChoisi(y)).map(l => {
           const a = this.pos[l.de], b = this.pos[l.vers]; if (!a || !b) return '';
           const k = courbe(a, b, this.via[l.de + '>' + l.vers]), sel = this.selection && this.selection.type === 'lien' && this.selection.id === l.id;
-          return `<g class="gr-lien${sel ? ' sel' : ''}${l.pointille ? ' pointille' : ''}" data-lien="${esc(l.id)}" tabindex="0" role="button"
+          return `<g class="gr-lien${sel ? ' sel' : ''}${l.pointille ? ' pointille' : ''}${uni(l) ? ' en-chaine' : ''}" data-lien="${esc(l.id)}" tabindex="0" role="button"
               aria-label="${esc(l.titre || '')}. Entrée pour le choisir, Suppr pour le retirer.">
             <title>${esc(l.titre || '')}</title>
             <path class="gr-prise" d="${k.d}"/><path class="gr-trait" d="${k.d}" marker-end="url(#${marque(l.couleur)})"${l.couleur ? ` style="stroke:${esc(l.couleur)}"` : ''}/>
@@ -231,7 +267,7 @@
         <g class="gr-noeuds">${noeuds.map(n => {
           const p = this.pos[n.id], sel = this.selection && this.selection.type === 'noeud' && this.selection.id === n.id;
           const cible = this.depuis && this.depuis !== n.id;
-          return `<g class="gr-noeud ton-${esc(n.ton || 'neutre')}${sel ? ' sel' : ''}${this.depuis === n.id ? ' depuis' : ''}${cible ? ' cible' : ''}"
+          return `<g class="gr-noeud ton-${esc(n.ton || 'neutre')}${membre.has(n.id) ? ' en-chaine' : ''}${sel ? ' sel' : ''}${this.depuis === n.id ? ' depuis' : ''}${cible ? ' cible' : ''}"
               data-noeud="${esc(n.id)}" transform="translate(${p.x},${p.y})" tabindex="0" role="button"
               aria-label="${esc(n.nom + (n.sous ? ', ' + n.sous : ''))}${cible ? '. Entrée pour y relier.' : ''}">
             <title>${esc(n.nom)}${n.sous ? ' — ' + esc(n.sous) : ''}</title>
@@ -328,6 +364,8 @@
       const q = this.pos[g.id]; q.x = Math.round(p.x - g.dx); q.y = Math.round(p.y - g.dy);
       const n = svg.querySelector(`[data-noeud="${CSS.escape(g.id)}"]`);
       if (n) n.setAttribute('transform', `translate(${q.x},${q.y})`);
+      // Le cadre de son groupe le suit aussi.
+      const gg = svg.querySelector('.gr-groupes'); if (gg && this.a.groupes) gg.innerHTML = this.groupesSVG(this.cadresGroupes());
       // Les liens suivent le nœud qu'on déplace.
       for (const l of this.a.liens()) {
         if (l.de !== g.id && l.vers !== g.id) continue;

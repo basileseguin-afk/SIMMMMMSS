@@ -5,6 +5,37 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-09-30 — À la chaîne : deux services fusionnés se voient partout
+
+Retour d'usage : « les fusions entre deux services comme Prépa et Montage,
+on ne les remarque pas visuellement, et cela rend la chose galère ». La
+fusion n'était dite que dans « Plus de réglages », une puce du récap et un
+⛓ minuscule dans la grille.
+
+- Une couleur à elle, rose (`--chaine`), la même partout.
+- **Diagrammes** (Flux de production, Une commande, liens de l'unité) : un
+  halo autour de chacun des deux services, un trait épais de l'un à l'autre,
+  et au-dessus de chacun « ⛓ + Prépa à la chaîne · 2/27 » / « ⛓ à la chaîne
+  → Montage ». Composant : `groupes()` dans `graphe.js` ; données :
+  `OrlyParcours.chaines(etat, parcours, commandes)`.
+- **Services et équipes** : dans la liste, « ⛓ + Prépa à la chaîne » sous le
+  Montage, « ⛓ avec Montage à la chaîne » sous la Prépa ; dans chaque fiche,
+  un encadré qui dit qui fait quoi, pour quelles commandes, avec « Ouvrir
+  l'autre service → » ; sur l'équipe, un badge, et le réglage « À la chaîne
+  avec l'étape d'avant ? » sort de « Plus de réglages » ; les cases de la
+  grille faites à la chaîne sont en rose.
+- **Semblable** : une ligne robot partagée entre équipes a son badge
+  (« ⇄ ligne partagée avec … »).
+- **Planning des équipes** : « Montage AF ⛓ +Prépa », barres roses, détail des
+  minutes (Prépa + Montage) au survol.
+- **Une commande** : le panneau du service fusionné et celui du Montage le
+  disent en rose ; le récap et « Parcours des commandes » prennent la même
+  couleur.
+
+Fichiers : `graphe.js`, `graphe.css`, `parcours.js`, `unite.js`, `unite.css`,
+`ateliers.js`, `ateliers.css`, `flow-center.js`, `sim.js`, `theme.css`,
+`index.html`, `tests/fusion-browser.cjs`, `README.md`.
+
 ## 2026-09-30 — Une commande : son chemin, relié aux flux et aux services
 
 Retour d'usage : « Chemins n'est pas très bien lié aux parties Flux de
