@@ -1185,6 +1185,28 @@
    *   que leur flux ne passe pas par ce service ; orphelines : décochées alors
    *   que leur flux y passe et que plus personne ne les y prépare.
    */
+  /**
+   * Un service sort d'un flux (retour d'usage du 01/10 : « j'ai enlevé la
+   * cuisine de la branche éco, mais je peux encore cocher la case ») : ses
+   * équipes ne préparent plus les commandes qui ne passent plus par lui —
+   * sinon elles restaient cochées, et leur travail compté. Seules les
+   * commandes dont on connaît le chemin sont retirées. Modifie `etat`.
+   * @returns {string[]} les commandes retirées
+   */
+  function liberer(etat, service, classes, o = {}) {
+    const routes = P.routesDesClasses(classes || [], etat), parties = new Set();
+    for (const a of etat.ateliers || []) {
+      if (a.service !== service || !fabrique(a)) continue;
+      const lots = a.lots.map(l => l.filter(id => {
+        const r = routes.get(id);
+        if (!r || r.services.has(service)) return true;
+        parties.add(id); return false;
+      })).filter(l => l.length);
+      if (!o.essai) a.lots = lots;   // `essai` : seulement dire lesquelles
+    }
+    return [...parties];
+  }
+
   function cocher(etat, atelierId, cmds, oui, o = {}) {
     const a = (etat.ateliers || []).find(x => x.id === atelierId);
     if (!a || !fabrique(a)) throw new Error('Cette équipe ne prépare pas commande par commande.');
@@ -1242,7 +1264,7 @@
       const qui = equipes.find(a => fabrique(a) && a.lots.some(l => l.includes(c.id)));
       const fu = fusionneePar(etat, service, c.id);
       out.set(c.id, !atelierId ? { etat: passe ? 'passe' : 'hors', par: null }
-        : qui && qui.id === atelierId ? { etat: 'ici', par: qui }
+        : qui && qui.id === atelierId ? { etat: 'ici', par: qui, ...(r && !passe ? { horsFlux: true } : {}) }
         : qui ? { etat: 'ailleurs', par: qui }
         : fu ? { etat: 'chaine', par: fu }
         : passe ? { etat: 'attendue', par: null } : { etat: 'hors', par: null });
@@ -2176,7 +2198,7 @@
   const api = { annoncer, fusionneePar, chaines, insererPrepa, depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, couverture, confier, nouvelleEquipe,
     completer, colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, donnerCases, completerCases, nomLibre, caseHandling, anciensHandlings, brancherHandling, caseRobot, remplacerEtape,
     SERVICES_DISPO, estDispo, caseDispo, anciensDispos, partagerDispos, separerParCommande, ajouterBesoin,
-    cheminPropre, insererService, retirerService, insererParEcheance, cocher, passerPar, grille, natureService, equipeNeuve,
+    cheminPropre, insererService, retirerService, liberer, insererParEcheance, cocher, passerPar, grille, natureService, equipeNeuve,
     marquerTypes, typeSuivi, fluxDe, signature, types, commandesDuType, nouveauType, assignerType, nettoyerTypes, nomVariante, adapter,
     changerFlux, regrouper, EditeurParcours };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

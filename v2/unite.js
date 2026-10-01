@@ -180,6 +180,13 @@
       const lesFlux = `<p class="mu-flux-passent"><span>${passent.length ? 'Flux qui passent ici :' : 'Aucun flux ne passe ici.'}</span>
         ${passent.map(t => `<button type="button" class="mu-flux-lien" data-mu-voir-flux="${esc(t.id)}">${esc(t.nom)}</button>`).join('')}
         <button type="button" class="lien-discret" data-page="mu-flux">${passent.length ? 'Tous les flux' : 'Les flux de production'} →</button></p>`;
+      // Des commandes encore cochées ici alors que leur flux ne passe plus par ce service
+      // (le service a été retiré du flux avant que ses équipes ne les lâchent toutes seules).
+      // Pendant la question qui suit un clic (« Ajouter … au flux ? »), elle seule parle.
+      const perdues = preparent(b.nature) && !(this.question && this.question.service === s.id) ? PC.liberer(st, s.id, classes, { essai: true }) : [];
+      const horsFlux = perdues.length ? `<div class="mu-q mu-hors-flux" role="alert"><p>⚠ ${perdues.length > 1 ? pl(perdues.length, 'commande') + ' sont encore cochées' : '1 commande est encore cochée'} ici
+        (${esc(perdues.slice(0, 6).map(c => PC.etiquette(c)).join(', ') + (perdues.length > 6 ? '…' : ''))}), mais ${perdues.length > 1 ? 'leur flux ne passe' : 'son flux ne passe'} plus par ${esc(s.nom)}.</p>
+        <div class="mu-q-gestes"><button class="btn btn-sm btn-play" type="button" data-mu-action="liberer">Les retirer de ses équipes</button></div></div>` : '';
       const aFaire = b.points.length ? `<ul class="mu-afaire">${b.points.map(p => `<li>${esc(P.enClair ? P.enClair(p) : p)}</li>`).join('')}</ul>` : '';
       const etape = (num, titre, corps, note) => `<section class="mu-etape"><h3><span class="mu-num">${num}</span>${esc(titre)}${note ? `<small>${note}</small>` : ''}</h3>${corps}</section>`;
 
@@ -222,7 +229,7 @@
         ? etape(3, 'Minutes de travail pour un vol', rg.ficheTemps(s.id), 'pour une compagnie dans une classe : la durée se déduit des personnes de l’équipe')
         : nature === 'robot' ? etape(3, 'Débit du robot', '<p class="mini-note">Le débit (plateaux par heure) se règle dans la fiche de chaque équipe robot, plus haut : « Plus de réglages ».</p>') : '';
 
-      return tete + lesFlux + blocChaine + aFaire
+      return tete + lesFlux + blocChaine + horsFlux + aFaire
         + etape(1, 'Ce qu’il fait', choixNature)
         + etape(2, preparent(nature) ? 'Ses équipes, et ce que chacune prépare' : 'Ses horaires et ses réglages', equipes)
         + temps;
@@ -276,16 +283,17 @@
       const coche = x => (a ? x.etat === 'ici' : x.etat === 'passe');
       const titre = (c, x) => {
         const lib = P.libelleClasse(c.id) + ' · ' + pl(c.vols.length, 'vol') + (Number.isFinite(c.echeance) ? ', prête avant ' + P.hhmm(c.echeance) : '');
+        if (x.horsFlux) return lib + ' — cochée ici, mais son flux ne passe plus par ce service : décochez-la';
         return lib + ' — ' + ({ ici: 'préparée par cette équipe', ailleurs: 'préparée par « ' + (x.par && x.par.nom) + ' » (cocher la déplace ici)',
           chaine: 'faite à la chaîne par « ' + (x.par && x.par.nom) + ' »', attendue: 'passe par ce service, personne ne la prépare encore',
-          passe: 'en a besoin', hors: a ? 'ne passe pas par ce service' : 'n’en a pas besoin' })[x.etat];
+          passe: 'en a besoin', hors: a ? 'ne passe pas par ce service (son flux ne le traverse pas ; cocher propose de l’y ajouter)' : 'n’en a pas besoin' })[x.etat];
       };
       const cellule = (cie, cab) => {
         const id = P.idClasse(cie, cab), c = par.get(id);
         if (!c) return '<td class="mu-rien" aria-hidden="true">·</td>';
         const x = g.get(id);
-        const marque = x.etat === 'ailleurs' ? `<i class="mu-chez">${esc(initiales(x.par.nom))}</i>` : x.etat === 'chaine' ? '<i class="mu-chez">⛓</i>' : x.etat === 'attendue' ? '<i class="mu-chez">!</i>' : '';
-        return `<td class="mu-c ${x.etat}"><label title="${esc(titre(c, x))}"><input type="checkbox" data-mu-cocher="${esc(id)}"${coche(x) ? ' checked' : ''}${x.etat === 'chaine' ? ' disabled' : ''}
+        const marque = x.horsFlux ? '<i class="mu-chez">⚠</i>' : x.etat === 'ailleurs' ? `<i class="mu-chez">${esc(initiales(x.par.nom))}</i>` : x.etat === 'chaine' ? '<i class="mu-chez">⛓</i>' : x.etat === 'attendue' ? '<i class="mu-chez">!</i>' : '';
+        return `<td class="mu-c ${x.etat}${x.horsFlux ? ' hors-flux' : ''}"><label title="${esc(titre(c, x))}"><input type="checkbox" data-mu-cocher="${esc(id)}"${coche(x) ? ' checked' : ''}${x.etat === 'chaine' ? ' disabled' : ''}
           aria-label="${esc(titre(c, x))}">${marque}</label></td>`;
       };
       return `<div class="mu-grille-scroll"><table class="mu-grille"${a ? ` data-mu-equipe="${esc(a.id)}"` : ` data-mu-service="${esc(service)}"`}>
@@ -417,12 +425,14 @@
         partages.map(x => '« ' + esc(x.f.nom) + ' » (' + qui(x.f) + ')').join(', ')}</button>` : '';
       const seul = `<button class="btn btn-sm" type="button" data-mu-q="seul">${q.oui ? 'Seulement pour ' : 'Retirer seulement pour '}${esc(lib)}</button>`;
       return `<div class="mu-q" role="alert"><p>${esc(texte)} ${q.oui ? 'Pour tout le flux, ou seulement pour cette commande ?' : 'Que faire ?'}</p>
-        <div class="mu-q-gestes">${tout}${seul}<button class="btn btn-sm" type="button" data-mu-q="rien">${q.oui ? 'Ne rien changer' : 'Laisser : une autre équipe la prendra'}</button></div></div>`;
+        <div class="mu-q-gestes">${tout}${seul}<button class="btn btn-sm" type="button" data-mu-q="rien">${q.oui ? 'Annuler : ne pas la préparer ici' : 'Laisser : une autre équipe la prendra'}</button></div></div>`;
     }
 
     repondre(quoi) {
       const q = this.question; this.question = null;
-      if (!q || quoi === 'rien') return this.rendreServices();
+      if (!q) return this.rendreServices();
+      // Cochée hors de son flux, puis « Annuler » : la case se décoche (on revient avant le clic).
+      if (quoi === 'rien') { if (q.oui) this.at.histoire(false); return this.rendreServices(); }
       const st = this.at.state, o = this.options(), svc = this.nom(q.service);
       if (quoi === 'flux') {
         const faits = new Set();
@@ -432,6 +442,8 @@
             if (!f.type) PC.adapter(st, [c], q.service, q.oui, o);
             else if (!faits.has(f.id)) { faits.add(f.id); PC.changerFlux(st, f.id, q.service, q.oui, o); }
           }
+          // Sorti du flux : ses équipes lâchent aussi les autres commandes de ce flux.
+          if (!q.oui) PC.liberer(st, q.service, this.at.classes);
         }, svc + (q.oui ? ' entre dans ' : ' sort de ') + (faits.size > 1 ? 'ces flux.' : 'ce flux, pour toutes ses commandes.'));
       } else {
         this.at.changer(() => { PC.adapter(st, q.cmds, q.service, q.oui, o); },
@@ -451,7 +463,7 @@
     }
 
     passer(service, typeIds, oui) {
-      this.at.changer(() => { PC.passerPar(this.at.state, service, typeIds, oui, this.options()); },
+      this.at.changer(() => { PC.passerPar(this.at.state, service, typeIds, oui, this.options()); if (!oui) PC.liberer(this.at.state, service, this.at.classes); },
         this.nom(service) + (oui ? ' sert maintenant ' : ' ne sert plus ') + (typeIds.length > 1 ? 'ces flux.' : 'ce flux.'));
     }
 
@@ -692,9 +704,15 @@
           }, 'Flux « ' + t.nom + ' » supprimé.');
           this.fluxChoisi = null; return this.rendreFlux();
         }
-        case 'retirer-service':
+        case 'retirer-service': {
           this.fluxSel = null;
-          return this.changerFlux(x => { PC.retirerService(x, el.dataset.service); }, this.nom(el.dataset.service) + ' sort du flux : ceux qui le livraient livrent ceux qu’il livrait.');
+          const svc = el.dataset.service; let parties = [];
+          this.changerFlux(x => { PC.retirerService(x, svc); parties = PC.liberer(this.at.state, svc, this.at.classes); },
+            this.nom(svc) + ' sort du flux : ceux qui le livraient livrent ceux qu’il livrait.');
+          if (parties.length) this.at.rendre(this.nom(svc) + ' sort du flux ; ses équipes ne préparent plus '
+            + (parties.length > 6 ? pl(parties.length, 'commande') : parties.map(c => PC.etiquette(c)).join(', ')) + '.');
+          return;
+        }
         case 'retirer-lien': { this.fluxSel = null; const [de, vers] = el.dataset.lien.split('>'); return this.changerFlux(x => { x.liens = x.liens.filter(l => !(l.de === de && l.vers === vers)); }, 'Lien retiré.'); }
         case 'reorganiser': if (this.graphe) this.graphe.reorganiser(); return;
       }
@@ -802,6 +820,11 @@
         const id = this.choisi;
         switch (t.dataset.muAction) {
           case 'equipe': return this.ajouterEquipe(id);
+          case 'liberer': {
+            let parties = [];
+            this.at.changer(() => { parties = PC.liberer(this.at.state, id, this.at.classes); }, '');
+            return this.at.rendre(this.nom(id) + ' : ses équipes ne préparent plus ' + parties.map(c => PC.etiquette(c)).join(', ') + '.');
+          }
           case 'voir': return this.a.voir(id);
           case 'plan': return this.a.plan(id);
           case 'supprimer':

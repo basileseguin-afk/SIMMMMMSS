@@ -5,6 +5,29 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-01 — Un service retiré d'un flux : ses équipes lâchent ses commandes
+
+Retour d'usage : « j'ai enlevé la cuisine de la branche éco, mais quand je
+vais dans le service cuisine je peux encore cocher la case ». Retirer un
+service d'un flux ne touchait que le dessin : ses équipes gardaient les
+commandes de ce flux, toujours cochées (et leur travail compté).
+
+- `PC.liberer(etat, service, classes)` (`parcours.js`) : les équipes du
+  service lâchent les commandes dont le chemin ne passe plus par lui. Appelé
+  quand on retire un service d'un flux (Mon unité › Flux), quand on répond
+  « Retirer … de ce flux » sous une grille, et quand un service qui sert tout
+  le monde quitte un flux.
+- Une saisie déjà faite (le flux changé avant ce correctif) : la fiche du
+  service le signale (« 2 commandes sont encore cochées ici (AF YC, TX YC),
+  mais leur flux ne passe plus par Cuisine ») avec « Les retirer de ses
+  équipes » ; ces cases sont en rouge pointillé avec ⚠.
+- Une commande dont le flux ne passe pas par le service : sa case est
+  grisée ; la cocher demande toujours s'il faut ajouter le service au flux,
+  et « Annuler : ne pas la préparer ici » la décoche (avant : « Ne rien
+  changer » la laissait cochée).
+- v1 et v2 (`parcours.js`, `unite.js`, `unite.css`). Tests :
+  `tests/flux-retrait-browser.cjs`, `tests/parcours.test.cjs`.
+
 ## 2026-10-01 — Le jour d'une équipe, chaque choix par son nom
 
 Dans la fiche d'une équipe (Mon unité › Services et équipes), le menu du

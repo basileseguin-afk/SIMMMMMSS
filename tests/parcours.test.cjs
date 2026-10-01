@@ -515,3 +515,19 @@ test('le Robot remplace le Montage sur le chemin de TX, CRL et FBU Économie', (
   assert.deepEqual(r[0].lots, [['TX/YC'], ['CRL/YC'], ['FBU/YC']], 'dans l’ordre des échéances');
   assert.equal(etat.ateliers.filter(a => a.service === 'prepa' && a.lots.some(l => l.includes('FBU/YC'))).length, 0);
 });
+
+test('un service sort d’un flux : ses équipes lâchent les commandes qui n’y passent plus', () => {
+  const PC = require('../parcours.js');
+  const classes = P.classesDeVols(VOLS);
+  const eco = { id: 'eco', nom: 'Éco', noeuds: ['appros', 'cuisine', 'prepa'], liens: [{ de: 'appros', vers: 'cuisine' }, { de: 'cuisine', vers: 'prepa' }] };
+  const etat = { parcours: [eco, { id: 'bc', nom: 'Business', noeuds: ['cuisine', 'prepa'], liens: [{ de: 'cuisine', vers: 'prepa' }] }],
+    parcoursCabine: { YC: 'eco', BC: 'bc' }, parcoursClasse: {},
+    ateliers: [{ id: 'cu', nom: 'Cuisine', service: 'cuisine', type: 'manuel', lots: [['AF/BC'], ['AF/YC', 'TX/YC'], ['ZZ/YC']] }] };
+  assert.deepEqual(PC.liberer(etat, 'cuisine', classes), [], 'tant que le flux y passe, rien ne bouge');
+  PC.retirerService(eco, 'cuisine');
+  assert.deepEqual(PC.liberer(etat, 'cuisine', classes, { essai: true }).sort(), ['AF/YC', 'TX/YC']);
+  assert.equal(etat.ateliers[0].lots.length, 3, 'à l’essai, rien ne change');
+  PC.liberer(etat, 'cuisine', classes);
+  // ZZ/YC ne vole pas aujourd'hui : son chemin est inconnu, elle reste.
+  assert.deepEqual(etat.ateliers[0].lots, [['AF/BC'], ['ZZ/YC']]);
+});

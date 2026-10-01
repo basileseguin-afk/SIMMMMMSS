@@ -175,3 +175,9 @@
 .mu-badge.cond.off{background:var(--bg2);color:var(--txt2);border-style:dashed}
 .mu-cond-reglage .at-cond,.mu-cond-reglage .at-cond-ajout{margin:8px 0 0}
 .mu-equipe.au-repos{border-style:dashed;opacity:.85}
+
+/* Hors du flux : la commande ne passe pas par ce service. Grisée ; la cocher propose d'ajouter le service à son flux. */
+.mu-c.hors label{opacity:.45;border-style:dotted}
+.mu-c.hors label:hover{opacity:.8}
+.mu-c.ici.hors-flux label,.mu-c.hors-flux label{background:var(--bad-fill);border:1.5px dashed var(--bad-stroke)}
+.mu-c.hors-flux .mu-chez{font-size:12px;color:var(--bad-stroke)}
