@@ -137,7 +137,8 @@
     const cie = String(k.cie ?? '*').trim().toUpperCase().slice(0, 40) || '*';
     return { condition: { cie, seuil: Math.min(seuil, 99999), mesure: k.mesure === 'repas' ? 'repas' : 'vols',
       sinon: typeof k.sinon === 'string' ? k.sinon : '',
-      ...(typeof k.renfort === 'string' && k.renfort && k.renfort !== k.sinon ? { renfort: k.renfort } : {}) } };
+      // Ses personnes : vers l'équipe qui reprend (rien), une autre (`renfort`), ou nulle part (`absorbe`).
+      ...(k.absorbe ? { absorbe: true } : typeof k.renfort === 'string' && k.renfort && k.renfort !== k.sinon ? { renfort: k.renfort } : {}) } };
   }
 
   function valider(brut) {
@@ -626,7 +627,8 @@
           const cies = this.compagniesDuJour();
           const cie = cies.includes('AF') ? 'AF' : cies[0] || '*';
           const seuil = Math.max(1, P.compteDuJour(this.classes, cie, 'vols'));
-          return this.changer(() => { a.condition = { cie, seuil, mesure: 'vols', sinon: autres[0].id }; },
+          // Par défaut, l'équipe qui reprend absorbe la charge avec ses propres personnes.
+          return this.changer(() => { a.condition = { cie, seuil, mesure: 'vols', sinon: autres[0].id, absorbe: true }; },
             'Condition ajoutée : complétez la phrase (compagnie, nombre, et qui reprend les jours sans).');
         }
         case 'cond-retirer':
@@ -832,7 +834,10 @@
           case 'cond-seuil': if (a.condition) a.condition.seuil = Math.max(1, parseInt(v, 10) || 1); break;
           case 'cond-mesure': if (a.condition) a.condition.mesure = v === 'repas' ? 'repas' : 'vols'; break;
           case 'cond-sinon': if (a.condition) a.condition.sinon = v; break;
-          case 'cond-renfort': if (a.condition) { if (v) a.condition.renfort = v; else delete a.condition.renfort; } break;
+          case 'cond-renfort': if (a.condition) {
+            delete a.condition.renfort; delete a.condition.absorbe;
+            if (v === '-') a.condition.absorbe = true; else if (v) a.condition.renfort = v;
+          } break;
           case 'tunnel-nom': a.tunnels[+el.dataset.index].nom = v; break;
           case 'tunnel-debit': a.tunnels[+el.dataset.index].debit = Math.max(0, parseFloat(v) || 0); break;
           case 'tunnel-actif': a.tunnels[+el.dataset.index].actif = el.checked; break;
@@ -1835,9 +1840,10 @@
       if (remplie) texte += '<b>elle travaille</b>.';
       else if (vue && vue.sansIssue) texte += '<b>elle travaille quand même</b> : aucune équipe de ce service ne travaille pour reprendre ses commandes.';
       else {
-        const vers = vue && vue.vers ? vue.vers : k.sinon, renfort = vue ? vue.renforce : (k.renfort || k.sinon);
+        const vers = vue && vue.vers ? vue.vers : k.sinon, renfort = k.absorbe ? null : vue ? vue.renforce : (k.renfort || k.sinon);
         texte += `<b>elle ne travaille pas</b> ; ses commandes vont à « ${esc(nomDe(vers))} »`
-          + (a.personnes > 0 && renfort ? `, ${a.personnes > 1 ? 'ses ' + a.personnes + ' personnes' : 'sa personne'} renforce${a.personnes > 1 ? 'nt' : ''} « ${esc(nomDe(renfort))} »` : '') + '.';
+          + (k.absorbe ? ', qui absorbe la charge avec ses propres personnes'
+            : a.personnes > 0 && renfort ? `, ${a.personnes > 1 ? 'ses ' + a.personnes + ' personnes' : 'sa personne'} renforce${a.personnes > 1 ? 'nt' : ''} « ${esc(nomDe(renfort))} »` : '') + '.';
       }
       return { remplie, compte, texte };
     }
@@ -1861,9 +1867,9 @@
           <select data-at-champ="cond-mesure" aria-label="Vols ou repas">${opt('vols', 'vols', k.mesure !== 'repas')}${opt('repas', 'repas', k.mesure === 'repas')}</select>
           ce jour-là.</p>
         <p class="at-cond-phrase">Sinon, ses commandes passent à
-          <select data-at-champ="cond-sinon" aria-label="Quelle équipe reprend ses commandes">${autres.map(x => opt(x.id, x.nom, x.id === k.sinon)).join('')}</select>
-          et ses personnes à
-          <select data-at-champ="cond-renfort" aria-label="Quelle équipe reçoit ses personnes">${opt('', 'la même équipe', !k.renfort)}${tous.filter(x => x.id !== k.sinon).map(x => opt(x.id, x.nom, x.id === k.renfort)).join('')}</select>.
+          <select data-at-champ="cond-sinon" aria-label="Quelle équipe reprend ses commandes">${autres.map(x => opt(x.id, x.nom, x.id === k.sinon)).join('')}</select>,
+          et ses personnes
+          <select data-at-champ="cond-renfort" aria-label="Où vont ses personnes ces jours-là">${opt('-', 'ne viennent pas : elle absorbe la charge', !!k.absorbe)}${opt('', 'y vont aussi, en renfort', !k.absorbe && !k.renfort)}${tous.filter(x => x.id !== k.sinon).map(x => opt(x.id, 'vont en renfort à « ' + x.nom + ' »', x.id === k.renfort)).join('')}</select>.
           <button class="btn btn-sm at-cond-retirer" type="button" data-at-action="cond-retirer" title="Retirer la condition : l’équipe travaille tous les jours">Retirer</button></p>
         ${etat ? `<p class="at-cond-etat ${etat.remplie ? 'oui' : 'non'}">${etat.texte}</p>` : ''}
       </div>`;

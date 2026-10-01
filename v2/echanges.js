@@ -790,7 +790,8 @@
         // La règle ⚡ : « AF ≥ 6 vols » ; sinon, les noms des équipes qui reprennent.
         a.condition ? (a.condition.cie === '*' ? 'toutes' : a.condition.cie) + ' ≥ ' + a.condition.seuil + ' ' + (a.condition.mesure === 'repas' ? 'repas' : 'vols') : null,
         a.condition ? nomAtelier(a.condition.sinon) : null,
-        a.condition && a.condition.renfort ? nomAtelier(a.condition.renfort) : null]);
+        // Ses personnes : vide = avec les commandes ; « aucune » = l'équipe qui reprend absorbe la charge.
+        a.condition ? (a.condition.absorbe ? 'aucune' : a.condition.renfort ? nomAtelier(a.condition.renfort) : null) : null]);
       if (a.type === 'handling') {
         // Une ligne par compagnie réglée : sa durée, et si elle est long courrier.
         const longs = new Set(a.longs || []), d = a.durees || {}, al = a.allers || {}, re = a.retours || {}, vc = a.volsCamion || {};
@@ -1091,6 +1092,7 @@
           const cie = /^(toutes?|tout|\*)$/i.test(m[1].trim()) ? '*' : m[1].trim().toUpperCase();
           a._cond = { cie, seuil: Math.max(1, +m[2]), mesure: /^repas$/i.test(m[3] || '') ? 'repas' : 'vols',
             sinon: String(o.sinon_commandes_a ?? '').trim(), renfort: String(o.sinon_personnes_a ?? '').trim() };
+          if (/^(aucune?|personne|non|-|absorbe|absorbée?)$/i.test(a._cond.renfort)) { a._cond.renfort = ''; a._cond.absorbe = true; }
           if (!a._cond.sinon) throw new Error('« ne travaille que si » : dites quelle équipe reprend ses commandes (« Sinon, commandes à »)');
         }
         a._ligne = o._ligne;
@@ -1110,7 +1112,8 @@
       const renfort = c.renfort ? atelierNomme(c.renfort, fA.nom, a._ligne) : null;
       if (!sinon || (c.renfort && !renfort)) continue;
       if (sinon === a || sinon.service !== a.service) { err.ajouter(fA.nom, a._ligne, '« Sinon, commandes à » : une autre équipe du même service'); continue; }
-      a.condition = { cie: c.cie, seuil: c.seuil, mesure: c.mesure, sinon: sinon.id, ...(renfort && renfort !== sinon && renfort !== a ? { renfort: renfort.id } : {}) };
+      a.condition = { cie: c.cie, seuil: c.seuil, mesure: c.mesure, sinon: sinon.id,
+        ...(c.absorbe ? { absorbe: true } : renfort && renfort !== sinon && renfort !== a ? { renfort: renfort.id } : {}) };
     }
 
     const fH = T.feuille(feuilles, 'Horaires');

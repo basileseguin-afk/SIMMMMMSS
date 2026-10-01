@@ -61,7 +61,7 @@ Une ligne par équipe. **Le nom est la clé** : les autres feuilles s'y réfère
 | À la chaîne avec | équipe qui prépare seulement : le service de l'étape d'avant qu'elle fait aussi, pour ses commandes (ex. `PRÉPA` dans une case de Montage) ; vide = chacune sa case |
 | Ne travaille que si | équipe qui prépare : `AF ≥ 6 vols` (ou `>=`, `au moins`), `toutes ≥ 300 repas` ; vide = tous les jours |
 | Sinon, commandes à | avec la colonne précédente : le nom d'une autre équipe du même service, qui reprend ses commandes les jours sans |
-| Sinon, personnes à | le nom de l'équipe qui reçoit ses personnes ; vide = la même |
+| Sinon, personnes à | le nom de l'équipe qui reçoit ses personnes ; vide = celle qui reprend ses commandes ; `aucune` = ses personnes ne viennent pas, l'autre équipe absorbe la charge |
 | Débit robot (plateaux/h) | robot seulement |
 | Effectif mini robot | robot seulement |
 | Plafond plonge (u/h) | plonge seulement ; vide = aucun plafond |

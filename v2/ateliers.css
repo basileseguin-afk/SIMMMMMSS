@@ -443,3 +443,4 @@ body[data-sous="at-chemins"] #at-status{display:none}
 .at-cond-etat{margin:2px 0 0;font-size:13px}
 .at-cond-etat.oui{color:var(--ok,#15803d)}
 .at-cond-etat.non{color:#9a3412}
+.at-cond .at-cond-phrase select[data-at-champ=cond-renfort],#view-ateliers .at-cond .at-cond-phrase select[data-at-champ=cond-renfort]{max-width:28em}

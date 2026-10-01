@@ -1103,7 +1103,8 @@
    * — elle ne travaille que si la compagnie `cie` (« * » : toutes) a au moins
    * `seuil` vols (ou repas, `mesure: 'repas'`) ce jour-là. Sinon, ses commandes
    * passent à l'équipe `sinon` (même service) et ses personnes à `renfort`
-   * (par défaut la même). La règle se joue ici, dans le moteur, sur les vols
+   * (par défaut la même) — ou nulle part (`absorbe` : l'équipe qui reprend
+   * absorbe la charge avec ses propres personnes). La règle se joue ici, dans le moteur, sur les vols
    * du jour : toute journée rejouée la respecte. */
 
   /** Ce que compte la règle, ce jour-là : les vols au départ, ou leurs repas. */
@@ -1129,8 +1130,9 @@
       const compte = compteDuJour(classes, k.cie, mesure);
       const remplie = compte >= +k.seuil;
       if (!remplie) inactives.add(a.id);
+      // `absorbe` : ses personnes ne viennent pas, l'équipe qui reprend absorbe la charge avec les siennes.
       conditions.push({ atelier: a.id, nom: a.nom, cie: k.cie || '*', mesure, seuil: +k.seuil, compte, remplie,
-        sinon: k.sinon || null, renfort: k.renfort || k.sinon || null, vers: null, renforce: null });
+        sinon: k.sinon || null, renfort: k.absorbe ? null : k.renfort || k.sinon || null, absorbe: !!k.absorbe, vers: null, renforce: null });
     }
     // La première équipe qui travaille, en suivant les « sinon » (sans tourner en rond).
     const suivre = (id, champ) => {
@@ -1170,7 +1172,7 @@
       }
       vers.lots = lots;
       if (a.minutes) vers.minutes = { ...a.minutes, ...(vers.minutes || {}) };
-      const renfort = suivre(a.condition.renfort || a.condition.sinon, 'renfort');
+      const renfort = a.condition.absorbe ? null : suivre(a.condition.renfort || a.condition.sinon, 'renfort');
       if (renfort && +a.personnes > 0) {
         renfort.personnes = (+renfort.personnes || 0) + (+a.personnes);
         r.renforce = renfort.id;

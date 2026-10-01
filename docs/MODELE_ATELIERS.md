@@ -196,10 +196,10 @@ sinon elle est rattachée à un autre atelier. » Une seule forme de règle, qui
 se lit comme une phrase dans la fiche de l'équipe :
 
 > ⚡ Cette équipe ne travaille que si **AF** a au moins **6** **vols** ce
-> jour-là. Sinon, ses commandes passent à **Montage général** et ses
-> personnes à **la même équipe**.
+> jour-là. Sinon, ses commandes passent à **Montage général**, et ses
+> personnes **ne viennent pas : elle absorbe la charge**.
 
-`condition: { cie, seuil, mesure, sinon, renfort? }` sur une équipe qui
+`condition: { cie, seuil, mesure, sinon, renfort?, absorbe? }` sur une équipe qui
 prépare (à la main ou au robot) :
 
 - `cie` : une compagnie, ou `*` (toutes) ; `mesure` : `vols` (départs du jour)
@@ -207,8 +207,12 @@ prépare (à la main ou au robot) :
 - `sinon` : une **autre équipe du même service**, qui reprend ses commandes ;
   elles s'insèrent dans sa liste par échéance, sans déranger l'ordre des
   siennes (avec leurs man-minutes propres) ;
-- `renfort` : l'équipe qui reçoit ses personnes, de n'importe quel service ;
-  absent = la même que `sinon`.
+- ses personnes, ces jours-là (retour d'usage du 01/10 : elles ne vont pas
+  forcément sur l'autre atelier) :
+  - `absorbe: true` — elles ne viennent pas, l'équipe `sinon` absorbe la
+    charge avec ses propres personnes (le choix proposé par défaut) ;
+  - `renfort` — elles renforcent cette équipe, de n'importe quel service ;
+  - ni l'un ni l'autre — elles suivent les commandes (renfort de `sinon`).
 
 La règle se joue **dans le moteur**, au début de la journée, sur les vols du
 jour (`appliquerConditions`) : toute journée rejouée la respecte (calage,
@@ -223,9 +227,11 @@ ou a changé de service.
 Visible : un badge ⚡ sur l'équipe (« travaille aujourd'hui » / « pas
 aujourd'hui »), la phrase et le constat du jour dans sa fiche, la carte en
 pointillés un jour de repos ; dans le budget de la v2, ses personnes sont
-payées à la vacation de l'équipe qu'elles renforcent. Excel : colonnes « Ne
+payées à la vacation de l'équipe qu'elles renforcent, et rien quand l'autre
+équipe absorbe la charge (elles ne sont pas planifiées). Excel : colonnes « Ne
 travaille que si » (`AF ≥ 6 vols`, `toutes >= 300 repas`), « Sinon, commandes
-à », « Sinon, personnes à » de la feuille Ateliers.
+à », « Sinon, personnes à » (`aucune` : l'autre équipe absorbe la charge)
+de la feuille Ateliers.
 
 ### L'atelier robot
 

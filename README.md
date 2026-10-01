@@ -165,8 +165,9 @@ le rouge ne sert qu’aux retards.
         rose au planning. Une ligne robot partagée a aussi son badge.
         **⚡ Certains jours seulement** : une équipe peut ne travailler que
         si une compagnie a assez de vols (« ne travaille que si AF a au
-        moins 6 vols ce jour-là ; sinon, ses commandes et ses personnes
-        passent au Montage général ») — une phrase à compléter dans sa fiche,
+        moins 6 vols ce jour-là ; sinon, ses commandes passent au Montage
+        général », qui absorbe la charge — ou que ses personnes y viennent en
+        renfort, ou aillent ailleurs) — une phrase à compléter dans sa fiche,
         un badge ⚡ qui dit si elle travaille aujourd’hui.
         « Plus de réglages » : l’ordre à la main, les pauses,
         les arrêts, les man-minutes propres, la

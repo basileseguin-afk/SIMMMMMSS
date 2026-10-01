@@ -53,7 +53,7 @@ function verifier(dossier, nomVersion) {
     assert.equal(gen.personnes, 3, 'sa personne renforce le montage général');
     assert.deepEqual(gen.lots.map(l => l.classes ? l.classes.join('+') : l.nom).length, 2);
     assert.deepEqual(r.conditions[0], { atelier: 'af', nom: 'Montage AF', cie: 'AF', mesure: 'vols', seuil: 6, compte: 4, remplie: false,
-      sinon: 'gen', renfort: 'gen', vers: 'gen', renforce: 'gen', personnes: 1 });
+      sinon: 'gen', renfort: 'gen', absorbe: false, vers: 'gen', renforce: 'gen', personnes: 1 });
     // Toutes les commandes sont faites : AF par le montage général.
     assert.equal(r.indicateurs.pasFinies, 0);
     assert.ok(r.lots.some(l => l.atelier === 'gen' && /AF\/YC/.test(l.classe || l.nom || '')) || r.parClasse['AF/YC'].fin != null);
@@ -73,6 +73,21 @@ function verifier(dossier, nomVersion) {
     assert.equal(r.ateliers.find(a => a.id === 'gen').personnes, 2);
     assert.equal(r.ateliers.find(a => a.id === 'cu').personnes, 4);
     assert.equal(r.conditions[0].renforce, 'cu');
+  });
+
+  test(nomVersion + ' — l’équipe qui reprend peut absorber la charge, sans les personnes', () => {
+    const at = equipes(); at[0].condition.absorbe = true;
+    const r = jouer(4, at);
+    assert.ok(r.ok);
+    const gen = r.ateliers.find(a => a.id === 'gen');
+    assert.equal(gen.personnes, 2, 'ses personnes ne viennent pas');
+    assert.equal(gen.lots.length, 2, 'mais ses commandes, si');
+    assert.equal(r.conditions[0].absorbe, true);
+    assert.equal(r.conditions[0].renforce, null);
+    assert.equal(r.indicateurs.pasFinies, 0);
+    // Moins de bras pour plus de travail : le montage général finit plus tard qu'avec le renfort.
+    const avecRenfort = jouer(4);
+    assert.ok(gen.fin >= avecRenfort.ateliers.find(a => a.id === 'gen').fin);
   });
 
   test(nomVersion + ' — en chaîne, sans tourner en rond ; sans issue, l’équipe garde ses commandes', () => {
@@ -102,6 +117,8 @@ function verifier(dossier, nomVersion) {
     etat.ateliers[0].condition = { cie: ' af ', seuil: '6', mesure: 'repas', sinon: 'gen', renfort: 'gen', bidule: 1 };
     let v = A.valider(etat);
     assert.deepEqual(v.ateliers[0].condition, { cie: 'AF', seuil: 6, mesure: 'repas', sinon: 'gen' });
+    etat.ateliers[0].condition = { cie: 'AF', seuil: 6, sinon: 'gen', renfort: 'cu', absorbe: true };
+    assert.deepEqual(A.valider(etat).ateliers[0].condition, { cie: 'AF', seuil: 6, mesure: 'vols', sinon: 'gen', absorbe: true }, 'absorber l’emporte');
     etat.ateliers[0].condition = { cie: 'AF', seuil: 6, sinon: 'cu' };
     assert.equal(A.valider(etat).ateliers[0].condition, undefined, 'une équipe d’un autre service ne reprend pas les commandes');
     etat.ateliers[0].condition = { cie: 'AF', seuil: 0, sinon: 'gen' };
@@ -135,6 +152,13 @@ function verifier(dossier, nomVersion) {
       ? l.map((v, i) => (i === tete.indexOf('Ne travaille que si') ? 'toutes >= 300 repas' : i === tete.indexOf('Sinon, personnes à') ? null : v)) : l)) });
     const lu2 = E.classeurVersAteliers(f2, etat, ctx).etat;
     assert.deepEqual(lu2.ateliers.find(a => a.nom === 'Montage AF').condition, { cie: '*', seuil: 300, mesure: 'repas', sinon: 'gen' });
+    // « aucune » : l'équipe qui reprend absorbe la charge.
+    const f4 = f.map(x => x.nom !== f[0].nom ? x : { ...x, lignes: x.lignes.map(l => (l[0] === 'Montage AF'
+      ? l.map((v, i) => (i === tete.indexOf('Sinon, personnes à') ? 'aucune' : v)) : l)) });
+    const lu4 = E.classeurVersAteliers(f4, etat, ctx).etat.ateliers.find(a => a.nom === 'Montage AF');
+    assert.deepEqual(lu4.condition, { cie: 'AF', seuil: 6, mesure: 'vols', sinon: 'gen', absorbe: true });
+    assert.equal(E.ateliersVersClasseur({ ...etat, ateliers: etat.ateliers.map(a => (a.id === 'af' ? lu4 : a)) }, ctx)[0].lignes
+      .find(l => l[0] === 'Montage AF')[tete.indexOf('Sinon, personnes à')], 'aucune');
     // Une équipe inconnue est signalée.
     const f3 = f.map(x => x.nom !== f[0].nom ? x : { ...x, lignes: x.lignes.map(l => (l[0] === 'Montage AF'
       ? l.map((v, i) => (i === tete.indexOf('Sinon, commandes à') ? 'Personne' : v)) : l)) });

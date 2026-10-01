@@ -5,6 +5,16 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-01 — Règle ⚡ : l'autre équipe peut absorber la charge
+
+Retour d'usage : les personnes d'une équipe au repos ne vont pas forcément
+sur l'autre atelier ; il peut simplement absorber la charge. La phrase dit
+maintenant où vont ses personnes : « ne viennent pas : elle absorbe la
+charge » (proposé par défaut), « y vont aussi, en renfort », ou « vont en
+renfort à … ». Moteur (`absorbe`), fiche, Excel (« Sinon, personnes à » :
+`aucune`), budget de la v2 (personne au repos non planifiée : rien), v1 et
+v2. Tests et docs mis à jour.
+
 ## 2026-10-01 — Une équipe qui ne travaille que certains jours (v1 et v2)
 
 Demande : « s'il y a tant de vols Air France, une personne est consacrée

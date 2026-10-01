@@ -28,7 +28,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.locator('[data-mu-choisir=prepa]').click();await attendre();
    const carte=sel=>page.locator(`#mu-services article.mu-equipe[data-at="mo"] ${sel}`);
    await carte('[data-at-action=cond-ajouter]').click();await attendre();
-   assert.deepEqual(await kase('mo').then(a=>a.condition),{cie:'AF',seuil:af,mesure:'vols',sinon:'mg'},version+' : proposée remplie pour aujourd’hui');
+   assert.deepEqual(await kase('mo').then(a=>a.condition),{cie:'AF',seuil:af,mesure:'vols',sinon:'mg',absorbe:true},version+' : proposée remplie pour aujourd’hui ; l’autre équipe absorbe la charge');
    assert.match(await carte('.at-cond').innerText(),/Cette équipe ne travaille que si[\s\S]*Sinon, ses commandes passent à/);
    assert.match(await carte('.at-cond-etat').innerText(),new RegExp('AF a '+af+' vols? \\(au moins '+af+'\\) → elle travaille'));
    assert.match(await carte('.mu-badge.cond').innerText(),/⚡ si AF ≥ \d+ vols · travaille aujourd’hui/);
@@ -37,7 +37,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    const seuil=carte('[data-at-champ=cond-seuil]');
    await seuil.fill(String(af+1));await seuil.dispatchEvent('change');await attendre();
    assert.equal((await kase('mo')).condition.seuil,af+1);
-   assert.match(await carte('.at-cond-etat').innerText(),/elle ne travaille pas ; ses commandes vont à « Montage général », sa personne renforce « Montage général »/);
+   assert.match(await carte('.at-cond-etat').innerText(),/elle ne travaille pas ; ses commandes vont à « Montage général », qui absorbe la charge avec ses propres personnes/);
+   assert.equal(await page.evaluate(()=>Sim.ateliers.resultat.ateliers.find(a=>a.id==='mg').personnes),2,version+' : sans renfort');
+   // Ses personnes peuvent aussi suivre ses commandes.
+   await carte('[data-at-champ=cond-renfort]').selectOption('');await attendre();
+   assert.equal((await kase('mo')).condition.absorbe,undefined);
+   assert.match(await carte('.at-cond-etat').innerText(),/sa personne renforce « Montage général »/);
    assert.match(await carte('.mu-badge.cond').innerText(),/pas aujourd’hui/);
    assert.equal(await page.locator('#mu-services article.mu-equipe[data-at="mo"]').evaluate(e=>e.classList.contains('au-repos')),true);
    const r=await page.evaluate(()=>({ids:Sim.ateliers.resultat.ateliers.map(a=>a.id),mg:Sim.ateliers.resultat.ateliers.find(a=>a.id==='mg'),

@@ -173,7 +173,8 @@
   function bilan(o) {
     const f = o.f, vues = new Map(((o.resultat && o.resultat.ateliers) || []).map(v => [v.id, v]));
     // Une équipe au repos ce jour-là (règle ⚡) : ses personnes sont payées là où
-    // elles travaillent (la vacation et les heures sup de l'équipe qu'elles renforcent).
+    // elles travaillent (la vacation et les heures sup de l'équipe qu'elles renforcent) ;
+    // quand l'équipe qui reprend absorbe la charge, elles ne sont pas planifiées : rien.
     const repos = new Map(((o.resultat && o.resultat.conditions) || []).filter(c => !c.remplie && !c.sansIssue).map(c => [c.atelier, c]));
     const lignes = (o.services || []).map(s => {
       const equipes = (o.ateliers || []).filter(a => a.service === s.id && a.type !== 'dispo')
@@ -303,7 +304,8 @@
         ${l.equipes.map(e => {
           const v = vues.get(e.repos ? e.repos.renforce : e.a.id) || {}, essai = this.essais[e.a.id];
           const nomEq = id => ((this.a.at().state.ateliers || []).find(x => x.id === id) || {}).nom || id;
-          const repos = e.repos ? ` · <span class="bu-repos">⚡ au repos aujourd’hui${e.repos.renforce ? ' : ses personnes renforcent « ' + esc(nomEq(e.repos.renforce)) + ' »' : ''}</span>` : '';
+          const repos = e.repos ? ` · <span class="bu-repos">⚡ au repos aujourd’hui${e.repos.renforce ? ' : ses personnes renforcent « ' + esc(nomEq(e.repos.renforce)) + ' »'
+            : e.repos.absorbe ? ' : pas planifiée, « ' + esc(nomEq(e.repos.vers)) + ' » absorbe la charge' : ''}</span>` : '';
           return `<tr data-bu-equipe="${esc(e.a.id)}"><th scope="row">${esc(e.a.nom)}<small>${e.personnes} pers.${repos}${e.ecart ? ` · <span class="bu-alerte">la composition compte ${e.ecart} de plus que l’équipe</span>` : ''}</small></th>
             ${cats.map(c => `<td><input type="number" min="0" max="99" class="bu-n" value="${e.parCat[c.id] || 0}" data-bu-compo="${esc(c.id)}" aria-label="${esc(c.nom)} dans ${esc(e.a.nom)}"></td>`).join('')}
             <td>${duree(e.presence)}</td><td>${hhmm(v.fin)}</td>
