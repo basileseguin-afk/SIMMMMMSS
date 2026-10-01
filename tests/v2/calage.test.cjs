@@ -69,23 +69,26 @@ test('le calage retrouve la vitesse cachée, et prédit les jours qu’il n’a 
 });
 
 test('le classeur modèle se relit tel quel', () => {
-  const services = [{ id: 'prepa', nom: 'Montage' }];
+  const services = [{ id: 'prepa', nom: 'Montage' }, { id: 'cuisine', nom: 'Cuisine' }];
   const lu = C.lireClasseur(C.classeurModele(), { T, parseVols: UI.parseFlightRows, service: T.correspondance(services) });
   assert.deepEqual(lu.avertissements, []);
   assert.equal(lu.jours.length, 2);
-  assert.equal(lu.jours[0].vols.length, 2);
-  assert.equal(lu.jours[0].planning[0].duree, 495);
+  assert.equal(lu.jours[0].vols.length, 3, 'deux départs et un retour');
+  assert.equal(lu.jours[0].planning[0].jour, -1, 'la cuisine, la veille');
+  assert.equal(lu.jours[0].planning[1].duree, 495);
+  // Un cuisinier arrivé 5 min plus tard, parti 30 min plus tard : 25 min au-delà du planning.
+  assert.equal(C.reelParService(lu.jours[0]).get('cuisine').sup, 25);
   // Deux personnes prévues 8 h 15 ; l'une est restée 1 h 15 de plus.
   assert.equal(C.reelParService(lu.jours[0]).get('prepa').sup, 75);
-  assert.equal(lu.cout.length, 2);
+  assert.equal(lu.cout.length, 4);
 });
 
 test('une ligne fautive est signalée, sans faire tomber le reste', () => {
   const f = C.classeurModele();
   f.find(x => x.nom === 'Pointages').lignes.push(['2026-09-02', 'Inconnu', 'Z', '04:00', '12:00']);
-  const lu = C.lireClasseur(f, { T, parseVols: UI.parseFlightRows, service: T.correspondance([{ id: 'prepa', nom: 'Montage' }]) });
+  const lu = C.lireClasseur(f, { T, parseVols: UI.parseFlightRows, service: T.correspondance([{ id: 'prepa', nom: 'Montage' }, { id: 'cuisine', nom: 'Cuisine' }]) });
   assert.equal(lu.avertissements.length, 1);
-  assert.match(lu.avertissements[0], /Pointages, ligne 6 : pointages : service inconnu « Inconnu »/);
+  assert.match(lu.avertissements[0], /Pointages, ligne 12 : pointages : service inconnu « Inconnu »/);
   assert.equal(lu.jours.length, 2);
 });
 

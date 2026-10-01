@@ -261,25 +261,61 @@
         apres: { apprendre: global(apres, apprendre), verifier: global(apres, verifier) } } };
   }
 
-  /** Un classeur de calage d'exemple, FICTIF : la forme attendue, deux jours. */
+  /** Un classeur de calage d'exemple, FICTIF : la forme attendue, deux jours, deux services. */
   function classeurModele() {
-    const v = (d, id, cie, av, std, yc) => [d, id, cie, av, 'DEP', std, '', 0, 0, yc, 4, 2];
+    const v = (d, id, cie, av, sens, std, sta, bc, pc, yc, crew, spml) => [d, id, cie, av, sens, std, sta, bc, pc, yc, crew, spml];
+    const guide = [
+      ['Feuille', 'Colonne', 'Obligatoire', 'Format', 'Exemple', 'Ce qu’on y met'],
+      ['Vols', 'date', 'oui', 'AAAA-MM-JJ ou JJ/MM/AAAA', '2026-09-01', 'Le jour du vol (départ ou retour).'],
+      ['Vols', 'vol_id', 'oui', 'texte', 'XX101', 'Le numéro de vol.'],
+      ['Vols', 'compagnie', 'oui', 'texte', 'XX', 'Le code de la compagnie, comme dans Mon unité (ex. AF).'],
+      ['Vols', 'type_avion', 'non', 'texte', 'A320', 'Le type d’avion (sert au taux de remplissage).'],
+      ['Vols', 'sens', 'oui', 'DEP ou RET', 'DEP', 'DEP : un départ (on prépare ses repas) ; RET : un retour (la plonge).'],
+      ['Vols', 'heure_std', 'pour un DEP', 'HH:MM', '07:00', 'L’heure de départ prévue.'],
+      ['Vols', 'heure_sta', 'pour un RET', 'HH:MM', '15:40', 'L’heure d’arrivée prévue.'],
+      ['Vols', 'nb_BC, nb_PC, nb_YC', 'oui', 'nombre entier', '12, 0, 150', 'Les repas (passagers) par classe : Business, Premium, Économie.'],
+      ['Vols', 'nb_CREW, nb_SPML', 'non', 'nombre entier', '5, 3', 'Les repas équipage et les repas spéciaux.'],
+      ['Planning', 'date', 'oui', 'AAAA-MM-JJ', '2026-09-01', 'Le jour des vols que l’équipe prépare.'],
+      ['Planning', 'service', 'oui', 'texte', 'Montage', 'Le service, avec le même nom que dans Mon unité.'],
+      ['Planning', 'equipe', 'oui', 'texte', 'Montage matin', 'L’équipe, avec le même nom que dans Mon unité (c’est ce qui relie le planning à ce qu’elle prépare).'],
+      ['Planning', 'debut, fin', 'oui', 'HH:MM', '04:00, 12:15', 'L’horaire prévu de l’équipe (sa vacation). Une fin avant le début passe minuit.'],
+      ['Planning', 'personnes', 'oui', 'nombre entier', '4', 'Le nombre de personnes prévues dans l’équipe ce jour-là.'],
+      ['Planning', 'jour', 'non', '0, -1 ou -2', '-1', 'Vide ou 0 : le jour même ; -1 : la veille (ex. la cuisine).'],
+      ['Pointages', 'date', 'oui', 'AAAA-MM-JJ', '2026-09-01', 'Le même jour que la ligne de planning de l’équipe (la veille compte pour le jour des vols).'],
+      ['Pointages', 'service', 'oui', 'texte', 'Montage', 'Le service où la personne a travaillé.'],
+      ['Pointages', 'personne', 'non', 'texte', 'A', 'Un matricule ou des initiales (facultatif ; jamais de nom complet nécessaire).'],
+      ['Pointages', 'arrivee, depart', 'oui', 'HH:MM', '04:02, 13:30', 'Les heures réelles de badge. Un départ avant l’arrivée passe minuit.'],
+      ['Labor cost', 'date', 'non', 'AAAA-MM-JJ', '2026-09-01', 'Le jour ; vide : le montant vaut pour le mois.'],
+      ['Labor cost', 'service', 'oui', 'texte', 'Montage', 'Le service.'],
+      ['Labor cost', 'montant', 'oui', 'nombre (euros)', '610', 'Le coût réel de la main-d’œuvre.'],
+      [],
+      ['Règles'],
+      ['Une ligne par vol, par équipe et par jour, par personne et par jour. Un mois entier dans un seul classeur.'],
+      ['Les noms de service et d’équipe doivent être ceux de Mon unité (majuscules et accents indifférents).'],
+      ['Les heures sup ne se saisissent pas : le site les déduit (heures pointées au-delà du planning).'],
+      ['Les lignes de ce classeur sont un EXEMPLE FICTIF : remplacez-les par les vôtres.'],
+      ['Confidentialité : ce classeur reste dans votre navigateur (ou est traité dans la session) ; il ne va jamais dans le dépôt public.']
+    ];
     return [
-      { nom: 'Lisez-moi', lignes: [['Classeur de calage — un mois réel, un jour par date. Exemple FICTIF : remplacez-le.'],
-        ['Vols : les vols de chaque jour (mêmes colonnes que l’import des vols, plus la date).'],
-        ['Planning : les équipes prévues — service et nom d’équipe comme dans Mon unité, heure de début et de fin, personnes ; jour = -1 pour la veille.'],
-        ['Pointages : une ligne par personne et par jour — service, heure d’arrivée, heure de départ (le nom est facultatif).'],
-        ['Labor cost : le coût réel par service (par jour, ou sans date pour le mois).'],
-        ['Ces données restent dans votre navigateur : elles ne partent jamais dans le dépôt public.']] },
+      { nom: 'Lisez-moi', lignes: guide },
       { nom: 'Vols', lignes: [['date'].concat(COLS_VOLS),
-        v('2026-09-01', 'XX101', 'XX', 'A320', '07:00', 150), v('2026-09-01', 'XX205', 'XX', 'A350', '12:30', 260),
-        v('2026-09-02', 'XX101', 'XX', 'A320', '07:00', 170), v('2026-09-02', 'XX205', 'XX', 'A350', '12:30', 280)] },
+        v('2026-09-01', 'XX101', 'XX', 'A320', 'DEP', '07:00', '', 12, 0, 150, 5, 3),
+        v('2026-09-01', 'YY205', 'YY', 'A350', 'DEP', '12:30', '', 30, 40, 220, 8, 10),
+        v('2026-09-01', 'XX102', 'XX', 'A320', 'RET', '', '15:40', 12, 0, 150, 0, 0),
+        v('2026-09-02', 'XX101', 'XX', 'A320', 'DEP', '07:00', '', 14, 0, 170, 5, 4),
+        v('2026-09-02', 'YY205', 'YY', 'A350', 'DEP', '12:30', '', 32, 44, 240, 8, 11)] },
       { nom: 'Planning', lignes: [['date', 'service', 'equipe', 'debut', 'fin', 'personnes', 'jour'],
-        ['2026-09-01', 'Montage', 'Montage matin', '04:00', '12:15', 2, 0], ['2026-09-02', 'Montage', 'Montage matin', '04:00', '12:15', 2, 0]] },
+        ['2026-09-01', 'Cuisine', 'Cuisine veille', '14:00', '21:00', 3, -1],
+        ['2026-09-01', 'Montage', 'Montage matin', '04:00', '12:15', 2, 0],
+        ['2026-09-02', 'Cuisine', 'Cuisine veille', '14:00', '21:00', 3, -1],
+        ['2026-09-02', 'Montage', 'Montage matin', '04:00', '12:15', 2, 0]] },
       { nom: 'Pointages', lignes: [['date', 'service', 'personne', 'arrivee', 'depart'],
-        ['2026-09-01', 'Montage', 'A', '04:00', '12:15'], ['2026-09-01', 'Montage', 'B', '04:00', '13:30'],
-        ['2026-09-02', 'Montage', 'A', '04:00', '12:15'], ['2026-09-02', 'Montage', 'B', '04:02', '12:20']] },
-      { nom: 'Labor cost', lignes: [['date', 'service', 'montant'], ['2026-09-01', 'Montage', 610], ['2026-09-02', 'Montage', 590]] }
+        ['2026-09-01', 'Cuisine', 'C1', '14:00', '21:00'], ['2026-09-01', 'Cuisine', 'C2', '14:00', '21:00'], ['2026-09-01', 'Cuisine', 'C3', '14:05', '21:30'],
+        ['2026-09-01', 'Montage', 'M1', '04:00', '12:15'], ['2026-09-01', 'Montage', 'M2', '04:00', '13:30'],
+        ['2026-09-02', 'Cuisine', 'C1', '14:00', '21:00'], ['2026-09-02', 'Cuisine', 'C2', '14:00', '21:00'], ['2026-09-02', 'Cuisine', 'C3', '14:00', '21:00'],
+        ['2026-09-02', 'Montage', 'M1', '04:00', '12:15'], ['2026-09-02', 'Montage', 'M2', '04:02', '12:20']] },
+      { nom: 'Labor cost', lignes: [['date', 'service', 'montant'],
+        ['2026-09-01', 'Cuisine', 520], ['2026-09-01', 'Montage', 610], ['2026-09-02', 'Cuisine', 505], ['2026-09-02', 'Montage', 590]] }
     ];
   }
 
