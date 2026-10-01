@@ -748,12 +748,14 @@
   function ateliersVersClasseur(etat, ctx) {
     const services = ctx.services || [];
     const nomDe = id => (services.find(s => s.id === id) || {}).nom || id;
+    const nomAtelier = id => (etat.ateliers.find(x => x.id === id) || {}).nom || null;
     const ateliers = [['Atelier', 'Service', 'Type', 'Personnes', 'Pauses',
       'Poste réglementaire', 'Présence (min)', 'Emporte du matériel', 'Débit robot (plateaux/h)',
       'Effectif mini robot', 'Plafond plonge (u/h)', 'Permanent', 'Identifiant',
       'Vols en même temps', 'Pas avant départ (h)', 'Compagnies chargées', 'Vagues',
       'Chauffeurs long courrier', 'Chauffeurs court courrier', 'Plonge par vol', 'Vols par camion', 'Camions disponibles',
-      'À la chaîne avec', 'Ligne robot', 'Arrêts de la ligne']];
+      'À la chaîne avec', 'Ligne robot', 'Arrêts de la ligne',
+      'Ne travaille que si', 'Sinon, commandes à', 'Sinon, personnes à']];
     const handling = [['Atelier', 'Compagnie', 'Aller (min)', 'Minutes par vol', 'Retour (min)', 'Courrier', 'Vols par camion']];
     const chauffeurs = [['Atelier', 'Début', 'Fin', 'Chauffeurs']];
     const plongeVol = [['Atelier', 'Compagnie', 'Minutes par vol']];
@@ -784,7 +786,11 @@
         a.type === 'manuel' && a.fusion ? nomDe(a.fusion) : null,
         // La ligne robot : partagée par les robots du service, ou propre ; ses arrêts.
         a.type === 'robot' ? (a.lignePropre ? 'propre' : 'partagée') : null,
-        a.type === 'robot' ? (a.arretsLigne || []).map(x => x.de + '-' + x.a).join('; ') || null : null]);
+        a.type === 'robot' ? (a.arretsLigne || []).map(x => x.de + '-' + x.a).join('; ') || null : null,
+        // La règle ⚡ : « AF ≥ 6 vols » ; sinon, les noms des équipes qui reprennent.
+        a.condition ? (a.condition.cie === '*' ? 'toutes' : a.condition.cie) + ' ≥ ' + a.condition.seuil + ' ' + (a.condition.mesure === 'repas' ? 'repas' : 'vols') : null,
+        a.condition ? nomAtelier(a.condition.sinon) : null,
+        a.condition && a.condition.renfort ? nomAtelier(a.condition.renfort) : null]);
       if (a.type === 'handling') {
         // Une ligne par compagnie réglée : sa durée, et si elle est long courrier.
         const longs = new Set(a.longs || []), d = a.durees || {}, al = a.allers || {}, re = a.retours || {}, vc = a.volsCamion || {};
@@ -1076,6 +1082,17 @@
           a.volsParCamion = Math.max(1, Math.round(T.nombreDe(o.vols_par_camion, ah.volsParCamion ?? 1)) || 1);
           a.camions = Math.max(0, Math.round(T.nombreDe(o.camions_disponibles, ah.camions ?? 0)) || 0);
         }
+        // « AF ≥ 6 vols » : ne travaille que ces jours-là. Les équipes nommées se lisent ensuite.
+        const si = String(o.ne_travaille_que_si ?? '').trim();
+        if (si && !/^(non|toujours|-)$/i.test(si)) {
+          if (type !== 'manuel' && type !== 'robot') throw new Error('« ne travaille que si » : pour une équipe qui prépare des commandes');
+          const m = /^(.+?)\s*(?:≥|>=|>|:|au moins)?\s*(\d+)\s*(vols?|repas)?$/i.exec(si);
+          if (!m) throw new Error('« ne travaille que si » illisible « ' + si + ' » (ex. « AF ≥ 6 vols »)');
+          const cie = /^(toutes?|tout|\*)$/i.test(m[1].trim()) ? '*' : m[1].trim().toUpperCase();
+          a._cond = { cie, seuil: Math.max(1, +m[2]), mesure: /^repas$/i.test(m[3] || '') ? 'repas' : 'vols',
+            sinon: String(o.sinon_commandes_a ?? '').trim(), renfort: String(o.sinon_personnes_a ?? '').trim() };
+          if (!a._cond.sinon) throw new Error('« ne travaille que si » : dites quelle équipe reprend ses commandes (« Sinon, commandes à »)');
+        }
         a._ligne = o._ligne;
         parNom.set(k, a); out.ateliers.push(a);
       });
@@ -1085,6 +1102,16 @@
       if (!a) err.ajouter(ou, ligne, 'atelier inconnu « ' + (v ?? '') + ' » (absent de la feuille Ateliers)');
       return a;
     };
+
+    // Les règles ⚡ : les équipes qui reprennent, par leur nom.
+    for (const a of out.ateliers) {
+      const c = a._cond; delete a._cond; if (!c) continue;
+      const sinon = atelierNomme(c.sinon, fA.nom, a._ligne);
+      const renfort = c.renfort ? atelierNomme(c.renfort, fA.nom, a._ligne) : null;
+      if (!sinon || (c.renfort && !renfort)) continue;
+      if (sinon === a || sinon.service !== a.service) { err.ajouter(fA.nom, a._ligne, '« Sinon, commandes à » : une autre équipe du même service'); continue; }
+      a.condition = { cie: c.cie, seuil: c.seuil, mesure: c.mesure, sinon: sinon.id, ...(renfort && renfort !== sinon && renfort !== a ? { renfort: renfort.id } : {}) };
+    }
 
     const fH = T.feuille(feuilles, 'Horaires');
     if (fH) lireHoraires(fH, atelierNomme, err);

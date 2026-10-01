@@ -189,6 +189,44 @@ ex. la Prépa dans une case de Montage), pour **ses** commandes seulement :
 Réglage : fiche de la case, « À la chaîne avec l'étape d'avant ? ». Excel :
 colonne « À la chaîne avec » de la feuille Ateliers.
 
+### Une équipe qui ne travaille que certains jours (retour d'usage du 01/10)
+
+« S'il y a tant de vols Air France, une personne est consacrée au montage AF ;
+sinon elle est rattachée à un autre atelier. » Une seule forme de règle, qui
+se lit comme une phrase dans la fiche de l'équipe :
+
+> ⚡ Cette équipe ne travaille que si **AF** a au moins **6** **vols** ce
+> jour-là. Sinon, ses commandes passent à **Montage général** et ses
+> personnes à **la même équipe**.
+
+`condition: { cie, seuil, mesure, sinon, renfort? }` sur une équipe qui
+prépare (à la main ou au robot) :
+
+- `cie` : une compagnie, ou `*` (toutes) ; `mesure` : `vols` (départs du jour)
+  ou `repas` (passagers des départs) ; `seuil` : au moins 1 ;
+- `sinon` : une **autre équipe du même service**, qui reprend ses commandes ;
+  elles s'insèrent dans sa liste par échéance, sans déranger l'ordre des
+  siennes (avec leurs man-minutes propres) ;
+- `renfort` : l'équipe qui reçoit ses personnes, de n'importe quel service ;
+  absent = la même que `sinon`.
+
+La règle se joue **dans le moteur**, au début de la journée, sur les vols du
+jour (`appliquerConditions`) : toute journée rejouée la respecte (calage,
+budget de la v2). Si l'équipe `sinon` ne travaille pas non plus, on suit sa
+propre règle ; si l'on tourne en rond ou qu'aucune équipe du service ne
+travaille au bout, l'équipe **garde** ses commandes plutôt que de les perdre
+(`sansIssue`). Le résultat porte `conditions` : pour chaque règle, le compte
+du jour, si elle est remplie, et où sont allées les commandes et les
+personnes. L'enregistrement retire une règle dont l'équipe `sinon` a disparu
+ou a changé de service.
+
+Visible : un badge ⚡ sur l'équipe (« travaille aujourd'hui » / « pas
+aujourd'hui »), la phrase et le constat du jour dans sa fiche, la carte en
+pointillés un jour de repos ; dans le budget de la v2, ses personnes sont
+payées à la vacation de l'équipe qu'elles renforcent. Excel : colonnes « Ne
+travaille que si » (`AF ≥ 6 vols`, `toutes >= 300 repas`), « Sinon, commandes
+à », « Sinon, personnes à » de la feuille Ateliers.
+
 ### L'atelier robot
 
 | Champ | Sens |

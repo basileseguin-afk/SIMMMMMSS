@@ -1096,6 +1096,90 @@
 
   const classesDuLot = lot => (Array.isArray(lot) ? lot : (lot && lot.classes) || []);
 
+  /* ÉQUIPE CONDITIONNELLE (retour d'usage du 01/10) : « s'il y a tant de vols
+   * Air France, une personne est consacrée au montage AF ; sinon elle est
+   * rattachée à un autre atelier ». Une équipe peut porter
+   *   condition: { cie, seuil, mesure, sinon, renfort }
+   * — elle ne travaille que si la compagnie `cie` (« * » : toutes) a au moins
+   * `seuil` vols (ou repas, `mesure: 'repas'`) ce jour-là. Sinon, ses commandes
+   * passent à l'équipe `sinon` (même service) et ses personnes à `renfort`
+   * (par défaut la même). La règle se joue ici, dans le moteur, sur les vols
+   * du jour : toute journée rejouée la respecte. */
+
+  /** Ce que compte la règle, ce jour-là : les vols au départ, ou leurs repas. */
+  function compteDuJour(classes, cie, mesure) {
+    const toutes = !cie || cie === '*', c = String(cie || '').trim().toUpperCase();
+    const siennes = (classes || []).filter(x => toutes || x.cie === c);
+    if (mesure === 'repas') return siennes.reduce((n, x) => n + (x.pax || 0), 0);
+    const vols = new Set();
+    for (const x of siennes) for (const v of (x.vols || [])) vols.add(v.id != null ? v.id : x.id + '@' + v.depart);
+    return vols.size;
+  }
+
+  /** Les équipes qui travaillent ce jour-là, avec les commandes et les personnes de celles qui ne travaillent pas. */
+  function appliquerConditions(ateliers, classes) {
+    const liste = (ateliers || []).map(a => ({ ...a }));
+    const parId = new Map(liste.map(a => [a.id, a]));
+    const conditions = [];
+    const inactives = new Set();
+    for (const a of liste) {
+      const k = a.condition;
+      if (!k || typeof k !== 'object' || !(+k.seuil > 0)) continue;
+      const mesure = k.mesure === 'repas' ? 'repas' : 'vols';
+      const compte = compteDuJour(classes, k.cie, mesure);
+      const remplie = compte >= +k.seuil;
+      if (!remplie) inactives.add(a.id);
+      conditions.push({ atelier: a.id, nom: a.nom, cie: k.cie || '*', mesure, seuil: +k.seuil, compte, remplie,
+        sinon: k.sinon || null, renfort: k.renfort || k.sinon || null, vers: null, renforce: null });
+    }
+    // La première équipe qui travaille, en suivant les « sinon » (sans tourner en rond).
+    const suivre = (id, champ) => {
+      const vus = new Set();
+      let x = parId.get(id);
+      while (x && inactives.has(x.id) && !vus.has(x.id)) {
+        vus.add(x.id);
+        const k = x.condition || {};
+        x = parId.get(champ === 'renfort' ? (k.renfort || k.sinon) : k.sinon);
+      }
+      return x && !inactives.has(x.id) ? x : null;
+    };
+    const echeance = lot => Math.min(...classesDuLot(lot).map(id => {
+      const c = classes.find(y => y.id === id); return c ? c.echeance : Infinity;
+    }), Infinity);
+    // Nulle part où aller (aucune équipe du service ne travaille au bout des
+    // « sinon ») : l'équipe garde ses commandes plutôt que de les perdre.
+    for (let change = true; change;) {
+      change = false;
+      for (const r of conditions) {
+        if (r.remplie || r.sansIssue) continue;
+        const a = parId.get(r.atelier), vers = suivre(a.condition.sinon, 'sinon');
+        if (!vers || vers.service !== a.service) { inactives.delete(a.id); r.sansIssue = true; change = true; }
+      }
+    }
+    for (const r of conditions) {
+      if (r.remplie || r.sansIssue) continue;
+      const a = parId.get(r.atelier);
+      const vers = suivre(a.condition.sinon, 'sinon');
+      r.vers = vers.id;
+      // Ses commandes s'insèrent par échéance, sans déranger l'ordre de celles déjà là.
+      const lots = (vers.lots || []).slice();
+      for (const lot of (a.lots || [])) {
+        const e = echeance(lot);
+        const i = lots.findIndex(l => echeance(l) > e);
+        lots.splice(i < 0 ? lots.length : i, 0, lot);
+      }
+      vers.lots = lots;
+      if (a.minutes) vers.minutes = { ...a.minutes, ...(vers.minutes || {}) };
+      const renfort = suivre(a.condition.renfort || a.condition.sinon, 'renfort');
+      if (renfort && +a.personnes > 0) {
+        renfort.personnes = (+renfort.personnes || 0) + (+a.personnes);
+        r.renforce = renfort.id;
+        r.personnes = +a.personnes;
+      }
+    }
+    return { ateliers: liste.filter(a => !inactives.has(a.id)), conditions };
+  }
+
   /**
    * Joue la journée.
    *
@@ -1119,7 +1203,10 @@
     const classes = opts.classes || classesDeVols(opts.vols, { delaiChargement: opts.delaiChargement });
     const parClasse = new Map(classes.map(c => [c.id, c]));
     // Le handling travaille le jour J des vols : jamais la veille.
-    const ateliers = (opts.ateliers || []).map(a => ({ ...a, type: a.type || 'manuel', ...(a.type === 'handling' ? { jour: 0 } : {}) }));
+    // Les équipes qui ne travaillent que selon le volume du jour (règle ⚡) : celles
+    // dont la condition n'est pas remplie passent leurs commandes et leurs personnes.
+    const regles = appliquerConditions((opts.ateliers || []).map(a => ({ ...a, type: a.type || 'manuel', ...(a.type === 'handling' ? { jour: 0 } : {}) })), classes);
+    const ateliers = regles.ateliers;
 
     const services = new Set(ateliers.map(a => a.service));
     const anomalies = validerAteliers(ateliers, { services: opts.services || [...services], classes, noms: opts.noms });
@@ -1193,7 +1280,7 @@
       // de la journée se calcule. Mettre une case à 0 effaçait tous les résultats.
       'sans-personne', 'robot-arret', 'plonge-arret']);
     const bloquant = anomalies.some(a => !NON_BLOQUANTES.has(a.code));
-    if (bloquant) return { ok: false, anomalies, classes, lots: [], ateliers: [] };
+    if (bloquant) return { ok: false, anomalies, classes, lots: [], ateliers: [], conditions: regles.conditions };
 
     // Une mise à disposition permanente n'a pas d'heure : elle ne doit pas
     // tirer le début de la journée en arrière.
@@ -2033,6 +2120,7 @@
       anomalies,
       classes,
       ateliers: suivi,
+      conditions: regles.conditions,
       lots: journal.sort((a, b) => a.debut - b.debut),
       parClasse: derniers,
       indicateurs: {
@@ -2240,7 +2328,7 @@
     MINUTES_PAR_JOUR, CABINES, TYPES,
     minutes, hhmm, idClasse, libelleClasse, enClair,
     REGIME_DEFAUT, normaliserRegime, travailDuPoste, executerTache,
-    classesDeVols, volsDesClasses, dureeHandling, compagniesDe, AVANCE_HANDLING, BAREME_DEMO, RENDEMENT_DEMO, travailClasse, travailDans, dureeFusion,
+    classesDeVols, volsDesClasses, compteDuJour, appliquerConditions, dureeHandling, compagniesDe, AVANCE_HANDLING, BAREME_DEMO, RENDEMENT_DEMO, travailClasse, travailDans, dureeFusion,
     PAX_TYPE, TOUTES, cleBareme, normaliserBareme, minutesParVol,
     arcsDuParcours, servicesDuParcours, routesDesClasses,
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,

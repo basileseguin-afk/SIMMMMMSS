@@ -431,3 +431,15 @@ body.ateliers-open .workbench{display:none}
 /* Sur les chemins, le message se lit au-dessus du diagramme : pas deux fois. */
 body[data-sous="at-chemins"] #at-status{display:none}
 .at-pourquoi{display:block;font-size:11.5px;color:var(--txt2,#475569);margin-top:2px;max-width:34ch}
+
+/* Équipe qui ne travaille que certains jours (règle ⚡, selon le nombre de vols) */
+.at-cond-ajout{margin:8px 0 0}
+.at-cond{display:grid;gap:4px;margin:8px 0;padding:8px 10px;border:1px solid color-mix(in srgb,#d97706 45%,transparent);border-left:4px solid #d97706;border-radius:10px;background:color-mix(in srgb,#f59e0b 8%,transparent)}
+.at-cond-phrase{margin:0;line-height:2.1}
+.at-cond .at-cond-phrase select,.at-cond .at-cond-phrase input,#view-ateliers .at-cond .at-cond-phrase select,#view-ateliers .at-cond .at-cond-phrase input{display:inline-block;width:auto;max-width:18em;min-height:30px;margin:0 2px;padding:2px 6px;font:inherit;font-weight:650;vertical-align:baseline}
+.at-cond .at-cond-phrase input[type=number],#view-ateliers .at-cond .at-cond-phrase input[type=number]{width:5.5em}
+.at-cond-eclair{color:#d97706;font-size:16px}
+.at-cond-retirer{margin-left:6px}
+.at-cond-etat{margin:2px 0 0;font-size:13px}
+.at-cond-etat.oui{color:var(--ok,#15803d)}
+.at-cond-etat.non{color:#9a3412}

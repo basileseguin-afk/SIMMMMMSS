@@ -5,6 +5,34 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-01 — Une équipe qui ne travaille que certains jours (v1 et v2)
+
+Demande : « s'il y a tant de vols Air France, une personne est consacrée
+entièrement à la prépa montage ; sinon elle est rattachée à un autre
+atelier », très visuel, simple et intuitif. Une seule forme de règle, qui se
+lit comme une phrase dans la fiche de l'équipe : « ⚡ Cette équipe ne
+travaille que si [AF] a au moins [6] [vols] ce jour-là. Sinon, ses commandes
+passent à [Montage général] et ses personnes à [la même équipe]. »
+
+- Moteur (`moteur/production.js`, `v2/moteur/production.js`) :
+  `compteDuJour`, `appliquerConditions` ; joué au début de `simuler` sur les
+  vols du jour ; commandes insérées par échéance chez l'équipe qui reprend,
+  personnes ajoutées à celle qui renforce ; chaînes suivies sans boucle ;
+  sans issue, l'équipe garde ses commandes. Le résultat porte `conditions`.
+- Fiche de l'équipe (`ateliers.js`, `unite.js`, v1 et v2) : bouton « ⚡ Ne
+  travailler que certains jours… », la phrase à menus, le constat du jour
+  (« AF a 4 vols (au moins 6) → elle ne travaille pas ; ses commandes vont
+  à… »), badge ⚡, carte en pointillés un jour de repos. Enregistrement :
+  règle bornée, retirée si l'équipe qui reprend disparaît ou change de
+  service.
+- Excel (`echanges.js`, v1 et v2) : colonnes « Ne travaille que si », « Sinon,
+  commandes à », « Sinon, personnes à ».
+- Budget (v2) : les personnes d'une équipe au repos sont payées à la
+  vacation de l'équipe qu'elles renforcent.
+- Tests : `tests/conditions.test.cjs` et `tests/v2/conditions.test.cjs` (même
+  jeu pour les deux versions), `tests/condition-browser.cjs`.
+- Docs : `docs/MODELE_ATELIERS.md`, `docs/FORMATS_EXCEL.md`, `README.md`.
+
 ## 2026-10-01 — Version 2 : reprendre le travail de la version 1
 
 Le plan : bien paramétrer la v1, puis passer à l'entraînement (calage) dans

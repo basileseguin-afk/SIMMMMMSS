@@ -169,3 +169,9 @@
 .mu-exceptions li>span{flex:1;min-width:240px}
 .mu-flux-ajout-cmd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--txt2)}
 .mu-flux-ajout-cmd select{min-height:32px;max-width:420px}
+
+/* Règle ⚡ : l'équipe ne travaille que certains jours */
+.mu-badge.cond{background:color-mix(in srgb,#f59e0b 14%,transparent);color:#b45309;border:1px solid color-mix(in srgb,#d97706 40%,transparent)}
+.mu-badge.cond.off{background:var(--bg2);color:var(--txt2);border-style:dashed}
+.mu-cond-reglage .at-cond,.mu-cond-reglage .at-cond-ajout{margin:8px 0 0}
+.mu-equipe.au-repos{border-style:dashed;opacity:.85}

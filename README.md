@@ -163,6 +163,11 @@ le rouge ne sert qu’aux retards.
         chaîne… »), un halo autour des deux services et un trait épais entre
         eux dans chaque diagramme (flux, commande, liens de l’unité), une barre
         rose au planning. Une ligne robot partagée a aussi son badge.
+        **⚡ Certains jours seulement** : une équipe peut ne travailler que
+        si une compagnie a assez de vols (« ne travaille que si AF a au
+        moins 6 vols ce jour-là ; sinon, ses commandes et ses personnes
+        passent au Montage général ») — une phrase à compléter dans sa fiche,
+        un badge ⚡ qui dit si elle travaille aujourd’hui.
         « Plus de réglages » : l’ordre à la main, les pauses,
         les arrêts, les man-minutes propres, la
         ligne robot. Un service qui sert tout le monde se règle en une fiche
@@ -487,6 +492,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/robot-ligne-browser.cjs` | La ligne robot : matin et après-midi sur une seule ligne (l’après-midi attend), arrêt 12:15–13:00 valable pour les deux équipes, second robot à sa propre ligne, récap, rechargement |
 | `tests/mon-unite-browser.cjs` | Mon unité : le menu à quatre parties, le pas à pas, un service ouvert depuis lui, deux équipes, toute une ligne / une colonne cochée sans rien prendre à l’autre équipe, l’ordre des départs, une commande déplacée, l’heure tapée et les personnes, décocher sort le service du chemin, les minutes dans la fiche, « Qui en a besoin ? » de la légumerie, un nouveau service placé dans le chemin, le calcul, les outils avancés, rechargement |
 | `tests/fusion-browser.cjs` | Deux étapes à la chaîne : « Montage AF » fait aussi la Prépa depuis sa fiche, AF quitte la case de la Prépa, durée à 1 et 2 personnes, récap, « Qui prépare quoi », chemin, fusion visible (halos et trait dans le diagramme, liste et fiches des services, badge et réglage de l’équipe, planning), retour à deux cases, rechargement |
+| `tests/condition-browser.cjs` | Règle ⚡ (v1 et v2) : bouton, phrase pré-remplie pour aujourd’hui, seuil au-dessus des vols du jour → l’équipe ne travaille pas, ses commandes et sa personne passent au montage général (badge, constat, calcul), repas, retrait, équipe seule dans son service |
 | `tests/saisie-heure-browser.cjs` | Taper une heure touche par touche (Récap des cases, fiche d’une case) : rien n’est arraché, Entrée ou quitter le champ enregistre, le tableau garde son défilement |
 | `tests/secours-browser.cjs` | Un démarrage resté en plan ouvre la page de secours ; elle rend les données en sauvegarde, repart sans les cases, puis les remet |
 | `tests/recap-cases-browser.cjs` | Récap des cases : une ligne par case, tâche unique / à la suite / ensemble, départ et jour modifiables, chercher, fichier de paramétrage exporté puis réimporté |

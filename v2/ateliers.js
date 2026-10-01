@@ -127,6 +127,19 @@
     else { delete a.debit; delete a.personnesMin; }
   }
 
+  /** La règle ⚡ d'une équipe (voir moteur : appliquerConditions), bornée. Seules
+   *  les équipes qui préparent des commandes (à la main ou au robot) en portent une. */
+  function conditionDe(a, type) {
+    const k = a.condition;
+    if (!k || typeof k !== 'object' || (type !== 'manuel' && type !== 'robot')) return {};
+    const seuil = Math.round(+k.seuil);
+    if (!(seuil >= 1)) return {};
+    const cie = String(k.cie ?? '*').trim().toUpperCase().slice(0, 40) || '*';
+    return { condition: { cie, seuil: Math.min(seuil, 99999), mesure: k.mesure === 'repas' ? 'repas' : 'vols',
+      sinon: typeof k.sinon === 'string' ? k.sinon : '',
+      ...(typeof k.renfort === 'string' && k.renfort && k.renfort !== k.sinon ? { renfort: k.renfort } : {}) } };
+  }
+
   function valider(brut) {
     if (!brut || brut.schema !== 'ory-ateliers' || brut.version !== 1 || !Array.isArray(brut.ateliers))
       throw new Error('Fichier d’ateliers v1 attendu.');
@@ -167,6 +180,8 @@
         // Les homme-minutes fixées dans la case, commande par commande ; sans
         // elles, celles du barème importé. Seules les commandes qu'elle prépare.
         ...minutesPropres(a, lots),
+        // Ne travaille que si une compagnie a assez de vols ce jour-là (règle ⚡).
+        ...conditionDe(a, type),
         ...(type === 'robot' ? {
           debit: Number.isFinite(a.debit) ? Math.max(1, a.debit) : 320,
           personnesMin: Number.isInteger(a.personnesMin) ? Math.max(0, a.personnesMin) : 1,
@@ -206,6 +221,14 @@
         ...(type === 'handling' ? handlingDe(a) : {})
       };
     }).map(a => (a.type === 'dispo' && a.vagues.length ? { ...a, debut: a.vagues[0].debut, jour: a.vagues[0].jour } : a));
+    // Une règle ⚡ renvoie vers une équipe du même service qui existe ; sinon elle ne tient pas.
+    const parId = new Map(ateliers.map(a => [a.id, a]));
+    for (const a of ateliers) {
+      if (!a.condition) continue;
+      const vers = parId.get(a.condition.sinon);
+      if (!vers || vers.id === a.id || vers.service !== a.service) { delete a.condition; continue; }
+      if (a.condition.renfort && (!parId.has(a.condition.renfort) || a.condition.renfort === a.id)) delete a.condition.renfort;
+    }
     // Ce que l'utilisateur retire du programme, et ce qu'il y ajoute. Le
     // programme de vols reste la source ; ces deux listes le corrigent.
     const exclues = [...new Set((Array.isArray(brut.exclues) ? brut.exclues : []).map(String))].slice(0, 500);
@@ -610,6 +633,18 @@
           return;
         }
         case 'chemin': return this.parcours.ouvrir(data.classe, a ? a.service : '');
+        // La règle ⚡ : ne travailler que si une compagnie a assez de vols ce jour-là.
+        case 'cond-ajouter': {
+          const autres = this.equipesSinon(a);
+          if (!autres.length) return this.rendre('Ajoutez d’abord une autre équipe à ce service : c’est elle qui reprendra les commandes les jours sans.');
+          const cies = this.compagniesDuJour();
+          const cie = cies.includes('AF') ? 'AF' : cies[0] || '*';
+          const seuil = Math.max(1, P.compteDuJour(this.classes, cie, 'vols'));
+          return this.changer(() => { a.condition = { cie, seuil, mesure: 'vols', sinon: autres[0].id }; },
+            'Condition ajoutée : complétez la phrase (compagnie, nombre, et qui reprend les jours sans).');
+        }
+        case 'cond-retirer':
+          return this.changer(() => { delete a.condition; }, '« ' + a.nom + ' » travaille tous les jours.');
         // Dans la liste des cases : aller la régler dans un chemin ; faute de
         // chemin qui passe par elle, elle se déplie sur place.
         case 'ouvrir':
@@ -807,6 +842,11 @@
             }
             break;
           }
+          case 'cond-cie': if (a.condition) a.condition.cie = v || '*'; break;
+          case 'cond-seuil': if (a.condition) a.condition.seuil = Math.max(1, parseInt(v, 10) || 1); break;
+          case 'cond-mesure': if (a.condition) a.condition.mesure = v === 'repas' ? 'repas' : 'vols'; break;
+          case 'cond-sinon': if (a.condition) a.condition.sinon = v; break;
+          case 'cond-renfort': if (a.condition) { if (v) a.condition.renfort = v; else delete a.condition.renfort; } break;
           case 'tunnel-nom': a.tunnels[+el.dataset.index].nom = v; break;
           case 'tunnel-debit': a.tunnels[+el.dataset.index].debit = Math.max(0, parseFloat(v) || 0); break;
           case 'tunnel-actif': a.tunnels[+el.dataset.index].actif = el.checked; break;
@@ -1423,6 +1463,7 @@
           <div class="at-actions-lot"><button class="btn btn-sm" data-at-action="vague-ajouter">+ Vague</button></div>` : ''}
         </div>` : `
         ${a.type === 'manuel' ? (o.compact ? '' : this.blocFusion(a)) : a.type === 'robot' ? this.blocLigne(a) : ''}
+        ${o.compact ? '' : this.blocCondition(a)}
         <div class="at-cases">
           <label class="chk chk-mini"><input type="checkbox" data-at-champ="regime" ${a.regime.actif ? 'checked' : ''}>
             Poste avec pauses — 15 min après 3 h, 30 min après 6 h</label>
@@ -1778,6 +1819,68 @@
         <span class="mini-note">Pour les commandes de cette case seulement : une personne dresse et passe le plat, l’autre monte directement.
           Seule, une personne fait les deux ; à plusieurs, elles se répartissent entre les deux postes.</span>
         ${bilan}</div>`;
+    }
+
+    /* Une équipe qui ne travaille que certains jours (retour d'usage du 01/10) :
+     * « s'il y a tant de vols Air France, une personne est consacrée au montage
+     * AF ; sinon elle est rattachée à un autre atelier ». Une seule forme de
+     * règle, qui se lit comme une phrase. Le moteur l'applique sur les vols du
+     * jour (voir appliquerConditions). */
+    equipesSinon(a) {
+      return a ? this.state.ateliers.filter(x => x.id !== a.id && x.service === a.service && (x.type === 'manuel' || x.type === 'robot')) : [];
+    }
+
+    compagniesDuJour() {
+      const n = new Map();
+      for (const c of this.classes || []) n.set(c.cie, (n.get(c.cie) || 0) + (c.vols || []).length);
+      return [...n].sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0])).map(x => x[0]);
+    }
+
+    /** Ce que la règle donne aujourd'hui, en une ligne ; null sans règle. */
+    etatCondition(a) {
+      const k = a && a.condition; if (!k) return null;
+      const compte = P.compteDuJour(this.classes, k.cie, k.mesure);
+      const vue = ((this.resultat && this.resultat.conditions) || []).find(r => r.atelier === a.id);
+      const nomDe = id => (this.state.ateliers.find(x => x.id === id) || {}).nom || '?';
+      const qui = k.cie === '*' ? 'Toutes les compagnies ont' : k.cie + ' a';
+      const unite = k.mesure === 'repas' ? 'repas' : compte > 1 ? 'vols' : 'vol';
+      const remplie = compte >= k.seuil;
+      let texte = `Aujourd’hui : ${esc(qui)} ${compte} ${unite} (au moins ${k.seuil}) → `;
+      if (remplie) texte += '<b>elle travaille</b>.';
+      else if (vue && vue.sansIssue) texte += '<b>elle travaille quand même</b> : aucune équipe de ce service ne travaille pour reprendre ses commandes.';
+      else {
+        const vers = vue && vue.vers ? vue.vers : k.sinon, renfort = vue ? vue.renforce : (k.renfort || k.sinon);
+        texte += `<b>elle ne travaille pas</b> ; ses commandes vont à « ${esc(nomDe(vers))} »`
+          + (a.personnes > 0 && renfort ? `, ${a.personnes > 1 ? 'ses ' + a.personnes + ' personnes' : 'sa personne'} renforce${a.personnes > 1 ? 'nt' : ''} « ${esc(nomDe(renfort))} »` : '') + '.';
+      }
+      return { remplie, compte, texte };
+    }
+
+    blocCondition(a) {
+      if (!a || (a.type !== 'manuel' && a.type !== 'robot')) return '';
+      const k = a.condition;
+      if (!k) return `<p class="at-cond-ajout"><button class="btn btn-sm" type="button" data-at-action="cond-ajouter"
+        title="Par exemple : une personne au montage AF seulement les jours où AF a au moins 6 vols ; sinon, elle rejoint le montage général">⚡ Ne travailler que certains jours (selon le nombre de vols)…</button></p>`;
+      const cies = this.compagniesDuJour();
+      if (k.cie !== '*' && !cies.includes(k.cie)) cies.push(k.cie);
+      const autres = this.equipesSinon(a);
+      const tous = this.state.ateliers.filter(x => x.id !== a.id && x.type !== 'handling');
+      const opt = (v, lib, sel) => `<option value="${esc(v)}"${sel ? ' selected' : ''}>${esc(lib)}</option>`;
+      const etat = this.etatCondition(a);
+      return `<div class="at-cond${etat && !etat.remplie ? ' off' : ''}">
+        <p class="at-cond-phrase"><span class="at-cond-eclair" aria-hidden="true">⚡</span> Cette équipe ne travaille que si
+          <select data-at-champ="cond-cie" aria-label="Quelle compagnie">${opt('*', 'toutes les compagnies', k.cie === '*')}${cies.map(c => opt(c, c, c === k.cie)).join('')}</select>
+          ${k.cie === '*' ? 'ont' : 'a'} au moins
+          <input type="number" min="1" max="99999" value="${k.seuil}" data-at-champ="cond-seuil" aria-label="Combien au moins">
+          <select data-at-champ="cond-mesure" aria-label="Vols ou repas">${opt('vols', 'vols', k.mesure !== 'repas')}${opt('repas', 'repas', k.mesure === 'repas')}</select>
+          ce jour-là.</p>
+        <p class="at-cond-phrase">Sinon, ses commandes passent à
+          <select data-at-champ="cond-sinon" aria-label="Quelle équipe reprend ses commandes">${autres.map(x => opt(x.id, x.nom, x.id === k.sinon)).join('')}</select>
+          et ses personnes à
+          <select data-at-champ="cond-renfort" aria-label="Quelle équipe reçoit ses personnes">${opt('', 'la même équipe', !k.renfort)}${tous.filter(x => x.id !== k.sinon).map(x => opt(x.id, x.nom, x.id === k.renfort)).join('')}</select>.
+          <button class="btn btn-sm at-cond-retirer" type="button" data-at-action="cond-retirer" title="Retirer la condition : l’équipe travaille tous les jours">Retirer</button></p>
+        ${etat ? `<p class="at-cond-etat ${etat.remplie ? 'oui' : 'non'}">${etat.texte}</p>` : ''}
+      </div>`;
     }
 
     rendreRecapCases(r) {

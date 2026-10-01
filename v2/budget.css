@@ -75,3 +75,4 @@
 .ca-table small{display:block;font-size:11px;color:var(--txt3);font-weight:400}
 .ca-table tr.ca-verif th{color:var(--accent2)}
 .ca-defile{max-height:420px;overflow:auto;overscroll-behavior:contain}
+.bu-repos{color:#b45309}

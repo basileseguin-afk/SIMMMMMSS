@@ -172,9 +172,17 @@
    */
   function bilan(o) {
     const f = o.f, vues = new Map(((o.resultat && o.resultat.ateliers) || []).map(v => [v.id, v]));
+    // Une équipe au repos ce jour-là (règle ⚡) : ses personnes sont payées là où
+    // elles travaillent (la vacation et les heures sup de l'équipe qu'elles renforcent).
+    const repos = new Map(((o.resultat && o.resultat.conditions) || []).filter(c => !c.remplie && !c.sansIssue).map(c => [c.atelier, c]));
     const lignes = (o.services || []).map(s => {
       const equipes = (o.ateliers || []).filter(a => a.service === s.id && a.type !== 'dispo')
-        .map(a => ({ a, ...coutEquipe(a, vues.get(a.id), f) }));
+        .map(a => {
+          const c = repos.get(a.id);
+          if (!c) return { a, ...coutEquipe(a, vues.get(a.id), f) };
+          const e = c.renforce ? coutEquipe(a, vues.get(c.renforce), f) : coutEquipe({ ...a, personnes: 0 }, null, f);
+          return { a, ...e, repos: c };
+        });
       const b = budgetJour(s.id, o.vols, f);
       const base = equipes.reduce((n, e) => n + e.base, 0), sup = equipes.reduce((n, e) => n + e.coutSup, 0);
       return { id: s.id, nom: s.nom, budget: b, equipes, base, sup, total: base + sup,
@@ -293,8 +301,10 @@
       return `<table class="bu-equipes"><thead><tr><th>Équipe</th>${cats.map(c => `<th title="${esc(eur(c.taux))} / h">${esc(c.nom)}</th>`).join('')}
         <th>Vacation</th><th>Finit à</th><th>Heures sup</th><th>Coût</th><th></th></tr></thead><tbody>
         ${l.equipes.map(e => {
-          const v = vues.get(e.a.id) || {}, essai = this.essais[e.a.id];
-          return `<tr data-bu-equipe="${esc(e.a.id)}"><th scope="row">${esc(e.a.nom)}<small>${e.personnes} pers.${e.ecart ? ` · <span class="bu-alerte">la composition compte ${e.ecart} de plus que l’équipe</span>` : ''}</small></th>
+          const v = vues.get(e.repos ? e.repos.renforce : e.a.id) || {}, essai = this.essais[e.a.id];
+          const nomEq = id => ((this.a.at().state.ateliers || []).find(x => x.id === id) || {}).nom || id;
+          const repos = e.repos ? ` · <span class="bu-repos">⚡ au repos aujourd’hui${e.repos.renforce ? ' : ses personnes renforcent « ' + esc(nomEq(e.repos.renforce)) + ' »' : ''}</span>` : '';
+          return `<tr data-bu-equipe="${esc(e.a.id)}"><th scope="row">${esc(e.a.nom)}<small>${e.personnes} pers.${repos}${e.ecart ? ` · <span class="bu-alerte">la composition compte ${e.ecart} de plus que l’équipe</span>` : ''}</small></th>
             ${cats.map(c => `<td><input type="number" min="0" max="99" class="bu-n" value="${e.parCat[c.id] || 0}" data-bu-compo="${esc(c.id)}" aria-label="${esc(c.nom)} dans ${esc(e.a.nom)}"></td>`).join('')}
             <td>${duree(e.presence)}</td><td>${hhmm(v.fin)}</td>
             <td>${e.sup ? duree(e.sup) + (e.plafondAtteint ? ' <span class="bu-alerte" title="Le plafond est atteint : le travail restant n’est pas fait">plafond</span>' : '') : '—'}</td>
