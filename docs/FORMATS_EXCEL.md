@@ -360,3 +360,19 @@ Feuille « Planche retour » (ou « Planche », « Retours », sinon la premièr
 Les classeurs exportés contiennent **les données réelles de l'unité** dès qu'elle
 est saisie. Le dépôt est public : `.gitignore` refuse les `*.xlsx`, `*.xls`,
 `*.xlsm` et `vols*.csv`. Travaillez-les dans `prive/`.
+
+### Feuille « Catégories » (classeur des ateliers)
+
+Un service qui travaille par catégories à lui (l'armement : trolleys bar,
+matériel thé/café…). Une ligne par catégorie et par compagnie.
+
+| Colonne | Sens |
+|---|---|
+| Service | le nom du service |
+| Catégorie | son nom (ex. `Trolleys bar`) |
+| Code | court, unique dans l'unité (ex. `TB`) ; vide = tiré du nom |
+| Compagnie | `toutes` (la valeur par défaut) ou une compagnie |
+| Minutes par vol | 0 = pas cette catégorie pour cette compagnie |
+
+Dans « Fabrications », une catégorie s'écrit `AF/@TB`. Sans la feuille, les
+catégories du site restent.

@@ -745,6 +745,14 @@
    * @param etat l'état de l'onglet Ateliers
    * @param ctx  { services:[{id,nom}], classes:[classe du moment], resultat? }
    */
+  /** « AF/BC », ou « AF/@TB » pour une catégorie d'un service (l'armement) ; null si illisible. */
+  function classeLue(x) {
+    const m = /^(.+)\/(@?[a-z0-9_-]+)$/i.exec(String(x ?? '').trim());
+    if (!m) return null;
+    const cab = m[2].toUpperCase();
+    return cab.startsWith('@') || P.CABINES.includes(cab) ? P.idClasse(m[1], cab) : null;
+  }
+
   function ateliersVersClasseur(etat, ctx) {
     const services = ctx.services || [];
     const nomDe = id => (services.find(s => s.id === id) || {}).nom || id;
@@ -842,10 +850,18 @@
       ['Retours à la plonge', RETOURS_ECRITS[P.sourceRetours(m)]],
       ...P.CABINES.map(c => ['Unités par vol ' + c, ((m.unites || {})[c] || {}).parVol || 0])];
 
+    // Les catégories propres à un service (l'armement) et leurs minutes par vol.
+    const cats = [['Service', 'Catégorie', 'Code', 'Compagnie', 'Minutes par vol']];
+    for (const [s, liste] of Object.entries(etat.categories || {})) for (const k of liste) {
+      const lignes = Object.entries(k.minutes || {});
+      if (!lignes.length) cats.push([nomDe(s), k.nom, k.id, null, null]);
+      for (const [cie, v] of lignes) cats.push([nomDe(s), k.nom, k.id, cie === '*' ? 'toutes' : cie, v]);
+    }
     return [
       { nom: 'Ateliers', lignes: ateliers },
       feuilleHoraires(etat, ctx),
       { nom: 'Fabrications', lignes: fab },
+      { nom: 'Catégories', lignes: cats },
       { nom: 'Man-minutes', lignes: mm },
       { nom: 'Débits robot', lignes: debitsRobot },
       { nom: 'Tunnels', lignes: tunnels },
@@ -868,6 +884,9 @@
         '   Ligne robot : « partagée » (défaut) — les robots d’un service tournent sur UNE ligne, un lot à la fois, matin et',
         '   après-midi ; « propre » — un second robot. Arrêts de la ligne : « 12:15-13:00 », chaque jour, pour toute la ligne.',
         'Fabrications : ce que fait chaque atelier, DANS L’ORDRE. Une ligne par lot ; plusieurs classes d’un lot se séparent par « + ».',
+        'Catégories : un service qui travaille par catégories à lui (l’armement : trolleys bar, matériel thé/café…). Une ligne par',
+        '   catégorie et par compagnie : ses minutes par vol (« toutes » : la valeur par défaut ; 0 : pas cette catégorie). Dans',
+        '   Fabrications, une catégorie s’écrit « AF/@TB » (la compagnie, puis @ et le code de la catégorie).',
         '   Pour ajouter une compagnie × classe à un atelier : ajoutez une ligne (Atelier, Ordre, ex. « AF/BC »).',
         'Man-minutes : celles qu’un atelier fixe pour une compagnie × classe, POUR TOUTE SA JOURNÉE (tous ses vols), à la place du barème. Absente = le barème.',
         'Débits robot : le débit d’une compagnie × classe sur un robot (plateaux/h). Absente = le débit du robot (feuille Ateliers).',
@@ -1116,6 +1135,30 @@
         ...(c.absorbe ? { absorbe: true } : renfort && renfort !== sinon && renfort !== a ? { renfort: renfort.id } : {}) };
     }
 
+    // Les catégories propres à un service : sans la feuille, celles du site restent.
+    const fCat = T.feuille(feuilles, 'Catégories', 'Categories');
+    if (fCat) {
+      const cats = {};
+      for (const o of T.enObjets(fCat.lignes).objets) {
+        err.essayer(fCat.nom, o._ligne, () => {
+          const sid = service(o.service);
+          if (!sid) throw new Error('service inconnu « ' + (o.service ?? '') + ' »');
+          const nom = String(o.categorie ?? '').trim();
+          if (!nom) throw new Error('catégorie sans nom');
+          const id = String(o.code ?? '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '')
+            || (nom.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().match(/[A-Z0-9]+/g) || ['CAT']).map(m => m[0]).join('').slice(0, 6);
+          const liste = cats[sid] || (cats[sid] = []);
+          let k = liste.find(x => x.id === id);
+          if (!k) { k = { id, nom, minutes: {} }; liste.push(k); }
+          const cie = String(o.compagnie ?? '').trim(), v = T.nombreDe(o.minutes_par_vol, null);
+          if (!cie || v === null) return;
+          if (!Number.isFinite(v) || v < 0) throw new Error('minutes par vol : nombre positif attendu');
+          k.minutes[/^(toutes?|\*)$/i.test(cie) ? '*' : cie.toUpperCase()] = v;
+        });
+      }
+      if (Object.keys(cats).length) out.categories = cats; else delete out.categories;
+    }
+
     const fH = T.feuille(feuilles, 'Horaires');
     if (fH) lireHoraires(fH, atelierNomme, err);
 
@@ -1135,9 +1178,9 @@
           if (a.type === 'handling') throw new Error(a.nom + ' : un handling charge des vols, il n’a pas de liste de commandes');
           const ordre = T.nombreDe(o.ordre, Infinity);
           const cls = String(o.compagnies_classes ?? '').split(SEP_CLASSES).filter(Boolean).map(x => {
-            const m = /^(.+)\/([a-z]+)$/i.exec(x.trim());
-            if (!m || !P.CABINES.includes(m[2].toUpperCase())) throw new Error('compagnie × classe illisible « ' + x + ' » (ex. AF/BC)');
-            return P.idClasse(m[1], m[2].toUpperCase());
+            const id = classeLue(x);
+            if (!id) throw new Error('compagnie × classe illisible « ' + x + ' » (ex. AF/BC, ou AF/@TB pour une catégorie)');
+            return id;
           });
           if (!cls.length) throw new Error('aucune compagnie × classe');
           if (!parAtelier.has(a)) parAtelier.set(a, []);
@@ -1160,12 +1203,12 @@
       for (const o of T.enObjets(fMM.lignes).objets) {
         const a = atelierNomme(o.atelier, fMM.nom, o._ligne); if (!a) continue;
         err.essayer(fMM.nom, o._ligne, () => {
-          const m = /^(.+)\/([a-z]+)$/i.exec(String(o.compagnie_classe ?? '').trim());
-          if (!m || !P.CABINES.includes(m[2].toUpperCase())) throw new Error('compagnie × classe illisible « ' + (o.compagnie_classe ?? '') + ' » (ex. AF/BC)');
+          const id = classeLue(o.compagnie_classe);
+          if (!id) throw new Error('compagnie × classe illisible « ' + (o.compagnie_classe ?? '') + ' » (ex. AF/BC)');
           const v = T.nombreDe(o.man_minutes, null);
           if (v === null) return;
           if (!Number.isFinite(v) || v < 0) throw new Error('man-minutes : nombre positif attendu');
-          (a.minutes || (a.minutes = {}))[P.idClasse(m[1], m[2].toUpperCase())] = v;
+          (a.minutes || (a.minutes = {}))[id] = v;
         });
       }
     }
@@ -1322,6 +1365,7 @@
     for (const a of out.ateliers) for (const l of a.lots) for (const id of l) {
       if (exclues.has(id)) { err.ajouter(fF ? fF.nom : null, null, id + ' est retirée (feuille Classes) mais ' + a.nom + ' la fabrique encore'); continue; }
       if (programme.has(id) || ajoutees.has(id)) continue;
+      if (id.includes('/@')) continue;   // une catégorie d'un service : elle vient de ses minutes, pas du programme
       const i = id.lastIndexOf('/');
       out.ajoutees = [...(out.ajoutees || []), { cie: id.slice(0, i), cabine: id.slice(i + 1) }];
       ajoutees.add(id); notes.push(id);

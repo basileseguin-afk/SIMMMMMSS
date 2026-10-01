@@ -496,7 +496,10 @@
   /** « TX/BC » → « TX BC » : le nom court d'une commande, pour nommer ses chemins et ses cases. */
   function etiquette(id) {
     const i = String(id).lastIndexOf('/');
-    return i < 0 ? String(id) : id.slice(0, i) + ' ' + id.slice(i + 1);
+    if (i < 0) return String(id);
+    const cab = id.slice(i + 1);
+    // Une catégorie d'un service (« AF/@TB ») : son nom, « AF Trolleys bar ».
+    return id.slice(0, i) + ' ' + (cab.startsWith('@') && P.nomCabine ? P.nomCabine(cab) : cab);
   }
 
   /** Le chemin propre d'une commande, ou rien. */
@@ -1231,6 +1234,8 @@
           x.lots = x.lots.map(l => l.filter(id => id !== cmd)).filter(l => l.length);
         }
         if (!chez) { insererParEcheance(a, cmd, o.classes); n++; }
+        // Une catégorie d'un service (« AF/@TB ») n'a pas de flux : elle ne passe que par lui.
+        if (String(cmd).includes('/@')) continue;
         const f = fluxDe(etat, cmd);
         if (!f) baseDeClasse(etat, cmd, s, o);
         else if (!P.servicesDuParcours(f).includes(s)) horsFlux.push(cmd);
@@ -1284,6 +1289,8 @@
 
   /** La nature d'un service : celle de ses équipes, sinon devinée d'après ce qu'il est. */
   function natureService(etat, service, nomService) {
+    // Un service qui travaille par catégories à lui (l'armement : trolleys bar…).
+    if (etat.categories && etat.categories[service]) return 'categories';
     const types = (etat.ateliers || []).filter(a => a.service === service).map(a => a.type || 'manuel');
     for (const t of ['handling', 'lavage', 'dispo', 'robot', 'manuel']) if (types.includes(t)) return t;
     if (service === 'handling' || /handling|chargement/i.test(nomService || '')) return 'handling';

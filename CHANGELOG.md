@@ -5,6 +5,27 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-01 — Un service qui travaille par catégories à lui (l'armement)
+
+Retour d'usage : « l'armement est un service qui ne travaille pas en fonction
+de BC, PC, Éco, SPML, mais en fonction d'autres catégories » — les trolleys
+bar, le matériel (sachets de thé, café…), avec un travail par vol selon la
+compagnie.
+
+- Fiche d'un service : « Ce service… travaille par catégories à lui ». On crée
+  ses catégories, et on donne leurs minutes par vol dans un tableau
+  compagnies × catégories (« Toutes les compagnies » = la valeur par défaut ;
+  case vide = cette valeur ; 0 = pas cette catégorie pour la compagnie).
+- Ses équipes cochent compagnie × catégorie (« AF · Trolleys bar ») dans leur
+  grille, comme les autres cochent compagnie × classe.
+- Moteur (v1 et v2) : `classesCategories`, une commande `AF/@TB` par
+  compagnie et catégorie, minutes par vol × vols, échéance du vol ; le
+  handling l'attend pour charger le vol ; le service n'est pas un trou sur le
+  chemin des repas. Libellés en clair (`declarerCategories`, `nomCabine`).
+- Excel : feuille « Catégories », et `AF/@TB` dans « Fabrications ».
+- Tests : `tests/categories.test.cjs` et `tests/v2/categories.test.cjs`,
+  `tests/categories-browser.cjs` ; `tests/excel-browser.cjs` adapté.
+
 ## 2026-10-01 — À la chaîne seulement pour les commandes qui passent par l'étape
 
 Retour d'usage : une équipe fait Prépa + Montage pour CRL et TX PC, puis le

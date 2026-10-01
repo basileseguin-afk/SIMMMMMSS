@@ -88,15 +88,23 @@
     CREW: 'Équipage', SPML: 'Repas spéciaux' };
 
   const idClasse = (cie, cabine) => String(cie).trim().toUpperCase() + '/' + cabine;
-  /** « AF/BC » en toutes lettres : « AF · Business ». */
+  /* Les catégories propres à un service (« AF/@TB » : AF, Trolleys bar) : leurs
+   * noms, déclarés par l'interface, pour les écrire en clair. */
+  const NOMS_CATEGORIES = new Map();
+  function declarerCategories(categories) {
+    NOMS_CATEGORIES.clear();
+    for (const liste of Object.values(categories || {})) for (const k of (liste || [])) if (k && k.id) NOMS_CATEGORIES.set(String(k.id), String(k.nom || k.id));
+  }
+  const nomCabine = cab => (String(cab).startsWith('@') ? NOMS_CATEGORIES.get(cab.slice(1)) || cab.slice(1) : NOM_CABINE[cab] || cab);
+  /** « AF/BC » en toutes lettres : « AF · Business » ; « AF/@TB » : « AF · Trolleys bar ». */
   const libelleClasse = id => {
     const i = String(id).lastIndexOf('/');
     if (i < 0) return String(id);
     const cab = String(id).slice(i + 1);
-    return String(id).slice(0, i) + ' · ' + (NOM_CABINE[cab] || cab);
+    return String(id).slice(0, i) + ' · ' + nomCabine(cab);
   };
   /** Un texte où chaque « AF/BC » est écrit en clair. */
-  const enClair = texte => String(texte ?? '').replace(/[A-Z0-9]{1,40}\/(BC|PC|YC|CREW|SPML)\b/g, libelleClasse);
+  const enClair = texte => String(texte ?? '').replace(/[A-Z0-9]{1,40}\/(BC|PC|YC|CREW|SPML|@[A-Z0-9_-]{1,40})(?![A-Z0-9_-])/g, libelleClasse);
 
   /**
    * Les compagnies × classes présentes dans un programme de vols.
@@ -123,6 +131,47 @@
         c.pax += pax;
         c.vols.push({ id: v.id, pax, depart, echeance: depart - delai });
         c.echeance = Math.min(c.echeance, depart - delai);
+      }
+    }
+    return [...parId.values()].sort((a, b) => a.echeance - b.echeance || a.id.localeCompare(b.id));
+  }
+
+  /*
+   * UN SERVICE QUI TRAVAILLE PAR CATÉGORIES (retour d'usage du 01/10 :
+   * « l'armement ne travaille pas en fonction de BC, PC, Éco, SPML, mais
+   * d'autres catégories » — les trolleys bar, le matériel thé/café…).
+   *
+   *   categories: { [service]: [{ id, nom, minutes: { '*': 10, AF: 15 } }] }
+   *
+   * Chaque départ d'une compagnie qui a des minutes pour une catégorie (les
+   * siennes, sinon celles de « * ») donne une commande « AF/@TB » à ce service
+   * seul : minutes par vol × vols, échéance du vol. Ses équipes la cochent
+   * comme une autre ; le handling l'attend pour charger le vol.
+   */
+  function classesCategories(vols, categories, options) {
+    const o = options || {};
+    const delai = o.delaiChargement === undefined ? 45 : o.delaiChargement;
+    const parId = new Map();
+    for (const [service, liste] of Object.entries(categories || {})) {
+      for (const k of (Array.isArray(liste) ? liste : [])) {
+        if (!k || !k.id) continue;
+        const min = k.minutes || {};
+        for (const v of vols || []) {
+          if (v.sens && v.sens !== 'DEP') continue;
+          const depart = v.std === undefined ? v.heure : v.std;
+          if (!Number.isFinite(depart) || !v.cie) continue;
+          const cie = String(v.cie).trim().toUpperCase();
+          const m = Number.isFinite(+min[cie]) && min[cie] !== '' && min[cie] !== null ? +min[cie] : Number.isFinite(+min[TOUTES]) && min[TOUTES] !== '' && min[TOUTES] !== null ? +min[TOUTES] : null;
+          if (!(m > 0)) continue;
+          const id = cie + '/@' + k.id;
+          let c = parId.get(id);
+          if (!c) {
+            c = { id, cie, cabine: '@' + k.id, categorie: k.id, service, minutes: m, pax: 0, vols: [], echeance: Infinity };
+            parId.set(id, c);
+          }
+          c.vols.push({ id: v.id, pax: 0, depart, echeance: depart - delai });
+          c.echeance = Math.min(c.echeance, depart - delai);
+        }
       }
     }
     return [...parId.values()].sort((a, b) => a.echeance - b.echeance || a.id.localeCompare(b.id));
@@ -217,6 +266,8 @@
 
   /** Minutes par vol d'une compagnie × classe dans un service, ou null. */
   function minutesParVol(table, classe) {
+    // Une catégorie propre à un service porte ses minutes par vol.
+    if (classe && classe.categorie) return Number.isFinite(classe.minutes) ? classe.minutes : null;
     if (!table) return null;
     const propre = table[cleBareme(classe.cie, classe.cabine)];
     if (Number.isFinite(propre)) return propre;
@@ -399,6 +450,8 @@
       const id = (opts.parcoursClasse || {})[c.id] || (opts.parcoursCabine || {})[c.cabine];
       const p = id && parId.get(id);
       if (p) out.set(c.id, preparer(p));
+      // Une catégorie d'un service ne passe que par lui.
+      else if (c.categorie && c.service) out.set(c.id, preparer({ id: '@' + c.service, nom: c.service, noeuds: [c.service], liens: [] }));
     }
     return out;
   }
@@ -1202,7 +1255,11 @@
     // Les compagnies × classes viennent du programme de vols, sauf quand
     // l'appelant en fournit une liste : l'utilisateur peut en retirer qu'il ne
     // fabrique pas, et en ajouter que le programme ne porte pas encore.
-    const classes = opts.classes || classesDeVols(opts.vols, { delaiChargement: opts.delaiChargement });
+    // Plus les commandes des services qui travaillent par catégories (l'armement).
+    const classes = (opts.classes || classesDeVols(opts.vols, { delaiChargement: opts.delaiChargement })).filter(c => !c.categorie)
+      .concat(classesCategories(opts.vols, opts.categories, { delaiChargement: opts.delaiChargement }))
+      .sort((a, b) => a.echeance - b.echeance || a.id.localeCompare(b.id));
+    const servicesCategories = new Set(Object.keys(opts.categories || {}));
     const parClasse = new Map(classes.map(c => [c.id, c]));
     // Le handling travaille le jour J des vols : jamais la veille.
     // Les équipes qui ne travaillent que selon le volume du jour (règle ⚡) : celles
@@ -1252,6 +1309,7 @@
       // Un robot va à son débit, une plonge à celui de ses tunnels, une mise à
       // disposition ne travaille pas : aucun n'a besoin de barème.
       if (a.type === 'robot' || a.type === 'lavage' || a.type === 'dispo' || a.type === 'handling') continue;
+      if (servicesCategories.has(a.service)) continue;   // ses minutes sont dans ses catégories
       if (!bareme[a.service]) anomalies.push({ code: 'bareme', atelier: a.id,
         message: a.nom + ' : aucun barème pour « ' + nom(a.service) + ' », sa durée est nulle tant qu’il n’est pas renseigné.' });
     }
@@ -1425,7 +1483,8 @@
       for (const [id] of producteurs) {
         const route = routes.get(id); if (!route) continue;
         for (const s of route.services) {
-          if (produit.has(cle(s, id)) || fusionPar.has(cle(s, id)) || lavages.has(s) || servicesHandling.has(s)) continue;
+          // Un service par catégories ne prépare pas les commandes : il n'est pas un trou sur leur chemin.
+          if (produit.has(cle(s, id)) || fusionPar.has(cle(s, id)) || lavages.has(s) || servicesHandling.has(s) || servicesCategories.has(s)) continue;
           if (!trous.has(s)) trous.set(s, []);
           trous.get(s).push(id);
         }
@@ -2335,9 +2394,9 @@
 
   const api = {
     MINUTES_PAR_JOUR, CABINES, TYPES,
-    minutes, hhmm, idClasse, libelleClasse, enClair,
+    minutes, hhmm, idClasse, libelleClasse, nomCabine, enClair,
     REGIME_DEFAUT, normaliserRegime, travailDuPoste, executerTache,
-    classesDeVols, volsDesClasses, compteDuJour, appliquerConditions, dureeHandling, compagniesDe, AVANCE_HANDLING, BAREME_DEMO, RENDEMENT_DEMO, travailClasse, travailDans, dureeFusion,
+    classesDeVols, classesCategories, declarerCategories, volsDesClasses, compteDuJour, appliquerConditions, dureeHandling, compagniesDe, AVANCE_HANDLING, BAREME_DEMO, RENDEMENT_DEMO, travailClasse, travailDans, dureeFusion,
     PAX_TYPE, TOUTES, cleBareme, normaliserBareme, minutesParVol,
     arcsDuParcours, servicesDuParcours, routesDesClasses,
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,

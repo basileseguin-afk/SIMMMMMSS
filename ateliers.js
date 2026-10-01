@@ -127,6 +127,27 @@
     else { delete a.debit; delete a.personnesMin; }
   }
 
+  /** Les catégories propres à un service (l'armement : trolleys bar, thé/café…),
+   *  avec leurs minutes par vol selon la compagnie (« * » : toutes). Bornées. */
+  function categoriesDe(brut) {
+    const out = {};
+    if (!brut || typeof brut !== 'object' || Array.isArray(brut)) return out;
+    for (const [service, liste] of Object.entries(brut).slice(0, 100)) {
+      if (!Array.isArray(liste)) continue;
+      const vus = new Set();
+      out[String(service).slice(0, 160)] = liste.slice(0, 30).filter(k => k && typeof k === 'object').map(k => {
+        const id = String(k.id ?? '').toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 40);
+        const minutes = {};
+        for (const [cie, v] of Object.entries(k.minutes && typeof k.minutes === 'object' ? k.minutes : {}).slice(0, 300)) {
+          const c = cie === '*' ? '*' : String(cie).trim().toUpperCase().slice(0, 40);
+          if (c && v !== null && v !== '' && Number.isFinite(+v) && +v >= 0) minutes[c] = Math.round(+v * 10) / 10;
+        }
+        return { id, nom: String(k.nom ?? id).slice(0, 80) || id, minutes };
+      }).filter(k => k.id && !vus.has(k.id) && vus.add(k.id));
+    }
+    return out;
+  }
+
   /** La règle ⚡ d'une équipe (voir moteur : appliquerConditions), bornée. Seules
    *  les équipes qui préparent des commandes (à la main ou au robot) en portent une. */
   function conditionDe(a, type) {
@@ -261,8 +282,9 @@
     // Les changements d'organisation déjà faits une fois (ex. « robot-eco ») :
     // ils ne se refont pas à chaque ouverture.
     const migrations = [...new Set((Array.isArray(brut.migrations) ? brut.migrations : []).map(String))].slice(0, 50);
+    const categories = categoriesDe(brut.categories);
     return { schema: 'ory-ateliers', version: 1, ateliers, exclues, ajoutees, materiel,
-      parcours, parcoursCabine, parcoursClasse, ...(migrations.length ? { migrations } : {}) };
+      parcours, parcoursCabine, parcoursClasse, ...(Object.keys(categories).length ? { categories } : {}), ...(migrations.length ? { migrations } : {}) };
   }
 
   const vide = () => ({ schema: 'ory-ateliers', version: 1, ateliers: [], exclues: [], ajoutees: [],
@@ -389,7 +411,15 @@
       return (this.a.classes() || []).filter(c => exclues.has(c.id));
     }
 
+    /** Les commandes d'un service qui travaille par catégories, ou null pour un autre. */
+    classesDe(service) {
+      const cats = (this.state.categories || {})[service]; if (!cats) return null;
+      const r = this.a.reglages ? this.a.reglages() : {};
+      return P.classesCategories(this.a.vols(), { [service]: cats }, { delaiChargement: r.delaiChargement });
+    }
+
     calculer() {
+      if (P.declarerCategories) P.declarerCategories(this.state.categories);
       const r = this.a.reglages ? this.a.reglages() : {};
       try {
         this.resultat = P.simuler({
@@ -398,6 +428,8 @@
           bareme: r.bareme, rendement: r.rendement, regime: r.regime, delaiChargement: r.delaiChargement,
           parcours: this.state.parcours, parcoursCabine: this.state.parcoursCabine,
           parcoursClasse: this.state.parcoursClasse,
+          // Les services qui travaillent par catégories propres (l'armement).
+          categories: this.state.categories || {},
           noms: Object.fromEntries((this.a.fantomes ? this.a.fantomes() : []).map(f => [f.id, f.nom])
             .concat(this.a.services().map(s => [s.id, s.nom])))
         });
