@@ -38,6 +38,7 @@
     // Un bras de robot : un socle, deux segments, une pince.
     robot: '<path d="M4 21h10M9 21v-3.5"/><circle cx="9" cy="15.5" r="2"/><path d="M10.4 14.1 15 9.5"/><circle cx="16" cy="8.5" r="1.5"/><path d="M17.2 7.4 20 5M19 9.5l1.5 1.5M16.5 11.5l1 2"/>',
     check: '<path d="M4.5 12.5 9.5 17.5 19.5 6.5"/>',
+    euro: '<circle cx="12" cy="12" r="9"/><path d="M15.5 8.6a4.3 4.3 0 1 0 0 6.8M6.8 10.8h6.4M6.8 13.4h6.4"/>',
     sablier: '<path d="M6.5 3h11M6.5 21h11M7.5 3c0 5 9 5 9 9s-9 4-9 9M16.5 3c0 5-9 5-9 9s9 4 9 9"/>',
     alerte: '<path d="M12 3.5 2.5 20h19z"/><path d="M12 10v4.5M12 17.2v.3"/>',
     croix: '<path d="M6 6l12 12M18 6 6 18"/>',

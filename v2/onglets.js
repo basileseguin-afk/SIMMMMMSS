@@ -31,7 +31,10 @@
       { id: 'at-grille', nom: 'Parcours des commandes', ico: 'fleche' },
       { id: 'at-planning', nom: 'Planning des équipes', ico: 'journee' },
       { id: 'at-repas', nom: 'Commandes', ico: 'plateau' },
-      { id: 'at-recap', nom: 'Tableau des équipes', ico: 'service' }
+      { id: 'at-recap', nom: 'Tableau des équipes', ico: 'service' },
+      // Version 2 : le budget de la main-d'œuvre.
+      { id: 'bu-jour', nom: 'Budget du jour', ico: 'euro' },
+      { id: 'bu-param', nom: 'Paramètres financiers', ico: 'curseurs' }
     ],
     reglages: [
       { id: 'rg-minutes', nom: 'Minutes', ico: 'chrono' },
@@ -80,6 +83,13 @@
       resume: 'Ce que vous essayez',
       pages: [
         { id: 'rg-simulation', intro: 'Tous les réglages de la simulation, au même endroit : horaires des vols, retours à la plonge et boucle du matériel, rythme et pauses.' }
+      ] },
+    // Version 2 : ce que coûte la journée, face au budget de chaque service.
+    { id: 'budget', nom: 'Budget', ico: 'euro', couleur: 'var(--c-budget)',
+      resume: 'Ce que la journée coûte',
+      pages: [
+        { id: 'bu-jour', intro: 'Le budget du jour de chaque service, face au coût de ce que vous avez planifié : vacations et heures sup.' },
+        { id: 'bu-param', intro: 'Taux horaires par catégorie, heures sup, budgets du mois, capacité des avions. Valeurs d’exemple fictives.' }
       ] },
     { id: 'resultats', nom: 'Résultats', ico: 'journee', couleur: 'var(--c-journee)',
       resume: 'Ce que la journée donne',

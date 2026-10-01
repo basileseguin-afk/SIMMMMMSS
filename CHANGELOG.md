@@ -5,6 +5,30 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-01 — Version 2 : le budget de la main-d'œuvre et les heures sup
+
+Retour d'usage : le siège donne un budget mensuel de labor cost ; le
+contrôleur de gestion le partage par service et par jour selon les vols (et
+le remplissage pour certains services) ; le chef de service planifie face au
+budget du jour ; une personne est payée sa vacation entière, les heures sup
+×1,25 dans un plafond par jour.
+
+- Moteur v2 : option `heuresSup` — l'équipe en retard reste jusqu'au
+  plafond ; chaque équipe porte sa présence et ses heures sup.
+- Nouvelle partie **Budget** (v2) : *Budget du jour* (par service : budget,
+  vacations, heures sup, coût, écart ; composition des équipes par
+  catégorie ; « Et avec une personne de plus ? » rejoue la journée et
+  compare) et *Paramètres financiers* (taux par catégorie, heures sup,
+  mois, budgets mensuels aux vols ou au remplissage, capacité des avions).
+- Tuile Budget sur l'accueil, clé `ory-budget-v1` dans la sauvegarde.
+- Valeurs d'exemple fictives seulement.
+
+Fichiers : `v2/budget.js`, `v2/budget.css`, `v2/moteur/production.js`,
+`v2/ateliers.js`, `v2/sim.js`, `v2/onglets.js`, `v2/icones.js`,
+`v2/demarrage.js`, `v2/theme.css`, `v2/index.html`,
+`tests/v2/heures-sup.test.cjs`, `tests/v2/budget.test.cjs`,
+`tests/v2-budget-browser.cjs`, `docs/V2.md`.
+
 ## 2026-10-01 — Version 2 : une copie du site pour aller plus loin
 
 Demande : dupliquer la simulation actuelle sur le site, pour avancer sur une

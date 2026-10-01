@@ -737,11 +737,12 @@ function initAteliers(){
     vols:()=>flights,
     classes:()=>MoteurProduction.classesDeVols(flights,{delaiChargement:CFG.loadDelay}),
     liaisons:liaisonsServices,
-    reglages:()=>(Sim.reglages?Sim.reglages.pourMoteur():{delaiChargement:CFG.loadDelay}),
+    // Version 2 : les heures sup permises viennent des paramètres financiers.
+    reglages:()=>({...(Sim.reglages?Sim.reglages.pourMoteur():{delaiChargement:CFG.loadDelay}),heuresSup:window.OrlyBudget?OrlyBudget.Budget.heuresSup():null}),
     // Le plan dit « aménagé » d'après les ateliers : il doit suivre leur saisie.
     // La liste du barème marque les services qui portent une équipe : elle doit
     // donc se redessiner quand les ateliers bougent.
-    change:()=>{majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();},
+    change:()=>{majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();if(Sim.budget)Sim.budget.rendre();},
     // Une case se règle dans le chemin d'une commande : l'ouvrir d'ailleurs y mène.
     onglet:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
     // Le chemin d'une commande mène à son flux et à ses services (Mon unité).
@@ -859,6 +860,7 @@ function etatDemarrage(){
     reglages:{ delai:CFG.loadDelay, decalage:CFG.shift,
                rendement:Sim.reglages?Sim.reglages.etat.rendement:1,
                pauses:Sim.reglages?((Sim.reglages.etat.regime||{}).seuils||[]).length:0 },
+    budget:resumeBudget(),
     journee:{ calculee:!!(r.lots&&r.lots.length), suivies:(r.indicateurs||{}).classesSuivies||0,
               aHeure:(r.indicateurs||{}).aHeure||0,
               fin:Number.isFinite((r.indicateurs||{}).finDerniere)?MoteurProduction.hhmm(r.indicateurs.finDerniere):null }
@@ -960,6 +962,29 @@ function majHauteurEntete(){
   document.documentElement.style.setProperty('--haut-entete',Math.round(so.getBoundingClientRect().bottom)+'px');
 }
 window.addEventListener('resize',()=>requestAnimationFrame(majHauteurEntete));
+/* ==========================================================================
+ *  VERSION 2 — LE BUDGET (budget.js)
+ * ==========================================================================*/
+function initBudget(){
+  if(!window.OrlyBudget||!Sim.ateliers)return;
+  Sim.budget=new OrlyBudget.Budget({
+    at:()=>Sim.ateliers,
+    services:servicesDisponibles,
+    vols:()=>flights,
+    // Les heures sup changent la journée : on la rejoue (le reste suit).
+    recalculer:()=>Sim.ateliers.rendre(),
+    notify:toast
+  });
+}
+/* Ce que la tuile d'accueil dit du budget. */
+function resumeBudget(){
+  if(!window.OrlyBudget||!Sim.budget||!Sim.ateliers)return null;
+  try{
+    const b=Sim.budget.bilan(),eur=n=>Math.round(n).toLocaleString('fr-FR')+' €';
+    return{budget:b.budget?eur(b.budget):null,cout:eur(b.total),dessus:b.ecart!=null&&b.ecart<0,
+      sup:b.heuresSup?Math.round(b.heuresSup/60*10)/10+' h ('+eur(b.sup)+')':null};
+  }catch(e){return null;}
+}
 function initOnglets(){
   if(!window.OrlyOnglets)return;
   Sim.onglets=new OrlyOnglets.SousOnglets({
@@ -973,6 +998,7 @@ function initOnglets(){
       if(id==='v-departs')renderFlights();
       if(id==='v-planche')renderPlanche();
       if(id==='rg-simulation'&&Sim.ateliers)Sim.ateliers.rendreMateriel(Sim.ateliers.resultat);
+      if((id==='bu-jour'||id==='bu-param')&&Sim.budget)Sim.budget.rendre();
       if(id==='u-lecture'&&Sim.flows){Sim.flows.refresh();renderControles();}
       // La fenêtre d'une case se cale sous la barre des onglets, mesurée une fois visible.
       if(id==='at-chemins'&&Sim.ateliers)Sim.ateliers.parcours.placeTiroir();
@@ -1629,7 +1655,9 @@ const PARTIES = [
   { cle:'ory-modele-v1',    nom:'barème et règles de poste', valider:r => window.OrlyReglages.valider(r) },
   // Où l'on a posé les services dans les diagrammes : une préférence, mais un
   // tracé soigné qu'on ne veut pas refaire.
-  { cle:'ory-graphes-v1',   nom:'disposition des diagrammes', valider:r => window.OrlyGraphe.validerPositions(r) }
+  { cle:'ory-graphes-v1',   nom:'disposition des diagrammes', valider:r => window.OrlyGraphe.validerPositions(r) },
+  // Version 2 : taux, budgets, capacités (valeurs réelles : jamais dans le dépôt).
+  { cle:'ory-budget-v1',    nom:'budget et taux',          valider:r => window.OrlyBudget.valider(r) }
 ];
 
 function sauvegardeComplete() {
@@ -2152,6 +2180,7 @@ etape('cases et chemins',initAteliers); etape('réglages',initWorkbench); etape(
 etape('handling',initHandlingVols); etape('robot',migrerRobot);
 etape('planche retour',()=>{initPlanche();renderPlanche();});
 etape('mon unité',initUnite);
+etape('budget',initBudget);
 // Les retours et le matériel se règlent dans les Réglages : leur panneau existe maintenant.
 etape('réglages de la simulation',()=>{if(Sim.ateliers)Sim.ateliers.rendreMateriel(Sim.ateliers.resultat);});
 // Le fil de mise en route vient en dernier : il relit les autres, il ne peut

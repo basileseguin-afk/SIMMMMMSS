@@ -1109,6 +1109,11 @@
    */
   function simuler(p) {
     const opts = p || {};
+    // Heures supplémentaires (version 2) : une équipe dont le travail n'est pas
+    // fini à la fin de sa présence reste, jusqu'à `plafond` minutes de plus,
+    // plutôt que de partir en laissant des commandes en retard. Sans l'option,
+    // rien ne change : l'équipe part à la fin de sa présence.
+    const SUP = opts.heuresSup && opts.heuresSup.actif !== false && +opts.heuresSup.plafond > 0 ? +opts.heuresSup.plafond : 0;
     const bareme = opts.bareme ? normaliserBareme(opts.bareme).bareme : BAREME_DEMO;
     const rendement = opts.rendement === undefined ? RENDEMENT_DEMO : opts.rendement;
     if (!(rendement > 0)) throw new Error('Le rendement doit être strictement positif.');
@@ -1456,7 +1461,10 @@
       const pauses = a.type === 'robot' ? fusionnerPauses([pausesDe(a), lignes.get(cleLigne(a)).arrets]) : pausesDe(a);
       const depart = vue.debut;
       const regime = normaliserRegime(a.regime, opts.regime);
-      const finPoste = regime.actif ? depart + regime.presence : Infinity;
+      // La présence payée, puis les heures sup permises : l'équipe s'en va au plus tard à la fin des deux.
+      const finPoste = regime.actif ? depart + regime.presence + SUP : Infinity;
+      vue.debutPoste = depart;
+      vue.presence = regime.actif ? regime.presence : null;
       const prises = new Set();   // pauses de régime déjà prises dans ce poste
       let cumul = 0;              // travail effectif depuis le début du poste
       vue.finPoste = Number.isFinite(finPoste) ? finPoste : null;
@@ -1585,7 +1593,7 @@
         const pistes = [];
         for (const x of groupe) {
           const vx = parId.get(x.id), rx = normaliserRegime(x.regime, opts.regime);
-          const dx = vx.debut, fx = rx.actif ? dx + rx.presence : Infinity, px = pausesDe(x);
+          const dx = vx.debut, fx = rx.actif ? dx + rx.presence + SUP : Infinity, px = pausesDe(x);
           // Sans liste de tunnels : un seul, s'il y a quelqu'un pour le tenir.
           const tournent = Array.isArray(x.tunnels) && x.tunnels.length ? tunnelsQuiTournent(x).tournent : (x.personnes > 0 ? [{ nom: 'Tunnel' }] : []);
           // Les temps saisis sont ceux d'un tunnel normal ; un tunnel « ×2 » lave
@@ -2022,6 +2030,15 @@
           + 'du matériel attend jusqu’à ' + dureeLisible(plonge.attenteMax) + ' avant d’être lavé.'
           + (plonge.depassements.length ? ' Les retours dépassent son débit (' + Math.round(plonge.capacite) + ' u/h) de '
             + plonge.depassements.map(d => hhmm(d.de) + ' à ' + hhmm(d.a)).join(', ') + '.' : '') });
+    }
+
+    // Les heures sup de chaque équipe : ce qu'elle a travaillé après sa présence.
+    // Une tâche coupée par la fin du poste a fait travailler l'équipe jusqu'à cette fin.
+    for (const v of suivi) {
+      if (v.presence == null || !Number.isFinite(v.debutPoste)) { v.heuresSup = 0; continue; }
+      const coupee = v.lots.some(l => l.horsPoste && l.fait > 0) ? v.debutPoste + v.presence + SUP : -Infinity;
+      const fin = Math.max(v.fin ?? -Infinity, coupee);
+      v.heuresSup = Number.isFinite(fin) ? Math.max(0, Math.min(SUP, fin - (v.debutPoste + v.presence))) : 0;
     }
 
     const suivies = Object.values(derniers).filter(c => !c.absente);

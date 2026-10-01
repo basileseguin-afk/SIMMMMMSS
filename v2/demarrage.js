@@ -144,10 +144,17 @@
       { texte: 'Rythme ' + String(r.rendement ?? 1).replace('.', ',')
         + ' · ' + pluriel(r.pauses ?? 0, 'pause') + ' par poste', etat: 'fait' }];
     const resultats = [ligne('journee', 'Journée')];
+    // Version 2 : le budget.
+    const bu = e.budget || {};
+    const budget = [bu.budget
+      ? { texte: 'Coût ' + bu.cout + ' pour un budget de ' + bu.budget + (bu.dessus ? ' : au-dessus' : ' : dans le budget'), etat: bu.dessus ? 'verifier' : 'fait' }
+      : { texte: 'Saisissez le budget du mois de chaque service', etat: 'afaire' },
+      { texte: 'Heures sup : ' + (bu.sup || 'aucune'), etat: 'fait' }];
     return [
       { partie: 'donnees', etat: pire(donnees.map(l => l.etat)), lignes: donnees },
       { partie: 'organisation', etat: pire(organisation.map(l => l.etat)), lignes: organisation },
       { partie: 'reglages', etat: 'fait', lignes: reglages },
+      { partie: 'budget', etat: pire(budget.map(l => l.etat)), lignes: budget },
       { partie: 'resultats', etat: pire(resultats.map(l => l.etat)), lignes: resultats }
     ];
   }

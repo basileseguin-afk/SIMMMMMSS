@@ -27,7 +27,7 @@
   --accent:#0f766e; --accent2:#115e59; --accent-doux:#ecfdf8;
   --on-accent:#ffffff;
   /* étapes : les mêmes teintes, plus nettes */
-  --c-vols:#2563eb; --c-equipes:#059669; --c-temps:#7c3aed; --c-journee:#db2777; --c-unite:#64748b;
+  --c-vols:#2563eb; --c-equipes:#059669; --c-temps:#7c3aed; --c-journee:#db2777; --c-unite:#64748b; --c-budget:#b45309;
   /* états */
   --ok:#067647; --attente:#b54708; --retard:#d92d20;
   --ok-fill:#ecfdf3; --warn-fill:#fffaeb; --warn-stroke:#dc6803; --bad-fill:#fef3f2; --bad-stroke:#d92d20;
@@ -270,6 +270,7 @@ body{--cp:var(--accent)}
 body[data-partie="donnees"]{--cp:var(--c-vols)}
 body[data-partie="organisation"]{--cp:var(--c-equipes)}
 body[data-partie="reglages"]{--cp:var(--c-temps)}
+body[data-partie="budget"]{--cp:var(--c-budget)}
 body[data-partie="resultats"]{--cp:var(--c-journee)}
 body[data-partie="avance"],body[data-partie="fichier"]{--cp:var(--c-unite)}
 body[data-vue="accueil"]{--cp:var(--accent)}
@@ -387,3 +388,11 @@ html,body{overscroll-behavior:none}
 }
 .btn-version b{font-weight:inherit}
 .btn-version i{font-style:normal}
+
+/* Version 2 : six parties dans le menu ; le badge se fait court. */
+@media (max-width:1600px){
+  .btn-version.v2 i,.btn-version.v2 span{display:none}
+  .btn-version{white-space:nowrap;padding:6px 10px}
+  header .entete-droite{flex-wrap:nowrap}
+  header .entete-droite .btn{white-space:nowrap}
+}

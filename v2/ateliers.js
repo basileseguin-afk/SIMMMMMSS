@@ -365,18 +365,32 @@
       return (this.a.classes() || []).filter(c => exclues.has(c.id));
     }
 
-    calculer() {
+    /* Les données du calcul, pour ces équipes-là (celles de l'unité, ou une
+     * variante qu'on veut essayer sans la garder). */
+    argsMoteur(ateliers) {
       const r = this.a.reglages ? this.a.reglages() : {};
-      try {
-        this.resultat = P.simuler({
+      return {
           vols: this.a.vols(), classes: this.classes,
-          ateliers: this.state.ateliers, liaisons: this.a.liaisons(), materiel: this.state.materiel,
+          ateliers, liaisons: this.a.liaisons(), materiel: this.state.materiel,
           bareme: r.bareme, rendement: r.rendement, regime: r.regime, delaiChargement: r.delaiChargement,
+          // Version 2 : les heures sup permises (Budget › Paramètres).
+          heuresSup: r.heuresSup,
           parcours: this.state.parcours, parcoursCabine: this.state.parcoursCabine,
           parcoursClasse: this.state.parcoursClasse,
           noms: Object.fromEntries((this.a.fantomes ? this.a.fantomes() : []).map(f => [f.id, f.nom])
             .concat(this.a.services().map(s => [s.id, s.nom])))
-        });
+      };
+    }
+
+    /* Version 2 : la journée avec d'autres équipes (« et avec une personne de
+     * plus ? »), sans toucher à celle qu'on affiche. */
+    simulerAvec(ateliers) {
+      try { return P.simuler(this.argsMoteur(ateliers)); } catch (e) { return null; }
+    }
+
+    calculer() {
+      try {
+        this.resultat = P.simuler(this.argsMoteur(this.state.ateliers));
       } catch (e) {
         this.resultat = { ok: false, anomalies: [{ code: 'moteur', message: e.message }], lots: [], ateliers: [], classes: [], parClasse: {} };
       }
