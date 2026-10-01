@@ -364,3 +364,10 @@ body[data-partie="avance"] header .btn-avance{background:color-mix(in srgb,var(-
    (le mot reste lu et dans l'infobulle) : six onglets et les outils tiennent sur une ligne. */
 .so-outils .mot-outil{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .so-outils #at-undo,.so-outils #at-redo{min-width:34px;justify-content:center;font-size:15px}
+
+/* Défilement : la page elle-même ne bouge jamais (elle tient dans l'écran) ;
+   seules les vues défilent, et un défilement appuyé ne déborde ni d'une liste
+   vers la page, ni de la page vers le vide (rebond du pavé tactile). */
+html,body{overscroll-behavior:none}
+#view-ateliers,#view-flux,.accueil,.flights-view,.reglages-view,.journee-chiffres,.journee-comparer,.journee-stocks,
+.services-unite,.panel-content,#panneau-edition,.pc-tiroir,.table-scroll{overscroll-behavior:contain}

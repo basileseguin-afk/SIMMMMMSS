@@ -950,6 +950,15 @@ function initUnite(){
   const box=document.getElementById('mu-services');
   if(box&&Sim.reglages)Sim.reglages.ecouter(box);
 }
+/* La hauteur de l'en-tête (menu et onglets) : les listes collées en haut d'une
+ * vue (services, commandes) s'y ajustent pour tenir dans l'écran. L'en-tête
+ * change de hauteur avec la largeur de la fenêtre et d'une partie à l'autre. */
+function majHauteurEntete(){
+  const so=document.getElementById('sous-onglets');
+  if(!so||so.hidden||!so.offsetParent)return;
+  document.documentElement.style.setProperty('--haut-entete',Math.round(so.getBoundingClientRect().bottom)+'px');
+}
+window.addEventListener('resize',()=>requestAnimationFrame(majHauteurEntete));
 function initOnglets(){
   if(!window.OrlyOnglets)return;
   Sim.onglets=new OrlyOnglets.SousOnglets({
@@ -957,7 +966,7 @@ function initOnglets(){
     vue:()=>activeView,
     badge:badgeOnglet,
     // Une fois la page ouverte : son titre, et le menu qui marque sa partie.
-    apres:id=>{afficherTitre();if(Sim.demarrage)Sim.demarrage.rendreMenu();if(id==='u-services')renderServices();},
+    apres:id=>{afficherTitre();if(Sim.demarrage)Sim.demarrage.rendreMenu();if(id==='u-services')renderServices();majHauteurEntete();},
     change:(vue,id)=>{
       if(vue!==activeView)showView(vue);
       if(id==='v-departs')renderFlights();

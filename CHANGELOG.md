@@ -5,6 +5,22 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-01 — Défilement : on ne sort plus de la page par le bas
+
+Retour d'usage : « quand tu scrolles trop fort, tu sors de la plage vers le
+bas ».
+
+- Les listes collées en haut d'une vue (services et flux de Mon unité,
+  commandes de « Une commande ») avaient une hauteur fixe (`100vh − 140 px`)
+  plus grande que la place sous l'en-tête, qui a grandi : un défilement
+  appuyé emportait la vue, la liste passait sous les onglets et un vide
+  apparaissait en bas. Leur hauteur suit maintenant l'en-tête, mesuré
+  (`--haut-entete`, recalculé à chaque page et au redimensionnement).
+- Une liste arrivée au bout ne fait plus défiler la vue derrière elle, et la
+  page elle-même ne rebondit plus (pavé tactile) : `overscroll-behavior`.
+
+Fichiers : `sim.js`, `unite.css`, `graphe.css`, `theme.css`, `index.html`.
+
 ## 2026-09-30 — À la chaîne : deux services fusionnés se voient partout
 
 Retour d'usage : « les fusions entre deux services comme Prépa et Montage,

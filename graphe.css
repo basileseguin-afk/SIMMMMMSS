@@ -102,7 +102,7 @@
 /* --- Un chemin par commande (Qui prépare quoi › Les chemins) ------------- */
 .pc-cadre{display:grid;grid-template-columns:240px minmax(0,1fr);gap:18px;align-items:start}
 .pc-principal{display:grid;gap:12px;min-width:0}
-.pc-cmds{display:grid;gap:8px;position:sticky;top:8px;max-height:calc(100vh - 120px);grid-template-rows:auto auto minmax(0,1fr) auto;
+.pc-cmds{display:grid;gap:8px;position:sticky;top:8px;max-height:calc(100dvh - var(--haut-entete,170px) - 100px);overscroll-behavior:contain;grid-template-rows:auto auto minmax(0,1fr) auto;
   border:1px solid var(--bordure);border-radius:12px;background:var(--bg3);padding:10px}
 .pc-cmds-tete{display:grid;gap:2px}
 .pc-cmds-tete span{font-size:12px;color:var(--txt2)}
