@@ -21,7 +21,8 @@
   try { vrai = window.localStorage; if (!vrai) return; } catch (e) { return; } // stockage indisponible : le site fait déjà sans
 
   // Les noms de la version 1 : ceux de ce site, pas ceux d'autres sites du même domaine.
-  var DE_LA_V1 = /^(ory|orly)-/;
+  // Le témoin de démarrage reste propre à chaque version.
+  var DE_LA_V1 = /^(ory|orly)-/, PROPRE = { 'ory-demarrage-en-cours': true };
 
   function toutes() {
     var out = [];
@@ -33,14 +34,20 @@
       .map(function (k) { return k.slice(PREFIXE.length); });
   }
 
-  try {
-    if (vrai.getItem(MARQUE) === null) {
-      toutes().forEach(function (k) {
-        if (k && k.indexOf(PREFIXE) !== 0 && DE_LA_V1.test(k)) vrai.setItem(PREFIXE + k, vrai.getItem(k));
-      });
-      vrai.setItem(MARQUE, new Date().toISOString());
-    }
-  } catch (e) { /* stockage plein ou refusé : la version 2 part de zéro */ }
+  /** Recopie le travail de la v1 dans la v2 (en écrasant le même nom) ; ce qui n'existe que dans la v2 reste. */
+  function copier() {
+    toutes().forEach(function (k) {
+      if (k && k.indexOf(PREFIXE) !== 0 && DE_LA_V1.test(k) && !PROPRE[k]) vrai.setItem(PREFIXE + k, vrai.getItem(k));
+    });
+    vrai.setItem(MARQUE, new Date().toISOString());
+  }
+  try { if (vrai.getItem(MARQUE) === null) copier(); } catch (e) { /* stockage plein ou refusé : la version 2 part de zéro */ }
+
+  // Plus tard, on peut reprendre le travail fait entre-temps dans la v1 (Sauvegarde de la v2).
+  window.OrlyV2 = {
+    derniereCopie: function () { try { return vrai.getItem(MARQUE); } catch (e) { return null; } },
+    reprendreV1: copier
+  };
 
   var tiroir = {
     getItem: function (k) { return vrai.getItem(PREFIXE + k); },

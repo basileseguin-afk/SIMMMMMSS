@@ -5,6 +5,17 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-01 — Version 2 : reprendre le travail de la version 1
+
+Le plan : bien paramétrer la v1, puis passer à l'entraînement (calage) dans
+la v2. La v2 ne copiait la v1 qu'à sa première ouverture : la page
+Sauvegarde de la v2 propose maintenant « Reprendre le travail de la
+version 1 » (plan, équipes, flux, minutes, réglages), en gardant ce qui
+n'existe que dans la v2 (budget, taux).
+
+Fichiers : `v2/stockage-v2.js`, `v2/sim.js`, `v2/index.html`,
+`v2/secours.html`, `tests/v2-browser.cjs`, `docs/V2.md`.
+
 ## 2026-10-01 — Version 2 : le calage sur un mois réel
 
 Demande : donner au site tous les éléments d'un mois, rejouer, comparer au

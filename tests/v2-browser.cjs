@@ -47,6 +47,17 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.goto(v2);await attendre();
   assert.ok(!(await equipes()).includes('Plus tard dans la v1'),'après la première ouverture, les deux versions vivent leur vie');
 
+  // 6. Plus tard : reprendre le travail fait entre-temps dans la v1 (Sauvegarde de la v2).
+  //    Ce qui n'existe que dans la v2 (le budget) reste.
+  await page.evaluate(()=>localStorage.setItem('ory-budget-v1',JSON.stringify({majoration:1.5})));
+  await page.locator('#btn-sauvegarde').click();await attendre();
+  assert.match(await page.locator('#v2-reprise').innerText(),/Reprendre le travail de la version 1/);
+  await page.locator('#v2-reprendre').click();await page.waitForLoadState('load');await attendre();
+  const reprises=await equipes();
+  assert.ok(reprises.includes('Plus tard dans la v1'),'le travail récent de la v1 est repris');
+  assert.ok(!reprises.includes('Équipe de la v2'),'il remplace les équipes de la v2');
+  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('ory-budget-v1')).majoration),1.5,'le budget de la v2 reste');
+
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('v2-browser : ok');
  }finally{await browser.close();}

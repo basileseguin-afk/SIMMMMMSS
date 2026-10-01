@@ -1839,6 +1839,21 @@ function installerCentreReglages() {
     const programme=donnees.querySelector('.panneau');
     if(volsDonnees&&programme)volsDonnees.appendChild(programme);
     donnees.dataset.sous='u-sauvegarde';
+    // Version 2 : reprendre le travail fait entre-temps dans la version 1.
+    if(window.OrlyV2){
+      const p=document.createElement('section');p.className='panneau v2-reprise';p.id='v2-reprise';
+      const le=OrlyV2.derniereCopie();
+      p.innerHTML='<h3>Reprendre le travail de la version 1</h3>'
+        +'<p class="mini-note">La version 2 a copié le travail de la version 1'+(le?' le '+escapeHTML(new Date(le).toLocaleString('fr-FR')):'')+'. '
+        +'Ce que vous avez réglé depuis dans la v1 (plan, équipes, flux, minutes, réglages) peut la remplacer ici. '
+        +'Ce qui n’existe que dans la v2 (budget, taux) reste. Pensez à une sauvegarde de la v2 avant.</p>'
+        +'<button type="button" class="btn btn-sm" id="v2-reprendre">Reprendre le travail de la v1</button>';
+      donnees.prepend(p);
+      p.querySelector('#v2-reprendre').addEventListener('click',()=>{
+        if(!confirm('Remplacer le travail de la version 2 par celui de la version 1 (plan, équipes, flux, minutes, réglages) ? Le budget de la v2 reste.'))return;
+        OrlyV2.reprendreV1();location.reload();
+      });
+    }
     const unite=document.getElementById('view-flux');
     if(unite)unite.appendChild(donnees);
   }
