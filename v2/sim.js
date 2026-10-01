@@ -976,6 +976,11 @@ function initBudget(){
     notify:toast
   });
 }
+/* Version 2 — le calage sur un mois réel (calage.js). */
+function initCalage(){
+  if(!window.OrlyCalage||!Sim.ateliers)return;
+  Sim.calage=new OrlyCalage.Calage({at:()=>Sim.ateliers,rg:()=>Sim.reglages,services:servicesDisponibles,notify:toast});
+}
 /* Ce que la tuile d'accueil dit du budget. */
 function resumeBudget(){
   if(!window.OrlyBudget||!Sim.budget||!Sim.ateliers)return null;
@@ -999,6 +1004,7 @@ function initOnglets(){
       if(id==='v-planche')renderPlanche();
       if(id==='rg-simulation'&&Sim.ateliers)Sim.ateliers.rendreMateriel(Sim.ateliers.resultat);
       if((id==='bu-jour'||id==='bu-param')&&Sim.budget)Sim.budget.rendre();
+      if(id==='rg-calage'&&Sim.calage)Sim.calage.rendre();
       if(id==='u-lecture'&&Sim.flows){Sim.flows.refresh();renderControles();}
       // La fenêtre d'une case se cale sous la barre des onglets, mesurée une fois visible.
       if(id==='at-chemins'&&Sim.ateliers)Sim.ateliers.parcours.placeTiroir();
@@ -2181,6 +2187,7 @@ etape('handling',initHandlingVols); etape('robot',migrerRobot);
 etape('planche retour',()=>{initPlanche();renderPlanche();});
 etape('mon unité',initUnite);
 etape('budget',initBudget);
+etape('calage',initCalage);
 // Les retours et le matériel se règlent dans les Réglages : leur panneau existe maintenant.
 etape('réglages de la simulation',()=>{if(Sim.ateliers)Sim.ateliers.rendreMateriel(Sim.ateliers.resultat);});
 // Le fil de mise en route vient en dernier : il relit les autres, il ne peut

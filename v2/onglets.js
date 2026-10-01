@@ -34,7 +34,9 @@
       { id: 'at-recap', nom: 'Tableau des équipes', ico: 'service' },
       // Version 2 : le budget de la main-d'œuvre.
       { id: 'bu-jour', nom: 'Budget du jour', ico: 'euro' },
-      { id: 'bu-param', nom: 'Paramètres financiers', ico: 'curseurs' }
+      { id: 'bu-param', nom: 'Paramètres financiers', ico: 'curseurs' },
+      // Version 2 : caler la simulation sur un mois réel.
+      { id: 'rg-calage', nom: 'Calage sur le réel', ico: 'check' }
     ],
     reglages: [
       { id: 'rg-minutes', nom: 'Minutes', ico: 'chrono' },
@@ -82,7 +84,8 @@
     { id: 'reglages', nom: 'Réglages', ico: 'sablier', couleur: 'var(--c-temps)',
       resume: 'Ce que vous essayez',
       pages: [
-        { id: 'rg-simulation', intro: 'Tous les réglages de la simulation, au même endroit : horaires des vols, retours à la plonge et boucle du matériel, rythme et pauses.' }
+        { id: 'rg-simulation', intro: 'Tous les réglages de la simulation, au même endroit : horaires des vols, retours à la plonge et boucle du matériel, rythme et pauses.' },
+        { id: 'rg-calage', intro: 'Rejouez un mois réel, comparez aux pointages, et calez la vitesse de chaque service sur la réalité.' }
       ] },
     // Version 2 : ce que coûte la journée, face au budget de chaque service.
     { id: 'budget', nom: 'Budget', ico: 'euro', couleur: 'var(--c-budget)',

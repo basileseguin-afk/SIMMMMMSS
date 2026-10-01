@@ -5,6 +5,28 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-01 — Version 2 : le calage sur un mois réel
+
+Demande : donner au site tous les éléments d'un mois, rejouer, comparer au
+réel et améliorer le modèle pour « entraîner » la simulation au maximum.
+
+- `v2/calage.js` : lecture d'un classeur de calage (Vols, Planning,
+  Pointages, Labor cost, par date) ; chaque jour rejoué avec les vols et les
+  équipes du planning (chaque équipe ne garde que les commandes qui volent ce
+  jour-là) ; le réel d'un service = heures pointées au-delà du planning ;
+  ajustement d'un facteur de vitesse par service (grille puis affinage),
+  apprentissage sur 75 % des jours, vérification sur le reste.
+- Page **Réglages › Calage sur le réel** : modèle du classeur, import (en
+  mémoire seulement), progression, résultat par service (facteur, erreur
+  avant / après, tendance), jour par jour, « Appliquer ces facteurs au
+  barème ».
+- `docs/CALAGE.md` : format, méthode, limites (seuls les jours avec heures
+  sup renseignent la vitesse).
+
+Fichiers : `v2/calage.js`, `v2/budget.css`, `v2/onglets.js`, `v2/sim.js`,
+`v2/index.html`, `tests/v2/calage.test.cjs`, `tests/v2-calage-browser.cjs`,
+`docs/CALAGE.md`, `docs/V2.md`.
+
 ## 2026-10-01 — Version 2 : le budget de la main-d'œuvre et les heures sup
 
 Retour d'usage : le siège donne un budget mensuel de labor cost ; le
