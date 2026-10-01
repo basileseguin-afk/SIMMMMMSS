@@ -5,6 +5,27 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-01 — Hors du flux, pas cochable ; l'équipe à la chaîne dans ses deux services
+
+Retours d'usage : « quand j'enlève un atelier dans les chemins il est toujours
+cochable » ; « si AF prépa et montage sont liés, il faut que l'atelier existe
+à la fois dans prépa et dans montage, et qu'il soit modifiable dans les 2
+services ».
+
+- Une commande dont le flux ne passe pas par un service ne se coche plus
+  dans ses équipes (case grisée, désactivée). Pour la préparer ici, la fiche
+  du service propose « + Faire passer un flux par ici… » : le service entre
+  dans le flux choisi, et ses commandes se cochent.
+- Retirer un atelier d'un chemin (Une commande, le modèle d'un flux) : ses
+  équipes lâchent aussi les commandes qui n'y passent plus (`PC.liberer`).
+- Une équipe à la chaîne (ex. « Montage AF » qui fait aussi la Prépa) est
+  aussi dans la fiche de la Prépa, sous « ⛓ À la chaîne : cette équipe fait
+  aussi Prépa », avec tous ses réglages : la modifier là la modifie au
+  Montage (c'est la même). Un lien ramène à sa fiche au Montage.
+- v1 et v2 (`parcours.js`, `unite.js`, `unite.css`). Tests :
+  `tests/chaine-services-browser.cjs`, `tests/flux-retrait-browser.cjs`,
+  `tests/mon-unite-browser.cjs` adapté.
+
 ## 2026-10-01 — Un service retiré d'un flux : ses équipes lâchent ses commandes
 
 Retour d'usage : « j'ai enlevé la cuisine de la branche éco, mais quand je

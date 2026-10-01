@@ -2,7 +2,8 @@
  * cuisine de la branche éco, mais quand je vais dans le service cuisine je
  * peux encore cocher la case »). Ses équipes lâchent les commandes de ce flux ;
  * une ancienne saisie restée cochée est signalée et se retire en un clic ;
- * cocher une commande hors de son flux demande, et « Annuler » la décoche. */
+ * une commande hors de son flux ne se coche pas : on fait d'abord passer le
+ * flux par le service. Même chose quand on retire un atelier d'un chemin. */
 const assert=require('node:assert/strict'),path=require('node:path');
 const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
@@ -38,12 +39,23 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.match(await classe('AF/YC'),/\bhors\b/);
    assert.equal(await cellule('AF/YC').isChecked(),false);
    assert.equal(await page.locator('.mu-hors-flux').count(),0,'rien à signaler');
-   // La cocher demande ; « Annuler » la décoche.
+   // Hors de son flux, elle ne se coche pas ; on fait d'abord passer le flux par ici.
+   assert.equal(await cellule('AF/YC').isDisabled(),true,version+' : pas cochable');
+   assert.equal(await cellule('AF/BC').isDisabled(),false);
+   await page.locator('#mu-services [data-mu-flux-ici=cuisine]').selectOption('eco');await attendre();
+   assert.ok((await eco()).includes('cuisine'),version+' : la Cuisine revient dans l’Éco');
+   assert.equal(await cellule('AF/YC').isDisabled(),false,version+' : et ses commandes se cochent');
    await cellule('AF/YC').check();await attendre();
-   assert.match(await page.locator('.mu-q').innerText(),/ne passe pas par CUISINE/i);
-   await page.locator('.mu-q [data-mu-q=rien]').click();await attendre();
-   assert.deepEqual(await lots(),['AF/BC'],version+' : annulé, rien n’est coché');
-   assert.equal(await cellule('AF/YC').isChecked(),false);
+   assert.deepEqual(await lots(),['AF/BC','AF/YC']);
+   // On la retire de nouveau, cette fois depuis Une commande (le modèle « Éco »).
+   await nav.aller(page,'at-chemins');
+   await page.evaluate(()=>{const e=Sim.ateliers.parcours;e.cmd=null;e.actif='eco';e.sel=null;e.rendre();});await attendre();
+   await page.evaluate(()=>{const b=document.createElement('button');b.dataset.pcAction='noeud-retirer';b.dataset.service='cuisine';
+     Sim.ateliers.parcours.cliquer({target:b});});await attendre();
+   assert.ok(!(await eco()).includes('cuisine'),version+' : retirée du chemin');
+   assert.deepEqual(await lots(),['AF/BC'],version+' : ses équipes la lâchent aussi');
+   await nav.aller(page,'mu-services');await page.locator('[data-mu-choisir=cuisine]').click();await attendre();
+   assert.equal(await cellule('AF/YC').isDisabled(),true);
 
    // 3. Une ancienne saisie (le flux changé avant ce correctif) : signalée, retirée en un clic.
    await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.find(a=>a.id==='cu').lots.push(['AF/YC'],['TX/YC']);},''));await attendre();

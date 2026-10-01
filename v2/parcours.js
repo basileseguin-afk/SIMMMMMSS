@@ -2125,7 +2125,10 @@
             x.ateliers = x.ateliers.filter(a => !seule(a));
             affecter(x, s, [cmd], null);
           }
-        }, this.nom(s) + ' quitte ce chemin, avec ses liens' + (cmd ? ' et la case de ' + this.lib(cmd) + ' dans ce service' : '') + '. Vous pouvez annuler.');
+          // Les équipes de ce service lâchent toutes les commandes qui n'y passent plus
+          // (un modèle suivi par plusieurs commandes) : elles ne restent pas cochées.
+          liberer(x, s, classes);
+        }, this.nom(s) + ' quitte ce chemin, avec ses liens' + (cmd ? ' et la case de ' + this.lib(cmd) + ' dans ce service' : ' ; ses équipes ne préparent plus ces commandes') + '. Vous pouvez annuler.');
       }
     }
 

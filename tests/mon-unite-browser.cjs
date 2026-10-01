@@ -104,8 +104,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(apm&&apm!=='prepa','la fiche du nouveau service est ouverte');
   await page.locator('.mu-fiche [data-mu-action=equipe]').click();await attendre();
   const e3=(await st()).ateliers.find(a=>a.service===apm).id;
+  // Aucun flux n'y passe : ses cases ne se cochent pas. Une variante du flux pour QR Business seule…
+  assert.equal(await page.locator(`table[data-mu-equipe="${e3}"] [data-mu-cocher="QR/BC"]`).isDisabled(),true,'hors de son flux : pas cochable');
+  await page.evaluate(apm=>Sim.ateliers.changer(()=>{OrlyParcours.adapter(Sim.ateliers.state,['QR/BC'],apm,true,Sim.unite.options());},''),apm);await attendre();
   await page.locator(`table[data-mu-equipe="${e3}"] [data-mu-cocher="QR/BC"]`).check();await attendre();
-  await page.locator('.mu-q [data-mu-q=seul]').click();await attendre();
   const qr=await chemin('QR/BC');
   assert.ok(qr.services.includes(apm));
   assert.ok(qr.arcs.some(a=>a.endsWith('>'+apm)),'quelqu’un le livre : '+qr.arcs.join(', '));

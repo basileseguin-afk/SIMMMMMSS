@@ -177,8 +177,13 @@
         <button class="btn btn-sm svc-danger" type="button" data-mu-action="supprimer">Supprimer</button>
       </div>`;
       const passent = PC.types(st).filter(t => P.servicesDuParcours(t).includes(s.id));
+      // Les commandes d'un flux qui ne passe pas ici ne se cochent pas : on fait d'abord passer le flux.
+      const autres = preparent(b.nature) ? PC.types(st).filter(t => !P.servicesDuParcours(t).includes(s.id)) : [];
+      const ajoutFlux = autres.length ? `<select class="mu-flux-ajout-ici" data-mu-flux-ici="${esc(s.id)}" aria-label="Faire passer un flux par ce service">
+        <option value="">+ Faire passer un flux par ici…</option>${autres.map(t => `<option value="${esc(t.id)}">${esc(t.nom)}</option>`).join('')}</select>` : '';
       const lesFlux = `<p class="mu-flux-passent"><span>${passent.length ? 'Flux qui passent ici :' : 'Aucun flux ne passe ici.'}</span>
         ${passent.map(t => `<button type="button" class="mu-flux-lien" data-mu-voir-flux="${esc(t.id)}">${esc(t.nom)}</button>`).join('')}
+        ${ajoutFlux}
         <button type="button" class="lien-discret" data-page="mu-flux">${passent.length ? 'Tous les flux' : 'Les flux de production'} →</button></p>`;
       // Des commandes encore cochées ici alors que leur flux ne passe plus par ce service
       // (le service a été retiré du flux avant que ses équipes ne les lâchent toutes seules).
@@ -200,18 +205,23 @@
           <button class="btn btn-sm" type="button" data-mu-ouvrir="${esc(g.avant)}">Ouvrir ${esc(this.nom(g.avant))} →</button></p>`)
         .concat(ch.filter(g => g.avant === s.id).map(g => `<p><span class="mu-chaine-ico" aria-hidden="true">⛓</span>
           <span><b>${esc(s.nom)} + ${esc(this.nom(g.service))}, à la chaîne.</b> Pour ${pl(g.commandes.length, 'commande')} (${esc(cmds(g))}), ${esc(s.nom)}
-          est fait par ${eqs(g)}, au ${esc(this.nom(g.service))}, d’un bloc : pas besoin d’équipe ici pour elles.</span>
+          est fait par ${eqs(g)}, au ${esc(this.nom(g.service))}, d’un bloc : pas besoin d’équipe ici pour elles. Sa fiche est plus bas : elle se règle ici comme au ${esc(this.nom(g.service))}.</span>
           <button class="btn btn-sm" type="button" data-mu-ouvrir="${esc(g.service)}">Ouvrir ${esc(this.nom(g.service))} →</button></p>`)).join('');
       const blocChaine = chaine ? `<div class="mu-chaine-bloc">${chaine}</div>` : '';
 
       const choixNature = `<label class="mu-nature">Ce service…<select data-mu-nature="${esc(s.id)}">${NATURES.map(x =>
         `<option value="${x.id}"${x.id === nature ? ' selected' : ''}>${esc(x.nom)}</option>`).join('')}</select></label>`;
 
+      // Une équipe d'un autre service qui fait aussi celui-ci, à la chaîne : elle
+      // existe dans les deux, et se règle dans les deux (retour d'usage du 01/10).
+      const chainees = (st.ateliers || []).filter(a => a.type === 'manuel' && a.fusion === s.id && a.service !== s.id);
       let equipes;
       if (preparent(nature)) {
         equipes = b.cases.map(a => (a.type === 'manuel' || a.type === 'robot') ? this.equipe(a, calc.get(a.id), classes)
           : `<div class="mu-carte">${this.at.carte(a, calc.get(a.id), { cmd: null })}</div>`).join('')
           + (b.cases.length ? '' : '<p class="mini-note mu-vide">Aucune équipe pour l’instant.</p>')
+          + (chainees.length ? `<h4 class="mu-chainees">⛓ À la chaîne : ${chainees.length > 1 ? 'ces équipes font' : 'cette équipe fait'} aussi ${esc(s.nom)}</h4>`
+            + chainees.map(a => this.equipe(a, calc.get(a.id), classes, { depuis: s.id })).join('') : '')
           + `<p class="mu-ajout"><button class="btn btn-play btn-sm" type="button" data-mu-action="equipe">+ Ajouter une équipe</button>
              <span class="mini-note">une équipe du matin, de l’après-midi, de nuit… chacune avec son heure, ses personnes et ce qu’elle prépare</span></p>`;
       } else {
@@ -236,7 +246,7 @@
     }
 
     /** Une équipe qui prépare : son heure, ses personnes, et sa grille. */
-    equipe(a, calc, classes) {
+    equipe(a, calc, classes, o = {}) {
       const fin = calc && calc.fin != null ? P.hhmm(calc.fin) : null;
       // Chaque jour par son nom : J-2 n'est pas « la veille » (retour d'usage du 01/10).
       const NOMS_JOURS = { 0: 'jour du vol (J)', '-1': 'la veille (J-1)', '-2': 'l’avant-veille (J-2)', '-3': '3 jours avant (J-3)' };
@@ -246,7 +256,10 @@
       // Une équipe qui ne travaille que certains jours (règle ⚡).
       const cond = a.condition, etat = cond && this.at.etatCondition ? this.at.etatCondition(a) : null;
       const ligne = a.type === 'robot' && this.at.robotsDeLigne ? this.at.robotsDeLigne(a).filter(x => x !== a) : [];
-      const badges = (avec ? `<span class="mu-badge chaine" title="Cette équipe fait aussi ${esc(avec)}, d’un bloc, pour ses commandes">⛓ + ${esc(avec)} à la chaîne</span>` : '')
+      // Vue depuis l'étape qu'elle absorbe : on dit d'où elle vient.
+      const badges = (o.depuis ? `<span class="mu-badge chaine" title="Équipe du ${esc(this.nom(a.service))} : elle fait ${esc(avec)} + ${esc(this.nom(a.service))} d’un bloc. La modifier ici la modifie aussi au ${esc(this.nom(a.service))}.">⛓ équipe du ${esc(this.nom(a.service))} · ${esc(avec)} + ${esc(this.nom(a.service))} à la chaîne</span>`
+          + ` <button type="button" class="lien-discret" data-mu-ouvrir="${esc(a.service)}">la voir au ${esc(this.nom(a.service))} →</button>`
+        : avec ? `<span class="mu-badge chaine" title="Cette équipe fait aussi ${esc(avec)}, d’un bloc, pour ses commandes">⛓ + ${esc(avec)} à la chaîne</span>` : '')
         + (ligne.length ? `<span class="mu-badge ligne" title="Une seule ligne robot : ces équipes ne tournent pas en même temps">⇄ ligne partagée avec ${ligne.map(x => '« ' + esc(x.nom) + ' »').join(', ')}</span>` : '')
         + (cond ? `<span class="mu-badge cond${etat && !etat.remplie ? ' off' : ''}" title="Elle ne travaille que certains jours, selon le nombre de vols">⚡ si ${esc(cond.cie === '*' ? 'toutes compagnies' : cond.cie)} ≥ ${cond.seuil} ${cond.mesure === 'repas' ? 'repas' : 'vols'}${etat ? (etat.remplie ? ' · travaille aujourd’hui' : ' · pas aujourd’hui') : ''}</span>` : '');
       const fusion = a.type === 'manuel' && this.at.blocFusion ? this.at.blocFusion(a) : '';
@@ -286,14 +299,17 @@
         if (x.horsFlux) return lib + ' — cochée ici, mais son flux ne passe plus par ce service : décochez-la';
         return lib + ' — ' + ({ ici: 'préparée par cette équipe', ailleurs: 'préparée par « ' + (x.par && x.par.nom) + ' » (cocher la déplace ici)',
           chaine: 'faite à la chaîne par « ' + (x.par && x.par.nom) + ' »', attendue: 'passe par ce service, personne ne la prépare encore',
-          passe: 'en a besoin', hors: a ? 'ne passe pas par ce service (son flux ne le traverse pas ; cocher propose de l’y ajouter)' : 'n’en a pas besoin' })[x.etat];
+          passe: 'en a besoin', hors: a ? 'ne passe pas par ce service : son flux ne le traverse pas (ajoutez ce service à son flux pour la préparer ici)' : 'n’en a pas besoin' })[x.etat];
       };
       const cellule = (cie, cab) => {
         const id = P.idClasse(cie, cab), c = par.get(id);
         if (!c) return '<td class="mu-rien" aria-hidden="true">·</td>';
         const x = g.get(id);
         const marque = x.horsFlux ? '<i class="mu-chez">⚠</i>' : x.etat === 'ailleurs' ? `<i class="mu-chez">${esc(initiales(x.par.nom))}</i>` : x.etat === 'chaine' ? '<i class="mu-chez">⛓</i>' : x.etat === 'attendue' ? '<i class="mu-chez">!</i>' : '';
-        return `<td class="mu-c ${x.etat}${x.horsFlux ? ' hors-flux' : ''}"><label title="${esc(titre(c, x))}"><input type="checkbox" data-mu-cocher="${esc(id)}"${coche(x) ? ' checked' : ''}${x.etat === 'chaine' ? ' disabled' : ''}
+        // Hors de son flux : pas cochable. Le flux décide par où passe une commande ;
+        // on y ajoute le service (« Faire passer un flux par ici »), puis on coche.
+        const bloquee = x.etat === 'chaine' || (a && x.etat === 'hors');
+        return `<td class="mu-c ${x.etat}${x.horsFlux ? ' hors-flux' : ''}"><label title="${esc(titre(c, x))}"><input type="checkbox" data-mu-cocher="${esc(id)}"${coche(x) ? ' checked' : ''}${bloquee ? ' disabled' : ''}
           aria-label="${esc(titre(c, x))}">${marque}</label></td>`;
       };
       return `<div class="mu-grille-scroll"><table class="mu-grille"${a ? ` data-mu-equipe="${esc(a.id)}"` : ` data-mu-service="${esc(service)}"`}>
@@ -780,6 +796,11 @@
           if (t.dataset.muEquipe) this.cocher(t.dataset.muEquipe, [el.dataset.muCocher], el.checked);
         } else if (el.dataset.muBesoin) this.passer(el.dataset.service, [el.dataset.muBesoin], el.checked);
         else if (el.dataset.muNature) this.nature(el.dataset.muNature, el.value);
+        else if (el.dataset.muFluxIci) {
+          const svc = el.dataset.muFluxIci, t = PC.types(this.etat).find(x => x.id === el.value); if (!t) return;
+          this.at.changer(() => { PC.changerFlux(this.at.state, t.id, svc, true, this.options()); },
+            this.nom(svc) + ' entre dans « ' + t.nom + ' », à sa place : ses commandes se cochent maintenant ici.');
+        }
         else if (el.dataset.muNom) {
           const v = el.value.trim();
           if (!v) { this.a.notify('Le nom ne peut pas être vide.'); this.rendreServices(); return; }

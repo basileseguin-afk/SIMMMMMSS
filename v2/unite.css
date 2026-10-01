@@ -181,3 +181,9 @@
 .mu-c.hors label:hover{opacity:.8}
 .mu-c.ici.hors-flux label,.mu-c.hors-flux label{background:var(--bad-fill);border:1.5px dashed var(--bad-stroke)}
 .mu-c.hors-flux .mu-chez{font-size:12px;color:var(--bad-stroke)}
+
+/* Faire passer un flux par ce service (les commandes hors de son flux ne se cochent pas) */
+.mu-flux-ajout-ici{font:inherit;font-size:13px;min-height:28px;padding:2px 6px;max-width:260px}
+.mu-c.hors input:disabled{cursor:not-allowed}
+/* Les équipes d'un autre service qui font aussi celui-ci, à la chaîne */
+.mu-chainees{margin:14px 0 6px;font-size:14px;color:var(--chaine,#c026d3)}
