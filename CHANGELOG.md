@@ -5,6 +5,13 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-01 — Le jour d'une équipe, chaque choix par son nom
+
+Dans la fiche d'une équipe (Mon unité › Services et équipes), le menu du
+jour disait « la veille » devant J-2 et J-3. Il dit maintenant « jour du vol
+(J) », « la veille (J-1) », « l'avant-veille (J-2) », « 3 jours avant (J-3) ».
+Fichiers : `unite.js`, `v2/unite.js`, `tests/condition-browser.cjs`.
+
 ## 2026-10-01 — Règle ⚡ : l'autre équipe peut absorber la charge
 
 Retour d'usage : les personnes d'une équipe au repos ne vont pas forcément

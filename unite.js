@@ -231,7 +231,9 @@
     /** Une équipe qui prépare : son heure, ses personnes, et sa grille. */
     equipe(a, calc, classes) {
       const fin = calc && calc.fin != null ? P.hhmm(calc.fin) : null;
-      const jours = [0, -1, -2, -3].map(j => `<option value="${j}"${j === (a.jour || 0) ? ' selected' : ''}>${j === 0 ? 'jour du vol' : 'la veille' + (j < -1 ? ' (J' + j + ')' : '')}</option>`).join('');
+      // Chaque jour par son nom : J-2 n'est pas « la veille » (retour d'usage du 01/10).
+      const NOMS_JOURS = { 0: 'jour du vol (J)', '-1': 'la veille (J-1)', '-2': 'l’avant-veille (J-2)', '-3': '3 jours avant (J-3)' };
+      const jours = [0, -1, -2, -3].map(j => `<option value="${j}"${j === (a.jour || 0) ? ' selected' : ''}>${NOMS_JOURS[j]}</option>`).join('');
       // Ce qui la lie à une autre : une étape faite à la chaîne, une ligne robot partagée.
       const avec = a.type === 'manuel' && a.fusion && a.fusion !== a.service ? this.nom(a.fusion) : '';
       // Une équipe qui ne travaille que certains jours (règle ⚡).
