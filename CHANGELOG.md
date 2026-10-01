@@ -5,6 +5,24 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-01 — À la chaîne seulement pour les commandes qui passent par l'étape
+
+Retour d'usage : une équipe fait Prépa + Montage pour CRL et TX PC, puis le
+Montage seul pour RAM et AH YC ; cocher RAM et AH YC les cochait aussi dans
+la Prépa, alors que leur chemin n'a pas de Prépa.
+
+- Moteur (v1 et v2) : la Prépa n'est faite à la chaîne que pour les
+  commandes dont le chemin y passe ; pour les autres, pas de minutes de
+  Prépa (avant : elles étaient comptées).
+- `PC.passePar(etat, cmd, service)` ; `fusionneePar` et `chaines` ne
+  retiennent que ces commandes (diagrammes, « Qui prépare quoi », récap).
+- Fiche de la Prépa : la carte de l'équipe ne montre cochées que les
+  commandes faites à la chaîne ; les autres sont grisées (« cette équipe
+  n'en fait que le Montage »). Au Montage, ⛓ marque les commandes faites à
+  la chaîne ; le bilan de temps dit lesquelles le sont et lesquelles non.
+- Tests : `tests/chaine-partielle.test.cjs` (v1) et
+  `tests/v2/chaine-partielle.test.cjs`, `tests/chaine-services-browser.cjs`.
+
 ## 2026-10-01 — Hors du flux, pas cochable ; l'équipe à la chaîne dans ses deux services
 
 Retours d'usage : « quand j'enlève un atelier dans les chemins il est toujours

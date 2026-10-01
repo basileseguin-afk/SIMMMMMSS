@@ -184,7 +184,13 @@ ex. la Prépa dans une case de Montage), pour **ses** commandes seulement :
   - `n = 1` : **P + M** — la personne fait les deux, l'un après l'autre ;
   - `n ≥ 2` : **min sur k de max(P ÷ k, M ÷ (n − k))** — k personnes au premier
     poste, n − k au second ; le plus lent donne le rythme ;
-- les autres compagnies gardent leurs deux cases.
+- les autres compagnies gardent leurs deux cases ;
+- **seulement les commandes dont le chemin passe par l'étape d'avant**
+  (retour d'usage du 01/10) : une équipe qui fait Prépa + Montage pour CRL et
+  TX PC fait le Montage seul pour RAM et AH YC, dont le flux n'a pas de
+  Prépa. Pour elles, ni minutes de Prépa, ni « faite à la chaîne » ; dans la
+  fiche de la Prépa, elles ne sont ni cochées ni cochables ; au Montage, ⛓
+  marque celles qu'elle fait à la chaîne.
 
 Réglage : fiche de la case, « À la chaîne avec l'étape d'avant ? ». Excel :
 colonne « À la chaîne avec » de la feuille Ateliers.

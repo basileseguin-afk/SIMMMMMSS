@@ -276,7 +276,7 @@
           <span class="mu-eq-fin">${fin ? 'finit à ' + esc(fin) : a.lots.length ? '' : ''}</span>
         </div>
         <p class="mu-question">Ce qu’elle prépare <small>cochez ; l’ordre suit les départs, la plus pressée d’abord</small></p>
-        ${this.grille(a.service, a, classes)}
+        ${this.grille(a.service, a, classes, o)}
         ${this.questionHTML(a)}
         ${ordre ? `<p class="mu-ordre"><span>Dans l’ordre :</span>${ordre}<small>cliquez une commande pour voir son chemin</small></p>` : ''}
         ${fusion ? `<div class="mu-chaine-reglage">${fusion}</div>` : ''}
@@ -287,7 +287,7 @@
     }
 
     /** La grille compagnies × classes d'une équipe (ou, sans équipe, de qui passe par le service). */
-    grille(service, a, classes) {
+    grille(service, a, classes, o = {}) {
       if (!classes.length) return '<p class="mini-note">Aucune commande : importez d’abord vos vols (Vols).</p>';
       const g = PC.grille(this.etat, service, a ? a.id : null, classes);
       const par = new Map(classes.map(c => [c.id, c]));
@@ -297,6 +297,10 @@
       const titre = (c, x) => {
         const lib = P.libelleClasse(c.id) + ' · ' + pl(c.vols.length, 'vol') + (Number.isFinite(c.echeance) ? ', prête avant ' + P.hhmm(c.echeance) : '');
         if (x.horsFlux) return lib + ' — cochée ici, mais son flux ne passe plus par ce service : décochez-la';
+        if (x.montageSeul) return lib + ' — son flux ne passe pas par ' + this.nom(o.depuis) + ' : cette équipe n’en fait que ' + this.nom(a.service) + ' (cochez-la dans ' + this.nom(a.service) + ')';
+        if (a && a.fusion && x.etat === 'ici') return lib + ' — ' + (PC.passePar(this.etat, c.id, a.fusion)
+          ? 'préparée par cette équipe, à la chaîne : ' + this.nom(a.fusion) + ' + ' + this.nom(a.service)
+          : 'préparée par cette équipe : ' + this.nom(a.service) + ' seulement (son flux ne passe pas par ' + this.nom(a.fusion) + ')');
         return lib + ' — ' + ({ ici: 'préparée par cette équipe', ailleurs: 'préparée par « ' + (x.par && x.par.nom) + ' » (cocher la déplace ici)',
           chaine: 'faite à la chaîne par « ' + (x.par && x.par.nom) + ' »', attendue: 'passe par ce service, personne ne la prépare encore',
           passe: 'en a besoin', hors: a ? 'ne passe pas par ce service : son flux ne le traverse pas (ajoutez ce service à son flux pour la préparer ici)' : 'n’en a pas besoin' })[x.etat];
@@ -304,8 +308,15 @@
       const cellule = (cie, cab) => {
         const id = P.idClasse(cie, cab), c = par.get(id);
         if (!c) return '<td class="mu-rien" aria-hidden="true">·</td>';
-        const x = g.get(id);
-        const marque = x.horsFlux ? '<i class="mu-chez">⚠</i>' : x.etat === 'ailleurs' ? `<i class="mu-chez">${esc(initiales(x.par.nom))}</i>` : x.etat === 'chaine' ? '<i class="mu-chez">⛓</i>' : x.etat === 'attendue' ? '<i class="mu-chez">!</i>' : '';
+        let x = g.get(id);
+        // Une équipe à la chaîne, vue depuis l'étape qu'elle absorbe (la Prépa) : les
+        // commandes dont le flux ne passe pas par cette étape n'y sont pas (elle ne fait
+        // que le Montage pour elles) — ni cochées, ni cochables d'ici.
+        const seulementIci = a && a.fusion && !PC.passePar(this.etat, id, a.fusion);
+        if (o.depuis && seulementIci) x = { etat: 'hors', par: null, montageSeul: true };
+        // Vue de son service : ⛓ sur les commandes qu'elle fait à la chaîne.
+        const enChaine = !o.depuis && a && a.fusion && x.etat === 'ici' && !seulementIci;
+        const marque = enChaine ? '<i class="mu-chez mu-chez-chaine">⛓</i>' : x.horsFlux ? '<i class="mu-chez">⚠</i>' : x.etat === 'ailleurs' ? `<i class="mu-chez">${esc(initiales(x.par.nom))}</i>` : x.etat === 'chaine' ? '<i class="mu-chez">⛓</i>' : x.etat === 'attendue' ? '<i class="mu-chez">!</i>' : '';
         // Hors de son flux : pas cochable. Le flux décide par où passe une commande ;
         // on y ajoute le service (« Faire passer un flux par ici »), puis on coche.
         const bloquee = x.etat === 'chaine' || (a && x.etat === 'hors');

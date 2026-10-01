@@ -1323,7 +1323,14 @@
     const fusionPar = new Map();       // « service|classe » → service de la case qui la fait
     for (const a of ateliers) {
       const f = fusionDe(a); if (!f) continue;
-      for (const lot of (a.lots || [])) for (const id of classesDuLot(lot)) if (!produit.has(cle(f, id))) fusionPar.set(cle(f, id), a.service);
+      // Seulement les commandes dont le chemin passe par cette étape : une équipe
+      // qui fait Prépa + Montage pour CRL et TX PC peut faire le Montage seul pour
+      // RAM et AH YC, dont le flux n'a pas de Prépa (retour d'usage du 01/10).
+      for (const lot of (a.lots || [])) for (const id of classesDuLot(lot)) {
+        const r = routes.get(id);
+        if (r && !r.services.has(f)) continue;
+        if (!produit.has(cle(f, id))) fusionPar.set(cle(f, id), a.service);
+      }
     }
     // Une mise à disposition sert TOUT : on ne lui fait pas énumérer les
     // classes. Le magasin sort du matériel pour qui en demande.

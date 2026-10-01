@@ -209,8 +209,18 @@
    * commandes. Pour ces commandes, l'étape d'avant n'est pas « à faire » :
    * elle est faite, par cette case. */
   function fusionneePar(etat, service, cmd) {
+    if (!passePar(etat, cmd, service)) return null;
     return (etat.ateliers || []).find(a => (a.type === 'manuel' || !a.type) && a.fusion === service && a.service !== service
       && (a.lots || []).some(l => l.includes(cmd))) || null;
+  }
+
+  /* Le flux (ou le chemin propre) de cette commande passe-t-il par ce service ?
+   * Sans flux connu : oui (on ne retire rien sur une supposition). Une équipe
+   * à la chaîne ne fait l'étape d'avant que pour les commandes qui y passent ;
+   * pour les autres, elle ne fait que son étape (retour d'usage du 01/10). */
+  function passePar(etat, cmd, service) {
+    const f = fluxDe(etat, cmd);
+    return !f || P.servicesDuParcours(f).includes(service);
   }
 
   /* Les étapes faites à la chaîne, pour les montrer d'un bloc : pour chaque
@@ -222,7 +232,7 @@
     for (const a of etat.ateliers || []) {
       if (!(a.type === 'manuel' || !a.type) || typeof a.fusion !== 'string' || !a.fusion || a.fusion === a.service) continue;
       if (dans && !(dans.has(a.fusion) && dans.has(a.service))) continue;
-      const ids = [...new Set((a.lots || []).flat())].filter(c => !garde || garde.has(c));
+      const ids = [...new Set((a.lots || []).flat())].filter(c => (!garde || garde.has(c)) && passePar(etat, c, a.fusion));
       if (!ids.length) continue;
       const k = a.fusion + '>' + a.service;
       if (!m.has(k)) m.set(k, { id: k, avant: a.fusion, service: a.service, equipes: [], commandes: [] });
@@ -2198,7 +2208,7 @@
   }
 
 
-  const api = { annoncer, fusionneePar, chaines, insererPrepa, depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, couverture, confier, nouvelleEquipe,
+  const api = { annoncer, fusionneePar, passePar, chaines, insererPrepa, depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, couverture, confier, nouvelleEquipe,
     completer, colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, donnerCases, completerCases, nomLibre, caseHandling, anciensHandlings, brancherHandling, caseRobot, remplacerEtape,
     SERVICES_DISPO, estDispo, caseDispo, anciensDispos, partagerDispos, separerParCommande, ajouterBesoin,
     cheminPropre, insererService, retirerService, liberer, insererParEcheance, cocher, passerPar, grille, natureService, equipeNeuve,

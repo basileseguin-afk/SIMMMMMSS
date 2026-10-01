@@ -1787,10 +1787,13 @@
       if (!avant.size) return '';
       const f = a.fusion;
       let bilan = '';
+      // Seules les commandes dont le flux passe par l'étape d'avant se font à la chaîne ;
+      // les autres, cette case n'en fait que son étape.
+      const enChaine = f ? ids.filter(id => PC.passePar(this.state, id, f)) : [], seules = f ? ids.filter(id => !enChaine.includes(id)) : [];
       if (f && ids.length) {
         const bareme = (this.a.reglages ? this.a.reglages() : {}).bareme;
         const cls = ids.map(id => this.classes.find(c => c.id === id)).filter(Boolean);
-        const pm = cls.reduce((n, c) => n + P.travailClasse(f, c, bareme), 0);
+        const pm = cls.filter(c => enChaine.includes(c.id)).reduce((n, c) => n + P.travailClasse(f, c, bareme), 0);
         const mm = cls.reduce((n, c) => n + P.travailDans(a, c, bareme), 0);
         const n = a.personnes, d = P.dureeFusion(pm, mm, n);
         let k = 0;
@@ -1799,7 +1802,9 @@
         bilan = `<p class="mini-note at-fusion-bilan">${esc(nom(f))} ${min(pm)} + ${esc(nom(a.service))} ${min(mm)} de travail →
           <b>${Number.isFinite(d) ? min(d) : 'rien ne se fait sans personne'}</b>${n === 1 ? ' : seule, la personne fait les deux, l’un après l’autre'
             : k ? ` : ${k} au ${esc(nom(f))}, ${n - k} au ${esc(nom(a.service))} — le poste le plus lent donne le rythme` : ''}.</p>`;
-        const ailleurs = this.state.ateliers.filter(x => x.service === f && x.id !== a.id && (x.lots || []).some(l => l.some(c => ids.includes(c))));
+        if (seules.length) bilan += `<p class="mini-note">À la chaîne pour ${esc(enChaine.map(c => PC.etiquette(c)).join(', ') || 'aucune')} ;
+          ${esc(nom(a.service))} seul pour ${esc(seules.map(c => PC.etiquette(c)).join(', '))} (leur flux ne passe pas par ${esc(nom(f))}).</p>`;
+        const ailleurs = this.state.ateliers.filter(x => x.service === f && x.id !== a.id && (x.lots || []).some(l => l.some(c => enChaine.includes(c))));
         if (ailleurs.length) bilan += `<p class="mini-note at-alerte">Encore dans ${ailleurs.map(x => '« ' + esc(x.nom) + ' »').join(', ')} : ces commandes y sont faites à part.
           Rechoisissez « à la chaîne » pour les en retirer.</p>`;
       }
@@ -1807,7 +1812,7 @@
         <label class="at-mode-dispo">À la chaîne avec l’étape d’avant ?<select data-at-champ="fusion" aria-label="Cette case fait-elle aussi l’étape d’avant, à la chaîne ?">
           <option value="" ${f ? '' : 'selected'}>Non — l’étape d’avant a sa propre case</option>
           ${[...avant].map(s => `<option value="${esc(s)}" ${s === f ? 'selected' : ''}>Oui, avec ${esc(nom(s))} : ${esc(nom(s))} + ${esc(nom(a.service))} dans cette case</option>`).join('')}</select></label>
-        <span class="mini-note">Pour les commandes de cette case seulement : une personne dresse et passe le plat, l’autre monte directement.
+        <span class="mini-note">Pour les commandes de cette case dont le flux passe par cette étape (les autres : son étape seule) : une personne dresse et passe le plat, l’autre monte directement.
           Seule, une personne fait les deux ; à plusieurs, elles se répartissent entre les deux postes.</span>
         ${bilan}</div>`;
     }

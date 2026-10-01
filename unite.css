@@ -187,3 +187,4 @@
 .mu-c.hors input:disabled{cursor:not-allowed}
 /* Les équipes d'un autre service qui font aussi celui-ci, à la chaîne */
 .mu-chainees{margin:14px 0 6px;font-size:14px;color:var(--chaine,#c026d3)}
+.mu-c .mu-chez-chaine{color:var(--chaine,#c026d3)}
