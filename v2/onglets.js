@@ -1,0 +1,249 @@
+/* Le menu : Accueil, puis quatre parties, et dans chacune quelques pages.
+ *
+ * Vols (ce qu'on importe), Mon unité (ce qu'on décrit, service par service),
+ * Réglages (ce qu'on essaie), Résultats (ce qu'on observe). Une page ne change
+ * pas de nature selon l'endroit d'où l'on vient. Les outils d'avant (chemins,
+ * cases, liens) restent dans une partie cachée, « Outils avancés ».
+ *
+ * Une page EST un sous-onglet d'une vue : les éléments d'une vue portent
+ * `data-sous="<page>"` (ou plusieurs, séparés par des espaces), et une règle
+ * de style masque ceux qui n'appartiennent pas à la page ouverte. Un élément
+ * sans `data-sous` reste visible dans toutes les pages de sa vue. Les parties
+ * ne déplacent rien : elles regroupent des pages de vues différentes.
+ * La dernière page ouverte de chaque partie est retenue d'une visite à l'autre.
+ */
+(function (root) {
+  'use strict';
+
+  /* Les pages de chaque vue : c'est la vue qui porte les éléments. */
+  const ONGLETS = {
+    vols: [
+      { id: 'v-programme', nom: 'Vols', ico: 'avion' },
+      { id: 'v-planche', nom: 'Planche retour', ico: 'camion' },
+      { id: 'v-departs', nom: 'Départs', ico: 'depart' }
+    ],
+    ateliers: [
+      { id: 'mu-pas', nom: 'Pas à pas', ico: 'check' },
+      { id: 'mu-flux', nom: 'Flux de production', ico: 'fleche' },
+      { id: 'mu-services', nom: 'Services et équipes', ico: 'service' },
+      { id: 'at-chemins', nom: 'Une commande', ico: 'fleche' },
+      { id: 'at-equipes', nom: 'Cases', ico: 'service' },
+      { id: 'at-grille', nom: 'Parcours des commandes', ico: 'fleche' },
+      { id: 'at-planning', nom: 'Planning des équipes', ico: 'journee' },
+      { id: 'at-repas', nom: 'Commandes', ico: 'plateau' },
+      { id: 'at-recap', nom: 'Tableau des équipes', ico: 'service' }
+    ],
+    reglages: [
+      { id: 'rg-minutes', nom: 'Minutes', ico: 'chrono' },
+      { id: 'rg-recap', nom: 'Tableau des minutes', ico: 'journee' },
+      { id: 'rg-simulation', nom: 'Réglages de la simulation', ico: 'sablier' }
+    ],
+    // Arriver « sur le plan » (un lien, « voir sur le plan »), c'est arriver
+    // sur la carte ; le menu, lui, ouvre les Résultats par leur synthèse.
+    plan: [
+      { id: 'j-plan', nom: 'Le plan rejoué', ico: 'unite' },
+      { id: 'j-chiffres', nom: 'Synthèse', ico: 'check' },
+      { id: 'j-stocks', nom: 'Stocks et retours', ico: 'boite' },
+      { id: 'j-comparer', nom: 'Comparer deux essais', ico: 'lecture' }
+    ],
+    flux: [
+      { id: 'u-liens', nom: 'Liens', ico: 'fleche' },
+      { id: 'u-services', nom: 'Services', ico: 'service' },
+      { id: 'u-lecture', nom: 'Contrôles', ico: 'info' },
+      { id: 'u-sauvegarde', nom: 'Sauvegarde et limites', ico: 'boite' }
+    ]
+  };
+
+  /* Les parties du menu, dans l'ordre du travail. `intro` : une phrase, pas
+   * un paragraphe. `cache` : une partie qu'on ouvre depuis l'en-tête ou
+   * l'accueil, sans tuile. */
+  const PARTIES = [
+    { id: 'donnees', nom: 'Vols', ico: 'avion', couleur: 'var(--c-vols)',
+      resume: 'Ce que vous importez',
+      pages: [
+        { id: 'v-programme', intro: 'Le programme de vols de la journée : importez le vôtre, en Excel ou en CSV.' },
+        { id: 'v-planche', intro: 'La planche retour du handling : quand chaque vol revient à l’unité, pour la plonge. À saisir ici ou à importer en Excel.' }
+      ] },
+    // Tout le paramétrage de l'unité, service par service (29/09) : ce que fait
+    // chaque service, ses équipes, ce que chacune prépare, ses minutes.
+    { id: 'organisation', nom: 'Mon unité', ico: 'equipe', couleur: 'var(--c-equipes)',
+      resume: 'Vos services et vos équipes',
+      pages: [
+        { id: 'mu-pas', intro: 'Ce qu’il reste à faire avant de simuler, dans l’ordre : chaque point mène là où il se règle.' },
+        { id: 'mu-flux', intro: 'Par où passe chaque type de production, et quelles commandes le suivent.' },
+        { id: 'mu-services', intro: 'Chaque service : ce qu’il fait, ses équipes, ce que chacune prépare, ses minutes.' },
+        { id: 'at-chemins', intro: 'Une commande de bout en bout : le flux qu’elle suit, et sur chaque service l’équipe qui la prépare.' },
+        { id: 'at-recap', intro: 'Toutes les équipes d’un coup d’œil, avec leurs heures : à régler ici ou dans Excel.' },
+        { id: 'rg-recap', intro: 'Toutes les minutes de travail d’un coup d’œil : une ligne par commande, une colonne par service ; à modifier ici ou dans Excel.' }
+      ] },
+    { id: 'reglages', nom: 'Réglages', ico: 'sablier', couleur: 'var(--c-temps)',
+      resume: 'Ce que vous essayez',
+      pages: [
+        { id: 'rg-simulation', intro: 'Tous les réglages de la simulation, au même endroit : horaires des vols, retours à la plonge et boucle du matériel, rythme et pauses.' }
+      ] },
+    { id: 'resultats', nom: 'Résultats', ico: 'journee', couleur: 'var(--c-journee)',
+      resume: 'Ce que la journée donne',
+      pages: [
+        { id: 'j-chiffres', intro: 'La journée en chiffres : commandes à l’heure, retards, attentes, travail fourni.' },
+        { id: 'j-plan', intro: 'Rejouez la journée sur le plan de l’unité : qui travaille, qui attend, ce qui est prêt.' },
+        { id: 'at-planning', intro: 'Qui travaille quand : chaque équipe, ses préparations et ses attentes.' },
+        { id: 'at-repas', intro: 'Chaque commande : à quelle heure elle est prête, et avant quand elle devait l’être.' },
+        { id: 'at-grille', intro: 'Chaque commande, étape par étape : cliquez « Prête à » pour la suivre dans le temps.' },
+        { id: 'v-departs', intro: 'Chaque vol : ses repas sont-ils prêts avant son départ ?' },
+        { id: 'j-stocks', intro: 'Ce qui attend entre deux services, et les retours des vols à la plonge.' },
+        { id: 'j-comparer', intro: 'Retenez deux essais et voyez ce qui a bougé.' }
+      ] },
+    // Les outils d'avant, pour les cas rares : une case réglée hors de sa
+    // fiche, les liens entre services. On y vient par un
+    // lien discret de Mon unité ; ils ne sont plus dans le menu.
+    { id: 'avance', nom: 'Outils avancés', ico: 'curseurs', couleur: 'var(--c-equipes)', cache: true,
+      resume: 'Cases, minutes et liens, à la main',
+      pages: [
+        { id: 'at-equipes', intro: 'Toutes les cases (équipes), une par une.' },
+        { id: 'rg-minutes', intro: 'Les minutes de travail d’un vol, service par service.' },
+        { id: 'u-services', intro: 'Les services de l’unité : nom, équipes, place sur le plan, services supprimés.' },
+        { id: 'u-liens', intro: 'Qui livre qui dans l’unité : ces liens ne servent qu’aux commandes sans chemin.' },
+        { id: 'u-lecture', intro: 'Ce que le calcul comprend de votre organisation, et ce qu’il faut corriger.' }
+      ] },
+    { id: 'fichier', nom: 'Sauvegarde', ico: 'boite', couleur: 'var(--c-unite)', cache: true,
+      resume: 'Votre travail dans un fichier',
+      pages: [
+        { id: 'u-sauvegarde', intro: 'Enregistrez tout votre travail dans un fichier, et relisez-le plus tard.' }
+      ] }
+  ];
+  const CLE = 'ory-menu-pages';
+
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
+    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+  function defaut(vue) { return ((ONGLETS[vue] || [])[0] || {}).id || null; }
+  function vueDe(id) { return Object.keys(ONGLETS).find(v => ONGLETS[v].some(o => o.id === id)) || null; }
+  /** La partie qui contient une page. */
+  function partieDe(id) { return PARTIES.find(p => p.pages.some(x => x.id === id)) || null; }
+  /** Une page, avec son nom, son pictogramme, sa vue et sa partie. */
+  function page(id) {
+    const vue = vueDe(id), o = vue && ONGLETS[vue].find(x => x.id === id), p = partieDe(id);
+    if (!o || !p) return null;
+    return { ...o, ...p.pages.find(x => x.id === id), vue, partie: p.id };
+  }
+  /** Les pages d'une partie, dans l'ordre du menu. */
+  const pagesDe = partie => ((PARTIES.find(p => p.id === partie) || {}).pages || []).map(x => page(x.id));
+
+  /* Une règle par onglet : dans l'onglet X, tout élément découpé qui n'est
+   * pas de X disparaît. Les éléments des autres vues sont déjà masqués. */
+  function regles() {
+    return Object.values(ONGLETS).flat().map(o =>
+      `body[data-sous="${o.id}"] [data-sous]:not([data-sous~="${o.id}"]){display:none!important}`).join('\n');
+  }
+
+  class SousOnglets {
+    /* a = {
+     *   hote()        — la barre où dessiner les onglets
+     *   vue()         — la vue affichée ('accueil' : aucune page)
+     *   badge(id)     — facultatif : { n, ton } à afficher sur l'onglet, ou rien
+     *   change(vue,id)— facultatif : appelé quand la page change (la vue suit)
+     *   apres(id)     — facultatif : appelé une fois la page ouverte et dessinée
+     * } */
+    constructor(a) {
+      this.a = a;
+      this.choix = {};   // partie → dernière page ouverte
+      try { this.choix = JSON.parse(localStorage.getItem(CLE) || '{}') || {}; } catch (e) { this.choix = {}; }
+      try { this.parVue = JSON.parse(localStorage.getItem(CLE + '-vues') || '{}') || {}; } catch (e) { this.parVue = {}; }
+      if (root.document && !document.getElementById('sous-onglets-regles')) {
+        const st = document.createElement('style'); st.id = 'sous-onglets-regles';
+        st.textContent = regles(); document.head.appendChild(st);
+      }
+      this.page = null;
+      const h = a.hote();
+      if (h) {
+        h.addEventListener('click', e => {
+          const b = e.target.closest('[data-sous-onglet]'); if (!b) return;
+          this.choisir(b.dataset.sousOnglet);
+        });
+        h.addEventListener('keydown', e => this.clavier(e));
+      }
+    }
+
+    /** La page à ouvrir dans une partie : la dernière vue, sinon la première. */
+    actifDe(partie) {
+      const pages = pagesDe(partie), c = this.choix[partie];
+      return pages.some(x => x.id === c) ? c : (pages[0] || {}).id || null;
+    }
+
+    /** La page ouverte, recalée sur la vue affichée si l'on est arrivé autrement. */
+    actif(vue = this.a.vue()) {
+      if (this.page && vueDe(this.page) === vue) return this.page;
+      if (!ONGLETS[vue]) return null;
+      // Arrivé par un lien vers la vue : la dernière page ouverte de cette vue
+      // (une vue porte des pages de plusieurs parties : Mon unité, Outils avancés).
+      const pv = (this.parVue || {})[vue];
+      const deja = (pv && vueDe(pv) === vue ? pv : null) || Object.values(this.choix).find(id => vueDe(id) === vue);
+      return deja || defaut(vue);
+    }
+
+    /** Ouvre une partie, sur sa dernière page. */
+    ouvrir(partie) { const id = this.actifDe(partie); if (id) this.choisir(id); }
+
+    /* Ouvre une page, de la vue affichée ou d'une autre (la vue suivra). */
+    choisir(id, focus) {
+      const vue = vueDe(id), p = partieDe(id); if (!vue || !p) return;
+      this.page = id;
+      this.choix[p.id] = id;
+      (this.parVue || (this.parVue = {}))[vue] = id;
+      try { localStorage.setItem(CLE, JSON.stringify(this.choix)); localStorage.setItem(CLE + '-vues', JSON.stringify(this.parVue)); } catch (e) { /* stockage indisponible */ }
+      // La page est connue AVANT qu'on prévienne : ce qui se dessine à
+      // l'ouverture (le tableau, le planning) regarde quelle page est affichée.
+      if (root.document) { document.body.dataset.sous = id; document.body.dataset.partie = p.id; }
+      if (this.a.change) this.a.change(vue, id);
+      this.rendre();
+      if (this.a.apres) this.a.apres(id);
+      if (focus) { const b = this.a.hote()?.querySelector(`[data-sous-onglet="${id}"]`); if (b) b.focus(); }
+    }
+
+    rendre() {
+      const vue = this.a.vue(), actif = this.actif(vue);
+      this.page = actif;
+      const p = actif ? partieDe(actif) : null;
+      if (root.document) {
+        if (actif) document.body.dataset.sous = actif; else delete document.body.dataset.sous;
+        if (p) document.body.dataset.partie = p.id; else delete document.body.dataset.partie;
+      }
+      const h = this.a.hote(); if (!h) return;
+      const liste = p ? pagesDe(p.id) : [];
+      const I = root.OrlyIcones;
+      const html = liste.map(o => {
+        const on = o.id === actif, b = this.a.badge ? this.a.badge(o.id) : null;
+        return `<button type="button" role="tab" class="so-onglet${on ? ' actif' : ''}" data-sous-onglet="${o.id}"
+          aria-selected="${on}" tabindex="${on ? 0 : -1}">${I ? I.ico(o.ico) : ''}<span>${esc(o.nom)}</span>${
+          b && b.n ? `<b class="so-badge ${esc(b.ton || '')}" title="${esc(b.titre || '')}">${esc(b.n)}</b>` : ''}</button>`;
+      }).join('');
+      // Redessiner seulement si quelque chose a changé : sinon l'onglet qui a
+      // le focus clavier le perdrait à chaque recalcul de la journée.
+      const boite = h.querySelector('.so-liste') || h;
+      if (this.dessin !== html || (html && !boite.firstChild)) { boite.innerHTML = html; this.dessin = html; }
+      // Sur téléphone la barre défile : l'onglet ouvert doit y rester visible.
+      const on = boite.querySelector('.actif');
+      if (on && boite.scrollWidth > boite.clientWidth) {
+        const g = on.offsetLeft - boite.offsetLeft, d = g + on.offsetWidth;
+        if (g < boite.scrollLeft) boite.scrollLeft = g - 16;
+        else if (d > boite.scrollLeft + boite.clientWidth) boite.scrollLeft = d - boite.clientWidth + 16;
+      }
+      h.hidden = !liste.length;
+    }
+
+    /* Flèches, Début et Fin : le parcours clavier des onglets. */
+    clavier(e) {
+      const b = e.target.closest('[data-sous-onglet]'); if (!b) return;
+      const tous = [...this.a.hote().querySelectorAll('[data-sous-onglet]')], i = tous.indexOf(b);
+      const j = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tous.length - 1 }[e.key];
+      if (j === undefined) return;
+      e.preventDefault();
+      const cible = tous[(j + tous.length) % tous.length];
+      this.choisir(cible.dataset.sousOnglet, true);
+    }
+  }
+
+  const api = { ONGLETS, PARTIES, defaut, vueDe, partieDe, page, pagesDe, regles, SousOnglets };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.OrlyOnglets = api;
+})(typeof window !== 'undefined' ? window : globalThis);

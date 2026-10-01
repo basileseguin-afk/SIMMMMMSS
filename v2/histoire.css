@@ -1,0 +1,569 @@
+/* ==========================================================================
+ *  L'HISTOIRE DU SITE
+ *  Quatre étapes numérotées, dans l'ordre où l'on pense, qui sont aussi la
+ *  navigation ; un encart « Comment ça marche » en quatre images ; et, sur
+ *  chaque vue, un titre et une phrase en mots de tous les jours.
+ * ==========================================================================*/
+
+/* La page empile ses bandeaux ; le contenu prend ce qui reste. Une grille à
+   rangées fixes décalait tout dès qu'un bandeau se masquait. */
+  body{display:flex;flex-direction:column}
+  body>.app{flex:1 1 auto;min-height:0}
+
+
+/* --- Les couleurs : chacune a un sens ---------------------------------
+   Une par étape (se repérer), une par classe de cabine (la reconnaître
+   partout, toujours avec son nom). Validées contre le daltonisme. */
+:root{
+  --c-vols:#2a78d6; --c-equipes:#138a60; --c-temps:#4a3aa7; --c-journee:#c2477a; --c-unite:#5b6b7d;
+  --cab-BC:#c98500; --cab-PC:#7b61d6; --cab-YC:#1baf7a; --cab-CREW:#2a78d6; --cab-SPML:#eb6834;
+  --ok:#15803d; --attente:#b45309; --retard:#c02618;
+}
+.ico{width:1.25em;height:1.25em;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;
+  stroke-linejoin:round;flex:none;vertical-align:-.25em}
+.puce-classe{display:inline-block;width:10px;height:10px;border-radius:3px;flex:none;background:var(--bordure2);vertical-align:0}
+.puce-classe[data-cab="BC"]{background:var(--cab-BC)} .puce-classe[data-cab="PC"]{background:var(--cab-PC)}
+.puce-classe[data-cab="YC"]{background:var(--cab-YC)} .puce-classe[data-cab="CREW"]{background:var(--cab-CREW)}
+.puce-classe[data-cab="SPML"]{background:var(--cab-SPML)}
+
+/* --- Comment ça marche : une frise d'images ------------------------------ */
+.cm-liste{list-style:none;margin:6px 0 0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;
+  position:relative}
+.cm-liste li{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;position:relative;padding:6px 6px 0}
+.cm-liste li:not(:last-child)::after{content:"";position:absolute;top:44px;left:calc(50% + 50px);right:calc(-50% + 50px);
+  border-top:3px dotted var(--bordure2)}
+.cm-liste li:not(:last-child)::before{content:"";position:absolute;top:39px;right:calc(-50% + 46px);
+  border:6px solid transparent;border-left:9px solid var(--bordure2)}
+.cm-rond{position:relative;width:78px;height:78px;border-radius:50%;display:grid;place-items:center;
+  background:color-mix(in srgb,var(--c) 14%,var(--bg3));color:var(--c);border:3px solid var(--c);margin-bottom:4px}
+.cm-picto.ico{width:40px;height:40px;stroke-width:1.7}
+.cm-num{position:absolute;top:-4px;right:-4px;width:24px;height:24px;border-radius:50%;background:var(--c);color:#fff;
+  font-size:13px;font-weight:800;display:grid;place-items:center;border:2px solid var(--bg3)}
+.cm-liste b{font-size:14px;line-height:1.25}
+.cm-liste p{margin:0;font-size:13px;color:var(--txt2)}
+
+/* --- Le titre de chaque vue : une tuile de couleur, un titre, une phrase - */
+.workspace-heading>div{display:grid;grid-template-columns:auto 1fr;column-gap:14px;align-items:center}
+.view-ico{grid-row:span 2;width:48px;height:48px;border-radius:14px;display:grid;place-items:center;
+  background:var(--c,var(--accent));color:#fff}
+.view-ico .ico{width:27px;height:27px}
+.view-ico:empty{display:none}
+.view-intro{margin:2px 0 0;font-size:14px;color:var(--txt2);max-width:90ch;line-height:1.4}
+.view-intro:empty{display:none}
+
+@media(max-width:1250px){
+}
+@media(max-width:1000px){
+  .cm-liste{grid-template-columns:1fr 1fr;row-gap:16px}
+  .cm-liste li::after,.cm-liste li::before{display:none}
+}
+
+/* --- Rejouer la journée -------------------------------------------------
+   L'horloge et les boutons de lecture ne servent qu'à « La journée » : ils
+   vivent dans la vue, pas dans l'en-tête commun. */
+.lecteur{display:flex;align-items:center;gap:18px;padding:10px 20px;background:var(--bg3);
+  border-bottom:1px solid var(--bordure);flex-wrap:wrap}
+.lecteur .horloge-box{flex:1 1 520px;min-width:0;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.lecteur .horloge{font-size:26px;color:var(--txt)}
+.lecteur .jour{font-size:12px;color:var(--txt2)}
+.lecteur .run-state{max-width:240px;font-size:12px;color:var(--txt2)}
+.lecteur #sim-curseur{flex:1 1 180px;width:auto;min-width:140px}
+.lecteur .vitesse-box{color:var(--txt2)}
+.lecteur .vitesse-box b{color:var(--txt)}
+body:not([data-vue="plan"]) .lecteur,body.editing .lecteur{display:none}
+
+/* --- Les vols : leur programme et leurs horaires, puis le bilan ---------- */
+body[data-vue="vols"] .app{grid-template-columns:minmax(0,1fr)}
+body[data-vue="vols"] .workbench{display:none}
+.vols-donnees{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:14px;margin-bottom:6px}
+.vols-donnees .panneau{margin:0}
+#vols-planche{grid-template-columns:minmax(0,1fr)}
+.vols-titre{font-size:16px;margin:14px 0 8px}
+
+/* --- Les temps de travail : un exemple plutôt qu'une formule ------------- */
+.rg-exemple{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 12px}
+.rg-eq{display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto;column-gap:9px;align-items:center;
+  background:color-mix(in srgb,var(--c-temps) 9%,var(--bg3));border:1px solid color-mix(in srgb,var(--c-temps) 30%,var(--bordure));
+  border-radius:12px;padding:7px 12px}
+.rg-eq .ico{grid-row:span 2;width:26px;height:26px;color:var(--c-temps)}
+.rg-eq b{font-size:18px;line-height:1.1;color:var(--txt)}
+.rg-eq small{font-size:12px;color:var(--txt2)}
+.rg-eq.res{background:var(--c-temps);border-color:var(--c-temps)}
+.rg-eq.res .ico,.rg-eq.res b,.rg-eq.res small{color:#fff}
+.rg-op{font-size:26px;font-weight:300;color:var(--txt2)}
+.rg-codes{margin:-6px 0 10px;font-size:12px;color:var(--txt2)}
+
+/* --- La journée : des indicateurs qu'on lit sans lire -------------------- */
+.kpi-grille .kpi{display:flex;align-items:center;gap:14px}
+.kpi-ico{flex:none;width:52px;height:52px;border-radius:50%;display:grid;place-items:center}
+.kpi-ico .ico{width:27px;height:27px}
+.kpi-retard .kpi-ico{background:color-mix(in srgb,var(--retard) 14%,var(--bg3));color:var(--retard)}
+.kpi-travail .kpi-ico{background:color-mix(in srgb,var(--c-journee) 14%,var(--bg3));color:var(--c-journee)}
+.kpi-attente .kpi-ico{background:color-mix(in srgb,var(--attente) 16%,var(--bg3));color:var(--attente)}
+.anneau{flex:none;width:58px;height:58px;transform:rotate(-90deg)}
+.anneau circle{fill:none;stroke-width:4.2}
+.anneau-fond{stroke:var(--jauge-bg)}
+.anneau-plein{stroke:var(--bordure2);stroke-linecap:round;transition:stroke-dasharray .4s}
+.anneau-plein.bon{stroke:var(--ok)} .anneau-plein.moyen{stroke:var(--attente)} .anneau-plein.mauvais{stroke:var(--retard)}
+.kpi-retard .val.mauvais{color:var(--retard)}
+.anneau-plein.zero{display:none}
+
+/* --- En ce moment : chaque service, son pictogramme, son état en couleur -- */
+.stat-atelier{display:flex;align-items:center;gap:11px;border-radius:12px;padding:8px 10px;margin:0 0 6px;
+  background:var(--bg2);border:1px solid transparent}
+.stat-atelier:hover{border-color:var(--bordure2)}
+.stat-atelier.active{border-color:var(--c-journee);background:color-mix(in srgb,var(--c-journee) 8%,var(--bg2))}
+.stat-ico{flex:none;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:var(--bg3);color:var(--txt2)}
+.stat-ico .ico{width:21px;height:21px}
+.stat-corps{flex:1;min-width:0;display:block}
+.stat-atelier .haut{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 8px;font-size:13px;font-weight:700;color:var(--txt)}
+.stat-etat{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:800;border-radius:99px;padding:2px 8px 2px 6px;white-space:nowrap}
+.stat-etat .ico{width:13px;height:13px;stroke-width:2.4}
+.stat-atelier.etat-travail .stat-etat{background:color-mix(in srgb,var(--c-journee) 15%,var(--bg3));color:var(--c-journee)}
+.stat-atelier.etat-attente .stat-etat{background:color-mix(in srgb,var(--attente) 16%,var(--bg3));color:var(--attente)}
+.stat-atelier.etat-fini .stat-etat{background:color-mix(in srgb,var(--ok) 15%,var(--bg3));color:var(--ok)}
+.stat-atelier.etat-avenir .stat-etat{background:var(--bg3);color:var(--txt2)}
+.stat-atelier.etat-travail .stat-ico{background:var(--c-journee);color:#fff}
+.stat-atelier.etat-attente .stat-ico{background:var(--attente);color:#fff}
+.stat-atelier.etat-fini .stat-ico{background:color-mix(in srgb,var(--ok) 18%,var(--bg3));color:var(--ok)}
+.stat-atelier .stat-quoi{display:block;margin-top:2px}
+
+/* --- Rien à rejouer : un seul encart, qui dit quoi faire ------------------ */
+.vide-carte{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:14px 8px}
+.vide-carte>.ico{width:46px;height:46px;padding:12px;box-sizing:content-box;border-radius:50%;
+  background:color-mix(in srgb,var(--c-equipes) 15%,var(--bg3));color:var(--c-equipes)}
+.vide-carte b{font-size:15px;color:var(--txt)}
+.vide-carte p{margin:0;font-size:13px;color:var(--txt2)}
+.vide-carte .btn{background:var(--c-equipes);border-color:var(--c-equipes);color:#fff}
+body.journee-vide #panel-suivi .panneau:has(#stats-ateliers),body.journee-vide #panel-suivi .panneau:has(#bilan-journee){display:none}
+body.journee-vide #goulot-info{border:0;background:none;padding:0}
+
+/* --- Les vols : un tableau des départs comme à l'aéroport ---------------- */
+.vols-titre{display:none}
+/* Le handling, au-dessus des départs : son état, ou le geste qui le met en place. */
+.vols-handling{margin:14px 0 0;background:var(--bg3);border:1px solid var(--bordure);border-left:4px solid var(--accent);border-radius:14px;padding:10px 14px}
+.vols-handling:empty{display:none}
+.vols-handling p{margin:0 0 6px;font-size:14px;line-height:1.5}
+.vols-handling .row-btns{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:8px 0 2px}
+.vols-handling .mini-note{margin:0}
+.vols-frise{margin:14px 0 10px;background:var(--bg3);border:1px solid var(--bordure);border-radius:14px;padding:12px 14px 6px}
+.vf-comptes{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
+.vf-compte{display:flex;align-items:center;gap:10px;font:inherit;cursor:pointer;border:2px solid transparent;border-radius:12px;
+  padding:8px 14px 8px 10px;background:var(--bg2);color:var(--txt);min-height:0}
+.vf-compte .ico{width:30px;height:30px;padding:6px;box-sizing:content-box;border-radius:50%;color:#fff}
+.vf-compte b{font-size:26px;line-height:1;font-variant-numeric:tabular-nums}
+.vf-compte span{font-size:12.5px;color:var(--txt2);font-weight:600;max-width:110px;line-height:1.2;text-align:left}
+.vf-ok .ico{background:var(--ok)} .vf-tard .ico{background:var(--attente)} .vf-sans .ico{background:var(--txt3)}
+.vf-compte:hover,.vf-compte.actif{border-color:var(--bordure2)}
+.vf-compte.actif{background:var(--bg3);box-shadow:0 2px 8px #0002}
+.vf-tout{font:inherit;font-size:12.5px;border:0;background:none;color:var(--accent2);text-decoration:underline;cursor:pointer}
+.vf-svg{width:100%;height:auto;display:block}
+.vf-grille{stroke:var(--bordure);stroke-width:1;stroke-dasharray:2 4}
+.vf-heure{font-size:11px;fill:var(--txt3)}
+.vf-vol circle{stroke:var(--bg3);stroke-width:2}
+.vf-vol .vf-avion{transform:translate(-1px,-1px) scale(1.0);fill:none;stroke:#fff;stroke-width:1.7;stroke-linejoin:round}
+.vf-vol text{font-size:11.5px;font-weight:700;fill:var(--txt)}
+.vf-ready circle{fill:var(--ok)} .vf-late circle{fill:var(--attente)}
+.vf-overdue circle{fill:var(--retard)} .vf-pending circle,.vf-orphan circle{fill:var(--txt3)}
+
+.flights-view .table-scroll{position:relative;border-radius:14px;overflow:auto;border:1px solid #0e1d2e}
+.flight-table{background:var(--bg3);color:var(--txt)}
+.flight-table thead th{background:var(--bg2);color:var(--txt2);font-size:12px;letter-spacing:.04em}
+.flight-table td,.flight-table th{border-bottom:1px solid var(--bordure) !important}
+.flight-table td small{color:var(--txt2)}
+.flight-table td strong{color:var(--txt);font-size:14px;letter-spacing:.03em}
+.vol-heure,.vol-avant{font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+.flight-table td.vol-heure{font-size:20px;font-weight:800;color:var(--txt);font-variant-numeric:tabular-nums}
+.flight-table td.vol-avant{font-size:14px;color:var(--txt2)}
+.flight-table .status{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:4px 11px 4px 8px;
+  font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+.flight-table .status .ico{width:15px;height:15px;stroke-width:2.4}
+.flight-table .status.ready{background:color-mix(in srgb,var(--ok) 14%,var(--bg3));color:var(--ok)}
+.flight-table .status.late{background:color-mix(in srgb,var(--attente) 14%,var(--bg3));color:var(--attente)}
+.flight-table .status.overdue{background:color-mix(in srgb,var(--retard) 14%,var(--bg3));color:var(--retard)}
+.flight-table .status.orphan{background:var(--bg2);color:var(--txt2)}
+.flight-table .status.pending{background:var(--bg2);color:var(--txt2)}
+.vol-repas{display:flex;flex-wrap:wrap;gap:5px}
+.rc{display:inline-flex;align-items:center;gap:5px;border-radius:99px;padding:3px 9px 3px 6px;font-size:12px;font-weight:700;
+  background:var(--bg2);color:var(--txt);border:1.5px solid var(--bordure)}
+.rc.ok{border-color:var(--ok)}
+.rc.tard{border-color:var(--attente)}
+.rc.attente{border-style:dashed;border-color:var(--bordure2)}
+.rc.sans{background:transparent;border:1.5px dashed var(--bordure2);color:var(--txt2)}
+.rc .puce-classe{width:9px;height:9px;border-radius:50%}
+.flight-table tbody tr,.flight-table tbody tr:nth-child(even),.flight-table tbody tr:hover{background:var(--bg3)}
+.flight-table tbody tr:nth-child(even){background:var(--bg3)}
+.flight-table tbody td{color:var(--txt)}
+
+/* --- Les temps de travail : de petites barres, une par classe ------------- */
+.rg-codes{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:12px;color:var(--txt2);margin:0 0 12px}
+.rg-codes>span{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:var(--txt)}
+.rg-codes em{font-style:normal;margin-left:auto}
+.rg-svc-ico{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:9px;margin-right:9px;vertical-align:middle;
+  background:color-mix(in srgb,var(--c-temps) 13%,var(--bg3));color:var(--c-temps)}
+.rg-svc-ico .ico{width:18px;height:18px}
+.rg-barres{display:inline-flex;align-items:flex-end;gap:8px;height:48px;vertical-align:middle}
+.rg-barre{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;width:34px;height:100%}
+.rg-barre i{display:block;width:22px;border-radius:4px 4px 0 0;background:var(--bordure2)}
+.rg-barre i[data-cab="BC"]{background:var(--cab-BC)} .rg-barre i[data-cab="PC"]{background:var(--cab-PC)}
+.rg-barre i[data-cab="YC"]{background:var(--cab-YC)} .rg-barre i[data-cab="CREW"]{background:var(--cab-CREW)}
+.rg-barre i[data-cab="SPML"]{background:var(--cab-SPML)}
+.rg-barre em{font-style:normal;font-size:12px;font-weight:700;color:var(--txt);margin-top:3px;font-variant-numeric:tabular-nums}
+.rg-plus{font-style:normal;font-size:12px;color:var(--txt2);margin-left:10px}
+.rg-service>summary .rg-svc-nom{flex:0 0 330px;min-width:0;gap:0}
+
+.qf-col-nom{display:flex;align-items:center;gap:6px}
+.qf-col-nom .ico{width:17px;height:17px;color:var(--txt2)}
+.qf-id b{display:flex;align-items:center;gap:6px}
+/* Une case vide ne crie pas : un « + » discret. L'ambre reste aux alertes. */
+.qf-case.libre{background:transparent;border:1.5px dashed var(--bordure2);color:var(--txt3);display:grid;place-items:center}
+.qf-case.libre:hover{border-color:var(--c-equipes);color:var(--c-equipes);background:color-mix(in srgb,var(--c-equipes) 7%,transparent)}
+.qf-plus{font-size:20px;font-weight:300;line-height:1}
+.qf-case.ok{background:color-mix(in srgb,var(--c-equipes) 12%,var(--bg3));border-color:color-mix(in srgb,var(--c-equipes) 45%,var(--bordure2))}
+.qf-l.libre::before{background:transparent;border:1.5px dashed var(--bordure2)}
+.qf-l.ok::before{background:color-mix(in srgb,var(--c-equipes) 12%,var(--bg3));border-color:var(--c-equipes)}
+.qf-g[data-g="0"]{border-bottom-color:var(--c-equipes) !important}
+.qf-g[data-g="1"]{border-bottom-color:var(--c-vols) !important}
+.qf-g[data-g="2"]{border-bottom-color:var(--cab-PC) !important}
+.qf-g[data-g="3"]{border-bottom-color:var(--cab-BC) !important}
+.qf-g.jonction{border-bottom-color:var(--txt) !important}
+.qf-col.a-remplir small{color:var(--txt2);font-weight:600}
+.pc-lab-cab{display:inline-flex;align-items:center;gap:5px}
+.pc-cab{display:inline-flex;align-items:center;gap:5px;background:var(--bg2);color:var(--txt)}
+.pc-cab .puce-classe{border-radius:50%}
+
+/* --- Indicateurs de « Qui prépare quoi » : un pictogramme par chiffre ----- */
+.at-kpi{display:flex;align-items:center;gap:12px}
+.at-kpi-ico{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--bg2);color:var(--txt2)}
+.at-kpi-ico .ico{width:23px;height:23px}
+.at-kpi.ton-ok .at-kpi-ico{background:color-mix(in srgb,var(--ok) 15%,var(--bg3));color:var(--ok)}
+.at-kpi.ton-mal .at-kpi-ico{background:color-mix(in srgb,var(--retard) 14%,var(--bg3));color:var(--retard)}
+.at-kpi.ton-attente .at-kpi-ico{background:color-mix(in srgb,var(--attente) 15%,var(--bg3));color:var(--attente)}
+.at-kpi.ton-journee .at-kpi-ico{background:color-mix(in srgb,var(--c-journee) 14%,var(--bg3));color:var(--c-journee)}
+
+/* --- Le bouton « chiffres d'exemple » : une pastille, pas une phrase ------ */
+.ctx-exemple{display:inline-flex;align-items:center;gap:6px;text-decoration:none !important;border-radius:99px;padding:4px 12px !important;
+  background:color-mix(in srgb,var(--attente) 13%,var(--bg3)) !important;color:var(--txt) !important;font-weight:700}
+.ctx-exemple .ico{color:var(--attente);width:16px;height:16px}
+
+/* --- Le plan : un médaillon par service, qui prend la couleur de l'état --- */
+.zone-ico{pointer-events:none}
+.zone-ico circle{fill:var(--bg3);fill-opacity:.92;stroke:var(--zone-stroke);stroke-width:1.2}
+.zone-ico-trait{fill:none;stroke:var(--zone-txt);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+body.avant-lancement .zone.p-vide .zone-ico circle{stroke:var(--txt3)}
+body.avant-lancement .zone.p-vide .zone-ico-trait{stroke:var(--txt3)}
+body.avant-lancement .zone.p-pret .zone-ico circle{fill:var(--c-equipes);stroke:var(--c-equipes)}
+body.avant-lancement .zone.p-pret .zone-ico-trait{stroke:#fff}
+body.en-lecture .zone.s-travail .zone-ico circle{fill:var(--c-journee);stroke:var(--c-journee)}
+body.en-lecture .zone.s-attente .zone-ico circle{fill:var(--attente);stroke:var(--attente)}
+body.en-lecture .zone.s-fini .zone-ico circle{fill:var(--ok);stroke:var(--ok)}
+body.en-lecture .zone.s-travail .zone-ico-trait,body.en-lecture .zone.s-attente .zone-ico-trait,body.en-lecture .zone.s-fini .zone-ico-trait{stroke:#fff}
+.goulot-tete{display:flex;align-items:center;gap:8px}
+.goulot-tete .ico{width:30px;height:30px;padding:6px;box-sizing:content-box;border-radius:50%;color:#fff}
+.goulot-tete.attente .ico{background:var(--attente)} .goulot-tete.ok .ico{background:var(--ok)}
+
+/* ==========================================================================
+ *  ÉPURER : UNE VUE, QUELQUES ONGLETS
+ *  Chaque étape montre une chose à la fois. Les onglets portent la couleur de
+ *  l'étape ; un nombre dit qu'il y a quelque chose à faire derrière. Les
+ *  outils de la vue (annuler, Excel, importer) se rangent à droite des
+ *  onglets au lieu de prendre une ligne à eux seuls.
+ * ==========================================================================*/
+.workspace-heading{border-bottom:0 !important;padding-bottom:6px !important}
+.view-ico{width:42px;height:42px;border-radius:12px}
+.view-ico .ico{width:24px;height:24px}
+.sous-onglets{display:flex;flex-wrap:wrap;align-items:flex-end;gap:0 12px;padding:0 20px;background:var(--bg3);
+  border-bottom:1px solid var(--bordure);--c:var(--accent)}
+.sous-onglets[hidden]{display:none}
+body[data-vue="vols"] .sous-onglets{--c:var(--c-vols)}
+body[data-vue="ateliers"] .sous-onglets{--c:var(--c-equipes)}
+body[data-vue="reglages"] .sous-onglets{--c:var(--c-temps)}
+body[data-vue="plan"] .sous-onglets{--c:var(--c-journee)}
+body[data-vue="flux"] .sous-onglets{--c:var(--c-unite)}
+.so-liste{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;min-width:0;flex:1 1 auto}
+.so-liste::-webkit-scrollbar{display:none}
+.so-onglet{appearance:none;background:none;border:0;border-bottom:3px solid transparent;border-radius:8px 8px 0 0;
+  padding:10px 14px 9px;display:inline-flex;align-items:center;gap:7px;font:inherit;font-size:14px;font-weight:700;
+  color:var(--txt2);cursor:pointer;white-space:nowrap}
+.so-onglet .ico{width:18px;height:18px}
+.so-onglet:hover{color:var(--txt);background:var(--bg2)}
+.so-onglet.actif{color:var(--txt);border-bottom-color:var(--c);background:var(--bg2)}
+.so-onglet.actif .ico{color:var(--c)}
+.so-onglet:focus-visible{outline:2px solid var(--c);outline-offset:-3px}
+.so-badge{min-width:20px;height:20px;padding:0 6px;border-radius:99px;display:inline-grid;place-items:center;
+  font-size:12px;font-weight:800;color:#fff;background:var(--txt2)}
+.so-badge.attente{background:var(--attente)}
+.so-badge.retard{background:var(--retard)}
+.so-outils{display:flex;gap:6px;padding:6px 0;flex:none;margin-left:auto}
+.so-outils>[data-vue-outils]{display:flex;gap:6px;flex-wrap:nowrap}
+.so-outils .btn{padding:5px 10px;font-size:13px}
+body:not([data-vue="ateliers"]) [data-vue-outils="ateliers"],
+body:not([data-vue="flux"]) [data-vue-outils="flux"]{display:none}
+body.editing .sous-onglets{display:none}
+#view-flux .fc-heading{display:none}
+
+/* La journée : le plan, ses chiffres, la comparaison de deux essais. */
+body[data-vue="plan"][data-sous="j-chiffres"] .app,
+body[data-vue="plan"][data-sous="j-comparer"] .app,
+body[data-vue="plan"][data-sous="j-stocks"] .app{grid-template-columns:minmax(0,1fr)}
+body:not([data-vue="plan"]) .journee-chiffres,body:not([data-vue="plan"]) .journee-comparer,body:not([data-vue="plan"]) .journee-stocks{display:none}
+.journee-chiffres,.journee-comparer{padding:18px 20px;overflow:auto;flex:1 1 auto;min-height:0}
+.journee-stocks{overflow:auto;flex:1 1 auto;min-height:0;align-content:start}
+.col-plan>.kpi-grille{border-top:0}
+.chiffres-vide{display:none}
+body.journee-vide .chiffres-vide{display:flex}
+body.journee-vide .journee-chiffres .panneau,body.journee-vide .col-plan>.kpi-grille{display:none}
+.journee-chiffres .panneau{max-width:1100px}
+.journee-comparer .reglages-grille{columns:auto;max-width:900px}
+.journee-comparer .panneau-compare{margin:0}
+
+/* Les vols : d'où vient le programme, dit une seule fois, là où on le change. */
+.vols-source{display:flex;align-items:center;gap:10px;margin:0 0 12px;font-size:13px;color:var(--txt2)}
+.vols-source .demo-badge{display:inline-grid;place-items:center;width:28px;height:28px;padding:0;border-radius:8px;
+  border:0;background:color-mix(in srgb,var(--c-vols) 14%,var(--bg3));color:var(--c-vols)}
+.vols-source .demo-badge .ico{width:16px;height:16px}
+.vols-source strong{color:var(--txt)}
+.vols-frise{margin-top:0}
+
+/* Le bouton « chiffres d'exemple » dans l'en-tête sombre. */
+
+/* Les points à regarder : repliés, un clic les déplie. */
+details.at-anomalies{padding-top:8px;padding-bottom:8px}
+details.at-anomalies>summary{cursor:pointer;list-style-position:inside}
+details.at-anomalies:not([open])>summary{margin:0}
+body:not([data-vue="reglages"]) [data-vue-outils="reglages"]{display:none}
+.so-outils .rg-actions{margin:0}
+
+/* Le titre d'une section redit l'onglet : on n'en garde que la phrase qui
+   l'explique (le titre reste lu par les lecteurs d'écran). */
+#view-ateliers{padding-top:16px}
+#view-ateliers h3.at-titre{font-size:0;letter-spacing:0;margin:0 0 10px;padding-top:0;border-top:0}
+#at-status:empty{display:none}
+details.at-anomalies{margin-top:0}
+#view-ateliers .at-titre-aide{margin-top:0;padding-top:0;border-top:0}
+#view-ateliers .at-titre-aide .at-titre{margin:0}
+#view-ateliers h3.at-titre .pc-sous{font-size:14px;margin:0;display:inline-block;color:var(--txt2)}
+#view-ateliers h3.at-titre .pc-sous::first-letter{text-transform:uppercase}
+details.at-anomalies{margin-bottom:12px}
+#view-reglages .titre-aide:has(>.reglages-titre){display:none}
+#view-flux .fc-list-title[data-sous="u-liens"]{display:none}
+#view-flux #fc-lecture{margin-top:0;padding-top:0;border-top:0}
+
+/* Le site vise les écrans de bureau : sous 1 024 px de large, la page garde sa
+   mise en page et défile de côté plutôt que de se réorganiser. */
+html{overflow-x:auto}
+body{min-width:1024px}
+
+/* ==========================================================================
+ *  AUDIT DU 23/09 — lisibilité, neutralité, une seule façon de dire
+ * ==========================================================================*/
+/* Ce qui n'est pas encore rempli n'est pas une alerte : gris, pas rouge. */
+.at-etat.neutre,.qf-etat.manque{color:var(--txt2);font-weight:600}
+.so-badge.neutre{background:var(--bg2);color:var(--txt);border:1px solid var(--bordure2)}
+/* Une action rare ou destructive : un lien discret, rouge au survol seulement. */
+.lien-discret{appearance:none;border:0;background:none;padding:6px 8px;min-height:32px;font:inherit;font-size:13px;
+  color:var(--txt2);text-decoration:underline;text-underline-offset:2px;cursor:pointer;min-height:0}
+.lien-discret:hover,.lien-discret:focus-visible{color:var(--accent2)}
+.lien-discret.danger:hover,.lien-discret.danger:focus-visible,
+[data-at-action="classe-supprimer"].lien-discret:hover{color:var(--rouge)}
+/* Le résumé de la journée, dans l'étape 2 : une phrase, les mêmes mots qu'à l'étape 4. */
+.at-resume{margin:0 0 12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--bordure);border-radius:10px;font-size:14px}
+.at-resume-retard{color:var(--retard);font-weight:700}
+/* L'heure à laquelle valent les indicateurs de « Les chiffres ». */
+.kpi-quand{margin:0;padding:12px 20px 0;background:var(--bg3);font-size:13px;font-weight:700;color:var(--c-journee)}
+body.avant-lancement .kpi-quand{display:none}
+.qf-vide{background:var(--bg3);border:1px dashed var(--bordure2);border-radius:14px;padding:28px 20px;max-width:720px;margin:10px auto}
+.qf-vide p{max-width:58ch}
+#fc-status:empty{display:none}
+/* Un champ a la taille de ce qu'il contient : un curseur de 0,5 à 1,2 ne
+   traverse pas l'écran, un nombre de trois chiffres ne prend pas une ligne. */
+.rg-modele .slider-ligne,#panneau-horaires .slider-ligne{max-width:460px}
+#rg-presence,#loadDelay{max-width:130px}
+.champ:has(#rg-presence),.champ:has(#loadDelay){max-width:420px}
+/* Le choix de fichier : un bouton du site, pas le contrôle du navigateur. */
+.fichier-btn{position:relative;display:inline-flex;align-items:center;width:max-content;cursor:pointer}
+.fichier-input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.fichier-btn:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+/* Les panneaux du programme de vols : des cartes, sans traits de séparation vides. */
+.vols-donnees .panneau{border:1px solid var(--bordure);border-radius:10px;padding:14px 16px;background:var(--bg3);margin:0}
+.rg-version{margin-top:10px;font-size:12px;color:var(--txt3)}
+.rg-reset-ligne{margin:12px 0 0;text-align:right}
+/* Une seule typographie de libellés : en minuscules, comme une phrase. Les
+   majuscules sont réservées aux petites pastilles d'état (« À faire ensuite »,
+   « à remplir »). */
+.panneau h3,.champ span,.kpi .lab,.at-kpi .lab,.pc-defauts-lab,.qf-g,.fc-list-title,.demo-badge,
+.flight-table th,.at-table thead th,.at-mat-table thead th,.fc-table thead th,.rg-table thead th,
+.compare-tab thead th,.compare-tab tr.compare-groupe th,.compare-tab td small,.at-bilan-debit em{
+  text-transform:none;letter-spacing:0}
+.champ span,.kpi .lab,.at-kpi .lab,.pc-defauts-lab{font-size:13px}
+.panneau h3,.fc-list-title{font-size:14px;color:var(--txt)}
+.flight-table th,.at-table thead th,.at-mat-table thead th,.fc-table thead th,.rg-table thead th,.compare-tab thead th{font-size:12px}
+.qf-g{font-size:12px}
+/* Les lignes de « Minutes par vol » : une ligne, pas un bloc. */
+.rg-barres{height:34px}
+.rg-service>summary{padding-top:5px;padding-bottom:5px}
+/* Le bilan tient dans la largeur de l'œil. */
+.journee-chiffres .panneau{max-width:640px}
+.gr-lien.pointille .gr-trait{opacity:.45;stroke-width:1.8}
+.gr-lien.pointille:hover .gr-trait,.gr-lien.pointille.sel .gr-trait{opacity:1}
+.fc-a-classer{margin:0;padding:8px 12px;border:1px dashed var(--bordure2);border-radius:8px;background:var(--bg3);font-size:13px;color:var(--txt2)}
+#fc-lecture>.fc-list-title{display:none}
+#at-indicateurs{display:block;background:none;border:0;box-shadow:none;padding:0;overflow:visible}
+button.lien-discret{min-height:32px !important}
+
+/* ==========================================================================
+ *  Le menu principal : l'accueil, les parties, leurs pages
+ * ==========================================================================*/
+body[data-vue="accueil"] .app{display:none}
+body:not([data-vue="accueil"]) #view-accueil{display:none}
+
+/* L'en-tête : la marque (retour à l'accueil), les parties, la sauvegarde. Une
+   seule ligne : le contenu commence tout de suite dessous. */
+body>header{padding:8px 20px;gap:16px}
+header .marque{display:flex;align-items:center;gap:10px;background:none;border:0;color:#fff;font:inherit;font-weight:800;
+  font-size:15px;cursor:pointer;padding:4px 6px 4px 0;border-radius:10px;text-align:left}
+header .marque:hover .brand-mark{background:#0a8a90}
+header .marque small{font-weight:600}
+header .brand-mark{width:34px;height:34px;font-size:19px}
+.marque-txt{display:block;line-height:1.15}
+.menu-parties{display:flex;gap:4px;flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none}
+.menu-partie{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:99px;border:1.5px solid transparent;
+  background:transparent;color:#d3dfec;font:inherit;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap}
+.menu-partie .ico{width:18px;height:18px;color:color-mix(in srgb,var(--c) 45%,#fff)}
+.menu-partie:hover{background:#233e59;color:#fff}
+.menu-partie.actif{background:#fff;color:#14283e;border-color:#fff}
+.menu-partie.actif .ico{color:var(--c)}
+.menu-partie:disabled,header .marque:disabled{opacity:.45;cursor:not-allowed}
+header .entete-droite .btn .ico{width:17px;height:17px}
+
+/* Le titre de la page : sa partie et une phrase, sur une ligne. */
+.workspace-heading{padding:12px 20px 4px !important}
+.workspace-heading>div{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.view-ico{width:34px !important;height:34px !important;border-radius:10px !important}
+.view-ico .ico{width:20px !important;height:20px !important}
+.workspace-heading h1{font-size:20px}
+.view-intro{margin:0;font-size:14px}
+
+/* L'accueil : l'histoire en quatre images, ce qu'il y a à faire, les parties. */
+.accueil{flex:1 1 auto;overflow:auto;background:var(--bg2)}
+.acc{max-width:1180px;margin:0 auto;padding:24px 20px 40px;display:grid;gap:20px}
+.acc-histoire{background:var(--bg3);border:1px solid var(--bordure);border-radius:14px;padding:18px 20px 16px}
+.acc-histoire h1{margin:0 0 6px;font-size:22px}
+.acc-histoire .cm-rond{width:64px;height:64px}
+.acc-histoire .cm-picto.ico{width:32px;height:32px}
+.acc-histoire .cm-liste li:not(:last-child)::after{top:36px;left:calc(50% + 42px);right:calc(-50% + 42px)}
+.acc-histoire .cm-liste li:not(:last-child)::before{top:31px;right:calc(-50% + 38px)}
+.acc-suite{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0;padding:12px 16px;border-radius:12px;font-size:15px;
+  background:color-mix(in srgb,var(--attente) 10%,var(--bg3));border:1px solid color-mix(in srgb,var(--attente) 35%,var(--bordure))}
+.acc-suite .ico{color:var(--attente)}
+.acc-suite.fait{background:color-mix(in srgb,var(--ok) 9%,var(--bg3));border-color:color-mix(in srgb,var(--ok) 35%,var(--bordure))}
+.acc-suite.fait .ico{color:var(--ok)}
+.lien-fort{background:none;border:0;padding:0;font:inherit;font-weight:800;color:var(--accent);cursor:pointer;text-decoration:underline;
+  text-underline-offset:3px}
+.acc-tuiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.acc-tuile{display:flex;flex-direction:column;background:var(--bg3);border:1px solid var(--bordure);border-top:5px solid var(--c);
+  border-radius:14px;overflow:hidden}
+.acc-tuile-tete{display:flex;align-items:center;gap:14px;padding:16px 18px 10px;background:none;border:0;font:inherit;color:inherit;
+  text-align:left;cursor:pointer}
+.acc-tuile-tete:hover .acc-titre b{text-decoration:underline;text-underline-offset:3px}
+.acc-ico{flex:none;width:48px;height:48px;border-radius:13px;display:grid;place-items:center;background:var(--c);color:#fff}
+.acc-ico .ico{width:26px;height:26px}
+.acc-titre{display:grid;gap:2px;flex:1;min-width:0}
+.acc-titre b{font-size:20px}
+.acc-titre em{font-style:normal;font-size:14px;color:var(--txt2)}
+.acc-etat{flex:none;font-size:12px;font-weight:800;padding:3px 10px;border-radius:99px;background:var(--bg2);color:var(--txt2);
+  border:1px solid var(--bordure2)}
+.acc-etat.fait{background:color-mix(in srgb,var(--ok) 12%,var(--bg3));color:var(--ok);border-color:color-mix(in srgb,var(--ok) 40%,var(--bordure))}
+.acc-etat.verifier{background:color-mix(in srgb,var(--attente) 12%,var(--bg3));color:var(--attente);border-color:color-mix(in srgb,var(--attente) 40%,var(--bordure))}
+.acc-lignes{list-style:none;margin:0;padding:0 18px 12px 80px;display:grid;gap:5px;font-size:14px}
+.acc-lignes li{display:flex;gap:8px;align-items:flex-start}
+.acc-lignes .etape-etat{flex:none;width:18px;height:18px;border-radius:50%;display:inline-grid;place-items:center;font-size:12px;font-weight:800;margin-top:1px}
+.etape-etat.fait{background:var(--ok);color:#fff}
+.etape-etat.verifier{background:var(--attente);color:#fff}
+.etape-etat.afaire{background:var(--bordure2);color:var(--txt)}
+.etape-etat.provisoire{background:var(--bg2);color:var(--txt2);border:1px solid var(--bordure2)}
+.acc-pages{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;padding:12px 18px 16px 80px;border-top:1px solid var(--bordure)}
+.acc-page{font:inherit;font-size:13px;font-weight:700;padding:5px 11px;border-radius:99px;cursor:pointer;
+  background:color-mix(in srgb,var(--c) 8%,var(--bg3));color:var(--txt);border:1px solid color-mix(in srgb,var(--c) 30%,var(--bordure))}
+.acc-page:hover{background:color-mix(in srgb,var(--c) 16%,var(--bg3))}
+.acc-pied{margin:0;display:flex;justify-content:center}
+@media(max-width:900px){
+  .acc-tuiles{grid-template-columns:1fr}
+  .acc-lignes,.acc-pages{padding-left:18px}
+  .marque-txt small{display:none}
+}
+
+/* La synthèse : la journée entière d'abord, en tuiles lisibles de loin. */
+.journee-chiffres .panneau-bilan{max-width:none;background:transparent;border:0;padding:0;box-shadow:none}
+.panneau-bilan h3{font-size:16px;margin:0 0 12px}
+.journee-chiffres .bilan{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:0}
+.journee-chiffres .bilan>div,.journee-chiffres .bilan>div:last-child{display:flex;flex-direction:column-reverse;gap:4px;padding:14px 16px;border-radius:12px;background:var(--bg3);
+  border:1px solid var(--bordure);border-left:4px solid var(--c-journee)}
+.journee-chiffres .bilan dt{font-size:14px;color:var(--txt2)}
+.journee-chiffres .bilan dd{margin:0;text-align:left;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+.bilan-suite{margin:14px 0 0}
+
+header .entete-droite .btn{display:inline-flex;align-items:center;gap:7px}
+/* L'en-tête tient sur une ligne jusqu'au plus petit écran visé (1 024 px). */
+body>header{flex-wrap:nowrap}
+@media(max-width:1250px){
+  header .marque small{display:none}
+  .menu-partie{padding:7px 10px}
+}
+
+/* Organisation › Services : un service par ligne, ce qu'il lui manque en tête. */
+.services-unite{padding:16px 20px 28px;display:grid;gap:12px;align-content:start;overflow:auto;flex:1 1 auto;min-height:0}
+body:not([data-vue="flux"]) .services-unite{display:none}
+.svc-tete{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.svc-tete .mini-note{margin:0;font-size:14px}
+.svc-table{border-collapse:collapse;width:100%;background:var(--bg3);border:1px solid var(--bordure);border-radius:12px;font-size:14px}
+.svc-table th{text-align:left;font-size:12px;color:var(--txt2);font-weight:700;padding:10px 12px;background:var(--bg2);border-bottom:1px solid var(--bordure)}
+.svc-table td{padding:10px 12px;border-bottom:1px solid var(--bordure);vertical-align:top}
+.svc-table tr:last-child td{border-bottom:0}
+.svc-table td small{display:block;font-size:12px;color:var(--txt2)}
+.svc-table td br+small,.svc-table td button+small{display:inline}
+.svc-nom{font:inherit;font-weight:700;width:100%;min-width:180px;padding:6px 8px;border:1px solid var(--bordure);border-radius:8px;background:var(--bg3)}
+.svc-nom:hover{border-color:var(--bordure2)}
+.svc-manque{background:color-mix(in srgb,var(--attente) 5%,var(--bg3))}
+.svc-etat{display:inline-block;font-size:12px;font-weight:800;padding:3px 9px;border-radius:99px;white-space:nowrap;background:var(--bg2);color:var(--txt2)}
+.svc-etat.ok{background:color-mix(in srgb,var(--ok) 12%,var(--bg3));color:var(--ok)}
+.svc-etat.manque{background:color-mix(in srgb,var(--attente) 14%,var(--bg3));color:var(--attente)}
+.svc-actions{white-space:normal;min-width:230px}
+.svc-actions .btn+.btn{margin-left:6px}
+.fc-gestes{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 4px}
+.svc-bloc{background:var(--bg3);border:1px solid var(--bordure);border-radius:12px;padding:14px 16px}
+.svc-bloc h3{margin:0 0 4px;font-size:16px}
+.svc-bloc.svc-alerte{border-left:4px solid var(--attente)}
+.svc-liste{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:8px}
+.svc-liste li{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.svc-liste li b{min-width:200px}
+.svc-liste label{display:flex;align-items:center;gap:6px;font-size:14px;white-space:nowrap}
+.svc-nouveau{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--bg3);border:1px solid var(--bordure);
+  border-left:4px solid var(--c-equipes);border-radius:12px;padding:12px 16px;font-size:14px}
+.svc-nouveau label{display:flex;align-items:center;gap:6px}
+.svc-nouveau input{font:inherit;padding:6px 8px;border:1px solid var(--bordure2);border-radius:8px;min-width:220px}
+.svc-nouveau .mini-note{flex-basis:100%;margin:0}
+.svc-parent{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:var(--txt2)}
+.svc-parent select{font-size:12px}
+.svc-chercher{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:14px}
+.svc-chercher label{display:flex;align-items:center;gap:8px;font-weight:700;white-space:nowrap}
+.svc-chercher input{font:inherit;font-weight:400;padding:6px 10px;border:1px solid var(--bordure2);border-radius:8px;min-width:240px;background:var(--bg3)}
+.svc-chercher .mini-note{margin:0}
+.svc-danger{color:var(--retard);border-color:color-mix(in srgb,var(--retard) 40%,var(--bordure))}
+.svc-actions .btn{margin-bottom:4px}
+.svc-nouveau-ligne td{animation:svc-flash 1.6s ease-out}
+@keyframes svc-flash{from{background:color-mix(in srgb,var(--ok) 20%,var(--bg3))}to{background:transparent}}
+.panne-demarrage{position:relative;z-index:200;background:#fff7ed;border-bottom:2px solid #d97706;padding:10px 16px;font-size:14px}
+.panne-demarrage a{font-weight:700;margin-left:6px}
+/* Données › Planche retour. */
+.planche{display:grid;gap:10px}
+.planche-tete{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.planche-tete h3{margin:0}
+.planche-fin{flex:1}
+.planche-etat{margin:0}
+.planche-etat.ok{color:var(--ok)}
+.planche-table{border-collapse:collapse;font-size:13px}
+.planche-table th,.planche-table td{padding:4px 6px;border-bottom:1px solid var(--bordure);text-align:left}
+.planche-table input,.planche-table select{font:inherit;padding:4px 6px;border:1px solid var(--bordure);border-radius:6px;background:var(--bg3);width:auto}
+.planche-table input[data-pl-champ=vol],.planche-table input[data-pl-champ=cie]{width:90px}
+.planche-table input[type=number]{width:62px}

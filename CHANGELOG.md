@@ -5,6 +5,30 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-01 — Version 2 : une copie du site pour aller plus loin
+
+Demande : dupliquer la simulation actuelle sur le site, pour avancer sur une
+version perfectionnée (paramètres financiers, moteur amélioré) sans toucher
+la version 1.
+
+- `v2/` : copie complète des fichiers servis, à l'adresse `…/v2/`.
+- `v2/stockage-v2.js`, chargé en premier : la v2 range ses données à part
+  (`ory-v2:`) ; à la première ouverture, elle part d'une copie du travail de
+  la v1, puis les deux ne se touchent plus.
+- En-tête : « Version 2 » dans la v1, « Version 2 · en construction —
+  revenir à la v1 » dans la v2 ; la page d'accueil du projet propose les deux.
+  Sur un écran étroit, le badge se réduit à « Version 2 ».
+- `outils/empreinte.cjs` : les pages de `v2/` ont leurs empreintes, leurs
+  chemins se lisent depuis leur dossier.
+- `docs/V2.md` : fonctionnement, règles de travail (la v1 ne reçoit plus que
+  des corrections ; chiffres financiers fictifs dans le dépôt), et ce qui est
+  prévu : coûts de la main-d'œuvre et des retards, heures sup et renforts,
+  aléas, optimisation automatique.
+- `tests/v2-browser.cjs`.
+
+Fichiers : `v2/` (nouveau), `index.html`, `accueil.html`, `theme.css`,
+`outils/empreinte.cjs`, `tests/v2-browser.cjs`, `docs/V2.md`, `README.md`.
+
 ## 2026-10-01 — Défilement : on ne sort plus de la page par le bas
 
 Retour d'usage : « quand tu scrolles trop fort, tu sors de la plage vers le

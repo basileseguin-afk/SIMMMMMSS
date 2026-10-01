@@ -26,7 +26,8 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 
 const RACINE = path.resolve(__dirname, '..');
-const PAGES = ['index.html', 'accueil.html'];
+// La version 2 (v2/) est une copie complète, avec ses propres fichiers.
+const PAGES = ['index.html', 'accueil.html', 'v2/index.html', 'v2/secours.html'];
 
 /** Huit caractères du SHA-256 du contenu : assez pour distinguer deux versions. */
 function empreinte(fichier) {
@@ -47,7 +48,8 @@ function analyser(page) {
   const attendu = contenu.replace(motif, (tout, attr, relatif, version) => {
     // Une adresse absolue ou distante n'est pas à nous : on n'y touche pas.
     if (/^(https?:)?\/\//.test(relatif) || relatif.startsWith('/')) return tout;
-    const cible = path.join(RACINE, relatif);
+    // Un chemin relatif se lit depuis le dossier de la page (v2/…).
+    const cible = path.join(path.dirname(chemin), relatif);
     if (!fs.existsSync(cible)) {
       ecarts.push(page + ' : ' + relatif + ' est référencé mais absent du dépôt.');
       return tout;

@@ -14,6 +14,12 @@ et aucune dépendance réseau ne sont nécessaires à l’utilisation. Conserver
 fichiers JavaScript, CSS et le dossier `moteur` à côté du HTML. Le fond privé
 est facultatif ; aucun dossier `assets` n’est nécessaire.
 
+**Deux versions.** La racine est la version 1, stable. `v2/index.html` (en
+ligne : `…/v2/`) est la version 2, en construction : une copie complète qui
+reçoit les nouveautés (coûts de la main-d’œuvre et des retards, heures sup,
+aléas, optimisation). Ses données restent à part ; à la première ouverture,
+elle part d’une copie de votre travail. Voir [docs/V2.md](docs/V2.md).
+
 ## 🌐 Ouvrir l'application depuis GitHub (sans rien télécharger)
 
 Le dépôt est **public** et sa branche par défaut est la branche de travail :

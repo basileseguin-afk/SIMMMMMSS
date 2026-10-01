@@ -1,0 +1,188 @@
+/* ==========================================================================
+ *  DIAGRAMME DE NŒUDS — services reliés par des traits
+ *  Un nœud par service (son pictogramme, son nom, ses équipes) ; un trait
+ *  fléché par lien. Le « + » à droite d'un nœud se tire vers un autre.
+ * ==========================================================================*/
+.gr-cadre{overflow:auto;max-width:100%;min-width:0;background:
+  radial-gradient(circle,color-mix(in srgb,var(--bordure) 70%,transparent) 1px,transparent 1.2px) 0 0/18px 18px,
+  var(--bg3);border:1px solid var(--bordure);border-radius:14px;padding:6px;max-height:70vh}
+.gr-svg{display:block;touch-action:pan-x pan-y;user-select:none;-webkit-user-select:none;overflow:visible}
+.gr-svg:focus{outline:none}
+
+.gr-noeud{cursor:grab;touch-action:none}
+.gr-noeud:active{cursor:grabbing}
+.gr-fond{fill:var(--bg3);stroke:var(--bordure2);stroke-width:1.5;filter:drop-shadow(0 1px 2px rgba(19,32,48,.12))}
+.gr-bord{fill:var(--bordure2)}
+.gr-noeud.ton-ok .gr-bord{fill:var(--ok)}
+.gr-noeud.ton-attente .gr-bord{fill:var(--attente)}
+.gr-noeud.ton-retard .gr-bord{fill:var(--retard)}
+.gr-ico{fill:none;stroke:var(--c,var(--accent));stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.gr-nom{font-size:12.5px;font-weight:800;fill:var(--txt);pointer-events:none}
+.gr-sous{font-size:11px;fill:var(--txt2);pointer-events:none}
+.gr-noeud.ton-attente .gr-sous{fill:var(--attente)}
+.gr-noeud:hover .gr-fond,.gr-noeud:focus-visible .gr-fond{stroke:var(--c,var(--accent))}
+.gr-noeud:focus-visible{outline:none}
+.gr-noeud:focus-visible .gr-fond{stroke-width:3}
+.gr-noeud.sel .gr-fond{stroke:var(--c,var(--accent));stroke-width:3;fill:color-mix(in srgb,var(--c,var(--accent)) 7%,var(--bg3))}
+.gr-noeud.depuis .gr-fond{stroke:var(--c,var(--accent));stroke-width:3;stroke-dasharray:6 4}
+.gr-noeud.cible .gr-fond{stroke:var(--c,var(--accent));stroke-dasharray:3 3}
+.gr-noeud.survol .gr-fond{stroke:var(--c,var(--accent));stroke-width:3.5;fill:color-mix(in srgb,var(--c,var(--accent)) 12%,var(--bg3))}
+
+.gr-port{cursor:crosshair}
+.gr-port circle{fill:var(--c,var(--accent));stroke:var(--bg3);stroke-width:2.5}
+.gr-port path{stroke:#fff;stroke-width:2;stroke-linecap:round}
+.gr-port:hover circle{r:11}
+
+.gr-lien{cursor:pointer}
+/* Le temps en stock sur un lien : ce que l'amont a fini et que l'aval n'a pas encore pris. */
+.gr-etiq{font-size:12px;font-weight:700;fill:#1e5aa8;paint-order:stroke;stroke:var(--bg3);stroke-width:5px;stroke-linejoin:round;pointer-events:none}
+.gr-prise{fill:none;stroke:transparent;stroke-width:16}
+.gr-trait{fill:none;stroke:var(--edge);stroke-width:2.6}
+.gr-pointe{fill:var(--edge)}
+.gr-lien.pointille .gr-trait{stroke-dasharray:7 5}
+/* Deux services faits à la chaîne par la même équipe : un seul bloc. */
+.gr-groupe-halo{fill:color-mix(in srgb,var(--chaine) 10%,transparent);stroke:var(--chaine);stroke-width:2;stroke-dasharray:7 4}
+.gr-groupe-trait{fill:none;stroke:var(--chaine);stroke-width:10;stroke-linecap:round;opacity:.28}
+.gr-groupe-etiq{font-size:11.5px;font-weight:700;fill:var(--chaine);paint-order:stroke;stroke:var(--bg3,#fff);stroke-width:3px;stroke-linejoin:round}
+.gr-lien.en-chaine .gr-trait{stroke:var(--chaine) !important;stroke-width:4.5}
+.gr-noeud.en-chaine:not(.sel):not(.survol):not(:hover) .gr-fond{stroke:var(--chaine);stroke-width:2}
+.pc-pan-chaine>span,.pc-chaine-mot{color:var(--chaine,#c026d3)}
+.pc-chaine-mot{font-weight:700;margin-left:4px}
+.gr-lien:hover .gr-trait,.gr-lien:focus-visible .gr-trait{stroke-width:4}
+.gr-lien:focus-visible{outline:none}
+.gr-lien.sel .gr-trait{stroke:var(--c,var(--accent)) !important;stroke-width:4.2}
+.gr-retirer{cursor:pointer}
+.gr-retirer circle{fill:var(--retard);stroke:var(--bg3);stroke-width:2}
+.gr-retirer path{stroke:#fff;stroke-width:2.2;stroke-linecap:round}
+.gr-brouillon{fill:none;stroke:var(--c,var(--accent));stroke-width:2.6;stroke-dasharray:6 5;pointer-events:none}
+
+/* --- Les chemins (Qui prépare quoi › Les chemins) ------------------------ */
+.pc-sec{--c:var(--c-equipes);grid-template-columns:minmax(0,1fr)}
+.pc-graphe{min-width:0}
+.pc-puces{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pc-puce{appearance:none;font:inherit;font-weight:700;font-size:13px;padding:7px 14px;border-radius:99px;cursor:pointer;
+  border:1.5px solid var(--bordure2);background:var(--bg3);color:var(--txt)}
+.pc-puce:hover{border-color:var(--c-equipes)}
+.pc-puce.actif{background:var(--c-equipes);border-color:var(--c-equipes);color:#fff}
+.pc-outils{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:end}
+.pc-besoins{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:10px 0 0}
+.pc-besoins-lab{font-size:13px;font-weight:600;color:var(--txt2)}
+.pc-besoin{font:inherit;font-size:13px;font-weight:600;padding:5px 12px;border-radius:999px;border:1px dashed var(--bordure);background:transparent;color:var(--txt2);cursor:pointer}
+.pc-besoin.oui{border-style:solid;border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent)}
+.pc-besoin:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.pc-besoins .mini-note{margin:0}
+.pc-outils label{display:grid;gap:4px;font-size:12px;color:var(--txt2)}
+.pc-outils .pc-nom{font:inherit;font-weight:700;padding:7px 9px;border:1.5px solid var(--bordure2);border-radius:var(--r2);background:var(--bg3);color:var(--txt);min-width:180px}
+.pc-outils-fin{flex:1}
+.pc-qui{margin:0;font-size:12.5px;color:var(--txt2)}
+.pc-qui .pc-cab{display:inline-flex;align-items:center;gap:4px;margin-right:6px;color:var(--txt)}
+.pc-geste{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--txt2)}
+.pc-geste .ico{color:var(--c-equipes);flex:none}
+.pc-rond{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--c-equipes);color:#fff;font-size:13px;line-height:1}
+.pc-panneau{border:1px solid var(--bordure);border-left:4px solid var(--c-equipes);border-radius:10px;background:var(--bg3);padding:10px 14px;display:grid;gap:8px}
+.pc-panneau p{margin:0}
+.pc-pan-tete{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pc-pan-tete .ico{color:var(--c-equipes)}
+.pc-pan-tete span{color:var(--txt2);font-size:12.5px}
+.pc-equipe small{font-weight:500;color:var(--txt2);margin-left:4px}
+
+/* --- Les liens de l'unité (L'unité › Les liens) -------------------------- */
+.fc-graphe-zone{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin:0 0 14px;--c:var(--c-unite)}
+.fc-graphe-outils{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:end}
+.fc-graphe-outils label{display:grid;gap:4px;font-size:12px;color:var(--txt2)}
+.fc-graphe-outils select{min-width:200px}
+.fc-graphe-outils .fc-graphe-fin{flex:1}
+.fc-detail{border:1px solid var(--bordure);border-left:4px solid var(--c-unite);border-radius:10px;background:var(--bg3);padding:10px 14px}
+.fc-detail:empty{display:none}
+.fc-detail p{margin:0 0 6px}
+.fc-liste-toute>summary{cursor:pointer;font-weight:700;margin:6px 0 10px}
+.pc-message{margin:0;min-height:1.4em;font-size:13px;font-weight:600;color:var(--accent2)}
+.pc-message:empty{min-height:0}
+
+/* --- Un chemin par commande (Qui prépare quoi › Les chemins) ------------- */
+.pc-cadre{display:grid;grid-template-columns:240px minmax(0,1fr);gap:18px;align-items:start}
+.pc-principal{display:grid;gap:12px;min-width:0}
+.pc-cmds{display:grid;gap:8px;position:sticky;top:8px;max-height:calc(100dvh - var(--haut-entete,170px) - 100px);overscroll-behavior:contain;grid-template-rows:auto auto minmax(0,1fr) auto;
+  border:1px solid var(--bordure);border-radius:12px;background:var(--bg3);padding:10px}
+.pc-cmds-tete{display:grid;gap:2px}
+.pc-cmds-tete span{font-size:12px;color:var(--txt2)}
+.pc-cmds-cherche{font:inherit;font-size:13px;padding:6px 9px;border:1.5px solid var(--bordure2);border-radius:var(--r2);background:var(--bg3);color:var(--txt);min-height:32px}
+.pc-cmds-liste{list-style:none;margin:0;padding:0;overflow:auto;display:grid;align-content:start;gap:2px}
+.pc-cie{font-size:11px;font-weight:800;letter-spacing:.05em;color:var(--txt2);padding:8px 6px 2px}
+.pc-cmd{appearance:none;font:inherit;width:100%;display:flex;align-items:center;gap:8px;text-align:left;cursor:pointer;
+  padding:5px 8px;min-height:36px;border-radius:8px;border:1px solid transparent;background:transparent;color:var(--txt)}
+.pc-cmd:hover{background:var(--bg2)}
+.pc-cmd.actif{background:color-mix(in srgb,var(--c-equipes) 12%,var(--bg3));border-color:var(--c-equipes)}
+.pc-cmd-nom{flex:1;display:grid;font-weight:700;font-size:13px;min-width:0}
+.pc-cmd-nom small{font-weight:500;font-size:11px;color:var(--txt2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-cmd.sans .pc-cmd-nom small{font-style:italic}
+.pc-cmd-etat{flex:none;display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;font-size:11px;font-weight:800;color:#fff;background:var(--txt2)}
+.pc-cmd-etat.ok{background:var(--vert)}
+.pc-cmd-etat.retard{background:var(--rouge)}
+.pc-cmd-etat.afaire{background:var(--bordure2);color:var(--txt)}
+.pc-modeles{border-top:1px solid var(--bordure);padding-top:6px;font-size:13px}
+.pc-modeles>summary{cursor:pointer;font-weight:700;min-height:32px;display:flex;align-items:center;gap:6px}
+.pc-modeles>summary small{font-weight:500;color:var(--txt2)}
+.pc-modeles-corps{display:grid;gap:10px;padding-top:6px}
+.pc-modeles .pc-defauts{display:grid;gap:6px}
+.pc-modeles .pc-defauts label{display:grid;grid-template-columns:110px 1fr;align-items:center;gap:6px;font-size:12px}
+.pc-modeles .pc-defauts select{min-width:0}
+.pc-cmd-tete{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:17px}
+.pc-cmd-tete span:last-child{font-size:13px;color:var(--txt2)}
+/* Une commande qui suit un flux partagé : le dire, et où le modifier. */
+.pc-flux-bandeau{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:10px 0 4px;padding:10px 12px;border:1px solid var(--bordure);border-radius:10px;background:var(--bg3);font-size:13px}
+.pc-flux-bandeau>svg{flex:none;width:18px;height:18px;color:var(--accent)}
+.pc-flux-bandeau>span{flex:1 1 320px}
+.pc-flux-bandeau .pc-flux-gestes{flex:0 1 auto;display:flex;flex-wrap:wrap;gap:6px}
+.pc-creer-plus{margin-top:10px;font-size:13px}
+.pc-creer-plus>summary{cursor:pointer;color:var(--txt2)}
+.pc-creer-plus .pc-creer.court{margin-top:8px;text-align:left}
+.pc-creer{justify-items:start;text-align:left}
+.pc-creer-choix{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:end}
+.pc-creer-choix label:not(.chk){display:grid;gap:4px;font-size:12px;color:var(--txt2)}
+.pc-dup{position:relative}
+.pc-dup>summary{list-style:none;cursor:pointer}
+.pc-dup>summary::-webkit-details-marker{display:none}
+.pc-dup-corps{position:absolute;right:0;top:calc(100% + 6px);z-index:30;width:360px;display:grid;gap:8px;padding:12px;
+  background:var(--bg3);border:1px solid var(--bordure2);border-radius:12px;box-shadow:0 10px 30px rgba(15,23,42,.18);font-size:13px}
+.pc-dup-corps p{margin:0;color:var(--txt2)}
+.pc-dup-liste{display:grid;grid-template-columns:1fr 1fr;gap:2px 10px;max-height:240px;overflow:auto}
+.pc-case-outils{align-items:end}
+.pc-case-choix{display:grid;gap:4px;font-size:12px;color:var(--txt2)}
+.pc-case-choix select{min-width:260px}
+.pc-panneau .at-carte{margin:4px 0 0;box-shadow:none}
+
+/* La case d'un service : une fenêtre à droite, toujours en vue. */
+.pc-tiroir{position:fixed;top:var(--tiroir-haut,0);right:0;bottom:0;z-index:60;width:var(--tiroir);overflow:auto;
+  display:grid;align-content:start;gap:10px;padding:0 18px 24px;background:var(--bg3);
+  border-left:4px solid var(--c-equipes);box-shadow:-14px 0 40px rgba(15,23,42,.22)}
+.pc-tiroir-tete{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:12px 0 8px;background:var(--bg3);border-bottom:1px solid var(--bordure);font-weight:800;font-size:15px}
+.pc-tiroir-tete>span{display:inline-flex;align-items:center;gap:8px}
+.pc-tiroir-fermer{appearance:none;font:inherit;font-size:22px;line-height:1;width:36px;height:36px;border-radius:50%;cursor:pointer;
+  border:1px solid var(--bordure2);background:var(--bg2);color:var(--txt)}
+.pc-tiroir-fermer:hover{border-color:var(--c-equipes);color:var(--c-equipes)}
+.pc-tiroir p{margin:0}
+.pc-tiroir .at-carte{margin:4px 0 0;box-shadow:none}
+.pc-tiroir .pc-case-choix select{min-width:0;width:100%}
+.pc-tiroir .pc-case-outils{display:grid;grid-template-columns:1fr;gap:8px}
+.pc-tiroir .pc-case-outils .pc-outils-fin{display:none}
+.pc-temps{margin:0;padding:8px 12px;list-style:none;display:grid;gap:4px;font-size:13px;border-radius:8px;background:var(--bg2)}
+.pc-temps li.stock{color:#1e5aa8}
+.pc-bleu{color:#1e5aa8;font-weight:700}
+.pc-renvoi{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--txt2)}
+.pc-renvoi .ico{color:var(--c-equipes)}
+/* La page se range à gauche de la fenêtre de la case. */
+:root{--tiroir:min(460px,40vw)}
+body.pc-tiroir-large{--tiroir:min(760px,60vw)}
+/* Le contenu ne l'élargit jamais : ce qui est trop large défile sur place. */
+.pc-tiroir{grid-template-columns:minmax(0,1fr)}
+.pc-tiroir .at-carte{min-width:0}
+body.pc-tiroir-ouvert[data-vue="ateliers"][data-sous="at-chemins"] #view-ateliers{padding-right:calc(var(--tiroir) + 16px)}
+/* Le temps de régler une case, la liste des commandes s'efface : le chemin garde la place. */
+body.pc-tiroir-ouvert .pc-cadre{grid-template-columns:minmax(0,1fr)}
+body.pc-tiroir-ouvert .pc-cmds{display:none}
+
+/* Un chemin plus large que l'écran : une ombre au bord droit, et un mot. */
+.gr-cadre.gr-deborde{box-shadow:inset -28px 0 18px -18px rgba(15,40,60,.35)}
+.gr-suite{margin:6px 2px 0;font-size:12px;color:var(--txt2)}

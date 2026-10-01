@@ -1,0 +1,171 @@
+/* Mon unité : le pas à pas, la liste des services et la fiche d'un service. */
+.mu{margin:4px 0 24px}
+
+/* ---- Services : la liste à gauche, la fiche à droite ---------------------- */
+.mu-cadre{display:grid;grid-template-columns:minmax(220px,280px) 1fr;gap:18px;align-items:start}
+/* La liste tient dans l'écran, sous l'en-tête (mesuré : --haut-entete) : sinon
+   un défilement appuyé l'emportait avec la page et la faisait sortir par le bas. */
+.mu-liste{position:sticky;top:8px;display:flex;flex-direction:column;gap:4px;max-height:calc(100dvh - var(--haut-entete,170px) - 100px);overflow:auto;overscroll-behavior:contain;padding-right:4px}
+.mu-groupe{margin:6px 0 2px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--txt2)}
+.mu-svc{display:flex;align-items:center;gap:10px;width:100%;text-align:left;font:inherit;color:var(--txt);background:var(--bg3);
+  border:1px solid var(--bordure);border-radius:10px;padding:8px 10px;cursor:pointer}
+.mu-svc:hover{border-color:var(--accent)}
+.mu-svc.actif{border-color:var(--accent);border-width:2px;padding:7px 9px;background:color-mix(in srgb,var(--accent) 6%,var(--bg3))}
+.mu-svc.libre{opacity:.75}
+.mu-svc-ico{flex:none;display:inline-flex;width:22px;height:22px;color:var(--accent)}
+.mu-svc-ico svg{width:22px;height:22px}
+.mu-svc-txt{flex:1;min-width:0;display:flex;flex-direction:column}
+.mu-svc-txt b{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mu-svc-txt small{font-size:12px;color:var(--txt2)}
+.mu-point{flex:none;width:10px;height:10px;border-radius:50%;background:var(--bordure2)}
+.mu-point.ok{background:var(--ok)}
+.mu-point.afaire{background:var(--attente)}
+.mu-nouveau{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding:10px;border:1px dashed var(--bordure2);border-radius:10px;font-size:13px}
+.mu-nouveau label{display:flex;flex-direction:column;gap:3px;color:var(--txt2);font-size:12px}
+.mu-nouveau input,.mu-nouveau select{font:inherit;min-height:32px}
+.mu-avance{margin:10px 0 0;font-size:12px}
+
+.mu-fiche{min-width:0;background:var(--bg3);border:1px solid var(--bordure);border-radius:12px;padding:14px 18px 18px}
+.mu-tete{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;padding-bottom:10px;border-bottom:1px solid var(--bordure)}
+.mu-tete-ico{display:inline-flex;width:34px;height:34px;color:var(--accent)}
+.mu-tete-ico svg{width:34px;height:34px}
+.mu-nom{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--txt2)}
+.mu-nom input{font:inherit;font-size:18px;font-weight:700;color:var(--txt);min-width:240px;padding:4px 8px}
+.mu-tete-fin{flex:1}
+.mu-afaire{margin:12px 0 0;padding:8px 12px 8px 30px;border-left:3px solid var(--warn-stroke);background:var(--warn-fill);border-radius:6px;font-size:13px}
+.mu-afaire li{margin:2px 0}
+
+.mu-etape{margin-top:18px}
+.mu-etape>h3{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 10px;font-size:15px}
+.mu-etape>h3 small{font-weight:400;font-size:12px;color:var(--txt2)}
+.mu-num{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;
+  background:var(--accent);color:var(--on-accent,#fff);font-size:13px;font-weight:800;flex:none}
+.mu-nature{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--txt2);max-width:520px}
+.mu-nature select{font:inherit;font-size:14px;color:var(--txt);min-height:36px}
+.mu-ajout{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 0}
+.mu-vide{margin:4px 0}
+.mu-carte .at-carte{margin:8px 0}
+.mu-besoin h4{margin:14px 0 6px;font-size:14px}
+
+/* ---- Une équipe ------------------------------------------------------------ */
+.mu-equipe{border:1px solid var(--bordure);border-radius:10px;padding:10px 12px;margin:0 0 12px;background:var(--bg2)}
+.mu-equipe-tete{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
+.mu-equipe-tete label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--txt2)}
+.mu-equipe-tete input,.mu-equipe-tete select{font:inherit;min-height:34px;color:var(--txt)}
+.mu-eq-nom input{font-weight:700;min-width:180px}
+.mu-eq-pers input{width:80px}
+.mu-eq-fin{flex:1;text-align:right;font-size:12px;color:var(--txt2);padding-bottom:8px}
+.mu-question{margin:12px 0 6px;font-size:13px;font-weight:700}
+.mu-question small{font-weight:400;color:var(--txt2);margin-left:6px}
+.mu-ordre{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:8px 0 0;font-size:12px;color:var(--txt2)}
+.mu-ordre-cmd{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border:1px solid var(--bordure);border-radius:99px;background:var(--bg3);color:var(--txt)}
+.mu-ordre-cmd b{font-size:11px;color:var(--txt2)}
+.mu-ordre-cmd button{border:0;background:none;padding:0;font:inherit;color:inherit;cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px}
+.mu-ordre-cmd button:hover{color:var(--accent)}
+.mu-ordre small{color:var(--txt3,var(--txt2));font-size:11px}
+/* Les flux qui passent par un service : on y va d'un clic. */
+.mu-flux-passent{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 12px;font-size:13px;color:var(--txt2)}
+.mu-flux-lien{display:inline-flex;align-items:center;padding:3px 10px;border:1px solid var(--bordure);border-radius:99px;background:var(--bg3);color:var(--txt);font:inherit;font-weight:600;cursor:pointer}
+.mu-flux-lien:hover{border-color:var(--accent);color:var(--accent)}
+.mu-plus{margin-top:8px}
+.mu-plus>summary{cursor:pointer;font-size:12px;color:var(--accent);font-weight:600}
+.mu-plus .at-carte{margin:8px 0 0}
+
+/* ---- La grille compagnies × classes ---------------------------------------- */
+.mu-grille-scroll{overflow:auto;max-width:100%}
+.mu-grille{border-collapse:separate;border-spacing:3px;font-size:13px}
+.mu-grille th{font-weight:600;color:var(--txt2);text-align:center;padding:0}
+.mu-grille tbody th{text-align:left}
+.mu-tout{font:inherit;font-size:12px;font-weight:700;color:var(--txt);background:none;border:1px solid transparent;border-radius:6px;
+  padding:3px 8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.mu-tout:hover{border-color:var(--bordure2);background:var(--bg3)}
+.mu-c{padding:0;text-align:center}
+.mu-c label{position:relative;display:flex;align-items:center;justify-content:center;width:44px;height:32px;border-radius:7px;
+  border:1px solid var(--bordure);background:var(--bg3);cursor:pointer}
+.mu-c input{width:18px;height:18px;margin:0;cursor:pointer;accent-color:var(--accent)}
+.mu-c.ici label{background:color-mix(in srgb,var(--accent) 16%,var(--bg3));border-color:var(--accent)}
+.mu-c.passe label{background:color-mix(in srgb,var(--accent) 16%,var(--bg3));border-color:var(--accent)}
+.mu-c.ailleurs label{background:var(--bg2);border-style:dashed}
+.mu-c.attendue label{background:var(--warn-fill);border:1.5px dashed var(--warn-stroke)}
+.mu-c.chaine label{background:var(--chaine-doux,#f3efff);border:1.5px dashed var(--chaine,#7c3aed);cursor:default}
+.mu-c.chaine .mu-chez{color:var(--chaine,#7c3aed);font-size:10px}
+/* À la chaîne : deux services qui ne font qu'un pour une équipe. Même teinte
+   partout (diagrammes, liste, fiches, équipes, planning). */
+.mu-svc-chaine{font-style:normal;font-size:11.5px;font-weight:650;color:var(--chaine,#7c3aed);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mu-svc.en-chaine{box-shadow:inset 3px 0 0 var(--chaine,#7c3aed)}
+.mu-chaine-bloc{display:grid;gap:6px;margin:0 0 12px;padding:8px 12px;border:1.5px dashed var(--chaine,#7c3aed);border-radius:12px;background:var(--chaine-doux,#f3efff)}
+.mu-chaine-bloc p{display:flex;align-items:center;gap:10px;margin:0;font-size:13px}
+.mu-chaine-bloc p>span:nth-child(2){flex:1}
+.mu-chaine-ico{color:var(--chaine,#7c3aed);font-size:18px;line-height:1}
+.mu-badges{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 6px}
+.mu-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:650}
+.mu-badge.chaine{background:var(--chaine-doux,#f3efff);color:var(--chaine,#7c3aed);border:1px solid color-mix(in srgb,var(--chaine,#7c3aed) 35%,transparent)}
+.mu-badge.ligne{background:var(--bg2);color:var(--txt2);border:1px solid var(--bordure2)}
+.mu-equipe.en-chaine{box-shadow:inset 3px 0 0 var(--chaine,#7c3aed)}
+.mu-chaine-reglage{margin:8px 0 0;padding:8px 10px;border-radius:10px;background:var(--bg2)}
+.mu-chaine-reglage .at-fusion{margin:0}
+.mu-chez{position:absolute;right:2px;bottom:0;font-style:normal;font-size:9px;font-weight:800;color:var(--txt2);line-height:1.2}
+.mu-c.attendue .mu-chez{color:var(--warn-stroke)}
+.mu-rien{color:var(--txt3,#aaa);text-align:center;width:44px}
+
+/* ---- Pas à pas --------------------------------------------------------------- */
+.mu-pas-liste{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;max-width:900px}
+.mu-pas-etape{display:flex;gap:14px;align-items:flex-start;padding:12px 16px;border:1px solid var(--bordure);border-radius:12px;background:var(--bg3)}
+.mu-pas-etape.afaire{border-left:4px solid var(--attente)}
+.mu-pas-etape.ok{border-left:4px solid var(--ok)}
+.mu-pas-num{flex:none;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;
+  background:var(--bg2);border:1px solid var(--bordure2);font-weight:800}
+.mu-pas-etape.ok .mu-pas-num{background:color-mix(in srgb,var(--ok) 14%,var(--bg3));color:var(--ok);border-color:var(--ok)}
+.mu-pas-etape.afaire .mu-pas-num{background:color-mix(in srgb,var(--attente) 14%,var(--bg3));color:var(--attente);border-color:var(--attente)}
+.mu-pas-corps{flex:1;min-width:0}
+.mu-pas-corps h3{margin:2px 0 4px;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mu-pas-corps p{margin:0 0 8px;font-size:13px;color:var(--txt2)}
+.mu-pas-etat{font-size:11px;font-weight:800;padding:2px 8px;border-radius:99px;background:var(--bg2);color:var(--txt2)}
+.mu-pas-etat.ok{color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,var(--bg3))}
+.mu-pas-etat.afaire{color:var(--attente);background:color-mix(in srgb,var(--attente) 12%,var(--bg3))}
+.mu-pas-cmds{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-wrap:wrap;gap:4px}
+.mu-pas-cmds li{font-size:12px;padding:1px 8px;border:1px solid var(--bordure);border-radius:99px;background:var(--bg2)}
+.mu-pas-services{list-style:none;margin:0 0 10px;padding:0;display:grid;grid-template-columns:minmax(140px,max-content) 1fr;gap:4px 12px;font-size:13px}
+.mu-pas-services li{display:contents}
+.mu-pas-services li>button{justify-self:start;text-align:left}
+.mu-pas-services li>span{color:var(--txt2)}
+.mu-pas-services li.afaire>span{color:var(--attente)}
+.mu-pas-services li.ok>span::before{content:'✓ ';color:var(--ok)}
+
+@media (max-width:900px){
+  .mu-cadre{grid-template-columns:1fr}
+  .mu-liste{position:static;max-height:none}
+  .mu-pas-services{grid-template-columns:1fr}
+}
+
+/* ---- Flux de production ------------------------------------------------------ */
+.mu-regrouper{margin:0 0 16px}
+.mu-flux-outils{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 8px}
+.mu-flux-outils label{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--txt2)}
+.mu-flux-sel{flex:1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;min-height:32px}
+.mu-graphe{border:1px solid var(--bordure);border-radius:12px;background:var(--bg2);min-height:220px;max-height:520px;overflow:auto}
+.mu-flux-message{min-height:1.2em;margin:6px 0 0}
+.mu-col-tete{display:inline-flex;align-items:center;gap:5px;font-weight:700;color:var(--txt)}
+.mu-q{margin:10px 0 0;padding:10px 14px;border:1px solid #fedf89;background:#fffaeb;border-radius:12px;font-size:13px}
+.mu-q p{margin:0 0 8px}
+.mu-q-gestes{display:flex;flex-wrap:wrap;gap:8px}
+.mu-besoins{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.mu-besoins .chk{display:flex;align-items:center;gap:8px;font-size:14px}
+.mu-besoins small{color:var(--txt3)}
+.mu-tete-flux{background:linear-gradient(145deg,color-mix(in srgb,var(--c-equipes) 78%,#fff),var(--c-equipes));color:#fff;border-radius:12px;width:44px;height:44px;display:inline-grid;place-items:center}
+
+.mu-sous-titre{margin:14px 0 8px;font-size:13px;font-weight:650;color:var(--txt)}
+.mu-sous-titre small{font-weight:400;color:var(--txt3);margin-left:6px}
+.mu-classes{display:flex;flex-wrap:wrap;gap:8px}
+.mu-classe{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border:1px solid var(--bordure2);border-radius:12px;background:var(--bg3);cursor:pointer;
+  box-shadow:0 1px 2px rgba(16,24,40,.04);transition:border-color .15s,background .15s}
+.mu-classe:hover{border-color:var(--accent)}
+.mu-classe.on{border-color:color-mix(in srgb,var(--accent) 55%,#fff);background:color-mix(in srgb,var(--accent) 8%,#fff)}
+.mu-classe input{width:17px;height:17px;margin:0;accent-color:var(--accent)}
+.mu-classe b{font-size:14px;font-weight:600}
+.mu-classe small{font-size:12px;color:var(--txt3)}
+.mu-exceptions{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.mu-exceptions li{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;border:1px solid var(--bordure);border-radius:10px;background:var(--bg2);font-size:13px}
+.mu-exceptions li>span{flex:1;min-width:240px}
+.mu-flux-ajout-cmd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--txt2)}
+.mu-flux-ajout-cmd select{min-height:32px;max-width:420px}

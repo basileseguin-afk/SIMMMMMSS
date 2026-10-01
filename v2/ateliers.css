@@ -1,0 +1,433 @@
+/* Centre des ateliers de travail : saisie, planning et couverture. */
+#view-ateliers{overflow:auto;min-height:0;padding:24px;flex:1;background:var(--bg2)}
+body.ateliers-open .app{grid-template-columns:minmax(0,1fr)}
+body.ateliers-open .workbench{display:none}
+
+.at-tete{display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap}
+.at-actions{display:flex;gap:6px;flex-wrap:wrap}
+
+/* Les quatre chiffres qui disent si la journée tient. */
+.at-indicateurs{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1px;
+  background:var(--bordure);border:1px solid var(--bordure);border-radius:10px;overflow:hidden;margin:16px 0}
+.at-kpi{background:var(--bg3);padding:12px 16px}
+.at-kpi .lab{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--txt2);font-weight:700}
+.at-kpi .val{font-size:26px;font-weight:800;margin:2px 0 2px;color:var(--txt)}
+.at-kpi .note{font-size:12px;color:var(--txt2)}
+
+#at-status:not(:empty){font-size:13px;color:var(--accent2);margin:8px 0;white-space:pre-line}
+.at-anomalies{border-left:3px solid var(--warn-stroke);background:var(--warn-fill);color:var(--txt);
+  padding:10px 14px;border-radius:0 8px 8px 0;font-size:13px;line-height:1.5;margin:12px 0}
+.at-anomalies ul{margin:6px 0 0;padding-left:18px}
+
+.at-barre{display:flex;align-items:end;gap:14px;flex-wrap:wrap;margin:18px 0 14px}
+.at-barre label{display:grid;gap:6px;font-size:12px;color:var(--txt2)}
+.at-barre-fin{flex:1}
+.at-service-nom{display:inline-flex;align-items:center;gap:8px;font:inherit;font-weight:700;color:inherit;background:none;border:0;padding:4px 0;min-height:32px}
+.at-service-nom .ico{width:18px;height:18px;color:var(--txt2)}
+
+.at-titre{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--txt2);
+  margin:26px 0 12px;padding-top:16px;border-top:1px solid var(--bordure)}
+.at-vide{padding:28px;text-align:center;color:var(--txt2);border:1px dashed var(--bordure);border-radius:10px}
+
+.at-service{margin-bottom:22px}
+.at-service>h3{font-size:14px;margin:0 0 10px;color:var(--txt)}
+.at-service>h3 span{font-weight:600;color:var(--txt2);font-size:12px;margin-left:6px}
+
+.at-carte{border:1px solid var(--bordure);border-radius:10px;background:var(--bg3);margin-bottom:8px}
+.at-carte.ouverte{border-color:var(--accent);border-width:2px}
+.at-carte-tete{display:flex;align-items:center;gap:16px;padding:10px 14px;flex-wrap:wrap}
+.at-carte-nom{flex:1;min-width:220px;text-align:left;border:0;background:none;font:inherit;color:var(--txt);cursor:pointer;padding:0}
+.at-carte-nom strong{display:block;font-size:14px}
+.at-carte-nom span{font-size:12px;color:var(--txt2)}
+.at-resume{font-size:12px;color:var(--txt2);overflow-wrap:anywhere}
+
+.at-champs{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;padding:0 14px 12px}
+.at-champs label,.at-lot select{display:grid;gap:6px;font-size:12px;color:var(--txt2)}
+/* Les cases à cocher sont exclues : la largeur pleine les étirerait et
+   rejetterait leur libellé hors de l'écran. */
+#view-ateliers input:not([type=checkbox]),#view-ateliers select{width:100%;min-width:0;box-sizing:border-box;padding:8px;
+  border:1px solid var(--bordure2);border-radius:6px;background:var(--bg2);color:var(--txt);font:inherit}
+#view-ateliers input[type=checkbox]{width:16px;height:16px;flex:none;accent-color:var(--accent)}
+
+.at-sous-titre{padding:12px 14px 6px;font-size:13px;font-weight:700;color:var(--txt);
+  border-top:1px solid var(--bordure);display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.at-sous-titre .mini-note{font-weight:400}
+
+.at-lot{border:1px solid var(--bordure);border-radius:8px;margin:8px 14px;padding:10px;background:var(--bg2)}
+.at-lot-tete{display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:8px;flex-wrap:wrap}
+.at-lot-tete b{font-size:12px}
+.at-lot-fin{flex:1;color:var(--txt2)}
+.at-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;font-size:12px;color:var(--txt2)}
+.at-chip{border:1px solid var(--accent);background:var(--bg3);color:var(--accent2);
+  border-radius:20px;padding:3px 10px;font:600 12px inherit;cursor:pointer}
+.at-chip:hover{background:var(--accent);color:var(--on-accent,#fff)}
+
+.at-pause{display:flex;gap:8px;align-items:center;margin:0 14px 8px}
+.at-pause input{max-width:130px}
+.at-actions-lot{display:flex;gap:8px;flex-wrap:wrap;padding:0 14px 12px}
+.at-bas{border-top:1px solid var(--bordure);padding-top:12px}
+.at-danger{color:var(--rouge)}
+
+/* Planning : une ligne par atelier, une barre par lot. */
+.at-planning svg{width:100%;height:auto;background:var(--bg3);border:1px solid var(--bordure);border-radius:10px}
+.at-pl-grille{stroke:var(--bordure);stroke-width:1}
+.at-pl-grille.minuit{stroke:var(--txt2,#64748b);stroke-width:1.5;stroke-dasharray:4 3}
+.at-pl-heure{fill:var(--txt2);font-size:10px;text-anchor:middle}
+.at-pl-nom{fill:var(--txt);font-size:11px;font-weight:600}
+.at-pl-lot{fill:var(--accent)}
+.at-pl-lot.robot{fill:var(--violet)}
+.at-pl-lot.chaine{fill:var(--chaine,#c026d3)}
+.at-pl-chaine{fill:var(--chaine,#c026d3);font-weight:700}
+.at-pl-legende-chaine{color:var(--chaine,#c026d3);font-weight:600}
+.at-pl-attente{fill:var(--warn-stroke);opacity:.55}
+.at-pl-bloque{fill:var(--rouge)}
+
+/* `position:relative` n'est pas décoratif : le libellé pour lecteur d'écran de
+   la dernière colonne est en position absolue. Sans bloc englobant ici, il se
+   place dans les coordonnées de la page — à droite d'un tableau large qui
+   défile — et rallonge le défilement horizontal de tout le document. */
+.at-table{width:100%;border-collapse:collapse;font-size:13px;background:var(--bg3);
+  border:1px solid var(--bordure);border-radius:10px;overflow:hidden;position:relative}
+.at-table th,.at-table td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--bordure)}
+.at-table thead th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--txt2);background:var(--bg2)}
+.at-table tbody tr:last-child th,.at-table tbody tr:last-child td{border-bottom:0}
+.at-parcours{color:var(--txt2)}
+.at-etat{font-weight:700}
+.at-etat.ok{color:var(--vert)}
+.at-etat.retard{color:var(--rouge)}
+.at-etat.manque{color:var(--orange)}
+
+/* Compagnies × classes : le programme de vols corrigé à la main. */
+.at-ajout{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;align-items:end;
+  border:2px solid var(--accent);border-radius:10px;padding:14px;margin-bottom:14px;
+  background:color-mix(in srgb,var(--accent) 7%,var(--bg3))}
+.at-ajout label{display:grid;gap:6px;font-size:12px;color:var(--txt2)}
+.at-ajout-actions{display:flex;gap:8px}
+.at-exclues{font-size:12px;color:var(--txt2);margin:0 0 12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.at-source{font-size:12px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;
+  color:var(--accent2);border:1px solid var(--accent);border-radius:4px;padding:1px 5px;margin-left:6px}
+.at-table td:last-child{text-align:right;white-space:nowrap}
+
+/* Poste : pauses automatiques et durée de présence. */
+.at-cases{display:flex;flex-direction:column;gap:6px;padding:0 14px 12px}
+.at-cases .chk{display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:1.4;color:var(--txt2)}
+.at-cases .chk input{width:16px;height:16px;flex:none;margin-top:1px;accent-color:var(--accent)}
+.at-presence{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--txt2);margin-left:24px}
+.at-presence input{max-width:90px}
+.at-lavage-note,.at-tunnel-note{padding:0 14px 12px;margin:0}
+
+/* La boucle du matériel : ce qui part revient. */
+.at-mat{border:1px solid var(--bordure);border-radius:10px;background:var(--bg3);padding:12px 16px;margin-bottom:16px}
+.at-mat-tete{display:flex;align-items:flex-start;gap:10px;font-size:13px;line-height:1.5;color:var(--txt2)}
+.at-mat-tete input{width:16px;height:16px;flex:none;margin-top:2px;accent-color:var(--accent)}
+.at-mat-tete strong{color:var(--txt)}
+.at-mat-champs{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;align-items:end;margin:12px 0}
+.at-mat-champs label:not(.chk){display:grid;gap:6px;font-size:12px;color:var(--txt2)}
+.at-mat-champs .chk{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--txt2)}
+.at-mat-champs .chk input{width:16px;height:16px;accent-color:var(--accent)}
+.at-mat-bilan{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;
+  border-top:1px solid var(--bordure);padding-top:12px}
+.at-mat-chiffre{font-size:12px;color:var(--txt2)}
+.at-mat-chiffre b{display:block;font-size:18px;color:var(--txt);font-weight:800}
+.at-mat-chiffre em{display:block;font-style:normal;font-size:12px}
+
+/* Les tunnels d'une plonge : leur somme fait son débit. */
+.at-tunnel{display:flex;align-items:center;gap:8px;margin:0 14px 6px}
+.at-tunnel input[type=text],.at-tunnel input:not([type=checkbox]):not([type=number]){flex:1}
+.at-tunnel input[type=number]{max-width:110px}
+.at-tunnel .chk{margin:0}
+.at-tunnel-unite{font-size:12px;color:var(--txt2)}
+/* Le handling : une durée par vol, par compagnie. */
+.at-duree{display:flex;align-items:center;gap:8px;margin:0 14px 6px}
+.at-duree-cie{min-width:200px;font-size:13px;font-weight:600}
+.at-duree input[type=number]{max-width:110px}
+.at-handling{padding-top:0}
+.at-tunnel.arret input:not([type=checkbox]),.at-tunnel.arret .at-tunnel-unite{opacity:.5}
+.at-tunnel-total{font-size:12px;color:var(--txt2);align-self:center}
+.at-tunnel-total b{color:var(--txt);font-size:14px}
+
+/* Une ligne = une fabrication : les classes sont dans l'en-tête, pas dessous. */
+.at-lot-tete .at-chips{flex:1;margin:0}
+.at-lot-tete b{min-width:22px}
+.at-lot-plus,.at-ajout-lot{max-width:320px}
+.at-ajout-lot{font-weight:600;border-color:var(--accent)}
+.at-regle{padding:0 14px 8px;margin:0}
+.at-rien{padding:0 14px 8px;margin:0}
+
+/* L'arrêt programmé n'est pas la pause de l'équipe : il se replie. */
+.at-arrets{border-top:1px solid var(--bordure);padding:10px 14px 4px}
+.at-arrets>summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--txt)}
+.at-arrets .mini-note{margin:8px 0}
+.at-arrets .at-pause,.at-arrets .at-actions-lot{margin-left:0;padding-left:0}
+
+/* Une mise à disposition n'a pas de durée : un repère, pas une barre. */
+.at-pl-dispo{fill:var(--txt2)}
+.at-ajout-note{grid-column:1/-1;margin:0}
+
+/* Un tunnel que personne ne tient ne tourne pas : il se voit. */
+.at-tunnel-etat{font-size:12px;color:var(--txt2);min-width:120px}
+.at-tunnel.sans-personne{border-left:3px solid var(--orange);padding-left:8px;margin-left:11px}
+.at-tunnel.sans-personne .at-tunnel-etat{color:var(--orange);font-weight:700}
+
+/* Les deux débits de la plonge : celui des lignes, celui de l'ensemble. */
+.at-plafond{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt2)}
+.at-plafond input{max-width:120px}
+.at-bilan-debit{display:flex;flex-wrap:wrap;gap:18px;align-items:baseline;
+  margin:0 14px 10px;padding:10px 12px;border:1px solid var(--bordure);border-radius:8px;background:var(--bg2)}
+.at-bilan-debit span{font-size:12px;color:var(--txt2)}
+.at-bilan-debit em{display:block;font-style:normal;font-size:12px;text-transform:uppercase;
+  letter-spacing:.04em;font-weight:700}
+.at-bilan-debit b{font-size:17px;color:var(--txt);margin-right:3px}
+.at-bilan-debit .retenu b{color:var(--accent2)}
+.at-bilan-debit .at-tunnel-total{margin-left:auto;align-self:center}
+/* Bridée : le plafond est ce qui décide, et il faut le voir. */
+.at-bilan-debit.bride{border-color:var(--orange)}
+.at-bilan-debit.bride .retenu b{color:var(--orange)}
+
+/* Le matériel, classe par classe : par passager et par vol. */
+.at-mat-table{width:100%;max-width:520px;border-collapse:collapse;font-size:13px;margin-top:10px}
+.at-mat-table th,.at-mat-table td{padding:5px 8px;border-bottom:1px solid var(--bordure);text-align:left}
+.at-mat-table thead th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--txt2)}
+.at-mat-table tbody th{font-weight:700;white-space:nowrap}
+.at-mat-table input{width:100%;max-width:110px;text-align:right}
+
+/* ==========================================================================
+ *  PARCOURS DES CLASSES
+ *  Une carte par parcours. Repliée : ses branches en une ligne chacune, et
+ *  l'endroit où elles se rejoignent. Ouverte : chaque étape est un menu, on
+ *  lit la chaîne de gauche à droite comme on la décrirait à voix haute.
+ * ==========================================================================*/
+.pc-defauts{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;padding:10px 12px;
+  border:1px solid var(--bordure);border-radius:9px;background:var(--bg2)}
+.pc-defauts-lab{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--txt2);align-self:center}
+.pc-defauts label{display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:700;color:var(--txt2)}
+#view-ateliers .pc-defauts select{font-size:12px;padding:5px 7px;max-width:170px}
+.at-titre-aide{margin-top:18px}
+.at-titre-aide .at-titre{margin:0}
+
+/* ==========================================================================
+ *  1. LES CHEMINS — un diagramme de nœuds (graphe.css)
+ *  2. QUI FABRIQUE QUOI — une ligne par compagnie × classe, une colonne par
+ *     service, une équipe par case. Trois états se voient de loin : choisie
+ *     (plein), à choisir (pointillés), hors parcours (grisé).
+ * ==========================================================================*/
+.pc{position:relative;display:block}
+.pc-sec,.qf{display:grid;gap:10px;margin-bottom:8px}
+.pc-sous{font-size:12px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--txt2);margin-left:6px}
+.at-titre .pc-sous{font-size:12px}
+.pc-qui{font-size:12px;color:var(--txt2);flex:1;min-width:160px}
+.pc-cab{display:inline-block;font-size:12px;font-weight:800;border-radius:5px;padding:1px 6px;
+  background:color-mix(in srgb,var(--accent) 14%,var(--bg3));color:var(--accent2)}
+
+.qf-barre{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.qf-barre-fin{flex:1}
+.qf-progres{display:flex;align-items:center;gap:8px;font-size:13px}
+.qf-jauge{width:140px;height:8px;border-radius:99px;background:var(--jauge-bg,var(--bordure));overflow:hidden}
+.qf-jauge span{display:block;height:100%;background:var(--vert);border-radius:99px}
+#view-ateliers .qf-barre input.qf-recherche{width:200px;font-size:13px;padding:6px 8px}
+.qf-legende,.qf-t-legende{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--txt2);margin:0}
+.qf-l::before{content:"";display:inline-block;width:16px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px;border:1px solid var(--bordure2)}
+.qf-l.ok::before{background:var(--ok-fill);border-color:var(--vert)}
+.qf-l.libre::before{background:var(--warn-fill);border:1.5px dashed var(--warn-stroke)}
+.qf-l.auto::before{background:var(--bg2)}
+.qf-l.hors::before{background:repeating-linear-gradient(135deg,var(--bg2) 0 3px,var(--bordure) 3px 4px)}
+.qf-l.attente::before{background:var(--orange);opacity:.6;height:6px;vertical-align:1px}
+.qf-l.echeance::before{width:0;border:0;border-left:2px dashed var(--rouge);height:12px;border-radius:0}
+
+.qf-scroll{overflow:auto;max-height:70vh;border:1px solid var(--bordure);border-radius:10px;background:var(--bg3)}
+.qf-table{border-collapse:separate;border-spacing:0;width:100%;font-size:12px}
+.qf-table th,.qf-table td{padding:3px 4px;border-bottom:1px solid var(--bordure);text-align:left;vertical-align:middle}
+.qf-table thead th{position:sticky;background:var(--bg3);z-index:2}
+.qf-table thead tr:first-child th{top:0;height:22px}
+.qf-table thead tr:nth-child(2) th{top:22px;border-bottom:2px solid var(--bordure2)}
+.qf-table tbody th,.qf-coin{position:sticky;left:0;background:var(--bg3);z-index:1;min-width:160px}
+.qf-table thead .qf-coin{z-index:3;font-size:12px;color:var(--txt2);font-weight:700}
+.qf-g{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--txt2);
+  border-bottom:3px solid var(--accent) !important;text-align:center !important}
+.qf-g[data-g="1"]{border-bottom-color:var(--violet) !important}
+.qf-g[data-g="2"]{border-bottom-color:var(--orange) !important}
+.qf-g[data-g="3"]{border-bottom-color:var(--vert) !important}
+.qf-g.jonction{border-bottom-color:var(--txt) !important}
+.qf-col{font:inherit;display:grid;gap:1px;width:100%;min-width:108px;text-align:left;border:1px solid transparent;
+  background:none;border-radius:6px;padding:4px 6px;cursor:pointer;font-weight:800;font-size:12px;color:var(--txt);min-height:0}
+.qf-col small{font-weight:500;font-size:12px;color:var(--txt2)}
+.qf-col.a-remplir small{color:var(--warn-stroke);font-weight:700}
+.qf-col:hover,.qf-col[aria-expanded]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--bg3))}
+.qf-id{display:grid;line-height:1.2}
+.qf-id b{font-size:13px}
+.qf-id small{font-size:12px;color:var(--txt2)}
+#view-ateliers .qf-parcours{font:inherit;font-size:12px;cursor:pointer;text-align:left;border:1px solid transparent;border-radius:6px;padding:4px 6px;min-height:32px;margin-top:2px;max-width:150px;border-color:transparent;background:transparent;color:var(--txt2)}
+#view-ateliers .qf-parcours:hover,#view-ateliers .qf-parcours:focus{border-color:var(--bordure2)}
+#view-ateliers .qf-parcours.propre{color:var(--accent2);font-weight:700}
+.qf-c{min-width:108px}
+.qf-c.hors{background:repeating-linear-gradient(135deg,transparent 0 5px,color-mix(in srgb,var(--bordure) 60%,transparent) 5px 6px)}
+.qf-c.auto{color:var(--txt2);font-size:12px;font-style:italic;padding-left:10px}
+.qf-vague{display:block;font-style:normal;font-size:12px;color:var(--txt2)}
+.qf-case{font:inherit;display:grid;gap:0;width:100%;text-align:left;border-radius:6px;padding:4px 7px;cursor:pointer;
+  min-height:34px;align-content:center;border:1px solid var(--bordure2);background:var(--bg2);color:var(--txt)}
+.qf-case .qf-nom{font-weight:700;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
+.qf-case small{font-size:12px;color:var(--txt2);font-variant-numeric:tabular-nums}
+.qf-case.ok{background:var(--ok-fill);border-color:color-mix(in srgb,var(--vert) 55%,var(--bordure2))}
+.qf-case.libre{background:var(--warn-fill);border:1.5px dashed var(--warn-stroke);color:var(--warn-stroke);font-weight:700;font-size:12px}
+.qf-case.alerte{background:var(--bad-fill);border-color:var(--rouge)}
+.qf-case:hover,.qf-case[aria-expanded]{outline:2px solid var(--accent);outline-offset:-1px}
+.qf-fin{white-space:nowrap}
+.qf-fin-tete{font-size:12px;color:var(--txt2)}
+.qf-suivre{font:inherit;font-size:12px;display:flex;align-items:center;gap:6px;border:1px solid transparent;background:none;
+  border-radius:6px;padding:4px 6px;cursor:pointer;color:var(--txt);min-height:34px;width:100%}
+.qf-suivre:hover,.qf-suivre[aria-expanded="true"]{border-color:var(--bordure2);background:var(--bg2)}
+.qf-chevron{margin-left:auto;color:var(--txt2)}
+.qf-etat{font-size:12px;font-weight:700}
+.qf-etat.ok{color:var(--vert)}
+.qf-etat.retard{color:var(--rouge)}
+.qf-etat.manque{color:var(--txt3);font-weight:500}
+.qf-temps>td{background:var(--bg2);padding:10px 14px 12px !important}
+.qf-phrase{margin:0 0 6px;font-size:13px;max-width:95ch}
+.qf-t{width:100%;max-width:1000px;height:auto;display:block}
+.qf-t-grille{stroke:var(--bordure);stroke-width:1}
+.qf-t-heure{font-size:10px;fill:var(--txt3)}
+.qf-t-svc{font-size:11.5px;font-weight:700;fill:var(--txt)}
+.qf-t-br{font-size:9.5px;fill:var(--txt3)}
+.qf-t-svc.saute{fill:var(--txt3)}
+.qf-t-vide{stroke:var(--bordure);stroke-width:1;stroke-dasharray:2 4}
+.qf-t-lot{fill:color-mix(in srgb,var(--accent) 30%,var(--bg3));stroke:var(--accent);stroke-width:1}
+.qf-t-lot.inacheve{fill:var(--bad-fill);stroke:var(--rouge);stroke-dasharray:4 3}
+.qf-t-attente{fill:var(--orange);opacity:.6}
+.qf-t-dispo{fill:var(--vert)}
+.qf-t-txt{font-size:10.5px;fill:var(--txt);pointer-events:none}
+.qf-t-txt.dehors{fill:var(--txt2)}
+.qf-t-echeance{stroke:var(--rouge);stroke-width:1.5;stroke-dasharray:4 3}
+.qf-t-echeance-txt{font-size:10px;fill:var(--rouge);font-weight:700}
+
+.qf-menu{position:absolute;z-index:30;width:300px;max-width:calc(100vw - 32px);background:var(--bg3);
+  border:1px solid var(--bordure2);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:10px;display:grid;gap:6px}
+.qf-menu-titre{margin:0;font-weight:800;font-size:13px}
+.qf-menu-titre span{font-weight:500;color:var(--txt2)}
+.qf-menu-note{margin:2px 0 0;font-size:12px;color:var(--txt2)}
+.qf-menu-liste{display:grid;gap:4px}
+.qf-choix{font:inherit;display:grid;grid-template-columns:18px 1fr;gap:6px;align-items:start;text-align:left;width:100%;
+  border:1px solid var(--bordure);border-radius:7px;background:var(--bg2);padding:6px 8px;cursor:pointer;color:var(--txt);min-height:0}
+.qf-choix b{display:block;font-size:13px}
+.qf-choix small{display:block;font-size:12px;color:var(--txt2)}
+.qf-choix:hover,.qf-choix:focus-visible{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--bg2))}
+.qf-choix.actuel{border-color:var(--vert);background:var(--ok-fill)}
+.qf-choix.nouveau{border-style:dashed}
+.qf-coche{font-weight:800;color:var(--accent2);text-align:center}
+.qf-menu-tout{display:flex;gap:6px;align-items:flex-start;font-size:12px;padding:6px 8px;border-radius:7px;background:var(--bg2)}
+.qf-menu-pied{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;border-top:1px solid var(--bordure);padding-top:6px}
+.qf-lien{font:inherit;font-size:12px;border:0;background:none;color:var(--accent2);cursor:pointer;padding:2px 0;text-decoration:underline;min-height:0;text-align:left}
+.qf-lien.danger{color:var(--rouge)}
+
+/* Une case : ses commandes dans l'ordre, et leurs man-minutes. */
+.at-cmd-chip{appearance:none;font:inherit;font-size:12px;font-weight:700;padding:3px 8px;min-height:28px;border-radius:99px;cursor:pointer;
+  border:1px solid var(--bordure2);background:var(--bg2);color:var(--txt)}
+.at-cmd-chip:hover{border-color:var(--c-equipes);color:var(--c-equipes)}
+.at-carte-nom.fixe{cursor:default}
+.at-lot-cmd{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.at-mm{white-space:nowrap;display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--txt2)}
+#view-ateliers .at-mm input{width:76px;flex:none;font:inherit;font-size:13px;padding:4px 6px;min-height:30px;border:1.5px solid var(--bordure2);border-radius:6px;background:var(--bg3);color:var(--txt)}
+.at-mm input:not(:placeholder-shown){border-color:var(--accent2);font-weight:700}
+.at-mm-import{color:var(--txt2)}
+.at-lot.ici{border-left:4px solid var(--c-equipes);padding-left:8px;background:color-mix(in srgb,var(--c-equipes) 6%,transparent)}
+
+/* Le temps en stock dans la frise d'une commande. */
+.qf-t-stock{fill:#2a78d6;opacity:.85}
+.qf-l.stock::before{background:#2a78d6}
+
+/* Récap des cases : une ligne par case, service par service. */
+.rc-outils{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:4px 0 8px}
+.rc-fin{flex:1}
+.rc-cherche{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--txt2)}
+.rc-cherche input{width:220px}
+.rc-legende{font-size:12px;color:var(--txt2);margin:0 0 10px;line-height:1.9}
+.rc-scroll{overflow:auto;max-height:75vh;border:1px solid var(--bordure);border-radius:10px}
+.rc-table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+.rc-table th,.rc-table td{padding:6px 8px;border-bottom:1px solid var(--bordure);text-align:left;vertical-align:middle;background:var(--bg3,#fff)}
+.rc-table thead th{position:sticky;top:0;z-index:2;font-size:12px;font-weight:600;color:var(--txt2)}
+.rc-svc th{background:color-mix(in srgb,var(--accent) 7%,var(--bg3,#fff));font-size:13px;font-weight:700;padding-top:9px}
+.rc-svc th span{display:inline-flex;align-items:center;gap:6px}
+.rc-svc small{margin-left:8px;font-weight:500;color:var(--txt2)}
+.rc-case th{font-weight:600;min-width:170px}
+.rc-case th small{display:block;font-weight:400;color:var(--txt2);font-size:11px}
+.rc-case th .lien-discret{font-weight:600;text-align:left}
+.rc-case:hover td,.rc-case:hover th{background:color-mix(in srgb,var(--accent) 5%,var(--bg3,#fff))}
+.rc-table input[type=time]{border:1px solid transparent;background:transparent;border-radius:6px;font:inherit;padding:3px 4px}
+.rc-table select{border:1px solid transparent;background:transparent;border-radius:6px;font:inherit;padding:3px 2px}
+.rc-table input[type=time]:hover,.rc-table select:hover{border-color:var(--bordure)}
+.rc-table input[type=time]:focus,.rc-table select:focus{border-color:var(--accent);background:var(--bg3,#fff);outline:none}
+.rc-heure input{font-weight:700}
+.rc-fin-h{color:var(--txt2);white-space:nowrap}
+.rc-deroule{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid var(--bordure);white-space:nowrap}
+.rc-deroule.unique{border-color:#6b8f71;color:#3d6b45}
+.rc-deroule.suite{border-color:var(--accent);color:var(--accent)}
+.rc-deroule.dispo,.rc-deroule.autre{color:var(--txt2)}
+.rc-deroule.vide{color:#b0413e;border-color:#e3b3b1}
+.rc-ensemble-lab{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:color-mix(in srgb,#c28a1b 16%,transparent);color:#8a5d0a;white-space:nowrap}
+.rc-seq{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.rc-seq li{display:inline-flex;flex-direction:column;align-items:flex-start;gap:2px;padding:4px 7px;border-radius:8px;border:1px solid var(--bordure)}
+.rc-seq li.ens{border-color:#d7b36a;background:color-mix(in srgb,#c28a1b 8%,transparent)}
+.rc-seq li.rc-fleche{border:0;padding:0;color:var(--txt2);font-weight:700}
+.rc-ens-tete{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#8a5d0a;font-weight:700}
+.rc-cmds{display:inline-flex;flex-wrap:wrap;gap:4px}
+.rc-cmd{display:inline-flex;align-items:center;gap:4px;font:inherit;font-weight:600;white-space:nowrap;color:inherit;
+  background:var(--bg3);border:1px solid var(--bordure);border-radius:99px;padding:2px 9px;cursor:pointer}
+.rc-cmd:hover{border-color:var(--c-equipes);text-decoration:underline}
+.rc-cmd:focus-visible{outline:2px solid var(--c-equipes);outline-offset:1px}
+.rc-quand{font-size:11px;color:var(--txt2);white-space:nowrap}
+.rc-quand.ko{color:#b0413e}
+.rc-vagues{display:inline-flex;flex-wrap:wrap;gap:6px;margin-right:8px}
+.rc-vague{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--bordure);border-radius:8px;padding:1px 4px}
+#view-ateliers .rc-table select{width:auto;min-width:64px;padding:3px 4px;border-color:transparent;background:transparent}
+#view-ateliers .rc-table input[type=time]{width:auto;min-width:96px;padding:3px 4px;border-color:transparent;background:transparent}
+#view-ateliers .rc-table select:hover,#view-ateliers .rc-table input[type=time]:hover{border-color:var(--bordure)}
+#view-ateliers .rc-table select:focus,#view-ateliers .rc-table input[type=time]:focus{border-color:var(--accent);background:var(--bg3,#fff)}
+#view-ateliers .rc-cherche input{width:220px}
+#view-ateliers .rc-table select.rc-mode{min-width:170px;border-color:var(--bordure);background:var(--bg3,#fff);font-weight:600}
+
+/* Handling et plonge : une ligne par compagnie (retour d'usage du 28/09). */
+.at-cies-bloc .table-scroll{overflow-x:auto;max-width:100%}
+.at-cies{border-collapse:collapse;width:auto;font-size:13px;margin:4px 0}
+.at-cies th,.at-cies td{padding:4px 6px;border-bottom:1px solid var(--bordure);text-align:left;vertical-align:middle;white-space:nowrap}
+.at-cies thead th{white-space:normal;line-height:1.2;vertical-align:bottom}
+.at-cies thead th{font-size:12px;color:var(--txt2);font-weight:700;background:var(--bg2)}
+.at-cies tbody th{font-weight:700;white-space:nowrap}
+.at-cies-toutes th,.at-cies-toutes td{background:color-mix(in srgb,var(--c-equipes) 6%,transparent)}
+#view-ateliers .at-cies input[type=number]{width:56px;min-width:0;padding:5px 5px}
+#view-ateliers .at-cies select{width:auto;min-width:0;padding:5px 6px}
+.at-creneau label{display:inline-flex;align-items:center;gap:6px}
+#view-ateliers .at-creneau input[type=number]{width:70px;min-width:0}
+.at-inline{display:inline-flex;align-items:center;gap:6px;margin-left:8px}
+#view-ateliers .at-inline input{width:70px;min-width:0}
+.at-cies-bloc{padding:0 14px 6px}
+.at-cies-bloc .mini-note{margin:2px 0 0}
+.at-mode-plonge{display:grid;gap:4px;margin:10px 14px 4px;font-size:13px;font-weight:700;max-width:560px}
+.at-tunnels-n{flex:1 1 320px}
+/* Ajouter une compagnie, ou les classes qui lui manquent. */
+.at-ajout-cabs{display:flex;flex-wrap:wrap;gap:6px 14px;border:0;padding:0;margin:0;grid-column:span 2}
+.at-ajout-cabs legend{font-size:12px;color:var(--txt2);padding:0;margin-bottom:6px}
+.at-ajout-cabs .chk{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--txt)}
+.pc-cmds-ajout{padding:4px 0 8px}
+.pc-cmds-ajout .at-ajout{grid-template-columns:1fr;margin:0;padding:10px}
+.pc-cmds-ajout .at-ajout-cabs{grid-column:auto}
+.pc-cmds-ajout .at-ajout-ouvrir{width:100%}
+.at-creneau{flex-wrap:wrap}
+#view-ateliers .at-creneau input[type=time]{width:auto;min-width:0}
+.at-intro-aide{padding:0 14px 8px;margin:0}
+.at-vitesse{display:inline-flex;align-items:center;gap:3px;font-weight:700;color:var(--txt2)}
+#view-ateliers .at-vitesse input{width:58px;min-width:0}
+
+/* Deux étapes fusionnées, à la chaîne (retour d'usage du 29/09). */
+.at-fusion{display:grid;gap:4px;margin:8px 0;padding:8px 10px;border:1px dashed var(--bordure);border-radius:10px}
+.at-fusion select{max-width:100%}
+.at-fusion-bilan{margin:2px 0 0}
+.at-fusion .at-alerte{color:#9a3412;margin:0}
+.rc-chaine,.qf-chaine{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--chaine-doux,#f3efff);color:var(--chaine,#7c3aed);white-space:nowrap}
+.qf-chaine{padding:0 6px}
+
+/* La ligne robot partagée (retour d'usage du 29/09). */
+.at-ligne-robot{display:grid;gap:4px;margin:8px 0;padding:8px 10px;border:1px dashed var(--bordure);border-radius:10px}
+.at-ligne-robot .at-pause{margin:0}
+
+/* Sur les chemins, le message se lit au-dessus du diagramme : pas deux fois. */
+body[data-sous="at-chemins"] #at-status{display:none}
+.at-pourquoi{display:block;font-size:11.5px;color:var(--txt2,#475569);margin-top:2px;max-width:34ch}

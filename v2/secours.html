@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Production ORY — secours</title>
+<!-- Page de secours : elle ne charge AUCUN script du site. Quand le site se
+     fige au chargement (des données enregistrées qu'il ne sait pas relire),
+     elle permet de récupérer ces données et de repartir sans elles. -->
+<style>
+  :root{--txt:#0f172a;--txt2:#475569;--bord:#cbd5e1;--fond:#eef2f7;--carte:#fff;--vert:#0f766e;--rouge:#b91c1c}
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--txt);background:var(--fond)}
+  header{background:#0f1f33;color:#fff;padding:14px 20px}
+  header b{font-size:17px}
+  main{max-width:820px;margin:0 auto;padding:20px 16px 40px;display:grid;gap:14px}
+  section{background:var(--carte);border:1px solid var(--bord);border-radius:12px;padding:16px 18px}
+  h1{font-size:20px;margin:0 0 6px}
+  h2{font-size:16px;margin:0 0 6px}
+  p{margin:6px 0}
+  .note{color:var(--txt2);font-size:13.5px}
+  .alerte{border-left:5px solid #d97706}
+  button,.lien{font:inherit;font-weight:700;padding:9px 14px;border-radius:9px;border:1px solid var(--bord);background:#f8fafc;color:var(--txt);cursor:pointer;text-decoration:none;display:inline-block}
+  button.principal,.lien.principal{background:var(--vert);border-color:var(--vert);color:#fff}
+  button.danger{color:var(--rouge);border-color:#fca5a5}
+  .boutons{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;margin-top:6px}
+  td,th{text-align:left;padding:5px 8px;border-bottom:1px solid var(--bord)}
+  #etat{font-weight:700;color:var(--vert)}
+  #etat.erreur{color:var(--rouge)}
+</style>
+</head>
+<body>
+<header><b>Production ORY</b> · page de secours</header>
+<main>
+  <section id="bloque" class="alerte" hidden>
+    <h1>Le site ne s’est pas chargé jusqu’au bout la dernière fois</h1>
+    <p>Il s’est probablement figé en relisant vos données enregistrées. Vous êtes sur une page de secours, qui ne fait aucun calcul :
+      vos données sont intactes. Récupérez-les, puis repartez sans elles, ou réessayez.</p>
+  </section>
+
+  <section>
+    <h2>1. Récupérer vos données</h2>
+    <p>Un fichier <b>ory-sauvegarde</b>, le même que « Sauvegarde › Sauvegarde complète » : il se relit ensuite depuis le site
+      (Sauvegarde › Restaurer). Il contient le plan réel de l’unité : ne le publiez pas.</p>
+    <div class="boutons"><button class="principal" id="telecharger">⇩ Télécharger mes données</button></div>
+    <table id="liste"><thead><tr><th>Données enregistrées dans ce navigateur</th><th>Taille</th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <section>
+    <h2>2. Repartir</h2>
+    <p>Mettre de côté ne supprime rien : les données sont gardées dans ce navigateur, et « Remettre » les rétablit.</p>
+    <div class="boutons">
+      <button id="cote-cases">Mettre de côté les cases et chemins, puis ouvrir le site</button>
+      <button class="danger" id="cote-tout">Tout mettre de côté, puis ouvrir le site</button>
+      <button id="remettre" hidden>Remettre ce qui a été mis de côté</button>
+    </div>
+    <p class="note" id="copie"></p>
+  </section>
+
+  <section>
+    <h2>3. Réessayer sans rien changer</h2>
+    <p class="note">Si le site a été mis à jour depuis, un rechargement complet (Ctrl + Maj + R, ou Cmd + Maj + R sur Mac)
+      prend la dernière version.</p>
+    <div class="boutons"><a class="lien principal" href="index.html?continuer=1" id="ouvrir">Ouvrir le site</a></div>
+  </section>
+
+  <p id="etat" role="status"></p>
+</main>
+<script src="stockage-v2.js?v=460ede7f"></script>
+<script>
+(function () {
+  'use strict';
+  // Les parties d'une sauvegarde complète (sim.js, PARTIES), dans le même ordre.
+  var PARTIES = ['orly-plan-v3', 'ory-ateliers-v1', 'orly-flows-v1', 'ory-modele-v1', 'ory-graphes-v1'];
+  var CASES = ['ory-ateliers-v1', 'ory-ateliers-v1-avant-fonte'];
+  var COPIE = 'ory-secours-copie', DEMARRAGE = 'ory-demarrage-en-cours';
+  var etat = document.getElementById('etat');
+  var dire = function (m, erreur) { etat.textContent = m; etat.className = erreur ? 'erreur' : ''; };
+  var lire = function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  var cles = function () {
+    var out = [];
+    try { for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (/^or?ly?-|^ory-/.test(k) && k !== COPIE) out.push(k); } } catch (e) { /* stockage indisponible */ }
+    return out.sort();
+  };
+  if (/[?&]bloque=1/.test(location.search) || lire(DEMARRAGE) === '1') document.getElementById('bloque').hidden = false;
+
+  function rendre() {
+    var corps = document.querySelector('#liste tbody');
+    var ks = cles();
+    corps.innerHTML = ks.length ? ks.map(function (k) {
+      var v = lire(k) || '';
+      return '<tr><td>' + k + '</td><td>' + (v.length > 1024 ? Math.round(v.length / 1024) + ' ko' : v.length + ' o') + '</td></tr>';
+    }).join('') : '<tr><td colspan="2">Aucune donnée enregistrée.</td></tr>';
+    var copie = lire(COPIE);
+    document.getElementById('remettre').hidden = !copie;
+    document.getElementById('copie').textContent = copie ? 'Des données ont été mises de côté le ' + (JSON.parse(copie).date || '').slice(0, 16).replace('T', ' à ') + '.' : '';
+  }
+
+  document.getElementById('telecharger').addEventListener('click', function () {
+    var contenu = {}, n = 0;
+    PARTIES.forEach(function (k) { var v = lire(k); if (!v) return; try { contenu[k] = JSON.parse(v); n++; } catch (e) { /* illisible */ } });
+    if (!n) return dire('Rien à télécharger : aucune donnée enregistrée.', true);
+    var blob = new Blob([JSON.stringify({ schema: 'ory-sauvegarde', version: 1, date: new Date().toISOString(), contenu: contenu }, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'ory-sauvegarde-' + new Date().toISOString().slice(0, 10) + '.json'; a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    dire(n + (n > 1 ? ' parties téléchargées.' : ' partie téléchargée.'));
+  });
+
+  function mettreDeCote(liste) {
+    var copie = { date: new Date().toISOString(), donnees: {} };
+    try { var avant = JSON.parse(lire(COPIE) || 'null'); if (avant && avant.donnees) copie.donnees = avant.donnees; } catch (e) { /* rien */ }
+    liste.forEach(function (k) { var v = lire(k); if (v !== null) copie.donnees[k] = v; });
+    try {
+      localStorage.setItem(COPIE, JSON.stringify(copie));
+      liste.forEach(function (k) { localStorage.removeItem(k); });
+      localStorage.removeItem(DEMARRAGE);
+    } catch (e) { return dire('Impossible d’écrire dans ce navigateur : ' + e.message, true); }
+    location.href = 'index.html?continuer=1';
+  }
+  document.getElementById('cote-cases').addEventListener('click', function () { mettreDeCote(CASES); });
+  document.getElementById('cote-tout').addEventListener('click', function () {
+    if (confirm('Mettre de côté toutes les données de ce navigateur (plan, cases, liens, barème) ? Le site repartira de la démonstration ; « Remettre » les rétablit.')) mettreDeCote(cles());
+  });
+  document.getElementById('remettre').addEventListener('click', function () {
+    try {
+      var copie = JSON.parse(lire(COPIE) || 'null');
+      if (!copie || !copie.donnees) return dire('Rien à remettre.', true);
+      Object.keys(copie.donnees).forEach(function (k) { localStorage.setItem(k, copie.donnees[k]); });
+      localStorage.removeItem(COPIE);
+      dire(Object.keys(copie.donnees).length + ' données remises. Ouvrez le site pour réessayer.');
+      rendre();
+    } catch (e) { dire('Impossible de remettre : ' + e.message, true); }
+  });
+  document.getElementById('ouvrir').addEventListener('click', function () { try { localStorage.removeItem(DEMARRAGE); } catch (e) { /* rien */ } });
+  rendre();
+})();
+</script>
+</body>
+</html>

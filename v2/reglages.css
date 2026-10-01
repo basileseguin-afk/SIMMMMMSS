@@ -1,0 +1,170 @@
+/* ==========================================================================
+ *  LE MODÈLE DE PRODUCTION dans le Centre des réglages
+ *  Cette section passe AVANT les curseurs de l'ancien moteur : c'est elle qui
+ *  pilote les ateliers de travail, et donc les chiffres qu'on lit aujourd'hui.
+ * ==========================================================================*/
+.rg-modele{display:contents}
+.rg-modele .reglages-titre,.rg-modele #rg-status,.rg-modele .rg-ailleurs,
+/* L'enveloppe titre + « ? » est désormais l'élément de grille : sans cette
+   ligne elle tient dans une seule colonne, et le titre déborde de son filet. */
+.rg-modele .titre-aide{grid-column:1/-1}
+
+#rg-status:not(:empty){font-size:13px;color:var(--accent2);margin:0 0 6px;white-space:pre-line}
+
+#rg-bareme-panneau{grid-column:1/-1}
+
+.rg-avertissement{border-left:3px solid var(--warn-stroke);background:var(--warn-fill);color:var(--txt);
+  padding:10px 14px;border-radius:0 8px 8px 0;font-size:13px;line-height:1.55;margin:10px 0}
+
+/* ==========================================================================
+ *  LE BARÈME, UN SERVICE À LA FOIS
+ *  Onze services × cinq classes × deux colonnes faisaient cent dix champs d'un
+ *  bloc. Replié, chaque service tient en une ligne qui dit l'essentiel ;
+ *  ouvert, il montre ses dix champs et rien d'autre.
+ * ==========================================================================*/
+.rg-service{border:1px solid var(--bordure);border-radius:9px;background:var(--bg3);margin-bottom:6px}
+.rg-service+.rg-service{margin-top:0}
+.rg-service>summary{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:9px 13px;min-height:0;cursor:pointer;list-style:none;
+  font-size:13px;color:var(--txt);font-weight:400}
+.rg-service>summary::-webkit-details-marker{display:none}
+.rg-service>summary::before{content:'\25b8';flex:none;color:var(--txt2);font-size:12px;
+  transition:transform .12s ease}
+.rg-service[open]>summary::before{transform:rotate(90deg)}
+.rg-service>summary:hover{background:var(--bg2)}
+.rg-service[open]{border-color:var(--accent);border-width:2px}
+.rg-service[open]>summary{border-bottom:1px solid var(--bordure)}
+.rg-svc-nom{font-weight:700;font-size:13px;min-width:190px;display:flex;align-items:center;gap:6px}
+.rg-svc-digest{color:var(--txt2);font-size:12px;overflow-wrap:anywhere}
+.rg-svc-digest b{color:var(--txt2);font-weight:700;font-size:12px;letter-spacing:.03em}
+.rg-svc-digest em{font-style:normal;color:var(--accent2)}
+/* Un service sans barème travaillerait en temps nul : il ne doit pas se fondre. */
+.rg-service.vide{border-left:3px solid var(--orange)}
+.rg-service.vide .rg-svc-digest{opacity:.6}
+.rg-occupe{font-size:12px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-left:8px;
+  color:var(--vert);border:1px solid var(--vert);border-radius:4px;padding:1px 5px;white-space:nowrap}
+/* Un service dont aucune case ne lit le barème (handling, plonge, mise à disposition) : en retrait. */
+.rg-service.inutile .rg-svc-digest{opacity:.45}
+.rg-service .rg-table{margin:0;max-width:420px}
+.rg-service .rg-table th,.rg-service .rg-table td{padding:5px 12px 5px 13px}
+.rg-service .rg-table tbody tr:last-child th,.rg-service .rg-table tbody tr:last-child td{border-bottom:0}
+
+.rg-table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0 4px}
+.rg-table th,.rg-table td{border-bottom:1px solid var(--bordure);padding:4px 6px;text-align:left}
+.rg-table thead th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--txt2);
+  background:var(--bg2);text-align:center;border-bottom:1px solid var(--bordure2)}
+.rg-table thead th:first-child{text-align:left}
+/* Une colonne sur deux : min/pax et min/vol d'une même cabine restent ensemble. */
+
+.rg-table tbody th{font-weight:600;white-space:nowrap}
+.rg-table input{width:100%;min-width:62px;box-sizing:border-box;padding:5px 6px;text-align:right;
+  border:1px solid var(--bordure2);border-radius:5px;background:var(--bg2);color:var(--txt);font:inherit;font-size:13px}
+.rg-table input:focus{outline:2px solid var(--accent);outline-offset:-1px}
+/* Un service dont le barème n'est pas renseigné travaillerait en temps nul. */
+
+.rg-herite,.rg-zero{font-size:12px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;
+  border-radius:4px;padding:1px 5px;margin-left:5px;white-space:nowrap}
+.rg-herite{color:var(--accent2);border:1px solid var(--accent)}
+.rg-zero{color:var(--orange);border:1px solid var(--orange)}
+
+.rg-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+
+.rg-seuil{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--txt2);margin-bottom:8px}
+.rg-seuil input{width:80px;padding:6px 8px;border:1px solid var(--bordure2);border-radius:5px;
+  background:var(--bg2);color:var(--txt);font:inherit}
+
+.rg-ailleurs{max-width:850px;margin:2px 0 0}
+
+/* La version servie : la réponse à « mon navigateur a-t-il la dernière ? ». */
+.rg-version{grid-column:1/-1;margin:0;font-size:12px;color:var(--txt2);
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+
+/* ==========================================================================
+ *  COMPARER DEUX SCÉNARIOS
+ *  Deux groupes — ce qu'on a changé, ce que ça a donné — et, sur chaque
+ *  résultat qui bouge, le mot « mieux » ou « moins bien » : la couleur
+ *  l'accompagne, elle ne le remplace pas.
+ * ==========================================================================*/
+.panneau-compare{max-width:760px}
+.compare-tab tr.compare-groupe th{text-align:left;padding-top:14px;font-size:12px;text-transform:uppercase;
+  letter-spacing:.05em;color:var(--txt2);font-weight:800;border-bottom:1px solid var(--bordure2)}
+.compare-tab td small{display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.compare-tab tr.mieux td small{color:var(--vert)}
+.compare-tab tr.moins-bien td small{color:var(--rouge)}
+/* Le modèle ouvre la page : son titre n'a rien au-dessus à séparer. */
+#rg-modele>.titre-aide:first-child{margin-top:0;padding-top:0;border-top:0}
+/* Une seule carte dans la section : elle prend la largeur d'un tableau lisible,
+   pas une colonne étroite à côté d'un grand vide. */
+#panel-reglages.reglages-grille{columns:auto;max-width:760px}
+
+/* Les valeurs propres à une compagnie, sous la valeur commune. */
+.rg-propres{display:grid;gap:8px;margin-top:10px}
+.rg-propres select{font-size:12px;padding:5px 8px;max-width:320px}
+.rg-table input::placeholder{color:var(--txt3)}
+
+/* Deux façons de chiffrer un service : par classe, ou compagnie par compagnie.
+   La grille garde la classe en colonne pour qu'une étude se recopie telle quelle. */
+.rg-mode{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.rg-mode .btn[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff)}
+.rg-grille-scroll{overflow-x:auto;max-width:100%}
+.rg-grille{min-width:520px}
+.rg-grille td{padding:3px 4px}
+.rg-grille input{width:74px}
+.rg-grille .rg-hors{color:var(--txt3);text-align:center}
+.rg-grille .rg-autres th,.rg-grille .rg-autres td{border-top:2px solid var(--bordure2);padding-top:7px}
+.rg-grille .rg-autres th{font-weight:600;color:var(--txt2)}
+.rg-table input.rg-manque{border-color:var(--rouge);box-shadow:0 0 0 1px var(--rouge)}
+.rg-manque-txt{color:var(--rouge)}
+.rg-service.manque{border-left:3px solid var(--rouge)}
+
+/* Le récap des man-minutes : une ligne par commande, une colonne par service. */
+.rg-recap-outils{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
+.rg-recap-fin{flex:1}
+.rg-recap-cherche{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--txt2)}
+.rg-recap-cherche input{width:170px}
+.rg-recap-legende{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;font-size:12px;color:var(--txt2);margin:10px 0 4px}
+.rg-recap-legende .rgr{padding:2px 8px;border-radius:6px;border:1px solid var(--bordure)}
+.rg-recap-resume{margin:6px 0 8px;font-size:14px}
+.rg-recap-scroll{overflow:auto;max-height:70vh;border:1px solid var(--bordure);border-radius:10px}
+.rg-recap-table{border-collapse:separate;border-spacing:0;font-size:13px;min-width:100%}
+.rg-recap-table th,.rg-recap-table td{padding:4px 6px;border-bottom:1px solid var(--bordure);text-align:right;white-space:nowrap;background:var(--bg3,#fff)}
+.rg-recap-table thead th{position:sticky;top:0;z-index:2;text-align:center;font-weight:600;vertical-align:bottom}
+.rg-recap-table tbody th,.rg-recap-table tfoot th{position:sticky;left:0;z-index:1;text-align:left;font-weight:600}
+.rg-recap-table thead th:first-child{left:0;z-index:3}
+.rg-recap-table tfoot td,.rg-recap-table tfoot th{font-weight:700;position:sticky;bottom:0}
+.rg-recap-svc{display:inline-flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;white-space:normal;max-width:110px}
+.rg-recap-total{font-weight:700}
+.rg-recap-vols{color:var(--txt2)}
+.rg-recap-table input{width:64px;text-align:right;font:inherit;padding:3px 4px}
+.rgr.propre input,.rg-recap-legende .rgr.propre{font-weight:700}
+.rgr.commun input,.rg-recap-legende .rgr.commun{color:var(--txt2);font-style:italic}
+.rgr.case,.rg-recap-legende .rgr.case{color:var(--accent)}
+.rgr.case small{margin-left:4px;font-size:10px;text-transform:uppercase;letter-spacing:.04em}
+.rgr.manque input,.rg-recap-legende .rgr.manque{border-color:#c0392b;outline:1px solid #c0392b}
+.rgr.hors{color:var(--txt2);text-align:center;opacity:.6}
+
+/* Le récap en grille : trois sous-colonnes par service (valeur · pers. · durée),
+ * alignées ; un filet entre deux services ; des champs qui ressemblent à des
+ * nombres, encadrés seulement au survol ou pendant la saisie. */
+.rg-recap-table{font-variant-numeric:tabular-nums}
+.rg-recap-table th,.rg-recap-table td{padding:5px 6px}
+.rg-recap-table .g{border-left:1px solid var(--bordure)}
+.rg-recap-table tbody tr:nth-child(even) td,.rg-recap-table tbody tr:nth-child(even) th{background:color-mix(in srgb,var(--txt2) 5%,var(--bg3,#fff))}
+.rg-recap-table tbody tr:hover td,.rg-recap-table tbody tr:hover th{background:color-mix(in srgb,var(--accent) 7%,var(--bg3,#fff))}
+.rg-recap-t1 th{border-bottom:0;padding-bottom:2px}
+.rg-recap-t2 th{top:44px;font-size:11px;font-weight:500;color:var(--txt2);text-transform:none;padding-top:0}
+.rg-recap-t1 th small{display:block;font-size:11px;font-weight:500;color:var(--txt2)}
+.rg-recap-svc{flex-direction:row;gap:6px;max-width:none;font-size:13px;white-space:nowrap}
+.rg-recap-table input{border:1px solid transparent;background:transparent;border-radius:6px;box-shadow:none;width:58px;padding:3px 5px}
+.rg-recap-table input:hover{border-color:var(--bordure)}
+.rg-recap-table input:focus{border-color:var(--accent);background:var(--bg3,#fff);outline:none}
+.rg-recap-table .rgr-p input{width:40px;color:var(--txt2)}
+.rgr-p.partage input{text-decoration:underline dotted;text-underline-offset:3px}
+.rgr-p.sans{color:var(--txt2);text-align:center}
+.rgr-p.partage>span{text-decoration:underline dotted;text-underline-offset:3px}
+.rgr-d{color:var(--txt2);font-size:12px;min-width:52px}
+.rgr.robot{background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.rgr.robot.propre input{font-weight:700}
+.rgr.case{font-weight:600}
+.rgr.manque input{border-color:#c0392b;outline:0}
+.rgr.hors{text-align:center}
