@@ -201,32 +201,31 @@ colonne « À la chaîne avec » de la feuille Ateliers.
 seule case par compagnie, oui ou non » ; « l'armement est toujours lié au
 handling ».
 
-**Pourquoi il n'est pas dans les chemins des repas.** On arme un vol, pas une
-classe : dans les flux par compagnie × classe, un vol AF en Business et en
-Éco serait armé deux fois. Et l'armement travaille en parallèle des repas, pas
-avant eux : dans un flux, les repas l'attendraient. Repas et armement se
-retrouvent au handling, qui charge le vol quand les deux sont prêts. Le lien
-est donc avec le handling, et il est automatique.
+**Une branche à part dans chaque chemin.** On arme un vol, pas une classe :
+un vol AF en Business et en Éco ne s'arme qu'une fois. Et l'armement
+travaille en parallèle des repas, pas avant eux : dans chaque chemin, il est
+une branche à part, reliée seulement au handling, qui charge le vol quand
+repas et armement sont prêts.
 
 `etat.categories = { [service]: [{ id: 'ARM', nom: 'Armement', minutes: { '*': 10, AF: 15 } }] }`
 — un seul réglage par service (fiche : « Ce service… travaille par
 compagnie » ; la fiche d'un service dont le nom dit « armement » le propose).
 
-- **Une case par compagnie construite** (`AF/@ARM`, « AF · Armement »),
-  pour chacun de ses départs — `volsAArmer`, `classesCategories`. La liste
-  « Compagnies chargées » d'un handling dit QUI charge le vol, pas s'il
-  s'arme : elle ne grise aucune case (retour d'usage du 02/10 : « toutes les
-  compagnies ont une case armement liée au handling, et pourtant plusieurs
-  ne sont pas cliquables »). Une compagnie qu'aucun handling ne charge est
-  signalée par le calcul (« aucun handling ne charge cette compagnie »).
-  Cochée dans une équipe : oui ; sinon, elle n'est pas armée (et le handling
-  ne l'attend pas).
-- **Une compagnie dont rien n'est construit** — aucune équipe ne prépare
-  l'une de ses commandes — n'est pas simulée (retour d'usage du 02/10 : « QR
-  n'est pas dans les chemins, rien n'est construit pour cette compagnie, je ne
-  veux pas la simuler ; pareil pour DL ») : pas de case d'armement (elle n'est
-  pas listée ; la fiche la nomme), et le handling ne charge pas ses vols
-  (`compagniesConstruites`).
+- **Une case par compagnie dont un chemin passe par le service** (`AF/@ARM`,
+  « AF · Armement ») — comme une commande a sa case dans chaque service de
+  son chemin (retour d'usage du 02/10 : « dans le chemin EZY, l'armement est
+  bien présent, et je ne peux pas faire apparaître sa case »).
+  `compagniesParService`, `classesCategories`.
+  - **Avec ou sans vol** : une compagnie ajoutée à la main, que le programme
+    ne porte pas encore, a sa case, à 0 vol (la fiche le dit).
+  - **La liste « Compagnies chargées » d'un handling** dit QUI charge le vol,
+    pas s'il s'arme : elle ne grise aucune case. Une compagnie qu'aucun
+    handling ne charge est signalée par le calcul.
+  - **Pas de case** : la compagnie dont aucun chemin ne passe par le service ;
+    la fiche la nomme.
+  - Cochée dans une équipe : armée ; sinon, elle ne l'est pas (et le handling
+    ne l'attend pas). Le handling ne charge que les vols dont une commande
+    est préparée.
 - **Minutes par vol** selon la compagnie (« Toutes les compagnies » par
   défaut) × vols ; échéance du vol. Sans minutes : le calcul le dit.
 - **Le handling** attend l'armement du vol pour le charger.

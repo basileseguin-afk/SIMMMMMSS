@@ -1,7 +1,8 @@
 /* L'armement : une case par compagnie, oui ou non (retour d'usage du 01/10),
- * lié au handling et pas aux chemins des repas (02/10) : chaque départ d'une
- * compagnie construite demande son armement, que la liste « Compagnies
- * chargées » d'un handling la cite ou non. Le site le propose dans la fiche d'un
+ * en branche à part dans chaque chemin, relié seulement au handling (02/10) :
+ * chaque compagnie dont le chemin passe par lui a sa case — avec ou sans vol
+ * (EZY ajoutée à la main), que la liste « Compagnies chargées » d'un handling
+ * la cite ou non. Le site le propose dans la fiche d'un
  * service Armement ; minutes par vol selon la compagnie ; joué par le calcul.
  * v1 et v2. */
 const assert=require('node:assert/strict'),path=require('node:path');
@@ -37,18 +38,25 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(await fiche('.mu-par-cie').count(),0);
    assert.equal(await fiche('[data-mu-nature]').inputValue(),'categories');
 
-   // 2. Lié au handling : chaque départ d'une compagnie construite s'arme. La liste
-   //    « Compagnies chargées » d'un handling dit qui charge, pas qui s'arme.
+   // 2. Une case par compagnie dont le chemin passe par l'armement (retour d'usage du 02/10 :
+   //    « dans le chemin EZY, l'armement est présent, et je ne vois pas sa case »).
+   const cases=()=>page.evaluate(()=>[...new Set(Sim.ateliers.classesDe('armement').map(c=>c.cie))].sort());
    assert.match(await fiche('.mu-lien-handling').innerText(),/Lié au handling[\s\S]*Pas encore de handling/);
-   assert.deepEqual(await page.evaluate(()=>[...new Set(Sim.ateliers.classesDe('armement').map(c=>c.cie))].sort()),construites,version+' : les compagnies construites');
-   assert.match(await fiche('').innerText(),/Pas simulées : DL, QR — rien n’est construit pour elles/);
-   const sansDL=construites.filter(c=>c!=='FWI');
-   await page.evaluate(cies=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'h',nom:'Quais',service:'quais',type:'handling',debut:'04:00',jour:0,personnes:2,pauses:[],lots:[],regime:{actif:true},durees:{'*':20},compagnies:cies});},''),sansDL);await attendre();
-   const cies=await page.evaluate(()=>[...new Set(Sim.ateliers.classesDe('armement').map(c=>c.cie))].sort());
-   assert.deepEqual(cies,construites,version+' : FWI garde sa case, même absente de la liste de « Quais »');
-   const toutes=construites;
-   assert.match(await fiche('.mu-lien-handling').innerText(),/Chaque départ d’une compagnie construite demande son armement ; « Quais » attend/);
+   assert.deepEqual(await cases(),[],version+' : pas encore dans les chemins, pas de case');
+   assert.match(await fiche('').innerText(),/Aucune compagnie n’a de case : aucun chemin ne passe par/);
+   // Un handling dont la liste ne cite pas FWI ; puis l'armement intégré aux chemins, d'un clic.
+   const sansFWI=construites.filter(c=>c!=='FWI');
+   await page.evaluate(cies=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'h',nom:'Quais',service:'quais',type:'handling',debut:'04:00',jour:0,personnes:2,pauses:[],lots:[],regime:{actif:true},durees:{'*':20},compagnies:cies});},''),sansFWI);await attendre();
+   assert.match(await fiche('.mu-lien-handling').innerText(),/« Quais » attend l’armement et les repas du vol/);
+   await fiche('[data-mu-action=integrer-armement]').click();await attendre();
+   const tous=await page.evaluate(()=>[...new Set(Sim.ateliers.classes.map(c=>c.cie))].sort());
+   assert.deepEqual(await cases(),tous,version+' : chaque compagnie dont le chemin passe par l’armement — FWI comprise, absente de la liste de « Quais »');
    assert.doesNotMatch(await fiche('').innerText(),/Pas de case pour/);
+   // EZY ajoutée à la main, sans vol au programme : sa case est là, à 0 vol.
+   await page.evaluate(()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;st.ajoutees=(st.ajoutees||[]).concat([{cie:'EZY',cabine:'YC'}]);},''));await attendre();
+   assert.ok((await cases()).includes('EZY'),version+' : EZY a sa case');
+   assert.match(await fiche('.mu-arm-sansvol').innerText(),/EZY : aucun départ au programme/);
+   const toutes=await cases();
 
    // 3. Ses minutes par vol : toutes, puis AF.
    const min=async(cie,v)=>{const c=fiche(`[data-mu-cat-min="ARM"][data-cie="${cie}"]`);await c.fill(String(v));await c.press('Tab');await attendre();};
@@ -60,10 +68,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    const eq=await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service==='armement').pop().id);
    const grille=page.locator(`#mu-services table[data-mu-equipe="${eq}"]`);
    assert.deepEqual((await grille.locator('thead th').allInnerTexts()).map(t=>t.trim().toUpperCase()).filter(Boolean).slice(1),['ARMEMENT']);
-   assert.equal(await grille.locator('tbody tr').count(),toutes.length,'les compagnies construites sont listées ; QR et DL non');
-   assert.equal(await grille.locator('tbody th',{hasText:/^QR$/}).count(),0);
-   assert.equal(await grille.locator('[data-mu-cocher]').count(),toutes.length,'une case par compagnie construite');
-   assert.equal(await grille.locator('[data-mu-cocher]:disabled').count(),0,version+' : toutes cochables, FWI comprise');
+   assert.equal(await grille.locator('tbody tr').count(),toutes.length,'une ligne par compagnie qui a sa case');
+   assert.equal(await grille.locator('[data-mu-cocher]').count(),toutes.length,'une case par compagnie');
+   assert.equal(await grille.locator('[data-mu-cocher]:disabled').count(),0,version+' : toutes cochables, FWI et EZY comprises');
+   assert.equal(await grille.locator('[data-mu-cocher="EZY/@ARM"]').count(),1,version+' : la case EZY se coche');
    await grille.locator('[data-mu-cocher="AF/@ARM"]').check();await attendre();
    assert.deepEqual(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).lots,eq),[['AF/@ARM']]);
 
@@ -82,8 +90,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
      return {arm:arm.length,h:h.length,ok:h.every(l=>arm.some(a=>a.fin<=l.debut+1e-6))};});
    assert.ok(attente.h>0&&attente.ok,version+' : '+JSON.stringify(attente));
 
-   // 7. Placé au milieu d'un flux (après la Prépa) : la fiche le dit ; un clic l'intègre à tous les chemins, relié au handling.
-   await page.evaluate(()=>Sim.ateliers.changer(()=>{const t=Sim.ateliers.state.parcours.find(x=>x.id==='sans-cuisine');t.noeuds.push('armement');t.liens.push({de:'prepa',vers:'armement'});},''));await attendre();
+   // 7. Relié au milieu d'un flux (après la Prépa) : la fiche le dit ; un clic le remet en branche à part, relié au handling.
+   await page.evaluate(()=>Sim.ateliers.changer(()=>{const t=Sim.ateliers.state.parcours.find(x=>x.id==='sans-cuisine');t.liens.push({de:'prepa',vers:'armement'});},''));await attendre();
    await nav.aller(page,'mu-services');await page.locator('[data-mu-choisir=armement]').click();await attendre();
    assert.match(await fiche('.mu-lien-handling').innerText(),/pas relié seulement au handling/);
    await fiche('[data-mu-action=integrer-armement]').click();await attendre();

@@ -441,8 +441,10 @@
     classesDe(service) {
       const cats = (this.state.categories || {})[service]; if (!cats) return null;
       const r = this.a.reglages ? this.a.reglages() : {};
-      // Une case par compagnie construite, pour chacun de ses départs.
-      return P.classesCategories(this.a.vols(), { [service]: cats }, { delaiChargement: r.delaiChargement, passe: P.volsAArmer(this.state.ateliers) });
+      // Une case par compagnie dont un chemin passe par ce service, avec ou sans vol.
+      const base = this.classes;
+      return P.classesCategories(this.a.vols(), { [service]: cats }, { delaiChargement: r.delaiChargement,
+        compagnies: P.compagniesParService(base, P.routesDesClasses(base, this.state)) });
     }
 
     calculer() {

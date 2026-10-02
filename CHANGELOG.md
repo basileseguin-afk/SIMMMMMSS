@@ -5,6 +5,25 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-02 — Armement : une case pour chaque compagnie dont le chemin y passe, avec ou sans vol
+
+Retour d'usage : « dans le chemin EZY, l'armement est bien présent, et je ne
+peux pas faire apparaître la case EZY ». Deux règles cachées l'empêchaient :
+- les cases d'armement naissaient des **vols** du programme : une compagnie
+  ajoutée à la main (EZY), sans vol au programme, n'en avait jamais ;
+- une compagnie n'avait sa case que si une équipe préparait déjà ses repas.
+
+La règle devient celle de tous les services : **une compagnie a sa case
+d'armement dès qu'un de ses chemins passe par l'armement** (`compagniesParService`
+remplace `volsAArmer` et `compagniesConstruites`). Sans vol au programme, la
+case est là, à 0 vol, et la fiche le dit. Une compagnie dont aucun chemin ne
+passe par l'armement n'a pas de case, et la fiche la nomme. Le handling ne
+charge toujours que les vols dont une commande est préparée.
+
+- v1 et v2 (`moteur/production.js`, `ateliers.js`, `unite.js`) ;
+  `tests/categories.test.cjs`, `tests/categories-browser.cjs` ; README,
+  `docs/MODELE_ATELIERS.md`.
+
 ## 2026-10-02 — Une commande : la liste de gauche défile correctement
 
 Retour d'usage : « bug de scrollage sur la barre de scroll à gauche dans

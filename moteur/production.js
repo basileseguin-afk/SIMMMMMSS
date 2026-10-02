@@ -142,73 +142,70 @@
    * « une seule case par compagnie, oui ou non » ; puis, le 02/10 : « l'armement
    * est toujours lié au handling »).
    *
-   * L'armement n'est PAS une étape des chemins des repas : on arme un vol, pas
-   * une classe (un vol AF en Business et en Éco s'arme une fois), et il
-   * travaille en parallèle des repas — les deux se retrouvent au handling, qui
-   * charge le vol quand tout est prêt. Il est donc lié au handling : chaque
-   * départ d'une compagnie construite demande son armement.
+   * On arme un vol, pas une classe (un vol AF en Business et en Éco s'arme une
+   * fois), en parallèle des repas : dans chaque chemin, l'armement est une
+   * branche à part, reliée seulement au handling, qui charge le vol quand repas
+   * et armement sont prêts.
    *
    *   categories: { [service]: [{ id, nom, minutes: { '*': 10, AF: 15 } }] }
    *
-   * Chaque départ à armer (`passe(service, vol)`, voir `volsAArmer`) donne au service une commande
-   * « AF/@ARM » — une par compagnie : minutes par vol (les siennes, sinon
-   * celles de « * ») × vols, échéance du vol. Ses équipes la cochent (une
-   * case par compagnie) ; le handling l'attend pour charger le vol. Sans
-   * `passe`, tous les départs comptent.
+   * QUI A SA CASE (retour d'usage du 02/10 : « dans le chemin EZY, l'armement
+   * est bien présent, et je ne peux pas faire apparaître sa case ») : chaque
+   * compagnie dont un chemin passe par le service — comme une commande a sa
+   * case dans chaque service de son chemin. Avec ou sans vol au programme : une
+   * compagnie ajoutée à la main a sa case, à 0 vol tant que le programme n'en
+   * porte pas. Ni la liste « Compagnies chargées » d'un handling (elle dit qui
+   * charge), ni le fait qu'une équipe prépare déjà ses repas n'entrent en jeu.
+   *
+   * La case « AF/@ARM » : minutes par vol (les siennes, sinon celles de « * »)
+   * × départs de la compagnie, échéance du premier. Ses équipes la cochent ;
+   * le handling l'attend pour charger le vol. `compagnies(service)` donne les
+   * compagnies qui ont leur case (voir `compagniesParService`) ; sans elle,
+   * chaque compagnie qui a un départ.
    */
   function classesCategories(vols, categories, options) {
     const o = options || {};
     const delai = o.delaiChargement === undefined ? 45 : o.delaiChargement;
-    const passe = typeof o.passe === 'function' ? o.passe : () => true;
     const lire = (min, k) => (min[k] !== '' && min[k] !== null && min[k] !== undefined && Number.isFinite(+min[k]) ? +min[k] : null);
-    const parId = new Map();
+    // Les départs de chaque compagnie.
+    const departs = new Map();
+    for (const v of vols || []) {
+      if ((v.sens && v.sens !== 'DEP') || !v.cie) continue;
+      const depart = v.std === undefined ? v.heure : v.std;
+      if (!Number.isFinite(depart)) continue;
+      const cie = String(v.cie).trim().toUpperCase();
+      if (!departs.has(cie)) departs.set(cie, []);
+      departs.get(cie).push({ id: v.id, pax: 0, depart, echeance: depart - delai });
+    }
+    const out = [];
     for (const [service, liste] of Object.entries(categories || {})) {
+      const cies = typeof o.compagnies === 'function' ? o.compagnies(service) : departs.keys();
       for (const k of (Array.isArray(liste) ? liste : [])) {
         if (!k || !k.id) continue;
         const min = k.minutes || {};
-        for (const v of vols || []) {
-          if (v.sens && v.sens !== 'DEP') continue;
-          const depart = v.std === undefined ? v.heure : v.std;
-          if (!Number.isFinite(depart) || !v.cie || !passe(service, v)) continue;
-          const cie = String(v.cie).trim().toUpperCase();
-          const m = lire(min, cie) ?? lire(min, TOUTES);
-          const id = cie + '/@' + k.id;
-          let c = parId.get(id);
-          if (!c) {
-            c = { id, cie, cabine: '@' + k.id, categorie: k.id, service, minutes: m, pax: 0, vols: [], echeance: Infinity };
-            parId.set(id, c);
-          }
-          c.vols.push({ id: v.id, pax: 0, depart, echeance: depart - delai });
-          c.echeance = Math.min(c.echeance, depart - delai);
+        for (const cie of cies || []) {
+          const vs = departs.get(cie) || [];
+          out.push({ id: cie + '/@' + k.id, cie, cabine: '@' + k.id, categorie: k.id, service, minutes: lire(min, cie) ?? lire(min, TOUTES), pax: 0,
+            vols: vs, echeance: vs.length ? Math.min(...vs.map(x => x.echeance)) : MINUTES_PAR_JOUR });
         }
       }
     }
-    return [...parId.values()].sort((a, b) => a.echeance - b.echeance || a.id.localeCompare(b.id));
+    return out.sort((a, b) => a.echeance - b.echeance || a.id.localeCompare(b.id));
   }
 
-  /* Une compagnie pour laquelle rien n'est construit — aucune équipe ne prépare
-   * l'une de ses commandes — n'est pas simulée (retour d'usage du 02/10 : « QR
-   * n'est pas dans les chemins, rien n'est construit pour cette compagnie, donc
-   * je ne veux pas la simuler ; pareil pour DL ») : ni armée, ni chargée. */
-  function compagniesConstruites(ateliers) {
-    const out = new Set();
-    for (const a of ateliers || []) {
-      if (!a || !(a.type === 'manuel' || a.type === 'robot' || !a.type)) continue;
-      for (const lot of (a.lots || [])) for (const id of classesDuLot(lot)) {
-        if (String(id).includes('/@')) continue;   // une case d'armement ne construit pas la compagnie
-        out.add(String(id).slice(0, String(id).lastIndexOf('/')).toUpperCase());
+  /** Les compagnies dont un chemin passe par chaque service : `service → Set`.
+   *  `classes` : les commandes des repas ; `routes` : `routesDesClasses`. */
+  function compagniesParService(classes, routes) {
+    const m = new Map();
+    for (const c of classes || []) {
+      const r = !c.categorie && routes.get(c.id);
+      if (!r) continue;
+      for (const s of r.services) {
+        if (!m.has(s)) m.set(s, new Set());
+        m.get(s).add(String(c.cie).trim().toUpperCase());
       }
     }
-    return out;
-  }
-
-  /** Les départs à armer : tous ceux d'une compagnie construite (retour d'usage
-   *  du 02/10 : l'armement est dans tous les chemins, relié au handling — la
-   *  liste « Compagnies chargées » d'un handling dit QUI charge le vol, pas s'il
-   *  s'arme). `(service, vol) → oui/non`. */
-  function volsAArmer(ateliers) {
-    const construites = compagniesConstruites(ateliers);
-    return (service, vol) => construites.has(String(vol && vol.cie).trim().toUpperCase());
+    return service => [...(m.get(service) || [])].sort();
   }
 
   /* ======================================================================
@@ -1267,9 +1264,9 @@
     // Les compagnies × classes viennent du programme de vols, sauf quand
     // l'appelant en fournit une liste : l'utilisateur peut en retirer qu'il ne
     // fabrique pas, et en ajouter que le programme ne porte pas encore.
-    // Un service par compagnie (l'armement) : une commande par compagnie, pour les vols qu'un handling charge.
+    // Un service par compagnie (l'armement) : une commande par compagnie dont un chemin passe par lui.
     const base = (opts.classes || classesDeVols(opts.vols, { delaiChargement: opts.delaiChargement })).filter(c => !c.categorie);
-    const classes = base.concat(classesCategories(opts.vols, opts.categories, { delaiChargement: opts.delaiChargement, passe: volsAArmer(opts.ateliers) }))
+    const classes = base.concat(classesCategories(opts.vols, opts.categories, { delaiChargement: opts.delaiChargement, compagnies: compagniesParService(base, routesDesClasses(base, opts)) }))
       .sort((a, b) => a.echeance - b.echeance || a.id.localeCompare(b.id));
     const servicesCategories = new Set(Object.keys(opts.categories || {}));
     const parClasse = new Map(classes.map(c => [c.id, c]));
@@ -2417,7 +2414,7 @@
     MINUTES_PAR_JOUR, CABINES, TYPES,
     minutes, hhmm, idClasse, libelleClasse, nomCabine, enClair,
     REGIME_DEFAUT, normaliserRegime, executerTache,
-    classesDeVols, classesCategories, volsAArmer, compagniesConstruites, declarerCategories, volsDesClasses, compteDuJour, appliquerConditions, dureeHandling, compagniesDe, AVANCE_HANDLING, BAREME_DEMO, RENDEMENT_DEMO, travailClasse, travailDans, dureeFusion,
+    classesDeVols, classesCategories, compagniesParService, declarerCategories, volsDesClasses, compteDuJour, appliquerConditions, dureeHandling, compagniesDe, AVANCE_HANDLING, BAREME_DEMO, RENDEMENT_DEMO, travailClasse, travailDans, dureeFusion,
     PAX_TYPE, TOUTES, cleBareme, normaliserBareme, minutesParVol,
     arcsDuParcours, servicesDuParcours, routesDesClasses,
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,

@@ -33,7 +33,7 @@
     { id: 'handling', nom: 'Il charge les vols (handling)', court: 'chargement des vols' },
     // L'armement : ni BC, ni PC, ni Éco — ses catégories à lui (retour d'usage du 01/10).
     // « Une seule case par compagnie, oui ou non » (01/10), « toujours lié au handling » (02/10).
-    { id: 'categories', nom: 'Il travaille par compagnie, pour chaque vol chargé : l’armement (lié au handling)', court: 'par compagnie' }
+    { id: 'categories', nom: 'Il travaille par compagnie : l’armement (relié au handling dans chaque chemin)', court: 'par compagnie' }
   ];
   const preparent = n => n === 'manuel' || n === 'robot' || n === 'categories';
 
@@ -87,7 +87,7 @@
       if (attendues.length && cases.length) points.push(pl(attendues.length, nature === 'categories' ? 'compagnie' : 'commande') + ' à cocher dans une équipe');
       if (vides.length) points.push(vides.length > 1 ? vides.length + ' équipes ne préparent rien' : '« ' + vides[0].nom + ' » ne prépare rien');
       if (sansTemps) points.push('minutes de travail à remplir');
-      if (nature === 'categories' && !classes.length) points.push('aucun vol à armer : aucune équipe ne prépare encore de repas');
+      if (nature === 'categories' && !classes.length) points.push('aucune case : aucun chemin ne passe par ce service');
       else if (nature === 'categories' && classes.some(c => c.minutes == null)) points.push('minutes par vol à remplir');
       for (const x of alertes.slice(0, 3)) points.push(x.message);
       const utilise = cases.length > 0 || passent > 0 || nature === 'categories';
@@ -286,9 +286,9 @@
       const qui = handlings.length ? handlings.map(a => '« ' + esc(a.nom) + ' »').join(', ') : '';
       const integre = handlings.length && PC.armementIntegre(st, [s.id], this.handlings(st));
       return `<div class="mu-lien-handling"><p><span aria-hidden="true">🚚</span> <b>Lié au handling.</b> ${handlings.length
-        ? 'Chaque départ d’une compagnie construite demande son armement ; ' + qui + (handlings.length > 1 ? ' attendent' : ' attend') + ' l’armement et les repas du vol pour le charger.'
-        : 'Pas encore de handling dans l’unité : chaque départ demande son armement. Quand un handling chargera les vols, il attendra leur armement.'}
-        On arme un vol, pas une classe : une case par compagnie.</p>
+        ? qui + (handlings.length > 1 ? ' attendent' : ' attend') + ' l’armement et les repas du vol pour le charger.'
+        : 'Pas encore de handling dans l’unité : créez-en un, puis intégrez l’armement aux chemins, relié au handling.'}
+        On arme un vol, pas une classe : une case par compagnie dont le chemin passe par ${esc(s.nom)}.</p>
         ${!handlings.length ? '' : integre ? `<p class="mini-note mu-arm-ok">✓ Dans tous les chemins, en branche à part, relié seulement au handling.</p>`
           : `<p class="mini-note">Dans les chemins : ${esc(s.nom)} n’est pas partout, ou pas relié seulement au handling.
           <button class="btn btn-sm btn-play" type="button" data-mu-action="integrer-armement">L’intégrer à tous les chemins, relié au handling</button></p>`}</div>`;
@@ -296,23 +296,25 @@
 
     /* Un service qui travaille par compagnie (l'armement) : ses minutes par vol,
      * pour toutes les compagnies, puis celles qui en ont d'autres. Chaque
-     * compagnie construite a sa case. */
+     * compagnie dont un chemin passe par le service a sa case, avec ou sans vol. */
     blocParCompagnie(s, classes) {
       const k = (((this.etat.categories || {})[s.id]) || [])[0];
       if (!k) return '';
       const avec = [...new Set(classes.map(c => c.cie))].sort((x, y) => x.localeCompare(y));
       const toutes = [...new Set((this.at.classes || []).map(c => c.cie))];
-      // Rien de construit (aucune équipe ne prépare ses commandes) : pas simulée, pas listée.
-      const construites = P.compagniesConstruites(this.etat.ateliers);
-      const vides = toutes.filter(c => !construites.has(c)).sort((x, y) => x.localeCompare(y));
+      // Pas de case : aucun chemin de la compagnie ne passe par ce service.
+      const hors = toutes.filter(c => !avec.includes(c)).sort((x, y) => x.localeCompare(y));
+      // Une case, mais aucun départ au programme (une compagnie ajoutée à la main).
+      const sansVol = avec.filter(cie => !classes.some(c => c.cie === cie && c.vols.length));
       const champ = cie => `<td><input type="number" min="0" step="1" value="${k.minutes[cie] ?? ''}" placeholder="${cie === '*' ? '—' : k.minutes['*'] ?? '—'}"
           data-mu-cat-min="${esc(k.id)}" data-cie="${esc(cie)}" aria-label="Minutes par vol${cie === '*' ? ', toutes les compagnies' : ', ' + esc(cie)}"></td>`;
-      const aucun = !avec.length ? '<p class="mini-note">Aucune compagnie n’a de case : rien n’est encore construit — aucune équipe ne prépare de commande. Une compagnie a sa case dès que ses repas sont préparés.</p>' : '';
+      const aucun = !avec.length ? `<p class="mini-note">Aucune compagnie n’a de case : aucun chemin ne passe par ${esc(s.nom)}.</p>` : '';
       return aucun + `<div class="mu-grille-scroll"><table class="mu-cat-table" data-mu-cat-service="${esc(s.id)}">
         <thead><tr><th scope="col">Compagnie</th><th scope="col">Minutes par vol</th></tr></thead>
         <tbody><tr class="mu-cat-toutes"><th scope="row">Toutes les compagnies</th>${champ('*')}</tr>
         ${avec.map(cie => `<tr><th scope="row">${esc(cie)}</th>${champ(cie)}</tr>`).join('')}</tbody></table></div>`
-        + (vides.length ? `<p class="mini-note">Pas simulées : ${esc(vides.join(', '))} — rien n’est construit pour ${vides.length > 1 ? 'elles' : 'elle'} (aucune équipe ne prépare leurs commandes) : ni armées, ni chargées.</p>` : '');
+        + (sansVol.length ? `<p class="mini-note mu-arm-sansvol">${esc(sansVol.join(', '))} : aucun départ au programme aujourd’hui — la case est là, à 0 vol, jusqu’à ce que le programme en porte.</p>` : '')
+        + (hors.length ? `<p class="mini-note mu-arm-hors">Pas de case pour ${esc(hors.join(', '))} : ${hors.length > 1 ? 'leurs chemins ne passent' : 'son chemin ne passe'} pas par ${esc(s.nom)} (Une commande).</p>` : '');
     }
 
     /** Changer le réglage d'un service par compagnie. */
@@ -370,13 +372,11 @@
     /** La grille compagnies × classes d'une équipe (ou, sans équipe, de qui passe par le service). */
     grille(service, a, classes, o = {}) {
       const parCategories = PC.natureService(this.etat, service) === 'categories';
-      if (!classes.length) return '<p class="mini-note">' + (parCategories ? 'Aucune case : rien n’est encore construit (voir plus haut).'
+      if (!classes.length) return '<p class="mini-note">' + (parCategories ? 'Aucune case : aucun chemin ne passe par ce service (voir plus haut).'
         : 'Aucune commande : importez d’abord vos vols (Vols).') + '</p>';
       const g = PC.grille(this.etat, service, a ? a.id : null, classes);
       const par = new Map(classes.map(c => [c.id, c]));
-      // Par compagnie : toutes les compagnies du jour ; celles dont le chemin ne passe pas ici, grisées.
-      const construites = parCategories ? P.compagniesConstruites(this.etat.ateliers) : null;
-      const cies = [...new Set(classes.map(c => c.cie).concat(parCategories ? (this.at.classes || []).map(c => c.cie).filter(c => construites.has(c)) : []))].sort((x, y) => x.localeCompare(y));
+      const cies = [...new Set(classes.map(c => c.cie))].sort((x, y) => x.localeCompare(y));
       // Les colonnes : les classes des vols, ou les catégories du service (« Trolleys bar »).
       const cabs = parCategories ? ((this.etat.categories || {})[service] || []).map(k => '@' + k.id).filter(c => classes.some(k => k.cabine === c))
         : P.CABINES.filter(c => classes.some(k => k.cabine === c));
