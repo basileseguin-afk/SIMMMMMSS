@@ -5,6 +5,19 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-02 — Armement : ajouter une compagnie au handling, d'un clic
+
+Retour d'usage : « pourquoi je ne peux pas cliquer sur la case d'EZY dans
+l'armement ? » — la case d'une compagnie est grisée quand aucun handling ne
+charge ses vols (sa liste « Compagnies chargées » ne la contient pas).
+
+- La fiche de l'armement le dit (« Pas de case pour EZY : aucun handling ne
+  charge leurs vols — sa liste “Compagnies chargées” ne la contient pas »)
+  et propose « Ajouter EZY à « Quais » » : la case devient cochable, et le
+  handling charge ses vols. « Annuler » revient en arrière.
+- La bulle de la case grisée le dit aussi.
+- v1 et v2 (`unite.js`) ; `tests/categories-browser.cjs`.
+
 ## 2026-10-02 — Le handling n'est relié qu'à l'armement
 
 Retour d'usage : « pourquoi tu as lié le handling à CF food ? Le handling est

@@ -306,6 +306,8 @@
       const construites = P.compagniesConstruites(this.etat.ateliers);
       const vides = toutes.filter(c => !construites.has(c)).sort((x, y) => x.localeCompare(y));
       const sans = toutes.filter(c => construites.has(c) && !avec.includes(c)).sort((x, y) => x.localeCompare(y));
+      // Le handling qui a une liste de compagnies : on peut y ajouter celles qui manquent, d'ici.
+      const hl = (this.etat.ateliers || []).find(a => a.type === 'handling' && (a.compagnies || []).length);
       const champ = cie => `<td><input type="number" min="0" step="1" value="${k.minutes[cie] ?? ''}" placeholder="${cie === '*' ? '—' : k.minutes['*'] ?? '—'}"
           data-mu-cat-min="${esc(k.id)}" data-cie="${esc(cie)}" aria-label="Minutes par vol${cie === '*' ? ', toutes les compagnies' : ', ' + esc(cie)}"></td>`;
       const aucun = !avec.length ? `<p class="mini-note">Aucune compagnie n’a de case : ${construites.size ? 'aucun handling ne charge leurs vols aujourd’hui (voir la liste des compagnies de chaque handling).'
@@ -314,7 +316,8 @@
         <thead><tr><th scope="col">Compagnie</th><th scope="col">Minutes par vol</th></tr></thead>
         <tbody><tr class="mu-cat-toutes"><th scope="row">Toutes les compagnies</th>${champ('*')}</tr>
         ${avec.map(cie => `<tr><th scope="row">${esc(cie)}</th>${champ(cie)}</tr>`).join('')}</tbody></table></div>`
-        + (sans.length ? `<p class="mini-note">Pas de case pour ${esc(sans.join(', '))} : aucun handling ne charge leurs vols.</p>` : '')
+        + (sans.length ? `<p class="mini-note mu-arm-sans">Pas de case pour ${esc(sans.join(', '))} : aucun handling ne charge leurs vols (sa liste « Compagnies chargées » ne ${sans.length > 1 ? 'les' : 'la'} contient pas).
+          ${hl ? sans.map(c => `<button class="btn btn-sm" type="button" data-mu-handling-cie="${esc(c)}">Ajouter ${esc(c)} à « ${esc(hl.nom)} »</button>`).join(' ') : ''}</p>` : '')
         + (vides.length ? `<p class="mini-note">Pas simulées : ${esc(vides.join(', '))} — rien n’est construit pour ${vides.length > 1 ? 'elles' : 'elle'} (aucune équipe ne prépare leurs commandes) : ni armées, ni chargées.</p>` : '');
     }
 
@@ -397,7 +400,7 @@
       };
       const cellule = (cie, cab) => {
         const id = P.idClasse(cie, cab), c = par.get(id);
-        if (!c && parCategories) return `<td class="mu-c hors"><label title="${esc(cie + ' — aucun handling ne charge ses vols : pas d’armement')}"><input type="checkbox" disabled aria-label="${esc(cie)} : aucun handling ne charge ses vols"></label></td>`;
+        if (!c && parCategories) return `<td class="mu-c hors"><label title="${esc(cie + ' — aucun handling ne charge ses vols : pas d’armement. Ajoutez-la à la liste « Compagnies chargées » du handling (bouton sous le tableau des minutes).')}"><input type="checkbox" disabled aria-label="${esc(cie)} : aucun handling ne charge ses vols"></label></td>`;
         if (!c) return '<td class="mu-rien" aria-hidden="true">·</td>';
         let x = g.get(id);
         // Une équipe à la chaîne, vue depuis l'étape qu'elle absorbe (la Prépa) : les
@@ -973,6 +976,14 @@
         if (pont) return pont.dataset.muVoirFlux ? this.ouvrirFlux(pont.dataset.muVoirFlux) : this.chemin(pont.dataset.muChemin, pont.dataset.service);
         const q = e.target.closest && e.target.closest('[data-mu-q]');
         if (q) return this.repondre(q.dataset.muQ);
+        // Une compagnie que le handling ne charge pas : l'ajouter à sa liste, depuis la fiche de l'armement.
+        const hc = e.target.closest && e.target.closest('#mu-services [data-mu-handling-cie]');
+        if (hc) {
+          const cie = hc.dataset.muHandlingCie, h = this.etat.ateliers.find(a => a.type === 'handling' && (a.compagnies || []).length);
+          if (!h) return;
+          return this.at.changer(() => { const x = this.at.state.ateliers.find(a => a.id === h.id); x.compagnies = [...new Set((x.compagnies || []).concat([cie]))]; },
+            '« ' + h.nom + ' » charge maintenant ' + cie + ' : sa case d’armement est cochable. « Annuler » revient en arrière.');
+        }
         const t = e.target.closest && e.target.closest('[data-mu-choisir], [data-mu-ouvrir], [data-mu-action], [data-mu-ligne], [data-mu-col]');
         if (!t || t.closest('#mu-flux')) return;
         if (t.dataset.muChoisir) return this.ouvrir(t.dataset.muChoisir);

@@ -47,6 +47,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    const toutes=construites;
    assert.match(await fiche('.mu-lien-handling').innerText(),/Chaque vol que « Quais » charge demande son armement/);
    assert.match(await fiche('').innerText(),/Pas de case pour FWI : aucun handling ne charge leurs vols/);
+   // Un clic l'ajoute à la liste du handling : sa case devient cochable (puis on revient en arrière pour la suite).
+   await fiche('[data-mu-handling-cie="FWI"]').click();await attendre();
+   assert.ok((await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.id==='h').compagnies)).includes('FWI'));
+   assert.ok(await page.evaluate(()=>Sim.ateliers.classesDe('armement').some(c=>c.cie==='FWI')),version+' : FWI a sa case');
+   await page.evaluate(()=>Sim.ateliers.histoire(false));await attendre();
 
    // 3. Ses minutes par vol : toutes, puis AF.
    const min=async(cie,v)=>{const c=fiche(`[data-mu-cat-min="ARM"][data-cie="${cie}"]`);await c.fill(String(v));await c.press('Tab');await attendre();};
