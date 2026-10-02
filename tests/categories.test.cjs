@@ -20,14 +20,15 @@ function verifier(dossier, v) {
   const montage = { id: 'mo', nom: 'Montage', service: 'prepa', type: 'manuel', debut: '05:00', jour: 0, personnes: 2, pauses: [], lots: [['AF/YC', 'TX/BC', 'QR/YC']], regime: { actif: false } };
   const armement = (lots, x) => ({ id: 'ar', nom: 'Armement', service: 'armement', type: 'manuel', debut: '05:00', jour: 0, personnes: 1, pauses: [], lots, regime: { actif: false }, ...x });
 
-  test(v + ' — une case par compagnie, pour chaque vol qu’un handling charge', () => {
+  test(v + ' — une case par compagnie, pour chaque départ d’une compagnie construite', () => {
     const vols2 = vols.concat([{ id: 'DL1', cie: 'DL', sens: 'DEP', std: 800, yc: 50 }]);
-    const passe = P.chargeParHandling([handling, montage]);
+    const passe = P.volsAArmer([handling, montage]);
     assert.equal(passe('armement', { id: 'AF1', cie: 'AF' }), true);
-    assert.equal(passe('armement', { id: 'DL1', cie: 'DL' }), false, 'aucun handling ne charge DL');
+    assert.equal(passe('armement', { id: 'DL1', cie: 'DL' }), false, 'rien n’est construit pour DL');
     const deDL = { ...montage, lots: montage.lots.concat([['DL/YC']]) };
-    assert.equal(P.chargeParHandling([deDL])('armement', { id: 'DL1', cie: 'DL' }), true, 'sans handling : chaque départ d’une compagnie construite');
-    assert.equal(P.chargeParHandling([handling])('armement', { id: 'AF1', cie: 'AF' }), false, 'rien de construit : pas d’armement');
+    assert.equal(P.volsAArmer([handling, deDL])('armement', { id: 'DL1', cie: 'DL' }), true,
+      'DL construite : elle s’arme, même si la liste du handling ne la cite pas (la liste dit qui charge, pas qui s’arme)');
+    assert.equal(P.volsAArmer([handling])('armement', { id: 'AF1', cie: 'AF' }), false, 'rien de construit : pas d’armement');
     const cl = P.classesCategories(vols2, categories, { passe });
     assert.deepEqual(cl.map(c => [c.id, c.vols.length, c.minutes]), [['AF/@ARM', 2, 15], ['TX/@ARM', 1, 10], ['QR/@ARM', 1, 10]],
       'un vol AF en Business et en Éco ne s’arme qu’une fois ; DL n’a pas de case');

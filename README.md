@@ -164,8 +164,8 @@ le rouge ne sert qu’aux retards.
         eux dans chaque diagramme (flux, commande, liens de l’unité), une barre
         rose au planning. Une ligne robot partagée a aussi son badge.
         **Par compagnie** (l’armement) : une case par compagnie, oui ou
-        non, liée au handling — chaque vol qu’un handling charge demande son
-        armement, et le handling l’attend ; il n’est pas dans les chemins des
+        non, liée au handling — chaque départ d’une compagnie construite demande
+        son armement, et le handling l’attend ; il n’est pas dans les chemins des
         repas (on arme un vol, pas une classe). Minutes par vol par compagnie.
         **⚡ Certains jours seulement** : une équipe peut ne travailler que
         si une compagnie a assez de vols (« ne travaille que si AF a au
@@ -500,7 +500,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/condition-browser.cjs` | Règle ⚡ (v1 et v2) : bouton, phrase pré-remplie pour aujourd’hui, seuil au-dessus des vols du jour → l’équipe ne travaille pas, ses commandes et sa personne passent au montage général (badge, constat, calcul), repas, retrait, équipe seule dans son service |
 | `tests/flux-retrait-browser.cjs` | Retirer un service d’un flux ou un atelier d’un chemin (v1 et v2) : ses équipes lâchent les commandes, cases hors flux non cochables, « Faire passer un flux par ici », ancienne saisie signalée et retirée en un clic |
 | `tests/chaine-services-browser.cjs` | Équipe à la chaîne (v1 et v2) : présente et modifiable dans ses deux services (Prépa et Montage), retirée de la Prépa quand elle n’est plus à la chaîne |
-| `tests/categories-browser.cjs` | Armement par compagnie, lié au handling (v1 et v2) : la fiche le propose ; sans handling, chaque départ ; avec, les compagnies qu’il charge (les autres grisées) ; minutes par vol ; une colonne ; calcul ; le handling attend l’armement ; « Le retirer des flux » ; retour aux commandes |
+| `tests/categories-browser.cjs` | Armement par compagnie, lié au handling (v1 et v2) : la fiche le propose ; chaque compagnie construite a sa case, cochable, que la liste du handling la cite ou non ; minutes par vol ; une colonne ; calcul ; le handling attend l’armement ; « Le retirer des flux » ; retour aux commandes |
 | `tests/armement-chemins-browser.cjs` | Armement intégré à tous les chemins, relié seulement au handling (v1 et v2) : migration au chargement (par compagnie, cases reprises, branche à part dans chaque chemin, sorti du milieu d’un chemin), pas de trou, le handling attend l’armement, bouton pour un nouveau chemin, « Annuler », une seule fois |
 | `tests/saisie-heure-browser.cjs` | Taper une heure touche par touche (Récap des cases, fiche d’une case) : rien n’est arraché, Entrée ou quitter le champ enregistre, le tableau garde son défilement |
 | `tests/secours-browser.cjs` | Un démarrage resté en plan ouvre la page de secours ; elle rend les données en sauvegarde, repart sans les cases, puis les remet |

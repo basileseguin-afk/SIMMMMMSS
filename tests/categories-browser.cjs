@@ -1,6 +1,7 @@
 /* L'armement : une case par compagnie, oui ou non (retour d'usage du 01/10),
- * lié au handling et pas aux chemins des repas (02/10) : chaque vol que le
- * handling charge demande son armement. Le site le propose dans la fiche d'un
+ * lié au handling et pas aux chemins des repas (02/10) : chaque départ d'une
+ * compagnie construite demande son armement, que la liste « Compagnies
+ * chargées » d'un handling la cite ou non. Le site le propose dans la fiche d'un
  * service Armement ; minutes par vol selon la compagnie ; joué par le calcul.
  * v1 et v2. */
 const assert=require('node:assert/strict'),path=require('node:path');
@@ -36,22 +37,18 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(await fiche('.mu-par-cie').count(),0);
    assert.equal(await fiche('[data-mu-nature]').inputValue(),'categories');
 
-   // 2. Lié au handling : sans handling, chaque départ ; avec, les vols qu'il charge.
+   // 2. Lié au handling : chaque départ d'une compagnie construite s'arme. La liste
+   //    « Compagnies chargées » d'un handling dit qui charge, pas qui s'arme.
    assert.match(await fiche('.mu-lien-handling').innerText(),/Lié au handling[\s\S]*Pas encore de handling/);
    assert.deepEqual(await page.evaluate(()=>[...new Set(Sim.ateliers.classesDe('armement').map(c=>c.cie))].sort()),construites,version+' : les compagnies construites');
    assert.match(await fiche('').innerText(),/Pas simulées : DL, QR — rien n’est construit pour elles/);
    const sansDL=construites.filter(c=>c!=='FWI');
    await page.evaluate(cies=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'h',nom:'Quais',service:'quais',type:'handling',debut:'04:00',jour:0,personnes:2,pauses:[],lots:[],regime:{actif:true},durees:{'*':20},compagnies:cies});},''),sansDL);await attendre();
    const cies=await page.evaluate(()=>[...new Set(Sim.ateliers.classesDe('armement').map(c=>c.cie))].sort());
-   assert.deepEqual(cies,sansDL,version+' : les vols que « Quais » charge');
+   assert.deepEqual(cies,construites,version+' : FWI garde sa case, même absente de la liste de « Quais »');
    const toutes=construites;
-   assert.match(await fiche('.mu-lien-handling').innerText(),/Chaque vol que « Quais » charge demande son armement/);
-   assert.match(await fiche('').innerText(),/Pas de case pour FWI : aucun handling ne charge leurs vols/);
-   // Un clic l'ajoute à la liste du handling : sa case devient cochable (puis on revient en arrière pour la suite).
-   await fiche('[data-mu-handling-cie="FWI"]').click();await attendre();
-   assert.ok((await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.id==='h').compagnies)).includes('FWI'));
-   assert.ok(await page.evaluate(()=>Sim.ateliers.classesDe('armement').some(c=>c.cie==='FWI')),version+' : FWI a sa case');
-   await page.evaluate(()=>Sim.ateliers.histoire(false));await attendre();
+   assert.match(await fiche('.mu-lien-handling').innerText(),/Chaque départ d’une compagnie construite demande son armement ; « Quais » attend/);
+   assert.doesNotMatch(await fiche('').innerText(),/Pas de case pour/);
 
    // 3. Ses minutes par vol : toutes, puis AF.
    const min=async(cie,v)=>{const c=fiche(`[data-mu-cat-min="ARM"][data-cie="${cie}"]`);await c.fill(String(v));await c.press('Tab');await attendre();};
@@ -65,7 +62,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.deepEqual((await grille.locator('thead th').allInnerTexts()).map(t=>t.trim().toUpperCase()).filter(Boolean).slice(1),['ARMEMENT']);
    assert.equal(await grille.locator('tbody tr').count(),toutes.length,'les compagnies construites sont listées ; QR et DL non');
    assert.equal(await grille.locator('tbody th',{hasText:/^QR$/}).count(),0);
-   assert.equal(await grille.locator('[data-mu-cocher]').count(),cies.length,'une case pour celles dont le chemin passe ici');
+   assert.equal(await grille.locator('[data-mu-cocher]').count(),toutes.length,'une case par compagnie construite');
+   assert.equal(await grille.locator('[data-mu-cocher]:disabled').count(),0,version+' : toutes cochables, FWI comprise');
    await grille.locator('[data-mu-cocher="AF/@ARM"]').check();await attendre();
    assert.deepEqual(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).lots,eq),[['AF/@ARM']]);
 

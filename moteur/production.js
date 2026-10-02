@@ -146,12 +146,11 @@
    * une classe (un vol AF en Business et en Éco s'arme une fois), et il
    * travaille en parallèle des repas — les deux se retrouvent au handling, qui
    * charge le vol quand tout est prêt. Il est donc lié au handling : chaque
-   * départ qu'un handling charge demande son armement.
+   * départ d'une compagnie construite demande son armement.
    *
    *   categories: { [service]: [{ id, nom, minutes: { '*': 10, AF: 15 } }] }
    *
-   * Chaque départ chargé par un handling (`passe(service, vol)`, voir
-   * `chargeParHandling`) donne au service une commande
+   * Chaque départ à armer (`passe(service, vol)`, voir `volsAArmer`) donne au service une commande
    * « AF/@ARM » — une par compagnie : minutes par vol (les siennes, sinon
    * celles de « * ») × vols, échéance du vol. Ses équipes la cochent (une
    * case par compagnie) ; le handling l'attend pour charger le vol. Sans
@@ -203,17 +202,13 @@
     return out;
   }
 
-  /** Les départs à armer : ceux d'une compagnie construite qu'un handling charge
-   *  (sa liste de compagnies, ou toutes ; sans handling dans l'unité, tous) :
-   *  `(service, vol) → oui/non`. */
-  function chargeParHandling(ateliers) {
-    const handlings = (ateliers || []).filter(a => a && a.type === 'handling');
+  /** Les départs à armer : tous ceux d'une compagnie construite (retour d'usage
+   *  du 02/10 : l'armement est dans tous les chemins, relié au handling — la
+   *  liste « Compagnies chargées » d'un handling dit QUI charge le vol, pas s'il
+   *  s'arme). `(service, vol) → oui/non`. */
+  function volsAArmer(ateliers) {
     const construites = compagniesConstruites(ateliers);
-    return (service, vol) => {
-      const cie = String(vol && vol.cie).trim().toUpperCase();
-      if (!construites.has(cie)) return false;
-      return !handlings.length || handlings.some(h => { const s = compagniesDe(h); return !s || s.has(cie); });
-    };
+    return (service, vol) => construites.has(String(vol && vol.cie).trim().toUpperCase());
   }
 
   /* ======================================================================
@@ -1274,7 +1269,7 @@
     // fabrique pas, et en ajouter que le programme ne porte pas encore.
     // Un service par compagnie (l'armement) : une commande par compagnie, pour les vols qu'un handling charge.
     const base = (opts.classes || classesDeVols(opts.vols, { delaiChargement: opts.delaiChargement })).filter(c => !c.categorie);
-    const classes = base.concat(classesCategories(opts.vols, opts.categories, { delaiChargement: opts.delaiChargement, passe: chargeParHandling(opts.ateliers) }))
+    const classes = base.concat(classesCategories(opts.vols, opts.categories, { delaiChargement: opts.delaiChargement, passe: volsAArmer(opts.ateliers) }))
       .sort((a, b) => a.echeance - b.echeance || a.id.localeCompare(b.id));
     const servicesCategories = new Set(Object.keys(opts.categories || {}));
     const parClasse = new Map(classes.map(c => [c.id, c]));
@@ -2422,7 +2417,7 @@
     MINUTES_PAR_JOUR, CABINES, TYPES,
     minutes, hhmm, idClasse, libelleClasse, nomCabine, enClair,
     REGIME_DEFAUT, normaliserRegime, executerTache,
-    classesDeVols, classesCategories, chargeParHandling, compagniesConstruites, declarerCategories, volsDesClasses, compteDuJour, appliquerConditions, dureeHandling, compagniesDe, AVANCE_HANDLING, BAREME_DEMO, RENDEMENT_DEMO, travailClasse, travailDans, dureeFusion,
+    classesDeVols, classesCategories, volsAArmer, compagniesConstruites, declarerCategories, volsDesClasses, compteDuJour, appliquerConditions, dureeHandling, compagniesDe, AVANCE_HANDLING, BAREME_DEMO, RENDEMENT_DEMO, travailClasse, travailDans, dureeFusion,
     PAX_TYPE, TOUTES, cleBareme, normaliserBareme, minutesParVol,
     arcsDuParcours, servicesDuParcours, routesDesClasses,
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,

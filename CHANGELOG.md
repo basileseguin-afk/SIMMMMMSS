@@ -5,6 +5,23 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-02 — Armement : chaque compagnie construite a sa case, cochable
+
+Retour d'usage : « toutes les compagnies ont une case armement liée au
+handling, et pourtant plusieurs ne sont pas cliquables ». La case d'une
+compagnie était grisée tant qu'aucun handling ne la citait dans sa liste
+« Compagnies chargées » — une règle cachée, sans rapport avec les chemins.
+
+- La règle devient : **chaque départ d'une compagnie construite s'arme**
+  (`volsAArmer`, qui remplace `chargeParHandling`). La liste d'un handling dit
+  qui charge le vol, pas s'il s'arme ; une compagnie qu'aucun handling ne
+  charge reste signalée par le calcul.
+- Plus de case grisée dans l'armement, plus de note « Pas de case pour… » ni
+  de bouton « Ajouter EZY au handling » : devenus inutiles.
+- v1 et v2 (`moteur/production.js`, `ateliers.js`, `unite.js`) ;
+  `tests/categories.test.cjs`, `tests/categories-browser.cjs` ; README,
+  `docs/MODELE_ATELIERS.md`.
+
 ## 2026-10-02 — Grand nettoyage : code mort et règles CSS orphelines
 
 Demande : « un grand nettoyage, avec beaucoup de précautions, sans rien

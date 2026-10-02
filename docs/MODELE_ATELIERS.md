@@ -212,11 +212,15 @@ est donc avec le handling, et il est automatique.
 — un seul réglage par service (fiche : « Ce service… travaille par
 compagnie » ; la fiche d'un service dont le nom dit « armement » le propose).
 
-- **Une case par compagnie** (`AF/@ARM`, « AF · Armement ») pour les départs
-  qu'un handling charge (sa liste de compagnies, ou toutes ; sans handling
-  dans l'unité : tous les départs) — `chargeParHandling`, `classesCategories`.
-  Les autres compagnies sont grisées. Cochée dans une équipe : oui ; sinon,
-  elle n'est pas armée (et le handling ne l'attend pas).
+- **Une case par compagnie construite** (`AF/@ARM`, « AF · Armement »),
+  pour chacun de ses départs — `volsAArmer`, `classesCategories`. La liste
+  « Compagnies chargées » d'un handling dit QUI charge le vol, pas s'il
+  s'arme : elle ne grise aucune case (retour d'usage du 02/10 : « toutes les
+  compagnies ont une case armement liée au handling, et pourtant plusieurs
+  ne sont pas cliquables »). Une compagnie qu'aucun handling ne charge est
+  signalée par le calcul (« aucun handling ne charge cette compagnie »).
+  Cochée dans une équipe : oui ; sinon, elle n'est pas armée (et le handling
+  ne l'attend pas).
 - **Une compagnie dont rien n'est construit** — aucune équipe ne prépare
   l'une de ses commandes — n'est pas simulée (retour d'usage du 02/10 : « QR
   n'est pas dans les chemins, rien n'est construit pour cette compagnie, je ne

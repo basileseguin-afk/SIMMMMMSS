@@ -416,8 +416,8 @@
     classesDe(service) {
       const cats = (this.state.categories || {})[service]; if (!cats) return null;
       const r = this.a.reglages ? this.a.reglages() : {};
-      // Une case par compagnie, pour les vols qu'un handling charge (l'armement est lié au handling).
-      return P.classesCategories(this.a.vols(), { [service]: cats }, { delaiChargement: r.delaiChargement, passe: P.chargeParHandling(this.state.ateliers) });
+      // Une case par compagnie construite, pour chacun de ses départs.
+      return P.classesCategories(this.a.vols(), { [service]: cats }, { delaiChargement: r.delaiChargement, passe: P.volsAArmer(this.state.ateliers) });
     }
 
     calculer() {
