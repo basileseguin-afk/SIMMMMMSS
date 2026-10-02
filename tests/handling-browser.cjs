@@ -35,6 +35,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.selectOption('[data-pc-champ=noeud-ajout]','handling');await attendre();
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service==='handling').length),1,'un seul handling, partagé');
 
+  // Une compagnie dont rien n'est construit n'est pas chargée (02/10) : une équipe
+  // de repas prépare les commandes du jour, en très peu de temps.
+  await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'repas',nom:'Repas',service:'prepa',type:'manuel',debut:'00:00',jour:-1,personnes:50,pauses:[],
+    lots:Sim.ateliers.classes.map(c=>[c.id]),minutes:Object.fromEntries(Sim.ateliers.classes.map(c=>[c.id,1])),regime:{actif:false}});},''));await attendre();
+
   // 2. Le calcul suit les vols : AF chargé, dans l'ordre des départs.
   const r=await page.evaluate(()=>{const r=Sim.ateliers.resultat;return {vols:r.vols.map(v=>({id:v.id,depart:v.depart,debut:v.debut,etat:v.etat})),k:r.indicateurs};});
   assert.ok(r.vols.length>0,'des vols suivis');

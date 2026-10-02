@@ -285,16 +285,20 @@
       if (!k) return '';
       const avec = [...new Set(classes.map(c => c.cie))].sort((x, y) => x.localeCompare(y));
       const toutes = [...new Set((this.at.classes || []).map(c => c.cie))];
-      const sans = toutes.filter(c => !avec.includes(c)).sort((x, y) => x.localeCompare(y));
+      // Rien de construit (aucune équipe ne prépare ses commandes) : pas simulée, pas listée.
+      const construites = P.compagniesConstruites(this.etat.ateliers);
+      const vides = toutes.filter(c => !construites.has(c)).sort((x, y) => x.localeCompare(y));
+      const sans = toutes.filter(c => construites.has(c) && !avec.includes(c)).sort((x, y) => x.localeCompare(y));
       const champ = cie => `<td><input type="number" min="0" step="1" value="${k.minutes[cie] ?? ''}" placeholder="${cie === '*' ? '—' : k.minutes['*'] ?? '—'}"
           data-mu-cat-min="${esc(k.id)}" data-cie="${esc(cie)}" aria-label="Minutes par vol${cie === '*' ? ', toutes les compagnies' : ', ' + esc(cie)}"></td>`;
-      const aucun = !avec.length ? `<p class="mini-note">Aucune compagnie n’a de case : aucun handling ne charge de vol aujourd’hui
-        (voir la liste des compagnies de chaque handling).</p>` : '';
+      const aucun = !avec.length ? `<p class="mini-note">Aucune compagnie n’a de case : ${construites.size ? 'aucun handling ne charge leurs vols aujourd’hui (voir la liste des compagnies de chaque handling).'
+        : 'rien n’est encore construit — aucune équipe ne prépare de commande. Une compagnie a sa case dès que ses repas sont préparés.'}</p>` : '';
       return aucun + `<div class="mu-grille-scroll"><table class="mu-cat-table" data-mu-cat-service="${esc(s.id)}">
         <thead><tr><th scope="col">Compagnie</th><th scope="col">Minutes par vol</th></tr></thead>
         <tbody><tr class="mu-cat-toutes"><th scope="row">Toutes les compagnies</th>${champ('*')}</tr>
         ${avec.map(cie => `<tr><th scope="row">${esc(cie)}</th>${champ(cie)}</tr>`).join('')}</tbody></table></div>`
-        + (sans.length ? `<p class="mini-note">Pas de case pour ${esc(sans.join(', '))} : aucun handling ne charge leurs vols.</p>` : '');
+        + (sans.length ? `<p class="mini-note">Pas de case pour ${esc(sans.join(', '))} : aucun handling ne charge leurs vols.</p>` : '')
+        + (vides.length ? `<p class="mini-note">Pas simulées : ${esc(vides.join(', '))} — rien n’est construit pour ${vides.length > 1 ? 'elles' : 'elle'} (aucune équipe ne prépare leurs commandes) : ni armées, ni chargées.</p>` : '');
     }
 
     /** Changer le réglage d'un service par compagnie. */
@@ -357,7 +361,8 @@
       const g = PC.grille(this.etat, service, a ? a.id : null, classes);
       const par = new Map(classes.map(c => [c.id, c]));
       // Par compagnie : toutes les compagnies du jour ; celles dont le chemin ne passe pas ici, grisées.
-      const cies = [...new Set(classes.map(c => c.cie).concat(parCategories ? (this.at.classes || []).map(c => c.cie) : []))].sort((x, y) => x.localeCompare(y));
+      const construites = parCategories ? P.compagniesConstruites(this.etat.ateliers) : null;
+      const cies = [...new Set(classes.map(c => c.cie).concat(parCategories ? (this.at.classes || []).map(c => c.cie).filter(c => construites.has(c)) : []))].sort((x, y) => x.localeCompare(y));
       // Les colonnes : les classes des vols, ou les catégories du service (« Trolleys bar »).
       const cabs = parCategories ? ((this.etat.categories || {})[service] || []).map(k => '@' + k.id).filter(c => classes.some(k => k.cabine === c))
         : P.CABINES.filter(c => classes.some(k => k.cabine === c));

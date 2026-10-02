@@ -5,6 +5,21 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-02 — Une compagnie dont rien n'est construit n'est pas simulée
+
+Retour d'usage : « QR n'est pas présente dans les chemins, rien n'est
+construit pour cette compagnie, donc je ne veux pas la simuler ; pareil pour
+DL » (QR et DL venaient du programme de vols de démonstration).
+
+- Règle : une compagnie est simulée dès qu'une équipe prépare l'une de ses
+  commandes (`compagniesConstruites`, moteur v1 et v2).
+- L'armement : pas de case pour une compagnie non construite ; elle n'est
+  plus listée dans sa grille ni dans ses minutes ; la fiche la nomme (« Pas
+  simulées : DL, QR — rien n'est construit pour elles »).
+- Le handling ne charge que les vols dont une commande est préparée.
+- Tests : `tests/categories.test.cjs` (v1, v2), `tests/categories-browser.cjs`,
+  `tests/handling-browser.cjs` (une équipe de repas ajoutée).
+
 ## 2026-10-02 — L'armement est lié au handling, pas aux chemins des repas
 
 Question d'usage : « comment je gère l'armement dans les chemins, dans les

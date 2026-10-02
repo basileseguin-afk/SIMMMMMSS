@@ -16,14 +16,18 @@ function verifier(dossier, v) {
     { id: 'bc', nom: 'Business', noeuds: ['prepa', 'quais'], liens: [{ de: 'prepa', vers: 'quais' }] }], parcoursCabine: { YC: 'eco', BC: 'bc' } };
   // Le handling charge AF, TX et QR — pas DL.
   const handling = { id: 'h', nom: 'Handling', service: 'quais', type: 'handling', debut: '05:00', jour: 0, personnes: 1, pauses: [], lots: [], regime: { actif: false }, durees: { '*': 10 }, compagnies: ['AF', 'TX', 'QR'] };
+  // Les repas construits : AF, TX et QR ont une équipe qui prépare leurs commandes.
+  const montage = { id: 'mo', nom: 'Montage', service: 'prepa', type: 'manuel', debut: '05:00', jour: 0, personnes: 2, pauses: [], lots: [['AF/YC', 'TX/BC', 'QR/YC']], regime: { actif: false } };
   const armement = (lots, x) => ({ id: 'ar', nom: 'Armement', service: 'armement', type: 'manuel', debut: '05:00', jour: 0, personnes: 1, pauses: [], lots, regime: { actif: false }, ...x });
 
   test(v + ' — une case par compagnie, pour chaque vol qu’un handling charge', () => {
     const vols2 = vols.concat([{ id: 'DL1', cie: 'DL', sens: 'DEP', std: 800, yc: 50 }]);
-    const passe = P.chargeParHandling([handling]);
+    const passe = P.chargeParHandling([handling, montage]);
     assert.equal(passe('armement', { id: 'AF1', cie: 'AF' }), true);
     assert.equal(passe('armement', { id: 'DL1', cie: 'DL' }), false, 'aucun handling ne charge DL');
-    assert.equal(P.chargeParHandling([])('armement', { id: 'DL1', cie: 'DL' }), true, 'sans handling : chaque départ');
+    const deDL = { ...montage, lots: montage.lots.concat([['DL/YC']]) };
+    assert.equal(P.chargeParHandling([deDL])('armement', { id: 'DL1', cie: 'DL' }), true, 'sans handling : chaque départ d’une compagnie construite');
+    assert.equal(P.chargeParHandling([handling])('armement', { id: 'AF1', cie: 'AF' }), false, 'rien de construit : pas d’armement');
     const cl = P.classesCategories(vols2, categories, { passe });
     assert.deepEqual(cl.map(c => [c.id, c.vols.length, c.minutes]), [['AF/@ARM', 2, 15], ['TX/@ARM', 1, 10], ['QR/@ARM', 1, 10]],
       'un vol AF en Business et en Éco ne s’arme qu’une fois ; DL n’a pas de case');
@@ -34,13 +38,24 @@ function verifier(dossier, v) {
   });
 
   test(v + ' — le calcul : minutes par vol × vols ; sans minutes, il le dit', () => {
-    const r = P.simuler({ vols, categories, ...chemins, bareme: { prepa: { '*/YC': 20, '*/BC': 20 } }, ateliers: [handling, armement([['AF/@ARM'], ['QR/@ARM']])] });
+    const r = P.simuler({ vols, categories, ...chemins, bareme: { prepa: { '*/YC': 20, '*/BC': 20 } }, ateliers: [montage, handling, armement([['AF/@ARM'], ['QR/@ARM']])] });
     assert.ok(r.ok, JSON.stringify(r.anomalies));
     const af = r.lots.find(l => l.classes.includes('AF/@ARM'));
     assert.equal(Math.round(af.fin - af.debut), 30, '2 vols AF × 15 min');
     assert.ok(!r.anomalies.some(a => a.code === 'parcours-trou'));
-    const sans = P.simuler({ vols, categories: { armement: [{ id: 'ARM', nom: 'ARMEMENT', minutes: { AF: 15 } }] }, ...chemins, ateliers: [handling, armement([['AF/@ARM', 'QR/@ARM']])] });
+    const sans = P.simuler({ vols, categories: { armement: [{ id: 'ARM', nom: 'ARMEMENT', minutes: { AF: 15 } }] }, ...chemins, ateliers: [montage, handling, armement([['AF/@ARM', 'QR/@ARM']])] });
     assert.match(sans.anomalies.find(a => a.code === 'bareme-classe').message, /pas de minutes par vol pour QR/);
+  });
+
+  test(v + ' — une compagnie dont rien n’est construit n’est pas simulée : ni armée, ni chargée', () => {
+    // DL vole, le handling charge toutes les compagnies, mais aucune équipe ne prépare DL.
+    const vols2 = vols.concat([{ id: 'DL1', cie: 'DL', sens: 'DEP', std: 800, yc: 50 }]);
+    const tous = { ...handling, compagnies: [] };
+    const r = P.simuler({ vols: vols2, categories, ...chemins, bareme: { prepa: { '*/YC': 20, '*/BC': 20 } }, ateliers: [montage, tous, armement([['AF/@ARM']])] });
+    assert.ok(r.ok);
+    assert.ok(!r.classes.some(c => c.id === 'DL/@ARM'), 'DL n’a pas de case d’armement');
+    assert.ok(!r.lots.some(l => l.handling && l.vol === 'DL1'), 'le handling ne charge pas DL');
+    assert.ok(r.lots.some(l => l.handling && l.vol === 'AF1'), 'il charge AF');
   });
 
   test(v + ' — le handling attend l’armement du vol', () => {

@@ -18,6 +18,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   for(const [fichier,version] of [['../index.html','v1'],['../v2/index.html','v2']]){
    await page.goto(pathToFileURL(path.resolve(__dirname,fichier)).href);await attendre();
    await page.evaluate(()=>localStorage.clear());await page.reload();await attendre();
+   // Des repas construits pour toutes les compagnies, sauf QR et DL : rien n'est construit pour elles.
+   const construites=await page.evaluate(()=>{const cies=[...new Set(Sim.ateliers.classes.map(c=>c.cie))].filter(c=>c!=='QR'&&c!=='DL').sort();
+     Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'mo',nom:'Montage',service:'prepa',type:'manuel',debut:'04:00',jour:0,personnes:4,pauses:[],
+       lots:Sim.ateliers.classes.filter(c=>cies.includes(c.cie)&&c.cabine==='YC').map(c=>[c.id]),regime:{actif:true}});},'');return cies;});
    await nav.aller(page,'mu-services');
    await page.locator('[data-mu-choisir=armement]').click();await attendre();
 
@@ -30,14 +34,15 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
    // 2. Lié au handling : sans handling, chaque départ ; avec, les vols qu'il charge.
    assert.match(await fiche('.mu-lien-handling').innerText(),/Lié au handling[\s\S]*Pas encore de handling/);
-   const toutes=await page.evaluate(()=>[...new Set(Sim.ateliers.classes.map(c=>c.cie))].sort());
-   assert.deepEqual(await page.evaluate(()=>[...new Set(Sim.ateliers.classesDe('armement').map(c=>c.cie))].sort()),toutes);
-   const sansDL=toutes.filter(c=>c!=='DL');
+   assert.deepEqual(await page.evaluate(()=>[...new Set(Sim.ateliers.classesDe('armement').map(c=>c.cie))].sort()),construites,version+' : les compagnies construites');
+   assert.match(await fiche('').innerText(),/Pas simulées : DL, QR — rien n’est construit pour elles/);
+   const sansDL=construites.filter(c=>c!=='FWI');
    await page.evaluate(cies=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'h',nom:'Quais',service:'quais',type:'handling',debut:'04:00',jour:0,personnes:2,pauses:[],lots:[],regime:{actif:true},durees:{'*':20},compagnies:cies});},''),sansDL);await attendre();
    const cies=await page.evaluate(()=>[...new Set(Sim.ateliers.classesDe('armement').map(c=>c.cie))].sort());
    assert.deepEqual(cies,sansDL,version+' : les vols que « Quais » charge');
+   const toutes=construites;
    assert.match(await fiche('.mu-lien-handling').innerText(),/Chaque vol que « Quais » charge demande son armement/);
-   assert.match(await fiche('').innerText(),/Pas de case pour DL : aucun handling ne charge leurs vols/);
+   assert.match(await fiche('').innerText(),/Pas de case pour FWI : aucun handling ne charge leurs vols/);
 
    // 3. Ses minutes par vol : toutes, puis AF.
    const min=async(cie,v)=>{const c=fiche(`[data-mu-cat-min="ARM"][data-cie="${cie}"]`);await c.fill(String(v));await c.press('Tab');await attendre();};
@@ -49,7 +54,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    const eq=await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.service==='armement').id);
    const grille=page.locator(`#mu-services table[data-mu-equipe="${eq}"]`);
    assert.deepEqual((await grille.locator('thead th').allInnerTexts()).map(t=>t.trim().toUpperCase()).filter(Boolean).slice(1),['ARMEMENT']);
-   assert.equal(await grille.locator('tbody tr').count(),toutes.length,'toutes les compagnies sont listées');
+   assert.equal(await grille.locator('tbody tr').count(),toutes.length,'les compagnies construites sont listées ; QR et DL non');
+   assert.equal(await grille.locator('tbody th',{hasText:/^QR$/}).count(),0);
    assert.equal(await grille.locator('[data-mu-cocher]').count(),cies.length,'une case pour celles dont le chemin passe ici');
    await grille.locator('[data-mu-cocher="AF/@ARM"]').check();await attendre();
    assert.deepEqual(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).lots,eq),[['AF/@ARM']]);

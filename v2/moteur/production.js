@@ -187,12 +187,33 @@
     return [...parId.values()].sort((a, b) => a.echeance - b.echeance || a.id.localeCompare(b.id));
   }
 
-  /** Les départs qu'un handling charge (sa liste de compagnies, ou toutes) ;
-   *  sans handling dans l'unité, tous les départs : `(service, vol) → oui/non`. */
+  /* Une compagnie pour laquelle rien n'est construit — aucune équipe ne prépare
+   * l'une de ses commandes — n'est pas simulée (retour d'usage du 02/10 : « QR
+   * n'est pas dans les chemins, rien n'est construit pour cette compagnie, donc
+   * je ne veux pas la simuler ; pareil pour DL ») : ni armée, ni chargée. */
+  function compagniesConstruites(ateliers) {
+    const out = new Set();
+    for (const a of ateliers || []) {
+      if (!a || !(a.type === 'manuel' || a.type === 'robot' || !a.type)) continue;
+      for (const lot of (a.lots || [])) for (const id of classesDuLot(lot)) {
+        if (String(id).includes('/@')) continue;   // une case d'armement ne construit pas la compagnie
+        out.add(String(id).slice(0, String(id).lastIndexOf('/')).toUpperCase());
+      }
+    }
+    return out;
+  }
+
+  /** Les départs à armer : ceux d'une compagnie construite qu'un handling charge
+   *  (sa liste de compagnies, ou toutes ; sans handling dans l'unité, tous) :
+   *  `(service, vol) → oui/non`. */
   function chargeParHandling(ateliers) {
     const handlings = (ateliers || []).filter(a => a && a.type === 'handling');
-    if (!handlings.length) return () => true;
-    return (service, vol) => handlings.some(h => { const s = compagniesDe(h); return !s || s.has(String(vol && vol.cie).trim().toUpperCase()); });
+    const construites = compagniesConstruites(ateliers);
+    return (service, vol) => {
+      const cie = String(vol && vol.cie).trim().toUpperCase();
+      if (!construites.has(cie)) return false;
+      return !handlings.length || handlings.some(h => { const s = compagniesDe(h); return !s || s.has(cie); });
+    };
   }
 
   /* ======================================================================
@@ -1488,7 +1509,8 @@
 
     // Chaque départ va au premier handling qui charge sa compagnie, sinon au
     // premier qui les charge toutes.
-    const volsJour = volsDesClasses(classes);
+    // Seulement les vols dont une commande est préparée : rien de construit, rien à charger.
+    const volsJour = volsDesClasses(classes.filter(c => producteurs.has(c.id)));
     const volsDe = new Map(handlings.map(a => [a.id, []]));
     if (handlings.length) {
       const sans = new Map();
@@ -2440,7 +2462,7 @@
     MINUTES_PAR_JOUR, CABINES, TYPES,
     minutes, hhmm, idClasse, libelleClasse, nomCabine, enClair,
     REGIME_DEFAUT, normaliserRegime, travailDuPoste, executerTache,
-    classesDeVols, classesCategories, chargeParHandling, declarerCategories, volsDesClasses, compteDuJour, appliquerConditions, dureeHandling, compagniesDe, AVANCE_HANDLING, BAREME_DEMO, RENDEMENT_DEMO, travailClasse, travailDans, dureeFusion,
+    classesDeVols, classesCategories, chargeParHandling, compagniesConstruites, declarerCategories, volsDesClasses, compteDuJour, appliquerConditions, dureeHandling, compagniesDe, AVANCE_HANDLING, BAREME_DEMO, RENDEMENT_DEMO, travailClasse, travailDans, dureeFusion,
     PAX_TYPE, TOUTES, cleBareme, normaliserBareme, minutesParVol,
     arcsDuParcours, servicesDuParcours, routesDesClasses,
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,

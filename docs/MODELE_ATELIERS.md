@@ -217,6 +217,12 @@ compagnie » ; la fiche d'un service dont le nom dit « armement » le propose).
   dans l'unité : tous les départs) — `chargeParHandling`, `classesCategories`.
   Les autres compagnies sont grisées. Cochée dans une équipe : oui ; sinon,
   elle n'est pas armée (et le handling ne l'attend pas).
+- **Une compagnie dont rien n'est construit** — aucune équipe ne prépare
+  l'une de ses commandes — n'est pas simulée (retour d'usage du 02/10 : « QR
+  n'est pas dans les chemins, rien n'est construit pour cette compagnie, je ne
+  veux pas la simuler ; pareil pour DL ») : pas de case d'armement (elle n'est
+  pas listée ; la fiche la nomme), et le handling ne charge pas ses vols
+  (`compagniesConstruites`).
 - **Minutes par vol** selon la compagnie (« Toutes les compagnies » par
   défaut) × vols ; échéance du vol. Sans minutes : le calcul le dit.
 - **Le handling** attend l'armement du vol pour le charger.
