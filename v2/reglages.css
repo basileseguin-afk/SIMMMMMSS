@@ -168,3 +168,7 @@
 .rgr.case{font-weight:600}
 .rgr.manque input{border-color:#c0392b;outline:0}
 .rgr.hors{text-align:center}
+/* La ligne récap d'une compagnie (02/10) : ses services par compagnie (l'armement),
+ * sous ses classes, sur un fond à part. */
+.rg-recap-table tbody tr.rg-recap-cie td,.rg-recap-table tbody tr.rg-recap-cie th{background:color-mix(in srgb,var(--c-equipes,var(--accent)) 9%,var(--bg3,#fff));border-bottom:2px solid var(--bordure)}
+.rg-recap-cie th{font-weight:700;white-space:nowrap}

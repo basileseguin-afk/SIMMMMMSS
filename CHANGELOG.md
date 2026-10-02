@@ -5,6 +5,27 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-02 — Tableau des minutes : une ligne récap par compagnie (armement)
+
+Demande : « lie les man-hours de l'armement dans le tableau des man-hours :
+une ligne récap compagnie, avec tous les services dont les man-hours sont sur
+l'ensemble de la compagnie et non sur les classes ».
+
+- Sous les classes de chaque compagnie, une ligne **« AF · toute la
+  compagnie »** : chaque service qui travaille par compagnie (l'armement) y
+  a sa colonne — minutes par vol, effectif de l'équipe qui la coche, durée ;
+  sur la journée, minutes × départs de la compagnie, comptées dans les
+  totaux. Sur les lignes des classes, la colonne renvoie à la compagnie (↓).
+- **Relié** : la valeur saisie est celle de la fiche de l'armement (Mon
+  unité › Armement) ; vide, ou égale à « toutes les compagnies », elle suit la
+  valeur commune ; « Annuler » du tableau revient en arrière ; l'effectif se
+  règle aussi d'ici. Le classeur Excel du barème n'a pas cette colonne
+  (l'armement se règle dans la feuille « Par compagnie »).
+- `echanges.js` (`recapManMinutes` : `lignesCie`), `reglages.js` (rendu,
+  saisie `recap-cie`), `sim.js` (`parCompagnie`, `minutesCompagnie`),
+  `reglages.css` ; v1 et v2. Tests : `tests/recap.test.cjs`,
+  `tests/recap-compagnie-browser.cjs`.
+
 ## 2026-10-02 — Jeu d'essai : sans QR ni DL, des vols pour vos compagnies
 
 Demande : « supprime de la simulation QR et DL et rajoute des vols des

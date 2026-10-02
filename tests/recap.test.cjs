@@ -113,3 +113,27 @@ test('le robot a sa colonne : un débit par commande, son effectif, la durée ; 
   const lu = E.classeurVersRecap(await parFichier(f), c.bareme, c);
   assert.deepEqual(lu.debits, { rb: { debit: 320, debits: { 'AF/YC': 450 } } });
 });
+
+test('l’armement, par compagnie : une ligne récap par compagnie, minutes par vol × départs (02/10)', async () => {
+  const c = ctx();
+  c.services = SERVICES.concat([{ id: 'armement', nom: 'ARMEMENT' }]);
+  c.sansBareme.add('armement');
+  c.categories = { armement: [{ id: 'ARM', nom: 'Armement', minutes: { '*': 10, AF: 15 } }] };
+  c.parCompagnie = [{ id: 'AF/@ARM', cie: 'AF', service: 'armement', vols: [{}, {}, {}] }, { id: 'TX/@ARM', cie: 'TX', service: 'armement', vols: [{}] }];
+  c.ateliers = c.ateliers.concat([{ id: 'ar', nom: 'Armement matin', service: 'armement', type: 'manuel', personnes: 2, lots: [['AF/@ARM']] }]);
+  const r = E.recapManMinutes(c);
+  assert.deepEqual(r.colonnes.map(x => [x.id, !!x.parCompagnie]), [['cuisine', false], ['prepa', false], ['armement', true]]);
+  assert.equal(r.lignes[0].cellules.armement.source, 'compagnie', 'sur une classe : renvoi à la ligne de la compagnie');
+  const [af, tx] = r.lignesCie;
+  assert.deepEqual([af.compagnie, af.vols, af.cellules.armement.source, af.cellules.armement.parVol, af.cellules.armement.jour, af.cellules.armement.duree],
+    ['AF', 3, 'propre', 15, 45, 7.5], 'AF : 15 min × 3 vols ; 2 personnes → 7,5 min par vol');
+  assert.deepEqual([tx.cellules.armement.source, tx.cellules.armement.parVol, tx.cellules.armement.jour, tx.cellules.armement.equipe], ['commun', 10, 10, null]);
+  assert.equal(af.cellules.cuisine.source, 'hors');
+  assert.equal(r.totaux.jour.armement, 55);
+  assert.equal(r.totaux.jourTotal, 60 + 45 + 40 + 20 + 12 + 55, 'le total de la journée compte l’armement');
+  // Le classeur du barème n'a pas de colonne d'armement : elle se règle dans « Par compagnie ».
+  const f = await parFichier(E.recapVersClasseur(c));
+  assert.ok(!f[0].lignes[0].includes('ARMEMENT'));
+  c.categories.armement[0].minutes = {};
+  assert.equal(E.recapManMinutes(c).lignesCie[0].cellules.armement.source, 'manque');
+});

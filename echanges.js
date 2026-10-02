@@ -212,18 +212,27 @@
     // Un robot ne lit pas le barème, mais il a sa colonne : son débit par commande.
     const robots = new Set(ateliers.filter(a => a.type === 'robot').map(a => a.service));
     // Un service où aucune commande ne passe n'a rien à montrer : pas de colonne.
-    const colonnes = (ctx.services || []).filter(sv => (!sans.has(sv.id) || robots.has(sv.id))
+    // Un service qui travaille par compagnie (l'armement, retour d'usage du 02/10 :
+    // « ses man-hours sont sur l'ensemble de la compagnie, pas sur les classes ») :
+    // sa colonne se remplit sur la ligne récap de chaque compagnie.
+    const parCie = ctx.parCompagnie || [];
+    const servicesCie = new Set(parCie.map(c => c.service));
+    const colonnes = (ctx.services || []).filter(sv => servicesCie.has(sv.id) || ((!sans.has(sv.id) || robots.has(sv.id))
       && (Object.keys(bareme[sv.id] || {}).length || classes.some(c => routes.get(c.id) && routes.get(c.id).services.has(sv.id)))
-      && classes.some(c => passe(c, sv.id))).map(sv => (robots.has(sv.id) ? { ...sv, robot: true } : sv));
+      && classes.some(c => passe(c, sv.id)))).map(sv => (servicesCie.has(sv.id) ? { ...sv, parCompagnie: true } : robots.has(sv.id) ? { ...sv, robot: true } : sv));
+    // L'équipe qui prépare une commande dans un service : son effectif se règle aussi dans le récap.
+    const equipeDe = (sid, id) => {
+      const eq = ateliers.find(x => x.service === sid && (x.type === 'manuel' || x.type === 'robot') && (x.lots || []).some(l => l.includes(id)));
+      return eq ? { id: eq.id, nom: eq.nom, personnes: eq.personnes, type: eq.type, commandes: new Set((eq.lots || []).flat()).size } : null;
+    };
     const lignes = classes.map(c => {
       const vols = (c.vols || []).length, cellules = {};
       let parVol = 0, jour = 0;
       for (const sv of colonnes) {
+        if (sv.parCompagnie) { cellules[sv.id] = { source: 'compagnie', parVol: null, jour: null }; continue; }
         if (!passe(c, sv.id)) { cellules[sv.id] = { source: 'hors', parVol: null, jour: null }; continue; }
-        // L'équipe qui prépare cette commande ici : son effectif se règle aussi dans le récap.
-        const eq = ateliers.find(x => x.service === sv.id && (x.type === 'manuel' || x.type === 'robot') && (x.lots || []).some(l => l.includes(c.id)));
-        const equipe = eq ? { id: eq.id, nom: eq.nom, personnes: eq.personnes, type: eq.type,
-          commandes: new Set((eq.lots || []).flat()).size } : null;
+        const equipe = equipeDe(sv.id, c.id);
+        const eq = equipe && ateliers.find(x => x.id === equipe.id);
         if (eq && eq.type === 'robot') {
           // Le robot : des plateaux à un débit, pas des man-minutes.
           const debit = P.debitRobot(eq, c.id), parVolPax = vols ? c.pax / vols : c.pax;
@@ -247,13 +256,33 @@
       }
       return { classe: c, vols, cellules, parVol, jour };
     });
+    // Une ligne récap par compagnie : ses services par compagnie, minutes par vol
+    // (les siennes, sinon « toutes les compagnies ») × ses départs.
+    const lignesCie = [...new Set(parCie.map(c => c.cie))].map(cie => {
+      const cellules = {};
+      let parVol = 0, jour = 0, vols = 0;
+      for (const sv of colonnes) {
+        const k = sv.parCompagnie && parCie.find(c => c.service === sv.id && c.cie === cie);
+        if (!k) { cellules[sv.id] = { source: 'hors', parVol: null, jour: null }; continue; }
+        const min = ((((ctx.categories || {})[sv.id] || [])[0]) || {}).minutes || {};
+        const lire = x => (x !== '' && x != null && Number.isFinite(+x) ? +x : null);
+        const propre = lire(min[cie]), commun = lire(min[P.TOUTES]), n = k.vols.length;
+        const v = propre ?? commun, equipe = equipeDe(sv.id, k.id);
+        vols = Math.max(vols, n);
+        cellules[sv.id] = { source: propre != null ? 'propre' : commun != null ? 'commun' : 'manque', parVol: v, jour: v == null ? null : v * n,
+          commun, equipe, classe: k.id, vols: n, duree: v != null && equipe && equipe.personnes > 0 ? v / equipe.personnes : null };
+        if (v != null) { parVol += v; jour += v * n; }
+      }
+      return { compagnie: cie, vols, cellules, parVol, jour };
+    });
     const totaux = { parVol: {}, jour: {}, jourTotal: 0 };
     for (const sv of colonnes) {
-      totaux.parVol[sv.id] = lignes.reduce((n, l) => n + (l.cellules[sv.id].parVol || 0), 0);
-      totaux.jour[sv.id] = lignes.reduce((n, l) => n + (l.cellules[sv.id].jour || 0), 0);
+      const toutes = lignes.concat(lignesCie);
+      totaux.parVol[sv.id] = toutes.reduce((n, l) => n + (l.cellules[sv.id].parVol || 0), 0);
+      totaux.jour[sv.id] = toutes.reduce((n, l) => n + (l.cellules[sv.id].jour || 0), 0);
       totaux.jourTotal += totaux.jour[sv.id];
     }
-    return { colonnes, lignes, totaux };
+    return { colonnes, lignes, lignesCie, totaux };
   }
 
   /**
@@ -265,7 +294,7 @@
   function recapVersClasseur(ctx) {
     const r0 = recapManMinutes(ctx);
     // Les robots ont leur feuille : leur colonne ne porte pas de man-minutes.
-    const r = { ...r0, colonnes: r0.colonnes.filter(sv => !sv.robot) };
+    const r = { ...r0, colonnes: r0.colonnes.filter(sv => !sv.robot && !sv.parCompagnie) };
     const noms = r.colonnes.map(sv => sv.nom);
     const lignes = [['Compagnie', 'Classe', 'Vols' + INFO, ...noms]];
     for (const l of r.lignes) {

@@ -1810,6 +1810,13 @@ function installerCentreReglages() {
     // Les compagnies × classes du moment, et le parcours de chacune : c'est ce
     // que le classeur du barème propose de renseigner, service par service.
     classes:()=>Sim.ateliers?Sim.ateliers.classes:[],
+    // Les services par compagnie (l'armement) : leurs cases « AF/@ARM », et leur réglage.
+    parCompagnie:()=>Sim.ateliers?Object.keys(Sim.ateliers.state.categories||{}).flatMap(s=>Sim.ateliers.classesDe(s)||[]):[],
+    categories:()=>(Sim.ateliers&&Sim.ateliers.state.categories)||{},
+    minutesCompagnie:(service,cie,n)=>{const at=Sim.ateliers,k=at&&((at.state.categories||{})[service]||[])[0];if(!k)return false;
+      return at.changer(()=>{const x=at.state.categories[service][0],m={...(x.minutes||{})},commun=m['*'];
+        if(n==null||(commun!=null&&commun!==''&&+commun===n))delete m[cie];else m[cie]=n;x.minutes=m;},
+        cie+' · '+k.nom+' : '+(n==null?'reprend la valeur de toutes les compagnies.':n+' min par vol.'));},
     routes:cls=>MoteurProduction.routesDesClasses(cls,Sim.ateliers?Sim.ateliers.state:{}),
     routesSignature:()=>{const e=(Sim.ateliers&&Sim.ateliers.state)||{};return JSON.stringify([e.parcours,e.parcoursCabine,e.parcoursClasse]);},
     // Un service dont toutes les équipes sont des plonges, des mises à

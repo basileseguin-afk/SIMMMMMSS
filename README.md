@@ -204,7 +204,9 @@ le rouge ne sert qu’aux retards.
      choisi, « Ses équipes → ».
    - *Tableau des équipes* et *Tableau des minutes* : toutes les équipes (et
      leurs heures), toutes les minutes, d’un coup d’œil, modifiables sur place
-     ou dans Excel.
+     ou dans Excel. Sous les classes de chaque compagnie, une ligne
+     « … · toute la compagnie » porte les services qui travaillent par
+     compagnie (l’armement) : minutes par vol, effectif, durée, total.
    - *Outils avancés* (le bouton en haut à droite, à côté de Sauvegarde) :
      les outils d’avant, pour les cas rares.
    - Suivre une commande étape par étape : **Résultats › Parcours des
@@ -511,8 +513,9 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/secours-browser.cjs` | Un démarrage resté en plan ouvre la page de secours ; elle rend les données en sauvegarde, repart sans les cases, puis les remet |
 | `tests/recap-cases-browser.cjs` | Récap des cases : une ligne par case, tâche unique / à la suite / ensemble, départ et jour modifiables, chercher, fichier de paramétrage exporté puis réimporté |
 | `tests/robot-browser.cjs` | Le Robot : service créé et rattaché au Montage, remplace le Montage sur TX, CRL et FBU Économie (une fois), une case Robot, plateaux ÷ débit, débit et effectif dans le récap et la fiche |
-| `tests/recap.test.cjs` | Récap des man-minutes : d’où vient chaque valeur, totaux, fichier de paramétrage (aller-retour sans changement, grosses modifications, erreurs) |
+| `tests/recap.test.cjs` | Récap des man-minutes : d’où vient chaque valeur, totaux, fichier de paramétrage (aller-retour sans changement, grosses modifications, erreurs), ligne récap par compagnie (armement) |
 | `tests/recap-browser.cjs` | Mon unité › Tableau des minutes : une ligne par commande, modifier / vider une case, sur la journée, chercher, export puis import |
+| `tests/recap-compagnie-browser.cjs` | Tableau des minutes et armement (v1 et v2) : une ligne récap par compagnie sous ses classes, minutes par vol modifiables (reliées à la fiche de l’armement), retour à la valeur commune, effectif, Annuler, sur la journée, recherche |
 | `tests/vagues.test.cjs` | Mise à disposition par vagues : chaque commande prend la vague qui précède son besoin, attente avant la première |
 | `tests/partage-browser.cjs` | Légumerie partagée : une case pour toutes les commandes, « Besoin de légumerie ? » sur le chemin, vagues dans le tableau, fusion des cases d’avant |
 | `tests/handling.test.cjs` | Le handling par vol : classes d’un même vol réunies, ordre strict des départs, pas avant départ − X h, plusieurs quais, vol bloqué, poste fini, durée par compagnie, stocks devant le handling |
