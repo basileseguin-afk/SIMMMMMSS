@@ -17,7 +17,6 @@ test('chaque service du plan a son pictogramme', () => {
 test('un pictogramme est un SVG muet, sauf s’il porte un titre', () => {
   assert.match(I.ico('avion'), /^<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">/);
   assert.match(I.ico('avion', 'x', 'Départ'), /role="img" aria-label="Départ"/);
-  for (const e of Object.values(I.ETAPES)) assert.ok(I.TRAITS[e.ico], e.ico);
 });
 
 test('un nom de service en capitales s’affiche comme une phrase, sans toucher aux sigles', () => {

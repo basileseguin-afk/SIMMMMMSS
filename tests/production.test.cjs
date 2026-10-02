@@ -409,7 +409,6 @@ test('une pause de régime n’est prise qu’une fois par poste', () => {
 
 test('le poste dure 8 h 15 de présence, dont 7 h 30 de travail', () => {
   assert.equal(P.REGIME_DEFAUT.presence, 495);
-  assert.equal(P.travailDuPoste(), 450, '495 − 15 − 30');
   const t = P.executerTache({ depart: 300, debutPoste: 300, duree: 600, prises: new Set() });
   assert.equal(t.tronque, true, 'on ne fait pas 10 h dans un poste de 8 h 15');
   assert.equal(t.fait, 450);

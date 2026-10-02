@@ -291,9 +291,6 @@
     /** Événement actuellement attendu par le processus, ou null. */
     get cible() { return this._cible; }
 
-    /** Vrai tant que le processus n'est pas terminé. */
-    get vivant() { return !this.declenche; }
-
     /**
      * Fait lever une Interruption au point d'attente du processus.
      * Retourne faux si le processus est déjà terminé.

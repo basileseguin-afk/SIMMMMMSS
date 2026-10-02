@@ -42,9 +42,6 @@ test('le CSV : séparateur deviné, guillemets, décimales à virgule', () => {
   assert.deepEqual(l, [['a', 'b', 'c'], ['1', 'x;y', '2,5'], [null]]);
   assert.equal(T.nombreDe('2,5'), 2.5);
   assert.deepEqual(T.lireCsv('a,b\n1,2'), [['a', 'b'], ['1', '2']]);
-  const csv = T.ecrireCsv([['a', 'b'], [1.5, 'x;y']]);
-  assert.ok(csv.startsWith('﻿'), 'Excel reconnaît l’UTF-8 grâce au BOM');
-  assert.deepEqual(T.lireCsv(csv), [['a', 'b'], ['1,5', 'x;y']]);
 });
 
 test('en-têtes : casse, accents et espaces ne comptent pas', () => {

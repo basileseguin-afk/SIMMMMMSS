@@ -51,8 +51,6 @@
 .view-intro{margin:2px 0 0;font-size:14px;color:var(--txt2);max-width:90ch;line-height:1.4}
 .view-intro:empty{display:none}
 
-@media(max-width:1250px){
-}
 @media(max-width:1000px){
   .cm-liste{grid-template-columns:1fr 1fr;row-gap:16px}
   .cm-liste li::after,.cm-liste li::before{display:none}
@@ -218,7 +216,6 @@ body.journee-vide #goulot-info{border:0;background:none;padding:0}
 /* Une case vide ne crie pas : un « + » discret. L'ambre reste aux alertes. */
 .qf-case.libre{background:transparent;border:1.5px dashed var(--bordure2);color:var(--txt3);display:grid;place-items:center}
 .qf-case.libre:hover{border-color:var(--c-equipes);color:var(--c-equipes);background:color-mix(in srgb,var(--c-equipes) 7%,transparent)}
-.qf-plus{font-size:20px;font-weight:300;line-height:1}
 .qf-case.ok{background:color-mix(in srgb,var(--c-equipes) 12%,var(--bg3));border-color:color-mix(in srgb,var(--c-equipes) 45%,var(--bordure2))}
 .qf-l.libre::before{background:transparent;border:1.5px dashed var(--bordure2)}
 .qf-l.ok::before{background:color-mix(in srgb,var(--c-equipes) 12%,var(--bg3));border-color:var(--c-equipes)}
@@ -229,22 +226,10 @@ body.journee-vide #goulot-info{border:0;background:none;padding:0}
 .qf-g.jonction{border-bottom-color:var(--txt) !important}
 .qf-col.a-remplir small{color:var(--txt2);font-weight:600}
 .pc-lab-cab{display:inline-flex;align-items:center;gap:5px}
-.pc-cab{display:inline-flex;align-items:center;gap:5px;background:var(--bg2);color:var(--txt)}
-.pc-cab .puce-classe{border-radius:50%}
 
 /* --- Indicateurs de « Qui prépare quoi » : un pictogramme par chiffre ----- */
-.at-kpi{display:flex;align-items:center;gap:12px}
-.at-kpi-ico{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--bg2);color:var(--txt2)}
-.at-kpi-ico .ico{width:23px;height:23px}
-.at-kpi.ton-ok .at-kpi-ico{background:color-mix(in srgb,var(--ok) 15%,var(--bg3));color:var(--ok)}
-.at-kpi.ton-mal .at-kpi-ico{background:color-mix(in srgb,var(--retard) 14%,var(--bg3));color:var(--retard)}
-.at-kpi.ton-attente .at-kpi-ico{background:color-mix(in srgb,var(--attente) 15%,var(--bg3));color:var(--attente)}
-.at-kpi.ton-journee .at-kpi-ico{background:color-mix(in srgb,var(--c-journee) 14%,var(--bg3));color:var(--c-journee)}
 
 /* --- Le bouton « chiffres d'exemple » : une pastille, pas une phrase ------ */
-.ctx-exemple{display:inline-flex;align-items:center;gap:6px;text-decoration:none !important;border-radius:99px;padding:4px 12px !important;
-  background:color-mix(in srgb,var(--attente) 13%,var(--bg3)) !important;color:var(--txt) !important;font-weight:700}
-.ctx-exemple .ico{color:var(--attente);width:16px;height:16px}
 
 /* --- Le plan : un médaillon par service, qui prend la couleur de l'état --- */
 .zone-ico{pointer-events:none}

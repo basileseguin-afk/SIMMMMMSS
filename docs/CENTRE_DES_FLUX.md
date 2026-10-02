@@ -79,8 +79,8 @@ Aucun catalogue d’articles ni quantité n’est demandé ici.
 - `flows` : identifiant stable, type, `from`, `to`, `enabled`, précision `label`.
 - Extrémité : paire sérialisée `[serviceId, storageId]` ; `null` désigne le service.
 - `internal` : autorisations générales par identifiant de service ; absent = autorisé.
-- `OrlyFlows.canTravel(state, points, from, to, role)` contrôle les déplacements
-  directs. `usable` exclut les liaisons désactivées, non classées ou orphelines.
+- Une liaison de personnel entre deux services est refusée : seuls les runners
+  circulent. `usable` exclut les liaisons désactivées, non classées ou orphelines.
 - Limites d’import : 2 Mo, 2 000 liaisons ; précision libre de 200 caractères.
 
 Vérification : `node --test tests/flows.test.cjs` et

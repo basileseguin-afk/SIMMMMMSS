@@ -268,21 +268,6 @@ test('les étapes se lisent dans l’ordre du flux : sources d’abord, jonction
   assert.deepEqual(PC.etapesOrdonnees(COMPLET), ['appros', 'plonge', 'magasin', 'cuisine', 'dotation', 'prepa']);
 });
 
-test('la couverture dit, étape par étape, quelle équipe travaille quelle classe', () => {
-  const etat = etatAvec([at('cu', 'cuisine', '05:00', [['AF/BC']]),
-    { id: 'pl', nom: 'Plonge', service: 'plonge', type: 'lavage', debut: '05:00', lots: [] }]);
-  const c = PC.couverture(etat, CLASSES);
-  const complet = c.find(x => x.parcours.id === 'complet');
-  assert.deepEqual(complet.classes, ['AF/BC'], 'seule AF/BC suit le parcours complet dans ce programme');
-  const e = s => complet.etapes.find(x => x.service === s);
-  assert.deepEqual(e('cuisine').manquantes, [], 'la cuisine fait AF/BC');
-  assert.equal(e('cuisine').classes[0].atelier, 'cu');
-  assert.deepEqual(e('prepa').manquantes, ['AF/BC'], 'personne au montage');
-  assert.deepEqual(e('plonge').manquantes, [], 'une plonge n’a rien à se voir confier');
-  const sans = c.find(x => x.parcours.id === 'sans-cuisine');
-  assert.deepEqual(sans.classes.sort(), ['AF/YC', 'TX/YC']);
-});
-
 test('confier ajoute une fabrication par classe, dans l’ordre des échéances, sans doublon', () => {
   const etat = etatAvec([at('mo', 'prepa', '05:00', [['AF/YC']])]);
   const n = PC.confier(etat, 'mo', ['TX/YC', 'AF/BC', 'AF/YC'], CLASSES);
@@ -297,19 +282,6 @@ test('une équipe se pose sur une étape avec ce qu’elle a à faire', () => {
   assert.equal(a.service, 'dotation'); assert.equal(a.nom, 'DOTATION');
   assert.deepEqual(a.lots, [['AF/YC'], ['TX/YC']]);
   assert.equal(PC.nouvelleEquipe(etat, 'dotation', 'DOTATION', [], CLASSES).nom, 'DOTATION 2');
-});
-
-test('compléter confie là où une seule équipe travaille, et rend la main ailleurs', () => {
-  const etat = etatAvec([at('mo', 'prepa', '05:00', []), at('d1', 'dotation', '05:00', []), at('d2', 'dotation', '05:00', [])]);
-  const { faits, restent } = PC.completer(etat, CLASSES);
-  const auMontage = faits.filter(f => f.service === 'prepa').reduce((n, f) => n + f.n, 0);
-  assert.equal(auMontage, 3, 'le montage reçoit ses trois classes, des deux parcours qui y passent');
-  assert.ok(restent.some(r => r.service === 'dotation' && r.raison === 'plusieurs équipes'), 'deux dotations : on ne choisit pas');
-  assert.ok(restent.some(r => r.service === 'cuisine' && r.raison === 'aucune équipe'));
-  // Et la journée tourne sur ce qui a été confié.
-  const r = P.simuler({ vols: VOLS, liaisons: [], bareme: BAREME, ateliers: etat.ateliers, ...PARCOURS });
-  assert.equal(r.ok, true);
-  assert.ok(r.lots.some(l => l.service === 'prepa' && l.classes.includes('TX/YC')));
 });
 
 test('les colonnes du tableau se groupent par nœud de départ, puis la jonction', () => {

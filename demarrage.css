@@ -17,7 +17,6 @@ body.editing .horloge-box,body.editing .vitesse-box,body.editing .kpi-grille{dis
 body.avant-lancement .kpi-grille{display:none}
 
 /* La barre de contexte se réduit à ce qu'elle dit vraiment. */
-.context-bar{padding-top:6px;padding-bottom:6px}
 
 
 /* ==========================================================================

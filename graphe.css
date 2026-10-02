@@ -74,8 +74,6 @@
 .pc-outils label{display:grid;gap:4px;font-size:12px;color:var(--txt2)}
 .pc-outils .pc-nom{font:inherit;font-weight:700;padding:7px 9px;border:1.5px solid var(--bordure2);border-radius:var(--r2);background:var(--bg3);color:var(--txt);min-width:180px}
 .pc-outils-fin{flex:1}
-.pc-qui{margin:0;font-size:12.5px;color:var(--txt2)}
-.pc-qui .pc-cab{display:inline-flex;align-items:center;gap:4px;margin-right:6px;color:var(--txt)}
 .pc-geste{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--txt2)}
 .pc-geste .ico{color:var(--c-equipes);flex:none}
 .pc-rond{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--c-equipes);color:#fff;font-size:13px;line-height:1}
@@ -84,14 +82,9 @@
 .pc-pan-tete{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .pc-pan-tete .ico{color:var(--c-equipes)}
 .pc-pan-tete span{color:var(--txt2);font-size:12.5px}
-.pc-equipe small{font-weight:500;color:var(--txt2);margin-left:4px}
 
 /* --- Les liens de l'unité (L'unité › Les liens) -------------------------- */
 .fc-graphe-zone{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin:0 0 14px;--c:var(--c-unite)}
-.fc-graphe-outils{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:end}
-.fc-graphe-outils label{display:grid;gap:4px;font-size:12px;color:var(--txt2)}
-.fc-graphe-outils select{min-width:200px}
-.fc-graphe-outils .fc-graphe-fin{flex:1}
 .fc-detail{border:1px solid var(--bordure);border-left:4px solid var(--c-unite);border-radius:10px;background:var(--bg3);padding:10px 14px}
 .fc-detail:empty{display:none}
 .fc-detail p{margin:0 0 6px}

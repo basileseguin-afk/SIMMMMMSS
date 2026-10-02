@@ -9,10 +9,6 @@ body.ateliers-open .workbench{display:none}
 /* Les quatre chiffres qui disent si la journée tient. */
 .at-indicateurs{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1px;
   background:var(--bordure);border:1px solid var(--bordure);border-radius:10px;overflow:hidden;margin:16px 0}
-.at-kpi{background:var(--bg3);padding:12px 16px}
-.at-kpi .lab{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--txt2);font-weight:700}
-.at-kpi .val{font-size:26px;font-weight:800;margin:2px 0 2px;color:var(--txt)}
-.at-kpi .note{font-size:12px;color:var(--txt2)}
 
 #at-status:not(:empty){font-size:13px;color:var(--accent2);margin:8px 0;white-space:pre-line}
 .at-anomalies{border-left:3px solid var(--warn-stroke);background:var(--warn-fill);color:var(--txt);
@@ -138,9 +134,6 @@ body.ateliers-open .workbench{display:none}
 .at-tunnel .chk{margin:0}
 .at-tunnel-unite{font-size:12px;color:var(--txt2)}
 /* Le handling : une durée par vol, par compagnie. */
-.at-duree{display:flex;align-items:center;gap:8px;margin:0 14px 6px}
-.at-duree-cie{min-width:200px;font-size:13px;font-weight:600}
-.at-duree input[type=number]{max-width:110px}
 .at-handling{padding-top:0}
 .at-tunnel.arret input:not([type=checkbox]),.at-tunnel.arret .at-tunnel-unite{opacity:.5}
 .at-tunnel-total{font-size:12px;color:var(--txt2);align-self:center}
@@ -199,7 +192,6 @@ body.ateliers-open .workbench{display:none}
  * ==========================================================================*/
 .pc-defauts{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;padding:10px 12px;
   border:1px solid var(--bordure);border-radius:9px;background:var(--bg2)}
-.pc-defauts-lab{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--txt2);align-self:center}
 .pc-defauts label{display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:700;color:var(--txt2)}
 #view-ateliers .pc-defauts select{font-size:12px;padding:5px 7px;max-width:170px}
 .at-titre-aide{margin-top:18px}
@@ -215,9 +207,6 @@ body.ateliers-open .workbench{display:none}
 .pc-sec,.qf{display:grid;gap:10px;margin-bottom:8px}
 .pc-sous{font-size:12px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--txt2);margin-left:6px}
 .at-titre .pc-sous{font-size:12px}
-.pc-qui{font-size:12px;color:var(--txt2);flex:1;min-width:160px}
-.pc-cab{display:inline-block;font-size:12px;font-weight:800;border-radius:5px;padding:1px 6px;
-  background:color-mix(in srgb,var(--accent) 14%,var(--bg3));color:var(--accent2)}
 
 .qf-barre{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .qf-barre-fin{flex:1}
@@ -299,24 +288,6 @@ body.ateliers-open .workbench{display:none}
 .qf-t-echeance{stroke:var(--rouge);stroke-width:1.5;stroke-dasharray:4 3}
 .qf-t-echeance-txt{font-size:10px;fill:var(--rouge);font-weight:700}
 
-.qf-menu{position:absolute;z-index:30;width:300px;max-width:calc(100vw - 32px);background:var(--bg3);
-  border:1px solid var(--bordure2);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:10px;display:grid;gap:6px}
-.qf-menu-titre{margin:0;font-weight:800;font-size:13px}
-.qf-menu-titre span{font-weight:500;color:var(--txt2)}
-.qf-menu-note{margin:2px 0 0;font-size:12px;color:var(--txt2)}
-.qf-menu-liste{display:grid;gap:4px}
-.qf-choix{font:inherit;display:grid;grid-template-columns:18px 1fr;gap:6px;align-items:start;text-align:left;width:100%;
-  border:1px solid var(--bordure);border-radius:7px;background:var(--bg2);padding:6px 8px;cursor:pointer;color:var(--txt);min-height:0}
-.qf-choix b{display:block;font-size:13px}
-.qf-choix small{display:block;font-size:12px;color:var(--txt2)}
-.qf-choix:hover,.qf-choix:focus-visible{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--bg2))}
-.qf-choix.actuel{border-color:var(--vert);background:var(--ok-fill)}
-.qf-choix.nouveau{border-style:dashed}
-.qf-coche{font-weight:800;color:var(--accent2);text-align:center}
-.qf-menu-tout{display:flex;gap:6px;align-items:flex-start;font-size:12px;padding:6px 8px;border-radius:7px;background:var(--bg2)}
-.qf-menu-pied{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;border-top:1px solid var(--bordure);padding-top:6px}
-.qf-lien{font:inherit;font-size:12px;border:0;background:none;color:var(--accent2);cursor:pointer;padding:2px 0;text-decoration:underline;min-height:0;text-align:left}
-.qf-lien.danger{color:var(--rouge)}
 
 /* Une case : ses commandes dans l'ordre, et leurs man-minutes. */
 .at-cmd-chip{appearance:none;font:inherit;font-size:12px;font-weight:700;padding:3px 8px;min-height:28px;border-radius:99px;cursor:pointer;
@@ -412,7 +383,6 @@ body.ateliers-open .workbench{display:none}
 .pc-cmds-ajout .at-ajout-ouvrir{width:100%}
 .at-creneau{flex-wrap:wrap}
 #view-ateliers .at-creneau input[type=time]{width:auto;min-width:0}
-.at-intro-aide{padding:0 14px 8px;margin:0}
 .at-vitesse{display:inline-flex;align-items:center;gap:3px;font-weight:700;color:var(--txt2)}
 #view-ateliers .at-vitesse input{width:58px;min-width:0}
 

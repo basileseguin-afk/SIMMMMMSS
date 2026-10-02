@@ -68,15 +68,6 @@
     return 'service';
   }
 
-  /** Les étapes et leur couleur (variables CSS définies dans histoire.css). */
-  const ETAPES = {
-    vols: { ico: 'avion', couleur: 'var(--c-vols)' },
-    ateliers: { ico: 'equipe', couleur: 'var(--c-equipes)' },
-    reglages: { ico: 'chrono', couleur: 'var(--c-temps)' },
-    plan: { ico: 'journee', couleur: 'var(--c-journee)' },
-    flux: { ico: 'unite', couleur: 'var(--c-unite)' }
-  };
-
   /** Une classe de cabine : sa pastille de couleur et son nom, jamais l'un sans l'autre. */
   function puceClasse(cabine) {
     return `<span class="puce-classe" data-cab="${String(cabine).replace(/[^A-Z]/g, '')}" aria-hidden="true"></span>`;
@@ -102,7 +93,7 @@
     }).join('');
   }
 
-  const api = { nomLisible, TRAITS, ico, icoService, ETAPES, puceClasse };
+  const api = { nomLisible, TRAITS, ico, icoService, puceClasse };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyIcones = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

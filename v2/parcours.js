@@ -173,14 +173,6 @@
     return n;
   }
 
-  /** Le parcours d'une classe : le sien, sinon celui de sa cabine. */
-  function parcoursDe(etat, classe) {
-    const id = (etat.parcoursClasse || {})[classe.id] || (etat.parcoursCabine || {})[classe.cabine];
-    return (etat.parcours || []).find(p => p.id === id) || null;
-  }
-
-
-
   /* ======================================================================
    *  PARCOURS × ÉQUIPES — le flux et le temps, au même endroit
    *
@@ -261,32 +253,6 @@
     return out;
   }
 
-  /**
-   * Pour chaque parcours : ses classes, et à chaque étape qui les travaille.
-   *
-   * @returns [{ parcours, classes:[id], etapes:[{ service, equipes:[id],
-   *   fabriquent:[id], lavage, dispo, classes:[{id, atelier}], manquantes:[id] }] }]
-   */
-  function couverture(etat, classes) {
-    const routes = P.routesDesClasses(classes, etat);
-    const ateliers = etat.ateliers || [];
-    return (etat.parcours || []).map(p => {
-      const cls = classes.filter(c => { const r = routes.get(c.id); return r && r.parcours.id === p.id; });
-      const etapes = etapesOrdonnees(p).map(service => {
-        const equipes = ateliers.filter(a => a.service === service);
-        const fab = equipes.filter(fabrique);
-        const lavage = equipes.some(a => a.type === 'lavage'), dispo = equipes.some(a => a.type === 'dispo' || a.type === 'handling');
-        const parClasse = cls.map(c => ({ id: c.id,
-          atelier: (fab.find(a => (a.lots || []).some(l => l.includes(c.id))) || fusionneePar(etat, service, c.id) || {}).id || null }));
-        // Une plonge lave les retours, une mise à disposition sert tout le
-        // monde : ni l'une ni l'autre n'a de classe à se voir confier.
-        const manquantes = lavage || dispo ? [] : parClasse.filter(x => !x.atelier).map(x => x.id);
-        return { service, equipes: equipes.map(a => a.id), fabriquent: fab.map(a => a.id),
-          lavage, dispo, classes: parClasse, manquantes };
-      });
-      return { parcours: p, classes: cls.map(c => c.id), etapes };
-    });
-  }
 
   const parEcheance = (ids, classes) => {
     const ech = new Map(classes.map(c => [c.id, c.echeance]));
@@ -320,24 +286,6 @@
     return a;
   }
 
-  /**
-   * Complète tous les parcours d'un coup : à chaque étape où une seule équipe
-   * fabrique, les classes manquantes lui sont confiées. Là où il n'y a
-   * personne, ou plusieurs équipes, on ne choisit pas à la place de
-   * l'utilisateur : ces étapes sont renvoyées pour qu'il décide.
-   */
-  function completer(etat, classes) {
-    const faits = [], restent = [];
-    for (const c of couverture(etat, classes)) for (const e of c.etapes) {
-      if (!e.manquantes.length) continue;
-      if (e.fabriquent.length === 1) {
-        const n = confier(etat, e.fabriquent[0], e.manquantes, classes);
-        if (n) faits.push({ service: e.service, atelier: e.fabriquent[0], n });
-      } else restent.push({ parcours: c.parcours.id, service: e.service, manquantes: e.manquantes,
-        raison: e.fabriquent.length ? 'plusieurs équipes' : 'aucune équipe' });
-    }
-    return { faits, restent };
-  }
 
   /**
    * Les colonnes du tableau « Qui fabrique quoi » : les services de tous les
@@ -924,20 +872,6 @@
    *  sortir, et ceux qui le livraient livrent ceux qu'il livrait.
    * ====================================================================*/
 
-  /** Le chemin propre d'une commande, créé au besoin : une copie de son modèle, sans créer de case. */
-  function cheminPropre(etat, cmd, classes) {
-    const deja = cheminDe(etat, cmd); if (deja) return deja;
-    etat.parcours = etat.parcours || []; etat.parcoursClasse = etat.parcoursClasse || {};
-    const c = (classes || []).find(x => x.id === cmd) || { id: cmd, cabine: String(cmd).slice(String(cmd).lastIndexOf('/') + 1) };
-    const modele = parcoursDe(etat, c);
-    // `cases` : les cases viennent des coches, pas de la création du chemin.
-    const p = { id: uid(), nom: nomDeChemin(etat, etiquette(cmd)),
-      noeuds: modele ? P.servicesDuParcours(modele).slice() : [],
-      liens: modele ? P.arcsDuParcours(modele).map(a => ({ de: a.from, vers: a.to })) : [], prepa: true, cases: true };
-    etat.parcours.push(p);
-    etat.parcoursClasse[cmd] = p.id;
-    return p;
-  }
 
   /* Ceux qui livrent `s` et ceux qu'il livre, parmi les services du chemin,
    * d'après un graphe de référence : on enjambe ceux qui n'y sont pas. */
@@ -2279,10 +2213,10 @@
   }
 
 
-  const api = { annoncer, fusionneePar, passePar, chaines, insererPrepa, depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, couverture, confier, nouvelleEquipe,
-    completer, colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, donnerCases, completerCases, nomLibre, caseHandling, anciensHandlings, brancherHandling, caseRobot, remplacerEtape,
+  const api = { annoncer, fusionneePar, passePar, chaines, insererPrepa, depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, confier, nouvelleEquipe,
+    colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, donnerCases, completerCases, nomLibre, caseHandling, anciensHandlings, brancherHandling, caseRobot, remplacerEtape,
     SERVICES_DISPO, estDispo, caseDispo, anciensDispos, partagerDispos, separerParCommande, ajouterBesoin,
-    cheminPropre, insererService, retirerService, integrerArmement, delierHandling, armementIntegre, versParCompagnie, liberer, insererParEcheance, cocher, passerPar, grille, natureService, equipeNeuve,
+    insererService, retirerService, integrerArmement, delierHandling, armementIntegre, versParCompagnie, liberer, insererParEcheance, cocher, passerPar, grille, natureService, equipeNeuve,
     marquerTypes, typeSuivi, fluxDe, signature, types, commandesDuType, nouveauType, assignerType, nettoyerTypes, nomVariante, adapter,
     changerFlux, regrouper, EditeurParcours };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

@@ -5,13 +5,12 @@ body{height:100dvh;grid-template-rows:auto auto auto minmax(0,1fr);font-size:14p
 header{padding:14px 24px;gap:24px;border-bottom:1px solid var(--bordure)}
 .marque{font-size:17px;gap:12px}.marque small{display:block;margin-top:4px;font-size:12px;letter-spacing:.04em}
 .brand-mark{display:grid;place-items:center;width:38px;height:38px;background:#086c71;color:white;border-radius:10px;font-size:22px}
-.brand-separator{color:var(--bordure2);margin:0 8px;font-weight:400}
 .horloge-box{border:0;background:transparent;padding:0;gap:16px}.jour{font-size:12px;color:var(--txt3)}
 .horloge{font-size:24px}.run-state{font-size:12px;color:var(--txt2);border-left:1px solid var(--bordure);padding-left:14px;max-width:90px}
 .btn{font-family:inherit;border-width:1px;padding:9px 12px;min-height:36px;font-weight:600}.btn-play{background:#086c71;border-color:#086c71}.btn-play:hover{background:#055357;border-color:#055357}
 button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,.zone:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
-.btn:disabled{opacity:.55}.context-bar{padding:9px 24px;display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:12px;border-bottom:1px solid var(--bordure);background:var(--bg2)}
-.context-bar>div{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.demo-badge{font-size:12px;text-transform:uppercase;font-weight:800;letter-spacing:.07em;border:1px solid var(--bordure2);padding:3px 7px;border-radius:4px;color:var(--txt2)}
+.btn:disabled{opacity:.55}
+.demo-badge{font-size:12px;text-transform:uppercase;font-weight:800;letter-spacing:.07em;border:1px solid var(--bordure2);padding:3px 7px;border-radius:4px;color:var(--txt2)}
 #source-label{overflow-wrap:anywhere}#source-count{color:var(--txt2)}.text-button{border:0;background:none;color:var(--accent2);font:inherit;cursor:pointer;text-decoration:underline;text-underline-offset:3px;padding:5px}
 .kpi-grille{grid-template-columns:repeat(4,minmax(0,1fr));gap:0;margin:0;padding:18px 24px;background:var(--bg3);border-bottom:1px solid var(--bordure)}
 .kpi{box-shadow:none;border:0;border-right:1px solid var(--bordure);border-radius:0;padding:0 24px}.kpi:first-child{padding-left:0}.kpi:last-child{border:0}.kpi .lab{font-size:12px;letter-spacing:.05em;min-height:26px}.kpi .val{font-size:30px;margin:2px 0 4px}.kpi-note{font-size:12px;color:var(--txt2);line-height:1.4}

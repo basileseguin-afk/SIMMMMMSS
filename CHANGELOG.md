@@ -5,6 +5,32 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-02 — Grand nettoyage : code mort et règles CSS orphelines
+
+Demande : « un grand nettoyage, avec beaucoup de précautions, sans rien
+perdre ». Rien de visible ni de calculé ne change ; on retire seulement ce
+que plus rien n'appelle.
+
+- **Fichiers** : tous les fichiers servis sont chargés par les pages, toutes
+  les docs sont citées (les audits passés restent comme historique) : aucun
+  fichier retiré.
+- **Fonctions jamais appelées** (v1 et v2, avec leur export) :
+  `debutAvecChauffeurs`, `travailDuPoste` (`moteur/production.js`) ;
+  `cheminPropre`, `completer`, `parcoursDe`, `couverture` (`parcours.js`) ;
+  `ecrireCsv` (`tableur.js`) ; `canTravel` (`flow-center.js`) ; `ETAPES`
+  (`icones.js`) ; l'accesseur `vivant` (`moteur/noyau.js`). Leurs tests
+  unitaires partent avec elles ; celui de `canTravel` devient « un lien de
+  personnel entre deux services est refusé : seuls les runners circulent »,
+  la règle qu'il gardait.
+- **Règles CSS orphelines** (≈ 54 par version, sélecteurs qu'aucun HTML ni
+  JS ne produit) dans `ateliers`, `demarrage`, `graphe`, `histoire`,
+  `interface`, `unite`, `usability`.css. Gardées exprès : les familles
+  construites à la volée (`ton-*`, `etat-*`, `vf-*`, `handle-*`, `svc-*`).
+- Bilan : −248 lignes de JS, −118 lignes de CSS, −43 lignes de tests.
+- Preuves : 359 tests unitaires et tous les tests navigateur passent ; tour
+  des 23 pages (v1) et 26 pages (v2) sans erreur ; captures avant/après des
+  49 pages identiques au pixel près, hors numéro de version.
+
 ## 2026-10-02 — Armement : ajouter une compagnie au handling, d'un clic
 
 Retour d'usage : « pourquoi je ne peux pas cliquer sur la case d'EZY dans

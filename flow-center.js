@@ -31,13 +31,6 @@ function validate(raw){
  return {schema:'ory-flows',version:1,flows,internal:Object.fromEntries(Object.entries(raw.internal))};
 }
 function usable(f,points){return f.enabled&&f.type!=='unclassified'&&points.some(p=>p.id===f.from)&&points.some(p=>p.id===f.to);}
-function canTravel(state,points,from,to,role){
- if(!['personnel','runner'].includes(role))return false;
- const a=points.find(p=>p.id===from),b=points.find(p=>p.id===to);if(!a||!b)return false;
- if(a.owner===b.owner&&state.internal[a.owner]!==false)return true;
- if(a.owner!==b.owner&&role!=='runner')return false;
- return state.flows.some(f=>usable(f,points)&&f.from===from&&f.to===to&&(f.type===role||(role==='runner'&&f.type==='personnel')));
-}
 function initial(pairs){return validate({schema:'ory-flows',version:1,internal:{},flows:pairs.map(([a,b],i)=>({id:'legacy-flow-'+i,type:'unclassified',from:endpointId(a),to:endpointId(b),enabled:true,label:''}))});}
 class FlowCenter{
  constructor(adapter){
@@ -262,5 +255,5 @@ class FlowCenter{
  export(){const link=document.createElement('a');link.href=URL.createObjectURL(new Blob([JSON.stringify(this.state,null,2)],{type:'application/json'}));link.download='centre-flux-'+new Date().toISOString().slice(0,10)+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(link.href),1000);this.status('Flux et règles humaines exportés. Les emplacements sont référencés par leurs identifiants du plan.');}
  async import(e){const file=e.target.files[0];if(!file)return;try{if(file.size>2*1024*1024)throw Error('Fichier trop volumineux (2 Mo maximum).');const state=validate(JSON.parse(await file.text()));if(!confirm('Remplacer la configuration des flux ? Cette action est annulable.'))return;this.change(()=>{this.state=state;},'Flux importés. Les emplacements absents sont signalés dans la liste.');}catch(err){this.status('Import refusé : '+err.message+' Configuration actuelle conservée.');}finally{e.target.value='';}}
 }
-const api={TYPES,FAMILIES,endpoints,endpointId,validate,initial,usable,canTravel,FlowCenter};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.OrlyFlows=api;
+const api={TYPES,FAMILIES,endpoints,endpointId,validate,initial,usable,FlowCenter};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.OrlyFlows=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

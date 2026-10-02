@@ -592,22 +592,6 @@
   function chauffeursPresents(creneaux, t) {
     return creneaux.reduce((n, c) => n + (t >= c.de && t < c.a ? c.n : 0), 0);
   }
-  /**
-   * Le premier instant, à partir de `t0`, où `besoin` chauffeurs sont libres
-   * pendant tout le chargement. `occupes` : les chargements déjà décidés
-   * ({ de, a, n }) ; `finDe(s)` : la fin d'un chargement qui commencerait à `s`.
-   * Infinity : jamais (pas assez de chauffeurs dans aucun créneau).
-   */
-  function debutAvecChauffeurs(creneaux, occupes, t0, besoin, finDe) {
-    const bornes = [...new Set(creneaux.flatMap(c => [c.de, c.a]).concat(occupes.flatMap(o => [o.de, o.a])))].sort((x, y) => x - y);
-    const libres = t => chauffeursPresents(creneaux, t) - occupes.reduce((n, o) => n + (t >= o.de && t < o.a ? o.n : 0), 0);
-    for (const s of [t0, ...bornes.filter(b => b > t0)]) {
-      const f = finDe(s);
-      if (!Number.isFinite(f)) continue;
-      if ([s, ...bornes.filter(b => b > s && b < f)].every(t => libres(t) >= besoin)) return s;
-    }
-    return Infinity;
-  }
 
   /** Combien de vols d'une compagnie un camion charge en un trajet : le sien, sinon celui de toutes, sinon 1. */
   function volsParCamionDe(atelier, cie) {
@@ -975,12 +959,6 @@
     presence: 495
   };
 
-  /** Travail effectif d'un poste : la présence moins les pauses qu'il contient. */
-  function travailDuPoste(regime) {
-    const r = normaliserRegime(regime);
-    if (!r.actif) return Infinity;
-    return r.presence - r.seuils.reduce((n, s) => n + s.duree, 0);
-  }
 
   /**
    * @param regime le régime propre à un atelier ; `false` ou `{actif:false}`
@@ -2443,13 +2421,13 @@
   const api = {
     MINUTES_PAR_JOUR, CABINES, TYPES,
     minutes, hhmm, idClasse, libelleClasse, nomCabine, enClair,
-    REGIME_DEFAUT, normaliserRegime, travailDuPoste, executerTache,
+    REGIME_DEFAUT, normaliserRegime, executerTache,
     classesDeVols, classesCategories, chargeParHandling, compagniesConstruites, declarerCategories, volsDesClasses, compteDuJour, appliquerConditions, dureeHandling, compagniesDe, AVANCE_HANDLING, BAREME_DEMO, RENDEMENT_DEMO, travailClasse, travailDans, dureeFusion,
     PAX_TYPE, TOUTES, cleBareme, normaliserBareme, minutesParVol,
     arcsDuParcours, servicesDuParcours, routesDesClasses,
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,
     pausesDe, fusionnerPauses, arretsDeLigne, finAvecPauses, vaguesDe, disponibleDes, debitRobot, ouvertureDe, prochaineOuverture,
-    categorieVol, chauffeursDe, creneauxDe, chauffeursPresents, debutAvecChauffeurs, dureeLavageVol, trajetHandling, debutTrajet, volsParCamionDe, vitesseTunnel,
+    categorieVol, chauffeursDe, creneauxDe, chauffeursPresents, dureeLavageVol, trajetHandling, debutTrajet, volsParCamionDe, vitesseTunnel,
     UNITES_DEFAUT, unitesDe, retoursDeVols, besoinMateriel, sourceRetours, SOURCES_RETOURS,
     simuler, niveauA, niveauLineaire, dureeLisible
   };

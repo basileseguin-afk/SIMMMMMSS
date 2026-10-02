@@ -351,15 +351,6 @@
     return lignes.map(l => l.map(v => { const s = v.trim(); return s === '' ? null : s; }));
   }
 
-  /** Écrit un CSV qu'Excel en français ouvre d'un double-clic. */
-  function ecrireCsv(lignes) {
-    const cell = v => {
-      if (v === null || v === undefined) return '';
-      const s = typeof v === 'number' ? String(v).replace('.', ',') : String(v);
-      return /[;"\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-    };
-    return '﻿' + lignes.map(l => l.map(cell).join(';')).join('\r\n') + '\r\n';
-  }
 
   /* ======================================================================
    *  6. LIRE UN FICHIER, QUEL QU'IL SOIT
@@ -486,7 +477,7 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
-  const api = { ecrireClasseur, lireClasseur, lireCsv, ecrireCsv, lireFichier, enObjets, feuille,
+  const api = { ecrireClasseur, lireClasseur, lireCsv, lireFichier, enObjets, feuille,
     cleEntete, heureDe, hhmm, nombreDe, ouiNon, telecharger, correspondance, zipper };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyTableur = api;
