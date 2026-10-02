@@ -278,16 +278,20 @@
      * (pas une classe), en parallèle des repas, et les deux se retrouvent au
      * handling, qui charge le vol quand tout est prêt (retour d'usage du 02/10).
      * Placé dans un flux, il n'y sert à rien : on propose de l'en retirer. */
+    /** Les services de handling de l'unité (ceux de ses équipes de chargement). */
+    handlings(st) { return [...new Set(((st || this.etat).ateliers || []).filter(a => a.type === 'handling').map(a => a.service))]; }
+
     lienHandling(s) {
       const st = this.etat, handlings = st.ateliers.filter(a => a.type === 'handling');
       const qui = handlings.length ? handlings.map(a => '« ' + esc(a.nom) + ' »').join(', ') : '';
-      const dans = PC.types(st).filter(t => P.servicesDuParcours(t).includes(s.id));
+      const integre = handlings.length && PC.armementIntegre(st, [s.id], this.handlings(st));
       return `<div class="mu-lien-handling"><p><span aria-hidden="true">🚚</span> <b>Lié au handling.</b> ${handlings.length
         ? 'Chaque vol que ' + qui + (handlings.length > 1 ? ' chargent' : ' charge') + ' demande son armement ; le handling attend l’armement et les repas du vol pour le charger.'
         : 'Pas encore de handling dans l’unité : chaque départ demande son armement. Quand un handling chargera les vols, il attendra leur armement.'}
-        L’armement n’est pas une étape des chemins des repas : on arme un vol, pas une classe.</p>
-        ${dans.length ? `<p class="mini-note">${esc(s.nom)} est dans ${dans.length > 1 ? dans.length + ' flux' : 'le flux'} ${esc(dans.map(t => '« ' + t.nom + ' »').join(', '))} : il n’y sert à rien.
-          <button class="btn btn-sm" type="button" data-mu-action="retirer-des-flux">Le retirer des flux</button></p>` : ''}</div>`;
+        On arme un vol, pas une classe : une case par compagnie.</p>
+        ${!handlings.length ? '' : integre ? `<p class="mini-note mu-arm-ok">✓ Dans tous les chemins, en branche à part, relié seulement au handling.</p>`
+          : `<p class="mini-note">Dans les chemins : ${esc(s.nom)} n’est pas partout, ou pas relié seulement au handling.
+          <button class="btn btn-sm btn-play" type="button" data-mu-action="integrer-armement">L’intégrer à tous les chemins, relié au handling</button></p>`}</div>`;
     }
 
     /* Un service qui travaille par compagnie (l'armement) : ses minutes par vol,
@@ -601,7 +605,8 @@
       const avant = PC.natureService(this.etat, service, this.nom(service));
       // Par catégories, ou plus par catégories : ses équipes repartent d'une grille vide.
       if (v === 'categories' || avant === 'categories') {
-        if (cases.some(a => a.lots.some(l => l.length)) && !confirm('Changer ce que fait « ' + this.nom(service) + ' » ? Ce que ses équipes préparent est effacé (leur grille change de colonnes) ; « Annuler » revient en arrière.')) { this.rendreServices(); return; }
+        // Vers « par compagnie », ses équipes gardent leurs compagnies ; dans l'autre sens, leur grille repart de zéro.
+        if (avant === 'categories' && cases.some(a => a.lots.some(l => l.length)) && !confirm('Changer ce que fait « ' + this.nom(service) + ' » ? Ce que ses équipes préparent est effacé (leur grille change de colonnes) ; « Annuler » revient en arrière.')) { this.rendreServices(); return; }
         delete this.natures[service];
         return this.at.changer(() => {
           const st = this.at.state;
@@ -611,11 +616,17 @@
             : [{ id: root.OrlyEchanges ? root.OrlyEchanges.codeService(this.nom(service), st) : 'ARM', nom: this.nom(service), minutes: {} }];
           else delete st.categories[service];
           for (const a of st.ateliers) if (a.service === service) {
-            if (v === 'categories') this.at.typer(a, 'manuel'); else if (v !== 'manuel') this.at.typer(a, v);
-            a.lots = [];
+            if (v === 'categories') { this.at.typer(a, 'manuel'); a.lots = a.lots || []; } else { if (v !== 'manuel') this.at.typer(a, v); a.lots = []; }
           }
-          if (v !== 'categories') this.natures[service] = v;
-        }, v === 'categories' ? this.nom(service) + ' travaille par compagnie, lié au handling : donnez ses minutes par vol, puis cochez les compagnies dans ses équipes.'
+          if (v === 'categories') {
+            // Ses cases par classe deviennent des cases par compagnie ; il entre dans tous les chemins, relié au handling.
+            PC.versParCompagnie(st, service, st.categories[service][0].id);
+            PC.integrerArmement(st, [service], this.handlings(st));
+          } else {
+            for (const p of st.parcours || []) if (P.servicesDuParcours(p).includes(service)) PC.retirerService(p, service);
+            this.natures[service] = v;
+          }
+        }, v === 'categories' ? this.nom(service) + ' travaille par compagnie, relié au handling dans tous les chemins : donnez ses minutes par vol, puis cochez les compagnies dans ses équipes.'
           : this.nom(service) + ' : ' + NATURES.find(x => x.id === v).nom.toLowerCase() + '.');
       }
       if (!cases.length) { this.natures[service] = v; this.rendreServices(); return; }
@@ -780,6 +791,13 @@
             const eq = u.etat.ateliers.filter(a => a.service === s);
             const fab = eq.filter(a => a.type === 'manuel' || a.type === 'robot');
             const prep = fab.length ? cmds.filter(c => fab.some(a => a.lots.some(l => l.includes(c.id))) || PC.fusionneePar(u.etat, s, c.id)).length : null;
+            // L'armement (par compagnie, relié au handling) : ses compagnies cochées, pas les repas.
+            const propres = u.at.classesDe(s);
+            if (propres) {
+              const faites = new Set(fab.flatMap(a => a.lots.flat()));
+              const n = propres.filter(c => faites.has(c.id)).length;
+              return { id: s, nom: u.nom(s), ico: I ? I.icoService(s, u.nom(s)) : 'service', sous: n + '/' + pl(propres.length, 'compagnie'), ton: n < propres.length ? 'neutre' : 'ok' };
+            }
             const sous = !eq.length ? 'aucune équipe' : fab.length ? prep + '/' + cmds.length + ' préparées' : eq[0].type === 'dispo' ? 'sert tout le monde' : eq[0].type === 'lavage' ? 'plonge' : 'par vol';
             return { id: s, nom: u.nom(s), ico: I ? I.icoService(s, u.nom(s)) : 'service', sous, ton: !eq.length || (fab.length && prep < cmds.length) ? 'neutre' : 'ok' };
           });
@@ -971,10 +989,12 @@
           case 'equipe': return this.ajouterEquipe(id);
           case 'par-compagnie': return this.nature(id, 'categories');
           // L'armement n'a rien à faire dans les chemins des repas.
-          case 'retirer-des-flux':
-            return this.at.changer(() => {
-              for (const t of PC.types(this.at.state)) if (P.servicesDuParcours(t).includes(id)) PC.retirerService(t, id);
-            }, this.nom(id) + ' sort des flux : il reste lié au handling, vol par vol.');
+          // L'armement dans tous les chemins, en branche à part, relié seulement au handling.
+          case 'integrer-armement': {
+            let n = 0;
+            this.at.changer(() => { n = PC.integrerArmement(this.at.state, [id], this.handlings(this.at.state)); }, '');
+            return this.at.rendre(this.nom(id) + ' : intégré à ' + pl(n, 'chemin') + ', relié seulement au handling. « Annuler » revient en arrière.');
+          }
           case 'liberer': {
             let parties = [];
             this.at.changer(() => { parties = PC.liberer(this.at.state, id, this.at.classes); }, '');

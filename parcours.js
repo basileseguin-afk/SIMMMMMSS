@@ -1023,6 +1023,54 @@
     return true;
   }
 
+  /* L'ARMEMENT DANS LES CHEMINS (retour d'usage du 02/10 : « intègre l'armement
+   * sur tous les chemins et lie-le uniquement au handling »). Dans chaque chemin
+   * (flux et chemins propres), l'armement est une branche à part : un nœud, une
+   * seule flèche, vers le handling — aucune vers les repas ni depuis eux. Il
+   * travaille en parallèle des repas ; le handling attend les deux pour charger.
+   * Un chemin sans handling le reçoit après ses dernières étapes. Un armement
+   * placé au milieu d'un chemin en sort : ce qui le livrait livre ce qu'il
+   * livrait. Modifie `etat`.
+   * @returns {number} le nombre de chemins changés */
+  function integrerArmement(etat, armements, handlings) {
+    const arm = new Set(armements || []), hs = [...new Set(handlings || [])].filter(h => !arm.has(h));
+    if (!arm.size || !hs.length) return 0;
+    let n = 0;
+    for (const p of etat.parcours || []) {
+      p.noeuds = (p.noeuds || []).slice(); p.liens = (p.liens || []).slice();
+      if (!p.noeuds.some(x => !arm.has(x))) continue;          // un chemin vide reste vide
+      const avant = JSON.stringify([p.noeuds, p.liens]);
+      for (const a of arm) retirerService(p, a);
+      for (const h of hs) if (!p.noeuds.includes(h)) {
+        const fins = p.noeuds.filter(x => !hs.includes(x) && !p.liens.some(l => l.de === x));
+        p.noeuds.push(h);
+        for (const x of fins) if (!creeBoucle(p, x, h)) p.liens.push({ de: x, vers: h });
+      }
+      for (const a of arm) { p.noeuds.push(a); for (const h of hs) p.liens.push({ de: a, vers: h }); }
+      if (JSON.stringify([p.noeuds, p.liens]) !== avant) n++;
+    }
+    return n;
+  }
+
+  /** L'armement est-il dans chaque chemin, relié seulement au handling ? */
+  function armementIntegre(etat, armements, handlings) {
+    const arm = new Set(armements || []), hs = new Set(handlings || []);
+    if (!arm.size || !hs.size) return false;
+    return (etat.parcours || []).filter(p => (p.noeuds || []).some(x => !arm.has(x))).every(p => [...arm].every(a =>
+      (p.noeuds || []).includes(a) && [...hs].every(h => (p.noeuds || []).includes(h) && (p.liens || []).some(l => l.de === a && l.vers === h))
+      && (p.liens || []).filter(l => l.de === a || l.vers === a).every(l => l.de === a && hs.has(l.vers))));
+  }
+
+  /** Ses cases par classe deviennent des cases par compagnie (« AF/YC » → « AF/@ARM ») : l'équipe garde ses compagnies. */
+  function versParCompagnie(etat, service, code) {
+    for (const a of etat.ateliers || []) {
+      if (a.service !== service || !Array.isArray(a.lots)) continue;
+      const vues = new Set();
+      a.lots = a.lots.map(l => [...new Set(l.map(id => (String(id).includes('/@') ? id : String(id).slice(0, String(id).lastIndexOf('/')) + '/@' + code)))]
+        .filter(id => !vues.has(id) && vues.add(id))).filter(l => l.length);
+    }
+  }
+
   /** Une commande rejoint les lignes d'une équipe à sa place dans l'ordre des départs (la plus pressée d'abord). */
   function insererParEcheance(a, cmd, classes) {
     const ech = new Map((classes || []).map(c => [c.id, c.echeance]));
@@ -2221,7 +2269,7 @@
   const api = { annoncer, fusionneePar, passePar, chaines, insererPrepa, depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, couverture, confier, nouvelleEquipe,
     completer, colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, donnerCases, completerCases, nomLibre, caseHandling, anciensHandlings, brancherHandling, caseRobot, remplacerEtape,
     SERVICES_DISPO, estDispo, caseDispo, anciensDispos, partagerDispos, separerParCommande, ajouterBesoin,
-    cheminPropre, insererService, retirerService, liberer, insererParEcheance, cocher, passerPar, grille, natureService, equipeNeuve,
+    cheminPropre, insererService, retirerService, integrerArmement, armementIntegre, versParCompagnie, liberer, insererParEcheance, cocher, passerPar, grille, natureService, equipeNeuve,
     marquerTypes, typeSuivi, fluxDe, signature, types, commandesDuType, nouveauType, assignerType, nettoyerTypes, nomVariante, adapter,
     changerFlux, regrouper, EditeurParcours };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

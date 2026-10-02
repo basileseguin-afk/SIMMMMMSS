@@ -1783,7 +1783,9 @@ function installerCentreReglages() {
       const par=new Map();
       for(const a of ((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]))
         par.set(a.service,(par.get(a.service)||false)||a.type==='manuel');
-      return [...par].filter(([,manuel])=>!manuel).map(([s])=>s);
+      // Un service par compagnie (l'armement) a ses minutes dans sa fiche, pas dans le barème.
+      const parCompagnie=Object.keys((Sim.ateliers&&Sim.ateliers.state.categories)||{});
+      return [...new Set([...par].filter(([,manuel])=>!manuel).map(([s])=>s).concat(parCompagnie))];
     },
     delaiChargement:()=>CFG.loadDelay,
     change:()=>{if(Sim.ateliers)Sim.ateliers.rendre();majDemarrage();if(Sim.vue)Sim.vue.recalculer();},
@@ -1987,6 +1989,33 @@ function migrerRobot(){
     +'. Une seule case Robot les prépare, à régler (débit par commande, personnes) dans Mon unité › Services et équipes ou dans le tableau des minutes. « Annuler » revient en arrière.');
 }
 
+/* L'armement (retour d'usage du 02/10 : « intègre pour moi l'armement sur tous
+ * les chemins et lie-le uniquement au handling »). Fait une fois, dès qu'un
+ * handling existe : chaque service « Armement » travaille par compagnie (ses
+ * cases par classe deviennent des cases par compagnie), et il entre dans tous
+ * les chemins en branche à part, avec une seule flèche, vers le handling.
+ * L'état le retient (« armement-handling ») ; « Annuler » le défait. */
+function migrerArmement(){
+  const at=Sim.ateliers;if(!at)return;
+  if((at.state.migrations||[]).includes('armement-handling'))return;
+  const handlings=[...new Set(at.state.ateliers.filter(a=>a.type==='handling').map(a=>a.service))];
+  if(!handlings.length)return;                       // rien à quoi le relier : on attend un handling
+  const armements=servicesDisponibles().filter(s=>/armement/i.test(s.nom)&&!handlings.includes(s.id));
+  if(!armements.length)return;
+  let n=0;
+  at.changer(()=>{
+    const st=at.state;st.categories=st.categories||{};
+    for(const s of armements){
+      if(!(st.categories[s.id]||[]).length)st.categories[s.id]=[{id:OrlyEchanges.codeService(s.nom,st),nom:s.nom,minutes:{}}];
+      for(const a of st.ateliers)if(a.service===s.id&&a.type!=='manuel')at.typer(a,'manuel');
+      OrlyParcours.versParCompagnie(st,s.id,st.categories[s.id][0].id);
+    }
+    n=OrlyParcours.integrerArmement(st,armements.map(s=>s.id),handlings);
+    st.migrations=[...(st.migrations||[]),'armement-handling'];
+  },'');
+  at.rendre(armements.map(s=>s.nom).join(', ')+' : intégré à '+n+(n>1?' chemins':' chemin')+', en branche à part, relié seulement au handling ; une case par compagnie. « Annuler » revient en arrière.');
+}
+
 /* Le handling, là où l'on regarde les vols : s'il n'y en a pas, un vol est
  * « prêt » quand ses commandes le sont ; le mettre en place se fait d'un geste. */
 function renderHandlingVols() {
@@ -2148,7 +2177,7 @@ etape('plan',()=>{chargerZones();construirePlan();});
 etape('vols',()=>chargerVols(SAMPLE));
 etape('contrôles',initControles); etape('édition du plan',initEdition); etape('liens',initFlux);
 etape('cases et chemins',initAteliers); etape('réglages',initWorkbench); etape('services',initServices);
-etape('handling',initHandlingVols); etape('robot',migrerRobot);
+etape('handling',initHandlingVols); etape('robot',migrerRobot); etape('armement',migrerArmement);
 etape('planche retour',()=>{initPlanche();renderPlanche();});
 etape('mon unité',initUnite);
 // Les retours et le matériel se règlent dans les Réglages : leur panneau existe maintenant.

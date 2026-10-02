@@ -226,8 +226,19 @@ compagnie » ; la fiche d'un service dont le nom dit « armement » le propose).
 - **Minutes par vol** selon la compagnie (« Toutes les compagnies » par
   défaut) × vols ; échéance du vol. Sans minutes : le calcul le dit.
 - **Le handling** attend l'armement du vol pour le charger.
-- Placé dans un flux, il n'y sert à rien : la fiche le dit et propose « Le
-  retirer des flux ». Sur le chemin des repas, il n'est jamais un trou.
+- **Dans les chemins** (retour d'usage du 02/10 : « intègre l'armement sur
+  tous les chemins et lie-le uniquement au handling ») : dans chaque chemin
+  (flux et chemins propres), l'armement est une branche à part — un nœud,
+  une seule flèche, vers le handling ; aucune vers les repas ni depuis eux.
+  Un chemin sans handling le reçoit après ses dernières étapes ; un armement
+  placé au milieu d'un chemin en sort (ce qui le livrait livre ce qu'il
+  livrait). `PC.integrerArmement`, `PC.armementIntegre`. Fait une fois au
+  chargement dès qu'un handling existe (migration « armement-handling » :
+  le service passe par compagnie, ses cases par classe deviennent des cases
+  par compagnie — `PC.versParCompagnie` ; « Annuler » le défait) ; la fiche
+  dit si c'est fait, sinon « L'intégrer à tous les chemins, relié au
+  handling ». Sur le chemin des repas, il n'est jamais un trou ; le tableau
+  des minutes ne lui donne pas de colonne (ses minutes sont dans sa fiche).
 - **Excel** : feuille « Par compagnie » (Service, Compagnie, Minutes par vol) ;
   dans « Fabrications », la case s'écrit `AF/@ARM`.
 

@@ -5,6 +5,30 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-02 — L'armement dans tous les chemins, relié seulement au handling
+
+Demande : « intègre pour moi l'armement sur tous les chemins et lie-le
+uniquement au handling ».
+
+- Dans chaque chemin (flux et chemins propres), l'armement est une branche
+  à part : un nœud, une seule flèche, vers le handling ; aucune vers les
+  repas ni depuis eux. Un chemin sans handling le reçoit après ses dernières
+  étapes ; un armement placé au milieu d'un chemin en sort, et ce qui le
+  livrait livre ce qu'il livrait (`PC.integrerArmement`).
+- Fait pour vous au chargement, une fois, dès qu'un handling existe : chaque
+  service « Armement » passe par compagnie, ses cases par classe deviennent
+  des cases par compagnie (`PC.versParCompagnie`), et il entre dans tous les
+  chemins. « Annuler » le défait (migration « armement-handling »).
+- Fiche de l'armement : « ✓ Dans tous les chemins, en branche à part, relié
+  seulement au handling », sinon « L'intégrer à tous les chemins, relié au
+  handling » (un nouveau chemin, par exemple). Passer un service « par
+  compagnie » l'intègre aussi, en gardant ses compagnies.
+- Diagramme d'un flux : le nœud Armement compte ses compagnies cochées
+  (« 1/7 compagnies »), pas les repas. Tableau des minutes : plus de colonne
+  Armement (ses minutes sont dans sa fiche).
+- v1 et v2 (`parcours.js`, `unite.js`, `unite.css`, `sim.js`). Tests :
+  `tests/armement-chemins-browser.cjs`, `tests/categories-browser.cjs` adapté.
+
 ## 2026-10-02 — La version servie, dans l'en-tête
 
 Retour d'usage : « je ne vois pas la version » — elle n'était qu'en bas de

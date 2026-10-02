@@ -79,13 +79,15 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
      return {arm:arm.length,h:h.length,ok:h.every(l=>arm.some(a=>a.fin<=l.debut+1e-6))};});
    assert.ok(attente.h>0&&attente.ok,version+' : '+JSON.stringify(attente));
 
-   // 7. Placé dans un flux, il n'y sert à rien : la fiche propose de l'en retirer.
+   // 7. Placé au milieu d'un flux (après la Prépa) : la fiche le dit ; un clic l'intègre à tous les chemins, relié au handling.
    await page.evaluate(()=>Sim.ateliers.changer(()=>{const t=Sim.ateliers.state.parcours.find(x=>x.id==='sans-cuisine');t.noeuds.push('armement');t.liens.push({de:'prepa',vers:'armement'});},''));await attendre();
    await nav.aller(page,'mu-services');await page.locator('[data-mu-choisir=armement]').click();await attendre();
-   assert.match(await fiche('.mu-lien-handling').innerText(),/il n’y sert à rien/);
-   await fiche('[data-mu-action=retirer-des-flux]').click();await attendre();
-   assert.ok(!(await page.evaluate(()=>Sim.ateliers.state.parcours.some(p=>(p.noeuds||[]).includes('armement')))),'retiré des flux');
-   assert.deepEqual(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).lots,eq),[['AF/@ARM']],version+' : la case AF reste : elle ne dépend pas des flux');
+   assert.match(await fiche('.mu-lien-handling').innerText(),/pas relié seulement au handling/);
+   await fiche('[data-mu-action=integrer-armement]').click();await attendre();
+   const parcours=await page.evaluate(()=>Sim.ateliers.state.parcours);
+   assert.ok(parcours.every(p=>!p.noeuds.length||(p.noeuds.includes('armement')&&p.liens.filter(l=>l.de==='armement'||l.vers==='armement').every(l=>l.de==='armement'&&l.vers==='quais'))),'dans tous les chemins, relié seulement au handling');
+   assert.match(await fiche('.mu-arm-ok').innerText(),/Dans tous les chemins/);
+   assert.deepEqual(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).lots,eq),[['AF/@ARM']],version+' : la case AF reste');
 
    // 8. Revenir à « des équipes préparent les commandes ».
    await fiche('[data-mu-nature]').selectOption('manuel');await attendre();
