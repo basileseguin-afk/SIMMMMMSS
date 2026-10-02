@@ -206,3 +206,4 @@
 @media (prefers-color-scheme:dark){.rg-cie-code{background:color-mix(in srgb,var(--txt2) 18%,transparent)}}
 /* Le tableau des minutes prend la largeur de l'écran : moins de défilement de côté. */
 #view-reglages #rg-recap-panneau{max-width:none}
+.rgr-p.chaine input{color:#b03a7a}

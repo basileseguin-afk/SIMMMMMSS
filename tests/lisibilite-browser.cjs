@@ -71,7 +71,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.evaluate(()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;const p=st.parcours.find(x=>x.id==='ch');
     p.noeuds.push('dotation');p.liens.push({de:'cuisine',vers:'dotation'});}));await attendre();
   await nav.aller(page,'u-lecture');await attendre();
-  assert.match(await page.locator('#fc-calcul .fc-alerte.grave').innerText(),/Dotation[\s\S]*sans qu’aucune équipe ne l’y prépare/i);
+  assert.match(await page.locator('#fc-calcul .fc-alerte.grave').innerText(),/Dotation[\s\S]*aucune équipe ne l’y prépare/i);
   assert.ok(+(await page.locator('[data-sous-onglet=u-lecture] .so-badge, [data-sous-onglet=u-lecture] [class*=badge]').first().textContent())>=1,'le badge le compte');
 
   assert.deepEqual(errors,[],'aucune erreur de page');

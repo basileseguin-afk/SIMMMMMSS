@@ -448,8 +448,12 @@
           : pl(utilises.length, 'service utilisé', 'services utilisés') + ', ' + pl(utilises.reduce((n, x) => n + x.b.cases.length, 0), 'équipe'),
         services: utilises.map(x => ({ id: x.s.id, nom: x.s.nom, etat: x.b.etat, points: x.b.points })),
         geste: { page: 'mu-services', texte: 'Ouvrir les services' } });
+      const parCie = absentes.filter(id => String(id).includes('/@')), repas = absentes.filter(id => !String(id).includes('/@'));
       out.push({ num: 4, titre: 'Chaque commande a quelqu’un pour la préparer', etat: absentes.length ? 'afaire' : 'ok',
-        texte: absentes.length ? pl(absentes.length, 'commande n’est préparée', 'commandes ne sont préparées') + ' par aucune équipe : cochez-les dans l’équipe qui les prépare.'
+        // Les commandes des repas, puis les compagnies sans armement (« RAM/@ARM ») : deux choses, deux mots.
+        texte: absentes.length ? [repas.length ? pl(repas.length, 'commande n’est préparée', 'commandes ne sont préparées') + ' par aucune équipe' : '',
+          parCie.length ? pl(parCie.length, 'compagnie n’a', 'compagnies n’ont') + ' personne ' + [...new Set(parCie.map(id => (P.libelleClasse(id).split(' · ')[1] || 'service par compagnie')))].map(n => 'à l’« ' + n + ' »').join(', ') : '']
+            .filter(Boolean).join(', et ') + ' : cochez-les dans l’équipe qui les prépare.'
           : 'Toutes les commandes sont préparées.',
         commandes: absentes.slice(0, 16).map(id => PC.etiquette(id)).concat(absentes.length > 16 ? ['+ ' + (absentes.length - 16)] : []),
         geste: absentes.length ? { page: 'mu-services', texte: 'Cocher dans un service' } : null });
@@ -1009,8 +1013,10 @@
   /* Ce que la journée montre (un retard, un poste trop court) n'est pas une
    * erreur de saisie : la fiche d'un service ne le range pas dans « à faire ». */
   const CODES_JOURNEE = new Set(['poste', 'materiel', 'bouchon', 'inacheve', 'plonge-fermee', 'plonge-vol',
-    'handling-bloque', 'handling-poste', 'handling-retard', 'handling-chauffeurs', 'sans-personne', 'robot-arret', 'plonge-arret',
-    'hors-parcours', 'doublon']);
+    'handling-bloque', 'handling-poste', 'handling-retard', 'handling-chauffeurs', 'sans-personne', 'robot-arret', 'plonge-arret']);
+  // « hors-parcours » et « doublon » n'en sont plus (audit du 02/10) : depuis que les flux
+  // décident des chemins, une case cochée hors de son chemin, ou deux fois dans un service,
+  // est un réglage à corriger — on le dit dans la fiche du service et dans le pas à pas.
   const initiales = nom => String(nom || '').split(/\s+/).filter(Boolean).map(m => m[0]).join('').slice(0, 3).toUpperCase();
 
   root.OrlyUnite = { NATURES, MonUnite };

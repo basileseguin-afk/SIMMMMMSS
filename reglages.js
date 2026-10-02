@@ -656,7 +656,7 @@
         const partage = eq && eq.commandes > 1;
         const tdPers = !eq
           ? `<td class="rgr-p sans" title="Aucune case ne prépare ${esc(P.libelleClasse(l.classe.id))} dans ${esc(sv.nom)}">—</td>`
-          : `<td class="rgr-p${partage ? ' partage' : ''}" title="${c.source === 'robot' ? 'Robot' : 'Case'} « ${esc(eq.nom)} »${c.source === 'robot' ? ' — tourne à partir de ' + (c.personnesMin ?? 1) : ''}${partage ? ' — partagée par ' + eq.commandes + ' commandes : son effectif vaut pour toutes' : ''}">`
+          : `<td class="rgr-p${partage ? ' partage' : ''}${eq.chaine ? ' chaine' : ''}" title="${c.source === 'robot' ? 'Robot' : 'Case'} « ${esc(eq.nom)} »${eq.chaine ? ' — à la chaîne : elle fait aussi cette étape' : ''}${c.source === 'robot' ? ' — tourne à partir de ' + (c.personnesMin ?? 1) : ''}${partage ? ' — partagée par ' + eq.commandes + ' commandes : son effectif vaut pour toutes' : ''}">`
             + `<input type="number" min="0" max="999" step="1" value="${eq.personnes}" data-rg-champ="recap-pers" data-atelier="${esc(eq.id)}" aria-label="Personnes de ${esc(eq.nom)}"></td>`;
         let tdVal;
         if (c.source === 'robot') {
@@ -723,7 +723,8 @@
         return `<tbody class="rg-recap-bloc${ouvert ? ' ouvert' : ''}" data-compagnie="${esc(cie)}">${tot ? ligneCie(tot, ouvert, siennes.length) : ''}${siennes.map(ligneClasse).join('')}</tbody>`;
       }).join('');
       const manque = r.lignes.concat(r.lignesCie || []).reduce((n, l) => n + Object.values(l.cellules).filter(c => c.source === 'manque').length, 0);
-      box.innerHTML = `<p class="rg-recap-resume">${r.lignes.length} commandes${(r.lignesCie || []).length ? ' · ' + r.lignesCie.length + ' compagnies' : ''} · ${r.colonnes.length} services · <b>${heures(r.totaux.jourTotal)}</b> de travail sur la journée${
+      box.innerHTML = `<p class="rg-recap-resume">${r.lignes.length} commandes${(r.lignesCie || []).length ? ' · ' + r.lignesCie.length + ' compagnies' : ''} · ${r.colonnes.length} services · <b>${heures(r.totaux.jourTotal)}</b> de travail demandé par les chemins sur la journée${
+        r.totaux.sansEquipe ? `, dont <b>${heures(r.totaux.avecEquipe)}</b> dans les cases d’une équipe (le travail fourni des Résultats) et ${heures(r.totaux.sansEquipe)} que personne ne prépare encore` : ''}${
         manque ? ` · <b class="rg-manque-txt">${manque} ${manque > 1 ? 'valeurs' : 'valeur'} à renseigner</b>` : ''}</p>
         <p class="rg-recap-plier"><button type="button" class="lien-discret" data-rg-action="recap-tout" data-ouvrir="1">Tout déplier</button> ·
           <button type="button" class="lien-discret" data-rg-action="recap-tout" data-ouvrir="0">Tout replier</button></p>

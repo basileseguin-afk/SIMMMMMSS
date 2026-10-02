@@ -5,6 +5,54 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-02 — Audit de la logique des flux : contradictions corrigées
+
+Demande : « fais un check de tous les flux internes, la logique des flux,
+pour vérifier qu'on n'a pas de choses absurdes ou contradictoires, et règle
+tout cela ».
+
+Méthode : six unités montées comme la vraie (handling, armement intégré,
+Prépa + Montage à la chaîne, règle ⚡ qui absorbe, chemin à elle, équipe la
+veille, robot), et neuf règles qui doivent toujours tenir (chaque commande
+suit son chemin, le handling attend repas et armement, cases d'armement,
+compteurs, tableau des minutes = calcul, fiches, messages…). L'audit est
+vérifié sur une faute introduite exprès ; il devient un test permanent.
+
+Trouvé et corrigé :
+- **Une commande cochée hors de son chemin était préparée quand même** (« le
+  travail est compté, mais personne ne l'attend ») : la journée ne suivait pas
+  le chemin dessiné. Elle n'y est plus préparée ; le message dit quoi faire.
+- **Un vol pouvait partir avec son seul armement**, sans aucun repas préparé
+  (TX armée, repas de TX préparés par personne). Le handling ne charge plus
+  que les vols dont un repas est préparé — et attend toujours leur armement.
+- **Ces cases hors chemin, et les doublons, étaient cachés** des fiches et du
+  pas à pas (rangés parmi les résultats de la journée, du temps où les chemins
+  se déduisaient des coches) : ils y sont, là où on les corrige.
+- **Le tableau des minutes disait « personne » pour une étape faite à la
+  chaîne** (Prépa d'une commande montée par l'équipe Prépa + Montage), alors
+  que le calcul compte ces minutes à cette équipe : il la nomme maintenant.
+- **Deux chiffres semblaient se contredire** : « 105 h de travail » au tableau,
+  « 48 h de travail fourni » aux Résultats. Le tableau précise désormais :
+  travail demandé par les chemins, dont la part dans les cases d'une équipe
+  (= le travail fourni, vérifié à l'identique) et la part sans équipe.
+- « Réception est sur le chemin de 12 commandes » (calcul) contre « 26
+  commandes passent par ici » (fiche) : la phrase du calcul dit maintenant
+  qu'il s'agit des commandes préparées dans d'autres services.
+- Pas à pas : « 16 commandes ne sont préparées par aucune équipe » mêlait
+  repas et armement ; il dit « 14 commandes …, et 2 compagnies n'ont personne
+  à l'« Armement » ».
+
+Vérifié sans contradiction : ordre des étapes sur chaque chemin, attente du
+handling, cases d'armement, compteurs, règle ⚡ (même service seulement),
+chemins à elles, équipes de la veille, robot.
+
+- `moteur/production.js`, `echanges.js`, `reglages.js`, `reglages.css`,
+  `unite.js` ; v1 et v2. Tests : `tests/coherence.test.cjs`,
+  `tests/coherence-browser.cjs`.
+  `tests/annexe-browser.cjs` vérifie maintenant le bon comportement : une
+  annexe hors du chemin de CRL Business ne la prépare pas (et le dit) ;
+  ajoutée à son chemin, elle la prépare.
+
 ## 2026-10-02 — Tableau des minutes : un bloc par compagnie, sa ligne en total
 
 Demande : « utilise cette ligne comme ligne récap / total pour les

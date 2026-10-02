@@ -21,7 +21,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('.rg-recap-table tbody tr[data-classe]').count(),n,'une ligne par commande');
   assert.equal(await page.locator('.rg-recap-table tbody tr.rg-recap-cie').count(),await page.evaluate(()=>new Set(Sim.ateliers.classes.map(c=>c.cie)).size),'et une ligne total par compagnie');
   assert.ok(await page.locator('.rg-recap-table thead th').count()>=4,'des colonnes de services');
-  assert.match(await page.locator('.rg-recap-resume').innerText(),/\d+ commandes · \d+ compagnies · \d+ services · .* de travail sur la journée/);
+  assert.match(await page.locator('.rg-recap-resume').innerText(),/\d+ commandes · \d+ compagnies · \d+ services · .* de travail demandé par les chemins sur la journée/);
 
   // 2. Modifier une case : elle devient propre à cette compagnie × classe ; la vider la ramène à la commune.
   const champ=page.locator('.rg-recap-table input[data-rg-champ=recap]').first();

@@ -221,9 +221,14 @@
       && (Object.keys(bareme[sv.id] || {}).length || classes.some(c => routes.get(c.id) && routes.get(c.id).services.has(sv.id)))
       && classes.some(c => passe(c, sv.id)))).map(sv => (servicesCie.has(sv.id) ? { ...sv, parCompagnie: true } : robots.has(sv.id) ? { ...sv, robot: true } : sv));
     // L'équipe qui prépare une commande dans un service : son effectif se règle aussi dans le récap.
+    // Sinon, l'équipe qui la fait à la chaîne avec l'étape d'après (Prépa + Montage) :
+    // le calcul lui compte ces minutes, le tableau la nomme (audit du 02/10).
     const equipeDe = (sid, id) => {
-      const eq = ateliers.find(x => x.service === sid && (x.type === 'manuel' || x.type === 'robot') && (x.lots || []).some(l => l.includes(id)));
-      return eq ? { id: eq.id, nom: eq.nom, personnes: eq.personnes, type: eq.type, commandes: new Set((eq.lots || []).flat()).size } : null;
+      const fait = x => (x.lots || []).some(l => l.includes(id));
+      const eq = ateliers.find(x => x.service === sid && (x.type === 'manuel' || x.type === 'robot') && fait(x))
+        || ateliers.find(x => x.type === 'manuel' && x.fusion === sid && x.service !== sid && fait(x));
+      return eq ? { id: eq.id, nom: eq.nom, personnes: eq.personnes, type: eq.type, commandes: new Set((eq.lots || []).flat()).size,
+        ...(eq.service !== sid ? { chaine: true } : {}) } : null;
     };
     const lignes = classes.map(c => {
       const vols = (c.vols || []).length, cellules = {};
@@ -288,12 +293,15 @@
       return { compagnie: cie, vols, commandes: siennes.length, cellules, parVol, jour };
     });
     // Les totaux : les classes pour leurs services, les compagnies pour les services par compagnie.
-    const totaux = { parVol: {}, jour: {}, jourTotal: 0 };
+    // Le travail DEMANDÉ par les chemins ; dont celui qu'une équipe a dans ses cases
+    // (le « travail fourni » des Résultats en vient) et celui que personne ne prépare encore.
+    const totaux = { parVol: {}, jour: {}, jourTotal: 0, avecEquipe: 0, sansEquipe: 0 };
     for (const sv of colonnes) {
       const de = sv.parCompagnie ? lignesCie : lignes;
       totaux.parVol[sv.id] = de.reduce((n, l) => n + (l.cellules[sv.id].parVol || 0), 0);
       totaux.jour[sv.id] = de.reduce((n, l) => n + (l.cellules[sv.id].jour || 0), 0);
       totaux.jourTotal += totaux.jour[sv.id];
+      for (const l of de) { const c = l.cellules[sv.id]; if (c.jour) totaux[c.equipe ? 'avecEquipe' : 'sansEquipe'] += c.jour; }
     }
     return { colonnes, lignes, lignesCie, totaux };
   }

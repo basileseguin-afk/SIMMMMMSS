@@ -1280,6 +1280,18 @@
     const anomalies = validerAteliers(ateliers, { services: opts.services || [...services], classes, noms: opts.noms });
     const fourn = fournisseurs(opts.liaisons);
     const routes = routesDesClasses(classes, opts);
+    // Le chemin décide par où passe une commande (retours d'usage du 01/10 et du
+    // 02/10) : cochée dans un service que son chemin ne traverse pas, elle n'y est
+    // pas préparée. On l'écarte avant de jouer la journée, et on le dit.
+    const horsChemin = new Map();         // atelier → commandes écartées
+    for (const a of ateliers) {
+      if (!Array.isArray(a.lots) || !(a.type === 'manuel' || a.type === 'robot')) continue;
+      const hors = new Set(a.lots.flatMap(classesDuLot).filter(id => { const r = routes.get(id); return r && !r.services.has(a.service); }));
+      if (!hors.size) continue;
+      horsChemin.set(a.id, [...hors]);
+      a.lots = a.lots.map(lot => (Array.isArray(lot) ? lot.filter(id => !hors.has(id)) : { ...lot, classes: classesDuLot(lot).filter(id => !hors.has(id)) }))
+        .filter(lot => classesDuLot(lot).length);
+    }
     const nom = id => (opts.noms && opts.noms[id]) || id;
 
     // Quels services fabriquent quelle classe. C'est ce qui définit le parcours
@@ -1473,8 +1485,11 @@
 
     // Chaque départ va au premier handling qui charge sa compagnie, sinon au
     // premier qui les charge toutes.
-    // Seulement les vols dont une commande est préparée : rien de construit, rien à charger.
-    const volsJour = volsDesClasses(classes.filter(c => producteurs.has(c.id)));
+    // Seulement les vols dont une commande DES REPAS est préparée : rien de construit, rien
+    // à charger — un vol ne part pas avec son seul armement (audit du 02/10).
+    const avecRepas = new Set(volsDesClasses(classes.filter(c => producteurs.has(c.id) && !c.categorie)).map(v => v.id));
+    // Ce que chaque vol attend : ses repas ET son armement préparés.
+    const volsJour = volsDesClasses(classes.filter(c => producteurs.has(c.id))).filter(v => avecRepas.has(v.id));
     const volsDe = new Map(handlings.map(a => [a.id, []]));
     if (handlings.length) {
       const sans = new Map();
@@ -1509,18 +1524,17 @@
       }
       for (const [s, ids] of trous) {
         anomalies.push({ code: 'parcours-trou', service: s, classes: ids,
-          message: '« ' + nom(s) + ' » est sur le chemin de ' + ids.length + (ids.length > 1 ? ' commandes' : ' commande') + ' sans qu’aucune équipe ne l’y prépare ('
-            + ids.slice(0, 4).join(', ') + (ids.length > 4 ? '…' : '') + ') : l’étape est sautée.' });
+          // Seulement les commandes préparées ailleurs : une commande que personne ne prépare est
+          // déjà dite « sans équipe » (Pas à pas, étape 4), et la fiche du service compte toutes celles qui passent.
+          message: '« ' + nom(s) + ' » est sur le chemin de ' + ids.length + (ids.length > 1 ? ' commandes préparées' : ' commande préparée') + ' dans d’autres services ('
+            + ids.slice(0, 4).join(', ') + (ids.length > 4 ? '…' : '') + '), mais aucune équipe ne l’y prépare : cette étape est sautée pour ' + (ids.length > 1 ? 'elles.' : 'elle.') });
       }
       for (const a of ateliers) {
-        const hors = [];
-        for (const lot of (a.lots || [])) for (const id of classesDuLot(lot)) {
-          const route = routes.get(id);
-          if (route && !route.services.has(a.service) && !hors.includes(id)) hors.push(id);
-        }
-        if (hors.length) anomalies.push({ code: 'hors-parcours', atelier: a.id, classes: hors,
+        const hors = horsChemin.get(a.id); if (!hors) continue;
+        anomalies.push({ code: 'hors-parcours', atelier: a.id, classes: hors,
           message: (a.nom || a.id) + ' : ' + hors.slice(0, 4).join(', ') + (hors.length > 4 ? '…' : '')
-            + ' ne passe(nt) pas par « ' + nom(a.service) + ' » selon leur parcours. Le travail est compté, mais personne ne l’attend.' });
+            + (hors.length > 1 ? ' sont cochées' : ' est cochée') + ' ici, mais ' + (hors.length > 1 ? 'leur chemin ne passe' : 'son chemin ne passe') + ' pas par « ' + nom(a.service)
+            + ' » : ' + (hors.length > 1 ? 'elles ne sont pas préparées' : 'elle n’est pas préparée') + ' ici. Décochez-la, ou ajoutez « ' + nom(a.service) + ' » à son chemin (Mon unité).' });
       }
     }
 

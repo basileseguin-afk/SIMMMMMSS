@@ -55,10 +55,16 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const amontsArmement=liens.filter(l=>l.to==='armement').map(l=>l.from).sort();
   const amontsAnnexe=liens.filter(l=>l.to===zone.id).map(l=>l.from).sort();
   assert.deepEqual(amontsAnnexe,amontsArmement,'mêmes fournisseurs que l’atelier dont elle dépend');
-  const r=await page.evaluate(()=>({ok:Sim.ateliers.resultat.ok,
-    services:(Sim.ateliers.resultat.parClasse['CRL/BC']||{}).services||[]}));
+  // Le chemin décide (audit du 02/10) : tant que l'annexe n'est pas sur le chemin de
+  // CRL/BC, elle ne la prépare pas, et c'est dit ; ajoutée à son chemin, elle la prépare.
+  let r=await page.evaluate(()=>({ok:Sim.ateliers.resultat.ok,services:(Sim.ateliers.resultat.parClasse['CRL/BC']||{}).services||[],
+    hors:Sim.ateliers.resultat.anomalies.filter(a=>a.code==='hors-parcours').map(a=>a.message)}));
   assert.equal(r.ok,true);
-  assert.ok(r.services.includes(zone.id),'le parcours de CRL/BC passe par l’annexe');
+  assert.ok(!r.services.includes(zone.id),'hors de son chemin : pas préparée dans l’annexe');
+  assert.ok(r.hors.some(m=>/CRL\/BC est cochée ici, mais son chemin ne passe pas par/.test(m)),'et c’est dit');
+  await page.evaluate(id=>Sim.ateliers.changer(()=>{OrlyParcours.adapter(Sim.ateliers.state,['CRL/BC'],id,true,Sim.unite.options());},''),zone.id);await page.waitForTimeout(250);
+  r=await page.evaluate(()=>({ok:Sim.ateliers.resultat.ok,services:(Sim.ateliers.resultat.parClasse['CRL/BC']||{}).services||[]}));
+  assert.ok(r.services.includes(zone.id),'sur son chemin : le parcours de CRL/BC passe par l’annexe');
 
   // 6. Le Centre des flux la propose comme n'importe quel emplacement, et une
   //    liaison saisie à la main l'emporte sur l'héritage.
