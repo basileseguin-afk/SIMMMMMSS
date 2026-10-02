@@ -50,7 +50,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(Math.abs(l.duree-l.pax/600*60)<0.01,'plateaux ÷ débit : '+JSON.stringify(l));
 
   // 5. Le récap : une colonne Robot, un débit par commande et l'effectif, modifiables.
-  await nav.aller(page,'rg-recap');
+  await nav.aller(page,'rg-recap');await nav.deplier(page);
   const deb=page.locator(`.rg-recap-table tr[data-classe="CRL/YC"] input[data-rg-champ=recap-debit]`);
   assert.equal(await deb.count(),1,'le débit de CRL YC sur le robot');
   assert.equal(await deb.getAttribute('placeholder'),'300','vide : celui du robot');

@@ -41,4 +41,10 @@ async function creerChemin(page, c) {
   await b.click(); await page.waitForTimeout(250);
   return true;
 }
-module.exports = { aller, vue, accueil, creerChemin, PREMIERE };
+/** Le tableau des minutes range les classes sous leur compagnie, repliées (02/10) : tout déplier. */
+async function deplier(page) {
+  const b = page.locator('#rg-recap [data-rg-action=recap-tout][data-ouvrir="1"]');
+  if (await b.count()) { await b.click(); await page.waitForTimeout(100); }
+}
+
+module.exports = { aller, vue, accueil, creerChemin, deplier, PREMIERE };

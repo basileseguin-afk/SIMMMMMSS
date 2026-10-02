@@ -206,7 +206,8 @@
           <div class="titre-aide"><h3>Toutes les man-minutes, d’un coup d’œil</h3><details class="aide">
             <summary aria-label="Comment lire ce tableau ?">?</summary>
             <span class="aide-corps">
-              <p>Une ligne par commande (compagnie × classe), une colonne par service. <b>Par vol</b> : les
+              <p>Un bloc par compagnie : sa ligne en tête est son total (la somme de ses classes, et son armement) ;
+                un clic la déplie sur ses classes (compagnie × classe). Une colonne par service. <b>Par vol</b> : les
                 man-minutes d’un vol de cette commande dans ce service — c’est le barème, modifiable ici.
                 <b>Sur la journée</b> : par vol × nombre de vols, pour voir où part le travail.</p>
               <p>Changer une case donne à cette compagnie × classe sa valeur propre ; la vider la ramène à la
@@ -229,7 +230,7 @@
             <input id="rg-recap-import" type="file" accept=".xlsx,.csv" hidden>
           </div>
           <p class="rg-recap-legende" aria-hidden="true"><span class="rgr propre">valeur propre</span><span class="rgr commun">toutes compagnies</span>
-            <span class="rgr case">fixée dans une case</span><span class="rgr robot">robot : plateaux / h</span><span class="rgr manque">à renseigner</span><span class="rgr hors">·</span> ne passe pas par ce service</p>
+            <span class="rgr case">fixée dans une case</span><span class="rgr robot">robot : plateaux / h</span><span class="rgr manque">à renseigner</span><span class="rgr somme">total de la compagnie</span></p>
           <div id="rg-recap" class="rg-recap"></div>
         </div>
         <div class="rg-sim-horaires" id="rg-sim-horaires" data-sous="rg-simulation"></div>
@@ -371,6 +372,20 @@
           const d = tete.parentElement;
           this.serviceOuvert = d.open ? null : d.dataset.service;
           return;   // le navigateur fait le reste : on ne redessine pas
+        }
+        // Déplier / replier une compagnie, ou toutes : sans redessiner le tableau.
+        const pl = e.target.closest('[data-rg-action="recap-cie"], [data-rg-action="recap-tout"]');
+        if (pl) {
+          const ouverts = this.recapOuverts || (this.recapOuverts = new Set());
+          const blocs = pl.dataset.rgAction === 'recap-tout' ? [...document.querySelectorAll('#rg-recap .rg-recap-bloc')]
+            : [pl.closest('.rg-recap-bloc')];
+          const ouvrir = pl.dataset.rgAction === 'recap-tout' ? pl.dataset.ouvrir === '1' : !blocs[0].classList.contains('ouvert');
+          for (const b of blocs) {
+            b.classList.toggle('ouvert', ouvrir);
+            const bt = b.querySelector('.rg-cie-btn'); if (bt) bt.setAttribute('aria-expanded', String(ouvrir));
+            if (ouvrir) ouverts.add(b.dataset.compagnie); else ouverts.delete(b.dataset.compagnie);
+          }
+          return;
         }
         const rv = e.target.closest('[data-rg-action="recap-vue"]');
         if (rv) { this.recapVue = rv.dataset.vue; return this.rendreRecap(); }
@@ -633,8 +648,8 @@
       // la valeur (man-min, ou débit du robot), l'effectif, la durée.
       const cellule = (l, sv) => {
         const c = l.cellules[sv.id], lib = P.libelleClasse(l.classe.id) + ' · ' + sv.nom;
-        if (c.source === 'compagnie') return `<td class="rgr hors g" colspan="3" title="${esc(sv.nom)} travaille par compagnie : ses minutes sont sur la ligne « ${esc(l.classe.cie)} · toute la compagnie »">↓</td>`;
-        if (c.source === 'hors') return `<td class="rgr hors g" colspan="3" title="${esc(P.libelleClasse(l.classe.id))} ne passe pas par ${esc(sv.nom)}">·</td>`;
+        if (c.source === 'compagnie') return `<td class="rgr parcie g" colspan="3" title="${esc(sv.nom)} travaille par compagnie : ses minutes sont sur la ligne de ${esc(l.classe.cie)}, en tête du bloc"></td>`;
+        if (c.source === 'hors') return `<td class="rgr hors g" colspan="3" title="${esc(P.libelleClasse(l.classe.id))} ne passe pas par ${esc(sv.nom)}"></td>`;
         const eq = c.equipe;
         const duree = c.duree != null ? (vue === 'jour' ? c.duree * l.vols : c.duree) : null;
         const tdDuree = `<td class="rgr-d"${duree != null ? ` title="${c.source === 'robot' ? 'Plateaux ÷ débit' : 'Man-minutes ÷ personnes'}${vue === 'jour' ? ', sur la journée' : ', pour un vol'}"` : ''}>${duree != null ? heures(duree) : ''}</td>`;
@@ -668,6 +683,12 @@
       const celluleCie = (l, sv) => {
         const c = l.cellules[sv.id];
         if (c.source === 'hors') return '<td class="rgr vide g" colspan="3"></td>';
+        if (c.source === 'robot') return `<td class="rgr vide g" colspan="3" title="Robot : des plateaux à un débit, pas des man-minutes"></td>`;
+        if (c.source === 'somme') {
+          const val = vue === 'jour' ? c.jour : c.parVol;
+          // Sous la colonne des minutes, comme les valeurs de ses classes.
+          return `<td class="rgr somme g" title="${esc(l.compagnie + ' · ' + sv.nom)} : somme de ${c.classes} ${c.classes > 1 ? 'classes' : 'classe'}${vue === 'jour' ? ' sur la journée' : ', pour un vol de chacune'}${c.manque ? ' — ' + c.manque + ' à renseigner' : ''}">${val ? (vue === 'jour' ? heures(val) : fr(val)) : '—'}${c.manque ? '<i class="rgr-manque-pt" aria-label="valeurs à renseigner"></i>' : ''}</td><td></td><td></td>`;
+        }
         const lib = l.compagnie + ' · ' + sv.nom, eq = c.equipe;
         const duree = c.duree != null ? (vue === 'jour' ? c.duree * c.vols : c.duree) : null;
         const tdVal = vue === 'jour'
@@ -679,35 +700,50 @@
           : `<td class="rgr-p${eq.commandes > 1 ? ' partage' : ''}" title="Équipe « ${esc(eq.nom)} »${eq.commandes > 1 ? ' — partagée : son effectif vaut pour toutes ses compagnies' : ''}"><input type="number" min="0" max="999" step="1" value="${eq.personnes}" data-rg-champ="recap-pers" data-atelier="${esc(eq.id)}" aria-label="Personnes de ${esc(eq.nom)}"></td>`;
         return tdVal + tdPers + `<td class="rgr-d">${duree != null ? heures(duree) : ''}</td>`;
       };
-      // Les lignes rangées par compagnie : ses classes, puis sa ligne récap.
+      // Un bloc par compagnie (retour d'usage du 02/10 : « utilise cette ligne comme
+      // ligne récap / total, et rends le tableau plus digeste ») : sa ligne total en
+      // tête — la somme de ses classes, service par service, et ses services par
+      // compagnie (l'armement) —, ses classes dessous, repliées tant qu'on ne les ouvre pas.
       const ordre = [], vues = new Set();
       for (const l of lignes) if (!vues.has(l.classe.cie)) { vues.add(l.classe.cie); ordre.push(l.classe.cie); }
       for (const l of lignesCie) if (!vues.has(l.compagnie)) { vues.add(l.compagnie); ordre.push(l.compagnie); }
-      const ligneClasse = l => `<tr data-classe="${esc(l.classe.id)}"><th scope="row"><span class="puce-classe" data-cab="${esc(l.classe.cabine)}"></span>${esc(P.libelleClasse(l.classe.id))}</th>
+      const ouverts = this.recapOuverts || (this.recapOuverts = new Set());
+      const nomCab = c => (P.NOM_CABINE || {})[c.cabine] || c.cabine;
+      const ligneClasse = l => `<tr class="rg-recap-classe" data-classe="${esc(l.classe.id)}"><th scope="row"><span class="puce-classe" data-cab="${esc(l.classe.cabine)}"></span>${esc(nomCab(l.classe))}<span class="sr-only"> ${esc(l.classe.cie)}</span></th>
           <td class="rg-recap-vols">${l.vols}</td>${r.colonnes.map(sv => cellule(l, sv)).join('')}<td class="rg-recap-total g">${vue === 'jour' ? heures(l.jour) : fr(l.parVol)}</td></tr>`;
-      const ligneCie = l => `<tr class="rg-recap-cie" data-compagnie="${esc(l.compagnie)}"><th scope="row">${esc(l.compagnie)} · toute la compagnie</th>
+      const ligneCie = (l, ouvert, n) => `<tr class="rg-recap-cie" data-compagnie="${esc(l.compagnie)}"><th scope="row">
+          <button type="button" class="rg-cie-btn" data-rg-action="recap-cie" data-compagnie="${esc(l.compagnie)}" aria-expanded="${ouvert}" title="${ouvert ? 'Replier' : 'Déplier'} les classes de ${esc(l.compagnie)}">
+            <span class="rg-cie-chevron" aria-hidden="true"></span><span class="rg-cie-code">${esc(l.compagnie)}</span>
+            <small>${n ? n + (n > 1 ? ' classes' : ' classe') : 'par compagnie'}</small></button></th>
           <td class="rg-recap-vols" title="Départs de la compagnie">${l.vols}</td>${r.colonnes.map(sv => celluleCie(l, sv)).join('')}<td class="rg-recap-total g">${vue === 'jour' ? heures(l.jour) : fr(l.parVol)}</td></tr>`;
-      const corps = ordre.map(cie => lignes.filter(l => l.classe.cie === cie).map(ligneClasse).join('')
-        + lignesCie.filter(l => l.compagnie === cie).map(ligneCie).join('')).join('');
+      const corps = ordre.map(cie => {
+        const siennes = lignes.filter(l => l.classe.cie === cie), tot = lignesCie.find(l => l.compagnie === cie);
+        // Une recherche ouvre ce qu'elle trouve.
+        const ouvert = !tot || !!filtre || ouverts.has(cie);
+        return `<tbody class="rg-recap-bloc${ouvert ? ' ouvert' : ''}" data-compagnie="${esc(cie)}">${tot ? ligneCie(tot, ouvert, siennes.length) : ''}${siennes.map(ligneClasse).join('')}</tbody>`;
+      }).join('');
       const manque = r.lignes.concat(r.lignesCie || []).reduce((n, l) => n + Object.values(l.cellules).filter(c => c.source === 'manque').length, 0);
       box.innerHTML = `<p class="rg-recap-resume">${r.lignes.length} commandes${(r.lignesCie || []).length ? ' · ' + r.lignesCie.length + ' compagnies' : ''} · ${r.colonnes.length} services · <b>${heures(r.totaux.jourTotal)}</b> de travail sur la journée${
         manque ? ` · <b class="rg-manque-txt">${manque} ${manque > 1 ? 'valeurs' : 'valeur'} à renseigner</b>` : ''}</p>
+        <p class="rg-recap-plier"><button type="button" class="lien-discret" data-rg-action="recap-tout" data-ouvrir="1">Tout déplier</button> ·
+          <button type="button" class="lien-discret" data-rg-action="recap-tout" data-ouvrir="0">Tout replier</button></p>
         <div class="rg-recap-scroll"><table class="rg-recap-table">
-        <thead><tr class="rg-recap-t1"><th scope="col" rowspan="2">Commande</th><th scope="col" rowspan="2" title="Nombre de vols de la journée">Vols</th>
+        <thead><tr class="rg-recap-t1"><th scope="col" rowspan="2">Compagnie · classe</th><th scope="col" rowspan="2" title="Nombre de vols de la journée">Vols</th>
           ${r.colonnes.map(sv => `<th scope="colgroup" colspan="3" class="g"><span class="rg-recap-svc">${I ? I.ico(I.icoService(sv.id, sv.nom)) : ''}${esc(sv.nom)}</span></th>`).join('')}
           <th scope="col" rowspan="2" class="g">${vue === 'jour' ? 'Total journée' : 'Total par vol'}<small>man-min</small></th></tr>
           <tr class="rg-recap-t2">${r.colonnes.map(sv => `<th scope="col" class="g" title="${sv.robot ? 'Débit en plateaux par heure' : vue === 'jour' ? 'Man-minutes sur la journée' : 'Man-minutes pour un vol'}">${sv.robot ? 'pl/h' : vue === 'jour' ? 'min/jour' : 'min/vol'}</th>
             <th scope="col" title="Personnes de l’équipe qui prépare">pers.</th><th scope="col" title="${vue === 'jour' ? 'Durée sur la journée' : 'Durée d’un vol'}">durée</th>`).join('')}</tr></thead>
-        <tbody>${corps}
-        ${lignes.length || lignesCie.length ? '' : `<tr><td colspan="${r.colonnes.length * 3 + 3}" class="mini-note">Aucune commande ne correspond à « ${esc(filtre)} ».</td></tr>`}</tbody>
-        ${vue === 'jour' ? `<tfoot><tr><th scope="row">Total journée</th><td></td>${r.colonnes.map(sv => `<td class="g">${sv.robot ? '' : heures(r.totaux.jour[sv.id])}</td><td></td><td></td>`).join('')}<td class="rg-recap-total g">${heures(r.totaux.jourTotal)}</td></tr></tfoot>` : ''}
+        ${corps}
+        ${lignes.length || lignesCie.length ? '' : `<tbody><tr><td colspan="${r.colonnes.length * 3 + 3}" class="mini-note">Aucune commande ne correspond à « ${esc(filtre)} ».</td></tr></tbody>`}
+        <tfoot><tr><th scope="row">Total journée</th><td></td>${r.colonnes.map(sv => `<td class="g">${sv.robot ? '' : heures(r.totaux.jour[sv.id])}</td><td></td><td></td>`).join('')}<td class="rg-recap-total g">${heures(r.totaux.jourTotal)}</td></tr></tfoot>
         </table></div>
         <p class="mini-note">${vue === 'jour' ? 'Man-minutes sur la journée : par vol × nombre de vols. Totaux en heures de travail.'
           : 'Man-minutes pour un vol. Changer une case la rend propre à cette compagnie × classe ; la vider la ramène à la valeur « toutes compagnies ».'}
           Pour chaque service : la valeur, l’effectif de l’équipe qui prépare (modifiable) et la durée = man-minutes ÷ personnes
           (robot : plateaux ÷ débit). Un effectif <span class="rgr-p partage"><span>souligné en pointillé</span></span> est celui d’une case partagée par
-          plusieurs commandes : il vaut pour toutes.${(r.lignesCie || []).length ? ` Un service qui travaille par compagnie (l’armement) se règle sur la ligne
-          « … · toute la compagnie » : minutes par vol × départs de la compagnie ; vide, la valeur de toutes les compagnies.` : ''}</p>`;
+          plusieurs commandes : il vaut pour toutes. La ligne d’une compagnie est son total : la somme de ses classes, service par
+          service ; un service qui travaille par compagnie (l’armement) s’y règle — minutes par vol × départs de la compagnie ;
+          vide, la valeur de toutes les compagnies.</p>`;
     }
 
     /* Ce que le récap a changé, dans l'ordre : 'bareme' ou 'cases'. */

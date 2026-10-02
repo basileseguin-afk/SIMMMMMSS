@@ -32,13 +32,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.evaluate(()=>{Sim.reglages.serviceOuvert='cuisine';Sim.reglages.rendre();});await attendre();
   await changer('#rg-bareme [data-service=cuisine][data-cle="*/BC"]',60);
   await verifier('A1 barème → calcul',async()=>assert.equal(Math.round((await lot('cu','AF/BC'))[1]-240),Math.round(60*vols/2)));
-  await nav.aller(page,'rg-recap');
+  await nav.aller(page,'rg-recap');await nav.deplier(page);
   await verifier('A2 barème → récap man-minutes',async()=>assert.equal(await page.locator('input[data-rg-champ=recap][data-service=cuisine][data-classe="AF/BC"]').inputValue(),'60'));
   await nav.aller(page,'at-recap');
   await verifier('A3 barème → récap des cases (heures)',async()=>assert.match(await page.locator('tr[data-at=cu] .rc-quand').innerText(),new RegExp('04:00–'+(await page.evaluate(t=>MoteurProduction.hhmm(t),(await lot('cu','AF/BC'))[1])))));
 
   // B. Le récap man-minutes → barème (Temps de travail), récap des cases, fiche.
-  await nav.aller(page,'rg-recap');
+  await nav.aller(page,'rg-recap');await nav.deplier(page);
   await changer('input[data-rg-champ=recap][data-service=cuisine][data-classe="AF/BC"]',90);
   await verifier('B1 récap man-min → barème',async()=>assert.equal(await page.evaluate(()=>Sim.reglages.etat.bareme.cuisine['AF/BC']),90));
   await nav.aller(page,'rg-minutes');
@@ -49,7 +49,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await verifier('B4 récap man-min → fiche (barème, pour la journée)',async()=>assert.equal(await f.locator('[data-at-champ=minutes][data-classe="AF/BC"]').getAttribute('placeholder'),String(90*vols)));
 
   // C. Personnes : récap man-min → fiche, récap des cases, calcul ; et fiche → récap man-min.
-  await nav.aller(page,'rg-recap');
+  await nav.aller(page,'rg-recap');await nav.deplier(page);
   await changer('input[data-rg-champ=recap-pers][data-atelier=cu]',3);
   f=await fiche('cu');
   await verifier('C1 personnes récap → fiche',async()=>assert.equal(await f.locator('[data-at-champ=personnes]').inputValue(),'3'));
@@ -57,12 +57,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await nav.aller(page,'at-recap');
   await verifier('C3 personnes récap → récap des cases',async()=>assert.match(await page.locator('tr[data-at=cu] th').innerText(),/3 pers\./));
   f=await fiche('cu');await changer(`#at-liste [data-at=cu] [data-at-champ=personnes]`,5);
-  await nav.aller(page,'rg-recap');
+  await nav.aller(page,'rg-recap');await nav.deplier(page);
   await verifier('C4 personnes fiche → récap man-min',async()=>assert.equal(await page.locator('input[data-rg-champ=recap-pers][data-atelier=cu]').inputValue(),'5'));
 
   // D. Man-minutes propres à une case (fiche) → récap man-min.
   f=await fiche('cu');await changer(`#at-liste [data-at=cu] [data-at-champ=minutes][data-classe="AF/BC"]`,45);
-  await nav.aller(page,'rg-recap');
+  await nav.aller(page,'rg-recap');await nav.deplier(page);
   // 45 man-min pour la journée de la case, ramenées à un vol dans le récap, comme le calcul les lit.
   await verifier('D1 man-min de la case → récap man-min (par vol)',async()=>assert.equal(await page.locator('tr[data-classe="AF/BC"] td.rgr.case').first().innerText(),String(Math.round(45/vols*10)/10).replace('.',',')));
   await verifier('D2 man-min de la case → calcul',async()=>assert.equal(Math.round((await lot('cu','AF/BC'))[1]-240),Math.round(45/5)));
@@ -87,7 +87,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.find(a=>a.id==='cu').lots=[['AF/BC','DL/BC']];},''));await attendre();
   await nav.aller(page,'at-recap');
   await verifier('F1 ensemble → récap des cases',async()=>assert.equal(await page.locator('tr[data-at=cu] .rc-seq li.ens .rc-cmd').count(),2));
-  await nav.aller(page,'rg-recap');
+  await nav.aller(page,'rg-recap');await nav.deplier(page);
   await verifier('F2 nouvelle commande de la case → récap man-min (effectif)',async()=>assert.equal(await page.locator('tr[data-classe="DL/BC"] input[data-rg-champ=recap-pers][data-atelier=cu]').count(),1));
 
   // G. Un service renommé → récap man-min, récap des cases.
@@ -97,7 +97,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await verifier('G2 renommé → récap des cases',async()=>{const t=await page.locator('.rc-table').innerText();assert.match(t,/Cuisine chaude/);assert.match(t,/Cuisine chaude AF BC/);});
 
   // H. Annuler dans un récap : les autres suivent.
-  await nav.aller(page,'rg-recap');
+  await nav.aller(page,'rg-recap');await nav.deplier(page);
   await changer('input[data-rg-champ=recap-pers][data-atelier=mo]',9);
   await page.locator('#rg-recap-undo').click();await attendre();
   await nav.aller(page,'at-recap');

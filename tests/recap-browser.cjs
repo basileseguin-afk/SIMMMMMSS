@@ -15,12 +15,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
 
   // 1. Dans Mon unité (Tableau des minutes) : une ligne par commande, une colonne par service.
-  await nav.aller(page,'rg-recap');
+  await nav.aller(page,'rg-recap');await nav.deplier(page);
   assert.equal(await page.evaluate(()=>document.body.dataset.partie),'organisation');
   const n=await page.evaluate(()=>Sim.ateliers.classes.length);
-  assert.equal(await page.locator('.rg-recap-table tbody tr').count(),n,'une ligne par commande');
+  assert.equal(await page.locator('.rg-recap-table tbody tr[data-classe]').count(),n,'une ligne par commande');
+  assert.equal(await page.locator('.rg-recap-table tbody tr.rg-recap-cie').count(),await page.evaluate(()=>new Set(Sim.ateliers.classes.map(c=>c.cie)).size),'et une ligne total par compagnie');
   assert.ok(await page.locator('.rg-recap-table thead th').count()>=4,'des colonnes de services');
-  assert.match(await page.locator('.rg-recap-resume').innerText(),/\d+ commandes · \d+ services · .* de travail sur la journée/);
+  assert.match(await page.locator('.rg-recap-resume').innerText(),/\d+ commandes · \d+ compagnies · \d+ services · .* de travail sur la journée/);
 
   // 2. Modifier une case : elle devient propre à cette compagnie × classe ; la vider la ramène à la commune.
   const champ=page.locator('.rg-recap-table input[data-rg-champ=recap]').first();
@@ -45,7 +46,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator('[data-rg-action=recap-vue][data-vue=vol]').click();await attendre();
   // Chercher une compagnie.
   await page.fill('#rg-recap-filtre','TX');await attendre();
-  assert.ok(await page.locator('.rg-recap-table tbody tr').evaluateAll(tr=>tr.every(t=>/^TX/.test(t.dataset.classe))),'seulement TX');
+  assert.ok(await page.locator('.rg-recap-table tbody tr[data-classe]').evaluateAll(tr=>tr.every(t=>/^TX/.test(t.dataset.classe))),'seulement TX');
   await page.fill('#rg-recap-filtre','');await attendre();
 
   // 4. Le fichier de paramétrage : exporté, modifié dans « Excel », réimporté.
@@ -67,7 +68,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await nav.aller(page,'at-chemins');
   await page.locator('[data-pc-action=cmd][data-classe="AF/BC"]').click();await attendre();
   await nav.creerChemin(page,'AF/BC');
-  await nav.aller(page,'rg-recap');
+  await nav.aller(page,'rg-recap');await nav.deplier(page);
   const pers=page.locator('.rg-recap-table tr[data-classe="AF/BC"] input[data-rg-champ=recap-pers]').first();
   assert.equal(await pers.count(),1,'l’effectif de la case est là');
   const at=await pers.getAttribute('data-atelier');

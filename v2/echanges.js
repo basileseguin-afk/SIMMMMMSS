@@ -256,16 +256,28 @@
       }
       return { classe: c, vols, cellules, parVol, jour };
     });
-    // Une ligne récap par compagnie : ses services par compagnie, minutes par vol
-    // (les siennes, sinon « toutes les compagnies ») × ses départs.
-    const lignesCie = [...new Set(parCie.map(c => c.cie))].map(cie => {
+    // Une ligne récap par compagnie (retours d'usage du 02/10) : le total de ses
+    // classes, service par service ; et ses services par compagnie (l'armement),
+    // minutes par vol (les siennes, sinon « toutes les compagnies ») × ses départs.
+    const cies = [...new Set(classes.map(c => c.cie).concat(parCie.map(c => c.cie)))];
+    const lire = x => (x !== '' && x != null && Number.isFinite(+x) ? +x : null);
+    const lignesCie = cies.map(cie => {
+      const siennes = lignes.filter(l => l.classe.cie === cie);
       const cellules = {};
-      let parVol = 0, jour = 0, vols = 0;
+      let parVol = 0, jour = 0, vols = Math.max(0, ...siennes.map(l => l.vols));
       for (const sv of colonnes) {
-        const k = sv.parCompagnie && parCie.find(c => c.service === sv.id && c.cie === cie);
+        if (!sv.parCompagnie) {
+          // La somme de ses classes qui passent par ce service (robot : pas de man-minutes).
+          const ici = siennes.map(l => l.cellules[sv.id]).filter(c => c && c.source !== 'hors' && c.source !== 'compagnie');
+          if (!ici.length || sv.robot) { cellules[sv.id] = { source: ici.length ? 'robot' : 'hors', parVol: null, jour: null }; continue; }
+          const pv = ici.reduce((n, c) => n + (c.parVol || 0), 0), j = ici.reduce((n, c) => n + (c.jour || 0), 0);
+          cellules[sv.id] = { source: 'somme', parVol: pv, jour: j, classes: ici.length, manque: ici.filter(c => c.source === 'manque').length };
+          parVol += pv; jour += j;
+          continue;
+        }
+        const k = parCie.find(c => c.service === sv.id && c.cie === cie);
         if (!k) { cellules[sv.id] = { source: 'hors', parVol: null, jour: null }; continue; }
         const min = ((((ctx.categories || {})[sv.id] || [])[0]) || {}).minutes || {};
-        const lire = x => (x !== '' && x != null && Number.isFinite(+x) ? +x : null);
         const propre = lire(min[cie]), commun = lire(min[P.TOUTES]), n = k.vols.length;
         const v = propre ?? commun, equipe = equipeDe(sv.id, k.id);
         vols = Math.max(vols, n);
@@ -273,13 +285,14 @@
           commun, equipe, classe: k.id, vols: n, duree: v != null && equipe && equipe.personnes > 0 ? v / equipe.personnes : null };
         if (v != null) { parVol += v; jour += v * n; }
       }
-      return { compagnie: cie, vols, cellules, parVol, jour };
+      return { compagnie: cie, vols, commandes: siennes.length, cellules, parVol, jour };
     });
+    // Les totaux : les classes pour leurs services, les compagnies pour les services par compagnie.
     const totaux = { parVol: {}, jour: {}, jourTotal: 0 };
     for (const sv of colonnes) {
-      const toutes = lignes.concat(lignesCie);
-      totaux.parVol[sv.id] = toutes.reduce((n, l) => n + (l.cellules[sv.id].parVol || 0), 0);
-      totaux.jour[sv.id] = toutes.reduce((n, l) => n + (l.cellules[sv.id].jour || 0), 0);
+      const de = sv.parCompagnie ? lignesCie : lignes;
+      totaux.parVol[sv.id] = de.reduce((n, l) => n + (l.cellules[sv.id].parVol || 0), 0);
+      totaux.jour[sv.id] = de.reduce((n, l) => n + (l.cellules[sv.id].jour || 0), 0);
       totaux.jourTotal += totaux.jour[sv.id];
     }
     return { colonnes, lignes, lignesCie, totaux };

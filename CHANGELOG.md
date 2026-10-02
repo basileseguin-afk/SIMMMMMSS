@@ -5,6 +5,29 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-02 — Tableau des minutes : un bloc par compagnie, sa ligne en total
+
+Demande : « utilise cette ligne comme ligne récap / total pour les
+compagnies, et rends le tableau bien plus digeste visuellement et plus beau ».
+
+- **La ligne d'une compagnie est son total**, pour toutes les compagnies : la
+  somme de ses classes, service par service (par vol, ou sur la journée), son
+  armement (toujours modifiable là), et son total. Un point rouge signale des
+  valeurs à renseigner dans ses classes.
+- **Un bloc par compagnie**, sa ligne total en tête, ses classes en retrait
+  dessous, **repliées** tant qu'on ne les ouvre pas (un clic sur la
+  compagnie ; « Tout déplier / Tout replier » ; la recherche ouvre ce qu'elle
+  trouve). Le tableau se lit d'abord en une ligne par compagnie.
+- **Plus calme à lire** : pastille de compagnie, plus de zébrage ni de « · »
+  dans les cases où une commande ne passe pas (vides), colonne de
+  l'armement hachurée sur les classes, première colonne figée au défilement
+  de côté, « Total journée » toujours en bas, aligné sous les minutes ; le
+  tableau prend toute la largeur de l'écran.
+- `echanges.js` (`lignesCie` : sommes, totaux sans double compte),
+  `reglages.js`, `reglages.css` ; v1 et v2. Tests : `tests/recap.test.cjs`,
+  `tests/recap-compagnie-browser.cjs` ; `nav.deplier` pour les tests qui
+  règlent une classe.
+
 ## 2026-10-02 — Tableau des minutes : une ligne récap par compagnie (armement)
 
 Demande : « lie les man-hours de l'armement dans le tableau des man-hours :

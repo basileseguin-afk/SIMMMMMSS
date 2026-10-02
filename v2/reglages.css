@@ -168,7 +168,41 @@
 .rgr.case{font-weight:600}
 .rgr.manque input{border-color:#c0392b;outline:0}
 .rgr.hors{text-align:center}
-/* La ligne récap d'une compagnie (02/10) : ses services par compagnie (l'armement),
- * sous ses classes, sur un fond à part. */
-.rg-recap-table tbody tr.rg-recap-cie td,.rg-recap-table tbody tr.rg-recap-cie th{background:color-mix(in srgb,var(--c-equipes,var(--accent)) 9%,var(--bg3,#fff));border-bottom:2px solid var(--bordure)}
-.rg-recap-cie th{font-weight:700;white-space:nowrap}
+/* Le tableau des minutes par blocs de compagnie (retour d'usage du 02/10 :
+ * « plus digeste, plus beau ») : la ligne d'une compagnie est son total, en tête
+ * de bloc ; ses classes, en retrait, se déplient d'un clic. Pas de zébrage : les
+ * blocs suffisent à guider l'œil. La première colonne reste en place quand le
+ * tableau défile de côté ; le total de la journée, en bas, aussi. */
+.rg-recap-plier{margin:6px 0 4px;font-size:13px;color:var(--txt2)}
+.rg-recap-table{border-collapse:separate;border-spacing:0}
+.rg-recap-table tbody tr:nth-child(even) td,.rg-recap-table tbody tr:nth-child(even) th{background:var(--bg3,#fff)}
+.rg-recap-table tbody td,.rg-recap-table tbody th{background:var(--bg3,#fff);border-bottom:1px solid color-mix(in srgb,var(--bordure) 55%,transparent)}
+.rg-recap-table th[scope=row],.rg-recap-table thead th:first-child,.rg-recap-table tfoot th{position:sticky;left:0;z-index:2;text-align:left;min-width:150px}
+.rg-recap-table thead th:first-child{z-index:4}
+/* La ligne de la compagnie : son total. */
+.rg-recap-table tbody tr.rg-recap-cie td,.rg-recap-table tbody tr.rg-recap-cie th{background:color-mix(in srgb,var(--c-equipes,var(--accent)) 7%,var(--bg3,#fff));
+  border-top:2px solid var(--bordure);border-bottom:1px solid var(--bordure);padding-top:8px;padding-bottom:8px}
+.rg-recap-bloc:first-of-type tr.rg-recap-cie td,.rg-recap-bloc:first-of-type tr.rg-recap-cie th{border-top:0}
+.rg-cie-btn{appearance:none;border:0;background:none;font:inherit;color:var(--txt);cursor:pointer;display:inline-flex;align-items:center;gap:8px;padding:2px 4px;border-radius:6px}
+.rg-cie-btn:hover{background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.rg-cie-btn:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.rg-cie-chevron{width:0;height:0;border-left:5px solid var(--txt2);border-top:4px solid transparent;border-bottom:4px solid transparent;transition:transform .15s}
+.rg-cie-btn[aria-expanded=true] .rg-cie-chevron{transform:rotate(90deg)}
+.rg-cie-code{font-weight:800;letter-spacing:.03em;font-size:13px;padding:2px 8px;border-radius:999px;background:var(--bg2,#eef);border:1px solid var(--bordure)}
+.rg-cie-btn small{font-size:11px;color:var(--txt2);font-weight:500}
+.rgr.somme{font-weight:700;text-align:right;padding-right:12px;white-space:nowrap}
+.rgr-manque-pt{display:inline-block;width:7px;height:7px;border-radius:50%;background:#c0392b;margin-left:6px;vertical-align:middle}
+.rg-recap-cie .rg-recap-total{font-size:14px}
+/* Ses classes : en retrait, repliées tant qu'on ne les ouvre pas. */
+.rg-recap-bloc:not(.ouvert) tr.rg-recap-classe{display:none}
+.rg-recap-classe th{padding-left:34px;font-weight:500;color:var(--txt);white-space:nowrap}
+.rg-recap-classe .rg-recap-total{font-weight:600;color:var(--txt2)}
+.rgr.hors{opacity:1}
+.rgr.parcie{background:repeating-linear-gradient(135deg,transparent 0 6px,color-mix(in srgb,var(--txt2) 6%,transparent) 6px 7px)!important}
+/* Le total de la journée, toujours visible en bas. */
+.rg-recap-table tfoot td,.rg-recap-table tfoot th{position:sticky;bottom:0;background:var(--bg2,#f4f5f7);font-weight:800;border-top:2px solid var(--bordure);padding-top:9px;padding-bottom:9px;text-align:right}
+.rg-recap-table tfoot th{text-align:left;z-index:3}
+.rg-recap-legende .rgr.somme{font-weight:700}
+@media (prefers-color-scheme:dark){.rg-cie-code{background:color-mix(in srgb,var(--txt2) 18%,transparent)}}
+/* Le tableau des minutes prend la largeur de l'écran : moins de défilement de côté. */
+#view-reglages #rg-recap-panneau{max-width:none}

@@ -1,7 +1,8 @@
-/* Le tableau des minutes et l'armement (retour d'usage du 02/10 : « lie les
- * man-hours de l'armement dans le tableau : une ligne récap compagnie, avec
- * tous les services dont les man-hours sont sur l'ensemble de la compagnie et
- * non sur les classes »). v1 et v2. */
+/* Le tableau des minutes et l'armement (retours d'usage du 02/10 : « lie les
+ * man-hours de l'armement dans le tableau : une ligne récap compagnie » ; puis
+ * « utilise cette ligne comme ligne récap / total, et rends le tableau plus
+ * digeste ») : un bloc par compagnie, sa ligne total en tête, ses classes
+ * repliables. v1 et v2. */
 const assert=require('node:assert/strict'),path=require('node:path');
 const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
@@ -25,17 +26,28 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
      OrlyParcours.integrerArmement(st,['armement'],['quais']);},''));
    await nav.aller(page,'rg-recap');await attendre();
 
-   // 1. Une ligne récap par compagnie, sous ses classes ; l'armement y a ses minutes.
+   // 1. Un bloc par compagnie : sa ligne total en tête, ses classes dessous, repliées.
    assert.match(await page.locator('#rg-recap thead').innerText(),/Armement/,version+' : une colonne Armement');
    const ordre=await page.evaluate(()=>[...document.querySelectorAll('#rg-recap tbody tr')].map(t=>t.dataset.compagnie?t.dataset.compagnie+'*':t.dataset.classe.split('/')[0]));
    const af=ordre.indexOf('AF*');
-   assert.ok(af>0&&ordre.slice(0,af).every(x=>x==='AF')&&ordre[af+1]!=='AF',version+' : AF, ses classes puis sa ligne '+ordre.join(','));
-   assert.match(await ligne('AF').innerText(),/AF · toute la compagnie/);
+   assert.ok(af>=0&&ordre[af+1]==='AF'&&ordre.slice(af+1).findIndex(x=>x!=='AF')>0,version+' : AF, sa ligne total puis ses classes '+ordre.join(','));
+   assert.equal(await page.locator('#rg-recap tr[data-classe="AF/YC"]').isVisible(),false,'repliées au départ');
+   assert.match(await ligne('AF').innerText(),/AF\s+\d+ classes/);
+   // Le total de ses classes, service par service : celui du Montage, par exemple.
+   const somme=await page.evaluate(()=>{const r=OrlyEchanges.recapManMinutes(Sim.reglages.contexteRecap());const l=r.lignesCie.find(x=>x.compagnie==='AF');
+     return [l.cellules.prepa.parVol,r.lignes.filter(x=>x.classe.cie==='AF').reduce((n,x)=>n+(x.cellules.prepa.parVol||0),0)];});
+   assert.ok(somme[0]>0&&Math.abs(somme[0]-somme[1])<1e-9,version+' : la ligne AF est la somme de ses classes '+somme);
+   // Un clic la déplie ; « Tout replier » referme tout.
+   await ligne('AF').locator('[data-rg-action=recap-cie]').click();
+   assert.equal(await page.locator('#rg-recap tr[data-classe="AF/YC"]').isVisible(),true,'dépliée d’un clic');
+   assert.equal(await ligne('AF').locator('[data-rg-action=recap-cie]').getAttribute('aria-expanded'),'true');
+   assert.equal(await page.locator('#rg-recap tr[data-classe="AF/YC"] td.rgr.parcie').count(),1,'sur une classe : la colonne Armement renvoie à la compagnie');
+   await page.locator('[data-rg-action=recap-tout][data-ouvrir="0"]').click();
+   assert.equal(await page.locator('#rg-recap tr[data-classe="AF/YC"]').isVisible(),false);
    assert.equal(await ligne('AF').locator('[data-rg-champ=recap-cie]').inputValue(),'15','AF : sa valeur propre');
    assert.equal(await ligne('TX').locator('[data-rg-champ=recap-cie]').inputValue(),'','TX : vide…');
    assert.equal(await ligne('TX').locator('[data-rg-champ=recap-cie]').getAttribute('placeholder'),'10','… la valeur de toutes les compagnies');
    assert.match(await ligne('AF').innerText(),/7,5 min/,'15 min ÷ 2 personnes');
-   assert.equal(await page.locator('#rg-recap tr[data-classe="AF/YC"] td.rgr.hors').first().innerText(),'↓','sur une classe : renvoi à la ligne de la compagnie');
 
    // 2. Saisie : TX à 12 ; puis 10 (= toutes les compagnies) la ramène à la commune.
    const tx=ligne('TX').locator('[data-rg-champ=recap-cie]');

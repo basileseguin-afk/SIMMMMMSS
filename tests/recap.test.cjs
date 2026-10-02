@@ -125,10 +125,13 @@ test('l’armement, par compagnie : une ligne récap par compagnie, minutes par 
   assert.deepEqual(r.colonnes.map(x => [x.id, !!x.parCompagnie]), [['cuisine', false], ['prepa', false], ['armement', true]]);
   assert.equal(r.lignes[0].cellules.armement.source, 'compagnie', 'sur une classe : renvoi à la ligne de la compagnie');
   const [af, tx] = r.lignesCie;
+  // La ligne de la compagnie est aussi son total : la somme de ses classes, service par service.
+  assert.deepEqual([af.commandes, af.cellules.cuisine.source, af.cellules.cuisine.parVol, af.cellules.cuisine.jour], [2, 'somme', 30, 60], 'AF : seule AF BC passe en cuisine');
+  assert.deepEqual([af.cellules.prepa.parVol, af.cellules.prepa.jour], [20 + 4, 40 + 12]);
+  assert.equal(af.jour, 60 + 52 + 45, 'le total d’AF : ses classes et son armement');
   assert.deepEqual([af.compagnie, af.vols, af.cellules.armement.source, af.cellules.armement.parVol, af.cellules.armement.jour, af.cellules.armement.duree],
     ['AF', 3, 'propre', 15, 45, 7.5], 'AF : 15 min × 3 vols ; 2 personnes → 7,5 min par vol');
   assert.deepEqual([tx.cellules.armement.source, tx.cellules.armement.parVol, tx.cellules.armement.jour, tx.cellules.armement.equipe], ['commun', 10, 10, null]);
-  assert.equal(af.cellules.cuisine.source, 'hors');
   assert.equal(r.totaux.jour.armement, 55);
   assert.equal(r.totaux.jourTotal, 60 + 45 + 40 + 20 + 12 + 55, 'le total de la journée compte l’armement');
   // Le classeur du barème n'a pas de colonne d'armement : elle se règle dans « Par compagnie ».
