@@ -18,6 +18,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   for(const [fichier,version] of [['../index.html','v1'],['../v2/index.html','v2']]){
    await page.goto(pathToFileURL(path.resolve(__dirname,fichier)).href);await attendre();
    await page.evaluate(()=>localStorage.clear());await page.reload();await attendre();
+   // La version servie se lit dans l'en-tête (02/10).
+   assert.equal(await page.locator('header .marque-version').innerText(),'version '+await page.evaluate(()=>document.querySelector('meta[name="ory-version"]').content));
    // Des repas construits pour toutes les compagnies, sauf QR et DL : rien n'est construit pour elles.
    const construites=await page.evaluate(()=>{const cies=[...new Set(Sim.ateliers.classes.map(c=>c.cie))].filter(c=>c!=='QR'&&c!=='DL').sort();
      Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'mo',nom:'Montage',service:'prepa',type:'manuel',debut:'04:00',jour:0,personnes:4,pauses:[],

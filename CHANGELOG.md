@@ -5,6 +5,13 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-02 — La version servie, dans l'en-tête
+
+Retour d'usage : « je ne vois pas la version » — elle n'était qu'en bas de
+Réglages › Simulation, en petit. Elle s'affiche maintenant sous « Production
+ORY », sur toutes les pages (`sim.js`, `theme.css`, v1 et v2) : c'est elle
+qu'on compare pour savoir si le navigateur sert la dernière mise en ligne.
+
 ## 2026-10-02 — L'armement : le réglage ne peut plus être caché
 
 Retour d'usage : « rien de ce que tu me dis n'apparaît ». Le site publié

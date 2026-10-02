@@ -387,3 +387,6 @@ html,body{overscroll-behavior:none}
 }
 .btn-version b{font-weight:inherit}
 .btn-version i{font-style:normal}
+
+/* La version servie, sous le nom du site */
+header .marque-version{display:block;font-size:11px;font-weight:500;color:var(--txt3);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:0}
