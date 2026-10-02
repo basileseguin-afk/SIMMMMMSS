@@ -35,8 +35,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
      const liens=p.liens.filter(l=>l.de==='armement'||l.vers==='armement');
      assert.deepEqual(liens,[{de:'armement',vers:'quais'}],p.nom+' : une seule flèche, vers le handling');
    }
-   // Le Montage livre toujours le handling (l'armement est sorti du milieu du chemin).
-   assert.ok(s.parcours.find(p=>p.id==='sans-cuisine').liens.some(l=>l.de==='prepa'&&l.vers==='quais'));
+   // Le handling n'est relié qu'à l'armement : aucune étape des repas ne le livre (02/10 : « CF food c'est juste une zone tampon »).
+   assert.ok(s.parcours.every(p=>p.liens.filter(l=>l.vers==='quais').every(l=>l.de==='armement')),version+' : le handling n’est relié qu’à l’armement');
+   assert.ok(s.migrations.includes('handling-seul'));
 
    // 2. Le calcul : pas de trou à l'armement ; le handling attend l'armement d'AF.
    const r=await page.evaluate(c=>{const r=Sim.ateliers.resultat;const arm=r.lots.find(l=>l.classes.includes('AF/@'+c));
@@ -52,7 +53,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.locator('#mu-services [data-mu-action=integrer-armement]').click();await attendre();
    s=await st();
    const neuf=s.parcours.find(p=>p.id==='neuf');
-   assert.deepEqual(neuf.liens,[{de:'prepa',vers:'quais'},{de:'armement',vers:'quais'}]);
+   assert.deepEqual(neuf.liens,[{de:'armement',vers:'quais'}]);
    assert.equal(await page.locator('#mu-services .mu-arm-ok').count(),1);
 
    // 4. Toutes les pages s'affichent ; puis « Annuler » défait l'intégration du nouveau chemin.
@@ -63,6 +64,17 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    // 5. Rechargée, la migration ne se refait pas.
    await page.reload();await attendre();
    assert.deepEqual((await st()).parcours.find(p=>p.id==='neuf').liens,[],'fait une fois seulement');
+
+   // 6. Une unité intégrée par la première version (CF food → handling) : la flèche s'en va, celle de l'armement reste.
+   await page.evaluate(()=>Sim.ateliers.changer(()=>{const s=Sim.ateliers.state;
+     s.migrations=s.migrations.filter(m=>m!=='handling-seul');
+     const t=s.parcours.find(p=>p.id==='complet');t.liens.push({de:'magasin',vers:'quais'});},''));
+   await page.reload();await attendre();
+   s=await st();
+   const complet=s.parcours.find(p=>p.id==='complet');
+   assert.ok(!complet.liens.some(l=>l.de==='magasin'&&l.vers==='quais'),version+' : flèche des repas vers le handling retirée');
+   assert.ok(complet.liens.some(l=>l.de==='armement'&&l.vers==='quais'));
+   assert.ok(s.migrations.includes('handling-seul'));
   }
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('armement-chemins-browser : ok');

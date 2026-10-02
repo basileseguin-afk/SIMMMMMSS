@@ -230,9 +230,12 @@ compagnie » ; la fiche d'un service dont le nom dit « armement » le propose).
   tous les chemins et lie-le uniquement au handling ») : dans chaque chemin
   (flux et chemins propres), l'armement est une branche à part — un nœud,
   une seule flèche, vers le handling ; aucune vers les repas ni depuis eux.
-  Un chemin sans handling le reçoit après ses dernières étapes ; un armement
-  placé au milieu d'un chemin en sort (ce qui le livrait livre ce qu'il
-  livrait). `PC.integrerArmement`, `PC.armementIntegre`. Fait une fois au
+  Un chemin sans handling le reçoit, relié à l'armement seulement : le
+  handling n'est pas la suite des repas (« le handling est le handling, CF
+  food c'est juste une zone tampon ») — le calcul sait qu'il charge les repas
+  préparés. Un armement placé au milieu d'un chemin en sort (ce qui le
+  livrait livre ce qu'il livrait). `PC.delierHandling` retire les flèches des
+  repas vers le handling (migration « handling-seul »). `PC.integrerArmement`, `PC.armementIntegre`. Fait une fois au
   chargement dès qu'un handling existe (migration « armement-handling » :
   le service passe par compagnie, ses cases par classe deviennent des cases
   par compagnie — `PC.versParCompagnie` ; « Annuler » le défait) ; la fiche

@@ -5,6 +5,21 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-02 — Le handling n'est relié qu'à l'armement
+
+Retour d'usage : « pourquoi tu as lié le handling à CF food ? Le handling est
+le handling, et CF food c'est juste une zone tampon ». L'intégration de
+l'armement ajoutait le handling aux chemins qui n'en avaient pas, après leur
+dernière étape (chez l'utilisateur : CF food).
+
+- Un chemin sans handling le reçoit relié à l'armement seulement ; aucune
+  étape des repas ne le livre. Le calcul n'en a pas besoin : le handling
+  charge les vols dont les repas sont préparés.
+- Migration « handling-seul » (une fois, annulable) : les flèches des étapes
+  des repas vers le handling s'en vont (`PC.delierHandling`) ; celle de
+  l'armement reste.
+- v1 et v2 (`parcours.js`, `sim.js`) ; `tests/armement-chemins-browser.cjs`.
+
 ## 2026-10-02 — L'armement dans tous les chemins, relié seulement au handling
 
 Demande : « intègre pour moi l'armement sur tous les chemins et lie-le

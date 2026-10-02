@@ -1990,18 +1990,29 @@ function migrerRobot(){
 }
 
 /* L'armement (retour d'usage du 02/10 : « intègre pour moi l'armement sur tous
- * les chemins et lie-le uniquement au handling »). Fait une fois, dès qu'un
+ * les chemins et lie-le uniquement au handling » ; puis « le handling est le
+ * handling, CF food c'est juste une zone tampon »). Fait une fois, dès qu'un
  * handling existe : chaque service « Armement » travaille par compagnie (ses
  * cases par classe deviennent des cases par compagnie), et il entre dans tous
  * les chemins en branche à part, avec une seule flèche, vers le handling.
  * L'état le retient (« armement-handling ») ; « Annuler » le défait. */
 function migrerArmement(){
   const at=Sim.ateliers;if(!at)return;
-  if((at.state.migrations||[]).includes('armement-handling'))return;
+  const faites=at.state.migrations||[];
+  if(faites.includes('armement-handling')&&faites.includes('handling-seul'))return;
   const handlings=[...new Set(at.state.ateliers.filter(a=>a.type==='handling').map(a=>a.service))];
   if(!handlings.length)return;                       // rien à quoi le relier : on attend un handling
   const armements=servicesDisponibles().filter(s=>/armement/i.test(s.nom)&&!handlings.includes(s.id));
   if(!armements.length)return;
+  // Déjà intégré par la première version, qui reliait aussi le handling à la fin
+  // des chemins des repas (CF food → handling) : on retire ces flèches.
+  if(faites.includes('armement-handling')){
+    let n=0;
+    at.changer(()=>{n=OrlyParcours.delierHandling(at.state,armements.map(s=>s.id),handlings);
+      at.state.migrations=[...(at.state.migrations||[]),'handling-seul'];},'');
+    if(n)at.rendre('Handling : '+n+(n>1?' flèches retirées':' flèche retirée')+' depuis les étapes des repas (CF food…) ; il n’est relié qu’à l’armement. « Annuler » revient en arrière.');
+    return;
+  }
   let n=0;
   at.changer(()=>{
     const st=at.state;st.categories=st.categories||{};
@@ -2011,7 +2022,7 @@ function migrerArmement(){
       OrlyParcours.versParCompagnie(st,s.id,st.categories[s.id][0].id);
     }
     n=OrlyParcours.integrerArmement(st,armements.map(s=>s.id),handlings);
-    st.migrations=[...(st.migrations||[]),'armement-handling'];
+    st.migrations=[...(st.migrations||[]),'armement-handling','handling-seul'];
   },'');
   at.rendre(armements.map(s=>s.nom).join(', ')+' : intégré à '+n+(n>1?' chemins':' chemin')+', en branche à part, relié seulement au handling ; une case par compagnie. « Annuler » revient en arrière.');
 }

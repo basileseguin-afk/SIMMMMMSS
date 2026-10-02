@@ -1028,7 +1028,10 @@
    * (flux et chemins propres), l'armement est une branche à part : un nœud, une
    * seule flèche, vers le handling — aucune vers les repas ni depuis eux. Il
    * travaille en parallèle des repas ; le handling attend les deux pour charger.
-   * Un chemin sans handling le reçoit après ses dernières étapes. Un armement
+   * Un chemin sans handling le reçoit, relié à l'armement seulement : le
+   * handling est le handling, pas la suite des repas (retour d'usage du 02/10 :
+   * « pourquoi tu as lié le handling à CF food ? CF food c'est juste une zone
+   * tampon ») — le calcul sait déjà qu'il charge les repas préparés. Un armement
    * placé au milieu d'un chemin en sort : ce qui le livrait livre ce qu'il
    * livrait. Modifie `etat`.
    * @returns {number} le nombre de chemins changés */
@@ -1041,13 +1044,23 @@
       if (!p.noeuds.some(x => !arm.has(x))) continue;          // un chemin vide reste vide
       const avant = JSON.stringify([p.noeuds, p.liens]);
       for (const a of arm) retirerService(p, a);
-      for (const h of hs) if (!p.noeuds.includes(h)) {
-        const fins = p.noeuds.filter(x => !hs.includes(x) && !p.liens.some(l => l.de === x));
-        p.noeuds.push(h);
-        for (const x of fins) if (!creeBoucle(p, x, h)) p.liens.push({ de: x, vers: h });
-      }
+      for (const h of hs) if (!p.noeuds.includes(h)) p.noeuds.push(h);
       for (const a of arm) { p.noeuds.push(a); for (const h of hs) p.liens.push({ de: a, vers: h }); }
       if (JSON.stringify([p.noeuds, p.liens]) !== avant) n++;
+    }
+    return n;
+  }
+
+  /** Le handling n'est relié qu'à l'armement : les flèches des étapes des repas
+   *  vers lui s'en vont (CF food → handling…). Modifie `etat`.
+   *  @returns {number} le nombre de flèches retirées */
+  function delierHandling(etat, armements, handlings) {
+    const arm = new Set(armements || []), hs = new Set(handlings || []);
+    let n = 0;
+    for (const p of etat.parcours || []) {
+      const avant = (p.liens || []).length;
+      p.liens = (p.liens || []).filter(l => !(hs.has(l.vers) && !arm.has(l.de)));
+      n += avant - p.liens.length;
     }
     return n;
   }
@@ -2269,7 +2282,7 @@
   const api = { annoncer, fusionneePar, passePar, chaines, insererPrepa, depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, couverture, confier, nouvelleEquipe,
     completer, colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, donnerCases, completerCases, nomLibre, caseHandling, anciensHandlings, brancherHandling, caseRobot, remplacerEtape,
     SERVICES_DISPO, estDispo, caseDispo, anciensDispos, partagerDispos, separerParCommande, ajouterBesoin,
-    cheminPropre, insererService, retirerService, integrerArmement, armementIntegre, versParCompagnie, liberer, insererParEcheance, cocher, passerPar, grille, natureService, equipeNeuve,
+    cheminPropre, insererService, retirerService, integrerArmement, delierHandling, armementIntegre, versParCompagnie, liberer, insererParEcheance, cocher, passerPar, grille, natureService, equipeNeuve,
     marquerTypes, typeSuivi, fluxDe, signature, types, commandesDuType, nouveauType, assignerType, nettoyerTypes, nomVariante, adapter,
     changerFlux, regrouper, EditeurParcours };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
