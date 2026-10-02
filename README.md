@@ -163,10 +163,9 @@ le rouge ne sert qu’aux retards.
         chaîne… »), un halo autour des deux services et un trait épais entre
         eux dans chaque diagramme (flux, commande, liens de l’unité), une barre
         rose au planning. Une ligne robot partagée a aussi son badge.
-        **Par catégories à lui** (l’armement) : un service peut travailler
-        non par Business / Économie, mais par ses catégories (trolleys bar,
-        matériel thé/café…), avec des minutes par vol selon la compagnie ;
-        ses équipes les cochent dans leur grille.
+        **Par compagnie** (l’armement) : une case par compagnie, oui ou
+        non, liée au chemin (seules les compagnies dont le flux passe par
+        l’armement en ont une), et des minutes par vol selon la compagnie.
         **⚡ Certains jours seulement** : une équipe peut ne travailler que
         si une compagnie a assez de vols (« ne travaille que si AF a au
         moins 6 vols ce jour-là ; sinon, ses commandes passent au Montage
@@ -500,7 +499,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/condition-browser.cjs` | Règle ⚡ (v1 et v2) : bouton, phrase pré-remplie pour aujourd’hui, seuil au-dessus des vols du jour → l’équipe ne travaille pas, ses commandes et sa personne passent au montage général (badge, constat, calcul), repas, retrait, équipe seule dans son service |
 | `tests/flux-retrait-browser.cjs` | Retirer un service d’un flux ou un atelier d’un chemin (v1 et v2) : ses équipes lâchent les commandes, cases hors flux non cochables, « Faire passer un flux par ici », ancienne saisie signalée et retirée en un clic |
 | `tests/chaine-services-browser.cjs` | Équipe à la chaîne (v1 et v2) : présente et modifiable dans ses deux services (Prépa et Montage), retirée de la Prépa quand elle n’est plus à la chaîne |
-| `tests/categories-browser.cjs` | Service par catégories (v1 et v2) : l’armement passe « par catégories », deux catégories et leurs minutes par vol (toutes, AF), équipe et grille par catégories, calcul, pages, suppression d’une catégorie, retour aux commandes |
+| `tests/categories-browser.cjs` | Armement par compagnie (v1 et v2) : la fiche le propose, aucun chemin → aucune case, « Faire passer un flux par ici », minutes par vol (toutes, AF), une colonne et une case par compagnie, calcul, pages, le service sort du flux → l’équipe lâche ses cases, retour aux commandes |
 | `tests/saisie-heure-browser.cjs` | Taper une heure touche par touche (Récap des cases, fiche d’une case) : rien n’est arraché, Entrée ou quitter le champ enregistre, le tableau garde son défilement |
 | `tests/secours-browser.cjs` | Un démarrage resté en plan ouvre la page de secours ; elle rend les données en sauvegarde, repart sans les cases, puis les remet |
 | `tests/recap-cases-browser.cjs` | Récap des cases : une ligne par case, tâche unique / à la suite / ensemble, départ et jour modifiables, chercher, fichier de paramétrage exporté puis réimporté |

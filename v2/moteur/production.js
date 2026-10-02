@@ -137,20 +137,24 @@
   }
 
   /*
-   * UN SERVICE QUI TRAVAILLE PAR CATÉGORIES (retour d'usage du 01/10 :
-   * « l'armement ne travaille pas en fonction de BC, PC, Éco, SPML, mais
-   * d'autres catégories » — les trolleys bar, le matériel thé/café…).
+   * UN SERVICE QUI TRAVAILLE PAR COMPAGNIE (retour d'usage du 01/10 :
+   * « l'armement ne travaille pas en fonction de BC, PC, Éco, SPML » ; puis
+   * « une seule case par compagnie, oui ou non, liée au chemin »).
    *
    *   categories: { [service]: [{ id, nom, minutes: { '*': 10, AF: 15 } }] }
    *
-   * Chaque départ d'une compagnie qui a des minutes pour une catégorie (les
-   * siennes, sinon celles de « * ») donne une commande « AF/@TB » à ce service
-   * seul : minutes par vol × vols, échéance du vol. Ses équipes la cochent
-   * comme une autre ; le handling l'attend pour charger le vol.
+   * Chaque départ dont une commande passe par ce service (son flux le
+   * traverse : `passe(service, vol)`) donne au service une commande
+   * « AF/@ARM » — une par compagnie : minutes par vol (les siennes, sinon
+   * celles de « * ») × vols, échéance du vol. Ses équipes la cochent (une
+   * case par compagnie) ; le handling l'attend pour charger le vol. Sans
+   * `passe`, tous les départs comptent.
    */
   function classesCategories(vols, categories, options) {
     const o = options || {};
     const delai = o.delaiChargement === undefined ? 45 : o.delaiChargement;
+    const passe = typeof o.passe === 'function' ? o.passe : () => true;
+    const lire = (min, k) => (min[k] !== '' && min[k] !== null && min[k] !== undefined && Number.isFinite(+min[k]) ? +min[k] : null);
     const parId = new Map();
     for (const [service, liste] of Object.entries(categories || {})) {
       for (const k of (Array.isArray(liste) ? liste : [])) {
@@ -159,10 +163,9 @@
         for (const v of vols || []) {
           if (v.sens && v.sens !== 'DEP') continue;
           const depart = v.std === undefined ? v.heure : v.std;
-          if (!Number.isFinite(depart) || !v.cie) continue;
+          if (!Number.isFinite(depart) || !v.cie || !passe(service, v)) continue;
           const cie = String(v.cie).trim().toUpperCase();
-          const m = Number.isFinite(+min[cie]) && min[cie] !== '' && min[cie] !== null ? +min[cie] : Number.isFinite(+min[TOUTES]) && min[TOUTES] !== '' && min[TOUTES] !== null ? +min[TOUTES] : null;
-          if (!(m > 0)) continue;
+          const m = lire(min, cie) ?? lire(min, TOUTES);
           const id = cie + '/@' + k.id;
           let c = parId.get(id);
           if (!c) {
@@ -175,6 +178,16 @@
       }
     }
     return [...parId.values()].sort((a, b) => a.echeance - b.echeance || a.id.localeCompare(b.id));
+  }
+
+  /** Les vols dont une commande passe par un service, d'après les chemins des commandes : `(service, vol) → oui/non`. */
+  function passeParVol(classes, o) {
+    const routes = routesDesClasses(classes, o), oui = new Set();
+    for (const c of classes || []) {
+      const r = routes.get(c.id); if (!r) continue;
+      for (const s of r.services) for (const v of (c.vols || [])) oui.add(s + '|' + v.id);
+    }
+    return (service, vol) => oui.has(service + '|' + (vol && vol.id));
   }
 
   /* ======================================================================
@@ -1261,9 +1274,9 @@
     // Les compagnies × classes viennent du programme de vols, sauf quand
     // l'appelant en fournit une liste : l'utilisateur peut en retirer qu'il ne
     // fabrique pas, et en ajouter que le programme ne porte pas encore.
-    // Plus les commandes des services qui travaillent par catégories (l'armement).
-    const classes = (opts.classes || classesDeVols(opts.vols, { delaiChargement: opts.delaiChargement })).filter(c => !c.categorie)
-      .concat(classesCategories(opts.vols, opts.categories, { delaiChargement: opts.delaiChargement }))
+    // Un service par compagnie (l'armement) : une commande par compagnie, pour les vols dont le chemin le traverse.
+    const base = (opts.classes || classesDeVols(opts.vols, { delaiChargement: opts.delaiChargement })).filter(c => !c.categorie);
+    const classes = base.concat(classesCategories(opts.vols, opts.categories, { delaiChargement: opts.delaiChargement, passe: passeParVol(base, opts) }))
       .sort((a, b) => a.echeance - b.echeance || a.id.localeCompare(b.id));
     const servicesCategories = new Set(Object.keys(opts.categories || {}));
     const parClasse = new Map(classes.map(c => [c.id, c]));
@@ -1315,7 +1328,7 @@
       // Un robot va à son débit, une plonge à celui de ses tunnels, une mise à
       // disposition ne travaille pas : aucun n'a besoin de barème.
       if (a.type === 'robot' || a.type === 'lavage' || a.type === 'dispo' || a.type === 'handling') continue;
-      if (servicesCategories.has(a.service)) continue;   // ses minutes sont dans ses catégories
+      if (servicesCategories.has(a.service)) continue;   // ses minutes sont dans sa fiche, par compagnie
       if (!bareme[a.service]) anomalies.push({ code: 'bareme', atelier: a.id,
         message: a.nom + ' : aucun barème pour « ' + nom(a.service) + ' », sa durée est nulle tant qu’il n’est pas renseigné.' });
     }
@@ -1324,7 +1337,7 @@
     // pour elle ni pour sa classe y travaillerait en temps nul. On la nomme :
     // c'est le cas courant d'un service chiffré compagnie par compagnie.
     for (const a of ateliers) {
-      if (a.type !== 'manuel' || !bareme[a.service]) continue;
+      if (a.type !== 'manuel' || !bareme[a.service] || servicesCategories.has(a.service)) continue;
       const sans = [];
       for (const lot of (a.lots || [])) for (const id of classesDuLot(lot)) {
         const c = parClasse.get(id);
@@ -1334,6 +1347,14 @@
         message: '« ' + nom(a.service) + ' » n’a pas de minutes pour ' + sans.slice(0, 5).join(', ')
           + (sans.length > 5 ? '…' : '') + ' : ' + (sans.length > 1 ? 'elles y travaillent' : 'elle y travaille')
           + ' en temps nul. Renseignez le barème.' });
+    }
+    // Un service par compagnie (l'armement) sans minutes pour une compagnie qu'il prépare.
+    for (const a of ateliers) {
+      if (!servicesCategories.has(a.service)) continue;
+      const sans = [...new Set((a.lots || []).flatMap(classesDuLot).filter(id => { const c = parClasse.get(id); return c && c.categorie && c.minutes == null; }))];
+      if (sans.length) anomalies.push({ code: 'bareme-classe', atelier: a.id, classes: sans,
+        message: '« ' + nom(a.service) + ' » n’a pas de minutes par vol pour ' + sans.map(id => id.slice(0, id.indexOf('/'))).slice(0, 6).join(', ')
+          + (sans.length > 6 ? '…' : '') + ' : temps nul. Renseignez-les dans sa fiche (Mon unité › Services et équipes).' });
     }
 
     // Ce qui n'empêche pas de jouer la journée ne doit pas l'empêcher.
@@ -2414,7 +2435,7 @@
     MINUTES_PAR_JOUR, CABINES, TYPES,
     minutes, hhmm, idClasse, libelleClasse, nomCabine, enClair,
     REGIME_DEFAUT, normaliserRegime, travailDuPoste, executerTache,
-    classesDeVols, classesCategories, declarerCategories, volsDesClasses, compteDuJour, appliquerConditions, dureeHandling, compagniesDe, AVANCE_HANDLING, BAREME_DEMO, RENDEMENT_DEMO, travailClasse, travailDans, dureeFusion,
+    classesDeVols, classesCategories, passeParVol, declarerCategories, volsDesClasses, compteDuJour, appliquerConditions, dureeHandling, compagniesDe, AVANCE_HANDLING, BAREME_DEMO, RENDEMENT_DEMO, travailClasse, travailDans, dureeFusion,
     PAX_TYPE, TOUTES, cleBareme, normaliserBareme, minutesParVol,
     arcsDuParcours, servicesDuParcours, routesDesClasses,
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,

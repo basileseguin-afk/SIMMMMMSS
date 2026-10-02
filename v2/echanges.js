@@ -745,12 +745,21 @@
    * @param etat l'état de l'onglet Ateliers
    * @param ctx  { services:[{id,nom}], classes:[classe du moment], resultat? }
    */
-  /** « AF/BC », ou « AF/@TB » pour une catégorie d'un service (l'armement) ; null si illisible. */
+  /** « AF/BC », ou « AF/@ARM » pour un service par compagnie (l'armement) ; null si illisible. */
   function classeLue(x) {
     const m = /^(.+)\/(@?[a-z0-9_-]+)$/i.exec(String(x ?? '').trim());
     if (!m) return null;
     const cab = m[2].toUpperCase();
     return cab.startsWith('@') || P.CABINES.includes(cab) ? P.idClasse(m[1], cab) : null;
+  }
+
+  /** Le code court d'un service par compagnie (« ARMEMENT » → ARM), unique dans l'unité. */
+  function codeService(nom, etat) {
+    const pris = new Set(Object.values((etat && etat.categories) || {}).flat().map(k => k.id));
+    const mots = String(nom || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().match(/[A-Z0-9]+/g) || ['SVC'];
+    const base = (mots.length > 1 ? mots.map(m => m[0]).join('') : mots[0].slice(0, 3)).slice(0, 6) || 'SVC';
+    let id = base; for (let i = 2; pris.has(id); i++) id = base + i;
+    return id;
   }
 
   function ateliersVersClasseur(etat, ctx) {
@@ -850,18 +859,19 @@
       ['Retours à la plonge', RETOURS_ECRITS[P.sourceRetours(m)]],
       ...P.CABINES.map(c => ['Unités par vol ' + c, ((m.unites || {})[c] || {}).parVol || 0])];
 
-    // Les catégories propres à un service (l'armement) et leurs minutes par vol.
-    const cats = [['Service', 'Catégorie', 'Code', 'Compagnie', 'Minutes par vol']];
-    for (const [s, liste] of Object.entries(etat.categories || {})) for (const k of liste) {
-      const lignes = Object.entries(k.minutes || {});
-      if (!lignes.length) cats.push([nomDe(s), k.nom, k.id, null, null]);
-      for (const [cie, v] of lignes) cats.push([nomDe(s), k.nom, k.id, cie === '*' ? 'toutes' : cie, v]);
+    // Un service qui travaille par compagnie (l'armement) : ses minutes par vol.
+    const parCie = [['Service', 'Compagnie', 'Minutes par vol']];
+    for (const [s, liste] of Object.entries(etat.categories || {})) {
+      const k = (liste || [])[0]; if (!k) continue;
+      const lignes = Object.entries(k.minutes || {}).sort((x, y) => (x[0] === '*' ? -1 : y[0] === '*' ? 1 : x[0].localeCompare(y[0])));
+      if (!lignes.length) parCie.push([nomDe(s), 'toutes', null]);
+      for (const [cie, v] of lignes) parCie.push([nomDe(s), cie === '*' ? 'toutes' : cie, v]);
     }
     return [
       { nom: 'Ateliers', lignes: ateliers },
       feuilleHoraires(etat, ctx),
       { nom: 'Fabrications', lignes: fab },
-      { nom: 'Catégories', lignes: cats },
+      { nom: 'Par compagnie', lignes: parCie },
       { nom: 'Man-minutes', lignes: mm },
       { nom: 'Débits robot', lignes: debitsRobot },
       { nom: 'Tunnels', lignes: tunnels },
@@ -884,9 +894,9 @@
         '   Ligne robot : « partagée » (défaut) — les robots d’un service tournent sur UNE ligne, un lot à la fois, matin et',
         '   après-midi ; « propre » — un second robot. Arrêts de la ligne : « 12:15-13:00 », chaque jour, pour toute la ligne.',
         'Fabrications : ce que fait chaque atelier, DANS L’ORDRE. Une ligne par lot ; plusieurs classes d’un lot se séparent par « + ».',
-        'Catégories : un service qui travaille par catégories à lui (l’armement : trolleys bar, matériel thé/café…). Une ligne par',
-        '   catégorie et par compagnie : ses minutes par vol (« toutes » : la valeur par défaut ; 0 : pas cette catégorie). Dans',
-        '   Fabrications, une catégorie s’écrit « AF/@TB » (la compagnie, puis @ et le code de la catégorie).',
+        'Par compagnie : un service qui travaille par compagnie (l’armement : une case par compagnie, selon le chemin). Ses minutes',
+        '   par vol : « toutes » (la valeur par défaut), puis une ligne par compagnie qui en a d’autres. Dans Fabrications, sa case',
+        '   s’écrit « AF/@ARM » (la compagnie, puis @ et le code du service, tel qu’exporté).',
         '   Pour ajouter une compagnie × classe à un atelier : ajoutez une ligne (Atelier, Ordre, ex. « AF/BC »).',
         'Man-minutes : celles qu’un atelier fixe pour une compagnie × classe, POUR TOUTE SA JOURNÉE (tous ses vols), à la place du barème. Absente = le barème.',
         'Débits robot : le débit d’une compagnie × classe sur un robot (plateaux/h). Absente = le débit du robot (feuille Ateliers).',
@@ -1135,25 +1145,23 @@
         ...(c.absorbe ? { absorbe: true } : renfort && renfort !== sinon && renfort !== a ? { renfort: renfort.id } : {}) };
     }
 
-    // Les catégories propres à un service : sans la feuille, celles du site restent.
-    const fCat = T.feuille(feuilles, 'Catégories', 'Categories');
-    if (fCat) {
+    // Un service par compagnie (l'armement) : sans la feuille, le réglage du site reste.
+    const fCie = T.feuille(feuilles, 'Par compagnie');
+    if (fCie) {
       const cats = {};
-      for (const o of T.enObjets(fCat.lignes).objets) {
-        err.essayer(fCat.nom, o._ligne, () => {
+      for (const o of T.enObjets(fCie.lignes).objets) {
+        err.essayer(fCie.nom, o._ligne, () => {
           const sid = service(o.service);
           if (!sid) throw new Error('service inconnu « ' + (o.service ?? '') + ' »');
-          const nom = String(o.categorie ?? '').trim();
-          if (!nom) throw new Error('catégorie sans nom');
-          const id = String(o.code ?? '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '')
-            || (nom.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().match(/[A-Z0-9]+/g) || ['CAT']).map(m => m[0]).join('').slice(0, 6);
-          const liste = cats[sid] || (cats[sid] = []);
-          let k = liste.find(x => x.id === id);
-          if (!k) { k = { id, nom, minutes: {} }; liste.push(k); }
+          if (!cats[sid]) {
+            const avant = ((etat.categories || {})[sid] || [])[0];
+            const nom = (ctx.services || []).find(x => x.id === sid)?.nom || sid;
+            cats[sid] = [{ id: avant ? avant.id : codeService(nom, etat), nom: avant ? avant.nom : nom, minutes: {} }];
+          }
           const cie = String(o.compagnie ?? '').trim(), v = T.nombreDe(o.minutes_par_vol, null);
           if (!cie || v === null) return;
           if (!Number.isFinite(v) || v < 0) throw new Error('minutes par vol : nombre positif attendu');
-          k.minutes[/^(toutes?|\*)$/i.test(cie) ? '*' : cie.toUpperCase()] = v;
+          cats[sid][0].minutes[/^(toutes?|\*)$/i.test(cie) ? '*' : cie.toUpperCase()] = v;
         });
       }
       if (Object.keys(cats).length) out.categories = cats; else delete out.categories;
@@ -1179,7 +1187,7 @@
           const ordre = T.nombreDe(o.ordre, Infinity);
           const cls = String(o.compagnies_classes ?? '').split(SEP_CLASSES).filter(Boolean).map(x => {
             const id = classeLue(x);
-            if (!id) throw new Error('compagnie × classe illisible « ' + x + ' » (ex. AF/BC, ou AF/@TB pour une catégorie)');
+            if (!id) throw new Error('compagnie × classe illisible « ' + x + ' » (ex. AF/BC, ou AF/@ARM pour un service par compagnie)');
             return id;
           });
           if (!cls.length) throw new Error('aucune compagnie × classe');
@@ -1365,7 +1373,7 @@
     for (const a of out.ateliers) for (const l of a.lots) for (const id of l) {
       if (exclues.has(id)) { err.ajouter(fF ? fF.nom : null, null, id + ' est retirée (feuille Classes) mais ' + a.nom + ' la fabrique encore'); continue; }
       if (programme.has(id) || ajoutees.has(id)) continue;
-      if (id.includes('/@')) continue;   // une catégorie d'un service : elle vient de ses minutes, pas du programme
+      if (id.includes('/@')) continue;   // la case d'un service par compagnie : elle vient du chemin, pas du programme
       const i = id.lastIndexOf('/');
       out.ajoutees = [...(out.ajoutees || []), { cie: id.slice(0, i), cabine: id.slice(i + 1) }];
       ajoutees.add(id); notes.push(id);
@@ -1414,7 +1422,7 @@
     return out;
   }
 
-  const api = { plancheVersClasseur, classeurVersPlanche, baremeVersClasseur, classeurVersBareme, recapManMinutes, recapVersClasseur, classeurVersRecap,
+  const api = { codeService, plancheVersClasseur, classeurVersPlanche, baremeVersClasseur, classeurVersBareme, recapManMinutes, recapVersClasseur, classeurVersRecap,
     recapCasesVersClasseur, classeurVersRecapCases, volsVersClasseur, classeurVersVols,
     ateliersVersClasseur, classeurVersAteliers, horairesVersClasseur, classeurVersHoraires, estClasseurHoraires, jourDe };
   if (enNode && module.exports) module.exports = api;

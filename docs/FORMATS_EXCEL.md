@@ -361,18 +361,16 @@ Les classeurs exportés contiennent **les données réelles de l'unité** dès q
 est saisie. Le dépôt est public : `.gitignore` refuse les `*.xlsx`, `*.xls`,
 `*.xlsm` et `vols*.csv`. Travaillez-les dans `prive/`.
 
-### Feuille « Catégories » (classeur des ateliers)
+### Feuille « Par compagnie » (classeur des ateliers)
 
-Un service qui travaille par catégories à lui (l'armement : trolleys bar,
-matériel thé/café…). Une ligne par catégorie et par compagnie.
+Un service qui travaille par compagnie (l'armement : une case par compagnie,
+selon le chemin). Ses minutes par vol.
 
 | Colonne | Sens |
 |---|---|
 | Service | le nom du service |
-| Catégorie | son nom (ex. `Trolleys bar`) |
-| Code | court, unique dans l'unité (ex. `TB`) ; vide = tiré du nom |
 | Compagnie | `toutes` (la valeur par défaut) ou une compagnie |
-| Minutes par vol | 0 = pas cette catégorie pour cette compagnie |
+| Minutes par vol | le temps d'un vol de cette compagnie |
 
-Dans « Fabrications », une catégorie s'écrit `AF/@TB`. Sans la feuille, les
-catégories du site restent.
+Dans « Fabrications », la case d'une compagnie s'écrit `AF/@ARM` (le code du
+service, tel qu'exporté). Sans la feuille, le réglage du site reste.

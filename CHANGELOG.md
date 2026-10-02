@@ -5,6 +5,28 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-02 — L'armement : une case par compagnie, liée au chemin
+
+Retour d'usage : « pourquoi je ne le vois pas apparaître ? » — le réglage
+était caché dans le menu « Ce service… » ; et : « une seule case par
+compagnie pour l'armement, pas deux choix distincts, oui ou non, liée au
+chemin ».
+
+- La fiche d'un service « Armement » le propose : « Passer à “une case par
+  compagnie” ». Le menu « Ce service… » dit « Il travaille par compagnie :
+  une case par compagnie, selon le chemin (l'armement) ».
+- Plus de catégories multiples : un réglage par service ; une colonne dans la
+  grille des équipes, une case par compagnie.
+- Liée au chemin : seules les compagnies dont une commande passe par
+  l'armement (son flux le traverse) ont une case ; les autres sont grisées.
+  Aucun chemin : la fiche le dit, avec « + Faire passer un flux par ici… ».
+  L'armement sort du flux : ses équipes lâchent ces cases.
+- Minutes par vol : « Toutes les compagnies », puis compagnie par compagnie ;
+  sans minutes, le calcul le signale.
+- Excel : feuille « Par compagnie » (remplace « Catégories »).
+- Moteur (`passeParVol`), `ateliers.js`, `unite.js`, `unite.css`,
+  `parcours.js` (`liberer`), `echanges.js` ; v1 et v2. Tests réécrits.
+
 ## 2026-10-01 — Un service qui travaille par catégories à lui (l'armement)
 
 Retour d'usage : « l'armement est un service qui ne travaille pas en fonction

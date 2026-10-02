@@ -189,16 +189,11 @@
 .mu-chainees{margin:14px 0 6px;font-size:14px;color:var(--chaine,#c026d3)}
 .mu-c .mu-chez-chaine{color:var(--chaine,#c026d3)}
 
-/* Un service par catégories (l'armement) : le tableau des minutes par vol */
+/* Un service par compagnie (l'armement) : ses minutes par vol */
 .mu-cat-table{border-collapse:separate;border-spacing:4px;font-size:13px}
 .mu-cat-table th{text-align:left;font-weight:650;vertical-align:bottom}
 .mu-cat-table thead th{min-width:150px}
-.mu-cat-table .mu-cat-nom{display:block;width:100%;font:inherit;font-weight:650;min-height:30px;padding:3px 6px;margin-bottom:2px}
 .mu-cat-table td input{width:80px;font:inherit;min-height:28px;padding:2px 6px}
 .mu-cat-toutes th,.mu-cat-toutes input{font-weight:650}
-.mu-cat-ajout{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0 0}
-.mu-cat-ajout input{font:inherit;min-height:32px;min-width:260px;padding:3px 8px}
 #view-ateliers .mu-cat-table td input{width:80px;min-width:0;padding:3px 6px}
-#view-ateliers .mu-cat-table .mu-cat-nom{width:170px;min-width:0;padding:3px 6px}
-#view-ateliers .mu-cat-ajout input{width:300px;min-width:0}
 .mu-cat-table thead th:first-child{vertical-align:middle;color:var(--txt2)}

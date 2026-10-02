@@ -195,27 +195,28 @@ ex. la Prépa dans une case de Montage), pour **ses** commandes seulement :
 Réglage : fiche de la case, « À la chaîne avec l'étape d'avant ? ». Excel :
 colonne « À la chaîne avec » de la feuille Ateliers.
 
-### Un service qui travaille par catégories à lui (retour d'usage du 01/10)
+### Un service qui travaille par compagnie : l'armement (retours d'usage du 01/10)
 
-« L'armement ne travaille pas en fonction de BC, PC, Éco, SPML, mais d'autres
-catégories » : les trolleys bar, le matériel thé/café… Son travail varie par
-vol, selon la compagnie.
+« L'armement ne travaille pas en fonction de BC, PC, Éco, SPML » ; puis :
+« une seule case par compagnie, oui ou non, qui est bien sûr liée au
+chemin ».
 
-`etat.categories = { [service]: [{ id, nom, minutes: { '*': 10, AF: 15 } }] }`
-(fiche du service : « Ce service… travaille par catégories à lui »).
+`etat.categories = { [service]: [{ id: 'ARM', nom: 'Armement', minutes: { '*': 10, AF: 15 } }] }`
+— un seul réglage par service (fiche : « Ce service… travaille par
+compagnie » ; la fiche d'un service dont le nom dit « armement » le propose).
 
-- **Commandes** : chaque départ d'une compagnie qui a des minutes pour une
-  catégorie (les siennes, sinon celles de « toutes » ; 0 = pas cette
-  catégorie) donne une commande `AF/@TB` (« AF · Trolleys bar ») à ce service
-  seul : minutes par vol × vols, échéance du vol (`classesCategories`).
-- **Équipes** : des équipes comme les autres ; leur grille a les catégories
-  en colonnes. Pas de flux à dessiner : une catégorie ne passe que par son
-  service.
-- **Calcul** : le handling attend ces commandes pour charger le vol (les
-  trolleys bar partent avec lui). Sur le chemin des repas, un service par
-  catégories n'est pas un trou : il ne prépare pas les repas.
-- **Excel** : feuille « Catégories » (Service, Catégorie, Code, Compagnie,
-  Minutes par vol) ; dans « Fabrications », une catégorie s'écrit `AF/@TB`.
+- **Une case par compagnie** (`AF/@ARM`, « AF · Armement »), seulement pour
+  les vols dont une commande passe par le service : son flux le traverse
+  (`passeParVol`, `classesCategories`). Les autres compagnies sont grisées.
+- **Minutes par vol** selon la compagnie (« Toutes les compagnies » par
+  défaut) × vols ; échéance du vol. Sans minutes : le calcul le dit.
+- **Le handling** attend la case du vol pour le charger. Sur le chemin des
+  repas, le service n'est pas un trou : il ne prépare pas les repas.
+- Le service sort du flux : ses équipes lâchent les cases des compagnies dont
+  plus aucune commande n'y passe (une compagnie qui ne vole pas aujourd'hui
+  garde la sienne).
+- **Excel** : feuille « Par compagnie » (Service, Compagnie, Minutes par vol) ;
+  dans « Fabrications », la case s'écrit `AF/@ARM`.
 
 ### Une équipe qui ne travaille que certains jours (retour d'usage du 01/10)
 

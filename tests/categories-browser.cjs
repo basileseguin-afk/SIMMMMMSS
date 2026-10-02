@@ -1,8 +1,7 @@
-/* Un service qui travaille par catégories à lui (retour d'usage du 01/10 :
- * « l'armement ne travaille pas en fonction de BC, PC, Éco, SPML, mais d'autres
- * catégories » — les trolleys bar, le matériel thé/café…), minutes par vol
- * selon la compagnie. Réglé dans sa fiche ; cochable dans ses équipes ; joué
- * par le calcul. v1 et v2. */
+/* L'armement : une case par compagnie, oui ou non, liée au chemin (retour
+ * d'usage du 01/10). Le site le propose dans la fiche d'un service Armement ;
+ * seules les compagnies dont le chemin passe par lui ont une case ; minutes
+ * par vol selon la compagnie ; joué par le calcul. v1 et v2. */
 const assert=require('node:assert/strict'),path=require('node:path');
 const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
@@ -12,7 +11,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const page=await browser.newPage({viewport:{width:1440,height:950}}),errors=[];
  page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
  const attendre=()=>page.waitForTimeout(250);
- const cats=()=>page.evaluate(()=>(Sim.ateliers.state.categories||{}).armement);
+ const reglage=()=>page.evaluate(()=>(Sim.ateliers.state.categories||{}).armement);
  const fiche=sel=>page.locator('#mu-services .mu-fiche '+sel);
  try{
   for(const [fichier,version] of [['../index.html','v1'],['../v2/index.html','v2']]){
@@ -21,53 +20,58 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await nav.aller(page,'mu-services');
    await page.locator('[data-mu-choisir=armement]').click();await attendre();
 
-   // 1. « Ce service… travaille par catégories à lui ».
-   await fiche('[data-mu-nature]').selectOption('categories');await attendre();
-   assert.deepEqual(await cats(),[],version+' : par catégories, sans catégorie encore');
-   assert.match(await fiche('').innerText(),/Créez la première/);
+   // 1. La fiche de l'armement le propose, à la vue.
+   assert.match(await fiche('.mu-par-cie').innerText(),/une case par compagnie/);
+   await fiche('[data-mu-action=par-compagnie]').click();await attendre();
+   assert.deepEqual(await reglage(),[{id:'ARM',nom:'Armement',minutes:{}}],version+' : un seul réglage, au nom du service');
+   assert.equal(await fiche('.mu-par-cie').count(),0);
+   assert.equal(await fiche('[data-mu-nature]').inputValue(),'categories');
 
-   // 2. Deux catégories ; leurs minutes par vol, pour toutes ou compagnie par compagnie.
-   const ajouter=async nom=>{await fiche('[data-mu-cat-ajout] input[name=nom]').fill(nom);await fiche('[data-mu-cat-ajout] button').click();await attendre();};
-   await ajouter('Trolleys bar');await ajouter('Matériel thé/café');
-   assert.deepEqual((await cats()).map(k=>[k.id,k.nom]),[['TB','Trolleys bar'],['MTC','Matériel thé/café']]);
-   const min=async(id,cie,v)=>{const c=fiche(`[data-mu-cat-min="${id}"][data-cie="${cie}"]`);await c.fill(String(v));await c.press('Tab');await attendre();};
-   await min('TB','*',10);await min('TB','AF',15);await min('MTC','TX',5);
-   assert.deepEqual((await cats())[0].minutes,{'*':10,AF:15});
-   assert.equal(await fiche('[data-mu-cat-min="TB"][data-cie="TX"]').getAttribute('placeholder'),'10','une case vide prend la valeur de « Toutes »');
+   // 2. Aucun chemin ne passe par l'armement : pas de case, et on dit comment faire.
+   assert.match(await fiche('').innerText(),/aucun chemin ne passe par ARMEMENT/i);
+   await fiche('[data-mu-flux-ici=armement]').selectOption({label:'Sans cuisine'});await attendre();
+   const cies=await page.evaluate(()=>Sim.ateliers.classesDe('armement').map(c=>c.cie));
+   assert.ok(cies.includes('AF'),version+' : le flux de l’Éco passe maintenant par l’armement : '+cies.join(', '));
 
-   // 3. Une équipe : sa grille a les catégories en colonnes.
+   // 3. Ses minutes par vol : toutes, puis AF.
+   const min=async(cie,v)=>{const c=fiche(`[data-mu-cat-min="ARM"][data-cie="${cie}"]`);await c.fill(String(v));await c.press('Tab');await attendre();};
+   await min('*',10);await min('AF',15);
+   assert.deepEqual((await reglage())[0].minutes,{'*':10,AF:15});
+
+   // 4. Une équipe : une seule colonne, une case par compagnie.
    await fiche('[data-mu-action=equipe]').click();await attendre();
    const eq=await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.service==='armement').id);
    const grille=page.locator(`#mu-services table[data-mu-equipe="${eq}"]`);
-   assert.deepEqual((await grille.locator('thead th').allInnerTexts()).map(t=>t.trim()).filter(Boolean).slice(1),['Trolleys bar','Matériel thé/café']);
-   assert.equal(await grille.locator('[data-mu-cocher="TX/@MTC"]').count(),1);
-   assert.equal(await grille.locator('[data-mu-cocher="AF/@MTC"]').count(),0,'AF n’a pas de thé/café : pas de case');
-   await grille.locator('[data-mu-col="@TB"]').click();await attendre();
-   await grille.locator('[data-mu-cocher="TX/@MTC"]').check();await attendre();
-   const lots=await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).lots.flat(),eq);
-   assert.ok(lots.includes('AF/@TB')&&lots.includes('TX/@MTC'),version+' : '+lots.join(', '));
-   assert.equal(await page.evaluate(()=>Object.keys(Sim.ateliers.state.parcoursCabine).some(k=>k.startsWith('@'))),false,'pas de flux créé pour une catégorie');
+   assert.deepEqual((await grille.locator('thead th').allInnerTexts()).map(t=>t.trim().toUpperCase()).filter(Boolean).slice(1),['ARMEMENT']);
+   const toutes=await page.evaluate(()=>[...new Set(Sim.ateliers.classes.map(c=>c.cie))]);
+   assert.equal(await grille.locator('tbody tr').count(),toutes.length,'toutes les compagnies sont listées');
+   assert.equal(await grille.locator('[data-mu-cocher]').count(),cies.length,'une case pour celles dont le chemin passe ici');
+   await grille.locator('[data-mu-cocher="AF/@ARM"]').check();await attendre();
+   assert.deepEqual(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).lots,eq),[['AF/@ARM']]);
 
-   // 4. Le calcul : 15 min par vol AF, en clair dans les libellés.
-   const r=await page.evaluate(id=>{const r=Sim.ateliers.resultat,l=r.lots.find(x=>x.atelier===id&&x.classes.includes('AF/@TB'));
-     return {ok:r.ok,minutes:l&&l.hommeMinutes,vols:r.parClasse['AF/@TB']&&r.classes.find(c=>c.id==='AF/@TB').vols.length,lib:MoteurProduction.libelleClasse('AF/@TB')};},eq);
+   // 5. Le calcul : 15 min par vol AF.
+   const r=await page.evaluate(id=>{const r=Sim.ateliers.resultat,l=r.lots.find(x=>x.atelier===id&&x.classes.includes('AF/@ARM'));
+     return {ok:r.ok,minutes:l&&l.hommeMinutes,vols:r.classes.find(c=>c.id==='AF/@ARM').vols.length,lib:MoteurProduction.libelleClasse('AF/@ARM')};},eq);
    assert.ok(r.ok);
    assert.equal(r.minutes,15*r.vols,version+' : minutes par vol × vols');
-   assert.equal(r.lib,'AF · Trolleys bar');
+   assert.equal(r.lib,'AF · Armement');
 
-   // 5. Toutes les pages s'affichent avec ces commandes.
+   // 6. Toutes les pages s'affichent.
    for(const p of ['at-recap','rg-recap','mu-pas','mu-flux','at-chemins','at-equipes']) await nav.aller(page,p);
+
+   // 7. L'armement sort du flux : plus de case, et l'équipe lâche AF.
+   await nav.aller(page,'mu-flux');
+   await page.evaluate(()=>{const t=OrlyParcours.types(Sim.ateliers.state).find(x=>x.nom==='Sans cuisine');Sim.unite.fluxChoisi=t.id;Sim.unite.fluxSel={type:'noeud',id:'armement'};Sim.unite.rendreFlux();});await attendre();
+   await page.locator('[data-mu-flux-action=retirer-service]').click();await attendre();
+   assert.equal(await page.evaluate(()=>Sim.ateliers.classesDe('armement').length),0);
+   assert.deepEqual(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).lots,eq),[],version+' : l’équipe lâche la case AF');
    await nav.aller(page,'mu-services');await page.locator('[data-mu-choisir=armement]').click();await attendre();
+   assert.equal(await page.locator(`#mu-services table[data-mu-equipe="${eq}"]`).count(),0,'plus de grille : aucun chemin');
+   assert.match(await fiche('.mu-afaire').innerText(),/aucun flux ne passe par ici/);
 
-   // 6. Supprimer une catégorie : ses équipes ne la préparent plus.
-   await fiche('[data-mu-cat-retirer="MTC"]').click();await attendre();
-   assert.deepEqual((await cats()).map(k=>k.id),['TB']);
-   assert.ok(!(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).lots.flat(),eq)).includes('TX/@MTC'));
-
-   // 7. Revenir à « des équipes préparent les commandes » : plus de catégories.
+   // 8. Revenir à « des équipes préparent les commandes ».
    await fiche('[data-mu-nature]').selectOption('manuel');await attendre();
-   assert.equal(await cats(),undefined);
-   assert.deepEqual(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).lots,eq),[]);
+   assert.equal(await reglage(),undefined);
   }
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('categories-browser : ok');

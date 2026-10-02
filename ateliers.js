@@ -135,7 +135,8 @@
     for (const [service, liste] of Object.entries(brut).slice(0, 100)) {
       if (!Array.isArray(liste)) continue;
       const vus = new Set();
-      out[String(service).slice(0, 160)] = liste.slice(0, 30).filter(k => k && typeof k === 'object').map(k => {
+      // Une seule case par compagnie : un seul réglage par service.
+      out[String(service).slice(0, 160)] = liste.slice(0, 1).filter(k => k && typeof k === 'object').map(k => {
         const id = String(k.id ?? '').toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 40);
         const minutes = {};
         for (const [cie, v] of Object.entries(k.minutes && typeof k.minutes === 'object' ? k.minutes : {}).slice(0, 300)) {
@@ -415,7 +416,8 @@
     classesDe(service) {
       const cats = (this.state.categories || {})[service]; if (!cats) return null;
       const r = this.a.reglages ? this.a.reglages() : {};
-      return P.classesCategories(this.a.vols(), { [service]: cats }, { delaiChargement: r.delaiChargement });
+      // Une case par compagnie, pour les vols dont une commande passe par ce service (son chemin).
+      return P.classesCategories(this.a.vols(), { [service]: cats }, { delaiChargement: r.delaiChargement, passe: P.passeParVol(this.classes, this.state) });
     }
 
     calculer() {

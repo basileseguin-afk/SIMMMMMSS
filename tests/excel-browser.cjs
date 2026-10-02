@@ -100,7 +100,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const {f:fAt,nom:nomAt}=await telecharger('#at-export','ateliers.xlsx');
   assert.match(nomAt,/^ory-ateliers-.*\.xlsx$/);
   const feuilles=await T.lireClasseur(fs.readFileSync(fAt));
-  assert.deepEqual(feuilles.map(f=>f.nom),['Ateliers','Horaires','Fabrications','Catégories','Man-minutes','Débits robot','Tunnels','Handling','Chauffeurs','Plonge par vol','Classes','Parcours','Parcours par classe','Matériel','Lisez-moi']);
+  assert.deepEqual(feuilles.map(f=>f.nom),['Ateliers','Horaires','Fabrications','Par compagnie','Man-minutes','Débits robot','Tunnels','Handling','Chauffeurs','Plonge par vol','Classes','Parcours','Parcours par classe','Matériel','Lisez-moi']);
   const fab=T.feuille(feuilles,'Fabrications');
   assert.deepEqual(fab.lignes.slice(1).map(l=>l.join('|')),['Cuisine|1|AF/BC','Dotation|1|AF/YC','Dotation|2|AF/BC','Montage|1|AF/YC','Montage|2|AF/BC']);
   // Dans Excel : deux personnes en cuisine, une compagnie × classe de plus,
