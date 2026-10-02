@@ -139,12 +139,19 @@
   /*
    * UN SERVICE QUI TRAVAILLE PAR COMPAGNIE (retour d'usage du 01/10 :
    * « l'armement ne travaille pas en fonction de BC, PC, Éco, SPML » ; puis
-   * « une seule case par compagnie, oui ou non, liée au chemin »).
+   * « une seule case par compagnie, oui ou non » ; puis, le 02/10 : « l'armement
+   * est toujours lié au handling »).
+   *
+   * L'armement n'est PAS une étape des chemins des repas : on arme un vol, pas
+   * une classe (un vol AF en Business et en Éco s'arme une fois), et il
+   * travaille en parallèle des repas — les deux se retrouvent au handling, qui
+   * charge le vol quand tout est prêt. Il est donc lié au handling : chaque
+   * départ qu'un handling charge demande son armement.
    *
    *   categories: { [service]: [{ id, nom, minutes: { '*': 10, AF: 15 } }] }
    *
-   * Chaque départ dont une commande passe par ce service (son flux le
-   * traverse : `passe(service, vol)`) donne au service une commande
+   * Chaque départ chargé par un handling (`passe(service, vol)`, voir
+   * `chargeParHandling`) donne au service une commande
    * « AF/@ARM » — une par compagnie : minutes par vol (les siennes, sinon
    * celles de « * ») × vols, échéance du vol. Ses équipes la cochent (une
    * case par compagnie) ; le handling l'attend pour charger le vol. Sans
@@ -180,14 +187,12 @@
     return [...parId.values()].sort((a, b) => a.echeance - b.echeance || a.id.localeCompare(b.id));
   }
 
-  /** Les vols dont une commande passe par un service, d'après les chemins des commandes : `(service, vol) → oui/non`. */
-  function passeParVol(classes, o) {
-    const routes = routesDesClasses(classes, o), oui = new Set();
-    for (const c of classes || []) {
-      const r = routes.get(c.id); if (!r) continue;
-      for (const s of r.services) for (const v of (c.vols || [])) oui.add(s + '|' + v.id);
-    }
-    return (service, vol) => oui.has(service + '|' + (vol && vol.id));
+  /** Les départs qu'un handling charge (sa liste de compagnies, ou toutes) ;
+   *  sans handling dans l'unité, tous les départs : `(service, vol) → oui/non`. */
+  function chargeParHandling(ateliers) {
+    const handlings = (ateliers || []).filter(a => a && a.type === 'handling');
+    if (!handlings.length) return () => true;
+    return (service, vol) => handlings.some(h => { const s = compagniesDe(h); return !s || s.has(String(vol && vol.cie).trim().toUpperCase()); });
   }
 
   /* ======================================================================
@@ -1274,9 +1279,9 @@
     // Les compagnies × classes viennent du programme de vols, sauf quand
     // l'appelant en fournit une liste : l'utilisateur peut en retirer qu'il ne
     // fabrique pas, et en ajouter que le programme ne porte pas encore.
-    // Un service par compagnie (l'armement) : une commande par compagnie, pour les vols dont le chemin le traverse.
+    // Un service par compagnie (l'armement) : une commande par compagnie, pour les vols qu'un handling charge.
     const base = (opts.classes || classesDeVols(opts.vols, { delaiChargement: opts.delaiChargement })).filter(c => !c.categorie);
-    const classes = base.concat(classesCategories(opts.vols, opts.categories, { delaiChargement: opts.delaiChargement, passe: passeParVol(base, opts) }))
+    const classes = base.concat(classesCategories(opts.vols, opts.categories, { delaiChargement: opts.delaiChargement, passe: chargeParHandling(opts.ateliers) }))
       .sort((a, b) => a.echeance - b.echeance || a.id.localeCompare(b.id));
     const servicesCategories = new Set(Object.keys(opts.categories || {}));
     const parClasse = new Map(classes.map(c => [c.id, c]));
@@ -2435,7 +2440,7 @@
     MINUTES_PAR_JOUR, CABINES, TYPES,
     minutes, hhmm, idClasse, libelleClasse, nomCabine, enClair,
     REGIME_DEFAUT, normaliserRegime, travailDuPoste, executerTache,
-    classesDeVols, classesCategories, passeParVol, declarerCategories, volsDesClasses, compteDuJour, appliquerConditions, dureeHandling, compagniesDe, AVANCE_HANDLING, BAREME_DEMO, RENDEMENT_DEMO, travailClasse, travailDans, dureeFusion,
+    classesDeVols, classesCategories, chargeParHandling, declarerCategories, volsDesClasses, compteDuJour, appliquerConditions, dureeHandling, compagniesDe, AVANCE_HANDLING, BAREME_DEMO, RENDEMENT_DEMO, travailClasse, travailDans, dureeFusion,
     PAX_TYPE, TOUTES, cleBareme, normaliserBareme, minutesParVol,
     arcsDuParcours, servicesDuParcours, routesDesClasses,
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,

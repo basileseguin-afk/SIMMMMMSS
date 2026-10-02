@@ -197,3 +197,8 @@
 .mu-cat-toutes th,.mu-cat-toutes input{font-weight:650}
 #view-ateliers .mu-cat-table td input{width:80px;min-width:0;padding:3px 6px}
 .mu-cat-table thead th:first-child{vertical-align:middle;color:var(--txt2)}
+
+/* L'armement, lié au handling */
+.mu-lien-handling{margin:10px 0;padding:10px 12px;border-radius:10px;background:var(--bg2);border:1px solid var(--bordure2)}
+.mu-lien-handling p{margin:0 0 4px}
+.mu-lien-handling .btn{margin-left:6px}

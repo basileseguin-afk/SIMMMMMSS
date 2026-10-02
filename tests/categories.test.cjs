@@ -1,7 +1,7 @@
-/* Un service qui travaille par compagnie (retour d'usage du 01/10 : l'armement
- * ne travaille pas par BC, PC, Éco, SPML ; « une seule case par compagnie, oui
- * ou non, liée au chemin »). Minutes par vol selon la compagnie. Même jeu pour
- * la v1 et la v2 (tests/v2/categories.test.cjs). */
+/* Un service qui travaille par compagnie (retours d'usage du 01/10 et du
+ * 02/10 : l'armement ne travaille pas par BC, PC, Éco, SPML ; « une seule case
+ * par compagnie, oui ou non » ; « toujours lié au handling »). Minutes par vol
+ * selon la compagnie. Même jeu pour la v1 et la v2 (tests/v2/categories.test.cjs). */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -11,17 +11,22 @@ function verifier(dossier, v) {
     { id: 'TX1', cie: 'TX', sens: 'DEP', std: 650, bc: 10 }, { id: 'QR1', cie: 'QR', sens: 'DEP', std: 900, yc: 50 },
     { id: 'AF-R', cie: 'AF', sens: 'ARR', std: 500, yc: 100 }];
   const categories = { armement: [{ id: 'ARM', nom: 'ARMEMENT', minutes: { '*': 10, AF: 15 } }] };
-  // L'Éco passe par l'armement ; le Business (TX) non.
-  const chemins = { parcours: [{ id: 'eco', nom: 'Éco', noeuds: ['prepa', 'armement', 'quais'], liens: [{ de: 'prepa', vers: 'armement' }, { de: 'armement', vers: 'quais' }] },
+  // Les chemins des repas, sans l'armement : il n'en est pas une étape.
+  const chemins = { parcours: [{ id: 'eco', nom: 'Éco', noeuds: ['prepa', 'quais'], liens: [{ de: 'prepa', vers: 'quais' }] },
     { id: 'bc', nom: 'Business', noeuds: ['prepa', 'quais'], liens: [{ de: 'prepa', vers: 'quais' }] }], parcoursCabine: { YC: 'eco', BC: 'bc' } };
+  // Le handling charge AF, TX et QR — pas DL.
+  const handling = { id: 'h', nom: 'Handling', service: 'quais', type: 'handling', debut: '05:00', jour: 0, personnes: 1, pauses: [], lots: [], regime: { actif: false }, durees: { '*': 10 }, compagnies: ['AF', 'TX', 'QR'] };
   const armement = (lots, x) => ({ id: 'ar', nom: 'Armement', service: 'armement', type: 'manuel', debut: '05:00', jour: 0, personnes: 1, pauses: [], lots, regime: { actif: false }, ...x });
 
-  test(v + ' — une case par compagnie, seulement si son chemin passe par l’armement', () => {
-    const passe = P.passeParVol(P.classesDeVols(vols), chemins);
-    assert.equal(passe('armement', { id: 'AF1' }), true);
-    assert.equal(passe('armement', { id: 'TX1' }), false, 'le Business ne passe pas par l’armement');
-    const cl = P.classesCategories(vols, categories, { passe });
-    assert.deepEqual(cl.map(c => [c.id, c.vols.length, c.minutes]), [['AF/@ARM', 2, 15], ['QR/@ARM', 1, 10]]);
+  test(v + ' — une case par compagnie, pour chaque vol qu’un handling charge', () => {
+    const vols2 = vols.concat([{ id: 'DL1', cie: 'DL', sens: 'DEP', std: 800, yc: 50 }]);
+    const passe = P.chargeParHandling([handling]);
+    assert.equal(passe('armement', { id: 'AF1', cie: 'AF' }), true);
+    assert.equal(passe('armement', { id: 'DL1', cie: 'DL' }), false, 'aucun handling ne charge DL');
+    assert.equal(P.chargeParHandling([])('armement', { id: 'DL1', cie: 'DL' }), true, 'sans handling : chaque départ');
+    const cl = P.classesCategories(vols2, categories, { passe });
+    assert.deepEqual(cl.map(c => [c.id, c.vols.length, c.minutes]), [['AF/@ARM', 2, 15], ['TX/@ARM', 1, 10], ['QR/@ARM', 1, 10]],
+      'un vol AF en Business et en Éco ne s’arme qu’une fois ; DL n’a pas de case');
     assert.equal(cl[0].echeance, 600 - 45);
     P.declarerCategories(categories);
     assert.equal(P.libelleClasse('AF/@ARM'), 'AF · ARMEMENT');
@@ -29,19 +34,18 @@ function verifier(dossier, v) {
   });
 
   test(v + ' — le calcul : minutes par vol × vols ; sans minutes, il le dit', () => {
-    const r = P.simuler({ vols, categories, ...chemins, bareme: { prepa: { '*/YC': 20, '*/BC': 20 } }, ateliers: [armement([['AF/@ARM'], ['QR/@ARM']])] });
+    const r = P.simuler({ vols, categories, ...chemins, bareme: { prepa: { '*/YC': 20, '*/BC': 20 } }, ateliers: [handling, armement([['AF/@ARM'], ['QR/@ARM']])] });
     assert.ok(r.ok, JSON.stringify(r.anomalies));
     const af = r.lots.find(l => l.classes.includes('AF/@ARM'));
     assert.equal(Math.round(af.fin - af.debut), 30, '2 vols AF × 15 min');
-    assert.ok(!r.classes.some(c => c.id === 'TX/@ARM'), 'pas de case pour TX');
-    assert.ok(!r.anomalies.some(a => a.code === 'parcours-trou' && a.service === 'armement'), 'l’armement n’est pas un trou sur le chemin des repas');
-    const sans = P.simuler({ vols, categories: { armement: [{ id: 'ARM', nom: 'ARMEMENT', minutes: { AF: 15 } }] }, ...chemins, ateliers: [armement([['AF/@ARM', 'QR/@ARM']])] });
+    assert.ok(!r.anomalies.some(a => a.code === 'parcours-trou'));
+    const sans = P.simuler({ vols, categories: { armement: [{ id: 'ARM', nom: 'ARMEMENT', minutes: { AF: 15 } }] }, ...chemins, ateliers: [handling, armement([['AF/@ARM', 'QR/@ARM']])] });
     assert.match(sans.anomalies.find(a => a.code === 'bareme-classe').message, /pas de minutes par vol pour QR/);
   });
 
   test(v + ' — le handling attend l’armement du vol', () => {
     const mo = { id: 'mo', nom: 'Montage', service: 'prepa', type: 'manuel', debut: '05:00', jour: 0, personnes: 2, pauses: [], lots: [['AF/YC']], regime: { actif: false } };
-    const h = { id: 'h', nom: 'Handling', service: 'quais', type: 'handling', debut: '05:00', jour: 0, personnes: 1, pauses: [], lots: [], regime: { actif: false }, durees: { '*': 10 } };
+    const h = handling;
     const r = P.simuler({ vols: vols.filter(x => x.cie === 'AF'), categories, bareme: { prepa: { '*/YC': 20 } }, ...chemins,
       ateliers: [mo, h, armement([['AF/@ARM']], { debut: '09:00' })] });
     assert.ok(r.ok);

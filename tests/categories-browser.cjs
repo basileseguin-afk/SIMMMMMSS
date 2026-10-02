@@ -1,7 +1,8 @@
-/* L'armement : une case par compagnie, oui ou non, liée au chemin (retour
- * d'usage du 01/10). Le site le propose dans la fiche d'un service Armement ;
- * seules les compagnies dont le chemin passe par lui ont une case ; minutes
- * par vol selon la compagnie ; joué par le calcul. v1 et v2. */
+/* L'armement : une case par compagnie, oui ou non (retour d'usage du 01/10),
+ * lié au handling et pas aux chemins des repas (02/10) : chaque vol que le
+ * handling charge demande son armement. Le site le propose dans la fiche d'un
+ * service Armement ; minutes par vol selon la compagnie ; joué par le calcul.
+ * v1 et v2. */
 const assert=require('node:assert/strict'),path=require('node:path');
 const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
@@ -27,11 +28,16 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(await fiche('.mu-par-cie').count(),0);
    assert.equal(await fiche('[data-mu-nature]').inputValue(),'categories');
 
-   // 2. Aucun chemin ne passe par l'armement : pas de case, et on dit comment faire.
-   assert.match(await fiche('').innerText(),/aucun chemin ne passe par ARMEMENT/i);
-   await fiche('[data-mu-flux-ici=armement]').selectOption({label:'Sans cuisine'});await attendre();
-   const cies=await page.evaluate(()=>Sim.ateliers.classesDe('armement').map(c=>c.cie));
-   assert.ok(cies.includes('AF'),version+' : le flux de l’Éco passe maintenant par l’armement : '+cies.join(', '));
+   // 2. Lié au handling : sans handling, chaque départ ; avec, les vols qu'il charge.
+   assert.match(await fiche('.mu-lien-handling').innerText(),/Lié au handling[\s\S]*Pas encore de handling/);
+   const toutes=await page.evaluate(()=>[...new Set(Sim.ateliers.classes.map(c=>c.cie))].sort());
+   assert.deepEqual(await page.evaluate(()=>[...new Set(Sim.ateliers.classesDe('armement').map(c=>c.cie))].sort()),toutes);
+   const sansDL=toutes.filter(c=>c!=='DL');
+   await page.evaluate(cies=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'h',nom:'Quais',service:'quais',type:'handling',debut:'04:00',jour:0,personnes:2,pauses:[],lots:[],regime:{actif:true},durees:{'*':20},compagnies:cies});},''),sansDL);await attendre();
+   const cies=await page.evaluate(()=>[...new Set(Sim.ateliers.classesDe('armement').map(c=>c.cie))].sort());
+   assert.deepEqual(cies,sansDL,version+' : les vols que « Quais » charge');
+   assert.match(await fiche('.mu-lien-handling').innerText(),/Chaque vol que « Quais » charge demande son armement/);
+   assert.match(await fiche('').innerText(),/Pas de case pour DL : aucun handling ne charge leurs vols/);
 
    // 3. Ses minutes par vol : toutes, puis AF.
    const min=async(cie,v)=>{const c=fiche(`[data-mu-cat-min="ARM"][data-cie="${cie}"]`);await c.fill(String(v));await c.press('Tab');await attendre();};
@@ -43,7 +49,6 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    const eq=await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.service==='armement').id);
    const grille=page.locator(`#mu-services table[data-mu-equipe="${eq}"]`);
    assert.deepEqual((await grille.locator('thead th').allInnerTexts()).map(t=>t.trim().toUpperCase()).filter(Boolean).slice(1),['ARMEMENT']);
-   const toutes=await page.evaluate(()=>[...new Set(Sim.ateliers.classes.map(c=>c.cie))]);
    assert.equal(await grille.locator('tbody tr').count(),toutes.length,'toutes les compagnies sont listées');
    assert.equal(await grille.locator('[data-mu-cocher]').count(),cies.length,'une case pour celles dont le chemin passe ici');
    await grille.locator('[data-mu-cocher="AF/@ARM"]').check();await attendre();
@@ -59,15 +64,18 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    // 6. Toutes les pages s'affichent.
    for(const p of ['at-recap','rg-recap','mu-pas','mu-flux','at-chemins','at-equipes']) await nav.aller(page,p);
 
-   // 7. L'armement sort du flux : plus de case, et l'équipe lâche AF.
-   await nav.aller(page,'mu-flux');
-   await page.evaluate(()=>{const t=OrlyParcours.types(Sim.ateliers.state).find(x=>x.nom==='Sans cuisine');Sim.unite.fluxChoisi=t.id;Sim.unite.fluxSel={type:'noeud',id:'armement'};Sim.unite.rendreFlux();});await attendre();
-   await page.locator('[data-mu-flux-action=retirer-service]').click();await attendre();
-   assert.equal(await page.evaluate(()=>Sim.ateliers.classesDe('armement').length),0);
-   assert.deepEqual(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).lots,eq),[],version+' : l’équipe lâche la case AF');
+   // 6 bis. Le handling attend l'armement du vol AF pour le charger.
+   const attente=await page.evaluate(()=>{const r=Sim.ateliers.resultat,arm=r.lots.filter(l=>l.classes.includes('AF/@ARM')),h=r.lots.filter(l=>l.handling&&String(l.vol||'').length&&l.classes.includes('AF/@ARM'));
+     return {arm:arm.length,h:h.length,ok:h.every(l=>arm.some(a=>a.fin<=l.debut+1e-6))};});
+   assert.ok(attente.h>0&&attente.ok,version+' : '+JSON.stringify(attente));
+
+   // 7. Placé dans un flux, il n'y sert à rien : la fiche propose de l'en retirer.
+   await page.evaluate(()=>Sim.ateliers.changer(()=>{const t=Sim.ateliers.state.parcours.find(x=>x.id==='sans-cuisine');t.noeuds.push('armement');t.liens.push({de:'prepa',vers:'armement'});},''));await attendre();
    await nav.aller(page,'mu-services');await page.locator('[data-mu-choisir=armement]').click();await attendre();
-   assert.equal(await page.locator(`#mu-services table[data-mu-equipe="${eq}"]`).count(),0,'plus de grille : aucun chemin');
-   assert.match(await fiche('.mu-afaire').innerText(),/aucun flux ne passe par ici/);
+   assert.match(await fiche('.mu-lien-handling').innerText(),/il n’y sert à rien/);
+   await fiche('[data-mu-action=retirer-des-flux]').click();await attendre();
+   assert.ok(!(await page.evaluate(()=>Sim.ateliers.state.parcours.some(p=>(p.noeuds||[]).includes('armement')))),'retiré des flux');
+   assert.deepEqual(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).lots,eq),[['AF/@ARM']],version+' : la case AF reste : elle ne dépend pas des flux');
 
    // 8. Revenir à « des équipes préparent les commandes ».
    await fiche('[data-mu-nature]').selectOption('manuel');await attendre();

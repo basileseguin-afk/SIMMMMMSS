@@ -1211,15 +1211,9 @@
     for (const a of etat.ateliers || []) {
       if (a.service !== service || !fabrique(a)) continue;
       const lots = a.lots.map(l => l.filter(id => {
-        // La case d'une compagnie dans un service par compagnie (« AF/@ARM ») : elle tient
-        // tant qu'une commande de cette compagnie passe par lui ; une compagnie qui ne vole
-        // pas aujourd'hui garde la sienne.
-        if (String(id).includes('/@')) {
-          const cie = id.slice(0, id.indexOf('/'));
-          const siennes = (classes || []).filter(c => c.cie === cie && !c.categorie && routes.get(c.id));
-          if (!siennes.length || siennes.some(c => routes.get(c.id).services.has(service))) return true;
-          parties.add(id); return false;
-        }
+        // La case d'une compagnie dans un service par compagnie (« AF/@ARM ») ne dépend
+        // pas des flux : elle est liée au handling.
+        if (String(id).includes('/@')) return true;
         const r = routes.get(id);
         if (!r || r.services.has(service)) return true;
         parties.add(id); return false;

@@ -364,7 +364,7 @@ est saisie. Le dépôt est public : `.gitignore` refuse les `*.xlsx`, `*.xls`,
 ### Feuille « Par compagnie » (classeur des ateliers)
 
 Un service qui travaille par compagnie (l'armement : une case par compagnie,
-selon le chemin). Ses minutes par vol.
+pour chaque vol que le handling charge). Ses minutes par vol.
 
 | Colonne | Sens |
 |---|---|

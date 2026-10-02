@@ -32,8 +32,8 @@
     { id: 'lavage', nom: 'Plonge : il lave ce qui revient des vols', court: 'plonge' },
     { id: 'handling', nom: 'Il charge les vols (handling)', court: 'chargement des vols' },
     // L'armement : ni BC, ni PC, ni Éco — ses catégories à lui (retour d'usage du 01/10).
-    // « Une seule case par compagnie, oui ou non, liée au chemin » (01/10).
-    { id: 'categories', nom: 'Il travaille par compagnie : une case par compagnie, selon le chemin (l’armement)', court: 'par compagnie' }
+    // « Une seule case par compagnie, oui ou non » (01/10), « toujours lié au handling » (02/10).
+    { id: 'categories', nom: 'Il travaille par compagnie, pour chaque vol chargé : l’armement (lié au handling)', court: 'par compagnie' }
   ];
   const preparent = n => n === 'manuel' || n === 'robot' || n === 'categories';
 
@@ -84,10 +84,10 @@
         && (x.service === id || cases.some(a => a.id === x.atelier)) && x.code !== 'parcours-trou' && x.code !== 'bareme' && x.code !== 'bareme-classe' && x.code !== 'lots');
       const points = [];
       if (passent && !cases.length) points.push(pl(passent, 'commande passe', 'commandes passent') + ' par ici, sans équipe');
-      if (attendues.length && cases.length) points.push(pl(attendues.length, 'commande') + ' à cocher dans une équipe');
+      if (attendues.length && cases.length) points.push(pl(attendues.length, nature === 'categories' ? 'compagnie' : 'commande') + ' à cocher dans une équipe');
       if (vides.length) points.push(vides.length > 1 ? vides.length + ' équipes ne préparent rien' : '« ' + vides[0].nom + ' » ne prépare rien');
       if (sansTemps) points.push('minutes de travail à remplir');
-      if (nature === 'categories' && !classes.length) points.push('aucun flux ne passe par ici : ajoutez-le au chemin des commandes');
+      if (nature === 'categories' && !classes.length) points.push('aucun vol à armer : aucun handling ne charge de vol aujourd’hui');
       else if (nature === 'categories' && classes.some(c => c.minutes == null)) points.push('minutes par vol à remplir');
       for (const x of alertes.slice(0, 3)) points.push(x.message);
       const utilise = cases.length > 0 || passent > 0 || nature === 'categories';
@@ -186,7 +186,7 @@
       </div>`;
       const passent = PC.types(st).filter(t => P.servicesDuParcours(t).includes(s.id));
       // Les commandes d'un flux qui ne passe pas ici ne se cochent pas : on fait d'abord passer le flux.
-      const autres = b.nature === 'manuel' || b.nature === 'robot' || b.nature === 'categories' ? PC.types(st).filter(t => !P.servicesDuParcours(t).includes(s.id)) : [];
+      const autres = b.nature === 'manuel' || b.nature === 'robot' ? PC.types(st).filter(t => !P.servicesDuParcours(t).includes(s.id)) : [];
       const ajoutFlux = autres.length ? `<select class="mu-flux-ajout-ici" data-mu-flux-ici="${esc(s.id)}" aria-label="Faire passer un flux par ce service">
         <option value="">+ Faire passer un flux par ici…</option>${autres.map(t => `<option value="${esc(t.id)}">${esc(t.nom)}</option>`).join('')}</select>` : '';
       const lesFlux = `<p class="mu-flux-passent"><span>${passent.length ? 'Flux qui passent ici :' : 'Aucun flux ne passe ici.'}</span>
@@ -247,13 +247,13 @@
         ? etape(3, 'Minutes de travail pour un vol', rg.ficheTemps(s.id), 'pour une compagnie dans une classe : la durée se déduit des personnes de l’équipe')
         : nature === 'robot' ? etape(3, 'Débit du robot', '<p class="mini-note">Le débit (plateaux par heure) se règle dans la fiche de chaque équipe robot, plus haut : « Plus de réglages ».</p>') : '';
 
-      if (nature === 'categories') return tete + lesFlux + horsFlux + aFaire
+      if (nature === 'categories') return tete + this.lienHandling(s) + aFaire
         + etape(1, 'Ce qu’il fait', choixNature)
         + etape(2, 'Minutes par vol, selon la compagnie', this.blocParCompagnie(s, classes), 'une case vide prend la valeur de « Toutes les compagnies »')
         + etape(3, 'Ses équipes : une case par compagnie', equipes);
       // Un armement qui suit encore les classes (BC, PC, Éco…) : on propose la bonne façon, à la vue.
       const proposer = preparent(nature) && /armement/i.test(s.nom) ? `<div class="mu-q mu-par-cie"><p>L’armement ne travaille pas par Business, Premium ou Éco :
-        <b>une case par compagnie</b>, oui ou non, selon le chemin de ses commandes, et des minutes par vol.</p>
+        <b>une case par compagnie</b>, oui ou non, pour chaque vol que le handling charge, et des minutes par vol.</p>
         <div class="mu-q-gestes"><button class="btn btn-sm btn-play" type="button" data-mu-action="par-compagnie">Passer à « une case par compagnie »</button></div></div>` : '';
       return tete + lesFlux + blocChaine + horsFlux + proposer + aFaire
         + etape(1, 'Ce qu’il fait', choixNature)
@@ -261,9 +261,25 @@
         + temps;
     }
 
+    /* L'armement est lié au handling, pas aux chemins des repas : on arme un vol
+     * (pas une classe), en parallèle des repas, et les deux se retrouvent au
+     * handling, qui charge le vol quand tout est prêt (retour d'usage du 02/10).
+     * Placé dans un flux, il n'y sert à rien : on propose de l'en retirer. */
+    lienHandling(s) {
+      const st = this.etat, handlings = st.ateliers.filter(a => a.type === 'handling');
+      const qui = handlings.length ? handlings.map(a => '« ' + esc(a.nom) + ' »').join(', ') : '';
+      const dans = PC.types(st).filter(t => P.servicesDuParcours(t).includes(s.id));
+      return `<div class="mu-lien-handling"><p><span aria-hidden="true">🚚</span> <b>Lié au handling.</b> ${handlings.length
+        ? 'Chaque vol que ' + qui + (handlings.length > 1 ? ' chargent' : ' charge') + ' demande son armement ; le handling attend l’armement et les repas du vol pour le charger.'
+        : 'Pas encore de handling dans l’unité : chaque départ demande son armement. Quand un handling chargera les vols, il attendra leur armement.'}
+        L’armement n’est pas une étape des chemins des repas : on arme un vol, pas une classe.</p>
+        ${dans.length ? `<p class="mini-note">${esc(s.nom)} est dans ${dans.length > 1 ? dans.length + ' flux' : 'le flux'} ${esc(dans.map(t => '« ' + t.nom + ' »').join(', '))} : il n’y sert à rien.
+          <button class="btn btn-sm" type="button" data-mu-action="retirer-des-flux">Le retirer des flux</button></p>` : ''}</div>`;
+    }
+
     /* Un service qui travaille par compagnie (l'armement) : ses minutes par vol,
      * pour toutes les compagnies, puis celles qui en ont d'autres. Seules les
-     * compagnies dont le chemin passe par lui ont une case. */
+     * compagnies dont un handling charge les vols ont une case. */
     blocParCompagnie(s, classes) {
       const k = (((this.etat.categories || {})[s.id]) || [])[0];
       if (!k) return '';
@@ -272,13 +288,13 @@
       const sans = toutes.filter(c => !avec.includes(c)).sort((x, y) => x.localeCompare(y));
       const champ = cie => `<td><input type="number" min="0" step="1" value="${k.minutes[cie] ?? ''}" placeholder="${cie === '*' ? '—' : k.minutes['*'] ?? '—'}"
           data-mu-cat-min="${esc(k.id)}" data-cie="${esc(cie)}" aria-label="Minutes par vol${cie === '*' ? ', toutes les compagnies' : ', ' + esc(cie)}"></td>`;
-      const aucun = !avec.length ? `<p class="mini-note">Aucune compagnie n’a de case : aucun chemin ne passe par ${esc(s.nom)}.
-        Ajoutez-le au flux de ses commandes (« + Faire passer un flux par ici… », en haut), ou dans Mon unité › Flux de production.</p>` : '';
+      const aucun = !avec.length ? `<p class="mini-note">Aucune compagnie n’a de case : aucun handling ne charge de vol aujourd’hui
+        (voir la liste des compagnies de chaque handling).</p>` : '';
       return aucun + `<div class="mu-grille-scroll"><table class="mu-cat-table" data-mu-cat-service="${esc(s.id)}">
         <thead><tr><th scope="col">Compagnie</th><th scope="col">Minutes par vol</th></tr></thead>
         <tbody><tr class="mu-cat-toutes"><th scope="row">Toutes les compagnies</th>${champ('*')}</tr>
         ${avec.map(cie => `<tr><th scope="row">${esc(cie)}</th>${champ(cie)}</tr>`).join('')}</tbody></table></div>`
-        + (sans.length ? `<p class="mini-note">Pas de case pour ${esc(sans.join(', '))} : leur chemin ne passe pas par ${esc(s.nom)}.</p>` : '');
+        + (sans.length ? `<p class="mini-note">Pas de case pour ${esc(sans.join(', '))} : aucun handling ne charge leurs vols.</p>` : '');
     }
 
     /** Changer le réglage d'un service par compagnie. */
@@ -336,7 +352,7 @@
     /** La grille compagnies × classes d'une équipe (ou, sans équipe, de qui passe par le service). */
     grille(service, a, classes, o = {}) {
       const parCategories = PC.natureService(this.etat, service) === 'categories';
-      if (!classes.length) return '<p class="mini-note">' + (parCategories ? 'Aucune case : aucun chemin ne passe par ' + esc(this.nom(service)) + ' (voir plus haut).'
+      if (!classes.length) return '<p class="mini-note">' + (parCategories ? 'Aucune case : aucun vol chargé par un handling (voir plus haut).'
         : 'Aucune commande : importez d’abord vos vols (Vols).') + '</p>';
       const g = PC.grille(this.etat, service, a ? a.id : null, classes);
       const par = new Map(classes.map(c => [c.id, c]));
@@ -359,7 +375,7 @@
       };
       const cellule = (cie, cab) => {
         const id = P.idClasse(cie, cab), c = par.get(id);
-        if (!c && parCategories) return `<td class="mu-c hors"><label title="${esc(cie + ' — son chemin ne passe pas par ' + this.nom(service) + ' : pas de case')}"><input type="checkbox" disabled aria-label="${esc(cie)} : son chemin ne passe pas par ${esc(this.nom(service))}"></label></td>`;
+        if (!c && parCategories) return `<td class="mu-c hors"><label title="${esc(cie + ' — aucun handling ne charge ses vols : pas d’armement')}"><input type="checkbox" disabled aria-label="${esc(cie)} : aucun handling ne charge ses vols"></label></td>`;
         if (!c) return '<td class="mu-rien" aria-hidden="true">·</td>';
         let x = g.get(id);
         // Une équipe à la chaîne, vue depuis l'étape qu'elle absorbe (la Prépa) : les
@@ -581,7 +597,7 @@
             a.lots = [];
           }
           if (v !== 'categories') this.natures[service] = v;
-        }, v === 'categories' ? this.nom(service) + ' travaille par compagnie : donnez ses minutes par vol, puis cochez les compagnies dans ses équipes.'
+        }, v === 'categories' ? this.nom(service) + ' travaille par compagnie, lié au handling : donnez ses minutes par vol, puis cochez les compagnies dans ses équipes.'
           : this.nom(service) + ' : ' + NATURES.find(x => x.id === v).nom.toLowerCase() + '.');
       }
       if (!cases.length) { this.natures[service] = v; this.rendreServices(); return; }
@@ -936,6 +952,11 @@
         switch (t.dataset.muAction) {
           case 'equipe': return this.ajouterEquipe(id);
           case 'par-compagnie': return this.nature(id, 'categories');
+          // L'armement n'a rien à faire dans les chemins des repas.
+          case 'retirer-des-flux':
+            return this.at.changer(() => {
+              for (const t of PC.types(this.at.state)) if (P.servicesDuParcours(t).includes(id)) PC.retirerService(t, id);
+            }, this.nom(id) + ' sort des flux : il reste lié au handling, vol par vol.');
           case 'liberer': {
             let parties = [];
             this.at.changer(() => { parties = PC.liberer(this.at.state, id, this.at.classes); }, '');

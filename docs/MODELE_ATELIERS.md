@@ -195,26 +195,33 @@ ex. la Prépa dans une case de Montage), pour **ses** commandes seulement :
 Réglage : fiche de la case, « À la chaîne avec l'étape d'avant ? ». Excel :
 colonne « À la chaîne avec » de la feuille Ateliers.
 
-### Un service qui travaille par compagnie : l'armement (retours d'usage du 01/10)
+### Un service qui travaille par compagnie : l'armement, lié au handling (01/10 et 02/10)
 
-« L'armement ne travaille pas en fonction de BC, PC, Éco, SPML » ; puis :
-« une seule case par compagnie, oui ou non, qui est bien sûr liée au
-chemin ».
+« L'armement ne travaille pas en fonction de BC, PC, Éco, SPML » ; « une
+seule case par compagnie, oui ou non » ; « l'armement est toujours lié au
+handling ».
+
+**Pourquoi il n'est pas dans les chemins des repas.** On arme un vol, pas une
+classe : dans les flux par compagnie × classe, un vol AF en Business et en
+Éco serait armé deux fois. Et l'armement travaille en parallèle des repas, pas
+avant eux : dans un flux, les repas l'attendraient. Repas et armement se
+retrouvent au handling, qui charge le vol quand les deux sont prêts. Le lien
+est donc avec le handling, et il est automatique.
 
 `etat.categories = { [service]: [{ id: 'ARM', nom: 'Armement', minutes: { '*': 10, AF: 15 } }] }`
 — un seul réglage par service (fiche : « Ce service… travaille par
 compagnie » ; la fiche d'un service dont le nom dit « armement » le propose).
 
-- **Une case par compagnie** (`AF/@ARM`, « AF · Armement »), seulement pour
-  les vols dont une commande passe par le service : son flux le traverse
-  (`passeParVol`, `classesCategories`). Les autres compagnies sont grisées.
+- **Une case par compagnie** (`AF/@ARM`, « AF · Armement ») pour les départs
+  qu'un handling charge (sa liste de compagnies, ou toutes ; sans handling
+  dans l'unité : tous les départs) — `chargeParHandling`, `classesCategories`.
+  Les autres compagnies sont grisées. Cochée dans une équipe : oui ; sinon,
+  elle n'est pas armée (et le handling ne l'attend pas).
 - **Minutes par vol** selon la compagnie (« Toutes les compagnies » par
   défaut) × vols ; échéance du vol. Sans minutes : le calcul le dit.
-- **Le handling** attend la case du vol pour le charger. Sur le chemin des
-  repas, le service n'est pas un trou : il ne prépare pas les repas.
-- Le service sort du flux : ses équipes lâchent les cases des compagnies dont
-  plus aucune commande n'y passe (une compagnie qui ne vole pas aujourd'hui
-  garde la sienne).
+- **Le handling** attend l'armement du vol pour le charger.
+- Placé dans un flux, il n'y sert à rien : la fiche le dit et propose « Le
+  retirer des flux ». Sur le chemin des repas, il n'est jamais un trou.
 - **Excel** : feuille « Par compagnie » (Service, Compagnie, Minutes par vol) ;
   dans « Fabrications », la case s'écrit `AF/@ARM`.
 

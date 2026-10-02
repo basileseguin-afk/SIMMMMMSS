@@ -5,6 +5,26 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-02 — L'armement est lié au handling, pas aux chemins des repas
+
+Question d'usage : « comment je gère l'armement dans les chemins, dans les
+flux ? En soi il est sur toutes les compagnies… l'armement est toujours lié
+au handling. »
+
+Réponse retenue : l'armement n'est pas une étape des chemins des repas. On
+arme un vol, pas une classe (un vol AF en Business et en Éco s'arme une
+fois), et il travaille en parallèle des repas ; les deux se retrouvent au
+handling, qui charge le vol quand tout est prêt.
+
+- Une case par compagnie pour chaque départ qu'un handling charge (sa liste
+  de compagnies, ou toutes ; sans handling, tous les départs) :
+  `chargeParHandling` remplace `passeParVol` (moteur v1 et v2).
+- Fiche de l'armement : « Lié au handling » — quel handling, et qu'il attend
+  l'armement et les repas du vol. Placé dans un flux : « il n'y sert à rien »,
+  avec « Le retirer des flux ». Plus de « Faire passer un flux par ici ».
+- Les cases ne dépendent plus des flux (`PC.liberer` les garde).
+- Tests réécrits ; docs.
+
 ## 2026-10-02 — L'armement : une case par compagnie, liée au chemin
 
 Retour d'usage : « pourquoi je ne le vois pas apparaître ? » — le réglage
