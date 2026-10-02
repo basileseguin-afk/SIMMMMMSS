@@ -1410,6 +1410,8 @@
       if (this.actif && !(etat.parcours || []).some(p => p.id === this.actif)) this.actif = null;
       if (!this.cmd && !this.actif && classes.length) this.cmd = this.ordreCommandes(classes)[0].id;
       const t = this.a.boite().querySelector('.pc-tiroir'), haut = t ? t.scrollTop : 0;
+      // La liste des commandes garde sa position : un clic en bas de liste ne la ramène pas en haut.
+      const l = this.a.boite().querySelector('.pc-cmds-liste'), hautListe = l ? l.scrollTop : 0;
       // Le tableau ne se construit que s'il est affiché (ou hors navigateur).
       const tableau = !root.document || root.document.body.dataset.sous === 'at-grille';
       this.a.boite().innerHTML = this.sectionParcours(etat, classes)
@@ -1420,6 +1422,19 @@
       const statut = document.getElementById('at-status'), m = this.a.boite().querySelector('.pc-message');
       if (m && statut) m.textContent = statut.textContent;
       this.filtrer(); this.filtrerCmd();
+      this.montrerCmd(hautListe);
+    }
+
+    /** Remet la liste des commandes où elle était, puis y amène la commande ouverte
+     *  si elle est hors de vue (ouverte depuis le tableau, par exemple). Sans
+     *  scrollIntoView : la page, elle, ne bouge pas. */
+    montrerCmd(haut) {
+      const l = this.a.boite().querySelector('.pc-cmds-liste'); if (!l) return;
+      l.scrollTop = haut || 0;
+      const x = l.querySelector('.pc-cmd.actif'); if (!x || !x.getBoundingClientRect) return;
+      const r = x.getBoundingClientRect(), q = l.getBoundingClientRect();
+      if (r.top < q.top) l.scrollTop -= q.top - r.top + 8;
+      else if (r.bottom > q.bottom) l.scrollTop += r.bottom - q.bottom + 8;
     }
 
     /* ---- 1. les chemins ---------------------------------------------- */

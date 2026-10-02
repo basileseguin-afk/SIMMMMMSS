@@ -5,6 +5,23 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-02 — Une commande : la liste de gauche défile correctement
+
+Retour d'usage : « bug de scrollage sur la barre de scroll à gauche dans
+“Une commande” ».
+
+- **La liste repartait en haut à chaque clic** : choisir une commande en bas
+  de liste redessine la page, et la liste revenait au début — la commande
+  choisie disparaissait. Elle garde maintenant sa position ; une commande
+  ouverte d'ailleurs (tableau, fiche) y est amenée en vue, sans faire bouger
+  la page (`montrerCmd`).
+- **Le cadre était mal découpé** : sa grille prévoyait 4 rangées pour 5 blocs
+  depuis l'ajout de « Ajouter une compagnie » ; le champ de recherche se
+  tassait et l'en-tête « AF » passait dessus. Le cadre est une colonne où
+  seule la liste défile, quel que soit le nombre de blocs.
+- v1 et v2 (`parcours.js`, `graphe.css`) ; `tests/liste-commandes-browser.cjs`
+  (échoue sur l'ancien code, passe sur le nouveau).
+
 ## 2026-10-02 — Armement : chaque compagnie construite a sa case, cochable
 
 Retour d'usage : « toutes les compagnies ont une case armement liée au
