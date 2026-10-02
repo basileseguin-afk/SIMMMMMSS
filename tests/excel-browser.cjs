@@ -108,7 +108,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const at=T.feuille(feuilles,'Ateliers');
   const col=at.lignes[0].indexOf('Personnes');
   at.lignes.find(l=>l[0]==='Cuisine')[col]=2;
-  fab.lignes.push(['Cuisine',2,'DL/BC']);
+  fab.lignes.push(['Cuisine',2,'FWI/BC']);
   assert.deepEqual(T.feuille(feuilles,'Parcours').lignes[0],['Parcours','De','Vers'],'une ligne par lien du diagramme');
   T.feuille(feuilles,'Parcours').lignes.push(['Complet','Armement','MONTAGE']);
   const modifie=path.join(dossier,'ateliers-modifie.xlsx');
@@ -117,7 +117,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const etat=await page.evaluate(()=>Sim.ateliers.state);
   const cuisine=etat.ateliers.find(a=>a.nom==='Cuisine');
   assert.equal(cuisine.personnes,2);
-  assert.deepEqual(cuisine.lots,[['AF/BC'],['DL/BC']]);
+  assert.deepEqual(cuisine.lots,[['AF/BC'],['FWI/BC']]);
   assert.ok(etat.parcours.find(p=>p.id==='complet').liens.some(l=>l.de==='armement'&&l.vers==='prepa'));
   assert.match(await page.locator('#at-status').textContent(),/Cases importées/);
   // Un classeur faux est refusé en bloc, et dit quoi corriger.
@@ -184,19 +184,19 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await kase('AF/BC','cuisine').textContent(),/Cuisine/,'la case figure dans sa cellule, avec ses heures');
   assert.match(await kase('AF/BC','cuisine').textContent(),/\d\d:\d\d–\d\d:\d\d/);
   assert.equal(await page.locator('tr[data-classe="AF/YC"] td.hors').count()>=2,true,'YC ne passe ni en cuisine ni en légumerie : grisé');
-  assert.match(await kase('DL/BC','cuisine').textContent(),/à faire/,'une étape sans case est à faire');
+  assert.match(await kase('FWI/BC','cuisine').textContent(),/à faire/,'une étape sans case est à faire');
   assert.equal(await page.locator('.qf-menu').count(),0,'plus de menu : le tableau ne se modifie pas, il se lit');
   assert.equal(await page.locator('[data-qf=remplir]').count(),0);
   // Une cellule ouvre le chemin de sa commande, sur son service.
-  await kase('DL/BC','cuisine').click();await attendre();
+  await kase('FWI/BC','cuisine').click();await attendre();
   assert.equal(await page.locator('[data-sous-onglet=at-chemins]').getAttribute('aria-selected'),'true');
-  assert.equal(await page.locator('.pc-cmd.actif').getAttribute('data-classe'),'DL/BC');
+  assert.equal(await page.locator('.pc-cmd.actif').getAttribute('data-classe'),'FWI/BC');
   // Le tableau se relit.
   await nav.aller(page,'at-grille');await attendre();
   // Filtrer : chercher une compagnie.
   await page.fill('[data-qf=recherche]','AF/');
   assert.ok(await page.locator('tr[data-classe]:visible').count()>0);
-  assert.equal(await page.locator('tr[data-classe^="DL"]:visible').count(),0,'DL est masquée');
+  assert.equal(await page.locator('tr[data-classe^="FWI"]:visible').count(),0,'FWI est masquée');
   await page.fill('[data-qf=recherche]','');
   // Une ligne se suit dans le temps, étape par étape, et le dit en clair.
   await page.locator('[data-qf=suivre][data-classe="AF/BC"]').click();await attendre();

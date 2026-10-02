@@ -27,7 +27,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 1. Une commande suit le flux de sa classe ; elle peut aussi avoir un chemin
   // à elle, avec ses propres cases : ici TX · Business, copié de son flux.
-  assert.ok(await page.locator('.pc-cmds [data-pc-action=cmd]').count()>=30,'une ligne par commande');
+  assert.ok(await page.locator('.pc-cmds [data-pc-action=cmd]').count()>=20,'une ligne par commande');
   await page.locator('[data-pc-action=cmd][data-classe="TX/BC"]').click();await attendre();
   assert.match(await page.locator('.pc-flux-bandeau').textContent(),/TX · Business suit le flux « Complet »/);
   await page.locator('.pc-creer-plus>summary').click();

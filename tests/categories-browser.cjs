@@ -22,8 +22,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.evaluate(()=>localStorage.clear());await page.reload();await attendre();
    // La version servie se lit dans l'en-tête (02/10).
    assert.equal(await page.locator('header .marque-version').innerText(),'version '+await page.evaluate(()=>document.querySelector('meta[name="ory-version"]').content));
-   // Des repas construits pour toutes les compagnies, sauf QR et DL : rien n'est construit pour elles.
-   const construites=await page.evaluate(()=>{const cies=[...new Set(Sim.ateliers.classes.map(c=>c.cie))].filter(c=>c!=='QR'&&c!=='DL').sort();
+   // Une équipe prépare l'Éco de chaque compagnie du jeu.
+   const construites=await page.evaluate(()=>{const cies=[...new Set(Sim.ateliers.classes.map(c=>c.cie))].sort();
      Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'mo',nom:'Montage',service:'prepa',type:'manuel',debut:'04:00',jour:0,personnes:4,pauses:[],
        lots:Sim.ateliers.classes.filter(c=>cies.includes(c.cie)&&c.cabine==='YC').map(c=>[c.id]),regime:{actif:true}});},'');return cies;});
    await nav.aller(page,'mu-services');
@@ -52,10 +52,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    const tous=await page.evaluate(()=>[...new Set(Sim.ateliers.classes.map(c=>c.cie))].sort());
    assert.deepEqual(await cases(),tous,version+' : chaque compagnie dont le chemin passe par l’armement — FWI comprise, absente de la liste de « Quais »');
    assert.doesNotMatch(await fiche('').innerText(),/Pas de case pour/);
-   // EZY ajoutée à la main, sans vol au programme : sa case est là, à 0 vol.
+   // EZY ajoutée à la main : le jeu de démonstration lui donne des vols d'essai (02/10), et sa case d'armement.
    await page.evaluate(()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;st.ajoutees=(st.ajoutees||[]).concat([{cie:'EZY',cabine:'YC'}]);},''));await attendre();
    assert.ok((await cases()).includes('EZY'),version+' : EZY a sa case');
-   assert.match(await fiche('.mu-arm-sansvol').innerText(),/EZY : aucun départ au programme/);
+   assert.equal(await page.evaluate(()=>Sim.ateliers.classesDe('armement').find(c=>c.cie==='EZY').vols.length),2,version+' : ses deux départs d’essai');
+   assert.match(await page.locator('#source-label').textContent(),/vols d’essai : EZY/);
    const toutes=await cases();
 
    // 3. Ses minutes par vol : toutes, puis AF.

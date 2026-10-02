@@ -61,8 +61,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 2. Toutes les compagnies × classes du programme sont listées, à fabriquer.
   await onglet('at-repas');
   const lignes=await page.locator('#at-classes tbody tr').count();
-  assert.equal(lignes,34,'34 compagnies × classes dans le jeu de démonstration');
-  assert.equal(await page.locator('.at-etat.neutre').count(),34,'aucune n’est préparée au départ : un état neutre, pas une alerte');
+  assert.equal(lignes,24,'24 compagnies × classes dans le jeu de démonstration');
+  assert.equal(await page.locator('.at-etat.neutre').count(),24,'aucune n’est préparée au départ : un état neutre, pas une alerte');
   // CREW et SPML sont des classes comme les autres : elles figurent au tableau.
   // Les classes s'écrivent en toutes lettres ; l'identifiant reste en attribut.
   const ids=await page.locator('#at-classes tbody tr th').allTextContents();
@@ -103,8 +103,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await lot(rob,['CRL/YC']);
   r=await resultat();
   const lrob=r.lots.find(l=>l.plateaux!==undefined);
-  assert.equal(lrob.plateaux,340,'les passagers YC de CRL');
-  assert.ok(Math.abs((lrob.fin-lrob.debut)-340/300*60)<1e-6);
+  assert.equal(lrob.plateaux,575,'les passagers YC de CRL : 340 + 235, ses deux départs');
+  assert.ok(Math.abs((lrob.fin-lrob.debut)-575/300*60)<1e-6);
   await champ(rob,'personnes',1);
   r=await resultat();
   assert.ok(r.anomalies.includes('robot-arret'),'l’effectif insuffisant est signalé');
@@ -133,7 +133,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await onglet('at-repas');
   const etats=await page.locator('#at-classes tbody tr').evaluateAll(rs=>rs.map(r=>r.cells[0].dataset.classe+'|'+r.cells[5].textContent));
   assert.ok(etats.some(t=>t.startsWith('CRL/BC')&&/à l’heure/.test(t)));
-  assert.equal(etats.filter(t=>/pas encore d’équipe/.test(t)).length,31,'34 commandes moins les 3 préparées');
+  assert.equal(etats.filter(t=>/pas encore d’équipe/.test(t)).length,21,'24 commandes moins les 3 préparées');
   // Par où elle passe, et qui la fabrique : le tableau « Qui fabrique quoi » le dit case par case.
   await onglet('at-grille');
   const traverses=await page.locator('tr[data-classe="CRL/BC"] .qf-case.ok').evaluateAll(bs=>bs.map(b=>b.dataset.service).sort());
@@ -141,7 +141,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 9. Les indicateurs résument la journée.
   assert.match(await page.locator('#at-indicateurs').textContent(),/Sur la journée : \d+ commandes? prêtes? à l’heure sur \d+/,'une phrase, les mêmes mots que l’étape 4');
-  assert.match(await page.locator('#at-indicateurs').textContent(),/31 commandes sans équipe/,'les commandes sans équipe sont comptées');
+  assert.match(await page.locator('#at-indicateurs').textContent(),/21 commandes sans équipe/,'les commandes sans équipe sont comptées');
 
   // 10. Annuler, rétablir, et la saisie survit au rechargement.
   const avantSuppr=(await etat()).ateliers.length;
@@ -206,10 +206,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(ajoutee.cie,'ZZ','la compagnie est normalisée en majuscules');
   assert.equal(ajoutee.cabine,'BC');
   assert.deepEqual(Object.keys(ajoutee).sort(),['cabine','cie'],'rien d’autre n’est retenu');
-  // Hors import, elle n'a ni volume ni échéance : on le dit, on ne l'invente pas.
+  // Le jeu de démonstration lui donne des vols d'essai, marqués comme tels (02/10) ;
+  // un programme importé, lui, n'est jamais complété.
   const ligneZZ=await page.locator('#at-classes tbody tr',{has:page.locator('th[data-classe="ZZ/BC"]')}).first()
     .evaluate(tr=>[...tr.cells].slice(1,4).map(c=>c.textContent.trim()));
-  assert.deepEqual(ligneZZ,['—','—','—'],'passagers, vols et échéance restent vides');
+  assert.equal(ligneZZ[1],'2','deux départs d’essai');
+  assert.match(await page.locator('#source-label').textContent(),/vols d’essai : ZZ/);
   // Elle se fabrique comme les autres.
   await ouvrir(cui2);
   await page.selectOption(`[data-at="${cui2}"] [data-at-champ=lot-ajout][data-index="0"]`,'ZZ/BC');await attendre();
@@ -220,6 +222,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 16. Une ajoutée se retire comme les autres, et quitte la liste pour de bon.
   await onglet('at-repas');await page.locator('[data-at-action=classe-supprimer][data-classe="ZZ/BC"]').click();await attendre();
   assert.equal((await etat()).ajoutees.length,0,'elle n\u2019est pas mise de c\u00f4t\u00e9, elle est supprim\u00e9e');
+  assert.equal(await page.evaluate(()=>Sim.ateliers.a.vols().filter(v=>v.cie==='ZZ').length),0,'ses vols d’essai partent avec elle');
   assert.deepEqual((await etat()).ateliers.find(a=>a.id===cui2).lots,[['CRL/BC']]);
 
   // 17. Retraits et ajouts survivent au rechargement.

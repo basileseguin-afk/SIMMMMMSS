@@ -5,6 +5,32 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-02 — Jeu d'essai : sans QR ni DL, des vols pour vos compagnies
+
+Demande : « supprime de la simulation QR et DL et rajoute des vols des
+compagnies que j'utilise pour la prépa, comme ça je peux bien paramétrer
+l'armement ».
+
+- **QR et DL quittent le jeu de démonstration.** Leurs vols sont remplacés,
+  aux mêmes heures et volumes, par des vols d'AF, FWI et CRL, déjà dans le
+  jeu : toujours 12 départs et 6 retours (fictifs).
+- **QR et DL quittent votre état**, une fois au chargement, annulable
+  (migration « sans-qr-dl ») : leurs cases cochées, ajouts, retraits, chemins
+  à elles, durées et listes du handling, minutes d'armement.
+- **Des vols d'essai pour vos compagnies.** Tant que le programme est celui
+  de démonstration, chaque compagnie que vos équipes préparent ou que vous
+  avez ajoutée, sans départ au programme (EZY, RAM, DAH…), reçoit deux départs
+  et un retour d'essai, avec seulement les classes que vous préparez
+  (`OrlyDemo.compagniesUtilisees`, `OrlyDemo.completer`). Ils arrivent dès
+  qu'une compagnie est cochée ou ajoutée, sans recharger ; l'en-tête des Vols
+  le dit (« Jeu de démonstration + vols d'essai : DAH, EZY, RAM »). Un
+  programme importé n'est jamais complété.
+- Tests : `tests/jeu-essai.test.cjs`, `tests/jeu-essai-browser.cjs` ; les tests
+  d'échanges Excel lisent un programme figé (`tests/vols-fixture.cjs`) ; les
+  tests qui citaient DL ou QR citent FWI ou CRL ; comptes mis à jour
+  (24 commandes au lieu de 34).
+- v1 et v2 (`vols-demo.js`, `sim.js`).
+
 ## 2026-10-02 — Armement : une case pour chaque compagnie dont le chemin y passe, avec ou sans vol
 
 Retour d'usage : « dans le chemin EZY, l'armement est bien présent, et je ne

@@ -18,7 +18,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.evaluate(()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
     const c=(id,nom,service,debut,lots)=>({id,nom,service,type:'manuel',debut,jour:0,personnes:3,pauses:[],lots,regime:{actif:true}});
     st.ateliers.push(c('u1','Cuisine AF BC','cuisine','04:00',[['AF/BC']]),c('s1','Dotation matin','dotation','03:00',[['AF/BC'],['TX/BC']]),
-      c('e1','Montage PC','prepa','05:00',[['AF/PC','DL/PC']]),
+      c('e1','Montage PC','prepa','05:00',[['AF/PC','FWI/PC']]),
       {id:'pl',nom:'Plonge',service:'plonge',type:'lavage',debut:'06:00',jour:0,personnes:2,pauses:[],lots:[],regime:{actif:true},plafond:0,tunnels:[{nom:'T1',debit:300,personnes:1,actif:true}]});},''));
 
   // 1. Dans Mon unité (Tableau des équipes) : une ligne par case, service par service.
@@ -56,11 +56,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const g=feuilles.find(f=>f.nom==='Cases').lignes;
   const r=g.find(l=>l[0]==='Dotation matin');
   assert.equal(r[6],'AF/BC → TX/BC');
-  r[4]='01:45';r[5]=5;r[6]='TX/BC → AF/BC + DL/BC';
+  r[4]='01:45';r[5]=5;r[6]='TX/BC → AF/BC + FWI/BC';
   fs.writeFileSync(fichier,T.ecrireClasseur(feuilles));
   await page.setInputFiles('#rc-import',fichier);await page.waitForTimeout(600);
   const k=await kase('s1');
-  assert.deepEqual([k.debut,k.personnes,k.lots],['01:45',5,[['TX/BC'],['AF/BC','DL/BC']]]);
+  assert.deepEqual([k.debut,k.personnes,k.lots],['01:45',5,[['TX/BC'],['AF/BC','FWI/BC']]]);
   fs.unlinkSync(fichier);
 
   // 5. Une commande mène à son chemin, ouvert sur le service de la case
@@ -72,8 +72,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     'sur le chemin de TX BC, à la dotation');
   assert.equal(await page.locator('#at-parcours .pc-cmd.actif[data-classe="TX/BC"]').count(),1,'TX BC est la commande choisie');
   await nav.aller(page,'at-recap');
-  await ligne('e1').locator('.rc-cmd[data-classe="DL/PC"]').click();await attendre();
-  assert.deepEqual(await page.evaluate(()=>[document.body.dataset.sous,Sim.ateliers.parcours.cmd]),['at-chemins','DL/PC'],'une commande « ensemble » aussi');
+  await ligne('e1').locator('.rc-cmd[data-classe="FWI/PC"]').click();await attendre();
+  assert.deepEqual(await page.evaluate(()=>[document.body.dataset.sous,Sim.ateliers.parcours.cmd]),['at-chemins','FWI/PC'],'une commande « ensemble » aussi');
 
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('recap-cases-browser : ok');

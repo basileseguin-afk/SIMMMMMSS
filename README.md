@@ -462,7 +462,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `moteur/noyau.js` | Noyau à événements discrets sur lequel tourne le modèle par ateliers |
 | `replay.js` / `simulation.js` | Relecture de la journée calculée : états à l’instant t, vue Simulation |
 | `comparaison.js` | Scénarios A/B : capture, tableau, verdict par ligne |
-| `vols-demo.js` | Programme de vols **fictif** de démonstration |
+| `vols-demo.js` | Programme de vols **fictif** de démonstration, sans QR ni DL ; il reçoit des vols d’essai pour chaque compagnie que l’unité prépare ou a ajoutée sans départ au programme (jamais un programme importé) |
 | `parcours.js` | Chemins des repas : validation, chemins types, tableau « Qui prépare quoi », suivi d’un repas dans le temps, éditeur |
 | `tableur.js` | Lecture et écriture de classeurs Excel (.xlsx) et de CSV, sans bibliothèque |
 | `echanges.js` | Les trois classeurs (ateliers, barème, vols) : format et conversions |
@@ -504,6 +504,9 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/categories-browser.cjs` | Armement par compagnie, lié au handling (v1 et v2) : la fiche le propose ; sans chemin, pas de case ; intégré aux chemins, chaque compagnie a sa case, cochable — FWI absente de la liste du handling, EZY ajoutée sans vol ; minutes par vol ; une colonne ; calcul ; le handling attend l’armement ; « Le retirer des flux » ; retour aux commandes |
 | `tests/armement-chemins-browser.cjs` | Armement intégré à tous les chemins, relié seulement au handling (v1 et v2) : migration au chargement (par compagnie, cases reprises, branche à part dans chaque chemin, sorti du milieu d’un chemin), pas de trou, le handling attend l’armement, bouton pour un nouveau chemin, « Annuler », une seule fois |
 | `tests/liste-commandes-browser.cjs` | Liste des commandes (Une commande, v1 et v2) : la recherche n’est pas recouverte, la liste défile seule, un clic en bas de liste ne la ramène pas en haut, une commande ouverte d’ailleurs est amenée en vue |
+| `tests/jeu-essai.test.cjs` | Jeu de démonstration (v1 et v2) : ni QR ni DL, 12 départs et 6 retours ; compagnies utilisées ; vols d’essai avec les seules classes préparées |
+| `tests/jeu-essai-browser.cjs` | Jeu d’essai dans le site (v1 et v2) : QR et DL retirées d’un état enregistré (une fois), vols d’essai pour EZY, RAM, DAH et leur case d’armement, une compagnie cochée reçoit ses vols sans recharger |
+| `tests/vols-fixture.cjs` | Programme figé (l’ancien jeu, fictif) pour les tests d’échanges Excel |
 | `tests/saisie-heure-browser.cjs` | Taper une heure touche par touche (Récap des cases, fiche d’une case) : rien n’est arraché, Entrée ou quitter le champ enregistre, le tableau garde son défilement |
 | `tests/secours-browser.cjs` | Un démarrage resté en plan ouvre la page de secours ; elle rend les données en sauvegarde, repart sans les cases, puis les remet |
 | `tests/recap-cases-browser.cjs` | Récap des cases : une ligne par case, tâche unique / à la suite / ensemble, départ et jour modifiables, chercher, fichier de paramétrage exporté puis réimporté |

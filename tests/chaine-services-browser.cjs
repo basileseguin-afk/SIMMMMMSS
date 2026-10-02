@@ -21,21 +21,21 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.evaluate(()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
      const ch=id=>({id,nom:'Chaîne '+id,noeuds:['cuisine','preparation','prepa'],liens:[{de:'cuisine',vers:'preparation'},{de:'preparation',vers:'prepa'}]});
      st.parcours.push(ch('ch'),ch('ch2'),{id:'mont',nom:'Montage seul',noeuds:['cuisine','prepa'],liens:[{de:'cuisine',vers:'prepa'}]});
-     st.parcoursClasse['AF/YC']='ch';st.parcoursClasse['TX/YC']='ch2';st.parcoursClasse['QR/YC']='mont';
+     st.parcoursClasse['AF/YC']='ch';st.parcoursClasse['TX/YC']='ch2';st.parcoursClasse['CRL/YC']='mont';
      const c=(id,nom,service,lots,p)=>({id,nom,service,type:'manuel',debut:'04:00',jour:0,personnes:1,pauses:[],lots,regime:{actif:false},...p});
      st.ateliers.push(c('pr','Prépa eco','preparation',[['TX/YC']]),c('mo','Montage AF','prepa',[['AF/YC']],{personnes:2,fusion:'preparation'}),c('mt','Montage TX','prepa',[['TX/YC']]));},''));
 
    // 1. Au Montage : l'équipe, avec son badge « + Prépa à la chaîne ».
    await ouvrir('prepa');
    assert.match(await carte('.mu-badge.chaine').innerText(),/\+ PRÉPA à la chaîne/i);
-   // Elle fait aussi le Montage seul de QR YC, dont le flux n'a pas de Prépa.
+   // Elle fait aussi le Montage seul de CRL YC, dont le flux n'a pas de Prépa.
    const auMontage=c=>page.locator(`#mu-services table[data-mu-equipe="mo"] [data-mu-cocher="${c}"]`);
-   await auMontage('QR/YC').check();await attendre();
-   assert.deepEqual((await kase('mo')).lots.flat().sort(),['AF/YC','QR/YC']);
+   await auMontage('CRL/YC').check();await attendre();
+   assert.deepEqual((await kase('mo')).lots.flat().sort(),['AF/YC','CRL/YC']);
    assert.equal(await auMontage('AF/YC').evaluate(i=>!!i.closest('td').querySelector('.mu-chez-chaine')),true,version+' : ⛓ sur AF YC');
-   assert.equal(await auMontage('QR/YC').evaluate(i=>!!i.closest('td').querySelector('.mu-chez-chaine')),false,version+' : pas sur QR YC');
-   const lotQR=await page.evaluate(()=>Sim.ateliers.resultat.lots.find(l=>l.atelier==='mo'&&l.classes.includes('QR/YC')));
-   assert.ok(!lotQR.minutesFusion,version+' : pas de minutes de Prépa pour QR YC');
+   assert.equal(await auMontage('CRL/YC').evaluate(i=>!!i.closest('td').querySelector('.mu-chez-chaine')),false,version+' : pas sur CRL YC');
+   const lotQR=await page.evaluate(()=>Sim.ateliers.resultat.lots.find(l=>l.atelier==='mo'&&l.classes.includes('CRL/YC')));
+   assert.ok(!lotQR.minutesFusion,version+' : pas de minutes de Prépa pour CRL YC');
 
    // 2. À la Prépa : la même équipe, dite « équipe du Montage », modifiable.
    await ouvrir('preparation');
@@ -45,9 +45,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    const pers=carte('[data-at-champ=personnes]');
    await pers.fill('3');await pers.press('Tab');await attendre();
    assert.equal((await kase('mo')).personnes,3,version+' : modifiée depuis la Prépa');
-   // Vue de la Prépa : QR YC n'y est pas (elle n'en fait que le Montage), ni cochée ni cochable.
-   const qr=page.locator('#mu-services table[data-mu-equipe="mo"] [data-mu-cocher="QR/YC"]');
-   assert.equal(await qr.isChecked(),false,version+' : QR YC pas cochée côté Prépa');
+   // Vue de la Prépa : CRL YC n'y est pas (elle n'en fait que le Montage), ni cochée ni cochable.
+   const qr=page.locator('#mu-services table[data-mu-equipe="mo"] [data-mu-cocher="CRL/YC"]');
+   assert.equal(await qr.isChecked(),false,version+' : CRL YC pas cochée côté Prépa');
    assert.equal(await qr.isDisabled(),true);
    assert.equal(await page.locator('#mu-services table[data-mu-equipe="mo"] [data-mu-cocher="AF/YC"]').isChecked(),true);
    // Dans la grille de l'équipe de la Prépa, AF YC est faite à la chaîne : pas cochable.
@@ -56,7 +56,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.match(await cellule.evaluate(i=>i.closest('td').className),/chaine/);
    // Ce qu'elle prépare se règle aussi d'ici (ses commandes, pour les deux étapes).
    await page.locator('#mu-services table[data-mu-equipe="mo"] [data-mu-cocher="TX/YC"]').check();await attendre();
-   assert.deepEqual((await kase('mo')).lots.flat().sort(),['AF/YC','QR/YC','TX/YC']);
+   assert.deepEqual((await kase('mo')).lots.flat().sort(),['AF/YC','CRL/YC','TX/YC']);
    // Et le lien ramène au Montage, où l'on retrouve le même réglage.
    await carte('[data-mu-ouvrir=prepa]').click();await attendre();
    assert.equal(await page.locator('.mu-fiche').getAttribute('data-mu-fiche'),'prepa');

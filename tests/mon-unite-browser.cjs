@@ -48,7 +48,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const lots=id=>s.ateliers.find(a=>a.id===id).lots.flat();
   assert.ok(lots(e1).includes('AF/BC')&&lots(e1).includes('AF/YC'),'la ligne AF');
   assert.ok(!lots(e2).includes('AF/YC'),'tout cocher ne prend rien à l’autre équipe');
-  assert.ok(lots(e2).includes('TX/YC')&&lots(e2).includes('DL/YC'),'la colonne YC');
+  assert.ok(lots(e2).includes('TX/YC')&&lots(e2).includes('FWI/YC'),'la colonne YC');
   // L'ordre suit les départs.
   const ech=await page.evaluate(ids=>ids.map(id=>Sim.ateliers.classes.find(c=>c.id===id).echeance),s.ateliers.find(a=>a.id===e1).lots.map(l=>l[0]));
   assert.deepEqual(ech,[...ech].sort((a,b)=>a-b),'la plus pressée d’abord');
@@ -73,14 +73,14 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 6. Décocher la dernière équipe d'une commande : le site demande s'il faut
   //    retirer le service de son flux — pour tout le flux, ou pour elle seule.
-  await page.locator(`table[data-mu-equipe="${e2}"] [data-mu-cocher="DL/YC"]`).uncheck();await attendre();
-  assert.match(await page.locator('.mu-q').innerText(),/reste sur le flux de DL YC/);
+  await page.locator(`table[data-mu-equipe="${e2}"] [data-mu-cocher="FWI/YC"]`).uncheck();await attendre();
+  assert.match(await page.locator('.mu-q').innerText(),/reste sur le flux de FWI YC/);
   const ecoAvant=(await chemin('AF/YC')).services;
   await page.locator('.mu-q [data-mu-q=seul]').click();await attendre();
-  assert.ok(!(await chemin('DL/YC')).services.includes('prepa'),'DL YC a sa variante, sans Montage');
+  assert.ok(!(await chemin('FWI/YC')).services.includes('prepa'),'FWI YC a sa variante, sans Montage');
   assert.deepEqual((await chemin('AF/YC')).services,ecoAvant,'les autres Économie gardent leur flux');
   // … et la grille dit maintenant qu'elle ne passe plus par là.
-  assert.match(await page.locator(`table[data-mu-equipe="${e2}"] [data-mu-cocher="DL/YC"]`).evaluate(e=>e.closest('td').className),/hors/);
+  assert.match(await page.locator(`table[data-mu-equipe="${e2}"] [data-mu-cocher="FWI/YC"]`).evaluate(e=>e.closest('td').className),/hors/);
 
   // 7. Les minutes de travail se règlent dans la fiche.
   const min=page.locator('.mu-fiche .rg-fiche input[data-rg-champ=minutes][data-cle="*/BC"]');
@@ -104,11 +104,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(apm&&apm!=='prepa','la fiche du nouveau service est ouverte');
   await page.locator('.mu-fiche [data-mu-action=equipe]').click();await attendre();
   const e3=(await st()).ateliers.find(a=>a.service===apm).id;
-  // Aucun flux n'y passe : ses cases ne se cochent pas. Une variante du flux pour QR Business seule…
-  assert.equal(await page.locator(`table[data-mu-equipe="${e3}"] [data-mu-cocher="QR/BC"]`).isDisabled(),true,'hors de son flux : pas cochable');
-  await page.evaluate(apm=>Sim.ateliers.changer(()=>{OrlyParcours.adapter(Sim.ateliers.state,['QR/BC'],apm,true,Sim.unite.options());},''),apm);await attendre();
-  await page.locator(`table[data-mu-equipe="${e3}"] [data-mu-cocher="QR/BC"]`).check();await attendre();
-  const qr=await chemin('QR/BC');
+  // Aucun flux n'y passe : ses cases ne se cochent pas. Une variante du flux pour CRL Business seule…
+  assert.equal(await page.locator(`table[data-mu-equipe="${e3}"] [data-mu-cocher="CRL/BC"]`).isDisabled(),true,'hors de son flux : pas cochable');
+  await page.evaluate(apm=>Sim.ateliers.changer(()=>{OrlyParcours.adapter(Sim.ateliers.state,['CRL/BC'],apm,true,Sim.unite.options());},''),apm);await attendre();
+  await page.locator(`table[data-mu-equipe="${e3}"] [data-mu-cocher="CRL/BC"]`).check();await attendre();
+  const qr=await chemin('CRL/BC');
   assert.ok(qr.services.includes(apm));
   assert.ok(qr.arcs.some(a=>a.endsWith('>'+apm)),'quelqu’un le livre : '+qr.arcs.join(', '));
 
@@ -116,13 +116,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const lotAF=await page.evaluate(id=>Sim.ateliers.resultat.lots.find(l=>l.atelier===id&&l.classes.includes('AF/BC')),e1);
   assert.ok(lotAF&&lotAF.debut>=14*60+15,'AF BC préparée par l’équipe, à partir de 14:15');
 
-  // 11. Les flux : QR Business a sa variante, avec l'Atelier APM ; on la voit, on la renomme.
+  // 11. Les flux : CRL Business a sa variante, avec l'Atelier APM ; on la voit, on la renomme.
   await nav.aller(page,'mu-flux');
-  const v=await page.evaluate(()=>OrlyParcours.fluxDe(Sim.ateliers.state,'QR/BC'));
+  const v=await page.evaluate(()=>OrlyParcours.fluxDe(Sim.ateliers.state,'CRL/BC'));
   assert.ok(v.type&&v.auto,'une variante partagée');
   await page.locator(`.mu-liste [data-mu-flux-choisir="${v.id}"]`).click();await attendre();
   assert.ok(await page.locator('#mu-flux .gr-noeud[data-noeud="'+apm+'"]').count(),'le diagramme montre le nouveau service');
-  assert.match(await page.locator('#mu-flux .mu-exceptions').innerText(),/QR · Business suit ce flux, alors que les Business suivent « Complet »/);
+  assert.match(await page.locator('#mu-flux .mu-exceptions').innerText(),/CRL · Business suit ce flux, alors que les Business suivent « Complet »/);
   await page.locator(`[data-mu-flux-nom="${v.id}"]`).fill('Business APM');await page.locator(`[data-mu-flux-nom="${v.id}"]`).press('Tab');await attendre();
   assert.equal(await page.evaluate(id=>Sim.ateliers.state.parcours.find(p=>p.id===id).nom,v.id),'Business APM');
   // TX Business suit aussi ce flux : on la choisit dans la liste.

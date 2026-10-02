@@ -56,7 +56,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await nav.aller(page,'at-equipes');await page.locator('#at-new').click();await page.waitForTimeout(150);
   const at=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
   await page.selectOption(`[data-at="${at}"] [data-at-champ=service]`,'cuisine');await page.waitForTimeout(150);
-  for(const c of ['AF/BC','AF/YC','DL/YC'])await page.selectOption(`[data-at="${at}"] [data-at-champ=lot-nouveau]`,c);
+  for(const c of ['AF/BC','AF/YC','FWI/YC'])await page.selectOption(`[data-at="${at}"] [data-at-champ=lot-nouveau]`,c);
   const personnes=n=>page.evaluate(([id,n])=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.find(a=>a.id===id).personnes=n;}),[at,n]);
   await personnes(2);
   await comparer();

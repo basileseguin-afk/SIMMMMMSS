@@ -6,7 +6,7 @@ const T = require('../tableur.js');
 const E = require('../echanges.js');
 const P = require('../moteur/production.js');
 const PC = require('../parcours.js');
-const { VOLS } = require('../vols-demo.js');
+const { VOLS } = require('./vols-fixture.cjs');
 
 const SERVICES = [
   { id: 'appros', nom: 'RÉCEPTION / APPROS' }, { id: 'decontam', nom: 'LÉGUMERIE' },

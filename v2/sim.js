@@ -742,7 +742,7 @@ function initAteliers(){
     // Le plan dit « aménagé » d'après les ateliers : il doit suivre leur saisie.
     // La liste du barème marque les services qui portent une équipe : elle doit
     // donc se redessiner quand les ateliers bougent.
-    change:()=>{majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();if(Sim.budget)Sim.budget.rendre();},
+    change:()=>{if(suivreDemo()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();if(Sim.budget)Sim.budget.rendre();},
     // Une case se règle dans le chemin d'une commande : l'ouvrir d'ailleurs y mène.
     onglet:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
     // Le chemin d'une commande mène à son flux et à ses services (Mon unité).
@@ -1895,7 +1895,9 @@ function showView(name) {
 }
 function updateSource() {
   majDemarrage();
-  document.getElementById('source-label').textContent=dataSource;
+  // Le jeu de démonstration dit quelles compagnies ont reçu des vols d'essai.
+  const essai=[...new Set(flights.filter(f=>f.essai).map(f=>f.cie))];
+  document.getElementById('source-label').textContent=dataSource+(essai.length?' + vols d’essai : '+essai.join(', '):'');
   document.getElementById('source-count').textContent=flights.filter(f=>f.sens==='DEP').length+' départs · '+flights.filter(f=>f.sens==='RET').length+' retours';
 }
 /* L'état de lecture appartient désormais à la vue. Il ne reste ici que ce qui
@@ -2037,6 +2039,50 @@ function migrerRobot(){
     at.state.migrations=[...(at.state.migrations||[]),'robot-eco'];},'');
   if(faites.length)at.rendre('Robot : il remplace le Montage sur le chemin de '+faites.map(MoteurProduction.libelleClasse).join(', ')
     +'. Une seule case Robot les prépare, à régler (débit par commande, personnes) dans Mon unité › Services et équipes ou dans le tableau des minutes. « Annuler » revient en arrière.');
+}
+
+
+/* LE JEU D'ESSAI SUIT L'UNITÉ (retour d'usage du 02/10 : « supprime QR et DL
+ * de la simulation et rajoute des vols des compagnies que j'utilise pour la
+ * prépa »). Tant que le programme est celui de démonstration, chaque compagnie
+ * que vos équipes préparent ou que vous avez ajoutée, sans départ, y reçoit
+ * des vols d'essai (OrlyDemo.completer) ; il se relit quand cette liste change.
+ * Un programme importé n'est jamais complété. */
+let cleDemo='';
+function suivreDemo(){
+  if(dataSource!=='Jeu de démonstration'||!Sim.ateliers)return false;
+  const data=OrlyDemo.completer(SAMPLE,OrlyDemo.compagniesUtilisees(Sim.ateliers.state));
+  const cle=data.map(v=>v.id).join(',');
+  if(cle===cleDemo)return false;
+  cleDemo=cle;Sim.dataCourante=data;chargerVols(data);
+  return true;
+}
+
+/* QR et DL sortent de la simulation (même retour d'usage) : leurs cases
+ * cochées, leurs chemins à elles, leurs réglages s'en vont, une fois. */
+function migrerSansQrDl(){
+  const at=Sim.ateliers;if(!at||(at.state.migrations||[]).includes('sans-qr-dl'))return;
+  const sort=x=>/^(QR|DL)$/i.test(String(x).trim());
+  const deCie=id=>sort(String(id).slice(0,String(id).lastIndexOf('/')));
+  let n=0;
+  at.changer(()=>{
+    const st=at.state,avant=JSON.stringify(st);
+    for(const a of st.ateliers){
+      if(Array.isArray(a.lots))a.lots=a.lots.map(l=>[].concat(l).filter(id=>!deCie(id))).filter(l=>l.length);
+      if(Array.isArray(a.compagnies))a.compagnies=a.compagnies.filter(c=>!sort(c));
+      if(a.durees)for(const k of Object.keys(a.durees))if(sort(k))delete a.durees[k];
+    }
+    st.exclues=(st.exclues||[]).filter(id=>!deCie(id));
+    st.ajoutees=(st.ajoutees||[]).filter(c=>!sort(c.cie));
+    const pc=st.parcoursClasse||{},orphelins=new Set();
+    for(const k of Object.keys(pc))if(deCie(k)){orphelins.add(pc[k]);delete pc[k];}
+    // Le chemin à elle d'une commande retirée part avec elle (pas un flux partagé).
+    st.parcours=(st.parcours||[]).filter(p=>!(orphelins.has(p.id)&&!p.type&&!Object.values(pc).includes(p.id)));
+    for(const l of Object.values(st.categories||{}))for(const k of l)for(const c of Object.keys(k.minutes||{}))if(sort(c))delete k.minutes[c];
+    n=avant!==JSON.stringify(st);
+    st.migrations=[...(st.migrations||[]),'sans-qr-dl'];
+  },'');
+  if(n)at.rendre('QR et DL retirées de la simulation : leurs cases cochées et leurs réglages sont partis. « Annuler » revient en arrière.');
 }
 
 /* L'armement (retour d'usage du 02/10 : « intègre pour moi l'armement sur tous
@@ -2207,7 +2253,7 @@ function initWorkbench() {
   });
   document.getElementById('restore-demo').addEventListener('click',()=>{
     if(dataSource!=='Jeu de démonstration'&&!confirm('Recharger la démo ? Les vols importés et les scénarios capturés seront remplacés.'))return;
-    dataSource='Jeu de démonstration';Sim.dataCourante=SAMPLE;snaps={};majCompare();reset(SAMPLE);updateSource();
+    dataSource='Jeu de démonstration';cleDemo='';suivreDemo();snaps={};majCompare();reset(Sim.dataCourante);updateSource();
     const report=document.getElementById('import-report');report.classList.remove('error');report.textContent='Jeu de démonstration rechargé.';
   });
   installerCentreReglages();
@@ -2239,6 +2285,7 @@ etape('vols',()=>chargerVols(SAMPLE));
 etape('contrôles',initControles); etape('édition du plan',initEdition); etape('liens',initFlux);
 etape('cases et chemins',initAteliers); etape('réglages',initWorkbench); etape('services',initServices);
 etape('handling',initHandlingVols); etape('robot',migrerRobot); etape('armement',migrerArmement);
+etape('vols d’essai',()=>{migrerSansQrDl();if(suivreDemo())Sim.ateliers.rendre();});
 etape('planche retour',()=>{initPlanche();renderPlanche();});
 etape('mon unité',initUnite);
 etape('budget',initBudget);
