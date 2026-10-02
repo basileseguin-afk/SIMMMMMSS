@@ -25,7 +25,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await nav.aller(page,'mu-services');
    await page.locator('[data-mu-choisir=armement]').click();await attendre();
 
-   // 1. La fiche de l'armement le propose, à la vue.
+   // 1. La fiche de l'armement le propose, à la vue — même réglé en « sert tout le monde ».
+   await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'ad',nom:'Armement',service:'armement',type:'dispo',debut:'06:00',jour:0,personnes:0,pauses:[],lots:[],regime:{actif:true},permanent:true});},''));await attendre();
+   await page.locator('[data-mu-choisir=armement]').click();await attendre();
    assert.match(await fiche('.mu-par-cie').innerText(),/une case par compagnie/);
    await fiche('[data-mu-action=par-compagnie]').click();await attendre();
    assert.deepEqual(await reglage(),[{id:'ARM',nom:'Armement',minutes:{}}],version+' : un seul réglage, au nom du service');
@@ -51,7 +53,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
    // 4. Une équipe : une seule colonne, une case par compagnie.
    await fiche('[data-mu-action=equipe]').click();await attendre();
-   const eq=await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.service==='armement').id);
+   const eq=await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service==='armement').pop().id);
    const grille=page.locator(`#mu-services table[data-mu-equipe="${eq}"]`);
    assert.deepEqual((await grille.locator('thead th').allInnerTexts()).map(t=>t.trim().toUpperCase()).filter(Boolean).slice(1),['ARMEMENT']);
    assert.equal(await grille.locator('tbody tr').count(),toutes.length,'les compagnies construites sont listées ; QR et DL non');

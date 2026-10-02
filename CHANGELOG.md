@@ -5,6 +5,21 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-02 — L'armement : le réglage ne peut plus être caché
+
+Retour d'usage : « rien de ce que tu me dis n'apparaît ». Le site publié
+était à jour ; le bandeau « Passer à “une case par compagnie” » ne
+s'affichait que si l'armement préparait des commandes (pas s'il était réglé
+en « sert tout le monde », ou autrement).
+
+- Le bandeau s'affiche pour tout service dont le nom contient « armement »,
+  quelle que soit sa nature actuelle.
+- Une fiche de service qui ne peut pas s'afficher le dit (avec le message
+  d'erreur) au lieu de rester vide ; un service dont le bilan échoue reste
+  dans la liste, avec son erreur.
+- v1 et v2 (`unite.js`) ; `tests/categories-browser.cjs` (armement réglé en
+  « sert tout le monde »).
+
 ## 2026-10-02 — Une compagnie dont rien n'est construit n'est pas simulée
 
 Retour d'usage : « QR n'est pas présente dans les chemins, rien n'est

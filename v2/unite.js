@@ -138,7 +138,12 @@
       const box = root.document.getElementById('mu-services'); if (!box) return;
       const classes = this.at.classes, r = this.at.resultat || {};
       const services = this.ordre(this.a.services());
-      const bilans = new Map(services.map(s => [s.id, this.bilan(s.id, classes, r)]));
+      // Un service dont le bilan échoue reste dans la liste, avec son erreur : le reste s'affiche.
+      const bilanSur = id => {
+        try { return this.bilan(id, classes, r); }
+        catch (e) { if (root.console) root.console.error(e); return { id, nature: 'manuel', cases: this.etat.ateliers.filter(a => a.service === id), passent: 0, attendues: [], vides: [], sansTemps: false, alertes: [], points: ['erreur d’affichage : ' + e.message], etat: 'afaire' }; }
+      };
+      const bilans = new Map(services.map(s => [s.id, bilanSur(s.id)]));
       if (!services.some(s => s.id === this.choisi)) {
         const premier = services.find(s => bilans.get(s.id).etat === 'afaire') || services.find(s => bilans.get(s.id).etat === 'ok') || services[0];
         this.choisi = premier ? premier.id : null;
@@ -167,7 +172,14 @@
         <p class="mu-avance"><button type="button" class="lien-discret" data-page="at-equipes">Outils avancés : cases, minutes, liens →</button></p>
       </nav>`;
       const s = services.find(x => x.id === this.choisi);
-      this.poser(box, `<div class="mu-cadre">${liste}<div class="mu-fiche" data-mu-fiche="${esc(this.choisi || '')}">${s ? this.fiche(s, bilans.get(s.id), classes, r) : '<p class="mini-note">Aucun service.</p>'}</div></div>`);
+      // Une fiche qui ne s'affiche pas doit le dire, pas laisser une page vide sans raison.
+      let corps;
+      try { corps = s ? this.fiche(s, bilans.get(s.id), classes, r) : '<p class="mini-note">Aucun service.</p>'; }
+      catch (e) {
+        corps = `<p class="mu-q" role="alert">La fiche de « ${esc(s.nom)} » n’a pas pu s’afficher : ${esc(e.message)}. Envoyez ce message pour qu’on corrige.</p>`;
+        if (root.console) root.console.error(e);
+      }
+      this.poser(box, `<div class="mu-cadre">${liste}<div class="mu-fiche" data-mu-fiche="${esc(this.choisi || '')}">${corps}</div></div>`);
     }
 
     /** La fiche d'un service : ce qu'il fait, ses équipes, ses minutes de travail. */
@@ -252,7 +264,8 @@
         + etape(2, 'Minutes par vol, selon la compagnie', this.blocParCompagnie(s, classes), 'une case vide prend la valeur de « Toutes les compagnies »')
         + etape(3, 'Ses équipes : une case par compagnie', equipes);
       // Un armement qui suit encore les classes (BC, PC, Éco…) : on propose la bonne façon, à la vue.
-      const proposer = preparent(nature) && /armement/i.test(s.nom) ? `<div class="mu-q mu-par-cie"><p>L’armement ne travaille pas par Business, Premium ou Éco :
+      // Quelle que soit sa nature actuelle (sert tout le monde, préparation…) : le réglage ne se cache pas.
+      const proposer = /armement/i.test(s.nom) ? `<div class="mu-q mu-par-cie"><p>L’armement ne travaille pas par Business, Premium ou Éco :
         <b>une case par compagnie</b>, oui ou non, pour chaque vol que le handling charge, et des minutes par vol.</p>
         <div class="mu-q-gestes"><button class="btn btn-sm btn-play" type="button" data-mu-action="par-compagnie">Passer à « une case par compagnie »</button></div></div>` : '';
       return tete + lesFlux + blocChaine + horsFlux + proposer + aFaire
