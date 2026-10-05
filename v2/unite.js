@@ -128,7 +128,9 @@
       box.innerHTML = html; box._html = html;
       for (const [e, t, l] of defiles) { e.scrollTop = t; e.scrollLeft = l; }
       const liste2 = box.querySelector('.mu-liste'); if (liste2) liste2.scrollTop = hautListe;
-      if (sel) { const el = box.querySelector(sel); if (el) el.focus({ preventScroll: true }); }
+      // Le focus, seulement s'il a été perdu : sur une heure déjà active, focus()
+      // efface les chiffres en cours (le rendu a pu attendre, champ intact).
+      if (sel) { const el = box.querySelector(sel); if (el && el !== root.document.activeElement) el.focus({ preventScroll: true }); }
     }
 
     ordre(services) {

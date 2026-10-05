@@ -5,6 +5,37 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-05 — Correctif : ce qu'on tape n'est plus perdu quand l'écran se redessine
+
+Signalement : « des fois, en dotation, j'écris dans un champ ou des heures,
+et le champ ne retient pas ce que j'ai écrit ».
+
+- **Cause** : chaque modification relance le calcul, puis l'écran se
+  redessine (fiche du service, cartes des équipes, horaires…). Quand le
+  calcul prend un peu de temps, ce qui est le cas avec un vrai programme de
+  vols, on a déjà cliqué dans le champ suivant et commencé à taper. Le rendu
+  remplaçait alors ce champ par un neuf, avec l'ancienne valeur. Pour une
+  heure, c'est pire : le navigateur ne donne la valeur qu'entière, et une
+  saisie relancée remet le curseur sur les heures. Reproduit : « 05:45 »
+  tapé devenait « 05:04 ».
+- **Correctif** (`rendu.js`, nouveau, v1 et v2) : tant qu'on tape dans un
+  champ (depuis sa dernière validation), la zone qui le contient n'est pas
+  redessinée ; le rendu attend. Dès que le champ est validé (Entrée, ou
+  quitté), le rendu se fait, et le focus revient au même champ dans le
+  nouveau dessin.
+  - **Une heure** annonce sa validation dès que les heures sont tapées : elle
+    n'est finie qu'en la quittant, ou sur Entrée.
+  - **Une seule garde**, posée à la source sur le remplacement du contenu
+    d'un élément (`innerHTML`) : les écrans à champs n'ont rien à faire, et
+    aucun n'est oublié.
+- **Focus** : la fiche d'un service et le tableau des horaires ne redonnent
+  plus le focus à un champ qui l'a déjà. Sur une heure, ce geste effaçait les
+  chiffres en cours.
+- **Test** : `tests/saisie-browser.cjs` (nouveau, v1 et v2). Un rendu arrive
+  au milieu de la saisie d'une heure, de personnes et de minutes par vol ;
+  rien ne se perd. Un champ validé montre la valeur retenue (5000 personnes
+  → 999). Sans le correctif, le test échoue.
+
 ## 2026-10-05 — La plonge se règle sur l'arrivée des retours, pas sur le départ
 
 Demande : « pour le lavage, c'est con de mettre le jour de départ, il faut

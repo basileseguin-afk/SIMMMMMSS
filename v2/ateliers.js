@@ -2051,7 +2051,7 @@
       if (cle && cle.at) {
         const el = [...box.querySelectorAll(`[data-at="${CSS.escape(cle.at)}"] [data-at-champ="${CSS.escape(cle.champ)}"]`)]
           .find(x => x.dataset.index === cle.index);
-        if (el) el.focus({ preventScroll: true });
+        if (el && el !== document.activeElement) el.focus({ preventScroll: true });
       }
     }
 
