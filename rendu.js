@@ -90,7 +90,9 @@
     const morceaux = el => /^(time|date|datetime-local|month|week)$/.test(el.type);
     // (Entre les heures et les minutes, le navigateur fait même croire un instant
     // que le champ n'a plus le focus : on ne s'y fie pas.)
-    d.addEventListener('change', e => { if (e.target === enCours && !morceaux(e.target)) fini(); }, true);
+    // Une saisie par programme (un import, un test) n'a pas ces morceaux : elle
+    // est finie tout de suite — comme l'enregistrement des heures (ateliers.js).
+    d.addEventListener('change', e => { if (e.target === enCours && !(e.isTrusted && morceaux(e.target))) fini(); }, true);
     d.addEventListener('focusout', e => { if (e.target === enCours) fini(); }, true);
 
     // La garde, à la source : tout remplacement de contenu passe par elle.
