@@ -557,9 +557,7 @@
         if (!a) throw new Error('case inconnue « ' + nom + ' » : le nom est la clé, il doit être celui du site');
         if (a.type !== 'dispo') {
           if (o.jour !== undefined && o.jour !== null && String(o.jour).trim() !== '') {
-            const j = jourDe(o.jour);
-            if (a.type === 'handling' && j !== 0) throw new Error(nom + ' : le handling travaille le jour J des vols, pas ' + jourEcrit(j));
-            a.jour = j;
+            a.jour = jourPermis(nom, a.type, jourDe(o.jour));
           }
           if (o.depart !== undefined && o.depart !== null && String(o.depart).trim() !== '') {
             const t = T.heureDe(o.depart);
@@ -697,16 +695,25 @@
    * Une feuille à part, la seule à ouvrir pour décaler une équipe. Elle voyage
    * seule (bouton « ⇩ Horaires ») ou dans le classeur complet. */
 
-  /** « J-1 », « J », « -1 » ou 0 : le décalage en jours, de -7 à 0. */
+  /** « J-1 », « J », « J+1 », « -1 » ou 0 : le décalage en jours, de -7 à +1
+   *  (J+1 : une plonge qui lave le lendemain de l'arrivée des retours). */
   function jourDe(v) {
     if (v === null || v === undefined || v === '') return 0;
     const t = String(v).trim().toUpperCase().replace(/\s+/g, '');
-    const m = /^(?:J)?([-−–]\d+)?$/.exec(t) || /^(?:J)?(0)$/.exec(t);
-    const n = m ? (m[1] ? -Math.abs(parseInt(m[1].replace(/[−–]/, '-'), 10)) : 0) : NaN;
-    if (!Number.isInteger(n) || n < -7) throw new Error('jour illisible « ' + v + ' » : J pour le jour du départ, J-1 la veille… jusqu’à J-7');
+    const m = /^(?:J)?([-−–+]\d+)?$/.exec(t) || /^(?:J)?(0)$/.exec(t);
+    const n = !m ? NaN : !m[1] || m[1] === '0' ? 0 : (m[1][0] === '+' ? 1 : -1) * Math.abs(parseInt(m[1].slice(1), 10));
+    if (!Number.isInteger(n) || n < -7 || n > 1) throw new Error('jour illisible « ' + v + ' » : J pour le jour du départ (ou de l’arrivée des retours, pour la plonge), J-1 la veille… jusqu’à J-7, J+1 le lendemain');
     return n || 0;
   }
-  const jourEcrit = j => (j ? 'J' + j : 'J');
+  const jourEcrit = j => (j > 0 ? 'J+' + j : j ? 'J' + j : 'J');
+  /** Le lendemain (J+1) ne vaut que pour la plonge : elle se règle sur
+   *  l'arrivée des retours ; les autres équipes travaillent avant le départ. */
+  function jourPermis(nom, type, j) {
+    if (type === 'handling' && j !== 0) throw new Error(nom + ' : le handling travaille le jour J des vols, pas ' + jourEcrit(j));
+    if (j > 0 && type !== 'lavage') throw new Error(nom + ' : ' + jourEcrit(j) + ' ne vaut que pour la plonge (le lendemain de l’arrivée des retours) ; une équipe qui prépare travaille au plus tard le jour J du départ');
+    if (type === 'lavage' && j < -1) throw new Error(nom + ' : la plonge travaille de la veille (J-1) au lendemain (J+1) de l’arrivée des retours, pas ' + jourEcrit(j));
+    return j;
+  }
 
   /**
    * @param ctx { services, resultat? } — le résultat du moment, pour la fin (info).
@@ -743,8 +750,7 @@
         const t = T.heureDe(o.debut);
         if (t === null) throw new Error(a.nom + ' : heure de début manquante (HH:MM)');
         if (t >= 1440) throw new Error(a.nom + ' : ' + hh(t) + ' dépasse 23:59 — écrivez l’heure du jour et changez la colonne Jour');
-        const jour = jourDe(o.jour);
-        if (a.type === 'handling' && jour !== 0) throw new Error(a.nom + ' : le handling travaille le jour J des vols, pas ' + jourEcrit(jour));
+        const jour = jourPermis(a.nom, a.type, jourDe(o.jour));
         if (a.debut !== hh(t) || (a.jour || 0) !== jour) changes.push(a);
         a.debut = hh(t); a.jour = jour;
         // Une mise à disposition par vagues : l'horaire est celui de sa première.
@@ -761,7 +767,7 @@
       lisezMoi('Horaires des ateliers — à modifier dans Excel puis réimporter', [
         'Une ligne par atelier (une case). Seules les colonnes Jour et Début sont lues ; celles marquées « (info) » sont là pour se repérer.',
         'Début : l’heure d’arrivée de l’équipe, en HH:MM (ex. 04:30).',
-        'Jour : J le jour du départ des vols, J-1 la veille, J-2 l’avant-veille (jusqu’à J-7).',
+        'Jour : J le jour du départ des vols, J-1 la veille, J-2 l’avant-veille (jusqu’à J-7). Pour la plonge, le jour se compte depuis l’arrivée des retours : J-1, J ou J+1 (le lendemain).',
         'Le nom de l’atelier est la clé : ne le changez pas ici. Une ligne retirée laisse son atelier à son heure.',
         'Réimportez avec « ⇧ Importer » : seules les heures changent, le reste de l’unité ne bouge pas. L’import est annulable.',
         'Une erreur, et rien n’est importé.'
@@ -1086,7 +1092,7 @@
         const avant = etat.ateliers.find(x => x.id === String(o.identifiant ?? '').trim())
           || etat.ateliers.find(x => T.cleEntete(x.nom) === k);
         const debut = T.heureDe(o.debut ?? (avant ? avant.debut : '06:00'));
-        const jour = type === 'handling' ? 0 : jourDe(o.jour ?? (avant ? avant.jour || 0 : 0));
+        const jour = type === 'handling' ? 0 : jourPermis(nom, type, jourDe(o.jour ?? (avant ? avant.jour || 0 : 0)));
         const personnes = T.nombreDe(o.personnes, type === 'dispo' ? 0 : 1);
         if (!Number.isInteger(personnes) || personnes < 0) throw new Error('personnes : entier positif ou nul');
         const pauses = String(o.pauses ?? '').split(/\s*;\s*/).filter(Boolean).map(t => {

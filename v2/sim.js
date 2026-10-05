@@ -770,7 +770,8 @@ function renderPlanche(){
   const box=document.getElementById('vols-planche');if(!box||!Sim.ateliers)return;
   if(box.contains(document.activeElement)&&document.activeElement.matches('input'))return;
   const m=Sim.ateliers.state.materiel,planche=m.planche||[],src=MoteurProduction.sourceRetours(m);
-  const jours=j=>[0,-1,-2,-3].map(k=>'<option value="'+k+'"'+(k===(j||0)?' selected':'')+'>'+(k?'J'+k:'J')+'</option>').join('');
+  // Un vol qui revient après minuit arrive le lendemain (J+1).
+  const jours=j=>[-1,0,1].map(k=>'<option value="'+k+'"'+(k===(j||0)?' selected':'')+'>'+(k>0?'J+'+k:k?'J'+k:'J')+'</option>').join('');
   const lignes=planche.map((l,i)=>'<tr data-index="'+i+'">'
     +'<td><input data-pl-champ="vol" value="'+escapeHTML(l.vol||'')+'" maxlength="40" aria-label="Vol, ligne '+(i+1)+'"></td>'
     +'<td><input data-pl-champ="cie" value="'+escapeHTML(l.cie||'')+'" maxlength="40" aria-label="Compagnie, ligne '+(i+1)+'"></td>'

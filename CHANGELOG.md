@@ -5,6 +5,53 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-05 — La plonge se règle sur l'arrivée des retours, pas sur le départ
+
+Demande : « pour le lavage, c'est con de mettre le jour de départ, il faut
+surtout le jour d'arrivée — je sais que c'est compliqué au niveau de la
+temporalité, mais il faut trouver une solution ».
+
+**La temporalité, mise à plat.** Le calcul compte tout depuis le jour J à
+minuit. Les retours à laver arrivent le jour J dans les trois sources :
+- les vols retour du programme, à l'atterrissage plus le délai ;
+- les départs de la veille, qui reviennent 24 h plus tard ;
+- la planche retour, à l'heure et au jour qu'elle donne.
+
+Le jour J d'une équipe de plonge, c'est donc le **jour d'arrivée des
+retours**. Ce qui manquait, c'était de le dire, et de pouvoir laver le
+lendemain.
+
+- **Le jour d'une équipe de plonge** (sa carte, et le tableau Horaires des
+  équipes) : « Veille de l'arrivée (J-1) », « Jour d'arrivée des retours
+  (J) », « Lendemain de l'arrivée (J+1) ». Il n'y a plus de « Jour du
+  départ ». J+1 est nouveau : une équipe de nuit peut laver ce qui est arrivé
+  le soir. Le calcul la suit, puisqu'il n'a pas d'heure de fin.
+  Validation : la plonge va de J-1 à J+1 ; les autres équipes restent au plus
+  tard au jour J du départ ; le handling reste au jour J.
+- **La fiche Plonge, « L'arrivée des retours, face à la plonge »** :
+  - une frise avec les retours qui arrivent, heure par heure, et chaque
+    équipe de plonge sur sa plage ;
+  - le jour d'arrivée est grisé et minuit est marqué, avec J+1 · lendemain ;
+  - en orange, ce qui arrive sans personne ;
+  - la phrase qui suit dit ce qui attend l'équipe suivante (par exemple :
+    attend « Plonge de nuit », J+1 02:00) et ce qui arrive après la dernière
+    équipe et reste sale.
+- **Planche retour** : un vol qui revient après minuit peut se saisir en J+1.
+- **Excel** (Horaires et Ateliers) :
+  - `J+1` se lit et s'écrit ;
+  - il est refusé, avec une explication, pour une équipe qui n'est pas une
+    plonge ;
+  - le Lisez-moi le dit.
+- **Les repères des frises** s'écrivent « J+1 », plus « J1 ».
+- Fichiers : `ateliers.js`, `unite.js`, `unite.css`, `echanges.js`, `sim.js`
+  (v1 et v2). Docs : README, FORMATS_EXCEL.
+- Tests :
+  - `tests/echanges.test.cjs` : J+1 pour la plonge, refusé ailleurs, J+2
+    illisible ;
+  - `tests/plonge-jour-browser.cjs` (nouveau, v1 et v2) : libellés, frise,
+    une équipe J+1 qui lave le soir (rien ne reste sale), tableau des
+    horaires, rechargement.
+
 ## 2026-10-05 — Correctif : la page défilait sous l'en-tête (fiche Plonge)
 
 Signalement : « bug de scrolling pour le service Plonge ».

@@ -247,12 +247,30 @@ test('horaires : les erreurs sont dites ensemble, et rien n’est importé', () 
   const etat = ETAT_ATELIERS();
   let f = E.horairesVersClasseur(etat, { services: SERVICES });
   f = modifier(f, 'Horaires', l => l.concat([['Fantôme', 'J', '05:00'], ['Robot', 'J', '06:00']])
-    .map(x => (x[0] === 'Cuisine matin' ? [x[0], 'J', '25:00'] : x[0] === 'Magasin' ? [x[0], 'J', null] : x[0] === 'Plonge' ? [x[0], 'J+1', '05:00'] : x)));
+    .map(x => (x[0] === 'Cuisine matin' ? [x[0], 'J', '25:00'] : x[0] === 'Magasin' ? [x[0], 'J', null] : x[0] === 'Plonge' ? [x[0], 'J+2', '05:00'] : x)));
   assert.throws(() => E.classeurVersHoraires(f, etat), e => {
-    for (const re of [/atelier inconnu « Fantôme »/, /« Robot » a déjà son horaire/, /jour illisible « J\+1 »/,
+    for (const re of [/atelier inconnu « Fantôme »/, /« Robot » a déjà son horaire/, /jour illisible « J\+2 »/,
       /25:00 dépasse 23:59/, /Magasin : heure de début manquante/, /Rien n’a été importé/]) assert.match(e.message, re);
     return true;
   });
+});
+
+/* La plonge se règle sur l'arrivée des retours (05/10) : elle peut laver le
+ * lendemain (J+1) ; une équipe qui prépare, non. */
+test('horaires : J+1 vaut pour la plonge, pas pour une équipe qui prépare', () => {
+  const etat = ETAT_ATELIERS();
+  let f = E.horairesVersClasseur(etat, { services: SERVICES });
+  assert.match(JSON.stringify(f.find(x => x.nom === 'Lisez-moi') || f), /depuis l’arrivée des retours/);
+  const plonge = modifier(f, 'Horaires', l => l.map(x => (x[0] === 'Plonge' ? [x[0], 'J+1', '02:00'] : x)));
+  const { etat: lu } = E.classeurVersHoraires(plonge, etat);
+  const p = lu.ateliers.find(a => a.nom === 'Plonge');
+  assert.deepEqual([p.jour, p.debut], [1, '02:00']);
+  // Et l'aller-retour l'écrit comme on le dit.
+  assert.ok(JSON.stringify(E.horairesVersClasseur(lu, { services: SERVICES })).includes('"J+1"'));
+  const cuisine = modifier(f, 'Horaires', l => l.map(x => (x[0] === 'Cuisine matin' ? [x[0], 'J+1', '05:00'] : x)));
+  assert.throws(() => E.classeurVersHoraires(cuisine, ETAT_ATELIERS()), /Cuisine matin : J\+1 ne vaut que pour la plonge/);
+  const veille = modifier(f, 'Horaires', l => l.map(x => (x[0] === 'Plonge' ? [x[0], 'J-2', '05:00'] : x)));
+  assert.throws(() => E.classeurVersHoraires(veille, ETAT_ATELIERS()), /la plonge travaille de la veille \(J-1\) au lendemain \(J\+1\)/);
 });
 
 test('horaires : dans le classeur complet, la feuille « Horaires » règle les heures', async () => {

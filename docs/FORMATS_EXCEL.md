@@ -243,7 +243,7 @@ Une ligne par atelier, **dans l'ordre de la journée**. Seules `Atelier`,
 | Colonne | Sens |
 |---|---|
 | Atelier | nom de l'atelier (la clé : ne pas le changer ici) |
-| Jour | `J` le jour du départ des vols, `J-1` la veille, `J-2`… jusqu'à `J-7` (`0`, `-1` sont lus aussi) |
+| Jour | `J` le jour du départ des vols, `J-1` la veille, `J-2`… jusqu'à `J-7` (`0`, `-1` sont lus aussi). **Plonge** : le jour se compte depuis l'arrivée des retours — `J-1`, `J` ou `J+1` (le lendemain) ; `J+1` est refusé pour toute autre équipe |
 | Début | heure d'arrivée de l'équipe, `HH:MM`, de `00:00` à `23:59` |
 | Service (info), Personnes (info), Fin prévue (info), Prépare (info) | pour se repérer ; la fin prévue est celle de la journée calculée à l'export |
 

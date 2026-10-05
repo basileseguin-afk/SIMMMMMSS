@@ -22,6 +22,7 @@
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const pl = (n, s, p) => n + ' ' + (n > 1 ? (p || s + 's') : s);
+  const jourEcrit = j => (j > 0 ? 'J+' + j : j < 0 ? 'J' + j : 'J');
   const CLE = 'ory-service-ouvert';
 
   /** Ce que fait un service, en mots de l'unité. */
@@ -252,6 +253,7 @@
           : nature === 'lavage' ? 'Elle lave les retours de tous les vols, à mesure qu’ils arrivent : rien à cocher. Réglez ses tunnels et ses horaires.'
           : 'Il charge chaque vol à son départ, pour toutes les commandes : rien à cocher. Réglez ses horaires et le temps par vol.';
         equipes = `<p class="mini-note">${esc(phrase)}</p>`
+          + (nature === 'lavage' ? this.friseRetours(b.cases) : '')
           + b.cases.map(a => `<div class="mu-carte">${this.at.carte(a, calc.get(a.id), { cmd: null })}</div>`).join('')
           + (b.cases.length ? '' : `<p class="mu-ajout"><button class="btn btn-play btn-sm" type="button" data-mu-action="equipe">+ ${nature === 'lavage' ? 'Ajouter une équipe de plonge' : nature === 'dispo' ? 'Mettre ce service en place' : 'Ajouter une équipe de chargement'}</button></p>`)
           + (nature === 'dispo' ? `<div class="mu-besoin"><h4>Quels flux en ont besoin ?</h4>${this.besoinFlux(s.id, classes)}</div>` : '');
@@ -819,6 +821,84 @@
         if (b.dataset.muCarteArret) return this.carteArret(b.dataset.muCarteArret);
         if (b.dataset.muCarteAjout) return this.carteAjout(b.dataset.muCarteAjout);
       });
+    }
+
+    /* La plonge et l'arrivée des retours (retour d'usage du 05/10 : « c'est
+     * con de mettre le jour de départ, il faut le jour d'arrivée »). Le jour
+     * d'une équipe de plonge se compte depuis l'arrivée des retours (J) ; la
+     * frise les met face à face : les retours qui arrivent, heure par heure,
+     * et chaque équipe de plonge sur sa plage. On voit d'un coup d'œil ce
+     * qui arrive quand personne n'est là pour le laver. */
+    friseRetours(cases) {
+      const vols = this.at.a && this.at.a.vols ? this.at.a.vols() : [];
+      const mat = this.etat.materiel || {};
+      const source = P.sourceRetours(mat), delai = Number.isFinite(+mat.delaiRetour) ? +mat.delaiRetour : 30;
+      const dou = { programme: 'les vols retour du programme (atterrissage + ' + delai + ' min)',
+        j1: 'les départs de la veille, qui reviennent 24 h plus tard (+ ' + delai + ' min)',
+        planche: 'la planche retour du handling' }[source];
+      const retours = P.retoursDeVols(vols, mat).filter(r => Number.isFinite(r.t)).sort((x, y) => x.t - y.t);
+      const r = this.at.a && this.at.a.reglages ? this.at.a.reglages() : {};
+      const equipes = cases.filter(a => a.type === 'lavage').map(a => {
+        const t0 = (a.jour || 0) * 1440 + P.minutes(a.debut || '06:00'), reg = P.normaliserRegime(a.regime, r.regime);
+        return { a, t0, t1: t0 + (Number.isFinite(reg.presence) ? reg.presence : 480) };
+      });
+      const quand = t => { const j = Math.floor(t / 1440); return (j ? jourEcrit(j) + ' ' : '') + P.hhmm(t - j * 1440); };
+      const regle = '<p class="mini-note">Le jour d’une équipe de plonge se compte <b>depuis l’arrivée des retours</b> : '
+        + '<b>J</b> le jour où ils arrivent, <b>J+1</b> le lendemain, <b>J-1</b> la veille. D’où viennent les retours : '
+        + '<button type="button" class="lien-discret" data-page="rg-simulation">Simulation › Réglages de la simulation →</button></p>';
+      if (!retours.length) return `<div class="mu-retours"><h4>L’arrivée des retours</h4>
+        <p>Aucun retour à laver d’après ${esc(dou)}.</p>${regle}</div>`;
+      const dedans = t => equipes.some(e => t >= e.t0 && t < e.t1);
+      const seuls = retours.filter(x => !dedans(x.t));
+      const t0 = Math.floor(Math.min(retours[0].t, ...equipes.map(e => e.t0)) / 60) * 60;
+      const t1 = Math.ceil(Math.max(retours[retours.length - 1].t + 1, ...equipes.map(e => e.t1)) / 60) * 60;
+      // Le dessin : une colonne par heure (les retours qui arrivent), puis une ligne par équipe.
+      const W = 1000, G = 150, D = 12, HH = 64, LH = 30, haut = 22 + HH + 10 + Math.max(1, equipes.length) * LH + 24;
+      const x = t => G + (t - t0) / (t1 - t0) * (W - G - D);
+      const parHeure = new Map();
+      for (const q of retours) { const h = Math.floor(q.t / 60) * 60; parHeure.set(h, (parHeure.get(h) || 0) + 1); }
+      const max = Math.max(...parHeure.values());
+      const pas = [60, 120, 180, 240, 360].find(k => (W - G - D) * k / (t1 - t0) >= 54) || 360;
+      let svg = '';
+      // Les jours : une bande pour le jour d'arrivée, un trait à chaque minuit.
+      for (let j = Math.floor(t0 / 1440); j * 1440 < t1; j++) {
+        const a = Math.max(t0, j * 1440), b = Math.min(t1, (j + 1) * 1440);
+        svg += `<rect class="mr-jour${j === 0 ? ' arrivee' : ''}" x="${x(a)}" y="16" width="${x(b) - x(a)}" height="${haut - 30}"/>`
+          + `<text class="mr-jour-nom" x="${x(a) + 6}" y="12">${j === 0 ? 'J · jour d’arrivée des retours' : jourEcrit(j) + (j > 0 ? ' · lendemain' : ' · veille')}</text>`;
+        if (j * 1440 > t0) svg += `<line class="mr-minuit" x1="${x(j * 1440)}" x2="${x(j * 1440)}" y1="16" y2="${haut - 14}"/>`;
+      }
+      for (let t = Math.ceil(t0 / pas) * pas; t <= t1; t += pas)
+        svg += `<text class="mr-heure" x="${x(t)}" y="${haut - 2}" text-anchor="middle">${P.hhmm(((t % 1440) + 1440) % 1440)}</text>`;
+      // Les retours, heure par heure.
+      svg += `<text class="mr-lib" x="8" y="${22 + HH / 2 + 4}">Retours qui arrivent</text>`;
+      for (const [h, n] of parHeure) {
+        const hb = Math.max(4, n / max * HH), seulsIci = seuls.filter(q => Math.floor(q.t / 60) * 60 === h).length;
+        svg += `<rect class="mr-retour${seulsIci ? ' seul' : ''}" x="${x(h) + 1}" y="${22 + HH - hb}" width="${Math.max(2, x(h + 60) - x(h) - 2)}" height="${hb}" rx="2">`
+          + `<title>${quand(h)} : ${n} retour${n > 1 ? 's' : ''}${seulsIci ? ' — ' + seulsIci + ' sans équipe de plonge' : ''}</title></rect>`;
+      }
+      // Les équipes de plonge, chacune sur sa plage.
+      equipes.forEach((e, i) => {
+        const y = 22 + HH + 10 + i * LH;
+        svg += `<text class="mr-lib" x="8" y="${y + 17}">${esc(e.a.nom.length > 20 ? e.a.nom.slice(0, 19) + '…' : e.a.nom)}</text>`
+          + `<rect class="mr-equipe" x="${x(e.t0)}" y="${y + 4}" width="${Math.max(3, x(e.t1) - x(e.t0))}" height="${LH - 10}" rx="5"><title>${esc(e.a.nom)} : ${quand(e.t0)} → ${quand(e.t1)}</title></rect>`
+          + `<text class="mr-plage" x="${x(e.t0) + 6}" y="${y + 18}">${quand(e.t0)} → ${quand(e.t1)}</text>`;
+      });
+      if (!equipes.length) svg += `<text class="mr-lib vide" x="${G}" y="${22 + HH + 27}">Aucune équipe de plonge : les retours attendent.</text>`;
+      const jours = [...new Set(retours.map(q => Math.floor(q.t / 1440)))];
+      const resume = `<b>${pl(retours.length, 'retour')}</b> à laver, ${jours.length === 1 && jours[0] === 0 ? 'le jour J, ' : ''}de <b>${quand(retours[0].t)}</b> à <b>${quand(retours[retours.length - 1].t)}</b> — d’après ${esc(dou)}.`;
+      // Ce qui arrive sans personne : l'équipe qui le reprend, ou personne.
+      const suivante = t => equipes.filter(e => e.t0 >= t).sort((p, q) => p.t0 - q.t0)[0];
+      const repris = seuls.filter(q => suivante(q.t)), perdus = seuls.filter(q => !suivante(q.t));
+      const liste = l => l.slice(0, 4).map(q => quand(q.t)).join(', ') + (l.length > 4 ? '…' : '');
+      const alerte = !equipes.length ? '' : !seuls.length
+        ? '<p class="mu-retours-ok">Chaque retour arrive pendant qu’une équipe de plonge est là.</p>'
+        : (repris.length ? `<p class="mu-retours-attente">${pl(repris.length, 'retour arrive', 'retours arrivent')} entre deux équipes (${liste(repris)}) : `
+            + `${repris.length > 1 ? 'ils attendent' : 'il attend'} ${[...new Set(repris.map(q => suivante(q.t)))].map(e => '« ' + esc(e.a.nom) + ' » (' + quand(e.t0) + ')').join(', ')}.</p>` : '')
+          + (perdus.length ? `<p class="mu-retours-alerte">${pl(perdus.length, 'retour arrive', 'retours arrivent')} après la dernière équipe (${liste(perdus)}) : `
+            + `${perdus.length > 1 ? 'ils restent' : 'il reste'} sale${perdus.length > 1 ? 's' : ''}. Ajoutez une équipe le soir, ou le lendemain de l’arrivée (J+1).</p>` : '');
+      return `<div class="mu-retours"><h4>L’arrivée des retours, face à la plonge</h4><p>${resume}</p>
+        <svg class="mu-retours-frise" viewBox="0 0 ${W} ${haut}" role="img" aria-label="Les retours qui arrivent, heure par heure, et les équipes de plonge">${svg}</svg>
+        ${alerte}${regle}</div>`;
     }
 
     /* Qui suit quel chemin (retour d'usage du 05/10) : toutes les commandes, par

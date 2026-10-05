@@ -263,3 +263,24 @@ tr:hover .mu-ct-ajout,.mu-ct-ajout:focus-visible{opacity:1}
 td.trait .mu-ct-ajout{background:var(--bg3)}
 .mu-carte-vide{padding:24px;border:1px dashed var(--bordure);border-radius:14px;display:grid;gap:10px;justify-items:start}
 .mu-carte-vide p{margin:0}
+
+/* ---- Plonge : l'arrivée des retours, face aux équipes (05/10). Le jour de
+ * la plonge se compte depuis l'arrivée des retours. */
+.mu-retours{border:1px solid var(--bordure);border-radius:12px;background:var(--bg3);padding:12px 14px;margin:6px 0 12px;display:grid;gap:8px}
+.mu-retours h4{margin:0;font-size:14px}
+.mu-retours p{margin:0}
+.mu-retours-frise{width:100%;height:auto;display:block}
+.mr-jour{fill:transparent}
+.mr-jour.arrivee{fill:color-mix(in srgb,var(--c-chemins,#0e7490) 6%,transparent)}
+.mr-jour-nom{font-size:11.5px;font-weight:800;fill:var(--txt2)}
+.mr-minuit{stroke:var(--bordure2);stroke-width:1.5;stroke-dasharray:4 4}
+.mr-heure{font-size:11px;fill:var(--txt3,var(--txt2))}
+.mr-lib{font-size:12px;font-weight:700;fill:var(--txt)}
+.mr-lib.vide{fill:var(--attente,#b45309);font-weight:600}
+.mr-retour{fill:var(--c-chemins,#0e7490);opacity:.75}
+.mr-retour.seul{fill:var(--attente,#b45309);opacity:1}
+.mr-equipe{fill:color-mix(in srgb,var(--c-equipes,#059669) 22%,transparent);stroke:var(--c-equipes,#059669);stroke-width:1.5}
+.mr-plage{font-size:11px;font-weight:700;fill:var(--txt)}
+.mu-retours-alerte{color:var(--attente,#b45309);font-weight:600;font-size:13px}
+.mu-retours-attente{color:var(--txt2);font-size:13px}
+.mu-retours-ok{color:var(--ok,#059669);font-size:13px}

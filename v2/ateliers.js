@@ -10,6 +10,11 @@
 
   const P = root.MoteurProduction;
   const PC = root.OrlyParcours;
+  /** « J », « J-1 », « J+1 » : un décalage en jours, écrit comme on le dit. */
+  const jourEcrit = j => (j > 0 ? 'J+' + j : j < 0 ? 'J' + j : 'J');
+  /* La plonge lave ce qui revient des vols : son jour se compte depuis
+   * l'arrivée des retours (J), pas depuis le départ (retour d'usage du 05/10). */
+  const JOURS_PLONGE = [[-1, 'Veille de l’arrivée (J-1)'], [0, 'Jour d’arrivée des retours (J)'], [1, 'Lendemain de l’arrivée (J+1)']];
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   const uid = () => 'at-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
   const clone = x => JSON.parse(JSON.stringify(x));
@@ -178,8 +183,11 @@
       const service = String(a.service ?? '').slice(0, 160);
       const type = ['robot', 'lavage', 'dispo', 'handling'].includes(a.type) ? a.type : 'manuel';
       P.minutes(a.debut ?? '06:00');
-      // Le handling travaille le jour J des vols : jamais la veille.
-      const jour = type === 'handling' ? 0 : Number.isInteger(a.jour) ? Math.max(-7, Math.min(0, a.jour)) : 0;
+      // Le handling travaille le jour J des vols : jamais la veille. La plonge
+      // se règle sur l'arrivée des retours (05/10) : la veille, le jour même ou
+      // le lendemain de leur arrivée (J-1, J, J+1).
+      const jour = type === 'handling' ? 0 : !Number.isInteger(a.jour) ? 0
+        : type === 'lavage' ? Math.max(-1, Math.min(1, a.jour)) : Math.max(-7, Math.min(0, a.jour));
       const personnes = Number.isInteger(a.personnes) ? Math.max(0, Math.min(999, a.personnes)) : 1;
       const pauses = (Array.isArray(a.pauses) ? a.pauses : []).slice(0, 12).map(p => {
         P.minutes(p.de); P.minutes(p.a); return { de: String(p.de), a: String(p.a) };
@@ -856,7 +864,7 @@
             a.service = v; break;
           }
           case 'debut': a.debut = v; break;
-          case 'jour': a.jour = a.type === 'handling' ? 0 : parseInt(v, 10) || 0; break;
+          case 'jour': a.jour = a.type === 'handling' ? 0 : a.type === 'lavage' ? Math.max(-1, Math.min(1, parseInt(v, 10) || 0)) : Math.min(0, parseInt(v, 10) || 0); break;
           case 'personnes': a.personnes = Math.max(0, parseInt(v, 10) || 0); break;
           case 'debit': a.debit = Math.max(1, parseFloat(v) || 1); break;
           // Le débit d'une commande sur ce robot ; vide = celui du robot.
@@ -1371,7 +1379,7 @@
       const dispo = a.type === 'dispo';
       const fin = calcul && calcul.fin != null ? P.hhmm(calcul.fin) : '—';
       const attente = calcul && calcul.attente ? ' · ' + Math.round(calcul.attente) + ' min d’attente' : '';
-      const jour = a.jour ? ' (J' + a.jour + ')' : '';
+      const jour = a.jour ? ' (' + jourEcrit(a.jour) + (a.type === 'lavage' ? ' de l’arrivée' : '') + ')' : '';
       // Ses commandes dans l'ordre ; chacune ouvre son chemin sur cette case.
       const handling = a.type === 'handling';
       const nVols = handling && calcul ? calcul.lots.filter(l => l.vol).length : 0;
@@ -1471,6 +1479,7 @@
           ${dispo || o.compact ? '' : `
           <label>Arrive à<input type="time" value="${esc(a.debut)}" data-at-champ="debut"></label>
           ${handling ? `<label>Jour<input value="Jour J des vols" disabled title="Le handling travaille le jour des vols, jamais la veille"></label>`
+            : a.type === 'lavage' ? `<label title="La plonge lave ce qui revient : son jour se compte depuis l’arrivée des retours, pas depuis le départ des vols">Jour<select data-at-champ="jour">${JOURS_PLONGE.map(([j, n]) => `<option value="${j}" ${j === (a.jour || 0) ? 'selected' : ''}>${n}</option>`).join('')}</select></label>`
             : `<label>Jour<select data-at-champ="jour">${[0, -1, -2, -3].map(j => `<option value="${j}" ${j === a.jour ? 'selected' : ''}>${j === 0 ? 'Jour du départ' : 'J' + j}</option>`).join('')}</select></label>`}
           ${handling && (a.creneaux || []).length ? '' : `<label>Personnes<input type="number" min="0" max="999" value="${a.personnes}" data-at-champ="personnes"></label>`}`}
           ${a.type === 'robot' ? `
@@ -1753,7 +1762,7 @@
       const heureSeule = t => P.hhmm(t - jourDe(t) * 1440);
       const etiquette = (t, i) => {
         const j = jourDe(t), neuf = i === 0 || jourDe(reperes[i - 1]) !== j;
-        return neuf && (j !== 0 || jourDe(t0) !== 0) ? (j ? 'J' + j : 'J') + ' ' + heureSeule(t) : heureSeule(t);
+        return neuf && (j !== 0 || jourDe(t0) !== 0) ? jourEcrit(j) + ' ' + heureSeule(t) : heureSeule(t);
       };
 
       const services = this.a.services(), nomSvc = id => (services.find(s => s.id === id) || {}).nom || id;
@@ -1944,7 +1953,7 @@
         .sort((x, y) => (ordre.get(x.service) ?? 999) - (ordre.get(y.service) ?? 999) || minDe(x) - minDe(y) || x.nom.localeCompare(y.nom));
       if (!this.state.ateliers.length) { box.innerHTML = '<p class="mini-note">Aucune case pour l’instant : décrivez vos équipes (Équipes › Services et équipes).</p>'; return; }
       const I = root.OrlyIcones, hh = P.hhmm;
-      const jours = (v, attrs) => `<select ${attrs}>${[0, -1, -2, -3].map(j => `<option value="${j}" ${j === (v || 0) ? 'selected' : ''}>${j === 0 ? 'J' : 'J' + j}</option>`).join('')}</select>`;
+      const jours = (v, attrs, plonge) => `<select ${attrs}>${(plonge ? [-1, 0, 1] : [0, -1, -2, -3]).map(j => `<option value="${j}" ${j === (v || 0) ? 'selected' : ''}>${jourEcrit(j)}</option>`).join('')}</select>`;
       // Une commande mène à son chemin, ouvert sur le service de cette case :
       // c'est là qu'on la voit et qu'on la règle.
       const chip = c => `<button type="button" class="rc-cmd" data-at-action="chemin" data-classe="${esc(c)}" title="Ouvrir le chemin de ${esc(P.libelleClasse(c))}"><span class="puce-classe" data-cab="${esc(c.slice(c.lastIndexOf('/') + 1))}"></span>${esc(PC.etiquette(c))}</button>`;
@@ -2009,7 +2018,9 @@
       const depart = a => {
         if (a.type === 'dispo') return '<td class="rc-jour">—</td><td class="rc-heure">—</td>';
         const jourFixe = a.type === 'handling';
-        return `<td class="rc-jour">${jourFixe ? '<span title="Le handling travaille le jour J des vols">J</span>' : jours(a.jour, `data-at-champ="jour" aria-label="Jour de départ de ${esc(a.nom)}"`)}</td>
+        return `<td class="rc-jour">${jourFixe ? '<span title="Le handling travaille le jour J des vols">J</span>'
+          : a.type === 'lavage' ? jours(a.jour, `data-at-champ="jour" aria-label="Jour de travail de ${esc(a.nom)}, compté depuis l’arrivée des retours" title="Compté depuis l’arrivée des retours (J)"`, true)
+          : jours(a.jour, `data-at-champ="jour" aria-label="Jour de départ de ${esc(a.nom)}"`)}</td>
           <td class="rc-heure"><input type="time" value="${esc(a.debut)}" data-at-champ="debut" aria-label="Heure de départ de ${esc(a.nom)}"></td>`;
       };
       let service = null;

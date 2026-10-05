@@ -228,7 +228,13 @@ le rouge ne sert qu’aux retards.
         les arrêts, les man-minutes propres, la
         ligne robot. Un service qui sert tout le monde se règle en une fiche
         (horaires, vagues) et une grille « Qui en a besoin ? » ; la plonge et
-        le handling n’ont rien à cocher ;
+        le handling n’ont rien à cocher. **La plonge se règle sur l’arrivée
+        des retours**, pas sur le départ des vols : chaque équipe de plonge
+        travaille la veille, le jour même ou le lendemain de l’arrivée
+        (J-1, J, J+1). Sa fiche met face à face les retours qui arrivent, heure
+        par heure, et les équipes de plonge sur leur plage ; elle dit ce qui
+        arrive entre deux équipes (et qui le reprend) et ce qui arrive après
+        la dernière (et reste sale) ;
      3. *Minutes de travail pour un vol* : le barème du service.
      Créer un service (un nom, près de quel service du plan), le renommer, le
      voir ou le déplacer sur le plan, le supprimer : tout se fait ici. **La
@@ -546,6 +552,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/chemin-choisi-browser.cjs` | Le chemin d’une commande dans une liste (v1 et v2) : « Qui suit quel chemin » (Flux de production) et « Chemin suivi » (Chemin d’une commande) ; un flux créé de toutes pièces se choisit, le calcul le suit ; un chemin à part choisi devient partagé, et c’est dit |
 | `tests/vue-ensemble-browser.cjs` | Chemins lisibles avec beaucoup de services (v1 et v2) : Vue d’ensemble (une colonne par flux, une ligne par service par étape, pastilles, case vide qui fait passer un flux puis Annuler, pastille qui ouvre le flux sur ce service), diagramme en étapes (de haut en bas, bandes, sans défilement de côté), chaîne éclairée au survol, « En ligne » retenu pour tous les diagrammes |
 | `tests/defilement-browser.cjs` | La page entière ne défile jamais, seule la vue (v1 et v2) : fiche Plonge avec son équipe, molette sur la fiche puis sur l’en-tête (qui reste en place), toutes les pages du menu, chaque fiche de service |
+| `tests/plonge-jour-browser.cjs` | La plonge se règle sur l’arrivée des retours (v1 et v2) : veille / jour / lendemain de l’arrivée, frise des retours face aux équipes, ce qui arrive sans personne, une équipe J+1 qui lave le soir (rien ne reste sale), tableau des horaires, rechargement |
 | `tests/service-autonome-browser.cjs` | Un service à part entière créé depuis le site (v1 et v2), « Roulés couverts » : rangé comme Prépa ou Dotation, sans minutes ni liens hérités ; flux, équipe, minutes, calcul, tableau des minutes, planning, Excel, rechargement ; rattacher / détacher ; la salle de plus reste un choix |
 | `tests/armement-integre-browser.cjs` | « L’intégrer à tous les chemins » seulement s’il y a à faire (v1 et v2) : chemins suivis par les commandes seulement, un lien vers un handling suffit, sinon le chemin à reprendre est nommé avec la raison ; un clic le remet en ordre |
 | `tests/coherence.test.cjs` | Audit des flux (v1 et v2) : une case cochée hors du chemin de sa commande n’y est pas préparée, et c’est dit ; un vol ne part pas avec son seul armement |
