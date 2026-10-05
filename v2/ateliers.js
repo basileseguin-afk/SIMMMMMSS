@@ -205,6 +205,9 @@
         regime: { actif: a.regime ? a.regime.actif !== false : true,
                   ...(Number.isFinite(+(a.regime || {}).presence) ? { presence: +a.regime.presence } : {}) },
         ...(a.materiel === 'consomme' ? { materiel: 'consomme' } : {}),
+        // L'effectif saisi à la main avant que le calcul ne le remplace (05/10) :
+        // cocher « Effectif constant » le retrouve.
+        ...(type === 'manuel' && Number.isInteger(a.personnesSaisies) ? { personnesSaisies: Math.max(0, Math.min(999, a.personnesSaisies)) } : {}),
         // Fait aussi l'étape d'avant, à la chaîne (retour d'usage du 29/09) : le
         // service de cette étape. Une équipe qui prépare seulement, et pas le sien.
         ...(type === 'manuel' && typeof a.fusion === 'string' && a.fusion && a.fusion.length <= 160 && a.fusion !== service ? { fusion: a.fusion } : {}),
@@ -497,7 +500,14 @@
 
     regleEffectif(service, constant) {
       const nom = (this.a.services().find(x => x.id === service) || {}).nom || service;
-      this.changer(() => { this.state.effectifs = { ...(this.state.effectifs || {}), [service]: constant ? 'fixe' : 'calcule' }; },
+      this.changer(() => {
+        this.state.effectifs = { ...(this.state.effectifs || {}), [service]: constant ? 'fixe' : 'calcule' };
+        // Constant : chaque équipe retrouve l'effectif saisi avant le calcul.
+        if (constant) for (const a of this.state.ateliers) {
+          if (a.service !== service || !Number.isInteger(a.personnesSaisies)) continue;
+          a.personnes = a.personnesSaisies; delete a.personnesSaisies;
+        }
+      },
         constant ? nom + ' : effectif constant, ses équipes gardent le nombre de personnes saisi.'
           : nom + ' : effectif calculé, d’après les minutes par vol et le nombre de vols.');
     }
@@ -527,7 +537,10 @@
       let n = 0;
       for (const a of this.state.ateliers) {
         const e = eff[a.id];
-        if (e && a.personnes !== e.personnes) { a.personnes = e.personnes; n++; }
+        if (!e || a.personnes === e.personnes) continue;
+        // La première fois, on garde ce qui avait été saisi : rien ne se perd.
+        if (!Number.isInteger(a.personnesSaisies)) a.personnesSaisies = a.personnes;
+        a.personnes = e.personnes; n++;
       }
       if (n) this.enregistrer();
     }
@@ -946,7 +959,7 @@
           }
           case 'debut': a.debut = v; break;
           case 'jour': a.jour = a.type === 'handling' ? 0 : a.type === 'lavage' ? Math.max(-1, Math.min(1, parseInt(v, 10) || 0)) : Math.min(0, parseInt(v, 10) || 0); break;
-          case 'personnes': a.personnes = Math.max(0, parseInt(v, 10) || 0); break;
+          case 'personnes': a.personnes = Math.max(0, parseInt(v, 10) || 0); delete a.personnesSaisies; break;
           case 'debit': a.debit = Math.max(1, parseFloat(v) || 1); break;
           // Le débit d'une commande sur ce robot ; vide = celui du robot.
           case 'debit-cmd': {

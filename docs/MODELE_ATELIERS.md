@@ -141,7 +141,8 @@ La journée est ensuite **jouée avec cet effectif** : les attentes entre servic
 ne sont pas dans le calcul, c'est la simulation qui dit si ça tient (une équipe
 qui attend la cuisine peut déborder de son poste). L'effectif calculé devient
 celui de l'équipe : planning, budget, exports et tableaux lisent le même nombre.
-Cocher « Effectif constant » repart du dernier effectif calculé.
+L'effectif saisi avant le calcul est gardé (`personnesSaisies`) : cocher
+« Effectif constant » le retrouve, rien ne se perd à la première ouverture.
 
 Ne se calculent jamais : le **robot** (sa ligne et son minimum), la **plonge**
 (ses tunnels), le **handling** (durées par vol, chauffeurs) et la **mise à

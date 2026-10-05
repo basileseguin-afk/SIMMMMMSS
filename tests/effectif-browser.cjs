@@ -3,7 +3,8 @@
  * dissocier les ateliers calculés des constants », avec « une case à cocher ») :
  *   - un service calculé (la cuisine) : l'équipe montre son effectif calculé,
  *     homme-minutes ÷ poste, et il suit ce qu'elle prépare ;
- *   - la case « Effectif constant » rend la main : l'effectif se saisit et reste ;
+ *   - la case « Effectif constant » rend la main : l'effectif saisi avant le
+ *     calcul revient, il se saisit et il reste ;
  *   - CF départ food est constant par défaut ;
  *   - Minutes de travail : l'effectif calculé se lit, il ne se saisit pas.
  *   v1 et v2. */
@@ -63,7 +64,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(await page.evaluate(()=>Sim.ateliers.state.effectifs.cuisine),'fixe');
    assert.equal(await effectif('cu'),null,version+' : plus de calcul');
    const champ=page.locator(`${M} [data-at="cu"] [data-at-champ=personnes]`).first();
-   assert.equal(await champ.inputValue(),String(e2.personnes),'il part du dernier effectif calculé');
+   assert.equal(await champ.inputValue(),'9','elle retrouve l’effectif saisi avant le calcul : rien ne se perd');
    await champ.fill('7');await champ.dispatchEvent('change');await attendre();
    assert.equal((await equipe('cu')).personnes,7,version+' : l’effectif saisi reste');
    assert.equal(await page.evaluate(()=>Sim.ateliers.resultat.ateliers.find(a=>a.id==='cu').personnes),7,'la journée se joue avec lui');

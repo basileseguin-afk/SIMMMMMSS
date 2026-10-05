@@ -31,7 +31,9 @@ soit plus modulable ».
   calcul : c'est elle qui dit si ça tient.
 - **Une case par service** : « Effectif constant », dans sa fiche (Équipes ›
   Services et équipes).
-  - Cochée, l'effectif se saisit comme avant, en partant du dernier calculé.
+  - Cochée, l'effectif se saisit comme avant. Chaque équipe retrouve celui
+    qu'on avait saisi avant le calcul : il est gardé (`personnesSaisies`),
+    rien ne se perd à la première ouverture.
   - Constants par défaut : CF départ food (les checkeurs), magasin,
     légumerie, duty free, appros. Les autres services se calculent.
   - Le robot, la plonge, le handling et les mises à disposition gardent
