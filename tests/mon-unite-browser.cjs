@@ -96,9 +96,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(!(await chemin('AF/BC')).services.includes('decontam'),'le flux des Business n’a plus besoin de légumerie');
   assert.ok(!(await chemin('TX/BC')).services.includes('decontam'),'pour toutes ses commandes');
 
-  // 9. Un nouveau service, placé sur le plan près du Montage : il prend sa place dans le chemin.
+  // 9. Une salle de plus du Montage : elle prend sa place dans le chemin.
   await page.locator('[data-mu-nouveau] input[name=nom]').fill('Atelier APM');
   await page.locator('[data-mu-nouveau] select[name=parent]').selectOption('prepa');
+  // Une salle de plus du Montage : elle se place dans le chemin comme lui (un service
+  // à part entière, le choix par défaut depuis le 05/10, n'hérite de rien).
+  await page.locator('[data-mu-nouveau] select[name=genre]').selectOption('salle');
   await page.locator('[data-mu-nouveau] button[type=submit]').click();await attendre();
   const apm=await page.locator('.mu-fiche').getAttribute('data-mu-fiche');
   assert.ok(apm&&apm!=='prepa','la fiche du nouveau service est ouverte');

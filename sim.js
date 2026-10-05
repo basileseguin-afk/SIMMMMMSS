@@ -322,6 +322,8 @@ function liaisonsServices(){
   // n'attendrait personne et ne serait attendu de personne.
   const liens=out.slice();
   for(const a of annexes()){
+    // Un service à part entière (05/10) n'hérite de personne.
+    if(a.autonome)continue;
     // … sauf si on l'a câblée soi-même dans le Centre des flux : la saisie
     // explicite l'emporte sur l'héritage, sinon on ne pourrait jamais donner
     // à une annexe un parcours qui lui soit propre.
@@ -391,20 +393,20 @@ function renderServices(){
     +'<div class="svc-chercher"><label>Chercher un service <input type="search" data-svc-chercher value="'+escapeHTML(cherche)+'" placeholder="ex. armement" autocomplete="off"></label>'
     +'<span class="mini-note" data-svc-compte aria-live="polite"></span></div>'
     +'<form class="svc-nouveau" data-svc-nouveau><b>Nouveau service</b><label>Nom <input name="nom" maxlength="120" placeholder="ex. Armement EZY/AF" required></label>'
-    +'<label>Rattaché à <select name="parent">'+servicesDuPlan().map(id=>'<option value="'+escapeHTML(id)+'">'+escapeHTML(nomLisible(ZONES[id].nom))+'</option>').join('')+'</select></label>'
+    +'<label>Rattaché à <select name="parent"><option value="">Aucun — service à part entière (comme Prépa, Dotation)</option>'+servicesDuPlan().map(id=>'<option value="'+escapeHTML(id)+'">'+escapeHTML(nomLisible(ZONES[id].nom))+'</option>').join('')+'</select></label>'
     +'<button class="btn btn-sm btn-play" type="submit">+ Créer le service</button>'
-    +'<span class="mini-note">Il reprend les liens de son service de rattachement, et se place sur le plan à côté de lui.</span></form>'
+    +'<span class="mini-note">À part entière : ses propres minutes et ses propres liens. Rattaché : une salle de plus de ce service, qui en reprend les liens.</span></form>'
     +'<div class="table-scroll"><table class="svc-table"><thead><tr><th>Service</th><th>Équipes</th><th>Commandes qui y passent</th><th>État</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>'
     +lignes.map(l=>{
       const annexe=!ZONES[l.id]?annexes().find(a=>a.id===l.id):null;
       const pere=annexe&&ZONES[annexe.parent]?nomLisible(ZONES[annexe.parent].nom):'';
       return '<tr data-svc="'+escapeHTML(l.id)+'" class="svc-'+l.etat+'">'
         +'<td><input class="svc-nom" data-svc-nom="'+escapeHTML(l.id)+'" maxlength="120" value="'+escapeHTML(brut(l.id))+'" aria-label="Nom du service '+escapeHTML(l.nom)+'">'
-        +(annexe?'<label class="svc-parent">rattaché à <select data-svc-reparent="'+escapeHTML(l.id)+'">'
+        +(annexe?'<label class="svc-parent">rattaché à <select data-svc-reparent="'+escapeHTML(l.id)+'"><option value=""'+(annexe.autonome?' selected':'')+'>aucun — service à part entière</option>'
             // Son service de rattachement a pu être supprimé : on le montre tel
             // quel, sans quoi la liste afficherait un autre service que le sien.
             +(estRetire(annexe.parent)&&ZONES[annexe.parent]?'<option value="'+escapeHTML(annexe.parent)+'" selected>'+escapeHTML(nomDeService(annexe.parent))+'</option>':'')
-            +servicesDuPlan().map(id=>'<option value="'+escapeHTML(id)+'"'+(id===annexe.parent?' selected':'')+'>'+escapeHTML(nomLisible(ZONES[id].nom))+'</option>').join('')+'</select></label>'
+            +servicesDuPlan().map(id=>'<option value="'+escapeHTML(id)+'"'+(!annexe.autonome&&id===annexe.parent?' selected':'')+'>'+escapeHTML(nomLisible(ZONES[id].nom))+'</option>').join('')+'</select></label>'
           :'<small>service du plan</small>')+'</td>'
         +'<td>'+(l.cases.length?l.cases.map(a=>'<button type="button" class="lien-discret" data-svc-case="'+escapeHTML(a.id)+'">'+escapeHTML(a.nom)+'</button>'
           +(type[a.type]?' <small>'+type[a.type]+'</small>':a.type==='manuel'?' <small>'+a.personnes+' pers.</small>':'')).join('<br>'):'<em>aucune</em>')+'</td>'
@@ -568,14 +570,15 @@ function initServices(){
     const f=e.target.closest('[data-svc-nouveau]');if(!f)return;e.preventDefault();
     const nom=f.elements.nom.value.trim();if(!nom){toast('Donnez un nom au service.');return;}
     if(servicesDisponibles().some(x=>x.nom.toLowerCase()===nomLisible(nom).toLowerCase())){toast('« '+nom+' » existe déjà.');return;}
-    const id=Sim.editor.nouveauService(nom,f.elements.parent.value);
+    const id=Sim.editor.nouveauService(nom,f.elements.parent.value,!f.elements.parent.value);
     if(id){toast('Service « '+nom+' » créé : il apparaît dans les chemins, les cases et le barème.');renderServices();
       const i=box.querySelector('[data-svc-nom="'+CSS.escape(id)+'"]');if(i)i.closest('tr').classList.add('svc-nouveau-ligne');}
   });
   box.addEventListener('change',e=>{
     const rp=e.target.closest('[data-svc-reparent]');
-    if(rp){const id=rp.dataset.svcReparent;Sim.editor.change(()=>{const z=Sim.editor.state.zones.find(v=>v.id===id);if(z)z.parent=rp.value;},'Rattachement enregistré.');
-      toast('Rattaché à « '+nomLisible(ZONES[rp.value].nom)+' » : il en reprend les liens.');renderServices();}
+    if(rp){const id=rp.dataset.svcReparent;Sim.editor.change(()=>{const z=Sim.editor.state.zones.find(v=>v.id===id);if(!z)return;
+        if(rp.value){z.parent=rp.value;delete z.autonome;}else{z.autonome=true;delete z.parent;}},'Rattachement enregistré.');
+      toast(rp.value?'Rattaché à « '+nomLisible(ZONES[rp.value].nom)+' » : il en reprend les liens.':'Service à part entière : ses propres minutes et ses propres liens.');renderServices();}
   });
   box.addEventListener('click',e=>{
     const sp=e.target.closest('[data-svc-supprimer]');
@@ -936,7 +939,7 @@ function initUnite(){
     liaisons:()=>liaisonsServices().filter(l=>l.from!=='quais'),
     brut:id=>{const z=((Sim.editor&&Sim.editor.state.zones)||[]).find(x=>x.id===id);return z?z.nom:nomDeService(id);},
     renommer:renommerService,
-    creer:(nom,parent)=>Sim.editor?Sim.editor.nouveauService(nom,parent):null,
+    creer:(nom,parent,autonome)=>Sim.editor?Sim.editor.nouveauService(nom,parent,autonome):null,
     supprimer:supprimerServiceUnite,
     voir:id=>actionService('voir',id),
     plan:id=>actionService('plan',id),

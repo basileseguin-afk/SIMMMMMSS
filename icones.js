@@ -59,7 +59,7 @@
     const s = (String(id || '') + ' ' + String(nom || '')).toLowerCase();
     const regles = [
       [/robot/, 'robot'], [/plonge|lavage/, 'gouttes'], [/cuisine/, 'marmite'], [/l[ée]gumerie|decontam/, 'carotte'],
-      [/^prepa\b/, 'plateau'], [/^preparation\b|pr[ée]pa\b(?!.*montage)/, 'saladier'], [/montage|prepa/, 'plateau'], [/dotation/, 'couverts'], [/magasin/, 'etagere'],
+      [/^prepa\b/, 'plateau'], [/^preparation\b|pr[ée]pa\b(?!.*montage)/, 'saladier'], [/montage|prepa/, 'plateau'], [/dotation|roul[ée]s?\b|couverts/, 'couverts'], [/magasin/, 'etagere'],
       [/armement/, 'trolley'], [/duty|bobduty|boutique/, 'sac'], [/quais|camion/, 'camion'],
       [/d[ée]part|handling/, 'depart'], [/appro|r[ée]ception/, 'boite']
     ];

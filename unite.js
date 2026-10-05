@@ -168,6 +168,8 @@
         <form class="mu-nouveau" data-mu-nouveau><b>Nouveau service</b>
           <label>Nom <input name="nom" maxlength="120" placeholder="ex. Atelier APM" required></label>
           <label>Sur le plan, près de <select name="parent">${this.a.racines().map(x => `<option value="${esc(x.id)}">${esc(x.nom)}</option>`).join('')}</select></label>
+          <label title="À part entière : ses propres minutes et ses propres liens, comme Prépa ou Dotation. Une salle de plus : elle reprend les minutes et les liens du service choisi au-dessus.">C’est <select name="genre"><option value="autonome">un service à part entière</option>
+            <option value="salle">une salle de plus de ce service</option></select></label>
           <button class="btn btn-sm btn-play" type="submit">+ Créer</button></form>
         <p class="mu-avance"><button type="button" class="lien-discret" data-page="at-equipes">Outils avancés : cases, minutes, liens →</button></p>
       </nav>`;
@@ -970,7 +972,7 @@
         e.preventDefault();
         const nom = f.elements.nom.value.trim(); if (!nom) return;
         if (this.a.services().some(x => x.nom.toLowerCase() === nom.toLowerCase())) { this.a.notify('« ' + nom + ' » existe déjà.'); return; }
-        const id = this.a.creer(nom, f.elements.parent.value);
+        const id = this.a.creer(nom, f.elements.parent.value, !f.elements.genre || f.elements.genre.value !== 'salle');
         if (id) { this.a.notify('Service « ' + nom + ' » créé : dites ce qu’il fait, puis ajoutez ses équipes.'); this.ouvrir(id); }
       });
       d.addEventListener('click', e => {

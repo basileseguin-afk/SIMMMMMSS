@@ -5,6 +5,28 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-05 — Créer un service à part entière (« Roulés couverts »)
+
+Demande : « créer un tout nouveau service, Roulés couverts, qui a la même
+entité que Prépa ou Dotation ».
+
+Un service créé depuis le site était toujours une **salle de plus** d'un
+service existant : rangé sous lui, il en reprenait les minutes de travail et
+les liens. Désormais :
+- **« Nouveau service »** (Mon unité › Services et équipes, et Organisation ›
+  Services) crée par défaut un **service à part entière** : rangé comme les
+  services du plan, ses propres minutes, ses propres liens, posé sur le plan
+  près du service choisi. « Une salle de plus de ce service » reste un choix.
+- Organisation › Services : le rattachement peut être mis à « aucun — service
+  à part entière », ou repris.
+- Le plan connaît ces services (`autonome`) : validation, import, duplication,
+  panneau de propriétés (« Aucun — service à part entière »).
+- « Roulés couverts » prend l'icône des couverts.
+- v1 et v2 (`plan-editor.js`, `sim.js`, `unite.js`, `icones.js`) ;
+  `tests/service-autonome-browser.cjs`.
+  `tests/mon-unite-browser.cjs` choisit « une salle de plus » là où il vérifie
+  qu'une salle se place dans le chemin comme son service.
+
 ## 2026-10-05 — Armement : plus de « L'intégrer à tous les chemins » à tort
 
 Retour d'usage : « j'ai relié correctement, dans tous les chemins,

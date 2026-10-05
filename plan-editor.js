@@ -30,8 +30,8 @@ function validZone(z){
  if(!['x','y','w','h'].every(k=>typeof z[k]==='number'&&Number.isFinite(z[k])&&Math.abs(z[k])<1e7)||z.w<=0||z.h<=0)throw new Error('Dimensions invalides pour '+z.nom+'.');
  if(z.pts!==undefined){if(!Array.isArray(z.pts)||z.pts.length<3||z.pts.length>500||!z.pts.every(p=>Array.isArray(p)&&p.length===2&&p.every(n=>typeof n==='number'&&Number.isFinite(n)&&Math.abs(n)<1e7))||area(z.pts)<1)throw new Error('Polygone invalide pour '+z.nom+'.');Object.assign(z,bounds(z));}
  if(z.color!==undefined&&!/^#[0-9a-f]{6}$/i.test(z.color))throw new Error('Couleur invalide.');
- if(z.kind==='annexe'&&(typeof z.parent!=='string'||!z.parent.trim()||z.parent.length>160))throw new Error('L’annexe '+z.nom+' doit indiquer l’atelier dont elle dépend.');
- return{id:z.id,nom:z.nom.trim(),kind:z.kind,...(z.kind==='service'?{storages:validStorages(z.storages)}:{}),...(z.kind==='annexe'?{parent:z.parent.trim()}:{}),...bounds(z),...(z.pts?{pts:clone(z.pts)}:{}),color:z.color||COLORS[z.kind],locked:z.locked===true,visible:z.visible!==false,approx:z.approx===true,...(z.kind==='service'&&z.retire===true?{retire:true}:{})};
+ if(z.kind==='annexe'&&z.autonome!==true&&(typeof z.parent!=='string'||!z.parent.trim()||z.parent.length>160))throw new Error('L’annexe '+z.nom+' doit indiquer l’atelier dont elle dépend.');
+ return{id:z.id,nom:z.nom.trim(),kind:z.kind,...(z.kind==='service'?{storages:validStorages(z.storages)}:{}),...(z.kind==='annexe'?(z.autonome===true?{autonome:true}:{parent:z.parent.trim()}):{}),...bounds(z),...(z.pts?{pts:clone(z.pts)}:{}),color:z.color||COLORS[z.kind],locked:z.locked===true,visible:z.visible!==false,approx:z.approx===true,...(z.kind==='service'&&z.retire===true?{retire:true}:{})};
 }
 function validatePlan(raw,originals){
  const base=clone(originals);let zones,opacity=.85,pending=[];
@@ -44,7 +44,7 @@ function validatePlan(raw,originals){
   zones=base.map(z=>{const v=raw[z.id];return v?{...z,...v,id:z.id,kind:'service'}:z;});
  }
  if(!zones.length||zones.length>500||typeof opacity!=='number'||!Number.isFinite(opacity)||opacity<0||opacity>1)throw new Error('Plan invalide (maximum 500 zones).');
- const ids=new Set();zones=zones.map(z=>{const v=validZone(z);if(ids.has(v.id))throw new Error('Identifiant de zone en double.');ids.add(v.id);const builtin=base.some(b=>b.id===v.id);if((v.kind==='service')!==builtin)throw new Error('Les ateliers du moteur ne peuvent pas être ajoutés ou convertis par import.');if(v.kind==='annexe'&&!base.some(b=>b.id===v.parent))throw new Error('L’annexe '+v.nom+' dépend d’un atelier inconnu : '+v.parent+'.');return v;});
+ const ids=new Set();zones=zones.map(z=>{const v=validZone(z);if(ids.has(v.id))throw new Error('Identifiant de zone en double.');ids.add(v.id);const builtin=base.some(b=>b.id===v.id);if((v.kind==='service')!==builtin)throw new Error('Les ateliers du moteur ne peuvent pas être ajoutés ou convertis par import.');if(v.kind==='annexe'&&!v.autonome&&!base.some(b=>b.id===v.parent))throw new Error('L’annexe '+v.nom+' dépend d’un atelier inconnu : '+v.parent+'.');return v;});
  // Un plan enregistré avant l'arrivée d'un nouveau service (la prépa) ne le
  // connaît pas : on le complète à sa place par défaut, au lieu de refuser tout
  // le tracé. (Un service ne peut pas être supprimé depuis l'éditeur.)
@@ -100,8 +100,8 @@ class PlanEditor{
   on('pe-name','change',e=>{const value=e.target.value.trim();if(!value){e.target.value=this.zone?.nom||'';this.status('Le nom ne peut pas être vide.');return;}this.change(()=>{if(this.zone)this.zone.nom=value;},'Nom enregistré.');});
   on('pe-color','change',e=>{const value=e.target.value;this.change(()=>{if(this.zone)this.zone.color=value;},'Couleur enregistrée. Elle reste visible hors édition.');});
   on('pe-color-reset','click',()=>{this.change(()=>{if(this.zone)this.zone.color=COLORS[this.zone.kind];},'Couleur du type rétablie.');});
-  on('pe-kind','change',e=>{const value=e.target.value;this.change(()=>{if(this.zone&&this.zone.kind!=='service'&&value!=='service'){this.zone.kind=value;this.zone.color=COLORS[value];if(value==='annexe'){if(!this.zone.parent)this.zone.parent=this.originals[0].id;}else delete this.zone.parent;}},'Type enregistré.');});
-  on('pe-parent','change',e=>{const value=e.target.value;this.change(()=>{if(this.zone&&this.zone.kind==='annexe')this.zone.parent=value;},'Atelier de rattachement enregistré.');});
+  on('pe-kind','change',e=>{const value=e.target.value;this.change(()=>{if(this.zone&&this.zone.kind!=='service'&&value!=='service'){this.zone.kind=value;this.zone.color=COLORS[value];if(value==='annexe'){if(!this.zone.parent&&!this.zone.autonome)this.zone.parent=this.originals[0].id;}else{delete this.zone.parent;delete this.zone.autonome;}}},'Type enregistré.');});
+  on('pe-parent','change',e=>{const value=e.target.value;this.change(()=>{if(this.zone&&this.zone.kind==='annexe'){if(value){this.zone.parent=value;delete this.zone.autonome;}else{this.zone.autonome=true;delete this.zone.parent;}}},'Atelier de rattachement enregistré.');});
   for(const k of ['x','y','w','h'])on('pe-'+k,'change',e=>{const n=Number(e.target.value);if(!e.target.value||!Number.isFinite(n)||Math.abs(n)>=1e7||(['w','h'].includes(k)&&n<=0)){e.target.value=this.zone?Math.round(bounds(this.zone)[k]):'';this.status('Valeur invalide.');return;}this.change(()=>{if(this.zone&&!this.zone.locked)resize(this.zone,{...bounds(this.zone),[k]:n});},'Dimensions enregistrées.');});
   on('pe-locked','change',e=>{const checked=e.target.checked;this.change(()=>{if(this.zone)this.zone.locked=checked;},'Verrouillage mis à jour.');});
   on('pe-confirmed','change',e=>{const checked=e.target.checked;this.change(()=>{if(this.zone)this.zone.approx=!checked;},'Statut de confirmation enregistré.');});
@@ -222,9 +222,10 @@ class PlanEditor{
   this.change(()=>{
    const z=clone(src);z.id='local-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7);
    if(seconde){
-    z.kind='annexe';z.parent=pere;z.color=COLORS.annexe;delete z.storages;
-    const base=this.state.zones.find(v=>v.id===pere),racine=base?base.nom:src.nom;
-    const n=this.state.zones.filter(v=>v.kind==='annexe'&&v.parent===pere).length+2;
+    z.kind='annexe';z.color=COLORS.annexe;delete z.storages;
+    if(src.autonome){z.autonome=true;delete z.parent;}else{z.parent=pere;delete z.autonome;}
+    const base=src.autonome?null:this.state.zones.find(v=>v.id===pere),racine=base?base.nom:src.nom;
+    const n=src.autonome?2:this.state.zones.filter(v=>v.kind==='annexe'&&v.parent===pere).length+2;
     z.nom=(racine+' '+n).slice(0,120);
    } else z.nom=(z.nom+' — copie').slice(0,120);
    z.locked=false;z.visible=true;z.approx=true;
@@ -242,7 +243,7 @@ class PlanEditor{
  retirer(id,oui){const z=this.state.zones.find(v=>v.id===id);if(!z||z.kind!=='service')return false;const zone=clone(z);if(oui&&this.a.avantSuppression&&this.a.avantSuppression(zone,'retirer')===false)return false;this.change(()=>{z.retire=!!oui;z.visible=!oui;},oui?'Service retiré de l’unité.':'Service remis dans l’unité.');if(oui&&this.a.apresSuppression)this.a.apresSuppression(zone);return true;}
  /* Un nouveau service : une zone de production posée à côté de son service
     parent, à déplacer ensuite sur le plan. */
- nouveauService(nom,parent){const p=this.state.zones.find(v=>v.id===parent&&v.kind==='service');const n=String(nom||'').trim().slice(0,120);if(!p||!n)return null;const id='local-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7);const b=bounds(p);this.change(()=>{this.state.zones.push(validZone({id,nom:n,kind:'annexe',parent,x:b.x+b.w*0.25,y:b.y+b.h*0.25,w:Math.max(20,b.w*0.5),h:Math.max(20,b.h*0.5),approx:true}));},'Service créé : placez-le sur le plan quand vous voudrez.');return id;}
+ nouveauService(nom,parent,autonome){const p=this.state.zones.find(v=>v.id===parent&&v.kind==='service')||(autonome?this.originals[0]:null);const n=String(nom||'').trim().slice(0,120);if(!p||!n)return null;const id='local-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7);const b=bounds(p);this.change(()=>{this.state.zones.push(validZone({id,nom:n,kind:'annexe',...(autonome?{autonome:true}:{parent:p.id}),x:b.x+b.w*0.25,y:b.y+b.h*0.25,w:Math.max(20,b.w*0.5),h:Math.max(20,b.h*0.5),approx:true}));},'Service créé : placez-le sur le plan quand vous voudrez.');return id;}
  /* Un local dessiné devient une zone de production : un service à part entière,
     rattaché à un service du plan. */
  convertir(id,parent){const z=this.state.zones.find(v=>v.id===id);if(!z||z.kind==='service'||z.kind==='annexe')return false;this.change(()=>{z.kind='annexe';z.parent=parent||this.originals[0].id;z.color=COLORS.annexe;},'Zone de production : c’est maintenant un service.');return true;}
@@ -314,8 +315,9 @@ class PlanEditor{
   const champParent=document.getElementById('pe-parent-champ'),selParent=document.getElementById('pe-parent');
   champParent.hidden=z.kind!=='annexe';
   if(z.kind==='annexe'){
-   selParent.innerHTML=this.originals.map(o=>`<option value="${esc(o.id)}">${esc(o.nom)}</option>`).join('');
-   assign('pe-parent',z.parent||this.originals[0].id);
+   // Aucun : un service à part entière, comme ceux du plan (05/10).
+   selParent.innerHTML='<option value="">Aucun — service à part entière</option>'+this.originals.map(o=>`<option value="${esc(o.id)}">${esc(o.nom)}</option>`).join('');
+   assign('pe-parent',z.autonome?'':(z.parent||this.originals[0].id));
   }
   document.getElementById('pe-kind-note').textContent=z.kind==='service'
    ?'Service du plan : vous pouvez corriger son contour et son nom.'
