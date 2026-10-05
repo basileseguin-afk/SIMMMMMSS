@@ -7,6 +7,28 @@
   radial-gradient(circle,color-mix(in srgb,var(--bordure) 70%,transparent) 1px,transparent 1.2px) 0 0/18px 18px,
   var(--bg3);border:1px solid var(--bordure);border-radius:14px;padding:6px;max-height:70vh}
 .gr-svg{display:block;touch-action:pan-x pan-y;user-select:none;-webkit-user-select:none;overflow:visible}
+/* Le sens du diagramme (05/10) : en étapes, de haut en bas, il tient dans la
+ * largeur ; la page défile, pas le diagramme. Le bouton, en haut à droite. */
+.gr-boite{position:relative;min-width:0}
+.gr-sens{position:absolute;top:10px;right:12px;z-index:2;font:inherit;font-size:12px;font-weight:700;padding:5px 11px;border-radius:99px;cursor:pointer;
+  border:1px solid var(--bordure2);background:var(--bg3);color:var(--txt2);box-shadow:0 1px 2px rgba(16,24,40,.06)}
+.gr-sens:hover{color:var(--txt);border-color:var(--c,var(--accent))}
+.gr-cadre.bas{max-height:none;overflow-x:hidden}
+.gr-hote-bas{max-height:none !important;overflow:visible !important}
+.gr-cadre.bas .gr-svg{max-width:100%;height:auto}
+/* Une bande par étape, numérotée. */
+.gr-etape rect{fill:color-mix(in srgb,var(--c,var(--accent)) 4%,var(--bg3));stroke:color-mix(in srgb,var(--bordure) 60%,transparent);stroke-width:1}
+.gr-etape.impaire rect{fill:color-mix(in srgb,var(--bordure) 22%,var(--bg3))}
+.gr-etape text{font-size:12px;font-weight:800;letter-spacing:.02em;fill:var(--txt3,var(--txt2));pointer-events:none}
+.gr-etape{pointer-events:none}
+.gr-etape.sans-lien rect{fill:transparent;stroke-dasharray:6 4}
+.gr-etape.sans-lien text{fill:var(--attente,#b45309)}
+/* Survoler (ou choisir) un service : sa chaîne ressort, le reste pâlit. */
+.gr-noeud,.gr-lien{transition:opacity .15s}
+.gr-svg.gr-focus .gr-noeud:not(.lie){opacity:.3}
+.gr-svg.gr-focus .gr-lien:not(.lie){opacity:.12}
+.gr-svg.gr-focus .gr-lien.lie .gr-trait{stroke-width:3.6}
+.gr-svg.gr-focus .gr-groupe{opacity:.35}
 .gr-svg:focus{outline:none}
 
 .gr-noeud{cursor:grab;touch-action:none}

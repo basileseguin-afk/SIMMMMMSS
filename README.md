@@ -130,6 +130,21 @@ le rouge ne sert qu’aux retards.
      vols d’exemple ; d’où viennent les vols est dit en tête.
    - *Planche retour* : quand chaque vol revient à l’unité, pour la plonge.
 2. **Chemins** — par où passe chaque commande.
+   - *Vue d’ensemble* : tous les chemins d’un coup d’œil, comme un plan de
+     métro. Une colonne par flux (puis les variantes et les chemins à part),
+     avec sa couleur, ses commandes et ses classes ; une ligne par service,
+     rangée par **étape** de haut en bas ; une pastille là où le chemin passe,
+     reliées par un trait de sa couleur. Une pastille ouvre le flux sur ce
+     service (sa chaîne éclairée) ; une case vide (+) y fait passer le chemin,
+     à sa place ; le nom d’un service ouvre sa fiche.
+   - **Les diagrammes en étapes** (flux, chemin d’une commande, liens) : de
+     haut en bas, une bande numérotée par étape ; une branche qui rejoint le
+     flux tard (plonge → dotation → montage) se range juste au-dessus de son
+     arrivée ; un service relié à rien se met à part (« Sans lien ») ; le
+     diagramme tient dans la largeur de l’écran. **Survoler (ou choisir) un
+     service éclaire sa chaîne** — ce qui y mène et ce qui en part — et pâlit
+     le reste. « → En ligne » revient à la disposition de gauche à droite (le
+     choix est retenu, chaque sens garde sa propre disposition).
    - *Flux de production* : un flux par type de production (Économie,
      Business…), partagé par ses commandes. À gauche les flux et leurs
      variantes ; à droite, **par où passe** celui qu'on choisit (un diagramme :
@@ -522,6 +537,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/recap-compagnie-browser.cjs` | Minutes de travail et armement (v1 et v2) : un bloc par compagnie, sa ligne total en tête (somme de ses classes), classes repliables, minutes par vol modifiables (reliées à la fiche de l’armement), retour à la valeur commune, effectif, Annuler, sur la journée, recherche |
 | `tests/chemin-choisi.test.cjs` | Choisir le chemin d’une commande (v1 et v2) : liste des chemins, flux choisi, retour au flux de sa classe, chemin à part qui devient partagé |
 | `tests/chemin-choisi-browser.cjs` | Le chemin d’une commande dans une liste (v1 et v2) : « Qui suit quel chemin » (Flux de production) et « Chemin suivi » (Chemin d’une commande) ; un flux créé de toutes pièces se choisit, le calcul le suit ; un chemin à part choisi devient partagé, et c’est dit |
+| `tests/vue-ensemble-browser.cjs` | Chemins lisibles avec beaucoup de services (v1 et v2) : Vue d’ensemble (une colonne par flux, une ligne par service par étape, pastilles, case vide qui fait passer un flux puis Annuler, pastille qui ouvre le flux sur ce service), diagramme en étapes (de haut en bas, bandes, sans défilement de côté), chaîne éclairée au survol, « En ligne » retenu pour tous les diagrammes |
 | `tests/service-autonome-browser.cjs` | Un service à part entière créé depuis le site (v1 et v2), « Roulés couverts » : rangé comme Prépa ou Dotation, sans minutes ni liens hérités ; flux, équipe, minutes, calcul, tableau des minutes, planning, Excel, rechargement ; rattacher / détacher ; la salle de plus reste un choix |
 | `tests/armement-integre-browser.cjs` | « L’intégrer à tous les chemins » seulement s’il y a à faire (v1 et v2) : chemins suivis par les commandes seulement, un lien vers un handling suffit, sinon le chemin à reprendre est nommé avec la raison ; un clic le remet en ordre |
 | `tests/coherence.test.cjs` | Audit des flux (v1 et v2) : une case cochée hors du chemin de sa commande n’y est pas préparée, et c’est dit ; un vol ne part pas avec son seul armement |

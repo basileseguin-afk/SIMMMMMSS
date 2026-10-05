@@ -162,6 +162,7 @@ de relire le cahier des charges initial :
 | E15 | **Un chemin par commande**, créé à la main ; sur chaque nœud une **case** (nom, personnes, heure, man-minutes de l'import modifiables), réutilisable d'un chemin à l'autre ; une case « TX BC/PC » ne fait attendre au chemin TX BC que la ligne de TX BC ; tableau, cases et journée calculés à partir des chemins | 24/09 | ✅ | Remplace E14 (même diagramme dans deux onglets), jugé insuffisant : il liait l'affichage, pas le fonctionnement. Liens propres à chaque chemin ; « Dupliquer pour… » dans les mêmes cases |
 | E10 | Pages **épurées** : ne plus tout montrer à la fois, onglets et sous-onglets | 23/09 | ✅ | Deux à cinq onglets par étape, un seul affiché ; bandeau de contexte retiré ; indicateurs de la journée dans leur onglet. Pas de sous-sous-onglet : aucun onglet n'en a eu besoin |
 | E16 | **Organisation du menu** claire : pas d'onglets qui se ressemblent pour des usages différents, mieux catégoriser, sans perdre de fonction | 05/10 | ✅ | Cinq parties, un sujet chacune : Vols · Chemins · Équipes · Simulation · Résultats ; outils fins après « Plus » dans leur partie (plus de partie cachée « Outils avancés ») ; noms de pages distincts ; identifiants inchangés |
+| E17 | **Chemins compréhensibles avec beaucoup de services**, de façon plus visuelle | 05/10 | ✅ | Chemins › Vue d'ensemble (plan de métro : services × flux, par étape) ; diagrammes en étapes de haut en bas, tenant dans l'écran, chaîne éclairée au survol ; « En ligne » reste disponible |
 
 ## 10. Méthode et fiabilité (feuille de route d'Astra)
 

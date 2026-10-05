@@ -20,7 +20,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 1. Le menu : cinq parties, un sujet chacune ; le chemin d'une commande est dans Chemins.
   assert.deepEqual(await page.locator('#menu [data-vers-partie]').allInnerTexts(),['Accueil','Vols','Chemins','Équipes','Simulation','Résultats']);
   await page.locator('#menu [data-vers-partie=chemins]').click();await attendre();
-  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-flux','Chemins s’ouvre sur les flux');
+  assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-carte','Chemins s’ouvre sur la vue d’ensemble');
   const onglets=await page.locator('#sous-onglets [data-sous-onglet]').allInnerTexts();
   assert.ok(onglets.includes('Chemin d’une commande'),onglets.join(', '));
   await page.locator('#menu [data-vers-partie=reglages]').click();await attendre();

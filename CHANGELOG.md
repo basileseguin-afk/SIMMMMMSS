@@ -5,6 +5,40 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-05 — Des chemins lisibles avec beaucoup de services
+
+Demande : « pour les chemins, trouve une façon plus visuelle de comprendre
+tout cela : dès qu'on a beaucoup de services, cela devient incompréhensible ».
+
+- **Chemins › Vue d'ensemble** (nouvelle page, la première de Chemins) : tous
+  les chemins comme un plan de métro. Une colonne par flux, puis les
+  variantes et les chemins à part, chacun avec sa couleur, ses commandes et
+  ses classes. Une ligne par service, rangée par étape. Une pastille là où le
+  chemin passe, avec un trait de sa couleur entre la première et la
+  dernière.
+  - Une pastille ouvre le flux sur ce service, sa chaîne éclairée.
+  - Une case vide (+) fait passer le chemin par ce service, à sa place.
+  - Le nom d'un service ouvre sa fiche.
+  - Code : `unite.js` (`rendreCarte`), `unite.css`, `ateliers.js`,
+    `onglets.js`, `icones.js` (pictogramme `reseau`), `sim.js`.
+- **Diagrammes en étapes** (`graphe.js`, `graphe.css`), pour les flux, le
+  chemin d'une commande et les liens de l'unité :
+  - de haut en bas, une bande numérotée par étape ;
+  - un service descend jusqu'à l'étape qui précède celui qu'il livre, si bien
+    que les branches restent courtes ;
+  - un service relié à rien se range à part, sous « Sans lien » ;
+  - le diagramme tient dans la largeur de l'écran, sans défilement de côté ;
+  - les flèches gardent la même taille.
+- **La chaîne d'un service** : le survoler, le choisir ou le cliquer depuis
+  la vue d'ensemble éclaire ce qui y mène et ce qui en part, et pâlit le reste.
+- **« → En ligne / ↓ En étapes »** : un bouton sur chaque diagramme. Le choix
+  vaut pour tous les diagrammes et est retenu (`ory-graphes-sens`). Chaque sens
+  garde sa propre disposition (`<clé>|bas`), donc les dispositions faites à la
+  main en ligne ne sont pas perdues.
+- Tests : `tests/graphe.test.cjs` (étapes, branches, sans lien, courbe),
+  `tests/vue-ensemble-browser.cjs` (nouveau), menu et mon-unite (Chemins
+  s'ouvre sur la vue d'ensemble).
+
 ## 2026-10-05 — Refonte de l'organisation : Vols · Chemins · Équipes · Simulation · Résultats
 
 Demande : « l'interface est très brouillon sur l'organisation, des onglets qui

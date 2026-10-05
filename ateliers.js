@@ -482,6 +482,7 @@
 <p id="at-status" role="status" aria-live="polite"></p>
 <details id="at-anomalies" class="at-anomalies" data-sous="at-chemins at-equipes at-grille at-planning at-repas at-recap" hidden></details>
 <section id="mu-pas" class="mu mu-pas" data-sous="mu-pas" aria-label="Pas à pas"></section>
+<section id="mu-carte" class="mu mu-carte" data-sous="mu-carte" aria-label="Vue d’ensemble des chemins"></section>
 <section id="mu-flux" class="mu mu-flux" data-sous="mu-flux" aria-label="Les flux de production"></section>
 <section id="mu-services" class="mu mu-services" data-sous="mu-services" aria-label="Les services de l’unité"></section>
 <div id="at-parcours" class="pc"></div>

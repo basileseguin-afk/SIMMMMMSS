@@ -984,7 +984,7 @@ function initOnglets(){
       if(id==='at-chemins'&&Sim.ateliers)Sim.ateliers.parcours.placeTiroir();
       // Un onglet des ateliers se dessine à son ouverture, s'il a changé depuis.
       if(vue==='ateliers'&&Sim.ateliers)Sim.ateliers.surOnglet(id);
-      if((id==='mu-services'||id==='mu-pas'||id==='mu-flux')&&Sim.unite)Sim.unite.rendre();
+      if((id==='mu-services'||id==='mu-pas'||id==='mu-flux'||id==='mu-carte')&&Sim.unite)Sim.unite.rendre();
     }
   });
   // Les outils d'une vue (annuler, Excel, importer) montent sur la barre des

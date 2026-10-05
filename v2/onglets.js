@@ -32,6 +32,7 @@
     ],
     ateliers: [
       { id: 'mu-pas', nom: 'Prêt à simuler ?', ico: 'check' },
+      { id: 'mu-carte', nom: 'Vue d’ensemble', ico: 'reseau' },
       { id: 'mu-flux', nom: 'Flux de production', ico: 'fleche' },
       { id: 'mu-services', nom: 'Services et équipes', ico: 'service' },
       { id: 'at-chemins', nom: 'Chemin d’une commande', ico: 'fleche' },
@@ -80,6 +81,7 @@
     { id: 'chemins', nom: 'Chemins', ico: 'fleche', couleur: 'var(--c-chemins)',
       resume: 'Par où passe chaque commande',
       pages: [
+        { id: 'mu-carte', intro: 'Tous les chemins d’un coup d’œil : une colonne par flux, une ligne par service, rangée par étape.' },
         { id: 'mu-flux', intro: 'Les flux de production : par où ils passent, et quelle commande (compagnie × classe) suit quel chemin.' },
         { id: 'at-chemins', intro: 'Le chemin d’une commande, de bout en bout, avec l’équipe qui la prépare sur chaque service.' },
         { id: 'u-liens', plus: true, intro: 'Qui livre qui dans l’unité : ces liens ne servent qu’aux commandes sans chemin.' }

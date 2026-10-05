@@ -55,8 +55,8 @@ test('une page se range selon sa nature, pas selon l’écran qui la porte', () 
   assert.equal(partie('v-programme'), 'donnees');
   assert.equal(partie('v-planche'), 'donnees');
   // Par où passe chaque commande : les chemins (05/10).
-  for (const id of ['mu-flux', 'at-chemins', 'u-liens']) assert.equal(partie(id), 'chemins', id);
-  assert.equal(O.pagesDe('chemins')[0].id, 'mu-flux', 'les chemins commencent par les flux');
+  for (const id of ['mu-carte', 'mu-flux', 'at-chemins', 'u-liens']) assert.equal(partie(id), 'chemins', id);
+  assert.equal(O.pagesDe('chemins')[0].id, 'mu-carte', 'les chemins commencent par la vue d’ensemble');
   // Qui prépare quoi, quand, en combien de temps : les équipes.
   for (const id of ['mu-services', 'at-recap', 'rg-recap', 'u-services', 'at-equipes', 'rg-minutes']) assert.equal(partie(id), 'organisation', id);
   assert.equal(O.pagesDe('organisation')[0].id, 'mu-services', 'les équipes commencent par les services');
@@ -93,7 +93,7 @@ test('v2 : la même organisation, chaque page dans une seule partie', () => {
   assert.deepEqual([...pages].sort(), Object.values(V.ONGLETS).flat().map(o => o.id).sort(), 'aucune page oubliée');
   assert.deepEqual(V.PARTIES.filter(p => !p.cache).map(p => p.nom), ['Vols', 'Chemins', 'Équipes', 'Simulation', 'Résultats', 'Budget']);
   for (const id of ['mu-pas', 'rg-simulation', 'rg-calage', 'u-lecture']) assert.equal(V.partieDe(id).id, 'reglages', id);
-  for (const id of ['mu-flux', 'at-chemins', 'u-liens']) assert.equal(V.partieDe(id).id, 'chemins', id);
+  for (const id of ['mu-carte', 'mu-flux', 'at-chemins', 'u-liens']) assert.equal(V.partieDe(id).id, 'chemins', id);
   for (const p of O.PARTIES) {
     const w = V.PARTIES.find(x => x.id === p.id);
     for (const x of p.pages) assert.equal(!!(w.pages.find(y => y.id === x.id) || {}).plus, !!x.plus, x.id + ' : rangé pareil en v1 et v2');

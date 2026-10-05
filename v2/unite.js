@@ -56,6 +56,7 @@
       this.a = a;
       this.natures = {};   // la nature choisie d'un service qui n'a pas encore d'équipe
       this.lierFlux();
+      this.lierCarte();
       try { this.choisi = localStorage.getItem(CLE) || null; } catch (e) { this.choisi = null; }
       this.lier();
     }
@@ -105,6 +106,7 @@
       if (p === 'mu-services') this.rendreServices();
       if (p === 'mu-pas') this.rendrePas();
       if (p === 'mu-flux') this.rendreFlux();
+      if (p === 'mu-carte') this.rendreCarte();
     }
 
     /* Remplacer le HTML sans perdre le champ où l'on est, ni le défilement. */
@@ -692,6 +694,131 @@
       this.poser(box, regroupe + `<div class="mu-cadre">${liste}<div class="mu-fiche" data-mu-flux-fiche="${esc(t ? t.id : '')}">${t ? this.ficheFlux(t, classes) : '<p class="mini-note">Aucun flux de production : créez-en un (à gauche).</p>'}</div></div>`
         + this.cheminsDesCommandes(classes));
       const g = this.grapheFlux(); if (g && t) g.rendre();
+    }
+
+    /* ---- vue d'ensemble (05/10) ---------------------------------------------
+     * « Dès qu'on a beaucoup de services, cela devient incompréhensible » : tous
+     * les chemins d'un coup d'œil, comme un plan de métro. Une colonne par flux
+     * (puis les variantes, puis les chemins à part), une ligne par service,
+     * rangée par étape ; une pastille où le chemin passe, reliées par sa couleur.
+     * Une pastille ouvre le flux sur ce service ; une case vide l'y fait passer. */
+
+    colonnesCarte() {
+      const st = this.etat, classes = this.at.classes, types = PC.types(st), cols = [];
+      for (const t of types.filter(x => !x.auto)) cols.push({ p: t, genre: 'flux' });
+      for (const t of types.filter(x => x.auto)) cols.push({ p: t, genre: 'variante' });
+      for (const c of classes) {
+        const p = PC.cheminDe(st, c.id);
+        if (p && !cols.some(x => x.p === p)) cols.push({ p, genre: 'propre', cmd: c.id });
+      }
+      const PAL = ['#2563eb', '#059669', '#d97706', '#7c3aed', '#db2777', '#0891b2', '#65a30d', '#dc2626', '#4f46e5', '#ca8a04'];
+      let i = 0;
+      for (const c of cols) {
+        c.couleur = c.genre === 'propre' ? '#64748b' : PAL[i++ % PAL.length];
+        c.cmds = c.genre === 'propre' ? [classes.find(x => x.id === c.cmd)].filter(Boolean) : PC.commandesDuType(st, c.p.id, classes);
+        c.cabs = c.genre === 'flux' ? P.CABINES.filter(x => (st.parcoursCabine || {})[x] === c.p.id) : [];
+        c.services = P.servicesDuParcours(c.p);
+        c.arcs = P.arcsDuParcours(c.p);
+      }
+      return cols;
+    }
+
+    /** Les services des chemins, rangés par étape (comme le diagramme en étapes). */
+    lignesCarte(cols) {
+      const ids = [...new Set(cols.flatMap(c => c.services))];
+      const arcs = cols.flatMap(c => c.arcs.map(a => ({ de: a.from, vers: a.to })));
+      const G = root.OrlyGraphe, d = G ? G.disposer(ids.map(id => ({ id })), arcs, { sens: 'bas' }) : null;
+      const isoles = new Set(d ? d.isoles : []);
+      const rang = id => (d ? d.etape[id] : 0), x = id => (d && d[id] ? d[id].x : 0);
+      const lignes = ids.map(id => ({ id, rang: rang(id), isole: isoles.has(id) }))
+        .sort((a, b) => a.rang - b.rang || x(a.id) - x(b.id) || this.nom(a.id).localeCompare(this.nom(b.id), 'fr'));
+      const rangs = [...new Set(lignes.filter(l => !l.isole).map(l => l.rang))];
+      for (const l of lignes) l.etape = l.isole ? null : rangs.indexOf(l.rang) + 1;
+      return lignes;
+    }
+
+    rendreCarte() {
+      const box = root.document.getElementById('mu-carte'); if (!box) return;
+      const cols = this.colonnesCarte(), I = root.OrlyIcones;
+      if (!cols.length) {
+        this.poser(box, `<div class="mu-carte-vide"><p><b>Aucun chemin pour l’instant.</b> Créez un flux de production : il dira par où passent les commandes.</p>
+          <button type="button" class="btn btn-play" data-page="mu-flux">Ouvrir les flux de production →</button></div>`);
+        return;
+      }
+      const lignes = this.lignesCarte(cols);
+      const nb = g => cols.filter(c => c.genre === g).length;
+      const cab = c => (P.NOM_CABINE || {})[c] || c;
+      const tete = c => {
+        const qui = c.genre === 'propre' ? 'chemin à part' : c.cabs.length ? 'flux des ' + c.cabs.map(cab).join(', ') : c.genre === 'variante' ? 'variante' : 'aucune classe';
+        const attr = c.genre === 'propre' ? `data-mu-carte-cmd="${esc(c.cmd)}"` : `data-mu-carte-flux="${esc(c.p.id)}"`;
+        return `<th scope="col" class="mu-ct-flux ${c.genre}" style="--fc:${c.couleur}">
+          <button type="button" ${attr} title="Ouvrir « ${esc(c.p.nom)} »"><span class="mu-ct-puce" aria-hidden="true"></span><b>${esc(c.genre === 'propre' ? PC.etiquette(c.cmd) : c.p.nom)}</b></button>
+          <small>${pl(c.cmds.length, 'commande')}</small><small class="mu-ct-qui">${esc(qui)}</small></th>`;
+      };
+      // Par étape : un en-tête de ligne qui couvre toutes les lignes de l'étape.
+      const combien = {};
+      for (const l of lignes) { const k = l.isole ? 'iso' : l.etape; combien[k] = (combien[k] || 0) + 1; }
+      const vu = new Set();
+      const corps = lignes.map(l => {
+        const k = l.isole ? 'iso' : l.etape, premiere = !vu.has(k); vu.add(k);
+        const etape = premiere ? `<th scope="rowgroup" rowspan="${combien[k]}" class="mu-ct-etape${l.isole ? ' sans-lien' : ''}">${l.isole ? 'Sans lien' : 'Étape ' + l.etape}</th>` : '';
+        const cases = cols.map(c => {
+          const i = c.services.indexOf(l.id), passe = i >= 0;
+          const rangs = c.services.map(s => lignes.findIndex(x => x.id === s)).filter(r => r >= 0);
+          const ici = lignes.indexOf(l), haut = Math.min(...rangs), bas = Math.max(...rangs);
+          const trait = ici >= haut && ici <= bas ? ' trait' + (ici === haut ? ' debut' : '') + (ici === bas ? ' fin' : '') : '';
+          const nomC = c.genre === 'propre' ? PC.etiquette(c.cmd) : c.p.nom, cle = esc(c.p.id + '|' + l.id);
+          if (passe) {
+            const avant = c.arcs.filter(a => a.to === l.id).map(a => this.nom(a.from)), apres = c.arcs.filter(a => a.from === l.id).map(a => this.nom(a.to));
+            const titre = '« ' + nomC + ' » passe par ' + this.nom(l.id) + (avant.length ? ' — après ' + avant.join(', ') : '') + (apres.length ? ' — avant ' + apres.join(', ') : '') + '. Cliquer pour l’ouvrir sur ce service.';
+            return `<td class="oui${trait}" style="--fc:${c.couleur}"><button type="button" class="mu-ct-arret" data-mu-carte-arret="${cle}" title="${esc(titre)}" aria-label="${esc(titre)}"></button></td>`;
+          }
+          return `<td class="${trait.trim()}" style="--fc:${c.couleur}"><button type="button" class="mu-ct-ajout" data-mu-carte-ajout="${cle}"
+            title="Faire passer « ${esc(nomC)} » par ${esc(this.nom(l.id))}" aria-label="Faire passer « ${esc(nomC)} » par ${esc(this.nom(l.id))}">+</button></td>`;
+        }).join('');
+        const n = cols.filter(c => c.services.includes(l.id)).length;
+        return `<tr class="${premiere ? 'mu-ct-nouvelle' : ''}" data-mu-carte-svc="${esc(l.id)}">${etape}
+          <th scope="row" class="mu-ct-svc"><button type="button" data-mu-ouvrir="${esc(l.id)}" title="Ouvrir la fiche de ${esc(this.nom(l.id))} (ses équipes)">
+            <span class="mu-ct-ico" aria-hidden="true">${I ? I.ico(I.icoService(l.id, this.nom(l.id))) : ''}</span><span>${esc(this.nom(l.id))}</span></button>
+            <small>${pl(n, 'chemin')}</small></th>${cases}</tr>`;
+      }).join('');
+      this.poser(box, `<div class="mu-carte-tete">
+          <p class="mu-carte-resume"><b>${pl(nb('flux'), 'flux', 'flux')}</b>${nb('variante') ? ' · ' + pl(nb('variante'), 'variante') : ''}${nb('propre') ? ' · ' + pl(nb('propre'), 'chemin à part', 'chemins à part') : ''}
+            · ${pl(lignes.length, 'service')}, rangés par étape, de haut en bas</p>
+          <p class="mini-note">Une colonne par chemin, une ligne par service. <span class="mu-ct-legende"><i class="mu-ct-l-arret"></i> il passe par ce service</span>
+            · une pastille ouvre le chemin sur ce service · une case vide (+) l’y fait passer · le nom d’un service ouvre sa fiche.</p></div>
+        <div class="mu-carte-cadre"><table class="mu-carte-table">
+          <thead><tr><th scope="col" class="mu-ct-etape"></th><th scope="col" class="mu-ct-svc">Service</th>${cols.map(tete).join('')}</tr></thead>
+          <tbody>${corps}</tbody></table></div>`);
+    }
+
+    /** Une pastille de la carte : le flux s'ouvre, ce service choisi (et sa chaîne éclairée). */
+    carteArret(cle) {
+      const [pid, svc] = cle.split('|'), st = this.etat;
+      const p = (st.parcours || []).find(x => x.id === pid); if (!p) return;
+      if (!p.type) { const cmd = PC.commandeDu(st, p.id); return cmd ? this.chemin(cmd, svc) : null; }
+      this.ouvrirFlux(pid);
+      const g = this.grapheFlux();
+      if (g) { g.selection = { type: 'noeud', id: svc }; this.fluxSel = g.selection; this.rendreFlux(); g.montrer(svc); }
+    }
+
+    /** Une case vide de la carte : faire passer ce chemin par ce service, à sa place. */
+    carteAjout(cle) {
+      const [pid, svc] = cle.split('|'), st = this.at.state, o = this.options();
+      const p = (st.parcours || []).find(x => x.id === pid); if (!p) return;
+      this.at.changer(() => { const x = st.parcours.find(q => q.id === pid); if (x) { x.liens = x.liens || []; x.noeuds = x.noeuds || []; PC.insererService(st, x, svc, o); } },
+        this.nom(svc) + ' entre dans « ' + p.nom + ' », à sa place (d’après les autres chemins) ; ouvrez-le pour ajuster les flèches.');
+    }
+
+    lierCarte() {
+      root.document.addEventListener('click', e => {
+        const b = e.target.closest && e.target.closest('#mu-carte [data-mu-carte-flux], #mu-carte [data-mu-carte-cmd], #mu-carte [data-mu-carte-arret], #mu-carte [data-mu-carte-ajout]');
+        if (!b) return;
+        if (b.dataset.muCarteFlux) return this.ouvrirFlux(b.dataset.muCarteFlux);
+        if (b.dataset.muCarteCmd) return this.chemin(b.dataset.muCarteCmd);
+        if (b.dataset.muCarteArret) return this.carteArret(b.dataset.muCarteArret);
+        if (b.dataset.muCarteAjout) return this.carteAjout(b.dataset.muCarteAjout);
+      });
     }
 
     /* Qui suit quel chemin (retour d'usage du 05/10) : toutes les commandes, par

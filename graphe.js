@@ -14,15 +14,31 @@
  *
  *  Le composant ne connaît pas le métier : il demande ses nœuds et ses liens
  *  à son adaptateur, et lui confie chaque geste (relier, retirer, choisir).
- *  Sans disposition enregistrée, les nœuds se rangent en colonnes, de gauche
- *  à droite dans le sens du flux (la « profondeur » de chaque nœud est le plus
- *  long chemin qui y mène).
+ *  Sans disposition enregistrée, les nœuds se rangent dans le sens du flux (la
+ *  « profondeur » de chaque nœud est le plus long chemin qui y mène).
+ *
+ *  Deux sens (05/10 : « dès qu'on a beaucoup de services, cela devient
+ *  incompréhensible ») :
+ *    • « en étapes » (par défaut) : de haut en bas, une bande par étape, et
+ *      une branche qui rejoint le flux tard (plonge → dotation → prépa) se
+ *      range juste au-dessus de celui qu'elle livre, pas tout en haut. Le
+ *      diagramme tient dans la largeur de l'écran ;
+ *    • « en ligne » : de gauche à droite, comme avant.
+ *  Survoler (ou choisir) un service éclaire sa chaîne — ce qui y mène et ce
+ *  qui en part — et pâlit le reste.
  * ==========================================================================*/
 (function (root) {
   'use strict';
 
   const L = 200, H = 52, PAS_X = 260, PAS_Y = 76, MARGE = 28;
-  const CLE = 'ory-graphes-v1';
+  // En étapes : d'une étape à l'autre, et d'un service au suivant dans une étape.
+  const PAS_BAS = 104, LIG_BAS = L + 36, COULOIR_BAS = L / 2 + 34, MARGE_ETAPE = 70;
+  const CLE = 'ory-graphes-v1', CLE_SENS = 'ory-graphes-sens';
+  /** Le sens choisi, retenu d'une visite à l'autre : 'bas' (en étapes) ou 'ligne'. */
+  function lireSens() { try { return localStorage.getItem(CLE_SENS) === 'ligne' ? 'ligne' : 'bas'; } catch (e) { return 'bas'; } }
+  function ecrireSens(v) { try { localStorage.setItem(CLE_SENS, v === 'ligne' ? 'ligne' : 'bas'); } catch (e) { /* stockage indisponible */ } }
+  // Les diagrammes de la page : changer de sens les redessine tous.
+  const DIAGRAMMES = new Set();
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
     c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const court = (s, n) => (s = String(s || ''), s.length > n ? s.slice(0, n - 1) + '…' : s);
@@ -31,9 +47,13 @@
    * Une disposition en colonnes : colonne = plus long chemin depuis un nœud
    * sans amont ; dans une colonne, les nœuds suivent la hauteur moyenne de
    * leurs amonts (moins de croisements). Une boucle ne fait pas tourner le calcul.
-   * @returns { id: {x, y} }
+   * `o.sens === 'bas'` : les colonnes deviennent des étapes, de haut en bas, et
+   * chaque service descend jusqu'à l'étape qui précède celui qu'il livre.
+   * @returns { id: {x, y} } (et, non énumérables, `via` et `etape`)
    */
-  function disposer(noeuds, liens) {
+  function disposer(noeuds, liens, o) {
+    const bas = !!(o && o.sens === 'bas');
+    const PAS_L = bas ? LIG_BAS : PAS_Y, ECART_C = bas ? COULOIR_BAS : PAS_Y / 2;
     const ids = noeuds.map(n => n.id), connu = new Set(ids);
     const tous = liens.filter(l => connu.has(l.de) && connu.has(l.vers) && l.de !== l.vers);
     // Un lien qui revient en arrière (un retour : quais → plonge → … → quais)
@@ -59,6 +79,26 @@
       }
       if (!bouge) break;
     }
+    // En étapes : un service descend jusqu'à l'étape qui précède le premier
+    // qu'il livre. Une branche (plonge → dotation → prépa) se range alors à
+    // côté de son arrivée, et ses traits restent courts.
+    if (bas) for (let tour = 0; tour < ids.length; tour++) {
+      let bouge = false;
+      for (const id of ids) {
+        const suite = arcs.filter(a => a.de === id).map(a => col.get(a.vers));
+        if (!suite.length) continue;
+        const c = Math.min(...suite) - 1;
+        if (c > col.get(id)) { col.set(id, c); bouge = true; }
+      }
+      if (!bouge) break;
+    }
+    // En étapes, un service relié à rien n'est à aucune étape : il se range
+    // à part, tout en bas (« Sans lien »), au lieu de faire croire au début du flux.
+    const isoles = bas ? ids.filter(id => !tous.some(l => l.de === id || l.vers === id)) : [];
+    if (isoles.length && isoles.length < ids.length) {
+      const der = Math.max(...ids.filter(id => !isoles.includes(id)).map(id => col.get(id)));
+      for (const id of isoles) col.set(id, der + 1);
+    }
     // Un lien qui saute des colonnes y réserve un couloir : un point de
     // passage par colonne traversée. Les nœuds s'en écartent, et le lien ne
     // passe plus sous un service qu'il ne concerne pas.
@@ -73,13 +113,13 @@
       }
       passages.push({ de: prec, vers: a.vers });
     }
-    const pos = {}, colonnes = new Map();
+    const pos = {}, voie = {}, colonnes = new Map();
     for (const id of col.keys()) { const c = col.get(id); if (!colonnes.has(c)) colonnes.set(c, []); colonnes.get(c).push(id); }
     const fictif = id => id[0] === '~';
     for (const c of [...colonnes.keys()].sort((a, b) => a - b)) {
       const liste = colonnes.get(c);
       const hauteur = id => {
-        const ys = passages.filter(a => a.vers === id && pos[a.de]).map(a => pos[a.de].y);
+        const ys = passages.filter(a => a.vers === id && voie[a.de] !== undefined).map(a => voie[a.de]);
         return ys.length ? ys.reduce((s, y) => s + y, 0) / ys.length : Infinity;
       };
       const rang = id => (fictif(id) ? ids.length : ids.indexOf(id));
@@ -90,15 +130,17 @@
       let avant = -Infinity, prec = null;
       for (const id of liste) {
         const h = hauteur(id);
-        const ecart = fictif(id) || (prec && fictif(prec)) ? PAS_Y / 2 : PAS_Y;
-        const voulu = Number.isFinite(h) ? Math.round(h / (PAS_Y / 2)) * (PAS_Y / 2) : (Number.isFinite(avant) ? avant + ecart : 0);
+        const ecart = fictif(id) || (prec && fictif(prec)) ? ECART_C : PAS_L;
+        const voulu = Number.isFinite(h) ? Math.round(h / (PAS_L / 2)) * (PAS_L / 2) : (Number.isFinite(avant) ? avant + ecart : 0);
         const y = Math.max(voulu, avant + ecart);
-        pos[id] = { x: c * PAS_X, y }; avant = y; prec = id;
+        voie[id] = y; pos[id] = bas ? { x: y, y: c * PAS_BAS } : { x: c * PAS_X, y }; avant = y; prec = id;
       }
     }
     const out = {};
     for (const id of ids) out[id] = pos[id];
     Object.defineProperty(out, 'via', { value: Object.fromEntries(Object.entries(via).map(([k, l]) => [k, l.map(id => pos[id])])) });
+    Object.defineProperty(out, 'etape', { value: Object.fromEntries(ids.map(id => [id, col.get(id)])) });
+    Object.defineProperty(out, 'isoles', { value: isoles.length < ids.length ? isoles : [] });
     return out;
   }
 
@@ -126,8 +168,23 @@
   }
 
   /** La courbe d'un lien : de la droite de A à la gauche de B, par ses
-   *  couloirs s'il en a (un trait droit à travers chaque colonne sautée). */
-  function courbe(a, b, via) {
+   *  couloirs s'il en a (un trait droit à travers chaque colonne sautée).
+   *  En étapes (`bas`) : du bas de A au haut de B. */
+  function courbe(a, b, via, bas) {
+    if (bas) {
+      const q = [[a.x + L / 2, a.y + H]];
+      for (const p of via || []) q.push([p.x + L / 2, p.y], [p.x + L / 2, p.y + H]);
+      q.push([b.x + L / 2, b.y - 6]);
+      let d = `M${q[0][0]},${q[0][1]}`;
+      for (let i = 1; i < q.length; i++) {
+        const [x0, y0] = q[i - 1], [x1, y1] = q[i];
+        if (i % 2 === 0) { d += ` L${x1},${y1}`; continue; }    // à travers une étape
+        const k = Math.max(30, Math.abs(y1 - y0) / 2);
+        d += ` C${x0},${y0 + k} ${x1},${y1 - k} ${x1},${y1}`;
+      }
+      const m = Math.floor((q.length - 1) / 2);
+      return { d, mx: (q[m][0] + q[m + 1][0]) / 2, my: (q[m][1] + q[m + 1][1]) / 2 };
+    }
     const pts = [[a.x + L, a.y + H / 2]];
     for (const p of via || []) pts.push([p.x, p.y + H / 2], [p.x + L, p.y + H / 2]);
     pts.push([b.x - 6, b.y + H / 2]);
@@ -159,14 +216,23 @@
      *                            faites à la chaîne par la même équipe) : un
      *                            cadre les entoure, le lien entre eux s'épaissit
      *   fige()                 — facultatif : ni prise pour relier, ni croix pour retirer
-     * } */
+     * }
+     * Le sens (en étapes ou en ligne) est un choix de la personne, commun à
+     * tous les diagrammes ; chaque sens retient sa propre disposition. */
     constructor(a) {
       this.a = a;
       this.selection = null;
       this.depuis = null;          // « Relier à… » : le nœud de départ
       this.geste = null;           // un glisser en cours
       this.pos = {};
+      DIAGRAMMES.add(this);
     }
+
+    /** 'bas' (en étapes, de haut en bas) ou 'ligne' (de gauche à droite). */
+    sens() { return lireSens(); }
+    bas() { return this.sens() === 'bas'; }
+    /** La disposition retenue, propre au sens : changer de sens ne la perd pas. */
+    cleDispo() { return this.a.cle + (this.bas() ? '|bas' : ''); }
 
     /* ---- dessin ------------------------------------------------------ */
 
@@ -186,7 +252,7 @@
      * services d'entre les deux. */
     groupesSVG(groupes) {
       return groupes.map(g => {
-        const traits = g.ids.slice(1).map((id, i) => `<path class="gr-groupe-trait" d="${courbe(this.pos[g.ids[i]], this.pos[id]).d}"/>`).join('');
+        const traits = g.ids.slice(1).map((id, i) => `<path class="gr-groupe-trait" d="${courbe(this.pos[g.ids[i]], this.pos[id], null, this.bas()).d}"/>`).join('');
         const halos = g.ids.map((id, i) => {
           const p = this.pos[id], t = (g.etiquettes || {})[id] || (i === 0 ? g.etiquette : '') || '';
           return `<rect class="gr-groupe-halo" x="${p.x - 7}" y="${p.y - 7}" width="${L + 14}" height="${H + 14}" rx="16"/>
@@ -198,7 +264,10 @@
 
     positions() {
       const noeuds = this.a.noeuds(), liens = this.a.liens();
-      const auto = disposer(noeuds, liens), gardees = lirePositions()[this.a.cle] || {};
+      const bas = this.bas(), auto = disposer(noeuds, liens, { sens: this.sens() }), gardees = lirePositions()[this.cleDispo()] || {};
+      // Les étapes se dessinent tant que personne n'a déplacé de service.
+      this.etapes = !Object.keys(gardees).length && bas ? auto.etape : null;
+      this.isoles = new Set(auto.isoles || []);
       // Les couloirs ne valent que tant que les deux bouts sont à leur place d'origine.
       this.via = {};
       for (const [k, v] of Object.entries(auto.via || {})) {
@@ -211,7 +280,7 @@
       for (const n of noeuds) pos[n.id] = gardees[n.id] ? { ...gardees[n.id] } : null;
       for (const n of noeuds) if (!pos[n.id]) {
         const p = { ...auto[n.id] };
-        while (Object.values(pos).some(q => q && Math.abs(q.x - p.x) < L && Math.abs(q.y - p.y) < H + 8)) p.y += PAS_Y;
+        while (Object.values(pos).some(q => q && Math.abs(q.x - p.x) < L && Math.abs(q.y - p.y) < H + 8)) { if (bas) p.x += LIG_BAS; else p.y += PAS_Y; }
         pos[n.id] = p;
       }
       return pos;
@@ -230,7 +299,8 @@
       const membre = new Map();
       for (const g of cadres) for (const id of g.ids) membre.set(id, g.id);
       const uni = l => membre.has(l.de) && membre.get(l.de) === membre.get(l.vers);
-      const x0 = Math.min(0, ...xs.map(p => p.x), ...cadres.map(g => g.x)) - MARGE, y0 = Math.min(0, ...xs.map(p => p.y), ...cadres.map(g => g.y)) - MARGE;
+      const bas = this.bas(), etapes = this.etapes;
+      const x0 = Math.min(0, ...xs.map(p => p.x), ...cadres.map(g => g.x)) - MARGE - (etapes ? MARGE_ETAPE : 0), y0 = Math.min(0, ...xs.map(p => p.y), ...cadres.map(g => g.y)) - MARGE;
       const x1 = Math.max(L, ...xs.map(p => p.x + L)) + MARGE + 30, y1 = Math.max(H, ...xs.map(p => p.y + H)) + MARGE;
       this.cadre = { x0, y0, w: x1 - x0, h: y1 - y0 };
       svg.setAttribute('viewBox', `${x0} ${y0} ${x1 - x0} ${y1 - y0}`);
@@ -238,6 +308,14 @@
       // Un diagramme plus large que son cadre : on le montre (ombre au bord
       // droit, invitation à faire défiler), sinon la fin du chemin passe inaperçue.
       const cadreEl = hote.querySelector('.gr-cadre');
+      if (cadreEl) cadreEl.classList.toggle('bas', bas);
+      // En étapes, le diagramme prend sa hauteur : c'est la page qui défile.
+      hote.classList.toggle('gr-hote-bas', bas);
+      const bouton = hote.querySelector('[data-gr-sens]');
+      if (bouton) {
+        bouton.innerHTML = bas ? '→ En ligne' : '↓ En étapes';
+        bouton.title = bas ? 'Disposer les services de gauche à droite, sur une ligne' : 'Disposer les services de haut en bas, une bande par étape : plus lisible quand il y en a beaucoup';
+      }
       if (cadreEl) root.requestAnimationFrame(() => {
         const deborde = cadreEl.scrollWidth > cadreEl.clientWidth + 4;
         cadreEl.classList.toggle('gr-deborde', deborde && cadreEl.scrollLeft + cadreEl.clientWidth < cadreEl.scrollWidth - 4);
@@ -249,12 +327,22 @@
       const marque = c => 'gr-f-' + this.a.cle.replace(/[^a-z0-9]/gi, '') + '-' + couleurs.indexOf(c || '');
       // Figé (un flux partagé vu depuis une commande) : ni prise pour relier, ni croix pour retirer.
       const I = root.OrlyIcones, fige = !!(this.a.fige && this.a.fige());
+      this.derniersLiens = liens;
+      // Les étapes : une bande par profondeur, numérotée, derrière les services.
+      const rangs = etapes ? [...new Set(noeuds.map(n => etapes[n.id]).filter(Number.isFinite))].sort((a, b) => a - b) : [];
+      const bandes = rangs.map((r, i) => {
+        const ici = noeuds.filter(n => etapes[n.id] === r), y = Math.min(...ici.map(n => this.pos[n.id].y));
+        const seuls = ici.every(n => this.isoles.has(n.id));
+        return `<g class="gr-etape${i % 2 ? ' impaire' : ''}${seuls ? ' sans-lien' : ''}" data-etape="${seuls ? 'sans-lien' : i + 1}"><rect x="${x0 + 6}" y="${y - 14}" width="${x1 - x0 - 12}" height="${H + 28}" rx="12"/>
+          <text x="${x0 + 18}" y="${y + H / 2 + 4}">${seuls ? 'Sans lien' : 'Étape ' + (i + 1)}</text></g>`;
+      }).join('');
       svg.innerHTML = `<defs>${couleurs.map(c => `<marker id="${marque(c)}" viewBox="0 0 10 10" refX="8" refY="5"
-          markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="gr-pointe"${c ? ` style="fill:${esc(c)}"` : ''}/></marker>`).join('')}</defs>
+          markerWidth="16" markerHeight="16" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="gr-pointe"${c ? ` style="fill:${esc(c)}"` : ''}/></marker>`).join('')}</defs>
+        <g class="gr-etapes">${bandes}</g>
         <g class="gr-groupes">${this.groupesSVG(cadres)}</g>
         <g class="gr-liens">${liens.slice().sort((x, y) => this.estChoisi(x) - this.estChoisi(y)).map(l => {
           const a = this.pos[l.de], b = this.pos[l.vers]; if (!a || !b) return '';
-          const k = courbe(a, b, this.via[l.de + '>' + l.vers]), sel = this.selection && this.selection.type === 'lien' && this.selection.id === l.id;
+          const k = courbe(a, b, this.via[l.de + '>' + l.vers], bas), sel = this.selection && this.selection.type === 'lien' && this.selection.id === l.id;
           return `<g class="gr-lien${sel ? ' sel' : ''}${l.pointille ? ' pointille' : ''}${uni(l) ? ' en-chaine' : ''}" data-lien="${esc(l.id)}" tabindex="0" role="button"
               aria-label="${esc(l.titre || '')}. Entrée pour le choisir, Suppr pour le retirer.">
             <title>${esc(l.titre || '')}</title>
@@ -276,7 +364,7 @@
             ${I ? `<g class="gr-ico" transform="translate(12,${(H - 22) / 2}) scale(.92)">${I.TRAITS[n.ico] || I.TRAITS.service}</g>` : ''}
             <text class="gr-nom" x="44" y="${n.sous ? 22 : 31}">${esc(court(n.nom, 19))}</text>
             ${n.sous ? `<text class="gr-sous" x="44" y="39">${esc(court(n.sous, 26))}</text>` : ''}
-            ${fige ? '' : `<g class="gr-port" data-port="${esc(n.id)}" transform="translate(${L},${H / 2})"><circle r="9"/><path d="M-4,0 H4 M0,-4 V4"/>
+            ${fige ? '' : `<g class="gr-port" data-port="${esc(n.id)}" transform="translate(${bas ? L / 2 : L},${bas ? H : H / 2})"><circle r="9"/><path d="M-4,0 H4 M0,-4 V4"/>
               <title>Tirer vers un autre service, ou cliquer ici puis sur lui, pour les relier</title></g>`}
           </g>`;
         }).join('')}</g>`;
@@ -284,6 +372,36 @@
         const f = svg.querySelector(this.focus);
         if (f) f.focus({ preventScroll: true });
         this.focus = null;
+      }
+      this.eclairer(this.choisi());
+    }
+
+    /** Le service choisi, s'il y en a un. */
+    choisi() { return this.selection && this.selection.type === 'noeud' ? this.selection.id : null; }
+
+    /** Ce qui mène à un service et ce qui en part : sa chaîne, dans les deux sens. */
+    chaine(id, liens) {
+      const suivre = (depart, de, vers) => {
+        const vus = new Set(), file = [depart];
+        while (file.length) { const x = file.pop(); for (const l of liens) if (l[de] === x && !vus.has(l[vers]) && l[vers] !== depart) { vus.add(l[vers]); file.push(l[vers]); } }
+        return vus;
+      };
+      return { amont: suivre(id, 'vers', 'de'), aval: suivre(id, 'de', 'vers') };
+    }
+
+    /** Éclairer la chaîne d'un service (survolé ou choisi) ; le reste pâlit. */
+    eclairer(id) {
+      const hote = this.a.hote(), svg = hote && hote.querySelector('.gr-svg'); if (!svg) return;
+      svg.querySelectorAll('.lie').forEach(x => x.classList.remove('lie'));
+      const liens = this.derniersLiens || [];
+      const n = id && svg.querySelector(`[data-noeud="${CSS.escape(id)}"]`);
+      svg.classList.toggle('gr-focus', !!n);
+      if (!n) return;
+      const { amont, aval } = this.chaine(id, liens);
+      const haut = new Set([id, ...amont]), bas = new Set([id, ...aval]);
+      for (const x of new Set([...haut, ...bas])) { const e = svg.querySelector(`[data-noeud="${CSS.escape(x)}"]`); if (e) e.classList.add('lie'); }
+      for (const l of liens) if ((haut.has(l.de) && (haut.has(l.vers) || bas.has(l.vers))) || (bas.has(l.de) && bas.has(l.vers))) {
+        const e = svg.querySelector(`[data-lien="${CSS.escape(l.id)}"]`); if (e) e.classList.add('lie');
       }
     }
 
@@ -293,8 +411,13 @@
     /* ---- gestes ------------------------------------------------------ */
 
     installer(hote) {
-      hote.innerHTML = `<div class="gr-cadre"><svg class="gr-svg" role="group" aria-label="${esc(this.a.titre || 'Diagramme')}"></svg></div>`;
+      hote.innerHTML = `<div class="gr-boite"><button type="button" class="gr-sens" data-gr-sens></button>
+        <div class="gr-cadre"><svg class="gr-svg" role="group" aria-label="${esc(this.a.titre || 'Diagramme')}"></svg></div></div>`;
       const cadre = hote.querySelector('.gr-cadre');
+      hote.querySelector('[data-gr-sens]').addEventListener('click', () => {
+        ecrireSens(this.bas() ? 'ligne' : 'bas');
+        for (const d of DIAGRAMMES) { const h = d.a.hote(); if (h && h.querySelector('.gr-svg')) d.rendre(); }
+      });
       cadre.addEventListener('scroll', () => cadre.classList.toggle('gr-deborde', cadre.scrollLeft + cadre.clientWidth < cadre.scrollWidth - 4));
       const svg = hote.querySelector('.gr-svg');
       svg.addEventListener('pointerdown', e => this.appui(e));
@@ -302,6 +425,10 @@
       svg.addEventListener('pointerup', e => this.lacher(e));
       svg.addEventListener('pointercancel', () => this.annulerGeste());
       svg.addEventListener('keydown', e => this.clavier(e));
+      // Survoler un service éclaire sa chaîne ; en sortir revient au service choisi.
+      svg.addEventListener('pointerover', e => { if (this.geste) return; const n = e.target.closest('[data-noeud]'); this.eclairer(n ? n.dataset.noeud : this.choisi()); });
+      svg.addEventListener('pointerleave', () => { if (!this.geste) this.eclairer(this.choisi()); });
+      svg.addEventListener('focusin', e => { const n = e.target.closest('[data-noeud]'); if (n) this.eclairer(n.dataset.noeud); });
     }
 
     point(e) {
@@ -353,7 +480,7 @@
         const cadre = this.a.hote().querySelector('.gr-cadre'), r = cadre.getBoundingClientRect();
         if (e.clientX > r.right - 40) cadre.scrollLeft += 16; else if (e.clientX < r.left + 40) cadre.scrollLeft -= 16;
         if (e.clientY > r.bottom - 40) cadre.scrollTop += 16; else if (e.clientY < r.top + 40) cadre.scrollTop -= 16;
-        b.setAttribute('d', courbe(a, { x: p.x + 6, y: p.y - H / 2 }).d);
+        b.setAttribute('d', (this.bas() ? courbe(a, { x: p.x - L / 2, y: p.y + 6 }, null, true) : courbe(a, { x: p.x + 6, y: p.y - H / 2 })).d);
         const sous = this.noeudSous(e);
         svg.querySelectorAll('.gr-noeud.survol').forEach(n => n.classList.remove('survol'));
         if (sous && sous.dataset.noeud !== g.de) sous.classList.add('survol');
@@ -371,7 +498,7 @@
         if (l.de !== g.id && l.vers !== g.id) continue;
         const el = svg.querySelector(`[data-lien="${CSS.escape(l.id)}"]`);
         if (!el) continue;
-        const d = courbe(this.pos[l.de], this.pos[l.vers]).d;
+        const d = courbe(this.pos[l.de], this.pos[l.vers], null, this.bas()).d;
         el.querySelectorAll('path.gr-prise,path.gr-trait').forEach(x => x.setAttribute('d', d));
       }
     }
@@ -392,7 +519,7 @@
       }
       if (g.bouge) {
         const garde = {}; for (const [id, p] of Object.entries(this.pos)) garde[id] = { x: p.x, y: p.y };
-        ecrirePositions(this.a.cle, garde);
+        ecrirePositions(this.cleDispo(), garde);
         return this.rendre();
       }
       // Un simple clic : relier (si l'on a demandé « Relier à… ») ou choisir.
@@ -426,7 +553,7 @@
         e.preventDefault();
         const q = this.pos[n.dataset.noeud]; q.x += pas[0]; q.y += pas[1];
         const garde = {}; for (const [id, p] of Object.entries(this.pos)) garde[id] = { x: p.x, y: p.y };
-        ecrirePositions(this.a.cle, garde);
+        ecrirePositions(this.cleDispo(), garde);
         this.focus = `[data-noeud="${CSS.escape(n.dataset.noeud)}"]`;
         return this.rendre();
       }
@@ -491,12 +618,12 @@
     }
 
     /** Oublier la disposition retenue : les nœuds se rangent à nouveau d'eux-mêmes. */
-    reorganiser() { ecrirePositions(this.a.cle, null); this.rendre(); }
+    reorganiser() { ecrirePositions(this.cleDispo(), null); this.rendre(); }
 
     dire(texte) { if (this.a.message) this.a.message(texte); }
   }
 
-  const api = { L, H, CLE, disposer, courbe, validerPositions, lirePositions, ecrirePositions, Diagramme };
+  const api = { L, H, CLE, CLE_SENS, disposer, courbe, validerPositions, lirePositions, ecrirePositions, lireSens, ecrireSens, Diagramme };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyGraphe = api;
 })(typeof window !== 'undefined' ? window : globalThis);

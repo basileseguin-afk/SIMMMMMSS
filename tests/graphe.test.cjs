@@ -49,3 +49,39 @@ test('les dispositions retenues se relisent, le reste est écarté', () => {
     { 'chemin:x': { a: { x: 10, y: 20 } } });
   assert.throws(() => G.validerPositions([]), /invalides/);
 });
+
+/* En étapes (05/10) : de haut en bas, une branche se range juste au-dessus de
+ * celui qu'elle livre, un service relié à rien se met à part. */
+test('en étapes : de haut en bas, une étape par profondeur', () => {
+  const p = G.disposer(N(['a', 'b', 'c', 'x']), Lk([['a', 'b'], ['b', 'c'], ['x', 'c']]), { sens: 'bas' });
+  assert.ok(p.a.y < p.b.y && p.b.y < p.c.y, 'a, puis b, puis c, vers le bas');
+  assert.deepEqual([p.etape.a, p.etape.b, p.etape.c], [0, 1, 2]);
+  // x ne livre que c : il descend à l'étape juste avant c, à côté de b, sans le chevaucher.
+  assert.equal(p.etape.x, 1);
+  assert.equal(p.x.y, p.b.y);
+  assert.ok(Math.abs(p.x.x - p.b.x) >= G.L, 'côte à côte');
+});
+
+test('en étapes : une branche longue descend jusqu’à son arrivée', () => {
+  // appros → légumerie → cuisine → préparation → montage ; plonge → dotation → montage
+  const ids = ['appros', 'decontam', 'cuisine', 'preparation', 'prepa', 'plonge', 'dotation'];
+  const p = G.disposer(N(ids), Lk([['appros', 'decontam'], ['decontam', 'cuisine'], ['cuisine', 'preparation'], ['preparation', 'prepa'],
+    ['plonge', 'dotation'], ['dotation', 'prepa']]), { sens: 'bas' });
+  assert.equal(p.etape.dotation, p.etape.preparation, 'la dotation, à l’étape d’avant le montage');
+  assert.equal(p.etape.plonge, p.etape.cuisine, 'la plonge, juste au-dessus');
+  assert.equal(Object.keys(p.via).length, 0, 'aucun trait ne saute d’étape');
+});
+
+test('en étapes : un service relié à rien se range à part, tout en bas', () => {
+  const p = G.disposer(N(['a', 'b', 'seul']), Lk([['a', 'b']]), { sens: 'bas' });
+  assert.deepEqual(p.isoles, ['seul']);
+  assert.ok(p.seul.y > p.b.y);
+  // Sans aucun lien, il n'y a pas de « à part » : tout est au même rang.
+  assert.deepEqual(G.disposer(N(['u', 'v']), [], { sens: 'bas' }).isoles, []);
+});
+
+test('en étapes : un lien va du bas de A au haut de B', () => {
+  const k = G.courbe({ x: 0, y: 0 }, { x: 0, y: 200 }, null, true);
+  assert.match(k.d, new RegExp('^M' + G.L / 2 + ',' + G.H + ' C'));
+  assert.match(k.d, new RegExp(' ' + G.L / 2 + ',194$'));
+});

@@ -211,3 +211,55 @@
 .mu-qs-ligne{display:grid;grid-template-columns:118px minmax(0,1fr) auto;align-items:center;gap:8px;padding:3px 0}
 .mu-qs-classe{display:inline-flex;align-items:center;gap:6px;font-size:13px}
 .mu-qs-ligne select{width:100%;font:inherit;font-size:13px;padding:4px 6px}
+
+/* ---- Chemins › Vue d'ensemble (05/10) : tous les chemins, comme un plan de
+ * métro. Une colonne par chemin, une ligne par service rangée par étape ; une
+ * pastille où le chemin passe, un trait de sa couleur de la première à la
+ * dernière. */
+.mu-carte{display:grid;gap:12px}
+.mu-carte-tete p{margin:0}
+.mu-carte-resume{font-size:14px;color:var(--txt2)}
+.mu-carte-resume b{color:var(--txt)}
+.mu-ct-legende{white-space:nowrap}
+.mu-ct-l-arret{display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--c-chemins,#0e7490);border:2px solid #fff;box-shadow:0 0 0 1.5px var(--c-chemins,#0e7490);vertical-align:-1px;margin-right:3px}
+.mu-carte-cadre{overflow:auto;border:1px solid var(--bordure);border-radius:14px;background:var(--bg3);max-width:100%;width:fit-content}
+.mu-carte-table{border-collapse:separate;border-spacing:0}
+.mu-carte-table th,.mu-carte-table td{padding:0;border:0}
+.mu-carte-table thead th{position:sticky;top:0;z-index:2;background:var(--bg3);border-bottom:1px solid var(--bordure);vertical-align:bottom}
+.mu-ct-etape{width:84px;padding:8px 10px !important;text-align:left;font-size:11.5px;font-weight:800;letter-spacing:.02em;color:var(--txt3,var(--txt2));
+  vertical-align:top;background:color-mix(in srgb,var(--bordure) 14%,var(--bg3));border-right:1px solid var(--bordure)}
+.mu-ct-etape.sans-lien{color:var(--attente,#b45309)}
+.mu-ct-svc{position:sticky;left:0;z-index:1;background:var(--bg3);text-align:left;padding:4px 12px 4px 10px !important;min-width:200px;border-right:1px solid var(--bordure)}
+thead .mu-ct-svc{z-index:3;font-size:12px;color:var(--txt3,var(--txt2));font-weight:700;padding:10px 12px !important}
+.mu-ct-svc button{display:flex;align-items:center;gap:8px;font:inherit;font-size:13.5px;font-weight:700;color:var(--txt);background:none;border:0;padding:4px 0;cursor:pointer;text-align:left}
+.mu-ct-svc button:hover span:last-child{text-decoration:underline}
+.mu-ct-svc small{display:block;margin:-2px 0 2px 30px;font-size:11px;color:var(--txt3,var(--txt2))}
+.mu-ct-ico{display:inline-grid;place-items:center;width:22px;height:22px;color:var(--c-chemins,#0e7490)}
+.mu-ct-ico .ico{width:18px;height:18px}
+tbody tr.mu-ct-nouvelle>*{border-top:1px solid var(--bordure)}
+tbody tr:hover>td,tbody tr:hover>.mu-ct-svc{background:color-mix(in srgb,var(--c-chemins,#0e7490) 5%,var(--bg3))}
+/* L'en-tête d'un chemin : sa couleur, son nom, ses commandes. */
+.mu-ct-flux{width:118px;min-width:118px;max-width:150px;padding:10px 8px 8px !important;text-align:center;font-weight:400}
+.mu-ct-flux button{display:flex;flex-direction:column;align-items:center;gap:5px;width:100%;font:inherit;background:none;border:0;cursor:pointer;color:var(--txt);padding:0}
+.mu-ct-flux button b{font-size:13px;line-height:1.2;overflow-wrap:anywhere}
+.mu-ct-flux button:hover b{text-decoration:underline;color:var(--fc)}
+.mu-ct-puce{width:30px;height:6px;border-radius:3px;background:var(--fc)}
+.mu-ct-flux small{display:block;font-size:11px;color:var(--txt2);margin-top:2px}
+.mu-ct-flux .mu-ct-qui{color:var(--txt3,var(--txt2));font-style:italic}
+.mu-ct-flux.variante b{font-weight:600}
+.mu-ct-flux.propre .mu-ct-puce{background:repeating-linear-gradient(90deg,var(--fc) 0 6px,transparent 6px 10px)}
+/* Une case : le trait du chemin, et sa pastille s'il passe par là. */
+.mu-carte-table td{position:relative;height:44px;text-align:center}
+.mu-carte-table td.trait::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:5px;margin-left:-2.5px;background:var(--fc);opacity:.85;border-radius:3px}
+.mu-carte-table td.trait.debut::before{top:50%}
+.mu-carte-table td.trait.fin::before{bottom:50%}
+.mu-carte-table td.trait.debut.fin::before{display:none}
+.mu-ct-arret{position:relative;z-index:1;width:20px;height:20px;border-radius:50%;background:var(--fc);border:3px solid #fff;box-shadow:0 0 0 2px var(--fc),0 1px 3px rgba(16,24,40,.2);cursor:pointer;padding:0}
+.mu-ct-arret:hover,.mu-ct-arret:focus-visible{transform:scale(1.25);outline:none}
+.mu-ct-ajout{position:relative;z-index:1;width:22px;height:22px;border-radius:50%;border:1.5px dashed var(--bordure2);background:var(--bg3);color:var(--txt3,var(--txt2));
+  font:inherit;font-size:14px;line-height:1;cursor:pointer;padding:0;opacity:0;transition:opacity .12s}
+tr:hover .mu-ct-ajout,.mu-ct-ajout:focus-visible{opacity:1}
+.mu-ct-ajout:hover{border-color:var(--fc);color:var(--fc);border-style:solid}
+td.trait .mu-ct-ajout{background:var(--bg3)}
+.mu-carte-vide{padding:24px;border:1px dashed var(--bordure);border-radius:14px;display:grid;gap:10px;justify-items:start}
+.mu-carte-vide p{margin:0}

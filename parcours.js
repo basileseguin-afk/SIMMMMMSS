@@ -2241,8 +2241,12 @@
     /** Un chemin copié garde la disposition de son modèle : on s'y retrouve. */
     copierDisposition(de, vers) {
       const G = root.OrlyGraphe; if (!G || !de) return;
-      const tout = G.lirePositions(), pos = tout['flux:' + de] || tout['chemin:' + de];
-      if (pos) for (const k of ['flux:', 'chemin:']) G.ecrirePositions(k + vers, pos);
+      // Chaque sens (en ligne, en étapes « |bas ») garde sa disposition.
+      const tout = G.lirePositions();
+      for (const sens of ['', '|bas']) {
+        const pos = tout['flux:' + de + sens] || tout['chemin:' + de + sens];
+        if (pos) for (const k of ['flux:', 'chemin:']) G.ecrirePositions(k + vers + sens, pos);
+      }
     }
 
     geste(q) {
