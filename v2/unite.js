@@ -690,8 +690,26 @@
           <button class="btn btn-sm btn-play" type="submit">+ Créer</button></form>
       </nav>`;
       const t = types.find(x => x.id === this.fluxChoisi);
-      this.poser(box, regroupe + `<div class="mu-cadre">${liste}<div class="mu-fiche" data-mu-flux-fiche="${esc(t ? t.id : '')}">${t ? this.ficheFlux(t, classes) : '<p class="mini-note">Aucun flux de production : créez-en un (à gauche).</p>'}</div></div>`);
+      this.poser(box, regroupe + `<div class="mu-cadre">${liste}<div class="mu-fiche" data-mu-flux-fiche="${esc(t ? t.id : '')}">${t ? this.ficheFlux(t, classes) : '<p class="mini-note">Aucun flux de production : créez-en un (à gauche).</p>'}</div></div>`
+        + this.cheminsDesCommandes(classes));
       const g = this.grapheFlux(); if (g && t) g.rendre();
+    }
+
+    /* Qui suit quel chemin (retour d'usage du 05/10) : toutes les commandes, par
+     * compagnie, chacune avec la liste de tous les chemins — un flux, une variante,
+     * ou un chemin créé de toutes pièces. */
+    cheminsDesCommandes(classes) {
+      const st = this.etat, cies = [];
+      for (const c of classes) if (!cies.includes(c.cie)) cies.push(c.cie);
+      const ordre = c => P.CABINES.indexOf(c.cabine);
+      return `<details class="mu-qui-suit panneau"${this.quiSuitOuvert === false ? '' : ' open'} data-mu-qui-suit><summary><b>Qui suit quel chemin</b>
+          <span class="mini-note">— chaque compagnie × classe, et le chemin qu’elle suit : à choisir dans la liste</span></summary>
+        <div class="mu-qui-suit-grille">${cies.map(cie => `<div class="mu-qs-cie"><p class="mu-qs-tete">${esc(cie)}</p>
+          ${classes.filter(c => c.cie === cie).sort((a, b) => ordre(a) - ordre(b)).map(c => `<div class="mu-qs-ligne">
+            <span class="mu-qs-classe"><span class="puce-classe" data-cab="${esc(c.cabine)}"></span>${esc((P.NOM_CABINE || {})[c.cabine] || c.cabine)}</span>
+            ${PC.selectChemin(st, c, 'data-mu-cmd-chemin')}
+            <button type="button" class="lien-discret" data-mu-chemin="${esc(c.id)}" title="Voir son chemin et ses équipes">voir</button></div>`).join('')}</div>`).join('')}</div>
+      </details>`;
     }
 
     ficheFlux(t, classes) {
@@ -909,6 +927,14 @@
           }, 'Les ' + nom + ' suivent maintenant « ' + t.nom + ' » (sauf leurs exceptions).');
           else this.at.changer(() => { delete st.parcoursCabine[cab]; PC.nettoyerTypes(st); },
             'Les ' + nom + ' ne suivent plus aucun flux : ouvrez celui qu’elles doivent suivre (à gauche) et cochez « ' + nom + ' ».');
+        } else if (el.dataset.muCmdChemin !== undefined) {
+          // Qui suit quel chemin : le chemin de cette commande, choisi dans la liste.
+          const cmd = el.dataset.muCmdChemin, pid = el.value, q = (st.parcours || []).find(x => x.id === pid);
+          const avec = q && !q.type ? PC.commandeDu(st, q.id) : null;
+          this.quiSuitOuvert = true;
+          this.at.changer(() => { PC.choisirChemin(st, cmd, pid); },
+            PC.etiquette(cmd) + (q ? ' suit maintenant « ' + q.nom + ' ».' : ' suit de nouveau le flux de sa classe.')
+            + (avec && avec !== cmd ? ' C’était le chemin à part de ' + PC.etiquette(avec) + ' : c’est maintenant un flux partagé, le modifier change pour les deux.' : ''));
         } else if (el.dataset.muFluxChemin !== undefined && el.value) {
           this.chemin(el.value);
         } else if (el.dataset.muFluxAjouterCmd !== undefined && el.value && t) {
@@ -963,7 +989,10 @@
       });
       d.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.muNom) { e.preventDefault(); e.target.blur(); } });
       d.addEventListener('toggle', e => {
-        const t = e.target; if (!t.dataset || !t.dataset.muPlus) return;
+        const t = e.target;
+        // « Qui suit quel chemin » reste comme on l'a laissé, ouvert ou fermé.
+        if (t.dataset && t.dataset.muQuiSuit !== undefined) { this.quiSuitOuvert = t.open; return; }
+        if (!t.dataset || !t.dataset.muPlus) return;
         this.ouvertes = this.ouvertes || new Set();
         if (t.open) this.ouvertes.add(t.dataset.muPlus); else this.ouvertes.delete(t.dataset.muPlus);
       }, true);

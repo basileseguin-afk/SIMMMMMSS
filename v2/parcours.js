@@ -1082,6 +1082,58 @@
   }
 
   /** Une commande suit ce flux (et quitte son chemin propre, s'il en avait un). */
+  /* CHOISIR LE CHEMIN D'UNE COMMANDE (retour d'usage du 05/10 : « si je crée un
+   * chemin de toute pièce, je veux pouvoir le choisir pour une compagnie × classe,
+   * dans une liste déroulante de tous les chemins »). */
+
+  /** Les chemins qu'une commande peut suivre : `[{ id, nom, groupe, proprio }]`,
+   *  groupe 'flux' (partagé), 'variante', 'sien' (son chemin à elle) ou 'apart'
+   *  (le chemin à part d'une autre commande, ou d'aucune). */
+  function cheminsPossibles(etat, cmd) {
+    const out = [];
+    for (const p of etat.parcours || []) {
+      if (p.type) { out.push({ id: p.id, nom: p.nom, groupe: p.auto ? 'variante' : 'flux' }); continue; }
+      const proprio = commandeDu(etat, p.id);
+      out.push({ id: p.id, nom: p.nom, groupe: proprio === cmd ? 'sien' : 'apart', proprio });
+    }
+    return out;
+  }
+
+  /** `cmd` suit désormais le chemin `pid` ; vide : le flux de sa classe. Le chemin à
+   *  part d'une autre commande devient un flux partagé — modifié, il change pour
+   *  toutes celles qui le suivent. Modifie `etat`.
+   *  @returns {{ partage: string|null }} la commande avec qui il est désormais partagé */
+  function choisirChemin(etat, cmd, pid) {
+    etat.parcoursClasse = etat.parcoursClasse || {};
+    const p = pid ? (etat.parcours || []).find(x => x.id === pid) : null;
+    let partage = null;
+    if (!p) delete etat.parcoursClasse[cmd];
+    else if (!p.type) {
+      const proprio = commandeDu(etat, p.id);
+      if (proprio !== cmd) {
+        // Un chemin à part, choisi par une autre : il devient un flux, suivi par les deux.
+        partage = proprio;
+        p.type = true; delete p.auto; p.prepa = p.prepa !== false; p.cases = p.cases !== false;
+        etat.parcoursClasse[cmd] = p.id;
+      }
+    } else assignerType(etat, cmd, p.id);
+    nettoyerTypes(etat);
+    return { partage };
+  }
+
+  /** La liste déroulante du chemin d'une commande, groupée ; `attr` : son attribut `data-…`. */
+  function selectChemin(etat, c, attr) {
+    const cab = c.cabine || String(c.id).slice(String(c.id).lastIndexOf('/') + 1);
+    const deClasse = (etat.parcours || []).find(p => p.id === (etat.parcoursCabine || {})[cab]);
+    const choisi = (etat.parcoursClasse || {})[c.id] || '';
+    const tous = cheminsPossibles(etat, c.id);
+    const opt = x => `<option value="${esc(x.id)}"${x.id === choisi ? ' selected' : ''}>${esc(x.nom)}${x.groupe === 'apart' && x.proprio ? ' (chemin de ' + esc(P.libelleClasse(x.proprio)) + ' : il deviendra partagé)' : ''}</option>`;
+    const groupe = (g, titre) => { const l = tous.filter(x => x.groupe === g); return l.length ? `<optgroup label="${titre}">${l.map(opt).join('')}</optgroup>` : ''; };
+    return `<select ${attr}="${esc(c.id)}" aria-label="Chemin suivi par ${esc(P.libelleClasse(c.id))}">
+      <option value=""${choisi ? '' : ' selected'}>${deClasse ? '« ' + esc(deClasse.nom) + ' » · flux de sa classe' : 'Aucun : sa classe n’a pas de flux'}</option>
+      ${groupe('sien', 'Son chemin à elle')}${groupe('flux', 'Flux')}${groupe('variante', 'Variantes')}${groupe('apart', 'Chemins à part')}</select>`;
+  }
+
   function assignerType(etat, cmd, typeId) {
     etat.parcoursClasse = etat.parcoursClasse || {};
     const propre = cheminDe(etat, cmd);
@@ -1538,11 +1590,14 @@
 
     corpsCommande(etat, classes) {
       const c = classes.find(x => x.id === this.cmd), p = fluxDe(etat, this.cmd);
-      if (!p) return this.teteCommande(c, false) + this.creation(etat, classes, c);
+      // Le chemin qu'elle suit, à choisir parmi tous (05/10).
+      const suit = `<p class="pc-suit"><label>Chemin suivi ${selectChemin(etat, c, 'data-pc-suit')}</label>
+        <span class="mini-note">un flux, une variante, ou un chemin créé de toutes pièces</span></p>`;
+      if (!p) return this.teteCommande(c, false) + suit + this.creation(etat, classes, c);
       if (this.partage(etat, p)) {
         // Elle suit un flux partagé : on le montre, avec SES équipes à chaque étape.
         const n = commandesDuType(etat, p.id, classes).length, lib = this.lib(this.cmd), I = root.OrlyIcones;
-        return this.teteCommande(c, true)
+        return this.teteCommande(c, true) + suit
           + `<div class="pc-flux-bandeau">${I ? I.ico('fleche') : ''}<span><b>${esc(lib)}</b> suit le flux <b>« ${esc(p.nom)} »</b>${n > 1 ? ', comme ' + (n - 1) + (n > 2 ? ' autres commandes' : ' autre commande') : ''}.
             Ci-dessous, ce flux ; sur chaque service, l’équipe qui prépare ${esc(lib)}.</span>
             <span class="pc-flux-gestes"><button class="btn btn-sm" data-pc-action="flux-ouvrir">Modifier ce flux${n > 1 ? ' (ses ' + n + ' commandes)' : ''}</button>
@@ -1553,7 +1608,7 @@
           <details class="pc-creer-plus"${this.depuis !== undefined ? ' open' : ''}><summary>Ou bien : un chemin à elle, avec une case à elle sur chaque service…</summary>
             ${this.creation(etat, classes, c, true)}</details>`;
       }
-      return this.teteCommande(c, true) + this.outils(etat, p, this.duplication(etat, classes, c))
+      return this.teteCommande(c, true) + suit + this.outils(etat, p, this.duplication(etat, classes, c))
         + `<p class="pc-message" role="status" aria-live="polite"></p>
         <div class="pc-graphe" data-parcours="${esc(p.id)}"></div>
         <div class="pc-bas">${this.blocPanneau(etat, classes, p)}</div>`;
@@ -2202,6 +2257,14 @@
 
     saisir(e) {
       const el = e.target;
+      if (el.dataset.pcSuit !== undefined) {
+        // Le chemin qu'elle suit, choisi dans la liste (05/10).
+        const cmd = el.dataset.pcSuit, pid = el.value, lib = this.lib(cmd), etat = this.a.etat();
+        const q = (etat.parcours || []).find(x => x.id === pid), avec = q && !q.type ? commandeDu(etat, q.id) : null;
+        const msg = !q ? lib + ' suit de nouveau le flux de sa classe.' : lib + ' suit maintenant « ' + q.nom + ' ».'
+          + (avec && avec !== cmd ? ' C’était le chemin à part de ' + this.lib(avec) + ' : c’est maintenant un flux partagé, le modifier change pour les deux.' : '');
+        return setTimeout(() => this.a.changer(x => { choisirChemin(x, cmd, pid); }, msg), 0);
+      }
       if (el.dataset.qf === 'incompletes') { this.incompletes = el.checked; return this.filtrer(); }
       const champ = el.dataset.pcChamp; if (!champ) return;
       const p = this.parcoursActif(this.a.etat()), pid = p && p.id;
@@ -2253,7 +2316,7 @@
     colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, donnerCases, completerCases, nomLibre, caseHandling, anciensHandlings, brancherHandling, caseRobot, remplacerEtape,
     SERVICES_DISPO, estDispo, caseDispo, anciensDispos, partagerDispos, separerParCommande, ajouterBesoin,
     insererService, retirerService, integrerArmement, delierHandling, armementIntegre, armementACorriger, versParCompagnie, liberer, insererParEcheance, cocher, passerPar, grille, natureService, equipeNeuve,
-    marquerTypes, typeSuivi, fluxDe, signature, types, commandesDuType, nouveauType, assignerType, nettoyerTypes, nomVariante, adapter,
+    marquerTypes, typeSuivi, fluxDe, signature, types, commandesDuType, nouveauType, assignerType, nettoyerTypes, cheminsPossibles, choisirChemin, selectChemin, nomVariante, adapter,
     changerFlux, regrouper, EditeurParcours };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyParcours = api;

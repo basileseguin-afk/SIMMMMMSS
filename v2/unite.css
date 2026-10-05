@@ -202,3 +202,12 @@
 .mu-lien-handling p{margin:0 0 4px}
 .mu-lien-handling .btn{margin-left:6px}
 .mu-arm-ok{color:var(--ok,#15803d)}
+/* Qui suit quel chemin (05/10) : une carte par compagnie, une ligne par classe et sa liste. */
+.mu-qui-suit{margin-top:18px}
+.mu-qui-suit>summary{cursor:pointer;padding:6px 0;font-size:14px}
+.mu-qui-suit-grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:12px;margin-top:10px}
+.mu-qs-cie{border:1px solid var(--bordure);border-radius:10px;padding:10px 12px;background:var(--bg3)}
+.mu-qs-tete{margin:0 0 6px;font-weight:800;letter-spacing:.03em}
+.mu-qs-ligne{display:grid;grid-template-columns:118px minmax(0,1fr) auto;align-items:center;gap:8px;padding:3px 0}
+.mu-qs-classe{display:inline-flex;align-items:center;gap:6px;font-size:13px}
+.mu-qs-ligne select{width:100%;font:inherit;font-size:13px;padding:4px 6px}

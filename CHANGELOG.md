@@ -5,6 +5,26 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-05 — Choisir le chemin de chaque commande dans une liste
+
+Demande : « si je crée un chemin de toute pièce, je veux pouvoir le choisir,
+ou modifier un chemin : pour une compagnie × classe, une liste déroulante de
+tous les chemins ». Réponses aux questions : les deux emplacements ; un chemin
+créé est un flux partageable ; un chemin à part choisi par une autre commande
+devient un flux partagé.
+
+- **Flux de production › Qui suit quel chemin** (ouvert par défaut, sous le
+  flux) : une carte par compagnie, une ligne par classe, et la liste de tous
+  les chemins — « « Complet » · flux de sa classe », puis les flux, les
+  variantes, les chemins à part. Un lien « voir » ouvre le chemin de la commande.
+- **Une commande › Chemin suivi** : la même liste, en tête.
+- Choisir le chemin à part d'une autre commande en fait un **flux partagé**
+  (la liste le prévient ; le message le confirme) : le modifier change pour
+  les deux.
+- `PC.cheminsPossibles`, `PC.choisirChemin`, `PC.selectChemin` ; v1 et v2
+  (`parcours.js`, `unite.js`, `unite.css`, `graphe.css`). Tests :
+  `tests/chemin-choisi.test.cjs`, `tests/chemin-choisi-browser.cjs`.
+
 ## 2026-10-05 — Créer un service à part entière (« Roulés couverts »)
 
 Demande : « créer un tout nouveau service, Roulés couverts, qui a la même

@@ -204,7 +204,10 @@ le rouge ne sert qu’aux retards.
      choisi, « Ses équipes → ».
    - *Tableau des équipes* et *Tableau des minutes* : toutes les équipes (et
      leurs heures), toutes les minutes, d’un coup d’œil, modifiables sur place
-     ou dans Excel. Le tableau des minutes se lit par compagnie : un bloc
+     ou dans Excel. *Flux de production › Qui suit quel chemin* : chaque
+     compagnie × classe et la liste de tous les chemins (flux, variantes,
+     chemins créés de toutes pièces) ; la même liste « Chemin suivi » en tête
+     de *Une commande*. Le tableau des minutes se lit par compagnie : un bloc
      chacune, sa ligne en tête est son total (la somme de ses classes,
      service par service, et l’armement, réglé là) ; un clic la déplie sur
      ses classes (« Tout déplier / Tout replier »). Première colonne et total
@@ -518,6 +521,8 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/recap.test.cjs` | Récap des man-minutes : d’où vient chaque valeur, totaux, fichier de paramétrage (aller-retour sans changement, grosses modifications, erreurs), ligne récap par compagnie (armement) |
 | `tests/recap-browser.cjs` | Mon unité › Tableau des minutes : une ligne par commande, modifier / vider une case, sur la journée, chercher, export puis import |
 | `tests/recap-compagnie-browser.cjs` | Tableau des minutes et armement (v1 et v2) : un bloc par compagnie, sa ligne total en tête (somme de ses classes), classes repliables, minutes par vol modifiables (reliées à la fiche de l’armement), retour à la valeur commune, effectif, Annuler, sur la journée, recherche |
+| `tests/chemin-choisi.test.cjs` | Choisir le chemin d’une commande (v1 et v2) : liste des chemins, flux choisi, retour au flux de sa classe, chemin à part qui devient partagé |
+| `tests/chemin-choisi-browser.cjs` | Le chemin d’une commande dans une liste (v1 et v2) : « Qui suit quel chemin » (Flux de production) et « Chemin suivi » (Une commande) ; un flux créé de toutes pièces se choisit, le calcul le suit ; un chemin à part choisi devient partagé, et c’est dit |
 | `tests/service-autonome-browser.cjs` | Un service à part entière créé depuis le site (v1 et v2), « Roulés couverts » : rangé comme Prépa ou Dotation, sans minutes ni liens hérités ; flux, équipe, minutes, calcul, tableau des minutes, planning, Excel, rechargement ; rattacher / détacher ; la salle de plus reste un choix |
 | `tests/armement-integre-browser.cjs` | « L’intégrer à tous les chemins » seulement s’il y a à faire (v1 et v2) : chemins suivis par les commandes seulement, un lien vers un handling suffit, sinon le chemin à reprendre est nommé avec la raison ; un clic le remet en ordre |
 | `tests/coherence.test.cjs` | Audit des flux (v1 et v2) : une case cochée hors du chemin de sa commande n’y est pas préparée, et c’est dit ; un vol ne part pas avec son seul armement |
