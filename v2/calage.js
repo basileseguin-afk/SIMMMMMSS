@@ -268,7 +268,7 @@
       ['Feuille', 'Colonne', 'Obligatoire', 'Format', 'Exemple', 'Ce qu’on y met'],
       ['Vols', 'date', 'oui', 'AAAA-MM-JJ ou JJ/MM/AAAA', '2026-09-01', 'Le jour du vol (départ ou retour).'],
       ['Vols', 'vol_id', 'oui', 'texte', 'XX101', 'Le numéro de vol.'],
-      ['Vols', 'compagnie', 'oui', 'texte', 'XX', 'Le code de la compagnie, comme dans Mon unité (ex. AF).'],
+      ['Vols', 'compagnie', 'oui', 'texte', 'XX', 'Le code de la compagnie, comme dans le programme des vols (ex. AF).'],
       ['Vols', 'type_avion', 'non', 'texte', 'A320', 'Le type d’avion (sert au taux de remplissage).'],
       ['Vols', 'sens', 'oui', 'DEP ou RET', 'DEP', 'DEP : un départ (on prépare ses repas) ; RET : un retour (la plonge).'],
       ['Vols', 'heure_std', 'pour un DEP', 'HH:MM', '07:00', 'L’heure de départ prévue.'],
@@ -276,8 +276,8 @@
       ['Vols', 'nb_BC, nb_PC, nb_YC', 'oui', 'nombre entier', '12, 0, 150', 'Les repas (passagers) par classe : Business, Premium, Économie.'],
       ['Vols', 'nb_CREW, nb_SPML', 'non', 'nombre entier', '5, 3', 'Les repas équipage et les repas spéciaux.'],
       ['Planning', 'date', 'oui', 'AAAA-MM-JJ', '2026-09-01', 'Le jour des vols que l’équipe prépare.'],
-      ['Planning', 'service', 'oui', 'texte', 'Montage', 'Le service, avec le même nom que dans Mon unité.'],
-      ['Planning', 'equipe', 'oui', 'texte', 'Montage matin', 'L’équipe, avec le même nom que dans Mon unité (c’est ce qui relie le planning à ce qu’elle prépare).'],
+      ['Planning', 'service', 'oui', 'texte', 'Montage', 'Le service, avec le même nom que dans Équipes.'],
+      ['Planning', 'equipe', 'oui', 'texte', 'Montage matin', 'L’équipe, avec le même nom que dans Équipes (c’est ce qui relie le planning à ce qu’elle prépare).'],
       ['Planning', 'debut, fin', 'oui', 'HH:MM', '04:00, 12:15', 'L’horaire prévu de l’équipe (sa vacation). Une fin avant le début passe minuit.'],
       ['Planning', 'personnes', 'oui', 'nombre entier', '4', 'Le nombre de personnes prévues dans l’équipe ce jour-là.'],
       ['Planning', 'jour', 'non', '0, -1 ou -2', '-1', 'Vide ou 0 : le jour même ; -1 : la veille (ex. la cuisine).'],
@@ -291,7 +291,7 @@
       [],
       ['Règles'],
       ['Une ligne par vol, par équipe et par jour, par personne et par jour. Un mois entier dans un seul classeur.'],
-      ['Les noms de service et d’équipe doivent être ceux de Mon unité (majuscules et accents indifférents).'],
+      ['Les noms de service et d’équipe doivent être ceux de Équipes (majuscules et accents indifférents).'],
       ['Les heures sup ne se saisissent pas : le site les déduit (heures pointées au-delà du planning).'],
       ['Les lignes de ce classeur sont un EXEMPLE FICTIF : remplacez-les par les vôtres.'],
       ['Confidentialité : ce classeur reste dans votre navigateur (ou est traité dans la session) ; il ne va jamais dans le dépôt public.']
@@ -320,7 +320,7 @@
   }
 
   /* ======================================================================
-   *  LA PAGE : Réglages › Calage sur le réel
+   *  LA PAGE : Simulation › Calage sur le réel
    * ====================================================================*/
 
   const esc = x => String(x ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -367,8 +367,8 @@
         corps += `<div class="ca-carte"><h3>Le mois importé</h3>
           <p>${j.length} jour(s)${j.length ? ' — du ' + esc(j[0].date) + ' au ' + esc(j[j.length - 1].date) : ''} · ${j.reduce((n, x) => n + x.vols.length, 0)} vols ·
             ${planning} lignes de planning · ${pointages} pointages · ${m.cout.length} lignes de labor cost.</p>
-          ${inconnues.size ? `<p class="ca-alerte">Équipes du planning absentes de Mon unité (ignorées) : ${[...inconnues.values()].slice(0, 8).map(i => esc(this.nom(i.service) + ' › ' + (i.equipe || '?'))).join(', ')}${inconnues.size > 8 ? '…' : ''}.
-            Donnez-leur le même nom dans Mon unité.</p>` : ''}
+          ${inconnues.size ? `<p class="ca-alerte">Équipes du planning absentes de Équipes (ignorées) : ${[...inconnues.values()].slice(0, 8).map(i => esc(this.nom(i.service) + ' › ' + (i.equipe || '?'))).join(', ')}${inconnues.size > 8 ? '…' : ''}.
+            Donnez-leur le même nom dans Équipes.</p>` : ''}
           ${m.avertissements.length ? `<details class="ca-alerte"><summary>${m.avertissements.length} ligne(s) non lue(s)</summary><ul>${m.avertissements.slice(0, 40).map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>` : ''}
           <div class="row-btns">${this.enCours ? '' : `<button type="button" class="btn btn-play" data-ca="lancer"${j.length < 2 ? ' disabled' : ''}>Lancer le calage</button>`}
             <button type="button" class="lien-discret" data-ca="oublier">Oublier ce mois</button></div>

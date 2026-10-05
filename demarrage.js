@@ -6,8 +6,9 @@
  *  tuiles, une par partie du travail :
  *
  *      Vols           ce qu'on importe : le programme, la planche retour
- *      Mon unité      ce qu'on décrit : services, équipes, minutes de travail
- *      Réglages       ce qu'on essaie : horaires, rythme, pauses
+ *      Chemins        par où passe chaque commande
+ *      Équipes        qui prépare quoi, quand, en combien de temps
+ *      Simulation     vérifier, régler (horaires, rythme, pauses), lancer
  *      Résultats      ce que la journée donne
  *
  *  Chaque tuile porte son état en clair (fait, exemple, à faire) et ses pages.
@@ -32,7 +33,7 @@
   const VUES = {
     vols: { titre: 'Les vols',
       intro: 'Les avions qui partent aujourd’hui, et si leurs repas sont prêts à temps.' },
-    ateliers: { titre: 'Mon unité',
+    ateliers: { titre: 'Les équipes',
       intro: 'Une commande par compagnie et par classe : par où elle passe, et quelle équipe la prépare.' },
     reglages: { titre: 'Les temps de travail',
       intro: 'Combien de minutes chaque service passe sur un vol : c’est ce qui fait durer chaque préparation.' },
@@ -137,6 +138,10 @@
     const ligne = (cle, nom) => ({ texte: nom + ' : ' + par[cle].detail, etat: par[cle].etat });
     const r = e.reglages || {};
     const donnees = [ligne('vols', 'Vols')];
+    const c = e.chemins || {};
+    const chemins = [{ texte: 'Flux : ' + pluriel(c.flux || 0, 'flux', 'flux') + (c.variantes ? ' · ' + pluriel(c.variantes, 'variante') : ''),
+      etat: c.flux ? 'fait' : 'afaire' }];
+    if (c.sansChemin) chemins.push({ texte: pluriel(c.sansChemin, 'commande') + ' sans chemin', etat: 'afaire' });
     const organisation = [ligne('ateliers', 'Équipes'), ligne('bareme', 'Minutes de travail'), ligne('unite', 'Unité')];
     const reglages = [
       { texte: 'Repas prêts ' + (r.delai ?? 45) + ' min avant le départ'
@@ -146,6 +151,7 @@
     const resultats = [ligne('journee', 'Journée')];
     return [
       { partie: 'donnees', etat: pire(donnees.map(l => l.etat)), lignes: donnees },
+      { partie: 'chemins', etat: pire(chemins.map(l => l.etat)), lignes: chemins },
       { partie: 'organisation', etat: pire(organisation.map(l => l.etat)), lignes: organisation },
       { partie: 'reglages', etat: 'fait', lignes: reglages },
       { partie: 'resultats', etat: pire(resultats.map(l => l.etat)), lignes: resultats }
@@ -220,7 +226,7 @@
         : `<p class="acc-suite fait">${icone('check')}<span>Tout est en place : regardez les <button type="button" class="lien-fort" data-page="j-chiffres">résultats →</button></span></p>`;
       const tuile = p => {
         const t = etat[p.id];
-        const pages = O().pagesDe(p.id).map(x => `<button type="button" class="acc-page" data-page="${x.id}">${esc(x.nom)}</button>`).join('');
+        const pages = O().pagesDe(p.id).map(x => `<button type="button" class="acc-page${x.plus ? ' acc-plus' : ''}" data-page="${x.id}">${esc(x.nom)}</button>`).join('');
         return `<article class="acc-tuile ${t.etat}" style="--c:${p.couleur}">
           <button type="button" class="acc-tuile-tete" data-vers-partie="${p.id}">
             <span class="acc-ico" aria-hidden="true">${icone(p.ico)}</span>

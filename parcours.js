@@ -861,7 +861,7 @@
   }
 
   /* ======================================================================
-   *  LA GRILLE À COCHER (Mon unité › Services, 29/09)
+   *  LA GRILLE À COCHER (Équipes › Services et équipes, 29/09)
    *
    *  Quelqu'un qui connaît l'unité ne pense pas en « chemins » : il sait
    *  quelle équipe prépare quoi. On coche donc, équipe par équipe, les
@@ -1936,7 +1936,7 @@
     sectionTableau(etat, classes) {
       const t = tableau(etat, classes);
       const r = this.a.resultat ? this.a.resultat() : null;
-      const titre = `<div class="titre-aide at-titre-aide"><h3 class="at-titre" id="pc-t2">Parcours des commandes <span class="pc-sous">qui prépare chaque commande, service par service, et quand</span></h3>
+      const titre = `<div class="titre-aide at-titre-aide"><h3 class="at-titre" id="pc-t2">Étapes de chaque commande <span class="pc-sous">qui prépare chaque commande, service par service, et quand</span></h3>
         <details class="aide"><summary aria-label="Comment lire le tableau ?">?</summary><span class="aide-corps">${AIDE_TABLEAU}</span></details></div>`;
       if (!t.lignes.length) return `<section class="qf" aria-labelledby="pc-t2" data-sous="at-grille">${titre}
         <p class="mini-note">Aucune commande à préparer : importez un programme de vols (Vols).</p></section>`;
@@ -1944,10 +1944,10 @@
       if (!(etat.ateliers || []).length) return `<section class="qf" aria-labelledby="pc-t2" data-sous="at-grille">${titre}
         <div class="vide-carte qf-vide">${root.OrlyIcones ? root.OrlyIcones.ico('equipe') : ''}<b>Aucune case pour l’instant</b>
           <p>Ce tableau se remplit tout seul : quelle équipe prépare chaque commande, service par service, et à quelle heure.</p>
-          <p>Pour commencer : dans Mon unité › Services et équipes, cochez ce que prépare chaque équipe.</p>
-          <div class="row-btns"><button class="btn btn-play" data-page="mu-services">Ouvrir Mon unité</button></div></div></section>`;
+          <p>Pour commencer : dans Équipes › Services et équipes, cochez ce que prépare chaque équipe.</p>
+          <div class="row-btns"><button class="btn btn-play" data-page="mu-services">Ouvrir Services et équipes</button></div></div></section>`;
       if (!t.colonnes.length) return `<section class="qf" aria-labelledby="pc-t2" data-sous="at-grille">${titre}
-        <p class="mini-note">Aucune commande ne passe encore par un service : cochez ce que prépare chaque équipe dans Mon unité › Services et équipes.</p></section>`;
+        <p class="mini-note">Aucune commande ne passe encore par un service : cochez ce que prépare chaque équipe dans Équipes › Services et équipes.</p></section>`;
 
       // Les heures d'un lot, pour lire le tableau comme un planning.
       const lots = new Map();

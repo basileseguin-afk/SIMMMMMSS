@@ -71,7 +71,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await nav.aller(p2,'at-chemins');
   assert.match(await p2.locator('#at-status').innerText(),/deviennent une case par poste[\s\S]*Annuler/);
   await p2.locator('[data-pc-action=cmd][data-classe="AF/BC"]').click();await p2.waitForTimeout(300);
-  assert.match(await p2.locator('.pc-graphe [data-noeud=decontam]').textContent(),/à disposition/,'le nœud du chemin est servi par la case partagée');
+  assert.match(await p2.locator('#at-parcours .pc-graphe [data-noeud=decontam]').textContent(),/à disposition/,'le nœud du chemin est servi par la case partagée');
   // « Annuler » revient à l'organisation d'avant.
   await p2.locator('#at-undo').click();await p2.waitForTimeout(300);
   assert.equal(await p2.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service==='decontam').length),2);

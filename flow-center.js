@@ -91,11 +91,11 @@ class FlowCenter{
    <section id="fc-lecture" class="fc-lecture" data-sous="u-lecture">
     <div id="fc-calcul" class="fc-calcul"></div>
     <h3 class="fc-list-title">Les liens entre services, tels que le calcul les lit</h3>
-    <div class="mini-note">Un repas suit d’abord <b>son chemin</b> (Mon unité : ce que chaque équipe prépare) ; ces
+    <div class="mini-note">Un repas suit d’abord <b>son chemin</b> (Chemins, et Équipes : ce que chaque équipe prépare) ; ces
      liens ne servent qu’aux repas qui n’en ont pas.<details class="aide"><summary aria-label="Ce que le calcul retient de ces liens">?</summary>
      <span class="aide-corps"><p>Ces liens décrivent l’unité : qui livre qui. Ils ne disent pas le
        chemin de <b>chaque</b> repas — un plateau d’économie ne passe pas par la cuisine. C’est le
-       rôle des <b>chemins</b>, que Mon unité déduit de ce que chaque équipe prépare.</p>
+       rôle des <b>chemins</b>, que l’on dessine dans Chemins.</p>
        <p>Pour un repas sans chemin, un service ne le prépare que lorsque tous ceux qui le
        livrent ici l’ont fait. Seul compte le <b>sens</b> des liens actifs ; leur type et leur
        précision ne servent qu’à décrire.</p></span></details></div>

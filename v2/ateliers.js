@@ -507,7 +507,7 @@
 </div>
 <div id="at-liste" data-sous="at-equipes"></div>
 <p class="mini-note at-materiel-renvoi" data-sous="at-equipes">La boucle du matériel et les retours des vols à la plonge se règlent dans
-  <button class="lien-discret" data-page="rg-simulation">Réglages › Réglages de la simulation →</button></p>
+  <button class="lien-discret" data-page="rg-simulation">Simulation › Réglages de la simulation →</button></p>
 <h3 class="at-titre" data-sous="at-planning">La journée des équipes <span class="pc-sous">qui travaille quand</span></h3>
 <div id="at-indicateurs" class="at-indicateurs" data-sous="at-planning"></div>
 <div id="at-planning" class="at-planning" data-sous="at-planning"></div>
@@ -635,7 +635,7 @@
         + (r.services.length > 1 ? 'une case par poste' : 'une seule case') + ', partagée par toutes les commandes ; leurs heures sont ses vagues.';
     }
 
-    /** Changer la nature d'une case (Mon unité › Services : ce que fait le service). */
+    /** Changer la nature d'une case (Équipes › Services et équipes : ce que fait le service). */
     typer(a, v) { typer(a, v); }
 
     /* Une case se règle dans le chemin d'une de ses commandes, sous son service.
@@ -645,7 +645,7 @@
     ouvrirFiche(id) {
       const a = this.state.ateliers.find(x => x.id === id); if (!a) return false;
       // Seul un chemin propre s'ouvre dans l'éditeur des chemins : un flux partagé
-      // se règle dans Mon unité › Flux de production ; la case s'ouvre alors sur place.
+      // se règle dans Chemins › Flux de production ; la case s'ouvre alors sur place.
       const passe = c => { const p = PC.cheminDe(this.state, c); return !!p && P.servicesDuParcours(p).includes(a.service); };
       const cmd = [...new Set((a.lots || []).flat())].find(passe) || this.classes.map(c => c.id).find(passe);
       if (!cmd) return false;
@@ -1204,7 +1204,7 @@
         // des commandes pas encore commencées) : on le dit autrement.
         const cmd = new Set(trous.flatMap(a => a.classes || [])).size;
         list.push((cmd > 1 ? cmd + ' commandes commencées sautent' : '1 commande commencée saute') + ' une étape sans équipe ('
-          + trous.map(a => esc(nomSv(a.service))).join(', ') + ') : à compléter dans Mon unité › Services et équipes (cochez-les dans une équipe) ; « Parcours des commandes », dans Résultats, montre les étapes sautées.');
+          + trous.map(a => esc(nomSv(a.service))).join(', ') + ') : à compléter dans Équipes › Services et équipes (cochez-les dans une équipe) ; « Étapes de chaque commande », dans Résultats, montre les étapes sautées.');
       }
       // Un service supprimé que des cases ou des chemins citent encore : il fait
       // des alertes, et aucune liste ne le montre. Le geste qui l'efface est ici.
@@ -1213,7 +1213,7 @@
           + [f.cases ? f.cases + (f.cases > 1 ? ' cases' : ' case') : '', f.chemins ? f.chemins + (f.chemins > 1 ? ' chemins' : ' chemin') : ''].filter(Boolean).join(' et ')
           + (f.cases + f.chemins > 1 ? ' y passent' : ' y passe') + ' encore. '
           + '<button class="btn btn-sm svc-danger" data-at-action="fantome-effacer" data-service="' + esc(f.id) + '">Effacer partout</button> '
-          + '<button class="lien-discret" data-page="u-services">Ou le remplacer, dans Outils avancés › Services →</button>');
+          + '<button class="lien-discret" data-page="u-services">Ou le remplacer, dans Équipes › Liste des services →</button>');
       }
       // Des cases de handling d'avant (une par commande) : le handling travaille
       // désormais par vol. On le dit en tête, avec le geste qui convertit.
@@ -1281,7 +1281,7 @@
       const chiffre = (lab, val, note) =>
         `<div class="at-mat-chiffre"><span>${esc(lab)}</span><b>${esc(String(val))}</b>${note ? '<em>' + esc(note) + '</em>' : ''}</div>`;
       // Les retours et la boucle du matériel sont des réglages de la simulation :
-      // ils vivent dans « Réglages › Réglages de la simulation » (retour d'usage du 29/09).
+      // ils vivent dans « Simulation › Réglages de la simulation » (retour d'usage du 29/09).
       const boite = document.getElementById('rg-sim-materiel') || document.getElementById('at-materiel');
       if (!boite) return;
       const src = P.sourceRetours(m), n = (m.planche || []).length;
@@ -1346,7 +1346,7 @@
       const box = document.getElementById('at-liste');
       if (!montrer.length) {
         box.innerHTML = '<p class="at-vide">Aucune case' + (this.filtre ? ' dans ' + esc(nom(this.filtre)) : '')
-          + '. Les cases se créent dans Mon unité › Services et équipes, ou dans « Une commande » : choisissez une commande, puis cliquez un service de son chemin.'
+          + '. Les cases se créent dans Équipes › Services et équipes, ou dans « Une commande » : choisissez une commande, puis cliquez un service de son chemin.'
           + ' <button class="lien-discret" data-aller="ateliers" data-onglet="at-chemins">Ouvrir « Une commande » →</button></p>';
         return;
       }
@@ -1941,7 +1941,7 @@
       const cases = this.state.ateliers.slice()
         .filter(a => !filtre || (a.nom + ' ' + nomSvc(a.service) + ' ' + (a.lots || []).flat().map(c => c + ' ' + P.libelleClasse(c)).join(' ')).toLowerCase().includes(filtre))
         .sort((x, y) => (ordre.get(x.service) ?? 999) - (ordre.get(y.service) ?? 999) || minDe(x) - minDe(y) || x.nom.localeCompare(y.nom));
-      if (!this.state.ateliers.length) { box.innerHTML = '<p class="mini-note">Aucune case pour l’instant : décrivez vos équipes (Mon unité › Services et équipes).</p>'; return; }
+      if (!this.state.ateliers.length) { box.innerHTML = '<p class="mini-note">Aucune case pour l’instant : décrivez vos équipes (Équipes › Services et équipes).</p>'; return; }
       const I = root.OrlyIcones, hh = P.hhmm;
       const jours = (v, attrs) => `<select ${attrs}>${[0, -1, -2, -3].map(j => `<option value="${j}" ${j === (v || 0) ? 'selected' : ''}>${j === 0 ? 'J' : 'J' + j}</option>`).join('')}</select>`;
       // Une commande mène à son chemin, ouvert sur le service de cette case :

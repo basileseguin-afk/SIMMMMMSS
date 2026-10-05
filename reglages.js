@@ -264,7 +264,7 @@
         </div>
         <p class="rg-version" id="rg-version" data-sous="rg-simulation"></p>
         <p class="mini-note rg-ailleurs" data-sous="rg-simulation">Ce qui est propre à une équipe (ses tunnels, ses chauffeurs, ses horaires)
-          se règle dans la fiche de son service, <b>Mon unité › Services et équipes</b>. Les vols et la planche retour sont dans <b>Vols</b>.</p>`;
+          se règle dans la fiche de son service, <b>Équipes › Services et équipes</b>. Les vols et la planche retour sont dans <b>Vols</b>.</p>`;
       hote.appendChild(section);
       // Quelle version le navigateur sert-il ? La question revient dès qu'un
       // doute s'installe, et un cache périmé ne se voit autrement pas.
@@ -308,7 +308,7 @@
         this.changer(() => { this.etat.regime.presence = +e.target.value; }, 'Présence enregistrée.'));
 
       const section = document.getElementById('rg-modele');
-      // Les mêmes écouteurs servent la fiche d'un service (Mon unité ›
+      // Les mêmes écouteurs servent la fiche d'un service (Équipes ›
       // Services), où le temps de travail se règle aussi : `ecouter(el)`.
       this.surChange = e => {
         const champ = e.target.dataset.rgChamp; if (!champ) return;
@@ -322,7 +322,7 @@
           return;
         }
         // Les minutes par vol d'une compagnie dans un service par compagnie (l'armement) :
-        // elles vivent dans son réglage (Mon unité › le service), pas dans le barème.
+        // elles vivent dans son réglage (Équipes › le service), pas dans le barème.
         if (champ === 'recap-cie') {
           const n = v === '' ? null : +String(v).replace(',', '.');
           if (n !== null && !(n >= 0)) { this.rendre('Nombre de minutes positif attendu.'); return; }
@@ -603,7 +603,7 @@
       return { etat, marque, digest, mode, corps, manquent, parCompagnie };
     }
 
-    /** Le temps de travail d'un service, pour sa fiche (Mon unité › Services). */
+    /** Le temps de travail d'un service, pour sa fiche (Équipes › Services et équipes). */
     ficheTemps(id) {
       const s = (this.a.services ? this.a.services() : []).find(x => x.id === id); if (!s) return '';
       const b = this.blocService(s);

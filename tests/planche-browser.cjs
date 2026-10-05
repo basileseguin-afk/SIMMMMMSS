@@ -1,5 +1,5 @@
 /* La planche retour du handling (Données › Planche retour) et les réglages de
- * la simulation réunis sur une page (Réglages › Réglages de la simulation) :
+ * la simulation réunis sur une page (Simulation › Réglages de la simulation) :
  * saisir une ligne, l'exporter et la réimporter par Excel, et la faire lire à
  * la simulation — les retours arrivent alors à la plonge à l'heure dite. */
 const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs'),os=require('node:os');

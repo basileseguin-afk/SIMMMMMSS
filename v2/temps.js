@@ -135,7 +135,7 @@
     const p = r.plonge;
     const titre = '<h3 class="tp-titre">Les retours des vols et la plonge</h3>';
     if (!p) return `<section class="tp-sec">${titre}<div class="vide-carte"><b>La boucle du matériel est coupée</b>
-      <p>Sans elle, les retours des vols ne sont pas suivis. Cochez « Matériel en boucle » dans Réglages › Réglages de la simulation.</p>
+      <p>Sans elle, les retours des vols ne sont pas suivis. Cochez « Matériel en boucle » dans Simulation › Réglages de la simulation.</p>
       <button class="btn" data-aller="ateliers" data-onglet="at-equipes">Les cases →</button></div></section>`;
     if (!p.retours.length) return `<section class="tp-sec">${titre}<p class="mini-note">Aucun retour de vol dans le programme : rien ne revient à laver.</p></section>`;
     if (!p.capacite && !p.parVol) return `<section class="tp-sec">${titre}<p class="mini-note"><b>Aucune plonge</b> : ${nombre(p.retours.reduce((n, x) => n + x.u, 0))} u reviennent

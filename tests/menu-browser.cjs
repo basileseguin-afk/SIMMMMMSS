@@ -1,6 +1,6 @@
-/* Le menu principal : une page d'accueil à tuiles, quatre parties rangées par
- * nature (Vols, Mon unité, Réglages, Résultats), et dans chacune ses
- * pages. On arrive sur l'accueil ; chaque page a un titre et une phrase en
+/* Le menu principal : une page d'accueil à tuiles, cinq parties, un sujet
+ * chacune (Vols, Chemins, Équipes, Simulation, Résultats — refonte du 05/10),
+ * et dans chacune ses pages, les outils fins après la mention « Plus ». On arrive sur l'accueil ; chaque page a un titre et une phrase en
  * mots de tous les jours. C'est ce qui permet à quelqu'un qui n'est pas du
  * métier de comprendre où il est et ce qu'il regarde. */
 const assert=require('node:assert/strict'),path=require('node:path');
@@ -19,7 +19,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
 
-  // 1. On arrive sur l'accueil : l'histoire en quatre images, puis quatre tuiles.
+  // 1. On arrive sur l'accueil : l'histoire en quatre images, puis cinq tuiles.
   assert.equal(await page.locator('#view-accueil').isVisible(),true,'on arrive sur l’accueil');
   assert.equal(await page.locator('.app').isVisible(),false,'aucune page derrière');
   assert.equal(await courant(),'accueil');
@@ -27,10 +27,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('.acc-histoire svg.ico').count(),4,'une image par temps de l’histoire');
   assert.match(await page.locator('.acc-histoire').textContent(),/Des avions partent[\s\S]*repas[\s\S]*équipes[\s\S]*calcule/);
   assert.deepEqual(await page.locator('.acc-tuile-tete').evaluateAll(bs=>bs.map(b=>b.dataset.versPartie)),
-    ['donnees','organisation','reglages','resultats'],'quatre parties, dans l’ordre du travail');
+    ['donnees','chemins','organisation','reglages','resultats'],'cinq parties, dans l’ordre du travail');
   // Chaque tuile dit son état en clair : ce qui est réel, ce qui est un exemple, ce qui reste à faire.
   assert.match(await tuile('donnees').textContent(),/Vols : 12 départs · exemple/);
   assert.match(await tuile('organisation').textContent(),/Minutes de travail : chiffres d’exemple/);
+  assert.match(await tuile('chemins').textContent(),/Flux : \d+ flux/,'la tuile des chemins compte les flux');
   assert.match(await tuile('donnees').locator('.acc-etat').textContent(),/provisoire/);
   assert.match(await tuile('organisation').textContent(),/aucune équipe/);
   assert.match(await tuile('reglages').textContent(),/Repas prêts 45 min avant le départ/);
@@ -40,20 +41,26 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator('.acc-suite').textContent(),/À faire ensuite/);
   await page.locator('.acc-suite [data-page]').click();await attendre();
   assert.equal(await courant(),'organisation');
-  assert.equal(await actif(),'mu-services','« Décrire une première équipe » ouvre les services de Mon unité');
+  assert.equal(await actif(),'mu-services','« Décrire une première équipe » ouvre les services et leurs équipes');
 
-  // 2. Le menu de l'en-tête : une partie ouvre ses pages, et seulement elles.
+  // 2. Le menu de l'en-tête : une partie ouvre ses pages, et seulement elles ;
+  //    ses outils fins viennent après la mention « Plus ».
   const attendues={donnees:['v-programme','v-planche'],
-    organisation:['mu-pas','mu-flux','mu-services','at-chemins','at-recap','rg-recap'],
-    reglages:['rg-simulation'],
+    chemins:['mu-flux','at-chemins','u-liens'],
+    organisation:['mu-services','at-recap','rg-recap','u-services','at-equipes','rg-minutes'],
+    reglages:['mu-pas','rg-simulation','u-lecture'],
     resultats:['j-chiffres','j-plan','at-planning','at-repas','at-grille','v-departs','j-stocks','j-comparer']};
-  const noms={donnees:'Vols',organisation:'Mon unité',reglages:'Réglages',resultats:'Résultats'};
+  const noms={donnees:'Vols',chemins:'Chemins',organisation:'Équipes',reglages:'Simulation',resultats:'Résultats'};
+  const plus={chemins:['u-liens'],organisation:['u-services','at-equipes','rg-minutes'],reglages:['u-lecture']};
   for(const [p,pages] of Object.entries(attendues)){
     await page.locator(`#menu [data-vers-partie=${p}]`).click();await attendre();
     assert.equal(await courant(),p);
     assert.equal(await page.locator('#menu [aria-current=page]').count(),1,'une seule partie ouverte');
     assert.deepEqual(await onglets(),pages,p);
     assert.equal(await page.locator('#view-title').textContent(),noms[p]);
+    assert.deepEqual(await page.locator('#sous-onglets .so-secondaire').evaluateAll(bs=>bs.map(b=>b.dataset.sousOnglet)),plus[p]||[],p+' : les outils fins');
+    assert.equal(await page.locator('#sous-onglets .so-plus').count(),plus[p]?1:0,p+' : une seule mention « Plus », avant eux');
+    if(plus[p]) assert.equal(await page.locator('#sous-onglets .so-plus + [data-sous-onglet]').getAttribute('data-sous-onglet'),plus[p][0]);
     for(const id of pages){
       await nav.aller(page,id);
       assert.equal(await actif(),id);
@@ -97,7 +104,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await nav.aller(page,'rg-minutes');
   assert.ok(await page.locator('.rg-barres .rg-barre i[data-cab=BC]').count()>5,'les minutes se lisent en barres');
 
-  // 4. Les outils suivent la page : ceux des cases dans Mon unité, pas dans les résultats.
+  // 4. Les outils suivent la page : ceux des cases dans Chemins et Équipes, pas dans les résultats.
   await nav.aller(page,'at-chemins');
   assert.equal(await page.locator('#at-export').isVisible(),true,'les outils restent à portée, sur la barre des onglets');
   assert.match(await page.locator('#at-export').textContent(),/Cases et chemins/,'un export dit ce qu’il contient');
@@ -148,15 +155,14 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await actif(),'at-chemins');
   assert.equal(await page.locator('.pc-cmd.actif').getAttribute('data-classe'),'AF/BC');
 
-  // Les outils avancés : un bouton toujours visible dans l'en-tête.
+  // Plus de partie cachée : les anciens « Outils avancés » sont des onglets de leur sujet.
   await nav.accueil(page);
-  assert.equal(await page.locator('#btn-avance').isVisible(),true,'on le voit sans chercher');
-  await page.locator('#btn-avance').click();await attendre();
-  assert.equal(await page.evaluate(()=>document.body.dataset.partie),'avance');
-  assert.equal(await actif(),'at-equipes');
+  assert.equal(await page.locator('#btn-avance').count(),0,'plus de bouton à part dans l’en-tête');
+  await nav.aller(page,'at-equipes');
+  assert.equal(await page.evaluate(()=>document.body.dataset.partie),'organisation');
 
   // 7. Le sens passe par l'image.
-  assert.equal(await page.locator('#menu .menu-partie svg.ico').count(),5,'un pictogramme par partie, et l’accueil');
+  assert.equal(await page.locator('#menu .menu-partie svg.ico').count(),6,'un pictogramme par partie, et l’accueil');
   assert.equal(await page.locator('#view-ico svg').count(),1,'la page porte le pictogramme de sa partie');
   assert.ok(await page.locator('#plan .zone-ico').count()>=10,'chaque service du plan a son médaillon');
 

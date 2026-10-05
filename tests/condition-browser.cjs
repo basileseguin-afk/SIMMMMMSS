@@ -1,7 +1,7 @@
 /* Une équipe qui ne travaille que certains jours (retour d'usage du 01/10) :
  * « s'il y a tant de vols Air France, une personne est consacrée au montage
  * AF ; sinon elle est rattachée à un autre atelier ». Réglée comme une phrase
- * dans la fiche de l'équipe (Mon unité › Services et équipes), jouée par le
+ * dans la fiche de l'équipe (Équipes › Services et équipes), jouée par le
  * calcul. Même parcours dans la version 1 et la version 2. */
 const assert=require('node:assert/strict'),path=require('node:path');
 const nav=require('./nav.cjs');

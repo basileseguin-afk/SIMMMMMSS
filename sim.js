@@ -513,7 +513,7 @@ function actionService(action,id){
     // là où on le voit (un service du plan d'origine se retire, et se remet).
     const z=Sim.editor.state.zones.find(v=>v.id===id);if(!z)return;
     const fait=z.kind==='service'?Sim.editor.retirer(id,true):Sim.editor.supprimer(id);
-    if(fait)toast('« '+nomLisible(z.nom)+' » supprimé'+(z.kind==='service'?' : on peut le remettre en bas de Outils avancés › Services.':'.'));
+    if(fait)toast('« '+nomLisible(z.nom)+' » supprimé'+(z.kind==='service'?' : on peut le remettre en bas de Équipes › Liste des services.':'.'));
     if(document.body.dataset.sous==='u-services')renderServices();
   }
 }
@@ -715,7 +715,7 @@ function lectureDuGraphe(){
   const orphelines=equipesOrphelines();
   if(orphelines.length)alertes.push({grave:true,orphelines:true,
     texte:orphelines.map(a=>a.nom).join(', ')+(orphelines.length>1?' travaillent':' travaille')+' dans un service qui n’existe plus sur le plan. '
-      +'Rattachez '+(orphelines.length>1?'ces équipes':'cette équipe')+' à un service (Outils avancés › Services).'});
+      +'Rattachez '+(orphelines.length>1?'ces équipes':'cette équipe')+' à un service (Équipes › Liste des services).'});
   // Un service supprimé qui reste une étape de chemins : l'étape est sautée,
   // et l'alerte du calcul le nomme sans qu'on puisse le retrouver nulle part.
   const fantomes=servicesFantomes().filter(f=>f.chemins);
@@ -723,7 +723,7 @@ function lectureDuGraphe(){
   if(fantomes.length)alertes.push({grave:true,
     texte:fantomes.map(f=>f.nom).join(', ')+(fantomes.length>1?' restent des étapes':' reste une étape')+' de '
       +nChemins+(nChemins>1?' chemins':' chemin')+'. Effacez-'+(fantomes.length>1?'les':'le')+' partout, ou faites passer '
-      +(fantomes.length>1?'leur':'son')+' travail dans un autre service (Outils avancés › Services, en tête de page).'});
+      +(fantomes.length>1?'leur':'son')+' travail dans un autre service (Équipes › Liste des services, en tête de page).'});
   // Un cycle bloquerait la fabrication sans jamais rien dire.
   const fourn=MoteurProduction.fournisseurs(liens);
   for(const c of MoteurProduction.cycles(fourn,new Set(lignes.filter(l=>l.produit).map(l=>l.id))))
@@ -746,7 +746,7 @@ function initAteliers(){
     change:()=>{if(suivreDemo()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();},
     // Une case se règle dans le chemin d'une commande : l'ouvrir d'ailleurs y mène.
     onglet:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
-    // Le chemin d'une commande mène à son flux et à ses services (Mon unité).
+    // Le chemin d'une commande mène à son flux (Chemins) et à ses services (Équipes).
     flux:id=>{if(Sim.unite)Sim.unite.ouvrirFlux(id);},
     ouvrirService:id=>{if(Sim.unite)Sim.unite.ouvrir(id);},
     // Un service supprimé encore cité : son nom, pour que les alertes le
@@ -857,6 +857,10 @@ function etatDemarrage(){
            alertes:sansChemin()?lu.alertes.filter(a=>a.grave).length:0 },
     ateliers:{ total:ats.length, fabriquent,
                absentes:(r.indicateurs||{}).classesAbsentes||0 },
+    // Les chemins (refonte du 05/10) : combien de flux, et les commandes sans chemin.
+    chemins:{ flux:Sim.ateliers&&window.OrlyParcours?OrlyParcours.types(Sim.ateliers.state).filter(t=>!t.auto).length:0,
+              variantes:Sim.ateliers&&window.OrlyParcours?OrlyParcours.types(Sim.ateliers.state).filter(t=>t.auto).length:0,
+              sansChemin:sansChemin() },
     bareme:{ calibre },
     reglages:{ delai:CFG.loadDelay, decalage:CFG.shift,
                rendement:Sim.reglages?Sim.reglages.etat.rendement:1,
@@ -921,7 +925,7 @@ function supprimerServiceUnite(id){
   const z=Sim.editor&&Sim.editor.state.zones.find(v=>v.id===id);if(!z)return false;
   const nom=nomLisible(z.nom),cases=Sim.ateliers.state.ateliers.filter(a=>a.service===id).length;
   if(!confirm('Supprimer le service « '+nom+' »'+(cases?' et ses '+cases+(cases>1?' équipes':' équipe'):'')+' ?'
-    +(z.kind==='service'?' (Un service du plan d’origine se remet depuis Outils avancés › Services.)':'')))return false;
+    +(z.kind==='service'?' (Un service du plan d’origine se remet depuis Équipes › Liste des services.)':'')))return false;
   if(cases||(Sim.ateliers.state.parcours||[]).some(p=>MoteurProduction.servicesDuParcours(p).includes(id)))reaffecterService(id,null,nom);
   const fait=z.kind==='service'?Sim.editor.retirer(id,true):Sim.editor.supprimer(id);
   if(fait)toast('« '+nom+' » supprimé.');
@@ -1360,7 +1364,7 @@ function majLegende(avant, compte) {
     if (etat) {
       const n = compte.vide + compte.partiel;
       etat.textContent = n
-        ? n + (n > 1 ? ' services' : ' service') + ' sans travail — voir Mon unité'
+        ? n + (n > 1 ? ' services' : ' service') + ' sans travail — voir Équipes'
         : 'Chaque service a une équipe au travail.';
       etat.className = 'plan-etat' + (n ? '' : ' complet');
     }
@@ -1802,7 +1806,7 @@ function installerCentreReglages() {
     notify:toast
   });
   // Les vols s'importent dans « Données › Vols » ; leurs horaires (décalage,
-  // délai de chargement) se règlent dans « Réglages › Réglages de la simulation ».
+  // délai de chargement) se règlent dans « Simulation › Réglages de la simulation ».
   const volsDonnees=document.getElementById('vols-donnees');
   const horaires=document.getElementById('panneau-horaires');
 
@@ -1820,7 +1824,7 @@ function installerCentreReglages() {
     if(unite)unite.appendChild(donnees);
   }
   // Les horaires des vols (délai de chargement, décalage) sont un réglage de la
-  // simulation : ils rejoignent « Réglages › Réglages de la simulation ».
+  // simulation : ils rejoignent « Simulation › Réglages de la simulation ».
   const simHoraires=document.getElementById('rg-sim-horaires');
   if(simHoraires&&horaires)simHoraires.appendChild(horaires);
   // La version servie aide à diagnostiquer un cache périmé : elle n'a rien à
@@ -1998,7 +2002,7 @@ function migrerRobot(){
   at.changer(()=>{faites=OrlyParcours.remplacerEtape(at.state,'prepa',z.id,presentes,at.classes,nomLisible(z.nom),nomDeService);
     at.state.migrations=[...(at.state.migrations||[]),'robot-eco'];},'');
   if(faites.length)at.rendre('Robot : il remplace le Montage sur le chemin de '+faites.map(MoteurProduction.libelleClasse).join(', ')
-    +'. Une seule case Robot les prépare, à régler (débit par commande, personnes) dans Mon unité › Services et équipes ou dans le tableau des minutes. « Annuler » revient en arrière.');
+    +'. Une seule case Robot les prépare, à régler (débit par commande, personnes) dans Équipes › Services et équipes ou dans le tableau des minutes. « Annuler » revient en arrière.');
 }
 
 
@@ -2107,7 +2111,7 @@ function renderHandlingVols() {
       + 'Le handling réunit les classes d’un même vol et le charge, dans l’ordre des départs, le jour J : '
       + 'le vol doit être chargé à son départ.</p>'
       + '<p class="row-btns"><button class="btn btn-play" type="button" data-vh-action="brancher">Mettre en place le handling</button>'
-      + '<span class="mini-note">Crée la case Handling et l’ajoute au bout de chaque chemin. « Annuler » (Mon unité) le retire.</span></p>';
+      + '<span class="mini-note">Crée la case Handling et l’ajoute au bout de chaque chemin. « Annuler » (en haut de page) le retire.</span></p>';
   } else {
     const a = h[0], vus = (r.vols || []).length;
     const sans = (at.state.parcours || []).filter(p => Array.isArray(p.noeuds) && !p.noeuds.includes(a.service)).length;

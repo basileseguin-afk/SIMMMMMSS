@@ -8,11 +8,7 @@ const PREMIERE = { vols: 'v-departs', ateliers: 'at-chemins', reglages: 'rg-minu
 async function aller(page, id) {
   const partie = await page.evaluate(id => (OrlyOnglets.partieDe(id) || {}).id, id);
   if (!partie) throw new Error('page inconnue : ' + id);
-  if (partie === 'avance') {
-    // Les outils avancés : par le lien discret de Mon unité › Services.
-    const actif = await page.evaluate(() => document.body.dataset.partie);
-    if (actif !== 'avance') { await page.locator('#btn-avance').click(); await page.waitForTimeout(120); }
-  } else if (partie !== 'fichier') {
+  if (partie !== 'fichier') {
     const actif = await page.evaluate(() => document.body.dataset.partie);
     if (actif !== partie) { await page.locator(`#menu [data-vers-partie=${partie}]`).click(); await page.waitForTimeout(120); }
   } else {
@@ -32,7 +28,7 @@ async function vue(page, v) {
 }
 const accueil = async page => { await page.locator('#btn-accueil').click(); await page.waitForTimeout(150); };
 
-/* Un chemin à elle pour une commande (Mon unité › Une commande) : si elle
+/* Un chemin à elle pour une commande (Chemins › Chemin d’une commande) : si elle
  * suit un flux, le formulaire est replié sous « Ou bien : un chemin à elle… ». */
 async function creerChemin(page, c) {
   const b = page.locator(`[data-pc-action=creer][data-classe="${c}"]`);

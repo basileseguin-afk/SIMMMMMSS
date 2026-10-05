@@ -1,7 +1,7 @@
 # Le calage sur un mois réel (version 2)
 
 But : rejouer un mois réel dans la simulation, comparer avec ce qui s'est
-passé, et ajuster le modèle jusqu'à ce qu'il colle. Page : **Réglages ›
+passé, et ajuster le modèle jusqu'à ce qu'il colle. Page : **Simulation ›
 Calage sur le réel** (version 2). Code : `v2/calage.js`.
 
 > ⚠ Les données réelles (vols, planning, pointages, labor cost) ne vont
@@ -18,7 +18,7 @@ ou une date Excel. Les heures : `HH:MM` ou une heure Excel.
 | Feuille | Colonnes | Remarques |
 | --- | --- | --- |
 | **Vols** | `date`, puis celles de l'import des vols : `vol_id`, `compagnie`, `type_avion`, `sens`, `heure_std`, `heure_sta`, `nb_BC`, `nb_PC`, `nb_YC`, `nb_CREW`, `nb_SPML` | tous les vols du mois |
-| **Planning** | `date`, `service`, `equipe`, `debut`, `fin`, `personnes`, `jour` (facultatif, −1 pour la veille) | `service` et `equipe` : les noms de Mon unité ; une fin avant le début passe minuit |
+| **Planning** | `date`, `service`, `equipe`, `debut`, `fin`, `personnes`, `jour` (facultatif, −1 pour la veille) | `service` et `equipe` : les noms de Équipes › Services et équipes ; une fin avant le début passe minuit |
 | **Pointages** | `date`, `service`, `arrivee`, `depart`, `personne` (facultatif) | une ligne par personne et par jour |
 | **Labor cost** | `date` (facultative), `service`, `montant` | lu, pas encore utilisé par le calage |
 

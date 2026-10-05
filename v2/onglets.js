@@ -1,9 +1,17 @@
-/* Le menu : Accueil, puis quatre parties, et dans chacune quelques pages.
+/* Le menu : Accueil, puis cinq parties, dans l'ordre du travail (refonte du
+ * 05/10 : « des onglets qui se ressemblent mais n'ont pas la même utilité ; ce
+ * n'est pas intuitif ; mieux catégoriser »).
  *
- * Vols (ce qu'on importe), Mon unité (ce qu'on décrit, service par service),
- * Réglages (ce qu'on essaie), Résultats (ce qu'on observe). Une page ne change
- * pas de nature selon l'endroit d'où l'on vient. Les outils d'avant (chemins,
- * cases, liens) restent dans une partie cachée, « Outils avancés ».
+ *   Vols        ce qui part et ce qui revient
+ *   Chemins     par où passe chaque commande
+ *   Équipes     qui prépare quoi, quand, en combien de temps
+ *   Simulation  vérifier, régler, lancer
+ *   Résultats   ce que la journée donne
+ *
+ * Une partie, un sujet. Les outils fins d'un sujet ne sont plus cachés dans
+ * une partie à part (« Outils avancés ») : ils suivent ses pages, après la
+ * mention « Plus » (`plus: true`). Aucune page n'a disparu : seuls leur
+ * rangement et leur nom ont changé ; leurs identifiants restent les mêmes.
  *
  * Une page EST un sous-onglet d'une vue : les éléments d'une vue portent
  * `data-sous="<page>"` (ou plusieurs, séparés par des espaces), et une règle
@@ -18,20 +26,20 @@
   /* Les pages de chaque vue : c'est la vue qui porte les éléments. */
   const ONGLETS = {
     vols: [
-      { id: 'v-programme', nom: 'Vols', ico: 'avion' },
+      { id: 'v-programme', nom: 'Programme des vols', ico: 'avion' },
       { id: 'v-planche', nom: 'Planche retour', ico: 'camion' },
-      { id: 'v-departs', nom: 'Départs', ico: 'depart' }
+      { id: 'v-departs', nom: 'Vols prêts au départ', ico: 'depart' }
     ],
     ateliers: [
-      { id: 'mu-pas', nom: 'Pas à pas', ico: 'check' },
+      { id: 'mu-pas', nom: 'Prêt à simuler ?', ico: 'check' },
       { id: 'mu-flux', nom: 'Flux de production', ico: 'fleche' },
       { id: 'mu-services', nom: 'Services et équipes', ico: 'service' },
-      { id: 'at-chemins', nom: 'Une commande', ico: 'fleche' },
-      { id: 'at-equipes', nom: 'Cases', ico: 'service' },
-      { id: 'at-grille', nom: 'Parcours des commandes', ico: 'fleche' },
+      { id: 'at-chemins', nom: 'Chemin d’une commande', ico: 'fleche' },
+      { id: 'at-equipes', nom: 'Équipes une par une', ico: 'service' },
+      { id: 'at-grille', nom: 'Étapes de chaque commande', ico: 'fleche' },
       { id: 'at-planning', nom: 'Planning des équipes', ico: 'journee' },
-      { id: 'at-repas', nom: 'Commandes', ico: 'plateau' },
-      { id: 'at-recap', nom: 'Tableau des équipes', ico: 'service' },
+      { id: 'at-repas', nom: 'Heure de chaque commande', ico: 'plateau' },
+      { id: 'at-recap', nom: 'Horaires des équipes', ico: 'journee' },
       // Version 2 : le budget de la main-d'œuvre.
       { id: 'bu-jour', nom: 'Budget du jour', ico: 'euro' },
       { id: 'bu-param', nom: 'Paramètres financiers', ico: 'curseurs' },
@@ -39,8 +47,8 @@
       { id: 'rg-calage', nom: 'Calage sur le réel', ico: 'check' }
     ],
     reglages: [
-      { id: 'rg-minutes', nom: 'Minutes', ico: 'chrono' },
-      { id: 'rg-recap', nom: 'Tableau des minutes', ico: 'journee' },
+      { id: 'rg-minutes', nom: 'Barème par service', ico: 'chrono' },
+      { id: 'rg-recap', nom: 'Minutes de travail', ico: 'chrono' },
       { id: 'rg-simulation', nom: 'Réglages de la simulation', ico: 'sablier' }
     ],
     // Arriver « sur le plan » (un lien, « voir sur le plan »), c'est arriver
@@ -52,47 +60,47 @@
       { id: 'j-comparer', nom: 'Comparer deux essais', ico: 'lecture' }
     ],
     flux: [
-      { id: 'u-liens', nom: 'Liens', ico: 'fleche' },
-      { id: 'u-services', nom: 'Services', ico: 'service' },
-      { id: 'u-lecture', nom: 'Contrôles', ico: 'info' },
+      { id: 'u-liens', nom: 'Liens entre services', ico: 'fleche' },
+      { id: 'u-services', nom: 'Liste des services', ico: 'service' },
+      { id: 'u-lecture', nom: 'Contrôles détaillés', ico: 'info' },
       { id: 'u-sauvegarde', nom: 'Sauvegarde et limites', ico: 'boite' }
     ]
   };
 
   /* Les parties du menu, dans l'ordre du travail. `intro` : une phrase, pas
-   * un paragraphe. `cache` : une partie qu'on ouvre depuis l'en-tête ou
-   * l'accueil, sans tuile. */
+   * un paragraphe. `plus` : un outil fin, rangé après la mention « Plus ».
+   * `cache` : une partie qu'on ouvre depuis l'en-tête, sans tuile. */
   const PARTIES = [
     { id: 'donnees', nom: 'Vols', ico: 'avion', couleur: 'var(--c-vols)',
-      resume: 'Ce que vous importez',
+      resume: 'Ce qui part et ce qui revient',
       pages: [
         { id: 'v-programme', intro: 'Le programme de vols de la journée : importez le vôtre, en Excel ou en CSV.' },
         { id: 'v-planche', intro: 'La planche retour du handling : quand chaque vol revient à l’unité, pour la plonge. À saisir ici ou à importer en Excel.' }
       ] },
-    // Tout le paramétrage de l'unité, service par service (29/09) : ce que fait
-    // chaque service, ses équipes, ce que chacune prépare, ses minutes.
-    { id: 'organisation', nom: 'Mon unité', ico: 'equipe', couleur: 'var(--c-equipes)',
-      resume: 'Vos services et vos équipes',
+    { id: 'chemins', nom: 'Chemins', ico: 'fleche', couleur: 'var(--c-chemins)',
+      resume: 'Par où passe chaque commande',
+      pages: [
+        { id: 'mu-flux', intro: 'Les flux de production : par où ils passent, et quelle commande (compagnie × classe) suit quel chemin.' },
+        { id: 'at-chemins', intro: 'Le chemin d’une commande, de bout en bout, avec l’équipe qui la prépare sur chaque service.' },
+        { id: 'u-liens', plus: true, intro: 'Qui livre qui dans l’unité : ces liens ne servent qu’aux commandes sans chemin.' }
+      ] },
+    { id: 'organisation', nom: 'Équipes', ico: 'equipe', couleur: 'var(--c-equipes)',
+      resume: 'Qui prépare quoi, quand, en combien de temps',
+      pages: [
+        { id: 'mu-services', intro: 'Chaque service : ce qu’il fait, ses équipes, ce que chacune prépare, ses minutes.' },
+        { id: 'at-recap', intro: 'Toutes les équipes et leurs horaires d’un coup d’œil : à régler ici ou dans Excel.' },
+        { id: 'rg-recap', intro: 'Toutes les minutes de travail : une compagnie par bloc, ses classes, un service par colonne ; ici ou dans Excel.' },
+        { id: 'u-services', plus: true, intro: 'Les services de l’unité : nom, rattachement, place sur le plan, services supprimés.' },
+        { id: 'at-equipes', plus: true, intro: 'Chaque équipe, une par une, avec tous ses réglages.' },
+        { id: 'rg-minutes', plus: true, intro: 'Le barème, service par service, et son classeur Excel (importer, exporter, chiffres d’exemple).' }
+      ] },
+    { id: 'reglages', nom: 'Simulation', ico: 'sablier', couleur: 'var(--c-temps)',
+      resume: 'Vérifier, régler, lancer',
       pages: [
         { id: 'mu-pas', intro: 'Ce qu’il reste à faire avant de simuler, dans l’ordre : chaque point mène là où il se règle.' },
-        { id: 'mu-flux', intro: 'Par où passe chaque type de production, et quelles commandes le suivent.' },
-        { id: 'mu-services', intro: 'Chaque service : ce qu’il fait, ses équipes, ce que chacune prépare, ses minutes.' },
-        { id: 'at-chemins', intro: 'Une commande de bout en bout : le flux qu’elle suit, et sur chaque service l’équipe qui la prépare.' },
-        { id: 'at-recap', intro: 'Toutes les équipes d’un coup d’œil, avec leurs heures : à régler ici ou dans Excel.' },
-        { id: 'rg-recap', intro: 'Toutes les minutes de travail d’un coup d’œil : une ligne par commande, une colonne par service ; à modifier ici ou dans Excel.' }
-      ] },
-    { id: 'reglages', nom: 'Réglages', ico: 'sablier', couleur: 'var(--c-temps)',
-      resume: 'Ce que vous essayez',
-      pages: [
         { id: 'rg-simulation', intro: 'Tous les réglages de la simulation, au même endroit : horaires des vols, retours à la plonge et boucle du matériel, rythme et pauses.' },
-        { id: 'rg-calage', intro: 'Rejouez un mois réel, comparez aux pointages, et calez la vitesse de chaque service sur la réalité.' }
-      ] },
-    // Version 2 : ce que coûte la journée, face au budget de chaque service.
-    { id: 'budget', nom: 'Budget', ico: 'euro', couleur: 'var(--c-budget)',
-      resume: 'Ce que la journée coûte',
-      pages: [
-        { id: 'bu-jour', intro: 'Le budget du jour de chaque service, face au coût de ce que vous avez planifié : vacations et heures sup.' },
-        { id: 'bu-param', intro: 'Taux horaires par catégorie, heures sup, budgets du mois, capacité des avions. Valeurs d’exemple fictives.' }
+        { id: 'rg-calage', intro: 'Rejouez un mois réel, comparez aux pointages, et calez la vitesse de chaque service sur la réalité.' },
+        { id: 'u-lecture', plus: true, intro: 'Ce que le calcul comprend de votre organisation, point par point, et ce qu’il faut corriger.' }
       ] },
     { id: 'resultats', nom: 'Résultats', ico: 'journee', couleur: 'var(--c-journee)',
       resume: 'Ce que la journée donne',
@@ -106,17 +114,12 @@
         { id: 'j-stocks', intro: 'Ce qui attend entre deux services, et les retours des vols à la plonge.' },
         { id: 'j-comparer', intro: 'Retenez deux essais et voyez ce qui a bougé.' }
       ] },
-    // Les outils d'avant, pour les cas rares : une case réglée hors de sa
-    // fiche, les liens entre services. On y vient par un
-    // lien discret de Mon unité ; ils ne sont plus dans le menu.
-    { id: 'avance', nom: 'Outils avancés', ico: 'curseurs', couleur: 'var(--c-equipes)', cache: true,
-      resume: 'Cases, minutes et liens, à la main',
+    // Version 2 : ce que coûte la journée, face au budget de chaque service.
+    { id: 'budget', nom: 'Budget', ico: 'euro', couleur: 'var(--c-budget)',
+      resume: 'Ce que la journée coûte',
       pages: [
-        { id: 'at-equipes', intro: 'Toutes les cases (équipes), une par une.' },
-        { id: 'rg-minutes', intro: 'Les minutes de travail d’un vol, service par service.' },
-        { id: 'u-services', intro: 'Les services de l’unité : nom, équipes, place sur le plan, services supprimés.' },
-        { id: 'u-liens', intro: 'Qui livre qui dans l’unité : ces liens ne servent qu’aux commandes sans chemin.' },
-        { id: 'u-lecture', intro: 'Ce que le calcul comprend de votre organisation, et ce qu’il faut corriger.' }
+        { id: 'bu-jour', intro: 'Le budget du jour de chaque service, face au coût de ce que vous avez planifié : vacations et heures sup.' },
+        { id: 'bu-param', intro: 'Taux horaires par catégorie, heures sup, budgets du mois, capacité des avions. Valeurs d’exemple fictives.' }
       ] },
     { id: 'fichier', nom: 'Sauvegarde', ico: 'boite', couleur: 'var(--c-unite)', cache: true,
       resume: 'Votre travail dans un fichier',
@@ -188,7 +191,7 @@
       if (this.page && vueDe(this.page) === vue) return this.page;
       if (!ONGLETS[vue]) return null;
       // Arrivé par un lien vers la vue : la dernière page ouverte de cette vue
-      // (une vue porte des pages de plusieurs parties : Mon unité, Outils avancés).
+      // (une vue porte des pages de plusieurs parties : Chemins, Équipes, Simulation).
       const pv = (this.parVue || {})[vue];
       const deja = (pv && vueDe(pv) === vue ? pv : null) || Object.values(this.choix).find(id => vueDe(id) === vue);
       return deja || defaut(vue);
@@ -224,9 +227,11 @@
       const h = this.a.hote(); if (!h) return;
       const liste = p ? pagesDe(p.id) : [];
       const I = root.OrlyIcones;
-      const html = liste.map(o => {
+      const html = liste.map((o, i) => {
         const on = o.id === actif, b = this.a.badge ? this.a.badge(o.id) : null;
-        return `<button type="button" role="tab" class="so-onglet${on ? ' actif' : ''}" data-sous-onglet="${o.id}"
+        // Les outils fins du sujet, après la mention « Plus » (05/10).
+        const sep = o.plus && !(liste[i - 1] || {}).plus ? '<span class="so-plus" aria-hidden="true">Plus</span>' : '';
+        return sep + `<button type="button" role="tab" class="so-onglet${on ? ' actif' : ''}${o.plus ? ' so-secondaire' : ''}" data-sous-onglet="${o.id}"
           aria-selected="${on}" tabindex="${on ? 0 : -1}">${I ? I.ico(o.ico) : ''}<span>${esc(o.nom)}</span>${
           b && b.n ? `<b class="so-badge ${esc(b.ton || '')}" title="${esc(b.titre || '')}">${esc(b.n)}</b>` : ''}</button>`;
       }).join('');

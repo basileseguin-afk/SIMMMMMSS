@@ -28,9 +28,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 1. Le chemin : le temps en stock sur le lien, et dans la case de la prépa.
   await nav.vue(page,'ateliers');await nav.aller(page,'at-chemins');await attendre();
   await page.locator('[data-pc-action=cmd][data-classe="TX/BC"]').click();await attendre();
-  assert.match(await page.locator('.pc-graphe .gr-lien[data-lien="cuisine>preparation"] .gr-etiq').textContent(),/^2 h \d\d$/);
-  assert.match(await page.locator('.pc-graphe .gr-lien[data-lien="cuisine>preparation"] title').textContent(),/en stock/);
-  await page.locator('.pc-graphe [data-noeud=preparation]').click();await attendre();
+  assert.match(await page.locator('#at-parcours .pc-graphe .gr-lien[data-lien="cuisine>preparation"] .gr-etiq').textContent(),/^2 h \d\d$/);
+  assert.match(await page.locator('#at-parcours .pc-graphe .gr-lien[data-lien="cuisine>preparation"] title').textContent(),/en stock/);
+  await page.locator('#at-parcours .pc-graphe [data-noeud=preparation]').click();await attendre();
   assert.match(await page.locator('.pc-tiroir .pc-temps').textContent(),/Livrée par Cuisine à 01:\d\d, prise à 04:00 :\s+2 h \d\d en stock \(32 repas\)/);
   await page.keyboard.press('Escape');await attendre();
 

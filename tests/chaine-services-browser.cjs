@@ -59,7 +59,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.deepEqual((await kase('mo')).lots.flat().sort(),['AF/YC','CRL/YC','TX/YC']);
    // Et le lien ramène au Montage, où l'on retrouve le même réglage.
    await carte('[data-mu-ouvrir=prepa]').click();await attendre();
-   assert.equal(await page.locator('.mu-fiche').getAttribute('data-mu-fiche'),'prepa');
+   assert.equal(await page.locator('.mu-fiche[data-mu-fiche]').getAttribute('data-mu-fiche'),'prepa');
    assert.equal(await carte('[data-at-champ=personnes]').inputValue(),'3');
 
    // 3. Plus à la chaîne : elle ne reste qu'au Montage.

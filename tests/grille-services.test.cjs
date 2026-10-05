@@ -1,4 +1,4 @@
-/* Mon unité : les flux de production (un par type, partagé) et la grille des
+/* Chemins et Équipes : les flux de production (un par type, partagé) et la grille des
  * équipes. « Les éco sont pratiquement tous identiques, pareil pour les
  * business ; ce qui change, ce sont les ateliers — mais ce n'est pas une
  * science exacte » (retour d'usage du 30/09). */

@@ -19,8 +19,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  // Tirer le « + » d'un service jusqu'à un autre, dans le diagramme des chemins.
  // Relier au clic : le + du premier, puis le second (le trait tiré est éprouvé dans graphe-browser).
  const tirer=async(de,vers)=>{
-   await page.locator(`.pc-graphe .gr-port[data-port=${de}]`).click();await attendre();
-   await page.locator(`.pc-graphe [data-noeud=${vers}] .gr-fond`).click();await attendre();
+   await page.locator(`#at-parcours .pc-graphe .gr-port[data-port=${de}]`).click();await attendre();
+   await page.locator(`#at-parcours .pc-graphe [data-noeud=${vers}] .gr-fond`).click();await attendre();
  };
  const liens=id=>page.evaluate(id=>Sim.ateliers.state.parcours.find(p=>p.id===id).liens.map(l=>l.de+'>'+l.vers),id);
  const lot=(service,classe)=>page.evaluate(([s,c])=>Sim.ateliers.resultat.lots.find(l=>l.service===s&&l.classes.includes(c)),[service,classe]);
@@ -37,9 +37,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await nav.aller(page,'at-chemins');
   await page.locator('.pc-modeles>summary').click();
   await page.locator('[data-pc-action=modele][data-parcours=complet]').click();await attendre();
-  assert.equal(await page.locator('.pc-graphe .gr-lien[data-lien$=">prepa"]').count(),3,'trois traits arrivent au montage');
+  assert.equal(await page.locator('#at-parcours .pc-graphe .gr-lien[data-lien$=">prepa"]').count(),3,'trois traits arrivent au montage');
   await page.locator('[data-pc-action=modele][data-parcours=sans-cuisine]').click();await attendre();
-  assert.equal(await page.locator('.pc-graphe [data-noeud=cuisine], .pc-graphe [data-noeud=decontam]').count(),0,
+  assert.equal(await page.locator('#at-parcours .pc-graphe [data-noeud=cuisine], #at-parcours .pc-graphe [data-noeud=decontam]').count(),0,
     'le parcours sans cuisine n’a ni cuisine ni légumerie');
 
   // Trois équipes : cuisine, dotation, montage. Le montage YC n'attend que la dotation.
@@ -56,7 +56,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await creer('Montage','prepa',[['AF/YC'],['AF/BC']]);
   assert.equal((await lot('prepa','AF/YC')).debut,(await lot('dotation','AF/YC')).fin,'YC : le montage attend la dotation, pas la cuisine');
   assert.ok((await lot('prepa','AF/BC')).debut>=(await lot('cuisine','AF/BC')).fin,'BC : le montage attend la cuisine');
-  assert.match(await page.locator('#at-anomalies').textContent(),/commandes? commencées? sautent? une étape sans équipe[\s\S]*Mon unité › Services et équipes/,'les étapes sans équipe renvoient au tableau');
+  assert.match(await page.locator('#at-anomalies').textContent(),/commandes? commencées? sautent? une étape sans équipe[\s\S]*Équipes › Services et équipes/,'les étapes sans équipe renvoient au tableau');
 
   // Une commande qui suit le flux de sa classe peut avoir sa variante, copiée du flux.
   await nav.aller(page,'at-chemins');await attendre();
@@ -78,23 +78,23 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator('[data-pc-action=modele][data-parcours=sans-cuisine]').click();await attendre();
   const avant=await liens('sans-cuisine');
   await page.selectOption('[data-pc-champ=noeud-ajout]','armement');await attendre();
-  assert.equal(await page.locator('.pc-graphe [data-noeud=armement]').count(),1,'le service rejoint le diagramme');
+  assert.equal(await page.locator('#at-parcours .pc-graphe [data-noeud=armement]').count(),1,'le service rejoint le diagramme');
   await tirer('prepa','armement');
   assert.deepEqual(await liens('sans-cuisine'),avant.concat('prepa>armement'),'tirer un trait crée le lien');
   assert.match(await page.locator('#at-status').textContent(),/Montage livre maintenant Armement/);
   // « Relier à… » fait la même chose sans glisser — et une boucle est refusée.
-  await page.locator('.pc-graphe [data-noeud=armement]').click();await attendre();
+  await page.locator('#at-parcours .pc-graphe [data-noeud=armement]').click();await attendre();
   await page.locator('[data-pc-action=relier-depuis]').click();await attendre();
-  await page.locator('.pc-graphe [data-noeud=appros]').click();await attendre();
+  await page.locator('#at-parcours .pc-graphe [data-noeud=appros]').click();await attendre();
   assert.deepEqual(await liens('sans-cuisine'),avant.concat('prepa>armement'),'armement → appros ferait tourner en rond');
   assert.match(await page.locator('#at-status').textContent(),/Impossible[\s\S]*tournerait en rond/);
   // Un lien choisi se retire par sa croix.
-  await page.locator('.pc-graphe .gr-lien[data-lien="prepa>armement"] .gr-prise').click({force:true});await attendre();
-  await page.locator('.pc-graphe .gr-retirer').click();await attendre();
+  await page.locator('#at-parcours .pc-graphe .gr-lien[data-lien="prepa>armement"] .gr-prise').click({force:true});await attendre();
+  await page.locator('#at-parcours .pc-graphe .gr-retirer').click();await attendre();
   assert.deepEqual(await liens('sans-cuisine'),avant);
-  await page.locator('.pc-graphe [data-noeud=armement]').click();await attendre();
+  await page.locator('#at-parcours .pc-graphe [data-noeud=armement]').click();await attendre();
   await page.locator('[data-pc-action=noeud-retirer]').click();await attendre();
-  assert.equal(await page.locator('.pc-graphe [data-noeud=armement]').count(),0,'et le service quitte le chemin');
+  assert.equal(await page.locator('#at-parcours .pc-graphe [data-noeud=armement]').count(),0,'et le service quitte le chemin');
 
   // 2. Le classeur des ateliers : export, modification « dans Excel », import.
   const {f:fAt,nom:nomAt}=await telecharger('#at-export','ateliers.xlsx');

@@ -5,6 +5,52 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-05 — Refonte de l'organisation : Vols · Chemins · Équipes · Simulation · Résultats
+
+Demande : « l'interface est très brouillon sur l'organisation, des onglets qui
+se ressemblent mais qui n'ont pas la même utilité, ce n'est pas intuitif ;
+mieux catégoriser, surtout les liens entre ; sans perdre aucune fonctionnalité ».
+
+**Aucune page n'a disparu, aucun identifiant de page n'a changé** (liens,
+sauvegardes, tests) : seuls le rangement et les noms bougent.
+
+- **Cinq parties, un sujet chacune** (au lieu de « Mon unité » qui mêlait
+  tout, et d'une partie cachée « Outils avancés ») :
+
+  | Partie | Pages principales | Plus › (outils fins) |
+  |---|---|---|
+  | Vols — ce qui part et ce qui revient | Programme des vols, Planche retour | |
+  | **Chemins** — par où passe chaque commande | Flux de production, Chemin d'une commande | Liens entre services |
+  | **Équipes** — qui prépare quoi, quand, en combien de temps | Services et équipes, Horaires des équipes, Minutes de travail | Liste des services, Équipes une par une, Barème par service |
+  | **Simulation** — vérifier, régler, lancer | Prêt à simuler ?, Réglages de la simulation (v2 : Calage sur le réel) | Contrôles détaillés |
+  | Résultats — ce que la journée donne | Synthèse, Le plan rejoué, Planning des équipes, Heure de chaque commande, Étapes de chaque commande, Vols prêts au départ, Stocks et retours, Comparer deux essais | |
+
+- **Des noms qui ne se ressemblent plus** : Vols → Programme des vols ;
+  Départs → Vols prêts au départ ; Pas à pas → Prêt à simuler ? ; Une
+  commande → Chemin d'une commande ; Cases → Équipes une par une ; Parcours
+  des commandes → Étapes de chaque commande ; Commandes → Heure de chaque
+  commande ; Minutes → Barème par service ; Tableau des minutes → Minutes de
+  travail ; Tableau des équipes → Horaires des équipes ; Liens → Liens entre
+  services ; Services → Liste des services ; Contrôles → Contrôles détaillés.
+- **« Plus »** : les outils fins d'un sujet suivent ses pages, en retrait,
+  après cette mention (`plus: true` dans `onglets.js`, `.so-plus`,
+  `.so-secondaire`). Le bouton « Outils avancés » de l'en-tête et le lien
+  discret de Services et équipes disparaissent : ces pages sont maintenant
+  dans leur partie.
+- **Une couleur pour les chemins** (`--c-chemins`) et une **tuile Chemins** à
+  l'accueil : nombre de flux et de variantes, commandes sans chemin.
+- Les messages qui renvoyaient à « Mon unité › … » ou « Outils avancés › … »
+  disent le nouveau chemin (« Équipes › Services et équipes », « Chemins ›
+  Chemin d'une commande »…).
+- v1 et v2 : `onglets.js`, `theme.css`, `histoire.css`, `index.html`,
+  `demarrage.js`, `sim.js`, `unite.js` et les textes de `ateliers.js`,
+  `echanges.js`, `flow-center.js`, `parcours.js`, `plan-editor.js`,
+  `reglages.js`, `simulation.js`, `temps.js`, `moteur/production.js`
+  (v2 : `budget.js`, `calage.js`). Docs : README (parcours d'utilisation),
+  FORMATS_EXCEL, CALAGE, V2, MODELE_ATELIERS. Tests : `onglets.test.cjs`,
+  `demarrage.test.cjs`, `menu-browser.cjs`, `mon-unite-browser.cjs`,
+  `services-browser.cjs`, `nav.cjs` et les libellés de quelques autres.
+
 ## 2026-10-05 — Choisir le chemin de chaque commande dans une liste
 
 Demande : « si je crée un chemin de toute pièce, je veux pouvoir le choisir,

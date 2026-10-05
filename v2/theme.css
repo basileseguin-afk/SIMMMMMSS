@@ -27,7 +27,7 @@
   --accent:#0f766e; --accent2:#115e59; --accent-doux:#ecfdf8;
   --on-accent:#ffffff;
   /* étapes : les mêmes teintes, plus nettes */
-  --c-vols:#2563eb; --c-equipes:#059669; --c-temps:#7c3aed; --c-journee:#db2777; --c-unite:#64748b; --c-budget:#b45309;
+  --c-vols:#2563eb; --c-chemins:#0e7490; --c-equipes:#059669; --c-temps:#7c3aed; --c-journee:#db2777; --c-unite:#64748b; --c-budget:#b45309;
   /* états */
   --ok:#067647; --attente:#b54708; --retard:#d92d20;
   --ok-fill:#ecfdf3; --warn-fill:#fffaeb; --warn-stroke:#dc6803; --bad-fill:#fef3f2; --bad-stroke:#d92d20;
@@ -268,11 +268,12 @@ table th{font-weight:600}
  * ==========================================================================*/
 body{--cp:var(--accent)}
 body[data-partie="donnees"]{--cp:var(--c-vols)}
+body[data-partie="chemins"]{--cp:var(--c-chemins)}
 body[data-partie="organisation"]{--cp:var(--c-equipes)}
 body[data-partie="reglages"]{--cp:var(--c-temps)}
 body[data-partie="budget"]{--cp:var(--c-budget)}
 body[data-partie="resultats"]{--cp:var(--c-journee)}
-body[data-partie="avance"],body[data-partie="fichier"]{--cp:var(--c-unite)}
+body[data-partie="fichier"]{--cp:var(--c-unite)}
 body[data-vue="accueil"]{--cp:var(--accent)}
 
 /* Une signature : un filet aux quatre couleurs, en haut de l'écran. */
@@ -355,11 +356,8 @@ body>header::before{content:"";position:absolute;left:0;right:0;top:0;height:3px
 /* ---- Les départs : l'horaire en couleur de sa partie ----------------------- */
 .flight-table td.vol-heure{color:color-mix(in srgb,var(--c-vols) 55%,#101828)}
 
-/* ---- « Outils avancés » : toujours visible, en haut à droite -------------------- */
+/* ---- En-tête : à droite, la sauvegarde ---------------------------------------- */
 header .entete-droite{display:flex;gap:8px}
-header .btn-avance{color:var(--txt2)}
-body[data-partie="avance"] header .btn-avance{background:color-mix(in srgb,var(--c-unite) 12%,#fff);color:var(--txt);
-  border-color:color-mix(in srgb,var(--c-unite) 35%,var(--bordure))}
 
 /* Dans la barre des onglets, Annuler / Rétablir se réduisent à leur flèche
    (le mot reste lu et dans l'infobulle) : six onglets et les outils tiennent sur une ligne. */
@@ -399,3 +397,11 @@ html,body{overscroll-behavior:none}
 
 /* La version servie, sous le nom du site */
 header .marque-version{display:block;font-size:11px;font-weight:500;color:var(--txt3);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:0}
+
+/* Les outils fins d'une partie, après la mention « Plus » (refonte du 05/10) :
+ * présents, mais en retrait des pages principales. */
+.so-plus{align-self:center;margin:0 4px 0 10px;padding:2px 8px;border-left:1px solid var(--bordure);font-size:11px;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);white-space:nowrap}
+.so-onglet.so-secondaire{font-size:13px;color:var(--txt3)}
+.so-onglet.so-secondaire.actif{color:var(--txt)}
+.acc-page.acc-plus{background:transparent;border-style:dashed;font-weight:500;color:var(--txt3)}

@@ -15,7 +15,7 @@
    Une par étape (se repérer), une par classe de cabine (la reconnaître
    partout, toujours avec son nom). Validées contre le daltonisme. */
 :root{
-  --c-vols:#2a78d6; --c-equipes:#138a60; --c-temps:#4a3aa7; --c-journee:#c2477a; --c-unite:#5b6b7d;
+  --c-vols:#2a78d6; --c-chemins:#0e7490; --c-equipes:#138a60; --c-temps:#4a3aa7; --c-journee:#c2477a; --c-unite:#5b6b7d;
   --cab-BC:#c98500; --cab-PC:#7b61d6; --cab-YC:#1baf7a; --cab-CREW:#2a78d6; --cab-SPML:#eb6834;
   --ok:#15803d; --attente:#b45309; --retard:#c02618;
 }

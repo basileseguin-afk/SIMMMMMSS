@@ -74,7 +74,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await verifier('E1 départ récap → fiche',async()=>assert.equal(await f.locator('[data-at-champ=debut]').inputValue(),'07:15'));
   await verifier('E2 départ récap → calcul',async()=>assert.ok((await lot('mo','AF/BC'))[0]>=7*60+15));
   await nav.aller(page,'at-chemins');await page.locator('[data-pc-action=cmd][data-classe="AF/BC"]').click();await attendre();
-  await verifier('E3 départ récap → chemin',async()=>assert.match(await page.locator('.pc-graphe [data-noeud=prepa]').textContent(),/07:15/));
+  await verifier('E3 départ récap → chemin',async()=>assert.match(await page.locator('#at-parcours .pc-graphe [data-noeud=prepa]').textContent(),/07:15/));
   await nav.aller(page,'at-grille');
   await verifier('E4 départ récap → Qui prépare quoi',async()=>assert.match(await page.locator('[data-qf=aller][data-classe="AF/BC"][data-service=prepa]').textContent(),/07:15/));
   await verifier('E5 départ récap → Excel Horaires',async()=>assert.ok(await page.evaluate(()=>{const f=OrlyEchanges.horairesVersClasseur(Sim.ateliers.state,{services:Sim.ateliers.a.services()});return f[0].lignes.some(l=>l[0]==='Montage AF BC'&&l[2]==='07:15');})));

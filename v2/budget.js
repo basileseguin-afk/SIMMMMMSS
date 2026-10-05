@@ -293,7 +293,7 @@
       box.innerHTML = tuiles + base + (b.lignes.length ? `<table class="bu-table">
         <thead><tr><th>Service</th><th>Budget du jour</th><th>Vacations</th><th>Heures sup</th><th>Coût</th><th>Écart</th><th class="bu-col-jauge">Coût / budget</th></tr></thead>
         <tbody>${b.lignes.map(ligne).join('')}</tbody></table>`
-        : '<p class="mini-note">Aucune équipe pour l’instant : décrivez-les dans Mon unité › Services et équipes.</p>');
+        : '<p class="mini-note">Aucune équipe pour l’instant : décrivez-les dans Équipes › Services et équipes.</p>');
     }
 
     /** Les équipes d'un service : composition, vacation, heures sup, et l'arbitrage. */
@@ -367,7 +367,7 @@
           <label>Plafond par personne et par jour <span class="bu-champ"><input type="number" min="0" max="12" step="0.25" value="${fr(f.heuresSup.plafond / 60)}" data-bu-sup-plafond class="bu-n"> h</span></label>
           <label>Majoration des heures sup <span class="bu-champ">× <input type="number" min="1" max="3" step="0.05" value="${f.majoration}" data-bu-majoration class="bu-n"></span></label>
           <label>Vacation d’une équipe sans règle de poste <span class="bu-champ"><input type="number" min="1" max="16" step="0.25" value="${fr(f.vacationDefaut / 60)}" data-bu-vacation class="bu-n"> h</span></label>
-          <p class="mini-note">Une personne planifiée est payée sa vacation entière : la présence de son poste (Réglages › Simulation, ou la fiche de l’équipe). Au-delà, les heures sup, dans le plafond ; ce qui dépasse le plafond n’est pas fait.</p></section>
+          <p class="mini-note">Une personne planifiée est payée sa vacation entière : la présence de son poste (Simulation › Réglages de la simulation, ou la fiche de l’équipe). Au-delà, les heures sup, dans le plafond ; ce qui dépasse le plafond n’est pas fait.</p></section>
 
         <section class="bu-carte"><h3>Le mois</h3><p class="mini-note">Pour passer du budget du mois au budget du jour.</p>
           <label>Vols du mois <input type="number" min="1" value="${f.mois.vols ?? ''}" placeholder="${j.vols * m.jours}" data-bu-mois-vols class="bu-n"></label>

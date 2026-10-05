@@ -1,4 +1,4 @@
-/* Version 2 — Réglages › Calage sur le réel, de bout en bout, sur un mois
+/* Version 2 — Simulation › Calage sur le réel, de bout en bout, sur un mois
  * FICTIF dont on connaît la vérité : le Montage prend 30 % de temps de plus
  * que son barème. Le classeur se télécharge, s'importe, le calage retrouve
  * le facteur et l'applique au barème. */

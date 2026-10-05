@@ -1356,7 +1356,7 @@
       const sans = [...new Set((a.lots || []).flatMap(classesDuLot).filter(id => { const c = parClasse.get(id); return c && c.categorie && c.minutes == null; }))];
       if (sans.length) anomalies.push({ code: 'bareme-classe', atelier: a.id, classes: sans,
         message: '« ' + nom(a.service) + ' » n’a pas de minutes par vol pour ' + sans.map(id => id.slice(0, id.indexOf('/'))).slice(0, 6).join(', ')
-          + (sans.length > 6 ? '…' : '') + ' : temps nul. Renseignez-les dans sa fiche (Mon unité › Services et équipes).' });
+          + (sans.length > 6 ? '…' : '') + ' : temps nul. Renseignez-les dans sa fiche (Équipes › Services et équipes).' });
     }
 
     // Ce qui n'empêche pas de jouer la journée ne doit pas l'empêcher.
@@ -1534,7 +1534,7 @@
         anomalies.push({ code: 'hors-parcours', atelier: a.id, classes: hors,
           message: (a.nom || a.id) + ' : ' + hors.slice(0, 4).join(', ') + (hors.length > 4 ? '…' : '')
             + (hors.length > 1 ? ' sont cochées' : ' est cochée') + ' ici, mais ' + (hors.length > 1 ? 'leur chemin ne passe' : 'son chemin ne passe') + ' pas par « ' + nom(a.service)
-            + ' » : ' + (hors.length > 1 ? 'elles ne sont pas préparées' : 'elle n’est pas préparée') + ' ici. Décochez-la, ou ajoutez « ' + nom(a.service) + ' » à son chemin (Mon unité).' });
+            + ' » : ' + (hors.length > 1 ? 'elles ne sont pas préparées' : 'elle n’est pas préparée') + ' ici. Décochez-la, ou ajoutez « ' + nom(a.service) + ' » à son chemin (Chemins).' });
       }
     }
 

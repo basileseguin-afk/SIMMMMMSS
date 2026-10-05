@@ -76,7 +76,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.evaluate(()=>Sim.ateliers.parcours.ouvrir('TX/YC'));await attendre();
   assert.equal(await page.locator('#at-parcours .gr-groupe').count(),0);
 
-  // 4 bis. Mon unité le dit sans rien ouvrir : la liste, les deux fiches, l'équipe.
+  // 4 bis. Services et équipes le dit sans rien ouvrir : la liste, les deux fiches, l'équipe.
   await nav.aller(page,'mu-services');
   assert.match(await page.locator('.mu-liste [data-mu-choisir=preparation] .mu-svc-chaine').innerText(),/avec MONTAGE/i);
   assert.match(await page.locator('.mu-liste [data-mu-choisir=prepa] .mu-svc-chaine').innerText(),/\+ PRÉPA/i);

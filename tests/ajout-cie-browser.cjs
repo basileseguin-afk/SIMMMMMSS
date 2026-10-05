@@ -16,7 +16,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
 
-  // 1. Organisation › Chemins : le bouton est dans la liste des commandes.
+  // 1. Chemins › Chemin d’une commande : le bouton est dans la liste des commandes.
   await nav.aller(page,'at-chemins');
   const liste=page.locator('.pc-cmds');
   await liste.locator('[data-at-action=classe-nouvelle]').click();await attendre();

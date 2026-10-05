@@ -23,7 +23,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
   await nav.vue(page,'ateliers');await nav.aller(page,'at-chemins');await attendre();
-  const Z='.pc-graphe';
+  const Z='#at-parcours .pc-graphe';
 
   // 1. Une commande suit le flux de sa classe ; elle peut aussi avoir un chemin
   // à elle, avec ses propres cases : ici TX · Business, copié de son flux.

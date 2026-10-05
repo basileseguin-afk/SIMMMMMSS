@@ -13,8 +13,8 @@
  *                compagnies × classes à cocher), ses minutes de travail.
  *
  *  Les chemins des commandes se déduisent des coches (parcours.js, « la
- *  grille à cocher ») ; les anciens outils restent, pour les cas rares, dans
- *  « Outils avancés ».
+ *  grille à cocher ») ; les outils fins restent, pour les cas rares, après la
+ *  mention « Plus » de chaque partie.
  * ==========================================================================*/
 (function (root) {
   'use strict';
@@ -97,7 +97,7 @@
 
     /* ---- rendu ---------------------------------------------------------- */
 
-    /** La page affichée de Mon unité, s'il y en a une. */
+    /** La page affichée de cette vue, s'il y en a une. */
     page() { const b = root.document.body; return b.dataset.vue === 'ateliers' ? b.dataset.sous : null; }
 
     rendre() {
@@ -171,7 +171,6 @@
           <label title="À part entière : ses propres minutes et ses propres liens, comme Prépa ou Dotation. Une salle de plus : elle reprend les minutes et les liens du service choisi au-dessus.">C’est <select name="genre"><option value="autonome">un service à part entière</option>
             <option value="salle">une salle de plus de ce service</option></select></label>
           <button class="btn btn-sm btn-play" type="submit">+ Créer</button></form>
-        <p class="mu-avance"><button type="button" class="lien-discret" data-page="at-equipes">Outils avancés : cases, minutes, liens →</button></p>
       </nav>`;
       const s = services.find(x => x.id === this.choisi);
       // Une fiche qui ne s'affiche pas doit le dire, pas laisser une page vide sans raison.
@@ -515,7 +514,7 @@
       if (this.page() !== 'mu-flux') this.a.page('mu-flux'); else this.rendreFlux();
     }
 
-    /** Ouvre le chemin d'une commande (Mon unité › Une commande), sur un service. */
+    /** Ouvre le chemin d'une commande (Chemins › Chemin d’une commande), sur un service. */
     chemin(cmd, service) { if (this.a.chemin) this.a.chemin(cmd, service); }
 
     cocher(atelierId, cmds, oui) {
@@ -582,7 +581,7 @@
     /** Un service qui sert tout le monde : les flux qui passent par lui. */
     besoinFlux(service, classes) {
       const st = this.etat, types = PC.types(st);
-      if (!types.length) return '<p class="mini-note">Aucun flux de production pour l’instant : dessinez-les dans Mon unité › Flux de production.</p>';
+      if (!types.length) return '<p class="mini-note">Aucun flux de production pour l’instant : dessinez-les dans Chemins › Flux de production.</p>';
       return `<ul class="mu-besoins">${types.map(t => {
         const dedans = P.servicesDuParcours(t).includes(service), n = PC.commandesDuType(st, t.id, classes).length;
         return `<li><label class="chk"><input type="checkbox" data-mu-besoin="${esc(t.id)}" data-service="${esc(service)}"${dedans ? ' checked' : ''}>

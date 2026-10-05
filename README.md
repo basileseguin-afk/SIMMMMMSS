@@ -104,12 +104,17 @@ raconte en quatre images.
 partie du travail, avec son état en clair (✓ fait, · à faire, ~ provisoire —
 des chiffres d’exemple, par exemple —, ! à vérifier, réservé aux vrais
 problèmes), ses pages, et ce qu’il y a « à faire ensuite ». Les parties sont
-rangées **par nature** : ce qu’on importe, ce qu’on décrit, ce qu’on essaie, ce
-qu’on observe. Une page ne mélange jamais deux natures.
+rangées dans l’ordre du travail, **un sujet chacune** (refonte du 05/10) :
+les vols, par où passe chaque commande, qui la prépare, la simulation, ce que
+la journée donne. Une page ne mélange jamais deux sujets, et deux pages n’ont
+jamais un nom qui se ressemble.
 
-L’en-tête garde, sur une ligne, l’accueil, les quatre parties et la
+L’en-tête garde, sur une ligne, l’accueil, les cinq parties et la
 **Sauvegarde**. Dans une partie, ses pages sont des **onglets** : un seul est
-affiché ; un nombre sur un onglet dit qu’il y a quelque chose à y faire. La
+affiché ; un nombre sur un onglet dit qu’il y a quelque chose à y faire. Les
+pages principales d’abord ; les **outils fins** du sujet (ceux qu’on ouvre
+rarement) suivent, en plus petit, après la mention **« Plus »** — il n’y a plus
+de partie cachée « Outils avancés ». La
 dernière page ouverte de chaque partie est retenue ; les outils de la page
 (annuler, rétablir, exporter, importer) se rangent à droite des onglets, et
 chaque export dit ce qu’il contient.
@@ -121,17 +126,10 @@ Chaque chiffre dit son unité (vols, commandes, services) et son moment (« à
 le rouge ne sert qu’aux retards.
 
 1. **Vols** — ce qu’on importe.
-   - *Vols* : importer le programme en Excel ou CSV simplifié, ou garder les
+   - *Programme des vols* : importer le programme en Excel ou CSV simplifié, ou garder les
      vols d’exemple ; d’où viennent les vols est dit en tête.
    - *Planche retour* : quand chaque vol revient à l’unité, pour la plonge.
-2. **Mon unité** — tout le paramétrage, **service par service**, pour
-   quelqu’un qui connaît l’unité sans connaître le site (29/09). Ni
-   « chemins », ni « cases », ni « liens » : des services, des équipes, et ce
-   que chacune prépare.
-   - *Pas à pas* : ce qu’il reste à faire avant de simuler, dans l’ordre
-     (vols, services et équipes, commandes que personne ne prépare, réglages,
-     résultats) ; chaque point mène là où il se règle, chaque service à sa
-     fiche.
+2. **Chemins** — par où passe chaque commande.
    - *Flux de production* : un flux par type de production (Économie,
      Business…), partagé par ses commandes. À gauche les flux et leurs
      variantes ; à droite, **par où passe** celui qu'on choisit (un diagramme :
@@ -143,6 +141,36 @@ le rouge ne sert qu’aux retards.
      s’écarte du flux de sa classe suit une variante (« Sans cuisine + Robot
      sans Montage »), partagée par celles qui s’écartent pareil. « Regrouper »
      range d’un clic les commandes qui avaient chacune leur chemin.
+   - *Chemin d’une commande* : son chemin de bout en bout. Si elle suit un
+     flux partagé, un bandeau le dit (« AF · Business suit le flux
+     « Complet », comme 12 autres commandes ») avec deux gestes : **Modifier
+     ce flux** (ouvre Flux de production, pour toutes ses commandes) ou
+     **lui faire sa variante** (une copie à elle, modifiable sur place). Le
+     diagramme montre, sur chaque service, l’équipe qui la prépare ; un clic
+     sur un service, puis « Ouvrir le service → », mène à sa fiche. Le
+     diagramme d’un flux garde la même disposition ici et dans Flux de
+     production.
+     Les trois pages se répondent : la fiche d’un service liste les **flux
+     qui y passent** (un clic ouvre le flux) ; dans une équipe, chaque
+     commande de « Dans l’ordre » ouvre son chemin sur ce service ; un flux
+     propose « Voir le chemin d’une de ses commandes » et, sur un service
+     choisi, « Ses équipes → ».
+     Une commande peut aussi avoir son **chemin à elle** (« Complet TX BC »),
+     créé à la main — vide, copié d’un modèle, ou copié du chemin d’une autre
+     commande — puis « Dupliquer pour… » d’autres commandes. À gauche la liste des
+     commandes, au centre le chemin **en diagramme de nœuds** : on tire le `+`
+     d’un service jusqu’à un autre (ou on clique le `+`, puis l’autre) pour dire
+     qu’il le livre ; un lien ne vaut que pour ce chemin. **Chaque nœud porte
+     une case** : l’équipe qui y prépare la commande, avec son nom, ses
+     personnes, son heure et ses man-minutes (celles de l’import, modifiables
+     pour la case). Une case se partage : « TX BC/PC » en cuisine prépare TX BC
+     puis TX PC, et le chemin de TX BC n’attend que la ligne de TX BC. Une
+     commande sans chemin suit le modèle de sa classe.
+   - **Plus ›** *Liens entre services* : qui livre qui dans l’unité, dans le même diagramme
+     de nœuds ; ces liens ne servent qu’aux commandes qui n’ont pas de chemin.
+3. **Équipes** — qui prépare quoi, quand, en combien de temps : tout le
+   paramétrage, **service par service**, pour quelqu’un qui connaît l’unité sans
+   connaître le site.
    - *Services et équipes* : la liste des services à gauche (utilisés, avec
      un point orange s’il manque quelque chose ; pas utilisés), la **fiche**
      du service choisi à droite :
@@ -188,77 +216,17 @@ le rouge ne sert qu’aux retards.
      changer ; le service se place alors entre ceux qui le livrent et ceux
      qu’il livre (d’après les autres flux, les modèles types, puis les liens
      de l’unité ; une salle annexe se place comme son service).
-   - *Une commande* : son chemin de bout en bout. Si elle suit un
-     flux partagé, un bandeau le dit (« AF · Business suit le flux
-     « Complet », comme 12 autres commandes ») avec deux gestes : **Modifier
-     ce flux** (ouvre Flux de production, pour toutes ses commandes) ou
-     **lui faire sa variante** (une copie à elle, modifiable sur place). Le
-     diagramme montre, sur chaque service, l’équipe qui la prépare ; un clic
-     sur un service, puis « Ouvrir le service → », mène à sa fiche. Le
-     diagramme d’un flux garde la même disposition ici et dans Flux de
-     production.
-     Les trois pages se répondent : la fiche d’un service liste les **flux
-     qui y passent** (un clic ouvre le flux) ; dans une équipe, chaque
-     commande de « Dans l’ordre » ouvre son chemin sur ce service ; un flux
-     propose « Voir le chemin d’une de ses commandes » et, sur un service
-     choisi, « Ses équipes → ».
-   - *Tableau des équipes* et *Tableau des minutes* : toutes les équipes (et
+   - *Horaires des équipes* et *Minutes de travail* : toutes les équipes (et
      leurs heures), toutes les minutes, d’un coup d’œil, modifiables sur place
      ou dans Excel. *Flux de production › Qui suit quel chemin* : chaque
      compagnie × classe et la liste de tous les chemins (flux, variantes,
      chemins créés de toutes pièces) ; la même liste « Chemin suivi » en tête
-     de *Une commande*. Le tableau des minutes se lit par compagnie : un bloc
+     de *Chemin d’une commande*. *Minutes de travail* se lit par compagnie : un bloc
      chacune, sa ligne en tête est son total (la somme de ses classes,
      service par service, et l’armement, réglé là) ; un clic la déplie sur
      ses classes (« Tout déplier / Tout replier »). Première colonne et total
      de la journée restent visibles au défilement.
-   - *Outils avancés* (le bouton en haut à droite, à côté de Sauvegarde) :
-     les outils d’avant, pour les cas rares.
-   - Suivre une commande étape par étape : **Résultats › Parcours des
-     commandes** (une ligne par commande, un clic sur « Prête à » la déplie
-     dans le temps).
-   Les outils avancés en détail :
-   - *Temps de travail* : les minutes d’un vol, service par service et classe
-     par classe (une valeur commune, des valeurs propres à une compagnie, ou une
-     grille compagnie par classe).
-   - *Une commande* (dans Mon unité), pour une commande qui a son
-     **chemin à elle** (« Complet TX BC »), créé à la
-     main — vide, copié d’un modèle, ou copié du chemin d’une autre commande —
-     et « Dupliquer pour… » d’autres commandes. À gauche la liste des
-     commandes, au centre le chemin **en diagramme de nœuds** : on tire le `+`
-     d’un service jusqu’à un autre (ou on clique le `+`, puis l’autre) pour dire
-     qu’il le livre ; un lien ne vaut que pour ce chemin. **Chaque nœud porte
-     une case** : l’équipe qui y prépare la commande, avec son nom, ses
-     personnes, son heure et ses man-minutes (celles de l’import, modifiables
-     pour la case). Une case se partage : « TX BC/PC » en cuisine prépare TX BC
-     puis TX PC, et le chemin de TX BC n’attend que la ligne de TX BC. Une
-     commande sans chemin suit le modèle de sa classe.
-   - *Cases* : chaque case avec ses commandes dans l’ordre, qui mènent à leur
-     chemin ; « + Case hors chemin » pour une plonge ou une mise à disposition
-     qui sert tout le monde. La **légumerie, le magasin et la réception**
-     ont **une seule case, partagée**, qui sert toutes les commandes à la
-     fois **par vagues** (ex. J-1 14:00, puis J 04:00) : chaque commande prend
-     la vague qui précède son besoin. Sur chaque chemin, une seule question :
-     « Besoin de Légumerie / Magasin / Réception ? ». Des cases d’avant, une par
-     commande (qui préparent, ou déjà en mise à disposition), se fondent en
-     une d’elles-mêmes à l’ouverture et à l’import — « Annuler » revient en
-     arrière : leurs heures deviennent ses vagues. Une case **Handling (par vol)** ne prépare pas de
-     commande : elle réunit les classes d’un même vol et le charge,
-     strictement dans l’ordre des départs, avec une durée par compagnie, un
-     nombre de vols en même temps et une heure au plus tôt (« pas avant 3 h
-     avant le départ »). Il travaille le jour J des vols, jamais la veille. Ajouter le handling à un chemin crée cette case, une
-     seule pour toutes les commandes. Plus simple : **Résultats › Départs ›
-     « Mettre en place le handling »** crée la case et l’ajoute au bout de
-     tous les chemins d’un coup ; le même bandeau dit ensuite combien de vols
-     sont chargés à l’heure et ouvre la fiche (« Régler le handling »). Des cases de handling d’avant, une par
-     commande, sont signalées (Départs, et points à regarder de
-     l’Organisation) : « Passer au handling par vol » les fond en une seule. Les commandes doivent être au handling
-     au départ moins le délai de chargement ; le vol doit être chargé à son
-     départ.
-   - *Qui prépare quoi* : le tableau calculé, une ligne par commande, une
-     colonne par service, la case et ses heures dans chaque cellule ; un clic
-     ouvre le chemin de la commande sur ce service.
-   - *Services* : un service par ligne — son nom (qui se change ici), ses
+   - **Plus ›** *Liste des services* : un service par ligne — son nom (qui se change ici), ses
      équipes, les commandes qui y passent et ce qui lui manque, en tête de liste.
      « + Une équipe » crée une case dans ce service et l’ouvre ; « Voir sur le
      plan » ; « Modifier le plan de l’unité » pour la forme et la place.
@@ -273,22 +241,49 @@ le rouge ne sert qu’aux retards.
      passent dans son service de rattachement) ; **retirer** un service du plan
      d’origine, qui sort des listes, des liens, du calcul et du plan, puis le
      **remettre** (« Services retirés de l’unité », en bas de page).
-   - *Liens entre services* : qui livre qui dans l’unité, dans le même diagramme
-     de nœuds ; ces liens ne servent qu’aux commandes qui n’ont pas de chemin.
-   - *Contrôles* : ce que le calcul comprend de l’organisation, et ce qu’il faut
-     corriger ; un service sans équipe s’y corrige d’un clic (« + Une équipe
-     dans… »).
-3. **Réglages** — ce qu’on essaie, sur une seule page : *Réglages de la
-   simulation*.
-   - *Horaires des vols* : décaler tous les vols ; « repas prêts combien de
+   - **Plus ›** *Équipes une par une* : chaque case avec ses commandes dans l’ordre, qui mènent à leur
+     chemin ; « + Case hors chemin » pour une plonge ou une mise à disposition
+     qui sert tout le monde. La **légumerie, le magasin et la réception**
+     ont **une seule case, partagée**, qui sert toutes les commandes à la
+     fois **par vagues** (ex. J-1 14:00, puis J 04:00) : chaque commande prend
+     la vague qui précède son besoin. Sur chaque chemin, une seule question :
+     « Besoin de Légumerie / Magasin / Réception ? ». Des cases d’avant, une par
+     commande (qui préparent, ou déjà en mise à disposition), se fondent en
+     une d’elles-mêmes à l’ouverture et à l’import — « Annuler » revient en
+     arrière : leurs heures deviennent ses vagues. Une case **Handling (par vol)** ne prépare pas de
+     commande : elle réunit les classes d’un même vol et le charge,
+     strictement dans l’ordre des départs, avec une durée par compagnie, un
+     nombre de vols en même temps et une heure au plus tôt (« pas avant 3 h
+     avant le départ »). Il travaille le jour J des vols, jamais la veille. Ajouter le handling à un chemin crée cette case, une
+     seule pour toutes les commandes. Plus simple : **Résultats › Vols prêts au départ ›
+     « Mettre en place le handling »** crée la case et l’ajoute au bout de
+     tous les chemins d’un coup ; le même bandeau dit ensuite combien de vols
+     sont chargés à l’heure et ouvre la fiche (« Régler le handling »). Des cases de handling d’avant, une par
+     commande, sont signalées (Départs, et points à regarder de
+     l’Organisation) : « Passer au handling par vol » les fond en une seule. Les commandes doivent être au handling
+     au départ moins le délai de chargement ; le vol doit être chargé à son
+     départ.
+   - **Plus ›** *Barème par service* : les minutes d’un vol, service par service et classe
+     par classe (une valeur commune, des valeurs propres à une compagnie, ou une
+     grille compagnie par classe).
+4. **Simulation** — vérifier, régler, lancer.
+   - *Prêt à simuler ?* : ce qu’il reste à faire avant de simuler, dans l’ordre
+     (vols, services et équipes, commandes que personne ne prépare, réglages,
+     résultats) ; chaque point mène là où il se règle, chaque service à sa
+     fiche.
+   - *Réglages de la simulation* : ce qu’on essaie, sur une seule page.
+     - *Horaires des vols* : décaler tous les vols ; « repas prêts combien de
      minutes avant le départ ? ».
-   - *Retours des vols à la plonge* : d’où ils viennent — les lignes
+     - *Retours des vols à la plonge* : d’où ils viennent — les lignes
      « retour » du programme, chaque départ le lendemain (J+1), ou la planche
      retour du handling ; le délai après atterrissage ; la boucle du matériel.
      « ⇄ Comparer J+1 et planche retour » calcule les deux et les met côte à
      côte dans Résultats › Comparer.
-   - *Rythme et pauses* : rythme de travail, pauses et temps de présence.
-4. **Résultats** — ce que la journée donne.
+     - *Rythme et pauses* : rythme de travail, pauses et temps de présence.
+   - **Plus ›** *Contrôles détaillés* : ce que le calcul comprend de l’organisation, et ce qu’il faut
+     corriger ; un service sans équipe s’y corrige d’un clic (« + Une équipe
+     dans… »).
+5. **Résultats** — ce que la journée donne.
    - *Synthèse* : la journée entière en tuiles (commandes à l’heure, retards,
      dernière commande prête, attentes, travail fourni) ; « Exporter les
      résultats ».
@@ -297,8 +292,12 @@ le rouge ne sert qu’aux retards.
      services, ce qui attend en stock ou à laver. Le plan des services se
      modifie d’ici (« Modifier le plan »).
    - *Planning des équipes* : case par case, qui travaille quand.
-   - *Commandes* : chaque commande, prête à quelle heure, avant quand.
-   - *Départs* : une frise de la journée et un tableau qui dit, vol par vol, si
+   - *Heure de chaque commande* : chaque commande, prête à quelle heure, avant quand.
+   - *Étapes de chaque commande* : une ligne par commande, un clic sur « Prête à »
+     la déplie dans le temps ; en dessous, le tableau calculé, une ligne par commande, une
+     colonne par service, la case et ses heures dans chaque cellule ; un clic
+     ouvre le chemin de la commande sur ce service.
+   - *Vols prêts au départ* : une frise de la journée et un tableau qui dit, vol par vol, si
      ses commandes sont prêtes à l’heure, en retard, ou sans équipe.
    - *Stocks et retours* : ce qui attend entre deux ateliers et avant le
      chargement ; les retours des vols face au débit de la plonge.
@@ -463,7 +462,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `index.html` | Structure et contrôles |
 | `interface.css` | Disposition et hiérarchie visuelle |
 | `theme.css` / `polices/` | L’habillage, posé en dernier : police Inter embarquée (licence OFL), couleurs, cartes, boutons, champs, en-tête |
-| `unite.js` / `unite.css` | Mon unité : le pas à pas et la fiche de chaque service (équipes, grille à cocher, minutes) |
+| `unite.js` / `unite.css` | Prêt à simuler ?, Flux de production et Services et équipes : le pas à pas et la fiche de chaque service (équipes, grille à cocher, minutes) |
 | `sim.js` | Interface, plan, interactions, glue entre les centres |
 | **`moteur/production.js`** | **Modèle par ateliers de travail** — compagnie × classe, lots ordonnés, robot, plonge, parcours lu des flux. Voir [la note de modèle](docs/MODELE_ATELIERS.md) |
 | `moteur/noyau.js` | Noyau à événements discrets sur lequel tourne le modèle par ateliers |
@@ -494,7 +493,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/tableur.test.cjs` | Classeurs Excel : aller-retour, fichier compressé d’un autre logiciel, CSV |
 | `tests/echanges.test.cjs` | Les trois classeurs : aller-retour, ajouts, erreurs regroupées |
 | `tests/excel-browser.cjs` | Chemins et tableau « Qui prépare quoi » dans l’interface, classeurs ateliers et vols de bout en bout |
-| `tests/menu-browser.cjs` | L’accueil (tuiles, états, « à faire ensuite »), le menu par parties, la nature de chaque page, les outils qui suivent la page, clavier, page retenue, sauvegarde, menu verrouillé pendant l’édition du plan, hauteur des bandeaux, écran de 1 024 px |
+| `tests/menu-browser.cjs` | L’accueil (tuiles, états, « à faire ensuite »), le menu à cinq parties (Vols, Chemins, Équipes, Simulation, Résultats), les onglets « Plus » de chaque partie, la nature de chaque page, les outils qui suivent la page, clavier, page retenue, sauvegarde, menu verrouillé pendant l’édition du plan, hauteur des bandeaux, écran de 1 024 px |
 | `tests/liaisons-browser.cjs` | Une donnée, partout la même : barème, récap des man-minutes, récap des cases, fiches, chemin, « Qui prépare quoi », calcul, Excel, renommage, Annuler — changée à un endroit, vérifiée à tous les autres |
 | `tests/fantome-browser.cjs` | Un service qu'on ne retrouve pas : « Armement » sans équipe, ses salles au travail — la note des Contrôles et « Supprimer », la recherche, les salles qui gardent ses liens, un service supprimé encore cité (« Effacer partout », « Passer dans… », « Remettre ») |
 | `tests/boutique-browser.cjs` | La légumerie comme une boutique : d'un clic depuis les vagues, fermée la cuisine attend l'ouverture, les heures dans le récap des cases et « Qui prépare quoi », Annuler |
@@ -503,14 +502,14 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/planche-browser.cjs` | Vols › Planche retour : saisir une ligne, export Excel modifié puis réimporté, classeur faux refusé, « Utiliser la planche retour », les réglages de la simulation (J+1, délai), rechargement, « ⇄ Comparer J+1 et planche retour » |
 | `tests/lisibilite-browser.cjs` | Ce qui se lisait mal : message qui s’efface, heures du planning espacées (jour écrit une fois), cause d’une commande pas finie, « en retard » ≠ « pas finie », durées en heures, horloge « J 00:00 », Contrôles (à corriger / ce que la journée montre, badge) |
 | `tests/robot-ligne-browser.cjs` | La ligne robot : matin et après-midi sur une seule ligne (l’après-midi attend), arrêt 12:15–13:00 valable pour les deux équipes, second robot à sa propre ligne, récap, rechargement |
-| `tests/mon-unite-browser.cjs` | Mon unité : le menu à quatre parties, le pas à pas, un service ouvert depuis lui, deux équipes, toute une ligne / une colonne cochée sans rien prendre à l’autre équipe, l’ordre des départs, une commande déplacée, l’heure tapée et les personnes, décocher sort le service du chemin, les minutes dans la fiche, « Qui en a besoin ? » de la légumerie, un nouveau service placé dans le chemin, le calcul, les outils avancés, rechargement |
+| `tests/mon-unite-browser.cjs` | Le menu à cinq parties (Chemins s’ouvre sur les flux, Simulation sur « Prêt à simuler ? »), le pas à pas, un service ouvert depuis lui, deux équipes, toute une ligne / une colonne cochée sans rien prendre à l’autre équipe, l’ordre des départs, une commande déplacée, l’heure tapée et les personnes, décocher sort le service du chemin, les minutes dans la fiche, « Qui en a besoin ? » de la légumerie, un nouveau service placé dans le chemin, le calcul, les outils « Plus » des Équipes, rechargement |
 | `tests/fusion-browser.cjs` | Deux étapes à la chaîne : « Montage AF » fait aussi la Prépa depuis sa fiche, AF quitte la case de la Prépa, durée à 1 et 2 personnes, récap, « Qui prépare quoi », chemin, fusion visible (halos et trait dans le diagramme, liste et fiches des services, badge et réglage de l’équipe, planning), retour à deux cases, rechargement |
 | `tests/condition-browser.cjs` | Règle ⚡ (v1 et v2) : bouton, phrase pré-remplie pour aujourd’hui, seuil au-dessus des vols du jour → l’équipe ne travaille pas, ses commandes et sa personne passent au montage général (badge, constat, calcul), repas, retrait, équipe seule dans son service |
 | `tests/flux-retrait-browser.cjs` | Retirer un service d’un flux ou un atelier d’un chemin (v1 et v2) : ses équipes lâchent les commandes, cases hors flux non cochables, « Faire passer un flux par ici », ancienne saisie signalée et retirée en un clic |
 | `tests/chaine-services-browser.cjs` | Équipe à la chaîne (v1 et v2) : présente et modifiable dans ses deux services (Prépa et Montage), retirée de la Prépa quand elle n’est plus à la chaîne |
 | `tests/categories-browser.cjs` | Armement par compagnie, lié au handling (v1 et v2) : la fiche le propose ; sans chemin, pas de case ; intégré aux chemins, chaque compagnie a sa case, cochable — FWI absente de la liste du handling, EZY ajoutée sans vol ; minutes par vol ; une colonne ; calcul ; le handling attend l’armement ; « Le retirer des flux » ; retour aux commandes |
 | `tests/armement-chemins-browser.cjs` | Armement intégré à tous les chemins, relié seulement au handling (v1 et v2) : migration au chargement (par compagnie, cases reprises, branche à part dans chaque chemin, sorti du milieu d’un chemin), pas de trou, le handling attend l’armement, bouton pour un nouveau chemin, « Annuler », une seule fois |
-| `tests/liste-commandes-browser.cjs` | Liste des commandes (Une commande, v1 et v2) : la recherche n’est pas recouverte, la liste défile seule, un clic en bas de liste ne la ramène pas en haut, une commande ouverte d’ailleurs est amenée en vue |
+| `tests/liste-commandes-browser.cjs` | Liste des commandes (Chemin d’une commande, v1 et v2) : la recherche n’est pas recouverte, la liste défile seule, un clic en bas de liste ne la ramène pas en haut, une commande ouverte d’ailleurs est amenée en vue |
 | `tests/jeu-essai.test.cjs` | Jeu de démonstration (v1 et v2) : ni QR ni DL, 12 départs et 6 retours ; compagnies utilisées ; vols d’essai avec les seules classes préparées |
 | `tests/jeu-essai-browser.cjs` | Jeu d’essai dans le site (v1 et v2) : QR et DL retirées d’un état enregistré (une fois), vols d’essai pour EZY, RAM, DAH et leur case d’armement, une compagnie cochée reçoit ses vols sans recharger |
 | `tests/vols-fixture.cjs` | Programme figé (l’ancien jeu, fictif) pour les tests d’échanges Excel |
@@ -519,10 +518,10 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/recap-cases-browser.cjs` | Récap des cases : une ligne par case, tâche unique / à la suite / ensemble, départ et jour modifiables, chercher, fichier de paramétrage exporté puis réimporté |
 | `tests/robot-browser.cjs` | Le Robot : service créé et rattaché au Montage, remplace le Montage sur TX, CRL et FBU Économie (une fois), une case Robot, plateaux ÷ débit, débit et effectif dans le récap et la fiche |
 | `tests/recap.test.cjs` | Récap des man-minutes : d’où vient chaque valeur, totaux, fichier de paramétrage (aller-retour sans changement, grosses modifications, erreurs), ligne récap par compagnie (armement) |
-| `tests/recap-browser.cjs` | Mon unité › Tableau des minutes : une ligne par commande, modifier / vider une case, sur la journée, chercher, export puis import |
-| `tests/recap-compagnie-browser.cjs` | Tableau des minutes et armement (v1 et v2) : un bloc par compagnie, sa ligne total en tête (somme de ses classes), classes repliables, minutes par vol modifiables (reliées à la fiche de l’armement), retour à la valeur commune, effectif, Annuler, sur la journée, recherche |
+| `tests/recap-browser.cjs` | Équipes › Minutes de travail : une ligne par commande, modifier / vider une case, sur la journée, chercher, export puis import |
+| `tests/recap-compagnie-browser.cjs` | Minutes de travail et armement (v1 et v2) : un bloc par compagnie, sa ligne total en tête (somme de ses classes), classes repliables, minutes par vol modifiables (reliées à la fiche de l’armement), retour à la valeur commune, effectif, Annuler, sur la journée, recherche |
 | `tests/chemin-choisi.test.cjs` | Choisir le chemin d’une commande (v1 et v2) : liste des chemins, flux choisi, retour au flux de sa classe, chemin à part qui devient partagé |
-| `tests/chemin-choisi-browser.cjs` | Le chemin d’une commande dans une liste (v1 et v2) : « Qui suit quel chemin » (Flux de production) et « Chemin suivi » (Une commande) ; un flux créé de toutes pièces se choisit, le calcul le suit ; un chemin à part choisi devient partagé, et c’est dit |
+| `tests/chemin-choisi-browser.cjs` | Le chemin d’une commande dans une liste (v1 et v2) : « Qui suit quel chemin » (Flux de production) et « Chemin suivi » (Chemin d’une commande) ; un flux créé de toutes pièces se choisit, le calcul le suit ; un chemin à part choisi devient partagé, et c’est dit |
 | `tests/service-autonome-browser.cjs` | Un service à part entière créé depuis le site (v1 et v2), « Roulés couverts » : rangé comme Prépa ou Dotation, sans minutes ni liens hérités ; flux, équipe, minutes, calcul, tableau des minutes, planning, Excel, rechargement ; rattacher / détacher ; la salle de plus reste un choix |
 | `tests/armement-integre-browser.cjs` | « L’intégrer à tous les chemins » seulement s’il y a à faire (v1 et v2) : chemins suivis par les commandes seulement, un lien vers un handling suffit, sinon le chemin à reprendre est nommé avec la raison ; un clic le remet en ordre |
 | `tests/coherence.test.cjs` | Audit des flux (v1 et v2) : une case cochée hors du chemin de sa commande n’y est pas préparée, et c’est dit ; un vol ne part pas avec son seul armement |
@@ -531,12 +530,12 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/partage-browser.cjs` | Légumerie partagée : une case pour toutes les commandes, « Besoin de légumerie ? » sur le chemin, vagues dans le tableau, fusion des cases d’avant |
 | `tests/handling.test.cjs` | Le handling par vol : classes d’un même vol réunies, ordre strict des départs, pas avant départ − X h, plusieurs quais, vol bloqué, poste fini, durée par compagnie, stocks devant le handling |
 | `tests/handling-browser.cjs` | Le handling dans l’interface : une case partagée posée depuis un chemin, sa fiche, les départs « chargé à », la synthèse |
-| `tests/services-browser.cjs` | Outils avancés › Services : une ligne par service, « + Une équipe » (depuis la page, les contrôles, le plan), renommer, voir et modifier sur le plan, pas d’alerte pour une plonge ; cycle de vie : créer, doublon refusé, changer de rattachement, supprimer, retirer et remettre |
+| `tests/services-browser.cjs` | Équipes › Liste des services : une ligne par service, « + Une équipe » (depuis la page, les contrôles, le plan), renommer, voir et modifier sur le plan, pas d’alerte pour une plonge ; cycle de vie : créer, doublon refusé, changer de rattachement, supprimer, retirer et remettre |
 | `tests/nav.cjs` | Aide partagée des tests navigateur : aller à une page comme à la main (la partie, puis l’onglet) |
 | `tests/icones.test.cjs` | Chaque service reconnaît son pictogramme |
 | `tests/graphe.test.cjs` | Diagramme : colonnes, nœud au milieu de ses amonts, couloirs des longs liens, boucles, dispositions retenues |
 | `tests/graphe-browser.cjs` | Diagrammes dans la page : tirer un trait, clavier, doublon et boucle refusés, équipe créée depuis un nœud, disposition retenue, liens de l’unité |
-| `tests/onglets.test.cjs` | Le menu : chaque page dans une seule partie, rangée par nature ; pages de chaque vue, identifiants uniques, règle de masquage, pictogrammes |
+| `tests/onglets.test.cjs` | Le menu (v1 et v2) : chaque page dans une seule partie, un sujet par partie, les outils fins après « Plus » ; pages de chaque vue, identifiants uniques, règle de masquage, pictogrammes |
 | `tests/browser-smoke.cjs` | Parcours dans Chromium : relecture, vols, import, export, écran étroit de bureau |
 | `tests/import-browser.cjs` | Import CSV : échec de lecture puis réimport, numéros de ligne, export, scénarios A/B |
 | `tests/sauvegarde-browser.cjs` | Sauvegarde complète : export, refus atomique, effacement et restauration |

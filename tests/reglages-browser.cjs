@@ -172,7 +172,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await nav.aller(page,'rg-simulation');await attendre();
   assert.equal(await page.locator('#loadDelay').count(),1,'un seul champ');
   assert.equal(await page.evaluate(()=>document.getElementById('rg-sim-horaires').contains(document.getElementById('loadDelay'))),true,
-    'et il vit dans Réglages › Réglages de la simulation');
+    'et il vit dans Simulation › Réglages de la simulation');
   assert.equal(await page.locator('#loadDelay').isVisible(),true);
 
   // 11. Rien ne déborde, sur grand écran comme sur le plus petit visé.

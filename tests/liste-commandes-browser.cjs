@@ -1,4 +1,4 @@
-/* La liste des commandes (Mon unité › Une commande) défile seule et garde sa
+/* La liste des commandes (Chemins › Chemin d’une commande) défile seule et garde sa
  * position (retour d'usage du 02/10 : « bug de scrollage sur la barre de
  * gauche ») : le champ de recherche n'est plus recouvert, un clic en bas de
  * liste ne la ramène plus en haut, et une commande ouverte d'ailleurs y est

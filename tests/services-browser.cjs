@@ -1,4 +1,4 @@
-/* Organisation › Services : la porte d'entrée d'un service. « Il manque une
+/* Équipes › Liste des services : la porte d'entrée d'un service. « Il manque une
  * équipe » doit se corriger d'un clic, et un service se renomme sans passer
  * par l'édition du plan. */
 const assert=require('node:assert/strict'),path=require('node:path');
@@ -15,18 +15,18 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
 
-  // 1. Une ligne par service de l'unité, dans les outils avancés (Mon unité a sa fiche par service).
+  // 1. Une ligne par service de l'unité, un onglet « Plus » des Équipes (qui ont leur fiche par service).
   await nav.aller(page,'u-services');
-  assert.equal(await page.evaluate(()=>document.body.dataset.partie),'avance');
+  assert.equal(await page.evaluate(()=>document.body.dataset.partie),'organisation');
   assert.equal(await page.locator('.svc-table tbody tr').count(),await page.evaluate(()=>Sim.ateliers.a.services().length),'tous les services');
   assert.match(await ligne('plonge').textContent(),/aucune/);
   assert.equal(await page.locator('#fc-export').isVisible(),false,'les outils des liens restent sur leur page');
 
   // 2. « + Une équipe » : l'équipe naît dans ce service, de sa nature (une
-  //    plonge lave), et se règle dans la fiche du service (Mon unité).
+  //    plonge lave), et se règle dans la fiche du service (Équipes).
   await ligne('plonge').locator('[data-svc-action=equipe]').click();await attendre();
   assert.equal(await page.evaluate(()=>document.body.dataset.sous),'mu-services','on la règle dans la fiche du service');
-  assert.equal(await page.locator('.mu-fiche').getAttribute('data-mu-fiche'),'plonge');
+  assert.equal(await page.locator('.mu-fiche[data-mu-fiche]').getAttribute('data-mu-fiche'),'plonge');
   const pl=(await cases('plonge'))[0];
   assert.ok(pl,'une case dans la plonge');
   assert.equal(pl.type,'lavage','une plonge lave');
