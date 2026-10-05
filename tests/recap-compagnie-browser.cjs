@@ -18,6 +18,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   for(const [fichier,version] of [['../index.html','v1'],['../v2/index.html','v2']]){
    await page.goto(pathToFileURL(path.resolve(__dirname,fichier)).href);await attendre();
    await page.evaluate(()=>localStorage.clear());await page.reload();await attendre();
+   await page.waitForTimeout(200);await nav.effectifSaisi(page);   // les personnes se saisissent ici (05/10)
    await page.evaluate(()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
      st.categories={armement:[{id:'ARM',nom:'Armement',minutes:{'*':10,AF:15}}]};
      st.ateliers.push({id:'mo',nom:'Montage',service:'prepa',type:'manuel',debut:'04:00',jour:0,personnes:4,pauses:[],lots:[['AF/YC','TX/YC']],regime:{actif:true}});

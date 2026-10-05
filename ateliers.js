@@ -292,9 +292,22 @@
     // ils ne se refont pas à chaque ouverture.
     const migrations = [...new Set((Array.isArray(brut.migrations) ? brut.migrations : []).map(String))].slice(0, 50);
     const categories = categoriesDe(brut.categories);
+    // L'effectif de chaque service : constant (« fixe ») ou calculé d'après les
+    // homme-minutes (« calcule »). Absent : le choix par défaut (effectifConstant).
+    const effectifs = Object.fromEntries(Object.entries(brut.effectifs && typeof brut.effectifs === 'object' ? brut.effectifs : {})
+      .filter(([k, x]) => k && k.length <= 160 && (x === 'fixe' || x === 'calcule')).slice(0, 500));
     return { schema: 'ory-ateliers', version: 1, ateliers, exclues, ajoutees, materiel,
-      parcours, parcoursCabine, parcoursClasse, ...(Object.keys(categories).length ? { categories } : {}), ...(migrations.length ? { migrations } : {}) };
+      parcours, parcoursCabine, parcoursClasse, ...(Object.keys(categories).length ? { categories } : {}),
+      ...(Object.keys(effectifs).length ? { effectifs } : {}), ...(migrations.length ? { migrations } : {}) };
   }
+
+  /* L'effectif constant par défaut (retour d'usage du 05/10) : « le nombre de
+   * personnes dépend du nombre de vols, à part sur certains ateliers ». CF
+   * départ food (les checkeurs, à heures fixes), le magasin, la légumerie, le
+   * duty free et les appros ne suivent pas les vols ; les autres services se
+   * calculent. Une case dans la fiche du service change ce choix. */
+  const CONSTANTS = new Set(['handling', 'magasin', 'decontam', 'bobduty', 'appros']);
+  const NOMS_CONSTANTS = /cf\s*d[ée]part|magasin|l[ée]gumerie|duty|appro/i;
 
   const vide = () => ({ schema: 'ory-ateliers', version: 1, ateliers: [], exclues: [], ajoutees: [],
     materiel: { actif: false, unites: P.UNITES_DEFAUT, stockInitial: 0, delaiRetour: 30 },
@@ -442,13 +455,67 @@
           parcoursClasse: this.state.parcoursClasse,
           // Les services qui travaillent par catégories propres (l'armement).
           categories: this.state.categories || {},
+          // Les services dont l'effectif se calcule d'après les homme-minutes (05/10).
+          effectifCalcule: this.servicesCalcules(),
           noms: Object.fromEntries((this.a.fantomes ? this.a.fantomes() : []).map(f => [f.id, f.nom])
             .concat(this.a.services().map(s => [s.id, s.nom])))
         });
       } catch (e) {
         this.resultat = { ok: false, anomalies: [{ code: 'moteur', message: e.message }], lots: [], ateliers: [], classes: [], parClasse: {} };
       }
+      this.reporterEffectifs();
       return this.resultat;
+    }
+
+    /* L'effectif d'un service (retour d'usage du 05/10) : constant, saisi équipe
+     * par équipe, ou calculé d'après les homme-minutes de ses équipes. */
+    effectifConstant(service) {
+      const v = (this.state.effectifs || {})[service];
+      if (v === 'fixe' || v === 'calcule') return v === 'fixe';
+      const s = this.a.services().find(x => x.id === service);
+      return CONSTANTS.has(service) || NOMS_CONSTANTS.test((s && s.nom) || '');
+    }
+
+    /** Les services dont l'effectif se calcule. */
+    servicesCalcules() {
+      return [...new Set(this.state.ateliers.map(a => a.service))].filter(s => !this.effectifConstant(s));
+    }
+
+    regleEffectif(service, constant) {
+      const nom = (this.a.services().find(x => x.id === service) || {}).nom || service;
+      this.changer(() => { this.state.effectifs = { ...(this.state.effectifs || {}), [service]: constant ? 'fixe' : 'calcule' }; },
+        constant ? nom + ' : effectif constant, ses équipes gardent le nombre de personnes saisi.'
+          : nom + ' : effectif calculé, d’après les minutes par vol et le nombre de vols.');
+    }
+
+    /** L'effectif calculé d'une équipe ({ personnes, hommeMinutes, poste, rendement }), ou null. */
+    effectifCalcule(a) {
+      if (!a || a.type !== 'manuel' || this.effectifConstant(a.service)) return null;
+      return ((this.resultat && this.resultat.effectifs) || {})[a.id] || null;
+    }
+
+    /* Le champ « Personnes » d'une équipe : à saisir, ou calculé (en lecture). */
+    champPersonnes(a, classe) {
+      const e = this.effectifCalcule(a), cls = classe ? ` class="${classe}"` : '';
+      if (!e) return `<label${cls}>Personnes<input type="number" min="0" max="999" value="${a.personnes}" data-at-champ="personnes"></label>`;
+      const h = m => (m >= 60 ? Math.floor(m / 60) + ' h ' + String(Math.round(m % 60)).padStart(2, '0') : Math.round(m) + ' min');
+      const pourquoi = h(e.hommeMinutes) + ' de travail (minutes par vol × vols de chaque compagnie) ÷ ' + h(e.poste)
+        + ' travaillées par personne pendant son poste' + (e.rendement !== 1 ? ' × rendement ' + Math.round(e.rendement * 100) + ' %' : '')
+        + ', arrondi au-dessus. Pour le saisir à la main, cochez « Effectif constant » dans la fiche du service.';
+      return `<span${cls ? ` class="${classe} at-pers-calc"` : ' class="at-pers-calc"'} title="${esc(pourquoi)}">Personnes
+        <output data-at-calcule="${esc(a.id)}">${e.personnes}</output><small>calculé · ${esc(h(e.hommeMinutes))} ÷ ${esc(h(e.poste))}</small></span>`;
+    }
+
+    /* L'effectif calculé devient celui de l'équipe : le planning, le budget, les
+     * exports et les fiches lisent tous le même nombre. */
+    reporterEffectifs() {
+      const eff = (this.resultat && this.resultat.effectifs) || {};
+      let n = 0;
+      for (const a of this.state.ateliers) {
+        const e = eff[a.id];
+        if (e && a.personnes !== e.personnes) { a.personnes = e.personnes; n++; }
+      }
+      if (n) this.enregistrer();
     }
 
     changer(fn, message) {
@@ -1481,7 +1548,7 @@
           ${handling ? `<label>Jour<input value="Jour J des vols" disabled title="Le handling travaille le jour des vols, jamais la veille"></label>`
             : a.type === 'lavage' ? `<label title="La plonge lave ce qui revient : son jour se compte depuis l’arrivée des retours, pas depuis le départ des vols">Jour<select data-at-champ="jour">${JOURS_PLONGE.map(([j, n]) => `<option value="${j}" ${j === (a.jour || 0) ? 'selected' : ''}>${n}</option>`).join('')}</select></label>`
             : `<label>Jour<select data-at-champ="jour">${[0, -1, -2, -3].map(j => `<option value="${j}" ${j === a.jour ? 'selected' : ''}>${j === 0 ? 'Jour du départ' : 'J' + j}</option>`).join('')}</select></label>`}
-          ${handling && (a.creneaux || []).length ? '' : `<label>Personnes<input type="number" min="0" max="999" value="${a.personnes}" data-at-champ="personnes"></label>`}`}
+          ${handling && (a.creneaux || []).length ? '' : this.champPersonnes(a)}`}
           ${a.type === 'robot' ? `
           ${o.compact ? '' : `<label>Débit du robot (plateaux/h)<input type="number" min="1" value="${a.debit}" data-at-champ="debit"
             title="Le débit des commandes qui n’ont pas le leur (réglable à côté de chaque commande)"></label>`}

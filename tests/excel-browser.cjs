@@ -26,6 +26,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const lot=(service,classe)=>page.evaluate(([s,c])=>Sim.ateliers.resultat.lots.find(l=>l.service===s&&l.classes.includes(c)),[service,classe]);
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
+  await page.waitForTimeout(200);await nav.effectifSaisi(page);   // les personnes se saisissent ici (05/10)
   await nav.vue(page,'ateliers');await attendre();
 
   // 1. Deux parcours types, prêts : YC ne passe ni par la cuisine ni par la légumerie.

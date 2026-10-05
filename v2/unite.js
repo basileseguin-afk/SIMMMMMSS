@@ -235,8 +235,13 @@
           <button class="btn btn-sm" type="button" data-mu-ouvrir="${esc(g.service)}">Ouvrir ${esc(this.nom(g.service))} →</button></p>`)).join('');
       const blocChaine = chaine ? `<div class="mu-chaine-bloc">${chaine}</div>` : '';
 
+      // L'effectif : constant (saisi) ou calculé d'après les homme-minutes (retour d'usage du 05/10).
+      const constant = this.at.effectifConstant(s.id);
+      const choixEffectif = preparent(nature) ? `<label class="mu-effectif"><input type="checkbox" data-mu-effectif="${esc(s.id)}"${constant ? ' checked' : ''}>
+        <span><b>Effectif constant</b><small>${constant ? 'ses équipes gardent le nombre de personnes saisi, quel que soit le nombre de vols. Décochez pour le calculer.'
+          : 'non coché : le nombre de personnes de chaque équipe se calcule, minutes par vol × vols de chaque compagnie ÷ minutes de son poste. Le robot garde le sien. Cochez pour le saisir.'}</small></span></label>` : '';
       const choixNature = `<label class="mu-nature">Ce service…<select data-mu-nature="${esc(s.id)}">${NATURES.map(x =>
-        `<option value="${x.id}"${x.id === nature ? ' selected' : ''}>${esc(x.nom)}</option>`).join('')}</select></label>`;
+        `<option value="${x.id}"${x.id === nature ? ' selected' : ''}>${esc(x.nom)}</option>`).join('')}</select></label>` + choixEffectif;
 
       // Une équipe d'un autre service qui fait aussi celui-ci, à la chaîne : elle
       // existe dans les deux, et se règle dans les deux (retour d'usage du 01/10).
@@ -263,7 +268,8 @@
 
       const rg = this.a.rg ? this.a.rg() : null;
       const temps = nature === 'manuel' && rg
-        ? etape(3, 'Minutes de travail pour un vol', rg.ficheTemps(s.id), 'pour une compagnie dans une classe : la durée se déduit des personnes de l’équipe')
+        ? etape(3, 'Minutes de travail pour un vol', rg.ficheTemps(s.id), constant ? 'pour une compagnie dans une classe : la durée se déduit des personnes de l’équipe'
+          : 'pour une compagnie dans une classe : les personnes de chaque équipe s’en déduisent')
         : nature === 'robot' ? etape(3, 'Débit du robot', '<p class="mini-note">Le débit (plateaux par heure) se règle dans la fiche de chaque équipe robot, plus haut : « Plus de réglages ».</p>') : '';
 
       if (nature === 'categories') return tete + this.lienHandling(s) + aFaire
@@ -367,7 +373,7 @@
           <label class="mu-eq-nom">Équipe<input value="${esc(a.nom)}" data-at-champ="nom" maxlength="160"></label>
           <label>Arrive à<input type="time" value="${esc(a.debut)}" data-at-champ="debut"></label>
           <label>Le<select data-at-champ="jour">${jours}</select></label>
-          <label class="mu-eq-pers">Personnes<input type="number" min="0" max="999" value="${a.personnes}" data-at-champ="personnes"></label>
+          ${this.at.champPersonnes(a, 'mu-eq-pers')}
           ${a.type === 'robot' ? `<label class="mu-eq-pers">Plateaux / h<input type="number" min="1" value="${a.debit}" data-at-champ="debit"></label>` : ''}
           <span class="mu-eq-fin">${fin ? 'finit à ' + esc(fin) : a.lots.length ? '' : ''}</span>
         </div>
@@ -1176,6 +1182,7 @@
           if (t.dataset.muEquipe) this.cocher(t.dataset.muEquipe, [el.dataset.muCocher], el.checked);
         } else if (el.dataset.muBesoin) this.passer(el.dataset.service, [el.dataset.muBesoin], el.checked);
         else if (el.dataset.muNature) this.nature(el.dataset.muNature, el.value);
+        else if (el.dataset.muEffectif) this.at.regleEffectif(el.dataset.muEffectif, el.checked);
         else if (el.dataset.muCatMin) {
           const service = el.closest('[data-mu-cat-service]').dataset.muCatService, id = el.dataset.muCatMin;
           const cie = el.dataset.cie, v = el.value.trim();

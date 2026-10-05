@@ -2,6 +2,7 @@
  * son service. Une personne planifiée est payée sa vacation ; les heures sup
  * valent ×1,25 dans un plafond par jour ; « et avec une personne de plus ? »
  * rejoue la journée pour comparer. Montants fictifs. */
+const nav=require('./nav.cjs');
 const assert=require('node:assert/strict'),path=require('node:path');
 const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
@@ -15,6 +16,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  try{
   await page.goto(v2);await attendre();
   await page.evaluate(()=>localStorage.clear());await page.reload();await attendre();
+  await page.waitForTimeout(200);await nav.effectifSaisi(page);   // les personnes se saisissent ici (05/10)
   // Un Montage trop court : trois personnes pour toutes les commandes.
   await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'mo',nom:'Montage matin',service:'prepa',type:'manuel',
     debut:'03:00',jour:0,personnes:3,pauses:[],lots:Sim.ateliers.classes.map(c=>[c.id]),regime:{actif:true}});},''));await attendre();

@@ -15,6 +15,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const header='vol_id,compagnie,type_avion,sens,heure_std,heure_sta,nb_BC,nb_PC,nb_YC\n';
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
+  await page.waitForTimeout(200);await nav.effectifSaisi(page);   // les personnes se saisissent ici (05/10)
   // L'import des vols vit à l'étape 1, « Les vols ».
   await nav.vue(page,'vols');await nav.aller(page,'v-programme');
 

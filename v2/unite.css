@@ -54,6 +54,10 @@
 .mu-equipe-tete input,.mu-equipe-tete select{font:inherit;min-height:34px;color:var(--txt)}
 .mu-eq-nom input{font-weight:700;min-width:180px}
 .mu-eq-pers input{width:80px}
+.mu-effectif{display:flex;gap:10px;align-items:flex-start;margin-top:12px;max-width:620px;font-size:14px;cursor:pointer}
+.mu-effectif input{margin-top:3px;width:18px;height:18px;flex:none}
+.mu-effectif span{display:flex;flex-direction:column;gap:2px}
+.mu-effectif small{font-size:12px;color:var(--txt2);line-height:1.4}
 .mu-eq-fin{flex:1;text-align:right;font-size:12px;color:var(--txt2);padding-bottom:8px}
 .mu-question{margin:12px 0 6px;font-size:13px;font-weight:700}
 .mu-question small{font-weight:400;color:var(--txt2);margin-left:6px}

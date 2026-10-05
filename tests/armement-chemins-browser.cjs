@@ -17,6 +17,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   for(const [fichier,version] of [['../index.html','v1'],['../v2/index.html','v2']]){
    await page.goto(pathToFileURL(path.resolve(__dirname,fichier)).href);await attendre();
    await page.evaluate(()=>localStorage.clear());await page.reload();await attendre();
+   await page.waitForTimeout(200);await nav.effectifSaisi(page);   // les personnes se saisissent ici (05/10)
    // Une unité décrite : des repas, un handling « Quais », et un armement coché par classe, au milieu d'un chemin.
    await page.evaluate(()=>Sim.ateliers.changer(()=>{const s=Sim.ateliers.state;
      s.ateliers.push({id:'mo',nom:'Montage',service:'prepa',type:'manuel',debut:'04:00',jour:0,personnes:6,pauses:[],lots:Sim.ateliers.classes.map(c=>[c.id]),regime:{actif:true}},

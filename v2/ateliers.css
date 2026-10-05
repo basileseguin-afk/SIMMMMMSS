@@ -39,6 +39,10 @@ body.ateliers-open .workbench{display:none}
 
 .at-champs{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;padding:0 14px 12px}
 .at-champs label,.at-lot select{display:grid;gap:6px;font-size:12px;color:var(--txt2)}
+/* L'effectif calculé d'après les homme-minutes (05/10) : lu, pas saisi. */
+.at-pers-calc{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--txt2);cursor:help}
+.at-pers-calc output{font-size:18px;font-weight:700;color:var(--txt);min-height:36px;display:flex;align-items:center}
+.at-pers-calc small{font-size:11px;color:var(--txt2);white-space:nowrap}
 /* Les cases à cocher sont exclues : la largeur pleine les étirerait et
    rejetterait leur libellé hors de l'écran. */
 #view-ateliers input:not([type=checkbox]),#view-ateliers select{width:100%;min-width:0;box-sizing:border-box;padding:8px;

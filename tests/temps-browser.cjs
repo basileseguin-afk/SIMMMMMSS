@@ -12,6 +12,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const attendre=(ms=200)=>page.waitForTimeout(ms);
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre(300);
+  await page.waitForTimeout(200);await nav.effectifSaisi(page);   // les personnes se saisissent ici (05/10)
   // Une journée : la cuisine de TX BC finit vers 01:30, la prépa ne commence qu'à 04:00 ;
   // les retours reviennent plus vite qu'une plonge lente ne lave.
   await page.evaluate(()=>{const A=Sim.ateliers;A.changer(()=>{const s=A.state;

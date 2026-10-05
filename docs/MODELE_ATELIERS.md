@@ -115,6 +115,49 @@ homme-minutes du lot = Σ sur ses classes ( minutes par vol × nombre de vols )
 durée                = homme-minutes ÷ personnes ÷ rendement
 ```
 
+### Effectif calculé ou constant (05/10)
+
+« Le nombre de personnes sur les ateliers dépend du nombre de vols et n'est pas
+constant, à part sur certains ateliers. » Chaque service porte donc un choix,
+une case dans sa fiche (Équipes › Services et équipes) :
+
+- **calculé** (case « Effectif constant » non cochée) : une équipe qui prépare à
+  la main ne lit plus ses personnes, le moteur les déduit de son travail ;
+- **constant** (case cochée) : l'effectif saisi, équipe par équipe, comme avant.
+
+```
+homme-minutes de l'équipe = Σ sur ses commandes ( minutes par vol × vols de la compagnie )
+                            (+ l'étape faite à la chaîne, le cas échéant)
+poste                     = minutes qu'une personne travaille entre son arrivée et la
+                            fin de sa présence, moins les pauses fixes et du régime
+personnes                 = ⌈ homme-minutes ÷ (poste × rendement) ⌉
+```
+
+Pour une équipe à la chaîne, le poste le plus lent donne le rythme : on prend le
+plus petit effectif dont la durée à la chaîne tient dans le poste. Sans régime
+(pas de fin de présence), on compte une présence ordinaire.
+
+La journée est ensuite **jouée avec cet effectif** : les attentes entre services
+ne sont pas dans le calcul, c'est la simulation qui dit si ça tient (une équipe
+qui attend la cuisine peut déborder de son poste). L'effectif calculé devient
+celui de l'équipe : planning, budget, exports et tableaux lisent le même nombre.
+Cocher « Effectif constant » repart du dernier effectif calculé.
+
+Ne se calculent jamais : le **robot** (sa ligne et son minimum), la **plonge**
+(ses tunnels), le **handling** (durées par vol, chauffeurs) et la **mise à
+disposition** — ils ne travaillent pas en homme-minutes.
+
+Constants par défaut : **CF départ food** (les checkeurs, à heures fixes), le
+**magasin**, la **légumerie**, le **duty free** et les **appros**. Les autres
+services se calculent. Le calage de la v2 rejoue les journées avec les personnes
+du planning réel : il ne recalcule pas l'effectif ; l'essai « une personne de
+plus » du budget impose son effectif à l'équipe essayée.
+
+Moteur : option `effectifCalcule` (les services calculés) de `simuler`, résultat
+`effectifs` ({ personnes, saisi, hommeMinutes, poste, rendement } par équipe),
+fonctions `minutesDuPoste` et `effectifPour`. Une équipe `effectifFixe` n'est
+pas calculée.
+
 **L'unité de compte est le vol, pas le passager.** On ne dresse pas un passager :
 on monte les trolleys d'un vol, on dresse les plateaux d'une classe de ce vol.
 Une étude de temps donne des minutes pour une compagnie × classe sur un vol ;

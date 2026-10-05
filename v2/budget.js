@@ -319,7 +319,8 @@
     /* « Et avec une personne de plus ? » : la journée rejouée, comparée en euros et en retards. */
     essayer(id) {
       const at = this.a.at(), a = at.state.ateliers.find(x => x.id === id); if (!a) return;
-      const autres = at.state.ateliers.map(x => (x.id === id ? { ...x, personnes: (+x.personnes || 0) + 1 } : x));
+      // Une personne de plus, même dans un service à l'effectif calculé : on l'impose à cette équipe.
+      const autres = at.state.ateliers.map(x => (x.id === id ? { ...x, personnes: (+x.personnes || 0) + 1, effectifFixe: true } : x));
       const r = at.simulerAvec ? at.simulerAvec(autres) : null;
       if (!r || !r.ok) { this.essais[id] = { erreur: true }; return this.rendreJour(); }
       // La personne de plus est de la catégorie par défaut : la composition saisie reste.

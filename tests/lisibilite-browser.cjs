@@ -17,6 +17,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const attendre=()=>page.waitForTimeout(250);
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
+  await page.waitForTimeout(200);await nav.effectifSaisi(page);   // les personnes se saisissent ici (05/10)
   // Une cuisine la veille, un montage le jour J au poste trop court, un handling.
   await page.evaluate(()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
     st.parcours.push({id:'ch',nom:'Chaud',noeuds:['cuisine','prepa'],liens:[{de:'cuisine',vers:'prepa'}]});

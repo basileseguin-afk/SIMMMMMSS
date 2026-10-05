@@ -14,6 +14,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const kase=id=>page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id),id);
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
+  await page.waitForTimeout(200);await nav.effectifSaisi(page);   // les personnes se saisissent ici (05/10)
   // Trois cases : une tâche unique, deux commandes à la suite, deux ensemble ; et une plonge.
   await page.evaluate(()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
     const c=(id,nom,service,debut,lots)=>({id,nom,service,type:'manuel',debut,jour:0,personnes:3,pauses:[],lots,regime:{actif:true}});

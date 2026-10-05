@@ -49,6 +49,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  };
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
+  await page.waitForTimeout(200);await nav.effectifSaisi(page);   // les personnes se saisissent ici (05/10)
   await nav.vue(page,'ateliers');await attendre();
 
   // 1. L'onglet occupe toute la largeur et part d'une page vide qui explique.

@@ -135,6 +135,7 @@ const SCENARIOS={
   for(const [fichier,version] of [['../index.html','v1'],['../v2/index.html','v2']]){
    await page.goto(pathToFileURL(path.resolve(__dirname,fichier)).href);await page.waitForTimeout(250);
    await page.evaluate(()=>localStorage.clear());await page.reload();await page.waitForTimeout(250);
+   await page.waitForTimeout(200);await nav.effectifSaisi(page);   // les personnes se saisissent ici (05/10)
    for(const [nom,fn] of Object.entries(SCENARIOS)){
     await page.evaluate(fn);await page.waitForTimeout(150);
     assert.deepEqual(await page.evaluate(`(${AUDIT})(${JSON.stringify(version+' · '+nom)})`),[],version+' · '+nom);

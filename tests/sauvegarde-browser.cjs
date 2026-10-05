@@ -11,6 +11,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const cles=()=>page.evaluate(()=>['orly-plan-v3','ory-ateliers-v1','orly-flows-v1'].map(k=>localStorage.getItem(k)));
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
+  await page.waitForTimeout(200);await nav.effectifSaisi(page);   // les personnes se saisissent ici (05/10)
 
   // 1. Saisir quelque chose : un atelier de travail, et une zone déplacée.
   await nav.vue(page,'ateliers');

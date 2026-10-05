@@ -26,6 +26,16 @@ async function vue(page, v) {
   const id = await page.evaluate(v => Sim.onglets.actif(v), v);
   await aller(page, id);
 }
+/* L'effectif saisi à la main partout (05/10) : depuis l'effectif calculé, un
+ * service qui prépare déduit les personnes de ses homme-minutes. Les tests qui
+ * règlent les personnes d'une équipe à la main (durées, récap, Excel…) cochent
+ * donc « Effectif constant » pour tous les services. */
+async function effectifSaisi(page) {
+  await page.evaluate(() => Sim.ateliers.changer(() => {
+    Sim.ateliers.state.effectifs = Object.fromEntries(Sim.ateliers.a.services().map(s => [s.id, 'fixe']));
+  }, ''));
+  await page.waitForTimeout(100);
+}
 const accueil = async page => { await page.locator('#btn-accueil').click(); await page.waitForTimeout(150); };
 
 /* Un chemin à elle pour une commande (Chemins › Chemin d’une commande) : si elle
@@ -43,4 +53,4 @@ async function deplier(page) {
   if (await b.count()) { await b.click(); await page.waitForTimeout(100); }
 }
 
-module.exports = { aller, vue, accueil, creerChemin, deplier, PREMIERE };
+module.exports = { aller, vue, accueil, creerChemin, deplier, effectifSaisi, PREMIERE };

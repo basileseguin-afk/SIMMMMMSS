@@ -159,6 +159,7 @@
 .rg-recap-table input:hover{border-color:var(--bordure)}
 .rg-recap-table input:focus{border-color:var(--accent);background:var(--bg3,#fff);outline:none}
 .rg-recap-table .rgr-p input{width:40px;color:var(--txt2)}
+.rg-recap-table .rgr-p .rgr-calc{display:inline-block;min-width:40px;font-weight:700;color:var(--txt);cursor:help}
 .rgr-p.partage input{text-decoration:underline dotted;text-underline-offset:3px}
 .rgr-p.sans{color:var(--txt2);text-align:center}
 .rgr-p.partage>span{text-decoration:underline dotted;text-underline-offset:3px}

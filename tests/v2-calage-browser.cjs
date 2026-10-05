@@ -2,6 +2,7 @@
  * FICTIF dont on connaît la vérité : le Montage prend 30 % de temps de plus
  * que son barème. Le classeur se télécharge, s'importe, le calage retrouve
  * le facteur et l'applique au barème. */
+const nav=require('./nav.cjs');
 const assert=require('node:assert/strict'),path=require('node:path');
 const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
@@ -13,6 +14,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../v2/index.html')).href);await attendre();
   await page.evaluate(()=>localStorage.clear());await page.reload();await attendre();
+  await page.waitForTimeout(200);await nav.effectifSaisi(page);   // les personnes se saisissent ici (05/10)
   // L'unité : une équipe de Montage pour toutes les commandes du jour.
   await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'mo',nom:'Montage matin',service:'prepa',type:'manuel',
     debut:'03:00',jour:0,personnes:3,pauses:[],lots:Sim.ateliers.classes.map(c=>[c.id]),regime:{actif:true}});},''));await attendre();

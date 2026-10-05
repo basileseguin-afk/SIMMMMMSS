@@ -16,6 +16,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const chemin=c=>page.evaluate(c=>{const p=OrlyParcours.fluxDe(Sim.ateliers.state,c);return p?{services:MoteurProduction.servicesDuParcours(p),arcs:MoteurProduction.arcsDuParcours(p).map(a=>a.from+'>'+a.to)}:null;},c);
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
+  await page.waitForTimeout(200);await nav.effectifSaisi(page);   // les personnes se saisissent ici (05/10)
 
   // 1. Le menu : cinq parties, un sujet chacune ; le chemin d'une commande est dans Chemins.
   assert.deepEqual(await page.locator('#menu [data-vers-partie]').allInnerTexts(),['Accueil','Vols','Chemins','Équipes','Simulation','Résultats']);

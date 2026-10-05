@@ -1807,6 +1807,8 @@ function installerCentreReglages() {
     // Les cases : une man-minute fixée dans une case prime, le récap le montre.
     ateliers:()=>(Sim.ateliers&&Sim.ateliers.state.ateliers)||[],
     // L'effectif d'une case, réglé depuis le récap des man-minutes.
+    // L'effectif calculé d'une équipe (homme-minutes ÷ poste), ou null s'il se saisit.
+    effectifCalcule:id=>{const at=Sim.ateliers;return at?at.effectifCalcule(at.state.ateliers.find(x=>x.id===id)):null;},
     personnes:(id,n)=>{const a=Sim.ateliers&&Sim.ateliers.state.ateliers.find(x=>x.id===id);if(!a)return false;
       return Sim.ateliers.changer(()=>{a.personnes=n;},'« '+a.nom+' » : '+n+(n>1?' personnes.':' personne.'));},
     // Le débit d'une commande sur un robot ; vide (null) : celui du robot.

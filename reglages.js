@@ -310,6 +310,13 @@
       const section = document.getElementById('rg-modele');
       // Les mêmes écouteurs servent la fiche d'un service (Équipes ›
       // Services), où le temps de travail se règle aussi : `ecouter(el)`.
+      /* Le champ « personnes » d'une équipe : à saisir, ou calculé d'après ses
+       * homme-minutes (retour d'usage du 05/10), en lecture. */
+      this.persEquipe = eq => {
+        const e = this.a.effectifCalcule ? this.a.effectifCalcule(eq.id) : null;
+        return e ? `<output class="rgr-calc" data-rg-calcule="${esc(eq.id)}" title="Calculé : homme-minutes de l’équipe ÷ minutes de son poste. Pour le saisir, cochez « Effectif constant » dans la fiche du service.">${e.personnes}</output>`
+          : `<input type="number" min="0" max="999" step="1" value="${eq.personnes}" data-rg-champ="recap-pers" data-atelier="${esc(eq.id)}" aria-label="Personnes de ${esc(eq.nom)}">`;
+      };
       this.surChange = e => {
         const champ = e.target.dataset.rgChamp; if (!champ) return;
         const { service, cle, index } = e.target.dataset;
@@ -657,7 +664,7 @@
         const tdPers = !eq
           ? `<td class="rgr-p sans" title="Aucune case ne prépare ${esc(P.libelleClasse(l.classe.id))} dans ${esc(sv.nom)}">—</td>`
           : `<td class="rgr-p${partage ? ' partage' : ''}${eq.chaine ? ' chaine' : ''}" title="${c.source === 'robot' ? 'Robot' : 'Case'} « ${esc(eq.nom)} »${eq.chaine ? ' — à la chaîne : elle fait aussi cette étape' : ''}${c.source === 'robot' ? ' — tourne à partir de ' + (c.personnesMin ?? 1) : ''}${partage ? ' — partagée par ' + eq.commandes + ' commandes : son effectif vaut pour toutes' : ''}">`
-            + `<input type="number" min="0" max="999" step="1" value="${eq.personnes}" data-rg-champ="recap-pers" data-atelier="${esc(eq.id)}" aria-label="Personnes de ${esc(eq.nom)}"></td>`;
+            + `${this.persEquipe(eq)}</td>`;
         let tdVal;
         if (c.source === 'robot') {
           tdVal = vue === 'jour'
@@ -697,7 +704,7 @@
               data-rg-champ="recap-cie" data-service="${esc(sv.id)}" data-cie="${esc(l.compagnie)}"
               aria-label="Man-minutes par vol : ${esc(lib)}" title="${esc(lib)} — ${c.source === 'propre' ? 'valeur propre à la compagnie' : c.source === 'commun' ? 'valeur toutes compagnies' : 'à renseigner'} ; vide : celle de toutes les compagnies"></td>`;
         const tdPers = !eq ? `<td class="rgr-p sans" title="Aucune équipe de ${esc(sv.nom)} ne coche ${esc(l.compagnie)}">—</td>`
-          : `<td class="rgr-p${eq.commandes > 1 ? ' partage' : ''}" title="Équipe « ${esc(eq.nom)} »${eq.commandes > 1 ? ' — partagée : son effectif vaut pour toutes ses compagnies' : ''}"><input type="number" min="0" max="999" step="1" value="${eq.personnes}" data-rg-champ="recap-pers" data-atelier="${esc(eq.id)}" aria-label="Personnes de ${esc(eq.nom)}"></td>`;
+          : `<td class="rgr-p${eq.commandes > 1 ? ' partage' : ''}" title="Équipe « ${esc(eq.nom)} »${eq.commandes > 1 ? ' — partagée : son effectif vaut pour toutes ses compagnies' : ''}">${this.persEquipe(eq)}</td>`;
         return tdVal + tdPers + `<td class="rgr-d">${duree != null ? heures(duree) : ''}</td>`;
       };
       // Un bloc par compagnie (retour d'usage du 02/10 : « utilise cette ligne comme

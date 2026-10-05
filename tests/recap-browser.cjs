@@ -13,6 +13,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const bareme=()=>page.evaluate(()=>Sim.reglages.etat.bareme);
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
+  await page.waitForTimeout(200);await nav.effectifSaisi(page);   // les personnes se saisissent ici (05/10)
 
   // 1. Dans Mon unité (Tableau des minutes) : une ligne par commande, une colonne par service.
   await nav.aller(page,'rg-recap');await nav.deplier(page);

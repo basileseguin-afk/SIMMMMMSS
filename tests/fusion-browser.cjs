@@ -15,6 +15,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const lot=(at,c)=>page.evaluate(([at,c])=>Sim.ateliers.resultat.lots.find(l=>l.atelier===at&&(l.classes||[]).includes(c)),[at,c]);
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
+  await page.waitForTimeout(200);await nav.effectifSaisi(page);   // les personnes se saisissent ici (05/10)
   // Un chemin Cuisine → Prépa → Montage pour l'économie ; AF et TX y passent.
   await page.evaluate(()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
     // Un chemin propre à chacune : un chemin partagé serait un flux de production.

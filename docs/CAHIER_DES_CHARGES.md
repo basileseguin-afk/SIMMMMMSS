@@ -163,6 +163,7 @@ de relire le cahier des charges initial :
 | E10 | Pages **épurées** : ne plus tout montrer à la fois, onglets et sous-onglets | 23/09 | ✅ | Deux à cinq onglets par étape, un seul affiché ; bandeau de contexte retiré ; indicateurs de la journée dans leur onglet. Pas de sous-sous-onglet : aucun onglet n'en a eu besoin |
 | E16 | **Organisation du menu** claire : pas d'onglets qui se ressemblent pour des usages différents, mieux catégoriser, sans perdre de fonction | 05/10 | ✅ | Cinq parties, un sujet chacune : Vols · Chemins · Équipes · Simulation · Résultats ; outils fins après « Plus » dans leur partie (plus de partie cachée « Outils avancés ») ; noms de pages distincts ; identifiants inchangés |
 | E17 | **Chemins compréhensibles avec beaucoup de services**, de façon plus visuelle | 05/10 | ✅ | Chemins › Vue d'ensemble (plan de métro : services × flux, par étape) ; diagrammes en étapes de haut en bas, tenant dans l'écran, chaîne éclairée au survol ; « En ligne » reste disponible |
+| E18 | **Effectif d'après les homme-minutes** : personnes = minutes par vol × vols de chaque compagnie, rapporté au poste ; dissocier les ateliers calculés des **constants**, avec une case à cocher | 05/10 | ✅ | Case « Effectif constant » par service ; constants par défaut : CF départ food, magasin, légumerie, duty free, appros ; la simulation dans le temps est gardée, jouée avec l'effectif calculé. Robot, plonge, handling, mise à disposition : toujours saisis (ils ne travaillent pas en homme-minutes) |
 
 ## 10. Méthode et fiabilité (feuille de route d'Astra)
 

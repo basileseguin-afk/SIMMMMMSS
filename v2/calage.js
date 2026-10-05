@@ -419,6 +419,9 @@
       const P = root.MoteurProduction, at = this.a.at();
       const args = at.argsMoteur(at.state.ateliers);
       delete args.vols; delete args.classes;
+      // Le calage rejoue les journées avec les personnes du planning réel : on ne
+      // les recalcule pas d'après les homme-minutes, c'est ce qu'on cherche à caler.
+      delete args.effectifCalcule;
       this.enCours = { fait: 0, total: 1 }; this.rendre();
       let dernier = 0;
       try {

@@ -17,6 +17,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const lot=(id,cmd)=>page.evaluate(([id,cmd])=>{const r=Sim.ateliers.resultat;const l=r.lots.find(x=>x.atelier===id&&x.classes.includes(cmd));return l?[l.debut,l.fin]:null;},[id,cmd]);
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
+  await page.waitForTimeout(200);await nav.effectifSaisi(page);   // les personnes se saisissent ici (05/10)
   // Une commande, AF · Business, avec son chemin : Cuisine puis Montage.
   await page.evaluate(()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
     const p={id:'ch',nom:'Chemin AF BC',noeuds:['cuisine','prepa'],liens:[{de:'cuisine',vers:'prepa'}],cases:true};

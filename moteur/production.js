@@ -351,6 +351,52 @@
   /** Le service d'avant qu'une case fait aussi, s'il y en a un. */
   const fusionDe = a => (a && (a.type === 'manuel' || !a.type) && typeof a.fusion === 'string' && a.fusion && a.fusion !== a.service ? a.fusion : null);
 
+  /*
+   * L'EFFECTIF CALCULÉ (retour d'usage du 05/10) : « le nombre de personnes
+   * sur les ateliers dépend du nombre de vols, il n'est pas constant, à part
+   * sur certains ateliers ». Dans un service dont l'effectif est calculé, une
+   * équipe qui prépare à la main ne lit plus ses personnes : on les déduit de
+   * son travail.
+   *
+   *   personnes = homme-minutes de ses commandes (minutes par vol × vols de
+   *               chaque compagnie) ÷ (minutes qu'une personne travaille
+   *               pendant le poste × rendement), arrondi au-dessus.
+   *
+   * Le poste se lit comme dans la journée : de l'heure de début à la fin de la
+   * présence, moins les pauses fixes et les pauses du régime. La journée est
+   * ensuite jouée avec cet effectif. Les attentes entre services ne sont pas
+   * dans le calcul : c'est la simulation qui dit si ça tient.
+   *
+   * Un robot (sa ligne), une plonge (ses tunnels), un handling (ses durées par
+   * vol, ses chauffeurs) et une mise à disposition ne travaillent pas en
+   * homme-minutes : leur effectif reste celui qu'on saisit.
+   */
+  const PLAFOND_EFFECTIF = 999;
+
+  /** Les minutes qu'une personne travaille pendant le poste de cette équipe. */
+  function minutesDuPoste(a, regimeDefaut) {
+    const debut = minutes(a.debut) + (a.jour || 0) * MINUTES_PAR_JOUR;
+    let regime = normaliserRegime(a.regime, regimeDefaut);
+    // Sans fin de poste, on compte une présence ordinaire : sinon une seule
+    // personne suffirait toujours, puisqu'elle aurait tout son temps.
+    if (!regime.actif) regime = normaliserRegime(null, regimeDefaut);
+    return executerTache({ depart: debut, duree: 1e7, pauses: pausesDe(a), regime, finPoste: debut + regime.presence }).fait;
+  }
+
+  /**
+   * Le plus petit effectif qui fait `ici` homme-minutes (et `avant`, l'étape
+   * fusionnée) en `poste` minutes. 0 sans travail ; null sans poste.
+   */
+  function effectifPour(ici, avant, poste, rendement) {
+    const m = Math.max(0, +ici || 0), p = Math.max(0, +avant || 0), r = rendement > 0 ? rendement : 1;
+    if (!(m + p > 0)) return 0;
+    if (!(poste > 0)) return null;
+    let n = Math.max(1, Math.ceil((m + p) / (poste * r) - 1e-9));
+    // À la chaîne, le poste le plus lent donne le rythme : il en faut parfois un de plus.
+    if (p > 0 && m > 0) while (n < PLAFOND_EFFECTIF && dureeFusion(p, m, n) / r > poste + 1e-9) n++;
+    return Math.min(n, PLAFOND_EFFECTIF);
+  }
+
   /* ======================================================================
    *  4. PARCOURS — lu dans le graphe des liaisons
    * ====================================================================*/
@@ -1293,6 +1339,8 @@
         .filter(lot => classesDuLot(lot).length);
     }
     const nom = id => (opts.noms && opts.noms[id]) || id;
+    // Les services dont l'effectif se calcule d'après les homme-minutes.
+    const calcules = new Set(Array.isArray(opts.effectifCalcule) ? opts.effectifCalcule : []);
 
     // Quels services fabriquent quelle classe. C'est ce qui définit le parcours
     // réel, et c'est sur lui seul qu'un cycle est bloquant : le graphe des flux
@@ -1413,6 +1461,32 @@
         if (!produit.has(cle(f, id))) fusionPar.set(cle(f, id), a.service);
       }
     }
+    // L'effectif calculé : homme-minutes des commandes de l'équipe ÷ son poste.
+    // Les commandes écartées (hors chemin, équipe ⚡ qui ne travaille pas) sont
+    // déjà parties : on ne compte que ce qu'elle fera vraiment.
+    const effectifs = {};
+    for (const a of ateliers) {
+      // `effectifFixe` : une équipe dont on essaie un autre effectif (« et avec une personne de plus ? »).
+      if (a.type !== 'manuel' || a.effectifFixe || !calcules.has(a.service)) continue;
+      let poste;
+      try { poste = minutesDuPoste(a, opts.regime); } catch (e) { continue; }   // heure invalide : déjà signalée
+      const lots = (a.lots || []).flatMap(classesDuLot).map(id => parClasse.get(id)).filter(Boolean);
+      const ici = lots.reduce((n, c) => n + travailDans(a, c, bareme), 0);
+      const f = fusionDe(a);
+      const avant = f ? lots.filter(c => fusionPar.get(cle(f, c.id)) === a.service).reduce((n, c) => n + travailClasse(f, c, bareme), 0) : 0;
+      let n = effectifPour(ici, avant, poste, rendement);
+      if (n == null) continue;
+      // Des commandes sans minutes (barème à renseigner) : quelqu'un est là, en temps nul.
+      if (n === 0 && lots.length) n = 1;
+      effectifs[a.id] = { personnes: n, saisi: a.personnes, hommeMinutes: ici + avant, poste, rendement };
+      a.personnes = n;
+    }
+    // Ses personnes saisies ne comptent plus : ce qu'on en disait non plus.
+    for (let i = anomalies.length - 1; i >= 0; i--) {
+      const x = anomalies[i];
+      if (effectifs[x.atelier] && (x.code === 'personnes' || x.code === 'sans-personne')) anomalies.splice(i, 1);
+    }
+
     // Une mise à disposition sert TOUT : on ne lui fait pas énumérer les
     // classes. Le magasin sort du matériel pour qui en demande.
     for (const a of ateliers) if (a.type === 'dispo') for (const c of classes) produit.add(cle(a.service, c.id));
@@ -2221,6 +2295,8 @@
       classes,
       ateliers: suivi,
       conditions: regles.conditions,
+      // L'effectif de chaque équipe calculée : { personnes, saisi, hommeMinutes, poste, rendement }.
+      effectifs,
       lots: journal.sort((a, b) => a.debut - b.debut),
       parClasse: derniers,
       indicateurs: {
@@ -2429,6 +2505,7 @@
     minutes, hhmm, idClasse, libelleClasse, nomCabine, enClair,
     REGIME_DEFAUT, normaliserRegime, executerTache,
     classesDeVols, classesCategories, compagniesParService, declarerCategories, volsDesClasses, compteDuJour, appliquerConditions, dureeHandling, compagniesDe, AVANCE_HANDLING, BAREME_DEMO, RENDEMENT_DEMO, travailClasse, travailDans, dureeFusion,
+    minutesDuPoste, effectifPour, PLAFOND_EFFECTIF,
     PAX_TYPE, TOUTES, cleBareme, normaliserBareme, minutesParVol,
     arcsDuParcours, servicesDuParcours, routesDesClasses,
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,

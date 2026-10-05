@@ -5,6 +5,54 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-05 — L'effectif se calcule d'après les homme-minutes ; case « Effectif constant »
+
+Demande : « on simule uniquement les man-minutes, et tu attribues un nombre
+de personnes en fonction des man-minutes par vol multipliées par le nombre de
+vols par compagnie : le nombre de personnes dépend du nombre de vols, il
+n'est pas constant, à part sur certains ateliers. Il faut dissocier les
+ateliers calculés et les constants », avec « une case à cocher, pour que ce
+soit plus modulable ».
+
+- **Le calcul, équipe par équipe** (`moteur/production.js`). Dans un service
+  calculé, une équipe qui prépare à la main ne lit plus ses personnes.
+  - Personnes = homme-minutes de ses commandes (minutes par vol × vols de
+    chaque compagnie, minutes propres à la case comprises) ÷ (minutes qu'une
+    personne travaille pendant son poste × rendement), arrondi au-dessus.
+  - Le poste va de l'heure d'arrivée à la fin de la présence, moins les
+    pauses fixes et celles du régime : 450 min pour 8 h 15 de présence.
+  - Une équipe à la chaîne prend le plus petit effectif dont la durée tient
+    dans le poste.
+  - Une équipe qui a des commandes sans minutes au barème garde une personne.
+  - Options : `effectifCalcule` (les services calculés). Résultat :
+    `effectifs`. Fonctions : `minutesDuPoste`, `effectifPour`.
+- **La simulation dans le temps est gardée.** La journée se joue avec
+  l'effectif calculé. Les attentes entre services ne sont pas dans le
+  calcul : c'est elle qui dit si ça tient.
+- **Une case par service** : « Effectif constant », dans sa fiche (Équipes ›
+  Services et équipes).
+  - Cochée, l'effectif se saisit comme avant, en partant du dernier calculé.
+  - Constants par défaut : CF départ food (les checkeurs), magasin,
+    légumerie, duty free, appros. Les autres services se calculent.
+  - Le robot, la plonge, le handling et les mises à disposition gardent
+    toujours leur effectif saisi : ils ne travaillent pas en homme-minutes.
+- **Partout le même nombre.** L'effectif calculé devient celui de l'équipe,
+  pour le planning, le budget, les exports et les tableaux.
+  - Dans la fiche de l'équipe et dans Minutes de travail, il se lit au lieu
+    de se saisir, avec son calcul (« calculé · 17 h 55 ÷ 7 h 30 »).
+- **v2.**
+  - Le calage rejoue chaque journée avec les personnes du planning réel,
+    sans les recalculer.
+  - « Et avec une personne de plus ? » impose l'effectif à l'équipe essayée.
+- **Tests.**
+  - Nouveaux : `tests/effectif-calcule.test.cjs` (moteur, v1 et v2) et
+    `tests/effectif-browser.cjs` (interface, v1 et v2).
+  - Les suites qui règlent les personnes à la main cochent maintenant
+    « Effectif constant » partout (`nav.effectifSaisi`). Ce qu'elles
+    vérifient ne change pas.
+- Docs : MODELE_ATELIERS (effectif calculé ou constant), README,
+  CAHIER_DES_CHARGES (E18), V2.
+
 ## 2026-10-05 — Plus jamais « bloqué en bas » : la liste de gauche rend la molette
 
 Signalement : « toujours le même problème de scroll : quand je scrolle tout

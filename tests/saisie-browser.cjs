@@ -20,6 +20,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   for(const [fichier,version] of [['../index.html','v1'],['../v2/index.html','v2']]){
    await page.goto(pathToFileURL(path.resolve(__dirname,fichier)).href);await attendre();
    await page.evaluate(()=>localStorage.clear());await page.reload();await attendre();
+   await page.waitForTimeout(200);await nav.effectifSaisi(page);   // les personnes se saisissent ici (05/10)
    await nav.aller(page,'mu-services');
    await page.locator(`${M} [data-mu-choisir=dotation]`).click();await attendre();
    await page.locator(`${M} [data-mu-action=equipe]`).first().click();await attendre();
