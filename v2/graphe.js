@@ -19,10 +19,12 @@
  *
  *  Deux sens (05/10 : « dès qu'on a beaucoup de services, cela devient
  *  incompréhensible ») :
- *    • « en étapes » (par défaut) : de haut en bas, une bande par étape, et
- *      une branche qui rejoint le flux tard (plonge → dotation → prépa) se
- *      range juste au-dessus de celui qu'elle livre, pas tout en haut. Le
- *      diagramme tient dans la largeur de l'écran ;
+ *    • « en étapes » (par défaut) : de haut en bas, une bande par étape. La
+ *      chaîne la plus longue — la colonne vertébrale du flux — descend tout
+ *      droit ; les branches se rangent de part et d'autre, juste au-dessus du
+ *      service qu'elles livrent. Les traits vont à angle droit, comme un plan
+ *      de métro, et arrivent chacun à sa place sur le bord du service (pas
+ *      tous au même point). Le diagramme tient dans la largeur de l'écran ;
  *    • « en ligne » : de gauche à droite, comme avant.
  *  Survoler (ou choisir) un service éclaire sa chaîne — ce qui y mène et ce
  *  qui en part — et pâlit le reste.
@@ -32,13 +34,14 @@
 
   const L = 200, H = 52, PAS_X = 260, PAS_Y = 76, MARGE = 28;
   // En étapes : d'une étape à l'autre, et d'un service au suivant dans une étape.
-  const PAS_BAS = 104, LIG_BAS = L + 36, COULOIR_BAS = L / 2 + 34, MARGE_ETAPE = 70;
+  const PAS_BAS = 112, LIG_BAS = L + 40, MARGE_ETAPE = 70;
   const CLE = 'ory-graphes-v1', CLE_SENS = 'ory-graphes-sens';
   /** Le sens choisi, retenu d'une visite à l'autre : 'bas' (en étapes) ou 'ligne'. */
   function lireSens() { try { return localStorage.getItem(CLE_SENS) === 'ligne' ? 'ligne' : 'bas'; } catch (e) { return 'bas'; } }
   function ecrireSens(v) { try { localStorage.setItem(CLE_SENS, v === 'ligne' ? 'ligne' : 'bas'); } catch (e) { /* stockage indisponible */ } }
   // Les diagrammes de la page : changer de sens les redessine tous.
   const DIAGRAMMES = new Set();
+  let numero = 0;
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
     c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const court = (s, n) => (s = String(s || ''), s.length > n ? s.slice(0, n - 1) + '…' : s);
@@ -53,7 +56,6 @@
    */
   function disposer(noeuds, liens, o) {
     const bas = !!(o && o.sens === 'bas');
-    const PAS_L = bas ? LIG_BAS : PAS_Y, ECART_C = bas ? COULOIR_BAS : PAS_Y / 2;
     const ids = noeuds.map(n => n.id), connu = new Set(ids);
     const tous = liens.filter(l => connu.has(l.de) && connu.has(l.vers) && l.de !== l.vers);
     // Un lien qui revient en arrière (un retour : quais → plonge → … → quais)
@@ -70,7 +72,23 @@
     };
     for (const id of ids) if (!tous.some(l => l.vers === id)) visiter(id);
     for (const id of ids) if (!etat.get(id)) visiter(id);
-    const arcs = tous.filter(l => !retours.has(l));
+    // En étapes, les retours se choisissent mieux (Eades) : on range les
+    // services du début à la fin du flux, et seuls les liens qui reviennent
+    // en arrière sont des retours — le moins possible. Dans la boucle du
+    // matériel (quais → plonge → dotation → montage → départ → quais), c'est
+    // « quais → plonge » qui revient, pas « dotation → montage ».
+    let arcs = tous.filter(l => !retours.has(l));
+    if (bas) {
+      // À égalité, on coupe la boucle au plus tôt dans le flux (profondeur
+      // d'un premier rangement) : la plonge passe avant la dotation.
+      const prof = new Map(ids.map(id => [id, 0]));
+      for (let tour = 0; tour < ids.length; tour++) {
+        let bouge = false;
+        for (const a of arcs) if (prof.get(a.vers) < prof.get(a.de) + 1 && prof.get(a.de) + 1 < ids.length) { prof.set(a.vers, prof.get(a.de) + 1); bouge = true; }
+        if (!bouge) break;
+      }
+      arcs = sansRetours(ids, tous, prof);
+    }
     const col = new Map(ids.map(id => [id, 0]));
     for (let tour = 0; tour < ids.length; tour++) {
       let bouge = false;
@@ -99,6 +117,7 @@
       const der = Math.max(...ids.filter(id => !isoles.includes(id)).map(id => col.get(id)));
       for (const id of isoles) col.set(id, der + 1);
     }
+    if (bas) return etapes(ids, arcs, col, isoles.length < ids.length ? isoles : [], tous.filter(l => !arcs.includes(l)));
     // Un lien qui saute des colonnes y réserve un couloir : un point de
     // passage par colonne traversée. Les nœuds s'en écartent, et le lien ne
     // passe plus sous un service qu'il ne concerne pas.
@@ -113,13 +132,13 @@
       }
       passages.push({ de: prec, vers: a.vers });
     }
-    const pos = {}, voie = {}, colonnes = new Map();
+    const pos = {}, colonnes = new Map();
     for (const id of col.keys()) { const c = col.get(id); if (!colonnes.has(c)) colonnes.set(c, []); colonnes.get(c).push(id); }
     const fictif = id => id[0] === '~';
     for (const c of [...colonnes.keys()].sort((a, b) => a - b)) {
       const liste = colonnes.get(c);
       const hauteur = id => {
-        const ys = passages.filter(a => a.vers === id && voie[a.de] !== undefined).map(a => voie[a.de]);
+        const ys = passages.filter(a => a.vers === id && pos[a.de]).map(a => pos[a.de].y);
         return ys.length ? ys.reduce((s, y) => s + y, 0) / ys.length : Infinity;
       };
       const rang = id => (fictif(id) ? ids.length : ids.indexOf(id));
@@ -130,17 +149,154 @@
       let avant = -Infinity, prec = null;
       for (const id of liste) {
         const h = hauteur(id);
-        const ecart = fictif(id) || (prec && fictif(prec)) ? ECART_C : PAS_L;
-        const voulu = Number.isFinite(h) ? Math.round(h / (PAS_L / 2)) * (PAS_L / 2) : (Number.isFinite(avant) ? avant + ecart : 0);
+        const ecart = fictif(id) || (prec && fictif(prec)) ? PAS_Y / 2 : PAS_Y;
+        const voulu = Number.isFinite(h) ? Math.round(h / (PAS_Y / 2)) * (PAS_Y / 2) : (Number.isFinite(avant) ? avant + ecart : 0);
         const y = Math.max(voulu, avant + ecart);
-        voie[id] = y; pos[id] = bas ? { x: y, y: c * PAS_BAS } : { x: c * PAS_X, y }; avant = y; prec = id;
+        pos[id] = { x: c * PAS_X, y }; avant = y; prec = id;
       }
     }
     const out = {};
     for (const id of ids) out[id] = pos[id];
     Object.defineProperty(out, 'via', { value: Object.fromEntries(Object.entries(via).map(([k, l]) => [k, l.map(id => pos[id])])) });
     Object.defineProperty(out, 'etape', { value: Object.fromEntries(ids.map(id => [id, col.get(id)])) });
-    Object.defineProperty(out, 'isoles', { value: isoles.length < ids.length ? isoles : [] });
+    Object.defineProperty(out, 'isoles', { value: [] });
+    return out;
+  }
+
+  /**
+   * La disposition en étapes : une ligne par étape, de haut en bas.
+   *  - la plus longue chaîne de services — la colonne vertébrale du flux —
+   *    descend tout droit, au milieu ; les branches se rangent de part et
+   *    d'autre ;
+   *  - dans une étape, l'ordre suit la place moyenne des voisins (moins de
+   *    croisements), affinée en descendant puis en remontant ;
+   *  - un service se pose au-dessus (ou au-dessous) de ceux qu'il touche ;
+   *  - un lien qui saute des étapes passe par un couloir sur le côté, tout
+   *    droit, au lieu de serpenter entre les services.
+   */
+  /** Les liens qui vont dans le sens du flux, d'après un ordre des services
+   *  qui en laisse le moins possible à l'envers (Eades, Lin et Smyth). */
+  function sansRetours(ids, tous, prof) {
+    const reste = new Set(ids), debut = [], fin = [];
+    const deg = (id, sortant) => tous.filter(l => reste.has(l.de) && reste.has(l.vers) && (sortant ? l.de : l.vers) === id).length;
+    while (reste.size) {
+      let bouge = true;
+      while (bouge) {
+        bouge = false;
+        for (const id of ids) if (reste.has(id) && !deg(id, true)) { fin.unshift(id); reste.delete(id); bouge = true; }
+        for (const id of ids) if (reste.has(id) && !deg(id, false)) { debut.push(id); reste.delete(id); bouge = true; }
+      }
+      if (!reste.size) break;
+      let mieux = null, m = -Infinity;
+      for (const id of ids) if (reste.has(id)) {
+        const v = deg(id, true) - deg(id, false);
+        if (v > m || (v === m && prof && prof.get(id) < prof.get(mieux))) { m = v; mieux = id; }
+      }
+      debut.push(mieux); reste.delete(mieux);
+    }
+    const rang = new Map([...debut, ...fin].map((id, i) => [id, i]));
+    return tous.filter(l => rang.get(l.de) < rang.get(l.vers));
+  }
+
+  function etapes(ids, arcs, col, isoles, retours) {
+    const rangs = [...new Set(ids.map(id => col.get(id)))].sort((a, b) => a - b);
+    const niv = new Map(ids.map(id => [id, rangs.indexOf(col.get(id))]));
+    const segs = arcs, via = {};
+    const lignes = Array.from({ length: Math.max(0, ...niv.values()) + 1 }, () => []);
+    for (const [id, c] of niv) lignes[c].push(id);
+    const amont = id => segs.filter(x => x.vers === id).map(x => x.de);
+    const aval = id => segs.filter(x => x.de === id).map(x => x.vers);
+    const moyenne = xs => (xs.length ? xs.reduce((t, v) => t + v, 0) / xs.length : null);
+
+    // La colonne vertébrale : la plus longue chaîne, de la source au bout.
+    const long = new Map(), prev = new Map();
+    const parNiveau = ids.slice().sort((a, b) => niv.get(a) - niv.get(b));
+    for (const id of parNiveau) {
+      let n = 0, p = null;
+      for (const a of arcs) if (a.vers === id && (long.get(a.de) || 0) > n) { n = long.get(a.de); p = a.de; }
+      long.set(id, n + 1); prev.set(id, p);
+    }
+    let bout = null;
+    for (const id of parNiveau) if (!isoles.includes(id) && (!bout || long.get(id) > long.get(bout))) bout = id;
+    const dos = new Set();
+    for (let x = bout; x; x = prev.get(x)) dos.add(x);
+
+    // L'ordre dans chaque étape : la place moyenne des voisins, en descendant
+    // puis en remontant ; la colonne vertébrale garde le milieu.
+    const ordre = new Map(), init = id => ids.indexOf(id);
+    for (const l of lignes) { l.sort((a, b) => init(a) - init(b)); l.forEach((id, i) => ordre.set(id, i)); }
+    for (let tour = 0; tour < 4; tour++) {
+      const desc = tour % 2 === 0;
+      for (const l of desc ? lignes.slice(1) : lignes.slice(0, -1).reverse()) {
+        const cle = new Map(l.map(id => [id, moyenne((desc ? amont(id) : aval(id)).map(v => ordre.get(v)))]));
+        const k = id => (cle.get(id) === null ? ordre.get(id) : cle.get(id));
+        l.sort((a, b) => k(a) - k(b) || ordre.get(a) - ordre.get(b));
+        l.forEach((id, i) => ordre.set(id, i));
+      }
+    }
+
+    // Les places : la colonne vertébrale à 0, les autres au plus près de leurs
+    // voisins, sans se chevaucher.
+    const ecart = () => LIG_BAS;
+    const cx = new Map();
+    for (const l of lignes) {
+      let x = 0;
+      l.forEach((id, i) => { if (i) x += ecart(l[i - 1], id); cx.set(id, x); });
+      const s = l.find(id => dos.has(id)), decal = s ? cx.get(s) : x / 2;
+      for (const id of l) cx.set(id, cx.get(id) - decal);
+    }
+    const placer = (l, voulu) => {
+      const s = l.findIndex(id => dos.has(id));
+      if (s >= 0) {
+        cx.set(l[s], 0);
+        for (let i = s + 1; i < l.length; i++) cx.set(l[i], Math.max(voulu(l[i]), cx.get(l[i - 1]) + ecart(l[i - 1], l[i])));
+        for (let i = s - 1; i >= 0; i--) cx.set(l[i], Math.min(voulu(l[i]), cx.get(l[i + 1]) - ecart(l[i], l[i + 1])));
+        return;
+      }
+      l.forEach((id, i) => cx.set(id, i ? Math.max(voulu(id), cx.get(l[i - 1]) + ecart(l[i - 1], id)) : voulu(id)));
+      const d = moyenne(l.map(id => voulu(id) - cx.get(id))) || 0;
+      for (const id of l) cx.set(id, cx.get(id) + d);
+    };
+    for (let tour = 0; tour < 3; tour++) {
+      const desc = tour % 2 === 0;
+      for (const l of desc ? lignes : lignes.slice().reverse()) placer(l, id => {
+        const v = (desc ? amont(id) : aval(id)).map(x => cx.get(x)), w = v.length ? v : (desc ? aval(id) : amont(id)).map(x => cx.get(x));
+        return w.length ? moyenne(w) : cx.get(id);
+      });
+    }
+
+    // Un lien qui saute des étapes : un couloir sur le côté le plus proche,
+    // au-delà des services des étapes qu'il traverse ; plusieurs couloirs
+    // d'un même côté se rangent l'un à côté de l'autre.
+    const couloirs = { g: [], d: [] };
+    const longs = arcs.filter(a => niv.get(a.vers) - niv.get(a.de) > 1)
+      .sort((a, b) => (niv.get(a.vers) - niv.get(a.de)) - (niv.get(b.vers) - niv.get(b.de)));
+    for (const a of longs) {
+      const c0 = niv.get(a.de), c1 = niv.get(a.vers), dedans = [];
+      for (let c = c0 + 1; c < c1; c++) dedans.push(...lignes[c]);
+      const gauche = Math.min(...dedans.map(id => cx.get(id))) - L / 2, droite = Math.max(...dedans.map(id => cx.get(id))) + L / 2;
+      const milieu = (cx.get(a.de) + cx.get(a.vers)) / 2;
+      const cote = Math.abs(milieu - gauche) < Math.abs(droite - milieu) ? 'g' : 'd';
+      const deja = couloirs[cote].filter(k => k.c0 < c1 && k.c1 > c0).length;
+      const x = cote === 'g' ? gauche - 28 - deja * 16 : droite + 28 + deja * 16;
+      couloirs[cote].push({ c0, c1 });
+      via[a.de + '>' + a.vers] = [];
+      for (let c = c0 + 1; c < c1; c++) via[a.de + '>' + a.vers].push({ x: x - L / 2, y: c * PAS_BAS });
+    }
+    // Un retour (vers le haut) contourne tout, par la droite.
+    const loin = Math.max(...[...cx.values()].map(x => x + L / 2), ...Object.values(via).flatMap(l => l.map(p => p.x + L / 2)));
+    (retours || []).forEach((a, i) => { via[a.de + '>' + a.vers] = [{ x: loin + 30 + i * 16 - L / 2, y: -1 }]; });
+    const xs = [...cx.values()].map(x => x - L / 2).concat(...Object.values(via).map(l => l.map(p => p.x + L / 2 - 10)));
+    const min = Math.min(...xs);
+    const pos = {};
+    for (const [id, x] of cx) pos[id] = { x: Math.round(x - L / 2 - min), y: niv.get(id) * PAS_BAS };
+    for (const l of Object.values(via)) for (const p of l) p.x = Math.round(p.x - min);
+    const out = {};
+    for (const id of ids) out[id] = pos[id];
+    Object.defineProperty(out, 'via', { value: via });
+    Object.defineProperty(out, 'etape', { value: Object.fromEntries(ids.map(id => [id, niv.get(id)])) });
+    Object.defineProperty(out, 'isoles', { value: isoles });
+    Object.defineProperty(out, 'dos', { value: ids.filter(id => dos.has(id)) });
     return out;
   }
 
@@ -169,21 +325,34 @@
 
   /** La courbe d'un lien : de la droite de A à la gauche de B, par ses
    *  couloirs s'il en a (un trait droit à travers chaque colonne sautée).
-   *  En étapes (`bas`) : du bas de A au haut de B. */
-  function courbe(a, b, via, bas) {
+   *  En étapes (`bas`) : du bas de A au haut de B, à angle droit (comme un
+   *  plan de métro) : on descend, on tourne dans l'espace entre deux étapes,
+   *  on redescend. `o` : où le trait quitte A (`d0`) et arrive sur B (`d1`),
+   *  par rapport au milieu, et à quelle hauteur il tourne (`canal`). */
+  function courbe(a, b, via, bas, o) {
     if (bas) {
-      const q = [[a.x + L / 2, a.y + H]];
-      for (const p of via || []) q.push([p.x + L / 2, p.y], [p.x + L / 2, p.y + H]);
-      q.push([b.x + L / 2, b.y - 6]);
-      let d = `M${q[0][0]},${q[0][1]}`;
-      for (let i = 1; i < q.length; i++) {
-        const [x0, y0] = q[i - 1], [x1, y1] = q[i];
-        if (i % 2 === 0) { d += ` L${x1},${y1}`; continue; }    // à travers une étape
-        const k = Math.max(30, Math.abs(y1 - y0) / 2);
-        d += ` C${x0},${y0 + k} ${x1},${y1 - k} ${x1},${y1}`;
+      o = o || {};
+      const x0 = a.x + L / 2 + (o.d0 || 0), y0 = a.y + H, x1 = b.x + L / 2 + (o.d1 || 0), y1 = b.y - 6;
+      // Un retour (vers le haut) : il contourne par le côté.
+      if (y1 < y0 + 16) {
+        const cote = via && via.length ? via[0].x + L / 2 : Math.max(a.x, b.x) + L + 26 + Math.abs(o.canal || 0);
+        const d = `M${x0},${y0} V${y0 + 14} H${cote} V${b.y - 18} H${x1} V${y1}`;
+        return { d, mx: cote, my: (y0 + b.y) / 2 };
       }
-      const m = Math.floor((q.length - 1) / 2);
-      return { d, mx: (q[m][0] + q[m + 1][0]) / 2, my: (q[m][1] + q[m + 1][1]) / 2 };
+      const xs = [x0, ...(via || []).map(p => p.x + L / 2), x1];
+      const jeu = (PAS_BAS - H) / 2, canal = o.canal || 0;
+      const yms = via && via.length ? [a.y, ...via.map(p => p.y)].map(t => t + H + jeu + canal) : [(y0 + y1) / 2 + canal];
+      let d = `M${x0},${y0}`, haut = y0;
+      for (let i = 0; i < yms.length; i++) {
+        const xa = xs[i], xb = xs[i + 1];
+        if (Math.abs(xb - xa) < 1) continue;                       // tout droit
+        const ym = Math.min(Math.max(yms[i], haut + 6), y1 - 6);
+        const sgn = Math.sign(xb - xa), k = Math.min(10, Math.abs(xb - xa) / 2, ym - haut, y1 - ym);
+        d += ` V${ym - k} Q${xa},${ym} ${xa + sgn * k},${ym} H${xb - sgn * k} Q${xb},${ym} ${xb},${ym + k}`;
+        haut = ym + k;
+      }
+      d += ` V${y1}`;
+      return { d, mx: x1, my: (haut + y1) / 2 };
     }
     const pts = [[a.x + L, a.y + H / 2]];
     for (const p of via || []) pts.push([p.x, p.y + H / 2], [p.x + L, p.y + H / 2]);
@@ -226,6 +395,10 @@
       this.geste = null;           // un glisser en cours
       this.pos = {};
       DIAGRAMMES.add(this);
+      // Ses pointes de flèche à lui : deux diagrammes d'un même flux (Flux de
+      // production, chemin d'une commande) ne se prêtent pas les leurs — celles
+      // d'une page cachée ne s'affichent pas.
+      this.numero = ++numero;
     }
 
     /** 'bas' (en étapes, de haut en bas) ou 'ligne' (de gauche à droite). */
@@ -324,10 +497,11 @@
         if (suite) { suite.hidden = !deborde; suite.textContent = 'Le chemin est plus large que l’écran : faites défiler vers la droite pour voir la suite →'; }
       });
       const couleurs = [...new Set(liens.map(l => l.couleur || ''))];
-      const marque = c => 'gr-f-' + this.a.cle.replace(/[^a-z0-9]/gi, '') + '-' + couleurs.indexOf(c || '');
+      const marque = c => 'gr-f' + this.numero + '-' + couleurs.indexOf(c || '');
       // Figé (un flux partagé vu depuis une commande) : ni prise pour relier, ni croix pour retirer.
       const I = root.OrlyIcones, fige = !!(this.a.fige && this.a.fige());
       this.derniersLiens = liens;
+      const places = bas ? this.places(liens) : new Map();
       // Les étapes : une bande par profondeur, numérotée, derrière les services.
       const rangs = etapes ? [...new Set(noeuds.map(n => etapes[n.id]).filter(Number.isFinite))].sort((a, b) => a - b) : [];
       const bandes = rangs.map((r, i) => {
@@ -342,7 +516,7 @@
         <g class="gr-groupes">${this.groupesSVG(cadres)}</g>
         <g class="gr-liens">${liens.slice().sort((x, y) => this.estChoisi(x) - this.estChoisi(y)).map(l => {
           const a = this.pos[l.de], b = this.pos[l.vers]; if (!a || !b) return '';
-          const k = courbe(a, b, this.via[l.de + '>' + l.vers], bas), sel = this.selection && this.selection.type === 'lien' && this.selection.id === l.id;
+          const k = courbe(a, b, this.via[l.de + '>' + l.vers], bas, places.get(l)), sel = this.selection && this.selection.type === 'lien' && this.selection.id === l.id;
           return `<g class="gr-lien${sel ? ' sel' : ''}${l.pointille ? ' pointille' : ''}${uni(l) ? ' en-chaine' : ''}" data-lien="${esc(l.id)}" tabindex="0" role="button"
               aria-label="${esc(l.titre || '')}. Entrée pour le choisir, Suppr pour le retirer.">
             <title>${esc(l.titre || '')}</title>
@@ -374,6 +548,43 @@
         this.focus = null;
       }
       this.eclairer(this.choisi());
+    }
+
+    /** En étapes : chaque trait part et arrive à sa place sur le bord d'un
+     *  service (rangés dans le sens de l'autre bout : ils ne se croisent pas
+     *  en arrivant), et tourne à sa hauteur entre deux étapes. */
+    places(liens) {
+      const out = new Map(), pos = this.pos, centre = id => pos[id].x + L / 2;
+      const vers = l => { const v = this.via[l.de + '>' + l.vers]; return v && v.length ? v[0].x + L / 2 : centre(l.vers); };
+      const depuis = l => { const v = this.via[l.de + '>' + l.vers]; return v && v.length ? v[v.length - 1].x + L / 2 : centre(l.de); };
+      const ok = liens.filter(l => pos[l.de] && pos[l.vers]);
+      // Un trait qui descend tout droit garde le milieu ; les autres
+      // s'écartent du côté où ils vont.
+      const repartir = (liste, cle, ici, champ) => {
+        liste.sort((p, q) => cle(p) - cle(q));
+        const droit = liste.filter(l => Math.abs(cle(l) - ici) < 1);
+        const g = liste.filter(l => cle(l) < ici - 1), d = liste.filter(l => cle(l) > ici + 1);
+        // Tous dans la largeur du service, même nombreux.
+        const n = liste.length, cote = droit.length ? Math.max(g.length, d.length) + (droit.length - 1) / 2 : (n - 1) / 2;
+        const pas = n > 1 ? Math.min(24, (L / 2 - 24) / Math.max(1, cote)) : 0;
+        const pose = (l, v) => { const o = out.get(l) || {}; o[champ] = v; out.set(l, o); };
+        if (!droit.length) { liste.forEach((l, i) => pose(l, (i - (n - 1) / 2) * pas)); return; }
+        droit.forEach((l, i) => pose(l, (i - (droit.length - 1) / 2) * pas));
+        const bord = (droit.length - 1) / 2 * pas;
+        g.reverse().forEach((l, i) => pose(l, -bord - (i + 1) * pas));
+        d.forEach((l, i) => pose(l, bord + (i + 1) * pas));
+      };
+      const par = f => { const m = new Map(); for (const l of ok) { const k = f(l); if (!m.has(k)) m.set(k, []); m.get(k).push(l); } return m; };
+      for (const [id, liste] of par(l => l.de)) repartir(liste, vers, centre(id), 'd0');
+      for (const [id, liste] of par(l => l.vers)) repartir(liste, depuis, centre(id), 'd1');
+      // Deux traits qui tournent entre les mêmes étapes : chacun à sa hauteur.
+      for (const liste of par(l => pos[l.de].y).values()) {
+        const tournent = liste.filter(l => Math.abs(vers(l) - centre(l.de) - (out.get(l).d0 || 0)) > 1);
+        tournent.sort((p, q) => (centre(p.de) + (out.get(p).d0 || 0)) - (centre(q.de) + (out.get(q).d0 || 0)));
+        const n = tournent.length, pas = n > 1 ? Math.min(7, 26 / (n - 1)) : 0;
+        tournent.forEach((l, i) => { out.get(l).canal = (i - (n - 1) / 2) * pas; });
+      }
+      return out;
     }
 
     /** Le service choisi, s'il y en a un. */

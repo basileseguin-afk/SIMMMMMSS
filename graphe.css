@@ -17,8 +17,8 @@
 .gr-hote-bas{max-height:none !important;overflow:visible !important}
 .gr-cadre.bas .gr-svg{max-width:100%;height:auto}
 /* Une bande par étape, numérotée. */
-.gr-etape rect{fill:color-mix(in srgb,var(--c,var(--accent)) 4%,var(--bg3));stroke:color-mix(in srgb,var(--bordure) 60%,transparent);stroke-width:1}
-.gr-etape.impaire rect{fill:color-mix(in srgb,var(--bordure) 22%,var(--bg3))}
+.gr-etape rect{fill:transparent;stroke:none}
+.gr-etape.impaire rect{fill:color-mix(in srgb,var(--bordure) 16%,transparent)}
 .gr-etape text{font-size:12px;font-weight:800;letter-spacing:.02em;fill:var(--txt3,var(--txt2));pointer-events:none}
 .gr-etape{pointer-events:none}
 .gr-etape.sans-lien rect{fill:transparent;stroke-dasharray:6 4}
@@ -50,7 +50,10 @@
 .gr-noeud.cible .gr-fond{stroke:var(--c,var(--accent));stroke-dasharray:3 3}
 .gr-noeud.survol .gr-fond{stroke:var(--c,var(--accent));stroke-width:3.5;fill:color-mix(in srgb,var(--c,var(--accent)) 12%,var(--bg3))}
 
-.gr-port{cursor:crosshair}
+.gr-port{cursor:crosshair;transition:opacity .12s}
+/* Le « + » pour relier n'apparaît que sur le service survolé, choisi ou
+ * attendu : sans lui sur chaque service, le diagramme se lit d'abord. */
+.gr-noeud:not(:hover):not(:focus-visible):not(.sel):not(.depuis):not(.cible) .gr-port{opacity:0}
 .gr-port circle{fill:var(--c,var(--accent));stroke:var(--bg3);stroke-width:2.5}
 .gr-port path{stroke:#fff;stroke-width:2;stroke-linecap:round}
 .gr-port:hover circle{r:11}
@@ -59,7 +62,7 @@
 /* Le temps en stock sur un lien : ce que l'amont a fini et que l'aval n'a pas encore pris. */
 .gr-etiq{font-size:12px;font-weight:700;fill:#1e5aa8;paint-order:stroke;stroke:var(--bg3);stroke-width:5px;stroke-linejoin:round;pointer-events:none}
 .gr-prise{fill:none;stroke:transparent;stroke-width:16}
-.gr-trait{fill:none;stroke:var(--edge);stroke-width:2.6}
+.gr-trait{fill:none;stroke:var(--edge);stroke-width:2.6;stroke-linejoin:round;stroke-linecap:round}
 .gr-pointe{fill:var(--edge)}
 .gr-lien.pointille .gr-trait{stroke-dasharray:7 5}
 /* Deux services faits à la chaîne par la même équipe : un seul bloc. */

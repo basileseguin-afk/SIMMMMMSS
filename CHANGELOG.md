@@ -5,6 +5,44 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-05 — Diagrammes en étapes : encore plus lisibles
+
+Retour d'usage : « en vertical, c'est une très bonne idée, mais ça reste peu
+lisible ». Ce qui gênait sur un flux chargé :
+- la chaîne principale zigzaguait ;
+- quatre flèches arrivaient au même point sur le montage ;
+- les traits partaient en biais et se croisaient ;
+- un « + » s'affichait sur chaque service ;
+- dans les liens de l'unité, la boucle du matériel mettait la plonge tout en
+  bas.
+
+Changements, tous dans `graphe.js` et `graphe.css` (v1 et v2) :
+
+- **Colonne vertébrale** : la plus longue chaîne de services descend tout
+  droit, au milieu. Les branches se rangent de part et d'autre, ordonnées par
+  la place de leurs voisins, en descendant puis en remontant.
+- **Traits à angle droit** : on descend, on tourne entre deux étapes, puis on
+  redescend, avec des coins arrondis et sans diagonale.
+- **Arrivées et départs répartis** : chaque trait touche le bord du service à
+  sa place, rangé dans le sens de l'autre bout. Un trait qui descend tout
+  droit garde le milieu. Deux traits qui tournent entre les mêmes étapes ont
+  chacun leur hauteur.
+- **Couloirs sur le côté** : un lien qui saute des étapes passe tout droit,
+  du côté le plus proche, au-delà des services qu'il longe.
+- **Boucles** : les retours sont choisis par la méthode d'Eades, Lin et
+  Smyth, avec un départage selon la profondeur dans le flux. Seul le vrai
+  retour (quais → plonge) remonte, et il passe par la droite.
+- **Le « + » pour relier** n'apparaît qu'au survol, sur le service choisi ou
+  sur la cible attendue.
+- **Pointes de flèche** : chaque diagramme a désormais les siennes. Avant, le
+  chemin d'une commande empruntait celles du diagramme de Flux de production,
+  qui est sur une page cachée, et ses flèches n'avaient pas de pointe.
+- Tests :
+  - `tests/graphe.test.cjs` : angle droit, arrivées réparties, colonne
+    vertébrale ;
+  - `tests/vue-ensemble-browser.cjs` : chaîne alignée, aucun trait en biais,
+    arrivées distinctes, une pointe par diagramme, « + » au survol.
+
 ## 2026-10-05 — Des chemins lisibles avec beaucoup de services
 
 Demande : « pour les chemins, trouve une façon plus visuelle de comprendre

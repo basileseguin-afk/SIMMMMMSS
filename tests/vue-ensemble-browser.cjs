@@ -67,6 +67,22 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.ok(await page.locator(`${G} .gr-etape`).count()>=4,'une bande par étape');
    assert.match(await page.locator(`${G} .gr-etape text`).first().textContent(),/Étape 1/);
    assert.equal(await page.locator(`${G} .gr-cadre`).evaluate(c=>c.scrollWidth<=c.clientWidth+1),true,'pas de défilement de côté');
+   // La chaîne principale descend tout droit ; les traits vont à angle droit.
+   const xg=id=>page.locator(`${G} [data-noeud=${id}]`).evaluate(n=>n.transform.baseVal.consolidate().matrix.e);
+   assert.equal(new Set([await xg('appros'),await xg('decontam'),await xg('cuisine')]).size,1,version+' : Réception, Légumerie, Cuisine dans une même colonne');
+   assert.equal(await page.locator(`${G} .gr-trait`).evaluateAll(ps=>ps.filter(p=>/ C/.test(p.getAttribute('d'))).length),0,'aucun trait en biais');
+   // Plusieurs traits qui arrivent sur le montage : chacun à sa place, pas tous au même point.
+   const arrivees=await page.locator(`${G} .gr-lien[data-lien$=">prepa"] .gr-trait`).evaluateAll(ps=>ps.map(p=>p.getAttribute('d').match(/ ([\d.-]+),[\d.-]+ V[\d.-]+$|M([\d.-]+),[\d.-]+ V[\d.-]+$/)).map(m=>m&&(m[1]||m[2])));
+   assert.ok(arrivees.length>=2&&new Set(arrivees).size===arrivees.length,'des arrivées distinctes : '+arrivees.join(', '));
+   // Les pointes de flèche sont celles de ce diagramme (pas celles d'une page cachée).
+   const ids=await page.locator(`${G} .gr-trait`).evaluateAll(ps=>ps.map(p=>(p.getAttribute('marker-end')||'').slice(5,-1)));
+   assert.ok(ids.length&&ids.every(Boolean),'chaque trait a sa pointe');
+   assert.equal(await page.evaluate(ids=>ids.every(id=>document.querySelectorAll('#'+CSS.escape(id)).length===1),ids),true,'une seule pointe par identifiant');
+   // Le « + » pour relier n'apparaît qu'au survol (ou sur le service choisi).
+   await page.mouse.move(5,5);
+   assert.equal(await page.locator(`${G} [data-noeud=plonge] .gr-port`).evaluate(p=>getComputedStyle(p).opacity),'0');
+   await page.locator(`${G} [data-noeud=plonge] .gr-fond`).hover();await page.waitForTimeout(200);
+   assert.equal(await page.locator(`${G} [data-noeud=plonge] .gr-port`).evaluate(p=>getComputedStyle(p).opacity),'1');
    // Survoler un autre service éclaire sa chaîne à lui.
    await page.locator(`${G} [data-noeud=plonge] .gr-fond`).hover();await page.waitForTimeout(80);
    assert.equal(await page.locator(`${G} [data-noeud=dotation]`).evaluate(n=>n.classList.contains('lie')),true,'la plonge livre la dotation');

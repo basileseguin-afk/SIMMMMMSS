@@ -138,10 +138,17 @@ le rouge ne sert qu’aux retards.
      service (sa chaîne éclairée) ; une case vide (+) y fait passer le chemin,
      à sa place ; le nom d’un service ouvre sa fiche.
    - **Les diagrammes en étapes** (flux, chemin d’une commande, liens) : de
-     haut en bas, une bande numérotée par étape ; une branche qui rejoint le
-     flux tard (plonge → dotation → montage) se range juste au-dessus de son
-     arrivée ; un service relié à rien se met à part (« Sans lien ») ; le
-     diagramme tient dans la largeur de l’écran. **Survoler (ou choisir) un
+     haut en bas, une bande numérotée par étape. La **chaîne principale**
+     (la plus longue) descend **tout droit** ; les branches se rangent de part
+     et d’autre, juste au-dessus du service qu’elles livrent (plonge →
+     dotation → montage). Les traits vont **à angle droit**, comme un plan de
+     métro, et chacun arrive **à sa place** sur le bord du service (un trait
+     qui descend tout droit garde le milieu). Un lien qui saute des étapes
+     passe par un couloir droit sur le côté ; dans une boucle (le matériel :
+     quais → plonge → … → quais), seul le vrai retour remonte, par la droite.
+     Un service relié à rien se met à part (« Sans lien ») ; le « + » pour
+     relier n’apparaît qu’au survol ; le diagramme tient dans la largeur de
+     l’écran. **Survoler (ou choisir) un
      service éclaire sa chaîne** — ce qui y mène et ce qui en part — et pâlit
      le reste. « → En ligne » revient à la disposition de gauche à droite (le
      choix est retenu, chaque sens garde sa propre disposition).

@@ -80,8 +80,27 @@ test('en étapes : un service relié à rien se range à part, tout en bas', () 
   assert.deepEqual(G.disposer(N(['u', 'v']), [], { sens: 'bas' }).isoles, []);
 });
 
-test('en étapes : un lien va du bas de A au haut de B', () => {
-  const k = G.courbe({ x: 0, y: 0 }, { x: 0, y: 200 }, null, true);
-  assert.match(k.d, new RegExp('^M' + G.L / 2 + ',' + G.H + ' C'));
-  assert.match(k.d, new RegExp(' ' + G.L / 2 + ',194$'));
+test('en étapes : un lien va du bas de A au haut de B, à angle droit', () => {
+  // Tout droit quand B est juste en dessous.
+  assert.equal(G.courbe({ x: 0, y: 0 }, { x: 0, y: 224 }, null, true).d, 'M' + G.L / 2 + ',' + G.H + ' V218');
+  // Sinon : on descend, on tourne entre les deux étapes, on redescend — sans diagonale.
+  const k = G.courbe({ x: 0, y: 0 }, { x: 300, y: 112 }, null, true);
+  assert.match(k.d, /^M100,52 V\d+ Q100,\d+ 110,\d+ H390 Q400,\d+ 400,\d+ V106$/);
+  assert.doesNotMatch(k.d, / C/, 'pas de courbe en biais');
+  // Chaque trait arrive à sa place sur le bord du service.
+  assert.match(G.courbe({ x: 0, y: 0 }, { x: 0, y: 224 }, null, true, { d0: -20, d1: 20 }).d, /^M80,52 .* 120,\d+ V218$/);
+});
+
+test('en étapes : la plus longue chaîne descend tout droit', () => {
+  // appros → légumerie → cuisine → montage → départ ; magasin et dotation livrent le montage.
+  const ids = ['appros', 'decontam', 'cuisine', 'prepa', 'handling', 'magasin', 'dotation'];
+  const p = G.disposer(N(ids), Lk([['appros', 'decontam'], ['decontam', 'cuisine'], ['cuisine', 'prepa'], ['prepa', 'handling'],
+    ['magasin', 'prepa'], ['dotation', 'prepa']]), { sens: 'bas' });
+  assert.deepEqual(p.dos, ['appros', 'decontam', 'cuisine', 'prepa', 'handling']);
+  assert.equal(new Set(p.dos.map(id => p[id].x)).size, 1, 'une seule colonne pour toute la chaîne');
+  // Les branches, de part et d'autre, sur l'étape d'avant le montage, sans se chevaucher.
+  for (const id of ['magasin', 'dotation']) {
+    assert.equal(p[id].y, p.cuisine.y);
+    assert.ok(Math.abs(p[id].x - p.cuisine.x) >= G.L, id);
+  }
 });
