@@ -503,3 +503,23 @@ test('un service sort d’un flux : ses équipes lâchent les commandes qui n’
   // ZZ/YC ne vole pas aujourd'hui : son chemin est inconnu, elle reste.
   assert.deepEqual(etat.ateliers[0].lots, [['AF/BC'], ['ZZ/YC']]);
 });
+
+/* CF départ food n'est pas le handling (05/10) : un handling rangé dans sa
+ * zone passe dans son service à lui, avec ses réglages et sa place dans les chemins. */
+test('separerHandling : le handling quitte CF départ food, ses chemins le suivent', () => {
+  const etat = {
+    ateliers: [
+      { id: 'h', nom: 'Handling', service: 'handling', type: 'handling', debut: '04:00', jour: 0, personnes: 4, lots: [], durees: { '*': 30, AF: 45 }, simultanes: 3 },
+      { id: 'm', nom: 'Montage', service: 'prepa', type: 'manuel', debut: '05:00', jour: 0, personnes: 3, lots: [['AF/BC']] }],
+    parcours: [{ id: 'complet', type: true, noeuds: ['prepa', 'armement', 'handling'], liens: [{ de: 'prepa', vers: 'handling' }, { de: 'armement', vers: 'handling' }] }]
+  };
+  assert.equal(PC.separerHandling(etat, 'handling', 'local-h'), 1);
+  const h = etat.ateliers.find(a => a.id === 'h');
+  assert.equal(h.service, 'local-h');
+  assert.deepEqual(h.durees, { '*': 30, AF: 45 }, 'ses réglages le suivent');
+  assert.deepEqual(etat.parcours[0].noeuds, ['prepa', 'armement', 'local-h']);
+  assert.deepEqual(etat.parcours[0].liens.map(l => l.de + '>' + l.vers), ['prepa>local-h', 'armement>local-h']);
+  assert.equal(etat.ateliers.find(a => a.id === 'm').service, 'prepa', 'le reste ne bouge pas');
+  // Rien à séparer : rien ne change.
+  assert.equal(PC.separerHandling(etat, 'handling', 'local-h'), 0);
+});

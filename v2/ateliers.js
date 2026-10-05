@@ -618,17 +618,31 @@
       this.ouvert = atelier.id; this.rendre();
     }
 
-    /* Le handling en un geste : sa case, et au bout de chaque chemin. */
+    /* Le handling en un geste : sa case, et au bout de chaque chemin. Il vit
+     * dans son service à lui, jamais dans CF départ food (la zone « handling »
+     * du plan), où des checkeurs vérifient les trolleys. */
     brancherHandling() {
-      const nom = (this.a.services().find(s => s.id === 'handling') || {}).nom || 'Handling';
+      const service = this.serviceHandling();
+      const nom = (this.a.services().find(s => s.id === service) || {}).nom || 'Handling';
       let r;
-      this.changer(() => { r = PC.brancherHandling(this.state, 'handling', nom, this.servicesHandling()); }, 'Handling en place.');
+      this.changer(() => { r = PC.brancherHandling(this.state, service, nom, this.servicesHandling()); }, 'Handling en place.');
       return r;
     }
 
-    /* Les services de handling : celui du plan, et ceux créés sous ce nom. */
+    /* Le service du handling : celui qui en a déjà la case, sinon un service qui
+     * porte ce nom, sinon un service « Handling » créé pour lui. */
+    serviceHandling() {
+      const aCase = (this.state.ateliers || []).find(a => a.type === 'handling');
+      if (aCase) return aCase.service;
+      const nomme = this.a.services().find(s => /handling|chargement/i.test(s.nom));
+      if (nomme) return nomme.id;
+      return (this.a.creerHandling && this.a.creerHandling()) || 'handling';
+    }
+
+    /* Les services de handling : ceux qui en ont une case, et ceux qui en portent le nom. */
     servicesHandling() {
-      return ['handling'].concat(this.a.services().filter(s => s.id !== 'handling' && /handling/i.test(s.nom)).map(s => s.id));
+      return [...new Set((this.state.ateliers || []).filter(a => a.type === 'handling').map(a => a.service)
+        .concat(this.a.services().filter(s => /handling|chargement/i.test(s.nom)).map(s => s.id)))];
     }
 
     /* Les cases de handling d'avant, une par commande. */

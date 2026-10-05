@@ -172,7 +172,11 @@ test('le moteur lit ce que les flux et la grille ont construit', () => {
 test('nature d’un service et équipe neuve', () => {
   const e = vide([]);
   assert.equal(PC.natureService(e, 'plonge', 'Plonge'), 'lavage');
-  assert.equal(PC.natureService(e, 'handling', 'CF départ'), 'handling');
+  // La zone « handling » du plan s'appelle CF départ food : des checkeurs y
+  // travaillent, elle ne charge pas les vols (05/10). C'est le nom qui compte.
+  assert.equal(PC.natureService(e, 'handling', 'CF départ food'), 'manuel');
+  assert.equal(PC.natureService(e, 'local-x', 'Handling'), 'handling');
+  assert.equal(PC.natureService(e, 'handling'), 'handling', 'sans nom, l’identifiant suffit');
   assert.equal(PC.natureService(e, 'decontam', 'Légumerie'), 'dispo');
   assert.equal(PC.natureService(e, 'x', 'Robot APM'), 'robot');
   assert.equal(PC.natureService(e, 'cuisine', 'Cuisine'), 'manuel');

@@ -5,6 +5,34 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-05 — CF départ food n'est plus le handling : un service à checkeurs
+
+Signalement : « CF départ food et le handling ont la même page de
+paramétrage, mais CF départ food est juste une zone tampon pour récupérer
+les trolleys ; des gens y travaillent à heures fixes, ce sont des
+checkeurs ».
+
+- **Cause** : la zone du plan « CF DÉPART FOOD » a pour identifiant
+  `handling`, y compris dans le plan par défaut. Le site devinait la nature
+  d'un service d'après cet identifiant : il prenait donc CF départ food pour
+  le chargement des vols et lui donnait la fiche du handling. « Mettre en
+  place le handling » y rangeait même la case Handling.
+- **La nature se lit au nom, pas à l'identifiant** (`natureService`) : CF
+  départ food est un service à équipes. On y ajoute les checkeurs, avec
+  leurs heures, leurs personnes et leurs minutes par vol, comme ailleurs. Un
+  service nommé « Handling » (ou « chargement ») charge les vols.
+- **Le handling a son service à lui.** Au démarrage, un handling rangé dans
+  CF départ food passe dans un service « Handling » (créé dans la zone),
+  avec ses horaires, ses chauffeurs, ses durées par compagnie, et sa place
+  dans chaque chemin (`separerHandling`, `migrerCfDepart`). « Mettre en place
+  le handling » vise ce service et ne range plus rien dans CF départ food.
+- Rien ne bloque en attendant les checkeurs : un service sans équipe dans
+  un chemin est simplement traversé.
+- Tests :
+  - `tests/grille-services.test.cjs` : la nature se lit au nom ;
+  - `tests/parcours.test.cjs` : `separerHandling` ;
+  - `tests/cf-depart-browser.cjs` (nouveau, v1 et v2).
+
 ## 2026-10-05 — Correctif : ce qu'on tape n'est plus perdu quand l'écran se redessine
 
 Signalement : « des fois, en dotation, j'écris dans un champ ou des heures,

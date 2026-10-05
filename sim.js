@@ -737,6 +737,8 @@ function initAteliers(){
     hote:()=>document.getElementById('view-ateliers'),
     services:servicesDisponibles,
     vols:()=>flights,
+    // Le handling a son service à lui, dans la zone CF départ food (où il charge).
+    creerHandling:()=>Sim.editor?Sim.editor.nouveauService('Handling','handling',!ZONES.handling):null,
     classes:()=>MoteurProduction.classesDeVols(flights,{delaiChargement:CFG.loadDelay}),
     liaisons:liaisonsServices,
     reglages:()=>(Sim.reglages?Sim.reglages.pourMoteur():{delaiChargement:CFG.loadDelay}),
@@ -2057,6 +2059,23 @@ function migrerSansQrDl(){
  * cases par classe deviennent des cases par compagnie), et il entre dans tous
  * les chemins en branche à part, avec une seule flèche, vers le handling.
  * L'état le retient (« armement-handling ») ; « Annuler » le défait. */
+/* CF départ food n'est pas le handling (retour d'usage du 05/10). La zone
+ * « handling » du plan s'appelle CF DÉPART FOOD : des checkeurs y vérifient les
+ * trolleys, à heures fixes, avant que le handling les charge. Un handling rangé
+ * là passe dans son service à lui (« Handling »), avec ses réglages et sa place
+ * dans chaque chemin ; CF départ food redevient un service avec ses équipes. */
+function migrerCfDepart(){
+  const at=Sim.ateliers;if(!at)return;
+  const zone=(Sim.editor&&Sim.editor.state.zones||[]).find(z=>z.id==='handling');
+  if(!zone||/handling|chargement/i.test(zone.nom||''))return;      // la zone EST le handling : rien à séparer
+  if(!at.state.ateliers.some(a=>a.service==='handling'&&a.type==='handling'))return;
+  const autre=servicesDisponibles().find(s=>s.id!=='handling'&&/handling|chargement/i.test(s.nom));
+  const vers=autre?autre.id:Sim.editor.nouveauService('Handling','handling',false);
+  if(!vers)return;
+  let n=0;
+  at.changer(()=>{n=OrlyParcours.separerHandling(at.state,'handling',vers);},'');
+  if(n)at.rendre('Le handling a maintenant son service à lui : CF départ food est le service des checkeurs (ajoutez-y leurs équipes). « Annuler » revient en arrière.');
+}
 function migrerArmement(){
   const at=Sim.ateliers;if(!at)return;
   const faites=at.state.migrations||[];
@@ -2249,7 +2268,7 @@ etape('plan',()=>{chargerZones();construirePlan();});
 etape('vols',()=>chargerVols(SAMPLE));
 etape('contrôles',initControles); etape('édition du plan',initEdition); etape('liens',initFlux);
 etape('cases et chemins',initAteliers); etape('réglages',initWorkbench); etape('services',initServices);
-etape('handling',initHandlingVols); etape('robot',migrerRobot); etape('armement',migrerArmement);
+etape('handling',initHandlingVols); etape('CF départ food',migrerCfDepart); etape('robot',migrerRobot); etape('armement',migrerArmement);
 etape('vols d’essai',()=>{migrerSansQrDl();if(suivreDemo())Sim.ateliers.rendre();});
 etape('planche retour',()=>{initPlanche();renderPlanche();});
 etape('mon unité',initUnite);

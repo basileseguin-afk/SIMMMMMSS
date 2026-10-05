@@ -545,7 +545,7 @@
     let n = 0;
     for (const s of services || []) {
       if (caseDe(etat, s, cmd) || fusionneePar(etat, s, cmd)) continue;
-      if (s === 'handling') {
+      if (natureService(etat, s, nom(s)) === 'handling') {
         // Le handling charge les vols de toutes les commandes : un seul, partagé.
         etat.ateliers.push(caseHandling(etat, s, nom(s)));
       } else if (estDispo(etat, s)) {
@@ -767,6 +767,27 @@
     return { id: 'at-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
       nom: nomLibre(etat, nomService || service), service, type: 'handling', debut: '04:00', jour: 0, personnes: 4, pauses: [], lots: [],
       regime: { actif: true }, durees: { [P.TOUTES]: 30 }, simultanes: 3, avance: P.AVANCE_HANDLING, compagnies: [] };
+  }
+
+  /**
+   * CF départ food n'est pas le handling (retour d'usage du 05/10 : « CF départ
+   * food et le handling ont la même page de paramétrage, mais CF départ food est
+   * une zone tampon où des checkeurs récupèrent les trolleys »). Le handling
+   * rangé dans la zone `zone` passe dans son service à lui, `vers` : ses cases
+   * (horaires, chauffeurs, durées par compagnie…) et sa place dans chaque chemin
+   * — là où le chemin passait par le handling, il passe par `vers`. Modifie `etat`.
+   * @returns {number} le nombre de cases déplacées
+   */
+  function separerHandling(etat, zone, vers) {
+    if (!zone || !vers || zone === vers) return 0;
+    const cases = (etat.ateliers || []).filter(a => a.service === zone && a.type === 'handling');
+    if (!cases.length) return 0;
+    for (const a of cases) a.service = vers;
+    for (const p of etat.parcours || []) {
+      if (Array.isArray(p.noeuds)) p.noeuds = [...new Set(p.noeuds.map(n => (n === zone ? vers : n)))];
+      if (Array.isArray(p.liens)) p.liens = p.liens.map(l => ({ ...l, de: l.de === zone ? vers : l.de, vers: l.vers === zone ? vers : l.vers }));
+    }
+    return cases.length;
   }
 
   /** Les cases de handling d'avant (28/09) : une par commande, qui préparaient
@@ -1364,7 +1385,11 @@
     if (etat.categories && etat.categories[service]) return 'categories';
     const types = (etat.ateliers || []).filter(a => a.service === service).map(a => a.type || 'manuel');
     for (const t of ['handling', 'lavage', 'dispo', 'robot', 'manuel']) if (types.includes(t)) return t;
-    if (service === 'handling' || /handling|chargement/i.test(nomService || '')) return 'handling';
+    // D'après son NOM, pas son identifiant : la zone « handling » du plan est
+    // « CF DÉPART FOOD », où des checkeurs vérifient les trolleys avant que le
+    // handling les charge (retour d'usage du 05/10) — elle a des équipes, elle
+    // ne charge pas les vols.
+    if (/handling|chargement/i.test(nomService || service)) return 'handling';
     if (service === 'plonge' || /plonge|lavage/i.test(nomService || '')) return 'lavage';
     if (SERVICES_DISPO.includes(service)) return 'dispo';
     if (/robot/i.test(nomService || '')) return 'robot';
@@ -2317,7 +2342,7 @@
 
 
   const api = { annoncer, fusionneePar, passePar, chaines, insererPrepa, depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, confier, nouvelleEquipe,
-    colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, donnerCases, completerCases, nomLibre, caseHandling, anciensHandlings, brancherHandling, caseRobot, remplacerEtape,
+    colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, donnerCases, completerCases, nomLibre, caseHandling, anciensHandlings, brancherHandling, separerHandling, caseRobot, remplacerEtape,
     SERVICES_DISPO, estDispo, caseDispo, anciensDispos, partagerDispos, separerParCommande, ajouterBesoin,
     insererService, retirerService, integrerArmement, delierHandling, armementIntegre, armementACorriger, versParCompagnie, liberer, insererParEcheance, cocher, passerPar, grille, natureService, equipeNeuve,
     marquerTypes, typeSuivi, fluxDe, signature, types, commandesDuType, nouveauType, assignerType, nettoyerTypes, cheminsPossibles, choisirChemin, selectChemin, nomVariante, adapter,
