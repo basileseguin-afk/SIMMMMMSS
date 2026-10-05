@@ -5,6 +5,24 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-05 — Correctif : la page défilait sous l'en-tête (fiche Plonge)
+
+Signalement : « bug de scrolling pour le service Plonge ».
+
+- **Cause** : la fiche de l'équipe de plonge contient, pour les lecteurs
+  d'écran, un texte caché (`.sr-only` : « Tunnel 1 en service »). Placé en
+  position absolue sans haut ni gauche, il se calait sur la page entière, à
+  sa place dans la fiche longue, et allongeait la page de 101 px. Il y avait
+  donc deux défilements : la vue, et la page sous l'en-tête. La molette
+  faisait remonter l'en-tête et le menu hors de l'écran. Équipes › Barème par
+  service avait le même défaut (+129 px).
+- **Correctif** (`interface.css`, v1 et v2) : un `.sr-only` se cale en haut
+  de son bloc (`top:0;left:0`, marges nulles), selon la règle habituelle des
+  textes cachés. Il n'allonge plus aucune page, où qu'il soit.
+- **Test** : `tests/defilement-browser.cjs` (nouveau, v1 et v2) parcourt
+  toutes les pages du menu et chaque fiche de service, puis fait tourner la
+  molette sur la fiche Plonge et sur l'en-tête. Il échoue sans le correctif.
+
 ## 2026-10-05 — Diagrammes en étapes : encore plus lisibles
 
 Retour d'usage : « en vertical, c'est une très bonne idée, mais ça reste peu
