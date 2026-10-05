@@ -94,7 +94,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    // 7. Relié au milieu d'un flux (après la Prépa) : la fiche le dit ; un clic le remet en branche à part, relié au handling.
    await page.evaluate(()=>Sim.ateliers.changer(()=>{const t=Sim.ateliers.state.parcours.find(x=>x.id==='sans-cuisine');t.liens.push({de:'prepa',vers:'armement'});},''));await attendre();
    await nav.aller(page,'mu-services');await page.locator('[data-mu-choisir=armement]').click();await attendre();
-   assert.match(await fiche('.mu-lien-handling').innerText(),/pas relié seulement au handling/);
+   assert.match(await fiche('.mu-lien-handling').innerText(),/À reprendre dans ce chemin : « .+ » \(relié aussi à /);
    await fiche('[data-mu-action=integrer-armement]').click();await attendre();
    const parcours=await page.evaluate(()=>Sim.ateliers.state.parcours);
    assert.ok(parcours.every(p=>!p.noeuds.length||(p.noeuds.includes('armement')&&p.liens.filter(l=>l.de==='armement'||l.vers==='armement').every(l=>l.de==='armement'&&l.vers==='quais'))),'dans tous les chemins, relié seulement au handling');

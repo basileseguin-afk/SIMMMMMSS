@@ -284,13 +284,19 @@
     lienHandling(s) {
       const st = this.etat, handlings = st.ateliers.filter(a => a.type === 'handling');
       const qui = handlings.length ? handlings.map(a => '« ' + esc(a.nom) + ' »').join(', ') : '';
-      const integre = handlings.length && PC.armementIntegre(st, [s.id], this.handlings(st));
+      // Seulement les chemins que suivent les commandes ; un lien vers un handling suffit.
+      const aCorriger = handlings.length ? PC.armementACorriger(st, [s.id], this.handlings(st), this.at.classes) : [];
+      const integre = handlings.length && !aCorriger.length;
+      const pourquoi = { absent: 'absent', 'sans-handling': 'pas relié au handling' };
+      const liste = aCorriger.slice(0, 4).map(x => '« ' + esc(x.parcours.nom || x.parcours.id) + ' » ('
+        + (x.raison === 'autres' ? 'relié aussi à ' + x.avec.map(id => esc(this.nom(id))).join(', ') : pourquoi[x.raison]) + ')').join(', ')
+        + (aCorriger.length > 4 ? '…' : '');
       return `<div class="mu-lien-handling"><p><span aria-hidden="true">🚚</span> <b>Lié au handling.</b> ${handlings.length
         ? qui + (handlings.length > 1 ? ' attendent' : ' attend') + ' l’armement et les repas du vol pour le charger.'
         : 'Pas encore de handling dans l’unité : créez-en un, puis intégrez l’armement aux chemins, relié au handling.'}
         On arme un vol, pas une classe : une case par compagnie dont le chemin passe par ${esc(s.nom)}.</p>
         ${!handlings.length ? '' : integre ? `<p class="mini-note mu-arm-ok">✓ Dans tous les chemins, en branche à part, relié seulement au handling.</p>`
-          : `<p class="mini-note">Dans les chemins : ${esc(s.nom)} n’est pas partout, ou pas relié seulement au handling.
+          : `<p class="mini-note mu-arm-reprendre">À reprendre dans ${aCorriger.length > 1 ? 'ces chemins' : 'ce chemin'} : ${liste}.
           <button class="btn btn-sm btn-play" type="button" data-mu-action="integrer-armement">L’intégrer à tous les chemins, relié au handling</button></p>`}</div>`;
     }
 

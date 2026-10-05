@@ -999,13 +999,34 @@
     return n;
   }
 
-  /** L'armement est-il dans chaque chemin, relié seulement au handling ? */
-  function armementIntegre(etat, armements, handlings) {
+  /** Ce qui reste à reprendre pour que l'armement soit, dans chaque chemin SUIVI par
+   *  une commande, une branche à part reliée seulement au handling (retour d'usage du
+   *  05/10 : « j'ai tout relié, et la fiche me propose encore de l'intégrer ») :
+   *  `[{ parcours, raison }]`, vide si tout va bien. Les chemins qu'aucune commande ne
+   *  suit (modèles, anciens chemins) ne comptent pas ; un lien vers UN handling suffit. */
+  function armementACorriger(etat, armements, handlings, classes) {
     const arm = new Set(armements || []), hs = new Set(handlings || []);
-    if (!arm.size || !hs.size) return false;
-    return (etat.parcours || []).filter(p => (p.noeuds || []).some(x => !arm.has(x))).every(p => [...arm].every(a =>
-      (p.noeuds || []).includes(a) && [...hs].every(h => (p.noeuds || []).includes(h) && (p.liens || []).some(l => l.de === a && l.vers === h))
-      && (p.liens || []).filter(l => l.de === a || l.vers === a).every(l => l.de === a && hs.has(l.vers))));
+    if (!arm.size || !hs.size) return [];
+    const suivis = classes && classes.length
+      ? new Set(classes.map(c => (fluxDe(etat, c) || {}).id).filter(Boolean)) : null;
+    const out = [];
+    for (const p of etat.parcours || []) {
+      const noeuds = p.noeuds || [], liens = p.liens || [];
+      if (!noeuds.some(x => !arm.has(x)) || (suivis && !suivis.has(p.id))) continue;
+      for (const a of arm) {
+        if (!noeuds.includes(a)) { out.push({ parcours: p, raison: 'absent' }); continue; }
+        const autres = liens.filter(l => (l.de === a || l.vers === a) && !(l.de === a && hs.has(l.vers)));
+        if (autres.length) out.push({ parcours: p, raison: 'autres', avec: [...new Set(autres.map(l => (l.de === a ? l.vers : l.de)))] });
+        else if (!liens.some(l => l.de === a && hs.has(l.vers) && noeuds.includes(l.vers))) out.push({ parcours: p, raison: 'sans-handling' });
+      }
+    }
+    return out;
+  }
+
+  /** L'armement est-il dans chaque chemin suivi, relié seulement au handling ? */
+  function armementIntegre(etat, armements, handlings, classes) {
+    const arm = new Set(armements || []), hs = new Set(handlings || []);
+    return !!arm.size && !!hs.size && !armementACorriger(etat, armements, handlings, classes).length;
   }
 
   /** Ses cases par classe deviennent des cases par compagnie (« AF/YC » → « AF/@ARM ») : l'équipe garde ses compagnies. */
@@ -2231,7 +2252,7 @@
   const api = { annoncer, fusionneePar, passePar, chaines, insererPrepa, depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, confier, nouvelleEquipe,
     colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, donnerCases, completerCases, nomLibre, caseHandling, anciensHandlings, brancherHandling, caseRobot, remplacerEtape,
     SERVICES_DISPO, estDispo, caseDispo, anciensDispos, partagerDispos, separerParCommande, ajouterBesoin,
-    insererService, retirerService, integrerArmement, delierHandling, armementIntegre, versParCompagnie, liberer, insererParEcheance, cocher, passerPar, grille, natureService, equipeNeuve,
+    insererService, retirerService, integrerArmement, delierHandling, armementIntegre, armementACorriger, versParCompagnie, liberer, insererParEcheance, cocher, passerPar, grille, natureService, equipeNeuve,
     marquerTypes, typeSuivi, fluxDe, signature, types, commandesDuType, nouveauType, assignerType, nettoyerTypes, nomVariante, adapter,
     changerFlux, regrouper, EditeurParcours };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

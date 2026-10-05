@@ -49,7 +49,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    // 3. La fiche le dit ; un nouveau chemin sans armement → le bouton le remet.
    await nav.aller(page,'mu-services');await page.locator('[data-mu-choisir=armement]').click();await attendre();
    assert.match(await page.locator('#mu-services .mu-arm-ok').innerText(),/Dans tous les chemins/);
-   await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.parcours.push({id:'neuf',nom:'Neuf',noeuds:['prepa'],liens:[]});},''));await attendre();
+   // Un nouveau chemin, suivi par une commande (un chemin que personne ne suit ne compte pas, 05/10).
+   await page.evaluate(()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;st.parcours.push({id:'neuf',nom:'Neuf',noeuds:['prepa'],liens:[]});st.parcoursClasse={...(st.parcoursClasse||{}),'AF/BC':'neuf'};},''));await attendre();
+   assert.match(await page.locator('#mu-services .mu-arm-reprendre').innerText(),/« Neuf » \(absent\)/);
    await page.locator('#mu-services [data-mu-action=integrer-armement]').click();await attendre();
    s=await st();
    const neuf=s.parcours.find(p=>p.id==='neuf');

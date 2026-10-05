@@ -5,6 +5,29 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-05 — Armement : plus de « L'intégrer à tous les chemins » à tort
+
+Retour d'usage : « j'ai relié correctement, dans tous les chemins,
+l'armement vers le handling, et Services et équipes me recommande encore de
+l'intégrer à tous les chemins ».
+
+La vérification était trop stricte :
+- elle lisait **tous** les chemins enregistrés, même ceux qu'aucune commande
+  ne suit (modèles, anciens chemins à part) ;
+- avec plusieurs services de handling, elle exigeait un lien vers **chacun**
+  dans chaque chemin ;
+- et elle ne disait pas lequel reprendre.
+
+Désormais (`PC.armementACorriger`) : seuls les chemins que suivent les
+commandes comptent, un lien de l'armement vers **un** handling suffit, et
+s'il reste à faire, la fiche nomme le chemin et la raison (« absent »,
+« pas relié au handling », « relié aussi à Montage ») avant le bouton.
+
+- v1 et v2 (`parcours.js`, `unite.js`) ; `tests/armement-integre-browser.cjs`
+  (échoue sur l'ancien code, passe sur le nouveau).
+  `tests/categories-browser.cjs` et `tests/armement-chemins-browser.cjs` lisent
+  le nouveau message ; le chemin « Neuf » y est suivi par une commande.
+
 ## 2026-10-02 — Audit de la logique des flux : contradictions corrigées
 
 Demande : « fais un check de tous les flux internes, la logique des flux,
