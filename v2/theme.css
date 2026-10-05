@@ -369,7 +369,11 @@ header .entete-droite{display:flex;gap:8px}
    vers la page, ni de la page vers le vide (rebond du pavé tactile). */
 html,body{overscroll-behavior:none}
 #view-ateliers,#view-flux,.accueil,.flights-view,.reglages-view,.journee-chiffres,.journee-comparer,.journee-stocks,
-.services-unite,.panel-content,#panneau-edition,.pc-tiroir,.table-scroll{overscroll-behavior:contain}
+/* Pas de « contain » sur une liste posée DANS la page (liste de gauche collante,
+   tableau qui défile en largeur) : arrivée au bout, la molette doit repartir sur
+   la page, sinon on reste « bloqué en bas » (retour d'usage du 05/10). */
+.services-unite,.panel-content,#panneau-edition,.pc-tiroir{overscroll-behavior:contain}
+.table-scroll{overscroll-behavior-x:contain}
 
 /* Le passage d'une version à l'autre (v1 stable ↔ v2 en construction). */
 .btn-version{display:inline-flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:0;padding:4px 12px;border-radius:10px;

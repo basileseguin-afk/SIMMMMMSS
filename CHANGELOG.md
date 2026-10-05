@@ -5,6 +5,30 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-05 — Plus jamais « bloqué en bas » : la liste de gauche rend la molette
+
+Signalement : « toujours le même problème de scroll : quand je scrolle tout
+en bas, après je suis bloqué, je ne peux plus remonter ».
+
+- **Cause** : dans Équipes › Services et équipes et dans Chemins › Chemin
+  d'une commande, la liste de gauche reste collée à l'écran et défile seule.
+  Elle portait `overscroll-behavior: contain`, qui garde la molette pour
+  elle, même quand elle est déjà en haut. Descendu en bas de la fiche, la
+  souris passée sur la liste, la molette vers le haut ne faisait plus rien.
+- **Correctif** : la liste (`.mu-liste`, `.pc-cmds`, `.pc-cmds-liste`) défile
+  d'abord, puis rend la main à la page une fois arrivée au bout. Les
+  tableaux qui défilent en largeur (`.table-scroll`) ne retiennent plus que
+  le défilement horizontal. Les fenêtres posées par-dessus la page (tiroir
+  d'une case, panneau d'édition) gardent le leur.
+- **Handling** : `tests/handling-browser.cjs` suit le changement précédent.
+  Le handling se pose dans son service à lui, plus dans CF départ food.
+- **Test** : `tests/defilement-browser.cjs` descend en bas de la fiche (la
+  plonge avec son équipe) et de Chemin d'une commande, puis remonte avec la
+  souris sur la liste de gauche. La page doit revenir en haut (v1 et v2).
+- Fichiers : `unite.css`, `graphe.css`, `theme.css` (et `v2/`),
+  `tests/defilement-browser.cjs`, `tests/handling-browser.cjs`, README,
+  empreintes.
+
 ## 2026-10-05 — CF départ food n'est plus le handling : un service à checkeurs
 
 Signalement : « CF départ food et le handling ont la même page de

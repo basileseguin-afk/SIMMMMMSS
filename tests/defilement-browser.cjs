@@ -3,7 +3,10 @@
  * menu restent en place. Un texte pour lecteur d'écran (.sr-only), posé dans
  * une fiche longue, se calait sur la page et l'allongeait (fiche Plonge avec
  * son équipe, Barème par service) : la molette faisait alors remonter l'en-tête.
- * Toutes les pages, et chaque fiche de service, v1 et v2. */
+ * Toutes les pages, et chaque fiche de service, v1 et v2.
+ * Et l'on n'est jamais « bloqué en bas » (retour d'usage du 05/10 : « quand je
+ * scrolle tout en bas, après je ne peux plus remonter ») : la liste collante de
+ * gauche (services, commandes) arrêtait la molette même arrivée au bout. */
 const assert=require('node:assert/strict'),path=require('node:path');
 const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
@@ -34,11 +37,24 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(await page.evaluate(()=>document.documentElement.scrollTop),0,version+' : l’en-tête ne remonte pas');
    assert.equal(await page.locator('#menu').evaluate(m=>Math.round(m.getBoundingClientRect().top)>=0),true);
 
-   // 2. Toutes les pages du menu.
+   // 2. Descendu tout en bas sur la fiche, on remonte la molette sur la liste de
+   //    gauche : arrivée en haut, la liste rend la main à la page.
+   const remonte=async(id,svc)=>{
+    await nav.aller(page,id);if(svc){await page.locator(`#mu-services [data-mu-choisir=${svc}]`).click();}await page.waitForTimeout(250);
+    const v=page.locator('#view-'+await page.evaluate(()=>[...document.querySelectorAll('[id^="view-"]')].find(x=>x.offsetParent&&x.scrollHeight>x.clientHeight).id.slice(5)));
+    await page.mouse.move(900,500);for(let k=0;k<12;k++){await page.mouse.wheel(0,600);await page.waitForTimeout(40);}await attendre();
+    assert.ok(await v.evaluate(x=>x.scrollTop)>100,version+' : '+id+' descend');
+    await page.mouse.move(160,500);for(let k=0;k<12;k++){await page.mouse.wheel(0,-600);await page.waitForTimeout(40);}await page.waitForTimeout(300);
+    assert.equal(await v.evaluate(x=>x.scrollTop),0,version+' : '+id+' remonte, la souris sur la liste de gauche');
+   };
+   await remonte('mu-services','plonge');
+   await remonte('at-chemins');
+
+   // 3. Toutes les pages du menu.
    const ids=await page.evaluate(()=>Object.values(OrlyOnglets.ONGLETS).flat().map(o=>o.id).filter(id=>OrlyOnglets.partieDe(id)));
    for(const id of ids){await nav.aller(page,id);assert.equal(await deborde(),0,version+' : '+id+' allonge la page');}
 
-   // 3. Chaque fiche de service.
+   // 4. Chaque fiche de service.
    await nav.aller(page,'mu-services');
    for(const s of await page.locator('#mu-services [data-mu-choisir]').evaluateAll(bs=>bs.map(x=>x.dataset.muChoisir))){
     await page.locator(`#mu-services [data-mu-choisir="${s}"]`).click();await attendre();

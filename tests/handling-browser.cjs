@@ -1,5 +1,7 @@
 /* Le handling dans l'interface : il se pose sur un chemin comme un service,
- * mais sa case charge des vols (retour d'usage du 28/09). */
+ * mais sa case charge des vols (retour d'usage du 28/09). Il a son service à
+ * lui, « Handling » : la zone « handling » du plan est CF départ food, le
+ * service des checkeurs (retour d'usage du 05/10). */
 const assert=require('node:assert/strict'),path=require('node:path');
 const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
@@ -16,14 +18,18 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await nav.aller(page,'v-departs');
   assert.match(await page.locator('#vols-handling').innerText(),/Pas de handling pour l’instant/);
   assert.equal(await page.locator('[data-vh-action=brancher]').count(),1);
+  // Le service du handling, à côté de CF départ food.
+  const H=await page.evaluate(()=>Sim.ateliers.a.creerHandling());await attendre();
+  assert.ok(H&&H!=='handling','un service Handling à lui');
+  await page.evaluate(h=>{window.H=h;},H);   // lu aussi dans la page
 
   // 1. Sur le chemin d'AF · Business, on ajoute le handling : sa case est un handling, partagé.
   await nav.aller(page,'at-chemins');
   await page.locator('[data-pc-action=cmd][data-classe="AF/BC"]').click();await attendre();
   // Elle suit un flux partagé : on lui fait sa variante, modifiable sur place.
   if(await page.locator('[data-pc-action=flux-variante]').count()){await page.locator('[data-pc-action=flux-variante]').click();await attendre();}
-  await page.selectOption('[data-pc-champ=noeud-ajout]','handling');await attendre();
-  const cases=await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service==='handling'));
+  await page.selectOption('[data-pc-champ=noeud-ajout]',H);await attendre();
+  const cases=await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service===H));
   assert.equal(cases.length,1);
   assert.equal(cases[0].type,'handling');
   assert.deepEqual(cases[0].lots,[],'pas de liste de commandes');
@@ -32,8 +38,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator('[data-pc-action=cmd][data-classe="AF/YC"]').click();await attendre();
   // Elle suit un flux partagé : on lui fait sa variante, modifiable sur place.
   if(await page.locator('[data-pc-action=flux-variante]').count()){await page.locator('[data-pc-action=flux-variante]').click();await attendre();}
-  await page.selectOption('[data-pc-champ=noeud-ajout]','handling');await attendre();
-  assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service==='handling').length),1,'un seul handling, partagé');
+  await page.selectOption('[data-pc-champ=noeud-ajout]',H);await attendre();
+  assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service===H).length),1,'un seul handling, partagé');
 
   // Une compagnie dont rien n'est construit n'est pas chargée (02/10) : une équipe
   // de repas prépare les commandes du jour, en très peu de temps.
@@ -105,9 +111,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await nav.aller(page,'v-departs');
   assert.match(await page.locator('#vols-handling').innerText(),/Handling : « .+ »[\s\S]*chargés? à l’heure sur/);
   // Les chemins qui n'y passent pas encore le reçoivent d'un geste, sans seconde case.
-  const sans=await page.evaluate(()=>Sim.ateliers.state.parcours.filter(p=>!p.noeuds.includes('handling')).length);
+  const sans=await page.evaluate(()=>Sim.ateliers.state.parcours.filter(p=>!p.noeuds.includes(H)).length);
   if(sans){await page.locator('[data-vh-action=brancher]').click();await attendre();}
-  assert.equal(await page.evaluate(()=>Sim.ateliers.state.parcours.filter(p=>!p.noeuds.includes('handling')).length),0);
+  assert.equal(await page.evaluate(()=>Sim.ateliers.state.parcours.filter(p=>!p.noeuds.includes(H)).length),0);
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.type==='handling').length),1);
   // « Régler le handling » ouvre sa fiche.
   await page.locator('[data-vh-action=regler]').click();await attendre();
@@ -130,23 +136,23 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   //    déjà ajouté du handling sur les chemins ») : le bandeau le dit, et les
   //    convertit en une seule case par vol.
   await page.evaluate(id=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;st.ateliers=st.ateliers.filter(a=>a.id!==id);
-    for(const c of ['AF/BC','AF/YC'])st.ateliers.push({id:'vieux-'+c.replace('/',''),nom:'CF départ food '+c,service:'handling',type:'manuel',debut:c==='AF/BC'?'05:00':'04:30',
+    for(const c of ['AF/BC','AF/YC'])st.ateliers.push({id:'vieux-'+c.replace('/',''),nom:'CF départ food '+c,service:H,type:'manuel',debut:c==='AF/BC'?'05:00':'04:30',
       jour:0,personnes:3,pauses:[],lots:[[c]],regime:{actif:true}});},''),id);
   await nav.aller(page,'v-departs');
   assert.match(await page.locator('#vols-handling').innerText(),/l’ancienne logique[\s\S]*2 cases le préparent commande par commande/);
   await page.locator('[data-vh-action=brancher]').click();await attendre();
-  const apres=await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service==='handling').map(a=>({type:a.type,debut:a.debut,lots:a.lots})));
+  const apres=await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service===H).map(a=>({type:a.type,debut:a.debut,lots:a.lots})));
   assert.deepEqual(apres,[{type:'handling',debut:'04:30',lots:[]}]);
   assert.match(await page.locator('#vols-handling').innerText(),/Handling : « .+ »/);
   assert.ok(await page.evaluate(()=>Sim.ateliers.resultat.vols.length>0),'les vols sont suivis');
   // 7. Même chose depuis l'Organisation, là où l'on travaille les chemins.
-  await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'vieux-TX',nom:'CF départ food TX',service:'handling',type:'manuel',
+  await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'vieux-TX',nom:'CF départ food TX',service:H,type:'manuel',
     debut:'05:00',jour:0,personnes:2,pauses:[],lots:[['TX/YC']],regime:{actif:true}});},''));
   await nav.aller(page,'at-chemins');
   assert.equal(await page.locator('#at-anomalies').evaluate(d=>d.open),true,'ouvert d’office');
   assert.match(await page.locator('#at-anomalies').innerText(),/1 case le prépare commande par commande/);
   await page.locator('#at-anomalies [data-at-action=handling-convertir]').click();await attendre();
-  assert.deepEqual(await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service==='handling').map(a=>a.type)),['handling'],'l’ancienne case rejoint le handling existant');
+  assert.deepEqual(await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service===H).map(a=>a.type)),['handling'],'l’ancienne case rejoint le handling existant');
   assert.doesNotMatch(await page.locator('#at-anomalies').innerText(),/ancienne logique/);
 
   // La fenêtre de la case dans un chemin tient dans l'écran (retour d'usage : « la page est
@@ -154,7 +160,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.setViewportSize({width:1280,height:720});
   await nav.aller(page,'at-chemins');
   const cmd=await page.evaluate(()=>Sim.ateliers.classes.find(c=>c.vols.length).id);
-  await page.evaluate(cmd=>Sim.ateliers.parcours.ouvrir(cmd,'handling'),cmd);await attendre();
+  await page.evaluate(cmd=>Sim.ateliers.parcours.ouvrir(cmd,H),cmd);await attendre();
   assert.equal(await page.locator('.pc-tiroir').count(),1,'la case du handling s’ouvre dans le chemin');
   {
     const debord=await page.evaluate(()=>{const t=document.querySelector('.pc-tiroir'),ts=t.querySelector('.at-cies-bloc .table-scroll');
