@@ -238,6 +238,8 @@
         if (!passe(c, sv.id)) { cellules[sv.id] = { source: 'hors', parVol: null, jour: null }; continue; }
         const equipe = equipeDe(sv.id, c.id);
         const eq = equipe && ateliers.find(x => x.id === equipe.id);
+        // Un poste qui ne dépend pas des vols n'a pas de minutes par vol (06/10).
+        if (eq && eq.type === 'manuel' && ctx.constantes && ctx.constantes.has(eq.id)) { cellules[sv.id] = { source: 'constant', parVol: null, jour: null, equipe }; continue; }
         if (eq && eq.type === 'robot') {
           // Le robot : des plateaux à un débit, pas des man-minutes.
           const debit = P.debitRobot(eq, c.id), parVolPax = vols ? c.pax / vols : c.pax;

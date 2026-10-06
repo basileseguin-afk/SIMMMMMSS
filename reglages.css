@@ -142,6 +142,7 @@
 .rgr.case small{margin-left:4px;font-size:10px;text-transform:uppercase;letter-spacing:.04em}
 .rgr.manque input,.rg-recap-legende .rgr.manque{border-color:#c0392b;outline:1px solid #c0392b}
 .rgr.hors{color:var(--txt2);text-align:center;opacity:.6}
+.rgr.constant{color:var(--txt2);text-align:center;font-style:italic;font-size:12px}
 
 /* Le récap en grille : trois sous-colonnes par service (valeur · pers. · durée),
  * alignées ; un filet entre deux services ; des champs qui ressemblent à des

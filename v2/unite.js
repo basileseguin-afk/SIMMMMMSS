@@ -80,7 +80,8 @@
       const attendues = preparent(nature) ? classes.filter(c => g.get(c.id).etat === 'attendue').map(c => c.id) : [];
       const vides = preparent(nature) ? cases.filter(a => (a.type === 'manuel' || a.type === 'robot') && !a.lots.some(l => l.length)) : [];
       const rg = this.a.rg ? this.a.rg() : null;
-      const temps = rg && nature === 'manuel' && cases.some(a => a.lots.some(l => l.length)) ? rg.blocService({ id, nom: this.nom(id) }) : null;
+      // Seuls les postes qui dépendent des vols ont des minutes par vol à remplir (06/10).
+      const temps = rg && nature === 'manuel' && cases.some(a => a.lots.some(l => l.length) && this.at.dependDesVols(a)) ? rg.blocService({ id, nom: this.nom(id) }) : null;
       const sansTemps = !!temps && (temps.etat === 'vide' || temps.manquent.length > 0);
       const alertes = ((resultat && resultat.anomalies) || []).filter(x => !CODES_JOURNEE.has(x.code)
         && (x.service === id || cases.some(a => a.id === x.atelier)) && x.code !== 'parcours-trou' && x.code !== 'bareme' && x.code !== 'bareme-classe' && x.code !== 'lots');
@@ -241,9 +242,13 @@
         <span><b>Effectif constant</b><small>${constant ? 'ses équipes gardent le nombre de personnes saisi, quel que soit le nombre de vols. Décochez pour le calculer.'
           : nature === 'lavage' ? 'non coché : les équipes hors tunnel se calculent, minutes par vol × vols qui reviennent de chaque compagnie ÷ minutes de leur poste. Les tunnels gardent leur effectif. Cochez pour le saisir.'
           : 'non coché : le nombre de personnes de chaque équipe se calcule, minutes par vol × vols de chaque compagnie ÷ minutes de son poste. Le robot garde le sien. Cochez pour le saisir.'}
-          Une équipe peut faire autrement : son choix « Effectif ».</small></span></label>` : '';
+          Une équipe peut faire autrement : son choix « Effectif ».</small></span></label>`
+        + (constant ? '' : `<label class="mu-effectif mu-impose"><input type="checkbox" data-mu-impose="${esc(s.id)}"${this.at.effectifImpose(s.id) ? ' checked' : ''}>
+          <span><b>Effectif imposé (essai)</b><small>les minutes par vol s’appliquent, mais à l’effectif saisi, sans le calculer : « et avec 2 personnes, ça tient ? »</small></span></label>`) : '';
       const choixNature = `<label class="mu-nature">Ce service…<select data-mu-nature="${esc(s.id)}">${NATURES.map(x =>
-        `<option value="${x.id}"${x.id === nature ? ' selected' : ''}>${esc(x.nom)}</option>`).join('')}</select></label>` + choixEffectif;
+        `<option value="${x.id}"${x.id === nature ? ' selected' : ''}>${esc(x.nom)}</option>`).join('')}</select></label>` + choixEffectif
+        + `<label class="mu-encadrement">Superviseurs / coordinateurs<input type="number" min="0" max="99" value="${this.at.encadrement(s.id)}" data-mu-encadrement="${esc(s.id)}">
+          <small>présents dans le service, hors production : ils ne changent rien au calcul ; ils serviront à relier l’unité au budget quotidien</small></label>`;
 
       // Une équipe d'un autre service qui fait aussi celui-ci, à la chaîne : elle
       // existe dans les deux, et se règle dans les deux (retour d'usage du 01/10).
@@ -272,7 +277,11 @@
       }
 
       const rg = this.a.rg ? this.a.rg() : null;
-      const temps = nature === 'manuel' && rg
+      // Des postes qui ne dépendent pas des vols n'ont pas de minutes par vol (06/10).
+      const aucunVol = nature === 'manuel' && !(st.ateliers || []).some(a => a.service === s.id && this.at.dependDesVols(a));
+      const temps = aucunVol && b.cases.length
+        ? etape(3, 'Minutes de travail pour un vol', '<p class="mini-note">Ses postes ne dépendent pas des vols : <b>pas de minutes par vol</b>. Leurs commandes passent dans leurs heures de présence. Décochez « Effectif constant » (ou choisissez « Dépend des vols » pour une équipe) pour en saisir.</p>')
+        : nature === 'manuel' && rg
         ? etape(3, 'Minutes de travail pour un vol', rg.ficheTemps(s.id), constant ? 'pour une compagnie dans une classe : la durée se déduit des personnes de l’équipe'
           : 'pour une compagnie dans une classe : les personnes de chaque équipe s’en déduisent')
         : nature === 'robot' ? etape(3, 'Débit du robot', '<p class="mini-note">Le débit (plateaux par heure) se règle dans la fiche de chaque équipe robot, plus haut : « Plus de réglages ».</p>') : '';
@@ -1189,6 +1198,9 @@
         } else if (el.dataset.muBesoin) this.passer(el.dataset.service, [el.dataset.muBesoin], el.checked);
         else if (el.dataset.muNature) this.nature(el.dataset.muNature, el.value);
         else if (el.dataset.muEffectif) this.at.regleEffectif(el.dataset.muEffectif, el.checked);
+        else if (el.dataset.muImpose) this.at.regleImpose(el.dataset.muImpose, el.checked);
+        // Après l'événement : redessiner pendant qu'il court arracherait le champ qu'on quitte.
+        else if (el.dataset.muEncadrement) { const svc = el.dataset.muEncadrement, n = el.value; setTimeout(() => this.at.regleEncadrement(svc, n), 0); }
         else if (el.dataset.muCatMin) {
           const service = el.closest('[data-mu-cat-service]').dataset.muCatService, id = el.dataset.muCatMin;
           const cie = el.dataset.cie, v = el.value.trim();

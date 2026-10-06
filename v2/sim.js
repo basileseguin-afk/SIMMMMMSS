@@ -1833,10 +1833,13 @@ function installerCentreReglages() {
     routesSignature:()=>{const e=(Sim.ateliers&&Sim.ateliers.state)||{};return JSON.stringify([e.parcours,e.parcoursCabine,e.parcoursClasse]);},
     // Un service dont toutes les équipes sont des plonges, des mises à
     // disposition ou des robots ne lit pas le barème : inutile de le proposer.
+    // Les équipes à la main constantes : leurs cellules du récap n'ont pas de minutes.
+    constantes:()=>Sim.ateliers?Sim.ateliers.constantes():[],
     sansBareme:()=>{
       const par=new Map();
       for(const a of ((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]))
-        par.set(a.service,(par.get(a.service)||false)||a.type==='manuel');
+        // Un poste qui ne dépend pas des vols n'a pas de minutes par vol (06/10).
+        par.set(a.service,(par.get(a.service)||false)||(a.type==='manuel'&&Sim.ateliers.dependDesVols(a)));
       // Un service par compagnie (l'armement) a ses minutes dans sa fiche, pas dans le barème.
       const parCompagnie=Object.keys((Sim.ateliers&&Sim.ateliers.state.categories)||{});
       return [...new Set([...par].filter(([,manuel])=>!manuel).map(([s])=>s).concat(parCompagnie))];

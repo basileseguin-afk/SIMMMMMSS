@@ -148,4 +148,35 @@ for (const [version, chemin] of [['v1', '../moteur/production.js'], ['v2', '../v
     assert.equal(r.effectifs.c.personnes, 1, 'calculée dans un service constant : 6 × 20 = 120 en 120 min');
     assert.equal(r.effectifs.c.hommeMinutes, 120);
   });
+
+  test(version + ' : un poste qui ne dépend pas des vols n’a pas de minutes par vol (06/10)', () => {
+    const fixe = at('f', 'prepa', '06:00', [['AF/YC'], ['TX/YC']], { personnes: 2, effectif: 'fixe' });
+    const r = jouer([fixe], { effectifCalcule: ['prepa'] });
+    const lots = r.lots.filter(l => l.atelier === 'f');
+    assert.ok(lots.length === 2 && lots.every(l => l.duree === 0 && l.hommeMinutes === 0 && l.constant), 'ses commandes passent, en temps nul');
+    assert.ok(lots.every(l => l.debut >= h('06:00')), 'dans ses heures de présence');
+    assert.equal(r.indicateurs.hommeHeures, 0, 'aucune homme-minute comptée');
+    // Pas d'alerte de barème pour lui, même sans barème.
+    const sansBareme = P.simuler({ vols: VOLS, liaisons: [], bareme: {}, rendement: 1, effectifCalcule: [], ateliers: [at('f2', 'prepa', '06:00', [['AF/YC']], { personnes: 2 })] });
+    assert.ok(!sansBareme.anomalies.some(x => x.code === 'bareme' || x.code === 'bareme-classe'), JSON.stringify(sansBareme.anomalies.map(x => x.code)));
+    // Sans le réglage des effectifs (calage, anciens appels) : le barème s'applique comme avant.
+    const avant = P.simuler({ vols: VOLS, liaisons: [], bareme: BAREME, rendement: 1, ateliers: [fixe] });
+    assert.equal(avant.lots.filter(l => l.atelier === 'f').reduce((n, l) => n + l.hommeMinutes, 0), 300);
+  });
+
+  test(version + ' : effectif imposé (essai) : les minutes par vol s’appliquent à l’effectif saisi', () => {
+    // Service imposé : 300 homme-minutes à 5 personnes = 60 min, rien de calculé.
+    const a = at('mo', 'prepa', '06:00', [['AF/YC'], ['TX/YC']], { personnes: 5 });
+    const r = jouer([a], { effectifCalcule: [], effectifImpose: ['prepa'] });
+    assert.equal(r.effectifs.mo, undefined);
+    const lots = r.lots.filter(l => l.atelier === 'mo');
+    assert.equal(lots.reduce((n, l) => n + l.hommeMinutes, 0), 300);
+    assert.equal(Math.max(...lots.map(l => l.fin)) - h('06:00'), 60);
+    // Une équipe imposée dans un service calculé, une constante dans un service imposé.
+    const r2 = jouer([at('i', 'prepa', '06:00', [['AF/YC']], { personnes: 6, effectif: 'impose' }), at('f', 'cuisine', '04:00', [['AF/YC']], { personnes: 2, effectif: 'fixe' })],
+      { effectifCalcule: ['prepa'], effectifImpose: ['cuisine'] });
+    assert.equal(r2.effectifs.i, undefined, 'imposée : pas calculée');
+    assert.equal(r2.lots.find(l => l.atelier === 'i').duree, 180 / 6, '6 vols × 30 min ÷ 6 personnes');
+    assert.equal(r2.lots.find(l => l.atelier === 'f').duree, 0, 'constante : pas de minutes');
+  });
 }

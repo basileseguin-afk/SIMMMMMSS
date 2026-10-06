@@ -5,6 +5,48 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-06 — Un poste constant n'a pas de minutes par vol ; les superviseurs
+
+Retour d'usage : « sois smart : tous les postes qui ne dépendent pas des vols
+n'ont forcément aucun man-hours par vol ; et rajoute pour chaque service un
+champ qui permet de placer des superviseurs, qui n'interfèrent pas du tout
+avec la production — dans le futur ils serviront à relier tout cela au budget
+quotidien, car les superviseurs / coordinateurs y sont présents ».
+
+- **Un poste constant n'a pas de minutes par vol.** Une équipe à la main dont
+  l'effectif ne dépend pas des vols (son service, ou son choix « Effectif »)
+  ne lit plus le barème.
+  - Ses commandes passent dans ses heures de présence, en temps nul.
+  - Sa fiche ne demande plus de minutes (« Ses postes ne dépendent pas des
+    vols : pas de minutes par vol »), ni de minutes propres.
+  - Un service tout constant ne demande plus « minutes de travail à
+    remplir » et n'a plus de colonne dans Minutes de travail. Dans un service
+    mixte, la cellule d'une équipe constante dit « constant ».
+  - Aucune alerte de barème pour ces équipes.
+  - Le calage de la v2 garde le barème : il rejoue avec les personnes du
+    planning réel.
+- **Superviseurs / coordinateurs** : un champ dans la fiche de chaque
+  service (« Ce qu'il fait »), gardé dans la sauvegarde (`encadrement`).
+  - Hors production, ils ne changent rien au calcul.
+  - Ils ne sont pas encore reliés au budget quotidien : ce sera la suite.
+- **L'effectif imposé (essai)** : un poste qui dépend des vols peut garder
+  l'effectif saisi. Les minutes par vol s'appliquent (durée = homme-minutes ÷
+  effectif saisi), rien n'est calculé : « et avec 2 personnes, ça tient ? ».
+  - Pour un service : case « Effectif imposé (essai) » sous « Effectif
+    constant ».
+  - Pour une équipe : « Dépend des vols, effectif imposé ».
+  - C'était le fonctionnement d'avant le calcul. Les tests qui règlent les
+    personnes à la main s'en servent (`nav.effectifSaisi`), puisqu'un poste
+    « constant » n'a plus de minutes.
+- Corrigé au passage : saisir ce nombre redessinait la fiche pendant
+  l'événement et arrachait le champ (erreur de page) ; le rendu se fait
+  maintenant juste après.
+- Tests : `effectif-calcule.test.cjs` (temps nul, pas d'alerte de barème,
+  barème gardé sans le réglage), `effectif-browser.cjs` (v1 et v2).
+- Docs : MODELE_ATELIERS, README, CAHIER_DES_CHARGES (E22, E23).
+
+---
+
 ## 2026-10-06 — Le poste ne dépend pas forcément des vols : le choix par équipe
 
 Retour d'usage : « rajoute le fait que le poste ne dépende pas forcément des

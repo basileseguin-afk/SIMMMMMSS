@@ -28,11 +28,13 @@ async function vue(page, v) {
 }
 /* L'effectif saisi à la main partout (05/10) : depuis l'effectif calculé, un
  * service qui prépare déduit les personnes de ses homme-minutes. Les tests qui
- * règlent les personnes d'une équipe à la main (durées, récap, Excel…) cochent
- * donc « Effectif constant » pour tous les services. */
+ * règlent les personnes d'une équipe à la main et vérifient les durées qui en
+ * découlent (récap, Excel…) imposent donc l'effectif dans tous les services
+ * (« Effectif imposé (essai) », 06/10) : les minutes par vol s'appliquent à
+ * l'effectif saisi. (« Constant » n'aurait plus de minutes par vol.) */
 async function effectifSaisi(page) {
   await page.evaluate(() => Sim.ateliers.changer(() => {
-    Sim.ateliers.state.effectifs = Object.fromEntries(Sim.ateliers.a.services().map(s => [s.id, 'fixe']));
+    Sim.ateliers.state.effectifs = Object.fromEntries(Sim.ateliers.a.services().map(s => [s.id, 'impose']));
   }, ''));
   await page.waitForTimeout(100);
 }

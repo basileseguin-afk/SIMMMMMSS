@@ -154,6 +154,29 @@ services se calculent. Le calage de la v2 rejoue les journées avec les personne
 du planning réel : il ne recalcule pas l'effectif ; l'essai « une personne de
 plus » du budget impose son effectif à l'équipe essayée.
 
+**Un poste constant n'a pas de minutes par vol (06/10).** « Tous les postes
+qui ne dépendent pas des vols n'ont forcément aucun man-hours par vol. » Une
+équipe à la main dont l'effectif est constant (son service, ou son choix
+« Effectif ») ne lit pas le barème : ses commandes passent dans ses heures de
+présence, en temps nul (`hommeMinutes` 0, `constant` au journal). Sa fiche ne
+demande ni minutes par vol ni minutes propres ; Minutes de travail la marque
+« constant » (et n'a pas de colonne pour un service tout constant) ; aucune
+alerte de barème. Seulement quand l'appelant passe `effectifCalcule` (le site
+le fait toujours) : le calage de la v2, qui rejoue avec les personnes du
+planning, garde le barème.
+
+**L'effectif imposé (essai).** Pour se demander « et avec 2 personnes, ça
+tient ? », un poste qui dépend des vols peut garder l'effectif qu'on saisit :
+les minutes par vol s'appliquent, la durée est homme-minutes ÷ effectif saisi,
+rien n'est calculé. Case « Effectif imposé (essai) » sous « Effectif
+constant » dans la fiche du service, ou « Dépend des vols, effectif imposé »
+dans le choix d'une équipe (`effectif: 'impose'` ; moteur : `effectifImpose`).
+
+**Les superviseurs / coordinateurs (06/10).** Un champ par service, dans sa
+fiche (« Ce qu'il fait ») : combien sont présents (`encadrement`, par
+service). Hors production, ils ne changent rien au calcul ; ils serviront à
+relier l'unité au budget quotidien, où ils figurent.
+
 **Une équipe peut faire autrement que son service (06/10).** « Le poste ne
 dépend pas forcément des vols. » Chaque équipe qui prépare à la main (et chaque
 équipe hors tunnel) a son choix « Effectif » : *comme le service* (par défaut),

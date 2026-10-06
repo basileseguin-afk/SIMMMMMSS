@@ -210,7 +210,7 @@
         // L'effectif saisi à la main avant que le calcul ne le remplace (05/10) :
         // cocher « Effectif constant » le retrouve.
         // Son effectif, autrement que son service (06/10) : 'fixe' ou 'calcule' ; absent, comme le service.
-        ...((type === 'manuel' || type === 'appui') && (a.effectif === 'fixe' || a.effectif === 'calcule') ? { effectif: a.effectif } : {}),
+        ...((type === 'manuel' || type === 'appui') && ['fixe', 'calcule', 'impose'].includes(a.effectif) ? { effectif: a.effectif } : {}),
         ...((type === 'manuel' || type === 'appui') && Number.isInteger(a.personnesSaisies) ? { personnesSaisies: Math.max(0, Math.min(999, a.personnesSaisies)) } : {}),
         // Fait aussi l'étape d'avant, à la chaîne (retour d'usage du 29/09) : le
         // service de cette étape. Une équipe qui prépare seulement, et pas le sien.
@@ -305,10 +305,14 @@
     // L'effectif de chaque service : constant (« fixe ») ou calculé d'après les
     // homme-minutes (« calcule »). Absent : le choix par défaut (effectifConstant).
     const effectifs = Object.fromEntries(Object.entries(brut.effectifs && typeof brut.effectifs === 'object' ? brut.effectifs : {})
-      .filter(([k, x]) => k && k.length <= 160 && (x === 'fixe' || x === 'calcule')).slice(0, 500));
+      .filter(([k, x]) => k && k.length <= 160 && (x === 'fixe' || x === 'calcule' || x === 'impose')).slice(0, 500));
+    // Les superviseurs / coordinateurs de chaque service (06/10) : hors production,
+    // ils serviront à relier l'unité au budget quotidien.
+    const encadrement = Object.fromEntries(Object.entries(brut.encadrement && typeof brut.encadrement === 'object' ? brut.encadrement : {})
+      .map(([k, x]) => [String(k).slice(0, 160), Math.round(+x)]).filter(([k, x]) => k && Number.isFinite(x) && x > 0).map(([k, x]) => [k, Math.min(99, x)]).slice(0, 500));
     return { schema: 'ory-ateliers', version: 1, ateliers, exclues, ajoutees, materiel,
       parcours, parcoursCabine, parcoursClasse, ...(Object.keys(categories).length ? { categories } : {}),
-      ...(Object.keys(effectifs).length ? { effectifs } : {}), ...(migrations.length ? { migrations } : {}) };
+      ...(Object.keys(effectifs).length ? { effectifs } : {}), ...(Object.keys(encadrement).length ? { encadrement } : {}), ...(migrations.length ? { migrations } : {}) };
   }
 
   /* L'effectif constant par défaut (retour d'usage du 05/10) : « le nombre de
@@ -469,7 +473,7 @@
           // Les services qui travaillent par catégories propres (l'armement).
           categories: this.state.categories || {},
           // Les services dont l'effectif se calcule d'après les homme-minutes (05/10).
-          effectifCalcule: this.servicesCalcules(),
+          effectifCalcule: this.servicesCalcules(), effectifImpose: this.servicesImposes(),
           noms: Object.fromEntries((this.a.fantomes ? this.a.fantomes() : []).map(f => [f.id, f.nom])
             .concat(this.a.services().map(s => [s.id, s.nom])))
         });
@@ -484,37 +488,59 @@
      * par équipe, ou calculé d'après les homme-minutes de ses équipes. */
     effectifConstant(service) {
       const v = (this.state.effectifs || {})[service];
-      if (v === 'fixe' || v === 'calcule') return v === 'fixe';
+      if (v === 'fixe' || v === 'calcule' || v === 'impose') return v === 'fixe';
       const s = this.a.services().find(x => x.id === service);
       return CONSTANTS.has(service) || NOMS_CONSTANTS.test((s && s.nom) || '');
     }
 
+    /** Effectif imposé (essai) : les minutes par vol s'appliquent, l'effectif est celui saisi. */
+    effectifImpose(service) { return (this.state.effectifs || {})[service] === 'impose'; }
+
     /** Les services dont l'effectif se calcule (une équipe peut faire autrement : `effectif`). */
     servicesCalcules() {
-      return [...new Set(this.state.ateliers.map(a => a.service))].filter(s => !this.effectifConstant(s));
+      return [...new Set(this.state.ateliers.map(a => a.service))].filter(s => !this.effectifConstant(s) && !this.effectifImpose(s));
+    }
+
+    /** Les services à effectif imposé (essai). */
+    servicesImposes() {
+      return [...new Set(this.state.ateliers.map(a => a.service))].filter(s => this.effectifImpose(s));
+    }
+
+    /** L'effectif de cette équipe est-il imposé (essai) ? */
+    impose(a) { return !!a && (a.effectif === 'impose' || (!a.effectif && this.effectifImpose(a.service))); }
+
+    regleImpose(service, oui) {
+      const nom = (this.a.services().find(x => x.id === service) || {}).nom || service;
+      this.changer(() => {
+        this.state.effectifs = { ...(this.state.effectifs || {}), [service]: oui ? 'impose' : 'calcule' };
+        if (oui) for (const a of this.state.ateliers) {
+          if (a.service !== service || a.effectif || !Number.isInteger(a.personnesSaisies)) continue;
+          a.personnes = a.personnesSaisies; delete a.personnesSaisies;
+        }
+      }, oui ? nom + ' : effectif imposé (essai) — les minutes par vol s’appliquent à l’effectif saisi.' : nom + ' : effectif calculé.');
     }
 
     /** Le poste de cette équipe dépend-il des vols ? Son choix à elle, sinon celui du service. */
     dependDesVols(a) {
       if (!a || !(a.type === 'manuel' || a.type === 'appui')) return false;
-      if (a.effectif === 'calcule' || a.effectif === 'fixe') return a.effectif === 'calcule';
+      if (['calcule', 'fixe', 'impose'].includes(a.effectif)) return a.effectif !== 'fixe';
       return !this.effectifConstant(a.service);
     }
 
     /* Le choix d'une équipe (06/10 : « le poste ne dépend pas forcément des vols ») :
      * comme son service, ou à part. Constant, elle retrouve l'effectif saisi. */
     regleEffectifEquipe(a, v) {
-      if (v === 'fixe' || v === 'calcule') a.effectif = v; else delete a.effectif;
-      if (!this.dependDesVols(a) && Number.isInteger(a.personnesSaisies)) { a.personnes = a.personnesSaisies; delete a.personnesSaisies; }
+      if (v === 'fixe' || v === 'calcule' || v === 'impose') a.effectif = v; else delete a.effectif;
+      if ((!this.dependDesVols(a) || this.impose(a)) && Number.isInteger(a.personnesSaisies)) { a.personnes = a.personnesSaisies; delete a.personnesSaisies; }
     }
 
     /* Le petit choix « Effectif » dans la fiche d'une équipe. */
     choixEffectifEquipe(a, classe) {
       if (!a || !(a.type === 'manuel' || a.type === 'appui')) return '';
-      const svc = this.effectifConstant(a.service) ? 'constant' : 'dépend des vols', v = a.effectif || '';
+      const svc = this.effectifConstant(a.service) ? 'constant' : this.effectifImpose(a.service) ? 'effectif imposé' : 'dépend des vols', v = a.effectif || '';
       const opt = (x, t) => `<option value="${x}"${x === v ? ' selected' : ''}>${t}</option>`;
       return `<label class="${classe || 'at-eff-equipe'}" title="Le poste de cette équipe dépend-il du nombre de vols ? Par défaut, comme son service (case « Effectif constant »).">Effectif
-        <select data-at-champ="effectif">${opt('', 'Comme le service (' + svc + ')')}${opt('calcule', 'Dépend des vols')}${opt('fixe', 'Constant (saisi)')}</select></label>`;
+        <select data-at-champ="effectif">${opt('', 'Comme le service (' + svc + ')')}${opt('calcule', 'Dépend des vols')}${opt('impose', 'Dépend des vols, effectif imposé (essai)')}${opt('fixe', 'Constant (saisi)')}</select></label>`;
     }
 
     regleEffectif(service, constant) {
@@ -533,7 +559,7 @@
 
     /** L'effectif calculé d'une équipe ({ personnes, hommeMinutes, poste, rendement }), ou null. */
     effectifCalcule(a) {
-      if (!this.dependDesVols(a)) return null;
+      if (!this.dependDesVols(a) || this.impose(a)) return null;
       return ((this.resultat && this.resultat.effectifs) || {})[a.id] || null;
     }
 
@@ -568,6 +594,22 @@
         <span class="mini-note">${n ? `${n} × ${esc(h(presence))} de présence (dont ${esc(h(presence - travail))} de pause) = <b>${esc(h(n * presence))}</b> de présence,
           ${esc(h(n * travail))} de travail sur la journée. ` : ''}Constant : ne dépend pas du nombre de vols, ne change pas les heures de service.</span>`;
     }
+
+    /** Les superviseurs / coordinateurs d'un service (0 sans). Hors production. */
+    encadrement(service) { return ((this.state.encadrement || {})[service]) || 0; }
+
+    regleEncadrement(service, n) {
+      const k = Math.max(0, Math.min(99, Math.round(+n) || 0));
+      const nom = (this.a.services().find(x => x.id === service) || {}).nom || service;
+      this.changer(() => {
+        const e = { ...(this.state.encadrement || {}) };
+        if (k) e[service] = k; else delete e[service];
+        this.state.encadrement = e;
+      }, nom + ' : ' + (k ? k + (k > 1 ? ' superviseurs ou coordinateurs.' : ' superviseur ou coordinateur.') : 'aucun superviseur.'));
+    }
+
+    /** Les équipes à la main dont le poste ne dépend pas des vols : pas de minutes par vol. */
+    constantes() { return this.state.ateliers.filter(a => a.type === 'manuel' && !this.dependDesVols(a)).map(a => a.id); }
 
     /** Ce service lave-t-il (une équipe de plonge, des tunnels) ? */
     serviceLave(service) { return this.state.ateliers.some(x => x.service === service && x.type === 'lavage'); }
@@ -1595,6 +1637,8 @@
       const bareme = (this.a.reglages ? this.a.reglages() : {}).bareme;
       const importees = c => { const k = this.classes.find(x => x.id === c); return k ? Math.round(P.travailClasse(a.service, k, bareme) * 10) / 10 : 0; };
       const mm = c => {
+        // Un poste qui ne dépend pas des vols n'a pas de minutes par vol (06/10).
+        if (a.type === 'manuel' && !this.dependDesVols(a)) return '';
         const imp = importees(c), propre = (a.minutes || {})[c];
         return `<label class="at-mm" title="Man-minutes de ${esc(P.libelleClasse(c))} dans cette case, pour toute sa journée (tous ses vols). Vide : celles du barème (${imp}).">
           <input type="number" min="0" step="1" value="${propre ?? ''}" placeholder="${imp}" data-at-champ="minutes" data-classe="${esc(c)}"

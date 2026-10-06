@@ -631,6 +631,7 @@
       return { bareme: this.baremeComplet(), services: this.a.services ? this.a.services() : [], classes,
         routes: this.a.routes ? this.a.routes(classes) : new Map(), ateliers: this.a.ateliers ? this.a.ateliers() : [],
         sansBareme: new Set(this.a.sansBareme ? this.a.sansBareme() : []),
+        constantes: new Set(this.a.constantes ? this.a.constantes() : []),
         // Les services par compagnie (l'armement) : une ligne récap par compagnie.
         parCompagnie: this.a.parCompagnie ? this.a.parCompagnie() : [], categories: this.a.categories ? this.a.categories() : {} };
     }
@@ -665,6 +666,7 @@
         const c = l.cellules[sv.id], lib = P.libelleClasse(l.classe.id) + ' · ' + sv.nom;
         if (c.source === 'compagnie') return `<td class="rgr parcie g" colspan="3" title="${esc(sv.nom)} travaille par compagnie : ses minutes sont sur la ligne de ${esc(l.classe.cie)}, en tête du bloc"></td>`;
         if (c.source === 'hors') return `<td class="rgr hors g" colspan="3" title="${esc(P.libelleClasse(l.classe.id))} ne passe pas par ${esc(sv.nom)}"></td>`;
+        if (c.source === 'constant') return `<td class="rgr constant g" colspan="3" title="« ${esc(c.equipe.nom)} » ne dépend pas des vols : pas de minutes par vol">constant</td>`;
         const eq = c.equipe;
         const duree = c.duree != null ? (vue === 'jour' ? c.duree * l.vols : c.duree) : null;
         const tdDuree = `<td class="rgr-d"${duree != null ? ` title="${c.source === 'robot' ? 'Plateaux ÷ débit' : 'Man-minutes ÷ personnes'}${vue === 'jour' ? ', sur la journée' : ', pour un vol'}"` : ''}>${duree != null ? heures(duree) : ''}</td>`;

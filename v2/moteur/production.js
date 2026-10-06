@@ -1375,7 +1375,20 @@
     // équipe peut faire autrement que son service (retour d'usage du 06/10 : « le
     // poste ne dépend pas forcément des vols ») : `effectif` 'fixe' ou 'calcule'.
     const calcules = new Set(Array.isArray(opts.effectifCalcule) ? opts.effectifCalcule : []);
-    const calculee = a => !a.effectifFixe && (a.effectif === 'calcule' || (a.effectif !== 'fixe' && calcules.has(a.service)));
+    // Effectif imposé (essai) : le travail dépend des vols (les minutes par vol
+    // s'appliquent), mais l'effectif est celui saisi — « et avec 2 personnes ? ».
+    const imposes = new Set(Array.isArray(opts.effectifImpose) ? opts.effectifImpose : []);
+    const modeEffectif = a => (['fixe', 'calcule', 'impose'].includes(a.effectif) ? a.effectif
+      : imposes.has(a.service) ? 'impose' : calcules.has(a.service) ? 'calcule' : 'fixe');
+    const dependDesVols = a => modeEffectif(a) !== 'fixe';
+    const calculee = a => !a.effectifFixe && modeEffectif(a) === 'calcule';
+    // Un poste qui ne dépend pas des vols n'a pas de minutes par vol (retour d'usage
+    // du 06/10 : « tous les postes qui ne dépendent pas des vols n'ont forcément
+    // aucun man-hours par vol ») : ses commandes passent dans ses heures de
+    // présence, en temps nul. Seulement quand l'appelant dit quels services se
+    // calculent : sans ce réglage (calage, anciens appels), le barème s'applique.
+    const reglesEffectif = Array.isArray(opts.effectifCalcule) || Array.isArray(opts.effectifImpose);
+    const sansMinutes = a => reglesEffectif && a.type === 'manuel' && !dependDesVols(a);
 
     // Quels services fabriquent quelle classe. C'est ce qui définit le parcours
     // réel, et c'est sur lui seul qu'un cycle est bloquant : le graphe des flux
@@ -1414,6 +1427,7 @@
       // disposition ne travaille pas : aucun n'a besoin de barème.
       if (a.type === 'robot' || a.type === 'lavage' || a.type === 'dispo' || a.type === 'handling' || a.type === 'appui') continue;
       if (servicesCategories.has(a.service)) continue;   // ses minutes sont dans sa fiche, par compagnie
+      if (sansMinutes(a)) continue;                       // effectif constant : pas de minutes par vol
       if (!bareme[a.service]) anomalies.push({ code: 'bareme', atelier: a.id,
         message: a.nom + ' : aucun barème pour « ' + nom(a.service) + ' », sa durée est nulle tant qu’il n’est pas renseigné.' });
     }
@@ -1422,7 +1436,7 @@
     // pour elle ni pour sa classe y travaillerait en temps nul. On la nomme :
     // c'est le cas courant d'un service chiffré compagnie par compagnie.
     for (const a of ateliers) {
-      if (a.type !== 'manuel' || !bareme[a.service] || servicesCategories.has(a.service)) continue;
+      if (a.type !== 'manuel' || !bareme[a.service] || servicesCategories.has(a.service) || sansMinutes(a)) continue;
       const sans = [];
       for (const lot of (a.lots || [])) for (const id of classesDuLot(lot)) {
         const c = parClasse.get(id);
@@ -1435,7 +1449,7 @@
     }
     // Un service par compagnie (l'armement) sans minutes pour une compagnie qu'il prépare.
     for (const a of ateliers) {
-      if (!servicesCategories.has(a.service)) continue;
+      if (!servicesCategories.has(a.service) || sansMinutes(a)) continue;
       const sans = [...new Set((a.lots || []).flatMap(classesDuLot).filter(id => { const c = parClasse.get(id); return c && c.categorie && c.minutes == null; }))];
       if (sans.length) anomalies.push({ code: 'bareme-classe', atelier: a.id, classes: sans,
         message: '« ' + nom(a.service) + ' » n’a pas de minutes par vol pour ' + sans.map(id => id.slice(0, id.indexOf('/'))).slice(0, 6).join(', ')
@@ -2075,9 +2089,14 @@
           } else {
             // Chaque ligne ne compte que ses classes : dans une case « TX BC puis
             // TX PC », TX BC sort après ses seules minutes, sans attendre TX PC.
-            const hommeMinutes = lots.reduce((n, c) => n + travailDans(a, c, bareme), 0);
+            const hommeMinutes = sansMinutes(a) ? 0 : lots.reduce((n, c) => n + travailDans(a, c, bareme), 0);
             const f = fusionDe(a);
-            if (f) {
+            if (sansMinutes(a)) {
+              // Effectif constant : ni minutes par vol, ni durée. La commande passe
+              // dans ses heures de présence (06/10).
+              duree = 0;
+              detail = { hommeMinutes: 0, constant: true };
+            } else if (f) {
               // L'étape d'avant, faite à la chaîne par la même case.
               // Seules les commandes dont elle fait vraiment l'étape d'avant : une
               // commande qu'une case de la Prépa fait encore n'est pas comptée deux fois.

@@ -7,7 +7,9 @@
  *     calcul revient, il se saisit et il reste ;
  *   - une équipe peut faire autrement que son service (« Effectif » : comme le
  *     service, dépend des vols, constant) ;
- *   - CF départ food est constant par défaut ;
+ *   - « Effectif imposé (essai) » : minutes par vol × effectif saisi ;
+ *   - CF départ food est constant par défaut ; ses superviseurs ne changent rien ;
+ *   - un poste constant n'a pas de minutes par vol ;
  *   - Minutes de travail : l'effectif calculé se lit, il ne se saisit pas ;
  *   - une mise à disposition (les appros) a ses personnes sur la journée ;
  *   - la plonge a ses équipes hors tunnel, calculées d'après les retours ou saisies.
@@ -76,6 +78,18 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal((await equipe('cu')).effectif,undefined);
    assert.equal((await equipe('cu')).personnes,e2.personnes,'revenue au service : calculée à nouveau');
 
+   // 3 ter. « Effectif imposé (essai) » : les minutes par vol s'appliquent à l'effectif saisi.
+   await page.locator(`${M} [data-mu-impose=cuisine]`).check();await attendre();
+   assert.equal(await page.evaluate(()=>Sim.ateliers.state.effectifs.cuisine),'impose');
+   assert.equal(await effectif('cu'),null,version+' : imposé, pas calculé');
+   const imp=page.locator(`${M} [data-at="cu"] [data-at-champ=personnes]`).first();
+   await imp.fill('9');await imp.dispatchEvent('change');await attendre();
+   assert.ok(await page.evaluate(()=>{const l=Sim.ateliers.resultat.lots.filter(x=>x.atelier==='cu');return l.length&&l.every(x=>x.hommeMinutes>0&&Math.abs(x.duree-x.hommeMinutes/9)<1e-6);}),
+     version+' : durée = homme-minutes ÷ 9 personnes');
+   await page.locator(`${M} [data-mu-impose=cuisine]`).uncheck();await attendre();
+   assert.equal(await page.evaluate(()=>Sim.ateliers.state.effectifs.cuisine),'calcule');
+   assert.equal((await equipe('cu')).personnes,e2.personnes,'décoché : calculé à nouveau');
+
    // 4. « Effectif constant » : l'effectif se saisit, et il reste.
    await nav.aller(page,'mu-services');
    await page.locator(`${M} [data-mu-choisir=cuisine]`).click();await attendre();
@@ -102,6 +116,28 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(await page.locator(`${M} [data-at="cf"] [data-at-champ=personnes]`).first().inputValue(),'3');
    assert.deepEqual(await page.evaluate(()=>['magasin','decontam','bobduty','appros','handling','cuisine','prepa','dotation'].filter(s=>!Sim.ateliers.effectifConstant(s))),
      ['prepa','dotation'],'constants par défaut : CF départ food, magasin, légumerie, duty free, appros (et la cuisine, cochée ici)');
+
+   // 5 bis. Ses superviseurs / coordinateurs (06/10) : hors production, ils ne
+   //        changent rien au calcul ; gardés au rechargement.
+   const avantSup=await page.evaluate(()=>JSON.stringify([Sim.ateliers.resultat.lots,Sim.ateliers.resultat.indicateurs]));
+   const sup=page.locator(`${M} [data-mu-encadrement=handling]`);
+   assert.equal(await sup.inputValue(),'0');
+   await sup.fill('2');await sup.dispatchEvent('change');await attendre();
+   assert.deepEqual(await page.evaluate(()=>Sim.ateliers.state.encadrement),{handling:2},version+' : 2 superviseurs à CF départ food');
+   assert.equal(await page.evaluate(()=>JSON.stringify([Sim.ateliers.resultat.lots,Sim.ateliers.resultat.indicateurs])),avantSup,'la production ne change pas');
+   await page.reload();await attendre();
+   assert.equal(await page.evaluate(()=>Sim.ateliers.encadrement('handling')),2,'gardés au rechargement');
+
+   // 5 ter. La cuisine, constante : ses postes n'ont pas de minutes par vol.
+   await nav.aller(page,'mu-services');
+   await page.locator(`${M} [data-mu-choisir=cuisine]`).click();await attendre();
+   assert.match(await page.locator(`${M} .mu-etape`).last().innerText(),/pas de minutes par vol/,version+' : pas de minutes par vol à saisir');
+   assert.doesNotMatch(await page.locator(`${M} .mu-afaire`).count()?await page.locator(`${M} .mu-afaire`).innerText():'',/minutes de travail à remplir/);
+   assert.equal(await page.locator(`${M} [data-at="cu"] [data-at-champ=minutes]`).count(),0,'ni minutes propres');
+   assert.ok(await page.evaluate(()=>Sim.ateliers.resultat.lots.filter(l=>l.atelier==='cu').every(l=>l.hommeMinutes===0&&l.duree===0)),'ses commandes passent en temps nul');
+   await nav.aller(page,'rg-recap');await attendre();
+   assert.ok(!(await page.locator('#rg-recap .rg-recap-svc').allInnerTexts()).some(t=>/Cuisine/i.test(t)),version+' : pas de colonne Cuisine dans Minutes de travail');
+   await nav.aller(page,'mu-services');
 
    // 6. Une mise à disposition a aussi ses gens (06/10 : « 2 personnes aux appros,
    //    ce sont 2 personnes en tout sur la journée ») : constant, une présence chacune.
