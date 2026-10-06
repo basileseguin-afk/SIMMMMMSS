@@ -154,6 +154,14 @@ services se calculent. Le calage de la v2 rejoue les journées avec les personne
 du planning réel : il ne recalcule pas l'effectif ; l'essai « une personne de
 plus » du budget impose son effectif à l'équipe essayée.
 
+**Une équipe peut faire autrement que son service (06/10).** « Le poste ne
+dépend pas forcément des vols. » Chaque équipe qui prépare à la main (et chaque
+équipe hors tunnel) a son choix « Effectif » : *comme le service* (par défaut),
+*dépend des vols* ou *constant (saisi)* — champ `effectif` ('calcule' ou
+'fixe'). Une équipe constante dans un service calculé retrouve l'effectif
+qu'on lui avait saisi ; une équipe calculée dans un service constant se calcule
+comme les autres.
+
 **Les mises à disposition ont aussi leurs personnes (06/10).** « Même si
 c'est une zone, les gens y travaillent, en quantité constante : 2 personnes
 aux appros, ce sont 2 personnes en tout sur la journée. » Le champ

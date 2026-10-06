@@ -209,6 +209,8 @@
         ...(a.materiel === 'consomme' ? { materiel: 'consomme' } : {}),
         // L'effectif saisi à la main avant que le calcul ne le remplace (05/10) :
         // cocher « Effectif constant » le retrouve.
+        // Son effectif, autrement que son service (06/10) : 'fixe' ou 'calcule' ; absent, comme le service.
+        ...((type === 'manuel' || type === 'appui') && (a.effectif === 'fixe' || a.effectif === 'calcule') ? { effectif: a.effectif } : {}),
         ...((type === 'manuel' || type === 'appui') && Number.isInteger(a.personnesSaisies) ? { personnesSaisies: Math.max(0, Math.min(999, a.personnesSaisies)) } : {}),
         // Fait aussi l'étape d'avant, à la chaîne (retour d'usage du 29/09) : le
         // service de cette étape. Une équipe qui prépare seulement, et pas le sien.
@@ -501,18 +503,41 @@
       return CONSTANTS.has(service) || NOMS_CONSTANTS.test((s && s.nom) || '');
     }
 
-    /** Les services dont l'effectif se calcule. */
+    /** Les services dont l'effectif se calcule (une équipe peut faire autrement : `effectif`). */
     servicesCalcules() {
       return [...new Set(this.state.ateliers.map(a => a.service))].filter(s => !this.effectifConstant(s));
+    }
+
+    /** Le poste de cette équipe dépend-il des vols ? Son choix à elle, sinon celui du service. */
+    dependDesVols(a) {
+      if (!a || !(a.type === 'manuel' || a.type === 'appui')) return false;
+      if (a.effectif === 'calcule' || a.effectif === 'fixe') return a.effectif === 'calcule';
+      return !this.effectifConstant(a.service);
+    }
+
+    /* Le choix d'une équipe (06/10 : « le poste ne dépend pas forcément des vols ») :
+     * comme son service, ou à part. Constant, elle retrouve l'effectif saisi. */
+    regleEffectifEquipe(a, v) {
+      if (v === 'fixe' || v === 'calcule') a.effectif = v; else delete a.effectif;
+      if (!this.dependDesVols(a) && Number.isInteger(a.personnesSaisies)) { a.personnes = a.personnesSaisies; delete a.personnesSaisies; }
+    }
+
+    /* Le petit choix « Effectif » dans la fiche d'une équipe. */
+    choixEffectifEquipe(a, classe) {
+      if (!a || !(a.type === 'manuel' || a.type === 'appui')) return '';
+      const svc = this.effectifConstant(a.service) ? 'constant' : 'dépend des vols', v = a.effectif || '';
+      const opt = (x, t) => `<option value="${x}"${x === v ? ' selected' : ''}>${t}</option>`;
+      return `<label class="${classe || 'at-eff-equipe'}" title="Le poste de cette équipe dépend-il du nombre de vols ? Par défaut, comme son service (case « Effectif constant »).">Effectif
+        <select data-at-champ="effectif">${opt('', 'Comme le service (' + svc + ')')}${opt('calcule', 'Dépend des vols')}${opt('fixe', 'Constant (saisi)')}</select></label>`;
     }
 
     regleEffectif(service, constant) {
       const nom = (this.a.services().find(x => x.id === service) || {}).nom || service;
       this.changer(() => {
         this.state.effectifs = { ...(this.state.effectifs || {}), [service]: constant ? 'fixe' : 'calcule' };
-        // Constant : chaque équipe retrouve l'effectif saisi avant le calcul.
+        // Constant : chaque équipe qui suit le service retrouve l'effectif saisi avant le calcul.
         if (constant) for (const a of this.state.ateliers) {
-          if (a.service !== service || !Number.isInteger(a.personnesSaisies)) continue;
+          if (a.service !== service || a.effectif || !Number.isInteger(a.personnesSaisies)) continue;
           a.personnes = a.personnesSaisies; delete a.personnesSaisies;
         }
       },
@@ -522,7 +547,7 @@
 
     /** L'effectif calculé d'une équipe ({ personnes, hommeMinutes, poste, rendement }), ou null. */
     effectifCalcule(a) {
-      if (!a || !(a.type === 'manuel' || a.type === 'appui') || this.effectifConstant(a.service)) return null;
+      if (!this.dependDesVols(a)) return null;
       return ((this.resultat && this.resultat.effectifs) || {})[a.id] || null;
     }
 
@@ -566,16 +591,16 @@
      * dépend des vols ou non »). Ses minutes par vol, par compagnie ; ce qu'elle
      * en tire dépend de la case « Effectif constant » du service. */
     ficheAppui(a) {
-      const lave = this.serviceLave(a.service), constant = this.effectifConstant(a.service);
+      const lave = this.serviceLave(a.service), constant = !this.dependDesVols(a);
       const e = this.effectifCalcule(a), m = a.minutesVol || {};
       const cies = [...new Set((this.a.vols() || []).filter(x => lave ? true : (x.sens || 'DEP') === 'DEP').map(x => String(x.cie || '').toUpperCase()).filter(Boolean))].sort();
       const ligne = (cie, nom) => `<tr><th scope="row">${esc(nom)}</th><td><input type="number" min="0" step="0.5" value="${m[cie] ?? ''}"
         placeholder="${cie === P.TOUTES ? '—' : (m[P.TOUTES] ?? '—')}" data-at-champ="appui-min" data-cie="${esc(cie)}" aria-label="Minutes par vol : ${esc(nom)}"></td></tr>`;
       return `<p class="mini-note at-regle">Une équipe <b>hors ${lave ? 'tunnel' : 'flux'}</b> : elle est là à ses heures, ne prépare pas de commande${lave ? ', ne tient pas de tunnel' : ''}
         et ne fait rien attendre. ${constant
-          ? 'Son effectif est celui saisi plus haut (le service est à <b>effectif constant</b>).'
+          ? 'Son effectif est <b>constant</b> : celui saisi plus haut.'
           : 'Son effectif <b>dépend des vols</b> : minutes par vol × ' + (lave ? 'vols qui reviennent à la plonge' : 'départs du jour') + ' de chaque compagnie ÷ son poste.'}
-        Le choix se fait dans la fiche du service : « Effectif constant ».</p>
+        Le choix se fait plus haut (« Effectif »), ou pour tout le service : « Effectif constant ».</p>
         ${constant ? '' : `<div class="at-sous-titre">Minutes de travail par vol
           <span class="mini-note">${lave ? 'pour chaque vol qui revient' : 'pour chaque départ'} ; vide : celle de toutes les compagnies</span></div>
         <table class="at-appui-cies"><tbody>${ligne(P.TOUTES, 'Toutes les compagnies')}${cies.map(c => ligne(c, c)).join('')}</tbody></table>
@@ -1069,6 +1094,7 @@
           // Saisi en heures, gardé en minutes.
           case 'avance': a.avance = Math.max(0, Math.min(1440, Math.round((parseFloat(String(v).replace(',', '.')) || 0) * 60))); break;
           case 'compagnies': a.compagnies = [...new Set(String(v).split(/[\s,;]+/).map(x => x.trim().toUpperCase()).filter(Boolean))].slice(0, 100); break;
+          case 'effectif': this.regleEffectifEquipe(a, v); break;
           case 'appui-min': {
             const cie = el.dataset.cie, d = { ...(a.minutesVol || {}) };
             if (v === '' || !Number.isFinite(+v)) delete d[cie]; else d[cie] = Math.max(0, Math.min(1440, +v));
@@ -1636,7 +1662,8 @@
           ${handling ? `<label>Jour<input value="Jour J des vols" disabled title="Le handling travaille le jour des vols, jamais la veille"></label>`
             : a.type === 'lavage' || (a.type === 'appui' && this.serviceLave(a.service)) ? `<label title="La plonge lave ce qui revient : son jour se compte depuis l’arrivée des retours, pas depuis le départ des vols">Jour<select data-at-champ="jour">${JOURS_PLONGE.map(([j, n]) => `<option value="${j}" ${j === (a.jour || 0) ? 'selected' : ''}>${n}</option>`).join('')}</select></label>`
             : `<label>Jour<select data-at-champ="jour">${[0, -1, -2, -3].map(j => `<option value="${j}" ${j === a.jour ? 'selected' : ''}>${j === 0 ? 'Jour du départ' : 'J' + j}</option>`).join('')}</select></label>`}
-          ${handling && (a.creneaux || []).length ? '' : this.champPersonnes(a)}`}
+          ${handling && (a.creneaux || []).length ? '' : this.champPersonnes(a)}
+          ${this.choixEffectifEquipe(a)}`}
           ${a.type === 'robot' ? `
           ${o.compact ? '' : `<label>Débit du robot (plateaux/h)<input type="number" min="1" value="${a.debit}" data-at-champ="debit"
             title="Le débit des commandes qui n’ont pas le leur (réglable à côté de chaque commande)"></label>`}

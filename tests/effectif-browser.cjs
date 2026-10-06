@@ -5,6 +5,8 @@
  *     homme-minutes ÷ poste, et il suit ce qu'elle prépare ;
  *   - la case « Effectif constant » rend la main : l'effectif saisi avant le
  *     calcul revient, il se saisit et il reste ;
+ *   - une équipe peut faire autrement que son service (« Effectif » : comme le
+ *     service, dépend des vols, constant) ;
  *   - CF départ food est constant par défaut ;
  *   - Minutes de travail : l'effectif calculé se lit, il ne se saisit pas ;
  *   - une mise à disposition (les appros) a ses personnes sur la journée ;
@@ -58,6 +60,21 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.ok(await page.locator('[data-rg-calcule="cu"]').count()>0,version+' : l’effectif calculé dans le tableau');
    assert.equal(await page.locator('[data-rg-calcule="cu"]').first().innerText(),String(e2.personnes));
    assert.equal(await page.locator('[data-rg-champ=recap-pers][data-atelier="cu"]').count(),0,version+' : pas de saisie dans le tableau');
+
+   // 3 bis. Une équipe à part (06/10 : « le poste ne dépend pas forcément des vols ») :
+   //        constante dans un service calculé, elle retrouve son effectif saisi.
+   await nav.aller(page,'mu-services');
+   await page.locator(`${M} [data-mu-choisir=cuisine]`).click();await attendre();
+   const choix=page.locator(`${M} [data-at="cu"] [data-at-champ=effectif]`).first();
+   assert.match(await choix.locator('option[value=""]').innerText(),/Comme le service \(dépend des vols\)/,version+' : par défaut, comme le service');
+   await choix.selectOption('fixe');await attendre();
+   assert.equal((await equipe('cu')).effectif,'fixe');
+   assert.equal((await equipe('cu')).personnes,9,version+' : constante, elle retrouve ses 9 personnes saisies');
+   assert.equal(await effectif('cu'),null,'plus calculée');
+   assert.equal(await page.locator(`${M} [data-at="cu"] [data-at-champ=personnes]`).count()>0,true,'son effectif se saisit');
+   await page.locator(`${M} [data-at="cu"] [data-at-champ=effectif]`).first().selectOption('');await attendre();
+   assert.equal((await equipe('cu')).effectif,undefined);
+   assert.equal((await equipe('cu')).personnes,e2.personnes,'revenue au service : calculée à nouveau');
 
    // 4. « Effectif constant » : l'effectif se saisit, et il reste.
    await nav.aller(page,'mu-services');

@@ -1371,8 +1371,11 @@
         .filter(lot => classesDuLot(lot).length);
     }
     const nom = id => (opts.noms && opts.noms[id]) || id;
-    // Les services dont l'effectif se calcule d'après les homme-minutes.
+    // Les services dont l'effectif se calcule d'après les homme-minutes. Une
+    // équipe peut faire autrement que son service (retour d'usage du 06/10 : « le
+    // poste ne dépend pas forcément des vols ») : `effectif` 'fixe' ou 'calcule'.
     const calcules = new Set(Array.isArray(opts.effectifCalcule) ? opts.effectifCalcule : []);
+    const calculee = a => !a.effectifFixe && (a.effectif === 'calcule' || (a.effectif !== 'fixe' && calcules.has(a.service)));
 
     // Quels services fabriquent quelle classe. C'est ce qui définit le parcours
     // réel, et c'est sur lui seul qu'un cycle est bloquant : le graphe des flux
@@ -1499,7 +1502,7 @@
     const effectifs = {};
     for (const a of ateliers) {
       // `effectifFixe` : une équipe dont on essaie un autre effectif (« et avec une personne de plus ? »).
-      if (a.type !== 'manuel' || a.effectifFixe || !calcules.has(a.service)) continue;
+      if (a.type !== 'manuel' || !calculee(a)) continue;
       let poste;
       try { poste = minutesDuPoste(a, opts.regime); } catch (e) { continue; }   // heure invalide : déjà signalée
       const lots = (a.lots || []).flatMap(classesDuLot).map(id => parClasse.get(id)).filter(Boolean);
@@ -1525,7 +1528,7 @@
       return n;
     };
     for (const a of ateliers) {
-      if (a.type !== 'appui' || a.effectifFixe || !calcules.has(a.service)) continue;
+      if (a.type !== 'appui' || !calculee(a)) continue;
       const lave = servicesLavage.has(a.service);
       volsParCie = volsParCie || {};
       const n = volsParCie[lave ? 'l' : 'd'] = volsParCie[lave ? 'l' : 'd'] || compter(lave);

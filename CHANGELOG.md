@@ -5,6 +5,27 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-06 — Le poste ne dépend pas forcément des vols : le choix par équipe
+
+Retour d'usage : « rajoute le fait que le poste ne dépende pas forcément des
+vols ».
+
+- **Un choix « Effectif » dans la fiche de chaque équipe** : celles qui
+  préparent à la main, et les équipes hors tunnel. On le trouve à côté des
+  personnes, dans Services et équipes comme dans la fiche complète.
+  - *Comme le service* : le défaut, qui suit la case « Effectif constant »
+    du service.
+  - *Dépend des vols* : calculée, même dans un service constant.
+  - *Constant (saisi)* : saisie, même dans un service calculé. L'équipe
+    retrouve alors l'effectif qu'on lui avait saisi avant le calcul.
+- Moteur : champ `effectif` ('calcule' ou 'fixe') d'une équipe. Il l'emporte
+  sur `effectifCalcule` du service.
+- Tests : `effectif-calcule.test.cjs` (constante dans un service calculé,
+  calculée dans un service constant), `effectif-browser.cjs` (v1 et v2).
+- Docs : MODELE_ATELIERS, README, CAHIER_DES_CHARGES (E21).
+
+---
+
 ## 2026-10-06 — Pauses de 15 et 45 min ; des équipes hors tunnel à la plonge
 
 Retours d'usage :

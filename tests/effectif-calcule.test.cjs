@@ -135,4 +135,17 @@ for (const [version, chemin] of [['v1', '../moteur/production.js'], ['v2', '../v
     // 10 départs × 42 min = 420 min sur un poste de 420 : 1 personne.
     assert.deepEqual([r.effectifs.ck.vols, r.effectifs.ck.retours, r.effectifs.ck.personnes], [10, false, 1]);
   });
+
+  test(version + ' : une équipe peut faire autrement que son service (06/10 : « le poste ne dépend pas forcément des vols »)', () => {
+    const base = { regime: { actif: true, presence: 120 } };
+    const fixe = at('f', 'prepa', '06:00', [['AF/YC']], { ...base, personnes: 5, effectif: 'fixe' });
+    const suit = at('s', 'prepa', '06:00', [['TX/YC']], { ...base, personnes: 5 });
+    const calc = at('c', 'cuisine', '04:00', [['AF/YC']], { ...base, personnes: 5, effectif: 'calcule' });
+    const r = jouer([fixe, suit, calc], { effectifCalcule: ['prepa'] });
+    assert.equal(r.effectifs.f, undefined, 'constant dans un service calculé : son effectif saisi');
+    assert.equal(r.ateliers.find(x => x.id === 'f').personnes, 5);
+    assert.equal(r.effectifs.s.personnes, 1, 'celle qui suit le service se calcule : 4 × 30 = 120 en 120 min');
+    assert.equal(r.effectifs.c.personnes, 1, 'calculée dans un service constant : 6 × 20 = 120 en 120 min');
+    assert.equal(r.effectifs.c.hommeMinutes, 120);
+  });
 }

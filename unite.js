@@ -240,7 +240,8 @@
       const choixEffectif = preparent(nature) || nature === 'lavage' ? `<label class="mu-effectif"><input type="checkbox" data-mu-effectif="${esc(s.id)}"${constant ? ' checked' : ''}>
         <span><b>Effectif constant</b><small>${constant ? 'ses équipes gardent le nombre de personnes saisi, quel que soit le nombre de vols. Décochez pour le calculer.'
           : nature === 'lavage' ? 'non coché : les équipes hors tunnel se calculent, minutes par vol × vols qui reviennent de chaque compagnie ÷ minutes de leur poste. Les tunnels gardent leur effectif. Cochez pour le saisir.'
-          : 'non coché : le nombre de personnes de chaque équipe se calcule, minutes par vol × vols de chaque compagnie ÷ minutes de son poste. Le robot garde le sien. Cochez pour le saisir.'}</small></span></label>` : '';
+          : 'non coché : le nombre de personnes de chaque équipe se calcule, minutes par vol × vols de chaque compagnie ÷ minutes de son poste. Le robot garde le sien. Cochez pour le saisir.'}
+          Une équipe peut faire autrement : son choix « Effectif ».</small></span></label>` : '';
       const choixNature = `<label class="mu-nature">Ce service…<select data-mu-nature="${esc(s.id)}">${NATURES.map(x =>
         `<option value="${x.id}"${x.id === nature ? ' selected' : ''}>${esc(x.nom)}</option>`).join('')}</select></label>` + choixEffectif;
 
@@ -378,6 +379,7 @@
           <label>Arrive à<input type="time" value="${esc(a.debut)}" data-at-champ="debut"></label>
           <label>Le<select data-at-champ="jour">${jours}</select></label>
           ${this.at.champPersonnes(a, 'mu-eq-pers')}
+          ${this.at.choixEffectifEquipe(a, 'mu-eq-eff')}
           ${a.type === 'robot' ? `<label class="mu-eq-pers">Plateaux / h<input type="number" min="1" value="${a.debit}" data-at-champ="debit"></label>` : ''}
           <span class="mu-eq-fin">${fin ? 'finit à ' + esc(fin) : a.lots.length ? '' : ''}</span>
         </div>
