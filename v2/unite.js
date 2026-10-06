@@ -396,6 +396,7 @@
         </div>
         <p class="mu-question">Ce qu’elle prépare <small>cochez ; l’ordre suit les départs, la plus pressée d’abord</small></p>
         ${this.grille(a.service, a, classes, o)}
+        ${o.depuis ? '' : this.aucunFlux(a)}
         ${this.questionHTML(a)}
         ${ordre ? `<p class="mu-ordre"><span>Dans l’ordre :</span>${ordre}<small>cliquez une commande pour voir son chemin</small></p>` : ''}
         ${fusion ? `<div class="mu-chaine-reglage">${fusion}</div>` : ''}
@@ -403,6 +404,20 @@
         <details class="mu-plus"${this.ouvertes && this.ouvertes.has(a.id) ? ' open' : ''} data-mu-plus="${esc(a.id)}"><summary>Plus de réglages : changer l’ordre, pauses, arrêts, minutes propres…</summary>
           ${this.at.carte(a, calc, { cmd: null, compact: true })}</details>
       </article>`;
+    }
+
+    /* Aucun flux ne passe par le service de l'équipe : toute sa grille est grisée
+     * (retour d'usage du 06/10 : « le frigo départ et le BOB, une équipe de nombre
+     * constant qui prépare des commandes… l'équipe ne prépare rien ? »). Ce n'est
+     * pas son effectif : c'est le chemin des commandes. On le dit là où l'on coche. */
+    aucunFlux(a) {
+      if (!a || !(a.type === 'manuel' || a.type === 'robot')) return '';
+      const types = PC.types(this.etat);
+      if (!types.length || types.some(t => P.servicesDuParcours(t).includes(a.service))) return '';
+      return `<div class="mu-q mu-aucun-flux" role="status"><p>Aucun flux ne passe par <b>${esc(this.nom(a.service))}</b> : ses commandes ne se cochent pas
+        (la grille est grisée). Ce n’est pas son effectif : une commande ne se prépare que dans les services de son chemin.</p>
+        <div class="mu-q-gestes"><button class="btn btn-sm btn-play" type="button" data-mu-action="flux-tous">Faire passer tous les flux par ${esc(this.nom(a.service))}</button>
+        <span class="mini-note">ou un seul : « + Faire passer un flux par ici… », en haut de la fiche</span></div></div>`;
     }
 
     /** La grille compagnies × classes d'une équipe (ou, sans équipe, de qui passe par le service). */
@@ -1259,6 +1274,14 @@
         const id = this.choisi;
         switch (t.dataset.muAction) {
           case 'equipe': return this.ajouterEquipe(id);
+          // Tous les flux passent par ce service, chacun à sa place.
+          case 'flux-tous': {
+            const ts = PC.types(this.etat).filter(x => !P.servicesDuParcours(x).includes(id));
+            if (!ts.length) return;
+            this.at.changer(() => { for (const x of ts) PC.changerFlux(this.at.state, x.id, id, true, this.options()); },
+              this.nom(id) + ' entre dans ' + ts.map(x => '« ' + x.nom + ' »').join(', ') + ', à sa place : ses commandes se cochent maintenant ici.');
+            return;
+          }
           case 'appui': {
             let a;
             this.at.changer(() => { a = PC.equipeNeuve(this.at.state, id, this.nom(id), 'appui'); this.at.state.ateliers.push(a); },

@@ -5,6 +5,25 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-06 — « L'équipe ne prépare rien » : aucun flux ne passe par le service
+
+Signalement : « le frigo départ et le BOB, c'est une équipe de nombre
+constant qui prépare des commandes, mais comme ils ne dépendent pas des vols
+ça met "l'équipe ne prépare rien" ? »
+
+- **Cause** : ce n'est pas l'effectif constant. Aucun flux de production ne
+  passait par CF départ food ni par le Duty free. Toute la grille de l'équipe
+  était grisée : une commande ne se prépare que dans les services de son
+  chemin. On ne le lisait qu'au survol d'une case.
+- **Correctif** : sous la grille d'une équipe dont aucun flux ne traverse le
+  service, un message le dit (« Ce n'est pas son effectif… »). Un bouton
+  « Faire passer tous les flux par … » fait entrer le service dans chaque
+  flux, à sa place. Une fois cochées, les commandes passent dans les heures
+  de présence de l'équipe, sans minutes : c'est un poste constant.
+- Test : `tests/sans-flux-browser.cjs` (CF départ food et Duty free, v1 et
+  v2). Vérifié avec les tests unitaires et les 22 suites navigateur de la
+  fiche Services et équipes.
+
 ## 2026-10-06 — Le minimum de personnes d'un tunnel et du robot, à la vue
 
 Retour d'usage : « comme nous allons simuler, il faut un nombre seuil de
