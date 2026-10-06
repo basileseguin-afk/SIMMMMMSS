@@ -88,7 +88,7 @@ de relire le cahier des charges initial :
 | M3 | **Atelier de travail** = une équipe dans un service : heure de départ, nombre de personnes, ce qu'elle fait ; **heure de fin calculée** | 21/09 | ✅ | |
 | M4 | Un atelier fabrique **plusieurs compagnies × classes**, reliées d'un service à l'autre | 21/09 | ✅ | Via les parcours |
 | M5 | Atelier **robot** : débit, classes, personnes (avec minimum), heure d'allumage, pauses machine | 21/09 | ✅ | |
-| M6 | **Pauses** : 15 min après 3 h, 30 min après 6 h, 8 h 15 de présence | 22/09 | ✅ | Réglable ; l'arrêt programmé (machine, local) est séparé |
+| M6 | **Pauses** : 8 h de présence dont 1 h de pause (après 4 h de travail) ; avant le 06/10 : 15 min après 3 h, 30 min après 6 h, 8 h 15 | 22/09 | ✅ | Réglable ; l'arrêt programmé (machine, local) est séparé |
 | M7 | **Plonge** : débit par tunnel **et** plafond de l'ensemble | 22/09 | ✅ | |
 | M8 | **Mise à disposition** (magasin, appros…) : ni man-minutes ni durée | 22/09 | ✅ | |
 | M9 | **Boucle du matériel** : départs → retours → plonge → propre ; stock = retours − départs | 22/09 | 🟡 | Un seul compte pour tout le matériel ; pas de distinction trolley / porcelaine / compagnie ; **pas de report d'un jour sur l'autre** |

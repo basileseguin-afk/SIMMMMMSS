@@ -48,7 +48,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     await nav.aller(page,'at-equipes');await page.locator('#at-new').click();await attendre();
     const id=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
     await page.evaluate(([id,nom,service,lots])=>Sim.ateliers.changer(()=>{
-      Object.assign(Sim.ateliers.state.ateliers.find(a=>a.id===id),{nom,service,debut:'05:00',personnes:1,lots});
+      Object.assign(Sim.ateliers.state.ateliers.find(a=>a.id===id),{nom,service,debut:'05:00',personnes:2,lots});
     }),[id,nom,service,lots]);
     await attendre();return id;
   };
@@ -130,7 +130,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.length),nAvant,'rien n’a changé');
   // Et l'import s'annule.
   await page.locator('#at-undo').click();await attendre();
-  assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.nom==='Cuisine').personnes),1);
+  assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.nom==='Cuisine').personnes),2);
 
   // 2 bis. Les horaires seuls : un petit classeur, et seules les heures changent.
   const {f:fH,nom:nomH}=await telecharger('#at-export-horaires','horaires.xlsx');

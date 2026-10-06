@@ -40,8 +40,15 @@
    * démonstration : un fichier tronqué ne doit pas vider le barème.
    */
   function valider(brut) {
-    const b = brut || {};
+    let b = brut || {};
+    // La règle de poste d'avant le 06/10 (8 h 15, pauses de 15 et 30 min), restée
+    // telle quelle dans une sauvegarde : elle passe à 8 h dont 1 h de pause, une
+    // fois. Une règle modifiée à la main ne bouge pas.
+    if (b.regimeV !== 2 && b.regime && P.REGIME_AVANT
+      && JSON.stringify({ seuils: (b.regime.seuils || []).map(s => ({ apres: +s.apres, duree: +s.duree })), presence: +b.regime.presence }) === JSON.stringify(P.REGIME_AVANT))
+      b = { ...b, regime: { seuils: P.REGIME_DEFAUT.seuils, presence: P.REGIME_DEFAUT.presence } };
     return {
+      regimeV: 2,
       bareme: validerBareme(b.bareme),
       // Certains services se chiffrent par compagnie × classe, d'autres par
       // classe seulement. Le mode ne change pas le calcul — une valeur propre

@@ -28,7 +28,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 2. Les heures sup : l'équipe reste, dans le plafond (3 h par défaut).
   const mo=await vue('mo');
-  assert.equal(mo.presence,495,'la présence du poste : sa vacation');
+  assert.equal(mo.presence,480,'la présence du poste : sa vacation (8 h)');
   assert.equal(mo.heuresSup,180,'elle reste jusqu’au plafond');
 
   // 3. Le budget du jour : des budgets d'exemple, puis l'écart.
@@ -43,8 +43,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const ligne=page.locator('#bu-jour tr[data-bu-svc=prepa]');
   assert.match(await ligne.innerText(),/Montage[\s\S]*€/);
 
-  // 4. Le coût : trois vacations de 8 h 15 à 18 €, plus 3 h sup ×1,25 chacune.
-  const attendu=3*18*495/60+3*18*3*1.25;
+  // 4. Le coût : trois vacations de 8 h à 18 €, plus 3 h sup ×1,25 chacune.
+  const attendu=3*18*480/60+3*18*3*1.25;
   const total=await page.evaluate(()=>Sim.budget.bilan().lignes.find(l=>l.id==='prepa').total);
   assert.ok(Math.abs(total-attendu)<0.01,total+' ≈ '+attendu);
 
@@ -53,7 +53,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const chef=page.locator('#bu-jour tr[data-bu-equipe=mo] [data-bu-compo=chef]');
   await chef.fill('1');await chef.dispatchEvent('change');await attendre();
   const total2=await page.evaluate(()=>Sim.budget.bilan().lignes.find(l=>l.id==='prepa').total);
-  assert.ok(Math.abs(total2-(attendu+(25-18)*(495/60+3*1.25)))<0.01,'un chef d’équipe à la place d’un agent');
+  assert.ok(Math.abs(total2-(attendu+(25-18)*(480/60+3*1.25)))<0.01,'un chef d’équipe à la place d’un agent');
 
   // 6. « Et avec une personne de plus ? » : la journée rejouée, comparée.
   await page.locator('[data-bu-essai=mo]').click();await attendre();

@@ -990,12 +990,15 @@
    *  fait apparaître ce qui ne rentre pas dans la journée.
    * --------------------------------------------------------------------*/
 
-  /** 15 min après 3 h de travail, 30 min après 6 h, 8 h 15 de présence. */
+  /** 8 h de présence, dont 1 h de pause après 4 h de travail : 7 h de travail
+   *  (retour d'usage du 06/10 ; c'était 8 h 15, avec 15 min après 3 h et 30 min après 6 h). */
   const REGIME_DEFAUT = {
     actif: true,
-    seuils: [{ apres: 180, duree: 15 }, { apres: 360, duree: 30 }],
-    presence: 495
+    seuils: [{ apres: 240, duree: 60 }],
+    presence: 480
   };
+  /** La règle d'avant le 06/10 : une sauvegarde qui la porte telle quelle passe à la nouvelle. */
+  const REGIME_AVANT = { seuils: [{ apres: 180, duree: 15 }, { apres: 360, duree: 30 }], presence: 495 };
 
 
   /**
@@ -2503,7 +2506,7 @@
   const api = {
     MINUTES_PAR_JOUR, CABINES, TYPES,
     minutes, hhmm, idClasse, libelleClasse, nomCabine, enClair,
-    REGIME_DEFAUT, normaliserRegime, executerTache,
+    REGIME_DEFAUT, REGIME_AVANT, normaliserRegime, executerTache,
     classesDeVols, classesCategories, compagniesParService, declarerCategories, volsDesClasses, compteDuJour, appliquerConditions, dureeHandling, compagniesDe, AVANCE_HANDLING, BAREME_DEMO, RENDEMENT_DEMO, travailClasse, travailDans, dureeFusion,
     minutesDuPoste, effectifPour, PLAFOND_EFFECTIF,
     PAX_TYPE, TOUTES, cleBareme, normaliserBareme, minutesParVol,

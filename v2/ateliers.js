@@ -312,6 +312,9 @@
   const CONSTANTS = new Set(['handling', 'magasin', 'decontam', 'bobduty', 'appros']);
   const NOMS_CONSTANTS = /cf\s*d[ée]part|magasin|l[ée]gumerie|duty|appro/i;
 
+  /** 420 → « 7 h », 60 → « 1 h », 15 → « 15 min », 495 → « 8 h 15 ». */
+  const dureeLue = m => { m = Math.round(m || 0); return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h' + (m % 60 ? ' ' + String(m % 60).padStart(2, '0') : ''); };
+
   const vide = () => ({ schema: 'ory-ateliers', version: 1, ateliers: [], exclues: [], ajoutees: [],
     materiel: { actif: false, unites: P.UNITES_DEFAUT, stockInitial: 0, delaiRetour: 30 },
     ...PC.parcoursTypes() });
@@ -540,11 +543,14 @@
       const r = this.a.reglages ? this.a.reglages() : {};
       const reg = P.normaliserRegime(a.regime, r.regime);
       const presence = reg.actif ? reg.presence : P.normaliserRegime(null, r.regime).presence;
-      const h = m => Math.floor(m / 60) + ' h' + (m % 60 ? ' ' + String(Math.round(m % 60)).padStart(2, '0') : '');
+      // Le travail d'une présence : la présence moins ses pauses (8 h dont 1 h de pause : 7 h).
+      const travail = P.minutesDuPoste({ debut: '06:00', jour: 0, pauses: [], regime: a.regime }, r.regime);
+      const h = dureeLue;
       const n = Math.max(0, +a.personnes || 0);
       return `<label class="at-pers-jour">Personnes sur la journée<input type="number" min="0" max="999" value="${n}" data-at-champ="personnes"
-        title="En tout, sur la journée : chacune fait une présence (${esc(h(presence))})"></label>
-        <span class="mini-note">${n ? `${n} × ${esc(h(presence))} de présence = <b>${esc(h(n * presence))}</b> sur la journée. ` : ''}Constant : ne dépend pas du nombre de vols, ne change pas les heures de service.</span>`;
+        title="En tout, sur la journée : chacune fait une présence (${esc(h(presence))}, dont ${esc(h(presence - travail))} de pause)"></label>
+        <span class="mini-note">${n ? `${n} × ${esc(h(presence))} de présence (dont ${esc(h(presence - travail))} de pause) = <b>${esc(h(n * presence))}</b> de présence,
+          ${esc(h(n * travail))} de travail sur la journée. ` : ''}Constant : ne dépend pas du nombre de vols, ne change pas les heures de service.</span>`;
     }
 
     /* L'effectif calculé devient celui de l'équipe : le planning, le budget, les
@@ -1529,7 +1535,7 @@
       // Le régime de la maison, pour dire ce que suit un atelier qui ne fixe rien.
       const etatTunnels = P.tunnelsQuiTournent(a);
       const reg = P.normaliserRegime(undefined, (this.a.reglages ? this.a.reglages() : {}).regime);
-      const defaut = { presence: reg.presence, arret: reg.seuils.reduce((n, x) => n + x.duree, 0) };
+      const defaut = { presence: reg.presence, seuils: reg.seuils, arret: reg.seuils.reduce((n, x) => n + x.duree, 0) };
       const restantes = i => this.classes.filter(c => !a.lots[i].includes(c.id));
 
       const libres = this.classes.filter(c => !a.lots.some(l => l.includes(c.id)));
@@ -1630,7 +1636,7 @@
         ${o.compact ? '' : this.blocCondition(a)}
         <div class="at-cases">
           <label class="chk chk-mini"><input type="checkbox" data-at-champ="regime" ${a.regime.actif ? 'checked' : ''}>
-            Poste avec pauses — 15 min après 3 h, 30 min après 6 h</label>
+            Poste avec pauses — ${esc((defaut.seuils || []).map(s => dureeLue(s.duree) + ' après ' + dureeLue(s.apres) + ' de travail').join(', ') || 'aucune pause')}</label>
           ${a.regime.actif ? `<label class="at-presence">Présence (min)<input type="number" min="30" max="1440"
             value="${a.regime.presence ?? ''}" placeholder="${defaut.presence}" data-at-champ="presence"></label>
             <span class="mini-note">${a.regime.presence === undefined

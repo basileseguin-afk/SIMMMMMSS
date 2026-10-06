@@ -5,6 +5,31 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-06 — Le poste : 8 h de présence, dont 1 h de pause
+
+Retour d'usage : « c'est 8 h de présence avec 1 h de pause ».
+
+- **La règle de poste par défaut** devient 8 h de présence, dont 1 h de pause
+  après 4 h de travail, soit 7 h de travail. Avant : 8 h 15, avec 15 min
+  après 3 h et 30 min après 6 h, soit 7 h 30 de travail.
+- **Une sauvegarde restée sur l'ancienne règle** (Réglages › Simulation, telle
+  quelle) passe à la nouvelle à l'ouverture, une fois (`regimeV`). Une règle
+  modifiée à la main ne bouge pas.
+- **Ce que ça change.**
+  - Le poste d'une personne compte 420 min de travail au lieu de 450 :
+    l'effectif calculé peut monter d'une personne.
+  - Les équipes s'en vont à 8 h de présence.
+  - Une mise à disposition affiche « 2 × 8 h de présence (dont 1 h de pause)
+    = 16 h de présence, 14 h de travail ».
+  - La case d'une équipe décrit la règle en vigueur (« 1 h après 4 h de
+    travail ») au lieu d'un texte figé.
+- Tests : `regime.test.cjs` (défaut, passage, règle à la main ; v1 et v2) ;
+  `production.test.cjs`, `effectif-calcule.test.cjs` et `effectif-browser.cjs`
+  suivent la nouvelle règle.
+- Docs : MODELE_ATELIERS, CAHIER_DES_CHARGES (M6), README.
+
+---
+
 ## 2026-10-06 — Les zones de mise à disposition ont leurs personnes
 
 Retour d'usage : « même les zones de mise à disposition comme les appros,

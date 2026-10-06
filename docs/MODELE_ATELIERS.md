@@ -160,7 +160,7 @@ aux appros, ce sont 2 personnes en tout sur la journée. » Le champ
 « Personnes sur la journée » de sa case le dit. Ces personnes ne changent rien
 au calcul (on vient s'y servir, sans attendre une équipe) mais comptent dans
 l'effectif du jour (comparaison de scénarios) et, dans la v2, dans le budget :
-une vacation chacune (la présence du poste, 8 h 15 par défaut). Leur effectif
+une vacation chacune (la présence du poste, 8 h dont 1 h de pause par défaut). Leur effectif
 est toujours constant.
 
 Moteur : option `effectifCalcule` (les services calculés) de `simuler`, résultat
@@ -370,14 +370,16 @@ son poste que le travail soit fini ou non.
 
 | Règle | Valeur par défaut |
 |---|---|
-| Pause après 3 h de **travail** | 15 min |
-| Pause après 6 h de **travail** | 30 min |
-| Présence totale sur le site | 8 h 15 |
+| Pause après 4 h de **travail** | 1 h |
+| Présence totale sur le site | 8 h |
 
-Ces trois valeurs sont **réglables** dans le Centre des réglages, et les seuils
-s'ajoutent ou se retirent.
+« 8 h de présence avec 1 h de pause » (retour d'usage du 06/10 ; c'était
+8 h 15, avec 15 min après 3 h et 30 min après 6 h). Ces valeurs sont
+**réglables** dans le Centre des réglages, et les seuils s'ajoutent ou se
+retirent. Une sauvegarde restée sur l'ancienne règle, telle quelle, passe à la
+nouvelle à l'ouverture ; une règle modifiée à la main ne bouge pas.
 
-Soit **7 h 30 de travail effectif**. Les seuils comptent le travail *cumulé*,
+Soit **7 h de travail effectif**. Les seuils comptent le travail *cumulé*,
 pas l'heure qu'il est : une équipe qui attend ses amonts ne consomme pas son
 crédit de travail, donc ne prend pas sa pause.
 

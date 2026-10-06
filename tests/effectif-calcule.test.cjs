@@ -19,14 +19,14 @@ for (const [version, chemin] of [['v1', '../moteur/production.js'], ['v2', '../v
   const jouer = (ateliers, o) => P.simuler({ vols: VOLS, liaisons: [], bareme: BAREME, rendement: 1, ateliers, ...o });
 
   test(version + ' : le poste d’une personne, pauses comprises', () => {
-    // 8 h 15 de présence, 15 min après 3 h et 30 min après 6 h : 450 min de travail.
-    assert.equal(P.minutesDuPoste(at('a', 'prepa', '06:00', []), null), 450);
+    // 8 h de présence, dont 1 h de pause après 4 h de travail : 420 min de travail (06/10).
+    assert.equal(P.minutesDuPoste(at('a', 'prepa', '06:00', []), null), 420);
     // Une pause fixe d'une heure en plus.
-    assert.equal(P.minutesDuPoste(at('a', 'prepa', '06:00', [], { pauses: [{ de: '10:00', a: '11:00' }] }), null), 390);
+    assert.equal(P.minutesDuPoste(at('a', 'prepa', '06:00', [], { pauses: [{ de: '10:00', a: '11:00' }] }), null), 360);
     // Une présence plus courte, sans pause de régime atteinte.
     assert.equal(P.minutesDuPoste(at('a', 'prepa', '06:00', [], { regime: { actif: true, presence: 120 } }), null), 120);
     // Sans régime : une présence ordinaire, pas un temps infini.
-    assert.equal(P.minutesDuPoste(at('a', 'prepa', '06:00', [], { regime: { actif: false } }), null), 450);
+    assert.equal(P.minutesDuPoste(at('a', 'prepa', '06:00', [], { regime: { actif: false } }), null), 420);
   });
 
   test(version + ' : le plus petit effectif qui tient dans le poste', () => {
@@ -68,7 +68,7 @@ for (const [version, chemin] of [['v1', '../moteur/production.js'], ['v2', '../v
 
   test(version + ' : les minutes propres à la case comptent, les autres types ne sont pas calculés', () => {
     const r = jouer([
-      // Cuisine : AF 6 × 20 = 120, TX : 50 fixées dans la case. 170 sur 450 : 1 personne.
+      // Cuisine : AF 6 × 20 = 120, TX : 50 fixées dans la case. 170 sur 420 : 1 personne.
       at('cu', 'cuisine', '04:00', [['AF/YC'], ['TX/YC']], { personnes: 5, minutes: { 'TX/YC': 50 } }),
       { id: 'ro', nom: 'Robot', service: 'prepa', type: 'robot', debut: '06:00', jour: 0, personnes: 4, lots: [['AF/YC']], debit: 300 }
     ], { effectifCalcule: ['cuisine', 'prepa'] });

@@ -274,15 +274,15 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 18. Le poste : pauses automatiques et heure de fin, visibles et r\u00e9glables.
   await ouvrir(cui2);
   assert.equal(await page.locator(`[data-at="${cui2}"] [data-at-champ=regime]`).isChecked(),true);
-  assert.match(await page.locator(`[data-at="${cui2}"] .at-cases`).textContent(),/15 min apr\u00e8s 3 h, 30 min apr\u00e8s 6 h/);
+  assert.match(await page.locator(`[data-at="${cui2}"] .at-cases`).textContent(),/1 h apr\u00e8s 4 h de travail/);
   // La présence suit le réglage général tant que l'équipe n'en fixe pas une :
   // changer la règle commune doit déplacer tout le monde, pas seulement les
   // ateliers créés ensuite.
   const champPresence=`[data-at="${cui2}"] [data-at-champ=presence]`;
   assert.equal(await page.locator(champPresence).inputValue(),'','aucune valeur propre');
-  assert.equal(await page.locator(champPresence).getAttribute('placeholder'),'495','le réglage général est montré');
+  assert.equal(await page.locator(champPresence).getAttribute('placeholder'),'480','le réglage général est montré (8 h)');
   assert.match(await page.locator(`[data-at="${cui2}"] .at-cases`).textContent(),/réglage général/);
-  assert.match(await page.locator(`[data-at="${cui2}"] .at-cases`).textContent(),/7,5 h de travail/);
+  assert.match(await page.locator(`[data-at="${cui2}"] .at-cases`).textContent(),/\b7 h de travail/);
   assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).regime.presence,cui2),undefined);
   // Une valeur saisie l'emporte, et se rend en la vidant.
   await champ(cui2,'presence',600);

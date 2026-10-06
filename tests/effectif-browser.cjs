@@ -93,7 +93,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(await ap.count(),1,version+' : les personnes des appros se saisissent');
    await ap.fill('2');await ap.dispatchEvent('change');await attendre();
    assert.deepEqual(await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service==='appros').map(a=>[a.type,a.personnes])),[['dispo',2]]);
-   assert.match(await page.locator(`${M} .at-pers-jour + .mini-note`).first().innerText(),/2 × 8 h 15 de présence = 16 h 30/);
+   assert.match(await page.locator(`${M} .at-pers-jour + .mini-note`).first().innerText(),/2 × 8 h de présence \(dont 1 h de pause\) = 16 h de présence,\s+14 h de travail/);
    assert.match(await page.locator(`${M} .at-carte, ${M} .mu-carte`).first().innerText(),/2 pers\. sur la journée/);
    assert.equal(await page.evaluate(()=>(Sim.ateliers.resultat.effectifs||{})[Sim.ateliers.state.ateliers.find(a=>a.service==='appros').id]),undefined,'jamais calculé');
   }
