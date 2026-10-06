@@ -5,6 +5,31 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-06 — Les zones de mise à disposition ont leurs personnes
+
+Retour d'usage : « même les zones de mise à disposition comme les appros,
+même si c'est une zone, les gens y travaillent, en quantité constante : si je
+mets 2 personnes aux appros, ce sont 2 personnes en tout qui ont travaillé aux
+appros sur toute la journée ».
+
+- **Un champ « Personnes sur la journée »** dans la case d'une mise à
+  disposition (appros, magasin, légumerie…). Il est toujours constant, jamais
+  calculé.
+  - Il montre ce que cela fait : « 2 × 8 h 15 de présence = 16 h 30 sur la
+    journée », une présence chacune.
+  - L'en-tête de la case, Horaires des équipes et le plan disent « 2 pers. ».
+- **Ce qu'elles changent.**
+  - L'effectif du jour (« Personnes au travail » dans la comparaison de
+    scénarios) les compte.
+  - Le budget de la v2 les paie, une vacation chacune, sans heures sup.
+- **Ce qu'elles ne changent pas** : les durées. On vient s'y servir, sans
+  attendre une équipe.
+- Tests : `comparaison.test.cjs`, `v2/budget.test.cjs`, `ateliers-browser.cjs`,
+  `effectif-browser.cjs` (les appros, v1 et v2).
+- Docs : MODELE_ATELIERS, README, CAHIER_DES_CHARGES (E19).
+
+---
+
 ## 2026-10-05 — L'effectif se calcule d'après les homme-minutes ; case « Effectif constant »
 
 Demande : « on simule uniquement les man-minutes, et tu attribues un nombre

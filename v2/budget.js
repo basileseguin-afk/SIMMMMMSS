@@ -177,7 +177,8 @@
     // quand l'équipe qui reprend absorbe la charge, elles ne sont pas planifiées : rien.
     const repos = new Map(((o.resultat && o.resultat.conditions) || []).filter(c => !c.remplie && !c.sansIssue).map(c => [c.atelier, c]));
     const lignes = (o.services || []).map(s => {
-      const equipes = (o.ateliers || []).filter(a => a.service === s.id && a.type !== 'dispo')
+      // Une mise à disposition se paie aussi : ses personnes, une vacation chacune (06/10).
+      const equipes = (o.ateliers || []).filter(a => a.service === s.id && (a.type !== 'dispo' || +a.personnes > 0))
         .map(a => {
           const c = repos.get(a.id);
           if (!c) return { a, ...coutEquipe(a, vues.get(a.id), f) };
@@ -349,7 +350,7 @@
       const actif = root.document.activeElement;
       if (box.contains(actif) && /^(INPUT|SELECT|TEXTAREA)$/.test(actif.tagName)) return;   // ne pas arracher le champ qu'on remplit
       const f = this.f, vols = this.a.vols(), j = journee(vols, f), m = mois(vols, f);
-      const services = this.a.services().filter(s => this.a.at().state.ateliers.some(a => a.service === s.id && a.type !== 'dispo') || f.services[s.id]);
+      const services = this.a.services().filter(s => this.a.at().state.ateliers.some(a => a.service === s.id && (a.type !== 'dispo' || +a.personnes > 0)) || f.services[s.id]);
       const avions = [...new Set(departs(vols).map(cleAvion).filter(Boolean))].sort();
       const couples = [...new Set(departs(vols).map(v => String(v.cie).toUpperCase() + '/' + cleAvion(v)))].sort();
       const fr = n => (n == null ? '' : String(n).replace('.', ','));

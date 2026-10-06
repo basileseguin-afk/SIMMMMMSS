@@ -154,6 +154,15 @@ services se calculent. Le calage de la v2 rejoue les journées avec les personne
 du planning réel : il ne recalcule pas l'effectif ; l'essai « une personne de
 plus » du budget impose son effectif à l'équipe essayée.
 
+**Les mises à disposition ont aussi leurs personnes (06/10).** « Même si
+c'est une zone, les gens y travaillent, en quantité constante : 2 personnes
+aux appros, ce sont 2 personnes en tout sur la journée. » Le champ
+« Personnes sur la journée » de sa case le dit. Ces personnes ne changent rien
+au calcul (on vient s'y servir, sans attendre une équipe) mais comptent dans
+l'effectif du jour (comparaison de scénarios) et, dans la v2, dans le budget :
+une vacation chacune (la présence du poste, 8 h 15 par défaut). Leur effectif
+est toujours constant.
+
 Moteur : option `effectifCalcule` (les services calculés) de `simuler`, résultat
 `effectifs` ({ personnes, saisi, hommeMinutes, poste, rendement } par équipe),
 fonctions `minutesDuPoste` et `effectifPour`. Une équipe `effectifFixe` n'est

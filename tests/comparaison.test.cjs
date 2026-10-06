@@ -95,3 +95,10 @@ test('retours J+1 contre planche retour : la source et la plonge se comparent', 
   assert.match(C.note(a, b), /seul ce que vous avez changé/);
   assert.equal(C.capturer(null, { etat: { materiel: { retours: 'j2' } } }).retours, 'J+1 (lendemain du départ)', 'l’ancien J+2 se lit J+1');
 });
+
+test('les personnes d’une mise à disposition comptent dans l’effectif du jour (06/10)', () => {
+  const ateliers = [atelier(4), { id: 'ap', nom: 'Appros', service: 'appros', type: 'dispo', debut: '00:00', jour: 0, personnes: 2, lots: [] }];
+  const reglages = { rendement: 1, delaiChargement: 45 };
+  const r = P.simuler({ vols: VOLS, ateliers, liaisons: [], ...reglages });
+  assert.equal(C.capturer(r, { source: 'démo', ateliers, reglages, liaisons: [] }).personnes, 6, '4 en cuisine + 2 aux appros');
+});

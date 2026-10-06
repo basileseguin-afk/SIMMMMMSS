@@ -110,6 +110,9 @@ body.ateliers-open .workbench{display:none}
 
 /* Poste : pauses automatiques et durée de présence. */
 .at-cases{display:flex;flex-direction:column;gap:6px;padding:0 14px 12px}
+/* Les personnes d'une mise à disposition, en tout sur la journée (06/10). */
+.at-pers-jour{display:grid;gap:6px;font-size:12px;color:var(--txt2);max-width:220px}
+.at-pers-jour input{width:100px}
 .at-cases .chk{display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:1.4;color:var(--txt2)}
 .at-cases .chk input{width:16px;height:16px;flex:none;margin-top:1px;accent-color:var(--accent)}
 .at-presence{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--txt2);margin-left:24px}

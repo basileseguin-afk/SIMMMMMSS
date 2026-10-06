@@ -79,11 +79,21 @@ test('le bilan : service par service, et l’écart au budget', () => {
   const ateliers = [{ id: 'm', service: 'prepa', type: 'manuel', personnes: 2 }, { id: 'd', service: 'magasin', type: 'dispo' }];
   const resultat = { ateliers: [{ id: 'm', presence: 480, heuresSup: 60 }], indicateurs: { enRetard: 1, pasFinies: 0 } };
   const b = B.bilan({ services: [{ id: 'prepa', nom: 'Montage' }, { id: 'magasin', nom: 'Magasin' }], ateliers, resultat, vols: VOLS, f });
-  assert.equal(b.lignes.length, 1, 'une mise à disposition ne coûte rien ici');
+  assert.equal(b.lignes.length, 1, 'une mise à disposition sans personne ne coûte rien');
   presque(b.base, 2 * 18 * 8);
   presque(b.sup, 2 * 18 * 1.25);
   presque(b.budget, 400);
   presque(b.ecart, 400 - b.total);
   assert.equal(b.retards, 1);
   assert.equal(b.heuresSup, 120, 'deux personnes, une heure chacune');
+});
+
+test('une mise à disposition avec des personnes : une vacation chacune, sur la journée (06/10)', () => {
+  const f = B.valider(null);
+  const ateliers = [{ id: 'ap', service: 'appros', type: 'dispo', personnes: 2 }];
+  const resultat = { ateliers: [{ id: 'ap', presence: 495, heuresSup: 0 }], indicateurs: {} };
+  const b = B.bilan({ services: [{ id: 'appros', nom: 'Appros' }], ateliers, resultat, vols: VOLS, f });
+  assert.equal(b.lignes.length, 1, 'les appros se paient');
+  presque(b.base, 2 * 18 * 495 / 60);
+  presque(b.sup, 0);
 });

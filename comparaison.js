@@ -43,7 +43,8 @@
       empreinte: JSON.stringify({ ateliers, reglages, liaisons: ctx.liaisons || [], decalage: ctx.decalage || 0,
         etat: ctx.etat || null, vols: ctx.vols || null }),
       ateliers: ateliers.length,
-      personnes: ateliers.filter(a => a.type !== 'dispo').reduce((n, a) => n + (+a.personnes || 0), 0),
+      // Les mises à disposition comptent aussi : des gens y travaillent toute la journée (06/10).
+      personnes: ateliers.reduce((n, a) => n + (+a.personnes || 0), 0),
       rendement: reglages.rendement == null ? null : Math.round(reglages.rendement * 100),
       delai: reglages.delaiChargement == null ? null : reglages.delaiChargement,
       decalage: ctx.decalage || 0,

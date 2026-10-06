@@ -234,11 +234,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.deepEqual(await etat(),memoire,'exclusions et ajouts sont relus du navigateur');
 
   // 17 bis. La mise à disposition : un service qui ne fabrique pas.
-  //         Ni effectif, ni homme-minutes, ni durée — et il sert TOUT.
+  //         Ni homme-minutes, ni durée — et il sert TOUT. Ses personnes, en tout sur
+  //         la journée, se saisissent (06/10) sans rien changer au calcul.
   const mag=await creer('Magasin','magasin','06:00',2);
   await champ(mag,'type','dispo');
   const fiche=`[data-at="${mag}"]`;
-  assert.equal(await page.locator(`${fiche} [data-at-champ=personnes]`).count(),0,'aucun effectif à saisir');
+  assert.equal(await page.locator(`${fiche} .at-pers-jour [data-at-champ=personnes]`).count(),1,'ses personnes sur la journée');
   assert.equal(await page.locator(`${fiche} [data-at-champ=lot-nouveau]`).count(),0,'rien à fabriquer');
   assert.equal(await page.locator(`${fiche} .at-arrets`).count(),0,'aucun arrêt programmé');
   assert.equal(await page.locator(`${fiche} [data-at-champ=mode-dispo]`).inputValue(),'toujours','toujours ouverte par défaut');

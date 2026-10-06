@@ -530,6 +530,23 @@
         <output data-at-calcule="${esc(a.id)}">${e.personnes}</output><small>calculé · ${esc(h(e.hommeMinutes))} ÷ ${esc(h(e.poste))}</small></span>`;
     }
 
+    /* Une mise à disposition a des gens qui y travaillent (retour d'usage du
+     * 06/10 : « même si c'est une zone, les gens y travaillent, en quantité
+     * constante : 2 personnes aux appros, ce sont 2 personnes en tout sur la
+     * journée »). Ils ne changent pas le calcul (on vient s'y servir), mais
+     * comptent dans l'effectif et les heures de la journée : une présence
+     * chacun. */
+    champPersonnesJournee(a) {
+      const r = this.a.reglages ? this.a.reglages() : {};
+      const reg = P.normaliserRegime(a.regime, r.regime);
+      const presence = reg.actif ? reg.presence : P.normaliserRegime(null, r.regime).presence;
+      const h = m => Math.floor(m / 60) + ' h' + (m % 60 ? ' ' + String(Math.round(m % 60)).padStart(2, '0') : '');
+      const n = Math.max(0, +a.personnes || 0);
+      return `<label class="at-pers-jour">Personnes sur la journée<input type="number" min="0" max="999" value="${n}" data-at-champ="personnes"
+        title="En tout, sur la journée : chacune fait une présence (${esc(h(presence))})"></label>
+        <span class="mini-note">${n ? `${n} × ${esc(h(presence))} de présence = <b>${esc(h(n * presence))}</b> sur la journée. ` : ''}Constant : ne dépend pas du nombre de vols, ne change pas les heures de service.</span>`;
+    }
+
     /* L'effectif calculé devient celui de l'équipe : le planning, le budget, les
      * exports et les fiches lisent tous le même nombre. */
     reporterEffectifs() {
@@ -1489,6 +1506,7 @@
         ? (a.permanent === false ? (a.vagues.length > 1 ? a.vagues.length + ' vagues : ' : 'une vague : ')
             + a.vagues.map(v => (v.jour ? 'J' + v.jour + ' ' : '') + v.debut).map(esc).join(' · ')
           : a.ouverture ? 'ouvert de ' + esc(a.ouverture.de) + ' à ' + esc(a.ouverture.a) + ', chaque jour' : 'disponible en permanence')
+          + (+a.personnes > 0 ? ' · ' + a.personnes + ' pers. sur la journée' : '')
         : esc(a.debut) + jour + (handling && (a.creneaux || []).length ? '' : ' · ' + a.personnes + ' pers.')
           + (a.type === 'robot' ? ' · robot ' + a.debit + ' pl/h' : a.type === 'lavage' ? (a.parVol ? ' · lave par vol' : ' · ' + P.debitLavage(a) + ' u/h')
             : handling ? ((a.creneaux || []).length ? ' · camion : ' + (a.chauffeurs || {}).long + ' chauffeurs en long courrier, ' + (a.chauffeurs || {}).court + ' en court · ' + (a.volsParCamion || 1) + ' vol' + ((a.volsParCamion || 1) > 1 ? 's' : '') + ' par camion' + (Object.keys(a.volsCamion || {}).length ? ' (sauf ' + Object.entries(a.volsCamion).map(([c, n]) => c + ' : ' + n).join(', ') + ')' : '')
@@ -1584,7 +1602,7 @@
         ${dispo ? `
         <p class="mini-note at-regle">Ce service <b>ne prépare pas une commande après l’autre</b> : il sert
           <b>toutes les commandes à la fois</b> (légumerie, magasin, réception…), comme une boutique où l’on vient se servir.
-          Ni effectif, ni man-minutes, ni durée.
+          Ni man-minutes, ni durée : des gens y travaillent, en nombre constant sur la journée.
           Sur chaque chemin, une seule question : « Besoin de ${esc((services.find(x => x.id === a.service) || {}).nom || a.service)} ? ».</p>
         <div class="at-cases">
           ${(() => { const mode = a.permanent === false ? 'vagues' : a.ouverture ? 'boutique' : 'toujours';
@@ -1592,6 +1610,7 @@
               <option value="boutique" ${mode === 'boutique' ? 'selected' : ''}>Ouvert tous les jours, de … à … (comme une boutique)</option>
               <option value="toujours" ${mode === 'toujours' ? 'selected' : ''}>Toujours ouvert — personne ne l’attend</option>
               <option value="vagues" ${mode === 'vagues' ? 'selected' : ''}>À heures fixes (vagues)</option></select></label>
+            ${this.champPersonnesJournee(a)}
             ${mode === 'boutique' ? `<div class="at-pause at-ouverture">
               <label>Ouvre à<input type="time" value="${esc(a.ouverture.de)}" data-at-champ="ouverture-de"></label>
               <label>Ferme à<input type="time" value="${esc(a.ouverture.a)}" data-at-champ="ouverture-a"></label>
@@ -2124,7 +2143,7 @@
           <small>${this.state.ateliers.filter(x => x.service === a.service).length} case${this.state.ateliers.filter(x => x.service === a.service).length > 1 ? 's' : ''}</small></th></tr>`) : '';
         return tete + `<tr data-at="${esc(a.id)}" class="rc-case">
           <th scope="row"><button class="lien-discret" data-at-action="ouvrir" title="Régler « ${esc(a.nom)} » dans sa fiche">${esc(a.nom)}</button>
-            <small>${a.type === 'dispo' ? 'mise à disposition' : a.type === 'lavage' ? 'plonge' : a.type === 'handling' ? 'handling' : a.type === 'robot' ? 'robot · ' + a.personnes + ' pers.' : a.personnes + ' pers.'}</small></th>
+            <small>${a.type === 'dispo' ? 'mise à disposition' + (+a.personnes > 0 ? ' · ' + a.personnes + ' pers.' : '') : a.type === 'lavage' ? 'plonge' : a.type === 'handling' ? 'handling' : a.type === 'robot' ? 'robot · ' + a.personnes + ' pers.' : a.personnes + ' pers.'}</small></th>
           <td class="rc-type">${deroule(a)}</td>
           ${depart(a)}
           <td class="rc-traite">${traite(a)}</td>

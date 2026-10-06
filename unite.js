@@ -256,7 +256,7 @@
           + `<p class="mu-ajout"><button class="btn btn-play btn-sm" type="button" data-mu-action="equipe">+ Ajouter une équipe</button>
              <span class="mini-note">une équipe du matin, de l’après-midi, de nuit… chacune avec son heure, ses personnes et ce qu’elle prépare</span></p>`;
       } else {
-        const phrase = nature === 'dispo' ? 'Il sert toutes les commandes à la fois : ni effectif, ni minutes. Dites quand il est ouvert, et qui en a besoin.'
+        const phrase = nature === 'dispo' ? 'Il sert toutes les commandes à la fois : ni minutes, ni durée. Dites quand il est ouvert, combien de personnes y travaillent sur la journée, et qui en a besoin.'
           : nature === 'lavage' ? 'Elle lave les retours de tous les vols, à mesure qu’ils arrivent : rien à cocher. Réglez ses tunnels et ses horaires.'
           : 'Il charge chaque vol à son départ, pour toutes les commandes : rien à cocher. Réglez ses horaires et le temps par vol.';
         equipes = `<p class="mini-note">${esc(phrase)}</p>`

@@ -444,7 +444,10 @@ poste (pauses déduites), arrondi au-dessus ; la journée se joue ensuite avec
 cet effectif. La case **« Effectif constant »** de la fiche du service rend
 la saisie à la main. Constants par défaut : CF départ food, magasin,
 légumerie, duty free, appros. Le robot, la plonge, le handling et les mises à
-disposition gardent toujours leur effectif saisi.
+disposition gardent toujours leur effectif saisi. Une mise à disposition (les
+appros, le magasin…) a ses **personnes sur la journée** : 2 aux appros, ce sont
+2 personnes en tout, une présence chacune ; elles comptent dans l'effectif du
+jour et le budget, pas dans les durées.
 
 Le barème d'homme-minutes est **non calibré** : ses durées ne dimensionnent pas
 une équipe. Voir [la note de modèle](docs/MODELE_ATELIERS.md).
@@ -566,7 +569,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/plonge-jour-browser.cjs` | La plonge se règle sur l’arrivée des retours (v1 et v2) : veille / jour / lendemain de l’arrivée, frise des retours face aux équipes, ce qui arrive sans personne, une équipe J+1 qui lave le soir (rien ne reste sale), tableau des horaires, rechargement |
 | `tests/saisie-browser.cjs` | Ce qu’on tape n’est jamais perdu (v1 et v2) : un rendu arrive au milieu de la saisie d’une heure, de personnes, de minutes par vol — il attend, rien ne se perd, et tout est retenu à la validation ; un champ validé montre la valeur retenue (bornée) ; rechargement |
 | `tests/cf-depart-browser.cjs` | CF départ food n’est pas le handling (v1 et v2) : un service à équipes (les checkeurs, à heures fixes) ; un handling rangé dans sa zone passe dans son service à lui, avec ses réglages et sa place dans les chemins ; « Mettre en place le handling » le vise, jamais CF départ food ; rechargement |
-| `tests/effectif-browser.cjs` | L’effectif calculé (v1 et v2) : une équipe de cuisine montre son effectif, homme-minutes ÷ poste arrondi au-dessus, qui suit les commandes cochées ; Minutes de travail le montre sans le faire saisir ; « Effectif constant » rend la saisie (gardée au rechargement), décoché le calcul reprend ; CF départ food, magasin, légumerie, duty free, appros constants par défaut |
+| `tests/effectif-browser.cjs` | L’effectif calculé (v1 et v2) : une équipe de cuisine montre son effectif, homme-minutes ÷ poste arrondi au-dessus, qui suit les commandes cochées ; Minutes de travail le montre sans le faire saisir ; « Effectif constant » rend la saisie (gardée au rechargement), décoché le calcul reprend ; CF départ food, magasin, légumerie, duty free, appros constants par défaut ; une mise à disposition (les appros) a ses personnes sur la journée (2 × 8 h 15 = 16 h 30), jamais calculées |
 | `tests/service-autonome-browser.cjs` | Un service à part entière créé depuis le site (v1 et v2), « Roulés couverts » : rangé comme Prépa ou Dotation, sans minutes ni liens hérités ; flux, équipe, minutes, calcul, tableau des minutes, planning, Excel, rechargement ; rattacher / détacher ; la salle de plus reste un choix |
 | `tests/armement-integre-browser.cjs` | « L’intégrer à tous les chemins » seulement s’il y a à faire (v1 et v2) : chemins suivis par les commandes seulement, un lien vers un handling suffit, sinon le chemin à reprendre est nommé avec la raison ; un clic le remet en ordre |
 | `tests/coherence.test.cjs` | Audit des flux (v1 et v2) : une case cochée hors du chemin de sa commande n’y est pas préparée, et c’est dit ; un vol ne part pas avec son seul armement |

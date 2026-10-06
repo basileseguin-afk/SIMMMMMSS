@@ -409,7 +409,7 @@ function renderServices(){
             +servicesDuPlan().map(id=>'<option value="'+escapeHTML(id)+'"'+(!annexe.autonome&&id===annexe.parent?' selected':'')+'>'+escapeHTML(nomLisible(ZONES[id].nom))+'</option>').join('')+'</select></label>'
           :'<small>service du plan</small>')+'</td>'
         +'<td>'+(l.cases.length?l.cases.map(a=>'<button type="button" class="lien-discret" data-svc-case="'+escapeHTML(a.id)+'">'+escapeHTML(a.nom)+'</button>'
-          +(type[a.type]?' <small>'+type[a.type]+'</small>':a.type==='manuel'?' <small>'+a.personnes+' pers.</small>':'')).join('<br>'):'<em>aucune</em>')+'</td>'
+          +(type[a.type]?' <small>'+type[a.type]+(a.type==='dispo'&&+a.personnes>0?' · '+a.personnes+' pers.':'')+'</small>':a.type==='manuel'?' <small>'+a.personnes+' pers.</small>':'')).join('<br>'):'<em>aucune</em>')+'</td>'
         +'<td>'+(l.cmds?l.cmds+(l.cmds>1?' commandes':' commande'):'—')+'</td>'
         +'<td><span class="svc-etat '+l.etat+'">'+escapeHTML(l.texte)+'</span></td>'
         +'<td class="svc-actions"><button class="btn btn-sm'+(l.etat==='manque'&&!l.cases.length?' btn-play':'')+'" type="button" data-svc-action="equipe" data-svc="'+escapeHTML(l.id)+'">+ Une équipe</button>'
@@ -1415,7 +1415,7 @@ function majGoulotInfo() {
     const equipes=((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]).filter(a=>a.service===id);
     if(!equipes.length)html+='<p>Aucune équipe ici.</p><p class="row-btns"><button class="btn btn-play" data-svc-action="equipe" data-svc="'+escapeHTML(id)+'">+ Ajouter une équipe</button><button class="btn" data-mu-ouvrir="'+escapeHTML(id)+'">Le service →</button></p>';
     else html+='<p>'+equipes.map(a=>'<strong>'+escapeHTML(a.nom)+'</strong>'
-      +(a.type==='dispo'?' · mise à disposition':a.type==='lavage'?' · plonge':a.type==='handling'?' · charge les vols':' · '+a.personnes+' pers.')).join('<br>')+'</p>';
+      +(a.type==='dispo'?' · mise à disposition'+(+a.personnes>0?' · '+a.personnes+' pers.':''):a.type==='lavage'?' · plonge':a.type==='handling'?' · charge les vols':' · '+a.personnes+' pers.')).join('<br>')+'</p>';
     const e=services[id];
     if(e&&!Sim.vue.vide)html+='<p>À '+hh(t)+' : <strong>'+escapeHTML(OrlySimulation.LIBELLE[e.etat])+'</strong>'
       +(e.etat!=='avenir'&&e.nom?' — '+escapeHTML(MoteurProduction.enClair(e.nom)):'')+'.</p>';

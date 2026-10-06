@@ -6,7 +6,8 @@
  *   - la case « Effectif constant » rend la main : l'effectif saisi avant le
  *     calcul revient, il se saisit et il reste ;
  *   - CF départ food est constant par défaut ;
- *   - Minutes de travail : l'effectif calculé se lit, il ne se saisit pas.
+ *   - Minutes de travail : l'effectif calculé se lit, il ne se saisit pas ;
+ *   - une mise à disposition (les appros) a ses personnes sur la journée.
  *   v1 et v2. */
 const assert=require('node:assert/strict'),path=require('node:path');
 const nav=require('./nav.cjs');
@@ -83,6 +84,18 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(await page.locator(`${M} [data-at="cf"] [data-at-champ=personnes]`).first().inputValue(),'3');
    assert.deepEqual(await page.evaluate(()=>['magasin','decontam','bobduty','appros','handling','cuisine','prepa','dotation'].filter(s=>!Sim.ateliers.effectifConstant(s))),
      ['prepa','dotation'],'constants par défaut : CF départ food, magasin, légumerie, duty free, appros (et la cuisine, cochée ici)');
+
+   // 6. Une mise à disposition a aussi ses gens (06/10 : « 2 personnes aux appros,
+   //    ce sont 2 personnes en tout sur la journée ») : constant, une présence chacune.
+   await page.locator(`${M} [data-mu-choisir=appros]`).click();await attendre();
+   const ajout=page.locator(`${M} [data-mu-action=equipe]`);if(await ajout.count()){await ajout.first().click();await attendre();}
+   const ap=page.locator(`${M} .at-pers-jour [data-at-champ=personnes]`).first();
+   assert.equal(await ap.count(),1,version+' : les personnes des appros se saisissent');
+   await ap.fill('2');await ap.dispatchEvent('change');await attendre();
+   assert.deepEqual(await page.evaluate(()=>Sim.ateliers.state.ateliers.filter(a=>a.service==='appros').map(a=>[a.type,a.personnes])),[['dispo',2]]);
+   assert.match(await page.locator(`${M} .at-pers-jour + .mini-note`).first().innerText(),/2 × 8 h 15 de présence = 16 h 30/);
+   assert.match(await page.locator(`${M} .at-carte, ${M} .mu-carte`).first().innerText(),/2 pers\. sur la journée/);
+   assert.equal(await page.evaluate(()=>(Sim.ateliers.resultat.effectifs||{})[Sim.ateliers.state.ateliers.find(a=>a.service==='appros').id]),undefined,'jamais calculé');
   }
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('effectif-browser : ok');
