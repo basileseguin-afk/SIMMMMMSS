@@ -387,22 +387,23 @@ test('un lot qui nomme une classe inconnue est refusé, en la nommant', () => {
 
 /* ---- régime de poste -------------------------------------------------- */
 
-test('une équipe prend 1 h de pause après 4 h de travail (06/10)', () => {
-  const t = P.executerTache({ depart: 300, debutPoste: 300, duree: 300, prises: new Set() });
-  // 240 min de travail, 1 h de pause, puis les 60 min restantes.
-  assert.equal(t.fin, 300 + 300 + 60);
-  assert.equal(t.arret, 60);
-  assert.equal(t.cumul, 300);
+test('une équipe prend 15 min après 3 h de travail, puis 45 min après 6 h (06/10)', () => {
+  const t = P.executerTache({ depart: 300, debutPoste: 300, duree: 200, prises: new Set() });
+  // 180 min de travail, 15 min de pause, puis les 20 min restantes.
+  assert.equal(t.fin, 300 + 200 + 15);
+  assert.equal(t.arret, 15);
+  assert.equal(t.cumul, 200);
 
-  const court = P.executerTache({ depart: 300, debutPoste: 300, duree: 200, prises: new Set() });
-  assert.equal(court.arret, 0, 'avant 4 h de travail, pas de pause');
+  const long = P.executerTache({ depart: 300, debutPoste: 300, duree: 400, prises: new Set() });
+  assert.equal(long.arret, 60, 'les deux pauses ont été prises : 15 + 45 min');
+  assert.equal(long.fin, 300 + 400 + 60);
 });
 
 test('une pause de régime n’est prise qu’une fois par poste', () => {
   const prises = new Set();
-  const a = P.executerTache({ depart: 300, debutPoste: 300, duree: 300, prises });
+  const a = P.executerTache({ depart: 300, debutPoste: 300, duree: 200, prises });
   const b = P.executerTache({ depart: a.fin, debutPoste: 300, duree: 50, cumul: a.cumul, prises });
-  assert.equal(b.arret, 0, 'le seuil de 4 h ne se redéclenche pas au lot suivant');
+  assert.equal(b.arret, 0, 'le seuil de 3 h ne se redéclenche pas au lot suivant');
   assert.equal(b.fin, a.fin + 50);
 });
 

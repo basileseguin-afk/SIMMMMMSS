@@ -1407,6 +1407,9 @@
       nom: nomLibre(etat, nom + (n ? ' ' + (n + 1) : '')), service, debut: '06:00', jour: 0, personnes: 2, pauses: [], lots: [],
       regime: { actif: true } };
     if (nature === 'lavage') return { ...base, type: 'lavage', plafond: 0, tunnels: [{ nom: 'Tunnel 1', debit: 300, personnes: 1, actif: true }] };
+    // Hors tunnel, hors flux (06/10) : présente à ses heures, des minutes par vol.
+    if (nature === 'appui') return { ...base, nom: nomLibre(etat, nom + ' hors ' + ((etat.ateliers || []).some(a => a.service === service && a.type === 'lavage') ? 'tunnel' : 'flux')),
+      type: 'appui', personnes: 1, minutesVol: {} };
     return { ...base, type: 'manuel' };
   }
 

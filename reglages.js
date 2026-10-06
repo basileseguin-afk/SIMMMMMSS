@@ -41,14 +41,15 @@
    */
   function valider(brut) {
     let b = brut || {};
-    // La règle de poste d'avant le 06/10 (8 h 15, pauses de 15 et 30 min), restée
-    // telle quelle dans une sauvegarde : elle passe à 8 h dont 1 h de pause, une
-    // fois. Une règle modifiée à la main ne bouge pas.
-    if (b.regimeV !== 2 && b.regime && P.REGIME_AVANT
-      && JSON.stringify({ seuils: (b.regime.seuils || []).map(s => ({ apres: +s.apres, duree: +s.duree })), presence: +b.regime.presence }) === JSON.stringify(P.REGIME_AVANT))
+    // Une règle de poste par défaut d'avant (8 h 15, pauses de 15 et 30 min ; puis
+    // 8 h avec 1 h d'un bloc), restée telle quelle dans une sauvegarde : elle passe
+    // à la règle du 06/10 (3 h, 15 min, 3 h, 45 min, 1 h), une fois. Une règle
+    // modifiée à la main ne bouge pas.
+    const lue = b.regime && JSON.stringify({ seuils: (b.regime.seuils || []).map(s => ({ apres: +s.apres, duree: +s.duree })), presence: +b.regime.presence });
+    if (b.regimeV !== 3 && lue && (P.REGIMES_AVANT || []).some(r => JSON.stringify(r) === lue))
       b = { ...b, regime: { seuils: P.REGIME_DEFAUT.seuils, presence: P.REGIME_DEFAUT.presence } };
     return {
-      regimeV: 2,
+      regimeV: 3,
       bareme: validerBareme(b.bareme),
       // Certains services se chiffrent par compagnie × classe, d'autres par
       // classe seulement. Le mode ne change pas le calcul — une valeur propre

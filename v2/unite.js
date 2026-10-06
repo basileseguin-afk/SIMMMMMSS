@@ -237,8 +237,9 @@
 
       // L'effectif : constant (saisi) ou calculé d'après les homme-minutes (retour d'usage du 05/10).
       const constant = this.at.effectifConstant(s.id);
-      const choixEffectif = preparent(nature) ? `<label class="mu-effectif"><input type="checkbox" data-mu-effectif="${esc(s.id)}"${constant ? ' checked' : ''}>
+      const choixEffectif = preparent(nature) || nature === 'lavage' ? `<label class="mu-effectif"><input type="checkbox" data-mu-effectif="${esc(s.id)}"${constant ? ' checked' : ''}>
         <span><b>Effectif constant</b><small>${constant ? 'ses équipes gardent le nombre de personnes saisi, quel que soit le nombre de vols. Décochez pour le calculer.'
+          : nature === 'lavage' ? 'non coché : les équipes hors tunnel se calculent, minutes par vol × vols qui reviennent de chaque compagnie ÷ minutes de leur poste. Les tunnels gardent leur effectif. Cochez pour le saisir.'
           : 'non coché : le nombre de personnes de chaque équipe se calcule, minutes par vol × vols de chaque compagnie ÷ minutes de son poste. Le robot garde le sien. Cochez pour le saisir.'}</small></span></label>` : '';
       const choixNature = `<label class="mu-nature">Ce service…<select data-mu-nature="${esc(s.id)}">${NATURES.map(x =>
         `<option value="${x.id}"${x.id === nature ? ' selected' : ''}>${esc(x.nom)}</option>`).join('')}</select></label>` + choixEffectif;
@@ -263,6 +264,9 @@
           + (nature === 'lavage' ? this.friseRetours(b.cases) : '')
           + b.cases.map(a => `<div class="mu-carte">${this.at.carte(a, calc.get(a.id), { cmd: null })}</div>`).join('')
           + (b.cases.length ? '' : `<p class="mu-ajout"><button class="btn btn-play btn-sm" type="button" data-mu-action="equipe">+ ${nature === 'lavage' ? 'Ajouter une équipe de plonge' : nature === 'dispo' ? 'Mettre ce service en place' : 'Ajouter une équipe de chargement'}</button></p>`)
+          // Des équipes hors tunnel (06/10) : tri, chariots… présentes à leurs heures, sans tunnel.
+          + (nature === 'lavage' ? `<p class="mu-ajout"><button class="btn btn-sm" type="button" data-mu-action="appui">+ Ajouter une équipe hors tunnel</button>
+             <span class="mini-note">des gens qui travaillent à la plonge sans tenir un tunnel ; leur effectif est saisi, ou suit les vols (case « Effectif constant »)</span></p>` : '')
           + (nature === 'dispo' ? `<div class="mu-besoin"><h4>Quels flux en ont besoin ?</h4>${this.besoinFlux(s.id, classes)}</div>` : '');
       }
 
@@ -1239,6 +1243,13 @@
         const id = this.choisi;
         switch (t.dataset.muAction) {
           case 'equipe': return this.ajouterEquipe(id);
+          case 'appui': {
+            let a;
+            this.at.changer(() => { a = PC.equipeNeuve(this.at.state, id, this.nom(id), 'appui'); this.at.state.ateliers.push(a); },
+              'Équipe hors tunnel ajoutée : donnez son heure, puis ses personnes ou ses minutes par vol.');
+            this.at.ouvert = a ? a.id : this.at.ouvert;
+            return this.rendreServices ? this.rendreServices() : this.at.rendre();
+          }
           case 'par-compagnie': return this.nature(id, 'categories');
           // L'armement n'a rien à faire dans les chemins des repas.
           // L'armement dans tous les chemins, en branche à part, relié seulement au handling.

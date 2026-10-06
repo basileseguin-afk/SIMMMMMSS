@@ -383,7 +383,7 @@ function renderServices(){
   const lignes=servicesDisponibles().map(s=>({...s,...etatService(s.id)}))
     .sort((a,b)=>rang[a.etat]-rang[b.etat]||a.nom.localeCompare(b.nom));
   const manque=lignes.filter(l=>l.etat==='manque').length;
-  const type={dispo:'mise à disposition',lavage:'plonge',robot:'robot',handling:'par vol',manuel:''};
+  const type={dispo:'mise à disposition',lavage:'plonge',robot:'robot',handling:'par vol',appui:'hors tunnel',manuel:''};
   const cherche=(box.querySelector('[data-svc-chercher]')||{}).value||'';
   box.innerHTML='<div class="svc-tete"><p class="mini-note">'+(manque
       ?'<b>'+manque+(manque>1?' services attendent':' service attend')+' une équipe ou du travail</b> : ils sont en tête de liste.'
@@ -409,7 +409,7 @@ function renderServices(){
             +servicesDuPlan().map(id=>'<option value="'+escapeHTML(id)+'"'+(!annexe.autonome&&id===annexe.parent?' selected':'')+'>'+escapeHTML(nomLisible(ZONES[id].nom))+'</option>').join('')+'</select></label>'
           :'<small>service du plan</small>')+'</td>'
         +'<td>'+(l.cases.length?l.cases.map(a=>'<button type="button" class="lien-discret" data-svc-case="'+escapeHTML(a.id)+'">'+escapeHTML(a.nom)+'</button>'
-          +(type[a.type]?' <small>'+type[a.type]+(a.type==='dispo'&&+a.personnes>0?' · '+a.personnes+' pers.':'')+'</small>':a.type==='manuel'?' <small>'+a.personnes+' pers.</small>':'')).join('<br>'):'<em>aucune</em>')+'</td>'
+          +(type[a.type]?' <small>'+type[a.type]+((a.type==='dispo'||a.type==='appui')&&+a.personnes>0?' · '+a.personnes+' pers.':'')+'</small>':a.type==='manuel'?' <small>'+a.personnes+' pers.</small>':'')).join('<br>'):'<em>aucune</em>')+'</td>'
         +'<td>'+(l.cmds?l.cmds+(l.cmds>1?' commandes':' commande'):'—')+'</td>'
         +'<td><span class="svc-etat '+l.etat+'">'+escapeHTML(l.texte)+'</span></td>'
         +'<td class="svc-actions"><button class="btn btn-sm'+(l.etat==='manque'&&!l.cases.length?' btn-play':'')+'" type="button" data-svc-action="equipe" data-svc="'+escapeHTML(l.id)+'">+ Une équipe</button>'

@@ -102,4 +102,37 @@ for (const [version, chemin] of [['v1', '../moteur/production.js'], ['v2', '../v
     assert.ok(P.dureeFusion(240, 180, r.effectifs.fu.personnes) <= 120);
     assert.ok(P.dureeFusion(240, 180, r.effectifs.fu.personnes - 1) > 120, 'le plus petit qui tient');
   });
+
+  test(version + ' : une équipe hors tunnel à la plonge suit les vols qui reviennent (06/10)', () => {
+    const RET = [];
+    for (let i = 0; i < 40; i++) RET.push({ id: 'R' + i, cie: i < 30 ? 'AF' : 'TX', sens: 'RET', sta: h('10:00'), bc: 0, pc: 0, yc: 100 });
+    const tunnel = { id: 'pl', nom: 'Plonge', service: 'plonge', type: 'lavage', debut: '06:00', jour: 0, personnes: 2, pauses: [], lots: [],
+      tunnels: [{ nom: 'T1', debit: 300, personnes: 1, actif: true }] };
+    const tri = { id: 'tri', nom: 'Tri des chariots', service: 'plonge', type: 'appui', debut: '08:00', jour: 0, personnes: 1, pauses: [], lots: [],
+      minutesVol: { AF: 20, '*': 12 } };
+    const jouer2 = o => P.simuler({ vols: VOLS.concat(RET), liaisons: [], bareme: BAREME, rendement: 1, materiel: { actif: true, retours: 'programme' },
+      ateliers: [tunnel, tri], ...o });
+    const r = jouer2({ effectifCalcule: ['plonge'] });
+    // 30 retours AF × 20 + 10 TX × 12 = 720 min sur un poste de 420 : 2 personnes.
+    assert.deepEqual([r.effectifs.tri.hommeMinutes, r.effectifs.tri.vols, r.effectifs.tri.retours, r.effectifs.tri.personnes], [720, 40, true, 2]);
+    assert.equal(r.effectifs.pl, undefined, 'le tunnel garde son effectif');
+    const v = r.ateliers.find(x => x.id === 'tri');
+    assert.equal(v.personnes, 2);
+    assert.equal(v.finPoste, h('08:00') + 480, 'présente ses 8 h');
+    assert.deepEqual(v.lots, [], 'elle ne fait rien attendre');
+    assert.ok(!r.anomalies.some(x => x.atelier === 'tri'), 'pas d’alerte « ne fabrique rien » : ' + JSON.stringify(r.anomalies.filter(x => x.atelier === 'tri')));
+    // Constant : l'effectif saisi.
+    assert.equal(jouer2({ effectifCalcule: [] }).ateliers.find(x => x.id === 'tri').personnes, 1);
+    // Sans minutes par vol : l'effectif saisi reste, même calculé.
+    const sans = P.simuler({ vols: VOLS.concat(RET), liaisons: [], bareme: BAREME, materiel: { actif: true }, effectifCalcule: ['plonge'],
+      ateliers: [tunnel, { ...tri, minutesVol: {} }] });
+    assert.equal(sans.effectifs.tri, undefined);
+  });
+
+  test(version + ' : ailleurs qu’à la plonge, une équipe d’appui suit les départs', () => {
+    const r = jouer([{ id: 'ck', nom: 'Checkeurs', service: 'handling', type: 'appui', debut: '04:00', jour: 0, personnes: 3, pauses: [], lots: [],
+      minutesVol: { '*': 42 } }], { effectifCalcule: ['handling'] });
+    // 10 départs × 42 min = 420 min sur un poste de 420 : 1 personne.
+    assert.deepEqual([r.effectifs.ck.vols, r.effectifs.ck.retours, r.effectifs.ck.personnes], [10, false, 1]);
+  });
 }

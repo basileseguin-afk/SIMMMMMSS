@@ -551,7 +551,25 @@
    * temps de production : il a préparé à l'avance, ou il sert dans l'instant.
    * Lui demander un effectif et une durée serait inventer du travail.
    */
-  const TYPES = ['manuel', 'robot', 'lavage', 'dispo', 'handling'];
+  const TYPES = ['manuel', 'robot', 'lavage', 'dispo', 'handling', 'appui'];
+
+  /*
+   * L'ÉQUIPE D'APPUI (retour d'usage du 06/10 : « pouvoir rajouter des équipes
+   * qui ne dépendent pas du tunnel, comme pour les autres, avec le choix si cela
+   * dépend des vols ou non »). Elle est là, à ses heures, et ne fait attendre
+   * personne : ni commandes, ni tunnel. Son effectif est saisi (service à
+   * effectif constant), ou calculé d'après ses minutes par vol :
+   *
+   *   minutesVol — minutes de travail par vol, par compagnie ({ AF: 6, '*': 4 })
+   *
+   * Les vols comptés : ceux qui reviennent à la plonge quand elle est dans un
+   * service qui lave, sinon les départs du jour.
+   */
+  function minutesVolAppui(a, cie) {
+    const d = (a && a.minutesVol) || {};
+    const lire = k => (d[k] === undefined || d[k] === null || d[k] === '' || !Number.isFinite(+d[k]) ? null : Math.max(0, +d[k]));
+    return lire(String(cie || '').trim().toUpperCase()) ?? lire(TOUTES);
+  }
 
   /*
    * LE HANDLING, OU LE VOL REDEVIENT L'UNITÉ.
@@ -815,7 +833,7 @@
       if (services.size && !services.has(a.service)) dire('service', 'service inconnu « ' + nomSvc(a.service) + ' ».');
       if (a.type !== undefined && !TYPES.includes(a.type)) dire('type', 'type inconnu « ' + a.type + ' ».');
 
-      const robot = a.type === 'robot', lavage = a.type === 'lavage', dispo = a.type === 'dispo', handling = a.type === 'handling';
+      const robot = a.type === 'robot', lavage = a.type === 'lavage', dispo = a.type === 'dispo', handling = a.type === 'handling', appui = a.type === 'appui';
       // Une mise à disposition permanente n'a pas d'heure : lui en réclamer une
       // serait inventer une contrainte qu'elle n'a pas.
       if (!(dispo && a.permanent !== false)) {
@@ -833,7 +851,7 @@
       if (dispo) { /* ni personnes, ni lots, ni barème */ }
       else if (!Number.isInteger(gens) || gens < 0) dire('personnes', 'nombre de personnes entier attendu.');
       // Le handling a une durée par vol, pas des man-minutes : son effectif ne compte pas.
-      else if (!robot && !handling && gens === 0) dire('sans-personne', 'sans personne, rien n’est fabriqué.');
+      else if (!robot && !handling && !appui && gens === 0) dire('sans-personne', 'sans personne, rien n’est fabriqué.');
 
       if (lavage) {
         const tunnels = Array.isArray(a.tunnels) ? a.tunnels : null;
@@ -873,7 +891,7 @@
       // Un atelier sans lot, ou un lot encore vide, c'est une saisie en cours :
       // on le signale sans empêcher le reste de la journée d'être calculé. Un
       // atelier de lavage, lui, n'a pas de lots : son travail vient des retours.
-      if (lavage || dispo || handling) { /* rien à exiger : aucun ne suit une liste de commandes */ }
+      if (lavage || dispo || handling || appui) { /* rien à exiger : aucun ne suit une liste de commandes */ }
       else if (!Array.isArray(a.lots) || !a.lots.length) dire('lots', 'ne fabrique rien pour l’instant.');
       else for (const lot of (a.lots || [])) {
         const liste = Array.isArray(lot) ? lot : (lot && lot.classes);
@@ -990,15 +1008,20 @@
    *  fait apparaître ce qui ne rentre pas dans la journée.
    * --------------------------------------------------------------------*/
 
-  /** 8 h de présence, dont 1 h de pause après 4 h de travail : 7 h de travail
-   *  (retour d'usage du 06/10 ; c'était 8 h 15, avec 15 min après 3 h et 30 min après 6 h). */
+  /** 8 h de présence, dont 1 h de pause : 3 h de travail, 15 min de pause, 3 h,
+   *  45 min de pause, puis la dernière heure — 7 h de travail (retour d'usage du
+   *  06/10 ; c'était 8 h 15, avec 15 min après 3 h et 30 min après 6 h). */
   const REGIME_DEFAUT = {
     actif: true,
-    seuils: [{ apres: 240, duree: 60 }],
+    seuils: [{ apres: 180, duree: 15 }, { apres: 360, duree: 45 }],
     presence: 480
   };
-  /** La règle d'avant le 06/10 : une sauvegarde qui la porte telle quelle passe à la nouvelle. */
-  const REGIME_AVANT = { seuils: [{ apres: 180, duree: 15 }, { apres: 360, duree: 30 }], presence: 495 };
+  /** Les règles par défaut d'avant : une sauvegarde qui en porte une telle quelle
+   *  passe à la nouvelle (8 h 15 jusqu'au 05/10 ; 8 h avec 1 h d'un bloc, le 06/10). */
+  const REGIMES_AVANT = [
+    { seuils: [{ apres: 180, duree: 15 }, { apres: 360, duree: 30 }], presence: 495 },
+    { seuils: [{ apres: 240, duree: 60 }], presence: 480 }
+  ];
 
 
   /**
@@ -1386,7 +1409,7 @@
     for (const a of ateliers) {
       // Un robot va à son débit, une plonge à celui de ses tunnels, une mise à
       // disposition ne travaille pas : aucun n'a besoin de barème.
-      if (a.type === 'robot' || a.type === 'lavage' || a.type === 'dispo' || a.type === 'handling') continue;
+      if (a.type === 'robot' || a.type === 'lavage' || a.type === 'dispo' || a.type === 'handling' || a.type === 'appui') continue;
       if (servicesCategories.has(a.service)) continue;   // ses minutes sont dans sa fiche, par compagnie
       if (!bareme[a.service]) anomalies.push({ code: 'bareme', atelier: a.id,
         message: a.nom + ' : aucun barème pour « ' + nom(a.service) + ' », sa durée est nulle tant qu’il n’est pas renseigné.' });
@@ -1489,6 +1512,32 @@
       if (n === 0 && lots.length) n = 1;
       effectifs[a.id] = { personnes: n, saisi: a.personnes, hommeMinutes: ici + avant, poste, rendement };
       a.personnes = n;
+    }
+    // L'équipe d'appui calculée : ses minutes par vol × les vols de chaque compagnie.
+    // Sans minutes renseignées, son effectif saisi reste.
+    const servicesLavage = new Set(ateliers.filter(a => a.type === 'lavage').map(a => a.service));
+    let volsParCie = null;
+    const compter = lavage => {
+      const n = new Map();
+      const liste = lavage ? retoursDeVols(opts.vols, opts.materiel, true).map(r => r.cie)
+        : (opts.vols || []).filter(x => (x.sens || 'DEP') === 'DEP').map(x => x.cie);
+      for (const c of liste) { const k = String(c || '').toUpperCase(); n.set(k, (n.get(k) || 0) + 1); }
+      return n;
+    };
+    for (const a of ateliers) {
+      if (a.type !== 'appui' || a.effectifFixe || !calcules.has(a.service)) continue;
+      const lave = servicesLavage.has(a.service);
+      volsParCie = volsParCie || {};
+      const n = volsParCie[lave ? 'l' : 'd'] = volsParCie[lave ? 'l' : 'd'] || compter(lave);
+      let ici = 0, vols = 0;
+      for (const [cie, k] of n) { const m = minutesVolAppui(a, cie); if (m != null) { ici += m * k; vols += k; } }
+      if (!(ici > 0)) continue;
+      let poste;
+      try { poste = minutesDuPoste(a, opts.regime); } catch (e) { continue; }
+      const p = effectifPour(ici, 0, poste, rendement);
+      if (p == null) continue;
+      effectifs[a.id] = { personnes: p, saisi: a.personnes, hommeMinutes: ici, poste, rendement, vols, retours: lave };
+      a.personnes = p;
     }
     // Ses personnes saisies ne comptent plus : ce qu'on en disait non plus.
     for (let i = anomalies.length - 1; i >= 0; i--) {
@@ -1733,6 +1782,13 @@
       const prises = new Set();   // pauses de régime déjà prises dans ce poste
       let cumul = 0;              // travail effectif depuis le début du poste
       vue.finPoste = Number.isFinite(finPoste) ? finPoste : null;
+      // Une équipe d'appui est présente à ses heures ; elle ne fait rien attendre.
+      if (a.type === 'appui') {
+        vue.appui = true;
+        // Elle part à la fin de sa présence : pas d'heures sup, rien ne la retient.
+        if (regime.actif) vue.finPoste = vue.fin = depart + regime.presence;
+        continue;
+      }
 
       // Une mise à disposition ne travaille pas : elle ouvre. Une seule ligne
       // de journal, portée par toutes les classes, pour que le parcours la
@@ -2524,8 +2580,8 @@
   const api = {
     MINUTES_PAR_JOUR, CABINES, TYPES,
     minutes, hhmm, idClasse, libelleClasse, nomCabine, enClair,
-    REGIME_DEFAUT, REGIME_AVANT, normaliserRegime, executerTache,
-    classesDeVols, classesCategories, compagniesParService, declarerCategories, volsDesClasses, compteDuJour, appliquerConditions, dureeHandling, compagniesDe, AVANCE_HANDLING, BAREME_DEMO, RENDEMENT_DEMO, travailClasse, travailDans, dureeFusion,
+    REGIME_DEFAUT, REGIMES_AVANT, normaliserRegime, executerTache,
+    classesDeVols, classesCategories, compagniesParService, declarerCategories, volsDesClasses, compteDuJour, appliquerConditions, dureeHandling, compagniesDe, AVANCE_HANDLING, BAREME_DEMO, RENDEMENT_DEMO, travailClasse, travailDans, dureeFusion, minutesVolAppui,
     minutesDuPoste, effectifPour, PLAFOND_EFFECTIF,
     PAX_TYPE, TOUTES, cleBareme, normaliserBareme, minutesParVol,
     arcsDuParcours, servicesDuParcours, routesDesClasses,

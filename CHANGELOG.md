@@ -5,6 +5,44 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-06 — Pauses de 15 et 45 min ; des équipes hors tunnel à la plonge
+
+Retours d'usage :
+- « c'est 3 h de travail puis 15 minutes de pause, puis 3 h, puis 45 min,
+  puis le reste des 7 h, donc 1 h » ;
+- « crée la possibilité de rajouter des équipes qui ne dépendent pas du
+  tunnel ; comme pour les autres, donne la possibilité de choisir si cela
+  dépend des vols ou non ».
+
+- **La règle de poste** : 8 h de présence, avec 15 min de pause après 3 h de
+  travail et 45 min après 6 h, soit 7 h de travail. La veille, l'heure de
+  pause était prise d'un bloc après 4 h.
+  - Une sauvegarde restée sur une règle par défaut d'avant (8 h 15, ou 8 h
+    avec 1 h d'un bloc) passe à celle-ci à l'ouverture (`regimeV` 3).
+  - Une règle modifiée à la main ne bouge pas.
+- **Les équipes hors tunnel** (`type: 'appui'`). Elles sont présentes à leurs
+  heures, ne préparent pas de commande, ne tiennent pas de tunnel et ne font
+  rien attendre.
+  - À la plonge : « + Ajouter une équipe hors tunnel ».
+  - **Le choix « dépend des vols ou non »** : la case « Effectif constant »
+    apparaît aussi dans la fiche de la plonge. Cochée, l'effectif se saisit.
+    Non cochée, il se calcule : minutes par vol (par compagnie) × vols qui
+    reviennent à la plonge ÷ minutes du poste. Sans minutes renseignées,
+    l'effectif saisi reste. Les tunnels gardent leur effectif.
+  - Le type « Hors tunnel, hors flux » existe aussi dans les autres services.
+    Ailleurs qu'à la plonge, ce sont les départs du jour qui comptent.
+  - Elles partent à la fin de leur présence (pas d'heures sup), et comptent
+    dans l'effectif du jour et le budget v2.
+  - Excel : le type « hors tunnel » se lit et s'écrit, mais les minutes par
+    vol ne passent pas encore par le classeur.
+- Tests : `regime.test.cjs`, `production.test.cjs`,
+  `effectif-calcule.test.cjs` (équipe hors tunnel : retours, départs,
+  constant, sans minutes), `effectif-browser.cjs` (la plonge, v1 et v2),
+  `ateliers-browser.cjs`.
+- Docs : MODELE_ATELIERS, README, CAHIER_DES_CHARGES (M6, E20).
+
+---
+
 ## 2026-10-06 — Le poste : 8 h de présence, dont 1 h de pause
 
 Retour d'usage : « c'est 8 h de présence avec 1 h de pause ».

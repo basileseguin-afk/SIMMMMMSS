@@ -88,7 +88,7 @@ de relire le cahier des charges initial :
 | M3 | **Atelier de travail** = une équipe dans un service : heure de départ, nombre de personnes, ce qu'elle fait ; **heure de fin calculée** | 21/09 | ✅ | |
 | M4 | Un atelier fabrique **plusieurs compagnies × classes**, reliées d'un service à l'autre | 21/09 | ✅ | Via les parcours |
 | M5 | Atelier **robot** : débit, classes, personnes (avec minimum), heure d'allumage, pauses machine | 21/09 | ✅ | |
-| M6 | **Pauses** : 8 h de présence dont 1 h de pause (après 4 h de travail) ; avant le 06/10 : 15 min après 3 h, 30 min après 6 h, 8 h 15 | 22/09 | ✅ | Réglable ; l'arrêt programmé (machine, local) est séparé |
+| M6 | **Pauses** : 8 h de présence dont 1 h de pause — 3 h de travail, 15 min, 3 h, 45 min, puis 1 h ; avant le 06/10 : 15 min après 3 h, 30 min après 6 h, 8 h 15 | 22/09 | ✅ | Réglable ; l'arrêt programmé (machine, local) est séparé |
 | M7 | **Plonge** : débit par tunnel **et** plafond de l'ensemble | 22/09 | ✅ | |
 | M8 | **Mise à disposition** (magasin, appros…) : ni man-minutes ni durée | 22/09 | ✅ | |
 | M9 | **Boucle du matériel** : départs → retours → plonge → propre ; stock = retours − départs | 22/09 | 🟡 | Un seul compte pour tout le matériel ; pas de distinction trolley / porcelaine / compagnie ; **pas de report d'un jour sur l'autre** |
@@ -165,6 +165,7 @@ de relire le cahier des charges initial :
 | E17 | **Chemins compréhensibles avec beaucoup de services**, de façon plus visuelle | 05/10 | ✅ | Chemins › Vue d'ensemble (plan de métro : services × flux, par étape) ; diagrammes en étapes de haut en bas, tenant dans l'écran, chaîne éclairée au survol ; « En ligne » reste disponible |
 | E18 | **Effectif d'après les homme-minutes** : personnes = minutes par vol × vols de chaque compagnie, rapporté au poste ; dissocier les ateliers calculés des **constants**, avec une case à cocher | 05/10 | ✅ | Case « Effectif constant » par service ; constants par défaut : CF départ food, magasin, légumerie, duty free, appros ; la simulation dans le temps est gardée, jouée avec l'effectif calculé. Robot, plonge, handling, mise à disposition : toujours saisis (ils ne travaillent pas en homme-minutes) |
 | E19 | **Les zones de mise à disposition ont leurs personnes**, constantes : « 2 personnes aux appros, ce sont 2 personnes en tout sur la journée » | 06/10 | ✅ | Champ « Personnes sur la journée » dans la case ; une présence chacune ; compté dans l'effectif du jour (comparaison) et le budget v2 ; ne change pas les durées |
+| E20 | **Des équipes qui ne dépendent pas du tunnel** à la plonge, avec le choix, comme ailleurs, d'un effectif qui dépend des vols ou non | 06/10 | ✅ | « + Ajouter une équipe hors tunnel » ; case « Effectif constant » dans la fiche de la plonge ; calculée : minutes par vol × vols qui reviennent ÷ poste. Type « hors tunnel » utilisable dans tout service (là : départs du jour). Les minutes par vol ne passent pas encore par le classeur Excel |
 
 ## 10. Méthode et fiabilité (feuille de route d'Astra)
 

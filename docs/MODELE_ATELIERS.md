@@ -163,6 +163,21 @@ l'effectif du jour (comparaison de scénarios) et, dans la v2, dans le budget :
 une vacation chacune (la présence du poste, 8 h dont 1 h de pause par défaut). Leur effectif
 est toujours constant.
 
+**Les équipes hors tunnel, hors flux (06/10).** « Pouvoir rajouter des équipes
+qui ne dépendent pas du tunnel, comme pour les autres, avec le choix si cela
+dépend des vols ou non. » Une équipe d'appui (`type: 'appui'`) est présente à
+ses heures, ne prépare pas de commande, ne tient pas de tunnel et ne fait rien
+attendre. À la plonge : « + Ajouter une équipe hors tunnel ».
+
+- Service à **effectif constant** : son effectif est celui saisi.
+- Sinon, il **dépend des vols** : ses minutes par vol (`minutesVol`, par
+  compagnie, « * » pour toutes) × les vols de chaque compagnie ÷ son poste.
+  À la plonge, les vols comptés sont ceux qui **reviennent** (la source des
+  retours : programme RET, départs de la veille ou planche retour) ; ailleurs,
+  les départs du jour. Sans minutes renseignées, l'effectif saisi reste.
+- Elle part à la fin de sa présence (pas d'heures sup) et compte dans
+  l'effectif du jour et le budget v2.
+
 Moteur : option `effectifCalcule` (les services calculés) de `simuler`, résultat
 `effectifs` ({ personnes, saisi, hommeMinutes, poste, rendement } par équipe),
 fonctions `minutesDuPoste` et `effectifPour`. Une équipe `effectifFixe` n'est
@@ -370,13 +385,15 @@ son poste que le travail soit fini ou non.
 
 | Règle | Valeur par défaut |
 |---|---|
-| Pause après 4 h de **travail** | 1 h |
+| Pause après 3 h de **travail** | 15 min |
+| Pause après 6 h de **travail** | 45 min |
 | Présence totale sur le site | 8 h |
 
-« 8 h de présence avec 1 h de pause » (retour d'usage du 06/10 ; c'était
-8 h 15, avec 15 min après 3 h et 30 min après 6 h). Ces valeurs sont
-**réglables** dans le Centre des réglages, et les seuils s'ajoutent ou se
-retirent. Une sauvegarde restée sur l'ancienne règle, telle quelle, passe à la
+« 8 h de présence avec 1 h de pause : 3 h de travail, 15 min de pause, 3 h,
+45 min, puis le reste des 7 h » (retours d'usage du 06/10 ; c'était 8 h 15,
+avec 15 min après 3 h et 30 min après 6 h). Ces valeurs sont **réglables**
+dans le Centre des réglages, et les seuils s'ajoutent ou se retirent. Une
+sauvegarde restée sur une règle par défaut d'avant, telle quelle, passe à la
 nouvelle à l'ouverture ; une règle modifiée à la main ne bouge pas.
 
 Soit **7 h de travail effectif**. Les seuils comptent le travail *cumulé*,

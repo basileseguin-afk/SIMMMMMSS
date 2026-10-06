@@ -7,7 +7,8 @@
  *     calcul revient, il se saisit et il reste ;
  *   - CF départ food est constant par défaut ;
  *   - Minutes de travail : l'effectif calculé se lit, il ne se saisit pas ;
- *   - une mise à disposition (les appros) a ses personnes sur la journée.
+ *   - une mise à disposition (les appros) a ses personnes sur la journée ;
+ *   - la plonge a ses équipes hors tunnel, calculées d'après les retours ou saisies.
  *   v1 et v2. */
 const assert=require('node:assert/strict'),path=require('node:path');
 const nav=require('./nav.cjs');
@@ -96,6 +97,29 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.match(await page.locator(`${M} .at-pers-jour + .mini-note`).first().innerText(),/2 × 8 h de présence \(dont 1 h de pause\) = 16 h de présence,\s+14 h de travail/);
    assert.match(await page.locator(`${M} .at-carte, ${M} .mu-carte`).first().innerText(),/2 pers\. sur la journée/);
    assert.equal(await page.evaluate(()=>(Sim.ateliers.resultat.effectifs||{})[Sim.ateliers.state.ateliers.find(a=>a.service==='appros').id]),undefined,'jamais calculé');
+
+   // 7. La plonge a ses équipes hors tunnel (06/10), dont l'effectif suit les vols
+   //    qui reviennent, ou se saisit (« Effectif constant »).
+   await page.locator(`${M} [data-mu-choisir=plonge]`).click();await attendre();
+   if(!(await page.evaluate(()=>Sim.ateliers.state.ateliers.some(a=>a.type==='lavage')))){await page.locator(`${M} [data-mu-action=equipe]`).first().click();await attendre();}
+   assert.equal(await page.locator(`${M} [data-mu-effectif=plonge]`).isChecked(),false,version+' : à la plonge aussi, la case « Effectif constant »');
+   await page.locator(`${M} [data-mu-action=appui]`).click();await attendre();
+   const ht=await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.type==='appui'&&a.service==='plonge'));
+   assert.ok(ht&&/hors tunnel/.test(ht.nom),version+' : une équipe hors tunnel');
+   const min=page.locator(`${M} [data-at="${ht.id}"] [data-at-champ=appui-min][data-cie="*"]`);
+   if(!(await min.count())){await page.locator(`${M} [data-at="${ht.id}"] button`).first().click();await attendre();}
+   await min.fill('300');await min.dispatchEvent('change');await attendre();
+   const eh=await effectif(ht.id);
+   assert.ok(eh&&eh.retours&&eh.vols>0,version+' : elle compte les vols qui reviennent '+JSON.stringify(eh));
+   assert.equal(eh.hommeMinutes,300*eh.vols);
+   assert.equal(eh.personnes,Math.ceil(eh.hommeMinutes/(eh.poste*eh.rendement)-1e-9));
+   assert.equal(eh.poste,420,'un poste de 8 h dont 1 h de pause : 7 h de travail');
+   assert.equal((await equipe(ht.id)).personnes,eh.personnes);
+   assert.match(await page.locator(`${M} [data-at="${ht.id}"] .at-appui-note`).innerText(),new RegExp(eh.vols+' vols?'));
+   // Effectif constant : elle reprend l'effectif saisi.
+   await page.locator(`${M} [data-mu-effectif=plonge]`).check();await attendre();
+   assert.equal((await equipe(ht.id)).personnes,1,version+' : constant, l’effectif saisi revient');
+   assert.equal(await page.locator(`${M} [data-at="${ht.id}"] [data-at-champ=appui-min]`).count(),0,'plus de minutes par vol à saisir');
   }
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('effectif-browser : ok');

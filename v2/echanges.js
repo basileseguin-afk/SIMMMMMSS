@@ -678,7 +678,7 @@
    *  3. ATELIERS, CLASSES ET PARCOURS
    * ====================================================================*/
 
-  const TYPES_FR = { manuel: 'manuel', robot: 'robot', lavage: 'plonge', dispo: 'mise à disposition', handling: 'handling' };
+  const TYPES_FR = { manuel: 'manuel', robot: 'robot', lavage: 'plonge', dispo: 'mise à disposition', handling: 'handling', appui: 'hors tunnel' };
   const typeDe = v => {
     const k = T.cleEntete(v || 'manuel');
     if (['manuel', 'equipe'].includes(k)) return 'manuel';
@@ -686,7 +686,8 @@
     if (['plonge', 'lavage'].includes(k)) return 'lavage';
     if (['mise_a_disposition', 'dispo', 'disposition'].includes(k)) return 'dispo';
     if (['handling', 'chargement', 'par_vol'].includes(k)) return 'handling';
-    throw new Error('type inconnu « ' + v + ' » (manuel, robot, plonge, mise à disposition ou handling)');
+    if (['hors_tunnel', 'hors_flux', 'appui'].includes(k)) return 'appui';
+    throw new Error('type inconnu « ' + v + ' » (manuel, robot, plonge, mise à disposition, handling ou hors tunnel)');
   };
   const SEP_CLASSES = /\s*[+,;]\s*/;
   const SEP_ETAPES = /\s*(?:→|->|>)\s*/;

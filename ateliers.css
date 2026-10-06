@@ -113,6 +113,11 @@ body.ateliers-open .workbench{display:none}
 /* Les personnes d'une mise à disposition, en tout sur la journée (06/10). */
 .at-pers-jour{display:grid;gap:6px;font-size:12px;color:var(--txt2);max-width:220px}
 .at-pers-jour input{width:100px}
+/* L'équipe hors tunnel : ses minutes par vol, par compagnie (06/10). */
+.at-appui-cies{border-collapse:collapse;margin:0 14px 6px;font-size:13px}
+.at-appui-cies th{text-align:left;font-weight:600;padding:3px 12px 3px 0;color:var(--txt2)}
+.at-appui-cies input{width:80px}
+.at-appui-note{margin:0 14px 10px}
 .at-cases .chk{display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:1.4;color:var(--txt2)}
 .at-cases .chk input{width:16px;height:16px;flex:none;margin-top:1px;accent-color:var(--accent)}
 .at-presence{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--txt2);margin-left:24px}

@@ -122,6 +122,8 @@
     delete a.durees; delete a.simultanes; delete a.avance; delete a.compagnies;
     if (v === 'robot') { a.debit = a.debit || 320; a.personnesMin = a.personnesMin === undefined ? 1 : a.personnesMin; }
     else if (v === 'lavage') { delete a.debit; delete a.personnesMin; a.lots = []; }
+    // Hors tunnel, hors flux : ni commandes, ni tunnels ; des minutes par vol (06/10).
+    else if (v === 'appui') { delete a.debit; delete a.personnesMin; delete a.tunnels; delete a.minutes; delete a.fusion; delete a.condition; a.lots = []; a.minutesVol = a.minutesVol || {}; }
     // Une mise à disposition ne fabrique rien : ses lignes, son
     // effectif et ses arrêts n'ont plus de sens, on les efface.
     else if (v === 'dispo') {
@@ -181,13 +183,13 @@
       ids.add(id);
       const nom = String(a.nom ?? '').slice(0, 160);
       const service = String(a.service ?? '').slice(0, 160);
-      const type = ['robot', 'lavage', 'dispo', 'handling'].includes(a.type) ? a.type : 'manuel';
+      const type = ['robot', 'lavage', 'dispo', 'handling', 'appui'].includes(a.type) ? a.type : 'manuel';
       P.minutes(a.debut ?? '06:00');
       // Le handling travaille le jour J des vols : jamais la veille. La plonge
       // se règle sur l'arrivée des retours (05/10) : la veille, le jour même ou
       // le lendemain de leur arrivée (J-1, J, J+1).
       const jour = type === 'handling' ? 0 : !Number.isInteger(a.jour) ? 0
-        : type === 'lavage' ? Math.max(-1, Math.min(1, a.jour)) : Math.max(-7, Math.min(0, a.jour));
+        : type === 'lavage' ? Math.max(-1, Math.min(1, a.jour)) : type === 'appui' ? Math.max(-7, Math.min(1, a.jour)) : Math.max(-7, Math.min(0, a.jour));
       const personnes = Number.isInteger(a.personnes) ? Math.max(0, Math.min(999, a.personnes)) : 1;
       const pauses = (Array.isArray(a.pauses) ? a.pauses : []).slice(0, 12).map(p => {
         P.minutes(p.de); P.minutes(p.a); return { de: String(p.de), a: String(p.a) };
@@ -207,7 +209,7 @@
         ...(a.materiel === 'consomme' ? { materiel: 'consomme' } : {}),
         // L'effectif saisi à la main avant que le calcul ne le remplace (05/10) :
         // cocher « Effectif constant » le retrouve.
-        ...(type === 'manuel' && Number.isInteger(a.personnesSaisies) ? { personnesSaisies: Math.max(0, Math.min(999, a.personnesSaisies)) } : {}),
+        ...((type === 'manuel' || type === 'appui') && Number.isInteger(a.personnesSaisies) ? { personnesSaisies: Math.max(0, Math.min(999, a.personnesSaisies)) } : {}),
         // Fait aussi l'étape d'avant, à la chaîne (retour d'usage du 29/09) : le
         // service de cette étape. Une équipe qui prépare seulement, et pas le sien.
         ...(type === 'manuel' && typeof a.fusion === 'string' && a.fusion && a.fusion.length <= 160 && a.fusion !== service ? { fusion: a.fusion } : {}),
@@ -248,6 +250,9 @@
               ...(Number.isFinite(+t.vitesse) && +t.vitesse > 0 && +t.vitesse !== 1 ? { vitesse: Math.min(10, Math.round(+t.vitesse * 100) / 100) } : {})
             }))
         } : {}),
+        // L'équipe hors tunnel : ses minutes par vol, par compagnie (« * » : toutes).
+        ...(type === 'appui' ? { minutesVol: Object.fromEntries(Object.entries(a.minutesVol && typeof a.minutesVol === 'object' ? a.minutesVol : {})
+          .map(([k, x]) => [String(k).trim().toUpperCase().slice(0, 40), +x]).filter(([k, x]) => k && Number.isFinite(x) && x >= 0).map(([k, x]) => [k, Math.min(1440, x)]).slice(0, 200)) } : {}),
         // Une mise à disposition est permanente sauf si on lui donne une heure.
         ...(type === 'dispo' ? { permanent: a.permanent !== false, vagues: vaguesDe(a, jour), ...ouvertureDe(a) } : {}),
         // Le handling : une durée par vol et par compagnie, combien de vols à la
@@ -503,7 +508,7 @@
 
     /** L'effectif calculé d'une équipe ({ personnes, hommeMinutes, poste, rendement }), ou null. */
     effectifCalcule(a) {
-      if (!a || a.type !== 'manuel' || this.effectifConstant(a.service)) return null;
+      if (!a || !(a.type === 'manuel' || a.type === 'appui') || this.effectifConstant(a.service)) return null;
       return ((this.resultat && this.resultat.effectifs) || {})[a.id] || null;
     }
 
@@ -537,6 +542,31 @@
         title="En tout, sur la journée : chacune fait une présence (${esc(h(presence))}, dont ${esc(h(presence - travail))} de pause)"></label>
         <span class="mini-note">${n ? `${n} × ${esc(h(presence))} de présence (dont ${esc(h(presence - travail))} de pause) = <b>${esc(h(n * presence))}</b> de présence,
           ${esc(h(n * travail))} de travail sur la journée. ` : ''}Constant : ne dépend pas du nombre de vols, ne change pas les heures de service.</span>`;
+    }
+
+    /** Ce service lave-t-il (une équipe de plonge, des tunnels) ? */
+    serviceLave(service) { return this.state.ateliers.some(x => x.service === service && x.type === 'lavage'); }
+
+    /* L'équipe hors tunnel, hors flux (retour d'usage du 06/10 : « des équipes qui
+     * ne dépendent pas du tunnel, comme pour les autres, avec le choix si cela
+     * dépend des vols ou non »). Ses minutes par vol, par compagnie ; ce qu'elle
+     * en tire dépend de la case « Effectif constant » du service. */
+    ficheAppui(a) {
+      const lave = this.serviceLave(a.service), constant = this.effectifConstant(a.service);
+      const e = this.effectifCalcule(a), m = a.minutesVol || {};
+      const cies = [...new Set((this.a.vols() || []).filter(x => lave ? true : (x.sens || 'DEP') === 'DEP').map(x => String(x.cie || '').toUpperCase()).filter(Boolean))].sort();
+      const ligne = (cie, nom) => `<tr><th scope="row">${esc(nom)}</th><td><input type="number" min="0" step="0.5" value="${m[cie] ?? ''}"
+        placeholder="${cie === P.TOUTES ? '—' : (m[P.TOUTES] ?? '—')}" data-at-champ="appui-min" data-cie="${esc(cie)}" aria-label="Minutes par vol : ${esc(nom)}"></td></tr>`;
+      return `<p class="mini-note at-regle">Une équipe <b>hors ${lave ? 'tunnel' : 'flux'}</b> : elle est là à ses heures, ne prépare pas de commande${lave ? ', ne tient pas de tunnel' : ''}
+        et ne fait rien attendre. ${constant
+          ? 'Son effectif est celui saisi plus haut (le service est à <b>effectif constant</b>).'
+          : 'Son effectif <b>dépend des vols</b> : minutes par vol × ' + (lave ? 'vols qui reviennent à la plonge' : 'départs du jour') + ' de chaque compagnie ÷ son poste.'}
+        Le choix se fait dans la fiche du service : « Effectif constant ».</p>
+        ${constant ? '' : `<div class="at-sous-titre">Minutes de travail par vol
+          <span class="mini-note">${lave ? 'pour chaque vol qui revient' : 'pour chaque départ'} ; vide : celle de toutes les compagnies</span></div>
+        <table class="at-appui-cies"><tbody>${ligne(P.TOUTES, 'Toutes les compagnies')}${cies.map(c => ligne(c, c)).join('')}</tbody></table>
+        <p class="mini-note at-appui-note">${e ? `${e.vols} vol${e.vols > 1 ? 's' : ''} · ${dureeLue(e.hommeMinutes)} de travail ÷ ${dureeLue(e.poste)} par personne : <b>${e.personnes} ${e.personnes > 1 ? 'personnes' : 'personne'}</b>.`
+          : 'Renseignez ses minutes par vol : sans elles, son effectif reste celui saisi.'}</p>`}`;
     }
 
     /* L'effectif calculé devient celui de l'équipe : le planning, le budget, les
@@ -1025,6 +1055,11 @@
           // Saisi en heures, gardé en minutes.
           case 'avance': a.avance = Math.max(0, Math.min(1440, Math.round((parseFloat(String(v).replace(',', '.')) || 0) * 60))); break;
           case 'compagnies': a.compagnies = [...new Set(String(v).split(/[\s,;]+/).map(x => x.trim().toUpperCase()).filter(Boolean))].slice(0, 100); break;
+          case 'appui-min': {
+            const cie = el.dataset.cie, d = { ...(a.minutesVol || {}) };
+            if (v === '' || !Number.isFinite(+v)) delete d[cie]; else d[cie] = Math.max(0, Math.min(1440, +v));
+            a.minutesVol = d; break;
+          }
           case 'duree': {
             const cie = el.dataset.cie, d = { ...(a.durees || {}) };
             if (v === '' || !Number.isFinite(+v)) { if (cie !== P.TOUTES) delete d[cie]; } else d[cie] = Math.max(0, Math.min(1440, +v));
@@ -1489,6 +1524,7 @@
       const resume = dispo ? 'sert toutes les commandes à la fois'
         : a.type === 'lavage' ? 'lave pour toutes les commandes'
         : handling ? 'charge les vols dans l’ordre des départs' + (nVols ? ' · ' + nVols + ' vol' + (nVols > 1 ? 's' : '') : '')
+        : a.type === 'appui' ? 'hors tunnel, hors flux : présente à ses heures, ne fait rien attendre'
         : !a.lots.length ? 'rattachée à aucune commande'
         : a.lots.map(l => l.map(c => `<button class="at-cmd-chip" data-at-action="chemin" data-classe="${esc(c)}"
             title="Ouvrir le chemin de ${esc(P.libelleClasse(c))}">${esc(PC.etiquette(c))}</button>`).join(' + ')).join(' <span aria-hidden="true">→</span> ');
@@ -1579,11 +1615,12 @@
             <option value="robot" ${a.type === 'robot' ? 'selected' : ''}>Robot</option>
             <option value="lavage" ${a.type === 'lavage' ? 'selected' : ''}>Lavage (plonge)</option>
             <option value="dispo" ${dispo ? 'selected' : ''}>Mise à disposition</option>
-            <option value="handling" ${handling ? 'selected' : ''}>Handling (par vol)</option></select></label>`}
+            <option value="handling" ${handling ? 'selected' : ''}>Handling (par vol)</option>
+            <option value="appui" ${a.type === 'appui' ? 'selected' : ''}>Hors tunnel, hors flux (ne fait rien attendre)</option></select></label>`}
           ${dispo || o.compact ? '' : `
           <label>Arrive à<input type="time" value="${esc(a.debut)}" data-at-champ="debut"></label>
           ${handling ? `<label>Jour<input value="Jour J des vols" disabled title="Le handling travaille le jour des vols, jamais la veille"></label>`
-            : a.type === 'lavage' ? `<label title="La plonge lave ce qui revient : son jour se compte depuis l’arrivée des retours, pas depuis le départ des vols">Jour<select data-at-champ="jour">${JOURS_PLONGE.map(([j, n]) => `<option value="${j}" ${j === (a.jour || 0) ? 'selected' : ''}>${n}</option>`).join('')}</select></label>`
+            : a.type === 'lavage' || (a.type === 'appui' && this.serviceLave(a.service)) ? `<label title="La plonge lave ce qui revient : son jour se compte depuis l’arrivée des retours, pas depuis le départ des vols">Jour<select data-at-champ="jour">${JOURS_PLONGE.map(([j, n]) => `<option value="${j}" ${j === (a.jour || 0) ? 'selected' : ''}>${n}</option>`).join('')}</select></label>`
             : `<label>Jour<select data-at-champ="jour">${[0, -1, -2, -3].map(j => `<option value="${j}" ${j === a.jour ? 'selected' : ''}>${j === 0 ? 'Jour du départ' : 'J' + j}</option>`).join('')}</select></label>`}
           ${handling && (a.creneaux || []).length ? '' : this.champPersonnes(a)}`}
           ${a.type === 'robot' ? `
@@ -1633,7 +1670,7 @@
             Emporte du matériel propre (trolleys, porcelaine)</label>` : ''}
         </div>`}
 
-        ${dispo ? '' : handling ? this.ficheHandling(a) : a.type === 'lavage' ? `
+        ${dispo ? '' : handling ? this.ficheHandling(a) : a.type === 'appui' ? this.ficheAppui(a) : a.type === 'lavage' ? `
         <label class="at-mode-dispo at-mode-plonge">Comment se compte le lavage ?<select data-at-champ="plonge-mode">
           <option value="vol" ${a.parVol ? 'selected' : ''}>Par vol : un tunnel lave un vol en tant de minutes</option>
           <option value="debit" ${a.parVol ? '' : 'selected'}>Par débit : unités de matériel par heure</option></select></label>
