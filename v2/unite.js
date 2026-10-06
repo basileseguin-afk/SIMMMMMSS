@@ -389,7 +389,9 @@
           <label>Le<select data-at-champ="jour">${jours}</select></label>
           ${this.at.champPersonnes(a, 'mu-eq-pers')}
           ${this.at.choixEffectifEquipe(a, 'mu-eq-eff')}
-          ${a.type === 'robot' ? `<label class="mu-eq-pers">Plateaux / h<input type="number" min="1" value="${a.debit}" data-at-champ="debit"></label>` : ''}
+          ${a.type === 'robot' ? `<label class="mu-eq-pers">Plateaux / h<input type="number" min="1" value="${a.debit}" data-at-champ="debit"></label>
+          <label class="mu-eq-pers" title="Sous ce nombre de personnes, le robot ne tourne pas">Minimum pour tourner<input type="number" min="0" max="99" value="${a.personnesMin ?? 1}" data-at-champ="personnesMin"></label>
+          ${(+a.personnes || 0) < (a.personnesMin ?? 1) ? `<span class="mu-badge cond off" role="status">⚠ à l’arrêt : ${+a.personnes || 0} pers. pour un minimum de ${a.personnesMin ?? 1}</span>` : ''}` : ''}
           <span class="mu-eq-fin">${fin ? 'finit à ' + esc(fin) : a.lots.length ? '' : ''}</span>
         </div>
         <p class="mu-question">Ce qu’elle prépare <small>cochez ; l’ordre suit les départs, la plus pressée d’abord</small></p>

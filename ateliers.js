@@ -1697,7 +1697,7 @@
           ${a.type === 'robot' ? `
           ${o.compact ? '' : `<label>Débit du robot (plateaux/h)<input type="number" min="1" value="${a.debit}" data-at-champ="debit"
             title="Le débit des commandes qui n’ont pas le leur (réglable à côté de chaque commande)"></label>`}
-          <label>Personnes minimum<input type="number" min="0" value="${a.personnesMin}" data-at-champ="personnesMin"></label>` : ''}
+          <label title="Sous ce nombre de personnes, le robot ne tourne pas">Minimum pour tourner<input type="number" min="0" value="${a.personnesMin}" data-at-champ="personnesMin"></label>` : ''}
         </div>
         ${dispo ? `
         <p class="mini-note at-regle">Ce service <b>ne prépare pas une commande après l’autre</b> : il sert
@@ -1755,10 +1755,10 @@
           <input value="${esc(t.nom)}" data-at-champ="tunnel-nom" data-index="${i}" maxlength="80" aria-label="Nom du tunnel">
           <input type="number" min="0" step="10" value="${t.debit}" data-at-champ="tunnel-debit" data-index="${i}" aria-label="Débit en unités par heure">
           <span class="at-tunnel-unite">u/h</span>
-          <input type="number" min="0" max="99" value="${t.personnes}" data-at-champ="tunnel-personnes" data-index="${i}" aria-label="Personnes pour tenir ${esc(t.nom)}">
-          <span class="at-tunnel-unite">pers.</span>
+          <label class="at-seuil" title="Le tunnel ne tourne que si l’équipe a au moins ce nombre de personnes pour lui (servis dans l’ordre de la liste)">Minimum pour tourner
+            <input type="number" min="0" max="99" value="${t.personnes}" data-at-champ="tunnel-personnes" data-index="${i}" aria-label="Personnes minimum pour que ${esc(t.nom)} tourne"><span>pers.</span></label>
           <span class="at-tunnel-etat">${!t.actif ? 'à l’arrêt'
-            : etatTunnels.sansPersonne.includes(t) ? 'personne pour le tenir' : 'tourne'}</span>
+            : etatTunnels.sansPersonne.includes(t) ? 'à l’arrêt : pas assez de monde' : 'tourne'}</span>
           <button class="btn btn-sm" data-at-action="tunnel-retirer" data-index="${i}">Retirer</button>
         </div>`).join('')}
         <div class="at-actions-lot">
@@ -1911,17 +1911,18 @@
           <label class="chk chk-mini"><input type="checkbox" data-at-champ="tunnel-actif" data-index="${i}" ${t.actif ? 'checked' : ''}>
             <span class="sr-only">${esc(t.nom)} en service</span></label>
           <input value="${esc(t.nom)}" data-at-champ="tunnel-nom" data-index="${i}" maxlength="80" aria-label="Nom du tunnel">
-          <input type="number" min="0" max="99" value="${t.personnes}" data-at-champ="tunnel-personnes" data-index="${i}" aria-label="Personnes pour tenir ${esc(t.nom)}">
-          <span class="at-tunnel-unite">pers.</span>
+          <label class="at-seuil" title="Le tunnel ne tourne que si l’équipe a au moins ce nombre de personnes pour lui (servis dans l’ordre de la liste)">Minimum pour tourner
+            <input type="number" min="0" max="99" value="${t.personnes}" data-at-champ="tunnel-personnes" data-index="${i}" aria-label="Personnes minimum pour que ${esc(t.nom)} tourne"><span>pers.</span></label>
           <label class="at-vitesse" title="Par rapport à un tunnel normal : 2 = lave deux fois plus vite. Les temps par compagnie sont ceux d’un tunnel normal.">×<input type="number" min="0.1" max="10" step="0.5"
             value="${String(t.vitesse || 1)}" data-at-champ="tunnel-vitesse" data-index="${i}" aria-label="Vitesse de ${esc(t.nom)} par rapport à un tunnel normal"></label>
           <span class="at-tunnel-unite">plus vite</span>
-          <span class="at-tunnel-etat">${!t.actif ? 'à l’arrêt' : etatTunnels.sansPersonne.includes(t) ? 'personne pour le tenir' : 'tourne'}</span>
+          <span class="at-tunnel-etat">${!t.actif ? 'à l’arrêt' : etatTunnels.sansPersonne.includes(t) ? 'à l’arrêt : pas assez de monde' : 'tourne'}</span>
           <button class="btn btn-sm" data-at-action="tunnel-retirer" data-index="${i}">Retirer</button>
         </div>`).join('')}
         <div class="at-actions-lot"><button class="btn btn-sm" data-at-action="tunnel-ajouter">+ Tunnel</button>
           <span class="mini-note at-tunnels-n"><b>${n}</b> tunnel${n > 1 ? 's' : ''} tourne${n > 1 ? 'nt' : ''} : autant de vols lavés en même temps.
-            Un tunnel ne tourne que si l’équipe a les gens pour le tenir, dans l’ordre de la liste.</span></div>
+            Un tunnel ne tourne que si l’équipe a son <b>minimum de personnes</b>, servi dans l’ordre de la liste
+            (${esc(String(Math.max(0, +a.personnes || 0)))} dans l’équipe${etatTunnels.reste ? ', ' + etatTunnels.reste + ' sans tunnel' : ''}).</span></div>
         <div class="at-sous-titre">Temps pour laver un vol, par compagnie <span class="mini-note">dans un tunnel normal (×1) ; un tunnel ×2 le lave en deux fois moins de temps</span></div>
         ${this.tableCompagnies(a, cies, nb, 'min par vol et par tunnel')}
         <p class="mini-note at-lavage-note">La plonge lave les vols qui reviennent, dans l’ordre de leur retour (arrivée + le délai

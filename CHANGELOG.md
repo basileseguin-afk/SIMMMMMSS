@@ -5,6 +5,27 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-06 — Le minimum de personnes d'un tunnel et du robot, à la vue
+
+Retour d'usage : « comme nous allons simuler, il faut un nombre seuil de
+personnes pour qu'un tunnel fonctionne, et pareil pour le robot ».
+
+- **Le moteur le faisait déjà.** Un tunnel ne tourne que si l'équipe de
+  plonge a son nombre de personnes, servi dans l'ordre de la liste des
+  tunnels. Le robot ne tourne pas sous son minimum de personnes.
+- **Mais c'était presque invisible**, d'où ces changements :
+  - Le seuil d'un tunnel s'intitule « Minimum pour tourner … pers. », par
+    vol comme par débit. Son état devient « à l'arrêt : pas assez de monde ».
+    La note rappelle combien l'équipe compte de personnes et combien restent
+    sans tunnel.
+  - Le minimum du robot sort de « Plus de réglages » : « Minimum pour
+    tourner » sur la ligne de l'équipe, dans Services et équipes. Un badge
+    « ⚠ à l'arrêt : 1 pers. pour un minimum de 2 » s'affiche quand il
+    manque du monde.
+- Test : `tests/seuils-browser.cjs` (v1 et v2). Vérifié avec les tests
+  unitaires et les 12 suites navigateur qui touchent la plonge et le robot ;
+  batterie complète à la fin de la série.
+
 ## 2026-10-06 — Un poste constant n'a pas de minutes par vol ; les superviseurs
 
 Retour d'usage : « sois smart : tous les postes qui ne dépendent pas des vols
