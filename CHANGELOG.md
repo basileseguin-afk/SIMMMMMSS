@@ -5,6 +5,24 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-07 — Défilement : la Liste des services et chaque service, vérifiés
+
+Signalement : « le scroll ne marche pas sur la page liste services, vérifie
+sur tous les services ».
+
+- **Non reproduit**, en v1 et en v2 :
+  - Équipes › Liste des services : molette sur le tableau, les noms, les
+    boutons, le haut, le bord droit et le bas ;
+  - cinq tailles d'écran, de 1024×700 à 1920×1080 ;
+  - une unité remplie (six services de plus, des équipes), en arrivant de
+    Services et équipes déjà défilée ;
+  - Services et équipes : les 12 services, sans équipe puis avec, la souris
+    sur la fiche puis sur la liste de gauche.
+  La page descend jusqu'en bas et remonte partout.
+- **Gardé en test** : `tests/defilement-browser.cjs` parcourt maintenant la
+  Liste des services et chaque service de Services et équipes (descendre,
+  puis remonter la souris sur la liste de gauche), v1 et v2.
+
 ## 2026-10-06 — « L'équipe ne prépare rien » : aucun flux ne passe par le service
 
 Signalement : « le frigo départ et le BOB, c'est une équipe de nombre

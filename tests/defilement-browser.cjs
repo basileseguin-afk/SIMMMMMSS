@@ -50,6 +50,26 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await remonte('mu-services','plonge');
    await remonte('at-chemins');
 
+   // 2 bis. Sur la Liste des services, et sur chaque service de Services et
+   //        équipes (retour d'usage du 07/10 : « le scroll ne marche pas sur la
+   //        page liste services, vérifie sur tous les services ») : on descend,
+   //        on remonte, la souris sur le contenu puis sur la liste de gauche.
+   const bout=async(id,x)=>{const v=page.locator('#view-'+id);await v.evaluate(e=>{e.scrollTop=0;});
+     await page.mouse.move(x,600);for(let k=0;k<10;k++){await page.mouse.wheel(0,500);await page.waitForTimeout(25);}await page.waitForTimeout(150);
+     const bas=await v.evaluate(e=>[e.scrollTop,e.scrollHeight-e.clientHeight]);
+     await page.mouse.move(160,600);for(let k=0;k<14;k++){await page.mouse.wheel(0,-500);await page.waitForTimeout(25);}await page.waitForTimeout(150);
+     return [bas,await v.evaluate(e=>e.scrollTop)];};
+   await nav.aller(page,'u-services');
+   {const [bas,haut]=await bout('flux',900);
+    assert.ok(bas[1]>0&&bas[0]>=bas[1]-2,version+' : la Liste des services descend jusqu’en bas '+bas);assert.equal(haut,0,version+' : et remonte');}
+   await nav.aller(page,'mu-services');
+   for(const s of await page.locator('#mu-services [data-mu-choisir]').evaluateAll(bs=>bs.map(x=>x.dataset.muChoisir))){
+    await page.locator(`#mu-services [data-mu-choisir="${s}"]`).click();await page.waitForTimeout(150);
+    const [bas,haut]=await bout('ateliers',900);
+    if(bas[1]>0)assert.ok(bas[0]>=bas[1]-2,version+' : '+s+' descend jusqu’en bas '+bas);
+    assert.equal(haut,0,version+' : '+s+' remonte, la souris sur la liste');
+   }
+
    // 3. Toutes les pages du menu.
    const ids=await page.evaluate(()=>Object.values(OrlyOnglets.ONGLETS).flat().map(o=>o.id).filter(id=>OrlyOnglets.partieDe(id)));
    for(const id of ids){await nav.aller(page,id);assert.equal(await deborde(),0,version+' : '+id+' allonge la page');}
