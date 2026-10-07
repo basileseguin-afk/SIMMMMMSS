@@ -448,7 +448,9 @@ poste constant n'a **pas de minutes par vol** : ses commandes passent dans ses
 heures de présence ; pour essayer un effectif sur un poste qui dépend des vols,
 **« Effectif imposé (essai) »** applique les minutes par vol à l'effectif
 saisi. Chaque service a aussi ses **superviseurs /
-coordinateurs** : hors production, gardés pour le budget quotidien. Constants par défaut : CF départ food, magasin,
+coordinateurs** : hors production, gardés pour le budget quotidien.
+Un service peut aussi n'avoir qu'**un seul atelier** (le BOB, les checkeurs) :
+x personnes, une heure, et les compagnies qu'il fait, cochées une à une. Constants par défaut : CF départ food, magasin,
 légumerie, duty free, appros. Le robot, la plonge, le handling et les mises à
 disposition gardent toujours leur effectif saisi. Une mise à disposition (les
 appros, le magasin…) a ses **personnes sur la journée** : 2 aux appros, ce sont
@@ -581,6 +583,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/effectif-browser.cjs` | L’effectif calculé (v1 et v2) : une équipe de cuisine montre son effectif, homme-minutes ÷ poste arrondi au-dessus, qui suit les commandes cochées ; Minutes de travail le montre sans le faire saisir ; « Effectif constant » rend la saisie (gardée au rechargement), décoché le calcul reprend ; CF départ food, magasin, légumerie, duty free, appros constants par défaut ; une mise à disposition (les appros) a ses personnes sur la journée (2 × 8 h dont 1 h de pause : 16 h de présence, 14 h de travail), jamais calculées ; la plonge a ses équipes hors tunnel, calculées d’après les vols qui reviennent (minutes par vol) ou saisies ; une équipe constante dans un service calculé (« Effectif ») retrouve son effectif saisi, puis revient au service ; superviseurs de CF départ food (sans effet sur la journée, gardés au rechargement) ; un poste constant sans minutes par vol (fiche, temps nul, pas de colonne dans Minutes de travail) ; « Effectif imposé (essai) » : durée = homme-minutes ÷ effectif saisi |
 | `tests/seuils-browser.cjs` | Le minimum de personnes pour qu’un tunnel ou le robot tourne (v1 et v2) : « Minimum pour tourner » à la vue, tunnel « à l’arrêt : pas assez de monde » puis « tourne », robot à l’arrêt (badge, rien ne sort) puis qui tourne |
 | `tests/sans-flux-browser.cjs` | Une équipe dans un service où aucun flux ne passe (CF départ food, Duty free ; v1 et v2) : grille grisée, le site dit pourquoi ; « Faire passer tous les flux par ici » la débloque ; la commande cochée passe sans minutes (poste constant) |
+| `tests/atelier-unique-browser.cjs` | Un service à un seul atelier pour certaines compagnies (le Duty free, v1 et v2) : une équipe constante, ses personnes, ses compagnies cochées (toutes leurs commandes, flux passés par le service), sans minutes ni alerte, Toutes/Aucune, gardé au rechargement, retour à des équipes ordinaires |
 | `tests/service-autonome-browser.cjs` | Un service à part entière créé depuis le site (v1 et v2), « Roulés couverts » : rangé comme Prépa ou Dotation, sans minutes ni liens hérités ; flux, équipe, minutes, calcul, tableau des minutes, planning, Excel, rechargement ; rattacher / détacher ; la salle de plus reste un choix |
 | `tests/armement-integre-browser.cjs` | « L’intégrer à tous les chemins » seulement s’il y a à faire (v1 et v2) : chemins suivis par les commandes seulement, un lien vers un handling suffit, sinon le chemin à reprendre est nommé avec la raison ; un clic le remet en ordre |
 | `tests/coherence.test.cjs` | Audit des flux (v1 et v2) : une case cochée hors du chemin de sa commande n’y est pas préparée, et c’est dit ; un vol ne part pas avec son seul armement |

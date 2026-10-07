@@ -34,7 +34,10 @@
     { id: 'handling', nom: 'Il charge les vols (handling)', court: 'chargement des vols' },
     // L'armement : ni BC, ni PC, ni Éco — ses catégories à lui (retour d'usage du 01/10).
     // « Une seule case par compagnie, oui ou non » (01/10), « toujours lié au handling » (02/10).
-    { id: 'categories', nom: 'Il travaille par compagnie : l’armement (relié au handling dans chaque chemin)', court: 'par compagnie' }
+    { id: 'categories', nom: 'Il travaille par compagnie : l’armement (relié au handling dans chaque chemin)', court: 'par compagnie' },
+    // « Le plus simple : le service comporte un seul atelier de x personnes, commençant à
+    // telle heure, faisant certaines compagnies » (07/10 : BOB, checkeurs de CF départ food).
+    { id: 'atelier', nom: 'Un seul atelier : x personnes, à telle heure, pour certaines compagnies', court: 'un atelier' }
   ];
   const preparent = n => n === 'manuel' || n === 'robot' || n === 'categories';
 
@@ -286,6 +289,9 @@
           : 'pour une compagnie dans une classe : les personnes de chaque équipe s’en déduisent')
         : nature === 'robot' ? etape(3, 'Débit du robot', '<p class="mini-note">Le débit (plateaux par heure) se règle dans la fiche de chaque équipe robot, plus haut : « Plus de réglages ».</p>') : '';
 
+      if (nature === 'atelier') return tete + lesFlux + aFaire
+        + etape(1, 'Ce qu’il fait', choixNature)
+        + etape(2, 'Son atelier : ses personnes, son heure, ses compagnies', this.atelierUnique(s, b.cases[0], calc));
       if (nature === 'categories') return tete + this.lienHandling(s) + aFaire
         + etape(1, 'Ce qu’il fait', choixNature)
         + etape(2, 'Minutes par vol, selon la compagnie', this.blocParCompagnie(s, classes), 'une case vide prend la valeur de « Toutes les compagnies »')
@@ -404,6 +410,59 @@
         <details class="mu-plus"${this.ouvertes && this.ouvertes.has(a.id) ? ' open' : ''} data-mu-plus="${esc(a.id)}"><summary>Plus de réglages : changer l’ordre, pauses, arrêts, minutes propres…</summary>
           ${this.at.carte(a, calc, { cmd: null, compact: true })}</details>
       </article>`;
+    }
+
+    /* Un seul atelier, pour certaines compagnies (07/10) : ses personnes, son heure,
+     * et une case par compagnie. Effectif constant : ses commandes passent dans ses
+     * heures de présence, sans minutes par vol. */
+    atelierUnique(s, a, calc) {
+      if (!a) return `<p class="mu-ajout"><button class="btn btn-play btn-sm" type="button" data-mu-action="atelier">+ Mettre l’atelier en place</button></p>`;
+      const NOMS_JOURS = { 0: 'jour du vol (J)', '-1': 'la veille (J-1)', '-2': 'l’avant-veille (J-2)', '-3': '3 jours avant (J-3)' };
+      const jours = [0, -1, -2, -3].map(j => `<option value="${j}"${j === (a.jour || 0) ? ' selected' : ''}>${NOMS_JOURS[j]}</option>`).join('');
+      const parCie = new Map();
+      for (const c of this.at.classes) if (!c.categorie) {
+        const k = String(c.cie).toUpperCase(), x = parCie.get(k) || { commandes: 0, vols: 0 };
+        x.commandes++; x.vols += c.vols.length; parCie.set(k, x);
+      }
+      const choisies = new Set(a.compagnies || []);
+      const cies = [...parCie.keys()].sort();
+      const v = calc.get ? calc.get(a.id) : null, fin = v && v.fin != null ? P.hhmm(v.fin) : null;
+      return `<article class="mu-equipe mu-atelier-unique" data-at="${esc(a.id)}">
+        <div class="mu-equipe-tete">
+          <label class="mu-eq-nom">Atelier<input value="${esc(a.nom)}" data-at-champ="nom" maxlength="160"></label>
+          <label class="mu-eq-pers">Personnes<input type="number" min="0" max="999" value="${a.personnes}" data-at-champ="personnes"></label>
+          <label>Arrive à<input type="time" value="${esc(a.debut)}" data-at-champ="debut"></label>
+          <label>Le<select data-at-champ="jour">${jours}</select></label>
+          <span class="mu-eq-fin">${fin ? 'dernière commande à ' + esc(fin) : ''}</span>
+        </div>
+        <p class="mu-question">Les compagnies qu’il fait <small>toutes leurs commandes, dans l’ordre des départs ; effectif constant : elles passent dans ses heures de présence, sans minutes par vol</small></p>
+        <div class="mu-atelier-cies">${cies.map(c => `<label class="chk"><input type="checkbox" data-mu-atelier-cie="${esc(c)}"${choisies.has(c) ? ' checked' : ''}>
+          <b>${esc(c)}</b> <small>${pl(parCie.get(c).commandes, 'commande')} · ${pl(parCie.get(c).vols, 'vol')}</small></label>`).join('') || '<span class="mini-note">Aucune compagnie dans le programme de vols.</span>'}</div>
+        ${cies.length ? `<p class="mu-atelier-gestes"><button class="btn btn-sm" type="button" data-mu-action="atelier-toutes">Toutes</button>
+          <button class="btn btn-sm" type="button" data-mu-action="atelier-aucune">Aucune</button>
+          <span class="mini-note">Cocher une compagnie fait passer ses flux par ${esc(s.nom)} ; les autres compagnies y passent sans s’y arrêter.</span></p>` : ''}
+        <details class="mu-plus"${this.ouvertes && this.ouvertes.has(a.id) ? ' open' : ''} data-mu-plus="${esc(a.id)}"><summary>Plus de réglages : pauses, arrêts…</summary>
+          ${this.at.carte(a, calc.get ? calc.get(a.id) : null, { cmd: null, compact: true })}</details>
+      </article>`;
+    }
+
+    /* Les compagnies de l'atelier unique : cochées, leurs flux passent par le service. */
+    compagniesAtelier(service, cies, oui) {
+      this.at.changer(() => {
+        const st = this.at.state, a = st.ateliers.find(x => x.service === service && x.parCompagnie); if (!a) return;
+        const set = new Set(a.compagnies || []);
+        for (const c of cies) { if (oui) set.add(c); else set.delete(c); }
+        a.compagnies = [...set].sort();
+        if (oui) {
+          // Les flux que suivent ses commandes passent par le service, à leur place.
+          const ids = new Set(this.at.classes.filter(c => !c.categorie && cies.includes(String(c.cie).toUpperCase())).map(c => c.id));
+          for (const t of PC.types(st)) {
+            if (P.servicesDuParcours(t).includes(service)) continue;
+            if (PC.commandesDuType(st, t.id, this.at.classes).some(c => ids.has(c.id))) PC.changerFlux(st, t.id, service, true, this.options());
+          }
+        }
+        a.lots = this.at.lotsAtelier(a);
+      }, this.nom(service) + ' : ' + (oui ? 'fait ' : 'ne fait plus ') + cies.join(', ') + '.');
     }
 
     /* Aucun flux ne passe par le service de l'équipe : toute sa grille est grisée
@@ -654,6 +713,29 @@
     nature(service, v) {
       const cases = this.etat.ateliers.filter(a => a.service === service);
       const avant = PC.natureService(this.etat, service, this.nom(service));
+      if (v === 'atelier' && avant !== 'atelier') {
+        if (cases.length > 1 && !confirm('« ' + this.nom(service) + ' » n’aura qu’un seul atelier : ses ' + cases.length + ' équipes deviennent une seule (la première). « Annuler » revient en arrière.')) { this.rendreServices(); return; }
+        delete this.natures[service];
+        return this.at.changer(() => {
+          const st = this.at.state;
+          if (st.categories) delete st.categories[service];
+          let a = cases.find(x => x.type === 'manuel') || cases[0];
+          a = a && st.ateliers.find(x => x.id === a.id);
+          if (!a) { a = PC.equipeNeuve(st, service, this.nom(service), 'manuel'); a.nom = this.nom(service); st.ateliers.push(a); }
+          if (a.type !== 'manuel') this.at.typer(a, 'manuel');
+          // Ses compagnies : celles qu'il préparait déjà.
+          const cies = [...new Set((a.lots || []).flat().filter(c => !String(c).includes('/@')).map(c => String(c).slice(0, String(c).lastIndexOf('/'))))].filter(Boolean);
+          Object.assign(a, { parCompagnie: true, effectif: 'fixe', compagnies: cies });
+          delete a.fusion; delete a.condition; delete a.minutes;
+          st.ateliers = st.ateliers.filter(x => x.service !== service || x === a);
+          a.lots = this.at.lotsAtelier(a);
+        }, this.nom(service) + ' : un seul atelier. Donnez ses personnes et son heure, puis cochez ses compagnies.');
+      }
+      if (avant === 'atelier' && v !== 'atelier') {
+        this.at.changer(() => { for (const a of this.at.state.ateliers) if (a.service === service) { delete a.parCompagnie; delete a.compagnies; delete a.effectif; } }, '');
+        if (v === 'manuel') { this.natures[service] = v; return this.rendreServices(); }
+        return this.nature(service, v);
+      }
       // Par catégories, ou plus par catégories : ses équipes repartent d'une grille vide.
       if (v === 'categories' || avant === 'categories') {
         // Vers « par compagnie », ses équipes gardent leurs compagnies ; dans l'autre sens, leur grille repart de zéro.
@@ -1215,6 +1297,7 @@
         } else if (el.dataset.muBesoin) this.passer(el.dataset.service, [el.dataset.muBesoin], el.checked);
         else if (el.dataset.muNature) this.nature(el.dataset.muNature, el.value);
         else if (el.dataset.muEffectif) this.at.regleEffectif(el.dataset.muEffectif, el.checked);
+        else if (el.dataset.muAtelierCie) this.compagniesAtelier(this.choisi, [el.dataset.muAtelierCie], el.checked);
         else if (el.dataset.muImpose) this.at.regleImpose(el.dataset.muImpose, el.checked);
         // Après l'événement : redessiner pendant qu'il court arracherait le champ qu'on quitte.
         else if (el.dataset.muEncadrement) { const svc = el.dataset.muEncadrement, n = el.value; setTimeout(() => this.at.regleEncadrement(svc, n), 0); }
@@ -1274,6 +1357,12 @@
         const id = this.choisi;
         switch (t.dataset.muAction) {
           case 'equipe': return this.ajouterEquipe(id);
+          case 'atelier': return this.nature(id, 'atelier');
+          case 'atelier-toutes': case 'atelier-aucune': {
+            const a = this.etat.ateliers.find(x => x.service === id && x.parCompagnie); if (!a) return;
+            const toutes = [...new Set(this.at.classes.filter(c => !c.categorie).map(c => String(c.cie).toUpperCase()))];
+            return this.compagniesAtelier(id, t.dataset.muAction === 'atelier-toutes' ? toutes : (a.compagnies || []).slice(), t.dataset.muAction === 'atelier-toutes');
+          }
           // Tous les flux passent par ce service, chacun à sa place.
           case 'flux-tous': {
             const ts = PC.types(this.etat).filter(x => !P.servicesDuParcours(x).includes(id));

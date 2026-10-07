@@ -209,6 +209,9 @@
         ...(a.materiel === 'consomme' ? { materiel: 'consomme' } : {}),
         // L'effectif saisi à la main avant que le calcul ne le remplace (05/10) :
         // cocher « Effectif constant » le retrouve.
+        // L'atelier unique d'un service, pour certaines compagnies (07/10).
+        ...(type === 'manuel' && a.parCompagnie ? { parCompagnie: true,
+          compagnies: [...new Set((Array.isArray(a.compagnies) ? a.compagnies : []).map(c => String(c).trim().toUpperCase().slice(0, 40)).filter(Boolean))].slice(0, 200) } : {}),
         // Son effectif, autrement que son service (06/10) : 'fixe' ou 'calcule' ; absent, comme le service.
         ...((type === 'manuel' || type === 'appui') && ['fixe', 'calcule', 'impose'].includes(a.effectif) ? { effectif: a.effectif } : {}),
         ...((type === 'manuel' || type === 'appui') && Number.isInteger(a.personnesSaisies) ? { personnesSaisies: Math.max(0, Math.min(999, a.personnesSaisies)) } : {}),
@@ -488,6 +491,7 @@
     }
 
     calculer() {
+      this.synchroniserAteliers();
       if (P.declarerCategories) P.declarerCategories(this.state.categories);
       try {
         this.resultat = P.simuler(this.argsMoteur(this.state.ateliers));
@@ -648,6 +652,22 @@
         <table class="at-appui-cies"><tbody>${ligne(P.TOUTES, 'Toutes les compagnies')}${cies.map(c => ligne(c, c)).join('')}</tbody></table>
         <p class="mini-note at-appui-note">${e ? `${e.vols} vol${e.vols > 1 ? 's' : ''} · ${dureeLue(e.hommeMinutes)} de travail ÷ ${dureeLue(e.poste)} par personne : <b>${e.personnes} ${e.personnes > 1 ? 'personnes' : 'personne'}</b>.`
           : 'Renseignez ses minutes par vol : sans elles, son effectif reste celui saisi.'}</p>`}`;
+    }
+
+    /* L'atelier unique (07/10) : ses commandes sont celles de ses compagnies, toutes
+     * classes, dans l'ordre des départs — de nouveaux vols, de nouvelles commandes. */
+    lotsAtelier(a) {
+      const cies = new Set(a.compagnies || []);
+      return this.classes.filter(c => !c.categorie && cies.has(String(c.cie).toUpperCase())).map(c => [c.id]);
+    }
+    synchroniserAteliers() {
+      let n = 0;
+      for (const a of this.state.ateliers) {
+        if (!a.parCompagnie) continue;
+        const l = this.lotsAtelier(a);
+        if (JSON.stringify(l) !== JSON.stringify(a.lots)) { a.lots = l; n++; }
+      }
+      if (n) this.enregistrer();
     }
 
     /* L'effectif calculé devient celui de l'équipe : le planning, le budget, les

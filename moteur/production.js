@@ -1567,6 +1567,9 @@
     // et il n'est pas un trou sur le chemin d'une commande.
     const handlings = ateliers.filter(a => a.type === 'handling');
     const servicesHandling = new Set(handlings.map(a => a.service));
+    // Un service à atelier unique (BOB, checkeurs, 07/10) ne fait que certaines
+    // compagnies : les autres passent par lui sans y être préparées, c'est voulu.
+    const servicesAtelier = new Set(ateliers.filter(a => a.parCompagnie).map(a => a.service));
     // Les boutiques (légumerie, magasin… ouverts de telle à telle heure) : on
     // n'y est servi qu'aux heures d'ouverture.
     const boutiques = new Map(ateliers.filter(a => ouvertureDe(a)).map(a => [a.service, a]));
@@ -1660,7 +1663,7 @@
         const route = routes.get(id); if (!route) continue;
         for (const s of route.services) {
           // Un service par catégories ne prépare pas les commandes : il n'est pas un trou sur leur chemin.
-          if (produit.has(cle(s, id)) || fusionPar.has(cle(s, id)) || lavages.has(s) || servicesHandling.has(s) || servicesCategories.has(s)) continue;
+          if (produit.has(cle(s, id)) || fusionPar.has(cle(s, id)) || lavages.has(s) || servicesHandling.has(s) || servicesCategories.has(s) || servicesAtelier.has(s)) continue;
           if (!trous.has(s)) trous.set(s, []);
           trous.get(s).push(id);
         }

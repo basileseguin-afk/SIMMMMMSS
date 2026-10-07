@@ -1383,6 +1383,8 @@
   function natureService(etat, service, nomService) {
     // Un service qui travaille par catégories à lui (l'armement : trolleys bar…).
     if (etat.categories && etat.categories[service]) return 'categories';
+    // Un seul atelier, pour certaines compagnies (BOB, checkeurs ; 07/10).
+    if ((etat.ateliers || []).some(a => a.service === service && a.parCompagnie)) return 'atelier';
     const types = (etat.ateliers || []).filter(a => a.service === service).map(a => a.type || 'manuel');
     for (const t of ['handling', 'lavage', 'dispo', 'robot', 'manuel']) if (types.includes(t)) return t;
     // D'après son NOM, pas son identifiant : la zone « handling » du plan est

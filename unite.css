@@ -61,6 +61,11 @@
 /* Les superviseurs / coordinateurs d'un service, hors production (06/10). */
 .mu-encadrement{display:grid;grid-template-columns:max-content 90px;align-items:center;gap:4px 12px;margin-top:12px;max-width:620px;font-size:14px}
 .mu-encadrement input{width:90px}
+/* L'atelier unique : une case par compagnie (07/10). */
+.mu-atelier-cies{display:flex;flex-wrap:wrap;gap:8px 14px;margin:6px 0 10px}
+.mu-atelier-cies label{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--bordure);border-radius:10px;font-size:14px}
+.mu-atelier-cies small{color:var(--txt2);font-size:12px}
+.mu-atelier-gestes{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .mu-encadrement small{grid-column:1/-1;font-size:12px;color:var(--txt2);line-height:1.4}
 .mu-eq-fin{flex:1;text-align:right;font-size:12px;color:var(--txt2);padding-bottom:8px}
 .mu-question{margin:12px 0 6px;font-size:13px;font-weight:700}

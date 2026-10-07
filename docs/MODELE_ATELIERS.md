@@ -172,6 +172,16 @@ rien n'est calculé. Case « Effectif imposé (essai) » sous « Effectif
 constant » dans la fiche du service, ou « Dépend des vols, effectif imposé »
 dans le choix d'une équipe (`effectif: 'impose'` ; moteur : `effectifImpose`).
 
+**Un seul atelier, pour certaines compagnies (07/10).** Nature de service
+« Un seul atelier : x personnes, à telle heure, pour certaines compagnies »
+(le BOB, les checkeurs de CF départ food). Une seule équipe à la main
+(`parCompagnie`, `effectif: 'fixe'`, `compagnies: ['AF', …]`) ; ses lots sont
+recalculés avant chaque journée : toutes les commandes de ses compagnies, dans
+l'ordre des départs. Constant, il n'a pas de minutes : ses commandes passent
+dans ses heures de présence. Cocher une compagnie fait passer ses flux par le
+service ; le moteur ne compte pas d'« étape sautée » pour les autres
+compagnies qui y passent.
+
 **Les superviseurs / coordinateurs (06/10).** Un champ par service, dans sa
 fiche (« Ce qu'il fait ») : combien sont présents (`encadrement`, par
 service). Hors production, ils ne changent rien au calcul ; ils serviront à

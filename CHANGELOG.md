@@ -5,6 +5,37 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-07 — Un service à un seul atelier, pour certaines compagnies
+
+Retour d'usage : « pour le BOB et les checkeurs, est-ce que "il travaille par
+compagnie" est le mieux ? Le plus simple serait de dire que le service
+comporte un seul et unique atelier de x personnes, commençant à telle heure,
+faisant certaines compagnies ».
+
+- **Une nature de plus** : « Un seul atelier : x personnes, à telle heure,
+  pour certaines compagnies ».
+  - Sa fiche : le nom, les personnes, l'heure d'arrivée, le jour, et une
+    case par compagnie (avec ses commandes et ses vols), plus « Toutes » et
+    « Aucune ». Pauses et arrêts sont sous « Plus de réglages ».
+  - Pas de grille par classe, pas de « + Ajouter une équipe ».
+- **Ce qu'il fait** : toutes les commandes de ses compagnies, toutes classes,
+  dans l'ordre des départs. Elles suivent le programme de vols : une nouvelle
+  commande AF s'y ajoute d'elle-même.
+  - Son effectif est constant : ses commandes passent dans ses heures de
+    présence, sans minutes par vol.
+- **Les flux** : cocher une compagnie fait passer ses flux par le service, à
+  leur place. Les autres compagnies y passent sans s'y arrêter, et sans
+  alerte « étape sautée ».
+- **Les changements de nature.**
+  - Vers « un seul atelier » : la première équipe du service devient
+    l'atelier, et garde les compagnies qu'elle préparait. Les autres
+    disparaissent, après confirmation ; « Annuler » revient en arrière.
+  - Retour à « des équipes préparent » : l'atelier redevient une équipe
+    ordinaire, avec ses commandes.
+- « Il travaille par compagnie » reste pour l'armement : minutes par vol,
+  relié au handling.
+- Test : `tests/atelier-unique-browser.cjs` (le Duty free, v1 et v2).
+
 ## 2026-10-07 — La molette sur la Liste des services (Firefox, Safari)
 
 Signalement, confirmé : « vraiment, le scroll avec la molette sur "Liste des
