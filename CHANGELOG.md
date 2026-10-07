@@ -5,6 +5,23 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-07 — Minutes de travail : l'effectif de l'équipe se lit, il ne se saisit plus
+
+Question : « pourquoi mettre le nombre de personnes sur le poste et pouvoir
+le changer dans les Minutes de travail ? »
+
+- **D'où venait ce champ** : c'est un reste d'avant l'effectif calculé, du
+  temps où l'on saisissait les personnes à la main à côté des minutes.
+  Désormais, les ateliers qui dépendent des vols tirent leurs personnes de
+  leurs minutes et du nombre de vols.
+- **La colonne « pers. » devient « équipe », en lecture.**
+  - Calculé : le nombre, en gras.
+  - Sinon : le nombre saisi dans la fiche de l'équipe (robot, poste
+    constant, essai), en gris, avec une bulle qui dit où le régler.
+  - La note sous le tableau le dit aussi.
+- Tests adaptés : `liaisons-browser` (l'effectif part de la fiche, le récap
+  le montre en lecture), `recap-browser`, `recap-compagnie-browser`.
+
 ## 2026-10-07 — Minutes de travail : la page ne remonte plus ; minutes d'une personne
 
 Retour d'usage : « dès que je valide un horaire dans les man-hours, la page

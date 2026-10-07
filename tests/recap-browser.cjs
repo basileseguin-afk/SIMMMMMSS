@@ -70,18 +70,18 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator('[data-pc-action=cmd][data-classe="AF/BC"]').click();await attendre();
   await nav.creerChemin(page,'AF/BC');
   await nav.aller(page,'rg-recap');await nav.deplier(page);
-  const pers=page.locator('.rg-recap-table tr[data-classe="AF/BC"] input[data-rg-champ=recap-pers]').first();
+  // L'effectif de la case se lit, il ne se saisit plus ici (07/10) : il suit la fiche.
+  const pers=page.locator('.rg-recap-table tr[data-classe="AF/BC"] [data-rg-equipe]').first();
   assert.equal(await pers.count(),1,'l’effectif de la case est là');
-  const at=await pers.getAttribute('data-atelier');
+  assert.equal(await page.locator('.rg-recap-table input[data-rg-champ=recap-pers]').count(),0,'en lecture');
+  const at=await pers.getAttribute('data-rg-equipe');
   const avant=await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).personnes,at);
-  await pers.fill(String(avant+2));await pers.dispatchEvent('change');await attendre();
-  assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).personnes,at),avant+2,'la case a son nouvel effectif');
-  const cel=page.locator(`.rg-recap-table input[data-atelier="${at}"]`).first().locator('xpath=ancestor::td/following-sibling::td[1]');
+  await page.evaluate(([id,n])=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.find(a=>a.id===id).personnes=n;},''),[at,avant+2]);await attendre();
+  assert.equal(await page.locator(`.rg-recap-table [data-rg-equipe="${at}"]`).first().innerText(),String(avant+2),'le tableau suit la fiche');
+  const cel=page.locator(`.rg-recap-table [data-rg-equipe="${at}"]`).first().locator('xpath=ancestor::td/following-sibling::td[1]');
   assert.match(await cel.innerText(),/\d/,'la durée d’un vol est dite, dans sa colonne');
   assert.equal(await page.locator('.rg-recap-t2 th').first().innerText(),'min/vol1 pers.','trois sous-colonnes par service (minutes d’une personne, 07/10)');
-  // « Annuler » du récap défait aussi un effectif.
-  await page.locator('#rg-recap-undo').click();await attendre();
-  assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).personnes,at),avant,'annulé');
+  // (L'effectif ne se change plus d'ici, 07/10 : plus d'« Annuler » d'un effectif dans le récap.)
 
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('recap-browser : ok');

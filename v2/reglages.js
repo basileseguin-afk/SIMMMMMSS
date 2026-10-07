@@ -318,12 +318,14 @@
       const section = document.getElementById('rg-modele');
       // Les mêmes écouteurs servent la fiche d'un service (Équipes ›
       // Services), où le temps de travail se règle aussi : `ecouter(el)`.
-      /* Le champ « personnes » d'une équipe : à saisir, ou calculé d'après ses
-       * homme-minutes (retour d'usage du 05/10), en lecture. */
+      /* L'effectif de l'équipe qui prépare : lu, jamais saisi ici (retour d'usage du
+       * 07/10 : « pourquoi pouvoir changer le nombre de personnes dans les minutes
+       * de travail ? »). Calculé d'après ses minutes et ses vols, ou saisi dans sa
+       * fiche (Équipes › Services et équipes) quand il ne se calcule pas. */
       this.persEquipe = eq => {
         const e = this.a.effectifCalcule ? this.a.effectifCalcule(eq.id) : null;
-        return e ? `<output class="rgr-calc" data-rg-calcule="${esc(eq.id)}" title="Calculé : homme-minutes de l’équipe ÷ minutes de son poste. Pour le saisir, cochez « Effectif constant » dans la fiche du service.">${e.personnes}</output>`
-          : `<input type="number" min="0" max="999" step="1" value="${eq.personnes}" data-rg-champ="recap-pers" data-atelier="${esc(eq.id)}" aria-label="Personnes de ${esc(eq.nom)}">`;
+        return e ? `<output class="rgr-calc" data-rg-calcule="${esc(eq.id)}" title="« ${esc(eq.nom)} » : effectif calculé, ses minutes × ses vols ÷ son poste">${e.personnes}</output>`
+          : `<output class="rgr-calc saisi" data-rg-equipe="${esc(eq.id)}" title="« ${esc(eq.nom)} » : effectif saisi dans sa fiche (Équipes › Services et équipes)">${eq.personnes}</output>`;
       };
       this.surChange = e => {
         const champ = e.target.dataset.rgChamp; if (!champ) return;
@@ -750,14 +752,14 @@
           ${r.colonnes.map(sv => `<th scope="colgroup" colspan="3" class="g"><span class="rg-recap-svc">${I ? I.ico(I.icoService(sv.id, sv.nom)) : ''}${esc(sv.nom)}</span></th>`).join('')}
           <th scope="col" rowspan="2" class="g">${vue === 'jour' ? 'Total journée' : 'Total par vol'}<small>man-min</small></th></tr>
           <tr class="rg-recap-t2">${r.colonnes.map(sv => `<th scope="col" class="g" title="${sv.robot ? 'Débit en plateaux par heure' : vue === 'jour' ? 'Minutes de travail d’une personne sur la journée' : 'Minutes de travail d’une personne pour un vol'}">${sv.robot ? 'pl/h' : vue === 'jour' ? 'min/jour' : 'min/vol'}<small>1 pers.</small></th>
-            <th scope="col" title="Personnes de l’équipe qui prépare">pers.</th><th scope="col" title="${vue === 'jour' ? 'Durée sur la journée' : 'Durée d’un vol'}">durée</th>`).join('')}</tr></thead>
+            <th scope="col" title="Personnes de l’équipe qui prépare : calculées (en gras), ou saisies dans sa fiche">équipe</th><th scope="col" title="${vue === 'jour' ? 'Durée sur la journée' : 'Durée d’un vol'}">durée</th>`).join('')}</tr></thead>
         ${corps}
         ${lignes.length || lignesCie.length ? '' : `<tbody><tr><td colspan="${r.colonnes.length * 3 + 3}" class="mini-note">Aucune commande ne correspond à « ${esc(filtre)} ».</td></tr></tbody>`}
         <tfoot><tr><th scope="row">Total journée</th><td></td>${r.colonnes.map(sv => `<td class="g">${sv.robot ? '' : heures(r.totaux.jour[sv.id])}</td><td></td><td></td>`).join('')}<td class="rg-recap-total g">${heures(r.totaux.jourTotal)}</td></tr></tfoot>
         </table></div>
         <p class="mini-note">${vue === 'jour' ? 'Man-minutes sur la journée : par vol × nombre de vols. Totaux en heures de travail.'
           : 'Minutes de travail pour un vol, comptées pour <b>une seule personne</b> (man-minutes). Changer une case la rend propre à cette compagnie × classe ; la vider la ramène à la valeur « toutes compagnies ».'}
-          Pour chaque service : la valeur, l’effectif de l’équipe qui prépare (modifiable) et la durée = man-minutes ÷ personnes
+          Pour chaque service : la valeur, l’effectif de l’équipe qui prépare (calculé d’après ses minutes et ses vols, ou saisi dans sa fiche) et la durée = minutes ÷ personnes
           (robot : plateaux ÷ débit). Un effectif <span class="rgr-p partage"><span>souligné en pointillé</span></span> est celui d’une case partagée par
           plusieurs commandes : il vaut pour toutes. La ligne d’une compagnie est son total : la somme de ses classes, service par
           service ; un service qui travaille par compagnie (l’armement) s’y règle — minutes par vol × départs de la compagnie ;

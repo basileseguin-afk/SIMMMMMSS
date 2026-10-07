@@ -49,17 +49,17 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   let f=await fiche('cu');
   await verifier('B4 récap man-min → fiche (barème, pour la journée)',async()=>assert.equal(await f.locator('[data-at-champ=minutes][data-classe="AF/BC"]').getAttribute('placeholder'),String(90*vols)));
 
-  // C. Personnes : récap man-min → fiche, récap des cases, calcul ; et fiche → récap man-min.
-  await nav.aller(page,'rg-recap');await nav.deplier(page);
-  await changer('input[data-rg-champ=recap-pers][data-atelier=cu]',3);
-  f=await fiche('cu');
-  await verifier('C1 personnes récap → fiche',async()=>assert.equal(await f.locator('[data-at-champ=personnes]').inputValue(),'3'));
-  await verifier('C2 personnes récap → calcul',async()=>assert.equal(Math.round((await lot('cu','AF/BC'))[1]-240),Math.round(90*vols/3)));
+  // C. Personnes : fiche → calcul, récap des cases, récap man-min (en lecture : on ne
+  //    les change plus dans le récap, 07/10 — elles se calculent, ou se saisissent dans la fiche).
+  f=await fiche('cu');await changer(`#at-liste [data-at=cu] [data-at-champ=personnes]`,3);
+  await verifier('C1 personnes fiche → fiche',async()=>assert.equal(await (await fiche('cu')).locator('[data-at-champ=personnes]').inputValue(),'3'));
+  await verifier('C2 personnes fiche → calcul',async()=>assert.equal(Math.round((await lot('cu','AF/BC'))[1]-240),Math.round(90*vols/3)));
   await nav.aller(page,'at-recap');
-  await verifier('C3 personnes récap → récap des cases',async()=>assert.match(await page.locator('tr[data-at=cu] th').innerText(),/3 pers\./));
+  await verifier('C3 personnes fiche → récap des cases',async()=>assert.match(await page.locator('tr[data-at=cu] th').innerText(),/3 pers\./));
   f=await fiche('cu');await changer(`#at-liste [data-at=cu] [data-at-champ=personnes]`,5);
   await nav.aller(page,'rg-recap');await nav.deplier(page);
-  await verifier('C4 personnes fiche → récap man-min',async()=>assert.equal(await page.locator('input[data-rg-champ=recap-pers][data-atelier=cu]').inputValue(),'5'));
+  await verifier('C4 personnes fiche → récap man-min',async()=>assert.equal(await page.locator('[data-rg-equipe=cu]').first().innerText(),'5'));
+  await verifier('C5 récap man-min : l’effectif se lit, ne se saisit pas',async()=>assert.equal(await page.locator('#rg-recap input[data-rg-champ=recap-pers]').count(),0));
 
   // D. Man-minutes propres à une case (fiche) → récap man-min.
   f=await fiche('cu');await changer(`#at-liste [data-at=cu] [data-at-champ=minutes][data-classe="AF/BC"]`,45);
@@ -89,7 +89,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await nav.aller(page,'at-recap');
   await verifier('F1 ensemble → récap des cases',async()=>assert.equal(await page.locator('tr[data-at=cu] .rc-seq li.ens .rc-cmd').count(),2));
   await nav.aller(page,'rg-recap');await nav.deplier(page);
-  await verifier('F2 nouvelle commande de la case → récap man-min (effectif)',async()=>assert.equal(await page.locator('tr[data-classe="DL/BC"] input[data-rg-champ=recap-pers][data-atelier=cu]').count(),1));
+  await verifier('F2 nouvelle commande de la case → récap man-min (effectif)',async()=>assert.equal(await page.locator('tr[data-classe="DL/BC"] [data-rg-equipe=cu]').count(),1));
 
   // G. Un service renommé → récap man-min, récap des cases.
   await page.evaluate(()=>Sim.editor.change(()=>{Sim.editor.state.zones.find(z=>z.id==='cuisine').nom='Cuisine chaude';},'x'));await attendre();
@@ -97,10 +97,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await nav.aller(page,'at-recap');
   await verifier('G2 renommé → récap des cases',async()=>{const t=await page.locator('.rc-table').innerText();assert.match(t,/Cuisine chaude/);assert.match(t,/Cuisine chaude AF BC/);});
 
-  // H. Annuler dans un récap : les autres suivent.
-  await nav.aller(page,'rg-recap');await nav.deplier(page);
-  await changer('input[data-rg-champ=recap-pers][data-atelier=mo]',9);
-  await page.locator('#rg-recap-undo').click();await attendre();
+  // H. Annuler : les récaps suivent.
+  f=await fiche('mo');await changer(`#at-liste [data-at=mo] [data-at-champ=personnes]`,9);
+  await page.locator('#at-undo').click();await attendre();
   await nav.aller(page,'at-recap');
   await verifier('H1 annuler un effectif → récap des cases',async()=>assert.match(await page.locator('tr[data-at=mo] th').innerText(),/4 pers\./));
 

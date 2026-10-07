@@ -59,9 +59,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    // « Annuler » du tableau revient en arrière.
    await page.locator('#rg-recap-undo').click();await attendre();
    assert.deepEqual(await minutes(),{'*':10,AF:15,TX:12},version+' : annulé');
-   // L'effectif de l'équipe, d'ici aussi.
-   await ligne('AF').locator('[data-rg-champ=recap-pers]').fill('3');await ligne('AF').locator('[data-rg-champ=recap-pers]').press('Tab');await attendre();
-   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.id==='ar').personnes),3);
+   // L'effectif de l'équipe se lit ici ; il se règle dans sa fiche (07/10).
+   await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.find(a=>a.id==='ar').personnes=3;},''));await attendre();
+   assert.equal(await ligne('AF').locator('[data-rg-equipe]').innerText(),'3',version+' : l’effectif se lit sur la ligne de la compagnie');
+   assert.equal(await ligne('AF').locator('[data-rg-champ=recap-pers]').count(),0);
    // Le même réglage, vu de la fiche de l'armement.
    await nav.aller(page,'mu-services');await page.locator('[data-mu-choisir=armement]').click();await attendre();
    assert.equal(await page.locator('#mu-services [data-mu-cat-min="ARM"][data-cie="TX"]').inputValue(),'12',version+' : la fiche de l’armement le montre');
