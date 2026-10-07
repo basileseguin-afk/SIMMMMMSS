@@ -31,7 +31,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // celui de l'aide repliée (textContent ramasse aussi ce qui est caché).
   const ordre=await page.evaluate(()=>[...document.querySelectorAll('#view-reglages .reglages-titre')]
     .map(h=>[...h.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join('').trim()));
-  assert.equal(ordre[0],'Minutes de travail par vol','il vient en premier');
+  assert.equal(ordre[0],'Minutes de travail par vol, pour une personne','il vient en premier');
   assert.ok(!ordre.includes('Ancien moteur de démonstration'),'l’ancien moteur a disparu');
   // Les temps de travail, et eux seuls : la comparaison est un onglet de « La journée ».
   assert.ok(!ordre.includes('Comparer deux essais'),'la comparaison n’encombre plus les temps de travail');

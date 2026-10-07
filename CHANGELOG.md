@@ -5,6 +5,32 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-07 — Minutes de travail : la page ne remonte plus ; minutes d'une personne
+
+Retour d'usage : « dès que je valide un horaire dans les man-hours, la page
+remonte directement ; de plus, les man-hours sont forcément pour une
+personne ».
+
+- **La page qui remontait.** Dans Minutes de travail, le tableau défile dans
+  sa propre zone. Chaque saisie validée redessine le tableau, et la zone
+  repartait en haut.
+  - Correctif à la source (`rendu.js`) : avant de redessiner un écran, on
+    note la position des zones qui défilent à l'intérieur. On les retrouve
+    ensuite dans le nouveau dessin par leur id, ou leur balise, leurs
+    classes et leur rang, et elles reprennent leur place.
+  - Le correctif vaut pour tous les écrans : tableaux, listes, fenêtres.
+  - Test : `tests/defilement-browser.cjs` met le tableau à mi-hauteur, tape
+    un temps et valide par Entrée. Le tableau reste où il était (v1 et v2).
+- **Des minutes pour une personne.** C'était déjà le calcul (durée = minutes
+  ÷ personnes de l'équipe) ; c'est maintenant écrit là où on les saisit :
+  - le titre du barème : « Minutes de travail par vol, pour une personne » ;
+  - l'en-tête du tableau : « min/vol · 1 pers. », avec une bulle d'aide ;
+  - l'étape 3 de la fiche d'un service : « le temps d'une seule personne… à
+    plusieurs, la durée se divise par les personnes de l'équipe » ;
+  - les minutes propres d'une case : « min d'une personne / jour » ;
+  - les minutes par vol d'une équipe hors tunnel.
+- Tests mis à jour sur ces libellés : `recap-browser`, `reglages-browser`.
+
 ## 2026-10-07 — Un service à un seul atelier, pour certaines compagnies
 
 Retour d'usage : « pour le BOB et les checkeurs, est-ce que "il travaille par

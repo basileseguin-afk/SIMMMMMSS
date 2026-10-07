@@ -285,8 +285,8 @@
       const temps = aucunVol && b.cases.length
         ? etape(3, 'Minutes de travail pour un vol', '<p class="mini-note">Ses postes ne dépendent pas des vols : <b>pas de minutes par vol</b>. Leurs commandes passent dans leurs heures de présence. Décochez « Effectif constant » (ou choisissez « Dépend des vols » pour une équipe) pour en saisir.</p>')
         : nature === 'manuel' && rg
-        ? etape(3, 'Minutes de travail pour un vol', rg.ficheTemps(s.id), constant ? 'pour une compagnie dans une classe : la durée se déduit des personnes de l’équipe'
-          : 'pour une compagnie dans une classe : les personnes de chaque équipe s’en déduisent')
+        ? etape(3, 'Minutes de travail pour un vol, pour une personne', rg.ficheTemps(s.id), constant ? 'le temps d’une seule personne, pour une compagnie dans une classe : à plusieurs, la durée se divise par les personnes de l’équipe'
+          : 'le temps d’une seule personne, pour une compagnie dans une classe : les personnes de chaque équipe s’en déduisent')
         : nature === 'robot' ? etape(3, 'Débit du robot', '<p class="mini-note">Le débit (plateaux par heure) se règle dans la fiche de chaque équipe robot, plus haut : « Plus de réglages ».</p>') : '';
 
       if (nature === 'atelier') return tete + lesFlux + aFaire

@@ -647,7 +647,7 @@
           ? 'Son effectif est <b>constant</b> : celui saisi plus haut.'
           : 'Son effectif <b>dépend des vols</b> : minutes par vol × ' + (lave ? 'vols qui reviennent à la plonge' : 'départs du jour') + ' de chaque compagnie ÷ son poste.'}
         Le choix se fait plus haut (« Effectif »), ou pour tout le service : « Effectif constant ».</p>
-        ${constant ? '' : `<div class="at-sous-titre">Minutes de travail par vol
+        ${constant ? '' : `<div class="at-sous-titre">Minutes de travail par vol, pour une personne
           <span class="mini-note">${lave ? 'pour chaque vol qui revient' : 'pour chaque départ'} ; vide : celle de toutes les compagnies</span></div>
         <table class="at-appui-cies"><tbody>${ligne(P.TOUTES, 'Toutes les compagnies')}${cies.map(c => ligne(c, c)).join('')}</tbody></table>
         <p class="mini-note at-appui-note">${e ? `${e.vols} vol${e.vols > 1 ? 's' : ''} · ${dureeLue(e.hommeMinutes)} de travail ÷ ${dureeLue(e.poste)} par personne : <b>${e.personnes} ${e.personnes > 1 ? 'personnes' : 'personne'}</b>.`
@@ -1676,7 +1676,7 @@
         const imp = importees(c), propre = (a.minutes || {})[c];
         return `<label class="at-mm" title="Man-minutes de ${esc(P.libelleClasse(c))} dans cette case, pour toute sa journée (tous ses vols). Vide : celles du barème (${imp}).">
           <input type="number" min="0" step="1" value="${propre ?? ''}" placeholder="${imp}" data-at-champ="minutes" data-classe="${esc(c)}"
-            aria-label="Man-minutes de ${esc(P.libelleClasse(c))} dans cette case, pour la journée (barème : ${imp})"><span>man-min / jour</span>${
+            aria-label="Man-minutes de ${esc(P.libelleClasse(c))} dans cette case, pour la journée (barème : ${imp})"><span>min d’une personne / jour</span>${
           propre != null ? `<small class="at-mm-import">import ${imp}</small>` : ''}</label>`;
       };
       // Un robot : le débit de chaque commande, en plateaux par heure ; vide = celui du robot.

@@ -45,7 +45,37 @@
   }
 
   let natif = null;
-  const ecrire = (box, html) => (natif ? natif.set.call(box, html) : (box.innerHTML = html));
+
+  /* Les zones qui défilent à l'intérieur (le tableau des Minutes de travail, une
+   * liste…) gardent leur place quand on redessine (retour d'usage du 07/10 :
+   * « dès que je valide un temps dans les man-hours, la page remonte »). Chaque
+   * zone défilée se retrouve dans le nouveau dessin par son id, ou sa balise et
+   * ses classes, et son rang parmi les pareilles. */
+  const signe = el => (el.id ? '#' + el.id : el.tagName + '.' + [...el.classList].sort().join('.'));
+  function defilees(box) {
+    const out = [];
+    for (const el of box.querySelectorAll('*')) {
+      if (!el.scrollTop && !el.scrollLeft) continue;
+      const k = signe(el);
+      out.push({ k, rang: out.filter(x => x.k === k).length, haut: el.scrollTop, gauche: el.scrollLeft });
+    }
+    return out;
+  }
+  function remettre(box, places) {
+    if (!places.length) return;
+    const par = new Map();
+    for (const el of box.querySelectorAll('*')) { const k = signe(el); if (!par.has(k)) par.set(k, []); par.get(k).push(el); }
+    for (const p of places) {
+      const el = (par.get(p.k) || [])[p.rang]; if (!el) continue;
+      el.scrollTop = p.haut; el.scrollLeft = p.gauche;
+    }
+  }
+  const remplacer = (box, html) => {
+    const places = box.isConnected ? defilees(box) : [];
+    natif ? natif.set.call(box, html) : (box.innerHTML = html);
+    remettre(box, places);
+  };
+  const ecrire = remplacer;
 
   /** Écrire le HTML ; le champ (ou la liste) où l'on était retrouve le focus. */
   function poser(box, html) {
@@ -105,7 +135,7 @@
           if (enSaisieDans(this)) { enAttente.set(this, String(html)); return; }
           enAttente.delete(this);
           if (root.document.activeElement && this.contains(root.document.activeElement)) poser(this, html);
-          else desc.set.call(this, html);
+          else remplacer(this, html);
         }
       });
     }

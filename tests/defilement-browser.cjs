@@ -72,6 +72,20 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     assert.equal(haut,0,version+' : '+s+' remonte, la souris sur la liste');
    }
 
+   // 2 ter. Minutes de travail : valider un temps ne ramène plus le tableau en haut
+   //        (retour d'usage du 07/10 : « dès que je valide un horaire dans les
+   //        man-hours, la page remonte »). Le tableau défile à part : sa place est gardée.
+   await nav.aller(page,'rg-recap');await nav.deplier(page);await attendre();
+   const zone=page.locator('#rg-recap .rg-recap-scroll');
+   const maxi=await zone.evaluate(z=>z.scrollHeight-z.clientHeight);
+   assert.ok(maxi>100,version+' : le tableau des minutes défile à part');
+   await zone.evaluate(z=>{z.scrollTop=Math.round((z.scrollHeight-z.clientHeight)/2);});await attendre();
+   const place=await zone.evaluate(z=>z.scrollTop);
+   const champ=await page.evaluateHandle(()=>{const z=document.querySelector('#rg-recap .rg-recap-scroll'),q=z.getBoundingClientRect();
+     return [...z.querySelectorAll('input[type=number]')].find(i=>{const r=i.getBoundingClientRect();return r.top>q.top+40&&r.bottom<q.bottom-10;});});
+   await champ.asElement().fill('17');await champ.asElement().press('Enter');await page.waitForTimeout(400);
+   assert.equal(await page.locator('#rg-recap .rg-recap-scroll').evaluate(z=>z.scrollTop),place,version+' : après Entrée, le tableau reste où il était');
+
    // 3. Toutes les pages du menu.
    const ids=await page.evaluate(()=>Object.values(OrlyOnglets.ONGLETS).flat().map(o=>o.id).filter(id=>OrlyOnglets.partieDe(id)));
    // Et aucun piège à molette (07/10, Liste des services) : une zone qui « sait »

@@ -78,7 +78,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).personnes,at),avant+2,'la case a son nouvel effectif');
   const cel=page.locator(`.rg-recap-table input[data-atelier="${at}"]`).first().locator('xpath=ancestor::td/following-sibling::td[1]');
   assert.match(await cel.innerText(),/\d/,'la durée d’un vol est dite, dans sa colonne');
-  assert.equal(await page.locator('.rg-recap-t2 th').first().innerText(),'min/vol','trois sous-colonnes par service');
+  assert.equal(await page.locator('.rg-recap-t2 th').first().innerText(),'min/vol1 pers.','trois sous-colonnes par service (minutes d’une personne, 07/10)');
   // « Annuler » du récap défait aussi un effectif.
   await page.locator('#rg-recap-undo').click();await attendre();
   assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).personnes,at),avant,'annulé');
