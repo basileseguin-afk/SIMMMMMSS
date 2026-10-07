@@ -58,6 +58,7 @@
 .mu-effectif input{margin-top:3px;width:18px;height:18px;flex:none}
 .mu-effectif span{display:flex;flex-direction:column;gap:2px}
 .mu-effectif small{font-size:12px;color:var(--txt2);line-height:1.4}
+.mu-effectif.mu-par-vols{flex-direction:column;gap:2px;cursor:default}
 /* Les superviseurs / coordinateurs d'un service, hors production (06/10). */
 .mu-encadrement{display:grid;grid-template-columns:max-content 90px;align-items:center;gap:4px 12px;margin-top:12px;max-width:620px;font-size:14px}
 .mu-encadrement input{width:90px}
@@ -209,6 +210,11 @@
 .mu-cat-toutes th,.mu-cat-toutes input{font-weight:650}
 #view-ateliers .mu-cat-table td input{width:80px;min-width:0;padding:3px 6px}
 .mu-cat-table thead th:first-child{vertical-align:middle;color:var(--txt2)}
+.mu-cat-table thead th:nth-child(n+3){min-width:0;padding:0 8px}
+.mu-cat-table .mu-cat-vols{text-align:center;color:var(--txt2)}
+.mu-cat-table .mu-cat-jour{padding:0 8px;white-space:nowrap}
+.mu-cat-table tfoot th,.mu-cat-table tfoot td{border-top:1px solid var(--bordure);padding-top:4px}
+.mu-cat-manque{color:var(--warn-stroke);font-size:12px}
 
 /* L'armement, lié au handling */
 .mu-lien-handling{margin:10px 0;padding:10px 12px;border-radius:10px;background:var(--bg2);border:1px solid var(--bordure2)}

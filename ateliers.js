@@ -491,11 +491,18 @@
     /* L'effectif d'un service (retour d'usage du 05/10) : constant, saisi équipe
      * par équipe, ou calculé d'après les homme-minutes de ses équipes. */
     effectifConstant(service) {
+      if (this.parVols(service)) return false;
       const v = (this.state.effectifs || {})[service];
       if (v === 'fixe' || v === 'calcule' || v === 'impose') return v === 'fixe';
       const s = this.a.services().find(x => x.id === service);
       return CONSTANTS.has(service) || NOMS_CONSTANTS.test((s && s.nom) || '');
     }
+
+    /* Un service qui travaille par compagnie (l'armement) dépend toujours des
+     * vols (retour d'usage du 07/10 : « l'armement dépend du nombre de vols de la
+     * compagnie ») : minutes par vol × départs de chaque compagnie. Ni lui ni ses
+     * équipes ne peuvent être constants. */
+    parVols(service) { return !!(this.state.categories || {})[service]; }
 
     /** Effectif imposé (essai) : les minutes par vol s'appliquent, l'effectif est celui saisi. */
     effectifImpose(service) { return (this.state.effectifs || {})[service] === 'impose'; }
@@ -527,6 +534,7 @@
     /** Le poste de cette équipe dépend-il des vols ? Son choix à elle, sinon celui du service. */
     dependDesVols(a) {
       if (!a || !(a.type === 'manuel' || a.type === 'appui')) return false;
+      if (this.parVols(a.service)) return true;
       if (['calcule', 'fixe', 'impose'].includes(a.effectif)) return a.effectif !== 'fixe';
       return !this.effectifConstant(a.service);
     }
@@ -544,7 +552,7 @@
       const svc = this.effectifConstant(a.service) ? 'constant' : this.effectifImpose(a.service) ? 'effectif imposé' : 'dépend des vols', v = a.effectif || '';
       const opt = (x, t) => `<option value="${x}"${x === v ? ' selected' : ''}>${t}</option>`;
       return `<label class="${classe || 'at-eff-equipe'}" title="Le poste de cette équipe dépend-il du nombre de vols ? Par défaut, comme son service (case « Effectif constant »).">Effectif
-        <select data-at-champ="effectif">${opt('', 'Comme le service (' + svc + ')')}${opt('calcule', 'Dépend des vols')}${opt('impose', 'Dépend des vols, effectif imposé (essai)')}${opt('fixe', 'Constant (saisi)')}</select></label>`;
+        <select data-at-champ="effectif">${opt('', 'Comme le service (' + svc + ')')}${opt('calcule', 'Dépend des vols')}${opt('impose', 'Dépend des vols, effectif imposé (essai)')}${this.parVols(a.service) ? '' : opt('fixe', 'Constant (saisi)')}</select></label>`;
     }
 
     regleEffectif(service, constant) {
@@ -648,7 +656,13 @@
     }
     synchroniserAteliers() {
       let n = 0;
+      // L'armement n'est jamais constant (07/10) : un ancien choix « constant » s'efface.
+      const eff = this.state.effectifs || {};
+      for (const s of Object.keys(this.state.categories || {})) if (eff[s] === 'fixe') { delete eff[s]; n++; }
       for (const a of this.state.ateliers) {
+        if (a.effectif === 'fixe' && this.parVols(a.service)) {
+          delete a.effectif; n++;
+        }
         if (!a.parCompagnie) continue;
         const l = this.lotsAtelier(a);
         if (JSON.stringify(l) !== JSON.stringify(a.lots)) { a.lots = l; n++; }

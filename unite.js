@@ -241,13 +241,18 @@
 
       // L'effectif : constant (saisi) ou calculé d'après les homme-minutes (retour d'usage du 05/10).
       const constant = this.at.effectifConstant(s.id);
-      const choixEffectif = preparent(nature) || nature === 'lavage' ? `<label class="mu-effectif"><input type="checkbox" data-mu-effectif="${esc(s.id)}"${constant ? ' checked' : ''}>
+      const impose = `<label class="mu-effectif mu-impose"><input type="checkbox" data-mu-impose="${esc(s.id)}"${this.at.effectifImpose(s.id) ? ' checked' : ''}>
+          <span><b>Effectif imposé (essai)</b><small>les minutes par vol s’appliquent, mais à l’effectif saisi, sans le calculer : « et avec 2 personnes, ça tient ? »</small></span></label>`;
+      // L'armement dépend toujours des vols de chaque compagnie (07/10) : pas de case « constant ».
+      const choixEffectif = nature === 'categories' ? `<p class="mu-effectif mu-par-vols"><b>Effectif selon les vols</b>
+          <small>le nombre de personnes de chaque équipe se calcule : minutes par vol × vols de chaque compagnie ÷ minutes de son poste.
+          Plus une compagnie a de vols, plus il faut de monde.</small></p>` + impose
+        : preparent(nature) || nature === 'lavage' ? `<label class="mu-effectif"><input type="checkbox" data-mu-effectif="${esc(s.id)}"${constant ? ' checked' : ''}>
         <span><b>Effectif constant</b><small>${constant ? 'ses équipes gardent le nombre de personnes saisi, quel que soit le nombre de vols. Décochez pour le calculer.'
           : nature === 'lavage' ? 'non coché : les équipes hors tunnel se calculent, minutes par vol × vols qui reviennent de chaque compagnie ÷ minutes de leur poste. Les tunnels gardent leur effectif. Cochez pour le saisir.'
           : 'non coché : le nombre de personnes de chaque équipe se calcule, minutes par vol × vols de chaque compagnie ÷ minutes de son poste. Le robot garde le sien. Cochez pour le saisir.'}
           Une équipe peut faire autrement : son choix « Effectif ».</small></span></label>`
-        + (constant ? '' : `<label class="mu-effectif mu-impose"><input type="checkbox" data-mu-impose="${esc(s.id)}"${this.at.effectifImpose(s.id) ? ' checked' : ''}>
-          <span><b>Effectif imposé (essai)</b><small>les minutes par vol s’appliquent, mais à l’effectif saisi, sans le calculer : « et avec 2 personnes, ça tient ? »</small></span></label>`) : '';
+        + (constant ? '' : impose) : '';
       const choixNature = `<label class="mu-nature">Ce service…<select data-mu-nature="${esc(s.id)}">${NATURES.map(x =>
         `<option value="${x.id}"${x.id === nature ? ' selected' : ''}>${esc(x.nom)}</option>`).join('')}</select></label>` + choixEffectif
         + `<label class="mu-encadrement">Superviseurs / coordinateurs<input type="number" min="0" max="99" value="${this.at.encadrement(s.id)}" data-mu-encadrement="${esc(s.id)}">
@@ -348,10 +353,24 @@
       const champ = cie => `<td><input type="number" min="0" step="1" value="${k.minutes[cie] ?? ''}" placeholder="${cie === '*' ? '—' : k.minutes['*'] ?? '—'}"
           data-mu-cat-min="${esc(k.id)}" data-cie="${esc(cie)}" aria-label="Minutes par vol${cie === '*' ? ', toutes les compagnies' : ', ' + esc(cie)}"></td>`;
       const aucun = !avec.length ? `<p class="mini-note">Aucune compagnie n’a de case : aucun chemin ne passe par ${esc(s.nom)}.</p>` : '';
+      // Le travail dépend des vols de chaque compagnie (07/10) : minutes par vol × ses départs du jour.
+      const lire = x => (x !== '' && x != null && Number.isFinite(+x) ? +x : null);
+      const vols = cie => new Set(classes.filter(c => c.cie === cie).flatMap(c => (c.vols || []).map(v => v.id))).size;
+      const h = m => (m >= 60 ? Math.floor(m / 60) + ' h ' + String(Math.round(m % 60)).padStart(2, '0') : Math.round(m) + ' min');
+      let totalVols = 0, total = 0, manque = 0;
+      const ligne = cie => {
+        const n = vols(cie), v = lire(k.minutes[cie]) ?? lire(k.minutes['*']);
+        totalVols += n; if (v == null) manque++; else total += v * n;
+        return `<tr><th scope="row">${esc(cie)}</th>${champ(cie)}<td class="mu-cat-vols">${n}</td>
+          <td class="mu-cat-jour">${v == null ? '<span class="mu-cat-manque">à remplir</span>' : `${v} × ${n} = <b>${esc(h(v * n))}</b>`}</td></tr>`;
+      };
+      const lignes = avec.map(ligne).join('');
       return aucun + `<div class="mu-grille-scroll"><table class="mu-cat-table" data-mu-cat-service="${esc(s.id)}">
-        <thead><tr><th scope="col">Compagnie</th><th scope="col">Minutes par vol</th></tr></thead>
-        <tbody><tr class="mu-cat-toutes"><th scope="row">Toutes les compagnies</th>${champ('*')}</tr>
-        ${avec.map(cie => `<tr><th scope="row">${esc(cie)}</th>${champ(cie)}</tr>`).join('')}</tbody></table></div>`
+        <thead><tr><th scope="col">Compagnie</th><th scope="col">Minutes par vol</th><th scope="col">Vols du jour</th><th scope="col">Sur la journée</th></tr></thead>
+        <tbody><tr class="mu-cat-toutes"><th scope="row">Toutes les compagnies</th>${champ('*')}<td></td><td></td></tr>
+        ${lignes}</tbody>
+        ${avec.length ? `<tfoot><tr><th scope="row">Total</th><td></td><td class="mu-cat-vols">${totalVols}</td><td class="mu-cat-jour"><b>${esc(h(total))}</b>${manque ? ` <span class="mu-cat-manque">(${manque} à remplir)</span>` : ''}</td></tr></tfoot>` : ''}</table></div>
+        <p class="mini-note mu-cat-note">Le travail suit les vols : minutes par vol (pour une personne) × vols de la compagnie. Les personnes de chaque équipe s’en déduisent, sur ses heures de poste.</p>`
         + (sansVol.length ? `<p class="mini-note mu-arm-sansvol">${esc(sansVol.join(', '))} : aucun départ au programme aujourd’hui — la case est là, à 0 vol, jusqu’à ce que le programme en porte.</p>` : '')
         + (hors.length ? `<p class="mini-note mu-arm-hors">Pas de case pour ${esc(hors.join(', '))} : ${hors.length > 1 ? 'leurs chemins ne passent' : 'son chemin ne passe'} pas par ${esc(s.nom)} (Une commande).</p>` : '');
     }
@@ -1304,10 +1323,10 @@
         else if (el.dataset.muCatMin) {
           const service = el.closest('[data-mu-cat-service]').dataset.muCatService, id = el.dataset.muCatMin;
           const cie = el.dataset.cie, v = el.value.trim();
-          return this.changerCategories(service, l => {
+          setTimeout(() => this.changerCategories(service, l => {
             const k = l.find(x => x.id === id); if (!k) return;
             if (v === '' || !Number.isFinite(+v)) delete k.minutes[cie]; else k.minutes[cie] = Math.max(0, +v);
-          }, 'Minutes par vol enregistrées.');
+          }, 'Minutes par vol enregistrées.'), 0);
         }
         else if (el.dataset.muFluxIci) {
           const svc = el.dataset.muFluxIci, t = PC.types(this.etat).find(x => x.id === el.value); if (!t) return;
@@ -1316,8 +1335,9 @@
         }
         else if (el.dataset.muNom) {
           const v = el.value.trim();
-          if (!v) { this.a.notify('Le nom ne peut pas être vide.'); this.rendreServices(); return; }
-          this.a.renommer(el.dataset.muNom, v); this.rendreServices();
+          if (!v) { this.a.notify('Le nom ne peut pas être vide.'); setTimeout(() => this.rendreServices(), 0); return; }
+          const svc = el.dataset.muNom;
+          setTimeout(() => { this.a.renommer(svc, v); this.rendreServices(); }, 0);
         }
       });
       d.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.muNom) { e.preventDefault(); e.target.blur(); } });

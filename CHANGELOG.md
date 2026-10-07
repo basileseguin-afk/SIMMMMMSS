@@ -5,6 +5,30 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-07 — L'armement suit toujours les vols de chaque compagnie
+
+Retour d'usage : « l'armement dépend du nombre de vols de la compagnie,
+pourtant tu pars du principe qu'il n'en dépend pas ».
+
+- **Le calcul multipliait déjà** les minutes par vol de l'armement par les
+  vols de chaque compagnie (AF : 20 min × 5 vols = 1 h 40). Mais rien ne
+  le montrait, et l'armement pouvait encore être déclaré constant.
+- **Un service qui travaille par compagnie n'est plus jamais constant.**
+  - La fiche n'a plus de case « Effectif constant ». À la place : « Effectif
+    selon les vols », avec la formule.
+  - L'équipe n'a plus le choix « Constant (saisi) ».
+  - Un ancien choix « constant » (service ou équipe) s'efface au calcul.
+  - L'« Effectif imposé (essai) » reste : il garde les minutes × vols.
+- **Le tableau « Minutes par vol, selon la compagnie »** montre, pour chaque
+  compagnie, ses **vols du jour** et le travail **sur la journée** (« 20 × 5
+  = 1 h 40 »), avec le total.
+- **Correctif** : saisir des minutes par compagnie (ou renommer un service)
+  levait une erreur de page ; l'enregistrement attend maintenant la fin de
+  l'événement.
+- Fichiers : `ateliers.js`, `unite.js`, `unite.css` (v1 et v2),
+  `docs/MODELE_ATELIERS.md`, `README.md`.
+- Test : `armement-vols-browser` (v1 et v2).
+
 ## 2026-10-07 — Minutes de travail : l'effectif de l'équipe se lit, il ne se saisit plus
 
 Question : « pourquoi mettre le nombre de personnes sur le poste et pouvoir

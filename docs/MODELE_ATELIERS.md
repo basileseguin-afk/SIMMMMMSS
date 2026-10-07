@@ -337,6 +337,15 @@ compagnie » ; la fiche d'un service dont le nom dit « armement » le propose).
     est préparée.
 - **Minutes par vol** selon la compagnie (« Toutes les compagnies » par
   défaut) × vols ; échéance du vol. Sans minutes : le calcul le dit.
+- **Toujours selon les vols** (retour d'usage du 07/10 : « l'armement dépend
+  du nombre de vols de la compagnie ») : un service par compagnie n'est
+  jamais constant. Ses équipes ont l'effectif calculé — minutes par vol ×
+  vols de chaque compagnie ÷ minutes du poste — ou, en essai, imposé. La
+  fiche n'a pas de case « Effectif constant », l'équipe pas de choix
+  « Constant » ; un ancien choix « constant » s'efface au calcul
+  (`ateliers.parVols`, `synchroniserAteliers`). Le tableau des minutes de la
+  fiche montre, par compagnie, ses vols du jour et le travail de la journée
+  (minutes × vols), avec le total.
 - **Le handling** attend l'armement du vol pour le charger.
 - **Dans les chemins** (retour d'usage du 02/10 : « intègre l'armement sur
   tous les chemins et lie-le uniquement au handling ») : dans chaque chemin
