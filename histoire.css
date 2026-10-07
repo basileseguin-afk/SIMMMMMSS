@@ -497,7 +497,9 @@ body>header{flex-wrap:nowrap}
 }
 
 /* Organisation › Services : un service par ligne, ce qu'il lui manque en tête. */
-.services-unite{padding:16px 20px 28px;display:grid;gap:12px;align-content:start;overflow:auto;flex:1 1 auto;min-height:0}
+/* La vue défile, pas la liste : une zone qui défile dans une zone qui défile garde
+   la molette sous Firefox et Safari (retour d'usage du 07/10, Liste des services). */
+.services-unite{padding:16px 20px 28px;display:grid;gap:12px;align-content:start;overflow:visible;flex:none}
 body:not([data-vue="flux"]) .services-unite{display:none}
 .svc-tete{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .svc-tete .mini-note{margin:0;font-size:14px}

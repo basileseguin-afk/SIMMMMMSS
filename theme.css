@@ -371,7 +371,7 @@ html,body{overscroll-behavior:none}
 /* Pas de « contain » sur une liste posée DANS la page (liste de gauche collante,
    tableau qui défile en largeur) : arrivée au bout, la molette doit repartir sur
    la page, sinon on reste « bloqué en bas » (retour d'usage du 05/10). */
-.services-unite,.panel-content,#panneau-edition,.pc-tiroir{overscroll-behavior:contain}
+.panel-content,#panneau-edition,.pc-tiroir{overscroll-behavior:contain}
 .table-scroll{overscroll-behavior-x:contain}
 
 /* Le passage d'une version à l'autre (v1 stable ↔ v2 en construction). */

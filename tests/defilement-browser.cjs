@@ -3,7 +3,9 @@
  * menu restent en place. Un texte pour lecteur d'écran (.sr-only), posé dans
  * une fiche longue, se calait sur la page et l'allongeait (fiche Plonge avec
  * son équipe, Barème par service) : la molette faisait alors remonter l'en-tête.
- * Toutes les pages, et chaque fiche de service, v1 et v2.
+ * Toutes les pages, et chaque fiche de service, v1 et v2. Aucune page n'a de
+ * « piège à molette » (07/10 : une zone qui garde la molette dans une zone qui
+ * défile — Firefox et Safari bloquaient la Liste des services).
  * Et l'on n'est jamais « bloqué en bas » (retour d'usage du 05/10 : « quand je
  * scrolle tout en bas, après je ne peux plus remonter ») : la liste collante de
  * gauche (services, commandes) arrêtait la molette même arrivée au bout. */
@@ -72,7 +74,18 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
    // 3. Toutes les pages du menu.
    const ids=await page.evaluate(()=>Object.values(OrlyOnglets.ONGLETS).flat().map(o=>o.id).filter(id=>OrlyOnglets.partieDe(id)));
-   for(const id of ids){await nav.aller(page,id);assert.equal(await deborde(),0,version+' : '+id+' allonge la page');}
+   // Et aucun piège à molette (07/10, Liste des services) : une zone qui « sait »
+   // défiler et garde la molette (overscroll-behavior contain/none), posée dans
+   // une zone qui défile. Chrome passe outre quand elle n'a rien à défiler ;
+   // Firefox et Safari, non : la page ne bouge plus.
+   const pieges=()=>page.evaluate(()=>{const sc=e=>/(auto|scroll)/.test(getComputedStyle(e).overflowY);
+     const nom=e=>(e.id?'#'+e.id:'')+(typeof e.className==='string'&&e.className?'.'+e.className.trim().split(/\s+/)[0]:'')||e.tagName;const out=[];
+     for(const e of document.querySelectorAll('body *')){if(e.offsetParent===null)continue;const st=getComputedStyle(e);
+       if(!sc(e)||!/(contain|none)/.test(st.overscrollBehaviorY)||st.position==='fixed')continue;
+       let x=e.parentElement;while(x&&x!==document.body){if(sc(x)&&x.scrollHeight>x.clientHeight+2){out.push(nom(e)+' dans '+nom(x));break;}x=x.parentElement;}}
+     return out;});
+   for(const id of ids){await nav.aller(page,id);assert.equal(await deborde(),0,version+' : '+id+' allonge la page');
+     assert.deepEqual(await pieges(),[],version+' : '+id+' : une zone garde la molette');}
 
    // 4. Chaque fiche de service.
    await nav.aller(page,'mu-services');

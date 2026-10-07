@@ -5,6 +5,27 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-07 — La molette sur la Liste des services (Firefox, Safari)
+
+Signalement, confirmé : « vraiment, le scroll avec la molette sur "Liste des
+services" ne marche pas ».
+
+- **Cause** : la page empilait trois zones qui « savent » défiler (la vue ›
+  `.services-unite` › le tableau). Celle du milieu n'avait rien à faire
+  défiler, mais portait `overscroll-behavior: contain`, une consigne qui
+  garde la molette pour elle.
+  - Chrome l'ignore quand la zone n'a rien à défiler : les tests, qui
+    tournent sous Chromium, passaient.
+  - Firefox et Safari l'appliquent : la molette s'arrêtait dans cette zone
+    et la page ne bougeait plus.
+- **Correctif** : `.services-unite` n'est plus une zone de défilement. C'est
+  la vue qui défile, et la consigne est retirée.
+- **Gardé en test** : `tests/defilement-browser.cjs` cherche maintenant ce
+  piège sur toutes les pages, en v1 et v2 : une zone qui garde la molette,
+  posée dans une zone qui défile. Le détecteur trouvait bien celle-ci avant
+  le correctif, et seulement sur cette page. Il n'en trouve plus aucune
+  après.
+
 ## 2026-10-07 — Défilement : la Liste des services et chaque service, vérifiés
 
 Signalement : « le scroll ne marche pas sur la page liste services, vérifie
