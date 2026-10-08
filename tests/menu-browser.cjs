@@ -43,8 +43,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await courant(),'organisation');
   assert.equal(await actif(),'mu-services','« Décrire une première équipe » ouvre les services et leurs équipes');
 
-  // 2. Le menu de l'en-tête : une partie ouvre ses pages, et seulement elles ;
-  //    ses outils fins viennent après la mention « Plus ».
+  // 2. Le menu de la barre latérale : une partie ouvre ses pages, et seulement
+  //    elles ; ses outils fins viennent après la mention « Plus ». Le fil
+  //    d'Ariane dit la partie, le titre la page.
   const attendues={donnees:['v-programme','v-planche'],
     chemins:['mu-carte','mu-flux','at-chemins','u-liens'],
     organisation:['mu-services','at-recap','rg-recap','u-services','at-equipes','rg-minutes'],
@@ -57,7 +58,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     assert.equal(await courant(),p);
     assert.equal(await page.locator('#menu [aria-current=page]').count(),1,'une seule partie ouverte');
     assert.deepEqual(await onglets(),pages,p);
-    assert.equal(await page.locator('#view-title').textContent(),noms[p]);
+    assert.equal(await page.locator('#ariane-partie').textContent(),noms[p]);
+    assert.equal(await page.locator('#view-title').textContent(),await page.evaluate(()=>OrlyOnglets.page(document.body.dataset.sous).nom));
     assert.deepEqual(await page.locator('#sous-onglets .so-secondaire').evaluateAll(bs=>bs.map(b=>b.dataset.sousOnglet)),plus[p]||[],p+' : les outils fins');
     assert.equal(await page.locator('#sous-onglets .so-plus').count(),plus[p]?1:0,p+' : une seule mention « Plus », avant eux');
     if(plus[p]) assert.equal(await page.locator('#sous-onglets .so-plus + [data-sous-onglet]').getAttribute('data-sous-onglet'),plus[p][0]);
@@ -163,7 +165,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 7. Le sens passe par l'image.
   assert.equal(await page.locator('#menu .menu-partie svg.ico').count(),6,'un pictogramme par partie, et l’accueil');
-  assert.equal(await page.locator('#view-ico svg').count(),1,'la page porte le pictogramme de sa partie');
+  assert.equal(await page.locator('#menu .menu-partie.actif svg.ico').count(),1,'la partie ouverte porte son pictogramme');
   assert.ok(await page.locator('#plan .zone-ico').count()>=10,'chaque service du plan a son médaillon');
 
   // 8. La sauvegarde, depuis l'en-tête ; les limites du calcul y sont dites.
@@ -180,10 +182,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.locator('#edit-done').click();await attendre();
   assert.equal(await page.locator('#menu [data-vers-partie=donnees]').isDisabled(),false);
 
-  // 10. Le contenu commence tout de suite : plus de bandeaux empilés.
+  // 10. Le contenu commence tout de suite : plus de bandeaux empilés (la barre
+  //     du haut, puis le titre de la page et ses outils).
   await nav.aller(page,'at-chemins');
-  const haut=await page.evaluate(()=>Math.round(document.getElementById('sous-onglets').getBoundingClientRect().bottom));
-  assert.ok(haut<=170,'les onglets finissent à '+haut+' px');
+  const haut=await page.evaluate(()=>Math.round(document.getElementById('tete-page').getBoundingClientRect().bottom));
+  assert.ok(haut<=120,'le titre de la page finit à '+haut+' px');
   // Sur le plus petit écran visé (1 024 px), rien ne déborde et le menu reste là.
   await page.setViewportSize({width:1024,height:700});await attendre();
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'pas de débordement');

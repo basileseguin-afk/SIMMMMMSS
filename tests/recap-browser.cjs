@@ -39,7 +39,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // Le barème par service le montre aussi.
   await page.locator(`.rg-recap-table input[data-service="${sid}"][data-classe="${cls}"]`).fill('1.1');
   await page.locator(`.rg-recap-table input[data-service="${sid}"][data-classe="${cls}"]`).dispatchEvent('change');await attendre();
-  await page.locator('#rg-recap-undo').click();await attendre();
+  await page.locator('#btn-annuler').click();await attendre();
   assert.equal((await bareme())[sid][cle],undefined,'Annuler');
 
   // 3. Sur la journée : par vol × vols, totaux en heures, en lecture.

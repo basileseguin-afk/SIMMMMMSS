@@ -5,11 +5,6 @@
  *  chaque vue, un titre et une phrase en mots de tous les jours.
  * ==========================================================================*/
 
-/* La page empile ses bandeaux ; le contenu prend ce qui reste. Une grille à
-   rangées fixes décalait tout dès qu'un bandeau se masquait. */
-  body{display:flex;flex-direction:column}
-  body>.app{flex:1 1 auto;min-height:0}
-
 
 /* --- Les couleurs : chacune a un sens ---------------------------------
    Une par étape (se repérer), une par classe de cabine (la reconnaître
@@ -42,14 +37,6 @@
 .cm-liste b{font-size:14px;line-height:1.25}
 .cm-liste p{margin:0;font-size:13px;color:var(--txt2)}
 
-/* --- Le titre de chaque vue : une tuile de couleur, un titre, une phrase - */
-.workspace-heading>div{display:grid;grid-template-columns:auto 1fr;column-gap:14px;align-items:center}
-.view-ico{grid-row:span 2;width:48px;height:48px;border-radius:14px;display:grid;place-items:center;
-  background:var(--c,var(--accent));color:#fff}
-.view-ico .ico{width:27px;height:27px}
-.view-ico:empty{display:none}
-.view-intro{margin:2px 0 0;font-size:14px;color:var(--txt2);max-width:90ch;line-height:1.4}
-.view-intro:empty{display:none}
 
 @media(max-width:1000px){
   .cm-liste{grid-template-columns:1fr 1fr;row-gap:16px}
@@ -254,34 +241,7 @@ body.en-lecture .zone.s-travail .zone-ico-trait,body.en-lecture .zone.s-attente 
  *  outils de la vue (annuler, Excel, importer) se rangent à droite des
  *  onglets au lieu de prendre une ligne à eux seuls.
  * ==========================================================================*/
-.workspace-heading{border-bottom:0 !important;padding-bottom:6px !important}
-.view-ico{width:42px;height:42px;border-radius:12px}
-.view-ico .ico{width:24px;height:24px}
-.sous-onglets{display:flex;flex-wrap:wrap;align-items:flex-end;gap:0 12px;padding:0 20px;background:var(--bg3);
-  border-bottom:1px solid var(--bordure);--c:var(--accent)}
-.sous-onglets[hidden]{display:none}
-body[data-vue="vols"] .sous-onglets{--c:var(--c-vols)}
-body[data-vue="ateliers"] .sous-onglets{--c:var(--c-equipes)}
-body[data-vue="reglages"] .sous-onglets{--c:var(--c-temps)}
-body[data-vue="plan"] .sous-onglets{--c:var(--c-journee)}
-body[data-vue="flux"] .sous-onglets{--c:var(--c-unite)}
-.so-liste{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;min-width:0;flex:1 1 auto}
-.so-liste::-webkit-scrollbar{display:none}
-.so-onglet{appearance:none;background:none;border:0;border-bottom:3px solid transparent;border-radius:8px 8px 0 0;
-  padding:10px 14px 9px;display:inline-flex;align-items:center;gap:7px;font:inherit;font-size:14px;font-weight:700;
-  color:var(--txt2);cursor:pointer;white-space:nowrap}
-.so-onglet .ico{width:18px;height:18px}
-.so-onglet:hover{color:var(--txt);background:var(--bg2)}
-.so-onglet.actif{color:var(--txt);border-bottom-color:var(--c);background:var(--bg2)}
-.so-onglet.actif .ico{color:var(--c)}
-.so-onglet:focus-visible{outline:2px solid var(--c);outline-offset:-3px}
-.so-badge{min-width:20px;height:20px;padding:0 6px;border-radius:99px;display:inline-grid;place-items:center;
-  font-size:12px;font-weight:800;color:#fff;background:var(--txt2)}
-.so-badge.attente{background:var(--attente)}
-.so-badge.retard{background:var(--retard)}
-.so-outils{display:flex;gap:6px;padding:6px 0;flex:none;margin-left:auto}
 .so-outils>[data-vue-outils]{display:flex;gap:6px;flex-wrap:nowrap}
-.so-outils .btn{padding:5px 10px;font-size:13px}
 body:not([data-vue="ateliers"]) [data-vue-outils="ateliers"],
 body:not([data-vue="flux"]) [data-vue-outils="flux"]{display:none}
 body.editing .sous-onglets{display:none}
@@ -402,33 +362,6 @@ button.lien-discret{min-height:32px !important}
 body[data-vue="accueil"] .app{display:none}
 body:not([data-vue="accueil"]) #view-accueil{display:none}
 
-/* L'en-tête : la marque (retour à l'accueil), les parties, la sauvegarde. Une
-   seule ligne : le contenu commence tout de suite dessous. */
-body>header{padding:8px 20px;gap:16px}
-header .marque{display:flex;align-items:center;gap:10px;background:none;border:0;color:#fff;font:inherit;font-weight:800;
-  font-size:15px;cursor:pointer;padding:4px 6px 4px 0;border-radius:10px;text-align:left}
-header .marque:hover .brand-mark{background:#0a8a90}
-header .marque small{font-weight:600}
-header .brand-mark{width:34px;height:34px;font-size:19px}
-.marque-txt{display:block;line-height:1.15}
-.menu-parties{display:flex;gap:4px;flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none}
-.menu-partie{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:99px;border:1.5px solid transparent;
-  background:transparent;color:#d3dfec;font:inherit;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap}
-.menu-partie .ico{width:18px;height:18px;color:color-mix(in srgb,var(--c) 45%,#fff)}
-.menu-partie:hover{background:#233e59;color:#fff}
-.menu-partie.actif{background:#fff;color:#14283e;border-color:#fff}
-.menu-partie.actif .ico{color:var(--c)}
-.menu-partie:disabled,header .marque:disabled{opacity:.45;cursor:not-allowed}
-header .entete-droite .btn .ico{width:17px;height:17px}
-
-/* Le titre de la page : sa partie et une phrase, sur une ligne. */
-.workspace-heading{padding:12px 20px 4px !important}
-.workspace-heading>div{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.view-ico{width:34px !important;height:34px !important;border-radius:10px !important}
-.view-ico .ico{width:20px !important;height:20px !important}
-.workspace-heading h1{font-size:20px}
-.view-intro{margin:0;font-size:14px}
-
 /* L'accueil : l'histoire en quatre images, ce qu'il y a à faire, les parties. */
 .accueil{flex:1 1 auto;overflow:auto;background:var(--bg2)}
 .acc{max-width:1180px;margin:0 auto;padding:24px 20px 40px;display:grid;gap:20px}
@@ -475,7 +408,6 @@ header .entete-droite .btn .ico{width:17px;height:17px}
 @media(max-width:900px){
   .acc-tuiles{grid-template-columns:1fr}
   .acc-lignes,.acc-pages{padding-left:18px}
-  .marque-txt small{display:none}
 }
 
 /* La synthèse : la journée entière d'abord, en tuiles lisibles de loin. */
@@ -487,14 +419,6 @@ header .entete-droite .btn .ico{width:17px;height:17px}
 .journee-chiffres .bilan dt{font-size:14px;color:var(--txt2)}
 .journee-chiffres .bilan dd{margin:0;text-align:left;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
 .bilan-suite{margin:14px 0 0}
-
-header .entete-droite .btn{display:inline-flex;align-items:center;gap:7px}
-/* L'en-tête tient sur une ligne jusqu'au plus petit écran visé (1 024 px). */
-body>header{flex-wrap:nowrap}
-@media(max-width:1250px){
-  header .marque small{display:none}
-  .menu-partie{padding:7px 10px}
-}
 
 /* Organisation › Services : un service par ligne, ce qu'il lui manque en tête. */
 /* La vue défile, pas la liste : une zone qui défile dans une zone qui défile garde

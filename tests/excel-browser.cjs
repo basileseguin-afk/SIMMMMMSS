@@ -129,7 +129,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator('#at-status').textContent(),/Import refusé[\s\S]*service inconnu « GARAGE »[\s\S]*Rien n’a été importé/);
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.length),nAvant,'rien n’a changé');
   // Et l'import s'annule.
-  await page.locator('#at-undo').click();await attendre();
+  await page.locator('#btn-annuler').click();await attendre();
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.nom==='Cuisine').personnes),2);
 
   // 2 bis. Les horaires seuls : un petit classeur, et seules les heures changent.
@@ -153,7 +153,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator('#at-status').textContent(),/Horaires importés : 1 case décalée \(Cuisine\)/);
   assert.equal(await page.evaluate(()=>Sim.ateliers.resultat.lots.find(l=>l.service==='cuisine').debut),-150,'la journée est recalculée : la cuisine part la veille à 21:30');
   assert.notEqual(finAvant,-150);
-  await page.locator('#at-undo').click();await attendre();
+  await page.locator('#btn-annuler').click();await attendre();
   assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.nom==='Cuisine').debut),'05:00','annulable');
 
   // 3. Le classeur des vols : départs et retours, aller-retour.

@@ -42,7 +42,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await ligne('s1').locator('select[data-at-champ=jour]').selectOption('-1');await attendre();
   assert.equal((await kase('s1')).jour,-1);
   assert.match(await ligne('s1').locator('.rc-quand').first().innerText(),/J-1 02:30/,'les heures de ses lignes suivent');
-  await page.locator('#rc-undo').click();await attendre();
+  await page.locator('#btn-annuler').click();await attendre();
   assert.equal((await kase('s1')).jour,0,'Annuler');
 
   // 3. Chercher une compagnie, une case ou un service.

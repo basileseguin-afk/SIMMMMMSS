@@ -57,8 +57,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('[data-pc-champ=case]').inputValue(),kase.id,'venue de « Les cases », la case est ouverte');
   // × ou Échap la referment ; cliquer le service la rouvre.
   const box=await page.locator('.pc-tiroir').boundingBox();
-  const barre=await page.locator('#sous-onglets').boundingBox();
-  assert.ok(box&&Math.abs(box.y-(barre.y+barre.height))<2&&box.y<1000-300&&box.x+box.width<=1440+1,'la fenêtre de la case est à l’écran, sous la barre des onglets');
+  const barre=await page.locator('#tete-page').boundingBox();
+  assert.ok(box&&Math.abs(box.y-(barre.y+barre.height))<2&&box.y<1000-300&&box.x+box.width<=1440+1,'la fenêtre de la case est à l’écran, sous le titre de la page et ses outils');
   assert.equal(await page.evaluate(()=>{const b=document.getElementById('at-export').getBoundingClientRect();
     return !!document.elementFromPoint(b.x+b.width/2,b.y+b.height/2).closest('#at-export');}),true,'les outils de la vue restent cliquables');
   await page.keyboard.press('Escape');await attendre();
@@ -167,7 +167,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('#fc-list article').count(),1,'la liste ne montre que ce lien');
   await page.locator(`${F} .gr-retirer`).click();await attendre();
   assert.equal(await nb(),n0,'la croix le retire');
-  await page.locator('#fc-undo').click();await attendre();
+  await page.locator('#btn-annuler').click();await attendre();
   assert.equal(await nb(),n0+1,'et Annuler le rend');
 
   // 6. Sur le plus petit écran visé, rien ne déborde : le diagramme défile dans son cadre.

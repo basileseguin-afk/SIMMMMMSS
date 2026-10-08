@@ -149,7 +149,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await onglet('at-equipes');
   await page.locator(`[data-at="${rob}"] [data-at-action=supprimer]`).click();await attendre();
   assert.equal((await etat()).ateliers.length,avantSuppr-1);
-  await page.locator('#at-undo').click();await attendre();
+  await page.locator('#btn-annuler').click();await attendre();
   assert.equal((await etat()).ateliers.length,avantSuppr,'l’annulation rend l’atelier');
   const garde=await etat();
   await page.reload();await nav.vue(page,'ateliers');await attendre();

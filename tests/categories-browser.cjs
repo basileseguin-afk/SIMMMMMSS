@@ -20,8 +20,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   for(const [fichier,version] of [['../index.html','v1'],['../v2/index.html','v2']]){
    await page.goto(pathToFileURL(path.resolve(__dirname,fichier)).href);await attendre();
    await page.evaluate(()=>localStorage.clear());await page.reload();await attendre();
-   // La version servie se lit dans l'en-tête (02/10).
-   assert.equal(await page.locator('header .marque-version').innerText(),'version '+await page.evaluate(()=>document.querySelector('meta[name="ory-version"]').content));
+   // La version servie se lit sous la marque, en haut de la barre latérale (02/10, 08/10).
+   assert.equal(await page.locator('#barre .marque-version').innerText(),'version '+await page.evaluate(()=>document.querySelector('meta[name="ory-version"]').content));
    // Une équipe prépare l'Éco de chaque compagnie du jeu.
    const construites=await page.evaluate(()=>{const cies=[...new Set(Sim.ateliers.classes.map(c=>c.cie))].sort();
      Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'mo',nom:'Montage',service:'prepa',type:'manuel',debut:'04:00',jour:0,personnes:4,pauses:[],

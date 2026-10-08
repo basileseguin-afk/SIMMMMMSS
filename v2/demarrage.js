@@ -193,7 +193,9 @@
   class Accueil {
     /**
      * @param {object} a adaptateur :
-     *   menu()          — le <nav> de l'en-tête où dessiner les parties
+     *   menu()          — le <nav> de la barre latérale où dessiner les parties
+     *   pages()         — facultatif : la liste des pages de la partie ouverte
+     *                     (dessinée par OrlyOnglets), à déplier sous elle
      *   accueil()       — l'élément où dessiner la page d'accueil
      *   etat()          — l'objet attendu par `tuiles()`
      *   partie()        — la partie ouverte ('accueil' sur l'accueil)
@@ -207,7 +209,11 @@
 
     rendre() { this.rendreMenu(); this.rendreAccueil(); }
 
-    /* L'en-tête : l'accueil, puis les quatre parties ; celle qui est ouverte est marquée. */
+    /* La barre latérale : l'accueil, puis les parties ; celle qui est ouverte
+     * est marquée, et ses pages se déplient juste dessous (refonte du 08/10).
+     * La liste des pages est déplacée, jamais recréée : elle garde ses
+     * écouteurs et son focus. Sans partie ouverte (l'accueil, la sauvegarde),
+     * elle attend après le menu. */
     rendreMenu() {
       const m = this.a.menu && this.a.menu(); if (!m || !O()) return;
       const ouverte = this.a.partie ? this.a.partie() : null;
@@ -218,7 +224,15 @@
       };
       const html = bouton('accueil', 'Accueil', 'unite', 'var(--accent)')
         + O().PARTIES.filter(p => !p.cache).map(p => bouton(p.id, p.nom, p.ico, p.couleur)).join('');
-      if (m.innerHTML !== html) m.innerHTML = html;
+      const pages = this.a.pages ? this.a.pages() : null;
+      if (this.dessin !== html || !m.firstElementChild) {
+        if (pages && m.contains(pages)) m.after(pages);
+        m.innerHTML = html; this.dessin = html;
+      }
+      if (!pages) return;
+      const on = m.querySelector('.menu-partie.actif:not([data-vers-partie="accueil"])');
+      if (on) { if (on.nextElementSibling !== pages) on.after(pages); }
+      else if (pages.parentNode === m) m.after(pages);
     }
 
     /* La page d'accueil : l'histoire en quatre images, ce qu'il y a à faire

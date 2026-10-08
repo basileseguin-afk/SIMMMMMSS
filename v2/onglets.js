@@ -249,13 +249,24 @@
         else if (d > boite.scrollLeft + boite.clientWidth) boite.scrollLeft = d - boite.clientWidth + 16;
       }
       h.hidden = !liste.length;
+      // Dans la barre latérale (refonte du 08/10), les pages se suivent en
+      // colonne et la barre défile en hauteur : la page ouverte y reste visible,
+      // une fois, quand elle change (on ne reprend pas la main à qui fait défiler).
+      const zone = on && on.closest('.barre-defile');
+      if (zone && this.vu !== actif && zone.scrollHeight > zone.clientHeight) {
+        const r = on.getBoundingClientRect(), z = zone.getBoundingClientRect();
+        if (r.top < z.top) zone.scrollTop -= z.top - r.top + 8;
+        else if (r.bottom > z.bottom) zone.scrollTop += r.bottom - z.bottom + 8;
+      }
+      this.vu = actif;
     }
 
-    /* Flèches, Début et Fin : le parcours clavier des onglets. */
+    /* Flèches, Début et Fin : le parcours clavier des onglets. Les pages se
+     * suivent en colonne dans la barre latérale : haut et bas valent gauche et droite. */
     clavier(e) {
       const b = e.target.closest('[data-sous-onglet]'); if (!b) return;
       const tous = [...this.a.hote().querySelectorAll('[data-sous-onglet]')], i = tous.indexOf(b);
-      const j = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tous.length - 1 }[e.key];
+      const j = { ArrowRight: i + 1, ArrowDown: i + 1, ArrowLeft: i - 1, ArrowUp: i - 1, Home: 0, End: tous.length - 1 }[e.key];
       if (j === undefined) return;
       e.preventDefault();
       const cible = tous[(j + tous.length) % tous.length];

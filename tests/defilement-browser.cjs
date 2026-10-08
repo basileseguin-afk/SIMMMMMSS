@@ -19,6 +19,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
  const attendre=()=>page.waitForTimeout(150);
  const deborde=()=>page.evaluate(()=>document.documentElement.scrollHeight-innerHeight);
+ // La liste de gauche de la vue (services, commandes) : à 160 px du bord de la
+ // vue, qui commence après la barre latérale (refonte du 08/10).
+ const gauche=()=>page.evaluate(()=>Math.round(document.getElementById('barre').getBoundingClientRect().right)+160);
  try{
   for(const [fichier,version] of [['../index.html','v1'],['../v2/index.html','v2']]){
    await page.goto(pathToFileURL(path.resolve(__dirname,fichier)).href);await attendre();
@@ -32,10 +35,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(await deborde(),0,version+' : la fiche de la plonge n’allonge pas la page');
    const vue=page.locator('#view-ateliers');
    assert.ok(await vue.evaluate(v=>v.scrollHeight>v.clientHeight),'c’est la vue qui défile');
-   // La molette, sur la fiche puis sur l'en-tête : l'en-tête reste en place.
+   // La molette, sur la fiche puis sur l'en-tête (la barre du haut) : l'en-tête reste en place.
    await page.mouse.move(800,600);await page.mouse.wheel(0,800);await attendre();
    assert.ok(await vue.evaluate(v=>v.scrollTop)>0,'la fiche défile');
-   await page.mouse.move(700,100);await page.mouse.wheel(0,400);await attendre();
+   await page.mouse.move(700,24);await page.mouse.wheel(0,400);await attendre();
    assert.equal(await page.evaluate(()=>document.documentElement.scrollTop),0,version+' : l’en-tête ne remonte pas');
    assert.equal(await page.locator('#menu').evaluate(m=>Math.round(m.getBoundingClientRect().top)>=0),true);
 
@@ -46,7 +49,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     const v=page.locator('#view-'+await page.evaluate(()=>[...document.querySelectorAll('[id^="view-"]')].find(x=>x.offsetParent&&x.scrollHeight>x.clientHeight).id.slice(5)));
     await page.mouse.move(900,500);for(let k=0;k<12;k++){await page.mouse.wheel(0,600);await page.waitForTimeout(40);}await attendre();
     assert.ok(await v.evaluate(x=>x.scrollTop)>100,version+' : '+id+' descend');
-    await page.mouse.move(160,500);for(let k=0;k<12;k++){await page.mouse.wheel(0,-600);await page.waitForTimeout(40);}await page.waitForTimeout(300);
+    await page.mouse.move(await gauche(),500);for(let k=0;k<12;k++){await page.mouse.wheel(0,-600);await page.waitForTimeout(40);}await page.waitForTimeout(300);
     assert.equal(await v.evaluate(x=>x.scrollTop),0,version+' : '+id+' remonte, la souris sur la liste de gauche');
    };
    await remonte('mu-services','plonge');
@@ -59,7 +62,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    const bout=async(id,x)=>{const v=page.locator('#view-'+id);await v.evaluate(e=>{e.scrollTop=0;});
      await page.mouse.move(x,600);for(let k=0;k<10;k++){await page.mouse.wheel(0,500);await page.waitForTimeout(25);}await page.waitForTimeout(150);
      const bas=await v.evaluate(e=>[e.scrollTop,e.scrollHeight-e.clientHeight]);
-     await page.mouse.move(160,600);for(let k=0;k<14;k++){await page.mouse.wheel(0,-500);await page.waitForTimeout(25);}await page.waitForTimeout(150);
+     await page.mouse.move(await gauche(),600);for(let k=0;k<14;k++){await page.mouse.wheel(0,-500);await page.waitForTimeout(25);}await page.waitForTimeout(150);
      return [bas,await v.evaluate(e=>e.scrollTop)];};
    await nav.aller(page,'u-services');
    {const [bas,haut]=await bout('flux',900);

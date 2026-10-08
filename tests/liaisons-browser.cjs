@@ -100,7 +100,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // H. Annuler : les récaps suivent.
   f=await fiche('mo');await changer(`#at-liste [data-at=mo] [data-at-champ=personnes]`,9);
-  await page.locator('#at-undo').click();await attendre();
+  await page.locator('#btn-annuler').click();await attendre();
   await nav.aller(page,'at-recap');
   await verifier('H1 annuler un effectif → récap des cases',async()=>assert.match(await page.locator('tr[data-at=mo] th').innerText(),/4 pers\./));
 

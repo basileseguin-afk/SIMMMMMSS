@@ -37,17 +37,8 @@ html,body{margin:0;height:100%}
 body{
   background:var(--bg); color:var(--txt);
   font-family:'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif; font-size:14px;
-  display:grid; grid-template-rows:auto 1fr; height:100vh; overflow:hidden;
 }
 
-/* --- En-tête --------------------------------------------------------------*/
-header{
-  display:flex; align-items:center; gap:18px; padding:9px 16px;
-  background:var(--bg3); border-bottom:2px solid var(--bordure); flex-wrap:wrap;
-}
-.marque{display:flex;align-items:center;gap:9px;font-weight:800;font-size:17px;white-space:nowrap;color:var(--txt)}
-
-.marque small{color:var(--txt3);font-weight:600;font-size:12px}
 .horloge-box{display:flex;align-items:center;gap:14px;background:var(--bg2);border:1px solid var(--bordure);border-radius:var(--r2);padding:6px 14px}
 .horloge{font-size:23px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px;color:var(--txt)}
 .horloge .jour{font-size:12px;color:var(--txt3);font-weight:600}
@@ -63,7 +54,6 @@ header{
 .btn-play:hover{background:#126d34;border-color:#126d34;color:#fff}
 .btn-pause{background:var(--orange);border-color:var(--orange);color:#fff}
 .btn-pause:hover{background:#96460a;border-color:#96460a;color:#fff}
-.entete-droite{margin-left:auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .vitesse-box{display:flex;align-items:center;gap:8px;color:var(--txt2);font-size:13px;font-weight:600}
 .vitesse-box input{width:110px;accent-color:var(--accent)}
 .vitesse-box b{color:var(--txt);min-width:38px}
@@ -164,16 +154,28 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 
 @media(max-width:1250px){ .app{grid-template-columns:260px 1fr 290px} }
 </style>
-<meta name="ory-version" content="cf0d89c365"/>
-<link href="interface.css?v=7bcf7853" rel="stylesheet"/><link href="editor.css?v=379cd9ed" rel="stylesheet"/><link href="flow-center.css?v=9f790b03" rel="stylesheet"/><link href="ateliers.css?v=22aa001b" rel="stylesheet"/>
-<link href="reglages.css?v=86e6961b" rel="stylesheet"/><link href="demarrage.css?v=33d3816b" rel="stylesheet"/><link href="aide.css?v=935ab1b2" rel="stylesheet"/><link href="usability.css?v=084b1ea5" rel="stylesheet"/><link href="graphe.css?v=51c6e753" rel="stylesheet"/><link href="histoire.css?v=27bc6815" rel="stylesheet"/><link href="temps.css?v=dc6ff1cd" rel="stylesheet"/><link href="unite.css?v=1a630de4" rel="stylesheet"/><link href="ds.css?v=b148a331" rel="stylesheet"/></head>
+<meta name="ory-version" content="ee2a3a0fef"/>
+<link href="interface.css?v=af9d91fe" rel="stylesheet"/><link href="editor.css?v=f75dd2ee" rel="stylesheet"/><link href="flow-center.css?v=9f790b03" rel="stylesheet"/><link href="ateliers.css?v=22aa001b" rel="stylesheet"/>
+<link href="reglages.css?v=86e6961b" rel="stylesheet"/><link href="demarrage.css?v=33d3816b" rel="stylesheet"/><link href="aide.css?v=935ab1b2" rel="stylesheet"/><link href="usability.css?v=da67a614" rel="stylesheet"/><link href="graphe.css?v=51c6e753" rel="stylesheet"/><link href="histoire.css?v=3e550ae1" rel="stylesheet"/><link href="temps.css?v=dc6ff1cd" rel="stylesheet"/><link href="unite.css?v=1a630de4" rel="stylesheet"/><link href="ds.css?v=9a12ce26" rel="stylesheet"/></head>
 <body data-vue="plan"><a class="skip-link" href="#workspace">Aller au contenu</a>
-<header>
+<!-- ============ NAVIGATION : la marque, les parties (celle qui est ouverte déplie ses pages), la sauvegarde ============ -->
+<aside aria-label="Navigation" class="barre" id="barre">
 <button class="marque" data-vers-partie="accueil" id="btn-accueil" title="Revenir à l’accueil" type="button"><span class="brand-mark">N</span><span class="marque-txt">Production ORY<small>Simulation d’une journée de repas à bord</small></span></button>
+<div class="barre-defile">
 <nav aria-label="Menu principal" class="menu-parties" id="menu"></nav>
-<div class="entete-droite">
+<div class="sous-onglets" id="sous-onglets"><div aria-label="Les pages de cette partie" aria-orientation="vertical" class="so-liste" role="tablist"></div></div>
+</div>
+<div class="barre-pied">
+<button class="barre-lien" data-page="u-sauvegarde" id="btn-sauvegarde" title="Enregistrer tout votre travail dans un fichier, ou le relire" type="button"><span data-ico="boite"></span><span>Sauvegarde</span></button>
 <a class="btn-version" href="v2/" title="La version de travail, avec les nouveautés à venir (finances, aléas, heures sup, optimisation). Elle part d’une copie de votre travail ; ses données restent à part.">Version 2<span>en construction →</span></a>
-<button class="btn" data-page="u-sauvegarde" id="btn-sauvegarde" title="Enregistrer tout votre travail dans un fichier, ou le relire" type="button"><span data-ico="boite"></span>Sauvegarde</button>
+</div>
+</aside>
+<!-- ============ BARRE DU HAUT : où l’on est, annuler / rétablir ============ -->
+<header class="haut">
+<nav aria-label="Vous êtes ici" class="ariane" id="ariane"><button class="ariane-partie" hidden="" id="ariane-partie" type="button"></button><span aria-hidden="true" class="ariane-sep" data-ico="droite" hidden=""></span><h1 id="view-title">Accueil</h1></nav>
+<div class="entete-droite">
+<button aria-label="Annuler" class="btn btn-icone" disabled="" id="btn-annuler" title="Annuler (Ctrl Z)" type="button"><span data-ico="annuler"></span></button>
+<button aria-label="Rétablir" class="btn btn-icone" disabled="" id="btn-retablir" title="Rétablir (Ctrl Maj Z)" type="button"><span data-ico="retablir"></span></button>
 </div>
 </header>
 <main aria-label="Accueil" class="accueil" id="view-accueil" tabindex="-1"></main>
@@ -181,8 +183,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <div class="app" id="workspace" tabindex="-1">
 <!-- ============ LEVIERS WHAT-IF ============ -->
 <!-- ============ PLAN ============ -->
-<div class="colonne col-plan"><div class="workspace-heading"><div><span class="view-ico" id="view-ico" aria-hidden="true"></span><h1 id="view-title">La journée</h1><p class="view-intro" id="view-intro"></p></div></div>
-<div class="sous-onglets" id="sous-onglets"><div class="so-liste" role="tablist" aria-label="Les onglets de cette étape"></div><div class="so-outils" id="so-outils"><div class="res-actions" data-sous="j-chiffres"><button class="btn btn-sm" id="btn-export" title="Enregistrer les résultats de la journée dans un fichier (JSON)" type="button">⇩ Exporter les résultats</button></div></div></div>
+<div class="colonne col-plan"><div class="workspace-heading" id="tete-page"><p class="view-intro" id="view-intro"></p><div class="so-outils" id="so-outils"><div class="res-actions" data-sous="j-chiffres"><button class="btn btn-sm" id="btn-export" title="Enregistrer les résultats de la journée dans un fichier (JSON)" type="button">⇩ Exporter les résultats</button></div></div></div>
 <div class="lecteur" id="lecteur" data-sous="j-plan"><div class="horloge-box">
 <div><div class="horloge" id="horloge">05:00</div><div class="jour">heure de la journée rejouée</div></div>
 <div class="transport">
@@ -267,8 +268,8 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <div aria-live="polite" class="toast" id="toast" role="status"></div>
 <script src="vols-demo.js?v=08d61681"></script>
 <script src="rendu.js?v=ac16ab27"></script>
-<script src="onglets.js?v=0243ae31"></script>
-<script src="icones.js?v=883082f8"></script>
+<script src="onglets.js?v=22bb09f1"></script>
+<script src="icones.js?v=1e5405a0"></script>
 <script src="ui-model.js?v=4688387f"></script>
 <script src="moteur/noyau.js?v=5b2122e2"></script>
 <script src="moteur/production.js?v=2b9cffbb"></script>
@@ -276,16 +277,16 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <script src="flow-center.js?v=d4b4f7c6"></script>
 <script src="tableur.js?v=d7003370"></script>
 <script src="graphe.js?v=d6b7a4a4"></script>
-<script src="parcours.js?v=9cf82dd8"></script>
+<script src="parcours.js?v=caee1ea8"></script>
 <script src="echanges.js?v=f7db5711"></script>
 <script src="ateliers.js?v=4c3cd0e2"></script>
 <script src="reglages.js?v=1aeb6352"></script>
 <script src="unite.js?v=e7e56c4b"></script>
-<script src="demarrage.js?v=e6c146d3"></script>
+<script src="demarrage.js?v=2b86e4f9"></script>
 <script src="temps.js?v=d3176c90"></script>
 <script src="replay.js?v=016adb42"></script>
 <script src="simulation.js?v=e6481416"></script>
 <script src="comparaison.js?v=65c11530"></script>
-<script src="sim.js?v=f0a44144"></script>
+<script src="sim.js?v=f2455e3e"></script>
 </body>
 </html>

@@ -58,7 +58,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await ligne('TX').locator('[data-rg-champ=recap-cie]').fill('0.167');await ligne('TX').locator('[data-rg-champ=recap-cie]').press('Tab');await attendre();
    assert.deepEqual(await minutes(),{'*':10,AF:15});
    // « Annuler » du tableau revient en arrière.
-   await page.locator('#rg-recap-undo').click();await attendre();
+   await page.locator('#btn-annuler').click();await attendre();
    assert.deepEqual(await minutes(),{'*':10,AF:15,TX:12},version+' : annulé');
    // L'effectif de l'équipe se lit ici ; il se règle dans sa fiche (07/10).
    await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.find(a=>a.id==='ar').personnes=3;},''));await attendre();

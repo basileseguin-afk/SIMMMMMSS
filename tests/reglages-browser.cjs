@@ -125,8 +125,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers=Sim.ateliers.state.ateliers.filter(a=>a.id!=='x-vide');}));await attendre();
 
   // 7. Annuler et rétablir.
-  await page.locator('#rg-undo').click();await attendre();
-  await page.locator('#rg-redo').click();await attendre();
+  await page.locator('#btn-annuler').click();await attendre();
+  await page.locator('#btn-retablir').click();await attendre();
   const valeur=cle=>page.evaluate(c=>Sim.reglages.etat.bareme.cuisine[c],cle);
   assert.equal(await valeur('*/BC'),70);
 
@@ -164,7 +164,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   fs.writeFileSync(ancien,JSON.stringify({schema:'ory-bareme',version:1,bareme:{cuisine:{BC:{parPax:2,parVol:0}}}}));
   await page.locator('#rg-import').setInputFiles(ancien);await page.waitForTimeout(400);
   assert.equal(await valeur('*/BC'),50,'2 min × 25 passagers types');
-  await page.locator('#rg-undo').click();await attendre();
+  await page.locator('#btn-annuler').click();await attendre();
   assert.equal(await valeur('CRL/BC'),15,'et l’import s’annule');
 
   // 9. Tout survit au rechargement.

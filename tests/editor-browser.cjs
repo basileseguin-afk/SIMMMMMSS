@@ -28,7 +28,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.keyboard.press('Control+z');assert.equal((await selected()).x,oldX);await page.keyboard.press('Control+Shift+z');assert.notEqual((await selected()).x,oldX);
   const w=(await selected()).w;c=await center('.handle-e');await drag(c.x,c.y,35,0);assert.ok((await selected()).w>w);
   await page.locator('#pe-locked').check();z=await selected();c=await center(`[data-pe-zone="${id}"] rect`);await drag(c.x,c.y,35,20);assert.equal((await selected()).x,z.x);await page.locator('#pe-locked').uncheck();
-  await click('#pe-duplicate');assert.equal((await state()).zones.length,initial+2);assert.equal((await selected()).kind,'room');await click('#pe-delete');assert.equal((await state()).zones.length,initial+1);await click('#pe-undo');assert.equal((await state()).zones.length,initial+2);
+  await click('#pe-duplicate');assert.equal((await state()).zones.length,initial+2);assert.equal((await selected()).kind,'room');await click('#pe-delete');assert.equal((await state()).zones.length,initial+1);await click('#btn-annuler');assert.equal((await state()).zones.length,initial+2);
   await click('[data-pe-tool=poly]');for(const [dx,dy]of [[400,170],[570,170],[560,300],[410,270]])await page.mouse.click(box.x+dx,box.y+dy);await page.keyboard.press('Enter');z=await selected();assert.equal(z.pts.length,4);
   const beforeMove=JSON.stringify(z.pts);c=await center('.handle-vertex[data-index="1"]');await drag(c.x,c.y,15,25);assert.notEqual(JSON.stringify((await selected()).pts),beforeMove);
   c=await center('.handle-mid[data-index="0"]');await drag(c.x,c.y,0,-15);assert.equal((await selected()).pts.length,5);

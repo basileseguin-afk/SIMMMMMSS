@@ -963,13 +963,14 @@ function initUnite(){
   const box=document.getElementById('mu-services');
   if(box&&Sim.reglages)Sim.reglages.ecouter(box);
 }
-/* La hauteur de l'en-tête (menu et onglets) : les listes collées en haut d'une
- * vue (services, commandes) s'y ajustent pour tenir dans l'écran. L'en-tête
- * change de hauteur avec la largeur de la fenêtre et d'une partie à l'autre. */
+/* La hauteur de l'en-tête (la barre du haut et le titre de la page, avec ses
+ * outils) : les listes collées en haut d'une vue (services, commandes) s'y
+ * ajustent pour tenir dans l'écran. Le titre change de hauteur avec la largeur
+ * de la fenêtre et d'une page à l'autre. */
 function majHauteurEntete(){
-  const so=document.getElementById('sous-onglets');
-  if(!so||so.hidden||!so.offsetParent)return;
-  document.documentElement.style.setProperty('--haut-entete',Math.round(so.getBoundingClientRect().bottom)+'px');
+  const t=document.getElementById('tete-page');
+  if(!t||!t.offsetParent)return;
+  document.documentElement.style.setProperty('--haut-entete',Math.round(t.getBoundingClientRect().bottom)+'px');
 }
 window.addEventListener('resize',()=>requestAnimationFrame(majHauteurEntete));
 /* ==========================================================================
@@ -1042,6 +1043,7 @@ function initDemarrage(){
   if(!window.OrlyDemarrage)return;
   Sim.demarrage=new OrlyDemarrage.Accueil({
     menu:()=>document.getElementById('menu'),
+    pages:()=>document.getElementById('sous-onglets'),
     accueil:()=>document.getElementById('view-accueil'),
     etat:etatDemarrage,
     partie:()=>activeView==='accueil'?'accueil':(document.body.dataset.partie||null)
@@ -1060,14 +1062,82 @@ function allerPartie(p){
   if(p==='accueil'){showView('accueil');return;}
   if(Sim.onglets)Sim.onglets.ouvrir(p);
 }
-/* Le titre de la page : sa partie, et une phrase qui dit ce qu'on y voit. */
+/* Où l'on est (refonte du 08/10) : le fil d'Ariane de la barre du haut — la
+ * partie, qui mène à sa première page, puis le nom de la page — et, sous lui,
+ * une phrase qui dit ce qu'on voit. Sur l'accueil, le titre suffit. */
 function afficherTitre(){
-  const O=window.OrlyOnglets, id=document.body.dataset.sous, pg=O&&id?O.page(id):null;
-  const partie=pg&&O.PARTIES.find(p=>p.id===pg.partie);
-  document.getElementById('view-title').textContent=partie?partie.nom:'';
-  const tuile=document.getElementById('view-ico');
-  if(partie&&tuile&&window.OrlyIcones){tuile.innerHTML=OrlyIcones.ico(partie.ico);tuile.style.setProperty('--c',partie.couleur);}
+  const O=window.OrlyOnglets, accueil=activeView==='accueil', id=document.body.dataset.sous;
+  const pg=!accueil&&O&&id?O.page(id):null, partie=pg&&O.PARTIES.find(p=>p.id===pg.partie);
+  document.getElementById('view-title').textContent=accueil?'Accueil':pg?pg.nom:'';
+  const lien=document.getElementById('ariane-partie'),sep=document.querySelector('#ariane .ariane-sep');
+  const premiere=partie?O.pagesDe(partie.id)[0]:null;
+  if(lien){
+    lien.hidden=!premiere;if(sep)sep.hidden=!premiere;
+    if(premiere){lien.textContent=partie.nom;lien.dataset.page=premiere.id;lien.title='Aller à la première page de '+partie.nom+' : '+premiere.nom;}
+  }
   const intro=document.getElementById('view-intro');if(intro)intro.textContent=pg?pg.intro:'';
+  // La sauvegarde n'est pas une partie du travail : son bouton, au pied de la barre, dit qu'on y est.
+  const sv=document.getElementById('btn-sauvegarde');
+  if(sv){const ici=!!partie&&partie.id==='fichier';sv.classList.toggle('actif',ici);if(ici)sv.setAttribute('aria-current','page');else sv.removeAttribute('aria-current');}
+  majAnnuler();
+}
+
+/* ==========================================================================
+ *  ANNULER / RÉTABLIR — un seul bouton, dans la barre du haut (08/10)
+ *  Chaque partie garde son historique : les cases, chemins et équipes ; le
+ *  barème ; les heures de travail (barème et cases mêlés) ; les liens ; le
+ *  plan en édition. Le bouton du haut actionne celui de la page ouverte — les
+ *  boutons de chaque zone restent dans la page, cachés — et suit son état.
+ *  Ctrl Z (⌘ Z) annule, Ctrl Maj Z ou Ctrl Y rétablit, hors d'un champ de
+ *  saisie : un champ garde sa propre annulation, lettre à lettre.
+ * ==========================================================================*/
+const HISTOIRES=[
+  [['mu-flux','mu-services','at-chemins','at-equipes','at-recap'],'at-undo','at-redo'],
+  [['rg-minutes','rg-simulation'],'rg-undo','rg-redo'],
+  [['rg-recap'],'rg-recap-undo','rg-recap-redo'],
+  [['u-liens'],'fc-undo','fc-redo']
+];
+/** Les boutons Annuler et Rétablir de la zone que la page ouverte modifie, ou rien. */
+function boutonsAnnuler(){
+  if(editMode)return ['pe-undo','pe-redo'];
+  if(activeView==='accueil')return null;
+  const h=HISTOIRES.find(([pages])=>pages.includes(document.body.dataset.sous));
+  return h?[h[1],h[2]]:null;
+}
+function majAnnuler(){
+  const ids=boutonsAnnuler();
+  [['btn-annuler','Annuler (Ctrl Z)','Rien à annuler sur cette page'],['btn-retablir','Rétablir (Ctrl Maj Z)','Rien à rétablir sur cette page']].forEach(([id,titre,rien],k)=>{
+    const b=document.getElementById(id);if(!b)return;
+    const c=ids&&document.getElementById(ids[k]),off=!c||c.disabled,t=ids?titre:rien;
+    // Seulement ce qui change : le bouton du haut observe les « disabled » de la page, et lui-même en est un.
+    if(b.disabled!==off)b.disabled=off;
+    if(b.title!==t)b.title=t;
+  });
+}
+function annulerOuRetablir(refaire){
+  const ids=boutonsAnnuler(),c=ids&&document.getElementById(ids[refaire?1:0]);
+  if(c&&!c.disabled)c.click();
+  majAnnuler();
+}
+/** Un champ où l'on tape du texte : Ctrl Z y reste celui du navigateur. */
+const saisieTexte=el=>!!(el&&el.closest)&&(el.isContentEditable||el.matches('textarea,input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=button]):not([type=submit]):not([type=reset]):not([type=file]):not([type=color])'));
+function initAnnuler(){
+  const un=document.getElementById('btn-annuler'),re=document.getElementById('btn-retablir');
+  if(!un||!re)return;
+  un.addEventListener('click',()=>annulerOuRetablir(false));
+  re.addEventListener('click',()=>annulerOuRetablir(true));
+  // Un historique qui se vide ou se remplit change le bouton de sa zone : celui du haut suit.
+  let prevu=0;
+  new MutationObserver(()=>{if(!prevu)prevu=requestAnimationFrame(()=>{prevu=0;majAnnuler();});})
+    .observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['disabled']});
+  document.addEventListener('keydown',e=>{
+    // Pendant l'édition du plan, l'éditeur a ses propres raccourcis.
+    if(!(e.ctrlKey||e.metaKey)||e.altKey||editMode)return;
+    const k=e.key.toLowerCase();if((k!=='z'&&k!=='y')||saisieTexte(e.target))return;
+    e.preventDefault();
+    annulerOuRetablir(k==='y'||e.shiftKey);
+  });
+  majAnnuler();
 }
 function initFlux(){
   Sim.flows=new OrlyFlows.FlowCenter({zones:()=>Sim.editor.state.zones.filter(z=>!z.retire).map(z=>({...z,nom:nomLisible(z.nom)})),legacy:FLUX.concat(FLUX_RETOUR),
@@ -1933,7 +2003,8 @@ function updateRunState() {
     if (e) e.textContent = 'Édition du plan';
   } else if (Sim.vue) Sim.vue.rendreTransport();
   // Pendant l'édition du plan, le menu attend : on termine d'abord l'édition.
-  document.querySelectorAll('[data-vers-partie],#menu [data-page],#btn-sauvegarde').forEach(b => b.disabled = editMode);
+  document.querySelectorAll('[data-vers-partie],#menu [data-page],#ariane [data-page],#btn-sauvegarde').forEach(b => b.disabled = editMode);
+  majAnnuler();
 }
 
 /* ==========================================================================
@@ -2337,6 +2408,7 @@ etape('réglages de la simulation',()=>{if(Sim.ateliers)Sim.ateliers.rendreMater
 etape('simulation',initVueSimulation);
 etape('menu',initOnglets);
 etape('accueil',initDemarrage);
+etape('annuler',initAnnuler);
 etape('affichage',()=>{majHorloge();majPlan();majDashboard();majStocks();});
 // Le démarrage est allé au bout : la marque s'efface.
 try{localStorage.removeItem(CLE_DEMARRAGE);}catch(e){/* rien */}
@@ -2353,7 +2425,7 @@ if(pannes.length){
  * Simulation). C'est elle qu'on compare pour savoir si le navigateur sert la
  * dernière mise en ligne. */
 (function versionVisible(){
-  const v=document.querySelector('meta[name="ory-version"]'),t=document.querySelector('header .marque-txt');
+  const v=document.querySelector('meta[name="ory-version"]'),t=document.querySelector('.marque-txt');
   if(!t||!v||!/^[0-9a-f]{4,}$/.test(v.content)||t.querySelector('.marque-version'))return;
   const e=document.createElement('span');e.className='marque-version';e.textContent='version '+v.content;
   e.title='La version servie par le site : si elle ne change pas après une mise en ligne, rechargez la page (Ctrl+F5).';

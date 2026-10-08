@@ -19,13 +19,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.evaluate(()=>localStorage.clear());await page.reload();await attendre();
   await ajouter('Équipe de la v1');await attendre();
   assert.ok((await equipes()).includes('Équipe de la v1'));
-  assert.equal(await page.locator('header .btn-version').getAttribute('href'),'v2/');
+  assert.equal(await page.locator('#barre .btn-version').getAttribute('href'),'v2/');
 
   // 2. La v2 s'ouvre sans erreur, se dit en construction, et part du travail de la v1.
   await page.goto(v2);await attendre();
   assert.match(await page.title(),/v2/);
-  assert.match(await page.locator('header .btn-version.v2').innerText(),/Version 2/);
-  assert.equal(await page.locator('header .btn-version.v2').getAttribute('href'),'../');
+  assert.match(await page.locator('#barre .btn-version.v2').innerText(),/Version 2/);
+  assert.equal(await page.locator('#barre .btn-version.v2').getAttribute('href'),'../');
   assert.ok((await equipes()).includes('Équipe de la v1'),'la v2 part d’une copie du travail de la v1');
 
   // 3. Ce qu'on fait dans la v2 reste dans la v2…

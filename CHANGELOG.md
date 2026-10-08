@@ -5,6 +5,71 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-08 — Refonte, étape 3 : barre latérale, fil d'Ariane, un seul Annuler
+
+Proposition de refonte acceptée (« 1. Oui 2. Thème clair 3. Oui 4. Oui
+5. Oui »), avec une condition : « j'ai bien paramétré la simulation, ne change
+rien, toutes les valeurs doivent être les mêmes ». Rien ne change dans les
+données ni dans le calcul : `donnees-intactes-browser` le vérifie.
+
+- **Une barre latérale** remplace la rangée de l'en-tête : la marque et la
+  version servie, l'accueil, les cinq parties (six en v2), puis, au pied, la
+  Sauvegarde et le passage à l'autre version. La partie ouverte **déplie ses
+  pages** juste sous elle, le long d'un trait (les pages « Plus » après la
+  mention). Toute page s'atteint en deux clics : sa partie, puis elle. Les
+  flèches haut et bas passent d'une page à l'autre.
+- **Une barre du haut** : le fil d'Ariane (la partie, qui mène à sa première
+  page, puis le nom de la page) et **un seul Annuler / Rétablir**. Il agit
+  sur ce que la page ouverte modifie : cases, chemins et équipes ; barème ;
+  heures de travail ; liens ; plan pendant son édition. Les boutons de chaque
+  zone restent dans la page, cachés : c'est eux qu'il actionne, et il suit
+  leur état. **Ctrl Z** (⌘ Z) annule, **Ctrl Maj Z** ou **Ctrl Y** rétablit,
+  hors d'un champ de texte, qui garde sa propre annulation.
+- **Le titre de la page** tient sur une ligne : la phrase qui dit ce qu'elle
+  montre, et ses outils à droite (exporter, importer). Le contenu commence
+  à 92 px du haut sur toutes les pages, au lieu de 160 à 200 px (mesuré à
+  1 440 px de large).
+- Pendant l'édition du plan, la barre latérale se replie sur ses
+  pictogrammes et attend qu'on termine (le verrouillage du menu, gardé).
+- Les anciennes règles de l'en-tête sont retirées de `interface.css`,
+  `usability.css`, `histoire.css`, `editor.css` et du style des deux pages.
+- Fichiers : `index.html`, `onglets.js`, `demarrage.js`, `sim.js`,
+  `parcours.js` (la fenêtre d'une case se cale sous le titre de la page),
+  `icones.js` (annuler, rétablir, chevron), `ds.css` (nouvelle section
+  « Coquille », jeton `--ds-accent-pale`), et les feuilles ci-dessus, v1 et v2.
+- Tests : `coquille-browser` (nouveau) ; `menu-browser`, `defilement-browser`,
+  `graphe-browser`, `categories-browser`, `v2-browser` adaptés ; onze suites
+  cliquent désormais l'Annuler du haut ; `contraste` vérifie le nouveau jeton.
+
+## 2026-10-08 — Refonte, étape 1 : le design system remplace theme.css
+
+- `ds.css`, posée en dernier, décide seule de l'apparence : jetons des thèmes
+  clair (par défaut) et sombre (en option, activé plus tard), une seule
+  couleur d'accent, des couleurs d'état et de données, 8 tailles de texte,
+  3 graisses, une grille de 4 px, 4 rayons, des durées de mouvement ; la
+  police Inter, embarquée.
+- Les anciennes variables des vues (`--bg`, `--txt`, `--accent`,
+  `--c-vols`…) sont rebranchées sur ces jetons : la couleur ne dit plus
+  qu'un état.
+- `theme.css` est supprimée (v1 et v2).
+- Tests : `contraste` (nouveau) vérifie le contraste AA des jetons, dans les
+  deux thèmes.
+
+## 2026-10-08 — Refonte, étape 0 : garde-fou des données et des résultats
+
+- `tests/donnees-intactes-browser.cjs` (v1 et v2) : une unité complète,
+  parcourue page par page (le plan ouvert en édition puis refermé, le thème
+  changé), garde toutes ses clés du navigateur identiques après
+  rechargement ; la journée calculée donne les mêmes nombres que ceux relevés
+  avant la refonte (`tests/donnees-intactes.attendu.json`).
+
+## 2026-10-08 — Refonte UX/UI : audit et proposition
+
+- `docs/REFONTE_UX.md` : l'audit de l'interface, la direction proposée, le
+  design system, l'architecture des pages, le plan par étapes et ses
+  critères. `docs/maquette-refonte.html` : une maquette (données fictives),
+  qui ne remplace aucune page du site. Rien d'autre ne change.
+
 ## 2026-10-08 — L'armement se déduit des chemins et des équipes
 
 Retour d'usage : « pour les compagnies, fais plutôt comme ça : si aucune

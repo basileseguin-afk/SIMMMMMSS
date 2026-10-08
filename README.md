@@ -109,15 +109,24 @@ les vols, par où passe chaque commande, qui la prépare, la simulation, ce que
 la journée donne. Une page ne mélange jamais deux sujets, et deux pages n’ont
 jamais un nom qui se ressemble.
 
-L’en-tête garde, sur une ligne, l’accueil, les cinq parties et la
-**Sauvegarde**. Dans une partie, ses pages sont des **onglets** : un seul est
-affiché ; un nombre sur un onglet dit qu’il y a quelque chose à y faire. Les
-pages principales d’abord ; les **outils fins** du sujet (ceux qu’on ouvre
-rarement) suivent, en plus petit, après la mention **« Plus »** — il n’y a plus
-de partie cachée « Outils avancés ». La
-dernière page ouverte de chaque partie est retenue ; les outils de la page
-(annuler, rétablir, exporter, importer) se rangent à droite des onglets, et
-chaque export dit ce qu’il contient.
+La **barre latérale** (refonte du 08/10) garde l’accueil, les cinq parties et,
+à son pied, la **Sauvegarde** et le passage à la version 2. La partie ouverte
+**déplie ses pages** juste sous elle : une seule est affichée ; un nombre sur
+une page dit qu’il y a quelque chose à y faire. Les pages principales
+d’abord ; les **outils fins** du sujet (ceux qu’on ouvre rarement) suivent, en
+plus discret, après la mention **« Plus »** — il n’y a plus de partie cachée
+« Outils avancés ». Toute page s’atteint en deux clics : sa partie, puis
+elle. La dernière page ouverte de chaque partie est retenue.
+
+La **barre du haut** dit où l’on est (le fil d’Ariane : la partie, qui mène à
+sa première page, puis la page) et porte **un seul Annuler / Rétablir** : il
+agit sur ce que la page ouverte modifie (les cases, chemins et équipes ; le
+barème ; les heures de travail ; les liens ; le plan pendant son édition).
+**Ctrl Z** (⌘ Z) annule, **Ctrl Maj Z** ou **Ctrl Y** rétablit, hors d’un
+champ de saisie, qui garde sa propre annulation. Sous elle, une phrase dit ce
+que la page montre, et ses outils (exporter, importer) se rangent à droite ;
+chaque export dit ce qu’il contient. Pendant l’édition du plan, la barre
+latérale se replie sur ses pictogrammes et attend qu’on la termine.
 
 **Le vocabulaire.** Chaque vol **commande** ses repas : une **commande** par
 compagnie et par classe (« AF · Business », 88 passagers), pour la journée.
@@ -335,7 +344,7 @@ le rouge ne sert qu’aux retards.
      chargement ; les retours des vols face au débit de la plonge.
    - *Comparer deux essais* : A / B.
 
-**Sauvegarde** (en-tête) : tout le travail dans un fichier, et les limites
+**Sauvegarde** (au pied de la barre latérale) : tout le travail dans un fichier, et les limites
 connues du calcul.
 
 **Tout se pilote aussi depuis Excel** : ateliers (avec classes et parcours),
@@ -515,7 +524,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 |---|---|
 | `index.html` | Structure et contrôles |
 | `interface.css` | Disposition et hiérarchie visuelle |
-| `ds.css` / `polices/` | Le design system, posé en dernier (refonte du 08/10) : jetons (thème clair, sombre en option), police Inter embarquée (licence OFL), boutons, champs, pastilles, cartes, tableaux, onglets, coquille |
+| `ds.css` / `polices/` | Le design system, posé en dernier (refonte du 08/10) : jetons (thème clair, sombre en option), police Inter embarquée (licence OFL), boutons, champs, pastilles, cartes, tableaux ; la coquille : barre latérale, barre du haut (fil d’Ariane, Annuler / Rétablir), titre de la page |
 | `unite.js` / `unite.css` | Prêt à simuler ?, Flux de production et Services et équipes : le pas à pas et la fiche de chaque service (équipes, grille à cocher, minutes) |
 | `sim.js` | Interface, plan, interactions, glue entre les centres |
 | **`moteur/production.js`** | **Modèle par ateliers de travail** — compagnie × classe, lots ordonnés, robot, plonge, parcours lu des flux. Voir [la note de modèle](docs/MODELE_ATELIERS.md) |
@@ -531,7 +540,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `flow-center.js` / `flow-center.css` | Réseau configurable, règles humaines, onglet et affichage des flux |
 | `ateliers.js` / `ateliers.css` | Onglet « Ateliers de travail » : saisie, planning, couverture par classe |
 | `reglages.js` / `reglages.css` | Centre des réglages : barème, rendement, régime de poste |
-| `demarrage.js` / `histoire.css` | L’accueil : une tuile par partie avec son état, « à faire ensuite », l’histoire en quatre images, le menu de l’en-tête ; `histoire.css` porte aussi le graphisme : couleurs par sens, jauges, tableau des départs, plan de métro, barres |
+| `demarrage.js` / `histoire.css` | L’accueil : une tuile par partie avec son état, « à faire ensuite », l’histoire en quatre images, le menu de la barre latérale (la partie ouverte déplie ses pages) ; `histoire.css` porte aussi le graphisme : couleurs par sens, jauges, tableau des départs, plan de métro, barres |
 | `graphe.js` / `graphe.css` | Le diagramme de nœuds des chemins et des liens de l’unité : disposition en colonnes avec couloirs, tirer un trait pour relier, clavier, disposition retenue |
 | `onglets.js` | Le menu : les cinq parties et leurs pages (chacune est un sous-onglet d’une vue), les outils « Plus », la règle qui masque les autres, le clavier, la page retenue par partie |
 | `rendu.js` | Redessiner sans perdre ce qu’on tape : tant qu’on écrit dans un champ, la zone qui le contient attend pour se redessiner ; elle le fait dès que le champ est validé (Entrée, quitté), le focus revenant au même champ. Posé une fois, à la source (`innerHTML`), pour tous les écrans |
@@ -568,6 +577,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/armement-chemins-browser.cjs` | Armement intégré à tous les chemins, relié seulement au handling (v1 et v2) : migration au chargement (par compagnie, cases reprises, branche à part dans chaque chemin, sorti du milieu d’un chemin), pas de trou, le handling attend l’armement ; un nouveau chemin sans armement n’est pas à reprendre, un armement mal relié se relie d’un clic, « Annuler », une seule fois |
 | `tests/nom-equipe-browser.cjs` | Le nom d'une équipe (v1 et v2) : « CRL » en Dotation quand la Cuisine a le sien ; vide ou déjà pris dans le service : refusé, et le champ revient au nom gardé ; plus de « nommez-le » |
 | `tests/parallele-browser.cjs` | Un service en même temps qu'un autre (v1 et v2) : une cuisine chaude en atelier unique, « en même temps que Cuisine » — plus de flèche entre elles, les mêmes entrées et sorties ; une compagnie cochée ensuite s'y range ; « aucun » garde les chemins |
+| `tests/coquille-browser.cjs` | La coquille (v1 et v2) : barre latérale sur toute la hauteur, chaque page en deux clics (sa partie, puis elle, dépliée dessous), fil d’Ariane (la partie mène à sa première page), flèches haut et bas, sauvegarde au pied ; un seul Annuler / Rétablir pour ce que la page modifie (cases, barème, plan en édition), au bouton et au clavier (Ctrl Z, Ctrl Maj Z, Ctrl Y), jamais dans un champ de texte ; barre repliée pendant l’édition du plan ; rien de coupé à 1 280 et 1 024 px, sur toutes les pages |
 | `tests/donnees-intactes-browser.cjs` | Le garde-fou de la refonte de l’interface (v1 et v2) : une unité complète, parcourue page par page (plan ouvert en édition puis refermé, thème changé), garde toutes ses clés du navigateur identiques après rechargement ; la journée calculée donne les nombres relevés avant la refonte (`tests/donnees-intactes.attendu.json`) |
 | `tests/sans-armement-browser.cjs` | Des compagnies sans armement, déduites (v1 et v2) : un chemin à elle sans armement et cochée dans une équipe — armée, la fiche le dit ; décochée — plus de case, « Sans armement : TX », rien à reprendre ni à cocher, aucune alerte ; plus de colonne « Armée » ; l’armement remis dans son chemin, elle est à cocher |
 | `tests/armement-vols-browser.cjs` | L'armement suit toujours les vols (v1 et v2) : jamais constant (un ancien choix s'efface), minutes par vol × vols de chaque compagnie, plus de minutes → plus de monde, fiche sans case « constant », vols du jour et journée par compagnie, saisie sans erreur de page |

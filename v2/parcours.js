@@ -2013,10 +2013,10 @@
       // Une case qui se règle compagnie par compagnie (handling, plonge par vol)
       // a besoin d'une fenêtre plus large : ses tableaux ne tiendraient pas.
       document.body.classList.toggle('pc-tiroir-large', ouvert && !!this.a.boite().querySelector('.pc-tiroir .at-cies'));
-      // Elle commence sous la barre des onglets : le bandeau, les étapes et les
-      // outils de la vue (Annuler, Excel, Importer) restent à portée.
+      // Elle commence sous le titre de la page : le fil d'Ariane, Annuler et
+      // les outils de la vue (Excel, Importer) restent à portée.
       if (ouvert) {
-        const barre = document.getElementById('sous-onglets');
+        const barre = document.getElementById('tete-page');
         const bas = barre && !barre.hidden ? barre.getBoundingClientRect().bottom : 0;
         // Vue cachée : la barre ne se mesure pas ; on garde la dernière mesure.
         if (bas > 0) document.documentElement.style.setProperty('--tiroir-haut', Math.round(bas) + 'px');

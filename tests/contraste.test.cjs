@@ -43,6 +43,8 @@ for (const [nom, selecteur] of [['clair', ':root'], ['sombre', ':root[data-theme
     for (const [s, fond] of surfaces) for (const texte of ['ds-texte-1', 'ds-texte-2', 'ds-texte-3']) verifier(texte, fond, s);
     const blanc = couleur(t, 'ds-surface-1');
     verifier('ds-accent-texte', blanc, 'ds-surface-1');
+    // La page ouverte, dans la barre latérale : le texte sur l'accent pâle.
+    for (const texte of ['ds-texte-1', 'ds-texte-2']) verifier(texte, couleur(t, 'ds-accent-pale'), 'ds-accent-pale');
     // Le texte sur l'accent (bouton principal).
     assert.ok(ratio(couleur(t, 'ds-sur-accent'), couleur(t, 'ds-accent')) >= 4.5, nom + ' : texte sur l’accent');
     // Le texte des états, sur leur fond teinté (pastilles, badges).
