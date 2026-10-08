@@ -1,0 +1,66 @@
+{
+ "v1": {
+  "indicateurs": {
+   "classesSuivies": 18,
+   "classesAbsentes": 15,
+   "aHeure": 6,
+   "enRetard": 5,
+   "pasFinies": 7,
+   "partAHeure": 33,
+   "retardMoyen": 31.061,
+   "retardMax": 94.167,
+   "finDerniere": 549.167,
+   "attenteTotale": 178,
+   "attenteMateriel": 0,
+   "hommeHeures": 51.117,
+   "volsSuivis": 16,
+   "volsCharges": 0,
+   "volsAHeure": 0,
+   "partVolsAHeure": 0
+  },
+  "lots": 16,
+  "debuts": 3347.5,
+  "fins": 538.667,
+  "hommeMinutes": 3067,
+  "classes": 33,
+  "anomalies": [
+   "handling-bloque",
+   "parcours-trou",
+   "plonge-vol",
+   "poste"
+  ]
+ },
+ "v2": {
+  "indicateurs": {
+   "classesSuivies": 18,
+   "classesAbsentes": 15,
+   "aHeure": 6,
+   "enRetard": 12,
+   "pasFinies": 0,
+   "partAHeure": 33,
+   "retardMoyen": 186.461,
+   "retardMax": 466.375,
+   "finDerniere": 796.375,
+   "attenteTotale": 734.375,
+   "attenteMateriel": 0,
+   "hommeHeures": 51.117,
+   "volsSuivis": 16,
+   "volsCharges": 4,
+   "volsAHeure": 0,
+   "partVolsAHeure": 0,
+   "retardVolMax": 471.375
+  },
+  "lots": 32,
+  "debuts": 18199.375,
+  "fins": 4770.542,
+  "hommeMinutes": 3067,
+  "classes": 33,
+  "anomalies": [
+   "handling-poste",
+   "handling-retard",
+   "parcours-trou",
+   "plonge-vol",
+   "poste"
+  ]
+ }
+}
