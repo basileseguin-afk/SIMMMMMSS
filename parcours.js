@@ -962,7 +962,67 @@
     const avant = new Set(v.avant.filter(a => p.liens.some(l => l.de === a && l.vers === s)));
     const apres = new Set(v.apres.filter(b => p.liens.some(l => l.de === s && l.vers === b)));
     p.liens = p.liens.filter(l => !(avant.has(l.de) && apres.has(l.vers)));
+    // Deux services qui travaillent en même temps (08/10) : il se range en parallèle.
+    appliquerParallele(etat, p, s);
     return true;
+  }
+
+  /* Deux services qui travaillent EN MÊME TEMPS sur une commande (retour d'usage
+   * du 08/10 : « la cuisine chaude et la cuisine travaillent en parallèle ») :
+   * `etat.paralleles = { [s]: x }`. Dans un chemin qui a les deux, plus de flèche
+   * entre eux — ce qui passait par l'un pour aller à l'autre y va directement —,
+   * et `s` reçoit aussi ce que `x` reçoit, livre aussi ce que `x` livre :
+   * l'étape d'après attend les deux. Jamais de boucle.
+   * @returns {boolean} le chemin a changé */
+  function mettreEnParalleleDans(p, s, x) {
+    const noeuds = p.noeuds || [];
+    if (!s || !x || s === x || !noeuds.includes(s) || !noeuds.includes(x)) return false;
+    const avant = JSON.stringify(p.liens || []);
+    let liens = (p.liens || []).slice();
+    const preds = n => liens.filter(l => l.vers === n).map(l => l.de);
+    const succs = n => liens.filter(l => l.de === n).map(l => l.vers);
+    const ajouter = (de, vers) => {
+      if (de === vers || liens.some(l => l.de === de && l.vers === vers) || creeBoucle({ ...p, liens }, de, vers)) return;
+      liens.push({ de, vers });
+    };
+    // s avant x : x reçoit directement ce que s recevait, et ne l'attend plus.
+    if (liens.some(l => l.de === s && l.vers === x)) { liens = liens.filter(l => !(l.de === s && l.vers === x)); for (const a of preds(s)) ajouter(a, x); }
+    // s après x : x livre directement ce que s livrait, et s ne l'attend plus.
+    if (liens.some(l => l.de === x && l.vers === s)) { liens = liens.filter(l => !(l.de === x && l.vers === s)); for (const b of succs(s)) ajouter(x, b); }
+    // Les mêmes entrées et les mêmes sorties que x.
+    for (const a of preds(x)) ajouter(a, s);
+    for (const b of succs(x)) ajouter(s, b);
+    // Ses autres flèches, qu'un détour garantit déjà (s → Montage quand s → Prépa → Montage),
+    // s'en vont : il reste à côté de x, sans raccourci.
+    const atteint = (ls, de, vers) => {
+      const vus = new Set(), pile = [de];
+      while (pile.length) { const n = pile.pop(); if (n === vers) return true; if (vus.has(n)) continue; vus.add(n); for (const l of ls) if (l.de === n) pile.push(l.vers); }
+      return false;
+    };
+    for (let encore = true; encore;) {
+      encore = false;
+      for (const l of liens) {
+        const sienne = (l.de === s && !succs(x).includes(l.vers)) || (l.vers === s && !preds(x).includes(l.de));
+        const autres = liens.filter(m => m !== l);
+        if (sienne && atteint(autres, l.de, l.vers)) { liens = autres; encore = true; break; }
+      }
+    }
+    p.liens = liens;
+    return JSON.stringify(liens) !== avant;
+  }
+
+  /** Range `s` en parallèle de `x` dans tous les chemins qui ont les deux. @returns {number} chemins changés */
+  function mettreEnParallele(etat, s, x) {
+    let n = 0;
+    for (const p of etat.parcours || []) if (mettreEnParalleleDans(p, s, x)) n++;
+    return n;
+  }
+
+  /** Après l'arrivée de `s` dans un chemin : s'il travaille en même temps qu'un autre (ou l'inverse), il s'y range. */
+  function appliquerParallele(etat, p, s) {
+    const par = etat.paralleles || {};
+    if (par[s]) mettreEnParalleleDans(p, s, par[s]);
+    for (const [y, x] of Object.entries(par)) if (x === s) mettreEnParalleleDans(p, y, x);
   }
 
   /** Fait sortir un service d'un chemin : ceux qui le livraient livrent ceux qu'il livrait. */
@@ -990,13 +1050,15 @@
    * placé au milieu d'un chemin en sort : ce qui le livrait livre ce qu'il
    * livrait. Modifie `etat`.
    * @returns {number} le nombre de chemins changés */
-  function integrerArmement(etat, armements, handlings) {
+  function integrerArmement(etat, armements, handlings, classes) {
     const arm = new Set(armements || []), hs = [...new Set(handlings || [])].filter(h => !arm.has(h));
     if (!arm.size || !hs.length) return 0;
+    // Les chemins que ne suivent que des compagnies sans armement restent tels quels (08/10).
+    const sansArm = cheminsSansArmement(etat, armements, classes);
     let n = 0;
     for (const p of etat.parcours || []) {
       p.noeuds = (p.noeuds || []).slice(); p.liens = (p.liens || []).slice();
-      if (!p.noeuds.some(x => !arm.has(x))) continue;          // un chemin vide reste vide
+      if (!p.noeuds.some(x => !arm.has(x)) || sansArm.has(p.id)) continue;          // un chemin vide reste vide
       const avant = JSON.stringify([p.noeuds, p.liens]);
       for (const a of arm) retirerService(p, a);
       for (const h of hs) if (!p.noeuds.includes(h)) p.noeuds.push(h);
@@ -1030,10 +1092,12 @@
     if (!arm.size || !hs.size) return [];
     const suivis = classes && classes.length
       ? new Set(classes.map(c => (fluxDe(etat, c) || {}).id).filter(Boolean)) : null;
+    // Un chemin que ne suivent que des compagnies sans armement n'en a pas besoin (08/10).
+    const sansArm = cheminsSansArmement(etat, armements, classes);
     const out = [];
     for (const p of etat.parcours || []) {
       const noeuds = p.noeuds || [], liens = p.liens || [];
-      if (!noeuds.some(x => !arm.has(x)) || (suivis && !suivis.has(p.id))) continue;
+      if (!noeuds.some(x => !arm.has(x)) || (suivis && !suivis.has(p.id)) || sansArm.has(p.id)) continue;
       for (const a of arm) {
         if (!noeuds.includes(a)) { out.push({ parcours: p, raison: 'absent' }); continue; }
         const autres = liens.filter(l => (l.de === a || l.vers === a) && !(l.de === a && hs.has(l.vers)));
@@ -1042,6 +1106,29 @@
       }
     }
     return out;
+  }
+
+  /* Les compagnies sans armement (retour d'usage du 08/10 : « tu pars du principe
+   * que le handling doit recevoir l'armement pour partir, mais il y a des
+   * compagnies qui n'en ont pas ») : la liste `sans` du réglage de l'armement.
+   * Les chemins que ne suivent QUE de telles compagnies n'ont pas besoin
+   * d'armement : ni « à reprendre », ni modifiés par l'intégration. */
+  function sansArmement(etat, armements) {
+    const out = new Set();
+    for (const s of armements || []) for (const k of ((etat.categories || {})[s] || [])) for (const c of (k.sans || [])) out.add(String(c).trim().toUpperCase());
+    return out;
+  }
+  function cheminsSansArmement(etat, armements, classes) {
+    const sans = sansArmement(etat, armements);
+    if (!sans.size || !classes || !classes.length) return new Set();
+    const cies = new Map();   // chemin → compagnies qui le suivent
+    for (const c of classes) {
+      if (c.categorie) continue;
+      const p = fluxDe(etat, c); if (!p) continue;
+      if (!cies.has(p.id)) cies.set(p.id, new Set());
+      cies.get(p.id).add(String(c.cie).trim().toUpperCase());
+    }
+    return new Set([...cies].filter(([, s]) => [...s].every(x => sans.has(x))).map(([id]) => id));
   }
 
   /** L'armement est-il dans chaque chemin suivi, relié seulement au handling ? */
@@ -2349,7 +2436,7 @@
   const api = { annoncer, fusionneePar, passePar, chaines, insererPrepa, depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, confier, nouvelleEquipe,
     colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, donnerCases, completerCases, nomLibre, caseHandling, anciensHandlings, brancherHandling, separerHandling, caseRobot, remplacerEtape,
     SERVICES_DISPO, estDispo, caseDispo, anciensDispos, partagerDispos, separerParCommande, ajouterBesoin,
-    insererService, retirerService, integrerArmement, delierHandling, armementIntegre, armementACorriger, versParCompagnie, liberer, insererParEcheance, cocher, passerPar, grille, natureService, equipeNeuve,
+    insererService, retirerService, mettreEnParallele, mettreEnParalleleDans, integrerArmement, delierHandling, armementIntegre, armementACorriger, sansArmement, cheminsSansArmement, versParCompagnie, liberer, insererParEcheance, cocher, passerPar, grille, natureService, equipeNeuve,
     marquerTypes, typeSuivi, fluxDe, signature, types, commandesDuType, nouveauType, assignerType, nettoyerTypes, cheminsPossibles, choisirChemin, selectChemin, nomVariante, adapter,
     changerFlux, regrouper, EditeurParcours };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

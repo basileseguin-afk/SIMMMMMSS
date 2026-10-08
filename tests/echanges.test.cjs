@@ -153,6 +153,31 @@ test('ateliers : l’aller-retour par Excel ne perd rien', async () => {
   assert.equal(lu.materiel.unites.YC.parVol, 12);
 });
 
+test('ateliers : deux équipes de même nom dans deux services se distinguent par leur service (08/10)', async () => {
+  const etat = ETAT_ATELIERS();
+  etat.ateliers.push(
+    { id: 'c1', nom: 'CRL', service: 'cuisine', type: 'manuel', debut: '03:00', jour: 0, personnes: 2, pauses: [], lots: [['CRL/BC']], regime: { actif: true } },
+    { id: 'd1', nom: 'CRL', service: 'dotation', type: 'manuel', debut: '04:00', jour: 0, personnes: 3, pauses: [], lots: [['CRL/YC']], regime: { actif: true } });
+  const f = E.ateliersVersClasseur(etat, ctxAteliers());
+  const cles = f.find(x => x.nom === 'Ateliers').lignes.slice(1).map(l => l[0]);
+  assert.ok(cles.includes('CRL · CUISINE') && cles.includes('CRL · DOTATION'), cles.join(' | '));
+  assert.ok(cles.includes('Cuisine matin'), 'un nom unique reste seul');
+  const { etat: lu } = E.classeurVersAteliers(await parFichier(f), etat, ctxAteliers());
+  assert.deepEqual(lu.ateliers.filter(a => a.nom === 'CRL').map(a => [a.id, a.service, a.debut, a.personnes, a.lots]),
+    [['c1', 'cuisine', '03:00', 2, [['CRL/BC']]], ['d1', 'dotation', '04:00', 3, [['CRL/YC']]]], 'chacune retrouve son nom, « CRL »');
+  // « CRL » seul, ambigu, dans une autre feuille : l'import le dit, avec la clé à écrire.
+  const g = modifier(f, 'Fabrications', l => l.map(x => (x[0] === 'CRL · DOTATION' ? ['CRL', x[1], x[2]] : x)));
+  assert.throws(() => E.classeurVersAteliers(g, etat, ctxAteliers()), /« CRL » .*2 équipes portent ce nom \(CUISINE, DOTATION\) : écrivez par exemple « CRL · CUISINE »/);
+  // Le petit classeur des horaires : la même clé.
+  const h = E.horairesVersClasseur(etat, { services: SERVICES });
+  const hl = h[0].lignes.slice(1).map(l => l[0]);
+  assert.ok(hl.includes('CRL · CUISINE') && hl.includes('CRL · DOTATION'), hl.join(' | '));
+  const h2 = modifier(h, 'Horaires', l => l.map(x => (x[0] === 'CRL · DOTATION' ? [x[0], 'J', '05:15', ...x.slice(3)] : x)));
+  const { etat: lh } = E.classeurVersHoraires(await parFichier(h2), etat, { services: SERVICES });
+  assert.equal(lh.ateliers.find(a => a.id === 'd1').debut, '05:15');
+  assert.equal(lh.ateliers.find(a => a.id === 'c1').debut, '03:00');
+});
+
 test('ateliers : ajouter une compagnie × classe à un atelier, c’est ajouter une ligne', async () => {
   const etat = ETAT_ATELIERS();
   let f = E.ateliersVersClasseur(etat, ctxAteliers());

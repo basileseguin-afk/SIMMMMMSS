@@ -147,7 +147,8 @@
    * branche à part, reliée seulement au handling, qui charge le vol quand repas
    * et armement sont prêts.
    *
-   *   categories: { [service]: [{ id, nom, minutes: { '*': 10, AF: 15 } }] }
+   *   categories: { [service]: [{ id, nom, minutes: { '*': 10, AF: 15 }, sans?: ['EZY'] }] }
+   *   (`sans` : les compagnies qui n'ont pas d'armement, 08/10 — pas de case.)
    *
    * QUI A SA CASE (retour d'usage du 02/10 : « dans le chemin EZY, l'armement
    * est bien présent, et je ne peux pas faire apparaître sa case ») : chaque
@@ -183,7 +184,12 @@
       for (const k of (Array.isArray(liste) ? liste : [])) {
         if (!k || !k.id) continue;
         const min = k.minutes || {};
+        // Une compagnie sans armement (retour d'usage du 08/10 : « il y a des
+        // compagnies qui n'ont pas d'armement ») n'a pas de case : le handling
+        // charge ses vols sans l'attendre.
+        const sans = new Set((Array.isArray(k.sans) ? k.sans : []).map(c => String(c).trim().toUpperCase()));
         for (const cie of cies || []) {
+          if (sans.has(String(cie).trim().toUpperCase())) continue;
           const vs = departs.get(cie) || [];
           out.push({ id: cie + '/@' + k.id, cie, cabine: '@' + k.id, categorie: k.id, service, minutes: lire(min, cie) ?? lire(min, TOUTES), pax: 0,
             vols: vs, echeance: vs.length ? Math.min(...vs.map(x => x.echeance)) : MINUTES_PAR_JOUR });

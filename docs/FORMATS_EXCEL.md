@@ -52,10 +52,15 @@ règles.
 ### Feuille « Ateliers » — obligatoire
 
 Une ligne par équipe. **Le nom est la clé** : les autres feuilles s'y réfèrent.
+Un nom n'est unique que dans son service (depuis le 08/10 : l'équipe « CRL » de
+la Dotation et celle de la Cuisine). Quand deux services ont une équipe de même
+nom, sa clé est **« nom · SERVICE »** (`CRL · DOTATION`), partout dans le
+classeur ; l'import la relit, et un nom seul ambigu est signalé avec la clé à
+écrire.
 
 | Colonne | Sens |
 |---|---|
-| Atelier | nom, unique |
+| Atelier | nom (unique dans son service), ou « nom · SERVICE » s'il est en double |
 | Service | nom ou identifiant du service |
 | Type | `manuel`, `robot`, `plonge`, `mise à disposition` ou `handling` |
 | Personnes | effectif (vide pour une mise à disposition) |
@@ -383,6 +388,7 @@ pour chaque vol que le handling charge). Ses heures par vol.
 | Service | le nom du service |
 | Compagnie | `toutes` (la valeur par défaut) ou une compagnie |
 | Heures par vol | le travail d'un vol de cette compagnie, pour une personne (une ancienne colonne « Minutes par vol » se relit en minutes) |
+| Armée | `non` : la compagnie n'a pas d'armement — pas de case, le handling charge ses vols sans l'attendre (08/10). Vide ou `oui` : armée |
 
 Dans « Fabrications », la case d'une compagnie s'écrit `AF/@ARM` (le code du
 service, tel qu'exporté). Sans la feuille, le réglage du site reste.

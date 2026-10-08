@@ -523,3 +523,28 @@ test('separerHandling : le handling quitte CF départ food, ses chemins le suive
   // Rien à séparer : rien ne change.
   assert.equal(PC.separerHandling(etat, 'handling', 'local-h'), 0);
 });
+
+/* Deux services qui travaillent en même temps (retour d'usage du 08/10 : « la
+ * cuisine chaude et la cuisine travaillent en parallèle »). */
+test('en parallèle : plus de flèche entre eux, les mêmes entrées et sorties, sans raccourci ni boucle', () => {
+  const PCx = require('../parcours.js');
+  const chemin = liens => ({ id: 'c', noeuds: ['appros', 'cuisine', 'chaude', 'preparation', 'prepa'], liens: liens.map(([de, vers]) => ({ de, vers })) });
+  const lu = p => p.liens.map(l => l.de + '>' + l.vers).sort();
+  const attendu = ['appros>chaude', 'appros>cuisine', 'chaude>preparation', 'cuisine>preparation', 'preparation>prepa'];
+  // En série après la cuisine, avant elle, ou à part avec un raccourci vers le montage : même résultat.
+  for (const l of [[['appros', 'cuisine'], ['cuisine', 'chaude'], ['chaude', 'preparation'], ['preparation', 'prepa']],
+    [['appros', 'chaude'], ['chaude', 'cuisine'], ['cuisine', 'preparation'], ['preparation', 'prepa']],
+    [['appros', 'cuisine'], ['cuisine', 'preparation'], ['preparation', 'prepa'], ['chaude', 'prepa']]]) {
+    const p = chemin(l);
+    assert.equal(PCx.mettreEnParalleleDans(p, 'chaude', 'cuisine'), true);
+    assert.deepEqual(lu(p), attendu, JSON.stringify(l));
+    assert.equal(PCx.mettreEnParalleleDans(p, 'chaude', 'cuisine'), false, 'deux fois : rien ne change');
+  }
+  // Un chemin sans la cuisine ne bouge pas ; la règle s'applique à l'insertion.
+  const etat = { paralleles: { chaude: 'cuisine' }, parcours: [chemin([['appros', 'cuisine'], ['cuisine', 'preparation'], ['preparation', 'prepa']])] };
+  etat.parcours[0].noeuds = ['appros', 'cuisine', 'preparation', 'prepa'];
+  PCx.insererService(etat, etat.parcours[0], 'chaude', {});
+  assert.ok(!lu(etat.parcours[0]).includes('cuisine>chaude') && !lu(etat.parcours[0]).includes('chaude>cuisine'), 'insérée, elle se range à côté : ' + lu(etat.parcours[0]));
+  assert.ok(lu(etat.parcours[0]).includes('appros>chaude') && lu(etat.parcours[0]).includes('chaude>preparation'));
+  assert.equal(PCx.mettreEnParallele({ parcours: [{ id: 'v', noeuds: ['appros', 'prepa'], liens: [] }] }, 'chaude', 'cuisine'), 0, 'un chemin sans eux ne bouge pas');
+});

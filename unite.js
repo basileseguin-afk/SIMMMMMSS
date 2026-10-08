@@ -253,8 +253,22 @@
           : 'non coché : le nombre de personnes de chaque équipe se calcule, heures par vol × vols de chaque compagnie ÷ heures de son poste. Le robot garde le sien. Cochez pour le saisir.'}
           Une équipe peut faire autrement : son choix « Effectif ».</small></span></label>`
         + (constant ? '' : impose) : '';
+      // Il travaille en même temps qu'un autre service (08/10 : « la cuisine chaude et la
+      // cuisine travaillent en parallèle ») : dans chaque chemin, une branche à côté de lui.
+      const partenaire = (st.paralleles || {})[s.id] || '';
+      const avecLui = new Set((st.parcours || []).filter(p => (p.noeuds || []).includes(s.id)).flatMap(p => p.noeuds || []));
+      const handlings = new Set(this.handlings(st));
+      const candidats = [...(avecLui.size > 1 ? avecLui : new Set((st.parcours || []).flatMap(p => p.noeuds || [])))]
+        .filter(x => x !== s.id && !handlings.has(x) && !(st.categories || {})[x]).sort((x, y) => this.nom(x).localeCompare(this.nom(y)));
+      if (partenaire && !candidats.includes(partenaire)) candidats.unshift(partenaire);
+      const choixParallele = nature === 'handling' || nature === 'categories' || nature === 'lavage' ? ''
+        : `<label class="mu-parallele">Il travaille en même temps que<select data-mu-parallele="${esc(s.id)}">
+            <option value="">— aucun : il a sa place dans le chemin</option>
+            ${candidats.map(x => `<option value="${esc(x)}"${x === partenaire ? ' selected' : ''}>${esc(this.nom(x))}</option>`).join('')}</select>
+          <small>${partenaire ? `En parallèle de ${esc(this.nom(partenaire))} : dans chaque chemin qui a les deux, il reçoit les mêmes livraisons et livre les mêmes étapes ; l’étape d’après attend les deux.`
+            : 'Deux services qui préparent la même commande au même moment (la cuisine chaude et la cuisine) : choisissez l’autre, ils se rangent côte à côte dans chaque chemin.'}</small></label>`;
       const choixNature = `<label class="mu-nature">Ce service…<select data-mu-nature="${esc(s.id)}">${NATURES.map(x =>
-        `<option value="${x.id}"${x.id === nature ? ' selected' : ''}>${esc(x.nom)}</option>`).join('')}</select></label>` + choixEffectif
+        `<option value="${x.id}"${x.id === nature ? ' selected' : ''}>${esc(x.nom)}</option>`).join('')}</select></label>` + choixEffectif + choixParallele
         + `<label class="mu-encadrement">Superviseurs / coordinateurs<input type="number" min="0" max="99" value="${this.at.encadrement(s.id)}" data-mu-encadrement="${esc(s.id)}">
           <small>présents dans le service, hors production : ils ne changent rien au calcul ; ils serviront à relier l’unité au budget quotidien</small></label>`;
 
@@ -326,15 +340,19 @@
       const aCorriger = handlings.length ? PC.armementACorriger(st, [s.id], this.handlings(st), this.at.classes) : [];
       const integre = handlings.length && !aCorriger.length;
       const pourquoi = { absent: 'absent', 'sans-handling': 'pas relié au handling' };
+      const sans = (((st.categories || {})[s.id] || [])[0] || {}).sans || [];
       const liste = aCorriger.slice(0, 4).map(x => '« ' + esc(x.parcours.nom || x.parcours.id) + ' » ('
         + (x.raison === 'autres' ? 'relié aussi à ' + x.avec.map(id => esc(this.nom(id))).join(', ') : pourquoi[x.raison]) + ')').join(', ')
         + (aCorriger.length > 4 ? '…' : '');
       return `<div class="mu-lien-handling"><p><span aria-hidden="true">🚚</span> <b>Lié au handling.</b> ${handlings.length
-        ? qui + (handlings.length > 1 ? ' attendent' : ' attend') + ' l’armement et les repas du vol pour le charger.'
+        ? qui + (handlings.length > 1 ? ' attendent' : ' attend') + ' les repas du vol, et son armement quand sa compagnie en a un, pour le charger.'
         : 'Pas encore de handling dans l’unité : créez-en un, puis intégrez l’armement aux chemins, relié au handling.'}
-        On arme un vol, pas une classe : une case par compagnie dont le chemin passe par ${esc(s.nom)}.</p>
+        On arme un vol, pas une classe : une case par compagnie dont le chemin passe par ${esc(s.nom)}.
+        Une compagnie sans armement se décoche (« Armée », plus bas) : le handling charge ses vols sans l’attendre.</p>
+        ${sans.length ? `<p class="mini-note mu-arm-sans">Sans armement : ${esc(sans.join(', '))}.</p>` : ''}
         ${!handlings.length ? '' : integre ? `<p class="mini-note mu-arm-ok">✓ Dans tous les chemins, en branche à part, relié seulement au handling.</p>`
           : `<p class="mini-note mu-arm-reprendre">À reprendre dans ${aCorriger.length > 1 ? 'ces chemins' : 'ce chemin'} : ${liste}.
+          Si ses compagnies n’ont pas d’armement, décochez-les (« Armée ») : leur chemin n’en a pas besoin.
           <button class="btn btn-sm btn-play" type="button" data-mu-action="integrer-armement">L’intégrer à tous les chemins, relié au handling</button></p>`}</div>`;
     }
 
@@ -346,8 +364,10 @@
       if (!k) return '';
       const avec = [...new Set(classes.map(c => c.cie))].sort((x, y) => x.localeCompare(y));
       const toutes = [...new Set((this.at.classes || []).map(c => c.cie))];
+      // Les compagnies sans armement (08/10) : pas de case ; leur ligne reste, décochée.
+      const sans = [...(k.sans || [])];
       // Pas de case : aucun chemin de la compagnie ne passe par ce service.
-      const hors = toutes.filter(c => !avec.includes(c)).sort((x, y) => x.localeCompare(y));
+      const hors = toutes.filter(c => !avec.includes(c) && !sans.includes(c)).sort((x, y) => x.localeCompare(y));
       // Une case, mais aucun départ au programme (une compagnie ajoutée à la main).
       const sansVol = avec.filter(cie => !classes.some(c => c.cie === cie && c.vols.length));
       // Gardées en minutes, saisies et lues en heures par vol (08/10).
@@ -359,21 +379,38 @@
       const vols = cie => new Set(classes.filter(c => c.cie === cie).flatMap(c => (c.vols || []).map(v => v.id))).size;
       const h = m => P.heuresFr(m, 2) + ' h';
       let totalVols = 0, total = 0, manque = 0;
+      const arme = (cie, oui) => `<td class="mu-cat-arme"><input type="checkbox" data-mu-cat-arme="${esc(cie)}"${oui ? ' checked' : ''}
+          aria-label="${esc(cie)} : armée" title="${oui ? 'Décocher : cette compagnie n’a pas d’armement' : 'Cocher : cette compagnie a un armement'}"></td>`;
       const ligne = cie => {
+        if (sans.includes(cie)) return `<tr class="mu-cat-sans"><th scope="row">${esc(cie)}</th>${arme(cie, false)}
+          <td colspan="3" class="mu-cat-sansarm">pas d’armement : le handling charge ses vols sans l’attendre</td></tr>`;
         const n = vols(cie), v = lire(k.minutes[cie]) ?? lire(k.minutes['*']);
         totalVols += n; if (v == null) manque++; else total += v * n;
-        return `<tr><th scope="row">${esc(cie)}</th>${champ(cie)}<td class="mu-cat-vols">${n}</td>
+        return `<tr><th scope="row">${esc(cie)}</th>${arme(cie, true)}${champ(cie)}<td class="mu-cat-vols">${n}</td>
           <td class="mu-cat-jour">${v == null ? '<span class="mu-cat-manque">à remplir</span>' : `${P.heuresFr(v)} h × ${n} = <b>${esc(h(v * n))}</b>`}</td></tr>`;
       };
-      const lignes = avec.map(ligne).join('');
+      const lignes = [...new Set(avec.concat(sans))].sort((x, y) => x.localeCompare(y)).map(ligne).join('');
       return aucun + `<div class="mu-grille-scroll"><table class="mu-cat-table" data-mu-cat-service="${esc(s.id)}">
-        <thead><tr><th scope="col">Compagnie</th><th scope="col">Heures par vol</th><th scope="col">Vols du jour</th><th scope="col">Sur la journée</th></tr></thead>
-        <tbody><tr class="mu-cat-toutes"><th scope="row">Toutes les compagnies</th>${champ('*')}<td></td><td></td></tr>
+        <thead><tr><th scope="col">Compagnie</th><th scope="col" title="Décochée : la compagnie n’a pas d’armement">Armée</th><th scope="col">Heures par vol</th><th scope="col">Vols du jour</th><th scope="col">Sur la journée</th></tr></thead>
+        <tbody><tr class="mu-cat-toutes"><th scope="row">Toutes les compagnies</th><td></td>${champ('*')}<td></td><td></td></tr>
         ${lignes}</tbody>
-        ${avec.length ? `<tfoot><tr><th scope="row">Total</th><td></td><td class="mu-cat-vols">${totalVols}</td><td class="mu-cat-jour"><b>${esc(h(total))}</b>${manque ? ` <span class="mu-cat-manque">(${manque} à remplir)</span>` : ''}</td></tr></tfoot>` : ''}</table></div>
+        ${avec.length ? `<tfoot><tr><th scope="row">Total</th><td></td><td></td><td class="mu-cat-vols">${totalVols}</td><td class="mu-cat-jour"><b>${esc(h(total))}</b>${manque ? ` <span class="mu-cat-manque">(${manque} à remplir)</span>` : ''}</td></tr></tfoot>` : ''}</table></div>
         <p class="mini-note mu-cat-note">Le travail suit les vols : heures par vol (pour une personne) × vols de la compagnie. Les personnes de chaque équipe s’en déduisent, sur ses heures de poste.</p>`
         + (sansVol.length ? `<p class="mini-note mu-arm-sansvol">${esc(sansVol.join(', '))} : aucun départ au programme aujourd’hui — la case est là, à 0 vol, jusqu’à ce que le programme en porte.</p>` : '')
         + (hors.length ? `<p class="mini-note mu-arm-hors">Pas de case pour ${esc(hors.join(', '))} : ${hors.length > 1 ? 'leurs chemins ne passent' : 'son chemin ne passe'} pas par ${esc(s.nom)} (Une commande).</p>` : '');
+    }
+
+    /** Un service qui travaille en même temps qu'un autre (08/10), ou plus. */
+    parallele(service, x) {
+      let n = 0;
+      if (!this.at.changer(() => {
+        const st = this.at.state, par = { ...(st.paralleles || {}) };
+        if (x) { par[service] = x; n = PC.mettreEnParallele(st, service, x); } else delete par[service];
+        if (Object.keys(par).length) st.paralleles = par; else delete st.paralleles;
+      }, '')) return;
+      this.at.rendre(x ? this.nom(service) + ' travaille en même temps que ' + this.nom(x) + ' : '
+        + (n ? 'rangé à côté de lui dans ' + pl(n, 'chemin') : 'les chemins qui ont les deux l’ont déjà à côté') + ' ; l’étape d’après attend les deux. « Annuler » revient en arrière.'
+        : this.nom(service) + ' n’est plus en parallèle : les chemins restent tels quels.');
     }
 
     /** Changer le réglage d'un service par compagnie. */
@@ -774,7 +811,7 @@
           if (v === 'categories') {
             // Ses cases par classe deviennent des cases par compagnie ; il entre dans tous les chemins, relié au handling.
             PC.versParCompagnie(st, service, st.categories[service][0].id);
-            PC.integrerArmement(st, [service], this.handlings(st));
+            PC.integrerArmement(st, [service], this.handlings(st), this.at.classes);
           } else {
             for (const p of st.parcours || []) if (P.servicesDuParcours(p).includes(service)) PC.retirerService(p, service);
             this.natures[service] = v;
@@ -1331,6 +1368,24 @@
             if (m === null) delete k.minutes[cie]; else k.minutes[cie] = Math.max(0, m);
           }, 'Heures par vol enregistrées.'), 0);
         }
+        // En même temps qu'un autre service (08/10) : rangé à côté de lui dans chaque chemin.
+        else if (el.dataset.muParallele !== undefined) {
+          const svc = el.dataset.muParallele, x = el.value;
+          setTimeout(() => this.parallele(svc, x), 0);
+        }
+        // Une compagnie sans armement (08/10) : pas de case, sa case quitte les équipes.
+        else if (el.dataset.muCatArme) {
+          const service = el.closest('[data-mu-cat-service]').dataset.muCatService, cie = el.dataset.muCatArme, oui = el.checked;
+          setTimeout(() => this.changerCategories(service, (l, st) => {
+            const k = l[0]; if (!k) return;
+            const s = new Set(k.sans || []);
+            if (oui) s.delete(cie); else s.add(cie);
+            if (s.size) k.sans = [...s].sort(); else delete k.sans;
+            if (!oui) for (const a of st.ateliers) if (a.service === service)
+              a.lots = (a.lots || []).map(x => x.filter(id => id !== cie + '/@' + k.id)).filter(x => x.length);
+          }, oui ? cie + ' : armée. Cochez-la dans l’équipe d’armement qui la prépare.'
+            : cie + ' : pas d’armement. Le handling charge ses vols sans l’attendre.'), 0);
+        }
         else if (el.dataset.muFluxIci) {
           const svc = el.dataset.muFluxIci, t = PC.types(this.etat).find(x => x.id === el.value); if (!t) return;
           this.at.changer(() => { PC.changerFlux(this.at.state, t.id, svc, true, this.options()); },
@@ -1406,7 +1461,7 @@
           // L'armement dans tous les chemins, en branche à part, relié seulement au handling.
           case 'integrer-armement': {
             let n = 0;
-            this.at.changer(() => { n = PC.integrerArmement(this.at.state, [id], this.handlings(this.at.state)); }, '');
+            this.at.changer(() => { n = PC.integrerArmement(this.at.state, [id], this.handlings(this.at.state), this.at.classes); }, '');
             return this.at.rendre(this.nom(id) + ' : intégré à ' + pl(n, 'chemin') + ', relié seulement au handling. « Annuler » revient en arrière.');
           }
           case 'liberer': {

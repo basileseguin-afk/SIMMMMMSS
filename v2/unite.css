@@ -210,7 +210,16 @@
 .mu-cat-toutes th,.mu-cat-toutes input{font-weight:650}
 #view-ateliers .mu-cat-table td input{width:80px;min-width:0;padding:3px 6px}
 .mu-cat-table thead th:first-child{vertical-align:middle;color:var(--txt2)}
-.mu-cat-table thead th:nth-child(n+3){min-width:0;padding:0 8px}
+.mu-cat-table thead th:nth-child(n+2){min-width:0;padding:0 8px}
+/* En même temps qu'un autre service (08/10). */
+.mu-parallele{display:flex;flex-direction:column;gap:4px;margin-top:12px;max-width:620px;font-size:14px}
+.mu-parallele select{max-width:420px}
+.mu-parallele small{font-size:12px;color:var(--txt2);line-height:1.4}
+/* Armée ou non (08/10) : une compagnie sans armement n'a pas de case. */
+.mu-cat-table .mu-cat-arme{text-align:center}
+.mu-cat-table td.mu-cat-arme input,#view-ateliers .mu-cat-table td.mu-cat-arme input{width:18px;min-width:0;height:18px;min-height:0;padding:0;margin:0;accent-color:var(--accent)}
+.mu-cat-table tr.mu-cat-sans th{color:var(--txt2)}
+.mu-cat-table .mu-cat-sansarm{color:var(--txt2);font-style:italic;font-size:12px;padding:0 8px}
 .mu-cat-table .mu-cat-vols{text-align:center;color:var(--txt2)}
 .mu-cat-table .mu-cat-jour{padding:0 8px;white-space:nowrap}
 .mu-cat-table tfoot th,.mu-cat-table tfoot td{border-top:1px solid var(--bordure);padding-top:4px}

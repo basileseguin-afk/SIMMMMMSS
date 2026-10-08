@@ -359,7 +359,16 @@ compagnie » ; la fiche d'un service dont le nom dit « armement » le propose).
   (`ateliers.parVols`, `synchroniserAteliers`). Le tableau des minutes de la
   fiche montre, par compagnie, ses vols du jour et le travail de la journée
   (minutes × vols), avec le total.
-- **Le handling** attend l'armement du vol pour le charger.
+- **Le handling** attend l'armement du vol pour le charger — quand sa
+  compagnie en a un.
+- **Une compagnie sans armement** (retour d'usage du 08/10 : « il y a des
+  compagnies qui n'ont pas d'armement ») : case « Armée » décochée dans la
+  fiche, `categories[service][0].sans = ['TX']`. Pas de case (`classesCategories`
+  la saute) : rien à cocher, rien à remplir, aucune alerte ; sa case quitte les
+  équipes ; le handling charge ses vols après leurs repas, sans attendre ; un
+  chemin qu'elle seule suit n'est pas « à reprendre » et l'intégration n'y
+  touche pas (`cheminsSansArmement`). Excel : colonne « Armée » de la feuille
+  « Par compagnie ».
 - **Dans les chemins** (retour d'usage du 02/10 : « intègre l'armement sur
   tous les chemins et lie-le uniquement au handling ») : dans chaque chemin
   (flux et chemins propres), l'armement est une branche à part — un nœud,
@@ -990,6 +999,21 @@ le modifierait pour toutes) ; `typeSuivi` donne le flux qu'une commande suit,
 `grille` dit, pour chaque commande, ce que montre la case de la grille :
 préparée ici, par une autre équipe, à la chaîne ailleurs, attendue (son flux
 passe par le service et personne ne l'y prépare) ou hors du service.
+
+**Deux services qui travaillent en même temps** (retour d'usage du 08/10 : « la
+cuisine chaude et la cuisine travaillent en parallèle »). Dans la fiche :
+« Il travaille en même temps que… », `etat.paralleles = { [s]: x }`.
+`mettreEnParallele` range `s` à côté de `x` dans chaque chemin qui a les deux :
+plus de flèche entre eux (ce qui passait par l'un pour aller à l'autre y va
+directement), `s` reçoit ce que `x` reçoit et livre ce qu'il livre ; ses
+raccourcis devenus inutiles (s → Montage quand s → Prépa → Montage) s'en
+vont ; jamais de boucle. L'étape d'après attend les deux. `insererService`
+applique la règle quand l'un des deux entre dans un chemin (une compagnie
+cochée plus tard). « Aucun » efface la règle, les chemins restent tels quels.
+
+**Le nom d'une équipe** n'est unique que dans son service (08/10) : jamais
+vide ; un refus remet le champ à la valeur gardée. Dans Excel, la clé d'une
+équipe dont le nom est en double est « nom · SERVICE » (`clesDesCases`).
 
 ## Ce que le modèle ne fait pas — délibérément
 

@@ -47,7 +47,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    // Un handling dont la liste ne cite pas FWI ; puis l'armement intégré aux chemins, d'un clic.
    const sansFWI=construites.filter(c=>c!=='FWI');
    await page.evaluate(cies=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'h',nom:'Quais',service:'quais',type:'handling',debut:'04:00',jour:0,personnes:2,pauses:[],lots:[],regime:{actif:true},durees:{'*':20},compagnies:cies});},''),sansFWI);await attendre();
-   assert.match(await fiche('.mu-lien-handling').innerText(),/« Quais » attend l’armement et les repas du vol/);
+   assert.match(await fiche('.mu-lien-handling').innerText(),/« Quais » attend les repas du vol, et son armement quand sa compagnie en a un/);
    await fiche('[data-mu-action=integrer-armement]').click();await attendre();
    const tous=await page.evaluate(()=>[...new Set(Sim.ateliers.classes.map(c=>c.cie))].sort());
    assert.deepEqual(await cases(),tous,version+' : chaque compagnie dont le chemin passe par l’armement — FWI comprise, absente de la liste de « Quais »');

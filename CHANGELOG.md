@@ -5,6 +5,43 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-08 — Nom d'équipe, services en parallèle, compagnies sans armement
+
+Retours d'usage : « le nom du premier atelier de la dotation est CRL, mais à
+chaque fois que je rentre le nom ça l'efface, et il me dit qu'il n'y a pas de
+nom » ; « la cuisine chaude et la cuisine travaillent en parallèle, il me faut
+une option pour le dire » ; « tu pars du principe que le handling doit
+recevoir l'armement pour partir, mais il y a des compagnies qui n'en ont pas ».
+
+- **Le nom d'une équipe n'est unique que dans son service.** « CRL » en
+  Dotation comme en Cuisine. Avant, un nom déjà pris n'importe où était refusé
+  sans que le champ revienne en arrière, et un nom vide passait : d'où
+  « nommez-le ».
+  - Un nom vide, ou déjà pris dans le même service, est refusé. Le champ
+    revient au nom gardé : l'écran ne montre jamais ce qui n'est pas retenu
+    (valable pour tout champ d'équipe refusé).
+  - Dans Excel, deux équipes de même nom se distinguent par leur service :
+    « CRL · DOTATION ». Un nom seul ambigu est signalé à l'import, avec la clé
+    à écrire. Classeur des cases, horaires, cases, heures de travail.
+- **Un service peut travailler en même temps qu'un autre.** Dans sa fiche :
+  « Il travaille en même temps que… [Cuisine] ».
+  - Dans chaque chemin qui a les deux, plus de flèche entre eux ; il reçoit ce
+    que l'autre reçoit et livre ce qu'il livre. L'étape d'après attend les deux.
+  - Une compagnie cochée plus tard s'y range d'elle-même. « Aucun » laisse les
+    chemins tels quels ; « Annuler » revient en arrière.
+- **Une compagnie peut ne pas avoir d'armement.** Dans la fiche Armement, une
+  case « Armée » par compagnie. Décochée :
+  - pas de case d'armement : rien à cocher, rien à remplir, aucune alerte ;
+  - le handling charge ses vols sans l'attendre (après ses repas) ;
+  - un chemin qu'elle seule suit n'est plus « à reprendre ».
+  
+  Le classeur des cases le garde (« Par compagnie », colonne « Armée »).
+- Fichiers : `ateliers.js`, `unite.js`, `unite.css`, `parcours.js`,
+  `echanges.js`, `moteur/production.js` (v1 et v2) ; docs.
+- Tests : `nom-equipe-browser`, `parallele-browser`, `sans-armement-browser`
+  (v1 et v2) ; `echanges` (deux « CRL »), `categories` (sans armement),
+  `parcours` (en parallèle).
+
 ## 2026-10-08 — Le travail par vol en heures, plus en minutes
 
 Demande : « remplace les min par vol en h par vol ».

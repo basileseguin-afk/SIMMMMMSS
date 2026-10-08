@@ -49,6 +49,35 @@
 
   const lisezMoi = (titre, lignes) => ({ nom: 'Lisez-moi', lignes: [[titre], ...lignes.map(l => [l])], largeurs: [110] });
 
+  /* Le nom d'une équipe n'est unique que dans son service (retour d'usage du
+   * 08/10 : l'équipe « CRL » de la Dotation, quand la Cuisine a aussi la
+   * sienne). Dans les classeurs, sa clé l'est toujours : le nom seul s'il
+   * n'appartient qu'à une équipe, sinon « nom · service ». Un nom seul que
+   * plusieurs équipes portent est ambigu : l'import le dit, avec la clé à écrire. */
+  const SEP_CLE = ' · ';
+  const nomServiceDe = services => id => ((services || []).find(s => s.id === id) || {}).nom || id;
+  function clesDesCases(ateliers, nomService) {
+    const compte = new Map();
+    for (const a of ateliers || []) { const k = T.cleEntete(a.nom); compte.set(k, (compte.get(k) || 0) + 1); }
+    const cle = a => (compte.get(T.cleEntete(a.nom)) > 1 ? a.nom + SEP_CLE + nomService(a.service) : a.nom);
+    const par = new Map(), doubles = new Map();
+    for (const a of ateliers || []) {
+      const k = T.cleEntete(a.nom);
+      par.set(T.cleEntete(cle(a)), a);
+      if (compte.get(k) > 1) doubles.set(k, (doubles.get(k) || []).concat([a]));
+    }
+    return {
+      cle,
+      trouver: v => par.get(T.cleEntete(v)) || null,
+      // Pourquoi une clé ne trouve rien : un nom en double, écrit sans son service.
+      pourquoi: v => {
+        const d = doubles.get(T.cleEntete(v));
+        return d ? ' — ' + d.length + ' équipes portent ce nom (' + d.map(a => nomService(a.service)).join(', ') + ') : écrivez par exemple « '
+          + String(v).trim() + SEP_CLE + nomService(d[0].service) + ' »' : '';
+      }
+    };
+  }
+
   /* ======================================================================
    *  1. BARÈME
    * ====================================================================*/
@@ -343,20 +372,21 @@
     // (une case partagée n'apparaît qu'une fois, avec ses commandes).
     const personnes = [['Case', 'Service' + INFO, 'Commandes' + INFO, 'Personnes']];
     const nomSvc = new Map((ctx.services || []).map(sv => [sv.id, sv.nom]));
+    const cles = clesDesCases(ctx.ateliers, id => nomSvc.get(id) || id);
     const vues = new Set(r.colonnes.map(sv => sv.id));
     for (const a of (ctx.ateliers || [])) {
       if (!vues.has(a.service) || (a.type !== 'manuel' && a.type !== 'robot') || !(a.lots || []).some(l => l.length)) continue;
       const cmds = [...new Set(a.lots.flat())];
-      personnes.push([a.nom, nomSvc.get(a.service) || a.service, cmds.slice(0, 8).join(', ') + (cmds.length > 8 ? '…' : ''), a.personnes]);
+      personnes.push([cles.cle(a), nomSvc.get(a.service) || a.service, cmds.slice(0, 8).join(', ') + (cmds.length > 8 ? '…' : ''), a.personnes]);
     }
     // Les robots : le débit de chaque commande (plateaux/h) ; « toutes » = celui du robot.
     const robot = [['Case', 'Compagnie', 'Classe', 'Plateaux sur la journée' + INFO, 'Débit (plateaux/h)']];
     for (const a of (ctx.ateliers || [])) {
       if (a.type !== 'robot') continue;
-      robot.push([a.nom, 'toutes', null, null, a.debit]);
+      robot.push([cles.cle(a), 'toutes', null, null, a.debit]);
       for (const id of [...new Set((a.lots || []).flat())]) {
         const c = (ctx.classes || []).find(x => x.id === id), i = id.lastIndexOf('/');
-        robot.push([a.nom, id.slice(0, i), id.slice(i + 1), c ? c.pax : null, a.debits && Number.isFinite(+a.debits[id]) ? +a.debits[id] : null]);
+        robot.push([cles.cle(a), id.slice(0, i), id.slice(i + 1), c ? c.pax : null, a.debits && Number.isFinite(+a.debits[id]) ? +a.debits[id] : null]);
       }
     }
     return [
@@ -444,15 +474,15 @@
     });
     // 3 bis. Les débits des robots : seulement ce qui change.
     const debits = {};
+    const cles = clesDesCases(ctx.ateliers, nomServiceDe(ctx.services));
     const fr = T.feuille(feuilles, 'Robot');
     if (fr) {
-      const parNom = new Map((ctx.ateliers || []).filter(a => a.type === 'robot').map(a => [T.cleEntete(a.nom), a]));
       const nouv = new Map();
       for (const o of T.enObjets(fr.lignes).objets) {
         err.essayer(fr.nom, o._ligne, () => {
           const nom = String(o.case ?? '').trim(); if (!nom) return;
-          const a = parNom.get(T.cleEntete(nom));
-          if (!a) throw new Error('robot inconnu « ' + nom + ' » : le nom de la case est la clé');
+          const a = cles.trouver(nom);
+          if (!a || a.type !== 'robot') throw new Error('robot inconnu « ' + nom + ' » : le nom de la case est la clé' + cles.pourquoi(nom));
           if (!nouv.has(a)) nouv.set(a, { debit: a.debit, debits: {} });
           const n = nouv.get(a), v = T.nombreDe(o.debit_plateaux_h, null);
           const cie = String(o.compagnie ?? '').trim();
@@ -472,13 +502,12 @@
     const personnes = {};
     const fp = T.feuille(feuilles, 'Personnes');
     if (fp) {
-      const parNom = new Map((ctx.ateliers || []).map(a => [T.cleEntete(a.nom), a]));
       const { objets } = T.enObjets(fp.lignes);
       for (const o of objets) {
         err.essayer(fp.nom, o._ligne, () => {
           const nom = String(o.case ?? '').trim(); if (!nom) return;
-          const a = parNom.get(T.cleEntete(nom));
-          if (!a) throw new Error('case inconnue « ' + nom + ' » : le nom est la clé, il doit être celui du site');
+          const a = cles.trouver(nom);
+          if (!a) throw new Error('case inconnue « ' + nom + ' » : le nom est la clé, il doit être celui du site' + cles.pourquoi(nom));
           const v = T.nombreDe(o.personnes, null); if (v === null) return;
           if (!Number.isInteger(v) || v < 0 || v > 999) throw new Error(nom + ' : nombre de personnes entier attendu (0 à 999)');
           if (v !== a.personnes) personnes[a.id] = v;
@@ -524,10 +553,11 @@
     const rang = new Map(services.map((s, i) => [s.id, i]));
     const lignes = [['Case', 'Service' + INFO, 'Type' + INFO, 'Jour', 'Départ', 'Personnes', 'Commandes, dans l’ordre', 'Vagues', 'Fin prévue' + INFO]];
     const debutDe = a => (a.jour || 0) * 1440 + (T.heureDe(a.debut) || 0);
+    const cles = clesDesCases(etat.ateliers, nomDe);
     for (const a of [...etat.ateliers].sort((x, y) => (rang.get(x.service) ?? 999) - (rang.get(y.service) ?? 999) || debutDe(x) - debutDe(y))) {
       const fabrique = a.type === 'manuel' || a.type === 'robot';
       const fin = fins.get(a.id);
-      lignes.push([a.nom, nomDe(a.service), TYPE_LU[a.type] || a.type,
+      lignes.push([cles.cle(a), nomDe(a.service), TYPE_LU[a.type] || a.type,
         a.type === 'dispo' ? null : jourEcrit(a.jour || 0), a.type === 'dispo' ? null : a.debut,
         a.type === 'dispo' ? null : a.personnes,
         fabrique ? ecrireLots(a.lots) || null : null,
@@ -559,7 +589,7 @@
     const f = T.feuille(feuilles, 'Cases');
     if (!f) throw new Error('Feuille « Cases » introuvable : exportez le fichier depuis le récap des cases.');
     const out = JSON.parse(JSON.stringify(etat));
-    const parNom = new Map(out.ateliers.map(a => [T.cleEntete(a.nom), a]));
+    const cles = clesDesCases(out.ateliers, nomServiceDe(ctx.services));
     const connues = new Set((ctx.classes || []).map(c => c.id));
     // Ce qui compte d'une case, tel que le calcul le lit : sans liste de vagues,
     // une mise à disposition a une vague, à son heure.
@@ -571,8 +601,8 @@
     for (const o of T.enObjets(f.lignes).objets) {
       err.essayer(f.nom, o._ligne, () => {
         const nom = String(o.case ?? '').trim(); if (!nom) return;
-        const a = parNom.get(T.cleEntete(nom));
-        if (!a) throw new Error('case inconnue « ' + nom + ' » : le nom est la clé, il doit être celui du site');
+        const a = cles.trouver(nom);
+        if (!a) throw new Error('case inconnue « ' + nom + ' » : le nom est la clé, il doit être celui du site' + cles.pourquoi(nom));
         if (a.type !== 'dispo') {
           if (o.jour !== undefined && o.jour !== null && String(o.jour).trim() !== '') {
             a.jour = jourPermis(nom, a.type, jourDe(o.jour));
@@ -746,13 +776,14 @@
     const ordre = services.map(s => s.id);
     const rang = a => (ordre.includes(a.service) ? ordre.indexOf(a.service) : ordre.length);
     const debutDe = a => (a.jour || 0) * 1440 + (T.heureDe(a.debut) || 0);
+    const cles = clesDesCases(etat.ateliers, nomDe);
     const prepare = a => {
       const ids = (a.lots || []).map(l => l.join(' + '));
       return ids.length ? ids.slice(0, 8).join(', ') + (ids.length > 8 ? '… (' + ids.length + ')' : '') : null;
     };
     for (const a of [...etat.ateliers].sort((x, y) => debutDe(x) - debutDe(y) || rang(x) - rang(y))) {
       const fin = fins.get(a.id);
-      lignes.push([a.nom, jourEcrit(a.jour || 0), a.debut, nomDe(a.service), a.type === 'dispo' ? null : a.personnes,
+      lignes.push([cles.cle(a), jourEcrit(a.jour || 0), a.debut, nomDe(a.service), a.type === 'dispo' ? null : a.personnes,
         Number.isFinite(fin) ? P.hhmm(fin) : null, prepare(a)]);
     }
     return { nom: 'Horaires', lignes };
@@ -800,15 +831,15 @@
    * Seules les heures changent.
    * @returns {{ etat, changes:[noms des ateliers décalés] }}
    */
-  function classeurVersHoraires(feuilles, etat) {
+  function classeurVersHoraires(feuilles, etat, ctx) {
     const fH = T.feuille(feuilles, 'Horaires');
     if (!fH) throw new Error('Feuille « Horaires » introuvable.');
     const err = new Erreurs();
     const out = JSON.parse(JSON.stringify(etat));
-    const parNom = new Map(out.ateliers.map(a => [T.cleEntete(a.nom), a]));
+    const cles = clesDesCases(out.ateliers, nomServiceDe((ctx || {}).services));
     const atelierNomme = (v, ou, ligne) => {
-      const a = parNom.get(T.cleEntete(v));
-      if (!a) err.ajouter(ou, ligne, 'atelier inconnu « ' + (v ?? '') + ' » : le nom est la clé, il doit être celui du site');
+      const a = cles.trouver(v);
+      if (!a) err.ajouter(ou, ligne, 'atelier inconnu « ' + (v ?? '') + ' » : le nom est la clé, il doit être celui du site' + cles.pourquoi(v));
       return a;
     };
     const changes = lireHoraires(fH, atelierNomme, err);
@@ -840,7 +871,9 @@
   function ateliersVersClasseur(etat, ctx) {
     const services = ctx.services || [];
     const nomDe = id => (services.find(s => s.id === id) || {}).nom || id;
-    const nomAtelier = id => (etat.ateliers.find(x => x.id === id) || {}).nom || null;
+    // La clé de chaque case : son nom, ou « nom · service » quand un autre service a la même (08/10).
+    const cles = clesDesCases(etat.ateliers, nomDe);
+    const nomAtelier = id => { const x = etat.ateliers.find(y => y.id === id); return x ? cles.cle(x) : null; };
     const ateliers = [['Atelier', 'Service', 'Type', 'Personnes', 'Pauses',
       'Poste réglementaire', 'Présence (min)', 'Emporte du matériel', 'Débit robot (plateaux/h)',
       'Effectif mini robot', 'Plafond plonge (u/h)', 'Permanent', 'Identifiant',
@@ -857,7 +890,7 @@
     const debitsRobot = [['Atelier', 'Compagnie × classe', 'Débit (plateaux/h)']];
     const tunnels = [['Atelier', 'Tunnel', 'Débit (u/h)', 'Personnes', 'Actif', 'Vitesse (×)']];
     for (const a of etat.ateliers) {
-      ateliers.push([a.nom, nomDe(a.service), TYPES_FR[a.type] || a.type,
+      ateliers.push([cles.cle(a), nomDe(a.service), TYPES_FR[a.type] || a.type,
         a.type === 'dispo' ? null : a.personnes,
         (a.pauses || []).map(p => p.de + '-' + p.a).join('; ') || null,
         a.regime && a.regime.actif === false ? 'non' : 'oui',
@@ -888,16 +921,16 @@
       if (a.type === 'handling') {
         // Une ligne par compagnie réglée : sa durée, et si elle est long courrier.
         const longs = new Set(a.longs || []), d = a.durees || {}, al = a.allers || {}, re = a.retours || {}, vc = a.volsCamion || {};
-        if ([d, al, re].some(m => m[P.TOUTES] !== undefined)) handling.push([a.nom, 'toutes', al[P.TOUTES] ?? null, d[P.TOUTES] ?? null, re[P.TOUTES] ?? null, null, null]);
+        if ([d, al, re].some(m => m[P.TOUTES] !== undefined)) handling.push([cles.cle(a), 'toutes', al[P.TOUTES] ?? null, d[P.TOUTES] ?? null, re[P.TOUTES] ?? null, null, null]);
         for (const cie of [...new Set([d, al, re, vc].flatMap(m => Object.keys(m)).filter(k => k !== P.TOUTES).concat([...longs]))].sort())
-          handling.push([a.nom, cie, al[cie] ?? null, d[cie] ?? null, re[cie] ?? null, longs.has(cie) ? 'long' : 'court', vc[cie] ?? null]);
-        for (const c of (a.creneaux || [])) chauffeurs.push([a.nom, c.de, c.a, c.n]);
+          handling.push([cles.cle(a), cie, al[cie] ?? null, d[cie] ?? null, re[cie] ?? null, longs.has(cie) ? 'long' : 'court', vc[cie] ?? null]);
+        for (const c of (a.creneaux || [])) chauffeurs.push([cles.cle(a), c.de, c.a, c.n]);
       }
-      if (a.type === 'lavage' && a.parVol) for (const [cie, v] of Object.entries(a.durees || {})) plongeVol.push([a.nom, cie === P.TOUTES ? 'toutes' : cie, v]);
-      (a.lots || []).forEach((l, i) => fab.push([a.nom, i + 1, l.join(' + ')]));
-      for (const [id, v] of Object.entries(a.minutes || {})) mm.push([a.nom, id, enHeures(v)]);
-      for (const [id, v] of Object.entries(a.debits || {})) debitsRobot.push([a.nom, id, v]);
-      for (const t of (a.tunnels || [])) tunnels.push([a.nom, t.nom, t.debit, t.personnes, t.actif === false ? 'non' : 'oui', t.vitesse || 1]);
+      if (a.type === 'lavage' && a.parVol) for (const [cie, v] of Object.entries(a.durees || {})) plongeVol.push([cles.cle(a), cie === P.TOUTES ? 'toutes' : cie, v]);
+      (a.lots || []).forEach((l, i) => fab.push([cles.cle(a), i + 1, l.join(' + ')]));
+      for (const [id, v] of Object.entries(a.minutes || {})) mm.push([cles.cle(a), id, enHeures(v)]);
+      for (const [id, v] of Object.entries(a.debits || {})) debitsRobot.push([cles.cle(a), id, v]);
+      for (const t of (a.tunnels || [])) tunnels.push([cles.cle(a), t.nom, t.debit, t.personnes, t.actif === false ? 'non' : 'oui', t.vitesse || 1]);
     }
 
     const exclues = new Set(etat.exclues || []);
@@ -935,13 +968,16 @@
       ['Retours à la plonge', RETOURS_ECRITS[P.sourceRetours(m)]],
       ...P.CABINES.map(c => ['Unités par vol ' + c, ((m.unites || {})[c] || {}).parVol || 0])];
 
-    // Un service qui travaille par compagnie (l'armement) : ses heures par vol.
-    const parCie = [['Service', 'Compagnie', 'Heures par vol']];
+    // Un service qui travaille par compagnie (l'armement) : ses heures par vol, et
+    // les compagnies qui n'ont pas d'armement (« Armée » : non, 08/10).
+    const parCie = [['Service', 'Compagnie', 'Heures par vol', 'Armée']];
     for (const [s, liste] of Object.entries(etat.categories || {})) {
       const k = (liste || [])[0]; if (!k) continue;
+      const sans = new Set(k.sans || []);
       const lignes = Object.entries(k.minutes || {}).sort((x, y) => (x[0] === '*' ? -1 : y[0] === '*' ? 1 : x[0].localeCompare(y[0])));
-      if (!lignes.length) parCie.push([nomDe(s), 'toutes', null]);
-      for (const [cie, v] of lignes) parCie.push([nomDe(s), cie === '*' ? 'toutes' : cie, enHeures(v)]);
+      if (!lignes.length) parCie.push([nomDe(s), 'toutes', null, null]);
+      for (const [cie, v] of lignes) parCie.push([nomDe(s), cie === '*' ? 'toutes' : cie, enHeures(v), cie === '*' ? null : sans.has(cie) ? 'non' : 'oui']);
+      for (const cie of [...sans].sort()) if (!(cie in (k.minutes || {}))) parCie.push([nomDe(s), cie, null, 'non']);
     }
     return [
       { nom: 'Ateliers', lignes: ateliers },
@@ -971,7 +1007,8 @@
         '   après-midi ; « propre » — un second robot. Arrêts de la ligne : « 12:15-13:00 », chaque jour, pour toute la ligne.',
         'Fabrications : ce que fait chaque atelier, DANS L’ORDRE. Une ligne par lot ; plusieurs classes d’un lot se séparent par « + ».',
         'Par compagnie : un service qui travaille par compagnie (l’armement : une case par compagnie, selon le chemin). Ses heures',
-        '   par vol : « toutes » (la valeur par défaut), puis une ligne par compagnie qui en a d’autres. Dans Fabrications, sa case',
+        '   par vol : « toutes » (la valeur par défaut), puis une ligne par compagnie qui en a d’autres. Armée = non : la compagnie',
+        '   n’a pas d’armement (pas de case ; le handling charge ses vols sans l’attendre). Dans Fabrications, sa case',
         '   s’écrit « AF/@ARM » (la compagnie, puis @ et le code du service, tel qu’exporté).',
         '   Pour ajouter une compagnie × classe à un atelier : ajoutez une ligne (Atelier, Ordre, ex. « AF/BC »).',
         'Heures propres : les heures de travail qu’un atelier fixe pour une compagnie × classe, POUR TOUTE SA JOURNÉE (tous ses vols),',
@@ -1013,6 +1050,7 @@
   function classeurVersAteliers(feuilles, etat, ctx) {
     const err = new Erreurs();
     const service = T.correspondance(ctx.services || []);
+    const nomService = nomServiceDe(ctx.services);
     const out = JSON.parse(JSON.stringify(etat));
     const fA = T.feuille(feuilles, 'Ateliers');
     if (!fA) throw new Error('Feuille « Ateliers » introuvable : ce n’est pas un classeur d’ateliers.');
@@ -1101,16 +1139,22 @@
     out.ateliers = [];
     for (const o of T.enObjets(fA.lignes).objets) {
       err.essayer(fA.nom, o._ligne, () => {
-        const nom = String(o.atelier ?? '').trim();
-        if (!nom) throw new Error('nom d’atelier manquant');
-        const k = T.cleEntete(nom);
-        if (parNom.has(k)) throw new Error('« ' + nom + ' » existe déjà ligne ' + parNom.get(k)._ligne + ' : le nom est la clé');
+        const cellule = String(o.atelier ?? '').trim();
+        if (!cellule) throw new Error('nom d’atelier manquant');
         const sid = service(o.service);
         if (!sid) throw new Error('service inconnu « ' + (o.service ?? '') + ' »');
+        // « CRL · Dotation » : la clé d'une équipe dont le nom est aussi celui d'une
+        // équipe d'un autre service (08/10). Son nom est « CRL ».
+        const i = cellule.lastIndexOf(SEP_CLE.trim());
+        const nom = i > 0 && [T.cleEntete(nomService(sid)), T.cleEntete(sid)].includes(T.cleEntete(cellule.slice(i + 1)))
+          ? cellule.slice(0, i).trim() : cellule;
+        const k = T.cleEntete(nom), ks = k + '|' + sid;
+        if (parNom.has(ks)) throw new Error('« ' + nom + ' » existe déjà dans ce service, ligne ' + parNom.get(ks)._ligne + ' : deux équipes d’un même service ne partagent pas un nom');
         const type = typeDe(o.type);
         // Les heures vivent dans la feuille « Horaires ». Un ancien classeur les
         // porte encore ici : on les lit. Sinon, celles du site restent.
         const avant = etat.ateliers.find(x => x.id === String(o.identifiant ?? '').trim())
+          || etat.ateliers.find(x => x.service === sid && T.cleEntete(x.nom) === k)
           || etat.ateliers.find(x => T.cleEntete(x.nom) === k);
         const debut = T.heureDe(o.debut ?? (avant ? avant.debut : '06:00'));
         const jour = type === 'handling' ? 0 : jourPermis(nom, type, jourDe(o.jour ?? (avant ? avant.jour || 0 : 0)));
@@ -1202,12 +1246,14 @@
           if (!a._cond.sinon) throw new Error('« ne travaille que si » : dites quelle équipe reprend ses commandes (« Sinon, commandes à »)');
         }
         a._ligne = o._ligne;
-        parNom.set(k, a); out.ateliers.push(a);
+        parNom.set(ks, a); out.ateliers.push(a);
       });
     }
+    // Les autres feuilles désignent une équipe par sa clé : son nom, ou « nom · service ».
+    const cles = clesDesCases(out.ateliers, nomService);
     const atelierNomme = (v, ou, ligne) => {
-      const a = parNom.get(T.cleEntete(v));
-      if (!a) err.ajouter(ou, ligne, 'atelier inconnu « ' + (v ?? '') + ' » (absent de la feuille Ateliers)');
+      const a = cles.trouver(v);
+      if (!a) err.ajouter(ou, ligne, 'atelier inconnu « ' + (v ?? '') + ' » (absent de la feuille Ateliers)' + cles.pourquoi(v));
       return a;
     };
 
@@ -1238,6 +1284,10 @@
           // En heures (08/10) ; un classeur d'avant, en minutes, se relit toujours.
           const enH = o.heures_par_vol !== undefined, cie = String(o.compagnie ?? '').trim();
           const v = T.nombreDe(enH ? o.heures_par_vol : o.minutes_par_vol, null);
+          // « Armée : non » — une compagnie sans armement (08/10).
+          if (cie && !/^(toutes?|\*)$/i.test(cie) && o.armee !== undefined && o.armee !== null && String(o.armee).trim() !== '' && !T.ouiNon(o.armee, true)) {
+            const k = cats[sid][0]; k.sans = [...new Set((k.sans || []).concat([cie.toUpperCase()]))].sort();
+          }
           if (!cie || v === null) return;
           if (!Number.isFinite(v) || v < 0) throw new Error((enH ? 'heures' : 'minutes') + ' par vol : nombre positif attendu');
           cats[sid][0].minutes[/^(toutes?|\*)$/i.test(cie) ? '*' : cie.toUpperCase()] = enH ? Math.round(v * 60 * 100) / 100 : v;
@@ -1253,7 +1303,7 @@
     const garder = !fF;   // sans la feuille, les fabrications restent celles du site
     if (garder) {
       for (const a of out.ateliers) {
-        const avant = etat.ateliers.find(x => x.id === a.id) || etat.ateliers.find(x => T.cleEntete(x.nom) === T.cleEntete(a.nom));
+        const avant = etat.ateliers.find(x => x.id === a.id) || etat.ateliers.find(x => x.service === a.service && T.cleEntete(x.nom) === T.cleEntete(a.nom));
         if (avant) a.lots = JSON.parse(JSON.stringify(avant.lots || []));
       }
     } else {
@@ -1285,7 +1335,7 @@
     const fHP = T.feuille(feuilles, 'Heures propres');
     const fMM = fHP || T.feuille(feuilles, 'Man-minutes');
     for (const a of out.ateliers) {
-      const avant = etat.ateliers.find(x => x.id === a.id) || etat.ateliers.find(x => T.cleEntete(x.nom) === T.cleEntete(a.nom));
+      const avant = etat.ateliers.find(x => x.id === a.id) || etat.ateliers.find(x => x.service === a.service && T.cleEntete(x.nom) === T.cleEntete(a.nom));
       if (!fMM && avant && avant.minutes) a.minutes = JSON.parse(JSON.stringify(avant.minutes));
     }
     if (fMM) {
@@ -1306,7 +1356,7 @@
     const fDR = T.feuille(feuilles, 'Débits robot', 'Debits robot');
     for (const a of out.ateliers) {
       if (a.type !== 'robot') continue;
-      const avant = etat.ateliers.find(x => x.id === a.id) || etat.ateliers.find(x => T.cleEntete(x.nom) === T.cleEntete(a.nom));
+      const avant = etat.ateliers.find(x => x.id === a.id) || etat.ateliers.find(x => x.service === a.service && T.cleEntete(x.nom) === T.cleEntete(a.nom));
       if (!fDR && avant && avant.debits) a.debits = JSON.parse(JSON.stringify(avant.debits));
     }
     if (fDR) {
@@ -1327,7 +1377,7 @@
     const fT = T.feuille(feuilles, 'Tunnels');
     for (const a of out.ateliers) {
       if (a.type !== 'lavage') continue;
-      const avant = etat.ateliers.find(x => x.id === a.id) || etat.ateliers.find(x => T.cleEntete(x.nom) === T.cleEntete(a.nom));
+      const avant = etat.ateliers.find(x => x.id === a.id) || etat.ateliers.find(x => x.service === a.service && T.cleEntete(x.nom) === T.cleEntete(a.nom));
       a.tunnels = !fT && avant ? JSON.parse(JSON.stringify(avant.tunnels || [])) : [];
     }
     if (fT) {

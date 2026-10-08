@@ -150,7 +150,9 @@
           const c = cie === '*' ? '*' : String(cie).trim().toUpperCase().slice(0, 40);
           if (c && v !== null && v !== '' && Number.isFinite(+v) && +v >= 0) minutes[c] = Math.round(+v * 10) / 10;
         }
-        return { id, nom: String(k.nom ?? id).slice(0, 80) || id, minutes };
+        // Les compagnies sans armement (08/10) : pas de case, le handling ne les attend pas.
+        const sans = [...new Set((Array.isArray(k.sans) ? k.sans : []).map(c => String(c).trim().toUpperCase().slice(0, 40)).filter(Boolean))].sort().slice(0, 300);
+        return { id, nom: String(k.nom ?? id).slice(0, 80) || id, minutes, ...(sans.length ? { sans } : {}) };
       }).filter(k => k.id && !vus.has(k.id) && vus.add(k.id));
     }
     return out;
@@ -313,9 +315,13 @@
     // ils serviront à relier l'unité au budget quotidien.
     const encadrement = Object.fromEntries(Object.entries(brut.encadrement && typeof brut.encadrement === 'object' ? brut.encadrement : {})
       .map(([k, x]) => [String(k).slice(0, 160), Math.round(+x)]).filter(([k, x]) => k && Number.isFinite(x) && x > 0).map(([k, x]) => [k, Math.min(99, x)]).slice(0, 500));
+    // Les services qui travaillent en même temps qu'un autre (08/10) : { cuisine chaude: cuisine }.
+    const paralleles = Object.fromEntries(Object.entries(brut.paralleles && typeof brut.paralleles === 'object' ? brut.paralleles : {})
+      .map(([k, x]) => [String(k).slice(0, 160), String(x ?? '').slice(0, 160)]).filter(([k, x]) => k && x && k !== x).slice(0, 100));
     return { schema: 'ory-ateliers', version: 1, ateliers, exclues, ajoutees, materiel,
       parcours, parcoursCabine, parcoursClasse, ...(Object.keys(categories).length ? { categories } : {}),
-      ...(Object.keys(effectifs).length ? { effectifs } : {}), ...(Object.keys(encadrement).length ? { encadrement } : {}), ...(migrations.length ? { migrations } : {}) };
+      ...(Object.keys(effectifs).length ? { effectifs } : {}), ...(Object.keys(encadrement).length ? { encadrement } : {}),
+      ...(Object.keys(paralleles).length ? { paralleles } : {}), ...(migrations.length ? { migrations } : {}) };
   }
 
   /* L'effectif constant par défaut (retour d'usage du 05/10) : « le nombre de
@@ -1090,13 +1096,18 @@
     }
 
     appliquerSaisie(champ, a, el, v) {
-      this.changer(() => {
+      const ok = this.changer(() => {
         switch (champ) {
           case 'nom': {
-            // Le nom est la clé des classeurs Excel : deux cases ne le partagent pas.
-            const pris = this.state.ateliers.some(x => x !== a && String(x.nom).trim().toUpperCase() === String(v).trim().toUpperCase());
-            if (pris) throw new Error('le nom « ' + v + ' » est déjà celui d’une autre case (le nom sert de clé dans Excel).');
-            a.nom = v; break;
+            // Jamais vide ; unique dans son service seulement (retour d'usage du
+            // 08/10 : l'équipe « CRL » de la Dotation, quand la Cuisine a aussi
+            // la sienne). Dans Excel, deux équipes de même nom se distinguent
+            // par leur service : « CRL · Dotation » (voir OrlyEchanges).
+            const n = String(v).trim();
+            if (!n) throw new Error('une équipe a besoin d’un nom : elle garde « ' + a.nom + ' ».');
+            const pris = this.state.ateliers.some(x => x !== a && x.service === a.service && String(x.nom).trim().toUpperCase() === n.toUpperCase());
+            if (pris) throw new Error('« ' + n + ' » est déjà le nom d’une autre équipe de ce service.');
+            a.nom = n; break;
           }
           // Le travail d'une commande dans cette case, pour sa journée ; vide = celui du barème.
           // Saisi en heures (08/10), gardé en minutes.
@@ -1257,6 +1268,13 @@
           case 'pause-a':  a.pauses[+el.dataset.index].a = v; break;
         }
       }, 'Enregistré.');
+      // Refusé : le champ reprend la valeur enregistrée. Le rendu, identique, ne
+      // le redessinerait pas, et l'écran montrerait ce qui n'est pas retenu.
+      if (!ok && el && el.isConnected) {
+        if (el.type === 'checkbox' || el.type === 'radio') el.checked = el.defaultChecked;
+        else if (el.tagName === 'SELECT') for (const o of el.options) o.selected = o.defaultSelected;
+        else el.value = el.defaultValue;
+      }
     }
 
     /* Retirer une compagnie × classe, c'est aussi couper tous les liens que les
@@ -1374,7 +1392,7 @@
           const E = root.OrlyEchanges, T = root.OrlyTableur;
           const feuilles = await T.lireFichier(f, 8 * 1024 * 1024);
           // Un classeur d'horaires seuls ne remplace rien : il décale des équipes.
-          if (E.estClasseurHoraires(feuilles)) return this.importerHoraires(E.classeurVersHoraires(feuilles, this.state));
+          if (E.estClasseurHoraires(feuilles)) return this.importerHoraires(E.classeurVersHoraires(feuilles, this.state, { services: this.a.services() }));
           const r = E.classeurVersAteliers(feuilles, this.state,
             { services: this.a.services(), programme: this.a.classes() || [] });
           etat = valider(r.etat); ajouts = r.ajouteesAuto;
