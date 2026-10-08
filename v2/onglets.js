@@ -49,7 +49,7 @@
     ],
     reglages: [
       { id: 'rg-minutes', nom: 'Barème par service', ico: 'chrono' },
-      { id: 'rg-recap', nom: 'Minutes de travail', ico: 'chrono' },
+      { id: 'rg-recap', nom: 'Heures de travail', ico: 'chrono' },
       { id: 'rg-simulation', nom: 'Réglages de la simulation', ico: 'sablier' }
     ],
     // Arriver « sur le plan » (un lien, « voir sur le plan »), c'est arriver
@@ -89,9 +89,9 @@
     { id: 'organisation', nom: 'Équipes', ico: 'equipe', couleur: 'var(--c-equipes)',
       resume: 'Qui prépare quoi, quand, en combien de temps',
       pages: [
-        { id: 'mu-services', intro: 'Chaque service : ce qu’il fait, ses équipes, ce que chacune prépare, ses minutes.' },
+        { id: 'mu-services', intro: 'Chaque service : ce qu’il fait, ses équipes, ce que chacune prépare, ses heures de travail.' },
         { id: 'at-recap', intro: 'Toutes les équipes et leurs horaires d’un coup d’œil : à régler ici ou dans Excel.' },
-        { id: 'rg-recap', intro: 'Toutes les minutes de travail : une compagnie par bloc, ses classes, un service par colonne ; ici ou dans Excel.' },
+        { id: 'rg-recap', intro: 'Toutes les heures de travail par vol : une compagnie par bloc, ses classes, un service par colonne ; ici ou dans Excel.' },
         { id: 'u-services', plus: true, intro: 'Les services de l’unité : nom, rattachement, place sur le plan, services supprimés.' },
         { id: 'at-equipes', plus: true, intro: 'Chaque équipe, une par une, avec tous ses réglages.' },
         { id: 'rg-minutes', plus: true, intro: 'Le barème, service par service, et son classeur Excel (importer, exporter, chiffres d’exemple).' }

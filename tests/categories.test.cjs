@@ -81,10 +81,17 @@ function verifier(dossier, v) {
     const classes = P.classesDeVols(vols);
     const ctx = { services, programme: classes, classes: classes.map(c => ({ ...c, origine: 'programme' })) };
     const f = E.ateliersVersClasseur(etat, ctx);
-    assert.deepEqual(f.find(x => x.nom === 'Par compagnie').lignes.slice(1), [['ARMEMENT', 'toutes', 10], ['ARMEMENT', 'AF', 15]]);
+    // En heures par vol (08/10) ; l'aller-retour retrouve les minutes du site.
+    const parCie = f.find(x => x.nom === 'Par compagnie');
+    assert.deepEqual(parCie.lignes[0], ['Service', 'Compagnie', 'Heures par vol']);
+    assert.deepEqual(parCie.lignes.slice(1), [['ARMEMENT', 'toutes', 0.1667], ['ARMEMENT', 'AF', 0.25]]);
     const lu = E.classeurVersAteliers(await T.lireClasseur(T.ecrireClasseur(f)), etat, ctx);
     assert.deepEqual(lu.ajouteesAuto, [], 'une case d’armement n’est pas une classe à ajouter');
     assert.deepEqual(lu.etat.categories, categories);
+    // Un classeur d'avant, en « Minutes par vol », se relit toujours en minutes.
+    const ancien = f.map(x => x.nom !== 'Par compagnie' ? x
+      : { ...x, lignes: [['Service', 'Compagnie', 'Minutes par vol'], ['ARMEMENT', 'toutes', 10], ['ARMEMENT', 'AF', 15]] });
+    assert.deepEqual(E.classeurVersAteliers(await T.lireClasseur(T.ecrireClasseur(ancien)), etat, ctx).etat.categories, categories);
     assert.deepEqual(lu.etat.ateliers[0].lots, [['AF/@ARM'], ['QR/@ARM']]);
   });
 }

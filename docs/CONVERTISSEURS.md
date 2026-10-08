@@ -92,20 +92,20 @@ Sans le modèle (b), tu ne produis rien : tu décris l'export et tu poses tes qu
 ## Comment le simulateur utilise le barème (à respecter pour convertir juste)
 
 - Une commande = une compagnie × une classe (ex. AF/YC). Ses vols sont UNIQUEMENT les départs du jour où cette classe a au moins un passager (un A320 sans BC ne compte pas dans AF/BC).
-- Temps de travail d'une commande dans un service = minutes par vol × nombre de vols de la commande (colonne « Vols au programme (info) » du modèle). Le simulateur ne multiplie PAS par les passagers ni par un taux de remplissage : si le remplissage doit jouer, il doit être déjà dans les minutes par vol.
-- Durée réelle = homme-minutes ÷ personnes de l'équipe ÷ rendement, et les pauses du poste arrêtent l'horloge (feuille « Réglages » : rendement, présence, pauses). Le barème attend donc du TRAVAIL EFFECTIF : des minutes qui contiennent déjà pauses et pertes seraient comptées deux fois.
-- Le barème n'a pas de notion de temps fixe par jour : seulement des minutes par vol.
+- Temps de travail d'une commande dans un service = heures par vol × nombre de vols de la commande (colonne « Vols au programme (info) » du modèle). Le simulateur ne multiplie PAS par les passagers ni par un taux de remplissage : si le remplissage doit jouer, il doit être déjà dans les heures par vol.
+- Durée réelle = heures de travail ÷ personnes de l'équipe ÷ rendement, et les pauses du poste arrêtent l'horloge (feuille « Réglages » : rendement, présence, pauses). Le barème attend donc du TRAVAIL EFFECTIF : des minutes qui contiennent déjà pauses et pertes seraient comptées deux fois.
+- Le barème n'a pas de notion de temps fixe par jour : seulement des heures par vol.
 
 ## Format de sortie (strict)
 
-Feuille « Barème », colonnes : Service | Compagnie | Classe | Minutes par vol | Vols au programme (info) | Valeur appliquée (info)
+Feuille « Barème », colonnes : Service | Compagnie | Classe | Heures par vol | Vols au programme (info) | Valeur appliquée (info)
 - Une ligne = un service × une compagnie × une classe.
 - Service : EXACTEMENT les noms du modèle (ex. CUISINE, MONTAGE). N'en crée aucun.
 - Compagnie : EXACTEMENT les codes du modèle — ce sont ceux des vols importés. La table des codes compagnie des connaissances du projet dit quel nom de l'export correspond à quel code ; tu ne choisis jamais un code toi-même (pas de conversion vers un code IATA de ton initiative). Un nom de l'export absent de la table : demande-moi.
   « * » : valeur commune d'un service × classe, pour toutes les compagnies qui n'ont pas de valeur propre. « * » remplace une compagnie, JAMAIS une classe.
 - Classe : BC, PC, YC, CREW (repas équipage) ou SPML (repas spéciaux). Il n'existe pas de classe « toutes classes ».
-- Minutes par vol :
-  - un NOMBRE (pas du texte), ≥ 0, arrondi à 2 décimales ;
+- Heures par vol (heures décimales de travail d'UNE personne pour UN vol : 0,25 = un quart d'heure, 1,5 = une heure et demie) :
+  - un NOMBRE (pas du texte), ≥ 0, arrondi à 4 décimales ;
   - VIDE = pas de valeur propre : la ligne « * » du service s'applique (ou rien si elle est vide aussi) ;
   - 0 = temps explicitement nul, qui ÉCRASE la ligne « * ». N'écris 0 que si l'export dit 0 ; une donnée absente reste vide (ou garde la valeur du modèle).
 - L'import REMPLACE le barème entier : rends TOUTES les lignes du modèle. Une ligne que l'export ne couvre pas garde la valeur du modèle.
@@ -115,15 +115,15 @@ Feuille « Barème », colonnes : Service | Compagnie | Classe | Minutes par vol
 
 ## Conversion
 
-1. Unité des durées : détecte et dis-moi si l'export donne des hh:mm, des heures décimales ou des fractions de jour Excel (minutes = fraction × 1440 ; heures décimales × 60 ; hh:mm → h × 60 + mm).
+1. Unité des durées : détecte et dis-moi si l'export donne des hh:mm, des heures décimales, des minutes ou des fractions de jour Excel (heures = fraction × 24 ; minutes ÷ 60 ; hh:mm → h + mm ÷ 60).
 2. Nature du temps : dis-moi si l'export mesure de la présence (pointage, heures payées, ETP × durée de poste) ou du travail effectif (standard, temps gamme). Si c'est de la présence ou un budget qui inclut pauses et pertes, ne convertis pas avant que je choisisse : (a) ramener au travail effectif avec un coefficient que je donne, ou (b) garder tel quel et je neutraliserai rendement et pauses dans le simulateur.
 3. Grain et période :
-   - standard PAR VOL (par poste × compagnie) → minutes par vol = heures par vol × 60 ;
-   - temps PAR REPAS / PAR PASSAGER → minutes par vol = minutes par repas × repas moyens par vol de la commande, calculés sur le classeur des vols : passagers de la classe ÷ nombre de vols QUI ONT cette classe (pas tous les vols de la compagnie). Pour CREW et SPML, prends nb_CREW et nb_SPML des vols ;
-   - temps TOTAL d'une période → minutes par vol = temps total ÷ nombre de vols de la MÊME période. Si l'export couvre une semaine ou un mois et que je ne donne que les vols d'un jour, ne divise pas : signale-le et demande-moi le nombre de vols de la période ;
+   - standard PAR VOL (par poste × compagnie) → heures par vol = le standard, en heures décimales ;
+   - temps PAR REPAS / PAR PASSAGER → heures par vol = heures par repas × repas moyens par vol de la commande, calculés sur le classeur des vols : passagers de la classe ÷ nombre de vols QUI ONT cette classe (pas tous les vols de la compagnie). Pour CREW et SPML, prends nb_CREW et nb_SPML des vols ;
+   - temps TOTAL d'une période → heures par vol = temps total (en heures) ÷ nombre de vols de la MÊME période. Si l'export couvre une semaine ou un mois et que je ne donne que les vols d'un jour, ne divise pas : signale-le et demande-moi le nombre de vols de la période ;
    - temps FIXE par jour (runner, palette, cantine…) ou au prorata d'autre chose que des vols : ne le convertis pas par défaut ; liste-le dans le compte rendu avec sa valeur, sauf règle contraire dans la table.
-   - postes des services de MISE À DISPOSITION (légumerie, magasin… : ceux qui servent toutes les compagnies à la demande) : leurs man-minutes sont ignorés par le simulateur, qui ne retient que l'heure à partir de laquelle ils servent. Ne les convertis pas ; cite-les seulement dans le compte rendu. Le modèle ne leur propose d'ailleurs aucune ligne.
-4. Taux de remplissage : si l'export donne un standard « vol plein » et des taux de remplissage, demande-moi une fois s'il faut pondérer (minutes par vol = standard × taux) ou non, et note la règle dans la table.
+   - postes des services de MISE À DISPOSITION (légumerie, magasin… : ceux qui servent toutes les compagnies à la demande) : leurs heures sont ignorées par le simulateur, qui ne retient que l'heure à partir de laquelle ils servent. Ne les convertis pas ; cite-les seulement dans le compte rendu. Le modèle ne leur propose d'ailleurs aucune ligne.
+4. Taux de remplissage : si l'export donne un standard « vol plein » et des taux de remplissage, demande-moi une fois s'il faut pondérer (heures par vol = standard × taux) ou non, et note la règle dans la table.
 5. Postes → services : applique la table ; plusieurs postes vers un même service × compagnie × classe s'additionnent. Un poste qui ne correspond à aucun service : demande-moi (l'ignorer ou le rattacher). Plonge et services de mise à disposition (magasin, légumerie…) n'ont pas de barème : rien sur ces services.
 6. Postes → classes : la classe se lit souvent dans le libellé (BC/BUS → BC, PY/PE → PC, YC/ECO → YC, PEQ/équipage → CREW, SPML → SPML). Un poste SANS classe (bar, épiceries, couverts, dispatch…) ne peut aller ni sur « * » ni sur une classe inventée : applique la règle de la table ; sans règle, demande-moi entre (a) tout sur une classe que je désigne — de préférence une classe présente sur TOUS les vols de la compagnie, sinon les vols qui ne l'ont pas perdent ce temps — ou (b) une répartition que je définis.
 7. Blocs communs à plusieurs compagnies (ex. « AH-AT ») : même valeur par vol pour chacune, sauf règle contraire.
@@ -133,7 +133,7 @@ Feuille « Barème », colonnes : Service | Compagnie | Classe | Minutes par vol
 1. Décris en quelques lignes l'export (feuilles, colonnes, unité, grain, période, nature du temps) et le modèle (services, compagnies, nombre de lignes). Liste les anomalies de l'export (valeurs incohérentes entre en-tête et détail, colonnes hors période, libellés suspects).
 2. Applique la table de correspondance des connaissances du projet sans me la redemander. Ne pose de questions que pour ce qu'elle ne couvre pas (postes, compagnies, unités, règles), toutes d'un coup, en liste numérotée, avant de produire le fichier ; signale toute divergence entre la table et l'export.
 3. Remplis le modèle et produis le .xlsx.
-4. Contrôle avant de rendre : feuilles et en-têtes inchangés ; aucun service ni code compagnie hors modèle ; aucune ligne service × compagnie × classe en double ; minutes toutes numériques et ≥ 0 ; aucun 0 qui ne vienne pas d'un 0 de l'export ; pour chaque service × compagnie, le total « minutes par vol × vols au programme » comparé au standard de l'export ramené aux mêmes vols (écart en %, expliqué au-delà de 2 %).
+4. Contrôle avant de rendre : feuilles et en-têtes inchangés ; aucun service ni code compagnie hors modèle ; aucune ligne service × compagnie × classe en double ; heures toutes numériques et ≥ 0 ; aucun 0 qui ne vienne pas d'un 0 de l'export ; pour chaque service × compagnie, le total « heures par vol × vols au programme » comparé au standard de l'export ramené aux mêmes vols (écart en %, expliqué au-delà de 2 %).
 
 ## Ce que tu me rends
 

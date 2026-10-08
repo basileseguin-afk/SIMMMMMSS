@@ -7,7 +7,7 @@ classeur des horaires tiré de celui des ateliers :
 |---|---|---|
 | **Ateliers** | Organisation (Chemins, Cases, Qui prépare quoi) › `⇩ Cases et chemins` / `⇧ Importer` | équipes, horaires, fabrications, tunnels, compagnies × classes, parcours, matériel |
 | **Horaires** | Équipes › Services et équipes › `⇩ Horaires` / `⇧ Importer` | l'heure et le jour de début de chaque case, seuls |
-| **Barème** | Équipes › Plus › Barème par service › `⇩ Temps de travail` / `⇧ Importer` (ou la fiche de chaque service) | homme-minutes **par vol**, par service et par compagnie × classe ; rendement, poste |
+| **Barème** | Équipes › Plus › Barème par service › `⇩ Temps de travail` / `⇧ Importer` (ou la fiche de chaque service) | heures de travail **par vol** (d'une personne), par service et par compagnie × classe ; rendement, poste |
 | **Vols** | Vols › Vols › `⇩ Exporter les vols (Excel)` / fichier à importer | départs et retours |
 
 Pour convertir des exports Winrest dans ces formats avec Claude, voir
@@ -27,6 +27,13 @@ règles.
 - **Une heure** s'écrit `HH:MM`. Une heure saisie dans Excel, qui la range en
   fraction de jour, est comprise aussi.
 - **Un nombre décimal** peut s'écrire avec une virgule : `12,5`.
+- **Le travail s'écrit en heures** (depuis le 08/10) : heures décimales de
+  travail d'une personne, `0,25` pour un quart d'heure, `1,5` pour une heure et
+  demie. Les classeurs exportés les donnent au dix-millième d'heure : les
+  réimporter tels quels ne change rien. Un classeur d'avant, en minutes (colonne
+  « Minutes par vol », feuilles « Man-minutes » et « Man-minutes par vol »), se
+  relit toujours, en minutes. Les **durées** (handling, plonge par vol, pauses,
+  présence) restent en minutes.
 - **Oui / non** : `oui`, `non`, `x`, `vrai`, `faux`, `1`, `0`.
 - Une colonne marquée **« (info) »** est donnée pour lire : elle est ignorée à
   l'import.
@@ -87,42 +94,45 @@ Ce que fait chaque atelier, **dans l'ordre**. Une ligne par lot.
   le dit ; ses volumes viendront du prochain import des vols.
 - Les lots sont rangés par `Ordre` ; un `1,5` se glisse entre `1` et `2`.
 
-### Feuille « Man-minutes »
+### Feuille « Heures propres »
 
-Les man-minutes qu'une case fixe pour une commande, **à la place de l'import**,
-pour elle seule. Une ligne par valeur fixée ; une commande absente reprend le
-barème importé.
+Les heures de travail qu'une case fixe pour une commande, **pour toute sa
+journée** (tous ses vols), **à la place du barème**, pour elle seule. Une ligne
+par valeur fixée ; une commande absente reprend le barème.
 
-| Atelier | Compagnie × classe | Man-minutes |
+| Atelier | Compagnie × classe | Heures de travail |
 |---|---|---|
-| Cuisine TX BC/PC | `TX/BC` | 90 |
+| Cuisine TX BC/PC | `TX/BC` | 1,5 |
 
-Feuille absente : les valeurs du site restent.
+Feuille absente : les valeurs du site restent. L'ancienne feuille « Man-minutes »
+(colonne « Man-minutes », en minutes) se relit toujours.
 
 ### Feuille « Tunnels »
 
 Les tunnels d'une plonge : `Atelier`, `Tunnel`, `Débit (u/h)`, `Personnes`,
 `Actif`.
 
-### Le fichier des man-minutes (Équipes › Minutes de travail)
+### Le fichier des heures de travail (Équipes › Heures de travail)
 
 Un fichier de **paramétrage** du barème, pour les grosses modifications :
-« ⇩ Man-minutes », modifier dans Excel, « ⇧ Importer ».
+« ⇩ Heures de travail », modifier dans Excel, « ⇧ Importer ».
 
-- **Man-minutes par vol** : `Compagnie`, `Classe`, `Vols (info)`, puis une
-  colonne par service (son nom). Chaque case : les man-minutes d'un vol de
-  cette commande dans ce service. Égale à la valeur « Toutes compagnies » de sa
-  classe, ou vide : elle la suit ; une autre valeur devient propre à la
-  compagnie.
+- **Heures par vol** : `Compagnie`, `Classe`, `Vols (info)`, puis une
+  colonne par service (son nom). Chaque case : les heures de travail d'un vol de
+  cette commande dans ce service, pour une personne. Égale à la valeur « Toutes
+  compagnies » de sa classe, ou vide : elle la suit ; une autre valeur devient
+  propre à la compagnie. Un fichier d'avant (feuille « Man-minutes par vol », en
+  minutes) se relit toujours.
 - **Toutes compagnies** : `Classe`, puis une colonne par service : la valeur
-  commune de chaque classe. Vide : aucune.
+  commune de chaque classe, en heures par vol (en minutes dans un fichier
+  d'avant). Vide : aucune.
 - **Personnes** : `Case`, `Service (info)`, `Commandes (info)`, `Personnes` :
   l'effectif de chaque case qui prépare ces commandes. Le nom de la case est la
   clé. Une case partagée n'a qu'une ligne : son effectif vaut pour toutes ses
   commandes.
-- Seuls les services présents en colonne changent. Les man-minutes fixées dans
+- Seuls les services présents en colonne changent. Les heures fixées dans
   une case d'équipe ne sont pas dans ce fichier (classeur des cases, feuille
-  « Man-minutes »).
+  « Heures propres »).
 
 ### Le fichier des cases (Équipes › Horaires des équipes)
 
@@ -280,18 +290,20 @@ correspondante telle qu'elle est sur le site** : on peut n'envoyer que
 
 ### Feuille « Barème »
 
-| Service | Compagnie | Classe | Minutes par vol | Vols au programme (info) | Valeur appliquée (info) |
+| Service | Compagnie | Classe | Heures par vol | Vols au programme (info) | Valeur appliquée (info) |
 |---|---|---|---|---|---|
-| CUISINE | `*` | BC | 35 | | |
-| CUISINE | AF | BC | *(vide)* | 4 | 35 |
-| CUISINE | CRL | BC | 42 | 1 | 42 |
+| CUISINE | `*` | BC | 0,5833 | | |
+| CUISINE | AF | BC | *(vide)* | 4 | 0,5833 |
+| CUISINE | CRL | BC | 0,7 | 1 | 0,7 |
 
-- **Minutes par vol** : les homme-minutes que coûte **un vol** de cette compagnie
-  dans cette classe, dans ce service. La journée de la classe vaut ces minutes
-  fois son nombre de vols. **Le nombre de passagers n'y entre pas.**
+- **Heures par vol** : les heures de travail que coûte **un vol** de cette
+  compagnie dans cette classe, dans ce service, pour une personne (0,7 h =
+  42 min). La journée de la classe vaut ces heures fois son nombre de vols.
+  **Le nombre de passagers n'y entre pas.** Un classeur d'avant, avec une
+  colonne « Minutes par vol », se relit toujours, en minutes.
 - **Compagnie `*`** : la valeur commune à toutes les compagnies qui n'en ont pas
   de propre.
-- **Minutes vides** : pas de valeur propre, la valeur commune s'applique. La
+- **Heures vides** : pas de valeur propre, la valeur commune s'applique. La
   colonne « Valeur appliquée (info) » dit laquelle.
 - L'export propose une ligne par compagnie × classe **et par service de son
   parcours** : exactement ce qu'une étude de temps doit renseigner.
@@ -364,13 +376,13 @@ est saisie. Le dépôt est public : `.gitignore` refuse les `*.xlsx`, `*.xls`,
 ### Feuille « Par compagnie » (classeur des ateliers)
 
 Un service qui travaille par compagnie (l'armement : une case par compagnie,
-pour chaque vol que le handling charge). Ses minutes par vol.
+pour chaque vol que le handling charge). Ses heures par vol.
 
 | Colonne | Sens |
 |---|---|
 | Service | le nom du service |
 | Compagnie | `toutes` (la valeur par défaut) ou une compagnie |
-| Minutes par vol | le temps d'un vol de cette compagnie |
+| Heures par vol | le travail d'un vol de cette compagnie, pour une personne (une ancienne colonne « Minutes par vol » se relit en minutes) |
 
 Dans « Fabrications », la case d'une compagnie s'écrit `AF/@ARM` (le code du
 service, tel qu'exporté). Sans la feuille, le réglage du site reste.

@@ -1806,7 +1806,7 @@ function installerCentreReglages() {
     occupes:()=>[...new Set(((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]).map(a=>a.service))],
     // Les cases : une man-minute fixée dans une case prime, le récap le montre.
     ateliers:()=>(Sim.ateliers&&Sim.ateliers.state.ateliers)||[],
-    // L'effectif d'une case, réglé depuis le récap des man-minutes.
+    // L'effectif d'une case, réglé depuis le récap des heures de travail.
     // L'effectif calculé d'une équipe (homme-minutes ÷ poste), ou null s'il se saisit.
     effectifCalcule:id=>{const at=Sim.ateliers;return at?at.effectifCalcule(at.state.ateliers.find(x=>x.id===id)):null;},
     personnes:(id,n)=>{const a=Sim.ateliers&&Sim.ateliers.state.ateliers.find(x=>x.id===id);if(!a)return false;
@@ -1827,8 +1827,9 @@ function installerCentreReglages() {
     categories:()=>(Sim.ateliers&&Sim.ateliers.state.categories)||{},
     minutesCompagnie:(service,cie,n)=>{const at=Sim.ateliers,k=at&&((at.state.categories||{})[service]||[])[0];if(!k)return false;
       return at.changer(()=>{const x=at.state.categories[service][0],m={...(x.minutes||{})},commun=m['*'];
-        if(n==null||(commun!=null&&commun!==''&&+commun===n))delete m[cie];else m[cie]=n;x.minutes=m;},
-        cie+' · '+k.nom+' : '+(n==null?'reprend la valeur de toutes les compagnies.':n+' min par vol.'));},
+        // Saisie en heures (08/10) : égale à celle de toutes les compagnies, à l'affichage près, elle la suit.
+        if(n==null||(commun!=null&&commun!==''&&MoteurProduction.versHeures(+commun)===MoteurProduction.versHeures(n)))delete m[cie];else m[cie]=n;x.minutes=m;},
+        cie+' · '+k.nom+' : '+(n==null?'reprend la valeur de toutes les compagnies.':MoteurProduction.heuresFr(n)+' h par vol.'));},
     routes:cls=>MoteurProduction.routesDesClasses(cls,Sim.ateliers?Sim.ateliers.state:{}),
     routesSignature:()=>{const e=(Sim.ateliers&&Sim.ateliers.state)||{};return JSON.stringify([e.parcours,e.parcoursCabine,e.parcoursClasse]);},
     // Un service dont toutes les équipes sont des plonges, des mises à
@@ -2180,7 +2181,7 @@ function renderHandlingVols() {
       + 'Le handling travaille par vol : ' + (vieilles.length > 1 ? 'elles deviennent' : 'elle devient') + ' une seule case Handling, '
       + 'qui réunit les classes de chaque vol et le charge, le jour J. Vos chemins ne changent pas.</p>'
       + '<p class="row-btns"><button class="btn btn-play" type="button" data-vh-action="brancher">Passer au handling par vol</button>'
-      + '<span class="mini-note">Leurs man-minutes ne servent plus : le handling a une durée par vol et par compagnie. Annuler (Organisation) revient en arrière.</span></p>';
+      + '<span class="mini-note">Leurs heures de travail ne servent plus : le handling a une durée par vol et par compagnie. Annuler (Organisation) revient en arrière.</span></p>';
   } else if (!h.length) {
     html = '<p><b>Pas de handling pour l’instant.</b> Un vol est donc « prêt » dès que ses commandes le sont. '
       + 'Le handling réunit les classes d’un même vol et le charge, dans l’ordre des départs, le jour J : '

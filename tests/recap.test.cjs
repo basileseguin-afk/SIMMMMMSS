@@ -1,4 +1,5 @@
-/* Le récap des man-minutes : tout le barème d'un coup d'œil, et un fichier de
+/* Le récap des heures de travail (man-minutes gardées en minutes, montrées en
+ * heures depuis le 08/10) : tout le barème d'un coup d'œil, et un fichier de
  * paramétrage pour les grosses modifications (retour d'usage du 28/09). */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -45,27 +46,41 @@ test('le fichier de paramétrage fait l’aller-retour sans rien changer', async
 test('grosses modifications dans Excel : commune, propre, retour à la commune', async () => {
   const c = ctx();
   const f = E.recapVersClasseur(c);
-  const g = f.find(x => x.nom === 'Man-minutes par vol').lignes, h = f.find(x => x.nom === 'Toutes compagnies').lignes;
+  // En heures par vol (08/10) : 30 min s'écrivent 0,5.
+  const g = f.find(x => x.nom === 'Heures par vol').lignes, h = f.find(x => x.nom === 'Toutes compagnies').lignes;
   const col = nom => g[0].indexOf(nom);
-  // TX BC en cuisine : vidée → revient à la commune. AF BC au montage : 25, propre.
+  assert.equal(g.find(l => l[0] === 'AF' && l[1] === 'BC')[col('CUISINE')], 0.5);
+  // TX BC en cuisine : vidée → revient à la commune. AF BC au montage : 0,5 h, propre.
   g.find(l => l[0] === 'TX' && l[1] === 'BC')[col('CUISINE')] = null;
-  g.find(l => l[0] === 'AF' && l[1] === 'BC')[col('MONTAGE')] = 25;
-  // La commune BC du montage passe à 22 ; TX BC y reste à 20 : elle devient propre.
-  h.find(l => l[0] === 'BC')[h[0].indexOf('MONTAGE')] = 22;
+  g.find(l => l[0] === 'AF' && l[1] === 'BC')[col('MONTAGE')] = 0.5;
+  // La commune BC du montage passe à 0,4 h (24 min) ; TX BC y reste à 20 min : elle devient propre.
+  h.find(l => l[0] === 'BC')[h[0].indexOf('MONTAGE')] = 0.4;
   const r = E.classeurVersRecap(await parFichier(f), c.bareme, c);
   assert.deepEqual(r.bareme.cuisine, { '*/BC': 30 });
-  assert.deepEqual(r.bareme.prepa, { '*/BC': 22, '*/YC': 10, 'AF/BC': 25, 'TX/BC': 20 });
+  assert.deepEqual(r.bareme.prepa, { '*/BC': 24, '*/YC': 10, 'AF/BC': 30, 'TX/BC': 20 });
   assert.equal(r.changes, 4);
+});
+
+test('un fichier d’avant, en man-minutes, se relit en minutes', async () => {
+  const c = ctx();
+  // Le même fichier, écrit comme avant le 08/10 : feuille « Man-minutes par vol », en minutes.
+  // Les colonnes des services : à partir de la 4e (après Compagnie, Classe, Vols), ou de la 2e (après Classe).
+  const enMinutes = (l, depuis) => l.map((row, i) => (i === 0 ? row : row.map((v, j) => (j >= depuis && typeof v === 'number' ? Math.round(v * 60 * 100) / 100 : v))));
+  const f = E.recapVersClasseur(c).map(x => x.nom === 'Heures par vol' ? { ...x, nom: 'Man-minutes par vol', lignes: enMinutes(x.lignes, 3) }
+    : x.nom === 'Toutes compagnies' ? { ...x, lignes: enMinutes(x.lignes, 1) } : x);
+  const r = E.classeurVersRecap(await parFichier(f), c.bareme, c);
+  assert.equal(r.changes, 0, 'rien ne change');
+  assert.deepEqual(r.bareme, BAREME);
 });
 
 test('les erreurs sont toutes dites, et rien n’est importé', async () => {
   const c = ctx();
   const f = E.recapVersClasseur(c);
-  const g = f.find(x => x.nom === 'Man-minutes par vol').lignes;
+  const g = f.find(x => x.nom === 'Heures par vol').lignes;
   g[0].push('LA LUNE'); g[1][3] = 'beaucoup'; g.push(['ZZ', 'XX', null, 1]);
   assert.throws(() => E.classeurVersRecap(f, c.bareme, c), e => /service inconnu en colonne : « LA LUNE »/.test(e.message)
     && /pas « beaucoup »/.test(e.message) && /classe inconnue « XX »/.test(e.message) && /Rien n’a été importé/.test(e.message));
-  assert.throws(() => E.classeurVersRecap([{ nom: 'Autre', lignes: [['x']] }], c.bareme, c), /Feuille « Man-minutes par vol » introuvable/);
+  assert.throws(() => E.classeurVersRecap([{ nom: 'Autre', lignes: [['x']] }], c.bareme, c), /Feuille « Heures par vol » introuvable/);
 });
 
 test('l’équipe de chaque case : son effectif, et la durée d’un vol', () => {

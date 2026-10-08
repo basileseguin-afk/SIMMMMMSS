@@ -306,6 +306,33 @@
     return Number.isFinite(commune) ? commune : null;
   }
 
+  /* Le travail par vol se lit et se saisit en HEURES (retour d'usage du 08/10 :
+   * « remplace les min par vol en h par vol ») ; le calcul, l'état et les
+   * sauvegardes restent en minutes. Ces conversions servent l'écran et les
+   * classeurs : au millième d'heure (3,6 s) à l'écran, au dix-millième dans
+   * Excel — un aller-retour par le classeur retrouve alors les minutes au
+   * centième près, sans dériver —, au centième de minute dans l'autre sens.
+   * Vide ou illisible : null. */
+  function versHeures(minutes, decimales = 3) {
+    if (minutes === null || minutes === undefined || minutes === '') return null;
+    const n = +minutes, k = 10 ** decimales;
+    return Number.isFinite(n) ? Math.round(n / 60 * k) / k : null;
+  }
+  function versMinutes(heures) {
+    if (heures === null || heures === undefined) return null;
+    const t = typeof heures === 'string' ? heures.trim().replace(',', '.') : heures;
+    if (t === '') return null;
+    const n = +t;
+    return Number.isFinite(n) ? Math.round(n * 60 * 100) / 100 : null;
+  }
+  /** Des minutes de travail dites en heures, à la française : « 0,117 », « 1,5 » ; '' sans valeur. */
+  function heuresFr(minutes, decimales = 3) {
+    const h = versHeures(minutes);
+    if (h === null) return '';
+    const k = 10 ** decimales;
+    return String(Math.round(h * k) / k).replace('.', ',');
+  }
+
   /** Rendement : part du temps de présence réellement produite. 1 = idéal. */
   const RENDEMENT_DEMO = 1;
 
@@ -2608,7 +2635,7 @@
     REGIME_DEFAUT, REGIMES_AVANT, normaliserRegime, executerTache,
     classesDeVols, classesCategories, compagniesParService, declarerCategories, volsDesClasses, compteDuJour, appliquerConditions, dureeHandling, compagniesDe, AVANCE_HANDLING, BAREME_DEMO, RENDEMENT_DEMO, travailClasse, travailDans, dureeFusion, minutesVolAppui,
     minutesDuPoste, effectifPour, PLAFOND_EFFECTIF,
-    PAX_TYPE, TOUTES, cleBareme, normaliserBareme, minutesParVol,
+    PAX_TYPE, TOUTES, cleBareme, normaliserBareme, minutesParVol, versHeures, versMinutes, heuresFr,
     arcsDuParcours, servicesDuParcours, routesDesClasses,
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,
     pausesDe, fusionnerPauses, arretsDeLigne, finAvecPauses, vaguesDe, disponibleDes, debitRobot, ouvertureDe, prochaineOuverture,

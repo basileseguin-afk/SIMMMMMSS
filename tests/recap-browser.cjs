@@ -28,14 +28,16 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const champ=page.locator('.rg-recap-table input[data-rg-champ=recap]').first();
   const sid=await champ.getAttribute('data-service'),cls=await champ.getAttribute('data-classe');
   const cle=cls;   // « AF/BC »
-  await champ.fill('77');await champ.dispatchEvent('change');await attendre();
-  assert.equal((await bareme())[sid][cle],77,'valeur propre au barème');
+  // Saisie en heures par vol (08/10), gardée en minutes : 1,25 h = 75 min.
+  await champ.fill('1.25');await champ.dispatchEvent('change');await attendre();
+  assert.equal((await bareme())[sid][cle],75,'valeur propre au barème, en minutes');
+  assert.equal(await page.locator(`.rg-recap-table input[data-service="${sid}"][data-classe="${cls}"]`).inputValue(),'1.25','relue en heures');
   assert.match(await page.locator(`.rg-recap-table input[data-service="${sid}"][data-classe="${cls}"]`).evaluate(i=>i.closest('td').className),/propre/);
   await page.locator(`.rg-recap-table input[data-service="${sid}"][data-classe="${cls}"]`).fill('');
   await page.locator(`.rg-recap-table input[data-service="${sid}"][data-classe="${cls}"]`).dispatchEvent('change');await attendre();
   assert.equal((await bareme())[sid][cle],undefined,'vidée : elle suit la valeur commune');
   // Le barème par service le montre aussi.
-  await page.locator(`.rg-recap-table input[data-service="${sid}"][data-classe="${cls}"]`).fill('66');
+  await page.locator(`.rg-recap-table input[data-service="${sid}"][data-classe="${cls}"]`).fill('1.1');
   await page.locator(`.rg-recap-table input[data-service="${sid}"][data-classe="${cls}"]`).dispatchEvent('change');await attendre();
   await page.locator('#rg-recap-undo').click();await attendre();
   assert.equal((await bareme())[sid][cle],undefined,'Annuler');
@@ -54,14 +56,14 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const [dl]=await Promise.all([page.waitForEvent('download'),page.locator('#rg-recap-export').click()]);
   const fichier=path.join(os.tmpdir(),'recap-'+process.pid+'.xlsx');await dl.saveAs(fichier);
   const feuilles=await T.lireClasseur(fs.readFileSync(fichier));
-  assert.deepEqual(feuilles.map(f=>f.nom),['Man-minutes par vol','Toutes compagnies','Personnes','Robot','Lisez-moi']);
+  assert.deepEqual(feuilles.map(f=>f.nom),['Heures par vol','Toutes compagnies','Personnes','Robot','Lisez-moi']);
   const g=feuilles[0].lignes, nomSvc=await page.evaluate(sid=>Sim.reglages.a.services().find(s=>s.id===sid).nom,sid);
   const col=g[0].indexOf(nomSvc), i=g.findIndex(l=>l[0]+'/'+l[1]===cls);
   assert.ok(col>2&&i>0);
-  g[i][col]=99;
+  g[i][col]=1.65;   // en heures : 99 min
   fs.writeFileSync(fichier,T.ecrireClasseur(feuilles));
   await page.setInputFiles('#rg-recap-import',fichier);await page.waitForTimeout(600);
-  assert.equal((await bareme())[sid][cle],99,'réimporté');
+  assert.equal((await bareme())[sid][cle],99,'réimporté, en minutes');
   assert.match(await page.locator('#rg-status').innerText(),/1 valeur changée/);
   fs.unlinkSync(fichier);
 
@@ -80,7 +82,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator(`.rg-recap-table [data-rg-equipe="${at}"]`).first().innerText(),String(avant+2),'le tableau suit la fiche');
   const cel=page.locator(`.rg-recap-table [data-rg-equipe="${at}"]`).first().locator('xpath=ancestor::td/following-sibling::td[1]');
   assert.match(await cel.innerText(),/\d/,'la durée d’un vol est dite, dans sa colonne');
-  assert.equal(await page.locator('.rg-recap-t2 th').first().innerText(),'min/vol1 pers.','trois sous-colonnes par service (minutes d’une personne, 07/10)');
+  assert.equal(await page.locator('.rg-recap-t2 th').first().innerText(),'h/vol1 pers.','trois sous-colonnes par service (heures d’une personne, 08/10)');
   // (L'effectif ne se change plus d'ici, 07/10 : plus d'« Annuler » d'un effectif dans le récap.)
 
   assert.deepEqual(errors,[],'aucune erreur de page');

@@ -34,11 +34,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 2. Tout sauvegarder en un fichier.
   await nav.vue(page,'reglages');
   // Comme le centre des flux, le barème n'écrit sa clé que si on y touche.
-  const champBareme='[data-rg-champ=minutes][data-service=cuisine][data-cle="*/BC"]';
+  const champBareme='[data-rg-champ=heures][data-service=cuisine][data-cle="*/BC"]';
   // Le barème se lit un service à la fois : il faut déplier celui qu'on modifie.
   await page.locator('.rg-service[data-service=cuisine] > summary').click();
   await page.waitForTimeout(150);
-  await page.fill(champBareme,'41.5');await page.dispatchEvent(champBareme,'change');
+  // En heures (08/10) : 0,6917 h = 41,5 min, gardées en minutes.
+  await page.fill(champBareme,'0.6917');await page.dispatchEvent(champBareme,'change');
   await page.waitForTimeout(200);
   // La sauvegarde vit dans « L'unité », onglet « Sauvegarde et limites ».
   await nav.vue(page,'flux');await nav.aller(page,'u-sauvegarde');

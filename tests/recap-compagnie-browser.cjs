@@ -45,16 +45,17 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(await page.locator('#rg-recap tr[data-classe="AF/YC"] td.rgr.parcie').count(),1,'sur une classe : la colonne Armement renvoie à la compagnie');
    await page.locator('[data-rg-action=recap-tout][data-ouvrir="0"]').click();
    assert.equal(await page.locator('#rg-recap tr[data-classe="AF/YC"]').isVisible(),false);
-   assert.equal(await ligne('AF').locator('[data-rg-champ=recap-cie]').inputValue(),'15','AF : sa valeur propre');
+   // En heures par vol (08/10) : 15 min = 0,25 h ; 10 min ≈ 0,167 h.
+   assert.equal(await ligne('AF').locator('[data-rg-champ=recap-cie]').inputValue(),'0.25','AF : sa valeur propre');
    assert.equal(await ligne('TX').locator('[data-rg-champ=recap-cie]').inputValue(),'','TX : vide…');
-   assert.equal(await ligne('TX').locator('[data-rg-champ=recap-cie]').getAttribute('placeholder'),'10','… la valeur de toutes les compagnies');
+   assert.equal(await ligne('TX').locator('[data-rg-champ=recap-cie]').getAttribute('placeholder'),'0,167','… la valeur de toutes les compagnies');
    assert.match(await ligne('AF').innerText(),/7,5 min/,'15 min ÷ 2 personnes');
 
-   // 2. Saisie : TX à 12 ; puis 10 (= toutes les compagnies) la ramène à la commune.
+   // 2. Saisie : TX à 0,2 h (12 min) ; puis 0,167 h (= toutes les compagnies, à l'affichage près) la ramène à la commune.
    const tx=ligne('TX').locator('[data-rg-champ=recap-cie]');
-   await tx.fill('12');await tx.press('Tab');await attendre();
-   assert.deepEqual(await minutes(),{'*':10,AF:15,TX:12},version+' : TX à 12, dans le réglage de l’armement');
-   await ligne('TX').locator('[data-rg-champ=recap-cie]').fill('10');await ligne('TX').locator('[data-rg-champ=recap-cie]').press('Tab');await attendre();
+   await tx.fill('0.2');await tx.press('Tab');await attendre();
+   assert.deepEqual(await minutes(),{'*':10,AF:15,TX:12},version+' : TX à 12 min, dans le réglage de l’armement');
+   await ligne('TX').locator('[data-rg-champ=recap-cie]').fill('0.167');await ligne('TX').locator('[data-rg-champ=recap-cie]').press('Tab');await attendre();
    assert.deepEqual(await minutes(),{'*':10,AF:15});
    // « Annuler » du tableau revient en arrière.
    await page.locator('#rg-recap-undo').click();await attendre();
@@ -65,13 +66,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(await ligne('AF').locator('[data-rg-champ=recap-pers]').count(),0);
    // Le même réglage, vu de la fiche de l'armement.
    await nav.aller(page,'mu-services');await page.locator('[data-mu-choisir=armement]').click();await attendre();
-   assert.equal(await page.locator('#mu-services [data-mu-cat-min="ARM"][data-cie="TX"]').inputValue(),'12',version+' : la fiche de l’armement le montre');
+   assert.equal(await page.locator('#mu-services [data-mu-cat-min="ARM"][data-cie="TX"]').inputValue(),'0.2',version+' : la fiche de l’armement le montre, en heures');
 
-   // 3. Sur la journée : minutes par vol × départs, comptées dans le total.
+   // 3. Sur la journée : heures par vol × départs, comptées dans le total.
    await nav.aller(page,'rg-recap');await attendre();
    await page.locator('[data-rg-action="recap-vue"][data-vue=jour]').click();await attendre();
    const vols=await page.evaluate(()=>Sim.ateliers.classesDe('armement').find(c=>c.cie==='AF').vols.length);
-   assert.match(await ligne('AF').innerText(),new RegExp(String(15*vols)),version+' : 15 × '+vols+' vols');
+   assert.match(await ligne('AF').innerText(),new RegExp(String(Math.round(15*vols/60*100)/100).replace('.',',')),version+' : 0,25 h × '+vols+' vols');
    await page.locator('[data-rg-action="recap-vue"][data-vue=vol]').click();await attendre();
    // La recherche garde la ligne de la compagnie.
    await page.fill('#rg-recap-filtre','TX');await attendre();

@@ -35,22 +35,32 @@ test('barème : l’aller-retour par Excel ne perd rien', async () => {
 
 test('barème : une ligne par compagnie × classe, pour chaque service de son parcours', async () => {
   const f = E.baremeVersClasseur(ETAT_BAREME, ctxBareme());
+  // En heures par vol (08/10) : 42 min = 0,7 h ; 35 min ≈ 0,5833 h.
+  assert.equal(f[0].lignes[0][3], 'Heures par vol');
   const lignes = f[0].lignes.slice(1);
   const cuisine = lignes.filter(l => l[0] === 'CUISINE' && l[1] !== '*');
   assert.ok(cuisine.some(l => l[1] === 'AF' && l[2] === 'BC'), 'AF/BC passe par la cuisine');
   assert.ok(!cuisine.some(l => l[2] === 'YC'), 'aucune YC en cuisine : son parcours l’évite');
   const afbc = cuisine.find(l => l[1] === 'AF' && l[2] === 'BC');
-  assert.equal(afbc[3], 42, 'la valeur propre est là');
+  assert.equal(afbc[3], 0.7, 'la valeur propre est là, en heures');
   const dlbc = cuisine.find(l => l[1] === 'DL' && l[2] === 'BC');
   assert.equal(dlbc[3], null, 'vide : pas de valeur propre');
-  assert.equal(dlbc[5], 35, 'et la colonne info dit ce qui s’applique');
+  assert.equal(dlbc[5], 0.5833, 'et la colonne info dit ce qui s’applique, en heures');
 });
 
 test('barème : on remplit une case dans Excel, elle devient une valeur propre', async () => {
   let f = E.baremeVersClasseur(ETAT_BAREME, ctxBareme());
-  f = modifier(f, 'Barème', l => l.map(x => (x[0] === 'CUISINE' && x[1] === 'DL' && x[2] === 'BC' ? [x[0], x[1], x[2], '12,5', x[4], x[5]] : x)));
+  f = modifier(f, 'Barème', l => l.map(x => (x[0] === 'CUISINE' && x[1] === 'DL' && x[2] === 'BC' ? [x[0], x[1], x[2], '0,25', x[4], x[5]] : x)));
   const lu = E.classeurVersBareme(await parFichier(f), { services: SERVICES });
-  assert.equal(lu.bareme.cuisine['DL/BC'], 12.5, 'la virgule décimale est acceptée');
+  assert.equal(lu.bareme.cuisine['DL/BC'], 15, 'la virgule décimale est acceptée ; 0,25 h = 15 min');
+});
+
+test('barème : un classeur d’avant, en « Minutes par vol », se relit en minutes', () => {
+  const f = [{ nom: 'Barème', lignes: [['Service', 'Compagnie', 'Classe', 'Minutes par vol'], ['CUISINE', '*', 'BC', 35], ['CUISINE', 'AF', 'BC', '42,5']] }];
+  assert.deepEqual(E.classeurVersBareme(f, { services: SERVICES }).bareme, { cuisine: { '*/BC': 35, 'AF/BC': 42.5 } });
+  // Ni heures ni minutes : la colonne manque.
+  assert.throws(() => E.classeurVersBareme([{ nom: 'Barème', lignes: [['Service', 'Compagnie', 'Classe', 'Temps'], ['CUISINE', '*', 'BC', 1]] }], { services: SERVICES }),
+    /colonne « heures par vol » manquante/);
 });
 
 test('barème : les erreurs sont toutes dites, et rien n’est importé', () => {

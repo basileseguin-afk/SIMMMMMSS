@@ -31,23 +31,24 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // A. Le barème (Temps de travail) → récap man-minutes, récap des cases, calcul.
   await nav.aller(page,'rg-minutes');
   await page.evaluate(()=>{Sim.reglages.serviceOuvert='cuisine';Sim.reglages.rendre();});await attendre();
-  await changer('#rg-bareme [data-service=cuisine][data-cle="*/BC"]',60);
+  // Saisies et lues en heures (08/10), gardées en minutes : 1 h = 60 min.
+  await changer('#rg-bareme [data-service=cuisine][data-cle="*/BC"]',1);
   await verifier('A1 barème → calcul',async()=>assert.equal(Math.round((await lot('cu','AF/BC'))[1]-240),Math.round(60*vols/2)));
   await nav.aller(page,'rg-recap');await nav.deplier(page);
-  await verifier('A2 barème → récap man-minutes',async()=>assert.equal(await page.locator('input[data-rg-champ=recap][data-service=cuisine][data-classe="AF/BC"]').inputValue(),'60'));
+  await verifier('A2 barème → récap man-minutes',async()=>assert.equal(await page.locator('input[data-rg-champ=recap][data-service=cuisine][data-classe="AF/BC"]').inputValue(),'1'));
   await nav.aller(page,'at-recap');
   await verifier('A3 barème → récap des cases (heures)',async()=>assert.match(await page.locator('tr[data-at=cu] .rc-quand').innerText(),new RegExp('04:00–'+(await page.evaluate(t=>MoteurProduction.hhmm(t),(await lot('cu','AF/BC'))[1])))));
 
   // B. Le récap man-minutes → barème (Temps de travail), récap des cases, fiche.
   await nav.aller(page,'rg-recap');await nav.deplier(page);
-  await changer('input[data-rg-champ=recap][data-service=cuisine][data-classe="AF/BC"]',90);
+  await changer('input[data-rg-champ=recap][data-service=cuisine][data-classe="AF/BC"]',1.5);
   await verifier('B1 récap man-min → barème',async()=>assert.equal(await page.evaluate(()=>Sim.reglages.etat.bareme.cuisine['AF/BC']),90));
   await nav.aller(page,'rg-minutes');
   await page.evaluate(()=>{Sim.reglages.serviceOuvert='cuisine';Sim.reglages.rendre();});await attendre();
   await verifier('B2 récap man-min → page Temps de travail',async()=>assert.match(await page.locator('#rg-bareme details[data-service=cuisine]').innerText(),/AF\/BC|AF/));
   await verifier('B3 récap man-min → calcul',async()=>assert.equal(Math.round((await lot('cu','AF/BC'))[1]-240),Math.round(90*vols/2)));
   let f=await fiche('cu');
-  await verifier('B4 récap man-min → fiche (barème, pour la journée)',async()=>assert.equal(await f.locator('[data-at-champ=minutes][data-classe="AF/BC"]').getAttribute('placeholder'),String(90*vols)));
+  await verifier('B4 récap man-min → fiche (barème, pour la journée, en heures)',async()=>assert.equal(await f.locator('[data-at-champ=heures][data-classe="AF/BC"]').getAttribute('placeholder'),String(Math.round(1.5*vols*100)/100).replace('.',',')));
 
   // C. Personnes : fiche → calcul, récap des cases, récap man-min (en lecture : on ne
   //    les change plus dans le récap, 07/10 — elles se calculent, ou se saisissent dans la fiche).
@@ -61,11 +62,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await verifier('C4 personnes fiche → récap man-min',async()=>assert.equal(await page.locator('[data-rg-equipe=cu]').first().innerText(),'5'));
   await verifier('C5 récap man-min : l’effectif se lit, ne se saisit pas',async()=>assert.equal(await page.locator('#rg-recap input[data-rg-champ=recap-pers]').count(),0));
 
-  // D. Man-minutes propres à une case (fiche) → récap man-min.
-  f=await fiche('cu');await changer(`#at-liste [data-at=cu] [data-at-champ=minutes][data-classe="AF/BC"]`,45);
+  // D. Heures propres à une case (fiche) → récap : 0,75 h = 45 min pour la journée.
+  f=await fiche('cu');await changer(`#at-liste [data-at=cu] [data-at-champ=heures][data-classe="AF/BC"]`,0.75);
   await nav.aller(page,'rg-recap');await nav.deplier(page);
   // 45 man-min pour la journée de la case, ramenées à un vol dans le récap, comme le calcul les lit.
-  await verifier('D1 man-min de la case → récap man-min (par vol)',async()=>assert.equal(await page.locator('tr[data-classe="AF/BC"] td.rgr.case').first().innerText(),String(Math.round(45/vols*10)/10).replace('.',',')));
+  await verifier('D1 heures de la case → récap (par vol, en heures)',async()=>assert.equal(await page.locator('tr[data-classe="AF/BC"] td.rgr.case').first().innerText(),String(Math.round(45/vols/60*1000)/1000).replace('.',',')));
   await verifier('D2 man-min de la case → calcul',async()=>assert.equal(Math.round((await lot('cu','AF/BC'))[1]-240),Math.round(45/5)));
 
   // E. Heure de départ : récap des cases → fiche, chemin, « Qui prépare quoi », Excel Horaires ; et fiche → récap des cases.

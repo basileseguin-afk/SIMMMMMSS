@@ -50,13 +50,15 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(await page.locator('#mu-services [data-at=ar] select[data-at-champ=effectif] option[value=fixe]').count(),0,version+' : pas de choix « constant » pour l’équipe');
    const af=page.locator('#mu-services .mu-cat-table tbody tr').filter({has:page.locator('th',{hasText:/^AF$/})});
    assert.equal((await af.locator('.mu-cat-vols').innerText()).trim(),String(r.af));
-   assert.match(await af.locator('.mu-cat-jour').innerText(),new RegExp('300 × '+r.af+' ='));
+   // En heures par vol (08/10) : 300 min = 5 h.
+   assert.match(await af.locator('.mu-cat-jour').innerText(),new RegExp('^5 h × '+r.af+' = '+(5*r.af)+' h$'));
+   assert.equal(await page.locator('#mu-services [data-mu-cat-min][data-cie="*"]').inputValue(),'5');
 
-   // 4. Saisir des minutes pour une compagnie : enregistré, sans erreur de page.
+   // 4. Saisir des heures pour une compagnie : enregistrées en minutes, sans erreur de page.
    const champ=page.locator('#mu-services [data-mu-cat-min][data-cie=AF]');
-   await champ.fill('30');await champ.press('Tab');await attendre();
+   await champ.fill('0.5');await champ.press('Tab');await attendre();
    assert.equal(await page.evaluate(()=>Sim.ateliers.state.categories.armement[0].minutes.AF),30);
-   assert.match(await page.locator('#mu-services .mu-cat-table tbody tr').filter({has:page.locator('th',{hasText:/^AF$/})}).locator('.mu-cat-jour').innerText(),new RegExp('30 × '+r.af+' ='));
+   assert.match(await page.locator('#mu-services .mu-cat-table tbody tr').filter({has:page.locator('th',{hasText:/^AF$/})}).locator('.mu-cat-jour').innerText(),new RegExp('^0,5 h × '+r.af+' ='));
    assert.deepEqual(errors,[],version+' : '+errors.join(' | '));
   }
   console.log('armement-vols-browser : ok');

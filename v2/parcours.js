@@ -1409,7 +1409,7 @@
       nom: nomLibre(etat, nom + (n ? ' ' + (n + 1) : '')), service, debut: '06:00', jour: 0, personnes: 2, pauses: [], lots: [],
       regime: { actif: true } };
     if (nature === 'lavage') return { ...base, type: 'lavage', plafond: 0, tunnels: [{ nom: 'Tunnel 1', debit: 300, personnes: 1, actif: true }] };
-    // Hors tunnel, hors flux (06/10) : présente à ses heures, des minutes par vol.
+    // Hors tunnel, hors flux (06/10) : présente à ses heures, des heures par vol (gardées en minutes).
     if (nature === 'appui') return { ...base, nom: nomLibre(etat, nom + ' hors ' + ((etat.ateliers || []).some(a => a.service === service && a.type === 'lavage') ? 'tunnel' : 'flux')),
       type: 'appui', personnes: 1, minutesVol: {} };
     return { ...base, type: 'manuel' };
@@ -1429,7 +1429,7 @@
     Pour relier deux services, tirez le <b>+</b> du premier jusqu’au second, ou cliquez-le puis cliquez l’autre.
     Un lien qui ferait tourner une commande en rond est refusé.</p>
     <p>Sur chaque nœud, une <b>case</b> : l’équipe qui y fait ce travail — son nom, ses personnes, son heure et
-    ses man-minutes (celles de l’import, modifiables pour cette case). Une case se <b>partage</b> entre chemins :
+    ses heures de travail (celles du barème, modifiables pour cette case). Une case se <b>partage</b> entre chemins :
     la case « TX BC/PC » de la cuisine prépare TX BC puis TX PC, sur deux lignes, et le chemin de TX BC n’attend
     que la ligne de TX BC.</p>
     <p>Une commande qui n’a pas encore son chemin suit le <b>modèle</b> de sa classe (en bas de la liste).</p>`;
@@ -2200,7 +2200,7 @@
         let res = null;
         this.depuis = undefined; this.svc = '';
         this.a.changer(x => { res = creerChemin(x, cible, source, memes, null, { nomDe: s => this.nom(s), classes }); },
-          'Chemin de ' + this.lib(cible) + ' créé : chaque service a sa case. Cliquez un service pour régler la sienne (personnes, heure, man-minutes).');
+          'Chemin de ' + this.lib(cible) + ' créé : chaque service a sa case. Cliquez un service pour régler la sienne (personnes, heure, heures de travail).');
         if (res) this.copierDisposition(source, res.chemin.id);
         if (res && res.cases) this.dire('Chemin de ' + this.lib(cible) + ' créé, dans les mêmes cases que ' + this.lib(commandeDu(this.a.etat(), source) || '')
           + ' (' + res.cases + (res.cases > 1 ? ' cases' : ' case') + ', à la suite). Réglez-les en cliquant les services.');

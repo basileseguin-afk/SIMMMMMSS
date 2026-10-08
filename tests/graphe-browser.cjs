@@ -72,15 +72,16 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.fill(`${fiche} [data-at-champ=personnes]`,'3');await page.dispatchEvent(`${fiche} [data-at-champ=personnes]`,'change');await attendre(300);
   assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).personnes,kase.id),3);
   assert.match(await page.locator(`${Z} [data-noeud=prepa] .gr-sous`).textContent(),/3 p\./);
-  // Ses man-minutes : celles de l'import, modifiables pour cette case seulement.
-  const mm=`${fiche} [data-at-champ=minutes][data-classe="TX/BC"]`;
-  const importees=+(await page.locator(mm).getAttribute('placeholder'));
-  assert.ok(importees>0,'l’import donne les man-minutes');
-  assert.equal(await page.evaluate(id=>Sim.ateliers.resultat.lots.find(l=>l.atelier===id).hommeMinutes,kase.id),importees);
-  await page.fill(mm,'50');await page.dispatchEvent(mm,'change');await attendre(300);
-  assert.deepEqual(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).minutes,kase.id),{'TX/BC':50});
-  assert.equal(await page.evaluate(id=>Sim.ateliers.resultat.lots.find(l=>l.atelier===id).hommeMinutes,kase.id),50,'le calcul prend celles de la case');
-  assert.match(await page.locator(`${fiche} .at-mm`).textContent(),new RegExp('import '+importees));
+  // Ses heures de travail : celles du barème, modifiables pour cette case seulement
+  // (lues et saisies en heures depuis le 08/10, gardées en minutes).
+  const mm=`${fiche} [data-at-champ=heures][data-classe="TX/BC"]`;
+  const importees=await page.locator(mm).getAttribute('placeholder');
+  assert.ok(+importees.replace(',','.')>0,'le barème donne les heures');
+  assert.equal(await page.evaluate(id=>MoteurProduction.heuresFr(Sim.ateliers.resultat.lots.find(l=>l.atelier===id).hommeMinutes,2),kase.id),importees);
+  await page.fill(mm,'0.5');await page.dispatchEvent(mm,'change');await attendre(300);
+  assert.deepEqual(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).minutes,kase.id),{'TX/BC':30});
+  assert.equal(await page.evaluate(id=>Sim.ateliers.resultat.lots.find(l=>l.atelier===id).hommeMinutes,kase.id),30,'le calcul prend celles de la case');
+  assert.match(await page.locator(`${fiche} .at-mm`).textContent(),new RegExp('barème '+importees+' h'));
 
   // 3. « Dupliquer pour… » TX · Économie, dans les mêmes cases, à la suite de TX BC.
   await page.locator('.pc-dup>summary').click();

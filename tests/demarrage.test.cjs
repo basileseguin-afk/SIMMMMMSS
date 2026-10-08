@@ -118,8 +118,8 @@ test('les tuiles de l’accueil regroupent les étapes par partie, avec leur ét
   assert.deepEqual(t.map(x => x.partie), ['donnees', 'chemins', 'organisation', 'reglages', 'resultats']);
   assert.equal(par.donnees.etat, 'provisoire', 'des exemples, pas une alerte');
   assert.match(par.donnees.lignes.map(l => l.texte).join(' | '), /Vols : 12 départs · exemple/);
-  // Les minutes de travail se règlent dans la fiche de chaque service : Équipes.
-  assert.match(par.organisation.lignes.map(l => l.texte).join(' | '), /Minutes de travail : chiffres d’exemple/);
+  // Les heures de travail se règlent dans la fiche de chaque service : Équipes.
+  assert.match(par.organisation.lignes.map(l => l.texte).join(' | '), /Heures de travail : chiffres d’exemple/);
   assert.equal(par.organisation.etat, 'afaire', 'la pire de ses lignes');
   assert.match(par.reglages.lignes[0].texte, /Repas prêts 50 min avant le départ · vols décalés de -10 min/);
   assert.match(par.reglages.lignes[1].texte, /Rythme 0,9 · 2 pauses par poste/);

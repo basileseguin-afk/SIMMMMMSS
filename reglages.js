@@ -10,6 +10,7 @@
  *
  *    1. le BARÈME    — homme-minutes PAR VOL, par service et par compagnie ×
  *                      classe (une valeur commune, et des valeurs propres) ;
+ *                      gardées en minutes, saisies et lues en HEURES (08/10) ;
  *    2. le RENDEMENT — part du temps de présence réellement produite ;
  *    3. le POSTE     — seuils de pause et durée de présence par défaut ;
  *    4. l'IMPORT/EXPORT Excel du barème, pour recevoir une étude en bloc.
@@ -173,7 +174,7 @@
       section.className = 'rg-modele'; section.id = 'rg-modele';
       section.innerHTML = `
         <div class="titre-aide" data-sous="rg-minutes">
-          <h2 class="reglages-titre">Minutes de travail par vol, pour une personne</h2><details class="aide">
+          <h2 class="reglages-titre">Heures de travail par vol, pour une personne</h2><details class="aide">
           <summary aria-label="À quoi sert cette page ?">?</summary>
           <span class="aide-corps">Ces chiffres disent combien de temps prend chaque préparation. Ils
             servent au calcul de la journée, dont on lit le résultat dans « Résultats ».</span></details></div>
@@ -182,28 +183,28 @@
           <div class="titre-aide"><h3>Service par service</h3><details class="aide">
             <summary aria-label="Comment lire ces chiffres ?">?</summary>
             <span class="aide-corps">
-              <p>Pour chaque service : les minutes de travail que demande <b>un vol</b> d’une compagnie
+              <p>Pour chaque service : les heures de travail que demande <b>un vol</b> d’une compagnie
                 dans une classe. Pour la journée, on multiplie par le <b>nombre de vols</b> ; le nombre
                 de passagers n’y change rien.</p>
               <p>Une valeur <b>commune</b> par classe vaut pour toutes les compagnies ; une compagnie
                 peut avoir la sienne.</p>
-              <p>Un service marqué « à remplir » travaillerait en zéro minute. Une salle annexe reprend
+              <p>Un service marqué « à remplir » travaillerait sans aucun temps. Une salle annexe reprend
                 les chiffres du service dont elle dépend.</p>
               <p><b>⇩ Excel</b> donne le tableau à remplir, une ligne par repas et par service de son
                 chemin ; <b>Importer</b> reprend l’étude entière d’un coup.</p>
             </span></details></div>
-          <p class="rg-exemple" aria-label="Exemple : 60 minutes de travail pour un vol, à 2 personnes, prennent 30 minutes.">
-            <span class="rg-eq">${root.OrlyIcones ? root.OrlyIcones.ico('chrono') : ''}<b>60 min</b><small>de travail pour un vol</small></span>
+          <p class="rg-exemple" aria-label="Exemple : 1 heure de travail pour un vol, à 2 personnes, prend 30 minutes.">
+            <span class="rg-eq">${root.OrlyIcones ? root.OrlyIcones.ico('chrono') : ''}<b>1 h</b><small>de travail pour un vol</small></span>
             <span class="rg-op">÷</span>
             <span class="rg-eq">${root.OrlyIcones ? root.OrlyIcones.ico('equipe') : ''}<b>2</b><small>personnes</small></span>
             <span class="rg-op">=</span>
             <span class="rg-eq res">${root.OrlyIcones ? root.OrlyIcones.ico('journee') : ''}<b>30 min</b><small>de préparation</small></span></p>
-          <p class="rg-codes">${P.CABINES.map(c => `<span><span class="puce-classe" data-cab="${c}"></span>${esc((P.NOM_CABINE || {})[c] || c)}</span>`).join('')}<em>minutes de travail pour un vol</em></p>
+          <p class="rg-codes">${P.CABINES.map(c => `<span><span class="puce-classe" data-cab="${c}"></span>${esc((P.NOM_CABINE || {})[c] || c)}</span>`).join('')}<em>heures de travail pour un vol</em></p>
           <div id="rg-alerte"></div>
           <div class="rg-actions">
             <button class="btn btn-sm" id="rg-undo" title="Annuler la dernière modification">↶ Annuler</button>
             <button class="btn btn-sm" id="rg-redo" title="Rétablir ce qui a été annulé">↷ Rétablir</button>
-            <button class="btn btn-sm" id="rg-export" title="Les temps de travail (minutes par vol) et les réglages du rythme, dans un classeur Excel prêt à remplir">⇩ Temps de travail</button>
+            <button class="btn btn-sm" id="rg-export" title="Les temps de travail (heures par vol) et les réglages du rythme, dans un classeur Excel prêt à remplir">⇩ Temps de travail</button>
             <button class="btn btn-sm" id="rg-import-btn" title="Réimporter un classeur (ou un CSV) de temps de travail modifié">⇧ Importer</button>
             <input id="rg-import" type="file" accept=".xlsx,.csv,.json" hidden>
           </div>
@@ -211,17 +212,17 @@
           <p class="rg-reset-ligne"><button class="lien-discret danger" id="rg-reset">Remettre les chiffres d’exemple</button></p>
         </div>
         <div class="panneau" id="rg-recap-panneau" data-sous="rg-recap">
-          <div class="titre-aide"><h3>Toutes les man-minutes, d’un coup d’œil</h3><details class="aide">
+          <div class="titre-aide"><h3>Toutes les heures de travail, d’un coup d’œil</h3><details class="aide">
             <summary aria-label="Comment lire ce tableau ?">?</summary>
             <span class="aide-corps">
               <p>Un bloc par compagnie : sa ligne en tête est son total (la somme de ses classes, et son armement) ;
                 un clic la déplie sur ses classes (compagnie × classe). Une colonne par service. <b>Par vol</b> : les
-                man-minutes d’un vol de cette commande dans ce service — c’est le barème, modifiable ici.
+                heures de travail d’un vol de cette commande dans ce service, pour une personne — c’est le barème, modifiable ici.
                 <b>Sur la journée</b> : par vol × nombre de vols, pour voir où part le travail.</p>
               <p>Changer une case donne à cette compagnie × classe sa valeur propre ; la vider la ramène à la
                 valeur « toutes compagnies » de sa classe. Une valeur fixée dans une case d’équipe prime pour
                 cette équipe : elle se change dans la case.</p>
-              <p><b>⇩ Man-minutes</b> donne ce même tableau dans Excel, pour les grosses modifications ;
+              <p><b>⇩ Heures de travail</b> donne ce même tableau dans Excel, pour les grosses modifications ;
                 <b>⇧ Importer</b> le reprend.</p>
             </span></details></div>
           <div class="rg-actions rg-recap-outils">
@@ -233,8 +234,8 @@
             <span class="rg-recap-fin"></span>
             <button class="btn btn-sm" id="rg-recap-undo" title="Annuler la dernière modification">↶ Annuler</button>
             <button class="btn btn-sm" id="rg-recap-redo" title="Rétablir ce qui a été annulé">↷ Rétablir</button>
-            <button class="btn btn-sm" id="rg-recap-export" title="Le tableau des man-minutes dans un classeur Excel, à modifier puis réimporter">⇩ Man-minutes</button>
-            <button class="btn btn-sm" id="rg-recap-import-btn" title="Réimporter le classeur des man-minutes modifié">⇧ Importer</button>
+            <button class="btn btn-sm" id="rg-recap-export" title="Le tableau des heures de travail dans un classeur Excel, à modifier puis réimporter">⇩ Heures de travail</button>
+            <button class="btn btn-sm" id="rg-recap-import-btn" title="Réimporter le classeur des heures de travail modifié">⇧ Importer</button>
             <input id="rg-recap-import" type="file" accept=".xlsx,.csv" hidden>
           </div>
           <p class="rg-recap-legende" aria-hidden="true"><span class="rgr propre">valeur propre</span><span class="rgr commun">toutes compagnies</span>
@@ -247,10 +248,10 @@
           <div class="titre-aide"><h3>Rythme de travail</h3><details class="aide">
             <summary aria-label="À quoi sert le rythme ?">?</summary>
             <span class="aide-corps">Un seul chiffre pour tous les services. À 1, les équipes tiennent
-              exactement les minutes ci-dessus ; à 0,8, tout prend un quart de temps en plus. S’il doit
-              varier d’un service à l’autre, ce sont les minutes du service qu’il faut changer.</span></details></div>
+              exactement leurs heures de travail ; à 0,8, tout prend un quart de temps en plus. S’il doit
+              varier d’un service à l’autre, ce sont les heures du service qu’il faut changer.</span></details></div>
           <div class="slider-ligne">
-            <label for="rg-rendement">Rythme (1 = les minutes de travail de chaque service) <b id="rg-rendement-val"></b></label>
+            <label for="rg-rendement">Rythme (1 = les heures de travail de chaque service) <b id="rg-rendement-val"></b></label>
             <input id="rg-rendement" type="range" min="0.5" max="1.2" step="0.01">
           </div>
         </div>
@@ -324,7 +325,7 @@
        * fiche (Équipes › Services et équipes) quand il ne se calcule pas. */
       this.persEquipe = eq => {
         const e = this.a.effectifCalcule ? this.a.effectifCalcule(eq.id) : null;
-        return e ? `<output class="rgr-calc" data-rg-calcule="${esc(eq.id)}" title="« ${esc(eq.nom)} » : effectif calculé, ses minutes × ses vols ÷ son poste">${e.personnes}</output>`
+        return e ? `<output class="rgr-calc" data-rg-calcule="${esc(eq.id)}" title="« ${esc(eq.nom)} » : effectif calculé, ses heures par vol × ses vols ÷ son poste">${e.personnes}</output>`
           : `<output class="rgr-calc saisi" data-rg-equipe="${esc(eq.id)}" title="« ${esc(eq.nom)} » : effectif saisi dans sa fiche (Équipes › Services et équipes)">${eq.personnes}</output>`;
       };
       this.surChange = e => {
@@ -341,8 +342,9 @@
         // Les minutes par vol d'une compagnie dans un service par compagnie (l'armement) :
         // elles vivent dans son réglage (Équipes › le service), pas dans le barème.
         if (champ === 'recap-cie') {
-          const n = v === '' ? null : +String(v).replace(',', '.');
-          if (n !== null && !(n >= 0)) { this.rendre('Nombre de minutes positif attendu.'); return; }
+          // Saisies en heures par vol (08/10), gardées en minutes.
+          const n = v === '' ? null : P.versMinutes(v);
+          if (v !== '' && !(Number.isFinite(n) && n >= 0)) { this.rendre('Nombre d’heures positif attendu.'); return; }
           setTimeout(() => { if (this.a.minutesCompagnie && this.a.minutesCompagnie(service, e.target.dataset.cie, n)) this.pile('cases'); }, 0);
           return;
         }
@@ -358,12 +360,13 @@
         // le champ qu'on vient de quitter, et le navigateur refuse. On laisse
         // l'événement se terminer d'abord.
         setTimeout(() => this.changer(() => {
-          if (champ === 'minutes') {
+          if (champ === 'heures') {
             const ligne = this.etat.bareme[service] || (this.etat.bareme[service] = {});
             // Une case vidée : la valeur disparaît. Commune, le service devient
             // « non renseigné » pour cette classe ; propre, la commune reprend.
+            // Saisie en heures par vol (08/10), gardée en minutes.
             if (v === '') delete ligne[cle];
-            else ligne[cle] = min(v.replace(',', '.'), 0);
+            else ligne[cle] = min(P.versMinutes(v), 0);
           } else if (champ === 'propre-ajout' && v) {
             const ligne = this.etat.bareme[service] || (this.etat.bareme[service] = {});
             const cabine = v.slice(v.lastIndexOf('/') + 1);
@@ -376,8 +379,9 @@
             const cab = classe.slice(i + 1), cle2 = P.cleBareme(classe.slice(0, i), cab);
             const ligne = this.etat.bareme[service] || (this.etat.bareme[service] = clone(this.baremeComplet()[service] || {}));
             const commun = ligne[P.cleBareme(P.TOUTES, cab)];
+            // Saisie en heures (08/10) : égale à la commune, à l'affichage près, elle la suit.
             if (v === '') delete ligne[cle2];
-            else { const n = min(v.replace(',', '.'), 0); if (Number.isFinite(commun) && n === commun) delete ligne[cle2]; else ligne[cle2] = n; }
+            else { const n = min(P.versMinutes(v), 0); if (Number.isFinite(commun) && P.versHeures(n) === P.versHeures(commun)) delete ligne[cle2]; else ligne[cle2] = n; }
             if (Object.keys(ligne).some(k => !k.startsWith(P.TOUTES + '/'))) this.etat.detail[service] = 'compagnie';
           } else if (champ === 'seuil-apres') this.etat.regime.seuils[+index].apres = min(v, 0);
           else if (champ === 'seuil-duree') this.etat.regime.seuils[+index].duree = min(v, 0);
@@ -502,7 +506,7 @@
       // Le barème n'est pas calibré : le dire ici, là où on le modifie.
       const alerte = document.getElementById('rg-alerte');
       const memeQueDemo = JSON.stringify(this.etat.bareme) === JSON.stringify(P.BAREME_DEMO);
-      const conversion = this.converti ? `<div class="rg-avertissement"><b>Barème converti en minutes par vol.</b>
+      const conversion = this.converti ? `<div class="rg-avertissement"><b>Barème converti en temps par vol.</b>
            Il comptait par passager ; chaque valeur a été multipliée par un nombre de passagers types
            (BC ${P.PAX_TYPE.BC}, PC ${P.PAX_TYPE.PC}, YC ${P.PAX_TYPE.YC}, CREW ${P.PAX_TYPE.CREW}, SPML ${P.PAX_TYPE.SPML}).
            Vérifiez-le, ou importez votre étude.</div>` : '';
@@ -523,7 +527,8 @@
       const complet = ctx.complet || this.baremeComplet();
       const cases = ctx.cases || (this.a.ateliers ? this.a.ateliers() : []);
       const lisent = ctx.lisent || new Set(cases.filter(a => a.type === 'manuel' || !a.type).flatMap(a => [a.service].concat(a.fusion ? [a.fusion] : [])));
-      const fr = n => String(n).replace('.', ',');
+      // Gardées en minutes, montrées et saisies en heures (08/10).
+      const h = m => P.heuresFr(m);
       const classes = this.a.classes ? this.a.classes() : [];
       const routes = this.a.routes ? this.a.routes(classes) : new Map();
       // Une même échelle pour tous les services : on compare d'un coup d'œil.
@@ -548,8 +553,8 @@
           // parcours le traverse, ou toutes quand une classe n'a pas de parcours.
           const ici = classes.filter(c => { const r = routes.get(c.id); return !r || r.services.has(s.id); });
           const manquent = ici.filter(c => P.minutesParVol(ligne, c) == null);
-          const champ = (cle, val, label, attrs) => `<input type="number" min="0" step="0.1" value="${Number.isFinite(val) ? val : ''}"
-            placeholder="${esc((attrs && attrs.placeholder) || '—')}" data-rg-champ="minutes" data-service="${esc(s.id)}"
+          const champ = (cle, val, label, attrs) => `<input type="number" min="0" step="any" value="${Number.isFinite(val) ? P.versHeures(val) : ''}"
+            placeholder="${esc((attrs && attrs.placeholder) || '—')}" data-rg-champ="heures" data-service="${esc(s.id)}"
             data-cle="${esc(cle)}" aria-label="${esc(label)}"${attrs && attrs.manque ? ' class="rg-manque"' : ''}>`;
 
           const digest = parCompagnie
@@ -557,13 +562,13 @@
               + (manquent.length ? ` · <b class="rg-manque-txt">${manquent.length} à renseigner</b>` : '')
             : `<span class="rg-barres" aria-hidden="true">${P.CABINES.map((c, i) => {
                 const v = communes[i], ok = Number.isFinite(v);
-                return `<span class="rg-barre" title="${esc((P.NOM_CABINE || {})[c] || c)} : ${ok ? fr(v) + ' min par vol' : 'à remplir'}">
-                  <i data-cab="${c}" style="height:${ok ? Math.max(3, Math.round(v / maxi * 30)) : 0}px"></i><em>${ok ? fr(v) : '—'}</em></span>`;
+                return `<span class="rg-barre" title="${esc((P.NOM_CABINE || {})[c] || c)} : ${ok ? h(v) + ' h par vol' : 'à remplir'}">
+                  <i data-cab="${c}" style="height:${ok ? Math.max(3, Math.round(v / maxi * 30)) : 0}px"></i><em>${ok ? h(v) : '—'}</em></span>`;
               }).join('')}</span>`
-              + `<span class="sr-only">${P.CABINES.map((c, i) => `${c} ${Number.isFinite(communes[i]) ? fr(communes[i]) : '—'}`).join(' · ')} min/vol</span>`
+              + `<span class="sr-only">${P.CABINES.map((c, i) => `${c} ${Number.isFinite(communes[i]) ? h(communes[i]) : '—'}`).join(' · ')} h/vol</span>`
               + (propres.length ? `<em class="rg-plus">+ ${propres.length} par compagnie</em>` : '');
 
-          const mode = `<div class="rg-mode" role="group" aria-label="Saisie des minutes de ${esc(s.nom)}">
+          const mode = `<div class="rg-mode" role="group" aria-label="Saisie des heures de ${esc(s.nom)}">
             <button class="btn btn-sm" data-rg-action="mode" data-mode="classe" data-service="${esc(s.id)}"
               aria-pressed="${!parCompagnie}">Une valeur par classe</button>
             <button class="btn btn-sm" data-rg-action="mode" data-mode="compagnie" data-service="${esc(s.id)}"
@@ -584,28 +589,28 @@
                 if (!passe.has(P.idClasse(cie, c)) && !Number.isFinite(val))
                   return '<td class="rg-hors" title="Cette compagnie × classe ne passe pas par ce service">·</td>';
                 const manque = !Number.isFinite(val) && !Number.isFinite(communes[i]);
-                return `<td>${champ(cle, val, s.nom + ' ' + cie + '/' + c + ' minutes par vol',
-                  { placeholder: Number.isFinite(communes[i]) ? fr(communes[i]) : 'à saisir', manque })}</td>`;
+                return `<td>${champ(cle, val, s.nom + ' ' + cie + '/' + c + ' heures par vol',
+                  { placeholder: Number.isFinite(communes[i]) ? h(communes[i]) : 'à saisir', manque })}</td>`;
               }).join('')}</tr>`).join('')}
               <tr class="rg-autres"><th scope="row" title="Valeur de toute compagnie qui n’a pas la sienne">Autres compagnies</th>
-                ${P.CABINES.map((c, i) => `<td>${champ(P.cleBareme(P.TOUTES, c), communes[i], s.nom + ' ' + c + ' minutes par vol, autres compagnies')}</td>`).join('')}</tr>
+                ${P.CABINES.map((c, i) => `<td>${champ(P.cleBareme(P.TOUTES, c), communes[i], s.nom + ' ' + c + ' heures par vol, autres compagnies')}</td>`).join('')}</tr>
             </tbody></table></div>
-            <p class="mini-note">Minutes par vol. Une case vide prend la valeur « autres compagnies » ;
+            <p class="mini-note">Heures par vol, pour une personne. Une case vide prend la valeur « autres compagnies » ;
               encadrée de rouge, il n’y en a pas.${cies.length ? '' : ' Aucune compagnie ne passe par ce service.'}</p>`;
           } else {
             const dispo = classes.filter(c => !(P.cleBareme(c.cie, c.cabine) in ligne));
             corps = `<table class="rg-table"><thead><tr><th scope="col">Classe</th>
-              <th scope="col">Toutes compagnies — min / vol</th></tr></thead><tbody>
+              <th scope="col">Toutes compagnies — h / vol</th></tr></thead><tbody>
               ${P.CABINES.map((c, i) => `<tr>
                 <th scope="row" title="${esc((P.NOM_CABINE || {})[c] || c)}">${c}</th>
-                <td>${champ(P.cleBareme(P.TOUTES, c), communes[i], s.nom + ' ' + c + ' minutes par vol, toutes compagnies')}</td>
+                <td>${champ(P.cleBareme(P.TOUTES, c), communes[i], s.nom + ' ' + c + ' heures par vol, toutes compagnies')}</td>
               </tr>`).join('')}
             </tbody></table>
             <div class="rg-propres">
               ${propres.length ? `<table class="rg-table"><thead><tr><th scope="col">Compagnie × classe</th>
-                <th scope="col">min / vol</th><th scope="col"><span class="sr-only">Retirer</span></th></tr></thead><tbody>
+                <th scope="col">h / vol</th><th scope="col"><span class="sr-only">Retirer</span></th></tr></thead><tbody>
                 ${propres.map(([k, v]) => `<tr><th scope="row">${esc(k)}</th>
-                  <td>${champ(k, v, s.nom + ' ' + k + ' minutes par vol')}</td>
+                  <td>${champ(k, v, s.nom + ' ' + k + ' heures par vol')}</td>
                   <td><button class="btn btn-sm" data-rg-action="propre-retirer" data-service="${esc(s.id)}" data-cle="${esc(k)}"
                     title="Revenir à la valeur commune">Retirer</button></td></tr>`).join('')}
               </tbody></table>` : ''}
@@ -660,18 +665,22 @@
         return;
       }
       const fr = n => String(Math.round(n * 10) / 10).replace('.', ',');
+      // Les durées en minutes ou en heures ; le travail en heures (08/10) : par vol au
+      // millième, sur la journée au centième, les totaux avec leur unité.
       const heures = n => (n >= 60 ? fr(n / 60) + ' h' : fr(n) + ' min');
+      const hv = m => P.heuresFr(m), hj = m => P.heuresFr(m, 2);
+      const travail = m => P.heuresFr(m, m >= 600 ? 1 : 2) + ' h';
       const I = root.OrlyIcones;
       // Trois sous-colonnes par service, alignées d'une ligne à l'autre :
       // la valeur (man-min, ou débit du robot), l'effectif, la durée.
       const cellule = (l, sv) => {
         const c = l.cellules[sv.id], lib = P.libelleClasse(l.classe.id) + ' · ' + sv.nom;
-        if (c.source === 'compagnie') return `<td class="rgr parcie g" colspan="3" title="${esc(sv.nom)} travaille par compagnie : ses minutes sont sur la ligne de ${esc(l.classe.cie)}, en tête du bloc"></td>`;
+        if (c.source === 'compagnie') return `<td class="rgr parcie g" colspan="3" title="${esc(sv.nom)} travaille par compagnie : ses heures sont sur la ligne de ${esc(l.classe.cie)}, en tête du bloc"></td>`;
         if (c.source === 'hors') return `<td class="rgr hors g" colspan="3" title="${esc(P.libelleClasse(l.classe.id))} ne passe pas par ${esc(sv.nom)}"></td>`;
-        if (c.source === 'constant') return `<td class="rgr constant g" colspan="3" title="« ${esc(c.equipe.nom)} » ne dépend pas des vols : pas de minutes par vol">constant</td>`;
+        if (c.source === 'constant') return `<td class="rgr constant g" colspan="3" title="« ${esc(c.equipe.nom)} » ne dépend pas des vols : pas d’heures par vol">constant</td>`;
         const eq = c.equipe;
         const duree = c.duree != null ? (vue === 'jour' ? c.duree * l.vols : c.duree) : null;
-        const tdDuree = `<td class="rgr-d"${duree != null ? ` title="${c.source === 'robot' ? 'Plateaux ÷ débit' : 'Man-minutes ÷ personnes'}${vue === 'jour' ? ', sur la journée' : ', pour un vol'}"` : ''}>${duree != null ? heures(duree) : ''}</td>`;
+        const tdDuree = `<td class="rgr-d"${duree != null ? ` title="${c.source === 'robot' ? 'Plateaux ÷ débit' : 'Heures de travail ÷ personnes'}${vue === 'jour' ? ', sur la journée' : ', pour un vol'}"` : ''}>${duree != null ? heures(duree) : ''}</td>`;
         const partage = eq && eq.commandes > 1;
         const tdPers = !eq
           ? `<td class="rgr-p sans" title="Aucune case ne prépare ${esc(P.libelleClasse(l.classe.id))} dans ${esc(sv.nom)}">—</td>`
@@ -686,35 +695,35 @@
                 aria-label="Débit de ${esc(lib)} sur le robot, en plateaux par heure (robot : ${c.debitRobot})"
                 title="${esc(lib)} — ${c.debitPropre ? 'débit propre' : 'débit du robot'} ; vide : celui du robot (${c.debitRobot} pl/h)"></td>`;
         } else if (vue === 'jour') {
-          tdVal = `<td class="rgr ${c.source} g" title="${esc(lib)} : ${c.parVol == null ? 'à renseigner' : fr(c.parVol) + ' man-min par vol × ' + l.vols + ' vol' + (l.vols > 1 ? 's' : '')}">${c.jour == null ? '—' : fr(c.jour)}</td>`;
+          tdVal = `<td class="rgr ${c.source} g" title="${esc(lib)} : ${c.parVol == null ? 'à renseigner' : hv(c.parVol) + ' h par vol × ' + l.vols + ' vol' + (l.vols > 1 ? 's' : '')}">${c.jour == null ? '—' : hj(c.jour)}</td>`;
         } else if (c.source === 'case') {
-          tdVal = `<td class="rgr case g" title="Fixée dans la case « ${esc(c.atelier)} » : ${fr(c.jour)} man-min pour la journée, soit ${fr(c.parVol)} par vol (barème : ${c.bareme == null ? 'rien' : fr(c.bareme)}). Elle se change dans la case.">${fr(c.parVol)}</td>`;
+          tdVal = `<td class="rgr case g" title="Fixée dans la case « ${esc(c.atelier)} » : ${hj(c.jour)} h pour la journée, soit ${hv(c.parVol)} h par vol (barème : ${c.bareme == null ? 'rien' : hv(c.bareme) + ' h'}). Elle se change dans la case.">${hv(c.parVol)}</td>`;
         } else {
-          tdVal = `<td class="rgr ${c.source} g"><input type="number" min="0" step="0.1" value="${c.parVol == null ? '' : c.parVol}"
+          tdVal = `<td class="rgr ${c.source} g"><input type="number" min="0" step="any" value="${c.parVol == null ? '' : P.versHeures(c.parVol)}"
             placeholder="${c.source === 'manque' ? 'à saisir' : ''}" data-rg-champ="recap" data-service="${esc(sv.id)}" data-classe="${esc(l.classe.id)}"
-            aria-label="Man-minutes par vol : ${esc(lib)}" title="${esc(lib)} — ${c.source === 'propre' ? 'valeur propre' : c.source === 'commun' ? 'valeur toutes compagnies' : 'à renseigner'}"></td>`;
+            aria-label="Heures de travail par vol : ${esc(lib)}" title="${esc(lib)} — ${c.source === 'propre' ? 'valeur propre' : c.source === 'commun' ? 'valeur toutes compagnies' : 'à renseigner'}"></td>`;
         }
         return tdVal + tdPers + tdDuree;
       };
       // La ligne récap d'une compagnie : ses services par compagnie (l'armement), le
-      // reste vide. Minutes par vol (les siennes, sinon « toutes les compagnies »),
+      // reste vide. Heures par vol (les siennes, sinon « toutes les compagnies »),
       // l'effectif de l'équipe qui la coche, la durée d'un vol.
       const celluleCie = (l, sv) => {
         const c = l.cellules[sv.id];
         if (c.source === 'hors') return '<td class="rgr vide g" colspan="3"></td>';
-        if (c.source === 'robot') return `<td class="rgr vide g" colspan="3" title="Robot : des plateaux à un débit, pas des man-minutes"></td>`;
+        if (c.source === 'robot') return `<td class="rgr vide g" colspan="3" title="Robot : des plateaux à un débit, pas des heures de travail"></td>`;
         if (c.source === 'somme') {
           const val = vue === 'jour' ? c.jour : c.parVol;
-          // Sous la colonne des minutes, comme les valeurs de ses classes.
-          return `<td class="rgr somme g" title="${esc(l.compagnie + ' · ' + sv.nom)} : somme de ${c.classes} ${c.classes > 1 ? 'classes' : 'classe'}${vue === 'jour' ? ' sur la journée' : ', pour un vol de chacune'}${c.manque ? ' — ' + c.manque + ' à renseigner' : ''}">${val ? (vue === 'jour' ? heures(val) : fr(val)) : '—'}${c.manque ? '<i class="rgr-manque-pt" aria-label="valeurs à renseigner"></i>' : ''}</td><td></td><td></td>`;
+          // Sous la colonne des heures, comme les valeurs de ses classes.
+          return `<td class="rgr somme g" title="${esc(l.compagnie + ' · ' + sv.nom)} : somme de ${c.classes} ${c.classes > 1 ? 'classes' : 'classe'}${vue === 'jour' ? ' sur la journée' : ', pour un vol de chacune'}${c.manque ? ' — ' + c.manque + ' à renseigner' : ''}">${val ? (vue === 'jour' ? travail(val) : hv(val)) : '—'}${c.manque ? '<i class="rgr-manque-pt" aria-label="valeurs à renseigner"></i>' : ''}</td><td></td><td></td>`;
         }
         const lib = l.compagnie + ' · ' + sv.nom, eq = c.equipe;
         const duree = c.duree != null ? (vue === 'jour' ? c.duree * c.vols : c.duree) : null;
         const tdVal = vue === 'jour'
-          ? `<td class="rgr ${c.source} g" title="${esc(lib)} : ${c.parVol == null ? 'à renseigner' : fr(c.parVol) + ' man-min par vol × ' + c.vols + ' vol' + (c.vols > 1 ? 's' : '')}">${c.jour == null ? '—' : fr(c.jour)}</td>`
-          : `<td class="rgr ${c.source} g"><input type="number" min="0" step="0.1" value="${c.source === 'propre' ? c.parVol : ''}" placeholder="${c.commun != null ? fr(c.commun) : 'à saisir'}"
+          ? `<td class="rgr ${c.source} g" title="${esc(lib)} : ${c.parVol == null ? 'à renseigner' : hv(c.parVol) + ' h par vol × ' + c.vols + ' vol' + (c.vols > 1 ? 's' : '')}">${c.jour == null ? '—' : hj(c.jour)}</td>`
+          : `<td class="rgr ${c.source} g"><input type="number" min="0" step="any" value="${c.source === 'propre' ? P.versHeures(c.parVol) : ''}" placeholder="${c.commun != null ? hv(c.commun) : 'à saisir'}"
               data-rg-champ="recap-cie" data-service="${esc(sv.id)}" data-cie="${esc(l.compagnie)}"
-              aria-label="Man-minutes par vol : ${esc(lib)}" title="${esc(lib)} — ${c.source === 'propre' ? 'valeur propre à la compagnie' : c.source === 'commun' ? 'valeur toutes compagnies' : 'à renseigner'} ; vide : celle de toutes les compagnies"></td>`;
+              aria-label="Heures de travail par vol : ${esc(lib)}" title="${esc(lib)} — ${c.source === 'propre' ? 'valeur propre à la compagnie' : c.source === 'commun' ? 'valeur toutes compagnies' : 'à renseigner'} ; vide : celle de toutes les compagnies"></td>`;
         const tdPers = !eq ? `<td class="rgr-p sans" title="Aucune équipe de ${esc(sv.nom)} ne coche ${esc(l.compagnie)}">—</td>`
           : `<td class="rgr-p${eq.commandes > 1 ? ' partage' : ''}" title="Équipe « ${esc(eq.nom)} »${eq.commandes > 1 ? ' — partagée : son effectif vaut pour toutes ses compagnies' : ''}">${this.persEquipe(eq)}</td>`;
         return tdVal + tdPers + `<td class="rgr-d">${duree != null ? heures(duree) : ''}</td>`;
@@ -729,12 +738,12 @@
       const ouverts = this.recapOuverts || (this.recapOuverts = new Set());
       const nomCab = c => (P.NOM_CABINE || {})[c.cabine] || c.cabine;
       const ligneClasse = l => `<tr class="rg-recap-classe" data-classe="${esc(l.classe.id)}"><th scope="row"><span class="puce-classe" data-cab="${esc(l.classe.cabine)}"></span>${esc(nomCab(l.classe))}<span class="sr-only"> ${esc(l.classe.cie)}</span></th>
-          <td class="rg-recap-vols">${l.vols}</td>${r.colonnes.map(sv => cellule(l, sv)).join('')}<td class="rg-recap-total g">${vue === 'jour' ? heures(l.jour) : fr(l.parVol)}</td></tr>`;
+          <td class="rg-recap-vols">${l.vols}</td>${r.colonnes.map(sv => cellule(l, sv)).join('')}<td class="rg-recap-total g">${vue === 'jour' ? travail(l.jour) : hv(l.parVol)}</td></tr>`;
       const ligneCie = (l, ouvert, n) => `<tr class="rg-recap-cie" data-compagnie="${esc(l.compagnie)}"><th scope="row">
           <button type="button" class="rg-cie-btn" data-rg-action="recap-cie" data-compagnie="${esc(l.compagnie)}" aria-expanded="${ouvert}" title="${ouvert ? 'Replier' : 'Déplier'} les classes de ${esc(l.compagnie)}">
             <span class="rg-cie-chevron" aria-hidden="true"></span><span class="rg-cie-code">${esc(l.compagnie)}</span>
             <small>${n ? n + (n > 1 ? ' classes' : ' classe') : 'par compagnie'}</small></button></th>
-          <td class="rg-recap-vols" title="Départs de la compagnie">${l.vols}</td>${r.colonnes.map(sv => celluleCie(l, sv)).join('')}<td class="rg-recap-total g">${vue === 'jour' ? heures(l.jour) : fr(l.parVol)}</td></tr>`;
+          <td class="rg-recap-vols" title="Départs de la compagnie">${l.vols}</td>${r.colonnes.map(sv => celluleCie(l, sv)).join('')}<td class="rg-recap-total g">${vue === 'jour' ? travail(l.jour) : hv(l.parVol)}</td></tr>`;
       const corps = ordre.map(cie => {
         const siennes = lignes.filter(l => l.classe.cie === cie), tot = lignesCie.find(l => l.compagnie === cie);
         // Une recherche ouvre ce qu'elle trouve.
@@ -742,27 +751,27 @@
         return `<tbody class="rg-recap-bloc${ouvert ? ' ouvert' : ''}" data-compagnie="${esc(cie)}">${tot ? ligneCie(tot, ouvert, siennes.length) : ''}${siennes.map(ligneClasse).join('')}</tbody>`;
       }).join('');
       const manque = r.lignes.concat(r.lignesCie || []).reduce((n, l) => n + Object.values(l.cellules).filter(c => c.source === 'manque').length, 0);
-      box.innerHTML = `<p class="rg-recap-resume">${r.lignes.length} commandes${(r.lignesCie || []).length ? ' · ' + r.lignesCie.length + ' compagnies' : ''} · ${r.colonnes.length} services · <b>${heures(r.totaux.jourTotal)}</b> de travail demandé par les chemins sur la journée${
-        r.totaux.sansEquipe ? `, dont <b>${heures(r.totaux.avecEquipe)}</b> dans les cases d’une équipe (le travail fourni des Résultats) et ${heures(r.totaux.sansEquipe)} que personne ne prépare encore` : ''}${
+      box.innerHTML = `<p class="rg-recap-resume">${r.lignes.length} commandes${(r.lignesCie || []).length ? ' · ' + r.lignesCie.length + ' compagnies' : ''} · ${r.colonnes.length} services · <b>${travail(r.totaux.jourTotal)}</b> de travail demandé par les chemins sur la journée${
+        r.totaux.sansEquipe ? `, dont <b>${travail(r.totaux.avecEquipe)}</b> dans les cases d’une équipe (le travail fourni des Résultats) et ${travail(r.totaux.sansEquipe)} que personne ne prépare encore` : ''}${
         manque ? ` · <b class="rg-manque-txt">${manque} ${manque > 1 ? 'valeurs' : 'valeur'} à renseigner</b>` : ''}</p>
         <p class="rg-recap-plier"><button type="button" class="lien-discret" data-rg-action="recap-tout" data-ouvrir="1">Tout déplier</button> ·
           <button type="button" class="lien-discret" data-rg-action="recap-tout" data-ouvrir="0">Tout replier</button></p>
         <div class="rg-recap-scroll"><table class="rg-recap-table">
         <thead><tr class="rg-recap-t1"><th scope="col" rowspan="2">Compagnie · classe</th><th scope="col" rowspan="2" title="Nombre de vols de la journée">Vols</th>
           ${r.colonnes.map(sv => `<th scope="colgroup" colspan="3" class="g"><span class="rg-recap-svc">${I ? I.ico(I.icoService(sv.id, sv.nom)) : ''}${esc(sv.nom)}</span></th>`).join('')}
-          <th scope="col" rowspan="2" class="g">${vue === 'jour' ? 'Total journée' : 'Total par vol'}<small>man-min</small></th></tr>
-          <tr class="rg-recap-t2">${r.colonnes.map(sv => `<th scope="col" class="g" title="${sv.robot ? 'Débit en plateaux par heure' : vue === 'jour' ? 'Minutes de travail d’une personne sur la journée' : 'Minutes de travail d’une personne pour un vol'}">${sv.robot ? 'pl/h' : vue === 'jour' ? 'min/jour' : 'min/vol'}<small>1 pers.</small></th>
+          <th scope="col" rowspan="2" class="g">${vue === 'jour' ? 'Total journée' : 'Total par vol'}<small>heures</small></th></tr>
+          <tr class="rg-recap-t2">${r.colonnes.map(sv => `<th scope="col" class="g" title="${sv.robot ? 'Débit en plateaux par heure' : vue === 'jour' ? 'Heures de travail d’une personne sur la journée' : 'Heures de travail d’une personne pour un vol'}">${sv.robot ? 'pl/h' : vue === 'jour' ? 'h/jour' : 'h/vol'}<small>1 pers.</small></th>
             <th scope="col" title="Personnes de l’équipe qui prépare : calculées (en gras), ou saisies dans sa fiche">équipe</th><th scope="col" title="${vue === 'jour' ? 'Durée sur la journée' : 'Durée d’un vol'}">durée</th>`).join('')}</tr></thead>
         ${corps}
         ${lignes.length || lignesCie.length ? '' : `<tbody><tr><td colspan="${r.colonnes.length * 3 + 3}" class="mini-note">Aucune commande ne correspond à « ${esc(filtre)} ».</td></tr></tbody>`}
-        <tfoot><tr><th scope="row">Total journée</th><td></td>${r.colonnes.map(sv => `<td class="g">${sv.robot ? '' : heures(r.totaux.jour[sv.id])}</td><td></td><td></td>`).join('')}<td class="rg-recap-total g">${heures(r.totaux.jourTotal)}</td></tr></tfoot>
+        <tfoot><tr><th scope="row">Total journée</th><td></td>${r.colonnes.map(sv => `<td class="g">${sv.robot ? '' : travail(r.totaux.jour[sv.id])}</td><td></td><td></td>`).join('')}<td class="rg-recap-total g">${travail(r.totaux.jourTotal)}</td></tr></tfoot>
         </table></div>
-        <p class="mini-note">${vue === 'jour' ? 'Man-minutes sur la journée : par vol × nombre de vols. Totaux en heures de travail.'
-          : 'Minutes de travail pour un vol, comptées pour <b>une seule personne</b> (man-minutes). Changer une case la rend propre à cette compagnie × classe ; la vider la ramène à la valeur « toutes compagnies ».'}
-          Pour chaque service : la valeur, l’effectif de l’équipe qui prépare (calculé d’après ses minutes et ses vols, ou saisi dans sa fiche) et la durée = minutes ÷ personnes
+        <p class="mini-note">${vue === 'jour' ? 'Heures de travail sur la journée : par vol × nombre de vols.'
+          : 'Heures de travail pour un vol, comptées pour <b>une seule personne</b> (man-hours). Changer une case la rend propre à cette compagnie × classe ; la vider la ramène à la valeur « toutes compagnies ».'}
+          Pour chaque service : la valeur, l’effectif de l’équipe qui prépare (calculé d’après ses heures et ses vols, ou saisi dans sa fiche) et la durée = heures ÷ personnes
           (robot : plateaux ÷ débit). Un effectif <span class="rgr-p partage"><span>souligné en pointillé</span></span> est celui d’une case partagée par
           plusieurs commandes : il vaut pour toutes. La ligne d’une compagnie est son total : la somme de ses classes, service par
-          service ; un service qui travaille par compagnie (l’armement) s’y règle — minutes par vol × départs de la compagnie ;
+          service ; un service qui travaille par compagnie (l’armement) s’y règle — heures par vol × départs de la compagnie ;
           vide, la valeur de toutes les compagnies.</p>`;
     }
 
@@ -778,8 +787,8 @@
 
     exporterRecap() {
       const E = root.OrlyEchanges, T = root.OrlyTableur;
-      T.telecharger('ory-man-minutes-' + new Date().toISOString().slice(0, 10) + '.xlsx', T.ecrireClasseur(E.recapVersClasseur(this.contexteRecap())));
-      this.rendre('Man-minutes exportées : modifiez-les dans Excel, puis « ⇧ Importer ».');
+      T.telecharger('ory-heures-travail-' + new Date().toISOString().slice(0, 10) + '.xlsx', T.ecrireClasseur(E.recapVersClasseur(this.contexteRecap())));
+      this.rendre('Heures de travail exportées : modifiez-les dans Excel, puis « ⇧ Importer ».');
     }
 
     async importerRecap(e) {
@@ -787,10 +796,10 @@
       try {
         const E = root.OrlyEchanges, T = root.OrlyTableur, ctx = this.contexteRecap();
         const r = E.classeurVersRecap(await T.lireFichier(f, 4 * 1024 * 1024), ctx.bareme, ctx);
-        if (!r.changes) return this.rendre('Man-minutes lues : aucune valeur ne change.');
+        if (!r.changes) return this.rendre('Heures de travail lues : aucune valeur ne change.');
         const np = Object.keys(r.personnes || {}).length, nr = Object.keys(r.debits || {}).length, nb = r.changes - np - nr;
         if (!confirm('Changer ' + r.changes + (r.changes > 1 ? ' valeurs' : ' valeur') + ' d’après le fichier ('
-          + [nb ? nb + ' man-minutes' : '', np ? np + (np > 1 ? ' effectifs de case' : ' effectif de case') : '',
+          + [nb ? nb + ' temps de travail' : '', np ? np + (np > 1 ? ' effectifs de case' : ' effectif de case') : '',
             nr ? nr + (nr > 1 ? ' robots (débits)' : ' robot (débits)') : ''].filter(Boolean).join(', ') + ') ? L’action est annulable.')) return;
         const nd = Object.keys(r.debits || {}).length;
         if ((np || nd) && this.a.casesImportees && this.a.casesImportees(r.personnes || {}, r.debits || {})) this.pile('cases');
@@ -800,9 +809,9 @@
           this.changer(() => { this.etat.bareme = r.bareme; this.etat.detail = detail; }, '');
           this.pile('bareme');
         }
-        this.rendre('Man-minutes importées : ' + r.changes + (r.changes > 1 ? ' valeurs changées.' : ' valeur changée.'));
+        this.rendre('Heures de travail importées : ' + r.changes + (r.changes > 1 ? ' valeurs changées.' : ' valeur changée.'));
       } catch (err) {
-        this.rendre('Import refusé — ' + err.message + '\nLes man-minutes en place sont conservées.');
+        this.rendre('Import refusé — ' + err.message + '\nLes heures de travail en place sont conservées.');
       } finally { e.target.value = ''; }
     }
 
@@ -854,7 +863,7 @@
           routes: this.a.routes ? this.a.routes(classes) : new Map(),
           sansBareme: new Set(this.a.sansBareme ? this.a.sansBareme() : []) }));
       T.telecharger('ory-bareme-' + new Date().toISOString().slice(0, 10) + '.xlsx', octets);
-      this.rendre('Barème exporté : remplissez la colonne « Minutes par vol », puis « Importer ».');
+      this.rendre('Barème exporté : remplissez la colonne « Heures par vol », puis « Importer ».');
     }
 
     async importer(e) {

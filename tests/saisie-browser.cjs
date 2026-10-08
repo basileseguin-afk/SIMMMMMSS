@@ -60,13 +60,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.keyboard.press('Tab');await attendre();
    assert.equal((await etat()).personnes,12);
 
-   // 3. Les minutes par vol (le barème du service), « 4 », un rendu, « 2 ».
-   const bc=page.locator(`${M} [data-rg-champ=minutes][data-service=dotation][data-cle="*/BC"]`).first();
+   // 3. Les heures par vol (le barème du service), « 4 », un rendu, « 2 ».
+   const bc=page.locator(`${M} [data-rg-champ=heures][data-service=dotation][data-cle="*/BC"]`).first();
    await renduDans(250);
    await bc.click();await page.keyboard.press('Control+A');await page.keyboard.type('42',{delay:250});
-   assert.equal(await page.locator(`${M} [data-rg-champ=minutes][data-service=dotation][data-cle="*/BC"]`).first().inputValue(),'42',version+' : les minutes tapées restent');
+   assert.equal(await page.locator(`${M} [data-rg-champ=heures][data-service=dotation][data-cle="*/BC"]`).first().inputValue(),'42',version+' : les heures tapées restent');
    await page.keyboard.press('Tab');await attendre();
-   assert.equal(await page.locator(`${M} [data-rg-champ=minutes][data-service=dotation][data-cle="*/BC"]`).first().inputValue(),'42','et sont retenues');
+   assert.equal(await page.locator(`${M} [data-rg-champ=heures][data-service=dotation][data-cle="*/BC"]`).first().inputValue(),'42','et sont retenues');
 
    // 4. Un champ validé se redessine normalement, avec la valeur retenue.
    await champ('[data-at-champ=personnes]').click();await page.keyboard.press('Control+A');await page.keyboard.type('5000',{delay:30});

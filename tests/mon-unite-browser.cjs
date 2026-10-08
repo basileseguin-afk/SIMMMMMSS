@@ -84,9 +84,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // … et la grille dit maintenant qu'elle ne passe plus par là.
   assert.match(await page.locator(`table[data-mu-equipe="${e2}"] [data-mu-cocher="FWI/YC"]`).evaluate(e=>e.closest('td').className),/hors/);
 
-  // 7. Les minutes de travail se règlent dans la fiche.
-  const min=page.locator('.mu-fiche .rg-fiche input[data-rg-champ=minutes][data-cle="*/BC"]');
-  await min.fill('42');await min.press('Tab');await attendre();
+  // 7. Les heures de travail se règlent dans la fiche (en heures depuis le 08/10, gardées en minutes).
+  const min=page.locator('.mu-fiche .rg-fiche input[data-rg-champ=heures][data-cle="*/BC"]');
+  await min.fill('0.7');await min.press('Tab');await attendre();
   assert.equal(await page.evaluate(()=>Sim.reglages.etat.bareme.prepa['*/BC']),42);
 
   // 8. Un service qui sert tout le monde : « Quels flux en ont besoin ? ».

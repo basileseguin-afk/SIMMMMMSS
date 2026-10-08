@@ -142,7 +142,7 @@
     const chemins = [{ texte: 'Flux : ' + pluriel(c.flux || 0, 'flux', 'flux') + (c.variantes ? ' · ' + pluriel(c.variantes, 'variante') : ''),
       etat: c.flux ? 'fait' : 'afaire' }];
     if (c.sansChemin) chemins.push({ texte: pluriel(c.sansChemin, 'commande') + ' sans chemin', etat: 'afaire' });
-    const organisation = [ligne('ateliers', 'Équipes'), ligne('bareme', 'Minutes de travail'), ligne('unite', 'Unité')];
+    const organisation = [ligne('ateliers', 'Équipes'), ligne('bareme', 'Heures de travail'), ligne('unite', 'Unité')];
     const reglages = [
       { texte: 'Repas prêts ' + (r.delai ?? 45) + ' min avant le départ'
         + (r.decalage ? ' · vols décalés de ' + (r.decalage > 0 ? '+' : '') + r.decalage + ' min' : ''), etat: 'fait' },

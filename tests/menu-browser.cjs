@@ -30,7 +30,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     ['donnees','chemins','organisation','reglages','resultats'],'cinq parties, dans l’ordre du travail');
   // Chaque tuile dit son état en clair : ce qui est réel, ce qui est un exemple, ce qui reste à faire.
   assert.match(await tuile('donnees').textContent(),/Vols : 12 départs · exemple/);
-  assert.match(await tuile('organisation').textContent(),/Minutes de travail : chiffres d’exemple/);
+  assert.match(await tuile('organisation').textContent(),/Heures de travail : chiffres d’exemple/);
   assert.match(await tuile('chemins').textContent(),/Flux : \d+ flux/,'la tuile des chemins compte les flux');
   assert.match(await tuile('donnees').locator('.acc-etat').textContent(),/provisoire/);
   assert.match(await tuile('organisation').textContent(),/aucune équipe/);

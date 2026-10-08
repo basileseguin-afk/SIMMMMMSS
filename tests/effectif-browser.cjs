@@ -10,7 +10,7 @@
  *   - « Effectif imposé (essai) » : minutes par vol × effectif saisi ;
  *   - CF départ food est constant par défaut ; ses superviseurs ne changent rien ;
  *   - un poste constant n'a pas de minutes par vol ;
- *   - Minutes de travail : l'effectif calculé se lit, il ne se saisit pas ;
+ *   - Heures de travail : l'effectif calculé se lit, il ne se saisit pas ;
  *   - une mise à disposition (les appros) a ses personnes sur la journée ;
  *   - la plonge a ses équipes hors tunnel, calculées d'après les retours ou saisies.
  *   v1 et v2. */
@@ -128,15 +128,15 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.reload();await attendre();
    assert.equal(await page.evaluate(()=>Sim.ateliers.encadrement('handling')),2,'gardés au rechargement');
 
-   // 5 ter. La cuisine, constante : ses postes n'ont pas de minutes par vol.
+   // 5 ter. La cuisine, constante : ses postes n'ont pas d'heures par vol.
    await nav.aller(page,'mu-services');
    await page.locator(`${M} [data-mu-choisir=cuisine]`).click();await attendre();
-   assert.match(await page.locator(`${M} .mu-etape`).last().innerText(),/pas de minutes par vol/,version+' : pas de minutes par vol à saisir');
-   assert.doesNotMatch(await page.locator(`${M} .mu-afaire`).count()?await page.locator(`${M} .mu-afaire`).innerText():'',/minutes de travail à remplir/);
-   assert.equal(await page.locator(`${M} [data-at="cu"] [data-at-champ=minutes]`).count(),0,'ni minutes propres');
+   assert.match(await page.locator(`${M} .mu-etape`).last().innerText(),/pas d’heures par vol/,version+' : pas d’heures par vol à saisir');
+   assert.doesNotMatch(await page.locator(`${M} .mu-afaire`).count()?await page.locator(`${M} .mu-afaire`).innerText():'',/heures de travail à remplir/);
+   assert.equal(await page.locator(`${M} [data-at="cu"] [data-at-champ=heures]`).count(),0,'ni heures propres');
    assert.ok(await page.evaluate(()=>Sim.ateliers.resultat.lots.filter(l=>l.atelier==='cu').every(l=>l.hommeMinutes===0&&l.duree===0)),'ses commandes passent en temps nul');
    await nav.aller(page,'rg-recap');await attendre();
-   assert.ok(!(await page.locator('#rg-recap .rg-recap-svc').allInnerTexts()).some(t=>/Cuisine/i.test(t)),version+' : pas de colonne Cuisine dans Minutes de travail');
+   assert.ok(!(await page.locator('#rg-recap .rg-recap-svc').allInnerTexts()).some(t=>/Cuisine/i.test(t)),version+' : pas de colonne Cuisine dans Heures de travail');
    await nav.aller(page,'mu-services');
 
    // 6. Une mise à disposition a aussi ses gens (06/10 : « 2 personnes aux appros,
@@ -159,9 +159,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.locator(`${M} [data-mu-action=appui]`).click();await attendre();
    const ht=await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.type==='appui'&&a.service==='plonge'));
    assert.ok(ht&&/hors tunnel/.test(ht.nom),version+' : une équipe hors tunnel');
-   const min=page.locator(`${M} [data-at="${ht.id}"] [data-at-champ=appui-min][data-cie="*"]`);
+   // En heures par vol (08/10), gardées en minutes : 5 h = 300 min.
+   const min=page.locator(`${M} [data-at="${ht.id}"] [data-at-champ=appui-h][data-cie="*"]`);
    if(!(await min.count())){await page.locator(`${M} [data-at="${ht.id}"] button`).first().click();await attendre();}
-   await min.fill('300');await min.dispatchEvent('change');await attendre();
+   await min.fill('5');await min.dispatchEvent('change');await attendre();
    const eh=await effectif(ht.id);
    assert.ok(eh&&eh.retours&&eh.vols>0,version+' : elle compte les vols qui reviennent '+JSON.stringify(eh));
    assert.equal(eh.hommeMinutes,300*eh.vols);
@@ -172,7 +173,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    // Effectif constant : elle reprend l'effectif saisi.
    await page.locator(`${M} [data-mu-effectif=plonge]`).check();await attendre();
    assert.equal((await equipe(ht.id)).personnes,1,version+' : constant, l’effectif saisi revient');
-   assert.equal(await page.locator(`${M} [data-at="${ht.id}"] [data-at-champ=appui-min]`).count(),0,'plus de minutes par vol à saisir');
+   assert.equal(await page.locator(`${M} [data-at="${ht.id}"] [data-at-champ=appui-h]`).count(),0,'plus d’heures par vol à saisir');
   }
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('effectif-browser : ok');

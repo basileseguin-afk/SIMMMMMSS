@@ -44,15 +44,15 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(eq.length,1);assert.equal(eq[0].type||'manuel','manuel',version+' : une équipe qui prépare, comme en Prépa');
    await page.locator(`#mu-services table[data-mu-equipe="${eq[0].id}"] [data-mu-cocher="AF/BC"]`).check();await attendre();
 
-   // 3. Ses minutes, dans le tableau des minutes : une colonne à lui ; le calcul les compte.
+   // 3. Ses heures, dans le tableau des heures de travail : une colonne à lui ; le calcul les compte.
    await nav.aller(page,'rg-recap');await nav.deplier(page);
    assert.match(await page.locator('#rg-recap thead').innerText(),/Roulés couverts/,version+' : sa colonne');
    const champ=page.locator(`#rg-recap input[data-rg-champ=recap][data-service="${id}"][data-classe="AF/BC"]`);
-   await champ.fill('4');await champ.press('Tab');await attendre();
+   await champ.fill('0.1');await champ.press('Tab');await attendre();   // 0,1 h = 6 min
    const r=await page.evaluate(([id,eq])=>{const r=Sim.ateliers.resultat,l=r.lots.find(x=>x.atelier===eq&&x.classes.includes('AF/BC'));
      const dot=r.lots.find(x=>x.service==='prepa'&&x.classes.includes('AF/BC'));return {hm:l&&l.hommeMinutes,vols:Sim.ateliers.classes.find(c=>c.id==='AF/BC').vols.length,
        services:(r.parClasse['AF/BC']||{}).services||[]};},[id,eq[0].id]);
-   assert.equal(r.hm,4*r.vols,version+' : 4 min × vols');
+   assert.equal(r.hm,6*r.vols,version+' : 6 min (0,1 h) × vols');
    assert.ok(r.services.includes(id),version+' : sur le chemin d’AF Business');
 
    // 4. Planning, Excel, rechargement.

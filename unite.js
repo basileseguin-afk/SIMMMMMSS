@@ -10,7 +10,7 @@
  *                chaque point mène à l'endroit où il se règle ;
  *    Services  — la liste des services, et la fiche de celui qu'on choisit :
  *                ce qu'il fait, ses équipes (heure, personnes, et une grille
- *                compagnies × classes à cocher), ses minutes de travail.
+ *                compagnies × classes à cocher), ses heures de travail.
  *
  *  Les chemins des commandes se déduisent des coches (parcours.js, « la
  *  grille à cocher ») ; les outils fins restent, pour les cas rares, après la
@@ -44,7 +44,7 @@
   class MonUnite {
     /* a = {
      *   at()          — le centre des ateliers (état, calcul, fiches de case)
-     *   rg()          — le centre des réglages (minutes de travail)
+     *   rg()          — le centre des réglages (heures de travail)
      *   services()    — [{id, nom}]
      *   parent(id)    — le service dont une salle annexe dépend, ou null
      *   racines()     — [{id, nom}] les services du plan, pour placer un nouveau service
@@ -83,7 +83,7 @@
       const attendues = preparent(nature) ? classes.filter(c => g.get(c.id).etat === 'attendue').map(c => c.id) : [];
       const vides = preparent(nature) ? cases.filter(a => (a.type === 'manuel' || a.type === 'robot') && !a.lots.some(l => l.length)) : [];
       const rg = this.a.rg ? this.a.rg() : null;
-      // Seuls les postes qui dépendent des vols ont des minutes par vol à remplir (06/10).
+      // Seuls les postes qui dépendent des vols ont des heures par vol à remplir (06/10).
       const temps = rg && nature === 'manuel' && cases.some(a => a.lots.some(l => l.length) && this.at.dependDesVols(a)) ? rg.blocService({ id, nom: this.nom(id) }) : null;
       const sansTemps = !!temps && (temps.etat === 'vide' || temps.manquent.length > 0);
       const alertes = ((resultat && resultat.anomalies) || []).filter(x => !CODES_JOURNEE.has(x.code)
@@ -92,9 +92,9 @@
       if (passent && !cases.length) points.push(pl(passent, 'commande passe', 'commandes passent') + ' par ici, sans équipe');
       if (attendues.length && cases.length) points.push(pl(attendues.length, nature === 'categories' ? 'compagnie' : 'commande') + ' à cocher dans une équipe');
       if (vides.length) points.push(vides.length > 1 ? vides.length + ' équipes ne préparent rien' : '« ' + vides[0].nom + ' » ne prépare rien');
-      if (sansTemps) points.push('minutes de travail à remplir');
+      if (sansTemps) points.push('heures de travail à remplir');
       if (nature === 'categories' && !classes.length) points.push('aucune case : aucun chemin ne passe par ce service');
-      else if (nature === 'categories' && classes.some(c => c.minutes == null)) points.push('minutes par vol à remplir');
+      else if (nature === 'categories' && classes.some(c => c.minutes == null)) points.push('heures par vol à remplir');
       for (const x of alertes.slice(0, 3)) points.push(x.message);
       const utilise = cases.length > 0 || passent > 0 || nature === 'categories';
       return { id, nature, cases, passent, attendues, vides, sansTemps, alertes, points,
@@ -177,7 +177,7 @@
         <form class="mu-nouveau" data-mu-nouveau><b>Nouveau service</b>
           <label>Nom <input name="nom" maxlength="120" placeholder="ex. Atelier APM" required></label>
           <label>Sur le plan, près de <select name="parent">${this.a.racines().map(x => `<option value="${esc(x.id)}">${esc(x.nom)}</option>`).join('')}</select></label>
-          <label title="À part entière : ses propres minutes et ses propres liens, comme Prépa ou Dotation. Une salle de plus : elle reprend les minutes et les liens du service choisi au-dessus.">C’est <select name="genre"><option value="autonome">un service à part entière</option>
+          <label title="À part entière : ses propres heures de travail et ses propres liens, comme Prépa ou Dotation. Une salle de plus : elle reprend les heures et les liens du service choisi au-dessus.">C’est <select name="genre"><option value="autonome">un service à part entière</option>
             <option value="salle">une salle de plus de ce service</option></select></label>
           <button class="btn btn-sm btn-play" type="submit">+ Créer</button></form>
       </nav>`;
@@ -192,7 +192,7 @@
       this.poser(box, `<div class="mu-cadre">${liste}<div class="mu-fiche" data-mu-fiche="${esc(this.choisi || '')}">${corps}</div></div>`);
     }
 
-    /** La fiche d'un service : ce qu'il fait, ses équipes, ses minutes de travail. */
+    /** La fiche d'un service : ce qu'il fait, ses équipes, ses heures de travail. */
     fiche(s, b, classes, r) {
       const I = root.OrlyIcones, st = this.etat;
       if (b.nature === 'categories') classes = this.at.classesDe(s.id) || [];
@@ -242,15 +242,15 @@
       // L'effectif : constant (saisi) ou calculé d'après les homme-minutes (retour d'usage du 05/10).
       const constant = this.at.effectifConstant(s.id);
       const impose = `<label class="mu-effectif mu-impose"><input type="checkbox" data-mu-impose="${esc(s.id)}"${this.at.effectifImpose(s.id) ? ' checked' : ''}>
-          <span><b>Effectif imposé (essai)</b><small>les minutes par vol s’appliquent, mais à l’effectif saisi, sans le calculer : « et avec 2 personnes, ça tient ? »</small></span></label>`;
+          <span><b>Effectif imposé (essai)</b><small>les heures par vol s’appliquent, mais à l’effectif saisi, sans le calculer : « et avec 2 personnes, ça tient ? »</small></span></label>`;
       // L'armement dépend toujours des vols de chaque compagnie (07/10) : pas de case « constant ».
       const choixEffectif = nature === 'categories' ? `<p class="mu-effectif mu-par-vols"><b>Effectif selon les vols</b>
-          <small>le nombre de personnes de chaque équipe se calcule : minutes par vol × vols de chaque compagnie ÷ minutes de son poste.
+          <small>le nombre de personnes de chaque équipe se calcule : heures par vol × vols de chaque compagnie ÷ heures de son poste.
           Plus une compagnie a de vols, plus il faut de monde.</small></p>` + impose
         : preparent(nature) || nature === 'lavage' ? `<label class="mu-effectif"><input type="checkbox" data-mu-effectif="${esc(s.id)}"${constant ? ' checked' : ''}>
         <span><b>Effectif constant</b><small>${constant ? 'ses équipes gardent le nombre de personnes saisi, quel que soit le nombre de vols. Décochez pour le calculer.'
-          : nature === 'lavage' ? 'non coché : les équipes hors tunnel se calculent, minutes par vol × vols qui reviennent de chaque compagnie ÷ minutes de leur poste. Les tunnels gardent leur effectif. Cochez pour le saisir.'
-          : 'non coché : le nombre de personnes de chaque équipe se calcule, minutes par vol × vols de chaque compagnie ÷ minutes de son poste. Le robot garde le sien. Cochez pour le saisir.'}
+          : nature === 'lavage' ? 'non coché : les équipes hors tunnel se calculent, heures par vol × vols qui reviennent de chaque compagnie ÷ heures de leur poste. Les tunnels gardent leur effectif. Cochez pour le saisir.'
+          : 'non coché : le nombre de personnes de chaque équipe se calcule, heures par vol × vols de chaque compagnie ÷ heures de son poste. Le robot garde le sien. Cochez pour le saisir.'}
           Une équipe peut faire autrement : son choix « Effectif ».</small></span></label>`
         + (constant ? '' : impose) : '';
       const choixNature = `<label class="mu-nature">Ce service…<select data-mu-nature="${esc(s.id)}">${NATURES.map(x =>
@@ -271,7 +271,7 @@
           + `<p class="mu-ajout"><button class="btn btn-play btn-sm" type="button" data-mu-action="equipe">+ Ajouter une équipe</button>
              <span class="mini-note">une équipe du matin, de l’après-midi, de nuit… chacune avec son heure, ses personnes et ce qu’elle prépare</span></p>`;
       } else {
-        const phrase = nature === 'dispo' ? 'Il sert toutes les commandes à la fois : ni minutes, ni durée. Dites quand il est ouvert, combien de personnes y travaillent sur la journée, et qui en a besoin.'
+        const phrase = nature === 'dispo' ? 'Il sert toutes les commandes à la fois : ni heures de travail, ni durée. Dites quand il est ouvert, combien de personnes y travaillent sur la journée, et qui en a besoin.'
           : nature === 'lavage' ? 'Elle lave les retours de tous les vols, à mesure qu’ils arrivent : rien à cocher. Réglez ses tunnels et ses horaires.'
           : 'Il charge chaque vol à son départ, pour toutes les commandes : rien à cocher. Réglez ses horaires et le temps par vol.';
         equipes = `<p class="mini-note">${esc(phrase)}</p>`
@@ -285,12 +285,12 @@
       }
 
       const rg = this.a.rg ? this.a.rg() : null;
-      // Des postes qui ne dépendent pas des vols n'ont pas de minutes par vol (06/10).
+      // Des postes qui ne dépendent pas des vols n'ont pas d'heures par vol (06/10).
       const aucunVol = nature === 'manuel' && !(st.ateliers || []).some(a => a.service === s.id && this.at.dependDesVols(a));
       const temps = aucunVol && b.cases.length
-        ? etape(3, 'Minutes de travail pour un vol', '<p class="mini-note">Ses postes ne dépendent pas des vols : <b>pas de minutes par vol</b>. Leurs commandes passent dans leurs heures de présence. Décochez « Effectif constant » (ou choisissez « Dépend des vols » pour une équipe) pour en saisir.</p>')
+        ? etape(3, 'Heures de travail pour un vol', '<p class="mini-note">Ses postes ne dépendent pas des vols : <b>pas d’heures par vol</b>. Leurs commandes passent dans leurs heures de présence. Décochez « Effectif constant » (ou choisissez « Dépend des vols » pour une équipe) pour en saisir.</p>')
         : nature === 'manuel' && rg
-        ? etape(3, 'Minutes de travail pour un vol, pour une personne', rg.ficheTemps(s.id), constant ? 'le temps d’une seule personne, pour une compagnie dans une classe : à plusieurs, la durée se divise par les personnes de l’équipe'
+        ? etape(3, 'Heures de travail pour un vol, pour une personne', rg.ficheTemps(s.id), constant ? 'le temps d’une seule personne, pour une compagnie dans une classe : à plusieurs, la durée se divise par les personnes de l’équipe'
           : 'le temps d’une seule personne, pour une compagnie dans une classe : les personnes de chaque équipe s’en déduisent')
         : nature === 'robot' ? etape(3, 'Débit du robot', '<p class="mini-note">Le débit (plateaux par heure) se règle dans la fiche de chaque équipe robot, plus haut : « Plus de réglages ».</p>') : '';
 
@@ -299,12 +299,12 @@
         + etape(2, 'Son atelier : ses personnes, son heure, ses compagnies', this.atelierUnique(s, b.cases[0], calc));
       if (nature === 'categories') return tete + this.lienHandling(s) + aFaire
         + etape(1, 'Ce qu’il fait', choixNature)
-        + etape(2, 'Minutes par vol, selon la compagnie', this.blocParCompagnie(s, classes), 'une case vide prend la valeur de « Toutes les compagnies »')
+        + etape(2, 'Heures par vol, selon la compagnie', this.blocParCompagnie(s, classes), 'pour une personne ; une case vide prend la valeur de « Toutes les compagnies »')
         + etape(3, 'Ses équipes : une case par compagnie', equipes);
       // Un armement qui suit encore les classes (BC, PC, Éco…) : on propose la bonne façon, à la vue.
       // Quelle que soit sa nature actuelle (sert tout le monde, préparation…) : le réglage ne se cache pas.
       const proposer = /armement/i.test(s.nom) ? `<div class="mu-q mu-par-cie"><p>L’armement ne travaille pas par Business, Premium ou Éco :
-        <b>une case par compagnie</b>, oui ou non, pour chaque vol que le handling charge, et des minutes par vol.</p>
+        <b>une case par compagnie</b>, oui ou non, pour chaque vol que le handling charge, et des heures par vol.</p>
         <div class="mu-q-gestes"><button class="btn btn-sm btn-play" type="button" data-mu-action="par-compagnie">Passer à « une case par compagnie »</button></div></div>` : '';
       return tete + lesFlux + blocChaine + horsFlux + proposer + aFaire
         + etape(1, 'Ce qu’il fait', choixNature)
@@ -338,7 +338,7 @@
           <button class="btn btn-sm btn-play" type="button" data-mu-action="integrer-armement">L’intégrer à tous les chemins, relié au handling</button></p>`}</div>`;
     }
 
-    /* Un service qui travaille par compagnie (l'armement) : ses minutes par vol,
+    /* Un service qui travaille par compagnie (l'armement) : ses heures par vol,
      * pour toutes les compagnies, puis celles qui en ont d'autres. Chaque
      * compagnie dont un chemin passe par le service a sa case, avec ou sans vol. */
     blocParCompagnie(s, classes) {
@@ -350,27 +350,28 @@
       const hors = toutes.filter(c => !avec.includes(c)).sort((x, y) => x.localeCompare(y));
       // Une case, mais aucun départ au programme (une compagnie ajoutée à la main).
       const sansVol = avec.filter(cie => !classes.some(c => c.cie === cie && c.vols.length));
-      const champ = cie => `<td><input type="number" min="0" step="1" value="${k.minutes[cie] ?? ''}" placeholder="${cie === '*' ? '—' : k.minutes['*'] ?? '—'}"
-          data-mu-cat-min="${esc(k.id)}" data-cie="${esc(cie)}" aria-label="Minutes par vol${cie === '*' ? ', toutes les compagnies' : ', ' + esc(cie)}"></td>`;
+      // Gardées en minutes, saisies et lues en heures par vol (08/10).
+      const champ = cie => `<td><input type="number" min="0" step="any" value="${P.versHeures(k.minutes[cie]) ?? ''}" placeholder="${cie === '*' ? '—' : P.heuresFr(k.minutes['*']) || '—'}"
+          data-mu-cat-min="${esc(k.id)}" data-cie="${esc(cie)}" aria-label="Heures par vol${cie === '*' ? ', toutes les compagnies' : ', ' + esc(cie)}"></td>`;
       const aucun = !avec.length ? `<p class="mini-note">Aucune compagnie n’a de case : aucun chemin ne passe par ${esc(s.nom)}.</p>` : '';
-      // Le travail dépend des vols de chaque compagnie (07/10) : minutes par vol × ses départs du jour.
+      // Le travail dépend des vols de chaque compagnie (07/10) : heures par vol × ses départs du jour.
       const lire = x => (x !== '' && x != null && Number.isFinite(+x) ? +x : null);
       const vols = cie => new Set(classes.filter(c => c.cie === cie).flatMap(c => (c.vols || []).map(v => v.id))).size;
-      const h = m => (m >= 60 ? Math.floor(m / 60) + ' h ' + String(Math.round(m % 60)).padStart(2, '0') : Math.round(m) + ' min');
+      const h = m => P.heuresFr(m, 2) + ' h';
       let totalVols = 0, total = 0, manque = 0;
       const ligne = cie => {
         const n = vols(cie), v = lire(k.minutes[cie]) ?? lire(k.minutes['*']);
         totalVols += n; if (v == null) manque++; else total += v * n;
         return `<tr><th scope="row">${esc(cie)}</th>${champ(cie)}<td class="mu-cat-vols">${n}</td>
-          <td class="mu-cat-jour">${v == null ? '<span class="mu-cat-manque">à remplir</span>' : `${v} × ${n} = <b>${esc(h(v * n))}</b>`}</td></tr>`;
+          <td class="mu-cat-jour">${v == null ? '<span class="mu-cat-manque">à remplir</span>' : `${P.heuresFr(v)} h × ${n} = <b>${esc(h(v * n))}</b>`}</td></tr>`;
       };
       const lignes = avec.map(ligne).join('');
       return aucun + `<div class="mu-grille-scroll"><table class="mu-cat-table" data-mu-cat-service="${esc(s.id)}">
-        <thead><tr><th scope="col">Compagnie</th><th scope="col">Minutes par vol</th><th scope="col">Vols du jour</th><th scope="col">Sur la journée</th></tr></thead>
+        <thead><tr><th scope="col">Compagnie</th><th scope="col">Heures par vol</th><th scope="col">Vols du jour</th><th scope="col">Sur la journée</th></tr></thead>
         <tbody><tr class="mu-cat-toutes"><th scope="row">Toutes les compagnies</th>${champ('*')}<td></td><td></td></tr>
         ${lignes}</tbody>
         ${avec.length ? `<tfoot><tr><th scope="row">Total</th><td></td><td class="mu-cat-vols">${totalVols}</td><td class="mu-cat-jour"><b>${esc(h(total))}</b>${manque ? ` <span class="mu-cat-manque">(${manque} à remplir)</span>` : ''}</td></tr></tfoot>` : ''}</table></div>
-        <p class="mini-note mu-cat-note">Le travail suit les vols : minutes par vol (pour une personne) × vols de la compagnie. Les personnes de chaque équipe s’en déduisent, sur ses heures de poste.</p>`
+        <p class="mini-note mu-cat-note">Le travail suit les vols : heures par vol (pour une personne) × vols de la compagnie. Les personnes de chaque équipe s’en déduisent, sur ses heures de poste.</p>`
         + (sansVol.length ? `<p class="mini-note mu-arm-sansvol">${esc(sansVol.join(', '))} : aucun départ au programme aujourd’hui — la case est là, à 0 vol, jusqu’à ce que le programme en porte.</p>` : '')
         + (hors.length ? `<p class="mini-note mu-arm-hors">Pas de case pour ${esc(hors.join(', '))} : ${hors.length > 1 ? 'leurs chemins ne passent' : 'son chemin ne passe'} pas par ${esc(s.nom)} (Une commande).</p>` : '');
     }
@@ -426,14 +427,14 @@
         ${ordre ? `<p class="mu-ordre"><span>Dans l’ordre :</span>${ordre}<small>cliquez une commande pour voir son chemin</small></p>` : ''}
         ${fusion ? `<div class="mu-chaine-reglage">${fusion}</div>` : ''}
         ${this.at.blocCondition ? `<div class="mu-cond-reglage">${this.at.blocCondition(a)}</div>` : ''}
-        <details class="mu-plus"${this.ouvertes && this.ouvertes.has(a.id) ? ' open' : ''} data-mu-plus="${esc(a.id)}"><summary>Plus de réglages : changer l’ordre, pauses, arrêts, minutes propres…</summary>
+        <details class="mu-plus"${this.ouvertes && this.ouvertes.has(a.id) ? ' open' : ''} data-mu-plus="${esc(a.id)}"><summary>Plus de réglages : changer l’ordre, pauses, arrêts, heures propres…</summary>
           ${this.at.carte(a, calc, { cmd: null, compact: true })}</details>
       </article>`;
     }
 
     /* Un seul atelier, pour certaines compagnies (07/10) : ses personnes, son heure,
      * et une case par compagnie. Effectif constant : ses commandes passent dans ses
-     * heures de présence, sans minutes par vol. */
+     * heures de présence, sans heures par vol. */
     atelierUnique(s, a, calc) {
       if (!a) return `<p class="mu-ajout"><button class="btn btn-play btn-sm" type="button" data-mu-action="atelier">+ Mettre l’atelier en place</button></p>`;
       const NOMS_JOURS = { 0: 'jour du vol (J)', '-1': 'la veille (J-1)', '-2': 'l’avant-veille (J-2)', '-3': '3 jours avant (J-3)' };
@@ -454,7 +455,7 @@
           <label>Le<select data-at-champ="jour">${jours}</select></label>
           <span class="mu-eq-fin">${fin ? 'dernière commande à ' + esc(fin) : ''}</span>
         </div>
-        <p class="mu-question">Les compagnies qu’il fait <small>toutes leurs commandes, dans l’ordre des départs ; effectif constant : elles passent dans ses heures de présence, sans minutes par vol</small></p>
+        <p class="mu-question">Les compagnies qu’il fait <small>toutes leurs commandes, dans l’ordre des départs ; effectif constant : elles passent dans ses heures de présence, sans heures par vol</small></p>
         <div class="mu-atelier-cies">${cies.map(c => `<label class="chk"><input type="checkbox" data-mu-atelier-cie="${esc(c)}"${choisies.has(c) ? ' checked' : ''}>
           <b>${esc(c)}</b> <small>${pl(parCie.get(c).commandes, 'commande')} · ${pl(parCie.get(c).vols, 'vol')}</small></label>`).join('') || '<span class="mini-note">Aucune compagnie dans le programme de vols.</span>'}</div>
         ${cies.length ? `<p class="mu-atelier-gestes"><button class="btn btn-sm" type="button" data-mu-action="atelier-toutes">Toutes</button>
@@ -778,7 +779,7 @@
             for (const p of st.parcours || []) if (P.servicesDuParcours(p).includes(service)) PC.retirerService(p, service);
             this.natures[service] = v;
           }
-        }, v === 'categories' ? this.nom(service) + ' travaille par compagnie, relié au handling dans tous les chemins : donnez ses minutes par vol, puis cochez les compagnies dans ses équipes.'
+        }, v === 'categories' ? this.nom(service) + ' travaille par compagnie, relié au handling dans tous les chemins : donnez ses heures par vol, puis cochez les compagnies dans ses équipes.'
           : this.nom(service) + ' : ' + NATURES.find(x => x.id === v).nom.toLowerCase() + '.');
       }
       if (!cases.length) { this.natures[service] = v; this.rendreServices(); return; }
@@ -1323,10 +1324,12 @@
         else if (el.dataset.muCatMin) {
           const service = el.closest('[data-mu-cat-service]').dataset.muCatService, id = el.dataset.muCatMin;
           const cie = el.dataset.cie, v = el.value.trim();
+          // Saisies en heures par vol (08/10), gardées en minutes.
+          const m = P.versMinutes(v);
           setTimeout(() => this.changerCategories(service, l => {
             const k = l.find(x => x.id === id); if (!k) return;
-            if (v === '' || !Number.isFinite(+v)) delete k.minutes[cie]; else k.minutes[cie] = Math.max(0, +v);
-          }, 'Minutes par vol enregistrées.'), 0);
+            if (m === null) delete k.minutes[cie]; else k.minutes[cie] = Math.max(0, m);
+          }, 'Heures par vol enregistrées.'), 0);
         }
         else if (el.dataset.muFluxIci) {
           const svc = el.dataset.muFluxIci, t = PC.types(this.etat).find(x => x.id === el.value); if (!t) return;
@@ -1394,7 +1397,7 @@
           case 'appui': {
             let a;
             this.at.changer(() => { a = PC.equipeNeuve(this.at.state, id, this.nom(id), 'appui'); this.at.state.ateliers.push(a); },
-              'Équipe hors tunnel ajoutée : donnez son heure, puis ses personnes ou ses minutes par vol.');
+              'Équipe hors tunnel ajoutée : donnez son heure, puis ses personnes ou ses heures par vol.');
             this.at.ouvert = a ? a.id : this.at.ouvert;
             return this.rendreServices ? this.rendreServices() : this.at.rendre();
           }

@@ -5,6 +5,41 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-08 — Le travail par vol en heures, plus en minutes
+
+Demande : « remplace les min par vol en h par vol ».
+
+- **Partout où l'on lit ou saisit le travail, c'est en heures** d'une personne
+  (0,25 = un quart d'heure, 1,5 = une heure et demie) :
+  - le barème par service et la fiche de chaque service (« Heures de travail
+    pour un vol, pour une personne ») ;
+  - le tableau « Heures de travail » (ex-« Minutes de travail ») : par vol en
+    heures, sur la journée en heures, totaux en heures ; l'onglet change de nom ;
+  - l'armement par compagnie (« 0,25 h × 5 = 1,25 h ») ;
+  - les équipes hors tunnel de la plonge ;
+  - les heures propres d'une case (« h d'une personne / jour »).
+- **Le calcul ne change pas** : l'état, les sauvegardes et le moteur gardent
+  les minutes. Conversions dans le moteur : `versHeures`, `versMinutes`
+  (virgule acceptée), `heuresFr`. À l'écran, au millième d'heure ; retaper la
+  valeur affichée de « toutes les compagnies » la suit toujours.
+- **Les classeurs Excel s'écrivent en heures**, au dix-millième : barème
+  (« Heures par vol »), tableau des heures de travail (feuille « Heures par
+  vol »), classeur des cases (« Par compagnie » en heures par vol, feuille
+  « Heures propres »). Un aller-retour par Excel ne change aucune valeur.
+- **Les anciens classeurs en minutes se relisent toujours** : colonne
+  « Minutes par vol », feuilles « Man-minutes » et « Man-minutes par vol ».
+- **Restent en minutes** : les durées (handling et plonge par vol, pauses,
+  présence) et la durée d'un vol affichée dans le tableau.
+- Fichiers : `moteur/production.js`, `reglages.js`, `unite.js`, `ateliers.js`,
+  `echanges.js`, `sim.js`, `parcours.js`, `onglets.js`, `demarrage.js`,
+  `index.html` (v1 et v2) ; `docs/FORMATS_EXCEL.md`, `docs/CONVERTISSEURS.md`,
+  `docs/MODELE_ATELIERS.md`, `docs/CAHIER_DES_CHARGES.md` (E26), `README.md`.
+- Tests adaptés aux heures : `categories`, `echanges`, `recap`, `demarrage`
+  (unitaires, dont la relecture des anciens classeurs en minutes) ;
+  `armement-vols`, `categories`, `recap`, `recap-compagnie`, `reglages`,
+  `liaisons`, `graphe`, `mon-unite`, `saisie`, `sauvegarde`,
+  `service-autonome`, `effectif`, `menu`, `excel`, `defilement` (navigateur).
+
 ## 2026-10-07 — L'armement suit toujours les vols de chaque compagnie
 
 Retour d'usage : « l'armement dépend du nombre de vols de la compagnie,

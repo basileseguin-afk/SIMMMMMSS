@@ -37,8 +37,8 @@ Les exports de l'unité n'ont pas cette forme : un convertisseur par export
   de son service ne travaille pas ; chaque équipe ne garde que les commandes
   qui volent ce jour-là), heures sup permises jusqu'à 12 h pour que le
   débordement s'exprime.
-- **Le paramètre** : un facteur par service sur ses minutes de travail
-  (barème et minutes propres des cases). ×1,18 = 18 % de temps de plus que le
+- **Le paramètre** : un facteur par service sur ses heures de travail
+  (barème et heures propres des cases). ×1,18 = 18 % de temps de plus que le
   barème. Lisible, et à faire valider par les chefs de service.
 
 **Limite à connaître.** Une équipe payée sa vacation part à la fin de sa

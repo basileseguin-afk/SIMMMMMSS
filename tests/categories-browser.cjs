@@ -59,10 +59,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.match(await page.locator('#source-label').textContent(),/vols d’essai : EZY/);
    const toutes=await cases();
 
-   // 3. Ses minutes par vol : toutes, puis AF.
+   // 3. Ses heures par vol (08/10, gardées en minutes) : toutes, puis AF.
    const min=async(cie,v)=>{const c=fiche(`[data-mu-cat-min="ARM"][data-cie="${cie}"]`);await c.fill(String(v));await c.press('Tab');await attendre();};
-   await min('*',10);await min('AF',15);
-   assert.deepEqual((await reglage())[0].minutes,{'*':10,AF:15});
+   await min('*','0.25');await min('AF','0.5');
+   assert.deepEqual((await reglage())[0].minutes,{'*':15,AF:30});
+   assert.equal(await fiche('[data-mu-cat-min="ARM"][data-cie="TX"]').getAttribute('placeholder'),'0,25',version+' : la valeur de toutes les compagnies, en heures');
 
    // 4. Une équipe : une seule colonne, une case par compagnie.
    await fiche('[data-mu-action=equipe]').click();await attendre();
@@ -76,11 +77,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await grille.locator('[data-mu-cocher="AF/@ARM"]').check();await attendre();
    assert.deepEqual(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).lots,eq),[['AF/@ARM']]);
 
-   // 5. Le calcul : 15 min par vol AF.
+   // 5. Le calcul : une demi-heure (30 min) par vol AF.
    const r=await page.evaluate(id=>{const r=Sim.ateliers.resultat,l=r.lots.find(x=>x.atelier===id&&x.classes.includes('AF/@ARM'));
      return {ok:r.ok,minutes:l&&l.hommeMinutes,vols:r.classes.find(c=>c.id==='AF/@ARM').vols.length,lib:MoteurProduction.libelleClasse('AF/@ARM')};},eq);
    assert.ok(r.ok);
-   assert.equal(r.minutes,15*r.vols,version+' : minutes par vol × vols');
+   assert.equal(r.minutes,30*r.vols,version+' : heures par vol × vols, en minutes pour le calcul');
    assert.equal(r.lib,'AF · Armement');
 
    // 6. Toutes les pages s'affichent.

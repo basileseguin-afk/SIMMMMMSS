@@ -122,7 +122,7 @@
     delete a.durees; delete a.simultanes; delete a.avance; delete a.compagnies;
     if (v === 'robot') { a.debit = a.debit || 320; a.personnesMin = a.personnesMin === undefined ? 1 : a.personnesMin; }
     else if (v === 'lavage') { delete a.debit; delete a.personnesMin; a.lots = []; }
-    // Hors tunnel, hors flux : ni commandes, ni tunnels ; des minutes par vol (06/10).
+    // Hors tunnel, hors flux : ni commandes, ni tunnels ; des heures par vol (06/10), gardées en minutes.
     else if (v === 'appui') { delete a.debit; delete a.personnesMin; delete a.tunnels; delete a.minutes; delete a.fusion; delete a.condition; a.lots = []; a.minutesVol = a.minutesVol || {}; }
     // Une mise à disposition ne fabrique rien : ses lignes, son
     // effectif et ses arrêts n'ont plus de sens, on les efface.
@@ -135,7 +135,7 @@
   }
 
   /** Les catégories propres à un service (l'armement : trolleys bar, thé/café…),
-   *  avec leurs minutes par vol selon la compagnie (« * » : toutes). Bornées. */
+   *  avec leurs minutes par vol selon la compagnie (« * » : toutes ; saisies en heures). Bornées. */
   function categoriesDe(brut) {
     const out = {};
     if (!brut || typeof brut !== 'object' || Array.isArray(brut)) return out;
@@ -528,7 +528,7 @@
           if (a.service !== service || a.effectif || !Number.isInteger(a.personnesSaisies)) continue;
           a.personnes = a.personnesSaisies; delete a.personnesSaisies;
         }
-      }, oui ? nom + ' : effectif imposé (essai) — les minutes par vol s’appliquent à l’effectif saisi.' : nom + ' : effectif calculé.');
+      }, oui ? nom + ' : effectif imposé (essai) — les heures par vol s’appliquent à l’effectif saisi.' : nom + ' : effectif calculé.');
     }
 
     /** Le poste de cette équipe dépend-il des vols ? Son choix à elle, sinon celui du service. */
@@ -566,7 +566,7 @@
         }
       },
         constant ? nom + ' : effectif constant, ses équipes gardent le nombre de personnes saisi.'
-          : nom + ' : effectif calculé, d’après les minutes par vol et le nombre de vols.');
+          : nom + ' : effectif calculé, d’après les heures par vol et le nombre de vols.');
     }
 
     /** L'effectif calculé d'une équipe ({ personnes, hommeMinutes, poste, rendement }), ou null. */
@@ -580,7 +580,7 @@
       const e = this.effectifCalcule(a), cls = classe ? ` class="${classe}"` : '';
       if (!e) return `<label${cls}>Personnes<input type="number" min="0" max="999" value="${a.personnes}" data-at-champ="personnes"></label>`;
       const h = m => (m >= 60 ? Math.floor(m / 60) + ' h ' + String(Math.round(m % 60)).padStart(2, '0') : Math.round(m) + ' min');
-      const pourquoi = h(e.hommeMinutes) + ' de travail (minutes par vol × vols de chaque compagnie) ÷ ' + h(e.poste)
+      const pourquoi = h(e.hommeMinutes) + ' de travail (heures par vol × vols de chaque compagnie) ÷ ' + h(e.poste)
         + ' travaillées par personne pendant son poste' + (e.rendement !== 1 ? ' × rendement ' + Math.round(e.rendement * 100) + ' %' : '')
         + ', arrondi au-dessus. Pour le saisir à la main, cochez « Effectif constant » dans la fiche du service.';
       return `<span${cls ? ` class="${classe} at-pers-calc"` : ' class="at-pers-calc"'} title="${esc(pourquoi)}">Personnes
@@ -620,7 +620,7 @@
       }, nom + ' : ' + (k ? k + (k > 1 ? ' superviseurs ou coordinateurs.' : ' superviseur ou coordinateur.') : 'aucun superviseur.'));
     }
 
-    /** Les équipes à la main dont le poste ne dépend pas des vols : pas de minutes par vol. */
+    /** Les équipes à la main dont le poste ne dépend pas des vols : pas d'heures par vol. */
     constantes() { return this.state.ateliers.filter(a => a.type === 'manuel' && !this.dependDesVols(a)).map(a => a.id); }
 
     /** Ce service lave-t-il (une équipe de plonge, des tunnels) ? */
@@ -628,24 +628,25 @@
 
     /* L'équipe hors tunnel, hors flux (retour d'usage du 06/10 : « des équipes qui
      * ne dépendent pas du tunnel, comme pour les autres, avec le choix si cela
-     * dépend des vols ou non »). Ses minutes par vol, par compagnie ; ce qu'elle
+     * dépend des vols ou non »). Ses heures par vol, par compagnie ; ce qu'elle
      * en tire dépend de la case « Effectif constant » du service. */
     ficheAppui(a) {
       const lave = this.serviceLave(a.service), constant = !this.dependDesVols(a);
       const e = this.effectifCalcule(a), m = a.minutesVol || {};
       const cies = [...new Set((this.a.vols() || []).filter(x => lave ? true : (x.sens || 'DEP') === 'DEP').map(x => String(x.cie || '').toUpperCase()).filter(Boolean))].sort();
-      const ligne = (cie, nom) => `<tr><th scope="row">${esc(nom)}</th><td><input type="number" min="0" step="0.5" value="${m[cie] ?? ''}"
-        placeholder="${cie === P.TOUTES ? '—' : (m[P.TOUTES] ?? '—')}" data-at-champ="appui-min" data-cie="${esc(cie)}" aria-label="Minutes par vol : ${esc(nom)}"></td></tr>`;
+      // Gardées en minutes, saisies et lues en heures par vol (08/10).
+      const ligne = (cie, nom) => `<tr><th scope="row">${esc(nom)}</th><td><input type="number" min="0" step="any" value="${P.versHeures(m[cie]) ?? ''}"
+        placeholder="${cie === P.TOUTES ? '—' : (P.heuresFr(m[P.TOUTES]) || '—')}" data-at-champ="appui-h" data-cie="${esc(cie)}" aria-label="Heures par vol : ${esc(nom)}"></td></tr>`;
       return `<p class="mini-note at-regle">Une équipe <b>hors ${lave ? 'tunnel' : 'flux'}</b> : elle est là à ses heures, ne prépare pas de commande${lave ? ', ne tient pas de tunnel' : ''}
         et ne fait rien attendre. ${constant
           ? 'Son effectif est <b>constant</b> : celui saisi plus haut.'
-          : 'Son effectif <b>dépend des vols</b> : minutes par vol × ' + (lave ? 'vols qui reviennent à la plonge' : 'départs du jour') + ' de chaque compagnie ÷ son poste.'}
+          : 'Son effectif <b>dépend des vols</b> : heures par vol × ' + (lave ? 'vols qui reviennent à la plonge' : 'départs du jour') + ' de chaque compagnie ÷ son poste.'}
         Le choix se fait plus haut (« Effectif »), ou pour tout le service : « Effectif constant ».</p>
-        ${constant ? '' : `<div class="at-sous-titre">Minutes de travail par vol, pour une personne
+        ${constant ? '' : `<div class="at-sous-titre">Heures de travail par vol, pour une personne
           <span class="mini-note">${lave ? 'pour chaque vol qui revient' : 'pour chaque départ'} ; vide : celle de toutes les compagnies</span></div>
         <table class="at-appui-cies"><tbody>${ligne(P.TOUTES, 'Toutes les compagnies')}${cies.map(c => ligne(c, c)).join('')}</tbody></table>
         <p class="mini-note at-appui-note">${e ? `${e.vols} vol${e.vols > 1 ? 's' : ''} · ${dureeLue(e.hommeMinutes)} de travail ÷ ${dureeLue(e.poste)} par personne : <b>${e.personnes} ${e.personnes > 1 ? 'personnes' : 'personne'}</b>.`
-          : 'Renseignez ses minutes par vol : sans elles, son effectif reste celui saisi.'}</p>`}`;
+          : 'Renseignez ses heures par vol : sans elles, son effectif reste celui saisi.'}</p>`}`;
     }
 
     /* L'atelier unique (07/10) : ses commandes sont celles de ses compagnies, toutes
@@ -1083,10 +1084,11 @@
             if (pris) throw new Error('le nom « ' + v + ' » est déjà celui d’une autre case (le nom sert de clé dans Excel).');
             a.nom = v; break;
           }
-          // Les man-minutes d'une commande dans cette case ; vide = celles de l'import.
-          case 'minutes': {
-            const cls = el.dataset.classe, m = { ...(a.minutes || {}) };
-            if (v === '' || !Number.isFinite(+v)) delete m[cls]; else m[cls] = Math.max(0, +v);
+          // Le travail d'une commande dans cette case, pour sa journée ; vide = celui du barème.
+          // Saisi en heures (08/10), gardé en minutes.
+          case 'heures': {
+            const cls = el.dataset.classe, m = { ...(a.minutes || {}) }, x = P.versMinutes(v);
+            if (x === null) delete m[cls]; else m[cls] = Math.max(0, x);
             if (Object.keys(m).length) a.minutes = m; else delete a.minutes;
             break;
           }
@@ -1157,9 +1159,10 @@
           case 'avance': a.avance = Math.max(0, Math.min(1440, Math.round((parseFloat(String(v).replace(',', '.')) || 0) * 60))); break;
           case 'compagnies': a.compagnies = [...new Set(String(v).split(/[\s,;]+/).map(x => x.trim().toUpperCase()).filter(Boolean))].slice(0, 100); break;
           case 'effectif': this.regleEffectifEquipe(a, v); break;
-          case 'appui-min': {
-            const cie = el.dataset.cie, d = { ...(a.minutesVol || {}) };
-            if (v === '' || !Number.isFinite(+v)) delete d[cie]; else d[cie] = Math.max(0, Math.min(1440, +v));
+          // Saisies en heures par vol (08/10), gardées en minutes.
+          case 'appui-h': {
+            const cie = el.dataset.cie, d = { ...(a.minutesVol || {}) }, x = P.versMinutes(v);
+            if (x === null) delete d[cie]; else d[cie] = Math.max(0, Math.min(1440, x));
             a.minutesVol = d; break;
           }
           case 'duree': {
@@ -1666,18 +1669,18 @@
       const optionsDe = liste => liste
         .map(c => `<option value="${esc(c.id)}">${esc(P.libelleClasse(c.id))} · ${c.vols.length} vol${c.vols.length > 1 ? 's' : ''}</option>`).join('');
 
-      // Les man-minutes de chaque commande : celles de l'import, sauf si la case
-      // en fixe d'autres (pour elle seule).
+      // Le travail de chaque commande : celui du barème, sauf si la case en fixe
+      // un autre (pour elle seule). Gardé en minutes, lu et saisi en heures (08/10).
       const bareme = (this.a.reglages ? this.a.reglages() : {}).bareme;
       const importees = c => { const k = this.classes.find(x => x.id === c); return k ? Math.round(P.travailClasse(a.service, k, bareme) * 10) / 10 : 0; };
       const mm = c => {
-        // Un poste qui ne dépend pas des vols n'a pas de minutes par vol (06/10).
+        // Un poste qui ne dépend pas des vols n'a pas d'heures par vol (06/10).
         if (a.type === 'manuel' && !this.dependDesVols(a)) return '';
-        const imp = importees(c), propre = (a.minutes || {})[c];
-        return `<label class="at-mm" title="Man-minutes de ${esc(P.libelleClasse(c))} dans cette case, pour toute sa journée (tous ses vols). Vide : celles du barème (${imp}).">
-          <input type="number" min="0" step="1" value="${propre ?? ''}" placeholder="${imp}" data-at-champ="minutes" data-classe="${esc(c)}"
-            aria-label="Man-minutes de ${esc(P.libelleClasse(c))} dans cette case, pour la journée (barème : ${imp})"><span>min d’une personne / jour</span>${
-          propre != null ? `<small class="at-mm-import">import ${imp}</small>` : ''}</label>`;
+        const imp = importees(c), propre = (a.minutes || {})[c], hImp = P.heuresFr(imp, 2);
+        return `<label class="at-mm" title="Heures de travail de ${esc(P.libelleClasse(c))} dans cette case, pour toute sa journée (tous ses vols). Vide : celles du barème (${hImp} h).">
+          <input type="number" min="0" step="any" value="${P.versHeures(propre) ?? ''}" placeholder="${hImp}" data-at-champ="heures" data-classe="${esc(c)}"
+            aria-label="Heures de travail de ${esc(P.libelleClasse(c))} dans cette case, pour la journée (barème : ${hImp} h)"><span>h d’une personne / jour</span>${
+          propre != null ? `<small class="at-mm-import">barème ${hImp} h</small>` : ''}</label>`;
       };
       // Un robot : le débit de chaque commande, en plateaux par heure ; vide = celui du robot.
       const db = c => {
@@ -1736,7 +1739,7 @@
         ${dispo ? `
         <p class="mini-note at-regle">Ce service <b>ne prépare pas une commande après l’autre</b> : il sert
           <b>toutes les commandes à la fois</b> (légumerie, magasin, réception…), comme une boutique où l’on vient se servir.
-          Ni man-minutes, ni durée : des gens y travaillent, en nombre constant sur la journée.
+          Ni heures de travail par vol, ni durée : des gens y travaillent, en nombre constant sur la journée.
           Sur chaque chemin, une seule question : « Besoin de ${esc((services.find(x => x.id === a.service) || {}).nom || a.service)} ? ».</p>
         <div class="at-cases">
           ${(() => { const mode = a.permanent === false ? 'vagues' : a.ouverture ? 'boutique' : 'toujours';
@@ -1929,7 +1932,7 @@
           ligne: cie => `<td><select data-at-champ="categorie" data-cie="${esc(cie)}" aria-label="${esc(cie)} : long ou court courrier">
               <option value="court" ${longs.has(cie) ? '' : 'selected'}>court</option><option value="long" ${longs.has(cie) ? 'selected' : ''}>long</option></select></td>
             <td>${longs.has(cie) ? ch.long : ch.court}</td>`, tete: '<th scope="col">Courrier</th><th scope="col" title="Chauffeurs par camion">Chauff.</th>' })}
-        <p class="mini-note at-regle">Des durées, pas des man-minutes : plus de chauffeurs dans le camion ne raccourcissent pas le trajet.
+        <p class="mini-note at-regle">Des durées, pas des heures de travail : plus de chauffeurs dans le camion ne raccourcissent pas le trajet.
           Un camion qui charge plusieurs vols fait un seul aller et un seul retour.</p>`;
     }
 

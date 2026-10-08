@@ -400,7 +400,7 @@
         <details class="ca-jours"><summary>Jour par jour : heures sup réelles, et simulées après calage</summary>
           <div class="ca-defile"><table class="ca-table"><thead><tr><th>Jour</th>${r.services.map(x => `<th>${esc(this.nom(x.service))}</th>`).join('')}</tr></thead><tbody>${jours}</tbody></table></div></details>
         <div class="row-btns"><button type="button" class="btn btn-play" data-ca="appliquer">Appliquer ces facteurs au barème</button>
-          <span class="mini-note">Les minutes de chaque service sont multipliées par son facteur. « Annuler » revient en arrière.</span></div></div>`;
+          <span class="mini-note">Les heures de travail de chaque service sont multipliées par son facteur. « Annuler » revient en arrière.</span></div></div>`;
     }
 
     async importer(f) {
@@ -436,7 +436,7 @@
     appliquer() {
       const r = this.resultat; if (!r) return;
       const rg = this.a.rg(), at = this.a.at();
-      if (!root.confirm('Multiplier les minutes de travail de ' + r.services.length + ' service(s) par leur facteur ? « Annuler » revient en arrière.')) return;
+      if (!root.confirm('Multiplier les heures de travail de ' + r.services.length + ' service(s) par leur facteur ? « Annuler » revient en arrière.')) return;
       const k = r.facteurs;
       if (rg) rg.changer(() => {
         const b = rg.baremeComplet();

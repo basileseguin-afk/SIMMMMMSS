@@ -115,6 +115,19 @@ homme-minutes du lot = Σ sur ses classes ( minutes par vol × nombre de vols )
 durée                = homme-minutes ÷ personnes ÷ rendement
 ```
 
+**Saisi en heures, calculé en minutes** (retour d'usage du 08/10 : « remplace
+les min par vol en h par vol »). Partout où l'on lit ou saisit le travail —
+barème par service, fiche d'un service, tableau « Heures de travail », armement
+par compagnie, équipe hors tunnel, heures propres d'une case, classeurs Excel —
+il s'écrit en **heures de travail d'une personne** : 0,25 h par vol, 1,5 h sur
+la journée. Le calcul, l'état enregistré et les sauvegardes restent en minutes
+: `P.versHeures(min, décimales = 3)`, `P.versMinutes(h)` (virgule acceptée),
+`P.heuresFr(min, décimales)`. À l'écran, au millième d'heure ; dans Excel, au
+dix-millième, pour qu'un aller-retour par le classeur retrouve les minutes au
+centième près. Un classeur d'avant, en minutes, se relit toujours (colonne
+« Minutes par vol », feuilles « Man-minutes » et « Man-minutes par vol »). Les
+**durées** — handling et plonge par vol, pauses, présence — restent en minutes.
+
 ### Effectif calculé ou constant (05/10)
 
 « Le nombre de personnes sur les ateliers dépend du nombre de vols et n'est pas

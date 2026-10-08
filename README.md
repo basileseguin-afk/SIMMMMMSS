@@ -184,7 +184,7 @@ le rouge ne sert qu’aux retards.
      d’un service jusqu’à un autre (ou on clique le `+`, puis l’autre) pour dire
      qu’il le livre ; un lien ne vaut que pour ce chemin. **Chaque nœud porte
      une case** : l’équipe qui y prépare la commande, avec son nom, ses
-     personnes, son heure et ses man-minutes (celles de l’import, modifiables
+     personnes, son heure et ses heures de travail (celles du barème, modifiables
      pour la case). Une case se partage : « TX BC/PC » en cuisine prépare TX BC
      puis TX PC, et le chemin de TX BC n’attend que la ligne de TX BC. Une
      commande sans chemin suit le modèle de sa classe.
@@ -217,7 +217,7 @@ le rouge ne sert qu’aux retards.
         non, liée au handling — chaque compagnie dont le chemin passe par
         l’armement a sa case, avec ou sans vol, et le handling l’attend ;
         dans chaque chemin, c’est une branche à part, reliée seulement au
-        handling (on arme un vol, pas une classe). Minutes par vol par compagnie.
+        handling (on arme un vol, pas une classe). Heures par vol par compagnie.
         **⚡ Certains jours seulement** : une équipe peut ne travailler que
         si une compagnie a assez de vols (« ne travaille que si AF a au
         moins 6 vols ce jour-là ; sinon, ses commandes passent au Montage
@@ -225,7 +225,7 @@ le rouge ne sert qu’aux retards.
         renfort, ou aillent ailleurs) — une phrase à compléter dans sa fiche,
         un badge ⚡ qui dit si elle travaille aujourd’hui.
         « Plus de réglages » : l’ordre à la main, les pauses,
-        les arrêts, les man-minutes propres, la
+        les arrêts, les heures propres, la
         ligne robot. Un service qui sert tout le monde se règle en une fiche
         (horaires, vagues) et une grille « Qui en a besoin ? » ; la plonge et
         le handling n’ont rien à cocher. **La plonge se règle sur l’arrivée
@@ -235,7 +235,11 @@ le rouge ne sert qu’aux retards.
         par heure, et les équipes de plonge sur leur plage ; elle dit ce qui
         arrive entre deux équipes (et qui le reprend) et ce qui arrive après
         la dernière (et reste sale) ;
-     3. *Minutes de travail pour un vol* : le barème du service.
+     3. *Heures de travail pour un vol* : le barème du service.
+     **Le travail se lit et se saisit en heures** d’une personne (0,25 h par
+     vol = un quart d’heure), partout, Excel compris ; le calcul et les
+     sauvegardes gardent les minutes. Les durées (handling, plonge, pauses)
+     restent en minutes.
      Créer un service (un nom, près de quel service du plan), le renommer, le
      voir ou le déplacer sur le plan, le supprimer : tout se fait ici. **La
      grille ne change pas le flux d’elle-même** : cocher une commande dans un
@@ -244,12 +248,12 @@ le rouge ne sert qu’aux retards.
      changer ; le service se place alors entre ceux qui le livrent et ceux
      qu’il livre (d’après les autres flux, les modèles types, puis les liens
      de l’unité ; une salle annexe se place comme son service).
-   - *Horaires des équipes* et *Minutes de travail* : toutes les équipes (et
-     leurs heures), toutes les minutes, d’un coup d’œil, modifiables sur place
+   - *Horaires des équipes* et *Heures de travail* : toutes les équipes (et
+     leurs horaires), tout le travail par vol, d’un coup d’œil, modifiables sur place
      ou dans Excel. *Flux de production › Qui suit quel chemin* : chaque
      compagnie × classe et la liste de tous les chemins (flux, variantes,
      chemins créés de toutes pièces) ; la même liste « Chemin suivi » en tête
-     de *Chemin d’une commande*. *Minutes de travail* se lit par compagnie : un bloc
+     de *Chemin d’une commande*. *Heures de travail* se lit par compagnie : un bloc
      chacune, sa ligne en tête est son total (la somme de ses classes,
      service par service, et l’armement, réglé là) ; un clic la déplie sur
      ses classes (« Tout déplier / Tout replier »). Première colonne et total
@@ -438,15 +442,15 @@ livré ses classes — c'est là que les branches food, matériel et armement se
 rejoignent.
 
 **Effectif calculé ou constant.** Dans un service calculé, le nombre de
-personnes d'une équipe se déduit de son travail : minutes par vol × vols de
-chaque compagnie qu'elle prépare, divisé par les minutes travaillées de son
+personnes d'une équipe se déduit de son travail : heures par vol × vols de
+chaque compagnie qu'elle prépare, divisé par les heures travaillées de son
 poste (pauses déduites), arrondi au-dessus ; la journée se joue ensuite avec
 cet effectif. La case **« Effectif constant »** de la fiche du service rend
 la saisie à la main ; chaque équipe peut faire autrement que son service, avec
 son choix **« Effectif »** (comme le service, dépend des vols, constant). Un
-poste constant n'a **pas de minutes par vol** : ses commandes passent dans ses
+poste constant n'a **pas d'heures par vol** : ses commandes passent dans ses
 heures de présence ; pour essayer un effectif sur un poste qui dépend des vols,
-**« Effectif imposé (essai) »** applique les minutes par vol à l'effectif
+**« Effectif imposé (essai) »** applique les heures par vol à l'effectif
 saisi. Chaque service a aussi ses **superviseurs /
 coordinateurs** : hors production, gardés pour le budget quotidien.
 Un service peut aussi n'avoir qu'**un seul atelier** (le BOB, les checkeurs) :
@@ -456,10 +460,10 @@ disposition gardent toujours leur effectif saisi. Une mise à disposition (les
 appros, le magasin…) a ses **personnes sur la journée** : 2 aux appros, ce sont
 2 personnes en tout, une présence chacune ; elles comptent dans l'effectif du
 jour et le budget, pas dans les durées. La plonge peut avoir des **équipes hors
-tunnel** : constantes, ou calculées d'après leurs minutes par vol × les vols
+tunnel** : constantes, ou calculées d'après leurs heures par vol × les vols
 qui reviennent.
 
-Le barème d'homme-minutes est **non calibré** : ses durées ne dimensionnent pas
+Le barème des heures de travail est **non calibré** : ses durées ne dimensionnent pas
 une équipe. Voir [la note de modèle](docs/MODELE_ATELIERS.md).
 
 ## Centre des flux
