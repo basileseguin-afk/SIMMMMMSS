@@ -156,7 +156,10 @@
 .rg-recap-t2 th{top:44px;font-size:11px;font-weight:500;color:var(--txt2);text-transform:none;padding-top:0}
 .rg-recap-t1 th small{display:block;font-size:11px;font-weight:500;color:var(--txt2)}
 .rg-recap-svc{flex-direction:row;gap:6px;max-width:none;font-size:13px;white-space:nowrap}
-.rg-recap-table input{border:1px solid transparent;background:transparent;border-radius:6px;box-shadow:none;width:58px;padding:3px 5px}
+.rg-recap-table input{border:1px solid transparent;background:transparent;border-radius:6px;box-shadow:none;width:70px;padding:3px 5px}
+/* Le travail en heures (08/10) : « 0,333 » tient dans la case, sans flèches (elles sautaient d'une heure entière). */
+.rg-recap-table input[type=number]{-moz-appearance:textfield;appearance:textfield}
+.rg-recap-table input[type=number]::-webkit-inner-spin-button,.rg-recap-table input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .rg-recap-table input:hover{border-color:var(--bordure)}
 .rg-recap-table input:focus{border-color:var(--accent);background:var(--bg3,#fff);outline:none}
 .rg-recap-table .rgr-p input{width:40px;color:var(--txt2)}

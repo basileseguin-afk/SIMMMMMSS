@@ -90,9 +90,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const yc=await page.evaluate(()=>Sim.ateliers.state.parcoursClasse['TX/YC']);
   assert.ok(yc&&yc!==bc,'TX/YC a son propre chemin');
   assert.deepEqual(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).lots,kase.id),[['TX/BC'],['TX/YC']],'TX BC puis TX YC');
-  // TX BC ne tire que ses propres minutes : sa ligne sort avant celle de TX YC.
+  // TX BC ne tire que ses propres heures (0,5 h = 30 min) : sa ligne sort avant celle de TX YC.
   const lignes=await page.evaluate(id=>Sim.ateliers.resultat.lots.filter(l=>l.atelier===id).map(l=>({c:l.classes[0],fin:l.fin,mm:l.hommeMinutes})),kase.id);
-  assert.equal(lignes[0].c,'TX/BC');assert.equal(lignes[0].mm,50);assert.ok(lignes[0].fin<lignes[1].fin);
+  assert.equal(lignes[0].c,'TX/BC');assert.equal(lignes[0].mm,30);assert.ok(lignes[0].fin<lignes[1].fin);
   // Dans le chemin de TX YC, la même case, sa ligne en évidence.
   assert.equal(await page.locator('.pc-cmds').isVisible(),false,'le temps de régler une case, la liste des commandes s’efface');
   await page.locator('.pc-tiroir-fermer').click();await attendre();

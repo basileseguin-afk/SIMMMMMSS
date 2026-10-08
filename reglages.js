@@ -563,7 +563,7 @@
             : `<span class="rg-barres" aria-hidden="true">${P.CABINES.map((c, i) => {
                 const v = communes[i], ok = Number.isFinite(v);
                 return `<span class="rg-barre" title="${esc((P.NOM_CABINE || {})[c] || c)} : ${ok ? h(v) + ' h par vol' : 'à remplir'}">
-                  <i data-cab="${c}" style="height:${ok ? Math.max(3, Math.round(v / maxi * 30)) : 0}px"></i><em>${ok ? h(v) : '—'}</em></span>`;
+                  <i data-cab="${c}" style="height:${ok ? Math.max(3, Math.round(v / maxi * 30)) : 0}px"></i><em>${ok ? P.heuresFr(v, 2) : '—'}</em></span>`;
               }).join('')}</span>`
               + `<span class="sr-only">${P.CABINES.map((c, i) => `${c} ${Number.isFinite(communes[i]) ? h(communes[i]) : '—'}`).join(' · ')} h/vol</span>`
               + (propres.length ? `<em class="rg-plus">+ ${propres.length} par compagnie</em>` : '');
