@@ -968,16 +968,13 @@
       ['Retours à la plonge', RETOURS_ECRITS[P.sourceRetours(m)]],
       ...P.CABINES.map(c => ['Unités par vol ' + c, ((m.unites || {})[c] || {}).parVol || 0])];
 
-    // Un service qui travaille par compagnie (l'armement) : ses heures par vol, et
-    // les compagnies qui n'ont pas d'armement (« Armée » : non, 08/10).
-    const parCie = [['Service', 'Compagnie', 'Heures par vol', 'Armée']];
+    // Un service qui travaille par compagnie (l'armement) : ses heures par vol.
+    const parCie = [['Service', 'Compagnie', 'Heures par vol']];
     for (const [s, liste] of Object.entries(etat.categories || {})) {
       const k = (liste || [])[0]; if (!k) continue;
-      const sans = new Set(k.sans || []);
       const lignes = Object.entries(k.minutes || {}).sort((x, y) => (x[0] === '*' ? -1 : y[0] === '*' ? 1 : x[0].localeCompare(y[0])));
-      if (!lignes.length) parCie.push([nomDe(s), 'toutes', null, null]);
-      for (const [cie, v] of lignes) parCie.push([nomDe(s), cie === '*' ? 'toutes' : cie, enHeures(v), cie === '*' ? null : sans.has(cie) ? 'non' : 'oui']);
-      for (const cie of [...sans].sort()) if (!(cie in (k.minutes || {}))) parCie.push([nomDe(s), cie, null, 'non']);
+      if (!lignes.length) parCie.push([nomDe(s), 'toutes', null]);
+      for (const [cie, v] of lignes) parCie.push([nomDe(s), cie === '*' ? 'toutes' : cie, enHeures(v)]);
     }
     return [
       { nom: 'Ateliers', lignes: ateliers },
@@ -1007,9 +1004,9 @@
         '   après-midi ; « propre » — un second robot. Arrêts de la ligne : « 12:15-13:00 », chaque jour, pour toute la ligne.',
         'Fabrications : ce que fait chaque atelier, DANS L’ORDRE. Une ligne par lot ; plusieurs classes d’un lot se séparent par « + ».',
         'Par compagnie : un service qui travaille par compagnie (l’armement : une case par compagnie, selon le chemin). Ses heures',
-        '   par vol : « toutes » (la valeur par défaut), puis une ligne par compagnie qui en a d’autres. Armée = non : la compagnie',
-        '   n’a pas d’armement (pas de case ; le handling charge ses vols sans l’attendre). Dans Fabrications, sa case',
-        '   s’écrit « AF/@ARM » (la compagnie, puis @ et le code du service, tel qu’exporté).',
+        '   par vol : « toutes » (la valeur par défaut), puis une ligne par compagnie qui en a d’autres. Dans Fabrications, sa case',
+        '   s’écrit « AF/@ARM » (la compagnie, puis @ et le code du service, tel qu’exporté). Une compagnie dont aucun chemin',
+        '   ne passe par lui et qu’aucune équipe n’a cochée n’a pas d’armement : le handling charge ses vols sans l’attendre.',
         '   Pour ajouter une compagnie × classe à un atelier : ajoutez une ligne (Atelier, Ordre, ex. « AF/BC »).',
         'Heures propres : les heures de travail qu’un atelier fixe pour une compagnie × classe, POUR TOUTE SA JOURNÉE (tous ses vols),',
         '   à la place du barème. Absente = le barème. Un classeur d’avant (feuille « Man-minutes », en minutes) se relit toujours.',
@@ -1284,10 +1281,6 @@
           // En heures (08/10) ; un classeur d'avant, en minutes, se relit toujours.
           const enH = o.heures_par_vol !== undefined, cie = String(o.compagnie ?? '').trim();
           const v = T.nombreDe(enH ? o.heures_par_vol : o.minutes_par_vol, null);
-          // « Armée : non » — une compagnie sans armement (08/10).
-          if (cie && !/^(toutes?|\*)$/i.test(cie) && o.armee !== undefined && o.armee !== null && String(o.armee).trim() !== '' && !T.ouiNon(o.armee, true)) {
-            const k = cats[sid][0]; k.sans = [...new Set((k.sans || []).concat([cie.toUpperCase()]))].sort();
-          }
           if (!cie || v === null) return;
           if (!Number.isFinite(v) || v < 0) throw new Error((enH ? 'heures' : 'minutes') + ' par vol : nombre positif attendu');
           cats[sid][0].minutes[/^(toutes?|\*)$/i.test(cie) ? '*' : cie.toUpperCase()] = enH ? Math.round(v * 60 * 100) / 100 : v;

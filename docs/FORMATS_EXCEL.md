@@ -388,7 +388,11 @@ pour chaque vol que le handling charge). Ses heures par vol.
 | Service | le nom du service |
 | Compagnie | `toutes` (la valeur par défaut) ou une compagnie |
 | Heures par vol | le travail d'un vol de cette compagnie, pour une personne (une ancienne colonne « Minutes par vol » se relit en minutes) |
-| Armée | `non` : la compagnie n'a pas d'armement — pas de case, le handling charge ses vols sans l'attendre (08/10). Vide ou `oui` : armée |
+
+Une compagnie n'a pas d'armement quand aucun de ses chemins ne passe par le
+service et qu'aucune équipe ne l'a cochée : pas de case, le handling charge
+ses vols sans l'attendre (08/10). Rien à écrire pour le dire : une colonne
+« Armée » (un classeur du 08/10 au matin) est ignorée.
 
 Dans « Fabrications », la case d'une compagnie s'écrit `AF/@ARM` (le code du
 service, tel qu'exporté). Sans la feuille, le réglage du site reste.

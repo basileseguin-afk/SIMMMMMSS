@@ -1049,16 +1049,20 @@
    * tampon ») — le calcul sait déjà qu'il charge les repas préparés. Un armement
    * placé au milieu d'un chemin en sort : ce qui le livrait livre ce qu'il
    * livrait. Modifie `etat`.
+   *
+   * `{ ouIlEst: true }` (retour d'usage du 08/10 : des compagnies n'ont pas
+   * d'armement) : seulement dans les chemins qui l'ont déjà. Un chemin sans
+   * armement dit que ses compagnies n'en ont pas ; on ne l'y ajoute pas.
    * @returns {number} le nombre de chemins changés */
-  function integrerArmement(etat, armements, handlings, classes) {
+  function integrerArmement(etat, armements, handlings, o) {
     const arm = new Set(armements || []), hs = [...new Set(handlings || [])].filter(h => !arm.has(h));
     if (!arm.size || !hs.length) return 0;
-    // Les chemins que ne suivent que des compagnies sans armement restent tels quels (08/10).
-    const sansArm = cheminsSansArmement(etat, armements, classes);
+    const ouIlEst = !!(o && o.ouIlEst);
     let n = 0;
     for (const p of etat.parcours || []) {
       p.noeuds = (p.noeuds || []).slice(); p.liens = (p.liens || []).slice();
-      if (!p.noeuds.some(x => !arm.has(x)) || sansArm.has(p.id)) continue;          // un chemin vide reste vide
+      if (!p.noeuds.some(x => !arm.has(x))) continue;          // un chemin vide reste vide
+      if (ouIlEst && !p.noeuds.some(x => arm.has(x))) continue;
       const avant = JSON.stringify([p.noeuds, p.liens]);
       for (const a of arm) retirerService(p, a);
       for (const h of hs) if (!p.noeuds.includes(h)) p.noeuds.push(h);
@@ -1066,6 +1070,21 @@
       if (JSON.stringify([p.noeuds, p.liens]) !== avant) n++;
     }
     return n;
+  }
+
+  /** L'armement relié au seul handling (08/10) : dans les chemins suivis qui l'ont
+   *  déjà — un chemin sans armement dit que ses compagnies n'en ont pas. Encore dans
+   *  aucun (un armement qu'on met en place) : dans tous, pour commencer ; on le
+   *  retire ensuite du chemin des compagnies qui n'en ont pas. Modifie `etat`.
+   *  @returns {number} le nombre de chemins changés */
+  function placerArmement(etat, armements, handlings, classes) {
+    const suivis = classes && classes.length ? new Set(classes.map(c => (fluxDe(etat, c) || {}).id).filter(Boolean)) : null;
+    const avant = new Map((etat.parcours || []).map(p => [p, JSON.stringify([p.noeuds, p.liens])]));
+    for (const a of new Set(armements || [])) {
+      const deja = (etat.parcours || []).some(p => (!suivis || suivis.has(p.id)) && (p.noeuds || []).includes(a));
+      integrerArmement(etat, [a], handlings, { ouIlEst: deja });
+    }
+    return (etat.parcours || []).filter(p => avant.get(p) !== JSON.stringify([p.noeuds, p.liens])).length;
   }
 
   /** Le handling n'est relié qu'à l'armement : les flèches des étapes des repas
@@ -1086,49 +1105,26 @@
    *  une commande, une branche à part reliée seulement au handling (retour d'usage du
    *  05/10 : « j'ai tout relié, et la fiche me propose encore de l'intégrer ») :
    *  `[{ parcours, raison }]`, vide si tout va bien. Les chemins qu'aucune commande ne
-   *  suit (modèles, anciens chemins) ne comptent pas ; un lien vers UN handling suffit. */
+   *  suit (modèles, anciens chemins) ne comptent pas ; un lien vers UN handling suffit.
+   *  Un chemin sans armement n'est pas à reprendre (08/10) : ses compagnies n'en ont
+   *  pas, sauf si une équipe d'armement les a cochées. */
   function armementACorriger(etat, armements, handlings, classes) {
     const arm = new Set(armements || []), hs = new Set(handlings || []);
     if (!arm.size || !hs.size) return [];
     const suivis = classes && classes.length
       ? new Set(classes.map(c => (fluxDe(etat, c) || {}).id).filter(Boolean)) : null;
-    // Un chemin que ne suivent que des compagnies sans armement n'en a pas besoin (08/10).
-    const sansArm = cheminsSansArmement(etat, armements, classes);
     const out = [];
     for (const p of etat.parcours || []) {
       const noeuds = p.noeuds || [], liens = p.liens || [];
-      if (!noeuds.some(x => !arm.has(x)) || (suivis && !suivis.has(p.id)) || sansArm.has(p.id)) continue;
+      if (!noeuds.some(x => !arm.has(x)) || (suivis && !suivis.has(p.id))) continue;
       for (const a of arm) {
-        if (!noeuds.includes(a)) { out.push({ parcours: p, raison: 'absent' }); continue; }
+        if (!noeuds.includes(a)) continue;
         const autres = liens.filter(l => (l.de === a || l.vers === a) && !(l.de === a && hs.has(l.vers)));
         if (autres.length) out.push({ parcours: p, raison: 'autres', avec: [...new Set(autres.map(l => (l.de === a ? l.vers : l.de)))] });
         else if (!liens.some(l => l.de === a && hs.has(l.vers) && noeuds.includes(l.vers))) out.push({ parcours: p, raison: 'sans-handling' });
       }
     }
     return out;
-  }
-
-  /* Les compagnies sans armement (retour d'usage du 08/10 : « tu pars du principe
-   * que le handling doit recevoir l'armement pour partir, mais il y a des
-   * compagnies qui n'en ont pas ») : la liste `sans` du réglage de l'armement.
-   * Les chemins que ne suivent QUE de telles compagnies n'ont pas besoin
-   * d'armement : ni « à reprendre », ni modifiés par l'intégration. */
-  function sansArmement(etat, armements) {
-    const out = new Set();
-    for (const s of armements || []) for (const k of ((etat.categories || {})[s] || [])) for (const c of (k.sans || [])) out.add(String(c).trim().toUpperCase());
-    return out;
-  }
-  function cheminsSansArmement(etat, armements, classes) {
-    const sans = sansArmement(etat, armements);
-    if (!sans.size || !classes || !classes.length) return new Set();
-    const cies = new Map();   // chemin → compagnies qui le suivent
-    for (const c of classes) {
-      if (c.categorie) continue;
-      const p = fluxDe(etat, c); if (!p) continue;
-      if (!cies.has(p.id)) cies.set(p.id, new Set());
-      cies.get(p.id).add(String(c.cie).trim().toUpperCase());
-    }
-    return new Set([...cies].filter(([, s]) => [...s].every(x => sans.has(x))).map(([id]) => id));
   }
 
   /** L'armement est-il dans chaque chemin suivi, relié seulement au handling ? */
@@ -2436,7 +2432,7 @@
   const api = { annoncer, fusionneePar, passePar, chaines, insererPrepa, depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, confier, nouvelleEquipe,
     colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, donnerCases, completerCases, nomLibre, caseHandling, anciensHandlings, brancherHandling, separerHandling, caseRobot, remplacerEtape,
     SERVICES_DISPO, estDispo, caseDispo, anciensDispos, partagerDispos, separerParCommande, ajouterBesoin,
-    insererService, retirerService, mettreEnParallele, mettreEnParalleleDans, integrerArmement, delierHandling, armementIntegre, armementACorriger, sansArmement, cheminsSansArmement, versParCompagnie, liberer, insererParEcheance, cocher, passerPar, grille, natureService, equipeNeuve,
+    insererService, retirerService, mettreEnParallele, mettreEnParalleleDans, integrerArmement, placerArmement, delierHandling, armementIntegre, armementACorriger, versParCompagnie, liberer, insererParEcheance, cocher, passerPar, grille, natureService, equipeNeuve,
     marquerTypes, typeSuivi, fluxDe, signature, types, commandesDuType, nouveauType, assignerType, nettoyerTypes, cheminsPossibles, choisirChemin, selectChemin, nomVariante, adapter,
     changerFlux, regrouper, EditeurParcours };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

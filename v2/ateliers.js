@@ -150,9 +150,8 @@
           const c = cie === '*' ? '*' : String(cie).trim().toUpperCase().slice(0, 40);
           if (c && v !== null && v !== '' && Number.isFinite(+v) && +v >= 0) minutes[c] = Math.round(+v * 10) / 10;
         }
-        // Les compagnies sans armement (08/10) : pas de case, le handling ne les attend pas.
-        const sans = [...new Set((Array.isArray(k.sans) ? k.sans : []).map(c => String(c).trim().toUpperCase().slice(0, 40)).filter(Boolean))].sort().slice(0, 300);
-        return { id, nom: String(k.nom ?? id).slice(0, 80) || id, minutes, ...(sans.length ? { sans } : {}) };
+        // Une compagnie sans armement n'a rien à régler (08/10) : ni chemin, ni équipe, pas de case.
+        return { id, nom: String(k.nom ?? id).slice(0, 80) || id, minutes };
       }).filter(k => k.id && !vus.has(k.id) && vus.add(k.id));
     }
     return out;
@@ -490,10 +489,11 @@
     classesDe(service) {
       const cats = (this.state.categories || {})[service]; if (!cats) return null;
       const r = this.a.reglages ? this.a.reglages() : {};
-      // Une case par compagnie dont un chemin passe par ce service, avec ou sans vol.
+      // Une case par compagnie dont un chemin passe par ce service, ou qu'une de ses
+      // équipes a cochée, avec ou sans vol. Les autres n'ont pas d'armement (08/10).
       const base = this.classes;
       return P.classesCategories(this.a.vols(), { [service]: cats }, { delaiChargement: r.delaiChargement,
-        compagnies: P.compagniesParService(base, P.routesDesClasses(base, this.state)) });
+        compagnies: P.compagniesParService(base, P.routesDesClasses(base, this.state), this.state.ateliers) });
     }
 
     calculer() {

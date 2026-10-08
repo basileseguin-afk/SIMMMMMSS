@@ -34,7 +34,7 @@
     { id: 'handling', nom: 'Il charge les vols (handling)', court: 'chargement des vols' },
     // L'armement : ni BC, ni PC, ni Éco — ses catégories à lui (retour d'usage du 01/10).
     // « Une seule case par compagnie, oui ou non » (01/10), « toujours lié au handling » (02/10).
-    { id: 'categories', nom: 'Il travaille par compagnie : l’armement (relié au handling dans chaque chemin)', court: 'par compagnie' },
+    { id: 'categories', nom: 'Il travaille par compagnie : l’armement (relié au handling dans ses chemins)', court: 'par compagnie' },
     // « Le plus simple : le service comporte un seul atelier de x personnes, commençant à
     // telle heure, faisant certaines compagnies » (07/10 : BOB, checkeurs de CF départ food).
     { id: 'atelier', nom: 'Un seul atelier : x personnes, à telle heure, pour certaines compagnies', court: 'un atelier' }
@@ -93,7 +93,7 @@
       if (attendues.length && cases.length) points.push(pl(attendues.length, nature === 'categories' ? 'compagnie' : 'commande') + ' à cocher dans une équipe');
       if (vides.length) points.push(vides.length > 1 ? vides.length + ' équipes ne préparent rien' : '« ' + vides[0].nom + ' » ne prépare rien');
       if (sansTemps) points.push('heures de travail à remplir');
-      if (nature === 'categories' && !classes.length) points.push('aucune case : aucun chemin ne passe par ce service');
+      if (nature === 'categories' && !classes.length) points.push('aucune compagnie armée : aucun chemin ne passe par ce service');
       else if (nature === 'categories' && classes.some(c => c.minutes == null)) points.push('heures par vol à remplir');
       for (const x of alertes.slice(0, 3)) points.push(x.message);
       const utilise = cases.length > 0 || passent > 0 || nature === 'categories';
@@ -336,68 +336,76 @@
     lienHandling(s) {
       const st = this.etat, handlings = st.ateliers.filter(a => a.type === 'handling');
       const qui = handlings.length ? handlings.map(a => '« ' + esc(a.nom) + ' »').join(', ') : '';
-      // Seulement les chemins que suivent les commandes ; un lien vers un handling suffit.
+      // Seulement les chemins que suivent les commandes et qui passent par lui ; un lien vers un handling suffit.
       const aCorriger = handlings.length ? PC.armementACorriger(st, [s.id], this.handlings(st), this.at.classes) : [];
-      const integre = handlings.length && !aCorriger.length;
-      const pourquoi = { absent: 'absent', 'sans-handling': 'pas relié au handling' };
-      const sans = (((st.categories || {})[s.id] || [])[0] || {}).sans || [];
+      // Un chemin sans armement dit que ses compagnies n'en ont pas (retour d'usage du
+      // 08/10) : on ne le réclame pas. Encore dans aucun chemin : on propose de commencer.
+      const suivis = new Set((this.at.classes || []).map(c => (PC.fluxDe(st, c) || {}).id).filter(Boolean));
+      const dans = (st.parcours || []).some(p => suivis.has(p.id) && (p.noeuds || []).includes(s.id));
       const liste = aCorriger.slice(0, 4).map(x => '« ' + esc(x.parcours.nom || x.parcours.id) + ' » ('
-        + (x.raison === 'autres' ? 'relié aussi à ' + x.avec.map(id => esc(this.nom(id))).join(', ') : pourquoi[x.raison]) + ')').join(', ')
+        + (x.raison === 'autres' ? 'relié aussi à ' + x.avec.map(id => esc(this.nom(id))).join(', ') : 'pas relié au handling') + ')').join(', ')
         + (aCorriger.length > 4 ? '…' : '');
+      const ou = !handlings.length ? ''
+        : aCorriger.length ? `<p class="mini-note mu-arm-reprendre">À reprendre dans ${aCorriger.length > 1 ? 'ces chemins' : 'ce chemin'} : ${liste}.
+          <button class="btn btn-sm btn-play" type="button" data-mu-action="integrer-armement">Le relier au seul handling</button></p>`
+        : dans ? `<p class="mini-note mu-arm-ok">✓ Dans chaque chemin qui passe par lui, en branche à part, relié seulement au handling.</p>`
+        : `<p class="mini-note mu-arm-aucun">Aucun chemin ne passe encore par ${esc(s.nom)}.
+          <button class="btn btn-sm btn-play" type="button" data-mu-action="integrer-armement">L’ajouter à tous les chemins, relié au handling</button>
+          Retirez-le ensuite du chemin des compagnies qui n’ont pas d’armement.</p>`;
       return `<div class="mu-lien-handling"><p><span aria-hidden="true">🚚</span> <b>Lié au handling.</b> ${handlings.length
         ? qui + (handlings.length > 1 ? ' attendent' : ' attend') + ' les repas du vol, et son armement quand sa compagnie en a un, pour le charger.'
-        : 'Pas encore de handling dans l’unité : créez-en un, puis intégrez l’armement aux chemins, relié au handling.'}
-        On arme un vol, pas une classe : une case par compagnie dont le chemin passe par ${esc(s.nom)}.
-        Une compagnie sans armement se décoche (« Armée », plus bas) : le handling charge ses vols sans l’attendre.</p>
-        ${sans.length ? `<p class="mini-note mu-arm-sans">Sans armement : ${esc(sans.join(', '))}.</p>` : ''}
-        ${!handlings.length ? '' : integre ? `<p class="mini-note mu-arm-ok">✓ Dans tous les chemins, en branche à part, relié seulement au handling.</p>`
-          : `<p class="mini-note mu-arm-reprendre">À reprendre dans ${aCorriger.length > 1 ? 'ces chemins' : 'ce chemin'} : ${liste}.
-          Si ses compagnies n’ont pas d’armement, décochez-les (« Armée ») : leur chemin n’en a pas besoin.
-          <button class="btn btn-sm btn-play" type="button" data-mu-action="integrer-armement">L’intégrer à tous les chemins, relié au handling</button></p>`}</div>`;
+        : 'Pas encore de handling dans l’unité : créez-en un, puis reliez-lui l’armement dans les chemins.'}
+        Une compagnie a un armement quand un de ses chemins passe par ${esc(s.nom)}, ou qu’une de ses équipes l’a cochée
+        (une case par compagnie : on arme un vol, pas une classe). Sinon, le handling charge ses vols sans l’attendre.</p>
+        ${ou}</div>`;
     }
 
     /* Un service qui travaille par compagnie (l'armement) : ses heures par vol,
      * pour toutes les compagnies, puis celles qui en ont d'autres. Chaque
-     * compagnie dont un chemin passe par le service a sa case, avec ou sans vol. */
+     * compagnie dont un chemin passe par le service, ou qu'une de ses équipes a
+     * cochée, a sa case, avec ou sans vol ; les autres n'ont pas d'armement (08/10). */
     blocParCompagnie(s, classes) {
       const k = (((this.etat.categories || {})[s.id]) || [])[0];
       if (!k) return '';
       const avec = [...new Set(classes.map(c => c.cie))].sort((x, y) => x.localeCompare(y));
       const toutes = [...new Set((this.at.classes || []).map(c => c.cie))];
-      // Les compagnies sans armement (08/10) : pas de case ; leur ligne reste, décochée.
-      const sans = [...(k.sans || [])];
-      // Pas de case : aucun chemin de la compagnie ne passe par ce service.
-      const hors = toutes.filter(c => !avec.includes(c) && !sans.includes(c)).sort((x, y) => x.localeCompare(y));
+      // Sans armement (08/10) : aucun chemin de la compagnie ne passe par ce service, aucune de ses équipes ne l'a cochée.
+      const hors = toutes.filter(c => !avec.includes(c)).sort((x, y) => x.localeCompare(y));
+      // Armée par une équipe seulement : aucun de ses chemins ne passe par le service.
+      const base = this.at.classes || [];
+      const parChemin = new Set(P.compagniesParService(base, P.routesDesClasses(base, this.etat))(s.id));
+      const parEquipe = avec.filter(c => !parChemin.has(c));
       // Une case, mais aucun départ au programme (une compagnie ajoutée à la main).
       const sansVol = avec.filter(cie => !classes.some(c => c.cie === cie && c.vols.length));
       // Gardées en minutes, saisies et lues en heures par vol (08/10).
       const champ = cie => `<td><input type="number" min="0" step="any" value="${P.versHeures(k.minutes[cie]) ?? ''}" placeholder="${cie === '*' ? '—' : P.heuresFr(k.minutes['*']) || '—'}"
           data-mu-cat-min="${esc(k.id)}" data-cie="${esc(cie)}" aria-label="Heures par vol${cie === '*' ? ', toutes les compagnies' : ', ' + esc(cie)}"></td>`;
-      const aucun = !avec.length ? `<p class="mini-note">Aucune compagnie n’a de case : aucun chemin ne passe par ${esc(s.nom)}.</p>` : '';
+      const aucun = !avec.length ? `<p class="mini-note">Aucune compagnie n’a d’armement : aucun chemin ne passe par ${esc(s.nom)}.</p>` : '';
       // Le travail dépend des vols de chaque compagnie (07/10) : heures par vol × ses départs du jour.
       const lire = x => (x !== '' && x != null && Number.isFinite(+x) ? +x : null);
       const vols = cie => new Set(classes.filter(c => c.cie === cie).flatMap(c => (c.vols || []).map(v => v.id))).size;
       const h = m => P.heuresFr(m, 2) + ' h';
       let totalVols = 0, total = 0, manque = 0;
-      const arme = (cie, oui) => `<td class="mu-cat-arme"><input type="checkbox" data-mu-cat-arme="${esc(cie)}"${oui ? ' checked' : ''}
-          aria-label="${esc(cie)} : armée" title="${oui ? 'Décocher : cette compagnie n’a pas d’armement' : 'Cocher : cette compagnie a un armement'}"></td>`;
       const ligne = cie => {
-        if (sans.includes(cie)) return `<tr class="mu-cat-sans"><th scope="row">${esc(cie)}</th>${arme(cie, false)}
-          <td colspan="3" class="mu-cat-sansarm">pas d’armement : le handling charge ses vols sans l’attendre</td></tr>`;
         const n = vols(cie), v = lire(k.minutes[cie]) ?? lire(k.minutes['*']);
         totalVols += n; if (v == null) manque++; else total += v * n;
-        return `<tr><th scope="row">${esc(cie)}</th>${arme(cie, true)}${champ(cie)}<td class="mu-cat-vols">${n}</td>
+        return `<tr><th scope="row">${esc(cie)}</th>${champ(cie)}<td class="mu-cat-vols">${n}</td>
           <td class="mu-cat-jour">${v == null ? '<span class="mu-cat-manque">à remplir</span>' : `${P.heuresFr(v)} h × ${n} = <b>${esc(h(v * n))}</b>`}</td></tr>`;
       };
-      const lignes = [...new Set(avec.concat(sans))].sort((x, y) => x.localeCompare(y)).map(ligne).join('');
+      const lignes = avec.map(ligne).join('');
       return aucun + `<div class="mu-grille-scroll"><table class="mu-cat-table" data-mu-cat-service="${esc(s.id)}">
-        <thead><tr><th scope="col">Compagnie</th><th scope="col" title="Décochée : la compagnie n’a pas d’armement">Armée</th><th scope="col">Heures par vol</th><th scope="col">Vols du jour</th><th scope="col">Sur la journée</th></tr></thead>
-        <tbody><tr class="mu-cat-toutes"><th scope="row">Toutes les compagnies</th><td></td>${champ('*')}<td></td><td></td></tr>
+        <thead><tr><th scope="col">Compagnie</th><th scope="col">Heures par vol</th><th scope="col">Vols du jour</th><th scope="col">Sur la journée</th></tr></thead>
+        <tbody><tr class="mu-cat-toutes"><th scope="row">Toutes les compagnies</th>${champ('*')}<td></td><td></td></tr>
         ${lignes}</tbody>
-        ${avec.length ? `<tfoot><tr><th scope="row">Total</th><td></td><td></td><td class="mu-cat-vols">${totalVols}</td><td class="mu-cat-jour"><b>${esc(h(total))}</b>${manque ? ` <span class="mu-cat-manque">(${manque} à remplir)</span>` : ''}</td></tr></tfoot>` : ''}</table></div>
+        ${avec.length ? `<tfoot><tr><th scope="row">Total</th><td></td><td class="mu-cat-vols">${totalVols}</td><td class="mu-cat-jour"><b>${esc(h(total))}</b>${manque ? ` <span class="mu-cat-manque">(${manque} à remplir)</span>` : ''}</td></tr></tfoot>` : ''}</table></div>
         <p class="mini-note mu-cat-note">Le travail suit les vols : heures par vol (pour une personne) × vols de la compagnie. Les personnes de chaque équipe s’en déduisent, sur ses heures de poste.</p>`
         + (sansVol.length ? `<p class="mini-note mu-arm-sansvol">${esc(sansVol.join(', '))} : aucun départ au programme aujourd’hui — la case est là, à 0 vol, jusqu’à ce que le programme en porte.</p>` : '')
-        + (hors.length ? `<p class="mini-note mu-arm-hors">Pas de case pour ${esc(hors.join(', '))} : ${hors.length > 1 ? 'leurs chemins ne passent' : 'son chemin ne passe'} pas par ${esc(s.nom)} (Une commande).</p>` : '');
+        + (hors.length ? `<p class="mini-note mu-arm-hors">Sans armement : ${esc(hors.join(', '))}. ${hors.length > 1
+          ? 'Aucun de leurs chemins ne passe par ' + esc(s.nom) + ' et aucune équipe ne les a cochées : le handling charge leurs vols sans l’attendre.'
+          : 'Aucun de ses chemins ne passe par ' + esc(s.nom) + ' et aucune équipe ne l’a cochée : le handling charge ses vols sans l’attendre.'}</p>` : '')
+        + (parEquipe.length ? `<p class="mini-note mu-arm-equipe">${esc(parEquipe.join(', '))} : ${parEquipe.length > 1
+          ? 'armées parce qu’une équipe les a cochées, alors qu’aucun de leurs chemins ne passe par ' + esc(s.nom) + '. Si elles n’en ont pas, décochez-les.'
+          : 'armée parce qu’une équipe l’a cochée, alors qu’aucun de ses chemins ne passe par ' + esc(s.nom) + '. Si elle n’en a pas, décochez-la.'}</p>` : '');
     }
 
     /** Un service qui travaille en même temps qu'un autre (08/10), ou plus. */
@@ -809,14 +817,15 @@
             if (v === 'categories') { this.at.typer(a, 'manuel'); a.lots = a.lots || []; } else { if (v !== 'manuel') this.at.typer(a, v); a.lots = []; }
           }
           if (v === 'categories') {
-            // Ses cases par classe deviennent des cases par compagnie ; il entre dans tous les chemins, relié au handling.
+            // Ses cases par classe deviennent des cases par compagnie ; relié au seul handling dans
+            // les chemins qui passent par lui — dans tous s'il n'est encore dans aucun (08/10).
             PC.versParCompagnie(st, service, st.categories[service][0].id);
-            PC.integrerArmement(st, [service], this.handlings(st), this.at.classes);
+            PC.placerArmement(st, [service], this.handlings(st), this.at.classes);
           } else {
             for (const p of st.parcours || []) if (P.servicesDuParcours(p).includes(service)) PC.retirerService(p, service);
             this.natures[service] = v;
           }
-        }, v === 'categories' ? this.nom(service) + ' travaille par compagnie, relié au handling dans tous les chemins : donnez ses heures par vol, puis cochez les compagnies dans ses équipes.'
+        }, v === 'categories' ? this.nom(service) + ' travaille par compagnie, relié au handling dans ses chemins : donnez ses heures par vol, puis cochez les compagnies dans ses équipes.'
           : this.nom(service) + ' : ' + NATURES.find(x => x.id === v).nom.toLowerCase() + '.');
       }
       if (!cases.length) { this.natures[service] = v; this.rendreServices(); return; }
@@ -1373,19 +1382,6 @@
           const svc = el.dataset.muParallele, x = el.value;
           setTimeout(() => this.parallele(svc, x), 0);
         }
-        // Une compagnie sans armement (08/10) : pas de case, sa case quitte les équipes.
-        else if (el.dataset.muCatArme) {
-          const service = el.closest('[data-mu-cat-service]').dataset.muCatService, cie = el.dataset.muCatArme, oui = el.checked;
-          setTimeout(() => this.changerCategories(service, (l, st) => {
-            const k = l[0]; if (!k) return;
-            const s = new Set(k.sans || []);
-            if (oui) s.delete(cie); else s.add(cie);
-            if (s.size) k.sans = [...s].sort(); else delete k.sans;
-            if (!oui) for (const a of st.ateliers) if (a.service === service)
-              a.lots = (a.lots || []).map(x => x.filter(id => id !== cie + '/@' + k.id)).filter(x => x.length);
-          }, oui ? cie + ' : armée. Cochez-la dans l’équipe d’armement qui la prépare.'
-            : cie + ' : pas d’armement. Le handling charge ses vols sans l’attendre.'), 0);
-        }
         else if (el.dataset.muFluxIci) {
           const svc = el.dataset.muFluxIci, t = PC.types(this.etat).find(x => x.id === el.value); if (!t) return;
           this.at.changer(() => { PC.changerFlux(this.at.state, t.id, svc, true, this.options()); },
@@ -1458,11 +1454,12 @@
           }
           case 'par-compagnie': return this.nature(id, 'categories');
           // L'armement n'a rien à faire dans les chemins des repas.
-          // L'armement dans tous les chemins, en branche à part, relié seulement au handling.
+          // L'armement en branche à part, relié seulement au handling : dans les chemins qui passent
+          // par lui ; dans tous s'il n'est encore dans aucun (08/10).
           case 'integrer-armement': {
             let n = 0;
-            this.at.changer(() => { n = PC.integrerArmement(this.at.state, [id], this.handlings(this.at.state), this.at.classes); }, '');
-            return this.at.rendre(this.nom(id) + ' : intégré à ' + pl(n, 'chemin') + ', relié seulement au handling. « Annuler » revient en arrière.');
+            this.at.changer(() => { n = PC.placerArmement(this.at.state, [id], this.handlings(this.at.state), this.at.classes); }, '');
+            return this.at.rendre(this.nom(id) + ' : relié seulement au handling dans ' + pl(n, 'chemin') + '. « Annuler » revient en arrière.');
           }
           case 'liberer': {
             let parties = [];

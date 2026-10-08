@@ -147,16 +147,22 @@
    * branche à part, reliée seulement au handling, qui charge le vol quand repas
    * et armement sont prêts.
    *
-   *   categories: { [service]: [{ id, nom, minutes: { '*': 10, AF: 15 }, sans?: ['EZY'] }] }
-   *   (`sans` : les compagnies qui n'ont pas d'armement, 08/10 — pas de case.)
+   *   categories: { [service]: [{ id, nom, minutes: { '*': 10, AF: 15 } }] }
    *
    * QUI A SA CASE (retour d'usage du 02/10 : « dans le chemin EZY, l'armement
    * est bien présent, et je ne peux pas faire apparaître sa case ») : chaque
    * compagnie dont un chemin passe par le service — comme une commande a sa
-   * case dans chaque service de son chemin. Avec ou sans vol au programme : une
-   * compagnie ajoutée à la main a sa case, à 0 vol tant que le programme n'en
-   * porte pas. Ni la liste « Compagnies chargées » d'un handling (elle dit qui
-   * charge), ni le fait qu'une équipe prépare déjà ses repas n'entrent en jeu.
+   * case dans chaque service de son chemin —, et chaque compagnie qu'une de ses
+   * équipes a cochée. Avec ou sans vol au programme : une compagnie ajoutée à
+   * la main a sa case, à 0 vol tant que le programme n'en porte pas. Ni la
+   * liste « Compagnies chargées » d'un handling (elle dit qui charge), ni le
+   * fait qu'une équipe prépare déjà ses repas n'entrent en jeu.
+   *
+   * UNE COMPAGNIE SANS ARMEMENT (retour d'usage du 08/10 : « si aucune classe
+   * de la compagnie, qu'elle n'est dans aucun chemin et qu'aucun atelier de
+   * l'armement ne l'a, pas besoin que le handling attende ») : ni chemin par le
+   * service, ni équipe du service qui l'a cochée — pas de case, et le handling
+   * charge ses vols sans l'attendre. Rien à régler pour le dire.
    *
    * La case « AF/@ARM » : minutes par vol (les siennes, sinon celles de « * »)
    * × départs de la compagnie, échéance du premier. Ses équipes la cochent ;
@@ -184,12 +190,7 @@
       for (const k of (Array.isArray(liste) ? liste : [])) {
         if (!k || !k.id) continue;
         const min = k.minutes || {};
-        // Une compagnie sans armement (retour d'usage du 08/10 : « il y a des
-        // compagnies qui n'ont pas d'armement ») n'a pas de case : le handling
-        // charge ses vols sans l'attendre.
-        const sans = new Set((Array.isArray(k.sans) ? k.sans : []).map(c => String(c).trim().toUpperCase()));
         for (const cie of cies || []) {
-          if (sans.has(String(cie).trim().toUpperCase())) continue;
           const vs = departs.get(cie) || [];
           out.push({ id: cie + '/@' + k.id, cie, cabine: '@' + k.id, categorie: k.id, service, minutes: lire(min, cie) ?? lire(min, TOUTES), pax: 0,
             vols: vs, echeance: vs.length ? Math.min(...vs.map(x => x.echeance)) : MINUTES_PAR_JOUR });
@@ -199,16 +200,25 @@
     return out.sort((a, b) => a.echeance - b.echeance || a.id.localeCompare(b.id));
   }
 
-  /** Les compagnies dont un chemin passe par chaque service : `service → Set`.
-   *  `classes` : les commandes des repas ; `routes` : `routesDesClasses`. */
-  function compagniesParService(classes, routes) {
+  /** Les compagnies qui ont leur case dans chaque service : `service → Set`.
+   *  Celles dont un chemin passe par lui, et celles qu'une de ses équipes a
+   *  cochées (« AF/@ARM », 08/10) ; les autres n'en ont pas.
+   *  `classes` : les commandes des repas ; `routes` : `routesDesClasses` ;
+   *  `ateliers` : les équipes. */
+  function compagniesParService(classes, routes, ateliers) {
     const m = new Map();
+    const ajouter = (s, cie) => { if (!m.has(s)) m.set(s, new Set()); m.get(s).add(String(cie).trim().toUpperCase()); };
     for (const c of classes || []) {
       const r = !c.categorie && routes.get(c.id);
       if (!r) continue;
-      for (const s of r.services) {
-        if (!m.has(s)) m.set(s, new Set());
-        m.get(s).add(String(c.cie).trim().toUpperCase());
+      for (const s of r.services) ajouter(s, c.cie);
+    }
+    for (const a of ateliers || []) {
+      for (const lot of (a && Array.isArray(a.lots) ? a.lots : [])) {
+        for (const id of (Array.isArray(lot) ? lot : (lot && lot.classes) || [])) {
+          const i = String(id).indexOf('/@');
+          if (i > 0) ajouter(a.service, String(id).slice(0, i));
+        }
       }
     }
     return service => [...(m.get(service) || [])].sort();
@@ -1369,9 +1379,10 @@
     // Les compagnies × classes viennent du programme de vols, sauf quand
     // l'appelant en fournit une liste : l'utilisateur peut en retirer qu'il ne
     // fabrique pas, et en ajouter que le programme ne porte pas encore.
-    // Un service par compagnie (l'armement) : une commande par compagnie dont un chemin passe par lui.
+    // Un service par compagnie (l'armement) : une commande par compagnie dont un chemin passe par
+    // lui, ou qu'une de ses équipes a cochée ; les autres n'ont pas d'armement (08/10).
     const base = (opts.classes || classesDeVols(opts.vols, { delaiChargement: opts.delaiChargement })).filter(c => !c.categorie);
-    const classes = base.concat(classesCategories(opts.vols, opts.categories, { delaiChargement: opts.delaiChargement, compagnies: compagniesParService(base, routesDesClasses(base, opts)) }))
+    const classes = base.concat(classesCategories(opts.vols, opts.categories, { delaiChargement: opts.delaiChargement, compagnies: compagniesParService(base, routesDesClasses(base, opts), opts.ateliers) }))
       .sort((a, b) => a.echeance - b.echeance || a.id.localeCompare(b.id));
     const servicesCategories = new Set(Object.keys(opts.categories || {}));
     const parClasse = new Map(classes.map(c => [c.id, c]));

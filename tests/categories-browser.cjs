@@ -43,15 +43,16 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    const cases=()=>page.evaluate(()=>[...new Set(Sim.ateliers.classesDe('armement').map(c=>c.cie))].sort());
    assert.match(await fiche('.mu-lien-handling').innerText(),/Lié au handling[\s\S]*Pas encore de handling/);
    assert.deepEqual(await cases(),[],version+' : pas encore dans les chemins, pas de case');
-   assert.match(await fiche('').innerText(),/Aucune compagnie n’a de case : aucun chemin ne passe par/);
-   // Un handling dont la liste ne cite pas FWI ; puis l'armement intégré aux chemins, d'un clic.
+   assert.match(await fiche('').innerText(),/Aucune compagnie n’a d’armement : aucun chemin ne passe par/);
+   // Un handling dont la liste ne cite pas FWI ; puis l'armement, encore dans aucun chemin, ajouté à tous d'un clic.
    const sansFWI=construites.filter(c=>c!=='FWI');
    await page.evaluate(cies=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'h',nom:'Quais',service:'quais',type:'handling',debut:'04:00',jour:0,personnes:2,pauses:[],lots:[],regime:{actif:true},durees:{'*':20},compagnies:cies});},''),sansFWI);await attendre();
    assert.match(await fiche('.mu-lien-handling').innerText(),/« Quais » attend les repas du vol, et son armement quand sa compagnie en a un/);
+   assert.match(await fiche('.mu-arm-aucun').innerText(),/Aucun chemin ne passe encore par/);
    await fiche('[data-mu-action=integrer-armement]').click();await attendre();
    const tous=await page.evaluate(()=>[...new Set(Sim.ateliers.classes.map(c=>c.cie))].sort());
    assert.deepEqual(await cases(),tous,version+' : chaque compagnie dont le chemin passe par l’armement — FWI comprise, absente de la liste de « Quais »');
-   assert.doesNotMatch(await fiche('').innerText(),/Pas de case pour/);
+   assert.doesNotMatch(await fiche('').innerText(),/Sans armement :/);
    // EZY ajoutée à la main : le jeu de démonstration lui donne des vols d'essai (02/10), et sa case d'armement.
    await page.evaluate(()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;st.ajoutees=(st.ajoutees||[]).concat([{cie:'EZY',cabine:'YC'}]);},''));await attendre();
    assert.ok((await cases()).includes('EZY'),version+' : EZY a sa case');
@@ -99,7 +100,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await fiche('[data-mu-action=integrer-armement]').click();await attendre();
    const parcours=await page.evaluate(()=>Sim.ateliers.state.parcours);
    assert.ok(parcours.every(p=>!p.noeuds.length||(p.noeuds.includes('armement')&&p.liens.filter(l=>l.de==='armement'||l.vers==='armement').every(l=>l.de==='armement'&&l.vers==='quais'))),'dans tous les chemins, relié seulement au handling');
-   assert.match(await fiche('.mu-arm-ok').innerText(),/Dans tous les chemins/);
+   assert.match(await fiche('.mu-arm-ok').innerText(),/Dans chaque chemin qui passe par lui/);
    assert.deepEqual(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).lots,eq),[['AF/@ARM']],version+' : la case AF reste');
 
    // 8. Revenir à « des équipes préparent les commandes ».

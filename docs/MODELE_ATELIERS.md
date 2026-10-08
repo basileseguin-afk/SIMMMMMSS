@@ -361,14 +361,24 @@ compagnie » ; la fiche d'un service dont le nom dit « armement » le propose).
   (minutes × vols), avec le total.
 - **Le handling** attend l'armement du vol pour le charger — quand sa
   compagnie en a un.
-- **Une compagnie sans armement** (retour d'usage du 08/10 : « il y a des
-  compagnies qui n'ont pas d'armement ») : case « Armée » décochée dans la
-  fiche, `categories[service][0].sans = ['TX']`. Pas de case (`classesCategories`
-  la saute) : rien à cocher, rien à remplir, aucune alerte ; sa case quitte les
-  équipes ; le handling charge ses vols après leurs repas, sans attendre ; un
-  chemin qu'elle seule suit n'est pas « à reprendre » et l'intégration n'y
-  touche pas (`cheminsSansArmement`). Excel : colonne « Armée » de la feuille
-  « Par compagnie ».
+- **Qui a un armement** (retour d'usage du 08/10 : « si aucune classe de la
+  compagnie, qu'elle n'est dans aucun chemin et qu'aucun atelier de
+  l'armement ne l'a, pas besoin que le handling attende ») : une compagnie
+  dont un chemin passe par le service, ou qu'une de ses équipes a cochée
+  (`compagniesParService(classes, routes, ateliers)`). Les autres n'en ont
+  pas, sans rien à régler : pas de case, rien à cocher ni à remplir, aucune
+  alerte, le handling charge leurs vols après leurs repas sans attendre. La
+  fiche les nomme (« Sans armement : TX ») ; elle signale aussi une
+  compagnie cochée dans une équipe alors qu'aucun de ses chemins ne passe
+  par le service. La case « Armée » du matin du 08/10 a disparu ; une
+  sauvegarde ou un classeur qui la portent se relisent sans elle.
+- **Un chemin sans armement n'est pas à reprendre** : il dit que ses
+  compagnies n'en ont pas (`armementACorriger` ne regarde que les chemins
+  qui passent par le service). Le bouton de la fiche relie l'armement au
+  seul handling dans ces chemins-là (`placerArmement`) ; encore dans aucun
+  chemin (un armement qu'on met en place), il l'ajoute à tous, pour
+  commencer, et on le retire ensuite du chemin des compagnies qui n'en ont
+  pas.
 - **Dans les chemins** (retour d'usage du 02/10 : « intègre l'armement sur
   tous les chemins et lie-le uniquement au handling ») : dans chaque chemin
   (flux et chemins propres), l'armement est une branche à part — un nœud,

@@ -2,7 +2,9 @@
  * handling » (retour d'usage du 02/10). Au chargement, une fois qu'un handling
  * existe : l'armement travaille par compagnie (ses cases par classe deviennent
  * des cases par compagnie) et entre dans chaque chemin en branche à part, avec
- * une seule flèche, vers le handling. Annulable. v1 et v2. */
+ * une seule flèche, vers le handling. Annulable. Ensuite, un chemin sans
+ * armement n'est plus réclamé (08/10 : ses compagnies n'en ont pas) ; un
+ * armement mal relié se relie au seul handling, d'un clic. v1 et v2. */
 const assert=require('node:assert/strict'),path=require('node:path');
 const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
@@ -47,26 +49,31 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.ok(!r.trou,version+' : l’armement n’est pas un trou');
    assert.ok(r.arm&&r.charges>0&&r.ok,version+' : '+JSON.stringify(r));
 
-   // 3. La fiche le dit ; un nouveau chemin sans armement → le bouton le remet.
+   // 3. La fiche le dit. Un nouveau chemin sans armement : ses compagnies n'en ont pas (08/10), rien à reprendre.
    await nav.aller(page,'mu-services');await page.locator('[data-mu-choisir=armement]').click();await attendre();
-   assert.match(await page.locator('#mu-services .mu-arm-ok').innerText(),/Dans tous les chemins/);
+   assert.match(await page.locator('#mu-services .mu-arm-ok').innerText(),/Dans chaque chemin qui passe par lui/);
    // Un nouveau chemin, suivi par une commande (un chemin que personne ne suit ne compte pas, 05/10).
    await page.evaluate(()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;st.parcours.push({id:'neuf',nom:'Neuf',noeuds:['prepa'],liens:[]});st.parcoursClasse={...(st.parcoursClasse||{}),'AF/BC':'neuf'};},''));await attendre();
-   assert.match(await page.locator('#mu-services .mu-arm-reprendre').innerText(),/« Neuf » \(absent\)/);
+   assert.equal(await page.locator('#mu-services .mu-arm-reprendre').count(),0,version+' : un chemin sans armement n’est pas à reprendre');
+   assert.equal(await page.locator('#mu-services .mu-arm-ok').count(),1);
+   // L'armement dans ce chemin, mais relié à la Prépa : à reprendre ; un clic le relie au seul handling.
+   await page.evaluate(()=>Sim.ateliers.changer(()=>{const p=Sim.ateliers.state.parcours.find(x=>x.id==='neuf');p.noeuds=p.noeuds.concat(['armement']);p.liens=[{de:'prepa',vers:'armement'}];},''));await attendre();
+   assert.match(await page.locator('#mu-services .mu-arm-reprendre').innerText(),/« Neuf » \(relié aussi à /);
    await page.locator('#mu-services [data-mu-action=integrer-armement]').click();await attendre();
    s=await st();
    const neuf=s.parcours.find(p=>p.id==='neuf');
    assert.deepEqual(neuf.liens,[{de:'armement',vers:'quais'}]);
    assert.equal(await page.locator('#mu-services .mu-arm-ok').count(),1);
+   assert.ok(s.parcours.filter(p=>p.id!=='neuf').every(p=>p.liens.filter(l=>l.de==='armement'||l.vers==='armement').length===1),version+' : les autres chemins n’ont pas bougé');
 
-   // 4. Toutes les pages s'affichent ; puis « Annuler » défait l'intégration du nouveau chemin.
+   // 4. Toutes les pages s'affichent ; puis « Annuler » défait le nouveau lien.
    for(const p of ['at-recap','rg-recap','mu-pas','mu-flux','at-chemins','at-equipes','v-departs']) await nav.aller(page,p);
    await page.evaluate(()=>Sim.ateliers.histoire(false));await attendre();
-   assert.deepEqual((await st()).parcours.find(p=>p.id==='neuf').liens,[]);
+   assert.deepEqual((await st()).parcours.find(p=>p.id==='neuf').liens,[{de:'prepa',vers:'armement'}]);
 
    // 5. Rechargée, la migration ne se refait pas.
    await page.reload();await attendre();
-   assert.deepEqual((await st()).parcours.find(p=>p.id==='neuf').liens,[],'fait une fois seulement');
+   assert.deepEqual((await st()).parcours.find(p=>p.id==='neuf').liens,[{de:'prepa',vers:'armement'}],'fait une fois seulement');
 
    // 6. Une unité intégrée par la première version (CF food → handling) : la flèche s'en va, celle de l'armement reste.
    await page.evaluate(()=>Sim.ateliers.changer(()=>{const s=Sim.ateliers.state;

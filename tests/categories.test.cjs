@@ -61,34 +61,44 @@ function verifier(dossier, v) {
     assert.ok(r2.lots.some(l => l.handling && l.vol === 'AF1'), 'il charge AF');
   });
 
-  test(v + ' — une compagnie sans armement (08/10) : pas de case ; le handling charge ses vols sans l’attendre', () => {
-    // QR n'a pas d'armement : son chemin passe par l'armement, mais elle n'y a pas de case.
-    const cat = { armement: [{ ...categories.armement[0], sans: ['QR'] }] };
-    const classes = P.classesDeVols(vols);
-    const cies = P.compagniesParService(classes, P.routesDesClasses(classes, chemins));
-    assert.deepEqual(P.classesCategories(vols, cat, { compagnies: cies }).map(c => c.id), ['AF/@ARM'], 'QR n’a pas de case');
-    const mo = { id: 'mo', nom: 'Montage', service: 'prepa', type: 'manuel', debut: '05:00', jour: 0, personnes: 2, pauses: [], lots: [['QR/YC']], regime: { actif: false } };
-    // L'équipe d'armement n'arrive qu'à 14:00 ; QR part à 15:00, chargé au plus tôt 3 h avant (12:00).
-    const r = P.simuler({ vols, categories: cat, bareme: { prepa: { '*/YC': 20 } }, ...chemins, ateliers: [mo, handling, armement([['AF/@ARM']], { debut: '14:00' })] });
+  test(v + ' — une compagnie sans armement (08/10) : ni chemin, ni équipe — pas de case ; le handling ne l’attend pas', () => {
+    // « Si aucune classe de la compagnie, qu'elle n'est dans aucun chemin et qu'aucun atelier de
+    // l'armement ne l'a, pas besoin que le handling attende. » TX ne vole qu'en Business, dont le
+    // chemin ne passe pas par l'armement.
+    const classes = P.classesDeVols(vols), routes = P.routesDesClasses(classes, chemins);
+    assert.deepEqual(P.compagniesParService(classes, routes, [armement([['AF/@ARM']])])('armement'), ['AF', 'QR'], 'TX : ni chemin, ni équipe');
+    // Cochée dans une équipe d'armement, elle en a un, même sans chemin.
+    const avecEquipe = P.compagniesParService(classes, routes, [armement([['AF/@ARM'], ['TX/@ARM']])]);
+    assert.deepEqual(avecEquipe('armement'), ['AF', 'QR', 'TX']);
+    assert.deepEqual(P.classesCategories(vols, categories, { compagnies: avecEquipe }).map(c => c.id), ['AF/@ARM', 'TX/@ARM', 'QR/@ARM']);
+    // Le calcul : l'équipe d'armement n'arrive qu'à 09:00 ; TX part à 10:50, chargé au plus tôt 3 h avant (07:50).
+    const mo = { id: 'mo', nom: 'Montage', service: 'prepa', type: 'manuel', debut: '05:00', jour: 0, personnes: 2, pauses: [], lots: [['TX/BC']], regime: { actif: false } };
+    const opts = { vols, categories, bareme: { prepa: { '*/BC': 20 } }, ...chemins };
+    const r = P.simuler({ ...opts, ateliers: [mo, handling, armement([['AF/@ARM']], { debut: '09:00' })] });
     assert.ok(r.ok, JSON.stringify(r.anomalies));
-    const qr = r.lots.find(l => l.handling && l.vol === 'QR1'), repas = r.lots.find(l => l.classes.includes('QR/YC'));
-    assert.ok(qr && qr.debut < 14 * 60, 'QR est chargé sans attendre l’armement : ' + JSON.stringify(qr && [qr.debut, qr.fin]));
-    assert.ok(qr.debut >= repas.fin - 1e-6, 'mais après ses repas');
-    assert.ok(!r.anomalies.some(a => /QR\/@ARM/.test(a.message || '')), 'aucune alerte pour QR à l’armement');
-    // Armée, et cochée dans l'équipe de 14:00 : là, le handling l'attend.
-    const r2 = P.simuler({ vols, categories, bareme: { prepa: { '*/YC': 20 } }, ...chemins, ateliers: [mo, handling, armement([['AF/@ARM'], ['QR/@ARM']], { debut: '14:00' })] });
-    assert.ok(r2.lots.find(l => l.handling && l.vol === 'QR1').debut >= 14 * 60, 'armée, QR attend son armement');
-    // Le chemin que seule QR suivrait n'a pas besoin d'armement : rien à reprendre, rien de modifié.
+    const tx = r.lots.find(l => l.handling && l.vol === 'TX1'), repas = r.lots.find(l => l.classes.includes('TX/BC'));
+    assert.ok(tx && tx.debut < 9 * 60, 'TX est chargé sans attendre l’armement : ' + JSON.stringify(tx && [tx.debut, tx.fin]));
+    assert.ok(tx.debut >= repas.fin - 1e-6, 'mais après ses repas');
+    assert.ok(!r.classes.some(c => c.id === 'TX/@ARM'), 'pas de case TX à l’armement');
+    assert.ok(!r.anomalies.some(a => /TX\/@ARM/.test(a.message || '')), 'aucune alerte pour TX à l’armement');
+    // Cochée dans l'équipe de 09:00 : là, le handling l'attend.
+    const r2 = P.simuler({ ...opts, ateliers: [mo, handling, armement([['AF/@ARM'], ['TX/@ARM']], { debut: '09:00' })] });
+    assert.ok(r2.lots.find(l => l.handling && l.vol === 'TX1').debut >= 9 * 60, 'cochée dans l’équipe, TX attend son armement');
+    // Un chemin sans armement n'est pas « à reprendre », et relier l'armement ne l'y ajoute pas.
     const PC = require(dossier + '/parcours.js');
-    const etat = { ...JSON.parse(JSON.stringify(chemins)), categories: cat,
-      parcours: chemins.parcours.concat([{ id: 'qr', nom: 'QR', noeuds: ['prepa', 'quais'], liens: [{ de: 'prepa', vers: 'quais' }] }]), parcoursClasse: { 'QR/YC': 'qr' } };
-    const cls = P.classesDeVols(vols);
-    assert.ok(!PC.armementACorriger(etat, ['armement'], ['quais'], cls).some(x => x.parcours.id === 'qr'), 'le chemin de QR n’est pas « à reprendre »');
-    const avant = JSON.stringify(etat.parcours.find(p => p.id === 'qr'));
-    PC.integrerArmement(etat, ['armement'], ['quais'], cls);
-    assert.equal(JSON.stringify(etat.parcours.find(p => p.id === 'qr')), avant, 'l’intégration n’y touche pas');
-    // Sans la liste : il est à reprendre.
-    assert.ok(PC.armementACorriger({ ...etat, categories }, ['armement'], ['quais'], cls).some(x => x.parcours.id === 'qr' && x.raison === 'absent'));
+    const etat = { ...JSON.parse(JSON.stringify(chemins)), categories };
+    assert.deepEqual(PC.armementACorriger(etat, ['armement'], ['quais'], classes), [], 'la Business, sans armement, n’est pas à reprendre');
+    const bc = JSON.stringify(etat.parcours.find(p => p.id === 'bc'));
+    etat.parcours.find(p => p.id === 'eco').liens.push({ de: 'prepa', vers: 'armement' });
+    assert.deepEqual(PC.armementACorriger(etat, ['armement'], ['quais'], classes).map(x => [x.parcours.id, x.raison]), [['eco', 'autres']]);
+    assert.equal(PC.placerArmement(etat, ['armement'], ['quais'], classes), 1, 'seul le chemin de l’Éco change');
+    assert.deepEqual(etat.parcours.find(p => p.id === 'eco').liens.filter(l => l.de === 'armement' || l.vers === 'armement'), [{ de: 'armement', vers: 'quais' }]);
+    assert.equal(JSON.stringify(etat.parcours.find(p => p.id === 'bc')), bc, 'la Business reste sans armement');
+    // Encore dans aucun chemin (un armement qu'on met en place) : dans tous, pour commencer.
+    const neuf = { parcoursCabine: chemins.parcoursCabine, parcours: JSON.parse(JSON.stringify(chemins.parcours))
+      .map(p => ({ ...p, noeuds: p.noeuds.filter(n => n !== 'armement'), liens: p.liens.filter(l => l.de !== 'armement') })) };
+    assert.equal(PC.placerArmement(neuf, ['armement'], ['quais'], classes), 2);
+    assert.ok(neuf.parcours.every(p => p.liens.some(l => l.de === 'armement' && l.vers === 'quais')));
   });
 
   test(v + ' — le handling attend l’armement du vol', () => {
@@ -113,8 +123,8 @@ function verifier(dossier, v) {
     const f = E.ateliersVersClasseur(etat, ctx);
     // En heures par vol (08/10) ; l'aller-retour retrouve les minutes du site.
     const parCie = f.find(x => x.nom === 'Par compagnie');
-    assert.deepEqual(parCie.lignes[0], ['Service', 'Compagnie', 'Heures par vol', 'Armée']);
-    assert.deepEqual(parCie.lignes.slice(1), [['ARMEMENT', 'toutes', 0.1667, null], ['ARMEMENT', 'AF', 0.25, 'oui']]);
+    assert.deepEqual(parCie.lignes[0], ['Service', 'Compagnie', 'Heures par vol']);
+    assert.deepEqual(parCie.lignes.slice(1), [['ARMEMENT', 'toutes', 0.1667], ['ARMEMENT', 'AF', 0.25]]);
     const lu = E.classeurVersAteliers(await T.lireClasseur(T.ecrireClasseur(f)), etat, ctx);
     assert.deepEqual(lu.ajouteesAuto, [], 'une case d’armement n’est pas une classe à ajouter');
     assert.deepEqual(lu.etat.categories, categories);
@@ -122,11 +132,12 @@ function verifier(dossier, v) {
     const ancien = f.map(x => x.nom !== 'Par compagnie' ? x
       : { ...x, lignes: [['Service', 'Compagnie', 'Minutes par vol'], ['ARMEMENT', 'toutes', 10], ['ARMEMENT', 'AF', 15]] });
     assert.deepEqual(E.classeurVersAteliers(await T.lireClasseur(T.ecrireClasseur(ancien)), etat, ctx).etat.categories, categories);
-    // Une compagnie sans armement (08/10) : « Armée : non », et l'aller-retour la garde.
-    const etat2 = A.valider({ ...etat, categories: { armement: [{ ...categories.armement[0], sans: ['QR'] }] }, ateliers: [armement([['AF/@ARM']])] });
-    const f2 = E.ateliersVersClasseur(etat2, ctx);
-    assert.deepEqual(f2.find(x => x.nom === 'Par compagnie').lignes.slice(1), [['ARMEMENT', 'toutes', 0.1667, null], ['ARMEMENT', 'AF', 0.25, 'oui'], ['ARMEMENT', 'QR', null, 'non']]);
-    assert.deepEqual(E.classeurVersAteliers(await T.lireClasseur(T.ecrireClasseur(f2)), etat2, ctx).etat.categories.armement[0].sans, ['QR']);
+    // La case « Armée » d'un matin (08/10) ne sert plus : l'armement se déduit des chemins et des
+    // équipes. Une sauvegarde ou un classeur qui la portent se relisent, sans elle.
+    assert.deepEqual(A.valider({ ...etat, categories: { armement: [{ ...categories.armement[0], sans: ['QR'] }] } }).categories, categories);
+    const avecArmee = f.map(x => x.nom !== 'Par compagnie' ? x
+      : { ...x, lignes: [['Service', 'Compagnie', 'Heures par vol', 'Armée'], ['ARMEMENT', 'toutes', 0.1667, null], ['ARMEMENT', 'AF', 0.25, 'oui'], ['ARMEMENT', 'QR', null, 'non']] });
+    assert.deepEqual(E.classeurVersAteliers(await T.lireClasseur(T.ecrireClasseur(avecArmee)), etat, ctx).etat.categories, categories);
     assert.deepEqual(lu.etat.ateliers[0].lots, [['AF/@ARM'], ['QR/@ARM']]);
   });
 }

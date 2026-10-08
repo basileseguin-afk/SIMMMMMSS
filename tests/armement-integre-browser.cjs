@@ -1,8 +1,9 @@
-/* « L'intégrer à tous les chemins » n'apparaît que s'il y a vraiment à faire
- * (retour d'usage du 05/10 : « j'ai relié correctement, dans tous les chemins,
+/* Le bouton de l'armement n'apparaît que s'il y a vraiment à faire (retour
+ * d'usage du 05/10 : « j'ai relié correctement, dans tous les chemins,
  * l'armement vers le handling, et la fiche me le propose encore »). Seuls les
  * chemins que suivent les commandes comptent ; un lien vers UN handling suffit ;
- * sinon la fiche nomme le chemin à reprendre et pourquoi. v1 et v2. */
+ * sinon la fiche nomme le chemin à reprendre et pourquoi, et le relie au seul
+ * handling d'un clic. v1 et v2. */
 const assert=require('node:assert/strict'),path=require('node:path');
 const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
@@ -28,7 +29,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
      st.parcours.push({id:'modele',nom:'Modèle inutilisé',noeuds:['prepa','quais'],liens:[{de:'prepa',vers:'quais'}]});
      st.migrations=[...(st.migrations||[]),'armement-handling','handling-seul'];},''));
    let f=await fiche();
-   assert.match(await f.innerText(),/✓ Dans tous les chemins/,version+' : rien à intégrer');
+   assert.match(await f.innerText(),/✓ Dans chaque chemin qui passe par lui/,version+' : rien à intégrer');
    assert.equal(await f.locator('[data-mu-action=integrer-armement]').count(),0,version+' : pas de bouton');
 
    // Un chemin suivi où l'armement est aussi relié au Montage : la fiche le nomme.
@@ -38,7 +39,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.match(await f.innerText(),new RegExp('À reprendre dans ce chemin : « '+nomFlux+' » \\(relié aussi à Montage\\)'),version);
    await f.locator('[data-mu-action=integrer-armement]').click();await attendre();
    f=await fiche();
-   assert.match(await f.innerText(),/✓ Dans tous les chemins/,version+' : un clic le remet en ordre');
+   assert.match(await f.innerText(),/✓ Dans chaque chemin qui passe par lui/,version+' : un clic le remet en ordre');
   }
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('armement-integre-browser : ok');

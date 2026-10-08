@@ -5,6 +5,34 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-08 — L'armement se déduit des chemins et des équipes
+
+Retour d'usage : « pour les compagnies, fais plutôt comme ça : si aucune
+classe de la compagnie, qu'elle n'est dans aucun chemin et qu'aucun atelier
+de l'armement n'a la compagnie, pas besoin que le handling attende ».
+Remplace la case « Armée » de l'entrée suivante.
+
+- **Plus rien à cocher pour dire qu'une compagnie n'a pas d'armement.** Elle
+  en a un quand un de ses chemins passe par l'armement, ou qu'une équipe
+  d'armement l'a cochée. Sinon, elle n'en a pas :
+  - pas de case : rien à cocher, rien à remplir, aucune alerte ;
+  - le handling charge ses vols après leurs repas, sans l'attendre.
+- **Un chemin sans armement n'est plus « à reprendre »** : il dit que ses
+  compagnies n'en ont pas. Seul un armement mal relié (à la Prépa plutôt
+  qu'au handling) l'est encore ; le bouton le relie au seul handling, dans
+  ces chemins-là. Encore dans aucun chemin, la fiche propose de l'ajouter à
+  tous pour commencer, à retirer ensuite des compagnies qui n'en ont pas.
+- La fiche Armement nomme les compagnies sans armement (« Sans armement :
+  TX », et pourquoi). Elle signale aussi une compagnie cochée dans une
+  équipe alors qu'aucun de ses chemins ne passe par l'armement.
+- Les chemins ne bougent pas. Une sauvegarde ou un classeur avec la colonne
+  « Armée » se relisent : elle est ignorée.
+- Fichiers : `moteur/production.js` (`compagniesParService` lit aussi les
+  équipes), `parcours.js` (`armementACorriger`, `placerArmement`),
+  `ateliers.js`, `unite.js`, `unite.css`, `echanges.js` (v1 et v2) ; docs.
+- Tests : `sans-armement-browser` réécrit ; `armement-chemins-browser`,
+  `armement-integre-browser`, `categories-browser` et `categories` adaptés.
+
 ## 2026-10-08 — Nom d'équipe, services en parallèle, compagnies sans armement
 
 Retours d'usage : « le nom du premier atelier de la dotation est CRL, mais à
