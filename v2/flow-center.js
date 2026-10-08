@@ -5,6 +5,8 @@ const TYPES={personnel:{label:'Personnel du service',family:'human',color:'#167b
 const FAMILIES={all:'Tous',human:'Humains',material:'Matériels',matter:'Matières',information:'Informations',unclassified:'À classer'};
 const clone=x=>JSON.parse(JSON.stringify(x));
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* Un pictogramme de icones.js (exporter, importer, annuler…), au lieu d'un caractère. */
+const pic=nom=>root.OrlyIcones?root.OrlyIcones.ico(nom):'';
 const uid=()=> 'flow-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);
 const endpointId=(service,storage=null)=>JSON.stringify([service,storage]);
 /* Une annexe — « Armement 2 » — est un emplacement comme un autre : on doit
@@ -60,7 +62,7 @@ class FlowCenter{
    // Deux étapes faites à la chaîne par une même équipe : un seul bloc.
    groupes:()=>{const nom=id=>(fc.points.find(x=>x.owner===id&&x.service)||{}).label||id;
     return(fc.a.chaines?fc.a.chaines():[]).map(g=>({id:g.id,ids:[g.avant,g.service],
-     etiquettes:{[g.avant]:'⛓ à la chaîne → '+nom(g.service),[g.service]:'⛓ + '+nom(g.avant)+' à la chaîne · '+g.commandes+(g.commandes>1?' commandes':' commande')},
+     etiquettes:{[g.avant]:'à la chaîne → '+nom(g.service),[g.service]:'+ '+nom(g.avant)+' à la chaîne · '+g.commandes+(g.commandes>1?' commandes':' commande')},
      titre:g.equipes.map(n=>'« '+n+' »').join(', ')+' : '+nom(g.avant)+' + '+nom(g.service)+' d’un bloc.'}));},
    relier:(de,vers)=>{const type=document.getElementById('fc-graphe-type').value;
     const flow={id:uid(),type,from:endpointId(de),to:endpointId(vers),enabled:true,label:''};
@@ -86,7 +88,7 @@ class FlowCenter{
  }
  status(message){document.getElementById('fc-status').textContent=message;}
  build(){
-  this.host.innerHTML=`<div class="fc-heading"><div><p class="scope-badge">Qui livre qui, entre les services de l’unité</p></div><div class="fc-actions"><button class="btn btn-sm" id="fc-undo" title="Annuler la dernière modification">↶ Annuler</button><button class="btn btn-sm" id="fc-redo" title="Rétablir ce qui a été annulé">↷ Rétablir</button><button class="btn btn-sm" id="fc-export" title="Les liens entre services, dans un fichier">⇩ Liens</button><button class="btn btn-sm" id="fc-import-button" title="Réimporter un fichier de liens">⇧ Importer</button><input id="fc-import" type="file" accept=".json" hidden></div></div>
+  this.host.innerHTML=`<div class="fc-heading"><div><p class="scope-badge">Qui livre qui, entre les services de l’unité</p></div><div class="fc-actions"><button class="btn btn-sm" id="fc-undo" title="Annuler la dernière modification">${pic('annuler')}Annuler</button><button class="btn btn-sm" id="fc-redo" title="Rétablir ce qui a été annulé">${pic('retablir')}Rétablir</button><button class="btn btn-sm" id="fc-export" title="Les liens entre services, dans un fichier">${pic('telecharger')}Liens</button><button class="btn btn-sm" id="fc-import-button" title="Réimporter un fichier de liens">${pic('importer')}Importer</button><input id="fc-import" type="file" accept=".json" hidden></div></div>
    <div id="fc-status" role="status" aria-live="polite"></div>
    <section id="fc-lecture" class="fc-lecture" data-sous="u-lecture">
     <div id="fc-calcul" class="fc-calcul"></div>

@@ -90,7 +90,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // Le planning : la barre de la case a la teinte de la chaîne.
   await nav.aller(page,'at-planning');
   assert.ok(await page.locator('#at-planning .at-pl-lot.chaine').count()>=1);
-  assert.match(await page.locator('#at-planning').textContent(),/Montage AF ⛓ \+PRÉPA/i);
+  assert.match(await page.locator('#at-planning').textContent(),/Montage AF\s+\+PRÉPA/i);
 
   // 5. Revenir à deux cases : la Prépa d'AF est de nouveau « à faire ».
   await nav.aller(page,'at-equipes');
@@ -104,6 +104,15 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.find(a=>a.id==='mo').fusion='preparation';},''));
   await page.reload();await attendre();
   assert.equal((await kase('mo')).fusion,'preparation');
+
+  // 7. Prêt à simuler ? : la liste des services garde chaque nom en face de son
+  //    état. La mention « à la chaîne » prenait une troisième cellule de la
+  //    grille et décalait toutes les lignes suivantes (audit du 08/10).
+  await nav.aller(page,'mu-pas');
+  const lignes=await page.locator('.mu-pas-services li').evaluateAll(ls=>ls.map(li=>{const b=li.querySelector('button').getBoundingClientRect(),s=li.querySelector('span').getBoundingClientRect(),i=li.querySelector('i');
+    return {nom:li.querySelector('button').textContent.trim(),ecart:Math.abs(b.top-s.top),chaine:!!i,sous:i?i.getBoundingClientRect().top>=s.bottom-1&&Math.abs(i.getBoundingClientRect().left-s.left)<2:true};}));
+  assert.ok(lignes.some(l=>l.chaine),'une mention « à la chaîne » est là');
+  for(const l of lignes){assert.ok(l.ecart<3,l.nom+' : son état est en face');assert.ok(l.sous,l.nom+' : « à la chaîne » sous son état');}
 
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('fusion-browser : ok');

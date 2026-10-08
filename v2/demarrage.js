@@ -254,7 +254,7 @@
             <span class="acc-titre"><b>${esc(p.nom)}</b><em>${esc(p.resume)}</em></span>
             <span class="acc-etat ${t.etat}">${esc(MOTS[t.etat])}</span>
           </button>
-          <ul class="acc-lignes">${t.lignes.map(l => `<li class="${l.etat}"><span class="etape-etat ${l.etat}" aria-hidden="true">${ETATS[l.etat]}</span>${esc(l.texte)}</li>`).join('')}</ul>
+          <ul class="acc-lignes">${t.lignes.map(l => `<li class="${l.etat}"><span class="etape-etat ${l.etat}" aria-hidden="true">${l.etat === 'fait' ? icone('check') : l.etat === 'verifier' ? icone('alerte') : ETATS[l.etat]}</span>${esc(l.texte)}</li>`).join('')}</ul>
           <nav class="acc-pages" aria-label="Les pages de ${esc(p.nom)}">${pages}</nav>
         </article>`;
       };

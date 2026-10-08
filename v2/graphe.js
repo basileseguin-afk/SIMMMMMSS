@@ -421,15 +421,17 @@
 
     /* Un groupe se lit où que soient ses nœuds : un halo autour de chacun, un
      * trait épais de l'un à l'autre, et au-dessus de chacun ce qu'il fait avec
-     * l'autre (« ⛓ + Prépa à la chaîne »). Un grand cadre couvrirait aussi les
-     * services d'entre les deux. */
+     * l'autre (« + Prépa à la chaîne »), précédé de deux maillons. Un grand
+     * cadre couvrirait aussi les services d'entre les deux. */
     groupesSVG(groupes) {
+      const maillons = root.OrlyIcones ? root.OrlyIcones.TRAITS.chaine : '';
       return groupes.map(g => {
         const traits = g.ids.slice(1).map((id, i) => `<path class="gr-groupe-trait" d="${courbe(this.pos[g.ids[i]], this.pos[id], null, this.bas()).d}"/>`).join('');
         const halos = g.ids.map((id, i) => {
           const p = this.pos[id], t = (g.etiquettes || {})[id] || (i === 0 ? g.etiquette : '') || '';
           return `<rect class="gr-groupe-halo" x="${p.x - 7}" y="${p.y - 7}" width="${L + 14}" height="${H + 14}" rx="16"/>
-            ${t ? `<text class="gr-groupe-etiq" x="${p.x + 2}" y="${p.y - 11}">${esc(court(t, 38))}</text>` : ''}`;
+            ${t && maillons ? `<svg class="gr-groupe-ico" x="${p.x + 1}" y="${p.y - 22}" width="13" height="13" viewBox="0 0 24 24" aria-hidden="true">${maillons}</svg>` : ''}
+            ${t ? `<text class="gr-groupe-etiq" x="${p.x + (maillons ? 18 : 2)}" y="${p.y - 11}">${esc(court(t, 36))}</text>` : ''}`;
         }).join('');
         return `<g class="gr-groupe" data-groupe="${esc(g.id)}"><title>${esc(g.titre || g.etiquette || '')}</title>${traits}${halos}</g>`;
       }).join('');
@@ -486,7 +488,8 @@
       hote.classList.toggle('gr-hote-bas', bas);
       const bouton = hote.querySelector('[data-gr-sens]');
       if (bouton) {
-        bouton.innerHTML = bas ? '→ En ligne' : '↓ En étapes';
+        const I = root.OrlyIcones;
+        bouton.innerHTML = (I ? I.ico(bas ? 'fleche' : 'flecheBas') : '') + (bas ? 'En ligne' : 'En étapes');
         bouton.title = bas ? 'Disposer les services de gauche à droite, sur une ligne' : 'Disposer les services de haut en bas, une bande par étape : plus lisible quand il y en a beaucoup';
       }
       if (cadreEl) root.requestAnimationFrame(() => {

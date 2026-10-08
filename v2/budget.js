@@ -46,6 +46,8 @@
   const nombre = (v, def) => (v === '' || v === null || v === undefined || !Number.isFinite(+v) ? def : +v);
   const positif = (v, def) => { const n = nombre(v, def); return n === null || n === undefined ? n : Math.max(0, n); };
   const clone = o => JSON.parse(JSON.stringify(o));
+  /** Un pictogramme de icones.js (le chevron d'un service qui se déplie), au lieu d'un caractère. */
+  const pic = nom => (root.OrlyIcones ? root.OrlyIcones.ico(nom) : '');
 
   /** Relit des réglages (navigateur, sauvegarde) : ce qui manque prend la valeur d'exemple. */
   function valider(r) {
@@ -283,7 +285,7 @@
           <i class="base" style="width:${(l.base / max * 100).toFixed(1)}%"></i><i class="sup" style="width:${(l.sup / max * 100).toFixed(1)}%"></i>
           ${l.budget ? `<i class="repere" style="left:${(l.budget.montant / max * 100).toFixed(1)}%"></i>` : ''}</span>`;
         return `<tr class="bu-svc${ouvert ? ' ouvert' : ''}" data-bu-svc="${esc(l.id)}">
-            <th scope="row"><button type="button" class="bu-ouvrir" data-bu-ouvrir="${esc(l.id)}" aria-expanded="${ouvert}">${ouvert ? '▾' : '▸'} ${esc(l.nom)}</button>
+            <th scope="row"><button type="button" class="bu-ouvrir" data-bu-ouvrir="${esc(l.id)}" aria-expanded="${ouvert}">${pic(ouvert ? 'bas' : 'droite')}${esc(l.nom)}</button>
               <small>${pl(l.equipes.length, 'équipe')} · ${pl(l.equipes.reduce((n, e) => n + e.personnes, 0), 'personne')}</small></th>
             <td>${l.budget ? eur(l.budget.montant) + `<small>${l.mode === 'remplissage' ? 'au remplissage' : 'aux vols'}</small>` : '<small>pas de budget</small>'}</td>
             <td>${eur(l.base)}</td><td>${l.sup ? eur(l.sup) : '—'}</td><td><b>${eur(l.total)}</b></td>

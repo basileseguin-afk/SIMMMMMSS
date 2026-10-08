@@ -29,7 +29,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
      st.parcours.push({id:'modele',nom:'Modèle inutilisé',noeuds:['prepa','quais'],liens:[{de:'prepa',vers:'quais'}]});
      st.migrations=[...(st.migrations||[]),'armement-handling','handling-seul'];},''));
    let f=await fiche();
-   assert.match(await f.innerText(),/✓ Dans chaque chemin qui passe par lui/,version+' : rien à intégrer');
+   assert.match(await f.innerText(),/Dans chaque chemin qui passe par lui/,version+' : rien à intégrer');
+   assert.equal(await f.locator('.mu-arm-ok svg.ico').count(),1,version+' : la coche est un pictogramme');
    assert.equal(await f.locator('[data-mu-action=integrer-armement]').count(),0,version+' : pas de bouton');
 
    // Un chemin suivi où l'armement est aussi relié au Montage : la fiche le nomme.
@@ -39,7 +40,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.match(await f.innerText(),new RegExp('À reprendre dans ce chemin : « '+nomFlux+' » \\(relié aussi à Montage\\)'),version);
    await f.locator('[data-mu-action=integrer-armement]').click();await attendre();
    f=await fiche();
-   assert.match(await f.innerText(),/✓ Dans chaque chemin qui passe par lui/,version+' : un clic le remet en ordre');
+   assert.match(await f.innerText(),/Dans chaque chemin qui passe par lui/,version+' : un clic le remet en ordre');
   }
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('armement-integre-browser : ok');

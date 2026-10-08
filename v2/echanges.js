@@ -742,7 +742,7 @@
 
   /* ---- Horaires : l'heure de début de chaque case ------------------------
    * Une feuille à part, la seule à ouvrir pour décaler une équipe. Elle voyage
-   * seule (bouton « ⇩ Horaires ») ou dans le classeur complet. */
+   * seule (bouton « Horaires ») ou dans le classeur complet. */
 
   /** « J-1 », « J », « J+1 », « -1 » ou 0 : le décalage en jours, de -7 à +1
    *  (J+1 : une plonge qui lave le lendemain de l'arrivée des retours). */
@@ -819,7 +819,7 @@
         'Début : l’heure d’arrivée de l’équipe, en HH:MM (ex. 04:30).',
         'Jour : J le jour du départ des vols, J-1 la veille, J-2 l’avant-veille (jusqu’à J-7). Pour la plonge, le jour se compte depuis l’arrivée des retours : J-1, J ou J+1 (le lendemain).',
         'Le nom de l’atelier est la clé : ne le changez pas ici. Une ligne retirée laisse son atelier à son heure.',
-        'Réimportez avec « ⇧ Importer » : seules les heures changent, le reste de l’unité ne bouge pas. L’import est annulable.',
+        'Réimportez avec « Importer » : seules les heures changent, le reste de l’unité ne bouge pas. L’import est annulable.',
         'Une erreur, et rien n’est importé.'
       ])];
   }

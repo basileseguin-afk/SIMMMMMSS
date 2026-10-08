@@ -18,6 +18,8 @@
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   const uid = () => 'at-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
   const clone = x => JSON.parse(JSON.stringify(x));
+  /** Un pictogramme de icones.js (exporter, importer, annuler…), au lieu d'un caractère. */
+  const pic = (nom, classe) => (root.OrlyIcones ? root.OrlyIcones.ico(nom, classe) : '');
 
   const CLE = 'ory-ateliers-v1';
 
@@ -720,11 +722,11 @@
       this.a.hote().innerHTML = `
 <div class="at-tete">
   <div class="at-actions">
-    <button class="btn btn-sm" id="at-undo" title="Annuler la dernière modification">↶<span class="mot-outil"> Annuler</span></button>
-    <button class="btn btn-sm" id="at-redo" title="Rétablir ce qui a été annulé">↷<span class="mot-outil"> Rétablir</span></button>
-    <button class="btn btn-sm" id="at-export" title="Les cases, ce qu’elles préparent et les chemins, dans un classeur Excel">⇩ Cases et chemins</button>
-    <button class="btn btn-sm" id="at-export-horaires" title="L’heure de début de chaque case, dans un petit classeur Excel à modifier puis réimporter">⇩ Horaires</button>
-    <button class="btn btn-sm" id="at-import-btn" title="Réimporter un classeur de cases et chemins, ou d’horaires, modifié dans Excel">⇧ Importer</button>
+    <button class="btn btn-sm" id="at-undo" title="Annuler la dernière modification">${pic('annuler')}<span class="mot-outil">Annuler</span></button>
+    <button class="btn btn-sm" id="at-redo" title="Rétablir ce qui a été annulé">${pic('retablir')}<span class="mot-outil">Rétablir</span></button>
+    <button class="btn btn-sm" id="at-export" title="Les cases, ce qu’elles préparent et les chemins, dans un classeur Excel">${pic('telecharger')}Cases et chemins</button>
+    <button class="btn btn-sm" id="at-export-horaires" title="L’heure de début de chaque case, dans un petit classeur Excel à modifier puis réimporter">${pic('telecharger')}Horaires</button>
+    <button class="btn btn-sm" id="at-import-btn" title="Réimporter un classeur de cases et chemins, ou d’horaires, modifié dans Excel">${pic('importer')}Importer</button>
     <input id="at-import" type="file" accept=".xlsx,.json" hidden>
   </div>
 </div>
@@ -752,10 +754,10 @@
   <div class="rc-outils">
     <label class="rc-cherche">Chercher <input id="rc-filtre" type="search" placeholder="Case, service ou compagnie"></label>
     <span class="rc-fin"></span>
-    <button class="btn btn-sm" id="rc-undo" title="Annuler la dernière modification">↶ Annuler</button>
-    <button class="btn btn-sm" id="rc-redo" title="Rétablir ce qui a été annulé">↷ Rétablir</button>
-    <button class="btn btn-sm" id="rc-export" title="Toutes les cases dans un classeur Excel de paramétrage : jour, heure de départ, personnes, commandes dans l’ordre">⇩ Cases</button>
-    <button class="btn btn-sm" id="rc-import-btn" title="Réimporter le classeur des cases modifié">⇧ Importer</button>
+    <button class="btn btn-sm" id="rc-undo" title="Annuler la dernière modification">${pic('annuler')}Annuler</button>
+    <button class="btn btn-sm" id="rc-redo" title="Rétablir ce qui a été annulé">${pic('retablir')}Rétablir</button>
+    <button class="btn btn-sm" id="rc-export" title="Toutes les cases dans un classeur Excel de paramétrage : jour, heure de départ, personnes, commandes dans l’ordre">${pic('telecharger')}Cases</button>
+    <button class="btn btn-sm" id="rc-import-btn" title="Réimporter le classeur des cases modifié">${pic('importer')}Importer</button>
     <input id="rc-import" type="file" accept=".xlsx" hidden>
   </div>
   <p class="rc-legende"><span class="rc-deroule unique">tâche unique</span> une seule préparation, de son départ à sa fin ·
@@ -1005,7 +1007,7 @@
           let n = 0;
           this.changer(() => { n = PC.separerParCommande(this.state, sv, nomSv, this.classes); }, '');
           return this.rendre(nomSv + ' : ' + n + (n > 1 ? ' cases, une par commande' : ' case') + ', à l’heure de sa première vague. '
-            + 'Reprenez leurs effectifs et leurs heures (ou réimportez vos horaires : ⇧ Importer). « Annuler » revient en arrière.');
+            + 'Reprenez leurs effectifs et leurs heures (ou réimportez vos horaires : « Importer »). « Annuler » revient en arrière.');
         }
         case 'avant-fonte': {
           let copie = null;
@@ -1566,7 +1568,7 @@
       <button class="lien-discret" data-page="v-planche">Ouvrir la planche retour (Données) →</button>`
     : 'Les vols « RET » du programme importé, à leur heure d’arrivée, plus le délai après atterrissage.'}</p>
   <p class="mini-note at-retours-comparer">Pour choisir en connaissance de cause :
-    <button class="btn btn-sm" data-comparer-retours ${n ? '' : 'disabled title="Saisissez d’abord la planche retour (Vols › Planche retour)"'}>⇄ Comparer J+1 et planche retour</button></p>
+    <button class="btn btn-sm" data-comparer-retours ${n ? '' : 'disabled title="Saisissez d’abord la planche retour (Vols › Planche retour)"'}>${pic('echanger')}Comparer J+1 et planche retour</button></p>
   <label class="at-inline-champ">Délai après atterrissage (min)<input type="number" min="0" value="${m.delaiRetour}" data-at-champ="mat-delai"
     ${src === 'planche' ? 'disabled title="La planche donne déjà l’heure d’arrivée à l’unité"' : ''}></label>
 </div>`;
@@ -1712,11 +1714,11 @@
           <div class="at-lot-tete">
             <b>${i + 1}.</b>
             <span class="at-chips">${l.map(c => `<span class="at-lot-cmd"><button class="at-chip" data-at-action="classe-retirer" data-index="${i}" data-classe="${esc(c)}"
-              title="Retirer ${esc(P.libelleClasse(c))} de cette case">${esc(P.libelleClasse(c))} ×</button>${a.type === 'manuel' ? mm(c) : a.type === 'robot' ? db(c) : ''}</span>`).join('') || '<em>à renseigner</em>'}</span>
+              title="Retirer ${esc(P.libelleClasse(c))} de cette case">${esc(P.libelleClasse(c))}${pic('croix', 'ico-apres')}</button>${a.type === 'manuel' ? mm(c) : a.type === 'robot' ? db(c) : ''}</span>`).join('') || '<em>à renseigner</em>'}</span>
             <span class="at-lot-fin">${esc(this.finLot(a.id, i))}</span>
             <button class="btn btn-sm" data-at-action="lot-monter" data-index="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Plus tôt">↑</button>
             <button class="btn btn-sm" data-at-action="lot-descendre" data-index="${i}" ${i === a.lots.length - 1 ? 'disabled' : ''} aria-label="Plus tard">↓</button>
-            <button class="btn btn-sm" data-at-action="lot-retirer" data-index="${i}" aria-label="Retirer cette préparation">×</button>
+            <button class="btn btn-sm" data-at-action="lot-retirer" data-index="${i}" aria-label="Retirer cette préparation">${pic('croix')}</button>
           </div>
           <select class="at-lot-plus" data-at-champ="lot-ajout" data-index="${i}" aria-label="Préparer autre chose en même temps que la ligne ${i + 1}">
             <option value="">+ préparer en même temps…</option>
@@ -1893,7 +1895,7 @@
         <thead><tr><th scope="col">Compagnie</th><th scope="col">Vols</th>${extra ? extra.tete : ''}${cols.map(c => `<th scope="col">${esc(c.lib)}</th>`).join('')}${total ? '<th scope="col">Trajet</th>' : ''}<th></th></tr></thead><tbody>
         <tr class="at-cies-toutes"><th scope="row">Toutes les compagnies</th><td>—</td>${extra ? extra.toutes : ''}${cols.map(c => `<td>${champ(c, P.TOUTES, 'toutes les compagnies')}</td>`).join('')}${total ? `<td>${total(P.TOUTES)}</td>` : ''}<td></td></tr>
         ${liste.map(cie => `<tr><th scope="row">${esc(cie)}</th><td>${nbVols(cie) || '—'}</td>${extra ? extra.ligne(cie) : ''}${cols.map(c => `<td>${champ(c, cie, cie)}</td>`).join('')}${total ? `<td>${total(cie)}</td>` : ''}
-          <td>${propre(cie) ? `<button class="lien-discret" data-at-action="duree-retirer" data-cie="${esc(cie)}" title="Revenir aux temps de toutes les compagnies" aria-label="Revenir aux temps de toutes les compagnies pour ${esc(cie)}">×</button>` : ''}</td></tr>`).join('')}
+          <td>${propre(cie) ? `<button class="lien-discret" data-at-action="duree-retirer" data-cie="${esc(cie)}" title="Revenir aux temps de toutes les compagnies" aria-label="Revenir aux temps de toutes les compagnies pour ${esc(cie)}">${pic('croix')}</button>` : ''}</td></tr>`).join('')}
         </tbody></table></div>
         <p class="mini-note">Vide : le temps de « Toutes les compagnies ».
           <label class="at-inline">Ajouter une compagnie<input data-at-champ="cie-nouvelle" maxlength="40" placeholder="Ex. EZY"
@@ -2040,7 +2042,7 @@
         // Une équipe qui fait aussi l'étape d'avant, à la chaîne : son nom le dit, ses barres ont la teinte de la chaîne.
         const fu = (a.lots.find(l => l.fusion) || {}).fusion;
         const court = (t, n) => (t.length > n ? t.slice(0, n - 1) + '…' : t);
-        const nom = `<text class="at-pl-nom" x="8" y="${y + 13}">${esc(fu ? court(a.nom, 15) : a.nom)}${fu ? `<tspan class="at-pl-chaine"> ⛓ +${esc(court(nomSvc(fu), 9))}</tspan>` : ''}<title>${esc(a.nom)}${fu ? ' — fait aussi ' + esc(nomSvc(fu)) + ', à la chaîne' : ''}</title></text>`;
+        const nom = `<text class="at-pl-nom" x="8" y="${y + 13}">${esc(fu ? court(a.nom, 15) : a.nom)}${fu ? `<tspan class="at-pl-chaine"> +${esc(court(nomSvc(fu), 9))}</tspan>` : ''}<title>${esc(a.nom)}${fu ? ' — fait aussi ' + esc(nomSvc(fu)) + ', à la chaîne' : ''}</title></text>`;
         const lots = a.lots.map(l => {
           // Une mise à disposition n'a pas de durée : une barre de deux pixels
           // se lirait comme une fabrication minuscule. C'est un repère.
@@ -2050,7 +2052,7 @@
           const w = Math.max(2, x(l.fin) - x(l.debut));
           return att + `<rect class="at-pl-lot ${a.type === 'robot' ? 'robot' : ''}${l.fusion ? ' chaine' : ''}" x="${x(l.debut)}" y="${y + 3}" width="${w}" height="14" rx="3">
             <title>${esc(l.nom)}\n${P.hhmm(l.debut)} → ${P.hhmm(l.fin)} (${Math.round(l.duree)} min${l.arret ? ', dont ' + Math.round(l.arret) + ' min d’arrêt' : ''})${l.fusion
-              ? '\n⛓ À la chaîne : ' + esc(nomSvc(l.fusion)) + ' ' + Math.round(l.minutesFusion || 0) + ' min + ' + esc(nomSvc(a.service)) + ' ' + Math.round(l.minutesIci || 0) + ' min de travail' : ''}</title></rect>`;
+              ? '\nÀ la chaîne : ' + esc(nomSvc(l.fusion)) + ' ' + Math.round(l.minutesFusion || 0) + ' min + ' + esc(nomSvc(a.service)) + ' ' + Math.round(l.minutesIci || 0) + ' min de travail' : ''}</title></rect>`;
         }).join('');
         return nom + lots;
       }).join('');
@@ -2060,7 +2062,7 @@
         ${barres}
       </svg>
       <p class="mini-note">Barre pleine : l’équipe prépare. Barre fine devant : elle attend le service d’avant.${r.lots.some(l => l.fusion)
-        ? ' <span class="at-pl-legende-chaine">Barre rose ⛓ : deux étapes faites d’un bloc, à la chaîne.</span>' : ''}</p>`;
+        ? ' <span class="at-pl-legende-chaine">Barre rose : deux étapes faites d’un bloc, à la chaîne.</span>' : ''}</p>`;
     }
 
     /* ---- couverture par classe --------------------------------------- */
@@ -2328,7 +2330,7 @@
       const E = root.OrlyEchanges, T = root.OrlyTableur;
       T.telecharger('ory-cases-' + new Date().toISOString().slice(0, 10) + '.xlsx',
         T.ecrireClasseur(E.recapCasesVersClasseur(this.state, { services: this.a.services(), classes: this.classes, resultat: this.resultat })));
-      this.rendre('Cases exportées : modifiez jour, heure, personnes ou commandes dans Excel, puis « ⇧ Importer ».');
+      this.rendre('Cases exportées : modifiez jour, heure, personnes ou commandes dans Excel, puis « Importer ».');
     }
 
     async importerRecapCases(e) {
@@ -2354,7 +2356,7 @@
       const barre = ouvert ? '' : `<div class="at-barre"><span class="at-barre-fin"></span>${this.formAjout('commandes')}</div>`;
 
       const exclues = retirees.length ? `<p class="at-exclues">Retirées du programme :
-        ${retirees.map(c => `<button class="at-chip" data-at-action="classe-retablir" data-classe="${esc(c.id)}">${esc(c.id)} ↺</button>`).join(' ')}</p>` : '';
+        ${retirees.map(c => `<button class="at-chip" data-at-action="classe-retablir" data-classe="${esc(c.id)}" title="Remettre cette commande au programme">${pic('recommencer')}${esc(c.id)}</button>`).join(' ')}</p>` : '';
 
       if (!classes.length) {
         box.innerHTML = barre + ajout + exclues +

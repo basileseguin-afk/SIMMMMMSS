@@ -19,6 +19,8 @@
 (function (root) {
   'use strict';
   const P = root.MoteurProduction, PC = root.OrlyParcours;
+  /** Un pictogramme de icones.js (deux maillons, une alerte, une coche…), au lieu d'un caractère. */
+  const pic = (nom, classe) => (root.OrlyIcones ? root.OrlyIcones.ico(nom, classe) : '');
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const pl = (n, s, p) => n + ' ' + (n > 1 ? (p || s + 's') : s);
@@ -168,7 +170,7 @@
           : (NATURES.find(x => x.id === b.nature) || {}).court + (n ? ' · ' + pl(n, 'équipe') : '') + (b.passent && preparent(b.nature) ? ' · ' + pl(b.passent, 'commande') : '');
         return `<button type="button" class="mu-svc ${b.etat}${l.length ? ' en-chaine' : ''}${s.id === this.choisi ? ' actif' : ''}" data-mu-choisir="${esc(s.id)}" aria-current="${s.id === this.choisi}">
           <span class="mu-svc-ico" aria-hidden="true">${ico(s)}</span><span class="mu-svc-txt"><b>${esc(s.nom)}</b><small>${esc(sous)}</small>${l.length
-            ? `<i class="mu-svc-chaine" title="Fait d’un bloc, à la chaîne, par une même équipe">⛓ ${esc(l.join(' · '))} à la chaîne</i>` : ''}</span>
+            ? `<i class="mu-svc-chaine" title="Fait d’un bloc, à la chaîne, par une même équipe">${pic('chaine', 'ico-texte')} ${esc(l.join(' · '))} à la chaîne</i>` : ''}</span>
           <span class="mu-point ${b.etat}" title="${b.etat === 'afaire' ? esc(b.points.join(' · ')) : b.etat === 'ok' ? 'Complet' : 'Pas utilisé'}" aria-hidden="true"></span></button>`;
       }).join('') : '';
       const utilises = services.filter(s => bilans.get(s.id).etat !== 'libre'), libres = services.filter(s => bilans.get(s.id).etat === 'libre');
@@ -219,7 +221,7 @@
       // (le service a été retiré du flux avant que ses équipes ne les lâchent toutes seules).
       // Pendant la question qui suit un clic (« Ajouter … au flux ? »), elle seule parle.
       const perdues = preparent(b.nature) && !(this.question && this.question.service === s.id) ? PC.liberer(st, s.id, b.nature === 'categories' ? this.at.classes : classes, { essai: true }) : [];
-      const horsFlux = perdues.length ? `<div class="mu-q mu-hors-flux" role="alert"><p>⚠ ${perdues.length > 1 ? pl(perdues.length, 'commande') + ' sont encore cochées' : '1 commande est encore cochée'} ici
+      const horsFlux = perdues.length ? `<div class="mu-q mu-hors-flux" role="alert"><p>${pic('alerte', 'ico-texte')} ${perdues.length > 1 ? pl(perdues.length, 'commande') + ' sont encore cochées' : '1 commande est encore cochée'} ici
         (${esc(perdues.slice(0, 6).map(c => PC.etiquette(c)).join(', ') + (perdues.length > 6 ? '…' : ''))}), mais ${perdues.length > 1 ? 'leur flux ne passe' : 'son flux ne passe'} plus par ${esc(s.nom)}.</p>
         <div class="mu-q-gestes"><button class="btn btn-sm btn-play" type="button" data-mu-action="liberer">Les retirer de ses équipes</button></div></div>` : '';
       const aFaire = b.points.length ? `<ul class="mu-afaire">${b.points.map(p => `<li>${esc(P.enClair ? P.enClair(p) : p)}</li>`).join('')}</ul>` : '';
@@ -229,11 +231,11 @@
       const ch = PC.chaines(st, null, null);
       const cmds = g => g.commandes.slice(0, 6).map(c => PC.etiquette(c)).join(', ') + (g.commandes.length > 6 ? '…' : '');
       const eqs = g => g.equipes.map(a => '« ' + esc(a.nom) + ' »').join(', ');
-      const chaine = ch.filter(g => g.service === s.id).map(g => `<p><span class="mu-chaine-ico" aria-hidden="true">⛓</span>
+      const chaine = ch.filter(g => g.service === s.id).map(g => `<p><span class="mu-chaine-ico" aria-hidden="true">${pic('chaine')}</span>
           <span><b>${esc(this.nom(g.avant))} + ${esc(s.nom)}, à la chaîne.</b> ${eqs(g)} ${g.equipes.length > 1 ? 'font' : 'fait'} aussi ${esc(this.nom(g.avant))}
           pour ${pl(g.commandes.length, 'commande')} (${esc(cmds(g))}) : pour elles, ${esc(this.nom(g.avant))} n’a pas d’équipe à part.</span>
           <button class="btn btn-sm" type="button" data-mu-ouvrir="${esc(g.avant)}">Ouvrir ${esc(this.nom(g.avant))} →</button></p>`)
-        .concat(ch.filter(g => g.avant === s.id).map(g => `<p><span class="mu-chaine-ico" aria-hidden="true">⛓</span>
+        .concat(ch.filter(g => g.avant === s.id).map(g => `<p><span class="mu-chaine-ico" aria-hidden="true">${pic('chaine')}</span>
           <span><b>${esc(s.nom)} + ${esc(this.nom(g.service))}, à la chaîne.</b> Pour ${pl(g.commandes.length, 'commande')} (${esc(cmds(g))}), ${esc(s.nom)}
           est fait par ${eqs(g)}, au ${esc(this.nom(g.service))}, d’un bloc : pas besoin d’équipe ici pour elles. Sa fiche est plus bas : elle se règle ici comme au ${esc(this.nom(g.service))}.</span>
           <button class="btn btn-sm" type="button" data-mu-ouvrir="${esc(g.service)}">Ouvrir ${esc(this.nom(g.service))} →</button></p>`)).join('');
@@ -280,7 +282,7 @@
         equipes = b.cases.map(a => (a.type === 'manuel' || a.type === 'robot') ? this.equipe(a, calc.get(a.id), classes)
           : `<div class="mu-carte">${this.at.carte(a, calc.get(a.id), { cmd: null })}</div>`).join('')
           + (b.cases.length ? '' : '<p class="mini-note mu-vide">Aucune équipe pour l’instant.</p>')
-          + (chainees.length ? `<h4 class="mu-chainees">⛓ À la chaîne : ${chainees.length > 1 ? 'ces équipes font' : 'cette équipe fait'} aussi ${esc(s.nom)}</h4>`
+          + (chainees.length ? `<h4 class="mu-chainees">${pic('chaine', 'ico-texte')} À la chaîne : ${chainees.length > 1 ? 'ces équipes font' : 'cette équipe fait'} aussi ${esc(s.nom)}</h4>`
             + chainees.map(a => this.equipe(a, calc.get(a.id), classes, { depuis: s.id })).join('') : '')
           + `<p class="mu-ajout"><button class="btn btn-play btn-sm" type="button" data-mu-action="equipe">+ Ajouter une équipe</button>
              <span class="mini-note">une équipe du matin, de l’après-midi, de nuit… chacune avec son heure, ses personnes et ce qu’elle prépare</span></p>`;
@@ -348,7 +350,7 @@
       const ou = !handlings.length ? ''
         : aCorriger.length ? `<p class="mini-note mu-arm-reprendre">À reprendre dans ${aCorriger.length > 1 ? 'ces chemins' : 'ce chemin'} : ${liste}.
           <button class="btn btn-sm btn-play" type="button" data-mu-action="integrer-armement">Le relier au seul handling</button></p>`
-        : dans ? `<p class="mini-note mu-arm-ok">✓ Dans chaque chemin qui passe par lui, en branche à part, relié seulement au handling.</p>`
+        : dans ? `<p class="mini-note mu-arm-ok">${pic('check', 'ico-texte')} Dans chaque chemin qui passe par lui, en branche à part, relié seulement au handling.</p>`
         : `<p class="mini-note mu-arm-aucun">Aucun chemin ne passe encore par ${esc(s.nom)}.
           <button class="btn btn-sm btn-play" type="button" data-mu-action="integrer-armement">L’ajouter à tous les chemins, relié au handling</button>
           Retirez-le ensuite du chemin des compagnies qui n’ont pas d’armement.</p>`;
@@ -443,10 +445,10 @@
       const cond = a.condition, etat = cond && this.at.etatCondition ? this.at.etatCondition(a) : null;
       const ligne = a.type === 'robot' && this.at.robotsDeLigne ? this.at.robotsDeLigne(a).filter(x => x !== a) : [];
       // Vue depuis l'étape qu'elle absorbe : on dit d'où elle vient.
-      const badges = (o.depuis ? `<span class="mu-badge chaine" title="Équipe du ${esc(this.nom(a.service))} : elle fait ${esc(avec)} + ${esc(this.nom(a.service))} d’un bloc. La modifier ici la modifie aussi au ${esc(this.nom(a.service))}.">⛓ équipe du ${esc(this.nom(a.service))} · ${esc(avec)} + ${esc(this.nom(a.service))} à la chaîne</span>`
+      const badges = (o.depuis ? `<span class="mu-badge chaine" title="Équipe du ${esc(this.nom(a.service))} : elle fait ${esc(avec)} + ${esc(this.nom(a.service))} d’un bloc. La modifier ici la modifie aussi au ${esc(this.nom(a.service))}.">${pic('chaine', 'ico-texte')} équipe du ${esc(this.nom(a.service))} · ${esc(avec)} + ${esc(this.nom(a.service))} à la chaîne</span>`
           + ` <button type="button" class="lien-discret" data-mu-ouvrir="${esc(a.service)}">la voir au ${esc(this.nom(a.service))} →</button>`
-        : avec ? `<span class="mu-badge chaine" title="Cette équipe fait aussi ${esc(avec)}, d’un bloc, pour ses commandes">⛓ + ${esc(avec)} à la chaîne</span>` : '')
-        + (ligne.length ? `<span class="mu-badge ligne" title="Une seule ligne robot : ces équipes ne tournent pas en même temps">⇄ ligne partagée avec ${ligne.map(x => '« ' + esc(x.nom) + ' »').join(', ')}</span>` : '')
+        : avec ? `<span class="mu-badge chaine" title="Cette équipe fait aussi ${esc(avec)}, d’un bloc, pour ses commandes">${pic('chaine', 'ico-texte')} + ${esc(avec)} à la chaîne</span>` : '')
+        + (ligne.length ? `<span class="mu-badge ligne" title="Une seule ligne robot : ces équipes ne tournent pas en même temps">${pic('echanger', 'ico-texte')} ligne partagée avec ${ligne.map(x => '« ' + esc(x.nom) + ' »').join(', ')}</span>` : '')
         + (cond ? `<span class="mu-badge cond${etat && !etat.remplie ? ' off' : ''}" title="Elle ne travaille que certains jours, selon le nombre de vols">⚡ si ${esc(cond.cie === '*' ? 'toutes compagnies' : cond.cie)} ≥ ${cond.seuil} ${cond.mesure === 'repas' ? 'repas' : 'vols'}${etat ? (etat.remplie ? ' · travaille aujourd’hui' : ' · pas aujourd’hui') : ''}</span>` : '');
       const fusion = a.type === 'manuel' && this.at.blocFusion ? this.at.blocFusion(a) : '';
       // Une catégorie d'un service (« AF Trolleys bar ») n'a pas d'autre chemin que lui : pas de lien.
@@ -462,7 +464,7 @@
           ${this.at.choixEffectifEquipe(a, 'mu-eq-eff')}
           ${a.type === 'robot' ? `<label class="mu-eq-pers">Plateaux / h<input type="number" min="1" value="${a.debit}" data-at-champ="debit"></label>
           <label class="mu-eq-pers" title="Sous ce nombre de personnes, le robot ne tourne pas">Minimum pour tourner<input type="number" min="0" max="99" value="${a.personnesMin ?? 1}" data-at-champ="personnesMin"></label>
-          ${(+a.personnes || 0) < (a.personnesMin ?? 1) ? `<span class="mu-badge cond off" role="status">⚠ à l’arrêt : ${+a.personnes || 0} pers. pour un minimum de ${a.personnesMin ?? 1}</span>` : ''}` : ''}
+          ${(+a.personnes || 0) < (a.personnesMin ?? 1) ? `<span class="mu-badge cond off" role="status">${pic('alerte', 'ico-texte')} à l’arrêt : ${+a.personnes || 0} pers. pour un minimum de ${a.personnesMin ?? 1}</span>` : ''}` : ''}
           <span class="mu-eq-fin">${fin ? 'finit à ' + esc(fin) : a.lots.length ? '' : ''}</span>
         </div>
         <p class="mu-question">Ce qu’elle prépare <small>cochez ; l’ordre suit les départs, la plus pressée d’abord</small></p>
@@ -576,9 +578,9 @@
         // que le Montage pour elles) — ni cochées, ni cochables d'ici.
         const seulementIci = a && a.fusion && !PC.passePar(this.etat, id, a.fusion);
         if (o.depuis && seulementIci) x = { etat: 'hors', par: null, montageSeul: true };
-        // Vue de son service : ⛓ sur les commandes qu'elle fait à la chaîne.
+        // Vue de son service : deux maillons sur les commandes qu'elle fait à la chaîne.
         const enChaine = !o.depuis && a && a.fusion && x.etat === 'ici' && !seulementIci;
-        const marque = enChaine ? '<i class="mu-chez mu-chez-chaine">⛓</i>' : x.horsFlux ? '<i class="mu-chez">⚠</i>' : x.etat === 'ailleurs' ? `<i class="mu-chez">${esc(initiales(x.par.nom))}</i>` : x.etat === 'chaine' ? '<i class="mu-chez">⛓</i>' : x.etat === 'attendue' ? '<i class="mu-chez">!</i>' : '';
+        const marque = enChaine ? `<i class="mu-chez mu-chez-chaine">${pic('chaine')}</i>` : x.horsFlux ? `<i class="mu-chez">${pic('alerte')}</i>` : x.etat === 'ailleurs' ? `<i class="mu-chez">${esc(initiales(x.par.nom))}</i>` : x.etat === 'chaine' ? `<i class="mu-chez">${pic('chaine')}</i>` : x.etat === 'attendue' ? '<i class="mu-chez">!</i>' : '';
         // Hors de son flux : pas cochable. Le flux décide par où passe une commande ;
         // on y ajoute le service (« Faire passer un flux par ici »), puis on coche.
         const bloquee = x.etat === 'chaine' || (a && x.etat === 'hors');
@@ -654,13 +656,13 @@
       const ch = PC.chaines(this.etat, null, null);
       const lies = id => ch.filter(g => g.service === id).map(g => '+ ' + this.nom(g.avant)).concat(ch.filter(g => g.avant === id).map(g => 'avec ' + this.nom(g.service)));
       this.poser(box, `<ol class="mu-pas-liste">${l.map(e => `<li class="mu-pas-etape ${e.etat}">
-        <span class="mu-pas-num" aria-hidden="true">${e.etat === 'ok' ? '✓' : e.num}</span>
+        <span class="mu-pas-num" aria-hidden="true">${e.etat === 'ok' ? pic('check') : e.num}</span>
         <div class="mu-pas-corps"><h3>${esc(e.titre)} <span class="mu-pas-etat ${e.etat}">${mots[e.etat]}</span></h3>
           <p>${esc(e.texte)}</p>
           ${e.commandes && e.commandes.length ? `<ul class="mu-pas-cmds">${e.commandes.map(c => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}
           ${e.services ? `<ul class="mu-pas-services">${e.services.map(x => `<li class="${x.etat}"><button type="button" class="lien-discret" data-mu-ouvrir="${esc(x.id)}">${esc(x.nom)}</button>
             <span>${x.points.length ? esc(x.points.map(p => P.enClair ? P.enClair(p) : p).join(' · ')) : 'complet'}</span>${lies(x.id).length
-              ? `<i class="mu-svc-chaine">⛓ ${esc(lies(x.id).join(' · '))} à la chaîne</i>` : ''}</li>`).join('')}</ul>` : ''}
+              ? `<i class="mu-svc-chaine">${pic('chaine', 'ico-texte')} ${esc(lies(x.id).join(' · '))} à la chaîne</i>` : ''}</li>`).join('')}</ul>` : ''}
           ${e.geste ? `<button type="button" class="btn btn-sm${e.etat === 'afaire' ? ' btn-play' : ''}" data-page="${e.geste.page}">${esc(e.geste.texte)} →</button>` : ''}</div></li>`).join('')}</ol>`);
     }
 
@@ -869,7 +871,7 @@
         return `<button type="button" class="mu-svc ${n ? 'ok' : 'libre'}${ch.length ? ' en-chaine' : ''}${t.id === this.fluxChoisi ? ' actif' : ''}" data-mu-flux-choisir="${esc(t.id)}" aria-current="${t.id === this.fluxChoisi}">
           <span class="mu-svc-ico" aria-hidden="true">${I ? I.ico('fleche') : ''}</span>
           <span class="mu-svc-txt"><b>${esc(t.nom)}</b><small>${pl(n, 'commande')}${cabs.length ? ' · flux des ' + cabs.map(c => (P.NOM_CABINE || {})[c] || c).join(', ') : t.auto ? ' · variante' : ''}</small>${ch.length
-            ? `<i class="mu-svc-chaine" title="Fait d’un bloc, à la chaîne, par une même équipe">⛓ ${esc(ch.join(' · '))} à la chaîne</i>` : ''}</span></button>`;
+            ? `<i class="mu-svc-chaine" title="Fait d’un bloc, à la chaîne, par une même équipe">${pic('chaine', 'ico-texte')} ${esc(ch.join(' · '))} à la chaîne</i>` : ''}</span></button>`;
       };
       const principaux = types.filter(t => !t.auto), variantes = types.filter(t => t.auto);
       const liste = `<nav class="mu-liste" aria-label="Les flux de production">
@@ -1227,7 +1229,7 @@
           const t = flux(); if (!t) return [];
           const cmds = PC.commandesDuType(u.etat, t.id, u.at.classes).map(c => c.id);
           return PC.chaines(u.etat, t, cmds).map(g => ({ id: g.id, ids: [g.avant, g.service],
-            etiquettes: { [g.avant]: '⛓ à la chaîne → ' + u.nom(g.service), [g.service]: '⛓ + ' + u.nom(g.avant) + ' à la chaîne · ' + g.commandes.length + '/' + cmds.length },
+            etiquettes: { [g.avant]: 'à la chaîne → ' + u.nom(g.service), [g.service]: '+ ' + u.nom(g.avant) + ' à la chaîne · ' + g.commandes.length + '/' + cmds.length },
             titre: g.equipes.map(a => '« ' + a.nom + ' »').join(', ') + ' : ' + u.nom(g.avant) + ' + ' + u.nom(g.service) + ' d’un bloc, pour '
               + g.commandes.map(c => PC.etiquette(c)).join(', ') + '.' }));
         },

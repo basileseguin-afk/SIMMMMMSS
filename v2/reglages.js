@@ -27,6 +27,8 @@
 
   const CLE = 'ory-modele-v1';
   const clone = x => JSON.parse(JSON.stringify(x));
+  /** Un pictogramme de icones.js (exporter, importer, annuler…), au lieu d'un caractère. */
+  const pic = nom => (root.OrlyIcones ? root.OrlyIcones.ico(nom) : '');
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -190,8 +192,8 @@
                 peut avoir la sienne.</p>
               <p>Un service marqué « à remplir » travaillerait sans aucun temps. Une salle annexe reprend
                 les chiffres du service dont elle dépend.</p>
-              <p><b>⇩ Excel</b> donne le tableau à remplir, une ligne par repas et par service de son
-                chemin ; <b>Importer</b> reprend l’étude entière d’un coup.</p>
+              <p>${pic('telecharger')} <b>Temps de travail</b> donne le tableau à remplir dans Excel, une ligne par repas
+                et par service de son chemin ; ${pic('importer')} <b>Importer</b> reprend l’étude entière d’un coup.</p>
             </span></details></div>
           <p class="rg-exemple" aria-label="Exemple : 1 heure de travail pour un vol, à 2 personnes, prend 30 minutes.">
             <span class="rg-eq">${root.OrlyIcones ? root.OrlyIcones.ico('chrono') : ''}<b>1 h</b><small>de travail pour un vol</small></span>
@@ -202,10 +204,10 @@
           <p class="rg-codes">${P.CABINES.map(c => `<span><span class="puce-classe" data-cab="${c}"></span>${esc((P.NOM_CABINE || {})[c] || c)}</span>`).join('')}<em>heures de travail pour un vol</em></p>
           <div id="rg-alerte"></div>
           <div class="rg-actions">
-            <button class="btn btn-sm" id="rg-undo" title="Annuler la dernière modification">↶ Annuler</button>
-            <button class="btn btn-sm" id="rg-redo" title="Rétablir ce qui a été annulé">↷ Rétablir</button>
-            <button class="btn btn-sm" id="rg-export" title="Les temps de travail (heures par vol) et les réglages du rythme, dans un classeur Excel prêt à remplir">⇩ Temps de travail</button>
-            <button class="btn btn-sm" id="rg-import-btn" title="Réimporter un classeur (ou un CSV) de temps de travail modifié">⇧ Importer</button>
+            <button class="btn btn-sm" id="rg-undo" title="Annuler la dernière modification">${pic('annuler')}Annuler</button>
+            <button class="btn btn-sm" id="rg-redo" title="Rétablir ce qui a été annulé">${pic('retablir')}Rétablir</button>
+            <button class="btn btn-sm" id="rg-export" title="Les temps de travail (heures par vol) et les réglages du rythme, dans un classeur Excel prêt à remplir">${pic('telecharger')}Temps de travail</button>
+            <button class="btn btn-sm" id="rg-import-btn" title="Réimporter un classeur (ou un CSV) de temps de travail modifié">${pic('importer')}Importer</button>
             <input id="rg-import" type="file" accept=".xlsx,.csv,.json" hidden>
           </div>
           <div id="rg-bareme"></div>
@@ -222,8 +224,8 @@
               <p>Changer une case donne à cette compagnie × classe sa valeur propre ; la vider la ramène à la
                 valeur « toutes compagnies » de sa classe. Une valeur fixée dans une case d’équipe prime pour
                 cette équipe : elle se change dans la case.</p>
-              <p><b>⇩ Heures de travail</b> donne ce même tableau dans Excel, pour les grosses modifications ;
-                <b>⇧ Importer</b> le reprend.</p>
+              <p>${pic('telecharger')} <b>Heures de travail</b> donne ce même tableau dans Excel, pour les grosses modifications ;
+                ${pic('importer')} <b>Importer</b> le reprend.</p>
             </span></details></div>
           <div class="rg-actions rg-recap-outils">
             <div class="rg-mode" role="group" aria-label="Valeurs montrées">
@@ -232,10 +234,10 @@
             </div>
             <label class="rg-recap-cherche">Chercher <input id="rg-recap-filtre" type="search" placeholder="Compagnie : AF, TX…"></label>
             <span class="rg-recap-fin"></span>
-            <button class="btn btn-sm" id="rg-recap-undo" title="Annuler la dernière modification">↶ Annuler</button>
-            <button class="btn btn-sm" id="rg-recap-redo" title="Rétablir ce qui a été annulé">↷ Rétablir</button>
-            <button class="btn btn-sm" id="rg-recap-export" title="Le tableau des heures de travail dans un classeur Excel, à modifier puis réimporter">⇩ Heures de travail</button>
-            <button class="btn btn-sm" id="rg-recap-import-btn" title="Réimporter le classeur des heures de travail modifié">⇧ Importer</button>
+            <button class="btn btn-sm" id="rg-recap-undo" title="Annuler la dernière modification">${pic('annuler')}Annuler</button>
+            <button class="btn btn-sm" id="rg-recap-redo" title="Rétablir ce qui a été annulé">${pic('retablir')}Rétablir</button>
+            <button class="btn btn-sm" id="rg-recap-export" title="Le tableau des heures de travail dans un classeur Excel, à modifier puis réimporter">${pic('telecharger')}Heures de travail</button>
+            <button class="btn btn-sm" id="rg-recap-import-btn" title="Réimporter le classeur des heures de travail modifié">${pic('importer')}Importer</button>
             <input id="rg-recap-import" type="file" accept=".xlsx,.csv" hidden>
           </div>
           <p class="rg-recap-legende" aria-hidden="true"><span class="rgr propre">valeur propre</span><span class="rgr commun">toutes compagnies</span>
@@ -788,7 +790,7 @@
     exporterRecap() {
       const E = root.OrlyEchanges, T = root.OrlyTableur;
       T.telecharger('ory-heures-travail-' + new Date().toISOString().slice(0, 10) + '.xlsx', T.ecrireClasseur(E.recapVersClasseur(this.contexteRecap())));
-      this.rendre('Heures de travail exportées : modifiez-les dans Excel, puis « ⇧ Importer ».');
+      this.rendre('Heures de travail exportées : modifiez-les dans Excel, puis « Importer ».');
     }
 
     async importerRecap(e) {

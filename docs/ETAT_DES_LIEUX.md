@@ -35,7 +35,9 @@ Deux assistants travaillent en parallèle sur cette branche : **Claude** et
 >
 > **Avant — bureau seulement, thème clair seulement.** Le thème sombre et la
 > version téléphone sont abandonnés (décision de Basile) : un seul thème, et une
-> mise en page pour écrans de bureau à partir de 1 024 px de large.
+> mise en page pour écrans de bureau à partir de 1 024 px de large. (Le 08/10,
+> avec la refonte, le thème sombre revient en option ; le clair reste celui
+> par défaut.)
 >
 > **Avant — des diagrammes de nœuds.** Les chemins des repas et les liens de
 > l'unité se dessinent : chaque service est un nœud, on tire un trait d'un

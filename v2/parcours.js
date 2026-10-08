@@ -26,6 +26,8 @@
 
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  /** Un pictogramme de icones.js (une coche, deux maillons…), au lieu d'un caractère. */
+  const pic = (nom, classe) => (root.OrlyIcones ? root.OrlyIcones.ico(nom, classe) : '');
   const uid = () => 'pc-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
   const texte = (v, max) => String(v ?? '').trim().slice(0, max);
 
@@ -648,7 +650,7 @@
    * L'inverse, pour un service qui prépare commande par commande (la cuisine)
    * et qu'une mise à disposition a remplacé : une case par commande dont le
    * chemin passe par lui, à l'heure de sa première vague. Effectif, man-minutes
-   * et heures propres sont à reprendre (ou à réimporter : ⇧ Horaires).
+   * et heures propres sont à reprendre (ou à réimporter : « Horaires »).
    * @returns {number} le nombre de cases créées
    */
   function separerParCommande(etat, service, nomService, classes) {
@@ -1653,7 +1655,7 @@
         const p = fluxDe(etat, c), on = this.cmd === c.id, v = par[c.id] || {};
         const propre = !!cheminDe(etat, c.id);
         const marque = !p ? '' : v.fin == null ? '<span class="pc-cmd-etat afaire" title="Pas encore prête">·</span>'
-          : v.aHeure ? '<span class="pc-cmd-etat ok" title="Prête à l’heure">✓</span>'
+          : v.aHeure ? '<span class="pc-cmd-etat ok" title="Prête à l’heure">' + pic('check') + '</span>'
           : `<span class="pc-cmd-etat retard" title="${Math.round(v.retard)} min de retard">!</span>`;
         return tete + `<li data-cmd="${esc(c.id)}" data-cie="${esc(c.cie)}"><button class="pc-cmd${on ? ' actif' : ''}${p ? '' : ' sans'}" data-pc-action="cmd"
           data-classe="${esc(c.id)}"${on ? ' aria-current="true"' : ''}>
@@ -1762,7 +1764,7 @@
       return `<div class="pc-besoins" role="group" aria-label="Ce dont ce chemin a besoin"><span class="pc-besoins-lab">Besoin de</span>
         ${dispos.map(x => { const oui = dedans.has(x.id);
           return `<button class="pc-besoin${oui ? ' oui' : ''}" data-pc-action="besoin" data-service="${esc(x.id)}" aria-pressed="${oui}"
-            title="${oui ? 'Oui : ' + esc(x.nom) + ' sert cette commande. Cliquer pour retirer.' : 'Non. Cliquer pour qu’' + esc(x.nom) + ' serve cette commande.'}">${oui ? '✓ ' : ''}${esc(x.nom)}</button>`; }).join('')}
+            title="${oui ? 'Oui : ' + esc(x.nom) + ' sert cette commande. Cliquer pour retirer.' : 'Non. Cliquer pour qu’' + esc(x.nom) + ' serve cette commande.'}">${oui ? pic('check') : ''}${esc(x.nom)}</button>`; }).join('')}
         <span class="mini-note">une seule case par poste, qui sert toutes les commandes à la fois, comme une boutique</span></div>`;
     }
 
@@ -1826,7 +1828,7 @@
     groupesDiagramme() {
       const etat = this.a.etat(), p = this.parcoursActif(etat); if (!p) return [];
       const noms = g => this.nom(g.avant) + ' + ' + this.nom(g.service);
-      const etiquettes = (g, fin) => ({ [g.avant]: '⛓ à la chaîne → ' + this.nom(g.service), [g.service]: '⛓ + ' + this.nom(g.avant) + ' à la chaîne' + fin });
+      const etiquettes = (g, fin) => ({ [g.avant]: 'à la chaîne → ' + this.nom(g.service), [g.service]: '+ ' + this.nom(g.avant) + ' à la chaîne' + fin });
       if (this.cmd) return chaines(etat, p, [this.cmd]).map(g => ({ id: g.id, ids: [g.avant, g.service],
         etiquettes: etiquettes(g, ' · « ' + g.equipes[0].nom + ' »'),
         titre: 'Pour ' + this.lib(this.cmd) + ', l’équipe « ' + g.equipes[0].nom + ' » fait ' + noms(g) + ' d’un bloc : pas de case à part pour ' + this.nom(g.avant) + '.' }));
@@ -1933,7 +1935,7 @@
         const fu = !a0 || !fabrique(a0) ? fusionneePar(etat, s, this.cmd) : null;
         if (fu) {
           const fiche = this.a.fiche ? this.a.fiche(fu.id, this.cmd) : '';
-          return `<p class="pc-pan-tete pc-pan-chaine">${ico}<b>${esc(this.nom(s))}</b><span>⛓ faite <b>à la chaîne</b> par la case « ${esc(fu.nom)} » de ${esc(this.nom(fu.service))} :
+          return `<p class="pc-pan-tete pc-pan-chaine">${ico}<b>${esc(this.nom(s))}</b><span>${pic('chaine', 'ico-texte')} faite <b>à la chaîne</b> par la case « ${esc(fu.nom)} » de ${esc(this.nom(fu.service))} :
             une personne dresse et passe le plat, l’autre monte directement.</span></p>
             ${this.dansLeTemps(s)}
             <div class="row-btns pc-case-outils"><span class="mini-note">Pour la faire à part, décochez « à la chaîne » dans cette case.</span><span class="pc-outils-fin"></span>${gestes}</div>
@@ -1947,7 +1949,7 @@
           : a.type === 'lavage' ? `« ${esc(a.nom)} » lave pour toutes les commandes`
           : a.type === 'handling' ? `« ${esc(a.nom)} » charge les vols de toutes les commandes, vol par vol dans l’ordre des départs`
           : `case « ${esc(a.nom)} »${autres.length ? ' — partagée avec ' + esc(autres.map(etiquette).join(', ')) : ''}`
-            + ((a.type === 'manuel' || !a.type) && a.fusion && a.fusion !== s ? ` <b class="pc-chaine-mot">⛓ fait aussi ${esc(this.nom(a.fusion))}, à la chaîne</b>` : '');
+            + ((a.type === 'manuel' || !a.type) && a.fusion && a.fusion !== s ? ` <b class="pc-chaine-mot">${pic('chaine', 'ico-texte')} fait aussi ${esc(this.nom(a.fusion))}, à la chaîne</b>` : '');
         const choix = !a || fabrique(a) ? `<label class="pc-case-choix">Case de ${esc(lib)} ici
           <select data-pc-champ="case" data-service="${esc(s)}" aria-label="Case de ${esc(lib)} dans ${esc(this.nom(s))}">
             <option value="" ${a ? '' : 'selected'}>— aucune —</option>
@@ -1975,7 +1977,7 @@
       return `<div class="pc-panneau pc-renvoi">${I ? I.ico('info') : ''}<span>La case de <b>${esc(this.nom(s))}</b> est ouverte à droite. Fermez-la (× ou Échap) pour revenir à la liste des commandes.</span></div>
         <aside class="pc-tiroir" role="dialog" aria-label="${esc(this.nom(s))} : sa case">
           <div class="pc-tiroir-tete"><span>${this.cmd ? `<span class="puce-classe" data-cab="${esc(this.cmd.split('/').pop())}"></span>${esc(this.lib(this.cmd))}` : 'Modèle'}</span>
-            <button class="pc-tiroir-fermer" data-pc-action="fermer" aria-label="Fermer la case" title="Fermer (Échap)">×</button></div>
+            <button class="pc-tiroir-fermer" data-pc-action="fermer" aria-label="Fermer la case" title="Fermer (Échap)">${pic('croix')}</button></div>
           ${this.panneau(etat, classes, p)}
         </aside>`;
     }
@@ -2135,7 +2137,7 @@
           return `<td class="qf-c${hors ? ' hors' : ''}"><button class="qf-case ${hors ? 'alerte' : 'ok'}" ${attrs}
             title="${hors ? esc(P.libelleClasse(c.id)) + ' ne passe pas par ' + esc(this.nom(s)) + ' selon son chemin : ce travail n’est attendu par personne'
               : k.fusion ? 'Faite à la chaîne par ' + esc(nomAt(k.ateliers[0])) + ' (' + esc(this.nom(k.fusion)) + ')' + (h ? ' · ' + h : '') : esc(nomAt(k.ateliers[0])) + (h ? ' · ' + h : '')}">
-            <span class="qf-nom">${hors ? '⚠ ' : ''}${esc(nomAt(k.ateliers[0]))}${plus}</span>${k.fusion ? '<small class="qf-chaine">à la chaîne</small>' : h ? `<small>${h}</small>` : ''}</button></td>`;
+            <span class="qf-nom">${hors ? pic('alerte', 'ico-texte') : ''}${esc(nomAt(k.ateliers[0]))}${plus}</span>${k.fusion ? '<small class="qf-chaine">à la chaîne</small>' : h ? `<small>${h}</small>` : ''}</button></td>`;
         }).join('');
         const v = par[c.id] || {};
         const fin = v.absente || v.fin == null ? '<span class="qf-etat manque">pas encore prête</span>'
@@ -2145,7 +2147,7 @@
           <th scope="row"><div class="qf-id"><b><span class="puce-classe" data-cab="${esc(c.cabine)}"></span>${esc(P.libelleClasse(c.id))}</b><small>${depart.length ? 'départ ' + P.hhmm(Math.min(...depart)) + (c.pax ? ' · ' + c.pax + ' passagers' : '') : 'hors programme'}</small></div>${choix}</th>
           ${cases}
           <td class="qf-fin"><button class="qf-suivre" data-qf="suivre" data-classe="${esc(c.id)}" aria-expanded="${suivie}"
-            title="${suivie ? 'Replier' : 'Suivre ' + esc(P.libelleClasse(c.id)) + ' dans le temps, étape par étape'}">${fin}<span class="qf-chevron" aria-hidden="true">${suivie ? '▾' : '▸'}</span></button></td>
+            title="${suivie ? 'Replier' : 'Suivre ' + esc(P.libelleClasse(c.id)) + ' dans le temps, étape par étape'}">${fin}<span class="qf-chevron" aria-hidden="true">${pic(suivie ? 'bas' : 'droite')}</span></button></td>
         </tr>${suivie ? `<tr class="qf-temps" data-pour="${esc(c.id)}"><td colspan="${nbCol}">${this.temps(l, r)}</td></tr>` : ''}`;
       }).join('');
 

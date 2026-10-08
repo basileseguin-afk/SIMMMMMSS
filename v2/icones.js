@@ -51,7 +51,24 @@
     // Annuler, rétablir : une flèche qui revient ; le chevron du fil d'Ariane.
     annuler: '<path d="M9 14 4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3"/>',
     retablir: '<path d="m15 14 5-5-5-5M20 9H9a5 5 0 0 0 0 10h3"/>',
-    droite: '<path d="m9 6 6 6-6 6"/>'
+    droite: '<path d="m9 6 6 6-6 6"/>',
+    bas: '<path d="m6 9 6 6 6-6"/>',
+    flecheBas: '<path d="M12 4v15M6 13l6 6 6-6"/>',
+    // Le thème : sombre (une lune), clair (un soleil).
+    lune: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
+    soleil: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/>',
+    // Les gestes des outils : exporter, importer, comparer, recommencer, lire.
+    telecharger: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+    importer: '<path d="M12 15V4M7 9l5-5 5 5M5 20h14"/>',
+    echanger: '<path d="M4 8h14M14 4l4 4-4 4M20 16H6M10 12l-4 4 4 4"/>',
+    recommencer: '<path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3L4.5 9"/><path d="M4.5 4.5V9H9"/>',
+    pas: '<path d="M6 5.5v13l9-6.5z"/><path d="M18 5.5v13"/>',
+    pause: '<path d="M8.5 5v14M15.5 5v14"/>',
+    // Deux étapes faites d'un bloc, à la chaîne : deux maillons.
+    chaine: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+    // Afficher, masquer (une zone du plan).
+    oeil: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',
+    oeilBarre: '<path d="M3 3l18 18M10.6 5.6c.5-.1.9-.1 1.4-.1 6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-3 3.8M6.6 6.7A16.6 16.6 0 0 0 2.5 12S6 18.5 12 18.5c1.6 0 3.1-.4 4.4-1.1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>'
   };
 
   /** Un pictogramme, en SVG inline. `titre` le rend lisible aux lecteurs d'écran. */

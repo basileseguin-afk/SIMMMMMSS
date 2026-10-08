@@ -5,6 +5,48 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-08 — Refonte, étape 2 : composants, pictogrammes, thème sombre
+
+Toujours sans rien changer aux données ni au calcul (`donnees-intactes-browser`).
+
+- **« Prêt à simuler ? » disait faux** (audit, point 5) : dans la liste des
+  services, la mention « à la chaîne » prenait une troisième cellule de la
+  grille, et toutes les lignes suivantes glissaient d'un cran (la Plonge en
+  face de l'état de la Prépa). Elle se range désormais sous l'état de son
+  service. `fusion-browser` vérifie chaque ligne, et échoue sans la correction.
+- **Plus aucun caractère-pictogramme** dans l'interface (⇩ ⇧ ↶ ↷ ⇄ ⛓ ↺ ✓ ▶
+  ⏭ ⏸ ⚠ ▾ ▸ ◉ ×, flèches des boutons) : des pictogrammes SVG du même jeu
+  (`icones.js` : télécharger, importer, échanger, recommencer, pas à pas,
+  pause, chaîne, œil, chevrons, lune, soleil…). Le « × » des multiplications
+  (« compagnie × classe », « 30× ») reste. Les textes d'un classeur Excel ou
+  d'une confirmation, qui ne peuvent pas porter d'image, disent « Importer ».
+- **Les couleurs viennent toutes des jetons** : plus une couleur écrite en dur
+  dans les feuilles des vues (133 couleurs distinctes avant) ; les anciens
+  thèmes définis en double (style des pages, `interface.css`,
+  `usability.css`, `histoire.css`) sont retirés.
+- **Une échelle de texte** : 7 tailles de l'échelle (11 à 24 px) au lieu de
+  29 tailles différentes, et 3 graisses ; les textes du plan, à l'échelle du
+  dessin, gardent les leurs.
+- **`!important`** : 20 retirés sans changer un pixel (19 pages capturées
+  avant et après, identiques à l'octet) ; il en reste 11, dans 8 règles
+  justifiées (`[hidden]`, mouvements réduits, champ en erreur, traits d'un
+  lien qui passent devant une couleur posée en ligne, diagramme déplié, mode
+  édition).
+- **Thème sombre**, au pied de la barre latérale : graphite, contrastes AA
+  vérifiés ; le dessin du bâtiment passe en clair sur sombre. Une préférence
+  d'affichage (`ory-ui-theme`), appliquée avant le premier dessin.
+- **Le focus se voit partout** : le bouton principal, Annuler, les arrêts de
+  la carte des flux, le diagramme entier et ses liens n'avaient pas d'anneau ;
+  `focus-browser` (nouveau) le vérifie sur toutes les pages, dans les deux
+  thèmes, v1 et v2.
+- Fichiers : `icones.js`, `ateliers.js`, `reglages.js`, `parcours.js`,
+  `flow-center.js`, `graphe.js`, `plan-editor.js`, `simulation.js`,
+  `unite.js`, `sim.js`, `demarrage.js`, `echanges.js`, `index.html`, toutes
+  les feuilles de style ; v2 : `budget.js`, `calage.js`, `budget.css`.
+- Tests : `focus-browser` (nouveau) ; `fusion-browser`,
+  `armement-integre-browser`, `vue-ensemble-browser` adaptés (pictogrammes) ;
+  `browser-smoke` : le clair par défaut, le sombre en option.
+
 ## 2026-10-08 — Refonte, étape 3 : barre latérale, fil d'Ariane, un seul Annuler
 
 Proposition de refonte acceptée (« 1. Oui 2. Thème clair 3. Oui 4. Oui

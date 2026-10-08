@@ -3,58 +3,34 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8"/>
+<!-- Le thème choisi (une préférence d'affichage), posé avant tout dessin : pas d'éclair clair au chargement. -->
+<script>try{if(localStorage.getItem('ory-ui-theme')==='sombre')document.documentElement.dataset.theme='sombre';}catch(e){}</script>
 <meta content="width=1280" name="viewport"/>
 <title>Production ORY — simulation d’une journée de repas à bord</title>
 <meta content="Simulation visuelle des flux de production d'une unité de catering aérien : goulots, charge par atelier, scénarios what-if." name="description"/>
 <style>
-/* ==========================================================================
- *  THÈME — un seul thème, clair (le site vise les écrans de bureau)
- * ==========================================================================*/
-:root{
-  /* surfaces */
-  --bg:#e9eef4; --bg2:#f4f7fa; --bg3:#ffffff; --panneau:#ffffff;
-  --bordure:#c8d3e0; --bordure2:#9fb2c7;
-  /* texte */
-  --txt:#132030; --txt2:#41566e; --txt3:#63788f;
-  /* couleurs */
-  --accent:#0b6fa4; --accent2:#0a5c88;
-  --vert:#15803d; --orange:#b45309; --rouge:#c02618; --violet:#7c3aed;
-  /* plan */
-  --plan-bg:#f7f9fc;
-  --zone-fill:#ffffff; --zone-stroke:#8ea4bb; --zone-txt:#0f1d2c; --zone-sous:#55697f;
-  --ok-fill:#e6f7ec;
-  --warn-fill:#fdf3dd; --warn-stroke:#c97a0a;
-  --bad-fill:#fde8e5;  --bad-stroke:#c02618;
-  --jauge-bg:#dfe7ef;
-  --edge:#7d92a9; --edge-retour:#9b7cc4;
-  --halo:#ffffff;
-  --ombre:0 1px 3px rgba(19,32,48,.10), 0 4px 14px rgba(19,32,48,.07);
-  --r:10px; --r2:6px;
-}
+/* Les couleurs, les rayons et les ombres viennent des jetons du design
+   system (ds.css, posée en dernier) : ce style ne garde que la mise en page. */
 
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
 body{
   background:var(--bg); color:var(--txt);
-  font-family:'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif; font-size:14px;
+  font-family:'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif; font-size:var(--ds-t-14);
 }
 
 .horloge-box{display:flex;align-items:center;gap:14px;background:var(--bg2);border:1px solid var(--bordure);border-radius:var(--r2);padding:6px 14px}
-.horloge{font-size:23px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px;color:var(--txt)}
-.horloge .jour{font-size:12px;color:var(--txt3);font-weight:600}
+.horloge{font-size:var(--ds-t-24);font-weight:var(--ds-g-fort);font-variant-numeric:tabular-nums;letter-spacing:1px;color:var(--txt)}
+.horloge .jour{font-size:var(--ds-t-12);color:var(--txt3);font-weight:var(--ds-g-fort)}
 .transport{display:flex;gap:6px}
 .btn{
   border:1.5px solid var(--bordure2); background:var(--bg3); color:var(--txt);
-  padding:7px 13px; border-radius:var(--r2); cursor:pointer; font-weight:700; font-size:13px;
+  padding:7px 13px; border-radius:var(--r2); cursor:pointer; font-weight:var(--ds-g-fort); font-size:var(--ds-t-13);
   transition:background .12s,border-color .12s;
 }
 .btn:hover{border-color:var(--accent);color:var(--accent)}
 .btn:disabled{opacity:.45;cursor:not-allowed}
-.btn-play{background:var(--vert);border-color:var(--vert);color:#fff}
-.btn-play:hover{background:#126d34;border-color:#126d34;color:#fff}
-.btn-pause{background:var(--orange);border-color:var(--orange);color:#fff}
-.btn-pause:hover{background:#96460a;border-color:#96460a;color:#fff}
-.vitesse-box{display:flex;align-items:center;gap:8px;color:var(--txt2);font-size:13px;font-weight:600}
+.vitesse-box{display:flex;align-items:center;gap:8px;color:var(--txt2);font-size:var(--ds-t-13);font-weight:var(--ds-g-fort)}
 .vitesse-box input{width:110px;accent-color:var(--accent)}
 .vitesse-box b{color:var(--txt);min-width:38px}
 
@@ -66,34 +42,34 @@ body{
 
 /* --- Panneaux -------------------------------------------------------------*/
 .panneau{background:var(--panneau);border:1px solid var(--bordure);border-radius:var(--r);padding:13px;margin-bottom:12px;box-shadow:var(--ombre)}
-.panneau h3{margin:0 0 11px;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--txt2);font-weight:800;display:flex;align-items:center;gap:6px}
+.panneau h3{margin:0 0 11px;font-size:var(--ds-t-13);text-transform:uppercase;letter-spacing:.05em;color:var(--txt2);font-weight:var(--ds-g-fort);display:flex;align-items:center;gap:6px}
 .slider-ligne{margin-bottom:12px}
-.slider-ligne label{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;color:var(--txt2);font-weight:600}
-.slider-ligne label b{color:var(--txt);font-variant-numeric:tabular-nums;font-weight:800}
+.slider-ligne label{display:flex;justify-content:space-between;font-size:var(--ds-t-13);margin-bottom:4px;color:var(--txt2);font-weight:var(--ds-g-fort)}
+.slider-ligne label b{color:var(--txt);font-variant-numeric:tabular-nums;font-weight:var(--ds-g-fort)}
 .slider-ligne input[type=range]{width:100%;accent-color:var(--accent)}
 
 .champ{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
-.champ span{font-size:12px;color:var(--txt2);text-transform:uppercase;letter-spacing:.03em;font-weight:700}
-select,input[type=number],input[type=file]{background:var(--bg3);border:1.5px solid var(--bordure2);color:var(--txt);padding:7px 9px;border-radius:var(--r2);font-size:13px;font-family:inherit}
+.champ span{font-size:var(--ds-t-12);color:var(--txt2);text-transform:uppercase;letter-spacing:.03em;font-weight:var(--ds-g-fort)}
+select,input[type=number],input[type=file]{background:var(--bg3);border:1.5px solid var(--bordure2);color:var(--txt);padding:7px 9px;border-radius:var(--r2);font-size:var(--ds-t-13);font-family:inherit}
 select:focus,input:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:var(--accent)}
-.pastille{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle;border:1px solid rgba(0,0,0,.18)}
-.mini-note{font-size:12px;color:var(--txt2);line-height:1.55}
+.pastille{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle;border:1px solid var(--ds-bordure-forte)}
+.mini-note{font-size:var(--ds-t-12);color:var(--txt2);line-height:1.55}
 .mini-note b{color:var(--txt)}
 .row-btns{display:flex;gap:6px;flex-wrap:wrap}
-label.chk{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--txt2);font-weight:600;cursor:pointer}
+label.chk{display:flex;gap:8px;align-items:center;font-size:var(--ds-t-13);color:var(--txt2);font-weight:var(--ds-g-fort);cursor:pointer}
 label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 
 /* --- Plan -----------------------------------------------------------------*/
 .plan-tete{display:flex;align-items:center;gap:16px;padding:10px 16px;border-bottom:2px solid var(--bordure);background:var(--bg3)}
-.plan-tete .titre{font-weight:800;font-size:14px}
+.plan-tete .titre{font-weight:var(--ds-g-fort);font-size:var(--ds-t-14)}
 
-.legende{display:flex;gap:15px;font-size:13px;color:var(--txt2);flex-wrap:wrap;font-weight:600}
+.legende{display:flex;gap:15px;font-size:var(--ds-t-13);color:var(--txt2);flex-wrap:wrap;font-weight:var(--ds-g-fort)}
 .legende span{display:flex;align-items:center}
 .plan-wrap{flex:1;position:relative;overflow:hidden}
 #plan{width:100%;height:100%;display:block}
 
 /* --- plan : fond CAD réel ------------------------------------------------- */
-#plan{cursor:grab;touch-action:none;background:#fff}
+#plan{cursor:grab;touch-action:none;background:var(--ds-surface-1)}
 #plan-fond{opacity:.92}
 #plan.sans-fond #plan-fond{display:none}
 
@@ -120,7 +96,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 /* --- mode édition des zones ---------------------------------------------- */
 .panneau-edit{border:2px solid var(--accent);background:var(--bg3)}
 
-.btn-sm{padding:5px 9px;font-size:12px}
+.btn-sm{padding:5px 9px;font-size:var(--ds-t-12)}
 
 /* poignées de redimensionnement sur le plan */
 #plan.edition .zone{cursor:move}
@@ -128,35 +104,35 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 
 /* contrôles de zoom */
 .zoom-ctrl{display:flex;align-items:center;gap:5px}
-.zoom-ctrl b{font-size:12px;min-width:42px;text-align:center;color:var(--txt2);font-variant-numeric:tabular-nums}
-.btn-mini{padding:3px 9px;font-size:14px;line-height:1.2;font-weight:800}
-.chk-mini{font-size:12px}
+.zoom-ctrl b{font-size:var(--ds-t-12);min-width:42px;text-align:center;color:var(--txt2);font-variant-numeric:tabular-nums}
+.btn-mini{padding:3px 9px;font-size:var(--ds-t-14);line-height:1.2;font-weight:var(--ds-g-fort)}
+.chk-mini{font-size:var(--ds-t-12)}
 
 /* --- Dashboard ------------------------------------------------------------*/
 .kpi-grille{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
 .kpi{background:var(--panneau);border:1px solid var(--bordure);border-radius:var(--r2);padding:10px 11px;box-shadow:var(--ombre)}
-.kpi .lab{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--txt2);font-weight:700}
-.kpi .val{font-size:21px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px;color:var(--txt)}
-.kpi .val small{font-size:12px;color:var(--txt3);font-weight:700}
+.kpi .lab{font-size:var(--ds-t-12);text-transform:uppercase;letter-spacing:.04em;color:var(--txt2);font-weight:var(--ds-g-fort)}
+.kpi .val{font-size:var(--ds-t-20);font-weight:var(--ds-g-fort);font-variant-numeric:tabular-nums;margin-top:2px;color:var(--txt)}
+.kpi .val small{font-size:var(--ds-t-12);color:var(--txt3);font-weight:var(--ds-g-fort)}
 .val.bon{color:var(--vert)} .val.moyen{color:var(--orange)} .val.mauvais{color:var(--rouge)}
 
 .stat-atelier{margin-bottom:10px}
-.stat-atelier .haut{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;font-weight:600;color:var(--txt)}
-.stat-atelier .haut b{font-variant-numeric:tabular-nums;font-weight:800}
+.stat-atelier .haut{display:flex;justify-content:space-between;font-size:var(--ds-t-13);margin-bottom:4px;font-weight:var(--ds-g-fort);color:var(--txt)}
+.stat-atelier .haut b{font-variant-numeric:tabular-nums;font-weight:var(--ds-g-fort)}
 
-.compare-tab{width:100%;border-collapse:collapse;font-size:13px}
+.compare-tab{width:100%;border-collapse:collapse;font-size:var(--ds-t-13)}
 .compare-tab th,.compare-tab td{padding:6px;text-align:right;border-bottom:1px solid var(--bordure);color:var(--txt)}
-.compare-tab td:first-child,.compare-tab th:first-child{text-align:left;color:var(--txt2);font-weight:600}
-.compare-tab thead th{color:var(--txt2);font-size:12px;text-transform:uppercase;font-weight:800}
+.compare-tab td:first-child,.compare-tab th:first-child{text-align:left;color:var(--txt2);font-weight:var(--ds-g-fort)}
+.compare-tab thead th{color:var(--txt2);font-size:var(--ds-t-12);text-transform:uppercase;font-weight:var(--ds-g-fort)}
 
-.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--accent);color:#fff;padding:10px 20px;border-radius:30px;font-weight:700;opacity:0;pointer-events:none;transition:.25s;z-index:50;box-shadow:var(--ombre)}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ds-texte-1);color:var(--ds-surface-1);padding:10px 20px;border-radius:30px;font-weight:var(--ds-g-fort);opacity:0;pointer-events:none;transition:.25s;z-index:50;box-shadow:var(--ombre)}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 
 @media(max-width:1250px){ .app{grid-template-columns:260px 1fr 290px} }
 </style>
-<meta name="ory-version" content="ee2a3a0fef"/>
-<link href="interface.css?v=af9d91fe" rel="stylesheet"/><link href="editor.css?v=f75dd2ee" rel="stylesheet"/><link href="flow-center.css?v=9f790b03" rel="stylesheet"/><link href="ateliers.css?v=22aa001b" rel="stylesheet"/>
-<link href="reglages.css?v=86e6961b" rel="stylesheet"/><link href="demarrage.css?v=33d3816b" rel="stylesheet"/><link href="aide.css?v=935ab1b2" rel="stylesheet"/><link href="usability.css?v=da67a614" rel="stylesheet"/><link href="graphe.css?v=51c6e753" rel="stylesheet"/><link href="histoire.css?v=3e550ae1" rel="stylesheet"/><link href="temps.css?v=dc6ff1cd" rel="stylesheet"/><link href="unite.css?v=1a630de4" rel="stylesheet"/><link href="ds.css?v=9a12ce26" rel="stylesheet"/></head>
+<meta name="ory-version" content="d016548026"/>
+<link href="interface.css?v=840cf9be" rel="stylesheet"/><link href="editor.css?v=205c059f" rel="stylesheet"/><link href="flow-center.css?v=ba246ece" rel="stylesheet"/><link href="ateliers.css?v=579b97f4" rel="stylesheet"/>
+<link href="reglages.css?v=909c68d2" rel="stylesheet"/><link href="demarrage.css?v=9ef1de69" rel="stylesheet"/><link href="aide.css?v=6dc5aec0" rel="stylesheet"/><link href="usability.css?v=c0668fd3" rel="stylesheet"/><link href="graphe.css?v=15cfc990" rel="stylesheet"/><link href="histoire.css?v=369d38e8" rel="stylesheet"/><link href="temps.css?v=a45fa6cd" rel="stylesheet"/><link href="unite.css?v=3cfe685d" rel="stylesheet"/><link href="ds.css?v=4ad3c902" rel="stylesheet"/></head>
 <body data-vue="plan"><a class="skip-link" href="#workspace">Aller au contenu</a>
 <!-- ============ NAVIGATION : la marque, les parties (celle qui est ouverte déplie ses pages), la sauvegarde ============ -->
 <aside aria-label="Navigation" class="barre" id="barre">
@@ -167,6 +143,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 </div>
 <div class="barre-pied">
 <button class="barre-lien" data-page="u-sauvegarde" id="btn-sauvegarde" title="Enregistrer tout votre travail dans un fichier, ou le relire" type="button"><span data-ico="boite"></span><span>Sauvegarde</span></button>
+<button aria-pressed="false" class="barre-lien" data-ui-theme="" id="btn-theme" title="Passer au thème sombre" type="button"><span data-ico="lune"></span><span>Thème sombre</span></button>
 <a class="btn-version" href="v2/" title="La version de travail, avec les nouveautés à venir (finances, aléas, heures sup, optimisation). Elle part d’une copie de votre travail ; ses données restent à part.">Version 2<span>en construction →</span></a>
 </div>
 </aside>
@@ -183,13 +160,13 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <div class="app" id="workspace" tabindex="-1">
 <!-- ============ LEVIERS WHAT-IF ============ -->
 <!-- ============ PLAN ============ -->
-<div class="colonne col-plan"><div class="workspace-heading" id="tete-page"><p class="view-intro" id="view-intro"></p><div class="so-outils" id="so-outils"><div class="res-actions" data-sous="j-chiffres"><button class="btn btn-sm" id="btn-export" title="Enregistrer les résultats de la journée dans un fichier (JSON)" type="button">⇩ Exporter les résultats</button></div></div></div>
+<div class="colonne col-plan"><div class="workspace-heading" id="tete-page"><p class="view-intro" id="view-intro"></p><div class="so-outils" id="so-outils"><div class="res-actions" data-sous="j-chiffres"><button class="btn btn-sm" id="btn-export" title="Enregistrer les résultats de la journée dans un fichier (JSON)" type="button"><span data-ico="telecharger"></span>Exporter les résultats</button></div></div></div>
 <div class="lecteur" id="lecteur" data-sous="j-plan"><div class="horloge-box">
 <div><div class="horloge" id="horloge">05:00</div><div class="jour">heure de la journée rejouée</div></div>
 <div class="transport">
-<button class="btn btn-play" id="btn-play">▶ Rejouer</button>
-<button class="btn" id="sim-pas" title="Avancer jusqu’au prochain moment où quelque chose change">⏭ Pas à pas</button>
-<button aria-label="Revenir au début de la journée" class="btn" id="btn-reset" title="Revenir au début de la journée">↺ Début</button>
+<button class="btn btn-play" id="btn-play"><span data-ico="lecture"></span>Rejouer</button>
+<button class="btn" id="sim-pas" title="Avancer jusqu’au prochain moment où quelque chose change"><span data-ico="pas"></span>Pas à pas</button>
+<button aria-label="Revenir au début de la journée" class="btn" id="btn-reset" title="Revenir au début de la journée"><span data-ico="recommencer"></span>Début</button>
 </div>
 <span class="run-state" id="run-state" role="status"></span>
 <input aria-label="Heure de la journée rejouée" id="sim-curseur" type="range" min="0" max="1440" step="1" value="0"/></div><div class="vitesse-box">Vitesse <input aria-label="Vitesse de lecture, minutes simulées par seconde" id="vitesse" max="120" min="1" type="range" value="30"/><b id="vitesse-val">30×</b></div></div>
@@ -248,7 +225,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <button class="btn btn-play" id="snap-a">Retenir comme essai A</button>
 <button class="btn" id="snap-b">Retenir comme essai B</button>
 <button class="lien-discret" id="snap-clear">Effacer les essais</button>
-<button class="btn" data-comparer-retours="" title="La même journée deux fois : A avec les retours du lendemain du départ, B avec la planche retour du handling">⇄ J+1 contre planche retour</button>
+<button class="btn" data-comparer-retours="" title="La même journée deux fois : A avec les retours du lendemain du départ, B avec la planche retour du handling"><span data-ico="echanger"></span>J+1 contre planche retour</button>
 </div>
 <table class="compare-tab" id="compare" style="margin-top:10px"><tbody></tbody></table>
 <p class="mini-note" id="compare-note"></p></div></div><!-- Rempli par plan-editor.js en mode édition. -->
@@ -256,12 +233,12 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <h3>Votre programme de vols</h3>
 <div class="champ"><span>Importer vos vols (Excel ou CSV)</span><label class="btn fichier-btn"><input accept=".xlsx,.csv" aria-label="Importer le programme de vols, Excel ou CSV" class="fichier-input" id="imp-vols" type="file"/>Choisir un fichier…</label></div>
 <details class="aide bloc"><summary>Format attendu</summary><span class="aide-corps"><p>Excel : une feuille « Départs » (heure_std) et une feuille « Retours » (heure_sta) ; colonnes vol_id, compagnie, type_avion, nb_BC, nb_PC, nb_YC, nb_CREW, nb_SPML.</p><p>CSV : une seule table, avec une colonne « sens » (DEP ou RET).</p><p>Le plus simple : exportez le programme actuel, modifiez-le, réimportez-le. L’export Winrest et ses lignes de prestations ne sont pas encore lus.</p></span></details>
-<div class="row-btns"><button class="btn" id="exp-vols">⇩ Exporter les vols (Excel)</button><button class="btn" id="csv-template">Modèle CSV</button><button class="btn" id="restore-demo">Revenir aux vols d’exemple</button></div><div aria-live="polite" class="import-report" id="import-report" role="status">Aucun fichier importé.</div></div><div class="panneau">
+<div class="row-btns"><button class="btn" id="exp-vols"><span data-ico="telecharger"></span>Exporter les vols (Excel)</button><button class="btn" id="csv-template">Modèle CSV</button><button class="btn" id="restore-demo">Revenir aux vols d’exemple</button></div><div aria-live="polite" class="import-report" id="import-report" role="status">Aucun fichier importé.</div></div><div class="panneau">
 <h3>Sauvegarder tout votre travail</h3>
 <div class="mini-note">Tout vit <strong>dans ce navigateur</strong> — exportez pour ne rien perdre.<details class="aide"><summary aria-label="Où vivent vos données ?">?</summary><span class="aide-corps">Le plan, les ateliers de travail, les flux et les vols disparaissent si vous videz vos données de site, et ils ne suivent pas d’un appareil à l’autre. Un seul fichier les réunit tous.</span></details></div>
-<div class="row-btns"><button class="btn" id="sauvegarde-export">⇩ Tout sauvegarder</button><button class="btn" id="sauvegarde-import-btn">⇧ Restaurer</button><input accept=".json" hidden="" id="sauvegarde-import" type="file"/></div>
+<div class="row-btns"><button class="btn" id="sauvegarde-export"><span data-ico="telecharger"></span>Tout sauvegarder</button><button class="btn" id="sauvegarde-import-btn"><span data-ico="importer"></span>Restaurer</button><input accept=".json" hidden="" id="sauvegarde-import" type="file"/></div>
 <div aria-live="polite" class="import-report" id="sauvegarde-etat" role="status">Sauvegardez avant de fermer, et à chaque étape importante de votre tracé.</div>
-<div class="mini-note">⚠️ Ce fichier <strong>contient le plan réel de l’unité</strong> : gardez-le hors du dépôt public.<details class="aide"><summary aria-label="Comment se passe la restauration ?">?</summary><span class="aide-corps">La restauration est refusée en entier si une partie est invalide, et demande confirmation avant de remplacer quoi que ce soit.</span></details></div>
+<div class="mini-note"><span class="note-ico" data-ico="alerte"></span>Ce fichier <strong>contient le plan réel de l’unité</strong> : gardez-le hors du dépôt public.<details class="aide"><summary aria-label="Comment se passe la restauration ?">?</summary><span class="aide-corps">La restauration est refusée en entier si une partie est invalide, et demande confirmation avant de remplacer quoi que ce soit.</span></details></div>
 <details class="aide bloc"><summary>Site et fichier local : deux stockages</summary><span class="aide-corps">Une page ouverte depuis <code>github.io</code> et un fichier ouvert depuis votre disque ne partagent pas le même stockage : travaillez toujours au même endroit, ou passez par ce fichier.</span></details>
 </div>
 <div class="panneau" id="model-limits"><h3>Ce que le calcul ne sait pas faire</h3><p class="mini-note">C’est un prototype : il sert à comparer des essais entre eux, pas à dire combien de personnes embaucher.</p><details class="aide bloc"><summary>Les limites connues</summary><span class="aide-corps"><ul class="limits-list"><li>Barème d’heures de travail <strong>non calibré</strong> : valeurs de démonstration tant que l’étude de l’unité n’est pas importée.</li><li>Calcul <strong>sans aléa</strong> : pas de panne, d’absence ni de retard de livraison. Une même journée donne toujours le même résultat.</li><li>Un seul compte de matériel propre, consommé et relavé ; les stocks de denrées, les trolleys et les transferts physiques ne sont pas modélisés.</li><li>Les compétences ne sont pas modélisées : une personne d’un atelier ne va pas aider dans un autre.</li><li>L’export Winrest (XLSX et lignes de prestations) n’est pas encore lu : seul le CSV simplifié l’est.</li></ul></span></details></div></div></aside></div>
@@ -269,24 +246,24 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <script src="vols-demo.js?v=08d61681"></script>
 <script src="rendu.js?v=ac16ab27"></script>
 <script src="onglets.js?v=22bb09f1"></script>
-<script src="icones.js?v=1e5405a0"></script>
+<script src="icones.js?v=07278243"></script>
 <script src="ui-model.js?v=4688387f"></script>
 <script src="moteur/noyau.js?v=5b2122e2"></script>
 <script src="moteur/production.js?v=2b9cffbb"></script>
-<script src="plan-editor.js?v=0b3676c7"></script>
-<script src="flow-center.js?v=d4b4f7c6"></script>
+<script src="plan-editor.js?v=425c673f"></script>
+<script src="flow-center.js?v=0b44ce08"></script>
 <script src="tableur.js?v=d7003370"></script>
-<script src="graphe.js?v=d6b7a4a4"></script>
-<script src="parcours.js?v=caee1ea8"></script>
-<script src="echanges.js?v=f7db5711"></script>
-<script src="ateliers.js?v=4c3cd0e2"></script>
-<script src="reglages.js?v=1aeb6352"></script>
-<script src="unite.js?v=e7e56c4b"></script>
-<script src="demarrage.js?v=2b86e4f9"></script>
+<script src="graphe.js?v=c8560615"></script>
+<script src="parcours.js?v=fbd19718"></script>
+<script src="echanges.js?v=db77d61a"></script>
+<script src="ateliers.js?v=8d1de382"></script>
+<script src="reglages.js?v=24721986"></script>
+<script src="unite.js?v=491869e3"></script>
+<script src="demarrage.js?v=7c44dc7e"></script>
 <script src="temps.js?v=d3176c90"></script>
 <script src="replay.js?v=016adb42"></script>
-<script src="simulation.js?v=e6481416"></script>
+<script src="simulation.js?v=193892c7"></script>
 <script src="comparaison.js?v=65c11530"></script>
-<script src="sim.js?v=f2455e3e"></script>
+<script src="sim.js?v=23386192"></script>
 </body>
 </html>

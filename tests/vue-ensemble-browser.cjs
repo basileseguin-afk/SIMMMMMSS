@@ -95,7 +95,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.ok(await x('appros')<await x('decontam'),'de gauche à droite');
    assert.equal(await page.locator(`${G} .gr-etape`).count(),0,'sans bandes');
    await nav.aller(page,'at-chemins');
-   assert.equal(await page.locator('#at-parcours [data-gr-sens]').textContent(),'↓ En étapes','le choix vaut pour tous les diagrammes');
+   assert.equal(await page.locator('#at-parcours [data-gr-sens]').textContent(),'En étapes','le choix vaut pour tous les diagrammes');
    await page.locator('#at-parcours [data-gr-sens]').click();await attendre();
    assert.equal(await page.locator('#at-parcours .gr-etape').count()>0,true,'retour en étapes');
 

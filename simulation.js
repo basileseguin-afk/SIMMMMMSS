@@ -156,7 +156,9 @@
     rendreTransport() {
       const b = document.getElementById('btn-play');
       if (b) {
-        b.textContent = this.vide ? '▶ Rejouer' : this.enMarche ? '⏸ Pause' : this.t >= this.fin ? '▶ Revoir' : '▶ Rejouer';
+        // Le pictogramme et le mot ; redessinés seulement quand ils changent.
+        const [ico, mot] = this.vide ? ['lecture', 'Rejouer'] : this.enMarche ? ['pause', 'Pause'] : this.t >= this.fin ? ['lecture', 'Revoir'] : ['lecture', 'Rejouer'];
+        if (b.dataset.mot !== mot) { b.innerHTML = (root.OrlyIcones ? root.OrlyIcones.ico(ico) : '') + mot; b.dataset.mot = mot; }
         b.className = this.enMarche ? 'btn btn-pause' : 'btn btn-play';
         b.disabled = this.vide;
       }

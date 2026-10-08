@@ -92,8 +92,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await nav.vue(page,'plan');await nav.aller(page,'j-plan');
   await page.evaluate(()=>{localStorage.removeItem('orly-zones');localStorage.removeItem('orly-plan-v3');});await page.reload();
   await page.screenshot({path:path.join(os.tmpdir(),'ory-interface-desktop.png'),fullPage:true});
-  // Un seul thème, clair ; le site vise les écrans de bureau (1 024 px et plus).
-  assert.equal(await page.locator('#btn-theme').count(),0,'plus de bascule de thème');
+  // Le thème clair par défaut ; le sombre en option (refonte du 08/10, au pied
+  // de la barre latérale). Le site vise les écrans de bureau (1 024 px et plus).
+  assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme||'clair'),'clair','le clair par défaut');
+  assert.equal(await page.locator('#btn-theme').count(),1,'le sombre en option');
   await page.setViewportSize({width:1024,height:700});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await nav.vue(page,'vols');assert.equal(await page.locator('#flight-rows tr').count(),12);

@@ -9,12 +9,12 @@
    ligne elle tient dans une seule colonne, et le titre déborde de son filet. */
 .rg-modele .titre-aide{grid-column:1/-1}
 
-#rg-status:not(:empty){font-size:13px;color:var(--accent2);margin:0 0 6px;white-space:pre-line}
+#rg-status:not(:empty){font-size:var(--ds-t-13);color:var(--accent2);margin:0 0 6px;white-space:pre-line}
 
 #rg-bareme-panneau{grid-column:1/-1}
 
 .rg-avertissement{border-left:3px solid var(--warn-stroke);background:var(--warn-fill);color:var(--txt);
-  padding:10px 14px;border-radius:0 8px 8px 0;font-size:13px;line-height:1.55;margin:10px 0}
+  padding:10px 14px;border-radius:0 8px 8px 0;font-size:var(--ds-t-13);line-height:1.55;margin:10px 0}
 
 /* ==========================================================================
  *  LE BARÈME, UN SERVICE À LA FOIS
@@ -26,22 +26,23 @@
 .rg-service+.rg-service{margin-top:0}
 .rg-service>summary{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
   padding:9px 13px;min-height:0;cursor:pointer;list-style:none;
-  font-size:13px;color:var(--txt);font-weight:400}
+  font-size:var(--ds-t-13);color:var(--txt);font-weight:var(--ds-g-normal)}
 .rg-service>summary::-webkit-details-marker{display:none}
-.rg-service>summary::before{content:'\25b8';flex:none;color:var(--txt2);font-size:12px;
-  transition:transform .12s ease}
+.rg-service>summary::before{content:"";flex:none;width:14px;height:14px;background:var(--txt2);transition:transform .15s;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 6 6 6-6 6'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 6 6 6-6 6'/%3E%3C/svg%3E") center/contain no-repeat}
 .rg-service[open]>summary::before{transform:rotate(90deg)}
 .rg-service>summary:hover{background:var(--bg2)}
 .rg-service[open]{border-color:var(--accent);border-width:2px}
 .rg-service[open]>summary{border-bottom:1px solid var(--bordure)}
-.rg-svc-nom{font-weight:700;font-size:13px;min-width:190px;display:flex;align-items:center;gap:6px}
-.rg-svc-digest{color:var(--txt2);font-size:12px;overflow-wrap:anywhere}
-.rg-svc-digest b{color:var(--txt2);font-weight:700;font-size:12px;letter-spacing:.03em}
+.rg-svc-nom{font-weight:var(--ds-g-fort);font-size:var(--ds-t-13);min-width:190px;display:flex;align-items:center;gap:6px}
+.rg-svc-digest{color:var(--txt2);font-size:var(--ds-t-12);overflow-wrap:anywhere}
+.rg-svc-digest b{color:var(--txt2);font-weight:var(--ds-g-fort);font-size:var(--ds-t-12);letter-spacing:.03em}
 .rg-svc-digest em{font-style:normal;color:var(--accent2)}
 /* Un service sans barème travaillerait en temps nul : il ne doit pas se fondre. */
 .rg-service.vide{border-left:3px solid var(--orange)}
 .rg-service.vide .rg-svc-digest{opacity:.6}
-.rg-occupe{font-size:12px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-left:8px;
+.rg-occupe{font-size:var(--ds-t-12);text-transform:uppercase;letter-spacing:.04em;font-weight:var(--ds-g-fort);margin-left:8px;
   color:var(--vert);border:1px solid var(--vert);border-radius:4px;padding:1px 5px;white-space:nowrap}
 /* Un service dont aucune case ne lit le barème (handling, plonge, mise à disposition) : en retrait. */
 .rg-service.inutile .rg-svc-digest{opacity:.45}
@@ -49,34 +50,34 @@
 .rg-service .rg-table th,.rg-service .rg-table td{padding:5px 12px 5px 13px}
 .rg-service .rg-table tbody tr:last-child th,.rg-service .rg-table tbody tr:last-child td{border-bottom:0}
 
-.rg-table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0 4px}
+.rg-table{width:100%;border-collapse:collapse;font-size:var(--ds-t-13);margin:10px 0 4px}
 .rg-table th,.rg-table td{border-bottom:1px solid var(--bordure);padding:4px 6px;text-align:left}
-.rg-table thead th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--txt2);
+.rg-table thead th{font-size:var(--ds-t-12);text-transform:uppercase;letter-spacing:.04em;color:var(--txt2);
   background:var(--bg2);text-align:center;border-bottom:1px solid var(--bordure2)}
 .rg-table thead th:first-child{text-align:left}
 /* Une colonne sur deux : min/pax et min/vol d'une même cabine restent ensemble. */
 
-.rg-table tbody th{font-weight:600;white-space:nowrap}
+.rg-table tbody th{font-weight:var(--ds-g-fort);white-space:nowrap}
 .rg-table input{width:100%;min-width:62px;box-sizing:border-box;padding:5px 6px;text-align:right;
-  border:1px solid var(--bordure2);border-radius:5px;background:var(--bg2);color:var(--txt);font:inherit;font-size:13px}
+  border:1px solid var(--bordure2);border-radius:5px;background:var(--bg2);color:var(--txt);font:inherit;font-size:var(--ds-t-13)}
 .rg-table input:focus{outline:2px solid var(--accent);outline-offset:-1px}
 /* Un service dont le barème n'est pas renseigné travaillerait en temps nul. */
 
-.rg-herite,.rg-zero{font-size:12px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;
+.rg-herite,.rg-zero{font-size:var(--ds-t-12);text-transform:uppercase;letter-spacing:.04em;font-weight:var(--ds-g-fort);
   border-radius:4px;padding:1px 5px;margin-left:5px;white-space:nowrap}
 .rg-herite{color:var(--accent2);border:1px solid var(--accent)}
 .rg-zero{color:var(--orange);border:1px solid var(--orange)}
 
 .rg-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 
-.rg-seuil{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--txt2);margin-bottom:8px}
+.rg-seuil{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:var(--ds-t-13);color:var(--txt2);margin-bottom:8px}
 .rg-seuil input{width:80px;padding:6px 8px;border:1px solid var(--bordure2);border-radius:5px;
   background:var(--bg2);color:var(--txt);font:inherit}
 
 .rg-ailleurs{max-width:850px;margin:2px 0 0}
 
 /* La version servie : la réponse à « mon navigateur a-t-il la dernière ? ». */
-.rg-version{grid-column:1/-1;margin:0;font-size:12px;color:var(--txt2);
+.rg-version{grid-column:1/-1;margin:0;font-size:var(--ds-t-12);color:var(--txt2);
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 
 /* ==========================================================================
@@ -86,9 +87,9 @@
  *  l'accompagne, elle ne le remplace pas.
  * ==========================================================================*/
 .panneau-compare{max-width:760px}
-.compare-tab tr.compare-groupe th{text-align:left;padding-top:14px;font-size:12px;text-transform:uppercase;
-  letter-spacing:.05em;color:var(--txt2);font-weight:800;border-bottom:1px solid var(--bordure2)}
-.compare-tab td small{display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.compare-tab tr.compare-groupe th{text-align:left;padding-top:14px;font-size:var(--ds-t-12);text-transform:uppercase;
+  letter-spacing:.05em;color:var(--txt2);font-weight:var(--ds-g-fort);border-bottom:1px solid var(--bordure2)}
+.compare-tab td small{display:block;font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);text-transform:uppercase;letter-spacing:.03em}
 .compare-tab tr.mieux td small{color:var(--vert)}
 .compare-tab tr.moins-bien td small{color:var(--rouge)}
 /* Le modèle ouvre la page : son titre n'a rien au-dessus à séparer. */
@@ -99,20 +100,20 @@
 
 /* Les valeurs propres à une compagnie, sous la valeur commune. */
 .rg-propres{display:grid;gap:8px;margin-top:10px}
-.rg-propres select{font-size:12px;padding:5px 8px;max-width:320px}
+.rg-propres select{font-size:var(--ds-t-12);padding:5px 8px;max-width:320px}
 .rg-table input::placeholder{color:var(--txt3)}
 
 /* Deux façons de chiffrer un service : par classe, ou compagnie par compagnie.
    La grille garde la classe en colonne pour qu'une étude se recopie telle quelle. */
 .rg-mode{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
-.rg-mode .btn[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff)}
+.rg-mode .btn[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .rg-grille-scroll{overflow-x:auto;max-width:100%}
 .rg-grille{min-width:520px}
 .rg-grille td{padding:3px 4px}
 .rg-grille input{width:74px}
 .rg-grille .rg-hors{color:var(--txt3);text-align:center}
 .rg-grille .rg-autres th,.rg-grille .rg-autres td{border-top:2px solid var(--bordure2);padding-top:7px}
-.rg-grille .rg-autres th{font-weight:600;color:var(--txt2)}
+.rg-grille .rg-autres th{font-weight:var(--ds-g-fort);color:var(--txt2)}
 .rg-table input.rg-manque{border-color:var(--rouge);box-shadow:0 0 0 1px var(--rouge)}
 .rg-manque-txt{color:var(--rouge)}
 .rg-service.manque{border-left:3px solid var(--rouge)}
@@ -120,29 +121,29 @@
 /* Le récap des man-minutes : une ligne par commande, une colonne par service. */
 .rg-recap-outils{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
 .rg-recap-fin{flex:1}
-.rg-recap-cherche{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--txt2)}
+.rg-recap-cherche{display:flex;align-items:center;gap:6px;font-size:var(--ds-t-13);color:var(--txt2)}
 .rg-recap-cherche input{width:170px}
-.rg-recap-legende{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;font-size:12px;color:var(--txt2);margin:10px 0 4px}
+.rg-recap-legende{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;font-size:var(--ds-t-12);color:var(--txt2);margin:10px 0 4px}
 .rg-recap-legende .rgr{padding:2px 8px;border-radius:6px;border:1px solid var(--bordure)}
-.rg-recap-resume{margin:6px 0 8px;font-size:14px}
+.rg-recap-resume{margin:6px 0 8px;font-size:var(--ds-t-14)}
 .rg-recap-scroll{overflow:auto;max-height:70vh;border:1px solid var(--bordure);border-radius:10px}
-.rg-recap-table{border-collapse:separate;border-spacing:0;font-size:13px;min-width:100%}
-.rg-recap-table th,.rg-recap-table td{padding:4px 6px;border-bottom:1px solid var(--bordure);text-align:right;white-space:nowrap;background:var(--bg3,#fff)}
-.rg-recap-table thead th{position:sticky;top:0;z-index:2;text-align:center;font-weight:600;vertical-align:bottom}
-.rg-recap-table tbody th,.rg-recap-table tfoot th{position:sticky;left:0;z-index:1;text-align:left;font-weight:600}
+.rg-recap-table{border-collapse:separate;border-spacing:0;font-size:var(--ds-t-13);min-width:100%}
+.rg-recap-table th,.rg-recap-table td{padding:4px 6px;border-bottom:1px solid var(--bordure);text-align:right;white-space:nowrap;background:var(--bg3)}
+.rg-recap-table thead th{position:sticky;top:0;z-index:2;text-align:center;font-weight:var(--ds-g-fort);vertical-align:bottom}
+.rg-recap-table tbody th,.rg-recap-table tfoot th{position:sticky;left:0;z-index:1;text-align:left;font-weight:var(--ds-g-fort)}
 .rg-recap-table thead th:first-child{left:0;z-index:3}
-.rg-recap-table tfoot td,.rg-recap-table tfoot th{font-weight:700;position:sticky;bottom:0}
-.rg-recap-svc{display:inline-flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;white-space:normal;max-width:110px}
-.rg-recap-total{font-weight:700}
+.rg-recap-table tfoot td,.rg-recap-table tfoot th{font-weight:var(--ds-g-fort);position:sticky;bottom:0}
+.rg-recap-svc{display:inline-flex;flex-direction:column;align-items:center;gap:2px;font-size:var(--ds-t-12);white-space:normal;max-width:110px}
+.rg-recap-total{font-weight:var(--ds-g-fort)}
 .rg-recap-vols{color:var(--txt2)}
 .rg-recap-table input{width:64px;text-align:right;font:inherit;padding:3px 4px}
-.rgr.propre input,.rg-recap-legende .rgr.propre{font-weight:700}
+.rgr.propre input,.rg-recap-legende .rgr.propre{font-weight:var(--ds-g-fort)}
 .rgr.commun input,.rg-recap-legende .rgr.commun{color:var(--txt2);font-style:italic}
 .rgr.case,.rg-recap-legende .rgr.case{color:var(--accent)}
-.rgr.case small{margin-left:4px;font-size:10px;text-transform:uppercase;letter-spacing:.04em}
-.rgr.manque input,.rg-recap-legende .rgr.manque{border-color:#c0392b;outline:1px solid #c0392b}
+.rgr.case small{margin-left:4px;font-size:var(--ds-t-11);text-transform:uppercase;letter-spacing:.04em}
+.rgr.manque input,.rg-recap-legende .rgr.manque{border-color:var(--ds-retard);outline:1px solid var(--ds-retard)}
 .rgr.hors{color:var(--txt2);text-align:center;opacity:.6}
-.rgr.constant{color:var(--txt2);text-align:center;font-style:italic;font-size:12px}
+.rgr.constant{color:var(--txt2);text-align:center;font-style:italic;font-size:var(--ds-t-12)}
 
 /* Le récap en grille : trois sous-colonnes par service (valeur · pers. · durée),
  * alignées ; un filet entre deux services ; des champs qui ressemblent à des
@@ -150,43 +151,43 @@
 .rg-recap-table{font-variant-numeric:tabular-nums}
 .rg-recap-table th,.rg-recap-table td{padding:5px 6px}
 .rg-recap-table .g{border-left:1px solid var(--bordure)}
-.rg-recap-table tbody tr:nth-child(even) td,.rg-recap-table tbody tr:nth-child(even) th{background:color-mix(in srgb,var(--txt2) 5%,var(--bg3,#fff))}
-.rg-recap-table tbody tr:hover td,.rg-recap-table tbody tr:hover th{background:color-mix(in srgb,var(--accent) 7%,var(--bg3,#fff))}
+.rg-recap-table tbody tr:nth-child(even) td,.rg-recap-table tbody tr:nth-child(even) th{background:color-mix(in srgb,var(--txt2) 5%,var(--bg3))}
+.rg-recap-table tbody tr:hover td,.rg-recap-table tbody tr:hover th{background:color-mix(in srgb,var(--accent) 7%,var(--bg3))}
 .rg-recap-t1 th{border-bottom:0;padding-bottom:2px}
-.rg-recap-t2 th{top:44px;font-size:11px;font-weight:500;color:var(--txt2);text-transform:none;padding-top:0}
-.rg-recap-t1 th small{display:block;font-size:11px;font-weight:500;color:var(--txt2)}
-.rg-recap-svc{flex-direction:row;gap:6px;max-width:none;font-size:13px;white-space:nowrap}
+.rg-recap-t2 th{top:44px;font-size:var(--ds-t-11);font-weight:var(--ds-g-moyen);color:var(--txt2);text-transform:none;padding-top:0}
+.rg-recap-t1 th small{display:block;font-size:var(--ds-t-11);font-weight:var(--ds-g-moyen);color:var(--txt2)}
+.rg-recap-svc{flex-direction:row;gap:6px;max-width:none;font-size:var(--ds-t-13);white-space:nowrap}
 .rg-recap-table input{border:1px solid transparent;background:transparent;border-radius:6px;box-shadow:none;width:70px;padding:3px 5px}
 /* Le travail en heures (08/10) : « 0,333 » tient dans la case, sans flèches (elles sautaient d'une heure entière). */
 .rg-recap-table input[type=number]{-moz-appearance:textfield;appearance:textfield}
 .rg-recap-table input[type=number]::-webkit-inner-spin-button,.rg-recap-table input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .rg-recap-table input:hover{border-color:var(--bordure)}
-.rg-recap-table input:focus{border-color:var(--accent);background:var(--bg3,#fff);outline:none}
+.rg-recap-table input:focus{border-color:var(--accent);background:var(--bg3);outline:none}
 .rg-recap-table .rgr-p input{width:40px;color:var(--txt2)}
-.rg-recap-table .rgr-p .rgr-calc{display:inline-block;min-width:40px;font-weight:700;color:var(--txt);cursor:help}
-.rg-recap-table .rgr-p .rgr-calc.saisi{font-weight:400;color:var(--txt2)}
+.rg-recap-table .rgr-p .rgr-calc{display:inline-block;min-width:40px;font-weight:var(--ds-g-fort);color:var(--txt);cursor:help}
+.rg-recap-table .rgr-p .rgr-calc.saisi{font-weight:var(--ds-g-normal);color:var(--txt2)}
 .rgr-p.partage input{text-decoration:underline dotted;text-underline-offset:3px}
 .rgr-p.sans{color:var(--txt2);text-align:center}
 .rgr-p.partage>span{text-decoration:underline dotted;text-underline-offset:3px}
-.rgr-d{color:var(--txt2);font-size:12px;min-width:52px}
+.rgr-d{color:var(--txt2);font-size:var(--ds-t-12);min-width:52px}
 .rgr.robot{background:color-mix(in srgb,var(--accent) 8%,transparent)}
-.rgr.robot.propre input{font-weight:700}
-.rgr.case{font-weight:600}
-.rgr.manque input{border-color:#c0392b;outline:0}
+.rgr.robot.propre input{font-weight:var(--ds-g-fort)}
+.rgr.case{font-weight:var(--ds-g-fort)}
+.rgr.manque input{border-color:var(--ds-retard);outline:0}
 .rgr.hors{text-align:center}
 /* Le tableau des minutes par blocs de compagnie (retour d'usage du 02/10 :
  * « plus digeste, plus beau ») : la ligne d'une compagnie est son total, en tête
  * de bloc ; ses classes, en retrait, se déplient d'un clic. Pas de zébrage : les
  * blocs suffisent à guider l'œil. La première colonne reste en place quand le
  * tableau défile de côté ; le total de la journée, en bas, aussi. */
-.rg-recap-plier{margin:6px 0 4px;font-size:13px;color:var(--txt2)}
+.rg-recap-plier{margin:6px 0 4px;font-size:var(--ds-t-13);color:var(--txt2)}
 .rg-recap-table{border-collapse:separate;border-spacing:0}
-.rg-recap-table tbody tr:nth-child(even) td,.rg-recap-table tbody tr:nth-child(even) th{background:var(--bg3,#fff)}
-.rg-recap-table tbody td,.rg-recap-table tbody th{background:var(--bg3,#fff);border-bottom:1px solid color-mix(in srgb,var(--bordure) 55%,transparent)}
+.rg-recap-table tbody tr:nth-child(even) td,.rg-recap-table tbody tr:nth-child(even) th{background:var(--bg3)}
+.rg-recap-table tbody td,.rg-recap-table tbody th{background:var(--bg3);border-bottom:1px solid color-mix(in srgb,var(--bordure) 55%,transparent)}
 .rg-recap-table th[scope=row],.rg-recap-table thead th:first-child,.rg-recap-table tfoot th{position:sticky;left:0;z-index:2;text-align:left;min-width:150px}
 .rg-recap-table thead th:first-child{z-index:4}
 /* La ligne de la compagnie : son total. */
-.rg-recap-table tbody tr.rg-recap-cie td,.rg-recap-table tbody tr.rg-recap-cie th{background:color-mix(in srgb,var(--c-equipes,var(--accent)) 7%,var(--bg3,#fff));
+.rg-recap-table tbody tr.rg-recap-cie td,.rg-recap-table tbody tr.rg-recap-cie th{background:color-mix(in srgb,var(--c-equipes,var(--accent)) 7%,var(--bg3));
   border-top:2px solid var(--bordure);border-bottom:1px solid var(--bordure);padding-top:8px;padding-bottom:8px}
 .rg-recap-bloc:first-of-type tr.rg-recap-cie td,.rg-recap-bloc:first-of-type tr.rg-recap-cie th{border-top:0}
 .rg-cie-btn{appearance:none;border:0;background:none;font:inherit;color:var(--txt);cursor:pointer;display:inline-flex;align-items:center;gap:8px;padding:2px 4px;border-radius:6px}
@@ -194,22 +195,22 @@
 .rg-cie-btn:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .rg-cie-chevron{width:0;height:0;border-left:5px solid var(--txt2);border-top:4px solid transparent;border-bottom:4px solid transparent;transition:transform .15s}
 .rg-cie-btn[aria-expanded=true] .rg-cie-chevron{transform:rotate(90deg)}
-.rg-cie-code{font-weight:800;letter-spacing:.03em;font-size:13px;padding:2px 8px;border-radius:999px;background:var(--bg2,#eef);border:1px solid var(--bordure)}
-.rg-cie-btn small{font-size:11px;color:var(--txt2);font-weight:500}
-.rgr.somme{font-weight:700;text-align:right;padding-right:12px;white-space:nowrap}
-.rgr-manque-pt{display:inline-block;width:7px;height:7px;border-radius:50%;background:#c0392b;margin-left:6px;vertical-align:middle}
-.rg-recap-cie .rg-recap-total{font-size:14px}
+.rg-cie-code{font-weight:var(--ds-g-fort);letter-spacing:.03em;font-size:var(--ds-t-13);padding:2px 8px;border-radius:999px;background:var(--bg2);border:1px solid var(--bordure)}
+.rg-cie-btn small{font-size:var(--ds-t-11);color:var(--txt2);font-weight:var(--ds-g-moyen)}
+.rgr.somme{font-weight:var(--ds-g-fort);text-align:right;padding-right:12px;white-space:nowrap}
+.rgr-manque-pt{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ds-retard);margin-left:6px;vertical-align:middle}
+.rg-recap-cie .rg-recap-total{font-size:var(--ds-t-14)}
 /* Ses classes : en retrait, repliées tant qu'on ne les ouvre pas. */
 .rg-recap-bloc:not(.ouvert) tr.rg-recap-classe{display:none}
-.rg-recap-classe th{padding-left:34px;font-weight:500;color:var(--txt);white-space:nowrap}
-.rg-recap-classe .rg-recap-total{font-weight:600;color:var(--txt2)}
+.rg-recap-classe th{padding-left:34px;font-weight:var(--ds-g-moyen);color:var(--txt);white-space:nowrap}
+.rg-recap-classe .rg-recap-total{font-weight:var(--ds-g-fort);color:var(--txt2)}
 .rgr.hors{opacity:1}
-.rgr.parcie{background:repeating-linear-gradient(135deg,transparent 0 6px,color-mix(in srgb,var(--txt2) 6%,transparent) 6px 7px)!important}
+.rgr.parcie{background:repeating-linear-gradient(135deg,transparent 0 6px,color-mix(in srgb,var(--txt2) 6%,transparent) 6px 7px)}
 /* Le total de la journée, toujours visible en bas. */
-.rg-recap-table tfoot td,.rg-recap-table tfoot th{position:sticky;bottom:0;background:var(--bg2,#f4f5f7);font-weight:800;border-top:2px solid var(--bordure);padding-top:9px;padding-bottom:9px;text-align:right}
+.rg-recap-table tfoot td,.rg-recap-table tfoot th{position:sticky;bottom:0;background:var(--bg2);font-weight:var(--ds-g-fort);border-top:2px solid var(--bordure);padding-top:9px;padding-bottom:9px;text-align:right}
 .rg-recap-table tfoot th{text-align:left;z-index:3}
-.rg-recap-legende .rgr.somme{font-weight:700}
+.rg-recap-legende .rgr.somme{font-weight:var(--ds-g-fort)}
 @media (prefers-color-scheme:dark){.rg-cie-code{background:color-mix(in srgb,var(--txt2) 18%,transparent)}}
 /* Le tableau des minutes prend la largeur de l'écran : moins de défilement de côté. */
 #view-reglages #rg-recap-panneau{max-width:none}
-.rgr-p.chaine input{color:#b03a7a}
+.rgr-p.chaine input{color:var(--ds-chaine)}

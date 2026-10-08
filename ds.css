@@ -153,6 +153,7 @@ a{color:var(--ds-accent-texte)}
 .btn-play,.btn.btn-play{background:var(--ds-accent);border-color:var(--ds-accent);color:var(--ds-sur-accent);box-shadow:var(--ds-ombre-1)}
 .btn-play .ico,.btn.btn-play .ico{color:currentColor}
 .btn-play:hover:not(:disabled),.btn.btn-play:hover:not(:disabled){background:var(--ds-accent-fort);border-color:var(--ds-accent-fort);color:var(--ds-sur-accent)}
+.btn-play:focus-visible,.btn.btn-play:focus-visible,.btn-pause:focus-visible,.btn.btn-pause:focus-visible{box-shadow:var(--ds-focus)}
 .btn-pause,.btn.btn-pause{background:var(--ds-attente);border-color:var(--ds-attente);color:#fff}
 .btn-pause:hover:not(:disabled){background:var(--ds-attente-texte);border-color:var(--ds-attente-texte);color:#fff}
 .svc-danger,.btn.svc-danger,.btn.at-danger{color:var(--ds-retard-texte);border-color:color-mix(in srgb,var(--ds-retard) 30%,var(--ds-bordure-forte));background:var(--ds-surface-1)}
@@ -176,6 +177,27 @@ input::placeholder,textarea::placeholder{color:var(--ds-texte-4)}
 input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--ds-accent)}
 input[aria-invalid="true"],select[aria-invalid="true"]{border-color:var(--ds-retard) !important;box-shadow:0 0 0 3px var(--ds-retard-doux)}
 label{color:inherit}
+
+/* Les pictogrammes qui remplacent les caractères (⛓ ⚠ ✓ ⇄ ⇩ ⇧ ↶ ▶…) : à la
+   taille du texte qu'ils accompagnent, ou de la pastille qui les porte. */
+.ico.ico-texte{width:1.1em;height:1.1em;vertical-align:-.18em}
+.note-ico{display:inline-flex;vertical-align:-3px;margin-right:5px;color:var(--ds-attente)}
+.note-ico .ico{width:15px;height:15px}
+.mu-chez .ico{width:11px;height:11px;stroke-width:2.2;vertical-align:-1px}
+.mu-chaine-ico{display:inline-flex}
+.mu-chaine-ico .ico{width:17px;height:17px}
+.mu-pas-num .ico{width:15px;height:15px;stroke-width:2.4}
+.pc-cmd-etat .ico{width:12px;height:12px;stroke-width:2.8}
+.qf-chevron{display:inline-flex}
+.qf-chevron .ico{width:14px;height:14px}
+.at-chip .ico,.pc-besoin .ico{width:13px;height:13px;margin-right:3px;vertical-align:-2px;stroke-width:2.2}
+.mu-badge .ico{width:13px;height:13px}
+.etape-etat .ico{width:12px;height:12px;stroke-width:2.6}
+.bu-ouvrir .ico{width:14px;height:14px;margin-right:4px;vertical-align:-2px}
+.at-chip .ico.ico-apres{margin:0 0 0 4px}
+.pc-tiroir-fermer .ico{width:18px;height:18px}
+[data-at-action="lot-retirer"] .ico,[data-at-action="duree-retirer"] .ico,[data-pl-action="retirer"] .ico{width:14px;height:14px;vertical-align:-2px}
+.btn>[data-ico]{display:inline-flex}
 
 /* Pastilles d'état. */
 .status{font-weight:var(--ds-g-moyen);border-radius:99px;padding:2px 8px;font-size:var(--ds-t-12)}
@@ -308,6 +330,7 @@ body.plan-editing .barre-defile,body.plan-editing .barre-pied{padding:10px 6px}
 .haut .btn-icone{border-color:transparent;background:transparent;box-shadow:none;color:var(--ds-texte-2)}
 .haut .btn-icone:hover:not(:disabled){background:var(--ds-survol);border-color:transparent}
 .haut .btn-icone .ico{width:18px;height:18px;color:currentColor}
+.haut .btn-icone:focus-visible{box-shadow:var(--ds-focus);border-color:var(--ds-accent)}
 .haut .btn-icone>[data-ico]{display:inline-flex}
 
 /* Un seul Annuler / Rétablir, en haut : il actionne ceux de chaque zone, restés
@@ -391,6 +414,9 @@ body.plan-editing .barre-defile,body.plan-editing .barre-pied{padding:10px 6px}
 #view-reglages .rg-sim-horaires>.panneau{margin-bottom:12px}
 
 /* Le lecteur, le plan, le panneau de droite. */
+/* Thème sombre : le dessin du bâtiment (des tuiles, noir sur blanc) passe en
+   clair sur sombre, comme le reste de la page ; ses traits gardent leur teinte. */
+:root[data-theme="sombre"] #plan-fond image{filter:invert(.9) hue-rotate(180deg)}
 .plan-tete .btn,.lecteur .btn{padding:0 10px}
 .lecteur{background:var(--ds-surface-1);border-bottom:1px solid var(--ds-bordure)}
 .horloge{font-weight:var(--ds-g-fort);letter-spacing:-.01em}

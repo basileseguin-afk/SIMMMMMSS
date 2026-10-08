@@ -25,7 +25,7 @@
 .aide>summary::-webkit-details-marker,.aide>summary::marker{display:none;content:''}
 .aide>summary:hover{border-color:var(--accent);color:var(--accent2);background:var(--bg3)}
 .aide>summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.aide[open]>summary{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff)}
+.aide[open]>summary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 
 /* Le corps est une BULLE ANCRÉE, pas un bloc dans le fil du texte.
    Dans le fil, il grossissait la ligne qui le portait : ouvrir l'aide d'un
@@ -40,7 +40,7 @@
   width:max-content;max-width:min(440px,72vw);
   padding:11px 14px;border:1px solid var(--bordure2);border-left:3px solid var(--accent);
   border-radius:0 9px 9px 0;background:var(--bg3);color:var(--txt2);
-  box-shadow:0 10px 28px rgba(0,0,0,.18);
+  box-shadow:var(--ds-ombre-flottant);
   font:400 12.5px/1.6 inherit;text-align:left;white-space:normal}
 /* Près du bord droit, la bulle s'ouvre vers la gauche plutôt que d'allonger
    la page : un débordement horizontal casse la lecture sur téléphone. */
@@ -49,7 +49,7 @@
 .aide[open] .aide-corps p{margin:0 0 8px}
 .aide[open] .aide-corps p:last-child{margin-bottom:0}
 .aide[open] .aide-corps ul{margin:6px 0 0;padding-left:18px}
-.aide[open] .aide-corps table{border-collapse:collapse;margin:8px 0 0;font-size:12px}
+.aide[open] .aide-corps table{border-collapse:collapse;margin:8px 0 0;font-size:var(--ds-t-12)}
 .aide[open] .aide-corps th,.aide[open] .aide-corps td{border-bottom:1px solid var(--bordure);padding:4px 10px 4px 0;text-align:left}
 
 /* Une aide qui occupe sa propre ligne : là, le corps reste dans le fil, il
@@ -58,10 +58,10 @@
 .aide.bloc[open] .aide-corps{position:static;width:auto;max-width:70ch;
   margin-top:8px;box-shadow:none;border-radius:0 8px 8px 0;background:var(--bg2)}
 .aide.bloc>summary{display:inline-flex;gap:7px;width:auto;height:auto;border-radius:6px;
-  padding:4px 10px;font-weight:600;font-size:12px}
+  padding:4px 10px;font-weight:var(--ds-g-fort);font-size:var(--ds-t-12)}
 .aide.bloc>summary::before{content:'?';display:grid;place-items:center;
-  width:15px;height:15px;border-radius:50%;background:var(--bordure2);color:var(--txt);font-size:10px}
-.aide.bloc[open]>summary::before{background:var(--on-accent,#fff);color:var(--accent2)}
+  width:15px;height:15px;border-radius:50%;background:var(--bordure2);color:var(--txt);font-size:var(--ds-t-11)}
+.aide.bloc[open]>summary::before{background:var(--on-accent);color:var(--accent2)}
 
 /* Un titre et son « ? ». Le `<details>` ne peut pas vivre DANS un `<h2>`/`<h3>`
    — ni dans un `<p>`, que le navigateur referme alors tout seul. On les met

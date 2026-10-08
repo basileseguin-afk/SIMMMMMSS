@@ -780,21 +780,21 @@ function renderPlanche(){
     +'<td><input type="time" data-pl-champ="heure" value="'+escapeHTML(l.heure)+'" aria-label="Arrivée à l’unité, ligne '+(i+1)+'"></td>'
     +'<td><select data-pl-champ="jour" aria-label="Jour, ligne '+(i+1)+'">'+jours(l.jour)+'</select></td>'
     +CLASSES_PLANCHE.map(([k,c])=>'<td><input type="number" min="0" data-pl-champ="'+k+'" value="'+(l[k]??'')+'" placeholder="—" aria-label="'+c+', ligne '+(i+1)+'"></td>').join('')
-    +'<td><button class="lien-discret" data-pl-action="retirer" aria-label="Retirer la ligne '+(i+1)+'">×</button></td></tr>').join('');
+    +'<td><button class="lien-discret" data-pl-action="retirer" aria-label="Retirer la ligne '+(i+1)+'">'+pic('croix')+'</button></td></tr>').join('');
   box.innerHTML='<div class="panneau planche">'
     +'<div class="planche-tete"><h3>Planche retour du handling</h3><span class="planche-fin"></span>'
     +'<button class="btn btn-sm" data-pl-action="ajouter">+ Ligne</button>'
-    +'<button class="btn btn-sm" data-pl-action="exporter" title="La planche dans un classeur Excel (vide : un modèle à remplir)">⇩ Excel</button>'
-    +'<button class="btn btn-sm" data-pl-action="importer" title="Remplacer la planche par un classeur Excel">⇧ Importer</button>'
+    +'<button class="btn btn-sm" data-pl-action="exporter" title="La planche dans un classeur Excel (vide : un modèle à remplir)">'+pic('telecharger')+'Excel</button>'
+    +'<button class="btn btn-sm" data-pl-action="importer" title="Remplacer la planche par un classeur Excel">'+pic('importer')+'Importer</button>'
     +'<input type="file" accept=".xlsx,.csv" hidden data-pl-fichier>'
     +(planche.length?'<button class="btn btn-sm svc-danger" data-pl-action="vider">Vider</button>':'')+'</div>'
     +(src==='planche'?'<p class="mini-note planche-etat ok">La simulation lit cette planche : chaque vol revient à la plonge à son heure d’arrivée à l’unité.</p>'
       :'<p class="mini-note planche-etat">La simulation ne lit pas cette planche : ses retours viennent '+(src==='j1'?'des départs de la veille (J+1)':'des lignes « retour » du programme de vols')
         +'. <button class="btn btn-sm btn-play" data-pl-action="utiliser">Utiliser la planche retour</button> <button class="lien-discret" data-page="rg-simulation">Réglages de la simulation →</button></p>')
-    +(planche.length?'<p class="mini-note planche-comparer">Laquelle donne la meilleure journée ? <button class="btn btn-sm" data-comparer-retours>⇄ Comparer J+1 et planche retour</button></p>':'')
+    +(planche.length?'<p class="mini-note planche-comparer">Laquelle donne la meilleure journée ? <button class="btn btn-sm" data-comparer-retours>'+pic('echanger')+'Comparer J+1 et planche retour</button></p>':'')
     +'<div class="table-scroll"><table class="planche-table"><thead><tr><th>Vol</th><th>Compagnie</th><th>Arrivée à l’unité</th><th>Jour</th>'
     +CLASSES_PLANCHE.map(([,c])=>'<th title="Passagers de cette classe à bord (facultatif)">'+c+'</th>').join('')+'<th></th></tr></thead><tbody>'
-    +(lignes||'<tr><td colspan="10" class="mini-note">Aucune ligne. « + Ligne » pour saisir, ou « ⇧ Importer » un classeur (« ⇩ Excel » donne le modèle).</td></tr>')
+    +(lignes||'<tr><td colspan="10" class="mini-note">Aucune ligne. « + Ligne » pour saisir, ou « Importer » un classeur (« Excel » donne le modèle).</td></tr>')
     +'</tbody></table></div>'
     +'<p class="mini-note">Classes : facultatif. Vides, le vol ramène le matériel des classes que sa compagnie emporte au départ. '
     +planche.length+(planche.length>1?' lignes.':' ligne.')+'</p></div>';
@@ -967,6 +967,28 @@ function initUnite(){
  * outils) : les listes collées en haut d'une vue (services, commandes) s'y
  * ajustent pour tenir dans l'écran. Le titre change de hauteur avec la largeur
  * de la fenêtre et d'une page à l'autre. */
+/** Un pictogramme de icones.js (exporter, importer, comparer…), au lieu d'un caractère. */
+function pic(nom){return window.OrlyIcones?OrlyIcones.ico(nom):'';}
+/* Le thème : clair par défaut, sombre au choix (refonte du 08/10). C'est une
+ * préférence d'affichage, retenue dans ce navigateur : elle ne touche à aucune
+ * donnée. Le <head> l'applique avant le premier dessin ; les couleurs du plan
+ * et des diagrammes suivent d'elles-mêmes (elles viennent des jetons). */
+const CLE_THEME='ory-ui-theme';
+function appliquerTheme(sombre){
+  if(sombre)document.documentElement.dataset.theme='sombre';else delete document.documentElement.dataset.theme;
+  const b=document.getElementById('btn-theme');if(!b)return;
+  b.setAttribute('aria-pressed',String(sombre));
+  b.title=sombre?'Revenir au thème clair':'Passer au thème sombre';
+  b.innerHTML='<span>'+pic(sombre?'soleil':'lune')+'</span><span>'+(sombre?'Thème clair':'Thème sombre')+'</span>';
+}
+function initTheme(){
+  const b=document.getElementById('btn-theme');if(!b)return;
+  appliquerTheme(document.documentElement.dataset.theme==='sombre');
+  b.addEventListener('click',()=>{
+    const sombre=document.documentElement.dataset.theme!=='sombre';appliquerTheme(sombre);
+    try{if(sombre)localStorage.setItem(CLE_THEME,'sombre');else localStorage.removeItem(CLE_THEME);}catch(e){/* stockage indisponible : le choix vaut pour la visite */}
+  });
+}
 function majHauteurEntete(){
   const t=document.getElementById('tete-page');
   if(!t||!t.offsetParent)return;
@@ -2409,6 +2431,7 @@ etape('simulation',initVueSimulation);
 etape('menu',initOnglets);
 etape('accueil',initDemarrage);
 etape('annuler',initAnnuler);
+etape('thème',initTheme);
 etape('affichage',()=>{majHorloge();majPlan();majDashboard();majStocks();});
 // Le démarrage est allé au bout : la marque s'efface.
 try{localStorage.removeItem(CLE_DEMARRAGE);}catch(e){/* rien */}

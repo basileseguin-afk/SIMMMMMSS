@@ -323,6 +323,8 @@
    *  LA PAGE : Simulation › Calage sur le réel
    * ====================================================================*/
 
+  /** Un pictogramme de icones.js (exporter, importer), au lieu d'un caractère. */
+  const pic = nom => (root.OrlyIcones ? root.OrlyIcones.ico(nom) : '');
   const esc = x => String(x ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const h = m => (m == null || !Number.isFinite(m) ? '—' : (Math.round(m / 6) / 10).toString().replace('.', ',') + ' h');
   const pctFacteur = k => (k === 1 ? 'comme le barème' : (k > 1 ? '+' : '−') + Math.round(Math.abs(k - 1) * 100) + ' % de temps');
@@ -351,8 +353,8 @@
       const box = root.document.getElementById('rg-calage'); if (!box) return;
       const etapes = `<ol class="ca-etapes">
           <li><b>Le classeur du mois</b> : une feuille Vols, une Planning, une Pointages (et le Labor cost si vous l’avez), une ligne par jour.
-            <button type="button" class="btn btn-sm" data-ca="modele">⇩ Le modèle du classeur</button></li>
-          <li><b>Importez-le</b> : <label class="btn btn-sm btn-play">⇧ Importer le mois<input type="file" accept=".xlsx,.csv" data-ca="fichier" hidden></label>
+            <button type="button" class="btn btn-sm" data-ca="modele">${pic('telecharger')}Le modèle du classeur</button></li>
+          <li><b>Importez-le</b> : <label class="btn btn-sm btn-play">${pic('importer')}Importer le mois<input type="file" accept=".xlsx,.csv" data-ca="fichier" hidden></label>
             <span class="mini-note">il reste dans ce navigateur, le temps de la page ; rien n’est envoyé.</span></li>
           <li><b>Lancez le calage</b> : chaque jour est rejoué ; les trois premières semaines apprennent, la dernière vérifie.</li>
           <li><b>Appliquez</b> les facteurs trouvés au barème, si les chefs de service les valident.</li></ol>`;

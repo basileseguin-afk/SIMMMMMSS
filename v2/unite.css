@@ -6,7 +6,7 @@
 /* La liste tient dans l'écran, sous l'en-tête (mesuré : --haut-entete) : sinon
    un défilement appuyé l'emportait avec la page et la faisait sortir par le bas. */
 .mu-liste{position:sticky;top:8px;display:flex;flex-direction:column;gap:4px;max-height:calc(100dvh - var(--haut-entete,170px) - 100px);overflow:auto;padding-right:4px}
-.mu-groupe{margin:6px 0 2px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--txt2)}
+.mu-groupe{margin:6px 0 2px;font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);text-transform:uppercase;letter-spacing:.05em;color:var(--txt2)}
 .mu-svc{display:flex;align-items:center;gap:10px;width:100%;text-align:left;font:inherit;color:var(--txt);background:var(--bg3);
   border:1px solid var(--bordure);border-radius:10px;padding:8px 10px;cursor:pointer}
 .mu-svc:hover{border-color:var(--accent)}
@@ -15,82 +15,82 @@
 .mu-svc-ico{flex:none;display:inline-flex;width:22px;height:22px;color:var(--accent)}
 .mu-svc-ico svg{width:22px;height:22px}
 .mu-svc-txt{flex:1;min-width:0;display:flex;flex-direction:column}
-.mu-svc-txt b{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mu-svc-txt small{font-size:12px;color:var(--txt2)}
+.mu-svc-txt b{font-size:var(--ds-t-14);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mu-svc-txt small{font-size:var(--ds-t-12);color:var(--txt2)}
 .mu-point{flex:none;width:10px;height:10px;border-radius:50%;background:var(--bordure2)}
 .mu-point.ok{background:var(--ok)}
 .mu-point.afaire{background:var(--attente)}
-.mu-nouveau{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding:10px;border:1px dashed var(--bordure2);border-radius:10px;font-size:13px}
-.mu-nouveau label{display:flex;flex-direction:column;gap:3px;color:var(--txt2);font-size:12px}
+.mu-nouveau{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding:10px;border:1px dashed var(--bordure2);border-radius:10px;font-size:var(--ds-t-13)}
+.mu-nouveau label{display:flex;flex-direction:column;gap:3px;color:var(--txt2);font-size:var(--ds-t-12)}
 .mu-nouveau input,.mu-nouveau select{font:inherit;min-height:32px}
-.mu-avance{margin:10px 0 0;font-size:12px}
+.mu-avance{margin:10px 0 0;font-size:var(--ds-t-12)}
 
 .mu-fiche{min-width:0;background:var(--bg3);border:1px solid var(--bordure);border-radius:12px;padding:14px 18px 18px}
 .mu-tete{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;padding-bottom:10px;border-bottom:1px solid var(--bordure)}
 .mu-tete-ico{display:inline-flex;width:34px;height:34px;color:var(--accent)}
 .mu-tete-ico svg{width:34px;height:34px}
-.mu-nom{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--txt2)}
-.mu-nom input{font:inherit;font-size:18px;font-weight:700;color:var(--txt);min-width:240px;padding:4px 8px}
+.mu-nom{display:flex;flex-direction:column;gap:3px;font-size:var(--ds-t-12);color:var(--txt2)}
+.mu-nom input{font:inherit;font-size:var(--ds-t-20);font-weight:var(--ds-g-fort);color:var(--txt);min-width:240px;padding:4px 8px}
 .mu-tete-fin{flex:1}
-.mu-afaire{margin:12px 0 0;padding:8px 12px 8px 30px;border-left:3px solid var(--warn-stroke);background:var(--warn-fill);border-radius:6px;font-size:13px}
+.mu-afaire{margin:12px 0 0;padding:8px 12px 8px 30px;border-left:3px solid var(--warn-stroke);background:var(--warn-fill);border-radius:6px;font-size:var(--ds-t-13)}
 .mu-afaire li{margin:2px 0}
 
 .mu-etape{margin-top:18px}
-.mu-etape>h3{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 10px;font-size:15px}
-.mu-etape>h3 small{font-weight:400;font-size:12px;color:var(--txt2)}
+.mu-etape>h3{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 10px;font-size:var(--ds-t-14)}
+.mu-etape>h3 small{font-weight:var(--ds-g-normal);font-size:var(--ds-t-12);color:var(--txt2)}
 .mu-num{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;
-  background:var(--accent);color:var(--on-accent,#fff);font-size:13px;font-weight:800;flex:none}
-.mu-nature{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--txt2);max-width:520px}
-.mu-nature select{font:inherit;font-size:14px;color:var(--txt);min-height:36px}
+  background:var(--accent);color:var(--on-accent);font-size:var(--ds-t-13);font-weight:var(--ds-g-fort);flex:none}
+.mu-nature{display:flex;flex-direction:column;gap:4px;font-size:var(--ds-t-12);color:var(--txt2);max-width:520px}
+.mu-nature select{font:inherit;font-size:var(--ds-t-14);color:var(--txt);min-height:36px}
 .mu-ajout{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 0}
 .mu-vide{margin:4px 0}
 .mu-carte .at-carte{margin:8px 0}
-.mu-besoin h4{margin:14px 0 6px;font-size:14px}
+.mu-besoin h4{margin:14px 0 6px;font-size:var(--ds-t-14)}
 
 /* ---- Une équipe ------------------------------------------------------------ */
 .mu-equipe{border:1px solid var(--bordure);border-radius:10px;padding:10px 12px;margin:0 0 12px;background:var(--bg2)}
 .mu-equipe-tete{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
-.mu-equipe-tete label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--txt2)}
+.mu-equipe-tete label{display:flex;flex-direction:column;gap:3px;font-size:var(--ds-t-12);color:var(--txt2)}
 .mu-equipe-tete input,.mu-equipe-tete select{font:inherit;min-height:34px;color:var(--txt)}
-.mu-eq-nom input{font-weight:700;min-width:180px}
+.mu-eq-nom input{font-weight:var(--ds-g-fort);min-width:180px}
 .mu-eq-pers input{width:80px}
-.mu-effectif{display:flex;gap:10px;align-items:flex-start;margin-top:12px;max-width:620px;font-size:14px;cursor:pointer}
+.mu-effectif{display:flex;gap:10px;align-items:flex-start;margin-top:12px;max-width:620px;font-size:var(--ds-t-14);cursor:pointer}
 .mu-effectif input{margin-top:3px;width:18px;height:18px;flex:none}
 .mu-effectif span{display:flex;flex-direction:column;gap:2px}
-.mu-effectif small{font-size:12px;color:var(--txt2);line-height:1.4}
+.mu-effectif small{font-size:var(--ds-t-12);color:var(--txt2);line-height:1.4}
 .mu-effectif.mu-par-vols{flex-direction:column;gap:2px;cursor:default}
 /* Les superviseurs / coordinateurs d'un service, hors production (06/10). */
-.mu-encadrement{display:grid;grid-template-columns:max-content 90px;align-items:center;gap:4px 12px;margin-top:12px;max-width:620px;font-size:14px}
+.mu-encadrement{display:grid;grid-template-columns:max-content 90px;align-items:center;gap:4px 12px;margin-top:12px;max-width:620px;font-size:var(--ds-t-14)}
 .mu-encadrement input{width:90px}
 /* L'atelier unique : une case par compagnie (07/10). */
 .mu-atelier-cies{display:flex;flex-wrap:wrap;gap:8px 14px;margin:6px 0 10px}
-.mu-atelier-cies label{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--bordure);border-radius:10px;font-size:14px}
-.mu-atelier-cies small{color:var(--txt2);font-size:12px}
+.mu-atelier-cies label{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--bordure);border-radius:10px;font-size:var(--ds-t-14)}
+.mu-atelier-cies small{color:var(--txt2);font-size:var(--ds-t-12)}
 .mu-atelier-gestes{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.mu-encadrement small{grid-column:1/-1;font-size:12px;color:var(--txt2);line-height:1.4}
-.mu-eq-fin{flex:1;text-align:right;font-size:12px;color:var(--txt2);padding-bottom:8px}
-.mu-question{margin:12px 0 6px;font-size:13px;font-weight:700}
-.mu-question small{font-weight:400;color:var(--txt2);margin-left:6px}
-.mu-ordre{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:8px 0 0;font-size:12px;color:var(--txt2)}
+.mu-encadrement small{grid-column:1/-1;font-size:var(--ds-t-12);color:var(--txt2);line-height:1.4}
+.mu-eq-fin{flex:1;text-align:right;font-size:var(--ds-t-12);color:var(--txt2);padding-bottom:8px}
+.mu-question{margin:12px 0 6px;font-size:var(--ds-t-13);font-weight:var(--ds-g-fort)}
+.mu-question small{font-weight:var(--ds-g-normal);color:var(--txt2);margin-left:6px}
+.mu-ordre{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:8px 0 0;font-size:var(--ds-t-12);color:var(--txt2)}
 .mu-ordre-cmd{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border:1px solid var(--bordure);border-radius:99px;background:var(--bg3);color:var(--txt)}
-.mu-ordre-cmd b{font-size:11px;color:var(--txt2)}
+.mu-ordre-cmd b{font-size:var(--ds-t-11);color:var(--txt2)}
 .mu-ordre-cmd button{border:0;background:none;padding:0;font:inherit;color:inherit;cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px}
 .mu-ordre-cmd button:hover{color:var(--accent)}
-.mu-ordre small{color:var(--txt3,var(--txt2));font-size:11px}
+.mu-ordre small{color:var(--txt3,var(--txt2));font-size:var(--ds-t-11)}
 /* Les flux qui passent par un service : on y va d'un clic. */
-.mu-flux-passent{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 12px;font-size:13px;color:var(--txt2)}
-.mu-flux-lien{display:inline-flex;align-items:center;padding:3px 10px;border:1px solid var(--bordure);border-radius:99px;background:var(--bg3);color:var(--txt);font:inherit;font-weight:600;cursor:pointer}
+.mu-flux-passent{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 12px;font-size:var(--ds-t-13);color:var(--txt2)}
+.mu-flux-lien{display:inline-flex;align-items:center;padding:3px 10px;border:1px solid var(--bordure);border-radius:99px;background:var(--bg3);color:var(--txt);font:inherit;font-weight:var(--ds-g-fort);cursor:pointer}
 .mu-flux-lien:hover{border-color:var(--accent);color:var(--accent)}
 .mu-plus{margin-top:8px}
-.mu-plus>summary{cursor:pointer;font-size:12px;color:var(--accent);font-weight:600}
+.mu-plus>summary{cursor:pointer;font-size:var(--ds-t-12);color:var(--accent);font-weight:var(--ds-g-fort)}
 .mu-plus .at-carte{margin:8px 0 0}
 
 /* ---- La grille compagnies × classes ---------------------------------------- */
 .mu-grille-scroll{overflow:auto;max-width:100%}
-.mu-grille{border-collapse:separate;border-spacing:3px;font-size:13px}
-.mu-grille th{font-weight:600;color:var(--txt2);text-align:center;padding:0}
+.mu-grille{border-collapse:separate;border-spacing:3px;font-size:var(--ds-t-13)}
+.mu-grille th{font-weight:var(--ds-g-fort);color:var(--txt2);text-align:center;padding:0}
 .mu-grille tbody th{text-align:left}
-.mu-tout{font:inherit;font-size:12px;font-weight:700;color:var(--txt);background:none;border:1px solid transparent;border-radius:6px;
+.mu-tout{font:inherit;font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);color:var(--txt);background:none;border:1px solid transparent;border-radius:6px;
   padding:3px 8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .mu-tout:hover{border-color:var(--bordure2);background:var(--bg3)}
 .mu-c{padding:0;text-align:center}
@@ -101,26 +101,26 @@
 .mu-c.passe label{background:color-mix(in srgb,var(--accent) 16%,var(--bg3));border-color:var(--accent)}
 .mu-c.ailleurs label{background:var(--bg2);border-style:dashed}
 .mu-c.attendue label{background:var(--warn-fill);border:1.5px dashed var(--warn-stroke)}
-.mu-c.chaine label{background:var(--chaine-doux,#f3efff);border:1.5px dashed var(--chaine,#7c3aed);cursor:default}
-.mu-c.chaine .mu-chez{color:var(--chaine,#7c3aed);font-size:10px}
+.mu-c.chaine label{background:var(--chaine-doux);border:1.5px dashed var(--chaine);cursor:default}
+.mu-c.chaine .mu-chez{color:var(--chaine);font-size:var(--ds-t-11)}
 /* À la chaîne : deux services qui ne font qu'un pour une équipe. Même teinte
    partout (diagrammes, liste, fiches, équipes, planning). */
-.mu-svc-chaine{font-style:normal;font-size:11.5px;font-weight:650;color:var(--chaine,#7c3aed);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mu-svc.en-chaine{box-shadow:inset 3px 0 0 var(--chaine,#7c3aed)}
-.mu-chaine-bloc{display:grid;gap:6px;margin:0 0 12px;padding:8px 12px;border:1.5px dashed var(--chaine,#7c3aed);border-radius:12px;background:var(--chaine-doux,#f3efff)}
-.mu-chaine-bloc p{display:flex;align-items:center;gap:10px;margin:0;font-size:13px}
+.mu-svc-chaine{font-style:normal;font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);color:var(--chaine);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mu-svc.en-chaine{box-shadow:inset 3px 0 0 var(--chaine)}
+.mu-chaine-bloc{display:grid;gap:6px;margin:0 0 12px;padding:8px 12px;border:1.5px dashed var(--chaine);border-radius:12px;background:var(--chaine-doux)}
+.mu-chaine-bloc p{display:flex;align-items:center;gap:10px;margin:0;font-size:var(--ds-t-13)}
 .mu-chaine-bloc p>span:nth-child(2){flex:1}
-.mu-chaine-ico{color:var(--chaine,#7c3aed);font-size:18px;line-height:1}
+.mu-chaine-ico{color:var(--chaine);font-size:var(--ds-t-16);line-height:1}
 .mu-badges{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 6px}
-.mu-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:650}
-.mu-badge.chaine{background:var(--chaine-doux,#f3efff);color:var(--chaine,#7c3aed);border:1px solid color-mix(in srgb,var(--chaine,#7c3aed) 35%,transparent)}
+.mu-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:99px;font-size:var(--ds-t-12);font-weight:var(--ds-g-fort)}
+.mu-badge.chaine{background:var(--chaine-doux);color:var(--chaine);border:1px solid color-mix(in srgb,var(--chaine) 35%,transparent)}
 .mu-badge.ligne{background:var(--bg2);color:var(--txt2);border:1px solid var(--bordure2)}
-.mu-equipe.en-chaine{box-shadow:inset 3px 0 0 var(--chaine,#7c3aed)}
+.mu-equipe.en-chaine{box-shadow:inset 3px 0 0 var(--chaine)}
 .mu-chaine-reglage{margin:8px 0 0;padding:8px 10px;border-radius:10px;background:var(--bg2)}
 .mu-chaine-reglage .at-fusion{margin:0}
-.mu-chez{position:absolute;right:2px;bottom:0;font-style:normal;font-size:9px;font-weight:800;color:var(--txt2);line-height:1.2}
+.mu-chez{position:absolute;right:2px;bottom:0;font-style:normal;font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);color:var(--txt2);line-height:1.2}
 .mu-c.attendue .mu-chez{color:var(--warn-stroke)}
-.mu-rien{color:var(--txt3,#aaa);text-align:center;width:44px}
+.mu-rien{color:var(--txt3);text-align:center;width:44px}
 
 /* ---- Pas à pas --------------------------------------------------------------- */
 .mu-pas-liste{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;max-width:900px}
@@ -128,23 +128,30 @@
 .mu-pas-etape.afaire{border-left:4px solid var(--attente)}
 .mu-pas-etape.ok{border-left:4px solid var(--ok)}
 .mu-pas-num{flex:none;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;
-  background:var(--bg2);border:1px solid var(--bordure2);font-weight:800}
+  background:var(--bg2);border:1px solid var(--bordure2);font-weight:var(--ds-g-fort)}
 .mu-pas-etape.ok .mu-pas-num{background:color-mix(in srgb,var(--ok) 14%,var(--bg3));color:var(--ok);border-color:var(--ok)}
 .mu-pas-etape.afaire .mu-pas-num{background:color-mix(in srgb,var(--attente) 14%,var(--bg3));color:var(--attente);border-color:var(--attente)}
 .mu-pas-corps{flex:1;min-width:0}
-.mu-pas-corps h3{margin:2px 0 4px;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.mu-pas-corps p{margin:0 0 8px;font-size:13px;color:var(--txt2)}
-.mu-pas-etat{font-size:11px;font-weight:800;padding:2px 8px;border-radius:99px;background:var(--bg2);color:var(--txt2)}
+.mu-pas-corps h3{margin:2px 0 4px;font-size:var(--ds-t-14);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mu-pas-corps p{margin:0 0 8px;font-size:var(--ds-t-13);color:var(--txt2)}
+.mu-pas-etat{font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);padding:2px 8px;border-radius:99px;background:var(--bg2);color:var(--txt2)}
 .mu-pas-etat.ok{color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,var(--bg3))}
 .mu-pas-etat.afaire{color:var(--attente);background:color-mix(in srgb,var(--attente) 12%,var(--bg3))}
 .mu-pas-cmds{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-wrap:wrap;gap:4px}
-.mu-pas-cmds li{font-size:12px;padding:1px 8px;border:1px solid var(--bordure);border-radius:99px;background:var(--bg2)}
-.mu-pas-services{list-style:none;margin:0 0 10px;padding:0;display:grid;grid-template-columns:minmax(140px,max-content) 1fr;gap:4px 12px;font-size:13px}
+.mu-pas-cmds li{font-size:var(--ds-t-12);padding:1px 8px;border:1px solid var(--bordure);border-radius:99px;background:var(--bg2)}
+.mu-pas-services{list-style:none;margin:0 0 10px;padding:0;display:grid;grid-template-columns:minmax(140px,max-content) 1fr;gap:4px 12px;font-size:var(--ds-t-13)}
 .mu-pas-services li{display:contents}
 .mu-pas-services li>button{justify-self:start;text-align:left}
 .mu-pas-services li>span{color:var(--txt2)}
 .mu-pas-services li.afaire>span{color:var(--attente)}
-.mu-pas-services li.ok>span::before{content:'✓ ';color:var(--ok)}
+/* « à la chaîne » : sous l'état de son service, dans la même colonne. En
+   troisième cellule, il décalait toutes les lignes suivantes d'un cran (la
+   Plonge en face de l'état de la Prépa — audit du 08/10). */
+.mu-pas-services li>i{grid-column:2}
+/* Complet : une coche dessinée (le pictogramme « check »), plus un caractère. */
+.mu-pas-services li.ok>span::before{content:"";display:inline-block;width:12px;height:12px;margin-right:5px;vertical-align:-1px;background:var(--ok);
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 12.5 9.5 17.5 19.5 6.5'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 12.5 9.5 17.5 19.5 6.5'/%3E%3C/svg%3E") center/contain no-repeat}
 
 @media (max-width:900px){
   .mu-cadre{grid-template-columns:1fr}
@@ -155,36 +162,36 @@
 /* ---- Flux de production ------------------------------------------------------ */
 .mu-regrouper{margin:0 0 16px}
 .mu-flux-outils{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 8px}
-.mu-flux-outils label{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--txt2)}
-.mu-flux-sel{flex:1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;min-height:32px}
+.mu-flux-outils label{display:flex;align-items:center;gap:6px;font-size:var(--ds-t-13);color:var(--txt2)}
+.mu-flux-sel{flex:1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:var(--ds-t-13);min-height:32px}
 .mu-graphe{border:1px solid var(--bordure);border-radius:12px;background:var(--bg2);min-height:220px;max-height:520px;overflow:auto}
 .mu-flux-message{min-height:1.2em;margin:6px 0 0}
-.mu-q{margin:10px 0 0;padding:10px 14px;border:1px solid #fedf89;background:#fffaeb;border-radius:12px;font-size:13px}
+.mu-q{margin:10px 0 0;padding:10px 14px;border:1px solid color-mix(in srgb,var(--ds-attente) 35%,transparent);background:var(--ds-attente-doux);border-radius:12px;font-size:var(--ds-t-13)}
 .mu-q p{margin:0 0 8px}
 .mu-q-gestes{display:flex;flex-wrap:wrap;gap:8px}
 .mu-besoins{list-style:none;margin:0;padding:0;display:grid;gap:6px}
-.mu-besoins .chk{display:flex;align-items:center;gap:8px;font-size:14px}
+.mu-besoins .chk{display:flex;align-items:center;gap:8px;font-size:var(--ds-t-14)}
 .mu-besoins small{color:var(--txt3)}
-.mu-tete-flux{background:linear-gradient(145deg,color-mix(in srgb,var(--c-equipes) 78%,#fff),var(--c-equipes));color:#fff;border-radius:12px;width:44px;height:44px;display:inline-grid;place-items:center}
+.mu-tete-flux{background:var(--ds-accent-doux);color:var(--ds-accent);border-radius:12px;width:44px;height:44px;display:inline-grid;place-items:center}
 
-.mu-sous-titre{margin:14px 0 8px;font-size:13px;font-weight:650;color:var(--txt)}
-.mu-sous-titre small{font-weight:400;color:var(--txt3);margin-left:6px}
+.mu-sous-titre{margin:14px 0 8px;font-size:var(--ds-t-13);font-weight:var(--ds-g-fort);color:var(--txt)}
+.mu-sous-titre small{font-weight:var(--ds-g-normal);color:var(--txt3);margin-left:6px}
 .mu-classes{display:flex;flex-wrap:wrap;gap:8px}
 .mu-classe{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border:1px solid var(--bordure2);border-radius:12px;background:var(--bg3);cursor:pointer;
-  box-shadow:0 1px 2px rgba(16,24,40,.04);transition:border-color .15s,background .15s}
+  box-shadow:var(--ds-ombre-1);transition:border-color .15s,background .15s}
 .mu-classe:hover{border-color:var(--accent)}
-.mu-classe.on{border-color:color-mix(in srgb,var(--accent) 55%,#fff);background:color-mix(in srgb,var(--accent) 8%,#fff)}
+.mu-classe.on{border-color:var(--ds-accent-trait);background:var(--ds-accent-pale)}
 .mu-classe input{width:17px;height:17px;margin:0;accent-color:var(--accent)}
-.mu-classe b{font-size:14px;font-weight:600}
-.mu-classe small{font-size:12px;color:var(--txt3)}
+.mu-classe b{font-size:var(--ds-t-14);font-weight:var(--ds-g-fort)}
+.mu-classe small{font-size:var(--ds-t-12);color:var(--txt3)}
 .mu-exceptions{list-style:none;margin:0;padding:0;display:grid;gap:6px}
-.mu-exceptions li{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;border:1px solid var(--bordure);border-radius:10px;background:var(--bg2);font-size:13px}
+.mu-exceptions li{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;border:1px solid var(--bordure);border-radius:10px;background:var(--bg2);font-size:var(--ds-t-13)}
 .mu-exceptions li>span{flex:1;min-width:240px}
-.mu-flux-ajout-cmd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--txt2)}
+.mu-flux-ajout-cmd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:var(--ds-t-13);color:var(--txt2)}
 .mu-flux-ajout-cmd select{min-height:32px;max-width:420px}
 
 /* Règle ⚡ : l'équipe ne travaille que certains jours */
-.mu-badge.cond{background:color-mix(in srgb,#f59e0b 14%,transparent);color:#b45309;border:1px solid color-mix(in srgb,#d97706 40%,transparent)}
+.mu-badge.cond{background:var(--ds-attente-doux);color:var(--ds-attente-texte);border:1px solid color-mix(in srgb,var(--ds-attente) 40%,transparent)}
 .mu-badge.cond.off{background:var(--bg2);color:var(--txt2);border-style:dashed}
 .mu-cond-reglage .at-cond,.mu-cond-reglage .at-cond-ajout{margin:8px 0 0}
 .mu-equipe.au-repos{border-style:dashed;opacity:.85}
@@ -193,47 +200,47 @@
 .mu-c.hors label{opacity:.45;border-style:dotted}
 .mu-c.hors label:hover{opacity:.8}
 .mu-c.ici.hors-flux label,.mu-c.hors-flux label{background:var(--bad-fill);border:1.5px dashed var(--bad-stroke)}
-.mu-c.hors-flux .mu-chez{font-size:12px;color:var(--bad-stroke)}
+.mu-c.hors-flux .mu-chez{font-size:var(--ds-t-12);color:var(--bad-stroke)}
 
 /* Faire passer un flux par ce service (les commandes hors de son flux ne se cochent pas) */
-.mu-flux-ajout-ici{font:inherit;font-size:13px;min-height:28px;padding:2px 6px;max-width:260px}
+.mu-flux-ajout-ici{font:inherit;font-size:var(--ds-t-13);min-height:28px;padding:2px 6px;max-width:260px}
 .mu-c.hors input:disabled{cursor:not-allowed}
 /* Les équipes d'un autre service qui font aussi celui-ci, à la chaîne */
-.mu-chainees{margin:14px 0 6px;font-size:14px;color:var(--chaine,#c026d3)}
-.mu-c .mu-chez-chaine{color:var(--chaine,#c026d3)}
+.mu-chainees{margin:14px 0 6px;font-size:var(--ds-t-14);color:var(--chaine)}
+.mu-c .mu-chez-chaine{color:var(--chaine)}
 
 /* Un service par compagnie (l'armement) : ses minutes par vol */
-.mu-cat-table{border-collapse:separate;border-spacing:4px;font-size:13px}
-.mu-cat-table th{text-align:left;font-weight:650;vertical-align:bottom}
+.mu-cat-table{border-collapse:separate;border-spacing:4px;font-size:var(--ds-t-13)}
+.mu-cat-table th{text-align:left;font-weight:var(--ds-g-fort);vertical-align:bottom}
 .mu-cat-table thead th{min-width:150px}
 .mu-cat-table td input{width:80px;font:inherit;min-height:28px;padding:2px 6px}
-.mu-cat-toutes th,.mu-cat-toutes input{font-weight:650}
+.mu-cat-toutes th,.mu-cat-toutes input{font-weight:var(--ds-g-fort)}
 #view-ateliers .mu-cat-table td input{width:80px;min-width:0;padding:3px 6px}
 .mu-cat-table thead th:first-child{vertical-align:middle;color:var(--txt2)}
 .mu-cat-table thead th:nth-child(n+3){min-width:0;padding:0 8px}
 /* En même temps qu'un autre service (08/10). */
-.mu-parallele{display:flex;flex-direction:column;gap:4px;margin-top:12px;max-width:620px;font-size:14px}
+.mu-parallele{display:flex;flex-direction:column;gap:4px;margin-top:12px;max-width:620px;font-size:var(--ds-t-14)}
 .mu-parallele select{max-width:420px}
-.mu-parallele small{font-size:12px;color:var(--txt2);line-height:1.4}
+.mu-parallele small{font-size:var(--ds-t-12);color:var(--txt2);line-height:1.4}
 .mu-cat-table .mu-cat-vols{text-align:center;color:var(--txt2)}
 .mu-cat-table .mu-cat-jour{padding:0 8px;white-space:nowrap}
 .mu-cat-table tfoot th,.mu-cat-table tfoot td{border-top:1px solid var(--bordure);padding-top:4px}
-.mu-cat-manque{color:var(--warn-stroke);font-size:12px}
+.mu-cat-manque{color:var(--warn-stroke);font-size:var(--ds-t-12)}
 
 /* L'armement, lié au handling */
 .mu-lien-handling{margin:10px 0;padding:10px 12px;border-radius:10px;background:var(--bg2);border:1px solid var(--bordure2)}
 .mu-lien-handling p{margin:0 0 4px}
 .mu-lien-handling .btn{margin-left:6px}
-.mu-arm-ok{color:var(--ok,#15803d)}
+.mu-arm-ok{color:var(--ok)}
 /* Qui suit quel chemin (05/10) : une carte par compagnie, une ligne par classe et sa liste. */
 .mu-qui-suit{margin-top:18px}
-.mu-qui-suit>summary{cursor:pointer;padding:6px 0;font-size:14px}
+.mu-qui-suit>summary{cursor:pointer;padding:6px 0;font-size:var(--ds-t-14)}
 .mu-qui-suit-grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:12px;margin-top:10px}
 .mu-qs-cie{border:1px solid var(--bordure);border-radius:10px;padding:10px 12px;background:var(--bg3)}
-.mu-qs-tete{margin:0 0 6px;font-weight:800;letter-spacing:.03em}
+.mu-qs-tete{margin:0 0 6px;font-weight:var(--ds-g-fort);letter-spacing:.03em}
 .mu-qs-ligne{display:grid;grid-template-columns:118px minmax(0,1fr) auto;align-items:center;gap:8px;padding:3px 0}
-.mu-qs-classe{display:inline-flex;align-items:center;gap:6px;font-size:13px}
-.mu-qs-ligne select{width:100%;font:inherit;font-size:13px;padding:4px 6px}
+.mu-qs-classe{display:inline-flex;align-items:center;gap:6px;font-size:var(--ds-t-13)}
+.mu-qs-ligne select{width:100%;font:inherit;font-size:var(--ds-t-13);padding:4px 6px}
 
 /* ---- Chemins › Vue d'ensemble (05/10) : tous les chemins, comme un plan de
  * métro. Une colonne par chemin, une ligne par service rangée par étape ; une
@@ -241,35 +248,40 @@
  * dernière. */
 .mu-carte{display:grid;gap:12px}
 .mu-carte-tete p{margin:0}
-.mu-carte-resume{font-size:14px;color:var(--txt2)}
+.mu-carte-resume{font-size:var(--ds-t-14);color:var(--txt2)}
 .mu-carte-resume b{color:var(--txt)}
 .mu-ct-legende{white-space:nowrap}
-.mu-ct-l-arret{display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--c-chemins,#0e7490);border:2px solid #fff;box-shadow:0 0 0 1.5px var(--c-chemins,#0e7490);vertical-align:-1px;margin-right:3px}
+.mu-ct-l-arret{display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--c-chemins);border:2px solid var(--ds-surface-1);box-shadow:0 0 0 1.5px var(--c-chemins);vertical-align:-1px;margin-right:3px}
 .mu-carte-cadre{overflow:auto;border:1px solid var(--bordure);border-radius:14px;background:var(--bg3);max-width:100%;width:fit-content}
 .mu-carte-table{border-collapse:separate;border-spacing:0}
 .mu-carte-table th,.mu-carte-table td{padding:0;border:0}
 .mu-carte-table thead th{position:sticky;top:0;z-index:2;background:var(--bg3);border-bottom:1px solid var(--bordure);vertical-align:bottom}
-.mu-ct-etape{width:84px;padding:8px 10px !important;text-align:left;font-size:11.5px;font-weight:800;letter-spacing:.02em;color:var(--txt3,var(--txt2));
+.mu-ct-etape{width:84px;text-align:left;font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);letter-spacing:.02em;color:var(--txt3,var(--txt2));
   vertical-align:top;background:color-mix(in srgb,var(--bordure) 14%,var(--bg3));border-right:1px solid var(--bordure)}
-.mu-ct-etape.sans-lien{color:var(--attente,#b45309)}
-.mu-ct-svc{position:sticky;left:0;z-index:1;background:var(--bg3);text-align:left;padding:4px 12px 4px 10px !important;min-width:200px;border-right:1px solid var(--bordure)}
-thead .mu-ct-svc{z-index:3;font-size:12px;color:var(--txt3,var(--txt2));font-weight:700;padding:10px 12px !important}
-.mu-ct-svc button{display:flex;align-items:center;gap:8px;font:inherit;font-size:13.5px;font-weight:700;color:var(--txt);background:none;border:0;padding:4px 0;cursor:pointer;text-align:left}
+/* Les cases de la carte n'ont pas de marge (ci-dessus) : celles-ci reprennent la leur. */
+.mu-carte-table .mu-ct-etape{padding:8px 10px}
+.mu-ct-etape.sans-lien{color:var(--attente)}
+.mu-ct-svc{position:sticky;left:0;z-index:1;background:var(--bg3);text-align:left;min-width:200px;border-right:1px solid var(--bordure)}
+.mu-carte-table .mu-ct-svc{padding:4px 12px 4px 10px}
+thead .mu-ct-svc{z-index:3;font-size:var(--ds-t-12);color:var(--txt3,var(--txt2));font-weight:var(--ds-g-fort)}
+.mu-carte-table thead .mu-ct-svc{padding:10px 12px}
+.mu-ct-svc button{display:flex;align-items:center;gap:8px;font:inherit;font-size:var(--ds-t-14);font-weight:var(--ds-g-fort);color:var(--txt);background:none;border:0;padding:4px 0;cursor:pointer;text-align:left}
 .mu-ct-svc button:hover span:last-child{text-decoration:underline}
-.mu-ct-svc small{display:block;margin:-2px 0 2px 30px;font-size:11px;color:var(--txt3,var(--txt2))}
-.mu-ct-ico{display:inline-grid;place-items:center;width:22px;height:22px;color:var(--c-chemins,#0e7490)}
+.mu-ct-svc small{display:block;margin:-2px 0 2px 30px;font-size:var(--ds-t-11);color:var(--txt3,var(--txt2))}
+.mu-ct-ico{display:inline-grid;place-items:center;width:22px;height:22px;color:var(--c-chemins)}
 .mu-ct-ico .ico{width:18px;height:18px}
 tbody tr.mu-ct-nouvelle>*{border-top:1px solid var(--bordure)}
-tbody tr:hover>td,tbody tr:hover>.mu-ct-svc{background:color-mix(in srgb,var(--c-chemins,#0e7490) 5%,var(--bg3))}
+tbody tr:hover>td,tbody tr:hover>.mu-ct-svc{background:color-mix(in srgb,var(--c-chemins) 5%,var(--bg3))}
 /* L'en-tête d'un chemin : sa couleur, son nom, ses commandes. */
-.mu-ct-flux{width:118px;min-width:118px;max-width:150px;padding:10px 8px 8px !important;text-align:center;font-weight:400}
+.mu-ct-flux{width:118px;min-width:118px;max-width:150px;text-align:center;font-weight:var(--ds-g-normal)}
+.mu-carte-table .mu-ct-flux{padding:10px 8px 8px}
 .mu-ct-flux button{display:flex;flex-direction:column;align-items:center;gap:5px;width:100%;font:inherit;background:none;border:0;cursor:pointer;color:var(--txt);padding:0}
-.mu-ct-flux button b{font-size:13px;line-height:1.2;overflow-wrap:anywhere}
+.mu-ct-flux button b{font-size:var(--ds-t-13);line-height:1.2;overflow-wrap:anywhere}
 .mu-ct-flux button:hover b{text-decoration:underline;color:var(--fc)}
 .mu-ct-puce{width:30px;height:6px;border-radius:3px;background:var(--fc)}
-.mu-ct-flux small{display:block;font-size:11px;color:var(--txt2);margin-top:2px}
+.mu-ct-flux small{display:block;font-size:var(--ds-t-11);color:var(--txt2);margin-top:2px}
 .mu-ct-flux .mu-ct-qui{color:var(--txt3,var(--txt2));font-style:italic}
-.mu-ct-flux.variante b{font-weight:600}
+.mu-ct-flux.variante b{font-weight:var(--ds-g-fort)}
 .mu-ct-flux.propre .mu-ct-puce{background:repeating-linear-gradient(90deg,var(--fc) 0 6px,transparent 6px 10px)}
 /* Une case : le trait du chemin, et sa pastille s'il passe par là. */
 .mu-carte-table td{position:relative;height:44px;text-align:center}
@@ -277,10 +289,11 @@ tbody tr:hover>td,tbody tr:hover>.mu-ct-svc{background:color-mix(in srgb,var(--c
 .mu-carte-table td.trait.debut::before{top:50%}
 .mu-carte-table td.trait.fin::before{bottom:50%}
 .mu-carte-table td.trait.debut.fin::before{display:none}
-.mu-ct-arret{position:relative;z-index:1;width:20px;height:20px;border-radius:50%;background:var(--fc);border:3px solid #fff;box-shadow:0 0 0 2px var(--fc),0 1px 3px rgba(16,24,40,.2);cursor:pointer;padding:0}
+.mu-ct-arret{position:relative;z-index:1;width:20px;height:20px;border-radius:50%;background:var(--fc);border:3px solid var(--ds-surface-1);box-shadow:0 0 0 2px var(--fc),var(--ds-ombre-1);cursor:pointer;padding:0}
 .mu-ct-arret:hover,.mu-ct-arret:focus-visible{transform:scale(1.25);outline:none}
+.mu-ct-arret:focus-visible{box-shadow:0 0 0 2px var(--fc),0 0 0 5px var(--ds-accent-trait)}
 .mu-ct-ajout{position:relative;z-index:1;width:22px;height:22px;border-radius:50%;border:1.5px dashed var(--bordure2);background:var(--bg3);color:var(--txt3,var(--txt2));
-  font:inherit;font-size:14px;line-height:1;cursor:pointer;padding:0;opacity:0;transition:opacity .12s}
+  font:inherit;font-size:var(--ds-t-14);line-height:1;cursor:pointer;padding:0;opacity:0;transition:opacity .12s}
 tr:hover .mu-ct-ajout,.mu-ct-ajout:focus-visible{opacity:1}
 .mu-ct-ajout:hover{border-color:var(--fc);color:var(--fc);border-style:solid}
 td.trait .mu-ct-ajout{background:var(--bg3)}
@@ -290,20 +303,20 @@ td.trait .mu-ct-ajout{background:var(--bg3)}
 /* ---- Plonge : l'arrivée des retours, face aux équipes (05/10). Le jour de
  * la plonge se compte depuis l'arrivée des retours. */
 .mu-retours{border:1px solid var(--bordure);border-radius:12px;background:var(--bg3);padding:12px 14px;margin:6px 0 12px;display:grid;gap:8px}
-.mu-retours h4{margin:0;font-size:14px}
+.mu-retours h4{margin:0;font-size:var(--ds-t-14)}
 .mu-retours p{margin:0}
 .mu-retours-frise{width:100%;height:auto;display:block}
 .mr-jour{fill:transparent}
-.mr-jour.arrivee{fill:color-mix(in srgb,var(--c-chemins,#0e7490) 6%,transparent)}
-.mr-jour-nom{font-size:11.5px;font-weight:800;fill:var(--txt2)}
+.mr-jour.arrivee{fill:color-mix(in srgb,var(--c-chemins) 6%,transparent)}
+.mr-jour-nom{font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);fill:var(--txt2)}
 .mr-minuit{stroke:var(--bordure2);stroke-width:1.5;stroke-dasharray:4 4}
-.mr-heure{font-size:11px;fill:var(--txt3,var(--txt2))}
-.mr-lib{font-size:12px;font-weight:700;fill:var(--txt)}
-.mr-lib.vide{fill:var(--attente,#b45309);font-weight:600}
-.mr-retour{fill:var(--c-chemins,#0e7490);opacity:.75}
-.mr-retour.seul{fill:var(--attente,#b45309);opacity:1}
-.mr-equipe{fill:color-mix(in srgb,var(--c-equipes,#059669) 22%,transparent);stroke:var(--c-equipes,#059669);stroke-width:1.5}
-.mr-plage{font-size:11px;font-weight:700;fill:var(--txt)}
-.mu-retours-alerte{color:var(--attente,#b45309);font-weight:600;font-size:13px}
-.mu-retours-attente{color:var(--txt2);font-size:13px}
-.mu-retours-ok{color:var(--ok,#059669);font-size:13px}
+.mr-heure{font-size:var(--ds-t-11);fill:var(--txt3,var(--txt2))}
+.mr-lib{font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);fill:var(--txt)}
+.mr-lib.vide{fill:var(--attente);font-weight:var(--ds-g-fort)}
+.mr-retour{fill:var(--c-chemins);opacity:.75}
+.mr-retour.seul{fill:var(--attente);opacity:1}
+.mr-equipe{fill:color-mix(in srgb,var(--c-equipes) 22%,transparent);stroke:var(--c-equipes);stroke-width:1.5}
+.mr-plage{font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);fill:var(--txt)}
+.mu-retours-alerte{color:var(--attente);font-weight:var(--ds-g-fort);font-size:var(--ds-t-13)}
+.mu-retours-attente{color:var(--txt2);font-size:var(--ds-t-13)}
+.mu-retours-ok{color:var(--ok);font-size:var(--ds-t-13)}
