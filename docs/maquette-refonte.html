@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maquette de la refonte</title>
+<meta name="description" content="Maquette non fonctionnelle de la refonte UX/UI de Production ORY : direction artistique, coquille, éditeur du plan, fiche service, synthèse. Données fictives, bâtiment schématique.">
+<style>
+/* ===========================================================================
+ *  MAQUETTE — non fonctionnelle. Données fictives, bâtiment schématique (ce
+ *  n'est pas le plan de l'unité). Elle montre la direction proposée dans
+ *  docs/REFONTE_UX.md : jetons, coquille, éditeur, fiche, synthèse.
+ * =========================================================================*/
+@font-face{font-family:'Inter Variable';font-style:normal;font-display:swap;font-weight:100 900;
+  src:url(../polices/inter-latin.woff2) format('woff2-variations'),url(../polices/inter-latin.woff2) format('woff2')}
+
+/* ---- Jetons : sombre (défaut proposé) ---------------------------------- */
+:root{
+  --fond:#0B0D10; --surface-1:#111418; --surface-2:#171B21; --surface-3:#1D222A; --surface-survol:#1A1F26;
+  --bordure:rgba(255,255,255,.07); --bordure-forte:rgba(255,255,255,.12);
+  --texte-1:#E8EAED; --texte-2:#A3A9B3; --texte-3:#6E7682;
+  --accent:#2CC2B0; --accent-texte:#5EDBCB; --accent-doux:rgba(44,194,176,.12); --sur-accent:#04201D;
+  --ok:#3FB950; --ok-doux:rgba(63,185,80,.12);
+  --attente:#D29922; --attente-doux:rgba(210,153,34,.12);
+  --retard:#F85149; --retard-doux:rgba(248,81,73,.12);
+  --info:#58A6FF;
+  --d1:#7C9CF0; --d2:#B392F0; --d3:#56C7A5; --d4:#E3B456; --d5:#EE8A7A; --d6:#7FB8D6;
+  --ombre-flottant:0 8px 24px rgba(0,0,0,.45),0 0 0 1px var(--bordure-forte);
+  --anneau:0 0 0 2px var(--fond),0 0 0 4px var(--accent);
+  --papier:#F3F1EC; --trait-papier:#B8B3AA; --trait-papier-fort:#7E786E;
+  --police:'Inter Variable',Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --mono:ui-monospace,'SF Mono','Cascadia Mono',Menlo,Consolas,monospace;
+  --r1:4px; --r2:6px; --r3:8px; --r4:12px;
+  --t-rapide:120ms; --t-panneau:180ms; --courbe:cubic-bezier(.2,.8,.2,1);
+  color-scheme:dark;
+}
+/* ---- Jetons : clair ---------------------------------------------------- */
+:root[data-theme="clair"]{
+  --fond:#F7F8FA; --surface-1:#FFFFFF; --surface-2:#F2F4F7; --surface-3:#FFFFFF; --surface-survol:#F4F5F7;
+  --bordure:#E6E8EC; --bordure-forte:#D5D9E0;
+  --texte-1:#111827; --texte-2:#4B5563; --texte-3:#6B7280;
+  --accent:#0F766E; --accent-texte:#0F766E; --accent-doux:rgba(15,118,110,.09); --sur-accent:#FFFFFF;
+  --ok:#15803D; --ok-doux:rgba(21,128,61,.09);
+  --attente:#B45309; --attente-doux:rgba(180,83,9,.09);
+  --retard:#C0262D; --retard-doux:rgba(192,38,45,.08);
+  --info:#1D4ED8;
+  --d1:#3B5BDB; --d2:#7C4DDB; --d3:#0E9F6E; --d4:#B7791F; --d5:#D9534F; --d6:#2B87B5;
+  --ombre-flottant:0 8px 24px rgba(16,24,40,.12),0 0 0 1px var(--bordure);
+  --anneau:0 0 0 2px var(--fond),0 0 0 4px var(--accent);
+  color-scheme:light;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--fond);color:var(--texte-1);font:13px/1.45 var(--police);font-feature-settings:'cv11','ss03','tnum';
+  -webkit-font-smoothing:antialiased;display:flex;flex-direction:column;overflow:hidden}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:none;box-shadow:var(--anneau);border-radius:var(--r2)}
+.ico{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.ico-20{width:20px;height:20px}
+.num{font-variant-numeric:tabular-nums}
+.code{font-family:var(--mono);font-size:12px;letter-spacing:-.01em}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ---- Bandeau de maquette (n'appartient pas au produit) ----------------- */
+.bandeau{flex:none;display:flex;align-items:center;gap:14px;padding:6px 14px;font-size:12px;color:var(--texte-2);
+  background:repeating-linear-gradient(135deg,var(--surface-1) 0 10px,var(--surface-2) 10px 20px);border-bottom:1px solid var(--bordure-forte)}
+.bandeau b{color:var(--attente);font-weight:600;letter-spacing:.02em;text-transform:uppercase;font-size:11px}
+.bandeau .sep{width:1px;height:16px;background:var(--bordure-forte)}
+.seg{display:inline-flex;padding:2px;gap:2px;border-radius:var(--r2);background:var(--surface-2);border:1px solid var(--bordure)}
+.seg button{border:0;background:transparent;padding:3px 10px;border-radius:4px;cursor:pointer;color:var(--texte-2);font-size:12px;font-weight:500}
+.seg button[aria-pressed="true"]{background:var(--surface-3);color:var(--texte-1);box-shadow:0 0 0 1px var(--bordure-forte)}
+.bandeau .droite{margin-left:auto;display:flex;align-items:center;gap:10px}
+
+/* ---- Coquille ---------------------------------------------------------- */
+.app{flex:1;min-height:0;display:grid;grid-template-columns:auto 1fr}
+.barre{width:232px;background:var(--surface-1);border-right:1px solid var(--bordure);display:flex;flex-direction:column;
+  transition:width var(--t-panneau) var(--courbe);overflow:hidden}
+.marque{display:flex;align-items:center;gap:10px;padding:12px 14px;height:48px;border-bottom:1px solid var(--bordure)}
+.logo{width:22px;height:22px;border-radius:6px;background:var(--accent);color:var(--sur-accent);display:grid;place-items:center;font-weight:700;font-size:12px;flex:none}
+.marque b{font-weight:600;font-size:13px;white-space:nowrap}
+.marque small{display:block;color:var(--texte-3);font-size:11px;font-weight:400}
+.nav{flex:1;overflow:auto;padding:8px}
+.nav h6{margin:14px 8px 4px;font-size:11px;font-weight:500;color:var(--texte-3);white-space:nowrap}
+.item{display:flex;align-items:center;gap:10px;height:30px;padding:0 8px;border-radius:var(--r2);color:var(--texte-2);cursor:pointer;
+  white-space:nowrap;border:0;background:none;width:100%;text-align:left;transition:background var(--t-rapide),color var(--t-rapide)}
+.item:hover{background:var(--surface-survol);color:var(--texte-1)}
+.item[aria-current="page"]{background:var(--surface-2);color:var(--texte-1);font-weight:500}
+.item .compte{margin-left:auto;font-size:11px;color:var(--texte-3)}
+.item .pt{width:6px;height:6px;border-radius:50%;background:var(--attente);margin-left:auto}
+.pied{padding:8px;border-top:1px solid var(--bordure)}
+.badge-pb{margin-left:auto;font-size:11px;font-weight:600;color:var(--attente);background:var(--attente-doux);padding:1px 7px;border-radius:99px}
+/* En édition du plan : le menu se replie et se fige (le verrouillage d'aujourd'hui). */
+body[data-ecran="plan"] .barre{width:52px}
+body[data-ecran="plan"] .barre .lib,body[data-ecran="plan"] .nav h6,body[data-ecran="plan"] .marque span,
+body[data-ecran="plan"] .item .compte,body[data-ecran="plan"] .item .pt,body[data-ecran="plan"] .badge-pb{display:none}
+body[data-ecran="plan"] .nav,body[data-ecran="plan"] .pied{opacity:.45;pointer-events:none}
+
+.principal{min-width:0;display:flex;flex-direction:column}
+.haut{height:48px;flex:none;display:flex;align-items:center;gap:10px;padding:0 14px;border-bottom:1px solid var(--bordure);background:var(--surface-1)}
+.ariane{display:flex;align-items:center;gap:6px;color:var(--texte-3);white-space:nowrap}
+.ariane b{color:var(--texte-1);font-weight:500}
+.ariane .ico{width:12px;height:12px}
+.haut .droite{margin-left:auto;display:flex;align-items:center;gap:8px}
+.puce{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px;border-radius:99px;border:1px solid var(--bordure);color:var(--texte-2);font-size:12px;white-space:nowrap}
+.puce .rond{width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.puce.attente{color:var(--attente);border-color:transparent;background:var(--attente-doux);cursor:pointer}
+.puce.edition{color:var(--accent-texte);border-color:transparent;background:var(--accent-doux)}
+
+/* Boutons */
+.bt{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:28px;padding:0 10px;border-radius:var(--r2);
+  border:1px solid var(--bordure-forte);background:var(--surface-2);color:var(--texte-1);font-weight:500;cursor:pointer;white-space:nowrap;
+  transition:background var(--t-rapide),border-color var(--t-rapide)}
+.bt:hover{background:var(--surface-3);border-color:var(--texte-3)}
+.bt.principal{background:var(--accent);border-color:var(--accent);color:var(--sur-accent)}
+.bt.principal:hover{filter:brightness(1.08)}
+.bt.discret{background:transparent;border-color:transparent;color:var(--texte-2)}
+.bt.discret:hover{background:var(--surface-survol);color:var(--texte-1)}
+.bt.danger{background:transparent;border-color:transparent;color:var(--retard)}
+.bt.danger:hover{background:var(--retard-doux)}
+.bt.icone{width:28px;padding:0}
+.bt:disabled{opacity:.4;cursor:not-allowed}
+kbd{font:500 10.5px var(--police);color:var(--texte-3);border:1px solid var(--bordure-forte);border-radius:4px;padding:0 4px;min-width:16px;text-align:center;line-height:15px}
+.recherche{display:flex;align-items:center;gap:8px;height:28px;padding:0 8px;width:200px;border-radius:var(--r2);border:1px solid var(--bordure);
+  background:var(--surface-2);color:var(--texte-3);cursor:text}
+.recherche kbd{margin-left:auto}
+
+.ecran{flex:1;min-height:0;display:none}
+body[data-ecran="plan"] #ecran-plan,body[data-ecran="services"] #ecran-services,body[data-ecran="synthese"] #ecran-synthese{display:grid}
+
+/* Panneaux latéraux */
+.panneau{background:var(--surface-1);min-width:0;overflow:auto}
+.panneau-tete{display:flex;align-items:center;gap:8px;padding:12px 14px 8px}
+.panneau-tete h2{margin:0;font-size:12px;font-weight:600;color:var(--texte-2)}
+.champ-rech{display:flex;align-items:center;gap:6px;margin:0 12px 8px;height:28px;padding:0 8px;border:1px solid var(--bordure);border-radius:var(--r2);background:var(--surface-2);color:var(--texte-3)}
+.champ-rech input{border:0;background:none;outline:none;width:100%;color:var(--texte-1)}
+.groupe{padding:4px 6px}
+.groupe-tete{display:flex;align-items:center;gap:6px;padding:4px 8px;color:var(--texte-3);font-size:11px;font-weight:500}
+.groupe-tete .ico{width:12px;height:12px}
+.calque{display:flex;align-items:center;gap:8px;height:28px;padding:0 8px;border-radius:var(--r2);cursor:pointer;color:var(--texte-2)}
+.calque:hover{background:var(--surface-survol);color:var(--texte-1)}
+.calque[aria-selected="true"]{background:var(--accent-doux);color:var(--texte-1)}
+.calque .pastille{width:8px;height:8px;border-radius:2px;flex:none}
+.calque .actions{margin-left:auto;display:flex;gap:2px;opacity:0;transition:opacity var(--t-rapide)}
+.calque:hover .actions,.calque .actions .fixe{opacity:1}
+.calque .actions span{display:grid;place-items:center;width:20px;height:20px;border-radius:4px;color:var(--texte-3)}
+.calque .actions span:hover{background:var(--surface-3);color:var(--texte-1)}
+.calque .actions .ico{width:13px;height:13px}
+.calque .nom{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.calque .approx{flex:none;width:8px;height:8px;border-radius:50%;border:1.5px dashed var(--attente)}
+
+/* ---- Écran 1 : plan de l'unité ----------------------------------------- */
+#ecran-plan{grid-template-columns:248px minmax(0,1fr) 300px}
+#ecran-plan>.panneau:first-child{border-right:1px solid var(--bordure)}
+.toile{position:relative;overflow:hidden;background:var(--fond)}
+.toile svg{width:100%;height:100%;display:block}
+.toile.papier{background:var(--papier)}
+.outils{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:2px;padding:4px;
+  border-radius:10px;background:var(--surface-3);box-shadow:var(--ombre-flottant)}
+.outils .sep{width:1px;height:18px;background:var(--bordure-forte);margin:0 4px}
+.outil{position:relative;display:grid;place-items:center;width:30px;height:30px;border-radius:var(--r2);border:0;background:none;color:var(--texte-2);cursor:pointer}
+.outil:hover{background:var(--surface-survol);color:var(--texte-1)}
+.outil[aria-pressed="true"]{background:var(--accent-doux);color:var(--accent-texte)}
+
+.zoom{position:absolute;right:12px;bottom:12px;display:flex;align-items:center;gap:2px;padding:3px;border-radius:var(--r3);background:var(--surface-3);box-shadow:var(--ombre-flottant)}
+.zoom b{min-width:46px;text-align:center;font-weight:500;color:var(--texte-2);font-size:12px}
+.statut-toile{position:absolute;left:12px;bottom:12px;display:flex;gap:8px;align-items:center;font-size:11.5px;color:var(--texte-2);
+  padding:5px 9px;border-radius:var(--r2);background:var(--surface-3);box-shadow:var(--ombre-flottant)}
+.mode-toile{position:absolute;right:12px;top:12px}
+/* le dessin */
+.mur{stroke:var(--trait-papier-fort);stroke-width:2;fill:none;vector-effect:non-scaling-stroke}
+.cloison{stroke:var(--trait-papier);stroke-width:1;fill:none;vector-effect:non-scaling-stroke}
+.toile:not(.papier) .mur{stroke:#4A525E}.toile:not(.papier) .cloison{stroke:#2A313A}
+.zone{cursor:pointer}
+.zone rect{stroke-width:1.5;vector-effect:non-scaling-stroke;transition:fill-opacity var(--t-rapide)}
+.zone:hover rect{fill-opacity:.24}
+.zone.approx rect{stroke-dasharray:6 4}
+.zone text{font-family:var(--police);paint-order:stroke fill;stroke-width:3px;stroke-linejoin:round}
+.toile.papier .zone text{stroke:var(--papier)}
+.toile:not(.papier) .zone text{stroke:var(--fond)}
+.zone .t1{font-size:14px;font-weight:600}
+.zone .t2{font-size:11.5px;font-weight:500;opacity:.8}
+.toile.papier .zone .t1{fill:#1F2328}.toile.papier .zone .t2{fill:#4B5158}
+.toile:not(.papier) .zone .t1{fill:#E8EAED}.toile:not(.papier) .zone .t2{fill:#A3A9B3}
+.zone.sel rect{stroke:var(--accent);stroke-width:2}
+.poignee{fill:#fff;stroke:var(--accent);stroke-width:1.5;vector-effect:non-scaling-stroke}
+.cote{font:600 10.5px var(--police);fill:var(--sur-accent)}
+/* inspecteur */
+.inspecteur{border-left:1px solid var(--bordure);display:flex;flex-direction:column}
+.insp-tete{padding:14px;border-bottom:1px solid var(--bordure)}
+.insp-tete .type{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--texte-3);margin-bottom:6px}
+.insp-tete h3{margin:0;font-size:16px;font-weight:600;display:flex;align-items:center;gap:8px}
+.insp-tete p{margin:4px 0 0;color:var(--texte-3);font-size:12px}
+.section{padding:12px 14px;border-bottom:1px solid var(--bordure)}
+.section h4{margin:0 0 10px;font-size:11px;font-weight:600;color:var(--texte-3);display:flex;align-items:center;gap:6px}
+.section h4 .plus{margin-left:auto;font-weight:500}
+.ligne-champ{display:grid;grid-template-columns:96px 1fr;align-items:center;gap:8px;margin-bottom:8px}
+.ligne-champ>label{color:var(--texte-2);font-size:12px}
+.saisie{display:flex;align-items:center;height:28px;border-radius:var(--r2);border:1px solid var(--bordure-forte);background:var(--surface-2);padding:0 8px;gap:6px;
+  transition:border-color var(--t-rapide),box-shadow var(--t-rapide)}
+.saisie:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-doux)}
+.saisie input,.saisie select{border:0;background:none;outline:none;width:100%;min-width:0;color:var(--texte-1);padding:0}
+.saisie select{appearance:none;cursor:pointer}
+.saisie .unite{color:var(--texte-3);font-size:11.5px;white-space:nowrap}
+.saisie.erreur{border-color:var(--retard);box-shadow:0 0 0 3px var(--retard-doux)}
+.msg-erreur{grid-column:2;color:var(--retard);font-size:11.5px;margin-top:-4px;display:flex;gap:5px;align-items:center}
+.msg-erreur .ico{width:12px;height:12px}
+.deux{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.inter{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;color:var(--texte-2);font-size:12px}
+.switch{position:relative;width:28px;height:16px;border-radius:99px;background:var(--surface-3);border:1px solid var(--bordure-forte);cursor:pointer;flex:none;transition:background var(--t-rapide)}
+.switch::after{content:'';position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:var(--texte-2);transition:transform var(--t-rapide) var(--courbe)}
+.switch[aria-checked="true"]{background:var(--accent);border-color:var(--accent)}
+.switch[aria-checked="true"]::after{transform:translateX(12px);background:var(--sur-accent)}
+.aide{color:var(--texte-3);font-size:11.5px;line-height:1.5;margin:0}
+.actions-insp{display:flex;gap:6px;padding:12px 14px;margin-top:auto;border-top:1px solid var(--bordure)}
+.liste-mini{margin:0;padding:0;list-style:none}
+.liste-mini li{display:flex;justify-content:space-between;padding:5px 0;color:var(--texte-2);font-size:12px;border-bottom:1px dashed var(--bordure)}
+.liste-mini li:last-child{border:0}
+
+/* ---- Écran 2 : services et équipes ------------------------------------- */
+#ecran-services{grid-template-columns:240px minmax(0,1fr) 300px}
+#ecran-services>.panneau:first-child{border-right:1px solid var(--bordure)}
+.service{display:flex;align-items:center;gap:10px;padding:8px;border-radius:var(--r2);cursor:pointer;margin:0 6px}
+.service:hover{background:var(--surface-survol)}
+.service[aria-selected="true"]{background:var(--surface-2)}
+.service .tuile{width:28px;height:28px;border-radius:var(--r2);display:grid;place-items:center;background:var(--surface-2);color:var(--texte-2);flex:none}
+.service[aria-selected="true"] .tuile{background:var(--accent-doux);color:var(--accent-texte)}
+.service b{display:block;font-weight:500;font-size:13px}
+.service small{color:var(--texte-3);font-size:11.5px}
+.service .etat{margin-left:auto;width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.service .etat.a{background:var(--attente)}
+.feuille{overflow:auto;background:var(--fond)}
+.feuille-int{max-width:820px;margin:0 auto;padding:20px 28px 60px}
+.fiche-tete{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}
+.fiche-tete .tuile{width:36px;height:36px;border-radius:var(--r3);display:grid;place-items:center;background:var(--accent-doux);color:var(--accent-texte);flex:none}
+.fiche-tete h1{margin:0;font-size:20px;font-weight:600;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+.fiche-tete p{margin:3px 0 0;color:var(--texte-3)}
+.fiche-tete>div:nth-child(2){flex:1;min-width:0}
+.fiche-tete .droite{margin-left:auto;display:flex;gap:6px;flex:none}
+.etiquette{display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 7px;border-radius:var(--r1);font-size:11px;font-weight:500;
+  background:var(--surface-2);color:var(--texte-2);border:1px solid var(--bordure)}
+.etiquette.chaine{color:var(--d2);border-color:transparent;background:color-mix(in srgb,var(--d2) 14%,transparent)}
+.alerte{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:var(--r3);background:var(--attente-doux);color:var(--texte-1);margin-bottom:16px;font-size:12.5px}
+.alerte .ico{color:var(--attente)}
+.alerte .bt{margin-left:auto;height:24px}
+.bloc{border:1px solid var(--bordure);border-radius:var(--r3);background:var(--surface-1);margin-bottom:12px}
+.bloc-tete{display:flex;align-items:center;gap:8px;padding:10px 14px;cursor:pointer;user-select:none}
+.bloc-tete h3{margin:0;font-size:13px;font-weight:600}
+.bloc-tete .resume{color:var(--texte-3);font-size:12px}
+.bloc-tete .chev{margin-left:auto;color:var(--texte-3);transition:transform var(--t-rapide)}
+.bloc[data-ouvert="false"] .chev{transform:rotate(-90deg)}
+.bloc[data-ouvert="false"] .bloc-corps{display:none}
+.bloc-corps{padding:4px 14px 14px}
+.grille-champs{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px}
+.champ{display:flex;flex-direction:column;gap:5px}
+.champ>label{font-size:12px;color:var(--texte-2);display:flex;align-items:center;gap:5px}
+.champ>label .q{display:inline-grid;place-items:center;width:14px;height:14px;border-radius:50%;border:1px solid var(--bordure-forte);font-size:9px;color:var(--texte-3);cursor:help}
+.champ .sert{font-size:11px;color:var(--texte-3)}
+/* tableaux */
+table.tab{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px}
+.tab th{position:sticky;top:0;background:var(--surface-1);text-align:left;font-weight:500;font-size:11.5px;color:var(--texte-3);padding:7px 10px;border-bottom:1px solid var(--bordure);white-space:nowrap}
+.tab td{padding:0 10px;height:34px;border-bottom:1px solid var(--bordure);color:var(--texte-1)}
+.tab tr:last-child td{border-bottom:0}
+.tab tbody tr:hover td{background:var(--surface-survol)}
+.tab .d{text-align:right}
+.tab .c{text-align:center}
+.tab tr[aria-selected="true"] td{background:var(--accent-doux)}
+.tab .groupe-ligne td{height:28px;background:var(--surface-2);color:var(--texte-2);font-weight:600;font-size:11.5px}
+.classe{display:inline-flex;align-items:center;gap:6px}
+.classe i{width:8px;height:8px;border-radius:2px;display:inline-block}
+.coche{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:4px;border:1px solid var(--bordure-forte);background:var(--surface-2);cursor:pointer;vertical-align:middle;
+  transition:background var(--t-rapide),border-color var(--t-rapide)}
+.coche[aria-checked="true"]{background:var(--accent);border-color:var(--accent);color:var(--sur-accent)}
+.coche[aria-checked="true"]::after{content:'';width:9px;height:5px;border:2px solid currentColor;border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
+.coche:hover{border-color:var(--accent)}
+.pied-tab{display:flex;align-items:center;gap:8px;padding:8px 0 0}
+.muet{color:var(--texte-3)}
+
+/* ---- Écran 3 : synthèse ------------------------------------------------- */
+#ecran-synthese{grid-template-columns:minmax(0,1fr) 320px}
+.analyse{overflow:auto;padding:22px 28px 40px}
+.analyse-tete{display:flex;align-items:flex-end;gap:12px;margin-bottom:18px}
+.analyse-tete h1{margin:0;font-size:20px;font-weight:600;letter-spacing:-.01em}
+.analyse-tete p{margin:3px 0 0;color:var(--texte-3)}
+.analyse-tete .droite{margin-left:auto;display:flex;gap:8px;align-items:center}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:22px}
+.kpi{padding:14px 16px;border:1px solid var(--bordure);border-radius:var(--r3);background:var(--surface-1);cursor:pointer;transition:border-color var(--t-rapide)}
+.kpi:hover{border-color:var(--bordure-forte)}
+.kpi .lib{color:var(--texte-2);font-size:12px;display:flex;align-items:center;gap:6px}
+.kpi .val{font-size:28px;font-weight:600;letter-spacing:-.02em;margin:8px 0 2px;display:flex;align-items:baseline;gap:6px}
+.kpi .val small{font-size:14px;color:var(--texte-3);font-weight:500}
+.kpi .sous{font-size:12px;color:var(--texte-3);display:flex;align-items:center;gap:6px}
+.jauge{height:4px;border-radius:99px;background:var(--surface-2);margin-top:10px;overflow:hidden}
+.jauge i{display:block;height:100%;border-radius:99px}
+.delta{font-size:11.5px;font-weight:600;padding:1px 6px;border-radius:99px}
+.delta.mieux{color:var(--ok);background:var(--ok-doux)}.delta.moins{color:var(--retard);background:var(--retard-doux)}
+.groupes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:22px}
+.carte{border:1px solid var(--bordure);border-radius:var(--r3);background:var(--surface-1)}
+.carte-tete{display:flex;align-items:center;gap:8px;padding:11px 14px;border-bottom:1px solid var(--bordure)}
+.carte-tete h3{margin:0;font-size:13px;font-weight:600}
+.carte-tete .muet{margin-left:auto;font-size:12px}
+.lignes{list-style:none;margin:0;padding:4px 0}
+.lignes li{display:flex;align-items:center;gap:10px;padding:7px 14px;cursor:pointer}
+.lignes li:hover{background:var(--surface-survol)}
+.lignes .v{margin-left:auto;font-weight:500;white-space:nowrap}
+.lignes li>.muet{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lignes li{white-space:nowrap}
+.lignes .ico{color:var(--texte-3);width:14px;height:14px}
+.pt-etat{width:6px;height:6px;border-radius:50%;flex:none}
+.gantt{padding:10px 14px 14px}
+.g-axe{display:grid;grid-template-columns:110px 1fr;font-size:11px;color:var(--texte-3);margin-bottom:6px}
+.g-axe div:last-child{display:flex;justify-content:space-between}
+.g-ligne{display:grid;grid-template-columns:110px 1fr;align-items:center;height:26px}
+.g-ligne span{color:var(--texte-2);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.g-piste{position:relative;height:14px;border-radius:3px;background:repeating-linear-gradient(90deg,transparent 0 calc(25% - 1px),var(--bordure) calc(25% - 1px) 25%)}
+.g-barre{position:absolute;top:2px;height:10px;border-radius:3px;background:var(--accent);opacity:.9}
+.g-barre.attente{background:var(--attente);height:4px;top:5px;opacity:.7}
+.g-barre.retard{background:var(--retard)}
+.g-maintenant{position:absolute;top:-4px;bottom:-4px;width:1px;background:var(--texte-2)}
+/* problèmes */
+.problemes{border-left:1px solid var(--bordure);display:flex;flex-direction:column}
+.pb-onglets{display:flex;gap:2px;padding:0 10px 8px;border-bottom:1px solid var(--bordure)}
+.pb-onglets button{border:0;background:none;padding:5px 9px;border-radius:var(--r2);color:var(--texte-2);cursor:pointer;font-size:12px;font-weight:500}
+.pb-onglets button[aria-pressed="true"]{background:var(--surface-2);color:var(--texte-1)}
+.pb{display:flex;gap:10px;padding:12px 14px;border-bottom:1px solid var(--bordure);cursor:pointer}
+.pb:hover{background:var(--surface-survol)}
+.pb .ico{margin-top:1px}
+.pb b{display:block;font-weight:500;font-size:12.5px}
+.pb p{margin:3px 0 6px;color:var(--texte-3);font-size:12px}
+.pb .lien{color:var(--accent-texte);font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:4px}
+.niv-attente{color:var(--attente)}.niv-retard{color:var(--retard)}.niv-info{color:var(--info)}
+
+/* Notification */
+.notif{position:fixed;left:50%;bottom:20px;transform:translate(-50%,16px);opacity:0;display:flex;align-items:center;gap:12px;padding:8px 8px 8px 14px;
+  border-radius:var(--r3);background:var(--surface-3);box-shadow:var(--ombre-flottant);font-size:12.5px;transition:opacity var(--t-panneau) var(--courbe),transform var(--t-panneau) var(--courbe);pointer-events:none}
+.notif.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.notif .ico{color:var(--ok)}
+.infobulle{position:absolute;pointer-events:none;padding:4px 8px;border-radius:var(--r2);background:var(--surface-3);box-shadow:var(--ombre-flottant);font-size:11.5px;color:var(--texte-1);
+  white-space:nowrap;opacity:0;transition:opacity var(--t-rapide);z-index:10}
+</style>
+</head>
+<body data-ecran="plan">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+ <defs>
+  <symbol id="i-accueil" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-avion" viewBox="0 0 24 24"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></symbol>
+  <symbol id="i-plan" viewBox="0 0 24 24"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15M15 6v15"/></symbol>
+  <symbol id="i-chemin" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 6H15a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h6.5"/></symbol>
+  <symbol id="i-equipe" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></symbol>
+  <symbol id="i-horloge" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-reglages" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
+  <symbol id="i-lecture" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z"/></symbol>
+  <symbol id="i-synthese" viewBox="0 0 24 24"><path d="M3 3v18h18M7 16v-5M12 16V8M17 16v-9"/></symbol>
+  <symbol id="i-planning" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M7 13h5M10 17h7"/></symbol>
+  <symbol id="i-liste" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></symbol>
+  <symbol id="i-boite" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/></symbol>
+  <symbol id="i-comparer" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/></symbol>
+  <symbol id="i-alerte" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"/></symbol>
+  <symbol id="i-sauver" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></symbol>
+  <symbol id="i-annuler" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3"/></symbol>
+  <symbol id="i-retablir" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5M20 9H9a5 5 0 0 0 0 10h3"/></symbol>
+  <symbol id="i-chercher" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-curseur" viewBox="0 0 24 24"><path d="m4 3 7 17 2.5-7.5L21 10z"/></symbol>
+  <symbol id="i-rect" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="1"/></symbol>
+  <symbol id="i-poly" viewBox="0 0 24 24"><path d="M12 3l9 6.5-3.5 10.5h-11L3 9.5z"/></symbol>
+  <symbol id="i-main" viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.4l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/></symbol>
+  <symbol id="i-aimant" viewBox="0 0 24 24"><path d="M6 15a6 6 0 0 0 12 0V4h-4v11a2 2 0 0 1-4 0V4H6zM6 8h4M14 8h4"/></symbol>
+  <symbol id="i-grille" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></symbol>
+  <symbol id="i-moins" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-cadrer" viewBox="0 0 24 24"><path d="M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5"/></symbol>
+  <symbol id="i-tout" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></symbol>
+  <symbol id="i-oeil" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-cadenas" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-droite" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="i-coche" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-calques" viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></symbol>
+  <symbol id="i-poubelle" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></symbol>
+  <symbol id="i-camion" viewBox="0 0 24 24"><path d="M1 4h14v12H1zM15 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2"/><circle cx="18.5" cy="18.5" r="2"/></symbol>
+  <symbol id="i-cuisine" viewBox="0 0 24 24"><path d="M4 11h16v2a7 7 0 0 1-7 7h-2a7 7 0 0 1-7-7zM2 11h20M9 7c0-1.5 1-2 1-3.5M14 7c0-1.5 1-2 1-3.5"/></symbol>
+  <symbol id="i-montage" viewBox="0 0 24 24"><path d="M3 17h18M5 17a7 7 0 0 1 14 0M12 8V6M10 6h4"/></symbol>
+  <symbol id="i-goutte" viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></symbol>
+  <symbol id="i-armement" viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="M6 9h12M6 15h12M10 21v1M14 21v1"/></symbol>
+  <symbol id="i-plus-cercle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></symbol>
+  <symbol id="i-soleil" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-lune" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></symbol>
+ </defs>
+</svg>
+
+<div class="bandeau" role="note">
+  <b>Maquette</b><span>non fonctionnelle · données fictives · bâtiment schématique (pas le plan de l’unité)</span>
+  <span class="sep"></span>
+  <div class="seg" role="group" aria-label="Écran de la maquette">
+    <button type="button" data-ecran="plan" aria-pressed="true">Plan de l’unité</button>
+    <button type="button" data-ecran="services" aria-pressed="false">Services et équipes</button>
+    <button type="button" data-ecran="synthese" aria-pressed="false">Synthèse</button>
+  </div>
+  <div class="droite">
+    <span>Thème</span>
+    <div class="seg" role="group" aria-label="Thème">
+      <button type="button" data-theme="sombre" aria-pressed="true"><svg class="ico" style="width:12px;height:12px;vertical-align:-2px"><use href="#i-lune"/></svg> Sombre</button>
+      <button type="button" data-theme="clair" aria-pressed="false"><svg class="ico" style="width:12px;height:12px;vertical-align:-2px"><use href="#i-soleil"/></svg> Clair</button>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+ <!-- ===== Barre latérale ===== -->
+ <aside class="barre" aria-label="Navigation principale">
+  <div class="marque"><div class="logo">N</div><span><b>Production ORY</b><small>Unité · journée du 08/10</small></span></div>
+  <nav class="nav">
+   <button class="item" type="button"><svg class="ico"><use href="#i-accueil"/></svg><span class="lib">Accueil</span></button>
+   <h6>Données</h6>
+   <button class="item" type="button"><svg class="ico"><use href="#i-avion"/></svg><span class="lib">Vols</span><span class="compte">16</span></button>
+   <h6>Unité</h6>
+   <button class="item" type="button" data-vers="plan"><svg class="ico"><use href="#i-plan"/></svg><span class="lib">Plan de l’unité</span></button>
+   <button class="item" type="button"><svg class="ico"><use href="#i-chemin"/></svg><span class="lib">Chemins</span><span class="compte">2 flux</span></button>
+   <button class="item" type="button" data-vers="services"><svg class="ico"><use href="#i-equipe"/></svg><span class="lib">Services et équipes</span><span class="pt"></span></button>
+   <button class="item" type="button"><svg class="ico"><use href="#i-horloge"/></svg><span class="lib">Heures de travail</span></button>
+   <h6>Simulation</h6>
+   <button class="item" type="button"><svg class="ico"><use href="#i-reglages"/></svg><span class="lib">Réglages</span></button>
+   <button class="item" type="button"><svg class="ico"><use href="#i-lecture"/></svg><span class="lib">Rejouer sur le plan</span></button>
+   <h6>Analyse</h6>
+   <button class="item" type="button" data-vers="synthese"><svg class="ico"><use href="#i-synthese"/></svg><span class="lib">Synthèse</span></button>
+   <button class="item" type="button"><svg class="ico"><use href="#i-planning"/></svg><span class="lib">Planning des équipes</span></button>
+   <button class="item" type="button"><svg class="ico"><use href="#i-liste"/></svg><span class="lib">Commandes</span></button>
+   <button class="item" type="button"><svg class="ico"><use href="#i-avion"/></svg><span class="lib">Vols au départ</span></button>
+   <button class="item" type="button"><svg class="ico"><use href="#i-boite"/></svg><span class="lib">Stocks et retours</span></button>
+   <button class="item" type="button"><svg class="ico"><use href="#i-comparer"/></svg><span class="lib">Comparer deux essais</span></button>
+  </nav>
+  <div class="pied">
+   <button class="item" type="button" data-vers="synthese"><svg class="ico"><use href="#i-alerte"/></svg><span class="lib">Problèmes</span><span class="badge-pb">6</span></button>
+   <button class="item" type="button"><svg class="ico"><use href="#i-sauver"/></svg><span class="lib">Sauvegarde</span></button>
+  </div>
+ </aside>
+
+ <div class="principal">
+  <!-- ===== Barre supérieure ===== -->
+  <header class="haut">
+   <div class="ariane" id="ariane"></div>
+   <div class="droite">
+    <span class="puce edition" id="puce-edition"><svg class="ico" style="width:12px;height:12px"><use href="#i-curseur"/></svg>Édition du plan</span>
+    <span class="puce" title="Le calcul se refait à chaque modification"><span class="rond"></span>Calcul à jour</span>
+    <span class="puce" title="Source des vols">Vols : démo + essai EZY, RAM</span>
+    <span class="puce attente" data-vers="synthese"><svg class="ico" style="width:12px;height:12px"><use href="#i-alerte"/></svg>6 problèmes</span>
+    <button class="bt icone discret" type="button" aria-label="Annuler" data-infobulle="Annuler  ⌘Z"><svg class="ico"><use href="#i-annuler"/></svg></button>
+    <button class="bt icone discret" type="button" aria-label="Rétablir" data-infobulle="Rétablir  ⇧⌘Z" disabled><svg class="ico"><use href="#i-retablir"/></svg></button>
+    <div class="recherche" role="button" tabindex="0"><svg class="ico"><use href="#i-chercher"/></svg>Aller à…<kbd>⌘K</kbd></div>
+    <button class="bt" type="button" id="bt-terminer"><svg class="ico"><use href="#i-sauver"/></svg>Sauvegarder</button>
+   </div>
+  </header>
+
+  <!-- ===== Écran 1 : plan de l'unité ===== -->
+  <section class="ecran" id="ecran-plan" aria-label="Plan de l’unité">
+   <div class="panneau">
+    <div class="panneau-tete"><svg class="ico"><use href="#i-calques"/></svg><h2>Calques</h2><span class="muet" style="margin-left:auto;font-size:11px">16 zones</span></div>
+    <label class="champ-rech"><svg class="ico"><use href="#i-chercher"/></svg><input placeholder="Chercher une zone" aria-label="Chercher une zone"></label>
+    <div id="calques"></div>
+   </div>
+
+   <div class="toile papier" id="toile">
+    <svg viewBox="0 0 1000 640" preserveAspectRatio="xMidYMid meet" aria-label="Bâtiment schématique (fictif)">
+     <defs><pattern id="pts" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".9" fill="currentColor"/></pattern></defs>
+     <rect x="-500" y="-500" width="2000" height="1640" fill="url(#pts)" style="color:var(--bordure-forte)" opacity=".7"/>
+     <g id="dessin">
+      <rect class="mur" x="20" y="20" width="960" height="600"/>
+      <path class="cloison" d="M20 120H980M290 120V310M480 120V310M690 120V310M20 310H980M250 310V460M490 310V460M670 310V460M820 310V460M20 460H980M20 520H980M230 520V620M390 520V620"/>
+      <path class="cloison" d="M110 140V300M600 140V300M760 330V450M120 330V450M350 330V450"/>
+     </g>
+     <g id="zones"></g>
+     <g id="selection"></g>
+    </svg>
+    <div class="outils" role="toolbar" aria-label="Outils du plan">
+     <button class="outil" type="button" aria-pressed="true" data-infobulle="Sélection  V"><svg class="ico"><use href="#i-curseur"/></svg></button>
+     <button class="outil" type="button" aria-pressed="false" data-infobulle="Rectangle  R"><svg class="ico"><use href="#i-rect"/></svg></button>
+     <button class="outil" type="button" aria-pressed="false" data-infobulle="Polygone  P"><svg class="ico"><use href="#i-poly"/></svg></button>
+     <button class="outil" type="button" aria-pressed="false" data-infobulle="Main  H · Espace"><svg class="ico"><use href="#i-main"/></svg></button>
+     <span class="sep"></span>
+     <button class="outil bascule" type="button" aria-pressed="true" data-infobulle="Aimantation"><svg class="ico"><use href="#i-aimant"/></svg></button>
+     <button class="outil bascule" type="button" aria-pressed="false" data-infobulle="Grille d’aide"><svg class="ico"><use href="#i-grille"/></svg></button>
+     <span class="sep"></span>
+     <button class="outil" type="button" data-infobulle="Annuler  ⌘Z"><svg class="ico"><use href="#i-annuler"/></svg></button>
+     <button class="outil" type="button" data-infobulle="Rétablir  ⇧⌘Z" disabled style="opacity:.4"><svg class="ico"><use href="#i-retablir"/></svg></button>
+    </div>
+    <div class="mode-toile seg" role="group" aria-label="Toile">
+     <button type="button" data-toile="papier" aria-pressed="true">Papier</button>
+     <button type="button" data-toile="sombre" aria-pressed="false">Sombre</button>
+    </div>
+    <div class="statut-toile num"><svg class="ico" style="width:12px;height:12px"><use href="#i-aimant"/></svg>Aimantation 10 <span class="muet">·</span> x 548 · y 212</div>
+    <div class="zoom" role="group" aria-label="Zoom">
+     <button class="bt icone discret" type="button" aria-label="Dézoomer"><svg class="ico"><use href="#i-moins"/></svg></button>
+     <b class="num">100 %</b>
+     <button class="bt icone discret" type="button" aria-label="Zoomer"><svg class="ico"><use href="#i-plus"/></svg></button>
+     <button class="bt icone discret" type="button" aria-label="Cadrer la sélection" data-infobulle="Cadrer la sélection"><svg class="ico"><use href="#i-cadrer"/></svg></button>
+     <button class="bt icone discret" type="button" aria-label="Tout voir" data-infobulle="Tout voir  0"><svg class="ico"><use href="#i-tout"/></svg></button>
+    </div>
+   </div>
+
+   <aside class="panneau inspecteur" aria-label="Inspecteur de la zone" id="insp-zone"></aside>
+  </section>
+
+  <!-- ===== Écran 2 : services et équipes ===== -->
+  <section class="ecran" id="ecran-services" aria-label="Services et équipes">
+   <div class="panneau">
+    <div class="panneau-tete"><h2>Services</h2><span class="muet" style="margin-left:auto;font-size:11px">10 utilisés</span></div>
+    <label class="champ-rech"><svg class="ico"><use href="#i-chercher"/></svg><input placeholder="Chercher un service" aria-label="Chercher un service"></label>
+    <div id="liste-services"></div>
+   </div>
+
+   <div class="feuille">
+    <div class="feuille-int">
+     <div class="fiche-tete">
+      <div class="tuile"><svg class="ico ico-20"><use href="#i-montage"/></svg></div>
+      <div>
+       <h1>Montage <span class="etiquette">Préparation</span></h1>
+       <p class="num">2 équipes · 13 commandes · 47,9 h de travail sur la journée</p>
+      </div>
+      <div class="droite">
+       <button class="bt discret" type="button"><svg class="ico"><use href="#i-plan"/></svg>Sur le plan</button>
+       <button class="bt discret" type="button"><svg class="ico"><use href="#i-chemin"/></svg>Ses flux</button>
+      </div>
+     </div>
+
+     <div class="alerte"><svg class="ico"><use href="#i-alerte"/></svg><span><b>2 commandes</b> passent par ici sans équipe : FBU · Économie, RAM · Économie.</span>
+      <button class="bt" type="button">Les confier</button></div>
+
+     <div class="bloc" data-ouvert="true">
+      <div class="bloc-tete"><h3>Nature</h3><span class="resume">Des équipes préparent les commandes · effectif selon les vols</span><svg class="ico chev"><use href="#i-chev"/></svg></div>
+      <div class="bloc-corps">
+       <div class="grille-champs">
+        <div class="champ"><label>Ce service <span class="q" title="Ce que fait le service : préparer, servir tout le monde, laver, charger…">?</span></label>
+         <div class="saisie"><select aria-label="Nature"><option>Des équipes préparent les commandes</option><option>Un robot (une ligne) prépare</option><option>Il sert tout le monde</option><option>Plonge</option><option>Il charge les vols (handling)</option><option>Il travaille par compagnie</option><option>Un seul atelier</option></select><svg class="ico" style="color:var(--texte-3)"><use href="#i-chev"/></svg></div></div>
+        <div class="champ"><label>Effectif</label>
+         <div class="seg" role="group" aria-label="Effectif"><button type="button" aria-pressed="true">Selon les vols</button><button type="button" aria-pressed="false">Imposé (essai)</button></div>
+         <span class="sert">Heures par vol × vols de chaque compagnie ÷ heures du poste.</span></div>
+       </div>
+      </div>
+     </div>
+
+     <div class="bloc" data-ouvert="true">
+      <div class="bloc-tete"><h3>Équipes</h3><span class="resume">2</span><svg class="ico chev"><use href="#i-chev"/></svg></div>
+      <div class="bloc-corps" style="padding:0">
+       <table class="tab" aria-label="Équipes du service">
+        <thead><tr><th style="padding-left:14px">Équipe</th><th>Arrive</th><th class="d">Personnes</th><th class="d">Commandes</th><th class="d">Fin</th><th></th></tr></thead>
+        <tbody id="equipes">
+         <tr data-eq="mo"><td style="padding-left:14px"><b style="font-weight:500">Montage</b> <span class="etiquette chaine">+ Prépa à la chaîne</span></td><td class="num">04:30 · J</td><td class="d num">5</td><td class="d num">7</td><td class="d num">11:10</td><td class="d"><svg class="ico muet"><use href="#i-droite"/></svg></td></tr>
+         <tr data-eq="mo2" aria-selected="true"><td style="padding-left:14px"><b style="font-weight:500">Montage 2</b></td><td class="num">05:00 · J</td><td class="d num">3 <span class="muet" style="font-size:11px">calc.</span></td><td class="d num">6</td><td class="d num">10:44</td><td class="d"><svg class="ico muet"><use href="#i-droite"/></svg></td></tr>
+        </tbody>
+       </table>
+       <div class="pied-tab" style="padding:8px 14px 12px"><button class="bt discret" type="button"><svg class="ico"><use href="#i-plus"/></svg>Ajouter une équipe</button></div>
+      </div>
+     </div>
+
+     <div class="bloc" data-ouvert="true">
+      <div class="bloc-tete"><h3>Ce qu’elles préparent</h3><span class="resume num">11 sur 13 commandes · Espace pour cocher</span><svg class="ico chev"><use href="#i-chev"/></svg></div>
+      <div class="bloc-corps" style="padding:0">
+       <table class="tab" aria-label="Ce que chaque équipe prépare">
+        <thead><tr><th style="padding-left:14px">Commande</th><th class="d">Vols</th><th class="d">Prête avant</th><th class="c">Montage</th><th class="c">Montage 2</th></tr></thead>
+        <tbody id="matrice"></tbody>
+       </table>
+      </div>
+     </div>
+
+     <div class="bloc" data-ouvert="false">
+      <div class="bloc-tete"><h3>Avancé</h3><span class="resume">1 réglage : en même temps que —, superviseurs 0, règle ⚡ sur Montage 2</span><svg class="ico chev"><use href="#i-chev"/></svg></div>
+      <div class="bloc-corps"><p class="aide">En même temps qu’un autre service, superviseurs, règles « selon le nombre de vols », pauses, heures propres.</p></div>
+     </div>
+    </div>
+   </div>
+
+   <aside class="panneau inspecteur" aria-label="Inspecteur de l’équipe">
+    <div class="insp-tete">
+     <div class="type"><svg class="ico" style="width:12px;height:12px"><use href="#i-equipe"/></svg>Équipe · Montage</div>
+     <h3>Montage 2</h3>
+     <p class="num">05:00 → 10:44 · 6 commandes · 2 lignes ensemble</p>
+    </div>
+    <div class="section">
+     <h4>Poste</h4>
+     <div class="ligne-champ"><label for="f-nom">Nom</label><div class="saisie"><input id="f-nom" value="Montage 2"></div></div>
+     <div class="ligne-champ"><label>Arrive à</label><div class="deux"><div class="saisie"><input class="num" value="05:00" aria-label="Heure d’arrivée, 24 h"></div><div class="saisie"><select aria-label="Jour"><option>Jour J</option><option>Veille (J-1)</option></select></div></div></div>
+     <div class="ligne-champ"><label>Personnes</label><div class="saisie"><input class="num" value="3" readonly aria-label="Personnes, calculé"><span class="unite">calculé</span></div></div>
+     <p class="aide num" style="margin:-2px 0 8px 104px">14,2 h de travail ÷ 5 h 44 de poste</p>
+     <div class="ligne-champ"><label>Effectif</label><div class="saisie"><select><option>Comme le service</option><option>Dépend des vols</option><option>Constant (saisi)</option></select><svg class="ico" style="color:var(--texte-3)"><use href="#i-chev"/></svg></div></div>
+    </div>
+    <div class="section">
+     <h4>Pauses <span class="plus muet">Plonge et réfectoire</span></h4>
+     <div class="ligne-champ"><label>Pause 1</label><div class="deux"><div class="saisie"><input class="num" value="08:00"></div><div class="saisie"><input class="num" value="08:15"></div></div></div>
+     <div class="ligne-champ"><label>Pause 2</label><div class="deux"><div class="saisie erreur"><input class="num" value="12:30" aria-invalid="true"></div><div class="saisie erreur"><input class="num" value="12:15" aria-invalid="true"></div></div>
+      <div class="msg-erreur"><svg class="ico"><use href="#i-info"/></svg>La fin précède le début : la pause garde 12:30 – 13:00.</div></div>
+     <button class="bt discret" type="button" style="margin-left:96px"><svg class="ico"><use href="#i-plus"/></svg>Une pause</button>
+    </div>
+    <div class="section">
+     <h4>Liens</h4>
+     <ul class="liste-mini">
+      <li><span>Dans le planning</span><svg class="ico" style="width:13px;height:13px"><use href="#i-droite"/></svg></li>
+      <li><span>Sur le plan · zone Montage</span><svg class="ico" style="width:13px;height:13px"><use href="#i-droite"/></svg></li>
+     </ul>
+    </div>
+    <div class="actions-insp"><button class="bt danger" type="button"><svg class="ico"><use href="#i-poubelle"/></svg>Supprimer l’équipe</button></div>
+   </aside>
+  </section>
+
+  <!-- ===== Écran 3 : synthèse ===== -->
+  <section class="ecran" id="ecran-synthese" aria-label="Synthèse">
+   <div class="analyse">
+    <div class="analyse-tete">
+     <div><h1>Synthèse de la journée</h1><p class="num">J-1 03:00 → J 14:00 · 16 vols · 26 commandes · calcul à jour</p></div>
+     <div class="droite">
+      <div class="seg" role="group" aria-label="Comparer"><button type="button" aria-pressed="true">Essai actuel</button><button type="button" aria-pressed="false">Écart avec l’essai A</button></div>
+      <button class="bt" type="button"><svg class="ico"><use href="#i-sauver"/></svg>Exporter</button>
+     </div>
+    </div>
+
+    <div class="kpis">
+     <div class="kpi" tabindex="0"><div class="lib"><svg class="ico" style="width:14px;height:14px"><use href="#i-avion"/></svg>Vols chargés à l’heure</div>
+      <div class="val num">12<small>/ 16</small> <span class="delta mieux">+2</span></div><div class="sous">75 % · 4 en retard au chargement</div>
+      <div class="jauge"><i style="width:75%;background:var(--ok)"></i></div></div>
+     <div class="kpi" tabindex="0"><div class="lib"><svg class="ico" style="width:14px;height:14px"><use href="#i-liste"/></svg>Commandes à l’heure</div>
+      <div class="val num">21<small>/ 26</small> <span class="delta mieux">+3</span></div><div class="sous">81 % · 5 en retard</div>
+      <div class="jauge"><i style="width:81%;background:var(--ok)"></i></div></div>
+     <div class="kpi" tabindex="0"><div class="lib"><svg class="ico" style="width:14px;height:14px"><use href="#i-horloge"/></svg>Retard le plus long</div>
+      <div class="val num" style="color:var(--retard)">1 h 05</div><div class="sous">AF · Business, vol de 06:40</div>
+      <div class="jauge"><i style="width:36%;background:var(--retard)"></i></div></div>
+     <div class="kpi" tabindex="0"><div class="lib"><svg class="ico" style="width:14px;height:14px"><use href="#i-equipe"/></svg>Travail fourni</div>
+      <div class="val num">96,0<small>h</small></div><div class="sous">sur 110,4 h demandées par les chemins</div>
+      <div class="jauge"><i style="width:87%;background:var(--accent)"></i></div></div>
+    </div>
+
+    <div class="groupes">
+     <div class="carte"><div class="carte-tete"><svg class="ico"><use href="#i-avion"/></svg><h3>Vols</h3><span class="muet num">4 à regarder</span></div>
+      <ul class="lignes">
+       <li><span class="pt-etat" style="background:var(--retard)"></span><span class="code">AF1080</span><span class="muet">chargé 07:12</span><span class="v num" style="color:var(--retard)">+32 min</span></li>
+       <li><span class="pt-etat" style="background:var(--retard)"></span><span class="code">TX305</span><span class="muet">chargé 08:41</span><span class="v num" style="color:var(--retard)">+18 min</span></li>
+       <li><span class="pt-etat" style="background:var(--attente)"></span><span class="code">FWI40</span><span class="muet">attend l’armement</span><span class="v num">12 min</span></li>
+       <li><span class="pt-etat" style="background:var(--ok)"></span><span>12 autres à l’heure</span><span class="v"><svg class="ico"><use href="#i-droite"/></svg></span></li>
+      </ul></div>
+     <div class="carte"><div class="carte-tete"><svg class="ico"><use href="#i-liste"/></svg><h3>Commandes</h3><span class="muet num">5 en retard</span></div>
+      <ul class="lignes">
+       <li><span class="pt-etat" style="background:var(--retard)"></span>AF · Business<span class="v num" style="color:var(--retard)">+1 h 05</span></li>
+       <li><span class="pt-etat" style="background:var(--retard)"></span>AF · Premium<span class="v num" style="color:var(--retard)">+48 min</span></li>
+       <li><span class="pt-etat" style="background:var(--retard)"></span>TX · Business<span class="v num" style="color:var(--retard)">+22 min</span></li>
+       <li><span class="pt-etat" style="background:var(--texte-3)"></span>Dernière prête<span class="v num">10:44</span></li>
+      </ul></div>
+     <div class="carte"><div class="carte-tete"><svg class="ico"><use href="#i-equipe"/></svg><h3>Équipes</h3><span class="muet num">attente cumulée 2 h 58</span></div>
+      <ul class="lignes">
+       <li><span class="pt-etat" style="background:var(--attente)"></span>Montage<span class="muet">attend la Prépa</span><span class="v num">1 h 53</span></li>
+       <li><span class="pt-etat" style="background:var(--attente)"></span>Armement<span class="muet">attend le Magasin</span><span class="v num">41 min</span></li>
+       <li><span class="pt-etat" style="background:var(--attente)"></span>Plonge<span class="muet">entre deux retours</span><span class="v num">24 min</span></li>
+       <li><span class="pt-etat" style="background:var(--texte-3)"></span>Planning des équipes<span class="v"><svg class="ico"><use href="#i-droite"/></svg></span></li>
+      </ul></div>
+    </div>
+
+    <div class="carte">
+     <div class="carte-tete"><svg class="ico"><use href="#i-planning"/></svg><h3>Planning des équipes</h3><span class="muet">barre pleine : prépare · trait fin : attend · rouge : finit après l’échéance</span></div>
+     <div class="gantt">
+      <div class="g-axe"><div></div><div class="num"><span>J-1 03:00</span><span>J 00:00</span><span>04:00</span><span>08:00</span><span>12:00</span></div></div>
+      <div class="g-ligne"><span>Cuisine</span><div class="g-piste"><i class="g-barre" style="left:1%;width:16%"></i></div></div>
+      <div class="g-ligne"><span>Prépa</span><div class="g-piste"><i class="g-barre" style="left:52%;width:18%"></i></div></div>
+      <div class="g-ligne"><span>Montage</span><div class="g-piste"><i class="g-barre attente" style="left:55%;width:12%"></i><i class="g-barre" style="left:67%;width:14%"></i><i class="g-barre retard" style="left:81%;width:5%"></i></div></div>
+      <div class="g-ligne"><span>Montage 2</span><div class="g-piste"><i class="g-barre" style="left:56%;width:28%"></i></div></div>
+      <div class="g-ligne"><span>Armement</span><div class="g-piste"><i class="g-barre" style="left:52%;width:10%"></i><i class="g-barre attente" style="left:62%;width:5%"></i><i class="g-barre" style="left:67%;width:4%"></i></div></div>
+      <div class="g-ligne"><span>Plonge</span><div class="g-piste"><i class="g-barre" style="left:63%;width:3%"></i><i class="g-barre" style="left:70%;width:3%"></i><i class="g-barre" style="left:76%;width:5%"></i><i class="g-maintenant" style="left:74%"></i></div></div>
+     </div>
+    </div>
+   </div>
+
+   <aside class="panneau problemes" aria-label="Problèmes">
+    <div class="panneau-tete" style="padding-top:14px"><svg class="ico" style="color:var(--attente)"><use href="#i-alerte"/></svg><h2 style="color:var(--texte-1);font-size:13px">Problèmes</h2><span class="muet" style="margin-left:auto;font-size:12px">6</span></div>
+    <div class="pb-onglets"><button type="button" aria-pressed="true">Tous 6</button><button type="button" aria-pressed="false">À compléter 4</button><button type="button" aria-pressed="false">Résultats 2</button></div>
+    <div class="pb"><svg class="ico niv-attente"><use href="#i-equipe"/></svg><div><b>2 commandes sans équipe au Montage</b><p>FBU · Économie, RAM · Économie : l’étape est sautée pour elles.</p><span class="lien">Ouvrir le Montage<svg class="ico" style="width:12px;height:12px"><use href="#i-droite"/></svg></span></div></div>
+    <div class="pb"><svg class="ico niv-attente"><use href="#i-horloge"/></svg><div><b>Heures par vol à remplir · Armement</b><p>FBU et CRL prennent la valeur de toutes les compagnies.</p><span class="lien">Ouvrir l’Armement<svg class="ico" style="width:12px;height:12px"><use href="#i-droite"/></svg></span></div></div>
+    <div class="pb"><svg class="ico niv-attente"><use href="#i-chemin"/></svg><div><b>Magasin sur le chemin, sans équipe</b><p>13 commandes y passent ; personne n’y travaille.</p><span class="lien">Ouvrir les chemins<svg class="ico" style="width:12px;height:12px"><use href="#i-droite"/></svg></span></div></div>
+    <div class="pb"><svg class="ico niv-attente"><use href="#i-plan"/></svg><div><b>9 zones à confirmer sur le plan</b><p>Leur emplacement n’est pas validé sur le terrain.</p><span class="lien">Ouvrir le plan<svg class="ico" style="width:12px;height:12px"><use href="#i-droite"/></svg></span></div></div>
+    <div class="pb"><svg class="ico niv-retard"><use href="#i-liste"/></svg><div><b>5 commandes en retard</b><p>La plus en retard : AF · Business, 1 h 05.</p><span class="lien">Voir les commandes<svg class="ico" style="width:12px;height:12px"><use href="#i-droite"/></svg></span></div></div>
+    <div class="pb"><svg class="ico niv-retard"><use href="#i-equipe"/></svg><div><b>Le poste du Montage finit avant</b><p>2 commandes restent à préparer à 11:10.</p><span class="lien">Ouvrir l’équipe<svg class="ico" style="width:12px;height:12px"><use href="#i-droite"/></svg></span></div></div>
+   </aside>
+  </section>
+ </div>
+</div>
+
+<div class="notif" id="notif" role="status"><svg class="ico"><use href="#i-coche"/></svg><span id="notif-texte"></span><button class="bt" type="button" id="notif-annuler">Annuler</button></div>
+<div class="infobulle" id="infobulle" role="tooltip"></div>
+
+<script>
+/* Maquette : quelques interactions pour juger la direction, rien de plus. */
+(function(){
+'use strict';
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const ico=id=>`<svg class="ico"><use href="#i-${id}"/></svg>`;
+const COUL={service:'#5B7BD5',annexe:'#2BAE9C',local:'#8C8F96',froid:'#4FA3D1',equipement:'#9B6FD6',circulation:'#D29922'};
+const TYPE={service:'Service',annexe:'Annexe',local:'Local',froid:'Chambre froide',equipement:'Équipement',circulation:'Circulation'};
+// Bâtiment schématique, fictif.
+const ZONES=[
+ {id:'quais',nom:'Quais · Réception',type:'service',x:30,y:30,w:440,h:80,sous:'handling · 1 équipe',approx:true},
+ {id:'appros',nom:'Réception / Appros',type:'service',x:490,y:30,w:190,h:80,sous:'sert tout le monde'},
+ {id:'magasin',nom:'Magasin',type:'service',x:700,y:30,w:270,h:80,sous:'aucune équipe',fixe:true},
+ {id:'cuisine',nom:'Cuisine',type:'service',x:30,y:130,w:250,h:170,sous:'1 équipe · J-1'},
+ {id:'prepa',nom:'Prépa',type:'service',x:300,y:130,w:170,h:170,sous:'1 équipe'},
+ {id:'montage',nom:'Montage',type:'service',x:490,y:130,w:190,h:170,sous:'2 équipes · 13 commandes'},
+ {id:'armement',nom:'Armement',type:'service',x:700,y:130,w:270,h:170,sous:'par compagnie'},
+ {id:'arm2',nom:'Armement 2',type:'annexe',x:830,y:470,w:140,h:40,sous:'annexe d’Armement',approx:true},
+ {id:'dotation',nom:'Dotation',type:'service',x:30,y:320,w:210,h:130,sous:'aucune équipe'},
+ {id:'plonge',nom:'Plonge',type:'service',x:260,y:320,w:220,h:130,sous:'1 tunnel · par vol'},
+ {id:'legumerie',nom:'Légumerie',type:'service',x:500,y:320,w:160,h:130,sous:'mise à disposition'},
+ {id:'cf1',nom:'Chambre froide 1',type:'froid',x:680,y:320,w:130,h:130,sous:'+2 °C'},
+ {id:'cf2',nom:'Chambre froide 2',type:'froid',x:830,y:320,w:140,h:130,sous:'−18 °C',approx:true},
+ {id:'allee',nom:'Allée centrale',type:'circulation',x:30,y:470,w:790,h:40,sous:'circulation'},
+ {id:'vestiaires',nom:'Vestiaires',type:'local',x:30,y:530,w:190,h:80,sous:'local'},
+ {id:'bureau',nom:'Bureau',type:'local',x:240,y:530,w:140,h:80,sous:'local'}];
+let sel='montage';
+
+function dessinerZones(){
+ $('#zones').innerHTML=ZONES.map(z=>`<g class="zone${z.approx?' approx':''}${z.id===sel?' sel':''}" data-zone="${z.id}" tabindex="0" role="button" aria-label="${z.nom}">
+   <rect x="${z.x}" y="${z.y}" width="${z.w}" height="${z.h}" rx="3" fill="${COUL[z.type]}" fill-opacity="${z.type==='circulation'?.08:.14}" stroke="${COUL[z.type]}"/>
+   <text class="t1" x="${z.x+10}" y="${z.y+22}">${z.nom}</text>
+   ${z.h>50?`<text class="t2" x="${z.x+10}" y="${z.y+39}">${z.sous}</text>`:''}
+   ${z.fixe?`<use href="#i-cadenas" x="${z.x+z.w-24}" y="${z.y+9}" width="15" height="15" class="ico" style="stroke:${COUL[z.type]};fill:none"/>`:''}
+  </g>`).join('');
+ const z=ZONES.find(x=>x.id===sel);
+ if(!z){$('#selection').innerHTML='';return;}
+ const p=[[z.x,z.y],[z.x+z.w/2,z.y],[z.x+z.w,z.y],[z.x+z.w,z.y+z.h/2],[z.x+z.w,z.y+z.h],[z.x+z.w/2,z.y+z.h],[z.x,z.y+z.h],[z.x,z.y+z.h/2]];
+ const lib=`${z.w} × ${z.h}`, lw=lib.length*6.4+14;
+ $('#selection').innerHTML=(z.fixe?'':p.map(([x,y])=>`<rect class="poignee" x="${x-4}" y="${y-4}" width="8" height="8" rx="1.5"/>`).join(''))
+  +`<g transform="translate(${z.x+z.w/2-lw/2},${z.y+z.h+8})"><rect width="${lw}" height="18" rx="4" fill="var(--accent)"/><text class="cote" x="${lw/2}" y="12.5" text-anchor="middle">${lib}</text></g>`;
+}
+function dessinerCalques(){
+ const groupes=[['service','Services'],['annexe','Annexes'],['froid','Chambres froides'],['local','Locaux'],['circulation','Circulations']];
+ $('#calques').innerHTML=groupes.map(([t,n])=>{const zs=ZONES.filter(z=>z.type===t);return `<div class="groupe"><div class="groupe-tete"><svg class="ico"><use href="#i-chev"/></svg>${n}<span style="margin-left:auto">${zs.length}</span></div>
+  ${zs.map(z=>`<div class="calque" role="option" aria-selected="${z.id===sel}" data-zone="${z.id}"><span class="pastille" style="background:${COUL[z.type]}"></span><span class="nom">${z.nom}</span>${z.approx?'<span class="approx" title="Emplacement à confirmer"></span>':''}
+   <span class="actions"><span title="Masquer">${ico('oeil')}</span><span title="${z.fixe?'Géométrie fixée':'Fixer la géométrie'}" class="${z.fixe?'fixe':''}">${ico('cadenas')}</span></span></div>`).join('')}</div>`;}).join('');
+}
+function dessinerInspecteur(){
+ const z=ZONES.find(x=>x.id===sel);
+ if(!z){$('#insp-zone').innerHTML='<div class="insp-tete"><p>Sélectionnez une zone pour voir ses propriétés.</p></div>';return;}
+ const dis=z.fixe?' disabled':'';
+ $('#insp-zone').innerHTML=`<div class="insp-tete"><div class="type"><span class="pastille" style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${COUL[z.type]}"></span>${TYPE[z.type]}${z.approx?' · à confirmer':''}</div>
+   <h3>${z.nom}${z.fixe?`<svg class="ico" style="color:var(--texte-3)"><use href="#i-cadenas"/></svg>`:''}</h3><p>${z.sous}</p></div>
+  <div class="section"><h4>Identité</h4>
+   <div class="ligne-champ"><label>Nom</label><div class="saisie"><input value="${z.nom}"></div></div>
+   <div class="ligne-champ"><label>Type</label><div class="saisie"><select${z.type==='service'?' disabled':''}><option>${TYPE[z.type]}</option></select>${ico('chev')}</div></div>
+   ${z.type==='annexe'?`<div class="ligne-champ"><label>Rattachée à</label><div class="saisie"><select><option>Armement</option></select>${ico('chev')}</div></div>`:''}
+   <div class="ligne-champ"><label>Couleur</label><div class="saisie"><span style="width:14px;height:14px;border-radius:3px;background:${COUL[z.type]}"></span><input value="couleur du type" readonly></div></div></div>
+  <div class="section"><h4>Géométrie${z.fixe?' <span class="plus muet">fixée</span>':''}</h4>
+   <div class="ligne-champ"><label>Position</label><div class="deux"><div class="saisie"><span class="unite">x</span><input class="num" value="${z.x}"${dis}></div><div class="saisie"><span class="unite">y</span><input class="num" value="${z.y}"${dis}></div></div></div>
+   <div class="ligne-champ"><label>Taille</label><div class="deux"><div class="saisie"><span class="unite">l</span><input class="num" value="${z.w}"${dis}></div><div class="saisie"><span class="unite">h</span><input class="num" value="${z.h}"${dis}></div></div></div>
+   <p class="aide" style="margin-left:104px">En unités du plan. Flèches : 1 · Maj + flèches : 10.</p></div>
+  <div class="section"><h4>Statut</h4>
+   <div class="inter"><span>Géométrie fixée</span><span class="switch" role="switch" tabindex="0" aria-checked="${!!z.fixe}" data-bascule="fixe"></span></div>
+   <div class="inter"><span>Emplacement confirmé sur le terrain</span><span class="switch" role="switch" tabindex="0" aria-checked="${!z.approx}" data-bascule="approx"></span></div></div>
+  ${z.type==='service'?`<div class="section"><h4>Stockages <span class="plus muet">2</span></h4><ul class="liste-mini"><li><span>Chariots propres</span><span class="muet">40</span></li><li><span>Trolleys bar</span><span class="muet">12</span></li></ul></div>`:''}
+  <div class="actions-insp"><button class="bt" type="button"${dis}>Redessiner</button><button class="bt" type="button"${dis}>En polygone</button>
+   <button class="bt danger icone" type="button" aria-label="Supprimer" style="margin-left:auto"${z.type==='service'||z.fixe?' disabled title="Un service du plan ne se supprime pas ici"':''}>${ico('poubelle')}</button></div>`;
+}
+function selectionner(id){sel=id;dessinerZones();dessinerCalques();dessinerInspecteur();}
+
+// Écran 2 : la matrice.
+const CLS={BC:['Business','var(--d4)'],PC:['Premium','var(--d2)'],YC:['Économie','var(--d3)'],CREW:['Équipage','var(--d1)'],SPML:['Repas spéciaux','var(--d5)']};
+const CMD=[['AF',[['BC',5,'05:55',1,0],['PC',5,'05:55',1,0],['YC',5,'05:55',1,0]]],['TX',[['BC',2,'06:20',1,0],['YC',2,'06:20',1,0]]],['FWI',[['BC',2,'07:10',0,1],['YC',2,'07:10',0,1]]],
+ ['CRL',[['BC',2,'08:05',0,1],['YC',2,'08:05',0,1]]],['FBU',[['BC',1,'09:20',0,1],['YC',1,'09:20',0,0]]],['EZY',[['YC',2,'05:30',1,0]]],['RAM',[['YC',2,'05:55',0,0]]]];
+function dessinerMatrice(){
+ $('#matrice').innerHTML=CMD.map(([cie,cls])=>`<tr class="groupe-ligne"><td colspan="5" style="padding-left:14px">${cie}</td></tr>`+cls.map(([c,v,av,a,b],i)=>`<tr>
+   <td style="padding-left:22px"><span class="classe"><i style="background:${CLS[c][1]}"></i>${CLS[c][0]}</span>${!a&&!b?' <span class="etiquette" style="color:var(--attente);border-color:transparent;background:var(--attente-doux)">sans équipe</span>':''}</td>
+   <td class="d num">${v}</td><td class="d num">${av}</td>
+   <td class="c"><span class="coche" role="checkbox" tabindex="0" aria-checked="${!!a}" aria-label="${cie} ${CLS[c][0]} · Montage" data-cmd="${cie} · ${CLS[c][0]}" data-eq="Montage"></span></td>
+   <td class="c"><span class="coche" role="checkbox" tabindex="0" aria-checked="${!!b}" aria-label="${cie} ${CLS[c][0]} · Montage 2" data-cmd="${cie} · ${CLS[c][0]}" data-eq="Montage 2"></span></td></tr>`).join('')).join('');
+}
+const SERVICES=[['appros','Réception / Appros','sert tout le monde','boite',1],['legumerie','Légumerie','mise à disposition','cuisine',1],['cuisine','Cuisine','préparation · 1 équipe','cuisine',1],
+ ['prepa','Prépa','préparation · 1 équipe','cuisine',1],['montage','Montage','préparation · 2 équipes','montage',0],['plonge','Plonge','par vol · 1 tunnel','goutte',1],
+ ['armement','Armement','par compagnie · 1 équipe','armement',0],['quais','Quais · Réception','handling · 1 équipe','camion',1],['dotation','Dotation','aucune équipe','liste',0],['magasin','Magasin','aucune équipe','boite',0]];
+function dessinerServices(){
+ $('#liste-services').innerHTML=SERVICES.map(([id,n,s,i,ok])=>`<div class="service" role="option" aria-selected="${id==='montage'}"><span class="tuile">${ico(i)}</span><span><b>${n}</b><small>${s}</small></span><span class="etat${ok?'':' a'}"></span></div>`).join('');
+}
+
+// Coquille.
+const ARIANE={plan:['Unité','Plan de l’unité'],services:['Unité','Services et équipes','Montage'],synthese:['Analyse','Synthèse']};
+function ecran(e){
+ document.body.dataset.ecran=e;
+ $$('.bandeau [data-ecran]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.ecran===e)));
+ $$('.barre .item').forEach(b=>b.removeAttribute('aria-current'));
+ const cur=$(`.barre .nav .item[data-vers="${e}"]`);if(cur)cur.setAttribute('aria-current','page');
+ const a=ARIANE[e];
+ $('#ariane').innerHTML=a.map((x,i)=>i<a.length-1?`<span>${x}</span><svg class="ico"><use href="#i-droite"/></svg>`:`<b>${x}</b>`).join('');
+ $('#puce-edition').style.display=e==='plan'?'':'none';
+ $('#bt-terminer').innerHTML=e==='plan'?'Terminer':ico('sauver')+'Sauvegarder';
+ $('#bt-terminer').className=e==='plan'?'bt principal':'bt';
+}
+let minuteur;
+function notifier(t){$('#notif-texte').textContent=t;$('#notif').classList.add('on');clearTimeout(minuteur);minuteur=setTimeout(()=>$('#notif').classList.remove('on'),4000);}
+
+document.addEventListener('click',e=>{
+ const t=e.target;
+ const be=t.closest('.bandeau [data-ecran]');if(be)return ecran(be.dataset.ecran);
+ const th=t.closest('.bandeau [data-theme]');if(th){if(th.dataset.theme==='clair')document.documentElement.dataset.theme='clair';else delete document.documentElement.dataset.theme;
+   $$('.bandeau [data-theme]').forEach(b=>b.setAttribute('aria-pressed',String(b===th)));return;}
+ const tv=t.closest('.mode-toile [data-toile]');if(tv){$('#toile').classList.toggle('papier',tv.dataset.toile==='papier');$$('[data-toile]').forEach(b=>b.setAttribute('aria-pressed',String(b===tv)));return;}
+ const v=t.closest('.barre [data-vers],.haut [data-vers]');if(v)return ecran(v.dataset.vers);
+ const z=t.closest('[data-zone]');if(z)return selectionner(z.dataset.zone);
+ if(t.closest('.toile svg')&&!t.closest('.zone'))return selectionner(null);
+ const o=t.closest('.outil');if(o&&!o.classList.contains('bascule')&&o.closest('.outils')&&!o.dataset.infobulle.startsWith('Annuler')&&!o.dataset.infobulle.startsWith('Rétablir')){
+   $$('.outils .outil:not(.bascule)').forEach(b=>b.setAttribute('aria-pressed','false'));o.setAttribute('aria-pressed','true');return;}
+ if(o&&o.classList.contains('bascule')){o.setAttribute('aria-pressed',String(o.getAttribute('aria-pressed')!=='true'));return;}
+ const sw=t.closest('.switch');if(sw){sw.setAttribute('aria-checked',String(sw.getAttribute('aria-checked')!=='true'));return;}
+ const s=t.closest('.seg button');if(s&&!s.dataset.ecran&&!s.dataset.theme&&!s.dataset.toile){[...s.parentNode.children].forEach(b=>b.setAttribute('aria-pressed',String(b===s)));return;}
+ const c=t.closest('.coche');if(c){const on=c.getAttribute('aria-checked')!=='true';c.setAttribute('aria-checked',String(on));
+   notifier(on?`${c.dataset.eq} prépare maintenant ${c.dataset.cmd}.`:`${c.dataset.eq} ne prépare plus ${c.dataset.cmd}.`);return;}
+ const bt=t.closest('.bloc-tete');if(bt){const b=bt.parentNode;b.dataset.ouvert=b.dataset.ouvert==='true'?'false':'true';return;}
+ if(t.closest('#notif-annuler')){$('#notif').classList.remove('on');return;}
+});
+document.addEventListener('keydown',e=>{
+ if((e.key===' '||e.key==='Enter')&&e.target.matches('.coche,.switch,.zone')){e.preventDefault();e.target.dispatchEvent(new MouseEvent('click',{bubbles:true}));}
+ if(e.key==='Escape'&&document.body.dataset.ecran==='plan')selectionner(null);
+});
+// Infobulles : rapides, au survol et au focus.
+const ib=$('#infobulle');
+function montrer(el){const r=el.getBoundingClientRect();ib.textContent=el.dataset.infobulle;ib.style.opacity=1;
+ const w=ib.offsetWidth;ib.style.left=Math.max(6,r.left+r.width/2-w/2)+'px';ib.style.top=(r.bottom+8)+'px';}
+document.addEventListener('mouseover',e=>{const el=e.target.closest('[data-infobulle]');if(el)montrer(el);});
+document.addEventListener('mouseout',e=>{if(e.target.closest('[data-infobulle]'))ib.style.opacity=0;});
+document.addEventListener('focusin',e=>{const el=e.target.closest('[data-infobulle]');if(el)montrer(el);});
+document.addEventListener('focusout',()=>{ib.style.opacity=0;});
+
+dessinerZones();dessinerCalques();dessinerInspecteur();dessinerMatrice();dessinerServices();ecran('plan');
+})();
+</script>
+</body>
+</html>
