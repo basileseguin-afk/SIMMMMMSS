@@ -230,7 +230,7 @@ label{color:inherit}
 
 /* Cartes : une bordure fine, pas d'ombre (sauf ce qui flotte). */
 .acc-histoire,.acc-tuile,.mu-fiche,.mu-pas-etape,.mu-svc,.at-carte,.vols-donnees .panneau,.reglages-grille .panneau,
-.svc-table,.rc-scroll,.rg-recap-scroll,.kpi,.journee-chiffres .bilan>div,.qf,.planche,.fc-alerte,.rg-service,.panneau{
+.svc-table,.rc-scroll,.rg-recap-scroll,.kpi,.bilan-cle,.qf,.planche,.fc-alerte,.rg-service,.panneau{
   border-color:var(--ds-bordure);box-shadow:none}
 .panneau{background:var(--ds-surface-1);border-radius:var(--ds-r-3)}
 .panneau h3{font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);color:var(--ds-texte-2);text-transform:none;letter-spacing:0}
@@ -471,20 +471,43 @@ body.plan-editing .barre-lien .pb-compte{display:none}
 .etape-etat.fait{background:var(--ds-ok)}
 .etape-etat.afaire{background:var(--ds-surface-2);color:var(--ds-texte-2)}
 
-/* La synthèse : des nombres, posés sur des cartes neutres. */
-.journee-chiffres .bilan{gap:12px}
-.journee-chiffres .bilan>div,.journee-chiffres .bilan>div:last-child{--t:var(--ds-texte-3);border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);
-  padding:16px 18px;background:var(--ds-surface-1);position:relative;overflow:hidden}
-.journee-chiffres .bilan>div[data-ton="ok"]{--t:var(--ds-ok)}
+/* La synthèse (étape 9) : les chiffres qui comptent en cartes, avec ce sur quoi
+   ils comptent ; dessous, Vols · Commandes · Équipes en listes sobres. Tout mène
+   à sa page : la carte entière, ou le libellé d'une ligne. */
+.bilan-cles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:0 0 16px}
+.bilan-cle{--t:var(--ds-texte-3);position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;
+  padding:14px 34px 14px 16px;border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);background:var(--ds-surface-1);
+  color:var(--ds-texte-1);font:inherit;cursor:pointer;transition:border-color var(--ds-t-rapide),box-shadow var(--ds-t-rapide)}
+.bilan-cle:hover{border-color:var(--ds-accent-trait)}
+.bilan-cle:focus-visible{outline:none;box-shadow:var(--ds-focus)}
+.bilan-cle[data-ton="ok"]{--t:var(--ds-ok)}
+.bilan-cle[data-ton="retard"]{--t:var(--ds-retard)}
+.bilan-cle[data-ton="travail"]{--t:var(--ds-accent)}
+.bilan-q{display:flex;align-items:center;gap:7px;font-size:var(--ds-t-12);font-weight:var(--ds-g-moyen);color:var(--ds-texte-2)}
+.bilan-q::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--t);flex:none}
+.bilan-chiffre{display:flex;align-items:baseline;flex-wrap:wrap;gap:0 6px}
+.bilan-v{font-size:var(--ds-t-24);font-weight:var(--ds-g-fort);letter-spacing:-.02em;line-height:1.2;font-variant-numeric:tabular-nums}
+.bilan-cle[data-ton="retard"] .bilan-v{color:var(--ds-retard-texte)}
+.bilan-sur{font-size:var(--ds-t-12);color:var(--ds-texte-3);font-variant-numeric:tabular-nums}
+.bilan-vers{position:absolute;top:13px;right:12px;display:inline-flex;color:var(--ds-texte-4);transition:color var(--ds-t-rapide),transform var(--ds-t-rapide)}
+.bilan-vers .ico{width:14px;height:14px}
+.bilan-cle:hover .bilan-vers{color:var(--ds-accent);transform:translateX(2px)}
+.bilan-groupes{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px 28px}
+.bilan-groupe h4{margin:0 0 4px;font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);color:var(--ds-texte-3);text-transform:uppercase;letter-spacing:.05em}
+.journee-chiffres .bilan>div{--t:var(--ds-texte-3);padding:7px 0}
 .journee-chiffres .bilan>div[data-ton="retard"]{--t:var(--ds-retard)}
 .journee-chiffres .bilan>div[data-ton="attente"]{--t:var(--ds-attente)}
 .journee-chiffres .bilan>div[data-ton="heure"]{--t:var(--ds-info)}
-.journee-chiffres .bilan>div[data-ton="travail"]{--t:var(--ds-accent)}
-.journee-chiffres .bilan>div[data-ton="manque"]{--t:var(--ds-texte-3)}
-.journee-chiffres .bilan dt{font-size:var(--ds-t-12);color:var(--ds-texte-2);font-weight:var(--ds-g-moyen);display:flex;align-items:center;gap:7px}
-.journee-chiffres .bilan dt::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--t);flex:none;box-shadow:none}
-.journee-chiffres .bilan dd{font-size:var(--ds-t-24);font-weight:var(--ds-g-fort);letter-spacing:-.02em;line-height:1.25;color:var(--ds-texte-1)}
-.journee-chiffres .bilan>div[data-ton="retard"] dd{color:var(--ds-retard-texte)}
+.journee-chiffres .bilan dt{display:flex;align-items:center;gap:7px}
+.journee-chiffres .bilan dt::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--t);flex:none}
+.bilan-lien{all:unset;cursor:pointer;color:var(--ds-texte-2);text-decoration:underline;text-decoration-color:transparent;text-underline-offset:3px}
+.bilan-lien:hover{color:var(--ds-accent-texte);text-decoration-color:currentColor}
+.bilan-lien:focus-visible{border-radius:4px;box-shadow:var(--ds-focus)}
+/* Des commandes que personne ne prépare : un problème à compléter, pas un résultat. */
+.bilan-probleme{display:flex;align-items:center;flex-wrap:wrap;gap:8px 10px;margin:0 0 16px;padding:10px 14px;border-radius:var(--ds-r-3);
+  background:var(--ds-attente-doux);color:var(--ds-texte-1);font-size:var(--ds-t-13)}
+.bilan-probleme>.ico{width:16px;height:16px;flex:none;color:var(--ds-attente)}
+.bilan-probleme>span{flex:1 1 280px}
 .panneau-bilan h3{font-size:var(--ds-t-14);color:var(--ds-texte-2);font-weight:var(--ds-g-fort)}
 
 /* Les réglages : des sections, pas un long formulaire. */

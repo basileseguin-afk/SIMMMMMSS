@@ -84,32 +84,47 @@
     { groupe: 'Ce qui a changé', lib: 'Décalage des vols', val: s => (s.decalage > 0 ? '+' : '') + s.decalage + ' min', sens: 0 },
     { groupe: 'Ce que ça donne', lib: 'Vols chargés à l’heure (handling)',
       val: s => s.vols ? s.volsAHeure + ' / ' + s.vols + (s.partVols != null ? ' · ' + s.partVols + ' %' : '') : '—',
-      num: s => s.partVols, sens: 1 },
+      num: s => s.partVols, unite: 'pts', sens: 1 },
     { groupe: 'Ce que ça donne', lib: 'Commandes prêtes à l’heure',
       val: s => s.suivies ? s.aHeure + ' / ' + s.suivies + (s.part != null ? ' · ' + s.part + ' %' : '') : '—',
-      num: s => s.part, sens: 1 },
+      num: s => s.part, unite: 'pts', sens: 1 },
     { groupe: 'Ce que ça donne', lib: 'Retard moyen', val: s => s.retardMoyen == null ? '—' : s.retardMoyen + ' min',
-      num: s => s.retardMoyen, sens: -1 },
+      num: s => s.retardMoyen, unite: 'min', sens: -1 },
     { groupe: 'Ce que ça donne', lib: 'Retard le plus long', val: s => s.retardMax == null ? '—' : s.retardMax + ' min',
-      num: s => s.retardMax, sens: -1 },
-    { groupe: 'Ce que ça donne', lib: 'Dernière commande prête', val: s => hhmm(s.finDerniere), num: s => s.finDerniere, sens: -1 },
+      num: s => s.retardMax, unite: 'min', sens: -1 },
+    { groupe: 'Ce que ça donne', lib: 'Dernière commande prête', val: s => hhmm(s.finDerniere), num: s => s.finDerniere, unite: 'min', sens: -1 },
     { groupe: 'Ce que ça donne', lib: 'Temps passé à attendre', val: s => s.attente == null ? '—' : s.attente + ' min',
-      num: s => s.attente, sens: -1 },
+      num: s => s.attente, unite: 'min', sens: -1 },
     { groupe: 'Ce que ça donne', lib: 'Attente de matériel propre', val: s => s.attenteMateriel == null ? '—' : s.attenteMateriel + ' min',
-      num: s => s.attenteMateriel, sens: -1 },
+      num: s => s.attenteMateriel, unite: 'min', sens: -1 },
     { groupe: 'Ce que ça donne', lib: 'Matériel revenu des vols', val: s => s.revenu == null ? '—' : s.revenu + ' u', sens: 0 },
     { groupe: 'Ce que ça donne', lib: 'Plus longue attente à la plonge', val: s => s.attentePlonge == null ? '—' : s.attentePlonge + ' min',
-      num: s => s.attentePlonge, sens: -1 },
+      num: s => s.attentePlonge, unite: 'min', sens: -1 },
     { groupe: 'Ce que ça donne', lib: 'Sale non lavé en fin de journée', val: s => s.resteSale == null ? '—' : s.resteSale + ' u',
-      num: s => s.resteSale, sens: -1 },
+      num: s => s.resteSale, unite: 'u', sens: -1 },
     { groupe: 'Ce que ça donne', lib: 'Heures de travail', val: s => s.hommeHeures == null ? '—' : String(s.hommeHeures).replace('.', ',') + ' h',
-      num: s => s.hommeHeures, sens: 0 },
-    { groupe: 'Ce que ça donne', lib: 'Commandes sans équipe', val: s => String(s.absentes), num: s => s.absentes, sens: -1 }
+      num: s => s.hommeHeures, unite: 'h', sens: 0 },
+    { groupe: 'Ce que ça donne', lib: 'Commandes sans équipe', val: s => String(s.absentes), num: s => s.absentes, unite: '', sens: -1 }
   ];
+
+  /**
+   * L'écart de B sur A (refonte du 08/10, étape 9), signé : « ▲ +12 min »,
+   * « ▼ −5 pts ». La flèche dit le sens du chiffre ; le verdict, si c'est mieux.
+   * Seulement pour les résultats chiffrés : un réglage n'a pas d'écart.
+   */
+  function ecart(l, A, B) {
+    if (!A || !B || !l.num || l.unite == null) return null;
+    const x = l.num(A), y = l.num(B);
+    if (x == null || y == null || x === y) return null;
+    const d = y - x, n = Math.abs(d);
+    const val = l.unite === 'h' ? String(Math.round(n * 10) / 10).replace('.', ',') : n < 1 ? '<1' : String(Math.round(n));
+    return { fleche: d > 0 ? '▲' : '▼', texte: (d > 0 ? '+' : '−') + val + (l.unite ? ' ' + l.unite : '') };
+  }
 
   /**
    * Le tableau A / B. `verdict` dit si B fait mieux ou moins bien que A sur
    * cette ligne — jamais par la couleur seule : le mot est écrit aussi.
+   * `ecart` : l'écart signé de B sur A, ou null.
    */
   function lignes(A, B) {
     return LIGNES.map(l => {
@@ -119,7 +134,7 @@
         const x = l.num(A), y = l.num(B);
         if (x != null && y != null && x !== y) verdict = (y - x) * l.sens > 0 ? 'mieux' : 'moins bien';
       }
-      return { groupe: l.groupe, lib: l.lib, a, b, diff: !!(A && B && a !== b), verdict };
+      return { groupe: l.groupe, lib: l.lib, a, b, diff: !!(A && B && a !== b), verdict, ecart: ecart(l, A, B) };
     });
   }
 
@@ -133,7 +148,7 @@
     return 'Mêmes vols, aucun hasard : seul ce que vous avez changé fait la différence.';
   }
 
-  const api = { capturer, lignes, note, LIGNES };
+  const api = { capturer, lignes, note, ecart, LIGNES };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyComparaison = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -406,11 +406,6 @@ body:not([data-vue="accueil"]) #view-accueil{display:none}
 /* La synthèse : la journée entière d'abord, en tuiles lisibles de loin. */
 .journee-chiffres .panneau-bilan{max-width:none;background:transparent;border:0;padding:0;box-shadow:none}
 .panneau-bilan h3{font-size:var(--ds-t-16);margin:0 0 12px}
-.journee-chiffres .bilan{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:0}
-.journee-chiffres .bilan>div,.journee-chiffres .bilan>div:last-child{display:flex;flex-direction:column-reverse;gap:4px;padding:14px 16px;border-radius:12px;background:var(--bg3);
-  border:1px solid var(--bordure);border-left:4px solid var(--c-journee)}
-.journee-chiffres .bilan dt{font-size:var(--ds-t-14);color:var(--txt2)}
-.journee-chiffres .bilan dd{margin:0;text-align:left;font-size:var(--ds-t-20);font-weight:var(--ds-g-fort);font-variant-numeric:tabular-nums}
 .bilan-suite{margin:14px 0 0}
 
 /* Organisation › Services : un service par ligne, ce qu'il lui manque en tête. */

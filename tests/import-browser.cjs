@@ -69,9 +69,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // Le tableau est relu à chaque appel : il change à chaque capture.
   const lignes=()=>page.locator('#compare tbody tr:not(.compare-groupe)').evaluateAll(trs=>trs.map(tr=>[...tr.querySelectorAll('td')].map(td=>td.textContent)));
   const ligne=async nom=>(await lignes()).find(l=>l[0].startsWith(nom));
-  assert.deepEqual((await ligne('Personnes au travail')).slice(1),['2','12']);
-  assert.deepEqual((await ligne('Vols')).slice(1),['Jeu de démonstration','Jeu de démonstration']);
-  assert.match((await ligne('Dernière commande prête'))[2],/mieux/,'à douze, la cuisine finit plus tôt, et le tableau le dit en mots');
+  assert.deepEqual((await ligne('Personnes au travail')).slice(1),['2','12',''],'un réglage n’a pas d’écart');
+  assert.deepEqual((await ligne('Vols')).slice(1),['Jeu de démonstration','Jeu de démonstration','']);
+  // L'écart (étape 9) : signé et fléché, et le mot.
+  assert.match((await ligne('Dernière commande prête'))[3],/^▼ −\d+ min mieux$/,'à douze, la cuisine finit plus tôt, et le tableau le dit en mots');
   assert.equal(await page.locator('#compare tr.diff').count()>0,true);
   assert.equal(await page.locator('#compare tr.moins-bien').count(),0,'plus de monde ne dégrade rien');
   assert.match(await page.locator('#compare-note').textContent(),/seul ce que vous avez changé/);
@@ -83,7 +84,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await nav.vue(page,'vols');await setRange('#shift','30');
   assert.equal(await page.locator('#shift-val').textContent(),'+30 min');
   await comparer();await click('#snap-b');
-  assert.deepEqual((await ligne('Décalage des vols')).slice(1),['0 min','+30 min']);
+  assert.deepEqual((await ligne('Décalage des vols')).slice(1),['0 min','+30 min',''],'un réglage : pas d’écart');
   await nav.vue(page,'vols');await setRange('#shift','0');
   // Deux programmes de vols différents : la comparaison le signale.
   await page.locator('#imp-vols').setInputFiles({name:'autre.csv',mimeType:'text/csv',buffer:Buffer.from(header+'AF1,AF,A320,DEP,12:00,,4,0,90')});

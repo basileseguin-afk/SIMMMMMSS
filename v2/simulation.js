@@ -206,6 +206,11 @@
      * Le bilan de la journée entière. Il ne dépend pas de l'instant relu :
      * c'est la réponse à « et au bout du compte ? », qu'on veut sous les yeux
      * pendant qu'on regarde comment on y arrive.
+     *
+     * Hiérarchisé (refonte du 08/10, étape 9) : en tête, les chiffres qui
+     * comptent, en cartes, avec leur dénominateur ; dessous, Vols · Commandes
+     * · Équipes, en listes sobres. Chaque ligne mène à la page qui l'explique.
+     * Les nombres sont ceux d'avant, écrits de même : rien n'est ajouté.
      */
     rendreBilan() {
       const box = document.getElementById('bilan-journee'); if (!box) return;
@@ -214,29 +219,44 @@
         box.innerHTML = '<p class="mini-note">Rien à résumer : aucune équipe ne prépare encore de commande.</p>';
         return;
       }
-      const lignes = [
-        ['Commandes prêtes à l’heure', k.classesSuivies ? k.aHeure + ' sur ' + k.classesSuivies + (k.partAHeure != null ? ' · ' + k.partAHeure + ' %' : '') : '—'],
-        ['Commandes en retard', String(k.enRetard ?? ((k.classesSuivies || 0) - (k.aHeure || 0)))],
-        ...(k.pasFinies ? [['Commandes pas finies', String(k.pasFinies)]] : []),
-        ['Retard le plus long', k.retardMax ? P.dureeLisible(k.retardMax) : k.classesSuivies ? 'aucun' : '—'],
-        ['Dernière commande prête à', k.finDerniere != null && Number.isFinite(k.finDerniere) ? P.hhmm(k.finDerniere) : '—'],
-        ['Temps passé à attendre', (k.attenteTotale >= 1 ? P.dureeLisible(k.attenteTotale) : 'aucun') + ', tous services'],
-        ['Travail fourni', (k.hommeHeures || 0).toFixed(1).replace('.', ',') + ' heures de travail']
-      ];
-      // Avec un handling, c'est le vol chargé qui compte : on le dit en tête.
-      if (k.volsSuivis) lignes.unshift(
-        ['Vols chargés à l’heure', k.volsAHeure + ' sur ' + k.volsSuivis + (k.partVolsAHeure != null ? ' · ' + k.partVolsAHeure + ' %' : '')],
-        ['Vols non chargés', String(k.volsSuivis - k.volsCharges)],
+      const pc = (n, part) => 'sur ' + n + (part != null ? ' · ' + part + ' %' : '');
+      // Les cartes : la question, le nombre, ce sur quoi il compte, la page qui l'explique.
+      const cles = [];
+      // Avec un handling, c'est le vol chargé qui compte : il vient en tête.
+      if (k.volsSuivis) cles.push({ q: 'Vols chargés à l’heure', v: String(k.volsAHeure), sur: pc(k.volsSuivis, k.partVolsAHeure), ton: 'ok', page: 'v-departs' });
+      cles.push({ q: 'Commandes prêtes à l’heure', v: k.classesSuivies ? String(k.aHeure) : '—',
+        sur: k.classesSuivies ? pc(k.classesSuivies, k.partAHeure) : 'aucune commande suivie', ton: 'ok', page: 'at-repas' });
+      cles.push({ q: 'Retard le plus long', v: k.retardMax ? P.dureeLisible(k.retardMax) : k.classesSuivies ? 'aucun' : '—',
+        sur: k.retardMax ? 'la commande la plus en retard' : '', ton: 'retard', page: 'at-repas' });
+      cles.push({ q: 'Travail fourni', v: (k.hommeHeures || 0).toFixed(1).replace('.', ','), sur: 'heures de travail', ton: 'travail', page: 'at-planning' });
+      // Les listes : le reste, rangé par ce dont il parle.
+      const groupes = [];
+      if (k.volsSuivis) groupes.push({ titre: 'Vols', page: 'v-departs', lignes: [
+        ['Vols non chargés', String(k.volsSuivis - k.volsCharges), 'retard'],
         // « aucun » alors qu'aucun vol n'est chargé laissait croire que tout allait bien.
-        ['Vol le plus en retard', k.retardVolMax ? '+' + P.dureeLisible(k.retardVolMax) + ' après son départ' : k.volsCharges ? 'aucun' : '— aucun vol chargé']);
-      if (k.classesAbsentes) lignes.push(['Sans équipe', k.classesAbsentes + (k.classesAbsentes > 1 ? ' commandes que personne ne prépare' : ' commande que personne ne prépare')]);
-      // Chaque tuile porte la couleur de ce qu'elle dit : à l'heure, en retard,
-      // attente, heure, travail, manque.
-      const TON = { 'Commandes prêtes à l’heure': 'ok', 'Vols chargés à l’heure': 'ok', 'Commandes en retard': 'retard',
-        'Vols non chargés': 'retard', 'Commandes pas finies': 'retard', 'Retard le plus long': 'retard', 'Vol le plus en retard': 'retard',
-        'Dernière commande prête à': 'heure', 'Temps passé à attendre': 'attente', 'Travail fourni': 'travail', 'Sans équipe': 'manque' };
-      box.innerHTML = '<dl class="bilan">' + lignes.map(([q, v]) =>
-        '<div data-ton="' + (TON[q] || 'heure') + '"><dt>' + esc(q) + '</dt><dd>' + esc(v) + '</dd></div>').join('') + '</dl>';
+        ['Vol le plus en retard', k.retardVolMax ? '+' + P.dureeLisible(k.retardVolMax) + ' après son départ' : k.volsCharges ? 'aucun' : '— aucun vol chargé', 'retard']] });
+      groupes.push({ titre: 'Commandes', page: 'at-repas', lignes: [
+        ['Commandes en retard', String(k.enRetard ?? ((k.classesSuivies || 0) - (k.aHeure || 0))), 'retard'],
+        ...(k.pasFinies ? [['Commandes pas finies', String(k.pasFinies), 'retard']] : []),
+        ['Dernière commande prête à', k.finDerniere != null && Number.isFinite(k.finDerniere) ? P.hhmm(k.finDerniere) : '—', 'heure']] });
+      groupes.push({ titre: 'Équipes', page: 'j-stocks', lignes: [
+        ['Temps passé à attendre', (k.attenteTotale >= 1 ? P.dureeLisible(k.attenteTotale) : 'aucun') + ', tous services', 'attente']] });
+      const fleche = root.OrlyIcones ? root.OrlyIcones.ico('droite') : '→';
+      const titreDe = id => (root.OrlyOnglets && root.OrlyOnglets.page && (root.OrlyOnglets.page(id) || {}).nom) || '';
+      const carte = c => '<button type="button" class="bilan-cle" data-ton="' + c.ton + '" data-page="' + c.page + '" title="Voir ' + esc(titreDe(c.page) || 'le détail') + '">'
+        + '<span class="bilan-q">' + esc(c.q) + '</span>'
+        + '<span class="bilan-chiffre"><b class="bilan-v">' + esc(c.v) + '</b>' + (c.sur ? ' <span class="bilan-sur">' + esc(c.sur) + '</span>' : '') + '</span>'
+        + '<span class="bilan-vers" aria-hidden="true">' + fleche + '</span></button>';
+      const groupe = g => '<section class="bilan-groupe" aria-label="' + esc(g.titre) + '"><h4>' + esc(g.titre) + '</h4><dl class="bilan">'
+        + g.lignes.map(([q, v, ton]) => '<div data-ton="' + ton + '"><dt><button type="button" class="bilan-lien" data-page="' + g.page + '">' + esc(q) + '</button></dt><dd>' + esc(v) + '</dd></div>').join('')
+        + '</dl></section>';
+      // Des commandes sans équipe : un Problème (à compléter), pas un résultat ; il dit où se régler.
+      const sans = k.classesAbsentes ? '<p class="bilan-probleme" role="note">' + (root.OrlyIcones ? root.OrlyIcones.ico('alerte') : '')
+        + '<span><b>' + esc(k.classesAbsentes + (k.classesAbsentes > 1 ? ' commandes que personne ne prépare' : ' commande que personne ne prépare')) + '</b>'
+        + ' — un problème à compléter : elles ne sont pas parmi les commandes comptées ici.</span>'
+        + '<button type="button" class="btn btn-sm" data-page="mu-services">Cocher dans un service ' + fleche + '</button></p>' : '';
+      box.innerHTML = '<div class="bilan-cles">' + cles.map(carte).join('') + '</div>' + sans
+        + '<div class="bilan-groupes">' + groupes.map(groupe).join('') + '</div>';
     }
 
     /** La liste de droite : un service, son état, ce qu'il fait. */

@@ -5,6 +5,37 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-09 — Refonte, étape 9 (1/2) : la synthèse hiérarchisée, les écarts de la comparaison
+
+Toujours sans rien changer aux données ni au calcul (`donnees-intactes-browser`) :
+aucun indicateur n'est ajouté, et chacun dit le même nombre qu'avant, écrit de
+même — un test le recalcule depuis les indicateurs.
+
+- **La synthèse est hiérarchisée** (REFONTE_UX §7). En tête, les chiffres qui
+  comptent, en cartes, avec ce sur quoi ils comptent : vols chargés à
+  l'heure (« 0 sur 7 · 0 % », avec un handling), commandes prêtes à l'heure,
+  retard le plus long, travail fourni. Dessous, *Vols · Commandes · Équipes*
+  en listes sobres : vols non chargés, vol le plus en retard ; commandes en
+  retard, pas finies, dernière prête ; temps passé à attendre.
+- **Chaque indicateur mène à sa page** : la carte entière, ou le libellé de
+  sa ligne — Vols prêts au départ, Heure de chaque commande, Planning des
+  équipes, Stocks et retours.
+- **« 15 commandes que personne ne prépare »** n'est plus une tuile parmi les
+  résultats : c'est un problème à compléter (il l'était déjà au registre),
+  dit en tête, avec son lien « Cocher dans un service ».
+- **Comparer deux essais** : une colonne *Écart* en face de chaque résultat,
+  signé et fléché (« ▼ −25 min », « ▲ +5 pts », « +2,5 h »), vert s'il est
+  mieux, rouge s'il est moins bien — et le mot, toujours. Un réglage n'a
+  pas d'écart.
+- Fichiers : `simulation.js` (`rendreBilan`), `comparaison.js` (`ecart()`),
+  `sim.js` (la colonne Écart), `ds.css`, `histoire.css` (les anciennes
+  tuiles retirées), `reglages.css` ; v1 et v2.
+- Tests : `synthese-browser` (neuf : mêmes nombres, hiérarchie, liens,
+  écarts) et `comparaison.test` (l'écart) ; `menu-browser` (des cartes et des
+  groupes, plus des tuiles) et `import-browser` (la colonne Écart) suivent ;
+  `browser-smoke`, `lisibilite`, `handling`, `etat-plan`, `planche`,
+  `reglages`, `v2-budget`, `focus` : verts sans changement.
+
 ## 2026-10-09 — Refonte, étape 8 : les tableaux d'heures et d'horaires, au clavier
 
 Toujours sans rien changer aux données ni au calcul (`donnees-intactes-browser`) :

@@ -102,3 +102,24 @@ test('les personnes d’une mise à disposition comptent dans l’effectif du jo
   const r = P.simuler({ vols: VOLS, ateliers, liaisons: [], ...reglages });
   assert.equal(C.capturer(r, { source: 'démo', ateliers, reglages, liaisons: [] }).personnes, 6, '4 en cuisine + 2 aux appros');
 });
+
+test('l’écart de B sur A : signé, fléché, seulement sur les résultats chiffrés (étape 9)', () => {
+  const a = scenario(1), b = scenario(12);
+  const par = Object.fromEntries(C.lignes(a, b).map(l => [l.lib, l]));
+  // On finit plus tôt : le chiffre baisse (▼), et c'est mieux.
+  const fin = par['Dernière commande prête'];
+  assert.equal(fin.ecart.fleche, '▼');
+  assert.equal(fin.ecart.texte, '−' + Math.round(a.finDerniere - b.finDerniere) + ' min');
+  assert.equal(fin.verdict, 'mieux');
+  // Un réglage n'a pas d'écart, même quand il change.
+  assert.equal(par['Personnes au travail'].ecart, null);
+  // Rien ne change : pas d'écart.
+  assert.equal(par['Commandes sans équipe'].ecart, null);
+  // Les heures gardent leur décimale ; les parts s'écrivent en points.
+  const L = Object.fromEntries(C.LIGNES.map(l => [l.lib, l]));
+  assert.deepEqual(C.ecart(L['Heures de travail'], { hommeHeures: 10 }, { hommeHeures: 12.5 }), { fleche: '▲', texte: '+2,5 h' });
+  assert.deepEqual(C.ecart(L['Commandes prêtes à l’heure'], { part: 80 }, { part: 75 }), { fleche: '▼', texte: '−5 pts' });
+  assert.deepEqual(C.ecart(L['Commandes sans équipe'], { absentes: 1 }, { absentes: 3 }), { fleche: '▲', texte: '+2' });
+  assert.deepEqual(C.ecart(L['Retard le plus long'], { retardMax: 10 }, { retardMax: 10.4 }), { fleche: '▲', texte: '+<1 min' });
+  assert.equal(C.ecart(L['Retard le plus long'], { retardMax: null }, { retardMax: 10 }), null, 'sans valeur d’un côté : pas d’écart');
+});

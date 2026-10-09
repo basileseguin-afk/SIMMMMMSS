@@ -90,6 +90,12 @@
 .compare-tab td small{display:block;font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);text-transform:uppercase;letter-spacing:.03em}
 .compare-tab tr.mieux td small{color:var(--vert)}
 .compare-tab tr.moins-bien td small{color:var(--rouge)}
+/* L'écart de B sur A (étape 9) : la flèche dit le sens du chiffre, la couleur et le mot si c'est mieux. */
+.compare-tab .compare-ecart{white-space:nowrap}
+.compare-tab .ecart{font-weight:var(--ds-g-fort);font-variant-numeric:tabular-nums;color:var(--ds-texte-2)}
+.compare-tab .ecart.mieux{color:var(--ds-ok-texte)}
+.compare-tab .ecart.moins-bien{color:var(--ds-retard-texte)}
+.compare-tab .compare-ecart small{display:inline-block;margin-left:6px}
 /* Le modèle ouvre la page : son titre n'a rien au-dessus à séparer. */
 #rg-modele>.titre-aide:first-child{margin-top:0;padding-top:0;border-top:0}
 /* Une seule carte dans la section : elle prend la largeur d'un tableau lisible,

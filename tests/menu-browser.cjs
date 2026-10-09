@@ -150,7 +150,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await tuile('resultats').textContent(),/en retard|à l’heure/,'la journée a un résultat');
   await nav.aller(page,'j-chiffres');
   assert.equal(await page.locator('#bilan-journee').isVisible(),true,'la synthèse : la journée entière d’abord');
-  assert.ok(await page.locator('#bilan-journee .bilan>div').count()>=6,'en tuiles');
+  // Hiérarchisée (étape 9) : les chiffres qui comptent en cartes, le reste par groupe.
+  assert.ok(await page.locator('#bilan-journee .bilan-cle').count()>=3,'les chiffres qui comptent, en cartes');
+  assert.ok(await page.locator('#bilan-journee .bilan-groupe').count()>=2,'le reste, par groupe');
   // Le tableau se calcule : une case mène au chemin de sa commande.
   await nav.aller(page,'at-grille');
   assert.equal(await page.locator('.qf-table').isVisible(),true,'le tableau se dessine à l’ouverture de sa page');

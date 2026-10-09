@@ -1792,12 +1792,16 @@ function comparerRetours() {
 }
 function majCompare() {
   const lignes = OrlyComparaison.lignes(snaps.A, snaps.B);
-  let groupe = '', html = '<thead><tr><th scope="col">Indicateur</th><th scope="col">A</th><th scope="col">B</th></tr></thead><tbody>';
+  // L'écart en face de chaque résultat (étape 9) : signé, fléché, coloré — et le mot.
+  let groupe = '', html = '<thead><tr><th scope="col">Indicateur</th><th scope="col">A</th><th scope="col">B</th><th scope="col">Écart</th></tr></thead><tbody>';
   for (const l of lignes) {
-    if (l.groupe !== groupe) { groupe = l.groupe; html += '<tr class="compare-groupe"><th colspan="3" scope="colgroup">' + escapeHTML(groupe) + '</th></tr>'; }
-    const cls = [l.diff ? 'diff' : '', l.verdict === 'mieux' ? 'mieux' : l.verdict ? 'moins-bien' : ''].filter(Boolean).join(' ');
+    if (l.groupe !== groupe) { groupe = l.groupe; html += '<tr class="compare-groupe"><th colspan="4" scope="colgroup">' + escapeHTML(groupe) + '</th></tr>'; }
+    const sens = l.verdict === 'mieux' ? 'mieux' : l.verdict ? 'moins-bien' : '';
+    const cls = [l.diff ? 'diff' : '', sens].filter(Boolean).join(' ');
     html += '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + escapeHTML(l.lib) + '</td><td>' + escapeHTML(l.a)
-      + '</td><td>' + escapeHTML(l.b) + (l.verdict ? ' <small>' + escapeHTML(l.verdict) + '</small>' : '') + '</td></tr>';
+      + '</td><td>' + escapeHTML(l.b) + '</td><td class="compare-ecart">'
+      + (l.ecart ? '<span class="ecart' + (sens ? ' ' + sens : '') + '"><span aria-hidden="true">' + l.ecart.fleche + '</span> ' + escapeHTML(l.ecart.texte) + '</span>' : '')
+      + (l.verdict ? ' <small>' + escapeHTML(l.verdict) + '</small>' : '') + '</td></tr>';
   }
   document.getElementById('compare').innerHTML = html + '</tbody>';
   document.getElementById('compare-note').textContent = OrlyComparaison.note(snaps.A, snaps.B);

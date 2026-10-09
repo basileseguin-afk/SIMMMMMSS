@@ -362,9 +362,14 @@ le rouge ne sert qu’aux retards.
      corriger ; un service sans équipe s’y corrige d’un clic (« + Une équipe
      dans… »).
 5. **Résultats** — ce que la journée donne.
-   - *Synthèse* : la journée entière en tuiles (commandes à l’heure, retards,
-     dernière commande prête, attentes, travail fourni) ; « Exporter les
-     résultats ».
+   - *Synthèse* : la journée entière, hiérarchisée. En tête, les chiffres qui
+     comptent en cartes, avec ce sur quoi ils comptent (vols chargés à
+     l’heure, avec un handling ; commandes prêtes à l’heure ; retard le plus
+     long ; travail fourni) ; dessous, *Vols · Commandes · Équipes* en listes
+     sobres. Une carte ou une ligne mène à sa page (Vols prêts au départ,
+     Heure de chaque commande, Planning des équipes, Stocks et retours). Des
+     commandes que personne ne prépare sont un problème, avec son lien vers
+     le service où les cocher. « Exporter les résultats ».
    - *Le plan rejoué* : rejouer la journée sur le plan de l’unité, en pleine
      hauteur, la barre de lecture en bas ; les chiffres de l’instant, la
      légende et le zoom posés sur le plan ; « En ce moment » à droite, qui se
@@ -381,7 +386,9 @@ le rouge ne sert qu’aux retards.
      ses commandes sont prêtes à l’heure, en retard, ou sans équipe.
    - *Stocks et retours* : ce qui attend entre deux ateliers et avant le
      chargement ; les retours des vols face au débit de la plonge.
-   - *Comparer deux essais* : A / B.
+   - *Comparer deux essais* : A / B, et l’écart de B sur A en face de chaque
+     résultat (« ▼ −25 min », « ▲ +5 pts »), vert s’il est mieux, rouge s’il
+     est moins bien, et le mot.
 
 **Sauvegarde** (au pied de la barre latérale) : tout le travail dans un fichier, et les limites
 connues du calcul.
@@ -424,7 +431,7 @@ production ; ils ne mesurent pas le retard avion.
 calculée, une capture **fige** les réglages et leurs résultats. Changez un
 atelier, le barème ou un horaire, capturez B : le tableau sépare les réglages
 des résultats, fait ressortir les lignes qui diffèrent et écrit, sur chaque
-résultat, « mieux » ou « moins bien ». Le calcul n’a aucun aléa : réglages
+résultat, son écart signé et fléché, « mieux » ou « moins bien ». Le calcul n’a aucun aléa : réglages
 identiques ⇒ chiffres identiques, et la note le dit. Un nouveau programme de
 vols efface les captures.
 
@@ -576,7 +583,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | **`moteur/production.js`** | **Modèle par ateliers de travail** — compagnie × classe, lots ordonnés, robot, plonge, parcours lu des flux. Voir [la note de modèle](docs/MODELE_ATELIERS.md) |
 | `moteur/noyau.js` | Noyau à événements discrets sur lequel tourne le modèle par ateliers |
 | `replay.js` / `simulation.js` | Relecture de la journée calculée : états à l’instant t, vue Simulation |
-| `comparaison.js` | Scénarios A/B : capture, tableau, verdict par ligne |
+| `comparaison.js` | Scénarios A/B : capture, tableau, verdict et écart signé par ligne |
 | `vols-demo.js` | Programme de vols **fictif** de démonstration, sans QR ni DL ; il reçoit des vols d’essai pour chaque compagnie que l’unité prépare ou a ajoutée sans départ au programme (jamais un programme importé) |
 | `parcours.js` | Chemins des repas : validation, chemins types, tableau « Qui prépare quoi », suivi d’un repas dans le temps, éditeur |
 | `tableur.js` | Lecture et écriture de classeurs Excel (.xlsx) et de CSV, sans bibliothèque |
@@ -645,6 +652,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/champs-browser.cjs` | Les champs dans un navigateur en anglais (v1 et v2) : plus de champ natif ni de « AM » ; frappe, Entrée, Tab ; « 2500 » et un champ vidé refusés sous le champ, la valeur gardée remise, retaper efface ; ↑↓ et Maj+↑↓ ; un nom d’équipe ou de service refusé sous son champ, sans notification ; les heures gardées restent « HH:MM » |
 | `tests/fiche-service-browser.cjs` | La fiche d’un service en feuille de propriétés (v1 et v2) : sections repliables, repli gardé d’un service à l’autre et au rendu, Entrée au clavier ; l’avancé replié qui dit ce qui y est réglé ; la règle ⚡ dans « Plus de réglages », dont la ligne dit ce qui est réglé ; la matrice (en-têtes collants, ligne et colonne survolées, Espace) ; rien ne change dans les données |
 | `tests/tableaux-browser.cjs` | Les tableaux d’heures et d’horaires au clavier (v1 et v2) : Horaires (case à gauche, service en cours sous les titres), Entrée qui enregistre et descend dans la même colonne, Maj+Entrée qui remonte, une heure refusée en descendant ; Heures de travail (nombres à droite, 0,3 h gardées 18 min, Entrée dans la colonne, sans saut) ; planche retour et barème marqués |
+| `tests/synthese-browser.cjs` | La synthèse (v1 et v2) : les mêmes nombres qu’avant, recalculés depuis les indicateurs comme l’ancienne synthèse les écrivait ; quatre cartes avec un handling, Vols · Commandes · Équipes, le problème des commandes sans équipe ; chaque carte et chaque ligne mènent à leur page ; la comparaison A/B et son écart signé, fléché, coloré |
 | `tests/secours-browser.cjs` | Un démarrage resté en plan ouvre la page de secours ; elle rend les données en sauvegarde, repart sans les cases, puis les remet |
 | `tests/recap-cases-browser.cjs` | Récap des cases : une ligne par case, tâche unique / à la suite / ensemble, départ et jour modifiables, chercher, fichier de paramétrage exporté puis réimporté |
 | `tests/robot-browser.cjs` | Le Robot : service créé et rattaché au Montage, remplace le Montage sur TX, CRL et FBU Économie (une fois), une case Robot, plateaux ÷ débit, débit et effectif dans le récap et la fiche |
