@@ -23,6 +23,8 @@
   /** Une heure en 24 h (champs.js, étape 7) : un champ texte, plus le champ natif
    *  qui s'affichait « 04:00 AM » selon la langue du navigateur. */
   const HEURE = 'type="text" data-heure inputmode="numeric" maxlength="8" placeholder="hh:mm" autocomplete="off" spellcheck="false"';
+  /** Un champ et son unité, dans le champ, à droite (étape 7) : « 3 pers. », « 480 min ». */
+  const avecUnite = (champ, unite) => `<span class="champ-unite">${champ}<span class="unite">${unite}</span></span>`;
 
   const CLE = 'ory-ateliers-v1';
 
@@ -607,7 +609,7 @@
     /* Le champ « Personnes » d'une équipe : à saisir, ou calculé (en lecture). */
     champPersonnes(a, classe) {
       const e = this.effectifCalcule(a), cls = classe ? ` class="${classe}"` : '';
-      if (!e) return `<label${cls}>Personnes<input type="number" min="0" max="999" value="${a.personnes}" data-at-champ="personnes"></label>`;
+      if (!e) return `<label${cls}>Personnes${avecUnite(`<input type="number" min="0" max="999" value="${a.personnes}" data-at-champ="personnes">`, 'pers.')}</label>`;
       const h = m => (m >= 60 ? Math.floor(m / 60) + ' h ' + String(Math.round(m % 60)).padStart(2, '0') : Math.round(m) + ' min');
       const pourquoi = h(e.hommeMinutes) + ' de travail (heures par vol × vols de chaque compagnie) ÷ ' + h(e.poste)
         + ' travaillées par personne pendant son poste' + (e.rendement !== 1 ? ' × rendement ' + Math.round(e.rendement * 100) + ' %' : '')
@@ -630,8 +632,8 @@
       const travail = P.minutesDuPoste({ debut: '06:00', jour: 0, pauses: [], regime: a.regime }, r.regime);
       const h = dureeLue;
       const n = Math.max(0, +a.personnes || 0);
-      return `<label class="at-pers-jour">Personnes sur la journée<input type="number" min="0" max="999" value="${n}" data-at-champ="personnes"
-        title="En tout, sur la journée : chacune fait une présence (${esc(h(presence))}, dont ${esc(h(presence - travail))} de pause)"></label>
+      return `<label class="at-pers-jour">Personnes sur la journée${avecUnite(`<input type="number" min="0" max="999" value="${n}" data-at-champ="personnes"
+        title="En tout, sur la journée : chacune fait une présence (${esc(h(presence))}, dont ${esc(h(presence - travail))} de pause)">`, 'pers.')}</label>
         <span class="mini-note">${n ? `${n} × ${esc(h(presence))} de présence (dont ${esc(h(presence - travail))} de pause) = <b>${esc(h(n * presence))}</b> de présence,
           ${esc(h(n * travail))} de travail sur la journée. ` : ''}Constant : ne dépend pas du nombre de vols, ne change pas les heures de service.</span>`;
     }
@@ -1775,9 +1777,9 @@
           ${handling && (a.creneaux || []).length ? '' : this.champPersonnes(a)}
           ${this.choixEffectifEquipe(a)}`}
           ${a.type === 'robot' ? `
-          ${o.compact ? '' : `<label>Débit du robot (plateaux/h)<input type="number" min="1" value="${a.debit}" data-at-champ="debit"
-            title="Le débit des commandes qui n’ont pas le leur (réglable à côté de chaque commande)"></label>`}
-          <label title="Sous ce nombre de personnes, le robot ne tourne pas">Minimum pour tourner<input type="number" min="0" value="${a.personnesMin}" data-at-champ="personnesMin"></label>` : ''}
+          ${o.compact ? '' : `<label>Débit du robot${avecUnite(`<input type="number" min="1" value="${a.debit}" data-at-champ="debit"
+            title="Le débit des commandes qui n’ont pas le leur (réglable à côté de chaque commande)">`, 'pl/h')}</label>`}
+          <label title="Sous ce nombre de personnes, le robot ne tourne pas">Minimum pour tourner${avecUnite(`<input type="number" min="0" value="${a.personnesMin}" data-at-champ="personnesMin">`, 'pers.')}</label>` : ''}
         </div>
         ${dispo ? `
         <p class="mini-note at-regle">Ce service <b>ne prépare pas une commande après l’autre</b> : il sert
@@ -1811,8 +1813,8 @@
         <div class="at-cases">
           <label class="chk chk-mini"><input type="checkbox" data-at-champ="regime" ${a.regime.actif ? 'checked' : ''}>
             Poste avec pauses — ${esc((defaut.seuils || []).map(s => dureeLue(s.duree) + ' après ' + dureeLue(s.apres) + ' de travail').join(', ') || 'aucune pause')}</label>
-          ${a.regime.actif ? `<label class="at-presence">Présence (min)<input type="number" min="30" max="1440"
-            value="${a.regime.presence ?? ''}" placeholder="${defaut.presence}" data-at-champ="presence"></label>
+          ${a.regime.actif ? `<label class="at-presence">Présence${avecUnite(`<input type="number" min="30" max="1440"
+            value="${a.regime.presence ?? ''}" placeholder="${defaut.presence}" data-at-champ="presence">`, 'min')}</label>
             <span class="mini-note">${a.regime.presence === undefined
               ? 'réglage général · ' + defaut.presence + ' min' : 'propre à cette équipe'}
               — soit ${String(Math.round(((a.regime.presence ?? defaut.presence) - defaut.arret) / 6) / 10).replace('.', ',')} h de travail</span>` : ''}
@@ -1949,8 +1951,8 @@
           <label>Chauffeurs par camion, <b>court courrier</b><input type="number" min="1" max="20" value="${ch.court}" data-at-champ="chauffeurs-court"></label>
           <label>Camions disponibles<input type="number" min="0" max="200" value="${a.camions || ''}" placeholder="pas de limite" data-at-champ="camions"
             title="Vide : autant de camions que les chauffeurs en font partir"></label>
-          <label>Pas avant (heures avant le départ)<input type="number" min="0" max="24" step="0.5" value="${String(avance)}" data-at-champ="avance"
-            title="Le handling ne commence pas un vol plus tôt que cela avant son départ"></label>
+          <label>Au plus tôt, avant le départ${avecUnite(`<input type="number" min="0" max="24" step="0.5" value="${String(avance)}" data-at-champ="avance"
+            title="Le handling ne commence pas un vol plus tôt que cela avant son départ">`, 'h')}</label>
           <label>Compagnies chargées<input value="${esc((a.compagnies || []).join(', '))}" placeholder="toutes" data-at-champ="compagnies"
             title="Vide : toutes les compagnies. Sinon, par exemple : AF, TX"></label>
         </div>

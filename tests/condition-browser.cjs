@@ -34,7 +34,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await nav.aller(page,'mu-services');
    await page.locator('[data-mu-choisir=prepa]').click();await attendre();
    const carte=sel=>page.locator(`#mu-services article.mu-equipe[data-at="mo"] ${sel}`);
+   // Dans « Plus de réglages » (étape 7), qui dit ensuite ce qui y est réglé.
+   await carte('details.mu-plus > summary').click();await attendre();
    await carte('[data-at-action=cond-ajouter]').click();await attendre();
+   assert.match(await carte('details.mu-plus > summary').innerText(),/⚡ certains jours/,version+' : la ligne repliée le dit');
    assert.deepEqual(await kase('mo').then(a=>a.condition),{cie:'AF',seuil:af,mesure:'vols',sinon:'mg',absorbe:true},version+' : proposée remplie pour aujourd’hui ; l’autre équipe absorbe la charge');
    assert.match(await carte('.at-cond').innerText(),/Cette équipe ne travaille que si[\s\S]*Sinon, ses commandes passent à/);
    assert.match(await carte('.at-cond-etat').innerText(),new RegExp('AF a '+af+' vols? \\(au moins '+af+'\\) → elle travaille'));

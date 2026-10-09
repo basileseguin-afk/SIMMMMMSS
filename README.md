@@ -224,13 +224,19 @@ le rouge ne sert qu’aux retards.
    connaître le site.
    - *Services et équipes* : la liste des services à gauche (utilisés, avec
      un point orange s’il manque quelque chose ; pas utilisés), la **fiche**
-     du service choisi à droite :
+     du service choisi à droite — une feuille de propriétés dont chaque
+     section se replie (le repli est gardé d’un service à l’autre) :
      1. *Ce qu’il fait* : des équipes préparent les commandes, un robot, il
         sert tout le monde (légumerie, magasin, réception), plonge, ou il
         charge les vols (handling) ;
-     2. *Ses équipes* : pour chacune, son nom, son heure d’arrivée, le jour
-        (du vol ou la veille), ses personnes, et une **grille à cocher**
-        compagnies × classes : ce qu’elle prépare. L’ordre suit les départs
+     2. *Ses équipes* : pour chacune, son nom, son heure d’arrivée (en 24 h :
+        « 0430 », « 4:30 » ou « 4h30 » ; un refus se lit sous le champ), le jour
+        (du vol ou la veille), ses personnes (l’unité est dans le champ :
+        « 3 pers. », « 120 pl/h », « 480 min »), et une **grille à cocher**
+        compagnies × classes : ce qu’elle prépare — une matrice dont les
+        compagnies et les classes restent à l’écran quand elle défile, la
+        ligne et la colonne survolées s’éclairent, Espace coche au clavier.
+        L’ordre suit les départs
         (la plus pressée d’abord) ; un clic sur une compagnie ou une classe
         coche toute la ligne ou la colonne. Une commande ne se prépare qu’une
         fois par service : la cocher dans une autre équipe l’y déplace. Une
@@ -251,11 +257,11 @@ le rouge ne sert qu’aux retards.
         si une compagnie a assez de vols (« ne travaille que si AF a au
         moins 6 vols ce jour-là ; sinon, ses commandes passent au Montage
         général », qui absorbe la charge — ou que ses personnes y viennent en
-        renfort, ou aillent ailleurs) — une phrase à compléter dans sa fiche,
-        un badge ⚡ qui dit si elle travaille aujourd’hui.
-        « Plus de réglages » : l’ordre à la main, les pauses,
-        les arrêts, les heures propres, la
-        ligne robot. Un service qui sert tout le monde se règle en une fiche
+        renfort, ou aillent ailleurs) — une phrase à compléter dans « Plus de
+        réglages », un badge ⚡ qui dit si elle travaille aujourd’hui.
+        « Plus de réglages », replié : certains jours ⚡, l’ordre à la main,
+        les pauses, les arrêts, les heures propres, la ligne robot ; sa ligne
+        dit ce qui y est réglé (« ⚡ certains jours · 1 pause »). Un service qui sert tout le monde se règle en une fiche
         (horaires, vagues) et une grille « Qui en a besoin ? » ; la plonge et
         le handling n’ont rien à cocher. **La plonge se règle sur l’arrivée
         des retours**, pas sur le départ des vols : chaque équipe de plonge
@@ -264,7 +270,10 @@ le rouge ne sert qu’aux retards.
         par heure, et les équipes de plonge sur leur plage ; elle dit ce qui
         arrive entre deux équipes (et qui le reprend) et ce qui arrive après
         la dernière (et reste sale) ;
-     3. *Heures de travail pour un vol* : le barème du service.
+     3. *Heures de travail pour un vol* : le barème du service ;
+     4. *Avancé*, replié : « Il travaille en même temps que… » et les
+        superviseurs ; son titre dit ce qui y est réglé (« 1 réglage :
+        2 superviseurs »).
      **Le travail se lit et se saisit en heures** d’une personne (0,25 h par
      vol = un quart d’heure), partout, Excel compris ; le calcul et les
      sauvegardes gardent les minutes. Les durées (handling, plonge, pauses)
@@ -630,6 +639,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/saisie-heure-browser.cjs` | Taper une heure touche par touche (Récap des cases, fiche d’une case) : rien n’est arraché, Entrée ou quitter le champ enregistre, le tableau garde son défilement |
 | `tests/champs.test.cjs` | L’heure tapée → « HH:MM » (« 0430 », « 4h30 », « 7 »…), une heure impossible refusée jamais devinée, ↑↓ au quart d’heure, Maj à l’heure, dix pas dans les bornes ; v1 et v2 portent le même `champs.js` |
 | `tests/champs-browser.cjs` | Les champs dans un navigateur en anglais (v1 et v2) : plus de champ natif ni de « AM » ; frappe, Entrée, Tab ; « 2500 » et un champ vidé refusés sous le champ, la valeur gardée remise, retaper efface ; ↑↓ et Maj+↑↓ ; un nom d’équipe ou de service refusé sous son champ, sans notification ; les heures gardées restent « HH:MM » |
+| `tests/fiche-service-browser.cjs` | La fiche d’un service en feuille de propriétés (v1 et v2) : sections repliables, repli gardé d’un service à l’autre et au rendu, Entrée au clavier ; l’avancé replié qui dit ce qui y est réglé ; la règle ⚡ dans « Plus de réglages », dont la ligne dit ce qui est réglé ; la matrice (en-têtes collants, ligne et colonne survolées, Espace) ; rien ne change dans les données |
 | `tests/secours-browser.cjs` | Un démarrage resté en plan ouvre la page de secours ; elle rend les données en sauvegarde, repart sans les cases, puis les remet |
 | `tests/recap-cases-browser.cjs` | Récap des cases : une ligne par case, tâche unique / à la suite / ensemble, départ et jour modifiables, chercher, fichier de paramétrage exporté puis réimporté |
 | `tests/robot-browser.cjs` | Le Robot : service créé et rattaché au Montage, remplace le Montage sur TX, CRL et FBU Économie (une fois), une case Robot, plateaux ÷ débit, débit et effectif dans le récap et la fiche |

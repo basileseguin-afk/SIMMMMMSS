@@ -120,18 +120,24 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    // 5 bis. Ses superviseurs / coordinateurs (06/10) : hors production, ils ne
    //        changent rien au calcul ; gardés au rechargement.
    const avantSup=await page.evaluate(()=>JSON.stringify([Sim.ateliers.resultat.lots,Sim.ateliers.resultat.indicateurs]));
+   // Dans l'avancé de la fiche (étape 7) : replié, il dit ce qui y est réglé.
+   const avance=page.locator(`${M} [data-mu-section=avance]`);
+   assert.equal(await avance.evaluate(d=>d.open),false,version+' : l’avancé est replié');
+   assert.match(await avance.locator('summary').innerText(),/rien de réglé/);
+   await avance.locator('summary').click();await attendre();
    const sup=page.locator(`${M} [data-mu-encadrement=handling]`);
    assert.equal(await sup.inputValue(),'0');
    await sup.fill('2');await sup.dispatchEvent('change');await attendre();
    assert.deepEqual(await page.evaluate(()=>Sim.ateliers.state.encadrement),{handling:2},version+' : 2 superviseurs à CF départ food');
    assert.equal(await page.evaluate(()=>JSON.stringify([Sim.ateliers.resultat.lots,Sim.ateliers.resultat.indicateurs])),avantSup,'la production ne change pas');
+   assert.match(await page.locator(`${M} [data-mu-section=avance] summary`).innerText(),/1 réglage : 2 superviseurs/,version+' : l’avancé dit ce qui y est réglé');
    await page.reload();await attendre();
    assert.equal(await page.evaluate(()=>Sim.ateliers.encadrement('handling')),2,'gardés au rechargement');
 
    // 5 ter. La cuisine, constante : ses postes n'ont pas d'heures par vol.
    await nav.aller(page,'mu-services');
    await page.locator(`${M} [data-mu-choisir=cuisine]`).click();await attendre();
-   assert.match(await page.locator(`${M} .mu-etape`).last().innerText(),/pas d’heures par vol/,version+' : pas d’heures par vol à saisir');
+   assert.match(await page.locator(`${M} [data-mu-section=temps]`).innerText(),/pas d’heures par vol/,version+' : pas d’heures par vol à saisir');
    assert.doesNotMatch(await page.locator(`${M} .mu-afaire`).count()?await page.locator(`${M} .mu-afaire`).innerText():'',/heures de travail à remplir/);
    assert.equal(await page.locator(`${M} [data-at="cu"] [data-at-champ=heures]`).count(),0,'ni heures propres');
    assert.ok(await page.evaluate(()=>Sim.ateliers.resultat.lots.filter(l=>l.atelier==='cu').every(l=>l.hommeMinutes===0&&l.duree===0)),'ses commandes passent en temps nul');

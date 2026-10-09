@@ -5,6 +5,47 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-09 — Refonte, étape 7 (2/2) : la fiche d'un service, en feuille de propriétés ; l'unité dans le champ
+
+Toujours sans rien changer aux données ni au calcul (`donnees-intactes-browser`) :
+ouvrir, replier, survoler ne touchent à rien ; les réglages déplacés gardent
+leurs champs, leurs valeurs et leurs gestes.
+
+- **Des sections repliables** (REFONTE_UX §5.4) : *Ce qu'il fait*, *Ses
+  équipes*, *Heures de travail* se replient d'un clic (ou d'Entrée sur leur
+  titre) ; un chevron le dit. Le repli est gardé d'un service à l'autre et
+  d'un rendu à l'autre (le temps de la visite).
+- **L'avancé, replié** : « Il travaille en même temps que… » et les
+  superviseurs / coordinateurs quittent *Ce qu'il fait* pour une section
+  *Avancé*, repliée, dont le titre dit ce qui y est réglé (« 1 réglage :
+  2 superviseurs », « rien de réglé »).
+- **« Plus de réglages » d'une équipe** porte aussi la règle ⚡ (certains
+  jours seulement), qui ne s'étale plus sous chaque grille ; sa ligne
+  repliée dit ce qui y est réglé (« ⚡ certains jours · 1 pause · 2 heures
+  propres »). Le badge ⚡ de l'équipe reste en tête.
+- **La grille « Ce qu'elle prépare » est une matrice** : les compagnies et
+  les classes restent à l'écran quand elle défile (au-delà de 70 % de la
+  hauteur, elle défile dans son cadre), la ligne et la colonne survolées
+  s'éclairent d'un anneau, chaque case est centrée sous sa colonne ; Espace
+  coche au clavier, avec un anneau de focus.
+- **L'unité dans le champ** (REFONTE_UX §6) : « 3 pers. », « 120 pl/h »,
+  « 480 min », « 3 h », en gris à droite du nombre ; le libellé raccourcit
+  (« Débit du robot », « Présence », « Au plus tôt, avant le départ » au
+  lieu de « (plateaux/h) », « (min) », « (heures avant le départ) »). Sur les
+  personnes d'une équipe, le minimum d'un robot, son débit, la présence, le
+  « pas avant » du handling et les superviseurs ; les tableaux d'heures
+  viendront à l'étape 8. Ces champs n'ont plus les flèchettes du navigateur,
+  qui tombaient sous le clic entre le nombre et l'unité (un clic au milieu
+  du champ retirait une personne) : ↑↓ et Maj+↑↓ restent au clavier.
+- Fichiers : `unite.js` (`section()`, l'avancé, `reglesEquipe()`,
+  `avecUnite()`), `ateliers.js` (`avecUnite()`), `unite.css`, `ateliers.css`,
+  `ds.css` ; v1 et v2.
+- Tests : `fiche-service-browser` (neuf : sections, repli gardé, clavier,
+  avancé et son titre, « Plus de réglages », matrice) ; `effectif-browser`
+  (les superviseurs dans l'avancé), `parallele-browser` (« en même temps
+  que » dans l'avancé), `condition-browser` (⚡ dans « Plus de réglages »)
+  l'ouvrent d'abord.
+
 ## 2026-10-09 — Refonte, étape 7 (1/2) : l'heure en 24 h, le refus sous le champ
 
 Toujours sans rien changer aux données ni au calcul (`donnees-intactes-browser`) :

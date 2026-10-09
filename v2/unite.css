@@ -36,8 +36,22 @@
 .mu-afaire li{margin:2px 0}
 
 .mu-etape{margin-top:18px}
-.mu-etape>h3{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 10px;font-size:var(--ds-t-14)}
-.mu-etape>h3 small{font-weight:var(--ds-g-normal);font-size:var(--ds-t-12);color:var(--txt2)}
+.mu-etape>h3,.mu-etape>summary>h3{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 10px;font-size:var(--ds-t-14)}
+.mu-etape>h3 small,.mu-etape>summary>h3 small{font-weight:var(--ds-g-normal);font-size:var(--ds-t-12);color:var(--txt2)}
+/* La fiche d'un service, en feuille de propriétés (étape 7) : chaque section se
+   replie ; un chevron le dit, à droite de son titre. */
+details.mu-etape{border-top:1px solid var(--ds-bordure);padding-top:12px}
+.mu-etape>summary{list-style:none;cursor:pointer;border-radius:var(--ds-r-2)}
+.mu-etape>summary::-webkit-details-marker{display:none}
+.mu-etape>summary>h3::after{content:'';flex:none;width:7px;height:7px;margin:0 4px 0 auto;align-self:center;color:var(--ds-texte-3);
+  border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform var(--ds-t-rapide)}
+.mu-etape:not([open])>summary>h3{margin-bottom:0}
+.mu-etape:not([open])>summary>h3::after{transform:rotate(-45deg)}
+.mu-etape>summary:hover>h3{color:var(--ds-accent-texte)}
+.mu-etape>summary:focus-visible{outline:none;box-shadow:var(--ds-focus)}
+.mu-etape .mu-num .ico{width:14px;height:14px}
+/* L'avancé : en retrait, replié tant qu'on ne l'ouvre pas ; son titre dit ce qui y est réglé. */
+[data-mu-section=avance] .mu-num{background:var(--ds-surface-3);color:var(--ds-texte-2)}
 .mu-num{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;
   background:var(--accent);color:var(--on-accent);font-size:var(--ds-t-13);font-weight:var(--ds-g-fort);flex:none}
 .mu-nature{display:flex;flex-direction:column;gap:4px;font-size:var(--ds-t-12);color:var(--txt2);max-width:520px}
@@ -54,14 +68,15 @@
 .mu-equipe-tete input,.mu-equipe-tete select{font:inherit;min-height:34px;color:var(--txt)}
 .mu-eq-nom input{font-weight:var(--ds-g-fort);min-width:180px}
 .mu-eq-pers input{width:80px}
+.mu-eq-pers .champ-unite>input{width:108px}
 .mu-effectif{display:flex;gap:10px;align-items:flex-start;margin-top:12px;max-width:620px;font-size:var(--ds-t-14);cursor:pointer}
 .mu-effectif input{margin-top:3px;width:18px;height:18px;flex:none}
 .mu-effectif span{display:flex;flex-direction:column;gap:2px}
 .mu-effectif small{font-size:var(--ds-t-12);color:var(--txt2);line-height:1.4}
 .mu-effectif.mu-par-vols{flex-direction:column;gap:2px;cursor:default}
 /* Les superviseurs / coordinateurs d'un service, hors production (06/10). */
-.mu-encadrement{display:grid;grid-template-columns:max-content 90px;align-items:center;gap:4px 12px;margin-top:12px;max-width:620px;font-size:var(--ds-t-14)}
-.mu-encadrement input{width:90px}
+.mu-encadrement{display:grid;grid-template-columns:max-content 108px 1fr;align-items:center;gap:4px 12px;margin-top:12px;max-width:620px;font-size:var(--ds-t-14)}
+.mu-encadrement input{width:108px}
 /* L'atelier unique : une case par compagnie (07/10). */
 .mu-atelier-cies{display:flex;flex-wrap:wrap;gap:8px 14px;margin:6px 0 10px}
 .mu-atelier-cies label{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--bordure);border-radius:10px;font-size:var(--ds-t-14)}
@@ -83,10 +98,47 @@
 .mu-flux-lien:hover{border-color:var(--accent);color:var(--accent)}
 .mu-plus{margin-top:8px}
 .mu-plus>summary{cursor:pointer;font-size:var(--ds-t-12);color:var(--accent);font-weight:var(--ds-g-fort)}
+/* Ce qui y est réglé, sur la ligne repliée : « ⚡ certains jours · 1 pause ». */
+.mu-regles{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:99px;background:var(--ds-surface-3);
+  color:var(--ds-texte-2);font-size:var(--ds-t-11);font-weight:var(--ds-g-normal)}
 .mu-plus .at-carte{margin:8px 0 0}
 
 /* ---- La grille compagnies × classes ---------------------------------------- */
-.mu-grille-scroll{overflow:auto;max-width:100%}
+.mu-grille-scroll{overflow:auto;max-width:100%;max-height:min(70vh,560px)}
+/* Une vraie matrice (étape 7) : les compagnies et les classes restent à l'écran
+   quand elle défile ; la ligne et la colonne survolées se suivent du regard. */
+.mu-grille thead th{position:sticky;top:0;z-index:2;background:var(--ds-surface-1)}
+.mu-grille tbody th{position:sticky;left:0;z-index:1;background:var(--ds-surface-1)}
+.mu-grille thead th:first-child{left:0;z-index:3}
+.mu-grille tbody tr:hover>th .mu-tout,
+.mu-grille:has(tbody td:nth-child(2):hover) thead th:nth-child(2) .mu-tout,
+.mu-grille:has(tbody td:nth-child(3):hover) thead th:nth-child(3) .mu-tout,
+.mu-grille:has(tbody td:nth-child(4):hover) thead th:nth-child(4) .mu-tout,
+.mu-grille:has(tbody td:nth-child(5):hover) thead th:nth-child(5) .mu-tout,
+.mu-grille:has(tbody td:nth-child(6):hover) thead th:nth-child(6) .mu-tout,
+.mu-grille:has(tbody td:nth-child(7):hover) thead th:nth-child(7) .mu-tout,
+.mu-grille:has(tbody td:nth-child(8):hover) thead th:nth-child(8) .mu-tout,
+.mu-grille:has(tbody td:nth-child(9):hover) thead th:nth-child(9) .mu-tout,
+.mu-grille:has(tbody td:nth-child(10):hover) thead th:nth-child(10) .mu-tout,
+.mu-grille:has(tbody td:nth-child(11):hover) thead th:nth-child(11) .mu-tout,
+.mu-grille:has(tbody td:nth-child(12):hover) thead th:nth-child(12) .mu-tout{color:var(--ds-accent-texte)}
+.mu-grille tbody tr:hover>.mu-c label,
+.mu-grille:has(tbody td:nth-child(2):hover) tbody td:nth-child(2) label,
+.mu-grille:has(tbody td:nth-child(3):hover) tbody td:nth-child(3) label,
+.mu-grille:has(tbody td:nth-child(4):hover) tbody td:nth-child(4) label,
+.mu-grille:has(tbody td:nth-child(5):hover) tbody td:nth-child(5) label,
+.mu-grille:has(tbody td:nth-child(6):hover) tbody td:nth-child(6) label,
+.mu-grille:has(tbody td:nth-child(7):hover) tbody td:nth-child(7) label,
+.mu-grille:has(tbody td:nth-child(8):hover) tbody td:nth-child(8) label,
+.mu-grille:has(tbody td:nth-child(9):hover) tbody td:nth-child(9) label,
+.mu-grille:has(tbody td:nth-child(10):hover) tbody td:nth-child(10) label,
+.mu-grille:has(tbody td:nth-child(11):hover) tbody td:nth-child(11) label,
+.mu-grille:has(tbody td:nth-child(12):hover) tbody td:nth-child(12) label{box-shadow:0 0 0 1px var(--ds-accent-trait)}
+.mu-grille .mu-c label:hover{box-shadow:0 0 0 2px var(--ds-accent)}
+/* La case sous sa colonne ; la ligne survolée se lit à l'anneau des cases, pas à un fond. */
+.mu-grille .mu-c label{margin-inline:auto}
+.mu-grille tbody tr:hover>td{background:none}
+.mu-grille .mu-c input:focus-visible{outline:2px solid var(--ds-accent);outline-offset:2px}
 .mu-grille{border-collapse:separate;border-spacing:3px;font-size:var(--ds-t-13)}
 .mu-grille th{font-weight:var(--ds-g-fort);color:var(--txt2);text-align:center;padding:0}
 .mu-grille tbody th{text-align:left}

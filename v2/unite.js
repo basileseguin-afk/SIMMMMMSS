@@ -24,9 +24,18 @@
   /** Une heure en 24 h (champs.js, étape 7) : un champ texte, plus le champ natif
    *  qui s'affichait « 04:00 AM » selon la langue du navigateur. */
   const HEURE = 'type="text" data-heure inputmode="numeric" maxlength="8" placeholder="hh:mm" autocomplete="off" spellcheck="false"';
+  /** Un champ et son unité, dans le champ, à droite (étape 7) : « 3 pers. », « 480 min ». */
+  const avecUnite = (champ, unite) => `<span class="champ-unite">${champ}<span class="unite">${unite}</span></span>`;
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const pl = (n, s, p) => n + ' ' + (n > 1 ? (p || s + 's') : s);
+  /** Ce qui est réglé dans « Plus de réglages » d'une équipe, dit sur sa ligne repliée (étape 7). */
+  const reglesEquipe = a => {
+    const n = Object.keys(a.minutes || {}).length;
+    const l = [a.condition ? '⚡ certains jours' : '', (a.pauses || []).length ? pl(a.pauses.length, 'pause') : '',
+      (a.arretsLigne || []).length ? pl(a.arretsLigne.length, 'arrêt') : '', n ? pl(n, 'heure propre', 'heures propres') : ''].filter(Boolean);
+    return l.length ? `<span class="mu-regles">${esc(l.join(' · '))}</span>` : '';
+  };
   const jourEcrit = j => (j > 0 ? 'J+' + j : j < 0 ? 'J' + j : 'J');
   const CLE = 'ory-service-ouvert';
 
@@ -64,6 +73,7 @@
     constructor(a) {
       this.a = a;
       this.natures = {};   // la nature choisie d'un service qui n'a pas encore d'équipe
+      this.sections = new Map();   // les sections de la fiche d'un service, repliées ou non (étape 7)
       this.lierFlux();
       this.lierCarte();
       try { this.choisi = localStorage.getItem(CLE) || null; } catch (e) { this.choisi = null; }
@@ -234,7 +244,11 @@
         (${esc(perdues.slice(0, 6).map(c => PC.etiquette(c)).join(', ') + (perdues.length > 6 ? '…' : ''))}), mais ${perdues.length > 1 ? 'leur flux ne passe' : 'son flux ne passe'} plus par ${esc(s.nom)}.</p>
         <div class="mu-q-gestes"><button class="btn btn-sm btn-play" type="button" data-mu-action="liberer">Les retirer de ses équipes</button></div></div>` : '';
       const aFaire = b.points.length ? `<ul class="mu-afaire">${b.points.map(p => `<li>${esc(P.enClair ? P.enClair(p) : p)}</li>`).join('')}</ul>` : '';
-      const etape = (num, titre, corps, note) => `<section class="mu-etape"><h3><span class="mu-num">${num}</span>${esc(titre)}${note ? `<small>${note}</small>` : ''}</h3>${corps}</section>`;
+      // Une feuille de propriétés (étape 7) : chaque section se replie, et le reste
+      // d'un service à l'autre ; l'avancé est replié tant qu'on ne l'ouvre pas.
+      const section = (cle, marque, titre, corps, note, ouvert = true) => `<details class="mu-etape" data-mu-section="${cle}"${this.sections.get(cle) ?? ouvert ? ' open' : ''}>
+        <summary><h3><span class="mu-num">${marque}</span>${esc(titre)}${note ? `<small>${note}</small>` : ''}</h3></summary>${corps}</details>`;
+      const etape = (num, titre, corps, note, cle) => section(cle, num, titre, corps, note);
 
       // À la chaîne : ce service et un autre ne font qu'un, pour certaines commandes.
       const ch = PC.chaines(st, null, null);
@@ -279,9 +293,14 @@
           <small>${partenaire ? `En parallèle de ${esc(this.nom(partenaire))} : dans chaque chemin qui a les deux, il reçoit les mêmes livraisons et livre les mêmes étapes ; l’étape d’après attend les deux.`
             : 'Deux services qui préparent la même commande au même moment (la cuisine chaude et la cuisine) : choisissez l’autre, ils se rangent côte à côte dans chaque chemin.'}</small></label>`;
       const choixNature = `<label class="mu-nature">Ce service…<select data-mu-nature="${esc(s.id)}">${NATURES.map(x =>
-        `<option value="${x.id}"${x.id === nature ? ' selected' : ''}>${esc(x.nom)}</option>`).join('')}</select></label>` + choixEffectif + choixParallele
-        + `<label class="mu-encadrement">Superviseurs / coordinateurs<input type="number" min="0" max="99" value="${this.at.encadrement(s.id)}" data-mu-encadrement="${esc(s.id)}">
-          <small>présents dans le service, hors production : ils ne changent rien au calcul ; ils serviront à relier l’unité au budget quotidien</small></label>`;
+        `<option value="${x.id}"${x.id === nature ? ' selected' : ''}>${esc(x.nom)}</option>`).join('')}</select></label>` + choixEffectif;
+      // L'avancé : replié, il dit ce qu'on y a réglé.
+      const enc = this.at.encadrement(s.id);
+      const regles = [choixParallele && partenaire ? 'en même temps que ' + this.nom(partenaire) : '', enc > 0 ? pl(enc, 'superviseur') : ''].filter(Boolean);
+      const avance = section('avance', pic('curseurs'), 'Avancé', choixParallele
+        + `<label class="mu-encadrement">Superviseurs / coordinateurs${avecUnite(`<input type="number" min="0" max="99" value="${enc}" data-mu-encadrement="${esc(s.id)}">`, 'pers.')}
+          <small>présents dans le service, hors production : ils ne changent rien au calcul ; ils serviront à relier l’unité au budget quotidien</small></label>`,
+        regles.length ? esc(pl(regles.length, 'réglage') + ' : ' + regles.join(' · ')) : 'rien de réglé', false);
 
       // Une équipe d'un autre service qui fait aussi celui-ci, à la chaîne : elle
       // existe dans les deux, et se règle dans les deux (retour d'usage du 01/10).
@@ -313,28 +332,30 @@
       // Des postes qui ne dépendent pas des vols n'ont pas d'heures par vol (06/10).
       const aucunVol = nature === 'manuel' && !(st.ateliers || []).some(a => a.service === s.id && this.at.dependDesVols(a));
       const temps = aucunVol && b.cases.length
-        ? etape(3, 'Heures de travail pour un vol', '<p class="mini-note">Ses postes ne dépendent pas des vols : <b>pas d’heures par vol</b>. Leurs commandes passent dans leurs heures de présence. Décochez « Effectif constant » (ou choisissez « Dépend des vols » pour une équipe) pour en saisir.</p>')
+        ? etape(3, 'Heures de travail pour un vol', '<p class="mini-note">Ses postes ne dépendent pas des vols : <b>pas d’heures par vol</b>. Leurs commandes passent dans leurs heures de présence. Décochez « Effectif constant » (ou choisissez « Dépend des vols » pour une équipe) pour en saisir.</p>', '', 'temps')
         : nature === 'manuel' && rg
         ? etape(3, 'Heures de travail pour un vol, pour une personne', rg.ficheTemps(s.id), constant ? 'le temps d’une seule personne, pour une compagnie dans une classe : à plusieurs, la durée se divise par les personnes de l’équipe'
-          : 'le temps d’une seule personne, pour une compagnie dans une classe : les personnes de chaque équipe s’en déduisent')
-        : nature === 'robot' ? etape(3, 'Débit du robot', '<p class="mini-note">Le débit (plateaux par heure) se règle dans la fiche de chaque équipe robot, plus haut : « Plus de réglages ».</p>') : '';
+          : 'le temps d’une seule personne, pour une compagnie dans une classe : les personnes de chaque équipe s’en déduisent', 'temps')
+        : nature === 'robot' ? etape(3, 'Débit du robot', '<p class="mini-note">Le débit (plateaux par heure) se règle dans la fiche de chaque équipe robot, plus haut : « Plus de réglages ».</p>', '', 'temps') : '';
 
       if (nature === 'atelier') return tete + lesFlux + aFaire
-        + etape(1, 'Ce qu’il fait', choixNature)
-        + etape(2, 'Son atelier : ses personnes, son heure, ses compagnies', this.atelierUnique(s, b.cases[0], calc));
+        + etape(1, 'Ce qu’il fait', choixNature, '', 'nature')
+        + etape(2, 'Son atelier : ses personnes, son heure, ses compagnies', this.atelierUnique(s, b.cases[0], calc), '', 'equipes')
+        + avance;
       if (nature === 'categories') return tete + this.lienHandling(s) + aFaire
-        + etape(1, 'Ce qu’il fait', choixNature)
-        + etape(2, 'Heures par vol, selon la compagnie', this.blocParCompagnie(s, classes), 'pour une personne ; une case vide prend la valeur de « Toutes les compagnies »')
-        + etape(3, 'Ses équipes : une case par compagnie', equipes);
+        + etape(1, 'Ce qu’il fait', choixNature, '', 'nature')
+        + etape(2, 'Heures par vol, selon la compagnie', this.blocParCompagnie(s, classes), 'pour une personne ; une case vide prend la valeur de « Toutes les compagnies »', 'temps')
+        + etape(3, 'Ses équipes : une case par compagnie', equipes, '', 'equipes')
+        + avance;
       // Un armement qui suit encore les classes (BC, PC, Éco…) : on propose la bonne façon, à la vue.
       // Quelle que soit sa nature actuelle (sert tout le monde, préparation…) : le réglage ne se cache pas.
       const proposer = /armement/i.test(s.nom) ? `<div class="mu-q mu-par-cie"><p>L’armement ne travaille pas par Business, Premium ou Éco :
         <b>une case par compagnie</b>, oui ou non, pour chaque vol que le handling charge, et des heures par vol.</p>
         <div class="mu-q-gestes"><button class="btn btn-sm btn-play" type="button" data-mu-action="par-compagnie">Passer à « une case par compagnie »</button></div></div>` : '';
       return tete + lesFlux + blocChaine + horsFlux + proposer + aFaire
-        + etape(1, 'Ce qu’il fait', choixNature)
-        + etape(2, preparent(nature) ? 'Ses équipes, et ce que chacune prépare' : 'Ses horaires et ses réglages', equipes)
-        + temps;
+        + etape(1, 'Ce qu’il fait', choixNature, '', 'nature')
+        + etape(2, preparent(nature) ? 'Ses équipes, et ce que chacune prépare' : 'Ses horaires et ses réglages', equipes, '', 'equipes')
+        + temps + avance;
     }
 
     /* L'armement est lié au handling, pas aux chemins des repas : on arme un vol
@@ -471,8 +492,8 @@
           <label>Le<select data-at-champ="jour">${jours}</select></label>
           ${this.at.champPersonnes(a, 'mu-eq-pers')}
           ${this.at.choixEffectifEquipe(a, 'mu-eq-eff')}
-          ${a.type === 'robot' ? `<label class="mu-eq-pers">Plateaux / h<input type="number" min="1" value="${a.debit}" data-at-champ="debit"></label>
-          <label class="mu-eq-pers" title="Sous ce nombre de personnes, le robot ne tourne pas">Minimum pour tourner<input type="number" min="0" max="99" value="${a.personnesMin ?? 1}" data-at-champ="personnesMin"></label>
+          ${a.type === 'robot' ? `<label class="mu-eq-pers">Débit${avecUnite(`<input type="number" min="1" value="${a.debit}" data-at-champ="debit">`, 'pl/h')}</label>
+          <label class="mu-eq-pers" title="Sous ce nombre de personnes, le robot ne tourne pas">Minimum pour tourner${avecUnite(`<input type="number" min="0" max="99" value="${a.personnesMin ?? 1}" data-at-champ="personnesMin">`, 'pers.')}</label>
           ${(+a.personnes || 0) < (a.personnesMin ?? 1) ? `<span class="mu-badge cond off" role="status">${pic('alerte', 'ico-texte')} à l’arrêt : ${+a.personnes || 0} pers. pour un minimum de ${a.personnesMin ?? 1}</span>` : ''}` : ''}
           <span class="mu-eq-fin">${fin ? 'finit à ' + esc(fin) : a.lots.length ? '' : ''}</span>
         </div>
@@ -482,8 +503,8 @@
         ${this.questionHTML(a)}
         ${ordre ? `<p class="mu-ordre"><span>Dans l’ordre :</span>${ordre}<small>cliquez une commande pour voir son chemin</small></p>` : ''}
         ${fusion ? `<div class="mu-chaine-reglage">${fusion}</div>` : ''}
-        ${this.at.blocCondition ? `<div class="mu-cond-reglage">${this.at.blocCondition(a)}</div>` : ''}
-        <details class="mu-plus"${this.ouvertes && this.ouvertes.has(a.id) ? ' open' : ''} data-mu-plus="${esc(a.id)}"><summary>Plus de réglages : changer l’ordre, pauses, arrêts, heures propres…</summary>
+        <details class="mu-plus"${this.ouvertes && this.ouvertes.has(a.id) ? ' open' : ''} data-mu-plus="${esc(a.id)}"><summary>Plus de réglages : certains jours ⚡, ordre, pauses, arrêts, heures propres…${reglesEquipe(a)}</summary>
+          ${this.at.blocCondition ? `<div class="mu-cond-reglage">${this.at.blocCondition(a)}</div>` : ''}
           ${this.at.carte(a, calc, { cmd: null, compact: true })}</details>
       </article>`;
     }
@@ -506,7 +527,7 @@
       return `<article class="mu-equipe mu-atelier-unique" data-at="${esc(a.id)}">
         <div class="mu-equipe-tete">
           <label class="mu-eq-nom">Atelier<input value="${esc(a.nom)}" data-at-champ="nom" maxlength="160"></label>
-          <label class="mu-eq-pers">Personnes<input type="number" min="0" max="999" value="${a.personnes}" data-at-champ="personnes"></label>
+          <label class="mu-eq-pers">Personnes${avecUnite(`<input type="number" min="0" max="999" value="${a.personnes}" data-at-champ="personnes">`, 'pers.')}</label>
           <label>Arrive à<input ${HEURE} value="${esc(a.debut)}" data-at-champ="debut"></label>
           <label>Le<select data-at-champ="jour">${jours}</select></label>
           <span class="mu-eq-fin">${fin ? 'dernière commande à ' + esc(fin) : ''}</span>
@@ -517,7 +538,7 @@
         ${cies.length ? `<p class="mu-atelier-gestes"><button class="btn btn-sm" type="button" data-mu-action="atelier-toutes">Toutes</button>
           <button class="btn btn-sm" type="button" data-mu-action="atelier-aucune">Aucune</button>
           <span class="mini-note">Cocher une compagnie fait passer ses flux par ${esc(s.nom)} ; les autres compagnies y passent sans s’y arrêter.</span></p>` : ''}
-        <details class="mu-plus"${this.ouvertes && this.ouvertes.has(a.id) ? ' open' : ''} data-mu-plus="${esc(a.id)}"><summary>Plus de réglages : pauses, arrêts…</summary>
+        <details class="mu-plus"${this.ouvertes && this.ouvertes.has(a.id) ? ' open' : ''} data-mu-plus="${esc(a.id)}"><summary>Plus de réglages : pauses, arrêts…${reglesEquipe(a)}</summary>
           ${this.at.carte(a, calc.get ? calc.get(a.id) : null, { cmd: null, compact: true })}</details>
       </article>`;
     }
@@ -1413,6 +1434,7 @@
         const t = e.target;
         // « Qui suit quel chemin » reste comme on l'a laissé, ouvert ou fermé.
         if (t.dataset && t.dataset.muQuiSuit !== undefined) { this.quiSuitOuvert = t.open; return; }
+        if (t.dataset && t.dataset.muSection) { this.sections.set(t.dataset.muSection, t.open); return; }
         if (!t.dataset || !t.dataset.muPlus) return;
         this.ouvertes = this.ouvertes || new Set();
         if (t.open) this.ouvertes.add(t.dataset.muPlus); else this.ouvertes.delete(t.dataset.muPlus);

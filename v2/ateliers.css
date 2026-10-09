@@ -124,6 +124,7 @@ body.ateliers-open .workbench{display:none}
 .at-cases .chk input{width:16px;height:16px;flex:none;margin-top:1px;accent-color:var(--accent)}
 .at-presence{display:flex;align-items:center;gap:8px;font-size:var(--ds-t-12);color:var(--txt2);margin-left:24px}
 .at-presence input{max-width:90px}
+.at-presence .champ-unite>input,.at-pers-jour .champ-unite>input{width:120px;max-width:none}
 .at-lavage-note,.at-tunnel-note{padding:0 14px 12px;margin:0}
 
 /* La boucle du matériel : ce qui part revient. */

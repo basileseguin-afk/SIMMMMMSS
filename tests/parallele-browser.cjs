@@ -34,8 +34,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    const c0=await chemin();
    assert.ok(c0.noeuds.includes(id)&&c0.noeuds.includes('cuisine'),version+' : la cuisine chaude est dans le chemin d’AF Business '+JSON.stringify(c0));
 
-   // 2. « En même temps que la Cuisine ».
+   // 2. « En même temps que la Cuisine », dans l'avancé de la fiche (étape 7).
+   await page.locator(`${M} [data-mu-section=avance] > summary`).click();await attendre();
    await page.locator(`${M} [data-mu-parallele="${id}"]`).selectOption('cuisine');await attendre();
+   assert.match(await page.locator(`${M} [data-mu-section=avance] > summary`).innerText(),/en même temps que Cuisine/,version+' : l’avancé le dit, replié ou non');
    const c1=await chemin();
    const preds=(c,n)=>c.liens.filter(l=>l.endsWith('>'+n)).map(l=>l.split('>')[0]).sort();
    const succs=(c,n)=>c.liens.filter(l=>l.startsWith(n+'>')).map(l=>l.split('>')[1]).sort();
