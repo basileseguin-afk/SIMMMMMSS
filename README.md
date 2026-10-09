@@ -579,6 +579,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `notifications.js` | Le retour des gestes (09/10) : une notification par geste, en bas à droite, avec « Annuler » quand il se défait (même sur deux historiques), et les questions du site pour ce qui ne se défait pas ; les historiques (cases, barème, plan, liens) s’y inscrivent |
 | `problemes.js` | Le registre des Problèmes (09/10) : à corriger, à compléter, ce que la journée montre ; le nombre au pied de la barre latérale, et ceux des onglets qui en dérivent |
 | `rendu.js` | Redessiner sans perdre ce qu’on tape : tant qu’on écrit dans un champ, la zone qui le contient attend pour se redessiner ; elle le fait dès que le champ est validé (Entrée, quitté), le focus revenant au même champ. Posé une fois, à la source (`innerHTML`), pour tous les écrans |
+| `champs.js` | Les champs (09/10) : l’heure en 24 h (champ texte `data-heure` : « 0430 », « 4:30 », « 4h30 » → « 04:30 », gardée « HH:MM » comme avant ; tout choisi au focus ; ↑↓ un quart d’heure, Maj+↑↓ une heure), Maj+↑↓ dix pas dans un nombre, et le refus d’une saisie sous son champ (bordure, message lié au champ, valeur gardée remise) |
 | `icones.js` | Les pictogrammes (étapes, services, états) et les couleurs d’étape |
 | `demarrage.css` | Ce que montre chaque vue (lecture de la journée seulement dans « La journée ») et couleurs du plan en lecture |
 | `plan-prive/` | Fond de plan **local, non versionné** (voir ci-dessous) |
@@ -627,6 +628,8 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/jeu-essai-browser.cjs` | Jeu d’essai dans le site (v1 et v2) : QR et DL retirées d’un état enregistré (une fois), vols d’essai pour EZY, RAM, DAH et leur case d’armement, une compagnie cochée reçoit ses vols sans recharger |
 | `tests/vols-fixture.cjs` | Programme figé (l’ancien jeu, fictif) pour les tests d’échanges Excel |
 | `tests/saisie-heure-browser.cjs` | Taper une heure touche par touche (Récap des cases, fiche d’une case) : rien n’est arraché, Entrée ou quitter le champ enregistre, le tableau garde son défilement |
+| `tests/champs.test.cjs` | L’heure tapée → « HH:MM » (« 0430 », « 4h30 », « 7 »…), une heure impossible refusée jamais devinée, ↑↓ au quart d’heure, Maj à l’heure, dix pas dans les bornes ; v1 et v2 portent le même `champs.js` |
+| `tests/champs-browser.cjs` | Les champs dans un navigateur en anglais (v1 et v2) : plus de champ natif ni de « AM » ; frappe, Entrée, Tab ; « 2500 » et un champ vidé refusés sous le champ, la valeur gardée remise, retaper efface ; ↑↓ et Maj+↑↓ ; un nom d’équipe ou de service refusé sous son champ, sans notification ; les heures gardées restent « HH:MM » |
 | `tests/secours-browser.cjs` | Un démarrage resté en plan ouvre la page de secours ; elle rend les données en sauvegarde, repart sans les cases, puis les remet |
 | `tests/recap-cases-browser.cjs` | Récap des cases : une ligne par case, tâche unique / à la suite / ensemble, départ et jour modifiables, chercher, fichier de paramétrage exporté puis réimporté |
 | `tests/robot-browser.cjs` | Le Robot : service créé et rattaché au Montage, remplace le Montage sur TX, CRL et FBU Économie (une fois), une case Robot, plateaux ÷ débit, débit et effectif dans le récap et la fiche |

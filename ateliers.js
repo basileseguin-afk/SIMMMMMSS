@@ -20,6 +20,9 @@
   const clone = x => JSON.parse(JSON.stringify(x));
   /** Un pictogramme de icones.js (exporter, importer, annuler…), au lieu d'un caractère. */
   const pic = (nom, classe) => (root.OrlyIcones ? root.OrlyIcones.ico(nom, classe) : '');
+  /** Une heure en 24 h (champs.js, étape 7) : un champ texte, plus le champ natif
+   *  qui s'affichait « 04:00 AM » selon la langue du navigateur. */
+  const HEURE = 'type="text" data-heure inputmode="numeric" maxlength="8" placeholder="hh:mm" autocomplete="off" spellcheck="false"';
 
   const CLE = 'ory-ateliers-v1';
 
@@ -698,15 +701,29 @@
       if (n) this.enregistrer();
     }
 
-    changer(fn, message) {
+    /** Changer l'état d'un geste ; refusé, il reste tel quel. Le refus d'une
+     *  saisie se lit sous son `champ` (étape 7) ; celui d'un autre geste, en
+     *  notification. */
+    changer(fn, message, champ) {
       const avant = clone(this.state);
       try { fn(); this.state = valider(this.state); }
-      catch (e) { this.state = avant; this.rendre('Refusé : ' + e.message); return false; }
+      catch (e) {
+        this.state = avant;
+        if (champ) { this.rendre(); this.refuserAuChamp(champ, e.message); }
+        else this.rendre('Refusé : ' + e.message);
+        return false;
+      }
       if (JSON.stringify(avant) !== JSON.stringify(this.state)) {
         this.undo.push(avant); if (this.undo.length > 80) this.undo.shift(); this.redo = [];
         this.version++; if (root.OrlyNotif) root.OrlyNotif.marquer('cases');
       }
       this.enregistrer(); this.rendre(message); return true;
+    }
+
+    /** Sous le champ, tel qu'il est à l'écran après le rendu ; s'il n'y est plus, en notification. */
+    refuserAuChamp(el, raison) {
+      const C = root.OrlyChamps, ici = C && C.retrouver(el);
+      if (ici) C.refuser(ici, raison); else PC.annoncer('Refusé : ' + raison);
     }
 
     enregistrer() {
@@ -804,30 +821,14 @@
       // Le matériel se règle dans une autre vue (Réglages de la simulation) : on
       // l'écoute là où il est, quel que soit l'ordre de construction des vues.
       const ou = el => (el.closest('#rg-sim-materiel') ? { id: null } : hote.contains(el) ? { id: el.closest('[data-at]')?.dataset.at } : null);
-      // Un champ d'heure envoie « change » dès que ses chiffres font une heure
-      // valide : taper « 14 » passe par 01:00. Enregistrer là redessinait tout
-      // et arrachait le champ sous les doigts — on ne pouvait taper qu'un
-      // chiffre. Une heure TAPÉE s'enregistre donc quand on quitte le champ, ou
-      // sur Entrée (retour d'usage du 29/09). Une saisie par programme (import,
-      // tests) n'est pas « de confiance » et s'enregistre tout de suite.
-      let enAttente = null;
-      const valider = () => {
-        const x = enAttente; enAttente = null;
-        if (x) this.saisir(x.el.dataset.atChamp, x.id, x.el);
-      };
+      // Une heure s'enregistre quand on quitte le champ, ou sur Entrée (retour
+      // d'usage du 29/09) : le champ natif annonçait « change » dès le premier
+      // chiffre, et il fallait l'attendre. Le champ en 24 h (champs.js, étape 7)
+      // ne l'annonce qu'une fois l'heure tapée, et au propre.
       document.addEventListener('change', e => {
         const el = e.target; if (!el.dataset || !el.dataset.atChamp) return;
         const lieu = ou(el); if (!lieu) return;
-        if (e.isTrusted && el.matches('input[type=time]')) {
-          if (enAttente && enAttente.el !== el) valider();
-          enAttente = { el, id: lieu.id }; return;
-        }
         this.saisir(el.dataset.atChamp, lieu.id, el);
-      });
-      // Après le focus du champ suivant : le rendu le retrouve et le lui rend.
-      document.addEventListener('focusout', e => { if (enAttente && e.target === enAttente.el) setTimeout(valider, 0); });
-      document.addEventListener('keydown', e => {
-        if (e.key === 'Enter' && enAttente && e.target === enAttente.el) { e.preventDefault(); valider(); }
       });
     }
 
@@ -1262,7 +1263,7 @@
           case 'pause-de': a.pauses[+el.dataset.index].de = v; break;
           case 'pause-a':  a.pauses[+el.dataset.index].a = v; break;
         }
-      }, 'Enregistré.');
+      }, 'Enregistré.', el);
       // Refusé : le champ reprend la valeur enregistrée. Le rendu, identique, ne
       // le redessinerait pas, et l'écran montrerait ce qui n'est pas retenu.
       if (!ok && el && el.isConnected) {
@@ -1736,8 +1737,8 @@
 
       const pauses = a.pauses.map((p, i) => `
         <div class="at-pause">
-          <input type="time" value="${esc(p.de)}" data-at-champ="pause-de" data-index="${i}" aria-label="Début de pause">
-          <input type="time" value="${esc(p.a)}" data-at-champ="pause-a" data-index="${i}" aria-label="Fin de pause">
+          <input ${HEURE} value="${esc(p.de)}" data-at-champ="pause-de" data-index="${i}" aria-label="Début de pause">
+          <input ${HEURE} value="${esc(p.a)}" data-at-champ="pause-a" data-index="${i}" aria-label="Fin de pause">
           <button class="btn btn-sm" data-at-action="pause-retirer" data-index="${i}">Retirer</button>
         </div>`).join('');
 
@@ -1753,7 +1754,7 @@
             <option value="handling" ${handling ? 'selected' : ''}>Handling (par vol)</option>
             <option value="appui" ${a.type === 'appui' ? 'selected' : ''}>Hors tunnel, hors flux (ne fait rien attendre)</option></select></label>`}
           ${dispo || o.compact ? '' : `
-          <label>Arrive à<input type="time" value="${esc(a.debut)}" data-at-champ="debut"></label>
+          <label>Arrive à<input ${HEURE} value="${esc(a.debut)}" data-at-champ="debut"></label>
           ${handling ? `<label>Jour<input value="Jour J des vols" disabled title="Le handling travaille le jour des vols, jamais la veille"></label>`
             : a.type === 'lavage' || (a.type === 'appui' && this.serviceLave(a.service)) ? `<label title="La plonge lave ce qui revient : son jour se compte depuis l’arrivée des retours, pas depuis le départ des vols">Jour<select data-at-champ="jour">${JOURS_PLONGE.map(([j, n]) => `<option value="${j}" ${j === (a.jour || 0) ? 'selected' : ''}>${n}</option>`).join('')}</select></label>`
             : `<label>Jour<select data-at-champ="jour">${[0, -1, -2, -3].map(j => `<option value="${j}" ${j === a.jour ? 'selected' : ''}>${j === 0 ? 'Jour du départ' : 'J' + j}</option>`).join('')}</select></label>`}
@@ -1777,14 +1778,14 @@
               <option value="vagues" ${mode === 'vagues' ? 'selected' : ''}>À heures fixes (vagues)</option></select></label>
             ${this.champPersonnesJournee(a)}
             ${mode === 'boutique' ? `<div class="at-pause at-ouverture">
-              <label>Ouvre à<input type="time" value="${esc(a.ouverture.de)}" data-at-champ="ouverture-de"></label>
-              <label>Ferme à<input type="time" value="${esc(a.ouverture.a)}" data-at-champ="ouverture-a"></label>
+              <label>Ouvre à<input ${HEURE} value="${esc(a.ouverture.de)}" data-at-champ="ouverture-de"></label>
+              <label>Ferme à<input ${HEURE} value="${esc(a.ouverture.a)}" data-at-champ="ouverture-a"></label>
               <span class="mini-note">Chaque jour (J-1, J…). Ouvert : on est servi tout de suite. Fermé : l’étape d’après attend l’ouverture.</span></div>` : ''}
             ${mode === 'vagues' ? '<p class="mini-note">Chaque commande prend la vague qui précède son besoin ; avant la première, on l’attend.</p>' : ''}`; })()}
           ${a.permanent === false ? `<div class="at-sous-titre">Vagues</div>
           ${a.vagues.map((v, i) => `<div class="at-pause at-vague">
             <b>${i + 1}.</b>
-            <label>À<input type="time" value="${esc(v.debut)}" data-at-champ="vague-debut" data-index="${i}"></label>
+            <label>À<input ${HEURE} value="${esc(v.debut)}" data-at-champ="vague-debut" data-index="${i}"></label>
             <label>Jour<select data-at-champ="vague-jour" data-index="${i}">${[0, -1, -2, -3].map(j => `<option value="${j}" ${j === (v.jour || 0) ? 'selected' : ''}>${j === 0 ? 'Jour du départ' : 'J' + j}</option>`).join('')}</select></label>
             <span class="mini-note">${esc(this.servisParVague(a.id, i))}</span>
             ${a.vagues.length > 1 ? `<button class="btn btn-sm" data-at-action="vague-retirer" data-index="${i}">Retirer</button>` : ''}
@@ -1942,8 +1943,8 @@
 
         <div class="at-sous-titre">Chauffeurs présents, par créneau (jour J)</div>
         ${creneaux.length ? creneaux.map((c, i) => `<div class="at-pause at-creneau">
-            <label>De<input type="time" value="${esc(c.de)}" data-at-champ="creneau-de" data-index="${i}"></label>
-            <label>À<input type="time" value="${esc(c.a)}" data-at-champ="creneau-a" data-index="${i}"></label>
+            <label>De<input ${HEURE} value="${esc(c.de)}" data-at-champ="creneau-de" data-index="${i}"></label>
+            <label>À<input ${HEURE} value="${esc(c.a)}" data-at-champ="creneau-a" data-index="${i}"></label>
             <label><input type="number" min="0" max="200" value="${c.n}" data-at-champ="creneau-n" data-index="${i}" aria-label="Chauffeurs de ce créneau"> chauffeurs</label>
             <button class="btn btn-sm" data-at-action="creneau-retirer" data-index="${i}">Retirer</button></div>`).join('')
           + `<p class="mini-note at-regle">Jusqu’à <b>${maxi}</b> chauffeurs en même temps. Deux créneaux qui se chevauchent s’additionnent ;
@@ -2105,8 +2106,8 @@
         <label class="chk chk-mini"><input type="checkbox" data-at-champ="ligne-propre" ${a.lignePropre ? 'checked' : ''}> Un second robot : sa propre ligne</label>
         ${arrets.map((x, i) => `<div class="at-pause">
           <span class="mini-note">Arrêt de la ligne</span>
-          <input type="time" value="${esc(x.de)}" data-at-champ="arret-ligne-de" data-index="${i}" aria-label="Début de l’arrêt ${i + 1} de la ligne">
-          <input type="time" value="${esc(x.a)}" data-at-champ="arret-ligne-a" data-index="${i}" aria-label="Fin de l’arrêt ${i + 1} de la ligne">
+          <input ${HEURE} value="${esc(x.de)}" data-at-champ="arret-ligne-de" data-index="${i}" aria-label="Début de l’arrêt ${i + 1} de la ligne">
+          <input ${HEURE} value="${esc(x.a)}" data-at-champ="arret-ligne-a" data-index="${i}" aria-label="Fin de l’arrêt ${i + 1} de la ligne">
           <button class="btn btn-sm" data-at-action="arret-ligne-retirer" data-index="${i}">Retirer</button></div>`).join('')}
         <div class="at-actions-lot"><button class="btn btn-sm" data-at-action="arret-ligne-ajouter">+ Arrêt de la ligne</button>
           <span class="mini-note">chaque jour, pour toutes les équipes de la ligne (ex. 12:15–13:00)</span></div>
@@ -2258,13 +2259,13 @@
         const vue = calc.get(a.id) || { lots: [] };
         if (a.type === 'dispo') {
           if (a.permanent !== false && a.ouverture) return `<span class="rc-vagues"><span class="rc-vague">de
-            <input type="time" value="${esc(a.ouverture.de)}" data-at-champ="ouverture-de" aria-label="Heure d’ouverture de ${esc(a.nom)}"> à
-            <input type="time" value="${esc(a.ouverture.a)}" data-at-champ="ouverture-a" aria-label="Heure de fermeture de ${esc(a.nom)}"></span></span>
+            <input ${HEURE} value="${esc(a.ouverture.de)}" data-at-champ="ouverture-de" aria-label="Heure d’ouverture de ${esc(a.nom)}"> à
+            <input ${HEURE} value="${esc(a.ouverture.a)}" data-at-champ="ouverture-a" aria-label="Heure de fermeture de ${esc(a.nom)}"></span></span>
             <span class="mini-note">chaque jour, comme une boutique : ouvert, on est servi ; fermé, on attend l’ouverture</span>`;
           if (a.permanent !== false) return '<span class="mini-note">sert toutes les commandes, à tout moment</span>';
           return `<span class="rc-vagues">${(a.vagues || []).map((v, i) => `<span class="rc-vague"><b>${i + 1}</b>
             ${jours(v.jour, `data-at-champ="vague-jour" data-index="${i}" aria-label="Jour de la vague ${i + 1}"`)}
-            <input type="time" value="${esc(v.debut)}" data-at-champ="vague-debut" data-index="${i}" aria-label="Heure de la vague ${i + 1}"></span>`).join('')}</span>
+            <input ${HEURE} value="${esc(v.debut)}" data-at-champ="vague-debut" data-index="${i}" aria-label="Heure de la vague ${i + 1}"></span>`).join('')}</span>
             <span class="mini-note">sert toutes les commandes, chacune à la vague qui précède son besoin</span>`;
         }
         if (a.type === 'lavage') {
@@ -2300,7 +2301,7 @@
         return `<td class="rc-jour">${jourFixe ? '<span title="Le handling travaille le jour J des vols">J</span>'
           : a.type === 'lavage' ? jours(a.jour, `data-at-champ="jour" aria-label="Jour de travail de ${esc(a.nom)}, compté depuis l’arrivée des retours" title="Compté depuis l’arrivée des retours (J)"`, true)
           : jours(a.jour, `data-at-champ="jour" aria-label="Jour de départ de ${esc(a.nom)}"`)}</td>
-          <td class="rc-heure"><input type="time" value="${esc(a.debut)}" data-at-champ="debut" aria-label="Heure de départ de ${esc(a.nom)}"></td>`;
+          <td class="rc-heure"><input ${HEURE} value="${esc(a.debut)}" data-at-champ="debut" aria-label="Heure de départ de ${esc(a.nom)}"></td>`;
       };
       let service = null;
       const lignes = cases.map(a => {

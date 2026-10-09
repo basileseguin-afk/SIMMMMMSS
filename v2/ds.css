@@ -183,6 +183,12 @@ input:disabled,select:disabled,textarea:disabled{background-color:var(--ds-surfa
 input::placeholder,textarea::placeholder{color:var(--ds-texte-4)}
 input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--ds-accent)}
 input[aria-invalid="true"],select[aria-invalid="true"]{border-color:var(--ds-retard) !important;box-shadow:0 0 0 3px var(--ds-retard-doux)}
+/* Le refus d'une saisie se lit sous son champ (champs.js, étape 7), plus dans une notification. */
+/* Dans une rangée de champs, il se range sous la rangée entière : la rangée ne se coupe pas. */
+.champ-erreur{display:block;flex:0 0 100%;order:99;grid-column:1/-1;width:100%;margin:4px 0 0;color:var(--ds-retard-texte);font-size:var(--ds-t-12);
+  font-weight:var(--ds-g-normal);line-height:1.4;white-space:normal;text-align:left}
+/* L'heure en 24 h : « 04:30 », cinq chiffres alignés. */
+input[data-heure]{font-variant-numeric:tabular-nums;width:6.5em}
 label{color:inherit}
 
 /* Les pictogrammes qui remplacent les caractères (⛓ ⚠ ✓ ⇄ ⇩ ⇧ ↶ ▶…) : à la

@@ -5,6 +5,43 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-09 — Refonte, étape 7 (1/2) : l'heure en 24 h, le refus sous le champ
+
+Toujours sans rien changer aux données ni au calcul (`donnees-intactes-browser`) :
+une heure s'enregistre « HH:MM », comme avant, et rien d'autre ne bouge.
+
+- **L'heure en 24 h** (audit, point 10 : le champ natif s'affichait
+  « 04:00 AM » selon la langue du navigateur). Les 17 champs d'heure — arrivée
+  d'une équipe, pauses, ouverture, vagues, créneaux, arrêts de la ligne robot,
+  arrivées de la planche retour — deviennent un champ texte : on tape
+  « 0430 », « 430 », « 4:30 », « 4h30 » ou « 4 », il écrit « 04:30 ». Au
+  focus, tout est choisi : on retape par-dessus ; le clic suivant pose le
+  curseur. Rien ne s'enregistre pendant la frappe : Entrée, ou la sortie du
+  champ. ↑↓ avancent d'un quart d'heure, Maj+↑↓ d'une heure.
+- **Le refus se lit sous le champ**, plus dans une notification : une heure
+  impossible (« 2500 », un champ vidé), un nom d'équipe vide ou déjà pris
+  dans son service, un nom de service vide ou déjà pris, un flux sans nom. Le
+  champ prend une bordure, la raison s'écrit dessous — sous sa rangée, qui ne
+  se coupe pas — et lui est liée pour un lecteur d'écran ; le champ reprend
+  la valeur gardée ; retaper efface le message. Les autres refus (un import)
+  restent des notifications.
+- **Les nombres** : ↑↓ font ±1 comme avant ; **Maj+↑↓ font dix pas**, dans les
+  bornes du champ.
+- L'enregistrement différé des heures (ateliers.js), qui attendait la sortie
+  d'un champ natif annonçant « change » dès le premier chiffre, n'a plus lieu
+  d'être : le champ en 24 h ne l'annonce qu'une fois l'heure tapée.
+- Fichiers : `champs.js` (nouveau : l'heure, les flèches, le refus),
+  `ateliers.js`, `unite.js`, `sim.js` (les champs, `refuserAuChamp`), `index.html`,
+  `ds.css`, `ateliers.css`, `histoire.css` ; v1 et v2.
+- Tests : `champs.test.cjs` (ce qu'on tape → « HH:MM », les refus, les
+  flèches) et `champs-browser` (navigateur en anglais : ni AM ni PM ; frappe,
+  refus sous le champ, flèches, noms refusés), neufs ; `mon-unite-browser`
+  tape son heure en 24 h (« 1415 », au lieu de « 0215 » puis « P » pour PM) ;
+  `saisie-heure`, `saisie`, `effectif`, `nom-equipe`, `services`, `ateliers`,
+  `recap-cases`, `robot-ligne`, `boutique`, `handling`, `planche`, `annexe`,
+  `cf-depart`, `coherence`, `liaisons`, `condition`, `parallele`,
+  `donnees-intactes` : verts sans changement.
+
 ## 2026-10-09 — Refonte, étape 6 : les chemins, même grammaire que le plan
 
 Toujours sans rien changer aux données ni au calcul (`donnees-intactes-browser`) :

@@ -21,6 +21,9 @@
   const P = root.MoteurProduction, PC = root.OrlyParcours;
   /** Un pictogramme de icones.js (deux maillons, une alerte, une coche…), au lieu d'un caractère. */
   const pic = (nom, classe) => (root.OrlyIcones ? root.OrlyIcones.ico(nom, classe) : '');
+  /** Une heure en 24 h (champs.js, étape 7) : un champ texte, plus le champ natif
+   *  qui s'affichait « 04:00 AM » selon la langue du navigateur. */
+  const HEURE = 'type="text" data-heure inputmode="numeric" maxlength="8" placeholder="hh:mm" autocomplete="off" spellcheck="false"';
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const pl = (n, s, p) => n + ' ' + (n > 1 ? (p || s + 's') : s);
@@ -114,6 +117,12 @@
       if (p === 'mu-pas') this.rendrePas();
       if (p === 'mu-flux') this.rendreFlux();
       if (p === 'mu-carte') this.rendreCarte();
+    }
+
+    /** Un refus de saisie se lit sous son champ, tel qu'il est à l'écran (étape 7) ; sans lui, en notification. */
+    refuserAuChamp(el, raison) {
+      const C = root.OrlyChamps, ici = C && C.retrouver(el);
+      if (ici) C.refuser(ici, raison); else this.a.notify(raison);
     }
 
     /* Remplacer le HTML sans perdre le champ où l'on est, ni le défilement. */
@@ -458,7 +467,7 @@
         ${badges ? `<p class="mu-badges">${badges}</p>` : ''}
         <div class="mu-equipe-tete">
           <label class="mu-eq-nom">Équipe<input value="${esc(a.nom)}" data-at-champ="nom" maxlength="160"></label>
-          <label>Arrive à<input type="time" value="${esc(a.debut)}" data-at-champ="debut"></label>
+          <label>Arrive à<input ${HEURE} value="${esc(a.debut)}" data-at-champ="debut"></label>
           <label>Le<select data-at-champ="jour">${jours}</select></label>
           ${this.at.champPersonnes(a, 'mu-eq-pers')}
           ${this.at.choixEffectifEquipe(a, 'mu-eq-eff')}
@@ -498,7 +507,7 @@
         <div class="mu-equipe-tete">
           <label class="mu-eq-nom">Atelier<input value="${esc(a.nom)}" data-at-champ="nom" maxlength="160"></label>
           <label class="mu-eq-pers">Personnes<input type="number" min="0" max="999" value="${a.personnes}" data-at-champ="personnes"></label>
-          <label>Arrive à<input type="time" value="${esc(a.debut)}" data-at-champ="debut"></label>
+          <label>Arrive à<input ${HEURE} value="${esc(a.debut)}" data-at-champ="debut"></label>
           <label>Le<select data-at-champ="jour">${jours}</select></label>
           <span class="mu-eq-fin">${fin ? 'dernière commande à ' + esc(fin) : ''}</span>
         </div>
@@ -1341,7 +1350,8 @@
           const s = el.value, o = this.options();
           this.changerFlux(x => { PC.insererService(st, x, s, o); }, this.nom(s) + ' entre dans « ' + t.nom + ' », à sa place ; ajustez les flèches si besoin.');
         } else if (el.dataset.muFluxNom && t) {
-          const v = el.value.trim(); if (!v) { this.rendreFlux(); return; }
+          const v = el.value.trim();
+          if (!v) { const garde = el.defaultValue; el.value = garde; this.rendreFlux(); this.refuserAuChamp(el, 'Un flux a besoin d’un nom : il garde « ' + garde + ' ».'); return; }
           this.changerFlux(x => { x.nom = v.slice(0, 76); delete x.auto; }, 'Flux renommé.');
         }
       });
@@ -1392,7 +1402,8 @@
         }
         else if (el.dataset.muNom) {
           const v = el.value.trim();
-          if (!v) { this.a.notify('Le nom ne peut pas être vide.'); setTimeout(() => this.rendreServices(), 0); return; }
+          // Vide : refusé ; le champ reprend le nom gardé, et la raison se lit sous lui (étape 7).
+          if (!v) { const garde = el.defaultValue; el.value = garde; setTimeout(() => { this.rendreServices(); this.refuserAuChamp(el, 'Un service a besoin d’un nom : il garde « ' + garde + ' ».'); }, 0); return; }
           const svc = el.dataset.muNom;
           setTimeout(() => { this.a.renommer(svc, v); this.rendreServices(); }, 0);
         }
@@ -1410,7 +1421,7 @@
         const f = e.target.closest && e.target.closest('[data-mu-nouveau]'); if (!f) return;
         e.preventDefault();
         const nom = f.elements.nom.value.trim(); if (!nom) return;
-        if (this.a.services().some(x => x.nom.toLowerCase() === nom.toLowerCase())) { this.a.notify('« ' + nom + ' » existe déjà.'); return; }
+        if (this.a.services().some(x => x.nom.toLowerCase() === nom.toLowerCase())) { this.refuserAuChamp(f.elements.nom, '« ' + nom + ' » existe déjà : choisissez un autre nom.'); return; }
         const id = this.a.creer(nom, f.elements.parent.value, !f.elements.genre || f.elements.genre.value !== 'salle');
         if (id) { this.a.notify('Service « ' + nom + ' » créé : dites ce qu’il fait, puis ajoutez ses équipes.'); this.ouvrir(id); }
       });

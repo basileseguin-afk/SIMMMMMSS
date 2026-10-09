@@ -62,10 +62,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok((await chemin('TX/YC')).services.includes('prepa'));
   assert.equal(await page.locator('.mu-q').count(),0);
 
-  // 5. L'heure (tapée, champ à champ) et les personnes, dans la ligne de l'équipe.
+  // 5. L'heure (tapée en 24 h, chiffre à chiffre : plus de « PM ») et les personnes, dans la ligne de l'équipe.
   const heure=page.locator(`.mu-equipe[data-at="${e1}"] input[data-at-champ=debut]`);
-  await heure.click({position:{x:10,y:10}});await page.waitForTimeout(120);   // la case des heures
-  for(const k of '0215P'){await page.keyboard.press(k);await page.waitForTimeout(80);}
+  await heure.click({position:{x:10,y:10}});await page.waitForTimeout(120);
+  for(const k of '1415'){await page.keyboard.press(k);await page.waitForTimeout(80);}
   await heure.press('Tab');await attendre();
   const pers=page.locator(`.mu-equipe[data-at="${e1}"] input[data-at-champ=personnes]`);
   await pers.fill('6');await pers.press('Tab');await attendre();

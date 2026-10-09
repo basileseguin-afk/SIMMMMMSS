@@ -552,9 +552,16 @@ function suivreNomsServices(){
     if(a)a.nom=OrlyParcours.nomLibre({ateliers:Sim.ateliers.state.ateliers.filter(x=>x!==a)},n);}},
     touchees.length+(touchees.length>1?' cases suivent':' case suit')+' le nouveau nom de leur service.');
 }
-function renommerService(id,valeur){
+/* Un refus de saisie se lit sous son champ, tel qu'il est à l'écran (étape 7) ; sans lui, en notification. */
+function refuserAuChamp(el,raison){const C=window.OrlyChamps,ici=C&&el?C.retrouver(el):null;if(ici)C.refuser(ici,raison);else toast(raison);}
+function renommerService(id,valeur,champ){
   const v=String(valeur||'').trim();
-  if(!v||!Sim.editor){renderServices();toast('Le nom ne peut pas être vide.');return;}
+  if(!v||!Sim.editor){
+    // Vide : refusé ; le champ reprend le nom gardé, et la raison se lit sous lui.
+    const garde=champ?champ.defaultValue:'';renderServices();
+    if(champ){if(champ.isConnected)champ.value=garde;refuserAuChamp(champ,'Un service a besoin d’un nom : il garde « '+garde+' ».');}
+    else toast('Le nom ne peut pas être vide.');
+    return;}
   Sim.editor.change(()=>{const z=Sim.editor.state.zones.find(x=>x.id===id);if(z)z.nom=v;},'Nom enregistré.');
   toast('Service renommé : '+v+'.');
   renderServices();
@@ -564,13 +571,13 @@ function initServices(){
   const box=document.createElement('section');
   box.id='services-unite';box.className='services-unite';box.dataset.sous='u-services';box.setAttribute('aria-label','Les services de l’unité');
   vue.appendChild(box);
-  box.addEventListener('change',e=>{const i=e.target.closest('[data-svc-nom]');if(i)renommerService(i.dataset.svcNom,i.value);});
+  box.addEventListener('change',e=>{const i=e.target.closest('[data-svc-nom]');if(i)renommerService(i.dataset.svcNom,i.value,i);});
   box.addEventListener('keydown',e=>{const i=e.target.closest('[data-svc-nom]');if(i&&e.key==='Enter'){e.preventDefault();i.blur();}});
   box.addEventListener('input',e=>{if(e.target.closest('[data-svc-chercher]'))filtrerServices(box);});
   box.addEventListener('submit',e=>{
     const f=e.target.closest('[data-svc-nouveau]');if(!f)return;e.preventDefault();
-    const nom=f.elements.nom.value.trim();if(!nom){toast('Donnez un nom au service.');return;}
-    if(servicesDisponibles().some(x=>x.nom.toLowerCase()===nomLisible(nom).toLowerCase())){toast('« '+nom+' » existe déjà.');return;}
+    const nom=f.elements.nom.value.trim();if(!nom){refuserAuChamp(f.elements.nom,'Donnez un nom au service.');return;}
+    if(servicesDisponibles().some(x=>x.nom.toLowerCase()===nomLisible(nom).toLowerCase())){refuserAuChamp(f.elements.nom,'« '+nom+' » existe déjà : choisissez un autre nom.');return;}
     const id=Sim.editor.nouveauService(nom,f.elements.parent.value,!f.elements.parent.value);
     if(id){toast('Service « '+nom+' » créé : il apparaît dans les chemins, les cases et le barème.');renderServices();
       const i=box.querySelector('[data-svc-nom="'+CSS.escape(id)+'"]');if(i)i.closest('tr').classList.add('svc-nouveau-ligne');}
@@ -776,7 +783,7 @@ function renderPlanche(){
   const lignes=planche.map((l,i)=>'<tr data-index="'+i+'">'
     +'<td><input data-pl-champ="vol" value="'+escapeHTML(l.vol||'')+'" maxlength="40" aria-label="Vol, ligne '+(i+1)+'"></td>'
     +'<td><input data-pl-champ="cie" value="'+escapeHTML(l.cie||'')+'" maxlength="40" aria-label="Compagnie, ligne '+(i+1)+'"></td>'
-    +'<td><input type="time" data-pl-champ="heure" value="'+escapeHTML(l.heure)+'" aria-label="Arrivée à l’unité, ligne '+(i+1)+'"></td>'
+    +'<td><input type="text" data-heure inputmode="numeric" maxlength="8" placeholder="hh:mm" autocomplete="off" spellcheck="false" data-pl-champ="heure" value="'+escapeHTML(l.heure)+'" aria-label="Arrivée à l’unité, ligne '+(i+1)+'"></td>'
     +'<td><select data-pl-champ="jour" aria-label="Jour, ligne '+(i+1)+'">'+jours(l.jour)+'</select></td>'
     +CLASSES_PLANCHE.map(([k,c])=>'<td><input type="number" min="0" data-pl-champ="'+k+'" value="'+(l[k]??'')+'" placeholder="—" aria-label="'+c+', ligne '+(i+1)+'"></td>').join('')
     +'<td><button class="lien-discret" data-pl-action="retirer" aria-label="Retirer la ligne '+(i+1)+'">'+pic('croix')+'</button></td></tr>').join('');

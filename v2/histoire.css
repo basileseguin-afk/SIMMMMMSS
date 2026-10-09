@@ -471,3 +471,4 @@ body:not([data-vue="flux"]) .services-unite{display:none}
 .planche-table input,.planche-table select{font:inherit;padding:4px 6px;border:1px solid var(--bordure);border-radius:6px;background:var(--bg3);width:auto}
 .planche-table input[data-pl-champ=vol],.planche-table input[data-pl-champ=cie]{width:90px}
 .planche-table input[type=number]{width:62px}
+.planche-table input[data-heure]{width:6.5em}

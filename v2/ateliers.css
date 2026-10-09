@@ -61,7 +61,7 @@ body.ateliers-open .workbench{display:none}
   border-radius:20px;padding:3px 10px;font:600 12px inherit;cursor:pointer}
 .at-chip:hover{background:var(--accent);color:var(--on-accent)}
 
-.at-pause{display:flex;gap:8px;align-items:center;margin:0 14px 8px}
+.at-pause{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 14px 8px}
 .at-pause input{max-width:130px}
 .at-actions-lot{display:flex;gap:8px;flex-wrap:wrap;padding:0 14px 12px}
 .at-bas{border-top:1px solid var(--bordure);padding-top:12px}
@@ -333,10 +333,10 @@ body.ateliers-open .workbench{display:none}
 .rc-case th small{display:block;font-weight:var(--ds-g-normal);color:var(--txt2);font-size:var(--ds-t-11)}
 .rc-case th .lien-discret{font-weight:var(--ds-g-fort);text-align:left}
 .rc-case:hover td,.rc-case:hover th{background:color-mix(in srgb,var(--accent) 5%,var(--bg3))}
-.rc-table input[type=time]{border:1px solid transparent;background:transparent;border-radius:6px;font:inherit;padding:3px 4px}
+.rc-table input[data-heure]{border:1px solid transparent;background:transparent;border-radius:6px;font:inherit;padding:3px 4px}
 .rc-table select{border:1px solid transparent;background:transparent;border-radius:6px;font:inherit;padding:3px 2px}
-.rc-table input[type=time]:hover,.rc-table select:hover{border-color:var(--bordure)}
-.rc-table input[type=time]:focus,.rc-table select:focus{border-color:var(--accent);background:var(--bg3);outline:none}
+.rc-table input[data-heure]:hover,.rc-table select:hover{border-color:var(--bordure)}
+.rc-table input[data-heure]:focus,.rc-table select:focus{border-color:var(--accent);background:var(--bg3);outline:none}
 .rc-heure input{font-weight:var(--ds-g-fort)}
 .rc-fin-h{color:var(--txt2);white-space:nowrap}
 .rc-deroule{display:inline-block;font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);padding:2px 8px;border-radius:999px;border:1px solid var(--bordure);white-space:nowrap}
@@ -358,11 +358,11 @@ body.ateliers-open .workbench{display:none}
 .rc-quand{font-size:var(--ds-t-11);color:var(--txt2);white-space:nowrap}
 .rc-quand.ko{color:var(--ds-retard-texte)}
 .rc-vagues{display:inline-flex;flex-wrap:wrap;gap:6px;margin-right:8px}
-.rc-vague{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--bordure);border-radius:8px;padding:1px 4px}
+.rc-vague{display:inline-flex;flex-wrap:wrap;align-items:center;gap:2px;border:1px solid var(--bordure);border-radius:8px;padding:1px 4px}
 #view-ateliers .rc-table select{width:auto;min-width:64px;padding:3px 4px;border-color:transparent;background:transparent}
-#view-ateliers .rc-table input[type=time]{width:auto;min-width:96px;padding:3px 4px;border-color:transparent;background:transparent}
-#view-ateliers .rc-table select:hover,#view-ateliers .rc-table input[type=time]:hover{border-color:var(--bordure)}
-#view-ateliers .rc-table select:focus,#view-ateliers .rc-table input[type=time]:focus{border-color:var(--accent);background:var(--bg3)}
+#view-ateliers .rc-table input[data-heure]{width:6.5em;min-width:0;padding:3px 4px;border-color:transparent;background:transparent}
+#view-ateliers .rc-table select:hover,#view-ateliers .rc-table input[data-heure]:hover{border-color:var(--bordure)}
+#view-ateliers .rc-table select:focus,#view-ateliers .rc-table input[data-heure]:focus{border-color:var(--accent);background:var(--bg3)}
 #view-ateliers .rc-cherche input{width:220px}
 #view-ateliers .rc-table select.rc-mode{min-width:170px;border-color:var(--bordure);background:var(--bg3);font-weight:var(--ds-g-fort)}
 
@@ -393,7 +393,7 @@ body.ateliers-open .workbench{display:none}
 .pc-cmds-ajout .at-ajout-cabs{grid-column:auto}
 .pc-cmds-ajout .at-ajout-ouvrir{width:100%}
 .at-creneau{flex-wrap:wrap}
-#view-ateliers .at-creneau input[type=time]{width:auto;min-width:0}
+#view-ateliers .at-creneau input[data-heure]{width:6.5em;min-width:0}
 .at-vitesse{display:inline-flex;align-items:center;gap:3px;font-weight:var(--ds-g-fort);color:var(--txt2)}
 #view-ateliers .at-vitesse input{width:58px;min-width:0}
 
