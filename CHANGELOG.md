@@ -5,6 +5,42 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-09 — Refonte, étape 9 (2/2) : le planning, la frise des vols et les stocks
+
+Toujours sans rien changer aux données ni au calcul (`donnees-intactes-browser`) :
+chaque barre est celle d'avant, à l'heure de son lot (un test le vérifie
+lot par lot) ; seuls la couleur, l'étiquette et le survol changent.
+
+- **La palette des données** (REFONTE_UX §7) : dans le planning, l'équipe
+  prépare en bleu, le robot en violet, la chaîne en rose — les couleurs des
+  données, plus l'accent des boutons ; l'attente et le blocage gardent leurs
+  couleurs d'état. Une ligne sur deux est teintée, pour suivre une équipe
+  jusqu'au bout de sa journée. La frise des vols et les stocks y étaient déjà.
+- **L'étiquette dans la barre quand elle y tient** : la commande en clair
+  (« AF · Business »), sinon son code (« AF/BC »), sinon rien. Blanc sur la
+  couleur en clair, presque noir en sombre.
+- **Une infobulle tout de suite au survol** (`ds.js`, nouveau, v1 = v2) : la
+  barre dit sa commande, ses heures, son attente et sa chaîne ; l'avion de la
+  frise, son vol, son départ et son état ; le nom d'une équipe, son nom entier.
+  Le `<title>` natif, qui venait une seconde après sans mise en forme, est
+  retiré. Sur chaque petite courbe des stocks, la bulle dit ce qui est en
+  stock à l'heure survolée.
+- **Le trait « maintenant »** : dès que la journée est rejouée ou le curseur
+  déplacé, le planning, la frise des vols et les deux graphiques de la plonge
+  marquent l'heure rejouée d'un trait, l'heure écrite au bout (les petites
+  courbes, le trait seul). Il suit la lecture ; le repère d'axe qu'il
+  chevauche s'efface ; au début de la journée, il s'en va. Une légende le dit
+  quand il est là.
+- Fichiers : `ds.js` (neuf), `ateliers.js` (`rendrePlanning`), `sim.js` (la
+  frise, et le rejeu qui pose le trait), `temps.js`, `ds.css` (jeton
+  `--ds-sur-donnee`, infobulle, trait), `ateliers.css`, `temps.css`,
+  `index.html` ; v1 et v2.
+- Tests : `graphiques-browser` (neuf : palette, barres à leur place,
+  étiquettes qui tiennent, bulle, trait sur les trois pages, courbe de stock)
+  et `ds.test` (neuf) ; `ateliers`, `fusion`, `lisibilite`, `menu`, `temps`,
+  `rejeu`, `browser-smoke`, `donnees-intactes`, `etat-plan`, `synthese`,
+  `armement-vols`, `handling` : verts sans changement.
+
 ## 2026-10-09 — Refonte, étape 9 (1/2) : la synthèse hiérarchisée, les écarts de la comparaison
 
 Toujours sans rien changer aux données ni au calcul (`donnees-intactes-browser`) :

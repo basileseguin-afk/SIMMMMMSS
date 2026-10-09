@@ -31,8 +31,9 @@
 .tp-ligne{fill:none;stroke:var(--serie);stroke-width:2}
 .tp-pic{fill:var(--serie);stroke:var(--bg3);stroke-width:2}
 .tp-curseur{stroke:var(--txt2);stroke-width:1;stroke-dasharray:3 3}
-.tp-bulle{position:absolute;z-index:5;pointer-events:none;max-width:260px;padding:6px 9px;border-radius:8px;
-  background:var(--txt);color:var(--bg3);font-size:var(--ds-t-13);box-shadow:var(--ds-ombre-flottant)}
+/* La bulle a l'allure de l'infobulle des graphiques (ds.css) ; elle se place dans l'onglet. */
+.tp-bulle{position:absolute;z-index:5}
+.tp-spark{cursor:crosshair}
 .tp-scroll{overflow-x:auto}
 .tp-table{border-collapse:collapse;width:100%;font-size:var(--ds-t-14)}
 .tp-table th,.tp-table td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--bordure);vertical-align:middle}

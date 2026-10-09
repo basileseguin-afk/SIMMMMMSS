@@ -1657,7 +1657,10 @@ function peindreStock(id, texte, sale) {
   st.t.setAttribute('x', b.x + b.w - w + 24); st.t.setAttribute('y', y + 49);
 }
 function peindreInstant(i) {
-  document.body.classList.toggle('en-lecture', Sim.vue ? Sim.vue.t > Sim.vue.debut : false);
+  const enLecture = Sim.vue ? Sim.vue.t > Sim.vue.debut : false;
+  document.body.classList.toggle('en-lecture', enLecture);
+  // Le planning, la frise et les stocks marquent l'heure rejouée d'un trait.
+  if (window.OrlyDS) OrlyDS.maintenant(enLecture ? i.t : null);
   const r = Sim.ateliers && Sim.ateliers.resultat;
   if (window.OrlyTemps && r) for (const s of servicesDisponibles()) {
     const n = OrlyTemps.enStockA(r, s.id, i.t);
@@ -2364,18 +2367,21 @@ function renderFriseVols(tous, etatDe, mot, icoEtat) {
     + compteur('tard', 'late', n.late, (n.late > 1 ? 'vols prêts' : 'vol prêt') + ' en retard', 'sablier')
     + compteur('sans', 'pending', n.sans, (n.sans > 1 ? 'vols pas prêts' : 'vol pas prêt') + ' ou sans équipe', 'chrono')
     + (filtre !== 'all' ? '<button class="vf-tout" data-vf-filtre="all">Tout voir</button>' : '') + '</div>'
-    + '<svg class="vf-svg" viewBox="0 0 ' + L + ' ' + H + '" role="img" aria-label="Les départs de la journée, par heure et par état">'
+    // L'axe du temps est déclaré : le trait « maintenant » s'y pose, l'heure dessous (ds.js).
+    + '<svg class="vf-svg ds-graphique" viewBox="0 0 ' + L + ' ' + H + '" role="img" aria-label="Les départs de la journée, par heure et par état"'
+    + ' data-axe="' + t0 + ' ' + t1 + ' ' + x(t0) + ' ' + x(t1) + ' 10 ' + (H - 17) + '" data-axe-etiquette="bas">'
     + heures.map((h, i) => '<line class="vf-grille" x1="' + x(h) + '" y1="14" x2="' + x(h) + '" y2="' + (H - 18) + '"/>'
-        + (i % pas ? '' : '<text class="vf-heure" x="' + x(h) + '" y="' + (H - 4) + '" text-anchor="middle">' + hh(h) + '</text>')).join('')
+        + (i % pas ? '' : '<text class="vf-heure ds-axe-heure" x="' + x(h) + '" y="' + (H - 4) + '" text-anchor="middle">' + hh(h) + '</text>')).join('')
     + points.map(p => {
         const y = 16 + p.c * 32;
-        return '<g class="vf-vol vf-' + p.e + '" transform="translate(' + (x(p.d.depart) - 11) + ',' + y + ')">'
-          + '<title>' + escapeHTML(p.d.id + ' · départ ' + hh(p.d.depart) + ' · ' + mot[p.e]) + '</title>'
+        return '<g class="vf-vol vf-' + p.e + '" transform="translate(' + (x(p.d.depart) - 11) + ',' + y + ')"'
+          + ' data-info="' + escapeHTML(p.d.id + ' · départ ' + hh(p.d.depart) + '\n' + mot[p.e]) + '">'
           + '<circle cx="11" cy="11" r="14"/>'
           + (I ? '<g class="vf-avion">' + I.TRAITS.avion + '</g>' : '')
           + '<text x="30" y="15">' + escapeHTML(p.d.id) + '</text></g>';
       }).join('')
-    + '</svg>';
+    + '</svg><p class="mini-note ds-legende-maintenant"><i aria-hidden="true"></i>Le trait : l’heure où en est le rejeu.</p>';
+  if (window.OrlyDS) OrlyDS.maintenant();
 }
 
 function initWorkbench() {

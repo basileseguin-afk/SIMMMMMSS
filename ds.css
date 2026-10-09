@@ -52,6 +52,8 @@
   /* Les données (classes, flux) : la couleur n'y sert qu'à reconnaître. */
   --ds-d1:#3B5BDB; --ds-d2:#7C4DDB; --ds-d3:#0E9F6E; --ds-d4:#B7791F; --ds-d5:#D9534F; --ds-d6:#2B87B5;
   --ds-chaine:#A21CAF;
+  /* Ce qui s'écrit sur une couleur de donnée : l'étiquette d'une barre. */
+  --ds-sur-donnee:#FFFFFF;
   --ds-ombre-1:0 1px 2px rgba(16,24,40,.05);
   --ds-ombre-flottant:0 10px 28px -6px rgba(16,24,40,.16),0 2px 6px -2px rgba(16,24,40,.08),0 0 0 1px rgba(16,24,40,.06);
   --ds-focus:0 0 0 3px color-mix(in srgb,#0F766E 22%,transparent);
@@ -74,6 +76,7 @@
   --ds-info:#58A6FF; --ds-info-doux:color-mix(in srgb,#58A6FF 13%,transparent);
   --ds-d1:#7C9CF0; --ds-d2:#B392F0; --ds-d3:#56C7A5; --ds-d4:#E3B456; --ds-d5:#EE8A7A; --ds-d6:#7FB8D6;
   --ds-chaine:#E879F9;
+  --ds-sur-donnee:#0B0D10;
   --ds-ombre-1:none;
   --ds-ombre-flottant:0 12px 32px -6px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.1);
   --ds-focus:0 0 0 3px color-mix(in srgb,#2CC2B0 30%,transparent);
@@ -280,6 +283,26 @@ dialog.question h2{margin:0 0 var(--ds-e-2);font-size:var(--ds-t-16)}
 dialog.question p{margin:0;color:var(--ds-texte-2);line-height:1.55;white-space:pre-line}
 .question-boutons{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:var(--ds-e-2);margin-top:var(--ds-e-5)}
 .at-anomalies,.rg-avertissement,.fc-alerte.grave{border-radius:var(--ds-r-3)}
+/* L'infobulle des graphiques (ds.js) : tout de suite au survol, inversée sur
+ * les deux thèmes, la première ligne dit de quoi l'on parle. */
+.ds-infobulle,.tp-bulle{max-width:280px;padding:6px 10px;border-radius:var(--ds-r-2);background:var(--ds-texte-1);color:var(--ds-surface-1);
+  font-size:var(--ds-t-12);line-height:1.5;font-weight:var(--ds-g-normal);white-space:pre-line;font-variant-numeric:tabular-nums;
+  box-shadow:var(--ds-ombre-flottant);pointer-events:none}
+.ds-infobulle{position:fixed;z-index:1000;left:0;top:0}
+.ds-infobulle::first-line{font-weight:var(--ds-g-fort)}
+.ds-infobulle[hidden],.tp-bulle[hidden]{display:none}
+.ds-graphique [data-info]{cursor:default}
+.ds-graphique [data-info]:hover{opacity:.8}
+/* Le trait « maintenant » : l'heure rejouée, à la couleur du lecteur. */
+.ds-maintenant{pointer-events:none}
+.ds-maintenant line{stroke:var(--ds-accent);stroke-width:1.5}
+.ds-maintenant rect{fill:var(--ds-accent)}
+.ds-maintenant text{fill:var(--ds-sur-accent);font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);text-anchor:middle;font-variant-numeric:tabular-nums}
+.ds-axe-heure.ds-sous-maintenant{opacity:0}
+.ds-legende-maintenant{display:none}
+body.en-lecture .ds-legende-maintenant{display:inline-flex;align-items:center;gap:6px}
+.ds-legende-maintenant i{width:2px;height:12px;border-radius:1px;background:var(--ds-accent)}
+p.ds-legende-maintenant{margin:2px 0 0}
 
 /* ---- 5. Coquille ------------------------------------------------------------ */
 /* La page (refonte du 08/10) : à gauche, la barre latérale, sur toute la

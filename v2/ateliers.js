@@ -2062,32 +2062,45 @@
       };
 
       const services = this.a.services(), nomSvc = id => (services.find(s => s.id === id) || {}).nom || id;
+      // L'étiquette d'une barre, quand elle y tient : la commande en clair, sinon son code.
+      const DS = root.OrlyDS;
+      const dansLaBarre = (l, w) => (DS ? [P.enClair(l.nom), String(l.nom).replace(/^Vol /, '')]
+        .find(s => s && DS.largeurTexte(s) + 10 <= w) || '' : '');
+      // Une ligne sur deux est teintée : l'œil suit l'équipe jusqu'au bout de sa journée.
+      const rangs = lignes.map((a, i) => (i % 2 ? `<rect class="at-pl-rang" x="0" y="${25 + i * H}" width="${L}" height="${H}"/>` : '')).join('');
       const barres = lignes.map((a, i) => {
         const y = 28 + i * H;
         // Une équipe qui fait aussi l'étape d'avant, à la chaîne : son nom le dit, ses barres ont la teinte de la chaîne.
         const fu = (a.lots.find(l => l.fusion) || {}).fusion;
         const court = (t, n) => (t.length > n ? t.slice(0, n - 1) + '…' : t);
-        const nom = `<text class="at-pl-nom" x="8" y="${y + 13}">${esc(fu ? court(a.nom, 15) : a.nom)}${fu ? `<tspan class="at-pl-chaine"> +${esc(court(nomSvc(fu), 9))}</tspan>` : ''}<title>${esc(a.nom)}${fu ? ' — fait aussi ' + esc(nomSvc(fu)) + ', à la chaîne' : ''}</title></text>`;
+        const nom = `<text class="at-pl-nom" x="8" y="${y + 14}" data-info="${esc(a.nom + (fu ? ' — fait aussi ' + nomSvc(fu) + ', à la chaîne' : ''))}">${esc(fu ? court(a.nom, 15) : a.nom)}${fu ? `<tspan class="at-pl-chaine"> +${esc(court(nomSvc(fu), 9))}</tspan>` : ''}</text>`;
         const lots = a.lots.map(l => {
           // Une mise à disposition n'a pas de durée : une barre de deux pixels
           // se lirait comme une fabrication minuscule. C'est un repère.
-          if (l.dispo) return `<rect class="at-pl-dispo" x="${x(l.debut) - 3}" y="${y + 2}" width="6" height="16" rx="2"><title>Disponible à partir de ${P.hhmm(l.debut)}</title></rect>`;
-          if (l.fin == null) return `<rect class="at-pl-bloque" x="${x(l.debut)}" y="${y + 3}" width="10" height="14" rx="3"><title>${esc(l.nom)} : ne tourne pas</title></rect>`;
-          const att = l.attente ? `<rect class="at-pl-attente" x="${x(l.debut - l.attente)}" y="${y + 6}" width="${Math.max(1, x(l.debut) - x(l.debut - l.attente))}" height="8" rx="2"><title>Attente des amonts : ${Math.round(l.attente)} min</title></rect>` : '';
-          const w = Math.max(2, x(l.fin) - x(l.debut));
-          return att + `<rect class="at-pl-lot ${a.type === 'robot' ? 'robot' : ''}${l.fusion ? ' chaine' : ''}" x="${x(l.debut)}" y="${y + 3}" width="${w}" height="14" rx="3">
-            <title>${esc(l.nom)}\n${P.hhmm(l.debut)} → ${P.hhmm(l.fin)} (${Math.round(l.duree)} min${l.arret ? ', dont ' + Math.round(l.arret) + ' min d’arrêt' : ''})${l.fusion
-              ? '\nÀ la chaîne : ' + esc(nomSvc(l.fusion)) + ' ' + Math.round(l.minutesFusion || 0) + ' min + ' + esc(nomSvc(a.service)) + ' ' + Math.round(l.minutesIci || 0) + ' min de travail' : ''}</title></rect>`;
+          if (l.dispo) return `<rect class="at-pl-dispo" x="${x(l.debut) - 3}" y="${y + 1}" width="6" height="18" rx="2" data-info="Disponible à partir de ${P.hhmm(l.debut)}"/>`;
+          if (l.fin == null) return `<rect class="at-pl-bloque" x="${x(l.debut)}" y="${y + 2}" width="10" height="16" rx="3" data-info="${esc(P.enClair(l.nom))} : ne tourne pas"/>`;
+          const att = l.attente ? `<rect class="at-pl-attente" x="${x(l.debut - l.attente)}" y="${y + 6}" width="${Math.max(1, x(l.debut) - x(l.debut - l.attente))}" height="8" rx="2" data-info="Attente des amonts : ${Math.round(l.attente)} min"/>` : '';
+          const w = Math.max(2, x(l.fin) - x(l.debut)), mot = dansLaBarre(l, w);
+          const info = P.enClair(l.nom) + '\n' + P.hhmm(l.debut) + ' → ' + P.hhmm(l.fin) + ' (' + Math.round(l.duree) + ' min'
+            + (l.arret ? ', dont ' + Math.round(l.arret) + ' min d’arrêt' : '') + ')'
+            + (l.attente ? '\nAttend les amonts ' + Math.round(l.attente) + ' min avant' : '')
+            + (l.fusion ? '\nÀ la chaîne : ' + nomSvc(l.fusion) + ' ' + Math.round(l.minutesFusion || 0) + ' min + ' + nomSvc(a.service) + ' ' + Math.round(l.minutesIci || 0) + ' min de travail' : '');
+          return att + `<rect class="at-pl-lot ${a.type === 'robot' ? 'robot' : ''}${l.fusion ? ' chaine' : ''}" x="${x(l.debut)}" y="${y + 2}" width="${w}" height="16" rx="3" data-info="${esc(info)}"/>`
+            + (mot ? `<text class="at-pl-etiq" x="${x(l.debut) + 5}" y="${y + 14}">${esc(mot)}</text>` : '');
         }).join('');
         return nom + lots;
       }).join('');
 
-      box.innerHTML = `<svg viewBox="0 0 ${L} ${haut}" role="img" aria-label="La journée des équipes">
-        ${reperes.map((t, i) => `<g><line class="at-pl-grille${t % 1440 === 0 ? ' minuit' : ''}" x1="${x(t)}" y1="20" x2="${x(t)}" y2="${haut}"/><text class="at-pl-heure" x="${x(t)}" y="14">${etiquette(t, i)}</text></g>`).join('')}
+      // L'axe du temps est déclaré : le trait « maintenant » s'y pose (ds.js).
+      box.innerHTML = `<svg class="ds-graphique" viewBox="0 0 ${L} ${haut}" role="img" aria-label="La journée des équipes" data-axe="${t0} ${t1} ${marge} ${L - 16} 20 ${haut}">
+        ${rangs}
+        ${reperes.map((t, i) => `<g><line class="at-pl-grille${t % 1440 === 0 ? ' minuit' : ''}" x1="${x(t)}" y1="20" x2="${x(t)}" y2="${haut}"/><text class="at-pl-heure ds-axe-heure" x="${x(t)}" y="14">${etiquette(t, i)}</text></g>`).join('')}
         ${barres}
       </svg>
       <p class="mini-note">Barre pleine : l’équipe prépare. Barre fine devant : elle attend le service d’avant.${r.lots.some(l => l.fusion)
-        ? ' <span class="at-pl-legende-chaine">Barre rose : deux étapes faites d’un bloc, à la chaîne.</span>' : ''}</p>`;
+        ? ' <span class="at-pl-legende-chaine">Barre rose : deux étapes faites d’un bloc, à la chaîne.</span>' : ''}
+        <span class="ds-legende-maintenant"><i aria-hidden="true"></i>Le trait : l’heure où en est le rejeu.</span></p>`;
+      if (DS) DS.maintenant();
     }
 
     /* ---- couverture par classe --------------------------------------- */

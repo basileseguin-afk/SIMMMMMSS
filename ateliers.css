@@ -73,13 +73,17 @@ body.ateliers-open .workbench{display:none}
 .at-pl-grille.minuit{stroke:var(--txt2);stroke-width:1.5;stroke-dasharray:4 3}
 .at-pl-heure{fill:var(--txt2);font-size:var(--ds-t-11);text-anchor:middle}
 .at-pl-nom{fill:var(--txt);font-size:var(--ds-t-11);font-weight:var(--ds-g-fort)}
-.at-pl-lot{fill:var(--accent)}
-.at-pl-lot.robot{fill:var(--violet)}
-.at-pl-lot.chaine{fill:var(--chaine)}
+/* La palette des données : l'équipe en bleu, le robot en violet, la chaîne en
+ * rose ; l'attente et le blocage gardent les couleurs d'état. */
+.at-pl-lot{fill:var(--ds-d1)}
+.at-pl-lot.robot{fill:var(--ds-d2)}
+.at-pl-lot.chaine{fill:var(--ds-chaine)}
 .at-pl-chaine{fill:var(--chaine);font-weight:var(--ds-g-fort)}
 .at-pl-legende-chaine{color:var(--chaine);font-weight:var(--ds-g-fort)}
-.at-pl-attente{fill:var(--warn-stroke);opacity:.55}
-.at-pl-bloque{fill:var(--rouge)}
+.at-pl-attente{fill:var(--ds-attente);opacity:.5}
+.at-pl-bloque{fill:var(--ds-retard)}
+.at-pl-rang{fill:var(--ds-surface-2)}
+.at-pl-etiq{fill:var(--ds-sur-donnee);font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);pointer-events:none}
 
 /* `position:relative` n'est pas décoratif : le libellé pour lecteur d'écran de
    la dernière colonne est en position absolue. Sans bloc englobant ici, il se
@@ -169,7 +173,7 @@ body.ateliers-open .workbench{display:none}
 .at-arrets .at-pause,.at-arrets .at-actions-lot{margin-left:0;padding-left:0}
 
 /* Une mise à disposition n'a pas de durée : un repère, pas une barre. */
-.at-pl-dispo{fill:var(--txt2)}
+.at-pl-dispo{fill:var(--ds-texte-3)}
 .at-ajout-note{grid-column:1/-1;margin:0}
 
 /* Un tunnel que personne ne tient ne tourne pas : il se voit. */

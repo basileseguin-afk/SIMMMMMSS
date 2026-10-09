@@ -45,6 +45,9 @@
 
   const W = 900, H = 210, G = 56, D = 16, HAUT = 16, BAS = 30;   // marges : gauche, droite, haut, bas
 
+  /** L'axe du temps d'un graphique, déclaré pour le trait « maintenant » (ds.js). */
+  const axeDuTemps = (t0, t1) => `data-axe="${t0} ${t1} ${G} ${W - D} ${HAUT} ${H - BAS}"`;
+
   function echelles(t0, t1, ymax) {
     const x = t => G + (t - t0) / Math.max(1, t1 - t0) * (W - G - D);
     const y = v => H - BAS - (v / Math.max(1, ymax)) * (H - BAS - HAUT);
@@ -99,10 +102,10 @@
           <path d="${barre(x0, x1, y0, yb)}"/>
           ${trop ? `<text class="tp-val" x="${(x0 + x1) / 2}" y="${y0 - 6}" text-anchor="middle">▲ ${nombre(h.u)}</text>` : ''}</g>`;
     }).join('');
-    if (seuil == null) return `<svg class="tp-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Retours des vols heure par heure">
+    if (seuil == null) return `<svg class="tp-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Retours des vols heure par heure" ${axeDuTemps(t0, t1)}>
       ${axes(t0, t1, ymax, sc)}${barres}</svg>`;
     const yc = sc.y(seuil);
-    return `<svg class="tp-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Retours des vols heure par heure, face au débit de la plonge (${nombre(seuil)} unités par heure)">
+    return `<svg class="tp-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Retours des vols heure par heure, face au débit de la plonge (${nombre(seuil)} unités par heure)" ${axeDuTemps(t0, t1)}>
       ${axes(t0, t1, ymax, sc)}${barres}
       <line class="tp-seuil" x1="${G}" x2="${W - D}" y1="${yc}" y2="${yc}"/>
       <text class="tp-seuil-txt" x="${W - D}" y="${yc - 6}" text-anchor="end">ce que la plonge lave : ${nombre(seuil)} u/h</text></svg>`;
@@ -118,7 +121,7 @@
     const aire = d + ` V${yb} H${sc.x(t0)} Z`;
     const pic = p.maxA != null ? `<circle class="tp-pic" cx="${sc.x(p.maxA)}" cy="${sc.y(p.max)}" r="5"/>
       <text class="tp-val" x="${Math.min(sc.x(p.maxA) + 10, W - D - 150)}" y="${sc.y(p.max) - 8}">${nombre(p.max)} u à ${P.hhmm(p.maxA)}</text>` : '';
-    return `<svg class="tp-svg tp-file" viewBox="0 0 ${W} ${H}" role="img" data-t0="${t0}" data-t1="${t1}"
+    return `<svg class="tp-svg tp-file" viewBox="0 0 ${W} ${H}" role="img" data-t0="${t0}" data-t1="${t1}" ${axeDuTemps(t0, t1)}
         aria-label="Sale pas encore lavé au fil de la journée, au plus ${nombre(p.max)} unités">
       ${axes(t0, t1, ymax, sc)}<path class="tp-aire" d="${aire}"/><path class="tp-ligne" d="${d}"/>${pic}
       <line class="tp-curseur" x1="0" x2="0" y1="${HAUT}" y2="${yb}" style="display:none"/>
@@ -161,7 +164,6 @@
       <p class="tp-phrase">${bouchon ? '<b class="tp-etiquette alerte">▲ Bouchon</b> ' : ''}${phrase}</p>
       <figure class="tp-fig"><figcaption>Ce qui revient des vols, heure par heure <small>(unités par heure)</small></figcaption>${graphiqueRetours(p, t0, t1)}</figure>
       <figure class="tp-fig"><figcaption>Le sale pas encore lavé : en attente et dans le tunnel <small>(unités)</small></figcaption>${graphiqueFile(p, t0, t1)}</figure>
-      <div class="tp-bulle" role="status" hidden></div>
     </section>`;
   }
 
@@ -175,22 +177,23 @@
     const t0 = Math.floor(Math.min(...tous) / 60) * 60, t1 = Math.ceil(Math.max(...tous) / 60) * 60 || t0 + 60;
     const vmax = Math.max(...s.parLien.map(l => l.repasMax), 1);
     // Petits multiples : même axe du temps et même hauteur pour tous, pour comparer d'un coup d'œil.
-    const spark = l => {
+    const spark = (l, i) => {
       const w = 180, h = 34, x = t => (t - t0) / Math.max(1, t1 - t0) * w, y = v => h - 2 - v / vmax * (h - 4);
       let d = `M0,${h - 2}`;
       for (const [t, v] of l.serie) d += ` H${x(t).toFixed(1)} V${y(v).toFixed(1)}`;
       d += ` H${w}`;
-      return `<svg class="tp-spark" viewBox="0 0 ${w} ${h}" aria-hidden="true"><path class="tp-aire" d="${d} V${h - 2} H0 Z"/><path class="tp-ligne" d="${d}"/></svg>`;
+      return `<svg class="tp-spark" viewBox="0 0 ${w} ${h}" aria-hidden="true" data-lien="${i}" data-axe="${t0} ${t1} 0 ${w} 0 ${h}" data-axe-etiquette="aucune">`
+        + `<path class="tp-aire" d="${d} V${h - 2} H0 Z"/><path class="tp-ligne" d="${d}"/></svg>`;
     };
     // « J-1 14:00–19:00 » se lirait comme une seule soirée : le jour J est nommé
     // dès que la période commence la veille.
     const fin = t0 < 0 && t1 >= 0 ? 'J ' + P.hhmm(t1) : P.hhmm(t1);
-    const lignes = s.parLien.map(l => `<tr>
+    const lignes = s.parLien.map((l, i) => `<tr>
         <th scope="row">${esc(nom(l.de))} <span aria-hidden="true">→</span> ${esc(nom(l.vers))}</th>
         <td><b>${nombre(l.repasMax)}</b> repas<small>à ${l.a != null ? P.hhmm(l.a) : '—'}</small></td>
         <td><b>${duree(l.dureeMax)}</b><small>${esc(P.libelleClasse(l.classeMax))}</small></td>
         <td>${duree(l.dureeMoy)}<small>${l.sejours} ${l.sejours > 1 ? 'commandes' : 'commande'}</small></td>
-        <td title="Repas en stock de ${P.hhmm(t0)} à ${fin}">${spark(l)}</td></tr>`).join('');
+        <td>${spark(l, i)}</td></tr>`).join('');
     return `<section class="tp-sec">${titre}${intro}
       <div class="tp-scroll"><table class="tp-table"><thead><tr><th scope="col">Entre</th><th scope="col">Le plus en stock</th>
         <th scope="col">Le plus long</th><th scope="col">En moyenne</th><th scope="col">Au fil de la journée <small>${P.hhmm(t0)} → ${fin}</small></th></tr></thead>
@@ -206,11 +209,13 @@
         + '<button class="btn" data-aller="ateliers" data-onglet="at-chemins">Les chemins →</button></div>';
       return;
     }
-    box.innerHTML = sectionStocks(r, nomDe) + sectionPlonge(r);
+    box.innerHTML = sectionStocks(r, nomDe) + sectionPlonge(r) + '<div class="tp-bulle" role="status" hidden></div>';
     lierSurvol(box, r);
+    if (root.OrlyDS) root.OrlyDS.maintenant();
   }
 
-  /* Survol : une bulle sur chaque barre, un curseur et sa valeur sur la file. */
+  /* Survol : une bulle sur chaque barre, un curseur et sa valeur sur la file,
+   * et ce qui est en stock à l'heure survolée sur chaque petite courbe. */
   function lierSurvol(box, r) {
     const bulle = box.querySelector('.tp-bulle'); if (!bulle) return;
     const montrer = (texte, e) => {
@@ -223,6 +228,17 @@
     for (const g of box.querySelectorAll('.tp-barre')) {
       g.addEventListener('pointermove', e => montrer(g.dataset.info, e));
       g.addEventListener('pointerleave', cacher);
+    }
+    const liens = (r.stocks && r.stocks.parLien) || [];
+    for (const sp of box.querySelectorAll('.tp-spark')) {
+      const l = liens[+sp.dataset.lien]; if (!l) continue;
+      const [t0, t1] = sp.dataset.axe.split(' ').map(Number);
+      sp.addEventListener('pointermove', e => {
+        const b = sp.getBoundingClientRect(); if (!b.width) return;
+        const t = Math.round(t0 + Math.max(0, Math.min(1, (e.clientX - b.left) / b.width)) * (t1 - t0));
+        montrer('À ' + P.hhmm(t) + ' : ' + nombre(P.niveauA(l.serie, t)) + ' repas en stock', e);
+      });
+      sp.addEventListener('pointerleave', cacher);
     }
     const svg = box.querySelector('.tp-file'); if (!svg) return;
     const t0 = +svg.dataset.t0, t1 = +svg.dataset.t1, trait = svg.querySelector('.tp-curseur');

@@ -376,16 +376,27 @@ le rouge ne sert qu’aux retards.
      replie (bouton dans le titre de la page) pour lui laisser toute la
      largeur ; au-dessus des services, ce qui attend en stock ou à laver.
      « Modifier le plan » ouvre *Équipes › Plan de l’unité*.
-   - *Planning des équipes* : case par case, qui travaille quand.
+   - *Planning des équipes* : case par case, qui travaille quand. Les barres
+     prennent la couleur des données (l’équipe en bleu, le robot en violet, la
+     chaîne en rose ; l’attente et le blocage gardent leurs couleurs d’état) et
+     portent la commande quand elle y tient (« AF · Business », sinon
+     « AF/BC ») ; au survol, une bulle dit tout de suite la commande, ses
+     heures et son attente.
    - *Heure de chaque commande* : chaque commande, prête à quelle heure, avant quand.
    - *Étapes de chaque commande* : une ligne par commande, un clic sur « Prête à »
      la déplie dans le temps ; en dessous, le tableau calculé, une ligne par commande, une
      colonne par service, la case et ses heures dans chaque cellule ; un clic
      ouvre le chemin de la commande sur ce service.
    - *Vols prêts au départ* : une frise de la journée et un tableau qui dit, vol par vol, si
-     ses commandes sont prêtes à l’heure, en retard, ou sans équipe.
+     ses commandes sont prêtes à l’heure, en retard, ou sans équipe ; l’avion
+     survolé dit son vol, son départ et son état.
    - *Stocks et retours* : ce qui attend entre deux ateliers et avant le
-     chargement ; les retours des vols face au débit de la plonge.
+     chargement — sur chaque petite courbe, ce qui est en stock à l’heure
+     survolée ; les retours des vols face au débit de la plonge.
+   - **Le trait « maintenant »** : dès que la journée est rejouée (ou le
+     curseur déplacé), le planning, la frise des vols et les graphiques des
+     stocks marquent l’heure rejouée d’un trait, l’heure écrite au bout ; il
+     suit la lecture, et s’en va quand on revient au début.
    - *Comparer deux essais* : A / B, et l’écart de B sur A en face de chaque
      résultat (« ▼ −25 min », « ▲ +5 pts »), vert s’il est mieux, rouge s’il
      est moins bien, et le mot.
@@ -600,6 +611,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `problemes.js` | Le registre des Problèmes (09/10) : à corriger, à compléter, ce que la journée montre ; le nombre au pied de la barre latérale, et ceux des onglets qui en dérivent |
 | `rendu.js` | Redessiner sans perdre ce qu’on tape : tant qu’on écrit dans un champ, la zone qui le contient attend pour se redessiner ; elle le fait dès que le champ est validé (Entrée, quitté), le focus revenant au même champ. Posé une fois, à la source (`innerHTML`), pour tous les écrans |
 | `champs.js` | Les champs (09/10) : l’heure en 24 h (champ texte `data-heure` : « 0430 », « 4:30 », « 4h30 » → « 04:30 », gardée « HH:MM » comme avant ; tout choisi au focus ; ↑↓ un quart d’heure, Maj+↑↓ une heure), Maj+↑↓ dix pas dans un nombre, et le refus d’une saisie sous son champ (bordure, message lié au champ, valeur gardée remise) |
+| `ds.js` | Les composants scriptés du système de dessin (09/10) : l’infobulle des graphiques (tout de suite au survol, ce que porte le `data-info` d’une barre, d’un avion, d’un nom ; seulement dans un graphique `ds-graphique`), et le trait « maintenant » (l’heure rejouée sur chaque graphique qui déclare son axe du temps, `data-axe="t0 t1 x0 x1 y0 y1"` ; le repère d’axe qu’il chevauche s’efface) |
 | `icones.js` | Les pictogrammes (étapes, services, états) et les couleurs d’étape |
 | `demarrage.css` | Ce que montre chaque vue (lecture de la journée seulement dans « La journée ») et couleurs du plan en lecture |
 | `plan-prive/` | Fond de plan **local, non versionné** (voir ci-dessous) |
@@ -652,6 +664,8 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/champs-browser.cjs` | Les champs dans un navigateur en anglais (v1 et v2) : plus de champ natif ni de « AM » ; frappe, Entrée, Tab ; « 2500 » et un champ vidé refusés sous le champ, la valeur gardée remise, retaper efface ; ↑↓ et Maj+↑↓ ; un nom d’équipe ou de service refusé sous son champ, sans notification ; les heures gardées restent « HH:MM » |
 | `tests/fiche-service-browser.cjs` | La fiche d’un service en feuille de propriétés (v1 et v2) : sections repliables, repli gardé d’un service à l’autre et au rendu, Entrée au clavier ; l’avancé replié qui dit ce qui y est réglé ; la règle ⚡ dans « Plus de réglages », dont la ligne dit ce qui est réglé ; la matrice (en-têtes collants, ligne et colonne survolées, Espace) ; rien ne change dans les données |
 | `tests/tableaux-browser.cjs` | Les tableaux d’heures et d’horaires au clavier (v1 et v2) : Horaires (case à gauche, service en cours sous les titres), Entrée qui enregistre et descend dans la même colonne, Maj+Entrée qui remonte, une heure refusée en descendant ; Heures de travail (nombres à droite, 0,3 h gardées 18 min, Entrée dans la colonne, sans saut) ; planche retour et barème marqués |
+| `tests/graphiques-browser.cjs` | Le planning, la frise des vols et les stocks (v1 et v2) : la palette des données, une barre par lot à l’heure de son lot ; l’étiquette quand elle tient, et seulement alors ; la bulle tout de suite au survol, plus de `<title>` natif ; le trait « maintenant » absent avant le rejeu, à l’heure rejouée ensuite (planning, frise, plonge), qui suit la lecture, sans repère d’axe dessous, et s’en va au début ; la valeur d’une courbe de stock à l’heure survolée, d’après le calcul |
+| `tests/ds.test.cjs` | La largeur estimée d’une étiquette, l’heure du trait (minutes, la veille négative, rien sinon) ; v1 et v2 portent le même `ds.js` |
 | `tests/synthese-browser.cjs` | La synthèse (v1 et v2) : les mêmes nombres qu’avant, recalculés depuis les indicateurs comme l’ancienne synthèse les écrivait ; quatre cartes avec un handling, Vols · Commandes · Équipes, le problème des commandes sans équipe ; chaque carte et chaque ligne mènent à leur page ; la comparaison A/B et son écart signé, fléché, coloré |
 | `tests/secours-browser.cjs` | Un démarrage resté en plan ouvre la page de secours ; elle rend les données en sauvegarde, repart sans les cases, puis les remet |
 | `tests/recap-cases-browser.cjs` | Récap des cases : une ligne par case, tâche unique / à la suite / ensemble, départ et jour modifiables, chercher, fichier de paramétrage exporté puis réimporté |
