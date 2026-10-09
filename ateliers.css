@@ -10,7 +10,6 @@ body.ateliers-open .workbench{display:none}
 .at-indicateurs{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1px;
   background:var(--bordure);border:1px solid var(--bordure);border-radius:10px;overflow:hidden;margin:16px 0}
 
-#at-status:not(:empty){font-size:var(--ds-t-13);color:var(--accent2);margin:8px 0;white-space:pre-line}
 .at-anomalies{border-left:3px solid var(--warn-stroke);background:var(--warn-fill);color:var(--txt);
   padding:10px 14px;border-radius:0 8px 8px 0;font-size:var(--ds-t-13);line-height:1.5;margin:12px 0}
 .at-anomalies ul{margin:6px 0 0;padding-left:18px}
@@ -410,8 +409,6 @@ body.ateliers-open .workbench{display:none}
 .at-ligne-robot{display:grid;gap:4px;margin:8px 0;padding:8px 10px;border:1px dashed var(--bordure);border-radius:10px}
 .at-ligne-robot .at-pause{margin:0}
 
-/* Sur les chemins, le message se lit au-dessus du diagramme : pas deux fois. */
-body[data-sous="at-chemins"] #at-status{display:none}
 .at-pourquoi{display:block;font-size:var(--ds-t-12);color:var(--txt2);margin-top:2px;max-width:34ch}
 
 /* Équipe qui ne travaille que certains jours (règle ⚡, selon le nombre de vols) */

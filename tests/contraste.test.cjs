@@ -47,6 +47,10 @@ for (const [nom, selecteur] of [['clair', ':root'], ['sombre', ':root[data-theme
     for (const texte of ['ds-texte-1', 'ds-texte-2']) verifier(texte, couleur(t, 'ds-accent-pale'), 'ds-accent-pale');
     // Le texte sur l'accent (bouton principal).
     assert.ok(ratio(couleur(t, 'ds-sur-accent'), couleur(t, 'ds-accent')) >= 4.5, nom + ' : texte sur l’accent');
+    // Les notifications et les questions, sur leur surface flottante.
+    for (const texte of ['ds-texte-1', 'ds-texte-2', 'ds-texte-3', 'ds-accent-texte']) verifier(texte, couleur(t, 'ds-surface-3'), 'ds-surface-3');
+    // Le geste qui détruit, dans une question : bouton plein, au repos et au survol.
+    for (const fond of ['ds-retard', 'ds-retard-texte']) assert.ok(ratio(couleur(t, 'ds-sur-retard'), couleur(t, fond)) >= 4.5, nom + ' : texte sur ' + fond);
     // Le texte des états, sur leur fond teinté (pastilles, badges).
     for (const [texte, doux] of [['ds-ok-texte', 'ds-ok-doux'], ['ds-attente-texte', 'ds-attente-doux'], ['ds-retard-texte', 'ds-retard-doux'], ['ds-accent-texte', 'ds-accent-doux']]) {
       const fond = couleur(t, doux, blanc);

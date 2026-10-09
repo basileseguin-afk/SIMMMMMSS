@@ -106,8 +106,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 4. Un lien ne vaut que pour son chemin : appros → montage sur TX YC, au clic.
   const liensBC=await liens(bc);
   await page.locator(`${Z} .gr-port[data-port=appros]`).click();await attendre();
-  assert.match(await page.locator('.pc-message').textContent(),/Relier/,'la consigne s’affiche au-dessus du diagramme');
+  assert.match(await page.locator('#notifs .notif.consigne').textContent(),/Relier/,'la consigne s’affiche, le temps du geste');
   await page.locator(`${Z} [data-noeud=prepa]`).click();await attendre();
+  assert.equal(await page.locator('#notifs .notif.consigne').count(),0,'elle part avec le geste');
   assert.ok((await liens(yc)).includes('appros>prepa'));
   assert.ok((await liens(yc)).includes('appros>decontam'),'appros livre deux services');
   assert.deepEqual(await liens(bc),liensBC,'le chemin de TX BC ne bouge pas');

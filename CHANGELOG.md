@@ -5,6 +5,48 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-09 — Refonte, étape 4 (1/2) : notifications avec « Annuler », questions du site
+
+Toujours sans rien changer aux données ni au calcul (`donnees-intactes-browser`).
+
+- **Une notification dit ce qui vient de se passer** (`notifications.js`, v1 =
+  v2), en bas à droite, quelques secondes, avec **« Annuler »** quand le geste
+  se défait. Elle remplace la ligne d'état collée en haut des pages (audit,
+  point 4 : « Armement : intégré à 0 chemin… » se lisait encore sur Budget et
+  Calage) et l'ancien message passager. Une par source (les cases, le
+  barème, les liens…) et par geste, trois au plus ; elle attend sous la
+  souris ou le focus ; × et Échap la ferment, et le focus revient d'où il
+  venait. Un refus se voit en rouge et s'annonce ; un enregistrement de
+  routine (« Enregistré. ») ne s'affiche pas : la valeur se lit dans son champ.
+- **« Annuler » défait le geste entier**, même s'il touche deux historiques
+  (le calage de la v2 change le barème et les cases ; supprimer un service
+  touche le plan et ses équipes). Si l'historique bouge ensuite autrement, la
+  notification se ferme : son « Annuler » ne défairait plus ce qu'elle dit.
+- **Plus aucun `confirm()` du navigateur.** Les gestes qui se défont se font
+  tout de suite : supprimer une case, un chemin, un modèle, un flux ; les
+  imports (cases et chemins, horaires, récap des cases, heures de travail,
+  barème, planche retour, liens, plan) ; vider la planche ; revenir au
+  barème de démonstration ; changer la nature d'un service ; effacer un
+  service supprimé ; appliquer le calage (v2). Leur message dit désormais
+  ce qui a été remplacé ou perdu.
+- **Une question du site, pour ce qui ne se défait pas d'un clic** : restaurer
+  une sauvegarde, recharger la démo (vols importés), reprendre le travail de
+  la v1 (v2), supprimer un service qui porte des équipes ou des étapes de
+  chemin. Le geste est écrit sur son bouton (« Supprimer le service »), le
+  focus va sur « Ne rien changer », Échap sort sans rien faire. Supprimer un
+  service sans équipe ne demande plus rien. Avant, le supprimer depuis sa
+  fiche posait deux questions de suite, et refuser la seconde laissait le
+  service en place sans ses équipes.
+- Les consignes des diagrammes (« Relier Prépa à… ») restent à l'écran le
+  temps du geste ; Annuler, en haut, sert aussi sur la planche retour.
+- Fichiers : `notifications.js` (nouveau), `ateliers.js`, `parcours.js`,
+  `graphe.js`, `unite.js`, `reglages.js`, `flow-center.js`, `plan-editor.js`,
+  `sim.js`, `index.html`, `ds.css` et les feuilles des vues ; v2 : `calage.js`.
+- Tests : `notifications-browser` (nouveau) ; `nav.repondre` répond aux
+  questions ; `services`, `sauvegarde`, `import`, `browser-smoke`, `v2` et
+  `graphe-browser` adaptés ; `contraste` vérifie la surface des
+  notifications et le bouton qui détruit.
+
 ## 2026-10-08 — Refonte, étape 2 : composants, pictogrammes, thème sombre
 
 Toujours sans rien changer aux données ni au calcul (`donnees-intactes-browser`).

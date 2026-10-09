@@ -680,7 +680,7 @@
 
     /** Ouvre un flux dans Flux de production (depuis le chemin d'une commande ou une fiche de service). */
     ouvrirFlux(id) {
-      this.fluxChoisi = id; this.fluxSel = null; this.fluxMessage = '';
+      this.fluxChoisi = id; this.fluxSel = null;
       if (this.page() !== 'mu-flux') this.a.page('mu-flux'); else this.rendreFlux();
     }
 
@@ -780,8 +780,8 @@
     nature(service, v) {
       const cases = this.etat.ateliers.filter(a => a.service === service);
       const avant = PC.natureService(this.etat, service, this.nom(service));
+      // Changer de nature se fait tout de suite : la notification porte « Annuler » (08/10).
       if (v === 'atelier' && avant !== 'atelier') {
-        if (cases.length > 1 && !confirm('« ' + this.nom(service) + ' » n’aura qu’un seul atelier : ses ' + cases.length + ' équipes deviennent une seule (la première). « Annuler » revient en arrière.')) { this.rendreServices(); return; }
         delete this.natures[service];
         return this.at.changer(() => {
           const st = this.at.state;
@@ -796,7 +796,8 @@
           delete a.fusion; delete a.condition; delete a.minutes;
           st.ateliers = st.ateliers.filter(x => x.service !== service || x === a);
           a.lots = this.at.lotsAtelier(a);
-        }, this.nom(service) + ' : un seul atelier. Donnez ses personnes et son heure, puis cochez ses compagnies.');
+        }, this.nom(service) + ' : un seul atelier' + (cases.length > 1 ? ' (ses ' + cases.length + ' équipes n’en font plus qu’une, la première)' : '')
+          + '. Donnez ses personnes et son heure, puis cochez ses compagnies.');
       }
       if (avant === 'atelier' && v !== 'atelier') {
         this.at.changer(() => { for (const a of this.at.state.ateliers) if (a.service === service) { delete a.parCompagnie; delete a.compagnies; delete a.effectif; } }, '');
@@ -806,7 +807,8 @@
       // Par catégories, ou plus par catégories : ses équipes repartent d'une grille vide.
       if (v === 'categories' || avant === 'categories') {
         // Vers « par compagnie », ses équipes gardent leurs compagnies ; dans l'autre sens, leur grille repart de zéro.
-        if (avant === 'categories' && cases.some(a => a.lots.some(l => l.length)) && !confirm('Changer ce que fait « ' + this.nom(service) + ' » ? Ce que ses équipes préparent est effacé (leur grille change de colonnes) ; « Annuler » revient en arrière.')) { this.rendreServices(); return; }
+        const efface = avant === 'categories' && cases.some(a => a.lots.some(l => l.length))
+          ? ' Ce que ses équipes préparaient est effacé : leur grille change de colonnes.' : '';
         delete this.natures[service];
         return this.at.changer(() => {
           const st = this.at.state;
@@ -828,12 +830,12 @@
             this.natures[service] = v;
           }
         }, v === 'categories' ? this.nom(service) + ' travaille par compagnie, relié au handling dans ses chemins : donnez ses heures par vol, puis cochez les compagnies dans ses équipes.'
-          : this.nom(service) + ' : ' + NATURES.find(x => x.id === v).nom.toLowerCase() + '.');
+          : this.nom(service) + ' : ' + NATURES.find(x => x.id === v).nom.toLowerCase() + '.' + efface);
       }
       if (!cases.length) { this.natures[service] = v; this.rendreServices(); return; }
       const N = NATURES.find(x => x.id === v);
-      if (!confirm('Changer ce que fait « ' + this.nom(service) + ' » : ' + N.nom.toLowerCase() + ' ? Ses ' + pl(cases.length, 'équipe') + ' changent de nature ; « Annuler » revient en arrière.')) { this.rendreServices(); return; }
-      this.at.changer(() => { for (const a of this.at.state.ateliers) if (a.service === service) this.at.typer(a, v); }, this.nom(service) + ' : ' + N.nom.toLowerCase() + '.');
+      this.at.changer(() => { for (const a of this.at.state.ateliers) if (a.service === service) this.at.typer(a, v); },
+        this.nom(service) + ' : ' + N.nom.toLowerCase() + ' ; ' + (cases.length > 1 ? 'ses ' + pl(cases.length, 'équipe') + ' changent' : 'son équipe change') + ' de nature.');
     }
 
     ajouterEquipe(service) {
@@ -1130,8 +1132,7 @@
           <span class="mu-flux-sel">${actionSel}</span>
           <button class="btn btn-sm" type="button" data-mu-flux-action="reorganiser" title="Ranger les services de gauche à droite, dans le sens du flux">Réorganiser</button>
         </div>
-        <div class="pc-graphe mu-graphe" data-mu-graphe></div>
-        <p class="mini-note mu-flux-message" aria-live="polite">${esc(this.fluxMessage || '')}</p>`;
+        <div class="pc-graphe mu-graphe" data-mu-graphe></div>`;
       const etape = (num, titre, corps, note) => `<section class="mu-etape"><h3><span class="mu-num">${num}</span>${esc(titre)}${note ? `<small>${note}</small>` : ''}</h3>${corps}</section>`;
       return tete
         + etape(1, 'Par où il passe', diagramme, 'un rond par service, une flèche pour « livre » ; un changement vaut pour toutes ses commandes')
@@ -1243,7 +1244,7 @@
         },
         retirerLien: id => { const [de, vers] = id.split('>'); u.changerFlux(x => { x.liens = x.liens.filter(l => !(l.de === de && l.vers === vers)); }, 'Lien retiré.'); },
         choisir: sel => { u.fluxSel = sel; const b = root.document.querySelector('#mu-flux .mu-flux-sel'); if (b) { u.rendreFlux(); } },
-        message: t => { u.fluxMessage = t; const m = root.document.querySelector('#mu-flux .mu-flux-message'); if (m) m.textContent = t; }
+        message: (t, o) => PC.annoncer(t, o)
       });
       return this.graphe;
     }
@@ -1273,11 +1274,10 @@
         case 'supprimer': {
           if (!t) return;
           const cmds = PC.commandesDuType(st, t.id, this.at.classes);
-          if (!confirm('Supprimer le flux « ' + t.nom + ' » ?' + (cmds.length ? ' Ses ' + pl(cmds.length, 'commande') + ' reprendront le flux de leur classe.' : ''))) return;
           this.at.changer(() => {
             for (const c of cmds) delete st.parcoursClasse[c.id];
             st.parcours = st.parcours.filter(p => p.id !== t.id);
-          }, 'Flux « ' + t.nom + ' » supprimé.');
+          }, 'Flux « ' + t.nom + ' » supprimé.' + (cmds.length ? ' Ses ' + pl(cmds.length, 'commande') + ' reprennent le flux de leur classe.' : ''));
           this.fluxChoisi = null; return this.rendreFlux();
         }
         case 'retirer-service': {
@@ -1299,7 +1299,7 @@
       d.addEventListener('click', e => {
         if (!dans(e.target)) return;
         const c = e.target.closest('[data-mu-flux-choisir]');
-        if (c) { this.fluxChoisi = c.dataset.muFluxChoisir; this.fluxSel = null; this.fluxMessage = ''; return this.rendreFlux(); }
+        if (c) { this.fluxChoisi = c.dataset.muFluxChoisir; this.fluxSel = null; return this.rendreFlux(); }
         const a = e.target.closest('[data-mu-flux-action]');
         if (a) return this.actionFlux(a.dataset.muFluxAction, a);
         const s = e.target.closest('[data-mu-ouvrir-svc]');
@@ -1470,8 +1470,9 @@
           }
           case 'voir': return this.a.voir(id);
           case 'plan': return this.a.plan(id);
+          // Une question s'il porte des équipes : la réponse arrive plus tard (une promesse).
           case 'supprimer':
-            if (this.a.supprimer(id)) { this.choisi = null; this.rendreServices(); }
+            Promise.resolve(this.a.supprimer(id)).then(fait => { if (fait) { this.choisi = null; this.rendreServices(); } });
             return;
         }
       });

@@ -88,7 +88,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(result.departs[0].retard>0,'le retard du départ est exporté');
   assert.ok(result.instant,'l’instant relu est exporté');
   assert.ok(result.journal.some(l=>l.service==='prepa'),'le journal des lots est exporté');
-  await nav.vue(page,'vols');await nav.aller(page,'v-programme');await click('#restore-demo');
+  // Des vols importés seraient remplacés : une question (08/10).
+  await nav.vue(page,'vols');await nav.aller(page,'v-programme');await click('#restore-demo');await nav.repondre(page);
   await nav.vue(page,'plan');await nav.aller(page,'j-plan');
   await page.evaluate(()=>{localStorage.removeItem('orly-zones');localStorage.removeItem('orly-plan-v3');});await page.reload();
   await page.screenshot({path:path.join(os.tmpdir(),'ory-interface-desktop.png'),fullPage:true});

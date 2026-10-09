@@ -100,8 +100,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.evaluate(id=>Sim.ateliers.creer(id),annexe);await attendre();
   await editer(async()=>{await page.evaluate(id=>Sim.editor.change(()=>{Sim.editor.state.zones.find(z=>z.id===id).visible=false;},'x'),annexe);});
   assert.deepEqual(await listes(annexe),partout,'masquée, elle reste dans toutes les listes');
-  //    c. Supprimée alors qu'elle porte une équipe : l'équipe passe dans son service parent.
-  await editer(async()=>{await page.evaluate(id=>Sim.editor.select(id),annexe);await page.locator('#pe-delete').click();await attendre();});
+  //    c. Supprimée alors qu'elle porte une équipe : une question (08/10), puis l'équipe passe dans son service parent.
+  await editer(async()=>{await page.evaluate(id=>Sim.editor.select(id),annexe);await page.locator('#pe-delete').click();await attendre();
+    assert.match(await page.locator('dialog.question[open]').textContent(),/passeront dans «\s*Dotation\s*»/,'la question dit où va son équipe');
+    await nav.repondre(page);});
   assert.equal((await cases(annexe)).length,0,'pas d’équipe orpheline');
   assert.ok((await cases('dotation')).some(a=>/Dotation EZY/.test(a.nom)),'elle travaille maintenant en Dotation');
   //    d. Un local dessiné n'est pas un service : la page des services le dit, et en fait un service.
@@ -148,6 +150,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.evaluate(id=>Sim.ateliers.creer(id),cree);await attendre();
   await nav.aller(page,'u-services');
   await page.locator(`[data-svc-supprimer="${cree}"]`).click();await attendre();
+  await nav.repondre(page);   // il porte une équipe : la question (08/10)
   assert.equal(await page.evaluate(id=>Sim.editor.state.zones.some(z=>z.id===id),cree),false,'le service est supprimé');
   assert.equal((await cases(cree)).length,0,'pas d’équipe orpheline');
   assert.equal(await page.locator(`tr[data-svc="${cree}"]`).count(),0,'plus de ligne');

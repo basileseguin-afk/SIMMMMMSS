@@ -37,6 +37,8 @@ function initial(pairs){return validate({schema:'ory-flows',version:1,internal:{
 class FlowCenter{
  constructor(adapter){
   this.a=adapter;this.host=document.getElementById('view-flux');this.family='all';this.service='';this.undoStack=[];this.redoStack=[];this.state=initial(adapter.legacy);this.mapFilter='all';this.mapOwner='';
+  // Chaque état a son numéro : la notification d'un geste ne l'annule que s'il est encore le dernier (notifications.js).
+  this.version=0;if(root.OrlyNotif)root.OrlyNotif.inscrire('liens',{version:()=>this.version,defaire:()=>this.history(false)});
   let warning='';try{const saved=localStorage.getItem('orly-flows-v1');if(saved)this.state=validate(JSON.parse(saved));}catch(e){warning='Configuration enregistrée non chargée : '+e.message+' La copie reste conservée.';}
   this.paire=null;this.build();this.graphe=this.creerGraphe();this.bind();this.refresh();this.status(warning||'');
  }
@@ -72,7 +74,7 @@ class FlowCenter{
    retirerLien:id=>{const p=paires().find(x=>x.id===id);if(!p)return;const ids=new Set(p.flows.map(f=>f.id));fc.paire=null;
     fc.change(()=>{fc.state.flows=fc.state.flows.filter(f=>!ids.has(f.id));},(ids.size>1?ids.size+' liens retirés':'Lien retiré')+'. Vous pouvez annuler.');},
    choisir:sel=>{fc.paire=sel&&sel.type==='lien'?sel.id:null;fc.noeud=sel&&sel.type==='noeud'?sel.id:null;fc.renderListe();fc.renderDetail();},
-   message:t=>{if(t)fc.status(t);}
+   message:(t,o)=>{if(t)fc.status(t,o);else if(root.OrlyNotif)root.OrlyNotif.fermer('liens');}
   });
  }
  renderDetail(){
@@ -86,10 +88,11 @@ class FlowCenter{
    box.innerHTML=`<p><b>${nom(this.noeud)}</b> — livre : ${livre.map(nom).join(', ')||'personne'} · reçoit de : ${recoit.map(nom).join(', ')||'personne'}.</p><div class="row-btns"><button class="btn btn-sm" data-fc-graphe="relier">Relier à…</button></div>`;return;}
   box.innerHTML='';
  }
- status(message){document.getElementById('fc-status').textContent=message;}
+ /* Ce qui vient de se passer : une notification (notifications.js) ; le dernier message reste, caché, dans #fc-status. */
+ status(message,o){document.getElementById('fc-status').textContent=message;if(root.OrlyNotif)root.OrlyNotif.notifier(message,{cle:'liens',...o});}
  build(){
   this.host.innerHTML=`<div class="fc-heading"><div><p class="scope-badge">Qui livre qui, entre les services de l’unité</p></div><div class="fc-actions"><button class="btn btn-sm" id="fc-undo" title="Annuler la dernière modification">${pic('annuler')}Annuler</button><button class="btn btn-sm" id="fc-redo" title="Rétablir ce qui a été annulé">${pic('retablir')}Rétablir</button><button class="btn btn-sm" id="fc-export" title="Les liens entre services, dans un fichier">${pic('telecharger')}Liens</button><button class="btn btn-sm" id="fc-import-button" title="Réimporter un fichier de liens">${pic('importer')}Importer</button><input id="fc-import" type="file" accept=".json" hidden></div></div>
-   <div id="fc-status" role="status" aria-live="polite"></div>
+   <div id="fc-status" hidden></div>
    <section id="fc-lecture" class="fc-lecture" data-sous="u-lecture">
     <div id="fc-calcul" class="fc-calcul"></div>
     <h3 class="fc-list-title">Les liens entre services, tels que le calcul les lit</h3>
@@ -167,11 +170,13 @@ class FlowCenter{
  refresh(){this.refreshAdd();this.render();this.a.changed();}
  change(fn,message){
   const before=clone(this.state);try{fn();this.state=validate(this.state);}catch(e){this.state=before;this.render();this.status(e.message);return false;}
-  if(JSON.stringify(before)!==JSON.stringify(this.state)){this.undoStack.push(before);if(this.undoStack.length>80)this.undoStack.shift();this.redoStack=[];}
+  if(JSON.stringify(before)!==JSON.stringify(this.state)){this.undoStack.push(before);if(this.undoStack.length>80)this.undoStack.shift();this.redoStack=[];
+   this.version++;if(root.OrlyNotif)root.OrlyNotif.marquer('liens');}
   this.render();this.a.changed();this.save(message);return true;
  }
  save(message){try{localStorage.setItem('orly-flows-v1',JSON.stringify(this.state));this.status(message);}catch{this.status('Sauvegarde impossible. Exportez vos flux avant de fermer la page.');this.a.notify('Sauvegarde des flux impossible : exportez la configuration.');}}
- history(redo){const source=redo?this.redoStack:this.undoStack,target=redo?this.undoStack:this.redoStack;if(!source.length)return;target.push(clone(this.state));this.state=source.pop();this.render();this.a.changed();this.save(redo?'Action rétablie.':'Action annulée.');}
+ history(redo){const source=redo?this.redoStack:this.undoStack,target=redo?this.undoStack:this.redoStack;if(!source.length)return;target.push(clone(this.state));this.state=source.pop();
+  this.version++;if(root.OrlyNotif)root.OrlyNotif.bouger();this.render();this.a.changed();this.save(redo?'Action rétablie.':'Action annulée.');}
  visibleFlows(){return this.state.flows.filter(f=>(this.family==='all'||TYPES[f.type].family===this.family)&&(!this.service||parseEndpoint(f.from)[0]===this.service||parseEndpoint(f.to)[0]===this.service));}
  mapFlows(){return this.state.flows.filter(f=>f.enabled&&(!this.mapOwner||parseEndpoint(f.from)[0]===this.mapOwner||parseEndpoint(f.to)[0]===this.mapOwner)&&(this.mapFilter==='all'||TYPES[f.type].family===this.mapFilter)&&this.points.some(p=>p.id===f.from)&&this.points.some(p=>p.id===f.to));}
  /* Le parcours tel que le moteur le lit : un service, ses fournisseurs, ses
@@ -255,7 +260,7 @@ class FlowCenter{
   return flows;
  }
  export(){const link=document.createElement('a');link.href=URL.createObjectURL(new Blob([JSON.stringify(this.state,null,2)],{type:'application/json'}));link.download='centre-flux-'+new Date().toISOString().slice(0,10)+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(link.href),1000);this.status('Flux et règles humaines exportés. Les emplacements sont référencés par leurs identifiants du plan.');}
- async import(e){const file=e.target.files[0];if(!file)return;try{if(file.size>2*1024*1024)throw Error('Fichier trop volumineux (2 Mo maximum).');const state=validate(JSON.parse(await file.text()));if(!confirm('Remplacer la configuration des flux ? Cette action est annulable.'))return;this.change(()=>{this.state=state;},'Flux importés. Les emplacements absents sont signalés dans la liste.');}catch(err){this.status('Import refusé : '+err.message+' Configuration actuelle conservée.');}finally{e.target.value='';}}
+ async import(e){const file=e.target.files[0];if(!file)return;try{if(file.size>2*1024*1024)throw Error('Fichier trop volumineux (2 Mo maximum).');const state=validate(JSON.parse(await file.text()));this.change(()=>{this.state=state;},'Flux importés, à la place des précédents. Les emplacements absents sont signalés dans la liste.');}catch(err){this.status('Import refusé : '+err.message+' Configuration actuelle conservée.');}finally{e.target.value='';}}
 }
 const api={TYPES,FAMILIES,endpoints,endpointId,validate,initial,usable,FlowCenter};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.OrlyFlows=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

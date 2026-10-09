@@ -3,6 +3,7 @@
  * Même site, donc même stockage du navigateur : la v2 range ses données à
  * part (« ory-v2: »), et part d'une copie du travail de la v1. */
 const assert=require('node:assert/strict'),path=require('node:path');
+const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
 (async()=>{
@@ -52,7 +53,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.evaluate(()=>localStorage.setItem('ory-budget-v1',JSON.stringify({majoration:1.5})));
   await page.locator('#btn-sauvegarde').click();await attendre();
   assert.match(await page.locator('#v2-reprise').innerText(),/Reprendre le travail de la version 1/);
-  await page.locator('#v2-reprendre').click();await page.waitForLoadState('load');await attendre();
+  // Le travail de la v2 serait remplacé : une question (08/10), puis la page se recharge.
+  await page.locator('#v2-reprendre').click();
+  const recharge=page.waitForEvent('load');await nav.repondre(page);await recharge;await attendre();
   const reprises=await equipes();
   assert.ok(reprises.includes('Plus tard dans la v1'),'le travail récent de la v1 est repris');
   assert.ok(!reprises.includes('Équipe de la v2'),'il remplace les équipes de la v2');

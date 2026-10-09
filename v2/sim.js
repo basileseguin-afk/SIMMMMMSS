@@ -513,9 +513,9 @@ function actionService(action,id){
     // Depuis une alerte : un service qui n'existe pas dans l'unité se supprime
     // là où on le voit (un service du plan d'origine se retire, et se remet).
     const z=Sim.editor.state.zones.find(v=>v.id===id);if(!z)return;
-    const fait=z.kind==='service'?Sim.editor.retirer(id,true):Sim.editor.supprimer(id);
-    if(fait)toast('« '+nomLisible(z.nom)+' » supprimé'+(z.kind==='service'?' : on peut le remettre en bas de Équipes › Liste des services.':'.'));
-    if(document.body.dataset.sous==='u-services')renderServices();
+    Promise.resolve(z.kind==='service'?Sim.editor.retirer(id,true):Sim.editor.supprimer(id)).then(fait=>{
+      if(fait)toast('« '+nomLisible(z.nom)+' » supprimé'+(z.kind==='service'?' : on peut le remettre en bas de Équipes › Liste des services.':'.'),{parDefaut:true});
+      if(document.body.dataset.sous==='u-services')renderServices();});
   }
 }
 /* Un service supprimé encore cité : ses cases et ses étapes de chemin passent
@@ -525,9 +525,10 @@ function effacerService(id,vers){
   const f=servicesFantomes().find(x=>x.id===id)||{cases:0,chemins:0};
   const cible=vers?nomDeService(vers):'';
   const quoi=[f.cases?f.cases+(f.cases>1?' cases':' case'):'',f.chemins?f.chemins+(f.chemins>1?' chemins':' chemin'):''].filter(Boolean).join(' et ');
-  if(!confirm(vers?'Faire passer '+quoi+' de « '+nom+' » dans « '+cible+' » ?':'Effacer « '+nom+' » de '+quoi+' ? Ses cases sont supprimées et ses étapes de chemin retirées. « Annuler » dans les cases les rétablit.'))return;
+  // Tout de suite : la notification porte « Annuler » (08/10).
   reaffecterService(id,vers,nom.replace(/ \(supprimé\)$/,''));
-  toast(vers?'« '+nom+' » : son travail passe dans « '+cible+' ».':'« '+nom+' » est effacé partout.');
+  const detail=quoi?' ('+quoi+')':'';
+  toast(vers?'« '+nom+' » : son travail'+detail+' passe dans « '+cible+' ».':'« '+nom+' » est effacé partout'+detail+'.');
   renderServices();
 }
 /* Un service renommé (page Services, édition du plan, Annuler…) : ses cases
@@ -583,9 +584,9 @@ function initServices(){
   });
   box.addEventListener('click',e=>{
     const sp=e.target.closest('[data-svc-supprimer]');
-    if(sp){if(Sim.editor.supprimer(sp.dataset.svcSupprimer))toast('Service supprimé.');renderServices();return;}
+    if(sp){Promise.resolve(Sim.editor.supprimer(sp.dataset.svcSupprimer)).then(fait=>{if(fait)toast('Service supprimé.',{parDefaut:true});renderServices();});return;}
     const rt=e.target.closest('[data-svc-retirer]');
-    if(rt){if(Sim.editor.retirer(rt.dataset.svcRetirer,true))toast('Service retiré de l’unité : « Remettre » en bas de la page.');renderServices();return;}
+    if(rt){Promise.resolve(Sim.editor.retirer(rt.dataset.svcRetirer,true)).then(fait=>{if(fait)toast('Service retiré de l’unité : « Remettre » en bas de la page.');renderServices();});return;}
     const rm=e.target.closest('[data-svc-remettre]');
     if(rm){Sim.editor.retirer(rm.dataset.svcRemettre,false);toast('Service remis dans l’unité.');renderServices();return;}
     const ef=e.target.closest('[data-svc-effacer]');
@@ -818,7 +819,7 @@ function initPlanche(){
     const a=b.dataset.plAction;
     if(a==='ajouter'){const d=(Sim.ateliers.state.materiel.planche||[]).slice(-1)[0];changerPlanche(m=>m.planche.push({vol:'',cie:d?d.cie:'',heure:d?d.heure:'12:00',jour:0}),'Ligne ajoutée.');}
     else if(a==='retirer'){const i=+b.closest('tr').dataset.index;changerPlanche(m=>m.planche.splice(i,1),'Ligne retirée.');}
-    else if(a==='vider'){if(confirm('Vider la planche retour ? « Annuler » (Organisation) la rétablit.'))changerPlanche(m=>{m.planche=[];},'Planche vidée.');}
+    else if(a==='vider'){const n=(Sim.ateliers.state.materiel.planche||[]).length;changerPlanche(m=>{m.planche=[];},'Planche retour vidée'+(n?' : '+n+(n>1?' lignes retirées.':' ligne retirée.'):'.'));}
     else if(a==='utiliser'){changerPlanche(m=>{m.retours='planche';},'La simulation lit maintenant la planche retour.');}
     else if(a==='exporter'){OrlyTableur.telecharger('ory-planche-retour.xlsx',OrlyTableur.ecrireClasseur(OrlyEchanges.plancheVersClasseur(Sim.ateliers.state.materiel.planche||[])));}
     else if(a==='importer')box.querySelector('[data-pl-fichier]').click();
@@ -828,9 +829,7 @@ async function importerPlanche(input){
   const f=input.files[0];if(!f)return;
   try{
     const lignes=OrlyEchanges.classeurVersPlanche(await OrlyTableur.lireFichier(f,4*1024*1024));
-    if(!confirm('Remplacer la planche retour par ce fichier ('+lignes.length+(lignes.length>1?' lignes':' ligne')+') ? L’action est annulable.'))return;
-    changerPlanche(m=>{m.planche=lignes;},'Planche retour importée : '+lignes.length+(lignes.length>1?' lignes.':' ligne.'));
-    toast('Planche retour importée : '+lignes.length+(lignes.length>1?' lignes':' ligne'));
+    changerPlanche(m=>{m.planche=lignes;},'Planche retour importée : '+lignes.length+(lignes.length>1?' lignes':' ligne')+', à la place des précédentes.');
   }catch(err){toast('Import refusé — '+err.message);}
   finally{input.value='';}
 }
@@ -927,14 +926,24 @@ function badgeOnglet(id){
 /* ==========================================================================
  *  MON UNITÉ (unite.js) — tout le paramétrage, service par service
  * ==========================================================================*/
-function supprimerServiceUnite(id){
+/* Supprimer un service depuis sa fiche (Équipes › Services et équipes) : ses
+ * équipes partent avec lui. Une question seulement s'il en porte, ou s'il est
+ * dans des chemins : la suppression touche alors le plan ET les équipes, et
+ * Annuler, en haut, n'en défait qu'un (la notification, elle, défait les deux).
+ * Sans eux, il est supprimé, et la notification porte « Annuler ». */
+async function supprimerServiceUnite(id){
   const z=Sim.editor&&Sim.editor.state.zones.find(v=>v.id===id);if(!z)return false;
   const nom=nomLisible(z.nom),cases=Sim.ateliers.state.ateliers.filter(a=>a.service===id).length;
-  if(!confirm('Supprimer le service « '+nom+' »'+(cases?' et ses '+cases+(cases>1?' équipes':' équipe'):'')+' ?'
-    +(z.kind==='service'?' (Un service du plan d’origine se remet depuis Équipes › Liste des services.)':'')))return false;
-  if(cases||(Sim.ateliers.state.parcours||[]).some(p=>MoteurProduction.servicesDuParcours(p).includes(id)))reaffecterService(id,null,nom);
-  const fait=z.kind==='service'?Sim.editor.retirer(id,true):Sim.editor.supprimer(id);
-  if(fait)toast('« '+nom+' » supprimé.');
+  const dansChemins=(Sim.ateliers.state.parcours||[]).some(p=>MoteurProduction.servicesDuParcours(p).includes(id));
+  if(cases||dansChemins){
+    const oui=await OrlyNotif.demander((cases?'Ses '+cases+(cases>1?' équipes sont supprimées':' équipe est supprimée')+(dansChemins?', et ses étapes de chemin retirées.':'.'):'Ses étapes de chemin sont retirées.')
+      +(z.kind==='service'?' Le service, lui, se remet depuis Équipes › Liste des services.':''),
+      {titre:'Supprimer le service « '+nom+' » ?',oui:'Supprimer le service',danger:true});
+    if(!oui)return false;
+    reaffecterService(id,null,nom);
+  }
+  const fait=z.kind==='service'?Sim.editor.retirer(id,true,true):Sim.editor.supprimer(id,true);
+  if(fait)toast('« '+nom+' » supprimé.',{parDefaut:true});
   return !!fait;
 }
 function initUnite(){
@@ -1114,7 +1123,7 @@ function afficherTitre(){
  *  saisie : un champ garde sa propre annulation, lettre à lettre.
  * ==========================================================================*/
 const HISTOIRES=[
-  [['mu-flux','mu-services','at-chemins','at-equipes','at-recap'],'at-undo','at-redo'],
+  [['mu-flux','mu-services','at-chemins','at-equipes','at-recap','v-planche'],'at-undo','at-redo'],
   [['rg-minutes','rg-simulation'],'rg-undo','rg-redo'],
   [['rg-recap'],'rg-recap-undo','rg-recap-redo'],
   [['u-liens'],'fc-undo','fc-redo']
@@ -1369,11 +1378,14 @@ function initEdition() {
       const n=((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]).filter(a=>a.service===z.id).length;
       const pere=z.kind==='annexe'&&ZONES[z.parent]&&!estRetire(z.parent)?z.parent:null;
       const dansChemins=((Sim.ateliers&&Sim.ateliers.state.parcours)||[]).some(p=>MoteurProduction.servicesDuParcours(p).includes(z.id));
-      const verbe=mode==='retirer'?'Retirer « '+nomLisible(z.nom)+' » de l’unité':'Supprimer « '+nomLisible(z.nom)+' »';
-      if(!n&&!dansChemins)return confirm(verbe+' ?');
+      // Rien ne dépend de lui : il part, et la notification porte « Annuler ».
+      // Sinon, une question (une promesse) : la suppression touche aussi les équipes.
+      if(!n&&!dansChemins)return true;
       const nomPere=pere?nomLisible(ZONES[pere].nom):'';
-      return confirm(verbe+' ? Il porte '+(n?n+(n>1?' équipes':' équipe')+(dansChemins?' et des étapes de chemins':''):'des étapes de chemins')+' : '
-        +(pere?'elles passeront dans « '+nomPere+' ».':'elles seront retirées (Annuler, dans Organisation, les rétablit).'));
+      return OrlyNotif.demander('Il porte '+(n?n+(n>1?' équipes':' équipe')+(dansChemins?' et des étapes de chemins':''):'des étapes de chemins')+' : '
+        +(pere?'elles passeront dans « '+nomPere+' ».':'elles seront retirées.'),
+        {titre:(mode==='retirer'?'Retirer « '+nomLisible(z.nom)+' » de l’unité ?':'Supprimer « '+nomLisible(z.nom)+' » ?'),
+         oui:mode==='retirer'?'Retirer de l’unité':'Supprimer',danger:true});
     },
     apresSuppression(z){reaffecterService(z.id,z.kind==='annexe'&&ZONES[z.parent]&&!estRetire(z.parent)?z.parent:null,z.nom);},
     getView(){return {vk,vtx,vty};},
@@ -1659,9 +1671,11 @@ function initVueSimulation() {
   });
 }
 
-function toast(msg) {
-  const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on');
-  clearTimeout(toast._t); toast._t = setTimeout(()=>t.classList.remove('on'), 1800);
+/* Un message passager : une notification (notifications.js), avec « Annuler »
+ * quand il suit un geste qui se défait. `o.parDefaut` : seulement si le geste
+ * n'a pas déjà dit, plus précisément, ce qu'il a fait. */
+function toast(msg,o) {
+  OrlyNotif.notifier(msg,{cle:'general',...o});
 }
 
 function initControles() {
@@ -1810,8 +1824,10 @@ async function restaurerSauvegarde(e) {
       aEcrire.push([p.cle, JSON.stringify(part)]);
     }
     if (!aEcrire.length) throw new Error('la sauvegarde ne contient aucune partie connue.');
-    if (!confirm('Remplacer le plan, les ateliers et les flux enregistrés dans ce navigateur par cette sauvegarde (' +
-      aEcrire.length + (aEcrire.length > 1 ? ' parties' : ' partie') + ') ? La page sera rechargée.')) { e.target.value = ''; return; }
+    // Une vraie question : la restauration remplace tout, et ne se défait pas.
+    if (!await OrlyNotif.demander('Le plan, les équipes, les flux et les réglages enregistrés dans ce navigateur seront remplacés par ceux de la sauvegarde ('
+      + aEcrire.length + (aEcrire.length > 1 ? ' parties' : ' partie') + '). La page se rechargera.',
+      { titre: 'Restaurer cette sauvegarde ?', oui: 'Restaurer la sauvegarde', danger: true })) { e.target.value = ''; return; }
     aEcrire.forEach(([cle, valeur]) => localStorage.setItem(cle, valeur));
     location.reload();
   } catch (err) { refuser(err.message); }
@@ -1966,8 +1982,10 @@ function installerCentreReglages() {
         +'Ce qui n’existe que dans la v2 (budget, taux) reste. Pensez à une sauvegarde de la v2 avant.</p>'
         +'<button type="button" class="btn btn-sm" id="v2-reprendre">Reprendre le travail de la v1</button>';
       donnees.prepend(p);
-      p.querySelector('#v2-reprendre').addEventListener('click',()=>{
-        if(!confirm('Remplacer le travail de la version 2 par celui de la version 1 (plan, équipes, flux, minutes, réglages) ? Le budget de la v2 reste.'))return;
+      p.querySelector('#v2-reprendre').addEventListener('click',async()=>{
+        // Une vraie question : la reprise remplace le travail de la v2, et ne se défait pas.
+        if(!await OrlyNotif.demander('Le plan, les équipes, les flux, les minutes et les réglages de la version 2 seront remplacés par ceux de la version 1. Le budget de la v2 reste. La page se rechargera.',
+          {titre:'Reprendre le travail de la version 1 ?',oui:'Reprendre la v1',danger:true}))return;
         OrlyV2.reprendreV1();location.reload();
       });
     }
@@ -2384,8 +2402,9 @@ function initWorkbench() {
     const content='vol_id,compagnie,type_avion,sens,heure_std,heure_sta,nb_BC,nb_PC,nb_YC,nb_CREW,nb_SPML\nDEMO001,DEMO,A320,DEP,12:00,,0,0,100,4,3\nDEMO-RET001,DEMO,A320,RET,,08:00,0,0,100,4,0\n';
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type:'text/csv;charset=utf-8'}));a.download='modele-vols-demo.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
   });
-  document.getElementById('restore-demo').addEventListener('click',()=>{
-    if(dataSource!=='Jeu de démonstration'&&!confirm('Recharger la démo ? Les vols importés et les scénarios capturés seront remplacés.'))return;
+  document.getElementById('restore-demo').addEventListener('click',async()=>{
+    if(dataSource!=='Jeu de démonstration'&&!await OrlyNotif.demander('Les vols importés et les scénarios capturés seront remplacés par le jeu de démonstration.',
+      {titre:'Recharger la démo ?',oui:'Recharger la démo',danger:true}))return;
     dataSource='Jeu de démonstration';cleDemo='';suivreDemo();snaps={};majCompare();reset(Sim.dataCourante);updateSource();
     const report=document.getElementById('import-report');report.classList.remove('error');report.textContent='Jeu de démonstration rechargé.';
   });

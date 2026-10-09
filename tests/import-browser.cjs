@@ -38,7 +38,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator('#import-report').textContent(),/Ligne 4 /);
   assert.equal(await page.locator('#source-label').textContent(),'vols.csv');
 
-  await click('#restore-demo');await nav.aller(page,'v-departs');
+  // Des vols importés seraient remplacés : une question (08/10).
+  await click('#restore-demo');await nav.repondre(page);await nav.aller(page,'v-departs');
   // La vue Vols lit le modèle par équipes : sans équipe décrite, aucun repas
   // n'est préparé, et le tableau le dit plutôt que d'annoncer un retard.
   assert.match(await page.locator('#flight-rows').textContent(),/Commandes sans équipe/);
@@ -89,7 +90,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.waitForFunction(()=>document.getElementById('source-label').textContent==='autre.csv');
   await comparer();
   assert.match(await page.locator('#compare-note').textContent(),/essai A/,'un nouveau programme efface les captures');
-  await click('#snap-a');await nav.vue(page,'vols');await nav.aller(page,'v-programme');await click('#restore-demo');await comparer();
+  await click('#snap-a');await nav.vue(page,'vols');await nav.aller(page,'v-programme');await click('#restore-demo');await nav.repondre(page);await comparer();
   assert.match(await page.locator('#compare-note').textContent(),/essai A/);
   // L'ancien moteur n'a plus de curseurs à offrir.
   for(const id of ['#staff-cuisine','#robot','#vivier','#calendrier','#materiel','#tunnels'])

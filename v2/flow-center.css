@@ -7,7 +7,6 @@ body.flows-open .workbench{display:none}
 .fc-actions,.fc-families{display:flex;flex-wrap:wrap;gap:8px}
 .fc-actions{flex-shrink:0}
 
-#fc-status{font-size:var(--ds-t-13);min-height:24px;margin:16px 0;color:var(--accent2)}
 .fc-families{margin:16px 0}
 .fc-families [aria-pressed=true]{background:var(--accent);color:var(--bg3);border-color:var(--accent)}
 .fc-families span{margin-left:6px;font-variant-numeric:tabular-nums}

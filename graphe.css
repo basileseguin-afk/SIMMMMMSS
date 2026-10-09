@@ -119,8 +119,6 @@
 .fc-detail:empty{display:none}
 .fc-detail p{margin:0 0 6px}
 .fc-liste-toute>summary{cursor:pointer;font-weight:var(--ds-g-fort);margin:6px 0 10px}
-.pc-message{margin:0;min-height:1.4em;font-size:var(--ds-t-13);font-weight:var(--ds-g-fort);color:var(--accent2)}
-.pc-message:empty{min-height:0}
 
 /* --- Un chemin par commande (Qui prépare quoi › Les chemins) ------------- */
 .pc-cadre{display:grid;grid-template-columns:240px minmax(0,1fr);gap:18px;align-items:start}

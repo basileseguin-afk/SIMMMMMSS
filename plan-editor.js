@@ -57,6 +57,8 @@ function validatePlan(raw,originals){
 class PlanEditor{
  constructor(adapter){
   this.a=adapter;this.svg=adapter.svg;this.active=false;this.tool='select';this.selected=null;this.vertex=null;this.undoStack=[];this.redoStack=[];this.snap=true;this.grid=false;this.space=false;this.points=[];this.gesture=null;this.redraw=false;
+  // Chaque état a son numéro : la notification d'un geste (supprimer un service depuis sa page…) ne l'annule que s'il est encore le dernier (notifications.js).
+  this.version=0;if(root.OrlyNotif)root.OrlyNotif.inscrire('plan',{version:()=>this.version,defaire:()=>this.undo()});
   this.originals=Object.entries(adapter.zones).map(([id,z])=>validZone({id,nom:z.nom,kind:'service',...bounds(z),...(z.pts?{pts:z.pts}:{}),approx:!!z.approx}));
   const annotations=(adapter.storages||[]).map((s,i)=>({s,i})).filter(({i})=>!OLD_STORAGE_IDS.has('storage-'+i)).map(({s,i})=>validZone({id:'storage-'+i,nom:s.l,kind:['cf','gel'].includes(s.cat)?'cold':'room',x:s.x,y:s.y,w:s.w,h:s.h,approx:true}));
   this.state={schema:'ory-plan',version:3,zones:clone(this.originals).concat(annotations),unassignedStorages:[],backgroundOpacity:.85};
@@ -134,7 +136,7 @@ class PlanEditor{
  change(fn,message){this.cancel();const before=clone(this.state);try{fn();this.state=validatePlan(this.state,this.originals);this.commit(before,message);}catch(e){this.state=before;this.render();this.status(e.message+' Modification annulée.');}}
  commit(before,message){
   try{this.state=validatePlan(this.state,this.originals);}catch(e){this.state=before;this.render();this.status(e.message+' Modification annulée.');return;}
-  if(JSON.stringify(before)!==JSON.stringify(this.state)){this.undoStack.push(before);if(this.undoStack.length>80)this.undoStack.shift();this.redoStack=[];this.sync();const saved=this.persist();this.render();if(saved&&message)this.status(message);return;}
+  if(JSON.stringify(before)!==JSON.stringify(this.state)){this.undoStack.push(before);if(this.undoStack.length>80)this.undoStack.shift();this.redoStack=[];this.version++;if(root.OrlyNotif)root.OrlyNotif.marquer('plan');this.sync();const saved=this.persist();this.render();if(saved&&message)this.status(message);return;}
   this.render();if(message)this.status(message);
  }
  persist(){try{const old=localStorage.getItem('orly-plan-v3');if(old)localStorage.setItem('orly-plan-v3-backup',old);localStorage.setItem('orly-plan-v3',JSON.stringify(this.state));return true;}catch(e){this.status('Sauvegarde locale impossible. Exportez le plan pour conserver vos modifications.');this.a.notify('Sauvegarde impossible : utilisez Exporter le plan.');return false;}}
@@ -154,8 +156,8 @@ class PlanEditor{
   }
   this.a.refresh();
  }
- undo(){this.cancel();if(!this.undoStack.length)return;this.redoStack.push(clone(this.state));this.state=this.undoStack.pop();this.afterHistory('Action annulée.');}
- redo(){this.cancel();if(!this.redoStack.length)return;this.undoStack.push(clone(this.state));this.state=this.redoStack.pop();this.afterHistory('Action rétablie.');}
+ undo(){this.cancel();if(!this.undoStack.length)return;this.redoStack.push(clone(this.state));this.state=this.undoStack.pop();this.version++;if(root.OrlyNotif)root.OrlyNotif.bouger();this.afterHistory('Action annulée.');}
+ redo(){this.cancel();if(!this.redoStack.length)return;this.undoStack.push(clone(this.state));this.state=this.redoStack.pop();this.version++;if(root.OrlyNotif)root.OrlyNotif.bouger();this.afterHistory('Action rétablie.');}
  afterHistory(message){if(!this.zone)this.selected=null;this.vertex=null;this.sync();const saved=this.persist();this.render();if(saved)this.status(message);}
  cancel(){if(this.gesture?.before)this.state=this.gesture.before;this.gesture=null;this.points=[];this.preview=null;this.redraw=false;this.guides=[];if(this.layer)this.render();}
  snapPoint(p,e={}){
@@ -238,11 +240,22 @@ class PlanEditor{
  }
  remove(){if(!this.zone)return;if(this.zone.kind==='service'){this.status('Un service du plan d’origine ne se supprime pas : retirez-le de l’unité depuis Équipes › Services et équipes (on peut l’y remettre).');return;}if(this.zone.locked){this.status('Déverrouillez la zone avant de la supprimer.');return;}this.supprimer(this.zone.id);}
  /* Supprimer une zone (pas un service du plan d'origine). La page prévient
-    d'abord si elle porte des équipes, puis les fait passer dans son parent. */
- supprimer(id){const z=this.state.zones.find(v=>v.id===id);if(!z||z.kind==='service')return false;const zone=clone(z);if(this.a.avantSuppression&&this.a.avantSuppression(zone)===false){this.status('Suppression annulée.');return false;}this.change(()=>{this.state.zones=this.state.zones.filter(v=>v.id!==zone.id);if(this.selected===zone.id)this.selected=null;},'Zone supprimée. Annuler permet de la retrouver.');if(this.a.apresSuppression)this.a.apresSuppression(zone);return true;}
+    d'abord si elle porte des équipes (avantSuppression : vrai, faux, ou une
+    question, c'est-à-dire une promesse), puis les fait passer dans son parent.
+    Rend vrai ou faux, ou la promesse de la réponse. `sansQuestion` : l'appelant
+    a déjà demandé. */
+ supprimer(id,sansQuestion){const z=this.state.zones.find(v=>v.id===id);if(!z||z.kind==='service')return false;const zone=clone(z);
+  const faire=oui=>{if(!oui){this.status('Suppression annulée.');return false;}if(!this.state.zones.some(v=>v.id===zone.id))return false;
+   this.change(()=>{this.state.zones=this.state.zones.filter(v=>v.id!==zone.id);if(this.selected===zone.id)this.selected=null;},'Zone supprimée. Annuler permet de la retrouver.');if(this.a.apresSuppression)this.a.apresSuppression(zone);return true;};
+  const ok=sansQuestion||!this.a.avantSuppression?true:this.a.avantSuppression(zone);
+  return ok&&typeof ok.then==='function'?ok.then(faire):faire(ok!==false);}
  /* Retirer un service du plan d'origine de l'unité, ou l'y remettre : il sort
-    de toutes les listes et du plan, sans être effacé. */
- retirer(id,oui){const z=this.state.zones.find(v=>v.id===id);if(!z||z.kind!=='service')return false;const zone=clone(z);if(oui&&this.a.avantSuppression&&this.a.avantSuppression(zone,'retirer')===false)return false;this.change(()=>{z.retire=!!oui;z.visible=!oui;},oui?'Service retiré de l’unité.':'Service remis dans l’unité.');if(oui&&this.a.apresSuppression)this.a.apresSuppression(zone);return true;}
+    de toutes les listes et du plan, sans être effacé. Même réponse que supprimer. */
+ retirer(id,oui,sansQuestion){const z=this.state.zones.find(v=>v.id===id);if(!z||z.kind!=='service')return false;const zone=clone(z);
+  const faire=ok=>{const y=ok&&this.state.zones.find(v=>v.id===id);if(!y)return false;
+   this.change(()=>{y.retire=!!oui;y.visible=!oui;},oui?'Service retiré de l’unité.':'Service remis dans l’unité.');if(oui&&this.a.apresSuppression)this.a.apresSuppression(zone);return true;};
+  const ok=!oui||sansQuestion||!this.a.avantSuppression?true:this.a.avantSuppression(zone,'retirer');
+  return ok&&typeof ok.then==='function'?ok.then(faire):faire(ok!==false);}
  /* Un nouveau service : une zone de production posée à côté de son service
     parent, à déplacer ensuite sur le plan. */
  nouveauService(nom,parent,autonome){const p=this.state.zones.find(v=>v.id===parent&&v.kind==='service')||(autonome?this.originals[0]:null);const n=String(nom||'').trim().slice(0,120);if(!p||!n)return null;const id='local-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7);const b=bounds(p);this.change(()=>{this.state.zones.push(validZone({id,nom:n,kind:'annexe',...(autonome?{autonome:true}:{parent:p.id}),x:b.x+b.w*0.25,y:b.y+b.h*0.25,w:Math.max(20,b.w*0.5),h:Math.max(20,b.h*0.5),approx:true}));},'Service créé : placez-le sur le plan quand vous voudrez.');return id;}
@@ -356,7 +369,7 @@ class PlanEditor{
   if(this.guides){const[x,y]=this.guides;if(x!=null)this.layer.appendChild(this.el('line',{x1:x,x2:x,y1:-10000,y2:20000,class:'pe-guide','vector-effect':'non-scaling-stroke'}));if(y!=null)this.layer.appendChild(this.el('line',{y1:y,y2:y,x1:-10000,x2:20000,class:'pe-guide','vector-effect':'non-scaling-stroke'}));}
  }
  export(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(this.state,null,2)],{type:'application/json'}));a.download='plan-ory-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);this.status('Plan exporté : locaux, contours, stockages, noms, couleurs et verrouillages.');}
- async import(e){const file=e.target.files[0];if(!file)return;try{if(file.size>5*1024*1024)throw new Error('Fichier trop volumineux (maximum 5 Mo).');const raw=JSON.parse(await file.text());const plan=validatePlan(raw,raw.schema==='ory-plan'?this.originals:this.state.zones.filter(z=>z.kind==='service'));if(raw.schema!=='ory-plan')plan.unassignedStorages=clone(this.state.unassignedStorages);if(raw.schema!=='ory-plan')plan.zones.push(...clone(this.state.zones.filter(z=>z.kind!=='service')));if(!confirm('Remplacer le plan par ce fichier ? Vous pourrez annuler cette action.'))return;this.change(()=>{this.state=plan;this.selected=null;},'Plan importé. Annuler restaure votre plan précédent.');}catch(err){this.status('Import refusé : '+err.message+' Le plan actuel est conservé.');}finally{e.target.value='';}}
+ async import(e){const file=e.target.files[0];if(!file)return;try{if(file.size>5*1024*1024)throw new Error('Fichier trop volumineux (maximum 5 Mo).');const raw=JSON.parse(await file.text());const plan=validatePlan(raw,raw.schema==='ory-plan'?this.originals:this.state.zones.filter(z=>z.kind==='service'));if(raw.schema!=='ory-plan')plan.unassignedStorages=clone(this.state.unassignedStorages);if(raw.schema!=='ory-plan')plan.zones.push(...clone(this.state.zones.filter(z=>z.kind!=='service')));this.change(()=>{this.state=plan;this.selected=null;},'Plan importé, à la place du précédent. Annuler le restaure.');}catch(err){this.status('Import refusé : '+err.message+' Le plan actuel est conservé.');}finally{e.target.value='';}}
 }
 const api={PlanEditor,validatePlan,validZone,bounds,resize};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.OrlyPlan=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

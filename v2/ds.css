@@ -45,7 +45,7 @@
   --ds-accent-pale:#E9F3F2;
   --ds-ok:#15803D; --ds-ok-texte:#166534; --ds-ok-doux:color-mix(in srgb,#15803D 9%,transparent);
   --ds-attente:#B45309; --ds-attente-texte:#92400E; --ds-attente-doux:color-mix(in srgb,#B45309 9%,transparent);
-  --ds-retard:#C0262D; --ds-retard-texte:#A11D24; --ds-retard-doux:color-mix(in srgb,#C0262D 8%,transparent);
+  --ds-retard:#C0262D; --ds-retard-texte:#A11D24; --ds-retard-doux:color-mix(in srgb,#C0262D 8%,transparent); --ds-sur-retard:#FFFFFF;
   --ds-info:#1D4ED8; --ds-info-doux:color-mix(in srgb,#1D4ED8 8%,transparent);
   /* Les données (classes, flux) : la couleur n'y sert qu'à reconnaître. */
   --ds-d1:#3B5BDB; --ds-d2:#7C4DDB; --ds-d3:#0E9F6E; --ds-d4:#B7791F; --ds-d5:#D9534F; --ds-d6:#2B87B5;
@@ -67,7 +67,7 @@
   --ds-accent-pale:#152B2C;
   --ds-ok:#3FB950; --ds-ok-texte:#56D364; --ds-ok-doux:color-mix(in srgb,#3FB950 13%,transparent);
   --ds-attente:#D29922; --ds-attente-texte:#E3B341; --ds-attente-doux:color-mix(in srgb,#D29922 13%,transparent);
-  --ds-retard:#F85149; --ds-retard-texte:#FF7B72; --ds-retard-doux:color-mix(in srgb,#F85149 13%,transparent);
+  --ds-retard:#F85149; --ds-retard-texte:#FF7B72; --ds-retard-doux:color-mix(in srgb,#F85149 13%,transparent); --ds-sur-retard:#1A0606;
   --ds-info:#58A6FF; --ds-info-doux:color-mix(in srgb,#58A6FF 13%,transparent);
   --ds-d1:#7C9CF0; --ds-d2:#B392F0; --ds-d3:#56C7A5; --ds-d4:#E3B456; --ds-d5:#EE8A7A; --ds-d6:#7FB8D6;
   --ds-chaine:#E879F9;
@@ -156,6 +156,10 @@ a{color:var(--ds-accent-texte)}
 .btn-play:focus-visible,.btn.btn-play:focus-visible,.btn-pause:focus-visible,.btn.btn-pause:focus-visible{box-shadow:var(--ds-focus)}
 .btn-pause,.btn.btn-pause{background:var(--ds-attente);border-color:var(--ds-attente);color:#fff}
 .btn-pause:hover:not(:disabled){background:var(--ds-attente-texte);border-color:var(--ds-attente-texte);color:#fff}
+/* Le geste qui détruit, dans une question (notifications.js) : plein, rouge. */
+.btn.btn-danger{background:var(--ds-retard);border-color:var(--ds-retard);color:var(--ds-sur-retard)}
+.btn.btn-danger .ico{color:currentColor}
+.btn.btn-danger:hover:not(:disabled){background:var(--ds-retard-texte);border-color:var(--ds-retard-texte);color:var(--ds-sur-retard)}
 .svc-danger,.btn.svc-danger,.btn.at-danger{color:var(--ds-retard-texte);border-color:color-mix(in srgb,var(--ds-retard) 30%,var(--ds-bordure-forte));background:var(--ds-surface-1)}
 .svc-danger:hover:not(:disabled),.btn.svc-danger:hover:not(:disabled),.btn.at-danger:hover:not(:disabled){background:var(--ds-retard-doux);border-color:var(--ds-retard);color:var(--ds-retard-texte)}
 .lien-fort{font-weight:var(--ds-g-fort);color:var(--ds-accent-texte);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;
@@ -224,8 +228,35 @@ table th{font-weight:var(--ds-g-moyen)}
 .aide>summary{border-color:var(--ds-bordure-forte);color:var(--ds-texte-3);background:var(--ds-surface-1);font-weight:var(--ds-g-moyen)}
 .aide>summary:hover{border-color:var(--ds-accent);color:var(--ds-accent-texte)}
 
-/* Les messages. */
-.toast,#toast{border-radius:var(--ds-r-3);box-shadow:var(--ds-ombre-flottant)}
+/* Les notifications (notifications.js) : ce qui vient de se passer, en bas à
+   droite, quelques secondes ; « Annuler » quand le geste se défait. */
+.notifs{position:fixed;right:var(--ds-e-4);bottom:var(--ds-e-4);z-index:1200;width:min(380px,calc(100vw - 2 * var(--ds-e-4)));pointer-events:none}
+.notifs-pile{display:flex;flex-direction:column;gap:var(--ds-e-2)}
+.notif{pointer-events:auto;display:flex;align-items:flex-start;gap:var(--ds-e-1);padding:6px 6px 6px 14px;
+  background:var(--ds-surface-3);color:var(--ds-texte-1);border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);
+  box-shadow:var(--ds-ombre-flottant);font-size:var(--ds-t-13);line-height:1.45;
+  animation:notif-entre var(--ds-t-panneau) var(--ds-courbe)}
+.notif.sort{opacity:0;transform:translateY(4px);transition:opacity 150ms,transform 150ms}
+.notif-texte{flex:1;min-width:0;margin:5px 4px 5px 0;white-space:pre-line;overflow-wrap:anywhere}
+.notif>.ico{flex:none;width:16px;height:16px;margin:7px 0 0 -4px;color:var(--ds-retard)}
+.notif.retard{border-color:color-mix(in srgb,var(--ds-retard) 35%,var(--ds-bordure))}
+.notif.consigne{border-color:var(--ds-accent-trait);background:var(--ds-accent-pale)}
+.notif-annuler{flex:none;min-height:var(--ds-h-compact);padding:0 10px;border:0;border-radius:var(--ds-r-2);background:none;
+  font:inherit;font-weight:var(--ds-g-fort);color:var(--ds-accent-texte);cursor:pointer}
+.notif-annuler:hover{background:var(--ds-accent-doux)}
+.notif-fermer{flex:none;display:grid;place-items:center;width:var(--ds-h-compact);height:var(--ds-h-compact);border:0;border-radius:var(--ds-r-2);
+  background:none;color:var(--ds-texte-3);cursor:pointer}
+.notif-fermer:hover{background:var(--ds-survol);color:var(--ds-texte-1)}
+.notif-fermer .ico{width:14px;height:14px}
+@keyframes notif-entre{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+/* Les questions : une fenêtre, pour ce qui ne se défait pas d'un clic. */
+dialog.question{width:min(440px,calc(100vw - 32px));padding:0;border:1px solid var(--ds-bordure);border-radius:var(--ds-r-4);
+  background:var(--ds-surface-3);color:var(--ds-texte-1);box-shadow:var(--ds-ombre-flottant)}
+dialog.question::backdrop{background:var(--ds-voile)}
+dialog.question form{padding:var(--ds-e-5)}
+dialog.question h2{margin:0 0 var(--ds-e-2);font-size:var(--ds-t-16)}
+dialog.question p{margin:0;color:var(--ds-texte-2);line-height:1.55;white-space:pre-line}
+.question-boutons{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:var(--ds-e-2);margin-top:var(--ds-e-5)}
 .at-anomalies,.rg-avertissement,.fc-alerte.grave{border-radius:var(--ds-r-3)}
 
 /* ---- 5. Coquille ------------------------------------------------------------ */

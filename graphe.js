@@ -792,7 +792,7 @@
       this.depuis = id;
       if (this.a.relierDebut) this.a.relierDebut(id);
       const n = this.a.noeuds().find(x => x.id === id);
-      this.dire('Relier ' + (n ? n.nom : id) + ' à… : cliquez le service qui le reçoit (Échap ou un clic dans le vide pour annuler).');
+      this.dire('Relier ' + (n ? n.nom : id) + ' à… : cliquez le service qui le reçoit (Échap ou un clic dans le vide pour annuler).', { consigne: true });
       this.rendre();
       const autre = this.a.hote().querySelector('.gr-noeud.cible');
       if (autre) autre.focus({ preventScroll: true });
@@ -834,7 +834,8 @@
     /** Oublier la disposition retenue : les nœuds se rangent à nouveau d'eux-mêmes. */
     reorganiser() { ecrirePositions(this.cleDispo(), null); this.rendre(); }
 
-    dire(texte) { if (this.a.message) this.a.message(texte); }
+    /** Ce que le diagramme a à dire : une consigne (tant que dure le geste), un refus, un abandon. */
+    dire(texte, o) { if (this.a.message) this.a.message(texte, o); }
   }
 
   const api = { L, H, CLE, CLE_SENS, disposer, courbe, validerPositions, lirePositions, ecrirePositions, lireSens, ecrireSens, Diagramme };

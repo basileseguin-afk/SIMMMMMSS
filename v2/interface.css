@@ -23,7 +23,7 @@ h1{font-size:var(--ds-t-20);margin:4px 0 0;letter-spacing:-.025em}.eyebrow{font-
 .zone[aria-pressed=true] .fond{stroke:var(--accent)}
 /* Un texte pour lecteur d'écran se cale en haut de son bloc : à sa place
  * dans une fiche qui défile, il allongeait la page entière (Plonge, 05/10). */
-.sr-only,.skip-link:not(:focus){position:absolute;top:0;left:0;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}.skip-link:focus{position:fixed;top:0;left:0;z-index:100;background:var(--bg3);padding:16px}.toast{max-width:calc(100vw - 32px);border-radius:8px;font-size:var(--ds-t-12)}
+.sr-only,.skip-link:not(:focus){position:absolute;top:0;left:0;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}.skip-link:focus{position:fixed;top:0;left:0;z-index:100;background:var(--bg3);padding:16px}
 @media(min-width:1600px){.app{grid-template-columns:minmax(0,1fr) 380px}.plan-tete{gap:16px}}
 @media(max-width:1150px){.run-state{display:none}.vitesse-box input{width:70px}.app{grid-template-columns:minmax(0,1fr) 300px}.panel-content{padding:16px}.plan-tete{padding-left:16px;padding-right:16px}.kpi{padding:0 14px}.kpi .val{font-size:var(--ds-t-24)}.plan-aide{display:none}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}

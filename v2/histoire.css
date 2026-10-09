@@ -279,7 +279,6 @@ body:not([data-vue="reglages"]) [data-vue-outils="reglages"]{display:none}
    l'explique (le titre reste lu par les lecteurs d'écran). */
 #view-ateliers{padding-top:16px}
 #view-ateliers h3.at-titre{font-size:0;letter-spacing:0;margin:0 0 10px;padding-top:0;border-top:0}
-#at-status:empty{display:none}
 details.at-anomalies{margin-top:0}
 #view-ateliers .at-titre-aide{margin-top:0;padding-top:0;border-top:0}
 #view-ateliers .at-titre-aide .at-titre{margin:0}
@@ -315,7 +314,6 @@ body{min-width:1024px}
 body.avant-lancement .kpi-quand{display:none}
 .qf-vide{background:var(--bg3);border:1px dashed var(--bordure2);border-radius:14px;padding:28px 20px;max-width:720px;margin:10px auto}
 .qf-vide p{max-width:58ch}
-#fc-status:empty{display:none}
 /* Un champ a la taille de ce qu'il contient : un curseur de 0,5 à 1,2 ne
    traverse pas l'écran, un nombre de trois chiffres ne prend pas une ligne. */
 .rg-modele .slider-ligne,#panneau-horaires .slider-ligne{max-width:460px}

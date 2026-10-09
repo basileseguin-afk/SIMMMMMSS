@@ -125,14 +125,11 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 .compare-tab td:first-child,.compare-tab th:first-child{text-align:left;color:var(--txt2);font-weight:var(--ds-g-fort)}
 .compare-tab thead th{color:var(--txt2);font-size:var(--ds-t-12);text-transform:uppercase;font-weight:var(--ds-g-fort)}
 
-.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ds-texte-1);color:var(--ds-surface-1);padding:10px 20px;border-radius:30px;font-weight:var(--ds-g-fort);opacity:0;pointer-events:none;transition:.25s;z-index:50;box-shadow:var(--ombre)}
-.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
-
 @media(max-width:1250px){ .app{grid-template-columns:260px 1fr 290px} }
 </style>
-<meta name="ory-version" content="d016548026"/>
-<link href="interface.css?v=840cf9be" rel="stylesheet"/><link href="editor.css?v=205c059f" rel="stylesheet"/><link href="flow-center.css?v=ba246ece" rel="stylesheet"/><link href="ateliers.css?v=579b97f4" rel="stylesheet"/>
-<link href="reglages.css?v=909c68d2" rel="stylesheet"/><link href="demarrage.css?v=9ef1de69" rel="stylesheet"/><link href="aide.css?v=6dc5aec0" rel="stylesheet"/><link href="usability.css?v=c0668fd3" rel="stylesheet"/><link href="graphe.css?v=15cfc990" rel="stylesheet"/><link href="histoire.css?v=369d38e8" rel="stylesheet"/><link href="temps.css?v=a45fa6cd" rel="stylesheet"/><link href="unite.css?v=3cfe685d" rel="stylesheet"/><link href="ds.css?v=4ad3c902" rel="stylesheet"/></head>
+<meta name="ory-version" content="3abe22db97"/>
+<link href="interface.css?v=a79339df" rel="stylesheet"/><link href="editor.css?v=205c059f" rel="stylesheet"/><link href="flow-center.css?v=62899a0b" rel="stylesheet"/><link href="ateliers.css?v=e42b8371" rel="stylesheet"/>
+<link href="reglages.css?v=37e11929" rel="stylesheet"/><link href="demarrage.css?v=9ef1de69" rel="stylesheet"/><link href="aide.css?v=6dc5aec0" rel="stylesheet"/><link href="usability.css?v=d05639c8" rel="stylesheet"/><link href="graphe.css?v=c6498078" rel="stylesheet"/><link href="histoire.css?v=805de82a" rel="stylesheet"/><link href="temps.css?v=a45fa6cd" rel="stylesheet"/><link href="unite.css?v=b72a9e90" rel="stylesheet"/><link href="ds.css?v=639e0b22" rel="stylesheet"/></head>
 <body data-vue="plan"><a class="skip-link" href="#workspace">Aller au contenu</a>
 <!-- ============ NAVIGATION : la marque, les parties (celle qui est ouverte déplie ses pages), la sauvegarde ============ -->
 <aside aria-label="Navigation" class="barre" id="barre">
@@ -242,28 +239,28 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <details class="aide bloc"><summary>Site et fichier local : deux stockages</summary><span class="aide-corps">Une page ouverte depuis <code>github.io</code> et un fichier ouvert depuis votre disque ne partagent pas le même stockage : travaillez toujours au même endroit, ou passez par ce fichier.</span></details>
 </div>
 <div class="panneau" id="model-limits"><h3>Ce que le calcul ne sait pas faire</h3><p class="mini-note">C’est un prototype : il sert à comparer des essais entre eux, pas à dire combien de personnes embaucher.</p><details class="aide bloc"><summary>Les limites connues</summary><span class="aide-corps"><ul class="limits-list"><li>Barème d’heures de travail <strong>non calibré</strong> : valeurs de démonstration tant que l’étude de l’unité n’est pas importée.</li><li>Calcul <strong>sans aléa</strong> : pas de panne, d’absence ni de retard de livraison. Une même journée donne toujours le même résultat.</li><li>Un seul compte de matériel propre, consommé et relavé ; les stocks de denrées, les trolleys et les transferts physiques ne sont pas modélisés.</li><li>Les compétences ne sont pas modélisées : une personne d’un atelier ne va pas aider dans un autre.</li><li>L’export Winrest (XLSX et lignes de prestations) n’est pas encore lu : seul le CSV simplifié l’est.</li></ul></span></details></div></div></aside></div>
-<div aria-live="polite" class="toast" id="toast" role="status"></div>
 <script src="vols-demo.js?v=08d61681"></script>
 <script src="rendu.js?v=ac16ab27"></script>
 <script src="onglets.js?v=22bb09f1"></script>
+<script src="notifications.js?v=c02682a3"></script>
 <script src="icones.js?v=07278243"></script>
 <script src="ui-model.js?v=4688387f"></script>
 <script src="moteur/noyau.js?v=5b2122e2"></script>
 <script src="moteur/production.js?v=2b9cffbb"></script>
-<script src="plan-editor.js?v=425c673f"></script>
-<script src="flow-center.js?v=0b44ce08"></script>
+<script src="plan-editor.js?v=3798b094"></script>
+<script src="flow-center.js?v=d404dcd9"></script>
 <script src="tableur.js?v=d7003370"></script>
-<script src="graphe.js?v=c8560615"></script>
-<script src="parcours.js?v=fbd19718"></script>
+<script src="graphe.js?v=8de5e60e"></script>
+<script src="parcours.js?v=d04675a3"></script>
 <script src="echanges.js?v=db77d61a"></script>
-<script src="ateliers.js?v=8d1de382"></script>
-<script src="reglages.js?v=24721986"></script>
-<script src="unite.js?v=491869e3"></script>
+<script src="ateliers.js?v=11bcd0f0"></script>
+<script src="reglages.js?v=b79d22b3"></script>
+<script src="unite.js?v=77cc00a1"></script>
 <script src="demarrage.js?v=7c44dc7e"></script>
 <script src="temps.js?v=d3176c90"></script>
 <script src="replay.js?v=016adb42"></script>
 <script src="simulation.js?v=193892c7"></script>
 <script src="comparaison.js?v=65c11530"></script>
-<script src="sim.js?v=23386192"></script>
+<script src="sim.js?v=3e355295"></script>
 </body>
 </html>

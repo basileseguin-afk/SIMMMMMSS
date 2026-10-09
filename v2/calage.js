@@ -438,7 +438,7 @@
     appliquer() {
       const r = this.resultat; if (!r) return;
       const rg = this.a.rg(), at = this.a.at();
-      if (!root.confirm('Multiplier les heures de travail de ' + r.services.length + ' service(s) par leur facteur ? « Annuler » revient en arrière.')) return;
+      // Tout de suite : la notification porte « Annuler », qui défait le barème et les cases ensemble (08/10).
       const k = r.facteurs;
       if (rg) rg.changer(() => {
         const b = rg.baremeComplet();
@@ -449,7 +449,7 @@
         for (const a of at.state.ateliers) if (a.minutes && k[a.service] && k[a.service] !== 1)
           for (const c of Object.keys(a.minutes)) a.minutes[c] = Math.round(a.minutes[c] * k[a.service] * 10) / 10;
       }, 'Minutes calées sur le mois réel.');
-      this.a.notify('Facteurs appliqués. Relancez le calage : ils doivent maintenant être proches de ×1.');
+      this.a.notify('Facteurs appliqués aux heures de travail de ' + r.services.length + (r.services.length > 1 ? ' services' : ' service') + '. Relancez le calage : ils doivent maintenant être proches de ×1.');
       this.resultat = null; this.rendre();
     }
 

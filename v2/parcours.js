@@ -185,18 +185,19 @@
    * ====================================================================*/
 
   const fabrique = a => a.type === 'manuel' || a.type === 'robot';
-  /* Ce qui vient de se passer (« Enregistré. », « Case créée… ») : dans la
-   * ligne d'état de la vue et au-dessus du diagramme des chemins. Un message
-   * s'efface de lui-même : resté affiché, il se lisait encore des pages plus
-   * loin, dans les résultats, comme s'il parlait d'eux (audit du 29/09). */
+  /* Ce qui vient de se passer (« Case créée… », « Lien retiré. ») : une
+   * notification, avec « Annuler » quand le geste se défait (notifications.js,
+   * refonte du 08/10). Une consigne (« Relier Prépa à… ») y reste tant que dure
+   * son geste. Le dernier message reste aussi, caché, dans `#at-status`, et
+   * s'y efface de lui-même : les tests le lisent. Vide, il ferme la notification. */
   let minuterie = null;
-  function annoncer(t) {
+  function annoncer(t, o = {}) {
     if (typeof document === 'undefined') return;
     const texte = t || '';
     const s = document.getElementById('at-status'); if (s) s.textContent = texte;
-    for (const m of document.querySelectorAll('.pc-message')) m.textContent = texte;
     clearTimeout(minuterie);
-    if (texte) minuterie = setTimeout(() => annoncer(''), Math.min(10000, 5000 + texte.length * 20));
+    if (texte) minuterie = setTimeout(() => { const s2 = document.getElementById('at-status'); if (s2) s2.textContent = ''; }, Math.min(10000, 5000 + texte.length * 20));
+    if (root.OrlyNotif) root.OrlyNotif.notifier(texte, { cle: 'cases', ...o });
   }
   /* Deux étapes fusionnées, à la chaîne (retour d'usage du 29/09) : la case
    * d'un service (le Montage) fait aussi l'étape d'avant (la Prépa) pour ses
@@ -1607,8 +1608,6 @@
       const t2 = this.a.boite().querySelector('.pc-tiroir'); if (t2 && haut) t2.scrollTop = haut;
       this.placeTiroir();
       const g = this.diagramme(); if (g) { g.selection = this.selection(); g.rendre(); }
-      const statut = document.getElementById('at-status'), m = this.a.boite().querySelector('.pc-message');
-      if (m && statut) m.textContent = statut.textContent;
       this.filtrer(); this.filtrerCmd();
       this.montrerCmd(hautListe);
     }
@@ -1717,15 +1716,13 @@
             Ci-dessous, ce flux ; sur chaque service, l’équipe qui prépare ${esc(lib)}.</span>
             <span class="pc-flux-gestes"><button class="btn btn-sm" data-pc-action="flux-ouvrir">Modifier ce flux${n > 1 ? ' (ses ' + n + ' commandes)' : ''}</button>
             <button class="btn btn-sm" data-pc-action="flux-variante">Seulement pour ${esc(lib)} : lui faire sa variante</button></span></div>`
-          + `<p class="pc-message" role="status" aria-live="polite"></p>
-          <div class="pc-graphe" data-parcours="${esc(p.id)}"></div>
+          + `<div class="pc-graphe" data-parcours="${esc(p.id)}"></div>
           <div class="pc-bas">${this.blocPanneau(etat, classes, p)}</div>
           <details class="pc-creer-plus"${this.depuis !== undefined ? ' open' : ''}><summary>Ou bien : un chemin à elle, avec une case à elle sur chaque service…</summary>
             ${this.creation(etat, classes, c, true)}</details>`;
       }
       return this.teteCommande(c, true) + suit + this.outils(etat, p, this.duplication(etat, classes, c))
-        + `<p class="pc-message" role="status" aria-live="polite"></p>
-        <div class="pc-graphe" data-parcours="${esc(p.id)}"></div>
+        + `<div class="pc-graphe" data-parcours="${esc(p.id)}"></div>
         <div class="pc-bas">${this.blocPanneau(etat, classes, p)}</div>`;
     }
 
@@ -1737,8 +1734,7 @@
       return `<div class="pc-cmd-tete"><b>Modèle « ${esc(p.nom)} »</b><span>${suivi.length ? 'classe' + (suivi.length > 1 ? 's ' : ' ') + esc(suivi.join(', ')) : 'suivi par aucune classe'}
           · ${sans} ${sans > 1 ? 'commandes le suivent' : 'commande le suit'} faute de chemin à elles</span></div>`
         + this.outils(etat, p, '')
-        + `<p class="pc-message" role="status" aria-live="polite"></p>
-        <div class="pc-graphe" data-parcours="${esc(p.id)}"></div>
+        + `<div class="pc-graphe" data-parcours="${esc(p.id)}"></div>
         <div class="pc-bas">${this.blocPanneau(etat, classes, p)}</div>`;
     }
 
@@ -1871,7 +1867,7 @@
         },
         // Relier : la fenêtre de la case se referme, le service visé doit se voir.
         relierDebut: () => { if (ed.svc) { ed.svc = ''; ed.rendrePanneau(); } },
-        message: t => ed.dire(t)
+        message: (t, o) => ed.dire(t, o)
       });
       return this.graphe;
     }
@@ -1907,7 +1903,7 @@
 
     /* Ce qui vient de se passer se dit deux fois : dans la ligne d'état de la
      * vue, et juste au-dessus du diagramme, là où l'on regarde. */
-    dire(t) { annoncer(t); }
+    dire(t, o) { annoncer(t, o); }
 
     /** Les commandes d'une case, en bref : « TX BC, TX PC ». */
     resumeCase(a) {
@@ -2307,10 +2303,8 @@
           + (memes ? ', dans les mêmes cases, à la suite de ' + etiquette(source) : '') + '.');
         return;
       }
+      // Supprimer se fait tout de suite : la notification porte « Annuler » (08/10).
       if (action === 'parcours-retirer') {
-        if (this.cmd) {
-          if (!confirm('Supprimer le chemin de ' + this.lib(this.cmd) + ' ? Les cases qui ne préparent qu’elle disparaissent avec lui ; elle suit de nouveau le modèle de sa classe. L’action est annulable.')) return;
-        } else if (!confirm('Supprimer le modèle « ' + (p ? p.nom : '') + ' » ? Les commandes sans chemin qui le suivaient retomberont sur les liens de l’unité. L’action est annulable.')) return;
         this.sel = null; this.svc = ''; if (!this.cmd) this.actif = null;
         const cmd = this.cmd;
         return this.a.changer(x => {
@@ -2324,7 +2318,8 @@
           x.parcours = x.parcours.filter(y => y.id !== pid);
           for (const c of Object.keys(x.parcoursCabine)) if (x.parcoursCabine[c] === pid) delete x.parcoursCabine[c];
           for (const c of Object.keys(x.parcoursClasse)) if (x.parcoursClasse[c] === pid) delete x.parcoursClasse[c];
-        }, this.cmd ? 'Chemin de ' + this.lib(this.cmd) + ' supprimé.' : 'Modèle supprimé.');
+        }, this.cmd ? 'Chemin de ' + this.lib(this.cmd) + ' supprimé : les cases qui ne préparaient qu’elle partent avec lui ; elle suit de nouveau le modèle de sa classe.'
+          : 'Modèle « ' + (p ? p.nom : '') + ' » supprimé : les commandes sans chemin qui le suivaient retombent sur les liens de l’unité.');
       }
       if (action === 'besoin') {
         const cmd = this.cmd;

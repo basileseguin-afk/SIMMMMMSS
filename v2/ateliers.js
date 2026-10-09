@@ -360,6 +360,10 @@
       this.ouvert = null;         // atelier en cours d'édition
       this.resultat = null;
       this.undo = []; this.redo = [];
+      // Chaque état a son numéro : la notification d'un geste ne l'annule que
+      // s'il est encore le dernier (notifications.js).
+      this.version = 0;
+      if (root.OrlyNotif) root.OrlyNotif.inscrire('cases', { version: () => this.version, defaire: () => this.histoire(false) });
       let alerte = '';
       try {
         const brut = localStorage.getItem(CLE);
@@ -402,7 +406,7 @@
           // Une copie de l'organisation d'avant, gardée dans ce navigateur :
           // « Annuler » ne survit pas à un rechargement de la page.
           try { localStorage.setItem(CLE + '-avant-fonte', JSON.stringify({ le: new Date().toISOString(), etat: avant })); } catch (e) { /* plein */ }
-          this.state = valider(this.state); this.undo.push(avant); this.enregistrer();
+          this.state = valider(this.state); this.undo.push(avant); this.version++; this.enregistrer();
           alerte = this.messageFonte(r) + ' « Annuler » revient en arrière.';
         }
       } catch (e) { /* un état illisible est déjà signalé plus haut */ }
@@ -714,6 +718,7 @@
       catch (e) { this.state = avant; this.rendre('Refusé : ' + e.message); return false; }
       if (JSON.stringify(avant) !== JSON.stringify(this.state)) {
         this.undo.push(avant); if (this.undo.length > 80) this.undo.shift(); this.redo = [];
+        this.version++; if (root.OrlyNotif) root.OrlyNotif.marquer('cases');
       }
       this.enregistrer(); this.rendre(message); return true;
     }
@@ -727,6 +732,7 @@
       const de = refaire ? this.redo : this.undo, vers = refaire ? this.undo : this.redo;
       if (!de.length) return;
       vers.push(clone(this.state)); this.state = de.pop(); this.ouvert = null;
+      this.version++; if (root.OrlyNotif) root.OrlyNotif.bouger();
       this.enregistrer(); this.rendre(refaire ? 'Action rétablie.' : 'Action annulée.');
     }
 
@@ -744,7 +750,8 @@
     <input id="at-import" type="file" accept=".xlsx,.json" hidden>
   </div>
 </div>
-<p id="at-status" role="status" aria-live="polite"></p>
+<!-- Le dernier message, caché : il s'affiche en notification (notifications.js). -->
+<p id="at-status" hidden></p>
 <details id="at-anomalies" class="at-anomalies" data-sous="at-chemins at-equipes at-grille at-planning at-repas at-recap" hidden></details>
 <section id="mu-pas" class="mu mu-pas" data-sous="mu-pas" aria-label="Pas à pas"></section>
 <section id="mu-carte" class="mu mu-carte" data-sous="mu-carte" aria-label="Vue d’ensemble des chemins"></section>
@@ -959,10 +966,11 @@
         // qui n'existe pas et on doute que l'atelier existe.
         case 'fermer':
           this.ouvert = null;
-          return this.rendre('« ' + a.nom + ' » enregistré.');
+          return this.rendre('Fiche de « ' + a.nom + ' » refermée : tout est enregistré.');
+        // Supprimer se fait tout de suite : la notification porte « Annuler » (08/10).
         case 'supprimer':
-          if (!confirm('Supprimer la case « ' + a.nom + ' » ? Ses commandes sauteront cette étape jusqu’à ce qu’on leur en donne une autre. L’action est annulable.')) return;
-          return this.changer(() => { this.state.ateliers = this.state.ateliers.filter(x => x.id !== id); }, 'Case « ' + a.nom + ' » supprimée.');
+          return this.changer(() => { this.state.ateliers = this.state.ateliers.filter(x => x.id !== id); },
+            'Case « ' + a.nom + ' » supprimée : ses commandes sautent cette étape jusqu’à ce qu’on leur en donne une autre.');
         case 'dupliquer':
           return this.changer(() => {
             const c = clone(a); c.id = uid(); c.nom = (a.nom + ' (2)').slice(0, 160);
@@ -1027,8 +1035,7 @@
           let copie = null;
           try { copie = JSON.parse(localStorage.getItem(CLE + '-avant-fonte') || 'null'); } catch (e) { copie = null; }
           if (!copie || !copie.etat) return this.rendre('Aucune copie d’avant la fusion.');
-          if (!confirm('Remplacer les cases et les chemins par ceux d’avant la fusion (' + String(copie.le || '').slice(0, 16).replace('T', ' ') + ') ? L’action est annulable.')) return;
-          this.changer(() => { this.state = valider(copie.etat); }, 'Organisation d’avant la fusion rétablie. La légumerie et le magasin ne sont plus fondus : '
+          this.changer(() => { this.state = valider(copie.etat); }, 'Organisation d’avant la fusion (' + String(copie.le || '').slice(0, 16).replace('T', ' ') + ') rétablie. La légumerie et le magasin ne sont plus fondus : '
             + 'utilisez « Passer à une case partagée » dans les points à regarder, si besoin.');
           try { localStorage.removeItem(CLE + '-avant-fonte'); } catch (e) { /* rien */ }
           return this.rendre();
@@ -1400,8 +1407,8 @@
           etat = valider(r.etat); ajouts = r.ajouteesAuto;
           this.fondreDispos(etat); etat = valider(etat);
         }
-        if (!confirm('Remplacer les cases et les chemins par ceux du fichier (' + etat.ateliers.length + (etat.ateliers.length > 1 ? ' cases' : ' case') + ') ? L’action est annulable.')) return;
-        this.changer(() => { this.state = etat; }, 'Cases importées : ' + etat.ateliers.length + (etat.ateliers.length > 1 ? ' cases.' : ' case.')
+        this.changer(() => { this.state = etat; }, 'Cases importées : ' + etat.ateliers.length + (etat.ateliers.length > 1 ? ' cases' : ' case')
+          + ', avec les chemins du fichier, à la place des précédents.'
           + (ajouts.length ? (ajouts.length > 1 ? ' Commandes ajoutées : ' : ' Commande ajoutée : ') + ajouts.join(', ') + '.' : ''));
       } catch (err) { this.rendre('Import refusé — ' + err.message); }
       finally { e.target.value = ''; }
@@ -1410,7 +1417,6 @@
     importerHoraires({ etat, changes }) {
       if (!changes.length) return this.rendre('Horaires lus : aucune heure ne change.');
       const liste = changes.slice(0, 6).join(', ') + (changes.length > 6 ? '…' : '');
-      if (!confirm('Changer l’heure de début de ' + changes.length + (changes.length > 1 ? ' cases' : ' case') + ' (' + liste + ') ? Rien d’autre ne change. L’action est annulable.')) return;
       this.changer(() => { this.state = valider(etat); },
         'Horaires importés : ' + changes.length + (changes.length > 1 ? ' cases décalées' : ' case décalée') + ' (' + liste + ').');
     }
@@ -2354,7 +2360,6 @@
         const r = E.classeurVersRecapCases(await T.lireFichier(f, 4 * 1024 * 1024), this.state, { services: this.a.services(), classes: this.classes });
         if (!r.changes.length) return this.rendre('Cases lues : rien ne change.');
         const liste = r.changes.slice(0, 6).join(', ') + (r.changes.length > 6 ? '…' : '');
-        if (!confirm('Changer ' + r.changes.length + (r.changes.length > 1 ? ' cases' : ' case') + ' (' + liste + ') d’après le fichier ? L’action est annulable.')) return;
         this.changer(() => { this.state = valider(r.etat); }, 'Cases importées : ' + r.changes.length + (r.changes.length > 1 ? ' cases changées' : ' case changée') + ' (' + liste + ').');
       } catch (err) { this.rendre('Import refusé — ' + err.message); }
       finally { e.target.value = ''; }

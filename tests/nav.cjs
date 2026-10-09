@@ -55,4 +55,15 @@ async function deplier(page) {
   if (await b.count()) { await b.click(); await page.waitForTimeout(100); }
 }
 
-module.exports = { aller, vue, accueil, creerChemin, deplier, effectifSaisi, PREMIERE };
+/* Une question du site (notifications.js, 08/10) : avant un geste qui ne se
+ * défait pas d'un clic (supprimer un service et ses équipes, restaurer une
+ * sauvegarde…), une fenêtre demande. `oui` y répond par le geste, sinon par
+ * « Ne rien changer ». Les gestes qui se défont ne demandent plus rien. */
+async function repondre(page, oui = true) {
+  const d = page.locator('dialog.question[open]');
+  await d.waitFor({ state: 'visible', timeout: 3000 });
+  await d.locator(oui ? '[value=oui]' : '[value=non]').click();
+  await page.waitForTimeout(150);
+}
+
+module.exports = { aller, vue, accueil, creerChemin, deplier, effectifSaisi, repondre, PREMIERE };

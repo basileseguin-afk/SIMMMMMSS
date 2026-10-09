@@ -99,6 +99,10 @@
       this.a = a;
       this.etat = valider(null);
       this.undo = []; this.redo = [];
+      // Chaque état a son numéro : la notification d'un geste ne l'annule que
+      // s'il est encore le dernier (notifications.js).
+      this.version = 0;
+      if (root.OrlyNotif) root.OrlyNotif.inscrire('bareme', { version: () => this.version, defaire: () => this.histoire(false) });
       this.serviceOuvert = null;   // un seul service déplié à la fois
       this.converti = false;
       let alerte = '';
@@ -149,6 +153,7 @@
       catch (e) { this.etat = avant; return this.rendre('Refusé : ' + e.message); }
       if (JSON.stringify(avant) !== JSON.stringify(this.etat)) {
         this.undo.push(avant); if (this.undo.length > 60) this.undo.shift(); this.redo = [];
+        this.version++; if (root.OrlyNotif) root.OrlyNotif.marquer('bareme');
       }
       this.enregistrer();
       this.rendre(message);
@@ -164,6 +169,7 @@
       const source = refaire ? this.redo : this.undo, cible = refaire ? this.undo : this.redo;
       if (!source.length) return;
       cible.push(clone(this.etat)); this.etat = source.pop();
+      this.version++; if (root.OrlyNotif) root.OrlyNotif.bouger();
       this.enregistrer(); this.rendre(refaire ? 'Rétabli.' : 'Annulé.');
       if (this.a.change) this.a.change();
     }
@@ -180,7 +186,8 @@
           <summary aria-label="À quoi sert cette page ?">?</summary>
           <span class="aide-corps">Ces chiffres disent combien de temps prend chaque préparation. Ils
             servent au calcul de la journée, dont on lit le résultat dans « Résultats ».</span></details></div>
-        <p id="rg-status" role="status" aria-live="polite"></p>
+        <!-- Le dernier message, caché : il s'affiche en notification (notifications.js). -->
+        <p id="rg-status" hidden></p>
         <div class="panneau" id="rg-bareme-panneau" data-sous="rg-minutes">
           <div class="titre-aide"><h3>Service par service</h3><details class="aide">
             <summary aria-label="Comment lire ces chiffres ?">?</summary>
@@ -291,10 +298,8 @@
       const sur = (id, ev, fn) => { const e = document.getElementById(id); if (e) e.addEventListener(ev, fn); };
       sur('rg-undo', 'click', () => this.histoire(false));
       sur('rg-redo', 'click', () => this.histoire(true));
-      sur('rg-reset', 'click', () => {
-        if (!confirm('Revenir au barème de démonstration ? Vos valeurs seront perdues.')) return;
-        this.changer(() => { this.etat.bareme = clone(P.BAREME_DEMO); }, 'Barème de démonstration rétabli.');
-      });
+      // Tout de suite : la notification porte « Annuler », qui rend vos valeurs (08/10).
+      sur('rg-reset', 'click', () => this.changer(() => { this.etat.bareme = clone(P.BAREME_DEMO); }, 'Barème de démonstration rétabli, à la place de vos valeurs.'));
       sur('rg-export', 'click', () => this.exporter());
       // Le récap touche deux choses : le barème et l'effectif des cases.
       // « Annuler » y défait la dernière, quelle qu'elle soit.
@@ -438,9 +443,11 @@
 
     /* ---- rendu ---------------------------------------------------------- */
 
-    rendre(message) {
+    /** `o` : pour la notification (notifications.js), comment défaire un geste du récap. */
+    rendre(message, o) {
       if (message !== undefined) {
         const s = document.getElementById('rg-status'); if (s) s.textContent = message || '';
+        if (root.OrlyNotif) root.OrlyNotif.notifier(message || '', { cle: 'bareme', ...o });
       }
       this.rendreBareme();
       this.rendreRecap();
@@ -800,9 +807,9 @@
         const r = E.classeurVersRecap(await T.lireFichier(f, 4 * 1024 * 1024), ctx.bareme, ctx);
         if (!r.changes) return this.rendre('Heures de travail lues : aucune valeur ne change.');
         const np = Object.keys(r.personnes || {}).length, nr = Object.keys(r.debits || {}).length, nb = r.changes - np - nr;
-        if (!confirm('Changer ' + r.changes + (r.changes > 1 ? ' valeurs' : ' valeur') + ' d’après le fichier ('
-          + [nb ? nb + ' temps de travail' : '', np ? np + (np > 1 ? ' effectifs de case' : ' effectif de case') : '',
-            nr ? nr + (nr > 1 ? ' robots (débits)' : ' robot (débits)') : ''].filter(Boolean).join(', ') + ') ? L’action est annulable.')) return;
+        const detailGeste = [nb ? nb + ' temps de travail' : '', np ? np + (np > 1 ? ' effectifs de case' : ' effectif de case') : '',
+          nr ? nr + (nr > 1 ? ' robots (débits)' : ' robot (débits)') : ''].filter(Boolean).join(', ');
+        const empile = (this.pileRecap || []).length;
         const nd = Object.keys(r.debits || {}).length;
         if ((np || nd) && this.a.casesImportees && this.a.casesImportees(r.personnes || {}, r.debits || {})) this.pile('cases');
         if (nb) {
@@ -811,7 +818,11 @@
           this.changer(() => { this.etat.bareme = r.bareme; this.etat.detail = detail; }, '');
           this.pile('bareme');
         }
-        this.rendre('Heures de travail importées : ' + r.changes + (r.changes > 1 ? ' valeurs changées.' : ' valeur changée.'));
+        // Le récap empile ce qu'il change (barème, cases) : « Annuler » le défait
+        // par la même pile, sans quoi la pile et les historiques divergent.
+        const k = (this.pileRecap || []).length - empile;
+        this.rendre('Heures de travail importées : ' + r.changes + (r.changes > 1 ? ' valeurs changées' : ' valeur changée') + ' (' + detailGeste + ').',
+          { defaire: () => { for (let i = 0; i < k; i++) this.annulerRecap(false); } });
       } catch (err) {
         this.rendre('Import refusé — ' + err.message + '\nLes heures de travail en place sont conservées.');
       } finally { e.target.value = ''; }
@@ -890,9 +901,8 @@
           lu = valider({ ...this.etat, ...r, detail, regime: { ...this.etat.regime, ...(r.regime || {}) } });
         }
         const n = Object.values(lu.bareme).reduce((k, t) => k + Object.keys(t).length, 0);
-        if (!confirm('Remplacer le barème entier par celui du fichier (' + n + (n > 1 ? ' valeurs' : ' valeur') + ') ? L’action est annulable.')) return;
         this.converti = false;
-        this.changer(() => { this.etat = lu; }, 'Barème importé : ' + n + (n > 1 ? ' valeurs.' : ' valeur.'));
+        this.changer(() => { this.etat = lu; }, 'Barème importé : ' + n + (n > 1 ? ' valeurs' : ' valeur') + ', à la place du barème en place.');
       } catch (err) {
         this.rendre('Import refusé — ' + err.message + '\nLe barème en place est conservé.');
       } finally { e.target.value = ''; }

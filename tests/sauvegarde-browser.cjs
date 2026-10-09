@@ -74,6 +74,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 5. Restaurer : le tracé revient à l'identique.
   await nav.vue(page,'flux');
   await page.locator('#sauvegarde-import').setInputFiles({name:'ory-sauvegarde.json',mimeType:'application/json',buffer:fs.readFileSync(chemin)});
+  // Restaurer remplace tout : une question (08/10), puis la page se recharge.
+  assert.match(await page.locator('dialog.question[open] h2').textContent({timeout:5000}),/Restaurer cette sauvegarde/);
+  const recharge=page.waitForEvent('load');
+  await nav.repondre(page);await recharge;
   await page.waitForFunction(()=>localStorage.getItem('ory-ateliers-v1')!==null,{},{timeout:15000});
   await page.waitForLoadState('load');
   assert.deepEqual(await cles(),avant,'les trois clés doivent être rendues à l’identique');
