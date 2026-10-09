@@ -5,6 +5,35 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-09 — Refonte, étape 4 (2/2) : un seul registre des Problèmes
+
+Toujours sans rien changer aux données ni au calcul (`donnees-intactes-browser`).
+
+- **Un seul compte** (audit, point 3 : « Prêt à simuler ? 2 », « Contrôles
+  détaillés 4 », « 8 points à regarder »… on ne savait pas quel chiffre
+  croire). **Problèmes**, au pied de la barre latérale, en dit le nombre ; il
+  s'ouvre à côté d'elle et range chaque problème dans l'un de trois
+  niveaux : **à corriger** (un point que le calcul refuse, un service
+  supprimé encore cité, un service qui fournit sans équipe quand les liens
+  de l'unité servent encore), **à compléter** (les étapes à faire de « Prêt
+  à simuler ? »), **ce que la journée montre** (retards, postes trop
+  courts : des résultats, pas des erreurs de saisie). Rien n'est calculé de
+  plus : ce sont les sources que le site montrait déjà, page par page.
+- **Chaque problème mène à la page où il se règle** ; celui d'un service, à
+  sa fiche (Équipes › Services et équipes, le service ouvert).
+- **Les nombres des onglets en dérivent** : chacun compte les problèmes qui
+  se règlent sur sa page ; « Contrôles détaillés » en dit le même nombre que
+  son onglet. Un résultat de la journée ne fait de nombre sur aucun onglet.
+  Le volet « Points à regarder » des pages Équipes et Chemins garde son
+  détail et ses gestes d'un clic, sans nombre à lui.
+- Le registre attend la fin de l'édition du plan, comme le menu ; Échap le
+  ferme ; il suit chaque changement.
+- Fichiers : `problemes.js` (nouveau, v1 = v2), `sim.js` (sources, nombres
+  des onglets), `unite.js` (les étapes de « Prêt à simuler ? » ont un
+  identifiant), `ateliers.js`, `index.html`, `ds.css`.
+- Tests : `problemes.test` (nouveau, le registre et ses nombres) ;
+  `problemes-browser` (nouveau, v1 et v2).
+
 ## 2026-10-09 — Refonte, étape 4 (1/2) : notifications avec « Annuler », questions du site
 
 Toujours sans rien changer aux données ni au calcul (`donnees-intactes-browser`).

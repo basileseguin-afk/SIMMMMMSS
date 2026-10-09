@@ -110,9 +110,16 @@ la journée donne. Une page ne mélange jamais deux sujets, et deux pages n’on
 jamais un nom qui se ressemble.
 
 La **barre latérale** (refonte du 08/10) garde l’accueil, les cinq parties et,
-à son pied, la **Sauvegarde** et le passage à la version 2. La partie ouverte
-**déplie ses pages** juste sous elle : une seule est affichée ; un nombre sur
-une page dit qu’il y a quelque chose à y faire. Les pages principales
+à son pied, les **Problèmes**, la **Sauvegarde** et le passage à la version 2.
+La partie ouverte **déplie ses pages** juste sous elle : une seule est
+affichée ; un nombre sur une page compte les problèmes qui s’y règlent.
+
+**Problèmes** est le seul compte de ce qui reste à faire (refonte du 09/10) :
+il s’ouvre à côté de la barre et range chaque problème en trois niveaux — **à
+corriger** (un point que le calcul refuse, un service supprimé encore cité),
+**à compléter** (les étapes à faire de « Prêt à simuler ? »), **ce que la
+journée montre** (retards, postes trop courts). Chacun mène à la page où il
+se règle ; celui d’un service, à sa fiche. Les nombres des pages en dérivent. Les pages principales
 d’abord ; les **outils fins** du sujet (ceux qu’on ouvre rarement) suivent, en
 plus discret, après la mention **« Plus »** — il n’y a plus de partie cachée
 « Outils avancés ». Toute page s’atteint en deux clics : sa partie, puis
@@ -123,7 +130,13 @@ sa première page, puis la page) et porte **un seul Annuler / Rétablir** : il
 agit sur ce que la page ouverte modifie (les cases, chemins et équipes ; le
 barème ; les heures de travail ; les liens ; le plan pendant son édition).
 **Ctrl Z** (⌘ Z) annule, **Ctrl Maj Z** ou **Ctrl Y** rétablit, hors d’un
-champ de saisie, qui garde sa propre annulation. Au pied de la barre latérale,
+champ de saisie, qui garde sa propre annulation. Ce qui vient de se passer
+s’affiche en **notification**, en bas à droite, quelques secondes, avec
+**« Annuler »** quand le geste se défait : supprimer une case, importer un
+classeur, changer la nature d’un service se font sans question, et
+s’annulent d’un clic. Une **question** du site reste pour ce qui ne se défait
+pas : restaurer une sauvegarde, recharger la démo, supprimer un service qui
+porte des équipes. Au pied de la barre latérale,
 **Thème sombre** passe l’interface en sombre (le dessin du bâtiment aussi) :
 une préférence de ce navigateur, qui ne touche à aucune donnée. Sous elle, une phrase dit ce
 que la page montre, et ses outils (exporter, importer) se rangent à droite ;
@@ -545,6 +558,8 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `demarrage.js` / `histoire.css` | L’accueil : une tuile par partie avec son état, « à faire ensuite », l’histoire en quatre images, le menu de la barre latérale (la partie ouverte déplie ses pages) ; `histoire.css` porte aussi le graphisme : couleurs par sens, jauges, tableau des départs, plan de métro, barres |
 | `graphe.js` / `graphe.css` | Le diagramme de nœuds des chemins et des liens de l’unité : disposition en colonnes avec couloirs, tirer un trait pour relier, clavier, disposition retenue |
 | `onglets.js` | Le menu : les cinq parties et leurs pages (chacune est un sous-onglet d’une vue), les outils « Plus », la règle qui masque les autres, le clavier, la page retenue par partie |
+| `notifications.js` | Le retour des gestes (09/10) : une notification par geste, en bas à droite, avec « Annuler » quand il se défait (même sur deux historiques), et les questions du site pour ce qui ne se défait pas ; les historiques (cases, barème, plan, liens) s’y inscrivent |
+| `problemes.js` | Le registre des Problèmes (09/10) : à corriger, à compléter, ce que la journée montre ; le nombre au pied de la barre latérale, et ceux des onglets qui en dérivent |
 | `rendu.js` | Redessiner sans perdre ce qu’on tape : tant qu’on écrit dans un champ, la zone qui le contient attend pour se redessiner ; elle le fait dès que le champ est validé (Entrée, quitté), le focus revenant au même champ. Posé une fois, à la source (`innerHTML`), pour tous les écrans |
 | `icones.js` | Les pictogrammes (étapes, services, états) et les couleurs d’étape |
 | `demarrage.css` | Ce que montre chaque vue (lecture de la journée seulement dans « La journée ») et couleurs du plan en lecture |
@@ -581,6 +596,9 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/parallele-browser.cjs` | Un service en même temps qu'un autre (v1 et v2) : une cuisine chaude en atelier unique, « en même temps que Cuisine » — plus de flèche entre elles, les mêmes entrées et sorties ; une compagnie cochée ensuite s'y range ; « aucun » garde les chemins |
 | `tests/focus-browser.cjs` | Le focus se voit partout (v1 et v2, thèmes clair et sombre) : sur chaque page, chaque élément atteint au clavier porte un anneau (contour, ombre pleine ; dans un diagramme, le trait du nœud ou la bande du lien) ; le thème choisi est retenu, et s’efface revenu au clair |
 | `tests/coquille-browser.cjs` | La coquille (v1 et v2) : barre latérale sur toute la hauteur, chaque page en deux clics (sa partie, puis elle, dépliée dessous), fil d’Ariane (la partie mène à sa première page), flèches haut et bas, sauvegarde au pied ; un seul Annuler / Rétablir pour ce que la page modifie (cases, barème, plan en édition), au bouton et au clavier (Ctrl Z, Ctrl Maj Z, Ctrl Y), jamais dans un champ de texte ; barre repliée pendant l’édition du plan ; rien de coupé à 1 280 et 1 024 px, sur toutes les pages |
+| `tests/notifications-browser.cjs` | Le retour des gestes (v1 et v2) : supprimer une case sans question, « Annuler » qui la rend ; une notification par source et par geste, trois au plus ; refus annoncé, routine muette ; un geste sur deux historiques défait d’un bloc ; la question pour supprimer un service et ses équipes (Échap, « Ne rien changer », puis « Supprimer le service » et « Annuler ») ; aucune boîte du navigateur |
+| `tests/problemes-browser.cjs` | Le registre des Problèmes (v1 et v2) : le nombre au pied de la barre, les trois niveaux, les nombres des onglets qui en dérivent, « Contrôles détaillés » qui compte pareil, un problème qui mène à sa page (un service à sa fiche), Échap, l’attente pendant l’édition du plan |
+| `tests/problemes.test.cjs` | Le registre, en Node : ses niveaux, ses pages, et les nombres de chaque onglet |
 | `tests/donnees-intactes-browser.cjs` | Le garde-fou de la refonte de l’interface (v1 et v2) : une unité complète, parcourue page par page (plan ouvert en édition puis refermé, thème changé), garde toutes ses clés du navigateur identiques après rechargement ; la journée calculée donne les nombres relevés avant la refonte (`tests/donnees-intactes.attendu.json`) |
 | `tests/sans-armement-browser.cjs` | Des compagnies sans armement, déduites (v1 et v2) : un chemin à elle sans armement et cochée dans une équipe — armée, la fiche le dit ; décochée — plus de case, « Sans armement : TX », rien à reprendre ni à cocher, aucune alerte ; plus de colonne « Armée » ; l’armement remis dans son chemin, elle est à cocher |
 | `tests/armement-vols-browser.cjs` | L'armement suit toujours les vols (v1 et v2) : jamais constant (un ancien choix s'efface), minutes par vol × vols de chaque compagnie, plus de minutes → plus de monde, fiche sans case « constant », vols du jour et journée par compagnie, saisie sans erreur de page |

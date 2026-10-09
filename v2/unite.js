@@ -596,7 +596,8 @@
 
     /* ---- pas à pas ------------------------------------------------------ */
 
-    /** Ce qui reste à faire avant de simuler, dans l'ordre. */
+    /** Ce qui reste à faire avant de simuler, dans l'ordre. Le registre des
+     *  problèmes (problemes.js) en reprend les étapes « à faire », par leur `id`. */
     etapes() {
       const classes = this.at.classes, r = this.at.resultat || {};
       const vols = this.a.vols ? this.a.vols() : { departs: 0, importes: false };
@@ -606,7 +607,7 @@
       const absentes = Object.values(r.parClasse || {}).filter(c => c.absente).map(c => c.id);
       const corriger = (r.anomalies || []).filter(x => !CODES_JOURNEE.has(x.code) && !x.service && !x.atelier);
       const out = [];
-      out.push({ num: 1, titre: 'Les vols de la journée', etat: !vols.departs ? 'afaire' : vols.importes ? 'ok' : 'exemple',
+      out.push({ id: 'vols', num: 1, titre: 'Les vols de la journée', etat: !vols.departs ? 'afaire' : vols.importes ? 'ok' : 'exemple',
         texte: !vols.departs ? 'Aucun vol : importez votre programme.' : pl(vols.departs, 'départ') + ' · ' + pl(classes.length, 'commande') + ' (une par compagnie et par classe)'
           + (vols.importes ? '' : ' — ce sont les vols d’exemple : importez les vôtres.'),
         geste: { page: 'v-programme', texte: vols.importes ? 'Voir les vols' : 'Importer vos vols' } });
@@ -614,19 +615,19 @@
       const st = this.etat, types = PC.types(st);
       const propres = classes.filter(c => PC.cheminDe(st, c.id)).length, sansFlux = classes.filter(c => !PC.fluxDe(st, c)).length;
       const principaux = types.filter(t => !t.auto && PC.commandesDuType(st, t.id, classes).length), variantes = types.filter(t => t.auto);
-      out.push({ num: 2, titre: 'Les flux de production', etat: !types.length || sansFlux || propres ? 'afaire' : 'ok',
+      out.push({ id: 'flux', num: 2, titre: 'Les flux de production', etat: !types.length || sansFlux || propres ? 'afaire' : 'ok',
         texte: !types.length ? 'Aucun flux : dessinez par où passe chaque type de production (Économie, Business…).'
           : propres ? pl(propres, 'commande a', 'commandes ont') + ' encore leur propre chemin : regroupez-les en flux.'
           : sansFlux ? pl(sansFlux, 'commande n’a', 'commandes n’ont') + ' pas de flux : donnez-en un à leur classe.'
           : pl(principaux.length, 'flux', 'flux') + ' : ' + principaux.map(t => t.nom).join(' · ') + (variantes.length ? ' — et ' + pl(variantes.length, 'variante') : ''),
         geste: { page: 'mu-flux', texte: 'Ouvrir les flux' } });
-      out.push({ num: 3, titre: 'Vos services et leurs équipes', etat: !utilises.length ? 'afaire' : utilises.some(x => x.b.etat === 'afaire') ? 'afaire' : 'ok',
+      out.push({ id: 'services', num: 3, titre: 'Vos services et leurs équipes', etat: !utilises.length ? 'afaire' : utilises.some(x => x.b.etat === 'afaire') ? 'afaire' : 'ok',
         texte: !utilises.length ? 'Aucun service n’a d’équipe : ouvrez un service, dites ce qu’il fait, ajoutez ses équipes.'
           : pl(utilises.length, 'service utilisé', 'services utilisés') + ', ' + pl(utilises.reduce((n, x) => n + x.b.cases.length, 0), 'équipe'),
         services: utilises.map(x => ({ id: x.s.id, nom: x.s.nom, etat: x.b.etat, points: x.b.points })),
         geste: { page: 'mu-services', texte: 'Ouvrir les services' } });
       const parCie = absentes.filter(id => String(id).includes('/@')), repas = absentes.filter(id => !String(id).includes('/@'));
-      out.push({ num: 4, titre: 'Chaque commande a quelqu’un pour la préparer', etat: absentes.length ? 'afaire' : 'ok',
+      out.push({ id: 'commandes', num: 4, titre: 'Chaque commande a quelqu’un pour la préparer', etat: absentes.length ? 'afaire' : 'ok',
         // Les commandes des repas, puis les compagnies sans armement (« RAM/@ARM ») : deux choses, deux mots.
         texte: absentes.length ? [repas.length ? pl(repas.length, 'commande n’est préparée', 'commandes ne sont préparées') + ' par aucune équipe' : '',
           parCie.length ? pl(parCie.length, 'compagnie n’a', 'compagnies n’ont') + ' personne ' + [...new Set(parCie.map(id => (P.libelleClasse(id).split(' · ')[1] || 'service par compagnie')))].map(n => 'à l’« ' + n + ' »').join(', ') : '']
@@ -634,15 +635,15 @@
           : 'Toutes les commandes sont préparées.',
         commandes: absentes.slice(0, 16).map(id => PC.etiquette(id)).concat(absentes.length > 16 ? ['+ ' + (absentes.length - 16)] : []),
         geste: absentes.length ? { page: 'mu-services', texte: 'Cocher dans un service' } : null });
-      if (corriger.length) out.push({ num: 5, titre: 'Autres points à corriger', etat: 'afaire',
+      if (corriger.length) out.push({ id: 'corriger', num: 5, titre: 'Autres points à corriger', etat: 'afaire',
         texte: corriger.slice(0, 6).map(x => P.enClair ? P.enClair(x.message || x.code) : x.message).join(' · '),
         geste: { page: 'at-chemins', texte: 'Voir le chemin des commandes' } });
       const num = out.length + 1;
-      out.push({ num, titre: 'Les réglages de la simulation', etat: 'ok',
+      out.push({ id: 'reglages', num, titre: 'Les réglages de la simulation', etat: 'ok',
         texte: 'Délai de chargement, retours à la plonge, rythme, pauses : des valeurs par défaut sont en place.',
         geste: { page: 'rg-simulation', texte: 'Voir les réglages' } });
       const pret = out.every(x => x.etat !== 'afaire');
-      out.push({ num: num + 1, titre: 'Simuler la journée', etat: pret ? 'ok' : 'attente',
+      out.push({ id: 'simuler', num: num + 1, titre: 'Simuler la journée', etat: pret ? 'ok' : 'attente',
         texte: pret ? 'Tout est en place : la journée est calculée.' : 'La journée se calcule déjà ; elle sera juste quand les points ci-dessus seront faits.',
         geste: { page: 'j-chiffres', texte: 'Voir les résultats' } });
       return out;
@@ -665,9 +666,6 @@
               ? `<i class="mu-svc-chaine">${pic('chaine', 'ico-texte')} ${esc(lies(x.id).join(' · '))} à la chaîne</i>` : ''}</li>`).join('')}</ul>` : ''}
           ${e.geste ? `<button type="button" class="btn btn-sm${e.etat === 'afaire' ? ' btn-play' : ''}" data-page="${e.geste.page}">${esc(e.geste.texte)} →</button>` : ''}</div></li>`).join('')}</ol>`);
     }
-
-    /** Le nombre de points à faire, pour le badge de l'onglet. */
-    aFaire() { return this.etapes().filter(e => e.etat === 'afaire').length; }
 
     /* ---- gestes ----------------------------------------------------------- */
 

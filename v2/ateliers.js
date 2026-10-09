@@ -1552,9 +1552,11 @@
       }
       box.hidden = !list.length;
       if (vieilles.length || dispos.length || remplaces.length || fantomes.length) box.open = true;
-      // Replié par défaut : le nombre suffit à savoir qu'il y a à faire.
+      // Replié par défaut. Sans nombre à lui : le compte de ce qui reste à
+      // faire est celui des Problèmes, au pied de la barre latérale (08/10) ;
+      // ici, le détail et ses gestes d'un clic.
       box.innerHTML = list.length
-        ? '<summary><strong>' + list.length + (list.length > 1 ? ' points' : ' point') + ' à regarder</strong></summary><ul>' +
+        ? '<summary><strong>Points à regarder ici</strong></summary><ul>' +
           list.map(m => '<li>' + m + '</li>').join('') + '</ul>'
         : '';
     }

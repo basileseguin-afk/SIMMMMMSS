@@ -129,9 +129,9 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 
 @media(max-width:1250px){ .app{grid-template-columns:260px 1fr 290px} }
 </style>
-<meta name="ory-version" content="f154b7dc5e"/>
+<meta name="ory-version" content="4efe0d8a32"/>
 <link href="interface.css?v=a79339df" rel="stylesheet"/><link href="editor.css?v=205c059f" rel="stylesheet"/><link href="flow-center.css?v=62899a0b" rel="stylesheet"/><link href="ateliers.css?v=e42b8371" rel="stylesheet"/>
-<link href="reglages.css?v=37e11929" rel="stylesheet"/><link href="demarrage.css?v=9ef1de69" rel="stylesheet"/><link href="aide.css?v=6dc5aec0" rel="stylesheet"/><link href="usability.css?v=d05639c8" rel="stylesheet"/><link href="graphe.css?v=c6498078" rel="stylesheet"/><link href="histoire.css?v=805de82a" rel="stylesheet"/><link href="temps.css?v=a45fa6cd" rel="stylesheet"/><link href="unite.css?v=b72a9e90" rel="stylesheet"/><link href="budget.css?v=5e5e5a08" rel="stylesheet"/><link href="ds.css?v=639e0b22" rel="stylesheet"/></head>
+<link href="reglages.css?v=37e11929" rel="stylesheet"/><link href="demarrage.css?v=9ef1de69" rel="stylesheet"/><link href="aide.css?v=6dc5aec0" rel="stylesheet"/><link href="usability.css?v=d05639c8" rel="stylesheet"/><link href="graphe.css?v=c6498078" rel="stylesheet"/><link href="histoire.css?v=805de82a" rel="stylesheet"/><link href="temps.css?v=a45fa6cd" rel="stylesheet"/><link href="unite.css?v=b72a9e90" rel="stylesheet"/><link href="budget.css?v=5e5e5a08" rel="stylesheet"/><link href="ds.css?v=d8e24943" rel="stylesheet"/></head>
 <body data-vue="plan"><a class="skip-link" href="#workspace">Aller au contenu</a>
 <!-- ============ NAVIGATION : la marque, les parties (celle qui est ouverte déplie ses pages), la sauvegarde ============ -->
 <aside aria-label="Navigation" class="barre" id="barre">
@@ -141,6 +141,8 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <div class="sous-onglets" id="sous-onglets"><div aria-label="Les pages de cette partie" aria-orientation="vertical" class="so-liste" role="tablist"></div></div>
 </div>
 <div class="barre-pied">
+<button aria-controls="problemes" class="barre-lien" id="btn-problemes" popovertarget="problemes" title="Ce qui reste à corriger, à compléter, et ce que la journée montre" type="button"><span data-ico="alerte"></span><span>Problèmes</span><b class="so-badge pb-compte" hidden=""></b></button>
+<div aria-labelledby="problemes-titre" class="problemes" id="problemes" popover="" role="dialog"></div>
 <button class="barre-lien" data-page="u-sauvegarde" id="btn-sauvegarde" title="Enregistrer tout votre travail dans un fichier, ou le relire" type="button"><span data-ico="boite"></span><span>Sauvegarde</span></button>
 <button aria-pressed="false" class="barre-lien" data-ui-theme="" id="btn-theme" title="Passer au thème sombre" type="button"><span data-ico="lune"></span><span>Thème sombre</span></button>
 <a class="btn-version v2" href="../" title="Version de travail : les nouveautés (finances, aléas, heures sup, optimisation) arrivent ici. Ses données sont à part de la version 1."><b>Version 2<i> · en construction</i></b><span>revenir à la v1</span></a>
@@ -244,6 +246,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <script src="vols-demo.js?v=08d61681"></script>
 <script src="rendu.js?v=ac16ab27"></script>
 <script src="onglets.js?v=cc6ee69d"></script>
+<script src="problemes.js?v=f6cc46da"></script>
 <script src="notifications.js?v=c02682a3"></script>
 <script src="icones.js?v=8428bd2d"></script>
 <script src="ui-model.js?v=4688387f"></script>
@@ -255,9 +258,9 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <script src="graphe.js?v=8de5e60e"></script>
 <script src="parcours.js?v=d04675a3"></script>
 <script src="echanges.js?v=db77d61a"></script>
-<script src="ateliers.js?v=47c04882"></script>
+<script src="ateliers.js?v=0cfd92ca"></script>
 <script src="reglages.js?v=b79d22b3"></script>
-<script src="unite.js?v=77cc00a1"></script>
+<script src="unite.js?v=1a0e959e"></script>
 <script src="calage.js?v=3fb067d6"></script>
 <script src="budget.js?v=f2626d91"></script>
 <script src="demarrage.js?v=82d612e3"></script>
@@ -265,6 +268,6 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <script src="replay.js?v=016adb42"></script>
 <script src="simulation.js?v=193892c7"></script>
 <script src="comparaison.js?v=65c11530"></script>
-<script src="sim.js?v=fafa8e01"></script>
+<script src="sim.js?v=e22e16cf"></script>
 </body>
 </html>

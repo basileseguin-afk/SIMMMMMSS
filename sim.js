@@ -721,7 +721,7 @@ function lectureDuGraphe(){
   // et l'alerte du calcul le nomme sans qu'on puisse le retrouver nulle part.
   const fantomes=servicesFantomes().filter(f=>f.chemins);
   const nChemins=fantomes.reduce((n,f)=>n+f.chemins,0);
-  if(fantomes.length)alertes.push({grave:true,
+  if(fantomes.length)alertes.push({grave:true,fantomes:true,
     texte:fantomes.map(f=>f.nom).join(', ')+(fantomes.length>1?' restent des étapes':' reste une étape')+' de '
       +nChemins+(nChemins>1?' chemins':' chemin')+'. Effacez-'+(fantomes.length>1?'les':'le')+' partout, ou faites passer '
       +(fantomes.length>1?'leur':'son')+' travail dans un autre service (Équipes › Liste des services, en tête de page).'});
@@ -872,7 +872,7 @@ function etatDemarrage(){
               fin:Number.isFinite((r.indicateurs||{}).finDerniere)?MoteurProduction.hhmm(r.indicateurs.finDerniere):null }
   };
 }
-function majDemarrage(){ if(Sim.onglets)Sim.onglets.rendre(); if(Sim.demarrage)Sim.demarrage.rendre(); afficherTitre(); if(document.body.dataset.sous==='u-services')renderServices(); }
+function majDemarrage(){ if(Sim.problemes)Sim.problemes.maj(); if(Sim.onglets)Sim.onglets.rendre(); if(Sim.demarrage)Sim.demarrage.rendre(); afficherTitre(); if(document.body.dataset.sous==='u-services')renderServices(); }
 /* Un nombre sur un onglet dit qu'il y a quelque chose à y faire, sans l'ouvrir. */
 /* Les contrôles du calcul (audit du 29/09) : la page Contrôles ne parlait que
  * des liens entre services, qui ne servent plus quand chaque commande a son
@@ -901,24 +901,38 @@ function renderControles(){
     +'<p class="mini-note fc-liens-note">'+(n?'<b>'+n+(n>1?' commandes n’ont pas':' commande n’a pas')+' de chemin</b> : pour elles, le calcul suit les liens entre services ci-dessous.'
       :'Toutes les commandes ont leur chemin : les liens ci-dessous ne servent pas au calcul, ils décrivent l’unité.')+'</p>';
 }
-function badgeOnglet(id){
-  const r=(Sim.ateliers&&Sim.ateliers.resultat)||{};
-  if(id==='mu-pas'&&Sim.unite){const n=Sim.unite.aFaire();return n?{n,ton:'neutre',titre:n+(n>1?' étapes':' étape')+' à faire'}:null;}
-  // Les commandes qui n'ont pas encore leur chemin : ce qui reste à dessiner.
-  if(id==='at-chemins'&&window.OrlyParcours&&Sim.ateliers){
-    const n=Sim.ateliers.classes.filter(c=>!OrlyParcours.fluxDe(Sim.ateliers.state,c)).length;
-    return n?{n,ton:'neutre',titre:n+(n>1?' commandes sans flux':' commande sans flux')}:null;
+/* Le nombre d'un onglet : les problèmes qui se règlent sur sa page. Il dérive
+ * du registre (problemes.js) : un seul compte, partout (refonte du 08/10). */
+function badgeOnglet(id){return Sim.problemes?Sim.problemes.badge(id):null;}
+/* Les sources du registre des problèmes : celles que le site montre déjà
+ * ailleurs (contrôles du calcul, services supprimés encore cités, liens de
+ * l'unité quand ils servent, étapes de « Prêt à simuler ? ») ; rien de plus. */
+function sourcesProblemes(){
+  const {corriger,journee}=controlesDuCalcul();
+  const anomalies=new Set(corriger.map(a=>a.message));
+  const serviceDe=a=>a.service||((Sim.ateliers.state.ateliers.find(x=>x.id===a.atelier)||{}).service);
+  const etapes=[];
+  for(const e of (Sim.unite?Sim.unite.etapes():[])){
+    if(e.etat!=='afaire'||e.id==='corriger')continue;
+    let services;
+    if(e.id==='services'&&e.services&&e.services.length){
+      // Un service « à faire » pour les seuls points du calcul est déjà à corriger.
+      services=e.services.filter(x=>x.etat==='afaire'&&x.points.some(p=>!anomalies.has(p)));
+      if(!services.length)continue;
+    }
+    etapes.push({id:e.id,titre:e.titre,texte:e.texte,page:(e.geste||{}).page,services});
   }
-  if(id==='at-repas'){
-    const n=(r.indicateurs||{}).classesAbsentes||0;
-    return n?{n,ton:'neutre',titre:n+(n>1?' commandes':' commande')+' sans équipe'}:null;
-  }
-  if(id==='u-lecture'&&Sim.flows){
-    // Ce qui est à corriger dans l'organisation ; les liens seulement s'ils servent encore.
-    const n=controlesDuCalcul().corriger.length+(sansChemin()?lectureDuGraphe().alertes.filter(a=>a.grave).length:0);
-    return n?{n,ton:'attente',titre:n+(n>1?' points':' point')+' à corriger'}:null;
-  }
-  return null;
+  return {corriger:corriger.map(a=>({...a,service:serviceDe(a)})),fantomes:servicesFantomes(),
+    liens:sansChemin()?lectureDuGraphe().alertes.filter(a=>a.grave&&!a.fantomes):[],
+    etapes,journee,enClair:MoteurProduction.enClair};
+}
+function initProblemes(){
+  const bouton=document.getElementById('btn-problemes'),panneau=document.getElementById('problemes');
+  if(!bouton||!panneau||!window.OrlyProblemes)return;
+  Sim.problemes=new OrlyProblemes.Registre({bouton,panneau,sources:sourcesProblemes,
+    nomPage:id=>(OrlyOnglets.page(id)||{}).nom||id,
+    aller:(page,service)=>{if(service&&page==='mu-services'&&Sim.unite)Sim.unite.ouvrir(service);else allerPage(page);}});
+  Sim.problemes.maj();
 }
 /* ==========================================================================
  *  MON UNITÉ (unite.js) — tout le paramétrage, service par service
@@ -1991,7 +2005,7 @@ function updateRunState() {
     if (e) e.textContent = 'Édition du plan';
   } else if (Sim.vue) Sim.vue.rendreTransport();
   // Pendant l'édition du plan, le menu attend : on termine d'abord l'édition.
-  document.querySelectorAll('[data-vers-partie],#menu [data-page],#ariane [data-page],#btn-sauvegarde').forEach(b => b.disabled = editMode);
+  document.querySelectorAll('[data-vers-partie],#menu [data-page],#ariane [data-page],#btn-sauvegarde,#btn-problemes').forEach(b => b.disabled = editMode);
   majAnnuler();
 }
 
@@ -2393,6 +2407,7 @@ etape('réglages de la simulation',()=>{if(Sim.ateliers)Sim.ateliers.rendreMater
 // Le fil de mise en route vient en dernier : il relit les autres, il ne peut
 // donc se dresser qu'une fois qu'ils sont là.
 etape('simulation',initVueSimulation);
+etape('problèmes',initProblemes);
 etape('menu',initOnglets);
 etape('accueil',initDemarrage);
 etape('annuler',initAnnuler);

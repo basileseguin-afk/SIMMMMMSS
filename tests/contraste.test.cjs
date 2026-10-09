@@ -45,6 +45,9 @@ for (const [nom, selecteur] of [['clair', ':root'], ['sombre', ':root[data-theme
     verifier('ds-accent-texte', blanc, 'ds-surface-1');
     // La page ouverte, dans la barre latérale : le texte sur l'accent pâle.
     for (const texte of ['ds-texte-1', 'ds-texte-2']) verifier(texte, couleur(t, 'ds-accent-pale'), 'ds-accent-pale');
+    // Les pastilles des onglets (problèmes à corriger, retards), sur leur fond opaque.
+    verifier('ds-attente-texte', couleur(t, 'ds-attente-pale'), 'ds-attente-pale');
+    verifier('ds-retard-texte', couleur(t, 'ds-retard-pale'), 'ds-retard-pale');
     // Le texte sur l'accent (bouton principal).
     assert.ok(ratio(couleur(t, 'ds-sur-accent'), couleur(t, 'ds-accent')) >= 4.5, nom + ' : texte sur l’accent');
     // Les notifications et les questions, sur leur surface flottante.
