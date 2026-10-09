@@ -1,7 +1,11 @@
 # Construire le plan détaillé de l’unité
 
-Cliquer sur **Éditer les zones**. Le tableau de bord laisse place à l’espace de
-dessin et la simulation est mise en pause. Le fond d’architecte reste la référence lorsqu’il est disponible en privé.
+Ouvrir **Équipes › Plan de l’unité** — ou « Modifier le plan » sur le plan
+rejoué, ou « Modifier le plan de l’unité » sur la fiche d’un service. La page
+s’ouvre en édition : à gauche les **calques** (les zones, rangées par type), au
+centre le plan et sa barre d’outils flottante, à droite **la zone choisie**. La
+simulation est mise en pause et le menu attend : **Terminer** ramène à la page
+d’où l’on venait. Le fond d’architecte reste la référence lorsqu’il est disponible en privé.
 Il n’est pas réintroduit dans le dépôt public : les 12 tuiles se chargent depuis
 `plan-prive/` en local. Sans ce dossier, le dessin des zones reste utilisable.
 
@@ -31,18 +35,22 @@ aucune capacité au moteur actuel. Limites : 200 stockages par service, nom de
 
 ## Corriger une pièce existante
 
-1. Rechercher son nom dans **Zones & locaux**. Les ateliers et les locaux
-   hors stockage sont disponibles.
+1. Rechercher son nom dans les **calques**. Les services, les zones de
+   production, les locaux, les équipements et les circulations y sont rangés
+   par type.
 2. Cliquer son nom puis **Centrer la sélection**, ou double-cliquer son nom.
 3. Glisser l’intérieur pour déplacer la zone. Les huit poignées d’un rectangle
-   permettent de modifier ses côtés ou ses coins. Leur taille à l’écran reste
-   constante avec le zoom.
-4. Ajuster le nom, le type, la couleur ou les coordonnées dans le panneau.
-5. Pour épouser une pièce irrégulière, utiliser **Redessiner le contour** :
+   permettent de modifier ses côtés ou ses coins : ce sont des carrés de 8 px à
+   l’écran, à tout zoom, et la taille de la zone s’affiche sous son coin.
+4. Ajuster le nom, le type, la couleur ou les coordonnées dans **la zone
+   choisie**, à droite.
+5. Pour épouser une pièce irrégulière, utiliser **Redessiner** :
    cliquer les sommets, puis le premier point ou **Fermer le polygone** / Entrée.
    Échap conserve l’ancien contour.
-6. Verrouiller la géométrie une fois le placement satisfaisant. Le statut
-   **Emplacement confirmé sur le terrain** est une décision explicite.
+6. Cocher **Géométrie fixée** une fois le placement satisfaisant : la zone
+   porte un cadenas sur le plan, et ses actions (Redessiner, En polygone,
+   Supprimer) sont grisées, avec la raison. Le statut **Emplacement confirmé
+   sur le terrain** est une décision explicite.
 
 Un atelier simulé conserve son identifiant et sa liaison au moteur même si son
 nom ou son contour change. Il ne peut pas être supprimé ou converti en simple
@@ -63,8 +71,8 @@ ne constituent pas automatiquement des contours de pièces validés.
 Pour corriger un polygone, déplacer ses sommets. Les petites poignées entre deux
 sommets permettent d’insérer un point en le faisant glisser. Sélectionner un
 sommet puis **Supprimer le sommet** permet de le retirer, avec au moins trois
-points conservés. **Convertir en polygone** transforme un rectangle en quatre
-sommets ; **Revenir au rectangle** utilise la boîte englobante. Ces actions sont
+points conservés. **En polygone** transforme un rectangle en quatre
+sommets ; **En rectangle** utilise la boîte englobante. Ces actions sont
 annulables.
 
 ## Naviguer et placer précisément
@@ -72,7 +80,8 @@ annulables.
 - Molette ou boutons + / − : zoom autour du curseur ou du centre de la vue.
 - **Main (H)**, Espace + glisser ou bouton central : déplacer la vue.
 - Glisser dans un endroit vide avec l’outil Sélection déplace aussi la vue.
-- **Vue d’ensemble** rétablit le cadrage initial.
+- **Tout voir** (touche 0), en bas à droite du plan, rétablit le cadrage initial.
+- L’aimantation et la grille se règlent sur la barre d’outils du plan.
 - L’aimantation rapproche le pointeur des bords et sommets voisins. Des guides
   roses matérialisent cet alignement. Maintenir Alt la désactive temporairement.
 - La grille optionnelle a un pas de **20 unités du dessin**, pas 20 mètres.
@@ -81,8 +90,9 @@ annulables.
 - Les flèches déplacent la sélection d’une unité ; Maj + flèche, de dix unités.
 - L’opacité du fond peut être ajustée pour mieux lire les zones.
 
-La liste permet de sélectionner les petites zones et les zones superposées.
-L’œil masque une zone et **Libre / Fixé** verrouille sa géométrie. Rechercher un
+Les calques permettent de sélectionner les petites zones et les zones
+superposées. L’œil masque une zone ; le cadenas fixe sa géométrie (ouvert :
+libre, fermé : fixée). Les contours gardent la même épaisseur à tout zoom. Rechercher un
 nom filtre la liste sans effacer les autres zones du plan.
 
 ## Annuler, enregistrer, importer

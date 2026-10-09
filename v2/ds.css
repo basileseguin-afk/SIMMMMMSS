@@ -505,6 +505,20 @@ body.sans-en-ce-moment:not(.editing)[data-vue="plan"] .app{grid-template-columns
 #btn-en-ce-moment[aria-expanded="true"]{background:var(--ds-accent-doux);border-color:var(--ds-accent-trait);color:var(--ds-accent-texte)}
 body.editing #btn-en-ce-moment{display:none}
 
+/* Les contours des services gardent la même épaisseur à tout zoom (ils
+   faisaient 7 unités du plan : épais de près, fins de loin). */
+#plan .zone .fond{vector-effect:non-scaling-stroke;stroke-width:1.5px}
+#plan .zone.approx .fond{stroke-dasharray:5 4}
+#plan .zone.p-hors .fond,#plan .zone.couleur-perso.p-hors .fond{stroke-width:1px;stroke-dasharray:2 4}
+#plan .zone.selection .fond{stroke-width:3px}
+body.avant-lancement #plan .zone.p-vide .fond{stroke-width:1.25px;stroke-dasharray:5 4}
+body.avant-lancement #plan .zone.p-partiel .fond{stroke-width:1.5px}
+body.avant-lancement #plan .zone.p-pret .fond{stroke-width:2px}
+body.avant-lancement #plan .zone.selection .fond{stroke-width:3px}
+body.en-lecture #plan .zone.s-travail .fond{stroke-width:2px}
+body.en-lecture #plan .zone.s-attente .fond{stroke-width:2px;stroke-dasharray:6 4}
+body.en-lecture #plan .zone.s-fini .fond{stroke-width:1.5px}
+
 /* La toile, et ce qui se pose dessus : des cartes flottantes, opaques. */
 .col-plan>.plan-wrap{flex:1 1 auto;min-height:0;position:relative;container:toile/inline-size}
 .plan-sur{position:absolute;z-index:2;margin:0;border:0;border-radius:var(--ds-r-3);background:var(--ds-surface-3);

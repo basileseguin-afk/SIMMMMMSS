@@ -1,12 +1,89 @@
-/* Espace de dessin, isolé du tableau de bord. */
-body.plan-editing>.context-bar,body.plan-editing>.kpi-grille{display:none}
+/* Le plan de l'unité, en édition (refonte, étape 5) : à gauche les calques, au
+   centre la toile et sa barre d'outils flottante, à droite l'inspecteur de la
+   zone choisie. Le reste de la page s'efface. */
 body.plan-editing #btn-export{display:none}
-body.plan-editing .app{grid-template-columns:minmax(0,1fr) 370px}
+body.plan-editing .app{grid-template-columns:248px minmax(0,1fr) 340px}
+.pe-calques{display:none}
+body.plan-editing .pe-calques:not([hidden]){display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;
+  background:var(--ds-surface-1);border-right:1px solid var(--ds-bordure)}
 body.plan-editing .map-footer,body.plan-editing .zone-picker,body.plan-editing .plan-tete>#btn-edit{display:none}
-body.plan-editing .plan-tete{padding:8px 20px;justify-content:flex-end}
+body.plan-editing .plan-tete{justify-content:flex-end}
 body.plan-editing #viewport>g:not(#plan-fond):not(#editor-layer){display:none}
-body.plan-editing #panneau-edition{padding:18px;overflow:auto;min-height:0}
-#plan-editor-toolbar{padding:10px 20px;display:flex;flex-wrap:wrap;gap:8px 18px;background:var(--bg3);border-bottom:1px solid var(--bordure);flex-shrink:0}
+body.plan-editing #panneau-edition{padding:16px 18px;overflow:auto;min-height:0}
+
+/* Les calques : les zones rangées par type, l'œil et le cadenas en pictogrammes. */
+.pe-calques-tete{display:flex;align-items:center;gap:8px;padding:14px 14px 8px}
+.pe-calques-tete h2{margin:0;font-size:var(--ds-t-13);font-weight:var(--ds-g-fort)}
+.pe-compte{font-size:var(--ds-t-11);color:var(--ds-texte-3);font-variant-numeric:tabular-nums}
+.pe-calques-tete .text-button{margin-left:auto;padding:2px 0;font-size:var(--ds-t-11)}
+.pe-calques #pe-search{width:auto;margin:0 12px 8px}
+.pe-calques #pe-list{flex:1 1 auto;min-height:0;max-height:none;margin:0;padding:0 8px 12px;overflow:auto;border:0;border-radius:0}
+.pe-groupe+.pe-groupe{margin-top:6px}
+.pe-groupe-tete{display:flex;align-items:center;margin:0;padding:8px 6px 4px;font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);
+  letter-spacing:.04em;text-transform:uppercase;color:var(--ds-texte-3)}
+.pe-groupe-tete span{margin-left:auto;font-variant-numeric:tabular-nums}
+.pe-calques .pe-list-row{gap:2px;padding:0 2px;border:0;border-radius:var(--ds-r-2);background:none}
+.pe-calques .pe-list-row:hover{background:var(--ds-survol)}
+.pe-calques .pe-list-row.selected{background:var(--ds-accent-pale);box-shadow:none}
+.pe-calques .pe-list-row.masquee .pe-zone-name{opacity:.55}
+.pe-list-row [data-action=visibility],.pe-list-row [data-action=lock]{flex:none;display:grid;place-items:center;width:26px;min-height:26px;padding:0;
+  color:var(--ds-texte-3)}
+.pe-list-row [data-action] .ico{width:14px;height:14px}
+.pe-list-row [data-action=lock][aria-pressed=true]{color:var(--ds-texte-1)}
+
+/* La barre d'outils flotte en haut de la toile : les outils, l'aide au placement, le tracé en cours. */
+#plan-editor-toolbar.pe-barre{top:12px;left:50%;transform:translateX(-50%);display:flex;flex-wrap:wrap;align-items:center;justify-content:center;
+  gap:2px 4px;width:max-content;max-width:calc(100% - 24px);padding:4px}
+.pe-barre .pe-tools{display:flex;gap:2px;flex-wrap:nowrap}
+.pe-barre .btn{min-height:30px;padding:0 9px;border-color:transparent;background:transparent;box-shadow:none;font-size:var(--ds-t-12);
+  font-weight:var(--ds-g-moyen);color:var(--ds-texte-2)}
+.pe-barre .btn:hover:not(:disabled){background:var(--ds-survol);color:var(--ds-texte-1)}
+.pe-barre .btn:focus-visible{box-shadow:var(--ds-focus);border-color:var(--ds-accent)}
+.pe-barre .btn[aria-pressed=true]{background:var(--ds-accent-doux);border-color:transparent;color:var(--ds-accent-texte)}
+.pe-barre .btn .ico{width:16px;height:16px}
+.pe-barre kbd{margin-left:6px;font-family:inherit;font-size:var(--ds-t-11);opacity:1;color:var(--ds-texte-3)}
+.pe-barre #pe-finish{background:var(--ds-accent);color:var(--ds-sur-accent)}
+.pe-barre #pe-finish:disabled{opacity:.5}
+.pe-barre #pe-cancel{border-color:var(--ds-bordure-forte)}
+.pe-sep{width:1px;height:18px;margin:0 4px;background:var(--ds-bordure-forte)}
+.pe-bascule{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:0 9px;border-radius:var(--ds-r-2);font-size:var(--ds-t-12);
+  font-weight:var(--ds-g-moyen);color:var(--ds-texte-2);cursor:pointer;user-select:none}
+.pe-bascule:hover{background:var(--ds-survol);color:var(--ds-texte-1)}
+.pe-bascule:has(input:checked){background:var(--ds-accent-doux);color:var(--ds-accent-texte)}
+.pe-bascule input{width:13px;height:13px;margin:0}
+.pe-bascule .ico{width:15px;height:15px}
+.pe-barre #pe-tool-help{flex-basis:100%;padding:2px 8px;text-align:center;font-size:var(--ds-t-11);line-height:1.4;color:var(--ds-texte-3)}
+/* Toile étroite : les outils gardent leurs pictogrammes ; leurs noms restent lus par les lecteurs d'écran. */
+@container toile (max-width:720px){
+  .pe-barre .pe-lib{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .pe-barre kbd{display:none}
+}
+
+/* L'inspecteur : la zone choisie, son identité, sa géométrie, son statut. */
+.pe-heading #edit-done{flex:none}
+.pe-vide{margin:4px 0 16px;font-size:var(--ds-t-13);line-height:1.5;color:var(--ds-texte-3)}
+.pe-insp-tete{margin:0 0 6px}
+#pe-insp-type{display:block;font-size:var(--ds-t-11);font-weight:var(--ds-g-moyen);color:var(--ds-texte-3)}
+#pe-insp-nom{display:flex;align-items:center;gap:6px;margin:2px 0 0;font-size:var(--ds-t-16);font-weight:var(--ds-g-fort);letter-spacing:0;
+  text-transform:none;color:var(--ds-texte-1);overflow-wrap:anywhere}
+#pe-insp-nom .ico{flex:none;width:15px;height:15px;color:var(--ds-texte-3)}
+#pe-properties h4{margin:16px 0 8px;font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);letter-spacing:.04em;text-transform:uppercase;
+  color:var(--ds-texte-3)}
+.pe-fixe{display:flex;align-items:flex-start;gap:8px;margin:8px 0 0;padding:8px 10px;border-radius:var(--ds-r-2);background:var(--ds-surface-2);
+  font-size:var(--ds-t-12);line-height:1.45;color:var(--ds-texte-2)}
+.pe-fixe .ico{flex:none;width:14px;height:14px;margin-top:2px}
+.pe-actions .pe-supprimer{margin-left:auto}
+
+/* Sur la toile : la zone choisie en accent, des poignées carrées de 8 px, sa
+   taille affichée ; un voile au survol ; un cadenas sur une zone fixée. */
+#plan.edition .pe-shape.selected>:is(rect,polygon){stroke:var(--ds-accent)}
+#plan.edition .pe-shape:not(.selected):hover>:is(rect,polygon){fill-opacity:.2}
+.pe-handle{fill:var(--ds-surface-1);stroke:var(--ds-accent)}
+.pe-handle.actif{fill:var(--ds-attente);stroke:var(--ds-surface-1)}
+.pe-plus{fill:var(--ds-accent);font-weight:var(--ds-g-fort)}
+.pe-taille{font-family:var(--ds-police);font-weight:var(--ds-g-moyen);font-variant-numeric:tabular-nums;fill:var(--ds-texte-1);
+  paint-order:stroke;stroke:var(--ds-surface-1);stroke-linejoin:round}
+.pe-cadenas{fill:none;stroke:var(--ds-texte-2);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .pe-tools{display:flex;gap:5px;flex-wrap:wrap}.pe-tools .btn{font-size:var(--ds-t-12);padding:7px 10px}
 .pe-tools button[aria-pressed=true]{background:var(--ds-accent);color:var(--ds-sur-accent);border-color:var(--ds-accent)}
 .pe-tools kbd{font-family:inherit;font-size:var(--ds-t-11);opacity:.65;margin-left:9px}
@@ -22,11 +99,11 @@ body.plan-editing #panneau-edition{padding:18px;overflow:auto;min-height:0}
 .pe-section>label,.pe-two>label{display:flex;flex-direction:column;gap:5px;font-size:var(--ds-t-11);color:var(--txt2);margin-bottom:10px}.pe-section input[type=text],.pe-section input[type=number],.pe-section select{width:100%;min-width:0;font-size:var(--ds-t-12);padding:8px;color:var(--txt);background:var(--bg3);border:1px solid var(--bordure2);border-radius:6px}.pe-section .chk{flex-direction:row;align-items:center;font-size:var(--ds-t-11);line-height:1.5}.pe-section input[type=range]{width:100%;accent-color:var(--accent)}
 .pe-two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}.pe-two input[type=color]{height:34px;width:100%;padding:2px;border:1px solid var(--bordure2);border-radius:6px;background:var(--bg3)}
 .pe-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}.pe-actions .btn{font-size:var(--ds-t-11);padding:7px 9px}
-.pe-shape{cursor:move}.pe-shape-label{font-family:system-ui,sans-serif;font-weight:var(--ds-g-fort);fill:var(--txt);paint-order:stroke;stroke:var(--bg3);stroke-width:3px;stroke-linejoin:round}
+.pe-shape{cursor:move}.pe-shape-label{font-family:var(--ds-police);font-weight:var(--ds-g-fort);fill:var(--ds-texte-1);paint-order:stroke;stroke:var(--ds-surface-1);stroke-linejoin:round}
 .pe-handles{pointer-events:all}.pe-handle{cursor:move}.handle-n,.handle-s{cursor:ns-resize}.handle-e,.handle-w{cursor:ew-resize}.handle-nw,.handle-se{cursor:nwse-resize}.handle-ne,.handle-sw{cursor:nesw-resize}.handle-mid{cursor:copy}
 .pe-draft{fill:var(--ds-accent-doux);stroke:var(--ds-accent);stroke-width:2;stroke-dasharray:6 4;pointer-events:none}.pe-guide{stroke:var(--ds-chaine);stroke-width:1;stroke-dasharray:5 5;pointer-events:none}
 #plan[data-editor-tool=poly],#plan[data-editor-tool=rect]{cursor:crosshair}#plan[data-editor-tool=hand],#plan.pe-panning{cursor:grab}#plan:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
-@media(max-width:1100px){body.plan-editing .app{grid-template-columns:minmax(0,1fr) 320px}.pe-tools kbd{display:none}#plan-editor-toolbar{padding:8px 12px}.pe-tools .btn{padding:6px 8px}}
+@media(max-width:1100px){body.plan-editing .app{grid-template-columns:216px minmax(0,1fr) 300px}.pe-tools kbd{display:none}}
 
 /* Stockages descriptifs rattachés aux services. */
 .storage-card{min-width:0;border:1px solid var(--bordure);border-radius:8px;padding:12px;margin:12px 0;display:grid;gap:10px}

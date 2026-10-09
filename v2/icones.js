@@ -70,7 +70,17 @@
     oeil: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',
     oeilBarre: '<path d="M3 3l18 18M10.6 5.6c.5-.1.9-.1 1.4-.1 6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-3 3.8M6.6 6.7A16.6 16.6 0 0 0 2.5 12S6 18.5 12 18.5c1.6 0 3.1-.4 4.4-1.1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
     // Un panneau sur le côté (« En ce moment ») : le replier, le déplier.
-    panneau: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M14.5 4.5v15"/>'
+    panneau: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M14.5 4.5v15"/>',
+    // Les outils du plan : choisir, tracer un rectangle, un polygone, déplacer la vue ;
+    // aimanter, montrer la grille ; une zone fixée ou libre.
+    curseur: '<path d="M6 3.5v15.5l4.3-4.2 2.7 5.7 2.5-1.2-2.7-5.6H18.5z"/>',
+    rectangle: '<rect x="4" y="6" width="16" height="12" rx="1.5"/>',
+    polygone: '<path d="M12 3.5l8.5 6.2-3.2 9.8H6.7L3.5 9.7z"/>',
+    main: '<path d="M8 13V6.2a1.6 1.6 0 0 1 3.2 0V11M11.2 11V4.6a1.6 1.6 0 0 1 3.2 0V11M14.4 11V6.4a1.6 1.6 0 0 1 3.2 0v7.4c0 3.9-2.6 6.7-6.1 6.7-2.4 0-3.9-1.1-5.2-3.1l-2.4-3.8a1.5 1.5 0 0 1 2.5-1.6L8 13.6"/>',
+    aimant: '<path d="M6 3.5v8.5a6 6 0 0 0 12 0V3.5h-4V12a2 2 0 0 1-4 0V3.5z"/><path d="M6 8h4M14 8h4"/>',
+    grille: '<rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M4 9.3h16M4 14.7h16M9.3 4v16M14.7 4v16"/>',
+    cadenas: '<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>',
+    cadenasOuvert: '<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 7.7-1.6"/>'
   };
 
   /** Un pictogramme, en SVG inline. `titre` le rend lisible aux lecteurs d'écran. */

@@ -58,7 +58,10 @@ test('une page se range selon sa nature, pas selon l’écran qui la porte', () 
   for (const id of ['mu-carte', 'mu-flux', 'at-chemins', 'u-liens']) assert.equal(partie(id), 'chemins', id);
   assert.equal(O.pagesDe('chemins')[0].id, 'mu-carte', 'les chemins commencent par la vue d’ensemble');
   // Qui prépare quoi, quand, en combien de temps : les équipes.
-  for (const id of ['mu-services', 'at-recap', 'rg-recap', 'u-services', 'at-equipes', 'rg-minutes']) assert.equal(partie(id), 'organisation', id);
+  for (const id of ['mu-services', 'at-recap', 'rg-recap', 'u-plan', 'u-services', 'at-equipes', 'rg-minutes']) assert.equal(partie(id), 'organisation', id);
+  // Le plan de l'unité a sa page, parmi les principales (refonte, étape 5) : la même toile que le plan rejoué.
+  assert.equal(O.page('u-plan').plus, undefined);
+  assert.equal(O.vueDe('u-plan'), 'plan');
   assert.equal(O.pagesDe('organisation')[0].id, 'mu-services', 'les équipes commencent par les services');
   // Plus de partie cachée « Outils avancés » : les outils fins suivent leur sujet, après « Plus ».
   assert.equal(O.PARTIES.find(p => p.id === 'avance'), undefined);
@@ -98,4 +101,19 @@ test('v2 : la même organisation, chaque page dans une seule partie', () => {
     const w = V.PARTIES.find(x => x.id === p.id);
     for (const x of p.pages) assert.equal(!!(w.pages.find(y => y.id === x.id) || {}).plus, !!x.plus, x.id + ' : rangé pareil en v1 et v2');
   }
+});
+
+/* Le plan de l'unité est une page de passage (refonte, étape 5) : on l'ouvre
+ * pour le modifier, on le quitte par « Terminer ». Ni sa partie ni sa vue ne
+ * le rouvrent ensuite d'elles-mêmes. */
+test('une page de passage n’est pas retenue', () => {
+  const s = new O.SousOnglets({ hote: () => null, vue: () => 'plan' });
+  s.choisir('rg-recap');
+  s.choisir('j-plan');
+  s.choisir('u-plan');
+  assert.equal(s.page, 'u-plan', 'elle est ouverte');
+  assert.equal(s.actifDe('organisation'), 'rg-recap', 'Équipes rouvre la page d’avant');
+  assert.equal(s.parVue.plan, 'j-plan', 'arriver « sur le plan » rouvre le plan rejoué');
+  assert.equal(O.page('u-plan').passage, true);
+  for (const o of Object.values(O.ONGLETS).flat().filter(o => o.id !== 'u-plan')) assert.ok(!o.passage, o.id);
 });

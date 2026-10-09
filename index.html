@@ -127,9 +127,9 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 
 @media(max-width:1250px){ .app{grid-template-columns:260px 1fr 290px} }
 </style>
-<meta name="ory-version" content="61da0991f8"/>
-<link href="interface.css?v=a79339df" rel="stylesheet"/><link href="editor.css?v=205c059f" rel="stylesheet"/><link href="flow-center.css?v=62899a0b" rel="stylesheet"/><link href="ateliers.css?v=e42b8371" rel="stylesheet"/>
-<link href="reglages.css?v=37e11929" rel="stylesheet"/><link href="demarrage.css?v=9ef1de69" rel="stylesheet"/><link href="aide.css?v=6dc5aec0" rel="stylesheet"/><link href="usability.css?v=d05639c8" rel="stylesheet"/><link href="graphe.css?v=c6498078" rel="stylesheet"/><link href="histoire.css?v=80722a26" rel="stylesheet"/><link href="temps.css?v=a45fa6cd" rel="stylesheet"/><link href="unite.css?v=b72a9e90" rel="stylesheet"/><link href="ds.css?v=615b6818" rel="stylesheet"/></head>
+<meta name="ory-version" content="627bed0aee"/>
+<link href="interface.css?v=a79339df" rel="stylesheet"/><link href="editor.css?v=7c30f1f7" rel="stylesheet"/><link href="flow-center.css?v=62899a0b" rel="stylesheet"/><link href="ateliers.css?v=e42b8371" rel="stylesheet"/>
+<link href="reglages.css?v=37e11929" rel="stylesheet"/><link href="demarrage.css?v=9ef1de69" rel="stylesheet"/><link href="aide.css?v=6dc5aec0" rel="stylesheet"/><link href="usability.css?v=d05639c8" rel="stylesheet"/><link href="graphe.css?v=c6498078" rel="stylesheet"/><link href="histoire.css?v=80722a26" rel="stylesheet"/><link href="temps.css?v=a45fa6cd" rel="stylesheet"/><link href="unite.css?v=b72a9e90" rel="stylesheet"/><link href="ds.css?v=4b97a980" rel="stylesheet"/></head>
 <body data-vue="plan"><a class="skip-link" href="#workspace">Aller au contenu</a>
 <!-- ============ NAVIGATION : la marque, les parties (celle qui est ouverte déplie ses pages), la sauvegarde ============ -->
 <aside aria-label="Navigation" class="barre" id="barre">
@@ -156,15 +156,15 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 </header>
 <main aria-label="Accueil" class="accueil" id="view-accueil" tabindex="-1"></main>
 
-<div class="app" id="workspace" tabindex="-1">
+<div class="app" id="workspace" tabindex="-1"><aside aria-label="Calques du plan" class="pe-calques" data-sous="u-plan" hidden="" id="pe-calques"></aside>
 <!-- ============ LEVIERS WHAT-IF ============ -->
 <!-- ============ PLAN ============ -->
 <div class="colonne col-plan"><div class="workspace-heading" id="tete-page"><p class="view-intro" id="view-intro"></p><div class="so-outils" id="so-outils"><button aria-controls="en-ce-moment" aria-expanded="true" class="btn btn-sm" data-sous="j-plan" id="btn-en-ce-moment" type="button"><span data-ico="panneau"></span>En ce moment</button><div class="res-actions" data-sous="j-chiffres"><button class="btn btn-sm" id="btn-export" title="Enregistrer les résultats de la journée dans un fichier (JSON)" type="button"><span data-ico="telecharger"></span>Exporter les résultats</button></div></div></div>
-<div class="plan-tete" data-sous="j-plan"><label class="zone-picker"><span class="tete-lib">Voir un service</span> <select id="zone-picker"><option value="">Vue d’ensemble</option></select></label>
+<div class="plan-tete" data-sous="j-plan u-plan"><label class="zone-picker"><span class="tete-lib">Voir un service</span> <select id="zone-picker"><option value="">Vue d’ensemble</option></select></label>
 <label class="chk chk-mini"><input checked="" id="fond-plan" type="checkbox"/> Dessin du bâtiment</label>
-<button aria-pressed="false" class="btn btn-mini" id="btn-edit" title="Déplacer ou redimensionner les services sur le plan">Modifier le plan</button>
+<button class="btn btn-mini" id="btn-edit" title="Ouvrir le plan de l’unité pour déplacer ou redimensionner les services" type="button">Modifier le plan</button>
 </div>
-<div class="plan-wrap" id="view-plan" data-sous="j-plan">
+<div class="plan-wrap" id="view-plan" data-sous="j-plan u-plan">
 <svg tabindex="0" aria-label="Plan de l’unité. Choisissez un service dans la liste « Voir un service »." id="plan" preserveaspectratio="xMidYMid meet" viewbox="0 0 1075 835"></svg>
 <div class="plan-sur plan-kpi" data-sous="j-plan" aria-label="Les indicateurs à cette heure" role="group"><p class="kpi-quand" id="kpi-quand"></p><div class="kpi-grille" data-sous="j-plan"><div class="kpi kpi-anneau"><svg aria-hidden="true" class="anneau" viewBox="0 0 36 36"><circle class="anneau-fond" cx="18" cy="18" r="15.9"></circle><circle class="anneau-plein" cx="18" cy="18" id="kpi-anneau" r="15.9" stroke-dasharray="0 100"></circle></svg><div><div class="lab">Commandes prêtes à l’heure</div><div class="val" id="kpi-ontime">—</div><div class="kpi-note" id="kpi-denom">aucune commande préparée</div></div></div>
 <div class="kpi kpi-retard"><span class="kpi-ico" data-ico="alerte"></span><div><div class="lab">Commandes en retard</div><div class="val" id="kpi-overdue">0</div><div class="kpi-note" id="kpi-ready">aucun retard à cette heure</div></div></div>
@@ -196,7 +196,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <section aria-label="Stocks et retours" class="journee-stocks" id="journee-stocks" data-sous="j-stocks"></section><section aria-label="Comparer deux essais" class="journee-comparer" id="view-comparer" data-sous="j-comparer"></section>
 <section aria-label="Les vols" class="flights-view" hidden="" id="view-vols"><p class="vols-source" data-sous="v-programme"><span class="demo-badge" data-ico="avion"></span><strong id="source-label">Jeu de démonstration</strong><span id="source-count"></span></p><div class="vols-donnees" id="vols-donnees" data-sous="v-programme"></div><div class="vols-donnees" id="vols-planche" data-sous="v-planche"></div><h2 class="vols-titre">Les départs de la journée</h2><div class="vols-handling" id="vols-handling" data-sous="v-departs" aria-live="polite"></div><div class="vols-frise" id="vols-frise" data-sous="v-departs"></div><div class="flight-filters" data-sous="v-departs"><label>Chercher un vol <input id="flight-search" placeholder="Numéro de vol ou compagnie" type="search"/></label><label>Afficher <select id="flight-filter"><option value="all">Tous les départs</option><option value="ontime">Prêts à l’heure</option><option value="late">Prêts en retard</option><option value="overdue">En retard</option><option value="pending">Pas prêts ou sans équipe</option><option value="ready">Prêts</option></select></label></div><details class="inline-help" data-sous="v-departs"><summary>Que veut dire « prêts avant » ?</summary><p class="mini-note">Les repas doivent être prêts avant d’être chargés dans l’avion : « prêts avant » = heure de départ − délai de chargement (45 min par défaut). « En retard » parle de la préparation des repas, pas de l’avion. <b>Avec une case Handling</b>, c’est le vol chargé qui compte : ses commandes arrivent au handling avant départ − délai, le handling réunit les classes du vol et le charge, et le vol doit être chargé à son heure de départ.</p></details><div class="table-scroll" data-sous="v-departs"><table class="flight-table"><caption class="sr-only">Où en sont les repas de chaque départ</caption><thead><tr><th scope="col">Départ</th><th scope="col">Vol</th><th scope="col">Prêts avant</th><th scope="col">Où elles en sont</th><th scope="col">Ses commandes</th></tr></thead><tbody id="flight-rows"></tbody></table></div></section><section id="view-ateliers" aria-label="Ateliers de travail" hidden></section><section id="view-flux" aria-label="Centre des flux" hidden></section><section id="view-reglages" aria-label="Centre des réglages" class="reglages-view" hidden></section></div>
 <!-- ============ DASHBOARD ============ -->
-<aside aria-label="En ce moment" class="workbench" data-sous="j-plan" id="en-ce-moment"><div class="panel-content" id="panel-suivi"><div class="panel-heading"><h2>En ce moment</h2></div><div class="panneau">
+<aside aria-label="En ce moment" class="workbench" data-sous="j-plan u-plan" id="en-ce-moment"><div class="panel-content" id="panel-suivi"><div class="panel-heading"><h2>En ce moment</h2></div><div class="panneau">
 <h3>À regarder</h3>
 <div class="mini-note" id="goulot-info"></div>
 <section id="service-storages" class="pe-section" hidden></section>
@@ -243,14 +243,14 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <div class="panneau" id="model-limits"><h3>Ce que le calcul ne sait pas faire</h3><p class="mini-note">C’est un prototype : il sert à comparer des essais entre eux, pas à dire combien de personnes embaucher.</p><details class="aide bloc"><summary>Les limites connues</summary><span class="aide-corps"><ul class="limits-list"><li>Barème d’heures de travail <strong>non calibré</strong> : valeurs de démonstration tant que l’étude de l’unité n’est pas importée.</li><li>Calcul <strong>sans aléa</strong> : pas de panne, d’absence ni de retard de livraison. Une même journée donne toujours le même résultat.</li><li>Un seul compte de matériel propre, consommé et relavé ; les stocks de denrées, les trolleys et les transferts physiques ne sont pas modélisés.</li><li>Les compétences ne sont pas modélisées : une personne d’un atelier ne va pas aider dans un autre.</li><li>L’export Winrest (XLSX et lignes de prestations) n’est pas encore lu : seul le CSV simplifié l’est.</li></ul></span></details></div></div></aside></div>
 <script src="vols-demo.js?v=08d61681"></script>
 <script src="rendu.js?v=ac16ab27"></script>
-<script src="onglets.js?v=22bb09f1"></script>
+<script src="onglets.js?v=c808dd8b"></script>
 <script src="problemes.js?v=f8dc7772"></script>
 <script src="notifications.js?v=c02682a3"></script>
-<script src="icones.js?v=dedca50e"></script>
+<script src="icones.js?v=ec8c455f"></script>
 <script src="ui-model.js?v=4688387f"></script>
 <script src="moteur/noyau.js?v=5b2122e2"></script>
 <script src="moteur/production.js?v=2b9cffbb"></script>
-<script src="plan-editor.js?v=3798b094"></script>
+<script src="plan-editor.js?v=5dd59f80"></script>
 <script src="flow-center.js?v=d404dcd9"></script>
 <script src="tableur.js?v=d7003370"></script>
 <script src="graphe.js?v=8de5e60e"></script>
@@ -264,6 +264,6 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <script src="replay.js?v=016adb42"></script>
 <script src="simulation.js?v=193892c7"></script>
 <script src="comparaison.js?v=65c11530"></script>
-<script src="sim.js?v=b6ad48ba"></script>
+<script src="sim.js?v=9d018171"></script>
 </body>
 </html>

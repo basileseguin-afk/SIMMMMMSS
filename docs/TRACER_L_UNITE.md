@@ -44,7 +44,7 @@ et refuse le fichier **en entier** si une partie est abîmée — jamais à moit
 1. **Le fond de plan**, si vous l'avez : `plan-prive/tuile1.png` … `tuile12.png`
    à la racine, en local. Sans lui tout fonctionne, seul le calque d'architecte
    manque.
-2. **Les zones des services** — *Plan → Éditer les zones*. Corriger position et
+2. **Les zones des services** — *Équipes › Plan de l’unité*. Corriger position et
    contour ; convertir en forme libre là où un rectangle ment. C'est la base :
    les ateliers ne peuvent pas déborder du contour d'un service.
 3. **Les stockages** rattachés à chaque service — nom et contenu.
@@ -70,7 +70,7 @@ ne permet de dimensionner une équipe.
 
 ## 5. Une seconde salle pour un atelier — « Armement 2 »
 
-Un atelier peut occuper deux endroits de l'unité. Dans **Éditer les zones**,
+Un atelier peut occuper deux endroits de l'unité. Dans **Équipes › Plan de l’unité**,
 sélectionnez l'atelier et cliquez **Dupliquer** : vous obtenez « ARMEMENT 2 »,
 une **zone de production annexe** rattachée à Armement. Déplacez-la où elle se
 trouve réellement, puis posez-y des ateliers dans « Ateliers de travail » comme

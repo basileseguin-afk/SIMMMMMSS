@@ -5,9 +5,17 @@
  * ateliers ») : elle ouvre la page qui était la première de cette vue. */
 const PREMIERE = { vols: 'v-departs', ateliers: 'at-chemins', reglages: 'rg-minutes', plan: 'j-plan', flux: 'u-liens' };
 
+/* Le plan de l'unité (refonte, étape 5) ouvre l'édition, et le menu attend
+ * qu'on la termine : on la termine avant d'aller ailleurs, comme à la main. */
+async function terminerPlan(page) {
+  if (await page.evaluate(() => document.body.classList.contains('plan-editing'))) {
+    await page.locator('#edit-done').click(); await page.waitForTimeout(150);
+  }
+}
 async function aller(page, id) {
   const partie = await page.evaluate(id => (OrlyOnglets.partieDe(id) || {}).id, id);
   if (!partie) throw new Error('page inconnue : ' + id);
+  if (id !== 'u-plan') await terminerPlan(page);
   if (partie !== 'fichier') {
     const actif = await page.evaluate(() => document.body.dataset.partie);
     if (actif !== partie) { await page.locator(`#menu [data-vers-partie=${partie}]`).click(); await page.waitForTimeout(120); }
@@ -38,7 +46,7 @@ async function effectifSaisi(page) {
   }, ''));
   await page.waitForTimeout(100);
 }
-const accueil = async page => { await page.locator('#btn-accueil').click(); await page.waitForTimeout(150); };
+const accueil = async page => { await terminerPlan(page); await page.locator('#btn-accueil').click(); await page.waitForTimeout(150); };
 
 /* Un chemin à elle pour une commande (Chemins › Chemin d’une commande) : si elle
  * suit un flux, le formulaire est replié sous « Ou bien : un chemin à elle… ». */
@@ -66,4 +74,4 @@ async function repondre(page, oui = true) {
   await page.waitForTimeout(150);
 }
 
-module.exports = { aller, vue, accueil, creerChemin, deplier, effectifSaisi, repondre, PREMIERE };
+module.exports = { aller, vue, accueil, terminerPlan, creerChemin, deplier, effectifSaisi, repondre, PREMIERE };

@@ -5,6 +5,44 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-09 — Refonte, étape 5 (2/2) : le plan de l'unité a sa page
+
+Toujours sans rien changer aux données ni au calcul (`donnees-intactes-browser`) :
+le plan enregistré, ses gestes, ses raccourcis, son historique, son import et
+son export sont inchangés.
+
+- **Équipes › Plan de l'unité** (audit, point 1 : l'éditeur était caché dans
+  les Résultats). La page s'ouvre en édition, d'où qu'on vienne : le menu,
+  « Modifier le plan » sur le plan rejoué, « Modifier le plan de l'unité » sur
+  la fiche d'un service. Le menu attend qu'on termine, comme avant ;
+  **Terminer** ramène à la page d'où l'on venait. Une page de passage : sa
+  partie et sa vue ne la rouvrent pas d'elles-mêmes.
+- **Trois colonnes** : à gauche les **calques**, rangés par type (services du
+  plan, zones de production, locaux, équipements, circulations) et
+  recherchables, l'œil et le cadenas en pictogrammes (plus de « Libre » /
+  « Fixé » écrits) ; au centre le plan, en pleine hauteur (89 % de la
+  hauteur utile à 1440 × 900) ; à droite **la zone choisie** : son type, son
+  nom, puis Identité, Géométrie et Statut.
+- **Barre d'outils flottante** sur le plan : Sélection V · Rectangle R ·
+  Polygone P · Main H, puis Aimantation et Grille. Étroite, elle garde ses
+  pictogrammes.
+- **Sur la toile** : poignées carrées de 8 px à tout zoom ; la taille de la
+  zone choisie sous son coin ; la zone choisie en accent, un voile au
+  survol ; un cadenas sur une zone fixée, dont l'inspecteur grise et
+  explique les actions (Redessiner, En polygone, Supprimer) ; les étiquettes
+  et leur halo à taille d'écran.
+- **Les contours des services gardent la même épaisseur à tout zoom**, sur le
+  plan rejoué aussi (ils faisaient 7 unités du plan : épais de près, fins de
+  loin).
+- Fichiers : `onglets.js` (la page, `passage`), `sim.js` (l'ouvrir, en
+  revenir), `plan-editor.js` et `editor.css` (calques, barre, inspecteur,
+  toile), `icones.js` (curseur, rectangle, polygone, main, aimant, grille,
+  cadenas), `index.html`, `ds.css` ; v1 et v2.
+- Tests : `plan-unite-browser` (nouveau, v1 et v2) ; `onglets.test` (une page
+  de passage n'est pas retenue) ; `nav.cjs` termine l'édition avant d'aller
+  ailleurs ; `coquille-browser` et `menu-browser` connaissent la page.
+  Docs : `README`, `docs/EDITEUR_PLAN.md`, `docs/TRACER_L_UNITE.md`.
+
 ## 2026-10-09 — Refonte, étape 5 (1/2) : rejouer la journée, la toile d'abord
 
 Toujours sans rien changer aux données ni au calcul (`donnees-intactes-browser`).

@@ -48,7 +48,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   //    d'Ariane dit la partie, le titre la page.
   const attendues={donnees:['v-programme','v-planche'],
     chemins:['mu-carte','mu-flux','at-chemins','u-liens'],
-    organisation:['mu-services','at-recap','rg-recap','u-services','at-equipes','rg-minutes'],
+    // Le plan de l'unité a sa page dans Équipes (refonte, étape 5).
+    organisation:['mu-services','at-recap','rg-recap','u-plan','u-services','at-equipes','rg-minutes'],
     reglages:['mu-pas','rg-simulation','u-lecture'],
     resultats:['j-chiffres','j-plan','at-planning','at-repas','at-grille','v-departs','j-stocks','j-comparer']};
   const noms={donnees:'Vols',chemins:'Chemins',organisation:'Équipes',reglages:'Simulation',resultats:'Résultats'};

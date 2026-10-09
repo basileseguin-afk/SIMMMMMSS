@@ -18,7 +18,9 @@
  * de style masque ceux qui n'appartiennent pas à la page ouverte. Un élément
  * sans `data-sous` reste visible dans toutes les pages de sa vue. Les parties
  * ne déplacent rien : elles regroupent des pages de vues différentes.
- * La dernière page ouverte de chaque partie est retenue d'une visite à l'autre.
+ * La dernière page ouverte de chaque partie est retenue d'une visite à l'autre,
+ * sauf une page de passage (`passage: true`) : le plan de l'unité, qu'on ouvre
+ * pour le modifier et qu'on quitte par « Terminer » (refonte, étape 5).
  */
 (function (root) {
   'use strict';
@@ -53,7 +55,9 @@
       { id: 'j-plan', nom: 'Le plan rejoué', ico: 'unite' },
       { id: 'j-chiffres', nom: 'Synthèse', ico: 'check' },
       { id: 'j-stocks', nom: 'Stocks et retours', ico: 'boite' },
-      { id: 'j-comparer', nom: 'Comparer deux essais', ico: 'lecture' }
+      { id: 'j-comparer', nom: 'Comparer deux essais', ico: 'lecture' },
+      // La même toile, pour la modifier : une page de passage, jamais retenue.
+      { id: 'u-plan', nom: 'Plan de l’unité', ico: 'unite', passage: true }
     ],
     flux: [
       { id: 'u-liens', nom: 'Liens entre services', ico: 'fleche' },
@@ -87,6 +91,7 @@
         { id: 'mu-services', intro: 'Chaque service : ce qu’il fait, ses équipes, ce que chacune prépare, ses heures de travail.' },
         { id: 'at-recap', intro: 'Toutes les équipes et leurs horaires d’un coup d’œil : à régler ici ou dans Excel.' },
         { id: 'rg-recap', intro: 'Toutes les heures de travail par vol : une compagnie par bloc, ses classes, un service par colonne ; ici ou dans Excel.' },
+        { id: 'u-plan', intro: 'La place et la forme de chaque service sur le plan : choisissez une zone, déplacez-la, redimensionnez-la. « Terminer » ramène où vous étiez.' },
         { id: 'u-services', plus: true, intro: 'Les services de l’unité : nom, rattachement, place sur le plan, services supprimés.' },
         { id: 'at-equipes', plus: true, intro: 'Chaque équipe, une par une, avec tous ses réglages.' },
         { id: 'rg-minutes', plus: true, intro: 'Le barème, service par service, et son classeur Excel (importer, exporter, chiffres d’exemple).' }
@@ -193,9 +198,12 @@
     choisir(id, focus) {
       const vue = vueDe(id), p = partieDe(id); if (!vue || !p) return;
       this.page = id;
-      this.choix[p.id] = id;
-      (this.parVue || (this.parVue = {}))[vue] = id;
-      try { localStorage.setItem(CLE, JSON.stringify(this.choix)); localStorage.setItem(CLE + '-vues', JSON.stringify(this.parVue)); } catch (e) { /* stockage indisponible */ }
+      // Une page de passage n'est pas retenue : sa partie et sa vue rouvrent la page d'avant.
+      if (!ONGLETS[vue].find(o => o.id === id).passage) {
+        this.choix[p.id] = id;
+        (this.parVue || (this.parVue = {}))[vue] = id;
+        try { localStorage.setItem(CLE, JSON.stringify(this.choix)); localStorage.setItem(CLE + '-vues', JSON.stringify(this.parVue)); } catch (e) { /* stockage indisponible */ }
+      }
       // La page est connue AVANT qu'on prévienne : ce qui se dessine à
       // l'ouverture (le tableau, le planning) regarde quelle page est affichée.
       if (root.document) { document.body.dataset.sous = id; document.body.dataset.partie = p.id; }

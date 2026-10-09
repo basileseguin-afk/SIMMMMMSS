@@ -282,6 +282,10 @@ le rouge ne sert qu’aux retards.
      service par service, et l’armement, réglé là) ; un clic la déplie sur
      ses classes (« Tout déplier / Tout replier »). Première colonne et total
      de la journée restent visibles au défilement.
+   - *Plan de l’unité* : la place et la forme de chaque service, en pleine
+     page : les calques à gauche (les zones rangées par type), le plan au
+     centre avec sa barre d’outils, la zone choisie à droite. La page s’ouvre
+     en édition ; « Terminer » ramène à la page d’où l’on venait.
    - **Plus ›** *Liste des services* : un service par ligne — son nom (qui se change ici), ses
      équipes, les commandes qui y passent et ce qui lui manque, en tête de liste.
      « + Une équipe » crée une case dans ce service et l’ouvre ; « Voir sur le
@@ -347,8 +351,8 @@ le rouge ne sert qu’aux retards.
      hauteur, la barre de lecture en bas ; les chiffres de l’instant, la
      légende et le zoom posés sur le plan ; « En ce moment » à droite, qui se
      replie (bouton dans le titre de la page) pour lui laisser toute la
-     largeur ; au-dessus des services, ce qui attend en stock ou à laver. Le
-     plan des services se modifie d’ici (« Modifier le plan »).
+     largeur ; au-dessus des services, ce qui attend en stock ou à laver.
+     « Modifier le plan » ouvre *Équipes › Plan de l’unité*.
    - *Planning des équipes* : case par case, qui travaille quand.
    - *Heure de chaque commande* : chaque commande, prête à quelle heure, avant quand.
    - *Étapes de chaque commande* : une ligne par commande, un clic sur « Prête à »
@@ -434,13 +438,20 @@ encore pris en charge.** Aucun effectif passager n’est déduit de cet export.
 
 ## Dessiner et détailler le plan
 
-**Éditer les zones** ouvre un espace dédié : plan agrandi, outils Rectangle /
-Polygone / Sélection / Main, liste recherchable des ateliers et locaux.
+**Équipes › Plan de l’unité** (ou « Modifier le plan » sur le plan rejoué, ou
+« Modifier le plan de l’unité » sur la fiche d’un service) ouvre l’éditeur en
+pleine page : à gauche les **calques**, rangés par type (services, zones de
+production, locaux, équipements, circulations) et recherchables ; au centre le
+plan, avec sa barre d’outils flottante (Sélection, Rectangle, Polygone, Main ;
+Aimantation, Grille) ; à droite **la zone choisie** (identité, géométrie,
+statut). « Terminer » ramène à la page d’où l’on venait.
 Les stockages sont des fiches rattachées aux services, sans contour individuel.
 Ajouter des locaux et équipements, les nommer, choisir
 une couleur, dupliquer, masquer ou verrouiller leur géométrie.
 
-Les poignées gardent une taille lisible au zoom. L’aimantation et les guides
+Les contours gardent la même épaisseur à tout zoom ; les poignées sont des
+carrés de 8 px, et la taille de la zone choisie s’affiche sous son coin. Une
+zone fixée porte un cadenas ; l’inspecteur grise et explique ses actions. L’aimantation et les guides
 facilitent l’alignement ; Espace + glisser déplace la vue. **Annuler / Rétablir**
 couvre les gestes et les imports. **Centrer la sélection** permet de travailler
 sur une petite pièce. L’édition est compatible avec les anciennes positions
@@ -601,6 +612,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/notifications-browser.cjs` | Le retour des gestes (v1 et v2) : supprimer une case sans question, « Annuler » qui la rend ; une notification par source et par geste, trois au plus ; refus annoncé, routine muette ; un geste sur deux historiques défait d’un bloc ; la question pour supprimer un service et ses équipes (Échap, « Ne rien changer », puis « Supprimer le service » et « Annuler ») ; aucune boîte du navigateur |
 | `tests/problemes-browser.cjs` | Le registre des Problèmes (v1 et v2) : le nombre au pied de la barre, les trois niveaux, les nombres des onglets qui en dérivent, « Contrôles détaillés » qui compte pareil, un problème qui mène à sa page (un service à sa fiche), Échap, l’attente pendant l’édition du plan |
 | `tests/problemes.test.cjs` | Le registre, en Node : ses niveaux, ses pages, et les nombres de chaque onglet ; une source en panne ne le bloque pas |
+| `tests/plan-unite-browser.cjs` | Le plan de l’unité a sa page (v1 et v2) : Équipes › Plan de l’unité ouvre l’édition, le menu attend, « Terminer » ramène à la page d’avant, la page n’est pas retenue ; calques à gauche, toile au centre (barre d’outils flottante), inspecteur à droite ; calques par type, cadenas en pictogramme ; poignées carrées de 8 px à tout zoom, taille affichée, zone fixée expliquée ; contours constants ; « Modifier le plan » et la fiche d’un service y mènent. Aucune capture d’écran |
 | `tests/rejeu-browser.cjs` | Rejouer la journée (v1 et v2) : le plan occupe au moins 75 % de la hauteur utile, la barre de lecture en bas, indicateurs, légende et zoom posés sur le plan ; « En ce moment » se replie et le choix est retenu ; replié d’office sur un écran étroit ; l’édition garde son panneau ; rien à relire, la barre dit pourquoi. Aucune capture d’écran |
 | `tests/donnees-intactes-browser.cjs` | Le garde-fou de la refonte de l’interface (v1 et v2) : une unité complète, parcourue page par page (plan ouvert en édition puis refermé, thème changé), garde toutes ses clés du navigateur identiques après rechargement ; la journée calculée donne les nombres relevés avant la refonte (`tests/donnees-intactes.attendu.json`) |
 | `tests/sans-armement-browser.cjs` | Des compagnies sans armement, déduites (v1 et v2) : un chemin à elle sans armement et cochée dans une équipe — armée, la fiche le dit ; décochée — plus de case, « Sans armement : TX », rien à reprendre ni à cocher, aucune alerte ; plus de colonne « Armée » ; l’armement remis dans son chemin, elle est à cocher |

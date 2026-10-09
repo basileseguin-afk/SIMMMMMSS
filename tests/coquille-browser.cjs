@@ -53,6 +53,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
      assert.equal(await actif(),id);
      assert.equal(await page.locator('#ariane-partie').textContent(),p.nom);
      assert.equal(await page.locator('#view-title').textContent(),await page.evaluate(id=>OrlyOnglets.page(id).nom,id));
+     // Le plan de l'unité ouvre l'édition ; « Terminer » ramène à la page d'avant.
+     if(id==='u-plan'){
+      const avant=p.pages[p.pages.indexOf(id)-1];
+      assert.equal(await page.evaluate(()=>document.body.classList.contains('plan-editing')),true,V+'le plan de l’unité s’ouvre en édition');
+      await page.locator('#edit-done').click();await attendre(150);
+      assert.equal(await actif(),avant,V+'« Terminer » ramène à « '+avant+' »');
+     }
     }
    }
    // La partie, dans le fil d'Ariane, mène à sa première page.

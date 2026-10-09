@@ -8,6 +8,8 @@ const COLORS={service:'#0b6fa4',annexe:'#0e8aa8',room:'#087f75',cold:'#3178c6',e
 // Une annexe est une seconde salle d'un atelier du moteur : Armement 2 fait le
 // même travail qu'Armement. Elle a son espace et ses gens, pas sa propre file.
 const TYPES={service:'Service du plan',annexe:'Zone de production (annexe)',room:'Local / zone',cold:'Chambre froide',equipment:'Équipement',path:'Circulation'};
+// Les calques, par type, dans cet ordre.
+const GROUPES=[['service','Services du plan'],['annexe','Zones de production'],['room','Locaux'],['cold','Chambres froides'],['equipment','Équipements'],['path','Circulations']];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 /* La couleur retenue par l'utilisateur, ou null si c'est celle du type. */
 function couleurVoulue(z){
@@ -73,23 +75,39 @@ class PlanEditor{
  status(text){document.getElementById('pe-status').textContent=text;}
  setActive(active){
   this.cancel();this.active=active;this.tool='select';this.space=false;document.body.classList.toggle('plan-editing',active);document.getElementById('plan-editor-toolbar').hidden=!active;
-  document.getElementById('panneau-edition').hidden=!active;this.render();this.status(active?'Choisissez une zone, ou dessinez-en une nouvelle : un local, ou une zone de production rattachée à un atelier.':'Plan enregistré dans ce navigateur.');
+  document.getElementById('panneau-edition').hidden=!active;const calques=document.getElementById('pe-calques');if(calques)calques.hidden=!active;this.render();this.status(active?'Choisissez une zone, ou dessinez-en une nouvelle : un local, ou une zone de production rattachée à un atelier.':'Plan enregistré dans ce navigateur.');
  }
  buildUI(){
-  const panel=document.getElementById('panneau-edition');panel.innerHTML=`
-   <div class="pe-heading"><div><span class="eyebrow">ÉDITEUR DU PLAN</span><h2>Construire l’unité</h2></div><button class="btn" id="edit-done">Terminer</button></div>
+  // Le plan de l'unité a sa page (refonte, étape 5) : à gauche les calques (les
+  // zones, rangées par type), à droite l'inspecteur de la zone choisie, et sur
+  // la toile une barre d'outils flottante. Les identifiants restent les mêmes.
+  const calques=`<div class="pe-calques-tete"><h2>Calques</h2><span class="pe-compte" id="pe-count"></span><button class="text-button" id="pe-focus" type="button">Centrer la sélection</button></div>
+   <label class="sr-only" for="pe-search">Rechercher une zone</label><input type="search" id="pe-search" placeholder="Chercher une zone…">
+   <div id="pe-list" aria-label="Les zones du plan, par type"></div>`;
+  const hote=document.getElementById('pe-calques');if(hote)hote.innerHTML=calques;
+  const panel=document.getElementById('panneau-edition');panel.innerHTML=(hote?'':`<div class="pe-section">${calques}</div>`)+`
+   <div class="pe-heading"><h2>La zone choisie</h2><button class="btn btn-play" id="edit-done" type="button">Terminer</button></div>
    <div id="pe-status" role="status" aria-live="polite"></div>
-   <div class="pe-section"><div class="pe-section-title"><h3>Zones & locaux <span id="pe-count"></span></h3><button class="text-button" id="pe-focus">Centrer la sélection</button></div><label class="sr-only" for="pe-search">Rechercher une zone</label><input type="search" id="pe-search" placeholder="Rechercher une zone…"><div id="pe-list" aria-label="Liste des zones"></div></div>
-   <div class="pe-section" id="pe-properties" hidden><h3>Zone sélectionnée</h3><label>Nom<input id="pe-name" maxlength="120" type="text"></label><div class="pe-two"><label>Type<select id="pe-kind"><option value="service">Service du plan</option><option value="annexe">Zone de production (un service)</option><option value="room">Local (annotation)</option><option value="equipment">Équipement</option><option value="path">Circulation</option></select></label><label>Couleur<input type="color" id="pe-color"><button class="text-button" id="pe-color-reset" type="button">Couleur du type</button></label></div>
+   <p class="pe-vide" id="pe-vide">Choisissez une zone sur le plan ou dans les calques, ou dessinez-en une avec Rectangle ou Polygone.</p>
+   <div class="pe-section" id="pe-properties" hidden><div class="pe-insp-tete"><span id="pe-insp-type"></span><h3 id="pe-insp-nom"></h3></div>
+   <h4>Identité</h4><label>Nom<input id="pe-name" maxlength="120" type="text"></label><div class="pe-two"><label>Type<select id="pe-kind"><option value="service">Service du plan</option><option value="annexe">Zone de production (un service)</option><option value="room">Local (annotation)</option><option value="equipment">Équipement</option><option value="path">Circulation</option></select></label><label>Couleur<input type="color" id="pe-color"><button class="text-button" id="pe-color-reset" type="button">Couleur du type</button></label></div>
    <label id="pe-parent-champ" hidden>Atelier dont elle dépend<select id="pe-parent"></select></label>
-   <p id="pe-kind-note" class="mini-note"></p><div class="pe-two pe-dimensions">${[['x','X'],['y','Y'],['w','Largeur'],['h','Hauteur']].map(([k,label])=>`<label>${label}<input id="pe-${k}" type="number" step="1" ${k==='w'||k==='h'?'min="1"':''}></label>`).join('')}</div><p class="mini-note">Coordonnées du dessin, pas des mètres.</p>
-   <label class="chk"><input id="pe-locked" type="checkbox">Verrouiller la géométrie</label><label class="chk"><input id="pe-confirmed" type="checkbox">Emplacement confirmé sur le terrain</label>
-   <div class="pe-actions"><button class="btn" id="pe-duplicate">Dupliquer</button><button class="btn" id="pe-delete">Supprimer</button><button class="btn" id="pe-redraw">Redessiner le contour</button><button class="btn" id="pe-convert">Convertir en polygone</button><button class="btn" id="pe-delete-vertex">Supprimer le sommet</button></div></div>
-   <section id="pe-storages" class="pe-section"></section><details class="pe-section"><summary>Fond & aide au placement</summary><label>Opacité du plan d’origine<input id="pe-opacity" type="range" min="0" max="100" value="85"></label><label class="chk"><input id="pe-snap" type="checkbox" checked>Aimanter aux bords et sommets proches</label><label class="chk"><input id="pe-grid" type="checkbox">Grille de 20 unités du dessin</label><p class="mini-note">Alt suspend l’aimantation. Maj contraint le rectangle au carré et les segments à l’horizontale/verticale.</p></details>
+   <p id="pe-kind-note" class="mini-note"></p>
+   <h4>Géométrie</h4><div class="pe-two pe-dimensions">${[['x','X'],['y','Y'],['w','Largeur'],['h','Hauteur']].map(([k,label])=>`<label>${label}<input id="pe-${k}" type="number" step="1" ${k==='w'||k==='h'?'min="1"':''}></label>`).join('')}</div><p class="mini-note">En unités du dessin, pas en mètres. Flèches : 1 · Maj + flèches : 10.</p>
+   <h4>Statut</h4><label class="chk"><input id="pe-locked" type="checkbox">Géométrie fixée</label><label class="chk"><input id="pe-confirmed" type="checkbox">Emplacement confirmé sur le terrain</label>
+   <p class="pe-fixe" id="pe-fixe-note" hidden>${pic('cadenas')}<span>Zone fixée : elle ne se déplace, ne se redessine ni ne se supprime. Décochez «&nbsp;Géométrie fixée&nbsp;» pour la modifier.</span></p>
+   <div class="pe-actions"><button class="btn" id="pe-redraw" type="button">Redessiner</button><button class="btn" id="pe-convert" type="button">En polygone</button><button class="btn" id="pe-delete-vertex" type="button">Supprimer le sommet</button><button class="btn" id="pe-duplicate" type="button">Dupliquer</button><button class="btn pe-supprimer" id="pe-delete" type="button">Supprimer</button></div></div>
+   <section id="pe-storages" class="pe-section"></section><details class="pe-section"><summary>Fond & aide au placement</summary><label>Opacité du plan d’origine<input id="pe-opacity" type="range" min="0" max="100" value="85"></label><p class="mini-note">L’aimantation et la grille se règlent sur la barre d’outils du plan. Alt suspend l’aimantation. Maj contraint le rectangle au carré et les segments à l’horizontale/verticale.</p></details>
    <details class="pe-section"><summary>Enregistrer & partager</summary><p class="mini-note">Sauvegarde locale automatique. Exportez un fichier pour le conserver ou l’ouvrir sur un autre poste. Les locaux ajoutés sont des annotations, sans charge simulée.</p><div class="pe-actions"><button class="btn" id="pe-export">Exporter le plan</button><button class="btn" id="pe-import-button">Importer un plan</button><input type="file" id="pe-import" accept=".json" hidden><button class="btn" id="pe-backup">Restaurer la sauvegarde précédente</button></div></details>
    <details class="pe-section"><summary>Raccourcis clavier</summary><p class="mini-note">V : sélectionner · R : rectangle · P : polygone · H ou Espace : déplacer la vue · Ctrl/Cmd Z : annuler · Ctrl/Cmd Maj Z : rétablir · Ctrl/Cmd D : dupliquer · flèches : déplacer de 1 unité (Maj : 10) · Suppr : supprimer · Entrée : fermer le polygone · Échap : annuler le geste.</p></details>`;
-  const bar=document.createElement('div');bar.id='plan-editor-toolbar';bar.hidden=true;bar.innerHTML=`<div class="pe-tools" role="group" aria-label="Outils de dessin">${[['select','Sélection','V'],['rect','Rectangle','R'],['poly','Polygone','P'],['hand','Main','H']].map(([tool,label,key])=>`<button class="btn" data-pe-tool="${tool}" aria-pressed="false" title="${label} (${key})">${label}<kbd>${key}</kbd></button>`).join('')}</div><div class="pe-tools"><button class="btn" id="pe-undo" title="Annuler (Ctrl Z)">${pic('annuler')}Annuler</button><button class="btn" id="pe-redo" title="Rétablir (Ctrl Maj Z)">${pic('retablir')}Rétablir</button><button class="btn" id="pe-finish" hidden>Fermer le polygone</button><button class="btn" id="pe-cancel" hidden>Annuler le tracé</button></div><span id="pe-tool-help"></span>`;
-  document.querySelector('.plan-tete').after(bar);
+  const bar=document.createElement('div');bar.id='plan-editor-toolbar';bar.className='plan-sur pe-barre';bar.hidden=true;bar.setAttribute('role','group');bar.setAttribute('aria-label','Outils du plan');
+  bar.innerHTML=`<div class="pe-tools" role="group" aria-label="Outils de dessin">${[['select','Sélection','V','curseur'],['rect','Rectangle','R','rectangle'],['poly','Polygone','P','polygone'],['hand','Main','H','main']].map(([tool,label,key,ico])=>`<button class="btn" data-pe-tool="${tool}" aria-pressed="false" title="${label} (${key})" type="button">${pic(ico)}<span class="pe-lib">${label}</span><kbd>${key}</kbd></button>`).join('')}</div>
+   <span class="pe-sep" aria-hidden="true"></span>
+   <div class="pe-tools" role="group" aria-label="Aide au placement"><label class="pe-bascule" title="Aimanter aux bords et sommets proches (Alt suspend)"><input id="pe-snap" type="checkbox" checked>${pic('aimant')}<span class="pe-lib">Aimantation</span></label><label class="pe-bascule" title="Grille de 20 unités du dessin"><input id="pe-grid" type="checkbox">${pic('grille')}<span class="pe-lib">Grille</span></label></div>
+   <div class="pe-tools pe-trace"><button class="btn" id="pe-undo" title="Annuler (Ctrl Z)" type="button">${pic('annuler')}Annuler</button><button class="btn" id="pe-redo" title="Rétablir (Ctrl Maj Z)" type="button">${pic('retablir')}Rétablir</button><button class="btn" id="pe-finish" hidden type="button">Fermer le polygone</button><button class="btn" id="pe-cancel" hidden type="button">Annuler le tracé</button></div>
+   <span id="pe-tool-help"></span>`;
+  // Elle flotte sur la toile, au-dessus du dessin.
+  (this.svg.parentNode||document.body).appendChild(bar);
  }
  bind(){
   const on=(id,event,fn)=>document.getElementById(id).addEventListener(event,fn);
@@ -318,11 +336,18 @@ class PlanEditor{
  renderList(){
   const search=document.getElementById('pe-search').value.trim().toLowerCase(),list=document.getElementById('pe-list');
   const zones=this.state.zones.filter(z=>z.nom.toLowerCase().includes(search));document.getElementById('pe-count').textContent=this.state.zones.length;
-  const html=zones.map(z=>`<div class="pe-list-row ${z.id===this.selected?'selected':''}"><button data-action="select" data-zone="${esc(z.id)}" class="pe-zone-name" aria-pressed="${z.id===this.selected}"><span class="pe-swatch" style="background:${z.color}"></span><span>${esc(z.nom)}<small>${TYPES[z.kind]}${z.approx?' · à confirmer':''}</small></span></button><button data-zone="${esc(z.id)}" data-action="visibility" aria-label="${z.visible?'Masquer':'Afficher'} ${esc(z.nom)}" title="${z.visible?'Masquer':'Afficher'}" aria-pressed="${!z.visible}">${pic(z.visible?'oeil':'oeilBarre')}</button><button data-zone="${esc(z.id)}" data-action="lock" aria-label="${z.locked?'Déverrouiller':'Verrouiller'} ${esc(z.nom)}" title="${z.locked?'Déverrouiller':'Verrouiller'}" aria-pressed="${z.locked}">${z.locked?'Fixé':'Libre'}</button></div>`).join('')||'<p class="mini-note">Aucune zone trouvée.</p>';
-  if(list.innerHTML!==html)list.innerHTML=html;
+  const ligne=z=>`<div class="pe-list-row ${z.id===this.selected?'selected':''}${z.visible?'':' masquee'}"><button type="button" data-action="select" data-zone="${esc(z.id)}" class="pe-zone-name" aria-pressed="${z.id===this.selected}"><span class="pe-swatch" style="background:${z.color}"></span><span>${esc(z.nom)}${z.approx?'<small>à confirmer</small>':''}</span></button>`
+   +`<button type="button" data-zone="${esc(z.id)}" data-action="visibility" aria-label="${z.visible?'Masquer':'Afficher'} ${esc(z.nom)}" title="${z.visible?'Masquer':'Afficher'}" aria-pressed="${!z.visible}">${pic(z.visible?'oeil':'oeilBarre')}</button>`
+   +`<button type="button" data-zone="${esc(z.id)}" data-action="lock" aria-label="${z.locked?'Déverrouiller':'Verrouiller'} ${esc(z.nom)}" title="${z.locked?'Fixée : cliquer pour la libérer':'Libre : cliquer pour la fixer'}" aria-pressed="${z.locked}">${pic(z.locked?'cadenas':'cadenasOuvert')}</button></div>`;
+  // Les zones, rangées par type (refonte, étape 5) : les services d'abord.
+  const html=GROUPES.map(([kind,nom])=>{const l=zones.filter(z=>z.kind===kind);return l.length?`<div class="pe-groupe" role="group" aria-label="${nom}"><p class="pe-groupe-tete">${nom}<span>${l.length}</span></p>${l.map(ligne).join('')}</div>`:'';}).join('')||'<p class="mini-note">Aucune zone trouvée.</p>';
+  if(this._liste!==html){list.innerHTML=html;this._liste=html;}
  }
  renderProperties(){
-  const z=this.zone;document.getElementById('pe-properties').hidden=!z;document.getElementById('pe-focus').disabled=!z;if(!z)return;
+  const z=this.zone;document.getElementById('pe-properties').hidden=!z;document.getElementById('pe-vide').hidden=!!z;document.getElementById('pe-focus').disabled=!z;if(!z)return;
+  document.getElementById('pe-insp-type').textContent=TYPES[z.kind]+(z.approx?' · à confirmer':'');
+  document.getElementById('pe-insp-nom').innerHTML=esc(z.nom)+(z.locked?pic('cadenas'):'');
+  document.getElementById('pe-fixe-note').hidden=!z.locked;
   const assign=(id,value)=>{const e=document.getElementById(id);if(document.activeElement!==e)e.value=value;};
   assign('pe-name',z.nom);assign('pe-kind',z.kind);assign('pe-color',z.color);
   document.getElementById('pe-color-reset').hidden=!couleurVoulue(z);
@@ -343,24 +368,25 @@ class PlanEditor{
   document.getElementById('pe-locked').checked=z.locked;document.getElementById('pe-confirmed').checked=!z.approx;
   document.getElementById('pe-delete').disabled=z.kind==='service'||z.locked;
   document.getElementById('pe-redraw').disabled=z.locked;document.getElementById('pe-convert').disabled=z.locked;
-  document.getElementById('pe-convert').textContent=z.pts?'Revenir au rectangle':'Convertir en polygone';
+  document.getElementById('pe-convert').textContent=z.pts?'En rectangle':'En polygone';
   document.getElementById('pe-delete-vertex').hidden=!z.pts;document.getElementById('pe-delete-vertex').disabled=z.locked||this.vertex==null||z.pts?.length<=3;
  }
  renderCanvas(){
   this.layer.replaceChildren();document.getElementById('plan-fond').style.opacity=this.state.backgroundOpacity;
   if(this.active&&this.grid){const defs=this.el('defs');const pattern=this.el('pattern',{id:'pe-grid-pattern',width:20,height:20,patternUnits:'userSpaceOnUse'});pattern.appendChild(this.el('path',{d:'M 20 0 L 0 0 0 20',fill:'none',stroke:'#91a0ac','stroke-width':.7}));defs.appendChild(pattern);this.layer.appendChild(defs);this.layer.appendChild(this.el('rect',{x:-10000,y:-10000,width:30000,height:30000,fill:'url(#pe-grid-pattern)','pointer-events':'none'}));}
-  const scale=this.scale(),r=6/scale;
+  const scale=this.scale();
   for(const z of this.state.zones){if(!z.visible||(!this.active&&z.kind==='service'))continue;
    const vise=this.active?z.id===this.selected:z.id===this.serviceId;
    const g=this.el('g',{'data-pe-zone':z.id,class:'pe-shape'+(vise?' selected':'')+(z.kind==='annexe'?' pe-annexe':''),'pointer-events':this.active||z.kind==='annexe'?'all':'none'});
    const b=bounds(z),shape=z.pts?this.el('polygon',{points:z.pts.map(p=>p.join(',')).join(' ')}):this.el('rect',{x:b.x,y:b.y,width:b.w,height:b.h});
    for(const[k,v]of Object.entries({fill:z.color,'fill-opacity':vise?.22:z.kind==='annexe'?.16:.09,stroke:z.color,'stroke-width':vise?2.5:z.kind==='annexe'?2:1.3,'vector-effect':'non-scaling-stroke','stroke-dasharray':z.approx?'6 4':'none'}))shape.setAttribute(k,v);g.appendChild(shape);
-   const text=this.el('text',{x:b.x+7/scale,y:b.y+17/scale,'font-size':12/scale,'pointer-events':'none',class:'pe-shape-label'});const limit=Math.floor((b.w*scale-14)/7);text.textContent=limit>=5?(z.nom.length>limit?z.nom.slice(0,limit-1)+'…':z.nom):'';if(z.id===this.selected)text.textContent=z.nom;const title=this.el('title');title.textContent=z.nom;g.appendChild(title);g.appendChild(text);this.layer.appendChild(g);
+   const text=this.el('text',{x:b.x+7/scale,y:b.y+17/scale,'font-size':12/scale,'stroke-width':3/scale,'pointer-events':'none',class:'pe-shape-label'});const limit=Math.floor((b.w*scale-14)/7);text.textContent=limit>=5?(z.nom.length>limit?z.nom.slice(0,limit-1)+'…':z.nom):'';if(z.id===this.selected)text.textContent=z.nom;const title=this.el('title');title.textContent=z.nom;g.appendChild(title);g.appendChild(text);this.layer.appendChild(g);if(this.active&&z.locked&&root.OrlyIcones){const c=14/scale,ic=this.el('svg',{x:b.x+b.w-c-5/scale,y:b.y+5/scale,width:c,height:c,viewBox:'0 0 24 24',class:'pe-cadenas','data-pe-cadenas':z.id,'aria-hidden':'true','pointer-events':'none'});ic.innerHTML=root.OrlyIcones.TRAITS.cadenas;this.layer.appendChild(ic);}
   }
   if(!this.active)return;
+  if(this.zone?.visible){const b=bounds(this.zone),t=this.el('text',{x:b.x+b.w,y:b.y+b.h+16/scale,'text-anchor':'end','font-size':11/scale,'stroke-width':3/scale,'pointer-events':'none',class:'pe-taille'});t.textContent=Math.round(b.w)+' × '+Math.round(b.h);this.layer.appendChild(t);}
   if(this.zone?.visible&&!this.zone.locked&&this.tool==='select'){
    const z=this.zone,b=bounds(z),g=this.el('g',{class:'pe-handles'});this.layer.appendChild(g);
-   const h=(x,y,type,index,mid=false)=>{const e=this.el('circle',{cx:x,cy:y,r:mid?4/scale:r,fill:mid?'#fff':index===this.vertex&&type==='vertex'?'#d36e12':'#087f75',stroke:mid?'#087f75':'#fff','stroke-width':1.5/scale,'data-pe-handle':type,...(index!=null?{'data-index':index}:{}),class:'pe-handle handle-'+type});g.appendChild(e);if(mid){const plus=this.el('text',{x,y:y+3/scale,'text-anchor':'middle','font-size':9/scale,fill:'#087f75','pointer-events':'none'});plus.textContent='+';g.appendChild(plus);}};
+   const h=(x,y,type,index,mid=false)=>{if(mid){g.appendChild(this.el('circle',{cx:x,cy:y,r:4/scale,'stroke-width':1.5/scale,'data-pe-handle':type,'data-index':index,class:'pe-handle pe-milieu handle-'+type}));const plus=this.el('text',{x,y:y+3/scale,'text-anchor':'middle','font-size':9/scale,'pointer-events':'none',class:'pe-plus'});plus.textContent='+';g.appendChild(plus);return;}const c=8/scale;g.appendChild(this.el('rect',{x:x-c/2,y:y-c/2,width:c,height:c,'stroke-width':1.5/scale,'data-pe-handle':type,...(index!=null?{'data-index':index}:{}),class:'pe-handle handle-'+type+(type==='vertex'&&index===this.vertex?' actif':'')}));};
    if(z.pts)z.pts.forEach((p,i)=>{h(p[0],p[1],'vertex',i);const q=z.pts[(i+1)%z.pts.length];h((p[0]+q[0])/2,(p[1]+q[1])/2,'mid',i,true);});
    else for(const [x,y,k]of [[b.x,b.y,'nw'],[b.x+b.w/2,b.y,'n'],[b.x+b.w,b.y,'ne'],[b.x+b.w,b.y+b.h/2,'e'],[b.x+b.w,b.y+b.h,'se'],[b.x+b.w/2,b.y+b.h,'s'],[b.x,b.y+b.h,'sw'],[b.x,b.y+b.h/2,'w']])h(x,y,k);
   }

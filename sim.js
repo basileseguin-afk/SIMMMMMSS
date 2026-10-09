@@ -1043,7 +1043,10 @@ function initOnglets(){
     vue:()=>activeView,
     badge:badgeOnglet,
     // Une fois la page ouverte : son titre, et le menu qui marque sa partie.
-    apres:id=>{afficherTitre();if(Sim.demarrage)Sim.demarrage.rendreMenu();if(id==='u-services')renderServices();majHauteurEntete();},
+    apres:id=>{afficherTitre();if(Sim.demarrage)Sim.demarrage.rendreMenu();if(id==='u-services')renderServices();majHauteurEntete();
+      // Le plan de l'unité (refonte, étape 5) : y arriver ouvre l'édition ;
+      // ailleurs, on retient la page, pour que « Terminer » y ramène.
+      if(id==='u-plan'){if(!editMode)basculerEdition();}else Sim.pageAvantPlan=id;},
     change:(vue,id)=>{
       if(vue!==activeView)showView(vue);
       if(id==='v-departs')renderFlights();
@@ -1346,15 +1349,19 @@ function appliquerGeom(o, silencieux) {
   return ids.length;
 }
 
+/* Le plan de l'unité a sa page (refonte, étape 5) : l'édition s'y ouvre, d'où
+ * qu'on vienne (« Modifier le plan », la fiche d'un service, le menu), et
+ * « Terminer » ramène à la page d'où l'on venait. */
 function basculerEdition() {
   editMode=!editMode;
-  if(editMode){pause();showView('plan');if(Sim.onglets)Sim.onglets.choisir('j-plan');}
+  if(editMode){pause();showView('plan');if(Sim.onglets&&document.body.dataset.sous!=='u-plan')Sim.onglets.choisir('u-plan');}
   svg.classList.toggle('edition',editMode);
   document.body.classList.toggle('editing',editMode);
-  document.getElementById('btn-edit').setAttribute('aria-pressed',String(editMode));
-  document.getElementById('btn-edit').textContent=editMode?'Terminer l’édition':'Éditer les zones';
+  // Le panneau de droite devient l'inspecteur de la zone choisie.
+  const panneau=document.getElementById('en-ce-moment');if(panneau)panneau.setAttribute('aria-label',editMode?'La zone choisie':'En ce moment');
   // Le bouton de lecture appartient à la vue ; l'édition le masque déjà.
   Sim.editor.setActive(editMode);updateRunState();
+  if(!editMode&&Sim.onglets)Sim.onglets.choisir(Sim.pageAvantPlan||'j-plan');
 }
 
 function initEdition() {
@@ -2361,7 +2368,9 @@ function renderFriseVols(tous, etatDe, mot, icoEtat) {
 }
 
 function initWorkbench() {
-  document.getElementById('edit-done').addEventListener('click',()=>{if(editMode)basculerEdition();document.getElementById('btn-edit').focus();});
+  document.getElementById('edit-done').addEventListener('click',()=>{if(!editMode)return;basculerEdition();
+    // De retour sur la page d'avant : le focus va au bouton qui a ouvert le plan, sinon à la page.
+    const b=document.getElementById('btn-edit');(b.offsetParent?b:document.getElementById('workspace')).focus({preventScroll:true});});
   const picker=document.getElementById('zone-picker');
   majPicker();
   picker.addEventListener('change',()=>{const id=picker.value;selection=null;selectionner(id||null);});
