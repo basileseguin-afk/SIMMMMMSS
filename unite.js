@@ -425,7 +425,7 @@
           <td class="mu-cat-jour">${v == null ? '<span class="mu-cat-manque">à remplir</span>' : `${P.heuresFr(v)} h × ${n} = <b>${esc(h(v * n))}</b>`}</td></tr>`;
       };
       const lignes = avec.map(ligne).join('');
-      return aucun + `<div class="mu-grille-scroll"><table class="mu-cat-table" data-mu-cat-service="${esc(s.id)}">
+      return aucun + `<div class="mu-grille-scroll"><table class="mu-cat-table" data-clavier data-mu-cat-service="${esc(s.id)}">
         <thead><tr><th scope="col">Compagnie</th><th scope="col">Heures par vol</th><th scope="col">Vols du jour</th><th scope="col">Sur la journée</th></tr></thead>
         <tbody><tr class="mu-cat-toutes"><th scope="row">Toutes les compagnies</th>${champ('*')}<td></td><td></td></tr>
         ${lignes}</tbody>

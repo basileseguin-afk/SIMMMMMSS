@@ -171,5 +171,38 @@
     el.value = v;
   }, true);
 
+  /* ---- les tableaux d'heures au clavier (étape 8) ------------------------------ */
+
+  // Dans un tableau d'heures ou d'horaires (`data-clavier`), Entrée enregistre et
+  // descend à la ligne suivante, dans la même colonne ; Maj+Entrée remonte. Tab
+  // avance, comme partout. La dernière ligne garde l'Entrée d'ailleurs : on
+  // enregistre, et l'on reste.
+  const saisissable = x => !!(x && x.matches && x.matches('input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=file]):not([disabled]):not([readonly])'));
+  /** Le champ de la même colonne, `sens` lignes plus bas (1) ou plus haut (-1). */
+  function voisin(el, sens) {
+    const cellule = el.closest('td,th'), ligne = cellule && cellule.parentElement, table = ligne && ligne.closest('table');
+    if (!table) return null;
+    const r = cellule.getBoundingClientRect(), x = r.left + r.width / 2;
+    const lignes = [...table.querySelectorAll('tbody tr')];
+    for (let i = lignes.indexOf(ligne) + sens; i >= 0 && i < lignes.length; i += sens) {
+      const c = [...lignes[i].children].find(c => { const b = c.getBoundingClientRect(); return b.left <= x && x < b.right; });
+      const champ = c && [...c.querySelectorAll('input')].find(saisissable);
+      if (champ && champ.offsetParent !== null) return champ;
+    }
+    return null;
+  }
+  d.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' || e.altKey || e.ctrlKey || e.metaKey || e.isComposing) return;
+    const el = e.target;
+    if (!saisissable(el) || !el.closest('table[data-clavier]')) return;
+    const suivant = voisin(el, e.shiftKey ? -1 : 1);
+    if (!suivant) return;
+    e.preventDefault();
+    // Quitter le champ l'enregistre (« change ») ; le suivant se montre sans faire sauter le tableau.
+    suivant.focus({ preventScroll: true });
+    suivant.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    if (typeof suivant.select === 'function') suivant.select();
+  });
+
   Object.assign(api, { refuser, effacer, retrouver });
 })(typeof window !== 'undefined' ? window : globalThis);

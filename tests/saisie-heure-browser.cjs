@@ -44,12 +44,16 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(Math.abs(await page.evaluate(()=>document.querySelector('.rc-scroll').scrollTop)-haut)<2,'le tableau ne remonte pas en haut');
   assert.equal(await page.locator(champ).inputValue(),'14:30');
 
-  // 2. Entrée enregistre aussi, et le champ garde le focus.
+  // 2. Entrée enregistre aussi ; elle descend à la case suivante (étape 8 : le
+  //    tableau des horaires se remplit au clavier), et sur la dernière ligne
+  //    on reste dans le champ. Le tableau ne remonte pas.
+  const dessous=await page.evaluate(()=>{const tr=document.querySelector('tr[data-at="c25"]');let n=tr.nextElementSibling;while(n&&!n.dataset.at)n=n.nextElementSibling;return n&&n.dataset.at;});
   await taper(champ,'1615');
   await page.keyboard.press('Enter');await attendre();
   assert.equal(await debut('c25'),'16:15');
-  assert.equal(await page.evaluate(()=>document.activeElement.closest('tr')?.dataset.at),'c25','on reste dans le champ');
-  assert.ok(Math.abs(await page.evaluate(()=>document.querySelector('.rc-scroll').scrollTop)-haut)<2);
+  assert.equal(await page.evaluate(()=>document.activeElement.closest('tr')?.dataset.at),dessous||'c25',dessous?'Entrée descend à la case suivante':'dernière ligne : on reste dans le champ');
+  assert.equal(await page.evaluate(()=>document.activeElement.dataset.atChamp),'debut','dans la même colonne');
+  assert.ok(Math.abs(await page.evaluate(()=>document.querySelector('.rc-scroll').scrollTop)-haut)<40,'le tableau ne remonte pas');
 
   // 3. Passer d'une heure à l'autre : la première est enregistrée, la seconde garde la main.
   const autre='tr[data-at="c26"] [data-at-champ=debut]';

@@ -189,6 +189,8 @@ input[aria-invalid="true"],select[aria-invalid="true"]{border-color:var(--ds-ret
   font-weight:var(--ds-g-normal);line-height:1.4;white-space:normal;text-align:left}
 /* L'heure en 24 h : « 04:30 », cinq chiffres alignés. */
 input[data-heure]{font-variant-numeric:tabular-nums;width:6.5em}
+/* Les tableaux d'heures (étape 8) : les nombres s'alignent à droite, chiffre sous chiffre. */
+table[data-clavier] td input[type=number]{text-align:right;font-variant-numeric:tabular-nums}
 /* Le champ avec son unité (étape 7) : « 3 pers. », « 480 min » — l'unité dans le
    champ, à droite, en gris ; le champ garde sa largeur, ses flèches et son focus. */
 .champ-unite{display:inline-grid;align-items:center;justify-self:start;align-self:flex-start;max-width:100%}

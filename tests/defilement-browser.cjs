@@ -87,7 +87,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    const champ=await page.evaluateHandle(()=>{const z=document.querySelector('#rg-recap .rg-recap-scroll'),q=z.getBoundingClientRect();
      return [...z.querySelectorAll('input[type=number]')].find(i=>{const r=i.getBoundingClientRect();return r.top>q.top+40&&r.bottom<q.bottom-10;});});
    await champ.asElement().fill('0.3');await champ.asElement().press('Enter');await page.waitForTimeout(400);
-   assert.equal(await page.locator('#rg-recap .rg-recap-scroll').evaluate(z=>z.scrollTop),place,version+' : après Entrée, le tableau reste où il était');
+   // Entrée descend à la ligne suivante (étape 8) : le tableau la montre au besoin, sans remonter.
+   assert.ok(Math.abs(await page.locator('#rg-recap .rg-recap-scroll').evaluate(z=>z.scrollTop)-place)<40,version+' : après Entrée, le tableau reste où il était');
 
    // 3. Toutes les pages du menu.
    const ids=await page.evaluate(()=>Object.values(OrlyOnglets.ONGLETS).flat().map(o=>o.id).filter(id=>OrlyOnglets.partieDe(id)));

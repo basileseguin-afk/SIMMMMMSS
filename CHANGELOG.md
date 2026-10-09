@@ -5,6 +5,39 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-09 — Refonte, étape 8 : les tableaux d'heures et d'horaires, au clavier
+
+Toujours sans rien changer aux données ni au calcul (`donnees-intactes-browser`) :
+les valeurs s'enregistrent comme avant (« HH:MM », heures par vol gardées en
+minutes) ; seuls le déplacement et l'affichage changent.
+
+- **Entrée descend, Tab avance** (REFONTE_UX §6, option retenue) : dans les
+  tableaux d'heures — Horaires (Récap des cases), Heures de travail (récap et
+  barème par service), temps par compagnie du handling, de la plonge et de
+  l'armement, matériel par classe, planche retour —, Entrée enregistre et
+  passe au champ de la ligne suivante, dans la même colonne ; Maj+Entrée
+  remonte ; le champ d'arrivée est tout choisi, on retape par-dessus. Le
+  tableau montre la ligne suivante sans sauter. Sur la dernière ligne,
+  Entrée enregistre et l'on reste, comme ailleurs.
+- **Horaires** : la colonne des cases reste à gauche quand le tableau défile
+  en largeur ; le service en cours reste en haut, sous les titres, quand il
+  défile en hauteur (le suivant le remplace en arrivant). Les titres et la
+  première colonne des Heures de travail l'étaient déjà.
+- **Les nombres à droite**, chiffre sous chiffre, dans tous ces tableaux ;
+  l'unité reste une fois, dans l'en-tête (« h/vol », « min »).
+- **Le refus au champ** gagne le barème : un nombre de personnes, un débit ou
+  des heures impossibles, ou un refus du barème, se lisent sous la case du
+  tableau, qui reprend sa valeur.
+- Fichiers : `champs.js` (Entrée et Maj+Entrée dans `table[data-clavier]`),
+  `ateliers.js`, `reglages.js`, `unite.js`, `sim.js` (les tableaux marqués ;
+  `refuserAuChamp` du barème), `ateliers.css`, `ds.css` ; v1 et v2.
+- Tests : `tableaux-browser` (neuf : colonnes et services collants, Entrée,
+  Maj+Entrée, refus en descendant, heures de travail, autres tableaux) ;
+  `saisie-heure-browser` (Entrée descend, ou reste sur la dernière ligne) et
+  `defilement-browser` (Entrée ne fait pas remonter le tableau : au plus une
+  ligne, pour montrer la suivante) suivent ; `recap-*`, `reglages`,
+  `planche`, `categories`, `temps` : verts sans changement.
+
 ## 2026-10-09 — Refonte, étape 7 (2/2) : la fiche d'un service, en feuille de propriétés ; l'unité dans le champ
 
 Toujours sans rien changer aux données ni au calcul (`donnees-intactes-browser`) :

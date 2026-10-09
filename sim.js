@@ -798,7 +798,7 @@ function renderPlanche(){
       :'<p class="mini-note planche-etat">La simulation ne lit pas cette planche : ses retours viennent '+(src==='j1'?'des départs de la veille (J+1)':'des lignes « retour » du programme de vols')
         +'. <button class="btn btn-sm btn-play" data-pl-action="utiliser">Utiliser la planche retour</button> <button class="lien-discret" data-page="rg-simulation">Réglages de la simulation →</button></p>')
     +(planche.length?'<p class="mini-note planche-comparer">Laquelle donne la meilleure journée ? <button class="btn btn-sm" data-comparer-retours>'+pic('echanger')+'Comparer J+1 et planche retour</button></p>':'')
-    +'<div class="table-scroll"><table class="planche-table"><thead><tr><th>Vol</th><th>Compagnie</th><th>Arrivée à l’unité</th><th>Jour</th>'
+    +'<div class="table-scroll"><table class="planche-table" data-clavier><thead><tr><th>Vol</th><th>Compagnie</th><th>Arrivée à l’unité</th><th>Jour</th>'
     +CLASSES_PLANCHE.map(([,c])=>'<th title="Passagers de cette classe à bord (facultatif)">'+c+'</th>').join('')+'<th></th></tr></thead><tbody>'
     +(lignes||'<tr><td colspan="10" class="mini-note">Aucune ligne. « + Ligne » pour saisir, ou « Importer » un classeur (« Excel » donne le modèle).</td></tr>')
     +'</tbody></table></div>'

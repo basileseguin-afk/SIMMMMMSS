@@ -661,7 +661,7 @@
         Le choix se fait plus haut (« Effectif »), ou pour tout le service : « Effectif constant ».</p>
         ${constant ? '' : `<div class="at-sous-titre">Heures de travail par vol, pour une personne
           <span class="mini-note">${lave ? 'pour chaque vol qui revient' : 'pour chaque départ'} ; vide : celle de toutes les compagnies</span></div>
-        <table class="at-appui-cies"><tbody>${ligne(P.TOUTES, 'Toutes les compagnies')}${cies.map(c => ligne(c, c)).join('')}</tbody></table>
+        <table class="at-appui-cies" data-clavier><tbody>${ligne(P.TOUTES, 'Toutes les compagnies')}${cies.map(c => ligne(c, c)).join('')}</tbody></table>
         <p class="mini-note at-appui-note">${e ? `${e.vols} vol${e.vols > 1 ? 's' : ''} · ${dureeLue(e.hommeMinutes)} de travail ÷ ${dureeLue(e.poste)} par personne : <b>${e.personnes} ${e.personnes > 1 ? 'personnes' : 'personne'}</b>.`
           : 'Renseignez ses heures par vol : sans elles, son effectif reste celui saisi.'}</p>`}`;
     }
@@ -1600,7 +1600,7 @@
     <summary aria-label="Pourquoi par vol ?">?</summary>
     <span class="aide-corps">Un trolley part avec l’avion : sa quantité ne bouge pas parce que la
       cabine est à moitié vide. Un vol retour ramène la même quantité, classe par classe.</span></details></div>
-  <table class="at-mat-table"><thead><tr><th scope="col">Classe</th>
+  <table class="at-mat-table" data-clavier><thead><tr><th scope="col">Classe</th>
     <th scope="col">unités / vol</th></tr></thead><tbody>
     ${P.CABINES.map(c => `<tr><th scope="row" title="${esc((P.NOM_CABINE || {})[c] || c)}">${c}</th>
       <td><input type="number" min="0" step="1"
@@ -1902,7 +1902,7 @@
       };
       const propre = cie => cols.some(c => (a[c.map] || {})[cie] != null);
       const total = extra && extra.total ? extra.total : null;
-      return `<div class="at-cies-bloc"><div class="table-scroll"><table class="at-cies">
+      return `<div class="at-cies-bloc"><div class="table-scroll"><table class="at-cies" data-clavier>
         <thead><tr><th scope="col">Compagnie</th><th scope="col">Vols</th>${extra ? extra.tete : ''}${cols.map(c => `<th scope="col">${esc(c.lib)}</th>`).join('')}${total ? '<th scope="col">Trajet</th>' : ''}<th></th></tr></thead><tbody>
         <tr class="at-cies-toutes"><th scope="row">Toutes les compagnies</th><td>—</td>${extra ? extra.toutes : ''}${cols.map(c => `<td>${champ(c, P.TOUTES, 'toutes les compagnies')}</td>`).join('')}${total ? `<td>${total(P.TOUTES)}</td>` : ''}<td></td></tr>
         ${liste.map(cie => `<tr><th scope="row">${esc(cie)}</th><td>${nbVols(cie) || '—'}</td>${extra ? extra.ligne(cie) : ''}${cols.map(c => `<td>${champ(c, cie, cie)}</td>`).join('')}${total ? `<td>${total(cie)}</td>` : ''}
@@ -2324,7 +2324,7 @@
       const avant = box.querySelector('.rc-scroll'), haut = avant ? avant.scrollTop : 0, gauche = avant ? avant.scrollLeft : 0;
       const actif = box.contains(document.activeElement) && document.activeElement.dataset.atChamp ? document.activeElement : null;
       const cle = actif && { at: actif.closest('[data-at]')?.dataset.at, champ: actif.dataset.atChamp, index: actif.dataset.index };
-      box.innerHTML = `<div class="rc-scroll"><table class="rc-table">
+      box.innerHTML = `<div class="rc-scroll"><table class="rc-table" data-clavier>
         <thead><tr><th scope="col">Case</th><th scope="col">Déroulé</th><th scope="col">Jour</th><th scope="col">Départ</th>
           <th scope="col">Ce qu’elle traite, dans l’ordre</th><th scope="col">Fin</th></tr></thead>
         <tbody>${lignes || `<tr><td colspan="6" class="mini-note">Aucune case ne correspond à « ${esc(filtre)} ».</td></tr>`}</tbody></table></div>`;

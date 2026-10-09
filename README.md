@@ -295,7 +295,11 @@ le rouge ne sert qu’aux retards.
      chacune, sa ligne en tête est son total (la somme de ses classes,
      service par service, et l’armement, réglé là) ; un clic la déplie sur
      ses classes (« Tout déplier / Tout replier »). Première colonne et total
-     de la journée restent visibles au défilement.
+     de la journée restent visibles au défilement ; dans *Horaires*, la case
+     reste à gauche et son service en haut. **Au clavier**, dans ces tableaux
+     comme dans le barème, la planche retour et les temps par compagnie :
+     Entrée enregistre et descend à la ligne suivante (Maj+Entrée remonte),
+     Tab avance ; les nombres s’alignent à droite.
    - *Plan de l’unité* : la place et la forme de chaque service, en pleine
      page : les calques à gauche (les zones rangées par type), le plan au
      centre avec sa barre d’outils, la zone choisie à droite. La page s’ouvre
@@ -640,6 +644,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/champs.test.cjs` | L’heure tapée → « HH:MM » (« 0430 », « 4h30 », « 7 »…), une heure impossible refusée jamais devinée, ↑↓ au quart d’heure, Maj à l’heure, dix pas dans les bornes ; v1 et v2 portent le même `champs.js` |
 | `tests/champs-browser.cjs` | Les champs dans un navigateur en anglais (v1 et v2) : plus de champ natif ni de « AM » ; frappe, Entrée, Tab ; « 2500 » et un champ vidé refusés sous le champ, la valeur gardée remise, retaper efface ; ↑↓ et Maj+↑↓ ; un nom d’équipe ou de service refusé sous son champ, sans notification ; les heures gardées restent « HH:MM » |
 | `tests/fiche-service-browser.cjs` | La fiche d’un service en feuille de propriétés (v1 et v2) : sections repliables, repli gardé d’un service à l’autre et au rendu, Entrée au clavier ; l’avancé replié qui dit ce qui y est réglé ; la règle ⚡ dans « Plus de réglages », dont la ligne dit ce qui est réglé ; la matrice (en-têtes collants, ligne et colonne survolées, Espace) ; rien ne change dans les données |
+| `tests/tableaux-browser.cjs` | Les tableaux d’heures et d’horaires au clavier (v1 et v2) : Horaires (case à gauche, service en cours sous les titres), Entrée qui enregistre et descend dans la même colonne, Maj+Entrée qui remonte, une heure refusée en descendant ; Heures de travail (nombres à droite, 0,3 h gardées 18 min, Entrée dans la colonne, sans saut) ; planche retour et barème marqués |
 | `tests/secours-browser.cjs` | Un démarrage resté en plan ouvre la page de secours ; elle rend les données en sauvegarde, repart sans les cases, puis les remet |
 | `tests/recap-cases-browser.cjs` | Récap des cases : une ligne par case, tâche unique / à la suite / ensemble, départ et jour modifiables, chercher, fichier de paramétrage exporté puis réimporté |
 | `tests/robot-browser.cjs` | Le Robot : service créé et rattaché au Montage, remplace le Montage sur TX, CRL et FBU Économie (une fois), une case Robot, plateaux ÷ débit, débit et effectif dans le récap et la fiche |

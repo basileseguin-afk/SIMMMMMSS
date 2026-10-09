@@ -147,10 +147,17 @@
 
     /* ---- modification ------------------------------------------------- */
 
-    changer(fn, message) {
+    /** Changer le barème d'un geste ; refusé, il reste tel quel. Le refus d'une
+     *  saisie se lit sous son `champ` (étape 8) ; celui d'un autre geste, en
+     *  notification. */
+    changer(fn, message, champ) {
       const avant = clone(this.etat);
       try { fn(); this.etat = valider(this.etat); }
-      catch (e) { this.etat = avant; return this.rendre('Refusé : ' + e.message); }
+      catch (e) {
+        this.etat = avant;
+        if (champ) { this.rendre(); return this.refuserAuChamp(champ, e.message); }
+        return this.rendre('Refusé : ' + e.message);
+      }
       if (JSON.stringify(avant) !== JSON.stringify(this.etat)) {
         this.undo.push(avant); if (this.undo.length > 60) this.undo.shift(); this.redo = [];
         this.version++; if (root.OrlyNotif) root.OrlyNotif.marquer('bareme');
@@ -158,6 +165,14 @@
       this.enregistrer();
       this.rendre(message);
       if (this.a.change) this.a.change();
+    }
+
+    /** Sous le champ, tel qu'il est à l'écran ; il reprend la valeur gardée. Sans lui, en notification. */
+    refuserAuChamp(el, raison) {
+      const C = root.OrlyChamps, ici = C && C.retrouver(el);
+      if (!ici) return this.rendre('Refusé : ' + raison);
+      if (ici === el && 'defaultValue' in el) el.value = el.defaultValue;
+      C.refuser(ici, raison);
     }
 
     enregistrer() {
@@ -342,7 +357,7 @@
         // L'effectif d'une équipe : il vit dans ses cases, pas dans le barème.
         if (champ === 'recap-pers') {
           const n = parseInt(v, 10), id = e.target.dataset.atelier;
-          if (!Number.isInteger(n) || n < 0) { this.rendre('Nombre de personnes entier attendu.'); return; }
+          if (!Number.isInteger(n) || n < 0) { this.refuserAuChamp(e.target, 'nombre de personnes entier attendu.'); return; }
           setTimeout(() => { if (this.a.personnes && this.a.personnes(id, Math.min(999, n))) this.pile('cases'); }, 0);
           return;
         }
@@ -351,14 +366,14 @@
         if (champ === 'recap-cie') {
           // Saisies en heures par vol (08/10), gardées en minutes.
           const n = v === '' ? null : P.versMinutes(v);
-          if (v !== '' && !(Number.isFinite(n) && n >= 0)) { this.rendre('Nombre d’heures positif attendu.'); return; }
+          if (v !== '' && !(Number.isFinite(n) && n >= 0)) { this.refuserAuChamp(e.target, 'nombre d’heures positif attendu.'); return; }
           setTimeout(() => { if (this.a.minutesCompagnie && this.a.minutesCompagnie(service, e.target.dataset.cie, n)) this.pile('cases'); }, 0);
           return;
         }
         if (champ === 'recap-debit') {
           const id = e.target.dataset.atelier, cls = e.target.dataset.classe;
           const n = v === '' ? null : +String(v).replace(',', '.');
-          if (n !== null && !(n > 0)) { this.rendre('Débit positif attendu, en plateaux par heure.'); return; }
+          if (n !== null && !(n > 0)) { this.refuserAuChamp(e.target, 'débit positif attendu, en plateaux par heure.'); return; }
           setTimeout(() => { if (this.a.debitRobot && this.a.debitRobot(id, cls, n)) this.pile('cases'); }, 0);
           return;
         }
@@ -392,7 +407,7 @@
             if (Object.keys(ligne).some(k => !k.startsWith(P.TOUTES + '/'))) this.etat.detail[service] = 'compagnie';
           } else if (champ === 'seuil-apres') this.etat.regime.seuils[+index].apres = min(v, 0);
           else if (champ === 'seuil-duree') this.etat.regime.seuils[+index].duree = min(v, 0);
-        }, 'Enregistré.'), 0);
+        }, 'Enregistré.', e.target), 0);
       };
       this.surClic = e => {
         const tete = e.target.closest('.rg-service > summary');
@@ -591,7 +606,7 @@
             const cies = [...new Set(ici.map(c => c.cie).concat(propres.map(([k]) => k.slice(0, k.lastIndexOf('/')))))]
               .sort((x, y) => x.localeCompare(y));
             const passe = new Set(ici.map(c => c.id));
-            corps = `<div class="rg-grille-scroll"><table class="rg-table rg-grille"><thead><tr><th scope="col">Compagnie</th>
+            corps = `<div class="rg-grille-scroll"><table class="rg-table rg-grille" data-clavier><thead><tr><th scope="col">Compagnie</th>
               ${P.CABINES.map(c => `<th scope="col" title="${esc((P.NOM_CABINE || {})[c] || c)}">${c}</th>`).join('')}</tr></thead><tbody>
               ${cies.map(cie => `<tr><th scope="row">${esc(cie)}</th>${P.CABINES.map((c, i) => {
                 const cle = P.cleBareme(cie, c), val = ligne[cle];
@@ -608,7 +623,7 @@
               encadrée de rouge, il n’y en a pas.${cies.length ? '' : ' Aucune compagnie ne passe par ce service.'}</p>`;
           } else {
             const dispo = classes.filter(c => !(P.cleBareme(c.cie, c.cabine) in ligne));
-            corps = `<table class="rg-table"><thead><tr><th scope="col">Classe</th>
+            corps = `<table class="rg-table" data-clavier><thead><tr><th scope="col">Classe</th>
               <th scope="col">Toutes compagnies — h / vol</th></tr></thead><tbody>
               ${P.CABINES.map((c, i) => `<tr>
                 <th scope="row" title="${esc((P.NOM_CABINE || {})[c] || c)}">${c}</th>
@@ -616,7 +631,7 @@
               </tr>`).join('')}
             </tbody></table>
             <div class="rg-propres">
-              ${propres.length ? `<table class="rg-table"><thead><tr><th scope="col">Compagnie × classe</th>
+              ${propres.length ? `<table class="rg-table" data-clavier><thead><tr><th scope="col">Compagnie × classe</th>
                 <th scope="col">h / vol</th><th scope="col"><span class="sr-only">Retirer</span></th></tr></thead><tbody>
                 ${propres.map(([k, v]) => `<tr><th scope="row">${esc(k)}</th>
                   <td>${champ(k, v, s.nom + ' ' + k + ' heures par vol')}</td>
@@ -765,7 +780,7 @@
         manque ? ` · <b class="rg-manque-txt">${manque} ${manque > 1 ? 'valeurs' : 'valeur'} à renseigner</b>` : ''}</p>
         <p class="rg-recap-plier"><button type="button" class="lien-discret" data-rg-action="recap-tout" data-ouvrir="1">Tout déplier</button> ·
           <button type="button" class="lien-discret" data-rg-action="recap-tout" data-ouvrir="0">Tout replier</button></p>
-        <div class="rg-recap-scroll"><table class="rg-recap-table">
+        <div class="rg-recap-scroll"><table class="rg-recap-table" data-clavier>
         <thead><tr class="rg-recap-t1"><th scope="col" rowspan="2">Compagnie · classe</th><th scope="col" rowspan="2" title="Nombre de vols de la journée">Vols</th>
           ${r.colonnes.map(sv => `<th scope="colgroup" colspan="3" class="g"><span class="rg-recap-svc">${I ? I.ico(I.icoService(sv.id, sv.nom)) : ''}${esc(sv.nom)}</span></th>`).join('')}
           <th scope="col" rowspan="2" class="g">${vue === 'jour' ? 'Total journée' : 'Total par vol'}<small>heures</small></th></tr>

@@ -326,7 +326,13 @@ body.ateliers-open .workbench{display:none}
 .rc-scroll{overflow:auto;max-height:75vh;border:1px solid var(--bordure);border-radius:10px}
 .rc-table{border-collapse:separate;border-spacing:0;width:100%;font-size:var(--ds-t-13);font-variant-numeric:tabular-nums}
 .rc-table th,.rc-table td{padding:6px 8px;border-bottom:1px solid var(--bordure);text-align:left;vertical-align:middle;background:var(--bg3)}
-.rc-table thead th{position:sticky;top:0;z-index:2;font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);color:var(--txt2)}
+.rc-table thead th{position:sticky;top:0;z-index:2;font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);color:var(--txt2);white-space:nowrap}
+/* Les horaires (étape 8) : la case reste à gauche quand le tableau défile en
+   largeur ; le service en cours reste en haut, sous les titres, quand il défile
+   en hauteur — le suivant le remplace en arrivant. */
+.rc-table thead th:first-child{left:0;z-index:4}
+.rc-case>th{position:sticky;left:0;z-index:1}
+.rc-svc>th{position:sticky;top:var(--rc-tete,31px);z-index:3}
 .rc-svc th{background:color-mix(in srgb,var(--accent) 7%,var(--bg3));font-size:var(--ds-t-13);font-weight:var(--ds-g-fort);padding-top:9px}
 .rc-svc th span{display:inline-flex;align-items:center;gap:6px}
 .rc-svc small{margin-left:8px;font-weight:var(--ds-g-moyen);color:var(--txt2)}
