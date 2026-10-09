@@ -1009,6 +1009,27 @@ function initTheme(){
     try{if(sombre)localStorage.setItem(CLE_THEME,'sombre');else localStorage.removeItem(CLE_THEME);}catch(e){/* stockage indisponible : le choix vaut pour la visite */}
   });
 }
+/* « En ce moment » se replie : le plan rejoué prend alors toute la largeur.
+ * Une préférence d'affichage, retenue dans ce navigateur, comme le thème. Sans
+ * choix retenu, il s'ouvre sur un écran large et se replie sur un écran
+ * étroit : le plan d'abord. */
+const CLE_EN_CE_MOMENT='ory-ui-en-ce-moment';
+function appliquerEnCeMoment(ouvert){
+  document.body.classList.toggle('sans-en-ce-moment',!ouvert);
+  const b=document.getElementById('btn-en-ce-moment');if(!b)return;
+  b.setAttribute('aria-expanded',String(ouvert));
+  b.title=ouvert?'Replier « En ce moment » : le plan prend toute la largeur':'Déplier « En ce moment » : ce que fait chaque service à cette heure';
+}
+function initEnCeMoment(){
+  const b=document.getElementById('btn-en-ce-moment');if(!b)return;
+  let choix=null;
+  try{choix=localStorage.getItem(CLE_EN_CE_MOMENT);}catch(e){/* stockage indisponible : selon l'écran */}
+  appliquerEnCeMoment(choix?choix!=='replie':!window.matchMedia||matchMedia('(min-width: 1200px)').matches);
+  b.addEventListener('click',()=>{
+    const o=document.body.classList.contains('sans-en-ce-moment');appliquerEnCeMoment(o);
+    try{localStorage.setItem(CLE_EN_CE_MOMENT,o?'ouvert':'replie');}catch(e){/* le choix vaut pour la visite */}
+  });
+}
 function majHauteurEntete(){
   const t=document.getElementById('tete-page');
   if(!t||!t.offsetParent)return;
@@ -2411,7 +2432,7 @@ etape('problèmes',initProblemes);
 etape('menu',initOnglets);
 etape('accueil',initDemarrage);
 etape('annuler',initAnnuler);
-etape('thème',initTheme);
+etape('thème',initTheme); etape('En ce moment',initEnCeMoment);
 etape('affichage',()=>{majHorloge();majPlan();majDashboard();majStocks();});
 // Le démarrage est allé au bout : la marque s'efface.
 try{localStorage.removeItem(CLE_DEMARRAGE);}catch(e){/* rien */}

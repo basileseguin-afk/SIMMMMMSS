@@ -100,9 +100,11 @@
       });
     }
 
-    /** Après chaque changement : le nombre, au pied de la barre, et la liste (refaite seulement si elle change). */
+    /** Après chaque changement : le nombre, au pied de la barre, et la liste (refaite seulement si elle change).
+     *  Une source en panne ne bloque pas la page : on garde la liste d'avant, et on le dit dans la console. */
     maj() {
-      this.liste = lister(this.a.sources());
+      try { this.liste = lister(this.a.sources()); }
+      catch (e) { if (root.console) root.console.error('Problèmes : liste non mise à jour', e); }
       const n = this.liste.length, c = this.a.bouton.querySelector('.pb-compte');
       if (c) { c.hidden = !n; c.textContent = n; }
       this.a.bouton.title = n ? pl(n, 'problème') + ' : ce qui reste à corriger, à compléter, et ce que la journée montre' : 'Aucun problème : tout est en place';

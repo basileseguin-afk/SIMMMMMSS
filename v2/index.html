@@ -129,9 +129,9 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 
 @media(max-width:1250px){ .app{grid-template-columns:260px 1fr 290px} }
 </style>
-<meta name="ory-version" content="4efe0d8a32"/>
+<meta name="ory-version" content="dc70aa2746"/>
 <link href="interface.css?v=a79339df" rel="stylesheet"/><link href="editor.css?v=205c059f" rel="stylesheet"/><link href="flow-center.css?v=62899a0b" rel="stylesheet"/><link href="ateliers.css?v=e42b8371" rel="stylesheet"/>
-<link href="reglages.css?v=37e11929" rel="stylesheet"/><link href="demarrage.css?v=9ef1de69" rel="stylesheet"/><link href="aide.css?v=6dc5aec0" rel="stylesheet"/><link href="usability.css?v=d05639c8" rel="stylesheet"/><link href="graphe.css?v=c6498078" rel="stylesheet"/><link href="histoire.css?v=805de82a" rel="stylesheet"/><link href="temps.css?v=a45fa6cd" rel="stylesheet"/><link href="unite.css?v=b72a9e90" rel="stylesheet"/><link href="budget.css?v=5e5e5a08" rel="stylesheet"/><link href="ds.css?v=d8e24943" rel="stylesheet"/></head>
+<link href="reglages.css?v=37e11929" rel="stylesheet"/><link href="demarrage.css?v=9ef1de69" rel="stylesheet"/><link href="aide.css?v=6dc5aec0" rel="stylesheet"/><link href="usability.css?v=d05639c8" rel="stylesheet"/><link href="graphe.css?v=c6498078" rel="stylesheet"/><link href="histoire.css?v=80722a26" rel="stylesheet"/><link href="temps.css?v=a45fa6cd" rel="stylesheet"/><link href="unite.css?v=b72a9e90" rel="stylesheet"/><link href="budget.css?v=5e5e5a08" rel="stylesheet"/><link href="ds.css?v=615b6818" rel="stylesheet"/></head>
 <body data-vue="plan"><a class="skip-link" href="#workspace">Aller au contenu</a>
 <!-- ============ NAVIGATION : la marque, les parties (celle qui est ouverte déplie ses pages), la sauvegarde ============ -->
 <aside aria-label="Navigation" class="barre" id="barre">
@@ -161,44 +161,44 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <div class="app" id="workspace" tabindex="-1">
 <!-- ============ LEVIERS WHAT-IF ============ -->
 <!-- ============ PLAN ============ -->
-<div class="colonne col-plan"><div class="workspace-heading" id="tete-page"><p class="view-intro" id="view-intro"></p><div class="so-outils" id="so-outils"><div class="res-actions" data-sous="j-chiffres"><button class="btn btn-sm" id="btn-export" title="Enregistrer les résultats de la journée dans un fichier (JSON)" type="button"><span data-ico="telecharger"></span>Exporter les résultats</button></div></div></div>
-<div class="lecteur" id="lecteur" data-sous="j-plan"><div class="horloge-box">
-<div><div class="horloge" id="horloge">05:00</div><div class="jour">heure de la journée rejouée</div></div>
-<div class="transport">
-<button class="btn btn-play" id="btn-play"><span data-ico="lecture"></span>Rejouer</button>
-<button class="btn" id="sim-pas" title="Avancer jusqu’au prochain moment où quelque chose change"><span data-ico="pas"></span>Pas à pas</button>
-<button aria-label="Revenir au début de la journée" class="btn" id="btn-reset" title="Revenir au début de la journée"><span data-ico="recommencer"></span>Début</button>
+<div class="colonne col-plan"><div class="workspace-heading" id="tete-page"><p class="view-intro" id="view-intro"></p><div class="so-outils" id="so-outils"><button aria-controls="en-ce-moment" aria-expanded="true" class="btn btn-sm" data-sous="j-plan" id="btn-en-ce-moment" type="button"><span data-ico="panneau"></span>En ce moment</button><div class="res-actions" data-sous="j-chiffres"><button class="btn btn-sm" id="btn-export" title="Enregistrer les résultats de la journée dans un fichier (JSON)" type="button"><span data-ico="telecharger"></span>Exporter les résultats</button></div></div></div>
+<div class="plan-tete" data-sous="j-plan"><label class="zone-picker"><span class="tete-lib">Voir un service</span> <select id="zone-picker"><option value="">Vue d’ensemble</option></select></label>
+<label class="chk chk-mini"><input checked="" id="fond-plan" type="checkbox"/> Dessin du bâtiment</label>
+<button aria-pressed="false" class="btn btn-mini" id="btn-edit" title="Déplacer ou redimensionner les services sur le plan">Modifier le plan</button>
 </div>
-<span class="run-state" id="run-state" role="status"></span>
-<input aria-label="Heure de la journée rejouée" id="sim-curseur" type="range" min="0" max="1440" step="1" value="0"/></div><div class="vitesse-box">Vitesse <input aria-label="Vitesse de lecture, minutes simulées par seconde" id="vitesse" max="120" min="1" type="range" value="30"/><b id="vitesse-val">30×</b></div></div>
-<div class="plan-tete" data-sous="j-plan"><label class="zone-picker">Voir un service <select id="zone-picker"><option value="">Vue d’ensemble</option></select></label>
-<div class="zoom-ctrl">
+<div class="plan-wrap" id="view-plan" data-sous="j-plan">
+<svg tabindex="0" aria-label="Plan de l’unité. Choisissez un service dans la liste « Voir un service »." id="plan" preserveaspectratio="xMidYMid meet" viewbox="0 0 1075 835"></svg>
+<div class="plan-sur plan-kpi" data-sous="j-plan" aria-label="Les indicateurs à cette heure" role="group"><p class="kpi-quand" id="kpi-quand"></p><div class="kpi-grille" data-sous="j-plan"><div class="kpi kpi-anneau"><svg aria-hidden="true" class="anneau" viewBox="0 0 36 36"><circle class="anneau-fond" cx="18" cy="18" r="15.9"></circle><circle class="anneau-plein" cx="18" cy="18" id="kpi-anneau" r="15.9" stroke-dasharray="0 100"></circle></svg><div><div class="lab">Commandes prêtes à l’heure</div><div class="val" id="kpi-ontime">—</div><div class="kpi-note" id="kpi-denom">aucune commande préparée</div></div></div>
+<div class="kpi kpi-retard"><span class="kpi-ico" data-ico="alerte"></span><div><div class="lab">Commandes en retard</div><div class="val" id="kpi-overdue">0</div><div class="kpi-note" id="kpi-ready">aucun retard à cette heure</div></div></div>
+<div class="kpi kpi-travail"><span class="kpi-ico" data-ico="equipe"></span><div><div class="lab">Services au travail</div><div class="val" id="kpi-wip">0 <small>services</small></div><div class="kpi-note" id="kpi-wip-note">qui préparent en ce moment</div></div></div>
+<div class="kpi kpi-attente"><span class="kpi-ico" data-ico="sablier"></span><div><div class="lab">Services qui attendent</div><div class="val" id="kpi-debit">0 <small>services</small></div><div class="kpi-note" id="kpi-debit-note">le service d’avant n’a pas livré</div></div></div></div></div>
+<div class="map-footer plan-sur plan-legende" data-sous="j-plan"><div aria-label="Ce que dit la couleur des services" class="legende" id="legende-plan">
+<span><span class="pastille" style="background:var(--bad-stroke)"></span>Personne</span>
+<span><span class="pastille" style="background:var(--bordure2)"></span>Au curseur</span>
+<span><span class="pastille" style="background:var(--accent)"></span>Aménagé</span>
+<span><span class="pastille" style="background:transparent"></span>Hors calcul</span>
+</div><span class="plan-etat" id="plan-etat"></span><span class="plan-aide">Molette : zoomer · Double-clic : cadrer un service · <kbd>0</kbd> : tout voir</span></div><div class="zoom-ctrl plan-sur plan-zoom" role="group" aria-label="Zoom du plan">
 <button aria-label="Dézoomer" class="btn btn-mini" id="zoom-out" title="Dézoomer">−</button>
 <b id="zoom-val">100%</b>
 <button aria-label="Zoomer" class="btn btn-mini" id="zoom-in" title="Zoomer">+</button>
 <button class="btn btn-mini" id="zoom-fit" title="Cadrer le service sélectionné">Cadrer</button>
 <button class="btn btn-mini" id="zoom-reset" title="Vue d'ensemble (touche 0)">Tout voir</button>
 </div>
-<label class="chk chk-mini"><input checked="" id="fond-plan" type="checkbox"/> Dessin du bâtiment</label>
-<button aria-pressed="false" class="btn btn-mini" id="btn-edit" title="Déplacer ou redimensionner les services sur le plan">Modifier le plan</button>
 </div>
-<div class="plan-wrap" id="view-plan" data-sous="j-plan">
-<svg tabindex="0" aria-label="Plan de l’unité. Choisissez un service dans la liste « Voir un service »." id="plan" preserveaspectratio="xMidYMid meet" viewbox="0 0 1075 835"></svg>
+<div class="lecteur" id="lecteur" data-sous="j-plan"><div class="horloge-box">
+<div><div class="horloge" id="horloge">05:00</div><div class="jour">heure de la journée rejouée</div></div>
+<div class="transport">
+<button class="btn btn-play" id="btn-play"><span data-ico="lecture"></span>Rejouer</button>
+<button class="btn" id="sim-pas" title="Avancer jusqu’au prochain moment où quelque chose change"><span data-ico="pas"></span><span class="lecteur-lib">Pas à pas</span></button>
+<button aria-label="Revenir au début de la journée" class="btn" id="btn-reset" title="Revenir au début de la journée"><span data-ico="recommencer"></span><span class="lecteur-lib">Début</span></button>
 </div>
-<div class="map-footer" data-sous="j-plan"><div aria-label="Ce que dit la couleur des services" class="legende" id="legende-plan">
-<span><span class="pastille" style="background:var(--bad-stroke)"></span>Personne</span>
-<span><span class="pastille" style="background:var(--bordure2)"></span>Au curseur</span>
-<span><span class="pastille" style="background:var(--accent)"></span>Aménagé</span>
-<span><span class="pastille" style="background:transparent"></span>Hors calcul</span>
-</div><span class="plan-etat" id="plan-etat"></span><span class="plan-aide">Molette : zoomer · Double-clic : cadrer un service · <kbd>0</kbd> : tout voir</span></div><p class="kpi-quand" id="kpi-quand" data-sous="j-plan"></p><div class="kpi-grille" data-sous="j-plan"><div class="kpi kpi-anneau"><svg aria-hidden="true" class="anneau" viewBox="0 0 36 36"><circle class="anneau-fond" cx="18" cy="18" r="15.9"></circle><circle class="anneau-plein" cx="18" cy="18" id="kpi-anneau" r="15.9" stroke-dasharray="0 100"></circle></svg><div><div class="lab">Commandes prêtes à l’heure</div><div class="val" id="kpi-ontime">—</div><div class="kpi-note" id="kpi-denom">aucune commande préparée</div></div></div>
-<div class="kpi kpi-retard"><span class="kpi-ico" data-ico="alerte"></span><div><div class="lab">Commandes en retard</div><div class="val" id="kpi-overdue">0</div><div class="kpi-note" id="kpi-ready">aucun retard à cette heure</div></div></div>
-<div class="kpi kpi-travail"><span class="kpi-ico" data-ico="equipe"></span><div><div class="lab">Services au travail</div><div class="val" id="kpi-wip">0 <small>services</small></div><div class="kpi-note" id="kpi-wip-note">qui préparent en ce moment</div></div></div>
-<div class="kpi kpi-attente"><span class="kpi-ico" data-ico="sablier"></span><div><div class="lab">Services qui attendent</div><div class="val" id="kpi-debit">0 <small>services</small></div><div class="kpi-note" id="kpi-debit-note">le service d’avant n’a pas livré</div></div></div></div>
+<span class="run-state" id="run-state" role="status"></span>
+<input aria-label="Heure de la journée rejouée" id="sim-curseur" type="range" min="0" max="1440" step="1" value="0"/></div><div class="vitesse-box">Vitesse <input aria-label="Vitesse de lecture, minutes simulées par seconde" id="vitesse" max="120" min="1" type="range" value="30"/><b id="vitesse-val">30×</b></div></div>
 <section aria-label="Les chiffres de la journée" class="journee-chiffres" id="journee-chiffres" data-sous="j-chiffres"><div class="vide-carte chiffres-vide"><span data-ico="equipe"></span><b>Rien à compter pour l’instant</b><p>Aucune équipe ne prépare encore de commande.</p><button class="btn" data-page="mu-pas">Décrire votre unité →</button></div><div class="panneau panneau-bilan"><h3>Sur toute la journée</h3><div id="bilan-journee"></div><p class="bilan-suite"><button class="lien-fort" data-page="j-plan" type="button">Rejouer la journée sur le plan →</button></p></div></section>
 <section aria-label="Stocks et retours" class="journee-stocks" id="journee-stocks" data-sous="j-stocks"></section><section aria-label="Comparer deux essais" class="journee-comparer" id="view-comparer" data-sous="j-comparer"></section>
 <section aria-label="Les vols" class="flights-view" hidden="" id="view-vols"><p class="vols-source" data-sous="v-programme"><span class="demo-badge" data-ico="avion"></span><strong id="source-label">Jeu de démonstration</strong><span id="source-count"></span></p><div class="vols-donnees" id="vols-donnees" data-sous="v-programme"></div><div class="vols-donnees" id="vols-planche" data-sous="v-planche"></div><h2 class="vols-titre">Les départs de la journée</h2><div class="vols-handling" id="vols-handling" data-sous="v-departs" aria-live="polite"></div><div class="vols-frise" id="vols-frise" data-sous="v-departs"></div><div class="flight-filters" data-sous="v-departs"><label>Chercher un vol <input id="flight-search" placeholder="Numéro de vol ou compagnie" type="search"/></label><label>Afficher <select id="flight-filter"><option value="all">Tous les départs</option><option value="ontime">Prêts à l’heure</option><option value="late">Prêts en retard</option><option value="overdue">En retard</option><option value="pending">Pas prêts ou sans équipe</option><option value="ready">Prêts</option></select></label></div><details class="inline-help" data-sous="v-departs"><summary>Que veut dire « prêts avant » ?</summary><p class="mini-note">Les repas doivent être prêts avant d’être chargés dans l’avion : « prêts avant » = heure de départ − délai de chargement (45 min par défaut). « En retard » parle de la préparation des repas, pas de l’avion. <b>Avec une case Handling</b>, c’est le vol chargé qui compte : ses commandes arrivent au handling avant départ − délai, le handling réunit les classes du vol et le charge, et le vol doit être chargé à son heure de départ.</p></details><div class="table-scroll" data-sous="v-departs"><table class="flight-table"><caption class="sr-only">Où en sont les repas de chaque départ</caption><thead><tr><th scope="col">Départ</th><th scope="col">Vol</th><th scope="col">Prêts avant</th><th scope="col">Où elles en sont</th><th scope="col">Ses commandes</th></tr></thead><tbody id="flight-rows"></tbody></table></div></section><section id="view-ateliers" aria-label="Ateliers de travail" hidden></section><section id="view-flux" aria-label="Centre des flux" hidden></section><section id="view-reglages" aria-label="Centre des réglages" class="reglages-view" hidden></section></div>
 <!-- ============ DASHBOARD ============ -->
-<aside aria-label="En ce moment" class="workbench" data-sous="j-plan"><div class="panel-content" id="panel-suivi"><div class="panel-heading"><h2>En ce moment</h2></div><div class="panneau">
+<aside aria-label="En ce moment" class="workbench" data-sous="j-plan" id="en-ce-moment"><div class="panel-content" id="panel-suivi"><div class="panel-heading"><h2>En ce moment</h2></div><div class="panneau">
 <h3>À regarder</h3>
 <div class="mini-note" id="goulot-info"></div>
 <section id="service-storages" class="pe-section" hidden></section>
@@ -246,9 +246,9 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <script src="vols-demo.js?v=08d61681"></script>
 <script src="rendu.js?v=ac16ab27"></script>
 <script src="onglets.js?v=cc6ee69d"></script>
-<script src="problemes.js?v=f6cc46da"></script>
+<script src="problemes.js?v=f8dc7772"></script>
 <script src="notifications.js?v=c02682a3"></script>
-<script src="icones.js?v=8428bd2d"></script>
+<script src="icones.js?v=ced704f1"></script>
 <script src="ui-model.js?v=4688387f"></script>
 <script src="moteur/noyau.js?v=5b2122e2"></script>
 <script src="moteur/production.js?v=9ce0c85e"></script>
@@ -268,6 +268,6 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <script src="replay.js?v=016adb42"></script>
 <script src="simulation.js?v=193892c7"></script>
 <script src="comparaison.js?v=65c11530"></script>
-<script src="sim.js?v=e22e16cf"></script>
+<script src="sim.js?v=1f628f26"></script>
 </body>
 </html>

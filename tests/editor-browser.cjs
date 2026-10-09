@@ -1,4 +1,4 @@
-const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs'),os=require('node:os');
+const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs');
 const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
@@ -44,7 +44,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.reload();await versPlan();await click('#btn-edit');assert.deepEqual((await state()).zones,exported.zones);
   const beforeInvalid=JSON.stringify(await state());await page.locator('#pe-import').setInputFiles({name:'bad.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({schema:'ory-plan',version:2,zones:[]}))});await page.waitForFunction(()=>document.getElementById('pe-status').textContent.includes('Import refusé'));assert.equal(JSON.stringify(await state()),beforeInvalid);
   await page.locator('#pe-import').setInputFiles({name:'plan.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(exported))});await page.waitForFunction(()=>document.getElementById('pe-status').textContent.includes('Plan importé'));assert.deepEqual((await state()).zones,exported.zones);
-  await click('[data-action=select][data-zone=cuisine]');await click('#pe-focus');await page.screenshot({path:path.join(os.tmpdir(),'ory-editor-desktop.png'),fullPage:true});
+  await click('[data-action=select][data-zone=cuisine]');await click('#pe-focus');
   await page.setViewportSize({width:1024,height:700});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await click('#edit-done');assert.notEqual(await page.locator('#run-state').textContent(),'Édition du plan');assert.equal(await page.locator('#btn-play').isDisabled(),await page.evaluate(()=>Sim.vue.vide),'hors édition, seul un jour vide empêche de lire');assert.equal(await page.locator('[data-pe-tool=rect]').isVisible(),false);assert.deepEqual(errors,[]);
   console.log('Editor browser passed: legacy migration, storage zones, constant handles, drawing, movement, resize, undo/redo, locking, duplicate/delete, polygons, pan, import/export/reload, desktop and narrow desktop.');

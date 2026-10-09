@@ -3,7 +3,6 @@ const assert=require('node:assert/strict');
 const nav=require('./nav.cjs');
 const path=require('node:path');
 const fs=require('node:fs');
-const os=require('node:os');
 const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
 (async()=>{
@@ -92,7 +91,6 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await nav.vue(page,'vols');await nav.aller(page,'v-programme');await click('#restore-demo');await nav.repondre(page);
   await nav.vue(page,'plan');await nav.aller(page,'j-plan');
   await page.evaluate(()=>{localStorage.removeItem('orly-zones');localStorage.removeItem('orly-plan-v3');});await page.reload();
-  await page.screenshot({path:path.join(os.tmpdir(),'ory-interface-desktop.png'),fullPage:true});
   // Le thème clair par défaut ; le sombre en option (refonte du 08/10, au pied
   // de la barre latérale). Le site vise les écrans de bureau (1 024 px et plus).
   assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme||'clair'),'clair','le clair par défaut');

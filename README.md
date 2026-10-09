@@ -343,10 +343,12 @@ le rouge ne sert qu’aux retards.
    - *Synthèse* : la journée entière en tuiles (commandes à l’heure, retards,
      dernière commande prête, attentes, travail fourni) ; « Exporter les
      résultats ».
-   - *Le plan rejoué* : rejouer la journée sur le plan de l’unité, avec les
-     chiffres de l’instant, « En ce moment » à droite et, au-dessus des
-     services, ce qui attend en stock ou à laver. Le plan des services se
-     modifie d’ici (« Modifier le plan »).
+   - *Le plan rejoué* : rejouer la journée sur le plan de l’unité, en pleine
+     hauteur, la barre de lecture en bas ; les chiffres de l’instant, la
+     légende et le zoom posés sur le plan ; « En ce moment » à droite, qui se
+     replie (bouton dans le titre de la page) pour lui laisser toute la
+     largeur ; au-dessus des services, ce qui attend en stock ou à laver. Le
+     plan des services se modifie d’ici (« Modifier le plan »).
    - *Planning des équipes* : case par case, qui travaille quand.
    - *Heure de chaque commande* : chaque commande, prête à quelle heure, avant quand.
    - *Étapes de chaque commande* : une ligne par commande, un clic sur « Prête à »
@@ -369,9 +371,9 @@ tableur et se réimportent. Voir [les formats Excel](docs/FORMATS_EXCEL.md).
 La journée est **calculée d’un coup** par `moteur/production.js` et
 **recalculée à chaque modification** : aucun réglage ne se verrouille.
 
-- **Le plan rejoué** : rejoue la journée calculée. « ▶ Rejouer », « ⏭ Pas à pas »
-  (saute au prochain changement), « ↺ Début » et un curseur de temps qui va dans
-  les deux sens. Le plan montre quatre états par service : au travail, attend le
+- **Le plan rejoué** : rejoue la journée calculée. La barre de lecture, en bas :
+  « ▶ Rejouer », « ⏭ Pas à pas » (saute au prochain changement), « ↺ Début », un
+  curseur de temps qui va dans les deux sens, la vitesse. Le plan montre quatre états par service : au travail, attend le
   service d’avant (pointillé), a fini, pas commencé. Au début de la journée, il
   montre plutôt ce qui reste à décrire (aucune équipe, équipe sans travail,
   équipe au travail).
@@ -598,7 +600,8 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/coquille-browser.cjs` | La coquille (v1 et v2) : barre latérale sur toute la hauteur, chaque page en deux clics (sa partie, puis elle, dépliée dessous), fil d’Ariane (la partie mène à sa première page), flèches haut et bas, sauvegarde au pied ; un seul Annuler / Rétablir pour ce que la page modifie (cases, barème, plan en édition), au bouton et au clavier (Ctrl Z, Ctrl Maj Z, Ctrl Y), jamais dans un champ de texte ; barre repliée pendant l’édition du plan ; rien de coupé à 1 280 et 1 024 px, sur toutes les pages |
 | `tests/notifications-browser.cjs` | Le retour des gestes (v1 et v2) : supprimer une case sans question, « Annuler » qui la rend ; une notification par source et par geste, trois au plus ; refus annoncé, routine muette ; un geste sur deux historiques défait d’un bloc ; la question pour supprimer un service et ses équipes (Échap, « Ne rien changer », puis « Supprimer le service » et « Annuler ») ; aucune boîte du navigateur |
 | `tests/problemes-browser.cjs` | Le registre des Problèmes (v1 et v2) : le nombre au pied de la barre, les trois niveaux, les nombres des onglets qui en dérivent, « Contrôles détaillés » qui compte pareil, un problème qui mène à sa page (un service à sa fiche), Échap, l’attente pendant l’édition du plan |
-| `tests/problemes.test.cjs` | Le registre, en Node : ses niveaux, ses pages, et les nombres de chaque onglet |
+| `tests/problemes.test.cjs` | Le registre, en Node : ses niveaux, ses pages, et les nombres de chaque onglet ; une source en panne ne le bloque pas |
+| `tests/rejeu-browser.cjs` | Rejouer la journée (v1 et v2) : le plan occupe au moins 75 % de la hauteur utile, la barre de lecture en bas, indicateurs, légende et zoom posés sur le plan ; « En ce moment » se replie et le choix est retenu ; replié d’office sur un écran étroit ; l’édition garde son panneau ; rien à relire, la barre dit pourquoi. Aucune capture d’écran |
 | `tests/donnees-intactes-browser.cjs` | Le garde-fou de la refonte de l’interface (v1 et v2) : une unité complète, parcourue page par page (plan ouvert en édition puis refermé, thème changé), garde toutes ses clés du navigateur identiques après rechargement ; la journée calculée donne les nombres relevés avant la refonte (`tests/donnees-intactes.attendu.json`) |
 | `tests/sans-armement-browser.cjs` | Des compagnies sans armement, déduites (v1 et v2) : un chemin à elle sans armement et cochée dans une équipe — armée, la fiche le dit ; décochée — plus de case, « Sans armement : TX », rien à reprendre ni à cocher, aucune alerte ; plus de colonne « Armée » ; l’armement remis dans son chemin, elle est à cocher |
 | `tests/armement-vols-browser.cjs` | L'armement suit toujours les vols (v1 et v2) : jamais constant (un ancien choix s'efface), minutes par vol × vols de chaque compagnie, plus de minutes → plus de monde, fiche sans case « constant », vols du jour et journée par compagnie, saisie sans erreur de page |

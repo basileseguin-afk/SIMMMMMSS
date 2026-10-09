@@ -5,6 +5,44 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-09 — Refonte, étape 5 (1/2) : rejouer la journée, la toile d'abord
+
+Toujours sans rien changer aux données ni au calcul (`donnees-intactes-browser`).
+
+- **Le plan prend la hauteur** (audit, point 2 : il avait environ 330 px sur
+  900, sous trois rangées d'outils). Sur *Le plan rejoué*, il occupe
+  désormais 83 % de la hauteur utile à 1440 × 900, 80 % à 1366 × 768,
+  78 % à 1280 × 720.
+- **La barre de lecture court en bas**, comme une frise : Rejouer, Pas à
+  pas, Début, l'heure, le curseur de la journée, ce qui se passe, la
+  vitesse. Étroite, elle garde ses pictogrammes (les mots restent lus par
+  les lecteurs d'écran). Quand il n'y a rien à relire, ni curseur ni
+  vitesse : la barre dit pourquoi.
+- **Sur la toile** : les quatre indicateurs « à cette heure » en bandeau
+  compact en haut à gauche (le détail de chaque chiffre au survol), la
+  légende en bas à gauche, le zoom en bas à droite (− · 100 % · + · Cadrer ·
+  Tout voir). Au-dessus, une seule rangée : le service à voir, le dessin du
+  bâtiment, les liens dessinés, « Modifier le plan ».
+- **« En ce moment » se replie** (bouton dans le titre de la page) : le
+  plan prend toute la largeur. Le choix est retenu dans ce navigateur
+  (`ory-ui-en-ce-moment`, une préférence d'affichage) ; sans choix, il
+  s'ouvre sur un écran large et se replie sous 1200 px. L'édition du plan
+  garde son panneau.
+- Les gestes, raccourcis et le zoom (molette, 0, Cadrer) sont inchangés ;
+  tous les identifiants sont gardés.
+- **Confidentialité du plan** : les tests navigateur n'enregistrent plus de
+  captures d'écran (ils en écrivaient quatre dans `/tmp`, avec le plan quand
+  il est présent). Aucune n'était utilisée par une vérification.
+- Suites de l'étape 4 : le registre des Problèmes garde sa liste si une
+  source tombe en panne (la navigation continue) ; sa pastille se cache
+  quand la barre est repliée.
+- Fichiers : `index.html`, `ds.css`, `histoire.css`, `sim.js`, `icones.js`
+  (pictogramme « panneau »), `problemes.js` ; v1 et v2.
+- Tests : `rejeu-browser` (nouveau, v1 et v2 : part du plan, barre en bas,
+  surimpressions sur la toile, repli retenu, écran étroit, journée vide) ;
+  `problemes.test` (une source en panne) ; `browser-smoke`,
+  `editor-browser`, `flows-browser`, `usability-browser` sans captures.
+
 ## 2026-10-09 — Refonte, étape 4 (2/2) : un seul registre des Problèmes
 
 Toujours sans rien changer aux données ni au calcul (`donnees-intactes-browser`).

@@ -250,10 +250,9 @@ body[data-vue="plan"][data-sous="j-stocks"] .app{grid-template-columns:minmax(0,
 body:not([data-vue="plan"]) .journee-chiffres,body:not([data-vue="plan"]) .journee-comparer,body:not([data-vue="plan"]) .journee-stocks{display:none}
 .journee-chiffres,.journee-comparer{padding:18px 20px;overflow:auto;flex:1 1 auto;min-height:0}
 .journee-stocks{overflow:auto;flex:1 1 auto;min-height:0;align-content:start}
-.col-plan>.kpi-grille{border-top:0}
 .chiffres-vide{display:none}
 body.journee-vide .chiffres-vide{display:flex}
-body.journee-vide .journee-chiffres .panneau,body.journee-vide .col-plan>.kpi-grille{display:none}
+body.journee-vide .journee-chiffres .panneau{display:none}
 .journee-chiffres .panneau{max-width:1100px}
 .journee-comparer .reglages-grille{columns:auto;max-width:900px}
 .journee-comparer .panneau-compare{margin:0}

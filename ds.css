@@ -373,6 +373,7 @@ body.plan-editing .barre .marque{justify-content:center;padding:0}
 body.plan-editing .marque-txt,body.plan-editing .menu-partie>span,body.plan-editing .barre-lien>span+span,body.plan-editing .btn-version{display:none}
 body.plan-editing .menu-partie,body.plan-editing .barre-lien{justify-content:center;padding:0}
 body.plan-editing .barre-defile,body.plan-editing .barre-pied{padding:10px 6px}
+body.plan-editing .barre-lien .pb-compte{display:none}
 
 /* La barre du haut : où l'on est (la partie, puis la page), et un seul
    Annuler / Rétablir. */
@@ -475,16 +476,119 @@ body.plan-editing .barre-defile,body.plan-editing .barre-pied{padding:10px 6px}
 #view-reglages label{font-weight:var(--ds-g-moyen)}
 #view-reglages .rg-sim-horaires>.panneau{margin-bottom:12px}
 
-/* Le lecteur, le plan, le panneau de droite. */
+/* Le rejeu (refonte, étape 5) : la toile d'abord. Le plan prend toute la
+   hauteur de la colonne ; les indicateurs « à cette heure », la légende et le
+   zoom se posent dessus, et la barre de lecture court en bas, comme une frise.
+   « En ce moment », à droite, se replie pour lui laisser toute la largeur. */
 /* Thème sombre : le dessin du bâtiment (des tuiles, noir sur blanc) passe en
    clair sur sombre, comme le reste de la page ; ses traits gardent leur teinte. */
 :root[data-theme="sombre"] #plan-fond image{filter:invert(.9) hue-rotate(180deg)}
-.plan-tete .btn,.lecteur .btn{padding:0 10px}
-.lecteur{background:var(--ds-surface-1);border-bottom:1px solid var(--ds-bordure)}
-.horloge{font-weight:var(--ds-g-fort);letter-spacing:-.01em}
 .workbench{background:var(--ds-surface-1);border-left:1px solid var(--ds-bordure)}
-.plan-tete,.map-footer{background:var(--ds-surface-1)}
 .kpi{border-radius:var(--ds-r-3);background:var(--ds-surface-1)}
+body.sans-en-ce-moment:not(.editing) .workbench{display:none}
+body.sans-en-ce-moment:not(.editing)[data-vue="plan"] .app{grid-template-columns:minmax(0,1fr)}
+
+/* Au-dessus de la toile, une seule rangée : ce qu'on regarde (un service, le
+   dessin, les liens), puis les deux gestes de la page. */
+.plan-tete{container:tete-plan/inline-size;display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;min-height:44px;padding:6px 16px;
+  background:var(--ds-surface-1);border-bottom:1px solid var(--ds-bordure)}
+.plan-tete .btn{padding:0 10px}
+.plan-tete select{height:var(--ds-h-normal);min-height:0;padding-top:0;padding-bottom:0}
+.plan-tete .zone-picker select{width:auto;max-width:190px}
+/* Étroite, la rangée garde ses champs ; « Voir un service » ne se dit plus qu'aux lecteurs d'écran. */
+@container tete-plan (max-width:800px){
+  .plan-tete .tete-lib{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+}
+.plan-tete>#btn-edit{margin-left:auto}
+.plan-tete .btn .ico{width:15px;height:15px}
+/* « En ce moment » se replie depuis le titre de la page ; l'édition du plan garde son panneau. */
+#btn-en-ce-moment[aria-expanded="true"]{background:var(--ds-accent-doux);border-color:var(--ds-accent-trait);color:var(--ds-accent-texte)}
+body.editing #btn-en-ce-moment{display:none}
+
+/* La toile, et ce qui se pose dessus : des cartes flottantes, opaques. */
+.col-plan>.plan-wrap{flex:1 1 auto;min-height:0;position:relative;container:toile/inline-size}
+.plan-sur{position:absolute;z-index:2;margin:0;border:0;border-radius:var(--ds-r-3);background:var(--ds-surface-3);
+  box-shadow:var(--ds-ombre-flottant)}
+/* Les indicateurs « à cette heure », en bandeau compact, en haut à gauche. Le
+   détail de chaque chiffre s'affiche au survol (les lecteurs d'écran l'ont toujours). */
+.plan-kpi{top:12px;left:12px;max-width:calc(100% - 24px);display:flex;flex-direction:column;overflow:hidden}
+body.avant-lancement .plan-kpi,body.journee-vide .plan-kpi,body.editing .plan-kpi{display:none}
+.plan-kpi .kpi-quand{margin:0;padding:8px 14px 0;background:none;font-size:var(--ds-t-11);font-weight:var(--ds-g-moyen);color:var(--ds-texte-3)}
+.plan-kpi .kpi-grille{display:flex;flex-wrap:wrap;gap:6px 0;margin:0;padding:6px 0 10px;background:none;border:0}
+.plan-kpi .kpi{display:flex;align-items:center;gap:8px;min-width:0;padding:0 14px;border:0;border-right:1px solid var(--ds-bordure);
+  border-radius:0;background:none;box-shadow:none}
+.plan-kpi .kpi:last-child{border-right:0}
+.plan-kpi .kpi .lab{min-height:0;margin:0;font-size:var(--ds-t-11);font-weight:var(--ds-g-normal);letter-spacing:0;text-transform:none;
+  white-space:nowrap;color:var(--ds-texte-3)}
+.plan-kpi .kpi .val{margin:1px 0 0;font-size:var(--ds-t-16);line-height:1.2;white-space:nowrap}
+.plan-kpi .kpi .val small{font-size:var(--ds-t-11);font-weight:var(--ds-g-moyen)}
+.plan-kpi .kpi-ico{width:28px;height:28px}
+.plan-kpi .kpi-ico .ico{width:15px;height:15px}
+.plan-kpi .anneau{width:30px;height:30px}
+.plan-kpi .kpi-note{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.plan-kpi:hover .kpi-note{position:static;width:auto;height:auto;max-width:22ch;margin-top:2px;overflow:visible;clip-path:none;
+  white-space:normal;font-size:var(--ds-t-11);line-height:1.35;color:var(--ds-texte-3)}
+/* La légende, en bas à gauche ; le zoom, en bas à droite. */
+.plan-legende{left:12px;bottom:12px;max-width:calc(100% - 320px);display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;
+  gap:4px 14px;padding:7px 12px;border-top:0;background:var(--ds-surface-3);font-size:var(--ds-t-12);color:var(--ds-texte-2)}
+.plan-legende .legende{gap:4px 12px}
+.plan-legende .plan-etat:empty{display:none}
+.plan-legende .plan-aide{flex-basis:100%;font-size:var(--ds-t-11);color:var(--ds-texte-3)}
+.plan-zoom{right:12px;bottom:12px;margin:0;gap:2px;padding:3px}
+.plan-zoom .btn{min-height:var(--ds-h-compact);padding:0 9px;border-color:transparent;background:transparent;box-shadow:none}
+.plan-zoom .btn:hover:not(:disabled){background:var(--ds-survol)}
+.plan-zoom .btn:focus-visible{box-shadow:var(--ds-focus);border-color:var(--ds-accent)}
+.plan-zoom b{min-width:46px;font-weight:var(--ds-g-moyen)}
+/* Toile moins large : les libellés des indicateurs tiennent sur deux lignes ;
+   étroite, la légende passe au-dessus du zoom, sur toute la largeur. */
+@container toile (max-width:780px){
+  .plan-kpi .kpi .lab{max-width:12ch;white-space:normal;line-height:1.3}
+}
+@container toile (max-width:640px){
+  .plan-legende{right:12px;bottom:56px;max-width:none}
+  .plan-kpi .kpi-grille{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));row-gap:8px}
+  .plan-kpi .kpi{padding:0 10px}
+  .plan-kpi .kpi:nth-child(2n){border-right:0}
+  .plan-kpi .kpi .lab{max-width:none}
+}
+
+/* La barre de lecture, en bas : lire, avancer d'un pas, revenir au début ;
+   l'heure ; le curseur de la journée ; ce qui se passe ; la vitesse. Étroite,
+   elle garde ses pictogrammes et range ses mots. */
+.lecteur{container:lecteur/inline-size;display:flex;align-items:center;flex-wrap:nowrap;gap:12px 20px;min-height:56px;padding:8px 16px;
+  background:var(--ds-surface-1);border-top:1px solid var(--ds-bordure);border-bottom:0}
+.lecteur .horloge-box{flex:1 1 auto;display:flex;align-items:center;flex-wrap:nowrap;gap:14px;min-width:0}
+.lecteur .transport{order:1;flex:none;display:flex;gap:6px}
+.lecteur .btn{padding:0 10px}
+.lecteur .horloge-box>div:first-child{order:2;flex:none;display:grid}
+.lecteur .horloge{font-size:var(--ds-t-20);font-weight:var(--ds-g-fort);line-height:1.15;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.lecteur .jour{font-size:var(--ds-t-11);line-height:1.3;color:var(--ds-texte-3);white-space:nowrap}
+.lecteur #sim-curseur{order:3;flex:1 1 160px;width:auto;min-width:120px;margin:0}
+.lecteur .run-state{order:4;flex:0 1 auto;max-width:190px;min-width:0;margin:0;padding:0;border:0;font-size:var(--ds-t-12);line-height:1.35;
+  color:var(--ds-texte-3)}
+.lecteur .vitesse-box{flex:none;gap:8px;font-size:var(--ds-t-12);font-weight:var(--ds-g-moyen);color:var(--ds-texte-2)}
+.lecteur .vitesse-box input{width:90px}
+.lecteur .vitesse-box b{min-width:34px;font-weight:var(--ds-g-moyen);color:var(--ds-texte-1);font-variant-numeric:tabular-nums}
+@container lecteur (max-width:1020px){
+  .lecteur .jour,.lecteur .lecteur-lib{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .lecteur .transport .btn:not(.btn-play):not(.btn-pause){width:var(--ds-h-normal);padding:0;justify-content:center}
+}
+@container lecteur (max-width:760px){
+  .lecteur .run-state{display:none}
+  .lecteur .vitesse-box input{width:70px}
+}
+/* Très étroite : le curseur de vitesse garde son nom pour les lecteurs d'écran (aria-label), pas à l'écran. */
+@container lecteur (max-width:600px){
+  .lecteur{gap:10px 14px}
+  .lecteur .horloge-box{gap:10px}
+  .lecteur .vitesse-box{gap:6px;font-size:0}
+  .lecteur .vitesse-box b{font-size:var(--ds-t-12)}
+  .lecteur .vitesse-box input{width:64px}
+  .lecteur #sim-curseur{min-width:72px}
+}
+/* Rien à relire : ni curseur ni vitesse, la barre dit pourquoi, à toute largeur. */
+body.journee-vide .lecteur #sim-curseur,body.journee-vide .lecteur .vitesse-box{display:none}
+body.journee-vide .lecteur .run-state{display:block;flex:1 1 auto;max-width:none}
 
 /* Services et équipes. */
 .mu-fiche{border-radius:var(--ds-r-4);padding:18px 22px 22px}

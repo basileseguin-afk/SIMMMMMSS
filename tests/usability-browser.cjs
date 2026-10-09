@@ -16,7 +16,6 @@ const theme='clair';{
   }
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   if(view==='ateliers'){assert.equal(await page.locator('.at-carte.ouverte').count(),1,'l’atelier créé s’ouvre pour être renseigné');}
-  await page.screenshot({path:'/tmp/ory-review-'+theme+'-'+view+'.png'});
  }
 }
 await page.setViewportSize({width:1024,height:700});for(const view of ['plan','ateliers','flux','reglages','vols']){await nav.vue(page,view);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,view+' à 1024 px');}console.log('Usability passed: key text contrast ≥ 4.5:1 in the light theme, keyboard help, five views without horizontal overflow on desktop/mobile.');

@@ -97,7 +97,6 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     'le magasin n’est plus signalé');
   assert.match(await parcours('MAGASIN'),/mise à disposition/i);
 
-  await page.screenshot({path:'/tmp/ory-flows-desktop.png'});
   await page.setViewportSize({width:1024,height:700});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   assert.deepEqual(errors,[]);console.log('Flow center browser passed: many-to-many, human restrictions, reverse, active/map filters, CRUD, persistence, import/export, storage lifecycle, narrow desktop.');
  }finally{await browser.close();}

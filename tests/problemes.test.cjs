@@ -3,7 +3,7 @@
  * en dérivent. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { lister, pages, compte } = require('../problemes.js');
+const { lister, pages, compte, Registre } = require('../problemes.js');
 
 const sources = () => ({
   corriger: [
@@ -69,4 +69,24 @@ test('le texte en clair, quand le site le donne ; rien à dire, rien de listé',
   assert.ok(l.some(p => /boucle/.test(p.titre)));
   assert.deepEqual(lister({}), []);
   assert.deepEqual(lister(), []);
+});
+
+test('une source en panne ne bloque pas la page : la liste d’avant reste', () => {
+  // Un bouton et un panneau minimaux : assez pour maj() et rendre().
+  const compteur = { hidden: true, textContent: '' };
+  const bouton = { title: '', querySelector: () => compteur };
+  const panneau = { innerHTML: '', addEventListener() {} };
+  let panne = false;
+  const r = new Registre({ sources: () => { if (panne) throw new Error('source en panne'); return sources(); },
+    aller() {}, nomPage: p => p, bouton, panneau });
+  r.maj();
+  const avant = r.liste.length;
+  assert.ok(avant > 0);
+  assert.equal(compteur.textContent, avant);
+  const erreur = console.error; const vus = [];
+  console.error = (...a) => vus.push(a);
+  try { panne = true; assert.doesNotThrow(() => r.maj()); } finally { console.error = erreur; }
+  assert.equal(r.liste.length, avant, 'la liste d’avant');
+  assert.equal(compteur.textContent, avant, 'le même nombre');
+  assert.equal(vus.length, 1, 'dit dans la console');
 });
