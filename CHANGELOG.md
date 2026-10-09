@@ -5,6 +5,33 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-09 — Refonte, étape 6 : les chemins, même grammaire que le plan
+
+Toujours sans rien changer aux données ni au calcul (`donnees-intactes-browser`) :
+les chemins, les flux, leurs dispositions et les cases sont inchangés.
+
+- **Le diagramme** (Flux de production, Chemin d'une commande, Liens entre
+  services) prend la grammaire du plan : un fond pointillé, un cadre fin ;
+  les services en **cartes compactes** (pictogramme, nom, état — « 6/19
+  préparées », « aucune équipe »), au trait fin ; l'accent dit ce qui est
+  choisi ; les **étapes en bandes discrètes** ; les liens à 2 px, plus épais
+  au survol et choisis.
+- **Une barre flotte en haut à droite du diagramme** : « Ajouter un
+  service », « Réorganiser », « En ligne / En étapes ». Ils étaient dans
+  la rangée d'outils au-dessus ; sur un flux partagé vu depuis une
+  commande, seule reste « En ligne ».
+- **Ce qui est choisi** dans un flux (un service, un lien) s'affiche
+  au-dessus du diagramme dans une carte, avec ce qu'on peut en faire
+  (« Retirer du flux », « Ses équipes → », « Retirer ce lien »).
+- **La case d'un service**, dans Chemin d'une commande, s'ouvre à droite
+  comme l'inspecteur du plan : un trait fin, son en-tête, la croix discrète.
+- Fichiers : `graphe.js` (la barre, `outils()` de l'adaptateur), `parcours.js`
+  et `unite.js` (leurs outils passent sur le diagramme), `ds.css` ; v1 et v2.
+- Tests : `graphe-browser`, `flows-browser`, `chemin-choisi-browser` (les
+  critères de l'étape), `vue-ensemble`, `excel`, `handling`, `services`,
+  `temps`, `flux-retrait`, `mon-unite`, `focus`, `usability`, `lisibilite`,
+  `defilement` : verts sans changement.
+
 ## 2026-10-09 — Refonte, étape 5 (2/2) : le plan de l'unité a sa page
 
 Toujours sans rien changer aux données ni au calcul (`donnees-intactes-browser`) :

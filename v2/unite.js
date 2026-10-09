@@ -1125,10 +1125,12 @@
         : sel.type === 'noeud' ? `<b>${esc(this.nom(sel.id))}</b> <button class="btn btn-sm svc-danger" type="button" data-mu-flux-action="retirer-service" data-service="${esc(sel.id)}">Retirer du flux</button>
           <button class="btn btn-sm" type="button" data-mu-ouvrir-svc="${esc(sel.id)}">Ses équipes →</button>`
         : `<b>${esc(this.nom(sel.id.split('>')[0]))} → ${esc(this.nom(sel.id.split('>')[1]))}</b> <button class="btn btn-sm svc-danger" type="button" data-mu-flux-action="retirer-lien" data-lien="${esc(sel.id)}">Retirer ce lien</button>`;
-      const diagramme = `<div class="mu-flux-outils">
-          <label>Ajouter un service <select data-mu-flux-ajout><option value="">choisir…</option>${hors.map(s => `<option value="${esc(s.id)}">${esc(s.nom)}</option>`).join('')}</select></label>
+      // Ajouter un service et Réorganiser flottent sur le diagramme (refonte, étape 6) ;
+      // au-dessus, ce qui est choisi et ce qu'on peut en faire.
+      this.outilsFlux = `<label class="gr-outil-choix">Ajouter un service <select data-mu-flux-ajout><option value="">choisir…</option>${hors.map(s => `<option value="${esc(s.id)}">${esc(s.nom)}</option>`).join('')}</select></label>
+          <button class="btn btn-sm" type="button" data-mu-flux-action="reorganiser" title="Ranger les services d’eux-mêmes, dans le sens du flux">Réorganiser</button>`;
+      const diagramme = `<div class="mu-flux-outils${sel ? ' choisi' : ''}">
           <span class="mu-flux-sel">${actionSel}</span>
-          <button class="btn btn-sm" type="button" data-mu-flux-action="reorganiser" title="Ranger les services de gauche à droite, dans le sens du flux">Réorganiser</button>
         </div>
         <div class="pc-graphe mu-graphe" data-mu-graphe></div>`;
       const etape = (num, titre, corps, note) => `<section class="mu-etape"><h3><span class="mu-num">${num}</span>${esc(titre)}${note ? `<small>${note}</small>` : ''}</h3>${corps}</section>`;
@@ -1242,6 +1244,7 @@
         },
         retirerLien: id => { const [de, vers] = id.split('>'); u.changerFlux(x => { x.liens = x.liens.filter(l => !(l.de === de && l.vers === vers)); }, 'Lien retiré.'); },
         choisir: sel => { u.fluxSel = sel; const b = root.document.querySelector('#mu-flux .mu-flux-sel'); if (b) { u.rendreFlux(); } },
+        outils: () => u.outilsFlux || '',
         message: (t, o) => PC.annoncer(t, o)
       });
       return this.graphe;

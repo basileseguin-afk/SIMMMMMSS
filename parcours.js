@@ -1740,16 +1740,25 @@
 
     outils(etat, p, dup) {
       const dedans = new Set(P.servicesDuParcours(p));
-      const hors = this.a.services().filter(s => !dedans.has(s.id));
       return `<div class="pc-outils" data-parcours="${esc(p.id)}">
         <label class="pc-nom-champ">Nom du chemin <input class="pc-nom" value="${esc(p.nom)}" data-pc-champ="nom" aria-label="Nom du chemin"></label>
-        <label>Ajouter un service <select data-pc-champ="noeud-ajout" aria-label="Ajouter un service à ce chemin">
-          <option value="">Choisir…</option>${hors.map(s => `<option value="${esc(s.id)}">${esc(s.nom)}</option>`).join('')}</select></label>
         <span class="pc-outils-fin"></span>
         ${dup}
-        <button class="btn btn-sm" data-pc-action="reorganiser" title="Ranger les services d’eux-mêmes, de gauche à droite dans le sens du flux">Réorganiser</button>
         <button class="lien-discret danger" data-pc-action="parcours-retirer">Supprimer ce chemin</button>
       </div>${this.besoins(etat, dedans)}`;
+    }
+
+    /* Les outils du diagramme (refonte, étape 6) : ajouter un service,
+     * réorganiser. Ils flottent sur le diagramme, à côté de « En ligne ». Rien
+     * sur un flux partagé vu depuis une commande : il se modifie ailleurs. */
+    outilsDiagramme() {
+      const etat = this.a.etat(), p = this.parcoursActif(etat);
+      if (!p || (this.cmd && this.partage(etat, p))) return '';
+      const dedans = new Set(P.servicesDuParcours(p));
+      const hors = this.a.services().filter(s => !dedans.has(s.id));
+      return `<label class="gr-outil-choix">Ajouter un service <select data-pc-champ="noeud-ajout" aria-label="Ajouter un service à ce chemin">
+          <option value="">Choisir…</option>${hors.map(s => `<option value="${esc(s.id)}">${esc(s.nom)}</option>`).join('')}</select></label>
+        <button class="btn btn-sm" type="button" data-pc-action="reorganiser" title="Ranger les services d’eux-mêmes, dans le sens du flux">Réorganiser</button>`;
     }
 
     /* Les postes qui mettent à disposition : une question par chemin, oui ou non.
@@ -1859,6 +1868,7 @@
         relier: (de, vers) => ed.relier(de, vers),
         retirerLien: id => ed.retirerLien(id),
         fige: () => { const e = ed.a.etat(); return !!ed.cmd && ed.partage(e, ed.parcoursActif(e)); },
+        outils: () => ed.outilsDiagramme(),
         groupes: () => ed.groupesDiagramme(),
         choisir: sel => {
           ed.sel = sel && sel.type === 'lien' ? sel : null;

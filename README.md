@@ -174,8 +174,13 @@ le rouge ne sert qu’aux retards.
      relier n’apparaît qu’au survol ; le diagramme tient dans la largeur de
      l’écran. **Survoler (ou choisir) un
      service éclaire sa chaîne** — ce qui y mène et ce qui en part — et pâlit
-     le reste. « → En ligne » revient à la disposition de gauche à droite (le
-     choix est retenu, chaque sens garde sa propre disposition).
+     le reste. Sur le diagramme, une barre flotte en haut à droite :
+     « Ajouter un service », « Réorganiser » (les services se rangent
+     d’eux-mêmes) et « → En ligne », qui revient à la disposition de gauche à
+     droite (le choix est retenu, chaque sens garde sa propre disposition).
+     Le service ou le lien choisi s’affiche au-dessus, avec ce qu’on peut en
+     faire ; dans *Chemin d’une commande*, la case d’un service s’ouvre à
+     droite, comme l’inspecteur du plan.
    - *Flux de production* : un flux par type de production (Économie,
      Business…), partagé par ses commandes. À gauche les flux et leurs
      variantes ; à droite, **par où passe** celui qu'on choisit (un diagramme :

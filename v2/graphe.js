@@ -385,6 +385,9 @@
      *                            faites à la chaîne par la même équipe) : un
      *                            cadre les entoure, le lien entre eux s'épaissit
      *   fige()                 — facultatif : ni prise pour relier, ni croix pour retirer
+     *   outils()               — facultatif : les outils de la page sur ce diagramme
+     *                            (ajouter un service, réorganiser), en HTML : ils
+     *                            flottent en haut à droite, avec le sens
      * }
      * Le sens (en étapes ou en ligne) est un choix de la personne, commun à
      * tous les diagrammes ; chaque sens retient sa propre disposition. */
@@ -492,6 +495,9 @@
         bouton.innerHTML = (I ? I.ico(bas ? 'fleche' : 'flecheBas') : '') + (bas ? 'En ligne' : 'En étapes');
         bouton.title = bas ? 'Disposer les services de gauche à droite, sur une ligne' : 'Disposer les services de haut en bas, une bande par étape : plus lisible quand il y en a beaucoup';
       }
+      // Les outils de la page, redessinés seulement s'ils changent (un menu ouvert reste ouvert).
+      const outils = hote.querySelector('.gr-outils');
+      if (outils) { const h = this.a.outils ? this.a.outils() || '' : ''; if (outils._h !== h) { outils.innerHTML = h; outils._h = h; } outils.hidden = !h; }
       if (cadreEl) root.requestAnimationFrame(() => {
         const deborde = cadreEl.scrollWidth > cadreEl.clientWidth + 4;
         cadreEl.classList.toggle('gr-deborde', deborde && cadreEl.scrollLeft + cadreEl.clientWidth < cadreEl.scrollWidth - 4);
@@ -536,7 +542,7 @@
               data-noeud="${esc(n.id)}" transform="translate(${p.x},${p.y})" tabindex="0" role="button"
               aria-label="${esc(n.nom + (n.sous ? ', ' + n.sous : ''))}${cible ? '. Entrée pour y relier.' : ''}">
             <title>${esc(n.nom)}${n.sous ? ' — ' + esc(n.sous) : ''}</title>
-            <rect class="gr-fond" width="${L}" height="${H}" rx="12"/>
+            <rect class="gr-fond" width="${L}" height="${H}" rx="8"/>
             <rect class="gr-bord" width="5" height="${H - 16}" x="0" y="8" rx="2"/>
             ${I ? `<g class="gr-ico" transform="translate(12,${(H - 22) / 2}) scale(.92)">${I.TRAITS[n.ico] || I.TRAITS.service}</g>` : ''}
             <text class="gr-nom" x="44" y="${n.sous ? 22 : 31}">${esc(court(n.nom, 19))}</text>
@@ -625,7 +631,8 @@
     /* ---- gestes ------------------------------------------------------ */
 
     installer(hote) {
-      hote.innerHTML = `<div class="gr-boite"><button type="button" class="gr-sens" data-gr-sens></button>
+      // La barre flotte en haut à droite (refonte, étape 6) : les outils de la page, puis le sens.
+      hote.innerHTML = `<div class="gr-boite"><div class="gr-barre" role="group" aria-label="Outils du diagramme"><span class="gr-outils"></span><button type="button" class="gr-sens" data-gr-sens></button></div>
         <div class="gr-cadre"><svg class="gr-svg" role="group" aria-label="${esc(this.a.titre || 'Diagramme')}"></svg></div></div>`;
       const cadre = hote.querySelector('.gr-cadre');
       hote.querySelector('[data-gr-sens]').addEventListener('click', () => {

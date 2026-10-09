@@ -604,6 +604,60 @@ body.avant-lancement .plan-kpi,body.journee-vide .plan-kpi,body.editing .plan-kp
 body.journee-vide .lecteur #sim-curseur,body.journee-vide .lecteur .vitesse-box{display:none}
 body.journee-vide .lecteur .run-state{display:block;flex:1 1 auto;max-width:none}
 
+/* Les chemins (refonte, étape 6) : la même grammaire que le plan. Le diagramme
+   sur un fond pointillé ; des cartes compactes (pictogramme, nom, état) ; des
+   étapes en bandes discrètes ; ses outils dans une barre qui flotte en haut à
+   droite ; ce qui est choisi, au-dessus, comme un inspecteur. */
+.gr-cadre{border:1px solid var(--ds-bordure);border-radius:var(--ds-r-4);
+  background:radial-gradient(circle,var(--ds-bordure-forte) 1px,transparent 1.3px) 0 0/16px 16px,var(--ds-surface-1)}
+.gr-barre{position:absolute;top:10px;right:12px;z-index:2;display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:4px;
+  max-width:calc(100% - 24px);padding:4px;border-radius:var(--ds-r-3);background:var(--ds-surface-3);box-shadow:var(--ds-ombre-flottant)}
+.gr-outils{display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+.gr-barre .btn,.gr-barre .gr-sens{position:static;min-height:var(--ds-h-compact);padding:0 10px;border:0;border-radius:var(--ds-r-2);box-shadow:none;
+  background:transparent;font-size:var(--ds-t-12);font-weight:var(--ds-g-moyen);color:var(--ds-texte-2)}
+.gr-barre .btn:hover,.gr-barre .gr-sens:hover{background:var(--ds-survol);color:var(--ds-texte-1)}
+.gr-barre .btn:focus-visible{box-shadow:var(--ds-focus)}
+.gr-barre .gr-sens{display:inline-flex;align-items:center;gap:6px;border-left:1px solid var(--ds-bordure);border-radius:0 var(--ds-r-2) var(--ds-r-2) 0}
+.gr-barre .gr-sens .ico{width:14px;height:14px}
+.gr-outil-choix{display:inline-flex;align-items:center;gap:6px;padding:0 4px 0 8px;font-size:var(--ds-t-12);font-weight:var(--ds-g-moyen);color:var(--ds-texte-2);
+  white-space:nowrap}
+/* (#view-ateliers donne à ses listes 8 px de marge intérieure et toute la largeur : pas ici.) */
+.gr-outil-choix select,#view-ateliers .gr-outil-choix select{width:auto;max-width:200px;height:var(--ds-h-compact);min-height:0;padding:0 26px 0 8px;font-size:var(--ds-t-12)}
+/* Les étapes : des bandes discrètes, numérotées sans crier. */
+.gr-etape.impaire rect{fill:color-mix(in srgb,var(--ds-surface-2) 80%,transparent)}
+.gr-etape text{font-size:var(--ds-t-11);font-weight:var(--ds-g-moyen);letter-spacing:0;fill:var(--ds-texte-3)}
+.gr-etape.sans-lien text{fill:var(--ds-attente-texte)}
+/* Les services : des cartes compactes, un trait fin ; l'accent dit ce qui est choisi. */
+.gr-fond{fill:var(--ds-surface-1);stroke:var(--ds-bordure-forte);stroke-width:1}
+.gr-bord{fill:var(--ds-bordure-forte)}
+.gr-ico{stroke:var(--ds-texte-2)}
+.gr-nom{fill:var(--ds-texte-1)}
+.gr-sous{fill:var(--ds-texte-3)}
+.gr-noeud.ton-attente .gr-sous{fill:var(--ds-attente-texte)}
+.gr-noeud:hover .gr-fond{stroke:var(--ds-accent)}
+.gr-noeud.sel .gr-fond{stroke:var(--ds-accent);stroke-width:2;fill:var(--ds-accent-pale)}
+.gr-noeud.sel .gr-ico{stroke:var(--ds-accent)}
+.gr-noeud:focus-visible .gr-fond{stroke:var(--ds-accent);stroke-width:3}
+/* Les liens : un trait de 2 px ; plus épais au survol et choisi. */
+.gr-trait{stroke-width:2}
+.gr-lien:hover .gr-trait,.gr-lien:focus-visible .gr-trait{stroke-width:3}
+.gr-lien.sel .gr-trait{stroke:var(--ds-accent) !important;stroke-width:3}
+.gr-etiq{fill:var(--ds-info);stroke:var(--ds-surface-1)}
+.gr-retirer circle{fill:var(--ds-retard);stroke:var(--ds-surface-1)}
+.gr-retirer path{stroke:var(--ds-sur-retard)}
+/* Ce qui est choisi dans un flux, et ce qu'on peut en faire : au-dessus du diagramme. */
+.mu-flux-outils{min-height:40px;margin:0 0 8px;padding:4px 0}
+.mu-flux-outils.choisi{padding:6px 10px;border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);background:var(--ds-surface-1)}
+.mu-flux-outils.choisi .mu-flux-sel b{font-size:var(--ds-t-13);color:var(--ds-texte-1)}
+
+/* La case d'un service, dans son chemin : un inspecteur à droite, comme celui du plan. */
+.pc-tiroir{background:var(--ds-surface-1);border-left:1px solid var(--ds-bordure);padding:0 18px 24px}
+.pc-tiroir-tete{background:var(--ds-surface-1);border-bottom:1px solid var(--ds-bordure);font-size:var(--ds-t-13);font-weight:var(--ds-g-fort);color:var(--ds-texte-1)}
+.pc-tiroir-fermer{display:grid;place-items:center;width:var(--ds-h-normal);height:var(--ds-h-normal);padding:0;border:0;border-radius:var(--ds-r-2);
+  background:transparent;color:var(--ds-texte-2)}
+.pc-tiroir-fermer:hover{background:var(--ds-survol);color:var(--ds-texte-1)}
+.pc-tiroir-fermer .ico{width:16px;height:16px}
+
 /* Services et équipes. */
 .mu-fiche{border-radius:var(--ds-r-4);padding:18px 22px 22px}
 .mu-svc{border-radius:var(--ds-r-3);transition:border-color var(--ds-t-rapide),background var(--ds-t-rapide)}
