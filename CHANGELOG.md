@@ -5,6 +5,63 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-12 — Refonte, étape 11 : la v2 (Budget, Calage), le design system écrit
+
+Toujours sans rien changer aux données ni au calcul (`donnees-intactes-browser`) :
+montants, budgets et facteurs du calage sont ceux d'avant ; seule leur
+présentation change. C'est la dernière étape de la refonte (REFONTE_UX §10).
+
+- **Budget du jour.**
+  - Les cinq indicateurs prennent l'allure des cartes de la synthèse : une
+    surface neutre, le ton dans la pastille et le chiffre, plus d'aplat vert
+    ou rouge.
+  - Le tableau prend les en-têtes sobres du système (plus de capitales) et
+    des chiffres alignés.
+  - Les barres « Coût / budget » prennent la palette des données (vacations
+    en bleu, heures sup en ambre, le budget en trait) et une même échelle
+    pour tous les services. Sans budget saisi, elles étaient toutes pleines
+    et ne disaient rien ; elles comparent maintenant les coûts d'un coup
+    d'œil. Une légende les explique.
+- **Paramètres financiers.**
+  - L'unité est dans le champ, comme dans les fiches (« 3 h », « 86 % »,
+    « … € »).
+  - Le nom d'une catégorie se lit en entier : « Agent de production » était
+    coupé.
+  - « Retirer » devient un bouton-icône nommé (« Retirer « Cuisinier » »),
+    et le tableau tient dans sa carte.
+- **Calage.** Cartes, étapes et tableau passent sur les jetons du système
+  (rayon, surfaces, en-têtes). Les titres du tableau des facteurs restent
+  visibles quand il défile.
+- **`docs/DESIGN_SYSTEM.md`** (neuf) :
+  - les principes et les jetons (échelles, couleurs des deux thèmes et leur
+    usage) ;
+  - les règles de la couleur : l'accent pour l'action, les états avec un
+    mot, les données pour reconnaître ;
+  - les composants : boutons, champs, tableaux, cartes indicateurs,
+    notifications, problèmes, coquille, palette, graphiques ;
+  - les mouvements, le clavier et le focus, la latence ;
+  - la liste à suivre pour ajouter un écran.
+  `REFONTE_UX.md` dit que la refonte est faite.
+- **Les dernières couleurs en dur deviennent des jetons.** Il en restait
+  trois dans `ds.css`, hors des blocs de jetons. La plus gênante : le bouton
+  Pause du rejeu écrivait en blanc sur l'ambre, soit 2,5:1 en thème sombre,
+  sous le minimum AA. Il écrit maintenant `--ds-sur-attente` (plus de 7:1).
+  Le contour des services et les liens prennent `--ds-trait-plan` et
+  `--ds-trait-lien`. Il reste 34 couleurs pour le thème clair et 35 pour le
+  sombre, toutes dans les jetons (critère de l'étape 1 : 40 au plus), et
+  aucune dans les autres feuilles.
+- **v1 = v2, vérifié.** `parite.test` (neuf) tient la liste des 33 fichiers
+  communs et refuse une retouche faite d'un seul côté. `contraste.test`
+  vérifie aussi l'étiquette posée dans une barre du planning
+  (`--ds-sur-donnee`, 5,3:1 au moins).
+- Captures avant / après des trois pages, dans les deux thèmes, relues hors
+  dépôt (montants d'exemple, sans le plan).
+- Fichiers : `v2/budget.js`, `v2/budget.css`, `ds.css` (v1 et v2),
+  `docs/DESIGN_SYSTEM.md`, `docs/REFONTE_UX.md`, `docs/V2.md`, `README.md`.
+- Tests : `parite.test` (neuf), `contraste.test`. `v2-budget-browser`,
+  `v2-calage-browser`, `v2-browser` et `focus-browser` restent verts sans
+  changement.
+
 ## 2026-10-12 — Refonte, étape 10 : la palette, les raccourcis, les mouvements, la latence
 
 Toujours sans rien changer aux données ni au calcul (`donnees-intactes-browser`) :

@@ -1,5 +1,13 @@
 # Refonte UX/UI — audit et proposition
 
+> **Statut au 12 octobre 2026 : réalisée.** Accordée le 8 octobre (thème
+> clair par défaut, sombre en option ; palette ⌘K, clavier dans les tableaux,
+> flèches dans les nombres), faite en douze étapes, de l'étape 0 à l'étape 11
+> (voir le [journal des modifications](../CHANGELOG.md)), sans rien changer aux
+> données ni au calcul. Ce qu'elle a posé est décrit dans
+> [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md). Le texte ci-dessous est la
+> proposition telle qu'elle a été faite.
+
 8 octobre 2026. **Statut : proposition, en attente de votre accord.** Rien
 n'a été modifié dans l'application. La maquette
 [`maquette-refonte.html`](maquette-refonte.html) montre la direction proposée :

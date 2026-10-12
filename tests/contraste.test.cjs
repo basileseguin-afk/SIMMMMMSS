@@ -54,6 +54,12 @@ for (const [nom, selecteur] of [['clair', ':root'], ['sombre', ':root[data-theme
     for (const texte of ['ds-texte-1', 'ds-texte-2', 'ds-texte-3', 'ds-accent-texte']) verifier(texte, couleur(t, 'ds-surface-3'), 'ds-surface-3');
     // Le geste qui détruit, dans une question : bouton plein, au repos et au survol.
     for (const fond of ['ds-retard', 'ds-retard-texte']) assert.ok(ratio(couleur(t, 'ds-sur-retard'), couleur(t, fond)) >= 4.5, nom + ' : texte sur ' + fond);
+    // Le bouton Pause du rejeu, plein d'attente, au repos et au survol (étape 11 : blanc sur ambre, illisible en sombre).
+    for (const fond of ['ds-attente', 'ds-attente-texte']) assert.ok(ratio(couleur(t, 'ds-sur-attente'), couleur(t, fond)) >= 4.5,
+      nom + ' : texte sur ' + fond + ' = ' + ratio(couleur(t, 'ds-sur-attente'), couleur(t, fond)).toFixed(2) + ':1');
+    // L'étiquette dans une barre du planning (étape 9) : sur chaque couleur de donnée qui porte du texte.
+    for (const fond of ['ds-d1', 'ds-d2', 'ds-chaine']) assert.ok(ratio(couleur(t, 'ds-sur-donnee'), couleur(t, fond)) >= 4.5,
+      nom + ' : étiquette sur ' + fond + ' = ' + ratio(couleur(t, 'ds-sur-donnee'), couleur(t, fond)).toFixed(2) + ':1');
     // Le texte des états, sur leur fond teinté (pastilles, badges).
     for (const [texte, doux] of [['ds-ok-texte', 'ds-ok-doux'], ['ds-attente-texte', 'ds-attente-doux'], ['ds-retard-texte', 'ds-retard-doux'], ['ds-accent-texte', 'ds-accent-doux']]) {
       const fond = couleur(t, doux, blanc);

@@ -54,6 +54,10 @@
   --ds-chaine:#A21CAF;
   /* Ce qui s'écrit sur une couleur de donnée : l'étiquette d'une barre. */
   --ds-sur-donnee:#FFFFFF;
+  /* Ce qui s'écrit sur l'attente pleine (le bouton Pause du rejeu). */
+  --ds-sur-attente:#FFFFFF;
+  /* Les traits du dessin : le contour d'un service sur le plan, un lien entre services. */
+  --ds-trait-plan:#8C97A6; --ds-trait-lien:#7D8A9B;
   --ds-ombre-1:0 1px 2px rgba(16,24,40,.05);
   --ds-ombre-flottant:0 10px 28px -6px rgba(16,24,40,.16),0 2px 6px -2px rgba(16,24,40,.08),0 0 0 1px rgba(16,24,40,.06);
   --ds-focus:0 0 0 3px color-mix(in srgb,#0F766E 22%,transparent);
@@ -77,6 +81,7 @@
   --ds-d1:#7C9CF0; --ds-d2:#B392F0; --ds-d3:#56C7A5; --ds-d4:#E3B456; --ds-d5:#EE8A7A; --ds-d6:#7FB8D6;
   --ds-chaine:#E879F9;
   --ds-sur-donnee:#0B0D10;
+  --ds-sur-attente:#1A1206;
   --ds-ombre-1:none;
   --ds-ombre-flottant:0 12px 32px -6px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.1);
   --ds-focus:0 0 0 3px color-mix(in srgb,#2CC2B0 30%,transparent);
@@ -106,8 +111,8 @@
   --police:var(--ds-police);
   --jauge-bg:var(--ds-surface-2);
   --plan-bg:var(--ds-surface-1);
-  --zone-fill:var(--ds-surface-1); --zone-stroke:#8C97A6; --zone-txt:var(--ds-texte-1); --zone-sous:var(--ds-texte-2);
-  --halo:var(--ds-surface-1); --edge:#7D8A9B; --edge-retour:var(--ds-d2);
+  --zone-fill:var(--ds-surface-1); --zone-stroke:var(--ds-trait-plan); --zone-txt:var(--ds-texte-1); --zone-sous:var(--ds-texte-2);
+  --halo:var(--ds-surface-1); --edge:var(--ds-trait-lien); --edge-retour:var(--ds-d2);
 }
 
 /* ---- 3. Base --------------------------------------------------------------- */
@@ -160,8 +165,9 @@ a{color:var(--ds-accent-texte)}
 .btn-play .ico,.btn.btn-play .ico{color:currentColor}
 .btn-play:hover:not(:disabled),.btn.btn-play:hover:not(:disabled){background:var(--ds-accent-fort);border-color:var(--ds-accent-fort);color:var(--ds-sur-accent)}
 .btn-play:focus-visible,.btn.btn-play:focus-visible,.btn-pause:focus-visible,.btn.btn-pause:focus-visible{box-shadow:var(--ds-focus)}
-.btn-pause,.btn.btn-pause{background:var(--ds-attente);border-color:var(--ds-attente);color:#fff}
-.btn-pause:hover:not(:disabled){background:var(--ds-attente-texte);border-color:var(--ds-attente-texte);color:#fff}
+.btn-pause,.btn.btn-pause{background:var(--ds-attente);border-color:var(--ds-attente);color:var(--ds-sur-attente)}
+.btn-pause .ico,.btn.btn-pause .ico{color:currentColor}
+.btn-pause:hover:not(:disabled){background:var(--ds-attente-texte);border-color:var(--ds-attente-texte);color:var(--ds-sur-attente)}
 /* Le geste qui détruit, dans une question (notifications.js) : plein, rouge. */
 .btn.btn-danger{background:var(--ds-retard);border-color:var(--ds-retard);color:var(--ds-sur-retard)}
 .btn.btn-danger .ico{color:currentColor}

@@ -48,6 +48,8 @@
   const clone = o => JSON.parse(JSON.stringify(o));
   /** Un pictogramme de icones.js (le chevron d'un service qui se déplie), au lieu d'un caractère. */
   const pic = nom => (root.OrlyIcones ? root.OrlyIcones.ico(nom) : '');
+  /** Un champ et son unité, dans le champ : la même écriture que les fiches (refonte, étape 7). */
+  const avecUnite = (champ, unite) => `<span class="champ-unite">${champ}<span class="unite">${unite}</span></span>`;
 
   /** Relit des réglages (navigateur, sauvegarde) : ce qui manque prend la valeur d'exemple. */
   function valider(r) {
@@ -279,8 +281,11 @@
         ${j.inconnus.length ? `<b>Capacité inconnue pour ${esc(j.inconnus.join(', '))}</b> : comptés pleins.` : ''}
         <span class="bu-fictif">Montants d’exemple, fictifs.</span>
         <button type="button" class="lien-discret" data-page="bu-param">Paramètres financiers →</button></p>`;
+      // Une seule échelle pour toutes les barres : les coûts se comparent d'un service à l'autre,
+      // et le repère du budget s'y pose quand il y en a un (refonte, étape 11).
+      const max = Math.max(1, ...b.lignes.map(l => Math.max(l.total, l.budget ? l.budget.montant : 0)));
       const ligne = l => {
-        const ouvert = this.ouverts.has(l.id), max = Math.max(l.total, l.budget ? l.budget.montant : 0, 1);
+        const ouvert = this.ouverts.has(l.id);
         const jauge = `<span class="bu-jauge" title="${esc(eur(l.total))} sur ${esc(l.budget ? eur(l.budget.montant) : 'pas de budget')}">
           <i class="base" style="width:${(l.base / max * 100).toFixed(1)}%"></i><i class="sup" style="width:${(l.sup / max * 100).toFixed(1)}%"></i>
           ${l.budget ? `<i class="repere" style="left:${(l.budget.montant / max * 100).toFixed(1)}%"></i>` : ''}</span>`;
@@ -295,7 +300,9 @@
       };
       box.innerHTML = tuiles + base + (b.lignes.length ? `<table class="bu-table">
         <thead><tr><th>Service</th><th>Budget du jour</th><th>Vacations</th><th>Heures sup</th><th>Coût</th><th>Écart</th><th class="bu-col-jauge">Coût / budget</th></tr></thead>
-        <tbody>${b.lignes.map(ligne).join('')}</tbody></table>`
+        <tbody>${b.lignes.map(ligne).join('')}</tbody></table>
+        <p class="mini-note bu-legende"><span><i class="bu-cle base" aria-hidden="true"></i>vacations</span><span><i class="bu-cle sup" aria-hidden="true"></i>heures sup</span>
+          <span><i class="bu-cle repere" aria-hidden="true"></i>budget du jour</span><span>une même échelle pour tous les services</span></p>`
         : '<p class="mini-note">Aucune équipe pour l’instant : décrivez-les dans Équipes › Services et équipes.</p>');
     }
 
@@ -363,19 +370,19 @@
           ${f.categories.map(c => `<tr data-bu-cat="${esc(c.id)}"><td><input value="${esc(c.nom)}" data-bu-cat-nom maxlength="80"></td>
             <td><input type="number" min="0" step="0.5" value="${c.taux}" data-bu-cat-taux class="bu-n"></td>
             <td><input type="radio" name="bu-defaut" value="${esc(c.id)}" data-bu-defaut ${c.id === f.categorieDefaut ? 'checked' : ''} aria-label="Catégorie par défaut"></td>
-            <td>${f.categories.length > 1 ? `<button type="button" class="lien-discret danger" data-bu-cat-retirer="${esc(c.id)}">Retirer</button>` : ''}</td></tr>`).join('')}
+            <td>${f.categories.length > 1 ? `<button type="button" class="btn btn-icone bu-retirer" data-bu-cat-retirer="${esc(c.id)}" aria-label="Retirer « ${esc(c.nom)} »" title="Retirer « ${esc(c.nom)} »">${pic('croix')}</button>` : ''}</td></tr>`).join('')}
           </tbody></table><button type="button" class="btn btn-sm" data-bu-cat-ajouter>+ Une catégorie</button></section>
 
         <section class="bu-carte"><h3>Vacations et heures sup</h3>
           <label class="chk"><input type="checkbox" data-bu-sup-actif ${f.heuresSup.actif ? 'checked' : ''}> Une équipe en retard reste en heures sup</label>
-          <label>Plafond par personne et par jour <span class="bu-champ"><input type="number" min="0" max="12" step="0.25" value="${fr(f.heuresSup.plafond / 60)}" data-bu-sup-plafond class="bu-n"> h</span></label>
+          <label>Plafond par personne et par jour ${avecUnite(`<input type="number" min="0" max="12" step="0.25" value="${fr(f.heuresSup.plafond / 60)}" data-bu-sup-plafond class="bu-n">`, 'h')}</label>
           <label>Majoration des heures sup <span class="bu-champ">× <input type="number" min="1" max="3" step="0.05" value="${f.majoration}" data-bu-majoration class="bu-n"></span></label>
-          <label>Vacation d’une équipe sans règle de poste <span class="bu-champ"><input type="number" min="1" max="16" step="0.25" value="${fr(f.vacationDefaut / 60)}" data-bu-vacation class="bu-n"> h</span></label>
+          <label>Vacation d’une équipe sans règle de poste ${avecUnite(`<input type="number" min="1" max="16" step="0.25" value="${fr(f.vacationDefaut / 60)}" data-bu-vacation class="bu-n">`, 'h')}</label>
           <p class="mini-note">Une personne planifiée est payée sa vacation entière : la présence de son poste (Simulation › Réglages de la simulation, ou la fiche de l’équipe). Au-delà, les heures sup, dans le plafond ; ce qui dépasse le plafond n’est pas fait.</p></section>
 
         <section class="bu-carte"><h3>Le mois</h3><p class="mini-note">Pour passer du budget du mois au budget du jour.</p>
           <label>Vols du mois <input type="number" min="1" value="${f.mois.vols ?? ''}" placeholder="${j.vols * m.jours}" data-bu-mois-vols class="bu-n"></label>
-          <label>Remplissage moyen du mois <span class="bu-champ"><input type="number" min="1" max="100" value="${f.mois.remplissage == null ? '' : Math.round(f.mois.remplissage * 100)}" placeholder="${Math.round(j.remplissage * 100)}" data-bu-mois-rempl class="bu-n"> %</span></label>
+          <label>Remplissage moyen du mois ${avecUnite(`<input type="number" min="1" max="100" value="${f.mois.remplissage == null ? '' : Math.round(f.mois.remplissage * 100)}" placeholder="${Math.round(j.remplissage * 100)}" data-bu-mois-rempl class="bu-n">`, '%')}</label>
           <label>Jours dans le mois <input type="number" min="1" max="31" value="${f.mois.jours}" data-bu-mois-jours class="bu-n"></label>
           <p class="mini-note">Vide : déduit de la journée (${j.vols} vols × ${m.jours} jours, remplissage ${pct(j.remplissage)}).</p></section>
         </div>
@@ -385,7 +392,7 @@
           <table class="bu-mini"><thead><tr><th>Service</th><th>Budget du mois</th><th>Réparti</th><th>Soit aujourd’hui</th></tr></thead><tbody>
           ${services.map(s => { const c = f.services[s.id] || {}, b = budgetJour(s.id, vols, f);
             return `<tr data-bu-service="${esc(s.id)}"><th scope="row">${esc(s.nom)}</th>
-              <td><span class="bu-champ"><input type="number" min="0" step="100" value="${c.budget ?? ''}" placeholder="—" data-bu-budget class="bu-n"> €</span></td>
+              <td>${avecUnite(`<input type="number" min="0" step="100" value="${c.budget ?? ''}" placeholder="—" data-bu-budget class="bu-n">`, '€')}</td>
               <td><select data-bu-mode><option value="vols"${c.mode !== 'remplissage' ? ' selected' : ''}>aux vols</option><option value="remplissage"${c.mode === 'remplissage' ? ' selected' : ''}>au remplissage</option></select></td>
               <td>${b ? eur(b.montant) : '—'}</td></tr>`; }).join('')}
           </tbody></table>

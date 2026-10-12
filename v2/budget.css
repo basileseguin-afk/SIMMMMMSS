@@ -1,56 +1,80 @@
 /* ==========================================================================
  *  VERSION 2 — Budget › Budget du jour, Paramètres financiers
  * ==========================================================================*/
-.bu{display:grid;gap:14px;align-content:start}
+.bu{display:grid;gap:16px;align-content:start}
+/* Les indicateurs ont l'allure des cartes de la synthèse (ds.css, .bilan-cle) :
+   une surface neutre, le ton dans la pastille et le chiffre, jamais en aplat (refonte, étape 11). */
 .bu-tuiles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
-.bu-tuile{display:grid;gap:2px;padding:12px 14px;border:1px solid var(--bordure);border-radius:14px;background:var(--bg3)}
-.bu-tuile span{font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);color:var(--txt2)}
-.bu-tuile b{font-size:var(--ds-t-24);font-weight:var(--ds-g-fort);letter-spacing:-.01em;color:var(--txt)}
-.bu-tuile small{font-size:var(--ds-t-12);color:var(--txt3)}
-.bu-tuile.ok{border-color:color-mix(in srgb,var(--ok) 40%,var(--bordure));background:var(--ok-fill)}
-.bu-tuile.ok b{color:var(--ok)}
-.bu-tuile.retard{border-color:color-mix(in srgb,var(--retard) 40%,var(--bordure));background:var(--bad-fill)}
-.bu-tuile.retard b{color:var(--retard)}
+.bu-tuile{--t:var(--ds-texte-4);display:grid;gap:4px;align-content:start;padding:14px 16px;border:1px solid var(--ds-bordure);
+  border-radius:var(--ds-r-3);background:var(--ds-surface-1)}
+.bu-tuile span{display:flex;align-items:center;gap:7px;font-size:var(--ds-t-12);font-weight:var(--ds-g-moyen);color:var(--ds-texte-2)}
+.bu-tuile span::before{content:"";flex:none;width:6px;height:6px;border-radius:50%;background:var(--t)}
+.bu-tuile b{font-size:var(--ds-t-24);font-weight:var(--ds-g-fort);letter-spacing:-.02em;line-height:1.2;color:var(--ds-texte-1);font-variant-numeric:tabular-nums}
+.bu-tuile small{font-size:var(--ds-t-12);color:var(--ds-texte-3)}
+.bu-tuile.ok{--t:var(--ds-ok)}
+.bu-tuile.ok b{color:var(--ds-ok-texte)}
+.bu-tuile.retard{--t:var(--ds-retard)}
+.bu-tuile.retard b{color:var(--ds-retard-texte)}
 .bu-note{margin:0;font-size:var(--ds-t-13);color:var(--txt2);display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
 .bu-fictif{display:inline-block;padding:1px 8px;border-radius:99px;background:var(--ds-attente-doux);border:1px solid color-mix(in srgb,var(--ds-attente) 45%,transparent);color:var(--ds-attente-texte);font-size:var(--ds-t-12);font-weight:var(--ds-g-fort)}
-.bu-alerte{color:var(--retard);font-weight:var(--ds-g-fort)}
+.bu-alerte{color:var(--ds-retard-texte);font-weight:var(--ds-g-fort)}
 
 .bu-table,.bu-equipes,.bu-mini{width:100%;border-collapse:collapse;font-size:var(--ds-t-13)}
-.bu-table{background:var(--bg3);border:1px solid var(--bordure);border-radius:14px;overflow:hidden}
-.bu-table th,.bu-table td{padding:9px 12px;border-bottom:1px solid var(--bordure);text-align:right;vertical-align:middle}
+/* Les tableaux : les en-têtes sobres du système (pas de capitales), les chiffres en colonnes tabulaires. */
+.bu-table{border-collapse:separate;border-spacing:0;background:var(--ds-surface-1);border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);overflow:hidden}
+.bu-table th,.bu-table td{padding:9px 12px;border-bottom:1px solid var(--ds-bordure);text-align:right;vertical-align:middle;font-variant-numeric:tabular-nums}
+.bu-table tbody tr:last-child>*{border-bottom:0}
 .bu-table th:first-child,.bu-table td:first-child{text-align:left}
-.bu-table thead th{font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);color:var(--txt2);background:var(--bg2);text-transform:uppercase;letter-spacing:.03em}
-.bu-table td small,.bu-table th small,.bu-equipes small{display:block;font-size:var(--ds-t-11);font-weight:var(--ds-g-normal);color:var(--txt3)}
-.bu-table td.ok{color:var(--ok);font-weight:var(--ds-g-fort)}
-.bu-table td.retard{color:var(--retard);font-weight:var(--ds-g-fort)}
-.bu-ouvrir{border:0;background:none;padding:0;font:inherit;font-weight:var(--ds-g-fort);color:var(--txt);cursor:pointer}
-.bu-ouvrir:hover{color:var(--accent)}
-.bu-svc.ouvert>*{background:color-mix(in srgb,var(--c-budget) 5%,var(--bg3))}
+.bu-table thead th,.bu-mini thead th,.bu-equipes thead th,.ca-table thead th{font-size:var(--ds-t-12);font-weight:var(--ds-g-moyen);color:var(--ds-texte-3);
+  background:var(--ds-surface-1);text-transform:none;letter-spacing:0}
+.bu-table td small,.bu-table th small,.bu-equipes small{display:block;font-size:var(--ds-t-11);font-weight:var(--ds-g-normal);color:var(--ds-texte-3)}
+.bu-table td.ok{color:var(--ds-ok-texte);font-weight:var(--ds-g-fort)}
+.bu-table td.retard{color:var(--ds-retard-texte);font-weight:var(--ds-g-fort)}
+.bu-ouvrir{display:inline-flex;align-items:center;border:0;background:none;padding:0;font:inherit;font-weight:var(--ds-g-fort);color:var(--ds-texte-1);cursor:pointer}
+.bu-ouvrir .ico{color:var(--ds-texte-3)}
+.bu-ouvrir:hover{color:var(--ds-accent-texte)}
+.bu-ouvrir:focus-visible{outline:2px solid var(--ds-accent);outline-offset:2px;border-radius:var(--ds-r-1)}
+.bu-svc:hover>*{background:var(--ds-survol)}
+.bu-svc.ouvert>*{background:var(--ds-surface-2)}
+/* La jauge : la palette des données (vacations, heures sup), le budget en trait ; une échelle pour tous. */
 .bu-col-jauge{width:22%}
-.bu-jauge{position:relative;display:flex;height:12px;border-radius:99px;background:var(--bg2);overflow:visible}
+.bu-jauge{position:relative;display:flex;height:10px;border-radius:99px;background:var(--ds-surface-2);overflow:visible}
 .bu-jauge i{display:block;height:100%}
-.bu-jauge i.base{background:var(--accent);border-radius:99px 0 0 99px}
-.bu-jauge i.sup{background:var(--c-budget)}
-.bu-jauge i.repere{position:absolute;top:-4px;bottom:-4px;width:2px;margin-left:-1px;background:var(--txt);border-radius:2px}
-.bu-detail>td{padding:4px 12px 14px;text-align:left;background:color-mix(in srgb,var(--c-budget) 3%,var(--bg3))}
+.bu-jauge i.base{background:var(--ds-d1);border-radius:99px 0 0 99px}
+.bu-jauge i.sup{background:var(--ds-d4)}
+.bu-jauge i.repere{position:absolute;top:-4px;bottom:-4px;width:2px;margin-left:-1px;background:var(--ds-texte-1);border-radius:2px}
+.bu-legende{display:flex;flex-wrap:wrap;gap:4px 16px;margin:-6px 0 0}
+.bu-legende span{display:inline-flex;align-items:center;gap:6px}
+.bu-cle{display:inline-block;width:12px;height:8px;border-radius:2px}
+.bu-cle.base{background:var(--ds-d1)}
+.bu-cle.sup{background:var(--ds-d4)}
+.bu-cle.repere{width:2px;height:12px;background:var(--ds-texte-1)}
+.bu-detail>td{padding:4px 12px 14px;text-align:left;background:var(--ds-surface-2)}
 
-.bu-equipes th,.bu-equipes td{padding:6px 8px;border-bottom:1px solid var(--bordure);text-align:right;vertical-align:middle}
+.bu-equipes th,.bu-equipes td{padding:6px 8px;border-bottom:1px solid var(--ds-bordure);text-align:right;vertical-align:middle;font-variant-numeric:tabular-nums}
 .bu-equipes th:first-child{text-align:left}
-.bu-equipes thead th{font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);color:var(--txt2)}
 #view-ateliers .bu input.bu-n{width:72px;text-align:right;padding:4px 6px}
-.bu-essai{display:grid;gap:4px;padding:10px 12px;border:1px dashed var(--bordure2);border-radius:10px;background:var(--bg3);font-size:var(--ds-t-13)}
+/* Un champ qui porte son unité garde la place du chiffre. */
+#view-ateliers .bu .champ-unite>input.bu-n{width:104px;padding-right:2.4em}
+#view-ateliers .bu .champ-unite>input[data-bu-budget]{width:132px}
+.bu-essai{display:grid;gap:4px;padding:10px 12px;border:1px dashed var(--ds-bordure-forte);border-radius:var(--ds-r-3);background:var(--ds-surface-1);font-size:var(--ds-t-13)}
 .bu-essai p{margin:0}
 .bu-verdict{font-weight:var(--ds-g-fort)}
-.bu-verdict.ok{color:var(--ok)}
+.bu-verdict.ok{color:var(--ds-ok-texte)}
 
 .bu-grille{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;align-items:start}
-.bu-carte{display:grid;gap:8px;align-content:start;padding:14px 16px;border:1px solid var(--bordure);border-radius:14px;background:var(--bg3)}
+.bu-carte{display:grid;gap:10px;align-content:start;padding:16px 18px;border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);background:var(--ds-surface-1)}
 .bu-carte h3{margin:0;font-size:var(--ds-t-14)}
 .bu-carte label:not(.chk){display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:var(--ds-t-13)}
 .bu-champ{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
-.bu-mini th,.bu-mini td{padding:5px 8px;border-bottom:1px solid var(--bordure);text-align:left}
-.bu-mini thead th{font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);color:var(--txt2)}
-.bu-mini small{color:var(--txt3);font-weight:var(--ds-g-normal)}
+.bu-mini th,.bu-mini td{padding:5px 8px;border-bottom:1px solid var(--ds-bordure);text-align:left}
+.bu-mini small{color:var(--ds-texte-3);font-weight:var(--ds-g-normal)}
+/* Le nom d'une catégorie se lit en entier (« Agent de production » était coupé). */
+#view-ateliers .bu-mini input[data-bu-cat-nom]{width:100%;min-width:150px}
+#view-ateliers .bu-mini input[data-bu-cat-taux]{width:64px}
+.bu-retirer{border-color:transparent;background:transparent;box-shadow:none;color:var(--ds-texte-3)}
+.bu-retirer:hover{color:var(--ds-retard-texte);background:var(--ds-retard-doux)}
+.bu-retirer .ico{width:14px;height:14px}
 @media (max-width:1200px){.bu-tuiles{grid-template-columns:repeat(3,minmax(0,1fr))}}
 
 /* ==========================================================================
@@ -58,21 +82,21 @@
  * ==========================================================================*/
 .ca{display:grid;gap:14px;align-content:start;max-width:1200px}
 .ca-intro{margin:0;font-size:var(--ds-t-14);color:var(--txt2);line-height:1.55}
-.ca-etapes{margin:0;padding:12px 16px 12px 36px;display:grid;gap:8px;border:1px solid var(--bordure);border-radius:14px;background:var(--bg3);font-size:var(--ds-t-14)}
+.ca-etapes{margin:0;padding:14px 18px 14px 38px;display:grid;gap:8px;border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);background:var(--ds-surface-1);font-size:var(--ds-t-14)}
 .ca-etapes li{line-height:1.6}
 .ca-etapes label.btn{cursor:pointer}
-.ca-carte{display:grid;gap:10px;padding:14px 16px;border:1px solid var(--bordure);border-radius:14px;background:var(--bg3)}
+.ca-carte{display:grid;gap:10px;padding:16px 18px;border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);background:var(--ds-surface-1)}
 .ca-carte h3{margin:0;font-size:var(--ds-t-14)}
 .ca-carte p{margin:0;font-size:var(--ds-t-14)}
-.ca-alerte{color:var(--attente);font-size:var(--ds-t-13)}
-.ca-progres{height:10px;border-radius:99px;background:var(--bg2);overflow:hidden}
+.ca-alerte{color:var(--ds-attente-texte);font-size:var(--ds-t-13)}
+.ca-progres{height:8px;border-radius:99px;background:var(--ds-surface-2);overflow:hidden}
 .ca-progres span{display:block;height:100%;background:var(--accent);transition:width .2s}
 .ca-global b{color:var(--txt)}
 .ca-table{width:100%;border-collapse:collapse;font-size:var(--ds-t-13)}
-.ca-table th,.ca-table td{padding:7px 10px;border-bottom:1px solid var(--bordure);text-align:right;vertical-align:top}
+.ca-table th,.ca-table td{padding:7px 10px;border-bottom:1px solid var(--ds-bordure);text-align:right;vertical-align:top;font-variant-numeric:tabular-nums}
 .ca-table th:first-child{text-align:left}
-.ca-table thead th{font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);color:var(--txt2);background:var(--bg2)}
-.ca-table small{display:block;font-size:var(--ds-t-11);color:var(--txt3);font-weight:var(--ds-g-normal)}
+.ca-table thead th{position:sticky;top:0}
+.ca-table small{display:block;font-size:var(--ds-t-11);color:var(--ds-texte-3);font-weight:var(--ds-g-normal)}
 .ca-table tr.ca-verif th{color:var(--accent2)}
 .ca-defile{max-height:420px;overflow:auto;overscroll-behavior:contain}
 .bu-repos{color:var(--ds-attente-texte)}

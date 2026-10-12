@@ -592,6 +592,10 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 [registre des bugs](BUGS.md) et le
 [journal des modifications](CHANGELOG.md). La
 [feuille de route commune](docs/FEUILLE_DE_ROUTE.md) reste la référence métier.
+Pour l’interface, le **[design system](docs/DESIGN_SYSTEM.md)** dit les jetons,
+les composants, les règles de la couleur, du mouvement, du clavier et de la
+latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a posé :
+[docs/REFONTE_UX.md](docs/REFONTE_UX.md)).
 
 ## Fichiers et vérification
 
@@ -680,6 +684,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/palette.test.cjs` | Ce que la palette trouve et dans quel ordre : gestes et pages sans texte, sans accents ni majuscules, début du nom d’abord, tous les mots, au plus N par groupe ; le surlignage échappé ; v1 et v2 portent la même `palette.js` |
 | `tests/latence-browser.cjs` | La latence d’un changement, sans chronomètre (v1 et v2) : un bilan par service au plus pendant un changement ; aucun sur une page qui n’en a pas besoin, le registre des problèmes refait juste après et son compte suivi ; le menu jamais mesuré quand il ne change pas |
 | `tests/graphiques-browser.cjs` | Le planning, la frise des vols et les stocks (v1 et v2) : la palette des données, une barre par lot à l’heure de son lot ; l’étiquette quand elle tient, et seulement alors ; la bulle tout de suite au survol, plus de `<title>` natif ; le trait « maintenant » absent avant le rejeu, à l’heure rejouée ensuite (planning, frise, plonge), qui suit la lecture, sans repère d’axe dessous, et s’en va au début ; la valeur d’une courbe de stock à l’heure survolée, d’après le calcul |
+| `tests/parite.test.cjs` | v1 et v2 portent les mêmes fichiers communs (le design system, les vues, le noyau) : une retouche faite d’un seul côté échoue ici |
 | `tests/ds.test.cjs` | La largeur estimée d’une étiquette, l’heure du trait (minutes, la veille négative, rien sinon) ; v1 et v2 portent le même `ds.js` |
 | `tests/synthese-browser.cjs` | La synthèse (v1 et v2) : les mêmes nombres qu’avant, recalculés depuis les indicateurs comme l’ancienne synthèse les écrivait ; quatre cartes avec un handling, Vols · Commandes · Équipes, le problème des commandes sans équipe ; chaque carte et chaque ligne mènent à leur page ; la comparaison A/B et son écart signé, fléché, coloré |
 | `tests/secours-browser.cjs` | Un démarrage resté en plan ouvre la page de secours ; elle rend les données en sauvegarde, repart sans les cases, puis les remet |
