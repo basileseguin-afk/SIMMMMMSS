@@ -5,56 +5,53 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>ORY — Applications</title>
 <meta name="description" content="Point d'entrée des applications du projet de simulation de l'unité ORY." />
+<script>try{if(localStorage.getItem('ory-ui-theme')==='sombre')document.documentElement.dataset.theme='sombre';}catch(e){}</script>
+<!-- Le design system du site (refonte, étape 11) : mêmes jetons, même police, les deux thèmes. -->
+<link href="ds.css?v=6c563e03" rel="stylesheet"/>
 <style>
-@font-face{font-family:'Inter Variable';font-style:normal;font-display:swap;font-weight:100 900;
-  src:url(polices/inter-latin.woff2) format('woff2-variations'),url(polices/inter-latin.woff2) format('woff2')}
-:root{
-  --bg:#f5f6f8; --carte:#fff; --bordure:#e4e7ec; --bordure2:#d0d5dd;
-  --txt:#101828; --txt2:#475467; --txt3:#667085; --accent:#0f766e; --orange:#b54708;
-  --ombre:0 1px 2px rgba(16,24,40,.04),0 1px 3px rgba(16,24,40,.06);
-}
+/* ds.css cadre l'application sur un écran (grille, rien ne défile hors des vues) :
+   cette page est un simple document, qui défile. */
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--txt);
-  font-family:'Inter Variable',Inter,system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;
-  font-size:15px;line-height:1.6;padding:32px 16px}
-.page{max-width:760px;margin:0 auto}
-h1{font-size:28px;margin:0 0 4px;letter-spacing:-.025em}
-.sous{color:var(--txt3);margin:0 0 26px;font-weight:500}
-.apps{display:grid;gap:14px;margin-bottom:26px}
-a.app{display:flex;gap:15px;align-items:flex-start;text-decoration:none;color:inherit;
-  background:var(--carte);border:1px solid var(--bordure);border-radius:16px;
-  padding:18px 20px;box-shadow:var(--ombre);transition:border-color .15s,transform .15s,box-shadow .15s}
-a.app:hover{border-color:color-mix(in srgb,var(--accent) 40%,var(--bordure));transform:translateY(-2px);
-  box-shadow:0 12px 24px -6px rgba(16,24,40,.10),0 4px 8px -4px rgba(16,24,40,.06)}
-a.app:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-.ico{font-size:30px;line-height:1}
-.app h2{margin:0 0 3px;font-size:17px;color:var(--txt);font-weight:650}
-.app p{margin:0;color:var(--txt2);font-size:13.5px}
-.bloc{background:var(--carte);border:1px solid var(--bordure);border-radius:16px;box-shadow:var(--ombre);
-  padding:16px 18px;margin-bottom:14px}
-.bloc h3{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;
-  color:var(--txt3);font-weight:600}
-code{background:#eef2f7;border:1px solid var(--bordure);border-radius:4px;
-  padding:1px 5px;font-size:12.5px;word-break:break-all}
-.avert{box-shadow:inset 3px 0 0 var(--orange),var(--ombre)}
-.avert h3{color:var(--orange)}
-p.fin{color:var(--txt3);font-size:13px}
+html,body{overscroll-behavior:auto}
+body{display:block;height:auto;overflow:visible;margin:0;background:var(--ds-fond);color:var(--ds-texte-1);font-family:var(--ds-police);
+  font-size:var(--ds-t-14);line-height:1.6;padding:40px 16px}
+.ap-page{max-width:760px;margin:0 auto}
+.ap-page h1{font-size:var(--ds-t-24);font-weight:var(--ds-g-fort);letter-spacing:-.02em;margin:0 0 4px}
+.ap-sous{color:var(--ds-texte-3);margin:0 0 24px}
+.ap-apps{display:grid;gap:12px;margin-bottom:24px}
+a.ap-app{display:flex;gap:16px;align-items:flex-start;text-decoration:none;color:inherit;background:var(--ds-surface-1);
+  border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);padding:18px 20px;box-shadow:var(--ds-ombre-1);
+  transition:border-color var(--ds-t-rapide),box-shadow var(--ds-t-rapide)}
+a.ap-app:hover{border-color:var(--ds-accent-trait)}
+a.ap-app:focus-visible{outline:none;box-shadow:var(--ds-focus);border-color:var(--ds-accent)}
+.ap-ico{flex:none;display:inline-grid;place-items:center;width:40px;height:40px;border-radius:var(--ds-r-3);background:var(--ds-accent-doux);color:var(--ds-accent)}
+.ap-ico svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.ap-app h2{margin:0 0 2px;font-size:var(--ds-t-16);font-weight:var(--ds-g-fort);color:var(--ds-texte-1)}
+.ap-app p{margin:0;color:var(--ds-texte-2);font-size:var(--ds-t-13)}
+.ap-bloc{background:var(--ds-surface-1);border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);padding:16px 20px;margin-bottom:12px}
+.ap-bloc h3{margin:0 0 8px;font-size:var(--ds-t-11);text-transform:uppercase;letter-spacing:.05em;color:var(--ds-texte-3);font-weight:var(--ds-g-fort)}
+.ap-bloc p{margin:6px 0;color:var(--ds-texte-2)}
+.ap-bloc code{background:var(--ds-surface-2);border:1px solid var(--ds-bordure);border-radius:var(--ds-r-1);padding:1px 5px;font-family:var(--ds-mono);
+  font-size:var(--ds-t-12);color:var(--ds-texte-1);overflow-wrap:anywhere}
+.ap-avert{box-shadow:inset 3px 0 0 var(--ds-attente)}
+.ap-avert h3{color:var(--ds-attente-texte)}
+.ap-fin{color:var(--ds-texte-3);font-size:var(--ds-t-13)}
 </style>
 </head>
 <body>
-<div class="page">
+<div class="ap-page">
   <h1>ORY — Applications</h1>
-  <p class="sous">Point d'entrée du projet. Rien à télécharger : tout s'ouvre dans le navigateur.</p>
+  <p class="ap-sous">Point d'entrée du projet. Rien à télécharger : tout s'ouvre dans le navigateur.</p>
 
-  <div class="apps">
-    <a class="app" href="./">
-      <span class="ico">🛫</span>
+  <div class="ap-apps">
+    <a class="ap-app" href="./">
+      <span class="ap-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10.5 3.5c0-.8.7-1.5 1.5-1.5s1.5.7 1.5 1.5V9l7.5 4.5V16l-7.5-2.3V19l2.5 1.8V22L12 21l-4 1v-1.2l2.5-1.8v-5.3L3 16v-2.5L10.5 9z"/></svg></span>
       <span><h2>Simulateur des flux de production</h2>
       <p>Plan de l'unité, ateliers de travail, parcours des compagnies × classes,
          relecture de la journée et échanges avec Excel. Prototype non calibré.</p></span>
     </a>
-    <a class="app" href="v2/">
-      <span class="ico">🧪</span>
+    <a class="ap-app" href="v2/">
+      <span class="ap-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg></span>
       <span><h2>Version 2 — en construction</h2>
       <p>La même simulation, copiée pour aller plus loin : coûts de la main-d'œuvre
          et des retards, aléas, heures supplémentaires, optimisation automatique.
@@ -62,7 +59,7 @@ p.fin{color:var(--txt3);font-size:13px}
     </a>
   </div>
 
-  <div class="bloc">
+  <div class="ap-bloc">
     <h3>Ouvrir n'importe quel autre fichier</h3>
     <p>Tout fichier du dépôt est servi à la même adresse relative. Prenez son
     chemin sur GitHub et remplacez le début :</p>
@@ -72,7 +69,7 @@ p.fin{color:var(--txt3);font-size:13px}
     fichier.</p>
   </div>
 
-  <div class="bloc avert">
+  <div class="ap-bloc ap-avert">
     <h3>À savoir</h3>
     <p>Le dépôt est <b>public</b>. Le plan de l'unité, les exports de vols et les
     classeurs Excel n'y sont <b>jamais</b> déposés : ils restent en local
@@ -81,8 +78,8 @@ p.fin{color:var(--txt3);font-size:13px}
     Si une page semble figée, forcez le rechargement (<b>Ctrl+Maj+R</b>).</p>
   </div>
 
-  <p class="fin">Code source :
-  <a href="https://github.com/basileseguin-afk/SIMMMMMSS">github.com/basileseguin-afk/SIMMMMMSS</a></p>
+  <p class="ap-fin">Code source :
+  <a class="lien-discret" href="https://github.com/basileseguin-afk/SIMMMMMSS">github.com/basileseguin-afk/SIMMMMMSS</a></p>
 </div>
 </body>
 </html>

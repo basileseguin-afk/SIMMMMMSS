@@ -5,6 +5,30 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-12 — Refonte, étape 11 (suite) : la page d'entrée au design system
+
+La page à mettre en favori (`accueil.html`) gardait l'habillage d'avant la
+refonte : ses propres couleurs, des émojis, et pas de thème sombre. Elle
+prend maintenant celui du site. Rien ne change dans les données, ni dans le
+texte de la page.
+
+- **Le design system.** Elle charge `ds.css` : mêmes jetons, même police,
+  cartes et anneau de focus du système. Elle suit le thème choisi dans
+  l'application (clair par défaut, sombre s'il a été choisi) et ne l'écrit
+  pas.
+- **Un document, pas l'application.** `ds.css` cadre l'application sur un
+  écran : une grille où seules les vues défilent. La page défait cette
+  grille dans sa propre feuille, elle défile comme avant. Sur un téléphone,
+  rien ne déborde : les adresses longues passent à la ligne.
+- **Les deux applications** ont un pictogramme du système (un avion, des
+  curseurs) à la place des émojis, muet pour les lecteurs d'écran.
+- Les pages de secours restent autonomes, et c'est voulu : elles ne
+  chargent rien du site, pour s'ouvrir même quand il ne démarre plus.
+  `docs/DESIGN_SYSTEM.md` le dit.
+- Fichiers : `accueil.html`, `docs/DESIGN_SYSTEM.md`, `README.md`.
+- Tests : `accueil-browser` (neuf) ; sans la correction de la grille, il
+  échoue.
+
 ## 2026-10-12 — Refonte, étape 11 : la v2 (Budget, Calage), le design system écrit
 
 Toujours sans rien changer aux données ni au calcul (`donnees-intactes-browser`) :

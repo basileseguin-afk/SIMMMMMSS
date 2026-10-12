@@ -17,6 +17,16 @@ Ce qui le porte :
 | `problemes.js` | Le registre unique des problèmes. |
 | `icones.js` | Les pictogrammes SVG (traits de 1,7 sur 24 × 24). |
 
+Hors de l'application :
+
+- `accueil.html`, le point d'entrée, charge `ds.css` pour ses jetons, sa
+  police et ses deux thèmes. Il défait la coquille dans sa propre feuille :
+  c'est un document qui défile, pas la grille de l'application.
+  `accueil-browser` le vérifie.
+- Les pages de secours (`secours.html`, `v2/secours.html`) restent
+  autonomes, et c'est voulu : elles ne chargent rien du site, pour
+  s'ouvrir même quand il ne démarre plus.
+
 Une règle passe avant toutes les autres : **une retouche d'interface ne
 change ni les données enregistrées ni le calcul**. `donnees-intactes-browser`
 le vérifie à chaque batterie.
