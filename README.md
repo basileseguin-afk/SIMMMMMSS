@@ -126,7 +126,18 @@ plus discret, après la mention **« Plus »** — il n’y a plus de partie cac
 elle. La dernière page ouverte de chaque partie est retenue.
 
 La **barre du haut** dit où l’on est (le fil d’Ariane : la partie, qui mène à
-sa première page, puis la page) et porte **un seul Annuler / Rétablir** : il
+sa première page, puis la page), que le **calcul est à jour** (il se refait à
+chaque changement ; son point bat une fois quand il vient de suivre ; un clic
+mène à la synthèse), ouvre **la palette « Aller à… »** et porte **un seul
+Annuler / Rétablir**. La palette (**Ctrl K**, ⌘ K sur Mac) : quelques lettres,
+sans accents ni majuscules, et elle propose une page, un service, une équipe,
+une commande (« af eco » : AF · Économie) ou un geste (rejouer la journée,
+annuler, les problèmes, le thème, exporter les résultats) ; les flèches
+choisissent, Entrée ouvre, Échap ferme. La touche **?** (hors d’un champ)
+ouvre la **fiche des raccourcis** ; sur le plan rejoué, **Espace** lit la
+journée ou la met en pause. Les mouvements sont courts (une page qui arrive,
+une fenêtre qui s’ouvre) et s’arrêtent quand le système demande de réduire
+les animations. Annuler / Rétablir
 agit sur ce que la page ouverte modifie (les cases, chemins et équipes ; le
 barème ; les heures de travail ; les liens ; le plan pendant son édition).
 **Ctrl Z** (⌘ Z) annule, **Ctrl Maj Z** ou **Ctrl Y** rétablit, hors d’un
@@ -588,7 +599,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 |---|---|
 | `index.html` | Structure et contrôles |
 | `interface.css` | Disposition et hiérarchie visuelle |
-| `ds.css` / `polices/` | Le design system, posé en dernier (refonte du 08/10) : jetons (thème clair, sombre en option), police Inter embarquée (licence OFL), boutons, champs, pastilles, cartes, tableaux ; la coquille : barre latérale, barre du haut (fil d’Ariane, Annuler / Rétablir), titre de la page |
+| `ds.css` / `polices/` | Le design system, posé en dernier (refonte du 08/10) : jetons (thème clair, sombre en option), police Inter embarquée (licence OFL), boutons, champs, pastilles, cartes, tableaux ; la coquille : barre latérale, barre du haut (fil d’Ariane, état du calcul, « Aller à… », Annuler / Rétablir), titre de la page ; la palette et la fiche des raccourcis ; les mouvements (180 ms au plus), coupés quand les animations sont réduites |
 | `unite.js` / `unite.css` | Prêt à simuler ?, Flux de production et Services et équipes : le pas à pas et la fiche de chaque service (équipes, grille à cocher, minutes) |
 | `sim.js` | Interface, plan, interactions, glue entre les centres |
 | **`moteur/production.js`** | **Modèle par ateliers de travail** — compagnie × classe, lots ordonnés, robot, plonge, parcours lu des flux. Voir [la note de modèle](docs/MODELE_ATELIERS.md) |
@@ -612,6 +623,7 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `rendu.js` | Redessiner sans perdre ce qu’on tape : tant qu’on écrit dans un champ, la zone qui le contient attend pour se redessiner ; elle le fait dès que le champ est validé (Entrée, quitté), le focus revenant au même champ. Posé une fois, à la source (`innerHTML`), pour tous les écrans |
 | `champs.js` | Les champs (09/10) : l’heure en 24 h (champ texte `data-heure` : « 0430 », « 4:30 », « 4h30 » → « 04:30 », gardée « HH:MM » comme avant ; tout choisi au focus ; ↑↓ un quart d’heure, Maj+↑↓ une heure), Maj+↑↓ dix pas dans un nombre, et le refus d’une saisie sous son champ (bordure, message lié au champ, valeur gardée remise) |
 | `ds.js` | Les composants scriptés du système de dessin (09/10) : l’infobulle des graphiques (tout de suite au survol, ce que porte le `data-info` d’une barre, d’un avion, d’un nom ; seulement dans un graphique `ds-graphique`), et le trait « maintenant » (l’heure rejouée sur chaque graphique qui déclare son axe du temps, `data-axe="t0 t1 x0 x1 y0 y1"` ; le repère d’axe qu’il chevauche s’efface) |
+| `palette.js` | La palette et la fiche des raccourcis (12/10, v1 = v2) : Ctrl K (⌘ K) ou « Aller à… » ; chercher sans accents ni majuscules dans ce que le site lui donne (pages, services, équipes, commandes, gestes), le meilleur en tête de son groupe, ce qui répond marqué ; flèches, Entrée, Échap ; la touche ? ouvre la fiche des raccourcis. `chercher` et `surligner` sont purs. Rien n’est enregistré |
 | `icones.js` | Les pictogrammes (étapes, services, états) et les couleurs d’étape |
 | `demarrage.css` | Ce que montre chaque vue (lecture de la journée seulement dans « La journée ») et couleurs du plan en lecture |
 | `plan-prive/` | Fond de plan **local, non versionné** (voir ci-dessous) |
@@ -664,6 +676,9 @@ faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
 | `tests/champs-browser.cjs` | Les champs dans un navigateur en anglais (v1 et v2) : plus de champ natif ni de « AM » ; frappe, Entrée, Tab ; « 2500 » et un champ vidé refusés sous le champ, la valeur gardée remise, retaper efface ; ↑↓ et Maj+↑↓ ; un nom d’équipe ou de service refusé sous son champ, sans notification ; les heures gardées restent « HH:MM » |
 | `tests/fiche-service-browser.cjs` | La fiche d’un service en feuille de propriétés (v1 et v2) : sections repliables, repli gardé d’un service à l’autre et au rendu, Entrée au clavier ; l’avancé replié qui dit ce qui y est réglé ; la règle ⚡ dans « Plus de réglages », dont la ligne dit ce qui est réglé ; la matrice (en-têtes collants, ligne et colonne survolées, Espace) ; rien ne change dans les données |
 | `tests/tableaux-browser.cjs` | Les tableaux d’heures et d’horaires au clavier (v1 et v2) : Horaires (case à gauche, service en cours sous les titres), Entrée qui enregistre et descend dans la même colonne, Maj+Entrée qui remonte, une heure refusée en descendant ; Heures de travail (nombres à droite, 0,3 h gardées 18 min, Entrée dans la colonne, sans saut) ; planche retour et barème marqués |
+| `tests/palette-browser.cjs` | Les finitions (v1 et v2) : « Rien à calculer » puis « Calcul à jour », son point qui bat, vers la synthèse ; la palette (Ctrl K l’ouvre et la referme, le focus dans son champ, gestes et pages sans texte, une équipe et une commande sans accents, ce qui répond marqué, les flèches, Entrée et le focus rendu à la page, Échap, un clic, rien de trouvé dit, pas pendant la modification du plan, aucune donnée enregistrée) ; la fiche des raccourcis (« ? », pas dans un champ) ; Espace sur le plan rejoué (pas sur un bouton) ; les mouvements, et plus aucun quand les animations sont réduites |
+| `tests/palette.test.cjs` | Ce que la palette trouve et dans quel ordre : gestes et pages sans texte, sans accents ni majuscules, début du nom d’abord, tous les mots, au plus N par groupe ; le surlignage échappé ; v1 et v2 portent la même `palette.js` |
+| `tests/latence-browser.cjs` | La latence d’un changement, sans chronomètre (v1 et v2) : un bilan par service au plus pendant un changement ; aucun sur une page qui n’en a pas besoin, le registre des problèmes refait juste après et son compte suivi ; le menu jamais mesuré quand il ne change pas |
 | `tests/graphiques-browser.cjs` | Le planning, la frise des vols et les stocks (v1 et v2) : la palette des données, une barre par lot à l’heure de son lot ; l’étiquette quand elle tient, et seulement alors ; la bulle tout de suite au survol, plus de `<title>` natif ; le trait « maintenant » absent avant le rejeu, à l’heure rejouée ensuite (planning, frise, plonge), qui suit la lecture, sans repère d’axe dessous, et s’en va au début ; la valeur d’une courbe de stock à l’heure survolée, d’après le calcul |
 | `tests/ds.test.cjs` | La largeur estimée d’une étiquette, l’heure du trait (minutes, la veille négative, rien sinon) ; v1 et v2 portent le même `ds.js` |
 | `tests/synthese-browser.cjs` | La synthèse (v1 et v2) : les mêmes nombres qu’avant, recalculés depuis les indicateurs comme l’ancienne synthèse les écrivait ; quatre cartes avec un handling, Vols · Commandes · Équipes, le problème des commandes sans équipe ; chaque carte et chaque ligne mènent à leur page ; la comparaison A/B et son écart signé, fléché, coloré |

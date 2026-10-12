@@ -879,7 +879,18 @@ function etatDemarrage(){
               fin:Number.isFinite((r.indicateurs||{}).finDerniere)?MoteurProduction.hhmm(r.indicateurs.finDerniere):null }
   };
 }
-function majDemarrage(){ if(Sim.problemes)Sim.problemes.maj(); if(Sim.onglets)Sim.onglets.rendre(); if(Sim.demarrage)Sim.demarrage.rendre(); afficherTitre(); if(document.body.dataset.sous==='u-services')renderServices(); }
+/* Le registre des problèmes se refait juste après un changement, pas pendant :
+ * ce qu'on vient de modifier s'affiche d'abord, le compte suit aussitôt après
+ * (refonte, étape 10 : un changement ne coûte pas plus qu'avant la refonte).
+ * Plusieurs changements de suite n'en font qu'une mise à jour. */
+let problemesPrevus=0;
+function majProblemes(){
+  if(problemesPrevus||!Sim.problemes)return;
+  problemesPrevus=setTimeout(()=>{problemesPrevus=0;Sim.problemes.maj();
+    // Les nombres des onglets se lisent dans le registre : ils le suivent.
+    if(Sim.onglets)Sim.onglets.rendre();},0);
+}
+function majDemarrage(){ majCalcul(); majProblemes(); if(Sim.onglets)Sim.onglets.rendre(); if(Sim.demarrage)Sim.demarrage.rendre(); afficherTitre(); if(document.body.dataset.sous==='u-services')renderServices(); }
 /* Un nombre sur un onglet dit qu'il y a quelque chose à y faire, sans l'ouvrir. */
 /* Les contrôles du calcul (audit du 29/09) : la page Contrôles ne parlait que
  * des liens entre services, qui ne servent plus quand chaque commande a son
@@ -1181,6 +1192,91 @@ function initAnnuler(){
     annulerOuRetablir(k==='y'||e.shiftKey);
   });
   majAnnuler();
+}
+/* ==========================================================================
+ *  LA PALETTE, LES RACCOURCIS, L'ÉTAT DU CALCUL (refonte du 08/10, étape 10)
+ *  La palette (palette.js, Ctrl K) propose ce que le site connaît à
+ *  l'instant : les gestes, les pages, les services, les équipes, les
+ *  commandes. La barre du haut dit que le calcul est à jour — il se refait à
+ *  chaque changement — et son point bat une fois quand il vient de suivre.
+ * ==========================================================================*/
+/** Une équipe : la fiche de son service, l'équipe à l'écran, marquée un instant. */
+function ouvrirEquipe(a){
+  if(!Sim.unite)return;
+  Sim.unite.ouvrir(a.service);
+  const art=document.querySelector('#mu-services .mu-equipe[data-at="'+CSS.escape(a.id)+'"]');
+  if(!art)return;
+  for(let d=art.closest('details');d;d=d.parentElement&&d.parentElement.closest('details'))d.open=true;
+  art.scrollIntoView({block:'center'});
+  art.tabIndex=-1;art.focus({preventScroll:true});
+  art.classList.add('pal-trouvee');setTimeout(()=>art.classList.remove('pal-trouvee'),1600);
+}
+/** Ce que la palette propose maintenant. */
+function elementsPalette(){
+  const O=window.OrlyOnglets,out=[];
+  // Après un saut de page, le focus va à la page : au clavier, on reprend en haut de ce qu'on voit.
+  const ici=()=>{const w=document.getElementById(activeView==='accueil'?'view-accueil':'workspace');if(w)w.focus({preventScroll:true});};
+  const vers=id=>{allerPage(id);ici();};
+  const geste=(nom,faire,o)=>out.push({groupe:'Gestes',nom,faire,...o});
+  geste('Rejouer la journée',()=>{vers('j-plan');if(Sim.vue)Sim.vue.lancer();},{ico:'lecture',indice:'Le plan rejoué',mots:'lire lecture lancer'});
+  const un=document.getElementById('btn-annuler'),re=document.getElementById('btn-retablir');
+  if(un&&!un.disabled)geste('Annuler',()=>annulerOuRetablir(false),{ico:'annuler',indice:OrlyPalette.MOD+' Z'});
+  if(re&&!re.disabled)geste('Rétablir',()=>annulerOuRetablir(true),{ico:'retablir',indice:OrlyPalette.MOD+' Maj Z'});
+  const pb=Sim.problemes?Sim.problemes.liste.length:0;
+  geste('Problèmes',()=>{const b=document.getElementById('btn-problemes');if(b)b.click();},{ico:'alerte',indice:pb?pb+(pb>1?' problèmes':' problème'):'aucun',mots:'corriger completer'});
+  const sombre=document.documentElement.dataset.theme==='sombre';
+  geste(sombre?'Thème clair':'Thème sombre',()=>{const b=document.getElementById('btn-theme');if(b)b.click();},{ico:sombre?'soleil':'lune',mots:'theme couleurs affichage'});
+  geste('Exporter les résultats',()=>{allerPage('j-chiffres');const b=document.getElementById('btn-export');if(b)b.click();},{ico:'telecharger',indice:'Synthèse',mots:'json fichier'});
+  geste('Raccourcis clavier',()=>OrlyPalette.raccourcis(),{ico:'clavier',indice:'?',mots:'touches aide'});
+  out.push({groupe:'Pages',nom:'Accueil',ico:'unite',faire:()=>{allerPartie('accueil');ici();}});
+  if(O)for(const p of O.PARTIES)for(const pg of O.pagesDe(p.id))if(pg)out.push({groupe:'Pages',nom:pg.nom,indice:p.nom,ico:pg.ico,faire:()=>vers(pg.id)});
+  const svcs=servicesDisponibles(),noms=Object.fromEntries(svcs.map(s=>[s.id,s.nom]));
+  for(const s of svcs)out.push({groupe:'Services',nom:s.nom,indice:'Service',ico:'service',faire:()=>{if(Sim.unite)Sim.unite.ouvrir(s.id);ici();}});
+  for(const a of ((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]))
+    out.push({groupe:'Équipes',nom:a.nom,indice:noms[a.service]||a.service,ico:'equipe',faire:()=>ouvrirEquipe(a)});
+  for(const c of ((Sim.ateliers&&Sim.ateliers.classes)||[]))
+    out.push({groupe:'Commandes',nom:MoteurProduction.libelleClasse(c.id),indice:c.id,ico:'plateau',
+      faire:()=>{if(Sim.ateliers&&Sim.ateliers.parcours)Sim.ateliers.parcours.ouvrir(c.id);ici();}});
+  return out;
+}
+/** L'état du calcul, dans la barre du haut. */
+function majCalcul(){
+  const b=document.getElementById('calcul-etat');if(!b)return;
+  const r=Sim.ateliers&&Sim.ateliers.resultat;
+  const etat=!r?'vide':r.ok===false?'arret':(r.lots||[]).length?'ok':'vide';
+  if(b.dataset.etat!==etat){
+    b.dataset.etat=etat;
+    b.querySelector('.calcul-mot').textContent={ok:'Calcul à jour',vide:'Rien à calculer',arret:'Calcul arrêté'}[etat];
+    b.title={ok:'La journée se recalcule à chaque changement : voir la synthèse',
+      vide:'Aucune équipe ne prépare encore de commande : décrire votre unité',
+      arret:'Le calcul s’arrête sur un point à corriger : voir les problèmes'}[etat];
+  }
+  // Le point bat une fois : le calcul vient de suivre ce qu'on a changé. Le battement repart deux
+  // images plus tard, sans forcer de mise en page au milieu du calcul (la latence d'un changement).
+  b.classList.remove('bat');
+  cancelAnimationFrame(majCalcul.image);
+  majCalcul.image=requestAnimationFrame(()=>{majCalcul.image=requestAnimationFrame(()=>b.classList.add('bat'));});
+}
+function initPalette(){
+  if(!window.OrlyPalette)return;
+  OrlyPalette.brancher({elements:elementsPalette,groupes:['Gestes','Pages','Services','Équipes','Commandes'],sansTexte:['Gestes','Pages'],
+    // Le plan en modification se termine d'abord, comme pour le menu.
+    peutOuvrir:()=>!editMode});
+  const b=document.getElementById('btn-palette');
+  if(b){b.addEventListener('click',()=>OrlyPalette.ouvrir());const k=b.querySelector('kbd');if(k)k.textContent=OrlyPalette.MOD+' K';
+    b.title='Aller à une page, un service, une équipe, une commande ('+OrlyPalette.MOD+' K)';}
+  const c=document.getElementById('calcul-etat');
+  if(c)c.addEventListener('click',()=>{const e=c.dataset.etat;
+    if(e==='arret'){const p=document.getElementById('btn-problemes');if(p)p.click();}else allerPage(e==='ok'?'j-chiffres':'mu-pas');});
+  // Le plan rejoué : Espace lit la journée, ou la met en pause — hors d'un champ, d'un bouton, d'une fenêtre.
+  document.addEventListener('keydown',e=>{
+    if(e.code!=='Space'||e.defaultPrevented||e.ctrlKey||e.metaKey||e.altKey||editMode||activeView==='accueil'||document.body.dataset.sous!=='j-plan')return;
+    const t=e.target;
+    if(saisieTexte(t)||(t.closest&&t.closest('button,a[href],summary,select,input,textarea,[role=button],[role=tab],[role=option],[contenteditable=true]'))||document.querySelector('dialog[open]'))return;
+    e.preventDefault();
+    if(Sim.vue)Sim.vue.basculer();
+  });
+  majCalcul();
 }
 function initFlux(){
   Sim.flows=new OrlyFlows.FlowCenter({zones:()=>Sim.editor.state.zones.filter(z=>!z.retire).map(z=>({...z,nom:nomLisible(z.nom)})),legacy:FLUX.concat(FLUX_RETOUR),
@@ -2458,6 +2554,7 @@ etape('problèmes',initProblemes);
 etape('menu',initOnglets);
 etape('accueil',initDemarrage);
 etape('annuler',initAnnuler);
+etape('palette',initPalette);
 etape('thème',initTheme); etape('En ce moment',initEnCeMoment);
 etape('affichage',()=>{majHorloge();majPlan();majDashboard();majStocks();});
 // Le démarrage est allé au bout : la marque s'efface.

@@ -248,7 +248,12 @@
       // Redessiner seulement si quelque chose a changé : sinon l'onglet qui a
       // le focus clavier le perdrait à chaque recalcul de la journée.
       const boite = h.querySelector('.so-liste') || h;
-      if (this.dessin !== html || (html && !boite.firstChild)) { boite.innerHTML = html; this.dessin = html; }
+      const redessine = this.dessin !== html || (html && !boite.firstChild);
+      if (redessine) { boite.innerHTML = html; this.dessin = html; }
+      h.hidden = !liste.length;
+      // Rien n'a bougé (un recalcul de la journée) : rien à mesurer. Lire les
+      // tailles forcerait une mise en page au milieu du calcul (étape 10).
+      if (!redessine && this.vu === actif) return;
       // Sur téléphone la barre défile : l'onglet ouvert doit y rester visible.
       const on = boite.querySelector('.actif');
       if (on && boite.scrollWidth > boite.clientWidth) {
@@ -256,7 +261,6 @@
         if (g < boite.scrollLeft) boite.scrollLeft = g - 16;
         else if (d > boite.scrollLeft + boite.clientWidth) boite.scrollLeft = d - boite.clientWidth + 16;
       }
-      h.hidden = !liste.length;
       // Dans la barre latérale (refonte du 08/10), les pages se suivent en
       // colonne et la barre défile en hauteur : la page ouverte y reste visible,
       // une fois, quand elle change (on ne reprend pas la main à qui fait défiler).

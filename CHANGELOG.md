@@ -5,6 +5,60 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-12 — Refonte, étape 10 : la palette, les raccourcis, les mouvements, la latence
+
+Toujours sans rien changer aux données ni au calcul (`donnees-intactes-browser`) :
+la palette et les raccourcis ne font qu'ouvrir des pages et des fiches. Rien
+n'est enregistré, hors la page retenue par partie, comme quand on clique le menu.
+
+- **La palette** (Ctrl K, ⌘ K sur Mac, ou « Aller à… » dans la barre du haut) :
+  quelques lettres, sans accents ni majuscules, et elle propose une page, un
+  service, une équipe, une commande (« af eco » : AF · Économie) ou un geste
+  (rejouer la journée, annuler, rétablir, les problèmes, le thème, exporter
+  les résultats, les raccourcis). Ce qui répond est marqué ; les flèches
+  choisissent, Entrée ouvre, Échap ferme, Ctrl K referme. Une équipe s'ouvre
+  dans la fiche de son service, à l'écran, éclairée un instant ; une page
+  reçoit le focus, pour reprendre au clavier en haut de ce qu'on voit. Pas
+  pendant la modification du plan, que le menu non plus ne quitte pas.
+- **La fiche des raccourcis** (touche ?, hors d'un champ, ou depuis la
+  palette) : partout, champs et tableaux, le plan rejoué, le plan en
+  modification, les diagrammes.
+- **Espace lit la journée** sur le plan rejoué, ou la met en pause — hors
+  d'un bouton ou d'un champ, qui gardent leur Espace.
+- **« Calcul à jour »** dans la barre du haut (REFONTE_UX §4 et §7) : le
+  calcul se refait à chaque changement, et son point bat une fois quand il
+  vient de suivre. « Rien à calculer » tant qu'aucune équipe ne prépare. Un
+  clic mène à la synthèse, ou à « Prêt à simuler ? ».
+- **Les mouvements**, courts (180 ms) et seulement là où ils disent quelque
+  chose : une page qui arrive se fond, une fenêtre (palette, fiche, question,
+  problèmes) apparaît, l'équipe retrouvée s'éclaire. « Réduire les
+  animations » (le réglage du système) les coupe tous : vérifié par test.
+- **Le focus** : le nouveau bouton « Aller à… » avait perdu son anneau —
+  `focus-browser` l'a trouvé, il l'a retrouvé ; la page qui reçoit le focus
+  après un saut ne s'entoure pas d'un cadre.
+- **La latence** (critère de l'étape : au plus 10 % au-dessus de la
+  référence). Mesurée contre le commit de l'étape 0 (`fbe9654`), sur la même
+  machine, avec l'unité type de `donnees-intactes`, 180 mesures alternées :
+  un changement prenait 17 ms avant la refonte, 20 ms après l'étape 9
+  (+16 %). Trois causes, corrigées :
+  - le bilan de chaque service se faisait deux fois par changement (la liste
+    des services, puis « Prêt à simuler ? ») : une fois (`bilanDuCalcul`) ;
+  - le registre des problèmes se refaisait pendant le changement : il se
+    refait juste après, et son compte suit aussitôt ;
+  - le menu mesurait sa taille à chaque recalcul, ce qui forçait une mise en
+    page : il ne mesure que quand il change.
+  Après : un changement à +1 à +5 % de la référence ; un changement de page
+  14 à 27 % plus rapide qu'avant la refonte. `latence-browser` tient ces trois
+  règles sans chronomètre.
+- Fichiers : `palette.js` (neuf, v1 = v2), `sim.js` (la palette, l'état du
+  calcul, Espace, le registre après le changement), `unite.js`, `onglets.js`,
+  `icones.js` (la loupe, le clavier), `ds.css`, `index.html` ; v1 et v2.
+- Tests : `palette-browser`, `palette.test` et `latence-browser` (neufs) ;
+  `focus-browser`, `menu`, `coquille`, `aide`, `problemes`, `mon-unite`,
+  `fiche-service`, `editor`, `etat-plan`, `plan-unite`, `champs`, `tableaux`,
+  `graphiques`, `rejeu`, `notifications`, `donnees-intactes`,
+  `browser-smoke` : verts sans changement.
+
 ## 2026-10-09 — Refonte, étape 9 (2/2) : le planning, la frise des vols et les stocks
 
 Toujours sans rien changer aux données ni au calcul (`donnees-intactes-browser`) :

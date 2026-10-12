@@ -116,6 +116,23 @@
         etat: !utilise ? 'libre' : points.length ? 'afaire' : 'ok' };
     }
 
+    /**
+     * Les bilans d'un même calcul. Après un changement, la liste des services,
+     * « Prêt à simuler ? » et le registre des problèmes les demandent tour à
+     * tour, pour le même état : on ne les refait pas. Ils valent pour la tâche
+     * en cours, tant que les cases et le résultat restent les mêmes (refonte,
+     * étape 10 : un changement ne doit pas coûter plus qu'avant la refonte).
+     */
+    bilanDuCalcul(id, classes, resultat) {
+      const v = this.at.version;
+      if (!this.memo || this.memo.r !== resultat || this.memo.v !== v) {
+        const memo = this.memo = { r: resultat, v, bilans: new Map() };
+        queueMicrotask(() => { if (this.memo === memo) this.memo = null; });
+      }
+      if (!this.memo.bilans.has(id)) this.memo.bilans.set(id, this.bilan(id, classes, resultat));
+      return this.memo.bilans.get(id);
+    }
+
     /* ---- rendu ---------------------------------------------------------- */
 
     /** La page affichée de cette vue, s'il y en a une. */
@@ -170,7 +187,7 @@
       const services = this.ordre(this.a.services());
       // Un service dont le bilan échoue reste dans la liste, avec son erreur : le reste s'affiche.
       const bilanSur = id => {
-        try { return this.bilan(id, classes, r); }
+        try { return this.bilanDuCalcul(id, classes, r); }
         catch (e) { if (root.console) root.console.error(e); return { id, nature: 'manuel', cases: this.etat.ateliers.filter(a => a.service === id), passent: 0, attendues: [], vides: [], sansTemps: false, alertes: [], points: ['erreur d’affichage : ' + e.message], etat: 'afaire' }; }
       };
       const bilans = new Map(services.map(s => [s.id, bilanSur(s.id)]));
@@ -632,7 +649,7 @@
       const classes = this.at.classes, r = this.at.resultat || {};
       const vols = this.a.vols ? this.a.vols() : { departs: 0, importes: false };
       const services = this.ordre(this.a.services());
-      const bilans = services.map(s => ({ s, b: this.bilan(s.id, classes, r) }));
+      const bilans = services.map(s => ({ s, b: this.bilanDuCalcul(s.id, classes, r) }));
       const utilises = bilans.filter(x => x.b.etat !== 'libre');
       const absentes = Object.values(r.parClasse || {}).filter(c => c.absente).map(c => c.id);
       const corriger = (r.anomalies || []).filter(x => !CODES_JOURNEE.has(x.code) && !x.service && !x.atelier);

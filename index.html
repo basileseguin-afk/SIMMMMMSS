@@ -127,9 +127,9 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 
 @media(max-width:1250px){ .app{grid-template-columns:260px 1fr 290px} }
 </style>
-<meta name="ory-version" content="3e9395c8fd"/>
+<meta name="ory-version" content="07c3f0e575"/>
 <link href="interface.css?v=a79339df" rel="stylesheet"/><link href="editor.css?v=7c30f1f7" rel="stylesheet"/><link href="flow-center.css?v=62899a0b" rel="stylesheet"/><link href="ateliers.css?v=11a5e456" rel="stylesheet"/>
-<link href="reglages.css?v=492a7bab" rel="stylesheet"/><link href="demarrage.css?v=9ef1de69" rel="stylesheet"/><link href="aide.css?v=6dc5aec0" rel="stylesheet"/><link href="usability.css?v=d05639c8" rel="stylesheet"/><link href="graphe.css?v=c6498078" rel="stylesheet"/><link href="histoire.css?v=768c5f75" rel="stylesheet"/><link href="temps.css?v=5b7080b2" rel="stylesheet"/><link href="unite.css?v=11ed21b1" rel="stylesheet"/><link href="ds.css?v=fe7bd8c9" rel="stylesheet"/></head>
+<link href="reglages.css?v=492a7bab" rel="stylesheet"/><link href="demarrage.css?v=9ef1de69" rel="stylesheet"/><link href="aide.css?v=6dc5aec0" rel="stylesheet"/><link href="usability.css?v=d05639c8" rel="stylesheet"/><link href="graphe.css?v=c6498078" rel="stylesheet"/><link href="histoire.css?v=768c5f75" rel="stylesheet"/><link href="temps.css?v=5b7080b2" rel="stylesheet"/><link href="unite.css?v=11ed21b1" rel="stylesheet"/><link href="ds.css?v=1b1e9e2e" rel="stylesheet"/></head>
 <body data-vue="plan"><a class="skip-link" href="#workspace">Aller au contenu</a>
 <!-- ============ NAVIGATION : la marque, les parties (celle qui est ouverte déplie ses pages), la sauvegarde ============ -->
 <aside aria-label="Navigation" class="barre" id="barre">
@@ -150,6 +150,8 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <header class="haut">
 <nav aria-label="Vous êtes ici" class="ariane" id="ariane"><button class="ariane-partie" hidden="" id="ariane-partie" type="button"></button><span aria-hidden="true" class="ariane-sep" data-ico="droite" hidden=""></span><h1 id="view-title">Accueil</h1></nav>
 <div class="entete-droite">
+<button class="calcul" data-etat="vide" id="calcul-etat" type="button"><span aria-hidden="true" class="calcul-point"></span><span class="calcul-mot">Rien à calculer</span></button>
+<button aria-keyshortcuts="Control+K Meta+K" class="btn btn-sm aller-a" id="btn-palette" title="Aller à une page, un service, une équipe, une commande (Ctrl K)" type="button"><span data-ico="recherche"></span><span class="aller-mot">Aller à…</span><kbd>Ctrl K</kbd></button>
 <button aria-label="Annuler" class="btn btn-icone" disabled="" id="btn-annuler" title="Annuler (Ctrl Z)" type="button"><span data-ico="annuler"></span></button>
 <button aria-label="Rétablir" class="btn btn-icone" disabled="" id="btn-retablir" title="Rétablir (Ctrl Maj Z)" type="button"><span data-ico="retablir"></span></button>
 </div>
@@ -245,10 +247,11 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <script src="rendu.js?v=ac16ab27"></script>
 <script src="champs.js?v=acec5c92"></script>
 <script src="ds.js?v=2acdca0d"></script>
-<script src="onglets.js?v=c808dd8b"></script>
+<script src="palette.js?v=7712201e"></script>
+<script src="onglets.js?v=1e01a69a"></script>
 <script src="problemes.js?v=f8dc7772"></script>
 <script src="notifications.js?v=c02682a3"></script>
-<script src="icones.js?v=ec8c455f"></script>
+<script src="icones.js?v=a3450299"></script>
 <script src="ui-model.js?v=4688387f"></script>
 <script src="moteur/noyau.js?v=5b2122e2"></script>
 <script src="moteur/production.js?v=2b9cffbb"></script>
@@ -260,12 +263,12 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <script src="echanges.js?v=db77d61a"></script>
 <script src="ateliers.js?v=59dc0a47"></script>
 <script src="reglages.js?v=1239e5a5"></script>
-<script src="unite.js?v=3a54d444"></script>
+<script src="unite.js?v=5e38bfcc"></script>
 <script src="demarrage.js?v=7c44dc7e"></script>
 <script src="temps.js?v=e2f675cd"></script>
 <script src="replay.js?v=016adb42"></script>
 <script src="simulation.js?v=8d2f509a"></script>
 <script src="comparaison.js?v=390e35e8"></script>
-<script src="sim.js?v=0c254082"></script>
+<script src="sim.js?v=fac5b5ca"></script>
 </body>
 </html>

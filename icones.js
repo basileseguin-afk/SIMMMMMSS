@@ -79,7 +79,9 @@
     aimant: '<path d="M6 3.5v8.5a6 6 0 0 0 12 0V3.5h-4V12a2 2 0 0 1-4 0V3.5z"/><path d="M6 8h4M14 8h4"/>',
     grille: '<rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M4 9.3h16M4 14.7h16M9.3 4v16M14.7 4v16"/>',
     cadenas: '<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>',
-    cadenasOuvert: '<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 7.7-1.6"/>'
+    cadenasOuvert: '<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 7.7-1.6"/>',
+    recherche: '<circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/>',
+    clavier: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M10.5 10h.01M14 10h.01M17.5 10h.01M8 14.2h8"/>'
   };
 
   /** Un pictogramme, en SVG inline. `titre` le rend lisible aux lecteurs d'écran. */
