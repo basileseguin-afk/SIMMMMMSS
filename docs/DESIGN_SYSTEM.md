@@ -81,7 +81,7 @@ couleur, une taille, un rayon ou une durée en dur.
 | `--ds-bordure` / `-forte` | `#E2DFDA` / `#CDCAC4` | 8 % / 14 % de blanc | les traits fins ; les champs et boutons |
 | `--ds-texte-1` à `-4` | `#0A1626` … `#8794A6` (l'encre bleu nuit) | `#E8EAED` … `#5F6670` | titre et valeur ; texte ; secondaire ; indice (jamais pour une phrase) |
 | `--ds-accent` (+ `-fort`, `-texte`, `-doux`, `-trait`, `-pale`) | `#0B6E99` (bleu océan) | `#2CC2B0` | **l'action et la sélection** |
-| `--ds-nav-*` (fond, lueur, textes, traits, survol, actif, repère, pastilles) et `--ds-heros-ico` | bleu nuit `#0B1A2E` → `#0D2036`, texte blanc, `#B4C2D4`, `#93A7BF` ; repère bleu ciel `#38BDF8` | les surfaces et les textes du thème : la barre d'avant la 2e passe | **la navigation**, et le bandeau de l'accueil qui reprend son bleu nuit |
+| `--ds-nav-*` (fond, lueur, textes, traits, survol, actif, repère, pastilles) et `--ds-heros-ico` | bleu nuit `#0B1A2E` → `#0D2036`, texte blanc, `#E2E8F0`, `#B4C2D4` ; repère bleu ciel `#38BDF8` | les surfaces et les textes du thème : la barre d'avant la 2e passe | **la navigation**, et le bandeau de l'accueil qui reprend son bleu nuit |
 | `--ds-entete-bas` | `#FBFAF9` | `--ds-surface-1` | le bas du titre de la page, à peine plus chaud que le haut |
 | `--ds-ok`, `--ds-attente`, `--ds-retard`, `--ds-info` (+ `-texte`, `-doux`) | vert, ambre, rouge, bleu | plus clairs | **les états** |
 | `--ds-d1` à `--ds-d6`, `--ds-chaine` | bleu, vert, violet, orange, magenta, ocre ; magenta | bleu, violet, vert, ambre, corail, azur ; magenta (inchangés) | **les données** |
@@ -228,7 +228,9 @@ tableau.
   dans l'ordre du travail ; celle qui est ouverte, éclairée d'un trait bleu
   ciel, déplie ses pages ; au pied, les problèmes, la sauvegarde, le thème,
   l'autre version. Le focus y prend le repère bleu ciel, qui se voit sur le
-  bleu nuit.
+  bleu nuit. Un texte clair sur fond foncé paraît plus fin : les parties
+  sont en 14 px, les pages en graisse moyenne (la page ouverte en gras), le
+  texte presque blanc.
 - **La barre du haut** : le fil d'Ariane ; « Calcul à jour » (le point bat
   quand le calcul vient de suivre un changement) ; « Aller à… » ; un seul
   Annuler / Rétablir pour ce que la page modifie.

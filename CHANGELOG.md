@@ -5,6 +5,20 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-15 — Barre latérale : un texte plus lisible
+
+Retour d'usage : « le texte dans la barre à gauche est quand même peu
+lisible ». Le contraste passait (9:1), mais un gris-bleu fin de 13 px paraît
+plus fin encore sur un fond foncé. Trois réglages comparés sur la vraie
+barre ; retenu le plus net : le texte presque blanc (`--ds-nav-texte-2`
+`#E2E8F0`, le secondaire `--ds-nav-texte-3` `#B4C2D4` : les pictogrammes, les
+pages « Plus », la version, et le texte des étapes de l'accueil), les
+parties en 14 px, les pages en graisse moyenne et la page ouverte en gras.
+Rien d'autre ne change.
+
+- Fichiers : `ds.css` (v1, v2), `index.html`, `v2/index.html`, `accueil.html`
+  (empreintes), `docs/DESIGN_SYSTEM.md`.
+
 ## 2026-10-15 — Thème clair : le fond passe en « pierre »
 
 Retour d'usage : le fond pêche « ne se marie pas du tout avec l'ensemble de la

@@ -53,7 +53,7 @@
      nuit, son texte clair, un repère bleu ciel pour la page ouverte. Les
      pastilles des onglets y prennent un fond teinté opaque : leur contraste se vérifie. */
   --ds-nav-fond:#0B1A2E; --ds-nav-fond-bas:#0D2036; --ds-nav-lueur:#16395E; --ds-nav-bord:#081324;
-  --ds-nav-texte-1:#FFFFFF; --ds-nav-texte-2:#B4C2D4; --ds-nav-texte-3:#93A7BF;
+  --ds-nav-texte-1:#FFFFFF; --ds-nav-texte-2:#E2E8F0; --ds-nav-texte-3:#B4C2D4;
   --ds-nav-trait:color-mix(in srgb,#FFFFFF 9%,transparent); --ds-nav-trait-fort:color-mix(in srgb,#FFFFFF 22%,transparent);
   --ds-nav-survol:color-mix(in srgb,#FFFFFF 6%,transparent); --ds-nav-badge:color-mix(in srgb,#FFFFFF 11%,transparent);
   --ds-nav-actif:color-mix(in srgb,#38BDF8 13%,transparent); --ds-nav-sous-actif:color-mix(in srgb,#FFFFFF 9%,transparent);
@@ -397,7 +397,7 @@ body>.accueil,body>.app{grid-column:2;grid-row:3;min-width:0;min-height:0}
 .barre-defile{flex:1 1 auto;min-height:0;overflow-y:auto;padding:10px 8px;overscroll-behavior:contain}
 .menu-parties{display:flex;flex-direction:column;gap:1px}
 .menu-partie,.barre-lien{display:flex;align-items:center;gap:10px;width:100%;min-height:32px;padding:0 10px;border:0;border-radius:var(--ds-r-2);
-  background:none;font:inherit;font-size:var(--ds-t-13);font-weight:var(--ds-g-moyen);color:var(--ds-nav-texte-2);text-align:left;
+  background:none;font:inherit;font-size:var(--ds-t-14);font-weight:var(--ds-g-moyen);color:var(--ds-nav-texte-2);text-align:left;
   white-space:nowrap;cursor:pointer;transition:background var(--ds-t-rapide),color var(--ds-t-rapide)}
 .menu-partie .ico,.barre-lien .ico{width:16px;height:16px;flex:none;color:var(--ds-nav-texte-3)}
 .barre-lien>[data-ico]{display:inline-flex}
@@ -417,11 +417,11 @@ body>.accueil,body>.app{grid-column:2;grid-row:3;min-width:0;min-height:0}
 body[data-partie="fichier"] .sous-onglets,body.editing .sous-onglets{display:none}
 .so-liste{display:flex;flex-direction:column;gap:1px}
 .so-onglet{position:relative;display:flex;align-items:center;gap:8px;width:100%;min-height:28px;padding:4px 8px;border:0;
-  border-radius:var(--ds-r-2);background:none;font:inherit;font-size:var(--ds-t-13);font-weight:var(--ds-g-normal);line-height:1.3;
+  border-radius:var(--ds-r-2);background:none;font:inherit;font-size:var(--ds-t-13);font-weight:var(--ds-g-moyen);line-height:1.3;
   color:var(--ds-nav-texte-2);text-align:left;cursor:pointer;transition:background var(--ds-t-rapide),color var(--ds-t-rapide)}
 .so-onglet .ico{display:none}
 .so-onglet:hover{background:var(--ds-nav-survol);color:var(--ds-nav-texte-1)}
-.so-onglet.actif{background:var(--ds-nav-sous-actif);color:var(--ds-nav-texte-1);font-weight:var(--ds-g-moyen)}
+.so-onglet.actif{background:var(--ds-nav-sous-actif);color:var(--ds-nav-texte-1);font-weight:var(--ds-g-fort)}
 .so-onglet.actif::before{content:"";position:absolute;left:-10px;top:5px;bottom:5px;width:2px;border-radius:2px;background:var(--ds-nav-repere)}
 .so-onglet:focus-visible{outline:2px solid var(--ds-nav-repere);outline-offset:-2px}
 .so-onglet.so-secondaire{color:var(--ds-nav-texte-3)}
