@@ -12,7 +12,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE_PATH?{executablePath:process.env.CHROMIUM_EXECUTABLE_PATH,args:['--no-sandbox','--disable-gpu','--disable-software-rasterizer','--no-zygote','--single-process']}:{})});
  const page=await browser.newPage({viewport:{width:1280,height:800}}),errors=[];
  page.on('pageerror',e=>errors.push(e.message));
- page.on('requestfailed',r=>errors.push('requête en échec : '+r.url()));
+ // Une requête annulée par un rechargement (le test en fait) n'est pas un fichier
+ // manquant : une police encore en route quand la page se recharge le serait.
+ page.on('requestfailed',r=>{const f=(r.failure()||{}).errorText;if(f!=='net::ERR_ABORTED')errors.push('requête en échec : '+r.url()+' ('+f+')');});
  const url=pathToFileURL(path.resolve(__dirname,'../accueil.html')).href;
  const ouvrir=async(theme,[l,h])=>{
    await page.setViewportSize({width:l,height:h});

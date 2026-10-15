@@ -5,6 +5,17 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-15 — Test de la page d'entrée : une police annulée n'est pas une erreur
+
+La batterie complète a vu `accueil-browser` échouer une fois, la machine
+chargée : la police était encore en route quand le test rechargeait la page,
+et l'annulation (`net::ERR_ABORTED`) comptait comme une requête en échec.
+Reproduit à coup sûr en retardant la police de 500 ms. Le test ignore
+désormais une requête annulée par un rechargement ; une police qui manque le
+fait toujours échouer (vérifié en la refusant). La page n'avait rien.
+
+- Fichier : `tests/accueil-browser.cjs`.
+
 ## 2026-10-15 — Plonge : une équipe de plus aux tunnels (le matin, le soir)
 
 Retour d'usage : « l'atelier plonge tunnel actuel gère le shift de l'aprem, je
