@@ -3,7 +3,7 @@
 Ce document dit comment l'interface est construite depuis la refonte du
 08/10 au 12/10 (`docs/REFONTE_UX.md`, étapes 0 à 11), et depuis la deuxième
 passe de direction artistique du 15/10 (thème clair : une navigation bleu
-nuit, un fond chaud, des cartes qui ont de la profondeur, des titres de page
+nuit, un fond pierre, des cartes qui ont de la profondeur, des titres de page
 plus affirmés, des indicateurs à voyant). Il sert à ajouter un écran ou un
 composant sans casser l'ensemble : mêmes jetons, mêmes composants, mêmes
 règles, en v1 comme en v2.
@@ -76,13 +76,13 @@ couleur, une taille, un rayon ou une durée en dur.
 
 | Jeton | Clair | Sombre | Pour quoi |
 |---|---|---|---|
-| `--ds-fond` | `#F6E8DF` (chaud, à peine orangé) | `#0B0D10` | le fond de la page |
-| `--ds-surface-1` / `-2` / `-3` | `#FFF` / `#FCF6F2` / `#FFF` | `#111418` / `#171B21` / `#1D222A` | carte ; zone en retrait ; ce qui flotte |
-| `--ds-bordure` / `-forte` | `#E7DDD7` / `#D3C8C1` | 8 % / 14 % de blanc | les traits fins ; les champs et boutons |
+| `--ds-fond` | `#EDEAE6` (pierre : un gris à peine chaud) | `#0B0D10` | le fond de la page |
+| `--ds-surface-1` / `-2` / `-3` | `#FFF` / `#F9F7F5` / `#FFF` | `#111418` / `#171B21` / `#1D222A` | carte ; zone en retrait ; ce qui flotte |
+| `--ds-bordure` / `-forte` | `#E2DFDA` / `#CDCAC4` | 8 % / 14 % de blanc | les traits fins ; les champs et boutons |
 | `--ds-texte-1` à `-4` | `#0A1626` … `#8794A6` (l'encre bleu nuit) | `#E8EAED` … `#5F6670` | titre et valeur ; texte ; secondaire ; indice (jamais pour une phrase) |
 | `--ds-accent` (+ `-fort`, `-texte`, `-doux`, `-trait`, `-pale`) | `#0B6E99` (bleu océan) | `#2CC2B0` | **l'action et la sélection** |
 | `--ds-nav-*` (fond, lueur, textes, traits, survol, actif, repère, pastilles) et `--ds-heros-ico` | bleu nuit `#0B1A2E` → `#0D2036`, texte blanc, `#B4C2D4`, `#93A7BF` ; repère bleu ciel `#38BDF8` | les surfaces et les textes du thème : la barre d'avant la 2e passe | **la navigation**, et le bandeau de l'accueil qui reprend son bleu nuit |
-| `--ds-entete-bas` | `#FDFAF7` | `--ds-surface-1` | le bas du titre de la page, à peine plus chaud que le haut |
+| `--ds-entete-bas` | `#FBFAF9` | `--ds-surface-1` | le bas du titre de la page, à peine plus chaud que le haut |
 | `--ds-ok`, `--ds-attente`, `--ds-retard`, `--ds-info` (+ `-texte`, `-doux`) | vert, ambre, rouge, bleu | plus clairs | **les états** |
 | `--ds-d1` à `--ds-d6`, `--ds-chaine` | bleu, vert, violet, orange, magenta, ocre ; magenta | bleu, violet, vert, ambre, corail, azur ; magenta (inchangés) | **les données** |
 | `--ds-sur-accent`, `--ds-sur-retard`, `--ds-sur-attente`, `--ds-sur-donnee` | blanc | presque noir | le texte posé sur ces couleurs pleines |

@@ -40,9 +40,10 @@
   --ds-t-rapide:120ms; --ds-t-panneau:180ms; --ds-t-vue:240ms; --ds-courbe:cubic-bezier(.2,.8,.2,1);
 
   /* Couleurs — thème clair (2e passe, 15/10) : une encre bleu nuit sur un fond
-     chaud, à peine orangé ; des cartes blanches posées dessus. */
-  --ds-fond:#F6E8DF; --ds-surface-1:#FFFFFF; --ds-surface-2:#FCF6F2; --ds-surface-3:#FFFFFF; --ds-survol:#F9F2ED;
-  --ds-bordure:#E7DDD7; --ds-bordure-forte:#D3C8C1;
+     pierre, gris à peine chaud (le pêche du premier essai teintait tout de rose) ;
+     des cartes blanches posées dessus. */
+  --ds-fond:#EDEAE6; --ds-surface-1:#FFFFFF; --ds-surface-2:#F9F7F5; --ds-surface-3:#FFFFFF; --ds-survol:#F5F3F0;
+  --ds-bordure:#E2DFDA; --ds-bordure-forte:#CDCAC4;
   --ds-texte-1:#0A1626; --ds-texte-2:#36475A; --ds-texte-3:#526174; --ds-texte-4:#8794A6;
   --ds-accent:#0B6E99; --ds-accent-fort:#085A7E; --ds-accent-texte:#0A6690;
   --ds-accent-doux:color-mix(in srgb,#0B6E99 10%,transparent); --ds-accent-trait:color-mix(in srgb,#0B6E99 38%,transparent); --ds-sur-accent:#FFFFFF;
@@ -84,7 +85,7 @@
   --ds-ombre-bouton:0 1px 2px rgba(10,22,38,.18),inset 0 1px 0 rgba(255,255,255,.14);
   --ds-ombre-haut:0 6px 16px -12px rgba(10,22,38,.28);
   --ds-ombre-heros:0 18px 36px -20px rgba(11,26,46,.55);
-  --ds-entete-bas:#FDFAF7;
+  --ds-entete-bas:#FBFAF9;
   --ds-ombre-flottant:0 10px 28px -6px rgba(16,24,40,.16),0 2px 6px -2px rgba(16,24,40,.08),0 0 0 1px rgba(16,24,40,.06);
   --ds-focus:0 0 0 3px color-mix(in srgb,#0B6E99 28%,transparent);
   --ds-voile:rgba(16,24,40,.32);

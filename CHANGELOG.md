@@ -5,6 +5,22 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-15 — Thème clair : le fond passe en « pierre »
+
+Retour d'usage : le fond pêche « ne se marie pas du tout avec l'ensemble de la
+simulation ». Il teintait toute l'application de rose, contre le bleu nuit,
+les bleus de l'interface et les couleurs du planning. Quatre fonds ont été
+comparés sur les vrais écrans (gris perle, pierre, sable, pêche atténué) ;
+retenu : **pierre**, `#EDEAE6`, un gris à peine chaud. Les traits et les zones
+en retrait s'accordent (`--ds-surface-2` `#F9F7F5`, `--ds-survol` `#F5F3F0`,
+`--ds-bordure` `#E2DFDA`, `--ds-bordure-forte` `#CDCAC4`, `--ds-entete-bas`
+`#FBFAF9`). Rien d'autre ne change : la navigation, les cartes, les couleurs
+des graphiques et le thème sombre restent ceux de la direction retenue ; le
+contraste des textes reste AA (`contraste.test`).
+
+- Fichiers : `ds.css` (v1, v2), `index.html`, `v2/index.html`, `accueil.html`
+  (empreintes), `docs/DESIGN_SYSTEM.md`, `README.md`.
+
 ## 2026-10-15 — Deuxième passe de direction artistique : le thème clair
 
 Demande : un thème clair moins blanc, moins uniforme, avec du caractère et de
