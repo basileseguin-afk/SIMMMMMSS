@@ -609,7 +609,7 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 |---|---|
 | `index.html` | Structure et contrôles |
 | `interface.css` | Disposition et hiérarchie visuelle |
-| `ds.css` / `polices/` | Le design system, posé en dernier (refonte du 08/10) : jetons (thème clair, sombre en option), police Inter embarquée (licence OFL), boutons, champs, pastilles, cartes, tableaux ; la coquille : barre latérale, barre du haut (fil d’Ariane, état du calcul, « Aller à… », Annuler / Rétablir), titre de la page ; la palette et la fiche des raccourcis ; les mouvements (180 ms au plus), coupés quand les animations sont réduites |
+| `ds.css` / `polices/` | Le design system, posé en dernier (refonte du 08/10, deuxième passe du 15/10 pour le thème clair : navigation bleu nuit, fond chaud, cartes posées avec une ombre douce, titre de page avec sa partie en surtitre, indicateurs à voyant, palette des données validée pour les daltoniens) : jetons (thème clair, sombre en option), police Inter embarquée (licence OFL), boutons, champs, pastilles, cartes, tableaux ; la coquille : barre latérale, barre du haut (fil d’Ariane, état du calcul, « Aller à… », Annuler / Rétablir), titre de la page ; la palette et la fiche des raccourcis ; les mouvements (180 ms au plus), coupés quand les animations sont réduites |
 | `unite.js` / `unite.css` | Prêt à simuler ?, Flux de production et Services et équipes : le pas à pas et la fiche de chaque service (équipes, grille à cocher, minutes) |
 | `sim.js` | Interface, plan, interactions, glue entre les centres |
 | **`moteur/production.js`** | **Modèle par ateliers de travail** — compagnie × classe, lots ordonnés, robot, plonge, parcours lu des flux. Voir [la note de modèle](docs/MODELE_ATELIERS.md) |

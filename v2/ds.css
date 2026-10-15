@@ -9,6 +9,10 @@
  *  une seule couleur d'accent ; une densité maîtrisée ; les nombres en
  *  chiffres tabulaires ; des mouvements courts.
  *
+ *  Deuxième passe (15/10), thème clair : une navigation bleu nuit, un fond
+ *  chaud, des cartes blanches qui ont de la profondeur, des titres de page
+ *  plus affirmés, des indicateurs à voyant. Le thème sombre n'a pas bougé.
+ *
  *  1. Jetons            — thème clair (par défaut) et sombre (en option)
  *  2. Correspondances   — les anciennes variables des vues, rebranchées
  *  3. Base              — police, texte, focus, défilement, mouvements
@@ -35,32 +39,54 @@
   --ds-h-compact:28px; --ds-h-normal:32px;
   --ds-t-rapide:120ms; --ds-t-panneau:180ms; --ds-t-vue:240ms; --ds-courbe:cubic-bezier(.2,.8,.2,1);
 
-  /* Couleurs — thème clair. */
-  --ds-fond:#F7F8FA; --ds-surface-1:#FFFFFF; --ds-surface-2:#F2F4F7; --ds-surface-3:#FFFFFF; --ds-survol:#F4F5F7;
-  --ds-bordure:#E6E8EC; --ds-bordure-forte:#D5D9E0;
-  --ds-texte-1:#111827; --ds-texte-2:#4B5563; --ds-texte-3:#626A77; --ds-texte-4:#9AA1AC;
-  --ds-accent:#0F766E; --ds-accent-fort:#115E59; --ds-accent-texte:#0F766E;
-  --ds-accent-doux:color-mix(in srgb,#0F766E 9%,transparent); --ds-accent-trait:color-mix(in srgb,#0F766E 35%,transparent); --ds-sur-accent:#FFFFFF;
-  /* L'élément choisi d'une liste (la page ouverte) : l'accent, pâle et opaque. */
-  --ds-accent-pale:#E9F3F2;
-  /* Les fonds teintés des pastilles d'onglet, opaques (sur la barre latérale) : leur contraste se vérifie. */
-  --ds-attente-pale:#F8F0E9; --ds-retard-pale:#FAEEEE;
+  /* Couleurs — thème clair (2e passe, 15/10) : une encre bleu nuit sur un fond
+     chaud, à peine orangé ; des cartes blanches posées dessus. */
+  --ds-fond:#F6E8DF; --ds-surface-1:#FFFFFF; --ds-surface-2:#FCF6F2; --ds-surface-3:#FFFFFF; --ds-survol:#F9F2ED;
+  --ds-bordure:#E7DDD7; --ds-bordure-forte:#D3C8C1;
+  --ds-texte-1:#0A1626; --ds-texte-2:#36475A; --ds-texte-3:#526174; --ds-texte-4:#8794A6;
+  --ds-accent:#0B6E99; --ds-accent-fort:#085A7E; --ds-accent-texte:#0A6690;
+  --ds-accent-doux:color-mix(in srgb,#0B6E99 10%,transparent); --ds-accent-trait:color-mix(in srgb,#0B6E99 38%,transparent); --ds-sur-accent:#FFFFFF;
+  /* L'élément choisi d'une liste : l'accent, pâle et opaque. */
+  --ds-accent-pale:#E1EEF6;
+  /* La navigation, et le bandeau de l'accueil qui lui répond : une surface bleu
+     nuit, son texte clair, un repère bleu ciel pour la page ouverte. Les
+     pastilles des onglets y prennent un fond teinté opaque : leur contraste se vérifie. */
+  --ds-nav-fond:#0B1A2E; --ds-nav-fond-bas:#0D2036; --ds-nav-lueur:#16395E; --ds-nav-bord:#081324;
+  --ds-nav-texte-1:#FFFFFF; --ds-nav-texte-2:#B4C2D4; --ds-nav-texte-3:#93A7BF;
+  --ds-nav-trait:color-mix(in srgb,#FFFFFF 9%,transparent); --ds-nav-trait-fort:color-mix(in srgb,#FFFFFF 22%,transparent);
+  --ds-nav-survol:color-mix(in srgb,#FFFFFF 6%,transparent); --ds-nav-badge:color-mix(in srgb,#FFFFFF 11%,transparent);
+  --ds-nav-actif:color-mix(in srgb,#38BDF8 13%,transparent); --ds-nav-sous-actif:color-mix(in srgb,#FFFFFF 9%,transparent);
+  --ds-nav-repere:#38BDF8; --ds-nav-actif-trait:#38BDF8; --ds-heros-ico:#9DD8F5;
+  --ds-nav-attente-fond:#323731; --ds-nav-attente-texte:#FCD34D; --ds-nav-retard-fond:#362C3E; --ds-nav-retard-texte:#FCA5A5;
   --ds-ok:#15803D; --ds-ok-texte:#166534; --ds-ok-doux:color-mix(in srgb,#15803D 9%,transparent);
   --ds-attente:#B45309; --ds-attente-texte:#92400E; --ds-attente-doux:color-mix(in srgb,#B45309 9%,transparent);
   --ds-retard:#C0262D; --ds-retard-texte:#A11D24; --ds-retard-doux:color-mix(in srgb,#C0262D 8%,transparent); --ds-sur-retard:#FFFFFF;
   --ds-info:#1D4ED8; --ds-info-doux:color-mix(in srgb,#1D4ED8 8%,transparent);
-  /* Les données (classes, flux) : la couleur n'y sert qu'à reconnaître. */
-  --ds-d1:#3B5BDB; --ds-d2:#7C4DDB; --ds-d3:#0E9F6E; --ds-d4:#B7791F; --ds-d5:#D9534F; --ds-d6:#2B87B5;
-  --ds-chaine:#A21CAF;
+  /* Les données (classes, flux) : la couleur n'y sert qu'à reconnaître. L'ordre
+     compte (15/10) : deux voisines restent distinctes en vision normale comme
+     pour un daltonien — bleu, vert, violet, orange, magenta, ocre, validés
+     paire par paire (l'équipe, le robot et la chaîne du planning ; les deux
+     jauges du budget ; les classes dans l'ordre de leurs barres). */
+  --ds-d1:#2563C4; --ds-d2:#127A55; --ds-d3:#6250D6; --ds-d4:#EB6834; --ds-d5:#C2378F; --ds-d6:#B98100;
+  --ds-chaine:#C2378F;
   /* Ce qui s'écrit sur une couleur de donnée : l'étiquette d'une barre. */
   --ds-sur-donnee:#FFFFFF;
   /* Ce qui s'écrit sur l'attente pleine (le bouton Pause du rejeu). */
   --ds-sur-attente:#FFFFFF;
   /* Les traits du dessin : le contour d'un service sur le plan, un lien entre services. */
   --ds-trait-plan:#8C97A6; --ds-trait-lien:#7D8A9B;
-  --ds-ombre-1:0 1px 2px rgba(16,24,40,.05);
+  --ds-ombre-1:0 1px 2px rgba(10,22,38,.06);
+  /* La profondeur (2e passe) : une carte se pose sur le fond, s'élève un peu au
+     survol ; le bouton principal a de la matière ; la barre du haut et le titre
+     de la page tiennent au-dessus de ce qui défile. */
+  --ds-ombre-carte:0 1px 2px rgba(10,22,38,.05),0 8px 18px -10px rgba(10,22,38,.16);
+  --ds-ombre-carte-survol:0 1px 2px rgba(10,22,38,.06),0 14px 28px -12px rgba(10,22,38,.24);
+  --ds-ombre-bouton:0 1px 2px rgba(10,22,38,.18),inset 0 1px 0 rgba(255,255,255,.14);
+  --ds-ombre-haut:0 6px 16px -12px rgba(10,22,38,.28);
+  --ds-ombre-heros:0 18px 36px -20px rgba(11,26,46,.55);
+  --ds-entete-bas:#FDFAF7;
   --ds-ombre-flottant:0 10px 28px -6px rgba(16,24,40,.16),0 2px 6px -2px rgba(16,24,40,.08),0 0 0 1px rgba(16,24,40,.06);
-  --ds-focus:0 0 0 3px color-mix(in srgb,#0F766E 22%,transparent);
+  --ds-focus:0 0 0 3px color-mix(in srgb,#0B6E99 28%,transparent);
   --ds-voile:rgba(16,24,40,.32);
   color-scheme:light;
 }
@@ -73,7 +99,15 @@
   --ds-accent:#2CC2B0; --ds-accent-fort:#5EDBCB; --ds-accent-texte:#5EDBCB;
   --ds-accent-doux:color-mix(in srgb,#2CC2B0 13%,transparent); --ds-accent-trait:color-mix(in srgb,#2CC2B0 40%,transparent); --ds-sur-accent:#04201D;
   --ds-accent-pale:#152B2C;
-  --ds-attente-pale:#2A2519; --ds-retard-pale:#2F1C1E;
+  /* La navigation et le bandeau de l'accueil gardent ici leur allure d'avant
+     la 2e passe : les surfaces et les textes du thème sombre. */
+  --ds-nav-fond:var(--ds-surface-1); --ds-nav-fond-bas:var(--ds-surface-1); --ds-nav-lueur:var(--ds-surface-1); --ds-nav-bord:var(--ds-bordure);
+  --ds-nav-texte-1:var(--ds-texte-1); --ds-nav-texte-2:var(--ds-texte-2); --ds-nav-texte-3:var(--ds-texte-3);
+  --ds-nav-trait:var(--ds-bordure); --ds-nav-trait-fort:var(--ds-bordure-forte);
+  --ds-nav-survol:var(--ds-survol); --ds-nav-badge:var(--ds-surface-2);
+  --ds-nav-actif:var(--ds-surface-2); --ds-nav-sous-actif:var(--ds-accent-pale);
+  --ds-nav-repere:var(--ds-accent); --ds-nav-actif-trait:transparent; --ds-heros-ico:var(--ds-texte-2);
+  --ds-nav-attente-fond:#2A2519; --ds-nav-attente-texte:var(--ds-attente-texte); --ds-nav-retard-fond:#2F1C1E; --ds-nav-retard-texte:var(--ds-retard-texte);
   --ds-ok:#3FB950; --ds-ok-texte:#56D364; --ds-ok-doux:color-mix(in srgb,#3FB950 13%,transparent);
   --ds-attente:#D29922; --ds-attente-texte:#E3B341; --ds-attente-doux:color-mix(in srgb,#D29922 13%,transparent);
   --ds-retard:#F85149; --ds-retard-texte:#FF7B72; --ds-retard-doux:color-mix(in srgb,#F85149 13%,transparent); --ds-sur-retard:#1A0606;
@@ -82,7 +116,13 @@
   --ds-chaine:#E879F9;
   --ds-sur-donnee:#0B0D10;
   --ds-sur-attente:#1A1206;
-  --ds-ombre-1:none;
+  /* En sombre, l'élévation se lit à la luminance des surfaces : les ombres
+     s'effacent (une ombre nulle, pas « none », pour se combiner à une autre :
+     « 0 0 0 2px X, none » n'est pas une valeur, et l'anneau disparaissait). */
+  --ds-ombre-1:0 0 transparent;
+  --ds-ombre-carte:0 0 transparent; --ds-ombre-carte-survol:0 0 transparent; --ds-ombre-bouton:0 0 transparent;
+  --ds-ombre-haut:0 0 transparent; --ds-ombre-heros:0 0 transparent;
+  --ds-entete-bas:var(--ds-surface-1);
   --ds-ombre-flottant:0 12px 32px -6px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.1);
   --ds-focus:0 0 0 3px color-mix(in srgb,#2CC2B0 30%,transparent);
   --ds-voile:rgba(0,0,0,.55);
@@ -113,6 +153,13 @@
   --plan-bg:var(--ds-surface-1);
   --zone-fill:var(--ds-surface-1); --zone-stroke:var(--ds-trait-plan); --zone-txt:var(--ds-texte-1); --zone-sous:var(--ds-texte-2);
   --halo:var(--ds-surface-1); --edge:var(--ds-trait-lien); --edge-retour:var(--ds-d2);
+}
+/* Thème clair : la palette des données a changé d'ordre (15/10). Chaque classe
+   garde sa famille de couleur (Business ocre, Premium violet, Économie vert,
+   Équipage bleu, repas spéciaux orangés), et les retours de matériel leur violet. */
+:root:not([data-theme="sombre"]){
+  --cab-BC:var(--ds-d6); --cab-PC:var(--ds-d3); --cab-YC:var(--ds-d2); --cab-CREW:var(--ds-d1); --cab-SPML:var(--ds-d4);
+  --violet:var(--ds-d3); --edge-retour:var(--ds-d3);
 }
 
 /* ---- 3. Base --------------------------------------------------------------- */
@@ -161,7 +208,7 @@ a{color:var(--ds-accent-texte)}
 .btn:disabled{opacity:.45;box-shadow:none;cursor:not-allowed}
 .btn-sm{min-height:var(--ds-h-compact);padding:0 10px;font-size:var(--ds-t-12);border-radius:var(--ds-r-2)}
 .btn-mini{min-height:var(--ds-h-compact);min-width:var(--ds-h-compact);padding:0 8px;font-size:var(--ds-t-13);font-weight:var(--ds-g-moyen);line-height:1}
-.btn-play,.btn.btn-play{background:var(--ds-accent);border-color:var(--ds-accent);color:var(--ds-sur-accent);box-shadow:var(--ds-ombre-1)}
+.btn-play,.btn.btn-play{background:var(--ds-accent);border-color:var(--ds-accent-fort);color:var(--ds-sur-accent);box-shadow:var(--ds-ombre-bouton)}
 .btn-play .ico,.btn.btn-play .ico{color:currentColor}
 .btn-play:hover:not(:disabled),.btn.btn-play:hover:not(:disabled){background:var(--ds-accent-fort);border-color:var(--ds-accent-fort);color:var(--ds-sur-accent)}
 .btn-play:focus-visible,.btn.btn-play:focus-visible,.btn-pause:focus-visible,.btn.btn-pause:focus-visible{box-shadow:var(--ds-focus)}
@@ -237,20 +284,27 @@ label{color:inherit}
 /* Pastilles d'état. */
 .status{font-weight:var(--ds-g-moyen);border-radius:99px;padding:2px 8px;font-size:var(--ds-t-12)}
 
-/* Cartes : une bordure fine, pas d'ombre (sauf ce qui flotte). */
+/* Cartes : une bordure fine ; celles du travail se posent sur le fond avec une
+   ombre douce (2e passe) — en sombre, la luminance des surfaces suffit. */
 .acc-histoire,.acc-tuile,.mu-fiche,.mu-pas-etape,.mu-svc,.at-carte,.vols-donnees .panneau,.reglages-grille .panneau,
 .svc-table,.rc-scroll,.rg-recap-scroll,.kpi,.bilan-cle,.qf,.planche,.fc-alerte,.rg-service,.panneau{
   border-color:var(--ds-bordure);box-shadow:none}
+.acc-tuile,.acc-suite,.mu-fiche,.mu-pas-etape,.mu-svc,.mu-carte-cadre,.mu-retours,.at-carte,.at-planning-cadre,.vols-donnees .panneau,
+.reglages-grille .panneau,.svc-table,.rc-scroll,.rg-recap-scroll,.bilan-cle,.qf,.planche,.fc-alerte,.rg-service{box-shadow:var(--ds-ombre-carte)}
 .panneau{background:var(--ds-surface-1);border-radius:var(--ds-r-3)}
-.panneau h3{font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);color:var(--ds-texte-2);text-transform:none;letter-spacing:0}
+.panneau h3{font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);color:var(--ds-texte-1);text-transform:none;letter-spacing:0}
 .reglages-grille .panneau{background:var(--ds-surface-1);border-radius:var(--ds-r-3)}
 .at-carte{border-radius:var(--ds-r-3)}
 .at-carte.ouverte{border-color:var(--ds-accent-trait);box-shadow:0 0 0 3px var(--ds-accent-doux)}
 
-/* Tableaux : en-têtes sobres (pas de capitales), lignes qui réagissent au survol. */
+/* Tableaux : les en-têtes de colonne sur un fond, en petites capitales espacées
+   (2e passe) ; les lignes réagissent au survol. */
 table th{font-weight:var(--ds-g-moyen)}
 .flight-table th,.svc-table th,.rc-table thead th,.planche-table th,.rg-table thead th,.qf-table thead th{
   font-size:var(--ds-t-12);font-weight:var(--ds-g-moyen);color:var(--ds-texte-3);text-transform:none;letter-spacing:0;background:var(--ds-surface-1)}
+.flight-table thead th,.svc-table thead th,.rc-table thead th,.planche-table thead th,.rg-table thead th,.qf-table thead th{
+  font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);letter-spacing:.06em;text-transform:uppercase;background:var(--ds-surface-2);
+  border-bottom:1px solid var(--ds-bordure-forte)}
 .flight-table tbody tr,.svc-table tbody tr,.rc-table tbody tr,.planche-table tbody tr{transition:background var(--ds-t-rapide)}
 .flight-table tbody tr:hover,.svc-table tbody tr:hover,.planche-table tbody tr:hover{background:var(--ds-survol)}
 .flight-table th,.flight-table td{border-bottom-color:var(--ds-bordure)}
@@ -326,57 +380,61 @@ body>.accueil,body>.app{grid-column:2;grid-row:3;min-width:0;min-height:0}
 
 /* La barre latérale : la marque, les parties dans l'ordre du travail (celle
    qui est ouverte déplie ses pages), puis la sauvegarde et la version. */
-.barre{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--ds-surface-1);border-right:1px solid var(--ds-bordure);
-  position:relative;z-index:31}
+.barre{display:flex;flex-direction:column;min-width:0;min-height:0;background:linear-gradient(180deg,var(--ds-nav-fond),var(--ds-nav-fond-bas)) var(--ds-nav-fond);
+  border-right:1px solid var(--ds-nav-bord);position:relative;z-index:31}
 .barre .marque{display:flex;align-items:center;gap:10px;flex:none;width:100%;height:var(--haut-h);padding:0 16px;border:0;
-  border-bottom:1px solid var(--ds-bordure);background:none;font:inherit;color:var(--ds-texte-1);text-align:left;cursor:pointer}
-.brand-mark{display:grid;place-items:center;flex:none;width:24px;height:24px;border-radius:var(--ds-r-2);background:var(--ds-accent);
-  color:var(--ds-sur-accent);font-size:var(--ds-t-13);font-weight:var(--ds-g-fort);line-height:1}
+  border-bottom:1px solid var(--ds-nav-trait);background:none;font:inherit;color:var(--ds-nav-texte-1);text-align:left;cursor:pointer}
+.brand-mark{display:grid;place-items:center;flex:none;width:24px;height:24px;border-radius:var(--ds-r-2);
+  background:linear-gradient(135deg,var(--ds-nav-repere),var(--ds-accent));color:var(--ds-sur-accent);font-size:var(--ds-t-13);
+  font-weight:var(--ds-g-fort);line-height:1}
 .barre .marque:hover .brand-mark{background:var(--ds-accent-fort)}
 .barre .marque:disabled{cursor:not-allowed;opacity:.6}
 .marque-txt{display:block;min-width:0;font-size:var(--ds-t-13);font-weight:var(--ds-g-fort);letter-spacing:-.01em;line-height:1.25;white-space:nowrap}
 .marque-txt small{display:none}
 .marque-version{display:block;overflow:hidden;text-overflow:ellipsis;font-family:var(--ds-mono);font-size:var(--ds-t-11);
-  font-weight:var(--ds-g-normal);letter-spacing:0;color:var(--ds-texte-3)}
+  font-weight:var(--ds-g-normal);letter-spacing:0;color:var(--ds-nav-texte-3)}
 .barre-defile{flex:1 1 auto;min-height:0;overflow-y:auto;padding:10px 8px;overscroll-behavior:contain}
 .menu-parties{display:flex;flex-direction:column;gap:1px}
 .menu-partie,.barre-lien{display:flex;align-items:center;gap:10px;width:100%;min-height:32px;padding:0 10px;border:0;border-radius:var(--ds-r-2);
-  background:none;font:inherit;font-size:var(--ds-t-13);font-weight:var(--ds-g-moyen);color:var(--ds-texte-2);text-align:left;
+  background:none;font:inherit;font-size:var(--ds-t-13);font-weight:var(--ds-g-moyen);color:var(--ds-nav-texte-2);text-align:left;
   white-space:nowrap;cursor:pointer;transition:background var(--ds-t-rapide),color var(--ds-t-rapide)}
-.menu-partie .ico,.barre-lien .ico{width:16px;height:16px;flex:none;color:var(--ds-texte-3)}
+.menu-partie .ico,.barre-lien .ico{width:16px;height:16px;flex:none;color:var(--ds-nav-texte-3)}
 .barre-lien>[data-ico]{display:inline-flex}
-.menu-partie:hover:not(:disabled),.barre-lien:hover:not(:disabled){background:var(--ds-survol);color:var(--ds-texte-1)}
-.menu-partie.actif,.barre-lien.actif{background:var(--ds-surface-2);color:var(--ds-texte-1)}
-.menu-partie.actif .ico,.barre-lien.actif .ico{color:var(--ds-accent)}
+.menu-partie:hover:not(:disabled),.barre-lien:hover:not(:disabled){background:var(--ds-nav-survol);color:var(--ds-nav-texte-1)}
+/* La partie ouverte : éclairée, un trait bleu ciel à gauche (2e passe). */
+.menu-partie.actif,.barre-lien.actif{background:var(--ds-nav-actif);color:var(--ds-nav-texte-1);box-shadow:inset 3px 0 0 var(--ds-nav-actif-trait)}
+.menu-partie.actif .ico,.barre-lien.actif .ico{color:var(--ds-nav-repere)}
+/* Le focus, sur le bleu nuit : au repère bleu ciel, qui se voit. */
+.barre :focus-visible{outline-color:var(--ds-nav-repere)}
 .menu-partie:disabled,.barre-lien:disabled{opacity:.45;cursor:not-allowed}
 /* L'accueil, à part : le travail commence dessous. */
 .menu-partie[data-vers-partie="accueil"]{margin-bottom:10px}
 
 /* Les pages de la partie ouverte, dépliées sous elle, le long d'un trait. */
-.sous-onglets{margin:2px 0 8px 18px;padding-left:9px;border-left:1px solid var(--ds-bordure)}
+.sous-onglets{margin:2px 0 8px 18px;padding-left:9px;border-left:1px solid var(--ds-nav-trait)}
 .menu-parties>.sous-onglets:last-child{margin-bottom:0}
 body[data-partie="fichier"] .sous-onglets,body.editing .sous-onglets{display:none}
 .so-liste{display:flex;flex-direction:column;gap:1px}
 .so-onglet{position:relative;display:flex;align-items:center;gap:8px;width:100%;min-height:28px;padding:4px 8px;border:0;
   border-radius:var(--ds-r-2);background:none;font:inherit;font-size:var(--ds-t-13);font-weight:var(--ds-g-normal);line-height:1.3;
-  color:var(--ds-texte-2);text-align:left;cursor:pointer;transition:background var(--ds-t-rapide),color var(--ds-t-rapide)}
+  color:var(--ds-nav-texte-2);text-align:left;cursor:pointer;transition:background var(--ds-t-rapide),color var(--ds-t-rapide)}
 .so-onglet .ico{display:none}
-.so-onglet:hover{background:var(--ds-survol);color:var(--ds-texte-1)}
-.so-onglet.actif{background:var(--ds-accent-pale);color:var(--ds-texte-1);font-weight:var(--ds-g-moyen)}
-.so-onglet.actif::before{content:"";position:absolute;left:-10px;top:5px;bottom:5px;width:2px;border-radius:2px;background:var(--ds-accent)}
-.so-onglet:focus-visible{outline:2px solid var(--ds-accent);outline-offset:-2px}
-.so-onglet.so-secondaire{color:var(--ds-texte-3)}
-.so-onglet.so-secondaire:hover,.so-onglet.so-secondaire.actif{color:var(--ds-texte-1)}
-.so-plus{display:block;margin:8px 0 2px;padding:0 8px;font-size:var(--ds-t-11);font-weight:var(--ds-g-moyen);color:var(--ds-texte-3)}
+.so-onglet:hover{background:var(--ds-nav-survol);color:var(--ds-nav-texte-1)}
+.so-onglet.actif{background:var(--ds-nav-sous-actif);color:var(--ds-nav-texte-1);font-weight:var(--ds-g-moyen)}
+.so-onglet.actif::before{content:"";position:absolute;left:-10px;top:5px;bottom:5px;width:2px;border-radius:2px;background:var(--ds-nav-repere)}
+.so-onglet:focus-visible{outline:2px solid var(--ds-nav-repere);outline-offset:-2px}
+.so-onglet.so-secondaire{color:var(--ds-nav-texte-3)}
+.so-onglet.so-secondaire:hover,.so-onglet.so-secondaire.actif{color:var(--ds-nav-texte-1)}
+.so-plus{display:block;margin:8px 0 2px;padding:0 8px;font-size:var(--ds-t-11);font-weight:var(--ds-g-moyen);color:var(--ds-nav-texte-3)}
 .so-badge{margin-left:auto;flex:none;display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 6px;border-radius:99px;
   font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);font-variant-numeric:tabular-nums;
-  background:var(--ds-surface-2);color:var(--ds-texte-2);box-shadow:inset 0 0 0 1px var(--ds-bordure)}
-.so-badge.attente{background:var(--ds-attente-pale);color:var(--ds-attente-texte);box-shadow:none}
-.so-badge.retard{background:var(--ds-retard-pale);color:var(--ds-retard-texte);box-shadow:none}
-.so-badge.neutre{background:var(--ds-surface-2);color:var(--ds-texte-2);border:0}
+  background:var(--ds-nav-badge);color:var(--ds-nav-texte-2);box-shadow:inset 0 0 0 1px var(--ds-nav-trait)}
+.so-badge.attente{background:var(--ds-nav-attente-fond);color:var(--ds-nav-attente-texte);box-shadow:none}
+.so-badge.retard{background:var(--ds-nav-retard-fond);color:var(--ds-nav-retard-texte);box-shadow:none}
+.so-badge.neutre{background:var(--ds-nav-badge);color:var(--ds-nav-texte-2);border:0}
 
 /* Le pied : les problèmes, la sauvegarde, et le passage d'une version à l'autre. */
-.barre-pied{flex:none;display:grid;gap:6px;padding:8px;border-top:1px solid var(--ds-bordure)}
+.barre-pied{flex:none;display:grid;gap:6px;padding:8px;border-top:1px solid var(--ds-nav-trait)}
 .barre-lien .pb-compte{margin-left:auto}
 /* Les problèmes (problemes.js) : un seul registre, ouvert depuis le pied de la
    barre, à côté d'elle ; chaque problème mène à la page où il se règle. */
@@ -406,11 +464,11 @@ body[data-partie="fichier"] .sous-onglets,body.editing .sous-onglets{display:non
 .pb-vide{display:flex;align-items:flex-start;gap:8px;margin:0;padding:16px;color:var(--ds-texte-2)}
 .pb-vide .ico{flex:none;width:16px;height:16px;margin-top:2px;color:var(--ds-ok)}
 .btn-version{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:0;padding:6px 10px;border-radius:var(--ds-r-2);
-  border:1px dashed var(--ds-bordure-forte);color:var(--ds-texte-2);text-decoration:none;font-size:var(--ds-t-12);font-weight:var(--ds-g-moyen);line-height:1.3}
-.btn-version span{font-size:var(--ds-t-11);font-weight:var(--ds-g-normal);color:var(--ds-texte-3)}
-.btn-version:hover{border-color:var(--ds-accent);color:var(--ds-accent-texte)}
-.btn-version.v2{border:1px solid color-mix(in srgb,var(--ds-attente) 40%,transparent);background:var(--ds-attente-doux);color:var(--ds-attente-texte)}
-.btn-version.v2 span{color:var(--ds-attente-texte)}
+  border:1px dashed var(--ds-nav-trait-fort);color:var(--ds-nav-texte-2);text-decoration:none;font-size:var(--ds-t-12);font-weight:var(--ds-g-moyen);line-height:1.3}
+.btn-version span{font-size:var(--ds-t-11);font-weight:var(--ds-g-normal);color:var(--ds-nav-texte-3)}
+.btn-version:hover{border-color:var(--ds-nav-repere);color:var(--ds-nav-texte-1)}
+.btn-version.v2{border:1px solid color-mix(in srgb,var(--ds-nav-attente-texte) 35%,transparent);background:var(--ds-nav-attente-fond);color:var(--ds-nav-attente-texte)}
+.btn-version.v2 span{color:var(--ds-nav-attente-texte)}
 .btn-version b{font-weight:inherit}
 .btn-version i{font-style:normal}
 
@@ -426,7 +484,7 @@ body.plan-editing .barre-lien .pb-compte{display:none}
 /* La barre du haut : où l'on est (la partie, puis la page), et un seul
    Annuler / Rétablir. */
 .haut{display:flex;align-items:center;gap:12px;min-width:0;height:var(--haut-h);padding:0 16px 0 24px;background:var(--ds-surface-1);
-  border-bottom:1px solid var(--ds-bordure);position:relative;z-index:30}
+  border-bottom:1px solid var(--ds-bordure);box-shadow:var(--ds-ombre-haut);position:relative;z-index:30}
 .ariane{display:flex;align-items:center;gap:4px;flex:1 1 auto;min-width:0}
 .ariane-partie{flex:none;padding:4px 6px;margin-left:-6px;border:0;border-radius:var(--ds-r-2);background:none;font:inherit;
   font-size:var(--ds-t-14);color:var(--ds-texte-3);white-space:nowrap;cursor:pointer;transition:background var(--ds-t-rapide),color var(--ds-t-rapide)}
@@ -522,13 +580,26 @@ dialog.palette[open],dialog.raccourcis[open],dialog.question[open],.problemes:po
    dans la page, mais cachés. */
 #at-undo,#at-redo,#rc-undo,#rc-redo,#rg-undo,#rg-redo,#rg-recap-undo,#rg-recap-redo,#fc-undo,#fc-redo,#pe-undo,#pe-redo{display:none}
 
-/* Le titre de la page : une phrase qui dit ce qu'on voit, et les outils de la
-   page (Excel, importer, exporter) à droite. */
-.workspace-heading{display:flex;align-items:center;gap:16px;flex:none;min-height:44px;padding:6px 24px;background:var(--ds-surface-1);
-  border-bottom:1px solid var(--ds-bordure)}
-.view-intro{flex:1 1 auto;min-width:0;max-width:96ch;margin:0;font-size:var(--ds-t-13);line-height:1.45;color:var(--ds-texte-3)}
+/* Le titre de la page (2e passe) : la partie en surtitre, le nom de la page en
+   grand, puis une phrase qui dit ce qu'on voit ; les outils de la page (Excel,
+   importer, exporter) à droite. Le surtitre et le titre redisent le fil
+   d'Ariane pour l'œil : les lecteurs d'écran ont déjà le titre de la barre du haut. */
+.workspace-heading{display:grid;grid-template-columns:minmax(0,1fr) fit-content(55%);grid-template-areas:"partie outils" "titre outils" "intro outils";
+  align-items:end;column-gap:var(--ds-e-5);flex:none;min-height:44px;padding:11px 24px 10px;
+  background:linear-gradient(180deg,var(--ds-surface-1),var(--ds-entete-bas)) var(--ds-surface-1);border-bottom:1px solid var(--ds-bordure);
+  box-shadow:var(--ds-ombre-haut);position:relative;z-index:2}
+.tete-partie,.tete-titre{min-width:0;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tete-partie{grid-area:partie;font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);line-height:1.3;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--ds-accent-texte)}
+.tete-titre{grid-area:titre;margin-top:1px;font-size:var(--ds-t-20);font-weight:var(--ds-g-fort);line-height:1.2;letter-spacing:-.02em;
+  color:var(--ds-texte-1)}
+.tete-partie:empty,.tete-titre:empty{display:none}
+/* Sur un écran bas, le surtitre se retire : le fil d'Ariane dit déjà la partie, et
+   le contenu (le plan d'abord) remonte d'une ligne. */
+@media (max-height:820px){.tete-partie{display:none}}
+.view-intro{grid-area:intro;min-width:0;max-width:110ch;margin:2px 0 0;font-size:var(--ds-t-13);line-height:1.4;color:var(--ds-texte-3)}
 .view-intro:empty{display:none}
-.so-outils{display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:8px;flex:none;margin-left:auto;padding:0}
+.so-outils{grid-area:outils;align-self:end;display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:8px;padding:0}
 .so-outils .btn{padding:0 10px;font-size:var(--ds-t-12);min-height:var(--ds-h-compact)}
 .app{background:var(--ds-fond)}
 
@@ -543,30 +614,33 @@ dialog.palette[open],dialog.raccourcis[open],dialog.question[open],.problemes:po
 /* Accueil. */
 .accueil{background:var(--ds-fond)}
 .acc{gap:20px;padding-top:28px}
-.acc-histoire{border-radius:var(--ds-r-4);padding:24px 28px 22px;background:var(--ds-surface-1)}
-.acc-histoire h1{font-size:var(--ds-t-24);letter-spacing:-.02em;margin-bottom:14px;color:var(--ds-texte-1);background:none}
-.cm-rond{border:1px solid var(--ds-bordure);background:var(--ds-surface-2);color:var(--ds-texte-2);box-shadow:none}
-.cm-num{font-weight:var(--ds-g-fort);border:2px solid var(--ds-surface-1);background:var(--ds-texte-1);color:var(--ds-surface-1);box-shadow:none}
-.cm-liste b{font-weight:var(--ds-g-fort)}
-.cm-liste p{color:var(--ds-texte-3)}
-.cm-liste li:not(:last-child)::after{border-top:1px dashed var(--ds-bordure-forte)}
-.cm-liste li:not(:last-child)::before{border-left-color:var(--ds-bordure-forte)}
+/* Le bandeau de l'histoire (2e passe) : le bleu nuit de la navigation, éclairé
+   d'une lueur en haut à gauche ; les étapes en clair dessus. */
+.acc-histoire{border-color:var(--ds-nav-bord);border-radius:var(--ds-r-4);padding:24px 28px 22px;color:var(--ds-nav-texte-1);
+  background:radial-gradient(130% 160% at 0% 0%,var(--ds-nav-lueur) 0%,var(--ds-nav-fond) 62%) var(--ds-nav-fond);box-shadow:var(--ds-ombre-heros)}
+.acc-histoire h1{font-size:var(--ds-t-24);letter-spacing:-.025em;margin-bottom:14px;color:var(--ds-nav-texte-1);background:none}
+.cm-rond{border:1px solid var(--ds-nav-trait);background:var(--ds-nav-badge);color:var(--ds-heros-ico);box-shadow:none}
+.cm-num{font-weight:var(--ds-g-fort);border:2px solid var(--ds-nav-fond);background:var(--ds-nav-texte-1);color:var(--ds-nav-fond);box-shadow:none}
+.cm-liste b{font-weight:var(--ds-g-fort);color:var(--ds-nav-texte-1)}
+.cm-liste p{color:var(--ds-nav-texte-3)}
+.cm-liste li:not(:last-child)::after{border-top:1px dashed var(--ds-nav-trait-fort)}
+.cm-liste li:not(:last-child)::before{border-left-color:var(--ds-nav-trait-fort)}
 .acc-suite{border-radius:var(--ds-r-3);background:var(--ds-surface-1);border:1px solid var(--ds-bordure);padding:12px 16px}
 .acc-suite .ico{width:20px;height:20px;padding:5px;box-sizing:content-box;border-radius:var(--ds-r-2);background:var(--ds-attente-doux);color:var(--ds-attente)}
 .acc-suite.fait .ico{background:var(--ds-ok-doux);color:var(--ds-ok)}
 .acc-tuile{border:1px solid var(--ds-bordure);border-radius:var(--ds-r-4);background:var(--ds-surface-1);
   transition:border-color var(--ds-t-rapide),box-shadow var(--ds-t-rapide)}
-.acc-tuile:hover{box-shadow:var(--ds-ombre-1);border-color:var(--ds-bordure-forte);transform:none}
+.acc-tuile:hover{box-shadow:var(--ds-ombre-carte-survol);border-color:var(--ds-bordure-forte);transform:none}
 .acc-tuile-tete{padding:18px 20px 10px;background:none}
 .acc-tuile-tete:hover .acc-titre b{text-decoration:none}
-.acc-ico{background:var(--ds-surface-2);color:var(--ds-texte-2);border-radius:var(--ds-r-3);box-shadow:inset 0 0 0 1px var(--ds-bordure)}
-.acc-titre b{font-size:var(--ds-t-16);font-weight:var(--ds-g-fort);letter-spacing:-.01em}
+.acc-ico{background:var(--ds-accent-pale);color:var(--ds-accent);border-radius:var(--ds-r-3);box-shadow:none}
+.acc-titre b{font-size:var(--ds-t-16);font-weight:var(--ds-g-fort);letter-spacing:-.015em}
 .acc-titre em{color:var(--ds-texte-3)}
 .acc-etat{border:0;font-weight:var(--ds-g-moyen);font-size:var(--ds-t-12);padding:2px 9px;border-radius:99px;background:var(--ds-surface-2);color:var(--ds-texte-2)}
 .acc-etat.fait{background:var(--ds-ok-doux);color:var(--ds-ok-texte)}
 .acc-etat.verifier,.acc-etat.afaire{background:var(--ds-attente-doux);color:var(--ds-attente-texte)}
 .acc-lignes{color:var(--ds-texte-2)}
-.acc-pages{border-top:1px solid var(--ds-bordure);padding:12px 20px 16px;background:none}
+.acc-pages{border-top:1px solid var(--ds-bordure);padding:12px 20px 16px;background:var(--ds-surface-2);border-radius:0 0 var(--ds-r-4) var(--ds-r-4)}
 .acc-page{font-weight:var(--ds-g-moyen);background:var(--ds-surface-1);border:1px solid var(--ds-bordure-forte);color:var(--ds-texte-2);box-shadow:none;
   border-radius:var(--ds-r-2);transition:border-color var(--ds-t-rapide),color var(--ds-t-rapide),background var(--ds-t-rapide)}
 .acc-page:hover{background:var(--ds-survol);border-color:color-mix(in srgb,var(--ds-texte-3) 45%,var(--ds-bordure-forte));color:var(--ds-texte-1)}
@@ -578,25 +652,29 @@ dialog.palette[open],dialog.raccourcis[open],dialog.question[open],.problemes:po
    ils comptent ; dessous, Vols · Commandes · Équipes en listes sobres. Tout mène
    à sa page : la carte entière, ou le libellé d'une ligne. */
 .bilan-cles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:0 0 16px}
+/* La carte indicateur (2e passe) : un voyant à gauche, à la couleur de son ton ;
+   le libellé en petites capitales ; le chiffre en grand. */
 .bilan-cle{--t:var(--ds-texte-3);position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;
-  padding:14px 34px 14px 16px;border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);background:var(--ds-surface-1);
-  color:var(--ds-texte-1);font:inherit;cursor:pointer;transition:border-color var(--ds-t-rapide),box-shadow var(--ds-t-rapide)}
-.bilan-cle:hover{border-color:var(--ds-accent-trait)}
+  padding:14px 34px 14px 16px;border:1px solid var(--ds-bordure);border-left:4px solid var(--t);border-radius:var(--ds-r-3);
+  background:var(--ds-surface-1);color:var(--ds-texte-1);font:inherit;cursor:pointer;
+  transition:border-color var(--ds-t-rapide),box-shadow var(--ds-t-rapide)}
+.bilan-cle:hover{border-color:var(--ds-accent-trait);border-left-color:var(--t);box-shadow:var(--ds-ombre-carte-survol)}
 .bilan-cle:focus-visible{outline:none;box-shadow:var(--ds-focus)}
 .bilan-cle[data-ton="ok"]{--t:var(--ds-ok)}
 .bilan-cle[data-ton="retard"]{--t:var(--ds-retard)}
 .bilan-cle[data-ton="travail"]{--t:var(--ds-accent)}
-.bilan-q{display:flex;align-items:center;gap:7px;font-size:var(--ds-t-12);font-weight:var(--ds-g-moyen);color:var(--ds-texte-2)}
-.bilan-q::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--t);flex:none}
+.bilan-q{display:flex;align-items:center;gap:7px;font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);letter-spacing:.07em;text-transform:uppercase;
+  color:var(--ds-texte-3)}
 .bilan-chiffre{display:flex;align-items:baseline;flex-wrap:wrap;gap:0 6px}
-.bilan-v{font-size:var(--ds-t-24);font-weight:var(--ds-g-fort);letter-spacing:-.02em;line-height:1.2;font-variant-numeric:tabular-nums}
+.bilan-v{font-size:var(--ds-t-32);font-weight:var(--ds-g-fort);letter-spacing:-.03em;line-height:1.1;font-variant-numeric:tabular-nums}
 .bilan-cle[data-ton="retard"] .bilan-v{color:var(--ds-retard-texte)}
 .bilan-sur{font-size:var(--ds-t-12);color:var(--ds-texte-3);font-variant-numeric:tabular-nums}
 .bilan-vers{position:absolute;top:13px;right:12px;display:inline-flex;color:var(--ds-texte-4);transition:color var(--ds-t-rapide),transform var(--ds-t-rapide)}
 .bilan-vers .ico{width:14px;height:14px}
 .bilan-cle:hover .bilan-vers{color:var(--ds-accent);transform:translateX(2px)}
 .bilan-groupes{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px 28px}
-.bilan-groupe h4{margin:0 0 4px;font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);color:var(--ds-texte-3);text-transform:uppercase;letter-spacing:.05em}
+.bilan-groupe h4{margin:0 0 4px;padding-bottom:6px;border-bottom:2px solid var(--ds-texte-1);font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);
+  color:var(--ds-accent-texte);text-transform:uppercase;letter-spacing:.09em}
 .journee-chiffres .bilan>div{--t:var(--ds-texte-3);padding:7px 0}
 .journee-chiffres .bilan>div[data-ton="retard"]{--t:var(--ds-retard)}
 .journee-chiffres .bilan>div[data-ton="attente"]{--t:var(--ds-attente)}
@@ -616,7 +694,7 @@ dialog.palette[open],dialog.raccourcis[open],dialog.question[open],.problemes:po
 /* Les réglages : des sections, pas un long formulaire. */
 #view-reglages{background:transparent}
 #view-reglages .panneau,#view-reglages .rg-sim-materiel{background:var(--ds-surface-1);border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);
-  padding:18px 20px;margin:0 0 12px;box-shadow:none;max-width:980px}
+  padding:18px 20px;margin:0 0 12px;box-shadow:var(--ds-ombre-carte);max-width:980px}
 #view-reglages .panneau h3{font-size:var(--ds-t-14);font-weight:var(--ds-g-fort);letter-spacing:-.01em;text-transform:none;color:var(--ds-texte-1);display:block}
 #view-reglages label{font-weight:var(--ds-g-moyen)}
 #view-reglages .rg-sim-horaires>.panneau{margin-bottom:12px}
@@ -806,7 +884,7 @@ body.journee-vide .lecteur .run-state{display:block;flex:1 1 auto;max-width:none
 /* Services et équipes. */
 .mu-fiche{border-radius:var(--ds-r-4);padding:18px 22px 22px}
 .mu-svc{border-radius:var(--ds-r-3);transition:border-color var(--ds-t-rapide),background var(--ds-t-rapide)}
-.mu-svc:hover{box-shadow:none;border-color:var(--ds-bordure-forte)}
+.mu-svc:hover{box-shadow:var(--ds-ombre-carte-survol);border-color:var(--ds-bordure-forte)}
 .mu-svc.actif{border-width:1px;padding:8px 10px;border-color:var(--ds-accent-trait);background:var(--ds-accent-doux);box-shadow:none}
 .mu-svc-ico{width:30px;height:30px;border-radius:var(--ds-r-2);display:inline-grid;place-items:center;background:var(--ds-surface-2);color:var(--ds-texte-2)}
 .mu-svc-ico svg{width:18px;height:18px}
@@ -823,19 +901,19 @@ body.journee-vide .lecteur .run-state{display:block;flex:1 1 auto;max-width:none
 .mu-pas-etape{border-radius:var(--ds-r-3)}
 .mu-pas-etape.afaire,.mu-pas-etape.ok{border-left:1px solid var(--ds-bordure)}
 .mu{margin-top:20px}
-.mu-pas-etape.afaire{box-shadow:inset 3px 0 0 var(--ds-attente)}
-.mu-pas-etape.ok{box-shadow:inset 3px 0 0 var(--ds-ok)}
+.mu-pas-etape.afaire{box-shadow:inset 3px 0 0 var(--ds-attente),var(--ds-ombre-carte)}
+.mu-pas-etape.ok{box-shadow:inset 3px 0 0 var(--ds-ok),var(--ds-ombre-carte)}
 .mu-pas-etape.afaire .mu-pas-num{background:var(--ds-attente-doux)}
 .mu-afaire{border:1px solid color-mix(in srgb,var(--ds-attente) 35%,transparent);background:var(--ds-attente-doux);border-radius:var(--ds-r-3)}
 .mu-grille thead .puce-classe{width:9px;height:9px}
 
 /* Les départs. */
-.flights-view .table-scroll{border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);box-shadow:none}
+.flights-view .table-scroll{border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);box-shadow:var(--ds-ombre-carte)}
 .flight-table td.vol-heure,.flight-table td.vol-avant,.vol-heure,.vol-avant{font-family:var(--ds-police);font-feature-settings:'tnum','cv11'}
 .flight-table td.vol-heure{font-size:var(--ds-t-16);font-weight:var(--ds-g-fort);letter-spacing:-.01em;color:var(--ds-texte-1)}
 .flight-table td strong{letter-spacing:0;font-weight:var(--ds-g-fort)}
 .flight-table .status{font-size:var(--ds-t-12);font-weight:var(--ds-g-moyen);text-transform:none;letter-spacing:0}
-.flight-table thead th{font-size:var(--ds-t-12)}
+.flight-table thead th{font-size:var(--ds-t-11)}
 
 /* Les petites étiquettes parlent sans crier. */
 .rg-herite,.rg-zero,.rg-occupe,.at-source,.qf-g,.pc-defauts-lab,.at-kpi .lab,.at-titre,.fc-list-title,.rc-ens-tete,.demo-badge{font-weight:var(--ds-g-moyen)}

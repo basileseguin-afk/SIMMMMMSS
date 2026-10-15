@@ -270,9 +270,9 @@
       const b = this.bilan(), j = journee(this.a.vols(), this.f), m = mois(this.a.vols(), this.f);
       const ton = x => (x == null ? 'neutre' : x >= 0 ? 'ok' : 'retard');
       const tuiles = `<div class="bu-tuiles">
-        <div class="bu-tuile"><span>Budget du jour</span><b>${b.budget ? eur(b.budget) : '—'}</b><small>${b.sansBudget.length && b.budget ? 'hors ' + b.sansBudget.length + ' service(s) sans budget' : b.budget ? 'services avec budget' : 'aucun budget saisi'}</small></div>
-        <div class="bu-tuile"><span>Vacations planifiées</span><b>${eur(b.base)}</b><small>chaque personne payée sa vacation</small></div>
-        <div class="bu-tuile"><span>Heures sup</span><b>${eur(b.sup)}</b><small>${duree(b.heuresSup)} × ${String(this.f.majoration).replace('.', ',')}</small></div>
+        <div class="bu-tuile repere"><span>Budget du jour</span><b>${b.budget ? eur(b.budget) : '—'}</b><small>${b.sansBudget.length && b.budget ? 'hors ' + b.sansBudget.length + ' service(s) sans budget' : b.budget ? 'services avec budget' : 'aucun budget saisi'}</small></div>
+        <div class="bu-tuile base"><span>Vacations planifiées</span><b>${eur(b.base)}</b><small>chaque personne payée sa vacation</small></div>
+        <div class="bu-tuile sup"><span>Heures sup</span><b>${eur(b.sup)}</b><small>${duree(b.heuresSup)} × ${String(this.f.majoration).replace('.', ',')}</small></div>
         <div class="bu-tuile"><span>Coût de la journée</span><b>${eur(b.total)}</b><small>${b.retards ? b.retards + ' commande(s) en retard ou pas faites' : 'tout est à l’heure'}</small></div>
         <div class="bu-tuile ${ton(b.ecart)}"><span>${b.ecart == null ? 'Écart' : b.ecart >= 0 ? 'Sous le budget' : 'Au-dessus du budget'}</span><b>${b.ecart == null ? '—' : eur(Math.abs(b.ecart))}</b><small>${b.ecart == null ? 'saisissez les budgets' : 'services avec budget'}</small></div>
       </div>`;

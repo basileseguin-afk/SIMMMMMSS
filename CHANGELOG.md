@@ -5,6 +5,66 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-15 — Deuxième passe de direction artistique : le thème clair
+
+Demande : un thème clair moins blanc, moins uniforme, avec du caractère et de
+la profondeur, sans surcharge ni simple changement de palette. Trois
+directions ont été proposées sur les vrais écrans ; retenue : **A « Tour de
+contrôle », avec les voyants des indicateurs de B, et un fond chaud un peu
+orangé** à la place du gris-bleu de A. Rien ne change dans le calcul, les
+données ou les clés de sauvegarde (`donnees-intactes-browser` vert) ; le
+thème sombre garde son allure.
+
+- **Navigation bleu nuit.** La barre latérale passe en bleu nuit, en dégradé ;
+  la partie ouverte s'éclaire d'un trait bleu ciel, ses pages aussi ; les
+  pastilles, le pied et le focus suivent. Nouveaux jetons `--ds-nav-*`, que
+  le thème sombre renvoie à ses surfaces (sa barre ne bouge pas).
+- **Un fond chaud, des cartes qui ont de la profondeur.** Le fond devient
+  `#F6E8DF`, à peine orangé ; les surfaces et les traits se réchauffent ;
+  le texte prend une encre bleu nuit ; l'accent passe au bleu océan. Les
+  cartes de travail se posent sur le fond avec une ombre douce et s'élèvent
+  au survol ; la barre du haut et le titre de la page tiennent au-dessus de
+  ce qui défile ; le bouton principal a de la matière.
+- **Le titre de la page.** La partie en surtitre, le nom de la page en
+  grand, puis la phrase qui dit ce qu'on voit, les outils à droite. Le
+  surtitre et le grand titre sont pour l'œil : pour un lecteur d'écran, le
+  titre reste celui de la barre du haut. Sur un écran bas (820 px ou
+  moins), le surtitre se retire : le plan rejoué garde ses trois quarts de
+  la hauteur à 1 024 × 768.
+- **Les indicateurs à voyant.** Synthèse et Budget : un trait de couleur à
+  gauche (le ton de l'indicateur), un libellé en petites capitales, le
+  chiffre en grand. Les tuiles du budget prennent la couleur de ce qu'elles
+  résument dans la jauge (le budget, les vacations, les heures sup) ; les
+  groupes Vols · Commandes · Équipes sont soulignés.
+- **Les en-têtes de tableau** passent en petites capitales sur un fond.
+- **L'accueil.** Le bandeau de l'histoire reprend le bleu nuit de la
+  navigation ; les pictogrammes des tuiles prennent l'accent.
+- **Les couleurs des graphiques.** L'ancienne palette donnait le même bleu à
+  `d1` et `d2` pour un daltonien (écart 0,5 ; il en faut 8) : les lots du
+  robot et les autres lots du planning, les classes Équipage et Premium. La
+  nouvelle (bleu, vert, violet, orange, magenta, ocre) passe le validateur
+  de la méthode, paire par paire : le trio du planning, les deux jauges du
+  budget, les classes dans l'ordre de leurs barres, les six dans leur
+  ordre ; l'étiquette blanche reste lisible (4,5:1) sur `d1`, `d2` et la
+  chaîne. Chaque classe garde sa famille de couleur. La carte des chemins
+  prend ces jetons au lieu de dix couleurs écrites en dur.
+- **BUG-057** (thème sombre) : les arrêts de la carte des chemins avaient
+  perdu leur anneau ; les ombres nulles du sombre se combinent désormais.
+- **Tests.** `contraste.test` vérifie aussi la navigation (ses textes sur
+  ses deux teintes et sur la lueur de l'accueil, la partie et la page
+  ouvertes, les pastilles, le repère bleu ciel) et lit les renvois d'un
+  jeton à l'autre. `menu-browser` : le titre de la page, plus haut d'une
+  ligne, doit finir avant 132 px au lieu de 120 (toujours une seule rangée
+  sous la barre du haut). `handling-browser` lit le texte de la synthèse,
+  pas son rendu en petites capitales. Les fonds en dégradé (la barre,
+  l'accueil, le titre de la page) gardent une couleur de repli : c'est elle
+  que lit `usability-browser` pour le contraste des onglets.
+- Fichiers des tests : `tests/contraste.test.cjs`, `tests/menu-browser.cjs`,
+  `tests/handling-browser.cjs`.
+- Fichiers : `ds.css`, `index.html`, `sim.js`, `unite.js` (v1 et v2),
+  `v2/budget.css`, `v2/budget.js`, `accueil.html` (empreintes),
+  `docs/DESIGN_SYSTEM.md`, `README.md`, `BUGS.md`.
+
 ## 2026-10-15 — Test de la page d'entrée : une police annulée n'est pas une erreur
 
 La batterie complète a vu `accueil-browser` échouer une fois, la machine

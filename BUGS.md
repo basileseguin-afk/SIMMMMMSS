@@ -634,3 +634,9 @@ quoi » ↔ Excel Horaires ; « ensemble » ; renommage d'un service ; Annuler.
 |---|---|---|---|---|---|
 | BUG-055 | Majeur | Corrigé | Confirmé | Deux équipes d'une plonge par vol dont les postes se chevauchent lavaient **deux vols à la fois dans le même tunnel** : chaque équipe avait « ses » tunnels, alors que ce sont les mêmes machines. Sur 600 journées tirées au hasard à deux ou trois équipes, 32 le faisaient. Un tunnel du même nom est maintenant la même machine pour toutes les équipes de la plonge : l'équipe qui arrive attend que le vol en cours en sorte. Une seule équipe, ou des noms différents : rien ne change (500 journées identiques à l'octet près, v1 et v2). En version 2, à heure de fin égale, le vol va à l'équipe dans ses heures plutôt qu'à celle qui partirait en heures sup. Tests : `tests/plonge-equipes.test.cjs` (dont 150 journées au hasard, v1 et v2), `tests/v2/heures-sup.test.cjs` | `moteur/production.js` (v1, v2) |
 | BUG-056 | Mineur | Corrigé | Confirmé | Une plonge dont une équipe lave par vol et une autre au débit lavait **deux fois** le même matériel, sans le dire. Le choix « Comment se compte le lavage ? » vaut maintenant pour toutes les équipes de la plonge, et une plonge mêlée (venue d'un classeur Excel, par exemple) est signalée (`plonge-mixte`, non bloquant) | `ateliers.js`, `moteur/production.js` |
+
+### Deuxième passe de direction artistique (15/10)
+
+| ID | Gravité | Statut | Vérification | Constat | Fichiers |
+|---|---|---|---|---|---|
+| BUG-057 | Mineur | Corrigé | Confirmé | Thème sombre : les arrêts de la carte des chemins (Chemins › Vue d'ensemble) n'avaient pas leur anneau de couleur. Leur ombre combinait l'anneau et `--ds-ombre-1`, qui valait `none` en sombre : « 0 0 0 2px X, none » n'est pas une valeur, et toute la déclaration tombait (`box-shadow: none`, mesuré). Les ombres du thème sombre valent maintenant `0 0 transparent`, qui se combine | `ds.css` (v1, v2) |

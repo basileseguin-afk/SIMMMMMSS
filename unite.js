@@ -984,10 +984,13 @@
         const p = PC.cheminDe(st, c.id);
         if (p && !cols.some(x => x.p === p)) cols.push({ p, genre: 'propre', cmd: c.id });
       }
-      const PAL = ['#2563eb', '#059669', '#d97706', '#7c3aed', '#db2777', '#0891b2', '#65a30d', '#dc2626', '#4f46e5', '#ca8a04'];
+      // La palette des données du design system, dans son ordre (deux colonnes
+      // voisines restent distinctes, daltoniens compris) ; un chemin propre à une
+      // commande, en gris (15/10 : plus de couleurs écrites en dur).
+      const PAL = [1, 2, 3, 4, 5, 6].map(n => 'var(--ds-d' + n + ')');
       let i = 0;
       for (const c of cols) {
-        c.couleur = c.genre === 'propre' ? '#64748b' : PAL[i++ % PAL.length];
+        c.couleur = c.genre === 'propre' ? 'var(--ds-trait-lien)' : PAL[i++ % PAL.length];
         c.cmds = c.genre === 'propre' ? [classes.find(x => x.id === c.cmd)].filter(Boolean) : PC.commandesDuType(st, c.p.id, classes);
         c.cabs = c.genre === 'flux' ? P.CABINES.filter(x => (st.parcoursCabine || {})[x] === c.p.id) : [];
         c.services = P.servicesDuParcours(c.p);

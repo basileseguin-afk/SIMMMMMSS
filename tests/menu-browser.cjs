@@ -186,10 +186,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('#menu [data-vers-partie=donnees]').isDisabled(),false);
 
   // 10. Le contenu commence tout de suite : plus de bandeaux empilés (la barre
-  //     du haut, puis le titre de la page et ses outils).
+  //     du haut, puis le titre de la page et ses outils). Depuis la 2e passe
+  //     de direction artistique (15/10), le titre porte sa partie en surtitre
+  //     et le nom de la page en grand : une rangée plus haute, toujours une seule.
   await nav.aller(page,'at-chemins');
   const haut=await page.evaluate(()=>Math.round(document.getElementById('tete-page').getBoundingClientRect().bottom));
-  assert.ok(haut<=120,'le titre de la page finit à '+haut+' px');
+  assert.ok(haut<=132,'le titre de la page finit à '+haut+' px');
   // Sur le plus petit écran visé (1 024 px), rien ne déborde et le menu reste là.
   await page.setViewportSize({width:1024,height:700});await attendre();
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'pas de débordement');

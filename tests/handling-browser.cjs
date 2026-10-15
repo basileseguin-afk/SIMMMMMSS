@@ -122,7 +122,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await nav.aller(page,'v-departs');
   assert.match(await page.locator('#flight-rows').innerText(),/chargé à \d\d:\d\d/);
   await nav.aller(page,'j-chiffres');
-  assert.match(await page.locator('#bilan-journee').innerText(),/Vols chargés à l’heure/);
+  // Le texte de la page, pas son rendu : le libellé s'affiche en petites capitales (15/10).
+  assert.match(await page.locator('#bilan-journee').textContent(),/Vols chargés à l’heure/);
 
   // 5. Revenir à une équipe qui prépare efface les réglages du handling.
   await nav.aller(page,'at-equipes');

@@ -20,9 +20,12 @@ function jetons(selecteur) {
   return out;
 }
 const hex = h => { const v = h.replace('#', ''); return [0, 2, 4].map(i => parseInt(v.slice(i, i + 2), 16)); };
-/** Une couleur du bloc, posée sur un fond : un hexadécimal, ou color-mix(in srgb,#X P%,transparent). */
+/** Une couleur du bloc, posée sur un fond : un hexadécimal, color-mix(in srgb,#X P%,transparent),
+ *  ou un renvoi à un autre jeton (var(--ds-…), le thème sombre de la navigation, 15/10). */
 function couleur(t, nom, fond) {
   const v = t[nom]; assert.ok(v, 'jeton absent : ' + nom);
+  const renvoi = v.match(/^var\(--(ds-[a-z0-9-]+)\)$/);
+  if (renvoi) return couleur(t, renvoi[1], fond);
   if (/^#[0-9a-f]{6}$/i.test(v)) return hex(v);
   const m = v.match(/^color-mix\(in srgb,(#[0-9a-f]{6}) ([\d.]+)%,transparent\)$/i);
   assert.ok(m && fond, 'couleur non lue : ' + nom + ' = ' + v);
@@ -45,11 +48,23 @@ for (const [nom, selecteur] of [['clair', ':root'], ['sombre', ':root[data-theme
     verifier('ds-accent-texte', blanc, 'ds-surface-1');
     // Un état dit dans une phrase, sur une carte (la frise des retours de la plonge, 15/10).
     for (const texte of ['ds-ok-texte', 'ds-attente-texte', 'ds-retard-texte']) verifier(texte, blanc, 'ds-surface-1');
-    // La page ouverte, dans la barre latérale : le texte sur l'accent pâle.
+    // L'élément choisi d'une liste : le texte sur l'accent pâle.
     for (const texte of ['ds-texte-1', 'ds-texte-2']) verifier(texte, couleur(t, 'ds-accent-pale'), 'ds-accent-pale');
+    // La navigation (2e passe, 15/10) : ses textes sur ses deux teintes de fond, et
+    // sur la lueur du bandeau de l'accueil qui reprend son bleu nuit.
+    for (const fondNav of ['ds-nav-fond', 'ds-nav-fond-bas', 'ds-nav-lueur']) {
+      const f = couleur(t, fondNav);
+      for (const texte of ['ds-nav-texte-1', 'ds-nav-texte-2', 'ds-nav-texte-3']) verifier(texte, f, fondNav);
+      // La partie ouverte, la page ouverte, une pastille : leur fond teinté, posé sur le bleu nuit.
+      verifier('ds-nav-texte-1', couleur(t, 'ds-nav-actif', f), 'ds-nav-actif sur ' + fondNav);
+      verifier('ds-nav-texte-1', couleur(t, 'ds-nav-sous-actif', f), 'ds-nav-sous-actif sur ' + fondNav);
+      verifier('ds-nav-texte-2', couleur(t, 'ds-nav-badge', f), 'ds-nav-badge sur ' + fondNav);
+      // Le repère de la page ouverte et le focus : une forme, 3:1 suffit.
+      verifier('ds-nav-repere', f, fondNav, 3);
+    }
     // Les pastilles des onglets (problèmes à corriger, retards), sur leur fond opaque.
-    verifier('ds-attente-texte', couleur(t, 'ds-attente-pale'), 'ds-attente-pale');
-    verifier('ds-retard-texte', couleur(t, 'ds-retard-pale'), 'ds-retard-pale');
+    verifier('ds-nav-attente-texte', couleur(t, 'ds-nav-attente-fond'), 'ds-nav-attente-fond');
+    verifier('ds-nav-retard-texte', couleur(t, 'ds-nav-retard-fond'), 'ds-nav-retard-fond');
     // Le texte sur l'accent (bouton principal).
     assert.ok(ratio(couleur(t, 'ds-sur-accent'), couleur(t, 'ds-accent')) >= 4.5, nom + ' : texte sur l’accent');
     // Les notifications et les questions, sur leur surface flottante.

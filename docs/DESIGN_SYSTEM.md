@@ -1,9 +1,12 @@
 # Le design system de Production ORY
 
 Ce document dit comment l'interface est construite depuis la refonte du
-08/10 au 12/10 (`docs/REFONTE_UX.md`, étapes 0 à 11). Il sert à ajouter un
-écran ou un composant sans casser l'ensemble : mêmes jetons, mêmes
-composants, mêmes règles, en v1 comme en v2.
+08/10 au 12/10 (`docs/REFONTE_UX.md`, étapes 0 à 11), et depuis la deuxième
+passe de direction artistique du 15/10 (thème clair : une navigation bleu
+nuit, un fond chaud, des cartes qui ont de la profondeur, des titres de page
+plus affirmés, des indicateurs à voyant). Il sert à ajouter un écran ou un
+composant sans casser l'ensemble : mêmes jetons, mêmes composants, mêmes
+règles, en v1 comme en v2.
 
 Ce qui le porte :
 
@@ -66,20 +69,22 @@ couleur, une taille, un rayon ou une durée en dur.
 | Rayons | `--ds-r-1` à `--ds-r-4` | 4 (touche, kbd), 6 (bouton, champ), 8 (carte), 12 (fenêtre) |
 | Hauteurs | `--ds-h-compact`, `--ds-h-normal` | 28 et 32 px |
 | Durées | `--ds-t-rapide`, `-panneau`, `-vue` | 120, 180, 240 ms, courbe `--ds-courbe` |
-| Ombres | `--ds-ombre-1`, `--ds-ombre-flottant` | presque rien ; seul ce qui flotte porte une ombre |
+| Ombres | `--ds-ombre-1`, `--ds-ombre-carte` (et `-survol`), `--ds-ombre-bouton`, `--ds-ombre-haut`, `--ds-ombre-heros`, `--ds-ombre-flottant` | en clair, une carte de travail se pose sur le fond et s'élève un peu au survol ; le bouton principal a de la matière ; la barre du haut et le titre de la page tiennent au-dessus de ce qui défile. En sombre, seul ce qui flotte garde une ombre (les autres valent `0 0 transparent`, qui se combine, là où `none` ferait tomber toute la déclaration) |
 | Focus | `--ds-focus` | un anneau de 3 px à l'accent |
 
 ### Couleurs
 
 | Jeton | Clair | Sombre | Pour quoi |
 |---|---|---|---|
-| `--ds-fond` | `#F7F8FA` | `#0B0D10` | le fond de la page |
-| `--ds-surface-1` / `-2` / `-3` | `#FFF` / `#F2F4F7` / `#FFF` | `#111418` / `#171B21` / `#1D222A` | carte ; zone en retrait ; ce qui flotte |
-| `--ds-bordure` / `-forte` | `#E6E8EC` / `#D5D9E0` | 8 % / 14 % de blanc | les traits fins ; les champs et boutons |
-| `--ds-texte-1` à `-4` | `#111827` … `#9AA1AC` | `#E8EAED` … `#5F6670` | titre et valeur ; texte ; secondaire ; indice (jamais pour une phrase) |
-| `--ds-accent` (+ `-fort`, `-texte`, `-doux`, `-trait`, `-pale`) | `#0F766E` | `#2CC2B0` | **l'action et la sélection** |
+| `--ds-fond` | `#F6E8DF` (chaud, à peine orangé) | `#0B0D10` | le fond de la page |
+| `--ds-surface-1` / `-2` / `-3` | `#FFF` / `#FCF6F2` / `#FFF` | `#111418` / `#171B21` / `#1D222A` | carte ; zone en retrait ; ce qui flotte |
+| `--ds-bordure` / `-forte` | `#E7DDD7` / `#D3C8C1` | 8 % / 14 % de blanc | les traits fins ; les champs et boutons |
+| `--ds-texte-1` à `-4` | `#0A1626` … `#8794A6` (l'encre bleu nuit) | `#E8EAED` … `#5F6670` | titre et valeur ; texte ; secondaire ; indice (jamais pour une phrase) |
+| `--ds-accent` (+ `-fort`, `-texte`, `-doux`, `-trait`, `-pale`) | `#0B6E99` (bleu océan) | `#2CC2B0` | **l'action et la sélection** |
+| `--ds-nav-*` (fond, lueur, textes, traits, survol, actif, repère, pastilles) et `--ds-heros-ico` | bleu nuit `#0B1A2E` → `#0D2036`, texte blanc, `#B4C2D4`, `#93A7BF` ; repère bleu ciel `#38BDF8` | les surfaces et les textes du thème : la barre d'avant la 2e passe | **la navigation**, et le bandeau de l'accueil qui reprend son bleu nuit |
+| `--ds-entete-bas` | `#FDFAF7` | `--ds-surface-1` | le bas du titre de la page, à peine plus chaud que le haut |
 | `--ds-ok`, `--ds-attente`, `--ds-retard`, `--ds-info` (+ `-texte`, `-doux`) | vert, ambre, rouge, bleu | plus clairs | **les états** |
-| `--ds-d1` à `--ds-d6`, `--ds-chaine` | bleu, violet, vert, ambre, corail, azur ; magenta | plus clairs | **les données** |
+| `--ds-d1` à `--ds-d6`, `--ds-chaine` | bleu, vert, violet, orange, magenta, ocre ; magenta | bleu, violet, vert, ambre, corail, azur ; magenta (inchangés) | **les données** |
 | `--ds-sur-accent`, `--ds-sur-retard`, `--ds-sur-attente`, `--ds-sur-donnee` | blanc | presque noir | le texte posé sur ces couleurs pleines |
 | `--ds-trait-plan`, `--ds-trait-lien` | gris bleuté | les mêmes | le contour d'un service sur le plan ; un lien entre services |
 
@@ -89,7 +94,9 @@ sans être vérifié fait échouer la batterie.
 
 Les anciennes variables des vues (`--bg`, `--txt`, `--accent`, `--cab-BC`…)
 pointent sur ces jetons (section 2 de `ds.css`) : on ne les emploie plus
-dans du code neuf.
+dans du code neuf. En clair, les classes de cabine y suivent le nouvel ordre
+de la palette pour garder leur famille de couleur (Business ocre, Premium
+violet, Économie vert, Équipage bleu, repas spéciaux orangés).
 
 ---
 
@@ -105,10 +112,20 @@ dans du code neuf.
 - **Les données** servent à reconnaître, pas à juger : les classes de
   cabine (`--cab-*`), les séries d'un graphique, les barres du planning
   (l'équipe en `d1`, le robot en `d2`, la chaîne en `--ds-chaine`), les
-  jauges du budget (vacations en `d1`, heures sup en `d4`). Un texte posé
-  dessus prend `--ds-sur-donnee`.
-- Une carte indicateur reste **neutre** : le ton est dans sa pastille et
-  dans son chiffre, jamais en aplat sur toute la carte.
+  jauges du budget (vacations en `d1`, heures sup en `d4`), les colonnes de
+  la carte des chemins (`d1` à `d6`, dans l'ordre). Un texte posé dessus
+  prend `--ds-sur-donnee` (4,5:1 sur `d1`, `d2` et la chaîne).
+- **L'ordre de la palette compte.** Deux couleurs voisines restent
+  distinctes en vision normale (écart ≥ 15) comme pour un daltonien (≥ 8),
+  avec un contraste d'au moins 3:1 sur les cartes. On le mesure avec le
+  validateur de la méthode, pas à l'œil : le trio du planning (équipe,
+  robot, chaîne), les deux jauges du budget, les classes dans l'ordre de
+  leurs barres et les six couleurs dans leur ordre passent (15/10).
+  L'ancienne palette donnait le même bleu à `d1` et `d2` pour un daltonien
+  (écart 0,5).
+- Une carte indicateur reste **neutre** : le ton est dans son voyant (un
+  trait de 4 px à gauche) et dans son chiffre, jamais en aplat sur toute la
+  carte.
 
 ---
 
@@ -119,6 +136,13 @@ latérale). Le thème est un attribut, `data-theme="sombre"` sur `<html>`,
 posé avant le premier affichage. Il est retenu sous `ory-ui-theme` : une
 préférence d'affichage, jamais une donnée. En sombre, l'élévation se lit à
 la luminance des surfaces, pas aux ombres.
+
+La deuxième passe (15/10) ne concerne que le thème clair. En sombre, les
+jetons de la navigation renvoient aux surfaces et aux textes du thème : la
+barre latérale et le bandeau de l'accueil y gardent leur allure d'avant, et
+la palette des données son ordre. Seule la structure est commune aux deux
+thèmes : le titre de la page, les voyants des indicateurs, les en-têtes de
+tableau.
 
 ---
 
@@ -154,7 +178,9 @@ la luminance des surfaces, pas aux ombres.
 
 ### Tableaux
 
-- En-têtes sobres : 12 px, `--ds-texte-3`, pas de capitales.
+- En-têtes de colonne (2e passe) : 11 px, petites capitales espacées,
+  `--ds-texte-3`, sur `--ds-surface-2`, un trait `--ds-bordure-forte`
+  dessous.
 - Les nombres à droite, en chiffres tabulaires.
 - Un grand tableau garde ses titres et sa première colonne à l'écran
   (`position: sticky`).
@@ -163,14 +189,20 @@ la luminance des surfaces, pas aux ombres.
 
 ### Cartes et indicateurs
 
-- Une carte : `--ds-surface-1`, une bordure fine, un rayon de 8 px, pas
-  d'ombre.
+- Une carte : `--ds-surface-1`, une bordure fine, un rayon de 8 px ; une
+  carte de travail se pose sur le fond par `--ds-ombre-carte` et s'élève
+  au survol (`--ds-ombre-carte-survol`). Un état à gauche (« à faire »,
+  « fait ») s'y ajoute en ombre intérieure : `inset 3px 0 0 <ton>,
+  var(--ds-ombre-carte)`.
 - La **carte indicateur** (`.bilan-cle`, la synthèse ; les tuiles du
-  budget la suivent) : un libellé et sa pastille de ton, le chiffre en
-  24 px tabulaire, ce sur quoi il compte (« 0 sur 7 · 0 % »). Elle mène à
-  sa page.
-- Un groupe de lignes (`.bilan-groupe`) : un titre de 11 px en capitales,
-  puis des lignes sobres, chacune avec son lien.
+  budget la suivent) : un voyant de 4 px à gauche à la couleur de son ton,
+  un libellé de 11 px en capitales, le chiffre en 32 px tabulaire, ce sur
+  quoi il compte (« 0 sur 7 · 0 % »). Elle mène à sa page. Une tuile du
+  budget prend la couleur de ce qu'elle résume dans la jauge (le budget en
+  trait, les vacations, les heures sup) ou le ton de l'écart.
+- Un groupe de lignes (`.bilan-groupe`) : un titre de 11 px en capitales à
+  l'accent, souligné d'un trait de 2 px à l'encre, puis des lignes sobres,
+  chacune avec son lien.
 
 ### Pastilles et étiquettes
 
@@ -192,14 +224,27 @@ la luminance des surfaces, pas aux ombres.
 
 ### La coquille
 
-- **La barre latérale** : les parties dans l'ordre du travail ; celle qui
-  est ouverte déplie ses pages ; au pied, les problèmes, la sauvegarde, le
-  thème, l'autre version.
+- **La barre latérale** : bleu nuit en clair (`--ds-nav-*`) ; les parties
+  dans l'ordre du travail ; celle qui est ouverte, éclairée d'un trait bleu
+  ciel, déplie ses pages ; au pied, les problèmes, la sauvegarde, le thème,
+  l'autre version. Le focus y prend le repère bleu ciel, qui se voit sur le
+  bleu nuit.
 - **La barre du haut** : le fil d'Ariane ; « Calcul à jour » (le point bat
   quand le calcul vient de suivre un changement) ; « Aller à… » ; un seul
   Annuler / Rétablir pour ce que la page modifie.
-- **Le titre de la page** : une phrase qui dit ce qu'on voit, et les outils
-  de la page.
+- **Le titre de la page** : la partie en surtitre (11 px, capitales, à
+  l'accent), le nom de la page en 20 px, une phrase qui dit ce qu'on voit,
+  et les outils de la page à droite. Le surtitre et le grand titre sont pour
+  l'œil (`aria-hidden`) : pour un lecteur d'écran, le titre de la page reste
+  celui de la barre du haut (`#view-title`). Une seule rangée sous la barre
+  du haut : `menu-browser` la veut finie avant 132 px. Sur un écran bas
+  (820 px ou moins), le surtitre se retire : le fil d'Ariane dit déjà la
+  partie, et le contenu remonte (`rejeu-browser` : le plan d'abord, à
+  1 024 × 768 aussi).
+- Un fond en dégradé garde une couleur de repli (`linear-gradient(…)
+  var(--ds-nav-fond)`) : c'est elle que lisent les contrôles de contraste.
+- **L'accueil** : le bandeau de l'histoire reprend le bleu nuit de la
+  navigation, éclairé d'une lueur ; les étapes s'y lisent en clair.
 
 ### La palette et la fiche des raccourcis (`palette.js`)
 

@@ -3,13 +3,18 @@
  * ==========================================================================*/
 .bu{display:grid;gap:16px;align-content:start}
 /* Les indicateurs ont l'allure des cartes de la synthèse (ds.css, .bilan-cle) :
-   une surface neutre, le ton dans la pastille et le chiffre, jamais en aplat (refonte, étape 11). */
+   une surface neutre, jamais en aplat (refonte, étape 11) ; un voyant à gauche
+   (2e passe, 15/10), à la couleur de ce qu'il résume dans la jauge (le budget
+   en trait, les vacations, les heures sup), ou au ton de l'écart. */
 .bu-tuiles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
 .bu-tuile{--t:var(--ds-texte-4);display:grid;gap:4px;align-content:start;padding:14px 16px;border:1px solid var(--ds-bordure);
-  border-radius:var(--ds-r-3);background:var(--ds-surface-1)}
-.bu-tuile span{display:flex;align-items:center;gap:7px;font-size:var(--ds-t-12);font-weight:var(--ds-g-moyen);color:var(--ds-texte-2)}
-.bu-tuile span::before{content:"";flex:none;width:6px;height:6px;border-radius:50%;background:var(--t)}
-.bu-tuile b{font-size:var(--ds-t-24);font-weight:var(--ds-g-fort);letter-spacing:-.02em;line-height:1.2;color:var(--ds-texte-1);font-variant-numeric:tabular-nums}
+  border-left:4px solid var(--t);border-radius:var(--ds-r-3);background:var(--ds-surface-1);box-shadow:var(--ds-ombre-carte)}
+.bu-tuile span{display:flex;align-items:center;gap:7px;font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);letter-spacing:.07em;
+  text-transform:uppercase;color:var(--ds-texte-3)}
+.bu-tuile b{font-size:var(--ds-t-32);font-weight:var(--ds-g-fort);letter-spacing:-.03em;line-height:1.1;color:var(--ds-texte-1);font-variant-numeric:tabular-nums}
+.bu-tuile.repere{--t:var(--ds-texte-1)}
+.bu-tuile.base{--t:var(--ds-d1)}
+.bu-tuile.sup{--t:var(--ds-d4)}
 .bu-tuile small{font-size:var(--ds-t-12);color:var(--ds-texte-3)}
 .bu-tuile.ok{--t:var(--ds-ok)}
 .bu-tuile.ok b{color:var(--ds-ok-texte)}
@@ -20,13 +25,15 @@
 .bu-alerte{color:var(--ds-retard-texte);font-weight:var(--ds-g-fort)}
 
 .bu-table,.bu-equipes,.bu-mini{width:100%;border-collapse:collapse;font-size:var(--ds-t-13)}
-/* Les tableaux : les en-têtes sobres du système (pas de capitales), les chiffres en colonnes tabulaires. */
-.bu-table{border-collapse:separate;border-spacing:0;background:var(--ds-surface-1);border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);overflow:hidden}
+/* Les tableaux : les en-têtes du système (petites capitales sur un fond, 2e passe), les chiffres en colonnes tabulaires. */
+.bu-table{border-collapse:separate;border-spacing:0;background:var(--ds-surface-1);border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);overflow:hidden;
+  box-shadow:var(--ds-ombre-carte)}
 .bu-table th,.bu-table td{padding:9px 12px;border-bottom:1px solid var(--ds-bordure);text-align:right;vertical-align:middle;font-variant-numeric:tabular-nums}
 .bu-table tbody tr:last-child>*{border-bottom:0}
 .bu-table th:first-child,.bu-table td:first-child{text-align:left}
-.bu-table thead th,.bu-mini thead th,.bu-equipes thead th,.ca-table thead th{font-size:var(--ds-t-12);font-weight:var(--ds-g-moyen);color:var(--ds-texte-3);
-  background:var(--ds-surface-1);text-transform:none;letter-spacing:0}
+.bu-table thead th,.bu-mini thead th,.bu-equipes thead th,.ca-table thead th{font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);color:var(--ds-texte-3);
+  background:var(--ds-surface-2);text-transform:uppercase;letter-spacing:.06em}
+.bu-table thead th{border-bottom-color:var(--ds-bordure-forte)}
 .bu-table td small,.bu-table th small,.bu-equipes small{display:block;font-size:var(--ds-t-11);font-weight:var(--ds-g-normal);color:var(--ds-texte-3)}
 .bu-table td.ok{color:var(--ds-ok-texte);font-weight:var(--ds-g-fort)}
 .bu-table td.retard{color:var(--ds-retard-texte);font-weight:var(--ds-g-fort)}

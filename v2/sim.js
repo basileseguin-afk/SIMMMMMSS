@@ -1156,6 +1156,10 @@ function afficherTitre(){
   const O=window.OrlyOnglets, accueil=activeView==='accueil', id=document.body.dataset.sous;
   const pg=!accueil&&O&&id?O.page(id):null, partie=pg&&O.PARTIES.find(p=>p.id===pg.partie);
   document.getElementById('view-title').textContent=accueil?'Accueil':pg?pg.nom:'';
+  // Au-dessus de la page (15/10) : la partie en surtitre, le nom de la page en grand.
+  const surtitre=document.getElementById('tete-partie'),grand=document.getElementById('tete-titre');
+  if(surtitre)surtitre.textContent=partie?partie.nom:'';
+  if(grand)grand.textContent=pg?pg.nom:'';
   const lien=document.getElementById('ariane-partie'),sep=document.querySelector('#ariane .ariane-sep');
   const premiere=partie?O.pagesDe(partie.id)[0]:null;
   if(lien){
