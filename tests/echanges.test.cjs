@@ -502,6 +502,20 @@ test('plonge : la vitesse d’un tunnel fait l’aller-retour par Excel', async 
   assert.deepEqual(t.map(x => x.vitesse ?? 1), [1, 2]);
 });
 
+/* Deux équipes de plonge qui se relaient (15/10) : chacune garde ses heures, ses
+ * tunnels et ses temps par vol à l'aller-retour par Excel. */
+test('plonge : deux équipes (matin, après-midi) font l’aller-retour par Excel', async () => {
+  const etat = ETAT_ATELIERS();
+  const plonge = (id, nom, debut, durees) => ({ id, nom, service: 'plonge', type: 'lavage', debut, jour: 0, personnes: 2, pauses: [], lots: [],
+    regime: { actif: true }, plafond: 0, parVol: true, durees, tunnels: [{ nom: 'T1', debit: 300, personnes: 1, actif: true }, { nom: 'T2', debit: 300, personnes: 1, actif: true }] });
+  etat.ateliers = etat.ateliers.filter(a => a.service !== 'plonge')
+    .concat(plonge('pa', 'Plonge', '13:00', { '*': 30, AF: 40 }), plonge('pm', 'Plonge matin', '05:00', { '*': 30, AF: 45 }));
+  const f = await parFichier(E.ateliersVersClasseur(etat, ctxAteliers()));
+  const lu = E.classeurVersAteliers(f, etat, ctxAteliers()).etat.ateliers.filter(a => a.service === 'plonge')
+    .map(a => [a.nom, a.debut, a.durees, a.tunnels.map(t => t.nom)]).sort((x, y) => x[0].localeCompare(y[0]));
+  assert.deepEqual(lu, [['Plonge', '13:00', { '*': 30, AF: 40 }, ['T1', 'T2']], ['Plonge matin', '05:00', { '*': 30, AF: 45 }, ['T1', 'T2']]]);
+});
+
 /* ---- planche retour --------------------------------------------------- */
 
 test('planche retour : l’aller-retour par Excel ne perd rien, classes facultatives comprises', async () => {

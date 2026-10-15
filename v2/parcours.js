@@ -1501,6 +1501,45 @@
     return { ...base, type: 'manuel' };
   }
 
+  /*
+   * UNE ÉQUIPE DE PLONGE EN PLUS (retour d'usage du 15/10 : « l'équipe de plonge
+   * actuelle fait l'après-midi, je voudrais ajouter celle du matin »). Elle lave
+   * comme la première équipe de la plonge, celle qui la mène : même façon de
+   * compter, mêmes tunnels (les mêmes machines, voir machinesDesTunnels), mêmes
+   * temps par compagnie, même effectif, même poste. Seules ses heures changent :
+   *   - là où des retours arrivent sans équipe pour les laver (au premier, arrondi
+   *     au quart d'heure) ;
+   *   - sinon, juste avant la première équipe ;
+   * et son nom dit son moment (« Plonge matin »). Sans équipe de plonge, c'est
+   * une équipe neuve. Ses arrêts programmés ne la suivent pas : ils sont à
+   * l'heure de l'autre équipe.
+   *   retours — les heures d'arrivée des retours (minutes, J = 0)
+   *   regime  — le régime de la maison (Réglages de la simulation)
+   */
+  function equipePlongeEnPlus(etat, service, nomService, o = {}) {
+    const equipes = (etat.ateliers || []).filter(a => a.service === service && a.type === 'lavage');
+    const modele = equipes[0];
+    if (!modele) return equipeNeuve(etat, service, nomService, 'lavage');
+    const presence = a => P.normaliserRegime(a.regime, o.regime).presence;   // Infinity : pas de fin de poste
+    const plages = equipes.map(a => { const t0 = (a.jour || 0) * 1440 + P.minutes(a.debut || '06:00'); return [t0, t0 + presence(a)]; });
+    const seuls = (o.retours || []).filter(t => Number.isFinite(t) && !plages.some(([d, f]) => t >= d && t < f)).sort((x, y) => x - y);
+    const duree = Number.isFinite(presence(modele)) ? presence(modele) : 480;
+    // La plonge travaille de la veille au lendemain de l'arrivée des retours (J-1 à J+1).
+    const t = Math.max(-1440, Math.min(2 * 1440 - 15, seuls.length ? Math.floor(seuls[0] / 15) * 15 : Math.min(...plages.map(p => p[0])) - duree));
+    const jour = Math.floor(t / 1440), m = t - jour * 1440;
+    const moment = m < 4 * 60 ? 'nuit' : m < 12 * 60 ? 'matin' : m < 18 * 60 ? 'après-midi' : m < 22 * 60 ? 'soir' : 'nuit';
+    const copie = x => JSON.parse(JSON.stringify(x));
+    return {
+      id: 'at-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
+      nom: nomLibre(etat, (nomService || service) + ' ' + moment), service, type: 'lavage',
+      debut: String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'), jour,
+      personnes: modele.personnes, pauses: [], lots: [], regime: copie(modele.regime || { actif: true }),
+      plafond: modele.plafond || 0,
+      ...(modele.parVol ? { parVol: true, durees: copie(modele.durees || {}) } : {}),
+      ...(Array.isArray(modele.tunnels) ? { tunnels: copie(modele.tunnels) } : { debit: modele.debit })
+    };
+  }
+
   /* ======================================================================
    *  L'ÉDITEUR
    *
@@ -2439,7 +2478,7 @@
   const api = { annoncer, fusionneePar, passePar, chaines, insererPrepa, depuisBranches, creeBoucle, parcoursTypes, validerParcours, etapesOrdonnees, confier, nouvelleEquipe,
     colonnes, tableau, affecter, chronogramme, etiquette, cheminDe, commandeDu, modeles, caseDe, creerChemin, donnerCases, completerCases, nomLibre, caseHandling, anciensHandlings, brancherHandling, separerHandling, caseRobot, remplacerEtape,
     SERVICES_DISPO, estDispo, caseDispo, anciensDispos, partagerDispos, separerParCommande, ajouterBesoin,
-    insererService, retirerService, mettreEnParallele, mettreEnParalleleDans, integrerArmement, placerArmement, delierHandling, armementIntegre, armementACorriger, versParCompagnie, liberer, insererParEcheance, cocher, passerPar, grille, natureService, equipeNeuve,
+    insererService, retirerService, mettreEnParallele, mettreEnParalleleDans, integrerArmement, placerArmement, delierHandling, armementIntegre, armementACorriger, versParCompagnie, liberer, insererParEcheance, cocher, passerPar, grille, natureService, equipeNeuve, equipePlongeEnPlus,
     marquerTypes, typeSuivi, fluxDe, signature, types, commandesDuType, nouveauType, assignerType, nettoyerTypes, cheminsPossibles, choisirChemin, selectChemin, nomVariante, adapter,
     changerFlux, regrouper, EditeurParcours };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

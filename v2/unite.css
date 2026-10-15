@@ -353,21 +353,26 @@ td.trait .mu-ct-ajout{background:var(--bg3)}
 
 /* ---- Plonge : l'arrivée des retours, face aux équipes (05/10). Le jour de
  * la plonge se compte depuis l'arrivée des retours. */
-.mu-retours{border:1px solid var(--bordure);border-radius:12px;background:var(--bg3);padding:12px 14px;margin:6px 0 12px;display:grid;gap:8px}
+.mu-retours{border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);background:var(--ds-surface-1);padding:var(--ds-e-3) var(--ds-e-4);
+  margin:var(--ds-e-1) 0 var(--ds-e-3);display:grid;gap:var(--ds-e-2)}
 .mu-retours h4{margin:0;font-size:var(--ds-t-14)}
 .mu-retours p{margin:0}
+/* La frise des retours face à la plonge (15/10, règles des graphiques) : les retours
+ * en gris neutre, ceux qui arrivent sans équipe à la couleur d'attente (la phrase
+ * dessous le dit), les équipes à la couleur de donnée de l'équipe (d1), comme au
+ * planning. L'infobulle est celle des graphiques (data-info, ds.js). */
 .mu-retours-frise{width:100%;height:auto;display:block}
 .mr-jour{fill:transparent}
-.mr-jour.arrivee{fill:color-mix(in srgb,var(--c-chemins) 6%,transparent)}
-.mr-jour-nom{font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);fill:var(--txt2)}
-.mr-minuit{stroke:var(--bordure2);stroke-width:1.5;stroke-dasharray:4 4}
-.mr-heure{font-size:var(--ds-t-11);fill:var(--txt3,var(--txt2))}
-.mr-lib{font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);fill:var(--txt)}
-.mr-lib.vide{fill:var(--attente);font-weight:var(--ds-g-fort)}
-.mr-retour{fill:var(--c-chemins);opacity:.75}
-.mr-retour.seul{fill:var(--attente);opacity:1}
-.mr-equipe{fill:color-mix(in srgb,var(--c-equipes) 22%,transparent);stroke:var(--c-equipes);stroke-width:1.5}
-.mr-plage{font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);fill:var(--txt)}
-.mu-retours-alerte{color:var(--attente);font-weight:var(--ds-g-fort);font-size:var(--ds-t-13)}
-.mu-retours-attente{color:var(--txt2);font-size:var(--ds-t-13)}
-.mu-retours-ok{color:var(--ok);font-size:var(--ds-t-13)}
+.mr-jour.arrivee{fill:var(--ds-surface-2)}
+.mr-jour-nom{font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);fill:var(--ds-texte-2)}
+.mr-minuit{stroke:var(--ds-bordure-forte);stroke-width:1.5;stroke-dasharray:4 4}
+.mr-heure{font-size:var(--ds-t-11);fill:var(--ds-texte-3)}
+.mr-lib{font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);fill:var(--ds-texte-1)}
+.mr-lib.vide{fill:var(--ds-attente-texte)}
+.mr-retour{fill:var(--ds-texte-4)}
+.mr-retour.seul{fill:var(--ds-attente)}
+.mr-equipe{fill:color-mix(in srgb,var(--ds-d1) 18%,transparent);stroke:var(--ds-d1);stroke-width:1.5}
+.mr-plage{font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);fill:var(--ds-texte-1);pointer-events:none}
+.mu-retours-alerte{color:var(--ds-attente-texte);font-weight:var(--ds-g-fort);font-size:var(--ds-t-13)}
+.mu-retours-attente,.mu-retours-relais{color:var(--ds-texte-2);font-size:var(--ds-t-13)}
+.mu-retours-ok{color:var(--ds-ok-texte);font-size:var(--ds-t-13)}

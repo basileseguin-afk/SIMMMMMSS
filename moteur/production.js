@@ -736,6 +736,28 @@
   /** La vitesse d'un tunnel par rapport à un tunnel normal (1) : 2 lave deux fois plus vite. */
   function vitesseTunnel(tunnel) { const v = +(tunnel && tunnel.vitesse); return Number.isFinite(v) && v > 0 ? v : 1; }
 
+  /*
+   * LES TUNNELS SONT DES MACHINES (retour d'usage du 15/10 : « l'équipe de plonge
+   * fait l'après-midi, j'ajoute celle du matin »). Deux équipes d'une même plonge
+   * qui ont un tunnel du même nom parlent de la même machine : quand leurs postes
+   * se chevauchent, il ne lave qu'un vol à la fois, pour l'une ou pour l'autre.
+   * Dans une même équipe, deux tunnels du même nom restent deux machines ; une
+   * équipe sans liste de tunnels a le sien, à elle seule. Une seule équipe, ou des
+   * noms différents : rien ne change.
+   *
+   * Rend la clé de machine de chaque tunnel de `tournent` (ceux qui tournent).
+   */
+  function machinesDesTunnels(equipe, tournent) {
+    const liste = equipe && Array.isArray(equipe.tunnels) && equipe.tunnels.length ? equipe.tunnels : null;
+    const vus = new Map();
+    return tournent.map((t, i) => {
+      if (!liste) return 'equipe:' + (equipe && equipe.id) + '#' + i;
+      const nom = String((t && t.nom) || '').trim().toLowerCase().replace(/\s+/g, ' ') || 'tunnel ' + (liste.indexOf(t) + 1);
+      const k = vus.get(nom) || 0; vus.set(nom, k + 1);
+      return 'tunnel:' + nom + '#' + k;
+    });
+  }
+
   /** Les compagnies qu'un handling charge, ou null pour toutes. */
   function compagniesDe(atelier) {
     const l = Array.isArray(atelier && atelier.compagnies) ? atelier.compagnies.map(x => String(x).trim().toUpperCase()).filter(Boolean) : [];
@@ -968,6 +990,19 @@
           } else vu.set(cle, a.id);
         }
       }
+    }
+
+    // Une plonge lave d'une seule façon, par vol ou au débit (15/10) : des équipes
+    // mêlées laveraient deux fois le même matériel.
+    const plonges = new Map();
+    for (const a of ateliers) if (a && a.type === 'lavage') (plonges.get(a.service) || plonges.set(a.service, []).get(a.service)).push(a);
+    for (const [s, eq] of plonges) {
+      const parVol = eq.filter(a => a.parVol), debit = eq.filter(a => !a.parVol);
+      if (!parVol.length || !debit.length) continue;
+      const noms = l => l.map(a => '« ' + (a.nom || a.id) + ' »').join(', ');
+      anomalies.push({ code: 'plonge-mixte', atelier: debit[0].id, service: s,
+        message: '« ' + nomSvc(s) + ' » ne lave pas d’une seule façon : ' + noms(parVol) + ' par vol, ' + noms(debit) + ' au débit. '
+          + 'Le même matériel serait lavé deux fois : choisissez la même façon pour toutes ses équipes (« Comment se compte le lavage ? »).' });
     }
     return anomalies;
   }
@@ -1498,7 +1533,7 @@
     const NON_BLOQUANTES = new Set(['doublon', 'bareme', 'lots', 'lot-vide', 'poste', 'materiel', 'dispo', 'bouchon', 'inacheve', 'plonge-fermee',
       'tunnel-personnes', 'parcours-trou', 'hors-parcours', 'bareme-classe',
       'handling-duree', 'handling-sans', 'handling-bloque', 'handling-poste', 'handling-retard', 'handling-chauffeurs',
-      'plonge-duree', 'plonge-vol',
+      'plonge-duree', 'plonge-vol', 'plonge-mixte',
       // Une case sans personne, un robot sous son effectif, une plonge dont aucun
       // tunnel ne tourne : cette case ne produit rien, et on le dit — mais le reste
       // de la journée se calcule. Mettre une case à 0 effaçait tous les résultats.
@@ -1966,31 +2001,41 @@
         // (trouvé avec le jeu d'essai, 29/09). La première équipe mène le groupe.
         const groupe = plongesParVol.get(a.service) || [a];
         if (groupe[0] !== a) continue;
-        const pistes = [];
+        // Une piste : un tunnel d'une équipe. Sa machine peut être celle d'une
+        // autre équipe (même nom de tunnel) : elles se la passent.
+        const pistes = [], machines = new Map();
         for (const x of groupe) {
           const vx = parId.get(x.id), rx = normaliserRegime(x.regime, opts.regime);
           const dx = vx.debut, fx = rx.actif ? dx + rx.presence : Infinity, px = pausesDe(x);
           // Sans liste de tunnels : un seul, s'il y a quelqu'un pour le tenir.
           const tournent = Array.isArray(x.tunnels) && x.tunnels.length ? tunnelsQuiTournent(x).tournent : (x.personnes > 0 ? [{ nom: 'Tunnel' }] : []);
+          const cles = machinesDesTunnels(x, tournent);
           // Les temps saisis sont ceux d'un tunnel normal ; un tunnel « ×2 » lave
           // en deux fois moins de temps (retour d'usage du 29/09).
-          tournent.forEach((t, i) => pistes.push({ a: x, vue: vx, depart: dx, finPoste: fx, pauses: px, vitesse: vitesseTunnel(t),
-            libre: dx, numero: i + 1, nom: (t && t.nom) || 'Tunnel ' + (i + 1) }));
+          tournent.forEach((t, i) => {
+            if (!machines.has(cles[i])) machines.set(cles[i], { libre: -Infinity });
+            pistes.push({ a: x, vue: vx, depart: dx, finPoste: fx, finPresence: fx, pauses: px, vitesse: vitesseTunnel(t),
+              machine: machines.get(cles[i]), numero: i + 1, nom: (t && t.nom) || 'Tunnel ' + (i + 1) });
+          });
         }
+        // Libre pour cette équipe : quand sa machine l'est, et pas avant son arrivée.
+        const libre = q => Math.max(q.machine.libre, q.depart);
         const retours = retoursDeVols(opts.vols, { ...mat, unites: mat.unites }, true);
         for (const r of retours) {
           const base = { service: a.service, nom: 'Vol ' + r.vol, vol: r.vol, cie: r.cie, classes: [], retourVol: true,
             arrivee: r.t, unites: r.unites, arret: 0 };
           // Le tunnel qui rend ce vol propre le plus tôt : le premier libre, ou
-          // un plus rapide qui se libère un peu plus tard. À égalité, celui qui
-          // est libre depuis le plus longtemps : le travail se répartit.
-          let p = null, fin = Infinity;
+          // un plus rapide qui se libère un peu plus tard. À égalité, une équipe
+          // dans ses heures plutôt qu'une autre en heures sup, puis celui qui est
+          // libre depuis le plus longtemps : le travail se répartit.
+          let p = null, fin = Infinity, supP = false;
           for (const q of pistes) {
-            const d0 = Math.max(r.t, q.libre, q.depart);
+            const d0 = Math.max(r.t, libre(q));
             if (d0 >= q.finPoste) continue;
             const f = finAvecPauses(d0, (dureeLavageVol(q.a, r.cie) ?? 0) / q.vitesse, q.pauses).fin;
             if (f > q.finPoste) continue;
-            if (f < fin - 1e-9 || (Math.abs(f - fin) <= 1e-9 && q.libre < p.libre)) { p = q; fin = f; }
+            const sup = f > q.finPresence + 1e-9;
+            if (f < fin - 1e-9 || (Math.abs(f - fin) <= 1e-9 && ((supP && !sup) || (sup === supP && libre(q) < libre(p))))) { p = q; fin = f; supP = sup; }
           }
           if (!p) {
             // Aucune équipe au travail ne peut le laver avant la fin de son poste :
@@ -2003,9 +2048,9 @@
             continue;
           }
           const duree = (dureeLavageVol(p.a, r.cie) ?? 0) / p.vitesse;
-          const debutV = Math.max(r.t, p.libre, p.depart);
+          const debutV = Math.max(r.t, libre(p));
           const f = finAvecPauses(debutV, duree, p.pauses);
-          p.libre = f.fin;
+          p.machine.libre = f.fin;
           const ligne = { ...base, atelier: p.a.id, debut: debutV, fin: f.fin, duree, attente: debutV - r.t, arret: f.arret, impossible: false,
             tunnel: p.numero, nomTunnel: p.nom, vitesse: p.vitesse };
           journal.push(ligne); p.vue.lots.push(ligne);
@@ -2594,7 +2639,14 @@
     // à calculer, et surtout pas de débit « infini », qu'un graphique mettrait à l'échelle.
     const parVol = !!lavages.length && lavages.every(a => a.parVol);
     const capacite = parVol ? null : lavages.reduce((n, a) => n + debitLavage(a), 0);
-    const tunnels = lavages.reduce((n, a) => n + (Array.isArray(a.tunnels) && a.tunnels.length ? tunnelsQuiTournent(a).tournent.length : (a.personnes > 0 ? 1 : 0)), 0);
+    // Les tunnels qui tournent, machine par machine : deux équipes qui se relaient
+    // sur les mêmes tunnels n'en font pas deux fois plus (15/10).
+    const machines = new Set();
+    for (const a of lavages) {
+      const tournent = Array.isArray(a.tunnels) && a.tunnels.length ? tunnelsQuiTournent(a).tournent : (a.personnes > 0 ? [{ nom: 'Tunnel' }] : []);
+      for (const k of machinesDesTunnels(a, tournent)) machines.add(a.service + '|' + k);
+    }
+    const tunnels = machines.size;
     // La plonge ferme à la dernière fin de poste de ses équipes (sans fin : jamais).
     const fins = finsDePoste || [];
     const fermeture = lavages.length && fins.length === lavages.length ? Math.max(...fins) : null;
@@ -2638,7 +2690,7 @@
     arcsDuParcours, servicesDuParcours, routesDesClasses,
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,
     pausesDe, fusionnerPauses, arretsDeLigne, finAvecPauses, vaguesDe, disponibleDes, debitRobot, ouvertureDe, prochaineOuverture,
-    categorieVol, chauffeursDe, creneauxDe, chauffeursPresents, dureeLavageVol, trajetHandling, debutTrajet, volsParCamionDe, vitesseTunnel,
+    categorieVol, chauffeursDe, creneauxDe, chauffeursPresents, dureeLavageVol, trajetHandling, debutTrajet, volsParCamionDe, vitesseTunnel, machinesDesTunnels,
     UNITES_DEFAUT, unitesDe, retoursDeVols, besoinMateriel, sourceRetours, SOURCES_RETOURS,
     simuler, niveauA, niveauLineaire, dureeLisible
   };

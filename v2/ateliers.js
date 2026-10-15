@@ -656,6 +656,17 @@
 
     /** Ce service lave-t-il (une équipe de plonge, des tunnels) ? */
     serviceLave(service) { return this.state.ateliers.some(x => x.service === service && x.type === 'lavage'); }
+    /** Les équipes aux tunnels d'une même plonge, celle-ci comprise (15/10). */
+    equipesDePlonge(a) { return this.state.ateliers.filter(x => x.service === a.service && x.type === 'lavage'); }
+    /* Plusieurs équipes se relaient à la plonge (15/10) : ce qu'elles partagent. */
+    notePlongeRelais(a) {
+      const autres = this.equipesDePlonge(a).filter(x => x !== a);
+      if (!autres.length) return '';
+      const noms = autres.map(x => '« ' + esc(x.nom) + ' »').join(', ');
+      return `<p class="mini-note at-relais">${a.parVol
+        ? `Les tunnels du même nom que ceux de ${noms} sont <b>les mêmes machines</b> : quand les équipes sont là en même temps, chacun ne lave qu’un vol à la fois. Un autre nom, c’est un autre tunnel.`
+        : `Au débit, ${noms} et cette équipe additionnent leurs débits quand elles sont là en même temps : faites-les se suivre, ou lavez par vol.`}</p>`;
+    }
 
     /* L'équipe hors tunnel, hors flux (retour d'usage du 06/10 : « des équipes qui
      * ne dépendent pas du tunnel, comme pour les autres, avec le choix si cela
@@ -1227,10 +1238,13 @@
           case 'creneau-de': a.creneaux[+el.dataset.index].de = v; break;
           case 'creneau-a': a.creneaux[+el.dataset.index].a = v; break;
           case 'creneau-n': a.creneaux[+el.dataset.index].n = Math.max(0, parseInt(v, 10) || 0); break;
-          // La plonge : par vol, ou par débit.
+          // La plonge : par vol, ou par débit. Elle lave d'une seule façon : ses
+          // équipes changent ensemble (15/10), sinon le même matériel serait lavé deux fois.
           case 'plonge-mode':
-            if (v === 'vol') { a.parVol = true; if (!a.durees || !Object.keys(a.durees).length) a.durees = { [P.TOUTES]: 30 }; }
-            else { delete a.parVol; delete a.durees; }
+            for (const x of this.equipesDePlonge(a)) {
+              if (v === 'vol') { x.parVol = true; if (!x.durees || !Object.keys(x.durees).length) x.durees = { [P.TOUTES]: 30 }; }
+              else { delete x.parVol; delete x.durees; }
+            }
             break;
           // Une compagnie absente des vols du jour : sa ligne, au temps de toutes.
           case 'cie-nouvelle': {
@@ -1279,7 +1293,9 @@
           case 'pause-de': a.pauses[+el.dataset.index].de = v; break;
           case 'pause-a':  a.pauses[+el.dataset.index].a = v; break;
         }
-      }, 'Enregistré.', el);
+      }, champ === 'plonge-mode' && this.equipesDePlonge(a).length > 1
+        ? 'Les ' + this.equipesDePlonge(a).length + ' équipes de la plonge lavent maintenant ' + (v === 'vol' ? 'par vol' : 'au débit') + ' : une plonge lave d’une seule façon.'
+        : 'Enregistré.', el);
       // Refusé : le champ reprend la valeur enregistrée. Le rendu, identique, ne
       // le redessinerait pas, et l'écran montrerait ce qui n'est pas retenu.
       if (!ok && el && el.isConnected) {
@@ -1824,7 +1840,7 @@
         </div>`}
 
         ${dispo ? '' : handling ? this.ficheHandling(a) : a.type === 'appui' ? this.ficheAppui(a) : a.type === 'lavage' ? `
-        <label class="at-mode-dispo at-mode-plonge">Comment se compte le lavage ?<select data-at-champ="plonge-mode">
+        <label class="at-mode-dispo at-mode-plonge">Comment se compte le lavage ?${this.equipesDePlonge(a).length > 1 ? ' <small>pour toutes les équipes de la plonge</small>' : ''}<select data-at-champ="plonge-mode">
           <option value="vol" ${a.parVol ? 'selected' : ''}>Par vol : un tunnel lave un vol en tant de minutes</option>
           <option value="debit" ${a.parVol ? '' : 'selected'}>Par débit : unités de matériel par heure</option></select></label>
         ${a.parVol ? this.fichePlongeParVol(a, etatTunnels) : `
@@ -1843,6 +1859,7 @@
             : etatTunnels.sansPersonne.includes(t) ? 'à l’arrêt : pas assez de monde' : 'tourne'}</span>
           <button class="btn btn-sm" data-at-action="tunnel-retirer" data-index="${i}">Retirer</button>
         </div>`).join('')}
+        ${this.notePlongeRelais(a)}
         <div class="at-actions-lot">
           <button class="btn btn-sm" data-at-action="tunnel-ajouter">+ Tunnel</button>
           <label class="at-plafond">Débit maximum de l’ensemble
@@ -2001,6 +2018,7 @@
           <span class="at-tunnel-etat">${!t.actif ? 'à l’arrêt' : etatTunnels.sansPersonne.includes(t) ? 'à l’arrêt : pas assez de monde' : 'tourne'}</span>
           <button class="btn btn-sm" data-at-action="tunnel-retirer" data-index="${i}">Retirer</button>
         </div>`).join('')}
+        ${this.notePlongeRelais(a)}
         <div class="at-actions-lot"><button class="btn btn-sm" data-at-action="tunnel-ajouter">+ Tunnel</button>
           <span class="mini-note at-tunnels-n"><b>${n}</b> tunnel${n > 1 ? 's' : ''} tourne${n > 1 ? 'nt' : ''} : autant de vols lavés en même temps.
             Un tunnel ne tourne que si l’équipe a son <b>minimum de personnes</b>, servi dans l’ordre de la liste

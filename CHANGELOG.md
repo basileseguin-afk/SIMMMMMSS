@@ -5,6 +5,55 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-15 — Plonge : une équipe de plus aux tunnels (le matin, le soir)
+
+Retour d'usage : « l'atelier plonge tunnel actuel gère le shift de l'aprem, je
+voudrais ajouter le shift du matin ». Rien ne change dans vos données tant que
+vous n'ajoutez pas d'équipe. Avec une seule équipe, le calcul est le même à
+l'octet près (`donnees-intactes-browser` vert, 500 journées tirées au hasard
+identiques, v1 et v2).
+
+- **Le bouton.** « + Ajouter une équipe de plonge » n'existait que pour une
+  plonge sans équipe : on ne pouvait pas ajouter la deuxième. Il reste
+  maintenant, en bouton secondaire, sous les équipes de la plonge.
+- **L'équipe en plus lave comme la première.** Même façon de compter (par
+  vol ou au débit), mêmes tunnels, mêmes temps par compagnie, même effectif
+  et même poste ; seules ses heures changent. Elle se place d'elle-même au
+  premier retour qui arrive sans équipe (au quart d'heure), sinon juste avant
+  la première, et son nom dit son moment (« Plonge matin »). Sa fiche vient en
+  haut de la page, le curseur dans son heure ; la notification le dit, avec
+  « Annuler ».
+- **Les tunnels sont des machines (BUG-055).** Deux équipes qui se
+  chevauchaient lavaient deux vols à la fois dans le même tunnel : 32
+  journées sur 600 tirées au hasard. Un tunnel du même nom est maintenant la
+  même machine pour toutes les équipes de la plonge : celle qui arrive attend
+  que le vol en cours sorte. La fiche le dit, et la plonge compte ses tunnels
+  machine par machine. Version 2 : à heure de fin égale, le vol va à l'équipe
+  dans ses heures plutôt qu'à celle qui partirait en heures sup.
+- **Une plonge lave d'une seule façon (BUG-056).** « Comment se compte le
+  lavage ? » vaut pour toutes ses équipes ; mêlées (par vol et au débit),
+  elles laveraient deux fois le même matériel. Une plonge mêlée, venue d'un
+  classeur par exemple, est signalée (`plonge-mixte`).
+- **La frise des retours suit les règles des graphiques.**
+  - `ds-graphique` et `data-info` (plus de `<title>`).
+  - Les équipes à la couleur de donnée de l'équipe (`d1`), les retours en gris,
+    ceux qui arrivent sans équipe à la couleur d'attente.
+  - Une ligne par équipe, dans l'ordre des heures ; une équipe sans fin de
+    poste va jusqu'au bout, comme dans le calcul.
+  - Deux équipes là en même temps : une phrase dit quels tunnels elles se
+    passent. Les retours qui attendent la suivante renvoient au bouton.
+  - Jetons `--ds-*` seulement ; `contraste.test` vérifie aussi le texte des
+    états sur une carte.
+- Fichiers : `moteur/production.js` (v1, v2), `parcours.js`, `unite.js`,
+  `unite.css`, `ateliers.js` (v1, v2), `ateliers.css`,
+  `docs/MODELE_ATELIERS.md`, `BUGS.md`, `README.md`.
+- Tests :
+  - nouveaux : `plonge-equipes-browser`, `equipe-plonge.test` ;
+  - complétés : `plonge-equipes.test` (tunnels partagés, plonge mêlée,
+    150 journées au hasard en v1 et v2), `v2/heures-sup.test`,
+    `echanges.test` (deux équipes par Excel), `contraste.test` ;
+  - mis à jour : `plonge-jour-browser` (la nouvelle phrase).
+
 ## 2026-10-12 — Refonte, étape 11 (suite) : la page d'entrée au design system
 
 La page à mettre en favori (`accueil.html`) gardait l'habillage d'avant la

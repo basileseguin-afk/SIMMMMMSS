@@ -721,6 +721,27 @@ ceux d'un tunnel normal, et chaque vol va au tunnel qui le rend propre le plus
 tôt (à égalité, celui qui est libre depuis le plus longtemps). Le mode « par débit » ci-dessous reste au choix
 dans la fiche.
 
+**Plusieurs équipes, les mêmes tunnels** (15/10 : « l'équipe de plonge fait
+l'après-midi, j'ajoute celle du matin »). Les équipes d'une même plonge se
+partagent les vols revenus : un vol n'est lavé qu'une fois, par l'équipe au
+travail qui le rend propre le plus tôt (BUG-054). Leurs tunnels **du même nom**
+sont la même machine (`machinesDesTunnels`) : quand deux postes se
+chevauchent, l'équipe qui arrive attend que le vol en cours sorte du tunnel
+(BUG-055). Le nom se lit sans casse ni espaces en trop ; dans une même équipe,
+deux tunnels du même nom restent deux machines ; une équipe sans liste de
+tunnels a le sien. En version 2, à heure de fin égale, le vol va à l'équipe
+dans ses heures plutôt qu'à celle qui partirait en heures sup. Une plonge lave
+d'une seule façon : par vol ou au débit pour toutes ses équipes ; mêlées, elles
+laveraient deux fois le même matériel (`plonge-mixte`). Au débit, deux équipes
+présentes en même temps additionnent leurs débits.
+
+« + Ajouter une équipe de plonge » (Équipes › Services et équipes, la plonge)
+crée une équipe qui lave comme la première (`equipePlongeEnPlus`, parcours.js) :
+même façon, mêmes tunnels, mêmes temps par compagnie, même effectif et même
+poste, sans ses arrêts programmés. Elle commence au premier retour qui arrive
+sans équipe (au quart d'heure), sinon juste avant la première, et son nom dit
+son moment (« Plonge matin »).
+
 ### La plonge : un débit par ligne, un plafond pour l'ensemble
 
 Chaque tunnel porte son **nom**, son **débit** en unités par heure, les

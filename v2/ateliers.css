@@ -129,7 +129,7 @@ body.ateliers-open .workbench{display:none}
 .at-presence{display:flex;align-items:center;gap:8px;font-size:var(--ds-t-12);color:var(--txt2);margin-left:24px}
 .at-presence input{max-width:90px}
 .at-presence .champ-unite>input,.at-pers-jour .champ-unite>input{width:120px;max-width:none}
-.at-lavage-note,.at-tunnel-note{padding:0 14px 12px;margin:0}
+.at-lavage-note,.at-tunnel-note,.at-relais{padding:0 14px 12px;margin:0}
 
 /* La boucle du matériel : ce qui part revient. */
 .at-mat{border:1px solid var(--bordure);border-radius:10px;background:var(--bg3);padding:12px 16px;margin-bottom:16px}
@@ -394,6 +394,8 @@ body.ateliers-open .workbench{display:none}
 .at-cies-bloc{padding:0 14px 6px}
 .at-cies-bloc .mini-note{margin:2px 0 0}
 .at-mode-plonge{display:grid;gap:4px;margin:10px 14px 4px;font-size:var(--ds-t-13);font-weight:var(--ds-g-fort);max-width:560px}
+/* « pour toutes les équipes de la plonge » (15/10) : une indication, pas un titre. */
+.at-mode-plonge small{font-size:var(--ds-t-12);font-weight:var(--ds-g-normal);color:var(--ds-texte-3)}
 .at-tunnels-n{flex:1 1 320px}
 /* Ajouter une compagnie, ou les classes qui lui manquent. */
 .at-ajout-cabs{display:flex;flex-wrap:wrap;gap:6px 14px;border:0;padding:0;margin:0;grid-column:span 2}

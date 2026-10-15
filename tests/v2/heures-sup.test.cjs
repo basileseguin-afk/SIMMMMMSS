@@ -45,3 +45,19 @@ test('une équipe qui finit dans sa présence ne fait pas d’heures sup', () =>
 test('heures sup désactivées : comme sans l’option', () => {
   assert.equal(vue(jouer({ actif: false, plafond: 90 })).heuresSup, 0);
 });
+
+/* Une plonge par vol à deux équipes qui se relaient sur le même tunnel (15/10) :
+ * à heure de fin égale, le vol revient à l'équipe dans ses heures, pas à
+ * celle qui partirait en heures sup. */
+test('plonge : à égalité, l’équipe dans ses heures plutôt que celle en heures sup', () => {
+  const plongeur = (id, debut) => ({ id, nom: id, service: 'plonge', type: 'lavage', debut, jour: 0, personnes: 1, pauses: [], lots: [],
+    regime: { actif: true, seuils: [], presence: 480 }, parVol: true, durees: { '*': 30 }, tunnels: [{ nom: 'T1', personnes: 1, actif: true }] });
+  // Un départ à 12:30 la veille, de retour à 13:00 : le matin finit sa présence à 13:00.
+  const r = P.simuler({ vols: [{ id: 'AF9', cie: 'AF', sens: 'DEP', std: h('12:30'), bc: 0, pc: 0, yc: 100 }], liaisons: [], rendement: 1,
+    ateliers: [plongeur('matin', '05:00'), plongeur('soir', '13:00')], heuresSup: { actif: true, plafond: 60 },
+    materiel: { actif: true, delaiRetour: 30, retours: 'j1', stockInitial: 0, unites: { YC: { parVol: 10 } } } });
+  const l = r.lots.find(x => x.retourVol);
+  assert.equal(l.atelier, 'soir');
+  assert.equal(P.hhmm(l.debut), '13:00');
+  assert.equal(r.ateliers.find(a => a.id === 'matin').heuresSup, 0, 'le matin ne reste pas');
+});

@@ -52,7 +52,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.equal(await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.nom==='Plonge de nuit').jour),1,version+' : J+1 retenu');
    assert.match(await page.locator(F).innerText(),/J\+1 · lendemain/);
    assert.match(await page.locator(F).innerText(),/Plonge de nuit[\s\S]*J\+1 02:00 → J\+1 10:00/);
-   assert.match(await page.locator(F).innerText(),/entre deux équipes .* attend(ent)? « Plonge de nuit » \(J\+1 02:00\)/);
+   assert.match(await page.locator(F).innerText(),/sans équipe de plonge .* attend(ent)? « Plonge de nuit » \(J\+1 02:00\)/);
    assert.equal(await sale(),0,'la plonge du lendemain lave ce qui est arrivé le soir');
    // Le tableau des horaires dit la même chose.
    await nav.aller(page,'at-recap');await attendre();

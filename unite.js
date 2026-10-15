@@ -338,7 +338,8 @@
         equipes = `<p class="mini-note">${esc(phrase)}</p>`
           + (nature === 'lavage' ? this.friseRetours(b.cases) : '')
           + b.cases.map(a => `<div class="mu-carte">${this.at.carte(a, calc.get(a.id), { cmd: null })}</div>`).join('')
-          + (b.cases.length ? '' : `<p class="mu-ajout"><button class="btn btn-play btn-sm" type="button" data-mu-action="equipe">+ ${nature === 'lavage' ? 'Ajouter une équipe de plonge' : nature === 'dispo' ? 'Mettre ce service en place' : 'Ajouter une équipe de chargement'}</button></p>`)
+          + (nature === 'lavage' ? this.ajoutPlonge(b.cases)
+            : b.cases.length ? '' : `<p class="mu-ajout"><button class="btn btn-play btn-sm" type="button" data-mu-action="equipe">+ ${nature === 'dispo' ? 'Mettre ce service en place' : 'Ajouter une équipe de chargement'}</button></p>`)
           // Des équipes hors tunnel (06/10) : tri, chariots… présentes à leurs heures, sans tunnel.
           + (nature === 'lavage' ? `<p class="mu-ajout"><button class="btn btn-sm" type="button" data-mu-action="appui">+ Ajouter une équipe hors tunnel</button>
              <span class="mini-note">des gens qui travaillent à la plonge sans tenir un tunnel ; leur effectif est saisi, ou suit les vols (case « Effectif constant »)</span></p>` : '')
@@ -885,11 +886,44 @@
 
     ajouterEquipe(service) {
       const nature = this.natures[service] || PC.natureService(this.etat, service, this.nom(service));
+      if (nature === 'lavage' && this.etat.ateliers.some(x => x.service === service && x.type === 'lavage')) return this.ajouterRelevePlonge(service);
       let a;
       this.at.changer(() => { a = PC.equipeNeuve(this.at.state, service, this.nom(service), nature); this.at.state.ateliers.push(a); },
         preparent(nature) ? 'Équipe ajoutée : donnez son heure et ses personnes, puis cochez ce qu’elle prépare.' : 'C’est en place : réglez ses horaires.');
       const el = a && root.document.querySelector(`[data-at="${CSS.escape(a.id)}"] input`);
       if (el) el.focus();
+    }
+
+    /* Le bouton qui ajoute une équipe à la plonge : la première, ou une autre qui
+     * se relaie sur ses tunnels (15/10) — celle du matin, quand la première fait
+     * l'après-midi. Le geste attendu n'est le bouton principal que pour la première. */
+    ajoutPlonge(cases) {
+      const premiere = cases.find(a => a.type === 'lavage');
+      if (!premiere) return `<p class="mu-ajout"><button class="btn btn-play btn-sm" type="button" data-mu-action="equipe">+ Ajouter une équipe de plonge</button></p>`;
+      return `<p class="mu-ajout"><button class="btn btn-sm" type="button" data-mu-action="equipe">+ Ajouter une équipe de plonge</button>
+        <span class="mini-note">une autre équipe aux tunnels, celle du matin ou du soir : elle lave comme « ${esc(premiere.nom)} », à ses heures</span></p>`;
+    }
+
+    /* Une équipe de plonge en plus (15/10) : elle reprend la façon de laver de la
+     * première, et se place là où des retours arrivent sans personne pour les
+     * laver. Sa fiche s'ouvre, le curseur dans son heure : c'est ce qu'on règle. */
+    ajouterRelevePlonge(service) {
+      const st = this.at.state, r = this.at.a && this.at.a.reglages ? this.at.a.reglages() : {};
+      const vols = this.at.a && this.at.a.vols ? this.at.a.vols() : [];
+      const retours = P.retoursDeVols(vols, st.materiel || {}).map(x => x.t);
+      const modele = st.ateliers.find(x => x.service === service && x.type === 'lavage');
+      const a = PC.equipePlongeEnPlus(st, service, this.nom(service), { retours, regime: r.regime });
+      const t0 = a.jour * 1440 + P.minutes(a.debut), presence = P.normaliserRegime(a.regime, r.regime).presence;
+      const quand = t => { const j = Math.floor(t / 1440); return (j ? jourEcrit(j) + ' ' : '') + P.hhmm(t - j * 1440); };
+      const ok = this.at.changer(() => { this.at.state.ateliers.push(a); },
+        '« ' + a.nom + ' » ajoutée, ' + (Number.isFinite(presence) ? 'de ' + quand(t0) + ' à ' + quand(t0 + presence) : 'à partir de ' + quand(t0))
+        + ' : elle lave comme « ' + modele.nom + ' » (mêmes tunnels, ' + (a.parVol ? 'mêmes temps par vol' : 'mêmes débits') + '). Réglez son heure et son effectif.');
+      if (!ok) return;
+      this.at.ouvert = a.id;
+      if (this.rendreServices) this.rendreServices(); else this.at.rendre();
+      // Sa fiche en haut de la page : la notification, en bas, ne cache pas son heure.
+      const carte = root.document.querySelector(`[data-at="${CSS.escape(a.id)}"]`), el = carte && carte.querySelector('[data-at-champ="debut"]');
+      if (el) { el.focus({ preventScroll: true }); if (el.select) el.select(); carte.scrollIntoView({ block: 'start' }); }
     }
 
     /* ---- flux de production (30/09) ---------------------------------------
@@ -1075,10 +1109,12 @@
         planche: 'la planche retour du handling' }[source];
       const retours = P.retoursDeVols(vols, mat).filter(r => Number.isFinite(r.t)).sort((x, y) => x.t - y.t);
       const r = this.at.a && this.at.a.reglages ? this.at.a.reglages() : {};
+      // Une équipe sans fin de poste (pauses décochées) reste jusqu'au bout : c'est ce que fait le calcul.
+      // Une ligne par équipe, dans l'ordre des heures : c'est une frise.
       const equipes = cases.filter(a => a.type === 'lavage').map(a => {
         const t0 = (a.jour || 0) * 1440 + P.minutes(a.debut || '06:00'), reg = P.normaliserRegime(a.regime, r.regime);
-        return { a, t0, t1: t0 + (Number.isFinite(reg.presence) ? reg.presence : 480) };
-      });
+        return { a, t0, t1: t0 + reg.presence };
+      }).sort((p, q) => p.t0 - q.t0);
       const quand = t => { const j = Math.floor(t / 1440); return (j ? jourEcrit(j) + ' ' : '') + P.hhmm(t - j * 1440); };
       const regle = '<p class="mini-note">Le jour d’une équipe de plonge se compte <b>depuis l’arrivée des retours</b> : '
         + '<b>J</b> le jour où ils arrivent, <b>J+1</b> le lendemain, <b>J-1</b> la veille. D’où viennent les retours : '
@@ -1088,7 +1124,8 @@
       const dedans = t => equipes.some(e => t >= e.t0 && t < e.t1);
       const seuls = retours.filter(x => !dedans(x.t));
       const t0 = Math.floor(Math.min(retours[0].t, ...equipes.map(e => e.t0)) / 60) * 60;
-      const t1 = Math.ceil(Math.max(retours[retours.length - 1].t + 1, ...equipes.map(e => e.t1)) / 60) * 60;
+      const t1 = Math.ceil(Math.max(retours[retours.length - 1].t + 1, ...equipes.map(e => (Number.isFinite(e.t1) ? e.t1 : e.t0 + 60))) / 60) * 60;
+      const finDe = e => Math.min(e.t1, t1);
       // Le dessin : une colonne par heure (les retours qui arrivent), puis une ligne par équipe.
       const W = 1000, G = 150, D = 12, HH = 64, LH = 30, haut = 22 + HH + 10 + Math.max(1, equipes.length) * LH + 24;
       const x = t => G + (t - t0) / (t1 - t0) * (W - G - D);
@@ -1106,19 +1143,22 @@
       }
       for (let t = Math.ceil(t0 / pas) * pas; t <= t1; t += pas)
         svg += `<text class="mr-heure" x="${x(t)}" y="${haut - 2}" text-anchor="middle">${P.hhmm(((t % 1440) + 1440) % 1440)}</text>`;
-      // Les retours, heure par heure.
+      // Les retours, heure par heure : ceux qui arrivent sans équipe se voient, et se disent.
       svg += `<text class="mr-lib" x="8" y="${22 + HH / 2 + 4}">Retours qui arrivent</text>`;
       for (const [h, n] of parHeure) {
         const hb = Math.max(4, n / max * HH), seulsIci = seuls.filter(q => Math.floor(q.t / 60) * 60 === h).length;
-        svg += `<rect class="mr-retour${seulsIci ? ' seul' : ''}" x="${x(h) + 1}" y="${22 + HH - hb}" width="${Math.max(2, x(h + 60) - x(h) - 2)}" height="${hb}" rx="2">`
-          + `<title>${quand(h)} : ${n} retour${n > 1 ? 's' : ''}${seulsIci ? ' — ' + seulsIci + ' sans équipe de plonge' : ''}</title></rect>`;
+        svg += `<rect class="mr-retour${seulsIci ? ' seul' : ''}" x="${x(h) + 1}" y="${22 + HH - hb}" width="${Math.max(2, x(h + 60) - x(h) - 2)}" height="${hb}" rx="2"`
+          + ` data-info="${esc(quand(h) + ' : ' + pl(n, 'retour') + (seulsIci ? '\n' + (seulsIci === n ? 'aucune équipe de plonge n’est là pour les laver' : seulsIci + ' sans équipe de plonge pour les laver') : ''))}"/>`;
       }
       // Les équipes de plonge, chacune sur sa plage.
+      const tunnelsDe = a => (Array.isArray(a.tunnels) && a.tunnels.length ? P.tunnelsQuiTournent(a).tournent.map(t => t.nom) : []);
       equipes.forEach((e, i) => {
-        const y = 22 + HH + 10 + i * LH;
-        svg += `<text class="mr-lib" x="8" y="${y + 17}">${esc(e.a.nom.length > 20 ? e.a.nom.slice(0, 19) + '…' : e.a.nom)}</text>`
-          + `<rect class="mr-equipe" x="${x(e.t0)}" y="${y + 4}" width="${Math.max(3, x(e.t1) - x(e.t0))}" height="${LH - 10}" rx="5"><title>${esc(e.a.nom)} : ${quand(e.t0)} → ${quand(e.t1)}</title></rect>`
-          + `<text class="mr-plage" x="${x(e.t0) + 6}" y="${y + 18}">${quand(e.t0)} → ${quand(e.t1)}</text>`;
+        const y = 22 + HH + 10 + i * LH, fin = Number.isFinite(e.t1) ? quand(e.t1) : 'sans fin de poste', tun = tunnelsDe(e.a);
+        const info = e.a.nom + '\n' + quand(e.t0) + ' → ' + fin + ' · ' + pl(+e.a.personnes || 0, 'personne')
+          + '\n' + (tun.length ? pl(tun.length, 'tunnel tourne', 'tunnels tournent') + ' : ' + tun.join(', ') : 'aucun tunnel ne tourne') + (e.a.parVol ? ' · lave par vol' : ' · au débit');
+        svg += `<text class="mr-lib" x="8" y="${y + 17}" data-info="${esc(info)}">${esc(e.a.nom.length > 20 ? e.a.nom.slice(0, 19) + '…' : e.a.nom)}</text>`
+          + `<rect class="mr-equipe" x="${x(e.t0)}" y="${y + 4}" width="${Math.max(3, x(finDe(e)) - x(e.t0))}" height="${LH - 10}" rx="5" data-info="${esc(info)}"/>`
+          + `<text class="mr-plage" x="${x(e.t0) + 6}" y="${y + 18}">${quand(e.t0)} → ${esc(fin)}</text>`;
       });
       if (!equipes.length) svg += `<text class="mr-lib vide" x="${G}" y="${22 + HH + 27}">Aucune équipe de plonge : les retours attendent.</text>`;
       const jours = [...new Set(retours.map(q => Math.floor(q.t / 1440)))];
@@ -1129,13 +1169,29 @@
       const liste = l => l.slice(0, 4).map(q => quand(q.t)).join(', ') + (l.length > 4 ? '…' : '');
       const alerte = !equipes.length ? '' : !seuls.length
         ? '<p class="mu-retours-ok">Chaque retour arrive pendant qu’une équipe de plonge est là.</p>'
-        : (repris.length ? `<p class="mu-retours-attente">${pl(repris.length, 'retour arrive', 'retours arrivent')} entre deux équipes (${liste(repris)}) : `
-            + `${repris.length > 1 ? 'ils attendent' : 'il attend'} ${[...new Set(repris.map(q => suivante(q.t)))].map(e => '« ' + esc(e.a.nom) + ' » (' + quand(e.t0) + ')').join(', ')}.</p>` : '')
+        : (repris.length ? `<p class="mu-retours-attente">${pl(repris.length, 'retour arrive', 'retours arrivent')} sans équipe de plonge (${liste(repris)}) : `
+            + `${repris.length > 1 ? 'ils attendent' : 'il attend'} ${[...new Set(repris.map(q => suivante(q.t)))].map(e => '« ' + esc(e.a.nom) + ' » (' + quand(e.t0) + ')').join(', ')}. `
+            + `Une autre équipe ${repris.length > 1 ? 'les' : 'le'} laverait plus tôt : « Ajouter une équipe de plonge », plus bas.</p>` : '')
           + (perdus.length ? `<p class="mu-retours-alerte">${pl(perdus.length, 'retour arrive', 'retours arrivent')} après la dernière équipe (${liste(perdus)}) : `
-            + `${perdus.length > 1 ? 'ils restent' : 'il reste'} sale${perdus.length > 1 ? 's' : ''}. Ajoutez une équipe le soir, ou le lendemain de l’arrivée (J+1).</p>` : '');
+            + `${perdus.length > 1 ? 'ils restent' : 'il reste'} sale${perdus.length > 1 ? 's' : ''}. Ajoutez une équipe de plonge (plus bas), le soir, ou le lendemain de l’arrivée (J+1).</p>` : '');
+      // Deux équipes là en même temps (la relève, 15/10) : par vol, elles se passent les
+      // tunnels du même nom ; au débit, leurs débits s'additionnent.
+      const ensemble = [];
+      for (let i = 0; i < equipes.length; i++) for (let k = i + 1; k < equipes.length; k++) {
+        const p = equipes[i], q = equipes[k], de = Math.max(p.t0, q.t0), a = Math.min(p.t1, q.t1);
+        if (de < a) ensemble.push({ p, q, de, a });
+      }
+      const relais = ensemble.slice(0, 3).map(({ p, q, de, a }) => {
+        const cle = n => n.trim().toLowerCase().replace(/\s+/g, ' ');
+        const communs = tunnelsDe(p.a).filter(n => tunnelsDe(q.a).some(m => cle(m) === cle(n)));
+        const et = l => l.length > 1 ? l.slice(0, -1).join(', ') + ' et ' + l[l.length - 1] : l.join('');
+        return `« ${esc(p.a.nom)} » et « ${esc(q.a.nom)} » sont là ensemble de ${quand(de)} à ${Number.isFinite(a) ? quand(a) : 'la fin'}`
+          + (p.a.parVol && q.a.parVol ? (communs.length ? ` : elles se passent ${communs.length > 1 ? 'les tunnels ' + esc(et(communs)) + ' ; chacun' : 'le tunnel ' + esc(communs[0]) + ' ; il'} ne lave qu’un vol à la fois.`
+            : ' : leurs tunnels n’ont pas les mêmes noms, ce sont d’autres machines.') : ' : au débit, leurs débits s’additionnent.');
+      }).map(t => `<p class="mu-retours-relais">${t}</p>`).join('');
       return `<div class="mu-retours"><h4>L’arrivée des retours, face à la plonge</h4><p>${resume}</p>
-        <svg class="mu-retours-frise" viewBox="0 0 ${W} ${haut}" role="img" aria-label="Les retours qui arrivent, heure par heure, et les équipes de plonge">${svg}</svg>
-        ${alerte}${regle}</div>`;
+        <svg class="mu-retours-frise ds-graphique" viewBox="0 0 ${W} ${haut}" role="img" aria-label="Les retours qui arrivent, heure par heure, et les équipes de plonge">${svg}</svg>
+        ${alerte}${relais}${regle}</div>`;
     }
 
     /* Qui suit quel chemin (retour d'usage du 05/10) : toutes les commandes, par

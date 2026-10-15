@@ -279,8 +279,14 @@ le rouge ne sert qu’aux retards.
         travaille la veille, le jour même ou le lendemain de l’arrivée
         (J-1, J, J+1). Sa fiche met face à face les retours qui arrivent, heure
         par heure, et les équipes de plonge sur leur plage ; elle dit ce qui
-        arrive entre deux équipes (et qui le reprend) et ce qui arrive après
-        la dernière (et reste sale) ;
+        arrive sans équipe (et qui le reprend), ce qui arrive après la
+        dernière (et reste sale), et quand deux équipes se chevauchent.
+        **« + Ajouter une équipe de plonge »** reste quand la plonge a déjà
+        la sienne : l’équipe du matin ou du soir lave comme la première (même
+        façon, mêmes tunnels, mêmes temps par vol), à ses heures, et se place
+        d’elle-même au premier retour sans équipe. Les tunnels du même nom
+        sont les mêmes machines : quand deux équipes se chevauchent, chacun ne
+        lave qu’un vol à la fois ;
      3. *Heures de travail pour un vol* : le barème du service ;
      4. *Avancé*, replié : « Il travaille en même temps que… » et les
         superviseurs ; son titre dit ce qui y est réglé (« 1 réglage :
@@ -698,6 +704,9 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/chemin-choisi-browser.cjs` | Le chemin d’une commande dans une liste (v1 et v2) : « Qui suit quel chemin » (Flux de production) et « Chemin suivi » (Chemin d’une commande) ; un flux créé de toutes pièces se choisit, le calcul le suit ; un chemin à part choisi devient partagé, et c’est dit |
 | `tests/vue-ensemble-browser.cjs` | Chemins lisibles avec beaucoup de services (v1 et v2) : Vue d’ensemble (une colonne par flux, une ligne par service par étape, pastilles, case vide qui fait passer un flux puis Annuler, pastille qui ouvre le flux sur ce service), diagramme en étapes (de haut en bas, bandes, sans défilement de côté), chaîne éclairée au survol, « En ligne » retenu pour tous les diagrammes |
 | `tests/defilement-browser.cjs` | La page entière ne défile jamais, seule la vue (v1 et v2) : fiche Plonge avec son équipe, molette sur la fiche puis sur l’en-tête (qui reste en place), jamais bloqué en bas : descendu sur la fiche, on remonte la souris sur la liste de gauche (Services et équipes, Chemin d’une commande), la Liste des services et chaque service de Services et équipes, aucun « piège à molette » (zone qui garde la molette dans une zone qui défile, bloquant sous Firefox et Safari), le tableau des Minutes de travail qui garde sa place quand on valide un temps, toutes les pages du menu, chaque fiche de service |
+| `tests/plonge-equipes-browser.cjs` | Une équipe de plonge en plus (v1 et v2) : le bouton reste quand la plonge a son équipe ; « Plonge matin » au premier retour sans équipe, qui lave comme la première ; sa fiche en haut, le curseur dans son heure, la notification avec « Annuler » ; le matin lave les retours du matin, chaque vol une fois, un tunnel un vol à la fois ; la frise aux règles des graphiques (ds-graphique, data-info, d1, attente) ; l’heure au clavier ; le mode de lavage pour toute la plonge ; rien d’autre n’est écrit |
+| `tests/equipe-plonge.test.cjs` | L’équipe de plonge en plus : même façon de laver, mêmes tunnels et temps (une copie), sans les arrêts de l’autre ; au premier retour sans équipe, au quart d’heure, sinon juste avant la première ; son nom dit son moment, libre dans le service ; la veille et le lendemain ; au débit ; le calcul à deux équipes |
+| `tests/plonge-equipes.test.cjs` | Une plonge par vol à plusieurs équipes : chaque vol lavé une fois ; un tunnel du même nom est la même machine (un vol à la fois quand les postes se chevauchent), un autre nom une autre ; plonge mêlée signalée ; 150 journées au hasard, v1 et v2 |
 | `tests/plonge-jour-browser.cjs` | La plonge se règle sur l’arrivée des retours (v1 et v2) : veille / jour / lendemain de l’arrivée, frise des retours face aux équipes, ce qui arrive sans personne, une équipe J+1 qui lave le soir (rien ne reste sale), tableau des horaires, rechargement |
 | `tests/saisie-browser.cjs` | Ce qu’on tape n’est jamais perdu (v1 et v2) : un rendu arrive au milieu de la saisie d’une heure, de personnes, de minutes par vol — il attend, rien ne se perd, et tout est retenu à la validation ; un champ validé montre la valeur retenue (bornée) ; rechargement |
 | `tests/cf-depart-browser.cjs` | CF départ food n’est pas le handling (v1 et v2) : un service à équipes (les checkeurs, à heures fixes) ; un handling rangé dans sa zone passe dans son service à lui, avec ses réglages et sa place dans les chemins ; « Mettre en place le handling » le vise, jamais CF départ food ; rechargement |
