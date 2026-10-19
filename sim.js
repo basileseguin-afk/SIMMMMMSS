@@ -11,7 +11,7 @@
  *  ==========================================================================*/
 (function () {
 'use strict';
-const {escapeHTML, parseFlights} = window.OrlyUI;
+const {escapeHTML} = window.OrlyUI;
 let activeView = 'plan', dataSource = 'Jeu de démonstration';
 
 /* ==========================================================================
@@ -46,76 +46,15 @@ const TILES = [
 // Cadrage sur le bâtiment
 const VUE = { x:300, y:320, w:4340, h:2140 };
 
-/* Les services du plan de base (clé = identifiant du service).
+/* Les services du plan de base, ses stockages et ses liens d'origine : dans
+ * plan-base.js, que le calcul hors du navigateur relit aussi (moteur/journee.js).
  * `approx:true` => emplacement estimé, à confirmer. `sous` : sous-titres. */
-const ZONES = {
-  quais:    { nom:'QUAIS · RÉCEPTION', x:700, y:330, w:1960, h:180, approx:true,
-              sous:['camions : départ trolleys / retour vols sales'] },
-  handling: { nom:'CF DÉPART FOOD', x:1528, y:673.1, w:808.6, h:230.3,
-              sous:['trolleys prêts → camion'] },
-  appros:   { nom:'RÉCEPTION / APPROS', x:2680, y:560, w:640, h:250, approx:true,
-              sous:['réceptions & commandes'] },
-  armement: { nom:'ARMEMENT', x:3065.8, y:755.1, w:317.9, h:296,
-              sous:['trolleys non-food'] },
-  prepa:    { nom:'MONTAGE', x:2180, y:900, w:400, h:350,
-              sous:['dressage plateaux','montage trolleys'] },
-  // La prépa précède le montage : elle prépare ce que le montage dresse.
-  // Emplacement à confirmer sur le plan (« Modifier le plan »).
-  preparation: { nom:'PRÉPA', x:2180, y:1262, w:400, h:110, approx:true,
-              sous:['préparation avant montage'] },
-  magasin:  { nom:'MAGASIN', x:4009.3, y:1052.8, w:486.7, h:140,
-              sous:['produit compagnie'] },
-  dotation: { nom:'DOTATION', x:1156, y:1387.9, w:348, h:629.9,
-              sous:['couverts + serviettes','assiettes propres'] },
-  decontam: { nom:'LÉGUMERIE', x:2555.1, y:1446.3, w:165.7, h:115.2,
-              sous:['lavage / décontamination'] },
-  bobduty:  { nom:'DUTY FREE', x:787.3, y:1519.5, w:348, h:492,
-              sous:['buy-on-board'] },
-  cuisine:  { nom:'CUISINE', x:1900, y:1560, w:280, h:520, approx:true,
-              sous:['tranche · froid · chaud'] },
-  plonge:   { nom:'PLONGE', x:1180, y:2090, w:420, h:330, approx:true,
-              sous:['lavage des retours'] }
-};
-
+const ZONES = window.OrlyPlanBase.zones();
 /* Stockages, chambres froides et locaux : repris tels quels du plan. */
-const STORAGES = [
-  { l:'CF départ armement',        x:850,    y:680.6,  w:289.8, h:593.3, cat:'cf' },
-  { l:'Congélateur (KSO + cuisine chaude)', x:2355.8, y:692.9, w:204.5, h:227.4, cat:'gel' },
-  { l:'SAS plaquage produit congelé', x:2793.9, y:750.8, w:217, h:184.6, cat:'gel' },
-  { l:'Montage KSO',               x:2216.7, y:914.1,  w:142.1, h:131.6, cat:'sub' },
-  { l:'Sortie KSO',                x:2368.6, y:926.9,  w:186.5, h:152.5, cat:'sub' },
-  { l:'Congélateur',               x:2845.3, y:936.8,  w:128,   h:581.3, cat:'gel' },
-  { l:'CF + BOF',                  x:2637.4, y:978.4,  w:148.8, h:184.3, cat:'cf' },
-  { l:'Réserve local Montage (mise à dispo montage + pain)', x:2270.3, y:1085.3, w:282.8, h:166, cat:'sub' },
-  { l:'CF charcuterie',            x:2636.7, y:1177.4, w:146,   h:99.2,  cat:'cf' },
-  { l:'CF Fruits & Légumes',       x:2267.8, y:1257.8, w:289.6, h:111.5, cat:'cf' },
-  { l:'CF sortie cuisine',         x:2638.7, y:1292.3, w:148.1, h:80.2,  cat:'cf' },
-  { l:'CF sortie matière pour prépa montage', x:2272.6, y:1377.7, w:220.2, h:137.9, cat:'cf' },
-  { l:'Stockage compagnie',        x:383.1,  y:1533.8, w:380.3, h:492.9, cat:'aire' },
-  { l:'Aire de stockage',          x:3033.3, y:1540,   w:390,   h:453.6, cat:'aire' },
-  { l:'Aire de stockage',          x:4132,   y:1544,   w:408.7, h:313.9, cat:'aire' },
-  { l:'CF Jour (tranché et décontaminé)', x:2420.1, y:1565.3, w:120.1, h:259.5, cat:'cf' },
-  { l:'CF intermédiaire (prépa montage + produit fini)', x:2244.9, y:1620.2, w:165.7, h:204.9, cat:'cf' },
-  { l:'Refroidissement et sous-vide', x:2194.4, y:1840.6, w:133.6, h:111.2, cat:'cf' },
-  { l:'CF sous-vide',              x:2338.4, y:1842.1, w:200.9, h:117.8, cat:'cf' },
-  { l:'CF 4e et 5e gamme',         x:2789.2, y:1915.3, w:228,   h:176.8, cat:'cf' },
-  { l:'CF PEQ tranche cuisine',    x:2624.3, y:1965.2, w:111.8, h:139.2, cat:'cf' },
-  { l:'Aire de stockage',          x:3890,   y:2039.2, w:658.7, h:381.3, cat:'aire' },
-  { l:'Local produit chimique',    x:2793.8, y:2095,   w:218.2, h:70.7,  cat:'loc' },
-  { l:'Bureau maintenance',        x:2397.3, y:2174.3, w:108.6, h:238,   cat:'loc' },
-  { l:'Local QHSE (produit hygiène)', x:2522.3, y:2172.2, w:108, h:241.2, cat:'loc' },
-  { l:'Réserve sèche',             x:2651.5, y:2175.9, w:302.2, h:241.8, cat:'sec' },
-  { l:'Armement — zone retour',    x:915.2,  y:2182.3, w:208,   h:242.7, cat:'sub' }
-];
-
+const STORAGES = window.OrlyPlanBase.stockages();
 /* Flux fonctionnels (graphe de précédences §3), entre ateliers. */
-const FLUX = [
-  ['magasin','prepa'], ['appros','cuisine'], ['appros','prepa'], ['appros','decontam'],
-  ['decontam','cuisine'], ['cuisine','prepa'], ['plonge','prepa'], ['plonge','dotation'],
-  ['dotation','quais'], ['dotation','prepa'], ['prepa','handling'], ['handling','quais'],
-  ['armement','quais'], ['bobduty','quais']
-];
-const FLUX_RETOUR = [ ['quais','plonge'], ['quais','armement'] ];
+const FLUX = window.OrlyPlanBase.flux();
+const FLUX_RETOUR = window.OrlyPlanBase.fluxRetour();
 
 /* Les coordonnées sont déjà en pixels du plan : pas de transformation.
  * Une zone est soit un rectangle (x,y,w,h), soit un polygone libre (pts).
@@ -169,10 +108,7 @@ const SAMPLE = window.OrlyDemo.VOLS;
 let flights = [];
 
 function chargerVols(data) {
-  flights = (data || []).map(f => Object.assign({}, f, {
-    std: f.std == null ? f.std : f.std + CFG.shift,
-    sta: f.sta == null ? f.sta : f.sta + CFG.shift
-  }));
+  flights = OrlyJournee.volsDecales(data, CFG.shift);
   if (document.getElementById('source-count')) updateSource();
 }
 
@@ -294,50 +230,18 @@ function majStocks(){
 }
 /* Un service du plan d'origine retiré de l'unité (Organisation › Services) :
  * il sort de toutes les listes, des liens et du plan, sans être effacé. */
-function estRetire(id){const z=Sim.editor&&Sim.editor.state.zones.find(v=>v.id===id);return !!(z&&z.retire);}
+/* Ces lectures du plan et des liens sont celles du calcul (moteur/journee.js) :
+ * ce que la page montre est ce que le moteur reçoit. */
+const zonesDuPlan=()=>(Sim.editor?Sim.editor.state.zones:[]);
+function estRetire(id){return OrlyJournee.estRetire(zonesDuPlan(),id);}
 const servicesDuPlan=()=>Object.keys(ZONES).filter(id=>!estRetire(id));
-function servicesDisponibles(){
-  const liste=servicesDuPlan().map(id=>({id,nom:nomLisible(ZONES[id].nom)}));
-  for(const a of annexes()) liste.push({id:a.id,nom:nomLisible(a.nom)});
-  return liste;
-}
+function servicesDisponibles(){return OrlyJournee.servicesDeLUnite(zonesDuPlan(),ZONES);}
 /* Le parcours des compagnies × classes se lit dans le graphe du Centre des
  * flux : on n'en retient que les couples de services, en ignorant le détail
  * des stockages et les liaisons désactivées. */
 function liaisonsServices(){
-  const f=Sim.flows; if(!f) return FLUX.map(([from,to])=>({from,to}));
-  const service=point=>{try{return JSON.parse(point)[0];}catch(e){return null;}};
-  const out=[],tous=[];
-  for(const l of f.state.flows){
-    if(!l.enabled) continue;
-    const from=service(l.from),to=service(l.to);
-    if(!from||!to||from===to) continue;
-    tous.push({from,to});
-    // Un service retiré de l'unité garde ses liens (Remettre les retrouve),
-    // mais le calcul ne les lit plus.
-    if(!estRetire(from)&&!estRetire(to)) out.push({from,to});
-  }
-  // Une annexe est une seconde salle de son atelier : elle en hérite les
-  // fournisseurs et les clients. Sans cela, un atelier posé dans « Armement 2 »
-  // n'attendrait personne et ne serait attendu de personne.
-  const liens=out.slice();
-  for(const a of annexes()){
-    // Un service à part entière (05/10) n'hérite de personne.
-    if(a.autonome)continue;
-    // … sauf si on l'a câblée soi-même dans le Centre des flux : la saisie
-    // explicite l'emporte sur l'héritage, sinon on ne pourrait jamais donner
-    // à une annexe un parcours qui lui soit propre.
-    if(liens.some(l=>l.from===a.id||l.to===a.id))continue;
-    // Le service de rattachement peut avoir été supprimé de l'unité (« Armement »
-    // tout court, quand tout se fait dans « Armement AF Équipage ») : ses salles
-    // gardent ses liens, sans quoi elles n'attendraient plus personne.
-    const source=estRetire(a.parent)?tous.filter(l=>!estRetire(l.from===a.parent?l.to:l.from)):liens;
-    for(const l of source){
-      if(l.to===a.parent) out.push({from:l.from,to:a.id});
-      if(l.from===a.parent) out.push({from:a.id,to:l.to});
-    }
-  }
-  return out;
+  // Une annexe hérite des liens de son atelier ; un service retiré ne compte plus.
+  return OrlyJournee.liaisonsDeLUnite(Sim.flows?Sim.flows.state:null,zonesDuPlan(),FLUX);
 }
 /* ==========================================================================
  *  CE QUE LE MODÈLE LIT DU CENTRE DES FLUX
@@ -443,22 +347,13 @@ function sectionRetires(){
 }
 /* Le nom d'un service, même supprimé : « Armement (supprimé) » se comprend,
  * « armement » tout court se cherche en vain dans les listes. */
-function nomDeService(id){
-  const s=servicesDisponibles().find(x=>x.id===id);if(s)return s.nom;
-  const z=ZONES[id]||((Sim.editor&&Sim.editor.state.zones)||[]).find(x=>x.id===id);
-  return (z?nomLisible(z.nom):id)+' (supprimé)';
-}
+function nomDeService(id){return OrlyJournee.nomDeService(id,servicesDisponibles(),zonesDuPlan(),ZONES);}
 /* Les services supprimés (de l'unité ou du plan) que des cases ou des chemins
  * citent encore — après un « Annuler » des cases, un vieil import… Ils font
  * des alertes qu'aucune liste ne permet de retrouver : on les montre ici. */
 function servicesFantomes(){
   const at=Sim.ateliers;if(!at||!window.MoteurProduction)return [];
-  const connus=new Set(servicesDisponibles().map(s=>s.id)),par=new Map();
-  const noter=(id,champ)=>{if(!id||connus.has(id))return;
-    const f=par.get(id)||{id,nom:nomDeService(id),cases:0,chemins:0,retire:estRetire(id)};f[champ]++;par.set(id,f);};
-  for(const a of at.state.ateliers)noter(a.service,'cases');
-  for(const p of at.state.parcours||[])for(const s of MoteurProduction.servicesDuParcours(p))noter(s,'chemins');
-  return [...par.values()];
+  return OrlyJournee.fantomesDeLUnite(at.state,servicesDisponibles(),zonesDuPlan(),ZONES);
 }
 function sectionFantomes(){
   const f=servicesFantomes();if(!f.length)return '';
@@ -750,6 +645,10 @@ function initAteliers(){
     classes:()=>MoteurProduction.classesDeVols(flights,{delaiChargement:CFG.loadDelay}),
     liaisons:liaisonsServices,
     reglages:()=>(Sim.reglages?Sim.reglages.pourMoteur():{delaiChargement:CFG.loadDelay}),
+    // Ce que le calcul lit de l'unité (moteur/journee.js) : le plan, ses services
+    // d'origine, les liens et le barème ; le délai de chargement des Horaires.
+    unite:()=>({zones:zonesDuPlan(),base:ZONES,flux:Sim.flows?Sim.flows.state:null,modele:Sim.reglages?Sim.reglages.etat:null}),
+    delaiChargement:()=>CFG.loadDelay,
     // Le plan dit « aménagé » d'après les ateliers : il doit suivre leur saisie.
     // La liste du barème marque les services qui portent une équipe : elle doit
     // donc se redessiner quand les ateliers bougent.
@@ -1962,15 +1861,11 @@ async function importVols(e) {
   const report=document.getElementById('import-report');
   const fail=message=>{report.classList.add('error');report.textContent=message;};
   try {
-    if(file.size>4*1024*1024)throw new Error('Fichier trop volumineux (maximum 4 Mo). Aucune donnée remplacée.');
-    let data;
-    if(/\.(csv|txt)$/i.test(file.name)){
-      // BUG-005 : un échec de lecture doit vider le champ, sinon resélectionner
-      // le même fichier ne déclenche plus `change`.
-      const texte=await new Promise((ok,ko)=>{const rd=new FileReader();rd.onload=()=>ok(rd.result);
-        rd.onerror=()=>ko(new Error('Lecture du fichier impossible. Aucune donnée remplacée.'));rd.readAsText(file);});
-      data=parseVols(texte);
-    } else data=OrlyEchanges.classeurVersVols(await OrlyTableur.lireFichier(file,4*1024*1024));
+    // CSV ou classeur Excel (4 Mo au plus), lus comme le banc d'essai les lit (moteur/journee.js).
+    // BUG-005 : un échec de lecture doit vider le champ, sinon resélectionner
+    // le même fichier ne déclenche plus `change`.
+    const data=await OrlyJournee.volsDuFichier(file,f=>new Promise((ok,ko)=>{const rd=new FileReader();rd.onload=()=>ok(rd.result);
+      rd.onerror=()=>ko(new Error('Lecture du fichier impossible. Aucune donnée remplacée.'));rd.readAsText(f);}));
     Sim.dataCourante=data;dataSource=file.name;snaps={};majCompare();reset(data);updateSource();
     report.classList.remove('error');report.textContent=data.length+' lignes importées. '+data.filter(f=>f.sens==='DEP').length+' départs et '+data.filter(f=>f.sens==='RET').length+' retours.';
   } catch(err){fail(err.message);}
@@ -1982,7 +1877,6 @@ function exporterVols() {
   OrlyTableur.telecharger('ory-vols-'+nom+'.xlsx',octets);
   toast('Programme de vols exporté');
 }
-function parseVols(txt) { return parseFlights(txt); }
 /* L'export suit ce qu'on regarde : la journée du modèle par ateliers, telle
  * qu'elle est calculée. Il se fait en local, par téléchargement — rien ne part
  * ailleurs. On y met les départs, les classes et le journal des lots : de quoi

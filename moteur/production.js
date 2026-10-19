@@ -1869,6 +1869,11 @@
       const depart = vue.debut;
       const regime = normaliserRegime(a.regime, opts.regime);
       const finPoste = regime.actif ? depart + regime.presence : Infinity;
+      // Le début du poste et sa présence (les noms de la version 2), et son jour :
+      // ce qu'un banc d'essai compare aux heures pointées (docs/BANC_ESSAI.md).
+      vue.debutPoste = depart;
+      vue.presence = regime.actif ? regime.presence : null;
+      vue.jour = a.jour || 0;
       const prises = new Set();   // pauses de régime déjà prises dans ce poste
       let cumul = 0;              // travail effectif depuis le début du poste
       vue.finPoste = Number.isFinite(finPoste) ? finPoste : null;

@@ -5,6 +5,45 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-19 — Banc d'essai (1/7) : jouer une journée hors du navigateur
+
+Un banc d'essai, tenu hors du dépôt, rejoue des journées réelles avec le moteur
+de la v1 (les vols du jour, le fichier « Tout sauvegarder ») et compare les
+heures sup et les effectifs simulés aux heures pointées. Il doit lancer
+exactement le calcul de la page : l'assemblage des arguments du moteur sort de
+la page. Rien ne change dans le calcul ni dans les clés du navigateur ; la v2
+n'est pas touchée.
+
+- **Un seul chemin de calcul** : `moteur/journee.js`, sans navigateur.
+  `argumentsDeLaJournee(sauvegarde, vols, options)` relit une sauvegarde comme
+  « Restaurer » (chaque partie validée, refusée en la nommant ; une partie
+  absente vaut ce que la page a sans elle) ; `argumentsDeLUnite` fait la même
+  chose depuis l'état déjà relu, et c'est ce que `calculer()` appelle
+  désormais (ateliers.js). Les services, les liens tirés du Centre des flux et
+  les services supprimés encore cités se lisent par ce module dans toute la
+  page (sim.js) : ce qu'elle montre est ce que le moteur reçoit.
+- **Le plan de base dans un fichier à lui** : `plan-base.js` (les services du
+  plan d'origine, leurs stockages, les liens d'origine), sortis tels quels de
+  `sim.js`, pour que l'outil sache relire un plan.
+- **L'outil** : `node outils/simuler-journee.cjs sauvegarde.json vols.csv
+  [options.json] > resultat.json`. Les vols se lisent par le code de l'import
+  (CSV ou classeur). Les options : délai de chargement et décalage (ceux des
+  Horaires), réglages forcés du barème, de l'état des équipes ou d'une équipe
+  (`modele`, `ateliers`, `equipes`), passés par les validateurs — une faute de
+  frappe est refusée. `--arguments` rend ce que reçoit le moteur.
+- **Ce que rend chaque équipe** : en plus de ce qu'elle rendait, `jour`,
+  `debutPoste` et `presence` (les noms de la v2).
+- **Tests** : `tests/non-regression.test.cjs` — la page d'avant (commit
+  3702d37), ses arguments et sa journée relevés sur la démo et deux unités
+  fictives (`tests/non-regression.attendu.json`), comparés champ par champ ;
+  `tests/journee.test.cjs` (module et outil) ; `tests/journee-browser.cjs` —
+  pour la démo et une unité fictive, l'outil rend la journée de la page, et la
+  sauvegarde restaurée redonne la même.
+- Fichiers : `moteur/journee.js`, `plan-base.js`, `outils/simuler-journee.cjs`
+  (nouveaux), `ateliers.js`, `sim.js`, `moteur/production.js`, `index.html`
+  (empreintes), `docs/BANC_ESSAI.md` (nouveau), `docs/MODELE_ATELIERS.md`,
+  `README.md`, les trois tests.
+
 ## 2026-10-15 — Barre latérale : un texte plus lisible
 
 Retour d'usage : « le texte dans la barre à gauche est quand même peu

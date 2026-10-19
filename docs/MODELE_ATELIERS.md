@@ -1062,7 +1062,9 @@ vide ; un refus remet le champ à la valeur gardée. Dans Excel, la clé d'une
 ## Ce qu'il rapporte
 
 - par **lot** : début, fin, durée, attente des amonts, temps d'arrêt ;
-- par **atelier** : fin, travail cumulé, attente, arrêt ;
+- par **atelier** : fin, travail cumulé, attente, arrêt ; son service, son jour,
+  le début de son poste et sa présence (`debutPoste`, `presence`, pour le banc
+  d'essai : docs/BANC_ESSAI.md) ;
 - par **compagnie × classe** : fin, échéance, retard, à l'heure ou non, et les
   services traversés ;
 - les **classes du programme que personne ne fabrique** — l'oubli le plus facile.

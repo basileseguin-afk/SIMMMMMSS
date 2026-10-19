@@ -592,6 +592,12 @@ restent en privé.
 [mode d’emploi de la saisie](docs/TRACER_L_UNITE.md)** : où travailler, dans
 quel ordre, et comment ne rien perdre.
 
+**Pour rejouer des journées réelles hors du navigateur** (un banc d’essai, tenu
+hors du dépôt, qui compare les heures supplémentaires et les effectifs simulés
+aux heures pointées), voir [le banc d’essai](docs/BANC_ESSAI.md) :
+`node outils/simuler-journee.cjs sauvegarde.json vols.csv [options.json]` rend
+la journée que la page aurait calculée.
+
 **Pour reprendre le projet, commencer par l’[état des lieux](docs/ETAT_DES_LIEUX.md)** :
 où en est le travail, ce qui est décidé, ce qui ne l’est pas, et ce qui reste à
 faire. Voir aussi [l’audit d’usage](docs/AUDIT_INTERFACE.md), le
@@ -614,6 +620,9 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `sim.js` | Interface, plan, interactions, glue entre les centres |
 | **`moteur/production.js`** | **Modèle par ateliers de travail** — compagnie × classe, lots ordonnés, robot, plonge, parcours lu des flux. Voir [la note de modèle](docs/MODELE_ATELIERS.md) |
 | `moteur/noyau.js` | Noyau à événements discrets sur lequel tourne le modèle par ateliers |
+| `moteur/journee.js` | L’assemblage du calcul de la journée, d’un seul chemin pour la page et le banc d’essai : une sauvegarde relue comme « Restaurer », les commandes, les équipes resynchronisées, les liens, le barème, l’effectif calculé, les noms. Voir [le banc d’essai](docs/BANC_ESSAI.md) |
+| `plan-base.js` | Le plan de base : les services du plan d’origine (ordre, noms, emplacements), ses stockages et ses liens d’origine, lus par la page et par le banc d’essai |
+| `outils/simuler-journee.cjs` | Jouer une journée hors du navigateur : `node outils/simuler-journee.cjs sauvegarde.json vols.csv [options.json]` rend la journée que la page aurait calculée ([le banc d’essai](docs/BANC_ESSAI.md)) |
 | `replay.js` / `simulation.js` | Relecture de la journée calculée : états à l’instant t, vue Simulation |
 | `comparaison.js` | Scénarios A/B : capture, tableau, verdict et écart signé par ligne |
 | `vols-demo.js` | Programme de vols **fictif** de démonstration, sans QR ni DL ; il reçoit des vols d’essai pour chaque compagnie que l’unité prépare ou a ajoutée sans départ au programme (jamais un programme importé) |
@@ -641,6 +650,9 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/noyau.test.cjs` | Régressions du noyau : ordre, horloge, conditions, interruptions, erreurs |
 | `tests/grille-services.test.cjs` | Les flux de production et la grille des équipes : le flux d’une classe naît au premier coche, cocher renvoie ce que le flux ne traverse pas, « tout le flux » (s’intercale, sans raccourci), « seulement pour cette commande » (une variante partagée, nommée par son écart, retirée quand plus personne ne la suit), une équipe par service, l’ordre des départs, les liens de l’unité sans boucle, une salle annexe, regrouper les chemins identiques (le calcul voit les mêmes chemins), le calcul |
 | `tests/production.test.cjs` | Régressions du modèle par ateliers : enchaînement des lots, attente des amonts, robot, pauses, validation |
+| `tests/non-regression.test.cjs` | Les options du banc d’essai désactivées, rien ne change : pour la démo et deux unités fictives relevées avant elles (`tests/non-regression.attendu.json`), les mêmes arguments du moteur et la même journée, champ par champ, hors champs nouveaux déclarés |
+| `tests/journee.test.cjs` | Jouer une journée hors du navigateur : la sauvegarde relue et refusée comme par « Restaurer », les options et leurs bornes, les réglages forcés, les vols lus comme dans la page (CSV, classeur), mêmes entrées même journée, l’outil en ligne de commande |
+| `tests/journee-browser.cjs` | Le banc d’essai joue la journée de la page : pour la démo et une unité fictive, « Tout sauvegarder » et le programme, rejoués par l’outil, rendent la journée de la page ; restaurée, la sauvegarde redonne la même journée |
 | `tests/effectif-calcule.test.cjs` | L’effectif calculé dans le moteur (v1 et v2) : minutes du poste (pauses fixes et de régime), plus petit effectif qui tient (rendement, étape à la chaîne), suit le nombre de vols de chaque compagnie, minutes propres à la case, robot et services constants non touchés, équipe sans commande ; poste constant sans minutes (temps nul, sans alerte de barème) ; effectif imposé (essai) ; choix par équipe |
 | `tests/regime.test.cjs` | La règle de poste (v1 et v2) : 8 h de présence dont 1 h de pause par défaut (3 h, 15 min, 3 h, 45 min, 1 h) ; une sauvegarde restée sur une règle par défaut d’avant y passe, une règle réglée à la main reste |
 | `tests/replay.test.cjs` | Relecture : états d’un service, ponctualité à l’instant t, pas suivant |

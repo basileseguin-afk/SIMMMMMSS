@@ -8,8 +8,14 @@
 (function (root) {
   'use strict';
 
-  const P = root.MoteurProduction;
-  const PC = root.OrlyParcours;
+  // Dans Node (le banc d'essai relit une sauvegarde : moteur/journee.js), les
+  // modules se chargent ; dans la page, ils sont déjà là.
+  const enNode = typeof module !== 'undefined' && module.exports && typeof require === 'function';
+  const P = enNode ? require('./moteur/production.js') : root.MoteurProduction;
+  const PC = enNode ? require('./parcours.js') : root.OrlyParcours;
+  // L'assemblage du calcul (moteur/journee.js), le même que celui du banc d'essai.
+  // Pris à la demande : il relit lui-même ce fichier pour valider une sauvegarde.
+  const J = () => (enNode ? require('./moteur/journee.js') : root.OrlyJournee);
   /** « J », « J-1 », « J+1 » : un décalage en jours, écrit comme on le dit. */
   const jourEcrit = j => (j > 0 ? 'J+' + j : j < 0 ? 'J' + j : 'J');
   /* La plonge lave ce qui revient des vols : son jour se compte depuis
@@ -330,14 +336,6 @@
       ...(Object.keys(paralleles).length ? { paralleles } : {}), ...(migrations.length ? { migrations } : {}) };
   }
 
-  /* L'effectif constant par défaut (retour d'usage du 05/10) : « le nombre de
-   * personnes dépend du nombre de vols, à part sur certains ateliers ». CF
-   * départ food (les checkeurs, à heures fixes), le magasin, la légumerie, le
-   * duty free et les appros ne suivent pas les vols ; les autres services se
-   * calculent. Une case dans la fiche du service change ce choix. */
-  const CONSTANTS = new Set(['handling', 'magasin', 'decontam', 'bobduty', 'appros']);
-  const NOMS_CONSTANTS = /cf\s*d[ée]part|magasin|l[ée]gumerie|duty|appro/i;
-
   /** 420 → « 7 h », 60 → « 1 h », 15 → « 15 min », 495 → « 8 h 15 ». */
   const dureeLue = m => { m = Math.round(m || 0); return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h' + (m % 60 ? ' ' + String(m % 60).padStart(2, '0') : ''); };
 
@@ -441,25 +439,9 @@
      * fabrique pas et y ajoute ce que le programme ne porte pas encore : une
      * compagnie à venir, une prestation hors vol. Un ajout qui porte le même
      * identifiant qu'une classe du programme la remplace — c'est la façon de
-     * corriger un volume sans toucher au fichier de vols. */
+     * corriger un volume sans toucher au fichier de vols. (moteur/journee.js) */
     get classes() {
-      const exclues = new Set(this.state.exclues || []);
-      const par = new Map();
-      for (const c of (this.a.classes() || [])) {
-        if (exclues.has(c.id)) continue;
-        par.set(c.id, { ...c, origine: 'programme' });
-      }
-      for (const c of (this.state.ajoutees || [])) {
-        const id = P.idClasse(c.cie, c.cabine);
-        if (exclues.has(id)) continue;
-        // Le programme fait foi : une classe qu'il porte déjà garde SES chiffres.
-        // Une déclaration ne sert qu'à nommer ce que l'import ne nomme pas — et
-        // ce qu'il ne nomme pas n'a, aujourd'hui, ni passager ni vol.
-        if (par.has(id)) { par.get(id).declaree = true; continue; }
-        par.set(id, { id, cie: c.cie, cabine: c.cabine, pax: 0, vols: [],
-          echeance: P.MINUTES_PAR_JOUR, origine: 'ajoutee' });
-      }
-      return [...par.values()].sort((a, b) => a.echeance - b.echeance || a.id.localeCompare(b.id));
+      return J().classesDuProgramme(this.a.classes() || [], this.state);
     }
 
     /* Les classes du programme que l'utilisateur a retirées, pour pouvoir les
@@ -480,24 +462,16 @@
         compagnies: P.compagniesParService(base, P.routesDesClasses(base, this.state), this.state.ateliers) });
     }
 
+    /* Le calcul de la journée. Ses arguments s'assemblent dans moteur/journee.js,
+     * comme pour le banc d'essai qui rejoue une sauvegarde hors du navigateur :
+     * un seul chemin de calcul. La page y passe son état : les cases, le plan,
+     * les liens et le barème (`unite`), et le délai de chargement. */
     calculer() {
       this.synchroniserAteliers();
-      if (P.declarerCategories) P.declarerCategories(this.state.categories);
-      const r = this.a.reglages ? this.a.reglages() : {};
       try {
-        this.resultat = P.simuler({
-          vols: this.a.vols(), classes: this.classes,
-          ateliers: this.state.ateliers, liaisons: this.a.liaisons(), materiel: this.state.materiel,
-          bareme: r.bareme, rendement: r.rendement, regime: r.regime, delaiChargement: r.delaiChargement,
-          parcours: this.state.parcours, parcoursCabine: this.state.parcoursCabine,
-          parcoursClasse: this.state.parcoursClasse,
-          // Les services qui travaillent par catégories propres (l'armement).
-          categories: this.state.categories || {},
-          // Les services dont l'effectif se calcule d'après les homme-minutes (05/10).
-          effectifCalcule: this.servicesCalcules(), effectifImpose: this.servicesImposes(),
-          noms: Object.fromEntries((this.a.fantomes ? this.a.fantomes() : []).map(f => [f.id, f.nom])
-            .concat(this.a.services().map(s => [s.id, s.nom])))
-        });
+        const unite = { ...(this.a.unite ? this.a.unite() : {}), etat: this.state };
+        this.resultat = J().jouer(J().argumentsDeLUnite(unite, this.a.vols(),
+          { delaiChargement: this.a.delaiChargement ? this.a.delaiChargement() : undefined }));
       } catch (e) {
         this.resultat = { ok: false, anomalies: [{ code: 'moteur', message: e.message }], lots: [], ateliers: [], classes: [], parClasse: {} };
       }
@@ -507,32 +481,22 @@
 
     /* L'effectif d'un service (retour d'usage du 05/10) : constant, saisi équipe
      * par équipe, ou calculé d'après les homme-minutes de ses équipes. */
-    effectifConstant(service) {
-      if (this.parVols(service)) return false;
-      const v = (this.state.effectifs || {})[service];
-      if (v === 'fixe' || v === 'calcule' || v === 'impose') return v === 'fixe';
-      const s = this.a.services().find(x => x.id === service);
-      return CONSTANTS.has(service) || NOMS_CONSTANTS.test((s && s.nom) || '');
-    }
+    effectifConstant(service) { return J().effectifConstant(this.state, service, this.a.services()); }
 
     /* Un service qui travaille par compagnie (l'armement) dépend toujours des
      * vols (retour d'usage du 07/10 : « l'armement dépend du nombre de vols de la
      * compagnie ») : minutes par vol × départs de chaque compagnie. Ni lui ni ses
      * équipes ne peuvent être constants. */
-    parVols(service) { return !!(this.state.categories || {})[service]; }
+    parVols(service) { return J().parVols(this.state, service); }
 
     /** Effectif imposé (essai) : les minutes par vol s'appliquent, l'effectif est celui saisi. */
-    effectifImpose(service) { return (this.state.effectifs || {})[service] === 'impose'; }
+    effectifImpose(service) { return J().effectifImpose(this.state, service); }
 
     /** Les services dont l'effectif se calcule (une équipe peut faire autrement : `effectif`). */
-    servicesCalcules() {
-      return [...new Set(this.state.ateliers.map(a => a.service))].filter(s => !this.effectifConstant(s) && !this.effectifImpose(s));
-    }
+    servicesCalcules() { return J().servicesCalcules(this.state, this.a.services()); }
 
     /** Les services à effectif imposé (essai). */
-    servicesImposes() {
-      return [...new Set(this.state.ateliers.map(a => a.service))].filter(s => this.effectifImpose(s));
-    }
+    servicesImposes() { return J().servicesImposes(this.state); }
 
     /** L'effectif de cette équipe est-il imposé (essai) ? */
     impose(a) { return !!a && (a.effectif === 'impose' || (!a.effectif && this.effectifImpose(a.service))); }
@@ -679,24 +643,11 @@
 
     /* L'atelier unique (07/10) : ses commandes sont celles de ses compagnies, toutes
      * classes, dans l'ordre des départs — de nouveaux vols, de nouvelles commandes. */
-    lotsAtelier(a) {
-      const cies = new Set(a.compagnies || []);
-      return this.classes.filter(c => !c.categorie && cies.has(String(c.cie).toUpperCase())).map(c => [c.id]);
-    }
+    lotsAtelier(a) { return J().lotsAtelier(a, this.classes); }
+    /* Les cases d'accord avec le programme : l'armement jamais constant, les
+     * ateliers uniques avec les commandes de leurs compagnies (moteur/journee.js). */
     synchroniserAteliers() {
-      let n = 0;
-      // L'armement n'est jamais constant (07/10) : un ancien choix « constant » s'efface.
-      const eff = this.state.effectifs || {};
-      for (const s of Object.keys(this.state.categories || {})) if (eff[s] === 'fixe') { delete eff[s]; n++; }
-      for (const a of this.state.ateliers) {
-        if (a.effectif === 'fixe' && this.parVols(a.service)) {
-          delete a.effectif; n++;
-        }
-        if (!a.parCompagnie) continue;
-        const l = this.lotsAtelier(a);
-        if (JSON.stringify(l) !== JSON.stringify(a.lots)) { a.lots = l; n++; }
-      }
-      if (n) this.enregistrer();
+      if (J().synchroniser(this.state, this.classes)) this.enregistrer();
     }
 
     /* L'effectif calculé devient celui de l'équipe : le planning, le budget, les
