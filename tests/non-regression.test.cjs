@@ -20,7 +20,12 @@ const REF = require('./non-regression.attendu.json');
  * quelconque, « [] » : chaque élément d'une liste). */
 const NOUVEAUX = {
   // Évolution 1 : le poste de chaque équipe, pour le banc d'essai.
-  'ateliers[]': ['debutPoste', 'presence', 'jour']
+  // Évolution 2 : ses heures supplémentaires.
+  'ateliers[]': ['debutPoste', 'presence', 'jour', 'heuresSup']
+};
+/* Chaque évolution, réglée mais désactivée : la même journée qu'avant. */
+const DESACTIVEES = {
+  heuresSup: { actif: false, plafond: 180 }
 };
 const nouveau = (motif, cle) => Object.entries(NOUVEAUX).some(([m, cles]) => cles.includes(cle)
   && m.split('.').length === motif.split('.').length && m.split('.').every((x, i) => x === '*' || x === motif.split('.')[i]));
@@ -56,6 +61,11 @@ for (const s of REF.scenarios) {
 
   test(s.nom + ' — options désactivées, la même journée, champ par champ', () => {
     const e = ecarts(s.resultat, json(J.jouer(J.argumentsDeLaJournee(s.sauvegarde, s.args.vols, s.options))));
+    assert.deepEqual(e, [], e.join('\n'));
+  });
+
+  test(s.nom + ' — chaque option réglée mais désactivée : la même journée', () => {
+    const e = ecarts(s.resultat, json(J.jouer(J.argumentsDeLaJournee(s.sauvegarde, s.args.vols, { ...s.options, ...DESACTIVEES }))));
     assert.deepEqual(e, [], e.join('\n'));
   });
 }

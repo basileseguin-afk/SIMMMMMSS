@@ -72,6 +72,7 @@ formé). Il rend, sur la sortie standard, un objet JSON :
 | `modele` | Des règles de calcul forcées, fondues dans `ory-modele-v1` **avant** validation (par exemple `{ "rendement": 0.9 }`) | — |
 | `ateliers` | Des réglages forcés de l'état des équipes (`ory-ateliers-v1`), hors de la liste des équipes (par exemple `{ "materiel": { "delaiRetour": 45 } }`) | — |
 | `equipes` | Des réglages forcés d'une équipe, désignée par son identifiant ou par son nom (`{ "Plonge soir": { "debut": "14:00" } }`) | — |
+| `heuresSup` | Les heures supplémentaires (§ 2), fondues dans `ory-modele-v1` comme `modele` : `{ "actif": true, "plafond": 720 }` | celles de la sauvegarde |
 
 Un réglage forcé passe par le validateur, comme une saisie : un objet se
 fond dans celui de la sauvegarde (le reste est gardé), une valeur le
@@ -92,6 +93,7 @@ options des évolutions suivantes s'ajoutent à ce tableau.
 | `presence` | La durée de sa présence, en minutes (480 par défaut, pauses comprises) ; `null` pour une équipe sans règle de poste |
 | `personnes` | Ses personnes : saisies, ou calculées (effectif calculé) |
 | `travail`, `attente`, `arret` | Ses minutes de travail, d'attente (un amont, du matériel, une ligne) et d'arrêt (pauses) |
+| `heuresSup` | Ses heures supplémentaires, en minutes **par personne** (§ 2) ; 0 sans l'option |
 
 Les noms `debutPoste` et `presence` sont ceux de la version 2, dans le même
 sens, pour une fusion future.
@@ -139,3 +141,55 @@ sauvegarde à nouveau.
   fichiers que donne la page (« Tout sauvegarder », le programme exporté ou
   importé), rejoués par l'outil, rendent la journée de la page ; restaurée
   dans un navigateur vide, la sauvegarde redonne la même journée.
+
+## 2. Les heures supplémentaires
+
+La règle est celle de la version 2, avec ses noms : une équipe dont le
+travail n'est pas fini à la fin de sa présence (début de poste + présence)
+**reste**, jusqu'à `plafond` minutes de plus par personne, au lieu de partir
+en laissant ses lots « hors poste ».
+
+- **Le réglage** : `heuresSup: { actif, plafond }`, une règle de calcul rangée
+  avec le barème (`ory-modele-v1`). Il se règle dans **Simulation › Réglages de
+  la simulation › Heures supplémentaires** : une case, et le plafond en heures
+  par personne et par jour (0 à 12 h). Plafond par défaut : **180 min** — avec
+  la présence par défaut (480 min, dont 60 de pause), 7 h + 3 h = 10 h de
+  travail, la durée maximale quotidienne. Le banc le porte à 720 min pour voir
+  tout le débordement (`"heuresSup": { "actif": true, "plafond": 720 }` dans
+  `options.json`). Il n'est enregistré qu'une fois réglé : un état d'avant se
+  relit tel quel, sans heures sup.
+- **Ce qui est compté**, par équipe : `heuresSup` = les minutes travaillées
+  après la fin de la présence, plafonnées (la fin de l'équipe moins la fin de
+  sa présence). Une tâche coupée par le plafond compte jusqu'à lui ; ce qui le
+  dépasse reste hors poste, comme sans l'option. La fin de poste rendue
+  (`finPoste`) est alors la fin de la présence plus le plafond : l'heure où
+  l'équipe part au plus tard, comme en version 2.
+- **Qui en fait** :
+  - une équipe à la main et un **robot** : elle finit ses lots ; le robot
+    garde sa ligne, l'équipe suivante attend qu'elle se libère ;
+  - la **plonge** : les tunnels continuent, mais seulement pour **ce qui
+    l'attendait** à la fin de sa présence. Par vol : un vol revenu avant la fin
+    de sa présence peut finir en heures sup ; un vol revenu après va à
+    l'équipe suivante. Entre deux tunnels qui le rendent propre à la même
+    heure, celui d'une équipe encore dans ses heures passe d'abord (comme en
+    version 2). Au débit : le sale revenu avant la fin de la présence, pas
+    celui qui revient après ; une plonge qui n'a plus rien à laver s'en va ;
+  - le **handling** d'une équipe (sans créneaux de chauffeurs) charge ses vols
+    jusqu'au plafond. Un handling **à créneaux** n'en fait pas : ses chauffeurs
+    viennent à leurs créneaux (les heures sup des chauffeurs viennent avec les
+    tournées, § 3 et 4) ;
+  - **jamais** une mise à disposition (`dispo`) ni une équipe d'appui
+    (`appui`).
+- **L'effectif calculé ne change pas** : il se calcule toujours sur la
+  présence normale, jamais sur présence + plafond.
+- **Dans la page** : la **Synthèse** montre, quand l'option est cochée, les
+  heures sup de la journée par service (personnes × heures sup de chaque
+  équipe) et par équipe. Désactivée, rien ne se montre et rien ne change.
+
+Vérifications : `tests/heures-sup.test.cjs` (une équipe qui finit dans son
+poste a 0, une équipe qui déborde de 40 min a 40 min, le plafond coupe, une
+mise à disposition et un appui ont 0, l'option désactivée rend la journée
+d'avant, robot, plonge par vol et au débit, handling avec et sans créneaux,
+effectif calculé inchangé, validation, options du banc) ;
+`tests/heures-sup-browser.cjs` (le réglage, son enregistrement, la Synthèse) ;
+`tests/non-regression.test.cjs` (réglées mais désactivées : la même journée).

@@ -652,7 +652,7 @@ function initAteliers(){
     // Le plan dit « aménagé » d'après les ateliers : il doit suivre leur saisie.
     // La liste du barème marque les services qui portent une équipe : elle doit
     // donc se redessiner quand les ateliers bougent.
-    change:()=>{if(suivreDemo()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();},
+    change:r=>{if(suivreDemo()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();renderHeuresSup(r);},
     // Une case se règle dans le chemin d'une commande : l'ouvrir d'ailleurs y mène.
     onglet:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
     // Le chemin d'une commande mène à son flux (Chemins) et à ses services (Équipes).
@@ -1689,6 +1689,74 @@ function initVueSimulation() {
   });
 }
 
+/* ==========================================================================
+ *  HEURES SUPPLÉMENTAIRES (banc d'essai, évolution 2 — docs/BANC_ESSAI.md)
+ *  Une règle de calcul, rangée avec le barème (ory-modele-v1) : une équipe qui
+ *  n'a pas fini à la fin de sa présence reste, jusqu'au plafond par personne.
+ *  Elle se règle dans « Réglages de la simulation » ; ce qu'elle coûte se lit
+ *  dans la Synthèse, par service et par équipe. Désactivée, rien ne se montre.
+ * ==========================================================================*/
+const HEURES_SUP_DEFAUT={actif:false,plafond:180};
+const heuresSup=()=>(Sim.reglages&&Sim.reglages.etat.heuresSup)||HEURES_SUP_DEFAUT;
+/** « 3 », « 2,5 » : des heures écrites à la française, sans zéro inutile. */
+const heuresFr=m=>String(Math.round(m/60*100)/100).replace('.',',');
+function reglerHeuresSup(e){
+  const t=e.target;if(!Sim.reglages)return;
+  if(t.matches('[data-hs-actif]')){
+    Sim.reglages.changer(()=>{Sim.reglages.etat.heuresSup={...heuresSup(),actif:t.checked};},
+      t.checked?'Heures supplémentaires : une équipe qui n’a pas fini reste, jusqu’à '+heuresFr(heuresSup().plafond)+' h.':'Heures supplémentaires désactivées : une équipe part à la fin de sa présence.');
+  }else if(t.matches('[data-hs-plafond]')){
+    const v=+String(t.value).replace(',','.');
+    if(t.value===''||!Number.isFinite(v)||v<0||v>12){refuserAuChamp(t,'Plafond attendu : de 0 à 12 h par personne.');renderReglageHeuresSup(true);return;}
+    Sim.reglages.changer(()=>{Sim.reglages.etat.heuresSup={...heuresSup(),plafond:Math.round(v*60)};},
+      'Plafond des heures supplémentaires : '+heuresFr(Math.round(v*60))+' h par personne.');
+  }
+}
+/* Le réglage, dans « Réglages de la simulation », après le matériel. */
+function renderReglageHeuresSup(force){
+  const apres=document.getElementById('rg-sim-materiel');if(!apres||!Sim.reglages)return;
+  let box=document.getElementById('rg-sim-heures-sup');
+  if(!box){
+    box=document.createElement('div');box.className='panneau rg-sim-heures-sup';box.id='rg-sim-heures-sup';box.dataset.sous='rg-simulation';
+    apres.after(box);box.addEventListener('change',reglerHeuresSup);
+  }
+  // On ne redessine pas sous les doigts de quelqu'un qui tape le plafond.
+  if(!force&&box.contains(document.activeElement)&&document.activeElement.matches('input[type=number]'))return;
+  const hs=heuresSup();
+  box.innerHTML='<div class="titre-aide"><h3>Heures supplémentaires</h3><details class="aide">'
+    +'<summary aria-label="Comment les heures supplémentaires sont comptées">?</summary>'
+    +'<span class="aide-corps">Une équipe dont le travail n’est pas fini à la fin de sa présence reste, au plus le plafond par personne, '
+    +'au lieu de laisser ses commandes hors poste. Ni une mise à disposition ni une équipe hors tunnel n’en font ; une plonge finit '
+    +'le sale qui l’attendait à la fin de sa présence, pas celui qui revient après. L’effectif calculé ne change pas : il se calcule '
+    +'sur la présence, jamais sur la présence et le plafond.</span></details></div>'
+    +'<label class="chk chk-mini"><input type="checkbox" data-hs-actif'+(hs.actif?' checked':'')+'><span>Une équipe qui n’a pas fini reste en heures supplémentaires</span></label>'
+    +'<label class="at-inline-champ">Plafond par personne et par jour <span class="champ-unite"><input type="number" min="0" max="12" step="0.25" value="'+(hs.plafond/60)+'"'
+    +' data-hs-plafond aria-label="Plafond des heures supplémentaires, en heures par personne"'+(hs.actif?'':' disabled')+'><span class="unite">h</span></span></label>'
+    +'<p class="mini-note">'+(hs.actif?'Avec la présence par défaut ('+heuresFr(Sim.reglages.etat.regime.presence)+' h, pauses comprises), une personne travaille au plus '
+      +heuresFr(Sim.reglages.etat.regime.presence+hs.plafond)+' h. Ce que chaque service fait en plus se lit dans la Synthèse.'
+      :'Désactivées : une équipe part à la fin de sa présence, et ce qu’elle n’a pas fini reste hors poste.')+'</p>';
+}
+/* Dans la Synthèse : les heures sup de la journée, par service (personnes × heures) et par équipe. */
+function renderHeuresSup(r){
+  const sec=document.getElementById('journee-chiffres');if(!sec)return;
+  let box=document.getElementById('bilan-heures-sup');
+  if(!heuresSup().actif||!r||!r.ok){if(box)box.remove();return;}
+  if(!box){box=document.createElement('div');box.className='panneau panneau-heures-sup';box.id='bilan-heures-sup';sec.appendChild(box);}
+  const noms=Object.fromEntries(servicesDisponibles().map(x=>[x.id,x.nom]));
+  const equipes=(r.ateliers||[]).filter(a=>a.heuresSup>0);
+  const parService=new Map();
+  for(const a of equipes){const l=parService.get(a.service)||{total:0,equipes:[]};l.total+=(+a.personnes||0)*a.heuresSup;l.equipes.push(a);parService.set(a.service,l);}
+  const lignes=[...parService].sort((x,y)=>y[1].total-x[1].total);
+  const total=lignes.reduce((n,[,l])=>n+l.total,0),dl=MoteurProduction.dureeLisible;
+  box.innerHTML='<h3>Heures supplémentaires</h3>'
+    +(lignes.length?'<p class="mini-note">'+escapeHTML(dl(total))+' en tout, plafond '+heuresFr(heuresSup().plafond)+' h par personne. Par service : personnes × heures sup de chaque équipe.</p>'
+      +'<div class="table-scroll"><table class="svc-table hs-table"><thead><tr><th scope="col">Service</th><th scope="col">Heures sup</th><th scope="col">Équipes</th></tr></thead><tbody>'
+      +lignes.map(([id,l])=>'<tr data-hs-service="'+escapeHTML(id)+'"><th scope="row">'+escapeHTML(noms[id]||nomDeService(id))+'</th><td class="num">'+escapeHTML(dl(l.total))+'</td><td>'
+        +l.equipes.map(a=>escapeHTML(a.nom)+' : '+(+a.personnes||0)+' pers. × '+escapeHTML(dl(a.heuresSup))).join('<br>')+'</td></tr>').join('')
+      +'</tbody></table></div>'
+    :'<p class="mini-note">Aucune : chaque équipe finit dans sa présence.</p>');
+}
+
 /* Un message passager : une notification (notifications.js), avec « Annuler »
  * quand il suit un geste qui se défait. `o.parDefaut` : seulement si le geste
  * n'a pas déjà dit, plus précisément, ce qu'il a fait. */
@@ -1969,7 +2037,7 @@ function installerCentreReglages() {
       return [...new Set([...par].filter(([,manuel])=>!manuel).map(([s])=>s).concat(parCompagnie))];
     },
     delaiChargement:()=>CFG.loadDelay,
-    change:()=>{if(Sim.ateliers)Sim.ateliers.rendre();majDemarrage();if(Sim.vue)Sim.vue.recalculer();},
+    change:()=>{if(Sim.ateliers)Sim.ateliers.rendre();majDemarrage();if(Sim.vue)Sim.vue.recalculer();renderReglageHeuresSup();},
     notify:toast
   });
   // Les vols s'importent dans « Données › Vols » ; leurs horaires (décalage,
@@ -2412,6 +2480,7 @@ function initWorkbench() {
     const report=document.getElementById('import-report');report.classList.remove('error');report.textContent='Jeu de démonstration rechargé.';
   });
   installerCentreReglages();
+  renderReglageHeuresSup();
   updateSource();updateRunState();majCompare();
 }
 

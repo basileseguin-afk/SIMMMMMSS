@@ -1410,6 +1410,12 @@
     const bareme = opts.bareme ? normaliserBareme(opts.bareme).bareme : BAREME_DEMO;
     const rendement = opts.rendement === undefined ? RENDEMENT_DEMO : opts.rendement;
     if (!(rendement > 0)) throw new Error('Le rendement doit être strictement positif.');
+    // Heures supplémentaires (la règle de la version 2, docs/BANC_ESSAI.md) : une
+    // équipe dont le travail n'est pas fini à la fin de sa présence reste, jusqu'à
+    // `plafond` minutes de plus par personne, plutôt que de partir en laissant ses
+    // commandes hors poste. Sans l'option, rien ne change : elle part à la fin de
+    // sa présence.
+    const SUP = opts.heuresSup && opts.heuresSup.actif !== false && +opts.heuresSup.plafond > 0 ? +opts.heuresSup.plafond : 0;
 
     // Les compagnies × classes viennent du programme de vols, sauf quand
     // l'appelant en fournit une liste : l'utilisateur peut en retirer qu'il ne
@@ -1868,7 +1874,10 @@
       const pauses = a.type === 'robot' ? fusionnerPauses([pausesDe(a), lignes.get(cleLigne(a)).arrets]) : pausesDe(a);
       const depart = vue.debut;
       const regime = normaliserRegime(a.regime, opts.regime);
-      const finPoste = regime.actif ? depart + regime.presence : Infinity;
+      // La présence payée, puis les heures sup permises : l'équipe s'en va au plus
+      // tard à la fin des deux. L'effectif calculé, lui, ne compte que la présence.
+      const finPresence = regime.actif ? depart + regime.presence : Infinity;
+      const finPoste = regime.actif ? finPresence + SUP : Infinity;
       // Le début du poste et sa présence (les noms de la version 2), et son jour :
       // ce qu'un banc d'essai compare aux heures pointées (docs/BANC_ESSAI.md).
       vue.debutPoste = depart;
@@ -2011,7 +2020,8 @@
         const pistes = [], machines = new Map();
         for (const x of groupe) {
           const vx = parId.get(x.id), rx = normaliserRegime(x.regime, opts.regime);
-          const dx = vx.debut, fx = rx.actif ? dx + rx.presence : Infinity, px = pausesDe(x);
+          // La fin de sa présence payée, puis celle de ses heures sup.
+          const dx = vx.debut, fp = rx.actif ? dx + rx.presence : Infinity, fx = rx.actif ? fp + SUP : Infinity, px = pausesDe(x);
           // Sans liste de tunnels : un seul, s'il y a quelqu'un pour le tenir.
           const tournent = Array.isArray(x.tunnels) && x.tunnels.length ? tunnelsQuiTournent(x).tournent : (x.personnes > 0 ? [{ nom: 'Tunnel' }] : []);
           const cles = machinesDesTunnels(x, tournent);
@@ -2019,7 +2029,7 @@
           // en deux fois moins de temps (retour d'usage du 29/09).
           tournent.forEach((t, i) => {
             if (!machines.has(cles[i])) machines.set(cles[i], { libre: -Infinity });
-            pistes.push({ a: x, vue: vx, depart: dx, finPoste: fx, finPresence: fx, pauses: px, vitesse: vitesseTunnel(t),
+            pistes.push({ a: x, vue: vx, depart: dx, finPoste: fx, finPresence: fp, pauses: px, vitesse: vitesseTunnel(t),
               machine: machines.get(cles[i]), numero: i + 1, nom: (t && t.nom) || 'Tunnel ' + (i + 1) });
           });
         }
@@ -2035,6 +2045,9 @@
           // libre depuis le plus longtemps : le travail se répartit.
           let p = null, fin = Infinity, supP = false;
           for (const q of pistes) {
+            // En heures sup, une équipe finit ce qui l'attendait à la fin de sa
+            // présence ; un vol revenu après, c'est l'équipe suivante qui le lave.
+            if (r.t >= q.finPresence) continue;
             const d0 = Math.max(r.t, libre(q));
             if (d0 >= q.finPoste) continue;
             const f = finAvecPauses(d0, (dureeLavageVol(q.a, r.cie) ?? 0) / q.vitesse, q.pauses).fin;
@@ -2086,15 +2099,21 @@
           const prisesL = new Set(); let cumulL = 0;
           for (let garde = 0; garde < 5000; garde++) {
             if (env.maintenant >= finPoste) break;
-            if (stock.sale <= 0) {
-              // Rien \u00e0 laver : on attend le prochain retour, ou la fin du poste.
+            // En heures sup, elle ne lave que le sale revenu avant la fin de sa
+            // présence ; ce qui revient après est pour l'équipe suivante.
+            const enSup = env.maintenant >= finPresence;
+            const reste = enSup ? Math.min(stock.sale, file.arrivees.reduce((n, x) => n + (x.t < finPresence ? x.u : 0), 0)) : stock.sale;
+            if (reste <= 1e-9) {
+              // Passé sa présence, une équipe qui n'a plus rien à laver s'en va.
+              if (enSup) break;
+              // Rien \u00e0 laver : on attend le prochain retour, ou la fin de la présence.
               const ev = env.evenement('retour'); reveilsSale.push(ev);
               // Un poste sans fin (pauses décochées) n'attend que le retour.
-              yield Number.isFinite(finPoste) ? env.unDe([ev, env.delai(Math.max(0, finPoste - env.maintenant))]) : ev;
+              yield Number.isFinite(finPresence) ? env.unDe([ev, env.delai(Math.max(0, finPresence - env.maintenant))]) : ev;
               continue;
             }
             // On lave tout ce qui est l\u00e0 ; ce qui arrive pendant sera le tour suivant.
-            const unites = stock.sale; stock.sale = 0;
+            const unites = reste; stock.sale -= unites;
             // Ce qui entre au tunnel, dans l'ordre des retours (premier revenu, premier lavé).
             const pris = [];
             for (let pos = 0; pos < unites - 1e-9 && file.arrivees.length;) {
@@ -2461,6 +2480,20 @@
           + 'du matériel attend jusqu’à ' + dureeLisible(plonge.attenteMax) + ' avant d’être lavé.'
           + (plonge.depassements.length ? ' Les retours dépassent son débit (' + Math.round(plonge.capacite) + ' u/h) de '
             + plonge.depassements.map(d => hhmm(d.de) + ' à ' + hhmm(d.a)).join(', ') + '.' : '') });
+    }
+
+    // Les heures sup de chaque équipe : ce qu'elle a travaillé après sa présence,
+    // plafonné. Une tâche coupée par le plafond l'a fait travailler jusqu'à lui.
+    // Ni une mise à disposition ni une équipe d'appui n'en font ; un handling à
+    // créneaux non plus : ses chauffeurs viennent à leurs créneaux.
+    const atelierDe = new Map(ateliers.map(a => [a.id, a]));
+    for (const v of suivi) {
+      const a = atelierDe.get(v.id);
+      if (v.presence == null || !Number.isFinite(v.debutPoste) || a.type === 'dispo' || a.type === 'appui'
+        || (a.type === 'handling' && creneauxDe(a).length)) { v.heuresSup = 0; continue; }
+      const coupee = v.lots.some(l => l.horsPoste && l.fait > 0) ? v.debutPoste + v.presence + SUP : -Infinity;
+      const fin = Math.max(v.fin ?? -Infinity, coupee);
+      v.heuresSup = Number.isFinite(fin) ? Math.max(0, Math.min(SUP, fin - (v.debutPoste + v.presence))) : 0;
     }
 
     const suivies = Object.values(derniers).filter(c => !c.absente);

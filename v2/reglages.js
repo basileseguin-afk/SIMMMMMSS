@@ -73,7 +73,18 @@
           const n = +(b.regime || {}).presence;
           return Number.isFinite(n) && n >= 30 && n <= 1440 ? Math.round(n) : P.REGIME_DEFAUT.presence;
         })()
-      }
+      },
+      // Les heures supplémentaires (banc d'essai de la v1, docs/BANC_ESSAI.md) :
+      // une équipe qui n'a pas fini à la fin de sa présence reste, jusqu'au
+      // plafond (minutes par personne, 3 h par défaut). Gardées une fois
+      // réglées seulement : un état d'avant se relit tel quel.
+      ...(b.heuresSup && typeof b.heuresSup === 'object' ? { heuresSup: {
+        actif: b.heuresSup.actif === true,
+        plafond: (() => {
+          const n = +b.heuresSup.plafond;
+          return Number.isFinite(n) && n >= 0 && b.heuresSup.plafond !== null && b.heuresSup.plafond !== '' ? Math.min(720, Math.round(n)) : 180;
+        })()
+      } } : {})
     };
   }
 

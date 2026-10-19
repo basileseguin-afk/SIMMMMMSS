@@ -138,7 +138,8 @@
       const a = annexesDe(zones).find(z => z.id === s.id), pere = a ? a.parent : null;
       if (pere && bareme[pere]) bareme[s.id] = clone(bareme[pere]);
     }
-    return { bareme, rendement: modele.rendement, regime: modele.regime };
+    // Les heures sup (évolution 2) : seulement une fois réglées.
+    return { bareme, rendement: modele.rendement, regime: modele.regime, ...(modele.heuresSup ? { heuresSup: modele.heuresSup } : {}) };
   }
 
   /* ----------------------------------------------------------------------
@@ -264,7 +265,7 @@
     return {
       vols, classes,
       ateliers: etat.ateliers, liaisons, materiel: etat.materiel,
-      bareme: r.bareme, rendement: r.rendement, regime: r.regime, delaiChargement,
+      bareme: r.bareme, rendement: r.rendement, regime: r.regime, heuresSup: r.heuresSup, delaiChargement,
       parcours: etat.parcours, parcoursCabine: etat.parcoursCabine,
       parcoursClasse: etat.parcoursClasse,
       // Les services qui travaillent par catégories propres (l'armement).
@@ -308,7 +309,10 @@
       : 'aucune équipe « ' + cle + ' » dans la sauvegarde.');
   }
 
-  const CLES_OPTIONS = new Set(['delaiChargement', 'decalage', 'modele', 'ateliers', 'equipes']);
+  /* Les règles de calcul que le banc peut forcer directement (`options.heuresSup`) :
+   * elles se fondent dans `ory-modele-v1`, comme `options.modele`. */
+  const REGLES = ['heuresSup'];
+  const CLES_OPTIONS = new Set(['delaiChargement', 'decalage', 'modele', 'ateliers', 'equipes', ...REGLES]);
 
   /**
    * L'unité d'une sauvegarde : chaque partie validée comme « Restaurer » la
@@ -352,9 +356,12 @@
     const flux = c['orly-flows-v1'] === undefined ? F.initial(PB().flux().concat(PB().fluxRetour()))
       : partie('centre des flux', () => F.validate(clone(c['orly-flows-v1'])));
     if (o.modele !== undefined && !objet(o.modele)) throw new Error('option « modele » : un objet.');
+    for (const k of REGLES) if (o[k] !== undefined && !objet(o[k])) throw new Error('option « ' + k + ' » : un objet.');
+    const regles = Object.fromEntries(REGLES.filter(k => o[k] !== undefined).map(k => [k, o[k]]));
+    const force = o.modele === undefined && !Object.keys(regles).length ? undefined : fondre(o.modele || {}, regles);
     const modele = partie('barème et règles de poste', () =>
-      R.valider(o.modele === undefined ? (c['ory-modele-v1'] === undefined ? null : clone(c['ory-modele-v1'])) : fondre(c['ory-modele-v1'] || {}, o.modele)));
-    verifierForce(modele, o.modele, 'modele');
+      R.valider(force === undefined ? (c['ory-modele-v1'] === undefined ? null : clone(c['ory-modele-v1'])) : fondre(c['ory-modele-v1'] || {}, force)));
+    verifierForce(modele, force, 'modele');
     return { etat, zones: plan.zones, base, flux, modele };
   }
 

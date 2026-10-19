@@ -5,6 +5,32 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-19 — Banc d'essai (2/7) : les heures supplémentaires
+
+Une équipe dont le travail n'est pas fini à la fin de sa présence reste,
+jusqu'à un plafond par personne, au lieu de laisser ses lots hors poste — la
+règle de la version 2, avec ses noms (`heuresSup: { actif, plafond }`, et par
+équipe `heuresSup`, en minutes par personne). **Désactivée par défaut** :
+désactivée, la journée est celle d'avant, champ par champ.
+
+- **Le réglage** : Simulation › Réglages de la simulation › Heures
+  supplémentaires, une case et le plafond (3 h par défaut, 12 h au plus).
+  Rangé avec le barème (`ory-modele-v1`), seulement une fois réglé : un état
+  d'avant se relit tel quel. Le banc peut le forcer (`options.heuresSup`).
+- **Qui en fait** : l'équipe à la main, le robot (sa ligne continue), la
+  plonge (seulement ce qui l'attendait à la fin de sa présence ; à égalité, un
+  tunnel encore dans ses heures d'abord), le handling d'une équipe. Ni une
+  mise à disposition, ni un appui, ni un handling à créneaux (ses chauffeurs
+  ont leurs créneaux). L'effectif calculé ne change pas.
+- **Dans la Synthèse** : les heures sup par service (personnes × heures) et
+  par équipe, quand l'option est cochée.
+- Fichiers : `moteur/production.js`, `moteur/journee.js`, `sim.js` (le réglage
+  et la Synthèse, propres à la v1), `reglages.js` et `v2/reglages.js` (le même
+  validateur des deux côtés ; la v2 ne s'en sert pas : son état n'a pas ce
+  réglage, ses heures sup restent celles de son budget), `index.html`
+  (empreintes), `docs/BANC_ESSAI.md`, `README.md`, `tests/heures-sup.test.cjs`,
+  `tests/heures-sup-browser.cjs`, `tests/non-regression.test.cjs`.
+
 ## 2026-10-19 — Banc d'essai (1/7) : jouer une journée hors du navigateur
 
 Un banc d'essai, tenu hors du dépôt, rejoue des journées réelles avec le moteur
