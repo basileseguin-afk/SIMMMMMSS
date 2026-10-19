@@ -1615,6 +1615,39 @@
     throw new Error('Trop d’interruptions pour achever une tâche.');
   }
 
+  /**
+   * Comme `executerTache`, mais arrêtée à l'instant `jusqua` (banc d'essai,
+   * renforts : l'effectif change en cours de tâche). Rend ce qui a été
+   * travaillé jusque-là, les pauses dues prises (ajoutées à `prises`), et,
+   * si l'équipe est en pleine pause de régime à cet instant, l'heure où elle
+   * reprend (`reprise`).
+   */
+  function executerJusqua(o, jusqua) {
+    const pauses = o.pauses || [];
+    const regime = normaliserRegime(o.regime);
+    const finPoste = Number.isFinite(o.finPoste) ? o.finPoste : Infinity;
+    const prises = o.prises;
+    let t = o.depart, reste = o.duree, cumul = o.cumul || 0, arret = 0, fait = 0;
+    for (let garde = 0; garde < 5000; garde++) {
+      if (t >= jusqua - 1e-9 || t >= finPoste || reste <= 1e-9) return { t, arret, cumul, fait, reprise: t };
+      const fixe = pauses.find(p => t >= p.de && t < p.a);
+      if (fixe) { const f = Math.min(fixe.a, finPoste, jusqua); arret += f - t; t = f; continue; }
+      const due = regime.seuils.find(s => cumul >= s.apres && !prises.has(s.apres));
+      if (due) {
+        prises.add(due.apres);
+        if (t + due.duree > jusqua) { arret += jusqua - t; return { t: jusqua, arret, cumul, fait, reprise: t + due.duree }; }
+        arret += due.duree; t += due.duree; continue;
+      }
+      const prochainSeuil = regime.seuils.find(s => s.apres > cumul);
+      const versSeuil = prochainSeuil ? prochainSeuil.apres - cumul : Infinity;
+      const prochaineFixe = pauses.find(p => p.de > t);
+      const versFixe = prochaineFixe ? prochaineFixe.de - t : Infinity;
+      const creneau = Math.min(reste, versSeuil, versFixe, finPoste - t, jusqua - t);
+      t += creneau; cumul += creneau; fait += creneau; reste -= creneau;
+    }
+    throw new Error('Trop d’interruptions pour achever une tâche.');
+  }
+
   /* ----------------------------------------------------------------------
    *  BOUCLE DU MATÉRIEL
    *  Les trolleys, la porcelaine, les couverts ne s'achètent pas : ils
@@ -1869,6 +1902,19 @@
     // commandes hors poste. Sans l'option, rien ne change : elle part à la fin de
     // sa présence.
     const SUP = opts.heuresSup && opts.heuresSup.actif !== false && +opts.heuresSup.plafond > 0 ? +opts.heuresSup.plafond : 0;
+    // Les renforts (banc d'essai, évolution 5) : une équipe qui a fini tous ses lots
+    // avant la fin de sa présence prête ses personnes à une équipe encore au travail.
+    // `polyvalence` : pour chaque service, les services qu'il peut aider (saisis) ;
+    // `familles` : sans saisie, son service et ses annexes.
+    const REN = (() => {
+      const r = opts.renforts;
+      if (!r || r.actif !== true) return null;
+      const n = (v, d, min, max) => (v === undefined || v === null || v === '' || !Number.isFinite(+v) ? d : Math.max(min, Math.min(max, +v)));
+      const liste = m => new Map(Object.entries(m && typeof m === 'object' && !Array.isArray(m) ? m : {})
+        .map(([k, v]) => [k, new Set(Array.isArray(v) ? v.map(String) : [])]));
+      return { efficacite: n(r.efficacite, 0.8, 0, 2), autre: n(r.efficaciteAutreService, 0.6, 0, 2), delai: n(r.delai, 10, 0, 240),
+        versHeuresSup: r.versHeuresSup === true, polyvalence: liste(r.polyvalence), familles: liste(r.familles) };
+    })();
 
     // Les compagnies × classes viennent du programme de vols, sauf quand
     // l'appelant en fournit une liste : l'utilisateur peut en retirer qu'il ne
@@ -2435,7 +2481,17 @@
         return { v, b: x.b, unites: x.unites || 0, libelle: x.libelle || String(v.id), attendus, pret: null,
           etat: 'attente', dech: x.b.arrivee == null ? null : 'attente', finDech: null, blocage: null };
       });
-      suivis24h.set(a.id, { mesVols, conducteurs, parChauffeurs, R, avance, finir: () => { for (const d of conducteurs) if (d.pauses.length) prendrePauses(d, d.a); } });
+      // Un renfort (évolution 5) : un chauffeur de plus, de n'importe quel véhicule, jusqu'à la fin de sa présence ;
+      // ses pauses restent les siennes. Le répartiteur se réveille quand il arrive.
+      let reveil = null;
+      const reveiller = () => { if (reveil && !reveil.declenche) reveil.reussir(env.maintenant); };
+      const ajouterChauffeur = h => {
+        const d = { id: 'renfort ' + h.id, vehicule: '*', de: h.debut, a: h.fin, libre: h.debut, heuresSup: 0, rang: conducteurs.length, renfort: true,
+          pauses: h.pauses.filter(p => p.a > h.debut).map(p => ({ du: Math.max(p.de, h.debut), duree: p.a - Math.max(p.de, h.debut), max: Math.max(p.de, h.debut), prise: null })) };
+        conducteurs.push(d); conducteurParId.set(d.id, d);
+        env.processus(function* () { if (env.maintenant < h.debut) yield env.delai(h.debut - env.maintenant); reveiller(); }, 'renfort ' + h.id);
+      };
+      suivis24h.set(a.id, { mesVols, conducteurs, parChauffeurs, R, avance, ajouterChauffeur, finir: () => { for (const d of conducteurs) if (d.pauses.length) prendrePauses(d, d.a); } });
       const tournees = vue.tournees = [];
       const dehors = [];             // les tournées sorties : { fin, vehicule }
       // Les chauffeurs d'une tournée : « long courrier » si elle sert un vol long courrier.
@@ -2538,7 +2594,8 @@
       const conducteurParId = new Map(conducteurs.map(d => [d.id, d]));
       function choisir(p, t, c) {
         for (const d of conducteurs) if (d.pauses.length) prendrePauses(d, t);
-        const peutMener = d => d.vehicule === p.vehicule && d.de <= t + 1e-9 && t < d.a - 1e-9 && d.libre <= t + 1e-9 && p.fin <= d.a + SUP + 1e-9 && tientPause(d, p.fin);
+        const peutMener = d => (d.vehicule === p.vehicule || d.vehicule === '*') && d.de <= t + 1e-9 && t < d.a - 1e-9 && d.libre <= t + 1e-9
+          && p.fin <= d.a + (d.renfort ? 0 : SUP) + 1e-9 && tientPause(d, p.fin);
         // Le plan dit qui la mène : eux, s'ils le peuvent.
         const voulus = prevu && c ? prevu.chauffeurs.get((c.quoi === 'decharge' ? 'd:' : 'c:') + c.x.v.id) : null;
         if (voulus) { const l = voulus.map(id => conducteurParId.get(id)).filter(d => d && peutMener(d)); if (l.length >= p.chauffeurs) return l.slice(0, p.chauffeurs); }
@@ -2550,7 +2607,8 @@
       /** Lancer une tournée si son véhicule et ses chauffeurs sont là ; sinon dire ce qui manque. */
       function essayer(c, t) {
         const vehicule = c.x.b.vehicule;
-        const noter = raison => { c.x.blocage = raison; return false; };
+        // Un vol qui attend un chauffeur peut appeler un renfort (évolution 5).
+        const noter = raison => { c.x.blocage = raison; if (raison === 'chauffeur' && REN) repartir(); return false; };
         if (dehors.filter(o => o.vehicule === vehicule).length >= R.flotte[vehicule]) return noter('vehicule');
         if (!parChauffeurs && dehors.length >= simultanes) return noter('chauffeur');
         let p = composer(c, t, false), pris = parChauffeurs ? choisir(p, t, c) : [];
@@ -2603,7 +2661,7 @@
         for (const d of conducteurs) { voir(d.de); voir(d.libre); }
         return m;
       }
-      env.processus(function* () {
+      const repartiteur = env.processus(function* () {
         for (let garde = 0; garde < 100000; garde++) {
           const t = env.maintenant;
           for (const x of mesVols) if (x.pret == null && x.attendus.every(e => e.ev.declenche))
@@ -2615,10 +2673,311 @@
           if (!reste) break;
           const u = prochain(t);
           const commandes = mesVols.filter(x => x.etat === 'attente' && x.pret == null).flatMap(x => x.attendus.filter(e => !e.ev.declenche).map(e => e.ev));
-          if (!Number.isFinite(u) && !commandes.length) break;
-          yield env.unDe([...commandes, ...(Number.isFinite(u) ? [env.delai(u - t)] : [])]);
+          if (!Number.isFinite(u) && !commandes.length && !(REN && receveurs.has(a.id))) break;
+          if (REN && receveurs.has(a.id)) reveil = env.evenement('renfort');
+          yield env.unDe([...commandes, ...(Number.isFinite(u) ? [env.delai(u - t)] : []), ...(reveil && !reveil.declenche ? [reveil] : [])]);
         }
       }, a.nom);
+      // Tous ses vols partis, le handling libère ses renforts, chacun au retour de sa dernière tournée.
+      const Rh = REN ? receveurs.get(a.id) : null;
+      if (Rh) repartiteur.surResolution(() => {
+        Rh.fini = true;
+        for (const h of Rh.aides.slice()) {
+          const d = conducteurParId.get('renfort ' + h.id), libre = d ? d.libre : env.maintenant;
+          env.processus(function* () {
+            if (env.maintenant < libre) yield env.delai(libre - env.maintenant);
+            if (h.aide === Rh) { liberer(h, env.maintenant, false); repartir(); }
+          }, 'retour ' + h.id);
+        }
+      });
+    }
+
+    /**
+     * Le travail d'un lot (ses commandes `ids`) pour une équipe : sa durée avec
+     * son effectif, son détail, et `base` — la même durée pour une seule
+     * personne (à la main) ou pour un robot armé, qui sert quand un renfort
+     * change l'effectif (évolution 5).
+     */
+    function travailDuLot(a, ids) {
+      const lots = ids.map(id => parClasse.get(id)).filter(Boolean);
+      let duree, detail, base;
+      if (a.type === 'robot') {
+        // Chaque commande à son débit : ses plateaux ÷ son débit.
+        const plateaux = lots.reduce((n, c) => n + c.pax, 0);
+        const mini = a.personnesMin === undefined ? 1 : a.personnesMin;
+        const heures = lots.reduce((n, c) => n + c.pax / Math.max(1e-9, debitRobot(a, c.id)), 0);
+        duree = a.personnes >= mini ? heures * 60 : Infinity;
+        detail = { plateaux, debit: plateaux && heures ? Math.round(plateaux / heures) : a.debit };
+        base = heures * 60;
+      } else {
+        // Chaque ligne ne compte que ses classes : dans une case « TX BC puis
+        // TX PC », TX BC sort après ses seules minutes, sans attendre TX PC.
+        const hommeMinutes = sansMinutes(a) ? 0 : lots.reduce((n, c) => n + travailDans(a, c, bareme), 0);
+        const f = fusionDe(a);
+        if (sansMinutes(a)) {
+          // Effectif constant : ni minutes par vol, ni durée. La commande passe
+          // dans ses heures de présence (06/10).
+          duree = 0;
+          detail = { hommeMinutes: 0, constant: true };
+          base = 0;
+        } else if (f) {
+          // L'étape d'avant, faite à la chaîne par la même case.
+          // Seules les commandes dont elle fait vraiment l'étape d'avant : une
+          // commande qu'une case de la Prépa fait encore n'est pas comptée deux fois.
+          const avant = lots.filter(c => fusionPar.get(cle(f, c.id)) === a.service).reduce((n, c) => n + travailClasse(f, c, bareme), 0);
+          duree = dureeFusion(avant, hommeMinutes, a.personnes) / rendement;
+          detail = { hommeMinutes: hommeMinutes + avant, fusion: f, minutesFusion: avant, minutesIci: hommeMinutes };
+          base = Number.isFinite(duree) && a.personnes > 0 ? duree * a.personnes : (hommeMinutes + avant) / rendement;
+        } else {
+          duree = hommeMinutes / a.personnes / rendement;
+          detail = { hommeMinutes };
+          base = hommeMinutes / rendement;
+        }
+      }
+      return { lots, duree, detail, base };
+    }
+
+    /* ---- les renforts (évolution 5) ------------------------------------ */
+    // Qui peut aider qui : la liste saisie du service qui prête, sinon son service et ses annexes. Jamais une
+    // mise à disposition ; vers un robot ou le handling, seulement si la liste saisie le dit (et c'est elle aussi
+    // qui envoie une personne de la plonge vers une zone alimentaire).
+    const peutAider = (de, vers) => {
+      if (!(vers.type === 'manuel' || vers.type === 'robot' || (vers.type === 'handling' && vers.handling24h === true))) return false;
+      const saisie = REN.polyvalence.get(de);
+      if (saisie) return saisie.has(vers.service);
+      if (vers.type !== 'manuel') return false;
+      return vers.service === de || (REN.familles.get(de) || new Set()).has(vers.service);
+    };
+    // « Du même service » : le sien, ou une salle de la même famille.
+    const memeService = (de, vers) => de === vers || (REN.familles.get(de) || new Set()).has(vers);
+    // Qui prête : une équipe qui a un vrai travail (pas une mise à disposition, ni une équipe sans minutes par vol).
+    const pretable = a => ((a.type === 'manuel' && !sansMinutes(a)) || a.type === 'robot') && a.personnes > 0
+      && (a.lots || []).some(l => classesDuLot(l).length);
+    const aidants = [], receveurs = new Map();
+    if (REN) {
+      const preteurs = ateliers.filter(pretable);
+      for (const a of ateliers) {
+        // Un handling dont le moteur calcule les chauffeurs (§ 4) n'en reçoit pas : son plan les compte déjà au plus juste.
+        if (a.type === 'handling' ? !(a.handling24h === true && plan24 && creneauxDe(a).length && !(a.chauffeurs && a.chauffeurs.mode === 'calcules'))
+          : !((a.type === 'manuel' || a.type === 'robot') && (a.lots || []).some(l => classesDuLot(l).length))) continue;
+        if (!preteurs.some(x => x !== a && peutAider(x.service, a))) continue;
+        const v = parId.get(a.id), reg = normaliserRegime(a.regime, opts.regime);
+        const lotsIds = (a.lots || []).map(classesDuLot).filter(ids => ids.length);
+        // Le handling 24 h/24 n'a pas de poste d'équipe : ses chauffeurs ont leurs créneaux.
+        const h24 = a.type === 'handling';
+        receveurs.set(a.id, { id: a.id, a, service: a.service, aides: [], proc: null, enTache: false, attend: false, fini: false, segment: null, lireEtat: null,
+          debutPoste: h24 ? -Infinity : v.debut, finPresence: reg.actif && !h24 ? v.debut + reg.presence : Infinity, finPoste: reg.actif && !h24 ? v.debut + reg.presence + SUP : Infinity,
+          regime: reg, pauses: a.type === 'robot' ? fusionnerPauses([pausesDe(a), lignes.get(cleLigne(a)).arrets]) : pausesDe(a),
+          mini: a.personnesMin === undefined ? 1 : a.personnesMin,
+          // Pour chaque lot : son travail en minutes-personne (un robot : ses minutes de ligne), et l'échéance de ses commandes.
+          bases: a.type === 'handling' ? [] : lotsIds.map(ids => travailDuLot(a, ids).base),
+          echeances: a.type === 'handling' ? [] : lotsIds.map(ids => Math.min(...ids.map(id => (parClasse.get(id) || {}).echeance).filter(Number.isFinite), Infinity)) });
+      }
+    }
+    /** Une personne prêtée est-elle en pause à l'instant t ? Ses pauses sont celles de son équipe. */
+    const enPause = (h, t) => h.pauses.some(p => t >= p.de - 1e-9 && t < p.a - 1e-9);
+    /** L'effectif qu'apportent les renforts arrivés, hors de leurs pauses : en personnes, et en personnes « efficaces ». */
+    function apport(R, t) {
+      let efficace = 0, personnes = 0;
+      for (const h of R.aides) if (t >= h.debut - 1e-9 && t < h.fin - 1e-9 && !enPause(h, t)) { efficace += h.efficacite; personnes++; }
+      return { efficace, personnes };
+    }
+    /** Le prochain instant où l'effectif d'une équipe aidée change : un renfort arrive, part, ou prend sa pause. */
+    function prochainChangement(R, t) {
+      let m = Infinity;
+      const voir = u => { if (u > t + 1e-9 && u < m) m = u; };
+      for (const h of R.aides) { voir(h.debut); voir(h.fin); for (const p of h.pauses) { voir(p.de); voir(p.a); } }
+      return m;
+    }
+    const robotArme = (R, t) => R.a.personnes + apport(R, t).personnes >= R.mini;
+    /**
+     * Où en est une équipe à l'instant t : son lot, le travail qui lui reste (en
+     * minutes-personne ; un robot : en minutes de ligne), son travail du poste
+     * et ses pauses prises — au milieu d'une tâche aussi —, et l'heure où elle
+     * reprend si elle est en pause.
+     */
+    function avancement(R, t) {
+      const e = R.lireEtat ? R.lireEtat() : null; if (!e) return null;
+      const g = R.segment;
+      let rho = 1, cumul = e.cumul, prises = new Set(e.prises), reprise = t;
+      if (g) {
+        rho = g.rho; cumul = g.cumul; prises = new Set(g.prises); reprise = Math.max(t, g.t0);
+        if (Number.isFinite(g.dRest) && t > g.t0) {
+          const p = executerJusqua({ depart: g.t0, duree: g.dRest, cumul: g.cumul, prises, pauses: R.pauses, regime: R.regime, finPoste: R.finPoste }, t);
+          rho = g.rho * Math.max(0, 1 - p.fait / g.dRest); cumul = p.cumul; reprise = p.reprise;
+        }
+      }
+      let reste = 0;
+      for (let j = e.lot; j < R.bases.length; j++) reste += (j === e.lot ? rho : 1) * R.bases[j];
+      return { lot: e.lot, reste, cumul, prises, reprise };
+    }
+    /** Le travail qui reste à une équipe, en minutes-personne (un robot : en minutes de ligne). */
+    function resteDe(R, t) {
+      if (R.a.type === 'handling') { const s = suivis24h.get(R.id); return s ? s.mesVols.filter(x => x.etat === 'attente').length : 0; }
+      const e = avancement(R, t);
+      return e ? e.reste : 0;
+    }
+    /** L'échéance la plus proche des commandes qui restent à une équipe. */
+    function echeanceDe(R, t) {
+      if (R.a.type === 'handling') { const s = suivis24h.get(R.id); return s ? Math.min(...s.mesVols.filter(x => x.etat === 'attente' && x.blocage === 'chauffeur').map(x => x.b.limite), Infinity) : Infinity; }
+      const e = R.lireEtat ? R.lireEtat() : null; if (!e) return Infinity;
+      return Math.min(...R.echeances.slice(e.lot), Infinity);
+    }
+    /**
+     * Une équipe risque-t-elle de dépasser sa présence ? À la main : ce qui lui
+     * reste, au rythme de son effectif du moment, finit après. Un robot : il
+     * n'a pas assez de monde pour tourner. Le handling : des vols attendent un
+     * chauffeur.
+     */
+    function aRisque(R, t) {
+      if (R.fini) return false;
+      if (R.a.type === 'handling') { const s = suivis24h.get(R.id); return !!s && s.mesVols.some(x => x.etat === 'attente' && x.pret != null && x.blocage === 'chauffeur'); }
+      const e = avancement(R, t); if (!e || e.lot >= R.bases.length) return false;
+      if (R.a.type === 'robot') return R.a.personnes + R.aides.filter(h => h.fin > t + 1e-9).length < R.mini;
+      return finProjetee(R, e) > R.finPresence + 1e-9;
+    }
+    /**
+     * L'heure où une équipe à la main finirait ce qui lui reste (en minutes-
+     * personne), avec son effectif et les renforts qu'elle a déjà : chacun
+     * compte de son arrivée à son départ, hors de ses pauses ; les pauses de
+     * l'équipe arrêtent tout le monde.
+     */
+    function finProjetee(R, e) {
+      const prises = new Set(e.prises);
+      let tau = e.reprise, w = e.reste, cumul = e.cumul;
+      for (let garde = 0; garde < 10000; garde++) {
+        if (w <= 1e-9) return tau;
+        const vitesse = R.a.personnes + apport(R, tau).efficace, suivant = prochainChangement(R, tau);
+        if (!(vitesse > 1e-9)) { if (!Number.isFinite(suivant)) return Infinity; tau = suivant; continue; }
+        const o = { depart: tau, duree: w / vitesse, cumul, prises, pauses: R.pauses, regime: R.regime, finPoste: Infinity };
+        const p = executerJusqua(o, suivant);
+        if (p.fait >= o.duree - 1e-9) return p.t;
+        w -= p.fait * vitesse; cumul = p.cumul; tau = Math.max(suivant, p.reprise);
+      }
+      return Infinity;
+    }
+    /** Une équipe ne reçoit pas plus de renforts que ses postes de travail (`personnesMax`) ; sans lui, pas de limite. */
+    const placeLibre = (R, t) => R.a.type === 'handling' || !(Number.isInteger(R.a.personnesMax) && R.a.personnesMax > 0)
+      || R.a.personnes + R.aides.filter(h => h.fin > t + 1e-9).length < R.a.personnesMax;
+    /** Les minutes qu'une personne a passées à aider, entre deux instants, hors de ses pauses. */
+    function minutesAidees(h, de, a) {
+      if (!(a > de)) return 0;
+      let m = a - de;
+      for (const p of h.pauses) m -= Math.max(0, Math.min(a, p.a) - Math.max(de, p.de));
+      return Math.max(0, m);
+    }
+    /** Une personne quitte l'équipe qu'elle aidait : ce qu'elle lui a donné est compté. */
+    function liberer(h, t, part) {
+      const R = h.aide; if (!R) return;
+      const a = Math.min(t, h.fin), m = minutesAidees(h, h.depuis, a);
+      if (m > 0) {
+        h.parts.set(R.id, (h.parts.get(R.id) || 0) + m);
+        h.sup += minutesAidees(h, Math.max(h.depuis, h.finPresence), a);
+      }
+      R.aides.splice(R.aides.indexOf(h), 1);
+      h.aide = null; h.libre = part ? Infinity : t;
+    }
+    /** Une personne rejoint une équipe : elle y travaille après le délai (déplacement, lavage des mains, tenue). */
+    function affecter(h, R, t) {
+      h.aide = R; h.depuis = t; h.debut = t + REN.delai;
+      h.efficacite = memeService(h.service, R.service) ? REN.efficacite : REN.autre;
+      R.aides.push(h);
+      // Vers le handling : un chauffeur de plus, de n'importe quel véhicule, jusqu'à la fin de sa présence.
+      if (R.a.type === 'handling') { const s = suivis24h.get(R.id); if (s && s.ajouterChauffeur) s.ajouterChauffeur(h); }
+      else if ((R.enTache || R.attend) && R.proc && !R.proc.declenche && env.processusActif !== R.proc) R.proc.interrompre('renfort');
+      // Elle repart à la fin de sa propre présence.
+      if (Number.isFinite(h.fin)) env.processus(function* () {
+        if (env.maintenant < h.fin) yield env.delai(h.fin - env.maintenant);
+        if (h.aide === R) { liberer(h, env.maintenant, true); repartir(); }
+      }, 'renfort ' + h.id);
+    }
+    /**
+     * Les personnes libres vont aux équipes qui risquent de dépasser leur
+     * présence : celle dont les commandes partent le plus tôt d'abord ; à
+     * égalité, celle à qui il reste le plus de travail. Chacune prend d'abord
+     * une personne de son service (elle y compte davantage).
+     */
+    function repartir() {
+      if (!REN) return;
+      const t = env.maintenant;
+      for (let garde = 0; garde < 10000; garde++) {
+        const libres = aidants.filter(h => !h.aide && h.libre <= t + 1e-9 && t + REN.delai < h.fin - 1e-9);
+        if (!libres.length) return;
+        const cands = [...receveurs.values()].filter(R => !R.fini && t >= R.debutPoste - 1e-9 && t + REN.delai < R.finPoste - 1e-9 && placeLibre(R, t) && aRisque(R, t))
+          .map(R => ({ R, e: echeanceDe(R, t), r: resteDe(R, t) }))
+          .sort((x, y) => x.e - y.e || y.r - x.r || String(x.R.id).localeCompare(String(y.R.id)));
+        let choix = null;
+        for (const { R } of cands) {
+          const h = libres.filter(x => x.de !== R.a && peutAider(x.service, R.a))
+            .sort((x, y) => (memeService(y.service, R.service) - memeService(x.service, R.service)) || x.libre - y.libre || x.rang - y.rang)[0];
+          if (h) { choix = { R, h }; break; }
+        }
+        if (!choix) return;
+        affecter(choix.h, choix.R, t);
+      }
+    }
+    /** Une équipe a fini ses lots avant la fin de sa présence : ses personnes deviennent des renforts. */
+    function preter(a, t, prises) {
+      if (!REN || !pretable(a)) return;
+      const v = parId.get(a.id), reg = normaliserRegime(a.regime, opts.regime);
+      const finPresence = reg.actif ? v.debut + reg.presence : Infinity;
+      if (!(t + REN.delai < finPresence - 1e-9)) return;
+      // Pas d'heures sup en renfort, sauf si on les permet (et seulement si les heures sup le sont).
+      const fin = REN.versHeuresSup && SUP > 0 && Number.isFinite(finPresence) ? finPresence + SUP : finPresence;
+      // Ses pauses restent les siennes : les arrêts de son équipe, et ses pauses de régime pas encore prises, à leur heure.
+      const pauses = pausesDe(a).map(p => ({ de: p.de, a: p.a }));
+      let avant = 0;
+      for (const x of reg.seuils) { if (!prises.has(x.apres)) { const de = v.debut + x.apres + avant; pauses.push({ de, a: de + x.duree }); } avant += x.duree; }
+      pauses.sort((x, y) => x.de - y.de || x.a - y.a);
+      for (let i = 0; i < a.personnes; i++) aidants.push({ id: a.id + '#' + (i + 1), de: a, service: a.service, libre: t, fin, finPresence, pauses,
+        aide: null, depuis: null, debut: null, efficacite: 0, rang: aidants.length, parts: new Map(), sup: 0 });
+      repartir();
+    }
+    /**
+     * Une tâche dont l'effectif peut changer en cours de route (une équipe qui
+     * peut recevoir des renforts). Sans renfort, exactement `executerTache`.
+     * Quand l'effectif change, le temps qui reste se recalcule : travail
+     * restant ÷ (personnes + somme des efficacités des renforts) ÷ rendement.
+     * Un robot, lui, tourne à son débit quand il a son minimum de personnes.
+     * @param o { duree, base, cumul, prises, pauses, regime, finPoste, robot }
+     */
+    function* tacheAvecRenforts(R, o) {
+      const n = R.a.personnes;
+      let rho = 1, cumul = o.cumul, arret = 0, fait = 0, aide = false, reprise = -Infinity, attenteRenfort = 0;
+      R.enTache = true;
+      try {
+        for (let garde = 0; garde < 100000; garde++) {
+          const t0 = env.maintenant;
+          if (t0 >= o.finPoste - 1e-9) return { fin: o.finPoste, arret, cumul, fait, tronque: true, aide, attenteRenfort };
+          const ap = apport(R, t0);
+          let dRest;
+          if (o.robot) dRest = n + ap.personnes >= R.mini ? rho * o.base : Infinity;
+          else if (!ap.personnes) dRest = n > 0 ? rho * o.duree : Infinity;     // son effectif seul : la durée d'avant, telle quelle
+          else dRest = rho * o.base / (n + ap.efficace);
+          if (ap.personnes && Number.isFinite(dRest)) aide = true;
+          const debut = Math.max(t0, reprise), prochain = prochainChangement(R, t0);
+          const copie = new Set(o.prises);
+          const res = Number.isFinite(dRest) ? executerTache({ depart: debut, duree: dRest, cumul, prises: copie, pauses: o.pauses, regime: o.regime, finPoste: o.finPoste }) : null;
+          const fin = res ? Math.min(res.fin, prochain) : Math.min(prochain, o.finPoste);
+          R.segment = { t0: debut, dRest, rho, cumul, prises: new Set(o.prises) };
+          let interrompu = false;
+          try { yield Number.isFinite(fin) ? env.delai(Math.max(0, fin - t0)) : env.evenement('attente d’un renfort'); }
+          catch (e) { if (!(e instanceof Noyau.Interruption)) throw e; interrompu = true; }
+          const t1 = env.maintenant;
+          if (res && !interrompu && t1 >= res.fin - 1e-9) {
+            for (const x of copie) o.prises.add(x);
+            return { fin: res.fin, arret: arret + (debut - t0) + res.arret, cumul: res.cumul, fait: fait + res.fait, tronque: res.tronque, aide, attenteRenfort };
+          }
+          if (!res) { attenteRenfort += t1 - t0; continue; }
+          if (t1 <= debut + 1e-9) { arret += t1 - t0; continue; }   // encore en pause
+          const p = executerJusqua({ depart: debut, duree: dRest, cumul, prises: o.prises, pauses: o.pauses, regime: o.regime, finPoste: o.finPoste }, t1);
+          arret += (debut - t0) + p.arret; cumul = p.cumul; fait += p.fait;
+          rho *= Math.max(0, 1 - p.fait / dRest);
+          reprise = p.reprise > t1 + 1e-9 ? p.reprise : -Infinity;
+          if (rho <= 1e-9) return { fin: t1, arret, cumul, fait, tronque: false, aide, attenteRenfort };
+        }
+        throw new Error('Trop de changements d’effectif pour achever une tâche.');
+      } finally { R.enTache = false; R.segment = null; }
     }
 
     for (const a of ateliers) {
@@ -2920,9 +3279,13 @@
         continue;
       }
 
-      env.processus(function* () {
+      // Une équipe qui peut recevoir des renforts (évolution 5) : son état se lit pendant la journée.
+      const R = REN ? receveurs.get(a.id) || null : null;
+      let j = 0;   // le rang du lot en cours, parmi les lots non vides
+      const processus = env.processus(function* () {
         if (env.maintenant < depart) yield env.delai(depart - env.maintenant);
         let horloge = depart;
+        if (R) R.lireEtat = () => ({ cumul, prises, lot: j });
 
         for (const lot of a.lots) {
           const ids = classesDuLot(lot);
@@ -2948,38 +3311,27 @@
           if (env.maintenant < horloge) yield env.delai(horloge - env.maintenant);
 
           // Contenu de travail du lot.
-          const lots = ids.map(id => parClasse.get(id)).filter(Boolean);
-          let duree, detail;
-          if (a.type === 'robot') {
-            // Chaque commande à son débit : ses plateaux ÷ son débit.
-            const plateaux = lots.reduce((n, c) => n + c.pax, 0);
-            const mini = a.personnesMin === undefined ? 1 : a.personnesMin;
-            const heures = lots.reduce((n, c) => n + c.pax / Math.max(1e-9, debitRobot(a, c.id)), 0);
-            duree = a.personnes >= mini ? heures * 60 : Infinity;
-            detail = { plateaux, debit: plateaux && heures ? Math.round(plateaux / heures) : a.debit };
-          } else {
-            // Chaque ligne ne compte que ses classes : dans une case « TX BC puis
-            // TX PC », TX BC sort après ses seules minutes, sans attendre TX PC.
-            const hommeMinutes = sansMinutes(a) ? 0 : lots.reduce((n, c) => n + travailDans(a, c, bareme), 0);
-            const f = fusionDe(a);
-            if (sansMinutes(a)) {
-              // Effectif constant : ni minutes par vol, ni durée. La commande passe
-              // dans ses heures de présence (06/10).
-              duree = 0;
-              detail = { hommeMinutes: 0, constant: true };
-            } else if (f) {
-              // L'étape d'avant, faite à la chaîne par la même case.
-              // Seules les commandes dont elle fait vraiment l'étape d'avant : une
-              // commande qu'une case de la Prépa fait encore n'est pas comptée deux fois.
-              const avant = lots.filter(c => fusionPar.get(cle(f, c.id)) === a.service).reduce((n, c) => n + travailClasse(f, c, bareme), 0);
-              duree = dureeFusion(avant, hommeMinutes, a.personnes) / rendement;
-              detail = { hommeMinutes: hommeMinutes + avant, fusion: f, minutesFusion: avant, minutesIci: hommeMinutes };
-            } else {
-              duree = hommeMinutes / a.personnes / rendement;
-              detail = { hommeMinutes };
+          const { lots, duree, detail, base } = travailDuLot(a, ids);
+          // Pas assez de monde (un robot sous son minimum, une équipe sans personne) : une équipe qui
+          // peut recevoir des renforts les attend, avant de prendre du matériel ou sa ligne.
+          if (!Number.isFinite(duree) && R) {
+            const t0 = env.maintenant, arme = () => (a.type === 'robot' ? robotArme(R, env.maintenant) : apport(R, env.maintenant).personnes > 0);
+            R.attend = true; repartir();
+            try {
+              while (!arme() && env.maintenant < finPoste - 1e-9) {
+                const u = Math.min(prochainChangement(R, env.maintenant), finPoste);
+                try { yield Number.isFinite(u) ? env.delai(Math.max(0, u - env.maintenant)) : env.evenement('attente d’un renfort'); }
+                catch (e) { if (!(e instanceof Noyau.Interruption)) throw e; }
+              }
+            } finally { R.attend = false; }
+            if (!arme()) {
+              journal.push({ atelier: a.id, service: a.service, nom, classes: ids, debut: t0,
+                fin: null, duree: null, attente, arret: 0, impossible: true, ...detail });
+              vue.lots.push(journal[journal.length - 1]);
+              return;
             }
-          }
-          if (!Number.isFinite(duree)) {
+            attente += env.maintenant - t0;
+          } else if (!Number.isFinite(duree)) {
             journal.push({ atelier: a.id, service: a.service, nom, classes: ids, debut: env.maintenant,
               fin: null, duree: null, attente, arret: 0, impossible: true, ...detail });
             vue.lots.push(journal[journal.length - 1]);
@@ -3016,17 +3368,19 @@
             return;
           }
 
-          const t = executerTache({ depart: env.maintenant, duree, cumul, prises, pauses, regime, finPoste });
           const debutLot = env.maintenant;
-          yield env.delai(t.fin - env.maintenant);
+          let t;
+          // Une équipe qui peut recevoir des renforts : une tâche dont l'effectif peut changer en route.
+          if (R) { repartir(); t = yield* tacheAvecRenforts(R, { duree, base, cumul, prises, pauses, regime, finPoste, robot: a.type === 'robot' }); }
+          else { t = executerTache({ depart: env.maintenant, duree, cumul, prises, pauses, regime, finPoste }); yield env.delai(t.fin - env.maintenant); }
           if (tient) rendreLigne(k);
           cumul = t.cumul;
           const { arret } = t;
-          attente += attenteLigne;
+          attente += attenteLigne + (t.attenteRenfort || 0);
 
           if (t.tronque) {
             const ligne = { atelier: a.id, service: a.service, nom, classes: ids,
-              debut: debutLot, fin: null, duree, attente, arret,
+              debut: debutLot, fin: null, duree: Number.isFinite(duree) ? duree : null, attente, arret,
               fait: t.fait, impossible: true, horsPoste: true, ...detail };
             journal.push(ligne); vue.lots.push(ligne);
             vue.attente += attente; vue.arret += arret; vue.travail += t.fait;
@@ -3040,18 +3394,50 @@
           const fl = fusionDe(a);
           if (fl) for (const id of ids) if (fusionPar.get(cle(fl, id)) === a.service) livrer(fl, id);
 
+          // Aidée par des renforts : son travail est le temps qu'elle y a passé, plus court.
+          const aidee = t.aide || !Number.isFinite(duree);
           const ligne = { atelier: a.id, service: a.service, nom, classes: ids,
-            debut: debutLot, fin: env.maintenant, duree, attente, attenteMateriel: attenteMat,
-            arret, impossible: false, ...detail };
+            debut: debutLot, fin: env.maintenant, duree: Number.isFinite(duree) ? duree : t.fait, attente, attenteMateriel: attenteMat,
+            arret, impossible: false, ...detail, ...(t.aide ? { renfort: true, fait: t.fait } : {}) };
           journal.push(ligne); vue.lots.push(ligne);
-          vue.travail += duree; vue.attente += attente; vue.arret += arret;
+          vue.travail += aidee ? t.fait : duree; vue.attente += attente; vue.arret += arret;
           vue.fin = env.maintenant;
           horloge = env.maintenant;
+          j++;
         }
+        // Tous ses lots sont faits avant la fin de sa présence : ses personnes vont aider (évolution 5).
+        if (REN) preter(a, env.maintenant, prises);
       }, a.nom);
+      // Une équipe aidée qui s'arrête (ses lots faits, ou son poste fini) libère ses renforts.
+      if (R) {
+        R.proc = processus;
+        processus.surResolution(() => { R.fini = true; for (const h of R.aides.slice()) liberer(h, env.maintenant, false); repartir(); });
+      }
     }
 
     env.executer();
+
+    // Les renforts (évolution 5) : ce que chaque équipe a prêté et reçu, en minutes-personne
+    // (le délai de déplacement compris, les pauses du renfort non), vers qui et de qui.
+    const renforts = [];
+    if (REN) {
+      for (const h of aidants) if (h.aide) liberer(h, env.maintenant, true);
+      const paires = new Map();
+      for (const h of aidants) for (const [vers, minutes] of h.parts) {
+        const k = h.de.id + '\u0000' + vers;
+        if (!paires.has(k)) paires.set(k, { de: h.de.id, vers, minutes: 0 });
+        paires.get(k).minutes += minutes;
+      }
+      renforts.push(...[...paires.values()].sort((x, y) => String(x.de).localeCompare(String(y.de)) || String(x.vers).localeCompare(String(y.vers))));
+      for (const v of suivi) {
+        const vers = renforts.filter(p => p.de === v.id), de = renforts.filter(p => p.vers === v.id);
+        v.renfortsPretes = vers.reduce((n, p) => n + p.minutes, 0);
+        v.renfortsRecus = de.reduce((n, p) => n + p.minutes, 0);
+        v.renfortsHeuresSup = aidants.filter(h => h.de.id === v.id).reduce((n, h) => n + h.sup, 0);
+        v.renforts = { vers: vers.map(p => ({ id: p.vers, nom: parId.get(p.vers).nom, minutes: p.minutes })),
+          de: de.map(p => ({ id: p.de, nom: parId.get(p.de).nom, minutes: p.minutes })) };
+      }
+    }
 
     // Les vagues : chaque commande servie par une mise à disposition prend la
     // vague qui précède son besoin. Une ligne de journal par vague, avec ses
@@ -3364,6 +3750,8 @@
       } : null,
       stocks,
       plonge,
+      // Les renforts de la journée (évolution 5), équipe par équipe : { de, vers, minutes }.
+      ...(REN ? { renforts } : {}),
       finDe
     };
   }

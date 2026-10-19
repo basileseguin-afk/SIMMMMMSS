@@ -26,14 +26,22 @@ const NOUVEAUX = {
 /* Chaque évolution, réglée mais désactivée : la même journée qu'avant. */
 const DESACTIVEES = s => ({
   heuresSup: { actif: false, plafond: 180 },
-  // Évolution 3 : chaque handling a ses réglages 24 h/24 (escales, quais, VL…), sans le mode.
-  ...(handlingsDe(s).length ? { equipes: Object.fromEntries(handlingsDe(s).map(a => [a.id, { escale: { '*': 60, NORD: 30 }, quaiDepart: { '*': 10 },
-    dechargement: { '*': 20 }, quaiRetour: { '*': 15 }, vl: ['SUD'], entreAvions: 5, dechargementsParTournee: 2, margeDepart: 45,
-    margeEscaleCourte: 10, delaiArrivee: 5, camionsVL: 2,
-    // Évolution 4 : les chauffeurs calculés, réglés — sans le mode 24 h/24, ils ne comptent pas.
-    chauffeurs: { mode: 'calcules', selonPreparation: true, pasDebut: 60, debutsPossibles: ['06:00', '14:00', '22:00'], retardPauseMax: 30, iterationsMax: 2 } }])) } : {})
+  // Évolution 5 : les renforts réglés mais désactivés ; la matrice de polyvalence saisie (chaque service aide tous les autres).
+  renforts: { actif: false, efficacite: 1, efficaciteAutreService: 1, delai: 0, versHeuresSup: true },
+  ...(servicesDe(s).length ? { ateliers: { polyvalence: Object.fromEntries(servicesDe(s).map(x => [x, servicesDe(s)])) } } : {}),
+  equipes: {
+    // Évolution 5 : les postes de travail des équipes qui préparent.
+    ...Object.fromEntries(s.args.ateliers.filter(a => a.type === 'manuel' || a.type === 'robot').map(a => [a.id, { personnesMax: 1 }])),
+    // Évolution 3 : chaque handling a ses réglages 24 h/24 (escales, quais, VL…), sans le mode.
+    ...Object.fromEntries(handlingsDe(s).map(a => [a.id, { escale: { '*': 60, NORD: 30 }, quaiDepart: { '*': 10 },
+      dechargement: { '*': 20 }, quaiRetour: { '*': 15 }, vl: ['SUD'], entreAvions: 5, dechargementsParTournee: 2, margeDepart: 45,
+      margeEscaleCourte: 10, delaiArrivee: 5, camionsVL: 2,
+      // Évolution 4 : les chauffeurs calculés, réglés — sans le mode 24 h/24, ils ne comptent pas.
+      chauffeurs: { mode: 'calcules', selonPreparation: true, pasDebut: 60, debutsPossibles: ['06:00', '14:00', '22:00'], retardPauseMax: 30, iterationsMax: 2 } }]))
+  }
 });
 const handlingsDe = s => s.args.ateliers.filter(a => a.type === 'handling');
+const servicesDe = s => [...new Set(s.args.ateliers.map(a => a.service))];
 const nouveau = (motif, cle) => Object.entries(NOUVEAUX).some(([m, cles]) => cles.includes(cle)
   && m.split('.').length === motif.split('.').length && m.split('.').every((x, i) => x === '*' || x === motif.split('.')[i]));
 

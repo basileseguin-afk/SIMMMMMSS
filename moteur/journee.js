@@ -138,8 +138,25 @@
       const a = annexesDe(zones).find(z => z.id === s.id), pere = a ? a.parent : null;
       if (pere && bareme[pere]) bareme[s.id] = clone(bareme[pere]);
     }
-    // Les heures sup (évolution 2) : seulement une fois réglées.
-    return { bareme, rendement: modele.rendement, regime: modele.regime, ...(modele.heuresSup ? { heuresSup: modele.heuresSup } : {}) };
+    // Les heures sup (évolution 2) et les renforts (évolution 5) : seulement une fois réglés.
+    return { bareme, rendement: modele.rendement, regime: modele.regime, ...(modele.heuresSup ? { heuresSup: modele.heuresSup } : {}),
+      ...(modele.renforts ? { renforts: modele.renforts } : {}) };
+  }
+
+  /* Les familles de services (renforts, évolution 5) : un service et ses
+   * annexes. Sans matrice de polyvalence saisie, une personne aide son service
+   * et les salles de sa famille, dans les deux sens. */
+  function famillesDeLUnite(services, zones) {
+    const racine = new Map(annexesDe(zones).filter(a => a.parent).map(a => [a.id, a.parent]));
+    const groupes = new Map();
+    for (const s of services) {
+      const r = racine.get(s.id) || s.id;
+      if (!groupes.has(r)) groupes.set(r, new Set([r]));
+      groupes.get(r).add(s.id);
+    }
+    const out = {};
+    for (const g of groupes.values()) if (g.size > 1) for (const m of g) out[m] = [...g].filter(x => x !== m);
+    return out;
   }
 
   /* ----------------------------------------------------------------------
@@ -273,7 +290,9 @@
       // Les services dont l'effectif se calcule d'après les homme-minutes (05/10).
       effectifCalcule: servicesCalcules(etat, services), effectifImpose: servicesImposes(etat),
       noms: Object.fromEntries(fantomesDeLUnite(etat, services, zones, base).map(f => [f.id, f.nom])
-        .concat(services.map(s => [s.id, s.nom])))
+        .concat(services.map(s => [s.id, s.nom]))),
+      // Les renforts (évolution 5) : la règle du modèle, la matrice des cases, les familles du plan.
+      ...(r.renforts ? { renforts: { ...r.renforts, polyvalence: etat.polyvalence || {}, familles: famillesDeLUnite(services, zones) } } : {})
     };
   }
 
@@ -309,9 +328,9 @@
       : 'aucune équipe « ' + cle + ' » dans la sauvegarde.');
   }
 
-  /* Les règles de calcul que le banc peut forcer directement (`options.heuresSup`) :
-   * elles se fondent dans `ory-modele-v1`, comme `options.modele`. */
-  const REGLES = ['heuresSup'];
+  /* Les règles de calcul que le banc peut forcer directement (`options.heuresSup`,
+   * `options.renforts`) : elles se fondent dans `ory-modele-v1`, comme `options.modele`. */
+  const REGLES = ['heuresSup', 'renforts'];
   const CLES_OPTIONS = new Set(['delaiChargement', 'decalage', 'modele', 'ateliers', 'equipes', ...REGLES]);
 
   /**
@@ -402,7 +421,7 @@
 
   const api = {
     argumentsDeLaJournee, argumentsDeLUnite, uniteDeLaSauvegarde, jouer, volsDuFichier, volsDecales,
-    servicesDeLUnite, liaisonsDeLUnite, fantomesDeLUnite, nomDeService, estRetire, reglagesDuModele,
+    servicesDeLUnite, liaisonsDeLUnite, fantomesDeLUnite, nomDeService, estRetire, reglagesDuModele, famillesDeLUnite,
     classesDuProgramme, synchroniser, lotsAtelier, effectifConstant, effectifImpose, parVols,
     servicesCalcules, servicesImposes, CONSTANTS, NOMS_CONSTANTS, DELAI_CHARGEMENT
   };

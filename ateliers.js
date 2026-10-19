@@ -169,6 +169,8 @@
   /* La nature d'une case change : ce qui n'a plus de sens s'efface. */
   function typer(a, v) {
     a.type = v;
+    // Les postes de travail (renforts, évolution 5) : à la main ou au robot seulement.
+    if (v !== 'manuel' && v !== 'robot') delete a.personnesMax;
     if (v === 'handling') { a.jour = 0; delete a.debit; delete a.personnesMin; delete a.tunnels; delete a.minutes; delete a.materiel; a.lots = []; Object.assign(a, handlingDe(a)); return; }
     delete a.durees; delete a.simultanes; delete a.avance; delete a.compagnies;
     if (v === 'robot') { a.debit = a.debit || 320; a.personnesMin = a.personnesMin === undefined ? 1 : a.personnesMin; }
@@ -275,6 +277,8 @@
         ...minutesPropres(a, lots),
         // Ne travaille que si une compagnie a assez de vols ce jour-là (règle ⚡).
         ...conditionDe(a, type),
+        // Ses postes de travail (banc d'essai, évolution 5) : elle ne reçoit pas de renfort au-delà. Gardés une fois saisis.
+        ...((type === 'manuel' || type === 'robot') && Number.isInteger(a.personnesMax) && a.personnesMax > 0 ? { personnesMax: Math.min(999, a.personnesMax) } : {}),
         ...(type === 'robot' ? {
           debit: Number.isFinite(a.debit) ? Math.max(1, a.debit) : 320,
           personnesMin: Number.isInteger(a.personnesMin) ? Math.max(0, a.personnesMin) : 1,
@@ -368,10 +372,20 @@
     // Les services qui travaillent en même temps qu'un autre (08/10) : { cuisine chaude: cuisine }.
     const paralleles = Object.fromEntries(Object.entries(brut.paralleles && typeof brut.paralleles === 'object' ? brut.paralleles : {})
       .map(([k, x]) => [String(k).slice(0, 160), String(x ?? '').slice(0, 160)]).filter(([k, x]) => k && x && k !== x).slice(0, 100));
+    const polyvalence = polyvalenceDe(brut.polyvalence);
     return { schema: 'ory-ateliers', version: 1, ateliers, exclues, ajoutees, materiel,
       parcours, parcoursCabine, parcoursClasse, ...(Object.keys(categories).length ? { categories } : {}),
       ...(Object.keys(effectifs).length ? { effectifs } : {}), ...(Object.keys(encadrement).length ? { encadrement } : {}),
-      ...(Object.keys(paralleles).length ? { paralleles } : {}), ...(migrations.length ? { migrations } : {}) };
+      ...(Object.keys(paralleles).length ? { paralleles } : {}), ...(migrations.length ? { migrations } : {}),
+      ...(Object.keys(polyvalence).length ? { polyvalence } : {}) };
+  }
+
+  /** La polyvalence (renforts, évolution 5) : pour un service, les services qu'il peut aider.
+   *  Une liste vide est un choix (il n'aide personne) ; un service absent suit le défaut. */
+  function polyvalenceDe(brut) {
+    if (!brut || typeof brut !== 'object' || Array.isArray(brut)) return {};
+    return Object.fromEntries(Object.entries(brut).filter(([k, x]) => k && k.length <= 160 && Array.isArray(x)).slice(0, 300)
+      .map(([k, x]) => [k, [...new Set(x.filter(v => typeof v === 'string' && v && v.length <= 160))].slice(0, 300)]));
   }
 
   /** 420 → « 7 h », 60 → « 1 h », 15 → « 15 min », 495 → « 8 h 15 ». */
@@ -515,6 +529,12 @@
       }
       this.reporterEffectifs();
       return this.resultat;
+    }
+
+    /** Les renforts (banc d'essai, évolution 5) sont-ils actifs ? Ils montrent les postes de travail des équipes. */
+    renfortsActifs() {
+      const u = this.a.unite ? this.a.unite() : {};
+      return !!(u.modele && u.modele.renforts && u.modele.renforts.actif);
     }
 
     /* L'effectif d'un service (retour d'usage du 05/10) : constant, saisi équipe
@@ -1142,6 +1162,14 @@
             break;
           }
           case 'personnesMin': a.personnesMin = Math.max(0, parseInt(v, 10) || 0); break;
+          // Ses postes de travail (renforts) : vide, pas de limite.
+          case 'personnesMax': {
+            const n = +v;
+            if (v === '') delete a.personnesMax;
+            else if (!Number.isInteger(n) || n < 1 || n > 999) throw new Error('Postes de travail : un nombre entier de 1 à 999, ou vide.');
+            else a.personnesMax = n;
+            break;
+          }
           case 'type': typer(a, v); break;
           case 'consomme': a.materiel = el.checked ? 'consomme' : undefined; break;
           // Fait aussi l'étape d'avant, à la chaîne : ses commandes quittent les
@@ -1808,6 +1836,8 @@
           ${o.compact ? '' : `<label>Débit du robot${avecUnite(`<input type="number" min="1" value="${a.debit}" data-at-champ="debit"
             title="Le débit des commandes qui n’ont pas le leur (réglable à côté de chaque commande)">`, 'pl/h')}</label>`}
           <label title="Sous ce nombre de personnes, le robot ne tourne pas">Minimum pour tourner${avecUnite(`<input type="number" min="0" value="${a.personnesMin}" data-at-champ="personnesMin">`, 'pers.')}</label>` : ''}
+          ${(a.type === 'manuel' || a.type === 'robot') && !o.compact && (this.renfortsActifs() || Number.isInteger(a.personnesMax)) ? `
+          <label title="Les renforts ne la portent pas au-delà de ses postes de travail. Vide : pas de limite">Postes de travail${avecUnite(`<input type="number" min="1" max="999" step="1" value="${Number.isInteger(a.personnesMax) ? a.personnesMax : ''}" placeholder="sans limite" data-at-champ="personnesMax">`, 'pers.')}</label>` : ''}
         </div>
         ${dispo ? `
         <p class="mini-note at-regle">Ce service <b>ne prépare pas une commande après l’autre</b> : il sert

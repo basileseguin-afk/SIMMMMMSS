@@ -84,8 +84,25 @@
           const n = +b.heuresSup.plafond;
           return Number.isFinite(n) && n >= 0 && b.heuresSup.plafond !== null && b.heuresSup.plafond !== '' ? Math.min(720, Math.round(n)) : 180;
         })()
+      } } : {}),
+      // Les renforts (banc d'essai de la v1, évolution 5) : une équipe qui a fini
+      // prête ses personnes à une équipe encore au travail. L'efficacité d'une
+      // personne ajoutée (du même service, d'un autre), son délai d'arrivée, et
+      // si elle peut rester en heures sup. Gardés une fois réglés seulement.
+      ...(b.renforts && typeof b.renforts === 'object' && !Array.isArray(b.renforts) ? { renforts: {
+        actif: b.renforts.actif === true,
+        efficacite: borne(b.renforts.efficacite, 0, 2, 0.8, 100),
+        efficaciteAutreService: borne(b.renforts.efficaciteAutreService, 0, 2, 0.6, 100),
+        delai: borne(b.renforts.delai, 0, 240, 10, 1),
+        versHeuresSup: b.renforts.versHeuresSup === true
       } } : {})
     };
+  }
+
+  /** Un nombre dans ses bornes, arrondi (au centième : `pas` 100), ou sa valeur par défaut. */
+  function borne(v, min, max, defaut, pas) {
+    const n = +v;
+    return v === null || v === '' || v === undefined || !Number.isFinite(n) || n < min || n > max ? defaut : Math.round(n * pas) / pas;
   }
 
   /**

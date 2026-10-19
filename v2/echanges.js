@@ -895,6 +895,9 @@
       'Chauffeurs long courrier', 'Chauffeurs court courrier', 'Plonge par vol', 'Vols par camion', 'Camions disponibles',
       'À la chaîne avec', 'Ligne robot', 'Arrêts de la ligne',
       'Ne travaille que si', 'Sinon, commandes à', 'Sinon, personnes à']];
+    // Les postes de travail d'une équipe (banc d'essai de la version 1, renforts) : la colonne n'existe que si une équipe en a.
+    const postes = etat.ateliers.some(a => Number.isInteger(a.personnesMax));
+    if (postes) ateliers[0].push('Postes de travail');
     // Le handling 24 h/24 (banc d'essai de la version 1) : ses colonnes n'existent que s'il a des réglages par compagnie.
     const h24 = etat.ateliers.some(a => a.type === 'handling' && CARTES_24H.some(k => a[k] && Object.keys(a[k]).length));
     const vlCr = etat.ateliers.some(a => a.type === 'handling' && (a.creneaux || []).some(c => c.type === 'vl'));
@@ -935,7 +938,8 @@
         a.condition ? (a.condition.cie === '*' ? 'toutes' : a.condition.cie) + ' ≥ ' + a.condition.seuil + ' ' + (a.condition.mesure === 'repas' ? 'repas' : 'vols') : null,
         a.condition ? nomAtelier(a.condition.sinon) : null,
         // Ses personnes : vide = avec les commandes ; « aucune » = l'équipe qui reprend absorbe la charge.
-        a.condition ? (a.condition.absorbe ? 'aucune' : a.condition.renfort ? nomAtelier(a.condition.renfort) : null) : null]);
+        a.condition ? (a.condition.absorbe ? 'aucune' : a.condition.renfort ? nomAtelier(a.condition.renfort) : null) : null,
+        ...(postes ? [Number.isInteger(a.personnesMax) ? a.personnesMax : null] : [])]);
       if (a.type === 'handling') {
         // Une ligne par compagnie réglée : sa durée, et si elle est long courrier.
         const longs = new Set(a.longs || []), d = a.durees || {}, al = a.allers || {}, re = a.retours || {}, vc = a.volsCamion || {};
@@ -1156,6 +1160,7 @@
 
     // Les ateliers eux-mêmes.
     const parNom = new Map(), ids = new Set();
+    const colonnePostes = (fA.lignes[0] || []).some(h => T.cleEntete(h) === 'postes_de_travail');
     out.ateliers = [];
     for (const o of T.enObjets(fA.lignes).objets) {
       err.essayer(fA.nom, o._ligne, () => {
@@ -1192,6 +1197,15 @@
         const a = { id, nom, service: sid, type, debut: hh(debut), jour, personnes, pauses, lots: [],
           regime: { actif: T.ouiNon(o.poste_reglementaire, true), ...(presence !== null ? { presence } : {}) } };
         if (T.ouiNon(o.emporte_du_materiel, false)) a.materiel = 'consomme';
+        // Ses postes de travail : sans la colonne, ceux du site restent ; vide, pas de limite.
+        if (colonnePostes) {
+          const pm = T.nombreDe(o.postes_de_travail, null);
+          if (pm !== null) {
+            if (type !== 'manuel' && type !== 'robot') throw new Error('postes de travail : pour une équipe qui prépare, à la main ou au robot');
+            if (!Number.isInteger(pm) || pm < 1) throw new Error('postes de travail : entier positif attendu');
+            a.personnesMax = pm;
+          }
+        } else if (avant && Number.isInteger(avant.personnesMax) && (type === 'manuel' || type === 'robot')) a.personnesMax = avant.personnesMax;
         // À la chaîne avec l'étape d'avant : un nom de service. Vide = chacune sa case.
         const chaine = String(o.a_la_chaine_avec ?? '').trim();
         if (chaine && !/^(non|aucun|aucune|-)$/i.test(chaine)) {

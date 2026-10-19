@@ -5,6 +5,45 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-19 — Banc d'essai (5/7) : les renforts
+
+Une équipe qui a terminé tous ses lots avant la fin de sa présence ne reste
+plus inactive : ses personnes vont renforcer une équipe encore au travail,
+jusqu'à la fin de leur propre présence. **Désactivé par défaut** : décochés,
+la journée est celle d'avant, champ par champ.
+
+- **La règle** (`ory-modele-v1`) : `renforts: { actif, efficacite,
+  efficaciteAutreService, delai, versHeuresSup }` — un renfort du même service
+  compte pour 0,8 personne, d'un autre pour 0,6, commence après 10 min, ne
+  reste en heures sup que si on le permet (valeurs provisoires, réglables).
+  **Qui peut aider qui** (`ory-ateliers-v1`, `polyvalence`) : par service, la
+  liste des services qu'il aide ; sans elle, son service et ses annexes, à la
+  main seulement. Jamais une mise à disposition ; un robot ou le handling
+  seulement si la matrice le dit. **Les postes de travail** d'une équipe
+  (`personnesMax`, facultatif) bornent ce qu'elle reçoit.
+- **Les règles** : seules prêtent les équipes qui ont fini leurs lots ; reçoit
+  l'équipe qui risque de dépasser sa présence et dont les commandes partent le
+  plus tôt (à égalité, le plus de travail restant). Le temps restant d'une
+  tâche se recalcule quand l'effectif change ; vers un robot, un renfort compte
+  pour le minimum ; vers le handling 24 h/24, c'est un chauffeur de plus. Ses
+  pauses restent les siennes ; il repart à la fin de sa présence, ou va aider
+  une autre équipe quand celle-ci a fini.
+- **La sortie** : par équipe, les minutes-personne prêtées et reçues, vers qui
+  et de qui, et celles passées en heures sup ; pour la journée, `renforts`
+  (de, vers, minutes). La Synthèse a un tableau des renforts.
+- **Dans la page** : *Réglages de la simulation › Renforts* (la case, les
+  efficacités, le délai, les heures sup, la matrice) ; les postes de travail
+  dans la fiche d'une équipe. Excel : une colonne « Postes de travail »,
+  écrite seulement si une équipe en a.
+- Fichiers : `moteur/production.js`, `moteur/journee.js` (la règle, la
+  matrice et les familles d'annexes ; `options.renforts` pour le banc),
+  `reglages.js` et `v2/reglages.js` (identiques), `echanges.js` et
+  `v2/echanges.js` (identiques ; la v2 n'a pas de postes de travail),
+  `ateliers.js` (validateur, fiche), `sim.js` (réglages, Synthèse),
+  `index.html` et `v2/index.html` (empreintes), `docs/BANC_ESSAI.md`,
+  `docs/FORMATS_EXCEL.md`, `README.md`, `tests/renforts.test.cjs`,
+  `tests/renforts-browser.cjs`, `tests/non-regression.test.cjs`.
+
 ## 2026-10-19 — Banc d'essai (4/7) : le handling calcule ses chauffeurs au plus juste
 
 Le nombre de chauffeurs d'un handling 24 h/24 ne se saisit plus forcément :

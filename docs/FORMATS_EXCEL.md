@@ -83,6 +83,7 @@ classeur ; l'import la relit, et un nom seul ambigu est signalé avec la clé à
 | Pas avant départ (h) | handling seulement : il ne commence pas un vol plus tôt (3 h par défaut) |
 | Compagnies chargées | handling seulement : `toutes`, ou `AF, TX` |
 | Vagues | mise à disposition non permanente : `J-1 14:00; J 04:00` ; vide = celles du site. Elle prime sur « Horaires », qui ne donne que la première. Ouverte comme une boutique (Permanent = oui) : `ouvert 07:00-18:00` |
+| Postes de travail | équipe qui prépare ou robot (version 1, banc d'essai — [`BANC_ESSAI.md`](BANC_ESSAI.md), § 5) : ses postes de travail ; les renforts ne la portent pas au-delà. Vide = pas de limite. La colonne n'est écrite que si une équipe en a ; sans elle, l'import garde ceux du site |
 
 ### Feuille « Fabrications »
 

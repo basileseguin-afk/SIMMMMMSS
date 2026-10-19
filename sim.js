@@ -652,7 +652,7 @@ function initAteliers(){
     // Le plan dit « aménagé » d'après les ateliers : il doit suivre leur saisie.
     // La liste du barème marque les services qui portent une équipe : elle doit
     // donc se redessiner quand les ateliers bougent.
-    change:r=>{if(suivreDemo()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();renderHeuresSup(r);},
+    change:r=>{if(suivreDemo()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();renderHeuresSup(r);renderRenforts(r);renderReglageRenforts();},
     // Une case se règle dans le chemin d'une commande : l'ouvrir d'ailleurs y mène.
     onglet:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
     // Le chemin d'une commande mène à son flux (Chemins) et à ses services (Équipes).
@@ -1757,6 +1757,121 @@ function renderHeuresSup(r){
     :'<p class="mini-note">Aucune : chaque équipe finit dans sa présence.</p>');
 }
 
+/* ==========================================================================
+ *  RENFORTS (banc d'essai, évolution 5 — docs/BANC_ESSAI.md)
+ *  Une équipe qui a fini tous ses lots avant la fin de sa présence prête ses
+ *  personnes à une équipe encore au travail. La règle de calcul se range avec
+ *  le barème (ory-modele-v1) ; qui peut aider qui, service par service, avec
+ *  les cases (ory-ateliers-v1, `polyvalence`). Ce qui a été prêté se lit dans
+ *  la Synthèse. Désactivés, rien ne se montre.
+ * ==========================================================================*/
+const RENFORTS_DEFAUT={actif:false,efficacite:0.8,efficaciteAutreService:0.6,delai:10,versHeuresSup:false};
+const renforts=()=>({...RENFORTS_DEFAUT,...((Sim.reglages&&Sim.reglages.etat.renforts)||{})});
+const nombreFr=x=>String(Math.round(x*100)/100).replace('.',',');
+const RENFORTS_CHAMPS={
+  efficacite:{min:0,max:2,texte:'Efficacité d’un renfort du même service',unite:'pers.'},
+  efficaciteAutreService:{min:0,max:2,texte:'Efficacité d’un renfort d’un autre service',unite:'pers.'},
+  delai:{min:0,max:240,texte:'Délai d’arrivée d’un renfort',unite:'min'}
+};
+const renfortsOuverts=new Set();   // les services dont on règle la polyvalence (dépliés)
+/** Les services qui prêtent (une équipe à la main ou au robot) et ceux qui peuvent recevoir (et le handling 24 h/24). */
+function servicesRenforts(){
+  const at=(Sim.ateliers&&Sim.ateliers.state.ateliers)||[];
+  const preparent=new Set(at.filter(a=>a.type==='manuel'||a.type==='robot').map(a=>a.service));
+  const recoivent=new Set([...preparent,...at.filter(a=>a.type==='handling'&&a.handling24h===true).map(a=>a.service)]);
+  const ordre=servicesDisponibles().map(s=>s.id),rang=id=>{const i=ordre.indexOf(id);return i<0?999:i;};
+  const trier=l=>[...l].sort((x,y)=>rang(x)-rang(y)||String(x).localeCompare(String(y)));
+  // Sans choix, un renfort ne va qu'à une équipe à la main.
+  return {preteurs:trier(preparent),cibles:trier(recoivent),manuels:new Set(at.filter(a=>a.type==='manuel').map(a=>a.service))};
+}
+/** Ce qu'un service peut aider sans choix saisi : le sien et ses annexes. */
+function polyvalenceParDefaut(service){
+  const f=OrlyJournee.famillesDeLUnite(servicesDisponibles(),zonesDuPlan());
+  return [service,...(f[service]||[])];
+}
+function reglerRenforts(e){
+  const t=e.target;if(!Sim.reglages)return;
+  if(t.matches('[data-rf-actif]')){
+    Sim.reglages.changer(()=>{Sim.reglages.etat.renforts={...renforts(),actif:t.checked};},
+      t.checked?'Renforts : une équipe qui a fini va aider une équipe qui n’a pas fini.':'Renforts désactivés : une équipe qui a fini reste à son poste.');
+  }else if(t.matches('[data-rf-sup]')){
+    Sim.reglages.changer(()=>{Sim.reglages.etat.renforts={...renforts(),versHeuresSup:t.checked};},
+      t.checked?'Un renfort peut rester en heures supplémentaires.':'Un renfort repart à la fin de sa présence.');
+  }else if(t.matches('[data-rf]')){
+    const k=t.dataset.rf,c=RENFORTS_CHAMPS[k],v=+String(t.value).replace(',','.');
+    if(t.value===''||!Number.isFinite(v)||v<c.min||v>c.max){refuserAuChamp(t,c.texte+' : de '+c.min+' à '+c.max+' '+c.unite);renderReglageRenforts(true);return;}
+    Sim.reglages.changer(()=>{Sim.reglages.etat.renforts={...renforts(),[k]:k==='delai'?Math.round(v):Math.round(v*100)/100};},
+      c.texte+' : '+(k==='delai'?Math.round(v)+' min.':nombreFr(v)+' personne.'));
+  }else if(t.matches('[data-rf-cible]')){
+    const tr=t.closest('[data-rf-service]'),s=tr.dataset.rfService;
+    const liste=[...tr.querySelectorAll('[data-rf-cible]')].filter(x=>x.checked).map(x=>x.dataset.rfCible);
+    Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;st.polyvalence={...(st.polyvalence||{}),[s]:liste};},
+      '« '+nomDeService(s)+' » peut aider : '+(liste.length?liste.map(nomDeService).join(', '):'personne')+'.');
+  }
+}
+function revenirPolyvalence(e){
+  const b=e.target.closest('[data-rf-defaut]');if(!b||!Sim.ateliers)return;
+  const s=b.closest('[data-rf-service]').dataset.rfService;
+  Sim.ateliers.changer(()=>{const st=Sim.ateliers.state,p={...(st.polyvalence||{})};delete p[s];
+    if(Object.keys(p).length)st.polyvalence=p;else delete st.polyvalence;},'« '+nomDeService(s)+' » aide de nouveau son service et ses annexes.');
+}
+/* Le réglage, dans « Réglages de la simulation », après les heures supplémentaires. */
+function renderReglageRenforts(force){
+  const apres=document.getElementById('rg-sim-heures-sup');if(!apres||!Sim.reglages||!Sim.ateliers)return;
+  let box=document.getElementById('rg-sim-renforts');
+  if(!box){
+    box=document.createElement('div');box.className='panneau rg-sim-renforts';box.id='rg-sim-renforts';box.dataset.sous='rg-simulation';
+    apres.after(box);box.addEventListener('change',reglerRenforts);box.addEventListener('click',revenirPolyvalence);
+    box.addEventListener('toggle',e=>{const tr=e.target.closest&&e.target.closest('[data-rf-service]');if(!tr)return;
+      if(e.target.open)renfortsOuverts.add(tr.dataset.rfService);else renfortsOuverts.delete(tr.dataset.rfService);},true);
+  }
+  // On ne redessine pas sous les doigts de quelqu'un qui tape une valeur.
+  if(!force&&box.contains(document.activeElement)&&document.activeElement.matches('input[type=number]'))return;
+  const rf=renforts(),poly=(Sim.ateliers.state.polyvalence)||{},{preteurs,cibles,manuels}=servicesRenforts();
+  const champ=k=>{const c=RENFORTS_CHAMPS[k];return '<div><label class="at-inline-champ">'+escapeHTML(c.texte)+' <span class="champ-unite"><input type="number" min="'+c.min+'" max="'+c.max+'" step="'+(k==='delai'?1:0.05)+'" value="'+rf[k]+'"'
+    +' data-rf="'+k+'" aria-label="'+escapeHTML(c.texte+', en '+(k==='delai'?'minutes':'personne'))+'"'+(rf.actif?'':' disabled')+'><span class="unite">'+c.unite+'</span></span></label></div>';};
+  const ligne=s=>{
+    const saisi=Array.isArray(poly[s]),choisis=new Set(saisi?poly[s]:polyvalenceParDefaut(s).filter(x=>manuels.has(x)));
+    const resume=(saisi?'':'Par défaut : ')+([...choisis].map(nomDeService).join(', ')||'personne');
+    return '<tr data-rf-service="'+escapeHTML(s)+'"><th scope="row">'+escapeHTML(nomDeService(s))+'</th><td><details'+(renfortsOuverts.has(s)?' open':'')+'><summary>'+escapeHTML(resume)+'</summary>'
+      +'<div class="rf-cibles">'+cibles.map(c=>'<label class="chk chk-mini"><input type="checkbox" data-rf-cible="'+escapeHTML(c)+'"'+(choisis.has(c)?' checked':'')+'><span>'+escapeHTML(nomDeService(c))+'</span></label>').join('')+'</div>'
+      +(saisi?'<button type="button" class="btn btn-sm" data-rf-defaut>Revenir au défaut</button>':'')+'</details></td></tr>';
+  };
+  box.innerHTML='<div class="titre-aide"><h3>Renforts</h3><details class="aide">'
+    +'<summary aria-label="Comment les renforts sont comptés">?</summary>'
+    +'<span class="aide-corps">Une équipe qui a fini tous ses lots avant la fin de sa présence ne reste pas inactive : ses personnes vont aider l’équipe '
+    +'qui risque de dépasser sa présence et dont les commandes partent le plus tôt, jusqu’à la fin de leur propre présence. Une équipe qui attend un lot '
+    +'en amont ne prête personne. Un renfort compte pour une fraction de personne, commence après son délai d’arrivée, garde ses pauses ; vers un robot, '
+    +'il compte pour le minimum qui le fait tourner ; vers le handling 24 h/24, c’est un chauffeur de plus. Une équipe ne reçoit pas plus de renforts '
+    +'que ses postes de travail (dans sa fiche). Jamais vers une mise à disposition.</span></details></div>'
+    +'<label class="chk chk-mini"><input type="checkbox" data-rf-actif'+(rf.actif?' checked':'')+'><span>Une équipe qui a fini va aider une équipe qui n’a pas fini</span></label>'
+    +'<div class="rf-champs">'+champ('efficacite')+champ('efficaciteAutreService')+champ('delai')
+    +'<label class="chk chk-mini"><input type="checkbox" data-rf-sup'+(rf.versHeuresSup?' checked':'')+(rf.actif?'':' disabled')+'><span>Un renfort peut rester en heures supplémentaires'
+    +(heuresSup().actif?'':' (quand elles sont permises)')+'</span></label></div>'
+    +(rf.actif?'<h4>Qui peut aider qui</h4><p class="mini-note">Sans choix, un service aide le sien et ses annexes, à la main seulement. Cochez pour '
+      +'autoriser un autre service, un robot, ou le handling (permis de conduire) ; une plonge ne va vers une zone alimentaire que cochée ici.</p>'
+      +(preteurs.length?'<div class="table-scroll"><table class="svc-table rf-table"><thead><tr><th scope="col">Service</th><th scope="col">Peut aider</th></tr></thead><tbody>'
+        +preteurs.map(ligne).join('')+'</tbody></table></div>':'<p class="mini-note">Aucune équipe qui prépare : personne à prêter.</p>')
+      :'<p class="mini-note">Désactivés : une équipe qui a fini reste à son poste jusqu’à la fin de sa présence.</p>');
+}
+/* Dans la Synthèse : qui a aidé qui, et combien de temps (minutes-personne, délai d'arrivée compris). */
+function renderRenforts(r){
+  const sec=document.getElementById('journee-chiffres');if(!sec)return;
+  let box=document.getElementById('bilan-renforts');
+  if(!renforts().actif||!r||!r.ok||!Array.isArray(r.renforts)){if(box)box.remove();return;}
+  if(!box){box=document.createElement('div');box.className='panneau panneau-renforts';box.id='bilan-renforts';sec.appendChild(box);}
+  const eq=new Map((r.ateliers||[]).map(a=>[a.id,a])),dl=MoteurProduction.dureeLisible;
+  const total=r.renforts.reduce((n,p)=>n+p.minutes,0),sup=(r.ateliers||[]).reduce((n,a)=>n+(a.renfortsHeuresSup||0),0);
+  const cellule=id=>{const a=eq.get(id)||{};return escapeHTML(a.nom||id)+'<br><span class="mini-note">'+escapeHTML(nomDeService(a.service||''))+'</span>';};
+  box.innerHTML='<h3>Renforts</h3>'
+    +(r.renforts.length?'<p class="mini-note">Temps prêté en tout : '+escapeHTML(dl(total))+(sup>0?', dont '+escapeHTML(dl(sup))+' en heures supplémentaires':'')
+      +'. En minutes-personne, du départ du renfort à son retour, hors de ses pauses.</p>'
+      +'<div class="table-scroll"><table class="svc-table rf-bilan"><thead><tr><th scope="col">Équipe qui aide</th><th scope="col">Équipe aidée</th><th scope="col">Temps prêté</th></tr></thead><tbody>'
+      +r.renforts.map(p=>'<tr data-rf-de="'+escapeHTML(p.de)+'" data-rf-vers="'+escapeHTML(p.vers)+'"><td>'+cellule(p.de)+'</td><td>'+cellule(p.vers)+'</td><td class="num">'+escapeHTML(dl(p.minutes))+'</td></tr>').join('')
+      +'</tbody></table></div>'
+    :'<p class="mini-note">Aucun : aucune équipe qui a fini ne peut aider une équipe en retard.</p>');
+}
+
 /* Un message passager : une notification (notifications.js), avec « Annuler »
  * quand il suit un geste qui se défait. `o.parDefaut` : seulement si le geste
  * n'a pas déjà dit, plus précisément, ce qu'il a fait. */
@@ -2037,7 +2152,7 @@ function installerCentreReglages() {
       return [...new Set([...par].filter(([,manuel])=>!manuel).map(([s])=>s).concat(parCompagnie))];
     },
     delaiChargement:()=>CFG.loadDelay,
-    change:()=>{if(Sim.ateliers)Sim.ateliers.rendre();majDemarrage();if(Sim.vue)Sim.vue.recalculer();renderReglageHeuresSup();},
+    change:()=>{if(Sim.ateliers)Sim.ateliers.rendre();majDemarrage();if(Sim.vue)Sim.vue.recalculer();renderReglageHeuresSup();renderReglageRenforts();},
     notify:toast
   });
   // Les vols s'importent dans « Données › Vols » ; leurs horaires (décalage,
@@ -2485,6 +2600,7 @@ function initWorkbench() {
   });
   installerCentreReglages();
   renderReglageHeuresSup();
+  renderReglageRenforts();
   updateSource();updateRunState();majCompare();
 }
 

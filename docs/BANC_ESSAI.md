@@ -73,6 +73,7 @@ formé). Il rend, sur la sortie standard, un objet JSON :
 | `ateliers` | Des réglages forcés de l'état des équipes (`ory-ateliers-v1`), hors de la liste des équipes (par exemple `{ "materiel": { "delaiRetour": 45 } }`) | — |
 | `equipes` | Des réglages forcés d'une équipe, désignée par son identifiant ou par son nom (`{ "Plonge soir": { "debut": "14:00" } }`) | — |
 | `heuresSup` | Les heures supplémentaires (§ 2), fondues dans `ory-modele-v1` comme `modele` : `{ "actif": true, "plafond": 720 }` | celles de la sauvegarde |
+| `renforts` | Les renforts (§ 5), fondus dans `ory-modele-v1` comme `modele` : `{ "actif": true, "efficacite": 0.8 }`. La matrice de polyvalence se force par `ateliers` (`{ "polyvalence": { … } }`), les postes de travail d'une équipe par `equipes` (`{ "Montage B": { "personnesMax": 6 } }`) | ceux de la sauvegarde |
 
 Un réglage forcé passe par le validateur, comme une saisie : un objet se
 fond dans celui de la sauvegarde (le reste est gardé), une valeur le
@@ -97,6 +98,9 @@ options des évolutions suivantes s'ajoutent à ce tableau ; celles d'une
 | `heuresSup` | Ses heures supplémentaires, en minutes **par personne** (§ 2) ; 0 sans l'option |
 | `tournees`, `conducteurs`, `heuresSupChauffeurs`, `vehiculesMax` | Un handling 24 h/24 : ses tournées, ses chauffeurs et leurs heures sup, ses véhicules (§ 3) |
 | `planChauffeurs` | Un handling 24 h/24 aux chauffeurs calculés : son plan de vacations, sa borne basse (§ 4) |
+| `renfortsPretes`, `renfortsRecus` | Avec les renforts (§ 5) : les minutes-personne que l'équipe a prêtées à d'autres, et reçues d'autres |
+| `renfortsHeuresSup` | Avec les renforts : les minutes-personne que ses personnes ont passées en renfort après la fin de leur présence |
+| `renforts` | Avec les renforts : `vers` (à qui elle a prêté) et `de` (qui l'a aidée), chacun `{ id, nom, minutes }` |
 
 Les noms `debutPoste` et `presence` sont ceux de la version 2, dans le même
 sens, pour une fusion future.
@@ -533,3 +537,123 @@ déterminisme et le temps de calcul, la validation, Excel, les options du banc) 
 `tests/chauffeurs-calcules-browser.cjs` (la fiche, l'enregistrement, le plan,
 la reprise en créneaux) ; `tests/non-regression.test.cjs` (réglé sans le
 mode 24 h/24 : la même journée).
+
+## 5. Les renforts : une personne qui a fini aide une équipe qui n'a pas fini
+
+Une équipe qui a terminé tous ses lots avant la fin de sa présence ne reste
+pas inactive : ses personnes vont renforcer une équipe encore au travail,
+jusqu'à la fin de **leur** présence.
+
+### Le réglage
+
+- **La règle de calcul**, rangée avec le barème (`ory-modele-v1`) :
+  `renforts: { actif, efficacite, efficaciteAutreService, delai, versHeuresSup }`.
+  Elle se règle dans **Simulation › Réglages de la simulation › Renforts**.
+  Elle n'est enregistrée qu'une fois réglée : un état d'avant se relit tel
+  quel, sans renforts. Hors de ses bornes, une valeur reprend sa valeur par
+  défaut.
+
+  | Réglage | Sens | Par défaut |
+  | --- | --- | --- |
+  | `actif` | Les renforts jouent | non |
+  | `efficacite` | Ce que compte un renfort du **même service** (ou d'une salle de sa famille), en personne : 0 à 2 | 0,8 (provisoire) |
+  | `efficaciteAutreService` | Ce que compte un renfort d'**un autre service** : 0 à 2 | 0,6 (provisoire) |
+  | `delai` | Le délai avant qu'il travaille (déplacement, lavage des mains, tenue), en minutes : 0 à 240 | 10 (provisoire) |
+  | `versHeuresSup` | Un renfort peut rester en heures sup (seulement si elles sont permises, § 2), au plus leur plafond | non |
+
+- **Qui peut aider qui** : `polyvalence`, rangée avec les cases
+  (`ory-ateliers-v1`) — pour un service, la liste des services qu'il peut
+  aider. Elle se règle sous la règle, une ligne par service qui a une équipe
+  qui prépare. Une liste saisie **remplace** le défaut (son propre service n'y
+  est que s'il est coché ; une liste vide : il n'aide personne) ; « Revenir au
+  défaut » l'efface. Sans liste (défaut provisoire), un service aide **son
+  service et ses annexes** (les zones « annexe » du plan rattachées à lui ;
+  une annexe aide aussi son service), et seulement des équipes **à la main**.
+  Une liste saisie autorise toutes les équipes des services cochés, robots et
+  handling 24 h/24 compris.
+- **Les postes de travail** d'une équipe à la main ou d'un robot :
+  `personnesMax`, facultatif, dans sa fiche (le champ s'y montre quand les
+  renforts sont actifs, ou quand il est saisi). Ses personnes et ses renforts
+  ensemble ne le dépassent pas ; sans lui, pas de limite.
+
+Exemple de matrice (services fictifs) — le montage, la prépa et l'annexe du
+robot s'entraident ; la cuisine et la cuisine chaude ; la dotation et les
+roulés couverts :
+
+```json
+{ "polyvalence": {
+    "montage": ["montage", "prepa", "robot"], "prepa": ["prepa", "montage", "robot"], "robot": ["robot", "montage", "prepa"],
+    "cuisine": ["cuisine", "chaude"], "chaude": ["chaude", "cuisine"],
+    "dotation": ["dotation", "roules"], "roules": ["roules", "dotation"] } }
+```
+
+### Les règles
+
+- **Qui prête** : une équipe à la main (pas une équipe sans minutes par vol)
+  ou un robot qui a **fini tous ses lots** avant la fin de sa présence (moins
+  le délai). Une équipe qui attend un lot en amont n'a pas fini : elle ne
+  prête personne. Chacune de ses personnes devient un renfort, de l'heure où
+  l'équipe a fini à la fin de sa présence (plus le plafond des heures sup avec
+  `versHeuresSup`). Ni une plonge, ni une mise à disposition, ni une équipe
+  d'appui, ni le handling ne prêtent.
+- **Qui reçoit** : parmi les équipes **qui risquent de dépasser leur
+  présence**, celle dont les commandes partent le plus tôt (l'échéance la
+  plus proche de ce qui lui reste) ; à égalité, celle qui a le plus de travail
+  restant (en minutes-personne). Une équipe « risque » quand ce qui lui reste,
+  à son effectif et avec les renforts qu'elle a déjà (chacun de son arrivée à
+  son départ, hors de ses pauses ; ses pauses à elle arrêtent tout le monde),
+  finirait après sa présence. Un robot risque quand il n'a pas son minimum de
+  personnes ; le handling 24 h/24, quand un vol prêt attend un chauffeur. Un
+  renfort ne va qu'à une équipe déjà à son poste, qui y est encore après le
+  délai. Chaque équipe prend d'abord une personne de son service. On répartit
+  à chaque fois qu'une personne se libère, qu'une équipe commence un lot,
+  qu'un vol attend un chauffeur ou qu'un renfort repart ; une équipe qui ne
+  risque plus ne reçoit plus.
+- **Jamais** vers une mise à disposition, une plonge, une équipe d'appui, ni
+  un handling qui n'est pas 24 h/24. Vers un **robot** ou le **handling**
+  (permis de conduire), seulement si la matrice le dit. Une personne de la
+  plonge (zone sale) ne va vers une zone alimentaire que si la matrice le
+  dit. Un handling dont le moteur **calcule** les chauffeurs (§ 4) ne reçoit
+  pas : son plan les compte déjà au plus juste.
+- **Ce qu'apporte une personne** : quand l'effectif d'une tâche en cours
+  change (un renfort arrive, repart, prend sa pause), son temps restant se
+  recalcule : travail restant ÷ (personnes + somme des efficacités des
+  renforts présents) ÷ rendement. Vers un **robot**, un renfort compte pour
+  le minimum qui le fait tourner : armé, le robot tourne à son débit. Vers le
+  **handling 24 h/24**, c'est un chauffeur de plus, de n'importe quel
+  véhicule, jusqu'à la fin de sa présence (jamais en heures sup de chauffeur).
+- **Ses pauses restent les siennes** : les arrêts de son équipe, et ses pauses
+  de régime pas encore prises, à l'heure où elles tomberaient en travaillant
+  sans arrêt depuis le début de son poste (une simplification).
+- **Il repart** à la fin de sa propre présence, ou quand l'équipe aidée a fini
+  (le handling : quand tous ses vols sont partis, au retour de sa dernière
+  tournée). Il peut alors aller en aider une autre.
+- **L'effectif calculé ne change pas** : il se calcule sans renfort.
+
+### Ce qu'il rend
+
+Par équipe, `renfortsPretes`, `renfortsRecus`, `renfortsHeuresSup` et
+`renforts.vers` / `renforts.de` (§ 1), et pour la journée `resultat.renforts` :
+une ligne `{ de, vers, minutes }` par couple d'équipes. Les minutes sont des
+**minutes-personne de présence** : du départ du renfort (délai d'arrivée
+compris) à son retour, hors de ses pauses. Les heures sup d'une équipe restent
+celles de son propre travail (`heuresSup`, par personne) ; celles que ses
+personnes font en renfort se lisent à part (`renfortsHeuresSup`, en
+minutes-personne). Les lots qu'une équipe a faits avec des renforts portent
+`renfort: true` et `fait` (les minutes qu'elle y a passées).
+
+Dans la page, la **Synthèse** a un tableau des renforts (l'équipe qui aide,
+l'équipe aidée, le temps prêté), quand l'option est cochée.
+
+Vérifications : `tests/renforts.test.cjs` (sans renfort possible, la même
+journée, sur les journées de référence aussi ; une équipe qui finit à 10:00
+aide une équipe du même service qui aurait débordé de 60 min, et le
+débordement baisse selon l'efficacité ; la matrice interdit un passage, donc
+pas de renfort ; les familles ; `personnesMax` est respecté ; un renfort part
+à la fin de sa présence, et reste en heures sup seulement si on le permet ;
+une équipe qui attend l'amont ne prête pas ; l'ordre des équipes aidées ; le
+renfort qui passe à une autre équipe ; ses pauses ; vers un robot ; vers le
+handling ; le déterminisme ; la validation ; les options du banc ; Excel) ;
+`tests/renforts-browser.cjs` (le réglage, la matrice, les postes de travail, la
+Synthèse, l'enregistrement) ; `tests/non-regression.test.cjs` (réglés mais
+désactivés, matrice et postes saisis : la même journée).

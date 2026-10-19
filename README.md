@@ -380,6 +380,10 @@ le rouge ne sert qu’aux retards.
      « ⇄ Comparer J+1 et planche retour » calcule les deux et les met côte à
      côte dans Résultats › Comparer.
      - *Rythme et pauses* : rythme de travail, pauses et temps de présence.
+     - *Renforts* (v1, pour le banc d’essai) : une équipe qui a fini va aider
+     une équipe qui n’a pas fini, jusqu’à la fin de sa présence ; ce que compte
+     un renfort, son délai d’arrivée, et qui peut aider qui, service par
+     service ; voir [le banc d’essai](docs/BANC_ESSAI.md), § 5.
    - **Plus ›** *Contrôles détaillés* : ce que le calcul comprend de l’organisation, et ce qu’il faut
      corriger ; un service sans équipe s’y corrige d’un clic (« + Une équipe
      dans… »).
@@ -660,6 +664,8 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/heures-sup.test.cjs` | Les heures supplémentaires de la v1 (banc d’essai) : 0 dans le poste, 40 min pour 40 min de débordement, le plafond coupe, ni mise à disposition ni appui, option désactivée = journée d’avant ; robot (la ligne continue), plonge par vol et au débit (ce qui l’attendait seulement), handling avec et sans créneaux, effectif calculé inchangé, réglage validé, options du banc |
 | `tests/handling-24h.test.cjs` | Le handling 24 h/24 de la v1 (banc d’essai) : une tournée charge A puis décharge B, pas de rechargement avant le déchargement, escale courte (un échange), compagnie sans escale (la règle des retours), un vol pas prêt ne bloque plus, VL et gros camions à part, échéance des commandes selon la tournée, sale à la plonge à la fin du vidage, chauffeur en heures sup ; la veille au soir, le long courrier, la validation, Excel, heure_eta |
 | `tests/chauffeurs-calcules.test.cjs` | Les chauffeurs calculés au plus juste (v1, banc d’essai) : des tournées qui ne se chevauchent pas demandent un chauffeur, deux long courrier simultanés quatre, l’enchaînement baisse le besoin, aucun vol en retard faute de chauffeur, la borne basse sous le résultat, la flotte respectée, le mode « saisis » inchangé ; pauses, heures fixes, sortie, selon la préparation, déterminisme et temps de calcul, validation, Excel, options du banc |
+| `tests/renforts.test.cjs` | Les renforts de la v1 (banc d’essai) : sans renfort possible, la même journée ; une équipe qui finit à 10:00 aide une équipe qui aurait débordé de 60 min, et le débordement baisse selon l’efficacité ; la matrice interdit un passage ; familles ; `personnesMax` ; un renfort part à la fin de sa présence ; l’amont ; l’ordre des équipes aidées ; pauses ; robot ; handling ; déterminisme, validation, options du banc, Excel |
+| `tests/renforts-browser.cjs` | Les renforts dans la page : la case et ses réglages (Réglages de la simulation), qui peut aider qui, les postes de travail d’une équipe, le tableau de la Synthèse, « Tout sauvegarder » |
 | `tests/chauffeurs-calcules-browser.cjs` | Les chauffeurs calculés dans la page : le mode et ses réglages dans la fiche du handling, rangés avec l’équipe seulement saisis, le plan lisible comme des créneaux, « Tout sauvegarder », la reprise en créneaux saisis |
 | `tests/handling-24h-browser.cjs` | Le handling 24 h/24 dans la page : la case et les réglages de la fiche, rangés avec l’équipe seulement saisis, l’heure_eta de l’import, le bilan des tournées, la page des départs, « Tout sauvegarder » |
 | `tests/heures-sup-browser.cjs` | Les heures supplémentaires dans la page : la case et le plafond des Réglages de la simulation, rangés avec le barème, gardés au rechargement et dans « Tout sauvegarder » ; la Synthèse par service et par équipe ; désactivées, rien ne se montre |
