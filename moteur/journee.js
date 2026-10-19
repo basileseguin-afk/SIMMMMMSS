@@ -331,7 +331,7 @@
   /* Les règles de calcul que le banc peut forcer directement (`options.heuresSup`,
    * `options.renforts`) : elles se fondent dans `ory-modele-v1`, comme `options.modele`. */
   const REGLES = ['heuresSup', 'renforts'];
-  const CLES_OPTIONS = new Set(['delaiChargement', 'decalage', 'modele', 'ateliers', 'equipes', ...REGLES]);
+  const CLES_OPTIONS = new Set(['delaiChargement', 'decalage', 'modele', 'ateliers', 'equipes', 'saleInitial', ...REGLES]);
 
   /**
    * L'unité d'une sauvegarde : chaque partie validée comme « Restaurer » la
@@ -354,10 +354,13 @@
       : partie('plan et zones', () => PL.validatePlan(clone(c['orly-plan-v3']), originaux));
     // Les cases : les réglages forcés de l'état, puis ceux des équipes.
     let brut = c['ory-ateliers-v1'] === undefined ? A.vide() : clone(c['ory-ateliers-v1']);
-    if (o.ateliers !== undefined) {
-      if (!objet(o.ateliers) || 'ateliers' in o.ateliers) throw new Error('option « ateliers » : un objet, sans la liste des équipes (voir « equipes »).');
-      brut = fondre(brut, o.ateliers);
-    }
+    if (o.ateliers !== undefined && (!objet(o.ateliers) || 'ateliers' in o.ateliers))
+      throw new Error('option « ateliers » : un objet, sans la liste des équipes (voir « equipes »).');
+    // Le sale de la veille (évolution 6) : celui que la journée d'avant a rendu (`saleFinal`), ou un nombre d'unités.
+    if (o.saleInitial !== undefined && !Array.isArray(o.saleInitial) && !(typeof o.saleInitial === 'number' && o.saleInitial >= 0))
+      throw new Error('option « saleInitial » : un nombre d’unités, ou la liste des vols non lavés ({ vol, cie, unites }).');
+    const forceAteliers = o.saleInitial === undefined ? o.ateliers : fondre(o.ateliers || {}, { materiel: { saleInitial: o.saleInitial } });
+    if (forceAteliers !== undefined) brut = fondre(brut, forceAteliers);
     if (o.equipes !== undefined) {
       if (!objet(o.equipes)) throw new Error('option « equipes » : un objet { équipe: réglages }.');
       if (!objet(brut) || !Array.isArray(brut.ateliers)) throw new Error('la sauvegarde n’a pas d’équipes.');
@@ -368,7 +371,7 @@
       }
     }
     const etat = partie('ateliers de travail', () => A.valider(brut));
-    verifierForce(etat, o.ateliers, 'ateliers');
+    verifierForce(etat, forceAteliers, 'ateliers');
     // La validation garde les équipes dans leur ordre : la n-ième relue est la n-ième forcée.
     for (const [cle, force] of Object.entries(o.equipes || {}))
       verifierForce(etat.ateliers[brut.ateliers.indexOf(equipeVisee(brut.ateliers, cle))], force, 'equipes.' + cle);

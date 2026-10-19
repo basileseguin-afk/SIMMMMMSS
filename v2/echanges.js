@@ -934,11 +934,13 @@
         // La ligne robot : partagée par les robots du service, ou propre ; ses arrêts.
         a.type === 'robot' ? (a.lignePropre ? 'propre' : 'partagée') : null,
         a.type === 'robot' ? (a.arretsLigne || []).map(x => x.de + '-' + x.a).join('; ') || null : null,
-        // La règle ⚡ : « AF ≥ 6 vols » ; sinon, les noms des équipes qui reprennent.
-        a.condition ? (a.condition.cie === '*' ? 'toutes' : a.condition.cie) + ' ≥ ' + a.condition.seuil + ' ' + (a.condition.mesure === 'repas' ? 'repas' : 'vols') : null,
-        a.condition ? nomAtelier(a.condition.sinon) : null,
+        // La règle ⚡ : « AF ≥ 6 vols » ; sinon, les noms des équipes qui reprennent. Une plonge (banc d'essai
+        // de la version 1) : « sale ≥ 1 à 22:00 », elle ne vient que s'il reste du sale.
+        a.condition && a.condition.mesure === 'sale' ? 'sale ≥ ' + (a.condition.seuil ?? 1) + (a.condition.a ? ' à ' + a.condition.a : '')
+          : a.condition ? (a.condition.cie === '*' ? 'toutes' : a.condition.cie) + ' ≥ ' + a.condition.seuil + ' ' + (a.condition.mesure === 'repas' ? 'repas' : 'vols') : null,
+        a.condition && a.condition.mesure !== 'sale' ? nomAtelier(a.condition.sinon) : null,
         // Ses personnes : vide = avec les commandes ; « aucune » = l'équipe qui reprend absorbe la charge.
-        a.condition ? (a.condition.absorbe ? 'aucune' : a.condition.renfort ? nomAtelier(a.condition.renfort) : null) : null,
+        a.condition && a.condition.mesure !== 'sale' ? (a.condition.absorbe ? 'aucune' : a.condition.renfort ? nomAtelier(a.condition.renfort) : null) : null,
         ...(postes ? [Number.isInteger(a.personnesMax) ? a.personnesMax : null] : [])]);
       if (a.type === 'handling') {
         // Une ligne par compagnie réglée : sa durée, et si elle est long courrier.
@@ -990,7 +992,9 @@
     const materiel = [['Paramètre', 'Valeur'], ['Boucle du matériel active', m.actif ? 'oui' : 'non'],
       ['Stock propre à l’ouverture', m.stockInitial || 0], ['Délai après atterrissage (min)', m.delaiRetour ?? 30],
       ['Retours à la plonge', RETOURS_ECRITS[P.sourceRetours(m)]],
-      ...P.CABINES.map(c => ['Unités par vol ' + c, ((m.unites || {})[c] || {}).parVol || 0])];
+      ...P.CABINES.map(c => ['Unités par vol ' + c, ((m.unites || {})[c] || {}).parVol || 0]),
+      // Le sale de la veille (banc d'essai de la version 1), quand c'est un nombre ; une liste de vols reste sur le site.
+      ...(typeof m.saleInitial === 'number' && m.saleInitial > 0 ? [['Sale de la veille (u)', m.saleInitial]] : [])];
 
     // Un service qui travaille par compagnie (l'armement) : ses heures par vol.
     const parCie = [['Service', 'Compagnie', 'Heures par vol']];
@@ -1272,8 +1276,11 @@
         }
         // « AF ≥ 6 vols » : ne travaille que ces jours-là. Les équipes nommées se lisent ensuite.
         const si = String(o.ne_travaille_que_si ?? '').trim();
-        if (si && !/^(non|toujours|-)$/i.test(si)) {
-          if (type !== 'manuel' && type !== 'robot') throw new Error('« ne travaille que si » : pour une équipe qui prépare des commandes');
+        // Une plonge (banc d'essai, lu par la version 1) : « sale ≥ 1 à 22:00 », elle ne vient que s'il reste du sale.
+        const sale = ctx && ctx.banc && type === 'lavage' ? /^sale\s*(?:(?:≥|>=|>|:|au moins)?\s*(\d+(?:[.,]\d+)?))?(?:\s+[àa]\s+(\d{1,2}[:h]\d{2}))?$/i.exec(si) : null;
+        if (sale) a.condition = { mesure: 'sale', ...(sale[2] ? { a: hh(T.heureDe(sale[2].replace('h', ':'))) } : {}), ...(sale[1] ? { seuil: +sale[1].replace(',', '.') } : {}) };
+        else if (si && !/^(non|toujours|-)$/i.test(si)) {
+          if (type !== 'manuel' && type !== 'robot') throw new Error('« ne travaille que si » : pour une équipe qui prépare des commandes' + (ctx && ctx.banc && type === 'lavage' ? ' ; une plonge : « sale ≥ 1 à 22:00 »' : ''));
           const m = /^(.+?)\s*(?:≥|>=|>|:|au moins)?\s*(\d+)\s*(vols?|repas)?$/i.exec(si);
           if (!m) throw new Error('« ne travaille que si » illisible « ' + si + ' » (ex. « AF ≥ 6 vols »)');
           const cie = /^(toutes?|tout|\*)$/i.test(m[1].trim()) ? '*' : m[1].trim().toUpperCase();
@@ -1528,6 +1535,13 @@
           if (k === 'boucle_du_materiel_active') m.actif = T.ouiNon(o.valeur, false);
           else if (k === 'stock_propre_a_l_ouverture') m.stockInitial = T.nombreDe(o.valeur, 0);
           else if (k === 'delai_apres_atterrissage_min') m.delaiRetour = T.nombreDe(o.valeur, 30);
+          // Le sale de la veille (banc d'essai, lu par la version 1) : vide, rien.
+          else if (k === 'sale_de_la_veille_u' && ctx && ctx.banc) {
+            const n = T.nombreDe(o.valeur, null);
+            if (n === null || n === 0) delete m.saleInitial;
+            else if (!(n > 0)) throw new Error('sale de la veille : un nombre d’unités positif');
+            else m.saleInitial = n;
+          }
           else if (k === 'retours_a_la_plonge') {
             const v = T.cleEntete(o.valeur ?? '');
             const src = !v ? 'programme' : /^(programme|ret|lignes_retour)/.test(v) ? 'programme' : /^(j_?[12]|24|48|lendemain)/.test(v) ? 'j1' : /^planche/.test(v) ? 'planche' : null;

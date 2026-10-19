@@ -74,6 +74,7 @@ formé). Il rend, sur la sortie standard, un objet JSON :
 | `equipes` | Des réglages forcés d'une équipe, désignée par son identifiant ou par son nom (`{ "Plonge soir": { "debut": "14:00" } }`) | — |
 | `heuresSup` | Les heures supplémentaires (§ 2), fondues dans `ory-modele-v1` comme `modele` : `{ "actif": true, "plafond": 720 }` | celles de la sauvegarde |
 | `renforts` | Les renforts (§ 5), fondus dans `ory-modele-v1` comme `modele` : `{ "actif": true, "efficacite": 0.8 }`. La matrice de polyvalence se force par `ateliers` (`{ "polyvalence": { … } }`), les postes de travail d'une équipe par `equipes` (`{ "Montage B": { "personnesMax": 6 } }`) | ceux de la sauvegarde |
+| `saleInitial` | Le sale de la veille (§ 6), fondu dans `ory-ateliers-v1` (`materiel.saleInitial`) : la liste `saleFinal` que la journée d'avant a rendue, ou un nombre d'unités | celui de la sauvegarde |
 
 Un réglage forcé passe par le validateur, comme une saisie : un objet se
 fond dans celui de la sauvegarde (le reste est gardé), une valeur le
@@ -101,6 +102,10 @@ options des évolutions suivantes s'ajoutent à ce tableau ; celles d'une
 | `renfortsPretes`, `renfortsRecus` | Avec les renforts (§ 5) : les minutes-personne que l'équipe a prêtées à d'autres, et reçues d'autres |
 | `renfortsHeuresSup` | Avec les renforts : les minutes-personne que ses personnes ont passées en renfort après la fin de leur présence |
 | `renforts` | Avec les renforts : `vers` (à qui elle a prêté) et `de` (qui l'a aidée), chacun `{ id, nom, minutes }` |
+| `conditionSale` | Une plonge qui ne vient que s'il reste du sale (§ 6) : s'est-elle ouverte, le sale mesuré, ce qu'elle a lavé, ce qui reste à sa fin |
+
+Et pour la journée, quand l'unité a une plonge : `saleFinal`, le sale non lavé
+à la fin de la journée, vol par vol (§ 6).
 
 Les noms `debutPoste` et `presence` sont ceux de la version 2, dans le même
 sens, pour une fusion future.
@@ -657,3 +662,85 @@ handling ; le déterminisme ; la validation ; les options du banc ; Excel) ;
 `tests/renforts-browser.cjs` (le réglage, la matrice, les postes de travail, la
 Synthèse, l'enregistrement) ; `tests/non-regression.test.cjs` (réglés mais
 désactivés, matrice et postes saisis : la même journée).
+
+## 6. La plonge : un shift de nuit qui ne s'ouvre que s'il reste du sale
+
+Quand les retours de l'après-midi dépassent ce que la plonge du soir lave, un
+shift de nuit s'ouvre pour absorber ce retard. C'est une **équipe de lavage
+ordinaire**, saisie dans l'application (horaires, présence, tunnels,
+personnes), qui ne travaille que certains jours. Elle compte le jour J, celui
+où elle commence : une équipe de 22:00 à 06:00 a `jour` 0 et `debutPoste`
+22:00, même si elle lave après minuit.
+
+### Le réglage
+
+- **La condition**, sur une équipe de lavage (`ory-ateliers-v1`) :
+  `condition: { mesure: 'sale', a: 'HH:MM', seuil }`. L'équipe ne travaille
+  que si, à l'heure `a` (par défaut son début ; le jour où elle commence), le
+  sale **en attente** atteint `seuil` unités (défaut provisoire **1** : elle
+  s'ouvre dès qu'il reste du sale). Sinon, ses personnes ne viennent pas et ne
+  comptent pas. Dans la page : la fiche de l'équipe de plonge, « Ne vient que
+  s'il reste du sale », l'heure (« À son début » la remet à son début) et le
+  seuil. Rien n'est enregistré tant que la case n'est pas cochée.
+- **Le sale de la veille** : `materiel.saleInitial` (`ory-ateliers-v1`, défaut
+  0), le sale non lavé la veille, présent au début de la journée — pour que le
+  banc puisse enchaîner les jours. Deux formes :
+  - **la liste des vols** non lavés `[{ vol, cie, unites }]`, celle que rend
+    `saleFinal` à la fin de la journée d'avant : chaque vol se lave à la durée
+    de sa compagnie, et s'appelle « R13 (veille) » ;
+  - **un nombre d'unités** : il se lave comme des vols « toutes compagnies »
+    (la durée `*` de la plonge), chacun de la taille d'un vol moyen des retours
+    du jour (le dernier, du reste) ; sans retour ce jour-là, un seul vol.
+
+  Il arrive au début de la journée : 00:00 du jour J, ou le début de la journée
+  jouée s'il est plus tard. Dans la page : *Réglages de la simulation › Retours
+  des vols à la plonge › Sale de la veille* (un nombre ; une liste rendue par
+  le banc s'y lit, et une saisie la remplace). Pour le banc :
+  `options.saleInitial`.
+
+### Les règles
+
+- **Le sale en attente** est le sale revenu qui n'est pas encore entré dans un
+  tunnel. Par vol : les vols revenus (retours, déchargements du handling
+  24 h/24, sale de la veille) qu'aucun tunnel n'a commencés à l'heure de la
+  mesure. Au débit (avec la boucle du matériel) : le sale qui attend devant les
+  tunnels. On mesure après ce qui arrive au même instant (une équipe qui part
+  et rend ce qu'elle n'a pas lavé, un retour). Sans la boucle du matériel, une
+  plonge au débit n'a rien à laver : elle ne s'ouvre jamais.
+- **Le calcul** : la journée se joue d'abord **sans** l'équipe, pour mesurer
+  le sale à son heure ; puis avec elle (ouverte) ou sans elle (fermée). Deux
+  équipes conditionnelles décident l'une après l'autre, dans l'ordre de leur
+  heure : la seconde mesure dans une journée où la première est ouverte ou
+  fermée. Fermée, l'équipe reste dans la liste des équipes : `personnes` 0,
+  aucun lot, pas de fin, pas d'effectif.
+
+### Ce qu'il rend
+
+`resultat.ateliers[].conditionSale`, pour une plonge conditionnelle :
+
+| Champ | Sens |
+| --- | --- |
+| `ouverte` | Le shift s'est-il ouvert |
+| `a`, `heure`, `seuil` | L'heure de la mesure (saisie, et en minutes du jour J), le seuil |
+| `sale` | Le sale en attente mesuré, en unités |
+| `lavees` | Ce qu'elle a lavé, en unités (0 fermée) |
+| `reste`, `fin` | Le sale pas encore propre à sa fin (la fin de sa présence, ou de ses heures sup) : par vol, les vols revenus pas encore sortis du tunnel ; au débit, le niveau de la file |
+
+`resultat.saleFinal` (quand l'unité a une plonge) : le sale non lavé à la fin
+de la journée, `[{ vol, cie, unites }]` — par vol, les vols qu'aucune équipe
+n'a lavés ; au débit, ce qui attend encore devant les tunnels. C'est le
+`saleInitial` de la journée suivante.
+
+Dans la page, la fiche de la plonge dit, une fois la journée calculée,
+« Ouverte ce jour » ou « Fermée ce jour », le sale mesuré, ce qu'elle a lavé et
+ce qui reste à sa fin.
+
+Vérifications : `tests/plonge-nuit.test.cjs` (sous le seuil, le shift ne
+s'ouvre pas et ne compte aucune personne ; au-dessus, il s'ouvre et lave ; un
+shift qui passe minuit compte le jour où il commence ; le `saleInitial` est
+lavé, en liste ou en nombre ; l'heure de la mesure ; deux équipes
+conditionnelles ; au débit ; l'enchaînement des jours ; le déterminisme ; la
+validation ; les options du banc ; Excel) ; `tests/plonge-nuit-browser.cjs` (la
+fiche, le bilan, le sale de la veille, l'enregistrement) ;
+`tests/non-regression.test.cjs` (sans sale de la veille : la même journée,
+`saleFinal` en plus).

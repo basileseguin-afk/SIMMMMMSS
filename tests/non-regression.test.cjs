@@ -21,13 +21,17 @@ const REF = require('./non-regression.attendu.json');
 const NOUVEAUX = {
   // Évolution 1 : le poste de chaque équipe, pour le banc d'essai.
   // Évolution 2 : ses heures supplémentaires.
-  'ateliers[]': ['debutPoste', 'presence', 'jour', 'heuresSup']
+  'ateliers[]': ['debutPoste', 'presence', 'jour', 'heuresSup'],
+  // Évolution 6 : le sale que la journée n'a pas lavé, rendu à la suivante.
+  '': ['saleFinal']
 };
 /* Chaque évolution, réglée mais désactivée : la même journée qu'avant. */
 const DESACTIVEES = s => ({
   heuresSup: { actif: false, plafond: 180 },
   // Évolution 5 : les renforts réglés mais désactivés ; la matrice de polyvalence saisie (chaque service aide tous les autres).
   renforts: { actif: false, efficacite: 1, efficaciteAutreService: 1, delai: 0, versHeuresSup: true },
+  // Évolution 6 : pas de sale de la veille (zéro unité).
+  saleInitial: 0,
   ...(servicesDe(s).length ? { ateliers: { polyvalence: Object.fromEntries(servicesDe(s).map(x => [x, servicesDe(s)])) } } : {}),
   equipes: {
     // Évolution 5 : les postes de travail des équipes qui préparent.
@@ -91,5 +95,7 @@ test('le comparateur voit un champ changé, disparu, ou ajouté sans être décl
   assert.equal(ecarts({ a: 1, b: 2 }, { a: 1 }).length, 1);
   assert.equal(ecarts({ a: 1 }, { a: 1, z: 0 }).length, 1, 'un champ nouveau doit être déclaré');
   assert.deepEqual(ecarts({ ateliers: [{ id: 'x' }] }, { ateliers: [{ id: 'x', presence: 480 }] }), [], 'déclaré : admis');
+  assert.deepEqual(ecarts({ ok: true }, { ok: true, saleFinal: [] }), [], 'déclaré à la racine : admis');
+  assert.equal(ecarts({ lots: [{ id: 'x' }] }, { lots: [{ id: 'x', saleFinal: [] }] }).length, 1, 'déclaré à la racine seulement');
   assert.equal(ecarts({ lots: [{ id: 'x' }] }, { lots: [{ id: 'x', presence: 480 }] }).length, 1, 'déclaré ailleurs : refusé');
 });

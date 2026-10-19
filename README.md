@@ -380,6 +380,10 @@ le rouge ne sert qu’aux retards.
      « ⇄ Comparer J+1 et planche retour » calcule les deux et les met côte à
      côte dans Résultats › Comparer.
      - *Rythme et pauses* : rythme de travail, pauses et temps de présence.
+     - *Retours des vols à la plonge › Sale de la veille* (v1, pour le banc
+     d’essai) : le sale que la journée d’avant n’a pas lavé ; une équipe de
+     plonge peut ne venir que s’il reste du sale (un shift de nuit, dans sa
+     fiche) ; voir [le banc d’essai](docs/BANC_ESSAI.md), § 6.
      - *Renforts* (v1, pour le banc d’essai) : une équipe qui a fini va aider
      une équipe qui n’a pas fini, jusqu’à la fin de sa présence ; ce que compte
      un renfort, son délai d’arrivée, et qui peut aider qui, service par
@@ -664,6 +668,8 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/heures-sup.test.cjs` | Les heures supplémentaires de la v1 (banc d’essai) : 0 dans le poste, 40 min pour 40 min de débordement, le plafond coupe, ni mise à disposition ni appui, option désactivée = journée d’avant ; robot (la ligne continue), plonge par vol et au débit (ce qui l’attendait seulement), handling avec et sans créneaux, effectif calculé inchangé, réglage validé, options du banc |
 | `tests/handling-24h.test.cjs` | Le handling 24 h/24 de la v1 (banc d’essai) : une tournée charge A puis décharge B, pas de rechargement avant le déchargement, escale courte (un échange), compagnie sans escale (la règle des retours), un vol pas prêt ne bloque plus, VL et gros camions à part, échéance des commandes selon la tournée, sale à la plonge à la fin du vidage, chauffeur en heures sup ; la veille au soir, le long courrier, la validation, Excel, heure_eta |
 | `tests/chauffeurs-calcules.test.cjs` | Les chauffeurs calculés au plus juste (v1, banc d’essai) : des tournées qui ne se chevauchent pas demandent un chauffeur, deux long courrier simultanés quatre, l’enchaînement baisse le besoin, aucun vol en retard faute de chauffeur, la borne basse sous le résultat, la flotte respectée, le mode « saisis » inchangé ; pauses, heures fixes, sortie, selon la préparation, déterminisme et temps de calcul, validation, Excel, options du banc |
+| `tests/plonge-nuit.test.cjs` | La plonge qui ne vient que s’il reste du sale (v1, banc d’essai) : sous le seuil, fermée et sans personne ; au-dessus, ouverte, elle lave ; un shift après minuit compte le jour où il commence ; le sale de la veille lavé (liste ou nombre) ; l’heure de la mesure, deux équipes conditionnelles, au débit, l’enchaînement des jours ; déterminisme, validation, options du banc, Excel |
+| `tests/plonge-nuit-browser.cjs` | La plonge conditionnelle dans la page : la case, l’heure et le seuil dans la fiche de la plonge, son bilan du jour, le sale de la veille (Réglages de la simulation), « Tout sauvegarder » |
 | `tests/renforts.test.cjs` | Les renforts de la v1 (banc d’essai) : sans renfort possible, la même journée ; une équipe qui finit à 10:00 aide une équipe qui aurait débordé de 60 min, et le débordement baisse selon l’efficacité ; la matrice interdit un passage ; familles ; `personnesMax` ; un renfort part à la fin de sa présence ; l’amont ; l’ordre des équipes aidées ; pauses ; robot ; handling ; déterminisme, validation, options du banc, Excel |
 | `tests/renforts-browser.cjs` | Les renforts dans la page : la case et ses réglages (Réglages de la simulation), qui peut aider qui, les postes de travail d’une équipe, le tableau de la Synthèse, « Tout sauvegarder » |
 | `tests/chauffeurs-calcules-browser.cjs` | Les chauffeurs calculés dans la page : le mode et ses réglages dans la fiche du handling, rangés avec l’équipe seulement saisis, le plan lisible comme des créneaux, « Tout sauvegarder », la reprise en créneaux saisis |

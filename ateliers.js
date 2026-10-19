@@ -171,6 +171,8 @@
     a.type = v;
     // Les postes de travail (renforts, évolution 5) : à la main ou au robot seulement.
     if (v !== 'manuel' && v !== 'robot') delete a.personnesMax;
+    // La condition sur le sale (évolution 6) ne vaut que pour une plonge ; la règle ⚡, que pour une équipe qui prépare.
+    if (a.condition && (a.condition.mesure === 'sale') !== (v === 'lavage')) delete a.condition;
     if (v === 'handling') { a.jour = 0; delete a.debit; delete a.personnesMin; delete a.tunnels; delete a.minutes; delete a.materiel; a.lots = []; Object.assign(a, handlingDe(a)); return; }
     delete a.durees; delete a.simultanes; delete a.avance; delete a.compagnies;
     if (v === 'robot') { a.debit = a.debit || 320; a.personnesMin = a.personnesMin === undefined ? 1 : a.personnesMin; }
@@ -214,7 +216,17 @@
    *  les équipes qui préparent des commandes (à la main ou au robot) en portent une. */
   function conditionDe(a, type) {
     const k = a.condition;
-    if (!k || typeof k !== 'object' || (type !== 'manuel' && type !== 'robot')) return {};
+    if (!k || typeof k !== 'object') return {};
+    // Une plonge qui ne vient que s'il reste du sale (banc d'essai, évolution 6) : à l'heure `a` (sans
+    // elle, son début), au moins `seuil` unités en attente (sans lui, 1). Gardés une fois saisis.
+    if (type === 'lavage') {
+      if (k.mesure !== 'sale') return {};
+      let heure = null;
+      try { if (typeof k.a === 'string' && k.a.trim()) { P.minutes(k.a.trim()); heure = k.a.trim(); } } catch (e) { heure = null; }
+      const seuil = +k.seuil, saisi = k.seuil !== undefined && k.seuil !== null && k.seuil !== '' && Number.isFinite(seuil) && seuil >= 0;
+      return { condition: { mesure: 'sale', ...(heure ? { a: heure } : {}), ...(saisi ? { seuil: Math.min(999999, Math.round(seuil * 100) / 100) } : {}) } };
+    }
+    if (type !== 'manuel' && type !== 'robot') return {};
     const seuil = Math.round(+k.seuil);
     if (!(seuil >= 1)) return {};
     const cie = String(k.cie ?? '*').trim().toUpperCase().slice(0, 40) || '*';
@@ -324,7 +336,7 @@
     // Une règle ⚡ renvoie vers une équipe du même service qui existe ; sinon elle ne tient pas.
     const parId = new Map(ateliers.map(a => [a.id, a]));
     for (const a of ateliers) {
-      if (!a.condition) continue;
+      if (!a.condition || a.condition.mesure === 'sale') continue;
       const vers = parId.get(a.condition.sinon);
       if (!vers || vers.id === a.id || vers.service !== a.service) { delete a.condition; continue; }
       if (a.condition.renfort && (!parId.has(a.condition.renfort) || a.condition.renfort === a.id)) delete a.condition.renfort;
@@ -352,7 +364,10 @@
       // D'où viennent les retours à la plonge : les lignes RET du programme, les
       // départs de la veille (J+1), ou la planche retour du handling (Vols › Planche retour).
       retours: P.sourceRetours(m),
-      planche: plancheDe(m.planche)
+      planche: plancheDe(m.planche),
+      // Le sale de la veille (banc d'essai, évolution 6) : un nombre d'unités, ou les vols que la journée
+      // d'avant n'a pas lavés ({ vol, cie, unites }). Gardé une fois saisi.
+      ...saleInitialDe(m.saleInitial)
     };
     // Le chemin de chaque classe. Une sauvegarde d'avant les parcours reçoit
     // les parcours types ; une liste vidée exprès reste vide.
@@ -378,6 +393,13 @@
       ...(Object.keys(effectifs).length ? { effectifs } : {}), ...(Object.keys(encadrement).length ? { encadrement } : {}),
       ...(Object.keys(paralleles).length ? { paralleles } : {}), ...(migrations.length ? { migrations } : {}),
       ...(Object.keys(polyvalence).length ? { polyvalence } : {}) };
+  }
+
+  function saleInitialDe(v) {
+    if (Array.isArray(v)) return { saleInitial: v.slice(0, 5000).filter(x => x && typeof x === 'object' && Number.isFinite(+x.unites) && +x.unites > 0)
+      .map(x => ({ vol: String(x.vol ?? '').slice(0, 80), cie: String(x.cie ?? '*').trim().toUpperCase().slice(0, 40) || '*', unites: Math.round(+x.unites * 100) / 100 })) };
+    const n = +v;
+    return v !== undefined && v !== null && v !== '' && Number.isFinite(n) && n >= 0 ? { saleInitial: Math.round(n * 100) / 100 } : {};
   }
 
   /** La polyvalence (renforts, évolution 5) : pour un service, les services qu'il peut aider.
@@ -529,6 +551,32 @@
       }
       this.reporterEffectifs();
       return this.resultat;
+    }
+
+    /** Une plonge qui ne vient que s'il reste du sale (banc d'essai, évolution 6), et ce qu'elle a fait ce jour. */
+    blocConditionSale(a) {
+      const k = a.condition && a.condition.mesure === 'sale' ? a.condition : null;
+      const vue = k && this.resultat && this.resultat.ok ? (this.resultat.ateliers || []).find(v => v.id === a.id) : null, cs = vue && vue.conditionSale;
+      const u = x => Math.round(x) + ' u';
+      return `<div class="at-condition-sale">
+        <label class="chk chk-mini"><input type="checkbox" data-at-champ="sale-condition" ${k ? 'checked' : ''}>
+          <span>Ne vient que s’il reste du sale (un shift de nuit, par exemple)</span></label>
+        ${k ? `<div class="at-champs">
+          <label>Regarde à<input ${HEURE} value="${esc(k.a || a.debut)}" data-at-champ="sale-a" aria-label="Heure où elle regarde le sale en attente"></label>
+          ${k.a ? '<button class="btn btn-sm" data-at-action="sale-a-debut">À son début</button>' : ''}
+          <label>Vient s’il attend au moins${avecUnite(`<input type="number" min="0" step="1" value="${k.seuil ?? ''}" placeholder="1" data-at-champ="sale-seuil" aria-label="Sale en attente, en unités, à partir duquel elle vient">`, 'u')}</label>
+        </div>
+        ${cs ? `<p class="mini-note at-bilan-sale"><b>${cs.ouverte ? 'Ouverte ce jour' : 'Fermée ce jour'}</b> : ${u(cs.sale)} de sale en attente à ${P.hhmm(cs.heure)} (seuil ${cs.seuil} u)${
+          cs.ouverte ? ' ; elle a lavé ' + u(cs.lavees) : ' ; ses personnes ne viennent pas'}${cs.reste != null ? ' ; reste ' + u(cs.reste) + ' à ' + P.hhmm(cs.fin) : ''}.</p>` : ''}` : ''}
+      </div>`;
+    }
+
+    /** Le sale de la veille (évolution 6) : un nombre d'unités, ou les vols que la journée d'avant n'a pas lavés. */
+    champSaleVeille(m) {
+      const liste = Array.isArray(m.saleInitial) ? m.saleInitial : null, total = liste ? liste.reduce((n, x) => n + x.unites, 0) : +m.saleInitial || 0;
+      return `<label class="at-inline-champ" title="Le sale que la journée d’avant n’a pas lavé : présent au début de la journée">Sale de la veille (u)<input type="number" min="0" step="1"
+        value="${total || ''}" placeholder="0" data-at-champ="mat-sale"></label>${liste && liste.length ? `
+  <p class="mini-note">${liste.length} vol${liste.length > 1 ? 's' : ''} de la journée d’avant (${Math.round(total)} u), chacun lavé à la durée de sa compagnie. Une saisie les remplace par un nombre.</p>` : ''}`;
     }
 
     /** Les renforts (banc d'essai, évolution 5) sont-ils actifs ? Ils montrent les postes de travail des équipes. */
@@ -1028,6 +1076,9 @@
         case 'creneau-retirer':
           return this.changer(() => { a.creneaux.splice(+data.index, 1); },
             a.creneaux.length > 1 ? 'Créneau retiré.' : 'Dernier créneau retiré : le handling revient à « N vols à la fois ».');
+        // La plonge conditionnelle (évolution 6) regarde le sale à son début.
+        case 'sale-a-debut':
+          return this.changer(() => { if (a.condition) { const k = { ...a.condition }; delete k.a; a.condition = k; } }, 'Elle regarde le sale en attente à son début.');
         case 'tunnel-ajouter':
           return this.changer(() => a.tunnels.push({ nom: 'Tunnel ' + (a.tunnels.length + 1), debit: 300, personnes: 1, actif: true }),
             'Tunnel ajouté. Le débit de la plonge est la somme des tunnels qui tournent.');
@@ -1112,6 +1163,8 @@
         }
         if (champ === 'mat-stock') m.stockInitial = Math.max(0, parseInt(v, 10) || 0);
         if (champ === 'mat-delai') m.delaiRetour = Math.max(0, parseInt(v, 10) || 0);
+        // Le sale de la veille (évolution 6) : vide ou zéro, rien.
+        if (champ === 'mat-sale') { const n = parseFloat(String(v).replace(',', '.')); if (n > 0) m.saleInitial = n; else delete m.saleInitial; }
         if (champ === 'mat-retours' && P.SOURCES_RETOURS.includes(v)) m.retours = v;
       }, champ === 'mat-retours'
         ? (v === 'j1' ? 'Retours : le lendemain du départ, à la même heure.' : v === 'planche' ? 'Retours : la planche retour du handling.' : 'Retours : les lignes retour du programme de vols.')
@@ -1162,6 +1215,22 @@
             break;
           }
           case 'personnesMin': a.personnesMin = Math.max(0, parseInt(v, 10) || 0); break;
+          // Ne vient que s'il reste du sale (évolution 6) : la case, l'heure, le seuil.
+          case 'sale-condition': if (el.checked) a.condition = { mesure: 'sale' }; else delete a.condition; break;
+          case 'sale-a': {
+            // Son début : rien d'enregistré, l'heure suit son début.
+            const k = { ...(a.condition || {}), mesure: 'sale' };
+            P.minutes(v.trim());
+            if (v.trim() === a.debut) delete k.a; else k.a = v.trim();
+            a.condition = k; break;
+          }
+          case 'sale-seuil': {
+            const k = { ...(a.condition || {}), mesure: 'sale' }, n = +String(v).replace(',', '.');
+            if (v === '') delete k.seuil;
+            else if (!Number.isFinite(n) || n < 0) throw new Error('Seuil : un nombre d’unités, positif ou nul ; vide, 1.');
+            else k.seuil = n;
+            a.condition = k; break;
+          }
           // Ses postes de travail (renforts) : vide, pas de limite.
           case 'personnesMax': {
             const n = +v;
@@ -1461,8 +1530,9 @@
           const feuilles = await T.lireFichier(f, 8 * 1024 * 1024);
           // Un classeur d'horaires seuls ne remplace rien : il décale des équipes.
           if (E.estClasseurHoraires(feuilles)) return this.importerHoraires(E.classeurVersHoraires(feuilles, this.state, { services: this.a.services() }));
+          // `banc` : les réglages du banc d'essai que seule la version 1 lit (une plonge qui ne vient que s'il reste du sale…).
           const r = E.classeurVersAteliers(feuilles, this.state,
-            { services: this.a.services(), programme: this.a.classes() || [] });
+            { services: this.a.services(), programme: this.a.classes() || [], banc: true });
           etat = valider(r.etat); ajouts = r.ajouteesAuto;
           this.fondreDispos(etat); etat = valider(etat);
         }
@@ -1652,6 +1722,7 @@
     <button class="btn btn-sm" data-comparer-retours ${n ? '' : 'disabled title="Saisissez d’abord la planche retour (Vols › Planche retour)"'}>${pic('echanger')}Comparer J+1 et planche retour</button></p>
   <label class="at-inline-champ">Délai après atterrissage (min)<input type="number" min="0" value="${m.delaiRetour}" data-at-champ="mat-delai"
     ${src === 'planche' ? 'disabled title="La planche donne déjà l’heure d’arrivée à l’unité"' : ''}></label>
+  ${this.champSaleVeille(m)}
 </div>`;
       // La case qui active le compte ne doit pas être enfermée dans le bloc
       // qu'elle ouvre : elle reste visible, le reste suit.
@@ -1885,6 +1956,7 @@
         <label class="at-mode-dispo at-mode-plonge">Comment se compte le lavage ?${this.equipesDePlonge(a).length > 1 ? ' <small>pour toutes les équipes de la plonge</small>' : ''}<select data-at-champ="plonge-mode">
           <option value="vol" ${a.parVol ? 'selected' : ''}>Par vol : un tunnel lave un vol en tant de minutes</option>
           <option value="debit" ${a.parVol ? '' : 'selected'}>Par débit : unités de matériel par heure</option></select></label>
+        ${this.blocConditionSale(a)}
         ${a.parVol ? this.fichePlongeParVol(a, etatTunnels) : `
         <div class="at-sous-titre">Tunnels de lavage
           <span class="mini-note">un débit par ligne, un plafond pour l’ensemble</span></div>

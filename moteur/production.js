@@ -1772,6 +1772,24 @@
     return out.sort((a, b) => a.t - b.t);
   }
 
+  /**
+   * Le sale de la veille (banc d'essai, évolution 6), présent au début de la
+   * journée (`t`) : la liste des vols que la journée d'avant n'a pas lavés
+   * ({ vol, cie, unites }, ce que rend `saleFinal`), chacun lavé à la durée de
+   * sa compagnie ; ou un nombre d'unités, lavé comme des vols « toutes
+   * compagnies » de la taille d'un vol moyen des retours du jour.
+   */
+  function saleDeLaVeille(saisi, retours, t) {
+    if (Array.isArray(saisi)) return saisi.filter(x => x && +x.unites > 0).map(x => ({
+      vol: String(x.vol ?? 'veille').replace(/ \(veille\)$/, '') + ' (veille)', cie: String(x.cie || TOUTES).trim().toUpperCase() || TOUTES, t, unites: +x.unites }));
+    const n = +saisi;
+    if (!(n > 0)) return [];
+    const pleins = (retours || []).filter(r => r.unites > 0);
+    const moyen = pleins.length ? pleins.reduce((m, r) => m + r.unites, 0) / pleins.length : n;
+    const k = Math.max(1, Math.ceil(n / moyen - 1e-9));
+    return Array.from({ length: k }, (_, i) => ({ vol: 'veille ' + (i + 1), cie: TOUTES, t, unites: i < k - 1 ? moyen : n - moyen * (k - 1) }));
+  }
+
   /** Ce qu'un lot emporte : par vol, classe par classe. */
   function besoinMateriel(classes, materiel) {
     const unites = unitesDe(materiel);
@@ -1816,7 +1834,8 @@
     const inactives = new Set();
     for (const a of liste) {
       const k = a.condition;
-      if (!k || typeof k !== 'object' || !(+k.seuil > 0)) continue;
+      // La condition d'une plonge sur son sale (évolution 6) se décide pendant la journée, pas au volume.
+      if (!k || typeof k !== 'object' || !(+k.seuil > 0) || k.mesure === 'sale') continue;
       const mesure = k.mesure === 'repas' ? 'repas' : 'vols';
       const compte = compteDuJour(classes, k.cie, mesure);
       const remplie = compte >= +k.seuil;
@@ -1891,7 +1910,84 @@
     return calcules.length ? simulerAvecChauffeursCalcules(opts, calcules) : simulerJournee(opts);
   }
 
+  /* ----------------------------------------------------------------------
+   *  LA PLONGE QUI NE S'OUVRE QUE S'IL RESTE DU SALE (banc d'essai, évolution 6)
+   *  Une équipe de lavage ordinaire — un shift de nuit — peut ne travailler
+   *  que certains jours : `condition: { mesure: 'sale', a: 'HH:MM', seuil }`.
+   *  Elle vient si, à l'heure `a` (par défaut son début), le sale en attente
+   *  — revenu, pas encore entré dans un tunnel — atteint `seuil` unités (1 par
+   *  défaut, provisoire : dès qu'il en reste). Sinon ses personnes ne viennent
+   *  pas et ne comptent pas. La journée se joue d'abord sans elle, pour mesurer
+   *  le sale à son heure ; puis avec elle, ou sans.
+   * --------------------------------------------------------------------*/
+  const SEUIL_SALE = 1;
+  const plongeConditionnelle = a => !!(a && a.type === 'lavage' && a.condition && a.condition.mesure === 'sale');
+  /** L'heure où elle mesure le sale : `a`, le jour où elle commence ; sans `a`, son début. */
+  function heureMesureSale(a) {
+    let t = null;
+    try { t = a.condition.a ? minutes(a.condition.a) : null; } catch (e) { t = null; }
+    return (t == null ? minutes(a.debut) : t) + (a.jour || 0) * MINUTES_PAR_JOUR;
+  }
+  function seuilSale(a) {
+    const v = a.condition.seuil, s = +v;
+    return v !== undefined && v !== null && v !== '' && Number.isFinite(s) && s >= 0 ? s : SEUIL_SALE;
+  }
+
   function simulerJournee(p) {
+    const opts = p || {};
+    const conditionnelles = (opts.ateliers || []).filter(plongeConditionnelle);
+    if (!conditionnelles.length) return jouerJournee(opts);
+    // Chacune décide à son heure, dans l'ordre : la journée jouée sans elle ni les suivantes, avec celles déjà ouvertes.
+    const ordre = conditionnelles.map(a => ({ a, t: heureMesureSale(a) })).sort((x, y) => x.t - y.t || String(x.a.id).localeCompare(String(y.a.id)));
+    const ouvertes = new Set(), mesures = new Map();
+    const sauf = () => opts.ateliers.filter(a => !plongeConditionnelle(a) || ouvertes.has(a.id));
+    // Les plonges qui ne viennent pas restent des plonges : leur service, et leur façon de laver.
+    const fermees = () => conditionnelles.filter(a => !ouvertes.has(a.id)).map(a => ({ service: a.service, parVol: !!a.parVol }));
+    for (const { a, t } of ordre) {
+      const sonde = { id: a.id, service: a.service, parVol: !!a.parVol, t, sale: 0 };
+      const r0 = jouerJournee({ ...opts, ateliers: sauf(), _sondesSale: [sonde], _plongesFermees: fermees() });
+      if (!r0.ok) return r0;
+      const seuil = seuilSale(a);
+      mesures.set(a.id, { t, seuil, sale: sonde.sale });
+      if (sonde.sale >= seuil - 1e-9) ouvertes.add(a.id);
+    }
+    const r = jouerJournee({ ...opts, ateliers: sauf(), _plongesFermees: fermees() });
+    if (!r.ok) return r;
+    // Une équipe qui ne s'ouvre pas reste dans la liste des équipes, sans personne.
+    const presentes = new Set(r.ateliers.map(v => v.id)), regimeDe = a => normaliserRegime(a.regime, opts.regime);
+    const avecRenforts = r.ateliers.some(v => 'renfortsPretes' in v);
+    opts.ateliers.forEach((a, i) => {
+      if (!plongeConditionnelle(a) || presentes.has(a.id)) return;
+      const debut = minutes(a.debut) + (a.jour || 0) * MINUTES_PAR_JOUR, reg = regimeDe(a);
+      const v = { id: a.id, nom: a.nom, service: a.service, type: a.type, debut, personnes: 0, fin: null, travail: 0, attente: 0, arret: 0, lots: [],
+        debutPoste: debut, presence: reg.actif ? reg.presence : null, jour: a.jour || 0, finPoste: null, heuresSup: 0,
+        ...(avecRenforts ? { renfortsPretes: 0, renfortsRecus: 0, renfortsHeuresSup: 0, renforts: { vers: [], de: [] } } : {}) };
+      const apres = opts.ateliers.slice(i + 1).map(x => r.ateliers.findIndex(y => y.id === x.id)).find(k => k >= 0);
+      r.ateliers.splice(apres === undefined ? r.ateliers.length : apres, 0, v);
+    });
+    // Ce qu'elle rend : ouverte ou non, le sale mesuré, ce qu'elle a lavé, et le sale qui reste à sa fin.
+    for (const { a } of ordre) {
+      const v = r.ateliers.find(x => x.id === a.id), m = mesures.get(a.id), ouverte = ouvertes.has(a.id), reg = regimeDe(a);
+      const finPresence = reg.actif ? v.debutPoste + reg.presence : null;
+      const fin = Math.max(finPresence ?? -Infinity, ouverte && v.fin != null ? v.fin : -Infinity);
+      const lavees = ouverte ? v.lots.filter(l => !l.impossible).reduce((n, l) => n + (l.unites || 0), 0) : 0;
+      v.conditionSale = { ouverte, a: a.condition.a || a.debut, heure: m.t, seuil: m.seuil, sale: m.sale, lavees,
+        reste: Number.isFinite(fin) ? saleRestant(r, a, fin) : null, fin: Number.isFinite(fin) ? fin : null };
+    }
+    return r;
+  }
+
+  /** Le sale pas encore propre à l'instant t : par vol, les vols revenus qui ne sont pas sortis du tunnel ; au débit, le niveau de la file. */
+  function saleRestant(r, a, t) {
+    if (a.parVol) return r.lots.filter(l => l.retourVol && l.service === a.service && l.arrivee <= t + 1e-9 && (l.impossible || l.fin == null || l.fin > t + 1e-9))
+      .reduce((n, l) => n + (l.unites || 0), 0);
+    const serie = (r.plonge && r.plonge.serie) || [];
+    let niveau = 0;
+    for (const [u, n] of serie) { if (u > t + 1e-9) break; niveau = n; }
+    return niveau;
+  }
+
+  function jouerJournee(p) {
     const opts = p || {};
     const bareme = opts.bareme ? normaliserBareme(opts.bareme).bareme : BAREME_DEMO;
     const rendement = opts.rendement === undefined ? RENDEMENT_DEMO : opts.rendement;
@@ -2174,7 +2270,7 @@
     }
     // L'équipe d'appui calculée : ses minutes par vol × les vols de chaque compagnie.
     // Sans minutes renseignées, son effectif saisi reste.
-    const servicesLavage = new Set(ateliers.filter(a => a.type === 'lavage').map(a => a.service));
+    const servicesLavage = new Set(ateliers.filter(a => a.type === 'lavage').map(a => a.service).concat((opts._plongesFermees || []).map(x => x.service)));
     let volsParCie = null;
     const compter = lavage => {
       const n = new Map();
@@ -2210,7 +2306,8 @@
     // Une plonge ne fabrique pas de classe : elle lave ce qui revient, et la
     // boucle du matériel porte cette contrainte. Sur un parcours, elle est une
     // étape franchie, jamais un trou.
-    const lavages = new Set(ateliers.filter(a => a.type === 'lavage').map(a => a.service));
+    // Une plonge dont l'équipe conditionnelle ne vient pas ce jour (évolution 6) reste une plonge.
+    const lavages = new Set(ateliers.filter(a => a.type === 'lavage').map(a => a.service).concat((opts._plongesFermees || []).map(x => x.service)));
     // Le handling charge des vols : il n'a pas de commande à se voir confier,
     // et il n'est pas un trou sur le chemin d'une commande.
     const handlings = ateliers.filter(a => a.type === 'handling');
@@ -2388,13 +2485,26 @@
           if (env.maintenant < r.t) yield env.delai(r.t - env.maintenant);
           noterFile();
           stock.sale += r.unites; stock.entrees += r.unites;
-          file.arrivees.push({ t: env.maintenant, u: r.unites, vol: r.vol });
+          file.arrivees.push({ t: env.maintenant, u: r.unites, vol: r.vol, cie: r.cie });
           file.retours.push({ t: env.maintenant, u: r.unites, vol: r.vol });
           noterFile();
           while (reveilsSale.length) { const ev = reveilsSale.shift(); if (!ev.declenche) ev.reussir(env.maintenant); }
         }, 'retour ' + r.vol);
       }
     }
+    // Le sale de la veille (évolution 6) : présent au début de la journée (00:00 du jour J, ou le début
+    // de la journée jouée s'il est plus tard), vol par vol. La plonge par vol le lave comme un retour.
+    const debutSale = Math.max(0, env.maintenant);
+    const veille = saleDeLaVeille(mat.saleInitial, retoursStatiques({ ...mat, unites: mat.unites }, true), debutSale);
+    if (mat.actif && veille.length) env.processus(function* () {
+      if (env.maintenant < debutSale) yield env.delai(debutSale - env.maintenant);
+      noterFile();
+      for (const r of veille) { stock.sale += r.unites; file.arrivees.push({ t: env.maintenant, u: r.unites, vol: r.vol, cie: r.cie }); }
+      noterFile();
+      while (reveilsSale.length) { const ev = reveilsSale.shift(); if (!ev.declenche) ev.reussir(env.maintenant); }
+    }, 'sale de la veille');
+    // Tout le sale qui arrive à la plonge, pour le mesurer (évolution 6).
+    const arriveesSale = veille.concat(retoursStatiques({ ...mat, unites: mat.unites }, true));
 
     const journal = [];   // une ligne par lot : ce que l'on affichera
     const suspendus = new Map();   // handling → le vol qu'il attend encore
@@ -2437,10 +2547,11 @@
     // vol, qui le lave comme un retour.
     const plongesDynamiques = [];
     function deposerSale(r) {
+      arriveesSale.push({ vol: r.vol, cie: r.cie, t: env.maintenant, unites: r.unites });
       if (mat.actif && r.unites > 0) {
         noterFile();
         stock.sale += r.unites; stock.entrees += r.unites;
-        file.arrivees.push({ t: env.maintenant, u: r.unites, vol: r.vol });
+        file.arrivees.push({ t: env.maintenant, u: r.unites, vol: r.vol, cie: r.cie });
         file.retours.push({ t: env.maintenant, u: r.unites, vol: r.vol });
         noterFile();
         while (reveilsSale.length) { const ev = reveilsSale.shift(); if (!ev.declenche) ev.reussir(env.maintenant); }
@@ -3150,7 +3261,8 @@
         }
         // Libre pour cette équipe : quand sa machine l'est, et pas avant son arrivée.
         const libre = q => Math.max(q.machine.libre, q.depart);
-        const retours = retoursStatiques({ ...mat, unites: mat.unites }, true);
+        // Le sale de la veille d'abord, puis les retours, dans l'ordre de leur arrivée.
+        const retours = veille.concat(retoursStatiques({ ...mat, unites: mat.unites }, true)).sort((x, y) => x.t - y.t);
         const laver = r => {
           const base = { service: a.service, nom: 'Vol ' + r.vol, vol: r.vol, cie: r.cie, classes: [], retourVol: true,
             arrivee: r.t, unites: r.unites, arret: 0 };
@@ -3241,7 +3353,7 @@
             const pris = [];
             for (let pos = 0; pos < unites - 1e-9 && file.arrivees.length;) {
               const a0 = file.arrivees[0], u = Math.min(a0.u, unites - pos);
-              pris.push({ t: a0.t, u, pos }); pos += u;
+              pris.push({ t: a0.t, u, pos, vol: a0.vol, cie: a0.cie }); pos += u;
               a0.u -= u; if (a0.u <= 1e-9) file.arrivees.shift();
             }
             const duree = unites / debitLavage(a) * 60;
@@ -3263,7 +3375,7 @@
               // En moyenne, le milieu du paquet ; au pire, sa dernière unité.
               const sortie = k => debutLot + k / Math.max(lavees, 1e-9) * (env.maintenant - debutLot) - c.t;
               if (w > 1e-9) file.attentes.push({ u: w, attente: sortie(c.pos + w / 2), pire: sortie(c.pos + w) });
-              if (c.u - w > 1e-9) rendus.push({ t: c.t, u: c.u - w });
+              if (c.u - w > 1e-9) rendus.push({ t: c.t, u: c.u - w, vol: c.vol, cie: c.cie });
             }
             file.arrivees.unshift(...rendus);
             noterFile();
@@ -3415,7 +3527,36 @@
       }
     }
 
+    // Les mesures du sale (évolution 6) : à leur heure, après ce qui arrive au même instant (une
+    // équipe qui part et rend ce qu'elle n'a pas lavé, un retour). Le sale en attente : revenu, pas
+    // encore entré dans un tunnel. Par vol : les vols revenus qu'aucun tunnel n'a commencés ; au
+    // débit : le sale qui attend devant les tunnels.
+    for (const sonde of (opts._sondesSale || [])) env.processus(function* () {
+      if (env.maintenant < sonde.t) yield env.delai(sonde.t - env.maintenant);
+      yield env.delai(0);
+      const t = env.maintenant;
+      sonde.sale = sonde.parVol
+        ? Math.max(0, arriveesSale.filter(r => r.t <= t + 1e-9).reduce((n, r) => n + (r.unites || 0), 0)
+          - journal.filter(l => l.retourVol && l.service === sonde.service && !l.impossible && l.arrivee <= t + 1e-9 && l.debut <= t + 1e-9).reduce((n, l) => n + (l.unites || 0), 0))
+        : (mat.actif ? stock.sale : 0);
+    }, 'mesure du sale');
+
     env.executer();
+
+    // Le sale qui reste à la fin de la journée (évolution 6), vol par vol : ce que le banc rend à la
+    // journée suivante (son `saleInitial`). Par vol : les vols qu'aucune équipe n'a lavés ; au débit :
+    // ce qui attend encore devant les tunnels.
+    const saleFinal = [];
+    if (lavages.size) {
+      const ajouter = (vol, cie, unites) => {
+        const k = String(vol).replace(/ \(veille\)$/, ''), x = saleFinal.find(y => y.vol === k && y.cie === cie);
+        if (x) x.unites += unites; else saleFinal.push({ vol: k, cie, unites });
+      };
+      if (ateliers.some(a => a.type === 'lavage' && a.parVol) || (opts._plongesFermees || []).some(x => x.parVol)) {
+        const laves = new Set(journal.filter(l => l.retourVol && !l.impossible).map(l => l.vol)), vus = new Set();
+        for (const r of arriveesSale.slice().sort((x, y) => x.t - y.t)) if (r.unites > 0 && !laves.has(r.vol) && !vus.has(r.vol)) { vus.add(r.vol); ajouter(r.vol, r.cie, r.unites); }
+      } else if (mat.actif) for (const x of file.arrivees) if (x.u > 1e-9) ajouter(x.vol, x.cie || TOUTES, x.u);
+    }
 
     // Les renforts (évolution 5) : ce que chaque équipe a prêté et reçu, en minutes-personne
     // (le délai de déplacement compris, les pauses du renfort non), vers qui et de qui.
@@ -3752,6 +3893,8 @@
       plonge,
       // Les renforts de la journée (évolution 5), équipe par équipe : { de, vers, minutes }.
       ...(REN ? { renforts } : {}),
+      // Le sale non lavé à la fin de la journée (évolution 6), quand l'unité a une plonge.
+      ...(lavages.size ? { saleFinal } : {}),
       finDe
     };
   }

@@ -5,6 +5,39 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-19 — Banc d'essai (6/7) : une plonge qui ne vient que s'il reste du sale
+
+Quand les retours de l'après-midi dépassent ce que la plonge du soir lave, un
+shift de nuit s'ouvre pour absorber ce retard : une équipe de lavage ordinaire
+qui ne travaille que certains jours. **Désactivé par défaut** : sans condition
+ni sale de la veille, la journée est celle d'avant, champ par champ, avec
+`saleFinal` en plus.
+
+- **La condition** (`ory-ateliers-v1`, sur une équipe de lavage) :
+  `condition: { mesure: 'sale', a, seuil }` — l'équipe ne vient que si, à
+  l'heure `a` (par défaut son début), le sale en attente atteint `seuil` unités
+  (1 par défaut, provisoire). La journée se joue d'abord sans elle pour mesurer,
+  puis avec ou sans elle ; fermée, ses personnes ne viennent pas et ne comptent
+  pas. Elle compte le jour où elle commence.
+- **Le sale de la veille** (`materiel.saleInitial`) : la liste des vols non
+  lavés la veille (chacun lavé à la durée de sa compagnie) ou un nombre
+  d'unités (des vols « toutes compagnies » de la taille d'un vol moyen du
+  jour), présent au début de la journée. `saleFinal` rend, à la fin de la
+  journée, le sale non lavé vol par vol : le banc enchaîne les jours
+  (`options.saleInitial`).
+- **La sortie** : par plonge conditionnelle, `conditionSale` (ouverte, sale
+  mesuré, lavé, reste à sa fin) ; dans sa fiche, le bilan du jour.
+- **Dans la page** : la case, l'heure et le seuil dans la fiche de la plonge ;
+  « Sale de la veille » dans les Réglages de la simulation. Excel : « sale ≥ 1 à
+  22:00 » dans « Ne travaille que si » d'une plonge, « Sale de la veille (u) »
+  dans « Matériel » (lus par la version 1 seulement).
+- Fichiers : `moteur/production.js`, `moteur/journee.js` (`options.saleInitial`),
+  `ateliers.js` (validateur, fiche, réglage), `echanges.js` et
+  `v2/echanges.js` (identiques ; la v2 ne lit pas ces réglages),
+  `index.html` et `v2/index.html` (empreintes), `docs/BANC_ESSAI.md`,
+  `docs/FORMATS_EXCEL.md`, `README.md`, `tests/plonge-nuit.test.cjs`,
+  `tests/plonge-nuit-browser.cjs`, `tests/non-regression.test.cjs`.
+
 ## 2026-10-19 — Banc d'essai (5/7) : les renforts
 
 Une équipe qui a terminé tous ses lots avant la fin de sa présence ne reste
