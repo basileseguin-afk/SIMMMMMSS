@@ -376,6 +376,14 @@ désigne la veille. Elle sert au handling 24 h/24 (le déchargement de l'avion) 
 vide, l'arrivée s'estime par l'escale de la compagnie. L'export ne l'écrit que
 si un départ en a une, juste après `heure_std`. La version 2 l'ignore.
 
+Colonnes facultatives **`nb_SPML_BC`, `nb_SPML_PC`, `nb_SPML_YC`** (feuilles
+ou CSV ; version 1, banc d'essai — [`BANC_ESSAI.md`](BANC_ESSAI.md), § 7) : les
+repas spéciaux de chaque cabine. Quand elles sont là et que `nb_SPML` est vide,
+`nb_SPML` vaut leur somme ; `nb_SPML` seul se lit comme avant (toutes cabines
+confondues). Elles disent quels services préparent les SPML d'un vol (« Repas
+spéciaux par cabine », dans les Réglages de la simulation). L'export ne les
+écrit que si un vol a ce détail, après `nb_SPML`. La version 2 les ignore.
+
 ### En CSV
 
 Une seule table, avec une colonne `sens` (`DEP` ou `RET`) :

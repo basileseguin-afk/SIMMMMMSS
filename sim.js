@@ -652,7 +652,7 @@ function initAteliers(){
     // Le plan dit « aménagé » d'après les ateliers : il doit suivre leur saisie.
     // La liste du barème marque les services qui portent une équipe : elle doit
     // donc se redessiner quand les ateliers bougent.
-    change:r=>{if(suivreDemo()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();renderHeuresSup(r);renderRenforts(r);renderReglageRenforts();},
+    change:r=>{if(suivreDemo()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();renderHeuresSup(r);renderRenforts(r);renderReglageRenforts();renderReglageSpml();},
     // Une case se règle dans le chemin d'une commande : l'ouvrir d'ailleurs y mène.
     onglet:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
     // Le chemin d'une commande mène à son flux (Chemins) et à ses services (Équipes).
@@ -1872,6 +1872,54 @@ function renderRenforts(r){
     :'<p class="mini-note">Aucun : aucune équipe qui a fini ne peut aider une équipe en retard.</p>');
 }
 
+/* ==========================================================================
+ *  REPAS SPÉCIAUX PAR CABINE (banc d'essai, évolution 7 — docs/BANC_ESSAI.md)
+ *  Pour un service, les cabines dont il prépare les SPML (`spmlCabines`,
+ *  rangé avec les cases, ory-ateliers-v1) : un vol n'entre dans sa commande
+ *  X/SPML que s'il a un repas spécial de l'une d'elles. Sans réglage, toutes.
+ * ==========================================================================*/
+const CABINES_SPML=['BC','PC','YC'];
+/** Les services qui préparent une commande de repas spéciaux, et ceux déjà réglés. */
+function servicesSpml(){
+  const st=(Sim.ateliers&&Sim.ateliers.state)||{},ids=new Set(Object.keys(st.spmlCabines||{}));
+  for(const a of (st.ateliers||[]))if((a.type==='manuel'||a.type==='robot')&&(a.lots||[]).some(l=>(Array.isArray(l)?l:(l&&l.classes)||[]).some(c=>/\/SPML$/.test(c))))ids.add(a.service);
+  const ordre=servicesDisponibles().map(s=>s.id),rang=id=>{const i=ordre.indexOf(id);return i<0?999:i;};
+  return [...ids].sort((x,y)=>rang(x)-rang(y)||String(x).localeCompare(String(y)));
+}
+function reglerSpml(e){
+  const t=e.target;if(!t.matches('[data-spml-cabine]')||!Sim.ateliers)return;
+  const tr=t.closest('[data-spml-service]'),s=tr.dataset.spmlService;
+  const liste=CABINES_SPML.filter(c=>tr.querySelector('[data-spml-cabine='+c+']').checked);
+  Sim.ateliers.changer(()=>{const st=Sim.ateliers.state,m={...(st.spmlCabines||{})};
+    if(liste.length===CABINES_SPML.length)delete m[s];else m[s]=liste;
+    if(Object.keys(m).length)st.spmlCabines=m;else delete st.spmlCabines;},
+    '« '+nomDeService(s)+' » prépare les repas spéciaux '+(liste.length===CABINES_SPML.length?'de toutes les cabines.':liste.length?'de : '+liste.join(', ')+'.':'d’aucune cabine.'));
+}
+/* Le réglage, dans « Réglages de la simulation », après les renforts. */
+function renderReglageSpml(){
+  const apres=document.getElementById('rg-sim-renforts');if(!apres||!Sim.ateliers)return;
+  let box=document.getElementById('rg-sim-spml');
+  if(!box){box=document.createElement('div');box.className='panneau rg-sim-spml';box.id='rg-sim-spml';box.dataset.sous='rg-simulation';
+    apres.after(box);box.addEventListener('change',reglerSpml);}
+  const reglage=Sim.ateliers.state.spmlCabines||{},services=servicesSpml();
+  const detailles=(Sim.dataCourante||[]).filter(v=>v.spmlParCabine).length;
+  box.innerHTML='<div class="titre-aide"><h3>Repas spéciaux par cabine</h3><details class="aide">'
+    +'<summary aria-label="Comment les repas spéciaux se comptent par cabine">?</summary>'
+    +'<span class="aide-corps">Le travail des repas spéciaux se compte par vol, comme le reste : un vol entre dans la commande SPML d’un service '
+    +'s’il a au moins un repas spécial d’une cabine que ce service prépare. Les cabines viennent du programme de vols (colonnes nb_SPML_BC, '
+    +'nb_SPML_PC, nb_SPML_YC) ; un vol qui n’a que nb_SPML compte pour tous les services. Le barème reste par vol.</span></details></div>'
+    +'<p class="mini-note">'+(detailles?detailles+(detailles>1?' vols du programme détaillent leurs':' vol du programme détaille ses')+' repas spéciaux par cabine.'
+      :'Le programme de vols ne détaille pas les repas spéciaux par cabine : tous les vols comptent pour tous les services.')+'</p>'
+    +(services.length?'<div class="table-scroll"><table class="svc-table spml-table"><thead><tr><th scope="col">Service</th>'
+      +CABINES_SPML.map(c=>'<th scope="col">'+c+'</th>').join('')+'</tr></thead><tbody>'
+      +services.map(s=>{const l=Array.isArray(reglage[s])?reglage[s]:CABINES_SPML;
+        return '<tr data-spml-service="'+escapeHTML(s)+'"><th scope="row">'+escapeHTML(nomDeService(s))+'</th>'
+          +CABINES_SPML.map(c=>'<td><label class="chk chk-mini"><input type="checkbox" data-spml-cabine="'+c+'"'+(l.includes(c)?' checked':'')
+            +' aria-label="'+escapeHTML(nomDeService(s))+' prépare les repas spéciaux '+c+'"></label></td>').join('')+'</tr>';}).join('')
+      +'</tbody></table></div>'
+    :'<p class="mini-note">Aucune équipe ne prépare de commande de repas spéciaux.</p>');
+}
+
 /* Un message passager : une notification (notifications.js), avec « Annuler »
  * quand il suit un geste qui se défait. `o.parDefaut` : seulement si le geste
  * n'a pas déjà dit, plus précisément, ce qu'il a fait. */
@@ -2601,6 +2649,7 @@ function initWorkbench() {
   installerCentreReglages();
   renderReglageHeuresSup();
   renderReglageRenforts();
+  renderReglageSpml();
   updateSource();updateRunState();majCompare();
 }
 

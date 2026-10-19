@@ -292,7 +292,9 @@
       noms: Object.fromEntries(fantomesDeLUnite(etat, services, zones, base).map(f => [f.id, f.nom])
         .concat(services.map(s => [s.id, s.nom]))),
       // Les renforts (évolution 5) : la règle du modèle, la matrice des cases, les familles du plan.
-      ...(r.renforts ? { renforts: { ...r.renforts, polyvalence: etat.polyvalence || {}, familles: famillesDeLUnite(services, zones) } } : {})
+      ...(r.renforts ? { renforts: { ...r.renforts, polyvalence: etat.polyvalence || {}, familles: famillesDeLUnite(services, zones) } } : {}),
+      // Les cabines dont chaque service prépare les repas spéciaux (évolution 7) : seulement réglées.
+      ...(etat.spmlCabines ? { spmlCabines: etat.spmlCabines } : {})
     };
   }
 
@@ -415,8 +417,9 @@
   async function volsDuFichier(fichier, lireTexte) {
     if (fichier.size > MAX_VOLS) throw new Error('Fichier trop volumineux (maximum 4 Mo). Aucune donnée remplacée.');
     const UI = module_('OrlyUI', '../ui-model.js');
-    // Les colonnes que seule la version 1 lit : l'arrivée estimée d'un départ (heure_eta).
-    const colonnes = { eta: true };
+    // Les colonnes que seule la version 1 lit : l'arrivée estimée d'un départ (heure_eta), les repas
+    // spéciaux de chaque cabine (nb_SPML_BC, nb_SPML_PC, nb_SPML_YC).
+    const colonnes = { eta: true, spmlParCabine: true };
     if (/\.(csv|txt)$/i.test(fichier.name)) return UI.parseFlights(await (lireTexte ? lireTexte(fichier) : fichier.text()), colonnes);
     const E = module_('OrlyEchanges', '../echanges.js'), T = module_('OrlyTableur', '../tableur.js');
     return E.classeurVersVols(await T.lireFichier(fichier, MAX_VOLS), colonnes);

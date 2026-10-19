@@ -32,7 +32,9 @@ const DESACTIVEES = s => ({
   renforts: { actif: false, efficacite: 1, efficaciteAutreService: 1, delai: 0, versHeuresSup: true },
   // Évolution 6 : pas de sale de la veille (zéro unité).
   saleInitial: 0,
-  ...(servicesDe(s).length ? { ateliers: { polyvalence: Object.fromEntries(servicesDe(s).map(x => [x, servicesDe(s)])) } } : {}),
+  ...(servicesDe(s).length ? { ateliers: { polyvalence: Object.fromEntries(servicesDe(s).map(x => [x, servicesDe(s)])),
+    // Évolution 7 : chaque service prépare les repas spéciaux de toutes les cabines (le défaut, saisi).
+    spmlCabines: Object.fromEntries(servicesDe(s).map(x => [x, ['BC', 'PC', 'YC']])) } } : {}),
   equipes: {
     // Évolution 5 : les postes de travail des équipes qui préparent.
     ...Object.fromEntries(s.args.ateliers.filter(a => a.type === 'manuel' || a.type === 'robot').map(a => [a.id, { personnesMax: 1 }])),

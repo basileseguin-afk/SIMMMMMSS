@@ -678,11 +678,15 @@
     // L'arrivée estimée de l'avion d'un départ (heure_eta, banc d'essai de la version 1) : sa
     // colonne n'existe que si un départ en a une ; la veille s'écrit à l'heure de l'horloge.
     const eta = vols.some(v => v.sens === 'DEP' && Number.isFinite(v.eta));
+    // Les repas spéciaux par cabine (banc d'essai de la version 1) : leurs colonnes n'existent que si un vol les a.
+    const cab = vols.some(v => v.spmlParCabine), CAB_SPML = ['BC', 'PC', 'YC'];
     const ligne = (v, sens) => [v.id, v.cie, v.avion && v.avion !== '—' ? v.avion : null,
       sens === 'DEP' ? (Number.isFinite(v.std) ? hh(v.std) : null) : (Number.isFinite(v.sta) ? hh(v.sta) : null),
       ...(eta && sens === 'DEP' ? [Number.isFinite(v.eta) ? hh(((v.eta % 1440) + 1440) % 1440) : null] : []),
-      v.bc || 0, v.pc || 0, v.yc || 0, v.crew || 0, v.spml || 0];
-    const tete = (h, e) => ['vol_id', 'compagnie', 'type_avion', h, ...(e ? ['heure_eta'] : []), 'nb_BC', 'nb_PC', 'nb_YC', 'nb_CREW', 'nb_SPML'];
+      v.bc || 0, v.pc || 0, v.yc || 0, v.crew || 0, v.spml || 0,
+      ...(cab ? CAB_SPML.map(c => (v.spmlParCabine && v.spmlParCabine[c] !== undefined ? v.spmlParCabine[c] : null)) : [])];
+    const tete = (h, e) => ['vol_id', 'compagnie', 'type_avion', h, ...(e ? ['heure_eta'] : []), 'nb_BC', 'nb_PC', 'nb_YC', 'nb_CREW', 'nb_SPML',
+      ...(cab ? CAB_SPML.map(c => 'nb_SPML_' + c) : [])];
     return [
       { nom: 'Départs', lignes: [tete('heure_std', eta), ...vols.filter(v => v.sens === 'DEP').map(v => ligne(v, 'DEP'))] },
       { nom: 'Retours', lignes: [tete('heure_sta'), ...vols.filter(v => v.sens === 'RET').map(v => ligne(v, 'RET'))] },
@@ -691,6 +695,7 @@
         ...(eta ? ['   heure_eta (facultative) : l’arrivée estimée de son avion ; plus tard que heure_std sur l’horloge, c’est la veille.'] : []),
         'Feuille « Retours » : un vol qui revient, avec son heure d’arrivée (heure_sta). Il ramène du matériel à laver.',
         'Heures en HH:MM. Quantités entières. nb_CREW et nb_SPML sont facultatifs.',
+        ...(cab ? ['   nb_SPML_BC, nb_SPML_PC, nb_SPML_YC (facultatives) : les repas spéciaux de chaque cabine ; nb_SPML vide vaut leur somme.'] : []),
         'Chaque départ crée ou nourrit une compagnie × classe (AF/BC, AF/YC…) : c’est l’unité fabriquée.',
         'Une seule feuille avec une colonne « sens » (DEP / RET) est aussi acceptée : c’est le format CSV.',
         'L’import REMPLACE le programme entier. Une erreur, et rien n’est importé.'
@@ -698,12 +703,13 @@
     ];
   }
 
-  /** Les vols d'un classeur. `options` : celles de `parseFlightRows` (`eta` : lire heure_eta des départs). */
+  /** Les vols d'un classeur. `options` : celles de `parseFlightRows` (`eta` : lire heure_eta des départs ;
+   *  `spmlParCabine` : les repas spéciaux de chaque cabine). */
   function classeurVersVols(feuilles, options) {
     const dep = T.feuille(feuilles, 'Départs', 'Departs'), ret = T.feuille(feuilles, 'Retours');
     if (dep || ret) {
       // Deux feuilles : on reconstitue le format à une table, sens compris.
-      const cols = COLS_VOLS.concat(options && options.eta ? ['heure_eta'] : []);
+      const cols = COLS_VOLS.concat(options && options.eta ? ['heure_eta'] : [], options && options.spmlParCabine ? ['nb_SPML_BC', 'nb_SPML_PC', 'nb_SPML_YC'] : []);
       const lignes = [cols];
       const err = new Erreurs();
       for (const [f, sens, h] of [[dep, 'DEP', 'heure_std'], [ret, 'RET', 'heure_sta']]) {

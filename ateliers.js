@@ -388,11 +388,15 @@
     const paralleles = Object.fromEntries(Object.entries(brut.paralleles && typeof brut.paralleles === 'object' ? brut.paralleles : {})
       .map(([k, x]) => [String(k).slice(0, 160), String(x ?? '').slice(0, 160)]).filter(([k, x]) => k && x && k !== x).slice(0, 100));
     const polyvalence = polyvalenceDe(brut.polyvalence);
+    // Les cabines dont un service prépare les repas spéciaux (banc d'essai, évolution 7) : { service: ['BC', 'PC'] } ;
+    // un service absent les prépare toutes. Gardées une fois réglées.
+    const spmlCabines = Object.fromEntries(Object.entries(brut.spmlCabines && typeof brut.spmlCabines === 'object' && !Array.isArray(brut.spmlCabines) ? brut.spmlCabines : {})
+      .filter(([k, x]) => k && k.length <= 160 && Array.isArray(x)).slice(0, 300).map(([k, x]) => [k, ['BC', 'PC', 'YC'].filter(c => x.includes(c))]));
     return { schema: 'ory-ateliers', version: 1, ateliers, exclues, ajoutees, materiel,
       parcours, parcoursCabine, parcoursClasse, ...(Object.keys(categories).length ? { categories } : {}),
       ...(Object.keys(effectifs).length ? { effectifs } : {}), ...(Object.keys(encadrement).length ? { encadrement } : {}),
       ...(Object.keys(paralleles).length ? { paralleles } : {}), ...(migrations.length ? { migrations } : {}),
-      ...(Object.keys(polyvalence).length ? { polyvalence } : {}) };
+      ...(Object.keys(polyvalence).length ? { polyvalence } : {}), ...(Object.keys(spmlCabines).length ? { spmlCabines } : {}) };
   }
 
   function saleInitialDe(v) {
@@ -1844,7 +1848,7 @@
       // Le travail de chaque commande : celui du barème, sauf si la case en fixe
       // un autre (pour elle seule). Gardé en minutes, lu et saisi en heures (08/10).
       const bareme = (this.a.reglages ? this.a.reglages() : {}).bareme;
-      const importees = c => { const k = this.classes.find(x => x.id === c); return k ? Math.round(P.travailClasse(a.service, k, bareme) * 10) / 10 : 0; };
+      const importees = c => { const k = this.classes.find(x => x.id === c); return k ? Math.round(P.travailClasse(a.service, k, bareme, this.state.spmlCabines) * 10) / 10 : 0; };
       const mm = c => {
         // Un poste qui ne dépend pas des vols n'a pas d'heures par vol (06/10).
         if (a.type === 'manuel' && !this.dependDesVols(a)) return '';
@@ -2385,8 +2389,8 @@
       if (f && ids.length) {
         const bareme = (this.a.reglages ? this.a.reglages() : {}).bareme;
         const cls = ids.map(id => this.classes.find(c => c.id === id)).filter(Boolean);
-        const pm = cls.filter(c => enChaine.includes(c.id)).reduce((n, c) => n + P.travailClasse(f, c, bareme), 0);
-        const mm = cls.reduce((n, c) => n + P.travailDans(a, c, bareme), 0);
+        const pm = cls.filter(c => enChaine.includes(c.id)).reduce((n, c) => n + P.travailClasse(f, c, bareme, this.state.spmlCabines), 0);
+        const mm = cls.reduce((n, c) => n + P.travailDans(a, c, bareme, this.state.spmlCabines), 0);
         const n = a.personnes, d = P.dureeFusion(pm, mm, n);
         let k = 0;
         if (n > 1 && pm && mm) { let mieux = Infinity; for (let i = 1; i < n; i++) { const x = Math.max(pm / i, mm / (n - i)); if (x < mieux) { mieux = x; k = i; } } }

@@ -34,7 +34,10 @@
    * second cas, une heure arrive en fraction de jour (06:30 → 0,2708…) et une
    * quantité en nombre : on les accepte tels quels.
    * `options.eta` (banc d'essai de la version 1, docs/BANC_ESSAI.md) : lire aussi
-   * la colonne facultative heure_eta d'un départ, l'arrivée estimée de son avion. */
+   * la colonne facultative heure_eta d'un départ, l'arrivée estimée de son avion.
+   * `options.spmlParCabine` (de même) : lire aussi les colonnes facultatives
+   * nb_SPML_BC, nb_SPML_PC, nb_SPML_YC, les repas spéciaux de chaque cabine ; un
+   * nb_SPML vide vaut alors leur somme. */
   function parseFlightRows(input, options) {
     const o=options||{};
     const rows=(input||[]).map(r=>{const out=(r||[]).map(v=>v===null||v===undefined?'':typeof v==='number'?v:String(v).trim());out.ligne=r&&r.ligne;return out;})
@@ -47,6 +50,7 @@
     if(missing.length)throw new Error('Colonnes manquantes : '+missing.join(', ')+'. Téléchargez le modèle CSV.');
     if(new Set(headers).size!==headers.length)throw new Error('Les noms de colonnes doivent être uniques.');
     const errors=[],seen=new Set(),out=[];
+    const cabinesSpml=o.spmlParCabine?['BC','PC','YC'].filter(c=>headers.includes('nb_spml_'+c.toLowerCase())):[];
     rows.slice(1).forEach((r,i)=>{
       const line=r.ligne,get=h=>{const v=r[headers.indexOf(h)];return v===undefined||v===null?'':v;};
       try {
@@ -62,13 +66,16 @@
         const bc=quantity('nb_bc'),pc=quantity('nb_pc'),yc=quantity('nb_yc');
         // Équipage et repas spéciaux sont FACULTATIFS : un export qui ne les
         // porte pas reste lisible, et vaut zéro plutôt que d'être refusé.
-        const crew=optionnel('nb_crew'),spml=optionnel('nb_spml');
+        const crew=optionnel('nb_crew');let spml=optionnel('nb_spml');
+        // Les repas spéciaux de chaque cabine, s'ils sont saisis pour ce vol ; nb_SPML vide : leur somme.
+        const spmlParCabine=cabinesSpml.some(c=>get('nb_spml_'+c.toLowerCase())!=='')?Object.fromEntries(cabinesSpml.map(c=>[c,optionnel('nb_spml_'+c.toLowerCase())])):null;
+        if(spmlParCabine&&get('nb_spml')==='')spml=Object.values(spmlParCabine).reduce((n,x)=>n+x,0);
         if(bc+pc+yc+crew+spml===0)throw new Error('au moins une quantité doit être supérieure à zéro');
         const std=sens==='DEP'?time('heure_std'):get('heure_std')!==''?time('heure_std'):null;
         const sta=sens==='RET'?time('heure_sta'):get('heure_sta')!==''?time('heure_sta'):null;
         // Plus tard que le départ sur l'horloge, l'arrivée estimée est celle de la veille.
         const eta=o.eta&&sens==='DEP'&&headers.includes('heure_eta')&&get('heure_eta')!==''?time('heure_eta'):null;
-        out.push({id,cie,sens,avion:String(get('type_avion')||'—'),std,sta,bc,pc,yc,crew,spml,...(eta===null?{}:{eta:eta>std?eta-1440:eta})});
+        out.push({id,cie,sens,avion:String(get('type_avion')||'—'),std,sta,bc,pc,yc,crew,spml,...(eta===null?{}:{eta:eta>std?eta-1440:eta}),...(spmlParCabine?{spmlParCabine}:{})});
       } catch(e){errors.push('Ligne '+line+' : '+e.message);}
     });
     if(errors.length)throw new Error(errors.slice(0,8).join('\n')+(errors.length>8?'\n… '+(errors.length-8)+(errors.length-8>1?' autres erreurs.':' autre erreur.'):'')+'\nAucune donnée remplacée.');

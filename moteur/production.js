@@ -129,7 +129,8 @@
           parId.set(id, c);
         }
         c.pax += pax;
-        c.vols.push({ id: v.id, pax, depart, echeance: depart - delai });
+        // Les repas spéciaux de chaque cabine, quand le programme les donne (banc d'essai, évolution 7).
+        c.vols.push({ id: v.id, pax, depart, echeance: depart - delai, ...(cabine === 'SPML' && v.spmlParCabine ? { cabines: { ...v.spmlParCabine } } : {}) });
         c.echeance = Math.min(c.echeance, depart - delai);
       }
     }
@@ -353,10 +354,30 @@
   const RENDEMENT_DEMO = 1;
 
   /** Homme-minutes d'une classe dans un service : minutes par vol × vols. */
-  function travailClasse(service, classe, bareme) {
+  function travailClasse(service, classe, bareme, spml) {
     const b = bareme || BAREME_DEMO;
     const m = minutesParVol(b[service], classe);
-    return (m || 0) * ((classe.vols && classe.vols.length) || 0);
+    return (m || 0) * volsPrepares(service, classe, spml);
+  }
+
+  /**
+   * Les vols d'une commande qu'un service prépare (banc d'essai, évolution 7) :
+   * tous ; mais la commande « repas spéciaux » (X/SPML) d'un service réglé sur
+   * certaines cabines (`spml` : { service: ['BC', 'PC'] }) ne compte que les vols
+   * qui ont un SPML de l'une d'elles. Un vol dont le programme ne détaille pas
+   * les cabines (nb_SPML seul), ou pas toutes, compte pour tout service qui en
+   * prépare ; une liste vide n'en prépare aucun.
+   */
+  function volsPrepares(service, classe, spml) {
+    const vols = (classe && classe.vols) || [];
+    const cab = classe && classe.cabine === 'SPML' && spml ? spml[service] : null;
+    if (!Array.isArray(cab)) return vols.length;
+    if (!cab.length) return 0;      // il n'en prépare aucun
+    return vols.filter(v => {
+      if (!v.cabines) return true;
+      const detail = Object.values(v.cabines).reduce((n, x) => n + (+x || 0), 0);
+      return cab.some(c => +v.cabines[c] > 0) || (+v.pax || 0) > detail;
+    }).length;
   }
 
   /**
@@ -364,9 +385,9 @@
    * pour elle (`a.minutes[classe]`, saisies dans sa case), sinon celles du
    * barème importé. La valeur fixée ne vaut que pour cet atelier.
    */
-  function travailDans(a, classe, bareme) {
+  function travailDans(a, classe, bareme, spml) {
     const propre = a && a.minutes ? a.minutes[classe.id] : undefined;
-    return Number.isFinite(propre) ? propre : travailClasse(a.service, classe, bareme);
+    return Number.isFinite(propre) ? propre : travailClasse(a.service, classe, bareme, spml);
   }
 
   /*
@@ -1998,6 +2019,8 @@
     // commandes hors poste. Sans l'option, rien ne change : elle part à la fin de
     // sa présence.
     const SUP = opts.heuresSup && opts.heuresSup.actif !== false && +opts.heuresSup.plafond > 0 ? +opts.heuresSup.plafond : 0;
+    // Les cabines dont chaque service prépare les repas spéciaux (banc d'essai, évolution 7) ; sans réglage, toutes.
+    const SPML = opts.spmlCabines && typeof opts.spmlCabines === 'object' && !Array.isArray(opts.spmlCabines) ? opts.spmlCabines : null;
     // Les renforts (banc d'essai, évolution 5) : une équipe qui a fini tous ses lots
     // avant la fin de sa présence prête ses personnes à une équipe encore au travail.
     // `polyvalence` : pour chaque service, les services qu'il peut aider (saisis) ;
@@ -2258,9 +2281,9 @@
       let poste;
       try { poste = minutesDuPoste(a, opts.regime); } catch (e) { continue; }   // heure invalide : déjà signalée
       const lots = (a.lots || []).flatMap(classesDuLot).map(id => parClasse.get(id)).filter(Boolean);
-      const ici = lots.reduce((n, c) => n + travailDans(a, c, bareme), 0);
+      const ici = lots.reduce((n, c) => n + travailDans(a, c, bareme, SPML), 0);
       const f = fusionDe(a);
-      const avant = f ? lots.filter(c => fusionPar.get(cle(f, c.id)) === a.service).reduce((n, c) => n + travailClasse(f, c, bareme), 0) : 0;
+      const avant = f ? lots.filter(c => fusionPar.get(cle(f, c.id)) === a.service).reduce((n, c) => n + travailClasse(f, c, bareme, SPML), 0) : 0;
       let n = effectifPour(ici, avant, poste, rendement);
       if (n == null) continue;
       // Des commandes sans minutes (barème à renseigner) : quelqu'un est là, en temps nul.
@@ -2823,7 +2846,7 @@
       } else {
         // Chaque ligne ne compte que ses classes : dans une case « TX BC puis
         // TX PC », TX BC sort après ses seules minutes, sans attendre TX PC.
-        const hommeMinutes = sansMinutes(a) ? 0 : lots.reduce((n, c) => n + travailDans(a, c, bareme), 0);
+        const hommeMinutes = sansMinutes(a) ? 0 : lots.reduce((n, c) => n + travailDans(a, c, bareme, SPML), 0);
         const f = fusionDe(a);
         if (sansMinutes(a)) {
           // Effectif constant : ni minutes par vol, ni durée. La commande passe
@@ -2835,7 +2858,7 @@
           // L'étape d'avant, faite à la chaîne par la même case.
           // Seules les commandes dont elle fait vraiment l'étape d'avant : une
           // commande qu'une case de la Prépa fait encore n'est pas comptée deux fois.
-          const avant = lots.filter(c => fusionPar.get(cle(f, c.id)) === a.service).reduce((n, c) => n + travailClasse(f, c, bareme), 0);
+          const avant = lots.filter(c => fusionPar.get(cle(f, c.id)) === a.service).reduce((n, c) => n + travailClasse(f, c, bareme, SPML), 0);
           duree = dureeFusion(avant, hommeMinutes, a.personnes) / rendement;
           detail = { hommeMinutes: hommeMinutes + avant, fusion: f, minutesFusion: avant, minutesIci: hommeMinutes };
           base = Number.isFinite(duree) && a.personnes > 0 ? duree * a.personnes : (hommeMinutes + avant) / rendement;
@@ -4230,7 +4253,7 @@
     MINUTES_PAR_JOUR, CABINES, TYPES,
     minutes, hhmm, idClasse, libelleClasse, nomCabine, enClair,
     REGIME_DEFAUT, REGIMES_AVANT, normaliserRegime, executerTache,
-    classesDeVols, classesCategories, compagniesParService, declarerCategories, volsDesClasses, compteDuJour, appliquerConditions, dureeHandling, compagniesDe, AVANCE_HANDLING, BAREME_DEMO, RENDEMENT_DEMO, travailClasse, travailDans, dureeFusion, minutesVolAppui,
+    classesDeVols, classesCategories, compagniesParService, declarerCategories, volsDesClasses, compteDuJour, appliquerConditions, dureeHandling, compagniesDe, AVANCE_HANDLING, BAREME_DEMO, RENDEMENT_DEMO, travailClasse, travailDans, volsPrepares, dureeFusion, minutesVolAppui,
     minutesDuPoste, effectifPour, PLAFOND_EFFECTIF,
     PAX_TYPE, TOUTES, cleBareme, normaliserBareme, minutesParVol, versHeures, versMinutes, heuresFr,
     arcsDuParcours, servicesDuParcours, routesDesClasses,

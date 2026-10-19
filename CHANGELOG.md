@@ -5,6 +5,33 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-19 — Banc d'essai (7/7) : les SPML que chaque service prépare
+
+Le travail SPML se compte par vol : un vol entre dans la commande X/SPML d'un
+service s'il a au moins un SPML que ce service prépare. La cuisine et la cuisine
+chaude ne préparent pas les SPML de l'économie. **Désactivé par défaut** : sans
+le détail par cabine ni réglage, la journée est celle d'avant, champ par champ.
+
+- **L'import** (v1, l'outil comme la page) : colonnes facultatives
+  `nb_SPML_BC`, `nb_SPML_PC`, `nb_SPML_YC` ; si elles sont là et que `nb_SPML`
+  est vide, il vaut leur somme ; `nb_SPML` seul se lit comme avant. La v2 les
+  ignore (une option de l'import, que seule la v1 passe).
+- **Le réglage** `spmlCabines` (`ory-ateliers-v1`) : pour un service, les
+  cabines dont il prépare les SPML ; sans réglage, toutes. Un vol n'entre dans
+  la commande X/SPML d'un service que s'il a un SPML de l'une d'elles ; un vol
+  sans détail compte pour tous. Le barème reste par vol ; l'effectif calculé
+  suit.
+- **Dans la page** : *Réglages de la simulation › Repas spéciaux par cabine*,
+  une case par cabine et par service. Excel : les trois colonnes dans
+  « Départs », écrites seulement si un vol a le détail.
+- Fichiers : `moteur/production.js`, `moteur/journee.js`, `ui-model.js` et
+  `v2/ui-model.js` (identiques), `echanges.js` et `v2/echanges.js`
+  (identiques), `ateliers.js` (validateur, heures affichées), `sim.js`
+  (réglage), `index.html` et `v2/index.html` (empreintes),
+  `docs/BANC_ESSAI.md`, `docs/FORMATS_EXCEL.md`, `README.md`,
+  `tests/spml-cabines.test.cjs`, `tests/spml-cabines-browser.cjs`,
+  `tests/non-regression.test.cjs`.
+
 ## 2026-10-19 — Banc d'essai (6/7) : une plonge qui ne vient que s'il reste du sale
 
 Quand les retours de l'après-midi dépassent ce que la plonge du soir lave, un

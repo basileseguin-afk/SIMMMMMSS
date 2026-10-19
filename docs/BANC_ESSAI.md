@@ -112,7 +112,8 @@ sens, pour une fusion future.
 
 Les vols lus par l'outil (et par la page) portent aussi `eta`, l'arrivée
 estimée de l'avion d'un départ, quand le programme a une colonne `heure_eta`
-(§ 3).
+(§ 3), et `spmlParCabine`, les repas spéciaux de chaque cabine, quand il a les
+colonnes `nb_SPML_BC`, `nb_SPML_PC`, `nb_SPML_YC` (§ 7).
 
 ### Un seul chemin de calcul
 
@@ -744,3 +745,40 @@ validation ; les options du banc ; Excel) ; `tests/plonge-nuit-browser.cjs` (la
 fiche, le bilan, le sale de la veille, l'enregistrement) ;
 `tests/non-regression.test.cjs` (sans sale de la veille : la même journée,
 `saleFinal` en plus).
+
+## 7. Les SPML : les cabines que chaque service prépare
+
+Le travail SPML se compte par vol, comme le reste : un vol entre dans la
+commande X/SPML d'un service s'il a au moins un SPML que ce service prépare. Or
+la cuisine et la cuisine chaude ne préparent pas les SPML de l'économie : un vol
+qui n'a que des SPML éco n'entre pas dans leur commande SPML.
+
+- **L'import** (CSV ou classeur, l'outil comme la page) : colonnes facultatives
+  `nb_SPML_BC`, `nb_SPML_PC`, `nb_SPML_YC`. Si elles sont là et que `nb_SPML`
+  est vide, `nb_SPML` vaut leur somme. `nb_SPML` seul se lit comme avant
+  (toutes cabines confondues). Le vol porte alors `spmlParCabine`
+  (`{ BC, PC, YC }`, les colonnes présentes) ; la commande X/SPML garde ce
+  détail pour chacun de ses vols (`classes[].vols[].cabines`). La version 2
+  ignore ces colonnes.
+- **Le réglage** `spmlCabines` (`ory-ateliers-v1`) : pour un service, la liste
+  des cabines dont il prépare les SPML (par exemple `{ "cuisine": ["BC", "PC"] }`).
+  Un service sans réglage les prépare toutes ; une liste vide, aucune. Il n'est
+  enregistré qu'une fois réglé. Dans la page : *Réglages de la simulation ›
+  Repas spéciaux par cabine*, une ligne par service qui prépare une commande
+  SPML, une case par cabine (toutes cochées : le défaut). Pour le banc :
+  `options.ateliers` (`{ "spmlCabines": { … } }`).
+- **La règle** : un vol entre dans la commande X/SPML d'un service seulement
+  s'il a au moins un SPML d'une cabine de sa liste. Le barème reste par vol :
+  le travail d'un service sur X/SPML est ses minutes par vol × les vols qu'il
+  prépare. Un vol dont le programme ne détaille pas les cabines (nb_SPML seul),
+  ou dont nb_SPML dépasse la somme du détail, compte pour tout service qui
+  prépare des SPML. L'effectif calculé suit. Les commandes elles-mêmes (leurs
+  vols, leur échéance) ne changent pas.
+
+Vérifications : `tests/spml-cabines.test.cjs` (un vol qui n'a que des SPML éco
+n'entre pas dans la commande SPML d'un service réglé sur `['BC', 'PC']`, mais
+entre dans celle d'un service sans réglage ; un import sans les nouvelles
+colonnes ne change rien ; la somme, le détail incomplet, l'effectif calculé, la
+validation, les options du banc, l'outil, Excel) ; `tests/spml-cabines-browser.cjs`
+(l'import de la page, le réglage par service, l'enregistrement) ;
+`tests/non-regression.test.cjs` (toutes les cabines saisies : la même journée).
