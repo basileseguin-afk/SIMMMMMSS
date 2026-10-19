@@ -724,6 +724,108 @@
   }
 
   /*
+   * LE HANDLING 24 H/24 : DES TOURNÉES QUI CHARGENT PUIS DÉCHARGENT
+   * (banc d'essai, évolution 3 — docs/BANC_ESSAI.md).
+   *
+   * Une équipe de handling `handling24h` ne charge plus un vol après l'autre :
+   * elle mène des tournées en parallèle. Une tournée, c'est un véhicule et ses
+   * chauffeurs, du quai de l'unité au quai de l'unité : préparation au quai
+   * (`quaiDepart`) si elle charge, aller, un ou plusieurs chargements, un avion
+   * arrivé à décharger (`entreAvions`, `dechargement`), retour, vidage du sale
+   * au quai (`quaiRetour`) si elle en rapporte. L'avion d'un départ arrive à
+   * départ − `escale` (par compagnie, « * » pour les autres), ou à son ETA.
+   * Toutes les durées sont par compagnie, avec « * » pour les autres.
+   */
+  /** Une valeur par compagnie (« * » : les autres), ou null si elle n'en a pas. */
+  function parCompagnie(atelier, champ, cie) {
+    const d = (atelier && atelier[champ]) || {};
+    const lire = k => (d[k] === undefined || d[k] === null || d[k] === '' || !Number.isFinite(+d[k]) ? null : Math.max(0, +d[k]));
+    return lire(up(cie)) ?? lire(TOUTES);
+  }
+  /** L'escale d'une compagnie (minutes entre l'arrivée de l'avion et son départ), ou null : pas de déchargement. */
+  const escaleDe = (atelier, cie) => parCompagnie(atelier, 'escale', cie);
+  /** Préparer le camion au quai (chargement dans la CF départ, contrôle), et le vider du sale au retour. */
+  const quaiDepartDe = (atelier, cie) => parCompagnie(atelier, 'quaiDepart', cie) ?? 0;
+  const quaiRetourDe = (atelier, cie) => parCompagnie(atelier, 'quaiRetour', cie) ?? 0;
+  /** Décharger un avion : 30 min pour un long courrier, 10 pour les autres, sauf durée saisie. */
+  const dechargementDe = (atelier, cie) => parCompagnie(atelier, 'dechargement', cie) ?? (categorieVol(atelier, cie) === 'long' ? 30 : 10);
+  /** Le véhicule d'une compagnie : un petit camion (« vl ») pour celles de la liste, un gros camion sinon. */
+  const vehiculeDe = (atelier, cie) => (((atelier && atelier.vl) || []).map(up).includes(up(cie)) ? 'vl' : 'camion');
+  /** Les réglages d'un handling 24 h/24, avec leurs valeurs par défaut (provisoires, à caler). */
+  function reglages24h(atelier) {
+    const a = atelier || {};
+    const n = (v, d) => (v === undefined || v === null || v === '' || !Number.isFinite(+v) ? d : Math.max(0, +v));
+    const flotte = v => { const k = Math.floor(n(v, 0)); return k > 0 ? k : Infinity; };
+    return {
+      entreAvions: n(a.entreAvions, 10),
+      dechargementsParTournee: Math.max(1, Math.floor(n(a.dechargementsParTournee, 1)) || 1),
+      margeDepart: n(a.margeDepart, 60),
+      margeEscaleCourte: n(a.margeEscaleCourte, 0),
+      delaiArrivee: n(a.delaiArrivee, 0),
+      // La flotte, par type de véhicule (0 ou rien : sans limite).
+      flotte: { camion: flotte(a.camions), vl: flotte(a.camionsVL) }
+    };
+  }
+  /** L'arrivée de l'avion d'un départ : son ETA, sinon départ − escale ; null sans l'une ni l'autre. */
+  function arriveeDe(atelier, vol) {
+    if (vol && Number.isFinite(vol.eta)) return vol.eta;
+    const depart = vol && (vol.std === undefined ? vol.heure : vol.std);
+    const e = escaleDe(atelier, vol && vol.cie);
+    return e == null || !Number.isFinite(depart) ? null : depart - e;
+  }
+  /**
+   * Ce qu'un départ demande au handling 24 h/24 : son chargement, son
+   * déchargement (s'il a une arrivée), l'escale courte, l'heure limite du
+   * chargement et l'échéance de ses commandes, qui se déduit de sa tournée :
+   * départ − marge − chargement − aller − préparation au quai. En escale
+   * courte, la même tournée décharge puis charge le même avion, et le vol doit
+   * seulement être chargé `margeEscaleCourte` minutes avant son départ.
+   */
+  function besoin24h(atelier, vol) {
+    const r = reglages24h(atelier), cie = vol.cie;
+    const depart = vol.std === undefined ? vol.heure : vol.std;
+    const charge = dureeHandling(atelier, cie) ?? 0, t = trajetHandling(atelier, cie), quai = quaiDepartDe(atelier, cie);
+    const arrivee = arriveeDe(atelier, vol), dech = dechargementDe(atelier, cie);
+    const dispo = arrivee == null ? null : arrivee + r.delaiArrivee;
+    const courte = dispo != null && dispo + dech + charge > depart - r.margeDepart;
+    const limite = courte ? depart - r.margeEscaleCourte : depart - r.margeDepart;
+    return { depart, arrivee, dispo, courte, limite, charge, dechargement: dech, aller: t.aller, retour: t.retour, quaiDepart: quai,
+      quaiRetour: quaiRetourDe(atelier, cie), vehicule: vehiculeDe(atelier, cie), long: categorieVol(atelier, cie) === 'long',
+      echeance: limite - charge - (courte ? dech : 0) - t.aller - quai };
+  }
+  /** Le handling qui charge une compagnie : le premier qui la nomme, sinon le premier qui les charge toutes. */
+  function handlingDeCompagnie(handlings, cie) {
+    return handlings.find(a => { const s = compagniesDe(a); return s && s.has(up(cie)); }) || handlings.find(a => !compagniesDe(a)) || null;
+  }
+  /** L'échéance des commandes des vols d'un handling 24 h/24 : celle de leur tournée de chargement. */
+  function echeances24h(classes, ateliers, vols) {
+    const handlings = (ateliers || []).filter(a => a && a.type === 'handling');
+    if (!handlings.some(a => a.handling24h === true)) return classes;
+    const brut = new Map((vols || []).filter(v => (v.sens || 'DEP') === 'DEP').map(v => [v.id, v]));
+    return classes.map(c => {
+      const a = handlingDeCompagnie(handlings, c.cie);
+      if (!a || a.handling24h !== true || !(c.vols || []).length) return c;
+      const vs = c.vols.map(v => { const b = brut.get(v.id); return b ? { ...v, echeance: besoin24h(a, { ...b, cie: c.cie, std: v.depart }).echeance } : v; });
+      return { ...c, vols: vs, echeance: Math.min(...vs.map(v => v.echeance)) };
+    }).sort((x, y) => x.echeance - y.echeance || x.id.localeCompare(y.id));
+  }
+  /**
+   * Les créneaux de chauffeurs d'un handling 24 h/24, chacun avec son véhicule
+   * (« camion » par défaut, « vl »). La journée se répète : un créneau de 22:00
+   * à 06:00 couvre aussi la nuit d'avant (de la veille 22:00 à 06:00), où
+   * partent les premières tournées.
+   */
+  function creneaux24h(atelier) {
+    const out = [];
+    ((atelier && atelier.creneaux) || []).forEach((c, i) => {
+      const de = minutes(c.de); let a = minutes(c.a); if (a <= de) a += MINUTES_PAR_JOUR;
+      const n = Math.max(0, Math.floor(+c.n) || 0), vehicule = c.type === 'vl' ? 'vl' : 'camion';
+      if (n > 0) for (const k of [-1, 0]) out.push({ creneau: i, de: de + k * MINUTES_PAR_JOUR, a: a + k * MINUTES_PAR_JOUR, n, vehicule, veille: k < 0 });
+    });
+    return out;
+  }
+
+  /*
    * LA PLONGE PAR VOL (retour d'usage du 28/09).
    *
    * « Le débit d'un tunnel se parle en vol : un tunnel lave un vol en tant de
@@ -1423,8 +1525,9 @@
     // Un service par compagnie (l'armement) : une commande par compagnie dont un chemin passe par
     // lui, ou qu'une de ses équipes a cochée ; les autres n'ont pas d'armement (08/10).
     const base = (opts.classes || classesDeVols(opts.vols, { delaiChargement: opts.delaiChargement })).filter(c => !c.categorie);
-    const classes = base.concat(classesCategories(opts.vols, opts.categories, { delaiChargement: opts.delaiChargement, compagnies: compagniesParService(base, routesDesClasses(base, opts), opts.ateliers) }))
-      .sort((a, b) => a.echeance - b.echeance || a.id.localeCompare(b.id));
+    // Avec un handling 24 h/24, l'échéance des commandes d'un vol est celle de sa tournée de chargement.
+    const classes = echeances24h(base.concat(classesCategories(opts.vols, opts.categories, { delaiChargement: opts.delaiChargement, compagnies: compagniesParService(base, routesDesClasses(base, opts), opts.ateliers) }))
+      .sort((a, b) => a.echeance - b.echeance || a.id.localeCompare(b.id)), opts.ateliers, opts.vols);
     const servicesCategories = new Set(Object.keys(opts.categories || {}));
     const parClasse = new Map(classes.map(c => [c.id, c]));
     // Le handling travaille le jour J des vols : jamais la veille.
@@ -1547,10 +1650,73 @@
     const bloquant = anomalies.some(a => !NON_BLOQUANTES.has(a.code));
     if (bloquant) return { ok: false, anomalies, classes, lots: [], ateliers: [], conditions: regles.conditions };
 
+    /* ---- le handling 24 h/24 : ses départs, leurs avions, leurs retours ---- */
+    // Les départs qu'il charge (ceux dont un repas est préparé, comme pour tout
+    // handling) ; l'avion de chacun, s'il a une arrivée, est à décharger. Le sale
+    // qu'une tournée rapporte remplace, pour ces avions, la règle des retours :
+    // une ligne retour de la même compagnie, à l'heure la plus proche, en donne
+    // les quantités ; sans elle, ce sont celles du vol de départ.
+    const plan24 = (() => {
+      const hs = ateliers.filter(a => a.type === 'handling');
+      if (!hs.some(a => a.handling24h === true)) return null;
+      const repas = new Set(volsDesClasses(classes.filter(c => producteurs.has(c.id) && !c.categorie)).map(v => v.id));
+      const brut = new Map((opts.vols || []).filter(v => (v.sens || 'DEP') === 'DEP').map(v => [v.id, v]));
+      const unites = unitesDe(opts.materiel);
+      const parVol = new Map();
+      for (const v of volsDesClasses(classes.filter(c => producteurs.has(c.id))).filter(v => repas.has(v.id))) {
+        const a = handlingDeCompagnie(hs, v.cie);
+        if (!a || a.handling24h !== true) continue;
+        const b0 = brut.get(v.id) || { id: v.id, cie: v.cie, std: v.depart };
+        parVol.set(v.id, { v, a, brut: b0, b: besoin24h(a, { ...b0, cie: v.cie, std: v.depart }) });
+      }
+      // Les avions à décharger, dans l'ordre de leur arrivée.
+      const avions = [...parVol.values()].filter(x => x.b.arrivee != null)
+        .sort((x, y) => x.b.arrivee - y.b.arrivee || String(x.v.id).localeCompare(String(y.v.id)));
+      // Chaque avion prend la ligne de sa compagnie à l'heure la plus proche ; une ligne ne sert qu'une fois.
+      const apparier = (lignes, heureDe) => {
+        const libres = lignes.map((l, i) => ({ l, i, t: heureDe(l) })).filter(x => Number.isFinite(x.t)), pris = new Map();
+        for (const x of avions) {
+          let m = null;
+          for (const y of libres) if (!y.pris && up(y.l.cie) === up(x.v.cie)
+            && (!m || Math.abs(y.t - x.b.arrivee) < Math.abs(m.t - x.b.arrivee) - 1e-9 || (Math.abs(Math.abs(y.t - x.b.arrivee) - Math.abs(m.t - x.b.arrivee)) <= 1e-9 && y.t < m.t))) m = y;
+          if (m) { m.pris = true; pris.set(x.v.id, m); }
+        }
+        return pris;
+      };
+      const lignesRet = (opts.vols || []).filter(v => v.sens === 'RET');
+      const parRet = apparier(lignesRet, l => (l.sta === undefined ? l.heure : l.sta));
+      for (const x of avions) {
+        const r = parRet.get(x.v.id);
+        x.unites = unitesDuVol(r ? r.l : x.brut, unites);
+        x.libelle = r ? String(r.l.id) : String(x.v.id);
+      }
+      // Ce que la règle des retours ne compte plus : ces avions-là, d'où qu'ils reviennent.
+      const m = { ...MATERIEL_DEFAUT, ...(opts.materiel || {}) }, source = sourceRetours(m);
+      const decharges = new Set(avions.map(x => x.v.id));
+      let volsRetours = opts.vols || [], planche = null;
+      if (source === 'programme') { const exclus = new Set([...parRet.values()].map(y => y.l)); volsRetours = volsRetours.filter(v => !exclus.has(v)); }
+      else if (source === 'j1') volsRetours = volsRetours.filter(v => v.sens !== 'DEP' || !decharges.has(v.id));
+      else {
+        const lignes = Array.isArray(m.planche) ? m.planche : [];
+        const exclus = new Set([...apparier(lignes, l => { try { return minutes(l.heure) + (Number.isFinite(+l.jour) ? +l.jour : 0) * MINUTES_PAR_JOUR; } catch (e) { return NaN; } }).values()].map(y => y.l));
+        planche = lignes.filter(l => !exclus.has(l));
+      }
+      return { parVol, avions, volsRetours, planche };
+    })();
+    /** Les retours à la plonge selon la règle choisie, sans les avions qu'un handling 24 h/24 décharge. */
+    const retoursStatiques = (materiel, tous) => (plan24
+      ? retoursDeVols(plan24.volsRetours, plan24.planche ? { ...(materiel || {}), planche: plan24.planche } : materiel, tous)
+      : retoursDeVols(opts.vols, materiel, tous));
+
     // Une mise à disposition permanente n'a pas d'heure : elle ne doit pas
     // tirer le début de la journée en arrière.
     const debuts = ateliers.filter(a => a.type !== 'dispo' || a.permanent === false)
       .map(a => (a.type === 'dispo' ? disponibleDes(a) : minutes(a.debut) + (a.jour || 0) * MINUTES_PAR_JOUR));
+    // Le handling 24 h/24 n'attend pas 00:00 : sa première tournée peut partir la veille au soir.
+    if (plan24) for (const x of plan24.parVol.values()) {
+      const avance = Number.isFinite(+x.a.avance) && x.a.avance !== null && x.a.avance !== '' ? Math.max(0, +x.a.avance) : AVANCE_HANDLING;
+      debuts.push(Math.min(x.b.depart - avance - x.b.quaiDepart - x.b.aller, x.b.dispo != null ? x.b.dispo - x.b.aller : Infinity));
+    }
     const env = new Environnement(debuts.length ? Math.min(...debuts) : 0);
 
     // Livraisons : un événement par (service, classe), créé à la demande, et
@@ -1615,7 +1781,7 @@
     let volsParCie = null;
     const compter = lavage => {
       const n = new Map();
-      const liste = lavage ? retoursDeVols(opts.vols, opts.materiel, true).map(r => r.cie)
+      const liste = lavage ? retoursStatiques(opts.materiel, true).map(r => r.cie).concat(plan24 ? plan24.avions.map(x => x.v.cie) : [])
         : (opts.vols || []).filter(x => (x.sens || 'DEP') === 'DEP').map(x => x.cie);
       for (const c of liste) { const k = String(c || '').toUpperCase(); n.set(k, (n.get(k) || 0) + 1); }
       return n;
@@ -1820,7 +1986,7 @@
     }
 
     if (mat.actif) {
-      for (const r of retoursDeVols(opts.vols, mat)) {
+      for (const r of retoursStatiques(mat)) {
         env.processus(function* () {
           if (env.maintenant < r.t) yield env.delai(r.t - env.maintenant);
           noterFile();
@@ -1868,6 +2034,222 @@
       if (ev) ev.reussir(env.maintenant); else l.libre = true;
     }
 
+    /* ---- le handling 24 h/24 : les tournées (évolution 3) --------------- */
+    // Le sale qu'une tournée rapporte arrive à la plonge à la fin du vidage au
+    // quai : dans la file du sale (boucle du matériel), et à chaque plonge par
+    // vol, qui le lave comme un retour.
+    const plongesDynamiques = [];
+    function deposerSale(r) {
+      if (mat.actif && r.unites > 0) {
+        noterFile();
+        stock.sale += r.unites; stock.entrees += r.unites;
+        file.arrivees.push({ t: env.maintenant, u: r.unites, vol: r.vol });
+        file.retours.push({ t: env.maintenant, u: r.unites, vol: r.vol });
+        noterFile();
+        while (reveilsSale.length) { const ev = reveilsSale.shift(); if (!ev.declenche) ev.reussir(env.maintenant); }
+      }
+      for (const laver of plongesDynamiques) laver(r);
+    }
+    const suivis24h = new Map();   // handling → l'état de ses vols, pour le bilan
+    /**
+     * Les tournées d'un handling 24 h/24. Une tournée part dès que ses
+     * commandes sont prêtes (et pas plus de `avance` avant le départ), qu'un
+     * véhicule de son type et assez de chauffeurs sont libres ; entre deux
+     * tournées prêtes, la plus urgente (fin de fenêtre la plus proche) d'abord.
+     * Après ses chargements, elle va décharger l'avion arrivé le plus urgent de
+     * son type de véhicule, s'il y en a un ; sinon elle rentre. Un vol pas prêt
+     * ne retient plus les suivants.
+     */
+    function lancerHandling24h(a, vue) {
+      const R = reglages24h(a);
+      const avance = Number.isFinite(+a.avance) && a.avance !== null && a.avance !== '' ? Math.max(0, +a.avance) : AVANCE_HANDLING;
+      const cr = creneaux24h(a), parChauffeurs = cr.length > 0;
+      // Sans créneau : « N tournées à la fois », sans compter les chauffeurs.
+      const simultanes = Math.max(1, Math.floor(+a.simultanes) || 1);
+      const conducteurs = [];
+      cr.forEach(c => { for (let j = 0; j < c.n; j++) conducteurs.push({ id: (c.veille ? 'v' : '') + (c.creneau + 1) + '.' + (j + 1), creneau: c.creneau, veille: c.veille,
+        vehicule: c.vehicule, de: c.de, a: c.a, libre: c.de, heuresSup: 0, rang: conducteurs.length }); });
+      const plan = plan24.parVol;
+      const mesVols = (volsDe.get(a.id) || []).map(v => {
+        const x = plan.get(v.id) || { b: besoin24h(a, { id: v.id, cie: v.cie, std: v.depart }) };
+        const attendus = [];
+        for (const id of v.classes) for (const s of amontsHandling(a.service, id)) attendus.push({ service: s, classe: id, ev: livraison(s, id) });
+        return { v, b: x.b, unites: x.unites || 0, libelle: x.libelle || String(v.id), attendus, pret: null,
+          etat: 'attente', dech: x.b.arrivee == null ? null : 'attente', finDech: null, blocage: null };
+      });
+      suivis24h.set(a.id, { mesVols, conducteurs, parChauffeurs, R, avance });
+      const tournees = vue.tournees = [];
+      const dehors = [];             // les tournées sorties : { fin, vehicule }
+      // Les chauffeurs d'une tournée : « long courrier » si elle sert un vol long courrier.
+      const ch = a.chauffeurs || {}, nb = (v, d) => { const k = +v; return Number.isInteger(k) && k > 0 ? k : d; };
+      const chLong = nb(ch.long, 2), chCourt = nb(ch.court, 1);
+      suivis24h.get(a.id).chauffeurs = { long: chLong, court: chCourt };
+      // Un chargement ne commence pas plus de `avance` minutes avant le départ.
+      const ouverture = x => x.b.depart - avance;
+      // Les fenêtres de départ d'une tournée : elle part pour arriver à l'avion
+      // quand elle peut y travailler, pas avant. Pour charger : à l'ouverture, et
+      // son avion déchargé (un avion se décharge avant d'être rechargé).
+      const departCharge = x => Math.max(ouverture(x), x.finDech ?? -Infinity) - x.b.quaiDepart - x.b.aller;
+      // Un échange (escale courte) : quand l'avion est là, décharger puis charger.
+      const departEchange = x => Math.max(x.b.dispo, ouverture(x) - x.b.dechargement) - x.b.quaiDepart - x.b.aller;
+      // Un déchargement seul attend qu'une tournée passe après un chargement, sauf
+      // s'il presse : son départ est prêt et sa fenêtre ouvre, ou il ne reste que
+      // le temps d'y aller pour que le vol soit encore chargé à l'heure.
+      const finDechargement = x => x.b.limite - x.b.charge;
+      const presseA = x => finDechargement(x) - x.b.dechargement - x.b.aller;
+      const departSeul = x => Math.max(x.b.dispo - x.b.aller,
+        x.pret != null ? Math.min(presseA(x), ouverture(x) - x.b.dechargement - x.b.aller) : presseA(x));
+      function candidats(t) {
+        const out = [];
+        for (const x of mesVols) {
+          if (x.etat !== 'attente' || x.pret == null) continue;
+          if (x.b.courte) { if (t >= departEchange(x) - 1e-9) out.push({ quoi: 'echange', x, urgence: x.b.limite, auPlusTot: Math.max(x.pret, departEchange(x)) }); continue; }
+          if (x.dech === 'attente' || t < departCharge(x) - 1e-9) continue;
+          out.push({ quoi: 'charge', x, urgence: x.b.limite, auPlusTot: Math.max(x.pret, departCharge(x)) });
+        }
+        for (const x of mesVols) {
+          if (x.dech !== 'attente' || x.b.courte || t < departSeul(x) - 1e-9) continue;
+          out.push({ quoi: 'decharge', x, urgence: finDechargement(x), auPlusTot: departSeul(x) });
+        }
+        return out.sort((p, q) => p.urgence - q.urgence || p.x.b.depart - q.x.b.depart || String(p.x.v.id).localeCompare(String(q.x.v.id))
+          || (p.quoi === 'decharge') - (q.quoi === 'decharge'));
+      }
+      /** La tournée d'un candidat : ses étapes, de son départ à son retour au quai. */
+      function composer(c, t, sansLong) {
+        const x = c.x, vehicule = x.b.vehicule, etapes = [], charges = [], decharges = [];
+        let h = t;
+        const pas = (etape, d, vol) => { if (!(d > 0) && etape !== 'chargement' && etape !== 'dechargement') return; const de = h; h += Math.max(0, d); etapes.push({ etape, de, a: h, ...(vol != null ? { vol } : {}) }); };
+        const attendre = jusqua => { if (jusqua > h + 1e-9) { etapes.push({ etape: 'attente', de: h, a: jusqua }); h = jusqua; } };
+        // Un avion arrivé, du même type de véhicule, à décharger : le plus urgent.
+        const autresDecharges = () => {
+          while (decharges.length < R.dechargementsParTournee) {
+            const arrivee = h + R.entreAvions;
+            // Pas un avion qu'elle déchargerait trop tard pour que son départ soit encore chargé à l'heure, sauf
+            // s'il aurait déjà dû partir seul : mieux vaut tard que jamais.
+            const y = mesVols.filter(z => z.dech === 'attente' && !z.b.courte && z.b.vehicule === vehicule && !decharges.includes(z)
+              && z.b.dispo <= arrivee + 1e-9 && !(sansLong && z.b.long)
+              && (arrivee + z.b.dechargement <= finDechargement(z) + 1e-9 || t >= departSeul(z) - 1e-9))
+              .sort((p, q) => finDechargement(p) - finDechargement(q) || p.b.depart - q.b.depart || String(p.v.id).localeCompare(String(q.v.id)))[0];
+            if (!y) return;
+            pas('trajet', R.entreAvions);
+            pas('dechargement', y.b.dechargement, y.v.id); decharges.push(y);
+          }
+        };
+        if (c.quoi === 'decharge') {
+          pas('aller', x.b.aller); attendre(x.b.dispo);
+          pas('dechargement', x.b.dechargement, x.v.id); decharges.push(x);
+          autresDecharges();
+        } else {
+          // Les chargements : ce vol, puis les suivants de la même compagnie, prêts, jusqu'à « vols par camion ».
+          const groupe = [x];
+          if (c.quoi === 'charge') {
+            const parCamion = volsParCamionDe(a, x.v.cie);
+            let arrivee = t + x.b.quaiDepart + x.b.aller + x.b.charge;
+            for (const w of mesVols) {
+              if (groupe.length >= parCamion) break;
+              if (w === x || w.etat !== 'attente' || w.pret == null || w.b.courte || w.dech === 'attente' || up(w.v.cie) !== up(x.v.cie) || w.b.depart < x.b.depart) continue;
+              if (ouverture(w) > arrivee + R.entreAvions + 1e-9) continue;
+              groupe.push(w); arrivee += R.entreAvions + w.b.charge;
+            }
+          }
+          pas('quai-depart', groupe.reduce((n, g) => n + g.b.quaiDepart, 0));
+          pas('aller', x.b.aller);
+          if (c.quoi === 'echange') { attendre(x.b.dispo); pas('dechargement', x.b.dechargement, x.v.id); decharges.push(x); }
+          groupe.forEach((g, i) => {
+            if (i) pas('trajet', R.entreAvions);
+            // Son avion déchargé par une autre tournée : on attend qu'elle ait fini ; et pas avant `avance`.
+            attendre(Math.max(g.finDech != null ? g.finDech : -Infinity, ouverture(g)));
+            pas('chargement', g.b.charge, g.v.id); charges.push(g);
+          });
+          autresDecharges();
+        }
+        const derniere = decharges.length ? decharges[decharges.length - 1] : charges[charges.length - 1];
+        pas('retour', derniere.b.retour);
+        if (decharges.length) pas('quai-retour', decharges.reduce((n, g) => n + g.b.quaiRetour, 0));
+        const long = charges.concat(decharges).some(g => g.b.long);
+        return { etapes, fin: h, charges, decharges, long, vehicule, echange: c.quoi === 'echange', chauffeurs: long ? chLong : chCourt };
+      }
+      /** Les chauffeurs d'une tournée : de son véhicule, à leur poste à son départ, libres, qui la finissent dans leurs heures (ou leurs heures sup). */
+      function choisir(p, t) {
+        const ok = conducteurs.filter(d => d.vehicule === p.vehicule && d.de <= t + 1e-9 && t < d.a - 1e-9 && d.libre <= t + 1e-9 && p.fin <= d.a + SUP + 1e-9);
+        if (ok.length < p.chauffeurs) return null;
+        ok.sort((u, w) => ((p.fin > u.a + 1e-9) - (p.fin > w.a + 1e-9)) || u.a - w.a || u.rang - w.rang);
+        return ok.slice(0, p.chauffeurs);
+      }
+      /** Lancer une tournée si son véhicule et ses chauffeurs sont là ; sinon dire ce qui manque. */
+      function essayer(c, t) {
+        const vehicule = c.x.b.vehicule;
+        const noter = raison => { c.x.blocage = raison; return false; };
+        if (dehors.filter(o => o.vehicule === vehicule).length >= R.flotte[vehicule]) return noter('vehicule');
+        if (!parChauffeurs && dehors.length >= simultanes) return noter('chauffeur');
+        let p = composer(c, t, false), pris = parChauffeurs ? choisir(p, t) : [];
+        // Un long courrier à décharger demanderait plus de chauffeurs : la tournée s'en passe.
+        if (!pris && p.long && !c.x.b.long && c.quoi !== 'decharge') { p = composer(c, t, true); pris = choisir(p, t); }
+        if (!pris) return noter('chauffeur');
+        lancer(p, pris, t, c);
+        return true;
+      }
+      function lancer(p, pris, t, c) {
+        const n = tournees.length + 1;
+        const tournee = { n, vehicule: p.vehicule, chauffeurs: p.chauffeurs, conducteurs: pris.map(d => d.id), depart: t, retour: p.fin,
+          etapes: p.etapes, charges: p.charges.map(g => g.v.id), decharges: p.decharges.map(g => g.v.id), ...(p.echange ? { echange: true } : {}), heuresSup: 0 };
+        for (const d of pris) { d.libre = p.fin; const sup = Math.max(0, p.fin - d.a); d.heuresSup += sup; tournee.heuresSup += sup; }
+        tournees.push(tournee);
+        dehors.push({ fin: p.fin, vehicule: p.vehicule });
+        for (const g of p.decharges) {
+          const e = p.etapes.find(z => z.etape === 'dechargement' && z.vol === g.v.id);
+          g.dech = 'fait'; g.finDech = e.a; g.debutDech = e.de; g.tourneeDech = n;
+        }
+        for (const g of p.charges) {
+          const e = p.etapes.find(z => z.etape === 'chargement' && z.vol === g.v.id);
+          g.etat = 'fait'; g.debutCharge = e.de; g.finCharge = e.a; g.tournee = n;
+          // L'attente d'un véhicule ou de chauffeurs : entre l'heure où la tournée pouvait partir et son départ.
+          const w = g.v, attente = g === c.x ? Math.max(0, t - c.auPlusTot) : 0;
+          g.attente = attente;
+          const ligne = { atelier: a.id, service: a.service, nom: 'Vol ' + w.id, vol: w.id, cie: w.cie, classes: w.classes.slice(), pax: { ...w.pax },
+            depart: w.depart, handling: true, debut: e.de, fin: e.a, duree: g.b.charge, attente, arret: 0, pret: g.pret, impossible: false,
+            trajet: { depart: t, retour: p.fin, vols: tournee.charges, aller: g.b.aller, dureeRetour: g.b.retour }, camion: n, tournee: n,
+            vehicule: p.vehicule, chauffeurs: p.chauffeurs, categorie: g.b.long ? 'long' : 'court', attenteChauffeurs: attente,
+            limite: g.b.limite, retard: Math.max(0, e.a - g.b.limite), aHeure: e.a <= g.b.limite + 1e-9 };
+          journal.push(ligne); vue.lots.push(ligne);
+        }
+        vue.travail += p.fin - t; vue.fin = Math.max(vue.fin ?? -Infinity, p.fin);
+        // Le sale rapporté arrive à la plonge à la fin du vidage au quai.
+        if (p.decharges.length) env.processus(function* () {
+          if (env.maintenant < p.fin) yield env.delai(p.fin - env.maintenant);
+          for (const g of p.decharges) deposerSale({ vol: g.libelle, cie: g.v.cie, t: env.maintenant, unites: g.unites });
+        }, 'sale ' + a.nom + ' ' + n);
+      }
+      /** Le prochain instant où quelque chose peut changer. */
+      function prochain(t) {
+        let m = Infinity;
+        const voir = u => { if (Number.isFinite(u) && u > t + 1e-9 && u < m) m = u; };
+        for (const o of dehors) voir(o.fin);
+        for (const x of mesVols) {
+          if (x.etat === 'attente' && x.pret != null) { if (x.b.courte) voir(departEchange(x)); else if (x.dech !== 'attente') voir(departCharge(x)); }
+          if (x.dech === 'attente' && !x.b.courte) voir(departSeul(x));
+        }
+        for (const d of conducteurs) { voir(d.de); voir(d.libre); }
+        return m;
+      }
+      env.processus(function* () {
+        for (let garde = 0; garde < 100000; garde++) {
+          const t = env.maintenant;
+          for (const x of mesVols) if (x.pret == null && x.attendus.every(e => e.ev.declenche))
+            x.pret = x.attendus.length ? Math.max(...x.attendus.map(e => livreA.get(cle(e.service, e.classe)) ?? t)) : t;
+          for (let i = dehors.length - 1; i >= 0; i--) if (dehors[i].fin <= t + 1e-9) dehors.splice(i, 1);
+          // Autant de tournées que les véhicules et les chauffeurs le permettent, la plus urgente d'abord.
+          for (let parti = true; parti;) { parti = false; for (const c of candidats(t)) if (essayer(c, t)) { parti = true; break; } }
+          const reste = mesVols.some(x => x.etat === 'attente' || x.dech === 'attente');
+          if (!reste) break;
+          const u = prochain(t);
+          const commandes = mesVols.filter(x => x.etat === 'attente' && x.pret == null).flatMap(x => x.attendus.filter(e => !e.ev.declenche).map(e => e.ev));
+          if (!Number.isFinite(u) && !commandes.length) break;
+          yield env.unDe([...commandes, ...(Number.isFinite(u) ? [env.delai(u - t)] : [])]);
+        }
+      }, a.nom);
+    }
+
     for (const a of ateliers) {
       const vue = parId.get(a.id);
       // Un robot s'arrête aussi quand sa ligne s'arrête.
@@ -1912,6 +2294,9 @@
         }, a.nom);
         continue;
       }
+
+      // Le handling 24 h/24 : des tournées menées en parallèle (évolution 3).
+      if (a.type === 'handling' && a.handling24h === true && plan24) { lancerHandling24h(a, vue); continue; }
 
       if (a.type === 'handling') {
         const mesVols = volsDe.get(a.id) || [];
@@ -2035,8 +2420,8 @@
         }
         // Libre pour cette équipe : quand sa machine l'est, et pas avant son arrivée.
         const libre = q => Math.max(q.machine.libre, q.depart);
-        const retours = retoursDeVols(opts.vols, { ...mat, unites: mat.unites }, true);
-        for (const r of retours) {
+        const retours = retoursStatiques({ ...mat, unites: mat.unites }, true);
+        const laver = r => {
           const base = { service: a.service, nom: 'Vol ' + r.vol, vol: r.vol, cie: r.cie, classes: [], retourVol: true,
             arrivee: r.t, unites: r.unites, arret: 0 };
           // Le tunnel qui rend ce vol propre le plus tôt : le premier libre, ou
@@ -2063,7 +2448,7 @@
             const debut = Math.min(Math.max(r.t, der.depart), der.finPoste ?? Infinity);
             const ligne = { ...base, atelier: der.a.id, debut, fin: null, duree: dureeLavageVol(der.a, r.cie) ?? 0, attente: 0, impossible: true, horsPoste: true };
             journal.push(ligne); der.vue.lots.push(ligne);
-            continue;
+            return;
           }
           const duree = (dureeLavageVol(p.a, r.cie) ?? 0) / p.vitesse;
           const debutV = Math.max(r.t, libre(p));
@@ -2085,6 +2470,14 @@
             noterFile();
             crediter(r.unites);
           }, 'lavage ' + r.vol);
+        };
+        // Les retours connus d'avance, dans l'ordre de leur arrivée. Avec un
+        // handling 24 h/24, ceux de ses tournées arrivent pendant la journée :
+        // chacun se lave à son heure, comme les autres.
+        if (!plan24) for (const r of retours) laver(r);
+        else {
+          for (const r of retours) env.processus(function* () { if (env.maintenant < r.t) yield env.delai(r.t - env.maintenant); laver(r); }, 'retour ' + r.vol);
+          plongesDynamiques.push(laver);
         }
         continue;
       }
@@ -2402,7 +2795,58 @@
 
     /* ---- les vols, au handling ----------------------------------------- */
     const vols = [];
+    /**
+     * Le bilan d'un handling 24 h/24 : chaque vol chargé à l'heure (avant sa
+     * limite : départ − marge) ou non, et, s'il est en retard ou pas chargé, la
+     * cause — commande pas prête (après son échéance), pas de chauffeur, pas de
+     * véhicule ; « fenetre » si rien de cela, mais les durées ne tiennent pas.
+     */
+    function bilan24h(a) {
+      const { mesVols, conducteurs, avance, chauffeurs } = suivis24h.get(a.id), vue = parId.get(a.id);
+      const causeDe = x => (x.pret == null || x.pret > x.b.echeance + 1e-9 ? 'commande' : x.blocage || 'fenetre');
+      const ETAT = { commande: 'bloque', chauffeur: 'chauffeurs', vehicule: 'vehicule', fenetre: 'fenetre' };
+      const tard = [], non = [];
+      for (const x of mesVols) {
+        const v = x.v, charge = x.etat === 'fait', enRetard = !charge || x.finCharge > x.b.limite + 1e-9, cause = enRetard ? causeDe(x) : null;
+        if (!charge) {
+          const ligne = { atelier: a.id, service: a.service, nom: 'Vol ' + v.id, vol: v.id, cie: v.cie, classes: v.classes.slice(), pax: { ...v.pax },
+            depart: v.depart, handling: true, debut: x.pret ?? (v.depart - avance), fin: null, duree: x.b.charge, attente: 0, arret: 0, pret: x.pret,
+            impossible: true, limite: x.b.limite, cause, vehicule: x.b.vehicule,
+            ...(cause === 'chauffeur' ? { sansChauffeur: true, chauffeurs: x.b.long ? chauffeurs.long : chauffeurs.court, categorie: x.b.long ? 'long' : 'court' } : {}) };
+          journal.push(ligne); vue.lots.push(ligne); non.push({ x, cause });
+        } else if (enRetard) tard.push({ x, cause });
+        vols.push({ id: v.id, cie: v.cie, depart: v.depart, classes: v.classes, pax: v.pax, atelier: a.id, service: a.service,
+          debut: charge ? x.debutCharge : null, fin: charge ? x.finCharge : null, pret: x.pret,
+          attente: charge ? x.attente : 0,
+          retard: charge ? Math.max(0, x.finCharge - x.b.limite) : null, aHeure: charge && x.finCharge <= x.b.limite + 1e-9,
+          etat: charge ? (enRetard ? 'retard' : 'ok') : ETAT[cause], ...(cause ? { cause } : {}),
+          limite: x.b.limite, echeanceCommandes: x.b.echeance, vehicule: x.b.vehicule, tournee: charge ? x.tournee : null,
+          chauffeurs: x.b.long ? chauffeurs.long : chauffeurs.court, categorie: x.b.long ? 'long' : 'court',
+          ...(x.b.arrivee != null ? { arrivee: x.b.arrivee,
+            dechargement: x.dech === 'fait' ? { debut: x.debutDech, fin: x.finDech, tournee: x.tourneeDech } : null } : {}),
+          ...(x.b.courte ? { escaleCourte: true } : {}),
+          attendu: x.pret == null ? x.attendus.filter(e => !e.ev.declenche).map(e => ({ service: e.service, classe: e.classe })) : null });
+      }
+      // Les chauffeurs, leurs heures sup, et le pic de véhicules sortis par type.
+      vue.conducteurs = conducteurs.map(d => ({ id: d.id, vehicule: d.vehicule, de: d.de, a: d.a, ...(d.veille ? { veille: true } : {}), heuresSup: d.heuresSup }));
+      vue.heuresSupChauffeurs = conducteurs.reduce((n, d) => n + d.heuresSup, 0);
+      const pic = type => { let m = 0; for (const t of vue.tournees) if (t.vehicule === type) m = Math.max(m, vue.tournees.filter(u => u.vehicule === type && u.depart <= t.depart + 1e-9 && u.retour > t.depart + 1e-9).length); return m; };
+      vue.vehiculesMax = { camion: pic('camion'), vl: pic('vl') };
+      const dire = l => { const n = {}; for (const { cause } of l) n[cause] = (n[cause] || 0) + 1;
+        return Object.entries(n).map(([c, k]) => k + ' ' + { commande: 'commande pas prête', chauffeur: 'faute de chauffeur', vehicule: 'faute de véhicule', fenetre: 'durées trop longues pour la fenêtre' }[c]).join(', '); };
+      if (non.length) anomalies.push({ code: 'handling-chauffeurs', atelier: a.id,
+        message: (a.nom || a.id) + ' : ' + non.length + (non.length > 1 ? ' vols ne sont pas chargés' : ' vol n’est pas chargé') + ' (' + dire(non) + ' ; premier : '
+          + non[0].x.v.id + ' de ' + hhmm(non[0].x.v.depart) + ').' });
+      if (tard.length) {
+        const pire = tard.reduce((p, q) => (q.x.finCharge - q.x.b.limite > p.x.finCharge - p.x.b.limite ? q : p));
+        anomalies.push({ code: 'handling-retard', atelier: a.id,
+          message: (a.nom || a.id) + ' : ' + tard.length + (tard.length > 1 ? ' vols chargés' : ' vol chargé') + ' après leur heure limite (' + dire(tard)
+            + ' ; le plus en retard : ' + pire.x.v.id + ', +' + Math.round(pire.x.finCharge - pire.x.b.limite) + ' min).' });
+      }
+    }
     for (const a of handlings) {
+      // Le handling 24 h/24 a son bilan : ses vols, à l'heure ou non, et pourquoi.
+      if (a.handling24h === true && suivis24h.has(a.id)) { bilan24h(a); continue; }
       const s = suspendus.get(a.id) || {};
       const lignes = journal.filter(l => l.handling && l.atelier === a.id);
       const mesVols = volsDe.get(a.id) || [];
@@ -2490,7 +2934,7 @@
     for (const v of suivi) {
       const a = atelierDe.get(v.id);
       if (v.presence == null || !Number.isFinite(v.debutPoste) || a.type === 'dispo' || a.type === 'appui'
-        || (a.type === 'handling' && creneauxDe(a).length)) { v.heuresSup = 0; continue; }
+        || (a.type === 'handling' && (creneauxDe(a).length || a.handling24h === true))) { v.heuresSup = 0; continue; }
       const coupee = v.lots.some(l => l.horsPoste && l.fait > 0) ? v.debutPoste + v.presence + SUP : -Infinity;
       const fin = Math.max(v.fin ?? -Infinity, coupee);
       v.heuresSup = Number.isFinite(fin) ? Math.max(0, Math.min(SUP, fin - (v.debutPoste + v.presence))) : 0;
@@ -2729,6 +3173,7 @@
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,
     pausesDe, fusionnerPauses, arretsDeLigne, finAvecPauses, vaguesDe, disponibleDes, debitRobot, ouvertureDe, prochaineOuverture,
     categorieVol, chauffeursDe, creneauxDe, chauffeursPresents, dureeLavageVol, trajetHandling, debutTrajet, volsParCamionDe, vitesseTunnel, machinesDesTunnels,
+    parCompagnie, escaleDe, quaiDepartDe, quaiRetourDe, dechargementDe, vehiculeDe, reglages24h, arriveeDe, besoin24h,
     UNITES_DEFAUT, unitesDe, retoursDeVols, besoinMateriel, sourceRetours, SOURCES_RETOURS,
     simuler, niveauA, niveauLineaire, dureeLisible
   };

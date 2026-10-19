@@ -2143,10 +2143,11 @@ function departsSuivis() {
     d.fin = fins.every(f => f != null) ? Math.max(...fins) : null;
     const h = charges.get(d.id);
     if (h) {
+      // Un handling 24 h/24 doit avoir chargé le vol avant sa limite (départ − marge), pas seulement à son départ.
       d.handling = h; d.complet = d.fin;
-      d.fin = h.fin; d.echeance = d.depart;
+      d.fin = h.fin; d.echeance = h.limite ?? d.depart;
       d.dernier = h.fin == null ? d.classes.find(c => c.etat.fin == null) || null : d.classes.find(c => c.etat.fin === d.complet) || null;
-      d.retard = h.fin == null ? null : Math.max(0, Math.round(h.fin - d.depart));
+      d.retard = h.fin == null ? null : Math.max(0, Math.round(h.fin - d.echeance));
       continue;
     }
     // La dernière classe fixe l'heure du vol : c'est elle qu'il faut regarder.
@@ -2209,7 +2210,10 @@ function renderFlights() {
             + (d.handling.attenteChauffeurs >= 1 ? ' (attendus ' + Math.round(d.handling.attenteChauffeurs) + ' min)' : '') : '') + '</small>'
         : d.handling && d.handling.etat === 'chauffeurs' ? '<small>pas assez de chauffeurs (' + d.handling.chauffeurs + ' pour un ' + (d.handling.categorie === 'long' ? 'long' : 'court') + ' courrier)</small>'
         : d.handling && d.handling.etat === 'bloque' ? '<small>le handling attend ' + escapeHTML((d.handling.attendu || []).map(x => MoteurProduction.libelleClasse(x.classe)).join(', ') || 'un vol précédent') + '</small>'
-        : d.handling && d.handling.etat === 'poste' ? '<small>poste du handling fini</small>' : '')
+        : d.handling && d.handling.etat === 'poste' ? '<small>poste du handling fini</small>'
+        : d.handling && d.handling.etat === 'vehicule' ? '<small>pas de véhicule libre (' + (d.handling.vehicule === 'vl' ? 'VL' : 'gros camion') + ')</small>'
+        : d.handling && d.handling.etat === 'fenetre' ? '<small>pas le temps de le charger avant ' + hh(d.handling.limite) + '</small>' : '')
+      + (d.handling && d.handling.cause && d.fin != null ? '<small>en retard : ' + { commande: 'commande pas prête', chauffeur: 'faute de chauffeur', vehicule: 'faute de véhicule', fenetre: 'fenêtre trop courte' }[d.handling.cause] + '</small>' : '')
       + '</td><td><div class="vol-repas">' + d.classes.map(pastille).join('') + '</div></td></tr>';
   }).join('') || '<tr><td colspan="5" class="empty-state">Aucun départ ne correspond à ces filtres.</td></tr>';
   renderFriseVols(departsSuivis(), etatDe, mot, icoEtat);
@@ -2369,7 +2373,7 @@ function renderHandlingVols() {
     const a = h[0], vus = (r.vols || []).length;
     const sans = (at.state.parcours || []).filter(p => Array.isArray(p.noeuds) && !p.noeuds.includes(a.service)).length;
     html = '<p><b>Handling : « ' + escapeHTML(a.nom) + ' »</b> — ' + (h.length > 1 ? h.length + ' cases · ' : '')
-      + 'arrive à ' + escapeHTML(a.debut) + ' (jour J), ' + a.simultanes + (a.simultanes > 1 ? ' vols' : ' vol') + ' à la fois, '
+      + (a.handling24h ? '24 h/24, en tournées qui chargent puis déchargent, ' : 'arrive à ' + escapeHTML(a.debut) + ' (jour J), ' + a.simultanes + (a.simultanes > 1 ? ' vols' : ' vol') + ' à la fois, ')
       + 'pas avant ' + String(Math.round((a.avance ?? 180) / 6) / 10).replace('.', ',') + ' h avant le départ. '
       + (vus ? '<b>' + (k.volsAHeure || 0) + ' vol' + (k.volsAHeure > 1 ? 's' : '') + ' chargé' + (k.volsAHeure > 1 ? 's' : '') + ' à l’heure sur ' + vus + '</b>'
         + (vus - (k.volsCharges || 0) ? ', ' + (vus - k.volsCharges) + ' non chargé' + (vus - k.volsCharges > 1 ? 's' : '') : '') + '.' : 'Aucun vol suivi.')

@@ -29,11 +29,14 @@
     row.push(cell.trim());garder();
     return rows;
   }
-  function parseFlights(text) { return parseFlightRows(csvRows(text)); }
+  function parseFlights(text, options) { return parseFlightRows(csvRows(text), options); }
   /* Les lignes d'un tableur : un CSV découpé, ou une feuille Excel. Dans ce
    * second cas, une heure arrive en fraction de jour (06:30 → 0,2708…) et une
-   * quantité en nombre : on les accepte tels quels. */
-  function parseFlightRows(input) {
+   * quantité en nombre : on les accepte tels quels.
+   * `options.eta` (banc d'essai de la version 1, docs/BANC_ESSAI.md) : lire aussi
+   * la colonne facultative heure_eta d'un départ, l'arrivée estimée de son avion. */
+  function parseFlightRows(input, options) {
+    const o=options||{};
     const rows=(input||[]).map(r=>{const out=(r||[]).map(v=>v===null||v===undefined?'':typeof v==='number'?v:String(v).trim());out.ligne=r&&r.ligne;return out;})
       .filter(r=>r.some(v=>v!==''));
     rows.forEach((r,i)=>{if(r.ligne===undefined)r.ligne=i+1;});
@@ -63,7 +66,9 @@
         if(bc+pc+yc+crew+spml===0)throw new Error('au moins une quantité doit être supérieure à zéro');
         const std=sens==='DEP'?time('heure_std'):get('heure_std')!==''?time('heure_std'):null;
         const sta=sens==='RET'?time('heure_sta'):get('heure_sta')!==''?time('heure_sta'):null;
-        out.push({id,cie,sens,avion:String(get('type_avion')||'—'),std,sta,bc,pc,yc,crew,spml});
+        // Plus tard que le départ sur l'horloge, l'arrivée estimée est celle de la veille.
+        const eta=o.eta&&sens==='DEP'&&headers.includes('heure_eta')&&get('heure_eta')!==''?time('heure_eta'):null;
+        out.push({id,cie,sens,avion:String(get('type_avion')||'—'),std,sta,bc,pc,yc,crew,spml,...(eta===null?{}:{eta:eta>std?eta-1440:eta})});
       } catch(e){errors.push('Ligne '+line+' : '+e.message);}
     });
     if(errors.length)throw new Error(errors.slice(0,8).join('\n')+(errors.length>8?'\n… '+(errors.length-8)+(errors.length-8>1?' autres erreurs.':' autre erreur.'):'')+'\nAucune donnée remplacée.');

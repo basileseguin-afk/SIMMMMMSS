@@ -187,6 +187,22 @@ courrier « Chauffeurs court courrier » (1) — deux colonnes de la feuille
 Ateliers. Une compagnie long courrier sans durée propre a une ligne, minutes
 vides.
 
+**Handling 24 h/24** (version 1, banc d'essai — [`BANC_ESSAI.md`](BANC_ESSAI.md),
+§ 3). Quand un handling a des réglages par compagnie pour ses tournées, la
+feuille porte cinq colonnes de plus : `Escale (min)` (de l'arrivée de l'avion à
+son départ ; vide : pas de déchargement), `Préparation au quai (min)`,
+`Déchargement (min)`, `Vidage au quai (min)` — `toutes` pour les compagnies
+sans ligne — et `Véhicule` (`VL` : un petit camion ; `camion` : un gros). Sans
+ces colonnes, l'import garde les réglages du site ; avec elles, il les
+remplace. La case « 24 h/24 » et les réglages des tournées (marge avant le
+départ, d'un avion à l'autre, flotte de VL…) n'ont pas de colonne : l'import
+les garde tels qu'ils sont sur le site.
+
+| Atelier | Compagnie | … | Escale (min) | Préparation au quai (min) | Déchargement (min) | Vidage au quai (min) | Véhicule |
+|---|---|---|---|---|---|---|---|
+| Handling | toutes | … | 90 | 10 | | 15 | |
+| Handling | SUD | … | 45 | | | | VL |
+
 ### Feuille « Chauffeurs »
 
 Les créneaux de chauffeurs d'un handling, le jour J : `Atelier`, `Début`,
@@ -199,6 +215,10 @@ vols à la fois (feuille Ateliers). Feuille absente : les créneaux du site rest
 |---|---|---|---|
 | Handling | 03:00 | 11:00 | 6 |
 | Handling | 11:00 | 20:00 | 3 |
+
+Colonne `Véhicule` (handling 24 h/24, version 1) : `VL` pour des chauffeurs
+de petit camion, `camion` (ou vide) pour un gros. Elle n'est écrite que si un
+créneau est en VL.
 
 ### Feuille « Plonge par vol »
 
@@ -339,6 +359,13 @@ Une seule table, mêmes colonnes que la feuille « Barème ».
 La feuille « Retours » porte `heure_sta` (arrivée) au lieu de `heure_std`.
 `type_avion`, `nb_CREW` et `nb_SPML` sont facultatifs. Un vol retour ramène du
 matériel à laver ; seuls les départs créent des compagnies × classes à fabriquer.
+
+Colonne facultative **`heure_eta`** (feuille « Départs » ou CSV ; version 1,
+banc d'essai — [`BANC_ESSAI.md`](BANC_ESSAI.md), § 3) : l'arrivée estimée de
+l'avion du départ, en HH:MM. Plus tard que `heure_std` sur l'horloge, elle
+désigne la veille. Elle sert au handling 24 h/24 (le déchargement de l'avion) ;
+vide, l'arrivée s'estime par l'escale de la compagnie. L'export ne l'écrit que
+si un départ en a une, juste après `heure_std`. La version 2 l'ignore.
 
 ### En CSV
 

@@ -5,6 +5,48 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-19 — Banc d'essai (3/7) : le handling 24 h/24, en tournées
+
+Le handling travaille jour et nuit : il charge les départs et décharge les
+avions arrivés. Une équipe de handling `handling24h` mène des **tournées** en
+parallèle — préparation au quai, aller, un ou plusieurs chargements, un avion
+arrivé à décharger, retour, vidage du sale au quai — au lieu de charger un vol
+à la fois, strictement dans l'ordre des départs, à partir de 00:00 du jour J.
+**Désactivé par défaut** : décoché, le handling est celui d'avant, champ par
+champ.
+
+- **Les avions** : l'avion d'un départ arrive à départ − escale (par
+  compagnie), ou à l'heure_eta du programme (nouvelle colonne facultative de la
+  feuille « Départs », lue par la v1 seulement). Une compagnie sans escale n'est
+  pas déchargée : la règle des retours reste. Un avion se décharge avant d'être
+  rechargé ; en escale courte, une même tournée décharge puis charge.
+- **Les règles** : chargé avant départ − marge (60 min), pas plus tôt que
+  `avance`, pas avant ses commandes ; l'échéance des commandes se déduit de la
+  tournée ; la plus urgente d'abord, un vol pas prêt ne retient plus les
+  suivants ; gros camions et VL comptés à part (flotte par type, chauffeurs par
+  type de véhicule) ; une tournée peut partir la veille au soir ; un chauffeur
+  finit sa tournée, en heures sup s'il le faut (§ 2). Le sale arrive à la
+  plonge à la fin du vidage au quai, aux quantités du vol (ou de la ligne retour
+  la plus proche).
+- **La sortie** : les tournées (véhicule, chauffeurs, étapes, vols chargés et
+  déchargés), les chauffeurs et leurs heures sup, le pic de véhicules ; par
+  vol, la limite, l'échéance des commandes, le déchargement, et la cause d'un
+  retard (commande, chauffeur, véhicule, fenêtre).
+- **Dans la page** : la case et les réglages dans la fiche du handling
+  (rangés avec l'équipe, `ory-ateliers-v1`, seulement une fois saisis), les
+  colonnes par compagnie (escale, quais, déchargement, véhicule), le véhicule
+  de chaque créneau, le bilan des tournées ; la page des départs montre la
+  limite et la cause d'un retard. Excel : colonnes nouvelles des feuilles
+  « Handling » et « Chauffeurs », écrites seulement quand elles servent ; les
+  réglages sans colonne sont gardés à l'import.
+- Fichiers : `moteur/production.js`, `moteur/journee.js` (l'heure_eta lue et
+  décalée), `ateliers.js` (validateur, fiche), `sim.js` (départs),
+  `ui-model.js` et `echanges.js` (copiés à l'identique dans `v2/` ; la v2 ne
+  passe pas l'option qui lit heure_eta et n'a pas ces réglages : rien n'y
+  change), `index.html` et `v2/index.html` (empreintes), `docs/BANC_ESSAI.md`,
+  `docs/FORMATS_EXCEL.md`, `README.md`, `tests/handling-24h.test.cjs`,
+  `tests/handling-24h-browser.cjs`, `tests/non-regression.test.cjs`.
+
 ## 2026-10-19 — Banc d'essai (2/7) : les heures supplémentaires
 
 Une équipe dont le travail n'est pas fini à la fin de sa présence reste,

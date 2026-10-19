@@ -24,9 +24,14 @@ const NOUVEAUX = {
   'ateliers[]': ['debutPoste', 'presence', 'jour', 'heuresSup']
 };
 /* Chaque évolution, réglée mais désactivée : la même journée qu'avant. */
-const DESACTIVEES = {
-  heuresSup: { actif: false, plafond: 180 }
-};
+const DESACTIVEES = s => ({
+  heuresSup: { actif: false, plafond: 180 },
+  // Évolution 3 : chaque handling a ses réglages 24 h/24 (escales, quais, VL…), sans le mode.
+  ...(handlingsDe(s).length ? { equipes: Object.fromEntries(handlingsDe(s).map(a => [a.id, { escale: { '*': 60, NORD: 30 }, quaiDepart: { '*': 10 },
+    dechargement: { '*': 20 }, quaiRetour: { '*': 15 }, vl: ['SUD'], entreAvions: 5, dechargementsParTournee: 2, margeDepart: 45,
+    margeEscaleCourte: 10, delaiArrivee: 5, camionsVL: 2 }])) } : {})
+});
+const handlingsDe = s => s.args.ateliers.filter(a => a.type === 'handling');
 const nouveau = (motif, cle) => Object.entries(NOUVEAUX).some(([m, cles]) => cles.includes(cle)
   && m.split('.').length === motif.split('.').length && m.split('.').every((x, i) => x === '*' || x === motif.split('.')[i]));
 
@@ -65,7 +70,7 @@ for (const s of REF.scenarios) {
   });
 
   test(s.nom + ' — chaque option réglée mais désactivée : la même journée', () => {
-    const e = ecarts(s.resultat, json(J.jouer(J.argumentsDeLaJournee(s.sauvegarde, s.args.vols, { ...s.options, ...DESACTIVEES }))));
+    const e = ecarts(s.resultat, json(J.jouer(J.argumentsDeLaJournee(s.sauvegarde, s.args.vols, { ...s.options, ...DESACTIVEES(s) }))));
     assert.deepEqual(e, [], e.join('\n'));
   });
 }

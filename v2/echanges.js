@@ -675,15 +675,20 @@
   const COLS_VOLS = ['vol_id', 'compagnie', 'type_avion', 'sens', 'heure_std', 'heure_sta', 'nb_BC', 'nb_PC', 'nb_YC', 'nb_CREW', 'nb_SPML'];
 
   function volsVersClasseur(vols) {
+    // L'arrivée estimée de l'avion d'un départ (heure_eta, banc d'essai de la version 1) : sa
+    // colonne n'existe que si un départ en a une ; la veille s'écrit à l'heure de l'horloge.
+    const eta = vols.some(v => v.sens === 'DEP' && Number.isFinite(v.eta));
     const ligne = (v, sens) => [v.id, v.cie, v.avion && v.avion !== '—' ? v.avion : null,
       sens === 'DEP' ? (Number.isFinite(v.std) ? hh(v.std) : null) : (Number.isFinite(v.sta) ? hh(v.sta) : null),
+      ...(eta && sens === 'DEP' ? [Number.isFinite(v.eta) ? hh(((v.eta % 1440) + 1440) % 1440) : null] : []),
       v.bc || 0, v.pc || 0, v.yc || 0, v.crew || 0, v.spml || 0];
-    const tete = h => ['vol_id', 'compagnie', 'type_avion', h, 'nb_BC', 'nb_PC', 'nb_YC', 'nb_CREW', 'nb_SPML'];
+    const tete = (h, e) => ['vol_id', 'compagnie', 'type_avion', h, ...(e ? ['heure_eta'] : []), 'nb_BC', 'nb_PC', 'nb_YC', 'nb_CREW', 'nb_SPML'];
     return [
-      { nom: 'Départs', lignes: [tete('heure_std'), ...vols.filter(v => v.sens === 'DEP').map(v => ligne(v, 'DEP'))] },
+      { nom: 'Départs', lignes: [tete('heure_std', eta), ...vols.filter(v => v.sens === 'DEP').map(v => ligne(v, 'DEP'))] },
       { nom: 'Retours', lignes: [tete('heure_sta'), ...vols.filter(v => v.sens === 'RET').map(v => ligne(v, 'RET'))] },
       lisezMoi('Programme de vols — départs et retours', [
         'Feuille « Départs » : un vol qui part, avec son heure de départ (heure_std) et ses quantités par classe.',
+        ...(eta ? ['   heure_eta (facultative) : l’arrivée estimée de son avion ; plus tard que heure_std sur l’horloge, c’est la veille.'] : []),
         'Feuille « Retours » : un vol qui revient, avec son heure d’arrivée (heure_sta). Il ramène du matériel à laver.',
         'Heures en HH:MM. Quantités entières. nb_CREW et nb_SPML sont facultatifs.',
         'Chaque départ crée ou nourrit une compagnie × classe (AF/BC, AF/YC…) : c’est l’unité fabriquée.',
@@ -693,21 +698,23 @@
     ];
   }
 
-  function classeurVersVols(feuilles) {
+  /** Les vols d'un classeur. `options` : celles de `parseFlightRows` (`eta` : lire heure_eta des départs). */
+  function classeurVersVols(feuilles, options) {
     const dep = T.feuille(feuilles, 'Départs', 'Departs'), ret = T.feuille(feuilles, 'Retours');
     if (dep || ret) {
       // Deux feuilles : on reconstitue le format à une table, sens compris.
-      const lignes = [COLS_VOLS];
+      const cols = COLS_VOLS.concat(options && options.eta ? ['heure_eta'] : []);
+      const lignes = [cols];
       const err = new Erreurs();
       for (const [f, sens, h] of [[dep, 'DEP', 'heure_std'], [ret, 'RET', 'heure_sta']]) {
         if (!f) continue;
         const { entetes, objets } = T.enObjets(f.lignes);
         if (!entetes.includes(h)) { err.ajouter(f.nom, null, 'colonne « ' + h + ' » manquante.'); continue; }
         for (const o of objets) {
-          const l = COLS_VOLS.map(c => {
+          const l = cols.map(c => {
             const k = T.cleEntete(c);
             if (c === 'sens') return sens;
-            if (c === (sens === 'DEP' ? 'heure_sta' : 'heure_std')) return null;
+            if (c === (sens === 'DEP' ? 'heure_sta' : 'heure_std') || (c === 'heure_eta' && sens !== 'DEP')) return null;
             const v = o[k];
             return v === undefined ? null : v;
           });
@@ -716,10 +723,10 @@
         }
       }
       err.lever();
-      return UI.parseFlightRows(lignes);
+      return UI.parseFlightRows(lignes, options);
     }
     const f = T.feuille(feuilles, 'Vols') || feuilles[0];
-    return UI.parseFlightRows(f.lignes);
+    return UI.parseFlightRows(f.lignes, options);
   }
 
   /* ======================================================================
@@ -868,6 +875,13 @@
     return id;
   }
 
+  /** Les réglages par compagnie du handling 24 h/24 (banc d'essai de la version 1), puis ses compagnies en VL. */
+  const CARTES_24H = ['escale', 'quaiDepart', 'dechargement', 'quaiRetour', 'vl'];
+  const COLONNES_24H = [['escale_min', 'escale'], ['preparation_au_quai_min', 'quaiDepart'], ['dechargement_min', 'dechargement'], ['vidage_au_quai_min', 'quaiRetour']];
+  /** Ses réglages d'équipe : sans colonne dans le classeur, un import les garde tels qu'ils sont sur le site. */
+  const REGLAGES_24H = ['handling24h', 'escale', 'quaiDepart', 'dechargement', 'quaiRetour', 'vl', 'entreAvions', 'dechargementsParTournee',
+    'margeDepart', 'margeEscaleCourte', 'delaiArrivee', 'camionsVL'];
+
   function ateliersVersClasseur(etat, ctx) {
     const services = ctx.services || [];
     const nomDe = id => (services.find(s => s.id === id) || {}).nom || id;
@@ -881,8 +895,12 @@
       'Chauffeurs long courrier', 'Chauffeurs court courrier', 'Plonge par vol', 'Vols par camion', 'Camions disponibles',
       'À la chaîne avec', 'Ligne robot', 'Arrêts de la ligne',
       'Ne travaille que si', 'Sinon, commandes à', 'Sinon, personnes à']];
-    const handling = [['Atelier', 'Compagnie', 'Aller (min)', 'Minutes par vol', 'Retour (min)', 'Courrier', 'Vols par camion']];
-    const chauffeurs = [['Atelier', 'Début', 'Fin', 'Chauffeurs']];
+    // Le handling 24 h/24 (banc d'essai de la version 1) : ses colonnes n'existent que s'il a des réglages par compagnie.
+    const h24 = etat.ateliers.some(a => a.type === 'handling' && CARTES_24H.some(k => a[k] && Object.keys(a[k]).length));
+    const vlCr = etat.ateliers.some(a => a.type === 'handling' && (a.creneaux || []).some(c => c.type === 'vl'));
+    const handling = [['Atelier', 'Compagnie', 'Aller (min)', 'Minutes par vol', 'Retour (min)', 'Courrier', 'Vols par camion',
+      ...(h24 ? ['Escale (min)', 'Préparation au quai (min)', 'Déchargement (min)', 'Vidage au quai (min)', 'Véhicule'] : [])]];
+    const chauffeurs = [['Atelier', 'Début', 'Fin', 'Chauffeurs', ...(vlCr ? ['Véhicule'] : [])]];
     const plongeVol = [['Atelier', 'Compagnie', 'Minutes par vol']];
     const fab = [['Atelier', 'Ordre', 'Compagnies × classes']];
     // Les heures propres à une case, pour sa journée (en heures depuis le 08/10).
@@ -921,10 +939,12 @@
       if (a.type === 'handling') {
         // Une ligne par compagnie réglée : sa durée, et si elle est long courrier.
         const longs = new Set(a.longs || []), d = a.durees || {}, al = a.allers || {}, re = a.retours || {}, vc = a.volsCamion || {};
-        if ([d, al, re].some(m => m[P.TOUTES] !== undefined)) handling.push([cles.cle(a), 'toutes', al[P.TOUTES] ?? null, d[P.TOUTES] ?? null, re[P.TOUTES] ?? null, null, null]);
-        for (const cie of [...new Set([d, al, re, vc].flatMap(m => Object.keys(m)).filter(k => k !== P.TOUTES).concat([...longs]))].sort())
-          handling.push([cles.cle(a), cie, al[cie] ?? null, d[cie] ?? null, re[cie] ?? null, longs.has(cie) ? 'long' : 'court', vc[cie] ?? null]);
-        for (const c of (a.creneaux || [])) chauffeurs.push([cles.cle(a), c.de, c.a, c.n]);
+        const cartes = h24 ? CARTES_24H.slice(0, 4).map(k => a[k] || {}) : [], vl = new Set(h24 ? a.vl || [] : []);
+        const plus = cie => (h24 ? [...cartes.map(m => m[cie] ?? null), cie === P.TOUTES ? null : vl.has(cie) ? 'VL' : 'camion'] : []);
+        if ([d, al, re, ...cartes].some(m => m[P.TOUTES] !== undefined)) handling.push([cles.cle(a), 'toutes', al[P.TOUTES] ?? null, d[P.TOUTES] ?? null, re[P.TOUTES] ?? null, null, null, ...plus(P.TOUTES)]);
+        for (const cie of [...new Set([d, al, re, vc, ...cartes].flatMap(m => Object.keys(m)).filter(k => k !== P.TOUTES).concat([...longs], [...vl]))].sort())
+          handling.push([cles.cle(a), cie, al[cie] ?? null, d[cie] ?? null, re[cie] ?? null, longs.has(cie) ? 'long' : 'court', vc[cie] ?? null, ...plus(cie)]);
+        for (const c of (a.creneaux || [])) chauffeurs.push([cles.cle(a), c.de, c.a, c.n, ...(vlCr ? [c.type === 'vl' ? 'VL' : 'camion'] : [])]);
       }
       if (a.type === 'lavage' && a.parVol) for (const [cie, v] of Object.entries(a.durees || {})) plongeVol.push([cles.cle(a), cie === P.TOUTES ? 'toutes' : cie, v]);
       (a.lots || []).forEach((l, i) => fab.push([cles.cle(a), i + 1, l.join(' + ')]));
@@ -1024,8 +1044,11 @@
         '   avec ses chauffeurs pour tout le trajet. Vols par camion : en général 1 ; plus, il charge aussi les vols suivants',
         '   de la même compagnie s’ils sont prêts. Feuille Ateliers : pour toutes ; feuille Handling : propre à une compagnie.',
         '   Camions disponibles : vide = pas de limite.',
+        ...(h24 ? ['   Handling 24 h/24 (version 1) : par compagnie, Escale (min) entre l’arrivée de l’avion et son départ (vide : pas de',
+          '   déchargement), Préparation au quai, Déchargement et Vidage au quai (min) ; Véhicule : « VL » (petit camion) ou « camion ».'] : []),
         'Chauffeurs : les créneaux du handling, le jour J (Début, Fin, nombre de chauffeurs). Un vol attend d’avoir ses chauffeurs libres.',
         '   Sans créneau : « Vols en même temps » (Ateliers). Un créneau qui finit avant son début passe minuit.',
+        ...(vlCr ? ['   Véhicule (handling 24 h/24) : « VL » pour des chauffeurs de petit camion ; « camion » pour un gros.'] : []),
         'Plonge par vol : Plonge par vol = oui (Ateliers), puis une ligne par compagnie : le temps qu’un tunnel met à laver un de ses vols ;',
         '   « toutes » pour les compagnies sans ligne. Chaque tunnel qui tourne lave un vol revenu à la fois, dans l’ordre des retours.',
         'Classes : les compagnies × classes. Parcours vide = celui de sa classe. Retirée = oui pour ne plus la fabriquer.',
@@ -1229,6 +1252,7 @@
           a.allers = { ...(ah.allers || {}) }; a.retours = { ...(ah.retours || {}) }; a.volsCamion = { ...(ah.volsCamion || {}) };
           a.volsParCamion = Math.max(1, Math.round(T.nombreDe(o.vols_par_camion, ah.volsParCamion ?? 1)) || 1);
           a.camions = Math.max(0, Math.round(T.nombreDe(o.camions_disponibles, ah.camions ?? 0)) || 0);
+          for (const k of REGLAGES_24H) if (ah[k] !== undefined) a[k] = JSON.parse(JSON.stringify(ah[k]));
         }
         // « AF ≥ 6 vols » : ne travaille que ces jours-là. Les équipes nommées se lisent ensuite.
         const si = String(o.ne_travaille_que_si ?? '').trim();
@@ -1399,6 +1423,8 @@
             if (entetes.includes('aller_min')) a.allers = {};
             if (entetes.includes('retour_min')) a.retours = {};
             if (entetes.includes('vols_par_camion')) a.volsCamion = {};
+            for (const [col, m] of COLONNES_24H) if (entetes.includes(col)) delete a[m];
+            if (entetes.includes('vehicule')) delete a.vl;
           }
           const c = String(o.compagnie ?? '').trim();
           const cie = !c || T.cleEntete(c) === 'toutes' ? P.TOUTES : c.toUpperCase();
@@ -1412,6 +1438,18 @@
             if (x === null) continue;
             if (!Number.isFinite(x) || x < 0) throw new Error(col.replace('_min', '') + ' : nombre positif attendu');
             a[m] = { ...(a[m] || {}), [cie]: x };
+          }
+          // Le handling 24 h/24 : l'escale, le quai, le déchargement ; le véhicule (« VL » : un petit camion).
+          for (const [col, m] of COLONNES_24H) {
+            const x = T.nombreDe(o[col], null);
+            if (x === null) continue;
+            if (!Number.isFinite(x) || x < 0) throw new Error(col.replace(/_min$/, '').replace(/_/g, ' ') + ' : nombre positif attendu');
+            a[m] = { ...(a[m] || {}), [cie]: x };
+          }
+          const vh = T.cleEntete(o.vehicule ?? '');
+          if (vh && cie !== P.TOUTES) {
+            if (!['vl', 'camion'].includes(vh)) throw new Error('véhicule : « VL » ou « camion »');
+            if (vh === 'vl' && !(a.vl || []).includes(cie)) a.vl = (a.vl || []).concat([cie]);
           }
           const vc = T.nombreDe(o.vols_par_camion, null);
           if (vc !== null) {
@@ -1436,7 +1474,9 @@
           if (!lus.has(a)) { lus.add(a); a.creneaux = []; }
           const n = T.nombreDe(o.chauffeurs, null);
           if (n === null || !Number.isFinite(n) || n < 0) throw new Error('chauffeurs : nombre positif attendu');
-          a.creneaux.push({ de: hh(T.heureDe(o.debut)), a: hh(T.heureDe(o.fin)), n: Math.round(n) });
+          const vh = T.cleEntete(o.vehicule ?? '');
+          if (vh && !['vl', 'camion'].includes(vh)) throw new Error('véhicule : « VL » ou « camion »');
+          a.creneaux.push({ de: hh(T.heureDe(o.debut)), a: hh(T.heureDe(o.fin)), n: Math.round(n), ...(vh === 'vl' ? { type: 'vl' } : {}) });
         });
       }
     }

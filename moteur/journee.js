@@ -238,7 +238,7 @@
     return (vols || []).map(f => Object.assign({}, f, {
       std: f.std == null ? f.std : f.std + k,
       sta: f.sta == null ? f.sta : f.sta + k
-    }));
+    }, Number.isFinite(f.eta) ? { eta: f.eta + k } : {}));
   }
 
   /**
@@ -393,9 +393,11 @@
   async function volsDuFichier(fichier, lireTexte) {
     if (fichier.size > MAX_VOLS) throw new Error('Fichier trop volumineux (maximum 4 Mo). Aucune donnée remplacée.');
     const UI = module_('OrlyUI', '../ui-model.js');
-    if (/\.(csv|txt)$/i.test(fichier.name)) return UI.parseFlights(await (lireTexte ? lireTexte(fichier) : fichier.text()));
+    // Les colonnes que seule la version 1 lit : l'arrivée estimée d'un départ (heure_eta).
+    const colonnes = { eta: true };
+    if (/\.(csv|txt)$/i.test(fichier.name)) return UI.parseFlights(await (lireTexte ? lireTexte(fichier) : fichier.text()), colonnes);
     const E = module_('OrlyEchanges', '../echanges.js'), T = module_('OrlyTableur', '../tableur.js');
-    return E.classeurVersVols(await T.lireFichier(fichier, MAX_VOLS));
+    return E.classeurVersVols(await T.lireFichier(fichier, MAX_VOLS), colonnes);
   }
 
   const api = {

@@ -357,7 +357,10 @@ le rouge ne sert qu’aux retards.
      commande, sont signalées (Départs, et points à regarder de
      l’Organisation) : « Passer au handling par vol » les fond en une seule. Les commandes doivent être au handling
      au départ moins le délai de chargement ; le vol doit être chargé à son
-     départ.
+     départ. Case **« 24 h/24, en tournées »** (v1, pour le banc d’essai) :
+     le handling travaille jour et nuit, en tournées qui chargent un ou
+     plusieurs départs puis déchargent un avion arrivé (escales, quais, gros
+     camions et VL par compagnie) ; voir [le banc d’essai](docs/BANC_ESSAI.md), § 3.
    - **Plus ›** *Barème par service* : les minutes d’un vol, service par service et classe
      par classe (une valeur commune, des valeurs propres à une compagnie, ou une
      grille compagnie par classe).
@@ -653,6 +656,8 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/non-regression.test.cjs` | Les options du banc d’essai désactivées, rien ne change : pour la démo et deux unités fictives relevées avant elles (`tests/non-regression.attendu.json`), les mêmes arguments du moteur et la même journée, champ par champ, hors champs nouveaux déclarés |
 | `tests/journee.test.cjs` | Jouer une journée hors du navigateur : la sauvegarde relue et refusée comme par « Restaurer », les options et leurs bornes, les réglages forcés, les vols lus comme dans la page (CSV, classeur), mêmes entrées même journée, l’outil en ligne de commande |
 | `tests/heures-sup.test.cjs` | Les heures supplémentaires de la v1 (banc d’essai) : 0 dans le poste, 40 min pour 40 min de débordement, le plafond coupe, ni mise à disposition ni appui, option désactivée = journée d’avant ; robot (la ligne continue), plonge par vol et au débit (ce qui l’attendait seulement), handling avec et sans créneaux, effectif calculé inchangé, réglage validé, options du banc |
+| `tests/handling-24h.test.cjs` | Le handling 24 h/24 de la v1 (banc d’essai) : une tournée charge A puis décharge B, pas de rechargement avant le déchargement, escale courte (un échange), compagnie sans escale (la règle des retours), un vol pas prêt ne bloque plus, VL et gros camions à part, échéance des commandes selon la tournée, sale à la plonge à la fin du vidage, chauffeur en heures sup ; la veille au soir, le long courrier, la validation, Excel, heure_eta |
+| `tests/handling-24h-browser.cjs` | Le handling 24 h/24 dans la page : la case et les réglages de la fiche, rangés avec l’équipe seulement saisis, l’heure_eta de l’import, le bilan des tournées, la page des départs, « Tout sauvegarder » |
 | `tests/heures-sup-browser.cjs` | Les heures supplémentaires dans la page : la case et le plafond des Réglages de la simulation, rangés avec le barème, gardés au rechargement et dans « Tout sauvegarder » ; la Synthèse par service et par équipe ; désactivées, rien ne se montre |
 | `tests/journee-browser.cjs` | Le banc d’essai joue la journée de la page : pour la démo et une unité fictive, « Tout sauvegarder » et le programme, rejoués par l’outil, rendent la journée de la page ; restaurée, la sauvegarde redonne la même journée |
 | `tests/effectif-calcule.test.cjs` | L’effectif calculé dans le moteur (v1 et v2) : minutes du poste (pauses fixes et de régime), plus petit effectif qui tient (rendement, étape à la chaîne), suit le nombre de vols de chaque compagnie, minutes propres à la case, robot et services constants non touchés, équipe sans commande ; poste constant sans minutes (temps nul, sans alerte de barème) ; effectif imposé (essai) ; choix par équipe |
