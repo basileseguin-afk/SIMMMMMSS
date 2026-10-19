@@ -1245,8 +1245,10 @@
           a.compagnies = !cies || T.cleEntete(cies) === 'toutes' ? [] : [...new Set(cies.split(/[\s,;+]+/).map(x => x.trim().toUpperCase()).filter(Boolean))];
           a.durees = avant && avant.type === 'handling' ? JSON.parse(JSON.stringify(avant.durees || {})) : { [P.TOUTES]: 30 };
           const ah = avant && avant.type === 'handling' ? avant : {};
+          // Les chauffeurs calculés (banc d'essai de la version 1) : sans colonne, ses réglages restent ceux du site.
           a.chauffeurs = { long: Math.max(1, Math.round(T.nombreDe(o.chauffeurs_long_courrier, (ah.chauffeurs || {}).long ?? 2)) || 2),
-            court: Math.max(1, Math.round(T.nombreDe(o.chauffeurs_court_courrier, (ah.chauffeurs || {}).court ?? 1)) || 1) };
+            court: Math.max(1, Math.round(T.nombreDe(o.chauffeurs_court_courrier, (ah.chauffeurs || {}).court ?? 1)) || 1),
+            ...Object.fromEntries(Object.entries(ah.chauffeurs || {}).filter(([k]) => k !== 'long' && k !== 'court').map(([k, v]) => [k, JSON.parse(JSON.stringify(v))])) };
           a.longs = (ah.longs || []).slice();
           a.creneaux = JSON.parse(JSON.stringify(ah.creneaux || []));
           a.allers = { ...(ah.allers || {}) }; a.retours = { ...(ah.retours || {}) }; a.volsCamion = { ...(ah.volsCamion || {}) };

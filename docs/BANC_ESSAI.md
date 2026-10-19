@@ -96,6 +96,7 @@ options des évolutions suivantes s'ajoutent à ce tableau ; celles d'une
 | `travail`, `attente`, `arret` | Ses minutes de travail, d'attente (un amont, du matériel, une ligne) et d'arrêt (pauses) |
 | `heuresSup` | Ses heures supplémentaires, en minutes **par personne** (§ 2) ; 0 sans l'option |
 | `tournees`, `conducteurs`, `heuresSupChauffeurs`, `vehiculesMax` | Un handling 24 h/24 : ses tournées, ses chauffeurs et leurs heures sup, ses véhicules (§ 3) |
+| `planChauffeurs` | Un handling 24 h/24 aux chauffeurs calculés : son plan de vacations, sa borne basse (§ 4) |
 
 Les noms `debutPoste` et `presence` sont ceux de la version 2, dans le même
 sens, pour une fusion future.
@@ -360,3 +361,175 @@ pas ; la veille au soir, le long courrier, le déterminisme, la validation,
 Excel, `heure_eta`, les options du banc) ; `tests/handling-24h-browser.cjs` (la fiche,
 l'enregistrement, les départs, « Tout sauvegarder ») ;
 `tests/non-regression.test.cjs` (réglé mais décoché : la même journée).
+
+## 4. Le handling calcule son nombre de chauffeurs au plus juste
+
+Le nombre de chauffeurs d'un handling 24 h/24 ne se saisit pas : il dépend
+des avions à charger et à décharger, et il doit être le plus bas possible. Le
+moteur calcule le plus petit effectif qui sert toutes les tournées à l'heure,
+sans plancher ni marge. Les créneaux saisis restent le second mode, pour
+rejouer un planning donné.
+
+### Le réglage
+
+**Équipes › la fiche du handling (24 h/24) › Chauffeurs › « Leur nombre :
+calculé au plus juste »**. Rangé dans `chauffeurs`, avec l'équipe
+(`ory-ateliers-v1`), chaque réglage seulement une fois saisi ; les créneaux
+saisis restent enregistrés, de côté, pour revenir à « saisi ». Il ne vaut qu'en
+24 h/24 : sans lui, le handling d'avant, ses créneaux. Le banc le force par
+`equipes` :
+
+```json
+{ "equipes": { "Quais": { "handling24h": true, "chauffeurs": { "mode": "calcules", "selonPreparation": true } } } }
+```
+
+| Réglage (`chauffeurs.…`) | Sens | Par défaut |
+| --- | --- | --- |
+| `mode` | `calcules` ; sinon les créneaux saisis (`saisis`) | saisis |
+| `selonPreparation` | Les fenêtres partent de l'heure où chaque vol est prêt (un premier passage de la journée la donne), et non des seules heures de vol | non |
+| `pasDebut` | Une vacation peut commencer toutes les `pasDebut` minutes | 30 (provisoire) |
+| `debutsPossibles` | Ou seulement à ces heures (`["06:00", "14:00", "22:00"]` : un roulement 3 × 8) | — |
+| `retardPauseMax` | Une pause se prend au plus tard tant de minutes après son seuil | 60 (provisoire) |
+| `iterationsMax` | Combien de fois la journée se rejoue pour ajouter une vacation (étape 3) | 5 |
+
+**Une vacation** dure la présence du régime — celle de l'équipe de handling si
+elle en a une, sinon la règle générale (480 min par défaut) — et porte ses
+pauses (15 min après 3 h, 45 min après 6 h par défaut ; le seuil se compte en
+temps de service, pauses d'avant comprises). Pour un chauffeur, une pause ne
+coupe pas une tournée : elle se prend entre deux tournées, dès qu'elle est due
+et qu'il est libre, au plus tard `retardPauseMax` minutes après son seuil ; un
+chauffeur ne part pas pour une tournée qui l'en empêcherait.
+
+**La journée est circulaire** : pour le calcul des vacations, l'heure se lit
+modulo 24 h, en supposant que la veille au soir ressemble à ce soir. Une
+vacation qui commence à 22:00 couvre donc aussi les tournées de 00:00 à 06:00
+(et, dans la journée jouée, la vacation de 22:00 de la veille est là pour les
+premières tournées). Les heures d'une vacation comptent le jour où elle
+commence.
+
+### L'algorithme
+
+Sans dépendance, déterministe (à égalité, toujours le même ordre : heure, puis
+identifiant), moins d'une seconde pour une journée de 200 vols (0,3 à 0,6 s
+mesurées, trois passages de la journée compris).
+
+0. **Un premier passage** de la journée, chauffeurs et véhicules sans limite,
+   donne les vols que ce handling charge et l'heure où chacun est prêt.
+1. **Le besoin** : les tournées et leur placement.
+   - *Les tâches* : pour chaque départ, son chargement (en escale courte, un
+     échange : décharger puis charger le même avion) ; pour chaque avion
+     arrivé, son déchargement ; chacun dans ses fenêtres (§ 3). Un vol jamais
+     prêt n'est pas chargé ; son avion se décharge quand même.
+   - *Les enchaînements* : les déchargements, le plus pressé d'abord, se
+     donnent chacun au chargement compatible — même véhicule, et des fenêtres
+     qui se rejoignent : l'avion est là quand la tournée y arrive, et déchargé
+     à temps pour son départ — qui ferme le plus tôt, jusqu'à
+     `dechargementsParTournee` par tournée, et seulement si cela ne coûte pas
+     plus de minutes-chauffeur que deux tournées séparées (un déchargement long
+     courrier derrière un chargement court courrier double les chauffeurs de
+     toute la tournée). Les autres partent seuls.
+   - *Le placement* : chaque tournée, la plus contrainte d'abord, prend dans
+     sa fenêtre l'heure où elle fait le moins monter le nombre de chauffeurs
+     occupés en même temps (puis la moins chargée, puis la plus tôt), sur la
+     journée circulaire, par type de véhicule, dans la limite de la flotte. Un
+     avion se décharge avant d'être rechargé : chaque tournée placée resserre
+     la fenêtre de celle qui sert le même avion. Un second placement, « au plus
+     tôt », est essayé aussi ; on garde celui qui demande le moins de
+     vacations (à égalité, le premier).
+2. **Les vacations** : couvrir ce besoin avec le moins de vacations possible,
+   par type de véhicule. Une tournée ne se partage pas : chacun de ses
+   chauffeurs la mène d'un bout à l'autre. Les tournées se donnent, dans
+   l'ordre où l'étape 1 les a placées, à des chauffeurs déjà en poste : chacune
+   peut glisser dans sa fenêtre jusqu'à l'heure où assez d'entre eux sont
+   libres pour la mener et la finir dans leur vacation, pauses comprises (à
+   heure égale, ceux dont la vacation finit le plus tôt — la règle de la
+   journée jouée). Seulement s'il n'y en a pas assez avant la fin de sa
+   fenêtre, on ouvre une vacation : celle qui commence le plus tard possible
+   avant elle et peut la mener ; la tournée glisse au besoin, au plus près de
+   son heure prévue, jusqu'à une heure où c'est possible. Le plan ne compte pas
+   sur les heures sup. Un enchaînement qui ne tient plus (les autres tournées
+   placées, son déchargement finirait trop tard) est scindé : le chargement
+   seul, le déchargement à part. Si toute la flotte est dehors pendant toute
+   la fenêtre, la tournée attend qu'un véhicule rentre (son vol est en retard,
+   faute de véhicule). La journée circulaire est coupée là où il y a le moins
+   de tournées (quatre coupures essayées, la meilleure retenue) ; une vacation
+   qui passe la coupure couvre aussi le début du tour suivant, et l'on refait
+   le tour jusqu'à ce que ces vacations-là ne changent plus.
+3. **La vérification** : la journée se joue avec ce plan, comme avec des
+   créneaux saisis — chaque vacation est un créneau, qui porte ses pauses.
+   Chaque tournée part à l'heure où le plan l'a placée (pas avant ; plus tard
+   si son vol n'est pas prêt), avec les chauffeurs prévus s'ils sont libres
+   (sinon selon la règle habituelle), et n'enchaîne que les déchargements
+   prévus. Si des vols sont en retard faute de chauffeur, le moteur ajoute une
+   vacation là où elle manque — à l'heure de début qui couvre le plus de ces
+   tournées, telles que le plan les plaçait ; autant que la première d'entre
+   elles a de chauffeurs (deux pour un long courrier) — et rejoue, au plus
+   `iterationsMax` fois. Une vacation ajoutée qui n'ôte aucun retard est
+   retirée, et la vérification s'arrête. Un retard dû à la production reste un
+   retard : il ne fait pas ajouter de chauffeur.
+
+**Ce que le plan ne peut pas faire.** Une tournée qu'aucune vacation possible
+ne peut mener dans sa fenêtre — avec un roulement fixe, une tournée à cheval
+sur un changement d'équipe ou sur la pause de tous, quand sa fenêtre est trop
+courte pour glisser — est mise en retard, dès qu'un chauffeur le peut, et
+comptée à part (`horsVacations`) ; elle n'ajoute pas de vacation pour rien.
+Avec les heures sup (§ 2), et seulement pour ces tournées-là, un chauffeur la
+finit en heures sup. Le plan compte un vol par chargement : il ne regroupe pas
+plusieurs vols dans un camion (`volsParCamion`).
+
+### La borne basse
+
+Rendue à côté du résultat, par type de véhicule, pour mesurer l'écart à
+l'optimum ; elle ne dépasse jamais le résultat :
+
+- `pic` : le plus de chauffeurs occupés en même temps (le plus bas des deux
+  placements, l'étalé de l'étape 1 et celui que les vacations ont retenu) ;
+- `parHeures` : les minutes-chauffeur des tournées ÷ les minutes utiles d'une
+  vacation (sa présence moins ses pauses) ;
+- `instants` : une vacation ne peut contenir deux instants distants d'une
+  présence entière ; le plus grand besoin cumulé en ⌊24 h ÷ présence⌋ instants
+  ainsi espacés (trois, pour 8 h) en demande donc autant de vacations distinctes
+  — souvent la plus forte des trois ;
+- `chauffeurs` : la plus grande des trois.
+
+Sur une journée fictive de 200 vols (tests), le plan trouve 55 vacations de gros
+camion et 9 de VL, pour une borne basse de 48 et 8.
+
+### Ce qu'il rend
+
+`resultat.ateliers[].planChauffeurs`, pour un handling aux chauffeurs calculés :
+
+| Champ | Sens |
+| --- | --- |
+| `vacations` | Le plan : `vehicule`, `debut` (HH:MM), `de` (minutes), `a` (`de` + présence), `n` (combien) |
+| `chauffeurs`, `total` | Le nombre de chauffeurs de la journée, par type (`camion`, `vl`) et en tout |
+| `heuresPayees` | Les minutes-chauffeur payées (vacations × présence) |
+| `borneBasse` | Par type : `pic`, `minutes`, `parHeures`, `instants`, `chauffeurs` ; et `total` |
+| `occupation` | Les minutes de tournée ÷ les minutes payées (`minutesTournees`) |
+| `vehiculesMax`, `vehiculesPlan` | Le pic de véhicules sortis par type, dans la journée jouée et dans le plan |
+| `heuresSupChauffeurs` | Les heures sup des chauffeurs, en minutes |
+| `presence`, `pauses`, `selonPreparation` | La vacation et le réglage du calcul |
+| `iterations`, `ajoutees` | Les passages de la vérification, et les vacations qu'elle a ajoutées par type |
+| `retardsChauffeur`, `horsVacations` | Les vols encore en retard faute de chauffeur ; les tournées qu'aucune vacation possible ne peut mener |
+| `tournees` | Les tournées telles que le plan les place (`vehicule`, `chauffeurs`, `depart`, `retour`, `charges`, `decharges`) |
+
+Les chauffeurs de la journée jouée (`conducteurs`) portent leurs pauses
+(`pauses` : `debut`, `duree`).
+
+Dans la page : la fiche du handling 24 h/24 a le choix du mode, ses réglages et
+le plan calculé, lisible comme des créneaux (véhicule, de, à, chauffeurs), avec
+son bilan (chauffeurs par type, heures payées, borne basse, occupation,
+véhicules, heures sup). « Reprendre ce plan en créneaux saisis » en fait des
+créneaux saisis, modifiables (sans pauses : des créneaux saisis n'en ont pas).
+
+Vérifications : `tests/chauffeurs-calcules.test.cjs` (des tournées qui ne se
+chevauchent jamais demandent un chauffeur ; deux tournées long courrier
+simultanées en demandent quatre ; enchaîner un chargement et un déchargement
+fait baisser le besoin ; le plan calculé ne laisse aucun vol en retard faute de
+chauffeur ; la borne basse ne dépasse jamais le résultat ; la limite de flotte
+est respectée ; le mode « saisis » garde le comportement actuel ; les pauses,
+les heures de début fixes, la sortie, « selon la préparation », le
+déterminisme et le temps de calcul, la validation, Excel, les options du banc) ;
+`tests/chauffeurs-calcules-browser.cjs` (la fiche, l'enregistrement, le plan,
+la reprise en créneaux) ; `tests/non-regression.test.cjs` (réglé sans le
+mode 24 h/24 : la même journée).

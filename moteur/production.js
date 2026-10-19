@@ -820,9 +820,353 @@
     ((atelier && atelier.creneaux) || []).forEach((c, i) => {
       const de = minutes(c.de); let a = minutes(c.a); if (a <= de) a += MINUTES_PAR_JOUR;
       const n = Math.max(0, Math.floor(+c.n) || 0), vehicule = c.type === 'vl' ? 'vl' : 'camion';
-      if (n > 0) for (const k of [-1, 0]) out.push({ creneau: i, de: de + k * MINUTES_PAR_JOUR, a: a + k * MINUTES_PAR_JOUR, n, vehicule, veille: k < 0 });
+      // Une vacation d'un plan calculé (§ 4) porte ses pauses : { du (minutes après son début), duree }, à
+      // prendre entre deux tournées, au plus tard `retardPause` minutes après.
+      const pauses = Array.isArray(c.pauses) ? c.pauses : [], retardPause = Math.max(0, +c.retardPause || 0);
+      if (n > 0) for (const k of [-1, 0]) out.push({ creneau: i, de: de + k * MINUTES_PAR_JOUR, a: a + k * MINUTES_PAR_JOUR, n, vehicule, veille: k < 0, pauses, retardPause });
     });
     return out;
+  }
+
+  /*
+   * LES CHAUFFEURS CALCULÉS AU PLUS JUSTE (banc d'essai, évolution 4 —
+   * docs/BANC_ESSAI.md § 4). Le nombre de chauffeurs d'un handling 24 h/24 ne
+   * se saisit pas : il dépend des avions à charger et à décharger. Le moteur
+   * calcule le plus petit effectif qui sert toutes les tournées à l'heure, en
+   * trois étapes : le besoin (les tournées placées dans leurs fenêtres pour
+   * que le moins de chauffeurs soient occupés en même temps), les vacations
+   * (le moins possible pour couvrir ce besoin), la vérification (la journée
+   * jouée avec ce plan ; une vacation de plus là où un vol manque de
+   * chauffeur). La journée y est circulaire : l'heure se lit modulo 24 h.
+   */
+  const VEHICULES = ['camion', 'vl'];
+  const modJour = t => ((Math.floor(t) % MINUTES_PAR_JOUR) + MINUTES_PAR_JOUR) % MINUTES_PAR_JOUR;
+
+  /** Les réglages du calcul des chauffeurs d'un handling, avec leurs valeurs par défaut (provisoires, à caler). */
+  function reglagesChauffeurs(atelier, regimeGeneral) {
+    const ch = (atelier && atelier.chauffeurs) || {};
+    const n = (v, d, min) => (v === undefined || v === null || v === '' || !Number.isFinite(+v) ? d : Math.max(min, +v));
+    // Une vacation dure la présence du régime (celle de l'équipe, si elle en a une) et porte ses pauses ;
+    // le seuil d'une pause se compte en temps de service, les pauses d'avant comprises.
+    const reg = normaliserRegime(atelier && atelier.regime && atelier.regime.actif !== false ? atelier.regime : undefined, regimeGeneral);
+    const presence = Math.max(30, Math.min(MINUTES_PAR_JOUR, Math.round(reg.presence)));
+    let avant = 0;
+    const pauses = [];
+    for (const x of reg.seuils) { const du = Math.round(x.apres + avant); if (du + x.duree <= presence) pauses.push({ du, duree: Math.round(x.duree) }); avant += x.duree; }
+    const pas = Math.round(n(ch.pasDebut, 30, 5));
+    const debuts = Array.isArray(ch.debutsPossibles) && ch.debutsPossibles.length
+      ? [...new Set(ch.debutsPossibles.map(x => modJour(minutes(x))))].sort((x, y) => x - y)
+      : Array.from({ length: Math.ceil(MINUTES_PAR_JOUR / pas) }, (_, i) => i * pas);
+    return { presence, pauses, utile: presence - pauses.reduce((k, x) => k + x.duree, 0), debuts,
+      retardPauseMax: Math.round(n(ch.retardPauseMax, 60, 0)), iterationsMax: Math.floor(n(ch.iterationsMax, 5, 0)),
+      selonPreparation: ch.selonPreparation === true, sup: 0 };
+  }
+
+  /**
+   * Étape 1, le besoin. Chaque départ a son chargement (un échange en escale
+   * courte), chaque avion arrivé son déchargement, dans leurs fenêtres (§ 3) :
+   *   — les enchaînements : chaque déchargement, le plus pressé d'abord, suit
+   *     le chargement compatible (même véhicule, fenêtres qui se rejoignent)
+   *     qui ferme le plus tôt, si cela ne coûte pas de minutes-chauffeur de
+   *     plus que deux tournées séparées ;
+   *   — le placement : chaque tournée, la plus contrainte d'abord, prend dans
+   *     sa fenêtre l'heure où elle fait le moins monter le nombre de chauffeurs
+   *     occupés en même temps (puis la moins chargée, puis la plus tôt), dans
+   *     la limite de la flotte, sur la journée circulaire, par véhicule. Un
+   *     avion se décharge avant d'être rechargé : chaque tournée placée resserre
+   *     la fenêtre de celle qui sert le même avion.
+   * @param vols [{ id, b: besoin24h, pret }] (pret : null, jamais prêt ; absent : sans en tenir compte)
+   * @param o { avance, entreAvions, dechargementsParTournee, flotte, chLong, chCourt }
+   */
+  function besoinDesTournees(vols, o) {
+    const J = MINUTES_PAR_JOUR, entre = o.entreAvions, N = o.dechargementsParTournee;
+    const kDe = b => (b.long ? o.chLong : o.chCourt);
+    const chargements = [], dechargements = [], tournees = [];
+    for (const x of vols) {
+      const b = x.b, pret = Number.isFinite(x.pret) ? x.pret : -Infinity, ouverture = b.depart - o.avance;
+      if (b.courte) {
+        // L'échange : décharger, puis charger le même avion.
+        const avantCharge = b.quaiDepart + b.aller + b.dechargement;
+        if (x.pret !== null) tournees.push({ quoi: 'echange', v: b.vehicule, k: kDe(b), d: avantCharge + b.charge + b.retour + b.quaiRetour,
+          es: Math.max(pret, Math.max(b.dispo, ouverture - b.dechargement) - b.quaiDepart - b.aller), ls: b.limite - b.charge - avantCharge,
+          charges: [{ x, debut: avantCharge }], decharges: [{ x, fin: avantCharge }] });
+        continue;
+      }
+      // Un vol jamais prêt n'est pas chargé ; son avion se décharge quand même. Un avion se décharge
+      // avant d'être rechargé : son chargement ne commence pas avant la fin du déchargement le plus tôt.
+      const decharge = b.arrivee != null ? b.dispo + b.dechargement : -Infinity;
+      if (x.pret !== null) chargements.push({ x, b, k: kDe(b), es: Math.max(pret, Math.max(ouverture, decharge) - b.quaiDepart - b.aller),
+        ls: b.limite - b.charge - b.aller - b.quaiDepart, suite: [] });
+      if (b.arrivee != null) dechargements.push({ x, b, k: kDe(b), finMax: b.limite - b.charge });
+    }
+    // La forme d'une tournée qui charge c puis décharge `suite` : sa durée, ses chauffeurs, sa fenêtre de départ.
+    const forme = (c, suite) => {
+      const debut = c.b.quaiDepart + c.b.aller;
+      let h = debut + c.b.charge, es = c.es, ls = c.ls, k = c.k;
+      const fins = [];
+      for (const u of suite) {
+        h += entre; es = Math.max(es, u.b.dispo - h);
+        h += u.b.dechargement; ls = Math.min(ls, u.finMax - h); fins.push(h); k = Math.max(k, u.k);
+      }
+      const d = h + (suite.length ? suite[suite.length - 1].b.retour + suite.reduce((n, u) => n + u.b.quaiRetour, 0) : c.b.retour);
+      return { debut, fins, d, k, es, ls };
+    };
+    const seul = u => ({ d: u.b.aller + u.b.dechargement + u.b.retour + u.b.quaiRetour, k: u.k });
+    const cle = x => String(x.id);
+    dechargements.sort((p, q) => p.finMax - q.finMax || p.b.dispo - q.b.dispo || cle(p.x).localeCompare(cle(q.x)));
+    const enchaine = new Set();
+    for (const u of dechargements) {
+      let mieux = null;
+      for (const c of chargements) {
+        if (c.x === u.x || c.b.vehicule !== u.b.vehicule || c.suite.length >= N) continue;
+        const f = forme(c, c.suite.concat([u]));
+        if (f.es > f.ls + 1e-9) continue;
+        const avant = forme(c, c.suite), s = seul(u);
+        if (f.k * f.d > avant.k * avant.d + s.k * s.d + 1e-9) continue;
+        if (!mieux || f.ls < mieux.f.ls - 1e-9 || (Math.abs(f.ls - mieux.f.ls) <= 1e-9 && cle(c.x).localeCompare(cle(mieux.c.x)) < 0)) mieux = { c, f };
+      }
+      if (mieux) { mieux.c.suite.push(u); enchaine.add(u); }
+    }
+    // Un déchargement seul : il part à vide, pour arriver à l'avion quand il est là.
+    const tourneeSeule = u => { const s = seul(u);
+      return { quoi: 'decharge', v: u.b.vehicule, k: s.k, d: s.d, es: u.b.dispo - u.b.aller, ls: u.finMax - u.b.dechargement - u.b.aller,
+        charges: [], decharges: [{ x: u.x, fin: u.b.aller + u.b.dechargement }] }; };
+    for (const c of chargements) {
+      const f = forme(c, c.suite);
+      const T = { quoi: c.suite.length ? 'enchainee' : 'charge', v: c.b.vehicule, k: f.k, d: f.d, es: f.es, ls: f.ls,
+        charges: [{ x: c.x, debut: f.debut }], decharges: c.suite.map((u, i) => ({ x: u.x, fin: f.fins[i] })) };
+      // Si l'enchaînement ne tient plus une fois les autres tournées placées : le chargement seul, et chaque déchargement à part.
+      if (c.suite.length) { const g = forme(c, []); T.scinder = () => ({ charge: { quoi: 'charge', v: T.v, k: g.k, d: g.d, es: g.es, ls: g.ls, charges: T.charges, decharges: [] },
+        seuls: c.suite.map(tourneeSeule) }); }
+      tournees.push(T);
+    }
+    for (const u of dechargements) if (!enchaine.has(u)) tournees.push(tourneeSeule(u));
+    // Le placement.
+    const D = {}, V = {};
+    for (const t of VEHICULES) { D[t] = new Float64Array(J); V[t] = new Float64Array(J); }
+    const cleT = T => (T.charges[0] || T.decharges[0]).x.id;
+    tournees.sort((p, q) => p.ls - q.ls || p.es - q.es || String(cleT(p)).localeCompare(String(cleT(q))));
+    const debutCharge = new Map(), finDecharge = new Map();
+    for (const T of tournees) {
+      let es = T.es, ls = T.ls;
+      for (const c of T.charges) if (finDecharge.has(c.x.id)) es = Math.max(es, finDecharge.get(c.x.id) - c.debut);
+      for (const u of T.decharges) if (debutCharge.has(u.x.id)) ls = Math.min(ls, debutCharge.get(u.x.id) - u.fin);
+      const lo = Math.ceil(es - 1e-9), hi = Math.max(lo, Math.floor(ls + 1e-9)), pas = hi - lo > 360 ? 5 : 1;
+      const len = Math.max(1, Math.ceil(T.d - 1e-9)), d = D[T.v], v = V[T.v], flotte = o.flotte[T.v];
+      let m = null;
+      for (let s = lo; s <= hi; s += pas) {
+        let pic = 0, aire = 0, sortis = 0;
+        for (let i = 0; i < len; i++) { const j = modJour(s + i); if (d[j] > pic) pic = d[j]; aire += d[j]; if (v[j] > sortis) sortis = v[j]; }
+        const ok = sortis + 1 <= flotte;
+        // « au plus tôt » (o.placement === 'tot') : la première heure qui tient dans la flotte.
+        if (o.placement === 'tot') { if (!m || (ok && !m.ok)) m = { s, ok, pic, aire }; if (ok) break; continue; }
+        if (!m || (ok && !m.ok) || (ok === m.ok && (pic < m.pic || (pic === m.pic && aire < m.aire - 1e-9)))) m = { s, ok, pic, aire };
+      }
+      T.depart = m.s; T.retour = m.s + T.d;
+      for (let i = 0; i < len; i++) { const j = modJour(m.s + i); d[j] += T.k; v[j] += 1; }
+      for (const c of T.charges) debutCharge.set(c.x.id, m.s + c.debut);
+      for (const u of T.decharges) finDecharge.set(u.x.id, m.s + u.fin);
+    }
+    return { tournees, D, V };
+  }
+
+  /**
+   * Étape 2, les vacations : couvrir le besoin avec le moins de vacations
+   * possible. Une tournée ne se partage pas : chacun de ses chauffeurs la
+   * mène d'un bout à l'autre, et une vacation porte ses pauses, prises entre
+   * deux tournées dès qu'elles sont dues (au plus tard `retardPauseMax` après
+   * leur seuil). Les tournées se donnent, dans l'ordre où l'étape 1 les a
+   * placées, à des chauffeurs déjà en poste : chacune peut glisser dans sa
+   * fenêtre jusqu'à l'heure où assez d'entre eux sont libres pour la mener et
+   * la finir dans leur vacation (à heure égale, ceux dont la vacation finit le
+   * plus tôt — la règle de la journée jouée). Seulement s'il n'y en a pas
+   * assez avant la fin de sa fenêtre, on ouvre une vacation : celle qui
+   * commence le plus tard possible avant elle. La journée est circulaire : on
+   * la coupe là où il y a le moins de tournées, et une vacation qui passe la
+   * coupure couvre aussi le début du tour suivant (on refait le tour jusqu'à
+   * ce que ces vacations-là ne changent plus).
+   * @param tournees [{ depart, d, k, es, ls, charges, decharges }] d'un type de véhicule
+   * @returns { vacations: [{ s, pauses }], departs: Map tournée → heure de départ retenue }
+   */
+  function vacationsPourTournees(tournees, R, flotte = Infinity) {
+    const J = MINUTES_PAR_JOUR;
+    if (!tournees.length) return { vacations: [], departs: new Map(), chauffeurs: new Map(), horsVacations: new Set(), scindees: [], attendVehicule: new Set() };
+    const occupe = new Float64Array(J);
+    for (const T of tournees) for (let i = 0; i < Math.ceil(T.d - 1e-9); i++) occupe[modJour(T.depart + i)] += T.k;
+    const coupes = R.debuts.slice().sort((x, y) => occupe[x] - occupe[y] || x - y).slice(0, 4);
+    let mieux = null;
+    for (const c of coupes) {
+      const v = affecterTournees(tournees, R, c, flotte);
+      if (!mieux || v.horsVacations.size < mieux.horsVacations.size || (v.horsVacations.size === mieux.horsVacations.size && v.vacations.length < mieux.vacations.length)) mieux = v;
+    }
+    return { vacations: mieux.vacations.map(v => ({ s: v.s, pauses: R.pauses.map(x => ({ ...x })) })).sort((x, y) => x.s - y.s), departs: mieux.departs,
+      chauffeurs: mieux.chauffeurs, horsVacations: mieux.horsVacations, scindees: mieux.scindees, attendVehicule: mieux.attendVehicule };
+  }
+  function affecterTournees(tournees, R, c, flotte = Infinity) {
+    const J = MINUTES_PAR_JOUR, P = R.presence;
+    // Chaque tournée sur la journée coupée en c : `dec` ramène à l'heure réelle.
+    const items = tournees.map((T, i) => { const u = modJour(T.depart - c), dec = T.depart - u; return { T, i, u, dec }; })
+      .sort((x, y) => x.u - y.u || x.T.ls - y.T.ls || x.i - y.i);
+    const debuts = [...new Set(R.debuts.map(x => modJour(x - c)))].sort((x, y) => x - y);
+    const chauffeur = (sigma, rang) => ({ sigma, fin: sigma + P, libre: sigma, rang,
+      pauses: R.pauses.map(x => ({ du: sigma + x.du, duree: x.duree, max: sigma + x.du + R.retardPauseMax, prise: null })) });
+    // Ses pauses dues à l'heure t, prises dès qu'il est libre ; `essai` : sans rien changer.
+    const prendre = (d, t, essai) => {
+      let libre = d.libre;
+      for (const x of d.pauses) { if (x.prise != null) continue; if (x.du > Math.max(libre, t) + 1e-9) break; const pr = Math.max(libre, x.du); libre = pr + x.duree; if (!essai) x.prise = pr; }
+      if (!essai) d.libre = libre;
+      return libre;
+    };
+    // Peut-il mener une tournée de t à f ? En poste, libre (pauses prises), fini dans sa vacation (ou dans
+    // `sup` minutes d'heures sup), sa prochaine pause encore à temps. Le plan ne compte pas sur les heures sup.
+    let sup = 0;
+    const peut = (d, t, f) => {
+      if (d.sigma > t + 1e-9 || t >= d.fin - 1e-9 || f > d.fin + sup + 1e-9) return false;
+      let libre = d.libre, prochaine = null;
+      for (const x of d.pauses) { if (x.prise != null) continue; if (x.du > Math.max(libre, t) + 1e-9) { prochaine = x; break; } libre = Math.max(libre, x.du) + x.duree; }
+      return libre <= t + 1e-9 && (!prochaine || f <= prochaine.max + 1e-9);
+    };
+    const ordre = f => (x, y) => ((f > x.fin + 1e-9) - (f > y.fin + 1e-9)) || x.fin - y.fin || x.rang - y.rang;
+    const tour = fantomes => {
+      const tous = fantomes.map((g, i) => ({ ...g, pauses: g.pauses.map(x => ({ ...x })), rang: -1 - i }));
+      const nouvelles = [], departs = new Map(), menees = new Map(), horsVacations = new Set(), debutCharge = new Map(), finDecharge = new Map();
+      // Les véhicules sortis, minute par minute (journée circulaire) : une tournée ne part que s'il en reste un.
+      const sortis = new Float64Array(J);
+      const vehiculeLibre = (t, d) => { if (!Number.isFinite(flotte)) return true; for (let i = 0; i < Math.max(1, Math.ceil(d - 1e-9)); i++) if (sortis[modJour(t + c + i)] + 1 > flotte) return false; return true; };
+      // Les enchaînements scindés dans ce tour : la tournée garde son chargement seul, ses déchargements partent à part.
+      const scindees = [], formeDe = new Map(), attendVehicule = new Set();
+      const placer = it => {
+        const T = formeDe.get(it.T) || it.T, dec = it.dec;
+        let es = T.es - dec, ls = T.ls - dec;
+        for (const x of T.charges) if (finDecharge.has(x.x.id)) es = Math.max(es, finDecharge.get(x.x.id) - x.debut - dec);
+        for (const x of T.decharges) if (debutCharge.has(x.x.id)) ls = Math.min(ls, debutCharge.get(x.x.id) - x.fin - dec);
+        // Un enchaînement qui ne tient plus (son déchargement finirait trop tard) : le chargement seul, et le
+        // déchargement à part, placé tout de suite.
+        if (ls < es - 1e-9 && T.scinder) {
+          const { charge, seuls } = T.scinder();
+          formeDe.set(it.T, charge); scindees.push({ T: it.T, charge, seuls });
+          for (const u of seuls) placer({ T: u, i: -1, u: it.u, dec });
+          return placer(it);
+        }
+        if (ls < es) ls = es;
+        // La flotte : si tous les véhicules sont dehors pendant toute la fenêtre, la tournée attend qu'un rentre.
+        if (Number.isFinite(flotte) && ![es, ls].some(h => vehiculeLibre(h, T.d))) {
+          let h = es; for (let n = 0; n < J && !vehiculeLibre(h, T.d); n++) h++;
+          if (h > ls + 1e-9) attendVehicule.add(it.T);
+          es = ls = h;
+        }
+        // Les heures où un chauffeur se libère dans la fenêtre (après sa tournée, ou sa pause) : la plus tôt où il y en a assez.
+        const heures = [es];
+        for (const d of tous) {
+          const l = prendre(d, es, true); if (l > es && l <= ls + 1e-9) heures.push(l);
+          if (d.sigma > es && d.sigma <= ls + 1e-9) heures.push(d.sigma);
+          for (const x of d.pauses) if (x.prise == null) { const apres = Math.max(l, x.du) + x.duree; if (apres > es && apres <= ls + 1e-9) heures.push(apres); }
+        }
+        heures.sort((x, y) => x - y);
+        let t = null, pris = null, meilleur = null;
+        for (const h of heures) {
+          if (!vehiculeLibre(h, T.d)) continue;
+          const ok = tous.filter(d => peut(d, h, h + T.d));
+          if (ok.length >= T.k) { t = h; pris = ok.sort(ordre(h + T.d)).slice(0, T.k); break; }
+          if (ok.length && (!meilleur || ok.length > meilleur.ok.length)) meilleur = { h, ok };
+        }
+        if (t == null) {
+          // Pas assez de chauffeurs en poste : des vacations nouvelles, qui commencent le plus tard possible
+          // avant la tournée et peuvent la mener (finie dans la vacation, pauses comprises). La tournée glisse
+          // dans sa fenêtre, au plus près de l'heure prévue, jusqu'à une heure où c'est possible ; les chauffeurs
+          // déjà en poste qui le peuvent à cette heure-là en sont.
+          const voulu = Math.min(Math.max(it.u, es), ls);
+          const tous3 = debuts.concat(debuts.map(x => x - J), debuts.map(x => x + J)).sort((x, y) => x - y);
+          const sigmaPour = h => { for (let i = tous3.length - 1; i >= 0; i--) { const sg = tous3[i]; if (sg <= h + 1e-9 && peut(chauffeur(sg, 0), h, h + T.d)) return sg; } return null; };
+          const essais = [voulu, es, ls, ...(meilleur ? [meilleur.h] : []), ...tous3.flatMap(sg => [sg, sg + P - T.d, ...R.pauses.flatMap(x => [sg + x.du + x.duree, sg + x.du + R.retardPauseMax - T.d])])]
+            .filter(h => h >= es - 1e-9 && h <= ls + 1e-9);
+          // La flotte : pas une heure où tous les véhicules sont dehors, s'il y en a une autre.
+          if (Number.isFinite(flotte) && essais.some(h => vehiculeLibre(h, T.d))) for (let i = essais.length - 1; i >= 0; i--) if (!vehiculeLibre(essais[i], T.d)) essais.splice(i, 1);
+          const parProximite = [...new Set(essais)].sort((x, y) => Math.abs(x - voulu) - Math.abs(y - voulu) || x - y);
+          let choix = null;
+          const chercher = () => {
+            for (const h of parProximite) {
+              const ok = tous.filter(d => peut(d, h, h + T.d)).sort(ordre(h + T.d));
+              if (ok.length >= T.k) return { h, ok };
+              const sg = sigmaPour(h); if (sg == null) continue;
+              if (!choix || ok.length > choix.ok.length) choix = { h, sg, ok };
+              if (ok.length >= T.k - 1) break;
+            }
+            return choix;
+          };
+          choix = chercher();
+          // Aucune vacation ne la contient : seulement alors, un chauffeur la finit en heures sup, si elles sont permises.
+          if (!choix && R.sup > 0) { sup = R.sup; choix = chercher(); sup = 0; }
+          // Aucune vacation ne peut la mener dans sa fenêtre (elle chevauche la fin de toutes, et sa fenêtre est
+          // trop courte pour glisser) : elle part en retard, dès qu'un chauffeur le peut — la journée jouée fera
+          // de même, sans prendre les chauffeurs prévus pour d'autres. Elle est comptée « hors vacations ».
+          if (!choix) {
+            horsVacations.add(it.T);
+            const apres = new Set(tous3.flatMap(sg => [sg, ...R.pauses.map(x => sg + x.du + x.duree)]));
+            for (const d of tous) { const l = prendre(d, ls, true); apres.add(l); for (const x of d.pauses) if (x.prise == null) apres.add(Math.max(l, x.du) + x.duree); }
+            for (const h of [...apres].filter(h => h > ls + 1e-9 && h <= ls + J).sort((x, y) => x - y)) {
+              if (!vehiculeLibre(h, T.d)) continue;
+              const ok = tous.filter(d => peut(d, h, h + T.d)).sort(ordre(h + T.d));
+              if (ok.length >= T.k) { choix = { h, ok }; break; }
+              const sg = sigmaPour(h); if (sg != null) { choix = { h, sg, ok }; break; }
+            }
+            if (!choix) { departs.set(it.T, voulu + dec); return; }
+          }
+          t = choix.h; pris = choix.ok.slice(0, T.k);
+          while (pris.length < T.k) { const d = chauffeur(choix.sg, nouvelles.length); tous.push(d); nouvelles.push(d); pris.push(d); }
+          sup = 0;
+        }
+        for (const d of pris) { prendre(d, t); d.libre = t + T.d; }
+        for (let i = 0; i < Math.max(1, Math.ceil(T.d - 1e-9)); i++) sortis[modJour(t + c + i)]++;
+        departs.set(it.T, t + dec); menees.set(it.T, pris.map(d => ({ d, dec })));
+        for (const x of T.charges) debutCharge.set(x.x.id, t + dec + x.debut);
+        for (const x of T.decharges) finDecharge.set(x.x.id, t + dec + x.fin);
+      };
+      for (const it of items) placer(it);
+      return { nouvelles, departs, menees, horsVacations, scindees, attendVehicule, fantomes: tous.filter(d => d.rang < 0) };
+    };
+    // Le premier tour, sans rien de la veille ; puis ce qui passe la coupure couvre le début du tour suivant.
+    let avant = tour([]), retenu = avant;
+    const cle = l => l.nouvelles.filter(d => d.fin > J + 1e-9).map(d => d.sigma).sort((x, y) => x - y).join(',');
+    for (let k = 0; k < 4; k++) {
+      const fantomes = avant.nouvelles.filter(d => d.fin > J + 1e-9).map(d => ({ sigma: d.sigma - J, fin: d.fin - J, libre: d.libre - J,
+        pauses: d.pauses.map(x => ({ du: x.du - J, duree: x.duree, max: x.max - J, prise: x.prise == null ? null : x.prise - J })) }));
+      const n = tour(fantomes);
+      // Un tour juste : les vacations qui passent la coupure sont celles qu'il a supposées.
+      if (cle(n) === cle(avant)) { if (n.nouvelles.length <= retenu.nouvelles.length) retenu = n; break; }
+      avant = n;
+    }
+    // Qui mène chaque tournée : la vacation (son heure de début, son rang parmi celles de la même heure, son
+    // jour : 0, ou −1 pour celle de la veille). Un fantôme est une vacation de ce tour qui passe la coupure.
+    const rangDe = new Map(), parDebut = new Map();
+    for (const d of retenu.nouvelles) { const sDeb = modJour(d.sigma + c); const n = parDebut.get(sDeb) || 0; rangDe.set(d, n); parDebut.set(sDeb, n + 1); }
+    const fantomeVers = new Map(), passent = retenu.nouvelles.filter(d => d.fin > J + 1e-9);
+    for (const g of (retenu.fantomes || [])) { const i = passent.findIndex(d => Math.abs(d.sigma - J - g.sigma) < 1e-9 && ![...fantomeVers.values()].includes(d)); if (i >= 0) fantomeVers.set(g, passent[i]); }
+    const chauffeurs = new Map();
+    for (const [T, l] of retenu.menees) chauffeurs.set(T, l.map(({ d, dec }) => {
+      const v = d.rang < 0 ? fantomeVers.get(d) : d; if (!v) return null;
+      const abs = d.sigma + dec, sDeb = modJour(abs);
+      return { s: sDeb, rang: rangDe.get(v), jour: Math.round((abs - sDeb) / J) };
+    }));
+    return { vacations: retenu.nouvelles.map(d => ({ s: modJour(d.sigma + c) })), departs: retenu.departs, chauffeurs, horsVacations: retenu.horsVacations,
+      scindees: retenu.scindees, attendVehicule: retenu.attendVehicule };
+  }
+
+  /**
+   * La borne basse d'un besoin (des chauffeurs, minute par minute, sur la journée circulaire) : son pic ; ses
+   * minutes-chauffeur ÷ les minutes utiles d'une vacation ; et, une vacation ne pouvant contenir deux instants
+   * distants d'une présence entière, le plus grand besoin cumulé en ⌊24 h ÷ présence⌋ instants ainsi espacés.
+   */
+  function borneBasse(D, R) {
+    let pic = 0, minutesBesoin = 0;
+    for (const x of D) { if (x > pic) pic = x; minutesBesoin += x; }
+    pic = Math.ceil(pic - 1e-9);
+    const parHeures = R.utile > 0 ? Math.ceil(minutesBesoin / R.utile - 1e-9) : 0;
+    const m = Math.max(1, Math.floor(MINUTES_PAR_JOUR / R.presence));
+    let instants = 0;
+    for (let x = 0; x < MINUTES_PAR_JOUR; x++) { let n = 0; for (let i = 0; i < m; i++) n += D[modJour(x + i * R.presence)]; if (n > instants) instants = n; }
+    instants = Math.ceil(instants - 1e-9);
+    return { pic, minutes: minutesBesoin, parHeures, instants, chauffeurs: Math.max(pic, parHeures, instants) };
   }
 
   /*
@@ -1509,6 +1853,13 @@
    */
   function simuler(p) {
     const opts = p || {};
+    // Un handling 24 h/24 aux chauffeurs calculés (§ 4) : son plan de vacations d'abord, puis la journée avec lui.
+    const calcules = (opts.ateliers || []).filter(a => a && a.type === 'handling' && a.handling24h === true && a.chauffeurs && a.chauffeurs.mode === 'calcules');
+    return calcules.length ? simulerAvecChauffeursCalcules(opts, calcules) : simulerJournee(opts);
+  }
+
+  function simulerJournee(p) {
+    const opts = p || {};
     const bareme = opts.bareme ? normaliserBareme(opts.bareme).bareme : BAREME_DEMO;
     const rendement = opts.rendement === undefined ? RENDEMENT_DEMO : opts.rendement;
     if (!(rendement > 0)) throw new Error('Le rendement doit être strictement positif.');
@@ -2068,7 +2419,14 @@
       const simultanes = Math.max(1, Math.floor(+a.simultanes) || 1);
       const conducteurs = [];
       cr.forEach(c => { for (let j = 0; j < c.n; j++) conducteurs.push({ id: (c.veille ? 'v' : '') + (c.creneau + 1) + '.' + (j + 1), creneau: c.creneau, veille: c.veille,
-        vehicule: c.vehicule, de: c.de, a: c.a, libre: c.de, heuresSup: 0, rang: conducteurs.length }); });
+        vehicule: c.vehicule, de: c.de, a: c.a, libre: c.de, heuresSup: 0, rang: conducteurs.length,
+        pauses: c.pauses.map(x => ({ du: c.de + x.du, duree: x.duree, max: c.de + x.du + c.retardPause, prise: null })) }); });
+      // Les pauses d'une vacation calculée (§ 4) : prises dès qu'elles sont dues, entre deux tournées.
+      const prendrePauses = (d, t) => {
+        for (const x of d.pauses) { if (x.prise != null) continue; if (x.du > Math.max(d.libre, t) + 1e-9) break; x.prise = Math.max(d.libre, x.du); d.libre = x.prise + x.duree; }
+      };
+      // Une tournée qui l'empêcherait de prendre sa prochaine pause à temps n'est pas pour lui.
+      const tientPause = (d, fin) => { const x = d.pauses.find(y => y.prise == null); return !x || fin <= x.max + 1e-9; };
       const plan = plan24.parVol;
       const mesVols = (volsDe.get(a.id) || []).map(v => {
         const x = plan.get(v.id) || { b: besoin24h(a, { id: v.id, cie: v.cie, std: v.depart }) };
@@ -2077,7 +2435,7 @@
         return { v, b: x.b, unites: x.unites || 0, libelle: x.libelle || String(v.id), attendus, pret: null,
           etat: 'attente', dech: x.b.arrivee == null ? null : 'attente', finDech: null, blocage: null };
       });
-      suivis24h.set(a.id, { mesVols, conducteurs, parChauffeurs, R, avance });
+      suivis24h.set(a.id, { mesVols, conducteurs, parChauffeurs, R, avance, finir: () => { for (const d of conducteurs) if (d.pauses.length) prendrePauses(d, d.a); } });
       const tournees = vue.tournees = [];
       const dehors = [];             // les tournées sorties : { fin, vehicule }
       // Les chauffeurs d'une tournée : « long courrier » si elle sert un vol long courrier.
@@ -2089,16 +2447,21 @@
       // Les fenêtres de départ d'une tournée : elle part pour arriver à l'avion
       // quand elle peut y travailler, pas avant. Pour charger : à l'ouverture, et
       // son avion déchargé (un avion se décharge avant d'être rechargé).
-      const departCharge = x => Math.max(ouverture(x), x.finDech ?? -Infinity) - x.b.quaiDepart - x.b.aller;
+      // Un plan de chauffeurs calculé (§ 4) : ses tournées partent à l'heure où il les a placées, pas
+      // avant, et n'enchaînent que les déchargements qu'il a prévus.
+      const prevu = a._plan || null;
+      const prevue = (m, x) => (prevu && prevu[m].has(x.v.id) ? prevu[m].get(x.v.id) : -Infinity);
+      const departCharge = x => Math.max(Math.max(ouverture(x), x.finDech ?? -Infinity) - x.b.quaiDepart - x.b.aller, prevue('charge', x));
       // Un échange (escale courte) : quand l'avion est là, décharger puis charger.
-      const departEchange = x => Math.max(x.b.dispo, ouverture(x) - x.b.dechargement) - x.b.quaiDepart - x.b.aller;
+      const departEchange = x => Math.max(Math.max(x.b.dispo, ouverture(x) - x.b.dechargement) - x.b.quaiDepart - x.b.aller, prevue('charge', x));
       // Un déchargement seul attend qu'une tournée passe après un chargement, sauf
       // s'il presse : son départ est prêt et sa fenêtre ouvre, ou il ne reste que
-      // le temps d'y aller pour que le vol soit encore chargé à l'heure.
+      // le temps d'y aller pour que le vol soit encore chargé à l'heure. Avec un
+      // plan : à l'heure prévue, ou, s'il devait suivre un chargement, s'il presse.
       const finDechargement = x => x.b.limite - x.b.charge;
       const presseA = x => finDechargement(x) - x.b.dechargement - x.b.aller;
-      const departSeul = x => Math.max(x.b.dispo - x.b.aller,
-        x.pret != null ? Math.min(presseA(x), ouverture(x) - x.b.dechargement - x.b.aller) : presseA(x));
+      const departSeul = x => Math.max(x.b.dispo - x.b.aller, prevu ? (prevu.seul.has(x.v.id) ? prevu.seul.get(x.v.id) : presseA(x))
+        : x.pret != null ? Math.min(presseA(x), ouverture(x) - x.b.dechargement - x.b.aller) : presseA(x));
       function candidats(t) {
         const out = [];
         for (const x of mesVols) {
@@ -2120,14 +2483,15 @@
         let h = t;
         const pas = (etape, d, vol) => { if (!(d > 0) && etape !== 'chargement' && etape !== 'dechargement') return; const de = h; h += Math.max(0, d); etapes.push({ etape, de, a: h, ...(vol != null ? { vol } : {}) }); };
         const attendre = jusqua => { if (jusqua > h + 1e-9) { etapes.push({ etape: 'attente', de: h, a: jusqua }); h = jusqua; } };
-        // Un avion arrivé, du même type de véhicule, à décharger : le plus urgent.
+        // Un avion arrivé, du même type de véhicule, à décharger : le plus urgent (avec un plan : un de ceux qu'il a prévus).
+        const prevus = prevu ? new Set(c.quoi === 'charge' ? prevu.suite.get(x.v.id) || [] : []) : null;
         const autresDecharges = () => {
           while (decharges.length < R.dechargementsParTournee) {
             const arrivee = h + R.entreAvions;
             // Pas un avion qu'elle déchargerait trop tard pour que son départ soit encore chargé à l'heure, sauf
             // s'il aurait déjà dû partir seul : mieux vaut tard que jamais.
             const y = mesVols.filter(z => z.dech === 'attente' && !z.b.courte && z.b.vehicule === vehicule && !decharges.includes(z)
-              && z.b.dispo <= arrivee + 1e-9 && !(sansLong && z.b.long)
+              && z.b.dispo <= arrivee + 1e-9 && !(sansLong && z.b.long) && (!prevus || prevus.has(z.v.id))
               && (arrivee + z.b.dechargement <= finDechargement(z) + 1e-9 || t >= departSeul(z) - 1e-9))
               .sort((p, q) => finDechargement(p) - finDechargement(q) || p.b.depart - q.b.depart || String(p.v.id).localeCompare(String(q.v.id)))[0];
             if (!y) return;
@@ -2141,8 +2505,9 @@
           autresDecharges();
         } else {
           // Les chargements : ce vol, puis les suivants de la même compagnie, prêts, jusqu'à « vols par camion ».
+          // (Un plan compte un vol par chargement : il ne regroupe pas.)
           const groupe = [x];
-          if (c.quoi === 'charge') {
+          if (c.quoi === 'charge' && !prevu) {
             const parCamion = volsParCamionDe(a, x.v.cie);
             let arrivee = t + x.b.quaiDepart + x.b.aller + x.b.charge;
             for (const w of mesVols) {
@@ -2170,8 +2535,14 @@
         return { etapes, fin: h, charges, decharges, long, vehicule, echange: c.quoi === 'echange', chauffeurs: long ? chLong : chCourt };
       }
       /** Les chauffeurs d'une tournée : de son véhicule, à leur poste à son départ, libres, qui la finissent dans leurs heures (ou leurs heures sup). */
-      function choisir(p, t) {
-        const ok = conducteurs.filter(d => d.vehicule === p.vehicule && d.de <= t + 1e-9 && t < d.a - 1e-9 && d.libre <= t + 1e-9 && p.fin <= d.a + SUP + 1e-9);
+      const conducteurParId = new Map(conducteurs.map(d => [d.id, d]));
+      function choisir(p, t, c) {
+        for (const d of conducteurs) if (d.pauses.length) prendrePauses(d, t);
+        const peutMener = d => d.vehicule === p.vehicule && d.de <= t + 1e-9 && t < d.a - 1e-9 && d.libre <= t + 1e-9 && p.fin <= d.a + SUP + 1e-9 && tientPause(d, p.fin);
+        // Le plan dit qui la mène : eux, s'ils le peuvent.
+        const voulus = prevu && c ? prevu.chauffeurs.get((c.quoi === 'decharge' ? 'd:' : 'c:') + c.x.v.id) : null;
+        if (voulus) { const l = voulus.map(id => conducteurParId.get(id)).filter(d => d && peutMener(d)); if (l.length >= p.chauffeurs) return l.slice(0, p.chauffeurs); }
+        const ok = conducteurs.filter(peutMener);
         if (ok.length < p.chauffeurs) return null;
         ok.sort((u, w) => ((p.fin > u.a + 1e-9) - (p.fin > w.a + 1e-9)) || u.a - w.a || u.rang - w.rang);
         return ok.slice(0, p.chauffeurs);
@@ -2182,9 +2553,9 @@
         const noter = raison => { c.x.blocage = raison; return false; };
         if (dehors.filter(o => o.vehicule === vehicule).length >= R.flotte[vehicule]) return noter('vehicule');
         if (!parChauffeurs && dehors.length >= simultanes) return noter('chauffeur');
-        let p = composer(c, t, false), pris = parChauffeurs ? choisir(p, t) : [];
+        let p = composer(c, t, false), pris = parChauffeurs ? choisir(p, t, c) : [];
         // Un long courrier à décharger demanderait plus de chauffeurs : la tournée s'en passe.
-        if (!pris && p.long && !c.x.b.long && c.quoi !== 'decharge') { p = composer(c, t, true); pris = choisir(p, t); }
+        if (!pris && p.long && !c.x.b.long && c.quoi !== 'decharge') { p = composer(c, t, true); pris = choisir(p, t, c); }
         if (!pris) return noter('chauffeur');
         lancer(p, pris, t, c);
         return true;
@@ -2802,8 +3173,12 @@
      * véhicule ; « fenetre » si rien de cela, mais les durées ne tiennent pas.
      */
     function bilan24h(a) {
-      const { mesVols, conducteurs, avance, chauffeurs } = suivis24h.get(a.id), vue = parId.get(a.id);
-      const causeDe = x => (x.pret == null || x.pret > x.b.echeance + 1e-9 ? 'commande' : x.blocage || 'fenetre');
+      const { mesVols, conducteurs, avance, chauffeurs, finir } = suivis24h.get(a.id), vue = parId.get(a.id);
+      finir();
+      // Un plan calculé qui a fait attendre un véhicule à la tournée : la flotte en est la cause.
+      const parVehicule = (a._plan && a._plan.parVehicule) || new Set(), parChauffeur = (a._plan && a._plan.parChauffeur) || new Set();
+      const causeDe = x => (x.pret == null || x.pret > x.b.echeance + 1e-9 ? 'commande'
+        : x.blocage || (parVehicule.has(x.v.id) ? 'vehicule' : parChauffeur.has(x.v.id) ? 'chauffeur' : 'fenetre'));
       const ETAT = { commande: 'bloque', chauffeur: 'chauffeurs', vehicule: 'vehicule', fenetre: 'fenetre' };
       const tard = [], non = [];
       for (const x of mesVols) {
@@ -2828,7 +3203,8 @@
           attendu: x.pret == null ? x.attendus.filter(e => !e.ev.declenche).map(e => ({ service: e.service, classe: e.classe })) : null });
       }
       // Les chauffeurs, leurs heures sup, et le pic de véhicules sortis par type.
-      vue.conducteurs = conducteurs.map(d => ({ id: d.id, vehicule: d.vehicule, de: d.de, a: d.a, ...(d.veille ? { veille: true } : {}), heuresSup: d.heuresSup }));
+      vue.conducteurs = conducteurs.map(d => ({ id: d.id, vehicule: d.vehicule, de: d.de, a: d.a, ...(d.veille ? { veille: true } : {}), heuresSup: d.heuresSup,
+        ...(d.pauses.length ? { pauses: d.pauses.filter(x => x.prise != null).map(x => ({ debut: x.prise, duree: x.duree })) } : {}) }));
       vue.heuresSupChauffeurs = conducteurs.reduce((n, d) => n + d.heuresSup, 0);
       const pic = type => { let m = 0; for (const t of vue.tournees) if (t.vehicule === type) m = Math.max(m, vue.tournees.filter(u => u.vehicule === type && u.depart <= t.depart + 1e-9 && u.retour > t.depart + 1e-9).length); return m; };
       vue.vehiculesMax = { camion: pic('camion'), vl: pic('vl') };
@@ -2990,6 +3366,163 @@
       plonge,
       finDe
     };
+  }
+
+  /**
+   * Les chauffeurs calculés au plus juste (§ 4) : un premier passage, sans
+   * limite de chauffeurs ni de véhicules, donne les vols du handling et l'heure
+   * où chacun est prêt ; le besoin et les vacations s'en déduisent (étapes 1 et
+   * 2) ; puis la journée se joue avec ce plan comme avec des créneaux saisis.
+   * Un vol en retard faute de chauffeur ajoute une vacation là où elle manque,
+   * et la journée se rejoue, au plus `iterationsMax` fois (étape 3). Un retard
+   * dû à la production reste un retard : il n'ajoute pas de chauffeur.
+   */
+  function simulerAvecChauffeursCalcules(opts, calcules) {
+    const ids = new Set(calcules.map(a => a.id));
+    const jouerAvec = f => simulerJournee({ ...opts, ateliers: opts.ateliers.map(a => (ids.has(a.id) ? f(a) : a)) });
+    const r0 = jouerAvec(a => ({ ...a, creneaux: [], simultanes: 100000, camions: 0, camionsVL: 0 }));
+    if (!r0.ok) return r0;
+    const brut = new Map((opts.vols || []).filter(v => (v.sens || 'DEP') === 'DEP').map(v => [v.id, v]));
+    const nb = (v, d) => { const k = +v; return Number.isInteger(k) && k > 0 ? k : d; };
+    const plans = calcules.map(a => {
+      const R = { ...reglagesChauffeurs(a, opts.regime), sup: opts.heuresSup && opts.heuresSup.actif !== false && +opts.heuresSup.plafond > 0 ? +opts.heuresSup.plafond : 0 };
+      const H = reglages24h(a), ch = a.chauffeurs || {};
+      const avance = Number.isFinite(+a.avance) && a.avance !== null && a.avance !== '' ? Math.max(0, +a.avance) : AVANCE_HANDLING;
+      // Les fenêtres se lisent sur les heures de vol ; « selon la préparation », pas avant que le vol soit prêt.
+      const vols = r0.vols.filter(v => v.atelier === a.id).map(v => ({ id: v.id, b: besoin24h(a, { ...(brut.get(v.id) || { id: v.id }), cie: v.cie, std: v.depart }),
+        ...(R.selonPreparation ? { pret: v.pret } : {}) }));
+      // Deux placements à l'étape 1 — étalé (le pic le plus bas), et au plus tôt —, chacun couvert de vacations :
+      // on garde celui qui en demande le moins (à égalité, l'étalé). Le besoin étalé sert à la borne basse.
+      const essai = placement => {
+        const besoin = besoinDesTournees(vols, { avance, entreAvions: H.entreAvions, dechargementsParTournee: H.dechargementsParTournee, flotte: H.flotte,
+          chLong: nb(ch.long, 2), chCourt: nb(ch.court, 1), placement });
+        const vacations = {}, affectation = {};
+        for (const t of VEHICULES) { affectation[t] = vacationsPourTournees(besoin.tournees.filter(T => T.v === t), R, H.flotte[t]); vacations[t] = affectation[t].vacations; }
+        const hors = VEHICULES.reduce((n, t) => n + affectation[t].horsVacations.size, 0), total = VEHICULES.reduce((n, t) => n + vacations[t].length, 0);
+        return { besoin, vacations, affectation, hors, total };
+      };
+      const etale = essai('nivele'), tot = essai('tot');
+      const retenu = tot.hors < etale.hors || (tot.hors === etale.hors && tot.total < etale.total) ? tot : etale;
+      const besoin = retenu.besoin, vacations = retenu.vacations, besoinEtale = etale.besoin.D;
+      for (const t of VEHICULES) {
+        const v = retenu.affectation[t];
+        // Les enchaînements que l'étape 2 a dû scinder.
+        for (const x of v.scindees) { Object.assign(x.T, x.charge); delete x.T.scinder; besoin.tournees.push(...x.seuls); }
+        // Les tournées partent à l'heure que les vacations leur ont trouvée : le besoin se relit.
+        for (const [T, depart] of v.departs) { T.depart = depart; T.retour = depart + T.d; T.menee = v.chauffeurs.get(T) || [];
+          if (v.horsVacations.has(T)) T.horsVacations = true; if (v.attendVehicule.has(T)) T.attendVehicule = true; }
+      }
+      besoin.D = {}; besoin.V = {};
+      for (const t of VEHICULES) { besoin.D[t] = new Float64Array(MINUTES_PAR_JOUR); besoin.V[t] = new Float64Array(MINUTES_PAR_JOUR); }
+      for (const T of besoin.tournees) for (let i = 0; i < Math.max(1, Math.ceil(T.d - 1e-9)); i++) { const j = modJour(T.depart + i); besoin.D[T.v][j] += T.k; besoin.V[T.v][j] += 1; }
+      return { a, R, besoin, besoinEtale, vacations, iterations: 0, ajoutees: { camion: 0, vl: 0 } };
+    });
+    // Le plan, lisible comme des créneaux : une ligne par véhicule et par heure de début.
+    const groupes = pl => VEHICULES.flatMap(t => {
+      const n = new Map(); for (const v of pl.vacations[t]) n.set(v.s, (n.get(v.s) || 0) + 1);
+      return [...n].sort((x, y) => x[0] - y[0]).map(([s, k]) => ({ vehicule: t, s, n: k }));
+    });
+    const creneauxDu = pl => groupes(pl).map(g => ({ de: hhmm(g.s), a: hhmm(modJour(g.s + pl.R.presence)), n: g.n, ...(g.vehicule === 'vl' ? { type: 'vl' } : {}),
+      pauses: pl.R.pauses, retardPause: pl.R.retardPauseMax }));
+    // Les tournées du plan, pour la journée qui le joue : l'heure de chacune, et ses enchaînements.
+    // Et qui les mène : l'identifiant des chauffeurs dans la journée jouée (créneau.rang ; « v » : la veille).
+    const prevuDu = pl => {
+      const charge = new Map(), seul = new Map(), suite = new Map(), chauffeurs = new Map(), parVehicule = new Set(), parChauffeur = new Set();
+      const index = new Map(groupes(pl).map((g, i) => [g.vehicule + '|' + g.s, i]));
+      for (const T of pl.besoin.tournees) {
+        for (const c of T.charges) charge.set(c.x.id, T.depart);
+        if (T.quoi === 'decharge') seul.set(T.decharges[0].x.id, T.depart);
+        if (T.quoi === 'enchainee') suite.set(T.charges[0].x.id, T.decharges.map(u => u.x.id));
+        // Une tournée que le plan fait attendre un véhicule : son retard est dû à la flotte ; une tournée
+        // qu'aucune vacation possible ne mène dans sa fenêtre : il l'est au manque de chauffeur.
+        if (T.attendVehicule) for (const x of T.charges.concat(T.decharges)) parVehicule.add(x.x.id);
+        if (T.horsVacations) for (const x of T.charges.concat(T.decharges)) parChauffeur.add(x.x.id);
+        const ids = (T.menee || []).map(m => (m && index.has(T.v + '|' + m.s) && (m.jour === 0 || m.jour === -1)
+          ? (m.jour < 0 ? 'v' : '') + (index.get(T.v + '|' + m.s) + 1) + '.' + (m.rang + 1) : null));
+        if (ids.length && ids.every(Boolean)) chauffeurs.set((T.charges.length ? 'c:' + T.charges[0].x.id : 'd:' + T.decharges[0].x.id), ids);
+      }
+      return { charge, seul, suite, chauffeurs, parVehicule, parChauffeur };
+    };
+    const manquentDe = (res, pl) => res.vols.filter(v => v.atelier === pl.a.id && v.cause === 'chauffeur')
+      .sort((x, y) => x.limite - y.limite || String(x.id).localeCompare(String(y.id)));
+    let r, avant = null;
+    for (let garde = 0; garde < 100; garde++) {
+      const cr = new Map(plans.map(pl => [pl.a.id, creneauxDu(pl)])), prevus = new Map(plans.map(pl => [pl.a.id, prevuDu(pl)]));
+      r = jouerAvec(a => ({ ...a, creneaux: cr.get(a.id), _plan: prevus.get(a.id) }));
+      if (!r.ok) return r;
+      // Une vacation ajoutée qui n'ôte aucun retard faute de chauffeur ne sert à rien : retirée, et la
+      // vérification de ce plan s'arrête là (on rejoue la journée sans elle).
+      let retiree = false;
+      if (avant) for (const [pl, copie] of avant.ajouts) if (manquentDe(r, pl).length >= manquentDe(avant.r, pl).length) {
+        pl.vacations = copie.vacations; pl.ajoutees = copie.ajoutees; pl.iterations = copie.iterations; pl.fini = true; retiree = true;
+      }
+      avant = null;
+      if (retiree) continue;
+      const ajouts = new Map();
+      for (const pl of plans) {
+        if (pl.fini || pl.iterations >= pl.R.iterationsMax) continue;
+        const manquent = manquentDe(r, pl);
+        if (!manquent.length) continue;
+        const copie = { vacations: { camion: pl.vacations.camion.slice(), vl: pl.vacations.vl.slice() }, ajoutees: { ...pl.ajoutees }, iterations: pl.iterations };
+        let ajoute = false;
+        for (const t of VEHICULES) { const l = manquent.filter(v => v.vehicule === t), n = l.length ? ajouterVacation(pl, t, l) : 0; if (n) { pl.ajoutees[t] += n; ajoute = true; } }
+        if (ajoute) { pl.iterations++; ajouts.set(pl, copie); }
+      }
+      if (!ajouts.size) break;
+      avant = { r, ajouts };
+    }
+    for (const pl of plans) {
+      const vue = r.ateliers.find(x => x.id === pl.a.id); if (!vue) continue;
+      const P = pl.R.presence, chauffeurs = {}, borne = {}, vehicules = {};
+      for (const t of VEHICULES) {
+        chauffeurs[t] = pl.vacations[t].length;
+        // Le plus bas des deux placements : celui de l'étape 1 (étalé) et celui que les vacations ont retenu.
+        const b = borneBasse(pl.besoin.D[t], pl.R), e = borneBasse(pl.besoinEtale[t], pl.R);
+        const pic = Math.min(b.pic, e.pic), instants = Math.min(b.instants, e.instants);
+        borne[t] = { pic, minutes: b.minutes, parHeures: b.parHeures, instants, chauffeurs: Math.max(pic, b.parHeures, instants) };
+        vehicules[t] = Math.max(0, ...pl.besoin.V[t]);
+      }
+      const payees = (chauffeurs.camion + chauffeurs.vl) * P;
+      const conduites = (vue.tournees || []).reduce((n, T) => n + (T.retour - T.depart) * T.conducteurs.length, 0);
+      vue.planChauffeurs = {
+        mode: 'calcules', selonPreparation: pl.R.selonPreparation, presence: P, pauses: pl.R.pauses,
+        vacations: groupes(pl).map(g => ({ vehicule: g.vehicule, debut: hhmm(g.s), de: g.s, a: g.s + P, n: g.n })),
+        chauffeurs, total: chauffeurs.camion + chauffeurs.vl, heuresPayees: payees,
+        borneBasse: { ...borne, total: borne.camion.chauffeurs + borne.vl.chauffeurs },
+        occupation: payees > 0 ? conduites / payees : null, minutesTournees: conduites,
+        vehiculesMax: vue.vehiculesMax, vehiculesPlan: vehicules, heuresSupChauffeurs: vue.heuresSupChauffeurs,
+        iterations: pl.iterations, ajoutees: pl.ajoutees,
+        retardsChauffeur: r.vols.filter(v => v.atelier === pl.a.id && v.cause === 'chauffeur').length,
+        // Les tournées qu'aucune vacation possible ne peut mener (sans heures sup) : les heures de début le disent.
+        horsVacations: pl.besoin.tournees.filter(T => T.horsVacations).length,
+        // Les tournées telles que le plan les place (la journée jouée part de là).
+        tournees: pl.besoin.tournees.slice().sort((x, y) => x.depart - y.depart || String((x.charges[0] || x.decharges[0]).x.id).localeCompare(String((y.charges[0] || y.decharges[0]).x.id)))
+          .map(T => ({ vehicule: T.v, chauffeurs: T.k, depart: T.depart, retour: T.depart + T.d, charges: T.charges.map(x => x.x.id), decharges: T.decharges.map(x => x.x.id) }))
+      };
+    }
+    return r;
+  }
+
+  /** Étape 3 : la vacation qui manque — celle qui couvre le plus des tournées restées sans chauffeur, à l'heure où le plan les plaçait. */
+  function ajouterVacation(pl, type, manquent) {
+    const prevue = new Map(), dechargee = new Map();
+    for (const T of pl.besoin.tournees) { for (const c of T.charges) prevue.set(c.x.id, T); for (const u of T.decharges) dechargee.set(u.x.id, T); }
+    // Une tournée qu'aucune vacation ne peut mener — la sienne, ou celle qui décharge son avion — n'en fait pas
+    // ajouter : ce serait pour rien.
+    const voulues = manquent.map(v => { const T = prevue.get(v.id), U = dechargee.get(v.id);
+      return (T && T.horsVacations) || (U && U.horsVacations) ? null : T ? { de: T.depart, d: T.d, k: T.k } : { de: v.limite - 60, d: 60, k: v.chauffeurs || 1 }; }).filter(Boolean);
+    if (!voulues.length) return false;
+    let m = null;
+    for (const s of pl.R.debuts) {
+      let n = 0;
+      for (const x of voulues) if (modJour(x.de - s) + x.d <= pl.R.presence) n++;
+      const avant = modJour(voulues[0].de - s);
+      if (!m || n > m.n || (n === m.n && avant < m.avant)) m = { s, n, avant };
+    }
+    // Autant de vacations que la première de ces tournées a de chauffeurs : un long courrier en demande deux.
+    for (let i = 0; i < voulues[0].k; i++) pl.vacations[type].push({ s: m.s, pauses: pl.R.pauses.map(x => ({ ...x })) });
+    pl.vacations[type].sort((x, y) => x.s - y.s);
+    return voulues[0].k;
   }
 
   /* ======================================================================
@@ -3174,6 +3707,7 @@
     pausesDe, fusionnerPauses, arretsDeLigne, finAvecPauses, vaguesDe, disponibleDes, debitRobot, ouvertureDe, prochaineOuverture,
     categorieVol, chauffeursDe, creneauxDe, chauffeursPresents, dureeLavageVol, trajetHandling, debutTrajet, volsParCamionDe, vitesseTunnel, machinesDesTunnels,
     parCompagnie, escaleDe, quaiDepartDe, quaiRetourDe, dechargementDe, vehiculeDe, reglages24h, arriveeDe, besoin24h,
+    reglagesChauffeurs, besoinDesTournees, vacationsPourTournees, borneBasse,
     UNITES_DEFAUT, unitesDe, retoursDeVols, besoinMateriel, sourceRetours, SOURCES_RETOURS,
     simuler, niveauA, niveauLineaire, dureeLisible
   };

@@ -113,7 +113,7 @@
     return {
       durees,
       longs: cies(a.longs),
-      chauffeurs: { long: entier(ch.long, 2), court: entier(ch.court, 1) },
+      chauffeurs: { long: entier(ch.long, 2), court: entier(ch.court, 1), ...chauffeursCalculesDe(ch) },
       creneaux,
       // Le camion : aller jusqu'à l'avion et retour à l'unité (par compagnie,
       // « * » pour toutes), combien de vols il charge, combien il y en a.
@@ -128,6 +128,24 @@
       compagnies: cies(a.compagnies),
       ...handling24hDe(a)
     };
+  }
+  /** Les chauffeurs calculés au plus juste (banc d'essai, docs/BANC_ESSAI.md § 4) : le mode et
+   *  ses réglages, gardés seulement saisis. Sans eux, les créneaux saisis (« saisis »). */
+  function chauffeursCalculesDe(ch) {
+    const out = {};
+    if (ch.mode === 'calcules') out.mode = 'calcules';
+    if (ch.selonPreparation === true) out.selonPreparation = true;
+    const saisi = (v, min, max) => (v === '' || v === null || v === undefined || !Number.isFinite(+v) ? null : Math.max(min, Math.min(max, Math.round(+v))));
+    for (const [k, min, max] of [['pasDebut', 5, 720], ['retardPauseMax', 0, 240], ['iterationsMax', 0, 20]]) {
+      const x = saisi(ch[k], min, max); if (x !== null) out[k] = x;
+    }
+    // Des heures de début fixes (un roulement 3 × 8…) : HH:MM, dans l'ordre, sans doublon.
+    if (Array.isArray(ch.debutsPossibles)) {
+      const l = [...new Set(ch.debutsPossibles.slice(0, 96).map(x => String(x ?? '').trim()).filter(Boolean).map(x => { P.minutes(x); return x; }))]
+        .sort((x, y) => P.minutes(x) - P.minutes(y));
+      if (l.length) out.debutsPossibles = l;
+    }
+    return out;
   }
   /** Le handling 24 h/24 (banc d'essai, docs/BANC_ESSAI.md § 3) : des tournées
    *  qui chargent puis déchargent. Chaque réglage n'est gardé que saisi : un
@@ -979,6 +997,14 @@
             a.creneaux = (a.creneaux || []).concat([d ? { de: d.a, a: d.a < '20:00' ? String(Math.min(23, +d.a.slice(0, 2) + 8)).padStart(2, '0') + ':00' : '23:59', n: d.n }
               : { de: a.debut || '04:00', a: '14:00', n: Math.max(2, (a.simultanes || 1) * 2) }]);
           }, 'Créneau ajouté : chaque vol attend d’avoir ses chauffeurs (2 pour un long courrier, 1 pour un court).');
+        case 'plan-en-creneaux': {
+          const r = this.resultat, vue = r && r.ok ? r.ateliers.find(x => x.id === a.id) : null, pl = vue && vue.planChauffeurs;
+          if (!pl) return this.rendre('Aucun plan calculé à reprendre.');
+          return this.changer(() => {
+            a.creneaux = pl.vacations.map(v => ({ de: v.debut, a: P.hhmm((v.de + pl.presence) % 1440), n: v.n, ...(v.vehicule === 'vl' ? { type: 'vl' } : {}) }));
+            const c = { ...(a.chauffeurs || {}) }; delete c.mode; a.chauffeurs = c;
+          }, 'Le plan devient des créneaux saisis : ' + pl.total + ' chauffeurs. « Annuler » revient au calcul.');
+        }
         case 'creneau-retirer':
           return this.changer(() => { a.creneaux.splice(+data.index, 1); },
             a.creneaux.length > 1 ? 'Créneau retiré.' : 'Dernier créneau retiré : le handling revient à « N vols à la fois ».');
@@ -1209,6 +1235,21 @@
             break;
           }
           case 'creneau-type': { const c = a.creneaux[+el.dataset.index]; if (v === 'vl') c.type = 'vl'; else delete c.type; break; }
+          // Les chauffeurs calculés au plus juste (banc d'essai) : le mode et ses réglages, seulement saisis.
+          case 'chauffeurs-mode': { const c = { ...(a.chauffeurs || {}) }; if (v === 'calcules') c.mode = 'calcules'; else delete c.mode; a.chauffeurs = c; break; }
+          case 'ch-selon': { const c = { ...(a.chauffeurs || {}) }; if (el.checked) c.selonPreparation = true; else delete c.selonPreparation; a.chauffeurs = c; break; }
+          case 'ch-nombre': {
+            const k = el.dataset.cle, c = { ...(a.chauffeurs || {}) };
+            if (!['pasDebut', 'retardPauseMax', 'iterationsMax'].includes(k)) break;
+            if (v === '' || !Number.isFinite(+v)) delete c[k]; else c[k] = Math.round(+v);
+            a.chauffeurs = c; break;
+          }
+          case 'ch-debuts': {
+            const c = { ...(a.chauffeurs || {}) }, l = String(v).split(/[\s,;]+/).map(x => x.trim().replace('h', ':')).filter(Boolean);
+            for (const x of l) P.minutes(x);   // une heure illisible est refusée, sous le champ
+            if (l.length) c.debutsPossibles = l; else delete c.debutsPossibles;
+            a.chauffeurs = c; break;
+          }
           // La plonge : par vol, ou par débit. Elle lave d'une seule façon : ses
           // équipes changent ensemble (15/10), sinon le même matériel serait lavé deux fois.
           case 'plonge-mode':
@@ -1927,6 +1968,8 @@
       const maxi = presents.length ? Math.max(...presents.flatMap(c => [c.de, c.a]).map(t => P.chauffeursPresents(presents, t))) : 0;
       // Le handling 24 h/24 (banc d'essai, docs/BANC_ESSAI.md § 3) : des tournées qui chargent les départs puis déchargent les avions arrivés.
       const h24 = a.handling24h === true, vl = new Set(a.vl || []);
+      // Les chauffeurs calculés au plus juste (§ 4) : seulement en 24 h/24.
+      const calcules = h24 && ch.mode === 'calcules';
       const colonnes = [{ map: 'volsCamion', lib: 'Vols / camion', defaut: a.volsParCamion || 1, max: 10 }, { map: 'allers', lib: 'Aller piste' }, { map: 'durees', lib: 'Charger' }, { map: 'retours', lib: 'Retour unité' }]
         .concat(h24 ? [{ map: 'escale', lib: 'Escale', vide: 'aucune' }, { map: 'quaiDepart', lib: 'Quai départ' }, { map: 'dechargement', lib: 'Décharger', vide: '10 ; long : 30' }, { map: 'quaiRetour', lib: 'Quai retour' }] : []);
       return `
@@ -1962,6 +2005,11 @@
         </div>
         ${h24 ? this.blocTournees(a) : ''}
 
+        ${h24 ? `<div class="at-sous-titre">Chauffeurs</div>
+        <label class="at-mode-dispo at-mode-chauffeurs">Leur nombre<select data-at-champ="chauffeurs-mode">
+          <option value="saisis" ${calcules ? '' : 'selected'}>saisi, par créneaux</option>
+          <option value="calcules" ${calcules ? 'selected' : ''}>calculé au plus juste</option></select></label>` : ''}
+        ${calcules ? this.blocPlanChauffeurs(a) : `
         <div class="at-sous-titre">Chauffeurs présents, par créneau (jour J)</div>
         ${creneaux.length ? creneaux.map((c, i) => `<div class="at-pause at-creneau">
             <label>De<input ${HEURE} value="${esc(c.de)}" data-at-champ="creneau-de" data-index="${i}"></label>
@@ -1974,7 +2022,7 @@
               un créneau qui finit avant son début passe minuit. Un vol attend d’avoir ses chauffeurs libres.${h24 ? ' En 24 h/24, la journée se répète : un créneau de nuit couvre aussi la nuit d’avant ; un chauffeur ne conduit que son type de véhicule.' : ''}</p>`
           : `<p class="mini-note at-regle">Aucun créneau : le handling ${h24 ? 'mène' : 'charge'} <b>${a.simultanes || 1} ${h24 ? 'tournée' : 'vol'}${(a.simultanes || 1) > 1 ? 's' : ''} à la fois</b>, sans compter les chauffeurs.
               <label class="at-inline">Vols en même temps<input type="number" min="1" max="50" value="${a.simultanes || 1}" data-at-champ="simultanes"></label></p>`}
-        <div class="at-actions-lot"><button class="btn btn-sm${creneaux.length ? '' : ' btn-play'}" data-at-action="creneau-ajouter">+ Créneau de chauffeurs</button></div>
+        <div class="at-actions-lot"><button class="btn btn-sm${creneaux.length ? '' : ' btn-play'}" data-at-action="creneau-ajouter">+ Créneau de chauffeurs</button></div>`}
 
         <div class="at-sous-titre">Par compagnie : courrier et trajet du camion, en minutes (aller + charger + retour)</div>
         ${this.tableCompagnies(a, cies, nb, colonnes, {
@@ -1989,6 +2037,41 @@
         <p class="mini-note at-regle">Des durées, pas des heures de travail : plus de chauffeurs dans le camion ne raccourcissent pas le trajet.
           Un camion qui charge plusieurs vols fait un seul aller et un seul retour.${h24 ? ` Escale : de l’arrivée de l’avion à son départ (vide : pas de
           déchargement) ; quai départ : préparer le camion dans la CF départ ; quai retour : le vider du sale.` : ''}</p>`;
+    }
+
+    /* Les chauffeurs calculés au plus juste : les réglages du calcul, et le plan du dernier calcul, lisible
+     * comme des créneaux. */
+    blocPlanChauffeurs(a) {
+      const ch = a.chauffeurs || {}, R = P.reglagesChauffeurs({}, null);
+      const nombre = (cle, lib, unite, min, max, titre) => `<label>${lib}${avecUnite(`<input type="number" min="${min}" max="${max}" value="${ch[cle] ?? ''}"
+        placeholder="${{ pasDebut: 30, retardPauseMax: R.retardPauseMax, iterationsMax: R.iterationsMax }[cle]}" data-at-champ="ch-nombre" data-cle="${cle}" title="${esc(titre)}">`, unite)}</label>`;
+      const r = this.resultat, vue = r && r.ok ? (r.ateliers || []).find(x => x.id === a.id) : null, pl = vue && vue.planChauffeurs;
+      const duree = m => P.dureeLisible(m);
+      return `
+        <p class="mini-note at-regle">Le moteur cherche le <b>plus petit nombre de vacations</b> qui charge et décharge tous les avions à l’heure :
+          il place les tournées dans leurs fenêtres, les donne à des vacations (présence et pauses du régime ; une pause se prend entre deux
+          tournées), puis joue la journée avec ce plan et ajoute une vacation là où un vol manquerait de chauffeur.</p>
+        <div class="at-champs at-handling at-plan-reglages">
+          <label class="chk chk-mini"><input type="checkbox" data-at-champ="ch-selon" ${ch.selonPreparation ? 'checked' : ''}>
+            Selon la préparation : pas de tournée avant que le vol soit prêt</label>
+          ${nombre('pasDebut', 'Une heure de début toutes les', 'min', 5, 720, 'Les vacations commencent à ces heures-là (sauf heures fixes)')}
+          <label>Ou des heures fixes<input value="${esc((ch.debutsPossibles || []).join(', '))}" placeholder="ex. 06:00, 14:00, 22:00" data-at-champ="ch-debuts"
+            title="Un roulement : les seules heures où une vacation peut commencer. Vide : toutes les « Une heure de début toutes les » minutes."></label>
+          ${nombre('retardPauseMax', 'Pause au plus tard après son seuil', 'min', 0, 240, 'Une pause se prend entre deux tournées, au plus tard tant de minutes après son heure')}
+          ${nombre('iterationsMax', 'Vérifications au plus', '', 0, 20, 'Combien de fois la journée se rejoue pour ajouter une vacation là où un vol manque de chauffeur')}
+        </div>
+        ${pl ? `<div class="table-scroll"><table class="at-cies at-plan" data-clavier>
+          <thead><tr><th scope="col">Véhicule</th><th scope="col">De</th><th scope="col">À</th><th scope="col">Chauffeurs</th></tr></thead><tbody>
+          ${pl.vacations.map(v => `<tr data-vacation="${esc(v.vehicule + ' ' + v.debut)}"><td>${v.vehicule === 'vl' ? 'VL' : 'gros camion'}</td><td>${esc(v.debut)}</td>
+            <td>${esc(P.hhmm((v.de + pl.presence) % 1440))}</td><td>${v.n}</td></tr>`).join('') || '<tr><td colspan="4">Aucune vacation : aucune tournée.</td></tr>'}
+          </tbody></table></div>
+          <p class="mini-note at-regle at-bilan-plan"><b>${pl.total}</b> chauffeur${pl.total > 1 ? 's' : ''} (${pl.chauffeurs.camion} en gros camion, ${pl.chauffeurs.vl} en VL)
+            · ${duree(pl.heuresPayees)} payées · borne basse <b>${pl.borneBasse.total}</b> · occupation ${pl.occupation == null ? '—' : Math.round(pl.occupation * 100) + ' %'}
+            · jusqu’à ${pl.vehiculesMax.camion} gros camion${pl.vehiculesMax.camion > 1 ? 's' : ''} et ${pl.vehiculesMax.vl} VL dehors${pl.heuresSupChauffeurs > 0 ? ' · heures sup : ' + duree(pl.heuresSupChauffeurs) : ''}
+            ${pl.ajoutees.camion + pl.ajoutees.vl ? ' · ' + (pl.ajoutees.camion + pl.ajoutees.vl) + ' ajoutée' + (pl.ajoutees.camion + pl.ajoutees.vl > 1 ? 's' : '') + ' à la vérification' : ''}
+            ${pl.retardsChauffeur ? ' · <b>' + pl.retardsChauffeur + ' vol' + (pl.retardsChauffeur > 1 ? 's' : '') + ' encore sans chauffeur</b>' : ''}
+            ${pl.horsVacations ? ' · ' + pl.horsVacations + ' tournée' + (pl.horsVacations > 1 ? 's' : '') + ' qu’aucune vacation possible ne peut mener (autres heures de début, ou heures sup)' : ''}.</p>
+          <div class="at-actions-lot"><button class="btn btn-sm" data-at-action="plan-en-creneaux" title="Les vacations du plan deviennent des créneaux saisis, modifiables">Reprendre ce plan en créneaux saisis</button></div>` : ''}`;
     }
 
     /* Les tournées du handling 24 h/24 : leurs réglages, et ce qu'elles ont donné au dernier calcul. */

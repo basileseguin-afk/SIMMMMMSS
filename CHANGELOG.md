@@ -5,6 +5,37 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-19 — Banc d'essai (4/7) : le handling calcule ses chauffeurs au plus juste
+
+Le nombre de chauffeurs d'un handling 24 h/24 ne se saisit plus forcément :
+`chauffeurs.mode = 'calcules'` lui fait calculer le plus petit effectif qui sert
+toutes les tournées à l'heure. Les créneaux saisis restent le mode par défaut.
+**Désactivé par défaut** ; sans le mode 24 h/24, il ne compte pas.
+
+- **Trois étapes** : le besoin (les tournées, leurs enchaînements et leur
+  placement dans leurs fenêtres, pour que le moins de chauffeurs soient occupés
+  en même temps, par type de véhicule, dans la limite de la flotte) ; les
+  vacations (les tournées données à des chauffeurs en poste, chacune glissant
+  dans sa fenêtre ; une vacation nouvelle seulement s'il le faut) ; la
+  vérification (la journée jouée avec ce plan, une vacation de plus là où un
+  vol manquerait de chauffeur, au plus `iterationsMax` fois ; un retard de
+  production n'en ajoute pas). Journée circulaire ; vacations à la présence du
+  régime, avec leurs pauses, prises entre deux tournées ; heures de début toutes
+  les `pasDebut` minutes ou à des heures fixes (`debutsPossibles`) ; option
+  `selonPreparation`. Déterministe, moins d'une seconde pour 200 vols.
+- **La sortie** : le plan (vacations par véhicule et par heure de début), les
+  chauffeurs par type, les heures payées, une borne basse (le pic, les heures,
+  et les instants distants d'une présence) pour mesurer l'écart à l'optimum,
+  l'occupation, les véhicules, les heures sup ; les pauses des chauffeurs.
+- **Dans la page** : le mode, ses réglages et le plan, lisible comme des
+  créneaux, dans la fiche du handling ; « Reprendre ce plan en créneaux
+  saisis ». Excel : ces réglages n'ont pas de colonne, l'import les garde.
+- Fichiers : `moteur/production.js`, `ateliers.js` (validateur, fiche),
+  `echanges.js` et `v2/echanges.js` (identiques ; la v2 n'a pas ces réglages),
+  `index.html` et `v2/index.html` (empreintes), `docs/BANC_ESSAI.md`,
+  `docs/FORMATS_EXCEL.md`, `README.md`, `tests/chauffeurs-calcules.test.cjs`,
+  `tests/chauffeurs-calcules-browser.cjs`, `tests/non-regression.test.cjs`.
+
 ## 2026-10-19 — Banc d'essai (3/7) : le handling 24 h/24, en tournées
 
 Le handling travaille jour et nuit : il charge les départs et décharge les

@@ -29,7 +29,9 @@ const DESACTIVEES = s => ({
   // Évolution 3 : chaque handling a ses réglages 24 h/24 (escales, quais, VL…), sans le mode.
   ...(handlingsDe(s).length ? { equipes: Object.fromEntries(handlingsDe(s).map(a => [a.id, { escale: { '*': 60, NORD: 30 }, quaiDepart: { '*': 10 },
     dechargement: { '*': 20 }, quaiRetour: { '*': 15 }, vl: ['SUD'], entreAvions: 5, dechargementsParTournee: 2, margeDepart: 45,
-    margeEscaleCourte: 10, delaiArrivee: 5, camionsVL: 2 }])) } : {})
+    margeEscaleCourte: 10, delaiArrivee: 5, camionsVL: 2,
+    // Évolution 4 : les chauffeurs calculés, réglés — sans le mode 24 h/24, ils ne comptent pas.
+    chauffeurs: { mode: 'calcules', selonPreparation: true, pasDebut: 60, debutsPossibles: ['06:00', '14:00', '22:00'], retardPauseMax: 30, iterationsMax: 2 } }])) } : {})
 });
 const handlingsDe = s => s.args.ateliers.filter(a => a.type === 'handling');
 const nouveau = (motif, cle) => Object.entries(NOUVEAUX).some(([m, cles]) => cles.includes(cle)

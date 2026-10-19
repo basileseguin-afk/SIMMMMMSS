@@ -196,7 +196,10 @@ sans ligne — et `Véhicule` (`VL` : un petit camion ; `camion` : un gros). San
 ces colonnes, l'import garde les réglages du site ; avec elles, il les
 remplace. La case « 24 h/24 » et les réglages des tournées (marge avant le
 départ, d'un avion à l'autre, flotte de VL…) n'ont pas de colonne : l'import
-les garde tels qu'ils sont sur le site.
+les garde tels qu'ils sont sur le site. De même pour le calcul des chauffeurs
+au plus juste (`BANC_ESSAI.md`, § 4) : son mode et ses réglages n'ont pas de
+colonne, et « Chauffeurs long courrier » / « court courrier » se modifient sans
+les perdre.
 
 | Atelier | Compagnie | … | Escale (min) | Préparation au quai (min) | Déchargement (min) | Vidage au quai (min) | Véhicule |
 |---|---|---|---|---|---|---|---|
