@@ -5,6 +5,30 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-20 — Banc d'essai, correction 1 : une commande qui ne vole pas ce jour-là n'empêche plus la journée
+
+Trouvé en rejouant des journées réelles : un jour sans aucun vol d'une
+compagnie, la journée entière était refusée (« compagnie × classe inconnue :
+XX/CREW ») dès qu'une équipe avait cette commande dans ses lots sans qu'elle
+soit déclarée « ajoutée ».
+
+- **Bien écrite, sans vol ce jour-là** : la commande est absente de la journée,
+  écartée des lots avant de jouer ; l'équipe passe ce lot et fait les autres.
+  Une information le dit (`commande-absente`, non bloquante).
+- **Une compagnie qu'on ne voit nulle part ailleurs** (ni vols du jour, ni
+  barème, ni commandes ajoutées, ni autre commande des lots) : un avertissement
+  non bloquant, « compagnie jamais vue : XXX — faute de frappe ? »
+  (`compagnie-inconnue`). La journée se calcule quand même.
+- **Mal écrite** (cabine inconnue, forme fausse, catégorie non déclarée) : la
+  journée reste refusée, comme avant.
+- Même comportement dans la page et dans l'outil (un seul chemin de calcul).
+- Fichiers : `moteur/production.js`, `unite.js` et `v2/unite.js` (identiques :
+  l'information est un fait de la journée, pas un réglage à corriger),
+  `index.html` et `v2/index.html` (empreintes), `docs/BANC_ESSAI.md`,
+  `tests/commandes-sans-vol.test.cjs`, `tests/commandes-sans-vol-browser.cjs`,
+  `tests/production.test.cjs` (le lot « ZZ/BC » : bien écrit, il est signalé ;
+  mal écrit, « ZZ/BX », refusé).
+
 ## 2026-10-19 — Banc d'essai (7/7) : les SPML que chaque service prépare
 
 Le travail SPML se compte par vol : un vol entre dans la commande X/SPML d'un

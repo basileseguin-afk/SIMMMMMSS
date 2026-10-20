@@ -146,8 +146,41 @@ sauvegarde prise depuis la page : l'outil ne le refait pas. Une sauvegarde
 d'une version plus ancienne se rouvre donc d'abord dans la page, puis se
 sauvegarde à nouveau.
 
+### Une commande qui ne vole pas ce jour-là
+
+Une équipe a dans ses lots les commandes de toutes les compagnies qu'elle
+sert ; un jour où l'une d'elles ne vole pas, sa commande n'existe pas ce
+jour-là. La journée ne se refuse plus pour autant (correction du banc d'essai,
+trouvée en rejouant des journées réelles), dans la page comme dans l'outil :
+
+- **Bien écrite** — `compagnie/cabine` (BC, PC, YC, CREW, SPML), ou
+  `compagnie/@catégorie` d'une catégorie déclarée —, sans vol ce jour-là : elle
+  est **absente de la journée**. Elle est écartée des lots avant de jouer :
+  l'équipe passe ce lot et fait les autres (un lot qui la mêle à d'autres
+  commandes les fait sans elle). Une **information** le dit, équipe par équipe
+  (`commande-absente`, non bloquante) ; une équipe dont aucune commande ne vole
+  ce jour-là n'est pas « une équipe qui ne fabrique rien », et son effectif
+  calculé est nul. Une commande ajoutée à la main reste une commande de la
+  journée (sans vol, sans travail), comme l'armement d'une compagnie cochée.
+- **Une compagnie qu'on ne voit nulle part ailleurs** — ni dans les vols du
+  jour (départs et retours), ni dans le barème (ni dans les minutes par
+  compagnie de l'armement), ni dans les commandes ajoutées, ni dans une autre
+  commande des lots — ajoute un **avertissement**, non bloquant lui aussi :
+  « compagnie jamais vue : XXX — faute de frappe ? » (`compagnie-inconnue`). La
+  journée se calcule quand même : une journée refusée est perdue en entier pour
+  le banc.
+- **Mal écrite** — une cabine qui n'existe pas (`NORD/CRWE`), une forme fausse
+  (`NORDCREW`, `nord/YC`, `NORD/YC/BC`), une catégorie non déclarée — : la
+  journée reste **refusée**, comme avant (`lot` : « compagnie × classe
+  inconnue »).
+
 ### Vérifications
 
+- `tests/commandes-sans-vol.test.cjs` : une journée sans aucun vol d'une
+  compagnie dont une équipe prépare `XX/CREW` se joue, et les autres commandes
+  de l'équipe sont faites ; une commande mal écrite est toujours refusée ; une
+  compagnie jamais vue est signalée sans bloquer ; une commande ajoutée,
+  l'armement, l'outil ;
 - `tests/journee.test.cjs` : la sauvegarde relue et refusée comme par
   « Restaurer », les options et leurs bornes, les réglages forcés, les vols
   lus comme dans la page (CSV, classeur), les mêmes entrées donnant la même

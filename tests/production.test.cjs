@@ -376,13 +376,21 @@ test('une liste de compagnies × classes fournie remplace celle des vols', () =>
   assert.ok(r.lots[0].hommeMinutes > 0);
 });
 
-test('un lot qui nomme une classe inconnue est refusé, en la nommant', () => {
+test('un lot mal écrit est refusé, en le nommant ; bien écrit, sans vol ce jour-là, il est seulement signalé', () => {
+  // Une cabine qui n'existe pas : la journée est refusée, comme avant.
   const r = P.simuler({
+    vols: VOLS, liaisons: [],
+    ateliers: [atelier({ id: 'a', nom: 'A', service: 'cuisine', debut: '06:00', lots: [['ZZ/BX']] })]
+  });
+  assert.equal(r.ok, false);
+  assert.match(r.anomalies.map(a => a.message).join(' '), /compagnie × classe inconnue : ZZ\/BX/);
+  // Bien écrite, d'une compagnie qu'on ne voit nulle part : la journée se joue, et on le dit (correction du banc d'essai).
+  const z = P.simuler({
     vols: VOLS, liaisons: [],
     ateliers: [atelier({ id: 'a', nom: 'A', service: 'cuisine', debut: '06:00', lots: [['ZZ/BC']] })]
   });
-  assert.equal(r.ok, false);
-  assert.match(r.anomalies.map(a => a.message).join(' '), /compagnie × classe inconnue : ZZ\/BC/);
+  assert.equal(z.ok, true);
+  assert.match(z.anomalies.map(a => a.message).join(' '), /compagnie jamais vue : ZZ — faute de frappe \? \(ZZ\/BC/);
 });
 
 /* ---- régime de poste -------------------------------------------------- */

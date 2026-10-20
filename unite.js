@@ -1592,7 +1592,9 @@
   /* Ce que la journée montre (un retard, un poste trop court) n'est pas une
    * erreur de saisie : la fiche d'un service ne le range pas dans « à faire ». */
   const CODES_JOURNEE = new Set(['poste', 'materiel', 'bouchon', 'inacheve', 'plonge-fermee', 'plonge-vol',
-    'handling-bloque', 'handling-poste', 'handling-retard', 'handling-chauffeurs', 'sans-personne', 'robot-arret', 'plonge-arret']);
+    'handling-bloque', 'handling-poste', 'handling-retard', 'handling-chauffeurs', 'sans-personne', 'robot-arret', 'plonge-arret',
+    // Une commande sans vol ce jour-là (banc d'essai de la version 1) : la journée le dit, ce n'est pas un réglage à corriger.
+    'commande-absente']);
   // « hors-parcours » et « doublon » n'en sont plus (audit du 02/10) : depuis que les flux
   // décident des chemins, une case cochée hors de son chemin, ou deux fois dans un service,
   // est un réglage à corriger — on le dit dans la fiche du service et dans le pas à pas.

@@ -1424,7 +1424,7 @@
       // on le signale sans empêcher le reste de la journée d'être calculé. Un
       // atelier de lavage, lui, n'a pas de lots : son travail vient des retours.
       if (lavage || dispo || handling || appui) { /* rien à exiger : aucun ne suit une liste de commandes */ }
-      else if (!Array.isArray(a.lots) || !a.lots.length) dire('lots', 'ne fabrique rien pour l’instant.');
+      else if (!Array.isArray(a.lots) || !a.lots.length) { if (!a.sansVolCeJour) dire('lots', 'ne fabrique rien pour l’instant.'); }
       else for (const lot of (a.lots || [])) {
         const liste = Array.isArray(lot) ? lot : (lot && lot.classes);
         if (!Array.isArray(liste) || !liste.length) { dire('lot-vide', 'une ligne de fabrication est encore vide.'); continue; }
@@ -1913,6 +1913,68 @@
     return { ateliers: liste.filter(a => !inactives.has(a.id)), conditions };
   }
 
+  /*
+   * LES COMMANDES QUI NE VOLENT PAS CE JOUR-LÀ (correction du banc d'essai).
+   * Une équipe a dans ses lots les commandes de toutes les compagnies qu'elle
+   * sert ; un jour où l'une ne vole pas, sa commande n'existe pas ce jour-là.
+   * Bien écrite (« XX/CREW », « XX/@TB » d'une catégorie déclarée), elle est
+   * absente de la journée : écartée des lots, l'équipe passe ce lot et fait
+   * les autres, et on le dit (une information). Si sa compagnie n'apparaît
+   * nulle part ailleurs — ni dans les vols du jour, ni dans le barème, ni dans
+   * les commandes ajoutées, ni dans une autre commande des lots —, un
+   * avertissement le dit aussi : une faute de frappe ? Aucun des deux ne
+   * bloque. Mal écrite (une cabine inconnue, une forme fausse), elle reste
+   * refusée, comme avant (« lot »).
+   */
+  function commandesSansVol(ateliers, parClasse, opts, bareme) {
+    const categories = new Set(Object.values(opts.categories || {}).flatMap(l => (Array.isArray(l) ? l : []).map(k => k && k.id).filter(Boolean)));
+    const ecrite = id => {
+      const m = /^([^/\s]+)\/([^/\s]+)$/.exec(String(id));
+      if (!m || m[1] !== m[1].toUpperCase()) return null;
+      return CABINES.includes(m[2]) || (m[2][0] === '@' && categories.has(m[2].slice(1))) ? m[1] : null;
+    };
+    const absentes = new Map();     // atelier → commandes sans vol
+    for (const a of ateliers) {
+      if (!Array.isArray(a.lots) || !(a.type === 'manuel' || a.type === 'robot')) continue;
+      const ids = [...new Set(a.lots.flatMap(classesDuLot).filter(id => !parClasse.has(id) && ecrite(id)))];
+      if (ids.length) absentes.set(a, ids);
+    }
+    if (!absentes.size) return [];
+    // Les compagnies que l'unité connaît : celles des vols du jour et des commandes (ajoutées comprises), du barème
+    // (et des minutes par compagnie de l'armement), et de chaque commande des lots.
+    const cieDe = id => String(id).slice(0, String(id).indexOf('/'));
+    const connues = new Set([...(opts.vols || []).map(v => String(v.cie || '').trim().toUpperCase()), ...[...parClasse.keys()].map(cieDe)]);
+    for (const service of Object.values(bareme || {})) for (const k of Object.keys(service || {})) if (k.includes('/')) connues.add(cieDe(k));
+    for (const l of Object.values(opts.categories || {})) for (const k of (Array.isArray(l) ? l : [])) for (const c of Object.keys((k && k.minutes) || {})) connues.add(String(c).toUpperCase());
+    const parCie = new Map();       // compagnie → les commandes des lots qui la citent
+    for (const a of ateliers) for (const id of (a.lots || []).flatMap(classesDuLot)) {
+      const c = ecrite(id); if (!c) continue;
+      if (!parCie.has(c)) parCie.set(c, new Set());
+      parCie.get(c).add(id);
+    }
+    const anomalies = [], inconnues = new Map();
+    for (const [a, ids] of absentes) {
+      const ecartees = new Set(ids);
+      a.lots = a.lots.map(lot => (Array.isArray(lot) ? lot.filter(id => !ecartees.has(id)) : { ...lot, classes: classesDuLot(lot).filter(id => !ecartees.has(id)) }))
+        .filter(lot => classesDuLot(lot).length);
+      // Plus rien à préparer ce jour-là : ce n'est pas une équipe « qui ne fabrique rien pour l'instant ».
+      if (!a.lots.length) a.sansVolCeJour = true;
+      anomalies.push({ code: 'commande-absente', atelier: a.id, classes: ids,
+        message: (a.nom || a.id) + ' : ' + ids.slice(0, 6).join(', ') + (ids.length > 6 ? '…' : '') + (ids.length > 1
+          ? ' n’ont aucun vol ce jour-là : elles ne sont pas dans la journée.' : ' n’a aucun vol ce jour-là : elle n’est pas dans la journée.') });
+      for (const id of ids) {
+        const c = ecrite(id);
+        // Vue ailleurs : dans les vols, le barème, ou une autre commande des lots.
+        if (connues.has(c) || [...parCie.get(c)].some(x => x !== id)) continue;
+        if (!inconnues.has(c)) inconnues.set(c, { ateliers: [], classes: new Set() });
+        inconnues.get(c).ateliers.push(a); inconnues.get(c).classes.add(id);
+      }
+    }
+    for (const [c, x] of inconnues) anomalies.push({ code: 'compagnie-inconnue', cie: c, atelier: x.ateliers[0].id, classes: [...x.classes],
+      message: 'compagnie jamais vue : ' + c + ' — faute de frappe ? (' + [...x.classes].join(', ') + ', dans ' + [...new Set(x.ateliers.map(a => a.nom || a.id))].join(', ') + ')' });
+    return anomalies;
+  }
+
   /**
    * Joue la journée.
    *
@@ -2051,9 +2113,11 @@
     // dont la condition n'est pas remplie passent leurs commandes et leurs personnes.
     const regles = appliquerConditions((opts.ateliers || []).map(a => ({ ...a, type: a.type || 'manuel', ...(a.type === 'handling' ? { jour: 0 } : {}) })), classes);
     const ateliers = regles.ateliers;
+    // Les commandes des équipes qui ne volent pas ce jour-là (correction du banc d'essai) : écartées avant de jouer.
+    const sansVol = commandesSansVol(ateliers, parClasse, opts, bareme);
 
     const services = new Set(ateliers.map(a => a.service));
-    const anomalies = validerAteliers(ateliers, { services: opts.services || [...services], classes, noms: opts.noms });
+    const anomalies = validerAteliers(ateliers, { services: opts.services || [...services], classes, noms: opts.noms }).concat(sansVol);
     const fourn = fournisseurs(opts.liaisons);
     const routes = routesDesClasses(classes, opts);
     // Le chemin décide par où passe une commande (retours d'usage du 01/10 et du
@@ -2156,6 +2220,8 @@
 
     // Ce qui n'empêche pas de jouer la journée ne doit pas l'empêcher.
     const NON_BLOQUANTES = new Set(['doublon', 'bareme', 'lots', 'lot-vide', 'poste', 'materiel', 'dispo', 'bouchon', 'inacheve', 'plonge-fermee',
+      // Une commande sans vol ce jour-là, une compagnie qu'on ne voit nulle part ailleurs : on le dit, la journée se joue.
+      'commande-absente', 'compagnie-inconnue',
       'tunnel-personnes', 'parcours-trou', 'hors-parcours', 'bareme-classe',
       'handling-duree', 'handling-sans', 'handling-bloque', 'handling-poste', 'handling-retard', 'handling-chauffeurs',
       'plonge-duree', 'plonge-vol', 'plonge-mixte',
