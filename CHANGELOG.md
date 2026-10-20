@@ -5,6 +5,31 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-20 — Banc d'essai, correction 4 : en heures sup, on ne paie personne à attendre
+
+En heures sup, une équipe dont le lot suivant n'était pas prêt restait à
+attendre son amont ou l'ouverture d'une mise à disposition, et cette attente
+comptait en heures sup : sur 61 journées réelles, 89 % des heures sup simulées
+étaient de l'attente.
+
+- Passé la fin de sa présence, une équipe à la main ou un robot finit le lot
+  commencé, puis n'enchaîne que les lots déjà prêts (amont livré, mise à
+  disposition ouverte, matériel propre, ligne du robot libre, assez de monde) ;
+  dès qu'elle devrait attendre, elle part et les lots restants sont hors
+  poste. Pendant la présence, l'attente reste normale, jusqu'à sa fin.
+  `heuresSup` ne compte que du travail.
+- Un renfort en heures sup (`versHeuresSup`) reste tant que l'équipe aidée
+  travaille, part dès qu'elle attend, et ne va plus aider une autre équipe.
+- La plonge suit la correction 7 ; le handling ne change pas. Sans heures
+  sup, rien ne change.
+- Dans la page, l'aide des heures supplémentaires (Réglages de la simulation)
+  dit la règle, et celle de la plonge (correction 7).
+- Fichiers : `moteur/production.js`, `sim.js`, `index.html` (empreintes),
+  `docs/BANC_ESSAI.md`, `README.md`, `tests/heures-sup-sans-attente.test.cjs`,
+  `tests/heures-sup.test.cjs` (le montage de l'unité de référence au débit
+  attendait du matériel propre en heures sup : il part à la fin de sa
+  présence).
+
 ## 2026-10-20 — Banc d'essai, correction 8 : la plonge de nuit « absorbable » juge l'équipe du matin seule
 
 Sur 61 journées réelles, à 90 min par vol, la nuit s'ouvrait 38 fois, chaque

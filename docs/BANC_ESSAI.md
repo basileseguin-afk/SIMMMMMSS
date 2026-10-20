@@ -215,8 +215,18 @@ en laissant ses lots « hors poste ».
   (`finPoste`) est alors la fin de la présence plus le plafond : l'heure où
   l'équipe part au plus tard, comme en version 2.
 - **Qui en fait** :
-  - une équipe à la main et un **robot** : elle finit ses lots ; le robot
-    garde sa ligne, l'équipe suivante attend qu'elle se libère ;
+  - une équipe à la main et un **robot** : on ne paie personne à attendre
+    (correction du banc d'essai). Passé la fin de sa présence, elle finit le
+    lot commencé, puis n'enchaîne que les lots **déjà prêts** à cet instant
+    (amont livré, mise à disposition ouverte, matériel propre là, ligne du
+    robot libre, assez de monde) ; **dès qu'elle devrait attendre, elle part** :
+    le lot et les suivants sont hors poste, comme sans heures sup. Pendant la
+    présence, l'attente reste normale, mais pas au-delà de sa fin : une équipe
+    qui attend encore à la fin de sa présence part. `heuresSup` ne compte donc
+    que du travail. Le robot garde sa ligne pendant un lot ; l'équipe suivante
+    attend qu'il la libère. Elle restait avant à attendre son amont ou une
+    mise à disposition, et cette attente comptait en heures sup : rejouées sur
+    61 journées réelles, 89 % des heures sup simulées étaient de l'attente ;
   - la **plonge** finit le vol en cours, mais n'en commence pas d'autre
     (correction du banc d'essai). Par vol : passé la fin de sa présence, elle
     finit les vols **déjà dans un tunnel** — en heures sup, jusqu'au plafond ;
@@ -251,6 +261,11 @@ poste a 0, une équipe qui déborde de 40 min a 40 min, le plafond coupe, une
 mise à disposition et un appui ont 0, l'option désactivée rend la journée
 d'avant, robot, plonge par vol et au débit, handling avec et sans créneaux,
 effectif calculé inchangé, validation, options du banc) ;
+`tests/heures-sup-sans-attente.test.cjs` (une équipe dont le dernier lot n'est
+prêt que 2 h après sa présence part à sa fin, sans heure sup, le lot hors
+poste ; un lot commencé fini 40 min après : 40 min ; un lot prêt à la fin de
+la présence est fait en heures sup, puis elle part au premier lot pas prêt ;
+le robot ; le renfort en heures sup ; sans l'option, comme avant) ;
 `tests/plonge-heures-sup.test.cjs` (la plonge finit le vol dans son tunnel et
 ne commence pas celui qui attend : il va à la nuit, ou au sale de fin de
 journée ; une nuit ne commence aucun vol après la fin de sa présence ; le
@@ -657,8 +672,11 @@ roulés couverts (chacun aide aussi, toujours, son propre service) :
   le délai). Une équipe qui attend un lot en amont n'a pas fini : elle ne
   prête personne. Chacune de ses personnes devient un renfort, de l'heure où
   l'équipe a fini à la fin de sa présence (plus le plafond des heures sup avec
-  `versHeuresSup`). Ni une plonge, ni une mise à disposition, ni une équipe
-  d'appui, ni le handling ne prêtent.
+  `versHeuresSup`). En heures sup, un renfort suit la règle des heures sup
+  (§ 2) : il reste tant que l'équipe qu'il aide travaille ; dès qu'elle attend
+  (ou à la fin de sa présence, si elle attend déjà), il part, et il ne va plus
+  aider une autre équipe. Ni une plonge, ni une mise à disposition, ni une
+  équipe d'appui, ni le handling ne prêtent.
 - **Qui reçoit** : parmi les équipes **qui risquent de dépasser leur
   présence**, celle dont les commandes partent le plus tôt (l'échéance la
   plus proche de ce qui lui reste) ; à égalité, celle qui a le plus de travail

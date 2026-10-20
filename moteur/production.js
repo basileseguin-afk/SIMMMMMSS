@@ -2658,20 +2658,22 @@
     }
     function crediter(n) { stock.propre += n; stock.lavees += n; servir(); }
 
-    /** Prend `besoin` unités propres, en attendant s'il le faut. */
-    function* prendreMateriel(besoin, contexte) {
+    /** Prend `besoin` unités propres, en attendant s'il le faut — pas au-delà de `limite` : rend alors null, sans rien prendre. */
+    function* prendreMateriel(besoin, contexte, limite = Infinity) {
       if (besoin <= 0) return 0;
       if (!attenteurs.length && stock.propre >= besoin) {
         stock.propre -= besoin; stock.consommees += besoin;
         stock.minPropre = Math.min(stock.minPropre, stock.propre);
         return 0;
       }
-      const ev = env.evenement('materiel');
-      attenteurs.push({ besoin, ev, ...contexte, depuis: env.maintenant });
+      if (env.maintenant >= limite - 1e-9) return null;
+      const ev = env.evenement('materiel'), w = { besoin, ev, ...contexte, depuis: env.maintenant };
+      attenteurs.push(w);
       const t0 = env.maintenant;
-      yield ev;
+      yield Number.isFinite(limite) ? env.unDe([ev, env.delai(limite - env.maintenant)]) : ev;
       const attendu = env.maintenant - t0;
       stock.attente += attendu;
+      if (!ev.declenche) { attenteurs.splice(attenteurs.indexOf(w), 1); servir(); return null; }
       return attendu;
     }
 
@@ -2729,11 +2731,15 @@
       lignes.get(k).robots.push(a);
     }
     for (const l of lignes.values()) l.arrets = arretsDeLigne(l.robots);
-    function* prendreLigne(k) {
+    /** Prend la ligne, en attendant qu'elle se libère — pas au-delà de `limite` : rend alors false. */
+    function* prendreLigne(k, limite = Infinity) {
       const l = lignes.get(k);
-      if (l.libre) { l.libre = false; return; }
+      if (l.libre) { l.libre = false; return true; }
+      if (env.maintenant >= limite - 1e-9) return false;
       const ev = env.evenement('ligne ' + k); l.file.push(ev);
-      yield ev;
+      yield Number.isFinite(limite) ? env.unDe([ev, env.delai(limite - env.maintenant)]) : ev;
+      if (!ev.declenche) { l.file.splice(l.file.indexOf(ev), 1); return false; }
+      return true;
     }
     function rendreLigne(k) {
       const l = lignes.get(k);
@@ -3201,6 +3207,18 @@
         if (env.maintenant < h.fin) yield env.delai(h.fin - env.maintenant);
         if (h.aide === R) { liberer(h, env.maintenant, true); repartir(); }
       }, 'renfort ' + h.id);
+      // Restée en heures sup (versHeuresSup), elle n'attend pas avec l'équipe : si, à la fin de sa présence,
+      // l'équipe aidée n'est pas en train de travailler, elle part.
+      if (Number.isFinite(h.finPresence) && h.fin > h.finPresence + 1e-9) env.processus(function* () {
+        if (env.maintenant < h.finPresence) yield env.delai(h.finPresence - env.maintenant);
+        if (h.aide === R && !R.enTache) { liberer(h, env.maintenant, true); repartir(); }
+      }, 'renfort ' + h.id + ' (fin de présence)');
+    }
+    /** L'équipe aidée va attendre : ses renforts en heures sup s'en vont (correction du banc d'essai). */
+    function congedier(R) {
+      if (!R) return;
+      const t = env.maintenant;
+      for (const h of R.aides.slice()) if (t >= h.finPresence - 1e-9) liberer(h, t, true);
     }
     /**
      * Les personnes libres vont aux équipes qui risquent de dépasser leur
@@ -3212,7 +3230,8 @@
       if (!REN) return;
       const t = env.maintenant;
       for (let garde = 0; garde < 10000; garde++) {
-        const libres = aidants.filter(h => !h.aide && h.libre <= t + 1e-9 && t + REN.delai < h.fin - 1e-9);
+        // En heures sup, un renfort n'en commence pas d'autre (correction du banc d'essai : on ne paie personne à attendre).
+        const libres = aidants.filter(h => !h.aide && h.libre <= t + 1e-9 && t + REN.delai < h.fin - 1e-9 && t < h.finPresence - 1e-9);
         if (!libres.length) return;
         const cands = [...receveurs.values()].filter(R => !R.fini && t >= R.debutPoste - 1e-9 && t + REN.delai < R.finPoste - 1e-9 && placeLibre(R, t) && aRisque(R, t))
           .map(R => ({ R, e: echeanceDe(R, t), r: resteDe(R, t) }))
@@ -3595,6 +3614,12 @@
 
       // Une équipe qui peut recevoir des renforts (évolution 5) : son état se lit pendant la journée.
       const R = REN ? receveurs.get(a.id) || null : null;
+      // Heures sup (correction du banc d'essai) : on ne paie personne à attendre. Passé la fin de sa présence,
+      // une équipe finit le lot commencé, puis n'enchaîne que les lots déjà prêts ; dès qu'elle devrait
+      // attendre (son amont, une mise à disposition, du matériel, sa ligne, un renfort), elle part. Pendant
+      // la présence, l'attente reste normale, jusqu'à sa fin. Sans heures sup, rien ne change.
+      const sansAttente = SUP > 0 && Number.isFinite(finPresence);
+      const limiteAttente = sansAttente ? finPresence : Infinity;
       let j = 0;   // le rang du lot en cours, parmi les lots non vides
       const processus = env.processus(function* () {
         if (env.maintenant < depart) yield env.delai(depart - env.maintenant);
@@ -3614,11 +3639,31 @@
             for (const amont of amontsDe(a.service, id)) attendus.push(livraison(amont, id));
           }
           const debutAttente = env.maintenant;
-          if (attendus.length) yield env.tousDe(attendus);
-          // Une boutique fermée : on attend qu'elle ouvre.
-          if (boutiques.size) {
-            const ouvert = servi(ids.flatMap(id => amontsDe(a.service, id)), env.maintenant);
-            if (ouvert > env.maintenant && Number.isFinite(ouvert)) yield env.delai(ouvert - env.maintenant);
+          if (!sansAttente) {
+            if (attendus.length) yield env.tousDe(attendus);
+            // Une boutique fermée : on attend qu'elle ouvre.
+            if (boutiques.size) {
+              const ouvert = servi(ids.flatMap(id => amontsDe(a.service, id)), env.maintenant);
+              if (ouvert > env.maintenant && Number.isFinite(ouvert)) yield env.delai(ouvert - env.maintenant);
+            }
+          } else {
+            // L'amont livré et les boutiques ouvertes, pas plus tard que la fin de sa présence.
+            const ouvertA = () => (boutiques.size ? servi(ids.flatMap(id => amontsDe(a.service, id)), env.maintenant) : env.maintenant);
+            for (let garde = 0; garde < 1000; garde++) {
+              const livre = attendus.every(ev => ev.declenche), ouvert = livre ? ouvertA() : Infinity;
+              if (livre && ouvert <= env.maintenant + 1e-9) break;
+              if (env.maintenant >= finPresence - 1e-9) break;
+              if (R) congedier(R);
+              yield livre ? env.delai(Math.min(ouvert, finPresence) - env.maintenant)
+                : env.unDe([env.tousDe(attendus), env.delai(finPresence - env.maintenant)]);
+            }
+            if (!attendus.every(ev => ev.declenche) || ouvertA() > env.maintenant + 1e-9) {
+              if (R) congedier(R);
+              const ligne = { atelier: a.id, service: a.service, nom, classes: ids, debut: env.maintenant, fin: null, duree: null,
+                attente: env.maintenant - debutAttente, arret: 0, impossible: true, horsPoste: true };
+              journal.push(ligne); vue.lots.push(ligne);
+              return;   // elle part : les lots suivants non plus
+            }
           }
           let attente = env.maintenant - debutAttente;
           horloge = Math.max(horloge, env.maintenant);
@@ -3630,10 +3675,11 @@
           // peut recevoir des renforts les attend, avant de prendre du matériel ou sa ligne.
           if (!Number.isFinite(duree) && R) {
             const t0 = env.maintenant, arme = () => (a.type === 'robot' ? robotArme(R, env.maintenant) : apport(R, env.maintenant).personnes > 0);
-            R.attend = true; repartir();
+            R.attend = true; congedier(sansAttente ? R : null); repartir();
+            const finAttente = sansAttente ? finPresence : finPoste;
             try {
-              while (!arme() && env.maintenant < finPoste - 1e-9) {
-                const u = Math.min(prochainChangement(R, env.maintenant), finPoste);
+              while (!arme() && env.maintenant < finAttente - 1e-9) {
+                const u = Math.min(prochainChangement(R, env.maintenant), finAttente);
                 try { yield Number.isFinite(u) ? env.delai(Math.max(0, u - env.maintenant)) : env.evenement('attente d’un renfort'); }
                 catch (e) { if (!(e instanceof Noyau.Interruption)) throw e; }
               }
@@ -3654,26 +3700,30 @@
 
           // Le matériel propre : un lot ne part pas sans ce qu'il emporte.
           // C'est ici que la boucle des retours touche la production.
-          let attenteMat = 0;
+          let attenteMat = 0, parti = false;
           if (mat.actif && a.materiel === 'consomme') {
             const besoin = besoinMateriel(lots, mat);
+            if (sansAttente && R && !(!attenteurs.length && stock.propre >= besoin)) congedier(R);
             attenteMat = yield* prendreMateriel(besoin,
-              { atelier: a.id, service: a.service, nom, classes: ids });
+              { atelier: a.id, service: a.service, nom, classes: ids }, limiteAttente);
+            if (attenteMat === null) { parti = true; attenteMat = 0; }
             horloge = Math.max(horloge, env.maintenant);
           }
 
           // Un robot attend que SA LIGNE soit libre : l'autre équipe peut y être.
           const k = a.type === 'robot' ? cleLigne(a) : null;
           let attenteLigne = 0, tient = false;
-          if (k && env.maintenant < finPoste) {
+          if (k && !parti && env.maintenant < finPoste) {
             const t0 = env.maintenant;
-            yield* prendreLigne(k); tient = true;
+            if (sansAttente && R && !lignes.get(k).libre) congedier(R);
+            tient = yield* prendreLigne(k, limiteAttente); parti = !tient;
             attenteLigne = env.maintenant - t0;
             if (attenteLigne > 0) detail.attenteLigne = attenteLigne;
           }
 
-          // Le poste s'arrête : ce qui reste ne sera pas fait aujourd'hui.
-          if (env.maintenant >= finPoste) {
+          // Le poste s'arrête : ce qui reste ne sera pas fait aujourd'hui. Ou, en heures sup, elle
+          // devrait attendre (son matériel, sa ligne) : elle part.
+          if (parti || env.maintenant >= finPoste) {
             if (tient) rendreLigne(k);
             const ligne = { atelier: a.id, service: a.service, nom, classes: ids,
               debut: env.maintenant, fin: null, duree: null, attente: attente + attenteLigne, arret: 0,

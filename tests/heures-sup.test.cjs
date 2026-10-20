@@ -175,7 +175,10 @@ test('la journée reçoit la règle du barème ; le banc peut la forcer', () => 
   const D = require('./non-regression.attendu.json').scenarios.find(s => s.nom === 'unite-debit');
   const sans = J.jouer(J.argumentsDeLaJournee(D.sauvegarde, D.args.vols, D.options));
   const r = J.jouer(J.argumentsDeLaJournee(D.sauvegarde, D.args.vols, { ...D.options, heuresSup: { actif: true, plafond: 720 } }));
-  assert.ok(r.ateliers.find(a => a.id === 'mo').heuresSup > 0, 'le montage reste en heures sup');
+  // Le montage « mo » attend du matériel propre au-delà de sa présence : il part à sa fin, sans heures sup (correction 4 :
+  // on ne paie personne à attendre) ; « mo2 » travaille en heures sup.
+  assert.equal(r.ateliers.find(a => a.id === 'mo').heuresSup, 0, 'le montage n’attend pas en heures sup');
+  assert.ok(r.ateliers.find(a => a.id === 'mo2').heuresSup > 0, 'l’autre montage reste en heures sup');
   assert.ok(r.ateliers.every(a => a.heuresSup >= 0 && a.heuresSup <= 720));
   assert.ok(r.indicateurs.pasFinies < sans.indicateurs.pasFinies, 'et finit des commandes qu’il laissait');
   assert.deepEqual(r.effectifs, sans.effectifs, 'les mêmes effectifs calculés');
