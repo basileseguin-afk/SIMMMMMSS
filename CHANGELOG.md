@@ -5,6 +5,23 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-20 — Banc d'essai, correction 2 : un service aide toujours son propre service
+
+Les renforts (5/7) : une liste de polyvalence saisie remplaçait le défaut, et
+le service lui-même n'y figurait que s'il était coché. En saisissant « MONTAGE
+aide PRÉPA », on supprimait sans le voir l'entraide à l'intérieur du MONTAGE.
+
+- Un service aide **toujours** son propre service et ses annexes (leurs
+  équipes à la main) ; la liste saisie **ajoute** d'autres services, robots et
+  handling 24 h/24 compris. Une liste vide vaut le défaut.
+- Dans la page (Réglages de la simulation › Renforts) : son propre service est
+  coché et grisé, comme une annexe sans robot ni handling ; la liste
+  n'enregistre que les autres.
+- Une sauvegarde qui avait coché le service lui-même se relit sans changement
+  (son robot reste ouvert) ; la page garde ce choix quand on retouche la ligne.
+- Fichiers : `moteur/production.js`, `sim.js`, `index.html` (empreintes),
+  `docs/BANC_ESSAI.md`, `tests/renforts.test.cjs`, `tests/renforts-browser.cjs`.
+
 ## 2026-10-20 — Banc d'essai, correction 1 : une commande qui ne vole pas ce jour-là n'empêche plus la journée
 
 Trouvé en rejouant des journées réelles : un jour sans aucun vol d'une

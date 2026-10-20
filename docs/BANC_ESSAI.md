@@ -600,16 +600,20 @@ jusqu'à la fin de **leur** présence.
   | `delai` | Le délai avant qu'il travaille (déplacement, lavage des mains, tenue), en minutes : 0 à 240 | 10 (provisoire) |
   | `versHeuresSup` | Un renfort peut rester en heures sup (seulement si elles sont permises, § 2), au plus leur plafond | non |
 
-- **Qui peut aider qui** : `polyvalence`, rangée avec les cases
-  (`ory-ateliers-v1`) — pour un service, la liste des services qu'il peut
-  aider. Elle se règle sous la règle, une ligne par service qui a une équipe
-  qui prépare. Une liste saisie **remplace** le défaut (son propre service n'y
-  est que s'il est coché ; une liste vide : il n'aide personne) ; « Revenir au
-  défaut » l'efface. Sans liste (défaut provisoire), un service aide **son
-  service et ses annexes** (les zones « annexe » du plan rattachées à lui ;
-  une annexe aide aussi son service), et seulement des équipes **à la main**.
-  Une liste saisie autorise toutes les équipes des services cochés, robots et
-  handling 24 h/24 compris.
+- **Qui peut aider qui** : un service aide **toujours son propre service et
+  ses annexes** (les zones « annexe » du plan rattachées à lui ; une annexe
+  aide aussi son service), pour leurs équipes **à la main**. `polyvalence`,
+  rangée avec les cases (`ory-ateliers-v1`), **ajoute** d'autres services :
+  pour un service, la liste des services qu'il peut aider en plus. Elle se
+  règle sous la règle, une ligne par service qui a une équipe qui prépare ; son
+  propre service y est coché et grisé, comme une annexe qui n'a que des équipes
+  à la main ; « Revenir au défaut » efface la liste. Un service de la liste
+  ouvre toutes ses équipes, robots et handling 24 h/24 compris — c'est aussi
+  la seule façon d'ouvrir le robot ou le handling d'une annexe (sa case reste à
+  cocher), ou de son propre service (une liste qui le nomme, comme les
+  sauvegardes d'avant : elles se relisent sans changement). Correction du banc
+  d'essai : la liste remplaçait le défaut, et « MONTAGE aide PRÉPA » supprimait
+  sans le voir l'entraide à l'intérieur du MONTAGE.
 - **Les postes de travail** d'une équipe à la main ou d'un robot :
   `personnesMax`, facultatif, dans sa fiche (le champ s'y montre quand les
   renforts sont actifs, ou quand il est saisi). Ses personnes et ses renforts
@@ -617,13 +621,13 @@ jusqu'à la fin de **leur** présence.
 
 Exemple de matrice (services fictifs) — le montage, la prépa et l'annexe du
 robot s'entraident ; la cuisine et la cuisine chaude ; la dotation et les
-roulés couverts :
+roulés couverts (chacun aide aussi, toujours, son propre service) :
 
 ```json
 { "polyvalence": {
-    "montage": ["montage", "prepa", "robot"], "prepa": ["prepa", "montage", "robot"], "robot": ["robot", "montage", "prepa"],
-    "cuisine": ["cuisine", "chaude"], "chaude": ["chaude", "cuisine"],
-    "dotation": ["dotation", "roules"], "roules": ["roules", "dotation"] } }
+    "montage": ["prepa", "robot"], "prepa": ["montage", "robot"], "robot": ["montage", "prepa"],
+    "cuisine": ["chaude"], "chaude": ["cuisine"],
+    "dotation": ["roules"], "roules": ["dotation"] } }
 ```
 
 ### Les règles
@@ -692,7 +696,10 @@ pas de renfort ; les familles ; `personnesMax` est respecté ; un renfort part
 à la fin de sa présence, et reste en heures sup seulement si on le permet ;
 une équipe qui attend l'amont ne prête pas ; l'ordre des équipes aidées ; le
 renfort qui passe à une autre équipe ; ses pauses ; vers un robot ; vers le
-handling ; le déterminisme ; la validation ; les options du banc ; Excel) ;
+handling ; un service aide toujours son propre service — une matrice « A aide
+B » laisse A s'aider lui-même —, et une sauvegarde qui avait coché le service
+lui-même se relit sans changement ; le déterminisme ; la validation ; les
+options du banc ; Excel) ;
 `tests/renforts-browser.cjs` (le réglage, la matrice, les postes de travail, la
 Synthèse, l'enregistrement) ; `tests/non-regression.test.cjs` (réglés mais
 désactivés, matrice et postes saisis : la même journée).

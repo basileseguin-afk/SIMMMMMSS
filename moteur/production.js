@@ -2938,15 +2938,15 @@
     }
 
     /* ---- les renforts (évolution 5) ------------------------------------ */
-    // Qui peut aider qui : la liste saisie du service qui prête, sinon son service et ses annexes. Jamais une
-    // mise à disposition ; vers un robot ou le handling, seulement si la liste saisie le dit (et c'est elle aussi
-    // qui envoie une personne de la plonge vers une zone alimentaire).
+    // Qui peut aider qui : son propre service et ses annexes, toujours, pour leurs équipes à la main ; la liste
+    // saisie en ajoute d'autres (correction du banc d'essai : elle ne remplace plus le défaut). Jamais une mise à
+    // disposition ; vers un robot ou le handling, seulement si la liste saisie le dit (et c'est elle aussi qui
+    // envoie une personne de la plonge vers une zone alimentaire).
     const peutAider = (de, vers) => {
       if (!(vers.type === 'manuel' || vers.type === 'robot' || (vers.type === 'handling' && vers.handling24h === true))) return false;
+      if (vers.type === 'manuel' && memeService(de, vers.service)) return true;
       const saisie = REN.polyvalence.get(de);
-      if (saisie) return saisie.has(vers.service);
-      if (vers.type !== 'manuel') return false;
-      return vers.service === de || (REN.familles.get(de) || new Set()).has(vers.service);
+      return !!saisie && saisie.has(vers.service);
     };
     // « Du même service » : le sien, ou une salle de la même famille.
     const memeService = (de, vers) => de === vers || (REN.familles.get(de) || new Set()).has(vers);

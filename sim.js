@@ -1781,9 +1781,12 @@ function servicesRenforts(){
   const recoivent=new Set([...preparent,...at.filter(a=>a.type==='handling'&&a.handling24h===true).map(a=>a.service)]);
   const ordre=servicesDisponibles().map(s=>s.id),rang=id=>{const i=ordre.indexOf(id);return i<0?999:i;};
   const trier=l=>[...l].sort((x,y)=>rang(x)-rang(y)||String(x).localeCompare(String(y)));
-  // Sans choix, un renfort ne va qu'à une équipe à la main.
-  return {preteurs:trier(preparent),cibles:trier(recoivent),manuels:new Set(at.filter(a=>a.type==='manuel').map(a=>a.service))};
+  // Un robot ou un handling 24 h/24 ne reçoit de renfort que si son service est coché, même dans la famille du service.
+  return {preteurs:trier(preparent),cibles:trier(recoivent),manuels:new Set(at.filter(a=>a.type==='manuel').map(a=>a.service)),
+    machines:new Set(at.filter(a=>a.type==='robot'||(a.type==='handling'&&a.handling24h===true)).map(a=>a.service))};
 }
+/** Ce qu'un service aide toujours, coché et grisé : lui-même, et ses annexes où il n'y a rien d'autre à ouvrir (ni robot, ni handling). */
+function aideToujours(s,c,machines){return c===s||(polyvalenceParDefaut(s).includes(c)&&!machines.has(c));}
 /** Ce qu'un service peut aider sans choix saisi : le sien et ses annexes. */
 function polyvalenceParDefaut(service){
   const f=OrlyJournee.famillesDeLUnite(servicesDisponibles(),zonesDuPlan());
@@ -1803,17 +1806,24 @@ function reglerRenforts(e){
     Sim.reglages.changer(()=>{Sim.reglages.etat.renforts={...renforts(),[k]:k==='delai'?Math.round(v):Math.round(v*100)/100};},
       c.texte+' : '+(k==='delai'?Math.round(v)+' min.':nombreFr(v)+' personne.'));
   }else if(t.matches('[data-rf-cible]')){
-    const tr=t.closest('[data-rf-service]'),s=tr.dataset.rfService;
-    const liste=[...tr.querySelectorAll('[data-rf-cible]')].filter(x=>x.checked).map(x=>x.dataset.rfCible);
-    Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;st.polyvalence={...(st.polyvalence||{}),[s]:liste};},
-      '« '+nomDeService(s)+' » peut aider : '+(liste.length?liste.map(nomDeService).join(', '):'personne')+'.');
+    // Son propre service (et ses annexes sans robot ni handling) est toujours aidé : la liste ne garde que les autres,
+    // plus ce qu'une sauvegarde d'avant y avait coché.
+    const tr=t.closest('[data-rf-service]'),s=tr.dataset.rfService,cases=[...tr.querySelectorAll('[data-rf-cible]')];
+    const grises=new Set(cases.filter(x=>x.disabled).map(x=>x.dataset.rfCible));
+    const avant=((Sim.ateliers.state.polyvalence||{})[s]||[]).filter(x=>grises.has(x));
+    const liste=avant.concat(cases.filter(x=>x.checked&&!x.disabled).map(x=>x.dataset.rfCible));
+    const autres=liste.filter(x=>!grises.has(x));
+    Sim.ateliers.changer(()=>{const st=Sim.ateliers.state,p={...(st.polyvalence||{})};
+      if(liste.length)p[s]=liste;else delete p[s];
+      if(Object.keys(p).length)st.polyvalence=p;else delete st.polyvalence;},
+      '« '+nomDeService(s)+' » aide son service et ses annexes'+(autres.length?', et : '+autres.map(nomDeService).join(', '):'')+'.');
   }
 }
 function revenirPolyvalence(e){
   const b=e.target.closest('[data-rf-defaut]');if(!b||!Sim.ateliers)return;
   const s=b.closest('[data-rf-service]').dataset.rfService;
   Sim.ateliers.changer(()=>{const st=Sim.ateliers.state,p={...(st.polyvalence||{})};delete p[s];
-    if(Object.keys(p).length)st.polyvalence=p;else delete st.polyvalence;},'« '+nomDeService(s)+' » aide de nouveau son service et ses annexes.');
+    if(Object.keys(p).length)st.polyvalence=p;else delete st.polyvalence;},'« '+nomDeService(s)+' » n’aide plus que son service et ses annexes.');
 }
 /* Le réglage, dans « Réglages de la simulation », après les heures supplémentaires. */
 function renderReglageRenforts(force){
@@ -1827,15 +1837,20 @@ function renderReglageRenforts(force){
   }
   // On ne redessine pas sous les doigts de quelqu'un qui tape une valeur.
   if(!force&&box.contains(document.activeElement)&&document.activeElement.matches('input[type=number]'))return;
-  const rf=renforts(),poly=(Sim.ateliers.state.polyvalence)||{},{preteurs,cibles,manuels}=servicesRenforts();
+  const rf=renforts(),poly=(Sim.ateliers.state.polyvalence)||{},{preteurs,cibles,machines}=servicesRenforts();
   const champ=k=>{const c=RENFORTS_CHAMPS[k];return '<div><label class="at-inline-champ">'+escapeHTML(c.texte)+' <span class="champ-unite"><input type="number" min="'+c.min+'" max="'+c.max+'" step="'+(k==='delai'?1:0.05)+'" value="'+rf[k]+'"'
     +' data-rf="'+k+'" aria-label="'+escapeHTML(c.texte+', en '+(k==='delai'?'minutes':'personne'))+'"'+(rf.actif?'':' disabled')+'><span class="unite">'+c.unite+'</span></span></label></div>';};
   const ligne=s=>{
-    const saisi=Array.isArray(poly[s]),choisis=new Set(saisi?poly[s]:polyvalenceParDefaut(s).filter(x=>manuels.has(x)));
-    const resume=(saisi?'':'Par défaut : ')+([...choisis].map(nomDeService).join(', ')||'personne');
+    // Toujours : son propre service, et ses annexes (pour leurs équipes à la main) ; la liste en ajoute d'autres.
+    const saisie=Array.isArray(poly[s])?poly[s]:[],famille=polyvalenceParDefaut(s),toujours=c=>aideToujours(s,c,machines);
+    const autres=saisie.filter(c=>!famille.includes(c)||machines.has(c));
+    const resume=(famille.length>1?'Son service et ses annexes':'Son service')+(autres.length?', et : '+autres.map(nomDeService).join(', '):'');
+    const titre=c=>(c===s?'Toujours : son propre service':toujours(c)?'Toujours : une annexe de son service'
+      :famille.includes(c)?'Une annexe : toujours pour ses équipes à la main ; cochée, aussi pour ses robots et son handling':'');
     return '<tr data-rf-service="'+escapeHTML(s)+'"><th scope="row">'+escapeHTML(nomDeService(s))+'</th><td><details'+(renfortsOuverts.has(s)?' open':'')+'><summary>'+escapeHTML(resume)+'</summary>'
-      +'<div class="rf-cibles">'+cibles.map(c=>'<label class="chk chk-mini"><input type="checkbox" data-rf-cible="'+escapeHTML(c)+'"'+(choisis.has(c)?' checked':'')+'><span>'+escapeHTML(nomDeService(c))+'</span></label>').join('')+'</div>'
-      +(saisi?'<button type="button" class="btn btn-sm" data-rf-defaut>Revenir au défaut</button>':'')+'</details></td></tr>';
+      +'<div class="rf-cibles">'+cibles.map(c=>'<label class="chk chk-mini"'+(titre(c)?' title="'+escapeHTML(titre(c))+'"':'')+'><input type="checkbox" data-rf-cible="'+escapeHTML(c)+'"'
+        +(toujours(c)||saisie.includes(c)?' checked':'')+(toujours(c)?' disabled':'')+'><span>'+escapeHTML(nomDeService(c))+'</span></label>').join('')+'</div>'
+      +(saisie.length?'<button type="button" class="btn btn-sm" data-rf-defaut>Revenir au défaut</button>':'')+'</details></td></tr>';
   };
   box.innerHTML='<div class="titre-aide"><h3>Renforts</h3><details class="aide">'
     +'<summary aria-label="Comment les renforts sont comptés">?</summary>'
@@ -1848,8 +1863,8 @@ function renderReglageRenforts(force){
     +'<div class="rf-champs">'+champ('efficacite')+champ('efficaciteAutreService')+champ('delai')
     +'<label class="chk chk-mini"><input type="checkbox" data-rf-sup'+(rf.versHeuresSup?' checked':'')+(rf.actif?'':' disabled')+'><span>Un renfort peut rester en heures supplémentaires'
     +(heuresSup().actif?'':' (quand elles sont permises)')+'</span></label></div>'
-    +(rf.actif?'<h4>Qui peut aider qui</h4><p class="mini-note">Sans choix, un service aide le sien et ses annexes, à la main seulement. Cochez pour '
-      +'autoriser un autre service, un robot, ou le handling (permis de conduire) ; une plonge ne va vers une zone alimentaire que cochée ici.</p>'
+    +(rf.actif?'<h4>Qui peut aider qui</h4><p class="mini-note">Un service aide toujours le sien et ses annexes, pour leurs équipes à la main (cochés et grisés). '
+      +'Cochez pour ajouter un autre service, un robot, ou le handling (permis de conduire) ; une plonge ne va vers une zone alimentaire que cochée ici.</p>'
       +(preteurs.length?'<div class="table-scroll"><table class="svc-table rf-table"><thead><tr><th scope="col">Service</th><th scope="col">Peut aider</th></tr></thead><tbody>'
         +preteurs.map(ligne).join('')+'</tbody></table></div>':'<p class="mini-note">Aucune équipe qui prépare : personne à prêter.</p>')
       :'<p class="mini-note">Désactivés : une équipe qui a fini reste à son poste jusqu’à la fin de sa présence.</p>');

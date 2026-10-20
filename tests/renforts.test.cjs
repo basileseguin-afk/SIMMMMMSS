@@ -36,9 +36,10 @@ const sansRenforts = r => { const x = json(r); delete x.renforts; for (const a o
 test('désactivés, ou sans renfort possible : la même journée, champ par champ', () => {
   const sans = json(jouer(undefined));
   assert.deepEqual(json(jouer({ actif: false, efficacite: 1, delai: 0, versHeuresSup: true })), sans, 'désactivés : rien de nouveau');
-  // La matrice ne laisse personne aider : la même journée, avec ses champs de renforts à zéro.
-  const fermee = jouer({ actif: true, polyvalence: { prepa: [] } });
-  assert.deepEqual(sansRenforts(fermee), sans);
+  // Personne ne peut aider : A est en cuisine, qui n'aide que la cuisine. La même journée, avec ses champs de renforts à zéro.
+  const sansAide = json(jouer(undefined, [A_({ service: 'cuisine' }), B_()], par('cuisine')));
+  const fermee = jouer({ actif: true }, [A_({ service: 'cuisine' }), B_()], par('cuisine'));
+  assert.deepEqual(sansRenforts(fermee), sansAide);
   assert.deepEqual(fermee.renforts, []);
   assert.deepEqual([vue(fermee, 'ma').renfortsPretes, vue(fermee, 'mb').renfortsRecus, vue(fermee, 'mb').renforts], [0, 0, { vers: [], de: [] }]);
   // Les journées de référence (la démo, deux unités fictives) : aucun renfort possible n'y change rien.
@@ -88,13 +89,40 @@ test('la matrice interdit un passage : pas de renfort', () => {
   const r = jouer({ actif: true }, [cuisine, B_()], par('cuisine'));
   assert.equal(vue(r, 'ma').fin, h('10:00'), 'A finit bien à 10:00');
   assert.deepEqual([r.renforts, vue(r, 'mb').heuresSup], [[], 60]);
-  // Saisie, la matrice remplace le défaut : ici, le montage n'aide plus personne, pas même lui.
-  const f = jouer({ actif: true, polyvalence: { prepa: ['cuisine'] } });
-  assert.deepEqual([f.renforts, vue(f, 'mb').heuresSup], [[], 60]);
+  // La cuisine n'aide la prépa que si sa liste le dit.
+  assert.deepEqual(jouer({ actif: true, polyvalence: { cuisine: ['chaude'] } }, [cuisine, B_()], par('cuisine')).renforts, []);
   // Les familles : une annexe et son service s'aident sans matrice, au taux du même service.
   const annexe = jouer({ actif: true, familles: { prepa: ['prepa2'], prepa2: ['prepa'] } }, [A_({ service: 'prepa2' }), B_()], par('prepa2'));
   assert.deepEqual(annexe.renforts, [{ de: 'ma', vers: 'mb', minutes: 60 }]);
   proche(vue(annexe, 'mb').heuresSup, 20, 'une salle de la famille compte comme le même service');
+});
+
+test('un service aide toujours son propre service : une matrice « A aide B » laisse A s’aider lui-même', () => {
+  // Le montage aide la cuisine : il aide toujours le montage (correction du banc d'essai : la liste ajoute, elle ne remplace pas).
+  const r = jouer({ actif: true, polyvalence: { prepa: ['cuisine'] } });
+  assert.deepEqual(r.renforts, [{ de: 'ma', vers: 'mb', minutes: 60 }]);
+  proche(vue(r, 'mb').heuresSup, 20);
+  // Une liste vide : son service et ses annexes, comme sans liste.
+  assert.deepEqual(json(jouer({ actif: true, polyvalence: { prepa: [] } })), json(jouer({ actif: true })));
+  // Et il aide aussi les services de sa liste : la cuisine, saisie pour la prépa (un autre service, à 0,6).
+  const versCuisine = jouer({ actif: true, polyvalence: { prepa: ['cuisine'] } }, [A_(), B_({ service: 'cuisine' })],
+    { parcours: [CHEMIN, { id: 'c2', nom: 'cuisine', noeuds: ['cuisine'], liens: [] }], parcoursClasse: { 'EST/YC': 'c2', 'OUEST/YC': 'c2' } });
+  proche(vue(versCuisine, 'mb').heuresSup, 30);
+});
+
+test('une sauvegarde qui avait coché le service lui-même se relit sans changement', () => {
+  // Relue telle quelle par le validateur, et jouée comme avant : son service saisi ouvre aussi ses robots.
+  const base = { schema: 'ory-ateliers', version: 1, ateliers: [A_()], polyvalence: { prepa: ['prepa', 'cuisine'] } };
+  assert.deepEqual(A.valider(base).polyvalence, { prepa: ['prepa', 'cuisine'] });
+  assert.deepEqual(json(jouer({ actif: true, polyvalence: { prepa: ['prepa', 'cuisine'] } })), json(jouer({ actif: true, polyvalence: { prepa: ['cuisine'] } })),
+    'pour une équipe à la main, la même journée');
+  const vols = [vol('NO1', 'NORD', '15:00'), vol('SU1', 'SUD', '15:10'), vol('ES1', 'EST', '15:20'), vol('ES2', 'EST', '15:30'), vol('ES3', 'EST', '15:40')];
+  const robot = { id: 'ro', nom: 'Robot', service: 'prepa', type: 'robot', debut: '08:00', jour: 0, personnes: 1, personnesMin: 2, debit: 100, pauses: [],
+    lots: [['EST/YC']], regime: { actif: true, seuils: [], presence: 480 } };
+  const avec = poly => P.simuler({ vols, liaisons: [], bareme: BAREME, rendement: 1, ateliers: [A_({ regime: { actif: true, seuils: [], presence: 360 } }), robot],
+    parcours: [CHEMIN], parcoursCabine: { YC: 'c1' }, renforts: { actif: true, ...(poly ? { polyvalence: poly } : {}) } });
+  assert.deepEqual(avec({ prepa: ['prepa'] }).renforts, [{ de: 'ma', vers: 'ro', minutes: 190 }], 'cochée, la prépa ouvre son robot, comme avant');
+  assert.deepEqual(avec(null).renforts, [], 'sans la cocher, jamais vers un robot');
 });
 
 test('personnesMax : une équipe ne reçoit pas plus de renforts que ses postes de travail', () => {

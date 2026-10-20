@@ -20,6 +20,8 @@ const UNITE=()=>{
   Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
     st.ateliers.push({id:'ma',nom:'Montage A',service:'prepa',type:'manuel',debut:'08:00',jour:0,personnes:1,pauses:[],lots:[['NORD/YC'],['SUD/YC']],regime:{actif:true,presence:180}});
     st.ateliers.push({id:'mb',nom:'Montage B',service:'prepa',type:'manuel',debut:'08:00',jour:0,personnes:1,pauses:[],lots:[['EST/YC'],['OUEST/YC']],regime:{actif:true,presence:300}});
+    // Une équipe dans un autre service : une cible de plus pour la matrice.
+    st.ateliers.push({id:'cu',nom:'Cuisine C',service:'cuisine',type:'manuel',debut:'08:00',jour:0,personnes:1,pauses:[],lots:[],regime:{actif:true,presence:300}});
     st.effectifs={prepa:'impose'};},'');
 };
 
@@ -76,19 +78,27 @@ const UNITE=()=>{
   assert.equal((await resultat()).supB,42,'arrivé à 10:30 : 30 min × 0,6');
   await saisir('[data-rf=delai]','10');await saisir('[data-rf=efficacite]','0.8');
 
-  // 4. Qui peut aider qui : par défaut le montage aide le montage ; décoché, plus personne ; « Revenir au défaut ».
+  // 4. Qui peut aider qui : le montage aide toujours le montage (coché et grisé) ; cocher la cuisine l'ajoute ; « Revenir au défaut ».
   const ligne=panneau().locator('tr[data-rf-service=prepa]');
-  assert.match(await ligne.locator('summary').innerText(),/^Par défaut : /);
+  assert.match(await ligne.locator('summary').innerText(),/^Son service$/);
   await ligne.locator('summary').click();await attendre();
   const cible=ligne.locator('[data-rf-cible=prepa]');
-  assert.equal(await cible.isChecked(),true);
-  await cible.uncheck();await attendre();
-  assert.deepEqual((await cases()).polyvalence,{prepa:[]},'rangée avec les cases');
-  assert.deepEqual((await resultat()).renforts,[]);
+  assert.deepEqual([await cible.isChecked(),await cible.isDisabled()],[true,true],'son propre service : coché et grisé');
+  const cuisine=()=>panneau().locator('tr[data-rf-service=prepa] [data-rf-cible=cuisine]');
+  assert.deepEqual([await cuisine().isChecked(),await cuisine().isDisabled()],[false,false]);
+  await cuisine().check();await attendre();
+  assert.deepEqual((await cases()).polyvalence,{prepa:['cuisine']},'rangée avec les cases : les autres services seulement');
+  assert.deepEqual((await resultat()).renforts,[{de:'ma',vers:'mb',minutes:60}],'il aide toujours son service');
+  assert.match(await panneau().locator('tr[data-rf-service=prepa] summary').innerText(),/^Son service, et : /);
   assert.equal(await panneau().locator('tr[data-rf-service=prepa] details').getAttribute('open'),'','la ligne reste dépliée');
   await panneau().locator('tr[data-rf-service=prepa] [data-rf-defaut]').click();await attendre();
   assert.equal('polyvalence' in (await cases()),false,'revenue au défaut : rien d’enregistré');
   assert.deepEqual((await resultat()).renforts,[{de:'ma',vers:'mb',minutes:60}]);
+  // Une sauvegarde d'avant qui cochait le service lui-même : relue telle quelle, et gardée quand on retouche la ligne.
+  await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.polyvalence={prepa:['prepa','cuisine']};},''));await attendre();
+  assert.deepEqual([await cible.isChecked(),await cible.isDisabled(),await cuisine().isChecked()],[true,true,true]);
+  await cuisine().uncheck();await attendre();
+  assert.deepEqual((await cases()).polyvalence,{prepa:['prepa']});
 
   // 5. Les postes de travail, dans la fiche de B : un seul poste, déjà pris ; vidé, plus de limite.
   await nav.aller(page,'at-equipes');
@@ -112,17 +122,18 @@ const UNITE=()=>{
   // 7. Rechargée, la règle est la même ; dans « Tout sauvegarder » aussi, avec la matrice.
   await nav.aller(page,'rg-simulation');
   assert.equal(await panneau().locator('tr[data-rf-service=prepa] details').getAttribute('open'),'','toujours dépliée');
-  await panneau().locator('tr[data-rf-service=prepa] [data-rf-cible=prepa]').uncheck();await attendre();
+  await panneau().locator('tr[data-rf-service=prepa] [data-rf-defaut]').click();await attendre();
+  await panneau().locator('tr[data-rf-service=prepa] [data-rf-cible=cuisine]').check();await attendre();
   await page.reload();await attendre(600);
   await nav.aller(page,'rg-simulation');
   assert.equal(await panneau().locator('[data-rf-actif]').isChecked(),true);
-  assert.doesNotMatch(await panneau().locator('tr[data-rf-service=prepa] summary').innerText(),/Par défaut/);
+  assert.match(await panneau().locator('tr[data-rf-service=prepa] summary').innerText(),/, et : /);
   await nav.aller(page,'u-sauvegarde');
   const [d]=await Promise.all([page.waitForEvent('download'),page.locator('#sauvegarde-export').click()]);
   const fichier=path.join(dossier,'sauvegarde.json');await d.saveAs(fichier);
   const contenu=JSON.parse(fs.readFileSync(fichier,'utf8')).contenu,lu=x=>(typeof x==='string'?JSON.parse(x):x);
   assert.deepEqual(lu(contenu['ory-modele-v1']).renforts,{actif:true,efficacite:0.8,efficaciteAutreService:0.6,delai:10,versHeuresSup:false});
-  assert.deepEqual(lu(contenu['ory-ateliers-v1']).polyvalence,{prepa:[]});
+  assert.deepEqual(lu(contenu['ory-ateliers-v1']).polyvalence,{prepa:['cuisine']});
 
   // 8. Décochée : plus de renfort, plus rien dans la Synthèse ; « Annuler » revient.
   await nav.aller(page,'rg-simulation');
