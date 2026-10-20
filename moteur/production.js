@@ -1855,8 +1855,8 @@
     const inactives = new Set();
     for (const a of liste) {
       const k = a.condition;
-      // La condition d'une plonge sur son sale (évolution 6) se décide pendant la journée, pas au volume.
-      if (!k || typeof k !== 'object' || !(+k.seuil > 0) || k.mesure === 'sale') continue;
+      // La condition d'une plonge sur son sale (évolution 6) ou sur le retard se décide en jouant la journée, pas au volume.
+      if (!k || typeof k !== 'object' || !(+k.seuil > 0) || k.mesure === 'sale' || k.mesure === 'absorbable') continue;
       const mesure = k.mesure === 'repas' ? 'repas' : 'vols';
       const compte = compteDuJour(classes, k.cie, mesure);
       const remplie = compte >= +k.seuil;
@@ -2002,13 +2002,28 @@
    *  défaut, provisoire : dès qu'il en reste). Sinon ses personnes ne viennent
    *  pas et ne comptent pas. La journée se joue d'abord sans elle, pour mesurer
    *  le sale à son heure ; puis avec elle, ou sans.
+   *
+   *  OU QUE SI LE MATIN NE PEUT PAS ABSORBER LE RETARD (correction du banc
+   *  d'essai) : `condition: { mesure: 'absorbable', equipe }`. La journée se
+   *  joue sans elle : le sale non lavé à la fin (`saleFinal`) est le retard.
+   *  Puis on la rejoue, toujours sans elle, avec ce retard pour sale de la
+   *  veille, à la place de celui du jour : le matin du lendemain ressemble à
+   *  celui du jour, comme la journée circulaire du handling. Si le retard y
+   *  est propre avant la fin de la présence de l'équipe `equipe` (par défaut,
+   *  la plonge du même service qui commence le plus tôt), et qu'elle y lave
+   *  ses propres retours — ceux qu'elle lave sans le retard — avant cette fin,
+   *  sans heures sup, elle l'absorbe : la nuit ne vient pas, le retard passe
+   *  au lendemain par `saleFinal`. Sinon, elle vient. Les deux mesures ne se
+   *  cumulent pas : une seule `mesure`.
    * --------------------------------------------------------------------*/
   const SEUIL_SALE = 1;
-  const plongeConditionnelle = a => !!(a && a.type === 'lavage' && a.condition && a.condition.mesure === 'sale');
-  /** L'heure où elle mesure le sale : `a`, le jour où elle commence ; sans `a`, son début. */
+  const MESURES_PLONGE = new Set(['sale', 'absorbable']);
+  const plongeConditionnelle = a => !!(a && a.type === 'lavage' && a.condition && MESURES_PLONGE.has(a.condition.mesure));
+  const surLeRetard = a => a.condition.mesure === 'absorbable';
+  /** L'heure où elle décide : où elle mesure le sale (`a`, le jour où elle commence ; sans `a`, son début) ; sur le retard, son début. */
   function heureMesureSale(a) {
     let t = null;
-    try { t = a.condition.a ? minutes(a.condition.a) : null; } catch (e) { t = null; }
+    try { t = a.condition.a && !surLeRetard(a) ? minutes(a.condition.a) : null; } catch (e) { t = null; }
     return (t == null ? minutes(a.debut) : t) + (a.jour || 0) * MINUTES_PAR_JOUR;
   }
   function seuilSale(a) {
@@ -2026,7 +2041,18 @@
     const sauf = () => opts.ateliers.filter(a => !plongeConditionnelle(a) || ouvertes.has(a.id));
     // Les plonges qui ne viennent pas restent des plonges : leur service, et leur façon de laver.
     const fermees = () => conditionnelles.filter(a => !ouvertes.has(a.id)).map(a => ({ service: a.service, parVol: !!a.parVol }));
+    // La journée sans la dernière, quand elle reste fermée sur le retard : c'est déjà la journée jouée.
+    let sansElle = null;
     for (const { a, t } of ordre) {
+      if (surLeRetard(a)) {
+        const d = decisionSurLeRetard(a, opts, sauf(), fermees());
+        if (!d.m) return d.r;
+        mesures.set(a.id, d.m);
+        if (!d.m.absorbe) ouvertes.add(a.id);
+        sansElle = d.m.absorbe ? { id: a.id, r: d.r } : null;
+        continue;
+      }
+      sansElle = null;
       const sonde = { id: a.id, service: a.service, parVol: !!a.parVol, t, sale: 0 };
       const r0 = jouerJournee({ ...opts, ateliers: sauf(), _sondesSale: [sonde], _plongesFermees: fermees() });
       if (!r0.ok) return r0;
@@ -2034,7 +2060,7 @@
       mesures.set(a.id, { t, seuil, sale: sonde.sale });
       if (sonde.sale >= seuil - 1e-9) ouvertes.add(a.id);
     }
-    const r = jouerJournee({ ...opts, ateliers: sauf(), _plongesFermees: fermees() });
+    const r = sansElle && sansElle.id === ordre[ordre.length - 1].a.id ? sansElle.r : jouerJournee({ ...opts, ateliers: sauf(), _plongesFermees: fermees() });
     if (!r.ok) return r;
     // Une équipe qui ne s'ouvre pas reste dans la liste des équipes, sans personne.
     const presentes = new Set(r.ateliers.map(v => v.id)), regimeDe = a => normaliserRegime(a.regime, opts.regime);
@@ -2054,10 +2080,103 @@
       const finPresence = reg.actif ? v.debutPoste + reg.presence : null;
       const fin = Math.max(finPresence ?? -Infinity, ouverte && v.fin != null ? v.fin : -Infinity);
       const lavees = ouverte ? v.lots.filter(l => !l.impossible).reduce((n, l) => n + (l.unites || 0), 0) : 0;
-      v.conditionSale = { ouverte, a: a.condition.a || a.debut, heure: m.t, seuil: m.seuil, sale: m.sale, lavees,
-        reste: Number.isFinite(fin) ? saleRestant(r, a, fin) : null, fin: Number.isFinite(fin) ? fin : null };
+      const apres = { lavees, reste: Number.isFinite(fin) ? saleRestant(r, a, fin) : null, fin: Number.isFinite(fin) ? fin : null };
+      v.conditionSale = surLeRetard(a)
+        ? { mesure: 'absorbable', ouverte, equipe: m.equipe, retard: m.retard, absorbe: m.absorbe, depassement: m.depassement, ...apres }
+        : { mesure: 'sale', ouverte, a: a.condition.a || a.debut, heure: m.t, seuil: m.seuil, sale: m.sale, ...apres };
     }
     return r;
+  }
+
+  /** L'équipe qui doit absorber le retard : `equipe`, si elle lave ce jour-là ; sans elle, la plonge du même service
+   *  qui commence le plus tôt dans la journée (à l'heure, puis au jour ; à égalité, la première de la liste). */
+  function equipeQuiAbsorbe(a, ateliers) {
+    const plonges = ateliers.filter(x => x && x.type === 'lavage' && x.id !== a.id && x.service === a.service);
+    if (a.condition.equipe) return plonges.find(x => x.id === a.condition.equipe) || null;
+    return plonges.reduce((m, x) => (!m || plusTot(x, m) ? x : m), null);
+  }
+  const plusTot = (x, y) => minutes(x.debut) - minutes(y.debut) + ((x.jour || 0) - (y.jour || 0)) / 10 < 0;
+
+  /**
+   * La décision d'une plonge sur le retard (voir plus haut), dans la journée
+   * jouée sans elle (`ateliers`, `fermees`). Rend `r`, cette journée, et `m` :
+   * l'équipe qui doit absorber, le retard (vols et unités), si elle l'absorbe
+   * et, sinon, de combien de minutes elle dépasserait sa présence. Sans `m`,
+   * la journée est refusée (`r`).
+   */
+  function decisionSurLeRetard(a, opts, ateliers, fermees) {
+    const suiviA = { laves: [], veille: [] };
+    const rA = jouerJournee({ ...opts, ateliers, _plongesFermees: fermees, _suiviLavage: suiviA });
+    if (!rA.ok) return { r: rA };
+    const retard = (rA.saleFinal || []).filter(x => +x.unites > 1e-9);
+    const unites = retard.reduce((n, x) => n + x.unites, 0);
+    const d = equipeQuiAbsorbe(a, ateliers);
+    const m = { equipe: d ? d.id : a.condition.equipe || null, retard: { vols: retard.length, unites }, absorbe: true, depassement: 0 };
+    if (!retard.length) return { r: rA, m };
+    if (!d) return { r: rA, m: { ...m, absorbe: false, depassement: null } };
+    // Le lendemain : la même journée, avec le retard pour sale de la veille.
+    const suiviB = { laves: [], veille: [] };
+    const rB = jouerJournee({ ...opts, ateliers, _plongesFermees: fermees, _suiviLavage: suiviB,
+      materiel: { ...(opts.materiel || {}), saleInitial: retard.map(x => ({ ...x })) } });
+    if (!rB.ok) return { r: rB };
+    const vB = rB.ateliers.find(x => x.id === d.id), reg = normaliserRegime(d.regime, opts.regime);
+    const debut = vB ? vB.debutPoste : minutes(d.debut) + (d.jour || 0) * MINUTES_PAR_JOUR;
+    const finPresence = reg.actif ? debut + reg.presence : Infinity;
+    // Absorbé : le retard propre avant la fin de sa présence (premier dans la file, c'est elle qui le lave
+    // quand elle est seule au travail), ses propres retours — ce qu'elle lave sans le retard, vol par vol ;
+    // au débit, la part de chaque vol — lavés par elle avant la fin de sa présence, et pas d'heures sup.
+    const parVol = (liste, garder) => {
+      const s = new Map();
+      for (const x of liste) if (garder(x)) { const k = x.vol + '\u0000' + x.cie; s.set(k, (s.get(k) || 0) + x.u); }
+      return s;
+    };
+    const aTemps = x => x.fin <= finPresence + 1e-9;
+    const siens = parVol(suiviA.laves, x => x.atelier === d.id && !x.veille), faits = parVol(suiviB.laves, x => x.atelier === d.id && !x.veille && aTemps(x));
+    const retardLave = suiviB.laves.filter(x => x.veille && aTemps(x)).reduce((n, x) => n + x.u, 0);
+    const absorbe = !!vB && retardLave >= unites - 1e-6 && [...siens].every(([k, u]) => (faits.get(k) || 0) >= u - 1e-6) && !(vB.heuresSup > 1e-9);
+    return { r: rA, m: { ...m, absorbe,
+      depassement: absorbe ? 0 : depassementSeule(d, opts, suiviB.veille, suiviA.laves.filter(x => x.atelier === d.id && !x.veille), debut, finPresence) } };
+  }
+
+  /**
+   * De combien de minutes l'équipe `d` dépasserait la fin de sa présence pour
+   * laver seule, sans limite de fin, le retard (présent dès le début de la
+   * journée) et ses propres retours (à leur heure) : par vol, ses tunnels qui
+   * tournent, chacun prenant le vol suivant ; au débit, son débit, d'un bloc ce
+   * qui est là. Ses pauses comprises. null si elle ne lave rien.
+   */
+  function depassementSeule(d, opts, retard, siens, debut, finPresence) {
+    if (!Number.isFinite(finPresence)) return 0;
+    const pauses = pausesDe(d);
+    let fin = debut;
+    if (d.parVol) {
+      const tournent = Array.isArray(d.tunnels) && d.tunnels.length ? tunnelsQuiTournent(d).tournent : (d.personnes > 0 ? [{ nom: 'Tunnel' }] : []);
+      if (!tournent.length) return null;
+      const pistes = tournent.map(t => ({ libre: debut, vitesse: vitesseTunnel(t) }));
+      const vols = retard.map(x => ({ t: x.t, cie: x.cie })).concat(siens.map(x => ({ t: x.t, cie: x.cie }))).sort((x, y) => x.t - y.t);
+      for (const v of vols) {
+        let p = null, f = Infinity;
+        for (const q of pistes) {
+          const x = finAvecPauses(Math.max(v.t, q.libre), (dureeLavageVol(d, v.cie) ?? 0) / q.vitesse, pauses).fin;
+          if (x < f - 1e-9) { p = q; f = x; }
+        }
+        p.libre = f; fin = Math.max(fin, f);
+      }
+    } else {
+      const debit = debitLavage(d);
+      if (!(debit > 0)) return null;
+      const arrivees = retard.map(x => ({ t: x.t, u: x.unites })).concat(siens.map(x => ({ t: x.t, u: x.u }))).sort((x, y) => x.t - y.t);
+      const regime = normaliserRegime(d.regime, opts.regime), prises = new Set();
+      let cumul = 0;
+      for (let i = 0; i < arrivees.length;) {
+        let u = 0;
+        while (i < arrivees.length && arrivees[i].t <= fin + 1e-9) u += arrivees[i++].u;
+        if (u <= 1e-9) { if (i < arrivees.length) fin = Math.max(fin, arrivees[i].t); continue; }
+        const x = executerTache({ depart: fin, duree: u / debit * 60, cumul, prises, pauses, regime, finPoste: Infinity });
+        fin = x.fin; cumul = x.cumul;
+      }
+    }
+    return Math.max(0, fin - finPresence);
   }
 
   /** Le sale pas encore propre à l'instant t : par vol, les vols revenus qui ne sont pas sortis du tunnel ; au débit, le niveau de la file. */
@@ -2594,6 +2713,10 @@
     }, 'sale de la veille');
     // Tout le sale qui arrive à la plonge, pour le mesurer (évolution 6).
     const arriveesSale = veille.concat(retoursStatiques({ ...mat, unites: mat.unites }, true));
+    // Ce que lave chaque équipe de plonge, vol par vol, pour la décision sur le retard (correction du
+    // banc d'essai) : une simple écoute, la journée n'en change pas.
+    const suiviLavage = opts._suiviLavage || null, nomsVeille = new Set(veille.map(r => r.vol));
+    if (suiviLavage) suiviLavage.veille = veille.map(r => ({ ...r }));
 
     const journal = [];   // une ligne par lot : ce que l'on affichera
     const suspendus = new Map();   // handling → le vol qu'il attend encore
@@ -3388,6 +3511,7 @@
           const ligne = { ...base, atelier: p.a.id, debut: debutV, fin: f.fin, duree, attente: debutV - r.t, arret: f.arret, impossible: false,
             tunnel: p.numero, nomTunnel: p.nom, vitesse: p.vitesse };
           journal.push(ligne); p.vue.lots.push(ligne);
+          if (suiviLavage) suiviLavage.laves.push({ atelier: p.a.id, vol: r.vol, cie: r.cie, t: r.t, u: r.unites || 0, fin: f.fin, veille: nomsVeille.has(r.vol) });
           p.vue.travail += duree; p.vue.attente += ligne.attente; p.vue.arret += f.arret;
           p.vue.fin = Math.max(p.vue.fin ?? -Infinity, f.fin);
           // Le matériel du vol est propre à sa sortie du tunnel.
@@ -3464,6 +3588,7 @@
               // En moyenne, le milieu du paquet ; au pire, sa dernière unité.
               const sortie = k => debutLot + k / Math.max(lavees, 1e-9) * (env.maintenant - debutLot) - c.t;
               if (w > 1e-9) file.attentes.push({ u: w, attente: sortie(c.pos + w / 2), pire: sortie(c.pos + w) });
+              if (suiviLavage && w > 1e-9) suiviLavage.laves.push({ atelier: a.id, vol: c.vol, cie: c.cie, t: c.t, u: w, fin: env.maintenant, veille: nomsVeille.has(c.vol) });
               if (c.u - w > 1e-9) rendus.push({ t: c.t, u: c.u - w, vol: c.vol, cie: c.cie });
             }
             file.arrivees.unshift(...rendus);

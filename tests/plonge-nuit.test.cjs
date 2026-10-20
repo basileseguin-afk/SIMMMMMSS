@@ -32,7 +32,7 @@ test('sous le seuil, le shift ne s’ouvre pas et ne compte aucune personne', ()
   const nuit = vue(r, 'nuit');
   assert.deepEqual([nuit.personnes, nuit.fin, nuit.travail, nuit.lots, nuit.finPoste], [0, null, 0, [], null]);
   assert.deepEqual([nuit.debutPoste, nuit.presence, nuit.jour], [h('22:00'), 480, 0], 'son poste reste lisible');
-  assert.deepEqual(nuit.conditionSale, { ouverte: false, a: '22:00', heure: h('22:00'), seuil: 1, sale: 0, lavees: 0, reste: 0, fin: h('22:00') + 480 });
+  assert.deepEqual(nuit.conditionSale, { mesure: 'sale', ouverte: false, a: '22:00', heure: h('22:00'), seuil: 1, sale: 0, lavees: 0, reste: 0, fin: h('22:00') + 480 });
   assert.equal(r.effectifs.nuit, undefined, 'ses personnes ne comptent pas');
   // La journée est celle d'une unité sans elle.
   const sans = jouer(retours(10), [SOIR()]);
@@ -51,7 +51,7 @@ test('au-dessus du seuil, il s’ouvre et lave ce qui attend', () => {
   assert.equal(nuit.personnes, 2);
   assert.deepEqual(laves(r, 'nuit'), ['R13', 'R14', 'R15', 'R16'], 'les vols que le soir n’a pas pu laver');
   assert.deepEqual(r.lots.filter(l => l.atelier === 'nuit').map(l => [l.debut, l.fin]), [[h('22:00'), h('22:30')], [h('22:30'), h('23:00')], [h('23:00'), h('23:30')], [h('23:30'), h('24:00')]]);
-  assert.deepEqual(nuit.conditionSale, { ouverte: true, a: '22:00', heure: h('22:00'), seuil: 1, sale: 760, lavees: 760, reste: 0, fin: h('22:00') + 480 });
+  assert.deepEqual(nuit.conditionSale, { mesure: 'sale', ouverte: true, a: '22:00', heure: h('22:00'), seuil: 1, sale: 760, lavees: 760, reste: 0, fin: h('22:00') + 480 });
   assert.deepEqual(r.saleFinal, [], 'plus rien de sale à la fin de la journée');
   assert.equal(r.effectifs.nuit, undefined, 'son effectif est celui saisi');
 });

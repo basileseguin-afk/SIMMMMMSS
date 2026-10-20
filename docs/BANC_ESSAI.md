@@ -713,6 +713,13 @@ personnes), qui ne travaille que certains jours. Elle compte le jour J, celui
 où elle commence : une équipe de 22:00 à 06:00 a `jour` 0 et `debutPoste`
 22:00, même si elle lave après minuit.
 
+Deux règles décident si elle vient, au choix (une seule par équipe, elles ne
+se cumulent pas) : **le sale qui attend à une heure** (`mesure: 'sale'`, plus
+bas), ou **le retard que l'équipe du matin ne peut pas absorber**
+(`mesure: 'absorbable'`, « Sur le retard », plus bas) — c'est la règle de
+l'unité : le shift de nuit ne s'ouvre que si l'équipe du matin du lendemain
+ne pourrait pas laver ce retard en plus de son propre travail.
+
 ### Le réglage
 
 - **La condition**, sur une équipe de lavage (`ory-ateliers-v1`) :
@@ -761,6 +768,7 @@ où elle commence : une équipe de 22:00 à 06:00 a `jour` 0 et `debutPoste`
 
 | Champ | Sens |
 | --- | --- |
+| `mesure` | La règle : `sale` (et `absorbable`, plus bas) |
 | `ouverte` | Le shift s'est-il ouvert |
 | `a`, `heure`, `seuil` | L'heure de la mesure (saisie, et en minutes du jour J), le seuil |
 | `sale` | Le sale en attente mesuré, en unités |
@@ -785,6 +793,104 @@ validation ; les options du banc ; Excel) ; `tests/plonge-nuit-browser.cjs` (la
 fiche, le bilan, le sale de la veille, l'enregistrement) ;
 `tests/non-regression.test.cjs` (sans sale de la veille : la même journée,
 `saleFinal` en plus).
+
+### Sur le retard : que si le matin ne peut pas l'absorber (correction)
+
+Avec la règle du sale, le shift de nuit s'ouvre dès qu'il reste du sale à son
+heure. Dans l'unité, il ne s'ouvre que si l'équipe du matin du lendemain ne
+pourrait pas laver ce retard en plus de son propre travail.
+
+**Le réglage**, sur une équipe de lavage (`ory-ateliers-v1`) :
+`condition: { mesure: 'absorbable', equipe }`. `equipe` est l'identifiant de
+l'équipe qui doit absorber le retard : une autre équipe de la même plonge. Sans
+lui (le défaut), c'est la plonge du même service qui **commence le plus tôt
+dans la journée** (à l'heure ; à égalité, le jour, puis la première de la
+liste). Une équipe désignée qui n'existe plus, ou qui n'est pas une autre
+plonge du service, s'efface à la relecture : le défaut revient. Dans la page :
+la fiche de la plonge, « Ne vient que s'il reste du sale », puis « Elle vient :
+si le matin ne peut pas absorber le retard » et « Le retard, pour : la première
+du matin (« … ») » ou une autre équipe de la plonge. Rien n'est enregistré
+tant que la case n'est pas cochée ; changer de règle efface les réglages de
+l'autre (l'heure et le seuil du sale, ou l'équipe désignée). Pour le banc :
+`options.equipes` (`{ "Plonge nuit": { "condition": { "mesure": "absorbable" } } }`,
+l'équipe par défaut ; ou `"equipe": "<identifiant>"`, l'identifiant de
+l'équipe — celui de la sauvegarde, ou la colonne « Identifiant » d'Excel —, pas
+son nom : une équipe inconnue est refusée en le nommant).
+
+**Le calcul** :
+
+1. La journée se joue **avec l'équipe fermée** : le sale non lavé à la fin
+   (`saleFinal`) est **le retard**.
+2. Elle se **rejoue**, l'équipe toujours fermée, avec ce retard pour sale de
+   la veille (`saleInitial`), **à la place de celui du jour**. Le retard est
+   là au début de la journée (00:00 du jour J), comme tout sale de la veille.
+3. **L'équipe désignée l'absorbe** si, dans cette journée rejouée :
+   - le retard est entièrement propre avant la fin de sa présence — premier
+     dans la file, c'est elle qui le lave quand elle est seule au travail (une
+     autre plonge présente en même temps peut en laver une part) ;
+   - **ses propres retours** — ceux qu'elle lave dans la journée jouée sans
+     le retard (étape 1) ; au débit, la part de chaque vol qu'elle y lave —
+     sont lavés **par elle** avant la fin de sa présence. Si, à cause du
+     retard, une autre équipe doit en reprendre une partie, elle n'absorbe
+     pas ;
+   - elle ne fait **pas d'heures sup** : une équipe qui ne lave tout qu'en
+     heures sup (§ 2) ne l'absorbe pas.
+4. Si elle l'absorbe, le shift de nuit **reste fermé** : le retard passe au
+   lendemain par `saleFinal`, comme aujourd'hui. Sinon, **il s'ouvre**, et la
+   journée se joue avec lui. Sans retard, il reste fermé ; sans autre plonge
+   pour l'absorber (ou si l'équipe désignée ne travaille pas ce jour-là, une
+   autre plonge conditionnelle fermée), il s'ouvre dès qu'il y a un retard.
+
+**Hypothèse** : le matin du lendemain ressemble à celui du jour — ses retours
+sont ceux de ce matin —, comme la journée circulaire du handling (§ 3). Le banc
+qui enchaîne les jours réels rend, lui, le vrai retard au lendemain par
+`saleInitial`.
+
+**Le dépassement**, quand elle ne l'absorbe pas : de combien de minutes elle
+dépasserait la fin de sa présence pour laver **seule**, sans limite de fin, le
+retard (dès le début de la journée) et ses propres retours (à leur heure) —
+par vol, chacun de ses tunnels qui tournent prend le vol suivant ; au débit, à
+son débit, ce qui est là d'un bloc ; ses pauses comprises. Il vaut 0 quand,
+seule, elle aurait le temps, mais que dans la journée rejouée une autre équipe
+reprend une partie de son travail (des équipes qui se chevauchent) : la règle
+compte cela comme « n'absorbe pas », la fiche le dit. `null` si elle ne lave
+rien ce jour-là (aucun tunnel ne tourne, ou c'est une plonge conditionnelle
+fermée) ou s'il n'y a pas d'équipe pour absorber.
+
+Une plonge sur le retard décide à son début, dans l'ordre des heures, avec
+les plonges sur le sale : chacune décide dans la journée où les précédentes
+sont ouvertes ou fermées. La journée se joue jusqu'à trois fois pour elle
+(sans elle, le lendemain s'il y a un retard, puis la journée retenue) ; quand
+elle reste fermée et décide la dernière, la journée sans elle est la journée
+retenue.
+
+**Ce qu'il rend**, `resultat.ateliers[].conditionSale` :
+
+| Champ | Sens |
+| --- | --- |
+| `mesure` | `absorbable` |
+| `ouverte` | Le shift s'est-il ouvert |
+| `equipe` | L'équipe qui doit absorber le retard (son identifiant ; `null` sans autre plonge) |
+| `retard` | `{ vols, unites }` : le retard de la journée jouée sans elle, en vols (ceux de `saleFinal`) et en unités |
+| `absorbe` | L'équipe désignée l'absorbe-t-elle |
+| `depassement` | Quand elle ne l'absorbe pas : de combien de minutes elle dépasserait sa présence (voir plus haut) ; 0 quand elle l'absorbe |
+| `lavees`, `reste`, `fin` | Comme pour le sale : ce qu'elle a lavé, le sale pas encore propre à sa fin |
+
+Dans la page, la fiche dit « Ouverte ce jour » ou « Fermée ce jour », le
+retard sans elle, si l'équipe désignée l'absorbe le lendemain et, sinon, de
+combien elle dépasserait sa présence. Dans Excel : « Ne travaille que si » =
+`retard non absorbé`, ou `retard non absorbé (par Plonge matin)` (voir
+[`FORMATS_EXCEL.md`](FORMATS_EXCEL.md)).
+
+Vérifications : `tests/plonge-absorbable.test.cjs` (un petit retard que le
+matin absorbe laisse la nuit fermée, la journée est celle de l'unité sans
+elle ; tout juste à la fin de sa présence ; un gros retard l'ouvre, avec son
+dépassement ; une seule plonge ; une équipe désignée qui ferait des heures sup
+pour l'absorber ne l'absorbe pas ; l'équipe par défaut et l'équipe désignée ;
+au débit ; avec une plonge sur le sale ; le déterminisme ; la validation ; les
+options du banc ; Excel) ; `tests/plonge-absorbable-browser.cjs` (la règle,
+l'équipe désignée, le bilan, l'enregistrement) ; `tests/non-regression.test.cjs`
+(sans cette règle : la même journée).
 
 ## 7. Les SPML : les cabines que chaque service prépare
 

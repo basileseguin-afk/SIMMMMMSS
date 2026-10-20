@@ -5,6 +5,35 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-20 — Banc d'essai, correction 3 : la plonge de nuit ne s'ouvre que si le matin ne peut pas absorber le retard
+
+La plonge conditionnelle (6/7) : avec la condition « sale », le shift de nuit
+s'ouvrait dès qu'il restait du sale à son heure. Dans l'unité, il ne s'ouvre
+que si l'équipe du matin du lendemain ne pourrait pas laver ce retard en plus
+de son propre travail.
+
+- Une nouvelle règle pour une équipe de lavage :
+  `condition: { mesure: 'absorbable', equipe }` (`equipe` : l'équipe qui doit
+  absorber ; par défaut, la plonge du service qui commence le plus tôt dans la
+  journée). La condition « sale » reste ; une équipe porte l'une ou l'autre.
+- Le moteur joue la journée sans le shift : le sale non lavé à la fin est le
+  retard. Il la rejoue, toujours sans lui, avec ce retard pour sale de la
+  veille : si l'équipe désignée a le retard propre et lave ses propres retours
+  (ceux de la journée sans le retard) avant la fin de sa présence, sans heures
+  sup, le shift reste fermé et le retard passe au lendemain ; sinon il s'ouvre.
+  Hypothèse : le matin du lendemain ressemble à celui du jour.
+- `conditionSale` rend la mesure (`mesure`, aussi pour la règle du sale), le
+  retard en vols et en unités, si l'équipe désignée l'absorbe et, sinon, de
+  combien de minutes elle dépasserait sa présence.
+- Dans la page : la fiche de la plonge choisit la règle et l'équipe, et dit ce
+  qu'elle a décidé ce jour. Dans Excel : `retard non absorbé (par …)`.
+- Fichiers : `moteur/production.js`, `ateliers.js`, `echanges.js` et
+  `v2/echanges.js` (identiques), `index.html` et `v2/index.html` (empreintes),
+  `docs/BANC_ESSAI.md`, `docs/FORMATS_EXCEL.md`, `README.md` (la table des
+  tests, avec ceux de la correction 1 qui y manquaient),
+  `tests/plonge-absorbable.test.cjs`, `tests/plonge-absorbable-browser.cjs`,
+  `tests/plonge-nuit.test.cjs` (la mesure dans `conditionSale`).
+
 ## 2026-10-20 — Banc d'essai, correction 2 : un service aide toujours son propre service
 
 Les renforts (5/7) : une liste de polyvalence saisie remplaçait le défaut, et

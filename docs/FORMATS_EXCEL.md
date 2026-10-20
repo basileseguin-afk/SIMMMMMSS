@@ -71,7 +71,7 @@ classeur ; l'import la relit, et un nom seul ambigu est signalé avec la clé à
 | Ligne robot | robot seulement : `partagée` (défaut, une ligne pour tous les robots du service) ou `propre` (un second robot) |
 | Arrêts de la ligne | robot seulement : `12:15-13:00; …`, chaque jour, pour toute la ligne |
 | À la chaîne avec | équipe qui prépare seulement : le service de l'étape d'avant qu'elle fait aussi, pour ses commandes (ex. `PRÉPA` dans une case de Montage) ; vide = chacune sa case |
-| Ne travaille que si | équipe qui prépare : `AF ≥ 6 vols` (ou `>=`, `au moins`), `toutes ≥ 300 repas` ; vide = tous les jours. Plonge (version 1, banc d'essai — [`BANC_ESSAI.md`](BANC_ESSAI.md), § 6) : `sale ≥ 1 à 22:00`, elle ne vient que si ce sale attend à cette heure (`sale` seul : 1 u, à son début) |
+| Ne travaille que si | équipe qui prépare : `AF ≥ 6 vols` (ou `>=`, `au moins`), `toutes ≥ 300 repas` ; vide = tous les jours. Plonge (version 1, banc d'essai — [`BANC_ESSAI.md`](BANC_ESSAI.md), § 6) : `sale ≥ 1 à 22:00`, elle ne vient que si ce sale attend à cette heure (`sale` seul : 1 u, à son début) ; `retard non absorbé (par Plonge matin)`, elle ne vient que si cette équipe de la plonge ne peut pas absorber le lendemain le retard de la journée (sans parenthèse : la plonge qui commence le plus tôt) |
 | Sinon, commandes à | avec la colonne précédente : le nom d'une autre équipe du même service, qui reprend ses commandes les jours sans |
 | Sinon, personnes à | le nom de l'équipe qui reçoit ses personnes ; vide = celle qui reprend ses commandes ; `aucune` = ses personnes ne viennent pas, l'autre équipe absorbe la charge |
 | Débit robot (plateaux/h) | robot seulement |

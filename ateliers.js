@@ -171,8 +171,8 @@
     a.type = v;
     // Les postes de travail (renforts, évolution 5) : à la main ou au robot seulement.
     if (v !== 'manuel' && v !== 'robot') delete a.personnesMax;
-    // La condition sur le sale (évolution 6) ne vaut que pour une plonge ; la règle ⚡, que pour une équipe qui prépare.
-    if (a.condition && (a.condition.mesure === 'sale') !== (v === 'lavage')) delete a.condition;
+    // La condition sur le sale (évolution 6) ou sur le retard ne vaut que pour une plonge ; la règle ⚡, que pour une équipe qui prépare.
+    if (a.condition && conditionDePlonge(a.condition) !== (v === 'lavage')) delete a.condition;
     if (v === 'handling') { a.jour = 0; delete a.debit; delete a.personnesMin; delete a.tunnels; delete a.minutes; delete a.materiel; a.lots = []; Object.assign(a, handlingDe(a)); return; }
     delete a.durees; delete a.simultanes; delete a.avance; delete a.compagnies;
     if (v === 'robot') { a.debit = a.debit || 320; a.personnesMin = a.personnesMin === undefined ? 1 : a.personnesMin; }
@@ -212,6 +212,9 @@
     return out;
   }
 
+  /** Une condition de plonge : sur le sale à une heure (évolution 6), ou sur le retard que le matin n'absorbe pas. */
+  const conditionDePlonge = k => !!k && (k.mesure === 'sale' || k.mesure === 'absorbable');
+
   /** La règle ⚡ d'une équipe (voir moteur : appliquerConditions), bornée. Seules
    *  les équipes qui préparent des commandes (à la main ou au robot) en portent une. */
   function conditionDe(a, type) {
@@ -219,7 +222,10 @@
     if (!k || typeof k !== 'object') return {};
     // Une plonge qui ne vient que s'il reste du sale (banc d'essai, évolution 6) : à l'heure `a` (sans
     // elle, son début), au moins `seuil` unités en attente (sans lui, 1). Gardés une fois saisis.
+    // Ou que si l'équipe du matin ne peut pas absorber le retard (correction du banc d'essai) :
+    // `equipe`, celle qui doit l'absorber ; sans elle, la plonge du service qui commence le plus tôt.
     if (type === 'lavage') {
+      if (k.mesure === 'absorbable') return { condition: { mesure: 'absorbable', ...(typeof k.equipe === 'string' && k.equipe ? { equipe: k.equipe } : {}) } };
       if (k.mesure !== 'sale') return {};
       let heure = null;
       try { if (typeof k.a === 'string' && k.a.trim()) { P.minutes(k.a.trim()); heure = k.a.trim(); } } catch (e) { heure = null; }
@@ -337,6 +343,12 @@
     const parId = new Map(ateliers.map(a => [a.id, a]));
     for (const a of ateliers) {
       if (!a.condition || a.condition.mesure === 'sale') continue;
+      // L'équipe qui doit absorber le retard : une autre plonge du même service ; sinon, celle par défaut.
+      if (a.condition.mesure === 'absorbable') {
+        const d = parId.get(a.condition.equipe);
+        if ('equipe' in a.condition && (!d || d.id === a.id || d.type !== 'lavage' || d.service !== a.service)) delete a.condition.equipe;
+        continue;
+      }
       const vers = parId.get(a.condition.sinon);
       if (!vers || vers.id === a.id || vers.service !== a.service) { delete a.condition; continue; }
       if (a.condition.renfort && (!parId.has(a.condition.renfort) || a.condition.renfort === a.id)) delete a.condition.renfort;
@@ -557,22 +569,45 @@
       return this.resultat;
     }
 
-    /** Une plonge qui ne vient que s'il reste du sale (banc d'essai, évolution 6), et ce qu'elle a fait ce jour. */
+    /** Une plonge qui ne vient que s'il reste du sale (banc d'essai, évolution 6) — à une heure, ou que si
+     *  l'équipe du matin ne peut pas absorber le retard (correction du banc d'essai) —, et ce qu'elle a fait ce jour. */
     blocConditionSale(a) {
-      const k = a.condition && a.condition.mesure === 'sale' ? a.condition : null;
+      const k = a.condition && (a.condition.mesure === 'sale' || a.condition.mesure === 'absorbable') ? a.condition : null;
       const vue = k && this.resultat && this.resultat.ok ? (this.resultat.ateliers || []).find(v => v.id === a.id) : null, cs = vue && vue.conditionSale;
-      const u = x => Math.round(x) + ' u';
+      const u = x => Math.round(x) + ' u', retard = !!k && k.mesure === 'absorbable';
+      const opt = (v, lib, sel) => `<option value="${esc(v)}"${sel ? ' selected' : ''}>${esc(lib)}</option>`;
+      // L'équipe qui doit absorber le retard : par défaut, la plonge du service qui commence le plus tôt dans la journée.
+      const autres = this.equipesDePlonge(a).filter(x => x !== a), debut = x => { try { return P.minutes(x.debut) + (x.jour || 0) / 10; } catch (e) { return Infinity; } };
+      const premiere = autres.reduce((m, x) => (!m || debut(x) < debut(m) ? x : m), null);
       return `<div class="at-condition-sale">
         <label class="chk chk-mini"><input type="checkbox" data-at-champ="sale-condition" ${k ? 'checked' : ''}>
           <span>Ne vient que s’il reste du sale (un shift de nuit, par exemple)</span></label>
         ${k ? `<div class="at-champs">
+          <label>Elle vient<select data-at-champ="sale-mesure" aria-label="Quand elle vient">${opt('sale', 's’il attend du sale à une heure', !retard)}${
+            opt('absorbable', 'si le matin ne peut pas absorber le retard', retard)}</select></label>
+          ${retard ? `<label>Le retard, pour<select data-at-champ="sale-equipe" aria-label="L’équipe qui doit absorber le retard le lendemain">${
+            opt('', premiere ? 'la première du matin (« ' + premiere.nom + ' »)' : 'la première du matin', !k.equipe)}${autres.map(x => opt(x.id, x.nom, x.id === k.equipe)).join('')}</select></label>` : `
           <label>Regarde à<input ${HEURE} value="${esc(k.a || a.debut)}" data-at-champ="sale-a" aria-label="Heure où elle regarde le sale en attente"></label>
           ${k.a ? '<button class="btn btn-sm" data-at-action="sale-a-debut">À son début</button>' : ''}
-          <label>Vient s’il attend au moins${avecUnite(`<input type="number" min="0" step="1" value="${k.seuil ?? ''}" placeholder="1" data-at-champ="sale-seuil" aria-label="Sale en attente, en unités, à partir duquel elle vient">`, 'u')}</label>
+          <label>Vient s’il attend au moins${avecUnite(`<input type="number" min="0" step="1" value="${k.seuil ?? ''}" placeholder="1" data-at-champ="sale-seuil" aria-label="Sale en attente, en unités, à partir duquel elle vient">`, 'u')}</label>`}
         </div>
-        ${cs ? `<p class="mini-note at-bilan-sale"><b>${cs.ouverte ? 'Ouverte ce jour' : 'Fermée ce jour'}</b> : ${u(cs.sale)} de sale en attente à ${P.hhmm(cs.heure)} (seuil ${cs.seuil} u)${
+        ${retard && cs && cs.mesure === 'absorbable' ? this.bilanRetard(cs) : cs && cs.mesure === 'sale' ? `<p class="mini-note at-bilan-sale"><b>${cs.ouverte ? 'Ouverte ce jour' : 'Fermée ce jour'}</b> : ${u(cs.sale)} de sale en attente à ${P.hhmm(cs.heure)} (seuil ${cs.seuil} u)${
           cs.ouverte ? ' ; elle a lavé ' + u(cs.lavees) : ' ; ses personnes ne viennent pas'}${cs.reste != null ? ' ; reste ' + u(cs.reste) + ' à ' + P.hhmm(cs.fin) : ''}.</p>` : ''}` : ''}
       </div>`;
+    }
+
+    /** Ce que la plonge sur le retard a décidé ce jour : le retard sans elle, et si l'équipe du matin l'absorbe. */
+    bilanRetard(cs) {
+      const u = x => Math.round(x) + ' u', nom = id => '« ' + esc((this.state.ateliers.find(x => x.id === id) || {}).nom || id || '?') + ' »';
+      const vols = cs.retard.vols + (cs.retard.vols > 1 ? ' vols' : ' vol') + ' (' + u(cs.retard.unites) + ')', le = cs.retard.vols > 1 ? 'les ' : 'l’';
+      const pourquoi = !cs.retard.vols ? 'sans elle, tout est lavé à la fin de la journée'
+        : cs.absorbe ? 'sans elle, il reste ' + vols + ' à la fin de la journée ; ' + nom(cs.equipe) + ' ' + le + 'absorbe le lendemain, avec ses propres retours, avant la fin de sa présence'
+        : 'sans elle, il resterait ' + vols + ' à la fin de la journée ; ' + (!cs.equipe ? 'aucune autre équipe de la plonge pour ' + le + 'absorber le lendemain'
+          : nom(cs.equipe) + ' ne ' + le + 'absorberait pas : ' + (cs.depassement == null ? 'elle ne lave rien ce jour-là'
+            : cs.depassement > 0 ? 'elle dépasserait sa présence de ' + P.dureeLisible(cs.depassement)
+            : 'seule, elle aurait le temps, mais une autre équipe reprendrait une partie de son travail'));
+      return `<p class="mini-note at-bilan-sale"><b>${cs.ouverte ? 'Ouverte ce jour' : 'Fermée ce jour'}</b> : ${pourquoi}${
+        cs.ouverte ? ' ; elle a lavé ' + u(cs.lavees) : ' ; ses personnes ne viennent pas'}${cs.reste != null ? ' ; reste ' + u(cs.reste) + ' à ' + P.hhmm(cs.fin) : ''}.</p>`;
     }
 
     /** Le sale de la veille (évolution 6) : un nombre d'unités, ou les vols que la journée d'avant n'a pas lavés. */
@@ -1221,6 +1256,9 @@
           case 'personnesMin': a.personnesMin = Math.max(0, parseInt(v, 10) || 0); break;
           // Ne vient que s'il reste du sale (évolution 6) : la case, l'heure, le seuil.
           case 'sale-condition': if (el.checked) a.condition = { mesure: 'sale' }; else delete a.condition; break;
+          // La règle : le sale à une heure, ou le retard que le matin n'absorbe pas ; l'une remplace l'autre.
+          case 'sale-mesure': a.condition = { mesure: v === 'absorbable' ? 'absorbable' : 'sale' }; break;
+          case 'sale-equipe': a.condition = { mesure: 'absorbable', ...(v ? { equipe: v } : {}) }; break;
           case 'sale-a': {
             // Son début : rien d'enregistré, l'heure suit son début.
             const k = { ...(a.condition || {}), mesure: 'sale' };

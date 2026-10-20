@@ -887,6 +887,8 @@
   /** Ses réglages d'équipe : sans colonne dans le classeur, un import les garde tels qu'ils sont sur le site. */
   const REGLAGES_24H = ['handling24h', 'escale', 'quaiDepart', 'dechargement', 'quaiRetour', 'vl', 'entreAvions', 'dechargementsParTournee',
     'margeDepart', 'margeEscaleCourte', 'delaiArrivee', 'camionsVL'];
+  /** La condition d'une plonge (banc d'essai de la version 1) : le sale à une heure, ou le retard que le matin n'absorbe pas. */
+  const surLeSale = k => k.mesure === 'sale' || k.mesure === 'absorbable';
 
   function ateliersVersClasseur(etat, ctx) {
     const services = ctx.services || [];
@@ -941,12 +943,14 @@
         a.type === 'robot' ? (a.lignePropre ? 'propre' : 'partagée') : null,
         a.type === 'robot' ? (a.arretsLigne || []).map(x => x.de + '-' + x.a).join('; ') || null : null,
         // La règle ⚡ : « AF ≥ 6 vols » ; sinon, les noms des équipes qui reprennent. Une plonge (banc d'essai
-        // de la version 1) : « sale ≥ 1 à 22:00 », elle ne vient que s'il reste du sale.
+        // de la version 1) : « sale ≥ 1 à 22:00 », elle ne vient que s'il reste du sale ; « retard non absorbé
+        // (par Plonge matin) », que si l'équipe du matin ne peut pas absorber le retard.
         a.condition && a.condition.mesure === 'sale' ? 'sale ≥ ' + (a.condition.seuil ?? 1) + (a.condition.a ? ' à ' + a.condition.a : '')
+          : a.condition && a.condition.mesure === 'absorbable' ? 'retard non absorbé' + (nomAtelier(a.condition.equipe) ? ' (par ' + nomAtelier(a.condition.equipe) + ')' : '')
           : a.condition ? (a.condition.cie === '*' ? 'toutes' : a.condition.cie) + ' ≥ ' + a.condition.seuil + ' ' + (a.condition.mesure === 'repas' ? 'repas' : 'vols') : null,
-        a.condition && a.condition.mesure !== 'sale' ? nomAtelier(a.condition.sinon) : null,
+        a.condition && !surLeSale(a.condition) ? nomAtelier(a.condition.sinon) : null,
         // Ses personnes : vide = avec les commandes ; « aucune » = l'équipe qui reprend absorbe la charge.
-        a.condition && a.condition.mesure !== 'sale' ? (a.condition.absorbe ? 'aucune' : a.condition.renfort ? nomAtelier(a.condition.renfort) : null) : null,
+        a.condition && !surLeSale(a.condition) ? (a.condition.absorbe ? 'aucune' : a.condition.renfort ? nomAtelier(a.condition.renfort) : null) : null,
         ...(postes ? [Number.isInteger(a.personnesMax) ? a.personnesMax : null] : [])]);
       if (a.type === 'handling') {
         // Une ligne par compagnie réglée : sa durée, et si elle est long courrier.
@@ -1282,11 +1286,14 @@
         }
         // « AF ≥ 6 vols » : ne travaille que ces jours-là. Les équipes nommées se lisent ensuite.
         const si = String(o.ne_travaille_que_si ?? '').trim();
-        // Une plonge (banc d'essai, lu par la version 1) : « sale ≥ 1 à 22:00 », elle ne vient que s'il reste du sale.
+        // Une plonge (banc d'essai, lu par la version 1) : « sale ≥ 1 à 22:00 », elle ne vient que s'il reste du sale ;
+        // « retard non absorbé (par Plonge matin) », que si cette équipe (sans elle, la première du matin) ne l'absorbe pas.
         const sale = ctx && ctx.banc && type === 'lavage' ? /^sale\s*(?:(?:≥|>=|>|:|au moins)?\s*(\d+(?:[.,]\d+)?))?(?:\s+[àa]\s+(\d{1,2}[:h]\d{2}))?$/i.exec(si) : null;
+        const retard = ctx && ctx.banc && type === 'lavage' ? /^retard\s+non\s+absorb[ée]e?(?:\s*\(\s*(?:par\s+)?(.*?)\s*\))?$/i.exec(si) : null;
         if (sale) a.condition = { mesure: 'sale', ...(sale[2] ? { a: hh(T.heureDe(sale[2].replace('h', ':'))) } : {}), ...(sale[1] ? { seuil: +sale[1].replace(',', '.') } : {}) };
+        else if (retard) { a.condition = { mesure: 'absorbable' }; if (retard[1]) a._absorbePar = retard[1]; }
         else if (si && !/^(non|toujours|-)$/i.test(si)) {
-          if (type !== 'manuel' && type !== 'robot') throw new Error('« ne travaille que si » : pour une équipe qui prépare des commandes' + (ctx && ctx.banc && type === 'lavage' ? ' ; une plonge : « sale ≥ 1 à 22:00 »' : ''));
+          if (type !== 'manuel' && type !== 'robot') throw new Error('« ne travaille que si » : pour une équipe qui prépare des commandes' + (ctx && ctx.banc && type === 'lavage' ? ' ; une plonge : « sale ≥ 1 à 22:00 » ou « retard non absorbé »' : ''));
           const m = /^(.+?)\s*(?:≥|>=|>|:|au moins)?\s*(\d+)\s*(vols?|repas)?$/i.exec(si);
           if (!m) throw new Error('« ne travaille que si » illisible « ' + si + ' » (ex. « AF ≥ 6 vols »)');
           const cie = /^(toutes?|tout|\*)$/i.test(m[1].trim()) ? '*' : m[1].trim().toUpperCase();
@@ -1307,6 +1314,13 @@
       return a;
     };
 
+    // Une plonge sur le retard : l'équipe qui doit l'absorber, par son nom — une autre équipe de la même plonge.
+    for (const a of out.ateliers) {
+      const nom = a._absorbePar; delete a._absorbePar; if (!nom) continue;
+      const d = atelierNomme(nom, fA.nom, a._ligne); if (!d) continue;
+      if (d === a || d.type !== 'lavage' || d.service !== a.service) { err.ajouter(fA.nom, a._ligne, '« retard non absorbé (par …) » : une autre équipe de la même plonge'); continue; }
+      a.condition.equipe = d.id;
+    }
     // Les règles ⚡ : les équipes qui reprennent, par leur nom.
     for (const a of out.ateliers) {
       const c = a._cond; delete a._cond; if (!c) continue;
