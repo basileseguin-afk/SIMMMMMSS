@@ -972,3 +972,30 @@ colonnes ne change rien ; la somme, le détail incomplet, l'effectif calculé, l
 validation, les options du banc, l'outil, Excel) ; `tests/spml-cabines-browser.cjs`
 (l'import de la page, le réglage par service, l'enregistrement) ;
 `tests/non-regression.test.cjs` (toutes les cabines saisies : la même journée).
+
+## 8. Les lots d'une équipe : ses fournitures, et l'ordre de ses lots
+
+### Une mise à disposition fermée ne bloque pas une équipe déjà servie (correction)
+
+Un lot qui commençait pendant qu'une mise à disposition à heures fixes était
+fermée (un magasin ouvert de 07:00 à 18:00, une « boutique ») attendait sa
+réouverture : rejoué sur des journées réelles, un robot qui finissait un lot à
+19:14 attendait la réouverture du lendemain à 07:00 pour lancer le suivant.
+
+- **La règle** : une équipe prend ses fournitures en début de poste, ou dès
+  que la mise à disposition ouvre. Celle-ci ne fait donc attendre que le
+  **premier lot** d'une équipe qui en a besoin, et seulement si elle **n'a
+  pas encore ouvert depuis le début du poste** de l'équipe (son début,
+  `debutPoste`). Une fois servie, l'équipe n'est plus bloquée par ses
+  fermetures. Plusieurs mises à disposition : chacune sert l'équipe à sa
+  première ouverture depuis son début.
+- Une journée où rien ne commence pendant une fermeture ne change pas. Les
+  mises à disposition par vagues, ou toujours ouvertes, non plus.
+
+Vérifications : `tests/mise-a-disposition-servie.test.cjs` (un robot qui
+enchaîne un lot après la fermeture du magasin ne l'attend plus ; une équipe
+qui commence avant l'ouverture attend l'ouverture pour son premier lot, et
+seulement lui ; une équipe qui commence pendant une fermeture attend
+l'ouverture ; une journée où tout se fait magasin ouvert ne change pas) ;
+`tests/vagues.test.cjs` et `tests/boutique-browser.cjs` (la boutique, comme
+avant).

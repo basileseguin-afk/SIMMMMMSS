@@ -5,6 +5,21 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-20 — Banc d'essai, correction 5 : une mise à disposition fermée ne bloque pas une équipe déjà servie
+
+Un lot qui commençait pendant qu'une mise à disposition à heures fixes était
+fermée (magasin 07:00–18:00) attendait sa réouverture : un robot qui finissait
+un lot à 19:14 attendait le lendemain 07:00 pour lancer le suivant.
+
+- Une équipe prend ses fournitures en début de poste, ou dès que la mise à
+  disposition ouvre : celle-ci ne fait attendre que son premier lot qui en a
+  besoin, et seulement si elle n'a pas encore ouvert depuis le début de son
+  poste. Une fois servie, ses fermetures ne la bloquent plus.
+- Une journée où rien ne commence pendant une fermeture ne change pas.
+- Fichiers : `moteur/production.js`, `index.html` (empreintes),
+  `docs/BANC_ESSAI.md` (§ 8, nouveau), `docs/MODELE_ATELIERS.md`, `README.md`,
+  `tests/mise-a-disposition-servie.test.cjs`.
+
 ## 2026-10-20 — Banc d'essai, correction 4 : en heures sup, on ne paie personne à attendre
 
 En heures sup, une équipe dont le lot suivant n'était pas prêt restait à

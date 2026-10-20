@@ -2511,19 +2511,9 @@
     // Un service à atelier unique (BOB, checkeurs, 07/10) ne fait que certaines
     // compagnies : les autres passent par lui sans y être préparées, c'est voulu.
     const servicesAtelier = new Set(ateliers.filter(a => a.parCompagnie).map(a => a.service));
-    // Les boutiques (légumerie, magasin… ouverts de telle à telle heure) : on
-    // n'y est servi qu'aux heures d'ouverture.
+    // Les boutiques (légumerie, magasin… ouverts de telle à telle heure) : une
+    // équipe y prend ses fournitures en début de poste, ou à leur ouverture.
     const boutiques = new Map(ateliers.filter(a => ouvertureDe(a)).map(a => [a.service, a]));
-    /** L'instant où toutes les boutiques dont on a besoin sont ouvertes ensemble, à partir de `t`. */
-    const servi = (services, t) => {
-      const b = [...new Set(services)].map(s => boutiques.get(s)).filter(Boolean);
-      for (let k = 0; k < 8 && b.length; k++) {
-        const u = Math.max(...b.map(x => prochaineOuverture(x, t)));
-        if (u === t) return t;
-        t = u;
-      }
-      return t;
-    };
 
     /**
      * Les livraisons qu'un lot doit attendre, pour une classe, dans un service.
@@ -3620,6 +3610,10 @@
       // la présence, l'attente reste normale, jusqu'à sa fin. Sans heures sup, rien ne change.
       const sansAttente = SUP > 0 && Number.isFinite(finPresence);
       const limiteAttente = sansAttente ? finPresence : Infinity;
+      // Ses fournitures (correction du banc d'essai) : une équipe les prend en début de poste, ou dès qu'une mise à
+      // disposition à heures fixes ouvre. Celle-ci ne fait attendre que son premier lot qui en a besoin, et seulement si
+      // elle n'a pas encore ouvert depuis le début de son poste ; une fois servie, ses fermetures ne la bloquent plus.
+      const fournieA = svcs => Math.max(-Infinity, ...[...new Set(svcs)].filter(x => boutiques.has(x)).map(x => prochaineOuverture(boutiques.get(x), depart)));
       let j = 0;   // le rang du lot en cours, parmi les lots non vides
       const processus = env.processus(function* () {
         if (env.maintenant < depart) yield env.delai(depart - env.maintenant);
@@ -3641,14 +3635,14 @@
           const debutAttente = env.maintenant;
           if (!sansAttente) {
             if (attendus.length) yield env.tousDe(attendus);
-            // Une boutique fermée : on attend qu'elle ouvre.
+            // Une boutique qui n'a pas encore ouvert depuis son début de poste : on attend qu'elle ouvre.
             if (boutiques.size) {
-              const ouvert = servi(ids.flatMap(id => amontsDe(a.service, id)), env.maintenant);
+              const ouvert = fournieA(ids.flatMap(id => amontsDe(a.service, id)));
               if (ouvert > env.maintenant && Number.isFinite(ouvert)) yield env.delai(ouvert - env.maintenant);
             }
           } else {
             // L'amont livré et les boutiques ouvertes, pas plus tard que la fin de sa présence.
-            const ouvertA = () => (boutiques.size ? servi(ids.flatMap(id => amontsDe(a.service, id)), env.maintenant) : env.maintenant);
+            const ouvertA = () => (boutiques.size ? Math.max(env.maintenant, fournieA(ids.flatMap(id => amontsDe(a.service, id)))) : env.maintenant);
             for (let garde = 0; garde < 1000; garde++) {
               const livre = attendus.every(ev => ev.declenche), ouvert = livre ? ouvertA() : Infinity;
               if (livre && ouvert <= env.maintenant + 1e-9) break;

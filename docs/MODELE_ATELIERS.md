@@ -538,7 +538,11 @@ dans l'instant.
 magasin sont libres en permanence entre une heure et une heure. » Chaque jour
 (J-1, J…), de `ouverture.de` à `ouverture.a`, on y est servi à l'instant où
 l'on vient ; en dehors, l'étape qui en a besoin **attend l'ouverture**, et
-cette attente compte dans la sienne (« attend 180 min »). Une plage qui passe
+cette attente compte dans la sienne (« attend 180 min »). Une équipe y prend
+ses fournitures en début de poste, ou dès l'ouverture : seul son premier lot
+qui en a besoin attend, et seulement si la boutique n'a pas encore ouvert
+depuis le début de son poste ; ensuite, ses fermetures ne la bloquent plus
+(correction du banc d'essai, [`BANC_ESSAI.md`](BANC_ESSAI.md) § 8). Une plage qui passe
 minuit (22:00–06:00) est permise ; ouverture = fermeture est refusé. Trois
 façons de servir, au choix dans la fiche (« Quand sert-il ? ») : ouvert de …
 à … (boutique), toujours ouvert, à heures fixes (vagues).
