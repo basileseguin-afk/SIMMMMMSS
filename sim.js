@@ -1737,23 +1737,28 @@ function renderReglageHeuresSup(force){
       +heuresFr(Sim.reglages.etat.regime.presence+hs.plafond)+' h. Ce que chaque service fait en plus se lit dans la Synthèse.'
       :'Désactivées : une équipe part à la fin de sa présence, et ce qu’elle n’a pas fini reste hors poste.')+'</p>';
 }
-/* Dans la Synthèse : les heures sup de la journée, par service (personnes × heures) et par équipe. */
+/* Dans la Synthèse : les heures sup de la journée, par service et par équipe, en heures × personnes (heuresSupPersonnes) :
+ * d'une plonge, seules les personnes des tunnels qui finissent un vol après sa présence comptent. */
 function renderHeuresSup(r){
   const sec=document.getElementById('journee-chiffres');if(!sec)return;
   let box=document.getElementById('bilan-heures-sup');
   if(!heuresSup().actif||!r||!r.ok){if(box)box.remove();return;}
   if(!box){box=document.createElement('div');box.className='panneau panneau-heures-sup';box.id='bilan-heures-sup';sec.appendChild(box);}
   const noms=Object.fromEntries(servicesDisponibles().map(x=>[x.id,x.nom]));
+  const hsp=a=>Number.isFinite(a.heuresSupPersonnes)?a.heuresSupPersonnes:(+a.personnes||0)*a.heuresSup;
   const equipes=(r.ateliers||[]).filter(a=>a.heuresSup>0);
   const parService=new Map();
-  for(const a of equipes){const l=parService.get(a.service)||{total:0,equipes:[]};l.total+=(+a.personnes||0)*a.heuresSup;l.equipes.push(a);parService.set(a.service,l);}
+  for(const a of equipes){const l=parService.get(a.service)||{total:0,equipes:[]};l.total+=hsp(a);l.equipes.push(a);parService.set(a.service,l);}
+  // Toute l'équipe reste (personnes × heures sup) ; ou seulement les personnes de certains tunnels (une plonge).
+  const detail=a=>Math.abs(hsp(a)-(+a.personnes||0)*a.heuresSup)<1e-6?(+a.personnes||0)+' pers. × '+escapeHTML(dl(a.heuresSup))
+    :escapeHTML(dl(hsp(a)))+' (les personnes des tunnels qui finissent un vol ; la dernière part '+escapeHTML(dl(a.heuresSup))+' après sa présence)';
   const lignes=[...parService].sort((x,y)=>y[1].total-x[1].total);
   const total=lignes.reduce((n,[,l])=>n+l.total,0),dl=MoteurProduction.dureeLisible;
   box.innerHTML='<h3>Heures supplémentaires</h3>'
-    +(lignes.length?'<p class="mini-note">'+escapeHTML(dl(total))+' en tout, plafond '+heuresFr(heuresSup().plafond)+' h par personne. Par service : personnes × heures sup de chaque équipe.</p>'
+    +(lignes.length?'<p class="mini-note">'+escapeHTML(dl(total))+' en tout, plafond '+heuresFr(heuresSup().plafond)+' h par personne. Par service : les heures sup de chaque personne restée, additionnées.</p>'
       +'<div class="table-scroll"><table class="svc-table hs-table"><thead><tr><th scope="col">Service</th><th scope="col">Heures sup</th><th scope="col">Équipes</th></tr></thead><tbody>'
       +lignes.map(([id,l])=>'<tr data-hs-service="'+escapeHTML(id)+'"><th scope="row">'+escapeHTML(noms[id]||nomDeService(id))+'</th><td class="num">'+escapeHTML(dl(l.total))+'</td><td>'
-        +l.equipes.map(a=>escapeHTML(a.nom)+' : '+(+a.personnes||0)+' pers. × '+escapeHTML(dl(a.heuresSup))).join('<br>')+'</td></tr>').join('')
+        +l.equipes.map(a=>escapeHTML(a.nom)+' : '+detail(a)).join('<br>')+'</td></tr>').join('')
       +'</tbody></table></div>'
     :'<p class="mini-note">Aucune : chaque équipe finit dans sa présence.</p>');
 }

@@ -2068,7 +2068,7 @@
       if (!plongeConditionnelle(a) || presentes.has(a.id)) return;
       const debut = minutes(a.debut) + (a.jour || 0) * MINUTES_PAR_JOUR, reg = regimeDe(a);
       const v = { id: a.id, nom: a.nom, service: a.service, type: a.type, debut, personnes: 0, fin: null, travail: 0, attente: 0, arret: 0, lots: [],
-        debutPoste: debut, presence: reg.actif ? reg.presence : null, jour: a.jour || 0, finPoste: null, heuresSup: 0,
+        debutPoste: debut, presence: reg.actif ? reg.presence : null, jour: a.jour || 0, finPoste: null, heuresSup: 0, heuresSupPersonnes: 0,
         ...(avecRenforts ? { renfortsPretes: 0, renfortsRecus: 0, renfortsHeuresSup: 0, renforts: { vers: [], de: [] } } : {}) };
       const apres = opts.ateliers.slice(i + 1).map(x => r.ateliers.findIndex(y => y.id === x.id)).find(k => k >= 0);
       r.ateliers.splice(apres === undefined ? r.ateliers.length : apres, 0, v);
@@ -2165,6 +2165,16 @@
       }
     }
     return Math.max(0, fin - finPresence);
+  }
+
+  /** Les heures sup d'une plonge à tunnels, en minutes × personnes : pour chaque tunnel qui finit un vol après la fin de
+   *  sa présence, (fin de son dernier vol − fin de présence) × ses personnes, plafonné comme ses heures sup. */
+  function heuresSupDesTunnels(a, v, plafond) {
+    const tournent = tunnelsQuiTournent(a).tournent, finPresence = v.debutPoste + v.presence, derniere = new Map();
+    for (const l of v.lots) if (!l.impossible && Number.isFinite(l.fin) && l.tunnel) derniere.set(l.tunnel, Math.max(derniere.get(l.tunnel) ?? -Infinity, l.fin));
+    let n = 0;
+    for (const [i, fin] of derniere) n += Math.max(0, Math.min(plafond, fin - finPresence)) * (+(tournent[i - 1] || {}).personnes || 0);
+    return n;
   }
 
   /** Le sale pas encore propre à l'instant t : par vol, les vols revenus qui ne sont pas sortis du tunnel ; au débit, le niveau de la file. */
@@ -4116,6 +4126,15 @@
       const coupee = v.lots.some(l => l.horsPoste && l.fait > 0) ? v.debutPoste + v.presence + SUP : -Infinity;
       const fin = Math.max(v.fin ?? -Infinity, coupee);
       v.heuresSup = Number.isFinite(fin) ? Math.max(0, Math.min(SUP, fin - (v.debutPoste + v.presence))) : 0;
+    }
+    // Les heures sup en minutes × personnes (correction du banc d'essai), le seul champ qu'un banc additionne.
+    // `heuresSup` reste, par personne, l'heure où l'équipe part. Une plonge à tunnels : seules les personnes des
+    // tunnels qui finissent un vol après sa présence restent, chacun jusqu'à la fin de son dernier vol ; les autres
+    // partent à la fin de leur présence. Toute autre équipe (une plonge sans liste de tunnels aussi) : heures sup × personnes.
+    for (const v of suivi) {
+      const a = atelierDe.get(v.id);
+      v.heuresSupPersonnes = a.type === 'lavage' && Array.isArray(a.tunnels) && a.tunnels.length && v.heuresSup > 0
+        ? heuresSupDesTunnels(a, v, SUP) : v.heuresSup * (+v.personnes || 0);
     }
 
     const suivies = Object.values(derniers).filter(c => !c.absente);

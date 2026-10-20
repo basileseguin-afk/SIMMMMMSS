@@ -550,8 +550,11 @@
     const services = ctx.services || [];
     const nomDe = id => (services.find(s => s.id === id) || {}).nom || id;
     const fins = new Map((((ctx.resultat || {}).ateliers) || []).map(a => [a.id, a.fin]));
+    // Les heures sup de la journée (banc d'essai de la version 1), en heures × personnes : la colonne n'existe que s'il y en a.
+    const sup = new Map((((ctx.resultat || {}).ateliers) || []).filter(a => a.heuresSupPersonnes > 0).map(a => [a.id, a.heuresSupPersonnes]));
     const rang = new Map(services.map((s, i) => [s.id, i]));
-    const lignes = [['Case', 'Service' + INFO, 'Type' + INFO, 'Jour', 'Départ', 'Personnes', 'Commandes, dans l’ordre', 'Vagues', 'Fin prévue' + INFO]];
+    const lignes = [['Case', 'Service' + INFO, 'Type' + INFO, 'Jour', 'Départ', 'Personnes', 'Commandes, dans l’ordre', 'Vagues', 'Fin prévue' + INFO,
+      ...(sup.size ? ['Heures sup (h × pers.)' + INFO] : [])]];
     const debutDe = a => (a.jour || 0) * 1440 + (T.heureDe(a.debut) || 0);
     const cles = clesDesCases(etat.ateliers, nomDe);
     for (const a of [...etat.ateliers].sort((x, y) => (rang.get(x.service) ?? 999) - (rang.get(y.service) ?? 999) || debutDe(x) - debutDe(y))) {
@@ -563,7 +566,8 @@
         fabrique ? ecrireLots(a.lots) || null : null,
         a.type === 'dispo' ? (a.permanent === false ? (a.vagues && a.vagues.length ? a.vagues : [{ debut: a.debut, jour: a.jour }]).map(v => jourEcrit(v.jour || 0) + ' ' + v.debut).join('; ')
           : a.ouverture ? ecrireOuverture(a) : 'permanente') : null,
-        Number.isFinite(fin) && a.type !== 'dispo' ? P.hhmm(fin) : null]);
+        Number.isFinite(fin) && a.type !== 'dispo' ? P.hhmm(fin) : null,
+        ...(sup.size ? [sup.has(a.id) ? Math.round(sup.get(a.id) / 60 * 100) / 100 : null] : [])]);
     }
     return [
       { nom: 'Cases', lignes },

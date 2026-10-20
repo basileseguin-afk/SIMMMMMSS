@@ -20,8 +20,8 @@ const REF = require('./non-regression.attendu.json');
  * quelconque, « [] » : chaque élément d'une liste). */
 const NOUVEAUX = {
   // Évolution 1 : le poste de chaque équipe, pour le banc d'essai.
-  // Évolution 2 : ses heures supplémentaires.
-  'ateliers[]': ['debutPoste', 'presence', 'jour', 'heuresSup'],
+  // Évolution 2 : ses heures supplémentaires ; correction 9 : en minutes × personnes.
+  'ateliers[]': ['debutPoste', 'presence', 'jour', 'heuresSup', 'heuresSupPersonnes'],
   // Évolution 6 : le sale que la journée n'a pas lavé, rendu à la suivante.
   '': ['saleFinal']
 };

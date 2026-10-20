@@ -97,7 +97,8 @@ options des évolutions suivantes s'ajoutent à ce tableau ; celles d'une
 | `presence` | La durée de sa présence, en minutes (480 par défaut, pauses comprises) ; `null` pour une équipe sans règle de poste |
 | `personnes` | Ses personnes : saisies, ou calculées (effectif calculé) |
 | `travail`, `attente`, `arret` | Ses minutes de travail, d'attente (un amont, du matériel, une ligne) et d'arrêt (pauses) |
-| `heuresSup` | Ses heures supplémentaires, en minutes **par personne** (§ 2) ; 0 sans l'option |
+| `heuresSup` | Ses heures supplémentaires, en minutes **par personne** (§ 2) : l'heure où l'équipe part, moins la fin de sa présence ; 0 sans l'option |
+| `heuresSupPersonnes` | Ses heures supplémentaires en minutes × personnes (§ 2) : le seul champ à additionner pour un service. D'une plonge à tunnels, les personnes des tunnels qui finissent un vol après sa présence seulement ; de toute autre équipe, `heuresSup` × `personnes` ; 0 sans l'option |
 | `tournees`, `conducteurs`, `heuresSupChauffeurs`, `vehiculesMax` | Un handling 24 h/24 : ses tournées, ses chauffeurs et leurs heures sup, ses véhicules (§ 3) |
 | `planChauffeurs` | Un handling 24 h/24 aux chauffeurs calculés : son plan de vacations, sa borne basse (§ 4) |
 | `renfortsPretes`, `renfortsRecus` | Avec les renforts (§ 5) : les minutes-personne que l'équipe a prêtées à d'autres, et reçues d'autres |
@@ -215,6 +216,19 @@ en laissant ses lots « hors poste ».
   dépasse reste hors poste, comme sans l'option. La fin de poste rendue
   (`finPoste`) est alors la fin de la présence plus le plafond : l'heure où
   l'équipe part au plus tard, comme en version 2.
+- **En minutes × personnes** (correction du banc d'essai) :
+  `heuresSupPersonnes`, le champ qu'un banc additionne. D'une **plonge à
+  tunnels**, seules les personnes des tunnels encore en marche restent : la
+  somme, sur ses tunnels qui finissent un vol après la fin de sa présence, de
+  (fin de ce vol − fin de présence) × personnes du tunnel ; les autres partent
+  à la fin de leur présence. Une plonge **sans liste de tunnels** compte toutes
+  ses personnes. `heuresSup`, par personne, reste la fin du dernier vol moins
+  la fin de présence : l'heure de départ de l'équipe. Pour **toute autre
+  équipe**, `heuresSupPersonnes` = `heuresSup` × `personnes`. La Synthèse et le
+  récap des cases (Excel, colonne « Heures sup (h × pers.) ») comptent avec
+  lui. Avant, toute l'équipe comptait : quand un seul tunnel sur trois finissait
+  un vol, les 9 personnes comptaient, alors que seules les 3 de ce tunnel
+  restaient.
 - **Qui en fait** :
   - une équipe à la main et un **robot** : on ne paie personne à attendre
     (correction du banc d'essai). Passé la fin de sa présence, elle finit le
@@ -262,6 +276,11 @@ poste a 0, une équipe qui déborde de 40 min a 40 min, le plafond coupe, une
 mise à disposition et un appui ont 0, l'option désactivée rend la journée
 d'avant, robot, plonge par vol et au débit, handling avec et sans créneaux,
 effectif calculé inchangé, validation, options du banc) ;
+`tests/heures-sup-personnes.test.cjs` (9 personnes, trois tunnels de 3, un seul
+qui finit un vol 40 min après la présence : 120 et 40 ; deux tunnels, 40 et
+10 min : 150 ; un tunnel à vitesse 2 ; une plonge sans tunnels et une équipe à
+la main : heures sup × personnes ; sans l'option, 0 ; le récap des cases) ;
+`tests/heures-sup-personnes-browser.cjs` (la Synthèse) ;
 `tests/heures-sup-sans-attente.test.cjs` (une équipe dont le dernier lot n'est
 prêt que 2 h après sa présence part à sa fin, sans heure sup, le lot hors
 poste ; un lot commencé fini 40 min après : 40 min ; un lot prêt à la fin de

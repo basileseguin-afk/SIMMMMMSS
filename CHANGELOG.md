@@ -5,6 +5,30 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-20 — Banc d'essai, correction 9 : plonge en heures sup, seules les personnes des tunnels qui finissent un vol restent
+
+Depuis la correction 7, les heures sup de la plonge viennent de l'équipe qui
+finit, après sa présence, les vols déjà dans un tunnel ; mais `heuresSup`
+valait pour toute l'équipe : quand un seul tunnel sur trois finissait un vol,
+les 9 personnes comptaient, alors que seules les 3 de ce tunnel restaient
+(9,6 h par jour au lieu de 4,8 h sur 61 journées réelles).
+
+- Un nouveau champ par équipe, `heuresSupPersonnes`, en minutes × personnes.
+  D'une plonge à tunnels : la somme, sur ses tunnels qui finissent un vol
+  après la fin de sa présence, de (fin de ce vol − fin de présence) ×
+  personnes du tunnel ; les autres personnes partent à la fin de leur
+  présence. Une plonge sans liste de tunnels compte toutes ses personnes.
+  Toute autre équipe : `heuresSup` × `personnes`. `heuresSup`, par personne,
+  reste l'heure de départ de l'équipe.
+- La Synthèse et le récap des cases (Excel, colonne « Heures sup (h ×
+  pers.) », seulement quand il y en a) comptent avec lui.
+- Sans l'option des heures sup, il vaut 0 partout.
+- Fichiers : `moteur/production.js`, `sim.js`, `echanges.js` et
+  `v2/echanges.js` (identiques), `index.html` et `v2/index.html`
+  (empreintes), `docs/BANC_ESSAI.md`, `README.md`,
+  `tests/heures-sup-personnes.test.cjs`, `tests/heures-sup-personnes-browser.cjs`,
+  `tests/non-regression.test.cjs` (le champ nouveau, déclaré).
+
 ## 2026-10-20 — Banc d'essai, correction 6 : l'option « ordre souple », un lot prêt n'attend pas un lot en retard
 
 Une équipe faisait ses lots strictement dans l'ordre de sa liste : si un lot
