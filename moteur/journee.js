@@ -138,9 +138,9 @@
       const a = annexesDe(zones).find(z => z.id === s.id), pere = a ? a.parent : null;
       if (pere && bareme[pere]) bareme[s.id] = clone(bareme[pere]);
     }
-    // Les heures sup (évolution 2) et les renforts (évolution 5) : seulement une fois réglés.
+    // Les heures sup (évolution 2), les renforts (évolution 5) et l'ordre souple (correction 6) : seulement une fois réglés.
     return { bareme, rendement: modele.rendement, regime: modele.regime, ...(modele.heuresSup ? { heuresSup: modele.heuresSup } : {}),
-      ...(modele.renforts ? { renforts: modele.renforts } : {}) };
+      ...(modele.renforts ? { renforts: modele.renforts } : {}), ...(modele.ordreSouple ? { ordreSouple: modele.ordreSouple } : {}) };
   }
 
   /* Les familles de services (renforts, évolution 5) : un service et ses
@@ -293,6 +293,8 @@
         .concat(services.map(s => [s.id, s.nom]))),
       // Les renforts (évolution 5) : la règle du modèle, la matrice des cases, les familles du plan.
       ...(r.renforts ? { renforts: { ...r.renforts, polyvalence: etat.polyvalence || {}, familles: famillesDeLUnite(services, zones) } } : {}),
+      // L'ordre souple (correction 6) : la règle du modèle ; chaque équipe peut porter la sienne (`ordreSouple`).
+      ...(r.ordreSouple ? { ordreSouple: r.ordreSouple } : {}),
       // Les cabines dont chaque service prépare les repas spéciaux (évolution 7) : seulement réglées.
       ...(etat.spmlCabines ? { spmlCabines: etat.spmlCabines } : {})
     };
@@ -331,8 +333,8 @@
   }
 
   /* Les règles de calcul que le banc peut forcer directement (`options.heuresSup`,
-   * `options.renforts`) : elles se fondent dans `ory-modele-v1`, comme `options.modele`. */
-  const REGLES = ['heuresSup', 'renforts'];
+   * `options.renforts`, `options.ordreSouple`) : elles se fondent dans `ory-modele-v1`, comme `options.modele`. */
+  const REGLES = ['heuresSup', 'renforts', 'ordreSouple'];
   const CLES_OPTIONS = new Set(['delaiChargement', 'decalage', 'modele', 'ateliers', 'equipes', 'saleInitial', ...REGLES]);
 
   /**

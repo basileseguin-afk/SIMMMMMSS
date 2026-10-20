@@ -170,7 +170,7 @@
   function typer(a, v) {
     a.type = v;
     // Les postes de travail (renforts, évolution 5) : à la main ou au robot seulement.
-    if (v !== 'manuel' && v !== 'robot') delete a.personnesMax;
+    if (v !== 'manuel' && v !== 'robot') { delete a.personnesMax; delete a.ordreSouple; }
     // La condition sur le sale (évolution 6) ou sur le retard ne vaut que pour une plonge ; la règle ⚡, que pour une équipe qui prépare.
     if (a.condition && conditionDePlonge(a.condition) !== (v === 'lavage')) delete a.condition;
     if (v === 'handling') { a.jour = 0; delete a.debit; delete a.personnesMin; delete a.tunnels; delete a.minutes; delete a.materiel; a.lots = []; Object.assign(a, handlingDe(a)); return; }
@@ -297,6 +297,8 @@
         ...conditionDe(a, type),
         // Ses postes de travail (banc d'essai, évolution 5) : elle ne reçoit pas de renfort au-delà. Gardés une fois saisis.
         ...((type === 'manuel' || type === 'robot') && Number.isInteger(a.personnesMax) && a.personnesMax > 0 ? { personnesMax: Math.min(999, a.personnesMax) } : {}),
+        // L'ordre de ses lots (correction 6) : souple (true) ou strict (false) pour elle ; sans lui, la règle du modèle.
+        ...((type === 'manuel' || type === 'robot') && typeof a.ordreSouple === 'boolean' ? { ordreSouple: a.ordreSouple } : {}),
         ...(type === 'robot' ? {
           debit: Number.isFinite(a.debit) ? Math.max(1, a.debit) : 320,
           personnesMin: Number.isInteger(a.personnesMin) ? Math.max(0, a.personnesMin) : 1,
@@ -615,6 +617,15 @@
       return `<label class="at-inline-champ" title="Le sale que la journée d’avant n’a pas lavé : présent au début de la journée">Sale de la veille (u)<input type="number" min="0" step="1"
         value="${total || ''}" placeholder="0" data-at-champ="mat-sale"></label>${liste && liste.length ? `
   <p class="mini-note">${liste.length} vol${liste.length > 1 ? 's' : ''} de la journée d’avant (${Math.round(total)} u), chacun lavé à la durée de sa compagnie. Une saisie les remplace par un nombre.</p>` : ''}`;
+    }
+
+    /** L'ordre de ses lots (banc d'essai, correction 6) : la règle générale, ou la sienne. */
+    champOrdre(a) {
+      const u = this.a.unite ? this.a.unite() : {}, general = !!(u.modele && u.modele.ordreSouple && u.modele.ordreSouple.actif);
+      const v = a.ordreSouple === true ? 'souple' : a.ordreSouple === false ? 'strict' : '';
+      const opt = (x, lib) => `<option value="${x}"${x === v ? ' selected' : ''}>${lib}</option>`;
+      return `<label title="Souple : quand le lot suivant n’est pas prêt, elle prend le premier lot prêt de sa liste. Strict : dans l’ordre de la liste">Ordre de ses lots<select data-at-champ="ordreSouple">
+        ${opt('', 'le réglage général (' + (general ? 'souple' : 'strict') + ')')}${opt('souple', 'souple : un lot prêt d’abord')}${opt('strict', 'strict : l’ordre de la liste')}</select></label>`;
     }
 
     /** Les renforts (banc d'essai, évolution 5) sont-ils actifs ? Ils montrent les postes de travail des équipes. */
@@ -1272,6 +1283,8 @@
             else k.seuil = n;
             a.condition = k; break;
           }
+          // L'ordre de ses lots (correction 6) : le sien, ou la règle générale.
+          case 'ordreSouple': if (v === 'souple') a.ordreSouple = true; else if (v === 'strict') a.ordreSouple = false; else delete a.ordreSouple; break;
           // Ses postes de travail (renforts) : vide, pas de limite.
           case 'personnesMax': {
             const n = +v;
@@ -1950,6 +1963,7 @@
           <label title="Sous ce nombre de personnes, le robot ne tourne pas">Minimum pour tourner${avecUnite(`<input type="number" min="0" value="${a.personnesMin}" data-at-champ="personnesMin">`, 'pers.')}</label>` : ''}
           ${(a.type === 'manuel' || a.type === 'robot') && !o.compact && (this.renfortsActifs() || Number.isInteger(a.personnesMax)) ? `
           <label title="Les renforts ne la portent pas au-delà de ses postes de travail. Vide : pas de limite">Postes de travail${avecUnite(`<input type="number" min="1" max="999" step="1" value="${Number.isInteger(a.personnesMax) ? a.personnesMax : ''}" placeholder="sans limite" data-at-champ="personnesMax">`, 'pers.')}</label>` : ''}
+          ${(a.type === 'manuel' || a.type === 'robot') && !o.compact ? this.champOrdre(a) : ''}
         </div>
         ${dispo ? `
         <p class="mini-note at-regle">Ce service <b>ne prépare pas une commande après l’autre</b> : il sert

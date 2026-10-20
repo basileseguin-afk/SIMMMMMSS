@@ -906,6 +906,9 @@
     // Les postes de travail d'une équipe (banc d'essai de la version 1, renforts) : la colonne n'existe que si une équipe en a.
     const postes = etat.ateliers.some(a => Number.isInteger(a.personnesMax));
     if (postes) ateliers[0].push('Postes de travail');
+    // L'ordre de ses lots (banc d'essai de la version 1, correction 6) : la colonne n'existe que si une équipe a le sien.
+    const ordre = etat.ateliers.some(a => typeof a.ordreSouple === 'boolean');
+    if (ordre) ateliers[0].push('Ordre des lots');
     // Le handling 24 h/24 (banc d'essai de la version 1) : ses colonnes n'existent que s'il a des réglages par compagnie.
     const h24 = etat.ateliers.some(a => a.type === 'handling' && CARTES_24H.some(k => a[k] && Object.keys(a[k]).length));
     const vlCr = etat.ateliers.some(a => a.type === 'handling' && (a.creneaux || []).some(c => c.type === 'vl'));
@@ -951,7 +954,8 @@
         a.condition && !surLeSale(a.condition) ? nomAtelier(a.condition.sinon) : null,
         // Ses personnes : vide = avec les commandes ; « aucune » = l'équipe qui reprend absorbe la charge.
         a.condition && !surLeSale(a.condition) ? (a.condition.absorbe ? 'aucune' : a.condition.renfort ? nomAtelier(a.condition.renfort) : null) : null,
-        ...(postes ? [Number.isInteger(a.personnesMax) ? a.personnesMax : null] : [])]);
+        ...(postes ? [Number.isInteger(a.personnesMax) ? a.personnesMax : null] : []),
+        ...(ordre ? [a.ordreSouple === true ? 'souple' : a.ordreSouple === false ? 'strict' : null] : [])]);
       if (a.type === 'handling') {
         // Une ligne par compagnie réglée : sa durée, et si elle est long courrier.
         const longs = new Set(a.longs || []), d = a.durees || {}, al = a.allers || {}, re = a.retours || {}, vc = a.volsCamion || {};
@@ -1175,6 +1179,7 @@
     // Les ateliers eux-mêmes.
     const parNom = new Map(), ids = new Set();
     const colonnePostes = (fA.lignes[0] || []).some(h => T.cleEntete(h) === 'postes_de_travail');
+    const colonneOrdre = (fA.lignes[0] || []).some(h => T.cleEntete(h) === 'ordre_des_lots');
     out.ateliers = [];
     for (const o of T.enObjets(fA.lignes).objets) {
       err.essayer(fA.nom, o._ligne, () => {
@@ -1220,6 +1225,16 @@
             a.personnesMax = pm;
           }
         } else if (avant && Number.isInteger(avant.personnesMax) && (type === 'manuel' || type === 'robot')) a.personnesMax = avant.personnesMax;
+        // L'ordre de ses lots : « souple », « strict » ; vide, la règle générale ; sans la colonne, celui du site.
+        if (colonneOrdre) {
+          const ordre = String(o.ordre_des_lots ?? '').trim();
+          if (ordre) {
+            if (type !== 'manuel' && type !== 'robot') throw new Error('ordre des lots : pour une équipe qui prépare, à la main ou au robot');
+            if (/^souple$/i.test(ordre)) a.ordreSouple = true;
+            else if (/^strict$/i.test(ordre)) a.ordreSouple = false;
+            else throw new Error('ordre des lots illisible « ' + ordre + ' » (souple, strict, ou vide : le réglage général)');
+          }
+        } else if (avant && typeof avant.ordreSouple === 'boolean' && (type === 'manuel' || type === 'robot')) a.ordreSouple = avant.ordreSouple;
         // À la chaîne avec l'étape d'avant : un nom de service. Vide = chacune sa case.
         const chaine = String(o.a_la_chaine_avec ?? '').trim();
         if (chaine && !/^(non|aucun|aucune|-)$/i.test(chaine)) {

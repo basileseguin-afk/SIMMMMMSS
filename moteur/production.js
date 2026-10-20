@@ -2188,6 +2188,9 @@
     // commandes hors poste. Sans l'option, rien ne change : elle part à la fin de
     // sa présence.
     const SUP = opts.heuresSup && opts.heuresSup.actif !== false && +opts.heuresSup.plafond > 0 ? +opts.heuresSup.plafond : 0;
+    // L'ordre souple (correction du banc d'essai, option) : un lot prêt n'attend pas un lot en retard. La règle
+    // du modèle ; une équipe peut la changer pour elle (`ordreSouple` : true ou false). Sans elle, l'ordre strict.
+    const SOUPLE = !!(opts.ordreSouple && opts.ordreSouple.actif === true);
     // Les cabines dont chaque service prépare les repas spéciaux (banc d'essai, évolution 7) ; sans réglage, toutes.
     const SPML = opts.spmlCabines && typeof opts.spmlCabines === 'object' && !Array.isArray(opts.spmlCabines) ? opts.spmlCabines : null;
     // Les renforts (banc d'essai, évolution 5) : une équipe qui a fini tous ses lots
@@ -3115,8 +3118,8 @@
         }
       }
       let reste = 0;
-      for (let j = e.lot; j < R.bases.length; j++) reste += (j === e.lot ? rho : 1) * R.bases[j];
-      return { lot: e.lot, reste, cumul, prises, reprise };
+      for (const j of e.restants) reste += (j === e.lot ? rho : 1) * R.bases[j];
+      return { lot: e.lot, restants: e.restants, reste, cumul, prises, reprise };
     }
     /** Le travail qui reste à une équipe, en minutes-personne (un robot : en minutes de ligne). */
     function resteDe(R, t) {
@@ -3128,7 +3131,7 @@
     function echeanceDe(R, t) {
       if (R.a.type === 'handling') { const s = suivis24h.get(R.id); return s ? Math.min(...s.mesVols.filter(x => x.etat === 'attente' && x.blocage === 'chauffeur').map(x => x.b.limite), Infinity) : Infinity; }
       const e = R.lireEtat ? R.lireEtat() : null; if (!e) return Infinity;
-      return Math.min(...R.echeances.slice(e.lot), Infinity);
+      return Math.min(...e.restants.map(j => R.echeances[j]), Infinity);
     }
     /**
      * Une équipe risque-t-elle de dépasser sa présence ? À la main : ce qui lui
@@ -3139,7 +3142,7 @@
     function aRisque(R, t) {
       if (R.fini) return false;
       if (R.a.type === 'handling') { const s = suivis24h.get(R.id); return !!s && s.mesVols.some(x => x.etat === 'attente' && x.pret != null && x.blocage === 'chauffeur'); }
-      const e = avancement(R, t); if (!e || e.lot >= R.bases.length) return false;
+      const e = avancement(R, t); if (!e || !e.restants.length) return false;
       if (R.a.type === 'robot') return R.a.personnes + R.aides.filter(h => h.fin > t + 1e-9).length < R.mini;
       return finProjetee(R, e) > R.finPresence + 1e-9;
     }
@@ -3614,25 +3617,51 @@
       // disposition à heures fixes ouvre. Celle-ci ne fait attendre que son premier lot qui en a besoin, et seulement si
       // elle n'a pas encore ouvert depuis le début de son poste ; une fois servie, ses fermetures ne la bloquent plus.
       const fournieA = svcs => Math.max(-Infinity, ...[...new Set(svcs)].filter(x => boutiques.has(x)).map(x => prochaineOuverture(boutiques.get(x), depart)));
+      // Ses lots, dans l'ordre de sa liste (un lot en cours de saisie, vide, ne compte pas), et ceux qui restent.
+      const aFaire = (a.lots || []).map(classesDuLot).filter(ids => ids.length);
+      const restants = aFaire.map((ids, k) => k);
+      // L'ordre souple : quand le lot suivant n'est pas prêt (son amont, une mise à disposition), l'équipe prend le
+      // premier lot prêt de sa liste, et revient aux autres quand ils le sont ; aucun prêt, elle attend le premier qui
+      // le devient. Les commandes réunies par « + » restent un seul lot.
+      const souple = a.ordreSouple === true || (a.ordreSouple !== false && SOUPLE);
+      const attendusDe = ids => ids.flatMap(id => amontsDe(a.service, id).map(amont => livraison(amont, id)));
+      const servieA = ids => (boutiques.size ? fournieA(ids.flatMap(id => amontsDe(a.service, id))) : -Infinity);
+      const pret = ids => attendusDe(ids).every(ev => ev.declenche) && servieA(ids) <= env.maintenant + 1e-9;
       let j = 0;   // le rang du lot en cours, parmi les lots non vides
       const processus = env.processus(function* () {
         if (env.maintenant < depart) yield env.delai(depart - env.maintenant);
         let horloge = depart;
-        if (R) R.lireEtat = () => ({ cumul, prises, lot: j });
+        if (R) R.lireEtat = () => ({ cumul, prises, lot: j, restants: restants.slice() });
 
-        for (const lot of a.lots) {
-          const ids = classesDuLot(lot);
-          if (!ids.length) continue;          // lot en cours de saisie
+        while (restants.length) {
+          const debutAttente = env.maintenant;
+          let rang = restants[0];
+          if (souple && restants.length > 1 && !pret(aFaire[rang])) {
+            for (let garde = 0; garde < 10000; garde++) {
+              const prets = restants.filter(x => pret(aFaire[x]));
+              if (prets.length) { rang = prets[0]; break; }
+              // Aucun lot prêt : le premier qui le devient. En heures sup, elle n'attend pas (voir plus haut).
+              if (sansAttente && env.maintenant >= finPresence - 1e-9) break;
+              const evs = [];
+              for (const x of restants) {
+                const att = attendusDe(aFaire[x]);
+                if (!att.every(ev => ev.declenche)) evs.push(env.tousDe(att));
+                else { const o = servieA(aFaire[x]); if (Number.isFinite(o) && o > env.maintenant) evs.push(env.delai(o - env.maintenant)); }
+              }
+              if (sansAttente) evs.push(env.delai(finPresence - env.maintenant));
+              if (!evs.length) break;
+              if (sansAttente && R) congedier(R);
+              yield env.unDe(evs);
+            }
+          }
+          j = rang;
+          const ids = aFaire[rang];
           const nom = ids.join(' + ');
 
           // Attendre que TOUS les fournisseurs aient livré TOUTES les classes
           // du lot. C'est ici que les branches food, matériel et armement se
           // rejoignent : on ne choisit pas laquelle, on les attend toutes.
-          const attendus = [];
-          for (const id of ids) {
-            for (const amont of amontsDe(a.service, id)) attendus.push(livraison(amont, id));
-          }
-          const debutAttente = env.maintenant;
+          const attendus = attendusDe(ids);
           if (!sansAttente) {
             if (attendus.length) yield env.tousDe(attendus);
             // Une boutique qui n'a pas encore ouvert depuis son début de poste : on attend qu'elle ouvre.
@@ -3761,7 +3790,7 @@
           vue.travail += aidee ? t.fait : duree; vue.attente += attente; vue.arret += arret;
           vue.fin = env.maintenant;
           horloge = env.maintenant;
-          j++;
+          restants.splice(restants.indexOf(rang), 1);
         }
         // Tous ses lots sont faits avant la fin de sa présence : ses personnes vont aider (évolution 5).
         if (REN) preter(a, env.maintenant, prises);

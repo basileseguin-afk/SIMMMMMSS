@@ -95,7 +95,10 @@
         efficaciteAutreService: borne(b.renforts.efficaciteAutreService, 0, 2, 0.6, 100),
         delai: borne(b.renforts.delai, 0, 240, 10, 1),
         versHeuresSup: b.renforts.versHeuresSup === true
-      } } : {})
+      } } : {}),
+      // L'ordre souple (banc d'essai de la v1, correction 6) : un lot prêt n'attend pas un lot en retard. Désactivé
+      // par défaut ; une équipe peut le changer pour elle (ory-ateliers-v1). Gardé une fois réglé seulement.
+      ...(b.ordreSouple && typeof b.ordreSouple === 'object' && !Array.isArray(b.ordreSouple) ? { ordreSouple: { actif: b.ordreSouple.actif === true } } : {})
     };
   }
 

@@ -32,12 +32,14 @@ const DESACTIVEES = s => ({
   renforts: { actif: false, efficacite: 1, efficaciteAutreService: 1, delai: 0, versHeuresSup: true },
   // Évolution 6 : pas de sale de la veille (zéro unité).
   saleInitial: 0,
+  // Correction 6 : l'ordre souple réglé mais désactivé.
+  ordreSouple: { actif: false },
   ...(servicesDe(s).length ? { ateliers: { polyvalence: Object.fromEntries(servicesDe(s).map(x => [x, servicesDe(s)])),
     // Évolution 7 : chaque service prépare les repas spéciaux de toutes les cabines (le défaut, saisi).
     spmlCabines: Object.fromEntries(servicesDe(s).map(x => [x, ['BC', 'PC', 'YC']])) } } : {}),
   equipes: {
-    // Évolution 5 : les postes de travail des équipes qui préparent.
-    ...Object.fromEntries(s.args.ateliers.filter(a => a.type === 'manuel' || a.type === 'robot').map(a => [a.id, { personnesMax: 1 }])),
+    // Évolution 5 : les postes de travail des équipes qui préparent ; correction 6 : l'ordre strict, réglé pour chacune.
+    ...Object.fromEntries(s.args.ateliers.filter(a => a.type === 'manuel' || a.type === 'robot').map(a => [a.id, { personnesMax: 1, ordreSouple: false }])),
     // Évolution 3 : chaque handling a ses réglages 24 h/24 (escales, quais, VL…), sans le mode.
     ...Object.fromEntries(handlingsDe(s).map(a => [a.id, { escale: { '*': 60, NORD: 30 }, quaiDepart: { '*': 10 },
       dechargement: { '*': 20 }, quaiRetour: { '*': 15 }, vl: ['SUD'], entreAvions: 5, dechargementsParTournee: 2, margeDepart: 45,

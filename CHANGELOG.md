@@ -5,6 +5,32 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-20 — Banc d'essai, correction 6 : l'option « ordre souple », un lot prêt n'attend pas un lot en retard
+
+Une équipe faisait ses lots strictement dans l'ordre de sa liste : si un lot
+attendait son amont, les suivants attendaient aussi, même prêts. Une équipe de
+contrôle de 27 lots attendait 790 min son premier lot et n'atteignait jamais
+les derniers.
+
+- Une option `ordreSouple`, règle de calcul rangée dans `ory-modele-v1`,
+  désactivée par défaut, modifiable équipe par équipe (`ordreSouple` : true
+  ou false, dans `ory-ateliers-v1`). Avec elle, quand le lot suivant n'est pas
+  prêt, l'équipe prend le premier lot prêt de sa liste, puis revient aux
+  autres ; aucun prêt, elle attend le premier qui le devient. L'ordre de la
+  liste reste la priorité entre lots prêts ; les commandes réunies par « + »
+  restent ensemble.
+- Dans la page : *Réglages de la simulation › Ordre des lots*, et « Ordre de
+  ses lots » dans la fiche d'une équipe. Excel : la colonne « Ordre des
+  lots ». Banc : `options.ordreSouple`.
+- Désactivée, la journée est la même qu'avant.
+- Fichiers : `moteur/production.js`, `moteur/journee.js`, `reglages.js` et
+  `v2/reglages.js` (identiques), `ateliers.js`, `sim.js`, `echanges.js` et
+  `v2/echanges.js` (identiques), `index.html` et `v2/index.html`
+  (empreintes), `docs/BANC_ESSAI.md`, `docs/FORMATS_EXCEL.md`, `README.md`,
+  `tests/ordre-souple.test.cjs`, `tests/ordre-souple-browser.cjs`,
+  `tests/non-regression.test.cjs` (réglée mais désactivée, et l'ordre strict
+  réglé pour chaque équipe : la même journée).
+
 ## 2026-10-20 — Banc d'essai, correction 5 : une mise à disposition fermée ne bloque pas une équipe déjà servie
 
 Un lot qui commençait pendant qu'une mise à disposition à heures fixes était

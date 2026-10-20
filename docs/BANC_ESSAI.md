@@ -74,6 +74,7 @@ formé). Il rend, sur la sortie standard, un objet JSON :
 | `equipes` | Des réglages forcés d'une équipe, désignée par son identifiant ou par son nom (`{ "Plonge soir": { "debut": "14:00" } }`) | — |
 | `heuresSup` | Les heures supplémentaires (§ 2), fondues dans `ory-modele-v1` comme `modele` : `{ "actif": true, "plafond": 720 }` | celles de la sauvegarde |
 | `renforts` | Les renforts (§ 5), fondus dans `ory-modele-v1` comme `modele` : `{ "actif": true, "efficacite": 0.8 }`. La matrice de polyvalence se force par `ateliers` (`{ "polyvalence": { … } }`), les postes de travail d'une équipe par `equipes` (`{ "Montage B": { "personnesMax": 6 } }`) | ceux de la sauvegarde |
+| `ordreSouple` | L'ordre souple (§ 8), fondu dans `ory-modele-v1` comme `modele` : `{ "actif": true }`. Celui d'une équipe se force par `equipes` (`{ "Contrôle": { "ordreSouple": true } }`) | celui de la sauvegarde |
 | `saleInitial` | Le sale de la veille (§ 6), fondu dans `ory-ateliers-v1` (`materiel.saleInitial`) : la liste `saleFinal` que la journée d'avant a rendue, ou un nombre d'unités | celui de la sauvegarde |
 
 Un réglage forcé passe par le validateur, comme une saisie : un objet se
@@ -999,3 +1000,41 @@ seulement lui ; une équipe qui commence pendant une fermeture attend
 l'ouverture ; une journée où tout se fait magasin ouvert ne change pas) ;
 `tests/vagues.test.cjs` et `tests/boutique-browser.cjs` (la boutique, comme
 avant).
+
+### L'ordre souple : un lot prêt n'attend pas un lot en retard (correction, option)
+
+Une équipe fait ses lots strictement dans l'ordre de sa liste : si un lot
+attend son amont, les suivants attendent aussi, même prêts. Rejouée sur des
+journées réelles, une équipe de contrôle de 27 lots attendait 790 min son
+premier lot et n'atteignait jamais les derniers.
+
+- **Le réglage** : `ordreSouple: { actif }`, une règle de calcul rangée avec le
+  barème (`ory-modele-v1`), **désactivée par défaut**, enregistrée seulement
+  une fois réglée. Une équipe (à la main ou au robot) peut avoir la sienne :
+  `ordreSouple: true` (souple) ou `false` (strict) dans `ory-ateliers-v1` ;
+  sans elle, la règle générale. Dans la page : *Réglages de la simulation ›
+  Ordre des lots* (la case ; le panneau nomme les équipes réglées autrement),
+  et, dans la fiche d'une équipe, « Ordre de ses lots » (le réglage général,
+  souple, strict). Dans Excel : la colonne « Ordre des lots ». Pour le banc :
+  `options.ordreSouple`, et `options.equipes` pour une équipe.
+- **La règle** : quand le lot suivant n'est pas prêt — son amont n'a pas tout
+  livré, ou une mise à disposition ne l'a pas encore servie (voir plus haut) —,
+  l'équipe prend le **premier lot prêt de sa liste**, puis revient aux autres
+  quand ils le sont. L'ordre de la liste reste la priorité entre lots prêts,
+  et les commandes réunies par « + » restent un seul lot. Quand **aucun lot
+  n'est prêt**, elle attend le premier qui le devient (s'il en devient
+  plusieurs à la fois, le premier de sa liste). Le matériel, la ligne du
+  robot et les renforts ne comptent pas dans « prêt » : ils se prennent
+  ensuite, comme avant. En heures sup (§ 2), aucun lot prêt : elle part.
+- Désactivée, ou quand rien n'attend, la journée est celle d'avant. Les
+  renforts suivent les lots qui restent à l'équipe, dans l'ordre où elle les
+  fait.
+
+Vérifications : `tests/ordre-souple.test.cjs` (lot 1 pas prêt, lot 2 prêt : le
+lot 2 d'abord ; la priorité de la liste entre lots prêts ; les commandes
+réunies par « + » ; aucun lot prêt : le premier qui le devient ; désactivée,
+la même journée ; la règle d'une équipe ; avec les heures sup ; le
+déterminisme, renforts compris ; la validation ; les options du banc ; Excel) ;
+`tests/ordre-souple-browser.cjs` (la case, la fiche, le rechargement, « Tout
+sauvegarder ») ; `tests/non-regression.test.cjs` (désactivée : la même
+journée).

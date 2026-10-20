@@ -652,7 +652,7 @@ function initAteliers(){
     // Le plan dit « aménagé » d'après les ateliers : il doit suivre leur saisie.
     // La liste du barème marque les services qui portent une équipe : elle doit
     // donc se redessiner quand les ateliers bougent.
-    change:r=>{if(suivreDemo()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();renderHeuresSup(r);renderRenforts(r);renderReglageRenforts();renderReglageSpml();},
+    change:r=>{if(suivreDemo()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();renderHeuresSup(r);renderRenforts(r);renderReglageRenforts();renderReglageOrdre();renderReglageSpml();},
     // Une case se règle dans le chemin d'une commande : l'ouvrir d'ailleurs y mène.
     onglet:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
     // Le chemin d'une commande mène à son flux (Chemins) et à ses services (Équipes).
@@ -1759,6 +1759,40 @@ function renderHeuresSup(r){
 }
 
 /* ==========================================================================
+ *  ORDRE SOUPLE (banc d'essai, correction 6 — docs/BANC_ESSAI.md § 8)
+ *  Une règle de calcul, rangée avec le barème (ory-modele-v1), désactivée par
+ *  défaut : quand le lot suivant d'une équipe n'est pas prêt, elle prend le
+ *  premier lot prêt de sa liste. Une équipe peut avoir la sienne (sa fiche,
+ *  `ordreSouple` dans ory-ateliers-v1).
+ * ==========================================================================*/
+const ordreSouple=()=>!!(Sim.reglages&&Sim.reglages.etat.ordreSouple&&Sim.reglages.etat.ordreSouple.actif);
+function reglerOrdreSouple(e){
+  const t=e.target;if(!Sim.reglages||!t.matches('[data-os-actif]'))return;
+  Sim.reglages.changer(()=>{Sim.reglages.etat.ordreSouple={actif:t.checked};},
+    t.checked?'Ordre souple : un lot prêt n’attend plus un lot en retard.':'Ordre strict : chaque équipe fait ses lots dans l’ordre de sa liste.');
+}
+/* Le réglage, dans « Réglages de la simulation », après les heures supplémentaires et les renforts. */
+function renderReglageOrdre(){
+  const apres=document.getElementById('rg-sim-renforts')||document.getElementById('rg-sim-heures-sup');if(!apres||!Sim.reglages||!Sim.ateliers)return;
+  let box=document.getElementById('rg-sim-ordre');
+  if(!box){
+    box=document.createElement('div');box.className='panneau rg-sim-ordre';box.id='rg-sim-ordre';box.dataset.sous='rg-simulation';
+    apres.after(box);box.addEventListener('change',reglerOrdreSouple);
+  }
+  const on=ordreSouple(),propres=(Sim.ateliers.state.ateliers||[]).filter(a=>typeof a.ordreSouple==='boolean');
+  const autres=propres.filter(a=>a.ordreSouple!==on);
+  box.innerHTML='<div class="titre-aide"><h3>Ordre des lots</h3><details class="aide">'
+    +'<summary aria-label="Comment l’ordre souple choisit le lot suivant">?</summary>'
+    +'<span class="aide-corps">Une équipe fait ses lots dans l’ordre de sa liste. Si le lot suivant attend son amont (ou une mise à disposition), '
+    +'les suivants attendent aussi, même prêts. En ordre souple, elle prend le premier lot prêt de sa liste, puis revient aux autres quand ils le sont ; '
+    +'l’ordre de la liste reste la priorité entre lots prêts, et les commandes réunies par « + » restent ensemble. Aucun lot prêt : elle attend '
+    +'le premier qui le devient.</span></details></div>'
+    +'<label class="chk chk-mini"><input type="checkbox" data-os-actif'+(on?' checked':'')+'><span>Un lot prêt n’attend pas un lot en retard (ordre souple)</span></label>'
+    +'<p class="mini-note">'+(on?'Toutes les équipes, sauf celles réglées autrement dans leur fiche.':'Désactivé : chaque équipe fait ses lots dans l’ordre de sa liste, sauf celles réglées autrement dans leur fiche.')
+    +(autres.length?' Réglée'+(autres.length>1?'s':'')+' autrement : '+autres.map(a=>escapeHTML(a.nom)).join(', ')+'.':'')+'</p>';
+}
+
+/* ==========================================================================
  *  RENFORTS (banc d'essai, évolution 5 — docs/BANC_ESSAI.md)
  *  Une équipe qui a fini tous ses lots avant la fin de sa présence prête ses
  *  personnes à une équipe encore au travail. La règle de calcul se range avec
@@ -2227,7 +2261,7 @@ function installerCentreReglages() {
       return [...new Set([...par].filter(([,manuel])=>!manuel).map(([s])=>s).concat(parCompagnie))];
     },
     delaiChargement:()=>CFG.loadDelay,
-    change:()=>{if(Sim.ateliers)Sim.ateliers.rendre();majDemarrage();if(Sim.vue)Sim.vue.recalculer();renderReglageHeuresSup();renderReglageRenforts();},
+    change:()=>{if(Sim.ateliers)Sim.ateliers.rendre();majDemarrage();if(Sim.vue)Sim.vue.recalculer();renderReglageHeuresSup();renderReglageRenforts();renderReglageOrdre();},
     notify:toast
   });
   // Les vols s'importent dans « Données › Vols » ; leurs horaires (décalage,
@@ -2676,6 +2710,7 @@ function initWorkbench() {
   installerCentreReglages();
   renderReglageHeuresSup();
   renderReglageRenforts();
+  renderReglageOrdre();
   renderReglageSpml();
   updateSource();updateRunState();majCompare();
 }
