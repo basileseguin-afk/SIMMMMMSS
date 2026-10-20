@@ -217,13 +217,22 @@ en laissant ses lots « hors poste ».
 - **Qui en fait** :
   - une équipe à la main et un **robot** : elle finit ses lots ; le robot
     garde sa ligne, l'équipe suivante attend qu'elle se libère ;
-  - la **plonge** : les tunnels continuent, mais seulement pour **ce qui
-    l'attendait** à la fin de sa présence. Par vol : un vol revenu avant la fin
-    de sa présence peut finir en heures sup ; un vol revenu après va à
-    l'équipe suivante. Entre deux tunnels qui le rendent propre à la même
-    heure, celui d'une équipe encore dans ses heures passe d'abord (comme en
-    version 2). Au débit : le sale revenu avant la fin de la présence, pas
-    celui qui revient après ; une plonge qui n'a plus rien à laver s'en va ;
+  - la **plonge** finit le vol en cours, mais n'en commence pas d'autre
+    (correction du banc d'essai). Par vol : passé la fin de sa présence, elle
+    finit les vols **déjà dans un tunnel** — en heures sup, jusqu'au plafond ;
+    un vol qui ne finirait pas avant lui n'est pas commencé — et n'en commence
+    **aucun autre**. Ce qui attend va à la plonge suivante présente (la nuit,
+    si elle est ouverte ; le matin du lendemain, si une plonge est réglée sur
+    J+1) ; sinon au sale de fin de journée (`saleFinal`), donc au retard que
+    mesure une plonge de nuit sur le retard (§ 6). Ses `heuresSup` : la fin
+    du dernier vol commencé moins la fin de sa présence. Entre deux tunnels
+    qui rendent un vol propre à la même heure, celui d'une équipe encore dans
+    ses heures passe d'abord (comme en version 2). Au débit : elle s'arrête à
+    la fin de sa présence, heures sup permises ou non (sa `finPoste` est la fin
+    de sa présence) ; le sale qui reste suit le même chemin. Elle lavait
+    avant tout ce qui l'attendait à la fin de sa présence : rejouée avec une
+    nuit et 90 min par vol, l'équipe de l'après-midi commençait encore un vol à
+    03:00, et ses heures sup avalaient le travail de la nuit ;
   - le **handling** d'une équipe (sans créneaux de chauffeurs) charge ses vols
     jusqu'au plafond. Un handling **à créneaux** n'en fait pas : ses chauffeurs
     viennent à leurs créneaux. Un handling **24 h/24** non plus : ce sont ses
@@ -242,6 +251,11 @@ poste a 0, une équipe qui déborde de 40 min a 40 min, le plafond coupe, une
 mise à disposition et un appui ont 0, l'option désactivée rend la journée
 d'avant, robot, plonge par vol et au débit, handling avec et sans créneaux,
 effectif calculé inchangé, validation, options du banc) ;
+`tests/plonge-heures-sup.test.cjs` (la plonge finit le vol dans son tunnel et
+ne commence pas celui qui attend : il va à la nuit, ou au sale de fin de
+journée ; une nuit ne commence aucun vol après la fin de sa présence ; le
+retard d'une plonge sur le retard compte ce que l'après-midi n'a pas commencé ;
+sans l'option, rien ne change) ;
 `tests/heures-sup-browser.cjs` (le réglage, son enregistrement, la Synthèse) ;
 `tests/non-regression.test.cjs` (réglées mais désactivées : la même journée).
 

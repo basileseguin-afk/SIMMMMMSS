@@ -89,7 +89,7 @@ const plongeur = (id, debut, tunnels) => ({ id, nom: id, service: 'plonge', type
 const retour = (id, sta) => ({ id, cie: 'NORD', sens: 'RET', sta: h(sta), bc: 0, pc: 0, yc: 100 });
 const MAT = { actif: true, delaiRetour: 0, retours: 'programme', stockInitial: 0, unites: { YC: { parVol: 10 } } };
 
-test('plonge par vol : en heures sup, l’équipe finit ce qui l’attendait ; un vol revenu après va à l’équipe suivante', () => {
+test('plonge par vol : en heures sup, l’équipe finit le vol commencé ; un vol revenu après va à l’équipe suivante', () => {
   const r = P.simuler({ vols: [retour('NO8', '12:50'), retour('NO9', '13:10')], liaisons: [], rendement: 1, materiel: MAT,
     ateliers: [plongeur('matin', '05:00', ['T1']), plongeur('soir', '13:00', ['T1'])], heuresSup: { actif: true, plafond: 60 } });
   const l8 = r.lots.find(l => l.vol === 'NO8'), l9 = r.lots.find(l => l.vol === 'NO9');
@@ -110,14 +110,16 @@ test('plonge par vol : à égalité, l’équipe dans ses heures plutôt que cel
   assert.equal(vue(r, 'matin').heuresSup, 0);
 });
 
-test('plonge au débit : en heures sup, elle lave le sale qui restait, pas celui qui revient après', () => {
+test('plonge au débit : elle s’arrête à la fin de sa présence, heures sup permises ou non (correction 7)', () => {
   const p = { id: 'pl', nom: 'Plonge', service: 'plonge', type: 'lavage', debut: '05:00', jour: 0, personnes: 1, pauses: [], lots: [],
     regime: { actif: true, seuils: [], presence: 120 }, tunnels: [{ nom: 'T1', debit: 60, personnes: 1, actif: true }] };
   const mat = { ...MAT, unites: { YC: { parVol: 60 } } };
   const r = P.simuler({ vols: [retour('NO8', '06:30'), retour('NO9', '07:10')], liaisons: [], rendement: 1, materiel: mat,
     ateliers: [p], heuresSup: { actif: true, plafond: 180 } });
-  assert.equal(vue(r, 'pl').heuresSup, 30, '60 u revenues à 06:30, lavées en une heure : jusqu’à 07:30');
-  assert.equal(Math.round(r.plonge.resteSale), 60, 'les 60 u de 07:10 attendent l’équipe suivante');
+  assert.equal(vue(r, 'pl').heuresSup, 0, '60 u revenues à 06:30 : à 07:00, elle en a lavé la moitié, et s’en va');
+  assert.equal(vue(r, 'pl').finPoste, h('07:00'), 'sa fin de poste : la fin de sa présence');
+  assert.equal(Math.round(r.plonge.resteSale), 90, 'les 30 u de 06:30 et les 60 u de 07:10 attendent l’équipe suivante');
+  assert.deepEqual(r.saleFinal.map(x => [x.vol, Math.round(x.unites)]), [['NO8', 30], ['NO9', 60]]);
   const sans = P.simuler({ vols: [retour('NO8', '06:30')], liaisons: [], rendement: 1, materiel: mat, ateliers: [p] });
   assert.equal(vue(sans, 'pl').heuresSup, 0);
   assert.equal(Math.round(sans.plonge.resteSale), 30, 'sans heures sup, la moitié reste sale');

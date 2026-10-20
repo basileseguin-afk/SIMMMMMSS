@@ -3484,11 +3484,13 @@
           // libre depuis le plus longtemps : le travail se répartit.
           let p = null, fin = Infinity, supP = false;
           for (const q of pistes) {
-            // En heures sup, une équipe finit ce qui l'attendait à la fin de sa
-            // présence ; un vol revenu après, c'est l'équipe suivante qui le lave.
+            // Passé la fin de sa présence, une équipe finit les vols déjà dans un tunnel
+            // (en heures sup, jusqu'au plafond) et n'en commence aucun autre : ce qui
+            // attend va à l'équipe suivante, ou reste sale (correction du banc d'essai :
+            // elle lavait tout ce qui l'attendait, et la nuit n'avait plus rien à faire).
             if (r.t >= q.finPresence) continue;
             const d0 = Math.max(r.t, libre(q));
-            if (d0 >= q.finPoste) continue;
+            if (d0 >= q.finPresence) continue;
             const f = finAvecPauses(d0, (dureeLavageVol(q.a, r.cie) ?? 0) / q.vitesse, q.pauses).fin;
             if (f > q.finPoste) continue;
             const sup = f > q.finPresence + 1e-9;
@@ -3542,18 +3544,16 @@
         // rien, et on le dit (« plonge-arret »). Laver « en un temps infini »
         // faisait planter toute la journée (trouvé par tirage au hasard, 29/09).
         if (!(debitLavage(a) > 0)) continue;
+        // Au débit, la plonge s'arrête à la fin de sa présence, heures sup ou non : le sale qui
+        // reste va à l'équipe suivante, ou à la fin de la journée (correction du banc d'essai).
+        vue.finPoste = Number.isFinite(finPresence) ? finPresence : null;
         env.processus(function* () {
           if (env.maintenant < depart) yield env.delai(depart - env.maintenant);
           const prisesL = new Set(); let cumulL = 0;
           for (let garde = 0; garde < 5000; garde++) {
-            if (env.maintenant >= finPoste) break;
-            // En heures sup, elle ne lave que le sale revenu avant la fin de sa
-            // présence ; ce qui revient après est pour l'équipe suivante.
-            const enSup = env.maintenant >= finPresence;
-            const reste = enSup ? Math.min(stock.sale, file.arrivees.reduce((n, x) => n + (x.t < finPresence ? x.u : 0), 0)) : stock.sale;
+            if (env.maintenant >= finPresence) break;
+            const reste = stock.sale;
             if (reste <= 1e-9) {
-              // Passé sa présence, une équipe qui n'a plus rien à laver s'en va.
-              if (enSup) break;
               // Rien \u00e0 laver : on attend le prochain retour, ou la fin de la présence.
               const ev = env.evenement('retour'); reveilsSale.push(ev);
               // Un poste sans fin (pauses décochées) n'attend que le retour.
@@ -3571,7 +3571,7 @@
             }
             const duree = unites / debitLavage(a) * 60;
             const t = executerTache({ depart: env.maintenant, duree, cumul: cumulL,
-              prises: prisesL, pauses, regime, finPoste });
+              prises: prisesL, pauses, regime, finPoste: finPresence });
             const debutLot = env.maintenant;
             const passe = { debut: debutLot, fin: t.fin, unites };
             file.tunnels.add(passe);

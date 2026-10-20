@@ -69,15 +69,16 @@ test('un gros retard l’ouvre : elle lave le retard, et l’on sait de combien 
   assert.deepEqual([seule.ouverte, seule.equipe, seule.retard.vols, seule.absorbe, seule.depassement], [true, null, 10, false, null]);
 });
 
-test('une équipe désignée qui ferait des heures sup pour l’absorber compte comme ne l’absorbant pas', () => {
+test('une équipe désignée qui aurait besoin d’heures sup pour l’absorber ne l’absorbe pas', () => {
   // Le matin et la nuit seulement : les onze retours de l'après-midi (après 13:00) restent sales.
   const vols = serie('M', '05:30', 6, 30).concat(serie('E', '14:30', 11, 20));
   const sup = { heuresSup: { actif: true, plafond: 60 } };
-  // Le lendemain, avec les heures sup permises, le matin lave tout… en finissant à 13:30 : 30 min d'heures sup.
+  // Le lendemain, heures sup permises : le retard (5 h 30) et cinq de ses retours le mènent à 13:00, la fin de sa présence ;
+  // il ne commence pas le sixième (correction 7 : en heures sup, une plonge finit le vol en cours, n'en commence pas d'autre).
   const sans = jouer(vols, [MATIN()], {}, sup);
   const demain = jouer(vols, [MATIN()], { saleInitial: sans.saleFinal }, sup);
-  assert.equal(vue(demain, 'matin').heuresSup, 30);
-  assert.deepEqual(demain.saleFinal, sans.saleFinal, 'il a tout lavé, le retard et ses retours : ne restent que ceux de l’après-midi');
+  assert.equal(vue(demain, 'matin').heuresSup, 0);
+  assert.deepEqual(demain.saleFinal.map(x => x.vol), ['M6'].concat(sans.saleFinal.map(x => x.vol)), 'il lui faudrait 30 min de plus');
   // Il ne l'absorbe donc pas : la nuit s'ouvre.
   const r = jouer(vols, [MATIN(), NUIT()], {}, sup);
   assert.deepEqual([vue(r, 'nuit').conditionSale.ouverte, vue(r, 'nuit').conditionSale.absorbe, vue(r, 'nuit').conditionSale.depassement], [true, false, 30]);

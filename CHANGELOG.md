@@ -5,6 +5,27 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-20 — Banc d'essai, correction 7 : une plonge en heures sup finit le vol en cours, n'en commence pas d'autre
+
+En heures sup, une plonge lavait tout ce qui l'attendait à la fin de sa
+présence. Rejouée avec une équipe de nuit et 90 min par vol, l'équipe de
+l'après-midi commençait encore un vol à 03:00 et la nuit continuait jusqu'à
+10:45 ; comme le retard se mesure après ces heures sup, elles avalaient le
+travail de la nuit.
+
+- Une équipe de lavage, passé la fin de sa présence : par vol, elle finit les
+  vols déjà dans un tunnel (jusqu'au plafond des heures sup) et n'en commence
+  aucun autre ; ce qui attend va à la plonge suivante, sinon au sale de fin de
+  journée (`saleFinal`), donc au retard. Au débit, elle s'arrête à la fin de sa
+  présence (sa `finPoste` aussi). Ses `heuresSup` : la fin du dernier vol
+  commencé moins la fin de sa présence.
+- Les autres équipes ne changent pas ; sans l'option des heures sup, rien ne
+  change.
+- Fichiers : `moteur/production.js`, `index.html` (empreintes),
+  `docs/BANC_ESSAI.md`, `README.md`, `tests/plonge-heures-sup.test.cjs`,
+  `tests/heures-sup.test.cjs` (la plonge au débit), `tests/plonge-absorbable.test.cjs`
+  (le matin ne commence plus un vol à la fin de sa présence).
+
 ## 2026-10-20 — Banc d'essai, correction 2 (suite) : le robot de son propre service se coche
 
 Avec la correction 2, son propre service était coché et grisé même quand il a
