@@ -63,21 +63,22 @@ const UNITE=()=>{
   assert.match(await qui.locator('option:checked').innerText(),/la première du matin \(« Plonge matin »\)/);
   let n=await nuit();
   assert.deepEqual([n.personnes,n.cs.mesure,n.cs.ouverte,n.cs.equipe,n.cs.retard,n.cs.absorbe],[0,'absorbable',false,'matin',{vols:8,unites:1520},true]);
-  assert.match(await bilan(),/Fermée ce jour : sans elle, il reste 8 vols \(1520 u\) à la fin de la journée ; « Plonge matin » les absorbe le lendemain, avec ses propres retours, avant la fin de sa présence ; ses personnes ne viennent pas/);
+  assert.match(await bilan(),/Fermée ce jour : sans elle, il reste 8 vols \(1520 u\) à la fin de la journée ; « Plonge matin » les absorbe le lendemain : seule, elle les lave avec ses propres retours avant la fin de sa présence ; ses personnes ne viennent pas/);
 
   // 3. Vingt-trois retours : onze vols de retard, le matin dépasserait sa présence de 30 min. Ouverte.
   await importer(23);await ouvrir();
   n=await nuit();
   assert.deepEqual([n.personnes,n.cs.ouverte,n.cs.absorbe,n.cs.depassement],[2,true,false,30]);
-  assert.match(await bilan(),/Ouverte ce jour : sans elle, il resterait 11 vols \(2090 u\) à la fin de la journée ; « Plonge matin » ne les absorberait pas : elle dépasserait sa présence de 30 min ; elle a lavé 2090 u ; reste 0 u/);
+  assert.match(await bilan(),/Ouverte ce jour : sans elle, il resterait 11 vols \(2090 u\) à la fin de la journée ; « Plonge matin » ne les absorberait pas : seule, elle dépasserait sa présence de 30 min ; elle a lavé 2090 u ; reste 0 u/);
 
-  // 4. L'équipe désignée : le soir. Le retard est propre avant 21:00 (le matin le lave) et le soir lave ses retours à
-  // temps (le vol que le matin n'a pas fini l'attend à 14:00, quand il n'a encore rien à laver) : fermée. Rangée avec la condition.
+  // 4. L'équipe désignée : le soir. Seul, il laverait le retard de 14:00 à 19:30, puis ses douze retours jusqu'à 01:30 :
+  // 4 h 30 après 21:00 (correction 8 : on le juge seul). Ouverte. Rangée avec la condition.
   await choisir('[data-at-champ=sale-equipe]','soir');
   assert.deepEqual((await equipe()).condition,{mesure:'absorbable',equipe:'soir'});
   n=await nuit();
-  assert.deepEqual([n.personnes,n.cs.equipe,n.cs.absorbe,n.cs.ouverte],[0,'soir',true,false]);
-  assert.match(await bilan(),/Fermée ce jour : sans elle, il reste 11 vols \(2090 u\) à la fin de la journée ; « Plonge soir » les absorbe le lendemain/);
+  assert.deepEqual([n.personnes,n.cs.equipe,n.cs.absorbe,n.cs.depassement,n.cs.ouverte],[2,'soir',false,270,true]);
+  assert.match(await bilan(),/« Plonge soir » ne les absorberait pas : seule, elle dépasserait sa présence de 4 h 30 ;/);
+  assert.doesNotMatch(await bilan(),/une autre équipe/);
 
   // 5. Rechargée, tout est là ; dans « Tout sauvegarder » aussi.
   await page.reload();await attendre(600);

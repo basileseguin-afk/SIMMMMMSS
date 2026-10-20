@@ -601,11 +601,10 @@
       const u = x => Math.round(x) + ' u', nom = id => '« ' + esc((this.state.ateliers.find(x => x.id === id) || {}).nom || id || '?') + ' »';
       const vols = cs.retard.vols + (cs.retard.vols > 1 ? ' vols' : ' vol') + ' (' + u(cs.retard.unites) + ')', le = cs.retard.vols > 1 ? 'les ' : 'l’';
       const pourquoi = !cs.retard.vols ? 'sans elle, tout est lavé à la fin de la journée'
-        : cs.absorbe ? 'sans elle, il reste ' + vols + ' à la fin de la journée ; ' + nom(cs.equipe) + ' ' + le + 'absorbe le lendemain, avec ses propres retours, avant la fin de sa présence'
+        : cs.absorbe ? 'sans elle, il reste ' + vols + ' à la fin de la journée ; ' + nom(cs.equipe) + ' ' + le + 'absorbe le lendemain : seule, elle ' + le + 'lave avec ses propres retours avant la fin de sa présence'
         : 'sans elle, il resterait ' + vols + ' à la fin de la journée ; ' + (!cs.equipe ? 'aucune autre équipe de la plonge pour ' + le + 'absorber le lendemain'
           : nom(cs.equipe) + ' ne ' + le + 'absorberait pas : ' + (cs.depassement == null ? 'elle ne lave rien ce jour-là'
-            : cs.depassement > 0 ? 'elle dépasserait sa présence de ' + P.dureeLisible(cs.depassement)
-            : 'seule, elle aurait le temps, mais une autre équipe reprendrait une partie de son travail'));
+            : 'seule, elle dépasserait sa présence de ' + P.dureeLisible(cs.depassement)));
       return `<p class="mini-note at-bilan-sale"><b>${cs.ouverte ? 'Ouverte ce jour' : 'Fermée ce jour'}</b> : ${pourquoi}${
         cs.ouverte ? ' ; elle a lavé ' + u(cs.lavees) : ' ; ses personnes ne viennent pas'}${cs.reste != null ? ' ; reste ' + u(cs.reste) + ' à ' + P.hhmm(cs.fin) : ''}.</p>`;
     }

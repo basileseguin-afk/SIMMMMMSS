@@ -840,49 +840,51 @@ son nom : une équipe inconnue est refusée en le nommant).
 **Le calcul** :
 
 1. La journée se joue **avec l'équipe fermée** : le sale non lavé à la fin
-   (`saleFinal`) est **le retard**.
-2. Elle se **rejoue**, l'équipe toujours fermée, avec ce retard pour sale de
-   la veille (`saleInitial`), **à la place de celui du jour**. Le retard est
-   là au début de la journée (00:00 du jour J), comme tout sale de la veille.
-3. **L'équipe désignée l'absorbe** si, dans cette journée rejouée :
-   - le retard est entièrement propre avant la fin de sa présence — premier
-     dans la file, c'est elle qui le lave quand elle est seule au travail (une
-     autre plonge présente en même temps peut en laver une part) ;
-   - **ses propres retours** — ceux qu'elle lave dans la journée jouée sans
-     le retard (étape 1) ; au débit, la part de chaque vol qu'elle y lave —
-     sont lavés **par elle** avant la fin de sa présence. Si, à cause du
-     retard, une autre équipe doit en reprendre une partie, elle n'absorbe
-     pas ;
-   - elle ne fait **pas d'heures sup** : une équipe qui ne lave tout qu'en
-     heures sup (§ 2) ne l'absorbe pas.
-4. Si elle l'absorbe, le shift de nuit **reste fermé** : le retard passe au
+   (`saleFinal`) est **le retard**. Une plonge en heures sup ne commence pas
+   de nouveau vol (§ 2) : le retard compte ce que l'après-midi n'a pas
+   commencé.
+2. **L'équipe désignée l'absorbe** si, **seule**, sans limite de fin, elle
+   lave avant la fin de sa présence et sans heures sup :
+   - le retard, présent dès le début de la journée (00:00 du jour J, comme
+     tout sale de la veille) ;
+   - **ses propres retours** : ceux qu'elle lave dans la journée jouée sans
+     la nuit (étape 1), à leur heure — au débit, la part de chaque vol qu'elle
+     y lave.
+
+   Seule : par vol, chacun de ses tunnels qui tournent prend le vol suivant,
+   dans l'ordre des arrivées (le retard d'abord) ; au débit, à son débit, ce
+   qui est là d'un bloc ; ses pauses comprises. Autrement dit, elle l'absorbe
+   si et seulement si son **dépassement** — de combien de minutes elle
+   finirait après la fin de sa présence — vaut 0. La façon dont la journée
+   répartit les vols entre deux équipes qui se chevauchent n'entre pas dans
+   la décision.
+3. Si elle l'absorbe, le shift de nuit **reste fermé** : le retard passe au
    lendemain par `saleFinal`, comme aujourd'hui. Sinon, **il s'ouvre**, et la
    journée se joue avec lui. Sans retard, il reste fermé ; sans autre plonge
    pour l'absorber (ou si l'équipe désignée ne travaille pas ce jour-là, une
-   autre plonge conditionnelle fermée), il s'ouvre dès qu'il y a un retard.
+   autre plonge conditionnelle fermée), il s'ouvre dès qu'il y a un retard
+   (`depassement` vaut alors `null`, comme quand aucun de ses tunnels ne
+   tourne).
 
 **Hypothèse** : le matin du lendemain ressemble à celui du jour — ses retours
 sont ceux de ce matin —, comme la journée circulaire du handling (§ 3). Le banc
 qui enchaîne les jours réels rend, lui, le vrai retard au lendemain par
 `saleInitial`.
 
-**Le dépassement**, quand elle ne l'absorbe pas : de combien de minutes elle
-dépasserait la fin de sa présence pour laver **seule**, sans limite de fin, le
-retard (dès le début de la journée) et ses propres retours (à leur heure) —
-par vol, chacun de ses tunnels qui tournent prend le vol suivant ; au débit, à
-son débit, ce qui est là d'un bloc ; ses pauses comprises. Il vaut 0 quand,
-seule, elle aurait le temps, mais que dans la journée rejouée une autre équipe
-reprend une partie de son travail (des équipes qui se chevauchent) : la règle
-compte cela comme « n'absorbe pas », la fiche le dit. `null` si elle ne lave
-rien ce jour-là (aucun tunnel ne tourne, ou c'est une plonge conditionnelle
-fermée) ou s'il n'y a pas d'équipe pour absorber.
+**Corrections du banc d'essai** : d'abord, la journée était rejouée avec le
+retard pour sale de la veille, et l'équipe désignée devait y laver elle-même
+ses propres retours. Rejouées sur 61 journées réelles, à 90 min par vol, la
+nuit s'ouvrait 38 fois, chaque fois avec un dépassement de 0 : seule, l'équipe
+du matin avait le temps, mais au rejeu l'équipe de l'après-midi, arrivée avant
+son départ, prenait sur ses tunnels libres une partie de ses retours. Cette
+condition mesurait la répartition des vols entre deux équipes qui se
+chevauchent, pas la capacité du matin : on juge maintenant l'équipe seule.
 
 Une plonge sur le retard décide à son début, dans l'ordre des heures, avec
 les plonges sur le sale : chacune décide dans la journée où les précédentes
-sont ouvertes ou fermées. La journée se joue jusqu'à trois fois pour elle
-(sans elle, le lendemain s'il y a un retard, puis la journée retenue) ; quand
-elle reste fermée et décide la dernière, la journée sans elle est la journée
-retenue.
+sont ouvertes ou fermées. La journée se joue deux fois pour elle (sans elle,
+puis la journée retenue) ; quand elle reste fermée et décide la dernière, la
+journée sans elle est la journée retenue.
 
 **Ce qu'il rend**, `resultat.ateliers[].conditionSale` :
 
@@ -893,7 +895,7 @@ retenue.
 | `equipe` | L'équipe qui doit absorber le retard (son identifiant ; `null` sans autre plonge) |
 | `retard` | `{ vols, unites }` : le retard de la journée jouée sans elle, en vols (ceux de `saleFinal`) et en unités |
 | `absorbe` | L'équipe désignée l'absorbe-t-elle |
-| `depassement` | Quand elle ne l'absorbe pas : de combien de minutes elle dépasserait sa présence (voir plus haut) ; 0 quand elle l'absorbe |
+| `depassement` | De combien de minutes elle dépasserait sa présence, seule (voir plus haut) : 0 quand elle l'absorbe ; `null` sans équipe qui lave ce jour-là |
 | `lavees`, `reste`, `fin` | Comme pour le sale : ce qu'elle a lavé, le sale pas encore propre à sa fin |
 
 Dans la page, la fiche dit « Ouverte ce jour » ou « Fermée ce jour », le
@@ -908,7 +910,11 @@ elle ; tout juste à la fin de sa présence ; un gros retard l'ouvre, avec son
 dépassement ; une seule plonge ; une équipe désignée qui ferait des heures sup
 pour l'absorber ne l'absorbe pas ; l'équipe par défaut et l'équipe désignée ;
 au débit ; avec une plonge sur le sale ; le déterminisme ; la validation ; les
-options du banc ; Excel) ; `tests/plonge-absorbable-browser.cjs` (la règle,
+options du banc ; Excel) ; `tests/plonge-absorbable-seule.test.cjs` (le matin
+seul lave le retard et ses retours avant la fin de sa présence : la nuit reste
+fermée, même si au rejeu l'après-midi prend un de ses retours ; 20 min de
+dépassement l'ouvrent ; les autres cas et la condition « sale » ne changent
+pas ; le déterminisme) ; `tests/plonge-absorbable-browser.cjs` (la règle,
 l'équipe désignée, le bilan, l'enregistrement) ; `tests/non-regression.test.cjs`
 (sans cette règle : la même journée).
 

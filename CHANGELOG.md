@@ -5,6 +5,29 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-20 — Banc d'essai, correction 8 : la plonge de nuit « absorbable » juge l'équipe du matin seule
+
+Sur 61 journées réelles, à 90 min par vol, la nuit s'ouvrait 38 fois, chaque
+fois avec un dépassement de 0 : seule, l'équipe du matin aurait lavé le retard
+et ses propres retours avant la fin de sa présence. Elle « n'absorbait pas »
+seulement parce qu'au rejeu l'équipe de l'après-midi, arrivée avant son départ,
+prenait sur ses tunnels libres une partie de ses retours.
+
+- L'équipe désignée absorbe le retard si, seule (comme dans le calcul du
+  dépassement), elle lave avant la fin de sa présence et sans heures sup le
+  retard, présent dès le début de la journée, et ses propres retours (ceux de
+  la journée jouée sans la nuit, à leur heure) : si et seulement si son
+  dépassement vaut 0. La journée n'est plus rejouée avec le retard : elle se
+  joue deux fois au plus pour une plonge sur le retard, au lieu de trois.
+- Sans retard, la nuit reste fermée ; sans équipe pour absorber, ou si
+  l'équipe désignée est fermée, elle s'ouvre dès qu'il y a un retard.
+  `conditionSale` garde ses champs ; la fiche ne dit plus « une autre équipe
+  reprend une partie de son travail ».
+- Fichiers : `moteur/production.js`, `ateliers.js`, `index.html`
+  (empreintes), `docs/BANC_ESSAI.md`, `README.md`,
+  `tests/plonge-absorbable-seule.test.cjs`, `tests/plonge-absorbable-browser.cjs`
+  (le bilan ; le soir désigné, jugé seul, n'absorbe plus le retard).
+
 ## 2026-10-20 — Banc d'essai, correction 7 : une plonge en heures sup finit le vol en cours, n'en commence pas d'autre
 
 En heures sup, une plonge lavait tout ce qui l'attendait à la fin de sa
