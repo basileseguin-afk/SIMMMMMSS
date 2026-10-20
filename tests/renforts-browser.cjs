@@ -99,6 +99,21 @@ const UNITE=()=>{
   assert.deepEqual([await cible.isChecked(),await cible.isDisabled(),await cuisine().isChecked()],[true,true,true]);
   await cuisine().uncheck();await attendre();
   assert.deepEqual((await cases()).polyvalence,{prepa:['prepa']});
+  // Un robot dans son propre service : ses équipes à la main restent cochées et grisées ; la case de son robot se coche (correction 2, suite).
+  await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.push({id:'ro',nom:'Robot R',service:'prepa',type:'robot',debut:'08:00',jour:0,personnes:1,personnesMin:1,debit:100,
+    pauses:[],lots:[],regime:{actif:true,presence:300}});},''));await attendre();
+  const main=ligne.locator('[data-rf-main=prepa]');
+  assert.deepEqual([await main.isChecked(),await main.isDisabled()],[true,true],'ses équipes à la main : cochées et grisées');
+  assert.deepEqual([await cible.isChecked(),await cible.isDisabled()],[true,false],'la sauvegarde d’avant l’avait cochée : son robot reste ouvert, et se décoche');
+  assert.match(await ligne.locator('label:has([data-rf-cible=prepa])').innerText(),/· robot$/);
+  await cible.uncheck();await attendre();
+  assert.equal('polyvalence' in (await cases()),false,'décochée : plus rien d’enregistré');
+  assert.deepEqual([await main.isChecked(),await cible.isChecked(),await cible.isDisabled()],[true,false,false],'décochée par défaut');
+  await cible.check();await attendre();
+  assert.deepEqual((await cases()).polyvalence,{prepa:['prepa']});
+  assert.match(await ligne.locator('summary').innerText(),/^Son service, et : .+ \(robot\)$/);
+  await page.evaluate(()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;st.ateliers=st.ateliers.filter(a=>a.id!=='ro');},''));await attendre();
+  assert.deepEqual([await cible.isChecked(),await cible.isDisabled(),await main.count()],[true,true,0],'sans robot : coché et grisé, comme avant');
 
   // 5. Les postes de travail, dans la fiche de B : un seul poste, déjà pris ; vidé, plus de limite.
   await nav.aller(page,'at-equipes');

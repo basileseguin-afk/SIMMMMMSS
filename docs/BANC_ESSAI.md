@@ -609,11 +609,17 @@ jusqu'à la fin de **leur** présence.
   propre service y est coché et grisé, comme une annexe qui n'a que des équipes
   à la main ; « Revenir au défaut » efface la liste. Un service de la liste
   ouvre toutes ses équipes, robots et handling 24 h/24 compris — c'est aussi
-  la seule façon d'ouvrir le robot ou le handling d'une annexe (sa case reste à
-  cocher), ou de son propre service (une liste qui le nomme, comme les
-  sauvegardes d'avant : elles se relisent sans changement). Correction du banc
-  d'essai : la liste remplaçait le défaut, et « MONTAGE aide PRÉPA » supprimait
-  sans le voir l'entraide à l'intérieur du MONTAGE.
+  la seule façon d'ouvrir le robot ou le handling d'une annexe, ou de son
+  propre service. Quand le sien ou une annexe a un robot ou un handling
+  24 h/24, la page lui donne deux cases : « … · à la main », cochée et grisée
+  (ses équipes à la main, toujours aidées), et « … · robot » (ou « handling
+  24 h/24 »), **décochée par défaut** : cochée, la liste le nomme et ses
+  machines reçoivent aussi des renforts. Les sauvegardes d'avant qui
+  nommaient le service lui-même se relisent sans changement : sa case robot
+  y est cochée. Corrections du banc d'essai : la liste remplaçait le défaut, et
+  « MONTAGE aide PRÉPA » supprimait sans le voir l'entraide à l'intérieur du
+  MONTAGE ; puis le robot de son propre service ne se cochait plus dans la
+  page.
 - **Les postes de travail** d'une équipe à la main ou d'un robot :
   `personnesMax`, facultatif, dans sa fiche (le champ s'y montre quand les
   renforts sont actifs, ou quand il est saisi). Ses personnes et ses renforts

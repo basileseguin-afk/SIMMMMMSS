@@ -1781,12 +1781,18 @@ function servicesRenforts(){
   const recoivent=new Set([...preparent,...at.filter(a=>a.type==='handling'&&a.handling24h===true).map(a=>a.service)]);
   const ordre=servicesDisponibles().map(s=>s.id),rang=id=>{const i=ordre.indexOf(id);return i<0?999:i;};
   const trier=l=>[...l].sort((x,y)=>rang(x)-rang(y)||String(x).localeCompare(String(y)));
-  // Un robot ou un handling 24 h/24 ne reçoit de renfort que si son service est coché, même dans la famille du service.
+  // Un robot ou un handling 24 h/24 ne reçoit de renfort que si son service est coché, même le sien ou une annexe.
+  const genres=new Map();
+  for(const a of at){const g=a.type==='robot'?'robot':a.type==='handling'&&a.handling24h===true?'handling 24 h/24':null;
+    if(g){if(!genres.has(a.service))genres.set(a.service,[]);if(!genres.get(a.service).includes(g))genres.get(a.service).push(g);}}
   return {preteurs:trier(preparent),cibles:trier(recoivent),manuels:new Set(at.filter(a=>a.type==='manuel').map(a=>a.service)),
-    machines:new Set(at.filter(a=>a.type==='robot'||(a.type==='handling'&&a.handling24h===true)).map(a=>a.service))};
+    machines:new Set(genres.keys()),genres};
 }
-/** Ce qu'un service aide toujours, coché et grisé : lui-même, et ses annexes où il n'y a rien d'autre à ouvrir (ni robot, ni handling). */
-function aideToujours(s,c,machines){return c===s||(polyvalenceParDefaut(s).includes(c)&&!machines.has(c));}
+/** Ce qu'un service aide toujours, coché et grisé : lui-même et ses annexes, quand il n'y a rien d'autre à y ouvrir (ni robot, ni handling).
+ *  Avec un robot ou un handling 24 h/24, leurs équipes à la main restent toujours aidées ; la case ouvre aussi les machines. */
+function aideToujours(s,c,machines){return polyvalenceParDefaut(s).includes(c)&&!machines.has(c);}
+/** Le nom d'un service dans la liste de ceux qu'on aide : le sien ou une annexe, ce sont ses machines qu'on ouvre. */
+function nomAide(s,c,genres){return polyvalenceParDefaut(s).includes(c)&&genres.has(c)?nomDeService(c)+' ('+genres.get(c).join(', ')+')':nomDeService(c);}
 /** Ce qu'un service peut aider sans choix saisi : le sien et ses annexes. */
 function polyvalenceParDefaut(service){
   const f=OrlyJournee.famillesDeLUnite(servicesDisponibles(),zonesDuPlan());
@@ -1808,7 +1814,7 @@ function reglerRenforts(e){
   }else if(t.matches('[data-rf-cible]')){
     // Son propre service (et ses annexes sans robot ni handling) est toujours aidé : la liste ne garde que les autres,
     // plus ce qu'une sauvegarde d'avant y avait coché.
-    const tr=t.closest('[data-rf-service]'),s=tr.dataset.rfService,cases=[...tr.querySelectorAll('[data-rf-cible]')];
+    const tr=t.closest('[data-rf-service]'),s=tr.dataset.rfService,cases=[...tr.querySelectorAll('[data-rf-cible]')],{genres}=servicesRenforts();
     const grises=new Set(cases.filter(x=>x.disabled).map(x=>x.dataset.rfCible));
     const avant=((Sim.ateliers.state.polyvalence||{})[s]||[]).filter(x=>grises.has(x));
     const liste=avant.concat(cases.filter(x=>x.checked&&!x.disabled).map(x=>x.dataset.rfCible));
@@ -1816,7 +1822,7 @@ function reglerRenforts(e){
     Sim.ateliers.changer(()=>{const st=Sim.ateliers.state,p={...(st.polyvalence||{})};
       if(liste.length)p[s]=liste;else delete p[s];
       if(Object.keys(p).length)st.polyvalence=p;else delete st.polyvalence;},
-      '« '+nomDeService(s)+' » aide son service et ses annexes'+(autres.length?', et : '+autres.map(nomDeService).join(', '):'')+'.');
+      '« '+nomDeService(s)+' » aide son service et ses annexes'+(autres.length?', et : '+autres.map(c=>nomAide(s,c,genres)).join(', '):'')+'.');
   }
 }
 function revenirPolyvalence(e){
@@ -1837,19 +1843,24 @@ function renderReglageRenforts(force){
   }
   // On ne redessine pas sous les doigts de quelqu'un qui tape une valeur.
   if(!force&&box.contains(document.activeElement)&&document.activeElement.matches('input[type=number]'))return;
-  const rf=renforts(),poly=(Sim.ateliers.state.polyvalence)||{},{preteurs,cibles,machines}=servicesRenforts();
+  const rf=renforts(),poly=(Sim.ateliers.state.polyvalence)||{},{preteurs,cibles,machines,manuels,genres}=servicesRenforts();
   const champ=k=>{const c=RENFORTS_CHAMPS[k];return '<div><label class="at-inline-champ">'+escapeHTML(c.texte)+' <span class="champ-unite"><input type="number" min="'+c.min+'" max="'+c.max+'" step="'+(k==='delai'?1:0.05)+'" value="'+rf[k]+'"'
     +' data-rf="'+k+'" aria-label="'+escapeHTML(c.texte+', en '+(k==='delai'?'minutes':'personne'))+'"'+(rf.actif?'':' disabled')+'><span class="unite">'+c.unite+'</span></span></label></div>';};
   const ligne=s=>{
-    // Toujours : son propre service, et ses annexes (pour leurs équipes à la main) ; la liste en ajoute d'autres.
+    // Toujours : son propre service, et ses annexes (pour leurs équipes à la main) ; la liste en ajoute d'autres. Le sien
+    // ou une annexe qui a un robot ou un handling 24 h/24 : ses équipes à la main cochées et grisées, et une case pour ses machines.
     const saisie=Array.isArray(poly[s])?poly[s]:[],famille=polyvalenceParDefaut(s),toujours=c=>aideToujours(s,c,machines);
     const autres=saisie.filter(c=>!famille.includes(c)||machines.has(c));
-    const resume=(famille.length>1?'Son service et ses annexes':'Son service')+(autres.length?', et : '+autres.map(nomDeService).join(', '):'');
-    const titre=c=>(c===s?'Toujours : son propre service':toujours(c)?'Toujours : une annexe de son service'
-      :famille.includes(c)?'Une annexe : toujours pour ses équipes à la main ; cochée, aussi pour ses robots et son handling':'');
+    const resume=(famille.length>1?'Son service et ses annexes':'Son service')+(autres.length?', et : '+autres.map(c=>nomAide(s,c,genres)).join(', '):'');
+    const titre=c=>(toujours(c)?(c===s?'Toujours : son propre service':'Toujours : une annexe de son service')
+      :famille.includes(c)?(c===s?'Son propre service':'Une annexe')+' : cochée, ses renforts vont aussi à '+(genres.get(c)||[]).join(' et à ')+' ; décochée, à ses équipes à la main seulement':'');
+    const coche=(attrs,lib,t,oui,gris)=>'<label class="chk chk-mini"'+(t?' title="'+escapeHTML(t)+'"':'')+'><input type="checkbox" '+attrs+(oui?' checked':'')+(gris?' disabled':'')+'><span>'+escapeHTML(lib)+'</span></label>';
+    const cases=c=>famille.includes(c)&&machines.has(c)
+      ?(manuels.has(c)?coche('data-rf-main="'+escapeHTML(c)+'"',nomDeService(c)+' · à la main',c===s?'Toujours : les équipes à la main de son propre service':'Toujours : les équipes à la main d’une annexe',true,true):'')
+        +coche('data-rf-cible="'+escapeHTML(c)+'"',nomDeService(c)+' · '+genres.get(c).join(', '),titre(c),saisie.includes(c),false)
+      :coche('data-rf-cible="'+escapeHTML(c)+'"',nomDeService(c),titre(c),toujours(c)||saisie.includes(c),toujours(c));
     return '<tr data-rf-service="'+escapeHTML(s)+'"><th scope="row">'+escapeHTML(nomDeService(s))+'</th><td><details'+(renfortsOuverts.has(s)?' open':'')+'><summary>'+escapeHTML(resume)+'</summary>'
-      +'<div class="rf-cibles">'+cibles.map(c=>'<label class="chk chk-mini"'+(titre(c)?' title="'+escapeHTML(titre(c))+'"':'')+'><input type="checkbox" data-rf-cible="'+escapeHTML(c)+'"'
-        +(toujours(c)||saisie.includes(c)?' checked':'')+(toujours(c)?' disabled':'')+'><span>'+escapeHTML(nomDeService(c))+'</span></label>').join('')+'</div>'
+      +'<div class="rf-cibles">'+cibles.map(cases).join('')+'</div>'
       +(saisie.length?'<button type="button" class="btn btn-sm" data-rf-defaut>Revenir au défaut</button>':'')+'</details></td></tr>';
   };
   box.innerHTML='<div class="titre-aide"><h3>Renforts</h3><details class="aide">'
@@ -1864,7 +1875,7 @@ function renderReglageRenforts(force){
     +'<label class="chk chk-mini"><input type="checkbox" data-rf-sup'+(rf.versHeuresSup?' checked':'')+(rf.actif?'':' disabled')+'><span>Un renfort peut rester en heures supplémentaires'
     +(heuresSup().actif?'':' (quand elles sont permises)')+'</span></label></div>'
     +(rf.actif?'<h4>Qui peut aider qui</h4><p class="mini-note">Un service aide toujours le sien et ses annexes, pour leurs équipes à la main (cochés et grisés). '
-      +'Cochez pour ajouter un autre service, un robot, ou le handling (permis de conduire) ; une plonge ne va vers une zone alimentaire que cochée ici.</p>'
+      +'Cochez pour ajouter un autre service, un robot — le sien compris —, ou le handling (permis de conduire) ; une plonge ne va vers une zone alimentaire que cochée ici.</p>'
       +(preteurs.length?'<div class="table-scroll"><table class="svc-table rf-table"><thead><tr><th scope="col">Service</th><th scope="col">Peut aider</th></tr></thead><tbody>'
         +preteurs.map(ligne).join('')+'</tbody></table></div>':'<p class="mini-note">Aucune équipe qui prépare : personne à prêter.</p>')
       :'<p class="mini-note">Désactivés : une équipe qui a fini reste à son poste jusqu’à la fin de sa présence.</p>');

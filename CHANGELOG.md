@@ -5,6 +5,22 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-20 — Banc d'essai, correction 2 (suite) : le robot de son propre service se coche
+
+Avec la correction 2, son propre service était coché et grisé même quand il a
+un robot ou un handling 24 h/24 : on ne pouvait plus ouvrir aux renforts les
+machines de son propre service depuis la page.
+
+- Réglages de la simulation › Renforts : quand son service (ou une annexe) a
+  un robot ou un handling 24 h/24, deux cases — « … · à la main », cochée et
+  grisée (ses équipes à la main sont toujours aidées), et « … · robot »,
+  décochée par défaut. Cochée, la liste nomme le service et ses machines
+  reçoivent aussi des renforts ; décochée, plus rien n'est enregistré.
+- Le moteur ne change pas. Une sauvegarde qui nommait le service lui-même se
+  relit sans changement (sa case robot y est cochée).
+- Fichiers : `sim.js`, `index.html` (empreintes), `docs/BANC_ESSAI.md`,
+  `tests/renforts-browser.cjs`.
+
 ## 2026-10-20 — Banc d'essai, correction 3 : la plonge de nuit ne s'ouvre que si le matin ne peut pas absorber le retard
 
 La plonge conditionnelle (6/7) : avec la condition « sale », le shift de nuit
