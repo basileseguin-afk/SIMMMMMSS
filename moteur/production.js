@@ -720,6 +720,21 @@
     return lire(up(cie)) ?? lire(TOUTES) ?? Math.max(1, Math.floor(+(atelier && atelier.volsParCamion)) || 1);
   }
 
+  /**
+   * Combien de vols d'une compagnie une tournée du handling 24 h/24 sert au plus,
+   * selon son véhicule (évolution 8) : en VL, `volsVL` (le sien, sinon « * ») ;
+   * sans valeur, et en gros camion, celui du camion (`volsParCamionDe`).
+   */
+  function volsParTourneeDe(atelier, cie, vehicule) {
+    if (vehicule === 'vl') {
+      const m = (atelier && atelier.volsVL) || {};
+      const lire = k => { const v = Math.floor(+m[k]); return m[k] !== undefined && m[k] !== null && m[k] !== '' && v >= 1 ? v : null; };
+      const n = lire(up(cie)) ?? lire(TOUTES);
+      if (n != null) return n;
+    }
+    return volsParCamionDe(atelier, cie);
+  }
+
   /** Un trajet de camion pour une compagnie : aller jusqu'à l'avion, retour à l'unité (minutes). */
   function trajetHandling(atelier, cie) {
     const lire = (m, k) => { const d = (atelier && atelier[m]) || {}; const v = d[k]; return v === undefined || v === null || v === '' || !Number.isFinite(+v) ? null : Math.max(0, +v); };
@@ -768,6 +783,8 @@
   /** Préparer le camion au quai (chargement dans la CF départ, contrôle), et le vider du sale au retour. */
   const quaiDepartDe = (atelier, cie) => parCompagnie(atelier, 'quaiDepart', cie) ?? 0;
   const quaiRetourDe = (atelier, cie) => parCompagnie(atelier, 'quaiRetour', cie) ?? 0;
+  /** Une tournée qui sert plusieurs vols (évolution 8) : tant de minutes de quai en plus par vol de plus (0 par défaut, à confirmer). */
+  const quaiParVolDe = (atelier, cie) => parCompagnie(atelier, 'quaiParVol', cie) ?? 0;
   /** Décharger un avion : 30 min pour un long courrier, 10 pour les autres, sauf durée saisie. */
   const dechargementDe = (atelier, cie) => parCompagnie(atelier, 'dechargement', cie) ?? (categorieVol(atelier, cie) === 'long' ? 30 : 10);
   /** L'heure du jour (minutes) à partir de laquelle une compagnie part en VL (`vlDes`, HH:MM), ou null. */
@@ -828,6 +845,8 @@
     const limite = courte ? depart - r.margeEscaleCourte : depart - r.margeDepart;
     return { depart, arrivee, dispo, courte, limite, charge, dechargement: dech, aller: t.aller, retour: t.retour, quaiDepart: quai,
       quaiRetour: quaiRetourDe(atelier, cie), vehicule, long: categorieVol(atelier, cie) === 'long',
+      // Les vagues (évolution 8) : sa compagnie, les vols qu'une tournée de son véhicule sert au plus, le quai par vol de plus.
+      cie: up(cie), parTournee: volsParTourneeDe(atelier, cie, vehicule), quaiParVol: quaiParVolDe(atelier, cie),
       echeance: limite - charge - (courte ? dech : 0) - t.aller - quai };
   }
   /** Le handling qui charge une compagnie : le premier qui la nomme, sinon le premier qui les charge toutes. */
@@ -902,6 +921,11 @@
   /**
    * Étape 1, le besoin. Chaque départ a son chargement (un échange en escale
    * courte), chaque avion arrivé son déchargement, dans leurs fenêtres (§ 3) :
+   *   — les vagues (évolution 8) : les départs d'une même compagnie et d'un
+   *     même véhicule, dans l'ordre des départs, se regroupent jusqu'à
+   *     `parTournee` vols par tournée (`volsCamion`, `volsVL`), si chacun reste
+   *     dans sa fenêtre et si cela ne coûte pas de minutes-chauffeur de plus que
+   *     des tournées séparées ; un vol qui ne tiendrait pas part dans une autre ;
    *   — les enchaînements : chaque déchargement, le plus pressé d'abord, suit
    *     le chargement compatible (même véhicule, fenêtres qui se rejoignent)
    *     qui ferme le plus tôt, si cela ne coûte pas de minutes-chauffeur de
@@ -913,52 +937,82 @@
    *     avion se décharge avant d'être rechargé : chaque tournée placée resserre
    *     la fenêtre de celle qui sert le même avion.
    * @param vols [{ id, b: besoin24h, pret }] (pret : null, jamais prêt ; absent : sans en tenir compte)
-   * @param o { avance, entreAvions, dechargementsParTournee, flotte, chLong, chCourt }
+   * @param o { avance, entreAvions, dechargementsParTournee, flotte, chLong, chCourt, dureeMax }
    */
   function besoinDesTournees(vols, o) {
     const J = MINUTES_PAR_JOUR, entre = o.entreAvions, N = o.dechargementsParTournee;
     const kDe = b => (b.long ? o.chLong : o.chCourt);
-    const chargements = [], dechargements = [], tournees = [];
-    for (const x of vols) {
-      const b = x.b, pret = Number.isFinite(x.pret) ? x.pret : -Infinity, ouverture = b.depart - o.avance;
-      if (b.courte) {
-        // L'échange : décharger, puis charger le même avion.
-        const avantCharge = b.quaiDepart + b.aller + b.dechargement;
-        if (x.pret !== null) tournees.push({ quoi: 'echange', v: b.vehicule, k: kDe(b), d: avantCharge + b.charge + b.retour + b.quaiRetour,
-          es: Math.max(pret, Math.max(b.dispo, ouverture - b.dechargement) - b.quaiDepart - b.aller), ls: b.limite - b.charge - avantCharge,
-          charges: [{ x, debut: avantCharge }], decharges: [{ x, fin: avantCharge }] });
-        continue;
-      }
-      // Un vol jamais prêt n'est pas chargé ; son avion se décharge quand même. Un avion se décharge
-      // avant d'être rechargé : son chargement ne commence pas avant la fin du déchargement le plus tôt.
-      const decharge = b.arrivee != null ? b.dispo + b.dechargement : -Infinity;
-      if (x.pret !== null) chargements.push({ x, b, k: kDe(b), es: Math.max(pret, Math.max(ouverture, decharge) - b.quaiDepart - b.aller),
-        ls: b.limite - b.charge - b.aller - b.quaiDepart, suite: [] });
-      if (b.arrivee != null) dechargements.push({ x, b, k: kDe(b), finMax: b.limite - b.charge });
-    }
-    // La forme d'une tournée qui charge c puis décharge `suite` : sa durée, ses chauffeurs, sa fenêtre de départ.
-    const forme = (c, suite) => {
-      const debut = c.b.quaiDepart + c.b.aller;
-      let h = debut + c.b.charge, es = c.es, ls = c.ls, k = c.k;
-      const fins = [];
+    // Les vols à servir (un vol jamais prêt n'est pas chargé ; son avion se décharge quand même, sauf en escale courte),
+    // et les avions à décharger à part.
+    const servis = [], dechargements = [];
+    vols.forEach((x, rang) => {
+      const b = x.b;
+      if (x.pret !== null) servis.push({ x, b, k: kDe(b), rang, pret: Number.isFinite(x.pret) ? x.pret : -Infinity, ouverture: b.depart - o.avance });
+      if (!b.courte && b.arrivee != null) dechargements.push({ x, b, k: kDe(b), finMax: b.limite - b.charge });
+    });
+    // La forme d'une tournée qui sert la vague `v` (dans l'ordre des départs : un échange décharge puis charge le même
+    // avion), puis décharge `suite` : ses chargements et déchargements, sa durée, ses chauffeurs, sa fenêtre de départ.
+    // La préparation au quai et le vidage se comptent une fois, plus `quaiParVol` par vol de plus au quai de départ.
+    const forme = (v, suite) => {
+      const p = v[0].b, charges = [], decharges = [], fins = [];
+      let h = p.quaiDepart + (v.length - 1) * p.quaiParVol + p.aller, es = -Infinity, ls = Infinity, k = 0, vidage = 0;
+      v.forEach((c, i) => {
+        if (i) h += entre;
+        es = Math.max(es, c.pret);
+        if (c.b.courte) {
+          es = Math.max(es, Math.max(c.b.dispo, c.ouverture - c.b.dechargement) - h);
+          h += c.b.dechargement; decharges.push({ x: c.x, fin: h });
+          if (!vidage) vidage = c.b.quaiRetour;
+          charges.push({ x: c.x, debut: h });
+        } else if (v.length > 1 && c.b.arrivee != null) {
+          // Dans une vague, l'avion déchargé à part l'est avant que la tournée parte (`avant` : 0), comme dans la journée jouée.
+          es = Math.max(es, c.ouverture - h, c.b.dispo + c.b.dechargement);
+          charges.push({ x: c.x, debut: h, avant: 0 });
+        } else {
+          es = Math.max(es, Math.max(c.ouverture, c.b.arrivee != null ? c.b.dispo + c.b.dechargement : -Infinity) - h);
+          charges.push({ x: c.x, debut: h });
+        }
+        h += c.b.charge; ls = Math.min(ls, c.b.limite - h); k = Math.max(k, c.k);
+      });
       for (const u of suite) {
         h += entre; es = Math.max(es, u.b.dispo - h);
         h += u.b.dechargement; ls = Math.min(ls, u.finMax - h); fins.push(h); k = Math.max(k, u.k);
       }
-      const d = h + (suite.length ? suite[suite.length - 1].b.retour + suite.reduce((n, u) => n + u.b.quaiRetour, 0) : c.b.retour);
-      return { debut, fins, d, k, es, ls };
+      const d = h + (suite.length ? suite[suite.length - 1].b.retour + vidage + suite.reduce((n, u) => n + u.b.quaiRetour, 0) : v[v.length - 1].b.retour + vidage);
+      return { charges, decharges: decharges.concat(suite.map((u, i) => ({ x: u.x, fin: fins[i] }))), d, k, es, ls };
     };
     const seul = u => ({ d: u.b.aller + u.b.dechargement + u.b.retour + u.b.quaiRetour, k: u.k });
     const cle = x => String(x.id);
+    // Les vagues : par compagnie et véhicule, dans l'ordre des départs, chaque vague prend les vols suivants qui tiennent.
+    const parGroupe = new Map();
+    for (const c of servis) { const g = c.b.cie + '|' + c.b.vehicule; if (!parGroupe.has(g)) parGroupe.set(g, []); parGroupe.get(g).push(c); }
+    const vagues = [];
+    for (const l of parGroupe.values()) {
+      const libres = l.slice().sort((p, q) => p.b.depart - q.b.depart || cle(p.x).localeCompare(cle(q.x)));
+      while (libres.length) {
+        const v = [libres.shift()], n = v[0].b.parTournee;
+        let f = forme(v, []);
+        // Une vague tient dans sa fenêtre, se mène d'une traite (`dureeMax` : entre deux pauses d'une vacation), et ne coûte
+        // pas plus de minutes-chauffeur que des tournées séparées.
+        for (let i = 0; n > 1 && i < libres.length && v.length < n;) {
+          const g = forme(v.concat([libres[i]]), []), s = forme([libres[i]], []);
+          if (g.es <= g.ls + 1e-9 && g.d <= (o.dureeMax ?? Infinity) + 1e-9 && g.k * g.d <= f.k * f.d + s.k * s.d + 1e-9) { v.push(libres.splice(i, 1)[0]); f = g; } else i++;
+        }
+        vagues.push({ v, x: v[0].x, b: v[0].b, rang: v[0].rang, echange: v.some(c => c.b.courte), suite: [] });
+      }
+    }
+    vagues.sort((p, q) => p.rang - q.rang);
+    // Les enchaînements : derrière une vague sans échange.
+    const chargements = vagues.filter(c => !c.echange);
     dechargements.sort((p, q) => p.finMax - q.finMax || p.b.dispo - q.b.dispo || cle(p.x).localeCompare(cle(q.x)));
     const enchaine = new Set();
     for (const u of dechargements) {
       let mieux = null;
       for (const c of chargements) {
-        if (c.x === u.x || c.b.vehicule !== u.b.vehicule || c.suite.length >= N) continue;
-        const f = forme(c, c.suite.concat([u]));
+        if (c.v.some(m => m.x === u.x) || c.b.vehicule !== u.b.vehicule || c.suite.length >= N) continue;
+        const f = forme(c.v, c.suite.concat([u]));
         if (f.es > f.ls + 1e-9) continue;
-        const avant = forme(c, c.suite), s = seul(u);
+        const avant = forme(c.v, c.suite), s = seul(u);
         if (f.k * f.d > avant.k * avant.d + s.k * s.d + 1e-9) continue;
         if (!mieux || f.ls < mieux.f.ls - 1e-9 || (Math.abs(f.ls - mieux.f.ls) <= 1e-9 && cle(c.x).localeCompare(cle(mieux.c.x)) < 0)) mieux = { c, f };
       }
@@ -968,12 +1022,13 @@
     const tourneeSeule = u => { const s = seul(u);
       return { quoi: 'decharge', v: u.b.vehicule, k: s.k, d: s.d, es: u.b.dispo - u.b.aller, ls: u.finMax - u.b.dechargement - u.b.aller,
         charges: [], decharges: [{ x: u.x, fin: u.b.aller + u.b.dechargement }] }; };
-    for (const c of chargements) {
-      const f = forme(c, c.suite);
-      const T = { quoi: c.suite.length ? 'enchainee' : 'charge', v: c.b.vehicule, k: f.k, d: f.d, es: f.es, ls: f.ls,
-        charges: [{ x: c.x, debut: f.debut }], decharges: c.suite.map((u, i) => ({ x: u.x, fin: f.fins[i] })) };
-      // Si l'enchaînement ne tient plus une fois les autres tournées placées : le chargement seul, et chaque déchargement à part.
-      if (c.suite.length) { const g = forme(c, []); T.scinder = () => ({ charge: { quoi: 'charge', v: T.v, k: g.k, d: g.d, es: g.es, ls: g.ls, charges: T.charges, decharges: [] },
+    const tournees = [];
+    for (const c of vagues.filter(w => w.echange).concat(chargements)) {
+      const f = forme(c.v, c.suite);
+      const T = { quoi: c.echange ? 'echange' : c.suite.length ? 'enchainee' : 'charge', v: c.b.vehicule, k: f.k, d: f.d, es: f.es, ls: f.ls,
+        charges: f.charges, decharges: f.decharges };
+      // Si l'enchaînement ne tient plus une fois les autres tournées placées : les chargements seuls, et chaque déchargement à part.
+      if (c.suite.length) { const g = forme(c.v, []); T.scinder = () => ({ charge: { quoi: 'charge', v: T.v, k: g.k, d: g.d, es: g.es, ls: g.ls, charges: T.charges, decharges: [] },
         seuls: c.suite.map(tourneeSeule) }); }
       tournees.push(T);
     }
@@ -986,7 +1041,7 @@
     const debutCharge = new Map(), finDecharge = new Map();
     for (const T of tournees) {
       let es = T.es, ls = T.ls;
-      for (const c of T.charges) if (finDecharge.has(c.x.id)) es = Math.max(es, finDecharge.get(c.x.id) - c.debut);
+      for (const c of T.charges) if (finDecharge.has(c.x.id)) es = Math.max(es, finDecharge.get(c.x.id) - (c.avant ?? c.debut));
       for (const u of T.decharges) if (debutCharge.has(u.x.id)) ls = Math.min(ls, debutCharge.get(u.x.id) - u.fin);
       const lo = Math.ceil(es - 1e-9), hi = Math.max(lo, Math.floor(ls + 1e-9)), pas = hi - lo > 360 ? 5 : 1;
       const len = Math.max(1, Math.ceil(T.d - 1e-9)), d = D[T.v], v = V[T.v], flotte = o.flotte[T.v];
@@ -1001,10 +1056,20 @@
       }
       T.depart = m.s; T.retour = m.s + T.d;
       for (let i = 0; i < len; i++) { const j = modJour(m.s + i); d[j] += T.k; v[j] += 1; }
-      for (const c of T.charges) debutCharge.set(c.x.id, m.s + c.debut);
+      for (const c of T.charges) debutCharge.set(c.x.id, m.s + (c.avant ?? c.debut));
       for (const u of T.decharges) finDecharge.set(u.x.id, m.s + u.fin);
     }
     return { tournees, D, V };
+  }
+
+  /**
+   * La plus longue tournée qu'une vacation peut mener d'une traite : un chauffeur ne quitte pas une tournée en cours, et
+   * prend chaque pause au plus tard `retardPauseMax` minutes après son seuil (évolution 8 : la durée d'une vague).
+   */
+  function dureeMenable(R) {
+    let debut = 0, m = 0;
+    for (const x of R.pauses) { m = Math.max(m, x.du + R.retardPauseMax - debut); debut = x.du + x.duree; }
+    return Math.max(m, R.presence - debut);
   }
 
   /**
@@ -1075,7 +1140,7 @@
       const placer = it => {
         const T = formeDe.get(it.T) || it.T, dec = it.dec;
         let es = T.es - dec, ls = T.ls - dec;
-        for (const x of T.charges) if (finDecharge.has(x.x.id)) es = Math.max(es, finDecharge.get(x.x.id) - x.debut - dec);
+        for (const x of T.charges) if (finDecharge.has(x.x.id)) es = Math.max(es, finDecharge.get(x.x.id) - (x.avant ?? x.debut) - dec);
         for (const x of T.decharges) if (debutCharge.has(x.x.id)) ls = Math.min(ls, debutCharge.get(x.x.id) - x.fin - dec);
         // Un enchaînement qui ne tient plus (son déchargement finirait trop tard) : le chargement seul, et le
         // déchargement à part, placé tout de suite.
@@ -1156,7 +1221,7 @@
         for (const d of pris) { prendre(d, t); d.libre = t + T.d; }
         for (let i = 0; i < Math.max(1, Math.ceil(T.d - 1e-9)); i++) sortis[modJour(t + c + i)]++;
         departs.set(it.T, t + dec); menees.set(it.T, pris.map(d => ({ d, dec })));
-        for (const x of T.charges) debutCharge.set(x.x.id, t + dec + x.debut);
+        for (const x of T.charges) debutCharge.set(x.x.id, t + dec + (x.avant ?? x.debut));
         for (const x of T.decharges) finDecharge.set(x.x.id, t + dec + x.fin);
       };
       for (const it of items) placer(it);
@@ -2843,9 +2908,10 @@
       // avant, et n'enchaînent que les déchargements qu'il a prévus.
       const prevu = a._plan || null;
       const prevue = (m, x) => (prevu && prevu[m].has(x.v.id) ? prevu[m].get(x.v.id) : -Infinity);
-      const departCharge = x => Math.max(Math.max(ouverture(x), x.finDech ?? -Infinity) - x.b.quaiDepart - x.b.aller, prevue('charge', x));
+      // (`sansPlan` : sans l'heure du plan.)
+      const departCharge = (x, sansPlan) => Math.max(Math.max(ouverture(x), x.finDech ?? -Infinity) - x.b.quaiDepart - x.b.aller, sansPlan ? -Infinity : prevue('charge', x));
       // Un échange (escale courte) : quand l'avion est là, décharger puis charger.
-      const departEchange = x => Math.max(Math.max(x.b.dispo, ouverture(x) - x.b.dechargement) - x.b.quaiDepart - x.b.aller, prevue('charge', x));
+      const departEchange = (x, sansPlan) => Math.max(Math.max(x.b.dispo, ouverture(x) - x.b.dechargement) - x.b.quaiDepart - x.b.aller, sansPlan ? -Infinity : prevue('charge', x));
       // Un déchargement seul attend qu'une tournée passe après un chargement, sauf
       // s'il presse : son départ est prêt et sa fenêtre ouvre, ou il ne reste que
       // le temps d'y aller pour que le vol soit encore chargé à l'heure. Avec un
@@ -2854,10 +2920,39 @@
       const presseA = x => finDechargement(x) - x.b.dechargement - x.b.aller;
       const departSeul = x => Math.max(x.b.dispo - x.b.aller, prevu ? (prevu.seul.has(x.v.id) ? prevu.seul.get(x.v.id) : presseA(x))
         : x.pret != null ? Math.min(presseA(x), ouverture(x) - x.b.dechargement - x.b.aller) : presseA(x));
+      // Les vagues d'un plan (évolution 8) : une tournée sert les vols que le plan a regroupés quand ils sont tous prêts,
+      // sans attendre au point qu'un vol prêt passerait sa limite ; un vol qui manque alors part dans une autre tournée.
+      const parVolId = new Map(mesVols.map(x => [x.v.id, x]));
+      const vagueDe = x => (prevu && prevu.vague && !x.horsVague && prevu.vague.get(x.v.id)) || null;
+      const servable = x => x.etat === 'attente' && x.pret != null && (x.b.courte || x.dech !== 'attente');
+      let reveilsVague = [];
+      /** La tournée d'une vague du plan, si elle peut partir à `t` : ses vols prêts (ou null). */
+      function candidatVague(ids, t) {
+        const membres = ids.map(id => parVolId.get(id)).filter(m => m && m.etat === 'attente' && !m.horsVague);
+        const prets = membres.filter(servable);
+        if (!prets.length) return null;
+        // Elle part à l'heure du plan, ou plus tard pour arriver au premier avion quand elle peut y travailler, sa préparation
+        // au quai comprise (`quaiParVol` par vol de plus).
+        const y = prets[0], depart = Math.max(prevue('charge', y), (y.b.courte ? departEchange(y, true) : departCharge(y, true)) - (prets.length - 1) * y.b.quaiParVol);
+        if (t < depart - 1e-9) { reveilsVague.push(depart); return null; }
+        const c = { quoi: y.b.courte ? 'echange' : 'charge', x: y, groupe: prets, membres, premier: ids[0], urgence: y.b.limite,
+          auPlusTot: Math.max(depart, ...prets.map(m => m.pret)) };
+        if (prets.length < membres.length) {
+          // Pas tous prêts : la vague les attend, tant que ceux qui le sont restent à l'heure.
+          const p = composer(c, t, false);
+          const marge = Math.min(...p.charges.map(g => g.b.limite - p.etapes.find(e => e.etape === 'chargement' && e.vol === g.v.id).a));
+          if (marge > 1e-9) { reveilsVague.push(t + marge); return null; }
+        }
+        return c;
+      }
       function candidats(t) {
-        const out = [];
+        const out = [], vues = new Set();
+        reveilsVague = [];
         for (const x of mesVols) {
-          if (x.etat !== 'attente' || x.pret == null) continue;
+          if (x.etat !== 'attente') continue;
+          const ids = vagueDe(x);
+          if (ids) { if (!vues.has(ids)) { vues.add(ids); const c = candidatVague(ids, t); if (c) out.push(c); } continue; }
+          if (x.pret == null) continue;
           if (x.b.courte) { if (t >= departEchange(x) - 1e-9) out.push({ quoi: 'echange', x, urgence: x.b.limite, auPlusTot: Math.max(x.pret, departEchange(x)) }); continue; }
           if (x.dech === 'attente' || t < departCharge(x) - 1e-9) continue;
           out.push({ quoi: 'charge', x, urgence: x.b.limite, auPlusTot: Math.max(x.pret, departCharge(x)) });
@@ -2871,12 +2966,12 @@
       }
       /** La tournée d'un candidat : ses étapes, de son départ à son retour au quai. */
       function composer(c, t, sansLong) {
-        const x = c.x, vehicule = x.b.vehicule, etapes = [], charges = [], decharges = [];
-        let h = t;
+        const x = c.x, vehicule = x.b.vehicule;
+        let etapes = [], charges = [], decharges = [], h = t, dernier = x;
         const pas = (etape, d, vol) => { if (!(d > 0) && etape !== 'chargement' && etape !== 'dechargement') return; const de = h; h += Math.max(0, d); etapes.push({ etape, de, a: h, ...(vol != null ? { vol } : {}) }); };
         const attendre = jusqua => { if (jusqua > h + 1e-9) { etapes.push({ etape: 'attente', de: h, a: jusqua }); h = jusqua; } };
         // Un avion arrivé, du même type de véhicule, à décharger : le plus urgent (avec un plan : un de ceux qu'il a prévus).
-        const prevus = prevu ? new Set(c.quoi === 'charge' ? prevu.suite.get(x.v.id) || [] : []) : null;
+        const prevus = prevu ? new Set(c.quoi === 'charge' ? prevu.suite.get(c.premier ?? x.v.id) || [] : []) : null;
         const autresDecharges = () => {
           while (decharges.length < R.dechargementsParTournee) {
             const arrivee = h + R.entreAvions;
@@ -2888,43 +2983,66 @@
               .sort((p, q) => finDechargement(p) - finDechargement(q) || p.b.depart - q.b.depart || String(p.v.id).localeCompare(String(q.v.id)))[0];
             if (!y) return;
             pas('trajet', R.entreAvions);
-            pas('dechargement', y.b.dechargement, y.v.id); decharges.push(y);
+            pas('dechargement', y.b.dechargement, y.v.id); decharges.push(y); dernier = y;
           }
         };
+        // Servir des vols, dans l'ordre des départs (évolution 8) : la préparation au quai une fois (plus `quaiParVol` par
+        // vol de plus), l'aller, puis, d'un avion à l'autre en `entreAvions`, décharger l'avion d'un échange, puis le charger.
+        const servir = membres => {
+          etapes = []; charges = []; decharges = []; h = t;
+          const arrivees = [], fins = [];
+          pas('quai-depart', x.b.quaiDepart + (membres.length - 1) * x.b.quaiParVol);
+          pas('aller', x.b.aller);
+          membres.forEach((g, i) => {
+            if (i) pas('trajet', R.entreAvions);
+            arrivees.push(h);
+            if (g.b.courte) { attendre(g.b.dispo); pas('dechargement', g.b.dechargement, g.v.id); decharges.push(g); }
+            // Son avion déchargé par une autre tournée : on attend qu'elle ait fini ; et pas avant `avance`.
+            attendre(Math.max(g.finDech != null ? g.finDech : -Infinity, ouverture(g)));
+            pas('chargement', g.b.charge, g.v.id); charges.push(g); fins.push(h); dernier = g;
+          });
+          return { arrivees, fins, h };
+        };
+        // La durée d'une tournée qui ne servirait que ces vols : jusqu'au retour, et au vidage s'il y a un échange.
+        const duree = (r, l) => { const e = l.find(g => g.b.courte); return r.h - t + l[l.length - 1].b.retour + (e ? e.b.quaiRetour : 0); };
         if (c.quoi === 'decharge') {
           pas('aller', x.b.aller); attendre(x.b.dispo);
           pas('dechargement', x.b.dechargement, x.v.id); decharges.push(x);
           autresDecharges();
         } else {
-          // Les chargements : ce vol, puis les suivants de la même compagnie, prêts, jusqu'à « vols par camion ».
-          // (Un plan compte un vol par chargement : il ne regroupe pas.)
-          const groupe = [x];
-          if (c.quoi === 'charge' && !prevu) {
-            const parCamion = volsParCamionDe(a, x.v.cie);
-            let arrivee = t + x.b.quaiDepart + x.b.aller + x.b.charge;
-            for (const w of mesVols) {
-              if (groupe.length >= parCamion) break;
-              if (w === x || w.etat !== 'attente' || w.pret == null || w.b.courte || w.dech === 'attente' || up(w.v.cie) !== up(x.v.cie) || w.b.depart < x.b.depart) continue;
-              if (ouverture(w) > arrivee + R.entreAvions + 1e-9) continue;
-              groupe.push(w); arrivee += R.entreAvions + w.b.charge;
+          // Les vols de la tournée : ce vol, puis — ceux de sa vague, avec un plan ; sans plan, les suivants de la même
+          // compagnie et du même véhicule, prêts — jusqu'à `parTournee`. Chacun chargé avant sa limite, sans mettre en
+          // retard ceux d'avant ; sinon il part dans une autre tournée.
+          let membres = [x];
+          const n = x.b.parTournee;
+          const liste = c.seul ? [] : c.groupe ? c.groupe.slice(1) : prevu || n < 2 ? []
+            : mesVols.filter(w => w !== x && w.etat === 'attente' && w.pret != null && (w.b.courte || w.dech !== 'attente')
+              && w.b.cie === x.b.cie && w.b.vehicule === vehicule && w.b.depart >= x.b.depart);
+          if (liste.length) {
+            const aHeure = (r, i, g) => r.fins[i] <= g.b.limite + 1e-9;
+            let r0 = servir(membres);
+            for (const w of liste) {
+              if (membres.length >= n) break;
+              const essai = membres.concat([w]), r = servir(essai), i = essai.length - 1;
+              if (!aHeure(r, i, w) || membres.some((g, j) => aHeure(r0, j, g) && !aHeure(r, j, g))) continue;
+              if (!c.groupe) {
+                // Sans plan : sans attendre à son avion, et sans plus de minutes-chauffeur que deux tournées.
+                if (ouverture(w) > r.arrivees[i] + (w.b.courte ? w.b.dechargement : 0) + 1e-9 || (w.b.courte && w.b.dispo > r.arrivees[i] + 1e-9)) continue;
+                const seule = w.b.quaiDepart + w.b.aller + (w.b.courte ? w.b.dechargement + w.b.quaiRetour : 0) + w.b.charge + w.b.retour;
+                if (duree(r, essai) - duree(r0, membres) > seule + 1e-9) continue;
+              }
+              membres = essai; r0 = r;
             }
           }
-          pas('quai-depart', groupe.reduce((n, g) => n + g.b.quaiDepart, 0));
-          pas('aller', x.b.aller);
-          if (c.quoi === 'echange') { attendre(x.b.dispo); pas('dechargement', x.b.dechargement, x.v.id); decharges.push(x); }
-          groupe.forEach((g, i) => {
-            if (i) pas('trajet', R.entreAvions);
-            // Son avion déchargé par une autre tournée : on attend qu'elle ait fini ; et pas avant `avance`.
-            attendre(Math.max(g.finDech != null ? g.finDech : -Infinity, ouverture(g)));
-            pas('chargement', g.b.charge, g.v.id); charges.push(g);
-          });
+          servir(membres);
           autresDecharges();
         }
-        const derniere = decharges.length ? decharges[decharges.length - 1] : charges[charges.length - 1];
-        pas('retour', derniere.b.retour);
-        if (decharges.length) pas('quai-retour', decharges.reduce((n, g) => n + g.b.quaiRetour, 0));
+        pas('retour', dernier.b.retour);
+        // Le vidage au quai : une fois pour les échanges de la tournée, et pour chaque autre avion déchargé.
+        const echanges = decharges.filter(g => charges.includes(g)), autres = decharges.filter(g => !charges.includes(g));
+        if (decharges.length) pas('quai-retour', (echanges.length ? echanges[0].b.quaiRetour : 0) + autres.reduce((k, g) => k + g.b.quaiRetour, 0));
         const long = charges.concat(decharges).some(g => g.b.long);
-        return { etapes, fin: h, charges, decharges, long, vehicule, echange: c.quoi === 'echange', chauffeurs: long ? chLong : chCourt };
+        return { etapes, fin: h, charges, decharges, long, vehicule, echange: echanges.length > 0, chauffeurs: long ? chLong : chCourt };
       }
       /** Les chauffeurs d'une tournée : de son véhicule, à leur poste à son départ, libres, qui la finissent dans leurs heures (ou leurs heures sup). */
       const conducteurParId = new Map(conducteurs.map(d => [d.id, d]));
@@ -2933,7 +3051,7 @@
         const peutMener = d => (d.vehicule === p.vehicule || d.vehicule === '*') && d.de <= t + 1e-9 && t < d.a - 1e-9 && d.libre <= t + 1e-9
           && p.fin <= d.a + (d.renfort ? 0 : SUP) + 1e-9 && tientPause(d, p.fin);
         // Le plan dit qui la mène : eux, s'ils le peuvent.
-        const voulus = prevu && c ? prevu.chauffeurs.get((c.quoi === 'decharge' ? 'd:' : 'c:') + c.x.v.id) : null;
+        const voulus = prevu && c ? prevu.chauffeurs.get((c.quoi === 'decharge' ? 'd:' : 'c:') + (c.premier ?? c.x.v.id)) : null;
         if (voulus) { const l = voulus.map(id => conducteurParId.get(id)).filter(d => d && peutMener(d)); if (l.length >= p.chauffeurs) return l.slice(0, p.chauffeurs); }
         const ok = conducteurs.filter(peutMener);
         if (ok.length < p.chauffeurs) return null;
@@ -2944,10 +3062,12 @@
       function essayer(c, t) {
         const vehicule = c.x.b.vehicule;
         // Un vol qui attend un chauffeur peut appeler un renfort (évolution 5).
-        const noter = raison => { c.x.blocage = raison; if (raison === 'chauffeur' && REN) repartir(); return false; };
+        const noter = raison => { for (const g of c.groupe || [c.x]) g.blocage = raison; if (raison === 'chauffeur' && REN) repartir(); return false; };
         if (dehors.filter(o => o.vehicule === vehicule).length >= R.flotte[vehicule]) return noter('vehicule');
         if (!parChauffeurs && dehors.length >= simultanes) return noter('chauffeur');
         let p = composer(c, t, false), pris = parChauffeurs ? choisir(p, t, c) : [];
+        // Une tournée qui sert plusieurs vols et ne trouve pas ses chauffeurs : le premier seul, s'il les trouve (évolution 8).
+        if (!pris && p.charges.length > 1) { const q = composer({ ...c, seul: true }, t, false), l = choisir(q, t, c); if (l) { p = q; pris = l; } }
         // Un long courrier à décharger demanderait plus de chauffeurs : la tournée s'en passe.
         if (!pris && p.long && !c.x.b.long && c.quoi !== 'decharge') { p = composer(c, t, true); pris = choisir(p, t, c); }
         if (!pris) return noter('chauffeur');
@@ -2978,6 +3098,8 @@
             limite: g.b.limite, retard: Math.max(0, e.a - g.b.limite), aHeure: e.a <= g.b.limite + 1e-9 };
           journal.push(ligne); vue.lots.push(ligne);
         }
+        // Les vols de sa vague qu'elle n'a pas pris partent dans une autre tournée.
+        for (const m of c.membres || []) if (m.etat === 'attente') m.horsVague = true;
         vue.travail += p.fin - t; vue.fin = Math.max(vue.fin ?? -Infinity, p.fin);
         // Le sale rapporté arrive à la plonge à la fin du vidage au quai.
         if (p.decharges.length) env.processus(function* () {
@@ -2995,6 +3117,7 @@
           if (x.dech === 'attente' && !x.b.courte) voir(departSeul(x));
         }
         for (const d of conducteurs) { voir(d.de); voir(d.libre); }
+        for (const u of reveilsVague) voir(u);
         return m;
       }
       const repartiteur = env.processus(function* () {
@@ -4236,7 +4359,7 @@
       // on garde celui qui en demande le moins (à égalité, l'étalé). Le besoin étalé sert à la borne basse.
       const essai = placement => {
         const besoin = besoinDesTournees(vols, { avance, entreAvions: H.entreAvions, dechargementsParTournee: H.dechargementsParTournee, flotte: H.flotte,
-          chLong: nb(ch.long, 2), chCourt: nb(ch.court, 1), placement });
+          chLong: nb(ch.long, 2), chCourt: nb(ch.court, 1), placement, dureeMax: dureeMenable(R) });
         const vacations = {}, affectation = {};
         for (const t of VEHICULES) { affectation[t] = vacationsPourTournees(besoin.tournees.filter(T => T.v === t), R, H.flotte[t]); vacations[t] = affectation[t].vacations; }
         const hors = VEHICULES.reduce((n, t) => n + affectation[t].horsVacations.size, 0), total = VEHICULES.reduce((n, t) => n + vacations[t].length, 0);
@@ -4269,9 +4392,12 @@
     // Et qui les mène : l'identifiant des chauffeurs dans la journée jouée (créneau.rang ; « v » : la veille).
     const prevuDu = pl => {
       const charge = new Map(), seul = new Map(), suite = new Map(), chauffeurs = new Map(), parVehicule = new Set(), parChauffeur = new Set();
+      // Les vagues (évolution 8) : chaque vol d'une tournée qui en sert plusieurs → les vols de sa tournée, dans l'ordre.
+      const vague = new Map();
       const index = new Map(groupes(pl).map((g, i) => [g.vehicule + '|' + g.s, i]));
       for (const T of pl.besoin.tournees) {
         for (const c of T.charges) charge.set(c.x.id, T.depart);
+        if (T.charges.length > 1) { const ids = T.charges.map(c => c.x.id); for (const id of ids) vague.set(id, ids); }
         if (T.quoi === 'decharge') seul.set(T.decharges[0].x.id, T.depart);
         if (T.quoi === 'enchainee') suite.set(T.charges[0].x.id, T.decharges.map(u => u.x.id));
         // Une tournée que le plan fait attendre un véhicule : son retard est dû à la flotte ; une tournée
@@ -4282,7 +4408,7 @@
           ? (m.jour < 0 ? 'v' : '') + (index.get(T.v + '|' + m.s) + 1) + '.' + (m.rang + 1) : null));
         if (ids.length && ids.every(Boolean)) chauffeurs.set((T.charges.length ? 'c:' + T.charges[0].x.id : 'd:' + T.decharges[0].x.id), ids);
       }
-      return { charge, seul, suite, chauffeurs, parVehicule, parChauffeur };
+      return { charge, seul, suite, chauffeurs, parVehicule, parChauffeur, vague };
     };
     const manquentDe = (res, pl) => res.vols.filter(v => v.atelier === pl.a.id && v.cause === 'chauffeur')
       .sort((x, y) => x.limite - y.limite || String(x.id).localeCompare(String(y.id)));
@@ -4350,7 +4476,10 @@
     for (const T of pl.besoin.tournees) { for (const c of T.charges) prevue.set(c.x.id, T); for (const u of T.decharges) dechargee.set(u.x.id, T); }
     // Une tournée qu'aucune vacation ne peut mener — la sienne, ou celle qui décharge son avion — n'en fait pas
     // ajouter : ce serait pour rien.
+    // Une tournée qui sert plusieurs vols (évolution 8) ne compte qu'une fois.
+    const vues = new Set();
     const voulues = manquent.map(v => { const T = prevue.get(v.id), U = dechargee.get(v.id);
+      if (T && vues.has(T)) return null; if (T) vues.add(T);
       return (T && T.horsVacations) || (U && U.horsVacations) ? null : T ? { de: T.depart, d: T.d, k: T.k } : { de: v.limite - 60, d: 60, k: v.chauffeurs || 1 }; }).filter(Boolean);
     if (!voulues.length) return false;
     let m = null;
@@ -4546,7 +4675,7 @@
     arcsDuParcours, servicesDuParcours, routesDesClasses,
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,
     pausesDe, fusionnerPauses, arretsDeLigne, finAvecPauses, vaguesDe, disponibleDes, debitRobot, ouvertureDe, prochaineOuverture,
-    categorieVol, chauffeursDe, creneauxDe, chauffeursPresents, dureeLavageVol, trajetHandling, debutTrajet, volsParCamionDe, vitesseTunnel, machinesDesTunnels,
+    categorieVol, chauffeursDe, creneauxDe, chauffeursPresents, dureeLavageVol, trajetHandling, debutTrajet, volsParCamionDe, volsParTourneeDe, quaiParVolDe, vitesseTunnel, machinesDesTunnels,
     parCompagnie, escaleDe, quaiDepartDe, quaiRetourDe, dechargementDe, vehiculeDe, vlDesDe, reglages24h, arriveeDe, besoin24h,
     reglagesChauffeurs, besoinDesTournees, vacationsPourTournees, borneBasse,
     UNITES_DEFAUT, unitesDe, retoursDeVols, besoinMateriel, sourceRetours, SOURCES_RETOURS,

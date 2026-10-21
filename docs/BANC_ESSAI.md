@@ -332,11 +332,14 @@ les force par `equipes` :
 | `delaiArrivee` | Un avion se décharge au plus tôt tant de minutes après son arrivée | 0 |
 | `vl` | Les compagnies servies en petit camion (VL), toute la journée ; les autres vont en gros camion | aucune |
 | `vlDes` | Par compagnie : en VL à partir de cette heure (`{ "SUD": "10:00" }`, l'heure du départ sur l'horloge), en gros camion avant | aucune |
+| `volsCamion` | Par compagnie (« * » : `volsParCamion`) : les vols qu'une tournée en gros camion sert au plus, une vague | 1 |
+| `volsVL` | Par compagnie (« * » : les autres) : les vols qu'une tournée en VL sert au plus | comme en gros camion |
+| `quaiParVol` | Par compagnie : la préparation au quai en plus, par vol de plus dans une tournée | 0 (à confirmer) |
 | `camions`, `camionsVL` | La flotte de gros camions, de VL (0 ou vide : sans limite) | sans limite |
 | `creneaux[].type` | `vl` : des chauffeurs de VL ; sinon, de gros camion | gros camion |
 
 Repris tels quels : `durees` (charger un avion), `allers`, `retours`,
-`volsParCamion` et `volsCamion`, `longs`, `chauffeurs.long` et
+`volsParCamion` et `volsCamion` (les vagues, ci-dessous), `longs`, `chauffeurs.long` et
 `chauffeurs.court`, `avance`, `creneaux` ; sans créneau, `simultanes` devient
 le nombre de tournées à la fois, sans compter les chauffeurs.
 
@@ -357,10 +360,12 @@ vols, comme aujourd'hui.
 
 Un véhicule et ses chauffeurs, du quai de l'unité au quai de l'unité :
 
-1. la préparation au quai (`quaiDepart`), si elle charge quelque chose ;
+1. la préparation au quai (`quaiDepart`), si elle charge quelque chose — une
+   fois par tournée, plus `quaiParVol` par vol de plus ;
 2. l'aller (`allers`) ;
-3. un ou plusieurs chargements (`durees` ; jusqu'à `volsParCamion` vols de la
-   même compagnie, déjà prêts), d'un avion à l'autre en `entreAvions` ;
+3. un ou plusieurs chargements (`durees` ; jusqu'à `volsCamion` ou `volsVL`
+   vols de la même compagnie : une vague, ci-dessous), d'un avion à l'autre en
+   `entreAvions` ;
 4. le déplacement vers un avion arrivé (`entreAvions`) et son déchargement
    (`dechargement`), jusqu'à `dechargementsParTournee` avions ;
 5. le retour (`retours`, celui du dernier avion servi) ;
@@ -368,6 +373,45 @@ Un véhicule et ses chauffeurs, du quai de l'unité au quai de l'unité :
 
 Elle peut aussi seulement charger, ou seulement décharger : elle part alors à
 vide, sans préparation au quai.
+
+### Les vagues : plusieurs vols par tournée (évolution 8)
+
+Les vols courts partent par vagues : plusieurs départs d'une même compagnie
+dans une tournée, en gros camion le matin et en VL l'après-midi. Le réglage,
+par compagnie et par type de véhicule : le nombre maximum de vols chargés dans
+une tournée, `volsCamion` en gros camion, `volsVL` en VL (sans valeur : comme
+en gros camion) ; 1 par défaut, comme avant. Le banc :
+
+```json
+{ "equipes": { "Quais": { "vlDes": { "EQUI": "10:00" }, "volsCamion": { "EQUI": 3 }, "volsVL": { "EQUI": 9 }, "quaiParVol": { "EQUI": 2 } } } }
+```
+
+- **Une vague** : des départs de la même compagnie et du même type de
+  véhicule, pris dans l'ordre des départs. La tournée part quand tous ses vols
+  sont prêts et les sert dans l'ordre des départs, d'un avion à l'autre en
+  `entreAvions`. En échange (escale courte), pour chaque avion : décharger,
+  charger, puis passer au suivant.
+- **Chaque vol est chargé avant sa propre limite** (départ − marge) ; un vol
+  qui ne tiendrait pas — ni lui, ni ceux d'avant mis en retard par lui — part
+  dans une autre tournée.
+- **La préparation au quai et le vidage se comptent une fois par tournée**,
+  plus `quaiParVol` minutes au quai de départ par vol de plus (0 par défaut,
+  la valeur est à confirmer dans l'unité).
+- **On ne groupe que si cela ne fait pas monter les minutes-chauffeur** (la
+  tournée groupée, attentes comprises, ne coûte pas plus que des tournées
+  séparées) et ne met aucun vol en retard.
+- **Un avion déchargé à part** (escale longue) l'est avant que la vague parte :
+  un avion se décharge toujours avant d'être rechargé.
+- **Dans la journée jouée.** Avec un plan de chauffeurs (§ 4), la tournée sert
+  la vague du plan, à l'heure du plan (sa préparation au quai comprise). Un vol
+  de la vague pas encore prêt est attendu, tant que ceux qui le sont restent à
+  l'heure ; ensuite la tournée part sans lui, et il part dans une autre. Sans
+  plan, la tournée du vol le plus urgent prend les départs suivants de sa
+  compagnie et de son véhicule déjà prêts, si elle peut les charger en
+  arrivant à leur avion. Une tournée groupée qui ne trouve pas ses chauffeurs
+  part avec son premier vol seul, s'il les trouve.
+
+Sans ces réglages (1 vol par tournée), la journée est celle d'avant.
 
 ### Les règles
 
@@ -465,8 +509,12 @@ l'enregistrement, les départs, « Tout sauvegarder ») ;
 `tests/non-regression.test.cjs` (réglé mais décoché : la même journée) ;
 `tests/handling-vagues.test.cjs` et `tests/handling-vagues-browser.cjs`
 (évolution 8 : le véhicule selon l'heure de départ — la journée, les
-chauffeurs et le plan de chaque véhicule, la validation, Excel, les options du
-banc, la fiche).
+chauffeurs et le plan de chaque véhicule ; les vagues — 6 départs entre 06:00
+et 07:00 à 3 vols par camion en 2 tournées, 9 départs de l'après-midi en une
+tournée de VL, un vol qui ne tiendrait pas dans une autre, une vague qui
+attend un vol pas prêt, pas de vague qui coûte plus de minutes-chauffeur, ni
+qui mélange compagnies ou véhicules, l'échange avion par avion ; la
+validation, Excel, les options du banc, la fiche).
 
 ## 4. Le handling calcule son nombre de chauffeurs au plus juste
 
@@ -526,8 +574,18 @@ mesurées, trois passages de la journée compris).
      échange : décharger puis charger le même avion) ; pour chaque avion
      arrivé, son déchargement ; chacun dans ses fenêtres (§ 3). Un vol jamais
      prêt n'est pas chargé ; son avion se décharge quand même.
+   - *Les vagues* (évolution 8, § 3) : par compagnie et type de véhicule, dans
+     l'ordre des départs, chaque tournée prend les départs suivants tant
+     qu'elle en a moins que `volsCamion` ou `volsVL`, que chaque vol tient dans
+     sa fenêtre, que la tournée se mène d'une traite — pas plus longue que ce
+     qu'une vacation mène entre deux pauses, chacune au plus tard
+     `retardPauseMax` après son seuil (240 min par défaut) — et qu'elle ne
+     coûte pas plus de minutes-chauffeur que des tournées séparées. Un vol qui
+     ne tient pas part dans une autre. Ensuite, tout le calcul — les
+     enchaînements, le placement, les vacations, la vérification et la borne
+     basse — compte une vague comme une seule tournée.
    - *Les enchaînements* : les déchargements, le plus pressé d'abord, se
-     donnent chacun au chargement compatible — même véhicule, et des fenêtres
+     donnent chacun au chargement (ou à la vague sans échange) compatible — même véhicule, et des fenêtres
      qui se rejoignent : l'avion est là quand la tournée y arrive, et déchargé
      à temps pour son départ — qui ferme le plus tôt, jusqu'à
      `dechargementsParTournee` par tournée, et seulement si cela ne coûte pas
@@ -580,8 +638,8 @@ sur un changement d'équipe ou sur la pause de tous, quand sa fenêtre est trop
 courte pour glisser — est mise en retard, dès qu'un chauffeur le peut, et
 comptée à part (`horsVacations`) ; elle n'ajoute pas de vacation pour rien.
 Avec les heures sup (§ 2), et seulement pour ces tournées-là, un chauffeur la
-finit en heures sup. Le plan compte un vol par chargement : il ne regroupe pas
-plusieurs vols dans un camion (`volsParCamion`).
+finit en heures sup. Avec `volsCamion` ou `volsVL` (évolution 8), le plan
+regroupe les vagues ; sans eux, il compte un vol par chargement, comme avant.
 
 ### La borne basse
 
@@ -637,7 +695,9 @@ est respectée ; le mode « saisis » garde le comportement actuel ; les pauses,
 les heures de début fixes, la sortie, « selon la préparation », le
 déterminisme et le temps de calcul, la validation, Excel, les options du banc) ;
 `tests/chauffeurs-calcules-browser.cjs` (la fiche, l'enregistrement, le plan,
-la reprise en créneaux) ; `tests/non-regression.test.cjs` (réglé sans le
+la reprise en créneaux) ; `tests/handling-vagues.test.cjs` (évolution 8 : le
+plan part des vagues, la borne basse sous le résultat, aucun retard faute de
+chauffeur, le déterminisme et le temps de calcul) ; `tests/non-regression.test.cjs` (réglé sans le
 mode 24 h/24 : la même journée).
 
 ## 5. Les renforts : une personne qui a fini aide une équipe qui n'a pas fini

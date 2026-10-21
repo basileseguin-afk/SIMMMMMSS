@@ -153,8 +153,12 @@
   function handling24hDe(a) {
     const out = {};
     if (a.handling24h === true) out.handling24h = true;
-    // Par compagnie (« * » : les autres) : l'escale, la préparation et le vidage au quai, le déchargement.
-    for (const m of ['escale', 'quaiDepart', 'dechargement', 'quaiRetour']) { const d = dureesDe(a, undefined, m); if (Object.keys(d).length) out[m] = d; }
+    // Par compagnie (« * » : les autres) : l'escale, la préparation et le vidage au quai, le déchargement ; le quai en plus
+    // par vol de plus dans une tournée (évolution 8).
+    for (const m of ['escale', 'quaiDepart', 'dechargement', 'quaiRetour', 'quaiParVol']) { const d = dureesDe(a, undefined, m); if (Object.keys(d).length) out[m] = d; }
+    // Les vols qu'une tournée en VL sert au plus, par compagnie (évolution 8) ; sans valeur, comme en gros camion.
+    const volsVL = Object.fromEntries(Object.entries(dureesDe(a, undefined, 'volsVL')).map(([k, v]) => [k, Math.max(1, Math.min(20, Math.round(v)))]));
+    if (Object.keys(volsVL).length) out.volsVL = volsVL;
     // Les compagnies servies en petit camion (VL) ; les autres vont en gros camion.
     const vl = cies(a.vl); if (vl.length) out.vl = vl;
     // Une compagnie en VL à partir d'une heure (HH:MM, l'heure du départ) : avant, en gros camion.
@@ -1185,7 +1189,7 @@
           return;
         }
         case 'duree-retirer':
-          return this.changer(() => { for (const m of ['durees', 'allers', 'retours', 'volsCamion', 'escale', 'quaiDepart', 'dechargement', 'quaiRetour']) if (a[m]) { const d = { ...a[m] }; delete d[data.cie]; a[m] = d; } },
+          return this.changer(() => { for (const m of ['durees', 'allers', 'retours', 'volsCamion', 'escale', 'quaiDepart', 'dechargement', 'quaiRetour', 'volsVL', 'quaiParVol']) if (a[m]) { const d = { ...a[m] }; delete d[data.cie]; a[m] = d; } },
             'Durée retirée : ' + data.cie + ' prend la durée de toutes les compagnies.');
         case 'classe-supprimer': return this.supprimerClasse(data.classe);
         case 'classe-retablir':  return this.retablirClasse(data.classe);
@@ -1373,7 +1377,7 @@
           case 'temps': {
             const m = el.dataset.map, cie = el.dataset.cie, d = { ...(a[m] || {}) };
             if (v === '' || !Number.isFinite(+v)) delete d[cie];
-            else d[cie] = m === 'volsCamion' ? Math.max(1, Math.min(10, Math.round(+v))) : Math.max(0, Math.min(1440, +v));
+            else d[cie] = m === 'volsCamion' ? Math.max(1, Math.min(10, Math.round(+v))) : m === 'volsVL' ? Math.max(1, Math.min(20, Math.round(+v))) : Math.max(0, Math.min(1440, +v));
             a[m] = d;
             // « Toutes les compagnies » : c'est aussi le nombre de vols par camion du handling.
             if (m === 'volsCamion' && cie === P.TOUTES) { a.volsParCamion = d[cie] || 1; delete d[cie]; }
@@ -2115,7 +2119,7 @@
       const champ = (c, cie, lib) => {
         const m = a[c.map] || {}, toutes = m[P.TOUTES] ?? c.defaut;
         const vide = c.vide ?? (c.map === 'durees' ? 'à saisir' : String(c.defaut ?? 0));
-        return `<input type="number" min="${c.defaut !== undefined ? 1 : 0}" max="${c.max || 1440}" step="1" value="${m[cie] ?? (cie === P.TOUTES && c.defaut !== undefined ? c.defaut : '')}"
+        return `<input type="number" min="${c.min ?? (c.defaut !== undefined ? 1 : 0)}" max="${c.max || 1440}" step="1" value="${m[cie] ?? (cie === P.TOUTES && c.defaut !== undefined ? c.defaut : '')}"
           placeholder="${cie === P.TOUTES ? vide : toutes != null ? String(toutes) : vide}"
           ${c.map === 'durees' ? 'data-at-champ="duree"' : `data-at-champ="temps" data-map="${c.map}"`} data-cie="${esc(cie)}" aria-label="${esc(c.lib)} pour ${esc(lib)}">`;
       };
@@ -2146,8 +2150,15 @@
       const h24 = a.handling24h === true, vl = new Set(a.vl || []);
       // Les chauffeurs calculés au plus juste (§ 4) : seulement en 24 h/24.
       const calcules = h24 && ch.mode === 'calcules';
-      const colonnes = [{ map: 'volsCamion', lib: 'Vols / camion', defaut: a.volsParCamion || 1, max: 10 }, { map: 'allers', lib: 'Aller piste' }, { map: 'durees', lib: 'Charger' }, { map: 'retours', lib: 'Retour unité' }]
-        .concat(h24 ? [{ map: 'escale', lib: 'Escale', vide: 'aucune' }, { map: 'quaiDepart', lib: 'Quai départ' }, { map: 'dechargement', lib: 'Décharger', vide: '10 ; long : 30' }, { map: 'quaiRetour', lib: 'Quai retour' }] : []);
+      // Les vagues (évolution 8) : les vols d'une tournée en VL, dès qu'une compagnie part en VL ; le quai par vol de plus,
+      // dès qu'une tournée peut en servir plusieurs.
+      const avecVL = h24 && (vl.size > 0 || Object.keys(a.vlDes || {}).length > 0 || Object.keys(a.volsVL || {}).length > 0);
+      const plusDeUn = m => Object.values(m || {}).some(n => n > 1);
+      const plusieurs = h24 && ((a.volsParCamion || 1) > 1 || plusDeUn(a.volsCamion) || plusDeUn(a.volsVL) || Object.keys(a.quaiParVol || {}).length > 0);
+      const colonnes = [{ map: 'volsCamion', lib: 'Vols / camion', defaut: a.volsParCamion || 1, max: 10 }]
+        .concat(avecVL ? [{ map: 'volsVL', lib: 'Vols / VL', min: 1, max: 20, vide: 'camion' }] : [], [{ map: 'allers', lib: 'Aller piste' }, { map: 'durees', lib: 'Charger' }, { map: 'retours', lib: 'Retour unité' }])
+        .concat(h24 ? [{ map: 'escale', lib: 'Escale', vide: 'aucune' }, { map: 'quaiDepart', lib: 'Quai départ' }] : [], plusieurs ? [{ map: 'quaiParVol', lib: 'Quai / vol en plus' }] : [],
+          h24 ? [{ map: 'dechargement', lib: 'Décharger', vide: '10 ; long : 30' }, { map: 'quaiRetour', lib: 'Quai retour' }] : []);
       return `
         <div class="at-sous-titre">Chargement des vols</div>
         <div class="mini-note at-regle">${h24 ? `Le handling travaille <b>24 h/24, en tournées</b> : une tournée prépare son camion au quai, va charger un ou plusieurs
@@ -2211,7 +2222,9 @@
           tete: '<th scope="col">Courrier</th><th scope="col" title="Chauffeurs par camion">Chauff.</th>' + (h24 ? '<th scope="col">Véhicule</th>' : '') })}
         <p class="mini-note at-regle">Des durées, pas des heures de travail : plus de chauffeurs dans le camion ne raccourcissent pas le trajet.
           Un camion qui charge plusieurs vols fait un seul aller et un seul retour.${h24 ? ` Escale : de l’arrivée de l’avion à son départ (vide : pas de
-          déchargement) ; quai départ : préparer le camion dans la CF départ ; quai retour : le vider du sale.` : ''}</p>`;
+          déchargement) ; quai départ : préparer le camion dans la CF départ ; quai retour : le vider du sale.
+          Vols / camion${avecVL ? ', vols / VL (vide : comme en gros camion)' : ''} : une tournée sert jusqu’à tant de départs de la compagnie qui se suivent
+          (une vague), chacun chargé avant sa limite${plusieurs ? ' ; quai / vol en plus : la préparation au quai, par vol de plus' : ''}.` : ''}</p>`;
     }
 
     /* Les chauffeurs calculés au plus juste : les réglages du calcul, et le plan du dernier calcul, lisible
@@ -2268,7 +2281,7 @@
       const ts = (vue && vue.tournees) || [], vols = r && r.ok ? (r.vols || []).filter(v => v.atelier === a.id) : [];
       const CAUSES = { commande: 'commande pas prête', chauffeur: 'faute de chauffeur', vehicule: 'faute de véhicule', fenetre: 'fenêtre trop courte' };
       const causes = {}; for (const v of vols) if (v.cause) causes[v.cause] = (causes[v.cause] || 0) + 1;
-      const parType = t => ts.filter(x => x.vehicule === t).length;
+      const parType = t => ts.filter(x => x.vehicule === t).length, vagues = ts.filter(x => x.charges.length > 1);
       const pic = (vue && vue.vehiculesMax) || { camion: 0, vl: 0 };
       return `
         <div class="at-sous-titre">Les tournées</div>
@@ -2280,7 +2293,7 @@
           ${champ('delaiArrivee', 'Déchargement après l’arrivée', 'min', 240, 'Un avion se décharge au plus tôt tant de minutes après son arrivée')}
         </div>
         ${vue ? `<p class="mini-note at-regle at-bilan-tournees"><b>${ts.length}</b> tournée${ts.length > 1 ? 's' : ''}
-          (${parType('camion')} en gros camion, ${parType('vl')} en VL) · jusqu’à ${pic.camion} gros camion${pic.camion > 1 ? 's' : ''} et ${pic.vl} VL dehors en même temps
+          (${parType('camion')} en gros camion, ${parType('vl')} en VL${vagues.length ? `, dont ${vagues.length} qui ${vagues.length > 1 ? 'servent' : 'sert'} plusieurs vols, jusqu’à ${Math.max(...vagues.map(x => x.charges.length))}` : ''}) · jusqu’à ${pic.camion} gros camion${pic.camion > 1 ? 's' : ''} et ${pic.vl} VL dehors en même temps
           · <b>${vols.filter(v => v.aHeure).length}</b> vol${vols.length > 1 ? 's' : ''} sur ${vols.length} chargé${vols.length > 1 ? 's' : ''} à l’heure${Object.keys(causes).length
             ? ' ; en retard ou pas chargés : ' + Object.entries(causes).map(([c, n]) => n + ' ' + CAUSES[c]).join(', ') : ''}${vue.heuresSupChauffeurs > 0
             ? ' · heures sup des chauffeurs : ' + P.dureeLisible(vue.heuresSupChauffeurs) : ''}.</p>` : ''}`;

@@ -889,7 +889,8 @@
   const CARTES_24H = ['escale', 'quaiDepart', 'dechargement', 'quaiRetour', 'vl'];
   const COLONNES_24H = [['escale_min', 'escale'], ['preparation_au_quai_min', 'quaiDepart'], ['dechargement_min', 'dechargement'], ['vidage_au_quai_min', 'quaiRetour']];
   /** Ses tournées par vagues (banc d'essai de la version 1, évolution 8) : une colonne par réglage, écrite seulement si un handling l'a. */
-  const COLONNES_VAGUES = [['VL à partir de', 'vl_a_partir_de', 'vlDes', 'heure']];
+  const COLONNES_VAGUES = [['VL à partir de', 'vl_a_partir_de', 'vlDes', 'heure'], ['Vols par VL', 'vols_par_vl', 'volsVL', 'vols'],
+    ['Quai par vol en plus (min)', 'quai_par_vol_en_plus_min', 'quaiParVol', 'minutes']];
   /** Ses réglages d'équipe : sans colonne dans le classeur, un import les garde tels qu'ils sont sur le site. */
   const REGLAGES_24H = ['handling24h', 'escale', 'quaiDepart', 'dechargement', 'quaiRetour', 'vl', 'entreAvions', 'dechargementsParTournee',
     'margeDepart', 'margeEscaleCourte', 'delaiArrivee', 'camionsVL', ...COLONNES_VAGUES.map(c => c[2])];
@@ -1078,6 +1079,8 @@
           '   déchargement), Préparation au quai, Déchargement et Vidage au quai (min) ; Véhicule : « VL » (petit camion) ou « camion ».'] : []),
         ...(vagues.some(c => c[2] === 'vlDes') ? ['   VL à partir de (handling 24 h/24, version 1) : HH:MM ; les départs de cette compagnie partent en VL à partir de',
           '   cette heure, en gros camion avant.'] : []),
+        ...(vagues.some(c => c[2] === 'volsVL' || c[2] === 'quaiParVol') ? ['   Vols par VL (handling 24 h/24, version 1) : comme Vols par camion, pour une tournée en VL (vide : comme en camion) ;',
+          '   Quai par vol en plus (min) : la préparation au quai d’une tournée qui sert plusieurs vols, par vol de plus.'] : []),
         'Chauffeurs : les créneaux du handling, le jour J (Début, Fin, nombre de chauffeurs). Un vol attend d’avoir ses chauffeurs libres.',
         '   Sans créneau : « Vols en même temps » (Ateliers). Un créneau qui finit avant son début passe minuit.',
         ...(vlCr ? ['   Véhicule (handling 24 h/24) : « VL » pour des chauffeurs de petit camion ; « camion » pour un gros.'] : []),
@@ -1520,15 +1523,20 @@
             if (!['vl', 'camion'].includes(vh)) throw new Error('véhicule : « VL » ou « camion »');
             if (vh === 'vl' && !(a.vl || []).includes(cie)) a.vl = (a.vl || []).concat([cie]);
           }
-          // Les tournées par vagues : en VL à partir d'une heure (celle du départ), propre à une compagnie.
+          // Les tournées par vagues : en VL à partir d'une heure (celle du départ), propre à une compagnie ; les vols
+          // d'une tournée en VL ; le quai en plus par vol de plus.
           for (const [lib, col, m, sorte] of COLONNES_VAGUES) {
             const x = o[col];
             if (x === null || x === undefined || x === '') continue;
-            if (cie === P.TOUTES) throw new Error(lib + ' : propre à une compagnie, pas sur la ligne « toutes »');
             if (sorte === 'heure') {
+              if (cie === P.TOUTES) throw new Error(lib + ' : propre à une compagnie, pas sur la ligne « toutes »');
               const t = T.heureDe(x);
               if (t >= 1440) throw new Error(lib + ' : une heure de 00:00 à 23:59');
               a[m] = { ...(a[m] || {}), [cie]: hh(t) };
+            } else {
+              const n = T.nombreDe(x, null);
+              if (!Number.isFinite(n) || n < (sorte === 'vols' ? 1 : 0)) throw new Error(lib.replace(/ \(min\)$/, '') + ' : ' + (sorte === 'vols' ? '1 ou plus' : 'nombre positif attendu'));
+              a[m] = { ...(a[m] || {}), [cie]: sorte === 'vols' ? Math.round(n) : n };
             }
           }
           const vc = T.nombreDe(o.vols_par_camion, null);

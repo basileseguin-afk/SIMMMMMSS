@@ -5,6 +5,44 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-21 — Banc d'essai, évolution 8 (b) : handling 24 h/24, plusieurs vols par tournée, y compris dans le plan des chauffeurs
+
+Sur 61 journées réelles, le plan des chauffeurs comptait une tournée par vol :
+10 à 12 chauffeurs de VL par jour au lieu de 2 à 3, et la flotte de VL
+saturée. Dans l'unité, les vols courts partent par vagues.
+
+- Une tournée sert une vague : des départs de la même compagnie et du même
+  véhicule, dans l'ordre des départs, jusqu'à `volsCamion` en gros camion
+  (repris) et `volsVL` en VL (nouveau, par compagnie ; sans valeur, comme en
+  gros camion). Elle part quand ses vols sont prêts et les sert l'un après
+  l'autre (`entreAvions`) ; en échange, avion par avion : décharger, charger.
+  Chaque vol est chargé avant sa limite ; un vol qui ne tiendrait pas part
+  dans une autre tournée. La préparation au quai et le vidage se comptent une
+  fois, plus `quaiParVol` (nouveau, par compagnie, 0 par défaut) au quai de
+  départ par vol de plus. On ne groupe que si les minutes-chauffeur ne
+  montent pas. Un avion déchargé à part l'est avant que la vague parte.
+- Le plan des chauffeurs (§ 4) part de ces vagues : tâches, placement,
+  vacations, vérification et borne basse comptent une vague comme une seule
+  tournée ; une vague n'est pas plus longue que ce qu'une vacation mène entre
+  deux pauses. La journée jouée suit les vagues du plan, à son heure ; un vol
+  pas encore prêt est attendu tant que les autres restent à l'heure.
+- Dans la fiche : les colonnes « Vols / VL » (dès qu'une compagnie part en
+  VL) et « Quai / vol en plus » (dès qu'une tournée peut servir plusieurs
+  vols) ; le bilan des tournées compte celles qui servent plusieurs vols.
+  Excel : les colonnes « Vols par VL » et « Quai par vol en plus (min) ».
+  Banc : `equipes`.
+- Sans ces réglages (1 vol par tournée), la journée et le plan sont ceux
+  d'avant. Un handling qui avait déjà `volsCamion` ou `volsParCamion` au-dessus
+  de 1 voit maintenant son plan regrouper ces vols, et la journée jouée sans
+  plan suivre les règles des vagues : préparation au quai une fois, chaque
+  vol à l'heure, pas de groupe plus cher.
+- Fichiers : `moteur/production.js`, `ateliers.js`, `echanges.js` et
+  `v2/echanges.js` (identiques), `index.html` et `v2/index.html`
+  (empreintes), `docs/BANC_ESSAI.md`, `docs/FORMATS_EXCEL.md`, `README.md`,
+  `tests/handling-vagues.test.cjs`, `tests/handling-vagues-browser.cjs`,
+  `tests/non-regression.test.cjs` (réglé sans le mode 24 h/24 : la même
+  journée).
+
 ## 2026-10-21 — Banc d'essai, évolution 8 (a) : handling 24 h/24, le véhicule selon l'heure de départ
 
 Une compagnie servie en VL l'est toute la journée (liste `vl`) ; dans l'unité,
