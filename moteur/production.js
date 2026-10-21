@@ -770,8 +770,23 @@
   const quaiRetourDe = (atelier, cie) => parCompagnie(atelier, 'quaiRetour', cie) ?? 0;
   /** Décharger un avion : 30 min pour un long courrier, 10 pour les autres, sauf durée saisie. */
   const dechargementDe = (atelier, cie) => parCompagnie(atelier, 'dechargement', cie) ?? (categorieVol(atelier, cie) === 'long' ? 30 : 10);
-  /** Le véhicule d'une compagnie : un petit camion (« vl ») pour celles de la liste, un gros camion sinon. */
-  const vehiculeDe = (atelier, cie) => (((atelier && atelier.vl) || []).map(up).includes(up(cie)) ? 'vl' : 'camion');
+  /** L'heure du jour (minutes) à partir de laquelle une compagnie part en VL (`vlDes`, HH:MM), ou null. */
+  function vlDesDe(atelier, cie) {
+    const v = ((atelier && atelier.vlDes) || {})[up(cie)];
+    if (v === undefined || v === null || v === '') return null;
+    try { return minutes(v); } catch (e) { return null; }
+  }
+  /**
+   * Le véhicule d'un départ : un petit camion (« vl ») pour une compagnie de la
+   * liste `vl`, toute la journée ; pour une compagnie de `vlDes`, à partir de
+   * son heure (l'heure du départ, sur l'horloge), un gros camion avant ; un
+   * gros camion sinon.
+   */
+  const vehiculeDe = (atelier, cie, depart) => {
+    if (((atelier && atelier.vl) || []).map(up).includes(up(cie))) return 'vl';
+    const des = vlDesDe(atelier, cie);
+    return des != null && Number.isFinite(depart) && modJour(depart) >= des ? 'vl' : 'camion';
+  };
   /** Les réglages d'un handling 24 h/24, avec leurs valeurs par défaut (provisoires, à caler). */
   function reglages24h(atelier) {
     const a = atelier || {};
@@ -805,13 +820,14 @@
   function besoin24h(atelier, vol) {
     const r = reglages24h(atelier), cie = vol.cie;
     const depart = vol.std === undefined ? vol.heure : vol.std;
+    const vehicule = vehiculeDe(atelier, cie, depart);
     const charge = dureeHandling(atelier, cie) ?? 0, t = trajetHandling(atelier, cie), quai = quaiDepartDe(atelier, cie);
     const arrivee = arriveeDe(atelier, vol), dech = dechargementDe(atelier, cie);
     const dispo = arrivee == null ? null : arrivee + r.delaiArrivee;
     const courte = dispo != null && dispo + dech + charge > depart - r.margeDepart;
     const limite = courte ? depart - r.margeEscaleCourte : depart - r.margeDepart;
     return { depart, arrivee, dispo, courte, limite, charge, dechargement: dech, aller: t.aller, retour: t.retour, quaiDepart: quai,
-      quaiRetour: quaiRetourDe(atelier, cie), vehicule: vehiculeDe(atelier, cie), long: categorieVol(atelier, cie) === 'long',
+      quaiRetour: quaiRetourDe(atelier, cie), vehicule, long: categorieVol(atelier, cie) === 'long',
       echeance: limite - charge - (courte ? dech : 0) - t.aller - quai };
   }
   /** Le handling qui charge une compagnie : le premier qui la nomme, sinon le premier qui les charge toutes. */
@@ -4531,7 +4547,7 @@
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,
     pausesDe, fusionnerPauses, arretsDeLigne, finAvecPauses, vaguesDe, disponibleDes, debitRobot, ouvertureDe, prochaineOuverture,
     categorieVol, chauffeursDe, creneauxDe, chauffeursPresents, dureeLavageVol, trajetHandling, debutTrajet, volsParCamionDe, vitesseTunnel, machinesDesTunnels,
-    parCompagnie, escaleDe, quaiDepartDe, quaiRetourDe, dechargementDe, vehiculeDe, reglages24h, arriveeDe, besoin24h,
+    parCompagnie, escaleDe, quaiDepartDe, quaiRetourDe, dechargementDe, vehiculeDe, vlDesDe, reglages24h, arriveeDe, besoin24h,
     reglagesChauffeurs, besoinDesTournees, vacationsPourTournees, borneBasse,
     UNITES_DEFAUT, unitesDe, retoursDeVols, besoinMateriel, sourceRetours, SOURCES_RETOURS,
     simuler, niveauA, niveauLineaire, dureeLisible

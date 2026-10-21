@@ -330,7 +330,8 @@ les force par `equipes` :
 | `margeDepart` | Un vol doit être chargé tant de minutes avant son départ | 60 |
 | `margeEscaleCourte` | La même marge, en escale courte | 0 (provisoire) |
 | `delaiArrivee` | Un avion se décharge au plus tôt tant de minutes après son arrivée | 0 |
-| `vl` | Les compagnies servies en petit camion (VL) ; les autres vont en gros camion | aucune |
+| `vl` | Les compagnies servies en petit camion (VL), toute la journée ; les autres vont en gros camion | aucune |
+| `vlDes` | Par compagnie : en VL à partir de cette heure (`{ "SUD": "10:00" }`, l'heure du départ sur l'horloge), en gros camion avant | aucune |
 | `camions`, `camionsVL` | La flotte de gros camions, de VL (0 ou vide : sans limite) | sans limite |
 | `creneaux[].type` | `vl` : des chauffeurs de VL ; sinon, de gros camion | gros camion |
 
@@ -388,6 +389,13 @@ vide, sans préparation au quai.
 - **Les véhicules.** Une tournée prend un gros camion ou un VL selon la liste
   `vl`, et ne sert que des vols d'un même type de véhicule. Un vol prend
   toujours un seul véhicule. La flotte est une limite par type.
+- **Le véhicule selon l'heure de départ** (évolution 8). Une compagnie de
+  `vlDes` part en VL pour ses départs à partir de son heure, et en gros camion
+  pour ceux d'avant : `{ "SUD": "10:00" }`, un départ de 08:00 part en gros
+  camion, un de 14:00 en VL. L'heure se lit sur l'horloge : un départ de 23:30
+  part en VL, un de 00:30 en gros camion. Chaque départ prend alors les
+  chauffeurs, la flotte et le plan (§ 4) de son véhicule. Une compagnie de la
+  liste `vl` part en VL toute la journée, même si elle a aussi une heure.
 - **Les chauffeurs.** Une tournée qui sert un vol long courrier prend
   `chauffeurs.long` chauffeurs, les autres `chauffeurs.court`, occupés toute la
   tournée. Avec des créneaux : des chauffeurs de son type de véhicule, à leur
@@ -440,7 +448,9 @@ durées ne tiennent pas dans la fenêtre). `etat` : `ok`, `retard`, `bloque`
 
 Dans la page : la fiche du handling (la case, les réglages, les colonnes par
 compagnie, le véhicule de chaque créneau, le bilan des tournées) et la page des
-départs (l'échéance d'un vol est sa limite ; la cause d'un retard).
+départs (l'échéance d'un vol est sa limite ; la cause d'un retard). Le véhicule
+d'une compagnie se choisit dans sa ligne : « gros camion », « VL » (toute la
+journée) ou « VL à partir de », avec son heure.
 
 Vérifications : `tests/handling-24h.test.cjs` (une tournée charge A puis
 décharge B, un avion n'est pas rechargé avant d'être déchargé, une escale
@@ -452,7 +462,11 @@ heures sup ; un déchargement qui mettrait son départ en retard ne s'enchaîne
 pas ; la veille au soir, le long courrier, le déterminisme, la validation,
 Excel, `heure_eta`, les options du banc) ; `tests/handling-24h-browser.cjs` (la fiche,
 l'enregistrement, les départs, « Tout sauvegarder ») ;
-`tests/non-regression.test.cjs` (réglé mais décoché : la même journée).
+`tests/non-regression.test.cjs` (réglé mais décoché : la même journée) ;
+`tests/handling-vagues.test.cjs` et `tests/handling-vagues-browser.cjs`
+(évolution 8 : le véhicule selon l'heure de départ — la journée, les
+chauffeurs et le plan de chaque véhicule, la validation, Excel, les options du
+banc, la fiche).
 
 ## 4. Le handling calcule son nombre de chauffeurs au plus juste
 

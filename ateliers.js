@@ -157,6 +157,16 @@
     for (const m of ['escale', 'quaiDepart', 'dechargement', 'quaiRetour']) { const d = dureesDe(a, undefined, m); if (Object.keys(d).length) out[m] = d; }
     // Les compagnies servies en petit camion (VL) ; les autres vont en gros camion.
     const vl = cies(a.vl); if (vl.length) out.vl = vl;
+    // Une compagnie en VL à partir d'une heure (HH:MM, l'heure du départ) : avant, en gros camion.
+    const des = {};
+    for (const [k, v] of Object.entries(a.vlDes && typeof a.vlDes === 'object' && !Array.isArray(a.vlDes) ? a.vlDes : {}).slice(0, 100)) {
+      const cie = String(k).trim().toUpperCase().slice(0, 40), h = String(v ?? '').trim();
+      if (!cie || cie === P.TOUTES || !h) continue;
+      const m = P.minutes(h);   // une heure illisible est refusée
+      if (m < 0 || m >= 1440) throw new Error('VL à partir de : une heure de 00:00 à 23:59');
+      des[cie] = P.hhmm(m);
+    }
+    if (Object.keys(des).length) out.vlDes = des;
     const saisi = (v, min, max) => (v === '' || v === null || v === undefined || !Number.isFinite(+v) ? null : Math.max(min, Math.min(max, Math.round(+v))));
     for (const [k, min, max] of [['entreAvions', 0, 240], ['dechargementsParTournee', 1, 10], ['margeDepart', 0, 720], ['margeEscaleCourte', 0, 720], ['delaiArrivee', 0, 240]]) {
       const x = saisi(a[k], min, max); if (x !== null) out[k] = x;
@@ -1380,10 +1390,19 @@
             if (v === '' || !Number.isFinite(+v)) delete a[k]; else a[k] = Math.max(0, Math.round(+v));
             break;
           }
+          // Le véhicule d'une compagnie : gros camion, VL toute la journée, ou VL à partir d'une heure (avant, gros camion).
           case 'vehicule': {
-            const l = new Set(a.vl || []); if (v === 'vl') l.add(el.dataset.cie); else l.delete(el.dataset.cie);
+            const cie = el.dataset.cie, l = new Set(a.vl || []), des = { ...(a.vlDes || {}) };
+            if (v === 'vl') l.add(cie); else l.delete(cie);
+            if (v === 'des') des[cie] = des[cie] || '12:00'; else delete des[cie];
             if (l.size) a.vl = [...l].sort(); else delete a.vl;
+            if (Object.keys(des).length) a.vlDes = des; else delete a.vlDes;
             break;
+          }
+          case 'vl-des': {
+            const cie = el.dataset.cie, h = String(v).trim().replace('h', ':');
+            if (!h) throw new Error('une heure, au format hh:mm (sinon, choisissez « gros camion » ou « VL »)');
+            a.vlDes = { ...(a.vlDes || {}), [cie]: h }; break;
           }
           case 'creneau-type': { const c = a.creneaux[+el.dataset.index]; if (v === 'vl') c.type = 'vl'; else delete c.type; break; }
           // Les chauffeurs calculés au plus juste (banc d'essai) : le mode et ses réglages, seulement saisis.
@@ -2188,8 +2207,7 @@
           toutes: '<td>—</td><td>—</td>' + (h24 ? '<td>—</td>' : ''),
           ligne: cie => `<td><select data-at-champ="categorie" data-cie="${esc(cie)}" aria-label="${esc(cie)} : long ou court courrier">
               <option value="court" ${longs.has(cie) ? '' : 'selected'}>court</option><option value="long" ${longs.has(cie) ? 'selected' : ''}>long</option></select></td>
-            <td>${longs.has(cie) ? ch.long : ch.court}</td>` + (h24 ? `<td><select data-at-champ="vehicule" data-cie="${esc(cie)}" aria-label="${esc(cie)} : gros camion ou VL">
-              <option value="camion" ${vl.has(cie) ? '' : 'selected'}>gros camion</option><option value="vl" ${vl.has(cie) ? 'selected' : ''}>VL</option></select></td>` : ''),
+            <td>${longs.has(cie) ? ch.long : ch.court}</td>` + (h24 ? `<td>${this.champVehicule(a, cie)}</td>` : ''),
           tete: '<th scope="col">Courrier</th><th scope="col" title="Chauffeurs par camion">Chauff.</th>' + (h24 ? '<th scope="col">Véhicule</th>' : '') })}
         <p class="mini-note at-regle">Des durées, pas des heures de travail : plus de chauffeurs dans le camion ne raccourcissent pas le trajet.
           Un camion qui charge plusieurs vols fait un seul aller et un seul retour.${h24 ? ` Escale : de l’arrivée de l’avion à son départ (vide : pas de
@@ -2232,6 +2250,16 @@
     }
 
     /* Les tournées du handling 24 h/24 : leurs réglages, et ce qu'elles ont donné au dernier calcul. */
+    /* Le véhicule d'une compagnie, en 24 h/24 : gros camion, VL toute la journée, ou VL à partir de l'heure de départ saisie. */
+    champVehicule(a, cie) {
+      const des = (a.vlDes || {})[cie], v = (a.vl || []).includes(cie) ? 'vl' : des ? 'des' : 'camion';
+      const option = (x, lib) => `<option value="${x}" ${v === x ? 'selected' : ''}>${lib}</option>`;
+      return `<select data-at-champ="vehicule" data-cie="${esc(cie)}" aria-label="${esc(cie)} : gros camion ou VL">
+          ${option('camion', 'gros camion')}${option('vl', 'VL')}${option('des', 'VL à partir de')}</select>${v === 'des'
+        ? `<input ${HEURE} value="${esc(des)}" data-at-champ="vl-des" data-cie="${esc(cie)}" class="at-vl-des"
+            aria-label="${esc(cie)} : en VL pour les départs à partir de cette heure, en gros camion avant" title="Les départs à partir de cette heure partent en VL ; avant, en gros camion">` : ''}`;
+    }
+
     blocTournees(a) {
       const R = P.reglages24h({});
       const champ = (cle, lib, unite, max, titre) => `<label>${lib}${avecUnite(`<input type="number" min="${cle === 'dechargementsParTournee' ? 1 : 0}" max="${max}"

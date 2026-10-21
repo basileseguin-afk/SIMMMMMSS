@@ -208,6 +208,17 @@ les perdre.
 | Handling | toutes | … | 90 | 10 | | 15 | |
 | Handling | SUD | … | 45 | | | | VL |
 
+Les tournées par vagues (version 1, banc d'essai, évolution 8 —
+[`BANC_ESSAI.md`](BANC_ESSAI.md), § 3) ajoutent leurs colonnes à la feuille,
+chacune écrite seulement si un handling a ce réglage :
+
+| Colonne | Sens |
+|---|---|
+| `VL à partir de` | HH:MM (ou une heure Excel) : les départs de cette compagnie partent en VL à partir de cette heure, en gros camion avant. Propre à une compagnie : refusée sur la ligne `toutes`. `VL` dans `Véhicule` : en VL toute la journée. |
+
+Sans la colonne, l'import garde la valeur du site ; avec elle, il la remplace
+(vide : plus de VL à partir d'une heure).
+
 ### Feuille « Chauffeurs »
 
 Les créneaux de chauffeurs d'un handling, le jour J : `Atelier`, `Début`,

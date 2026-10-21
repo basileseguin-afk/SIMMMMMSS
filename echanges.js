@@ -888,9 +888,11 @@
   /** Les réglages par compagnie du handling 24 h/24 (banc d'essai de la version 1), puis ses compagnies en VL. */
   const CARTES_24H = ['escale', 'quaiDepart', 'dechargement', 'quaiRetour', 'vl'];
   const COLONNES_24H = [['escale_min', 'escale'], ['preparation_au_quai_min', 'quaiDepart'], ['dechargement_min', 'dechargement'], ['vidage_au_quai_min', 'quaiRetour']];
+  /** Ses tournées par vagues (banc d'essai de la version 1, évolution 8) : une colonne par réglage, écrite seulement si un handling l'a. */
+  const COLONNES_VAGUES = [['VL à partir de', 'vl_a_partir_de', 'vlDes', 'heure']];
   /** Ses réglages d'équipe : sans colonne dans le classeur, un import les garde tels qu'ils sont sur le site. */
   const REGLAGES_24H = ['handling24h', 'escale', 'quaiDepart', 'dechargement', 'quaiRetour', 'vl', 'entreAvions', 'dechargementsParTournee',
-    'margeDepart', 'margeEscaleCourte', 'delaiArrivee', 'camionsVL'];
+    'margeDepart', 'margeEscaleCourte', 'delaiArrivee', 'camionsVL', ...COLONNES_VAGUES.map(c => c[2])];
   /** La condition d'une plonge (banc d'essai de la version 1) : le sale à une heure, ou le retard que le matin n'absorbe pas. */
   const surLeSale = k => k.mesure === 'sale' || k.mesure === 'absorbable';
 
@@ -916,8 +918,9 @@
     // Le handling 24 h/24 (banc d'essai de la version 1) : ses colonnes n'existent que s'il a des réglages par compagnie.
     const h24 = etat.ateliers.some(a => a.type === 'handling' && CARTES_24H.some(k => a[k] && Object.keys(a[k]).length));
     const vlCr = etat.ateliers.some(a => a.type === 'handling' && (a.creneaux || []).some(c => c.type === 'vl'));
+    const vagues = COLONNES_VAGUES.filter(c => etat.ateliers.some(a => a.type === 'handling' && a[c[2]] && Object.keys(a[c[2]]).length));
     const handling = [['Atelier', 'Compagnie', 'Aller (min)', 'Minutes par vol', 'Retour (min)', 'Courrier', 'Vols par camion',
-      ...(h24 ? ['Escale (min)', 'Préparation au quai (min)', 'Déchargement (min)', 'Vidage au quai (min)', 'Véhicule'] : [])]];
+      ...(h24 ? ['Escale (min)', 'Préparation au quai (min)', 'Déchargement (min)', 'Vidage au quai (min)', 'Véhicule'] : []), ...vagues.map(c => c[0])]];
     const chauffeurs = [['Atelier', 'Début', 'Fin', 'Chauffeurs', ...(vlCr ? ['Véhicule'] : [])]];
     const plongeVol = [['Atelier', 'Compagnie', 'Minutes par vol']];
     const fab = [['Atelier', 'Ordre', 'Compagnies × classes']];
@@ -964,9 +967,10 @@
         // Une ligne par compagnie réglée : sa durée, et si elle est long courrier.
         const longs = new Set(a.longs || []), d = a.durees || {}, al = a.allers || {}, re = a.retours || {}, vc = a.volsCamion || {};
         const cartes = h24 ? CARTES_24H.slice(0, 4).map(k => a[k] || {}) : [], vl = new Set(h24 ? a.vl || [] : []);
-        const plus = cie => (h24 ? [...cartes.map(m => m[cie] ?? null), cie === P.TOUTES ? null : vl.has(cie) ? 'VL' : 'camion'] : []);
-        if ([d, al, re, ...cartes].some(m => m[P.TOUTES] !== undefined)) handling.push([cles.cle(a), 'toutes', al[P.TOUTES] ?? null, d[P.TOUTES] ?? null, re[P.TOUTES] ?? null, null, null, ...plus(P.TOUTES)]);
-        for (const cie of [...new Set([d, al, re, vc, ...cartes].flatMap(m => Object.keys(m)).filter(k => k !== P.TOUTES).concat([...longs], [...vl]))].sort())
+        const parVague = vagues.map(c => a[c[2]] || {});
+        const plus = cie => (h24 ? [...cartes.map(m => m[cie] ?? null), cie === P.TOUTES ? null : vl.has(cie) ? 'VL' : 'camion'] : []).concat(parVague.map(m => m[cie] ?? null));
+        if ([d, al, re, ...cartes, ...parVague].some(m => m[P.TOUTES] !== undefined)) handling.push([cles.cle(a), 'toutes', al[P.TOUTES] ?? null, d[P.TOUTES] ?? null, re[P.TOUTES] ?? null, null, null, ...plus(P.TOUTES)]);
+        for (const cie of [...new Set([d, al, re, vc, ...cartes, ...parVague].flatMap(m => Object.keys(m)).filter(k => k !== P.TOUTES).concat([...longs], [...vl]))].sort())
           handling.push([cles.cle(a), cie, al[cie] ?? null, d[cie] ?? null, re[cie] ?? null, longs.has(cie) ? 'long' : 'court', vc[cie] ?? null, ...plus(cie)]);
         for (const c of (a.creneaux || [])) chauffeurs.push([cles.cle(a), c.de, c.a, c.n, ...(vlCr ? [c.type === 'vl' ? 'VL' : 'camion'] : [])]);
       }
@@ -1072,6 +1076,8 @@
         '   Camions disponibles : vide = pas de limite.',
         ...(h24 ? ['   Handling 24 h/24 (version 1) : par compagnie, Escale (min) entre l’arrivée de l’avion et son départ (vide : pas de',
           '   déchargement), Préparation au quai, Déchargement et Vidage au quai (min) ; Véhicule : « VL » (petit camion) ou « camion ».'] : []),
+        ...(vagues.some(c => c[2] === 'vlDes') ? ['   VL à partir de (handling 24 h/24, version 1) : HH:MM ; les départs de cette compagnie partent en VL à partir de',
+          '   cette heure, en gros camion avant.'] : []),
         'Chauffeurs : les créneaux du handling, le jour J (Début, Fin, nombre de chauffeurs). Un vol attend d’avoir ses chauffeurs libres.',
         '   Sans créneau : « Vols en même temps » (Ateliers). Un créneau qui finit avant son début passe minuit.',
         ...(vlCr ? ['   Véhicule (handling 24 h/24) : « VL » pour des chauffeurs de petit camion ; « camion » pour un gros.'] : []),
@@ -1487,6 +1493,7 @@
             if (entetes.includes('vols_par_camion')) a.volsCamion = {};
             for (const [col, m] of COLONNES_24H) if (entetes.includes(col)) delete a[m];
             if (entetes.includes('vehicule')) delete a.vl;
+            for (const [, col, m] of COLONNES_VAGUES) if (entetes.includes(col)) delete a[m];
           }
           const c = String(o.compagnie ?? '').trim();
           const cie = !c || T.cleEntete(c) === 'toutes' ? P.TOUTES : c.toUpperCase();
@@ -1512,6 +1519,17 @@
           if (vh && cie !== P.TOUTES) {
             if (!['vl', 'camion'].includes(vh)) throw new Error('véhicule : « VL » ou « camion »');
             if (vh === 'vl' && !(a.vl || []).includes(cie)) a.vl = (a.vl || []).concat([cie]);
+          }
+          // Les tournées par vagues : en VL à partir d'une heure (celle du départ), propre à une compagnie.
+          for (const [lib, col, m, sorte] of COLONNES_VAGUES) {
+            const x = o[col];
+            if (x === null || x === undefined || x === '') continue;
+            if (cie === P.TOUTES) throw new Error(lib + ' : propre à une compagnie, pas sur la ligne « toutes »');
+            if (sorte === 'heure') {
+              const t = T.heureDe(x);
+              if (t >= 1440) throw new Error(lib + ' : une heure de 00:00 à 23:59');
+              a[m] = { ...(a[m] || {}), [cie]: hh(t) };
+            }
           }
           const vc = T.nombreDe(o.vols_par_camion, null);
           if (vc !== null) {

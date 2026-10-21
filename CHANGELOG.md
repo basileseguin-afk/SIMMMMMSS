@@ -5,6 +5,29 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-21 — Banc d'essai, évolution 8 (a) : handling 24 h/24, le véhicule selon l'heure de départ
+
+Une compagnie servie en VL l'est toute la journée (liste `vl`) ; dans l'unité,
+certaines partent en gros camion le matin et en VL l'après-midi.
+
+- Un réglage par compagnie, `vlDes` (`{ "SUD": "10:00" }`) : ses départs à
+  partir de cette heure (sur l'horloge) partent en VL, ceux d'avant en gros
+  camion. Chaque départ prend les chauffeurs, la flotte et le plan des
+  chauffeurs de son véhicule. La liste `vl` garde son sens : VL toute la
+  journée.
+- Dans la fiche du handling 24 h/24 : le véhicule de chaque compagnie,
+  « gros camion », « VL » ou « VL à partir de » et son heure. Excel : la
+  colonne « VL à partir de » de la feuille Handling, écrite seulement si un
+  handling a ce réglage. Banc : `equipes`.
+- Sans ce réglage, la journée est la même qu'avant.
+- Fichiers : `moteur/production.js`, `ateliers.js`, `ateliers.css` et
+  `v2/ateliers.css` (identiques), `echanges.js` et `v2/echanges.js`
+  (identiques), `index.html` et `v2/index.html` (empreintes),
+  `docs/BANC_ESSAI.md`, `docs/FORMATS_EXCEL.md`, `README.md`,
+  `tests/handling-vagues.test.cjs`, `tests/handling-vagues-browser.cjs`,
+  `tests/non-regression.test.cjs` (réglé sans le mode 24 h/24 : la même
+  journée).
+
 ## 2026-10-20 — Banc d'essai, correction 9 : plonge en heures sup, seules les personnes des tunnels qui finissent un vol restent
 
 Depuis la correction 7, les heures sup de la plonge viennent de l'équipe qui

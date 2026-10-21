@@ -44,6 +44,8 @@ const DESACTIVEES = s => ({
     ...Object.fromEntries(handlingsDe(s).map(a => [a.id, { escale: { '*': 60, NORD: 30 }, quaiDepart: { '*': 10 },
       dechargement: { '*': 20 }, quaiRetour: { '*': 15 }, vl: ['SUD'], entreAvions: 5, dechargementsParTournee: 2, margeDepart: 45,
       margeEscaleCourte: 10, delaiArrivee: 5, camionsVL: 2,
+      // Évolution 8 : les vagues — VL à partir d'une heure.
+      vlDes: { NORD: '12:00' },
       // Évolution 4 : les chauffeurs calculés, réglés — sans le mode 24 h/24, ils ne comptent pas.
       chauffeurs: { mode: 'calcules', selonPreparation: true, pasDebut: 60, debutsPossibles: ['06:00', '14:00', '22:00'], retardPauseMax: 30, iterationsMax: 2 } }]))
   }
