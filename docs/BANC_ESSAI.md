@@ -335,6 +335,7 @@ les force par `equipes` :
 | `volsCamion` | Par compagnie (« * » : `volsParCamion`) : les vols qu'une tournée en gros camion sert au plus, une vague | 1 |
 | `volsVL` | Par compagnie (« * » : les autres) : les vols qu'une tournée en VL sert au plus | comme en gros camion |
 | `quaiParVol` | Par compagnie : la préparation au quai en plus, par vol de plus dans une tournée | 0 (à confirmer) |
+| `echange` | Les compagnies dont chaque avion est déchargé puis chargé dans la même visite, quelle que soit son escale | aucune |
 | `camions`, `camionsVL` | La flotte de gros camions, de VL (0 ou vide : sans limite) | sans limite |
 | `creneaux[].type` | `vl` : des chauffeurs de VL ; sinon, de gros camion | gros camion |
 
@@ -426,6 +427,13 @@ Sans ces réglages (1 vol par tournée), la journée est celle d'avant.
   chargé avant départ − `margeDepart`, une seule tournée fait l'échange sur le
   même avion (décharger, puis charger), et ce vol doit seulement être chargé
   `margeEscaleCourte` minutes avant son départ.
+- **L'échange sur le même avion, par compagnie** (évolution 8). Chaque avion
+  d'une compagnie de la liste `echange` est déchargé puis chargé dans la même
+  visite, quelle que soit son escale, sans tournée de déchargement à part ; le
+  chargement est fini au plus tard à départ − `margeEscaleCourte`. Avec
+  plusieurs vols par tournée : pour chaque avion, décharger puis charger, puis
+  passer au suivant. Une compagnie de la liste sans escale ni ETA n'a pas
+  d'avion à décharger : ses vols se chargent comme avant.
 - **L'échéance des commandes** se déduit de la tournée de chargement : limite
   − chargement − aller − préparation au quai (− déchargement, en escale
   courte), au lieu de départ − délai de chargement. Les retards de commandes se
@@ -494,7 +502,8 @@ Dans la page : la fiche du handling (la case, les réglages, les colonnes par
 compagnie, le véhicule de chaque créneau, le bilan des tournées) et la page des
 départs (l'échéance d'un vol est sa limite ; la cause d'un retard). Le véhicule
 d'une compagnie se choisit dans sa ligne : « gros camion », « VL » (toute la
-journée) ou « VL à partir de », avec son heure.
+journée) ou « VL à partir de », avec son heure ; sa case « Échange » la met
+dans la liste `echange`.
 
 Vérifications : `tests/handling-24h.test.cjs` (une tournée charge A puis
 décharge B, un avion n'est pas rechargé avant d'être déchargé, une escale
@@ -513,7 +522,8 @@ chauffeurs et le plan de chaque véhicule ; les vagues — 6 départs entre 06:0
 et 07:00 à 3 vols par camion en 2 tournées, 9 départs de l'après-midi en une
 tournée de VL, un vol qui ne tiendrait pas dans une autre, une vague qui
 attend un vol pas prêt, pas de vague qui coûte plus de minutes-chauffeur, ni
-qui mélange compagnies ou véhicules, l'échange avion par avion ; la
+qui mélange compagnies ou véhicules, l'échange avion par avion ; l'échange
+sur le même avion par compagnie — aucune tournée de déchargement à part ; la
 validation, Excel, les options du banc, la fiche).
 
 ## 4. Le handling calcule son nombre de chauffeurs au plus juste

@@ -5,6 +5,29 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-21 — Banc d'essai, évolution 8 (c) : handling 24 h/24, l'échange sur le même avion, par compagnie
+
+Les compagnies qui n'emportent que des repas équipage font un réajustement
+d'armoire : chaque avion est déchargé puis chargé dans la même visite, même
+avec une escale longue.
+
+- Une liste par handling, `echange` : chaque avion de ces compagnies est
+  déchargé puis chargé dans la même visite, quelle que soit son escale, sans
+  tournée de déchargement à part, ni dans la journée ni dans le plan des
+  chauffeurs. Le chargement est fini au plus tard à départ −
+  `margeEscaleCourte`. Avec plusieurs vols par tournée : pour chaque avion,
+  décharger puis charger, puis passer au suivant.
+- Dans la fiche : la case « Échange » de chaque compagnie. Excel : la colonne
+  « Échange sur l’avion » (`oui`), écrite seulement si un handling a cette
+  liste. Banc : `equipes`.
+- Sans cette liste, la journée est la même qu'avant.
+- Fichiers : `moteur/production.js`, `ateliers.js`, `echanges.js` et
+  `v2/echanges.js` (identiques), `index.html` et `v2/index.html`
+  (empreintes), `docs/BANC_ESSAI.md`, `docs/FORMATS_EXCEL.md`, `README.md`,
+  `tests/handling-vagues.test.cjs`, `tests/handling-vagues-browser.cjs`,
+  `tests/non-regression.test.cjs` (réglée sans le mode 24 h/24 : la même
+  journée).
+
 ## 2026-10-21 — Banc d'essai, évolution 8 (b) : handling 24 h/24, plusieurs vols par tournée, y compris dans le plan des chauffeurs
 
 Sur 61 journées réelles, le plan des chauffeurs comptait une tournée par vol :

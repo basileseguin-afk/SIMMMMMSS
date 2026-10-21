@@ -161,6 +161,8 @@
     if (Object.keys(volsVL).length) out.volsVL = volsVL;
     // Les compagnies servies en petit camion (VL) ; les autres vont en gros camion.
     const vl = cies(a.vl); if (vl.length) out.vl = vl;
+    // Les compagnies dont chaque avion est déchargé puis chargé dans la même visite (évolution 8).
+    const echange = cies(a.echange); if (echange.length) out.echange = echange;
     // Une compagnie en VL à partir d'une heure (HH:MM, l'heure du départ) : avant, en gros camion.
     const des = {};
     for (const [k, v] of Object.entries(a.vlDes && typeof a.vlDes === 'object' && !Array.isArray(a.vlDes) ? a.vlDes : {}).slice(0, 100)) {
@@ -1403,6 +1405,12 @@
             if (Object.keys(des).length) a.vlDes = des; else delete a.vlDes;
             break;
           }
+          // L'échange sur le même avion, pour une compagnie : décharger puis charger dans la même visite.
+          case 'echange': {
+            const l = new Set(a.echange || []); if (el.checked) l.add(el.dataset.cie); else l.delete(el.dataset.cie);
+            if (l.size) a.echange = [...l].sort(); else delete a.echange;
+            break;
+          }
           case 'vl-des': {
             const cie = el.dataset.cie, h = String(v).trim().replace('h', ':');
             if (!h) throw new Error('une heure, au format hh:mm (sinon, choisissez « gros camion » ou « VL »)');
@@ -2147,7 +2155,7 @@
       const presents = P.creneauxDe(a);
       const maxi = presents.length ? Math.max(...presents.flatMap(c => [c.de, c.a]).map(t => P.chauffeursPresents(presents, t))) : 0;
       // Le handling 24 h/24 (banc d'essai, docs/BANC_ESSAI.md § 3) : des tournées qui chargent les départs puis déchargent les avions arrivés.
-      const h24 = a.handling24h === true, vl = new Set(a.vl || []);
+      const h24 = a.handling24h === true, vl = new Set(a.vl || []), echange = new Set(a.echange || []);
       // Les chauffeurs calculés au plus juste (§ 4) : seulement en 24 h/24.
       const calcules = h24 && ch.mode === 'calcules';
       // Les vagues (évolution 8) : les vols d'une tournée en VL, dès qu'une compagnie part en VL ; le quai par vol de plus,
@@ -2215,14 +2223,18 @@
         ${this.tableCompagnies(a, cies, nb, colonnes, {
           total: cie => { const t = P.trajetHandling(a, cie), d = P.dureeHandling(a, cie);
             return d == null ? '—' : '<b>' + Math.round(t.aller + d + t.retour) + '</b> min'; },
-          toutes: '<td>—</td><td>—</td>' + (h24 ? '<td>—</td>' : ''),
+          toutes: '<td>—</td><td>—</td>' + (h24 ? '<td>—</td><td>—</td>' : ''),
           ligne: cie => `<td><select data-at-champ="categorie" data-cie="${esc(cie)}" aria-label="${esc(cie)} : long ou court courrier">
               <option value="court" ${longs.has(cie) ? '' : 'selected'}>court</option><option value="long" ${longs.has(cie) ? 'selected' : ''}>long</option></select></td>
-            <td>${longs.has(cie) ? ch.long : ch.court}</td>` + (h24 ? `<td>${this.champVehicule(a, cie)}</td>` : ''),
-          tete: '<th scope="col">Courrier</th><th scope="col" title="Chauffeurs par camion">Chauff.</th>' + (h24 ? '<th scope="col">Véhicule</th>' : '') })}
+            <td>${longs.has(cie) ? ch.long : ch.court}</td>` + (h24 ? `<td>${this.champVehicule(a, cie)}</td>
+            <td><label class="chk chk-mini"><input type="checkbox" data-at-champ="echange" data-cie="${esc(cie)}" ${echange.has(cie) ? 'checked' : ''}
+              aria-label="${esc(cie)} : chaque avion déchargé puis chargé dans la même visite"><span class="sr-only">Échange</span></label></td>` : ''),
+          tete: '<th scope="col">Courrier</th><th scope="col" title="Chauffeurs par camion">Chauff.</th>' + (h24 ? '<th scope="col">Véhicule</th><th scope="col" title="Chaque avion déchargé puis chargé dans la même visite, quelle que soit son escale">Échange</th>' : '') })}
         <p class="mini-note at-regle">Des durées, pas des heures de travail : plus de chauffeurs dans le camion ne raccourcissent pas le trajet.
           Un camion qui charge plusieurs vols fait un seul aller et un seul retour.${h24 ? ` Escale : de l’arrivée de l’avion à son départ (vide : pas de
           déchargement) ; quai départ : préparer le camion dans la CF départ ; quai retour : le vider du sale.
+          Échange : chaque avion de la compagnie est déchargé puis chargé dans la même visite, quelle que soit son escale,
+          chargé au plus tard à départ − la marge d’escale courte.
           Vols / camion${avecVL ? ', vols / VL (vide : comme en gros camion)' : ''} : une tournée sert jusqu’à tant de départs de la compagnie qui se suivent
           (une vague), chacun chargé avant sa limite${plusieurs ? ' ; quai / vol en plus : la préparation au quai, par vol de plus' : ''}.` : ''}</p>`;
     }

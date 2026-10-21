@@ -787,6 +787,12 @@
   const quaiParVolDe = (atelier, cie) => parCompagnie(atelier, 'quaiParVol', cie) ?? 0;
   /** Décharger un avion : 30 min pour un long courrier, 10 pour les autres, sauf durée saisie. */
   const dechargementDe = (atelier, cie) => parCompagnie(atelier, 'dechargement', cie) ?? (categorieVol(atelier, cie) === 'long' ? 30 : 10);
+  /**
+   * L'échange sur le même avion, par compagnie (évolution 8) : chaque avion d'une
+   * compagnie de la liste `echange` est déchargé puis chargé dans la même visite,
+   * quelle que soit son escale, sans tournée de déchargement à part.
+   */
+  const echangeDe = (atelier, cie) => ((atelier && atelier.echange) || []).map(up).includes(up(cie));
   /** L'heure du jour (minutes) à partir de laquelle une compagnie part en VL (`vlDes`, HH:MM), ou null. */
   function vlDesDe(atelier, cie) {
     const v = ((atelier && atelier.vlDes) || {})[up(cie)];
@@ -832,7 +838,8 @@
    * chargement et l'échéance de ses commandes, qui se déduit de sa tournée :
    * départ − marge − chargement − aller − préparation au quai. En escale
    * courte, la même tournée décharge puis charge le même avion, et le vol doit
-   * seulement être chargé `margeEscaleCourte` minutes avant son départ.
+   * seulement être chargé `margeEscaleCourte` minutes avant son départ. De même
+   * pour chaque avion d'une compagnie de la liste `echange` (évolution 8).
    */
   function besoin24h(atelier, vol) {
     const r = reglages24h(atelier), cie = vol.cie;
@@ -841,7 +848,8 @@
     const charge = dureeHandling(atelier, cie) ?? 0, t = trajetHandling(atelier, cie), quai = quaiDepartDe(atelier, cie);
     const arrivee = arriveeDe(atelier, vol), dech = dechargementDe(atelier, cie);
     const dispo = arrivee == null ? null : arrivee + r.delaiArrivee;
-    const courte = dispo != null && dispo + dech + charge > depart - r.margeDepart;
+    // L'échange sur le même avion : en escale courte, ou toujours pour une compagnie de la liste `echange`.
+    const courte = dispo != null && (echangeDe(atelier, cie) || dispo + dech + charge > depart - r.margeDepart);
     const limite = courte ? depart - r.margeEscaleCourte : depart - r.margeDepart;
     return { depart, arrivee, dispo, courte, limite, charge, dechargement: dech, aller: t.aller, retour: t.retour, quaiDepart: quai,
       quaiRetour: quaiRetourDe(atelier, cie), vehicule, long: categorieVol(atelier, cie) === 'long',
@@ -4676,7 +4684,7 @@
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,
     pausesDe, fusionnerPauses, arretsDeLigne, finAvecPauses, vaguesDe, disponibleDes, debitRobot, ouvertureDe, prochaineOuverture,
     categorieVol, chauffeursDe, creneauxDe, chauffeursPresents, dureeLavageVol, trajetHandling, debutTrajet, volsParCamionDe, volsParTourneeDe, quaiParVolDe, vitesseTunnel, machinesDesTunnels,
-    parCompagnie, escaleDe, quaiDepartDe, quaiRetourDe, dechargementDe, vehiculeDe, vlDesDe, reglages24h, arriveeDe, besoin24h,
+    parCompagnie, escaleDe, quaiDepartDe, quaiRetourDe, dechargementDe, vehiculeDe, vlDesDe, echangeDe, reglages24h, arriveeDe, besoin24h,
     reglagesChauffeurs, besoinDesTournees, vacationsPourTournees, borneBasse,
     UNITES_DEFAUT, unitesDe, retoursDeVols, besoinMateriel, sourceRetours, SOURCES_RETOURS,
     simuler, niveauA, niveauLineaire, dureeLisible

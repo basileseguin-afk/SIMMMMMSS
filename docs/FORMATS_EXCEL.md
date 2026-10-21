@@ -217,6 +217,7 @@ chacune écrite seulement si un handling a ce réglage :
 | `VL à partir de` | HH:MM (ou une heure Excel) : les départs de cette compagnie partent en VL à partir de cette heure, en gros camion avant. Propre à une compagnie : refusée sur la ligne `toutes`. `VL` dans `Véhicule` : en VL toute la journée. |
 | `Vols par VL` | Comme `Vols par camion`, pour une tournée en VL : les départs de la compagnie qu'elle sert au plus, une vague (1 ou plus ; vide : comme en camion). `toutes` : les compagnies sans ligne. |
 | `Quai par vol en plus (min)` | La préparation au quai d'une tournée qui sert plusieurs vols, en plus, par vol de plus (vide : 0). `toutes` : les compagnies sans ligne. |
+| `Échange sur l’avion` | `oui` : chaque avion de cette compagnie est déchargé puis chargé dans la même visite, quelle que soit son escale (vide ou `non` : comme avant). Propre à une compagnie : refusée sur la ligne `toutes`. |
 
 Sans la colonne, l'import garde les valeurs du site ; avec elle, il les
 remplace (vide : plus de réglage pour cette compagnie).

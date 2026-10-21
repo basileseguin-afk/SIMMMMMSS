@@ -217,6 +217,53 @@ test('vols par VL et quai par vol : gardés seulement saisis', () => {
   assert.deepEqual([P.volsParTourneeDe(lu, 'equi', 'vl'), P.volsParTourneeDe(lu, 'NORD', 'vl'), P.volsParTourneeDe(lu, 'NORD', 'camion')], [9, 20, 1]);
 });
 
+/* ---- c. L'échange sur le même avion, par compagnie ---------------------- */
+
+test('une compagnie dans `echange` : aucune tournée de déchargement à part pour elle', () => {
+  // L'avion de SU1 arrive 4 h 30 avant son départ : d'habitude, une tournée le décharge à part, une autre le charge.
+  const vols = [dep('SU1', 'SUD', '12:00'), dep('NO1', 'NORD', '12:00')];
+  const ha = p => calcules({ escale: { '*': 270 }, margeEscaleCourte: 15, ...p });
+  const avant = jouer(ha({}), vols);
+  assert.ok(vue(avant).tournees.some(t => t.decharges.includes('SU1') && !t.charges.includes('SU1')), 'd’habitude : déchargé à part');
+  const r = jouer(ha({ echange: ['SUD'] }), vols);
+  assert.equal(r.ok, true, JSON.stringify(r.anomalies));
+  const t = vue(r).tournees.find(x => x.charges.includes('SU1'));
+  assert.deepEqual(etapes(t), ['aller', 'dechargement SU1', 'chargement SU1', 'retour']);
+  assert.equal(t.echange, true);
+  assert.ok(vue(r).tournees.every(x => !x.decharges.includes('SU1') || x === t), 'pas de déchargement à part');
+  assert.ok(plan(r).tournees.every(x => !x.decharges.includes('SU1') || x.charges.includes('SU1')), 'ni dans le plan');
+  // Chargé au plus tard à départ − margeEscaleCourte ; NORD, hors de la liste, comme avant.
+  assert.deepEqual([vol(r, 'SU1').limite, vol(r, 'SU1').escaleCourte, vol(r, 'SU1').aHeure], [h('11:45'), true, true]);
+  assert.deepEqual([vol(r, 'NO1').limite, vol(r, 'NO1').escaleCourte], [h('11:00'), undefined]);
+  assert.ok(vue(r).tournees.some(x => x.decharges.includes('NO1') && !x.charges.includes('NO1')));
+  // Une compagnie de la liste sans escale ni ETA : pas d'avion à décharger, un chargement comme avant.
+  const sans = jouer(calcules({ echange: ['SUD'] }), vols);
+  assert.deepEqual([vol(sans, 'SU1').limite, vol(sans, 'SU1').arrivee, vol(sans, 'SU1').escaleCourte], [h('11:00'), undefined, undefined]);
+});
+
+test('`echange` et plusieurs vols par tournée : pour chaque avion, décharger puis charger, puis passer au suivant', () => {
+  // Trois départs de l'après-midi, en VL, escale de 3 h : une tournée échange les trois avions, l'un après l'autre.
+  const vols = APRES_MIDI.slice(0, 3).map((t, i) => dep('EQ' + (i + 1), 'EQUI', t));
+  const ha = calcules(vl9({ echange: ['EQUI'], escale: { '*': 180 }, dechargement: { EQUI: 5 }, quaiRetour: { '*': 10 } }));
+  const r = jouer(ha, vols);
+  assert.deepEqual(tournees(r), [['vl', 'EQ1+EQ2+EQ3']]);
+  assert.deepEqual(etapes(vue(r).tournees[0]), ['aller', 'dechargement EQ1', 'chargement EQ1', 'trajet', 'dechargement EQ2', 'chargement EQ2',
+    'trajet', 'dechargement EQ3', 'chargement EQ3', 'retour', 'quai-retour']);
+  assert.ok(r.vols.every(v => v.aHeure && v.dechargement.tournee === 1));
+  assert.deepEqual(plan(r).tournees.map(t => [t.charges.join('+'), t.decharges.join('+')]), [['EQ1+EQ2+EQ3', 'EQ1+EQ2+EQ3']]);
+  // Sans plan, la même tournée.
+  assert.deepEqual(tournees(jouer(handling(vl9({ echange: ['EQUI'], escale: { '*': 180 }, dechargement: { EQUI: 5 } })), vols)), [['vl', 'EQ1+EQ2+EQ3']]);
+});
+
+test('l’échange sur l’avion : gardé seulement saisi', () => {
+  const base = { schema: 'ory-ateliers', version: 1, ateliers: [handling({})] };
+  assert.equal('echange' in A.valider(base).ateliers[0], false);
+  const lu = A.valider({ ...base, ateliers: [handling({ echange: ['equi', 'EQUI', '', 'sud'] })] }).ateliers[0];
+  assert.deepEqual(lu.echange, ['EQUI', 'SUD']);
+  assert.deepEqual(A.valider(JSON.parse(JSON.stringify({ ...base, ateliers: [lu] }))).ateliers[0], lu, 'relu tel quel');
+  assert.deepEqual([P.echangeDe(lu, 'sud'), P.echangeDe(lu, 'NORD')], [true, false]);
+});
+
 /* ---- Excel et options du banc ------------------------------------------ */
 const T = require('../tableur.js');
 const E = require('../echanges.js');
@@ -270,6 +317,21 @@ test('Excel : « Vols par VL » et « Quai par vol en plus » font l’aller-ret
   assert.throws(() => E.classeurVersAteliers(modifier(f, 'Handling', l => l.map(x => (x[1] === 'EQUI' ? Object.assign(x, { [cq]: -1 }) : x))), etat, CTX), /Quai par vol en plus/);
 });
 
+test('Excel : « Échange sur l’avion » fait l’aller-retour, et se modifie', async () => {
+  const etat = etatAvec(handling({ escale: { '*': 90 }, echange: ['EQUI'] }));
+  const f = await parFichier(E.ateliersVersClasseur(etat, CTX));
+  const col = entetes(f).indexOf('Échange sur l’avion');
+  assert.ok(col > 0);
+  assert.equal(f.find(x => x.nom === 'Handling').lignes.find(l => l[1] === 'EQUI')[col], 'oui');
+  assert.deepEqual(A.valider(E.classeurVersAteliers(f, etat, CTX).etat).ateliers[0], etat.ateliers[0], 'rien de perdu');
+  // Dans Excel : EQUI ne fait plus l'échange, SUD le fait.
+  const g = modifier(f, 'Handling', l => l.map(x => (x[1] === 'EQUI' ? Object.assign(x, { [col]: 'non' }) : x))
+    .concat([Object.assign(Array(l[0].length).fill(null), { 0: 'Handling', 1: 'SUD', [col]: 'oui' })]));
+  assert.deepEqual(A.valider(E.classeurVersAteliers(await parFichier(g), etat, CTX).etat).ateliers[0].echange, ['SUD']);
+  assert.throws(() => E.classeurVersAteliers(modifier(f, 'Handling', l => l.map(x => (x[1] === 'EQUI' ? Object.assign(x, { [col]: 'peut-être' }) : x))), etat, CTX), /oui ou non/);
+  assert.throws(() => E.classeurVersAteliers(modifier(f, 'Handling', l => l.map(x => (x[1] === 'toutes' ? Object.assign(x, { [col]: 'oui' }) : x))), etat, CTX), /propre à une compagnie/);
+});
+
 test('le banc force « VL à partir de » par « equipes », comme une saisie', () => {
   const s = require('./non-regression.attendu.json').scenarios.find(x => x.nom === 'unite-vol');
   const jouerAvec = force => J.jouer(J.argumentsDeLaJournee(s.sauvegarde, s.args.vols, { ...s.options, equipes: { h: { handling24h: true, ...force } } }));
@@ -285,4 +347,7 @@ test('le banc force « VL à partir de » par « equipes », comme une saisie', 
   assert.ok(t(avant).every(x => x.charges.length === 1));
   assert.ok(t(v).some(x => x.charges.length > 1) && t(v).length < t(avant).length);
   assert.throws(() => jouerAvec({ volsVL: { [cies[0]]: 'neuf' } }), /volsVL/);
+  // L'échange sur l'avion : aucune tournée de déchargement à part pour ces compagnies.
+  const e = jouerAvec({ escale: { '*': 300 }, echange: cies });
+  assert.ok(e.vols.every(x => x.escaleCourte && (!x.dechargement || e.ateliers.find(a => a.id === 'h').tournees.find(t => t.n === x.dechargement.tournee).charges.includes(x.id))));
 });

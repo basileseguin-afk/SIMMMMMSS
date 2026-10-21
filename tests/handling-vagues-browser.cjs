@@ -81,6 +81,17 @@ const UNITE=H=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
   const quai=await page.evaluate(()=>Sim.ateliers.resultat.ateliers.find(a=>a.id==='ha').tournees.find(t=>t.charges.length>1).etapes.find(e=>e.etape==='quai-depart'));
   assert.equal(quai.a-quai.de,3,'3 min de quai pour le vol de plus');
 
+  // 2 ter. c. NORD fait l'échange sur l'avion : avec une escale, son avion est déchargé puis chargé dans la même visite.
+  const echange=fiche().locator('[data-at-champ=echange][data-cie=NORD]');
+  assert.equal(await echange.isChecked(),false);
+  assert.equal('echange' in (await equipe()),false);
+  await echange.check();await attendre();
+  assert.deepEqual((await equipe()).echange,['NORD']);
+  await saisir('[data-at-champ=temps][data-map=escale][data-cie="*"]','240');
+  const no1=await page.evaluate(()=>{const r=Sim.ateliers.resultat,ts=r.ateliers.find(a=>a.id==='ha').tournees;
+    return {vol:r.vols.find(v=>v.id==='NO1').escaleCourte,tournees:ts.filter(t=>t.decharges.includes('NO1')).map(t=>[t.echange===true,t.charges.join('+')])};});
+  assert.deepEqual(no1,{vol:true,tournees:[[true,'NO1']]},'déchargé et chargé par la même tournée');
+
   // 3. Rechargée, tout est là ; dans « Tout sauvegarder » aussi.
   await page.reload();await attendre(600);
   await ouvrir();
@@ -91,9 +102,12 @@ const UNITE=H=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
   const fichier=path.join(dossier,'sauvegarde.json');await d.saveAs(fichier);
   const sauve=JSON.parse(fs.readFileSync(fichier,'utf8')).contenu['ory-ateliers-v1'];
   const ha=(typeof sauve==='string'?JSON.parse(sauve):sauve).ateliers.find(a=>a.id==='ha');
-  assert.deepEqual([ha.vlDes,ha.volsVL,ha.quaiParVol],[{SUD:'10:00'},{SUD:2},{'*':3}]);
+  assert.deepEqual([ha.vlDes,ha.volsVL,ha.quaiParVol,ha.echange],[{SUD:'10:00'},{SUD:2},{'*':3},['NORD']]);
   await ouvrir();
   assert.equal(await fiche().locator('[data-at-champ=temps][data-map=volsVL][data-cie=SUD]').inputValue(),'2');
+  assert.equal(await fiche().locator('[data-at-champ=echange][data-cie=NORD]').isChecked(),true);
+  await fiche().locator('[data-at-champ=echange][data-cie=NORD]').uncheck();await attendre();
+  assert.equal('echange' in (await equipe()),false,'décochée : rien ne reste');
 
   // 4. De nouveau en gros camion : rien ne reste.
   await ouvrir();
@@ -101,6 +115,6 @@ const UNITE=H=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
   assert.deepEqual(['vl' in (await equipe()),'vlDes' in (await equipe())],[false,false]);
 
   assert.deepEqual(errors,[]);
-  console.log('handling-vagues-browser : ok — véhicule selon l’heure, vols par VL, quai par vol, rechargement, sauvegarde');
+  console.log('handling-vagues-browser : ok — véhicule selon l’heure, vols par VL, quai par vol, échange sur l’avion, rechargement, sauvegarde');
  }catch(e){console.error(e);process.exitCode=1;}finally{await browser.close();fs.rmSync(dossier,{recursive:true,force:true});}
 })();
