@@ -336,6 +336,7 @@ les force par `equipes` :
 | `volsVL` | Par compagnie (« * » : les autres) : les vols qu'une tournée en VL sert au plus | comme en gros camion |
 | `quaiParVol` | Par compagnie : la préparation au quai en plus, par vol de plus dans une tournée | 0 (à confirmer) |
 | `echange` | Les compagnies dont chaque avion est déchargé puis chargé dans la même visite, quelle que soit son escale | aucune |
+| `dureesVL`, `dechargementVL` | Par compagnie (« * » : les autres) : charger, décharger un avion servi en VL | celles de la compagnie |
 | `camions`, `camionsVL` | La flotte de gros camions, de VL (0 ou vide : sans limite) | sans limite |
 | `creneaux[].type` | `vl` : des chauffeurs de VL ; sinon, de gros camion | gros camion |
 
@@ -434,6 +435,12 @@ Sans ces réglages (1 vol par tournée), la journée est celle d'avant.
   plusieurs vols par tournée : pour chaque avion, décharger puis charger, puis
   passer au suivant. Une compagnie de la liste sans escale ni ETA n'a pas
   d'avion à décharger : ses vols se chargent comme avant.
+- **Des durées par type de véhicule** (évolution 8). En VL, un réajustement
+  d'armoire ne prend pas le temps d'un chargement complet : un vol servi en VL
+  se charge en `dureesVL` et son avion se décharge en `dechargementVL`, s'ils
+  sont saisis pour sa compagnie (ou pour « * ») ; sinon, les durées de la
+  compagnie (`durees`, `dechargement`). La limite, l'escale courte et
+  l'échéance des commandes suivent ces durées.
 - **L'échéance des commandes** se déduit de la tournée de chargement : limite
   − chargement − aller − préparation au quai (− déchargement, en escale
   courte), au lieu de départ − délai de chargement. Les retards de commandes se
@@ -523,8 +530,8 @@ et 07:00 à 3 vols par camion en 2 tournées, 9 départs de l'après-midi en une
 tournée de VL, un vol qui ne tiendrait pas dans une autre, une vague qui
 attend un vol pas prêt, pas de vague qui coûte plus de minutes-chauffeur, ni
 qui mélange compagnies ou véhicules, l'échange avion par avion ; l'échange
-sur le même avion par compagnie — aucune tournée de déchargement à part ; la
-validation, Excel, les options du banc, la fiche).
+sur le même avion par compagnie — aucune tournée de déchargement à part ;
+les durées en VL ; la validation, Excel, les options du banc, la fiche).
 
 ## 4. Le handling calcule son nombre de chauffeurs au plus juste
 

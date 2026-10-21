@@ -264,6 +264,37 @@ test('l’échange sur l’avion : gardé seulement saisi', () => {
   assert.deepEqual([P.echangeDe(lu, 'sud'), P.echangeDe(lu, 'NORD')], [true, false]);
 });
 
+/* ---- d. Des durées par type de véhicule --------------------------------- */
+
+test('en VL, le chargement et le déchargement peuvent être plus courts qu’en camion ; sans durée VL, celle de la compagnie', () => {
+  // EQUI en VL à partir de 10:00 : le départ de 08:00 en gros camion (25 et 15 min), celui de 14:00 en VL (5 et 4 min).
+  const vols = [dep('EQ1', 'EQUI', '08:00'), dep('EQ2', 'EQUI', '14:00'), dep('NO1', 'NORD', '14:00')];
+  const ha = p => calcules({ vlDes: { EQUI: '10:00', NORD: '10:00' }, escale: { '*': 240 }, durees: { '*': 20, EQUI: 25 }, dechargement: { '*': 10, EQUI: 15 }, ...p });
+  const r = jouer(ha({ dureesVL: { EQUI: 5 }, dechargementVL: { EQUI: 4 } }), vols);
+  assert.equal(r.ok, true, JSON.stringify(r.anomalies));
+  const duree = (id, etape) => { const e = vue(r).tournees.flatMap(t => t.etapes).find(x => x.etape === etape && x.vol === id); return e.a - e.de; };
+  assert.deepEqual([duree('EQ1', 'chargement'), duree('EQ1', 'dechargement')], [25, 15], 'en gros camion : les durées de la compagnie');
+  assert.deepEqual([duree('EQ2', 'chargement'), duree('EQ2', 'dechargement')], [5, 4], 'en VL : ses durées VL');
+  assert.deepEqual([duree('NO1', 'chargement'), duree('NO1', 'dechargement')], [20, 10], 'en VL sans durée VL : celles de la compagnie');
+  assert.equal(vol(r, 'EQ2').fin - vol(r, 'EQ2').debut, 5);
+  // « * » : toutes les autres compagnies, en VL.
+  const toutes = jouer(ha({ dureesVL: { '*': 7 } }), vols);
+  assert.deepEqual(['EQ1', 'EQ2', 'NO1'].map(id => vol(toutes, id).fin - vol(toutes, id).debut), [25, 7, 7]);
+  // L'échéance des commandes et l'escale courte suivent ces durées ; le plan aussi (des tournées plus courtes).
+  const sans = jouer(ha({}), vols);
+  assert.ok(vol(r, 'EQ2').echeanceCommandes > vol(sans, 'EQ2').echeanceCommandes);
+  assert.ok(plan(r).borneBasse.vl.minutes < plan(sans).borneBasse.vl.minutes);
+});
+
+test('les durées VL : gardées seulement saisies', () => {
+  const base = { schema: 'ory-ateliers', version: 1, ateliers: [handling({})] };
+  const lu0 = A.valider(base).ateliers[0];
+  for (const k of ['dureesVL', 'dechargementVL']) assert.equal(k in lu0, false, k + ' : rien d’enregistré sans saisie');
+  const lu = A.valider({ ...base, ateliers: [handling({ dureesVL: { equi: 5, '*': '' }, dechargementVL: { '*': 4.5, SUD: 9000 } })] }).ateliers[0];
+  assert.deepEqual([lu.dureesVL, lu.dechargementVL], [{ EQUI: 5 }, { '*': 4.5, SUD: 1440 }]);
+  assert.deepEqual(A.valider(JSON.parse(JSON.stringify({ ...base, ateliers: [lu] }))).ateliers[0], lu, 'relu tel quel');
+});
+
 /* ---- Excel et options du banc ------------------------------------------ */
 const T = require('../tableur.js');
 const E = require('../echanges.js');
@@ -332,6 +363,20 @@ test('Excel : « Échange sur l’avion » fait l’aller-retour, et se modifie'
   assert.throws(() => E.classeurVersAteliers(modifier(f, 'Handling', l => l.map(x => (x[1] === 'toutes' ? Object.assign(x, { [col]: 'oui' }) : x))), etat, CTX), /propre à une compagnie/);
 });
 
+test('Excel : les durées VL font l’aller-retour, et se modifient', async () => {
+  const etat = etatAvec(handling({ vl: ['EQUI'], dureesVL: { EQUI: 5 }, dechargementVL: { '*': 4 } }));
+  const f = await parFichier(E.ateliersVersClasseur(etat, CTX));
+  const cc = entetes(f).indexOf('Minutes par vol en VL'), cd = entetes(f).indexOf('Déchargement en VL (min)');
+  assert.ok(cc > 0 && cd > 0);
+  const lignes = f.find(x => x.nom === 'Handling').lignes;
+  assert.deepEqual([lignes.find(l => l[1] === 'EQUI')[cc], lignes.find(l => l[1] === 'toutes')[cd]], [5, 4]);
+  assert.deepEqual(A.valider(E.classeurVersAteliers(f, etat, CTX).etat).ateliers[0], etat.ateliers[0], 'rien de perdu');
+  const g = modifier(f, 'Handling', l => l.map(x => (x[1] === 'EQUI' ? Object.assign(x, { [cc]: 6, [cd]: 3 }) : x)));
+  const relu = A.valider(E.classeurVersAteliers(await parFichier(g), etat, CTX).etat).ateliers[0];
+  assert.deepEqual([relu.dureesVL, relu.dechargementVL], [{ EQUI: 6 }, { '*': 4, EQUI: 3 }]);
+  assert.throws(() => E.classeurVersAteliers(modifier(f, 'Handling', l => l.map(x => (x[1] === 'EQUI' ? Object.assign(x, { [cc]: -2 }) : x))), etat, CTX), /Minutes par vol en VL/);
+});
+
 test('le banc force « VL à partir de » par « equipes », comme une saisie', () => {
   const s = require('./non-regression.attendu.json').scenarios.find(x => x.nom === 'unite-vol');
   const jouerAvec = force => J.jouer(J.argumentsDeLaJournee(s.sauvegarde, s.args.vols, { ...s.options, equipes: { h: { handling24h: true, ...force } } }));
@@ -350,4 +395,8 @@ test('le banc force « VL à partir de » par « equipes », comme une saisie', 
   // L'échange sur l'avion : aucune tournée de déchargement à part pour ces compagnies.
   const e = jouerAvec({ escale: { '*': 300 }, echange: cies });
   assert.ok(e.vols.every(x => x.escaleCourte && (!x.dechargement || e.ateliers.find(a => a.id === 'h').tournees.find(t => t.n === x.dechargement.tournee).charges.includes(x.id))));
+  // Les durées VL.
+  const d = jouerAvec({ vl: cies, dureesVL: { '*': 3 }, dechargementVL: { '*': 2 }, chauffeurs: { mode: 'calcules' } });
+  assert.ok(d.vols.every(x => x.vehicule === 'vl' && x.fin - x.debut === 3));
+  assert.throws(() => jouerAvec({ dureesVL: { [cies[0]]: 'vite' } }), /dureesVL/);
 });

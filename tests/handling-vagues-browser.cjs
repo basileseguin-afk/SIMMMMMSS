@@ -49,6 +49,7 @@ const UNITE=H=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
   assert.deepEqual(await vehicules(),[['SU1','camion'],['NO1','camion'],['SU2','camion'],['SU3','camion']]);
   assert.ok(!(await colonnes()).includes('Vols / VL'),'pas de colonne VL tant qu’aucune compagnie ne part en VL');
   assert.ok(!(await colonnes()).includes('Quai / vol en plus'));
+  assert.ok(!(await colonnes()).includes('Charger en VL'));
 
   // 2. a. SUD en VL à partir d'une heure : 12:00 proposé, puis 10:00 saisi. Le départ de 08:00 reste en gros camion.
   await choix.selectOption('des');await attendre();
@@ -81,6 +82,12 @@ const UNITE=H=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
   const quai=await page.evaluate(()=>Sim.ateliers.resultat.ateliers.find(a=>a.id==='ha').tournees.find(t=>t.charges.length>1).etapes.find(e=>e.etape==='quai-depart'));
   assert.equal(quai.a-quai.de,3,'3 min de quai pour le vol de plus');
 
+  // 2 bis. d. Charger en VL : 5 min pour SUD, au lieu de 20 ; en gros camion, toujours 20.
+  assert.ok((await colonnes()).includes('Charger en VL') && (await colonnes()).includes('Décharger en VL'));
+  await saisir('[data-at-champ=temps][data-map=dureesVL][data-cie=SUD]','5');
+  assert.deepEqual((await equipe()).dureesVL,{SUD:5});
+  assert.deepEqual(await page.evaluate(()=>Sim.ateliers.resultat.vols.filter(v=>v.cie==='SUD').map(v=>[v.id,v.fin-v.debut])),[['SU1',20],['SU2',5],['SU3',5]]);
+
   // 2 ter. c. NORD fait l'échange sur l'avion : avec une escale, son avion est déchargé puis chargé dans la même visite.
   const echange=fiche().locator('[data-at-champ=echange][data-cie=NORD]');
   assert.equal(await echange.isChecked(),false);
@@ -102,7 +109,7 @@ const UNITE=H=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
   const fichier=path.join(dossier,'sauvegarde.json');await d.saveAs(fichier);
   const sauve=JSON.parse(fs.readFileSync(fichier,'utf8')).contenu['ory-ateliers-v1'];
   const ha=(typeof sauve==='string'?JSON.parse(sauve):sauve).ateliers.find(a=>a.id==='ha');
-  assert.deepEqual([ha.vlDes,ha.volsVL,ha.quaiParVol,ha.echange],[{SUD:'10:00'},{SUD:2},{'*':3},['NORD']]);
+  assert.deepEqual([ha.vlDes,ha.volsVL,ha.quaiParVol,ha.echange,ha.dureesVL],[{SUD:'10:00'},{SUD:2},{'*':3},['NORD'],{SUD:5}]);
   await ouvrir();
   assert.equal(await fiche().locator('[data-at-champ=temps][data-map=volsVL][data-cie=SUD]').inputValue(),'2');
   assert.equal(await fiche().locator('[data-at-champ=echange][data-cie=NORD]').isChecked(),true);
@@ -115,6 +122,6 @@ const UNITE=H=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
   assert.deepEqual(['vl' in (await equipe()),'vlDes' in (await equipe())],[false,false]);
 
   assert.deepEqual(errors,[]);
-  console.log('handling-vagues-browser : ok — véhicule selon l’heure, vols par VL, quai par vol, échange sur l’avion, rechargement, sauvegarde');
+  console.log('handling-vagues-browser : ok — véhicule selon l’heure, vols par VL, quai par vol, échange sur l’avion, durées VL, rechargement, sauvegarde');
  }catch(e){console.error(e);process.exitCode=1;}finally{await browser.close();fs.rmSync(dossier,{recursive:true,force:true});}
 })();

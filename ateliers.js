@@ -154,8 +154,8 @@
     const out = {};
     if (a.handling24h === true) out.handling24h = true;
     // Par compagnie (« * » : les autres) : l'escale, la préparation et le vidage au quai, le déchargement ; le quai en plus
-    // par vol de plus dans une tournée (évolution 8).
-    for (const m of ['escale', 'quaiDepart', 'dechargement', 'quaiRetour', 'quaiParVol']) { const d = dureesDe(a, undefined, m); if (Object.keys(d).length) out[m] = d; }
+    // par vol de plus dans une tournée, charger et décharger en VL (évolution 8).
+    for (const m of ['escale', 'quaiDepart', 'dechargement', 'quaiRetour', 'quaiParVol', 'dureesVL', 'dechargementVL']) { const d = dureesDe(a, undefined, m); if (Object.keys(d).length) out[m] = d; }
     // Les vols qu'une tournée en VL sert au plus, par compagnie (évolution 8) ; sans valeur, comme en gros camion.
     const volsVL = Object.fromEntries(Object.entries(dureesDe(a, undefined, 'volsVL')).map(([k, v]) => [k, Math.max(1, Math.min(20, Math.round(v)))]));
     if (Object.keys(volsVL).length) out.volsVL = volsVL;
@@ -1191,7 +1191,7 @@
           return;
         }
         case 'duree-retirer':
-          return this.changer(() => { for (const m of ['durees', 'allers', 'retours', 'volsCamion', 'escale', 'quaiDepart', 'dechargement', 'quaiRetour', 'volsVL', 'quaiParVol']) if (a[m]) { const d = { ...a[m] }; delete d[data.cie]; a[m] = d; } },
+          return this.changer(() => { for (const m of ['durees', 'allers', 'retours', 'volsCamion', 'escale', 'quaiDepart', 'dechargement', 'quaiRetour', 'volsVL', 'quaiParVol', 'dureesVL', 'dechargementVL']) if (a[m]) { const d = { ...a[m] }; delete d[data.cie]; a[m] = d; } },
             'Durée retirée : ' + data.cie + ' prend la durée de toutes les compagnies.');
         case 'classe-supprimer': return this.supprimerClasse(data.classe);
         case 'classe-retablir':  return this.retablirClasse(data.classe);
@@ -2160,13 +2160,15 @@
       const calcules = h24 && ch.mode === 'calcules';
       // Les vagues (évolution 8) : les vols d'une tournée en VL, dès qu'une compagnie part en VL ; le quai par vol de plus,
       // dès qu'une tournée peut en servir plusieurs.
-      const avecVL = h24 && (vl.size > 0 || Object.keys(a.vlDes || {}).length > 0 || Object.keys(a.volsVL || {}).length > 0);
+      const avecVL = h24 && (vl.size > 0 || [a.vlDes, a.volsVL, a.dureesVL, a.dechargementVL].some(m => Object.keys(m || {}).length > 0));
       const plusDeUn = m => Object.values(m || {}).some(n => n > 1);
       const plusieurs = h24 && ((a.volsParCamion || 1) > 1 || plusDeUn(a.volsCamion) || plusDeUn(a.volsVL) || Object.keys(a.quaiParVol || {}).length > 0);
       const colonnes = [{ map: 'volsCamion', lib: 'Vols / camion', defaut: a.volsParCamion || 1, max: 10 }]
-        .concat(avecVL ? [{ map: 'volsVL', lib: 'Vols / VL', min: 1, max: 20, vide: 'camion' }] : [], [{ map: 'allers', lib: 'Aller piste' }, { map: 'durees', lib: 'Charger' }, { map: 'retours', lib: 'Retour unité' }])
+        .concat(avecVL ? [{ map: 'volsVL', lib: 'Vols / VL', min: 1, max: 20, vide: 'camion' }] : [], [{ map: 'allers', lib: 'Aller piste' }, { map: 'durees', lib: 'Charger' }],
+          avecVL ? [{ map: 'dureesVL', lib: 'Charger en VL', vide: 'camion' }] : [], [{ map: 'retours', lib: 'Retour unité' }])
         .concat(h24 ? [{ map: 'escale', lib: 'Escale', vide: 'aucune' }, { map: 'quaiDepart', lib: 'Quai départ' }] : [], plusieurs ? [{ map: 'quaiParVol', lib: 'Quai / vol en plus' }] : [],
-          h24 ? [{ map: 'dechargement', lib: 'Décharger', vide: '10 ; long : 30' }, { map: 'quaiRetour', lib: 'Quai retour' }] : []);
+          h24 ? [{ map: 'dechargement', lib: 'Décharger', vide: '10 ; long : 30' }] : [], avecVL ? [{ map: 'dechargementVL', lib: 'Décharger en VL', vide: 'camion' }] : [],
+          h24 ? [{ map: 'quaiRetour', lib: 'Quai retour' }] : []);
       return `
         <div class="at-sous-titre">Chargement des vols</div>
         <div class="mini-note at-regle">${h24 ? `Le handling travaille <b>24 h/24, en tournées</b> : une tournée prépare son camion au quai, va charger un ou plusieurs
@@ -2235,7 +2237,7 @@
           déchargement) ; quai départ : préparer le camion dans la CF départ ; quai retour : le vider du sale.
           Échange : chaque avion de la compagnie est déchargé puis chargé dans la même visite, quelle que soit son escale,
           chargé au plus tard à départ − la marge d’escale courte.
-          Vols / camion${avecVL ? ', vols / VL (vide : comme en gros camion)' : ''} : une tournée sert jusqu’à tant de départs de la compagnie qui se suivent
+          ${avecVL ? 'Charger, décharger en VL : un réajustement d’armoire peut être plus court (vide : comme en gros camion). ' : ''}Vols / camion${avecVL ? ', vols / VL (vide : comme en gros camion)' : ''} : une tournée sert jusqu’à tant de départs de la compagnie qui se suivent
           (une vague), chacun chargé avant sa limite${plusieurs ? ' ; quai / vol en plus : la préparation au quai, par vol de plus' : ''}.` : ''}</p>`;
     }
 

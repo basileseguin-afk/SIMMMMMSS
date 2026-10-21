@@ -5,6 +5,27 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-21 — Banc d'essai, évolution 8 (d) : handling 24 h/24, des durées par type de véhicule
+
+En VL, un réajustement d'armoire ne prend pas le temps d'un chargement
+complet.
+
+- Deux réglages par compagnie (« * » : les autres), `dureesVL` et
+  `dechargementVL` : charger et décharger un avion servi en VL. Sans eux,
+  les durées de la compagnie (`durees`, `dechargement`). La limite, l'escale
+  courte, l'échéance des commandes et le plan des chauffeurs suivent ces
+  durées.
+- Dans la fiche : les colonnes « Charger en VL » et « Décharger en VL », dès
+  qu'une compagnie part en VL. Excel : « Minutes par vol en VL » et
+  « Déchargement en VL (min) ». Banc : `equipes`.
+- Sans ces réglages, la journée est la même qu'avant.
+- Fichiers : `moteur/production.js`, `ateliers.js`, `echanges.js` et
+  `v2/echanges.js` (identiques), `index.html` et `v2/index.html`
+  (empreintes), `docs/BANC_ESSAI.md`, `docs/FORMATS_EXCEL.md`, `README.md`,
+  `tests/handling-vagues.test.cjs`, `tests/handling-vagues-browser.cjs`,
+  `tests/non-regression.test.cjs` (réglées sans le mode 24 h/24 : la même
+  journée).
+
 ## 2026-10-21 — Banc d'essai, évolution 8 (c) : handling 24 h/24, l'échange sur le même avion, par compagnie
 
 Les compagnies qui n'emportent que des repas équipage font un réajustement

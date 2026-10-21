@@ -839,14 +839,18 @@
    * départ − marge − chargement − aller − préparation au quai. En escale
    * courte, la même tournée décharge puis charge le même avion, et le vol doit
    * seulement être chargé `margeEscaleCourte` minutes avant son départ. De même
-   * pour chaque avion d'une compagnie de la liste `echange` (évolution 8).
+   * pour chaque avion d'une compagnie de la liste `echange` (évolution 8). En VL,
+   * le chargement et le déchargement prennent les durées VL de la compagnie
+   * (`dureesVL`, `dechargementVL`, « * » : les autres) quand elle en a.
    */
   function besoin24h(atelier, vol) {
     const r = reglages24h(atelier), cie = vol.cie;
     const depart = vol.std === undefined ? vol.heure : vol.std;
     const vehicule = vehiculeDe(atelier, cie, depart);
-    const charge = dureeHandling(atelier, cie) ?? 0, t = trajetHandling(atelier, cie), quai = quaiDepartDe(atelier, cie);
-    const arrivee = arriveeDe(atelier, vol), dech = dechargementDe(atelier, cie);
+    // En VL, les durées VL de la compagnie (évolution 8 : un réajustement d'armoire), sinon les siennes.
+    const enVL = champ => (vehicule === 'vl' ? parCompagnie(atelier, champ, cie) : null);
+    const charge = enVL('dureesVL') ?? dureeHandling(atelier, cie) ?? 0, t = trajetHandling(atelier, cie), quai = quaiDepartDe(atelier, cie);
+    const arrivee = arriveeDe(atelier, vol), dech = enVL('dechargementVL') ?? dechargementDe(atelier, cie);
     const dispo = arrivee == null ? null : arrivee + r.delaiArrivee;
     // L'échange sur le même avion : en escale courte, ou toujours pour une compagnie de la liste `echange`.
     const courte = dispo != null && (echangeDe(atelier, cie) || dispo + dech + charge > depart - r.margeDepart);

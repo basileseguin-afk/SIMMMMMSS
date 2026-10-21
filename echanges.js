@@ -890,7 +890,8 @@
   const COLONNES_24H = [['escale_min', 'escale'], ['preparation_au_quai_min', 'quaiDepart'], ['dechargement_min', 'dechargement'], ['vidage_au_quai_min', 'quaiRetour']];
   /** Ses tournées par vagues (banc d'essai de la version 1, évolution 8) : une colonne par réglage, écrite seulement si un handling l'a. */
   const COLONNES_VAGUES = [['VL à partir de', 'vl_a_partir_de', 'vlDes', 'heure'], ['Vols par VL', 'vols_par_vl', 'volsVL', 'vols'],
-    ['Quai par vol en plus (min)', 'quai_par_vol_en_plus_min', 'quaiParVol', 'minutes'], ['Échange sur l’avion', 'echange_sur_l_avion', 'echange', 'liste']];
+    ['Quai par vol en plus (min)', 'quai_par_vol_en_plus_min', 'quaiParVol', 'minutes'], ['Échange sur l’avion', 'echange_sur_l_avion', 'echange', 'liste'],
+    ['Minutes par vol en VL', 'minutes_par_vol_en_vl', 'dureesVL', 'minutes'], ['Déchargement en VL (min)', 'dechargement_en_vl_min', 'dechargementVL', 'minutes']];
   /** Ses réglages d'équipe : sans colonne dans le classeur, un import les garde tels qu'ils sont sur le site. */
   const REGLAGES_24H = ['handling24h', 'escale', 'quaiDepart', 'dechargement', 'quaiRetour', 'vl', 'entreAvions', 'dechargementsParTournee',
     'margeDepart', 'margeEscaleCourte', 'delaiArrivee', 'camionsVL', ...COLONNES_VAGUES.map(c => c[2])];
@@ -1082,6 +1083,8 @@
           '   cette heure, en gros camion avant.'] : []),
         ...(vagues.some(c => c[2] === 'volsVL' || c[2] === 'quaiParVol') ? ['   Vols par VL (handling 24 h/24, version 1) : comme Vols par camion, pour une tournée en VL (vide : comme en camion) ;',
           '   Quai par vol en plus (min) : la préparation au quai d’une tournée qui sert plusieurs vols, par vol de plus.'] : []),
+        ...(vagues.some(c => c[2] === 'dureesVL' || c[2] === 'dechargementVL') ? ['   Minutes par vol en VL, Déchargement en VL (min) (handling 24 h/24, version 1) : les durées d’un vol servi en VL',
+          '   (vide : celles de la compagnie).'] : []),
         ...(vagues.some(c => c[2] === 'echange') ? ['   Échange sur l’avion (handling 24 h/24, version 1) : oui, chaque avion de la compagnie est déchargé puis chargé dans',
           '   la même visite, quelle que soit son escale ; chargé au plus tard à départ − la marge d’escale courte.'] : []),
         'Chauffeurs : les créneaux du handling, le jour J (Début, Fin, nombre de chauffeurs). Un vol attend d’avoir ses chauffeurs libres.',
