@@ -11,6 +11,7 @@
  *
  *      node outils/simuler-periode.cjs sauvegarde.json vols-dates.csv|vols-dates.xlsx [options.json] > periode.json
  *          --sans-detail      sans le résultat complet de chaque journée (un fichier léger)
+ *          --xlsx periode.xlsx  écrit aussi le classeur de la période, celui de « Exporter les résultats »
  *
  *  Le résultat : { periode, bilan, journees: [{ date, departs, retours, options, resultat }] }.
  *  `options` d'une journée : celles qui la font rejouer seule par
@@ -23,9 +24,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const J = require('../moteur/journee.js');
 const PE = require('../moteur/periode.js');
+const T = require('../tableur.js');
+const E = require('../echanges.js');
 const { lireJson } = require('./simuler-journee.cjs');
 
-const USAGE = 'Usage : node outils/simuler-periode.cjs sauvegarde.json vols-dates.csv|vols-dates.xlsx [options.json] [--sans-detail] > periode.json';
+const USAGE = 'Usage : node outils/simuler-periode.cjs sauvegarde.json vols-dates.csv|vols-dates.xlsx [options.json] [--sans-detail] [--xlsx periode.xlsx] > periode.json';
 
 /** Joue la période : rend { periode, bilan, journees } (sans les journées avec `detail: false`). */
 async function simulerPeriode(cheminSauvegarde, cheminVols, cheminOptions, { detail = true } = {}) {
@@ -47,6 +50,14 @@ async function simulerPeriode(cheminSauvegarde, cheminVols, cheminOptions, { det
   };
 }
 
+/** Le classeur de la période : le même que la page écrit (echanges.js), pour les mêmes réglages. */
+function classeurDeLaPeriode(sortie, calculeLe = new Date()) {
+  const { delaiChargement, decalage, ...autres } = sortie.periode.options || {};
+  return T.ecrireClasseur(E.periodeVersClasseur({ periode: sortie.periode, bilan: sortie.bilan, journees: sortie._journees }, {
+    sauvegarde: sortie.periode.sauvegarde, vols: sortie.periode.vols, calculeLe,
+    reglages: { delaiChargement: J.delaiDe(sortie.periode.options || {}), decalage: +decalage || 0, ...autres } }));
+}
+
 /** Le JSON, écrit morceau par morceau : une période de deux mois tient en mémoire, pas forcément en une seule chaîne. */
 function ecrireJson(sortie, flux) {
   const { _journees, _vols, journees, ...tete } = sortie;
@@ -60,13 +71,20 @@ function ecrireJson(sortie, flux) {
 }
 
 if (require.main === module) {
-  const brut = process.argv.slice(2), drapeaux = brut.filter(a => a.startsWith('--')), fichiers = brut.filter(a => !a.startsWith('--'));
-  const inconnus = drapeaux.filter(d => d !== '--sans-detail');
-  if (inconnus.length || fichiers.length < 2 || fichiers.length > 3) { console.error(USAGE); process.exit(2); }
+  const brut = process.argv.slice(2), drapeaux = [], fichiers = [];
+  let xlsx = null;
+  for (let i = 0; i < brut.length; i++) {
+    if (brut[i] === '--xlsx') { xlsx = brut[++i] || ''; drapeaux.push('--xlsx'); }
+    else (brut[i].startsWith('--') ? drapeaux : fichiers).push(brut[i]);
+  }
+  const inconnus = drapeaux.filter(d => d !== '--sans-detail' && d !== '--xlsx');
+  if (inconnus.length || fichiers.length < 2 || fichiers.length > 3 || xlsx === '' || (xlsx && !/\.xlsx$/i.test(xlsx))) { console.error(USAGE); process.exit(2); }
   const debut = Date.now();
   simulerPeriode(fichiers[0], fichiers[1], fichiers[2], { detail: !drapeaux.includes('--sans-detail') })
     .then(sortie => {
+      if (xlsx) fs.writeFileSync(xlsx, classeurDeLaPeriode(sortie));
       ecrireJson(sortie, process.stdout);
+      if (xlsx) console.error('Classeur de la période : ' + xlsx + '.');
       const p = sortie.periode;
       for (const d of p.joursSansVol) console.error('Aucun vol le ' + PE.dateLongue(d) + ' : jour sans vol ou oubli ?');
       console.error('Période jouée : ' + p.jours + (p.jours > 1 ? ' journées' : ' journée') + ' de vols, du ' + PE.dateLongue(p.debut) + ' au ' + PE.dateLongue(p.fin)
@@ -75,4 +93,4 @@ if (require.main === module) {
     .catch(e => { console.error('Période non jouée : ' + e.message); process.exitCode = 1; });
 }
 
-module.exports = { simulerPeriode, ecrireJson };
+module.exports = { simulerPeriode, ecrireJson, classeurDeLaPeriode };

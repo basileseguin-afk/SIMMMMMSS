@@ -60,6 +60,7 @@
      *   recalculer()      — recalculer la journée affichée (son sale de la veille a pu changer)
      *   allerPage(id), notifier(texte)
      *   mesurer()         — la hauteur de l'en-tête a changé (le bandeau paraît, s'en va, s'agrandit)
+     *   exporter()        — le classeur Excel de la période simulée
      * } */
     constructor(a) {
       this.a = a; this.resultat = null; this.signature = null; this.calcul = null; this.erreur = null;
@@ -102,7 +103,7 @@
       let p;
       try { p = PE().creerPeriode(this.a.unite(), this.programme, this.a.options()); }
       catch (e) { this.erreur = e.message; this.rendre(); return; }
-      const c = this.calcul = { p, signature: this.a.signature() };
+      const c = this.calcul = { p, signature: this.a.signature(), reglages: this.a.options() };
       this.erreur = null;
       // Chaque pas joue une journée, puis rend la main : la page reste vivante, Annuler répond.
       const pas = () => {
@@ -112,6 +113,8 @@
         catch (e) { this.calcul = null; this.erreur = e.message; this.rendre(); return; }
         if (!p.fini) { this.rendreProgression(); setTimeout(pas, 0); return; }
         this.resultat = p.resultat(); this.signature = c.signature; this.calcul = null; this.ouverts.clear();
+        // Pour le Lisez-moi du classeur : les réglages du calcul, et quand il a été fait.
+        this.reglages = c.reglages; this.calculeLe = new Date();
         this.rendre(); this.a.recalculer();
         const r = this.resultat.periode;
         this.a.notifier('Période simulée : ' + r.jours + (r.jours > 1 ? ' journées' : ' journée') + ' de vols, ' + r.joursIncomplets.length
@@ -138,6 +141,7 @@
       const f = b.dataset.pv;
       if (f === 'lancer') this.lancer();
       else if (f === 'ouvrir') this.ouvrirJour(b.dataset.date);
+      else if (f === 'exporter') { if (this.a.exporter) this.a.exporter(); }
       else if (f === 'annuler') this.annuler();
       else if (f === 'voir') this.a.allerPage('j-periode');
       else if (f === 'precedent' || f === 'suivant') this.decaler(f === 'precedent' ? -1 : 1);
@@ -224,7 +228,8 @@
           le premier jour ou en fin de période — est montré, et sort des totaux et des moyennes. Passent d’un jour au suivant : le sale non lavé, le stock propre
           (boucle du matériel), et en « J+1 » les départs de la veille ; pas encore les lots non finis ni les retards.</p>
         <div class="pv-actions">${e === 'en-cours' ? '<button type="button" class="btn btn-sm" data-pv="annuler">Annuler</button>'
-          : `<button type="button" class="btn btn-sm${e === 'a-jour' ? '' : ' btn-play'}" data-pv="lancer">${e === 'jamais' ? 'Simuler la période' : 'Relancer la période'}</button>`}</div></div>`;
+          : `<button type="button" class="btn btn-sm${e === 'a-jour' ? '' : ' btn-play'}" data-pv="lancer">${e === 'jamais' ? 'Simuler la période' : 'Relancer la période'}</button>`}
+          ${e === 'a-jour' ? '<button type="button" class="btn btn-sm" data-pv="exporter">Exporter la période (Excel)</button>' : ''}</div></div>`;
       if (!r) { dessiner(box, tete); return; }
       const b = r.bilan, m = MESURES.find(x => x.id === this.mesure) || MESURES[0];
       const services = b.services.filter(s => b.joursTravail.some(w => w.services[s.id]));

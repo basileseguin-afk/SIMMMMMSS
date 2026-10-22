@@ -1231,6 +1231,7 @@ vérifie moins d'une seconde).
 ```sh
 node outils/simuler-periode.cjs sauvegarde.json vols-dates.csv|vols-dates.xlsx [options.json] > periode.json
 node outils/simuler-periode.cjs sauvegarde.json vols-dates.csv --sans-detail > periode-legere.json
+node outils/simuler-periode.cjs sauvegarde.json vols-dates.csv --sans-detail --xlsx periode.xlsx > periode-legere.json
 ```
 
 Les mêmes options que `outils/simuler-journee.cjs` (§ 1), sauf `volsVeille`
@@ -1242,7 +1243,8 @@ Les mêmes options que `outils/simuler-journee.cjs` (§ 1), sauf `volsVeille`
 | `bilan` | Le bilan par jour de travail, par mois et sur la période (ci-dessous) |
 | `journees` | Chaque journée de vols : `date`, `departs`, `retours`, `options` (celles qui la rejouent seule par `simuler-journee`, au champ près : le sale de la veille, le stock initial, les vols de la veille en « J+1 ») et son `resultat` complet |
 
-`--sans-detail` omet `journees`, pour un fichier léger. Un jour sans vol au
+`--sans-detail` omet `journees`, pour un fichier léger. `--xlsx periode.xlsx`
+écrit aussi le classeur de la période, le même que la page (ci-dessous). Un jour sans vol au
 milieu est signalé sur la sortie d'erreur, sans bloquer, ainsi que le temps de
 calcul ; un programme sans date est refusé (une journée :
 `simuler-journee`). Deux lancers donnent le même fichier.
@@ -1344,3 +1346,31 @@ sale saisi ; la page Période : jours incomplets, totaux et moyennes par mois,
 clic sur un jour, détail déplié ; de nouveau sans date, la page s'en va) ;
 `tests/onglets.test.cjs` (la page Période ne se montre qu'avec un programme
 daté).
+
+### L'export de la période
+
+Quand une période a été simulée et qu'elle est à jour, **« Exporter les
+résultats »** propose « La période, en Excel » ; « La journée affichée, en
+JSON » reste (à relancer, le choix de la période attend le nouveau calcul ;
+sans période, le bouton exporte la journée, comme avant). La page Période a
+aussi « Exporter la période (Excel) ». L'outil écrit le même classeur avec
+`--xlsx` : **un seul code d'écriture** (`echanges.js`, `periodeVersClasseur` ;
+`tableur.js` pour le fichier).
+
+Huit feuilles — Lisez-moi (la période, la sauvegarde, les réglages, la date du
+calcul, les définitions, l'avertissement de prototype), Période, Équipes,
+Compagnies, Lots, Vols, Plonge, Jours —, décrites colonne par colonne dans
+`FORMATS_EXCEL.md`, § 4. Les jours et les heures sont de vraies dates Excel,
+la veille comprise ; chaque feuille a sa ligne d'en-tête, des filtres et ses
+premières colonnes figées.
+
+Vérifications : `tests/periode-export.test.cjs` (les feuilles et leurs
+colonnes ; le Lisez-moi ; des dates Excel, la veille d'une équipe à J−1
+comprise ; les lignes = celles du bilan et de chaque journée ; relu par
+`tableur.js`, filtres et volets figés, le même fichier pour les mêmes
+données ; deux mois fictifs de 50 vols par jour écrits en moins de
+5 secondes) ; `tests/simuler-periode.test.cjs` (`--xlsx` : le classeur de la
+page, le même JSON) ; `tests/periode-browser.cjs` (le choix d'« Exporter les
+résultats », l'export de la page = celui de l'outil pour la sauvegarde de la
+page, la journée en JSON ; à relancer, le choix attend ; sans date, la
+journée comme avant).

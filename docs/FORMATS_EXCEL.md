@@ -9,6 +9,7 @@ classeur des horaires tiré de celui des ateliers :
 | **Horaires** | Équipes › Services et équipes › `⇩ Horaires` / `⇧ Importer` | l'heure et le jour de début de chaque case, seuls |
 | **Barème** | Équipes › Plus › Barème par service › `⇩ Temps de travail` / `⇧ Importer` (ou la fiche de chaque service) | heures de travail **par vol** (d'une personne), par service et par compagnie × classe ; rendement, poste |
 | **Vols** | Vols › Vols › `⇩ Exporter les vols (Excel)` / fichier à importer | départs et retours |
+| **Période** (résultats, version 1) | Résultats › Synthèse › `Exporter les résultats` › « La période, en Excel » ; `node outils/simuler-periode.cjs … --xlsx` | les résultats d'une période simulée, jour par jour ; à lire, pas à réimporter (§ 4) |
 
 Pour convertir des exports Winrest dans ces formats avec Claude, voir
 [`CONVERTISSEURS.md`](CONVERTISSEURS.md) (deux prompts prêts à l'emploi : vols et man-hours).
@@ -457,6 +458,44 @@ Feuille « Planche retour » (ou « Planche », « Retours », sinon la premièr
   entier ; l'import remplace la planche et s'annule.
 - La simulation ne la lit que si « Retours à la plonge » vaut `planche`
   (Simulation › Réglages de la simulation).
+
+## 4. Le classeur d'une période (résultats, version 1)
+
+Banc d'essai, évolution 10 (`BANC_ESSAI.md`, § 9). Quand une période a été
+simulée et qu'elle est à jour, **« Exporter les résultats »** propose « La
+période, en Excel » (la journée affichée reste en JSON) ; la page Période a
+aussi son bouton. `node outils/simuler-periode.cjs sauvegarde.json
+vols-dates.csv --xlsx periode.xlsx` écrit **le même classeur**, par le même
+code (`echanges.js`, `periodeVersClasseur`). Il se lit, il ne se réimporte pas.
+
+Toutes les feuilles de données ont une ligne d'en-tête figée, **des filtres**,
+et leurs premières colonnes figées. Les jours et les heures sont de **vraies
+dates Excel** (`jj/mm/aaaa`, `jj/mm/aaaa hh:mm`) : une heure de la veille d'une
+journée de vols porte la date de la veille (la cuisine à J−1 qui commence à
+20:00 : le 30/10 à 20:00 pour les vols du 31/10). Les durées sont en
+minutes ; « Heures sup » en minutes × personnes.
+
+| Feuille | Une ligne par | Colonnes |
+|---|---|---|
+| **Lisez-moi** | — | la période (premier et dernier jour, jours sans vol, jours de travail incomplets), la sauvegarde et le programme de vols, les réglages (délai de chargement, décalage, options de l'outil), la date du calcul, les définitions, l'avertissement de prototype |
+| **Période** | jour de travail × service, plus « Toute l'unité » ; puis, chaque mois et sur la période, le total et la moyenne par jour | `Ligne` (jour, total du mois, moyenne par jour du mois, total de la période, moyenne par jour de la période), `Jour de travail`, `Jour`, `Mois`, `Complet`, `Vols manquants`, `Jours complets`, `Service`, puis les mesures du bilan : `Personnes`, `Besoin exact (pers.)`, `Homme-minutes`, `Heures sup (min × pers.)`, `Renforts prêtés (min)`, `Renforts reçus (min)`, `Lots`, `Lots en retard`, `Commandes en retard`, `Retard max (min)`, `Vols chargés`, `Vols en retard`, `Chauffeurs camion`, `Chauffeurs VL`, `Borne basse chauffeurs`, `Heures sup chauffeurs (min)`, `Vols lavés`, `Encadrement` |
+| **Équipes** | jour de travail × équipe | `Jour de travail`, `Journée de vols`, `Jour complet`, `Service`, `Équipe`, `Type`, `Effectif` (calculé ou saisi), `Personnes`, `Homme-minutes`, `Besoin exact (pers.)`, `Début de poste`, `Fin de présence`, `Fin du travail`, `Travail (min)`, `Attente (min)`, `Pauses (min)`, `Heures sup (min × pers.)`, `Renforts prêtés (min)`, `Renforts reçus (min)`, `Lots`, `Lots en retard`, `Commandes en retard`, `Retard max (min)` |
+| **Compagnies** | jour de travail × service × compagnie | `Jour de travail`, `Jour complet`, `Service`, `Compagnie`, `Commandes`, `Vols`, `Passagers`, `Homme-minutes`, `Retard max (min)` |
+| **Lots** | lot de chaque journée de vols | `Journée de vols`, `Jour de travail`, `Service`, `Équipe`, `Commande`, `Début`, `Fin`, `Durée (min)`, `Attente (min)`, `Homme-minutes`, `Échéance`, `Marge (min)` (l'échéance moins la fin ; négative : en retard) |
+| **Vols** | vol de chaque journée, avec son chargement | `Journée de vols`, `Vol`, `Compagnie`, `Équipe`, `Départ`, `Commandes prêtes`, `Arrivée de l’avion`, `Début du déchargement`, `Fin du déchargement`, `Début du chargement`, `Fin du chargement`, `Véhicule`, `Tournée`, `Limite`, `Retard (min)`, `À l’heure`, `Cause` |
+| **Plonge** | vol lavé | `Journée de vols`, `Vol`, `Compagnie`, `Arrivée du sale`, `Équipe`, `Tunnel`, `Début`, `Fin`, `Attente (min)` |
+| **Jours** | journée de vols | `Journée de vols`, `Jour`, `Départs`, `Retours`, `Calcul abouti`, `Anomalies`, `Commandes`, `Commandes à l’heure`, `Commandes en retard`, `Commandes pas finies`, `Retard max (min)`, `Vols suivis`, `Vols chargés`, `Vols à l’heure`, `Retard vol max (min)`, `Homme-minutes`, `Sale de la veille (u)`, `Sale restant le soir (u)`, `Stock propre initial (u)`, `Stock propre le soir (u)`, `Plonge de nuit`, `Chauffeurs camion`, `Chauffeurs VL`, `Borne basse chauffeurs`, `Heures sup chauffeurs (min)` |
+
+- **Journée de vols** : le jour des vols. **Jour de travail** : le jour où
+  l'équipe travaille, le jour des vols + son jour. Un jour de travail
+  **incomplet** (une de ses journées de vols manque) est montré, `Complet` =
+  `non`, et sort des totaux et des moyennes.
+- Totaux et moyennes sur les jours complets : la moyenne est le total ÷ les
+  jours complets ; pour `Retard max`, le total est le plus haut et la moyenne
+  celle des retards max de chaque jour.
+- Les nombres sont arrondis au centième. L'archive n'est pas compressée :
+  deux mois fictifs de 50 vols par jour font environ 6 Mo ; un programme
+  réel, davantage (surtout la feuille Lots).
 
 ---
 

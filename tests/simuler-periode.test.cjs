@@ -1,9 +1,10 @@
-/* Banc d'essai, évolution 10 (c) — l'outil outils/simuler-periode.cjs : une
+/* Banc d'essai, évolution 10 (c et e) — l'outil outils/simuler-periode.cjs : une
  * sauvegarde et un programme daté (CSV ou classeur), les options de l'outil
  * d'une journée ; le JSON de la période (la période, le bilan, chaque
  * journée), `--sans-detail`. Chaque journée se rejoue seule par
  * outils/simuler-journee.cjs avec ses `options`, au champ près. Données
- * fictives : l'unité de la référence de non-régression. */
+ * fictives : l'unité de la référence de non-régression. `--xlsx` écrit le
+ * classeur de la période, celui de la page. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -78,6 +79,27 @@ test('un classeur daté (Départs / Retours) donne la même période que le CSV 
   assert.equal(xlsx.status, 0, xlsx.stderr);
   assert.deepEqual(JSON.parse(xlsx.stdout).bilan, JSON.parse(csv.stdout).bilan);
   assert.equal(lancer(f('sauvegarde.json'), f('vols-dates.csv')).stdout, lancer(f('sauvegarde.json'), f('vols-dates.csv')).stdout, 'déterministe');
+});
+
+test('--xlsx : le classeur de la période, celui de la page (echanges.js), et le même JSON', async () => {
+  const sortie = f('periode.xlsx');
+  const r = lancer(f('sauvegarde.json'), f('vols-dates.csv'), f('options.json'), '--xlsx', sortie, '--sans-detail');
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stderr, /Classeur de la période : .*periode\.xlsx\./);
+  assert.deepEqual(JSON.parse(r.stdout), JSON.parse(lancer(f('sauvegarde.json'), f('vols-dates.csv'), f('options.json'), '--sans-detail').stdout), 'le même JSON');
+  // Le classeur que la page écrit pour la même période (seule la date du calcul diffère).
+  const vols = UI.parseFlights(CSV, { eta: true, spmlParCabine: true, date: true });
+  const p = PE.depuisSauvegarde(S.sauvegarde, vols, S.options);
+  const attendu = await T.lireClasseur(T.ecrireClasseur(E.periodeVersClasseur(p, { sauvegarde: 'sauvegarde.json', vols: 'vols-dates.csv',
+    reglages: { delaiChargement: 45, decalage: 0 }, calculeLe: new Date() })));
+  const lu = await T.lireClasseur(fs.readFileSync(sortie));
+  const sansDate = c => c.map(x => ({ nom: x.nom, lignes: x.lignes.filter(l => !/^Calculée le /.test(String(l[0] || ''))) }));
+  assert.deepEqual(sansDate(lu), sansDate(attendu));
+  assert.deepEqual(lu.map(x => x.nom), ['Lisez-moi', 'Période', 'Équipes', 'Compagnies', 'Lots', 'Vols', 'Plonge', 'Jours']);
+  assert.ok(lu[0].lignes.some(l => /^Calculée le \d\d\/\d\d\/\d{4} à \d\d:\d\d\.$/.test(l[0])));
+  // Sans chemin, ou un autre format : l'usage.
+  assert.equal(lancer(f('sauvegarde.json'), f('vols-dates.csv'), '--xlsx').status, 2);
+  assert.equal(lancer(f('sauvegarde.json'), f('vols-dates.csv'), '--xlsx', f('periode.csv')).status, 2);
 });
 
 test('les refus : programme sans date, jour sans vol signalé, options et drapeaux inconnus', () => {

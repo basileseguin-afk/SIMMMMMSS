@@ -1139,7 +1139,7 @@ function elementsPalette(){
   geste('Problèmes',()=>{const b=document.getElementById('btn-problemes');if(b)b.click();},{ico:'alerte',indice:pb?pb+(pb>1?' problèmes':' problème'):'aucun',mots:'corriger completer'});
   const sombre=document.documentElement.dataset.theme==='sombre';
   geste(sombre?'Thème clair':'Thème sombre',()=>{const b=document.getElementById('btn-theme');if(b)b.click();},{ico:sombre?'soleil':'lune',mots:'theme couleurs affichage'});
-  geste('Exporter les résultats',()=>{allerPage('j-chiffres');const b=document.getElementById('btn-export');if(b)b.click();},{ico:'telecharger',indice:'Synthèse',mots:'json fichier'});
+  geste('Exporter les résultats',()=>{allerPage('j-chiffres');const b=document.getElementById('btn-export');if(b)b.click();},{ico:'telecharger',indice:'Synthèse',mots:'json fichier excel période'});
   geste('Raccourcis clavier',()=>OrlyPalette.raccourcis(),{ico:'clavier',indice:'?',mots:'touches aide'});
   out.push({groupe:'Pages',nom:'Accueil',ico:'unite',faire:()=>{allerPartie('accueil');ici();}});
   if(O)for(const p of O.PARTIES)for(const pg of O.pagesDe(p.id))if(pg)out.push({groupe:'Pages',nom:pg.nom,indice:p.nom,ico:pg.ico,faire:()=>vers(pg.id)});
@@ -1724,6 +1724,7 @@ function initPeriode(){
     recalculer:()=>{Sim.ateliers.rendre();if(Sim.vue)Sim.vue.recalculer();},
     allerPage,
     mesurer:majHauteurEntete,
+    exporter:exporterPeriode,
     notifier:toast
   });
   Sim.periode.rendre();
@@ -2048,7 +2049,7 @@ function initControles() {
   const bind = (id, fn) => document.getElementById(id).addEventListener('input', fn);
   bind('shift', e => { CFG.shift = +e.target.value; document.getElementById('shift-val').textContent = (e.target.value>0?'+':'') + e.target.value + ' min'; reset(); });
   document.getElementById('loadDelay').addEventListener('change',e=>{if(!e.target.checkValidity() || !e.target.value){e.target.value=CFG.loadDelay;toast('Délai attendu : 10 à 120 minutes');return;}CFG.loadDelay=+e.target.value;reset();});
-  document.getElementById('btn-export').addEventListener('click', exporter);
+  document.getElementById('btn-export').addEventListener('click', exporterResultats);
   document.getElementById('snap-a').addEventListener('click', () => capturer('A'));
   document.getElementById('snap-b').addEventListener('click', () => capturer('B'));
   document.getElementById('snap-clear').addEventListener('click', () => { snaps = {}; majCompare(); });
@@ -2232,6 +2233,54 @@ function exporterVols() {
  * qu'elle est calculée. Il se fait en local, par téléchargement — rien ne part
  * ailleurs. On y met les départs, les classes et le journal des lots : de quoi
  * refaire les comptes dans un tableur sans relancer le site. */
+/* « Exporter les résultats » (banc d'essai, évolution 10) : quand une période
+ * a été simulée, le bouton propose son classeur Excel (echanges.js, le même
+ * que l'outil écrit) ; la journée affichée reste en JSON. Sans période, il
+ * exporte la journée, comme avant. */
+function exporterResultats(){
+  const pe=Sim.periode;
+  if(!pe||!pe.resultat||!pe.description()){exporter();return;}
+  const m=document.getElementById('export-choix');
+  if(m&&!m.hidden)fermerChoixExport(true);else ouvrirChoixExport();
+}
+function ouvrirChoixExport(){
+  const b=document.getElementById('btn-export'),pe=Sim.periode,r=pe.resultat.periode,ok=pe.aJour();
+  let m=document.getElementById('export-choix');
+  if(!m){
+    m=document.createElement('div');m.id='export-choix';m.className='export-choix';m.setAttribute('role','menu');m.setAttribute('aria-label','Exporter les résultats');
+    b.parentNode.appendChild(m);
+    m.addEventListener('click',e=>{const x=e.target.closest('[data-export]');if(!x||x.disabled)return;fermerChoixExport(true);
+      if(x.dataset.export==='periode')exporterPeriode();else exporter();});
+    m.addEventListener('keydown',e=>{
+      const items=[...m.querySelectorAll('[data-export]:not(:disabled)')],i=items.indexOf(document.activeElement);
+      if(e.key==='Escape'){e.preventDefault();fermerChoixExport(true);}
+      else if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();const j=(i+(e.key==='ArrowDown'?1:-1)+items.length)%items.length;if(items[j])items[j].focus();}
+    });
+    document.addEventListener('click',e=>{if(!m.hidden&&!m.contains(e.target)&&!b.contains(e.target))fermerChoixExport(false);},true);
+    m.addEventListener('focusout',e=>{if(!m.hidden&&e.relatedTarget&&!m.contains(e.relatedTarget)&&e.relatedTarget!==b)fermerChoixExport(false);});
+  }
+  m.innerHTML=`<button type="button" role="menuitem" data-export="periode"${ok?'':' disabled'}><b>La période, en Excel</b><small>${ok
+      ?'Du '+OrlyPeriode.dateLongue(r.debut)+' au '+OrlyPeriode.dateLongue(r.fin)+' : chaque jour de travail, chaque équipe, chaque vol'
+      :'À relancer d’abord : un réglage ou les vols ont changé depuis le calcul'}</small></button>
+    <button type="button" role="menuitem" data-export="journee"><b>La journée affichée, en JSON</b><small>${Sim.jourVols?'Celle du '+OrlyPeriode.dateLongue(Sim.jourVols):'La journée calculée'}</small></button>`;
+  m.hidden=false;b.setAttribute('aria-haspopup','menu');b.setAttribute('aria-expanded','true');
+  m.querySelector('[data-export]:not(:disabled)').focus();
+}
+function fermerChoixExport(focus){
+  const m=document.getElementById('export-choix'),b=document.getElementById('btn-export');
+  if(!m||m.hidden)return;
+  m.hidden=true;b.setAttribute('aria-expanded','false');
+  if(focus)b.focus();
+}
+/** Le classeur de la période simulée : le même que `node outils/simuler-periode.cjs … --xlsx`. */
+function exporterPeriode(){
+  const pe=Sim.periode;if(!pe||!pe.resultat||!pe.aJour())return;
+  const r=pe.resultat,d=r.periode;
+  const octets=OrlyTableur.ecrireClasseur(OrlyEchanges.periodeVersClasseur(r,{sauvegarde:'l’unité enregistrée dans ce navigateur',vols:dataSource,
+    calculeLe:pe.calculeLe,reglages:pe.reglages||{delaiChargement:CFG.loadDelay,decalage:CFG.shift}}));
+  OrlyTableur.telecharger('ory-periode-'+d.debut+'-au-'+d.fin+'.xlsx',octets);
+  toast('Période exportée : du '+OrlyPeriode.dateLongue(d.debut)+' au '+OrlyPeriode.dateLongue(d.fin)+', en Excel.');
+}
 function exporter() {
   const r = (Sim.ateliers && Sim.ateliers.resultat) || null;
   const hh = t => t == null || !Number.isFinite(t) ? null : MoteurProduction.hhmm(t);

@@ -9,11 +9,15 @@
  *     au champ près, tant que rien n'a changé ; un réglage modifié la marque
  *     « à relancer », et la journée repart du sale de la veille saisi ;
  *   — la page Période : jours incomplets, totaux et moyennes par mois, un clic
- *     ouvre la journée, le détail par équipe et par compagnie se déplie.
+ *     ouvre la journée, le détail par équipe et par compagnie se déplie ;
+ *   — (e) « Exporter les résultats » propose le classeur de la période, le même
+ *     que celui de l'outil (--xlsx) ; la journée reste en JSON.
  * Données fictives ; aucune capture d'écran (le plan est confidentiel). */
 const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs'),os=require('node:os');
 const nav=require('./nav.cjs');
-const J=require('../moteur/journee.js'),PE=require('../moteur/periode.js'),UI=require('../ui-model.js');
+const J=require('../moteur/journee.js'),PE=require('../moteur/periode.js'),UI=require('../ui-model.js'),T=require('../tableur.js');
+const {spawnSync}=require('node:child_process');
+const OUTIL=path.join(__dirname,'..','outils','simuler-periode.cjs');
 const REF=require('./non-regression.attendu.json');
 const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
@@ -32,7 +36,7 @@ const parse=t=>UI.parseFlights(t,{eta:true,spmlParCabine:true,date:true});
 
 (async()=>{
  const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE_PATH?{executablePath:process.env.CHROMIUM_EXECUTABLE_PATH,args:['--no-sandbox','--disable-gpu','--disable-software-rasterizer','--no-zygote','--single-process']}:{})});
- const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
+ const page=await browser.newPage({viewport:{width:1440,height:1000},acceptDownloads:true}),errors=[];
  page.on('pageerror',e=>errors.push(e.message));
  const attendre=(ms=250)=>page.waitForTimeout(ms);
  const dossier=fs.mkdtempSync(path.join(os.tmpdir(),'ory-periode-page-'));
@@ -51,6 +55,7 @@ const parse=t=>UI.parseFlights(t,{eta:true,spmlParCabine:true,date:true});
  const verifier=async(d,entree,msg)=>{const j=await journee();assert.deepEqual(j.r,seule(j,d,entree),msg);return j;};
  const etat=()=>page.evaluate(()=>Sim.periode.etat());
  const pagesResultats=()=>page.evaluate(()=>OrlyOnglets.pagesDe('resultats').map(x=>x.id));
+ const telecharger=async fn=>{const [d]=await Promise.all([page.waitForEvent('download'),fn()]);const f=path.join(dossier,d.suggestedFilename());await d.saveAs(f);return f;};
  const finir=()=>page.waitForFunction(()=>Sim.periode.etat()==='a-jour',null,{timeout:60000});
  try{
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await attendre();
@@ -203,19 +208,59 @@ const parse=t=>UI.parseFlights(t,{eta:true,spmlParCabine:true,date:true});
   assert.equal(await etat(),'a-relancer');
   await page.locator('#loadDelay').fill('45');await page.locator('#loadDelay').dispatchEvent('change');await attendre(200);
   assert.equal(await etat(),'a-jour','revenu au même délai : la période calculée vaut de nouveau');
+
+  // 11. « Exporter les résultats » propose le classeur de la période ; la journée reste en JSON.
+  await nav.aller(page,'j-chiffres');
+  await page.locator('#btn-export').click();await attendre(100);
+  assert.equal(await page.locator('#export-choix').isVisible(),true);
+  assert.equal(await page.locator('#btn-export').getAttribute('aria-expanded'),'true');
+  assert.deepEqual(await page.locator('#export-choix [data-export]').evaluateAll(l=>l.map(x=>x.dataset.export)),['periode','journee']);
+  assert.equal(await page.evaluate(()=>document.activeElement.dataset.export),'periode');
+  await page.keyboard.press('Escape');await attendre(50);
+  assert.deepEqual(await page.evaluate(()=>[document.getElementById('export-choix').hidden,document.activeElement.id]),[true,'btn-export']);
+  await page.locator('#btn-export').click();await attendre(100);
+  const xlsx=await telecharger(()=>page.locator('#export-choix [data-export=periode]').click());
+  assert.equal(path.basename(xlsx),'ory-periode-2026-10-25-au-2026-11-13.xlsx');
+  const classeurPage=await T.lireClasseur(fs.readFileSync(xlsx));
+  assert.deepEqual(classeurPage.map(f=>f.nom),['Lisez-moi','Période','Équipes','Compagnies','Lots','Vols','Plonge','Jours']);
+  // Le même classeur que l'outil, pour la sauvegarde de la page et les mêmes vols (seuls la sauvegarde nommée et l'instant du calcul diffèrent).
+  const sv=fichier('unite-page.json',JSON.stringify((await journee()).sv)),sortie=path.join(dossier,'outil.xlsx');
+  const r=spawnSync(process.execPath,[OUTIL,sv,fichier('vols-dates.csv',CSV),'--sans-detail','--xlsx',sortie],{encoding:'utf8',maxBuffer:1<<28});
+  assert.equal(r.status,0,r.stderr);
+  const variable=c=>c.map(f=>({nom:f.nom,lignes:f.lignes.filter(l=>!/^(Calculée le|Sauvegarde) /.test(String(l[0]||'')))}));
+  assert.deepEqual(variable(classeurPage),variable(await T.lireClasseur(fs.readFileSync(sortie))),'l’export de la page = celui de l’outil');
+  assert.ok(classeurPage[0].lignes.some(l=>/^Sauvegarde : l’unité enregistrée dans ce navigateur ; programme de vols : vols-dates\.csv\.$/.test(l[0])));
+  // La journée affichée, en JSON, comme avant.
+  await page.locator('#btn-export').click();await attendre(100);
+  const jsonJour=await telecharger(()=>page.locator('#export-choix [data-export=journee]').click());
+  assert.equal(path.basename(jsonJour),'newrest-orly-journee.json');
+  assert.ok(JSON.parse(fs.readFileSync(jsonJour,'utf8')).journal.length>0);
+  // Sur la page Période aussi.
+  await nav.aller(page,'j-periode');
+  assert.match(path.basename(await telecharger(()=>page.locator('#journee-periode [data-pv=exporter]').click())),/^ory-periode-.*\.xlsx$/);
   // Des vols modifiés (un autre programme importé) : à relancer.
   await importer('vols-dates-2.csv',CSV.replace(/,NORD,GROS,DEP,06:10,/g,',NORD,GROS,DEP,06:20,'));
   assert.equal(await etat(),'a-relancer');
+  // À relancer : le classeur de la période attend le nouveau calcul.
+  await nav.aller(page,'j-chiffres');await page.locator('#btn-export').click();await attendre(100);
+  assert.equal(await page.locator('#export-choix [data-export=periode]').isDisabled(),true);
+  assert.match(await page.locator('#export-choix [data-export=periode]').innerText(),/À relancer d’abord/);
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('#journee-periode [data-pv=exporter]').count(),0);
 
-  // 11. De nouveau sans date : le bandeau et la page s'en vont (on était sur la Période : la Synthèse s'ouvre).
+  // 12. De nouveau sans date : le bandeau et la page s'en vont (on était sur la Période : la Synthèse s'ouvre).
   await nav.aller(page,'j-periode');
   await page.locator('#imp-vols').setInputFiles(fichier('vols-fictifs.csv',SANS_DATE));
   await page.waitForFunction(()=>document.getElementById('source-label').textContent==='vols-fictifs.csv');await attendre(200);
   assert.equal(await page.locator('#periode-bandeau').isHidden(),true);
   assert.ok(!(await pagesResultats()).includes('j-periode'));
   await verifier(null,null,'sans date : la journée d’aujourd’hui');
+  // Sans programme daté, « Exporter les résultats » exporte la journée, comme avant.
+  await nav.aller(page,'j-chiffres');
+  assert.equal(path.basename(await telecharger(()=>page.locator('#btn-export').click())),'newrest-orly-journee.json');
+  assert.equal(await page.locator('#export-choix').isVisible(),false);
 
   assert.deepEqual(errors,[]);
-  console.log('periode-browser : ok — sans date rien de nouveau ; sélecteur ; calcul par étapes et Annuler ; le bilan du moteur ; la veille de la période ; à relancer ; la page Période');
+  console.log('periode-browser : ok — sans date rien de nouveau ; sélecteur ; calcul par étapes et Annuler ; le bilan du moteur ; la veille de la période ; à relancer ; la page Période ; l’export de la période = celui de l’outil');
  }catch(e){console.error(e);process.exitCode=1;}finally{await browser.close();fs.rmSync(dossier,{recursive:true,force:true});}
 })();

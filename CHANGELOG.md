@@ -5,6 +5,32 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-22 — Banc d'essai, évolution 10 (e) : l'export des résultats d'une période
+
+- Quand une période a été simulée et qu'elle est à jour, **« Exporter les
+  résultats »** propose « La période, en Excel » ; « La journée affichée, en
+  JSON » reste. À relancer, le choix de la période attend le nouveau calcul ;
+  sans période, le bouton exporte la journée, comme avant. La page Période a
+  aussi « Exporter la période (Excel) ».
+- **Un seul code d'écriture** pour la page et l'outil : `periodeVersClasseur`
+  (`echanges.js`, partagé, copié dans `v2/` sans rien y changer d'autre) et
+  `tableur.js`. `node outils/simuler-periode.cjs … --xlsx periode.xlsx` écrit
+  le même classeur.
+- Huit feuilles : Lisez-moi (la période, la sauvegarde, les réglages, la date
+  du calcul, les définitions, l'avertissement de prototype), Période (jour de
+  travail × service, les mesures du bilan, totaux et moyennes par mois et sur
+  la période), Équipes, Compagnies, Lots, Vols, Plonge, Jours. De vraies dates
+  Excel (jour, jour et heure, la veille comprise), une ligne d'en-tête, des
+  filtres, les premières colonnes figées. Décrites dans
+  `docs/FORMATS_EXCEL.md`, § 4.
+- Fichiers : `echanges.js` et `v2/echanges.js`, `outils/simuler-periode.cjs`
+  (`--xlsx`), `sim.js` (le choix d'« Exporter les résultats »),
+  `periode-vue.js`, `periode.css`, `index.html`, `v2/index.html`
+  (empreinte), `docs/FORMATS_EXCEL.md` (§ 4), `docs/BANC_ESSAI.md` (§ 9),
+  `docs/CAHIER_DES_CHARGES.md` (M11), `README.md`,
+  `tests/periode-export.test.cjs` (nouveau), `tests/simuler-periode.test.cjs`,
+  `tests/periode-browser.cjs`.
+
 ## 2026-10-22 — Banc d'essai, évolution 10 (d) : la période dans la page
 
 - Avec un programme daté, **un bandeau en tête de chaque page** : la journée

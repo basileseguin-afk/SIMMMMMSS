@@ -1693,9 +1693,164 @@
     return out;
   }
 
+  /* ----------------------------------------------------------------------
+   *  LA PÉRIODE (banc d'essai de la version 1, évolution 10) : les résultats
+   *  d'une période simulée en un classeur. La page (« Exporter les
+   *  résultats ») et l'outil (outils/simuler-periode.cjs --xlsx) l'écrivent
+   *  par ce seul code. Les jours et les heures sont de vraies dates Excel (la
+   *  veille d'une journée de vols comprise) ; chaque feuille a sa ligne
+   *  d'en-tête, des filtres, ses premières colonnes figées.
+   * --------------------------------------------------------------------*/
+  const MESURES_PERIODE = [
+    ['personnes', 'Personnes', 'l’effectif des équipes'],
+    ['besoin', 'Besoin exact (pers.)', 'homme-minutes ÷ poste ÷ rendement pour une équipe à effectif calculé, ses personnes sinon (non arrondi)'],
+    ['hommeMinutes', 'Homme-minutes', 'le travail fait : la somme des homme-minutes des lots'],
+    ['heuresSup', 'Heures sup (min × pers.)', 'les heures supplémentaires en minutes × personnes, renforts en heures sup compris'],
+    ['renfortsPretes', 'Renforts prêtés (min)', 'les minutes prêtées à un autre service'],
+    ['renfortsRecus', 'Renforts reçus (min)', 'les minutes reçues d’un autre service'],
+    ['lots', 'Lots', 'les lots préparés'],
+    ['lotsEnRetard', 'Lots en retard', 'les lots finis après leur échéance'],
+    ['commandesEnRetard', 'Commandes en retard', 'les commandes finies après leur échéance, une fois par service'],
+    ['retardMax', 'Retard max (min)', 'le retard le plus long ; en moyenne, celle des retards max de chaque jour'],
+    ['volsCharges', 'Vols chargés', 'le handling : les vols chargés'],
+    ['volsEnRetard', 'Vols en retard', 'le handling : les vols chargés après leur limite'],
+    ['chauffeursCamion', 'Chauffeurs camion', 'le plan des chauffeurs du handling'],
+    ['chauffeursVL', 'Chauffeurs VL', 'le plan des chauffeurs du handling'],
+    ['borneBasse', 'Borne basse chauffeurs', 'le moins de chauffeurs possible'],
+    ['heuresSupChauffeurs', 'Heures sup chauffeurs (min)', 'les heures sup des chauffeurs'],
+    ['volsLaves', 'Vols lavés', 'la plonge : les vols lavés'],
+    ['encadrement', 'Encadrement', 'l’encadrement saisi du service, une fois par jour']
+  ];
+  const SEMAINE = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
+  const MOIS_FR = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+  const jourSemaine = d => SEMAINE[new Date(d + 'T12:00:00Z').getUTCDay()];
+  const dateFr = d => d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4);
+  const decalerJour = (d, k) => new Date(Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10) + k)).toISOString().slice(0, 10);
+  const n2 = x => (x == null || !Number.isFinite(+x) ? null : Math.round(+x * 100) / 100);
+  /** Une heure d'une journée de vols (minutes depuis son 00:00, négatives : la veille) : une vraie date Excel, jour et heure. */
+  const instantDe = (d, t) => (Number.isFinite(t) ? T.celluleDate(d, t) : null);
+
+  /**
+   * Le classeur d'une période. `p` : { periode, bilan, journees } — chaque
+   * journée avec sa `date`, ses `departs`, ses `retours` et son `extrait`
+   * (moteur/periode.js). `ctx` : { sauvegarde, vols (les noms des fichiers),
+   * reglages ({ delaiChargement, decalage, … }), calculeLe (une date) }.
+   */
+  function periodeVersClasseur(p, ctx = {}) {
+    const b = p.bilan, journees = p.journees || [], d = p.periode;
+    const nomService = new Map(b.services.map(x => [x.id, x.nom]));
+    const ns = id => nomService.get(id) || id;
+    const complet = new Map(b.joursTravail.map(w => [w.date, w.complet]));
+    const ouiNon = x => (x ? 'oui' : 'non');
+    const mesures = m => MESURES_PERIODE.map(([k]) => n2(m ? m[k] : null));
+
+    // Période : jour de travail × service, puis, chaque mois et sur la période, totaux et moyennes par jour (jours complets).
+    const periode = [['Ligne', 'Jour de travail', 'Jour', 'Mois', 'Complet', 'Vols manquants', 'Jours complets', 'Service', ...MESURES_PERIODE.map(m => m[1])]];
+    const services = w => b.services.filter(x => w.services[x.id]);
+    const cumul = (ligne, mois, c, moyenne) => {
+      const m = moyenne ? c.moyenne : c.total;
+      for (const x of b.services) if (m.services[x.id]) periode.push([ligne, null, null, mois, null, null, c.jours, x.nom, ...mesures(m.services[x.id])]);
+      periode.push([ligne, null, null, mois, null, null, c.jours, 'Toute l’unité', ...mesures(m)]);
+    };
+    for (const mo of b.mois) {
+      for (const w of b.joursTravail.filter(x => x.date.startsWith(mo.mois))) {
+        const tete = ['jour', T.celluleDate(w.date), jourSemaine(w.date), w.date.slice(0, 7), ouiNon(w.complet), w.manque.map(dateFr).join(', ') || null, null];
+        for (const x of services(w)) periode.push([...tete, x.nom, ...mesures(w.services[x.id])]);
+        periode.push([...tete, 'Toute l’unité', ...mesures(w.total)]);
+      }
+      cumul('total du mois', mo.mois, mo, false);
+      cumul('moyenne par jour du mois', mo.mois, mo, true);
+    }
+    cumul('total de la période', null, b.periode, false);
+    cumul('moyenne par jour de la période', null, b.periode, true);
+
+    // Équipes : jour de travail × équipe (chaque équipe au jour des vols + son jour).
+    const equipes = [['Jour de travail', 'Journée de vols', 'Jour complet', 'Service', 'Équipe', 'Type', 'Effectif', 'Personnes', 'Homme-minutes', 'Besoin exact (pers.)',
+      'Début de poste', 'Fin de présence', 'Fin du travail', 'Travail (min)', 'Attente (min)', 'Pauses (min)', 'Heures sup (min × pers.)',
+      'Renforts prêtés (min)', 'Renforts reçus (min)', 'Lots', 'Lots en retard', 'Commandes en retard', 'Retard max (min)']];
+    const lignesEquipes = [];
+    for (const j of journees) for (const e of j.extrait.equipes) {
+      const w = decalerJour(j.date, e.jour || 0);
+      lignesEquipes.push({ cle: [w, ns(e.service), e.nom, j.date], l: [T.celluleDate(w), T.celluleDate(j.date), ouiNon(complet.get(w)), ns(e.service), e.nom, TYPES_FR[e.type] || e.type,
+        e.calcule ? 'calculé' : 'saisi', e.personnes, n2(e.hommeMinutes), n2(e.besoin), instantDe(j.date, e.debutPoste), instantDe(j.date, e.finPresence), instantDe(j.date, e.fin),
+        n2(e.travail), n2(e.attente), n2(e.pauses), n2(e.heuresSup), n2(e.renfortsPretes), n2(e.renfortsRecus), e.lots, e.lotsEnRetard, e.commandesEnRetard.length, n2(e.retardMax)] });
+    }
+    const parCle = (x, y) => x.cle.reduce((r, v, i) => r || String(v).localeCompare(String(y.cle[i])), 0);
+    equipes.push(...lignesEquipes.sort(parCle).map(x => x.l));
+
+    // Compagnies : jour de travail × service × compagnie.
+    const compagnies = [['Jour de travail', 'Jour complet', 'Service', 'Compagnie', 'Commandes', 'Vols', 'Passagers', 'Homme-minutes', 'Retard max (min)']];
+    for (const w of b.joursTravail) for (const x of services(w)) for (const [cie, c] of Object.entries(w.services[x.id].compagnies || {}).sort((u, v) => u[0].localeCompare(v[0])))
+      compagnies.push([T.celluleDate(w.date), ouiNon(w.complet), x.nom, cie, c.commandes, c.vols, c.pax, n2(c.hommeMinutes), n2(c.retardMax)]);
+
+    // Lots, Vols, Plonge, Jours : chaque journée de vols, dans l'ordre.
+    const lots = [['Journée de vols', 'Jour de travail', 'Service', 'Équipe', 'Commande', 'Début', 'Fin', 'Durée (min)', 'Attente (min)', 'Homme-minutes', 'Échéance', 'Marge (min)']];
+    const vols = [['Journée de vols', 'Vol', 'Compagnie', 'Équipe', 'Départ', 'Commandes prêtes', 'Arrivée de l’avion', 'Début du déchargement', 'Fin du déchargement',
+      'Début du chargement', 'Fin du chargement', 'Véhicule', 'Tournée', 'Limite', 'Retard (min)', 'À l’heure', 'Cause']];
+    const plonge = [['Journée de vols', 'Vol', 'Compagnie', 'Arrivée du sale', 'Équipe', 'Tunnel', 'Début', 'Fin', 'Attente (min)']];
+    const jours = [['Journée de vols', 'Jour', 'Départs', 'Retours', 'Calcul abouti', 'Anomalies', 'Commandes', 'Commandes à l’heure', 'Commandes en retard', 'Commandes pas finies',
+      'Retard max (min)', 'Vols suivis', 'Vols chargés', 'Vols à l’heure', 'Retard vol max (min)', 'Homme-minutes', 'Sale de la veille (u)', 'Sale restant le soir (u)',
+      'Stock propre initial (u)', 'Stock propre le soir (u)', 'Plonge de nuit', 'Chauffeurs camion', 'Chauffeurs VL', 'Borne basse chauffeurs', 'Heures sup chauffeurs (min)']];
+    for (const j of journees) {
+      const x = j.extrait, eq = new Map(x.equipes.map(e => [e.id, e])), D = T.celluleDate(j.date);
+      const nomEq = id => (eq.get(id) || {}).nom || id;
+      for (const l of x.lots) {
+        const e = eq.get(l.equipe) || {};
+        lots.push([D, T.celluleDate(decalerJour(j.date, e.jour || 0)), ns(l.service), nomEq(l.equipe), l.commande, instantDe(j.date, l.debut), instantDe(j.date, l.fin),
+          n2(l.duree), n2(l.attente), n2(l.hommeMinutes), instantDe(j.date, l.echeance), n2(l.marge)]);
+      }
+      for (const v of x.vols) vols.push([D, v.id, v.cie, v.atelier ? nomEq(v.atelier) : null, instantDe(j.date, v.depart), instantDe(j.date, v.pret), instantDe(j.date, v.arrivee),
+        instantDe(j.date, v.dechargementDebut), instantDe(j.date, v.dechargementFin), instantDe(j.date, v.debut), instantDe(j.date, v.fin), v.vehicule, v.tournee,
+        instantDe(j.date, v.limite), n2(v.retard), ouiNon(v.aHeure), v.cause]);
+      for (const l of x.plonge) plonge.push([D, String(l.vol), l.cie, instantDe(j.date, l.arrivee), nomEq(l.equipe), l.tunnel, instantDe(j.date, l.debut), instantDe(j.date, l.fin), n2(l.attente)]);
+      const k = x.indicateurs, ch = x.chauffeurs, somme = f => (ch.length ? ch.reduce((n, c) => n + (+f(c) || 0), 0) : null);
+      jours.push([D, jourSemaine(j.date), j.departs, j.retours, ouiNon(x.ok), x.anomalies, k.commandes, k.aHeure, k.enRetard, k.pasFinies, n2(k.retardMax), k.vols, k.volsCharges,
+        k.volsAHeure, n2(k.retardVolMax), n2(k.hommeMinutes), n2(x.saleInitial), n2(x.saleFinal), n2(x.stockInitial), n2(x.stockPropre),
+        x.nuits.map(n => nomEq(n.equipe) + ' : ' + (n.ouverte ? 'ouverte' : 'fermée')).join(' ; ') || null,
+        somme(c => c.camion), somme(c => c.vl), somme(c => c.borneBasse), somme(c => c.heuresSup)]);
+    }
+
+    // Lisez-moi : la période, la sauvegarde, les réglages, la date du calcul, les définitions, l'avertissement.
+    const r = ctx.reglages || {}, { delaiChargement, decalage, ...autres } = r;
+    const le = ctx.calculeLe ? new Date(ctx.calculeLe) : null, deux = x => String(x).padStart(2, '0');
+    const liste = l => (l.length ? l.map(dateFr).join(', ') : 'aucun');
+    const lisez = lisezMoi('Période simulée du ' + dateFr(d.debut) + ' au ' + dateFr(d.fin) + ' — résultats (prototype)', [
+      'Période : ' + d.jours + (d.jours > 1 ? ' journées' : ' journée') + ' de vols, du ' + dateFr(d.debut) + ' au ' + dateFr(d.fin) + ' ; jours sans aucun vol : ' + liste(d.joursSansVol || []) + '.',
+      'Jours de travail incomplets (montrés, hors des totaux et des moyennes) : ' + liste(d.joursIncomplets || []) + '.',
+      'Sauvegarde : ' + (ctx.sauvegarde || '—') + ' ; programme de vols : ' + (ctx.vols || '—') + '.',
+      'Réglages : délai de chargement ' + (delaiChargement ?? 45) + ' min, décalage des horaires ' + (+decalage || 0) + ' min'
+        + (Object.keys(autres).length ? ', options ' + JSON.stringify(autres) : '') + '.',
+      'Calculée le ' + (le && !isNaN(le) ? deux(le.getDate()) + '/' + deux(le.getMonth() + 1) + '/' + le.getFullYear() + ' à ' + deux(le.getHours()) + ':' + deux(le.getMinutes()) : '—') + '.',
+      '',
+      'Les feuilles :',
+      '   Période — chaque jour de travail × service, les mesures du bilan, « Toute l’unité » ; chaque mois et sur la période, les totaux et les moyennes par jour.',
+      '   Équipes — chaque jour de travail × équipe : effectif, travail, horaires, heures sup, renforts, lots.',
+      '   Compagnies — chaque jour de travail × service × compagnie : commandes, vols, passagers, homme-minutes, retard max.',
+      '   Lots — chaque lot de chaque journée de vols : son équipe, sa commande, ses heures, son échéance et sa marge.',
+      '   Vols — chaque vol avec son chargement : commandes prêtes, arrivée de l’avion, déchargement, chargement, véhicule, tournée, retard.',
+      '   Plonge — chaque vol lavé : l’arrivée du sale, l’équipe, le tunnel, le début, la fin, l’attente.',
+      '   Jours — les indicateurs de chaque journée de vols : commandes à l’heure, retards, nuit de plonge, sale restant, plan des chauffeurs.',
+      '',
+      'Définitions :',
+      '   Journée de vols : le jour des vols. Jour de travail : le jour où l’équipe travaille, le jour des vols + son jour (la cuisine à J−2 des vols du 12',
+      '   travaille le 10). Un jour de travail est incomplet quand une de ses journées de vols manque (avant le premier jour, en fin de période).',
+      '   Les jours et les heures sont de vraies dates Excel : une heure de la veille d’une journée de vols porte la date de la veille.',
+      '   Totaux et moyennes : sur les jours de travail complets ; une moyenne est le total ÷ les jours complets.',
+      ...MESURES_PERIODE.map(([, nom, sens]) => '   ' + nom + ' : ' + sens + '.'),
+      '   Marge (min) : l’échéance moins la fin (négative : en retard). Effectif : calculé d’après le travail, ou saisi.',
+      '   Passent d’un jour au suivant : le sale non lavé, le stock propre (boucle du matériel), et en « J+1 » les départs de la veille ;',
+      '   pas encore les lots non finis, les retards ni les préparations d’avance.',
+      '',
+      'PROTOTYPE — barème non calibré : résultats de simulation, à lire comme un ordre de grandeur, pas comme une mesure.'
+    ]);
+    const feuille = (nom, lignes, figer) => ({ nom, lignes, filtres: true, figerColonnes: figer });
+    return [lisez, feuille('Période', periode, 2), feuille('Équipes', equipes, 2), feuille('Compagnies', compagnies, 1), feuille('Lots', lots, 1),
+      feuille('Vols', vols, 2), feuille('Plonge', plonge, 2), feuille('Jours', jours, 1)];
+  }
+
   const api = { codeService, plancheVersClasseur, classeurVersPlanche, baremeVersClasseur, classeurVersBareme, recapManMinutes, recapVersClasseur, classeurVersRecap,
     recapCasesVersClasseur, classeurVersRecapCases, volsVersClasseur, classeurVersVols,
-    ateliersVersClasseur, classeurVersAteliers, horairesVersClasseur, classeurVersHoraires, estClasseurHoraires, jourDe };
+    ateliersVersClasseur, classeurVersAteliers, horairesVersClasseur, classeurVersHoraires, estClasseurHoraires, jourDe, periodeVersClasseur, MESURES_PERIODE };
   if (enNode && module.exports) module.exports = api;
   else root.OrlyEchanges = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
