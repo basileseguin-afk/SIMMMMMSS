@@ -5,6 +5,21 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-22 — Banc d'essai, évolution 10 (c) : l'outil `outils/simuler-periode.cjs`
+
+- `node outils/simuler-periode.cjs sauvegarde.json vols-dates.csv|vols-dates.xlsx
+  [options.json] > periode.json`, avec les mêmes options que
+  `simuler-journee` : la période (début, fin, jours, jours sans vol, jours de
+  travail incomplets, options), le bilan, et chaque journée avec son résultat
+  complet et les options qui la font rejouer seule par `simuler-journee`, au
+  champ près. `--sans-detail` omet les journées. Le JSON s'écrit journée par
+  journée ; un jour sans vol et le temps de calcul vont sur la sortie
+  d'erreur. Le classeur de la période (`--xlsx`) arrive avec l'export de la
+  page (partie e).
+- Fichiers : `outils/simuler-periode.cjs` (nouveau), `outils/simuler-journee.cjs`
+  (son lecteur de JSON, partagé), `docs/BANC_ESSAI.md` (§ 9), `README.md`,
+  `tests/simuler-periode.test.cjs`.
+
 ## 2026-10-22 — Banc d'essai, évolution 10 (b) : le calcul d'une période, dans le moteur
 
 Rien ne passait d'un jour au suivant, sauf le sale de la veille saisi à la main

@@ -62,4 +62,4 @@ if (require.main === module) {
     .catch(e => { console.error('Journée non jouée : ' + e.message); process.exitCode = 1; });
 }
 
-module.exports = { simulerJournee };
+module.exports = { simulerJournee, lireJson };

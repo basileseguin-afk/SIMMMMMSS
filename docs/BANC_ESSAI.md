@@ -1226,6 +1226,27 @@ JSON de l'outil), de quoi la rejouer seule. Le calcul est déterministe : moins
 de 15 ms par journée fictive de 50 vols sous Node (`tests/periode.test.cjs`
 vérifie moins d'une seconde).
 
+### L'outil
+
+```sh
+node outils/simuler-periode.cjs sauvegarde.json vols-dates.csv|vols-dates.xlsx [options.json] > periode.json
+node outils/simuler-periode.cjs sauvegarde.json vols-dates.csv --sans-detail > periode-legere.json
+```
+
+Les mêmes options que `outils/simuler-journee.cjs` (§ 1), sauf `volsVeille`
+(la période trouve elle-même les vols de la veille). Le JSON rend :
+
+| Champ | Sens |
+| --- | --- |
+| `periode` | `debut`, `fin`, `jours` (les journées de vols), `joursSansVol`, `joursIncomplets` (les jours de travail), `options`, `sauvegarde` et `vols` (les noms des fichiers) |
+| `bilan` | Le bilan par jour de travail, par mois et sur la période (ci-dessous) |
+| `journees` | Chaque journée de vols : `date`, `departs`, `retours`, `options` (celles qui la rejouent seule par `simuler-journee`, au champ près : le sale de la veille, le stock initial, les vols de la veille en « J+1 ») et son `resultat` complet |
+
+`--sans-detail` omet `journees`, pour un fichier léger. Un jour sans vol au
+milieu est signalé sur la sortie d'erreur, sans bloquer, ainsi que le temps de
+calcul ; un programme sans date est refusé (une journée :
+`simuler-journee`). Deux lancers donnent le même fichier.
+
 ### Le bilan par jour de travail
 
 Chaque équipe d'une journée de vols compte **au jour des vols + son `jour`** :
@@ -1265,4 +1286,6 @@ journée avec ce que la veille lui laisse ; un vol non lavé le jour 1 lavé le
 jour 2, le stock propre au lendemain ; « J+1 » ; un jour sans vol au milieu ;
 le jour de travail de chaque équipe, les jours incomplets, la somme des
 homme-minutes ; les mesures ; le prorata d'un lot de deux compagnies ; pas à
-pas, le déterminisme et le temps de calcul).
+pas, le déterminisme et le temps de calcul) ; `tests/simuler-periode.test.cjs`
+(l'outil : le JSON, chaque journée rejouée seule par `simuler-journee` avec ses
+`options`, `--sans-detail`, le classeur daté, le déterminisme, les refus).
