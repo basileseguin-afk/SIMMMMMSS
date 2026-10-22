@@ -1845,8 +1845,9 @@
     return SOURCES_RETOURS.includes(s) ? s : 'programme';
   }
 
-  /** Ce que les vols retour ramènent de sale, et quand, selon la source choisie. */
-  function retoursDeVols(vols, materiel, tous) {
+  /** Ce que les vols retour ramènent de sale, et quand, selon la source choisie. En « J+1 », `departsVeille`
+   *  (une période, évolution 10 du banc d'essai) : les départs réels de la veille, au lieu de ceux du jour. */
+  function retoursDeVols(vols, materiel, tous, departsVeille) {
     const m = { ...MATERIEL_DEFAUT, ...(materiel || {}) };
     const unites = unitesDe(materiel);
     const out = [];
@@ -1859,7 +1860,7 @@
         pousser(v.id, v.cie, arrivee + m.delaiRetour, unitesDuVol(v, unites));
       }
     } else if (source === 'j1') {
-      for (const v of vols || []) {
+      for (const v of departsVeille || vols || []) {
         if (v.sens !== 'DEP') continue;
         const depart = v.std === undefined ? v.heure : v.std;
         pousser(v.id + ' (J-1)', v.cie, depart + m.delaiRetour, unitesDuVol(v, unites));
@@ -2499,9 +2500,14 @@
       return { parVol, avions, volsRetours, planche };
     })();
     /** Les retours à la plonge selon la règle choisie, sans les avions qu'un handling 24 h/24 décharge. */
+    // Une période (évolution 10), source « J+1 » : le sale du jour vient des départs réels de la veille, leur heure
+    // + 24 h + le délai ; sans eux (le premier jour, une journée seule), des départs du jour, comme avant.
+    const decharges24 = plan24 ? new Set(plan24.avions.map(x => x.v.id)) : null;
+    const departsVeille = Array.isArray(opts.departsVeille)
+      ? opts.departsVeille.filter(v => (v.sens || 'DEP') === 'DEP' && !(decharges24 && decharges24.has(v.id))) : null;
     const retoursStatiques = (materiel, tous) => (plan24
-      ? retoursDeVols(plan24.volsRetours, plan24.planche ? { ...(materiel || {}), planche: plan24.planche } : materiel, tous)
-      : retoursDeVols(opts.vols, materiel, tous));
+      ? retoursDeVols(plan24.volsRetours, plan24.planche ? { ...(materiel || {}), planche: plan24.planche } : materiel, tous, departsVeille)
+      : retoursDeVols(opts.vols, materiel, tous, departsVeille));
 
     // Une mise à disposition permanente n'a pas d'heure : elle ne doit pas
     // tirer le début de la journée en arrière.

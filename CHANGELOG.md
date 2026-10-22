@@ -5,6 +5,33 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-22 — Banc d'essai, évolution 10 (b) : le calcul d'une période, dans le moteur
+
+Rien ne passait d'un jour au suivant, sauf le sale de la veille saisi à la main
+; le banc enchaînait les journées hors du site.
+
+- `moteur/periode.js` joue un programme daté jour après jour, du premier au
+  dernier jour, chaque jour avec ses seuls vols et les mêmes réglages, par le
+  chemin de calcul d'une journée. Passent au lendemain : le sale non lavé
+  (`saleFinal` → `saleInitial`), le stock propre si la boucle du matériel est
+  active, et, en « J+1 », les départs réels de la veille (le moteur les reçoit
+  par `departsVeille`, l'outil d'une journée par l'option `volsVeille` ;
+  absents, rien ne change). Rien d'autre ne passe pour l'instant.
+- Chaque journée de la période est celle de `outils/simuler-journee.cjs` avec
+  ce que la veille lui laisse, champ par champ : elle porte les options qui la
+  rejouent seule.
+- Le bilan par jour de travail (chaque équipe au jour des vols + son `jour`),
+  par service, par équipe et par compagnie : personnes, besoin exact,
+  homme-minutes, heures sup, renforts, retards, handling, plonge,
+  encadrement ; un lot de plusieurs compagnies au prorata des minutes du
+  barème × vols. Les jours incomplets sont marqués et sortent des totaux et des
+  moyennes, par mois et sur la période.
+- Sans programme daté, tout reste comme avant.
+- Fichiers : `moteur/periode.js`, `moteur/production.js`, `moteur/journee.js`,
+  `index.html` et `v2/index.html` (empreintes), `docs/BANC_ESSAI.md` (§ 9),
+  `docs/CAHIER_DES_CHARGES.md` (M9, M11), `README.md`,
+  `tests/periode.test.cjs`.
+
 ## 2026-10-22 — Banc d'essai, évolution 10 (a) : le programme de vols daté, import et export
 
 Le programme de vols n'avait pas de date : deux mois de vols importés d'un coup

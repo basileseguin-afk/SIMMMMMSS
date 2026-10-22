@@ -1193,3 +1193,76 @@ lignes datées et non datées mêlées, date illisible ou doublon d'un même jou
 refusés, la ligne nommée ; le rapport de la période et le jour sans vol ; l'outil
 d'une journée) ; `tests/programme-date-browser.cjs` (le modèle daté, le rapport
 d'import, le refus, l'export).
+
+### Le calcul de la période
+
+`moteur/periode.js`, sans navigateur, que l'outil et la page appellent tous
+les deux. La période va du premier au dernier jour du programme ; chaque jour
+se joue dans l'ordre, avec les mêmes réglages et ses seuls vols (un jour sans
+vol aussi : il est joué, et ce qui reste passe). Chaque journée se calcule
+exactement comme une journée seule (`moteur/journee.js`), avec ce que la veille
+lui laisse :
+
+- **le sale non lavé** : le `saleFinal` du jour devient le `saleInitial` du
+  lendemain ; le premier jour part du sale de la veille saisi ;
+- **le matériel propre restant**, si la boucle du matériel est active : le
+  stock propre de fin de journée (`materiel.restePropre`) devient le stock
+  initial du lendemain ;
+- **avec la source de retours « J+1 »** : le sale du jour J vient des départs
+  réels de J−1 (leur heure + 24 h + le délai), et non plus des départs de J ;
+  le premier jour garde la règle d'aujourd'hui. Le moteur reçoit ces départs
+  par `departsVeille` (l'outil d'une journée, par l'option `volsVeille`) ;
+  sans eux, rien ne change.
+
+**Rien d'autre ne passe pour l'instant** : les lots non finis, les retards,
+les préparations d'avance. Ils se comptent dans le bilan du jour où ils
+manquent.
+
+Une journée de la période rend, champ par champ, ce que rend
+`outils/simuler-journee.cjs` pour ses vols avec le même `saleInitial` (et, si
+la boucle est active, le même stock initial ; en « J+1 », les vols de la
+veille) : chaque journée porte ces options (`entree`, et `options` dans le
+JSON de l'outil), de quoi la rejouer seule. Le calcul est déterministe : moins
+de 15 ms par journée fictive de 50 vols sous Node (`tests/periode.test.cjs`
+vérifie moins d'une seconde).
+
+### Le bilan par jour de travail
+
+Chaque équipe d'une journée de vols compte **au jour des vols + son `jour`** :
+la cuisine à J−2 des vols du 12 travaille le 10. Une plonge de nuit compte le
+jour où elle commence, comme aujourd'hui. Pour chaque jour de travail, par
+service, par équipe et par compagnie :
+
+| Mesure | Sens |
+| --- | --- |
+| `personnes` | L'effectif de l'équipe ce jour-là |
+| `besoin` | Le besoin exact : homme-minutes ÷ poste ÷ rendement pour une équipe à effectif calculé, ses personnes sinon (non arrondi) |
+| `hommeMinutes` | Le travail fait : la somme des homme-minutes de ses lots |
+| `heuresSup` | Les heures sup en minutes × personnes : `heuresSupPersonnes` + `renfortsHeuresSup` |
+| `renfortsPretes`, `renfortsRecus` | Les minutes de renfort prêtées et reçues (§ 5) |
+| `lots`, `lotsEnRetard` | Ses lots, et ceux finis après leur échéance |
+| `commandesEnRetard`, `retardMax` | Les commandes finies après leur échéance (une fois par service), et le retard le plus long |
+| `volsCharges`, `volsEnRetard`, `chauffeursCamion`, `chauffeursVL`, `borneBasse`, `heuresSupChauffeurs` | Le handling : vols chargés, en retard, chauffeurs du plan par type de véhicule, borne basse, heures sup des chauffeurs (§ 3, § 4) |
+| `volsLaves`, `nuits`, `saleSoir` | La plonge : vols lavés ; la nuit ouverte ou non (§ 6) ; le sale qui reste le soir |
+| `encadrement` | L'encadrement saisi du service, une fois par jour |
+
+**Par compagnie** (par service) : commandes, vols, passagers, homme-minutes et
+retard max. Un lot de plusieurs compagnies se répartit **au prorata des minutes
+du barème × vols** de chacune.
+
+**Un jour de travail est « incomplet »** quand une de ses journées de vols
+manque : avant le premier jour de vols (la cuisine à J−2 des premiers vols),
+et en fin de période (les derniers jours n'ont pas leurs vols de J+1 et J+2).
+Il est montré, marqué (`complet: false`, `manque` : les journées absentes), et
+**sort des totaux et des moyennes**. Totaux et moyennes par mois et sur la
+période, sur les jours complets seulement : les mesures s'additionnent (la
+moyenne : le total ÷ les jours complets), sauf `retardMax`, le plus haut (la
+moyenne : celle des retards max de chaque jour).
+
+Vérifications : `tests/periode.test.cjs` (une période d'un jour = la journée
+d'aujourd'hui ; chaque journée d'une période de 3 jours = l'outil d'une
+journée avec ce que la veille lui laisse ; un vol non lavé le jour 1 lavé le
+jour 2, le stock propre au lendemain ; « J+1 » ; un jour sans vol au milieu ;
+le jour de travail de chaque équipe, les jours incomplets, la somme des
+homme-minutes ; les mesures ; le prorata d'un lot de deux compagnies ; pas à
+pas, le déterminisme et le temps de calcul).

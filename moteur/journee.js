@@ -17,7 +17,7 @@
  *                   ({ schema: 'ory-sauvegarde', version: 1, contenu }),
  *                   relu et validé comme « Restaurer » le relit ;
  *      vols       — les vols du jour, tels que l'import les produit ;
- *      options    — { delaiChargement, decalage, modele, ateliers, equipes }.
+ *      options    — { delaiChargement, decalage, modele, ateliers, equipes, saleInitial, volsVeille, … }.
  *    argumentsDeLUnite(unite, vols, options) → args
  *      la même chose depuis un état déjà relu : celui de la page.
  *    jouer(args) → le résultat de `simuler`, les catégories déclarées.
@@ -264,7 +264,8 @@
    *   les zones du plan, les services du plan de base, le Centre des flux
    *   (null : les liens du plan de base) et le barème (null : celui du moteur).
    * @param vols les vols, déjà décalés
-   * @param options { delaiChargement }
+   * @param options { delaiChargement, volsVeille } — `volsVeille` : les vols de la veille (une période,
+   *   évolution 10), déjà décalés ; leurs départs donnent le sale du jour quand les retours viennent « J+1 ».
    */
   function argumentsDeLUnite(unite, vols, options) {
     const o = options || {};
@@ -296,7 +297,9 @@
       // L'ordre souple (correction 6) : la règle du modèle ; chaque équipe peut porter la sienne (`ordreSouple`).
       ...(r.ordreSouple ? { ordreSouple: r.ordreSouple } : {}),
       // Les cabines dont chaque service prépare les repas spéciaux (évolution 7) : seulement réglées.
-      ...(etat.spmlCabines ? { spmlCabines: etat.spmlCabines } : {})
+      ...(etat.spmlCabines ? { spmlCabines: etat.spmlCabines } : {}),
+      // Une journée d'une période (évolution 10) : les départs de la veille, d'où vient le sale en « J+1 ».
+      ...(Array.isArray(o.volsVeille) ? { departsVeille: o.volsVeille.filter(v => (v.sens || 'DEP') === 'DEP') } : {})
     };
   }
 
@@ -335,7 +338,7 @@
   /* Les règles de calcul que le banc peut forcer directement (`options.heuresSup`,
    * `options.renforts`, `options.ordreSouple`) : elles se fondent dans `ory-modele-v1`, comme `options.modele`. */
   const REGLES = ['heuresSup', 'renforts', 'ordreSouple'];
-  const CLES_OPTIONS = new Set(['delaiChargement', 'decalage', 'modele', 'ateliers', 'equipes', 'saleInitial', ...REGLES]);
+  const CLES_OPTIONS = new Set(['delaiChargement', 'decalage', 'modele', 'ateliers', 'equipes', 'saleInitial', 'volsVeille', ...REGLES]);
 
   /**
    * L'unité d'une sauvegarde : chaque partie validée comme « Restaurer » la
@@ -396,8 +399,12 @@
     const o = options || {};
     if (o.decalage !== undefined && !(Number.isInteger(+o.decalage) && +o.decalage >= -60 && +o.decalage <= 60))
       throw new Error('Décalage attendu : un nombre entier de -60 à 60 minutes.');
+    // Les vols de la veille (une période, évolution 10) : une liste de vols, comme l'import les rend.
+    if (o.volsVeille !== undefined && !(Array.isArray(o.volsVeille) && o.volsVeille.every(objet)))
+      throw new Error('option « volsVeille » : la liste des vols de la veille, comme l’import les rend.');
     const unite = uniteDeLaSauvegarde(sauvegarde, o);
-    return argumentsDeLUnite(unite, volsDecales(vols, o.decalage), { ...o, delaiChargement: delaiDe(o) });
+    return argumentsDeLUnite(unite, volsDecales(vols, o.decalage), { ...o, delaiChargement: delaiDe(o),
+      ...(o.volsVeille !== undefined ? { volsVeille: volsDecales(o.volsVeille, o.decalage) } : {}) });
   }
 
   /** La journée jouée : les noms des catégories déclarés (ils nomment les commandes), puis le calcul. */
@@ -431,7 +438,7 @@
     argumentsDeLaJournee, argumentsDeLUnite, uniteDeLaSauvegarde, jouer, volsDuFichier, volsDecales,
     servicesDeLUnite, liaisonsDeLUnite, fantomesDeLUnite, nomDeService, estRetire, reglagesDuModele, famillesDeLUnite,
     classesDuProgramme, synchroniser, lotsAtelier, effectifConstant, effectifImpose, parVols,
-    servicesCalcules, servicesImposes, CONSTANTS, NOMS_CONSTANTS, DELAI_CHARGEMENT
+    servicesCalcules, servicesImposes, CONSTANTS, NOMS_CONSTANTS, DELAI_CHARGEMENT, delaiDe, fondre
   };
   if (enNode) module.exports = api;
   else root.OrlyJournee = api;
