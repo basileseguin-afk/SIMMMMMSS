@@ -127,7 +127,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 
 @media(max-width:1250px){ .app{grid-template-columns:260px 1fr 290px} }
 </style>
-<meta name="ory-version" content="64f0e029f4"/>
+<meta name="ory-version" content="cd34905079"/>
 <link href="interface.css?v=a79339df" rel="stylesheet"/><link href="editor.css?v=7c30f1f7" rel="stylesheet"/><link href="flow-center.css?v=62899a0b" rel="stylesheet"/><link href="ateliers.css?v=2da0c40c" rel="stylesheet"/>
 <link href="reglages.css?v=492a7bab" rel="stylesheet"/><link href="demarrage.css?v=9ef1de69" rel="stylesheet"/><link href="aide.css?v=6dc5aec0" rel="stylesheet"/><link href="usability.css?v=d05639c8" rel="stylesheet"/><link href="graphe.css?v=c6498078" rel="stylesheet"/><link href="histoire.css?v=768c5f75" rel="stylesheet"/><link href="temps.css?v=5b7080b2" rel="stylesheet"/><link href="unite.css?v=0de0aee2" rel="stylesheet"/><link href="ds.css?v=10e3eb8c" rel="stylesheet"/></head>
 <body data-vue="plan"><a class="skip-link" href="#workspace">Aller au contenu</a>
@@ -234,7 +234,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <h3>Votre programme de vols</h3>
 <div class="champ"><span>Importer vos vols (Excel ou CSV)</span><label class="btn fichier-btn"><input accept=".xlsx,.csv" aria-label="Importer le programme de vols, Excel ou CSV" class="fichier-input" id="imp-vols" type="file"/>Choisir un fichier…</label></div>
 <details class="aide bloc"><summary>Format attendu</summary><span class="aide-corps"><p>Excel : une feuille « Départs » (heure_std) et une feuille « Retours » (heure_sta) ; colonnes vol_id, compagnie, type_avion, nb_BC, nb_PC, nb_YC, nb_CREW, nb_SPML.</p><p>CSV : une seule table, avec une colonne « sens » (DEP ou RET).</p><p>Le plus simple : exportez le programme actuel, modifiez-le, réimportez-le. L’export Winrest et ses lignes de prestations ne sont pas encore lus.</p></span></details>
-<div class="row-btns"><button class="btn" id="exp-vols"><span data-ico="telecharger"></span>Exporter les vols (Excel)</button><button class="btn" id="csv-template">Modèle CSV</button><button class="btn" id="restore-demo">Revenir aux vols d’exemple</button></div><div aria-live="polite" class="import-report" id="import-report" role="status">Aucun fichier importé.</div></div><div class="panneau">
+<div class="row-btns"><button class="btn" id="exp-vols"><span data-ico="telecharger"></span>Exporter les vols (Excel)</button><button class="btn" id="csv-template">Modèle CSV</button><button class="btn" id="csv-template-date" title="Un programme sur deux jours fictifs, avec la colonne date">Modèle CSV daté</button><button class="btn" id="restore-demo">Revenir aux vols d’exemple</button></div><div aria-live="polite" class="import-report" id="import-report" role="status">Aucun fichier importé.</div></div><div class="panneau">
 <h3>Sauvegarder tout votre travail</h3>
 <div class="mini-note">Tout vit <strong>dans ce navigateur</strong> — exportez pour ne rien perdre.<details class="aide"><summary aria-label="Où vivent vos données ?">?</summary><span class="aide-corps">Le plan, les ateliers de travail, les flux et les vols disparaissent si vous videz vos données de site, et ils ne suivent pas d’un appareil à l’autre. Un seul fichier les réunit tous.</span></details></div>
 <div class="row-btns"><button class="btn" id="sauvegarde-export"><span data-ico="telecharger"></span>Tout sauvegarder</button><button class="btn" id="sauvegarde-import-btn"><span data-ico="importer"></span>Restaurer</button><input accept=".json" hidden="" id="sauvegarde-import" type="file"/></div>
@@ -253,24 +253,24 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <script src="problemes.js?v=f8dc7772"></script>
 <script src="notifications.js?v=c02682a3"></script>
 <script src="icones.js?v=a3450299"></script>
-<script src="ui-model.js?v=e9d72ef1"></script>
+<script src="ui-model.js?v=73d18d7f"></script>
 <script src="moteur/noyau.js?v=5b2122e2"></script>
 <script src="moteur/production.js?v=e2f46911"></script>
 <script src="plan-editor.js?v=5dd59f80"></script>
 <script src="flow-center.js?v=d404dcd9"></script>
-<script src="tableur.js?v=d7003370"></script>
+<script src="tableur.js?v=7fa2b57a"></script>
 <script src="graphe.js?v=d58b9826"></script>
 <script src="parcours.js?v=007c137c"></script>
-<script src="echanges.js?v=00d72bca"></script>
+<script src="echanges.js?v=03db9ca9"></script>
 <script src="ateliers.js?v=5d937f36"></script>
 <script src="reglages.js?v=720364e1"></script>
-<script src="moteur/journee.js?v=fbefdb4a"></script>
+<script src="moteur/journee.js?v=35bbe1b5"></script><script src="moteur/periode.js?v=069d7a94"></script>
 <script src="unite.js?v=d4b6c17b"></script>
 <script src="demarrage.js?v=7c44dc7e"></script>
 <script src="temps.js?v=e2f675cd"></script>
 <script src="replay.js?v=016adb42"></script>
 <script src="simulation.js?v=8d2f509a"></script>
 <script src="comparaison.js?v=390e35e8"></script>
-<script src="sim.js?v=b2da41cc"></script>
+<script src="sim.js?v=aacd4fb8"></script>
 </body>
 </html>

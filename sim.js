@@ -2164,7 +2164,10 @@ async function importVols(e) {
     const data=await OrlyJournee.volsDuFichier(file,f=>new Promise((ok,ko)=>{const rd=new FileReader();rd.onload=()=>ok(rd.result);
       rd.onerror=()=>ko(new Error('Lecture du fichier impossible. Aucune donnée remplacée.'));rd.readAsText(f);}));
     Sim.dataCourante=data;dataSource=file.name;snaps={};majCompare();reset(data);updateSource();
-    report.classList.remove('error');report.textContent=data.length+' lignes importées. '+data.filter(f=>f.sens==='DEP').length+' départs et '+data.filter(f=>f.sens==='RET').length+' retours.';
+    // Un programme daté (évolution 10) : la période qu'il couvre, les vols de chaque jour, un jour sans vol signalé.
+    const periode=OrlyPeriode.decrire(data);
+    report.classList.remove('error');report.textContent=data.length+' lignes importées. '+data.filter(f=>f.sens==='DEP').length+' départs et '+data.filter(f=>f.sens==='RET').length+' retours.'
+      +(periode?'\n'+OrlyPeriode.texteDuProgramme(periode).join('\n'):'');
   } catch(err){fail(err.message);}
   finally{e.target.value='';}
 }
@@ -2705,6 +2708,13 @@ function initWorkbench() {
   document.getElementById('csv-template').addEventListener('click',()=>{
     const content='vol_id,compagnie,type_avion,sens,heure_std,heure_sta,nb_BC,nb_PC,nb_YC,nb_CREW,nb_SPML\nDEMO001,DEMO,A320,DEP,12:00,,0,0,100,4,3\nDEMO-RET001,DEMO,A320,RET,,08:00,0,0,100,4,0\n';
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type:'text/csv;charset=utf-8'}));a.download='modele-vols-demo.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  });
+  // Le modèle daté (évolution 10) : deux jours fictifs, la date en première colonne.
+  document.getElementById('csv-template-date').addEventListener('click',()=>{
+    const content='date,vol_id,compagnie,type_avion,sens,heure_std,heure_sta,nb_BC,nb_PC,nb_YC,nb_CREW,nb_SPML\n'
+      +'2026-11-02,DEMO001,DEMO,A320,DEP,12:00,,0,0,100,4,3\n2026-11-02,DEMO-RET001,DEMO,A320,RET,,08:00,0,0,100,4,0\n'
+      +'2026-11-03,DEMO001,DEMO,A320,DEP,12:00,,0,0,90,4,2\n2026-11-03,DEMO-RET001,DEMO,A320,RET,,08:00,0,0,100,4,0\n';
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type:'text/csv;charset=utf-8'}));a.download='modele-vols-dates.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
   });
   document.getElementById('restore-demo').addEventListener('click',async()=>{
     if(dataSource!=='Jeu de démonstration'&&!await OrlyNotif.demander('Les vols importés et les scénarios capturés seront remplacés par le jeu de démonstration.',

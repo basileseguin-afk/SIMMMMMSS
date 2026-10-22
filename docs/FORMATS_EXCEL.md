@@ -400,6 +400,24 @@ confondues). Elles disent quels services préparent les SPML d'un vol (« Repas
 spéciaux par cabine », dans les Réglages de la simulation). L'export ne les
 écrit que si un vol a ce détail, après `nb_SPML`. La version 2 les ignore.
 
+Colonne facultative **`date`** (feuilles « Départs » et « Retours », feuille
+unique avec `sens`, ou CSV ; version 1, banc d'essai, évolution 10 —
+[`BANC_ESSAI.md`](BANC_ESSAI.md), § 9) : le jour du vol, celui de son
+`heure_std` pour un départ, de son `heure_sta` pour un retour. Elle s'écrit
+`AAAA-MM-JJ`, `JJ/MM/AAAA` (`JJ/MM/AA` : 20AA) ou en date Excel, comme dans le
+classeur de calage de la version 2. `heure_eta` garde sa règle : plus tard que
+`heure_std` sur l'horloge, c'est la veille du jour du départ. Remplie, le
+programme est **daté** : chaque vol a sa date, et la période va de son premier à
+son dernier jour ; une ligne sans date parmi des lignes datées, ou une date
+illisible (`31/02/2026`), et rien n'est importé — le message nomme la ligne (et
+la feuille). Le même vol (même `vol_id`, même sens) revient d'un jour à l'autre
+; le même jour, c'est un doublon. Vide partout, ou absente : une seule journée,
+comme avant. L'export l'écrit en **première colonne**, en vraie date Excel,
+quand le programme est daté ; exporté puis réimporté, le programme est le même.
+Le rapport d'import décrit la période : premier et dernier jour, nombre de
+jours, vols par jour, et chaque jour sans aucun vol au milieu (« aucun vol le
+15/08 : jour sans vol ou oubli ? »), sans bloquer. La version 2 l'ignore.
+
 ### En CSV
 
 Une seule table, avec une colonne `sens` (`DEP` ou `RET`) :
@@ -408,6 +426,16 @@ Une seule table, avec une colonne `sens` (`DEP` ou `RET`) :
 vol_id,compagnie,type_avion,sens,heure_std,heure_sta,nb_BC,nb_PC,nb_YC,nb_CREW,nb_SPML
 DEMO001,DEMO,A320,DEP,12:00,,0,0,100,4,3
 DEMO-RET001,DEMO,A320,RET,,08:00,0,0,100,4,0
+```
+
+Daté (« Modèle CSV daté », deux jours fictifs) :
+
+```csv
+date,vol_id,compagnie,type_avion,sens,heure_std,heure_sta,nb_BC,nb_PC,nb_YC,nb_CREW,nb_SPML
+2026-11-02,DEMO001,DEMO,A320,DEP,12:00,,0,0,100,4,3
+2026-11-02,DEMO-RET001,DEMO,A320,RET,,08:00,0,0,100,4,0
+2026-11-03,DEMO001,DEMO,A320,DEP,12:00,,0,0,90,4,2
+2026-11-03,DEMO-RET001,DEMO,A320,RET,,08:00,0,0,100,4,0
 ```
 
 **L'import remplace le programme entier** et efface les scénarios A/B capturés.

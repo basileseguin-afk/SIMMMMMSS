@@ -39,10 +39,15 @@ async function simulerJournee(cheminSauvegarde, cheminVols, cheminOptions, { arg
   let vols;
   try { vols = await J.volsDuFichier(new File([fs.readFileSync(cheminVols)], path.basename(cheminVols))); }
   catch (e) { throw new Error('vols : ' + e.message); }
+  // Un programme daté (évolution 10) : d'un seul jour, il se joue comme une journée ; de plusieurs, c'est une période.
+  const dates = [...new Set(vols.filter(v => v.date).map(v => v.date))].sort();
+  if (dates.length > 1) throw new Error('vols : programme daté sur ' + dates.length + ' jours (du ' + dates[0] + ' au ' + dates[dates.length - 1]
+    + ') ; une journée se joue avec les vols d’un seul jour. Pour la période : node outils/simuler-periode.cjs.');
+  if (dates.length) vols = vols.map(({ date, ...v }) => v);
   const args = J.argumentsDeLaJournee(sauvegarde, vols, options);
   if (seulementArguments) return args;
   return {
-    journee: { schema: 'ory-journee', version: 1, sauvegarde: path.basename(cheminSauvegarde), vols: path.basename(cheminVols),
+    journee: { schema: 'ory-journee', version: 1, sauvegarde: path.basename(cheminSauvegarde), vols: path.basename(cheminVols), ...(dates.length ? { date: dates[0] } : {}),
       departs: vols.filter(v => v.sens === 'DEP').length, retours: vols.filter(v => v.sens === 'RET').length, options },
     resultat: J.jouer(args)
   };

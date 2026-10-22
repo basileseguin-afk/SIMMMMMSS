@@ -684,12 +684,14 @@
     const eta = vols.some(v => v.sens === 'DEP' && Number.isFinite(v.eta));
     // Les repas spéciaux par cabine (banc d'essai de la version 1) : leurs colonnes n'existent que si un vol les a.
     const cab = vols.some(v => v.spmlParCabine), CAB_SPML = ['BC', 'PC', 'YC'];
-    const ligne = (v, sens) => [v.id, v.cie, v.avion && v.avion !== '—' ? v.avion : null,
+    // Le programme daté (banc d'essai de la version 1, évolution 10) : la date du vol, en première colonne, une vraie date Excel.
+    const datee = vols.some(v => v.date);
+    const ligne = (v, sens) => [...(datee ? [T.celluleDate(v.date)] : []), v.id, v.cie, v.avion && v.avion !== '—' ? v.avion : null,
       sens === 'DEP' ? (Number.isFinite(v.std) ? hh(v.std) : null) : (Number.isFinite(v.sta) ? hh(v.sta) : null),
       ...(eta && sens === 'DEP' ? [Number.isFinite(v.eta) ? hh(((v.eta % 1440) + 1440) % 1440) : null] : []),
       v.bc || 0, v.pc || 0, v.yc || 0, v.crew || 0, v.spml || 0,
       ...(cab ? CAB_SPML.map(c => (v.spmlParCabine && v.spmlParCabine[c] !== undefined ? v.spmlParCabine[c] : null)) : [])];
-    const tete = (h, e) => ['vol_id', 'compagnie', 'type_avion', h, ...(e ? ['heure_eta'] : []), 'nb_BC', 'nb_PC', 'nb_YC', 'nb_CREW', 'nb_SPML',
+    const tete = (h, e) => [...(datee ? ['date'] : []), 'vol_id', 'compagnie', 'type_avion', h, ...(e ? ['heure_eta'] : []), 'nb_BC', 'nb_PC', 'nb_YC', 'nb_CREW', 'nb_SPML',
       ...(cab ? CAB_SPML.map(c => 'nb_SPML_' + c) : [])];
     return [
       { nom: 'Départs', lignes: [tete('heure_std', eta), ...vols.filter(v => v.sens === 'DEP').map(v => ligne(v, 'DEP'))] },
@@ -698,6 +700,8 @@
         'Feuille « Départs » : un vol qui part, avec son heure de départ (heure_std) et ses quantités par classe.',
         ...(eta ? ['   heure_eta (facultative) : l’arrivée estimée de son avion ; plus tard que heure_std sur l’horloge, c’est la veille.'] : []),
         'Feuille « Retours » : un vol qui revient, avec son heure d’arrivée (heure_sta). Il ramène du matériel à laver.',
+        ...(datee ? ['Colonne date (programme daté, version 1) : le jour du vol, celui de son heure_std pour un départ, de son heure_sta pour',
+          '   un retour ; AAAA-MM-JJ, JJ/MM/AAAA ou une date Excel. Remplie, chaque vol a la sienne ; sans elle, une seule journée.'] : []),
         'Heures en HH:MM. Quantités entières. nb_CREW et nb_SPML sont facultatifs.',
         ...(cab ? ['   nb_SPML_BC, nb_SPML_PC, nb_SPML_YC (facultatives) : les repas spéciaux de chaque cabine ; nb_SPML vide vaut leur somme.'] : []),
         'Chaque départ crée ou nourrit une compagnie × classe (AF/BC, AF/YC…) : c’est l’unité fabriquée.',
@@ -708,12 +712,13 @@
   }
 
   /** Les vols d'un classeur. `options` : celles de `parseFlightRows` (`eta` : lire heure_eta des départs ;
-   *  `spmlParCabine` : les repas spéciaux de chaque cabine). */
+   *  `spmlParCabine` : les repas spéciaux de chaque cabine ; `date` : la colonne date d'un programme daté). */
   function classeurVersVols(feuilles, options) {
     const dep = T.feuille(feuilles, 'Départs', 'Departs'), ret = T.feuille(feuilles, 'Retours');
     if (dep || ret) {
       // Deux feuilles : on reconstitue le format à une table, sens compris.
-      const cols = COLS_VOLS.concat(options && options.eta ? ['heure_eta'] : [], options && options.spmlParCabine ? ['nb_SPML_BC', 'nb_SPML_PC', 'nb_SPML_YC'] : []);
+      const cols = COLS_VOLS.concat(options && options.eta ? ['heure_eta'] : [], options && options.spmlParCabine ? ['nb_SPML_BC', 'nb_SPML_PC', 'nb_SPML_YC'] : [],
+        options && options.date ? ['date'] : []);
       const lignes = [cols];
       const err = new Erreurs();
       for (const [f, sens, h] of [[dep, 'DEP', 'heure_std'], [ret, 'RET', 'heure_sta']]) {

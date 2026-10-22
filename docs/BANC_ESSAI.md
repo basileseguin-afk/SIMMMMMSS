@@ -1148,3 +1148,48 @@ déterminisme, renforts compris ; la validation ; les options du banc ; Excel) ;
 `tests/ordre-souple-browser.cjs` (la case, la fiche, le rechargement, « Tout
 sauvegarder ») ; `tests/non-regression.test.cjs` (désactivée : la même
 journée).
+
+## 9. Simuler une période : un programme daté, joué jour après jour
+
+Le site simulait une seule journée : un programme de vols n'avait pas de
+date, et deux mois de vols importés d'un coup tombaient dans la même journée.
+Rien ne passait d'un jour au suivant, sauf le « sale de la veille » saisi à la
+main. Le banc enchaînait déjà les journées réelles hors du site
+(`outils/simuler-journee.cjs` une fois par jour, le `saleFinal` d'un jour pour
+`saleInitial` du suivant). La version 1 le fait elle-même, par un seul chemin
+de calcul (`moteur/periode.js`), pour l'outil et pour la page.
+
+### Le programme daté
+
+Une colonne facultative **`date`** dans le programme de vols : en CSV, en
+feuille unique avec `sens`, et dans les feuilles « Départs » et « Retours »
+(`docs/FORMATS_EXCEL.md`, § 3). `AAAA-MM-JJ`, `JJ/MM/AAAA` ou une date Excel,
+comme le classeur de calage de la version 2 (sa logique, `dateDe`, reprise dans
+`ui-model.js` sans toucher à la version 2).
+
+- La date d'un départ est celle de son `heure_std` ; celle d'un retour, celle
+  de son `heure_sta`. `heure_eta` garde sa règle : plus tard que `heure_std`
+  sur l'horloge, c'est la veille.
+- **Sans colonne date** (ou vide partout) : une seule journée, exactement
+  comme aujourd'hui.
+- Des lignes avec date et d'autres sans, ou une date illisible : **rien n'est
+  importé**, et le message nomme la ligne.
+- Le rapport d'import décrit la période : premier et dernier jour, nombre de
+  jours, vols par jour. Un jour sans aucun vol au milieu est signalé (« aucun
+  vol le 15/08 : jour sans vol ou oubli ? »), sans bloquer.
+- « Exporter les vols (Excel) » écrit la date en première colonne, une vraie
+  date Excel ; exporté puis réimporté, le programme est le même. « Modèle CSV
+  daté » propose un programme sur deux jours fictifs.
+- Le programme daté se garde comme celui d'aujourd'hui : le temps de la
+  visite, jusqu'au prochain import.
+- `outils/simuler-journee.cjs` joue un fichier daté d'un seul jour comme une
+  journée (`journee.date` le dit) ; daté sur plusieurs jours, il le refuse et
+  renvoie à `outils/simuler-periode.cjs`.
+
+Vérifications : `tests/programme-date.test.cjs` (les formats de date ; un
+programme fictif de 3 jours lu de même en CSV, en feuille unique et en Départs /
+Retours ; exporté puis réimporté, identique ; sans colonne date, comme avant ;
+lignes datées et non datées mêlées, date illisible ou doublon d'un même jour :
+refusés, la ligne nommée ; le rapport de la période et le jour sans vol ; l'outil
+d'une journée) ; `tests/programme-date-browser.cjs` (le modèle daté, le rapport
+d'import, le refus, l'export).

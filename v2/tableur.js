@@ -169,10 +169,21 @@
 
   const NOM_FEUILLE_INTERDIT = /[\[\]:*?/\\]/g;
 
+  /** Un jour du calendrier (« AAAA-MM-JJ ») et des minutes depuis son 00:00 (négatives : la veille) → une
+   *  date Excel : des jours depuis le 30/12/1899, l'heure en fraction de jour. */
+  function dateExcel(iso, minutes) {
+    const [a, m, j] = String(iso).split('-').map(Number);
+    return (Date.UTC(a, m - 1, j) - Date.UTC(1899, 11, 30)) / 86400000 + (+minutes || 0) / 1440;
+  }
+  /** Une cellule date (jj/mm/aaaa), ou date et heure (jj/mm/aaaa hh:mm) quand `minutes` est donné : une vraie date Excel. */
+  const celluleDate = (iso, minutes) => (iso ? { excel: dateExcel(iso, minutes), format: minutes === undefined || minutes === null ? 'date' : 'dateHeure' } : null);
+  const estDate = v => !!v && typeof v === 'object' && Number.isFinite(v.excel);
+
   /**
-   * @param {Array} feuilles [{ nom, lignes: [[cellule…]…], largeurs?: [n…] }]
+   * @param {Array} feuilles [{ nom, lignes: [[cellule…]…], largeurs?: [n…], filtres?, figerColonnes? }]
    *   La première ligne de chaque feuille est l'en-tête : en gras et figée.
-   *   Une cellule est un texte, un nombre, un booléen, ou vide (null).
+   *   Une cellule est un texte, un nombre, un booléen, une date (`celluleDate`), ou vide (null).
+   *   `filtres` : des filtres sur la ligne d'en-tête ; `figerColonnes` : les premières colonnes figées aussi.
    * @returns {Uint8Array} le fichier .xlsx
    */
   function ecrireClasseur(feuilles) {
@@ -185,6 +196,10 @@
       return { ...f, nom };
     });
 
+    // Des dates (évolution 10 du banc d'essai) : leurs formats ne s'écrivent que si une feuille en a, le classeur
+    // d'avant reste le même octet pour octet.
+    const dates = propres.some(f => (f.lignes || []).some(l => l.some(estDate)));
+    const filtrees = propres.map((f, i) => ({ f, i })).filter(x => x.f.filtres && (x.f.lignes || []).length);
     const fichiers = [];
     fichiers.push({ nom: '[Content_Types].xml', contenu:
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
@@ -206,7 +221,10 @@
       + '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
       + 'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'
       + propres.map((f, i) => '<sheet name="' + echapper(f.nom) + '" sheetId="' + (i + 1) + '" r:id="rId' + (i + 1) + '"/>').join('')
-      + '</sheets></workbook>' });
+      + '</sheets>'
+      + (filtrees.length ? '<definedNames>' + filtrees.map(({ f, i }) => '<definedName name="_xlnm._FilterDatabase" localSheetId="' + i + '" hidden="1">\''
+        + echapper(f.nom.replace(/'/g, "''")) + '\'!$A$1:$' + nomColonne(Math.max(1, ...f.lignes.map(l => l.length)) - 1) + '$' + f.lignes.length + '</definedName>').join('') + '</definedNames>' : '')
+      + '</workbook>' });
     fichiers.push({ nom: 'xl/_rels/workbook.xml.rels', contenu:
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
       + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
@@ -215,16 +233,19 @@
       + '<Relationship Id="rId' + (propres.length + 1)
       + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
       + '</Relationships>' });
-    // Deux styles : normal, et gras pour l'en-tête.
+    // Deux styles : normal, et gras pour l'en-tête ; avec des dates, deux de plus : date, date et heure.
     fichiers.push({ nom: 'xl/styles.xml', contenu:
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
       + '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+      + (dates ? '<numFmts count="2"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/><numFmt numFmtId="165" formatCode="dd/mm/yyyy hh:mm"/></numFmts>' : '')
       + '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>'
       + '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>'
       + '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'
       + '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
-      + '<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
-      + '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>'
+      + '<cellXfs count="' + (dates ? 4 : 2) + '"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+      + '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>'
+      + (dates ? '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'
+        + '<xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' : '') + '</cellXfs>'
       + '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
       + '</styleSheet>' });
 
@@ -232,11 +253,13 @@
       const lignes = f.lignes || [];
       const nbCol = Math.max(1, ...lignes.map(l => l.length));
       const largeurs = f.largeurs || Array.from({ length: nbCol }, (_, c) =>
-        Math.min(60, Math.max(8, ...lignes.map(l => String(l[c] ?? '').length + 2))));
+        Math.min(60, Math.max(8, ...lignes.map(l => (estDate(l[c]) ? (l[c].format === 'date' ? 10 : 16) : String(l[c] ?? '').length) + 2))));
+      const k = Math.max(0, Math.floor(+f.figerColonnes || 0));
       let xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         + '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
         + '<sheetViews><sheetView workbookViewId="0">'
-        + (lignes.length > 1 ? '<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>' : '')
+        + (k && lignes.length > 1 ? '<pane xSplit="' + k + '" ySplit="1" topLeftCell="' + nomColonne(k) + '2" activePane="bottomRight" state="frozen"/>'
+          : lignes.length > 1 ? '<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>' : '')
         + '</sheetView></sheetViews>'
         + '<cols>' + largeurs.map((w, c) => '<col min="' + (c + 1) + '" max="' + (c + 1) + '" width="' + w + '" customWidth="1"/>').join('') + '</cols>'
         + '<sheetData>';
@@ -246,12 +269,15 @@
           if (v === null || v === undefined || v === '') return;
           const ref = nomColonne(c) + (r + 1), style = r === 0 ? ' s="1"' : '';
           if (typeof v === 'number' && Number.isFinite(v)) xml += '<c r="' + ref + '"' + style + '><v>' + v + '</v></c>';
+          else if (estDate(v)) xml += '<c r="' + ref + '" s="' + (v.format === 'date' ? 2 : 3) + '"><v>' + v.excel + '</v></c>';
           else if (typeof v === 'boolean') xml += '<c r="' + ref + '"' + style + ' t="b"><v>' + (v ? 1 : 0) + '</v></c>';
           else xml += '<c r="' + ref + '"' + style + ' t="inlineStr"><is><t xml:space="preserve">' + echapper(v) + '</t></is></c>';
         });
         xml += '</row>';
       });
-      xml += '</sheetData></worksheet>';
+      xml += '</sheetData>'
+        + (f.filtres && lignes.length ? '<autoFilter ref="A1:' + nomColonne(nbCol - 1) + lignes.length + '"/>' : '')
+        + '</worksheet>';
       fichiers.push({ nom: 'xl/worksheets/sheet' + (i + 1) + '.xml', contenu: xml });
     });
     return zipper(fichiers);
@@ -477,7 +503,7 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
-  const api = { ecrireClasseur, lireClasseur, lireCsv, lireFichier, enObjets, feuille,
+  const api = { ecrireClasseur, lireClasseur, lireCsv, lireFichier, enObjets, feuille, dateExcel, celluleDate,
     cleEntete, heureDe, hhmm, nombreDe, ouiNon, telecharger, correspondance, zipper };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyTableur = api;

@@ -5,6 +5,39 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-22 — Banc d'essai, évolution 10 (a) : le programme de vols daté, import et export
+
+Le programme de vols n'avait pas de date : deux mois de vols importés d'un coup
+tombaient tous dans la même journée.
+
+- Une colonne facultative `date` dans le programme : en CSV, en feuille unique
+  avec `sens`, et dans les feuilles « Départs » et « Retours » ; `AAAA-MM-JJ`,
+  `JJ/MM/AAAA` ou une date Excel (la convention du calage de la version 2,
+  reprise sans la modifier). La date d'un départ est celle de son
+  `heure_std`, d'un retour celle de son `heure_sta` ; `heure_eta` garde sa
+  règle.
+- Sans colonne date, une seule journée, exactement comme aujourd'hui. Des
+  lignes datées et d'autres non, ou une date illisible : rien n'est importé,
+  le message nomme la ligne.
+- Le rapport d'import décrit la période (premier et dernier jour, nombre de
+  jours, vols par jour) et signale un jour sans vol au milieu, sans bloquer.
+  « Exporter les vols (Excel) » écrit la date en première colonne, en vraie
+  date Excel ; exporté puis réimporté, le programme est le même. « Modèle CSV
+  daté » : deux jours fictifs.
+- `tableur.js` écrit de vraies dates Excel (date, ou date et heure), des
+  filtres d'en-tête et des colonnes figées, seulement quand une feuille les
+  demande : les classeurs d'avant sont les mêmes octet pour octet.
+- `moteur/periode.js`, nouveau : le programme daté et sa période (la suite de
+  l'évolution y met le calcul). `outils/simuler-journee.cjs` refuse un
+  fichier daté sur plusieurs jours.
+- Fichiers : `ui-model.js` et `v2/ui-model.js`, `tableur.js` et
+  `v2/tableur.js`, `echanges.js` et `v2/echanges.js` (identiques deux à deux,
+  la version 2 sans changement de comportement), `moteur/periode.js`,
+  `moteur/journee.js`, `outils/simuler-journee.cjs`, `sim.js`, `index.html`
+  et `v2/index.html` (empreintes), `docs/BANC_ESSAI.md` (§ 9),
+  `docs/FORMATS_EXCEL.md`, `README.md`, `tests/programme-date.test.cjs`,
+  `tests/programme-date-browser.cjs`.
+
 ## 2026-10-21 — Banc d'essai, évolution 8 (d) : handling 24 h/24, des durées par type de véhicule
 
 En VL, un réajustement d'armoire ne prend pas le temps d'un chargement
