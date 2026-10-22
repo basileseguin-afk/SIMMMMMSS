@@ -91,7 +91,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.ok(Math.abs(await page.locator('#rg-recap .rg-recap-scroll').evaluate(z=>z.scrollTop)-place)<40,version+' : après Entrée, le tableau reste où il était');
 
    // 3. Toutes les pages du menu.
-   const ids=await page.evaluate(()=>Object.values(OrlyOnglets.ONGLETS).flat().map(o=>o.id).filter(id=>OrlyOnglets.partieDe(id)));
+   const ids=await page.evaluate(()=>Object.values(OrlyOnglets.ONGLETS).flat().map(o=>o.id).filter(id=>OrlyOnglets.partieDe(id)&&OrlyOnglets.pagesDe(OrlyOnglets.partieDe(id).id).some(x=>x.id===id)));
    // Et aucun piège à molette (07/10, Liste des services) : une zone qui « sait »
    // défiler et garde la molette (overscroll-behavior contain/none), posée dans
    // une zone qui défile. Chrome passe outre quand elle n'a rien à défiler ;

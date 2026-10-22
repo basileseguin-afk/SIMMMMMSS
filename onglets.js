@@ -21,6 +21,9 @@
  * La dernière page ouverte de chaque partie est retenue d'une visite à l'autre,
  * sauf une page de passage (`passage: true`) : le plan de l'unité, qu'on ouvre
  * pour le modifier et qu'on quitte par « Terminer » (refonte, étape 5).
+ * Une page conditionnelle (`si: '<condition>'`) ne se montre que si sa
+ * condition, posée par la page (`conditions`), est vraie : la période ne
+ * paraît qu'avec un programme de vols daté (banc d'essai, évolution 10).
  */
 (function (root) {
   'use strict';
@@ -54,6 +57,8 @@
     plan: [
       { id: 'j-plan', nom: 'Le plan rejoué', ico: 'unite' },
       { id: 'j-chiffres', nom: 'Synthèse', ico: 'check' },
+      // Seulement avec un programme de vols daté (banc d'essai, évolution 10).
+      { id: 'j-periode', nom: 'Période', ico: 'journee', si: 'periode' },
       { id: 'j-stocks', nom: 'Stocks et retours', ico: 'boite' },
       { id: 'j-comparer', nom: 'Comparer deux essais', ico: 'lecture' },
       // La même toile, pour la modifier : une page de passage, jamais retenue.
@@ -107,6 +112,7 @@
       resume: 'Ce que la journée donne',
       pages: [
         { id: 'j-chiffres', intro: 'La journée en chiffres : commandes à l’heure, retards, attentes, travail fourni.' },
+        { id: 'j-periode', intro: 'La période jour après jour : les personnes, le besoin exact, les heures sup et les retards de chaque service.' },
         { id: 'j-plan', intro: 'Rejouez la journée sur le plan de l’unité : qui travaille, qui attend, ce qui est prêt.' },
         { id: 'at-planning', intro: 'Qui travaille quand : chaque équipe, ses préparations et ses attentes.' },
         { id: 'at-repas', intro: 'Chaque commande : à quelle heure elle est prête, et avant quand elle devait l’être.' },
@@ -136,8 +142,12 @@
     if (!o || !p) return null;
     return { ...o, ...p.pages.find(x => x.id === id), vue, partie: p.id };
   }
-  /** Les pages d'une partie, dans l'ordre du menu. */
-  const pagesDe = partie => ((PARTIES.find(p => p.id === partie) || {}).pages || []).map(x => page(x.id));
+  /** Les conditions des pages conditionnelles : `conditions.periode = () => …`, posée par la page. */
+  const conditions = {};
+  /** La page se montre-t-elle ? Toujours, sauf une page conditionnelle dont la condition est fausse. */
+  const montree = id => { const o = page(id); return !!o && (!o.si || !!(conditions[o.si] && conditions[o.si]())); };
+  /** Les pages d'une partie qui se montrent, dans l'ordre du menu. */
+  const pagesDe = partie => ((PARTIES.find(p => p.id === partie) || {}).pages || []).map(x => page(x.id)).filter(x => montree(x.id));
 
   /* Une règle par onglet : dans l'onglet X, tout élément découpé qui n'est
    * pas de X disparaît. Les éléments des autres vues sont déjà masqués. */
@@ -182,12 +192,17 @@
 
     /** La page ouverte, recalée sur la vue affichée si l'on est arrivé autrement. */
     actif(vue = this.a.vue()) {
-      if (this.page && vueDe(this.page) === vue) return this.page;
+      if (this.page && vueDe(this.page) === vue) {
+        if (montree(this.page)) return this.page;
+        // Une page qui ne se montre plus (la période, sans programme daté) : la première de sa partie, dans la même vue.
+        const p = partieDe(this.page), autre = p && pagesDe(p.id).find(x => x.vue === vue);
+        if (autre) return autre.id;
+      }
       if (!ONGLETS[vue]) return null;
       // Arrivé par un lien vers la vue : la dernière page ouverte de cette vue
       // (une vue porte des pages de plusieurs parties : Chemins, Équipes, Simulation).
       const pv = (this.parVue || {})[vue];
-      const deja = (pv && vueDe(pv) === vue ? pv : null) || Object.values(this.choix).find(id => vueDe(id) === vue);
+      const deja = (pv && vueDe(pv) === vue && montree(pv) ? pv : null) || Object.values(this.choix).find(id => vueDe(id) === vue && montree(id));
       return deja || defaut(vue);
     }
 
@@ -196,7 +211,7 @@
 
     /* Ouvre une page, de la vue affichée ou d'une autre (la vue suivra). */
     choisir(id, focus) {
-      const vue = vueDe(id), p = partieDe(id); if (!vue || !p) return;
+      const vue = vueDe(id), p = partieDe(id); if (!vue || !p || !montree(id)) return;
       this.page = id;
       // Une page de passage n'est pas retenue : sa partie et sa vue rouvrent la page d'avant.
       if (!ONGLETS[vue].find(o => o.id === id).passage) {
@@ -215,6 +230,8 @@
 
     rendre() {
       const vue = this.a.vue(), actif = this.actif(vue);
+      // La page ouverte ne se montre plus : celle qui la remplace s'ouvre, comme d'un clic.
+      if (actif && this.page && actif !== this.page && !montree(this.page)) { this.choisir(actif); return; }
       this.page = actif;
       const p = actif ? partieDe(actif) : null;
       if (root.document) {
@@ -273,7 +290,7 @@
     }
   }
 
-  const api = { ONGLETS, PARTIES, defaut, vueDe, partieDe, page, pagesDe, regles, SousOnglets };
+  const api = { ONGLETS, PARTIES, conditions, montree, defaut, vueDe, partieDe, page, pagesDe, regles, SousOnglets };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyOnglets = api;
 })(typeof window !== 'undefined' ? window : globalThis);

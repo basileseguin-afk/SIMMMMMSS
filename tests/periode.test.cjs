@@ -34,6 +34,24 @@ test('chaque journée d’une période de 3 jours est celle de l’outil d’une
   assert.deepEqual([p.periode.debut, p.periode.fin, p.periode.jours], ['2026-11-02', '2026-11-04', 3]);
 });
 
+test('la page rejoue une journée de la période d’après son entrée (jouerAvecEntree) : le même résultat, décalage compris', () => {
+  const vols = programme(JOURS, { '2026-11-03': ['NO101'] });
+  const u = J.uniteDeLaSauvegarde(S.sauvegarde, S.options);
+  for (const decalage of [0, 15]) {
+    const p = PE.simulerPeriode(u, vols, { delaiChargement: 45, decalage, detail: true });
+    for (const j of p.journees) {
+      // Comme la page : les vols du jour déjà décalés, ceux de la veille décalés de même.
+      const entree = j.entree.volsVeille ? { ...j.entree, volsVeille: J.volsDecales(j.entree.volsVeille, decalage) } : j.entree;
+      const r = PE.jouerAvecEntree(u, J.volsDecales(PE.volsDuJour(vols, j.date), decalage), entree, { delaiChargement: 45 });
+      assert.equal(json(r.resultat), json(j.resultat), j.date + ', décalage ' + decalage);
+      assert.deepEqual(r.entree, entree);
+    }
+  }
+  // Une entrée vide (le premier jour) : la journée d'aujourd'hui.
+  const jour = PE.volsDuJour(vols, JOURS[0]);
+  assert.equal(json(PE.jouerAvecEntree(u, jour, {}, { delaiChargement: 45 }).resultat), json(J.jouer(J.argumentsDeLUnite(u, jour, { delaiChargement: 45 }))));
+});
+
 test('un vol non lavé le jour 1 est lavé le jour 2 ; le stock propre passe au lendemain quand la boucle du matériel est active', () => {
   const p = periode(programme());
   const [j1, j2] = p.journees;

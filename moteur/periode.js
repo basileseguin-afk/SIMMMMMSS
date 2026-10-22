@@ -99,6 +99,24 @@
     const m = (unite.etat && unite.etat.materiel) || {};
     const j1 = !!veille && P().sourceRetours(m) === 'j1';
     const force = veille ? { saleInitial: veille.saleFinal, ...(m.actif && veille.restePropre != null ? { stockInitial: veille.restePropre } : {}) } : null;
+    return jouerForce(unite, volsJour, force, j1 ? volsVeille : null, o);
+  }
+
+  /**
+   * Une journée de la période rejouée seule, d'après son `entree` (ce que la
+   * veille lui a laissé dans la période) : la page s'en sert pour montrer la
+   * journée choisie telle que la période l'a jouée, au champ près. Une entrée
+   * vide (le premier jour) : la journée d'aujourd'hui.
+   */
+  function jouerAvecEntree(unite, volsJour, entree, o = {}) {
+    const e = entree || {}, stock = e.ateliers && e.ateliers.materiel && 'stockInitial' in e.ateliers.materiel;
+    const force = Array.isArray(e.saleInitial) ? { saleInitial: e.saleInitial, ...(stock ? { stockInitial: e.ateliers.materiel.stockInitial } : {}) } : null;
+    return jouerForce(unite, volsJour, force, force && Array.isArray(e.volsVeille) ? e.volsVeille : null, o);
+  }
+
+  /** Le cœur des deux : `force` (sale, stock propre) remplace celui de l'état ; `volsVeille`, en « J+1 ». */
+  function jouerForce(unite, volsJour, force, volsVeille, o) {
+    const m = (unite.etat && unite.etat.materiel) || {}, j1 = Array.isArray(volsVeille);
     // Le même validateur que « Restaurer » et que l'outil d'une journée : la même journée, au champ près.
     const etat = force ? A().valider({ ...unite.etat, materiel: { ...m, ...force } }) : unite.etat;
     const decaler = l => J().volsDecales(l, o.decalage);
@@ -351,7 +369,7 @@
   }
 
   const api = { JOUR, jourDecale, ecart, joursEntre, dateCourte, dateLongue, estDate, datesDu, volsDuJour, decrire, texteDuProgramme,
-    jouerJournee, creerPeriode, simulerPeriode, depuisSauvegarde, optionsDeRejeu, extraire, bilan, ADDITIVES };
+    jouerJournee, jouerAvecEntree, creerPeriode, simulerPeriode, depuisSauvegarde, optionsDeRejeu, extraire, bilan, ADDITIVES };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyPeriode = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

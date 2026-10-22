@@ -65,7 +65,7 @@ const JOURNEE=()=>{const r=Sim.ateliers.resultat,arrondi=x=>x==null?null:Math.ro
    releve[version]=journee;
 
    // Le tour : chaque page, l'accueil, le plan en édition puis refermé, le thème.
-   const pages=await page.evaluate(()=>OrlyOnglets.PARTIES.flatMap(p=>p.pages.map(x=>x.id)));
+   const pages=await page.evaluate(()=>OrlyOnglets.PARTIES.flatMap(p=>OrlyOnglets.pagesDe(p.id).map(x=>x.id)));
    for(const id of pages){await nav.aller(page,id);await attendre(120);}
    await nav.accueil(page);
    await nav.aller(page,'j-plan');

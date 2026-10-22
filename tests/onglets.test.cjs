@@ -7,7 +7,8 @@ const O = require('../onglets.js');
 test('chaque vue a au moins deux onglets, le premier par défaut ; une partie du menu, huit pages au plus', () => {
   // Ce qu'on voit, ce sont les pages d'une PARTIE du menu, pas les onglets d'une
   // vue : c'est sur elles que porte la limite.
-  for (const p of O.PARTIES.filter(x => !x.cache)) assert.ok(p.pages.length <= 8, p.id + ' : ' + p.pages.length + ' pages');
+  // Une page conditionnelle (la période, qui ne paraît qu'avec un programme daté) n'y compte pas.
+  for (const p of O.PARTIES.filter(x => !x.cache)) assert.ok(p.pages.filter(x => !O.page(x.id).si).length <= 8, p.id + ' : ' + p.pages.length + ' pages');
   for (const vue of ['vols', 'ateliers', 'reglages', 'plan', 'flux']) {
     const l = O.ONGLETS[vue];
     assert.ok(l && l.length >= 2, vue + ' : ' + (l || []).length + ' onglets');
@@ -116,4 +117,20 @@ test('une page de passage n’est pas retenue', () => {
   assert.equal(s.parVue.plan, 'j-plan', 'arriver « sur le plan » rouvre le plan rejoué');
   assert.equal(O.page('u-plan').passage, true);
   for (const o of Object.values(O.ONGLETS).flat().filter(o => o.id !== 'u-plan')) assert.ok(!o.passage, o.id);
+});
+
+test('la page Période ne se montre qu’avec un programme daté (évolution 10)', () => {
+  assert.equal(O.page('j-periode').si, 'periode');
+  assert.equal(O.partieDe('j-periode').id, 'resultats');
+  // Sans condition posée (aucun programme daté) : absente des pages de sa partie.
+  assert.equal(O.montree('j-periode'), false);
+  assert.ok(!O.pagesDe('resultats').some(x => x.id === 'j-periode'));
+  assert.deepEqual(O.pagesDe('resultats').map(x => x.id), ['j-chiffres', 'j-plan', 'at-planning', 'at-repas', 'at-grille', 'v-departs', 'j-stocks', 'j-comparer']);
+  O.conditions.periode = () => true;
+  try {
+    assert.equal(O.montree('j-periode'), true);
+    assert.deepEqual(O.pagesDe('resultats').slice(0, 2).map(x => x.id), ['j-chiffres', 'j-periode']);
+  } finally { delete O.conditions.periode; }
+  assert.equal(O.montree('j-chiffres'), true);
+  assert.equal(O.montree('rien'), false);
 });

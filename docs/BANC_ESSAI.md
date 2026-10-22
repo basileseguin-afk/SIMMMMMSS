@@ -1286,6 +1286,61 @@ journée avec ce que la veille lui laisse ; un vol non lavé le jour 1 lavé le
 jour 2, le stock propre au lendemain ; « J+1 » ; un jour sans vol au milieu ;
 le jour de travail de chaque équipe, les jours incomplets, la somme des
 homme-minutes ; les mesures ; le prorata d'un lot de deux compagnies ; pas à
-pas, le déterminisme et le temps de calcul) ; `tests/simuler-periode.test.cjs`
+pas, le déterminisme et le temps de calcul ; une journée rejouée d'après son
+entrée, décalage compris, comme la page la montre) ; `tests/simuler-periode.test.cjs`
 (l'outil : le JSON, chaque journée rejouée seule par `simuler-journee` avec ses
 `options`, `--sans-detail`, le classeur daté, le déterminisme, les refus).
+
+### La page
+
+**Sans programme daté, rien de nouveau ne se montre** : ni bandeau, ni page
+Période ; la journée se calcule comme aujourd'hui.
+
+Avec un programme daté :
+
+- **Un bandeau en tête de chaque page** : la journée de vols affichée (un
+  sélecteur, ‹ et ›, chaque jour avec ses départs et retours), où en est la
+  période, et « Simuler la période ». Les vues d'une journée (Synthèse, plan
+  rejoué, planning, commandes, vols, stocks…) montrent **la journée choisie**,
+  la première à l'import. « Programme des vols » le rappelle
+  (« journée du 02/11/2026 »).
+- **« Simuler la période »** joue les journées une à une, en rendant la main
+  entre deux : la page reste vivante, la progression se lit (« Journée 12 sur
+  61 ») et **Annuler** arrête le calcul (la période d'avant, s'il y en avait
+  une, reste).
+- **La période ne se recalcule pas à chaque frappe.** Un réglage modifié (une
+  équipe, le barème, les liens, le plan, le délai de chargement, le
+  décalage) ou d'autres vols importés la marquent **« à relancer »** ; le
+  bouton devient « Relancer la période ». Revenir au même délai ou au même
+  décalage la rend de nouveau à jour ; une modification annulée compte comme
+  une modification (on relance).
+- **Le sale de la veille** : tant que la période est calculée et à jour, la
+  journée affichée part de ce que la veille lui laisse dans la période (son
+  sale, son stock propre, ses départs de la veille en « J+1 ») — c'est, au
+  champ près, la journée de la période (`OrlyPeriode.jouerAvecEntree`). Sinon
+  (pas calculée, à relancer, ou le premier jour), elle part du sale de la
+  veille saisi, comme aujourd'hui.
+- **Résultats › Période** : le tableau jour de travail × service, une mesure
+  à la fois (personnes, besoin exact, heures sup en heures × personnes,
+  commandes en retard, retard max, homme-heures), avec le total du jour ; les
+  totaux et les moyennes par jour de chaque mois et de la période ; les jours
+  incomplets marqués « incomplet », hors des totaux. **Un clic sur un jour**
+  ouvre sa journée de vols (la Synthèse ; un jour de travail avant la période,
+  la première journée) ; **▸ déplie son détail** par équipe (service, jour
+  des vols, personnes, besoin exact, homme-heures, heures sup, lots en
+  retard, retard max) et par compagnie (commandes, vols, passagers,
+  homme-heures, retard max).
+- **La comparaison A/B reste à la journée** : elle compare deux essais de la
+  journée affichée.
+
+La période calculée vit le temps de la visite, comme le programme daté : elle
+ne s'enregistre pas dans le navigateur.
+
+Vérifications : `tests/periode-browser.cjs` (une unité fictive, un programme
+fictif de vingt jours sur deux mois : sans date, rien de nouveau ; le
+sélecteur ; le calcul par étapes et Annuler ; le bilan de la page = celui du
+moteur ; la journée affichée = celle de la période, puis, à relancer, celle du
+sale saisi ; la page Période : jours incomplets, totaux et moyennes par mois,
+clic sur un jour, détail déplié ; de nouveau sans date, la page s'en va) ;
+`tests/onglets.test.cjs` (la page Période ne se montre qu'avec un programme
+daté).

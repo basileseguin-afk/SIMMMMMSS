@@ -107,8 +107,16 @@ function bord(id, cible) {
 const SAMPLE = window.OrlyDemo.VOLS;
 let flights = [];
 
+/* Un programme daté (banc d'essai, évolution 10) couvre une période : la page
+ * montre une de ses journées de vols (`Sim.jourVols`), la première tant qu'on
+ * n'en choisit pas une autre. Sans date, rien ne change. */
+let descProgramme = { data: null, d: null };
+const descriptionDuProgramme = data => (descProgramme.data === data ? descProgramme.d : (descProgramme = { data, d: OrlyPeriode.decrire(data) }).d);
 function chargerVols(data) {
-  flights = OrlyJournee.volsDecales(data, CFG.shift);
+  const d = descriptionDuProgramme(data);
+  if (!d) Sim.jourVols = null;
+  else if (!(Sim.jourVols >= d.debut && Sim.jourVols <= d.fin)) Sim.jourVols = d.debut;
+  flights = OrlyJournee.volsDecales(d ? OrlyPeriode.volsDuJour(data, Sim.jourVols) : data, CFG.shift);
   if (document.getElementById('source-count')) updateSource();
 }
 
@@ -649,10 +657,12 @@ function initAteliers(){
     // d'origine, les liens et le barème ; le délai de chargement des Horaires.
     unite:()=>({zones:zonesDuPlan(),base:ZONES,flux:Sim.flows?Sim.flows.state:null,modele:Sim.reglages?Sim.reglages.etat:null}),
     delaiChargement:()=>CFG.loadDelay,
+    // Une journée d'une période simulée et à jour part de ce que la veille lui a laissé dans la période (évolution 10).
+    journeePeriode:entreeDeLaJournee,
     // Le plan dit « aménagé » d'après les ateliers : il doit suivre leur saisie.
     // La liste du barème marque les services qui portent une équipe : elle doit
     // donc se redessiner quand les ateliers bougent.
-    change:r=>{if(suivreDemo()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();renderHeuresSup(r);renderRenforts(r);renderReglageRenforts();renderReglageOrdre();renderReglageSpml();},
+    change:r=>{if(suivreDemo()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.periode)Sim.periode.rendre();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();renderHeuresSup(r);renderRenforts(r);renderReglageRenforts();renderReglageOrdre();renderReglageSpml();},
     // Une case se règle dans le chemin d'une commande : l'ouvrir d'ailleurs y mène.
     onglet:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
     // Le chemin d'une commande mène à son flux (Chemins) et à ses services (Équipes).
@@ -1678,6 +1688,47 @@ function peindreInstant(i) {
   majGoulotInfo();
 }
 
+/* ==========================================================================
+ *  LA PÉRIODE (banc d'essai, évolution 10 — docs/BANC_ESSAI.md, § 9)
+ *  Un programme daté : le bandeau en tête de page (la journée de vols
+ *  affichée, « Simuler la période ») et la page Résultats › Période
+ *  (periode-vue.js). La période ne se recalcule pas à chaque frappe : elle
+ *  devient « à relancer » quand sa signature change — les versions des cases,
+ *  du barème, des liens et du plan, le programme importé, le délai de
+ *  chargement et le décalage.
+ * ==========================================================================*/
+let programmeVu=null,programmes=0;
+function signaturePeriode(){
+  if(Sim.dataCourante!==programmeVu){programmeVu=Sim.dataCourante;programmes++;}
+  const v=x=>(x?x.version:0);
+  return [v(Sim.ateliers),v(Sim.reglages),v(Sim.flows),v(Sim.editor),programmes,CFG.loadDelay,CFG.shift].join('|');
+}
+const programmeDate=()=>(descriptionDuProgramme(Sim.dataCourante)?Sim.dataCourante:null);
+/** Ce que la veille laisse à la journée affichée dans la période (ses vols de la veille décalés comme les siens), ou null. */
+function entreeDeLaJournee(){
+  const e=Sim.periode?Sim.periode.entreeDuJour(Sim.jourVols):null;
+  if(!e||!e.saleInitial)return null;
+  return e.volsVeille?{...e,volsVeille:OrlyJournee.volsDecales(e.volsVeille,CFG.shift)}:e;
+}
+function initPeriode(){
+  if(!window.OrlyPeriodeVue||!Sim.ateliers)return;
+  if(window.OrlyOnglets)OrlyOnglets.conditions.periode=()=>!!programmeDate();
+  Sim.periode=new OrlyPeriodeVue.VuePeriode({
+    programme:programmeDate,
+    // Une copie : ce qu'on modifie pendant le calcul ne s'y mêle pas (la période devient « à relancer »).
+    unite:()=>{Sim.ateliers.synchroniserAteliers();return JSON.parse(JSON.stringify({...Sim.ateliers.a.unite(),etat:Sim.ateliers.state}));},
+    options:()=>({delaiChargement:CFG.loadDelay,decalage:CFG.shift}),
+    signature:signaturePeriode,
+    jour:()=>Sim.jourVols,
+    choisirJour:d=>{if(d!==Sim.jourVols){Sim.jourVols=d;reset();}},
+    recalculer:()=>{Sim.ateliers.rendre();if(Sim.vue)Sim.vue.recalculer();},
+    allerPage,
+    mesurer:majHauteurEntete,
+    notifier:toast
+  });
+  Sim.periode.rendre();
+}
+
 function initVueSimulation() {
   if (!window.OrlySimulation) return;
   Sim.vue = new OrlySimulation.VueSimulation({
@@ -2163,7 +2214,7 @@ async function importVols(e) {
     // le même fichier ne déclenche plus `change`.
     const data=await OrlyJournee.volsDuFichier(file,f=>new Promise((ok,ko)=>{const rd=new FileReader();rd.onload=()=>ok(rd.result);
       rd.onerror=()=>ko(new Error('Lecture du fichier impossible. Aucune donnée remplacée.'));rd.readAsText(f);}));
-    Sim.dataCourante=data;dataSource=file.name;snaps={};majCompare();reset(data);updateSource();
+    Sim.dataCourante=data;Sim.jourVols=null;dataSource=file.name;snaps={};majCompare();reset(data);updateSource();
     // Un programme daté (évolution 10) : la période qu'il couvre, les vols de chaque jour, un jour sans vol signalé.
     const periode=OrlyPeriode.decrire(data);
     report.classList.remove('error');report.textContent=data.length+' lignes importées. '+data.filter(f=>f.sens==='DEP').length+' départs et '+data.filter(f=>f.sens==='RET').length+' retours.'
@@ -2329,7 +2380,8 @@ function updateSource() {
   // Le jeu de démonstration dit quelles compagnies ont reçu des vols d'essai.
   const essai=[...new Set(flights.filter(f=>f.essai).map(f=>f.cie))];
   document.getElementById('source-label').textContent=dataSource+(essai.length?' + vols d’essai : '+essai.join(', '):'');
-  document.getElementById('source-count').textContent=flights.filter(f=>f.sens==='DEP').length+' départs · '+flights.filter(f=>f.sens==='RET').length+' retours';
+  document.getElementById('source-count').textContent=flights.filter(f=>f.sens==='DEP').length+' départs · '+flights.filter(f=>f.sens==='RET').length+' retours'
+    +(Sim.jourVols?' · journée du '+OrlyPeriode.dateLongue(Sim.jourVols):'');
 }
 /* L'état de lecture appartient désormais à la vue. Il ne reste ici que ce qui
  * concerne l'édition du plan : pendant qu'on déplace des zones, on ne change
@@ -2764,6 +2816,7 @@ etape('réglages de la simulation',()=>{if(Sim.ateliers)Sim.ateliers.rendreMater
 // donc se dresser qu'une fois qu'ils sont là.
 etape('simulation',initVueSimulation);
 etape('problèmes',initProblemes);
+etape('période',initPeriode);
 etape('menu',initOnglets);
 etape('accueil',initDemarrage);
 etape('annuler',initAnnuler);

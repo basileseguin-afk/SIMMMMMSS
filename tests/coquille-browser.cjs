@@ -41,7 +41,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
    // 1. Toute page en deux clics : sa partie, puis elle. Les pages de la partie
    //    ouverte se déplient juste sous elle ; le fil d'Ariane dit la partie, le titre la page.
-   const parties=await page.evaluate(()=>OrlyOnglets.PARTIES.filter(p=>!p.cache).map(p=>({id:p.id,nom:p.nom,pages:p.pages.map(x=>x.id)})));
+   const parties=await page.evaluate(()=>OrlyOnglets.PARTIES.filter(p=>!p.cache).map(p=>({id:p.id,nom:p.nom,pages:OrlyOnglets.pagesDe(p.id).map(x=>x.id)})));
    for(const p of parties){
     await page.locator(`#menu [data-vers-partie=${p.id}]`).click();await attendre();
     assert.equal(await page.evaluate(()=>{const on=document.querySelector('#menu .menu-partie.actif');

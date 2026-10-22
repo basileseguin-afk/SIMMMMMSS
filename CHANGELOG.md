@@ -5,6 +5,46 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-22 — Banc d'essai, évolution 10 (d) : la période dans la page
+
+- Avec un programme daté, **un bandeau en tête de chaque page** : la journée
+  de vols affichée (un sélecteur, ‹ ›), où en est la période, et **« Simuler
+  la période »**. Les vues d'une journée montrent la journée choisie (la
+  première à l'import) ; « Programme des vols » le rappelle.
+- Le calcul joue **une journée par étape** et rend la main entre deux : la
+  page reste vivante, la progression se lit (« Journée 12 sur 61 »),
+  **Annuler** l'arrête. Le calcul est celui du moteur (`moteur/periode.js`) :
+  le bilan de la page est celui de l'outil.
+- **« À relancer »** : la période ne se recalcule pas à chaque frappe. Une
+  équipe, le barème, les liens, le plan, le délai de chargement, le décalage
+  ou d'autres vols importés la marquent à relancer (les compteurs de version
+  des éditeurs, le programme, le délai et le décalage forment sa signature).
+- **Le sale de la veille** : tant que la période est calculée et à jour, la
+  journée affichée part de ce que la veille lui laisse dans la période, au
+  champ près (`OrlyPeriode.jouerAvecEntree`, partagé avec le calcul de la
+  période) ; sinon, du sale de la veille saisi, comme avant.
+- **Résultats › Période** (une page qui ne se montre qu'avec un programme
+  daté) : le tableau jour de travail × service, une mesure à la fois
+  (personnes, besoin exact, heures sup, commandes en retard, retard max,
+  homme-heures), les totaux et moyennes par mois et sur la période, les jours
+  incomplets marqués ; un clic sur un jour ouvre sa journée de vols ; ▸ déplie
+  le détail par équipe et par compagnie.
+- **Sans programme daté, rien de nouveau ne se montre** ; la journée se
+  calcule comme avant. La comparaison A/B reste à la journée.
+- `onglets.js` : une page peut être conditionnelle (`si`, `conditions`,
+  `montree`) ; la page ouverte qui ne se montre plus cède la place à la
+  première de sa partie. La limite de huit pages par partie ne compte pas la
+  page conditionnelle ; les tests navigateur qui parcourent le menu (coquille,
+  focus, défilement, données intactes) parcourent les pages qui se montrent.
+- Fichiers : `periode-vue.js` et `periode.css` (nouveaux, v1), `sim.js`,
+  `ateliers.js` (la journée d'une période à jour), `moteur/periode.js`
+  (`jouerAvecEntree`), `onglets.js`, `index.html`, `docs/BANC_ESSAI.md` (§ 9,
+  « La page »), `docs/CAHIER_DES_CHARGES.md` (M9, M11), `README.md`,
+  `tests/periode-browser.cjs` (nouveau), `tests/periode.test.cjs`,
+  `tests/onglets.test.cjs`, `tests/coquille-browser.cjs`,
+  `tests/focus-browser.cjs`, `tests/defilement-browser.cjs`,
+  `tests/donnees-intactes-browser.cjs`.
+
 ## 2026-10-22 — Banc d'essai, évolution 10 (c) : l'outil `outils/simuler-periode.cjs`
 
 - `node outils/simuler-periode.cjs sauvegarde.json vols-dates.csv|vols-dates.xlsx

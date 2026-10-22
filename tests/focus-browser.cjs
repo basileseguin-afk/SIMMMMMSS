@@ -34,7 +34,7 @@ const ANNEAU=()=>{const e=document.activeElement;if(!e||e===document.body)return
   for(const [fichier,version] of [['../index.html','v1'],['../v2/index.html','v2']]){
    await page.goto(pathToFileURL(path.resolve(__dirname,fichier)).href);await attendre(300);
    await page.evaluate(()=>localStorage.clear());await page.reload();await attendre(300);
-   const pages=await page.evaluate(()=>OrlyOnglets.PARTIES.flatMap(p=>p.pages.map(x=>x.id)));
+   const pages=await page.evaluate(()=>OrlyOnglets.PARTIES.flatMap(p=>OrlyOnglets.pagesDe(p.id).map(x=>x.id)));
    for(const theme of ['clair','sombre']){
     if(theme==='sombre'){await page.locator('#btn-theme').click();await attendre();
       assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme),'sombre',version+' : le thème sombre se choisit');}

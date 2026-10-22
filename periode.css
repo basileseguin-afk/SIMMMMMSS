@@ -1,0 +1,73 @@
+/* ==========================================================================
+   LA PÉRIODE (banc d'essai de la version 1, évolution 10 — docs/BANC_ESSAI.md, § 9)
+   Le bandeau en tête de page (la journée de vols affichée, « Simuler la
+   période ») et la page Résultats › Période. Rien ne se montre sans
+   programme de vols daté : le bandeau reste `hidden`, la page hors du menu.
+   ========================================================================== */
+
+/* ---- Le bandeau : une ligne sous le titre de la page, sur toute sa largeur -- */
+.periode-bandeau{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:var(--ds-e-2) var(--ds-e-4);
+  margin-top:var(--ds-e-2);padding:6px 10px;border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);
+  background:var(--ds-surface-2);font-size:var(--ds-t-13);color:var(--ds-texte-2)}
+.periode-bandeau[hidden]{display:none}
+.pj-jour{display:flex;align-items:center;gap:6px}
+.pj-jour label{font-weight:var(--ds-g-fort);color:var(--ds-texte-1)}
+.pj-jour select{min-height:var(--ds-h-compact);max-width:min(46ch,70vw);font-size:var(--ds-t-13)}
+.pj-jour .btn{min-width:var(--ds-h-compact);padding:0 6px}
+.pj-etat{flex:1 1 28ch;min-width:0;margin:0;line-height:1.4}
+.pj-actions,.pv-actions{display:flex;align-items:center;gap:var(--ds-e-3)}
+body[data-sous="j-periode"] .periode-bandeau [data-pv="voir"]{display:none}
+.pj-relancer{color:var(--ds-attente-texte)}
+.pj-erreur{color:var(--ds-retard-texte)}
+.pj-progression{font-variant-numeric:tabular-nums;font-weight:var(--ds-g-fort);color:var(--ds-texte-1);margin-right:8px}
+.pj-etat progress,.pv-etat progress{width:min(180px,40vw);height:6px;vertical-align:middle;accent-color:var(--ds-accent)}
+
+/* ---- La page Période ------------------------------------------------------- */
+body:not([data-vue="plan"]) .journee-periode{display:none}
+body[data-vue="plan"][data-sous="j-periode"] .app{grid-template-columns:minmax(0,1fr)}
+.journee-periode{padding:18px 20px;overflow:auto;flex:1 1 auto;min-height:0;overscroll-behavior:contain;
+  display:flex;flex-direction:column;gap:var(--ds-e-4)}
+.journee-periode .panneau{padding:var(--ds-e-4);max-width:1400px}
+.pv-tete .pv-etat{margin:0 0 var(--ds-e-2);font-size:var(--ds-t-14);color:var(--ds-texte-1)}
+.pv-tete .mini-note{max-width:110ch;margin:0 0 var(--ds-e-3)}
+.pv-outils{display:flex;flex-wrap:wrap;align-items:center;gap:var(--ds-e-2) var(--ds-e-4);margin-bottom:var(--ds-e-3)}
+.pv-outils label{display:flex;align-items:center;gap:6px;font-weight:var(--ds-g-fort);color:var(--ds-texte-1)}
+
+/* Le tableau : la tête et la colonne des jours restent en place quand il défile. */
+.pv-tableau .table-scroll{max-height:min(70vh,900px);overflow:auto;border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3)}
+.pv-table{width:100%;border-collapse:separate;border-spacing:0;font-size:var(--ds-t-13);box-shadow:none}
+.pv-table thead th{position:sticky;top:0;z-index:2;background:var(--ds-surface-1);text-align:right;white-space:nowrap}
+.pv-table thead th:first-child,.pv-table tbody th{text-align:left;position:sticky;left:0;z-index:1;background:var(--ds-surface-1)}
+.pv-table thead th:first-child{z-index:3}
+.pv-table th,.pv-table td{padding:5px 10px;border-bottom:1px solid var(--ds-bordure)}
+.pv-table tbody th{font-weight:var(--ds-g-normal);white-space:nowrap}
+.pv-n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pv-zero{color:var(--ds-texte-4)}
+.pv-table td[data-pv-total]{font-weight:var(--ds-g-fort);color:var(--ds-texte-1)}
+.pv-table tr[data-pv-jour]{cursor:pointer}
+.pv-table tr[data-pv-jour]:hover>*{background:var(--ds-survol)}
+.pv-ouvrir{all:unset;cursor:pointer;color:var(--ds-accent-texte);font-weight:var(--ds-g-moyen);text-decoration:underline;text-decoration-color:var(--ds-trait-lien);text-underline-offset:2px}
+.pv-ouvrir:focus-visible,.pv-deplier:focus-visible{outline:2px solid var(--ds-focus);outline-offset:2px;border-radius:2px}
+.pv-deplier{all:unset;cursor:pointer;display:inline-block;width:1.4em;text-align:center;color:var(--ds-texte-3)}
+.pv-deplier:hover{color:var(--ds-texte-1)}
+/* Un jour de travail incomplet : montré, à part des totaux et des moyennes. */
+.pv-incomplet>*{color:var(--ds-texte-3)}
+.pv-badge{display:inline-block;margin-left:6px;padding:0 6px;border-radius:999px;font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);
+  line-height:1.6;color:var(--ds-attente-texte);background:var(--ds-attente-doux)}
+.pv-cumul>*{background:var(--ds-surface-2);font-weight:var(--ds-g-fort);color:var(--ds-texte-1)}
+.pv-cumul:not(.pv-moyenne)>*{border-top:1px solid var(--ds-bordure-forte)}
+.pv-moyenne>*{font-weight:var(--ds-g-moyen);color:var(--ds-texte-2)}
+.pv-table .pv-cumul th,.pv-table .pv-moyenne th{white-space:normal}
+
+/* Le détail d'un jour, déplié sous sa ligne : par équipe, puis par compagnie. */
+.pv-detail>td{padding:var(--ds-e-3) var(--ds-e-4);background:var(--ds-surface-2);cursor:default}
+.pv-detail-corps{display:flex;flex-wrap:wrap;gap:var(--ds-e-4);align-items:flex-start}
+.pv-detail-corps table{font-size:var(--ds-t-12);border-collapse:collapse;background:var(--ds-surface-1)}
+.pv-detail-corps caption{text-align:left;font-weight:var(--ds-g-fort);color:var(--ds-texte-1);padding:0 0 6px}
+.pv-detail-corps th,.pv-detail-corps td{padding:4px 8px;border-bottom:1px solid var(--ds-bordure);white-space:nowrap}
+.pv-detail-corps small{color:var(--ds-texte-3)}
+
+@media (max-width:700px){
+  .journee-periode{padding:12px 16px}
+  .pj-etat{flex-basis:100%}
+}

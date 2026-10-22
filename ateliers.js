@@ -578,8 +578,11 @@
       this.synchroniserAteliers();
       try {
         const unite = { ...(this.a.unite ? this.a.unite() : {}), etat: this.state };
-        this.resultat = J().jouer(J().argumentsDeLUnite(unite, this.a.vols(),
-          { delaiChargement: this.a.delaiChargement ? this.a.delaiChargement() : undefined }));
+        const delaiChargement = this.a.delaiChargement ? this.a.delaiChargement() : undefined;
+        // Une journée d'une période simulée et à jour : elle part de ce que la veille lui a laissé dans la période (évolution 10).
+        const entree = this.a.journeePeriode ? this.a.journeePeriode() : null;
+        this.resultat = entree ? root.OrlyPeriode.jouerAvecEntree(unite, this.a.vols(), entree, { delaiChargement }).resultat
+          : J().jouer(J().argumentsDeLUnite(unite, this.a.vols(), { delaiChargement }));
       } catch (e) {
         this.resultat = { ok: false, anomalies: [{ code: 'moteur', message: e.message }], lots: [], ateliers: [], classes: [], parClasse: {} };
       }
