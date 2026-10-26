@@ -5,6 +5,16 @@ license: MIT
 metadata:
   origin: ECC
 ---
+<!--
+  Version adaptée du skill « verification-loop » d'ECC (https://github.com/affaan-m/ECC,
+  commit 25278e7), sous licence MIT : voir .claude/ECC-LICENSE.
+  Adaptations à ce dépôt (SIMMS) :
+  - chaque phase lance les commandes de ce dépôt : pas d'étape de build (les empreintes
+    à la place), pas de vérificateur de types (node --check à la place), pas de linter,
+    les tests par node --test ;
+  - la couverture se lit sans seuil (.claude/rules/ecc/common/testing.md) ;
+  - les renvois à la commande /verify et aux hooks d'ECC, absents de ce dépôt, sont retirés.
+-->
 
 # Verification Loop Skill
 
@@ -21,65 +31,52 @@ Invoke this skill:
 ## Verification Phases
 
 ### Phase 1: Build Verification
+This repository has no build step: the pages load their scripts and stylesheets directly.
+Check instead that each one carries the fingerprint of its content:
 ```bash
-set -o pipefail  # report the build's exit status, not tail's
-# Check if project builds
-npm run build 2>&1 | tail -20
-# OR
-pnpm build 2>&1 | tail -20
+node outils/empreinte.cjs
+git diff --stat -- index.html v2/index.html
 ```
 
-If build fails, STOP and fix before continuing.
+A changed `index.html` means the fingerprints were stale: commit it with the change.
+If the fingerprint tool fails, STOP and fix before continuing.
 
 ### Phase 2: Type Check
+Plain JavaScript, no type checker: check the syntax of every script instead.
 ```bash
-set -o pipefail
-# TypeScript projects
-npx --no-install tsc --noEmit 2>&1 | sed -n '1,30p'
-
-# Python projects
-pyright . 2>&1 | sed -n '1,30p'
+for f in *.js moteur/*.js v2/*.js v2/moteur/*.js outils/*.cjs; do node --check "$f" || echo "KO $f"; done
 ```
 
-Report all type errors. Fix critical ones before continuing.
+Report all syntax errors. Fix them before continuing.
 
 ### Phase 3: Lint Check
 
-Use `sed` to limit displayed output while consuming the whole stream. This keeps a
-successful linter from failing on SIGPIPE when `pipefail` is enabled.
-```bash
-set -o pipefail
-# JavaScript/TypeScript
-npm run lint 2>&1 | sed -n '1,30p'
-
-# Python
-ruff check . 2>&1 | sed -n '1,30p'
-```
+No linter in this repository: skip this phase.
 
 ### Phase 4: Test Suite
 ```bash
 set -o pipefail
-# Run tests with coverage
-npm run test -- --coverage 2>&1 | tail -50
+# Run the Node tests (add --experimental-test-coverage for a coverage report: no threshold)
+node --test tests/*.test.cjs tests/v2/*.test.cjs 2>&1 | tail -20
 
-# Check coverage threshold
-# Target: 80% minimum
+# Then the browser tests the change touches, one by one
+node tests/<name>-browser.cjs
 ```
 
 Report:
 - Total tests: X
 - Passed: X
 - Failed: X
-- Coverage: X%
+- Coverage: X% (only if the report was run; no threshold)
 
 ### Phase 5: Security Scan
 ```bash
 # Check for secrets
-grep -rn "sk-" --include="*.ts" --include="*.js" . 2>/dev/null | head -10
-grep -rn "api_key" --include="*.ts" --include="*.js" . 2>/dev/null | head -10
+grep -rn "sk-" --include="*.js" --include="*.cjs" . 2>/dev/null | head -10
+grep -rn "api_key" --include="*.js" --include="*.cjs" . 2>/dev/null | head -10
 
-# Check for console.log
-grep -rn "console.log" --include="*.ts" --include="*.tsx" src/ 2>/dev/null | head -10
+# Check for console.log (the tests and the tools may print; the pages should not)
+grep -rn "console.log" --include="*.js" --exclude-dir=tests . 2>/dev/null | head -10
 ```
 
 ### Phase 6: Diff Review
@@ -102,10 +99,10 @@ After running all phases, produce a verification report:
 VERIFICATION REPORT
 ==================
 
-Build:     [PASS/FAIL]
-Types:     [PASS/FAIL] (X errors)
-Lint:      [PASS/FAIL] (X warnings)
-Tests:     [PASS/FAIL] (X/Y passed, Z% coverage)
+Build:     [PASS/FAIL] (fingerprints)
+Types:     [PASS/FAIL] (X syntax errors)
+Lint:      n/a (no linter)
+Tests:     [PASS/FAIL] (X/Y passed)
 Security:  [PASS/FAIL] (X issues)
 Diff:      [X files changed]
 
@@ -126,10 +123,5 @@ Set a mental checkpoint:
 - After finishing a component
 - Before moving to next task
 
-Run: /verify
+Run this skill again (verification-loop).
 ```
-
-## Integration with Hooks
-
-This skill complements PostToolUse hooks but provides deeper verification.
-Hooks catch issues immediately; this skill provides comprehensive review.

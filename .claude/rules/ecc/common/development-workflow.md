@@ -25,7 +25,7 @@ The Feature Implementation Workflow describes the development pipeline: research
    - Write tests first (RED)
    - Implement to pass tests (GREEN)
    - Refactor (IMPROVE)
-   - Verify 80%+ coverage
+   - Run the whole suite before committing (coverage report optional, no threshold)
 
 3. **Code Review**
    - Use **code-reviewer** agent immediately after writing code
@@ -38,7 +38,7 @@ The Feature Implementation Workflow describes the development pipeline: research
    - See [git-workflow.md](./git-workflow.md) for commit message format and PR process
 
 5. **Pre-Review Checks**
-   - Verify all automated checks (CI/CD) are passing
+   - Verify all automated checks are passing (this repository has no CI: the Node tests and the browser tests the change touches)
    - Resolve any merge conflicts
    - Ensure branch is up to date with target branch
    - Only request review after these checks pass

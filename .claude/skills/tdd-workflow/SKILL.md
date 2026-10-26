@@ -20,7 +20,9 @@ metadata:
     .claude/rules/ecc/common/testing.md : pas de seuil de couverture (le bloc
     « Coverage Thresholds » est retiré), des tests E2E seulement quand la
     modification touche un parcours critique ;
-  - le renvoi au skill ECC bun-runtime, non copié, est retiré.
+  - le renvoi au skill ECC bun-runtime, non copié, est retiré, ainsi que la commande ECC
+    /plan (un plan *.plan.md, par exemple de l'agent planner) et le conseil de régler
+    un seuil de couverture pour Bun.
   Le reste est identique à l'original.
 -->
 
@@ -35,7 +37,7 @@ This skill ensures all code development follows TDD principles with comprehensiv
 - Refactoring existing code
 - Adding API endpoints
 - Creating new components
-- Continuing from a `/plan` output or another `*.plan.md` implementation plan
+- Continuing from a `*.plan.md` implementation plan (for example one drafted with the planner agent)
 
 ## Plan Handoff
 
@@ -217,7 +219,7 @@ node --test --experimental-test-coverage tests/*.test.cjs tests/v2/*.test.cjs
 
 ### Step 8: Write a TDD Evidence Report
 
-After GREEN and coverage are validated, write a short human-readable evidence report. The report is not a replacement for test code; it is an index that explains what the test code proves and preserves that proof across session restarts or squash merges.
+After GREEN is validated (and the coverage report read, if it was run), write a short human-readable evidence report. The report is not a replacement for test code; it is an index that explains what the test code proves and preserves that proof across session restarts or squash merges.
 
 Recommended path:
 
@@ -308,7 +310,6 @@ bun test --coverage   # coverage report
 ```
 
 - Mock modules with `mock.module(...)` / `mock(...)` from `bun:test` instead of `jest.mock(...)`.
-- Configure coverage thresholds in `bunfig.toml` under `[test]` (e.g. `coverageThreshold`) rather than the Jest `coverageThresholds` config block.
 
 ### API Integration Test Pattern
 ```typescript
@@ -524,6 +525,7 @@ node outils/empreinte.cjs && node --test tests/*.test.cjs tests/v2/*.test.cjs
 ```
 
 ### CI/CD Integration
+This repository has no CI; if one is added:
 ```yaml
 # GitHub Actions
 - name: Run Tests

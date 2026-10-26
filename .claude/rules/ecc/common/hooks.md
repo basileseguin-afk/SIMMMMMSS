@@ -14,9 +14,9 @@ Use with caution:
 - Never use dangerously-skip-permissions flag
 - Configure `permissions.allow` rules in `~/.claude/settings.json` (or a project's `.claude/settings.json`) instead
 
-## TodoWrite Best Practices
+## Task List Best Practices
 
-Use TodoWrite tool to:
+Use the task-list tool (TodoWrite, or TaskCreate / TaskUpdate depending on the Claude Code version) to:
 - Track progress on multi-step tasks
 - Verify understanding of instructions
 - Enable real-time steering

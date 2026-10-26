@@ -18,7 +18,7 @@ Code review ensures quality, security, and maintainability before code is merged
 
 Before requesting review, ensure:
 
-- All automated checks (CI/CD) are passing
+- All automated checks are passing (this repository has no CI: the Node tests and the browser tests the change touches)
 - Merge conflicts are resolved
 - Branch is up to date with target branch
 
@@ -34,7 +34,7 @@ Before marking code complete:
 - [ ] No hardcoded secrets or credentials
 - [ ] No console.log or debug statements
 - [ ] Tests exist for new functionality
-- [ ] Test coverage meets 80% minimum
+- [ ] The change is tested: its tests and the whole suite pass (no coverage threshold)
 
 ## Security Review Triggers
 
@@ -73,7 +73,7 @@ Use these for code review:
 2. Check security checklist first
 3. Review code quality checklist
 4. Run relevant tests
-5. Verify coverage >= 80%
+5. Optionally read the coverage report (no threshold)
 6. Use appropriate agent for detailed review
 ```
 
@@ -114,7 +114,7 @@ Use these for code review:
 
 This rule works with:
 
-- [testing.md](testing.md) - Test coverage requirements
+- [testing.md](testing.md) - Testing requirements
 - [security.md](security.md) - Security checklist
 - [git-workflow.md](git-workflow.md) - Commit standards
 - [agents.md](agents.md) - Agent delegation

@@ -3,8 +3,7 @@
 
 ## Available Agents
 
-ECC agents come either from the `ecc@ecc` plugin (plugin-scoped names, `ecc:<name>`) or from a manual install into `~/.claude/agents/` (bare names, `<name>`). Use the name that matches the install you have; the manual installer strips the `ecc:` prefix from copied files.
-In this repository, `planner` and `code-reviewer` are installed in `.claude/agents/` (bare names).
+In this repository, the ECC agents `planner` and `code-reviewer` are installed in `.claude/agents/` (bare names).
 They are invoked through the Agent tool with that `subagent_type`:
 
 ```text
