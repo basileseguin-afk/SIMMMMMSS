@@ -22,7 +22,9 @@ metadata:
     modification touche un parcours critique ;
   - le renvoi au skill ECC bun-runtime, non copié, est retiré, ainsi que la commande ECC
     /plan (un plan *.plan.md, par exemple de l'agent planner) et le conseil de régler
-    un seuil de couverture pour Bun.
+    un seuil de couverture pour Bun ;
+  - les messages des commits d'étape renvoient à .claude/rules/ecc/common/git-workflow.md
+    (plus de format test: / fix: / refactor:).
   Le reste est identique à l'original.
 -->
 
@@ -166,8 +168,7 @@ A test that was only written but not compiled and executed does not count as RED
 Do not edit production code until this RED state is confirmed.
 
 If the repository is under Git, create a checkpoint commit immediately after this stage is validated.
-Recommended commit message format:
-- `test: add reproducer for <feature or bug>`
+Commit message: follow `.claude/rules/ecc/common/git-workflow.md`.
 - This commit may also serve as the RED validation checkpoint if the reproducer was compiled and executed and failed for the intended reason
 - Verify that this checkpoint commit is on the current active branch before continuing
 
@@ -194,8 +195,7 @@ Rerun the same relevant test target after the fix and confirm the previously fai
 Only after a valid GREEN result may you proceed to refactor.
 
 If the repository is under Git, create a checkpoint commit immediately after GREEN is validated.
-Recommended commit message format:
-- `fix: <feature or bug>`
+Commit message: follow `.claude/rules/ecc/common/git-workflow.md`.
 - The fix commit may also serve as the GREEN validation checkpoint if the same relevant test target was rerun and passed
 - Verify that this checkpoint commit is on the current active branch before continuing
 
@@ -207,8 +207,7 @@ Improve code quality while keeping tests green:
 - Enhance readability
 
 If the repository is under Git, create a checkpoint commit immediately after refactoring is complete and tests remain green.
-Recommended commit message format:
-- `refactor: clean up after <feature or bug> implementation`
+Commit message: follow `.claude/rules/ecc/common/git-workflow.md`.
 - Verify that this checkpoint commit is on the current active branch before considering the TDD cycle complete
 
 ### Step 7: Verify Coverage

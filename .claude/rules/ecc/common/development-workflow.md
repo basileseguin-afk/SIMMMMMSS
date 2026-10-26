@@ -28,14 +28,13 @@ The Feature Implementation Workflow describes the development pipeline: research
    - Run the whole suite before committing (coverage report optional, no threshold)
 
 3. **Code Review**
-   - Use **code-reviewer** agent immediately after writing code
+   - Use **code-reviewer** agent when relevant (optional, not automatic), e.g. to review a significant change before committing
    - Address CRITICAL and HIGH issues
    - Fix MEDIUM issues when possible
 
 4. **Commit & Push**
-   - Detailed commit messages
-   - Follow conventional commits format
-   - See [git-workflow.md](./git-workflow.md) for commit message format and PR process
+   - Detailed commit messages, in the format of [git-workflow.md](./git-workflow.md)
+   - See [git-workflow.md](./git-workflow.md) for the PR process
 
 5. **Pre-Review Checks**
    - Verify all automated checks are passing (this repository has no CI: the Node tests and the browser tests the change touches)

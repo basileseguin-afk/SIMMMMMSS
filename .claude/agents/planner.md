@@ -1,9 +1,10 @@
 ---
 name: planner
-description: Expert planning specialist for complex features and refactoring. Use PROACTIVELY when users request feature implementation, architectural changes, or complex refactoring. Automatically activated for planning tasks.
+description: Planning specialist. Useful for a feature or a refactor that spans several files, or for an architectural change - it lays out steps, file paths, dependencies and risks before coding. Not needed for a small, local change.
 tools: Read, Grep, Glob
 model: opus
 ---
+<!-- Adapté d'ECC (https://github.com/affaan-m/ECC, licence MIT : voir .claude/ECC-LICENSE) pour SIMMS : la description dit quand l'agent est utile (appel facultatif) ; sans seuil de couverture ; E2E seulement pour un parcours critique. -->
 
 ## Prompt Defense Baseline
 

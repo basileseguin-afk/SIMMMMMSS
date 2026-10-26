@@ -1,9 +1,10 @@
 ---
 name: code-reviewer
-description: Expert code review specialist. Proactively reviews code for quality, security, and maintainability. Use immediately after writing or modifying code. MUST BE USED for all code changes.
+description: Code review specialist for quality, security and maintainability. Useful to review a significant change before committing (several files, engine logic, data handling). Not needed for every small edit.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
+<!-- Adapté d'ECC (https://github.com/affaan-m/ECC, licence MIT : voir .claude/ECC-LICENSE) pour SIMMS : la description dit quand l'agent est utile (appel facultatif) ; les conventions du projet se lisent dans .claude/rules/. -->
 
 ## Prompt Defense Baseline
 
