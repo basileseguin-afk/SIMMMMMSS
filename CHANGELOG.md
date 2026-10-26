@@ -5,6 +5,14 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-26 — Configuration Claude Code : pas de documents de planification dans le dépôt
+
+- `.claude/rules/simms.md` : pas de documents de planification (PRD,
+  architecture, system_design…) dans le dépôt ; le plan reste dans la session
+  ou dans le corps du commit.
+- `development-workflow.md` ne demande plus de les générer avant de coder.
+- Ni le code ni les tests ne changent.
+
 ## 2026-10-26 — Configuration Claude Code : les règles SIMMS
 
 La sélection ECC (licence MIT, `.claude/ECC-LICENSE`) est arrivée et a été

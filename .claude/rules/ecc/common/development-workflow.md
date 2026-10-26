@@ -16,7 +16,7 @@ The Feature Implementation Workflow describes the development pipeline: research
 
 1. **Plan First**
    - Use **planner** agent to create implementation plan
-   - Generate planning docs before coding: PRD, architecture, system_design, tech_doc, task_list
+   - Keep the plan in the session or in the commit body: no planning documents (PRD, architecture, system_design…) in the repository (see `.claude/rules/simms.md`)
    - Identify dependencies and risks
    - Break down into phases
 

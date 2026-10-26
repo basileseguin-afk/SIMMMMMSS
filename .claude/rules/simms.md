@@ -18,4 +18,5 @@
 ## Tests et commits
 - Le test s'écrit d'abord, mais sans commit d'étape (échec, réussite) : un commit par partie, vert, avec ses tests et sa doc, après node outils/empreinte.cjs.
 - Pas de rapport TDD dans un fichier : le résumé va dans le corps du commit.
+- Pas de documents de planification (PRD, architecture, system_design…) dans le dépôt : le plan reste dans la session ou dans le corps du commit.
 - Avant chaque commit : le skill verification-loop. Pour une partie qui touche le moteur : l'agent code-reviewer.
