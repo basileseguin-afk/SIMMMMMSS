@@ -16,9 +16,11 @@ metadata:
     (node --test sur tests/*.test.cjs et tests/v2/*.test.cjs) ; il n'a pas de
     linter : le crochet de pré-commit met à jour les empreintes
     (node outils/empreinte.cjs) avant de lancer les tests ;
-  - la description et « Core Principles » suivent .claude/rules/ecc/common/testing.md :
-    pas de seuil de couverture, des tests E2E seulement quand la modification
-    touche un parcours critique.
+  - la description, « Core Principles », l'étape 7 et « Success Metrics » suivent
+    .claude/rules/ecc/common/testing.md : pas de seuil de couverture (le bloc
+    « Coverage Thresholds » est retiré), des tests E2E seulement quand la
+    modification touche un parcours critique ;
+  - le renvoi au skill ECC bun-runtime, non copié, est retiré.
   Le reste est identique à l'original.
 -->
 
@@ -210,7 +212,7 @@ Recommended commit message format:
 ### Step 7: Verify Coverage
 ```bash
 node --test --experimental-test-coverage tests/*.test.cjs tests/v2/*.test.cjs
-# Verify 80%+ coverage achieved
+# Check that the changed code is covered (no threshold required)
 ```
 
 ### Step 8: Write a TDD Evidence Report
@@ -281,7 +283,7 @@ describe('Button Component', () => {
 
 ### Bun Native Test Pattern (`bun:test`)
 
-When the project uses Bun's built-in runner, import from `bun:test` and run with `bun test` — not `bun run test`. The API is Jest-like, so `describe` / `it` / `expect` and most matchers carry over. See the `bun-runtime` skill for runtime, install, and bundler details.
+When the project uses Bun's built-in runner, import from `bun:test` and run with `bun test` — not `bun run test`. The API is Jest-like, so `describe` / `it` / `expect` and most matchers carry over.
 
 ```typescript
 import { describe, it, expect, mock } from 'bun:test'
@@ -459,22 +461,6 @@ jest.mock('@/lib/openai', () => ({
 node --test --experimental-test-coverage tests/*.test.cjs tests/v2/*.test.cjs
 ```
 
-### Coverage Thresholds
-```json
-{
-  "jest": {
-    "coverageThresholds": {
-      "global": {
-        "branches": 80,
-        "functions": 80,
-        "lines": 80,
-        "statements": 80
-      }
-    }
-  }
-}
-```
-
 ## Common Testing Mistakes to Avoid
 
 ### FAIL: WRONG: Testing Implementation Details
@@ -561,11 +547,10 @@ node outils/empreinte.cjs && node --test tests/*.test.cjs tests/v2/*.test.cjs
 
 ## Success Metrics
 
-- 80%+ code coverage achieved
 - All tests passing (green)
 - No skipped or disabled tests
 - Fast test execution (< 30s for unit tests)
-- E2E tests cover critical user flows
+- E2E tests cover the critical user flows the change touches
 - Tests catch bugs before production
 
 ---

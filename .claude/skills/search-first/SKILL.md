@@ -138,12 +138,6 @@ The planner should also consult researcher for:
 - Integration pattern discovery
 - Existing reference architectures
 
-### With iterative-retrieval skill
-Combine for progressive discovery:
-- Cycle 1: Broad search (npm, PyPI, MCP)
-- Cycle 2: Evaluate top candidates in detail
-- Cycle 3: Test compatibility with project constraints
-
 ## Examples
 
 ### Example 1: "Add dead link checking"
