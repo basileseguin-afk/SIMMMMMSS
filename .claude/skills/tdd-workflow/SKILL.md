@@ -8,8 +8,14 @@ metadata:
 <!--
   Version adaptée du skill « tdd-workflow » d'ECC (https://github.com/affaan-m/ECC,
   commit 25278e7), sous licence MIT : voir .claude/ECC-LICENSE.
-  Adaptation : l'étape 0 (« Detect the Test Runner ») et la référence au script
-  ECC scripts/setup-package-manager.js, absent de ce dépôt, ont été retirées.
+  Adaptations à ce dépôt (SIMMS) :
+  - l'étape 0 (« Detect the Test Runner ») et la référence au script ECC
+    scripts/setup-package-manager.js, absent de ce dépôt, ont été retirées,
+    ainsi que le renvoi à cette étape dans la section Bun ;
+  - les commandes <test>, <test-watch> et <coverage> sont celles de ce dépôt
+    (node --test sur tests/*.test.cjs et tests/v2/*.test.cjs) ; il n'a pas de
+    linter : le crochet de pré-commit met à jour les empreintes
+    (node outils/empreinte.cjs) avant de lancer les tests.
   Le reste est identique à l'original.
 -->
 
@@ -129,7 +135,7 @@ describe('Semantic Search', () => {
 
 ### Step 3: Run Tests (They Should Fail)
 ```bash
-<test>
+node --test tests/*.test.cjs tests/v2/*.test.cjs
 # Tests should fail - we haven't implemented yet
 ```
 
@@ -170,7 +176,7 @@ If the repository is under Git, stage the minimal fix now but defer the checkpoi
 
 ### Step 5: Run Tests Again
 ```bash
-<test>
+node --test tests/*.test.cjs tests/v2/*.test.cjs
 # Tests should now pass
 ```
 
@@ -198,7 +204,7 @@ Recommended commit message format:
 
 ### Step 7: Verify Coverage
 ```bash
-<coverage>
+node --test --experimental-test-coverage tests/*.test.cjs tests/v2/*.test.cjs
 # Verify 80%+ coverage achieved
 ```
 
@@ -270,7 +276,7 @@ describe('Button Component', () => {
 
 ### Bun Native Test Pattern (`bun:test`)
 
-When the project uses Bun's built-in runner (see [Step 0](#step-0-detect-the-test-runner)), import from `bun:test` and run with `bun test` — not `bun run test`. The API is Jest-like, so `describe` / `it` / `expect` and most matchers carry over. See the `bun-runtime` skill for runtime, install, and bundler details.
+When the project uses Bun's built-in runner, import from `bun:test` and run with `bun test` — not `bun run test`. The API is Jest-like, so `describe` / `it` / `expect` and most matchers carry over. See the `bun-runtime` skill for runtime, install, and bundler details.
 
 ```typescript
 import { describe, it, expect, mock } from 'bun:test'
@@ -445,7 +451,7 @@ jest.mock('@/lib/openai', () => ({
 
 ### Run Coverage Report
 ```bash
-<coverage>
+node --test --experimental-test-coverage tests/*.test.cjs tests/v2/*.test.cjs
 ```
 
 ### Coverage Thresholds
@@ -516,21 +522,21 @@ test('updates user', () => {
 
 ### Watch Mode During Development
 ```bash
-<test-watch>
+node --test --watch tests/*.test.cjs tests/v2/*.test.cjs
 # Tests run automatically on file changes
 ```
 
 ### Pre-Commit Hook
 ```bash
 # Runs before every commit
-<test> && <lint>
+node outils/empreinte.cjs && node --test tests/*.test.cjs tests/v2/*.test.cjs
 ```
 
 ### CI/CD Integration
 ```yaml
 # GitHub Actions
 - name: Run Tests
-  run: <coverage>
+  run: node --test --experimental-test-coverage tests/*.test.cjs tests/v2/*.test.cjs
 - name: Upload Coverage
   uses: codecov/codecov-action@v3
 ```

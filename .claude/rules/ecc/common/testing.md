@@ -1,11 +1,20 @@
+<!-- Adapté d'ECC (https://github.com/affaan-m/ECC, licence MIT : voir .claude/ECC-LICENSE) pour SIMMS : sans seuil de couverture ni tests E2E obligatoires. -->
 # Testing Requirements
 
-## Minimum Test Coverage: 80%
+## Test Before Calling a Fix Done
 
-Test Types (ALL required):
+A fix or a feature is not finished until it has been tested:
+- run the tests that cover the change and see them pass;
+- run the whole suite before committing, to catch regressions.
+
+In this repository: `node --test tests/*.test.cjs tests/v2/*.test.cjs` (Node tests), and the browser tests `tests/*-browser.cjs` that the change touches.
+
+## Test Types
+
+Use the kinds of tests the change calls for:
 1. **Unit Tests** - Individual functions, utilities, components
 2. **Integration Tests** - API endpoints, database operations
-3. **E2E Tests** - Critical user flows (framework chosen per language)
+3. **E2E Tests** - Critical user flows (framework chosen per language), when the change affects them
 
 ## Test-Driven Development
 
@@ -15,7 +24,6 @@ MANDATORY workflow:
 3. Write minimal implementation (GREEN)
 4. Run test - it should PASS
 5. Refactor (IMPROVE)
-6. Verify coverage (80%+)
 
 ## Troubleshooting Test Failures
 

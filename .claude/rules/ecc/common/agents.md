@@ -1,20 +1,22 @@
+<!-- Adapté d'ECC (https://github.com/affaan-m/ECC, licence MIT : voir .claude/ECC-LICENSE) pour SIMMS : planner et code-reviewer sous leur nom installé, appelés quand c'est pertinent. -->
 # Agent Orchestration
 
 ## Available Agents
 
 ECC agents come either from the `ecc@ecc` plugin (plugin-scoped names, `ecc:<name>`) or from a manual install into `~/.claude/agents/` (bare names, `<name>`). Use the name that matches the install you have; the manual installer strips the `ecc:` prefix from copied files.
+In this repository, `planner` and `code-reviewer` are installed in `.claude/agents/` (bare names).
 They are invoked through the Agent tool with that `subagent_type`:
 
 ```text
-Agent(subagent_type: "ecc:planner", prompt: "...")
+Agent(subagent_type: "planner", prompt: "...")
 ```
 
 | Agent | Purpose | When to Use |
 |-------|---------|-------------|
-| ecc:planner | Implementation planning | Complex features, refactoring |
+| planner | Implementation planning | Complex features, refactoring |
 | ecc:architect | System design | Architectural decisions |
 | ecc:tdd-guide | Test-driven development | New features, bug fixes |
-| ecc:code-reviewer | Code review | After writing code |
+| code-reviewer | Code review | After writing code |
 | ecc:security-reviewer | Security analysis | Before commits |
 | ecc:build-error-resolver | Fix build errors | When build fails |
 | ecc:e2e-runner | E2E testing | Critical user flows |
@@ -25,11 +27,11 @@ Agent(subagent_type: "ecc:planner", prompt: "...")
 
 For the full roster of 69 agents, see `/ecc:ecc-guide`.
 
-## Immediate Agent Usage
+## Agent Usage When Relevant
 
-No user prompt needed:
-1. Complex feature requests - Use **ecc:planner** agent
-2. Code just written/modified - Use **ecc:code-reviewer** agent
+Optional, when it helps the task (not automatic):
+1. Complex feature requests - Use **planner** agent when relevant
+2. Code just written/modified - Use **code-reviewer** agent when relevant
 3. Bug fix or new feature - Use **ecc:tdd-guide** agent
 4. Architectural decision - Use **ecc:architect** agent
 
