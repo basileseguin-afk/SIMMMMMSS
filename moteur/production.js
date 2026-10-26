@@ -2502,9 +2502,14 @@
     /** Les retours à la plonge selon la règle choisie, sans les avions qu'un handling 24 h/24 décharge. */
     // Une période (évolution 10), source « J+1 » : le sale du jour vient des départs réels de la veille, leur heure
     // + 24 h + le délai ; sans eux (le premier jour, une journée seule), des départs du jour, comme avant.
-    const decharges24 = plan24 ? new Set(plan24.avions.map(x => x.v.id)) : null;
+    // Correction 11 : un départ de la veille dont un handling 24 h/24 décharge l'avion (il charge sa compagnie, et le
+    // vol a une ETA ou sa compagnie une escale) a rendu son sale au déchargement : il ne revient pas une seconde fois.
+    // On le juge d'après le vol de la veille lui-même, pas d'après les identifiants du jour (un numéro de vol change
+    // d'un jour à l'autre). Les autres gardent la règle « J+1 ».
+    const handlings24 = plan24 ? ateliers.filter(a => a.type === 'handling') : [];
+    const decharge24 = v => { const a = handlingDeCompagnie(handlings24, v.cie); return !!a && a.handling24h === true && arriveeDe(a, v) != null; };
     const departsVeille = Array.isArray(opts.departsVeille)
-      ? opts.departsVeille.filter(v => (v.sens || 'DEP') === 'DEP' && !(decharges24 && decharges24.has(v.id))) : null;
+      ? opts.departsVeille.filter(v => (v.sens || 'DEP') === 'DEP' && !(plan24 && decharge24(v))) : null;
     const retoursStatiques = (materiel, tous) => (plan24
       ? retoursDeVols(plan24.volsRetours, plan24.planche ? { ...(materiel || {}), planche: plan24.planche } : materiel, tous, departsVeille)
       : retoursDeVols(opts.vols, materiel, tous, departsVeille));

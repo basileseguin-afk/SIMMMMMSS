@@ -5,6 +5,31 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-26 — Banc d'essai, correction 11 : une période en handling 24 h/24, pas de second retour « J+1 »
+
+Constat sur 61 journées réelles (handling 24 h/24, escales saisies pour toutes
+ses compagnies, retours « J+1 ») : le premier jour était celui de
+`simuler-journee`, les 60 suivants lavaient de 18 à 69 vols de trop par jour,
+tous « (J-1) » ; en septembre, le sale restant le soir passait en moyenne de
+1 700 à 66 000 unités, et la nuit de plonge s'ouvrait 30 fois au lieu de 2.
+
+- Cause : en période, le moteur retirait des départs de la veille ceux dont
+  l'**identifiant** était déchargé le jour même. Un vol de la veille qui ne
+  vole pas le jour même (un numéro qui change, fréquent en long-courrier)
+  revenait en « J+1 », alors que son avion avait été déchargé et son sale
+  rendu.
+- Désormais, un départ de la veille ne revient en « J+1 » que si aucun
+  handling 24 h/24 ne décharge son avion, jugé d'après le vol de la veille
+  lui-même : un handling 24 h/24 charge sa compagnie, et le vol a une ETA ou
+  sa compagnie une escale. C'est la règle d'une journée seule, appliquée à la
+  veille. Une compagnie sans déchargement (ni escale ni ETA, ou hors de la
+  liste du handling) garde la règle « J+1 ». Sans handling 24 h/24, ou sans
+  période (une journée seule), rien ne change ; l'option `volsVeille` de
+  l'outil d'une journée reste « les départs réels de la veille ».
+- Fichiers : `moteur/production.js` (v1 ; `v2/moteur/production.js` n'est pas
+  touché), `docs/BANC_ESSAI.md` (§ 9), `README.md`,
+  `tests/periode-handling24.test.cjs` (nouveau), `index.html` (empreinte).
+
 ## 2026-10-22 — Banc d'essai, évolution 10 (e) : l'export des résultats d'une période
 
 - Quand une période a été simulée et qu'elle est à jour, **« Exporter les

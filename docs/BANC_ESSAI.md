@@ -1213,6 +1213,19 @@ lui laisse :
   le premier jour garde la règle d'aujourd'hui. Le moteur reçoit ces départs
   par `departsVeille` (l'outil d'une journée, par l'option `volsVeille`) ;
   sans eux, rien ne change.
+- **avec un handling 24 h/24** (correction 11) : un départ de la veille ne
+  revient en « J+1 » que si aucun handling 24 h/24 ne décharge son avion —
+  la règle d'une journée seule (§ 3 : ces avions-là sortent de la règle des
+  retours), appliquée à la veille. Le moteur juge chaque départ de la veille
+  d'après lui-même : un handling 24 h/24 charge sa compagnie, et le vol a une
+  ETA ou sa compagnie une escale. Son sale est alors revenu au déchargement ;
+  il ne revient pas une seconde fois. Une compagnie sans déchargement (ni
+  escale ni ETA, ou hors de la liste du handling 24 h/24) garde la règle
+  « J+1 » : son sale vient de ses départs réels de la veille. Jugé d'après les
+  identifiants du jour, un numéro de vol qui changeait d'un jour à l'autre
+  (fréquent en long-courrier) revenait une seconde fois : 18 à 69 vols lavés
+  de trop par jour sur 61 journées réelles. Sans handling 24 h/24, rien ne
+  change.
 
 **Rien d'autre ne passe pour l'instant** : les lots non finis, les retards,
 les préparations d'avance. Ils se comptent dans le bilan du jour où ils
@@ -1291,7 +1304,13 @@ homme-minutes ; les mesures ; le prorata d'un lot de deux compagnies ; pas à
 pas, le déterminisme et le temps de calcul ; une journée rejouée d'après son
 entrée, décalage compris, comme la page la montre) ; `tests/simuler-periode.test.cjs`
 (l'outil : le JSON, chaque journée rejouée seule par `simuler-journee` avec ses
-`options`, `--sans-detail`, le classeur daté, le déterminisme, les refus).
+`options`, `--sans-detail`, le classeur daté, le déterminisme, les refus) ;
+`tests/periode-handling24.test.cjs` (correction 11, deux jours fictifs en
+handling 24 h/24 : des numéros de vol qui changent, aucun retour « J+1 » le
+jour 2, identique champ par champ à `simuler-journee` avec le sale du jour 1 ;
+une compagnie sans escale, hors de la liste du handling, ou avec une ETA ; un
+vol sous le même numéro les deux jours, un seul déchargement par jour ; sans
+handling 24 h/24, rien ne change).
 
 ### La page
 
