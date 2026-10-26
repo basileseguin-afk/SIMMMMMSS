@@ -5,6 +5,32 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-26 — Configuration Claude Code : les règles SIMMS
+
+La sélection ECC (licence MIT, `.claude/ECC-LICENSE`) est arrivée et a été
+adaptée au dépôt dans les commits « Ajout d’une sélection ECC » puis
+« Adaptation de la sélection ECC à SIMMS » (parties 1 à 5) : skills
+`search-first`, `tdd-workflow`, `verification-loop`, `ecc-security-review`,
+`coding-standards`, agents `planner` et `code-reviewer`, règles
+`.claude/rules/ecc/common/`. Ce commit y ajoute les règles propres au dépôt.
+
+- `.claude/rules/simms.md` (nouveau) : les règles du dépôt, qui l'emportent
+  sur celles d'ECC — aucune donnée réelle, les fichiers refusés par
+  `.gitignore` jamais committés, la non-régression, le moteur à événements
+  (pas de règle d'immutabilité dans `moteur/`), pas de découpage ni de
+  dépendance sans demande, un commit par partie sans commit d'étape, le
+  skill `verification-loop` avant chaque commit et l'agent `code-reviewer`
+  pour une partie qui touche le moteur.
+- `tdd-workflow` : plus de commit d'étape (« Git Checkpoints » retiré) ;
+  l'étape 8 met le résumé échec / réussite dans le corps du commit, jamais
+  dans un fichier.
+- `code-review.md` : la relecture est facultative, comme dans `agents.md` ;
+  `agents.md` ne demande plus d'exécuter les tâches en parallèle.
+- `patterns.md` et `performance.md` supprimés ; `security.md` réduit à
+  quatre règles : aucune donnée réelle, pas de secret, fichiers importés
+  validés, texte importé échappé avant l'affichage.
+- Ni le code ni les tests ne changent.
+
 ## 2026-10-26 — Banc d'essai, correction 11 : une période en handling 24 h/24, pas de second retour « J+1 »
 
 Constat sur 61 journées réelles (handling 24 h/24, escales saisies pour toutes

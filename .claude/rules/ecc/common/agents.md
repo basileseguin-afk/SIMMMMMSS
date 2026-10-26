@@ -25,21 +25,6 @@ Optional, when it helps the task (not automatic):
 3. Bug fix or new feature - Use the **tdd-workflow** skill when relevant
 4. Architectural decision - Use **planner** agent when relevant
 
-## Parallel Task Execution
-
-ALWAYS use parallel Task execution for independent operations:
-
-```markdown
-# GOOD: Parallel execution
-Launch 3 agents in parallel:
-1. Agent 1: Security analysis of auth module
-2. Agent 2: Performance review of cache system
-3. Agent 3: Type checking of utilities
-
-# BAD: Sequential when unnecessary
-First agent 1, then agent 2, then agent 3
-```
-
 ## Delegation Completion Contract
 
 Applies to every agent at every depth (parent, child, grandchild):
@@ -48,7 +33,7 @@ Applies to every agent at every depth (parent, child, grandchild):
 2. **If you delegate, you own collection.** Wait for results, integrate them, then return. Fire-and-forget delegation is forbidden.
 3. **Decompose only when the work cannot fit in one context.** Do not re-delegate a task already sized for a single agent — depth is an outcome, not a plan.
 
-> Rationale: observed failure mode — research agents followed "Parallel Task Execution" above, spawned children, and returned "waiting" as their final answer. All children completed successfully but their results were orphaned. The parallel rule without a completion contract produces zombie tasks.
+> Rationale: observed failure mode — research agents spawned children in parallel and returned "waiting" as their final answer. All children completed successfully but their results were orphaned. Parallel delegation without a completion contract produces zombie tasks.
 
 ## Multi-Perspective Analysis
 

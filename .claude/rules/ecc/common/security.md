@@ -1,29 +1,7 @@
-# Security Guidelines
+<!-- Adapté d'ECC (https://github.com/affaan-m/ECC, licence MIT : voir .claude/ECC-LICENSE) pour SIMMS : réduit aux règles de sécurité de ce dépôt. -->
+# Sécurité
 
-## Mandatory Security Checks
-
-Before ANY commit:
-- [ ] No hardcoded secrets (API keys, passwords, tokens)
-- [ ] All user inputs validated
-- [ ] SQL injection prevention (parameterized queries)
-- [ ] XSS prevention (sanitized HTML)
-- [ ] CSRF protection enabled
-- [ ] Authentication/authorization verified
-- [ ] Rate limiting on all endpoints
-- [ ] Error messages don't leak sensitive data
-
-## Secret Management
-
-- NEVER hardcode secrets in source code
-- ALWAYS use environment variables or a secret manager
-- Validate that required secrets are present at startup
-- Rotate any secrets that may have been exposed
-
-## Security Response Protocol
-
-If security issue found:
-1. STOP immediately
-2. Use the **ecc-security-review** skill
-3. Fix CRITICAL issues before continuing
-4. Rotate any exposed secrets
-5. Review entire codebase for similar issues
+- **Aucune donnée réelle.** Le dépôt est public : ni plan, ni vols, ni effectifs, ni volumes, ni noms de l'unité, ni chiffres tirés d'une sauvegarde réelle (voir `.claude/rules/simms.md`).
+- **Pas de secret.** Ni clé, ni mot de passe, ni jeton dans le code, les tests, la doc ou les commits.
+- **Les fichiers importés sont validés** avant d'être utilisés : un CSV, un classeur Excel ou une sauvegarde est vérifié (format, colonnes, valeurs) ; une erreur refuse le fichier entier et dit quoi corriger.
+- **Le texte importé est échappé avant l'affichage** : un nom de vol, de compagnie, d'équipe ou de service venu d'un fichier passe par l'échappement HTML (`esc`, `escapeHTML`) avant d'entrer dans la page.

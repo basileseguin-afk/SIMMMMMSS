@@ -6,7 +6,7 @@ Code review ensures quality, security, and maintainability before code is merged
 
 ## When to Review
 
-**MANDATORY review triggers:**
+**Review triggers** (optional, when relevant, as in [agents.md](agents.md); for a part that touches the engine, `.claude/rules/simms.md` asks for the code-reviewer agent):
 
 - After writing or modifying code
 - Before any commit to shared branches
@@ -74,7 +74,7 @@ Use these for code review:
 3. Review code quality checklist
 4. Run relevant tests
 5. Optionally read the coverage report (no threshold)
-6. Use appropriate agent for detailed review
+6. Optionally, use the code-reviewer agent for a detailed review
 ```
 
 ## Common Issues to Catch
