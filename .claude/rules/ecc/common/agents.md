@@ -13,27 +13,18 @@ Agent(subagent_type: "planner", prompt: "...")
 
 | Agent | Purpose | When to Use |
 |-------|---------|-------------|
-| planner | Implementation planning | Complex features, refactoring |
-| ecc:architect | System design | Architectural decisions |
-| ecc:tdd-guide | Test-driven development | New features, bug fixes |
+| planner | Implementation planning, system design | Complex features, refactoring, architectural decisions |
 | code-reviewer | Code review | After writing code |
-| ecc:security-reviewer | Security analysis | Before commits |
-| ecc:build-error-resolver | Fix build errors | When build fails |
-| ecc:e2e-runner | E2E testing | Critical user flows |
-| ecc:refactor-cleaner | Dead code cleanup | Code maintenance |
-| ecc:doc-updater | Documentation | Updating docs |
-| ecc:rust-reviewer | Rust code review | Rust projects |
-| ecc:harmonyos-app-resolver | HarmonyOS app development | HarmonyOS/ArkTS projects |
 
-For the full roster of 69 agents, see `/ecc:ecc-guide`.
+Two skills take the place of ECC agents not installed here: **tdd-workflow** (test-driven development; new features, bug fixes) and **ecc-security-review** (security analysis; before commits).
 
 ## Agent Usage When Relevant
 
 Optional, when it helps the task (not automatic):
 1. Complex feature requests - Use **planner** agent when relevant
 2. Code just written/modified - Use **code-reviewer** agent when relevant
-3. Bug fix or new feature - Use **ecc:tdd-guide** agent
-4. Architectural decision - Use **ecc:architect** agent
+3. Bug fix or new feature - Use the **tdd-workflow** skill when relevant
+4. Architectural decision - Use **planner** agent when relevant
 
 ## Parallel Task Execution
 

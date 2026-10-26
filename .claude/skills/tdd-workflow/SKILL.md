@@ -1,6 +1,6 @@
 ---
 name: tdd-workflow
-description: "Test-driven development workflow: write a failing test first, watch it fail, implement the smallest change to green, then refactor with 80%+ coverage across unit, integration, and E2E tests. Use when writing a new feature, fixing a bug, refactoring, or when told to write failing tests first."
+description: "Test-driven development workflow: write a failing test first, watch it fail, implement the smallest change to green, then refactor; a change is done once its tests and the whole suite pass (no coverage threshold; E2E tests only when the change touches a critical user flow). Use when writing a new feature, fixing a bug, refactoring, or when told to write failing tests first."
 argument-hint: <path/to/*.plan.md>
 metadata:
   origin: ECC
@@ -15,7 +15,10 @@ metadata:
   - les commandes <test>, <test-watch> et <coverage> sont celles de ce dépôt
     (node --test sur tests/*.test.cjs et tests/v2/*.test.cjs) ; il n'a pas de
     linter : le crochet de pré-commit met à jour les empreintes
-    (node outils/empreinte.cjs) avant de lancer les tests.
+    (node outils/empreinte.cjs) avant de lancer les tests ;
+  - la description et « Core Principles » suivent .claude/rules/ecc/common/testing.md :
+    pas de seuil de couverture, des tests E2E seulement quand la modification
+    touche un parcours critique.
   Le reste est identique à l'original.
 -->
 
@@ -56,8 +59,9 @@ Do not treat the plan as permission to skip TDD. The plan supplies intent and ta
 ### 1. Tests BEFORE Code
 ALWAYS write tests first, then implement code to make tests pass.
 
-### 2. Coverage Requirements
-- Minimum 80% coverage (unit + integration + E2E)
+### 2. Test Before Calling It Done
+- No coverage threshold required
+- The tests that cover the change pass, and the whole suite runs before committing
 - All edge cases covered
 - Error scenarios tested
 - Boundary conditions verified
@@ -77,6 +81,7 @@ ALWAYS write tests first, then implement code to make tests pass.
 - External API calls
 
 #### E2E Tests (Playwright)
+Only when the change touches a critical user flow:
 - Critical user flows
 - Complete workflows
 - Browser automation

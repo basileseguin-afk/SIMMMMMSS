@@ -38,7 +38,7 @@ Before marking code complete:
 
 ## Security Review Triggers
 
-**STOP and use security-reviewer agent when:**
+**STOP and use the ecc-security-review skill when:**
 
 - Authentication or authorization code
 - User input handling
@@ -59,16 +59,12 @@ Before marking code complete:
 
 ## Agent Usage
 
-Use these agents for code review:
+Use these for code review:
 
-| Agent | Purpose |
+| Agent or skill | Purpose |
 |-------|---------|
-| **code-reviewer** | General code quality, patterns, best practices |
-| **security-reviewer** | Security vulnerabilities, OWASP Top 10 |
-| **typescript-reviewer** | TypeScript/JavaScript specific issues |
-| **python-reviewer** | Python specific issues |
-| **go-reviewer** | Go specific issues |
-| **rust-reviewer** | Rust specific issues |
+| **code-reviewer** (agent) | General code quality, patterns, best practices |
+| **ecc-security-review** (skill) | Security vulnerabilities, OWASP Top 10 |
 
 ## Review Workflow
 

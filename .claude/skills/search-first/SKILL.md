@@ -133,8 +133,7 @@ The planner should invoke researcher before Phase 1 (Architecture Review):
 - Planner incorporates them into the implementation plan
 - Avoids "reinventing the wheel" in the plan
 
-### With architect agent
-The architect should consult researcher for:
+The planner should also consult researcher for:
 - Technology stack decisions
 - Integration pattern discovery
 - Existing reference architectures
