@@ -5,6 +5,43 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-27 — Banc d'essai, évolution 9 : l'équipe d'un robot calculée à partir de son barème
+
+Un robot va à son débit, mais le travail autour de sa ligne (chargement,
+montage, runner) se budgète par vol : son équipe gardait toujours l'effectif
+saisi, même dans un service à effectif calculé.
+
+- Dans un service de robots (une annexe où ne travaillent que des robots,
+  comme le Robot sous le Montage) à effectif calculé, avec des heures par vol
+  à son barème **propre**, l'équipe du robot prend ses personnes avec la
+  formule d'une équipe à la main, au moins `personnesMin` ; le résultat va dans
+  `effectifs`. Calculé, il n'est plus « à l'arrêt, pas assez de monde ». Sa
+  ligne va toujours à son débit. Ailleurs, il se calcule s'il le demande
+  (« Calculé d'après le barème »).
+- Sans ces heures (le barème repris du service dont il dépend ne compte pas),
+  hors d'un service de robots sans le demander, à effectif « Constant
+  (saisi) », ou dans un service constant ou imposé : l'effectif saisi, comme
+  avant. Sans vol ce jour-là : 0 personne (correction 10), y compris quand sa
+  compagnie ne vole pas.
+- Correction 10, suite : une équipe calculée à 0 personne sans travail (robot
+  ou à la main) n'attend plus de renfort quand les renforts sont actifs ; sa
+  commande se fait en temps nul, au lieu d'un lot impossible.
+- Chaque journée part de l'effectif saisi d'un robot que le calcul avait
+  fait : la valeur d'un autre jour ne vaut pas saisie.
+- Dans la page : le choix « Effectif » de la fiche d'un robot (comme le
+  service, calculé d'après le barème, constant) ; ses heures par vol dans
+  Barème et dans le classeur du barème ; « Heures de travail » montre ses
+  heures par vol quand il est calculé, son débit sinon.
+- Sans heures par vol au barème propre d'un service de robots, ni demande sur
+  un robot, rien ne change : les journées enregistrées non plus (le rejeu du
+  corpus des tests, champ par champ) ; en v2, rien ne change.
+- Fichiers : `moteur/production.js`, `moteur/journee.js`, `ateliers.js`,
+  `sim.js`, `echanges.js` et `reglages.js` (copiés dans `v2/`),
+  `docs/BANC_ESSAI.md` (§ 10, nouveau), `docs/MODELE_ATELIERS.md`,
+  `docs/CAHIER_DES_CHARGES.md` (E18, M18), `README.md`,
+  `tests/robot-calcule.test.cjs` et `tests/robot-calcule-browser.cjs`
+  (nouveaux), `index.html` et `v2/index.html` (empreintes).
+
 ## 2026-10-27 — Banc d'essai, correction 10 : une équipe sans aucun vol ce jour-là n'a personne
 
 Dans un service à effectif calculé, la règle « des commandes sans minutes

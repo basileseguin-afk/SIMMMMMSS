@@ -431,9 +431,12 @@
    * ensuite jouée avec cet effectif. Les attentes entre services ne sont pas
    * dans le calcul : c'est la simulation qui dit si ça tient.
    *
-   * Un robot (sa ligne), une plonge (ses tunnels), un handling (ses durées par
-   * vol, ses chauffeurs) et une mise à disposition ne travaillent pas en
-   * homme-minutes : leur effectif reste celui qu'on saisit.
+   * Une plonge (ses tunnels), un handling (ses durées par vol, ses chauffeurs)
+   * et une mise à disposition ne travaillent pas en homme-minutes : leur
+   * effectif reste celui qu'on saisit. Un robot va à son débit, mais le travail
+   * autour de sa ligne se budgète par vol (banc d'essai, évolution 9) : avec des
+   * minutes au barème de son service, il se calcule comme une équipe à la main,
+   * au moins son minimum ; sans elles, il garde son effectif saisi.
    */
   const PLAFOND_EFFECTIF = 999;
 
@@ -2354,6 +2357,8 @@
     // Effectif imposé (essai) : le travail dépend des vols (les minutes par vol
     // s'appliquent), mais l'effectif est celui saisi — « et avec 2 personnes ? ».
     const imposes = new Set(Array.isArray(opts.effectifImpose) ? opts.effectifImpose : []);
+    // Les services dont le barème est repris du service dont ils dépendent : un robot n'y lit pas de minutes (évolution 9).
+    const repris = new Set(Array.isArray(opts.baremeRepris) ? opts.baremeRepris : []);
     const modeEffectif = a => (['fixe', 'calcule', 'impose'].includes(a.effectif) ? a.effectif
       : imposes.has(a.service) ? 'impose' : calcules.has(a.service) ? 'calcule' : 'fixe');
     const dependDesVols = a => modeEffectif(a) !== 'fixe';
@@ -2565,12 +2570,25 @@
     // Les commandes écartées (hors chemin, équipe ⚡ qui ne travaille pas) sont
     // déjà parties : on ne compte que ce qu'elle fera vraiment.
     const effectifs = {};
+    // Un robot (évolution 9) : le travail autour de sa ligne (chargement, montage, runner), budgété par vol au barème propre
+    // de son service — par défaut dans un service de robots (`servicesRobot`, que donne moteur/journee.js), ailleurs s'il le
+    // demande (`effectif: 'calcule'`) ; jamais au barème repris du service dont il dépend (`baremeRepris`). Sans minutes
+    // pour ses commandes — celles du jour, ou celles qui ne volent pas ce jour-là —, il garde son effectif saisi.
+    const servicesRobot = new Set(Array.isArray(opts.servicesRobot) ? opts.servicesRobot : []);
+    const absentesDe = new Map(sansVol.filter(x => x.code === 'commande-absente').map(x => [x.atelier, x.classes]));
+    const classeDe = id => ({ cie: id.slice(0, id.lastIndexOf('/')), cabine: id.slice(id.lastIndexOf('/') + 1) });
+    const robotSuitLeBareme = (a, lots) => {
+      if (repris.has(a.service) || !(servicesRobot.has(a.service) || a.effectif === 'calcule')) return false;
+      const t = bareme[a.service];
+      return lots.some(c => (minutesParVol(t, c) || 0) > 0) || (absentesDe.get(a.id) || []).some(id => (minutesParVol(t, classeDe(id)) || 0) > 0);
+    };
     for (const a of ateliers) {
       // `effectifFixe` : une équipe dont on essaie un autre effectif (« et avec une personne de plus ? »).
-      if (a.type !== 'manuel' || !calculee(a)) continue;
+      if (!(a.type === 'manuel' || a.type === 'robot') || !calculee(a)) continue;
       let poste;
       try { poste = minutesDuPoste(a, opts.regime); } catch (e) { continue; }   // heure invalide : déjà signalée
       const lots = (a.lots || []).flatMap(classesDuLot).map(id => parClasse.get(id)).filter(Boolean);
+      if (a.type === 'robot' && !robotSuitLeBareme(a, lots)) continue;
       const ici = lots.reduce((n, c) => n + travailDans(a, c, bareme, SPML), 0);
       const f = fusionDe(a);
       const avant = f ? lots.filter(c => fusionPar.get(cle(f, c.id)) === a.service).reduce((n, c) => n + travailClasse(f, c, bareme, SPML), 0) : 0;
@@ -2580,6 +2598,9 @@
       // temps nul. Sans aucun vol ce jour-là (une commande ajoutée à la main, l'armement d'une compagnie qui ne
       // vole pas), personne (correction 10 du banc d'essai).
       if (n === 0 && lots.some(c => (c.vols || []).length > 0 && !(travailDans(a, c, bareme, SPML) > 0))) n = 1;
+      // Un robot ne tourne qu'à partir de son minimum : au moins `personnesMin` dès qu'il a du travail. Sa ligne
+      // va toujours à son débit : des personnes en plus ne l'accélèrent pas.
+      if (a.type === 'robot' && n > 0) n = Math.max(n, a.personnesMin === undefined ? 1 : a.personnesMin);
       effectifs[a.id] = { personnes: n, saisi: a.personnes, hommeMinutes: ici + avant, poste, rendement };
       a.personnes = n;
     }
@@ -2612,7 +2633,7 @@
     // Ses personnes saisies ne comptent plus : ce qu'on en disait non plus.
     for (let i = anomalies.length - 1; i >= 0; i--) {
       const x = anomalies[i];
-      if (effectifs[x.atelier] && (x.code === 'personnes' || x.code === 'sans-personne')) anomalies.splice(i, 1);
+      if (effectifs[x.atelier] && (x.code === 'personnes' || x.code === 'sans-personne' || x.code === 'robot-arret')) anomalies.splice(i, 1);
     }
 
     // Une mise à disposition sert TOUT : on ne lui fait pas énumérer les
@@ -3190,7 +3211,8 @@
         const plateaux = lots.reduce((n, c) => n + c.pax, 0);
         const mini = a.personnesMin === undefined ? 1 : a.personnesMin;
         const heures = lots.reduce((n, c) => n + c.pax / Math.max(1e-9, debitRobot(a, c.id)), 0);
-        duree = a.personnes >= mini ? heures * 60 : Infinity;
+        // Calculé à 0 personne, sans plateau ce jour-là (correction 10) : sa commande se fait en temps nul.
+        duree = a.personnes >= mini ? heures * 60 : effectifs[a.id] && !(heures > 0) ? 0 : Infinity;
         detail = { plateaux, debit: plateaux && heures ? Math.round(plateaux / heures) : a.debit };
         base = heures * 60;
       } else {
@@ -3451,8 +3473,10 @@
           if (t0 >= o.finPoste - 1e-9) return { fin: o.finPoste, arret, cumul, fait, tronque: true, aide, attenteRenfort };
           const ap = apport(R, t0);
           let dRest;
-          if (o.robot) dRest = n + ap.personnes >= R.mini ? rho * o.base : Infinity;
-          else if (!ap.personnes) dRest = n > 0 ? rho * o.duree : Infinity;     // son effectif seul : la durée d'avant, telle quelle
+          // Calculée à 0 personne, sans travail (correction 10) : sa commande se fait en temps nul, sans attendre de renfort.
+          const vide = !!effectifs[R.a.id] && !(o.base > 0);
+          if (o.robot) dRest = n + ap.personnes >= R.mini || vide ? rho * o.base : Infinity;
+          else if (!ap.personnes) dRest = n > 0 || vide ? rho * o.duree : Infinity;     // son effectif seul : la durée d'avant, telle quelle
           else dRest = rho * o.base / (n + ap.efficace);
           if (ap.personnes && Number.isFinite(dRest)) aide = true;
           const debut = Math.max(t0, reprise), prochain = prochainChangement(R, t0);

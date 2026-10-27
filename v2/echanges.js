@@ -240,7 +240,8 @@
 
   /**
    * @param ctx { bareme (complet), services:[{id,nom}], classes, routes: Map,
-   *              ateliers:[…], sansBareme?: Set }
+   *              ateliers:[…], sansBareme?: Set, robotsCalcules?: Set (les robots dont
+   *              l'effectif se calcule d'après le barème : banc d'essai de la version 1, évolution 9) }
    * @returns {{ colonnes:[{id,nom}], lignes:[{ classe, vols, cellules:{sid:{parVol,jour,source,atelier}}, parVol, jour }],
    *             totaux:{ parVol:{sid}, jour:{sid}, jourTotal } }}
    */
@@ -248,8 +249,10 @@
     const bareme = ctx.bareme || {}, classes = ctx.classes || [], routes = ctx.routes || new Map();
     const sans = ctx.sansBareme || new Set(), ateliers = ctx.ateliers || [];
     const passe = (c, sid) => { const r = routes.get(c.id); return !r || r.services.has(sid); };
-    // Un robot ne lit pas le barème, mais il a sa colonne : son débit par commande.
-    const robots = new Set(ateliers.filter(a => a.type === 'robot').map(a => a.service));
+    // Un robot ne lit pas le barème, mais il a sa colonne : son débit par commande. Sauf un robot dont
+    // l'effectif se calcule d'après le barème (évolution 9) : ses heures par vol se lisent comme les autres.
+    const calcules = ctx.robotsCalcules || new Set();
+    const robots = new Set(ateliers.filter(a => a.type === 'robot' && !calcules.has(a.id)).map(a => a.service));
     // Un service où aucune commande ne passe n'a rien à montrer : pas de colonne.
     // Un service qui travaille par compagnie (l'armement, retour d'usage du 02/10 :
     // « ses man-hours sont sur l'ensemble de la compagnie, pas sur les classes ») :
@@ -279,7 +282,7 @@
         const eq = equipe && ateliers.find(x => x.id === equipe.id);
         // Un poste qui ne dépend pas des vols n'a pas de minutes par vol (06/10).
         if (eq && eq.type === 'manuel' && ctx.constantes && ctx.constantes.has(eq.id)) { cellules[sv.id] = { source: 'constant', parVol: null, jour: null, equipe }; continue; }
-        if (eq && eq.type === 'robot') {
+        if (eq && eq.type === 'robot' && !calcules.has(eq.id)) {
           // Le robot : des plateaux à un débit, pas des man-minutes.
           const debit = P.debitRobot(eq, c.id), parVolPax = vols ? c.pax / vols : c.pax;
           cellules[sv.id] = { source: 'robot', parVol: null, jour: null, equipe, debit,

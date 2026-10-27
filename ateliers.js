@@ -302,7 +302,9 @@
           compagnies: [...new Set((Array.isArray(a.compagnies) ? a.compagnies : []).map(c => String(c).trim().toUpperCase().slice(0, 40)).filter(Boolean))].slice(0, 200) } : {}),
         // Son effectif, autrement que son service (06/10) : 'fixe' ou 'calcule' ; absent, comme le service.
         ...((type === 'manuel' || type === 'appui') && ['fixe', 'calcule', 'impose'].includes(a.effectif) ? { effectif: a.effectif } : {}),
-        ...((type === 'manuel' || type === 'appui') && Number.isInteger(a.personnesSaisies) ? { personnesSaisies: Math.max(0, Math.min(999, a.personnesSaisies)) } : {}),
+        // Un robot (banc d'essai, évolution 9) : calculé d'après le barème de son service, ou constant (saisi).
+        ...(type === 'robot' && ['fixe', 'calcule'].includes(a.effectif) ? { effectif: a.effectif } : {}),
+        ...((type === 'manuel' || type === 'appui' || type === 'robot') && Number.isInteger(a.personnesSaisies) ? { personnesSaisies: Math.max(0, Math.min(999, a.personnesSaisies)) } : {}),
         // Fait aussi l'étape d'avant, à la chaîne (retour d'usage du 29/09) : le
         // service de cette étape. Une équipe qui prépare seulement, et pas le sien.
         ...(type === 'manuel' && typeof a.fusion === 'string' && a.fusion && a.fusion.length <= 160 && a.fusion !== service ? { fusion: a.fusion } : {}),
@@ -672,6 +674,20 @@
     /** Les services à effectif imposé (essai). */
     servicesImposes() { return J().servicesImposes(this.state); }
 
+    /** Un robot dont l'effectif peut se calculer d'après le barème de son service (banc d'essai, évolution 9) :
+     *  il le demande, ou il suit son service, un service de robots (une annexe où ne travaillent que des robots,
+     *  moteur/journee.js) ni constant ni imposé. Sans minutes au barème propre de son service pour ses commandes,
+     *  le calcul lui laisse son effectif saisi (moteur/production.js). */
+    robotCalcule(a) {
+      if (!a || a.type !== 'robot' || a.effectif === 'fixe') return false;
+      return a.effectif === 'calcule' || this.robotSuitSonService(a);
+    }
+    /** « Comme le service », ce robot se calcule-t-il ? */
+    robotSuitSonService(a) {
+      const zones = (this.a.unite ? this.a.unite() : {}).zones || [];
+      return !this.effectifConstant(a.service) && !this.effectifImpose(a.service) && J().servicesDeRobots(this.state, zones).includes(a.service);
+    }
+
     /** L'effectif de cette équipe est-il imposé (essai) ? */
     impose(a) { return !!a && (a.effectif === 'impose' || (!a.effectif && this.effectifImpose(a.service))); }
 
@@ -698,11 +714,20 @@
      * comme son service, ou à part. Constant, elle retrouve l'effectif saisi. */
     regleEffectifEquipe(a, v) {
       if (v === 'fixe' || v === 'calcule' || v === 'impose') a.effectif = v; else delete a.effectif;
-      if ((!this.dependDesVols(a) || this.impose(a)) && Number.isInteger(a.personnesSaisies)) { a.personnes = a.personnesSaisies; delete a.personnesSaisies; }
+      // Un robot (évolution 9) retrouve son effectif saisi quand il ne se calcule plus.
+      const saisi = a.type === 'robot' ? !this.robotCalcule(a) : !this.dependDesVols(a) || this.impose(a);
+      if (saisi && Number.isInteger(a.personnesSaisies)) { a.personnes = a.personnesSaisies; delete a.personnesSaisies; }
     }
 
     /* Le petit choix « Effectif » dans la fiche d'une équipe. */
     choixEffectifEquipe(a, classe) {
+      if (a && a.type === 'robot') {
+        // Un robot : calculé d'après le barème de son service (évolution 9), ou constant (saisi).
+        const svc = this.robotSuitSonService(a) ? 'calculé s’il a des heures par vol au barème' : 'saisi', v = a.effectif || '';
+        const opt = (x, t) => `<option value="${x}"${x === v ? ' selected' : ''}>${t}</option>`;
+        return `<label class="${classe || 'at-eff-equipe'}" title="Le travail autour de la ligne (chargement, montage, runner) se compte en heures par vol au barème du service : l’effectif suit alors les vols. La ligne, elle, va toujours à son débit.">Effectif
+        <select data-at-champ="effectif">${opt('', 'Comme le service (' + svc + ')')}${opt('calcule', 'Calculé d’après le barème')}${opt('fixe', 'Constant (saisi)')}</select></label>`;
+      }
       if (!a || !(a.type === 'manuel' || a.type === 'appui')) return '';
       const svc = this.effectifConstant(a.service) ? 'constant' : this.effectifImpose(a.service) ? 'effectif imposé' : 'dépend des vols', v = a.effectif || '';
       const opt = (x, t) => `<option value="${x}"${x === v ? ' selected' : ''}>${t}</option>`;
@@ -726,6 +751,8 @@
 
     /** L'effectif calculé d'une équipe ({ personnes, hommeMinutes, poste, rendement }), ou null. */
     effectifCalcule(a) {
+      // Un robot calculé (évolution 9) : seulement si le calcul l'a fait (des minutes au barème pour ses commandes).
+      if (a && a.type === 'robot') return this.robotCalcule(a) ? ((this.resultat && this.resultat.effectifs) || {})[a.id] || null : null;
       if (!this.dependDesVols(a) || this.impose(a)) return null;
       return ((this.resultat && this.resultat.effectifs) || {})[a.id] || null;
     }
@@ -835,6 +862,11 @@
         // La première fois, on garde ce qui avait été saisi : rien ne se perd.
         if (!Number.isInteger(a.personnesSaisies)) a.personnesSaisies = a.personnes;
         a.personnes = e.personnes; n++;
+      }
+      // Un robot que le calcul ne fait plus (constant, ou plus de minutes au barème) retrouve son effectif saisi.
+      if (this.resultat && this.resultat.ok) for (const a of this.state.ateliers) {
+        if (a.type !== 'robot' || eff[a.id] || !Number.isInteger(a.personnesSaisies)) continue;
+        a.personnes = a.personnesSaisies; delete a.personnesSaisies; n++;
       }
       if (n) this.enregistrer();
     }

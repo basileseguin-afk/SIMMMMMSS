@@ -694,6 +694,8 @@
         routes: this.a.routes ? this.a.routes(classes) : new Map(), ateliers: this.a.ateliers ? this.a.ateliers() : [],
         sansBareme: new Set(this.a.sansBareme ? this.a.sansBareme() : []),
         constantes: new Set(this.a.constantes ? this.a.constantes() : []),
+        // Les robots dont l'effectif se calcule d'après le barème (banc d'essai de la version 1, évolution 9).
+        robotsCalcules: new Set(this.a.robotsCalcules ? this.a.robotsCalcules() : []),
         // Les services par compagnie (l'armement) : une ligne récap par compagnie.
         parCompagnie: this.a.parCompagnie ? this.a.parCompagnie() : [], categories: this.a.categories ? this.a.categories() : {} };
     }

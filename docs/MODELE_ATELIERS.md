@@ -460,6 +460,14 @@ Le robot ne consomme pas de barème d'homme-minutes : son temps vient de son
 débit. Un arrêt programmé ne change pas la durée du travail, il **repousse la
 fin** d'autant — et ce temps d'arrêt est compté à part.
 
+Son **effectif**, lui, peut suivre les vols (version 1, banc d'essai,
+évolution 9 — `BANC_ESSAI.md` § 10) : dans un service de robots (une annexe où
+ne travaillent que des robots) à effectif calculé, avec des heures par vol au
+barème **propre** du service, l'équipe du robot se calcule comme une équipe à
+la main, au moins son minimum ; ailleurs, s'il le demande. Sa ligne va
+toujours à son débit. Sans ces heures, ou à effectif « Constant (saisi) », il
+garde son effectif saisi.
+
 ### Le poste : pauses et heure de fin
 
 Une équipe ne travaille pas huit heures d'affilée, et elle s'en va à la fin de

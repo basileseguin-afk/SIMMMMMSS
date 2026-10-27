@@ -1409,3 +1409,92 @@ page, le même JSON) ; `tests/periode-browser.cjs` (le choix d'« Exporter les
 résultats », l'export de la page = celui de l'outil pour la sauvegarde de la
 page, la journée en JSON ; à relancer, le choix attend ; sans date, la
 journée comme avant).
+
+## 10. Le calage sur le réel, version 1
+
+Le banc compare la simulation aux heures pointées. Pour que l'écart dise
+quelque chose, le calcul doit d'abord rendre le **besoin exact** de chaque
+équipe, sans personne de trop ni personne d'oubliée : une équipe sans aucun
+vol n'a personne (correction 10, § 1), et l'équipe d'un robot suit les vols
+comme les autres (ci-dessous).
+
+### L'équipe d'un robot calculée d'après son barème (évolution 9)
+
+Un robot va à son débit : sa ligne fait ses plateaux ÷ débit, avec au moins
+son minimum pour tourner. Mais le travail autour de la ligne — le chargement,
+le montage, le runner — se budgète par vol, comme ailleurs. Il se chiffre au
+barème **propre** d'un **service de robots** : une annexe où ne travaillent
+que des robots, comme le Robot que la page pose sous le Montage
+(`moteur/journee.js`, `servicesDeRobots`, passe ces services au moteur dans
+`servicesRobot` ; absent quand il n'y en a pas). Dans un service de robots à
+effectif calculé :
+
+- **avec des heures par vol à son barème propre** pour ses commandes,
+  l'équipe du robot prend ses personnes avec la formule d'une équipe à la
+  main : minutes par vol × vols de chaque commande ÷ minutes du poste ÷
+  rendement, arrondi au-dessus, et **au moins `personnesMin`** (1 par défaut)
+  dès qu'elle a du travail. Le résultat va dans `effectifs` (`personnes`,
+  `saisi`, `hommeMinutes`, `poste`, `rendement`), et la journée se joue avec
+  cet effectif : calculé, le robot n'est jamais « à l'arrêt, pas assez de
+  monde » (`robot-arret` disparaît) ;
+- **sans heures par vol pour ses commandes**, il garde son effectif saisi,
+  comme avant. Le barème **repris** du service dont il dépend ne compte jamais :
+  sous le Montage, le Robot en reprend les minutes, qui sont celles du travail
+  à la main, pas les siennes (`baremeRepris`, les services d'un robot dont le
+  barème est repris ; absent quand il n'y en a pas) ;
+- **hors d'un service de robots** — un service du plan de base (le Montage,
+  la Prépa), une annexe partagée avec des équipes à la main ou hors tunnel —,
+  les minutes du barème sont celles du travail à la main : le robot garde son
+  effectif saisi, comme avant, sauf s'il demande « Calculé d'après le
+  barème » ;
+- **sa compagnie ne vole pas ce jour-là** (sa commande écartée de la journée) :
+  0 personne si le barème a des minutes pour elle, comme une équipe à la main
+  (correction 10) ; son effectif saisi sinon ;
+- à effectif **« Constant (saisi) »** (le choix « Effectif » de sa fiche), ou
+  dans un service constant ou à effectif imposé, son effectif saisi ;
+- **sans vol ce jour-là** (une commande ajoutée à la main), 0 personne et sa
+  commande en temps nul (correction 10), renforts actifs ou non : calculée à
+  0 personne sans travail, une équipe — robot ou à la main — n'attend pas de
+  renfort ;
+- chaque journée part de son **effectif saisi** (`personnesSaisies`) : la
+  valeur qu'un autre jour a calculée ne vaut pas saisie ;
+- **sa ligne va toujours à son débit** : des personnes en plus ne
+  l'accélèrent pas, la durée de ses lots ne change pas.
+
+Dans la page :
+
+- **Barème** : les heures par vol du service de robots se saisissent comme
+  les autres — une valeur par classe, ou par compagnie × classe. Le classeur
+  « Barème » (Exporter, Importer) lui donne ses lignes dès que son effectif
+  peut se calculer ;
+- **sa fiche** : « Effectif » propose « Comme le service » (« calculé s'il a des
+  heures par vol au barème » dans un service de robots, « saisi » ailleurs),
+  « Calculé d'après le barème » et « Constant (saisi) » ; calculé,
+  « Personnes » se lit (« calculé · homme-minutes ÷ poste ») et l'effectif saisi
+  est gardé, il revient au « Constant (saisi) » ;
+- **Heures de travail** : un robot calculé montre ses heures par vol, comme
+  une équipe à la main ; sans calcul, son débit par commande, comme avant (le
+  débit par commande se règle aussi dans sa fiche).
+
+Vérifications :
+
+- `tests/robot-calcule.test.cjs` : 300 min par vol × 4 vols, ⌈1 200 ÷ 420⌉ =
+  3 personnes ; 2 vols, 2 ; sans minutes au barème ou à effectif fixe, son
+  effectif saisi ; au moins `personnesMin`, sans `robot-arret` ; la durée de la
+  ligne inchangée ; sans vol (correction 10), 0 personne et rien d'impossible,
+  renforts actifs compris (le robot, l'équipe à la main) ; sa compagnie qui ne
+  vole pas ; saisi sous son minimum sans minutes, à l'arrêt comme avant ; la
+  relecture des équipes ; la journée part de l'effectif saisi ; le récap en
+  heures par vol ; le barème repris du service dont il dépend ne compte pas,
+  son barème propre oui, dans un service de robots ; hors d'un service de
+  robots, seulement s'il le demande, et sans rien demander le résultat d'avant,
+  champ par champ ; les journées enregistrées inchangées ;
+- `tests/effectif-calcule.test.cjs`, `tests/seuils-browser.cjs` : un robot
+  dans un service du plan de base garde son effectif saisi, comme avant ;
+- `tests/robot-calcule-browser.cjs` : le Robot sous le Montage garde son
+  effectif saisi et son débit au récap ; 1 h par vol saisie dans Barème, il se
+  calcule (au moins son minimum), « calculé » dans sa fiche, ses heures par vol
+  au récap, la ligne à la même durée ; « Constant (saisi) » rend ses
+  5 personnes ; le classeur du barème lui donne ses lignes ; après
+  rechargement, le même calcul ; ses heures par vol retirées, ses
+  5 personnes reviennent, dans la journée affichée aussi.

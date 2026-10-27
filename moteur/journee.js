@@ -132,14 +132,14 @@
   /** Le barème complété des annexes, la règle de poste et le rendement ; rien sans réglages. */
   function reglagesDuModele(modele, services, zones) {
     if (!modele) return {};
-    const bareme = clone(modele.bareme);
+    const bareme = clone(modele.bareme), repris = [];
     for (const s of services) {
       if (bareme[s.id]) continue;
       const a = annexesDe(zones).find(z => z.id === s.id), pere = a ? a.parent : null;
-      if (pere && bareme[pere]) bareme[s.id] = clone(bareme[pere]);
+      if (pere && bareme[pere]) { bareme[s.id] = clone(bareme[pere]); repris.push(s.id); }
     }
     // Les heures sup (évolution 2), les renforts (évolution 5) et l'ordre souple (correction 6) : seulement une fois réglés.
-    return { bareme, rendement: modele.rendement, regime: modele.regime, ...(modele.heuresSup ? { heuresSup: modele.heuresSup } : {}),
+    return { bareme, repris, rendement: modele.rendement, regime: modele.regime, ...(modele.heuresSup ? { heuresSup: modele.heuresSup } : {}),
       ...(modele.renforts ? { renforts: modele.renforts } : {}), ...(modele.ordreSouple ? { ordreSouple: modele.ordreSouple } : {}) };
   }
 
@@ -259,6 +259,24 @@
   }
 
   /**
+   * Les services de robots (évolution 9) : les annexes où ne travaillent que des robots — comme le Robot que la page
+   * pose sous le Montage. Le robot d'un tel service se calcule d'après le barème propre du service ; ailleurs (un
+   * service du plan de base, un service partagé avec des équipes à la main), seulement s'il le demande.
+   */
+  function servicesDeRobots(etat, zones) {
+    const ateliers = (etat && etat.ateliers) || [], annexes = new Set(annexesDe(zones).map(z => z.id));
+    const aLaMain = new Set(ateliers.filter(a => a.type === 'manuel' || a.type === 'appui').map(a => a.service));
+    return [...new Set(ateliers.filter(a => a.type === 'robot').map(a => a.service))].filter(s => annexes.has(s) && !aLaMain.has(s)).sort();
+  }
+
+  /** Les services d'un robot dont le barème est repris du service dont ils dépendent ({} sans). */
+  function baremeReprisDesRobots(repris, ateliers) {
+    const robots = new Set((ateliers || []).filter(a => a.type === 'robot').map(a => a.service));
+    const ids = (repris || []).filter(id => robots.has(id));
+    return ids.length ? { baremeRepris: ids } : {};
+  }
+
+  /**
    * Les arguments de `simuler` depuis l'état relu de l'unité.
    * @param unite { etat, zones, base, flux, modele } — les cases (ory-ateliers-v1),
    *   les zones du plan, les services du plan de base, le Centre des flux
@@ -280,6 +298,8 @@
     // Les cases resynchronisées, sur une copie : la page a déjà enregistré les siennes.
     const etat = clone(u.etat);
     synchroniser(etat, classes);
+    // Un robot que le calcul a fait (évolution 9) part de son effectif saisi : un jour où il ne se calcule pas, c'est lui qui vaut.
+    for (const a of etat.ateliers || []) if (a.type === 'robot' && Number.isInteger(a.personnesSaisies)) a.personnes = a.personnesSaisies;
     return {
       vols, classes,
       ateliers: etat.ateliers, liaisons, materiel: etat.materiel,
@@ -290,6 +310,11 @@
       categories: etat.categories || {},
       // Les services dont l'effectif se calcule d'après les homme-minutes (05/10).
       effectifCalcule: servicesCalcules(etat, services), effectifImpose: servicesImposes(etat),
+      // Un robot ne se calcule que sur le barème propre de son service (évolution 9) : par défaut dans un service de
+      // robots, jamais sur le barème repris du service dont il dépend (le Robot posé sous le Montage n'a pas les
+      // minutes du Montage). Seulement s'il y en a.
+      ...(servicesDeRobots(etat, zones).length ? { servicesRobot: servicesDeRobots(etat, zones) } : {}),
+      ...baremeReprisDesRobots(r.repris, etat.ateliers),
       noms: Object.fromEntries(fantomesDeLUnite(etat, services, zones, base).map(f => [f.id, f.nom])
         .concat(services.map(s => [s.id, s.nom]))),
       // Les renforts (évolution 5) : la règle du modèle, la matrice des cases, les familles du plan.
@@ -438,7 +463,7 @@
     argumentsDeLaJournee, argumentsDeLUnite, uniteDeLaSauvegarde, jouer, volsDuFichier, volsDecales,
     servicesDeLUnite, liaisonsDeLUnite, fantomesDeLUnite, nomDeService, estRetire, reglagesDuModele, famillesDeLUnite,
     classesDuProgramme, synchroniser, lotsAtelier, effectifConstant, effectifImpose, parVols,
-    servicesCalcules, servicesImposes, CONSTANTS, NOMS_CONSTANTS, DELAI_CHARGEMENT, delaiDe, fondre
+    servicesCalcules, servicesImposes, servicesDeRobots, CONSTANTS, NOMS_CONSTANTS, DELAI_CHARGEMENT, delaiDe, fondre
   };
   if (enNode) module.exports = api;
   else root.OrlyJournee = api;

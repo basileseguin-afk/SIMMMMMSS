@@ -2359,11 +2359,14 @@ function installerCentreReglages() {
     // disposition ou des robots ne lit pas le barème : inutile de le proposer.
     // Les équipes à la main constantes : leurs cellules du récap n'ont pas de minutes.
     constantes:()=>Sim.ateliers?Sim.ateliers.constantes():[],
+    // Les robots que le calcul fait d'après le barème (banc d'essai, évolution 9) : leurs heures par vol au récap.
+    robotsCalcules:()=>Sim.ateliers?Sim.ateliers.state.ateliers.filter(a=>a.type==='robot'&&Sim.ateliers.effectifCalcule(a)).map(a=>a.id):[],
     sansBareme:()=>{
       const par=new Map();
       for(const a of ((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]))
         // Un poste qui ne dépend pas des vols n'a pas de minutes par vol (06/10).
-        par.set(a.service,(par.get(a.service)||false)||(a.type==='manuel'&&Sim.ateliers.dependDesVols(a)));
+        // Un robot calculé d'après le barème (banc d'essai, évolution 9) le lit aussi.
+        par.set(a.service,(par.get(a.service)||false)||(a.type==='manuel'&&Sim.ateliers.dependDesVols(a))||Sim.ateliers.robotCalcule(a));
       // Un service par compagnie (l'armement) a ses minutes dans sa fiche, pas dans le barème.
       const parCompagnie=Object.keys((Sim.ateliers&&Sim.ateliers.state.categories)||{});
       return [...new Set([...par].filter(([,manuel])=>!manuel).map(([s])=>s).concat(parCompagnie))];
