@@ -1707,6 +1707,10 @@
   const MESURES_PERIODE = [
     ['personnes', 'Personnes', 'l’effectif des équipes'],
     ['besoin', 'Besoin exact (pers.)', 'homme-minutes ÷ poste ÷ rendement pour une équipe à effectif calculé, ses personnes sinon (non arrondi)'],
+    // L'arrondi au service (banc d'essai de la version 1, évolution 11 a).
+    ['charge', 'Charge (ETP)', 'la charge des équipes, non arrondie : le besoin exact d’une équipe calculée ; pour un robot ou une plonge à effectif saisi, les homme-minutes de ses lots ÷ son poste ; sinon personnes × présence ÷ présence générale'],
+    ['personnesService', 'Personnes du service', '⌈charge⌉ : la charge du service arrondie une fois, au service'],
+    ['surplusArrondi', 'Surplus d’arrondi', 'personnes − personnes du service : ce que coûte l’arrondi équipe par équipe, avec le sous-emploi d’un effectif saisi ; négatif quand des présences dépassent la présence générale'],
     ['hommeMinutes', 'Homme-minutes', 'le travail fait : la somme des homme-minutes des lots'],
     ['heuresSup', 'Heures sup (min × pers.)', 'les heures supplémentaires en minutes × personnes, renforts en heures sup compris'],
     ['renfortsPretes', 'Renforts prêtés (min)', 'les minutes prêtées à un autre service'],
@@ -1722,7 +1726,8 @@
     ['borneBasse', 'Borne basse chauffeurs', 'le moins de chauffeurs possible'],
     ['heuresSupChauffeurs', 'Heures sup chauffeurs (min)', 'les heures sup des chauffeurs'],
     ['volsLaves', 'Vols lavés', 'la plonge : les vols lavés'],
-    ['encadrement', 'Encadrement', 'l’encadrement saisi du service, une fois par jour']
+    ['encadrement', 'Encadrement', 'l’encadrement saisi du service, une fois par jour'],
+    ['chargeEncadrement', 'Charge de l’encadrement (ETP)', 'l’encadrement saisi du service, à la présence générale (ses personnes), à part de la charge des équipes']
   ];
   const SEMAINE = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
   const MOIS_FR = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
@@ -1768,14 +1773,14 @@
     cumul('moyenne par jour de la période', null, b.periode, true);
 
     // Équipes : jour de travail × équipe (chaque équipe au jour des vols + son jour).
-    const equipes = [['Jour de travail', 'Journée de vols', 'Jour complet', 'Service', 'Équipe', 'Type', 'Effectif', 'Personnes', 'Homme-minutes', 'Besoin exact (pers.)',
+    const equipes = [['Jour de travail', 'Journée de vols', 'Jour complet', 'Service', 'Équipe', 'Type', 'Effectif', 'Personnes', 'Homme-minutes', 'Besoin exact (pers.)', 'Charge (ETP)',
       'Début de poste', 'Fin de présence', 'Fin du travail', 'Travail (min)', 'Attente (min)', 'Pauses (min)', 'Heures sup (min × pers.)',
       'Renforts prêtés (min)', 'Renforts reçus (min)', 'Lots', 'Lots en retard', 'Commandes en retard', 'Retard max (min)']];
     const lignesEquipes = [];
     for (const j of journees) for (const e of j.extrait.equipes) {
       const w = decalerJour(j.date, e.jour || 0);
       lignesEquipes.push({ cle: [w, ns(e.service), e.nom, j.date], l: [T.celluleDate(w), T.celluleDate(j.date), ouiNon(complet.get(w)), ns(e.service), e.nom, TYPES_FR[e.type] || e.type,
-        e.calcule ? 'calculé' : 'saisi', e.personnes, n2(e.hommeMinutes), n2(e.besoin), instantDe(j.date, e.debutPoste), instantDe(j.date, e.finPresence), instantDe(j.date, e.fin),
+        e.calcule ? 'calculé' : 'saisi', e.personnes, n2(e.hommeMinutes), n2(e.besoin), n2(e.charge), instantDe(j.date, e.debutPoste), instantDe(j.date, e.finPresence), instantDe(j.date, e.fin),
         n2(e.travail), n2(e.attente), n2(e.pauses), n2(e.heuresSup), n2(e.renfortsPretes), n2(e.renfortsRecus), e.lots, e.lotsEnRetard, e.commandesEnRetard.length, n2(e.retardMax)] });
     }
     const parCle = (x, y) => x.cle.reduce((r, v, i) => r || String(v).localeCompare(String(y.cle[i])), 0);

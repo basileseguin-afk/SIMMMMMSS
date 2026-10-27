@@ -478,8 +478,8 @@ minutes ; « Heures sup » en minutes × personnes.
 | Feuille | Une ligne par | Colonnes |
 |---|---|---|
 | **Lisez-moi** | — | la période (premier et dernier jour, jours sans vol, jours de travail incomplets), la sauvegarde et le programme de vols, les réglages (délai de chargement, décalage, options de l'outil), la date du calcul, les définitions, l'avertissement de prototype |
-| **Période** | jour de travail × service, plus « Toute l'unité » ; puis, chaque mois et sur la période, le total et la moyenne par jour | `Ligne` (jour, total du mois, moyenne par jour du mois, total de la période, moyenne par jour de la période), `Jour de travail`, `Jour`, `Mois`, `Complet`, `Vols manquants`, `Jours complets`, `Service`, puis les mesures du bilan : `Personnes`, `Besoin exact (pers.)`, `Homme-minutes`, `Heures sup (min × pers.)`, `Renforts prêtés (min)`, `Renforts reçus (min)`, `Lots`, `Lots en retard`, `Commandes en retard`, `Retard max (min)`, `Vols chargés`, `Vols en retard`, `Chauffeurs camion`, `Chauffeurs VL`, `Borne basse chauffeurs`, `Heures sup chauffeurs (min)`, `Vols lavés`, `Encadrement` |
-| **Équipes** | jour de travail × équipe | `Jour de travail`, `Journée de vols`, `Jour complet`, `Service`, `Équipe`, `Type`, `Effectif` (calculé ou saisi), `Personnes`, `Homme-minutes`, `Besoin exact (pers.)`, `Début de poste`, `Fin de présence`, `Fin du travail`, `Travail (min)`, `Attente (min)`, `Pauses (min)`, `Heures sup (min × pers.)`, `Renforts prêtés (min)`, `Renforts reçus (min)`, `Lots`, `Lots en retard`, `Commandes en retard`, `Retard max (min)` |
+| **Période** | jour de travail × service, plus « Toute l'unité » ; puis, chaque mois et sur la période, le total et la moyenne par jour | `Ligne` (jour, total du mois, moyenne par jour du mois, total de la période, moyenne par jour de la période), `Jour de travail`, `Jour`, `Mois`, `Complet`, `Vols manquants`, `Jours complets`, `Service`, puis les mesures du bilan : `Personnes`, `Besoin exact (pers.)`, `Charge (ETP)`, `Personnes du service`, `Surplus d’arrondi`, `Homme-minutes`, `Heures sup (min × pers.)`, `Renforts prêtés (min)`, `Renforts reçus (min)`, `Lots`, `Lots en retard`, `Commandes en retard`, `Retard max (min)`, `Vols chargés`, `Vols en retard`, `Chauffeurs camion`, `Chauffeurs VL`, `Borne basse chauffeurs`, `Heures sup chauffeurs (min)`, `Vols lavés`, `Encadrement`, `Charge de l’encadrement (ETP)` |
+| **Équipes** | jour de travail × équipe | `Jour de travail`, `Journée de vols`, `Jour complet`, `Service`, `Équipe`, `Type`, `Effectif` (calculé ou saisi), `Personnes`, `Homme-minutes`, `Besoin exact (pers.)`, `Charge (ETP)`, `Début de poste`, `Fin de présence`, `Fin du travail`, `Travail (min)`, `Attente (min)`, `Pauses (min)`, `Heures sup (min × pers.)`, `Renforts prêtés (min)`, `Renforts reçus (min)`, `Lots`, `Lots en retard`, `Commandes en retard`, `Retard max (min)` |
 | **Compagnies** | jour de travail × service × compagnie | `Jour de travail`, `Jour complet`, `Service`, `Compagnie`, `Commandes`, `Vols`, `Passagers`, `Homme-minutes`, `Retard max (min)` |
 | **Lots** | lot de chaque journée de vols | `Journée de vols`, `Jour de travail`, `Service`, `Équipe`, `Commande`, `Début`, `Fin`, `Durée (min)`, `Attente (min)`, `Homme-minutes`, `Échéance`, `Marge (min)` (l'échéance moins la fin ; négative : en retard) |
 | **Vols** | vol de chaque journée, avec son chargement | `Journée de vols`, `Vol`, `Compagnie`, `Équipe`, `Départ`, `Commandes prêtes`, `Arrivée de l’avion`, `Début du déchargement`, `Fin du déchargement`, `Début du chargement`, `Fin du chargement`, `Véhicule`, `Tournée`, `Limite`, `Retard (min)`, `À l’heure`, `Cause` |
@@ -493,6 +493,16 @@ minutes ; « Heures sup » en minutes × personnes.
 - Totaux et moyennes sur les jours complets : la moyenne est le total ÷ les
   jours complets ; pour `Retard max`, le total est le plus haut et la moyenne
   celle des retards max de chaque jour.
+- **L'arrondi au service** (banc d'essai, évolution 11 a — `BANC_ESSAI.md`
+  § 10) : `Charge (ETP)` est la charge d'une équipe, non arrondie (le besoin
+  exact d'une équipe calculée ; pour un robot ou une plonge à effectif saisi,
+  les homme-minutes de ses lots ÷ son poste ; sinon personnes × sa présence ÷
+  la présence générale) et, pour un service, la somme de ses équipes ;
+  `Personnes du service` = ⌈charge⌉ ; `Surplus d’arrondi` = `Personnes` −
+  `Personnes du service` (l'arrondi équipe par équipe, avec le sous-emploi
+  d'un effectif saisi ; négatif quand des présences dépassent la présence
+  générale) ; `Charge de l’encadrement (ETP)` : l'encadrement saisi, à la
+  présence générale, à part.
 - Les nombres sont arrondis au centième. L'archive n'est pas compressée :
   deux mois fictifs de 50 vols par jour font environ 6 Mo ; un programme
   réel, davantage (surtout la feuille Lots).

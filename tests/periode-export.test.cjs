@@ -24,11 +24,11 @@ const col = (nom, entete) => feuille(nom).lignes[0].indexOf(entete);
 test('les feuilles et leurs colonnes', () => {
   assert.deepEqual(F.map(f => f.nom), ['Lisez-moi', 'Période', 'Équipes', 'Compagnies', 'Lots', 'Vols', 'Plonge', 'Jours']);
   assert.deepEqual(feuille('Période').lignes[0], ['Ligne', 'Jour de travail', 'Jour', 'Mois', 'Complet', 'Vols manquants', 'Jours complets', 'Service',
-    'Personnes', 'Besoin exact (pers.)', 'Homme-minutes', 'Heures sup (min × pers.)', 'Renforts prêtés (min)', 'Renforts reçus (min)', 'Lots', 'Lots en retard',
+    'Personnes', 'Besoin exact (pers.)', 'Charge (ETP)', 'Personnes du service', 'Surplus d’arrondi', 'Homme-minutes', 'Heures sup (min × pers.)', 'Renforts prêtés (min)', 'Renforts reçus (min)', 'Lots', 'Lots en retard',
     'Commandes en retard', 'Retard max (min)', 'Vols chargés', 'Vols en retard', 'Chauffeurs camion', 'Chauffeurs VL', 'Borne basse chauffeurs',
-    'Heures sup chauffeurs (min)', 'Vols lavés', 'Encadrement']);
+    'Heures sup chauffeurs (min)', 'Vols lavés', 'Encadrement', 'Charge de l’encadrement (ETP)']);
   assert.deepEqual(feuille('Équipes').lignes[0], ['Jour de travail', 'Journée de vols', 'Jour complet', 'Service', 'Équipe', 'Type', 'Effectif', 'Personnes',
-    'Homme-minutes', 'Besoin exact (pers.)', 'Début de poste', 'Fin de présence', 'Fin du travail', 'Travail (min)', 'Attente (min)', 'Pauses (min)',
+    'Homme-minutes', 'Besoin exact (pers.)', 'Charge (ETP)', 'Début de poste', 'Fin de présence', 'Fin du travail', 'Travail (min)', 'Attente (min)', 'Pauses (min)',
     'Heures sup (min × pers.)', 'Renforts prêtés (min)', 'Renforts reçus (min)', 'Lots', 'Lots en retard', 'Commandes en retard', 'Retard max (min)']);
   assert.deepEqual(feuille('Compagnies').lignes[0], ['Jour de travail', 'Jour complet', 'Service', 'Compagnie', 'Commandes', 'Vols', 'Passagers', 'Homme-minutes', 'Retard max (min)']);
   assert.deepEqual(feuille('Lots').lignes[0], ['Journée de vols', 'Jour de travail', 'Service', 'Équipe', 'Commande', 'Début', 'Fin', 'Durée (min)', 'Attente (min)',

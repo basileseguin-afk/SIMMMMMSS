@@ -37,13 +37,18 @@
     if (n) n.focus();
     return true;
   }
+  // « + 0 » : un −0 (une moyenne négative arrondie) s'écrit 0.
   const nombre = (x, k = 1) => (x == null || !Number.isFinite(x) ? '—'
-    : (Math.round(x * 10 ** k) / 10 ** k).toLocaleString('fr-FR', { maximumFractionDigits: k }));
+    : (Math.round(x * 10 ** k) / 10 ** k + 0).toLocaleString('fr-FR', { maximumFractionDigits: k }));
 
   /** Les mesures du tableau : ce qu'une case montre, et comment l'écrire. */
   const MESURES = [
     { id: 'personnes', nom: 'Personnes', ecrire: x => nombre(x, 0) },
     { id: 'besoin', nom: 'Besoin exact (pers.)', ecrire: x => nombre(x, 1) },
+    // L'arrondi au service (banc d'essai, évolution 11 a).
+    { id: 'charge', nom: 'Charge (ETP)', ecrire: x => nombre(x, 2) },
+    { id: 'personnesService', nom: 'Personnes du service (⌈charge⌉)', ecrire: x => nombre(x, 0) },
+    { id: 'surplusArrondi', nom: 'Surplus d’arrondi (pers.)', ecrire: x => nombre(x, 0) },
     { id: 'heuresSup', nom: 'Heures sup (h × pers.)', ecrire: x => nombre(x / 60, 1) },
     { id: 'commandesEnRetard', nom: 'Commandes en retard', ecrire: x => nombre(x, 0) },
     { id: 'retardMax', nom: 'Retard max (min)', ecrire: x => (x == null ? '—' : nombre(x, 0)) },
@@ -268,10 +273,10 @@
       const cies = Object.entries(w.services).flatMap(([s, x]) => Object.entries(x.compagnies || {}).map(([cie, c]) => ({ service: s, cie, ...c })))
         .sort((x, y) => (nomService.get(x.service) || '').localeCompare(nomService.get(y.service) || '') || x.cie.localeCompare(y.cie));
       return `<div class="pv-detail-corps"><table class="svc-table pv-equipes"><caption>Par équipe</caption>
-          <thead><tr><th scope="col">Service</th><th scope="col">Équipe</th><th scope="col">Vols du</th><th scope="col">Personnes</th><th scope="col">Besoin exact</th>
+          <thead><tr><th scope="col">Service</th><th scope="col">Équipe</th><th scope="col">Vols du</th><th scope="col">Personnes</th><th scope="col">Besoin exact</th><th scope="col">Charge (ETP)</th>
             <th scope="col">Homme-heures</th><th scope="col">Heures sup (h × pers.)</th><th scope="col">Lots en retard</th><th scope="col">Retard max</th></tr></thead>
           <tbody>${eq.map(x => `<tr data-pv-equipe="${esc(x.id)}"><td>${esc(nomService.get(x.service) || x.service)}</td><td>${esc(x.nom)}${'ouverte' in x ? ' <small>' + (x.ouverte ? 'nuit ouverte' : 'nuit fermée') + '</small>' : ''}</td>
-            <td>${PE().dateCourte(x.vols)}</td><td class="pv-n">${nombre(x.personnes, 0)}</td><td class="pv-n">${nombre(x.besoin, 1)}</td><td class="pv-n">${nombre(x.hommeMinutes / 60, 1)}</td>
+            <td>${PE().dateCourte(x.vols)}</td><td class="pv-n">${nombre(x.personnes, 0)}</td><td class="pv-n">${nombre(x.besoin, 1)}</td><td class="pv-n">${nombre(x.charge, 2)}</td><td class="pv-n">${nombre(x.hommeMinutes / 60, 1)}</td>
             <td class="pv-n">${nombre(x.heuresSup / 60, 1)}</td><td class="pv-n">${nombre(x.lotsEnRetard, 0)}</td><td class="pv-n">${x.retardMax == null ? '—' : nombre(x.retardMax, 0) + ' min'}</td></tr>`).join('')}</tbody></table>
         <table class="svc-table pv-compagnies"><caption>Par compagnie</caption>
           <thead><tr><th scope="col">Service</th><th scope="col">Compagnie</th><th scope="col">Commandes</th><th scope="col">Vols</th><th scope="col">Passagers</th>

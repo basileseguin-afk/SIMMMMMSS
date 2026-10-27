@@ -187,6 +187,38 @@
   const somme = (l, f) => l.reduce((n, x) => n + (f(x) || 0), 0);
   const fini = x => (Number.isFinite(x) ? x : null);
 
+  /**
+   * La charge d'une équipe, en ETP, non arrondie (banc d'essai, évolution 11 a) :
+   *   — calculée (à la main, hors tunnel, robot de l'évolution 9) : son besoin exact ;
+   *   — un robot ou une plonge à effectif saisi : les homme-minutes de ses lots ÷ les minutes de son poste
+   *     (pendant un lot : l'équipe du robot ; à la plonge, les personnes du tunnel qui lave, ou de ceux qui tournent ;
+   *     un lot que la fin du poste interrompt compte ce qui en a été fait, un lot jamais commencé rien) ;
+   *   — toute autre équipe : personnes × sa présence ÷ la présence du réglage général.
+   * `def` : l'équipe telle que la journée l'a reçue ; `v` : ce que la journée en rend ; `ls` : ses lots ; `besoin` : son besoin exact.
+   */
+  function chargeEquipe(def, v, ls, e, besoin, regime) {
+    if (e) return besoin;
+    if (def && (v.type === 'robot' || v.type === 'lavage')) {
+      let poste = null;
+      try { poste = P().minutesDuPoste(def, regime); } catch (x) { poste = null; }
+      const fait = l => (l.impossible ? +l.fait || 0 : l.duree || 0);
+      if (poste > 0) return somme(ls, l => fait(l) * personnesDuLot(v, def, l)) / poste;
+    }
+    return presenceRelative(v.personnes || 0, v.presence, regime);
+  }
+  /** Les personnes qui tiennent un lot : à la plonge, celles de son tunnel (ou des tunnels qui tournent) ; ailleurs, l'équipe. */
+  function personnesDuLot(v, def, l) {
+    if (v.type !== 'lavage' || !Array.isArray(def.tunnels) || !def.tunnels.length) return v.personnes || 0;
+    const tournent = P().tunnelsQuiTournent({ ...def, personnes: v.personnes }).tournent;
+    const qui = Number.isInteger(l.tunnel) ? [tournent[l.tunnel - 1]].filter(Boolean) : tournent;
+    return somme(qui, t => +t.personnes);
+  }
+  /** Des personnes présentes `presence` minutes, rapportées à la présence du réglage général (sans fin de poste : la présence générale). */
+  function presenceRelative(personnes, presence, regime) {
+    const generale = P().normaliserRegime(null, regime).presence;
+    return Number.isFinite(presence) && presence > 0 && generale > 0 ? personnes * presence / generale : personnes;
+  }
+
   function extraire(r, args, date) {
     const parClasse = r.parClasse || {}, classes = new Map((r.classes || []).map(c => [c.id, c]));
     const bareme = args.bareme || {}, effectifs = r.effectifs || {};
@@ -200,8 +232,11 @@
     // Un lot de plusieurs compagnies se répartit au prorata des minutes du barème × vols de chacune.
     const poids = (service, c) => (P().minutesParVol(bareme[service], c) ?? 0) * ((c.vols || []).length);
     const paxDuVol = l => (l.pax && typeof l.pax === 'object' ? somme(Object.values(l.pax), x => +x) : 0);
+    const definitions = new Map((args.ateliers || []).map(a => [a.id, a]));
     const equipes = (r.ateliers || []).map(a => {
       const ls = parEquipe.get(a.id) || [], e = effectifs[a.id], cies = {};
+      // Le besoin exact : homme-minutes ÷ poste ÷ rendement pour une équipe à effectif calculé, ses personnes sinon.
+      const besoin = e && e.poste > 0 ? e.hommeMinutes / e.poste / (e.rendement || 1) : (a.personnes || 0);
       const cie = k => (cies[k] = cies[k] || { classes: {}, vols: [], hommeMinutes: 0, retardMax: null });
       const vol = (x, id) => { if (id != null && !x.vols.includes(String(id))) x.vols.push(String(id)); };
       const tard = new Set();
@@ -231,8 +266,9 @@
       return {
         id: a.id, nom: a.nom, service: a.service, type: a.type, jour: a.jour || 0,
         personnes: a.personnes || 0, calcule: !!e,
-        // Le besoin exact : homme-minutes ÷ poste ÷ rendement pour une équipe à effectif calculé, ses personnes sinon.
-        besoin: e && e.poste > 0 ? e.hommeMinutes / e.poste / (e.rendement || 1) : (a.personnes || 0),
+        besoin,
+        // Sa charge, en ETP (évolution 11 a) : son besoin exact, ou ce que ses personnes occupent.
+        charge: chargeEquipe(definitions.get(a.id), a, ls, e, besoin, args.regime),
         hommeMinutes: somme(ls, l => l.hommeMinutes),
         debutPoste: fini(a.debutPoste), finPresence: Number.isFinite(a.debutPoste) && Number.isFinite(a.presence) ? a.debutPoste + a.presence : null,
         fin: fini(a.fin), travail: a.travail || 0, attente: a.attente || 0, pauses: a.arret || 0,
@@ -278,7 +314,9 @@
 
   /** Les mesures qui s'additionnent d'un jour, d'une équipe, d'un service à l'autre ; `retardMax` se prend au plus haut. */
   const ADDITIVES = ['personnes', 'besoin', 'hommeMinutes', 'heuresSup', 'renfortsPretes', 'renfortsRecus', 'lots', 'lotsEnRetard', 'commandesEnRetard',
-    'volsCharges', 'volsEnRetard', 'chauffeursCamion', 'chauffeursVL', 'borneBasse', 'heuresSupChauffeurs', 'volsLaves', 'encadrement'];
+    'volsCharges', 'volsEnRetard', 'chauffeursCamion', 'chauffeursVL', 'borneBasse', 'heuresSupChauffeurs', 'volsLaves', 'encadrement',
+    // L'arrondi au service (évolution 11 a) : la charge de ses équipes, ⌈charge⌉, et ce que l'arrondi équipe par équipe ajoute.
+    'charge', 'personnesService', 'surplusArrondi', 'chargeEncadrement'];
   const vide = () => Object.fromEntries(ADDITIVES.map(k => [k, 0]).concat([['retardMax', null]]));
   function ajouter(m, x) {
     for (const k of ADDITIVES) m[k] += x[k] || 0;
@@ -290,7 +328,7 @@
     renfortsPretes: e.renfortsPretes, renfortsRecus: e.renfortsRecus, lots: e.lots, lotsEnRetard: e.lotsEnRetard, commandesEnRetard: e.commandesEnRetard.length,
     retardMax: e.retardMax, volsCharges: e.volsCharges || 0, volsEnRetard: e.volsEnRetard || 0,
     chauffeursCamion: e.chauffeurs ? e.chauffeurs.camion : 0, chauffeursVL: e.chauffeurs ? e.chauffeurs.vl : 0, borneBasse: e.borneBasse || 0,
-    heuresSupChauffeurs: e.heuresSupChauffeurs || 0, volsLaves: e.volsLaves || 0, encadrement: 0 });
+    heuresSupChauffeurs: e.heuresSupChauffeurs || 0, volsLaves: e.volsLaves || 0, encadrement: 0, charge: e.charge || 0 });
 
   /**
    * Le bilan de la période, par jour de travail : chaque équipe d'une journée de
@@ -339,9 +377,15 @@
     }
     for (const w of W) {
       // L'encadrement saisi par service, une fois par jour ; les commandes en retard comptées une fois par service.
-      for (const s of services) if (encadrement[s.id]) (w.services[s.id] = w.services[s.id] || { ...vide(), _tard: new Set(), compagnies: {} }).encadrement = encadrement[s.id];
+      for (const s of services) if (encadrement[s.id]) {
+        const x = w.services[s.id] = w.services[s.id] || { ...vide(), _tard: new Set(), compagnies: {} };
+        // Sa charge, à part (évolution 11 a) : ses personnes, présentes le temps du réglage général.
+        x.encadrement = encadrement[s.id]; x.chargeEncadrement = encadrement[s.id];
+      }
       for (const [id, s] of Object.entries(w.services)) {
         s.commandesEnRetard = s._tard.size; delete s._tard;
+        // L'arrondi au service : ses équipes arrondies une fois, ensemble (évolution 11 a).
+        s.personnesService = Math.ceil(s.charge - 1e-9) || 0; s.surplusArrondi = s.personnes - s.personnesService;
         for (const c of Object.values(s.compagnies)) {
           c.commandes = Object.keys(c._classes).length; c.pax = somme(Object.values(c._classes), x => x); c.vols = c._vols.size;
           delete c._classes; delete c._vols;

@@ -5,6 +5,32 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-27 — Banc d'essai, évolution 11 (a) : la charge de chaque équipe, et l'arrondi au service
+
+Le besoin exact d'une équipe calculée, arrondi équipe par équipe puis
+additionné, compte plus de monde qu'un service n'en emploie. La période donne
+maintenant la charge de chaque équipe, en ETP et sans arrondi, et l'arrondit
+une fois, au service.
+
+- `charge` dans chaque équipe d'une journée : le besoin exact d'une équipe
+  calculée ; pour un robot ou une plonge à effectif saisi, les homme-minutes de
+  ses lots ÷ son poste ; sinon personnes × sa présence ÷ la présence générale
+  (une mise à disposition de même).
+- Par service et jour de travail : `charge`, `personnesService` = ⌈charge⌉,
+  `surplusArrondi` = personnes − personnesService ; `chargeEncadrement` à
+  part. Le total du jour, les totaux et les moyennes les additionnent.
+- La page Période (« Mesure », le détail par équipe), le JSON de l'outil (le
+  bilan) et le classeur de la période (Période, Équipes, Lisez-moi) les
+  montrent.
+- Ni les personnes, ni le besoin, ni la simulation ne changent : seuls ces
+  champs s'ajoutent.
+- Fichiers : `moteur/periode.js`, `periode-vue.js`, `echanges.js` (copié dans
+  `v2/`), `docs/BANC_ESSAI.md` (§ 10), `docs/FORMATS_EXCEL.md` (§ 4),
+  `docs/CAHIER_DES_CHARGES.md` (M11, M19), `README.md`,
+  `tests/charge-periode.test.cjs` et `tests/periode-bilan.attendu.json`
+  (nouveaux), `tests/periode-export.test.cjs`, `tests/periode-browser.cjs`,
+  `index.html` et `v2/index.html` (empreintes).
+
 ## 2026-10-27 — Banc d'essai, évolution 9 : l'équipe d'un robot calculée à partir de son barème
 
 Un robot va à son débit, mais le travail autour de sa ligne (chargement,

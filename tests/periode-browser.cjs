@@ -161,6 +161,14 @@ const parse=t=>UI.parseFlights(t,{eta:true,spmlParCabine:true,date:true});
   assert.deepEqual(cases,[...services.map(s=>w.services[s.id]?String(w.services[s.id].personnes):'—'),String(w.total.personnes)]);
   const totalPeriode=await page.locator('#journee-periode tr.pv-cumul:not(.pv-moyenne)').last().locator('td[data-pv-total]').innerText();
   assert.equal(totalPeriode,periode.bilan.periode.total.personnes.toLocaleString('fr-FR'));
+  // L'arrondi au service (banc d'essai, évolution 11 a) : la charge, ⌈charge⌉ par service, le surplus d'arrondi.
+  const fr=(x,k)=>(Math.round(x*10**k)/10**k+0).toLocaleString('fr-FR',{maximumFractionDigits:k});
+  for(const [m,k] of [['personnesService',0],['surplusArrondi',0],['charge',2]]){
+    await page.locator('#periode-mesure').selectOption(m);await attendre(100);
+    assert.equal(await page.locator('#journee-periode table.pv-table').getAttribute('data-mesure'),m);
+    assert.deepEqual(await page.locator('#journee-periode tr[data-pv-jour="2026-10-28"] td').allInnerTexts(),
+      [...services.map(s=>w.services[s.id]?fr(w.services[s.id][m],k):'—'),fr(w.total[m],k)],m);
+  }
   // Une autre mesure : les heures sup.
   await page.locator('#periode-mesure').selectOption('heuresSup');await attendre(100);
   assert.equal(await page.locator('#journee-periode table.pv-table').getAttribute('data-mesure'),'heuresSup');
@@ -170,6 +178,10 @@ const parse=t=>UI.parseFlights(t,{eta:true,spmlParCabine:true,date:true});
   assert.equal(await page.evaluate(()=>document.body.dataset.sous),'j-periode');
   assert.equal(await page.locator('#journee-periode tr.pv-detail').count(),1);
   assert.deepEqual((await page.locator('#journee-periode .pv-equipes tr[data-pv-equipe]').evaluateAll(l=>l.map(x=>x.dataset.pvEquipe))).sort(),Object.keys(w.equipes).sort());
+  // La charge de chaque équipe (évolution 11 a), dans la colonne « Charge (ETP) ».
+  assert.equal((await page.locator('#journee-periode .pv-equipes thead th').allTextContents())[5],'Charge (ETP)');
+  for(const [id,x] of Object.entries(w.equipes))
+    assert.equal(await page.locator(`#journee-periode .pv-equipes tr[data-pv-equipe="${id}"] td`).nth(5).innerText(),fr(x.charge,2),id);
   const cies=Object.entries(w.services).flatMap(([s,x])=>Object.keys(x.compagnies||{}).map(c=>s+'|'+c)).sort();
   assert.ok(cies.length>0);
   assert.deepEqual((await page.locator('#journee-periode .pv-compagnies tr[data-pv-cie]').evaluateAll(l=>l.map(x=>x.dataset.pvCie))).sort(),cies);

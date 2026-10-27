@@ -1297,6 +1297,7 @@ service, par équipe et par compagnie :
 | `volsCharges`, `volsEnRetard`, `chauffeursCamion`, `chauffeursVL`, `borneBasse`, `heuresSupChauffeurs` | Le handling : vols chargés, en retard, chauffeurs du plan par type de véhicule, borne basse, heures sup des chauffeurs (§ 3, § 4) |
 | `volsLaves`, `nuits`, `saleSoir` | La plonge : vols lavés ; la nuit ouverte ou non (§ 6) ; le sale qui reste le soir |
 | `encadrement` | L'encadrement saisi du service, une fois par jour |
+| `charge`, `personnesService`, `surplusArrondi`, `chargeEncadrement` | La charge de l'équipe ou du service en ETP, ⌈charge⌉ au service, personnes − ⌈charge⌉, l'encadrement à part (évolution 11 a, § 10) |
 
 **Par compagnie** (par service) : commandes, vols, passagers, homme-minutes et
 retard max. Un lot de plusieurs compagnies se répartit **au prorata des minutes
@@ -1358,13 +1359,14 @@ Avec un programme daté :
   (pas calculée, à relancer, ou le premier jour), elle part du sale de la
   veille saisi, comme aujourd'hui.
 - **Résultats › Période** : le tableau jour de travail × service, une mesure
-  à la fois (personnes, besoin exact, heures sup en heures × personnes,
-  commandes en retard, retard max, homme-heures), avec le total du jour ; les
+  à la fois (personnes, besoin exact, charge, personnes du service, surplus
+  d'arrondi, heures sup en heures × personnes, commandes en retard, retard
+  max, homme-heures), avec le total du jour ; les
   totaux et les moyennes par jour de chaque mois et de la période ; les jours
   incomplets marqués « incomplet », hors des totaux. **Un clic sur un jour**
   ouvre sa journée de vols (la Synthèse ; un jour de travail avant la période,
   la première journée) ; **▸ déplie son détail** par équipe (service, jour
-  des vols, personnes, besoin exact, homme-heures, heures sup, lots en
+  des vols, personnes, besoin exact, charge, homme-heures, heures sup, lots en
   retard, retard max) et par compagnie (commandes, vols, passagers,
   homme-heures, retard max).
 - **La comparaison A/B reste à la journée** : elle compare deux essais de la
@@ -1498,3 +1500,60 @@ Vérifications :
   5 personnes ; le classeur du barème lui donne ses lignes ; après
   rechargement, le même calcul ; ses heures par vol retirées, ses
   5 personnes reviennent, dans la journée affichée aussi.
+
+### La charge de chaque équipe, et l'arrondi au service (évolution 11 a)
+
+Le besoin exact d'une équipe calculée (homme-minutes ÷ poste ÷ rendement) n'est
+pas un nombre de personnes : arrondi équipe par équipe, puis additionné, il
+compte plus de monde qu'un service n'en emploie. La période donne donc, en ETP
+et sans arrondi, la **charge** de chaque équipe, puis l'arrondit **une fois,
+au service** :
+
+- la **charge** d'une équipe (`charge`, dans chaque équipe de chaque journée et
+  dans le détail par équipe du bilan) :
+  - une équipe à effectif calculé — à la main, hors tunnel, robot de
+    l'évolution 9 — : son besoin exact (`besoin`) ;
+  - un robot ou une plonge à effectif saisi : les homme-minutes de ses lots ÷
+    les minutes de son poste (pendant un lot, l'équipe du robot ; à la plonge,
+    les personnes du tunnel qui lave, ou celles des tunnels qui tournent ; un
+    lot que la fin du poste interrompt compte ce qui en a été fait, un vol
+    jamais lavé rien) ;
+  - toute autre équipe : personnes × sa présence ÷ la présence du réglage
+    général (3 personnes 6 h, une présence générale de 8 h : 2,25 ; sans fin de
+    poste, ses personnes). De même pour une mise à disposition. Un handling
+    dont le plan calcule les chauffeurs (§ 4) a 0 personne : ses chauffeurs
+    se lisent dans `chauffeursCamion` et `chauffeursVL`, pas dans sa charge ;
+- par service et jour de travail : `charge`, la somme de ses équipes ;
+  `personnesService` = ⌈`charge`⌉ ; `surplusArrondi` = `personnes` −
+  `personnesService` : ce que coûte l'arrondi équipe par équipe, avec le
+  sous-emploi d'un effectif saisi (une plonge de 5 personnes pour 1 ETP de
+  travail) ; il est négatif quand des présences dépassent la présence
+  générale (un poste de 9 h compte plus d'un ETP) ;
+- l'**encadrement** saisi d'un service a sa charge à part,
+  `chargeEncadrement` (à la présence du réglage général : ses personnes) ; il
+  n'entre ni dans `charge` ni dans `personnesService` ;
+- le total du jour, les totaux et les moyennes par mois et sur la période les
+  additionnent, comme les autres mesures.
+
+`personnes`, `besoin`, les autres mesures et la simulation ne changent pas :
+seuls ces champs s'ajoutent. La page Période les propose dans « Mesure »
+(« Charge (ETP) », « Personnes du service (⌈charge⌉) », « Surplus d'arrondi
+(pers.) ») et dans le détail par équipe ; le JSON de l'outil les a dans
+`bilan` (chaque jour de travail, ses services et ses équipes, les totaux et
+les moyennes) ; le classeur de la période les a dans les feuilles Période et
+Équipes (`FORMATS_EXCEL.md` § 4).
+
+Vérifications :
+
+- `tests/charge-periode.test.cjs` : 2,3 + 1,4 ETP, 3 + 2 = 5 personnes, 4 au
+  service, 1 de surplus ; un robot saisi à 6 personnes, sa ligne 210 minutes
+  sur 420 : 3 ETP ; un robot saturé, son lot interrompu compté pour ce qui
+  en a été fait ; les plonges (par vol, au débit) : homme-minutes ÷ poste ;
+  une équipe constante : ses personnes, 2,25 pour 3 personnes 6 h ; une mise à
+  disposition ; l'encadrement à part, chaque jour et dans les totaux ; les
+  totaux et les moyennes ; les valeurs du classeur ; la
+  non-régression des autres mesures (`tests/periode-bilan.attendu.json`,
+  relevé avant ces champs sur les unités fictives) ; le classeur ;
+- `tests/periode-browser.cjs` : la vue Période montre, par service et par
+  jour, ⌈charge⌉, le surplus et la charge ; le détail, la charge de chaque
+  équipe.
