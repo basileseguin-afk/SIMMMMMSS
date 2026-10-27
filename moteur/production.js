@@ -2576,8 +2576,10 @@
       const avant = f ? lots.filter(c => fusionPar.get(cle(f, c.id)) === a.service).reduce((n, c) => n + travailClasse(f, c, bareme, SPML), 0) : 0;
       let n = effectifPour(ici, avant, poste, rendement);
       if (n == null) continue;
-      // Des commandes sans minutes (barème à renseigner) : quelqu'un est là, en temps nul.
-      if (n === 0 && lots.length) n = 1;
+      // Des commandes qui volent ce jour-là sans minutes au barème (barème à renseigner) : quelqu'un est là, en
+      // temps nul. Sans aucun vol ce jour-là (une commande ajoutée à la main, l'armement d'une compagnie qui ne
+      // vole pas), personne (correction 10 du banc d'essai).
+      if (n === 0 && lots.some(c => (c.vols || []).length > 0 && !(travailDans(a, c, bareme, SPML) > 0))) n = 1;
       effectifs[a.id] = { personnes: n, saisi: a.personnes, hommeMinutes: ici + avant, poste, rendement };
       a.personnes = n;
     }
@@ -3215,6 +3217,9 @@
           detail = { hommeMinutes };
           base = hommeMinutes / rendement;
         }
+        // Une équipe calculée à 0 personne n'a rien à faire ce jour-là (correction 10) : ses commandes sans vol
+        // se font en temps nul, comme avec la personne « en temps nul » d'avant, et l'aval est servi.
+        if (effectifs[a.id] && !(a.personnes > 0) && !(detail.hommeMinutes > 0)) { duree = 0; base = 0; }
       }
       return { lots, duree, detail, base };
     }

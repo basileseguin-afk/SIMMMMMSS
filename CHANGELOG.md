@@ -5,6 +5,23 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-27 — Banc d'essai, correction 10 : une équipe sans aucun vol ce jour-là n'a personne
+
+Dans un service à effectif calculé, la règle « des commandes sans minutes
+(barème à renseigner) : quelqu'un est là, en temps nul » donnait aussi une
+personne à une équipe dont aucune commande ne vole ce jour-là (une commande
+ajoutée à la main, l'armement d'une compagnie qui ne vole pas), même quand le
+barème a des minutes.
+
+- La personne en temps nul ne vient plus que si une commande de l'équipe vole
+  ce jour-là sans minutes au barème. Sans aucun vol, l'effectif calculé vaut 0,
+  et ses commandes sans vol se font en temps nul : rien d'impossible, l'équipe
+  en aval est servie, les indicateurs de la journée ne bougent pas.
+- Une équipe à effectif fixe garde son effectif saisi ; les journées où chaque
+  équipe a des vols ne changent pas.
+- Fichiers : `moteur/production.js`, `docs/BANC_ESSAI.md` (§ 1), `README.md`,
+  `tests/equipe-sans-vol.test.cjs` (nouveau), `index.html` (empreinte).
+
 ## 2026-10-26 — Configuration Claude Code : pas de documents de planification dans le dépôt
 
 - `.claude/rules/simms.md` : pas de documents de planification (PRD,

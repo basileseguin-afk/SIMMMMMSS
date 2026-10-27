@@ -176,6 +176,16 @@ trouvée en rejouant des journées réelles), dans la page comme dans l'outil :
   journée reste **refusée**, comme avant (`lot` : « compagnie × classe
   inconnue »).
 
+**Une équipe sans aucun vol ce jour-là n'a personne** (correction 10). Dans un
+service à effectif calculé, la personne « en temps nul » d'un barème à
+renseigner ne vient que si une commande de l'équipe **vole ce jour-là** sans
+minutes au barème. Une équipe dont aucune commande ne vole ce jour-là — une
+commande ajoutée à la main, l'armement d'une compagnie qui ne vole pas — a un
+effectif calculé de **0**, même si ses commandes ont des minutes au barème.
+Ses commandes sans vol se font en temps nul, comme avant : rien n'est
+« impossible », et l'équipe en aval est servie. Une équipe à effectif fixe
+garde son effectif saisi.
+
 ### Vérifications
 
 - `tests/commandes-sans-vol.test.cjs` : une journée sans aucun vol d'une
@@ -183,6 +193,12 @@ trouvée en rejouant des journées réelles), dans la page comme dans l'outil :
   de l'équipe sont faites ; une commande mal écrite est toujours refusée ; une
   compagnie jamais vue est signalée sans bloquer ; une commande ajoutée,
   l'armement, l'outil ;
+- `tests/equipe-sans-vol.test.cjs` (correction 10) : 315 min par vol au
+  barème et aucun vol ce jour-là, 0 personne, sa commande faite en temps nul et
+  l'équipe en aval servie ; l'armement d'une compagnie qui ne vole pas ; sans
+  minutes au barème avec deux vols, une personne en temps nul ; avec ses
+  minutes, la formule habituelle ; l'effectif fixe inchangé ; les journées
+  enregistrées inchangées ;
 - `tests/journee.test.cjs` : la sauvegarde relue et refusée comme par
   « Restaurer », les options et leurs bornes, les réglages forcés, les vols
   lus comme dans la page (CSV, classeur), les mêmes entrées donnant la même
