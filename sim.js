@@ -1725,9 +1725,30 @@ function initPeriode(){
     allerPage,
     mesurer:majHauteurEntete,
     exporter:exporterPeriode,
+    notifier:toast,
+    rendu:()=>{if(Sim.calage)Sim.calage.rafraichir();}
+  });
+  initCalage();
+  Sim.periode.rendre();
+}
+
+/* ==========================================================================
+ *  RÉEL ET CALAGE (banc d'essai, évolution 11 — docs/BANC_ESSAI.md, § 10)
+ *  Sous le tableau de la page Période : le réel par jour et par rôle, en
+ *  mémoire le temps de la page ; la correspondance et les décisions, gardées
+ *  dans « ory-calage-v1 » (et dans « Tout sauvegarder »).
+ * ==========================================================================*/
+const CLE_CALAGE='ory-calage-v1';
+function initCalage(){
+  if(!window.OrlyCalageVue||!window.OrlyReel)return;
+  Sim.calage=new OrlyCalageVue.VueCalage({
+    bilan:()=>(Sim.periode&&Sim.periode.aJour()?Sim.periode.resultat.bilan:null),
+    periode:()=>(Sim.periode&&Sim.periode.aJour()?Sim.periode.resultat.periode:null),
+    services:servicesDisponibles,
+    reglages:()=>{try{return JSON.parse(localStorage.getItem(CLE_CALAGE)||'null');}catch(e){return null;}},
+    enregistrer:r=>{try{localStorage.setItem(CLE_CALAGE,JSON.stringify(r));}catch(e){toast('Réglages du calage non enregistrés : stockage indisponible.');}},
     notifier:toast
   });
-  Sim.periode.rendre();
 }
 
 function initVueSimulation() {
@@ -2148,7 +2169,10 @@ const PARTIES = [
   { cle:'ory-modele-v1',    nom:'barème et règles de poste', valider:r => window.OrlyReglages.valider(r) },
   // Où l'on a posé les services dans les diagrammes : une préférence, mais un
   // tracé soigné qu'on ne veut pas refaire.
-  { cle:'ory-graphes-v1',   nom:'disposition des diagrammes', valider:r => window.OrlyGraphe.validerPositions(r) }
+  { cle:'ory-graphes-v1',   nom:'disposition des diagrammes', valider:r => window.OrlyGraphe.validerPositions(r) },
+  // Le calage sur le réel (banc d'essai, évolution 11) : des réglages seulement — la correspondance, les décisions —,
+  // jamais les heures réelles, qui restent en mémoire le temps de la page.
+  { cle:'ory-calage-v1',    nom:'calage sur le réel',      valider:r => window.OrlyReel.validerReglages(r) }
 ];
 
 function sauvegardeComplete() {

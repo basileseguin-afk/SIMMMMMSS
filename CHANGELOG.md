@@ -5,6 +5,42 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-27 — Banc d'essai, évolution 11 (b) : le réel, sa correspondance avec la simulation, la comparaison
+
+La période simulée se compare maintenant aux heures réelles, rôle par rôle.
+
+- `moteur/reel.js` (nouveau, sans navigateur) : le fichier « Réel par jour »
+  (CSV ou feuille « Réel » ; refusé entier s'il est mal formé, en nommant la
+  ligne) ; les contrôles (des heures négatives, un jour × rôle en double :
+  leur seule cellule écartée, avec sa raison ; une catégorie à zéro tout un
+  mois, un rôle absent un seul jour : signalés) ; la correspondance (des
+  lignes de rôles, chacune couvrant des services, l'encadrement d'un service,
+  des chauffeurs, ou rien ; des bases d'ETP par défaut et par rôle) ; la
+  comparaison sur les jours de travail complets : par ligne, réel, simulé et
+  écart par jour, erreur, biais et corrélation par mois et sur la période,
+  le total de l'unité, les heures supp par mois.
+- `outils/caler-periode.cjs` (nouveau) : `periode.json reel.csv|xlsx
+  correspondance.json [--xlsx]` ; le classeur (Lisez-moi, Réel, Comparaison)
+  est celui de la page (`echanges-calage.js`, nouveau).
+- La page Période : « Réel et calage » sous le tableau (`calage-vue.js`,
+  nouveau) — l'import du réel, le modèle CSV, la correspondance, les
+  anomalies (réintégrer, écarter, rétablir), la comparaison, ses exports. Les
+  heures réelles restent en mémoire ; la nouvelle partie « calage sur le
+  réel » (`ory-calage-v1`, dans « Tout sauvegarder ») ne garde que la
+  correspondance et les décisions.
+- Une cellule écartée entière fait sortir son jour de la comparaison des
+  lignes qui ont son rôle (jamais 0 h réelle) ; une même chose couverte par
+  deux lignes est refusée ; un classeur aux heures au format heure d'Excel
+  aussi. La page de secours emporte la nouvelle partie ; `.gitignore` refuse
+  les fichiers de réel, de planning, de correspondance et de calage.
+- Sans réel importé, rien ne change.
+- Fichiers : `moteur/reel.js`, `echanges-calage.js`, `calage-vue.js`,
+  `outils/caler-periode.cjs` (nouveaux), `periode-vue.js`, `periode.css`,
+  `sim.js`, `index.html`, `secours.html`, `.gitignore`, `docs/BANC_ESSAI.md` (§ 10), `docs/FORMATS_EXCEL.md`
+  (§ 5, nouveau), `docs/CAHIER_DES_CHARGES.md` (M13, M20, F3), `README.md`,
+  `tests/reel.test.cjs`, `tests/caler-periode.test.cjs`,
+  `tests/calage-browser.cjs` (nouveaux).
+
 ## 2026-10-27 — Banc d'essai, évolution 11 (a) : la charge de chaque équipe, et l'arrondi au service
 
 Le besoin exact d'une équipe calculée, arrondi équipe par équipe puis

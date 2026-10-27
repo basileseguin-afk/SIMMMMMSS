@@ -32,3 +32,10 @@ plan-ory-*.json
 ateliers-ory.json
 centre-flux-*.json
 ory-postes.json
+
+# Le calage sur le réel (banc d'essai, évolution 11) : le réel, le planning, la
+# correspondance des rôles de l'unité et les résultats restent locaux
+reel*.csv
+planning*.csv
+ory-correspondance*.json
+calage*.json

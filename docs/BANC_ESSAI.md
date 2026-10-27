@@ -1557,3 +1557,115 @@ Vérifications :
 - `tests/periode-browser.cjs` : la vue Période montre, par service et par
   jour, ⌈charge⌉, le surplus et la charge ; le détail, la charge de chaque
   équipe.
+
+### Le réel : import, correspondance, comparaison (évolution 11 b)
+
+La période simulée se compare aux heures réelles, rôle par rôle. Le calcul est
+dans `moteur/reel.js`, sans navigateur : la page (Résultats › Période, « Réel
+et calage ») et l'outil l'appellent.
+
+**Le fichier « Réel par jour »** (un CSV, ou la feuille « Réel » d'un
+classeur ; format dans `FORMATS_EXCEL.md` § 5) : une ligne par jour et par
+rôle, ses heures de titulaires et d'intérim, hors heures supp, et ses heures
+supp (facultatives). Avec une colonne `service`, le rôle devient « service /
+rôle ». Un fichier mal formé (une colonne manquante, une date, des heures ou
+un rôle illisibles, un « | » dans un rôle) est **refusé entier**, en nommant la
+ligne ; de même un classeur dont les heures sont au format heure d'Excel
+(7:30 y arrive en 0,3125 : des heures 24 fois trop petites).
+
+**Rien d'autre ne bloque.** Une anomalie écarte sa seule cellule, avec sa
+raison :
+
+- des heures négatives (de titulaires, d'intérim ou supp) : cette catégorie
+  de la cellule ;
+- un jour × rôle en double : la cellule.
+
+Une cellule écartée entière (en double, ou écartée par vous) fait sortir ce
+jour-là de la comparaison des lignes qui ont son rôle : elle ne compte jamais
+pour 0 h réelle.
+
+Deux cas se **signalent sans rien écarter** — à vous de décider : une
+catégorie à zéro tout un mois, présente les autres mois ; un rôle absent un
+jour, présent tous les autres. Vous pouvez réintégrer une cellule écartée (en
+double : ses lignes s'additionnent), écarter une cellule ou des jours, et les
+rétablir. Ces décisions sont des clés (jour, rôle), sans heures.
+
+**La correspondance** range les rôles en lignes. Chaque ligne a un nom, un ou
+plusieurs rôles (leurs ETP s'additionnent ; un rôle n'appartient qu'à une
+ligne) et ce qu'elle couvre — une seule chose, qu'aucune autre ligne ne
+couvre (son simulé compterait deux fois dans le total de l'unité) :
+
+| Couvre | Le simulé de la ligne, un jour de travail |
+|---|---|
+| des services | la charge de leurs équipes (évolution 11 a), en ETP |
+| l'encadrement saisi d'un service | sa charge d'encadrement (`chargeEncadrement`) |
+| les chauffeurs camion ou VL | les chauffeurs du plan du handling |
+| hors simulation | 0 |
+
+Un ETP, c'est `heures_titulaires ÷ base des titulaires + heures_interim ÷
+base de l'intérim` ; les bases sont de 7 h et 7 h par défaut, et se règlent
+pour un rôle. La correspondance s'importe et s'exporte en JSON pour l'outil
+(`FORMATS_EXCEL.md` § 5).
+
+**La comparaison** se fait sur les jours de travail **complets** de la
+période qui ont du réel (un jour incomplet, ou sans réel, en sort) :
+
+- par ligne et par jour : le réel, le simulé et l'écart (simulé − réel) ; un
+  jour où l'une des heures de la ligne est écartée n'y compte pas ;
+- par ligne, par mois et sur la période : l'erreur moyenne absolue (MAE), le
+  biais (l'écart moyen) et la corrélation (de Pearson) ;
+- pour toute l'unité (toutes les lignes, hors simulation comprise) : l'erreur
+  et le biais du total de chaque jour, les jours où chaque ligne compte (sans
+  ligne, pas de total) ;
+- avec la colonne `heures_supp` : par ligne et par mois, les heures supp
+  réelles et simulées (celles des services couverts ; des chauffeurs, au
+  prorata camion / VL), pour décrire, pas pour caler.
+
+Les rôles sans ligne sont listés, et ne comptent pas.
+
+**L'outil** :
+
+```
+node outils/caler-periode.cjs periode.json reel.csv|reel.xlsx correspondance.json [--xlsx calage.xlsx] > calage.json
+```
+
+`periode.json` est la sortie de `simuler-periode`, avec ou sans
+`--sans-detail`. Le JSON rend `{ calage, comparaison }` ; les cellules
+écartées, les cas à vérifier et les rôles sans ligne s'écrivent aussi sur la
+sortie d'erreur. `--xlsx` écrit le classeur de la page : Lisez-moi, Réel (le
+réel tel que lu, chaque cellule comptée, écartée ou sans ligne), Comparaison.
+
+**Dans la page**, sous le tableau de la période : « Importer le réel »,
+« Modèle CSV » (un réel fictif de trois jours et deux rôles), la
+correspondance (une ligne depuis un rôle sans ligne, ce qu'elle couvre, les
+bases, l'import et l'export en JSON), les anomalies (réintégrer, écarter,
+rétablir), puis la comparaison par ligne et par mois (les heures supp de
+chaque mois ; jour par jour, le réel, le simulé et l'écart, et « Écarter ce
+jour ») et son classeur. Tout se fait au clavier, le focus reste sur le
+geste. Les
+heures réelles restent en mémoire, le temps de la page ; la sauvegarde (la
+partie « calage sur le réel », `ory-calage-v1`, dans « Tout sauvegarder »)
+ne garde que la correspondance et les décisions.
+
+Vérifications :
+
+- `tests/reel.test.cjs` : le fichier (heures décimales ou HH:MM, en-têtes
+  sans casse ni accents, une seule colonne « heures », le service devant le
+  rôle) ; un fichier mal formé refusé, la ligne nommée ; des ETP, des écarts,
+  des erreurs, des biais et une corrélation connus ; une base par catégorie
+  et par rôle ; une ligne de deux rôles, l'encadrement, les chauffeurs, les
+  heures supp ; un jour incomplet écarté, les rôles sans ligne ; chaque
+  anomalie écartée ou signalée avec sa raison, réintégrée ou écartée par
+  l'utilisateur ; une cellule écartée entière qui fait sortir son jour de la
+  ligne, jamais 0 h ; « hors » dans le total de l'unité, pas de total sans
+  ligne ; les pièges (heures au format heure d'Excel, « heures » avec
+  « heures_interim », un « | ») ; la correspondance (un rôle dans une ligne,
+  une chose couverte par une ligne, des services connus, une base partielle,
+  un rôle nommé comme une propriété) ; un signal qui s'en va avec son jour ; la
+  sauvegarde sans aucune heure ; le modèle CSV ;
+- `tests/caler-periode.test.cjs` : l'outil, la même comparaison que le
+  module, avec ou sans `--sans-detail`, les décisions de la correspondance,
+  un réel en classeur, `--xlsx`, les erreurs ;
+- `tests/calage-browser.cjs` : le parcours dans la page avec des fichiers
+  fictifs — un nom de rôle en HTML affiché en texte, un refus qui se lit, le
+  focus, un jour écarté puis rétabli, « Tout sauvegarder ».

@@ -66,6 +66,7 @@
      *   allerPage(id), notifier(texte)
      *   mesurer()         — la hauteur de l'en-tête a changé (le bandeau paraît, s'en va, s'agrandit)
      *   exporter()        — le classeur Excel de la période simulée
+     *   rendu()           — après chaque rendu de la vue (facultatif) : « Réel et calage » se met à jour
      * } */
     constructor(a) {
       this.a = a; this.resultat = null; this.signature = null; this.calcul = null; this.erreur = null;
@@ -197,7 +198,8 @@
         + '<progress max="' + c.p.total + '" value="' + c.p.fait + '"></progress>';
     }
     rendreProgression() {
-      for (const [boite, sel] of [['periode-bandeau', '.pj-etat'], ['journee-periode', '.pv-etat']]) {
+      const vue = document.getElementById('pv-periode') ? 'pv-periode' : 'journee-periode';
+      for (const [boite, sel] of [['periode-bandeau', '.pj-etat'], [vue, '.pv-etat']]) {
         const box = document.getElementById(boite), el = box && box.querySelector(sel);
         if (el) { el.innerHTML = this.texteProgression(); dessins.delete(box); }
       }
@@ -223,7 +225,12 @@
     }
 
     rendreVue() {
-      const box = document.getElementById('journee-periode'); if (!box) return;
+      // La période dans sa boîte ; « Réel et calage » a la sienne, à côté (banc d'essai, évolution 11), que `rendu` rafraîchit.
+      const box = document.getElementById('pv-periode') || document.getElementById('journee-periode'); if (!box) return;
+      this.rendreVueSeule(box);
+      if (this.a.rendu) this.a.rendu();
+    }
+    rendreVueSeule(box) {
       const d = this.description();
       if (!d) { dessiner(box, '<p class="mini-note">Importez un programme de vols daté (colonne date) pour simuler une période.</p>'); return; }
       const e = this.etat(), r = this.resultat;

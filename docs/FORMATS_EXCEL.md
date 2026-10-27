@@ -507,6 +507,79 @@ minutes ; « Heures sup » en minutes × personnes.
   deux mois fictifs de 50 vols par jour font environ 6 Mo ; un programme
   réel, davantage (surtout la feuille Lots).
 
+## 5. Le calage sur le réel (version 1)
+
+Banc d'essai, évolution 11 (`BANC_ESSAI.md`, § 10). Ces fichiers contiennent
+des **données réelles** : ils ne vont jamais dans le dépôt. Dans la page, le
+réel reste en mémoire, le temps de la page.
+
+### Le fichier « Réel par jour »
+
+Un CSV (séparateur `;`, `,` ou tabulation), ou la feuille **« Réel »** d'un
+classeur (la seule feuille d'un CSV). Une ligne par jour et par rôle. Les
+en-têtes ne tiennent compte ni de la casse ni des accents.
+
+| Colonne | Obligatoire | Contenu |
+|---|---|---|
+| `date` | oui | comme le programme daté : `AAAA-MM-JJ`, `JJ/MM/AAAA` ou une date Excel |
+| `role` | oui | le rôle tel que l'unité le nomme (160 caractères au plus) |
+| `heures_titulaires` | oui | les heures des titulaires ce jour-là, **hors heures supp** |
+| `heures_interim` | oui | les heures des intérimaires, hors heures supp (vide : 0) |
+| `heures_supp` | non | les heures supp du rôle ce jour-là |
+| `service` | non | présent, le rôle devient « service / rôle » |
+
+- Les heures : un nombre décimal (`7,5`, `7.5`) ou `HH:MM` (`7:30`,
+  `350:30`). Une cellule vide vaut 0. Dans un classeur, écrivez-les en nombre
+  ou en texte : une cellule au **format heure** d'Excel arrive en fraction de
+  jour (7:30 → 0,3125), et un fichier dont toutes les heures sont ainsi est
+  refusé.
+- Une seule colonne `heures` (sans `heures_titulaires` ni `heures_interim`)
+  se lit comme des heures de titulaires, sans intérim.
+- Un rôle ne contient pas le caractère `|`.
+- Une colonne manquante, une date, un rôle ou des heures illisibles :
+  **le fichier entier est refusé**, en nommant la ligne. Des heures
+  négatives, un jour × rôle en double : la cellule est écartée, avec sa
+  raison, et le reste se lit.
+- « Modèle CSV » (page Période, « Réel et calage ») en donne un exemple
+  fictif : trois jours, deux rôles.
+
+### La correspondance (JSON)
+
+Ce que la page exporte, et ce que l'outil `caler-periode` lit :
+
+```json
+{ "bases": { "defaut": { "titulaires": 7, "interim": 7 }, "<rôle>": { "titulaires": 10, "interim": 7 } },
+  "lignes": [ { "nom": "…", "roles": ["<rôle>", "…"], "services": ["<id>", "…"] },
+              { "nom": "…", "roles": ["…"], "encadrement": "<id de service>" },
+              { "nom": "…", "roles": ["…"], "chauffeurs": "camion" },
+              { "nom": "…", "roles": ["…"], "hors": true } ],
+  "decisions": { "ecartes": { "jours": ["AAAA-MM-JJ"], "cellules": ["AAAA-MM-JJ|<rôle>"] }, "reintegres": ["AAAA-MM-JJ|<rôle>"] } }
+```
+
+- `bases` : les heures d'un ETP, de titulaire et d'intérimaire (de plus de 0
+  à 24 h) ; `defaut` vaut pour tous les rôles sans base propre (7 h et 7 h
+  sans elle) ; une base de rôle partielle prend le reste de `defaut`.
+- `lignes` : un nom unique, des rôles (un rôle n'appartient qu'à une ligne),
+  et **une seule** chose couverte : `services` (des identifiants de service),
+  `encadrement` (un identifiant), `chauffeurs` (`camion` ou `vl`) ou
+  `hors: true`. Un service inconnu est refusé, nommé ; un service, un
+  encadrement ou des chauffeurs couverts par deux lignes aussi.
+- `decisions` (facultatif) : les jours et les cellules écartés par
+  l'utilisateur, les cellules réintégrées (`|titulaires`, `|interim` ou
+  `|supp` pour des heures négatives). Des clés, aucune heure.
+
+### Le classeur du calage
+
+`node outils/caler-periode.cjs … --xlsx calage.xlsx`, ou « Exporter la
+comparaison (Excel) » dans la page : le même classeur
+(`echanges-calage.js`).
+
+| Feuille | Une ligne par | Colonnes |
+|---|---|---|
+| **Lisez-moi** | — | la période, les fichiers, la date du calcul, les bases, les jours comparés et écartés, les rôles sans ligne, les anomalies, les définitions |
+| **Réel** | jour × rôle | `Date`, `Rôle`, `Heures titulaires`, `Heures intérim`, `Heures supp`, `Base titulaires`, `Base intérim`, `ETP`, `Ligne`, `État` (compté, sans ligne, jour de travail incomplet, hors période, heures écartées, écartée : la raison) |
+| **Comparaison** | ligne × jour, puis ses mois et la période ; toute l'unité ; les heures supp par mois | `Ligne`, `Couvre`, `Niveau` (jour, mois, période, heures supp du mois), `Jour`, `Mois`, `Unité` (ETP ou h), `Réel`, `Simulé`, `Écart`, `Jours`, `Erreur`, `Biais`, `Corrélation` |
+
 ---
 
 ## Confidentialité

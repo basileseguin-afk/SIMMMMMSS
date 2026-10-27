@@ -127,9 +127,9 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 
 @media(max-width:1250px){ .app{grid-template-columns:260px 1fr 290px} }
 </style>
-<meta name="ory-version" content="53b9cec3fa"/>
+<meta name="ory-version" content="b535d6e6b9"/>
 <link href="interface.css?v=a79339df" rel="stylesheet"/><link href="editor.css?v=7c30f1f7" rel="stylesheet"/><link href="flow-center.css?v=62899a0b" rel="stylesheet"/><link href="ateliers.css?v=2da0c40c" rel="stylesheet"/>
-<link href="reglages.css?v=492a7bab" rel="stylesheet"/><link href="demarrage.css?v=9ef1de69" rel="stylesheet"/><link href="aide.css?v=6dc5aec0" rel="stylesheet"/><link href="usability.css?v=d05639c8" rel="stylesheet"/><link href="graphe.css?v=c6498078" rel="stylesheet"/><link href="histoire.css?v=768c5f75" rel="stylesheet"/><link href="temps.css?v=5b7080b2" rel="stylesheet"/><link href="unite.css?v=0de0aee2" rel="stylesheet"/><link href="ds.css?v=10e3eb8c" rel="stylesheet"/><link href="periode.css?v=cdb0fe57" rel="stylesheet"/></head>
+<link href="reglages.css?v=492a7bab" rel="stylesheet"/><link href="demarrage.css?v=9ef1de69" rel="stylesheet"/><link href="aide.css?v=6dc5aec0" rel="stylesheet"/><link href="usability.css?v=d05639c8" rel="stylesheet"/><link href="graphe.css?v=c6498078" rel="stylesheet"/><link href="histoire.css?v=768c5f75" rel="stylesheet"/><link href="temps.css?v=5b7080b2" rel="stylesheet"/><link href="unite.css?v=0de0aee2" rel="stylesheet"/><link href="ds.css?v=10e3eb8c" rel="stylesheet"/><link href="periode.css?v=a5c482c0" rel="stylesheet"/></head>
 <body data-vue="plan"><a class="skip-link" href="#workspace">Aller au contenu</a>
 <!-- ============ NAVIGATION : la marque, les parties (celle qui est ouverte déplie ses pages), la sauvegarde ============ -->
 <aside aria-label="Navigation" class="barre" id="barre">
@@ -195,7 +195,7 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <span class="run-state" id="run-state" role="status"></span>
 <input aria-label="Heure de la journée rejouée" id="sim-curseur" type="range" min="0" max="1440" step="1" value="0"/></div><div class="vitesse-box">Vitesse <input aria-label="Vitesse de lecture, minutes simulées par seconde" id="vitesse" max="120" min="1" type="range" value="30"/><b id="vitesse-val">30×</b></div></div>
 <section aria-label="Les chiffres de la journée" class="journee-chiffres" id="journee-chiffres" data-sous="j-chiffres"><div class="vide-carte chiffres-vide"><span data-ico="equipe"></span><b>Rien à compter pour l’instant</b><p>Aucune équipe ne prépare encore de commande.</p><button class="btn" data-page="mu-pas">Décrire votre unité →</button></div><div class="panneau panneau-bilan"><h3>Sur toute la journée</h3><div id="bilan-journee"></div><p class="bilan-suite"><button class="lien-fort" data-page="j-plan" type="button">Rejouer la journée sur le plan →</button></p></div></section>
-<section aria-label="La période" class="journee-periode" id="journee-periode" data-sous="j-periode"></section><section aria-label="Stocks et retours" class="journee-stocks" id="journee-stocks" data-sous="j-stocks"></section><section aria-label="Comparer deux essais" class="journee-comparer" id="view-comparer" data-sous="j-comparer"></section>
+<section aria-label="La période" class="journee-periode" id="journee-periode" data-sous="j-periode"><div class="pv-periode" id="pv-periode"></div><div class="pv-reel" id="pv-reel"></div></section><section aria-label="Stocks et retours" class="journee-stocks" id="journee-stocks" data-sous="j-stocks"></section><section aria-label="Comparer deux essais" class="journee-comparer" id="view-comparer" data-sous="j-comparer"></section>
 <section aria-label="Les vols" class="flights-view" hidden="" id="view-vols"><p class="vols-source" data-sous="v-programme"><span class="demo-badge" data-ico="avion"></span><strong id="source-label">Jeu de démonstration</strong><span id="source-count"></span></p><div class="vols-donnees" id="vols-donnees" data-sous="v-programme"></div><div class="vols-donnees" id="vols-planche" data-sous="v-planche"></div><h2 class="vols-titre">Les départs de la journée</h2><div class="vols-handling" id="vols-handling" data-sous="v-departs" aria-live="polite"></div><div class="vols-frise" id="vols-frise" data-sous="v-departs"></div><div class="flight-filters" data-sous="v-departs"><label>Chercher un vol <input id="flight-search" placeholder="Numéro de vol ou compagnie" type="search"/></label><label>Afficher <select id="flight-filter"><option value="all">Tous les départs</option><option value="ontime">Prêts à l’heure</option><option value="late">Prêts en retard</option><option value="overdue">En retard</option><option value="pending">Pas prêts ou sans équipe</option><option value="ready">Prêts</option></select></label></div><details class="inline-help" data-sous="v-departs"><summary>Que veut dire « prêts avant » ?</summary><p class="mini-note">Les repas doivent être prêts avant d’être chargés dans l’avion : « prêts avant » = heure de départ − délai de chargement (45 min par défaut). « En retard » parle de la préparation des repas, pas de l’avion. <b>Avec une case Handling</b>, c’est le vol chargé qui compte : ses commandes arrivent au handling avant départ − délai, le handling réunit les classes du vol et le charge, et le vol doit être chargé à son heure de départ.</p></details><div class="table-scroll" data-sous="v-departs"><table class="flight-table"><caption class="sr-only">Où en sont les repas de chaque départ</caption><thead><tr><th scope="col">Départ</th><th scope="col">Vol</th><th scope="col">Prêts avant</th><th scope="col">Où elles en sont</th><th scope="col">Ses commandes</th></tr></thead><tbody id="flight-rows"></tbody></table></div></section><section id="view-ateliers" aria-label="Ateliers de travail" hidden></section><section id="view-flux" aria-label="Centre des flux" hidden></section><section id="view-reglages" aria-label="Centre des réglages" class="reglages-view" hidden></section></div>
 <!-- ============ DASHBOARD ============ -->
 <aside aria-label="En ce moment" class="workbench" data-sous="j-plan u-plan" id="en-ce-moment"><div class="panel-content" id="panel-suivi"><div class="panel-heading"><h2>En ce moment</h2></div><div class="panneau">
@@ -264,13 +264,13 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <script src="echanges.js?v=2da99d61"></script>
 <script src="ateliers.js?v=d272a781"></script>
 <script src="reglages.js?v=71b88eea"></script>
-<script src="moteur/journee.js?v=1257fd1c"></script><script src="moteur/periode.js?v=da54ac32"></script><script src="periode-vue.js?v=48db3671"></script>
+<script src="moteur/journee.js?v=1257fd1c"></script><script src="moteur/periode.js?v=da54ac32"></script><script src="periode-vue.js?v=55e1b51f"></script><script src="moteur/reel.js?v=666fdcc1"></script><script src="echanges-calage.js?v=b6a045d9"></script><script src="calage-vue.js?v=297a9e0e"></script>
 <script src="unite.js?v=d4b6c17b"></script>
 <script src="demarrage.js?v=7c44dc7e"></script>
 <script src="temps.js?v=e2f675cd"></script>
 <script src="replay.js?v=016adb42"></script>
 <script src="simulation.js?v=8d2f509a"></script>
 <script src="comparaison.js?v=390e35e8"></script>
-<script src="sim.js?v=4caa1bd9"></script>
+<script src="sim.js?v=224cf5b2"></script>
 </body>
 </html>
