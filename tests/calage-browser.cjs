@@ -14,7 +14,10 @@
  *     et sa bande, dans la page Période, dans la Synthèse de la journée et
  *     dans la feuille Période ; « Appliquer au barème » le × a, « Annuler »
  *     exactement ; la période à relancer, puis un nouveau calage, a ≈ 1 ;
- *     « à refaire ».
+ *     « à refaire » ;
+ *   — (e) les vacations longues : la présence et la présence au contrat de
+ *     l'encadrement et d'une équipe, saisies dans la page ; les heures sup
+ *     d'office dans la période et dans son classeur.
  * Données fictives ; aucune capture d'écran (le plan est confidentiel). */
 const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs'),os=require('node:os');
 const nav=require('./nav.cjs');
@@ -242,6 +245,45 @@ const CLE='ory-calage-v1';
   assert.equal(await page.locator(`${B} .pc-politique`).count(),1);
   assert.equal(await page.locator(`${B} [data-cal=annuler-application]`).count(),1);
   assert.equal(await page.locator(`${B} tr[data-cal-prevu]`).count(),0);
+
+  // 7 (e). Les vacations longues : l'encadrement de la cuisine, 2 personnes présentes 10 h pour 7 h 30 au contrat ;
+  //    une équipe de cuisine avec une présence au contrat. La période compte leurs heures sup d'office.
+  await nav.aller(page,'mu-services');await page.locator('#mu-services [data-mu-choisir=cuisine]').click();await attendre();
+  if(!(await page.locator('#mu-services [data-mu-section=avance]').evaluate(d=>d.open)))await page.locator('#mu-services [data-mu-section=avance] > summary').click();await attendre();
+  const enc=page.locator('#mu-services [data-mu-encadrement=cuisine]');
+  await enc.fill('2');await enc.press('Tab');await attendre();
+  for(const [quoi,v] of [['presence','10:00'],['contrat','07:30']]){
+    const x=page.locator(`#mu-services [data-mu-encadrement-${quoi}=cuisine]`);await x.fill(v);await x.press('Tab');await attendre();
+  }
+  assert.deepEqual(await page.evaluate(()=>Sim.ateliers.state.encadrement.cuisine),{personnes:2,presence:600,presenceContrat:450});
+  // Une présence illisible : refusée sous le champ, qui reprend sa valeur ; l'autre champ se règle encore.
+  const presenceEnc=page.locator('#mu-services [data-mu-encadrement-presence=cuisine]');
+  await presenceEnc.fill('tard');await presenceEnc.press('Tab');await attendre();
+  assert.equal(await presenceEnc.inputValue(),'10:00','le champ reprend sa valeur');
+  assert.match(await page.locator('#mu-services .mu-encadrement-horaires + .champ-erreur').innerText(),/^Une présence s’écrit HH:MM ou en minutes/,'le refus, sous le champ');
+  assert.deepEqual(await page.evaluate(()=>Sim.ateliers.state.encadrement.cuisine),{personnes:2,presence:600,presenceContrat:450},'rien ne change');
+  const equipeCuisine=await page.evaluate(()=>Sim.ateliers.state.ateliers.find(a=>a.service==='cuisine'&&a.type==='manuel').id);
+  // La présence au contrat d'une équipe : dans « Plus de réglages » de sa ligne.
+  const plus=page.locator(`#mu-services article.mu-equipe[data-at="${equipeCuisine}"] details.mu-plus`);
+  if(!(await plus.evaluate(d=>d.open)))await plus.locator('> summary').click();await attendre();
+  const contrat=page.locator(`[data-at="${equipeCuisine}"] [data-at-champ=presence-contrat]`).first();
+  await contrat.fill('tard');await contrat.press('Tab');await attendre();
+  assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).presenceContrat,equipeCuisine),undefined,'une heure illisible est refusée');
+  await page.locator(`[data-at="${equipeCuisine}"] [data-at-champ=presence-contrat]`).first().fill('06:00');
+  await page.locator(`[data-at="${equipeCuisine}"] [data-at-champ=presence-contrat]`).first().press('Tab');await attendre();
+  assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).presenceContrat,equipeCuisine),360);
+  await nav.aller(page,'j-periode');await attendre();
+  await page.locator('#journee-periode [data-pv=lancer]').click();
+  await page.waitForFunction(()=>Sim.periode.etat()==='a-jour',null,{timeout:120000});await attendre(300);
+  const b3=await bilan(),w3=b3.joursTravail.find(w=>w.complet&&w.services.cuisine);
+  assert.equal(w3.services.cuisine.heuresSupOfficeEncadrement,2*150,'5 h d’office par jour pour l’encadrement');
+  assert.ok(w3.services.cuisine.heuresSupOffice>0,'l’équipe aussi');
+  await page.locator('#periode-mesure').selectOption('heuresSupOfficeEncadrement');await attendre(100);
+  const iCuisine=b3.services.filter(x=>Object.values(b3.joursTravail).some(w=>w.services[x.id])).findIndex(x=>x.id==='cuisine');
+  assert.equal((await page.locator(`#journee-periode tr[data-pv-jour="${w3.date}"] td`).allInnerTexts())[iCuisine],'5');
+  const x3=await T.lireClasseur(new Uint8Array(fs.readFileSync(await telecharger(()=>page.locator('#journee-periode [data-pv=exporter]').click()))));
+  assert.ok(x3.find(f=>f.nom==='Période').lignes[0].includes('Heures sup d’office de l’encadrement (min × pers.)'));
+  assert.ok(x3.find(f=>f.nom==='Équipes').lignes[0].includes('Heures sup d’office (min × pers.)'));
 
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('calage-browser : ok');

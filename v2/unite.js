@@ -316,7 +316,11 @@
       const regles = [choixParallele && partenaire ? 'en même temps que ' + this.nom(partenaire) : '', enc > 0 ? pl(enc, 'superviseur') : ''].filter(Boolean);
       const avance = section('avance', pic('curseurs'), 'Avancé', choixParallele
         + `<label class="mu-encadrement">Superviseurs / coordinateurs${avecUnite(`<input type="number" min="0" max="99" value="${enc}" data-mu-encadrement="${esc(s.id)}">`, 'pers.')}
-          <small>présents dans le service, hors production : ils ne changent rien au calcul ; ils serviront à relier l’unité au budget quotidien</small></label>`,
+          <small>présents dans le service, hors production : ${this.at.encadrementDe ? 'ils ne changent rien au déroulé de la journée ; la période compte leur charge et, au-delà de leur contrat, leurs heures sup d’office' : 'ils ne changent rien au calcul ; ils serviront à relier l’unité au budget quotidien'}</small></label>`
+        + (this.at.encadrementDe && enc > 0 ? (() => { const d = this.at.encadrementDe(s.id), h = m => (Number.isFinite(m) ? String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0') : '');
+            return `<label class="mu-encadrement-horaires">Leur présence<input value="${h(d.presence)}" placeholder="générale" data-mu-encadrement-presence="${esc(s.id)}" aria-label="Présence de l’encadrement (HH:MM)">
+              au contrat<input value="${h(d.presenceContrat)}" placeholder="—" data-mu-encadrement-contrat="${esc(s.id)}" aria-label="Présence au contrat de l’encadrement (HH:MM)">
+              <small>au-delà du contrat, des heures sup d’office chaque jour</small></label>`; })() : ''),
         regles.length ? esc(pl(regles.length, 'réglage') + ' : ' + regles.join(' · ')) : 'rien de réglé', false);
 
       // Une équipe d'un autre service qui fait aussi celui-ci, à la chaîne : elle
@@ -1477,6 +1481,13 @@
         else if (el.dataset.muImpose) this.at.regleImpose(el.dataset.muImpose, el.checked);
         // Après l'événement : redessiner pendant qu'il court arracherait le champ qu'on quitte.
         else if (el.dataset.muEncadrement) { const svc = el.dataset.muEncadrement, n = el.value; setTimeout(() => this.at.regleEncadrement(svc, n), 0); }
+        else if (el.dataset.muEncadrementPresence || el.dataset.muEncadrementContrat) {
+          // Le champ qu'on quitte, et l'autre tel qu'il est enregistré ; refusé, le champ reprend sa valeur et le refus se lit dessous.
+          const svc = el.dataset.muEncadrementPresence || el.dataset.muEncadrementContrat, box = el.closest('.mu-encadrement-horaires');
+          const lu = x => (x === el ? x.value : x.defaultValue), garde = el.defaultValue;
+          const p = lu(box.querySelector('[data-mu-encadrement-presence]')), c = lu(box.querySelector('[data-mu-encadrement-contrat]'));
+          if (this.at.regleEncadrementHoraires) setTimeout(() => { if (this.at.regleEncadrementHoraires(svc, p, c, el) === false) el.value = garde; }, 0);
+        }
         else if (el.dataset.muCatMin) {
           const service = el.closest('[data-mu-cat-service]').dataset.muCatService, id = el.dataset.muCatMin;
           const cie = el.dataset.cie, v = el.value.trim();

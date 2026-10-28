@@ -200,6 +200,27 @@ fiche (« Ce qu'il fait ») : combien sont présents (`encadrement`, par
 service). Hors production, ils ne changent rien au calcul ; ils serviront à
 relier l'unité au budget quotidien, où ils figurent.
 
+**Les vacations longues (banc d'essai, évolution 11 e).** L'encadrement d'un
+service a aussi, s'il le faut, sa présence et sa présence au contrat (« Leur
+présence … au contrat », en HH:MM) : `encadrement[service]` passe alors d'un
+nombre à `{ personnes, presence, presenceContrat }` (en minutes). L'ancienne
+forme, un nombre, se lit toujours et reste telle quelle tant qu'on n'y met
+pas d'horaire. Une équipe a de même un champ facultatif `presenceContrat`
+(« Présence au contrat », HH:MM ou des minutes, de 00:30 à 24:00, dans
+« Plus de réglages »). Quand la présence dépasse la présence au contrat,
+chaque personne compte l'écart en heures sup d'office, chaque jour, sans
+rien changer au déroulé de la journée. Sans présence propre, c'est la
+présence du réglage général qui compte. Une présence illisible dans un
+fichier (« tard », « 07:90 », moins de 00:30, plus de 24:00) le fait refuser
+entier, en la nommant ; le classeur des équipes ne porte pas la présence au
+contrat : à la relecture, celle du site reste.
+
+⚠ La version 2 lit la même sauvegarde (`ory-ateliers-v1`) mais ne connaît
+pas cette forme : un service dont l'encadrement a des horaires y perd son
+encadrement, et les équipes leur présence au contrat, dès que la version 2
+enregistre. Tant qu'on se sert des deux, gardez l'encadrement sans horaires
+dans les services qu'on règle aussi depuis la version 2.
+
 **Une équipe peut faire autrement que son service (06/10).** « Le poste ne
 dépend pas forcément des vols. » Chaque équipe qui prépare à la main (et chaque
 équipe hors tunnel) a son choix « Effectif » : *comme le service* (par défaut),

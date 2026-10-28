@@ -5,6 +5,32 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-28 — Banc d'essai, évolution 11 (e) : les vacations longues, des heures sup d'office
+
+- Une présence au contrat (`presenceContrat`) sur une équipe (« Plus de
+  réglages ») et sur l'encadrement saisi d'un service, qui devient
+  { personnes, presence, presenceContrat } (l'ancienne forme, un nombre, se
+  lit toujours).
+- Au-delà du contrat, des heures sup d'office chaque jour, par personne :
+  `heuresSupOffice` (équipes, services) et `heuresSupOfficeEncadrement` dans
+  le bilan de la période ; la comparaison au réel les ajoute aux heures sup
+  simulées ; la page Période et le classeur les montrent quand il y en a.
+- La charge de l'encadrement suit sa présence (sans présence : ses
+  personnes, comme avant).
+- Une présence illisible est refusée : sous le champ dans la page, et une
+  sauvegarde qui en a une est refusée entière. Le classeur des équipes ne
+  porte pas la présence au contrat : à la relecture, celle du site reste.
+- Sans présence au contrat, rien ne change. La version 2, qui lit la même
+  sauvegarde, ne connaît pas l'encadrement avec horaires (documenté).
+- Fichiers : `moteur/periode.js`, `moteur/reel.js`, `ateliers.js`,
+  `unite.js` et `v2/unite.js` (à l'identique ; les champs ne paraissent
+  qu'avec les équipes de la version 1), `echanges.js` et `v2/echanges.js`,
+  `periode-vue.js`, `sim.js`, `index.html`, `v2/index.html` (empreintes),
+  `docs/BANC_ESSAI.md` (§ 10), `docs/MODELE_ATELIERS.md`,
+  `docs/FORMATS_EXCEL.md` (§ 4), `docs/CAHIER_DES_CHARGES.md` (M21–M23),
+  `README.md`, `tests/vacations-longues.test.cjs` (nouveau),
+  `tests/calage-browser.cjs`.
+
 ## 2026-10-28 — Banc d'essai, évolution 11 (d) : se servir du calage, prévoir l'effectif ou corriger le barème
 
 - « Garder comme politique d'effectif » : la sauvegarde (`ory-calage-v1`)

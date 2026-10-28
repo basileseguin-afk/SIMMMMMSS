@@ -1768,9 +1768,11 @@ function initCalage(){
  */
 function signatureCalage(correspondance){
   const st=(Sim.ateliers&&Sim.ateliers.state)||{};
-  const equipes=(st.ateliers||[]).map(({personnes,personnesSaisies,lots,...a})=>({...a,...(a.parCompagnie?{}:{lots}),personnes:Number.isInteger(personnesSaisies)?personnesSaisies:personnes}));
+  // La présence au contrat (évolution 11 e) ne change pas la charge : elle n'y entre pas.
+  const equipes=(st.ateliers||[]).map(({personnes,personnesSaisies,lots,presenceContrat,...a})=>({...a,...(a.parCompagnie?{}:{lots}),personnes:Number.isInteger(personnesSaisies)?personnesSaisies:personnes}));
+  const encadrement=Object.fromEntries(Object.entries(st.encadrement||{}).map(([k,x])=>[k,x&&typeof x==='object'?{personnes:x.personnes,presence:x.presence}:x]));
   return OrlyCalagePeriode.empreinte(JSON.stringify({modele:(Sim.reglages&&Sim.reglages.etat)||{},flux:Sim.flows?Sim.flows.state:null,equipes,
-    effectifs:st.effectifs||{},categories:st.categories||{},encadrement:st.encadrement||{},correspondance}));
+    effectifs:st.effectifs||{},categories:st.categories||{},encadrement,correspondance}));
 }
 /** Le travail tel que le barème et les cases le portent. */
 function etatDuTravail(){
@@ -1791,7 +1793,9 @@ function journeeCalee(){
   const r=Sim.ateliers&&Sim.ateliers.resultat;if(!r||!r.ok)return null;
   const unite={...Sim.ateliers.a.unite(),etat:Sim.ateliers.state};
   const args=OrlyJournee.argumentsDeLUnite(unite,Sim.ateliers.a.vols(),{delaiChargement:CFG.loadDelay});
-  return OrlyCalagePeriode.jourDeLaJournee(OrlyPeriode.extraire(r,args,Sim.jourVols||'jour'),Sim.ateliers.state.encadrement);
+  // L'encadrement compté comme dans la période : ses personnes × sa présence ÷ la présence générale (évolution 11 e).
+  const encadrement=Object.fromEntries(Object.entries(Sim.ateliers.state.encadrement||{}).map(([id,x])=>[id,OrlyPeriode.encadrementDuJour(x,args.regime).charge]));
+  return OrlyCalagePeriode.jourDeLaJournee(OrlyPeriode.extraire(r,args,Sim.jourVols||'jour'),encadrement);
 }
 
 function initVueSimulation() {

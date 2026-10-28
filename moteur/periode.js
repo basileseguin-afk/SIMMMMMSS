@@ -213,6 +213,28 @@
     const qui = Number.isInteger(l.tunnel) ? [tournent[l.tunnel - 1]].filter(Boolean) : tournent;
     return somme(qui, t => +t.personnes);
   }
+  /**
+   * Les heures sup d'office (banc d'essai, évolution 11 e), en minutes × personnes : une présence plus longue que la
+   * présence au contrat, chaque jour, pour chaque personne. Sans présence au contrat : 0. Sans présence (pas de fin de
+   * poste) : la présence générale.
+   */
+  function heuresSupOffice(personnes, presence, contrat, regime) {
+    if (!Number.isFinite(contrat)) return 0;
+    const p = Number.isFinite(presence) && presence > 0 ? presence : P().normaliserRegime(null, regime).presence;
+    return Math.max(0, p - contrat) * (personnes || 0);
+  }
+  /** L'encadrement d'un service, ses deux formes : un nombre (l'ancienne), ou { personnes, presence, presenceContrat }. */
+  const encadrementDe = x => (x && typeof x === 'object' ? x : { personnes: +x || 0 });
+  /**
+   * L'encadrement saisi d'un service, un jour : ses personnes, sa charge (ses personnes × sa présence ÷ la présence
+   * générale ; l'ancienne forme : ses personnes) et ses heures sup d'office (évolution 11 e). La période et la
+   * Synthèse de la journée (le prévu calé) le comptent ainsi.
+   */
+  function encadrementDuJour(x, regime) {
+    const e = encadrementDe(x), personnes = e.personnes || 0;
+    return { personnes, charge: presenceRelative(personnes, e.presence, regime), heuresSupOffice: heuresSupOffice(personnes, e.presence, e.presenceContrat, regime) };
+  }
+
   /** Des personnes présentes `presence` minutes, rapportées à la présence du réglage général (sans fin de poste : la présence générale). */
   function presenceRelative(personnes, presence, regime) {
     const generale = P().normaliserRegime(null, regime).presence;
@@ -269,6 +291,8 @@
         besoin,
         // Sa charge, en ETP (évolution 11 a) : son besoin exact, ou ce que ses personnes occupent.
         charge: chargeEquipe(definitions.get(a.id), a, ls, e, besoin, args.regime),
+        // Ses heures sup d'office (évolution 11 e) : sa présence au-delà de son contrat.
+        heuresSupOffice: heuresSupOffice(a.personnes, a.presence, (definitions.get(a.id) || {}).presenceContrat, args.regime),
         hommeMinutes: somme(ls, l => l.hommeMinutes),
         debutPoste: fini(a.debutPoste), finPresence: Number.isFinite(a.debutPoste) && Number.isFinite(a.presence) ? a.debutPoste + a.presence : null,
         fin: fini(a.fin), travail: a.travail || 0, attente: a.attente || 0, pauses: a.arret || 0,
@@ -316,7 +340,9 @@
   const ADDITIVES = ['personnes', 'besoin', 'hommeMinutes', 'heuresSup', 'renfortsPretes', 'renfortsRecus', 'lots', 'lotsEnRetard', 'commandesEnRetard',
     'volsCharges', 'volsEnRetard', 'chauffeursCamion', 'chauffeursVL', 'borneBasse', 'heuresSupChauffeurs', 'volsLaves', 'encadrement',
     // L'arrondi au service (évolution 11 a) : la charge de ses équipes, ⌈charge⌉, et ce que l'arrondi équipe par équipe ajoute.
-    'charge', 'personnesService', 'surplusArrondi', 'chargeEncadrement'];
+    'charge', 'personnesService', 'surplusArrondi', 'chargeEncadrement',
+    // Les heures sup d'office (évolution 11 e) : des équipes, et de l'encadrement, à part.
+    'heuresSupOffice', 'heuresSupOfficeEncadrement'];
   const vide = () => Object.fromEntries(ADDITIVES.map(k => [k, 0]).concat([['retardMax', null]]));
   function ajouter(m, x) {
     for (const k of ADDITIVES) m[k] += x[k] || 0;
@@ -328,7 +354,8 @@
     renfortsPretes: e.renfortsPretes, renfortsRecus: e.renfortsRecus, lots: e.lots, lotsEnRetard: e.lotsEnRetard, commandesEnRetard: e.commandesEnRetard.length,
     retardMax: e.retardMax, volsCharges: e.volsCharges || 0, volsEnRetard: e.volsEnRetard || 0,
     chauffeursCamion: e.chauffeurs ? e.chauffeurs.camion : 0, chauffeursVL: e.chauffeurs ? e.chauffeurs.vl : 0, borneBasse: e.borneBasse || 0,
-    heuresSupChauffeurs: e.heuresSupChauffeurs || 0, volsLaves: e.volsLaves || 0, encadrement: 0, charge: e.charge || 0 });
+    heuresSupChauffeurs: e.heuresSupChauffeurs || 0, volsLaves: e.volsLaves || 0, encadrement: 0, charge: e.charge || 0,
+    heuresSupOffice: e.heuresSupOffice || 0 });
 
   /**
    * Le bilan de la période, par jour de travail : chaque équipe d'une journée de
@@ -341,6 +368,7 @@
    */
   function bilan(journees, unite, d) {
     const etat = (unite && unite.etat) || {}, encadrement = etat.encadrement || {};
+    const regime = unite && unite.modele ? unite.modele.regime : undefined;
     const decalages = [...new Set(((etat.ateliers || []).map(a => a.jour || 0)).concat(journees.flatMap(j => j.extrait.equipes.map(e => e.jour))).concat([0]))].sort((x, y) => x - y);
     const servicesDeLUnite = [...new Set((etat.ateliers || []).map(a => a.service).concat(journees.flatMap(j => j.extrait.equipes.map(e => e.service))))];
     const noms = Object.assign({}, ...journees.map(j => j.extrait.noms || {}));
@@ -379,8 +407,9 @@
       // L'encadrement saisi par service, une fois par jour ; les commandes en retard comptées une fois par service.
       for (const s of services) if (encadrement[s.id]) {
         const x = w.services[s.id] = w.services[s.id] || { ...vide(), _tard: new Set(), compagnies: {} };
-        // Sa charge, à part (évolution 11 a) : ses personnes, présentes le temps du réglage général.
-        x.encadrement = encadrement[s.id]; x.chargeEncadrement = encadrement[s.id];
+        // Sa charge, à part (évolution 11 a) : ses personnes × sa présence ÷ la présence générale ; ses heures sup d'office (évolution 11 e).
+        const enc = encadrementDuJour(encadrement[s.id], regime);
+        x.encadrement = enc.personnes; x.chargeEncadrement = enc.charge; x.heuresSupOfficeEncadrement = enc.heuresSupOffice;
       }
       for (const [id, s] of Object.entries(w.services)) {
         s.commandesEnRetard = s._tard.size; delete s._tard;
@@ -413,7 +442,7 @@
   }
 
   const api = { JOUR, jourDecale, ecart, joursEntre, dateCourte, dateLongue, estDate, datesDu, volsDuJour, decrire, texteDuProgramme,
-    jouerJournee, jouerAvecEntree, creerPeriode, simulerPeriode, depuisSauvegarde, optionsDeRejeu, extraire, bilan, ADDITIVES };
+    jouerJournee, jouerAvecEntree, creerPeriode, simulerPeriode, depuisSauvegarde, optionsDeRejeu, extraire, bilan, encadrementDuJour, ADDITIVES };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyPeriode = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -258,6 +258,32 @@
       ...(k.absorbe ? { absorbe: true } : typeof k.renfort === 'string' && k.renfort && k.renfort !== k.sinon ? { renfort: k.renfort } : {}) } };
   }
 
+  /** Une présence : des minutes (de 30 à 1 440, en nombre ou en chiffres), ou « HH:MM » ; sinon NaN. */
+  function minutesDePresence(v) {
+    if (v === null || v === undefined || v === '') return NaN;
+    const s = typeof v === 'string' ? v.trim() : null, m = s !== null ? /^(\d{1,2})[:hH]([0-5]\d)$/.exec(s) : null;
+    const n = m ? +m[1] * 60 + +m[2] : s !== null && /^\d+$/.test(s) ? +s : typeof v === 'number' ? Math.round(v) : NaN;
+    return Number.isFinite(n) && n >= 30 && n <= 1440 ? n : NaN;
+  }
+  /** Une présence lue d'un fichier : absente (vide), ou lisible ; illisible, le fichier est refusé en la nommant. */
+  function presenceLue(v, ou) {
+    if (v === null || v === undefined || v === '' || (typeof v === 'number' && Number.isNaN(v))) return NaN;
+    const n = minutesDePresence(v);
+    if (!Number.isFinite(n)) throw new Error(ou + ' : « ' + v + ' » n’est pas une présence (HH:MM ou des minutes, de 00:30 à 24:00).');
+    return n;
+  }
+  /** « 07:30 », « 24:00 » : une présence, en heures (pas « J+1 00:00 »). */
+  const heureDePresence = m => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+  /** L'encadrement saisi d'un service : un nombre de personnes (l'ancienne forme, gardée telle quelle), ou { personnes, presence, presenceContrat }. */
+  function encadrementValide(x, ou = 'encadrement') {
+    const objet = !!x && typeof x === 'object' && !Array.isArray(x), n = Math.round(+(objet ? x.personnes : x));
+    if (!(Number.isFinite(n) && n > 0)) return null;
+    const personnes = Math.min(99, n), presence = objet ? presenceLue(x.presence, ou + ', présence') : NaN;
+    const contrat = objet ? presenceLue(x.presenceContrat, ou + ', présence au contrat') : NaN;
+    if (!Number.isFinite(presence) && !Number.isFinite(contrat)) return personnes;
+    return { personnes, ...(Number.isFinite(presence) ? { presence } : {}), ...(Number.isFinite(contrat) ? { presenceContrat: contrat } : {}) };
+  }
+
   function valider(brut) {
     if (!brut || brut.schema !== 'ory-ateliers' || brut.version !== 1 || !Array.isArray(brut.ateliers))
       throw new Error('Fichier d’ateliers v1 attendu.');
@@ -294,6 +320,8 @@
         // général, et changer la règle commune déplace tout le monde.
         regime: { actif: a.regime ? a.regime.actif !== false : true,
                   ...(Number.isFinite(+(a.regime || {}).presence) ? { presence: +a.regime.presence } : {}) },
+        // Sa présence au contrat (banc d'essai, évolution 11 e) : au-delà, chaque personne fait des heures sup d'office, chaque jour.
+        ...(Number.isFinite(presenceLue(a.presenceContrat, 'Équipe « ' + nom + ' », présence au contrat')) ? { presenceContrat: presenceLue(a.presenceContrat, '') } : {}),
         ...(a.materiel === 'consomme' ? { materiel: 'consomme' } : {}),
         // L'effectif saisi à la main avant que le calcul ne le remplace (05/10) :
         // cocher « Effectif constant » le retrouve.
@@ -414,8 +442,9 @@
       .filter(([k, x]) => k && k.length <= 160 && (x === 'fixe' || x === 'calcule' || x === 'impose')).slice(0, 500));
     // Les superviseurs / coordinateurs de chaque service (06/10) : hors production,
     // ils serviront à relier l'unité au budget quotidien.
+    // Avec leur présence et leur présence au contrat (banc d'essai, évolution 11 e) : { personnes, presence, presenceContrat }.
     const encadrement = Object.fromEntries(Object.entries(brut.encadrement && typeof brut.encadrement === 'object' ? brut.encadrement : {})
-      .map(([k, x]) => [String(k).slice(0, 160), Math.round(+x)]).filter(([k, x]) => k && Number.isFinite(x) && x > 0).map(([k, x]) => [k, Math.min(99, x)]).slice(0, 500));
+      .map(([k, x]) => [String(k).slice(0, 160), encadrementValide(x, 'Encadrement de « ' + String(k).slice(0, 160) + ' »')]).filter(([k, x]) => k && x !== null).slice(0, 500));
     // Les services qui travaillent en même temps qu'un autre (08/10) : { cuisine chaude: cuisine }.
     const paralleles = Object.fromEntries(Object.entries(brut.paralleles && typeof brut.paralleles === 'object' ? brut.paralleles : {})
       .map(([k, x]) => [String(k).slice(0, 160), String(x ?? '').slice(0, 160)]).filter(([k, x]) => k && x && k !== x).slice(0, 100));
@@ -790,16 +819,39 @@
     }
 
     /** Les superviseurs / coordinateurs d'un service (0 sans). Hors production. */
-    encadrement(service) { return ((this.state.encadrement || {})[service]) || 0; }
+    encadrement(service) { return this.encadrementDe(service).personnes; }
+    /** L'encadrement d'un service : { personnes, presence, presenceContrat } (banc d'essai, évolution 11 e). */
+    encadrementDe(service) {
+      const x = (this.state.encadrement || {})[service];
+      return x && typeof x === 'object' ? { presence: null, presenceContrat: null, ...x } : { personnes: x || 0, presence: null, presenceContrat: null };
+    }
 
     regleEncadrement(service, n) {
       const k = Math.max(0, Math.min(99, Math.round(+n) || 0));
       const nom = (this.a.services().find(x => x.id === service) || {}).nom || service;
       this.changer(() => {
-        const e = { ...(this.state.encadrement || {}) };
-        if (k) e[service] = k; else delete e[service];
+        const e = { ...(this.state.encadrement || {}) }, d = this.encadrementDe(service);
+        if (k) e[service] = encadrementValide({ ...d, personnes: k }); else delete e[service];
         this.state.encadrement = e;
       }, nom + ' : ' + (k ? k + (k > 1 ? ' superviseurs ou coordinateurs.' : ' superviseur ou coordinateur.') : 'aucun superviseur.'));
+    }
+    /**
+     * La présence et la présence au contrat de l'encadrement d'un service (« HH:MM » ou des minutes ; vide : aucune).
+     * Refusée, rien ne change et le refus se lit sous `champ` ; rend false.
+     */
+    regleEncadrementHoraires(service, presence, contrat, champ) {
+      const d = this.encadrementDe(service), nom = (this.a.services().find(x => x.id === service) || {}).nom || service;
+      if (!d.personnes) return false;
+      const p = minutesDePresence(presence), c = minutesDePresence(contrat);
+      if ((String(presence ?? '').trim() && !Number.isFinite(p)) || (String(contrat ?? '').trim() && !Number.isFinite(c))) {
+        const raison = 'Une présence s’écrit HH:MM ou en minutes, de 00:30 à 24:00.';
+        if (champ) this.refuserAuChamp(champ, raison); else this.rendre('Refusé : ' + raison);
+        return false;
+      }
+      this.changer(() => {
+        this.state.encadrement = { ...(this.state.encadrement || {}), [service]: encadrementValide({ personnes: d.personnes, presence: p, presenceContrat: c }) };
+      }, nom + ' : présence de l’encadrement ' + (Number.isFinite(p) ? heureDePresence(p) : 'générale') + (Number.isFinite(c) ? ', contrat ' + heureDePresence(c) : '') + '.');
+      return true;
     }
 
     /** Les équipes à la main dont le poste ne dépend pas des vols : pas d'heures par vol. */
@@ -1486,6 +1538,13 @@
             el.value = '';
             break;
           case 'regime': a.regime = { ...a.regime, actif: el.checked }; break;
+          case 'presence-contrat': {
+            // Banc d'essai, évolution 11 e : vide, pas de contrat ; « HH:MM » ou des minutes.
+            const n = minutesDePresence(v);
+            if (String(v).trim() && !Number.isFinite(n)) throw new Error('Une présence au contrat s’écrit HH:MM, de 00:30 à 24:00.');
+            if (Number.isFinite(n)) a.presenceContrat = n; else delete a.presenceContrat;
+            break;
+          }
           case 'presence': {
             // Vider le champ, c'est revenir au réglage général.
             const n = parseInt(v, 10);
@@ -2068,6 +2127,8 @@
             <span class="mini-note">${a.regime.presence === undefined
               ? 'réglage général · ' + defaut.presence + ' min' : 'propre à cette équipe'}
               — soit ${String(Math.round(((a.regime.presence ?? defaut.presence) - defaut.arret) / 6) / 10).replace('.', ',')} h de travail</span>` : ''}
+          <label class="at-presence-contrat" title="Au-delà de la présence au contrat, chaque personne fait des heures sup d’office, chaque jour (banc d’essai)">Présence au contrat
+            <input value="${Number.isFinite(a.presenceContrat) ? heureDePresence(a.presenceContrat) : ''}" placeholder="—" inputmode="numeric" data-at-champ="presence-contrat"></label>
           ${a.type !== 'lavage' && !handling && this.state.materiel.actif ? `<label class="chk chk-mini"><input type="checkbox" data-at-champ="consomme"
             ${a.materiel === 'consomme' ? 'checked' : ''}>
             Emporte du matériel propre (trolleys, porcelaine)</label>` : ''}

@@ -300,10 +300,11 @@
     return 0;
   }
 
-  /** Les heures supp simulées d'une ligne un jour (heures) : celles de ses services ; ses chauffeurs, au prorata camion / VL. */
+  /** Les heures supp simulées d'une ligne un jour (heures) : celles de ses services, d'office comprises (évolution 11 e) ; son encadrement, d'office ; ses chauffeurs, au prorata camion / VL. */
   function heuresSuppSimulees(l, w) {
     const s = id => (w.services && w.services[id]) || {};
-    if (l.services) return somme(l.services, id => s(id).heuresSup) / 60;
+    if (l.services) return somme(l.services, id => (s(id).heuresSup || 0) + (s(id).heuresSupOffice || 0)) / 60;
+    if (l.encadrement) return (s(l.encadrement).heuresSupOfficeEncadrement || 0) / 60;
     if (!l.chauffeurs || !w.total) return 0;
     const n = (w.total.chauffeursCamion || 0) + (w.total.chauffeursVL || 0), k = l.chauffeurs === 'vl' ? w.total.chauffeursVL : w.total.chauffeursCamion;
     return n > 0 ? (w.total.heuresSupChauffeurs || 0) / 60 * (k || 0) / n : 0;

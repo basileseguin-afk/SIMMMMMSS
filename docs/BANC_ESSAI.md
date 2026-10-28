@@ -1848,3 +1848,52 @@ feuille Période avec et sans politique ; l'outil, avec et sans politique.
 prévu de chaque jour, la Synthèse, la feuille Période, « Appliquer »,
 « Annuler », le refus sans période à jour, la période relancée, un nouveau
 calage à a ≈ 1, « à refaire ».
+
+### Les vacations longues : des heures sup d'office (évolution 11 e)
+
+Au réel, une grande part des heures supp tombe sur des postes à vacation
+longue et fixe (la régulation, la coordination), sans débordement de charge.
+Le moteur, lui, ne crée des heures sup que par débordement. D'où une
+présence au contrat :
+
+- **Sur une équipe** : `presenceContrat`, facultatif, en minutes ou « HH:MM »
+  (de 00:30 à 24:00), dans « Plus de réglages » de sa ligne. Une heure
+  illisible est refusée : sous le champ dans la page, et une sauvegarde qui en
+  a une est refusée entière, la présence nommée. Le classeur des équipes ne
+  la porte pas : à la relecture, celle du site reste.
+- **Sur l'encadrement saisi d'un service** : il passe d'un nombre de
+  personnes à `{ personnes, presence, presenceContrat }`, réglé dans la fiche
+  du service (« Leur présence … au contrat »). L'ancienne forme, un nombre, se
+  lit toujours et ne change pas. La version 2, qui lit la même sauvegarde, ne
+  connaît pas cette forme (docs/MODELE_ATELIERS.md). La charge de l'encadrement suit sa présence :
+  personnes × présence ÷ la présence générale (sans présence : ses
+  personnes, comme avant).
+- **Les heures sup d'office** : quand la présence (celle de l'équipe, sinon
+  la présence générale) dépasse la présence au contrat, chaque personne
+  compte l'écart, chaque jour : `heuresSupOffice` par équipe et par service
+  (la somme de ses équipes), `heuresSupOfficeEncadrement` par service, en
+  minutes × personnes, dans le bilan de la période et ses totaux. Le déroulé
+  de la journée ne change pas.
+- **La comparaison au réel** (b) les ajoute aux heures sup simulées : celles
+  des équipes pour une ligne de services, celles de l'encadrement pour une
+  ligne d'encadrement.
+- **La page Période** propose les deux mesures, et le classeur de la période
+  leurs colonnes, seulement quand la période en a ; le Lisez-moi ne redéfinit
+  la charge de l'encadrement que quand un encadrement a sa propre présence.
+- Un calage gardé (d) ne devient pas « à refaire » pour une présence au
+  contrat : elle ne change pas la charge.
+
+Sans présence au contrat, rien ne change : les mesures d'avant sont les
+mêmes, champ par champ ; les deux champs nouveaux valent 0 ; la page et les
+classeurs gardent leurs colonnes d'avant.
+
+Vérifications — `tests/vacations-longues.test.cjs` : un encadrement de
+2 personnes présentes 10 h pour 7 h 30 au contrat, 5 h d'office par jour et
+sa charge à 2 × 10 h ÷ la présence générale ; une équipe de même ; l'ancienne
+forme lue et inchangée, « HH:MM » ou des minutes, une heure illisible
+écartée ; la comparaison qui les ajoute aux heures sup ; la non-régression de
+la référence ; une équipe sans présence propre, à la présence générale ; une
+présence illisible refusée (une équipe, un encadrement) ; l'aller-retour du
+classeur des équipes ; le classeur de la période avec et sans.
+`tests/calage-browser.cjs` les saisit dans la page (un refus sous le champ)
+et les retrouve dans la période et son classeur.

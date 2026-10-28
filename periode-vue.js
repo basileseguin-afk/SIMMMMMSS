@@ -52,8 +52,12 @@
     { id: 'heuresSup', nom: 'Heures sup (h × pers.)', ecrire: x => nombre(x / 60, 1) },
     { id: 'commandesEnRetard', nom: 'Commandes en retard', ecrire: x => nombre(x, 0) },
     { id: 'retardMax', nom: 'Retard max (min)', ecrire: x => (x == null ? '—' : nombre(x, 0)) },
-    { id: 'hommeMinutes', nom: 'Homme-heures', ecrire: x => nombre(x / 60, 1) }
+    { id: 'hommeMinutes', nom: 'Homme-heures', ecrire: x => nombre(x / 60, 1) },
+    // Les vacations longues (banc d'essai, évolution 11 e) : seulement quand la période en a.
+    { id: 'heuresSupOffice', nom: 'Heures sup d’office (h × pers.)', ecrire: x => nombre(x / 60, 1), office: true },
+    { id: 'heuresSupOfficeEncadrement', nom: 'Heures sup d’office de l’encadrement (h × pers.)', ecrire: x => nombre(x / 60, 1), office: true }
   ];
+  const avecOffice = b => (b.joursTravail || []).some(w => w.total && (w.total.heuresSupOffice > 0 || w.total.heuresSupOfficeEncadrement > 0));
 
   class VuePeriode {
     /* a = {
@@ -243,7 +247,7 @@
           : `<button type="button" class="btn btn-sm${e === 'a-jour' ? '' : ' btn-play'}" data-pv="lancer">${e === 'jamais' ? 'Simuler la période' : 'Relancer la période'}</button>`}
           ${e === 'a-jour' ? '<button type="button" class="btn btn-sm" data-pv="exporter">Exporter la période (Excel)</button>' : ''}</div></div>`;
       if (!r) { dessiner(box, tete); return; }
-      const b = r.bilan, m = MESURES.find(x => x.id === this.mesure) || MESURES[0];
+      const b = r.bilan, mesures = MESURES.filter(x => !x.office || avecOffice(b)), m = mesures.find(x => x.id === this.mesure) || mesures[0];
       const services = b.services.filter(s => b.joursTravail.some(w => w.services[s.id]));
       const valeur = s => (s ? s[m.id] : null);
       const cellule = (x, extra = '') => `<td class="pv-n"${extra}>${x == null || (m.id !== 'retardMax' && !x) ? '<span class="pv-zero">' + (x == null ? '—' : m.ecrire(x)) + '</span>' : m.ecrire(x)}</td>`;
@@ -265,7 +269,7 @@
         + ligneCumul('Total de la période (' + b.periode.jours + ' jour' + (b.periode.jours > 1 ? 's' : '') + ' complet' + (b.periode.jours > 1 ? 's' : '') + ')', b.periode, false)
         + ligneCumul('Moyenne par jour sur la période', b.periode, true);
       dessiner(box, tete + `<div class="panneau pv-tableau">
-        <div class="pv-outils"><label>Mesure <select id="periode-mesure">${MESURES.map(x => `<option value="${x.id}"${x.id === m.id ? ' selected' : ''}>${esc(x.nom)}</option>`).join('')}</select></label>
+        <div class="pv-outils"><label>Mesure <select id="periode-mesure">${mesures.map(x => `<option value="${x.id}"${x.id === m.id ? ' selected' : ''}>${esc(x.nom)}</option>`).join('')}</select></label>
           <span class="mini-note">Un clic sur un jour ouvre sa journée de vols ; ▸ déplie son détail par équipe et par compagnie.</span></div>
         <div class="table-scroll"><table class="svc-table pv-table" data-mesure="${m.id}">
           <thead><tr><th scope="col">Jour de travail</th>${services.map(s => `<th scope="col">${esc(s.nom)}</th>`).join('')}<th scope="col">Total</th></tr></thead>

@@ -1262,6 +1262,8 @@
             else throw new Error('ordre des lots illisible « ' + ordre + ' » (souple, strict, ou vide : le réglage général)');
           }
         } else if (avant && typeof avant.ordreSouple === 'boolean' && (type === 'manuel' || type === 'robot')) a.ordreSouple = avant.ordreSouple;
+        // Sa présence au contrat (banc d'essai de la version 1, évolution 11 e) : le classeur ne la porte pas, celle du site reste.
+        if (avant && Number.isFinite(avant.presenceContrat)) a.presenceContrat = avant.presenceContrat;
         // À la chaîne avec l'étape d'avant : un nom de service. Vide = chacune sa case.
         const chaine = String(o.a_la_chaine_avec ?? '').trim();
         if (chaine && !/^(non|aucun|aucune|-)$/i.test(chaine)) {
@@ -1713,6 +1715,7 @@
     ['surplusArrondi', 'Surplus d’arrondi', 'personnes − personnes du service : ce que coûte l’arrondi équipe par équipe, avec le sous-emploi d’un effectif saisi ; négatif quand des présences dépassent la présence générale'],
     ['hommeMinutes', 'Homme-minutes', 'le travail fait : la somme des homme-minutes des lots'],
     ['heuresSup', 'Heures sup (min × pers.)', 'les heures supplémentaires en minutes × personnes, renforts en heures sup compris'],
+    ['heuresSupOffice', 'Heures sup d’office (min × pers.)', 'une présence plus longue que la présence au contrat, chaque jour, pour chaque personne (banc d’essai, évolution 11 e)'],
     ['renfortsPretes', 'Renforts prêtés (min)', 'les minutes prêtées à un autre service'],
     ['renfortsRecus', 'Renforts reçus (min)', 'les minutes reçues d’un autre service'],
     ['lots', 'Lots', 'les lots préparés'],
@@ -1727,8 +1730,12 @@
     ['heuresSupChauffeurs', 'Heures sup chauffeurs (min)', 'les heures sup des chauffeurs'],
     ['volsLaves', 'Vols lavés', 'la plonge : les vols lavés'],
     ['encadrement', 'Encadrement', 'l’encadrement saisi du service, une fois par jour'],
-    ['chargeEncadrement', 'Charge de l’encadrement (ETP)', 'l’encadrement saisi du service, à la présence générale (ses personnes), à part de la charge des équipes']
+    ['chargeEncadrement', 'Charge de l’encadrement (ETP)', 'l’encadrement saisi du service, à la présence générale (ses personnes), à part de la charge des équipes'],
+    ['heuresSupOfficeEncadrement', 'Heures sup d’office de l’encadrement (min × pers.)', 'sa présence au-delà de sa présence au contrat, chaque jour']
   ];
+  /** Les heures sup d'office (banc d'essai, évolution 11 e) : leurs colonnes ne paraissent que si la période en a. */
+  const MESURES_OFFICE = ['heuresSupOffice', 'heuresSupOfficeEncadrement'];
+  const avecHeuresSupOffice = b => !!b && (b.joursTravail || []).some(w => MESURES_OFFICE.some(k => (w.total && w.total[k]) > 0));
   const SEMAINE = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
   const MOIS_FR = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
   const jourSemaine = d => SEMAINE[new Date(d + 'T12:00:00Z').getUTCDay()];
@@ -1750,13 +1757,18 @@
     const ns = id => nomService.get(id) || id;
     const complet = new Map(b.joursTravail.map(w => [w.date, w.complet]));
     const ouiNon = x => (x ? 'oui' : 'non');
-    const mesures = m => MESURES_PERIODE.map(([k]) => n2(m ? m[k] : null));
+    // Sans heures sup d'office, les colonnes d'avant (évolution 11 e) ; un encadrement à sa propre présence le dit.
+    const office = avecHeuresSupOffice(b), presenceEncadrement = (b.joursTravail || []).some(w => Object.values(w.services || {})
+      .some(x => x.encadrement && Math.abs((x.chargeEncadrement || 0) - x.encadrement) > 1e-9));
+    const MP = MESURES_PERIODE.filter(([k]) => office || !MESURES_OFFICE.includes(k)).map(m => (m[0] === 'chargeEncadrement' && presenceEncadrement
+      ? [m[0], m[1], 'l’encadrement saisi du service × sa présence ÷ la présence générale (sans présence propre : ses personnes), à part de la charge des équipes'] : m));
+    const mesures = m => MP.map(([k]) => n2(m ? m[k] : null));
 
     // Période : jour de travail × service, puis, chaque mois et sur la période, totaux et moyennes par jour (jours complets).
     // Avec une politique d'effectif (banc d'essai de la version 1, évolution 11 d) : le prévu calé de chaque ligne et de l'unité, sa bande.
     const prevu = ctx.prevu || null, colsPrevu = prevu ? ['Simulé de la ligne (ETP)', 'Prévu calé (ETP)', 'P10 (ETP)', 'P90 (ETP)'] : [];
-    const vides = MESURES_PERIODE.map(() => null);
-    const periode = [['Ligne', 'Jour de travail', 'Jour', 'Mois', 'Complet', 'Vols manquants', 'Jours complets', 'Service', ...MESURES_PERIODE.map(m => m[1]), ...colsPrevu]];
+    const vides = MP.map(() => null);
+    const periode = [['Ligne', 'Jour de travail', 'Jour', 'Mois', 'Complet', 'Vols manquants', 'Jours complets', 'Service', ...MP.map(m => m[1]), ...colsPrevu]];
     const services = w => b.services.filter(x => w.services[x.id]);
     const cumul = (ligne, mois, c, moyenne) => {
       const m = moyenne ? c.moyenne : c.total;
@@ -1782,14 +1794,14 @@
 
     // Équipes : jour de travail × équipe (chaque équipe au jour des vols + son jour).
     const equipes = [['Jour de travail', 'Journée de vols', 'Jour complet', 'Service', 'Équipe', 'Type', 'Effectif', 'Personnes', 'Homme-minutes', 'Besoin exact (pers.)', 'Charge (ETP)',
-      'Début de poste', 'Fin de présence', 'Fin du travail', 'Travail (min)', 'Attente (min)', 'Pauses (min)', 'Heures sup (min × pers.)',
+      'Début de poste', 'Fin de présence', 'Fin du travail', 'Travail (min)', 'Attente (min)', 'Pauses (min)', 'Heures sup (min × pers.)', ...(office ? ['Heures sup d’office (min × pers.)'] : []),
       'Renforts prêtés (min)', 'Renforts reçus (min)', 'Lots', 'Lots en retard', 'Commandes en retard', 'Retard max (min)']];
     const lignesEquipes = [];
     for (const j of journees) for (const e of j.extrait.equipes) {
       const w = decalerJour(j.date, e.jour || 0);
       lignesEquipes.push({ cle: [w, ns(e.service), e.nom, j.date], l: [T.celluleDate(w), T.celluleDate(j.date), ouiNon(complet.get(w)), ns(e.service), e.nom, TYPES_FR[e.type] || e.type,
         e.calcule ? 'calculé' : 'saisi', e.personnes, n2(e.hommeMinutes), n2(e.besoin), n2(e.charge), instantDe(j.date, e.debutPoste), instantDe(j.date, e.finPresence), instantDe(j.date, e.fin),
-        n2(e.travail), n2(e.attente), n2(e.pauses), n2(e.heuresSup), n2(e.renfortsPretes), n2(e.renfortsRecus), e.lots, e.lotsEnRetard, e.commandesEnRetard.length, n2(e.retardMax)] });
+        n2(e.travail), n2(e.attente), n2(e.pauses), n2(e.heuresSup), ...(office ? [n2(e.heuresSupOffice || 0)] : []), n2(e.renfortsPretes), n2(e.renfortsRecus), e.lots, e.lotsEnRetard, e.commandesEnRetard.length, n2(e.retardMax)] });
     }
     const parCle = (x, y) => x.cle.reduce((r, v, i) => r || String(v).localeCompare(String(y.cle[i])), 0);
     equipes.push(...lignesEquipes.sort(parCle).map(x => x.l));
@@ -1852,7 +1864,7 @@
       '   travaille le 10). Un jour de travail est incomplet quand une de ses journées de vols manque (avant le premier jour, en fin de période).',
       '   Les jours et les heures sont de vraies dates Excel : une heure de la veille d’une journée de vols porte la date de la veille.',
       '   Totaux et moyennes : sur les jours de travail complets ; une moyenne est le total ÷ les jours complets.',
-      ...MESURES_PERIODE.map(([, nom, sens]) => '   ' + nom + ' : ' + sens + '.'),
+      ...MP.map(([, nom, sens]) => '   ' + nom + ' : ' + sens + '.'),
       ...(prevu ? ['   Ligne : … — avec une politique d’effectif (un calage gardé) : le simulé de la ligne, son prévu calé (le modèle appliqué au simulé)',
         '   et sa bande P10–P90 ; « Toute l’unité (prévu calé) » : toutes les lignes (sans calage : leur simulé), sa bande à σ = √Σσ².',
         '   Le calage : du ' + ((prevu.calage && prevu.calage.date) || '?').slice(0, 10) + (prevu.calage && prevu.calage.periode
