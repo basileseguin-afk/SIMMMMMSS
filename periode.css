@@ -108,3 +108,9 @@ body[data-vue="plan"][data-sous="j-periode"] .app{grid-template-columns:minmax(0
 .pc-liste li{margin:2px 0}
 .pc-mesures .pc-tete-ligne th{background:var(--ds-surface-2);font-weight:var(--ds-g-fort)}
 .pc-mesures .pc-tete-ligne small{font-weight:var(--ds-g-normal);color:var(--ds-texte-3);margin-left:6px}
+.pc-rapport details{margin:4px 0}
+.pc-rapport summary{cursor:pointer}
+.pc-regle{display:block;font-size:var(--ds-t-12)}
+.pc-regle.ok{color:var(--ds-ok-texte,var(--ds-texte-2))}
+.pc-regle.non{color:var(--ds-retard-texte)}
+

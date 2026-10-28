@@ -9,7 +9,11 @@
  *  § 10, et docs/FORMATS_EXCEL.md pour les formats.
  *
  *      node outils/caler-periode.cjs periode.json reel.csv|reel.xlsx correspondance.json [--xlsx calage.xlsx] > calage.json
- *          --xlsx calage.xlsx   écrit aussi le classeur (Lisez-moi, Réel, Comparaison)
+ *          --xlsx calage.xlsx   écrit aussi le classeur (Lisez-moi, Réel, Comparaison, Calage)
+ *
+ *  Le JSON : { calage, comparaison, rapport } — `rapport`, le calage de chaque
+ *  ligne (moteur/calage-periode.js) : le modèle retenu, ses paramètres, ses
+ *  erreurs hors échantillon, le verdict de chaque règle, σ.
  *
  *  ⚠ Le réel, la période et le résultat contiennent des données réelles de
  *  l'unité : ils ne vont jamais dans le dépôt.
@@ -18,6 +22,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const R = require('../moteur/reel.js');
+const C = require('../moteur/calage-periode.js');
 const T = require('../tableur.js');
 const EC = require('../echanges-calage.js');
 const { lireJson } = require('./simuler-journee.cjs');
@@ -35,7 +40,7 @@ function lirePeriode(chemin) {
   return p;
 }
 
-/** Compare la période au réel : rend { calage, comparaison }. */
+/** Compare la période au réel et cale chaque ligne : rend { calage, comparaison, rapport }. */
 async function calerPeriode(cheminPeriode, cheminReel, cheminCorrespondance) {
   const p = lirePeriode(cheminPeriode);
   if (fs.statSync(cheminReel).size > MAX_REEL) throw new Error('réel : fichier trop volumineux (' + MAX_REEL / 1048576 + ' Mo au plus).');
@@ -50,13 +55,13 @@ async function calerPeriode(cheminPeriode, cheminReel, cheminCorrespondance) {
   return {
     calage: { schema: 'ory-calage', version: 1, periode: { debut: p.periode.debut, fin: p.periode.fin, sauvegarde: p.periode.sauvegarde || null, vols: p.periode.vols || null },
       reel: path.basename(cheminReel), correspondance: path.basename(cheminCorrespondance) },
-    comparaison, _bilan: p.bilan, _reel: controle
+    comparaison, rapport: C.caler(comparaison), _bilan: p.bilan, _reel: controle
   };
 }
 
 /** Le classeur : le même que la page écrit (echanges.js). */
 function classeurDuCalage(sortie, calculeLe = new Date()) {
-  return T.ecrireClasseur(EC.calageVersClasseur({ comparaison: sortie.comparaison, reel: sortie._reel }, {
+  return T.ecrireClasseur(EC.calageVersClasseur({ comparaison: sortie.comparaison, reel: sortie._reel, rapport: sortie.rapport }, {
     periode: sortie.calage.periode, reel: sortie.calage.reel, correspondance: sortie.calage.correspondance, calculeLe }));
 }
 
@@ -78,6 +83,7 @@ if (require.main === module) {
       if (c.rolesSansLigne.length) console.error('Rôles sans ligne (non comptés) : ' + c.rolesSansLigne.join(', ') + '.');
       for (const a of c.anomalies.ecartees) console.error('Écartée : ' + a.date + ', ' + a.role + ' — ' + a.raison + '.');
       for (const a of c.anomalies.signalees) console.error('À vérifier : ' + a.raison + '.');
+      for (const l of sortie.rapport.lignes) console.error('Calage, ' + l.nom + ' : ' + (l.cale ? l.retenu.nom + (l.raison ? ' (' + l.raison + ')' : '') : 'pas de calage, ' + l.raison) + '.');
       console.error('Comparaison : ' + c.lignes.length + ' ligne' + (c.lignes.length > 1 ? 's' : '') + ', ' + c.jours.length + ' jour' + (c.jours.length > 1 ? 's' : '')
         + ' de travail complets avec du réel.' + (xlsx ? ' Classeur : ' + xlsx + '.' : ''));
     })

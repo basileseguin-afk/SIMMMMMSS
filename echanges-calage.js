@@ -42,6 +42,8 @@
       ['   Réel — chaque jour × rôle, tel que lu : ses heures, ses bases, ses ETP, sa ligne, et s’il est compté, écarté (et pourquoi) ou sans ligne.'],
       ['   Comparaison — chaque ligne de la correspondance : réel, simulé et écart par jour ; erreur, biais et corrélation par mois et sur la période ;'],
       ['   toute l’unité (toutes les lignes, hors simulation comprise) ; les heures supp par mois, réelles et simulées.'],
+      ['   Calage (s’il est fait) — par ligne, le modèle retenu, puis les références et les candidats : leurs paramètres, leurs erreurs hors échantillon,'],
+      ['   le verdict de chaque règle ; σ et la bande P10–P90 ; le total de l’unité avant (le moteur) et après (les modèles retenus).'],
       [''],
       ['Définitions :'],
       ['   ETP : heures de titulaires ÷ leur base + heures d’intérim ÷ la leur. Les heures supp ne comptent pas dans les ETP.'],
@@ -93,12 +95,56 @@
   }
 
   /**
-   * Le classeur. `x` : { comparaison (moteur/reel.js, comparer), reel (controler) } ;
+   * Calage : par ligne, le modèle retenu, puis chaque référence et chaque
+   * candidat (paramètres sur tous les jours et leur plage sur les découpages,
+   * erreurs, verdict de chaque règle), « b + a × » quand il se confond avec
+   * « × a », l'erreur de chaque découpage laissé de côté ; l'unité avant / après.
+   */
+  function feuilleCalage(rapport) {
+    const REGLES = [['battreReferences', 'Plus juste que les références'], ['stabilite', 'Stable'], ['bornes', 'Bornes'], ['wilcoxon', 'Wilcoxon'], ['placebo', 'Placebo']];
+    const JOURS = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'], fr = x => (n3(x) === null ? '—' : String(n3(x)).replace('.', ','));
+    const lignes = [['Ligne', 'Couvre', 'Rang', 'Modèle', 'Accepté', 'a', 'a min', 'a max', 'b', 'b min', 'b max', 'Constante', 'Constante min', 'Constante max',
+      'Facteurs du jour (lun. → dim.)', 'Erreur par semaine (ETP)', 'Erreur par mois (ETP)', ...REGLES.map(r => r[1]), 'σ (ETP)', 'Bande P10–P90 (± ETP)', 'Jours', 'Validation', 'Laissé de côté']];
+    const vide = n => new Array(n).fill(null);
+    // Une ligne de la feuille : les colonnes nommées, les autres vides.
+    const rangee = x => [x.ligne, x.couvre, x.rang, x.modele == null ? null : x.modele, x.accepte == null ? null : x.accepte, ...(x.parametres || vide(9)),
+      x.jours == null ? null : x.jours, x.semaines == null ? null : x.semaines, x.mois == null ? null : x.mois, ...(x.regles || vide(REGLES.length)),
+      x.sigma == null ? null : x.sigma, x.bande == null ? null : x.bande, x.n == null ? null : x.n, x.validation == null ? null : x.validation, x.part == null ? null : x.part];
+    const plage = (m, k) => { const q = (m.parametres && m.parametres[k]) || {}; return [n3(q.tous), n3(q.min), n3(q.max)]; };
+    const facteurs = m => (m.parametres && m.parametres.jours ? m.parametres.jours.map((f, k) => JOURS[k] + ' ' + fr(f.tous)
+      + (f.min === null ? '' : ' (' + fr(f.min) + ' – ' + fr(f.max) + ')')).join(' ; ') : null);
+    for (const l of rapport.lignes || []) {
+      const id = { ligne: l.nom, couvre: l.couvre };
+      if (!l.cale) { lignes.push(rangee({ ...id, rang: 'pas de calage', n: l.jours, validation: l.raison })); continue; }
+      const r = l.retenu, pr = r.parametres;
+      lignes.push(rangee({ ...id, rang: 'retenu', modele: r.nom, parametres: [n3(pr.a), null, null, n3(pr.b), null, null, n3(pr.c), null, null],
+        jours: pr.jours ? pr.jours.map(x => fr(x)).join(' ; ') : null, sigma: n3(r.sigma), bande: n3(r.bande), n: l.jours,
+        validation: l.validation + (l.unSeulMois ? ' (un seul mois)' : '') + (l.raison ? ' — ' + l.raison : '') }));
+      const modeles = [...['moteur', 'constante'].map(n => [l.references[n], 'référence']), ...l.candidats.map(c => [c, 'candidat'])];
+      for (const [m, rang] of modeles) lignes.push(rangee({ ...id, rang, modele: m.nom, accepte: rang === 'candidat' ? (m.accepte ? 'oui' : 'non') : null,
+        parametres: [...plage(m, 'a'), ...plage(m, 'b'), ...plage(m, 'c')], jours: facteurs(m), semaines: n3(m.erreurs.semaines), mois: n3(m.erreurs.mois),
+        regles: REGLES.map(([k]) => (m.regles && m.regles[k] ? m.regles[k].raison : null)) }));
+      for (const x of l.confondus || []) lignes.push(rangee({ ...id, rang: 'candidat', modele: x.nom, accepte: 'non : ' + x.raison,
+        parametres: [n3(x.a), null, null, n3(x.b), null, null, null, null, null] }));
+      // L'erreur de chaque découpage : la semaine ou le mois laissé de côté, pour chaque modèle.
+      for (const [m, rang] of modeles) {
+        for (const x of m.erreurs.parSemaine) lignes.push(rangee({ ...id, rang: rang + ', une semaine laissée de côté', modele: m.nom, semaines: n3(x.erreur), part: x.semaine }));
+        for (const x of m.erreurs.parMois) lignes.push(rangee({ ...id, rang: rang + ', un mois laissé de côté', modele: m.nom, mois: n3(x.erreur), part: x.mois }));
+      }
+    }
+    const u = rapport.unite || {};
+    for (const [rang, x] of [['avant (moteur)', u.avant], ['après (modèles retenus)', u.apres]]) if (x)
+      lignes.push(rangee({ ligne: 'Toute l’unité', couvre: 'le total de chaque jour', rang, semaines: n3(x.mae), n: x.jours, validation: 'biais ' + fr(x.biais) }));
+    return feuille('Calage', lignes, 3);
+  }
+
+  /**
+   * Le classeur. `x` : { comparaison (moteur/reel.js, comparer), reel (controler), rapport (moteur/calage-periode.js, caler ; facultatif) } ;
    * `ctx` : { periode: { debut, fin, sauvegarde, vols }, reel, correspondance (noms des fichiers), calculeLe }.
    */
   function calageVersClasseur(x, ctx = {}) {
     const c = x.comparaison;
-    return [lisezMoi(c, ctx), feuilleReel(c, x.reel), feuilleComparaison(c)];
+    return [lisezMoi(c, ctx), feuilleReel(c, x.reel), feuilleComparaison(c)].concat(x.rapport ? [feuilleCalage(x.rapport)] : []);
   }
 
   const api = { calageVersClasseur };

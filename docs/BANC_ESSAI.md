@@ -1630,10 +1630,12 @@ node outils/caler-periode.cjs periode.json reel.csv|reel.xlsx correspondance.jso
 ```
 
 `periode.json` est la sortie de `simuler-periode`, avec ou sans
-`--sans-detail`. Le JSON rend `{ calage, comparaison }` ; les cellules
+`--sans-detail`. Le JSON rend `{ calage, comparaison, rapport }` (`rapport` :
+le calage de chaque ligne, ci-dessous) ; les cellules
 écartées, les cas à vérifier et les rôles sans ligne s'écrivent aussi sur la
 sortie d'erreur. `--xlsx` écrit le classeur de la page : Lisez-moi, Réel (le
-réel tel que lu, chaque cellule comptée, écartée ou sans ligne), Comparaison.
+réel tel que lu, chaque cellule comptée, écartée ou sans ligne), Comparaison,
+Calage (le rapport du calage, ci-dessous).
 
 **Dans la page**, sous le tableau de la période : « Importer le réel »,
 « Modèle CSV » (un réel fictif de trois jours et deux rôles), la
@@ -1669,3 +1671,82 @@ Vérifications :
 - `tests/calage-browser.cjs` : le parcours dans la page avec des fichiers
   fictifs — un nom de rôle en HTML affiché en texte, un refus qui se lit, le
   focus, un jour écarté puis rétabli, « Tout sauvegarder ».
+
+### Le calage : un modèle par ligne, validé hors échantillon (évolution 11 c)
+
+« Caler » cherche, ligne par ligne, comment passer du simulé au réel, et ne
+garde un modèle que s'il prédit mieux, sur des jours qu'il n'a pas appris, que
+de simples références. Le calcul est dans `moteur/calage-periode.js`, sans
+navigateur ; déterministe (deux passages donnent le même rapport), il tient en
+moins de 2 secondes sous Node pour 60 jours et 20 lignes.
+
+Une ligne se cale à partir de **20 jours utilisables** (sinon : « moins de
+20 jours utilisables »).
+
+- **Deux références** : « moteur » (réel = simulé) et « constante » (la
+  moyenne des jours appris).
+- **Trois candidats**, seulement pour une ligne simulée dont le simulé varie :
+  - « × a » : a = Σ simulé × réel ÷ Σ simulé², borné à [0,5 ; 2] ;
+  - « b + a × » : les moindres carrés, gardés seulement si a ∈ [0,5 ; 2] et
+    b ≥ 0 ; sinon il se confond avec « × a », n'est pas candidat, et le
+    rapport le dit (« se confond avec « × a » : moindres carrés hors bornes
+    (a = 0,4 ; b = -2,1) ») ;
+  - « × a × jour » : un facteur par jour de la semaine — la moyenne de
+    réel ÷ (a × simulé) ce jour-là, ramenée à une moyenne de 1, puis
+    rapprochée de moitié de 1.
+- **La validation**, jamais sur des jours appris (l'erreur : l'écart absolu
+  moyen, en ETP) : une **semaine ISO** laissée de côté, chacune à son tour ; et,
+  s'il y a au moins deux mois de 14 jours, un **mois** laissé de côté. Avec un
+  seul mois (moins de deux mois de 14 jours), les semaines seulement, et la
+  ligne le dit (« un seul mois »).
+- **Les règles**, toutes exigées :
+  1. plus juste que les deux références, en moyenne sur les semaines laissées
+     de côté et sur chaque mois laissé de côté ; un candidat qui ne s'apprend
+     pas sur une part (aucun simulé les jours appris) est refusé (« non appris
+     sur 1 part ») : il ne se compare pas sur moins de jours que les
+     références ;
+  2. stable : appris sans une semaine, chaque paramètre reste à ±15 % de sa
+     valeur sur tous les jours (« × a » : a ; « b + a × » : a et le niveau
+     b + a × simulé moyen ; « × a × jour » : a et chaque facteur du jour) ;
+  3. a ∈ [0,5 ; 2] (avant la borne) et b ≥ 0 ;
+  4. le test de Wilcoxon apparié (rangs signés, approximation normale,
+     correction des ex aequo) des erreurs absolues de chaque jour, contre la
+     meilleure référence de ce découpage — sur la validation par mois s'il y a
+     deux mois, sinon par semaine : p bilatéral < 0,05, et le candidat
+     meilleur (W+ au-dessus de sa moyenne), soit un test unilatéral à 2,5 %. La
+     référence peut être la constante quand la règle 1 se juge aussi contre le
+     moteur ; un p sous 0,001 s'écrit « p < 0,001 » ;
+  5. placebo : le simulé mélangé entre les jours (graine fixe, 20 mélanges),
+     la validation refaite ; le gain moyen sur la constante doit tomber au
+     quart, au plus, du vrai gain.
+- **Le choix** : parmi les candidats acceptés, le plus juste ; à 0,1 ETP près,
+  le plus simple (« × a », puis « b + a × », puis « × a × jour »). Sans
+  candidat accepté, la meilleure référence en validation. Une ligne hors
+  simulation prend la constante.
+- **σ** : l'écart quadratique moyen des erreurs hors échantillon du modèle
+  retenu ; la bande P10–P90 est la prédiction ± 1,2816 σ (`bande`, dans le
+  rapport).
+
+Le rapport, par ligne : le modèle retenu ; les paramètres de chaque modèle
+sur tous les jours, et leur plage (min–max) sur tous les découpages, semaines
+et mois (les facteurs du jour aussi) ; les erreurs des références, des
+candidats et du modèle retenu, en moyenne et pour chaque semaine et chaque
+mois laissés de côté (dans la page, le tableau « Erreur de chaque
+découpage » ; dans la feuille, une rangée par découpage et par modèle) ; le verdict de chaque règle avec sa raison (« refusé : instable,
+±23 % ») ; σ. Pour toute l'unité : l'erreur et le biais du total de chaque
+jour, avant (le moteur) et après (les modèles retenus), hors échantillon. Il
+se lit dans la page (« Caler »), dans le JSON de l'outil (`rapport`) et dans
+la feuille « Calage » du classeur.
+
+Vérifications — `tests/calage-periode.test.cjs` : réel = 0,8 × simulé et un
+peu de bruit, « × a » avec a = 0,80 à 2 % près ; un réel constant autour de
+15, la constante ; un bruit sans lien avec le volume, refusé par le placebo ;
+un fort effet du jour de la semaine, le même deux mois, « × a × jour », et
+s'il s'inverse d'un mois à l'autre, refusé ; un vrai a = 3, refusé, hors
+bornes, et « b + a × » qui se confond avec « × a » ; un seul mois, ou deux
+dont un seul de 14 jours : des semaines seulement, et la ligne le dit ; un a qui
+dérive d'une semaine à l'autre, refusé, instable ; un candidat qui ne
+s'apprend pas sur une part, refusé ; le placebo du « × a » au quart du vrai
+gain ; Wilcoxon sur un petit exemple calculé à la main (avec et sans ex aequo)
+et la loi normale ; le total de l'unité avant, celui de la comparaison ; deux passages,
+le même rapport ; 60 jours et 20 lignes en moins de 2 secondes.

@@ -17,7 +17,7 @@
 (function (root) {
   'use strict';
 
-  const R = () => root.OrlyReel, T = () => root.OrlyTableur;
+  const R = () => root.OrlyReel, T = () => root.OrlyTableur, C = () => root.OrlyCalagePeriode;
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   // « + 0 » : un −0 (un biais négatif arrondi) s'écrit 0.
   const nombre = (x, k = 2) => (x == null || !Number.isFinite(x) ? '—' : (Math.round(x * 10 ** k) / 10 ** k + 0).toLocaleString('fr-FR', { maximumFractionDigits: k }));
@@ -34,7 +34,7 @@
      *   notifier(texte)
      * } */
     constructor(a) {
-      this.a = a; this.lu = null; this.fichier = null; this.erreur = null; this.erreurCorrespondance = null;
+      this.a = a; this.lu = null; this.fichier = null; this.erreur = null; this.erreurCorrespondance = null; this.rapport = null;
       const r = this.relire();
       this.correspondance = r.correspondance; this.decisions = r.decisions;
       this.box = null;
@@ -133,9 +133,18 @@
     exporterClasseur() {
       const c = this.comparaison(); if (!c) return;
       const p = this.a.periode ? this.a.periode() : null;
-      const octets = T().ecrireClasseur(root.OrlyEchangesCalage.calageVersClasseur({ comparaison: c, reel: this.controle() },
+      const octets = T().ecrireClasseur(root.OrlyEchangesCalage.calageVersClasseur({ comparaison: c, reel: this.controle(), rapport: this.rapport },
         { periode: p || {}, reel: this.fichier, correspondance: 'la page', calculeLe: new Date() }));
       T().telecharger('ory-calage' + (p ? '-' + p.debut + '-au-' + p.fin : '') + '.xlsx', octets);
+    }
+
+    /** Le calage de chaque ligne (moteur/calage-periode.js) : le même que l'outil. */
+    caler() {
+      const c = this.comparaison(); if (!c) return;
+      this.rapport = { cle: this.cleComparaison, ...C().caler(c) };
+      const n = this.rapport.lignes.filter(l => l.cale && !['moteur', 'constante'].includes(l.retenu.modele)).length;
+      this.a.notifier('Calage fait : ' + n + ' ligne' + (n > 1 ? 's' : '') + ' sur ' + this.rapport.lignes.length + ' avec un modèle accepté.');
+      this.rendre();
     }
 
     /* ---- les gestes ------------------------------------------------------ */
@@ -151,6 +160,7 @@
       else if (f === 'retirer-role') this.changerCorrespondance(c => { c.lignes[i].roles = c.lignes[i].roles.filter(r => r !== b.dataset.role); });
       else if (f === 'exporter-correspondance') this.exporterCorrespondance();
       else if (f === 'exporter') this.exporterClasseur();
+      else if (f === 'caler') this.caler();
       else if (f === 'reintegrer') this.changerDecisions(d => { d.reintegres.push(b.dataset.cle); });
       else if (f === 'retablir') this.changerDecisions(d => { d.ecartes.cellules = d.ecartes.cellules.filter(k => k !== b.dataset.cle); });
       else if (f === 'retablir-jour') this.changerDecisions(d => { d.ecartes.jours = d.ecartes.jours.filter(k => k !== b.dataset.date); });
@@ -196,6 +206,10 @@
       const box = this.box || document.getElementById('pv-reel'); if (!box) return;
       this.attacher(box);
       const b = this.a.bilan(), ctrl = this.controle(), comp = this.comparaison();
+      // Le rapport ne vaut que pour la comparaison d'où il vient : elle change, il s'efface.
+      const cle = comp ? JSON.stringify([comp.lignes.map(l => [l.nom, l.jours]), comp.unite.jours]) : null;
+      if (this.rapport && this.rapport.cle !== cle) this.rapport = null;
+      this.cleComparaison = cle;
       const focus = VueCalage.cleDuFocus(box);
       box.innerHTML = `<div class="panneau pc-reel">
         <h2 class="pc-titre">Réel et calage</h2>
@@ -212,7 +226,7 @@
         ${ctrl ? this.rendreAnomalies(ctrl) : ''}
         ${!this.lu ? '' : !b ? '<p class="mini-note pc-attente">Simulez la période (à jour) pour comparer.</p>'
           : !this.correspondance.lignes.length ? '<p class="mini-note pc-attente">Ajoutez une ligne à la correspondance pour comparer.</p>'
-          : comp ? this.rendreComparaison(comp) : this.erreurComparaison ? `<p class="pj-erreur" role="alert">Comparaison impossible — ${esc(this.erreurComparaison)}</p>` : ''}
+          : comp ? this.rendreComparaison(comp) + this.rendreRapport() : this.erreurComparaison ? `<p class="pj-erreur" role="alert">Comparaison impossible — ${esc(this.erreurComparaison)}</p>` : ''}
       </div>`;
       VueCalage.rendreFocus(box, focus);
     }
@@ -302,9 +316,54 @@
           <thead><tr><th scope="col">Mois</th><th scope="col">Jours</th><th scope="col">Erreur (ETP)</th><th scope="col">Biais (ETP)</th><th scope="col">Corrélation</th><th scope="col">Heures supp</th></tr></thead>
           ${c.lignes.map(l => ligne(l.nom, l.couvre, l, true)).join('')}
           ${ligne('Toute l’unité', 'toutes les lignes, hors simulation comprise', c.unite, false)}</table></div>
-        <div class="pc-actions"><button type="button" class="btn btn-sm" data-cal="exporter">Exporter la comparaison (Excel)</button></div></section>`;
+        <div class="pc-actions"><button type="button" class="btn btn-sm btn-play" data-cal="caler" title="Un modèle par ligne, validé sur des jours qu’il n’a pas appris">Caler</button>
+          <button type="button" class="btn btn-sm" data-cal="exporter">Exporter la comparaison (Excel)</button></div></section>`;
     }
   }
+
+  /** Les paramètres d'un modèle, en mots : « a = 0,8 », « b = 1,2 ; a = 0,9 », « 15,3 », « a = 0,8 ; lun. 1,1 … ». */
+  const JOURS = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'];
+  function parametresEnMots(m) {
+    const p = m.parametres || {};
+    if (m.modele === 'moteur') return 'réel = simulé';
+    if (m.modele === 'constante') return nombre(p.c);
+    return (p.b !== undefined ? 'b = ' + nombre(p.b) + ' ; ' : '') + 'a = ' + nombre(p.a, 3)
+      + (p.jours ? ' ; ' + p.jours.map((x, i) => JOURS[i] + ' ' + nombre(x, 2)).join(', ') : '');
+  }
+  /** L'erreur de chaque découpage laissé de côté (une semaine, un mois), pour chaque modèle ; le retenu est marqué. */
+  function rendreDecoupages(l) {
+    const modeles = [l.references.moteur, l.references.constante, ...l.candidats];
+    const parts = l.references.moteur.erreurs.parSemaine.map(x => ['semaine', x.semaine]).concat(l.references.moteur.erreurs.parMois.map(x => ['mois', x.mois]));
+    const erreur = (m, [k, part]) => { const x = (k === 'semaine' ? m.erreurs.parSemaine : m.erreurs.parMois).find(y => y[k] === part); return x ? nombre(x.erreur) : '—'; };
+    return `<div class="table-scroll"><table class="svc-table pc-table" data-cal-decoupages><caption>Erreur de chaque découpage, sur les jours laissés de côté (ETP)</caption>
+      <thead><tr><th scope="col">Laissé de côté</th>${modeles.map(m => `<th scope="col">${esc(m.nom)}${m.modele === l.retenu.modele ? ' <small>retenu</small>' : ''}</th>`).join('')}</tr></thead>
+      <tbody>${parts.map(pt => `<tr><th scope="row">${pt[0]} ${esc(pt[1])}</th>${modeles.map(m => `<td class="pv-n">${erreur(m, pt)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  }
+  VueCalage.prototype.rendreRapport = function () {
+    const r = this.rapport; if (!r) return '';
+    const plage = (x, k = 3) => (x && x.min !== null ? ' (' + nombre(x.min, k) + ' – ' + nombre(x.max, k) + ')' : '');
+    const parametres = p => [p.b ? 'b : ' + nombre(p.b.tous) + plage(p.b, 2) : '', p.a ? 'a : ' + nombre(p.a.tous, 3) + plage(p.a) : '',
+      p.c ? nombre(p.c.tous) + plage(p.c, 2) : '', p.jours ? p.jours.map((x, i) => JOURS[i] + ' ' + nombre(x.tous) + plage(x, 2)).join(', ') : ''].filter(Boolean).join(' ; ');
+    const modele = (m, rang) => `<tr data-cal-modele="${esc(m.modele)}"><th scope="row">${esc(m.nom)} <small>${rang}</small></th>
+        <td class="pv-n">${nombre(m.erreurs.semaines)}</td><td class="pv-n">${m.erreurs.mois === null ? '—' : nombre(m.erreurs.mois)}</td>
+        <td>${esc(parametres(m.parametres))}</td>
+        <td>${m.regles ? Object.values(m.regles).map(x => `<span class="pc-regle ${x.ok ? 'ok' : 'non'}">${esc(x.raison)}</span>`).join('') : ''}</td></tr>`;
+    const confondus = l => (l.confondus || []).map(x => `<p class="mini-note" data-cal-confondu="${esc(x.modele)}">« ${esc(x.nom)} » ${esc(x.raison)}.</p>`).join('');
+    const ligne = l => (!l.cale ? `<li data-cal-rapport="${esc(l.nom)}"><b>${esc(l.nom)}</b> — pas de calage : ${esc(l.raison)}.</li>`
+      : `<li data-cal-rapport="${esc(l.nom)}"><details><summary><b>${esc(l.nom)}</b> — <span data-cal-retenu>${esc(l.retenu.nom)}</span> (${esc(parametresEnMots(l.retenu))}),
+          σ ${nombre(l.retenu.sigma)} ETP, bande P10–P90 ± ${nombre(l.retenu.bande)} ; ${l.jours} jours, validation par ${esc(l.validation)}${l.unSeulMois ? ' (un seul mois)' : ''}${l.raison ? ' — ' + esc(l.raison) : ''}</summary>
+          <div class="table-scroll"><table class="svc-table pc-table"><thead><tr><th scope="col">Modèle</th><th scope="col">Erreur par semaine (ETP)</th><th scope="col">Erreur par mois (ETP)</th>
+            <th scope="col">Paramètres, sur tous les jours (min – max sur les découpages)</th><th scope="col">Règles</th></tr></thead>
+          <tbody>${['moteur', 'constante'].map(n => modele(l.references[n], 'référence')).join('')}${l.candidats.map(c => modele(c, c.accepte ? 'accepté' : 'refusé')).join('')}</tbody></table></div>
+          ${confondus(l)}${rendreDecoupages(l)}</details></li>`);
+    const u = r.unite;
+    return `<section class="pc-rapport" aria-label="Le calage"><h3>Le calage</h3>
+      <p class="mini-note">Un modèle par ligne, retenu seulement s’il prédit mieux que le moteur et qu’une constante sur des jours qu’il n’a pas appris,
+        stable, dans ses bornes, confirmé par Wilcoxon et par un placebo. Toute l’unité, le total de chaque jour hors échantillon :
+        erreur <b data-cal-avant>${nombre(u.avant.mae)}</b> ETP avec le moteur, <b data-cal-apres>${nombre(u.apres.mae)}</b> ETP avec les modèles retenus
+        (biais ${nombre(u.avant.biais)} puis ${nombre(u.apres.biais)}).</p>
+      <ul class="pc-liste pc-lignes">${r.lignes.map(ligne).join('')}</ul></section>`;
+  };
 
   const api = { VueCalage };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

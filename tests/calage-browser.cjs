@@ -7,11 +7,13 @@
  *     rôles sans ligne ; les anomalies (une cellule en double, réintégrée) ;
  *     la comparaison par ligne et par mois, celle du module ; l'export JSON de
  *     la correspondance et le classeur ; après rechargement, la correspondance
- *     et les décisions restent, les heures réelles non.
+ *     et les décisions restent, les heures réelles non ;
+ *   — (c) « Caler » : le rapport de chaque ligne, celui du module ; le total
+ *     de l'unité avant et après ; la feuille « Calage » du classeur.
  * Données fictives ; aucune capture d'écran (le plan est confidentiel). */
 const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs'),os=require('node:os');
 const nav=require('./nav.cjs');
-const PE=require('../moteur/periode.js'),R=require('../moteur/reel.js'),T=require('../tableur.js');
+const PE=require('../moteur/periode.js'),R=require('../moteur/reel.js'),C=require('../moteur/calage-periode.js'),T=require('../tableur.js');
 const REF=require('./non-regression.attendu.json');
 const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
@@ -121,12 +123,31 @@ const CLE='ory-calage-v1';
   assert.equal(await page.locator(`${B} [data-cal-comparaison="Toute l’unité"] [data-cal-mae]`).innerText(),fr(attendu.unite.periode.mae));
   assert.match(await page.locator(`${B} [data-cal-comparaison="Cuisinier"]`).innerText(),/heures supp : [\d,]+ h réelles/);
 
+  // 4 bis (c). « Caler » : le rapport du module, ligne par ligne ; le total de l'unité, avant et après.
+  await page.locator(`${B} [data-cal=caler]`).click();await attendre(300);
+  const rapport=C.caler(attendu);
+  assert.ok(rapport.lignes.every(l=>l.cale),'28 jours : chaque ligne se cale');
+  for(const l of rapport.lignes)assert.equal(await page.locator(`${B} [data-cal-rapport="${l.nom}"] [data-cal-retenu]`).innerText(),l.retenu.nom,l.nom);
+  assert.equal(await page.locator(`${B} [data-cal-avant]`).innerText(),fr(rapport.unite.avant.mae));
+  assert.equal(await page.locator(`${B} [data-cal-apres]`).innerText(),fr(rapport.unite.apres.mae));
+  assert.equal(await page.locator(`${B} [data-cal-rapport="Agent"] [data-cal-retenu]`).innerText(),'constante','hors simulation : la constante');
+  // L'erreur de chaque découpage laissé de côté : une rangée par semaine, une colonne par modèle, le retenu marqué.
+  const cuisinier=rapport.lignes.find(l=>l.nom==='Cuisinier');
+  const decoupages=page.locator(`${B} [data-cal-rapport="Cuisinier"] [data-cal-decoupages]`);
+  assert.equal(await decoupages.locator('tbody tr').count(),cuisinier.references.moteur.erreurs.parSemaine.length+cuisinier.references.moteur.erreurs.parMois.length);
+  assert.equal(await decoupages.locator('thead th').count(),1+2+cuisinier.candidats.length);
+  assert.equal(await decoupages.locator('thead th small').count(),1,'le retenu est marqué');
+  assert.equal(await decoupages.locator('tbody tr').first().locator('td').first().textContent(),fr(cuisinier.references.moteur.erreurs.parSemaine[0].erreur));
+
   // 5. Les exports : la correspondance en JSON (avec les décisions), la comparaison en Excel.
   const json=JSON.parse(fs.readFileSync(await telecharger(()=>page.locator(`${B} [data-cal=exporter-correspondance]`).click()),'utf8'));
   assert.deepEqual(json.lignes,(await reglages()).correspondance.lignes);
   assert.deepEqual(json.decisions.reintegres,[complets[3].date+'|Cuisinier']);
   const classeur=await T.lireClasseur(new Uint8Array(fs.readFileSync(await telecharger(()=>page.locator(`${B} [data-cal=exporter]`).click()))));
-  assert.deepEqual(classeur.map(f=>f.nom),['Lisez-moi','Réel','Comparaison']);
+  assert.deepEqual(classeur.map(f=>f.nom),['Lisez-moi','Réel','Comparaison','Calage']);
+  const calage=classeur.find(f=>f.nom==='Calage').lignes;
+  assert.ok(calage.some(l=>l[0]==='Cuisinier'&&l[2]==='retenu'&&l[3]===cuisinier.retenu.nom));
+  assert.ok(calage.some(l=>l[0]==='Cuisinier'&&l[2]==='référence, une semaine laissée de côté'&&l[3]==='moteur'&&l[l.length-1]===cuisinier.references.moteur.erreurs.parSemaine[0].semaine));
 
   // 6. La sauvegarde ne garde que des réglages : pas une heure réelle.
   r=await reglages();

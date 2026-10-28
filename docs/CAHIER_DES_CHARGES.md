@@ -99,10 +99,11 @@ de relire le cahier des charges initial :
 | M14 | Loi de charge : temps fixe, temps par lot, temps par pièce | Feuille de route étape 3 | ❌ | Travail = minutes par vol × nombre de vols ; linéaire |
 | M15 | Robot réservé à l'économie de certaines compagnies | Feuille de route §2 | ✅ | C'est l'utilisateur qui confie les classes au robot |
 | M16 | Circulation des personnes entre services (runners) | 17-18/09 | 🟡 | Décrite dans « L'unité » ; **le calcul ne déplace personne** |
-| M17 | Aléas (pannes, absences, retards de livraison) | Feuille de route étape 8 | ❌ | Calcul déterministe, assumé et écrit ; à ouvrir plus tard |
+| M17 | Aléas (pannes, absences, retards de livraison) | Feuille de route étape 8 | ❌ | Calcul déterministe, assumé et écrit ; à ouvrir plus tard. Un calage (M21) chiffre l'écart au réel qui reste : la bande P10–P90 de ses erreurs hors échantillon, sans rien simuler d'aléatoire |
 | M18 | **L'équipe d'un robot suit les vols** : le travail autour de la ligne (chargement, montage, runner) se budgète par vol | Banc d'essai, évolution 9 | ✅ | Version 1 (`BANC_ESSAI.md` § 10) : dans un service de robots (une annexe où ne travaillent que des robots, comme le Robot sous le Montage) à effectif calculé, avec des heures par vol à son barème **propre**, comme une équipe à la main, au moins son minimum ; ailleurs, sur demande ; sa ligne va toujours à son débit. Sans ces heures (le barème repris du Montage ne compte pas), ou « Constant (saisi) », l'effectif saisi |
 | M19 | **La charge de chaque équipe, et l'arrondi au service** : ne pas compter deux fois l'arrondi d'équipes qui se partagent un service | Banc d'essai, évolution 11 (a) | ✅ | Version 1 (`BANC_ESSAI.md` § 10) : la charge en ETP, non arrondie, de chaque équipe d'une période (besoin exact, homme-minutes ÷ poste d'un robot ou d'une plonge saisis, personnes × présence ÷ présence générale) ; par service et jour, ⌈charge⌉ et le surplus d'arrondi ; l'encadrement à part. Dans la page Période, l'outil et le classeur |
 | M20 | **Comparer la période simulée au réel**, rôle par rôle : le réel par jour, une correspondance des rôles avec la simulation, l'écart par ligne | Banc d'essai, évolution 11 (b) | ✅ | Version 1 (`BANC_ESSAI.md` § 10, `FORMATS_EXCEL.md` § 5) : le fichier « Réel par jour » (refusé entier s'il est mal formé ; une anomalie n'écarte que sa cellule ; deux cas signalés) ; la correspondance (services, encadrement, chauffeurs, hors simulation ; bases d'ETP) ; par ligne, réel, simulé et écart par jour, erreur, biais et corrélation par mois et sur la période, le total de l'unité. Page Période (« Réel et calage »), outil `caler-periode`, classeur. Le réel reste en mémoire ; la sauvegarde ne garde que la correspondance et les décisions |
+| M21 | **Caler la simulation sur le réel** sans apprendre par cœur : un modèle par ligne, validé sur des jours qu'il n'a pas vus | Banc d'essai, évolution 11 (c) | ✅ | Version 1 (`BANC_ESSAI.md` § 10) : deux références (moteur, constante), trois candidats (× a, b + a ×, × a × jour) ; validation en laissant de côté une semaine ISO, et un mois quand il y en a deux de 14 jours ; cinq règles (plus juste, stable, bornes, Wilcoxon, placebo) ; σ et la bande P10–P90 ; le total de l'unité avant / après. Dans la page (« Caler »), l'outil et le classeur |
 
 ## 6. Simulation et visualisation
 
@@ -185,8 +186,8 @@ de relire le cahier des charges initial :
 |---|---|---|---|
 | F1 | Glossaire, registre des décisions, dictionnaire des données (`REGLES_METIER.md`, `DATA_DICTIONARY.md`) | 🟡 | Couvert en partie par `MODELE_ATELIERS.md` et `FORMATS_EXCEL.md` ; pas de registre des décisions |
 | F2 | Tests automatiques | ✅ | 193 tests purs, 16 parcours navigateur |
-| F3 | **Calibration** sur des journées observées | 🟡 | Version 1 : la période se compare au réel par jour et par rôle (M20) ; il faut encore l'étude de man-minutes et des relevés terrain |
-| F4 | **Validation** sur des journées distinctes, tolérances fixées avec Basile | ⏸ | **Au fil de l'eau** (23/09) : les tolérances se fixeront à mesure que les données arrivent |
+| F3 | **Calibration** sur des journées observées | 🟡 | Version 1 : la période se compare au réel par jour et par rôle (M20) et se cale ligne par ligne (M21) ; il faut encore l'étude de man-minutes et des relevés terrain |
+| F4 | **Validation** sur des journées distinctes, tolérances fixées avec Basile | 🟡 | **Au fil de l'eau** (23/09) : les tolérances se fixeront à mesure que les données arrivent. Version 1 : un calage ne se valide que hors échantillon (une semaine, un mois laissés de côté), M21 |
 
 ## 11. Abandonné par décision — ne pas y revenir sans le décider
 

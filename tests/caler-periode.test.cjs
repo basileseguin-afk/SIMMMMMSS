@@ -13,6 +13,7 @@ const { spawnSync } = require('node:child_process');
 const T = require('../tableur.js');
 const R = require('../moteur/reel.js');
 const EC = require('../echanges-calage.js');
+const C = require('../moteur/calage-periode.js');
 const REF = require('./non-regression.attendu.json');
 
 const S = REF.scenarios.find(s => s.nom === 'unite-vol');
@@ -50,7 +51,14 @@ test('le JSON : la comparaison, la même qu’avec le module, avec ou sans --san
   const r = lancer(OUTIL, f('periode.json'), f('reel.csv'), f('correspondance.json'));
   assert.equal(r.status, 0, r.stderr);
   const sortie = JSON.parse(r.stdout);
-  assert.deepEqual(Object.keys(sortie), ['calage', 'comparaison']);
+  assert.deepEqual(Object.keys(sortie), ['calage', 'comparaison', 'rapport']);
+  // Le calage (évolution 11 c) : celui du module, sur la même comparaison ; trois jours, aucune ligne ne se cale.
+  assert.deepEqual(sortie.rapport, JSON.parse(JSON.stringify(C.caler(sortie.comparaison))));
+  assert.ok(sortie.rapport.lignes.every(l => !l.cale && /moins de 20 jours/.test(l.raison)));
+  // Toute l'unité, avant : le total simulé moins le total réel de chaque jour, l'erreur et le biais de la comparaison.
+  const u = sortie.comparaison.unite.periode;
+  assert.equal(sortie.rapport.unite.avant.jours, sortie.comparaison.unite.jours.length);
+  assert.ok(Math.abs(sortie.rapport.unite.avant.mae - u.mae) < 1e-9 && Math.abs(sortie.rapport.unite.avant.biais - u.biais) < 1e-9);
   assert.deepEqual([sortie.calage.schema, sortie.calage.reel, sortie.calage.correspondance], ['ory-calage', 'reel.csv', 'correspondance.json']);
   const bilan = JSON.parse(fs.readFileSync(f('periode.json'), 'utf8')).bilan;
   const attendu = R.comparer(bilan, R.controler(R.lireReel([{ nom: 'reel.csv', lignes: T.lireCsv(REEL) }])), CORR);
@@ -81,7 +89,13 @@ test('--xlsx : le classeur du calage, celui de la page ; un classeur pour le ré
   const r = lancer(OUTIL, f('periode.json'), f('reel.csv'), f('correspondance.json'), '--xlsx', f('calage.xlsx'));
   assert.equal(r.status, 0, r.stderr);
   const feuilles = await T.lireClasseur(new Uint8Array(fs.readFileSync(f('calage.xlsx'))));
-  assert.deepEqual(feuilles.map(x => x.nom), ['Lisez-moi', 'Réel', 'Comparaison']);
+  assert.deepEqual(feuilles.map(x => x.nom), ['Lisez-moi', 'Réel', 'Comparaison', 'Calage']);
+  const calage = feuilles.find(x => x.nom === 'Calage').lignes;
+  assert.deepEqual(calage[0], ['Ligne', 'Couvre', 'Rang', 'Modèle', 'Accepté', 'a', 'a min', 'a max', 'b', 'b min', 'b max', 'Constante', 'Constante min',
+    'Constante max', 'Facteurs du jour (lun. → dim.)', 'Erreur par semaine (ETP)', 'Erreur par mois (ETP)', 'Plus juste que les références', 'Stable', 'Bornes',
+    'Wilcoxon', 'Placebo', 'σ (ETP)', 'Bande P10–P90 (± ETP)', 'Jours', 'Validation', 'Laissé de côté']);
+  assert.ok(calage.every(l => l.length <= calage[0].length));
+  assert.ok(calage.some(l => l[0] === 'Cuisine' && l[2] === 'pas de calage'));
   const reel = feuilles.find(x => x.nom === 'Réel').lignes;
   assert.deepEqual(reel[0], ['Date', 'Rôle', 'Heures titulaires', 'Heures intérim', 'Heures supp', 'Base titulaires', 'Base intérim', 'ETP', 'Ligne', 'État']);
   assert.ok(reel.some(l => l[1] === 'Plongeur' && l[9] === 'sans ligne'));

@@ -5,6 +5,30 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-27 — Banc d'essai, évolution 11 (c) : le calage, un modèle par ligne validé hors échantillon
+
+- `moteur/calage-periode.js` (nouveau, sans navigateur) : pour chaque ligne
+  de la comparaison qui a au moins 20 jours, deux références (moteur,
+  constante) et trois candidats (× a, b + a ×, × a × jour) ; la validation
+  en laissant de côté une semaine ISO, et un mois s'il y en a deux de
+  14 jours ; cinq règles (plus juste que les références, stable à ±15 %, a
+  et b dans leurs bornes, Wilcoxon apparié, placebo à 20 mélanges) ; le
+  choix (le plus juste, le plus simple à 0,1 ETP près) ; σ et la bande
+  P10–P90 ; le total de l'unité avant et après. Déterministe ; 60 jours et
+  20 lignes en moins de 2 secondes.
+- La page : « Caler », le rapport de chaque ligne (modèle, paramètres et leur
+  plage sur les semaines et les mois laissés de côté, erreurs des références
+  et des candidats en moyenne et pour chaque découpage, « b + a × » quand il
+  se confond avec « × a », verdict de chaque règle, σ et la bande). L'outil :
+  `rapport` dans le JSON, la feuille « Calage » du classeur.
+- Sans « Caler », rien ne change.
+- Fichiers : `moteur/calage-periode.js` (nouveau), `calage-vue.js`,
+  `echanges-calage.js`, `outils/caler-periode.cjs`, `periode.css`,
+  `index.html`, `docs/BANC_ESSAI.md` (§ 10), `docs/FORMATS_EXCEL.md` (§ 5),
+  `docs/CAHIER_DES_CHARGES.md` (M17, M21, F3, F4), `README.md`,
+  `tests/calage-periode.test.cjs` (nouveau), `tests/caler-periode.test.cjs`,
+  `tests/calage-browser.cjs`.
+
 ## 2026-10-27 — Banc d'essai, évolution 11 (b) : le réel, sa correspondance avec la simulation, la comparaison
 
 La période simulée se compare maintenant aux heures réelles, rôle par rôle.
