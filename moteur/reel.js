@@ -22,6 +22,7 @@
   const enNode = typeof module !== 'undefined' && module.exports && typeof require === 'function';
   const module_ = (nom, chemin) => (enNode ? require(chemin) : root[nom]);
   const T = () => module_('OrlyTableur', '../tableur.js');
+  const C = () => module_('OrlyCalagePeriode', './calage-periode.js');
   const U = () => module_('OrlyUI', '../ui-model.js');
 
   /** Les heures d'une cellule : de titulaires, d'intérim, et les heures supp (comptées à part). */
@@ -407,12 +408,49 @@
 
   /**
    * Les réglages du calage que la sauvegarde garde (« ory-calage-v1 ») : la
-   * correspondance et les décisions — aucune heure réelle.
+   * correspondance et les décisions ; la politique d'effectif (les modèles
+   * gardés, évolution 11 d) et les facteurs appliqués au barème (ce qu'il faut
+   * pour les annuler). Aucune heure réelle.
    */
   function validerReglages(x) {
     if (x === undefined || x === null) return { correspondance: validerCorrespondance(null), decisions: validerDecisions(null) };
     if (!objet(x)) throw new Error('calage : un objet { correspondance, decisions } est attendu.');
-    return { correspondance: validerCorrespondance(x.correspondance), decisions: validerDecisions(x.decisions) };
+    const p = x.politique === undefined || x.politique === null ? null : C().validerPolitique(x.politique);
+    const a = x.applications === undefined ? [] : validerApplications(x.applications);
+    return { correspondance: validerCorrespondance(x.correspondance), decisions: validerDecisions(x.decisions),
+      ...(p ? { politique: p } : {}), ...(a.length ? { applications: a } : {}) };
+  }
+
+  /** Des minutes par vol : { clé: nombre }. */
+  const tableMinutes = (t, ou) => {
+    if (!objet(t) || !Object.values(t).every(v => typeof v === 'number' && Number.isFinite(v))) throw new Error(ou + ' : des minutes par vol sont attendues.');
+    return t;
+  };
+  /** Les facteurs appliqués au barème : la ligne, ses services, le facteur, la date, ce qu'il faut pour annuler, les erreurs d'avant. */
+  function validerApplications(l) {
+    if (!Array.isArray(l) || l.length > 50) throw new Error('calage : « applications » est une liste (50 au plus).');
+    if (JSON.stringify(l).length > 4 * 1024 * 1024) throw new Error('calage : « applications » est trop volumineux.');
+    return l.map((x, i) => {
+      const ou = 'calage, application ' + (i + 1);
+      if (!objet(x) || typeof x.ligne !== 'string' || !x.ligne || !Array.isArray(x.services) || !x.services.every(s => typeof s === 'string' && s))
+        throw new Error(ou + ' : { ligne, services, a, date, avant } est attendu.');
+      if (!(typeof x.a === 'number' && x.a > 0 && x.a <= 10)) throw new Error(ou + ' : le facteur a est un nombre positif.');
+      const v = objet(x.avant) ? x.avant : null;
+      if (!v) throw new Error(ou + ' : « avant » manque (de quoi annuler).');
+      const bareme = Object.fromEntries(Object.entries(objet(v.bareme) ? v.bareme : {}).map(([s, t]) => [s, t === null ? null : tableMinutes(t, ou)]));
+      const minutes = Object.fromEntries(Object.entries(objet(v.minutes) ? v.minutes : {}).map(([id, t]) => [id, tableMinutes(t, ou)]));
+      const minutesVol = Object.fromEntries(Object.entries(objet(v.minutesVol) ? v.minutesVol : {}).map(([id, t]) => [id, tableMinutes(t, ou)]));
+      const categories = Object.fromEntries(Object.entries(objet(v.categories) ? v.categories : {}).map(([s, c]) => {
+        if (!Array.isArray(c) || c.length > 10 || !c.every(k => objet(k) && typeof k.id === 'string' && k.id.length <= 40 && objet(k.minutes)))
+          throw new Error(ou + ' : des catégories { id, nom, minutes } sont attendues.');
+        return [s, c.map(k => ({ id: k.id, nom: typeof k.nom === 'string' ? k.nom.slice(0, 80) : k.id, minutes: tableMinutes(k.minutes, ou) }))];
+      }));
+      const erreurs = Object.fromEntries(Object.entries(objet(x.erreursAvant) ? x.erreursAvant : {}).filter(([, e]) => typeof e === 'number' && Number.isFinite(e)));
+      // Le modèle de la ligne avant l'application (pour le rendre à l'annulation).
+      const modele = x.modele === undefined || x.modele === null ? null : C().validerPolitique({ lignes: [x.modele] }).lignes[0];
+      return { ligne: x.ligne, services: x.services.slice(), a: x.a, date: typeof x.date === 'string' ? x.date.slice(0, 40) : null,
+        avant: { bareme, minutes, minutesVol, categories }, erreursAvant: erreurs, ...(modele ? { modele } : {}) };
+    });
   }
 
   const api = { CATEGORIES, BASE_DEFAUT, SEP_ROLE, heuresDe, lireReel, controler, validerDecisions, validerCorrespondance, couvertureDe,

@@ -1647,7 +1647,9 @@ jour ») et son classeur. Tout se fait au clavier, le focus reste sur le
 geste. Les
 heures réelles restent en mémoire, le temps de la page ; la sauvegarde (la
 partie « calage sur le réel », `ory-calage-v1`, dans « Tout sauvegarder »)
-ne garde que la correspondance et les décisions.
+ne garde que la correspondance et les décisions (et, depuis l'évolution 11 d,
+la politique d'effectif et les facteurs appliqués au barème : des modèles et
+des minutes, pas une heure réelle).
 
 Vérifications :
 
@@ -1750,3 +1752,99 @@ s'apprend pas sur une part, refusé ; le placebo du « × a » au quart du vrai
 gain ; Wilcoxon sur un petit exemple calculé à la main (avec et sans ex aequo)
 et la loi normale ; le total de l'unité avant, celui de la comparaison ; deux passages,
 le même rapport ; 60 jours et 20 lignes en moins de 2 secondes.
+
+### Se servir du calage : la politique d'effectif, ou le barème (évolution 11 d)
+
+Un calage fait, deux usages, ligne par ligne.
+
+**« Garder comme politique d'effectif »** (le choix par défaut, sous le
+rapport du calage). La sauvegarde (`ory-calage-v1`, dans « Tout
+sauvegarder ») garde alors, par ligne calée, le modèle retenu, ses
+paramètres, σ et les services qu'elle couvre ; la date du calage, la période
+apprise (du premier au dernier jour comparé), et l'empreinte de ce qu'il
+suppose (les réglages du barème, les liens, les équipes avec leur effectif
+saisi, les modes d'effectif, l'armement, l'encadrement, la correspondance).
+Aucune heure réelle. Une politique relue est refusée entière si elle est mal
+formée : un modèle inconnu, a hors de [0,5 ; 2], b ou une constante négatifs,
+deux lignes du même nom. Ensuite :
+
+- **Le prévu calé** : pour chaque ligne de la correspondance, son modèle
+  appliqué au simulé du jour, à côté du simulé, avec sa bande P10–P90
+  (± 1,2816 σ) ; une ligne sans modèle gardé (pas calée, ou ajoutée depuis)
+  compte son simulé, sans bande. Pour toute l'unité, la somme de toutes les
+  lignes, sa bande à σ = √Σσ² (des écarts supposés indépendants d'une ligne
+  à l'autre). Dans la page Période, jour de travail par jour de travail ; dans
+  la Synthèse de la journée (« Politique d'effectif »), pour la journée
+  affichée — la charge de ses équipes, quel que soit leur jour, et
+  l'encadrement saisi. Le facteur du jour de « × a × jour » y est celui du
+  jour où les équipes de la ligne travaillent (les vols du mardi, une cuisine
+  à J−1 : le lundi) ; sans date, ou quand les équipes d'une ligne travaillent
+  des jours différents, le facteur moyen, 1, et la Synthèse le dit.
+- **Un programme futur**, sans réel : le prévu calé est la prévision
+  d'effectif. `node outils/simuler-periode.cjs` d'une sauvegarde qui a une
+  politique rend `prevuCale` (`lignes` : par ligne et par jour de travail,
+  `simule`, `prevu`, `p10`, `p90` ; `unite` ; `sigmaUnite`) à côté du bilan,
+  qui ne change pas.
+- **La feuille Période** du classeur (la page, et l'outil `--xlsx`) : pour
+  chaque jour de travail, une rangée « Ligne : … » par ligne et une rangée
+  « Toute l'unité (prévu calé) », et quatre colonnes de plus : `Simulé de la
+  ligne (ETP)`, `Prévu calé (ETP)`, `P10 (ETP)`, `P90 (ETP)` ; le Lisez-moi
+  dit la date du calage et la période apprise. Le « à refaire » ne se lit
+  que dans la page : avant d'exporter un prévu, vérifiez-y que le calage est
+  à jour.
+- **« À refaire »** : quand l'empreinte change (le barème, les équipes ou la
+  correspondance ont bougé depuis le calage), la politique le dit, comme la
+  période « à relancer ». Un nouveau « Caler », puis « Garder », la remplace.
+  « Oublier la politique » la retire.
+
+**« Appliquer au barème »**, seulement pour une ligne de services dont le
+modèle gardé est « × a ». Les minutes au barème de ses services, toutes
+compagnies × classes (un barème repris devient le leur), les minutes propres
+de leurs cases, les minutes par vol de leurs équipes d'appui et celles de
+leurs catégories (l'armement) sont multipliées par a — arrondies comme une
+saisie : au centième de minute au barème, au dixième dans les cases et
+l'armement. Une annexe qui reprenait le barème d'un de ces services garde
+celui d'avant : le facteur ne vaut que pour la ligne. La période devient « à
+relancer », le calage « à refaire » ; le prévu calé de la ligne passe à
+a = 1 (le facteur est dans le barème : il ne compte pas deux fois). Après une
+nouvelle période, un nouveau calage doit trouver a ≈ 1. Le bouton dit
+pourquoi il ne s'applique pas :
+
+- sans le réel importé et la période à jour : rien ne dirait ensuite si une
+  autre ligne se dégrade ;
+- quand la ligne ne couvre plus les services du calage ;
+- quand rien n'est à multiplier (le lavage, le handling : leur travail ne
+  vient pas du barème), ou qu'une équipe de ces services ne suit pas le
+  barème (effectif saisi, lavage, handling, un robot saisi) : le facteur
+  n'en corrigerait qu'une part.
+
+La sauvegarde garde chaque application : la ligne, ses services, a, la date,
+les minutes d'avant (de quoi annuler), le modèle de la ligne et l'erreur de
+chaque ligne avant. Les facteurs appliqués restent visibles, avec ou sans
+politique. **« Annuler »** remet les minutes d'avant, à l'identique, et le
+modèle de la ligne ; quand deux facteurs touchent un même service, le plus
+récent s'annule d'abord. (C'est ce « Annuler » qui revient en arrière :
+l'annulation du barème ou des cases défait le geste, mais la liste des
+facteurs ne le sait pas.) Si, sur la période suivante, l'erreur d'une autre
+ligne a monté de plus de 0,3 ETP, la vue le signale.
+
+Sans politique (rien gardé), rien ne change : les bilans, la Synthèse, le
+JSON de l'outil et le classeur de la période sont ceux d'avant, champ par
+champ.
+
+Vérifications — `tests/politique-calage.test.cjs` : la politique garde le
+modèle, ses paramètres, σ et ses services, la date et la période, et se
+relit telle quelle ; une politique ou une application forgées sont refusées
+(hors bornes, en double, mal formées) ; le prévu calé d'un programme futur
+et sa bande ; une ligne sans calage comptée à son simulé dans le total ;
+« × a × jour » sans date, et le jour de travail d'une journée seule ; × 0,8
+appliqué, puis « Annuler » : les valeurs d'avant à l'identique ; le lavage et
+le handling refusés, un robot saisi refusé, une équipe d'appui dont la
+charge suit × 1,25 ; une annexe qui garde son barème ; deux facteurs sur un
+même service, le plus récent d'abord ; après l'application et une nouvelle
+période, a = 1 à 2 % près ; une ligne dégradée de plus de 0,3 ETP ; la
+feuille Période avec et sans politique ; l'outil, avec et sans politique.
+`tests/calage-browser.cjs` fait le parcours dans la page : « Garder », le
+prévu de chaque jour, la Synthèse, la feuille Période, « Appliquer »,
+« Annuler », le refus sans période à jour, la période relancée, un nouveau
+calage à a ≈ 1, « à refaire ».

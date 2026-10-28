@@ -27,6 +27,8 @@ const PE = require('../moteur/periode.js');
 const T = require('../tableur.js');
 const E = require('../echanges.js');
 const { lireJson } = require('./simuler-journee.cjs');
+const R = require('../moteur/reel.js');
+const C = require('../moteur/calage-periode.js');
 
 const USAGE = 'Usage : node outils/simuler-periode.cjs sauvegarde.json vols-dates.csv|vols-dates.xlsx [options.json] [--sans-detail] [--xlsx periode.xlsx] > periode.json';
 
@@ -40,9 +42,11 @@ async function simulerPeriode(cheminSauvegarde, cheminVols, cheminOptions, { det
   catch (e) { throw new Error('vols : ' + e.message); }
   if (!PE.estDate(vols)) throw new Error('vols : le programme n’est pas daté (colonne date, docs/FORMATS_EXCEL.md) ; une seule journée : node outils/simuler-journee.cjs.');
   const p = PE.depuisSauvegarde(sauvegarde, vols, options, { detail });
+  // Une politique d'effectif dans la sauvegarde (banc d'essai, évolution 11 d) : le prévu calé de chaque jour, même sans réel.
+  const prevu = prevuDeLaSauvegarde(sauvegarde, p.bilan);
   return {
     periode: { ...p.periode, sauvegarde: path.basename(cheminSauvegarde), vols: path.basename(cheminVols), options },
-    bilan: p.bilan,
+    bilan: p.bilan, ...(prevu ? { prevuCale: prevu } : {}),
     ...(detail ? { journees: p.journees.map(j => ({ date: j.date, departs: j.departs, retours: j.retours,
       options: PE.optionsDeRejeu(options, j.entree), resultat: j.resultat })) } : {}),
     // Pour l'export Excel de la période (le même que celui de la page) : les extraits, hors du JSON.
@@ -50,11 +54,21 @@ async function simulerPeriode(cheminSauvegarde, cheminVols, cheminOptions, { det
   };
 }
 
+/** Le prévu calé de la période, si la sauvegarde a une politique d'effectif (« ory-calage-v1 ») ; sinon null. */
+function prevuDeLaSauvegarde(sauvegarde, bilan) {
+  const part = sauvegarde && sauvegarde.contenu && sauvegarde.contenu['ory-calage-v1'];
+  // Sans politique, la partie du calage ne compte pas ici : l'outil rend ce qu'il rendait.
+  if (!part || typeof part !== 'object' || part.politique === undefined || part.politique === null) return null;
+  let r;
+  try { r = R.validerReglages(part); } catch (e) { throw new Error('sauvegarde, calage sur le réel — ' + e.message); }
+  return r.politique ? C.prevuDesJours(r.politique, r.correspondance, bilan.joursTravail, R.simuleDe) : null;
+}
+
 /** Le classeur de la période : le même que la page écrit (echanges.js), pour les mêmes réglages. */
 function classeurDeLaPeriode(sortie, calculeLe = new Date()) {
   const { delaiChargement, decalage, ...autres } = sortie.periode.options || {};
   return T.ecrireClasseur(E.periodeVersClasseur({ periode: sortie.periode, bilan: sortie.bilan, journees: sortie._journees }, {
-    sauvegarde: sortie.periode.sauvegarde, vols: sortie.periode.vols, calculeLe,
+    sauvegarde: sortie.periode.sauvegarde, vols: sortie.periode.vols, calculeLe, ...(sortie.prevuCale ? { prevu: sortie.prevuCale } : {}),
     reglages: { delaiChargement: J.delaiDe(sortie.periode.options || {}), decalage: +decalage || 0, ...autres } }));
 }
 

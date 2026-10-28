@@ -32,11 +32,15 @@
      *   services()      — [{ id, nom }] : les services de l'unité
      *   reglages()      — les réglages gardés (ory-calage-v1), ou null ; enregistrer(r) — les garder
      *   notifier(texte)
+     *   signature(correspondance) — l'empreinte de ce que suppose un calage (barème, équipes, correspondance)
+     *   appliquerTravail(services, k) → avant ; annulerTravail(avant) — le travail des services × k au barème, et le retour
+     *   journee()       — la journée affichée en jour de travail (moteur/calage-periode.js, jourDeLaJournee), ou null
      * } */
     constructor(a) {
       this.a = a; this.lu = null; this.fichier = null; this.erreur = null; this.erreurCorrespondance = null; this.rapport = null;
       const r = this.relire();
       this.correspondance = r.correspondance; this.decisions = r.decisions;
+      this.politique = r.politique || null; this.applications = r.applications || [];
       this.box = null;
     }
     /** Les réglages gardés, relus ; vides s'ils sont illisibles. */
@@ -45,7 +49,8 @@
       catch (e) { return R().validerReglages(null); }
     }
     enregistrer() {
-      if (this.a.enregistrer) this.a.enregistrer({ correspondance: this.correspondance, decisions: this.decisions });
+      if (this.a.enregistrer) this.a.enregistrer({ correspondance: this.correspondance, decisions: this.decisions,
+        ...(this.politique ? { politique: this.politique } : {}), ...(this.applications.length ? { applications: this.applications } : {}) });
     }
     /** Redessiner seulement si la période a changé (un autre calcul, ou « à relancer ») : ses propres gestes redessinent d'eux-mêmes. */
     rafraichir() {
@@ -147,6 +152,65 @@
       this.rendre();
     }
 
+    /* ---- la politique d'effectif (évolution 11 d) ------------------------- */
+
+    /** Garder le calage comme politique d'effectif : par ligne, le modèle, ses paramètres et σ ; aucune heure réelle. */
+    garder() {
+      if (!this.rapport) return;
+      // La période apprise : du premier au dernier jour comparé (ceux qui ont du réel), sinon la période simulée.
+      const comp = this.comparaison(), jours = comp ? comp.jours : [];
+      const p = jours.length ? { debut: jours[0], fin: jours[jours.length - 1] } : this.a.periode ? this.a.periode() : null;
+      this.politique = C().politiqueDe(this.rapport, { date: new Date().toISOString(), periode: p, signature: this.a.signature(this.correspondance),
+        correspondance: this.correspondance });
+      this.enregistrer();
+      this.a.notifier('Politique d’effectif gardée : ' + this.politique.lignes.length + ' ligne' + (this.politique.lignes.length > 1 ? 's' : '') + '.');
+      this.rendre();
+    }
+    /** Le prévu calé des jours de travail de la période (le bilan à jour), ou null. */
+    prevuPeriode() {
+      const b = this.a.bilan();
+      return b && this.politique ? C().prevuDesJours(this.politique, this.correspondance, b.joursTravail, R().simuleDe) : null;
+    }
+    /**
+     * Pourquoi le × a d'une ligne ne s'applique pas au barème (null : il
+     * s'applique) : il faut une comparaison à jour (pour voir ensuite si une
+     * autre ligne se dégrade), les services du calage, et un travail qui suit
+     * le barème tout entier.
+     */
+    refusAppliquer(m, l) {
+      if (!this.comparaison()) return 'il faut le réel importé et la période à jour : sans comparaison, rien ne dirait ensuite si une autre ligne se dégrade';
+      if (m.services && [...m.services].sort().join('|') !== [...l.services].sort().join('|')) return 'la ligne ne couvre plus les services du calage : calez-la à nouveau';
+      return this.a.verifierTravail ? this.a.verifierTravail(l.services, m.parametres.a) : null;
+    }
+    /** « Appliquer au barème » le × a d'une ligne : ses services × a ; la période devient « à relancer ». */
+    appliquer(nom) {
+      const m = this.politique && this.politique.lignes.find(x => x.nom === nom), l = this.correspondance.lignes.find(x => x.nom === nom);
+      if (!m || m.modele !== 'x-a' || m.applique || !l || !l.services) return;
+      const refus = this.refusAppliquer(m, l);
+      // Les erreurs d'avant, prises avant que le barème change (la comparaison ne vaut plus ensuite).
+      const comp = refus ? null : this.comparaison();
+      const erreursAvant = comp ? Object.fromEntries(comp.lignes.map(x => [x.nom, x.periode.mae]).filter(([, e]) => Number.isFinite(e))) : {};
+      const r = refus ? null : this.a.appliquerTravail(l.services, m.parametres.a);
+      if (refus || r.refus) { this.a.notifier(nom + ' : pas appliqué — ' + (refus || r.refus) + '.'); return this.rendre(); }
+      this.applications.push({ ligne: nom, services: l.services.slice(), a: m.parametres.a, date: new Date().toISOString(), avant: r.avant, erreursAvant, modele: m });
+      // Le facteur est maintenant dans le barème : le prévu calé de la ligne ne le compte pas deux fois (a = 1 jusqu'au prochain calage).
+      this.politique = { ...this.politique, lignes: this.politique.lignes.map(x => (x === m ? { ...m, parametres: { a: 1 }, applique: true } : x)) };
+      this.enregistrer();
+      this.a.notifier(nom + ' : travail × ' + nombre(m.parametres.a, 3) + ' au barème. La période est à relancer, puis un nouveau calage doit trouver a ≈ 1.');
+      this.rendre();
+    }
+    /** « Annuler » une application : la plus récente d'abord, quand deux touchent un même service. */
+    annulerApplication(i) {
+      const x = this.applications[i]; if (!x || !C().annulable(this.applications, i)) return;
+      this.a.annulerTravail(x.avant);
+      // Le modèle de la ligne revient, s'il est encore celui que l'application a laissé.
+      if (this.politique && x.modele) this.politique = { ...this.politique,
+        lignes: this.politique.lignes.map(m => (m.nom === x.ligne && m.applique ? x.modele : m)) };
+      this.applications.splice(i, 1); this.enregistrer();
+      this.a.notifier(x.ligne + ' : le barème d’avant est rétabli.');
+      this.rendre();
+    }
+
     /* ---- les gestes ------------------------------------------------------ */
 
     clic(e) {
@@ -161,6 +225,10 @@
       else if (f === 'exporter-correspondance') this.exporterCorrespondance();
       else if (f === 'exporter') this.exporterClasseur();
       else if (f === 'caler') this.caler();
+      else if (f === 'garder') this.garder();
+      else if (f === 'oublier') { this.politique = null; this.enregistrer(); this.rendre(); }
+      else if (f === 'appliquer') this.appliquer(b.dataset.nom);
+      else if (f === 'annuler-application') this.annulerApplication(+b.dataset.i);
       else if (f === 'reintegrer') this.changerDecisions(d => { d.reintegres.push(b.dataset.cle); });
       else if (f === 'retablir') this.changerDecisions(d => { d.ecartes.cellules = d.ecartes.cellules.filter(k => k !== b.dataset.cle); });
       else if (f === 'retablir-jour') this.changerDecisions(d => { d.ecartes.jours = d.ecartes.jours.filter(k => k !== b.dataset.date); });
@@ -227,8 +295,11 @@
         ${!this.lu ? '' : !b ? '<p class="mini-note pc-attente">Simulez la période (à jour) pour comparer.</p>'
           : !this.correspondance.lignes.length ? '<p class="mini-note pc-attente">Ajoutez une ligne à la correspondance pour comparer.</p>'
           : comp ? this.rendreComparaison(comp) + this.rendreRapport() : this.erreurComparaison ? `<p class="pj-erreur" role="alert">Comparaison impossible — ${esc(this.erreurComparaison)}</p>` : ''}
+        ${this.rendrePolitique(b, comp)}
+        ${this.rendreApplications(comp)}
       </div>`;
       VueCalage.rendreFocus(box, focus);
+      this.rendreJour();
     }
 
     /** Le geste qui a le focus, pour le retrouver après le rendu. */
@@ -236,7 +307,7 @@
       const a = document.activeElement;
       if (!a || !box.contains(a) || a === box) return null;
       if (a.id) return '#' + a.id;
-      const attrs = ['data-cal', 'data-cal-champ', 'data-ligne', 'data-role', 'data-cle', 'data-date', 'data-mois'].filter(k => a.hasAttribute(k));
+      const attrs = ['data-cal', 'data-cal-champ', 'data-ligne', 'data-role', 'data-cle', 'data-date', 'data-mois', 'data-nom', 'data-i'].filter(k => a.hasAttribute(k));
       const val = a.type === 'checkbox' ? '[value="' + CSS.escape(a.value) + '"]' : '';
       return attrs.length ? attrs.map(k => '[' + k + '="' + CSS.escape(a.getAttribute(k)) + '"]').join('') + val : null;
     }
@@ -362,7 +433,71 @@
         stable, dans ses bornes, confirmé par Wilcoxon et par un placebo. Toute l’unité, le total de chaque jour hors échantillon :
         erreur <b data-cal-avant>${nombre(u.avant.mae)}</b> ETP avec le moteur, <b data-cal-apres>${nombre(u.apres.mae)}</b> ETP avec les modèles retenus
         (biais ${nombre(u.avant.biais)} puis ${nombre(u.apres.biais)}).</p>
-      <ul class="pc-liste pc-lignes">${r.lignes.map(ligne).join('')}</ul></section>`;
+      <ul class="pc-liste pc-lignes">${r.lignes.map(ligne).join('')}</ul>
+      <div class="pc-actions"><button type="button" class="btn btn-sm btn-play" data-cal="garder">Garder comme politique d’effectif</button></div></section>`;
+  };
+
+  /**
+   * La politique d'effectif : sa date, la période apprise, « à refaire » ; le
+   * prévu calé de chaque jour de la période (`b`, le bilan à jour, ou null :
+   * la période est à relancer) ; appliquer un × a au barème, l'annuler.
+   */
+  VueCalage.prototype.rendrePolitique = function (b, comp) {
+    const p = this.politique; if (!p) return '';
+    const refaire = this.a.signature && this.a.signature(this.correspondance) !== p.signature;
+    const x = b ? this.prevuPeriode() : null, lignes = x ? x.lignes : [];
+    const bande = j => nombre(j.prevu) + ' <small>[' + nombre(j.p10) + ' – ' + nombre(j.p90) + ']</small>';
+    // « Appliquer au barème » : un × a de services ; refusé, le bouton dit pourquoi.
+    const ligneDe = nom => this.correspondance.lignes.find(l => l.nom === nom) || {};
+    const appliquer = p.lignes.filter(m => m.modele === 'x-a' && !m.applique && ligneDe(m.nom).services).map((m, k) => {
+      const refus = this.refusAppliquer(m, ligneDe(m.nom));
+      return `<div class="pc-appliquer"><button type="button" class="btn btn-sm" data-cal="appliquer" data-nom="${esc(m.nom)}"${refus ? ' disabled aria-describedby="pc-refus-' + k + '"' : ''}>Appliquer au barème : ${esc(m.nom)} × ${nombre(m.parametres.a, 3)}</button>
+        ${refus ? `<small class="pc-refus-appliquer" id="pc-refus-${k}" data-cal-refus-appliquer="${esc(m.nom)}">Pas maintenant : ${esc(refus)}.</small>` : ''}</div>`;
+    }).join('');
+    const jours = !b ? '' : b.joursTravail.map((w, i) => `<tr data-cal-prevu="${w.date}"${w.complet ? '' : ' class="pv-incomplet"'}><th scope="row">${dateFr(w.date)}</th>
+        ${lignes.map(l => `<td class="pv-n">${nombre(l.jours[i].simule)}</td><td class="pv-n">${bande(l.jours[i])}</td>`).join('')}
+        <td class="pv-n" data-cal-prevu-total>${x ? bande(x.unite[i]) : '—'}</td></tr>`).join('');
+    return `<section class="pc-politique" aria-label="La politique d’effectif"><h3>La politique d’effectif</h3>
+      <p class="mini-note">Calage du ${esc((p.date || '').slice(0, 10))}${p.periode ? ', appris du ' + dateFr(p.periode.debut) + ' au ' + dateFr(p.periode.fin) : ''}.
+        ${refaire ? '<b class="pj-relancer" data-cal-refaire>À refaire</b> : le barème, les équipes ou la correspondance ont changé depuis.' : ''}
+        Le prévu calé : le modèle de chaque ligne appliqué au simulé du jour, entre crochets sa bande P10–P90 ; il vaut aussi pour un programme sans réel.</p>
+      ${!b ? '<p class="mini-note pc-attente">Simulez la période (à jour) pour voir le prévu calé de chaque jour.</p>'
+        : `<div class="table-scroll"><table class="svc-table pc-table pc-prevu"><thead><tr><th scope="col">Jour de travail</th>
+        ${lignes.map(l => `<th scope="col">${esc(l.nom)}<br><small>simulé</small></th><th scope="col">${esc(l.nom)}<br><small>prévu calé (${esc(l.nomModele)}${l.applique ? ', a = 1 : appliqué au barème' : l.nonCalee ? ' : pas de calage' : ''})</small></th>`).join('')}
+        <th scope="col">Toute l’unité<br><small>prévu calé</small></th></tr></thead><tbody>${jours}</tbody></table></div>`}
+      ${appliquer ? `<div class="pc-actions">${appliquer}</div>` : ''}
+      <div class="pc-actions"><button type="button" class="btn btn-sm" data-cal="oublier">Oublier la politique</button></div></section>`;
+  };
+
+  /**
+   * Les facteurs appliqués au barème, avec ou sans politique : chacun s'annule
+   * (le plus récent d'abord quand deux touchent un même service) ; une autre
+   * ligne dont l'erreur a monté de plus de 0,3 ETP depuis se signale.
+   */
+  VueCalage.prototype.rendreApplications = function (comp) {
+    if (!this.applications.length) return '';
+    const l = this.applications.map((a, i) => `<li data-cal-application="${esc(a.ligne)}">${esc(a.ligne)} : travail × ${nombre(a.a, 3)} au barème (${esc((a.date || '').slice(0, 10))})
+        ${C().annulable(this.applications, i) ? `<button type="button" class="btn btn-sm" data-cal="annuler-application" data-i="${i}">Annuler</button>`
+          : '<small>annulez d’abord le facteur plus récent sur un même service</small>'}</li>`).join('');
+    const degradees = comp ? this.applications.flatMap(a => C().lignesDegradees(a, comp).map(d => ({ ...d, par: a.ligne }))) : [];
+    return `<section class="pc-applications" aria-label="Les facteurs appliqués au barème"><h3>Les facteurs appliqués au barème</h3>
+      ${degradees.map(d => `<p class="pj-erreur" role="alert" data-cal-degradee>${esc(d.nom)} : erreur passée de ${nombre(d.avant)} à ${nombre(d.apres)} ETP depuis le facteur appliqué à ${esc(d.par)}.</p>`).join('')}
+      <ul class="pc-liste">${l}</ul></section>`;
+  };
+
+  /** Dans la Synthèse de la journée : le prévu calé de chaque ligne, sa bande, le total de l'unité. */
+  VueCalage.prototype.rendreJour = function () {
+    const box = document.getElementById('bilan-cale'); if (!box) return;
+    const j = this.politique && this.a.journee ? this.a.journee() : null;
+    if (!j) { box.innerHTML = ''; return; }
+    const x = C().prevuDesJours(this.politique, this.correspondance, [j], R().simuleDe);
+    if (!x || !x.lignes.length) { box.innerHTML = ''; return; }
+    const ligne = (nom, s, v) => `<tr data-cal-jour-ligne="${esc(nom)}"><th scope="row">${esc(nom)}</th><td class="pv-n">${nombre(s)}</td><td class="pv-n">${nombre(v.prevu)}</td>
+        <td class="pv-n">${nombre(v.p10)} – ${nombre(v.p90)}</td></tr>`;
+    box.innerHTML = `<section class="bilan-groupe pc-jour" aria-label="Politique d’effectif"><h4>Politique d’effectif (calage du ${esc((this.politique.date || '').slice(0, 10))})</h4>
+      <table class="svc-table pc-table"><thead><tr><th scope="col">Ligne</th><th scope="col">Simulé (ETP)</th><th scope="col">Prévu calé</th><th scope="col">P10 – P90</th></tr></thead>
+      <tbody>${x.lignes.map(l => ligne(l.nom, l.jours[0].simule, l.jours[0])).join('')}${ligne('Toute l’unité', x.unite[0].simule, x.unite[0])}</tbody></table>
+      ${x.lignes.some(l => l.jours[0].sansJour) ? '<p class="mini-note">Une journée sans date : « × a × jour » y prend le facteur moyen, 1.</p>' : ''}</section>`;
   };
 
   const api = { VueCalage };

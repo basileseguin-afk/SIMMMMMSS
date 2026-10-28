@@ -662,7 +662,7 @@ function initAteliers(){
     // Le plan dit « aménagé » d'après les ateliers : il doit suivre leur saisie.
     // La liste du barème marque les services qui portent une équipe : elle doit
     // donc se redessiner quand les ateliers bougent.
-    change:r=>{if(suivreDemo()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.periode)Sim.periode.rendre();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();renderHeuresSup(r);renderRenforts(r);renderReglageRenforts();renderReglageOrdre();renderReglageSpml();},
+    change:r=>{if(suivreDemo()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.periode)Sim.periode.rendre();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();renderHeuresSup(r);renderRenforts(r);renderReglageRenforts();renderReglageOrdre();renderReglageSpml();if(Sim.calage)Sim.calage.rendreJour();},
     // Une case se règle dans le chemin d'une commande : l'ouvrir d'ailleurs y mène.
     onglet:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
     // Le chemin d'une commande mène à son flux (Chemins) et à ses services (Équipes).
@@ -1747,8 +1747,51 @@ function initCalage(){
     services:servicesDisponibles,
     reglages:()=>{try{return JSON.parse(localStorage.getItem(CLE_CALAGE)||'null');}catch(e){return null;}},
     enregistrer:r=>{try{localStorage.setItem(CLE_CALAGE,JSON.stringify(r));}catch(e){toast('Réglages du calage non enregistrés : stockage indisponible.');}},
-    notifier:toast
+    notifier:toast,
+    // La politique d'effectif (évolution 11 d) : ce que suppose un calage, appliquer un × a au barème, la journée affichée.
+    signature:signatureCalage,
+    // Le travail des services × k au barème : le refus s'il ne corrigerait pas tout leur travail ; sinon, fait, et de quoi revenir.
+    verifierTravail:(services,k)=>facteurDesServices(services,k).refus,
+    appliquerTravail:(services,k)=>{
+      const r=facteurDesServices(services,k);if(r.refus)return{refus:r.refus};
+      changerTravail(r,services.join(', ')+' : travail × '+String(Math.round(k*1000)/1000).replace('.',',')+' au barème.');
+      return{avant:r.avant};
+    },
+    annulerTravail:avant=>changerTravail(OrlyCalagePeriode.annulerFacteur(etatDuTravail(),avant),'Le barème d’avant le calage est rétabli.'),
+    journee:journeeCalee
   });
+}
+/**
+ * Ce que suppose un calage : les réglages du barème (minutes, rendement, poste…), les liens, les équipes (l'effectif
+ * saisi, pas celui du jour ; sans les commandes qu'une équipe « par compagnie » tire des vols du jour affiché), les
+ * modes d'effectif, l'armement, l'encadrement et la correspondance.
+ */
+function signatureCalage(correspondance){
+  const st=(Sim.ateliers&&Sim.ateliers.state)||{};
+  const equipes=(st.ateliers||[]).map(({personnes,personnesSaisies,lots,...a})=>({...a,...(a.parCompagnie?{}:{lots}),personnes:Number.isInteger(personnesSaisies)?personnesSaisies:personnes}));
+  return OrlyCalagePeriode.empreinte(JSON.stringify({modele:(Sim.reglages&&Sim.reglages.etat)||{},flux:Sim.flows?Sim.flows.state:null,equipes,
+    effectifs:st.effectifs||{},categories:st.categories||{},encadrement:st.encadrement||{},correspondance}));
+}
+/** Le travail tel que le barème et les cases le portent. */
+function etatDuTravail(){
+  return{bareme:Sim.reglages.etat.bareme,complet:Sim.reglages.baremeComplet(),ateliers:Sim.ateliers.state.ateliers,categories:Sim.ateliers.state.categories||{}};
+}
+/** Le travail des services × k (moteur/calage-periode.js), sans rien changer : les annexes qui reprennent leur barème, les équipes calculées. */
+function facteurDesServices(services,k){
+  const parents=Object.fromEntries(servicesDisponibles().map(s=>[s.id,Sim.reglages.a.parent?Sim.reglages.a.parent(s.id):null]).filter(([,p])=>p));
+  return OrlyCalagePeriode.appliquerFacteur(etatDuTravail(),services,k,{parents,suitLeBareme:a=>!!Sim.ateliers.effectifCalcule(a)});
+}
+/** Le travail changé, d'un geste dans le barème et dans les cases (chacun peut se défaire). */
+function changerTravail(r,message){
+  Sim.reglages.changer(()=>{Sim.reglages.etat.bareme=r.bareme;},message);
+  Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers=r.ateliers;if(Object.keys(r.categories||{}).length)Sim.ateliers.state.categories=r.categories;},message);
+}
+/** La journée affichée, en jour de travail : la charge de ses services, l'encadrement, les chauffeurs (le prévu calé de la Synthèse). */
+function journeeCalee(){
+  const r=Sim.ateliers&&Sim.ateliers.resultat;if(!r||!r.ok)return null;
+  const unite={...Sim.ateliers.a.unite(),etat:Sim.ateliers.state};
+  const args=OrlyJournee.argumentsDeLUnite(unite,Sim.ateliers.a.vols(),{delaiChargement:CFG.loadDelay});
+  return OrlyCalagePeriode.jourDeLaJournee(OrlyPeriode.extraire(r,args,Sim.jourVols||'jour'),Sim.ateliers.state.encadrement);
 }
 
 function initVueSimulation() {
@@ -2300,8 +2343,10 @@ function fermerChoixExport(focus){
 function exporterPeriode(){
   const pe=Sim.periode;if(!pe||!pe.resultat||!pe.aJour())return;
   const r=pe.resultat,d=r.periode;
+  // Avec une politique d'effectif (évolution 11 d) : le prévu calé de chaque ligne, sa bande P10–P90.
+  const prevu=Sim.calage?Sim.calage.prevuPeriode():null;
   const octets=OrlyTableur.ecrireClasseur(OrlyEchanges.periodeVersClasseur(r,{sauvegarde:'l’unité enregistrée dans ce navigateur',vols:dataSource,
-    calculeLe:pe.calculeLe,reglages:pe.reglages||{delaiChargement:CFG.loadDelay,decalage:CFG.shift}}));
+    calculeLe:pe.calculeLe,reglages:pe.reglages||{delaiChargement:CFG.loadDelay,decalage:CFG.shift},...(prevu?{prevu}:{})}));
   OrlyTableur.telecharger('ory-periode-'+d.debut+'-au-'+d.fin+'.xlsx',octets);
   toast('Période exportée : du '+OrlyPeriode.dateLongue(d.debut)+' au '+OrlyPeriode.dateLongue(d.fin)+', en Excel.');
 }

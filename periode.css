@@ -113,4 +113,8 @@ body[data-vue="plan"][data-sous="j-periode"] .app{grid-template-columns:minmax(0
 .pc-regle{display:block;font-size:var(--ds-t-12)}
 .pc-regle.ok{color:var(--ds-ok-texte,var(--ds-texte-2))}
 .pc-regle.non{color:var(--ds-retard-texte)}
+.pc-prevu small{color:var(--ds-texte-3);font-weight:var(--ds-g-normal)}
+.pc-jour{margin-top:var(--ds-e-4)}
+.pc-appliquer{display:flex;flex-direction:column;gap:2px}
+.pc-refus-appliquer{color:var(--ds-texte-3);max-width:46ch}
 

@@ -1753,7 +1753,10 @@
     const mesures = m => MESURES_PERIODE.map(([k]) => n2(m ? m[k] : null));
 
     // Période : jour de travail × service, puis, chaque mois et sur la période, totaux et moyennes par jour (jours complets).
-    const periode = [['Ligne', 'Jour de travail', 'Jour', 'Mois', 'Complet', 'Vols manquants', 'Jours complets', 'Service', ...MESURES_PERIODE.map(m => m[1])]];
+    // Avec une politique d'effectif (banc d'essai de la version 1, évolution 11 d) : le prévu calé de chaque ligne et de l'unité, sa bande.
+    const prevu = ctx.prevu || null, colsPrevu = prevu ? ['Simulé de la ligne (ETP)', 'Prévu calé (ETP)', 'P10 (ETP)', 'P90 (ETP)'] : [];
+    const vides = MESURES_PERIODE.map(() => null);
+    const periode = [['Ligne', 'Jour de travail', 'Jour', 'Mois', 'Complet', 'Vols manquants', 'Jours complets', 'Service', ...MESURES_PERIODE.map(m => m[1]), ...colsPrevu]];
     const services = w => b.services.filter(x => w.services[x.id]);
     const cumul = (ligne, mois, c, moyenne) => {
       const m = moyenne ? c.moyenne : c.total;
@@ -1765,6 +1768,11 @@
         const tete = ['jour', T.celluleDate(w.date), jourSemaine(w.date), w.date.slice(0, 7), ouiNon(w.complet), w.manque.map(dateFr).join(', ') || null, null];
         for (const x of services(w)) periode.push([...tete, x.nom, ...mesures(w.services[x.id])]);
         periode.push([...tete, 'Toute l’unité', ...mesures(w.total)]);
+        if (prevu) {
+          const i = b.joursTravail.indexOf(w), cale = j => [n2(j.simule), n2(j.prevu), n2(j.p10), n2(j.p90)];
+          for (const l of prevu.lignes) periode.push([...tete, 'Ligne : ' + l.nom, ...vides, ...cale(l.jours[i])]);
+          periode.push([...tete, 'Toute l’unité (prévu calé)', ...vides, ...cale(prevu.unite[i])]);
+        }
       }
       cumul('total du mois', mo.mois, mo, false);
       cumul('moyenne par jour du mois', mo.mois, mo, true);
@@ -1845,6 +1853,10 @@
       '   Les jours et les heures sont de vraies dates Excel : une heure de la veille d’une journée de vols porte la date de la veille.',
       '   Totaux et moyennes : sur les jours de travail complets ; une moyenne est le total ÷ les jours complets.',
       ...MESURES_PERIODE.map(([, nom, sens]) => '   ' + nom + ' : ' + sens + '.'),
+      ...(prevu ? ['   Ligne : … — avec une politique d’effectif (un calage gardé) : le simulé de la ligne, son prévu calé (le modèle appliqué au simulé)',
+        '   et sa bande P10–P90 ; « Toute l’unité (prévu calé) » : toutes les lignes (sans calage : leur simulé), sa bande à σ = √Σσ².',
+        '   Le calage : du ' + ((prevu.calage && prevu.calage.date) || '?').slice(0, 10) + (prevu.calage && prevu.calage.periode
+          ? ', appris du ' + prevu.calage.periode.debut + ' au ' + prevu.calage.periode.fin : '') + ' (à refaire si le barème, les équipes ou la correspondance ont changé depuis).'] : []),
       '   Marge (min) : l’échéance moins la fin (négative : en retard). Effectif : calculé d’après le travail, ou saisi.',
       '   Passent d’un jour au suivant : le sale non lavé, le stock propre (boucle du matériel), et en « J+1 » les départs de la veille ;',
       '   pas encore les lots non finis, les retards ni les préparations d’avance.',

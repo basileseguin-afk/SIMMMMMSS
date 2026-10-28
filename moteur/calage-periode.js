@@ -341,14 +341,253 @@
    *  Se servir d'un modèle : le prévu calé, sa bande P10–P90
    * --------------------------------------------------------------------*/
 
-  /** Le prévu calé d'un jour ({ date, simule }) par un modèle gardé ({ modele, parametres, sigma }). */
+  /**
+   * Le prévu calé d'un jour ({ date, simule }) par un modèle gardé ({ modele,
+   * parametres, sigma }). Un jour sans date (une journée hors période) n'a pas
+   * de jour de la semaine : « × a × jour » y prend le facteur moyen, 1 (`sansJour`).
+   */
   function prevuCale(m, j) {
-    const p = predire(m.modele, { b: 0, ...m.parametres }, j), s = Number.isFinite(m.sigma) ? m.sigma : 0;
-    return { prevu: p, p10: p - Z_P10_P90 * s, p90: p + Z_P10_P90 * s };
+    const sansJour = m.modele === 'x-a-jour' && !/^\d{4}-\d{2}-\d{2}$/.test(String(j.date || ''));
+    const p = predire(sansJour ? 'x-a' : m.modele, { b: 0, ...m.parametres }, j), s = Number.isFinite(m.sigma) ? m.sigma : 0;
+    return { prevu: p, p10: p - Z_P10_P90 * s, p90: p + Z_P10_P90 * s, ...(sansJour ? { sansJour: true } : {}) };
+  }
+
+  /* ----------------------------------------------------------------------
+   *  La politique d'effectif : les modèles gardés, sans aucune heure réelle
+   *  (banc d'essai, évolution 11 d)
+   * --------------------------------------------------------------------*/
+
+  const MODELES = ['moteur', 'constante', 'x-a', 'b-x-a', 'x-a-jour'];
+  const objet = x => !!x && typeof x === 'object' && !Array.isArray(x);
+  const fini = x => typeof x === 'number' && Number.isFinite(x);
+
+  /**
+   * La politique d'effectif d'un calage : par ligne calée, son modèle, ses
+   * paramètres et σ, et les services qu'elle couvrait (`o.correspondance`) ;
+   * la date du calage, la période apprise, et la signature de ce qu'il suppose
+   * (barème, équipes, correspondance). Aucune heure réelle.
+   */
+  function politiqueDe(rapport, o = {}) {
+    const parNom = new Map((((o.correspondance && o.correspondance.lignes) || [])).map(l => [l.nom, l]));
+    return { date: o.date || null, periode: o.periode ? { debut: o.periode.debut, fin: o.periode.fin } : null, signature: o.signature || null,
+      lignes: (rapport.lignes || []).filter(l => l.cale).map(l => {
+        const c = parNom.get(l.nom);
+        return { nom: l.nom, modele: l.retenu.modele, parametres: l.retenu.parametres, sigma: l.retenu.sigma, ...(c && c.services ? { services: c.services.slice() } : {}) };
+      }) };
+  }
+
+  /** Les bornes d'un modèle gardé : celles du calage (a ∈ [0,5 ; 2], b ≥ 0), une constante et des facteurs du jour positifs, σ fini. */
+  const BORNES = { a: [A_MIN, A_MAX], b: [0, 1e6], c: [0, 1e6] }, FACTEUR_MAX = 10, SIGMA_MAX = 1e6;
+
+  /** La politique relue (la sauvegarde) : refusée entière si elle est mal formée. */
+  function validerPolitique(p) {
+    if (p === undefined || p === null) return null;
+    if (!objet(p) || !Array.isArray(p.lignes) || p.lignes.length > 200) throw new Error('politique d’effectif : { date, periode, lignes } est attendu.');
+    const date = p.date === null || p.date === undefined ? null : String(p.date);
+    if (date !== null && !/^\d{4}-\d{2}-\d{2}(T[\d:.]+Z?)?$/.test(date)) throw new Error('politique d’effectif : une date ISO est attendue.');
+    const jour = x => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x);
+    if (p.periode !== null && p.periode !== undefined && !(objet(p.periode) && jour(p.periode.debut) && jour(p.periode.fin)))
+      throw new Error('politique d’effectif : la période apprise est { debut, fin }.');
+    const noms = new Set();
+    const lignes = p.lignes.map((l, i) => {
+      const ou = 'politique d’effectif, ligne ' + (i + 1);
+      if (!objet(l) || typeof l.nom !== 'string' || !l.nom.trim() || l.nom.length > 160) throw new Error(ou + ' : un nom est attendu.');
+      if (noms.has(l.nom.trim())) throw new Error(ou + ' : deux lignes s’appellent « ' + l.nom.trim() + ' ».');
+      noms.add(l.nom.trim());
+      if (!MODELES.includes(l.modele)) throw new Error(ou + ' : modèle inconnu « ' + l.modele + ' ».');
+      const q = objet(l.parametres) ? l.parametres : {};
+      const out = {};
+      for (const k of ['a', 'b', 'c']) if (q[k] !== undefined) {
+        if (!fini(q[k]) || q[k] < BORNES[k][0] || q[k] > BORNES[k][1]) throw new Error(ou + ' : ' + k + ' hors de ses bornes (' + BORNES[k].map(x => fr(x)).join(' à ') + ').');
+        out[k] = q[k];
+      }
+      if (q.jours !== undefined) {
+        if (!Array.isArray(q.jours) || q.jours.length !== 7 || !q.jours.every(x => fini(x) && x > 0 && x <= FACTEUR_MAX)) throw new Error(ou + ' : sept facteurs du jour, positifs.');
+        out.jours = q.jours.slice();
+      }
+      if ((l.modele === 'x-a' || l.modele === 'b-x-a' || l.modele === 'x-a-jour') && !fini(out.a)) throw new Error(ou + ' : a manque.');
+      if (l.modele === 'b-x-a' && !fini(out.b)) throw new Error(ou + ' : b manque.');
+      if (l.modele === 'x-a-jour' && !out.jours) throw new Error(ou + ' : les facteurs du jour manquent.');
+      if (l.modele === 'constante' && !fini(out.c)) throw new Error(ou + ' : la constante manque.');
+      if (l.sigma !== null && l.sigma !== undefined && !(fini(l.sigma) && l.sigma >= 0 && l.sigma <= SIGMA_MAX)) throw new Error(ou + ' : σ est un nombre positif.');
+      const services = l.services === undefined ? null : l.services;
+      if (services !== null && !(Array.isArray(services) && services.length <= 100 && services.every(x => typeof x === 'string' && x && x.length <= 160)))
+        throw new Error(ou + ' : les services sont une liste de noms.');
+      return { nom: l.nom.trim(), modele: l.modele, parametres: out, sigma: fini(l.sigma) ? l.sigma : null,
+        ...(services ? { services: services.slice() } : {}), ...(l.applique === true ? { applique: true } : {}) };
+    });
+    return { date, periode: p.periode ? { debut: p.periode.debut, fin: p.periode.fin } : null,
+      signature: typeof p.signature === 'string' && p.signature.length <= 64 ? p.signature : null, lignes };
+  }
+
+  /** Un jour décalé de `k` jours (« 2026-11-02 » + 1) ; ce qui n'est pas une date reste tel quel. */
+  function jourDecale(d, k) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(d || '')) || !k) return d;
+    const t = utc(d); t.setUTCDate(t.getUTCDate() + k);
+    return t.toISOString().slice(0, 10);
+  }
+
+  /**
+   * Le jour de travail d'une ligne, pour son facteur du jour : la date du jour ;
+   * pour une journée seule (`w.decalages`), le jour des vols + le décalage de
+   * ses équipes, s'il est le même pour toutes ; sinon, aucun (le facteur moyen).
+   */
+  function jourDeTravail(l, w) {
+    if (!w.decalages || !l.services) return w.date;
+    const ks = [...new Set(l.services.flatMap(s => w.decalages[s] || []))];
+    return ks.length > 1 ? null : jourDecale(w.date, ks[0] || 0);
+  }
+
+  /**
+   * Le prévu calé : chaque ligne de la correspondance, par son modèle gardé,
+   * appliquée au simulé de chaque jour (`jours` : [{ date, services, total }]
+   * — un jour de travail du bilan, ou une journée), avec sa bande P10–P90 ;
+   * une ligne sans modèle gardé (pas calée, ou ajoutée depuis) compte son
+   * simulé (« moteur », σ nul). Le total de l'unité : toutes les lignes, sa
+   * bande à σ = √Σσ² (des écarts indépendants d'une ligne à l'autre).
+   * `simuleDe(ligne, jour)` : le simulé d'une ligne de la correspondance (moteur/reel.js).
+   */
+  function prevuDesJours(politique, correspondance, jours, simuleDe) {
+    if (!politique) return null;
+    const modeles = new Map(politique.lignes.map(m => [m.nom, m]));
+    const lignes = (((correspondance && correspondance.lignes) || [])).map(l => {
+      const m = modeles.get(l.nom) || { modele: 'moteur', parametres: {}, sigma: 0, nonCalee: true };
+      return { nom: l.nom, modele: m.modele, nomModele: NOMS[m.modele], sigma: m.sigma || 0, ...(m.applique ? { applique: true } : {}), ...(m.nonCalee ? { nonCalee: true } : {}),
+        jours: jours.map(w => { const simule = simuleDe(l, w); return { date: w.date, simule, ...prevuCale(m, { date: jourDeTravail(l, w), simule }) }; }) };
+    });
+    const s = Math.sqrt(lignes.reduce((n, l) => n + l.sigma ** 2, 0));
+    const unite = jours.map((w, i) => {
+      const prevu = lignes.reduce((n, l) => n + l.jours[i].prevu, 0), simule = lignes.reduce((n, l) => n + l.jours[i].simule, 0);
+      return { date: w.date, simule, prevu, p10: prevu - Z_P10_P90 * s, p90: prevu + Z_P10_P90 * s };
+    });
+    return { calage: { date: politique.date, periode: politique.periode }, lignes, unite, sigmaUnite: s };
+  }
+
+  /**
+   * Une journée en jour de travail, pour le prévu calé d'une journée seule :
+   * la charge et les heures sup de chaque service (ses équipes, quel que soit
+   * leur jour), l'encadrement saisi, les chauffeurs du handling ; et le
+   * décalage (`jour`) des équipes de chaque service, pour le jour de la semaine.
+   */
+  function jourDeLaJournee(extrait, encadrement) {
+    const services = {}, total = { chauffeursCamion: 0, chauffeursVL: 0, heuresSupChauffeurs: 0 }, decalages = {};
+    const service = id => (services[id] = services[id] || { charge: 0, heuresSup: 0, chargeEncadrement: 0 });
+    for (const e of extrait.equipes || []) {
+      const s = service(e.service);
+      s.charge += e.charge || 0; s.heuresSup += e.heuresSup || 0;
+      const d = decalages[e.service] = decalages[e.service] || [];
+      if (!d.includes(e.jour || 0)) d.push(e.jour || 0);
+      if (e.chauffeurs) { total.chauffeursCamion += e.chauffeurs.camion || 0; total.chauffeursVL += e.chauffeurs.vl || 0; }
+      total.heuresSupChauffeurs += e.heuresSupChauffeurs || 0;
+    }
+    for (const [id, n] of Object.entries(encadrement || {})) service(id).chargeEncadrement = +n || 0;
+    return { date: extrait.date, services, total, decalages };
+  }
+
+  /* ----------------------------------------------------------------------
+   *  Appliquer un facteur au barème — et l'annuler, exactement
+   * --------------------------------------------------------------------*/
+
+  const copie = x => (x === undefined ? undefined : JSON.parse(JSON.stringify(x)));
+  /**
+   * Des minutes × k, arrondies comme la page les garde : `pas` = 100 (le
+   * barème, au centième de minute), 10 (les cases et l'armement, au dixième),
+   * 0 (les minutes par vol d'une équipe d'appui, sans arrondi, 24 h au plus).
+   */
+  const multiplier = (t, k, pas) => Object.fromEntries(Object.entries(t || {}).map(([c, v]) => [c,
+    typeof v !== 'number' ? v : pas ? Math.round(v * k * pas) / pas : Math.min(1440, v * k)]));
+  const valeurs = t => Object.values(t || {}).filter(v => typeof v === 'number' && v > 0).length;
+  /** Une équipe dont le travail suit le barème : calculée d'après lui. Hors de la page, à la main ou d'appui, sans effectif fixe. */
+  const suitLeBaremeParDefaut = a => (a.type === 'manuel' || a.type === 'appui') && a.effectif !== 'fixe';
+
+  /**
+   * Multiplie par `k` le travail des services : leurs minutes au barème
+   * (toutes les compagnies × classes ; un barème repris devient le leur), les
+   * minutes propres des équipes qui y travaillent, les minutes par vol de
+   * leurs équipes d'appui, et les minutes par compagnie de leurs catégories
+   * (l'armement). Une annexe qui reprenait le barème d'un de ces services
+   * garde celui d'avant. Rend les nouveaux états, ce qu'il faut pour revenir
+   * exactement en arrière, et `refus` quand le facteur ne corrigerait pas tout
+   * le travail de la ligne (rien à multiplier, ou des équipes dont le travail
+   * ne suit pas le barème : effectif saisi, lavage, handling).
+   * @param x { bareme (le barème propre, ory-modele-v1), complet (avec les barèmes repris), ateliers, categories }
+   * @param o { parents: { annexe: service }, suitLeBareme(équipe) }
+   */
+  function appliquerFacteur(x, services, k, o = {}) {
+    const avant = { bareme: {}, minutes: {}, minutesVol: {}, categories: {} }, bareme = copie(x.bareme || {}), categories = copie(x.categories || {});
+    const propre = s => x.bareme && x.bareme[s] !== undefined, suit = o.suitLeBareme || suitLeBaremeParDefaut;
+    let n = 0;
+    for (const s of services) {
+      avant.bareme[s] = propre(s) ? copie(x.bareme[s]) : null;
+      const t = propre(s) ? x.bareme[s] : x.complet && x.complet[s];
+      if (t) { bareme[s] = multiplier(t, k, 100); n += valeurs(t); }
+      if (categories[s]) {
+        avant.categories[s] = copie(x.categories[s]);
+        categories[s] = categories[s].map(c => { n += valeurs(c.minutes); return { ...c, minutes: multiplier(c.minutes, k, 10) }; });
+      }
+    }
+    // Une annexe qui reprend le barème d'un de ces services garde celui d'avant : le facteur ne vaut que pour la ligne.
+    for (const [annexe, pere] of Object.entries(o.parents || {}))
+      if (services.includes(pere) && !services.includes(annexe) && !propre(annexe) && x.complet && x.complet[annexe]) {
+        avant.bareme[annexe] = null; bareme[annexe] = copie(x.complet[annexe]);
+      }
+    const horsBareme = [];
+    const ateliers = (x.ateliers || []).map(a => {
+      if (!services.includes(a.service)) return a;
+      if (a.type !== 'dispo' && (a.personnes || 0) > 0 && !suit(a)) horsBareme.push(a.nom || a.id);
+      let b = a;
+      if (a.minutes) { avant.minutes[a.id] = copie(a.minutes); b = { ...b, minutes: multiplier(a.minutes, k, 10) }; n += valeurs(a.minutes); }
+      if (a.type === 'appui' && a.minutesVol) { avant.minutesVol[a.id] = copie(a.minutesVol); b = { ...b, minutesVol: multiplier(a.minutesVol, k, 0) }; n += valeurs(a.minutesVol); }
+      return b;
+    });
+    const refus = !n ? 'aucune minute à multiplier : le travail de ' + (services.length > 1 ? 'ces services' : 'ce service') + ' ne vient pas du barème'
+      : horsBareme.length ? 'le travail de ' + horsBareme.map(x => '« ' + x + ' »').join(', ') + ' ne suit pas le barème (effectif saisi, lavage, handling) : le facteur n’en corrigerait qu’une part'
+        : null;
+    return { bareme, ateliers, categories, avant, valeurs: n, horsBareme, refus };
+  }
+
+  /** Revient exactement à l'état d'avant une application (`avant`, rendu par appliquerFacteur). */
+  function annulerFacteur(x, avant) {
+    const bareme = copie(x.bareme || {}), categories = copie(x.categories || {});
+    for (const [s, t] of Object.entries(avant.bareme || {})) { if (t === null) delete bareme[s]; else bareme[s] = copie(t); }
+    for (const [s, l] of Object.entries(avant.categories || {})) categories[s] = copie(l);
+    const m = avant.minutes || {}, mv = avant.minutesVol || {};
+    const ateliers = (x.ateliers || []).map(a => {
+      let b = a;
+      if (m[a.id] !== undefined) b = { ...b, minutes: copie(m[a.id]) };
+      if (mv[a.id] !== undefined) b = { ...b, minutesVol: copie(mv[a.id]) };
+      return b;
+    });
+    return { bareme, ateliers, categories };
+  }
+
+  /** Une application s'annule si aucune plus récente ne touche un de ses services (sinon l'ordre compte : la plus récente d'abord). */
+  function annulable(applications, i) {
+    const x = applications[i];
+    return !!x && !applications.slice(i + 1).some(y => y.services.some(s => x.services.includes(s)));
+  }
+
+  /** Les lignes dont l'erreur a monté de plus de 0,3 ETP depuis une application (la ligne appliquée exceptée). */
+  function lignesDegradees(application, comparaison, seuil = 0.3) {
+    const out = [];
+    for (const l of (comparaison && comparaison.lignes) || []) {
+      if (l.nom === application.ligne) continue;
+      const avant = (application.erreursAvant || {})[l.nom];
+      if (Number.isFinite(avant) && Number.isFinite(l.periode.mae) && l.periode.mae - avant > seuil) out.push({ nom: l.nom, avant, apres: l.periode.mae });
+    }
+    return out;
+  }
+
+  /** Une empreinte courte d'un texte (FNV-1a, 32 bits) : ce que suppose un calage, pour savoir s'il est à refaire. */
+  function empreinte(texte) {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < texte.length; i++) { h ^= texte.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+    return h.toString(16).padStart(8, '0');
   }
 
   const api = { JOURS_MIN, CANDIDATS, NOMS, semaineIso, jourSemaine, apprendre, predire, facteursDuJour, decoupages, wilcoxon, phi,
-    calerLigne, caler, prevuCale, Z_P10_P90 };
+    calerLigne, caler, prevuCale, Z_P10_P90, politiqueDe, validerPolitique, prevuDesJours, jourDeLaJournee, jourDecale, appliquerFacteur, annulerFacteur,
+    annulable, lignesDegradees, empreinte };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyCalagePeriode = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

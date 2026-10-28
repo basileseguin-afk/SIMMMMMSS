@@ -5,6 +5,29 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-28 — Banc d'essai, évolution 11 (d) : se servir du calage, prévoir l'effectif ou corriger le barème
+
+- « Garder comme politique d'effectif » : la sauvegarde (`ory-calage-v1`)
+  garde, par ligne calée, le modèle, ses paramètres et σ, la date du calage,
+  la période apprise et l'empreinte de ce qu'il suppose ; aucune heure réelle.
+- Le prévu calé et sa bande P10–P90, par ligne et pour toute l'unité : dans
+  la page Période, dans la Synthèse de la journée, dans l'outil
+  `simuler-periode` (`prevuCale`, même pour un programme futur) et dans la
+  feuille Période (rangées « Ligne : … », quatre colonnes).
+- « Appliquer au barème » un × a : le barème, les cases, les équipes d'appui
+  et l'armement des services de la ligne × a ; refusé, et dit pourquoi, sans
+  période à jour ou quand une équipe ne suit pas le barème ; « Annuler » à
+  l'identique, le plus récent d'abord ; la période à relancer ; une autre
+  ligne dégradée de plus de 0,3 ETP signalée. « À refaire » quand le barème,
+  les équipes ou la correspondance changent.
+- Sans politique, rien ne change.
+- Fichiers : `moteur/calage-periode.js`, `moteur/reel.js`, `calage-vue.js`,
+  `sim.js`, `echanges.js` (et `v2/echanges.js`, à l'identique),
+  `outils/simuler-periode.cjs`, `index.html`, `v2/index.html` (empreinte),
+  `periode.css`, `docs/BANC_ESSAI.md` (§ 10), `docs/FORMATS_EXCEL.md` (§ 4),
+  `docs/CAHIER_DES_CHARGES.md` (D3, M22), `README.md`,
+  `tests/politique-calage.test.cjs` (nouveau), `tests/calage-browser.cjs`.
+
 ## 2026-10-27 — Banc d'essai, évolution 11 (c) : le calage, un modèle par ligne validé hors échantillon
 
 - `moteur/calage-periode.js` (nouveau, sans navigateur) : pour chaque ligne
