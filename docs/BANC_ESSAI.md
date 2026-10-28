@@ -1897,3 +1897,108 @@ présence illisible refusée (une équipe, un encadrement) ; l'aller-retour du
 classeur des équipes ; le classeur de la période avec et sans.
 `tests/calage-browser.cjs` les saisit dans la page (un refus sous le champ)
 et les retrouve dans la période et son classeur.
+
+### Le rejeu à effectif imposé : un planning daté (évolution 11 f)
+
+But : tester le modèle de travail à part des décisions d'effectif. On rejoue
+chaque jour passé avec les personnes réellement présentes ; les heures supp,
+les nuits de plonge et les retards se comparent alors au réel, et le travail
+se cale.
+
+**Le planning** (`docs/FORMATS_EXCEL.md` § 5, `moteur/planning.js`) : une
+ligne par jour des vols et par équipe — `date`, `service`, `equipe`, `debut`,
+`fin`, `personnes`, `jour` (facultatif, −1 pour la veille) —, comme celui du
+calage de la version 2. Les noms se rapprochent sans casse ni accents ; un nom
+inconnu, une heure illisible : refusé, la ligne nommée. Il reste en mémoire.
+
+**Le rejeu**, dans une période (`moteur/periode.js`, l'option `planning`) :
+
+- un jour qui a des lignes : chaque équipe nommée prend son début, sa fin
+  (une fin avant le début passe minuit), ses personnes et son jour (vide :
+  le sien), à effectif imposé ce jour-là : « dépend des vols, effectif
+  imposé » pour une équipe à la main ou d'appui dont le travail suit les vols
+  (une équipe constante le reste : ses commandes en temps nul) ; saisi pour
+  les autres (robot, plonge, handling) ; une équipe d'un service qui a des
+  lignes ce jour-là, mais pas elle, ne travaille pas ; un service sans ligne
+  garde ses équipes ; les heures sup vont jusqu'à 720 min, pour que le
+  débordement se voie ;
+- un jour sans planning se joue comme aujourd'hui ;
+- la période porte `rejeu` : `{ joursAvecPlanning }` ; chaque jour de travail
+  dit s'il a été rejoué avec son planning (`planning` : toutes ses journées de
+  vols avaient le leur). Dans le JSON de l'outil, une journée rejouée avec son
+  planning n'a pas d'`options` (`rejeu: true`) : `simuler-journee` ne rejoue
+  pas un planning.
+
+**La comparaison du rejeu** (`moteur/reel.js`, `comparer` avec `rejeu`) : pour
+chaque ligne, ses heures supp simulées et réelles de chaque jour (en heures ;
+réelles : celles de ses rôles, sans la colonne ou une cellule écartée : non
+comptées) et, pour une ligne de services, ses lots en retard ; l'erreur et le
+biais de ses heures supp sur les seuls jours rejoués avec leur planning (les
+autres se montrent, marqués « sans planning », et ne comptent pas). Pour toute
+l'unité, chaque jour, les nuits de plonge ouvertes et les lots en retard.
+
+**Le calage du travail** (`moteur/calage-travail.js`), en rejeu seulement,
+pour chaque ligne de services qui a des heures supp au réel :
+
+- un facteur sur les homme-minutes de ses services (leur barème, les minutes
+  propres de leurs cases, les minutes par vol des équipes d'appui, l'armement) ;
+- une grille de 0,5 à 2 (0,5 ; 0,6 ; 0,7 ; 0,8 ; 0,9 ; 1 ; 1,1 ; 1,2 ; 1,35 ;
+  1,5 ; 1,75 ; 2, celle de la version 2) : tous les services se jouent
+  ensemble au même facteur, chacun lit sa propre erreur ; puis un affinage à
+  −8, −4, +4 et +8 % autour du meilleur de chaque ligne, chacune à son
+  facteur. Chaque essai rejoue toute la période : 16 essais ;
+- l'erreur : l'écart absolu moyen entre les heures supp simulées et réelles
+  de la ligne, jour par jour, en heures, sur les jours rejoués avec leur
+  planning ; à égalité, le facteur le plus proche de 1. La correspondance se
+  relit avant le premier essai, et un planning qui ne couvre aucun jour du
+  programme est refusé ;
+- les découpages et les règles 1 à 4 du calage de l'effectif (ci-dessus) :
+  une semaine ISO, un mois laissés de côté (chacun choisit son facteur parmi
+  les essais, sur ses seuls jours appris) ; plus juste que le barème (le
+  facteur 1) et qu'une constante (la moyenne des heures supp réelles des
+  jours appris) ; stable à ±15 % d'une semaine à l'autre ; dans [0,5 ; 2] ;
+  Wilcoxon contre la meilleure des deux. Il faut 20 jours avec le réel des
+  heures supp ;
+- le résultat, un « facteur de travail » par ligne, au centième, s'applique au
+  barème comme en (d) (« Appliquer au barème : Montage × 1,3 », puis
+  « Annuler ») ; il devient « à refaire » quand l'unité, le planning, le réel
+  ou la correspondance changent ; refusé, le bouton dit pourquoi, comme pour la
+  politique d'effectif. Le classeur n'emporte qu'un rejeu et un calage du
+  travail à jour.
+
+**Dans la page** (« Réel et calage ») : « Importer le planning (CSV, Excel) »
+et « Modèle de planning » à côté de l'import du réel ; puis « Rejouer la
+période avec le planning » et « Caler le travail » : le calcul avance jour par
+jour, avec sa progression et « Annuler », comme la période. La comparaison du
+rejeu (par ligne, jour par jour) et le rapport du calage du travail (le
+facteur, les règles, l'erreur avec le barème et avec le facteur, les facteurs
+essayés) se lisent sous la vue, et dans le classeur du calage.
+
+**Les outils** :
+
+```
+node outils/simuler-periode.cjs sauvegarde.json vols-dates.csv [options.json] --planning planning.csv > rejeu.json
+node outils/caler-periode.cjs rejeu.json reel.csv correspondance.json [--travail sauvegarde.json vols-dates.csv planning.csv]
+```
+
+`--planning` (CSV ou classeur) rejoue la période : `periode.planning`,
+`periode.rejeu`. `caler-periode` d'un rejeu rend la comparaison du rejeu ;
+`--travail` y ajoute le calage du travail (`travail`), la période rejouée avec
+ce planning, facteur après facteur, avec les options de la période.
+
+Sans planning, rien ne change : la période, sa comparaison, le JSON des
+outils et les classeurs sont ceux d'avant, champ par champ.
+
+Vérifications — `tests/rejeu-planning.test.cjs` : le fichier (noms sans casse
+ni accents, refus qui nomment la ligne, un classeur) ; une période fictive de
+trois jours, effectifs et horaires imposés, une équipe absente du planning de
+son service qui ne travaille pas, une vacation qui passe minuit, un service
+sans ligne inchangé, un jour sans planning comme aujourd'hui, et sans planning
+la période d'avant ; la comparaison du rejeu ; un Montage fictif dont le
+travail vrai est 1,3 × le barème : le calage du travail trouve 1,3 à 4 % près,
+accepté, et pas à pas le même rapport ; les refus sans planning ou sans heures
+supp ; les outils (`--planning`, `--travail`, le classeur). `tests/calage-browser.cjs`
+fait le parcours dans la page : un planning refusé, puis importé ; le rejeu et
+sa progression ; la comparaison du rejeu ; « Caler le travail », annulé puis
+fait ; un facteur appliqué au barème puis annulé ; le classeur ; le planning
+n'est pas dans la sauvegarde.

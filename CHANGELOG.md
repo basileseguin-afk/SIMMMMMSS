@@ -5,6 +5,32 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-28 — Banc d'essai, évolution 11 (f) : le rejeu à effectif imposé, un planning daté
+
+- `moteur/planning.js` (nouveau) : le fichier « Planning » (CSV ou feuille
+  Excel), lu et validé contre l'unité ; un jour rejoué avec ses équipes, leurs
+  horaires et leurs personnes, à effectif imposé, des heures sup jusqu'à
+  12 h ; le facteur de travail de chaque service.
+- `moteur/periode.js` : l'option `planning` (un rejeu) et `facteurs` ;
+  `moteur/reel.js` : la comparaison du rejeu (heures supp jour par jour, lots
+  en retard, nuits de plonge ouvertes).
+- `moteur/calage-travail.js` (nouveau) : le calage du travail, un facteur des
+  homme-minutes par ligne de services, une grille de 0,5 à 2 puis un affinage
+  à ±4 et ±8 %, validé par les règles 1 à 4 du calage ; pas à pas.
+- La page : « Importer le planning », « Rejouer la période avec le
+  planning », « Caler le travail » (progression, Annuler), leur rapport,
+  « Appliquer au barème » un facteur de travail ; le classeur du calage.
+- Les outils : `simuler-periode --planning`, `caler-periode` d'un rejeu et
+  `--travail`.
+- Sans planning, rien ne change.
+- Fichiers : `moteur/planning.js` et `moteur/calage-travail.js` (nouveaux),
+  `moteur/periode.js`, `moteur/reel.js`, `calage-vue.js`, `sim.js`,
+  `echanges-calage.js`, `outils/simuler-periode.cjs`,
+  `outils/caler-periode.cjs`, `index.html`, `periode.css`,
+  `docs/BANC_ESSAI.md` (§ 10), `docs/FORMATS_EXCEL.md` (§ 5),
+  `docs/CAHIER_DES_CHARGES.md` (F3, M24), `README.md`,
+  `tests/rejeu-planning.test.cjs` (nouveau), `tests/calage-browser.cjs`.
+
 ## 2026-10-28 — Banc d'essai, évolution 11 (e) : les vacations longues, des heures sup d'office
 
 - Une présence au contrat (`presenceContrat`) sur une équipe (« Plus de

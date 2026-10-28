@@ -78,6 +78,7 @@
   const J = () => module_('OrlyJournee', './journee.js');
   const P = () => module_('MoteurProduction', './production.js');
   const A = () => module_('OrlyAteliers', '../ateliers.js');
+  const PL = () => module_('OrlyPlanning', './planning.js');
   const clone = x => JSON.parse(JSON.stringify(x));
   const up = x => String(x ?? '').trim().toUpperCase();
 
@@ -114,13 +115,21 @@
     return jouerForce(unite, volsJour, force, force && Array.isArray(e.volsVeille) ? e.volsVeille : null, o);
   }
 
-  /** Le cœur des deux : `force` (sale, stock propre) remplace celui de l'état ; `volsVeille`, en « J+1 ». */
+  /**
+   * Le cœur des deux : `force` (sale, stock propre) remplace celui de l'état ; `volsVeille`, en « J+1 ».
+   * En rejeu (évolution 11 f) : `o.planningDuJour`, les lignes du planning de ce jour (moteur/planning.js) ;
+   * `o.facteurs`, le facteur de travail de chaque service (le calage du travail).
+   */
   function jouerForce(unite, volsJour, force, volsVeille, o) {
     const m = (unite.etat && unite.etat.materiel) || {}, j1 = Array.isArray(volsVeille);
     // Le même validateur que « Restaurer » et que l'outil d'une journée : la même journée, au champ près.
     const etat = force ? A().valider({ ...unite.etat, materiel: { ...m, ...force } }) : unite.etat;
     const decaler = l => J().volsDecales(l, o.decalage);
-    const args = J().argumentsDeLUnite({ ...unite, etat }, decaler(volsJour), { delaiChargement: o.delaiChargement, ...(j1 ? { volsVeille: decaler(volsVeille) } : {}) });
+    const brut = J().argumentsDeLUnite({ ...unite, etat }, decaler(volsJour), { delaiChargement: o.delaiChargement, ...(j1 ? { volsVeille: decaler(volsVeille) } : {}) });
+    // Un jour du planning : ses équipes, à effectif imposé ; des heures sup jusqu'à 12 h.
+    const lignes = o.planningDuJour && o.planningDuJour.length ? o.planningDuJour : null;
+    const jour = lignes ? PL().argsDuJour(brut, lignes) : brut;
+    const args = o.facteurs ? PL().facteursSurArgs(jour, o.facteurs) : jour;
     const entree = !force ? {} : { saleInitial: clone(etat.materiel.saleInitial ?? []),
       ...('stockInitial' in force ? { ateliers: { materiel: { stockInitial: etat.materiel.stockInitial } } } : {}), ...(j1 ? { volsVeille: clone(volsVeille) } : {}) };
     return { resultat: J().jouer(args), args, entree };
@@ -140,7 +149,8 @@
       suivant() {
         const i = journees.length;
         if (i >= jours.length) return null;
-        const date = jours[i], j = jouerJournee(unite, volsDuJour(vols, date), i ? volsDuJour(vols, jours[i - 1]) : null, veille, o);
+        const date = jours[i], dj = o.planning && o.planning.jours ? { ...o, planningDuJour: o.planning.jours[date] || null } : o;
+        const j = jouerJournee(unite, volsDuJour(vols, date), i ? volsDuJour(vols, jours[i - 1]) : null, veille, dj);
         veille = { saleFinal: j.resultat.saleFinal || [], restePropre: j.resultat.materiel ? j.resultat.materiel.restePropre : null };
         const n = d.parJour[i];
         journees.push({ date, departs: n.departs, retours: n.retours, entree: j.entree, extrait: extraire(j.resultat, j.args, date), ...(o.detail ? { resultat: j.resultat } : {}) });
@@ -149,8 +159,13 @@
       /** La période jouée (jusqu'où elle l'est) : sa description, son bilan, ses journées. */
       resultat() {
         const b = bilan(journees, unite, d);
+        // Un rejeu (évolution 11 f) : les jours de vols rejoués avec leur planning, et les facteurs de travail essayés ;
+        // chaque jour de travail dit si toutes ses journées de vols avaient le leur (`planning`).
+        const pj = (o.planning && o.planning.jours) || {};
+        const rejeu = o.planning ? { joursAvecPlanning: jours.filter(x => pj[x]).length, ...(o.facteurs ? { facteurs: o.facteurs } : {}) } : null;
+        if (rejeu) for (const w of b.joursTravail) w.planning = b.decalages.every(k => !!pj[jourDecale(w.date, -k)]);
         return { periode: { schema: 'ory-periode', version: 1, debut: d.debut, fin: d.fin, jours: d.jours, joursSansVol: d.sansVol,
-          joursIncomplets: b.joursTravail.filter(x => !x.complet).map(x => x.date), joues: journees.length }, bilan: b, journees };
+          joursIncomplets: b.joursTravail.filter(x => !x.complet).map(x => x.date), joues: journees.length, ...(rejeu ? { rejeu } : {}) }, bilan: b, journees };
       }
     };
   }

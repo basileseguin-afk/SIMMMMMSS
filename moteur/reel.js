@@ -362,11 +362,36 @@
   }
 
   /**
+   * En rejeu (évolution 11 f) : chaque jour d'une ligne a aussi ses heures supp simulées et réelles (en
+   * heures ; réelles : null sans la colonne ou une cellule écartée), s'il avait son planning (`planning`) et,
+   * pour une ligne de services, ses lots en retard ; la ligne, l'erreur et le biais de ses heures supp, jour
+   * par jour, sur les seuls jours qui avaient leur planning.
+   */
+  function rejeuDeLaLigne(l, joursLigne, jours, ctrl, sansReel) {
+    const parDate = new Map(jours.map(w => [w.date, w]));
+    for (const j of joursLigne) {
+      const w = parDate.get(j.date), cs = l.roles.map(r => ctrl.cellules.get(cle(j.date, r))).filter(Boolean);
+      const reel = ctrl.avecSupp && !l.roles.some(r => sansReel.has(cle(j.date, r))) && cs.every(c => Number.isFinite(c.supp)) ? somme(cs, c => c.supp) : null;
+      j.heuresSuppSimulees = heuresSuppSimulees(l, w); j.heuresSuppReelles = reel; j.planning = w.planning !== false;
+      if (l.services) j.lotsEnRetard = somme(l.services, id => ((w.services || {})[id] || {}).lotsEnRetard);
+    }
+    const avec = joursLigne.filter(j => j.heuresSuppReelles !== null && j.planning);
+    const e = avec.map(j => j.heuresSuppSimulees - j.heuresSuppReelles);
+    return { rejeu: { joursAvecPlanning: joursLigne.filter(j => j.planning).length, heuresSupp: { jours: avec.length, mae: e.length ? somme(e, x => Math.abs(x)) / e.length : null, biais: e.length ? somme(e, x => x) / e.length : null },
+      ...(l.services ? { lotsEnRetard: somme(joursLigne, j => j.lotsEnRetard) } : {}) } };
+  }
+  /** En rejeu : chaque jour de travail comparé, les nuits de plonge ouvertes et les lots en retard de toute l'unité. */
+  const rejeuDeLUnite = jours => ({ jours: jours.map(w => ({ date: w.date, planning: w.planning !== false, nuitsOuvertes: (w.nuits || []).filter(n => n.ouverte).length,
+    lotsEnRetard: (w.total && w.total.lotsEnRetard) || 0 })) });
+
+  /**
    * Compare le réel à la période simulée.
    * @param bilan le bilan de la période (moteur/periode.js), avec la charge de chaque service
    * @param reel le réel lu (lireReel) ou déjà contrôlé (controler)
    * @param correspondance { bases, lignes }
-   * @param o { decisions } : ce que l'utilisateur écarte ou réintègre ; { services } : les identifiants de service
+   * @param o { decisions } : ce que l'utilisateur écarte ou réintègre ; { rejeu } : la période est un rejeu à
+   *   effectif imposé (évolution 11 f), la comparaison ajoute les heures supp jour par jour, les nuits de plonge
+   *   ouvertes, les lots en retard ; { services } : les identifiants de service
    *   connus (la page : tous ceux de l'unité ; sans, ceux du bilan — un service inconnu est refusé, nommé)
    */
   function comparer(bilan, reel, correspondance, o = {}) {
@@ -379,7 +404,8 @@
       const sansReel = ctrl.sansReel || new Set();
       const j = joursDeLaLigne(l, jours, ctrl.cellules, corr.bases, sansReel);
       return { ...l, couvre: couvertureDe(l, nomService), ...j, ...parMois(j.jours, true),
-        ...(ctrl.avecSupp ? { heuresSupp: heuresSuppParMois(l, jours, ctrl.cellules, sansReel) } : {}) };
+        ...(ctrl.avecSupp ? { heuresSupp: heuresSuppParMois(l, jours, ctrl.cellules, sansReel) } : {}),
+        ...(o.rejeu ? rejeuDeLaLigne(l, j.jours, jours, ctrl, sansReel) : {}) };
     });
     // Toute l'unité : la somme de toutes les lignes, hors simulation comprise, les jours où chacune compte.
     const unite = (lignes.length ? jours : []).filter(w => lignes.every(l => l.jours.some(x => x.date === w.date))).map(w => {
@@ -390,7 +416,7 @@
     const dansUneLigne = new Set(corr.lignes.flatMap(l => l.roles));
     return { schema: 'ory-comparaison', version: 1, bases: corr.bases, jours: jours.map(w => w.date),
       joursIncomplets: (bilan.joursTravail || []).filter(w => !w.complet && avecReel.has(w.date)).map(w => w.date),
-      lignes, unite: { jours: unite, ...parMois(unite, false) },
+      lignes, unite: { jours: unite, ...parMois(unite, false), ...(o.rejeu ? { rejeu: rejeuDeLUnite(jours) } : {}) },
       rolesSansLigne: ctrl.roles.filter(r => !dansUneLigne.has(r)),
       anomalies: { ecartees: ctrl.ecartees, signalees: ctrl.signalees, joursEcartes: ctrl.joursEcartes }, avecSupp: ctrl.avecSupp };
   }
@@ -450,7 +476,9 @@
       // Le modèle de la ligne avant l'application (pour le rendre à l'annulation).
       const modele = x.modele === undefined || x.modele === null ? null : C().validerPolitique({ lignes: [x.modele] }).lignes[0];
       return { ligne: x.ligne, services: x.services.slice(), a: x.a, date: typeof x.date === 'string' ? x.date.slice(0, 40) : null,
-        avant: { bareme, minutes, minutesVol, categories }, erreursAvant: erreurs, ...(modele ? { modele } : {}) };
+        avant: { bareme, minutes, minutesVol, categories }, erreursAvant: erreurs, ...(modele ? { modele } : {}),
+        // Un facteur du calage du travail (évolution 11 f), et non un × a de la politique d'effectif.
+        ...(x.source === 'travail' ? { source: 'travail' } : {}) };
     });
   }
 

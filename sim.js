@@ -1758,7 +1758,11 @@ function initCalage(){
       return{avant:r.avant};
     },
     annulerTravail:avant=>changerTravail(OrlyCalagePeriode.annulerFacteur(etatDuTravail(),avant),'Le barème d’avant le calage est rétabli.'),
-    journee:journeeCalee
+    journee:journeeCalee,
+    // Le rejeu à effectif imposé (évolution 11 f) : les équipes, pour lire un planning ; la période à rejouer, et sa signature.
+    ateliers:()=>(Sim.ateliers?Sim.ateliers.state.ateliers:[]),
+    periodeDuRejeu:()=>(Sim.periode&&programmeDate()?{unite:Sim.periode.a.unite(),vols:programmeDate(),options:Sim.periode.a.options()}:null),
+    signaturePeriode:signaturePeriode
   });
 }
 /**

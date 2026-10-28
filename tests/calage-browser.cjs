@@ -17,7 +17,11 @@
  *     « à refaire » ;
  *   — (e) les vacations longues : la présence et la présence au contrat de
  *     l'encadrement et d'une équipe, saisies dans la page ; les heures sup
- *     d'office dans la période et dans son classeur.
+ *     d'office dans la période et dans son classeur ;
+ *   — (f) le rejeu : un planning fictif importé (un planning refusé, la ligne
+ *     nommée), « Rejouer » avec sa progression, les équipes du planning, la
+ *     comparaison du rejeu au réel ; « Caler le travail », « Annuler » puis
+ *     jusqu'au bout ; le planning reste en mémoire, la sauvegarde ne le garde pas.
  * Données fictives ; aucune capture d'écran (le plan est confidentiel). */
 const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs'),os=require('node:os');
 const nav=require('./nav.cjs');
@@ -284,6 +288,71 @@ const CLE='ory-calage-v1';
   const x3=await T.lireClasseur(new Uint8Array(fs.readFileSync(await telecharger(()=>page.locator('#journee-periode [data-pv=exporter]').click()))));
   assert.ok(x3.find(f=>f.nom==='Période').lignes[0].includes('Heures sup d’office de l’encadrement (min × pers.)'));
   assert.ok(x3.find(f=>f.nom==='Équipes').lignes[0].includes('Heures sup d’office (min × pers.)'));
+
+  // 8 (f). Le rejeu : un planning fictif, la cuisine froide chaque jour de vols, une nuit qui passe minuit.
+  const datesVols=[...new Set(VOLS.map(v=>v.date))];
+  const planningCsv='date;service;equipe;debut;fin;personnes;jour\n'+datesVols.flatMap((d,i)=>[d+';Cuisine froide;Cuisine froide nuit;20:00;04:00;'+(2+i%2)+';-1',
+    d+';CUISINE FROIDE;cuisine froide equipage;21:00;05:00;1;-1']).join('\n')+'\n';
+  await page.locator(`${B} button[data-cal=choisir][data-pour=calage-planning]`).count();
+  await page.locator('#calage-planning').setInputFiles(fichier('planning-faux.csv','date;service;equipe;debut;fin;personnes\n'+datesVols[0]+';Cuisine froide;Inconnue;20:00;04:00;2\n'));await attendre(300);
+  assert.match(await page.locator(`${B} [data-cal-erreur-planning]`).innerText(),/^Planning refusé — ligne 2 : équipe inconnue « Inconnue »/);
+  await page.locator('#calage-planning').setInputFiles(fichier('planning-fictif.csv',planningCsv));await attendre(300);
+  assert.match(await page.locator(`${B} .pc-rejeu`).innerText(),new RegExp('planning-fictif\\.csv : '+2*datesVols.length+' lignes, '+datesVols.length+' jours de vols'));
+  // « Rejouer » : la progression, puis le rejeu ; ses équipes sont celles du planning.
+  await page.locator(`${B} [data-cal=rejouer]`).click();
+  assert.equal(await page.locator(`${B} [data-cal-progression]`).count(),1,'la progression paraît');
+  await page.waitForFunction(()=>Sim.calage.rejeu&&!Sim.calage.calcul,null,{timeout:120000});await attendre(200);
+  const nuit=await page.evaluate(d=>Sim.calage.rejeu.resultat.journees.find(j=>j.date===d).extrait.equipes.find(e=>e.id==='cu1'),datesVols[1]);
+  assert.deepEqual([nuit.personnes,nuit.debutPoste,nuit.finPresence-nuit.debutPoste],[3,20*60-1440,480],'20:00 → 04:00 la veille, 3 personnes');
+  assert.match(await page.locator(`${B} [data-cal-rejeu]`).innerText(),/Importez le réel pour comparer le rejeu/);
+  // Le réel, de nouveau : la comparaison du rejeu, celle du module.
+  await page.locator('#calage-reel').setInputFiles(fichier('reel-fictif.csv',reelCsv));await attendre(400);
+  const bRejeu=await page.evaluate(()=>JSON.parse(JSON.stringify(Sim.calage.rejeu.resultat.bilan)));
+  const cRejeu=R.comparer(bRejeu,R.controler(R.lireReel([{nom:'reel.csv',lignes:T.lireCsv(reelCsv)}]),(await reglages()).decisions),(await reglages()).correspondance,{rejeu:true});
+  const lc=cRejeu.lignes.find(l=>l.nom==='Cuisinier');
+  assert.equal(await page.locator(`${B} [data-cal-rejeu-ligne="Cuisinier"] [data-cal-rejeu-mae]`).innerText(),fr(lc.rejeu.heuresSupp.mae));
+  assert.match(await page.locator(`${B} [data-cal-rejeu-nuits]`).innerText(),/Toute l’unité : (aucune nuit de plonge ouverte|nuits de plonge ouvertes)/);
+  // « Caler le travail » : Annuler l'arrête ; relancé, il va au bout.
+  await page.locator(`${B} [data-cal=caler-travail]`).click();
+  await page.locator(`${B} [data-cal=annuler-calcul]`).click();await attendre(200);
+  assert.deepEqual(await page.evaluate(()=>[Sim.calage.calcul,Sim.calage.travail]),[null,null],'annulé : rien');
+  await page.locator(`${B} [data-cal=caler-travail]`).click();
+  await page.waitForFunction(()=>Sim.calage.travail&&!Sim.calage.calcul,null,{timeout:300000});await attendre(200);
+  const travail=await page.evaluate(()=>JSON.parse(JSON.stringify(Sim.calage.travail)));
+  assert.deepEqual(travail.lignes.map(l=>l.nom),['Cuisinier'],'les lignes de services seulement');
+  const lt=travail.lignes[0];
+  if(lt.cale)assert.equal(await page.locator(`${B} [data-cal-travail="Cuisinier"] [data-cal-facteur]`).innerText(),'× '+fr(lt.facteur));
+  else assert.match(await page.locator(`${B} [data-cal-travail="Cuisinier"]`).innerText(),/pas de calage du travail/);
+  // Un facteur de travail accepté (posé ici, le réel fictif n'en donne pas) : « Appliquer au barème », puis « Annuler ».
+  const avantTravail2=await etatTravail();
+  await page.evaluate(()=>{const t=Sim.calage.travail,l=t.lignes[0];
+    t.lignes=[{...l,cale:true,accepte:true,facteur:1.1,raison:undefined,regles:{},essais:[],semaines:[],mois:[],erreur:0,erreurMoteur:0,jours:28,validation:'semaines',services:['cuisine']}];Sim.calage.rendre();});
+  await attendre(200);
+  await page.locator(`${B} [data-cal=appliquer-travail][data-nom="Cuisinier"]`).click();await attendre(400);
+  const apresTravail=await etatTravail();
+  for(const [c,v] of Object.entries(avantTravail2.complet.cuisine))assert.equal(apresTravail.bareme.cuisine[c],Math.round(v*1.1*100)/100,'travail × 1,1, '+c);
+  assert.match(await page.locator(`${B} [data-cal-application="Cuisinier"]`).last().innerText(),/travail × 1,1 au barème \(calage du travail\)/);
+  assert.equal((await reglages()).applications.at(-1).source,'travail');
+  const iTravail=(await reglages()).applications.length-1;
+  await page.locator(`${B} [data-cal=annuler-application][data-i="${iTravail}"]`).click();await attendre(400);
+  assert.deepEqual(await etatTravail(),avantTravail2,'Annuler : le barème d’avant');
+  // Le barème a bougé entre-temps (sa version) : le calage du travail est à refaire, il ne s'applique plus tel quel.
+  assert.equal(await page.locator(`${B} [data-cal-travail-refaire]`).count(),1);
+  assert.equal(await page.locator(`${B} [data-cal=appliquer-travail]`).count(),0);
+  assert.equal(await page.evaluate(()=>Sim.calage.travail.lignes[0].applique),undefined,'annulé : plus « appliqué »');
+  // Le classeur du calage : un rejeu à jour dans la Comparaison ; un calage du travail à refaire n'y va pas.
+  await page.locator('#journee-periode [data-pv=lancer]').click();
+  await page.waitForFunction(()=>Sim.periode.etat()==='a-jour',null,{timeout:120000});await attendre(300);
+  assert.equal(await page.locator(`${B} [data-cal-rejeu-relancer]`).count(),1,'le rejeu est à relancer');
+  await page.locator(`${B} [data-cal=rejouer]`).click();
+  await page.waitForFunction(()=>!Sim.calage.calcul&&Sim.calage.rejeu&&Sim.calage.rejeu.cle===Sim.calage.cleDuRejeu(),null,{timeout:120000});await attendre(200);
+  const x4=await T.lireClasseur(new Uint8Array(fs.readFileSync(await telecharger(()=>page.locator(`${B} [data-cal=exporter]`).click()))));
+  assert.ok(x4.find(f=>f.nom==='Comparaison').lignes.some(l=>l[2]==='rejeu : heures supp du jour'));
+  const cal4=x4.find(f=>f.nom==='Calage');
+  assert.ok(!cal4||!cal4.lignes.some(l=>l[2]==='calage du travail'),'à refaire : pas dans le classeur');
+
+  // Le planning reste en mémoire : la sauvegarde ne le garde pas.
+  assert.doesNotMatch(JSON.stringify(await reglages()),/planning|Cuisine froide nuit/);
 
   assert.deepEqual(errors,[],'aucune erreur de page');
   console.log('calage-browser : ok');

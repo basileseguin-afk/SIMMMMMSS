@@ -12,10 +12,13 @@
  *      node outils/simuler-periode.cjs sauvegarde.json vols-dates.csv|vols-dates.xlsx [options.json] > periode.json
  *          --sans-detail      sans le résultat complet de chaque journée (un fichier léger)
  *          --xlsx periode.xlsx  écrit aussi le classeur de la période, celui de « Exporter les résultats »
+ *          --planning planning.csv|planning.xlsx  un rejeu à effectif imposé (évolution 11 f) : chaque jour qui a
+ *                             des lignes de planning se joue avec ses équipes, leurs horaires et leurs personnes
  *
  *  Le résultat : { periode, bilan, journees: [{ date, departs, retours, options, resultat }] }.
  *  `options` d'une journée : celles qui la font rejouer seule par
- *  outils/simuler-journee.cjs, au champ près (le banc s'en sert pour vérifier).
+ *  outils/simuler-journee.cjs, au champ près (le banc s'en sert pour vérifier) ;
+ *  une journée rejouée avec son planning n'en a pas (`rejeu: true`).
  *  ⚠ Une sauvegarde contient le plan réel de l'unité : elle ne va jamais dans
  *  le dépôt (`.gitignore` refuse `ory-sauvegarde*.json`), le résultat non plus.
  * ==========================================================================*/
@@ -29,11 +32,27 @@ const E = require('../echanges.js');
 const { lireJson } = require('./simuler-journee.cjs');
 const R = require('../moteur/reel.js');
 const C = require('../moteur/calage-periode.js');
+const PL = require('../moteur/planning.js');
 
-const USAGE = 'Usage : node outils/simuler-periode.cjs sauvegarde.json vols-dates.csv|vols-dates.xlsx [options.json] [--sans-detail] [--xlsx periode.xlsx] > periode.json';
+const USAGE = 'Usage : node outils/simuler-periode.cjs sauvegarde.json vols-dates.csv|vols-dates.xlsx [options.json] [--sans-detail] [--xlsx periode.xlsx] [--planning planning.csv] > periode.json';
 
-/** Joue la période : rend { periode, bilan, journees } (sans les journées avec `detail: false`). */
-async function simulerPeriode(cheminSauvegarde, cheminVols, cheminOptions, { detail = true } = {}) {
+/**
+ * Le planning d'un fichier (CSV, ou la feuille « Planning » d'un classeur), lu contre l'unité de la sauvegarde :
+ * ses services (identifiants et noms) et ses équipes.
+ */
+async function planningDuFichier(chemin, sauvegarde, options) {
+  const u = J.uniteDeLaSauvegarde(sauvegarde, options || {});
+  const noms = J.argumentsDeLUnite(u, [], { delaiChargement: J.delaiDe(options || {}) }).noms;
+  try {
+    if (fs.statSync(chemin).size > 50 * 1024 * 1024) throw new Error('fichier trop volumineux (50 Mo au plus).');
+    const octets = fs.readFileSync(chemin);
+    const contenu = /\.xlsx$/i.test(chemin) ? await T.lireClasseur(new Uint8Array(octets)) : octets.toString('utf8');
+    return PL.lireFichier(path.basename(chemin), contenu, { services: Object.entries(noms).map(([id, nom]) => ({ id, nom })), ateliers: u.etat.ateliers || [] });
+  } catch (e) { throw new Error('planning : ' + e.message); }
+}
+
+/** Joue la période : rend { periode, bilan, journees } (sans les journées avec `detail: false`) ; avec un planning, un rejeu. */
+async function simulerPeriode(cheminSauvegarde, cheminVols, cheminOptions, { detail = true, planning: cheminPlanning = null } = {}) {
   const sauvegarde = lireJson(cheminSauvegarde, 'sauvegarde', 20 * 1024 * 1024);
   const options = cheminOptions ? lireJson(cheminOptions, 'options', 1024 * 1024) : {};
   if (!options || typeof options !== 'object' || Array.isArray(options)) throw new Error('options : un objet JSON est attendu.');
@@ -41,14 +60,17 @@ async function simulerPeriode(cheminSauvegarde, cheminVols, cheminOptions, { det
   try { vols = await J.volsDuFichier(new File([fs.readFileSync(cheminVols)], path.basename(cheminVols))); }
   catch (e) { throw new Error('vols : ' + e.message); }
   if (!PE.estDate(vols)) throw new Error('vols : le programme n’est pas daté (colonne date, docs/FORMATS_EXCEL.md) ; une seule journée : node outils/simuler-journee.cjs.');
-  const p = PE.depuisSauvegarde(sauvegarde, vols, options, { detail });
+  const planning = cheminPlanning ? await planningDuFichier(cheminPlanning, sauvegarde, options) : null;
+  const p = PE.depuisSauvegarde(sauvegarde, vols, options, { detail, ...(planning ? { planning } : {}) });
   // Une politique d'effectif dans la sauvegarde (banc d'essai, évolution 11 d) : le prévu calé de chaque jour, même sans réel.
   const prevu = prevuDeLaSauvegarde(sauvegarde, p.bilan);
   return {
-    periode: { ...p.periode, sauvegarde: path.basename(cheminSauvegarde), vols: path.basename(cheminVols), options },
+    periode: { ...p.periode, sauvegarde: path.basename(cheminSauvegarde), vols: path.basename(cheminVols), options,
+      ...(cheminPlanning ? { planning: path.basename(cheminPlanning) } : {}) },
     bilan: p.bilan, ...(prevu ? { prevuCale: prevu } : {}),
+    // Une journée rejouée avec son planning (évolution 11 f) n'a pas d'`options` : simuler-journee ne rejoue pas un planning.
     ...(detail ? { journees: p.journees.map(j => ({ date: j.date, departs: j.departs, retours: j.retours,
-      options: PE.optionsDeRejeu(options, j.entree), resultat: j.resultat })) } : {}),
+      ...(planning && planning.jours[j.date] ? { rejeu: true } : { options: PE.optionsDeRejeu(options, j.entree) }), resultat: j.resultat })) } : {}),
     // Pour l'export Excel de la période (le même que celui de la page) : les extraits, hors du JSON.
     _journees: p.journees, _vols: vols
   };
@@ -86,20 +108,22 @@ function ecrireJson(sortie, flux) {
 
 if (require.main === module) {
   const brut = process.argv.slice(2), drapeaux = [], fichiers = [];
-  let xlsx = null;
+  let xlsx = null, planning = null;
   for (let i = 0; i < brut.length; i++) {
     if (brut[i] === '--xlsx') { xlsx = brut[++i] || ''; drapeaux.push('--xlsx'); }
+    else if (brut[i] === '--planning') { planning = brut[++i] || ''; drapeaux.push('--planning'); }
     else (brut[i].startsWith('--') ? drapeaux : fichiers).push(brut[i]);
   }
-  const inconnus = drapeaux.filter(d => d !== '--sans-detail' && d !== '--xlsx');
-  if (inconnus.length || fichiers.length < 2 || fichiers.length > 3 || xlsx === '' || (xlsx && !/\.xlsx$/i.test(xlsx))) { console.error(USAGE); process.exit(2); }
+  const inconnus = drapeaux.filter(d => d !== '--sans-detail' && d !== '--xlsx' && d !== '--planning');
+  if (inconnus.length || fichiers.length < 2 || fichiers.length > 3 || xlsx === '' || (xlsx && !/\.xlsx$/i.test(xlsx)) || planning === '') { console.error(USAGE); process.exit(2); }
   const debut = Date.now();
-  simulerPeriode(fichiers[0], fichiers[1], fichiers[2], { detail: !drapeaux.includes('--sans-detail') })
+  simulerPeriode(fichiers[0], fichiers[1], fichiers[2], { detail: !drapeaux.includes('--sans-detail'), planning })
     .then(sortie => {
       if (xlsx) fs.writeFileSync(xlsx, classeurDeLaPeriode(sortie));
       ecrireJson(sortie, process.stdout);
       if (xlsx) console.error('Classeur de la période : ' + xlsx + '.');
       const p = sortie.periode;
+      if (p.rejeu) console.error('Rejeu à effectif imposé : ' + p.rejeu.joursAvecPlanning + ' jour' + (p.rejeu.joursAvecPlanning > 1 ? 's' : '') + ' de vols avec leur planning (' + p.planning + ').');
       for (const d of p.joursSansVol) console.error('Aucun vol le ' + PE.dateLongue(d) + ' : jour sans vol ou oubli ?');
       console.error('Période jouée : ' + p.jours + (p.jours > 1 ? ' journées' : ' journée') + ' de vols, du ' + PE.dateLongue(p.debut) + ' au ' + PE.dateLongue(p.fin)
         + ' (' + p.joursIncomplets.length + ' jour' + (p.joursIncomplets.length > 1 ? 's' : '') + ' de travail incomplet' + (p.joursIncomplets.length > 1 ? 's' : '') + '), en ' + ((Date.now() - debut) / 1000).toFixed(1) + ' s.');
@@ -107,4 +131,4 @@ if (require.main === module) {
     .catch(e => { console.error('Période non jouée : ' + e.message); process.exitCode = 1; });
 }
 
-module.exports = { simulerPeriode, ecrireJson, classeurDeLaPeriode };
+module.exports = { simulerPeriode, ecrireJson, classeurDeLaPeriode, planningDuFichier };

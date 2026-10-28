@@ -78,8 +78,13 @@
     return feuille('Réel', lignes.concat(rangs.map(r => r.l)), 2);
   }
 
-  /** Comparaison : par ligne, ses jours, ses mois, la période ; toute l'unité ; les heures supp par mois. */
-  function feuilleComparaison(c) {
+  /**
+   * Comparaison : par ligne, ses jours, ses mois, la période ; toute l'unité ; les heures supp par mois. Un
+   * rejeu (évolution 11 f ; `rejeu`, sa comparaison, ou `c` elle-même quand la période est un rejeu) ajoute,
+   * par ligne, ses heures supp de chaque jour et de la période, et ses lots en retard ; pour l'unité, les
+   * nuits de plonge ouvertes.
+   */
+  function feuilleComparaison(c, rejeu) {
     const T_ = T(), lignes = [['Ligne', 'Couvre', 'Niveau', 'Jour', 'Mois', 'Unité', 'Réel', 'Simulé', 'Écart', 'Jours', 'Erreur', 'Biais', 'Corrélation']];
     const bloc = (nom, couvre, x, avecCorrelation) => {
       for (const j of x.jours) lignes.push([nom, couvre, 'jour', T_.celluleDate(j.date), j.date.slice(0, 7), 'ETP', n3(j.reel), n3(j.simule), n3(j.ecart), null, null, null, null]);
@@ -91,6 +96,18 @@
     if (c.unite) bloc('Toute l’unité', 'toutes les lignes', c.unite, false);
     for (const l of c.lignes || []) for (const h of l.heuresSupp || [])
       lignes.push([l.nom, l.couvre, 'heures supp du mois', null, h.mois, 'h', n2(h.reel), n2(h.simule), n2(h.simule - h.reel), h.jours, null, null, null]);
+    const r = rejeu || ((c.lignes || []).some(l => l.rejeu) ? c : null);
+    if (r) {
+      for (const l of r.lignes || []) if (l.rejeu) {
+        for (const j of l.jours) lignes.push([l.nom, l.couvre, 'rejeu : heures supp du jour', T_.celluleDate(j.date), j.date.slice(0, 7), 'h', n2(j.heuresSuppReelles), n2(j.heuresSuppSimulees),
+          j.heuresSuppReelles === null ? null : n2(j.heuresSuppSimulees - j.heuresSuppReelles), null, null, null, null]);
+        const h = l.rejeu.heuresSupp;
+        lignes.push([l.nom, l.couvre, 'rejeu : heures supp, période', null, null, 'h', null, null, null, h.jours, n2(h.mae), n2(h.biais), null]);
+        if (l.rejeu.lotsEnRetard !== undefined) lignes.push([l.nom, l.couvre, 'rejeu : lots en retard', null, null, 'lots', null, l.rejeu.lotsEnRetard, null, l.jours.length, null, null, null]);
+      }
+      for (const w of (r.unite && r.unite.rejeu && r.unite.rejeu.jours) || [])
+        lignes.push(['Toute l’unité', 'toutes les lignes', 'rejeu : nuits de plonge ouvertes', T_.celluleDate(w.date), w.date.slice(0, 7), 'nuits', null, w.nuitsOuvertes, null, null, null, null, null]);
+    }
     return feuille('Comparaison', lignes, 3);
   }
 
@@ -100,7 +117,7 @@
    * erreurs, verdict de chaque règle), « b + a × » quand il se confond avec
    * « × a », l'erreur de chaque découpage laissé de côté ; l'unité avant / après.
    */
-  function feuilleCalage(rapport) {
+  function feuilleCalage(rapport, travail) {
     const REGLES = [['battreReferences', 'Plus juste que les références'], ['stabilite', 'Stable'], ['bornes', 'Bornes'], ['wilcoxon', 'Wilcoxon'], ['placebo', 'Placebo']];
     const JOURS = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'], fr = x => (n3(x) === null ? '—' : String(n3(x)).replace('.', ','));
     const lignes = [['Ligne', 'Couvre', 'Rang', 'Modèle', 'Accepté', 'a', 'a min', 'a max', 'b', 'b min', 'b max', 'Constante', 'Constante min', 'Constante max',
@@ -132,6 +149,15 @@
         for (const x of m.erreurs.parMois) lignes.push(rangee({ ...id, rang: rang + ', un mois laissé de côté', modele: m.nom, mois: n3(x.erreur), part: x.mois }));
       }
     }
+    // Le calage du travail (évolution 11 f) : le facteur des homme-minutes de chaque ligne de services, ses règles 1 à 4.
+    for (const l of (travail && travail.lignes) || []) {
+      const id = { ligne: l.nom, couvre: (l.services || []).join(', ') };
+      if (!l.cale) { lignes.push(rangee({ ...id, rang: 'calage du travail', modele: 'facteur de travail', n: l.jours, validation: l.raison })); continue; }
+      lignes.push(rangee({ ...id, rang: 'calage du travail', modele: 'facteur de travail', accepte: l.accepte ? 'oui' : 'non',
+        parametres: [n3(l.facteur), n3(Math.min(...l.semaines.map(s => s.k))), n3(Math.max(...l.semaines.map(s => s.k))), null, null, null, null, null, null],
+        semaines: n3(l.erreur), regles: REGLES.map(([k]) => (l.regles[k] ? l.regles[k].raison : null)), n: l.jours,
+        validation: l.validation + ' — heures supp : ' + fr(l.erreurMoteur) + ' h par jour avec le barème, ' + fr(l.erreur) + ' h avec le facteur' }));
+    }
     const u = rapport.unite || {};
     for (const [rang, x] of [['avant (moteur)', u.avant], ['après (modèles retenus)', u.apres]]) if (x)
       lignes.push(rangee({ ligne: 'Toute l’unité', couvre: 'le total de chaque jour', rang, semaines: n3(x.mae), n: x.jours, validation: 'biais ' + fr(x.biais) }));
@@ -139,12 +165,13 @@
   }
 
   /**
-   * Le classeur. `x` : { comparaison (moteur/reel.js, comparer), reel (controler), rapport (moteur/calage-periode.js, caler ; facultatif) } ;
+   * Le classeur. `x` : { comparaison (moteur/reel.js, comparer), reel (controler), rapport (moteur/calage-periode.js, caler ; facultatif),
+   *   rejeu (la comparaison d'un rejeu ; facultatif), travail (moteur/calage-travail.js ; facultatif) } ;
    * `ctx` : { periode: { debut, fin, sauvegarde, vols }, reel, correspondance (noms des fichiers), calculeLe }.
    */
   function calageVersClasseur(x, ctx = {}) {
     const c = x.comparaison;
-    return [lisezMoi(c, ctx), feuilleReel(c, x.reel), feuilleComparaison(c)].concat(x.rapport ? [feuilleCalage(x.rapport)] : []);
+    return [lisezMoi(c, ctx), feuilleReel(c, x.reel), feuilleComparaison(c, x.rejeu || null)].concat(x.rapport || x.travail ? [feuilleCalage(x.rapport || { lignes: [] }, x.travail || null)] : []);
   }
 
   const api = { calageVersClasseur };

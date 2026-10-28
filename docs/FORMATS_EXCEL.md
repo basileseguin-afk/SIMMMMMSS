@@ -568,6 +568,36 @@ Ce que la page exporte, et ce que l'outil `caler-periode` lit :
   l'utilisateur, les cellules réintégrées (`|titulaires`, `|interim` ou
   `|supp` pour des heures négatives). Des clés, aucune heure.
 
+### Le planning (le rejeu à effectif imposé)
+
+Banc d'essai, évolution 11 (f). Un CSV (séparateur `;`, `,` ou tabulation),
+ou la feuille **« Planning »** d'un classeur (la seule feuille d'un CSV), comme
+le planning du calage de la version 2 (`CALAGE.md`). Une ligne par jour des
+vols et par équipe. Les en-têtes, les services et les équipes ne tiennent
+compte ni de la casse ni des accents ; un service ou une équipe se
+reconnaissent aussi à leur identifiant. Un service ou une équipe inconnus, un
+nom qui désigne deux équipes du service, une heure, des personnes ou un
+jour illisibles, une équipe deux fois le même jour : le fichier est refusé
+entier, et le message nomme la ligne. Le planning reste en mémoire, le temps
+de la page.
+
+| Colonne | Obligatoire | Contenu |
+|---|---|---|
+| `date` | oui | le jour des vols que l'équipe prépare : `AAAA-MM-JJ`, `JJ/MM/AAAA` ou une date Excel |
+| `service` | oui | le service, par son nom (ou son identifiant) |
+| `equipe` | oui | l'équipe, par son nom dans ce service |
+| `debut`, `fin` | oui | sa vacation, `HH:MM` ; une fin avant le début passe minuit |
+| `personnes` | oui | ses personnes ce jour-là, un entier de 0 à 999 |
+| `jour` | non | vide : le jour de l'équipe dans la sauvegarde ; 0 : le jour des vols ; −1 : la veille (−3 au plus) ; +1 : le lendemain (une plonge) |
+
+Un jour qui a des lignes se rejoue avec elles : chaque équipe nommée prend
+son début, sa présence (fin − début) et ses personnes, à effectif imposé (une
+équipe constante le reste) ; une
+équipe d'un service qui a des lignes ce jour-là, mais pas elle, ne travaille
+pas ; un service sans ligne garde ses équipes ; les heures sup vont jusqu'à
+12 h. Un jour sans ligne se joue comme aujourd'hui. « Modèle de planning »,
+dans la page, donne un planning fictif de deux jours.
+
 ### Le classeur du calage
 
 `node outils/caler-periode.cjs … --xlsx calage.xlsx`, ou « Exporter la
@@ -578,8 +608,8 @@ comparaison (Excel) » dans la page : le même classeur
 |---|---|---|
 | **Lisez-moi** | — | la période, les fichiers, la date du calcul, les bases, les jours comparés et écartés, les rôles sans ligne, les anomalies, les définitions |
 | **Réel** | jour × rôle | `Date`, `Rôle`, `Heures titulaires`, `Heures intérim`, `Heures supp`, `Base titulaires`, `Base intérim`, `ETP`, `Ligne`, `État` (compté, sans ligne, jour de travail incomplet, hors période, heures écartées, écartée : la raison) |
-| **Comparaison** | ligne × jour, puis ses mois et la période ; toute l'unité ; les heures supp par mois | `Ligne`, `Couvre`, `Niveau` (jour, mois, période, heures supp du mois), `Jour`, `Mois`, `Unité` (ETP ou h), `Réel`, `Simulé`, `Écart`, `Jours`, `Erreur`, `Biais`, `Corrélation` |
-| **Calage** (quand il est fait) | ligne : le modèle retenu, puis chaque référence et chaque candidat (« b + a × » aussi quand il se confond avec « × a ») ; puis l'erreur de chaque découpage, une rangée par modèle et par semaine ou mois laissé de côté ; toute l'unité avant et après | `Ligne`, `Couvre`, `Rang` (retenu, référence, candidat, pas de calage ; « référence, une semaine laissée de côté », « candidat, un mois laissé de côté »…), `Modèle`, `Accepté`, `a`, `a min`, `a max`, `b`, `b min`, `b max`, `Constante`, `Constante min`, `Constante max` (sur tous les jours ; min et max sur les découpages, semaines et mois), `Facteurs du jour (lun. → dim.)` (et leur plage), `Erreur par semaine (ETP)`, `Erreur par mois (ETP)`, une colonne par règle (`Plus juste que les références`, `Stable`, `Bornes`, `Wilcoxon`, `Placebo` : le verdict et sa raison), `σ (ETP)`, `Bande P10–P90 (± ETP)`, `Jours`, `Validation`, `Laissé de côté` (la semaine ISO ou le mois d'une rangée de découpage) |
+| **Comparaison** | ligne × jour, puis ses mois et la période ; toute l'unité ; les heures supp par mois ; avec un rejeu (f), les heures supp de chaque jour et de la période, les lots en retard, les nuits de plonge ouvertes | `Ligne`, `Couvre`, `Niveau` (jour, mois, période, heures supp du mois ; « rejeu : heures supp du jour », « rejeu : heures supp, période », « rejeu : lots en retard », « rejeu : nuits de plonge ouvertes »), `Jour`, `Mois`, `Unité` (ETP ou h), `Réel`, `Simulé`, `Écart`, `Jours`, `Erreur`, `Biais`, `Corrélation` |
+| **Calage** (quand il est fait) | ligne : le modèle retenu, puis chaque référence et chaque candidat (« b + a × » aussi quand il se confond avec « × a ») ; puis l'erreur de chaque découpage, une rangée par modèle et par semaine ou mois laissé de côté ; le calage du travail (f), une rangée « calage du travail » par ligne de services (`a` : le facteur, `a min` et `a max` : sa plage d'une semaine laissée de côté à l'autre ; `Erreur par semaine` : l'erreur des heures supp, en heures par jour ; les règles 1 à 4) ; toute l'unité avant et après | `Ligne`, `Couvre`, `Rang` (retenu, référence, candidat, pas de calage ; « référence, une semaine laissée de côté », « candidat, un mois laissé de côté »…), `Modèle`, `Accepté`, `a`, `a min`, `a max`, `b`, `b min`, `b max`, `Constante`, `Constante min`, `Constante max` (sur tous les jours ; min et max sur les découpages, semaines et mois), `Facteurs du jour (lun. → dim.)` (et leur plage), `Erreur par semaine (ETP)`, `Erreur par mois (ETP)`, une colonne par règle (`Plus juste que les références`, `Stable`, `Bornes`, `Wilcoxon`, `Placebo` : le verdict et sa raison), `σ (ETP)`, `Bande P10–P90 (± ETP)`, `Jours`, `Validation`, `Laissé de côté` (la semaine ISO ou le mois d'une rangée de découpage) |
 
 ---
 

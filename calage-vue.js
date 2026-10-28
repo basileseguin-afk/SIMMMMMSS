@@ -18,6 +18,7 @@
   'use strict';
 
   const R = () => root.OrlyReel, T = () => root.OrlyTableur, C = () => root.OrlyCalagePeriode;
+  const PE = () => root.OrlyPeriode, PL = () => root.OrlyPlanning, CT = () => root.OrlyCalageTravail;
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   // « + 0 » : un −0 (un biais négatif arrondi) s'écrit 0.
   const nombre = (x, k = 2) => (x == null || !Number.isFinite(x) ? '—' : (Math.round(x * 10 ** k) / 10 ** k + 0).toLocaleString('fr-FR', { maximumFractionDigits: k }));
@@ -35,12 +36,16 @@
      *   signature(correspondance) — l'empreinte de ce que suppose un calage (barème, équipes, correspondance)
      *   appliquerTravail(services, k) → avant ; annulerTravail(avant) — le travail des services × k au barème, et le retour
      *   journee()       — la journée affichée en jour de travail (moteur/calage-periode.js, jourDeLaJournee), ou null
+     *   ateliers()      — les équipes de l'unité (pour lire un planning)
+     *   periodeDuRejeu() — { unite, vols, options } : la période à rejouer avec le planning ; signaturePeriode() — ce qui la rend « à relancer »
      * } */
     constructor(a) {
       this.a = a; this.lu = null; this.fichier = null; this.erreur = null; this.erreurCorrespondance = null; this.rapport = null;
       const r = this.relire();
       this.correspondance = r.correspondance; this.decisions = r.decisions;
       this.politique = r.politique || null; this.applications = r.applications || [];
+      // Le planning, le rejeu et le calage du travail (évolution 11 f) : en mémoire, le temps de la page.
+      this.planning = null; this.fichierPlanning = null; this.erreurPlanning = null; this.rejeu = null; this.travail = null; this.calcul = null;
       this.box = null;
     }
     /** Les réglages gardés, relus ; vides s'ils sont illisibles. */
@@ -77,6 +82,96 @@
       } catch (e) { this.erreur = 'Réel refusé — ' + e.message.replace(/[.\s]*$/, '') + '. Rien n’a été remplacé.'; }
       this.rendre();
     }
+    /* ---- le planning, le rejeu, le calage du travail (évolution 11 f) ---- */
+
+    async importerPlanning(fichier) {
+      if (!fichier) return;
+      try {
+        const p = PL().lirePlanning(await T().lireFichier(fichier, MAX_REEL), { services: this.a.services(), ateliers: this.a.ateliers ? this.a.ateliers() : [] });
+        this.planning = p; this.fichierPlanning = fichier.name; this.erreurPlanning = null; this.rejeu = null; this.travail = null;
+        this.a.notifier('Planning importé : ' + p.lignes + ' lignes, ' + p.dates.length + ' jours de vols, du ' + dateFr(p.dates[0]) + ' au ' + dateFr(p.dates[p.dates.length - 1]) + '.');
+      } catch (e) { this.erreurPlanning = 'Planning refusé — ' + e.message.replace(/[.\s]*$/, '') + '. Rien n’a été remplacé.'; }
+      this.rendre();
+    }
+    /** Ce qu'un rejeu suppose : la période (sa signature) et le planning. */
+    cleDuRejeu() {
+      return (this.a.signaturePeriode ? this.a.signaturePeriode() : '') + '|' + (this.planning ? C().empreinte(JSON.stringify(this.planning.jours)) : '');
+    }
+    /** Ce qu'un calage du travail suppose de plus : le réel, ses décisions, la correspondance. */
+    cleDuTravail() {
+      return this.cleDuRejeu() + '|' + C().empreinte(JSON.stringify([this.lu ? this.lu.lignes : null, this.decisions, this.correspondance]));
+    }
+    /**
+     * Lance un calcul jour par jour, avec sa progression et « Annuler » : le rejeu de la période avec le planning
+     * (moteur/periode.js), ou le calage du travail (moteur/calage-travail.js), qui la rejoue facteur après facteur.
+     */
+    lancerCalcul(type) {
+      if (this.calcul || !this.planning) return;
+      const x = this.a.periodeDuRejeu ? this.a.periodeDuRejeu() : null;
+      if (!x || !x.vols) { this.erreurPlanning = 'Importez un programme de vols daté : le rejeu joue une période.'; this.rendre(); return; }
+      let p;
+      try {
+        p = type === 'rejeu' ? PE().creerPeriode(x.unite, x.vols, { ...x.options, planning: this.planning })
+          : CT().creerCalageTravail({ unite: x.unite, vols: x.vols, planning: this.planning, controle: this.controle(), correspondance: this.correspondance, options: x.options,
+            services: this.a.services().map(s => s.id) });
+      } catch (e) { this.erreurPlanning = (type === 'rejeu' ? 'Rejeu impossible — ' : 'Calage du travail impossible — ') + e.message.replace(/[.\s]*$/, '') + '.'; this.rendre(); return; }
+      const c = this.calcul = { type, p, cle: type === 'rejeu' ? this.cleDuRejeu() : this.cleDuTravail() };
+      this.erreurPlanning = null;
+      // Chaque pas joue quelques journées, puis rend la main : la page reste vivante, Annuler répond.
+      const pas = () => {
+        if (this.calcul !== c) return;
+        try { for (let k = 0; k < 3 && !p.fini; k++) p.suivant(); }
+        catch (e) { this.calcul = null; this.erreurPlanning = 'Calcul arrêté — ' + e.message; this.rendre(); return; }
+        if (!p.fini) { this.rendreProgression(); setTimeout(pas, 0); return; }
+        this.calcul = null;
+        if (type === 'rejeu') {
+          this.rejeu = { resultat: p.resultat(), cle: c.cle };
+          this.a.notifier('Rejeu fait : ' + this.rejeu.resultat.periode.rejeu.joursAvecPlanning + ' jours de vols avec leur planning.');
+        } else {
+          this.travail = { ...p.resultat(), cle: c.cle };
+          const n = this.travail.lignes.filter(l => l.cale && l.accepte).length;
+          this.a.notifier('Calage du travail fait : ' + n + ' ligne' + (n > 1 ? 's' : '') + ' avec un facteur accepté.');
+        }
+        this.rendre();
+      };
+      this.rendre(); setTimeout(pas, 0);
+    }
+    annulerCalcul() {
+      if (!this.calcul) return;
+      const t = this.calcul.type; this.calcul = null; this.rendre();
+      this.a.notifier(t === 'rejeu' ? 'Rejeu annulé.' : 'Calage du travail annulé.');
+    }
+    /** La progression du calcul, sans tout redessiner. */
+    rendreProgression() {
+      const el = this.box && this.box.querySelector('[data-cal-progression]'), c = this.calcul;
+      if (!el || !c) return;
+      el.max = c.p.total; el.value = c.p.fait;
+      const t = this.box.querySelector('[data-cal-progression-texte]');
+      if (t) t.textContent = c.p.fait + ' / ' + c.p.total + ' journées jouées';
+    }
+    /** La comparaison du rejeu au réel (les heures supp jour par jour, les nuits de plonge, les lots en retard), ou null. */
+    comparaisonRejeu() {
+      const c = this.controle();
+      if (!this.rejeu || !c) return null;
+      try { return R().comparer(this.rejeu.resultat.bilan, c, this.correspondance, { rejeu: true, services: this.a.services().map(s => s.id) }); }
+      catch (e) { return null; }
+    }
+    /** « Appliquer au barème » le facteur de travail d'une ligne (accepté) : ses services × k, comme un × a de la politique. */
+    appliquerFacteurDeTravail(nom) {
+      const t = this.travail && this.travail.cle === this.cleDuTravail() && this.travail.lignes.find(x => x.nom === nom && x.cale && x.accepte && !x.applique);
+      const l = this.correspondance.lignes.find(x => x.nom === nom);
+      if (!t || !l || !l.services) return;
+      const refus = this.refusAppliquer({ services: t.services, parametres: { a: t.facteur } }, l);
+      const comp = refus ? null : this.comparaison();
+      const erreursAvant = comp ? Object.fromEntries(comp.lignes.map(x => [x.nom, x.periode.mae]).filter(([, e]) => Number.isFinite(e))) : {};
+      const r = refus ? null : this.a.appliquerTravail(l.services, t.facteur);
+      if (refus || r.refus) { this.a.notifier(nom + ' : pas appliqué — ' + (refus || r.refus) + '.'); this.rendre(); return; }
+      this.applications.push({ ligne: nom, services: l.services.slice(), a: t.facteur, date: new Date().toISOString(), avant: r.avant, erreursAvant, source: 'travail' });
+      t.applique = true; this.enregistrer();
+      this.a.notifier(nom + ' : travail × ' + nombre(t.facteur, 2) + ' au barème (calage du travail). La période est à relancer.');
+      this.rendre();
+    }
+
     /** Le réel contrôlé, avec les décisions ; null sans réel. */
     controle() { return this.lu ? R().controler(this.lu, this.decisions) : null; }
     /** La comparaison, ou null (sans réel, sans période à jour, ou une correspondance refusée). */
@@ -138,7 +233,10 @@
     exporterClasseur() {
       const c = this.comparaison(); if (!c) return;
       const p = this.a.periode ? this.a.periode() : null;
-      const octets = T().ecrireClasseur(root.OrlyEchangesCalage.calageVersClasseur({ comparaison: c, reel: this.controle(), rapport: this.rapport },
+      // Le rejeu et le calage du travail (évolution 11 f), s'ils sont faits.
+      const octets = T().ecrireClasseur(root.OrlyEchangesCalage.calageVersClasseur({ comparaison: c, reel: this.controle(), rapport: this.rapport,
+        ...(this.rejeu && this.rejeu.cle === this.cleDuRejeu() ? { rejeu: this.comparaisonRejeu() } : {}),
+        ...(this.travail && this.travail.cle === this.cleDuTravail() ? { travail: this.travail } : {}) },
         { periode: p || {}, reel: this.fichier, correspondance: 'la page', calculeLe: new Date() }));
       T().telecharger('ory-calage' + (p ? '-' + p.debut + '-au-' + p.fin : '') + '.xlsx', octets);
     }
@@ -206,6 +304,8 @@
       // Le modèle de la ligne revient, s'il est encore celui que l'application a laissé.
       if (this.politique && x.modele) this.politique = { ...this.politique,
         lignes: this.politique.lignes.map(m => (m.nom === x.ligne && m.applique ? x.modele : m)) };
+      // Un facteur du calage du travail annulé : il peut s'appliquer de nouveau.
+      if (x.source === 'travail' && this.travail) for (const l of this.travail.lignes) if (l.nom === x.ligne) delete l.applique;
       this.applications.splice(i, 1); this.enregistrer();
       this.a.notifier(x.ligne + ' : le barème d’avant est rétabli.');
       this.rendre();
@@ -229,6 +329,11 @@
       else if (f === 'oublier') { this.politique = null; this.enregistrer(); this.rendre(); }
       else if (f === 'appliquer') this.appliquer(b.dataset.nom);
       else if (f === 'annuler-application') this.annulerApplication(+b.dataset.i);
+      else if (f === 'modele-planning') T().telecharger('planning-modele.csv', PL().modeleCsv({ services: this.a.services(), ateliers: this.a.ateliers ? this.a.ateliers() : [] }), 'text/csv;charset=utf-8');
+      else if (f === 'rejouer') this.lancerCalcul('rejeu');
+      else if (f === 'caler-travail') this.lancerCalcul('travail');
+      else if (f === 'annuler-calcul') this.annulerCalcul();
+      else if (f === 'appliquer-travail') this.appliquerFacteurDeTravail(b.dataset.nom);
       else if (f === 'reintegrer') this.changerDecisions(d => { d.reintegres.push(b.dataset.cle); });
       else if (f === 'retablir') this.changerDecisions(d => { d.ecartes.cellules = d.ecartes.cellules.filter(k => k !== b.dataset.cle); });
       else if (f === 'retablir-jour') this.changerDecisions(d => { d.ecartes.jours = d.ecartes.jours.filter(k => k !== b.dataset.date); });
@@ -241,6 +346,7 @@
       const t = e.target, i = +t.dataset.ligne;
       if (t.id === 'calage-reel') { this.importer(t.files[0]); t.value = ''; return; }
       if (t.id === 'calage-correspondance') { this.importerCorrespondance(t.files[0]); t.value = ''; return; }
+      if (t.id === 'calage-planning') { this.importerPlanning(t.files[0]); t.value = ''; return; }
       const f = t.dataset.calChamp; if (!f) return;
       if (f === 'nom') this.changerCorrespondance(c => { c.lignes[i].nom = t.value; });
       else if (f === 'ajout-role' && t.value) this.changerCorrespondance(c => { c.lignes[i].roles.push(t.value); });
@@ -287,6 +393,9 @@
           <button type="button" class="btn btn-sm" data-cal="choisir" data-pour="calage-reel">Importer le réel (CSV, Excel)</button>
           <input type="file" id="calage-reel" accept=".csv,.txt,.xlsx" hidden aria-label="Le fichier du réel">
           <button type="button" class="btn btn-sm" data-cal="modele" title="Un réel fictif : trois jours, deux rôles">Modèle CSV</button>
+          <button type="button" class="btn btn-sm" data-cal="choisir" data-pour="calage-planning">Importer le planning (CSV, Excel)</button>
+          <input type="file" id="calage-planning" accept=".csv,.txt,.xlsx" hidden aria-label="Le fichier du planning">
+          <button type="button" class="btn btn-sm" data-cal="modele-planning" title="Un planning fictif : deux jours, une équipe, une nuit">Modèle de planning</button>
           <span class="pc-etat" role="status">${this.erreur ? '<span class="pj-erreur">' + esc(this.erreur) + '</span>'
             : this.lu ? esc(this.fichier) + ' : ' + this.lu.lignes.length + ' lignes, ' + ctrl.roles.length + ' rôles, ' + ctrl.jours.length + ' jours.' : 'Aucun réel importé.'}</span>
         </div>
@@ -297,6 +406,7 @@
           : comp ? this.rendreComparaison(comp) + this.rendreRapport() : this.erreurComparaison ? `<p class="pj-erreur" role="alert">Comparaison impossible — ${esc(this.erreurComparaison)}</p>` : ''}
         ${this.rendrePolitique(b, comp)}
         ${this.rendreApplications(comp)}
+        ${this.rendreRejeu()}
       </div>`;
       VueCalage.rendreFocus(box, focus);
       this.rendreJour();
@@ -470,13 +580,85 @@
   };
 
   /**
+   * Le rejeu à effectif imposé (évolution 11 f) : le planning importé, « Rejouer », « Caler le travail », leur
+   * progression et « Annuler » ; la comparaison du rejeu au réel ; le rapport du calage du travail.
+   */
+  VueCalage.prototype.rendreRejeu = function () {
+    if (!this.planning && !this.erreurPlanning) return '';
+    const c = this.calcul, p = this.planning;
+    const etat = this.erreurPlanning ? `<p class="pj-erreur" role="alert" data-cal-erreur-planning>${esc(this.erreurPlanning)}</p>` : '';
+    if (!p) return `<section class="pc-rejeu" aria-label="Le rejeu à effectif imposé"><h3>Le rejeu à effectif imposé</h3>${etat}</section>`;
+    // « Annuler » d'abord : le texte de la progression grandit, le bouton ne bouge pas.
+    const enCours = c ? `<div class="pc-actions" data-cal-calcul="${c.type}"><button type="button" class="btn btn-sm" data-cal="annuler-calcul">Annuler</button>
+        <progress data-cal-progression max="${c.p.total}" value="${c.p.fait}" aria-label="${c.type === 'rejeu' ? 'Le rejeu' : 'Le calage du travail'}"></progress>
+        <span data-cal-progression-texte>${c.p.fait} / ${c.p.total} journées jouées</span></div>` : '';
+    const rejeuAJour = this.rejeu && this.rejeu.cle === this.cleDuRejeu(), travailAJour = this.travail && this.travail.cle === this.cleDuTravail();
+    return `<section class="pc-rejeu" aria-label="Le rejeu à effectif imposé"><h3>Le rejeu à effectif imposé</h3>
+      <p class="mini-note">Le planning <b>${esc(this.fichierPlanning)}</b> : ${p.lignes} lignes, ${p.dates.length} jours de vols, du ${dateFr(p.dates[0])} au ${dateFr(p.dates[p.dates.length - 1])}.
+        Un jour qui a des lignes se rejoue avec les équipes, les horaires et les personnes du planning (une équipe absente de son service ne travaille pas ;
+        des heures sup jusqu’à 12 h) ; les heures supp, les nuits de plonge et les retards se comparent alors au réel, et le travail se cale.
+        Le planning reste dans cette page, le temps de la page.</p>
+      ${etat}
+      <div class="pc-actions"><button type="button" class="btn btn-sm" data-cal="rejouer"${c ? ' disabled' : ''}>Rejouer la période avec le planning</button>
+        <button type="button" class="btn btn-sm" data-cal="caler-travail"${c ? ' disabled' : ''}>Caler le travail</button></div>
+      ${enCours}
+      ${this.rejeu ? this.rendreComparaisonRejeu(rejeuAJour) : ''}
+      ${this.travail ? this.rendreTravail(travailAJour) : ''}</section>`;
+  };
+
+  /** La comparaison du rejeu : par ligne, ses heures supp simulées et réelles jour par jour, ses lots en retard ; les nuits de plonge ouvertes. */
+  VueCalage.prototype.rendreComparaisonRejeu = function (aJour) {
+    const comp = this.comparaisonRejeu();
+    const tete = `<h4>Le rejeu${aJour ? '' : ' <b class="pj-relancer" data-cal-rejeu-relancer>à relancer</b>'}</h4>`;
+    if (!comp) return `<div class="pc-rejeu-comparaison" data-cal-rejeu>${tete}<p class="mini-note pc-attente">Importez le réel pour comparer le rejeu.</p></div>`;
+    const ligne = l => `<li data-cal-rejeu-ligne="${esc(l.nom)}"><details><summary><b>${esc(l.nom)}</b> — heures supp : erreur <span data-cal-rejeu-mae>${nombre(l.rejeu.heuresSupp.mae)}</span> h par jour,
+        biais ${nombre(l.rejeu.heuresSupp.biais)} h, sur ${l.rejeu.heuresSupp.jours} jours (${l.rejeu.joursAvecPlanning} rejoués avec leur planning sur ${l.jours.length})${l.rejeu.lotsEnRetard !== undefined ? ' ; ' + l.rejeu.lotsEnRetard + ' lots en retard' : ''}</summary>
+        <div class="table-scroll"><table class="svc-table pc-table"><thead><tr><th scope="col">Jour de travail</th><th scope="col">Heures supp simulées (h)</th>
+          <th scope="col">Heures supp réelles (h)</th>${l.services ? '<th scope="col">Lots en retard</th>' : ''}</tr></thead>
+        <tbody>${l.jours.map(j => `<tr${j.planning ? '' : ' class="pv-incomplet" title="sans planning : joué comme d’ordinaire, non compté"'}><th scope="row">${dateFr(j.date)}${j.planning ? '' : ' <small>sans planning</small>'}</th><td class="pv-n">${nombre(j.heuresSuppSimulees)}</td><td class="pv-n">${nombre(j.heuresSuppReelles)}</td>
+          ${l.services ? `<td class="pv-n">${j.lotsEnRetard}</td>` : ''}</tr>`).join('')}</tbody></table></div></details></li>`;
+    const nuits = comp.unite.rejeu.jours.filter(w => w.nuitsOuvertes > 0);
+    return `<div class="pc-rejeu-comparaison" data-cal-rejeu>${tete}
+      <ul class="pc-liste pc-lignes">${comp.lignes.map(ligne).join('')}</ul>
+      <p class="mini-note" data-cal-rejeu-nuits>Toute l’unité : ${nuits.length ? 'nuits de plonge ouvertes ' + nuits.map(w => dateFr(w.date) + (w.nuitsOuvertes > 1 ? ' (' + w.nuitsOuvertes + ')' : '')).join(', ') : 'aucune nuit de plonge ouverte'} ;
+        ${comp.unite.rejeu.jours.reduce((n, w) => n + w.lotsEnRetard, 0)} lots en retard sur la période.</p></div>`;
+  };
+
+  /** « Appliquer au barème » un facteur de travail : refusé, le bouton dit pourquoi (comme la politique d'effectif). */
+  VueCalage.prototype.boutonTravail = function (l) {
+    const ligne = this.correspondance.lignes.find(x => x.nom === l.nom) || {};
+    const refus = ligne.services ? this.refusAppliquer({ services: l.services, parametres: { a: l.facteur } }, ligne) : 'la ligne n’a plus de services';
+    const id = 'pc-refus-travail-' + C().empreinte(l.nom);
+    return `<div class="pc-appliquer"><button type="button" class="btn btn-sm" data-cal="appliquer-travail" data-nom="${esc(l.nom)}"${refus ? ' disabled aria-describedby="' + id + '"' : ''}>Appliquer au barème : ${esc(l.nom)} × ${nombre(l.facteur, 2)}</button>
+      ${refus ? `<small class="pc-refus-appliquer" id="${id}">Pas maintenant : ${esc(refus)}.</small>` : ''}</div>`;
+  };
+
+  /** Le calage du travail : par ligne, le facteur, ses règles, l'erreur avant et après ; « Appliquer au barème » un facteur accepté. */
+  VueCalage.prototype.rendreTravail = function (aJour) {
+    const t = this.travail;
+    const ligne = l => (!l.cale ? `<li data-cal-travail="${esc(l.nom)}"><b>${esc(l.nom)}</b> — pas de calage du travail : ${esc(l.raison)}.</li>`
+      : `<li data-cal-travail="${esc(l.nom)}"><details><summary><b>${esc(l.nom)}</b> — travail <span data-cal-facteur>× ${nombre(l.facteur, 2)}</span>
+          (${l.accepte ? 'accepté' : 'refusé'}) ; heures supp : erreur ${nombre(l.erreurMoteur)} h par jour avec le barème, ${nombre(l.erreur)} h avec le facteur ;
+          ${l.jours} jours rejoués avec leur planning (sur ${l.joursCompares} comparés), validation par ${esc(l.validation)}${l.unSeulMois ? ' (un seul mois)' : ''}</summary>
+          <p>${Object.values(l.regles).map(x => `<span class="pc-regle ${x.ok ? 'ok' : 'non'}">${esc(x.raison)}</span>`).join('')}</p>
+          <p class="mini-note">Les facteurs essayés : ${l.essais.map(e => '× ' + nombre(e.k, 2) + ' : ' + nombre(e.erreur) + ' h').join(' · ')}.</p></details>
+          ${l.accepte && !l.applique && aJour ? this.boutonTravail(l) : ''}
+          ${l.applique ? '<small>appliqué au barème</small>' : ''}</li>`);
+    return `<div class="pc-travail" data-cal-travail-rapport><h4>Le calage du travail${aJour ? '' : ' <b class="pj-relancer" data-cal-travail-refaire>à refaire</b>'}</h4>
+      <p class="mini-note">Un facteur par ligne de services sur ses homme-minutes (barème, minutes propres des cases) : une grille de 0,5 à 2, puis ±4 % et ±8 %,
+        qui fait déborder le rejeu comme le réel, jour par jour ; retenu seulement s’il bat le barème et une constante sur des jours qu’il n’a pas appris,
+        stable, dans ses bornes, et confirmé par Wilcoxon.</p>
+      <ul class="pc-liste pc-lignes">${t.lignes.map(ligne).join('')}</ul></div>`;
+  };
+
+  /**
    * Les facteurs appliqués au barème, avec ou sans politique : chacun s'annule
    * (le plus récent d'abord quand deux touchent un même service) ; une autre
    * ligne dont l'erreur a monté de plus de 0,3 ETP depuis se signale.
    */
   VueCalage.prototype.rendreApplications = function (comp) {
     if (!this.applications.length) return '';
-    const l = this.applications.map((a, i) => `<li data-cal-application="${esc(a.ligne)}">${esc(a.ligne)} : travail × ${nombre(a.a, 3)} au barème (${esc((a.date || '').slice(0, 10))})
+    const l = this.applications.map((a, i) => `<li data-cal-application="${esc(a.ligne)}">${esc(a.ligne)} : travail × ${nombre(a.a, 3)} au barème${a.source === 'travail' ? ' (calage du travail)' : ''} (${esc((a.date || '').slice(0, 10))})
         ${C().annulable(this.applications, i) ? `<button type="button" class="btn btn-sm" data-cal="annuler-application" data-i="${i}">Annuler</button>`
           : '<small>annulez d’abord le facteur plus récent sur un même service</small>'}</li>`).join('');
     const degradees = comp ? this.applications.flatMap(a => C().lignesDegradees(a, comp).map(d => ({ ...d, par: a.ligne }))) : [];
