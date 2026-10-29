@@ -5,6 +5,24 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-29 — Banc d'essai, correction 13 : une case vide du réel n'est pas un zéro
+
+- `moteur/reel.js` : des heures supp vides sont inconnues — la cellule n'en a
+  pas, le jour sort de la comparaison des heures supp de la ligne, ses ETP
+  restent ; titulaires et intérim vides (ou `heures` vide) : la cellule n'a pas
+  de réel, comme une ligne absente, raison « heures vides » ; une seule des
+  deux vide vaut 0. Le classeur : « heures vides : pas de réel » dans la
+  feuille Réel ; la page : les cellules aux heures vides avec les anomalies,
+  et le nombre de jours des heures supp quand il diffère de celui des ETP ;
+  l'outil : la raison dans le JSON et la sortie d'erreur. Le signal « heures
+  supp à zéro tout le mois » ne compte que les jours renseignés.
+- Une case à 0 reste un vrai zéro ; avec un réel sans case vide, rien ne
+  change, champ par champ (`tests/reel-complet.attendu.json`).
+- Fichiers : `moteur/reel.js`, `echanges-calage.js`, `calage-vue.js`,
+  `index.html` (empreintes), `docs/FORMATS_EXCEL.md` (§ 5),
+  `docs/BANC_ESSAI.md` (§ 10), `README.md`, `tests/reel-vide.test.cjs`
+  (nouveau), `tests/caler-periode.test.cjs`.
+
 ## 2026-10-29 — Banc d'essai, correction 12 : une cellule absente du réel n'est pas un zéro
 
 - `moteur/reel.js` : une cellule jour × rôle sans ligne dans le fichier, ou

@@ -470,15 +470,19 @@
       // Un rôle absent se signale seulement : son absence retire déjà ces jours des lignes qui l'ont (correction 12).
       const signalees = ctrl.signalees.map(x => `<li data-cal-signal="${esc(x.code)}">${esc(x.raison)}${x.code === 'role-absent' ? ' — ces jours sortent des lignes qui ont ce rôle.'
         : ` <button type="button" class="btn btn-sm" data-cal="ecarter-mois" data-mois="${x.mois}">Écarter les jours de ce mois</button>`}</li>`);
-      if (!ecartees.length && !jours.length && !signalees.length && !d.reintegres.length) return '<p class="mini-note pc-propre">Le réel ne montre aucune anomalie.</p>';
+      // Les cellules aux heures vides (correction 13) : pas de réel, rien à réintégrer ; on les montre.
+      const vides = (ctrl.vides || []).map(x => `<li data-cal-vide="${esc(x.cle)}">${dateFr(x.date)} · ${esc(x.role)} — heures vides${x.suppNonComptees ? ' (ses heures supp non comptées)' : ''}</li>`);
+      if (!ecartees.length && !jours.length && !signalees.length && !d.reintegres.length && !vides.length) return '<p class="mini-note pc-propre">Le réel ne montre aucune anomalie.</p>';
       return `<section class="pc-anomalies" aria-label="Les anomalies du réel"><h3>Les anomalies du réel</h3>
         ${ecartees.length || jours.length ? `<p class="mini-note">Écartées (rien d’autre ne bloque) :</p><ul class="pc-liste pc-ecartees">${ecartees.concat(jours).join('')}</ul>` : ''}
         ${signalees.length ? `<p class="mini-note">À vérifier (rien n’est écarté : à vous de décider) :</p><ul class="pc-liste pc-signalees">${signalees.join('')}</ul>` : ''}
+        ${vides.length ? `<p class="mini-note">Sans réel : les heures des titulaires et de l’intérim sont vides (ces jours sortent des lignes qui ont le rôle) :</p><ul class="pc-liste pc-vides">${vides.join('')}</ul>` : ''}
         ${d.reintegres.length ? `<p class="mini-note">Réintégrées par vous : ${d.reintegres.map(esc).join(', ')}.</p>` : ''}</section>`;
     }
 
     rendreComparaison(c) {
-      const hs = h => (h ? nombre(h.reel, 1) + ' h réelles, ' + nombre(h.simule, 1) + ' h simulées' : '');
+      // Des heures supp vides (correction 13) : comptées sur moins de jours que les ETP, et la page le dit.
+      const hs = (h, n) => (h ? nombre(h.reel, 1) + ' h réelles, ' + nombre(h.simule, 1) + ' h simulées' + (Number.isFinite(n) && h.jours !== n ? ' (sur ' + h.jours + ' jours)' : '') : '');
       // Jour par jour : le réel, le simulé, l'écart ; un jour s'écarte d'ici.
       const jours = x => `<tr class="pc-jours"><td colspan="6"><details><summary>Jour par jour (${x.jours.length})</summary>
           <table class="svc-table pc-table"><thead><tr><th scope="col">Jour</th><th scope="col">Réel (ETP)</th><th scope="col">Simulé (ETP)</th><th scope="col">Écart</th><th scope="col"></th></tr></thead>
@@ -492,9 +496,9 @@
       };
       const ligne = (nom, couvre, x, corr) => `<tbody data-cal-comparaison="${esc(nom)}"><tr class="pc-tete-ligne"><th scope="rowgroup" colspan="6">${esc(nom)} <small>${esc(couvre)}</small></th></tr>
           ${x.mois.map(m => `<tr><th scope="row">${esc(m.mois)}</th><td class="pv-n">${m.jours}</td><td class="pv-n">${nombre(m.mae)}</td><td class="pv-n">${nombre(m.biais)}</td><td class="pv-n">${corr ? nombre(m.correlation) : ''}</td>
-            <td class="pv-n">${hs((x.heuresSupp || []).find(h => h.mois === m.mois))}</td></tr>`).join('')}
+            <td class="pv-n">${hs((x.heuresSupp || []).find(h => h.mois === m.mois), m.jours)}</td></tr>`).join('')}
           <tr class="pv-cumul"><th scope="row">Période</th><td class="pv-n">${x.periode.jours}</td><td class="pv-n" data-cal-mae>${nombre(x.periode.mae)}</td><td class="pv-n">${nombre(x.periode.biais)}</td><td class="pv-n">${corr ? nombre(x.periode.correlation) : ''}</td>
-            <td class="pv-n">${(x.heuresSupp || []).length ? 'heures supp : ' + hs(x.heuresSupp.reduce((n, h) => ({ reel: n.reel + h.reel, simule: n.simule + h.simule }), { reel: 0, simule: 0 })) : ''}</td></tr>
+            <td class="pv-n">${(x.heuresSupp || []).length ? 'heures supp : ' + hs(x.heuresSupp.reduce((n, h) => ({ reel: n.reel + h.reel, simule: n.simule + h.simule, jours: n.jours + h.jours }), { reel: 0, simule: 0, jours: 0 }), x.periode.jours) : ''}</td></tr>
           ${x.jours.length ? jours(x) : ''}${sansReel(x)}</tbody>`;
       // Un rôle d'une ligne absent de tout le fichier (correction 12) : la ligne n'a aucun jour ; on le dit en tête.
       const introuvables = (c.anomalies.signalees || []).filter(x => x.code === 'role-introuvable');

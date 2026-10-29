@@ -123,6 +123,18 @@ test('--xlsx : le classeur du calage, celui de la page ; un classeur pour le ré
   assert.ok(Array.isArray(EC.calageVersClasseur({ comparaison: JSON.parse(x.stdout).comparaison, reel: null })));
 });
 
+test('des cases vides (correction 13) : le JSON et la sortie d’erreur disent les heures vides ; des heures supp vides ne comptent pas', () => {
+  // Les jours comparés : le 02 et le 03 (le 04 est un jour de travail incomplet).
+  const vide = REEL.replace('2026-11-02;Cuisinier;14;7;1', '2026-11-02;Cuisinier;;;').replace('2026-11-03;Agent de bureau;7;0;0', '2026-11-03;Agent de bureau;7;0;');
+  fs.writeFileSync(f('reel-vide.csv'), vide);
+  const r = lancer(OUTIL, f('periode.json'), f('reel-vide.csv'), f('correspondance.json'));
+  assert.equal(r.status, 0, r.stderr);
+  const c = JSON.parse(r.stdout).comparaison, cuisine = c.lignes.find(l => l.nom === 'Cuisine');
+  assert.ok(cuisine.joursSansReel.some(j => j.date === '2026-11-02' && j.raison === 'rôle Cuisinier : heures vides'), JSON.stringify(cuisine.joursSansReel));
+  assert.match(r.stderr, /Sans réel, Cuisine : 2 jours \([^)]*heures vides/);
+  assert.equal(c.lignes.find(l => l.nom === 'Bureau').jours.length, 2, 'des heures supp vides : les ETP restent');
+});
+
 test('les erreurs : un appel mal formé (code 2), un réel mal formé refusé en nommant la ligne, une période qui n’en est pas une (code 1)', () => {
   assert.equal(lancer(OUTIL, f('periode.json'), f('reel.csv')).status, 2);
   assert.equal(lancer(OUTIL, f('periode.json'), f('reel.csv'), f('correspondance.json'), '--inconnu').status, 2);

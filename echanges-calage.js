@@ -24,7 +24,7 @@
   const feuille = (nom, lignes, figer) => ({ nom, lignes, filtres: true, figerColonnes: figer });
 
   /** Le Lisez-moi : la période, les fichiers, les bases, les jours, les définitions. */
-  function lisezMoi(c, ctx) {
+  function lisezMoi(c, ctx, reel) {
     const p = ctx.periode || {}, le = ctx.calculeLe, b = (c.bases && c.bases.defaut) || {};
     const autres = Object.entries(c.bases || {}).filter(([k]) => k !== 'defaut');
     const a = c.anomalies || {};
@@ -37,8 +37,10 @@
       ['Jours comparés (jours de travail complets avec du réel) : ' + (c.jours || []).length + ' ; jours de travail incomplets écartés : ' + liste((c.joursIncomplets || []).map(dateFr)) + '.'],
       ['Rôles sans ligne (listés, pas comptés) : ' + liste(c.rolesSansLigne) + '.'],
       ['Cellules écartées : ' + (a.ecartees || []).length + ' ; à vérifier : ' + (a.signalees || []).length + ' ; jours écartés par vous : ' + liste((a.joursEcartes || []).map(dateFr)) + '.'],
+      // Correction 13 : les cellules aux heures vides (titulaires et intérim) n'ont pas de réel.
+      ...(reel && reel.vides && reel.vides.length ? [['Cellules aux heures vides (titulaires et intérim, pas de réel) : ' + reel.vides.length + '.']] : []),
       // Correction 12 : une cellule absente ou écartée n'a pas de réel ; ses jours sortent de la ligne, et du total de l'unité.
-      ...((c.lignes || []).some(l => (l.joursSansReel || []).length) ? [['Jours sans réel (un rôle de la ligne sans ligne ce jour-là, ou sa cellule écartée ; ni comptés ni à 0 h) : '
+      ...((c.lignes || []).some(l => (l.joursSansReel || []).length) ? [['Jours sans réel (un rôle de la ligne sans ligne ce jour-là, aux heures vides, ou sa cellule écartée ; ni comptés ni à 0 h) : '
         + (c.lignes || []).filter(l => (l.joursSansReel || []).length).map(l => l.nom + ' ' + l.joursSansReel.length).join(', ') + ' — leurs raisons dans la feuille Comparaison.']] : []),
       ...(c.unite && c.unite.joursRetires ? [['Jours retirés du total de l’unité (une ligne sans réel) : ' + c.unite.joursRetires.length + '.']] : []),
       [''],
@@ -73,10 +75,13 @@
     const rang = (x, etatDe) => {
       const b = base(x.role), e = R().etpDe(x, b);
       rangs.push({ cle: [x.date, x.role], l: [T_.celluleDate(x.date), x.role, n2(x.titulaires), n2(x.interim), n2(x.supp), b.titulaires, b.interim,
-        n3(e), ligneDe.get(x.role) || null, e === null ? 'heures écartées' : etatDe] });
+        n3(e), ligneDe.get(x.role) || null, x.vide ? etatDe + ' (heures vides)' : e === null ? 'heures écartées' : etatDe] });
     };
     for (const x of (reel && reel.cellules ? reel.cellules.values() : [])) rang(x, etat(x.date, x.role));
     for (const x of (reel && reel.dansJoursEcartes) || []) rang(x, 'jour écarté par vous');
+    // Des heures vides (correction 13) : la cellule n'a pas de réel.
+    for (const v of (reel && reel.vides) || [])
+      rangs.push({ cle: [v.date, v.role], l: [T_.celluleDate(v.date), v.role, null, null, null, null, null, null, ligneDe.get(v.role) || null, 'heures vides : pas de réel'] });
     for (const e of (reel && reel.ecartees) || []) {
       if (e.code === 'negatif') continue;   // la cellule est dans la liste, ses heures négatives écartées
       rangs.push({ cle: [e.date, e.role], l: [T_.celluleDate(e.date), e.role, null, null, null, null, null, null, ligneDe.get(e.role) || null, 'écartée : ' + e.raison] });
@@ -190,7 +195,7 @@
    */
   function calageVersClasseur(x, ctx = {}) {
     const c = x.comparaison;
-    return [lisezMoi(c, ctx), feuilleReel(c, x.reel), feuilleComparaison(c, x.rejeu || null)].concat(x.rapport || x.travail ? [feuilleCalage(x.rapport || { lignes: [] }, x.travail || null)] : []);
+    return [lisezMoi(c, ctx, x.reel), feuilleReel(c, x.reel), feuilleComparaison(c, x.rejeu || null)].concat(x.rapport || x.travail ? [feuilleCalage(x.rapport || { lignes: [] }, x.travail || null)] : []);
   }
 
   const api = { calageVersClasseur };

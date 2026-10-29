@@ -523,13 +523,26 @@ en-têtes ne tiennent compte ni de la casse ni des accents.
 |---|---|---|
 | `date` | oui | comme le programme daté : `AAAA-MM-JJ`, `JJ/MM/AAAA` ou une date Excel |
 | `role` | oui | le rôle tel que l'unité le nomme (160 caractères au plus) |
-| `heures_titulaires` | oui | les heures des titulaires ce jour-là, **hors heures supp** |
-| `heures_interim` | oui | les heures des intérimaires, hors heures supp (vide : 0) |
-| `heures_supp` | non | les heures supp du rôle ce jour-là |
+| `heures_titulaires` | oui | les heures des titulaires ce jour-là, **hors heures supp** (vide, avec l'intérim rempli : 0) |
+| `heures_interim` | oui | les heures des intérimaires, hors heures supp (vide, avec les titulaires remplies : 0) |
+| `heures_supp` | non | les heures supp du rôle ce jour-là (vide : inconnues) |
 | `service` | non | présent, le rôle devient « service / rôle » |
 
 - Les heures : un nombre décimal (`7,5`, `7.5`) ou `HH:MM` (`7:30`,
-  `350:30`). Une cellule vide vaut 0. Dans un classeur, écrivez-les en nombre
+  `350:30`). Une case à 0 est un vrai zéro. **Une case vide n'est pas un
+  zéro** (correction 13), sauf pour l'une des deux catégories de présence :
+  - `heures_supp` vide : les heures supp de la cellule sont inconnues ; ce
+    jour-là sort de la comparaison des heures supp de sa ligne (par mois, le
+    nombre de jours comptés le dit). Ses ETP restent ;
+  - `heures_titulaires` et `heures_interim` vides toutes les deux (ou
+    `heures` vide, dans un fichier à une seule colonne) : la cellule n'a pas
+    de réel, comme une ligne absente, avec la raison « heures vides » ;
+  - une seule des deux vide, l'autre remplie : la vide vaut 0 (un export
+    laisse souvent l'intérim vide quand il n'y en a pas) ;
+  - les heures supp d'une ligne aux heures vides ne comptent pas non plus
+    (la raison le dit).
+
+  Dans un classeur, écrivez-les en nombre
   ou en texte : une cellule au **format heure** d'Excel arrive en fraction de
   jour (7:30 → 0,3125), et un fichier dont toutes les heures sont ainsi est
   refusé.
@@ -543,8 +556,8 @@ en-têtes ne tiennent compte ni de la casse ni des accents.
 - **Une cellule absente n'est pas un zéro** (correction 12) : un rôle sans
   ligne un jour, ou dont la cellule est écartée, n'a pas de réel ce jour-là ;
   le jour sort des lignes de la correspondance qui ont ce rôle, avec sa
-  raison, et du total de l'unité. Une ligne présente compte, même à 0 h (ou
-  avec des heures vides, lues 0) : pour dire 0 heure, écrivez la ligne. Un
+  raison, et du total de l'unité. Une ligne présente à 0 h compte 0 ; une
+  ligne aux heures vides n'a pas de réel (correction 13). Un
   rôle d'une ligne de la correspondance absent de tout le fichier se signale
   (la ligne n'a alors aucun jour).
 - « Modèle CSV » (page Période, « Réel et calage ») en donne un exemple

@@ -1588,6 +1588,30 @@ pour cette ligne : il sort de sa comparaison et de son calage, et va dans
 `joursSansReel`, avec sa raison (« rôle X sans ligne ce jour-là »,
 « cellule écartée (X) : en double (lignes 3, 4) »).
 
+**Une case vide n'est pas un zéro** (correction 13), sauf pour l'une des deux
+catégories de présence. Des heures supp vides sont inconnues : ce jour-là
+sort de la comparaison des heures supp de la ligne (le nombre de jours de
+chaque mois le dit), pas de ses ETP. Titulaires et intérim vides tous les deux
+(ou `heures` vide, seule colonne) : la cellule n'a pas de réel, comme une
+ligne absente (« rôle X : heures vides »), et la feuille « Réel » du classeur
+le dit. Une seule des deux vide, l'autre remplie : la vide vaut 0. Une case à
+0 reste un vrai zéro ; avec un réel sans case vide, rien ne change. Le détail :
+
+- les heures supp d'une ligne aux heures vides ne comptent pas non plus, et la
+  raison le dit (« heures vides (ses 3 h supp non comptées) ») ;
+- un jour du fichier qui n'a que des heures vides compte parmi les jours du
+  fichier : il se liste dans `joursSansReel` de chaque ligne et dans les jours
+  retirés du total de l'unité ;
+- une cellule réintégrée (en double) dont une ligne a ses heures supp vides a
+  des heures supp inconnues ; ses ETP s'additionnent ;
+- un jour écarté par vous reste écarté : sa cellule vide n'est pas « sans
+  réel », et la feuille Réel la marque « jour écarté par vous (heures
+  vides) » ;
+- le signal « heures supp à zéro tout le mois » ne compte que les jours
+  renseignés, et dit combien sont vides ;
+- la page montre les cellules aux heures vides avec les anomalies, et le
+  nombre de jours des heures supp quand il diffère de celui des ETP.
+
 Deux cas se **signalent sans rien écarter** — à vous de décider : une
 catégorie à zéro tout un mois, présente les autres mois ; un rôle absent un
 ou plusieurs jours alors qu'il est présent d'autres jours, ses jours

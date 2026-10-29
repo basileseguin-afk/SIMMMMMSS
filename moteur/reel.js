@@ -69,7 +69,7 @@
    * Lit le fichier du réel (ses feuilles, comme tableur.js les rend). Les
    * en-têtes ne tiennent compte ni de la casse ni des accents. Une ligne
    * illisible refuse le fichier entier, en la nommant.
-   * @returns {{ lignes: [{ ligne, date, role, titulaires, interim, supp }], avecSupp, avecService }}
+   * @returns {{ lignes: [{ ligne, date, role, titulaires, interim, supp, vide? }], avecSupp, avecService }}
    */
   function lireReel(feuilles) {
     const f = feuilleDuReel(feuilles);
@@ -105,8 +105,11 @@
       const role = (svc ? svc + SEP_ROLE : '') + nom;
       if (role.length > MAX_NOM) throw new Error('rôle trop long (' + MAX_NOM + ' caractères au plus)');
       if (role.includes('|')) throw new Error('rôle « ' + role + ' » : le caractère « | » n’y est pas permis');
-      const t = heuresDe(o.seule ? x.heures : x.heures_titulaires), i = o.seule ? 0 : heuresDe(x.heures_interim);
-      return { ligne: x._ligne, date, role, titulaires: t ?? 0, interim: i ?? 0, supp: o.supp ? heuresDe(x.heures_supp) ?? 0 : null };
+      // Une case vide n'est pas un zéro (correction 13) : titulaires et intérim vides (ou « heures », seule colonne) : la cellule
+      // n'a pas de réel (`vide`) ; une seule des deux vide vaut 0 ; des heures supp vides sont inconnues (null).
+      const t = heuresDe(o.seule ? x.heures : x.heures_titulaires), i = o.seule ? null : heuresDe(x.heures_interim);
+      return { ligne: x._ligne, date, role, titulaires: t ?? 0, interim: i ?? 0, supp: o.supp ? heuresDe(x.heures_supp) : null,
+        ...(t === null && i === null ? { vide: true } : {}) };
     } catch (e) { throw new Error('ligne ' + x._ligne + ' : ' + e.message); }
   }
 
@@ -153,11 +156,20 @@
       if (!groupes.has(k)) groupes.set(k, []);
       groupes.get(k).push(l);
     }
-    const cellules = new Map(), ecartees = [], dansJoursEcartes = [];
+    const cellules = new Map(), ecartees = [], dansJoursEcartes = [], vides = [];
     for (const [k, ls] of groupes) {
       const { date, role } = ls[0];
       if (ls.length > 1 && !reint.has(k)) { ecartees.push({ cle: k, date, role, code: 'double', raison: 'en double (lignes ' + ls.map(l => l.ligne).join(', ') + ')' }); continue; }
-      const c = { date, role, titulaires: somme(ls, l => l.titulaires), interim: somme(ls, l => l.interim), supp: lu.avecSupp ? somme(ls, l => l.supp) : null };
+      // Des heures vides (correction 13) : pas de réel, comme une ligne absente ; ce n'est pas une anomalie à réintégrer.
+      if (ls.every(l => l.vide)) {
+        const supp = somme(ls, l => l.supp);
+        if (ecJours.has(date)) dansJoursEcartes.push({ date, role, titulaires: null, interim: null, supp: null, vide: true });
+        else vides.push({ cle: k, date, role, lignes: ls.map(l => l.ligne), ...(supp ? { suppNonComptees: supp } : {}) });
+        continue;
+      }
+      // Des heures supp vides sont inconnues : la cellule n'en a pas (ses ETP restent).
+      const supp = !lu.avecSupp ? null : ls.some(l => l.supp === null) ? null : somme(ls, l => l.supp);
+      const c = { date, role, titulaires: somme(ls, l => l.titulaires), interim: somme(ls, l => l.interim), supp };
       for (const cat of CATEGORIES) {
         if (c[cat] === null || c[cat] >= 0 || reint.has(cle(date, role, cat))) continue;
         ecartees.push({ cle: cle(date, role, cat), date, role, categorie: cat, code: 'negatif', raison: NOMS_CATEGORIES[cat] + ' négatives (' + fr(c[cat]) + ' h)' });
@@ -169,7 +181,7 @@
     }
     const jours = [...new Set(lu.lignes.map(l => l.date))].sort();
     // Une cellule écartée (entière, ou l'une de ses heures) n'a pas de réel : son jour sort des lignes qui ont son rôle (joursDeLaLigne).
-    return { cellules, ecartees, dansJoursEcartes, signalees: signaler(lu, cellules, jours.filter(x => !ecJours.has(x))),
+    return { cellules, ecartees, dansJoursEcartes, vides, signalees: signaler(lu, cellules, jours.filter(x => !ecJours.has(x))),
       roles: [...new Set(lu.lignes.map(l => l.role))].sort(), jours, joursEcartes: jours.filter(x => ecJours.has(x)), avecSupp: !!lu.avecSupp, decisions: d };
   }
 
@@ -180,11 +192,16 @@
     const parRole = new Map();
     for (const c of cellules.values()) { if (!parRole.has(c.role)) parRole.set(c.role, []); parRole.get(c.role).push(c); }
     for (const [role, cs] of parRole) for (const cat of CATEGORIES.filter(x => x !== 'supp' || lu.avecSupp)) {
-      const parMois = new Map();
-      for (const c of cs) if (Number.isFinite(c[cat])) parMois.set(c.date.slice(0, 7), (parMois.get(c.date.slice(0, 7)) || 0) + c[cat]);
+      const parMois = new Map(), inconnus = new Map();
+      for (const c of cs) {
+        const m = c.date.slice(0, 7);
+        if (Number.isFinite(c[cat])) parMois.set(m, (parMois.get(m) || 0) + c[cat]);
+        else if (c[cat] === null) inconnus.set(m, (inconnus.get(m) || 0) + 1);   // des heures supp vides (correction 13)
+      }
       if (![...parMois.values()].some(v => v > 0)) continue;
       for (const [mois, v] of parMois) if (v === 0) out.push({ code: 'mois-a-zero', role, categorie: cat, mois,
-        raison: role + ' : ' + NOMS_CATEGORIES[cat] + ' à zéro tout le mois ' + mois + ', présentes les autres mois' });
+        raison: role + ' : ' + NOMS_CATEGORIES[cat] + ' à zéro tout le mois ' + mois + (inconnus.get(mois) ? ' (les jours renseignés ; ' + inconnus.get(mois) + ' vides)' : '')
+          + ', présentes les autres mois' });
     }
     // Un rôle absent des jours où il est présent d'autres : ses jours d'absence, regroupés en périodes (des jours qui se suivent dans le fichier).
     const rang = new Map(jours.map((x, i) => [x, i])), jj = x => x.slice(8, 10) + '/' + x.slice(5, 7);
@@ -349,13 +366,15 @@
    * et va dans `joursSansReel`, avec sa raison (correction 12).
    */
   function joursDeLaLigne(l, jours, ctrl, bases) {
-    const out = [], sans = [], ecartees = raisonsEcartees(ctrl);
+    const out = [], sans = [], ecartees = raisonsEcartees(ctrl), vides = new Map((ctrl.vides || []).map(x => [x.cle, x]));
     for (const w of jours) {
       const etps = [], raisons = [];
       for (const r of l.roles) {
         const k = cle(w.date, r), c = ctrl.cellules.get(k), e = c ? etpDe(c, baseDe(bases, r)) : null;
         if (e !== null) etps.push(e);
-        else raisons.push(ecartees.has(k) ? 'cellule écartée (' + r + ') : ' + ecartees.get(k).join(', ') : 'rôle ' + r + ' sans ligne ce jour-là');
+        else raisons.push(ecartees.has(k) ? 'cellule écartée (' + r + ') : ' + ecartees.get(k).join(', ')
+          : vides.has(k) ? 'rôle ' + r + ' : heures vides' + (vides.get(k).suppNonComptees ? ' (ses ' + fr(vides.get(k).suppNonComptees) + ' h supp non comptées)' : '')
+            : 'rôle ' + r + ' sans ligne ce jour-là');
       }
       if (raisons.length) { sans.push({ date: w.date, raison: raisons.join(' ; ') }); continue; }
       const reel = somme(etps, x => x), simule = simuleDe(l, w);
@@ -419,7 +438,8 @@
   function comparer(bilan, reel, correspondance, o = {}) {
     const corr = validerCorrespondance(correspondance, { services: o.services || (bilan.services || []).map(s => s.id) });
     const ctrl = reel.cellules ? reel : controler(reel, o.decisions);
-    const avecReel = new Set([...ctrl.cellules.values()].map(c => c.date));
+    // Les jours du fichier : ceux qui ont une cellule, ou des heures vides (correction 13 : ils se listent, avec leur raison).
+    const avecReel = new Set([...ctrl.cellules.values()].map(c => c.date).concat((ctrl.vides || []).map(v => v.date)));
     const jours = (bilan.joursTravail || []).filter(w => w.complet && avecReel.has(w.date));
     const nomService = id => ((bilan.services || []).find(s => s.id === id) || {}).nom || id;
     const lignes = corr.lignes.map(l => {
