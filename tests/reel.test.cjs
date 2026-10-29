@@ -84,7 +84,10 @@ test('un jour de travail incomplet sort de la comparaison ; les rôles sans lign
   assert.deepEqual(c.jours, ['2026-11-02']);
   assert.deepEqual(c.joursIncomplets, ['2026-11-01']);
   assert.deepEqual(c.rolesSansLigne, ['Plongeur']);
-  assert.equal(c.unite.jours[0].reel, 1 + 0, 'le plongeur ne compte pas ; le bureau, sans réel ce jour-là, vaut 0');
+  assert.equal(c.lignes[0].jours[0].reel, 1, 'le plongeur ne compte pas');
+  // Le bureau n'a pas de ligne ce jour-là : pas un zéro (correction 12) ; le jour sort de sa ligne, et du total de l'unité.
+  assert.deepEqual(c.lignes[1].joursSansReel, [{ date: '2026-11-02', raison: 'rôle Agent sans ligne ce jour-là' }]);
+  assert.deepEqual([c.unite.jours, c.unite.joursRetires], [[], [{ date: '2026-11-02', lignes: ['Bureau'] }]]);
 });
 
 test('chaque anomalie est écartée ou signalée, avec sa raison ; l’utilisateur réintègre ou écarte', () => {
@@ -102,7 +105,9 @@ test('chaque anomalie est écartée ou signalée, avec sa raison ; l’utilisate
   assert.equal(c.cellules.get('2026-11-04|Magasinier').interim, 3);
   const signal = code => c.signalees.filter(x => x.code === code).map(x => x.raison);
   assert.deepEqual(signal('mois-a-zero'), ['Préparateur : intérim à zéro tout le mois 2026-11, présentes les autres mois']);
-  assert.deepEqual(signal('jour-absent'), ['Agent : absent le 2026-11-03, présent tous les autres jours']);
+  assert.deepEqual(signal('role-absent').filter(x => x.startsWith('Agent')), ['Agent : absent le 03/11, présent les autres jours']);
+  assert.deepEqual(signal('role-absent').filter(x => x.startsWith('Magasinier')), ['Magasinier : absent du 01/10 au 03/11 (5 jours), présent les autres jours'],
+    'ses jours d’absence regroupés : ceux qui se suivent dans le fichier');
   assert.ok(c.cellules.has('2026-11-02|Préparateur'), 'signalé, rien n’est écarté');
   // Réintégrer : les lignes en double s'additionnent ; écarter un jour ou une cellule.
   const d = R.controler(reel, { reintegres: ['2026-10-02|Préparateur'], ecartes: { jours: ['2026-10-01'], cellules: ['2026-11-02|Agent'] } });
@@ -110,11 +115,12 @@ test('chaque anomalie est écartée ou signalée, avec sa raison ; l’utilisate
   assert.ok(![...d.cellules.keys()].some(k => k.startsWith('2026-10-01')));
   assert.deepEqual(d.joursEcartes, ['2026-10-01']);
   assert.equal(d.ecartees.find(x => x.cle === '2026-11-02|Agent').raison, 'écartée par vous');
-  // La comparaison laisse de côté le jour où l'une des heures de la ligne est écartée.
+  // La comparaison laisse de côté le jour où l'une des heures de la ligne est écartée, et ceux où son rôle n'a pas de ligne (correction 12).
   const b = bilan(jours.map(x => [x, 1, 0]));
   const comp = R.comparer(b, d, { lignes: [{ nom: 'Magasin', roles: ['Magasinier'], hors: true }] });
-  assert.deepEqual(comp.lignes[0].joursSansReel, ['2026-11-04']);
-  assert.ok(comp.lignes[0].jours.length > 0, 'les autres jours comptent (le magasinier à 0)');
+  assert.deepEqual(comp.lignes[0].joursSansReel, ['2026-10-02', '2026-10-03', '2026-11-02', '2026-11-03'].map(date => ({ date, raison: 'rôle Magasinier sans ligne ce jour-là' }))
+    .concat([{ date: '2026-11-04', raison: 'cellule écartée (Magasinier) : titulaires négatives (-2 h)' }]));
+  assert.equal(comp.lignes[0].jours.length, 0, 'aucun jour à 0 h : le magasinier n’a qu’un jour, écarté');
 });
 
 test('la correspondance : un rôle dans une seule ligne, une seule chose couverte, des services connus', () => {
@@ -154,13 +160,13 @@ test('une cellule écartée entière (en double, ou par vous) sort de la compara
     '2026-11-02;Agent;8;0;0', '2026-11-03;Agent;8;0;0', '2026-11-04;Agent;8;0;0'));
   const b = bilan([['2026-11-02', 9, 1], ['2026-11-03', 6, 1], ['2026-11-04', 11, 1]]);
   const c = R.comparer(b, reel, CORR), prepa = c.lignes.find(l => l.nom === 'Prépa');
-  assert.deepEqual(prepa.joursSansReel, ['2026-11-03']);
+  assert.deepEqual(prepa.joursSansReel, [{ date: '2026-11-03', raison: 'cellule écartée (Préparateur) : en double (lignes 3, 4)' }]);
   assert.deepEqual(prepa.jours.map(j => j.date), ['2026-11-02', '2026-11-04']);
   assert.deepEqual(c.unite.jours.map(j => j.date), ['2026-11-02', '2026-11-04'], 'ni dans le total de l’unité');
   proche(prepa.periode.mae, (1 + 1) / 2);
   // Écartée par vous : de même ; le bureau, lui, compte encore ce jour-là.
   const d = R.comparer(b, R.controler(reel, { reintegres: ['2026-11-03|Préparateur'], ecartes: { cellules: ['2026-11-02|Préparateur'] } }), CORR);
-  assert.deepEqual(d.lignes.find(l => l.nom === 'Prépa').joursSansReel, ['2026-11-02']);
+  assert.deepEqual(d.lignes.find(l => l.nom === 'Prépa').joursSansReel, [{ date: '2026-11-02', raison: 'cellule écartée (Préparateur) : écartée par vous' }]);
   assert.equal(d.lignes.find(l => l.nom === 'Bureau').jours.length, 3);
   // Sans aucune ligne, pas de total de l'unité (pas une erreur de 0).
   const vide = R.comparer(b, reel, { lignes: [] });
@@ -192,7 +198,7 @@ test('la correspondance : une même chose couverte par une seule ligne ; une bas
 test('écarter le jour qu’un rôle manque : le signal s’en va', () => {
   const jours = ['2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05'];
   const reel = lire(csv(...jours.map(d => d + ';A;7;0;0'), ...jours.filter(d => d !== '2026-11-04').map(d => d + ';B;7;0;0')));
-  assert.equal(R.controler(reel).signalees.filter(x => x.code === 'jour-absent').length, 1);
-  assert.equal(R.controler(reel, { ecartes: { jours: ['2026-11-04'] } }).signalees.filter(x => x.code === 'jour-absent').length, 0);
+  assert.equal(R.controler(reel).signalees.filter(x => x.code === 'role-absent').length, 1);
+  assert.equal(R.controler(reel, { ecartes: { jours: ['2026-11-04'] } }).signalees.filter(x => x.code === 'role-absent').length, 0);
 });
 

@@ -1580,13 +1580,23 @@ raison :
   de la cellule ;
 - un jour × rôle en double : la cellule.
 
-Une cellule écartée entière (en double, ou écartée par vous) fait sortir ce
-jour-là de la comparaison des lignes qui ont son rôle : elle ne compte jamais
-pour 0 h réelle.
+**Une cellule absente n'est pas un zéro** (correction 12). Une cellule jour ×
+rôle sans ligne dans le fichier, ou écartée (entière, ou l'une de ses heures),
+n'a pas de réel ; une ligne présente avec 0 h reste un vrai zéro. Un jour où
+l'un des rôles d'une ligne de la correspondance n'a pas de réel n'en a pas
+pour cette ligne : il sort de sa comparaison et de son calage, et va dans
+`joursSansReel`, avec sa raison (« rôle X sans ligne ce jour-là »,
+« cellule écartée (X) : en double (lignes 3, 4) »).
 
 Deux cas se **signalent sans rien écarter** — à vous de décider : une
 catégorie à zéro tout un mois, présente les autres mois ; un rôle absent un
-jour, présent tous les autres. Vous pouvez réintégrer une cellule écartée (en
+ou plusieurs jours alors qu'il est présent d'autres jours, ses jours
+d'absence regroupés en périodes (« absent du 01/08 au 30/08 (30 jours) » :
+des jours qui se suivent dans le fichier). L'absence suffit déjà à retirer
+ces jours des lignes qui ont ce rôle. Un rôle d'une ligne de la
+correspondance que le fichier n'a pas du tout se signale aussi, dans la
+comparaison (« rôle X de la ligne « Y » absent du fichier : la ligne n'a aucun
+jour avec du réel, ni le total de l'unité »). Vous pouvez réintégrer une cellule écartée (en
 double : ses lignes s'additionnent), écarter une cellule ou des jours, et les
 rétablir. Ces décisions sont des clés (jour, rôle), sans heures.
 
@@ -1611,12 +1621,14 @@ pour un rôle. La correspondance s'importe et s'exporte en JSON pour l'outil
 période qui ont du réel (un jour incomplet, ou sans réel, en sort) :
 
 - par ligne et par jour : le réel, le simulé et l'écart (simulé − réel) ; un
-  jour où l'une des heures de la ligne est écartée n'y compte pas ;
+  jour où l'un des rôles de la ligne n'a pas de réel n'y compte pas, et se
+  liste dans `joursSansReel`, avec sa raison ;
 - par ligne, par mois et sur la période : l'erreur moyenne absolue (MAE), le
   biais (l'écart moyen) et la corrélation (de Pearson) ;
 - pour toute l'unité (toutes les lignes, hors simulation comprise) : l'erreur
-  et le biais du total de chaque jour, les jours où chaque ligne compte (sans
-  ligne, pas de total) ;
+  et le biais du total de chaque jour, les seuls jours où chaque ligne a son
+  réel (sans ligne, pas de total) ; les jours retirés du total se listent
+  (`unite.joursRetires` : le jour, les lignes qui manquent) ;
 - avec la colonne `heures_supp` : par ligne et par mois, les heures supp
   réelles et simulées (celles des services couverts ; des chauffeurs, au
   prorata camion / VL), pour décrire, pas pour caler.
@@ -1725,6 +1737,13 @@ Une ligne se cale à partir de **20 jours utilisables** (sinon : « moins de
   le plus simple (« × a », puis « b + a × », puis « × a × jour »). Sans
   candidat accepté, la meilleure référence en validation. Une ligne hors
   simulation prend la constante.
+- **Le total de l'unité**, avant (le moteur) et après (les modèles retenus) :
+  chaque ligne validée par mois quand elle en a deux, sinon par semaine ; avec
+  une validation par mois, il se donne aussi en validation par semaines
+  (`unite.semaines`, la rangée « après (modèles retenus), validation par
+  semaines » de la feuille Calage) : avec deux mois, la validation par mois
+  mêle l'effet du mois et celui du volume, les deux chiffres se lisent mieux
+  ensemble (correction 12).
 - **σ** : l'écart quadratique moyen des erreurs hors échantillon du modèle
   retenu ; la bande P10–P90 est la prédiction ± 1,2816 σ (`bande`, dans le
   rapport).
@@ -1864,8 +1883,10 @@ présence au contrat :
 - **Sur l'encadrement saisi d'un service** : il passe d'un nombre de
   personnes à `{ personnes, presence, presenceContrat }`, réglé dans la fiche
   du service (« Leur présence … au contrat »). L'ancienne forme, un nombre, se
-  lit toujours et ne change pas. La version 2, qui lit la même sauvegarde, ne
-  connaît pas cette forme (docs/MODELE_ATELIERS.md). La charge de l'encadrement suit sa présence :
+  lit toujours et ne change pas. La version 2 ne connaît pas cette forme ;
+  elle range ses données à part, et seule une sauvegarde exportée depuis elle
+  puis restaurée dans la version 1 perdrait ces horaires
+  (docs/MODELE_ATELIERS.md). La charge de l'encadrement suit sa présence :
   personnes × présence ÷ la présence générale (sans présence : ses
   personnes, comme avant).
 - **Les heures sup d'office** : quand la présence (celle de l'équipe, sinon

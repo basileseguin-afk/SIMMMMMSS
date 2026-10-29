@@ -109,6 +109,11 @@ if (require.main === module) {
       if (c.rolesSansLigne.length) console.error('Rôles sans ligne (non comptés) : ' + c.rolesSansLigne.join(', ') + '.');
       for (const a of c.anomalies.ecartees) console.error('Écartée : ' + a.date + ', ' + a.role + ' — ' + a.raison + '.');
       for (const a of c.anomalies.signalees) console.error('À vérifier : ' + a.raison + '.');
+      // Correction 12 : les jours sans réel de chaque ligne, et ceux retirés du total de l'unité.
+      for (const l of c.lignes) if (l.joursSansReel.length) console.error('Sans réel, ' + l.nom + ' : ' + l.joursSansReel.length + ' jour' + (l.joursSansReel.length > 1 ? 's' : '')
+        + ' (' + [...new Set(l.joursSansReel.map(j => j.raison))].slice(0, 3).join(' ; ') + (new Set(l.joursSansReel.map(j => j.raison)).size > 3 ? ' ; …' : '') + ').');
+      if (c.unite.joursRetires) console.error('Retirés du total de l’unité : ' + c.unite.joursRetires.length + ' jour' + (c.unite.joursRetires.length > 1 ? 's' : '')
+        + ' (' + c.unite.joursRetires.slice(0, 5).map(w => w.date + ' : ' + w.lignes.join(', ')).join(' ; ') + (c.unite.joursRetires.length > 5 ? ' ; …' : '') + ').');
       for (const l of sortie.rapport.lignes) console.error('Calage, ' + l.nom + ' : ' + (l.cale ? l.retenu.nom + (l.raison ? ' (' + l.raison + ')' : '') : 'pas de calage, ' + l.raison) + '.');
       for (const l of (sortie.travail || {}).lignes || []) console.error('Travail, ' + l.nom + ' : ' + (l.cale ? '× ' + String(l.facteur).replace('.', ',')
         + (l.accepte ? ', accepté' : ', refusé — ' + Object.values(l.regles).filter(x => !x.ok).map(x => x.raison).join(' ; ')) : 'pas de calage, ' + l.raison) + '.');

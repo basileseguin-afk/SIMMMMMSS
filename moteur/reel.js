@@ -140,8 +140,9 @@
    * jour × rôle en double (la cellule) — sauf si l'utilisateur les réintègre
    * (en double : les lignes s'additionnent) —, et ce qu'il écarte lui-même (un
    * jour, une cellule). Signalés sans rien écarter : une catégorie à zéro tout
-   * un mois, présente les autres mois ; un rôle absent un jour, présent tous
-   * les autres.
+   * un mois, présente les autres mois ; un rôle absent un ou plusieurs jours,
+   * présent d'autres jours (ses jours d'absence, en périodes ; l'absence suffit
+   * déjà à retirer ces jours des lignes qui ont ce rôle — correction 12).
    */
   function controler(lu, decisions) {
     const d = validerDecisions(decisions), reint = new Set(d.reintegres);
@@ -167,9 +168,8 @@
       cellules.set(k, c);
     }
     const jours = [...new Set(lu.lignes.map(l => l.date))].sort();
-    // Les cellules écartées entières (en double, par vous) : leur jour sort de la comparaison des lignes qui ont leur rôle.
-    const sansReel = new Set(ecartees.filter(x => x.code === 'double' || x.code === 'choix').map(x => x.cle));
-    return { cellules, ecartees, sansReel, dansJoursEcartes, signalees: signaler(lu, cellules, jours.filter(x => !ecJours.has(x))),
+    // Une cellule écartée (entière, ou l'une de ses heures) n'a pas de réel : son jour sort des lignes qui ont son rôle (joursDeLaLigne).
+    return { cellules, ecartees, dansJoursEcartes, signalees: signaler(lu, cellules, jours.filter(x => !ecJours.has(x))),
       roles: [...new Set(lu.lignes.map(l => l.role))].sort(), jours, joursEcartes: jours.filter(x => ecJours.has(x)), avecSupp: !!lu.avecSupp, decisions: d };
   }
 
@@ -186,10 +186,18 @@
       for (const [mois, v] of parMois) if (v === 0) out.push({ code: 'mois-a-zero', role, categorie: cat, mois,
         raison: role + ' : ' + NOMS_CATEGORIES[cat] + ' à zéro tout le mois ' + mois + ', présentes les autres mois' });
     }
+    // Un rôle absent des jours où il est présent d'autres : ses jours d'absence, regroupés en périodes (des jours qui se suivent dans le fichier).
+    const rang = new Map(jours.map((x, i) => [x, i])), jj = x => x.slice(8, 10) + '/' + x.slice(5, 7);
     for (const [role, ses] of presents) {
       const manque = jours.filter(x => !ses.has(x));   // les jours écartés n'y sont pas
-      if (jours.length >= 3 && manque.length === 1) out.push({ code: 'jour-absent', role, date: manque[0],
-        raison: role + ' : absent le ' + manque[0] + ', présent tous les autres jours' });
+      if (!manque.length || manque.length === jours.length) continue;
+      const periodes = [];
+      for (const x of manque) {
+        const p = periodes[periodes.length - 1];
+        if (p && rang.get(x) === rang.get(p.au) + 1) { p.au = x; p.jours++; } else periodes.push({ du: x, au: x, jours: 1 });
+      }
+      for (const p of periodes) out.push({ code: 'role-absent', role, du: p.du, au: p.au, jours: p.jours,
+        raison: role + ' : ' + (p.jours > 1 ? 'absent du ' + jj(p.du) + ' au ' + jj(p.au) + ' (' + p.jours + ' jours)' : 'absent le ' + jj(p.du)) + ', présent les autres jours' });
     }
     return out;
   }
@@ -333,27 +341,41 @@
     return { mois: mois.map(m => ({ mois: m, ...mesures(points.filter(p => p.date.startsWith(m)), avecCorrelation) })), periode: mesures(points, avecCorrelation) };
   }
 
-  /** Les jours d'une ligne : réel, simulé, écart ; un jour où l'une de ses cellules ou de ses heures est écartée n'y compte pas. */
-  function joursDeLaLigne(l, jours, cellules, bases, sansReel) {
-    const out = [], sans = [];
+  /**
+   * Les jours d'une ligne : réel, simulé, écart. Une cellule jour × rôle sans
+   * ligne dans le fichier, ou écartée (entière, ou l'une de ses heures), n'a pas
+   * de réel — une ligne présente à 0 h reste un vrai zéro. Un jour où l'un de ses
+   * rôles n'a pas de réel n'en a pas pour la ligne : il sort de sa comparaison
+   * et va dans `joursSansReel`, avec sa raison (correction 12).
+   */
+  function joursDeLaLigne(l, jours, ctrl, bases) {
+    const out = [], sans = [], ecartees = raisonsEcartees(ctrl);
     for (const w of jours) {
-      if (l.roles.some(r => sansReel.has(cle(w.date, r)))) { sans.push(w.date); continue; }
-      const cs = l.roles.map(r => cellules.get(cle(w.date, r))).filter(Boolean);
-      const etps = cs.map(c => etpDe(c, baseDe(bases, c.role)));
-      if (etps.some(x => x === null)) { sans.push(w.date); continue; }
+      const etps = [], raisons = [];
+      for (const r of l.roles) {
+        const k = cle(w.date, r), c = ctrl.cellules.get(k), e = c ? etpDe(c, baseDe(bases, r)) : null;
+        if (e !== null) etps.push(e);
+        else raisons.push(ecartees.has(k) ? 'cellule écartée (' + r + ') : ' + ecartees.get(k).join(', ') : 'rôle ' + r + ' sans ligne ce jour-là');
+      }
+      if (raisons.length) { sans.push({ date: w.date, raison: raisons.join(' ; ') }); continue; }
       const reel = somme(etps, x => x), simule = simuleDe(l, w);
       out.push({ date: w.date, reel, simule, ecart: simule - reel });
     }
     return { jours: out, joursSansReel: sans };
   }
+  /** Les raisons des cellules écartées (entières, ou l'une de leurs heures), par jour × rôle. */
+  function raisonsEcartees(ctrl) {
+    const m = new Map();
+    for (const x of ctrl.ecartees || []) { const k = cle(x.date, x.role); if (!m.has(k)) m.set(k, []); m.get(k).push(x.raison); }
+    return m;
+  }
 
-  /** Les heures supp d'une ligne, par mois (descriptif) : réelles et simulées, en heures. */
-  function heuresSuppParMois(l, jours, cellules, sansReel) {
+  /** Les heures supp d'une ligne, par mois (descriptif) : réelles et simulées, en heures ; un jour où l'un de ses rôles n'a pas les siennes n'y compte pas. */
+  function heuresSuppParMois(l, jours, cellules) {
     const parMois = new Map();
     for (const w of jours) {
-      if (l.roles.some(r => sansReel.has(cle(w.date, r)))) continue;
-      const cs = l.roles.map(r => cellules.get(cle(w.date, r))).filter(Boolean);
-      if (cs.some(c => !Number.isFinite(c.supp))) continue;
+      const cs = l.roles.map(r => cellules.get(cle(w.date, r)));
+      if (cs.some(c => !c || !Number.isFinite(c.supp))) continue;
       const m = w.date.slice(0, 7), x = parMois.get(m) || { mois: m, jours: 0, reel: 0, simule: 0 };
       x.jours++; x.reel += somme(cs, c => c.supp); x.simule += heuresSuppSimulees(l, w);
       parMois.set(m, x);
@@ -367,11 +389,11 @@
    * pour une ligne de services, ses lots en retard ; la ligne, l'erreur et le biais de ses heures supp, jour
    * par jour, sur les seuls jours qui avaient leur planning.
    */
-  function rejeuDeLaLigne(l, joursLigne, jours, ctrl, sansReel) {
+  function rejeuDeLaLigne(l, joursLigne, jours, ctrl) {
     const parDate = new Map(jours.map(w => [w.date, w]));
     for (const j of joursLigne) {
-      const w = parDate.get(j.date), cs = l.roles.map(r => ctrl.cellules.get(cle(j.date, r))).filter(Boolean);
-      const reel = ctrl.avecSupp && !l.roles.some(r => sansReel.has(cle(j.date, r))) && cs.every(c => Number.isFinite(c.supp)) ? somme(cs, c => c.supp) : null;
+      const w = parDate.get(j.date), cs = l.roles.map(r => ctrl.cellules.get(cle(j.date, r)));
+      const reel = ctrl.avecSupp && cs.every(c => c && Number.isFinite(c.supp)) ? somme(cs, c => c.supp) : null;
       j.heuresSuppSimulees = heuresSuppSimulees(l, w); j.heuresSuppReelles = reel; j.planning = w.planning !== false;
       if (l.services) j.lotsEnRetard = somme(l.services, id => ((w.services || {})[id] || {}).lotsEnRetard);
     }
@@ -401,24 +423,31 @@
     const jours = (bilan.joursTravail || []).filter(w => w.complet && avecReel.has(w.date));
     const nomService = id => ((bilan.services || []).find(s => s.id === id) || {}).nom || id;
     const lignes = corr.lignes.map(l => {
-      const sansReel = ctrl.sansReel || new Set();
-      const j = joursDeLaLigne(l, jours, ctrl.cellules, corr.bases, sansReel);
+      const j = joursDeLaLigne(l, jours, ctrl, corr.bases);
       return { ...l, couvre: couvertureDe(l, nomService), ...j, ...parMois(j.jours, true),
-        ...(ctrl.avecSupp ? { heuresSupp: heuresSuppParMois(l, jours, ctrl.cellules, sansReel) } : {}),
-        ...(o.rejeu ? rejeuDeLaLigne(l, j.jours, jours, ctrl, sansReel) : {}) };
+        ...(ctrl.avecSupp ? { heuresSupp: heuresSuppParMois(l, jours, ctrl.cellules) } : {}),
+        ...(o.rejeu ? rejeuDeLaLigne(l, j.jours, jours, ctrl) : {}) };
     });
-    // Toute l'unité : la somme de toutes les lignes, hors simulation comprise, les jours où chacune compte.
-    const unite = (lignes.length ? jours : []).filter(w => lignes.every(l => l.jours.some(x => x.date === w.date))).map(w => {
-      const x = lignes.map(l => l.jours.find(y => y.date === w.date));
+    // Toute l'unité : la somme de toutes les lignes, hors simulation comprise, les seuls jours où chacune a son réel ;
+    // les autres sont retirés du total, avec les lignes qui manquent (correction 12).
+    const parLigne = lignes.map(l => new Map(l.jours.map(x => [x.date, x])));
+    const unite = [], retires = [];
+    for (const w of lignes.length ? jours : []) {
+      const x = parLigne.map(m => m.get(w.date)), manque = lignes.filter((l, i) => !x[i]).map(l => l.nom);
+      if (manque.length) { retires.push({ date: w.date, lignes: manque }); continue; }
       const reelU = somme(x, y => y.reel), simuleU = somme(x, y => y.simule);
-      return { date: w.date, reel: reelU, simule: simuleU, ecart: simuleU - reelU };
-    });
-    const dansUneLigne = new Set(corr.lignes.flatMap(l => l.roles));
+      unite.push({ date: w.date, reel: reelU, simule: simuleU, ecart: simuleU - reelU });
+    }
+    const dansUneLigne = new Set(corr.lignes.flatMap(l => l.roles)), dansLeFichier = new Set(ctrl.roles);
+    // Un rôle d'une ligne que le fichier n'a pas du tout : la ligne n'a aucun jour, et le total de l'unité non plus ; on le dit.
+    const introuvables = corr.lignes.flatMap(l => l.roles.filter(r => !dansLeFichier.has(r)).map(r => ({ code: 'role-introuvable', role: r, ligne: l.nom,
+      raison: 'rôle ' + r + ' de la ligne « ' + l.nom + ' » absent du fichier : la ligne n’a aucun jour avec du réel' + (corr.lignes.length > 1 ? ', ni le total de l’unité' : '') })));
     return { schema: 'ory-comparaison', version: 1, bases: corr.bases, jours: jours.map(w => w.date),
       joursIncomplets: (bilan.joursTravail || []).filter(w => !w.complet && avecReel.has(w.date)).map(w => w.date),
-      lignes, unite: { jours: unite, ...parMois(unite, false), ...(o.rejeu ? { rejeu: rejeuDeLUnite(jours) } : {}) },
+      lignes, unite: { jours: unite, ...parMois(unite, false), ...(retires.length ? { joursRetires: retires } : {}), ...(o.rejeu ? { rejeu: rejeuDeLUnite(jours) } : {}) },
       rolesSansLigne: ctrl.roles.filter(r => !dansUneLigne.has(r)),
-      anomalies: { ecartees: ctrl.ecartees, signalees: ctrl.signalees, joursEcartes: ctrl.joursEcartes }, avecSupp: ctrl.avecSupp };
+      anomalies: { ecartees: ctrl.ecartees, signalees: introuvables.length ? ctrl.signalees.concat(introuvables) : ctrl.signalees, joursEcartes: ctrl.joursEcartes },
+      avecSupp: ctrl.avecSupp };
   }
 
   /* ----------------------------------------------------------------------

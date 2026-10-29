@@ -215,11 +215,13 @@ fichier (« tard », « 07:90 », moins de 00:30, plus de 24:00) le fait refuser
 entier, en la nommant ; le classeur des équipes ne porte pas la présence au
 contrat : à la relecture, celle du site reste.
 
-⚠ La version 2 lit la même sauvegarde (`ory-ateliers-v1`) mais ne connaît
-pas cette forme : un service dont l'encadrement a des horaires y perd son
-encadrement, et les équipes leur présence au contrat, dès que la version 2
-enregistre. Tant qu'on se sert des deux, gardez l'encadrement sans horaires
-dans les services qu'on règle aussi depuis la version 2.
+⚠ La version 2 range ses données à part, dans son propre tiroir (le préfixe
+« ory-v2: », `v2/stockage-v2.js`) : y enregistrer n'efface rien dans la
+version 1. Elle ne connaît pas cette forme : le seul risque est d'exporter une
+sauvegarde depuis la version 2 puis de la restaurer dans la version 1 — ses
+équipes et son encadrement remplacent alors ceux de la version 1, sans
+horaires d'encadrement ni présence au contrat. Dans la version 1, restaurez
+une sauvegarde de la version 1.
 
 **Une équipe peut faire autrement que son service (06/10).** « Le poste ne
 dépend pas forcément des vols. » Chaque équipe qui prépare à la main (et chaque

@@ -467,9 +467,9 @@
           ${x.code === 'choix' ? `<button type="button" class="btn btn-sm" data-cal="retablir" data-cle="${esc(x.cle)}">Rétablir</button>`
             : `<button type="button" class="btn btn-sm" data-cal="reintegrer" data-cle="${esc(x.cle)}">Réintégrer</button>`}</li>`);
       const jours = ctrl.joursEcartes.map(x => `<li>${dateFr(x)} — jour écarté par vous <button type="button" class="btn btn-sm" data-cal="retablir-jour" data-date="${x}">Rétablir</button></li>`);
-      const signalees = ctrl.signalees.map(x => `<li>${esc(x.raison)} ${x.code === 'jour-absent'
-        ? `<button type="button" class="btn btn-sm" data-cal="ecarter-jour" data-date="${x.date}">Écarter ce jour</button>`
-        : `<button type="button" class="btn btn-sm" data-cal="ecarter-mois" data-mois="${x.mois}">Écarter les jours de ce mois</button>`}</li>`);
+      // Un rôle absent se signale seulement : son absence retire déjà ces jours des lignes qui l'ont (correction 12).
+      const signalees = ctrl.signalees.map(x => `<li data-cal-signal="${esc(x.code)}">${esc(x.raison)}${x.code === 'role-absent' ? ' — ces jours sortent des lignes qui ont ce rôle.'
+        : ` <button type="button" class="btn btn-sm" data-cal="ecarter-mois" data-mois="${x.mois}">Écarter les jours de ce mois</button>`}</li>`);
       if (!ecartees.length && !jours.length && !signalees.length && !d.reintegres.length) return '<p class="mini-note pc-propre">Le réel ne montre aucune anomalie.</p>';
       return `<section class="pc-anomalies" aria-label="Les anomalies du réel"><h3>Les anomalies du réel</h3>
         ${ecartees.length || jours.length ? `<p class="mini-note">Écartées (rien d’autre ne bloque) :</p><ul class="pc-liste pc-ecartees">${ecartees.concat(jours).join('')}</ul>` : ''}
@@ -484,13 +484,22 @@
           <table class="svc-table pc-table"><thead><tr><th scope="col">Jour</th><th scope="col">Réel (ETP)</th><th scope="col">Simulé (ETP)</th><th scope="col">Écart</th><th scope="col"></th></tr></thead>
           <tbody>${x.jours.map(j => `<tr data-cal-jour="${j.date}"><th scope="row">${dateFr(j.date)}</th><td class="pv-n">${nombre(j.reel)}</td><td class="pv-n">${nombre(j.simule)}</td><td class="pv-n">${nombre(j.ecart)}</td>
             <td><button type="button" class="btn btn-sm" data-cal="ecarter-jour" data-date="${j.date}">Écarter ce jour</button></td></tr>`).join('')}</tbody></table></details></td></tr>`;
+      // Les jours sans réel d'une ligne, ou retirés du total de l'unité (correction 12) : ni comptés, ni à 0 h ; leur raison.
+      const sansReel = x => {
+        const l = (x.joursSansReel || []).map(j => ({ date: j.date, raison: j.raison })).concat((x.joursRetires || []).map(w => ({ date: w.date, raison: 'sans réel : ' + w.lignes.join(', ') })));
+        return l.length ? `<tr class="pc-jours"><td colspan="6"><details data-cal-sans-reel><summary>${x.joursRetires ? 'Jours retirés du total' : 'Jours sans réel'} (${l.length})</summary>
+          <ul class="pc-liste">${l.map(j => `<li>${dateFr(j.date)} — ${esc(j.raison)}</li>`).join('')}</ul></details></td></tr>` : '';
+      };
       const ligne = (nom, couvre, x, corr) => `<tbody data-cal-comparaison="${esc(nom)}"><tr class="pc-tete-ligne"><th scope="rowgroup" colspan="6">${esc(nom)} <small>${esc(couvre)}</small></th></tr>
           ${x.mois.map(m => `<tr><th scope="row">${esc(m.mois)}</th><td class="pv-n">${m.jours}</td><td class="pv-n">${nombre(m.mae)}</td><td class="pv-n">${nombre(m.biais)}</td><td class="pv-n">${corr ? nombre(m.correlation) : ''}</td>
             <td class="pv-n">${hs((x.heuresSupp || []).find(h => h.mois === m.mois))}</td></tr>`).join('')}
           <tr class="pv-cumul"><th scope="row">Période</th><td class="pv-n">${x.periode.jours}</td><td class="pv-n" data-cal-mae>${nombre(x.periode.mae)}</td><td class="pv-n">${nombre(x.periode.biais)}</td><td class="pv-n">${corr ? nombre(x.periode.correlation) : ''}</td>
             <td class="pv-n">${(x.heuresSupp || []).length ? 'heures supp : ' + hs(x.heuresSupp.reduce((n, h) => ({ reel: n.reel + h.reel, simule: n.simule + h.simule }), { reel: 0, simule: 0 })) : ''}</td></tr>
-          ${x.jours.length ? jours(x) : ''}</tbody>`;
+          ${x.jours.length ? jours(x) : ''}${sansReel(x)}</tbody>`;
+      // Un rôle d'une ligne absent de tout le fichier (correction 12) : la ligne n'a aucun jour ; on le dit en tête.
+      const introuvables = (c.anomalies.signalees || []).filter(x => x.code === 'role-introuvable');
       return `<section class="pc-comparaison" aria-label="La comparaison"><h3>La comparaison</h3>
+        ${introuvables.map(x => `<p class="pj-erreur" role="alert" data-cal-introuvable="${esc(x.role)}">${esc(x.raison)}.</p>`).join('')}
         <p class="mini-note">${c.jours.length} jour${c.jours.length > 1 ? 's' : ''} de travail complet${c.jours.length > 1 ? 's' : ''} avec du réel${c.joursIncomplets.length ? ' ; jours incomplets laissés de côté : ' + c.joursIncomplets.map(dateFr).join(', ') : ''}.
           Erreur : l’écart moyen (simulé − réel) en valeur absolue, en ETP ; biais : l’écart moyen (positif : la simulation surestime).</p>
         <div class="table-scroll"><table class="svc-table pc-table pc-mesures">
@@ -542,7 +551,8 @@
       <p class="mini-note">Un modèle par ligne, retenu seulement s’il prédit mieux que le moteur et qu’une constante sur des jours qu’il n’a pas appris,
         stable, dans ses bornes, confirmé par Wilcoxon et par un placebo. Toute l’unité, le total de chaque jour hors échantillon :
         erreur <b data-cal-avant>${nombre(u.avant.mae)}</b> ETP avec le moteur, <b data-cal-apres>${nombre(u.apres.mae)}</b> ETP avec les modèles retenus
-        (biais ${nombre(u.avant.biais)} puis ${nombre(u.apres.biais)}).</p>
+        (biais ${nombre(u.avant.biais)} puis ${nombre(u.apres.biais)})${u.semaines ? `, en validation par mois ; en validation par semaines,
+        <b data-cal-apres-semaines>${nombre(u.semaines.apres.mae)}</b> ETP (biais ${nombre(u.semaines.apres.biais)}) — avec deux mois, la validation par mois mêle l’effet du mois et celui du volume` : ''}.</p>
       <ul class="pc-liste pc-lignes">${r.lignes.map(ligne).join('')}</ul>
       <div class="pc-actions"><button type="button" class="btn btn-sm btn-play" data-cal="garder">Garder comme politique d’effectif</button></div></section>`;
   };

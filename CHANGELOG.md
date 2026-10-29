@@ -5,6 +5,38 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-29 — Banc d'essai, correction 12 : une cellule absente du réel n'est pas un zéro
+
+- `moteur/reel.js` : une cellule jour × rôle sans ligne dans le fichier, ou
+  écartée, n'a pas de réel (une ligne à 0 h reste un vrai zéro). Un jour où
+  l'un des rôles d'une ligne n'a pas de réel sort de sa comparaison et de son
+  calage, et va dans `joursSansReel`, avec sa raison ; le total de l'unité ne
+  compte que les jours où toutes les lignes ont leur réel et liste les autres
+  (`unite.joursRetires`). L'anomalie « rôle absent » signale tout rôle absent
+  un ou plusieurs jours, ses dates en périodes, sans écarter.
+- `moteur/calage-periode.js` : avec une validation par mois, le total de
+  l'unité se donne aussi en validation par semaines (`unite.semaines`).
+- La page, le classeur (colonne `Raison`, rangées « jour sans réel » et
+  « jour retiré du total », la rangée par semaines) et l'outil (le JSON, la
+  sortie d'erreur) les montrent.
+- Avec un réel complet, la comparaison et le calage ne changent pas, champ
+  par champ (`tests/reel-complet.attendu.json`, fait avec le code d'avant),
+  sauf le total par semaines qui s'ajoute quand une ligne se valide par mois
+  (`unite.validation`, `unite.semaines` ; dans la feuille Calage, une rangée
+  de plus, et « validation par mois » après le biais de la rangée « après »).
+- Un rôle d'une ligne absent de tout le fichier se signale (`role-introuvable`) ;
+  la feuille « Réel » dit « jour sans réel pour sa ligne » d'une cellule dont
+  la ligne n'a pas de réel ce jour-là.
+- `docs/MODELE_ATELIERS.md` : l'avertissement sur la version 2 corrigé — elle
+  range ses données à part (« ory-v2: ») ; seul un export de la version 2
+  restauré dans la version 1 perdrait les horaires d'encadrement.
+- Fichiers : `moteur/reel.js`, `moteur/calage-periode.js`, `calage-vue.js`,
+  `echanges-calage.js`, `outils/caler-periode.cjs`, `index.html`,
+  `docs/BANC_ESSAI.md` (§ 10), `docs/FORMATS_EXCEL.md` (§ 5),
+  `docs/MODELE_ATELIERS.md`, `docs/CAHIER_DES_CHARGES.md` (M20), `README.md`, `tests/reel-absent.test.cjs` et
+  `tests/reel-complet.attendu.json` (nouveaux), `tests/reel.test.cjs`,
+  `tests/caler-periode.test.cjs`, `tests/calage-browser.cjs`.
+
 ## 2026-10-28 — Banc d'essai, évolution 11 (f) : le rejeu à effectif imposé, un planning daté
 
 - `moteur/planning.js` (nouveau) : le fichier « Planning » (CSV ou feuille

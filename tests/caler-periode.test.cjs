@@ -66,10 +66,16 @@ test('le JSON : la comparaison, la même qu’avec le module, avec ou sans --san
   // Le cuisinier du 03/11 est en double : écarté, et ce jour-là la ligne Cuisine ne compte pas.
   assert.ok(sortie.comparaison.anomalies.ecartees.some(a => a.code === 'double' && a.date === '2026-11-03'));
   const cuisine = sortie.comparaison.lignes.find(l => l.nom === 'Cuisine');
-  assert.ok(cuisine.joursSansReel.includes('2026-11-03') && !cuisine.jours.some(j => j.date === '2026-11-03'));
+  assert.deepEqual(cuisine.joursSansReel.map(j => j.date), ['2026-11-03']);
+  assert.match(cuisine.joursSansReel[0].raison, /^cellule écartée \(Cuisinier\) : en double/);
+  assert.ok(!cuisine.jours.some(j => j.date === '2026-11-03'));
+  // Ce jour-là, la ligne Cuisine manque : il sort du total de l'unité, listé (correction 12).
+  assert.deepEqual(sortie.comparaison.unite.joursRetires, [{ date: '2026-11-03', lignes: ['Cuisine'] }]);
   assert.deepEqual(sortie.comparaison.rolesSansLigne, ['Plongeur']);
   assert.match(r.stderr, /Rôles sans ligne \(non comptés\) : Plongeur/);
   assert.match(r.stderr, /Écartée : 2026-11-03, Cuisinier — en double/);
+  assert.match(r.stderr, /Sans réel, Cuisine : 1 jour \(cellule écartée \(Cuisinier\) : en double/);
+  assert.match(r.stderr, /Retirés du total de l’unité : 1 jour \(2026-11-03 : Cuisine\)/);
   const leger = lancer(OUTIL, f('periode-leger.json'), f('reel.csv'), f('correspondance.json'));
   assert.equal(leger.status, 0, leger.stderr);
   assert.deepEqual(JSON.parse(leger.stdout).comparaison, sortie.comparaison);
@@ -101,7 +107,12 @@ test('--xlsx : le classeur du calage, celui de la page ; un classeur pour le ré
   assert.ok(reel.some(l => l[1] === 'Plongeur' && l[9] === 'sans ligne'));
   assert.ok(reel.some(l => l[1] === 'Cuisinier' && /^écartée : en double/.test(l[9])));
   const comp = feuilles.find(x => x.nom === 'Comparaison').lignes;
-  assert.deepEqual(comp[0], ['Ligne', 'Couvre', 'Niveau', 'Jour', 'Mois', 'Unité', 'Réel', 'Simulé', 'Écart', 'Jours', 'Erreur', 'Biais', 'Corrélation']);
+  // Le cuisinier du 03/11 en double : ce jour-là, sa ligne n'a pas de réel ; une colonne « Raison » le dit (correction 12).
+  assert.deepEqual(comp[0], ['Ligne', 'Couvre', 'Niveau', 'Jour', 'Mois', 'Unité', 'Réel', 'Simulé', 'Écart', 'Jours', 'Erreur', 'Biais', 'Corrélation', 'Raison']);
+  const sans = comp.find(l => l[0] === 'Cuisine' && l[2] === 'jour sans réel'), retire = comp.find(l => l[2] === 'jour retiré du total');
+  assert.match(sans[13], /^cellule écartée \(Cuisinier\) : en double/);
+  assert.deepEqual([retire[0], retire[13]], ['Toute l’unité', 'sans réel : Cuisine']);
+  assert.match(feuilles.find(x => x.nom === 'Lisez-moi').lignes.map(l => l[0]).join('\n'), /Jours retirés du total de l’unité \(une ligne sans réel\) : 1\./);
   assert.ok(comp.some(l => l[0] === 'Toute l’unité' && l[2] === 'période'));
   assert.ok(comp.some(l => l[0] === 'Cuisine' && l[2] === 'heures supp du mois' && l[5] === 'h'));
   // Le réel en classeur (feuille « Réel ») : la même comparaison.

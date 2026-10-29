@@ -21,7 +21,9 @@
  *   — (f) le rejeu : un planning fictif importé (un planning refusé, la ligne
  *     nommée), « Rejouer » avec sa progression, les équipes du planning, la
  *     comparaison du rejeu au réel ; « Caler le travail », « Annuler » puis
- *     jusqu'au bout ; le planning reste en mémoire, la sauvegarde ne le garde pas.
+ *     jusqu'au bout ; le planning reste en mémoire, la sauvegarde ne le garde pas ;
+ *   — correction 12 : un rôle absent trois jours, ces jours hors de sa ligne
+ *     et du total de l'unité, avec leur raison ; l'anomalie en une période.
  * Données fictives ; aucune capture d'écran (le plan est confidentiel). */
 const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs'),os=require('node:os');
 const nav=require('./nav.cjs');
@@ -350,6 +352,21 @@ const CLE='ory-calage-v1';
   assert.ok(x4.find(f=>f.nom==='Comparaison').lignes.some(l=>l[2]==='rejeu : heures supp du jour'));
   const cal4=x4.find(f=>f.nom==='Calage');
   assert.ok(!cal4||!cal4.lignes.some(l=>l[2]==='calage du travail'),'à refaire : pas dans le classeur');
+
+  // Correction 12 : un réel où l'agent manque trois jours de suite. Ces jours sortent de sa ligne (pas un zéro), avec leur raison,
+  // et du total de l'unité ; l'anomalie les regroupe en une période, sans rien écarter.
+  const trous=complets.slice(6,9).map(w=>w.date);
+  const reelTrous=reelCsv.split('\n').filter(l=>!trous.some(d=>l.startsWith(d+';Agent;'))).join('\n');
+  await page.locator('#calage-reel').setInputFiles(fichier('reel-trous.csv',reelTrous));await attendre(400);
+  const agent=page.locator(`${B} [data-cal-comparaison="Agent"] [data-cal-sans-reel]`);
+  assert.match(await agent.locator('summary').innerText(),/^Jours sans réel \(3\)/);
+  assert.match(await agent.textContent(),/rôle Agent sans ligne ce jour-là/);
+  assert.match(await page.locator(`${B} [data-cal-comparaison="Toute l’unité"] [data-cal-sans-reel] summary`).innerText(),/^Jours retirés du total \(3\)/);
+  assert.match(await page.locator(`${B} [data-cal-signal="role-absent"]`).innerText(),
+    new RegExp('^Agent : absent du '+trous[0].slice(8,10)+'/'+trous[0].slice(5,7)+' au '+trous[2].slice(8,10)+'/'+trous[2].slice(5,7)+' \\(3 jours\\)'));
+  const cTrous=R.comparer(await bilan(),R.controler(R.lireReel([{nom:'reel.csv',lignes:T.lireCsv(reelTrous)}]),(await reglages()).decisions),(await reglages()).correspondance);
+  assert.equal(await page.locator(`${B} [data-cal-comparaison="Toute l’unité"] [data-cal-mae]`).innerText(),fr(cTrous.unite.periode.mae));
+  assert.deepEqual(cTrous.unite.joursRetires.map(w=>w.date),trous);
 
   // Le planning reste en mémoire : la sauvegarde ne le garde pas.
   assert.doesNotMatch(JSON.stringify(await reglages()),/planning|Cuisine froide nuit/);

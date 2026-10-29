@@ -37,6 +37,10 @@
       ['Jours comparés (jours de travail complets avec du réel) : ' + (c.jours || []).length + ' ; jours de travail incomplets écartés : ' + liste((c.joursIncomplets || []).map(dateFr)) + '.'],
       ['Rôles sans ligne (listés, pas comptés) : ' + liste(c.rolesSansLigne) + '.'],
       ['Cellules écartées : ' + (a.ecartees || []).length + ' ; à vérifier : ' + (a.signalees || []).length + ' ; jours écartés par vous : ' + liste((a.joursEcartes || []).map(dateFr)) + '.'],
+      // Correction 12 : une cellule absente ou écartée n'a pas de réel ; ses jours sortent de la ligne, et du total de l'unité.
+      ...((c.lignes || []).some(l => (l.joursSansReel || []).length) ? [['Jours sans réel (un rôle de la ligne sans ligne ce jour-là, ou sa cellule écartée ; ni comptés ni à 0 h) : '
+        + (c.lignes || []).filter(l => (l.joursSansReel || []).length).map(l => l.nom + ' ' + l.joursSansReel.length).join(', ') + ' — leurs raisons dans la feuille Comparaison.']] : []),
+      ...(c.unite && c.unite.joursRetires ? [['Jours retirés du total de l’unité (une ligne sans réel) : ' + c.unite.joursRetires.length + '.']] : []),
       [''],
       ['Les feuilles :'],
       ['   Réel — chaque jour × rôle, tel que lu : ses heures, ses bases, ses ETP, sa ligne, et s’il est compté, écarté (et pourquoi) ou sans ligne.'],
@@ -61,7 +65,10 @@
     const ligneDe = new Map((c.lignes || []).flatMap(l => l.roles.map(r => [r, l.nom])));
     const base = r => (c.bases ? R().baseDe(c.bases, r) : R().BASE_DEFAUT);
     const compares = new Set(c.jours || []), incomplets = new Set(c.joursIncomplets || []);
-    const etat = (date, role) => (!ligneDe.has(role) ? 'sans ligne' : compares.has(date) ? 'compté' : incomplets.has(date) ? 'jour de travail incomplet' : 'hors période');
+    // Le jour sans réel d'une ligne (un autre de ses rôles manque, correction 12) : ses cellules ne comptent pas, la raison le dit.
+    const sansReel = new Map((c.lignes || []).flatMap(l => (l.joursSansReel || []).flatMap(j => l.roles.map(r => [j.date + '|' + r, j.raison]))));
+    const etat = (date, role) => (!ligneDe.has(role) ? 'sans ligne' : sansReel.has(date + '|' + role) ? 'jour sans réel pour sa ligne : ' + sansReel.get(date + '|' + role)
+      : compares.has(date) ? 'compté' : incomplets.has(date) ? 'jour de travail incomplet' : 'hors période');
     const rangs = [];
     const rang = (x, etatDe) => {
       const b = base(x.role), e = R().etpDe(x, b);
@@ -96,6 +103,15 @@
     if (c.unite) bloc('Toute l’unité', 'toutes les lignes', c.unite, false);
     for (const l of c.lignes || []) for (const h of l.heuresSupp || [])
       lignes.push([l.nom, l.couvre, 'heures supp du mois', null, h.mois, 'h', n2(h.reel), n2(h.simule), n2(h.simule - h.reel), h.jours, null, null, null]);
+    // Les jours sans réel d'une ligne et ceux retirés du total de l'unité (correction 12), avec leur raison : une colonne de plus.
+    const sansReel = (c.lignes || []).some(l => (l.joursSansReel || []).length), retires = (c.unite && c.unite.joursRetires) || [];
+    if (sansReel || retires.length) {
+      lignes[0].push('Raison');
+      for (const l of c.lignes || []) for (const j of l.joursSansReel || [])
+        lignes.push([l.nom, l.couvre, 'jour sans réel', T_.celluleDate(j.date), j.date.slice(0, 7), 'ETP', null, null, null, null, null, null, null, j.raison]);
+      for (const w of retires) lignes.push(['Toute l’unité', 'toutes les lignes', 'jour retiré du total', T_.celluleDate(w.date), w.date.slice(0, 7), 'ETP',
+        null, null, null, null, null, null, null, 'sans réel : ' + w.lignes.join(', ')]);
+    }
     const r = rejeu || ((c.lignes || []).some(l => l.rejeu) ? c : null);
     if (r) {
       for (const l of r.lignes || []) if (l.rejeu) {
@@ -159,8 +175,11 @@
         validation: l.validation + ' — heures supp : ' + fr(l.erreurMoteur) + ' h par jour avec le barème, ' + fr(l.erreur) + ' h avec le facteur' }));
     }
     const u = rapport.unite || {};
-    for (const [rang, x] of [['avant (moteur)', u.avant], ['après (modèles retenus)', u.apres]]) if (x)
-      lignes.push(rangee({ ligne: 'Toute l’unité', couvre: 'le total de chaque jour', rang, semaines: n3(x.mae), n: x.jours, validation: 'biais ' + fr(x.biais) }));
+    // Avec une validation par mois, le total aussi en validation par semaines (correction 12) : les deux se lisent ensemble.
+    const parMois = u.validation === 'mois' && u.semaines;
+    for (const [rang, x, v] of [['avant (moteur)', u.avant, ''], ['après (modèles retenus)', u.apres, parMois ? ' — validation par mois' : ''],
+      ...(parMois ? [['après (modèles retenus), validation par semaines', u.semaines.apres, ' — validation par semaines']] : [])]) if (x)
+      lignes.push(rangee({ ligne: 'Toute l’unité', couvre: 'le total de chaque jour', rang, semaines: n3(x.mae), n: x.jours, validation: 'biais ' + fr(x.biais) + v }));
     return feuille('Calage', lignes, 3);
   }
 

@@ -319,22 +319,29 @@
     return { schema: 'ory-calage-rapport', version: 1, lignes: lignes.map(({ _retenu, _cle, ...x }) => x), unite };
   }
 
-  /** Le total de l'unité chaque jour : réel, moteur (le simulé), et la prédiction hors échantillon des modèles retenus. */
+  /**
+   * Le total de l'unité chaque jour : réel, moteur (le simulé), et la prédiction hors échantillon des modèles
+   * retenus — chaque ligne validée par mois quand elle en a deux, sinon par semaine. Quand une ligne au moins
+   * l'est par mois, le total se donne aussi en validation par semaines pour toutes (`semaines`) : avec deux
+   * mois, la validation par mois mêle l'effet du mois et celui du volume (correction 12).
+   */
   function uniteAvantApres(comparaison, lignes) {
-    const dates = ((comparaison.unite && comparaison.unite.jours) || []).map(j => j.date), avant = [], apres = [];
+    const dates = ((comparaison.unite && comparaison.unite.jours) || []).map(j => j.date), avant = [], apres = [], apresSemaines = [];
     for (const d of dates) {
-      let reel = 0, moteur = 0, cale = 0, ok = true;
+      let reel = 0, moteur = 0, cale = 0, caleSemaines = 0, ok = true;
       (comparaison.lignes || []).forEach((l, i) => {
         const j = l.jours.find(x => x.date === d), c = lignes[i];
         if (!j) { ok = false; return; }
         reel += j.reel; moteur += j.simule;
-        const e = c._retenu ? c._retenu[c._cle].erreurs.get(d) : undefined;
+        const e = c._retenu ? c._retenu[c._cle].erreurs.get(d) : undefined, es = c._retenu ? c._retenu.semaines.erreurs.get(d) : undefined;
         cale += e === undefined ? j.simule : j.reel - e;
+        caleSemaines += es === undefined ? j.simule : j.reel - es;
       });
-      if (ok) { avant.push(moteur - reel); apres.push(cale - reel); }
+      if (ok) { avant.push(moteur - reel); apres.push(cale - reel); apresSemaines.push(caleSemaines - reel); }
     }
     const m = e => ({ jours: e.length, mae: e.length ? moyenne(e.map(Math.abs)) : null, biais: moyenne(e) });
-    return { avant: m(avant), apres: m(apres) };
+    const parMois = lignes.some(c => c._retenu && c._cle === 'mois');
+    return { avant: m(avant), apres: m(apres), ...(parMois ? { validation: 'mois', semaines: { avant: m(avant), apres: m(apresSemaines) } } : {}) };
   }
 
   /* ----------------------------------------------------------------------
