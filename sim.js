@@ -2251,7 +2251,11 @@ async function restaurerSauvegarde(e) {
   const file = e.target.files[0]; if (!file) return;
   const r = document.getElementById('sauvegarde-etat');
   const refuser = m => { r.classList.add('error'); r.textContent = 'Restauration refusée : ' + m + ' Rien n’a été remplacé.'; };
+  // Un onglet en retard n'écrit plus rien (correction 14, stockage.js) : on le dit plutôt que de recharger sans avoir restauré.
+  const enRetard = () => !!(window.OrlyStockage && OrlyStockage.enRetard());
+  const RETARD = 'les données ont changé dans un autre onglet. Rechargez cette page, puis restaurez.';
   try {
+    if (enRetard()) throw new Error(RETARD);
     if (file.size > 20 * 1024 * 1024) throw new Error('fichier trop volumineux (maximum 20 Mo).');
     const brut = JSON.parse(await file.text());
     if (!brut || brut.schema !== 'ory-sauvegarde' || brut.version !== 1 || !brut.contenu || typeof brut.contenu !== 'object') {
@@ -2270,8 +2274,9 @@ async function restaurerSauvegarde(e) {
     if (!aEcrire.length) throw new Error('la sauvegarde ne contient aucune partie connue.');
     // Une vraie question : la restauration remplace tout, et ne se défait pas.
     if (!await OrlyNotif.demander('Le plan, les équipes, les flux et les réglages enregistrés dans ce navigateur seront remplacés par ceux de la sauvegarde ('
-      + aEcrire.length + (aEcrire.length > 1 ? ' parties' : ' partie') + '). La page se rechargera.',
+      + aEcrire.length + (aEcrire.length > 1 ? ' parties' : ' partie') + '). La page se rechargera. Les autres onglets ouverts du site devront être rechargés.',
       { titre: 'Restaurer cette sauvegarde ?', oui: 'Restaurer la sauvegarde', danger: true })) { e.target.value = ''; return; }
+    if (enRetard()) throw new Error(RETARD);
     aEcrire.forEach(([cle, valeur]) => localStorage.setItem(cle, valeur));
     location.reload();
   } catch (err) { refuser(err.message); }
@@ -2958,7 +2963,8 @@ if(pannes.length){
   const b=document.createElement('div');b.className='panne-demarrage';b.setAttribute('role','alert');
   b.innerHTML='<b>Une partie du site n’a pas pu se charger</b> ('+escapeHTML(pannes.join(' ; '))+'). Le reste fonctionne. '
     +'<a href="secours.html">Page de secours : récupérer vos données, repartir sans elles</a>';
-  document.body.prepend(b);
+  // Sur la rangée des bandeaux (stockage.js), sous celui d'un autre onglet qui a enregistré.
+  (window.OrlyStockage&&OrlyStockage.bandeaux?OrlyStockage.bandeaux():document.body).append(b);
 }
 
 

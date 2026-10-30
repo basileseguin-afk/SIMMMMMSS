@@ -2047,3 +2047,72 @@ fait le parcours dans la page : un planning refusé, puis importé ; le rejeu et
 sa progression ; la comparaison du rejeu ; « Caler le travail », annulé puis
 fait ; un facteur appliqué au barème puis annulé ; le classeur ; le planning
 n'est pas dans la sauvegarde.
+
+## 11. Plusieurs onglets ne s'écrasent plus (correction 14)
+
+Le banc lit le fichier « Tout sauvegarder », qui exporte ce qui est enregistré
+dans le navigateur. Chaque onglet de la page garde ses données en mémoire et
+réécrit tout l'enregistrement à chaque modification : un onglet resté ouvert
+sur un état ancien écrasait, à sa première action, ce qu'un autre onglet venait
+d'enregistrer, ou une sauvegarde restaurée ailleurs ; l'export suivant rendait
+cet état ancien.
+
+**La révision.** Les données du site (les clés `ory-…` et `orly-…`) portent un
+numéro de révision (`ory-revision`), augmenté à chaque écriture. Chaque onglet
+le lit en s'ouvrant. Il n'écrit que si la révision enregistrée est encore celle
+qu'il a lue ; sinon il n'écrit rien et affiche, en tête de page, un bandeau qui
+ne se ferme pas : « Les données ont changé dans un autre onglet. Vos dernières
+modifications ici ne sont pas enregistrées. », avec un bouton « Recharger ».
+
+**L'événement `storage`.** Quand un autre onglet écrit, ou restaure une
+sauvegarde, le navigateur prévient les autres : le même bandeau s'y affiche
+tout de suite, avant toute modification. Un onglet qui ne l'a pas reçu (en
+veille, ou revenu du cache de navigation) relit la révision quand il revient
+à l'écran, et avant chaque écriture : le bandeau paraît alors.
+
+**Ce qui n'est pas une donnée.** Les préférences d'affichage (le thème, la
+dernière page ouverte, le service choisi, le sens des diagrammes, le panneau
+« En ce moment ») et le témoin de démarrage, que chaque onglet pose en
+s'ouvrant, s'écrivent toujours et ne dérangent pas les autres onglets. Le
+tiroir de la version 2 (`ory-v2:…`) non plus : la version 2 ouverte à côté
+n'est pas un autre onglet de la version 1. Réécrire la même valeur n'est pas
+une écriture : la révision ne bouge pas.
+
+**Restaurer** avertit, dans sa question, que les autres onglets ouverts du site
+devront être rechargés. Un onglet en retard ne restaure pas, ni avant la
+question ni après (un autre onglet a pu écrire pendant qu'elle était ouverte) :
+« Restauration refusée : les données ont changé dans un autre onglet.
+Rechargez cette page, puis restaurez. Rien n'a été remplacé. »
+
+**La page de secours** (`secours.html`) écrit sans garde, puisqu'elle sert
+quand le site ne démarre plus ; elle augmente la révision à chaque écriture,
+et ne la compte pas parmi les données qu'elle liste, met de côté ou remet.
+
+**Comment.** `stockage.js`, chargé avant tous les autres scripts de
+`index.html`, met un garde à la place de `localStorage` : le reste du code lit
+et écrit comme avant. Avec un seul onglet, rien ne change : les données écrites
+sont celles d'avant, champ par champ ; seule s'ajoute la clé `ory-revision`,
+qui ne part pas dans « Tout sauvegarder ». Un navigateur qui refuserait le
+garde fait comme avant. Tout effacer ne fait jamais revenir un numéro déjà lu
+par un autre onglet.
+
+**Limites.** Relire la révision puis écrire ne se fait pas d'un seul geste
+entre onglets (le stockage du navigateur ne le permet pas) : l'événement
+`storage` couvre ce court instant. Deux onglets ouverts au même moment sur un
+navigateur neuf, ou juste après une mise à jour qui range les données au
+chargement, peuvent tous deux écrire en s'ouvrant : le second montre le
+bandeau, rien n'est perdu, un rechargement suffit.
+
+Vérifications — `tests/plusieurs-onglets.test.cjs` : le garde sur un stockage
+simulé (les clés gardées ; un seul onglet, champ par champ ; la même valeur
+réécrite ; deux onglets sans événement ; le retard relu à la révision ; tout
+effacer sans revenir à un numéro lu ; le signal d'un autre onglet ; un
+stockage plein). `tests/plusieurs-onglets-browser.cjs` : deux onglets (deux
+pages Playwright) ; un second onglet et le thème, sans bandeau ; une
+modification en A, le bandeau en B tout de suite, des modifications en B
+(équipes, plan, liens, barème) qui n'écrivent rien, « Recharger » qui montre
+la modification de A ; sans l'événement, B qui relit la révision et n'écrit
+rien ; une restauration en A, le bandeau en B sans attendre, B qui refuse de
+restaurer à son tour, avant la question et après ; la version 2 ouverte à
+côté, sans bandeau ; la page de secours qui augmente la révision ; un seul
+onglet : le même parcours avec et sans le garde, identique champ par champ.

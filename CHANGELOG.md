@@ -5,6 +5,33 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-30 — Banc d'essai, correction 14 (a) : plusieurs onglets ne s'écrasent plus
+
+- `stockage.js` (nouveau), chargé avant les autres scripts de `index.html` :
+  un garde à la place de `localStorage`. Les données du site (clés `ory-…` et
+  `orly-…`, hors préférences d'affichage, témoin de démarrage et tiroir de la
+  version 2) portent un numéro de révision (`ory-revision`), augmenté à chaque
+  écriture. Un onglet n'écrit que si la révision enregistrée est celle qu'il a
+  lue ; sinon il n'écrit rien et affiche un bandeau qui ne se ferme pas, avec
+  « Recharger ». L'événement `storage` d'un autre onglet (une écriture, une
+  restauration) l'affiche tout de suite ; sans lui, l'onglet relit la révision
+  avant d'écrire et quand il revient à l'écran. Réécrire la même valeur n'est
+  pas une écriture.
+- `sim.js` : « Restaurer » avertit que les autres onglets ouverts du site
+  devront être rechargés ; un onglet en retard refuse de restaurer, avant la
+  question et après, sans rien remplacer. Le bandeau d'un démarrage incomplet
+  rejoint la rangée des bandeaux.
+- `secours.html` : la page de secours augmente la révision quand elle écrit,
+  et ne la liste pas parmi les données.
+- Avec un seul onglet, rien ne change : les données écrites sont celles
+  d'avant, champ par champ ; seule s'ajoute la clé de la révision, hors de
+  « Tout sauvegarder ». La version 2 n'est pas touchée.
+- Fichiers : `stockage.js` (nouveau), `sim.js`, `secours.html`, `index.html`
+  (le script, le style des bandeaux, l'aide de « Restaurer », empreintes),
+  `docs/BANC_ESSAI.md`
+  (§ 11), `README.md`, `tests/plusieurs-onglets.test.cjs` (nouveau),
+  `tests/plusieurs-onglets-browser.cjs` (nouveau).
+
 ## 2026-10-29 — Banc d'essai, correction 13 : une case vide du réel n'est pas un zéro
 
 - `moteur/reel.js` : des heures supp vides sont inconnues — la cellule n'en a

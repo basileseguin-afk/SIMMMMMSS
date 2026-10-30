@@ -125,9 +125,16 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 .compare-tab td:first-child,.compare-tab th:first-child{text-align:left;color:var(--txt2);font-weight:var(--ds-g-fort)}
 .compare-tab thead th{color:var(--txt2);font-size:var(--ds-t-12);text-transform:uppercase;font-weight:var(--ds-g-fort)}
 
+/* La rangée des bandeaux, en tête : celui d'un autre onglet qui a enregistré (correction 14, stockage.js), qui ne se ferme
+   pas, puis celui d'un démarrage incomplet. */
+body>.bandeaux{grid-column:1/-1;grid-row:1;min-width:0}
+.donnees-changees{position:relative;z-index:201;display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:10px 16px;
+  background:var(--ds-attente-doux);border-bottom:2px solid var(--ds-attente);color:var(--txt);font-size:var(--ds-t-14)}
+.donnees-changees p{margin:0;font-weight:var(--ds-g-fort)}
+
 @media(max-width:1250px){ .app{grid-template-columns:260px 1fr 290px} }
 </style>
-<meta name="ory-version" content="e8e5acfe1a"/>
+<meta name="ory-version" content="068e1670da"/>
 <link href="interface.css?v=a79339df" rel="stylesheet"/><link href="editor.css?v=7c30f1f7" rel="stylesheet"/><link href="flow-center.css?v=62899a0b" rel="stylesheet"/><link href="ateliers.css?v=2da0c40c" rel="stylesheet"/>
 <link href="reglages.css?v=492a7bab" rel="stylesheet"/><link href="demarrage.css?v=9ef1de69" rel="stylesheet"/><link href="aide.css?v=6dc5aec0" rel="stylesheet"/><link href="usability.css?v=d05639c8" rel="stylesheet"/><link href="graphe.css?v=c6498078" rel="stylesheet"/><link href="histoire.css?v=768c5f75" rel="stylesheet"/><link href="temps.css?v=5b7080b2" rel="stylesheet"/><link href="unite.css?v=0de0aee2" rel="stylesheet"/><link href="ds.css?v=10e3eb8c" rel="stylesheet"/><link href="periode.css?v=c8d65865" rel="stylesheet"/></head>
 <body data-vue="plan"><a class="skip-link" href="#workspace">Aller au contenu</a>
@@ -239,10 +246,11 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <div class="mini-note">Tout vit <strong>dans ce navigateur</strong> — exportez pour ne rien perdre.<details class="aide"><summary aria-label="Où vivent vos données ?">?</summary><span class="aide-corps">Le plan, les ateliers de travail, les flux et les vols disparaissent si vous videz vos données de site, et ils ne suivent pas d’un appareil à l’autre. Un seul fichier les réunit tous.</span></details></div>
 <div class="row-btns"><button class="btn" id="sauvegarde-export"><span data-ico="telecharger"></span>Tout sauvegarder</button><button class="btn" id="sauvegarde-import-btn"><span data-ico="importer"></span>Restaurer</button><input accept=".json" hidden="" id="sauvegarde-import" type="file"/></div>
 <div aria-live="polite" class="import-report" id="sauvegarde-etat" role="status">Sauvegardez avant de fermer, et à chaque étape importante de votre tracé.</div>
-<div class="mini-note"><span class="note-ico" data-ico="alerte"></span>Ce fichier <strong>contient le plan réel de l’unité</strong> : gardez-le hors du dépôt public.<details class="aide"><summary aria-label="Comment se passe la restauration ?">?</summary><span class="aide-corps">La restauration est refusée en entier si une partie est invalide, et demande confirmation avant de remplacer quoi que ce soit.</span></details></div>
+<div class="mini-note"><span class="note-ico" data-ico="alerte"></span>Ce fichier <strong>contient le plan réel de l’unité</strong> : gardez-le hors du dépôt public.<details class="aide"><summary aria-label="Comment se passe la restauration ?">?</summary><span class="aide-corps">La restauration est refusée en entier si une partie est invalide, et demande confirmation avant de remplacer quoi que ce soit. Les autres onglets ouverts du site devront être rechargés : chacun le dit par un bandeau, et n’enregistre plus rien d’ici là.</span></details></div>
 <details class="aide bloc"><summary>Site et fichier local : deux stockages</summary><span class="aide-corps">Une page ouverte depuis <code>github.io</code> et un fichier ouvert depuis votre disque ne partagent pas le même stockage : travaillez toujours au même endroit, ou passez par ce fichier.</span></details>
 </div>
 <div class="panneau" id="model-limits"><h3>Ce que le calcul ne sait pas faire</h3><p class="mini-note">C’est un prototype : il sert à comparer des essais entre eux, pas à dire combien de personnes embaucher.</p><details class="aide bloc"><summary>Les limites connues</summary><span class="aide-corps"><ul class="limits-list"><li>Barème d’heures de travail <strong>non calibré</strong> : valeurs de démonstration tant que l’étude de l’unité n’est pas importée.</li><li>Calcul <strong>sans aléa</strong> : pas de panne, d’absence ni de retard de livraison. Une même journée donne toujours le même résultat.</li><li>Un seul compte de matériel propre, consommé et relavé ; les stocks de denrées, les trolleys et les transferts physiques ne sont pas modélisés.</li><li>Les compétences ne sont pas modélisées : une personne d’un atelier ne va pas aider dans un autre.</li><li>L’export Winrest (XLSX et lignes de prestations) n’est pas encore lu : seul le CSV simplifié l’est.</li></ul></span></details></div></div></aside></div>
+<script src="stockage.js?v=80051de2"></script>
 <script src="vols-demo.js?v=08d61681"></script>
 <script src="plan-base.js?v=2e06de39"></script>
 <script src="rendu.js?v=ac16ab27"></script>
@@ -271,6 +279,6 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <script src="replay.js?v=016adb42"></script>
 <script src="simulation.js?v=8d2f509a"></script>
 <script src="comparaison.js?v=390e35e8"></script>
-<script src="sim.js?v=aa605da3"></script>
+<script src="sim.js?v=47912498"></script>
 </body>
 </html>
