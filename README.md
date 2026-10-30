@@ -18,7 +18,8 @@ est facultatif ; aucun dossier `assets` n’est nécessaire.
 ligne : `…/v2/`) est la version 2, en construction : une copie complète qui
 reçoit les nouveautés (coûts de la main-d’œuvre et des retards, heures sup,
 aléas, optimisation). Ses données restent à part ; à la première ouverture,
-elle part d’une copie de votre travail. Voir [docs/V2.md](docs/V2.md).
+elle part d’une copie de votre travail, et un bandeau discret dit la date de
+cette copie, avec « Reprendre les données de la version 1 ». Voir [docs/V2.md](docs/V2.md).
 
 ## 🌐 Ouvrir l'application depuis GitHub (sans rien télécharger)
 
@@ -820,6 +821,7 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/import-browser.cjs` | Import CSV : échec de lecture puis réimport, numéros de ligne, export, scénarios A/B |
 | `tests/sauvegarde-browser.cjs` | Sauvegarde complète : export, refus atomique, effacement et restauration |
 | `tests/plusieurs-onglets-browser.cjs` | Deux onglets du même site (correction 14) : un second onglet et le thème sans bandeau ; une modification en A, le bandeau en B tout de suite, B en retard n’écrit rien (équipes, plan, liens, barème), « Recharger » montre la modification de A ; sans l’événement, B relit la révision et n’écrit rien ; une restauration en A (la question avertit), le bandeau en B sans attendre, B refuse de restaurer, avant la question et après ; la v2 à côté sans bandeau ; la page de secours augmente la révision ; un seul onglet identique champ par champ, avec et sans le garde |
+| `tests/v2-copie-browser.cjs` | La version 2 dit d’où viennent ses données (correction 14 b) : le bandeau discret et la date de la copie (JJ/MM/AAAA, celle enregistrée à la première ouverture), « Reprendre les données de la version 1 » refusé puis fait (la page rechargée, la date à jour, le budget de la v2 gardé), la v1 intacte octet pour octet et son onglet ouvert à côté sans bandeau, la révision de la v1 hors de la v2 |
 | `tests/ateliers-browser.cjs` | Onglet Ateliers de bout en bout : saisie, calcul, planning, persistance |
 | `tests/etat-plan-browser.cjs` | État de paramétrage sur le plan, quatre états de la relecture, bascule des légendes |
 | `tests/zoom-browser.cjs` | Bornes du zoom, cadrage d'un service, raccourcis clavier, bridage du déplacement |

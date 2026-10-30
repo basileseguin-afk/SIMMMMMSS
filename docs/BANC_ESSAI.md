@@ -2096,6 +2096,11 @@ qui ne part pas dans « Tout sauvegarder ». Un navigateur qui refuserait le
 garde fait comme avant. Tout effacer ne fait jamais revenir un numéro déjà lu
 par un autre onglet.
 
+**La version 2** (correction 14 b) a ses propres données : un bandeau
+discret dit qu'elles sont séparées de la version 1, et la date de leur copie ;
+« Reprendre les données de la version 1 » les recopie, sans jamais modifier la
+version 1 (`docs/V2.md`).
+
 **Limites.** Relire la révision puis écrire ne se fait pas d'un seul geste
 entre onglets (le stockage du navigateur ne le permet pas) : l'événement
 `storage` couvre ce court instant. Deux onglets ouverts au même moment sur un

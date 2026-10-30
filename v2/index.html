@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8"/>
 <!-- Version 2 : ses propres données, rangées à part de la version 1 (chargé en premier). -->
-<script src="stockage-v2.js?v=50b15ce2"></script>
+<script src="stockage-v2.js?v=817081cd"></script>
 <!-- Le thème choisi (une préférence d'affichage), posé avant tout dessin : pas d'éclair clair au chargement. -->
 <script>try{if(localStorage.getItem('ory-ui-theme')==='sombre')document.documentElement.dataset.theme='sombre';}catch(e){}</script>
 <meta content="width=1280" name="viewport"/>
@@ -128,8 +128,19 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 .compare-tab thead th{color:var(--txt2);font-size:var(--ds-t-12);text-transform:uppercase;font-weight:var(--ds-g-fort)}
 
 @media(max-width:1250px){ .app{grid-template-columns:260px 1fr 290px} }
+/* La version 2 dit d'où viennent ses données (correction 14 b) : un bandeau discret, sous la barre du haut, à côté de
+   la barre latérale (ds.css, § 5 : une rangée de plus, entre la barre du haut et la page). */
+html body{grid-template-rows:auto var(--haut-h) auto minmax(0,1fr)}
+html body>.accueil,html body>.app{grid-row:4}
+body>.v2-copie{grid-column:2;grid-row:3;min-width:0}
+/* Le plan rejoué : la toile d'abord (refonte, étape 5), le bandeau se retire. */
+body[data-sous="j-plan"]>.v2-copie{display:none}
+.v2-copie{display:flex;flex-wrap:wrap;align-items:center;gap:0 12px;padding:2px 16px;background:var(--bg2);border-bottom:1px solid var(--bordure);
+  color:var(--txt2);font-size:var(--ds-t-12)}
+.v2-copie p{margin:0}
+.v2-copie .lien-discret{min-height:24px;padding:2px 4px;font-size:var(--ds-t-12)}
 </style>
-<meta name="ory-version" content="0e908df2a6"/>
+<meta name="ory-version" content="cc95209a80"/>
 <link href="interface.css?v=a79339df" rel="stylesheet"/><link href="editor.css?v=7c30f1f7" rel="stylesheet"/><link href="flow-center.css?v=62899a0b" rel="stylesheet"/><link href="ateliers.css?v=2da0c40c" rel="stylesheet"/>
 <link href="reglages.css?v=492a7bab" rel="stylesheet"/><link href="demarrage.css?v=9ef1de69" rel="stylesheet"/><link href="aide.css?v=6dc5aec0" rel="stylesheet"/><link href="usability.css?v=d05639c8" rel="stylesheet"/><link href="graphe.css?v=c6498078" rel="stylesheet"/><link href="histoire.css?v=768c5f75" rel="stylesheet"/><link href="temps.css?v=5b7080b2" rel="stylesheet"/><link href="unite.css?v=0de0aee2" rel="stylesheet"/><link href="budget.css?v=3864b469" rel="stylesheet"/><link href="ds.css?v=10e3eb8c" rel="stylesheet"/></head>
 <body data-vue="plan"><a class="skip-link" href="#workspace">Aller au contenu</a>
@@ -273,6 +284,6 @@ label.chk input{width:16px;height:16px;accent-color:var(--accent)}
 <script src="replay.js?v=016adb42"></script>
 <script src="simulation.js?v=8d2f509a"></script>
 <script src="comparaison.js?v=390e35e8"></script>
-<script src="sim.js?v=55d88ea5"></script>
+<script src="sim.js?v=22cb55d5"></script>
 </body>
 </html>

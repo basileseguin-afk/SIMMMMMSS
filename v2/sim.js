@@ -2136,14 +2136,9 @@ function installerCentreReglages() {
         +'<p class="mini-note">La version 2 a copié le travail de la version 1'+(le?' le '+escapeHTML(new Date(le).toLocaleString('fr-FR')):'')+'. '
         +'Ce que vous avez réglé depuis dans la v1 (plan, équipes, flux, minutes, réglages) peut la remplacer ici. '
         +'Ce qui n’existe que dans la v2 (budget, taux) reste. Pensez à une sauvegarde de la v2 avant.</p>'
-        +'<button type="button" class="btn btn-sm" id="v2-reprendre">Reprendre le travail de la v1</button>';
+        +'<button type="button" class="btn btn-sm" id="v2-reprendre">Reprendre les données de la version 1</button>';
       donnees.prepend(p);
-      p.querySelector('#v2-reprendre').addEventListener('click',async()=>{
-        // Une vraie question : la reprise remplace le travail de la v2, et ne se défait pas.
-        if(!await OrlyNotif.demander('Le plan, les équipes, les flux, les minutes et les réglages de la version 2 seront remplacés par ceux de la version 1. Le budget de la v2 reste. La page se rechargera.',
-          {titre:'Reprendre le travail de la version 1 ?',oui:'Reprendre la v1',danger:true}))return;
-        OrlyV2.reprendreV1();location.reload();
-      });
+      p.querySelector('#v2-reprendre').addEventListener('click',reprendreLaV1);
     }
     const unite=document.getElementById('view-flux');
     if(unite)unite.appendChild(donnees);
@@ -2156,6 +2151,34 @@ function installerCentreReglages() {
   // faire au milieu des réglages, elle rejoint les limites du calcul.
   const version=document.getElementById('rg-version'),limites=document.getElementById('model-limits');
   if(version&&limites){delete version.dataset.sous;limites.appendChild(version);}
+}
+/* La version 2 dit d'où viennent ses données (correction 14 b) : un bandeau
+ * discret, sous la barre du haut, sur chaque page. Elles sont séparées de
+ * celles de la version 1, copiées à une date (enregistrée par
+ * v2/stockage-v2.js à la première ouverture, puis à chaque reprise) ; un
+ * bouton les reprend. La version 1 n'en est jamais modifiée : la reprise la
+ * lit, sans y écrire. */
+const jjmmaaaa=d=>[d.getDate(),d.getMonth()+1].map(n=>String(n).padStart(2,'0')).join('/')+'/'+d.getFullYear();
+/** Une vraie question : la reprise remplace le travail de la v2, et ne se défait pas. Puis la page se recharge. */
+async function reprendreLaV1(){
+  if(!await OrlyNotif.demander('Le plan, les équipes, les flux, les minutes et les réglages de la version 2 seront remplacés par ceux de la version 1. '
+    +'Le budget de la v2 reste. La version 1 n’est pas modifiée. La page se rechargera.',
+    {titre:'Reprendre les données de la version 1 ?',oui:'Reprendre la v1',danger:true}))return;
+  try{OrlyV2.reprendreV1();}
+  catch(e){toast('Reprise interrompue : '+e.message+'. Faites une sauvegarde de la v2, puis réessayez.');return;}
+  location.reload();
+}
+function bandeauCopie(){
+  if(!window.OrlyV2)return;
+  const le=OrlyV2.derniereCopie(),d=le?new Date(le):null;
+  const b=document.createElement('div');b.className='v2-copie';b.id='v2-copie';
+  const p=document.createElement('p');
+  p.textContent='Version 2 : ses données sont séparées de celles de la version 1'
+    +(d&&!isNaN(d)?', copiées le '+jjmmaaaa(d)+'.':' ; elles n’en ont pas été copiées.');
+  const bouton=document.createElement('button');bouton.type='button';bouton.className='lien-discret';
+  bouton.textContent='Reprendre les données de la version 1';bouton.addEventListener('click',reprendreLaV1);
+  b.append(p,bouton);
+  const haut=document.querySelector('body>.haut');if(haut)haut.after(b);else document.body.prepend(b);
 }
 function showView(name) {
   if(editMode && name!=='plan')return;
@@ -2615,6 +2638,7 @@ etape('annuler',initAnnuler);
 etape('palette',initPalette);
 etape('thème',initTheme); etape('En ce moment',initEnCeMoment);
 etape('affichage',()=>{majHorloge();majPlan();majDashboard();majStocks();});
+etape('copie de la v1',bandeauCopie);
 // Le démarrage est allé au bout : la marque s'efface.
 try{localStorage.removeItem(CLE_DEMARRAGE);}catch(e){/* rien */}
 if(pannes.length){

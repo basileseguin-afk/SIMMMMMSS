@@ -5,6 +5,22 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-10-30 — Banc d'essai, correction 14 (b) : la version 2 dit d'où viennent ses données
+
+- `v2/sim.js` : un bandeau discret, sous la barre du haut de chaque page (sauf
+  le plan rejoué, où la toile passe d'abord) :
+  « Version 2 : ses données sont séparées de celles de la version 1, copiées
+  le JJ/MM/AAAA. », avec « Reprendre les données de la version 1 » : après
+  confirmation, la v1 est recopiée dans la v2 et la page se recharge (la même
+  reprise que la page Sauvegarde, dont le bouton prend ce nom).
+- `v2/stockage-v2.js` : la date de la copie, enregistrée à la première
+  ouverture et à chaque reprise ; le numéro de révision de la v1
+  (`ory-revision`) n'est pas copié. La version 1 n'est jamais modifiée.
+- Fichiers : `v2/sim.js`, `v2/stockage-v2.js`, `v2/index.html` (le style du
+  bandeau, sa rangée sous la barre du haut, empreintes), `v2/secours.html`
+  (empreinte), `docs/V2.md`, `docs/BANC_ESSAI.md` (§ 11), `README.md`,
+  `tests/v2-copie-browser.cjs` (nouveau).
+
 ## 2026-10-30 — Banc d'essai, correction 14 (a) : plusieurs onglets ne s'écrasent plus
 
 - `stockage.js` (nouveau), chargé avant les autres scripts de `index.html` :

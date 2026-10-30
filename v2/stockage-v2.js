@@ -11,7 +11,10 @@
  *
  *  À la toute première ouverture, la version 2 part d'une COPIE du travail
  *  de la version 1 (les clés « ory-… » et « orly-… ») : on continue là où
- *  l'on en était. Ensuite, les deux versions ne se touchent plus.
+ *  l'on en était. Ensuite, les deux versions ne se touchent plus. La date de
+ *  la copie s'enregistre avec elle ; un bandeau discret la dit, et propose de
+ *  reprendre les données de la version 1 (v2/sim.js, correction 14 b). La
+ *  version 1 n'est jamais modifiée : la copie la lit, sans y écrire.
  * ==========================================================================*/
 (function () {
   'use strict';
@@ -21,8 +24,9 @@
   try { vrai = window.localStorage; if (!vrai) return; } catch (e) { return; } // stockage indisponible : le site fait déjà sans
 
   // Les noms de la version 1 : ceux de ce site, pas ceux d'autres sites du même domaine.
-  // Le témoin de démarrage reste propre à chaque version.
-  var DE_LA_V1 = /^(ory|orly)-/, PROPRE = { 'ory-demarrage-en-cours': true };
+  // Le témoin de démarrage reste propre à chaque version ; le numéro de révision de la
+  // version 1 (stockage.js, correction 14) n'a pas de sens ici.
+  var DE_LA_V1 = /^(ory|orly)-/, PROPRE = { 'ory-demarrage-en-cours': true, 'ory-revision': true };
 
   function toutes() {
     var out = [];
@@ -34,7 +38,7 @@
       .map(function (k) { return k.slice(PREFIXE.length); });
   }
 
-  /** Recopie le travail de la v1 dans la v2 (en écrasant le même nom) ; ce qui n'existe que dans la v2 reste. */
+  /** Recopie le travail de la v1 dans la v2 (en écrasant le même nom) ; ce qui n'existe que dans la v2 reste. La date de la copie avec. */
   function copier() {
     toutes().forEach(function (k) {
       if (k && k.indexOf(PREFIXE) !== 0 && DE_LA_V1.test(k) && !PROPRE[k]) vrai.setItem(PREFIXE + k, vrai.getItem(k));
@@ -43,7 +47,7 @@
   }
   try { if (vrai.getItem(MARQUE) === null) copier(); } catch (e) { /* stockage plein ou refusé : la version 2 part de zéro */ }
 
-  // Plus tard, on peut reprendre le travail fait entre-temps dans la v1 (Sauvegarde de la v2).
+  // Plus tard, on peut reprendre le travail fait entre-temps dans la v1 (le bandeau, Sauvegarde de la v2).
   window.OrlyV2 = {
     derniereCopie: function () { try { return vrai.getItem(MARQUE); } catch (e) { return null; } },
     reprendreV1: copier
