@@ -86,7 +86,10 @@ Créez un dossier `plan-prive/` à la racine et déposez-y les 12 tuiles nommée
 
 **Sans ce dossier, l'application fonctionne normalement** : les zones, la
 simulation et les indicateurs sont inchangés, seul le fond d'architecte manque.
-La case *Fond de plan* est alors désactivée et signalée « (absent) ».
+La case du fond est alors désactivée et se lit « Dessin (absent) », à la place
+de « Dessin du bâtiment » : plus courte, elle ne réduit pas le plan.
+Aucun test ne dépend de ce dossier : celui qui a besoin d'un fond crée une
+tuile fictive, hors du dépôt (`tests/plan-fictif.cjs`).
 
 Les **coordonnées** des zones et des tuiles restent dans le code : ce sont des
 nombres, pas le dessin. Les **vols embarqués sont fictifs** ; aucun export réel
@@ -651,6 +654,7 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `moteur/calage-travail.js` | Le calage du travail en rejeu (v1, banc d’essai, évolution 11 f) : un facteur des homme-minutes par ligne, une grille puis un affinage, validé hors échantillon (règles 1 à 4), pas à pas |
 | `moteur/calage-periode.js` | Le calage sur le réel, sans navigateur (v1, banc d’essai, évolution 11 c) : un modèle par ligne, validé hors échantillon, ses règles, σ et la bande P10–P90 |
 | `outils/caler-periode.cjs` | Comparer une période simulée au réel et la caler, ligne par ligne, hors du navigateur : `node outils/caler-periode.cjs periode.json reel.csv correspondance.json [--xlsx calage.xlsx]` ; d’un rejeu, la comparaison du rejeu ; `--travail sauvegarde.json vols-dates.csv planning.csv`, le calage du travail |
+| `outils/batterie.cjs` | La batterie complète dans un clone propre (correction 15) : `node outils/batterie.cjs` copie le dépôt sans les fichiers ignorés (ou `--commit HEAD`, un worktree Git), hors du dépôt, y joue les tests Node puis chaque test navigateur, une ligne par test, « FIN n OK, m ÉCHEC », les journaux dans un dossier temporaire |
 | `calage-vue.js` | « Réel et calage » dans la page Période (v1) : l’import du réel, la correspondance, les anomalies, la comparaison |
 | `echanges-calage.js` | Le classeur du calage sur le réel (v1), le même depuis la page et l’outil |
 | `replay.js` / `simulation.js` | Relecture de la journée calculée : états à l’instant t, vue Simulation |
@@ -701,6 +705,7 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/reel-absent.test.cjs` | Une cellule absente du réel n’est pas un zéro (v1, banc d’essai, correction 12) : un rôle sans ligne dix jours, ses jours hors de sa ligne ; une ligne à 0 h, un vrai zéro ; une ligne de deux rôles dont l’un manque, une cellule aux heures négatives, avec leur raison ; le total de l’unité qui saute et liste les jours où une ligne manque ; l’anomalie « rôle absent » en périodes ; le total aussi en validation par semaines ; la non-régression d’un réel complet (`tests/reel-complet.attendu.json`) |
 | `tests/reel-vide.test.cjs` | Une case vide du réel n’est pas un zéro (v1, banc d’essai, correction 13) : des heures supp vides dix jours, hors des heures supp mais pas des ETP ; titulaires et intérim vides, le jour hors de la ligne (« heures vides ») ; l’intérim vide, les titulaires remplies : 0 ; un jour écarté, un double réintégré, le rejeu, un jour tout vide, le signal d’un mois à zéro ; la non-régression d’un réel complet |
 | `tests/plusieurs-onglets.test.cjs` | Plusieurs onglets ne s’écrasent plus (v1, banc d’essai, correction 14) : le garde de `stockage.js` sur un stockage simulé ; les clés gardées (hors préférences d’affichage et tiroir de la v2) ; un seul onglet, les mêmes données champ par champ, plus la révision ; la même valeur réécrite sans révision ; deux onglets sans événement, B en retard n’écrit rien ; le retard relu à la révision ; tout effacer sans revenir à un numéro lu ; le signal d’un autre onglet ; un stockage plein |
+| `tests/batterie.test.cjs` | La batterie dans un clone propre (correction 15) : sur un dépôt Git fictif, la copie sans les fichiers ignorés, les tests Node puis navigateur, un échec qui se voit et son journal, un commit joué dans un worktree retiré ensuite |
 | `tests/vacations-longues.test.cjs` | Les vacations longues (v1, banc d’essai, évolution 11 e) : une présence au contrat sur l’encadrement d’un service et sur une équipe, les heures sup d’office (2 personnes 10 h pour 7 h 30 : 5 h par jour) ; l’ancienne forme de l’encadrement lue et inchangée ; la comparaison au réel qui les ajoute ; la non-régression ; le classeur de la période avec et sans |
 | `tests/periode-export.test.cjs` | Le classeur d’une période (v1, banc d’essai, évolution 10) : les huit feuilles et leurs colonnes, le Lisez-moi, de vraies dates Excel (la veille comprise), les lignes du bilan et de chaque journée, la charge et l’arrondi au service (évolution 11 a), relu par `tableur.js`, filtres et volets figés, déterministe ; deux mois fictifs écrits en quelques secondes |
 | `tests/handling-vagues.test.cjs` | Le handling 24 h/24 par vagues (v1, banc d’essai, évolution 8) : le véhicule selon l’heure de départ (la journée, les chauffeurs et le plan de chaque véhicule) ; plusieurs vols par tournée (6 départs en 2 tournées de camion, 9 en une tournée de VL, un vol qui ne tiendrait pas dans une autre, une vague qui attend un vol pas prêt, pas de vague plus chère en minutes-chauffeur, le quai par vol, l’échange avion par avion), dans la journée et dans le plan des chauffeurs (la borne basse sous le résultat, le déterminisme et le temps de calcul) ; l’échange sur le même avion par compagnie (aucune tournée de déchargement à part) ; les durées en VL ; la validation, Excel, les options du banc |
@@ -760,7 +765,7 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/problemes-browser.cjs` | Le registre des Problèmes (v1 et v2) : le nombre au pied de la barre, les trois niveaux, les nombres des onglets qui en dérivent, « Contrôles détaillés » qui compte pareil, un problème qui mène à sa page (un service à sa fiche), Échap, l’attente pendant l’édition du plan |
 | `tests/problemes.test.cjs` | Le registre, en Node : ses niveaux, ses pages, et les nombres de chaque onglet ; une source en panne ne le bloque pas |
 | `tests/plan-unite-browser.cjs` | Le plan de l’unité a sa page (v1 et v2) : Équipes › Plan de l’unité ouvre l’édition, le menu attend, « Terminer » ramène à la page d’avant, la page n’est pas retenue ; calques à gauche, toile au centre (barre d’outils flottante), inspecteur à droite ; calques par type, cadenas en pictogramme ; poignées carrées de 8 px à tout zoom, taille affichée, zone fixée expliquée ; contours constants ; « Modifier le plan » et la fiche d’un service y mènent. Aucune capture d’écran |
-| `tests/rejeu-browser.cjs` | Rejouer la journée (v1 et v2) : le plan occupe au moins 75 % de la hauteur utile, la barre de lecture en bas, indicateurs, légende et zoom posés sur le plan ; « En ce moment » se replie et le choix est retenu ; replié d’office sur un écran étroit ; l’édition garde son panneau ; rien à relire, la barre dit pourquoi. Aucune capture d’écran |
+| `tests/rejeu-browser.cjs` | Rejouer la journée (v1 et v2, sans le plan privé et avec une tuile fictive hors du dépôt, `tests/plan-fictif.cjs` : la même mise en page) : le plan occupe au moins 75 % de la hauteur utile, la barre de lecture en bas, indicateurs, légende et zoom posés sur le plan ; « En ce moment » se replie et le choix est retenu ; replié d’office sur un écran étroit ; l’édition garde son panneau ; rien à relire, la barre dit pourquoi. Aucune capture d’écran |
 | `tests/donnees-intactes-browser.cjs` | Le garde-fou de la refonte de l’interface (v1 et v2) : une unité complète, parcourue page par page (plan ouvert en édition puis refermé, thème changé), garde toutes ses clés du navigateur identiques après rechargement ; la journée calculée donne les nombres relevés avant la refonte (`tests/donnees-intactes.attendu.json`) |
 | `tests/sans-armement-browser.cjs` | Des compagnies sans armement, déduites (v1 et v2) : un chemin à elle sans armement et cochée dans une équipe — armée, la fiche le dit ; décochée — plus de case, « Sans armement : TX », rien à reprendre ni à cocher, aucune alerte ; plus de colonne « Armée » ; l’armement remis dans son chemin, elle est à cocher |
 | `tests/armement-vols-browser.cjs` | L'armement suit toujours les vols (v1 et v2) : jamais constant (un ancien choix s'efface), minutes par vol × vols de chaque compagnie, plus de minutes → plus de monde, fiche sans case « constant », vols du jour et journée par compagnie, saisie sans erreur de page |
@@ -843,3 +848,11 @@ Parcours spécifiques : `node tests/editor-browser.cjs`, `node tests/storage-bro
 `node tests/zoom-browser.cjs`,
 `node tests/annexe-browser.cjs` (Playwright / Chromium). Ils se rejouent **tous** : un parcours laissé de côté
 est une régression qui passe.
+
+**La batterie complète, dans un clone propre** (correction 15) : `node outils/batterie.cjs`
+joue les tests Node puis chaque test navigateur dans une copie du dépôt sans les
+fichiers que `.gitignore` refuse (le plan privé, les sauvegardes, le réel), hors du
+dépôt ; `--commit HEAD` joue un commit dans un worktree Git. Un test qui dépendrait
+d'un fichier ignoré y échoue, comme dans tout clone du dépôt public. Elle fait partie
+de la vérification d'avant commit (skill `verification-loop`). Code de sortie : 1 si un
+test échoue, 2 si elle ne peut pas se jouer ; Playwright vient de l'environnement.

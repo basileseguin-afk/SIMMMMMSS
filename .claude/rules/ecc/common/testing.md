@@ -7,7 +7,7 @@ A fix or a feature is not finished until it has been tested:
 - run the tests that cover the change and see them pass;
 - run the whole suite before committing, to catch regressions.
 
-In this repository: `node --test tests/*.test.cjs tests/v2/*.test.cjs` (Node tests), and the browser tests `tests/*-browser.cjs` that the change touches.
+In this repository: `node --test tests/*.test.cjs tests/v2/*.test.cjs` (Node tests), and the browser tests `tests/*-browser.cjs` that the change touches. Before each commit, the whole battery also runs in a clean clone, without the files `.gitignore` refuses: `node outils/batterie.cjs` (the verification-loop skill, phase 4b). No test depends on `plan-prive/` or any other ignored file; a test that needs a background plan uses the fictive tile of `tests/plan-fictif.cjs`.
 
 ## Test Types
 

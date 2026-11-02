@@ -1342,6 +1342,13 @@ function verifierPlan() {
       if (l) {
         l.title = 'Plan confidentiel, absent de ce dépôt public. Placez ses tuiles ' +
                   'dans le dossier ' + DOSSIER_PLAN + '/ en local pour l\'afficher.';
+        // La mention prend la place du nom au lieu de l'allonger : le premier mot seul (« Dessin
+        // (absent) »), l'en-tête du plan garde sa ligne et le plan sa hauteur (correction 15). Le nom
+        // entier reste celui que lit un lecteur d'écran.
+        l.childNodes.forEach(t => {
+          const nom = t.nodeType === 3 && t.textContent.trim();
+          if (nom) { c.setAttribute('aria-label', nom + ' (absent)'); t.textContent = ' ' + nom.split(' ')[0]; }
+        });
         const n = l.querySelector('.sans-plan') || document.createElement('span');
         n.className = 'sans-plan'; n.textContent = ' (absent)';
         n.style.color = 'var(--txt3)';

@@ -5,6 +5,29 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-02 — Banc d'essai, correction 15 : la batterie passe sans le plan privé
+
+- `sim.js`, `v2/sim.js` : sans le plan privé, la case du fond se lit
+  « Dessin (absent) » à la place de « Dessin du bâtiment » (un lecteur d'écran
+  lit le nom entier) : la mention ne l'allonge plus, l'en-tête du plan garde
+  sa ligne et le plan rejoué ses 75 % de hauteur, comme avec le fond. La v2
+  reçoit la même correction : `rejeu-browser` la teste aussi.
+- `tests/plan-fictif.cjs` (nouveau) : des vues du site hors du dépôt, sans
+  plan ou avec une tuile fictive ; `tests/rejeu-browser.cjs` se joue dans les
+  deux, sans dépendre de `plan-prive/`, et exige la même mise en page.
+- `outils/batterie.cjs` (nouveau) : la batterie complète dans un clone propre
+  (la copie de travail sans les fichiers ignorés, ou `--commit`, un worktree
+  Git), hors du dépôt ; code 1 si un test échoue, 2 si elle ne peut pas se
+  jouer. Elle entre dans la vérification d'avant commit (skill
+  `verification-loop`, phase 4b ; `.claude/rules/ecc/common/testing.md`).
+- Aucun calcul ne change ; avec le fond, la page est celle d'avant.
+- Fichiers : `sim.js`, `v2/sim.js`, `index.html` et `v2/index.html`
+  (empreintes), `outils/batterie.cjs`, `tests/plan-fictif.cjs`,
+  `tests/batterie.test.cjs` (nouveaux), `tests/rejeu-browser.cjs`,
+  `.claude/skills/verification-loop/SKILL.md`,
+  `.claude/rules/ecc/common/testing.md`, `docs/BANC_ESSAI.md` (§ 12),
+  `README.md`.
+
 ## 2026-10-30 — Banc d'essai, correction 14 (b) : la version 2 dit d'où viennent ses données
 
 - `v2/sim.js` : un bandeau discret, sous la barre du haut de chaque page (sauf

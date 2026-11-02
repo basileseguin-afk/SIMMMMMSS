@@ -13,7 +13,9 @@ metadata:
     à la place), pas de vérificateur de types (node --check à la place), pas de linter,
     les tests par node --test ;
   - la couverture se lit sans seuil (.claude/rules/ecc/common/testing.md) ;
-  - les renvois à la commande /verify et aux hooks d'ECC, absents de ce dépôt, sont retirés.
+  - les renvois à la commande /verify et aux hooks d'ECC, absents de ce dépôt, sont retirés ;
+  - la batterie complète se joue aussi dans un clone propre, sans les fichiers ignorés
+    (outils/batterie.cjs, banc d'essai, correction 15).
 -->
 
 # Verification Loop Skill
@@ -69,6 +71,30 @@ Report:
 - Failed: X
 - Coverage: X% (only if the report was run; no threshold)
 
+### Phase 4b: Full Battery in a Clean Clone
+The repository is public: a clone has no `plan-prive/`, no saves, no real data — nothing
+that `.gitignore` refuses. A test that depends on such a file passes here and fails in
+every clone. Run the whole battery (Node tests, then every browser test) in a clean copy,
+outside the repository:
+```bash
+# The working tree, without the ignored files (before the commit)
+node outils/batterie.cjs
+# Or a commit, in a git worktree (after the commit)
+node outils/batterie.cjs --commit HEAD
+```
+
+It prints one line per test and ends with `FIN n OK, m ÉCHEC`; exit code 1 if any test
+fails, 2 if the battery cannot run, 130 if interrupted. The logs stay in a temporary
+folder. A test that needs a background plan uses the fictive tile of
+`tests/plan-fictif.cjs`, never `plan-prive/`. Before the commit, the working-tree copy
+also carries new files that are not ignored; after it, `--commit HEAD` reveals a file
+forgotten at `git add`. Playwright comes from the environment (global install or
+`NODE_PATH`): a `node_modules/` in the repository is ignored, so the copy lacks it. The
+battery takes about half an hour: run it in the background while reviewing the diff.
+
+Report:
+- Battery: X OK, Y failed (with the failing tests)
+
 ### Phase 5: Security Scan
 ```bash
 # Check for secrets
@@ -103,6 +129,7 @@ Build:     [PASS/FAIL] (fingerprints)
 Types:     [PASS/FAIL] (X syntax errors)
 Lint:      n/a (no linter)
 Tests:     [PASS/FAIL] (X/Y passed)
+Battery:   [PASS/FAIL] (clean clone: X OK, Y failed)
 Security:  [PASS/FAIL] (X issues)
 Diff:      [X files changed]
 

@@ -7,10 +7,14 @@
  *   3. Pendant l'édition du plan, son panneau reste, le bouton s'efface.
  *   4. Sans choix retenu, un écran étroit s'ouvre panneau replié.
  *   5. Rien à relire : ni curseur ni vitesse, la barre dit pourquoi.
- * v1 et v2. Aucune capture : le plan de l'unité est confidentiel. */
+ * v1 et v2, chacune sans plan privé (le cas de tout clone du dépôt public) et
+ * avec une tuile fictive : deux vues du site hors du dépôt
+ * (tests/plan-fictif.cjs), qui ne dépendent pas de `plan-prive/` ; la même
+ * mise en page, le plan à la même hauteur (correction 15). Aucune capture :
+ * le plan de l'unité est confidentiel. */
 const assert=require('node:assert/strict'),path=require('node:path');
 const nav=require('./nav.cjs');
-const {pathToFileURL}=require('node:url');
+const {siteAvecPlanFictif,siteSansPlan}=require('./plan-fictif.cjs');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
 (async()=>{
  const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE_PATH?{executablePath:process.env.CHROMIUM_EXECUTABLE_PATH,args:['--no-sandbox','--disable-gpu','--disable-software-rasterizer','--no-zygote','--single-process']}:{})});
@@ -25,10 +29,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    const c=(id,nom,service,debut)=>({id,nom,service,type:'manuel',debut,jour:0,personnes:2,pauses:[],lots:[['AF/BC'],['AF/YC'],['TX/BC']],regime:{actif:false}});
    st.ateliers.push(c('cu','Cuisine chaud','cuisine','04:00'),c('mo','Montage','prepa','05:00'),c('do','Dotation','dotation','06:00'));},''));
  try{
-  for(const [fichier,version] of [['../index.html','v1'],['../v2/index.html','v2']]){
-   const V=version+' : ';
+  const sans=siteSansPlan(),fictif=siteAvecPlanFictif(),hauteurs={};
+  const SITES=[['sans plan privé',sans.url],['avec une tuile fictive',fictif.url]];
+  try{
+  for(const [site,url] of SITES)for(const [fichier,version] of [['index.html','v1'],['v2/index.html','v2']]){
+   const V=version+', '+site+' : ';
    await page.setViewportSize({width:1440,height:900});
-   await page.goto(pathToFileURL(path.resolve(__dirname,fichier)).href);await attendre(300);
+   await page.goto(url(fichier));await attendre(300);
    await page.evaluate(()=>localStorage.clear());await page.reload();await attendre(400);
    await decrire();await attendre(300);
    await nav.aller(page,'j-plan');
@@ -36,6 +43,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
    // 1. La toile d'abord.
    const haut=await boite('.haut'),plan=await boite('#plan'),lecteur=await boite('#lecteur');
+   // Le fond : présent, la case se coche ; absent, elle est désactivée et le dit.
+   const fond=await page.evaluate(()=>{const c=document.getElementById('fond-plan');return {actif:!c.disabled,coche:c.checked,texte:c.closest('label').textContent.trim(),nom:c.getAttribute('aria-label')};});
+   assert.deepEqual(fond,SITES[0][0]===site?{actif:false,coche:false,texte:'Dessin (absent)',nom:'Dessin du bâtiment (absent)'}:{actif:true,coche:true,texte:'Dessin du bâtiment',nom:null},V+'la case du fond');
+   (hauteurs[version]=hauteurs[version]||{})[site]={large:plan.h,tete:(await boite('.plan-tete')).h};
    const part=plan.h/(900-haut.bas);
    assert.ok(part>=0.75,V+'le plan occupe '+Math.round(part*100)+' % de la hauteur utile');
    assert.ok(lecteur.y>=plan.bas-1&&lecteur.bas<=900+1,V+'la barre de lecture court en bas, sous la toile');
@@ -76,6 +87,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await nav.aller(page,'j-plan');
    assert.equal(await bouton.getAttribute('aria-expanded'),'false',V+'replié sur un écran étroit');
    const etroit=await boite('#plan'),haut2=await boite('.haut');
+   hauteurs[version][site].etroit=etroit.h;
    assert.ok(etroit.h/(768-haut2.bas)>=0.75,V+'à 1024 px aussi, le plan d’abord');
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,V+'sans débord à 1024 px');
 
@@ -90,6 +102,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
    assert.deepEqual(errors,[],V+errors.join(' | '));
   }
-  console.log('rejeu-browser : ok');
+  // Avec ou sans fond, la même mise en page : l'en-tête du plan et le plan, à la même hauteur, à 1 440 px et à 1 024 px.
+  for(const [version,h] of Object.entries(hauteurs))assert.deepEqual(h[SITES[1][0]],h[SITES[0][0]],version+' : la même mise en page avec ou sans fond');
+  }finally{sans.effacer();fictif.effacer();}
+  console.log('rejeu-browser : ok (sans plan privé et avec une tuile fictive)');
  }catch(e){console.error(e);process.exitCode=1;}finally{await browser.close();}
 })();

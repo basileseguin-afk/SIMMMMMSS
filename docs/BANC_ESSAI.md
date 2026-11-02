@@ -2121,3 +2121,52 @@ rien ; une restauration en A, le bandeau en B sans attendre, B qui refuse de
 restaurer à son tour, avant la question et après ; la version 2 ouverte à
 côté, sans bandeau ; la page de secours qui augmente la révision ; un seul
 onglet : le même parcours avec et sans le garde, identique champ par champ.
+
+## 12. La batterie passe sans le plan privé (correction 15)
+
+Le dépôt est public : un clone n'a ni le plan privé (`plan-prive/`), ni les
+sauvegardes, ni le réel, que `.gitignore` refuse. Sans le plan privé, le plan
+rejoué tombait sous les 75 % de la hauteur : la mention « (absent) », ajoutée
+au nom de la case du fond, faisait passer l'en-tête du plan sur deux lignes.
+
+**La même mise en page, avec ou sans fond.** Sans fond, la case se lit
+« Dessin (absent) » à la place de « Dessin du bâtiment » : la mention prend la
+place du nom au lieu de l'allonger (un lecteur d'écran lit toujours « Dessin du
+bâtiment (absent) »). L'en-tête du plan n'est jamais plus long sans fond
+qu'avec : le plan garde au moins la hauteur qu'il a avec le fond, la même à
+1 440 et à 1 024 px, que le test vérifie (v1 et v2).
+
+**Aucun test ne dépend d'un fichier ignoré.** Un test qui a besoin d'un fond
+de plan crée une tuile fictive (`tests/plan-fictif.cjs`) : une vue du site
+(ses fichiers suivis, rien de ce que `.gitignore` refuse), dans un dossier
+temporaire hors du dépôt, avec son propre `plan-prive/` aux tuiles d'un
+pixel. `tests/rejeu-browser.cjs` se joue dans deux vues de ce genre, sans plan
+et avec la tuile fictive : il ne dépend ni de la présence du plan privé, ni de
+son absence, et exige la même mise en page.
+
+**La batterie complète dans un clone propre**, avant chaque commit (skill
+`verification-loop`, phase 4b) :
+
+```
+node outils/batterie.cjs                  # la copie de travail, sans les fichiers ignorés
+node outils/batterie.cjs --commit HEAD    # un commit, dans un worktree Git
+```
+
+L'outil copie le dépôt hors de lui-même, sans ce que `.gitignore` refuse, y
+joue les tests Node puis chaque test navigateur, écrit une ligne par test et
+« FIN n OK, m ÉCHEC », et garde les journaux dans un dossier temporaire. Il
+sort en code 1 si au moins un test échoue, 2 si la batterie ne peut pas se
+jouer, 130 si on l'interrompt. Un test qui dépendrait d'un fichier ignoré y
+échoue, comme dans tout clone. Avant le commit, la copie de travail emporte
+aussi les fichiers nouveaux non ignorés ; après, `--commit HEAD` montre un
+fichier oublié au `git add`. Playwright vient de l'environnement (installé
+globalement, ou `NODE_PATH`) : un `node_modules/` du dépôt est ignoré, la copie
+ne l'a pas.
+
+Vérifications — `tests/batterie.test.cjs` : sur un dépôt Git fictif, la copie
+sans les fichiers ignorés (les liens restent des liens), les tests Node puis
+navigateur, un échec qui se voit et son journal, un commit joué dans un
+worktree retiré ensuite, l'interruption, et les codes de sortie de l'outil
+(0, 1, 2).
+`tests/rejeu-browser.cjs` : sans le plan privé et avec la tuile fictive. La
+batterie complète, dans un clone propre.
