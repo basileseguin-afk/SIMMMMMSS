@@ -548,7 +548,7 @@
   }
 
   const api = { JOUR, jourDecale, ecart, joursEntre, dateCourte, dateLongue, estDate, datesDu, volsDuJour, decrire, texteDuProgramme,
-    jouerJournee, jouerAvecEntree, creerPeriode, simulerPeriode, depuisSauvegarde, optionsDeRejeu, extraire, bilan, encadrementDuJour, ADDITIVES };
+    jouerJournee, jouerAvecEntree, creerPeriode, simulerPeriode, depuisSauvegarde, optionsDeRejeu, extraire, bilan, encadrementDuJour, sommeDesCreneaux, ADDITIVES };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyPeriode = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

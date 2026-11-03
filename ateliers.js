@@ -612,9 +612,12 @@
         const delaiChargement = this.a.delaiChargement ? this.a.delaiChargement() : undefined;
         // Une journée d'une période simulée et à jour : elle part de ce que la veille lui a laissé dans la période (évolution 10).
         const entree = this.a.journeePeriode ? this.a.journeePeriode() : null;
-        this.resultat = entree ? root.OrlyPeriode.jouerAvecEntree(unite, this.a.vols(), entree, { delaiChargement }).resultat
-          : J().jouer(J().argumentsDeLUnite(unite, this.a.vols(), { delaiChargement }));
+        // Ses arguments restent : la vue « Charge » les lit avec le résultat (banc d'essai, évolution 12 c).
+        const j = entree ? root.OrlyPeriode.jouerAvecEntree(unite, this.a.vols(), entree, { delaiChargement }) : null;
+        this.args = j ? j.args : J().argumentsDeLUnite(unite, this.a.vols(), { delaiChargement });
+        this.resultat = j ? j.resultat : J().jouer(this.args);
       } catch (e) {
+        this.args = null;
         this.resultat = { ok: false, anomalies: [{ code: 'moteur', message: e.message }], lots: [], ateliers: [], classes: [], parClasse: {} };
       }
       this.reporterEffectifs();
@@ -994,6 +997,7 @@
   <button class="lien-discret" data-page="rg-simulation">Simulation › Réglages de la simulation →</button></p>
 <h3 class="at-titre" data-sous="at-planning">La journée des équipes <span class="pc-sous">qui travaille quand</span></h3>
 <div id="at-indicateurs" class="at-indicateurs" data-sous="at-planning"></div>
+<section id="at-charge" class="at-charge" data-sous="at-planning" aria-label="La charge de la journée, par service" hidden></section>
 <div id="at-planning" class="at-planning" data-sous="at-planning"></div>
 
 <section class="recap-cases" data-sous="at-recap" aria-label="Récap des cases">
@@ -2467,6 +2471,7 @@
       const box = document.getElementById('at-planning');
       if (!r.ok || !r.lots.length) {
         box.innerHTML = '<p class="mini-note">Le planning apparaîtra dès qu’une équipe aura quelque chose à fabriquer.</p>';
+        this.rendreCharge(r, null);
         return;
       }
       const t0 = Math.min(...r.lots.map(l => l.debut));
@@ -2529,7 +2534,16 @@
       <p class="mini-note">Barre pleine : l’équipe prépare. Barre fine devant : elle attend le service d’avant.${r.lots.some(l => l.fusion)
         ? ' <span class="at-pl-legende-chaine">Barre rose : deux étapes faites d’un bloc, à la chaîne.</span>' : ''}
         <span class="ds-legende-maintenant"><i aria-hidden="true"></i>Le trait : l’heure où en est le rejeu.</span></p>`;
+      this.rendreCharge(r, { t0, t1, marge, L, reperes, etiquettes: reperes.map(etiquette) });
       if (DS) DS.maintenant();
+    }
+
+    /** La charge de la journée (banc d'essai, évolution 12 c) : au-dessus du planning, sur son axe des heures (charge-vue.js). */
+    rendreCharge(r, axe) {
+      const box = document.getElementById('at-charge'), V = root.OrlyChargeVue;
+      if (!box || !V) return;
+      const services = this.a.services(), nomService = id => (services.find(s => s.id === id) || {}).nom || id;
+      V.rendre(box, { resultat: axe ? r : null, args: this.args, nomService }, axe);
     }
 
     /* ---- couverture par classe --------------------------------------- */

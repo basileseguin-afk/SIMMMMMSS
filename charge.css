@@ -1,0 +1,40 @@
+/* ==========================================================================
+ *  LA CHARGE DANS LA PAGE PLANNING (version 1, banc d'essai, évolution 12 c)
+ *  Au-dessus du planning des équipes, sur son axe des heures (charge-vue.js).
+ *  Les couleurs sont celles du design system (ds.css) : l'équipe au travail
+ *  dans la couleur de l'équipe du planning (d1), les présents à l'encre
+ *  secondaire, la file dans la couleur de l'attente ; le thème sombre suit
+ *  par les mêmes jetons.
+ * ==========================================================================*/
+.at-charge{margin:0 0 var(--ds-e-4)}
+.at-charge[hidden]{display:none}
+.ch-titre{margin:0;padding:var(--ds-e-2) 0 var(--ds-e-1)}
+.ch-legende{display:flex;flex-wrap:wrap;align-items:center;gap:var(--ds-e-1) var(--ds-e-3);margin:0 0 var(--ds-e-2)}
+.ch-cle{display:inline-block;width:14px;height:10px;margin-right:-6px;vertical-align:middle;border-radius:2px}
+.ch-cle-presents{height:0;border-top:2px solid var(--ds-texte-3);border-radius:0}
+.ch-cle-travail{background:color-mix(in srgb,var(--ds-d1) 32%,transparent);border-top:2px solid var(--ds-d1)}
+.ch-cle-file{background:var(--ds-attente)}
+.ch-cle-pic{width:9px;height:9px;border-radius:50%;background:var(--ds-d1);box-shadow:0 0 0 2px var(--ds-surface-1)}
+
+.ch-axe{display:block;width:100%;height:auto}
+.ch-heure-txt{fill:var(--ds-texte-3);font-size:var(--ds-t-11);text-anchor:middle}
+.ch-service{margin:0 0 var(--ds-e-2)}
+.ch-courbe{display:block;width:100%;height:auto;background:var(--bg3);border:1px solid var(--bordure);border-radius:10px}
+.ch-nom{fill:var(--ds-texte-1);font-size:var(--ds-t-12);font-weight:var(--ds-g-fort)}
+.ch-note{fill:var(--ds-texte-3);font-size:var(--ds-t-11)}
+.ch-echelle{fill:var(--ds-texte-4);font-size:var(--ds-t-11);text-anchor:end}
+.ch-grille{stroke:var(--ds-bordure);stroke-width:1;stroke-dasharray:2 3}
+.ch-heure{stroke:var(--ds-bordure);stroke-width:1}
+.ch-heure.minuit{stroke:var(--ds-texte-4);stroke-dasharray:4 3}
+.ch-base{stroke:var(--ds-bordure-forte);stroke-width:1}
+.ch-travail{fill:color-mix(in srgb,var(--ds-d1) 32%,transparent);stroke:var(--ds-d1);stroke-width:2;stroke-linejoin:round}
+.ch-presents{fill:none;stroke:var(--ds-texte-3);stroke-width:2;stroke-linejoin:round}
+.ch-file{fill:var(--ds-attente)}
+.ch-pic{fill:var(--ds-d1);stroke:var(--ds-surface-1);stroke-width:2}
+.ch-cible{fill:transparent;pointer-events:all}
+.ch-cible:hover{fill:var(--ds-accent-doux);opacity:1}
+
+.ch-equipes td.ch-n,.ch-equipes th.ch-n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ch-equipes small{color:var(--ds-texte-3);font-weight:var(--ds-g-normal)}
+.ch-sans-objet{color:var(--ds-texte-4);font-style:italic}
+.ch-equipes caption{caption-side:bottom;text-align:left;padding:var(--ds-e-2) var(--ds-e-3)}

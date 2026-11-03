@@ -114,7 +114,7 @@
         { id: 'j-chiffres', intro: 'La journée en chiffres : commandes à l’heure, retards, attentes, travail fourni.' },
         { id: 'j-periode', intro: 'La période jour après jour : les personnes, le besoin exact, les heures sup et les retards de chaque service.' },
         { id: 'j-plan', intro: 'Rejouez la journée sur le plan de l’unité : qui travaille, qui attend, ce qui est prêt.' },
-        { id: 'at-planning', intro: 'Qui travaille quand : chaque équipe, ses préparations et ses attentes.' },
+        { id: 'at-planning', intro: 'Qui travaille quand : d’abord la charge de chaque service (présents, au travail, en file) et le tableau des équipes, puis chaque équipe, ses préparations et ses attentes, sur le même axe des heures.' },
         { id: 'at-repas', intro: 'Chaque commande : à quelle heure elle est prête, et avant quand elle devait l’être.' },
         { id: 'at-grille', intro: 'Chaque commande, étape par étape : cliquez « Prête à » pour la suivre dans le temps.' },
         { id: 'v-departs', intro: 'Chaque vol : ses repas sont-ils prêts avant son départ ?' },

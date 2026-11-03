@@ -2302,6 +2302,38 @@ période sans journée les a vides aussi. Soixante journées de 50 vols
 s'extraient et se mettent au bilan en moins de 2 s sous Node (bien moins, en
 pratique ; la simulation de chaque journée, inchangée, n'est pas comptée).
 
+### Dans la page
+
+La page Planning (Résultats › Planning des équipes, version 1) montre la
+charge de la journée affichée au-dessus du planning des équipes, sur le même
+axe des heures, ses repères en tête (`charge-vue.js`, `charge.css`) :
+
+- par service, une courbe : les présents (un trait), les personnes au travail
+  (une aire) et, en dessous, ce qui attend son équipe (des barres, à leur
+  propre échelle : des lots, à la plonge des vols revenus) ; le pic des
+  personnes au travail est marqué et écrit (« pic N au travail à HH:MM »),
+  avec le plus haut des présents et de la file. Une équipe à J−1 se place la
+  veille, comme ses barres du planning. Survoler un créneau ouvre sa bulle :
+  ses six mesures. Le trait du rejeu y passe aussi ;
+- le tableau des équipes : occupation, consommé sur disponible, débit, file
+  la plus longue (et son instant), attente. Un cas sans objet s'écrit « sans
+  objet », sa raison au survol.
+
+Les couleurs sont celles du design system : l'aire au travail dans la
+couleur de l'équipe du planning, la file dans celle de l'attente ; le thème
+sombre suit. La page Période a deux mesures de plus, par jour de travail et
+par service : le **pic au travail** et l'**occupation**. Sur une ligne Total,
+le plus haut pic des jours complets (l'occupation de tous ces jours) ; sur
+une ligne Moyenne, la moyenne des pics. Pas de colonne Total : un pic ne
+s'additionne pas d'un service à l'autre. Avec ces deux mesures, un clic sur
+un jour ouvre sa journée de vols dans la page Planning ; avec les autres,
+Les chiffres, comme avant. La journée de vols du même jour n'est pas tout son
+jour de travail : ses équipes à J−1 travaillent la veille.
+
+Les nombres sont ceux de `moteur/indicateurs.js`, pour les arguments mêmes du
+calcul de la journée : la page et les outils appellent le même module. Rien
+d'autre ne change : ni la Synthèse, ni le menu, ni la version 2.
+
 ### Sans objet
 
 Les cas sans objet sont dits (`sansObjet`, avec la raison), pas mis à 0. Une
@@ -2352,4 +2384,11 @@ sur la période égale la somme des jours complets, le plus haut pic est celui
 des jours complets ; sans indicateurs dans les extraits, le bilan est celui
 d'avant, champ par champ ; le débit du handling sur la période et une mise à
 disposition sans objet ; un mois puis l'autre, et une période vide ; soixante
-journées de 50 vols en moins de 2 s.
+journées de 50 vols en moins de 2 s. `tests/charge-browser.cjs` (une unité et
+des vols fictifs) : la vue au-dessus du planning, sur le même axe (même
+largeur, même `data-axe`) ; les indicateurs de la page égaux à ceux de l'outil
+pour la même sauvegarde ; une courbe par service, le pic marqué (la cuisine à
+J−1, la veille) ; le tableau des équipes et ses « sans objet » ; la bulle d'un
+créneau ; les couleurs, en clair et en sombre ; un nom d'équipe piégé qui
+reste du texte ; la page Période, ses deux mesures, ses totaux et moyennes,
+et le clic qui ouvre la page Planning.

@@ -5,6 +5,26 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-03 — Banc d'essai, évolution 12 (c) : la charge dans la page Planning
+
+- Page Planning (v1) : au-dessus du planning des équipes et sur son axe des
+  heures, la charge de la journée. Par service, la courbe présents / au
+  travail / en file, le pic marqué ; une bulle par créneau ; puis le tableau
+  des équipes : occupation, consommé sur disponible, débit, file la plus
+  longue, attente, « sans objet » avec sa raison. L'intro de la page le dit.
+- Page Période : deux mesures de plus, le pic au travail et l'occupation, par
+  jour de travail et par service ; avec elles, un clic sur un jour ouvre la
+  journée dans la page Planning.
+- Les nombres viennent de `moteur/indicateurs.js` (un seul chemin) ;
+  `moteur/periode.js` exporte `sommeDesCreneaux`. Ni la Synthèse, ni le menu,
+  ni la version 2 ne changent.
+- `tests/graphiques-browser.cjs` : le planning est plus bas en v1 ; la page
+  défile avant le survol d'une barre (un défilement ferme la bulle).
+- Fichiers : `charge-vue.js` et `charge.css` (nouveaux), `ateliers.js`,
+  `periode-vue.js`, `onglets.js`, `moteur/periode.js`, `index.html`,
+  `tests/charge-browser.cjs` (nouveau), `tests/graphiques-browser.cjs`,
+  `docs/BANC_ESSAI.md` (§ 13), `README.md`.
+
 ## 2026-11-03 — Banc d'essai, évolution 12 (b) : les indicateurs de charge sur une période
 
 - `moteur/periode.js` : chaque journée de vols garde ses indicateurs de charge

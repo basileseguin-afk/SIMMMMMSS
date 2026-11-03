@@ -66,6 +66,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    // 3. L'infobulle, tout de suite.
    assert.equal(await page.locator('#at-planning svg title').count(),0,V+'plus de <title> natif dans le planning');
    const lot=page.locator('#at-planning .at-pl-lot').first();
+   // En v1, la vue « Charge » (évolution 12 c) met le planning plus bas : la page défile d'abord (un défilement ferme la bulle).
+   await lot.scrollIntoViewIfNeeded();await attendre(200);
    await lot.hover();
    const dit=await bulle();
    assert.ok(dit,V+'la bulle s’ouvre au survol, sans attendre');
