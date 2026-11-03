@@ -2334,6 +2334,24 @@ Les nombres sont ceux de `moteur/indicateurs.js`, pour les arguments mêmes du
 calcul de la journée : la page et les outils appellent le même module. Rien
 d'autre ne change : ni la Synthèse, ni le menu, ni la version 2.
 
+### Les exports
+
+- **Le classeur de la journée** (Lisez-moi, Charge, Créneaux) : la vue
+  Charge de la page Planning a son bouton « Exporter la charge (Excel) » ;
+  `node outils/simuler-journee.cjs --xlsx charge.xlsx sauvegarde.json
+  vols.csv` écrit le même (`echanges-charge.js`). Une journée sans date prend
+  la date du calcul, et le Lisez-moi le dit.
+- **Le classeur de la période** (§ 9) gagne les feuilles Charge (jour de
+  travail × équipe, de chaque journée de vols) et Créneaux (jour de travail ×
+  service × créneau, journées de vols réunies), après Équipes, et leurs
+  définitions dans le Lisez-moi ; depuis la page et `simuler-periode --xlsx`.
+- **Le JSON des outils** : `simuler-journee` rend `indicateursCharge` à côté
+  de `resultat`, qui ne change pas ; `simuler-periode` les rend dans le bilan
+  et pour chaque journée de vols (`journees[].indicateursCharge`).
+
+Les heures sont de vraies dates Excel ; un cas sans objet reste une case vide,
+sa raison dans la colonne `Sans objet`. Les colonnes : `FORMATS_EXCEL.md`, § 6.
+
 ### Sans objet
 
 Les cas sans objet sont dits (`sansObjet`, avec la raison), pas mis à 0. Une
@@ -2391,4 +2409,12 @@ pour la même sauvegarde ; une courbe par service, le pic marqué (la cuisine à
 J−1, la veille) ; le tableau des équipes et ses « sans objet » ; la bulle d'un
 créneau ; les couleurs, en clair et en sombre ; un nom d'équipe piégé qui
 reste du texte ; la page Période, ses deux mesures, ses totaux et moyennes,
-et le clic qui ouvre la page Planning.
+et le clic qui ouvre la page Planning ; le classeur de la charge qui se
+télécharge. `tests/charge-export.test.cjs` : le classeur de la journée (une
+ligne par équipe, les pourcents, la cuisine à J−1 datée de la veille, « sans
+objet » vide et dit) ; la feuille Créneaux (les sommes, les créneaux sur
+l'horloge du jour de travail, pas de ligne vide) ; relu par `tableur.js`,
+déterministe, une journée sans date ; la période (les deux feuilles après
+Équipes, les autres inchangées, « Jour complet », les créneaux réunis ; sans
+indicateurs, le classeur d'avant) ; les outils (le JSON, `--xlsx`, les appels
+mal formés).

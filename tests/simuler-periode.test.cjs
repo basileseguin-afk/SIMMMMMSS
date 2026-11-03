@@ -87,15 +87,15 @@ test('--xlsx : le classeur de la période, celui de la page (echanges.js), et le
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stderr, /Classeur de la période : .*periode\.xlsx\./);
   assert.deepEqual(JSON.parse(r.stdout), JSON.parse(lancer(f('sauvegarde.json'), f('vols-dates.csv'), f('options.json'), '--sans-detail').stdout), 'le même JSON');
-  // Le classeur que la page écrit pour la même période (seule la date du calcul diffère).
+  // Le classeur que la page écrit pour la même période (seule la date du calcul diffère), avec ses feuilles de charge (évolution 12 d).
   const vols = UI.parseFlights(CSV, { eta: true, spmlParCabine: true, date: true });
   const p = PE.depuisSauvegarde(S.sauvegarde, vols, S.options);
-  const attendu = await T.lireClasseur(T.ecrireClasseur(E.periodeVersClasseur(p, { sauvegarde: 'sauvegarde.json', vols: 'vols-dates.csv',
-    reglages: { delaiChargement: 45, decalage: 0 }, calculeLe: new Date() })));
+  const attendu = await T.lireClasseur(T.ecrireClasseur(require('../echanges-charge.js').avecCharge(E.periodeVersClasseur(p, { sauvegarde: 'sauvegarde.json', vols: 'vols-dates.csv',
+    reglages: { delaiChargement: 45, decalage: 0 }, calculeLe: new Date() }), p)));
   const lu = await T.lireClasseur(fs.readFileSync(sortie));
   const sansDate = c => c.map(x => ({ nom: x.nom, lignes: x.lignes.filter(l => !/^Calculée le /.test(String(l[0] || ''))) }));
   assert.deepEqual(sansDate(lu), sansDate(attendu));
-  assert.deepEqual(lu.map(x => x.nom), ['Lisez-moi', 'Période', 'Équipes', 'Compagnies', 'Lots', 'Vols', 'Plonge', 'Jours']);
+  assert.deepEqual(lu.map(x => x.nom), ['Lisez-moi', 'Période', 'Équipes', 'Charge', 'Créneaux', 'Compagnies', 'Lots', 'Vols', 'Plonge', 'Jours']);
   assert.ok(lu[0].lignes.some(l => /^Calculée le \d\d\/\d\d\/\d{4} à \d\d:\d\d\.$/.test(l[0])));
   // Sans chemin, ou un autre format : l'usage.
   assert.equal(lancer(f('sauvegarde.json'), f('vols-dates.csv'), '--xlsx').status, 2);

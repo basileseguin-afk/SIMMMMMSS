@@ -15,11 +15,15 @@
  *      sombre ; un nom d'équipe piégé (du HTML) reste du texte ;
  *   5. la page Période : par jour de travail et par service, le pic au travail
  *      et l'occupation ; un clic ouvre la journée dans la page Planning ; les
- *      autres mesures ouvrent toujours Les chiffres.
+ *      autres mesures ouvrent toujours Les chiffres ;
+ *   6. (évolution 12 d) « Exporter la charge (Excel) » : le classeur de la
+ *      journée, le même que l'outil (echanges-charge.js) ; celui de la
+ *      période a ses feuilles Charge et Créneaux.
  * Données fictives ; aucune capture d'écran (le plan est confidentiel). */
 const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs'),os=require('node:os');
 const nav=require('./nav.cjs');
 const J=require('../moteur/journee.js'),PE=require('../moteur/periode.js'),I=require('../moteur/indicateurs.js'),P=require('../moteur/production.js');
+const T=require('../tableur.js'),EC=require('../echanges-charge.js');
 const REF=require('./non-regression.attendu.json');
 const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
@@ -37,13 +41,14 @@ const PIEGE='<img src=x onerror="window.__xss=1">';
 
 (async()=>{
  const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE_PATH?{executablePath:process.env.CHROMIUM_EXECUTABLE_PATH,args:['--no-sandbox','--disable-gpu','--disable-software-rasterizer','--no-zygote','--single-process']}:{})});
- const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
+ const page=await browser.newPage({viewport:{width:1440,height:1000},acceptDownloads:true}),errors=[];
  page.on('pageerror',e=>errors.push(e.message));
  const attendre=(ms=250)=>page.waitForTimeout(ms);
  const dossier=fs.mkdtempSync(path.join(os.tmpdir(),'ory-charge-page-'));
  const fichier=(nom,texte)=>{const f=path.join(dossier,nom);fs.writeFileSync(f,texte);return f;};
  const importer=async(nom,texte)=>{await nav.aller(page,'v-programme');await page.locator('#imp-vols').setInputFiles(fichier(nom,texte));
    await page.waitForFunction(n=>document.getElementById('source-label').textContent===n,nom);await attendre(150);};
+ const telecharger=async fn=>{const [d]=await Promise.all([page.waitForEvent('download'),fn()]);const f=path.join(dossier,d.suggestedFilename());await d.saveAs(f);return f;};
  const CLES=['ory-ateliers-v1','ory-modele-v1','orly-plan-v3','orly-flows-v1','ory-graphes-v1'];
  /** La sauvegarde de la page à cet instant (« Tout sauvegarder » : ces clés du navigateur). */
  const sauvegarde=async()=>JSON.parse(await page.evaluate(cles=>{const contenu={};
@@ -158,6 +163,15 @@ const PIEGE='<img src=x onerror="window.__xss=1">';
   assert.ok((await page.locator('#at-charge .ch-service[data-service="prepa"] .ch-cible').first().getAttribute('data-info')).startsWith(PIEGE));
   await page.evaluate(()=>{const A=Sim.ateliers;A.a.services=window.__services;A.aDessiner.add('at-planning');A.surOnglet('at-planning');});await attendre(200);
 
+  // (évolution 12 d) Le classeur de la charge de la journée : le bouton de la vue ; les mêmes feuilles que l'outil, pour la même sauvegarde.
+  const fj=await telecharger(()=>page.locator('#at-charge [data-ch=exporter]').click());
+  assert.match(path.basename(fj),/^ory-charge-\d{4}-\d\d-\d\d\.xlsx$/);
+  const relu=await T.lireClasseur(fs.readFileSync(fj));
+  assert.deepEqual(relu.map(f=>f.nom),['Lisez-moi','Charge','Créneaux']);
+  const outil=EC.journeeVersClasseur({resultat:r,args},{calculeLe:new Date()});
+  const net=l=>{const x=l.map(c=>(c==null||c===''?null:c&&typeof c==='object'&&'excel' in c?c.excel:c));while(x.length&&x[x.length-1]==null)x.pop();return x;};
+  for(const i of [1,2])assert.deepEqual(relu[i].lignes.map(net).filter(l=>l.length),outil[i].lignes.map(net).filter(l=>l.length),relu[i].nom+' : celle de l’outil');
+
   // 5. La page Période : le pic au travail et l'occupation, par jour de travail et par service.
   await importer('vols-dates.csv',CSV);
   await nav.aller(page,'j-periode');await attendre();
@@ -191,6 +205,11 @@ const PIEGE='<img src=x onerror="window.__xss=1">';
   await page.locator('#periode-mesure').selectOption('personnes');await attendre(100);
   await page.locator(`#journee-periode tr[data-pv-jour="${w.date}"] td`).first().click();await attendre(300);
   assert.equal(await page.evaluate(()=>document.body.dataset.sous),'j-chiffres');
+  // Le classeur de la période : ses feuilles Charge et Créneaux, après Équipes.
+  await nav.aller(page,'j-periode');
+  const fp=await telecharger(()=>page.locator('#journee-periode [data-pv=exporter]').click());
+  const rp=await T.lireClasseur(fs.readFileSync(fp));
+  assert.deepEqual(rp.map(f=>f.nom),['Lisez-moi','Période','Équipes','Charge','Créneaux','Compagnies','Lots','Vols','Plonge','Jours']);
 
   assert.deepEqual(errors,[]);
   console.log('charge-browser : ok');

@@ -659,6 +659,8 @@ function initAteliers(){
     delaiChargement:()=>CFG.loadDelay,
     // Une journée d'une période simulée et à jour part de ce que la veille lui a laissé dans la période (évolution 10).
     journeePeriode:entreeDeLaJournee,
+    // Le classeur de la charge (banc d'essai, évolution 12 d) : la journée de vols affichée, et le nom des vols.
+    jourVols:()=>Sim.jourVols||null, sourceVols:()=>dataSource,
     // Le plan dit « aménagé » d'après les ateliers : il doit suivre leur saisie.
     // La liste du barème marque les services qui portent une équipe : elle doit
     // donc se redessiner quand les ateliers bougent.
@@ -2365,8 +2367,10 @@ function exporterPeriode(){
   const r=pe.resultat,d=r.periode;
   // Avec une politique d'effectif (évolution 11 d) : le prévu calé de chaque ligne, sa bande P10–P90.
   const prevu=Sim.calage?Sim.calage.prevuPeriode():null;
-  const octets=OrlyTableur.ecrireClasseur(OrlyEchanges.periodeVersClasseur(r,{sauvegarde:'l’unité enregistrée dans ce navigateur',vols:dataSource,
-    calculeLe:pe.calculeLe,reglages:pe.reglages||{delaiChargement:CFG.loadDelay,decalage:CFG.shift},...(prevu?{prevu}:{})}));
+  // Les feuilles « Charge » et « Créneaux » (évolution 12 d) : echanges-charge.js, comme l'outil.
+  const classeur=OrlyEchanges.periodeVersClasseur(r,{sauvegarde:'l’unité enregistrée dans ce navigateur',vols:dataSource,
+    calculeLe:pe.calculeLe,reglages:pe.reglages||{delaiChargement:CFG.loadDelay,decalage:CFG.shift},...(prevu?{prevu}:{})});
+  const octets=OrlyTableur.ecrireClasseur(window.OrlyEchangesCharge?OrlyEchangesCharge.avecCharge(classeur,r):classeur);
   OrlyTableur.telecharger('ory-periode-'+d.debut+'-au-'+d.fin+'.xlsx',octets);
   toast('Période exportée : du '+OrlyPeriode.dateLongue(d.debut)+' au '+OrlyPeriode.dateLongue(d.fin)+', en Excel.');
 }

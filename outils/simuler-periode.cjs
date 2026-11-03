@@ -15,7 +15,8 @@
  *          --planning planning.csv|planning.xlsx  un rejeu à effectif imposé (évolution 11 f) : chaque jour qui a
  *                             des lignes de planning se joue avec ses équipes, leurs horaires et leurs personnes
  *
- *  Le résultat : { periode, bilan, journees: [{ date, departs, retours, options, resultat }] }.
+ *  Le résultat : { periode, bilan, journees: [{ date, departs, retours, options, resultat, indicateursCharge }] } ;
+ *  le bilan porte les indicateurs de charge (évolution 12), le classeur leurs feuilles « Charge » et « Créneaux ».
  *  `options` d'une journée : celles qui la font rejouer seule par
  *  outils/simuler-journee.cjs, au champ près (le banc s'en sert pour vérifier) ;
  *  une journée rejouée avec son planning n'en a pas (`rejeu: true`).
@@ -29,6 +30,7 @@ const J = require('../moteur/journee.js');
 const PE = require('../moteur/periode.js');
 const T = require('../tableur.js');
 const E = require('../echanges.js');
+const EC = require('../echanges-charge.js');
 const { lireJson } = require('./simuler-journee.cjs');
 const R = require('../moteur/reel.js');
 const C = require('../moteur/calage-periode.js');
@@ -70,7 +72,9 @@ async function simulerPeriode(cheminSauvegarde, cheminVols, cheminOptions, { det
     bilan: p.bilan, ...(prevu ? { prevuCale: prevu } : {}),
     // Une journée rejouée avec son planning (évolution 11 f) n'a pas d'`options` : simuler-journee ne rejoue pas un planning.
     ...(detail ? { journees: p.journees.map(j => ({ date: j.date, departs: j.departs, retours: j.retours,
-      ...(planning && planning.jours[j.date] ? { rejeu: true } : { options: PE.optionsDeRejeu(options, j.entree) }), resultat: j.resultat })) } : {}),
+      ...(planning && planning.jours[j.date] ? { rejeu: true } : { options: PE.optionsDeRejeu(options, j.entree) }), resultat: j.resultat,
+      // Les indicateurs de charge de la journée de vols (évolution 12) : ses équipes, les créneaux de ses services par jour de travail.
+      ...(j.extrait && j.extrait.indicateursCharge ? { indicateursCharge: j.extrait.indicateursCharge } : {}) })) } : {}),
     // Pour l'export Excel de la période (le même que celui de la page) : les extraits, hors du JSON.
     _journees: p.journees, _vols: vols
   };
@@ -86,12 +90,13 @@ function prevuDeLaSauvegarde(sauvegarde, bilan) {
   return r.politique ? C.prevuDesJours(r.politique, r.correspondance, bilan.joursTravail, R.simuleDe) : null;
 }
 
-/** Le classeur de la période : le même que la page écrit (echanges.js), pour les mêmes réglages. */
+/** Le classeur de la période : le même que la page écrit (echanges.js, et ses feuilles de charge : echanges-charge.js), pour les mêmes réglages. */
 function classeurDeLaPeriode(sortie, calculeLe = new Date()) {
   const { delaiChargement, decalage, ...autres } = sortie.periode.options || {};
-  return T.ecrireClasseur(E.periodeVersClasseur({ periode: sortie.periode, bilan: sortie.bilan, journees: sortie._journees }, {
+  const p = { periode: sortie.periode, bilan: sortie.bilan, journees: sortie._journees };
+  return T.ecrireClasseur(EC.avecCharge(E.periodeVersClasseur(p, {
     sauvegarde: sortie.periode.sauvegarde, vols: sortie.periode.vols, calculeLe, ...(sortie.prevuCale ? { prevu: sortie.prevuCale } : {}),
-    reglages: { delaiChargement: J.delaiDe(sortie.periode.options || {}), decalage: +decalage || 0, ...autres } }));
+    reglages: { delaiChargement: J.delaiDe(sortie.periode.options || {}), decalage: +decalage || 0, ...autres } }), p));
 }
 
 /** Le JSON, écrit morceau par morceau : une période de deux mois tient en mémoire, pas forcément en une seule chaîne. */

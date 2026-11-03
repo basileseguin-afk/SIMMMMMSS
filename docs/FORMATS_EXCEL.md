@@ -467,6 +467,8 @@ période, en Excel » (la journée affichée reste en JSON) ; la page Période a
 aussi son bouton. `node outils/simuler-periode.cjs sauvegarde.json
 vols-dates.csv --xlsx periode.xlsx` écrit **le même classeur**, par le même
 code (`echanges.js`, `periodeVersClasseur`). Il se lit, il ne se réimporte pas.
+Depuis l'évolution 12 (d), il a aussi les feuilles **Charge** et **Créneaux**,
+après Équipes (§ 6).
 
 Toutes les feuilles de données ont une ligne d'en-tête figée, **des filtres**,
 et leurs premières colonnes figées. Les jours et les heures sont de **vraies
@@ -632,6 +634,45 @@ comparaison (Excel) » dans la page : le même classeur
 | **Calage** (quand il est fait) | ligne : le modèle retenu, puis chaque référence et chaque candidat (« b + a × » aussi quand il se confond avec « × a ») ; puis l'erreur de chaque découpage, une rangée par modèle et par semaine ou mois laissé de côté ; le calage du travail (f), une rangée « calage du travail » par ligne de services (`a` : le facteur, `a min` et `a max` : sa plage d'une semaine laissée de côté à l'autre ; `Erreur par semaine` : l'erreur des heures supp, en heures par jour ; les règles 1 à 4) ; toute l'unité avant et après (avec une validation par mois, aussi « après (modèles retenus), validation par semaines ») | `Ligne`, `Couvre`, `Rang` (retenu, référence, candidat, pas de calage ; « référence, une semaine laissée de côté », « candidat, un mois laissé de côté »…), `Modèle`, `Accepté`, `a`, `a min`, `a max`, `b`, `b min`, `b max`, `Constante`, `Constante min`, `Constante max` (sur tous les jours ; min et max sur les découpages, semaines et mois), `Facteurs du jour (lun. → dim.)` (et leur plage), `Erreur par semaine (ETP)`, `Erreur par mois (ETP)`, une colonne par règle (`Plus juste que les références`, `Stable`, `Bornes`, `Wilcoxon`, `Placebo` : le verdict et sa raison), `σ (ETP)`, `Bande P10–P90 (± ETP)`, `Jours`, `Validation`, `Laissé de côté` (la semaine ISO ou le mois d'une rangée de découpage) |
 
 ---
+
+## 6. Les indicateurs de charge (version 1)
+
+Banc d'essai, évolution 12 (`BANC_ESSAI.md`, § 13), par le même code depuis la
+page et les outils (`echanges-charge.js`). Deux classeurs les portent :
+
+- **le classeur de la journée** : page Planning, bouton « Exporter la charge
+  (Excel) » de la vue Charge ; `node outils/simuler-journee.cjs --xlsx
+  charge.xlsx sauvegarde.json vols.csv`. Trois feuilles : Lisez-moi, Charge,
+  Créneaux. Une journée sans date (des vols sans colonne `date`) prend la date
+  du calcul ; le Lisez-moi le dit ;
+- **le classeur de la période** (§ 4) : les feuilles Charge et Créneaux après
+  Équipes, une colonne `Jour complet` en plus, et leurs définitions dans le
+  Lisez-moi. Une période d'avant l'évolution 12 (des extraits sans
+  indicateurs) garde le classeur d'avant.
+
+Les jours et les heures sont de **vraies dates Excel** ; une équipe à J−1 porte
+la date de la veille. Les pourcentages sont à un dixième près, le reste au
+centième. Un cas **sans objet** reste une case vide ; la colonne `Sans objet`
+dit lesquels et pourquoi (« occupation, consommé sur disponible : handling »).
+
+| Feuille | Une ligne par | Colonnes |
+|---|---|---|
+| **Charge** | jour de travail × équipe (période : de chaque journée de vols) | `Jour de travail`, `Journée de vols`, (`Jour complet`, période), `Service`, `Équipe`, `Type`, `Personnes`, `Unité` (repas, plateaux, vols lavés, vols chargés), `Occupation (%)`, `Consommé sur disponible (%)`, `Débit (unités/h)`, `Unités terminées`, `Au travail (min × pers.)`, `Disponible (min × pers.)`, `Homme-minutes`, `Heures du débit (h)`, `File la plus longue` (lots), `File la plus longue à` (date et heure), `Attente (min)`, `Renforts prêtés (min)`, `Renforts reçus (min)`, `Sans objet` |
+| **Créneaux** | jour de travail × service × créneau de 15 min ; un créneau où rien ne se passe n'a pas de ligne | `Jour de travail`, (`Jour complet`, période), `Service`, `Créneau` (son début, date et heure), `Présents`, `Au travail`, `En pause`, `Sans travail`, `En file`, `Terminés` |
+
+- Dans la période, les créneaux d'un jour de travail réunissent les journées
+  de vols qui y travaillent (J−2, J−1, J), comme le bilan.
+- `Occupation` = minutes au travail ÷ minutes de présence hors pauses ;
+  `Consommé sur disponible` = homme-minutes ÷ (personnes × présence hors
+  pauses) ; `Débit` = unités terminées ÷ `Heures du débit` (au travail ; au
+  handling, de chargement). Les définitions et leurs limites :
+  `BANC_ESSAI.md`, § 13.
+- Le JSON des outils les porte aussi : `simuler-journee` rend
+  `indicateursCharge` à côté de `resultat` (qui ne change pas) ;
+  `simuler-periode`, le bilan (`indicateursCharge` par jour de travail, par
+  mois, sur la période) et chaque journée de vols (`journees[].indicateursCharge`).
+- Taille : deux mois fictifs de 50 vols par jour, environ 14 Mo (la feuille
+  Créneaux en fait plus de la moitié).
 
 ## Confidentialité
 

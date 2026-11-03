@@ -5,6 +5,31 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-03 — Banc d'essai, évolution 12 (d) : les indicateurs de charge dans les classeurs
+
+- `echanges-charge.js` (nouveau, v1) : le classeur de la journée (Lisez-moi,
+  Charge, Créneaux) et, dans celui de la période, les feuilles Charge (jour de
+  travail × équipe) et Créneaux (jour de travail × service × créneau :
+  présents, au travail, en pause, sans travail, en file, terminés), après
+  Équipes. Les heures sont de vraies dates Excel ; un cas sans objet reste
+  vide, sa raison dans sa colonne. `echanges.js`, commun aux deux versions,
+  ne change pas.
+- Page Planning : « Exporter la charge (Excel) » dans la vue Charge. Le
+  classeur de la période de la page a les deux feuilles.
+- Outils : `simuler-journee` rend `indicateursCharge` à côté de `resultat`
+  (inchangé) et écrit le classeur avec `--xlsx` ; `simuler-periode` rend les
+  indicateurs de chaque journée de vols, et son classeur a les deux feuilles.
+- Une période d'avant (des extraits sans indicateurs) garde son classeur.
+- Docs : `docs/BANC_ESSAI.md` (§ 13, les exports), `docs/FORMATS_EXCEL.md`
+  (§ 6), `docs/CAHIER_DES_CHARGES.md` (K3 à K8), `README.md`.
+- Tests : `tests/simuler-periode.test.cjs` et `tests/periode-browser.cjs`
+  attendent les deux feuilles de plus dans le classeur de la période.
+- Fichiers : `echanges-charge.js`, `tests/charge-export.test.cjs` (nouveaux),
+  `charge-vue.js`, `charge.css`, `ateliers.js`, `sim.js`,
+  `outils/simuler-journee.cjs`, `outils/simuler-periode.cjs`, `index.html`,
+  `tests/charge-browser.cjs`, `tests/simuler-periode.test.cjs`,
+  `tests/periode-browser.cjs`.
+
 ## 2026-11-03 — Banc d'essai, évolution 12 (c) : la charge dans la page Planning
 
 - Page Planning (v1) : au-dessus du planning des équipes et sur son axe des

@@ -137,7 +137,8 @@
 
   /**
    * La charge d'une journée dans `box`, sur l'axe `{ t0, t1, marge, L, reperes }` du planning (ses repères horaires,
-   * en minutes). `o` : { resultat, args, nomService(id) }. Sans résultat ou sans axe, la boîte se cache.
+   * en minutes). `o` : { resultat, args, nomService(id), exporter() (le bouton du classeur, facultatif) }. Sans résultat ou
+   * sans axe, la boîte se cache.
    */
   function rendre(box, o, axe) {
     const r = o.resultat;
@@ -147,7 +148,10 @@
     const noms = new Map((r.ateliers || []).map(a => [a.id, a.nom]));
     const services = servicesDe(k, nom);
     box.hidden = false;
-    box.innerHTML = `<h4 class="at-sous-titre ch-titre">La charge, service par service <span class="mini-note">sur l’axe des heures du planning, en dessous</span></h4>
+    // Le classeur de la charge de la journée (évolution 12 d) : echanges-charge.js, comme l'outil.
+    box.onclick = e => { if (e.target.closest('[data-ch="exporter"]') && o.exporter) o.exporter(); };
+    box.innerHTML = `<div class="ch-tete"><h4 class="at-sous-titre ch-titre">La charge, service par service <span class="mini-note">sur l’axe des heures du planning, en dessous</span></h4>
+      ${o.exporter ? '<button type="button" class="btn btn-sm" data-ch="exporter">Exporter la charge (Excel)</button>' : ''}</div>
       <p class="ch-legende mini-note"><span class="ch-cle ch-cle-presents" aria-hidden="true"></span>présents
       <span class="ch-cle ch-cle-travail" aria-hidden="true"></span>au travail
       <span class="ch-cle ch-cle-file" aria-hidden="true"></span>en file (ce qui attend son équipe, sous la courbe)

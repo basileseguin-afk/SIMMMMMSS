@@ -10,8 +10,12 @@
  *
  *      node outils/simuler-journee.cjs sauvegarde.json vols.csv [options.json] > resultat.json
  *      node outils/simuler-journee.cjs --arguments sauvegarde.json vols.xlsx    # ce que reçoit le moteur
+ *      node outils/simuler-journee.cjs --xlsx charge.xlsx sauvegarde.json vols.csv > resultat.json
  *
- *  Le résultat : { journee: { ce qui a été lu }, resultat: { ce que rend simuler } }.
+ *  Le résultat : { journee: { ce qui a été lu }, resultat: { ce que rend simuler },
+ *  indicateursCharge: { les indicateurs de charge, moteur/indicateurs.js } }.
+ *  `--xlsx` écrit aussi le classeur de la charge de la journée (Lisez-moi,
+ *  Charge, Créneaux), le même que la page (echanges-charge.js).
  *  ⚠ Une sauvegarde contient le plan réel de l'unité : elle ne va jamais dans
  *  le dépôt (`.gitignore` refuse `ory-sauvegarde*.json`), le résultat non plus.
  * ==========================================================================*/
@@ -19,8 +23,11 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const J = require('../moteur/journee.js');
+const I = require('../moteur/indicateurs.js');
+const T = require('../tableur.js');
+const EC = require('../echanges-charge.js');
 
-const USAGE = 'Usage : node outils/simuler-journee.cjs [--arguments] sauvegarde.json vols.csv|vols.xlsx [options.json] > resultat.json';
+const USAGE = 'Usage : node outils/simuler-journee.cjs [--arguments] [--xlsx charge.xlsx] sauvegarde.json vols.csv|vols.xlsx [options.json] > resultat.json';
 
 /** Un fichier JSON lu, ou une erreur qui dit lequel. */
 function lireJson(chemin, quoi, max) {
@@ -46,20 +53,41 @@ async function simulerJournee(cheminSauvegarde, cheminVols, cheminOptions, { arg
   if (dates.length) vols = vols.map(({ date, ...v }) => v);
   const args = J.argumentsDeLaJournee(sauvegarde, vols, options);
   if (seulementArguments) return args;
-  return {
+  const resultat = J.jouer(args);
+  const sortie = {
     journee: { schema: 'ory-journee', version: 1, sauvegarde: path.basename(cheminSauvegarde), vols: path.basename(cheminVols), ...(dates.length ? { date: dates[0] } : {}),
       departs: vols.filter(v => v.sens === 'DEP').length, retours: vols.filter(v => v.sens === 'RET').length, options },
-    resultat: J.jouer(args)
+    resultat,
+    // Les indicateurs de charge (banc d'essai, évolution 12) : à côté du résultat, qui reste celui d'avant.
+    indicateursCharge: I.journee(resultat, args)
   };
+  // Les arguments restent, hors du JSON (non énumérables) : les noms des services, pour le classeur.
+  return Object.defineProperty(sortie, 'args', { value: args, enumerable: false });
+}
+
+/** Le classeur de la charge de la journée : le même que la page écrit (echanges-charge.js). */
+function classeurDeLaJournee(sortie, calculeLe = new Date()) {
+  const j = sortie.journee;
+  return T.ecrireClasseur(EC.journeeVersClasseur({ indicateurs: sortie.indicateursCharge }, {
+    date: j.date, sauvegarde: j.sauvegarde, vols: j.vols, calculeLe, nomService: id => ((sortie.args && sortie.args.noms) || {})[id] || id }));
 }
 
 if (require.main === module) {
-  const brut = process.argv.slice(2), drapeaux = brut.filter(a => a.startsWith('--')), fichiers = brut.filter(a => !a.startsWith('--'));
-  const inconnus = drapeaux.filter(d => d !== '--arguments');
-  if (inconnus.length || fichiers.length < 2 || fichiers.length > 3) { console.error(USAGE); process.exit(2); }
-  simulerJournee(fichiers[0], fichiers[1], fichiers[2], { arguments: drapeaux.includes('--arguments') })
-    .then(sortie => { process.stdout.write(JSON.stringify(sortie) + '\n'); })
+  const brut = process.argv.slice(2), drapeaux = [], fichiers = [];
+  let xlsx = null;
+  for (let i = 0; i < brut.length; i++) {
+    if (brut[i] === '--xlsx') { xlsx = brut[++i] || ''; drapeaux.push('--xlsx'); }
+    else (brut[i].startsWith('--') ? drapeaux : fichiers).push(brut[i]);
+  }
+  const inconnus = drapeaux.filter(d => d !== '--arguments' && d !== '--xlsx');
+  const seulementArguments = drapeaux.includes('--arguments');
+  if (inconnus.length || fichiers.length < 2 || fichiers.length > 3 || xlsx === '' || (xlsx && (!/\.xlsx$/i.test(xlsx) || seulementArguments))) { console.error(USAGE); process.exit(2); }
+  simulerJournee(fichiers[0], fichiers[1], fichiers[2], { arguments: seulementArguments })
+    .then(sortie => {
+      if (xlsx) { fs.writeFileSync(xlsx, classeurDeLaJournee(sortie)); console.error('Classeur de la charge : ' + xlsx + '.'); }
+      process.stdout.write(JSON.stringify(sortie) + '\n');
+    })
     .catch(e => { console.error('Journée non jouée : ' + e.message); process.exitCode = 1; });
 }
 
-module.exports = { simulerJournee, lireJson };
+module.exports = { simulerJournee, lireJson, classeurDeLaJournee };

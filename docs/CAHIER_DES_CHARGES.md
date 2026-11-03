@@ -127,12 +127,12 @@ de relire le cahier des charges initial :
 |---|---|---|---|---|
 | K1 | % de repas / vols à l'heure, retard moyen et maximal | CdC §7 | ✅ | Dénominateur annoncé ; « — » avant la première échéance |
 | K2 | Vols inachevés comptés, jamais masqués | Feuille de route étape 6 | ✅ | |
-| K3 | **Taux d'occupation** par atelier | CdC §7 | ❌ | |
-| K4 | **Encours et longueur de file** par atelier | CdC §7 | 🟡 | Nombre de services qui attendent ; pas de longueur de file |
-| K5 | **Débit** (plateaux, trolleys par heure), global et par atelier | CdC §7 | ❌ | |
-| K6 | Man-minutes **consommées vs disponibles** par atelier | CdC §7 | 🟡 | Heures de travail totales au bilan ; pas le rapport par atelier |
-| K7 | **Courbe** de débit et d'encours sur la journée, avec les pics | CdC §7 | ❌ | Il existe le planning des équipes et la frise des départs, pas de courbe |
-| K8 | ETP (heures ÷ 7), besoins simultanés par créneau | Feuille de route §1, étape 6 | ❌ | Existait dans l'ancien moteur, perdu à la refonte |
+| K3 | **Taux d'occupation** par atelier | CdC §7 | ✅ | Par équipe et par jour : minutes au travail ÷ présence hors pauses ; par service, pondéré par les personnes ; sur la période (banc d'essai, évolution 12, `BANC_ESSAI.md` § 13) |
+| K4 | **Encours et longueur de file** par atelier | CdC §7 | ✅ | Lots en file par créneau de 15 min et par service ; la file la plus longue de chaque équipe et son instant (évolution 12) |
+| K5 | **Débit** (plateaux, trolleys par heure), global et par atelier | CdC §7 | 🟡 | Par équipe, dans son unité (repas, plateaux, vols lavés, vols chargés) par heure au travail, sur le jour et la période ; terminés par créneau. Pas de débit global : les unités ne s'additionnent pas (évolution 12) |
+| K6 | Man-minutes **consommées vs disponibles** par atelier | CdC §7 | ✅ | Homme-minutes ÷ (personnes × présence hors pauses), par équipe, par jour et sur la période (évolution 12) |
+| K7 | **Courbe** de débit et d'encours sur la journée, avec les pics | CdC §7 | ✅ | Page Planning : par service, présents, au travail et en file sur l'axe du planning, le pic marqué ; feuille Créneaux, terminés compris (évolution 12) |
+| K8 | ETP (heures ÷ 7), besoins simultanés par créneau | Feuille de route §1, étape 6 | ✅ | ETP présents par service (personnes × présence ÷ présence générale) ; personnes présentes et au travail par créneau de 15 min, et leurs pics (évolution 12) |
 | K9 | Cause du retard (personnel, machine, matériel, amont…) | Feuille de route étape 6 | 🟡 | Amont et matériel oui ; personnel ou machine non distingués |
 
 ## 8. Leviers « what-if » et scénarios
@@ -218,9 +218,9 @@ de relire le cahier des charges initial :
    - ce qui reste le soir **passe au lendemain** : matériel propre et sale,
      préparations d'avance, retards ;
    - un bilan **par jour** et **sur la période**.
-3. **Indicateurs de charge**, par jour et sur la période : occupation par
-   équipe (K3), débit (K5), consommé / disponible (K6), ETP (K8), courbe de la
-   journée (K7).
+3. ~~**Indicateurs de charge**, par jour et sur la période~~ : faits (banc
+   d'essai, évolution 12 — K3 à K8). Reste un débit global (K5), que des
+   unités différentes ne permettent pas d'additionner.
 4. **Lire l'export Winrest réel** (D9), avec ses règles de dossiers.
 5. **Stocks à capacité finie** (M12) — ils prennent tout leur sens sur
    plusieurs jours.
