@@ -105,9 +105,15 @@ options des évolutions suivantes s'ajoutent à ce tableau ; celles d'une
 | `renfortsHeuresSup` | Avec les renforts : les minutes-personne que ses personnes ont passées en renfort après la fin de leur présence |
 | `renforts` | Avec les renforts : `vers` (à qui elle a prêté) et `de` (qui l'a aidée), chacun `{ id, nom, minutes }` |
 | `conditionSale` | Une plonge qui ne vient que s'il reste du sale (§ 6) : s'est-elle ouverte, le sale mesuré, ce qu'elle a lavé, ce qui reste à sa fin |
+| `pausesPrises` | Les pauses qu'elle a vraiment prises, `[{ de, a }]` en minutes du jour J, dans l'ordre (§ 13) : celles que le moteur place en exécutant ses lots (pauses de régime, pauses fixes, arrêts de la ligne d'un robot). Une pause du poste qui tombe quand l'équipe n'a rien à faire n'y est pas |
 
 Et pour la journée, quand l'unité a une plonge : `saleFinal`, le sale non lavé
 à la fin de la journée, vol par vol (§ 6).
+
+Chaque lot à la main ou au robot porte aussi `pret` (§ 13) : l'instant où il
+est prêt, c'est-à-dire la dernière livraison de ses fournisseurs ou l'ouverture
+de la mise à disposition qu'il attend ; `null` sans l'un ni l'autre. Le lot
+d'un handling avait déjà le sien, l'heure où son vol est prêt.
 
 Les noms `debutPoste` et `presence` sont ceux de la version 2, dans le même
 sens, pour une fusion future.
@@ -2170,3 +2176,126 @@ worktree retiré ensuite, l'interruption, et les codes de sortie de l'outil
 (0, 1, 2).
 `tests/rejeu-browser.cjs` : sans le plan privé et avec la tuile fictive. La
 batterie complète, dans un clone propre.
+
+## 13. Les indicateurs de charge (évolution 12)
+
+Pour chaque équipe et chaque service : combien de personnes sont présentes, au
+travail, en pause ou sans travail à chaque moment de la journée, et ce que ça
+donne pour le jour (exigences K3 à K8 du cahier des charges).
+
+### Le module
+
+`moteur/indicateurs.js`, sans navigateur : `OrlyIndicateurs.journee(resultat,
+args)` lit le résultat d'une journée et ses arguments (les équipes telles que
+le moteur les a reçues, la règle de poste générale). Il ne change rien au
+calcul. Le moteur expose seulement ce que le module ne pouvait pas déduire :
+les pauses prises de chaque équipe (`pausesPrises`) et l'instant où chaque lot
+est prêt (`pret`). Sans ces deux champs, la journée est celle d'avant, champ
+par champ (`tests/non-regression.test.cjs`).
+
+### Les créneaux
+
+Ils font 15 minutes, alignés sur l'heure, sur l'horloge du jour de travail :
+une équipe à J−1 se place sur son propre jour (06:00 de la veille compte
+06:00), comme dans le bilan de la période (§ 9). Un service a donc une série
+par jour de travail où ses équipes travaillent (`services[].jour`). Les
+mesures sont en personnes, fraction du créneau comprise (une personne présente
+la moitié d'un créneau compte 0,5) :
+
+- **présents** : les personnes dont le poste couvre le créneau, du début de
+  poste à la fin de présence, prolongée jusqu'à la fin du travail en cas
+  d'heures sup. À une plonge à tunnels en heures sup, seules les personnes des
+  tunnels encore en marche restent. Une mise à disposition compte présente à
+  son heure et son jour saisis, pour sa présence. Un handling compte les
+  chauffeurs de son plan (§ 4) ou de ses créneaux saisis ; sans vacation,
+  « sans objet » ;
+- **au travail** : les personnes d'une équipe pendant qu'un de ses lots est en
+  cours, pauses prises retirées ; au robot, l'équipe pendant que la ligne
+  tourne ; à la plonge, les personnes de chaque tunnel pendant qu'il lave (au
+  débit, celles des tunnels qui tournent) ;
+- **en pause** : pendant les pauses prises (au robot, les arrêts de sa ligne
+  en font partie : le moteur les lui fait prendre comme des pauses) ;
+- **sans travail** : présents − au travail − en pause, équipe par équipe ;
+- **en file** : le nombre de lots prêts à commencer (tous leurs fournisseurs
+  ont livré) mais pas encore commencés. Un lot sans fournisseur est prêt dès
+  l'arrivée de son équipe. À la plonge par vol, les vols revenus qui attendent
+  leur tunnel ; au débit, « sans objet » ;
+- **terminés** : les unités finies dans le créneau (un lot fini à 11:15 compte
+  dans le créneau de 11:00) : les repas des commandes d'un lot à la main, les
+  plateaux au robot, les vols lavés à la plonge (au débit, les unités lavées),
+  les vols chargés au handling.
+
+### Par équipe et par jour
+
+- **occupation** (K3) = minutes au travail ÷ minutes de présence hors pauses,
+  en minutes × personnes : pour une équipe à la main ou un robot, c'est la même
+  chose qu'en minutes ; à la plonge, seules les personnes d'un tunnel qui lave
+  sont au travail. Les minutes de présence hors pauses sont celles du poste (sa
+  présence moins ses pauses, comme l'effectif calculé les compte ; au robot,
+  moins aussi les arrêts de sa ligne), plus ses heures sup (à une plonge à
+  tunnels, celles des seuls tunnels qui finissent tard, `heuresSupPersonnes`) ;
+- **consommé sur disponible** (K6) = homme-minutes de ses lots ÷ (personnes ×
+  minutes de présence hors pauses). Les homme-minutes d'un lot à la main sont
+  celles du barème ; au robot et à la plonge, sa durée × les personnes qui le
+  tiennent ;
+- **débit** (K5) = unités terminées ÷ heures au travail, dans l'unité de
+  l'équipe ; au handling, vols chargés ÷ heures de chargement (la réunion de
+  ses chargements : un camion qui charge trois vols ne compte qu'une fois) ;
+- **file la plus longue** (K4), et son premier instant ; l'attente de
+  l'équipe (ses minutes à attendre un amont, du matériel, sa ligne).
+
+### Par service et par jour
+
+- **ETP présents** (K8) = Σ personnes × présence ÷ présence du réglage
+  général, comme la charge de l'évolution 11 (a) (sans présence : une par
+  personne) ;
+- **heures au travail** : la somme des minutes × personnes au travail ;
+- **pic de personnes au travail** et **pic de présents**, avec le début de
+  leur premier créneau ;
+- **occupation pondérée** par les personnes : Σ occupation × personnes ÷ Σ
+  personnes, sur les équipes qui en ont une.
+
+### Sans objet
+
+Les cas sans objet sont dits (`sansObjet`, avec la raison), pas mis à 0. Une
+mise à disposition et une équipe d'appui n'ont pas d'occupation, ni de
+travail, de pause ou de file : elles comptent seulement dans les présents de
+leur service et dans ses ETP. Le handling compte ses vols chargés et, quand il
+a des vacations, ses chauffeurs présents ; le reste est sans objet.
+
+### Les renforts
+
+Les renforts (§ 5) comptent dans les totaux du jour, chez l'équipe qui prête
+et chez celle qui reçoit, mais pas dans les créneaux : le résultat ne dit pas
+quand ils ont lieu. Chez l'équipe qui prête, ses minutes × personnes prêtées
+s'ajoutent à son travail (et à son occupation) : ce sont ses personnes qui
+travaillent. Chez celle qui reçoit, elles sont dites à part (`renfortsRecus`),
+et le travail qu'elles font compte dans ses homme-minutes consommées (son
+consommé sur disponible peut alors passer 100 %) : ajoutées aussi à son
+travail, elles compteraient deux fois dans les heures au travail du service.
+Pendant qu'elle prête, l'équipe qui prête compte « sans travail » dans ses
+créneaux.
+
+### Limites
+
+- Une pause du poste qui tombe quand l'équipe n'a rien à faire n'est pas
+  « prise » : elle compte « sans travail ». Les minutes de présence hors pauses,
+  elles, retirent toutes les pauses du poste.
+- Les mesures d'un créneau sont des moyennes sur ses 15 minutes : un pic d'une
+  minute s'y lit atténué. La file la plus longue, elle, se lit à l'instant.
+- Une unité finie compte dans le créneau qui finit à son heure de fin ou après,
+  jamais avant celui où son travail a commencé.
+- Au robot, l'arrêt de la ligne qui recouvre une pause de régime n'est retiré
+  qu'une fois du poste ; l'arrêt qui recouvre une pause fixe, pas du tout.
+
+Vérifications — `tests/indicateurs.test.cjs` : une équipe de 2 personnes, un
+lot de 600 homme-minutes (au travail, en pause, sans travail, créneau par
+créneau ; occupation 300 ÷ 420 ; consommé 600 ÷ (2 × 420) ; pic au travail 2 à
+06:00) ; deux équipes qui se chevauchent ; un lot prêt à 07:00 pour une équipe
+occupée jusqu'à 09:00 (en file 1 de 07:00 à 09:00) ; un robot et un tunnel de
+plonge ; une mise à disposition et une équipe d'appui (sans objet) ; le
+handling, et un camion qui charge trois vols ; une équipe à J−1 ; les renforts ;
+un robot dont la ligne s'arrête ; les heures sup ; une équipe sans personne ; la
+somme des « au travail » ; la non-régression ; et, sur les journées de
+référence, des mesures qui tiennent ensemble et des pauses prises qui font le
+temps d'arrêt.

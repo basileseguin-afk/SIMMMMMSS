@@ -182,6 +182,8 @@ test('non-régression : les journées enregistrées ne changent pas (aucun robot
     const r = J.jouer(J.argumentsDeLaJournee(s.sauvegarde, s.args.vols, s.options));
     for (const a of s.args.ateliers.filter(x => x.type === 'robot')) assert.ok(!(s.args.effectifCalcule || []).includes(a.service), s.nom + ' : ' + a.id);
     assert.deepEqual(JSON.parse(JSON.stringify(r.effectifs)), s.resultat.effectifs, s.nom);
-    assert.deepEqual(JSON.parse(JSON.stringify(r.lots)), s.resultat.lots, s.nom);
+    // L'instant où un lot à la main ou au robot est prêt (évolution 12) s'ajoute ; celui du handling y était déjà.
+    const lots = JSON.parse(JSON.stringify(r.lots)).map((l, i) => ('pret' in (s.resultat.lots[i] || {}) ? l : (({ pret, ...x }) => x)(l)));
+    assert.deepEqual(lots, s.resultat.lots, s.nom);
   }
 });

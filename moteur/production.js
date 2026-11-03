@@ -1639,6 +1639,10 @@
     }
     throw new Error('Trop de pauses pour achever une tâche.');
   }
+  /** Les pauses qu'une tâche menée par `finAvecPauses` de `depart` à `fin` traverse, de leur début à leur fin (évolution 12). */
+  function pausesTraversees(depart, fin, pauses) {
+    return pauses.filter(p => p.a > depart && p.de < fin).map(p => ({ de: Math.max(p.de, depart), a: Math.min(p.a, fin) }));
+  }
 
   /* ----------------------------------------------------------------------
    *  RÉGIME DE POSTE
@@ -1690,8 +1694,9 @@
    * les pauses fixes, les pauses de régime et la fin du poste.
    *
    * @returns {object} fin, arret (temps immobile), cumul (travail total du
-   *   poste après la tâche), fait (minutes réellement travaillées ici) et
-   *   `tronque` quand le poste s'est terminé avant la tâche.
+   *   poste après la tâche), fait (minutes réellement travaillées ici),
+   *   `tronque` quand le poste s'est terminé avant la tâche, et `pauses`, les
+   *   pauses prises, de leur début à leur fin (évolution 12).
    */
   function executerTache(o) {
     const pauses = o.pauses || [];
@@ -1703,19 +1708,20 @@
       : Infinity;
     const prises = o.prises || new Set();   // seuils de pause déjà honorés dans ce poste
     let t = o.depart, reste = o.duree, cumul = o.cumul || 0, arret = 0, fait = 0;
+    const prisesIci = [];
 
-    if (reste <= 0) return { fin: t, arret: 0, cumul, fait: 0, tronque: false };
+    if (reste <= 0) return { fin: t, arret: 0, cumul, fait: 0, tronque: false, pauses: prisesIci };
 
     for (let garde = 0; garde < 5000; garde++) {
-      if (t >= finPoste) return { fin: finPoste, arret, cumul, fait, tronque: true };
+      if (t >= finPoste) return { fin: finPoste, arret, cumul, fait, tronque: true, pauses: prisesIci };
 
       // Une pause fixe en cours : on attend sa fin.
       const fixe = pauses.find(p => t >= p.de && t < p.a);
-      if (fixe) { arret += Math.min(fixe.a, finPoste) - t; t = Math.min(fixe.a, finPoste); continue; }
+      if (fixe) { const f = Math.min(fixe.a, finPoste); if (f > t) prisesIci.push({ de: t, a: f }); arret += f - t; t = f; continue; }
 
       // Une pause de régime due : le seuil de travail cumulé est atteint.
       const due = regime.seuils.find(s => cumul >= s.apres && !prises.has(s.apres));
-      if (due) { prises.add(due.apres); arret += due.duree; t += due.duree; continue; }
+      if (due) { prises.add(due.apres); prisesIci.push({ de: t, a: Math.min(t + due.duree, finPoste) }); arret += due.duree; t += due.duree; continue; }
 
       // Jusqu'où peut-on travailler sans être interrompu ?
       const prochainSeuil = regime.seuils.find(s => s.apres > cumul);
@@ -1726,8 +1732,8 @@
       const creneau = Math.min(reste, versSeuil, versFixe, versFin);
 
       t += creneau; cumul += creneau; fait += creneau; reste -= creneau;
-      if (reste <= 1e-9) return { fin: t, arret, cumul, fait, tronque: false };
-      if (creneau === versFin) return { fin: finPoste, arret, cumul, fait, tronque: true };
+      if (reste <= 1e-9) return { fin: t, arret, cumul, fait, tronque: false, pauses: prisesIci };
+      if (creneau === versFin) return { fin: finPoste, arret, cumul, fait, tronque: true, pauses: prisesIci };
     }
     throw new Error('Trop d’interruptions pour achever une tâche.');
   }
@@ -1737,23 +1743,23 @@
    * renforts : l'effectif change en cours de tâche). Rend ce qui a été
    * travaillé jusque-là, les pauses dues prises (ajoutées à `prises`), et,
    * si l'équipe est en pleine pause de régime à cet instant, l'heure où elle
-   * reprend (`reprise`).
+   * reprend (`reprise`) ; `pauses`, les pauses prises jusque-là (évolution 12).
    */
   function executerJusqua(o, jusqua) {
     const pauses = o.pauses || [];
     const regime = normaliserRegime(o.regime);
     const finPoste = Number.isFinite(o.finPoste) ? o.finPoste : Infinity;
-    const prises = o.prises;
+    const prises = o.prises, prisesIci = [];
     let t = o.depart, reste = o.duree, cumul = o.cumul || 0, arret = 0, fait = 0;
     for (let garde = 0; garde < 5000; garde++) {
-      if (t >= jusqua - 1e-9 || t >= finPoste || reste <= 1e-9) return { t, arret, cumul, fait, reprise: t };
+      if (t >= jusqua - 1e-9 || t >= finPoste || reste <= 1e-9) return { t, arret, cumul, fait, reprise: t, pauses: prisesIci };
       const fixe = pauses.find(p => t >= p.de && t < p.a);
-      if (fixe) { const f = Math.min(fixe.a, finPoste, jusqua); arret += f - t; t = f; continue; }
+      if (fixe) { const f = Math.min(fixe.a, finPoste, jusqua); if (f > t) prisesIci.push({ de: t, a: f }); arret += f - t; t = f; continue; }
       const due = regime.seuils.find(s => cumul >= s.apres && !prises.has(s.apres));
       if (due) {
         prises.add(due.apres);
-        if (t + due.duree > jusqua) { arret += jusqua - t; return { t: jusqua, arret, cumul, fait, reprise: t + due.duree }; }
-        arret += due.duree; t += due.duree; continue;
+        if (t + due.duree > jusqua) { prisesIci.push({ de: t, a: jusqua }); arret += jusqua - t; return { t: jusqua, arret, cumul, fait, reprise: t + due.duree, pauses: prisesIci }; }
+        prisesIci.push({ de: t, a: t + due.duree }); arret += due.duree; t += due.duree; continue;
       }
       const prochainSeuil = regime.seuils.find(s => s.apres > cumul);
       const versSeuil = prochainSeuil ? prochainSeuil.apres - cumul : Infinity;
@@ -2165,7 +2171,7 @@
       if (!plongeConditionnelle(a) || presentes.has(a.id)) return;
       const debut = minutes(a.debut) + (a.jour || 0) * MINUTES_PAR_JOUR, reg = regimeDe(a);
       const v = { id: a.id, nom: a.nom, service: a.service, type: a.type, debut, personnes: 0, fin: null, travail: 0, attente: 0, arret: 0, lots: [],
-        debutPoste: debut, presence: reg.actif ? reg.presence : null, jour: a.jour || 0, finPoste: null, heuresSup: 0, heuresSupPersonnes: 0,
+        debutPoste: debut, presence: reg.actif ? reg.presence : null, jour: a.jour || 0, finPoste: null, heuresSup: 0, heuresSupPersonnes: 0, pausesPrises: [],
         ...(avecRenforts ? { renfortsPretes: 0, renfortsRecus: 0, renfortsHeuresSup: 0, renforts: { vers: [], de: [] } } : {}) };
       const apres = opts.ateliers.slice(i + 1).map(x => r.ateliers.findIndex(y => y.id === x.id)).find(k => k >= 0);
       r.ateliers.splice(apres === undefined ? r.ateliers.length : apres, 0, v);
@@ -2843,7 +2849,9 @@
     const suivi = ateliers.map(a => ({ id: a.id, nom: a.nom, service: a.service, type: a.type,
       debut: a.type === 'dispo' ? (a.permanent !== false ? env.maintenant : disponibleDes(a)) : minutes(a.debut) + (a.jour || 0) * MINUTES_PAR_JOUR,
       personnes: a.personnes,
-      fin: null, travail: 0, attente: 0, arret: 0, lots: [] }));
+      fin: null, travail: 0, attente: 0, arret: 0, lots: [],
+      // Les pauses que l'équipe a vraiment prises, de leur début à leur fin (évolution 12) : placées en exécutant ses lots.
+      pausesPrises: [] }));
     const parId = new Map(suivi.map(s => [s.id, s]));
 
     // Les équipes d'une plonge par vol, service par service : elles se partagent les retours.
@@ -3466,11 +3474,13 @@
     function* tacheAvecRenforts(R, o) {
       const n = R.a.personnes;
       let rho = 1, cumul = o.cumul, arret = 0, fait = 0, aide = false, reprise = -Infinity, attenteRenfort = 0;
+      // Les pauses prises pendant la tâche (évolution 12) : celles des morceaux faits, et la fin d'une pause coupée par un changement d'effectif.
+      const pauses = [], pause = (de, a) => { if (a > de + 1e-9) pauses.push({ de, a }); };
       R.enTache = true;
       try {
         for (let garde = 0; garde < 100000; garde++) {
           const t0 = env.maintenant;
-          if (t0 >= o.finPoste - 1e-9) return { fin: o.finPoste, arret, cumul, fait, tronque: true, aide, attenteRenfort };
+          if (t0 >= o.finPoste - 1e-9) return { fin: o.finPoste, arret, cumul, fait, tronque: true, aide, attenteRenfort, pauses };
           const ap = apport(R, t0);
           let dRest;
           // Calculée à 0 personne, sans travail (correction 10) : sa commande se fait en temps nul, sans attendre de renfort.
@@ -3490,15 +3500,17 @@
           const t1 = env.maintenant;
           if (res && !interrompu && t1 >= res.fin - 1e-9) {
             for (const x of copie) o.prises.add(x);
-            return { fin: res.fin, arret: arret + (debut - t0) + res.arret, cumul: res.cumul, fait: fait + res.fait, tronque: res.tronque, aide, attenteRenfort };
+            pause(t0, debut); pauses.push(...res.pauses);
+            return { fin: res.fin, arret: arret + (debut - t0) + res.arret, cumul: res.cumul, fait: fait + res.fait, tronque: res.tronque, aide, attenteRenfort, pauses };
           }
           if (!res) { attenteRenfort += t1 - t0; continue; }
-          if (t1 <= debut + 1e-9) { arret += t1 - t0; continue; }   // encore en pause
+          if (t1 <= debut + 1e-9) { pause(t0, t1); arret += t1 - t0; continue; }   // encore en pause
           const p = executerJusqua({ depart: debut, duree: dRest, cumul, prises: o.prises, pauses: o.pauses, regime: o.regime, finPoste: o.finPoste }, t1);
+          pause(t0, debut); pauses.push(...p.pauses);
           arret += (debut - t0) + p.arret; cumul = p.cumul; fait += p.fait;
           rho *= Math.max(0, 1 - p.fait / dRest);
           reprise = p.reprise > t1 + 1e-9 ? p.reprise : -Infinity;
-          if (rho <= 1e-9) return { fin: t1, arret, cumul, fait, tronque: false, aide, attenteRenfort };
+          if (rho <= 1e-9) return { fin: t1, arret, cumul, fait, tronque: false, aide, attenteRenfort, pauses };
         }
         throw new Error('Trop de changements d’effectif pour achever une tâche.');
       } finally { R.enTache = false; R.segment = null; }
@@ -3710,6 +3722,7 @@
           const duree = (dureeLavageVol(p.a, r.cie) ?? 0) / p.vitesse;
           const debutV = Math.max(r.t, libre(p));
           const f = finAvecPauses(debutV, duree, p.pauses);
+          p.vue.pausesPrises.push(...pausesTraversees(debutV, f.fin, p.pauses));
           p.machine.libre = f.fin;
           const ligne = { ...base, atelier: p.a.id, debut: debutV, fin: f.fin, duree, attente: debutV - r.t, arret: f.arret, impossible: false,
             tunnel: p.numero, nomTunnel: p.nom, vitesse: p.vitesse };
@@ -3778,6 +3791,7 @@
             file.tunnels.add(passe);
             yield env.delai(t.fin - env.maintenant);
             file.tunnels.delete(passe);
+            vue.pausesPrises.push(...t.pauses);
             cumulL = t.cumul;
             const lavees = t.tronque ? unites * (t.fait / duree) : unites;
             stock.sale += unites - lavees;      // ce qui n'a pas \u00e9t\u00e9 lav\u00e9 reste sale
@@ -3828,6 +3842,13 @@
       const attendusDe = ids => ids.flatMap(id => amontsDe(a.service, id).map(amont => livraison(amont, id)));
       const servieA = ids => (boutiques.size ? fournieA(ids.flatMap(id => amontsDe(a.service, id))) : -Infinity);
       const pret = ids => attendusDe(ids).every(ev => ev.declenche) && servieA(ids) <= env.maintenant + 1e-9;
+      // L'instant où un lot est prêt : la dernière livraison de ses fournisseurs, l'ouverture de la mise à disposition
+      // qu'il attend ; null sans l'un ni l'autre (évolution 12).
+      const pretDuLot = ids => {
+        const livres = ids.flatMap(id => amontsDe(a.service, id).map(amont => livreA.get(cle(amont, id)))).filter(Number.isFinite);
+        const ouvert = servieA(ids), tous = livres.concat(Number.isFinite(ouvert) ? [ouvert] : []);
+        return tous.length ? Math.max(...tous) : null;
+      };
       let j = 0;   // le rang du lot en cours, parmi les lots non vides
       const processus = env.processus(function* () {
         if (env.maintenant < depart) yield env.delai(depart - env.maintenant);
@@ -3889,6 +3910,9 @@
               return;   // elle part : les lots suivants non plus
             }
           }
+          // L'instant où le lot est prêt (évolution 12) : le dernier de ses fournisseurs a livré, la mise à disposition
+          // qu'il attend est ouverte ; sans fournisseur, rien (null). Il peut attendre l'équipe : il est alors en file.
+          const pretA = pretDuLot(ids);
           let attente = env.maintenant - debutAttente;
           horloge = Math.max(horloge, env.maintenant);
           if (env.maintenant < horloge) yield env.delai(horloge - env.maintenant);
@@ -3910,14 +3934,14 @@
             } finally { R.attend = false; }
             if (!arme()) {
               journal.push({ atelier: a.id, service: a.service, nom, classes: ids, debut: t0,
-                fin: null, duree: null, attente, arret: 0, impossible: true, ...detail });
+                fin: null, duree: null, attente, arret: 0, impossible: true, ...detail, pret: pretA });
               vue.lots.push(journal[journal.length - 1]);
               return;
             }
             attente += env.maintenant - t0;
           } else if (!Number.isFinite(duree)) {
             journal.push({ atelier: a.id, service: a.service, nom, classes: ids, debut: env.maintenant,
-              fin: null, duree: null, attente, arret: 0, impossible: true, ...detail });
+              fin: null, duree: null, attente, arret: 0, impossible: true, ...detail, pret: pretA });
             vue.lots.push(journal[journal.length - 1]);
             return;   // rien ne sortira de cet atelier : inutile d'enchaîner
           }
@@ -3951,7 +3975,7 @@
             if (tient) rendreLigne(k);
             const ligne = { atelier: a.id, service: a.service, nom, classes: ids,
               debut: env.maintenant, fin: null, duree: null, attente: attente + attenteLigne, arret: 0,
-              impossible: true, horsPoste: true, ...detail };
+              impossible: true, horsPoste: true, ...detail, pret: pretA };
             journal.push(ligne); vue.lots.push(ligne);
             return;
           }
@@ -3962,6 +3986,7 @@
           if (R) { repartir(); t = yield* tacheAvecRenforts(R, { duree, base, cumul, prises, pauses, regime, finPoste, robot: a.type === 'robot' }); }
           else { t = executerTache({ depart: env.maintenant, duree, cumul, prises, pauses, regime, finPoste }); yield env.delai(t.fin - env.maintenant); }
           if (tient) rendreLigne(k);
+          vue.pausesPrises.push(...t.pauses);
           cumul = t.cumul;
           const { arret } = t;
           attente += attenteLigne + (t.attenteRenfort || 0);
@@ -3969,7 +3994,7 @@
           if (t.tronque) {
             const ligne = { atelier: a.id, service: a.service, nom, classes: ids,
               debut: debutLot, fin: null, duree: Number.isFinite(duree) ? duree : null, attente, arret,
-              fait: t.fait, impossible: true, horsPoste: true, ...detail };
+              fait: t.fait, impossible: true, horsPoste: true, ...detail, pret: pretA };
             journal.push(ligne); vue.lots.push(ligne);
             vue.attente += attente; vue.arret += arret; vue.travail += t.fait;
             return;   // l'équipe est partie : les lots suivants non plus
@@ -3986,7 +4011,7 @@
           const aidee = t.aide || !Number.isFinite(duree);
           const ligne = { atelier: a.id, service: a.service, nom, classes: ids,
             debut: debutLot, fin: env.maintenant, duree: Number.isFinite(duree) ? duree : t.fait, attente, attenteMateriel: attenteMat,
-            arret, impossible: false, ...detail, ...(t.aide ? { renfort: true, fait: t.fait } : {}) };
+            arret, impossible: false, ...detail, ...(t.aide ? { renfort: true, fait: t.fait } : {}), pret: pretA };
           journal.push(ligne); vue.lots.push(ligne);
           vue.travail += aidee ? t.fait : duree; vue.attente += attente; vue.arret += arret;
           vue.fin = env.maintenant;
@@ -4327,6 +4352,8 @@
       v.heuresSupPersonnes = a.type === 'lavage' && Array.isArray(a.tunnels) && a.tunnels.length && v.heuresSup > 0
         ? heuresSupDesTunnels(a, v, SUP) : v.heuresSup * (+v.personnes || 0);
     }
+    // Les pauses prises (évolution 12), dans l'ordre, celles de deux tunnels d'une plonge réunies.
+    for (const v of suivi) v.pausesPrises = fusionnerPauses([v.pausesPrises]);
 
     const suivies = Object.values(derniers).filter(c => !c.absente);
     const aHeure = suivies.filter(c => c.aHeure).length;

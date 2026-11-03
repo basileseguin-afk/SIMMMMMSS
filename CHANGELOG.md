@@ -5,6 +5,24 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-03 — Banc d'essai, évolution 12 (a) : les indicateurs de charge d'une journée
+
+- `moteur/indicateurs.js` (nouveau), sans navigateur : il lit le résultat d'une
+  journée et rend, par créneau de 15 minutes (horloge du jour de travail) et
+  par service, les présents, au travail, en pause, sans travail, en file et
+  terminés ; par équipe, l'occupation (K3), le consommé sur disponible (K6), le
+  débit (K5), la file la plus longue (K4) ; par service, les ETP présents (K8),
+  les heures au travail, les pics et l'occupation pondérée. Les cas sans objet
+  sont dits, pas mis à 0.
+- `moteur/production.js` : chaque équipe rend les pauses qu'elle a vraiment
+  prises (`pausesPrises`), chaque lot à la main ou au robot l'instant où il est
+  prêt (`pret`). Rien d'autre ne change : la journée est celle d'avant, champ
+  par champ.
+- Fichiers : `moteur/indicateurs.js`, `moteur/production.js`, `index.html`
+  (empreinte), `tests/indicateurs.test.cjs` (nouveau),
+  `tests/non-regression.test.cjs` et `tests/robot-calcule.test.cjs` (les deux
+  champs déclarés), `docs/BANC_ESSAI.md` (§ 1 et § 13), `README.md`.
+
 ## 2026-11-02 — Banc d'essai, correction 15 : la batterie passe sans le plan privé
 
 - `sim.js`, `v2/sim.js` : sans le plan privé, la case du fond se lit
