@@ -2240,7 +2240,8 @@ la moitié d'un créneau compte 0,5) :
   tiennent ;
 - **débit** (K5) = unités terminées ÷ heures au travail, dans l'unité de
   l'équipe ; au handling, vols chargés ÷ heures de chargement (la réunion de
-  ses chargements : un camion qui charge trois vols ne compte qu'une fois) ;
+  ses chargements : un camion qui charge trois vols ne compte qu'une fois).
+  Ces heures sont dites à part (`heuresDebit`) : la période les additionne ;
 - **file la plus longue** (K4), et son premier instant ; l'attente de
   l'équipe (ses minutes à attendre un amont, du matériel, sa ligne).
 
@@ -2254,6 +2255,52 @@ la moitié d'un créneau compte 0,5) :
   leur premier créneau ;
 - **occupation pondérée** par les personnes : Σ occupation × personnes ÷ Σ
   personnes, sur les équipes qui en ont une.
+
+### Sur une période
+
+Le bilan de la période (§ 9) gagne `indicateursCharge` :
+
+- **par jour de travail et par service** (`joursTravail[].services[id]`) : les
+  ETP présents, les heures au travail, les unités terminées, les pics de
+  personnes au travail et de présents avec leur créneau, l'occupation
+  pondérée par les personnes, et les créneaux. Les créneaux d'un jour de
+  travail rassemblent les journées de vols qui y travaillent (J−2, J−1, J),
+  comme le bilan : la cuisine à J−1 des vols du 3 et le montage à J des vols
+  du 2 comptent tous deux le 2, sur la même horloge ;
+- **par jour de travail et par équipe** (`joursTravail[].equipes[id]`) :
+  l'occupation, le consommé sur disponible, le débit, la file la plus longue,
+  l'attente, et ce qui les fait (minutes × personnes au travail et
+  disponibles, homme-minutes, unités, heures au travail) ;
+- **par mois et sur la période** (`mois[]`, `periode`), sur les jours complets
+  seulement : par service, les totaux (ETP, heures au travail, unités) et
+  leurs moyennes par jour, l'occupation pondérée de tous ces jours, le plus
+  haut pic avec sa date et son créneau, la moyenne des pics ; par équipe,
+  l'occupation (Σ au travail ÷ Σ disponible), le consommé (Σ homme-minutes ÷
+  Σ disponible), le débit (Σ unités ÷ Σ heures du débit : au handling, ses
+  heures de chargement), la plus longue file avec sa date.
+
+Ce qu'il faut savoir pour les lire :
+
+- une **moyenne** se fait par jour complet de la période (ou du mois), comme
+  le reste du bilan : un jour où le service ne travaille pas y compte pour 0 ;
+- une mesure « sans objet » un jour (les heures au travail d'une mise à
+  disposition) compte 0 dans un total ; l'occupation et les pics, eux, restent
+  « sans objet » (`null`) ;
+- l'**occupation d'un service** sur un mois ou la période est, comme sur un
+  jour, la moyenne des occupations de ses équipes, jour par jour, pondérée par
+  leurs personnes ; celle d'une **équipe** est Σ au travail ÷ Σ disponible. Les
+  deux diffèrent quand une équipe a, un jour, une présence plus courte (son
+  occupation de ce jour-là pèse autant que celle d'un jour plein) ;
+- à pics égaux, le plus haut pic de la période est celui du premier jour.
+
+Chaque journée de vols garde ses indicateurs dans son extrait
+(`journees[].extrait.indicateursCharge`) : ceux de ses équipes, et les
+créneaux de ses services par jour de travail. Le reste du bilan ne change
+pas, champ par champ : une période jouée avant l'évolution 12 (des extraits
+sans indicateurs) donne le même bilan qu'avant, et des cumuls vides. Une
+période sans journée les a vides aussi. Soixante journées de 50 vols
+s'extraient et se mettent au bilan en moins de 2 s sous Node (bien moins, en
+pratique ; la simulation de chaque journée, inchangée, n'est pas comptée).
 
 ### Sans objet
 
@@ -2298,4 +2345,11 @@ handling, et un camion qui charge trois vols ; une équipe à J−1 ; les renfor
 un robot dont la ligne s'arrête ; les heures sup ; une équipe sans personne ; la
 somme des « au travail » ; la non-régression ; et, sur les journées de
 référence, des mesures qui tiennent ensemble et des pauses prises qui font le
-temps d'arrêt.
+temps d'arrêt. `tests/indicateurs-periode.test.cjs` : une équipe à J−1
+compte au jour des vols − 1, un jour de travail rassemble J−1 et J ; par
+équipe et par jour de travail ; un jour incomplet sort des moyennes, la somme
+sur la période égale la somme des jours complets, le plus haut pic est celui
+des jours complets ; sans indicateurs dans les extraits, le bilan est celui
+d'avant, champ par champ ; le débit du handling sur la période et une mise à
+disposition sans objet ; un mois puis l'autre, et une période vide ; soixante
+journées de 50 vols en moins de 2 s.

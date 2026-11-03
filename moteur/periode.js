@@ -79,6 +79,7 @@
   const P = () => module_('MoteurProduction', './production.js');
   const A = () => module_('OrlyAteliers', '../ateliers.js');
   const PL = () => module_('OrlyPlanning', './planning.js');
+  const IND = () => module_('OrlyIndicateurs', './indicateurs.js');
   const clone = x => JSON.parse(JSON.stringify(x));
   const up = x => String(x ?? '').trim().toUpperCase();
 
@@ -343,8 +344,85 @@
         retard: fini(v.retard), aHeure: !!v.aHeure, cause: v.cause || null })),
       plonge: lots.filter(l => l.vol != null && (r.ateliers || []).some(a => a.id === l.atelier && a.type === 'lavage')).map(l => ({ vol: l.vol, cie: l.cie || null,
         arrivee: fini(l.arrivee), equipe: l.atelier, tunnel: l.nomTunnel || (l.tunnel != null ? String(l.tunnel) : null), debut: fini(l.debut), fin: fini(l.fin), attente: l.attente || 0 })),
-      noms: args.noms || {}
+      noms: args.noms || {},
+      // Les indicateurs de charge (évolution 12) : par équipe, ceux du jour ; par service et jour de travail, ses créneaux.
+      indicateursCharge: chargeDuJour(r, args)
     };
+  }
+
+  /* ----------------------------------------------------------------------
+   *  Les indicateurs de charge (évolution 12) : ce que la période en garde
+   * --------------------------------------------------------------------*/
+
+  /** Les indicateurs d'une journée, réduits à ce que le bilan additionne : sans les créneaux des équipes. */
+  function chargeDuJour(r, args) {
+    const k = IND().journee(r, args);
+    return {
+      equipes: k.equipes.map(e => ({ id: e.id, service: e.service, jour: e.jour, personnes: e.personnes, unite: e.unite,
+        termines: e.termines, auTravail: e.auTravail, disponible: e.minutesDisponibles === null ? null : e.minutesDisponibles * e.personnes,
+        minutesAuTravail: e.minutesAuTravail, hommeMinutes: e.hommeMinutes, occupation: e.occupation, consommeSurDisponible: e.consommeSurDisponible,
+        debit: e.debit, heuresDebit: e.heuresDebit, fileMax: e.fileMax, attente: e.attente, renfortsPretes: e.renfortsPretes, renfortsRecus: e.renfortsRecus, sansObjet: e.sansObjet })),
+      services: k.services.map(x => ({ service: x.service, jour: x.jour, etp: x.etp, heuresAuTravail: x.heuresAuTravail, termines: x.termines,
+        sansObjet: x.sansObjet, creneaux: x.creneaux }))
+    };
+  }
+
+  /** Des créneaux de plusieurs journées de vols, sur l'horloge d'un même jour de travail : additionnés créneau par créneau. */
+  function sommeDesCreneaux(listes) {
+    const pas = IND().PAS, mes = IND().MESURES, avec = listes.filter(c => c && c.debut !== null);
+    if (!avec.length) return { debut: null, ...Object.fromEntries(mes.map(m => [m, null])) };
+    const fin = c => c.debut + Math.max(0, ...mes.map(m => (c[m] ? c[m].valeurs.length : 0))) * pas;
+    const d0 = Math.min(...avec.map(c => c.debut)), n = Math.round((Math.max(...avec.map(fin)) - d0) / pas), out = { debut: d0 };
+    for (const m of mes) {
+      const series = avec.map(c => c[m]).filter(Boolean);
+      if (!series.length) { out[m] = null; continue; }
+      const valeurs = new Array(n).fill(0);
+      for (const x of series) x.valeurs.forEach((v, i) => { valeurs[Math.round((x.debut - d0) / pas) + i] += v; });
+      out[m] = { debut: d0, valeurs: valeurs.map(v => Math.round(v * 1e6) / 1e6) };
+    }
+    return out;
+  }
+
+  /** La charge d'un service un jour de travail : ses journées de vols réunies, l'occupation pondérée par les personnes de ses équipes. */
+  function chargeDuService(groupes, equipes) {
+    const c = sommeDesCreneaux(groupes.map(g => g.creneaux)), sansObjet = {};
+    for (const m of IND().MESURES) if (!c[m]) sansObjet[m] = (groupes.find(g => g.sansObjet[m]) || { sansObjet: {} }).sansObjet[m] || 'sans objet';
+    const occ = equipes.filter(e => e.occupation !== null && e.personnes > 0), avecTravail = groupes.filter(g => g.heuresAuTravail !== null);
+    return { etp: somme(groupes, g => g.etp), heuresAuTravail: avecTravail.length ? somme(avecTravail, g => g.heuresAuTravail) : null,
+      termines: groupes.some(g => g.termines !== null) ? somme(groupes, g => g.termines) : null,
+      picAuTravail: IND().pic(c.auTravail), picPresents: IND().pic(c.presents),
+      occupation: occ.length ? somme(occ, e => e.occupation * e.personnes) / somme(occ, e => e.personnes) : null,
+      sansObjet, creneaux: c };
+  }
+
+  /** Le plus haut de pics datés : { personnes, date, debut }. */
+  const plusHaut = (liste, cle) => liste.reduce((m, x) => (x.k && x.k[cle] && (!m || x.k[cle].personnes > m.personnes) ? { ...x.k[cle], date: x.date } : m), null);
+
+  /** Totaux et moyennes de la charge sur des jours complets (un mois, la période) : par service et par équipe. */
+  function cumulCharge(liste) {
+    const n = liste.length, services = {}, equipes = {};
+    for (const w of liste) {
+      for (const [id, s] of Object.entries(w.services)) if (s.indicateursCharge) (services[id] = services[id] || []).push({ date: w.date, k: s.indicateursCharge });
+      for (const [id, e] of Object.entries(w.equipes)) if (e.indicateursCharge) (equipes[id] = equipes[id] || []).push({ date: w.date, k: e.indicateursCharge });
+    }
+    const parService = Object.fromEntries(Object.entries(services).map(([id, l]) => {
+      const total = { etp: somme(l, x => x.k.etp), heuresAuTravail: somme(l, x => x.k.heuresAuTravail), termines: somme(l, x => x.k.termines) };
+      const occ = liste.flatMap(w => Object.values(w.equipes).filter(e => e.service === id && e.indicateursCharge && e.indicateursCharge.occupation !== null && e.indicateursCharge.personnes > 0)
+        .map(e => e.indicateursCharge));
+      return [id, { jours: n, total, moyenne: Object.fromEntries(Object.entries(total).map(([k, v]) => [k, n ? v / n : 0])),
+        occupation: occ.length ? somme(occ, e => e.occupation * e.personnes) / somme(occ, e => e.personnes) : null,
+        picAuTravail: plusHaut(l, 'picAuTravail'), picPresents: plusHaut(l, 'picPresents'),
+        picAuTravailMoyen: n ? somme(l, x => x.k.picAuTravail && x.k.picAuTravail.personnes) / n : 0 }];
+    }));
+    const parEquipe = Object.fromEntries(Object.entries(equipes).map(([id, l]) => {
+      const t = k => somme(l, x => x.k[k]), dispo = t('disponible'), heures = t('heuresDebit');
+      const file = l.reduce((m, x) => (x.k.fileMax && x.k.fileMax.lots > (m ? m.lots : 0) ? { ...x.k.fileMax, date: x.date } : m), null);
+      return [id, { jours: l.length, auTravail: t('auTravail'), disponible: dispo, hommeMinutes: t('hommeMinutes'), termines: t('termines'),
+        occupation: dispo > 0 && l.some(x => x.k.occupation !== null) ? t('auTravail') / dispo : null,
+        consommeSurDisponible: dispo > 0 && l.some(x => x.k.consommeSurDisponible !== null) ? t('hommeMinutes') / dispo : null,
+        debit: heures > 0 && l.some(x => x.k.debit !== null) ? t('termines') / heures : null, fileMax: file }];
+    }));
+    return { services: parService, equipes: parEquipe };
   }
 
   /* ----------------------------------------------------------------------
@@ -392,7 +470,7 @@
     const equipesVues = new Map();
     for (const j of journees) for (const e of j.extrait.equipes) if (!equipesVues.has(e.id)) equipesVues.set(e.id, { id: e.id, nom: e.nom, service: e.service, type: e.type, jour: e.jour });
     const equipes = [...equipesVues.values()].sort((x, y) => nomDe(x.service).localeCompare(nomDe(y.service)) || x.jour - y.jour || x.nom.localeCompare(y.nom) || x.id.localeCompare(y.id));
-    if (!journees.length) return { debut: d.debut, fin: d.fin, decalages, services, equipes, joursTravail: [], mois: [], periode: { jours: 0, joursIncomplets: [], total: vide(), moyenne: vide() } };
+    if (!journees.length) return { debut: d.debut, fin: d.fin, decalages, services, equipes, joursTravail: [], mois: [], periode: { jours: 0, joursIncomplets: [], total: vide(), moyenne: vide(), indicateursCharge: cumulCharge([]) } };
     // Les jours de travail : du premier jour de vols + le décalage le plus tôt, au dernier + le plus tard.
     const joues = new Set(journees.map(j => j.date)), premier = journees[0].date, dernier = journees[journees.length - 1].date;
     const W = joursEntre(jourDecale(premier, decalages[0]), jourDecale(dernier, decalages[decalages.length - 1])).map(date => {
@@ -406,8 +484,8 @@
       for (const e of j.extrait.equipes) {
         const w = parDate.get(jourDecale(j.date, e.jour)); if (!w) continue;
         const s = w.services[e.service] = w.services[e.service] || { ...vide(), _tard: new Set(), compagnies: {} };
-        const m = mesuresEquipe(e);
-        w.equipes[e.id] = { ...m, service: e.service, vols: j.date, ...('ouverte' in e ? { ouverte: e.ouverte } : {}) };
+        const m = mesuresEquipe(e), kc = j.extrait.indicateursCharge && j.extrait.indicateursCharge.equipes.find(x => x.id === e.id);
+        w.equipes[e.id] = { ...m, service: e.service, vols: j.date, ...('ouverte' in e ? { ouverte: e.ouverte } : {}), ...(kc ? { indicateursCharge: kc } : {}) };
         ajouter(s, { ...m, commandesEnRetard: 0 });
         for (const id of e.commandesEnRetard) s._tard.add(id);
         if ('ouverte' in e) w.nuits.push({ equipe: e.id, ouverte: e.ouverte });
@@ -416,6 +494,18 @@
           Object.assign(c._classes, x.classes); for (const v of x.vols) c._vols.add(v);
           c.hommeMinutes += x.hommeMinutes; if (x.retardMax != null) c.retardMax = Math.max(c.retardMax ?? 0, x.retardMax);
         }
+      }
+    }
+    // Les créneaux de chaque service, par jour de travail : ceux des journées de vols qui y travaillent (évolution 12).
+    const groupes = new Map();
+    for (const j of journees) for (const g of ((j.extrait.indicateursCharge || {}).services || [])) {
+      const k = jourDecale(j.date, g.jour) + '|' + g.service;
+      if (parDate.has(jourDecale(j.date, g.jour))) { if (!groupes.has(k)) groupes.set(k, []); groupes.get(k).push(g); }
+    }
+    for (const w of W) {
+      for (const [id, s] of Object.entries(w.services)) {
+        const gs = groupes.get(w.date + '|' + id);
+        if (gs) s.indicateursCharge = chargeDuService(gs, Object.values(w.equipes).filter(e => e.service === id && e.indicateursCharge).map(e => e.indicateursCharge));
       }
     }
     for (const w of W) {
@@ -451,9 +541,10 @@
     };
     const complets = W.filter(w => w.complet);
     const mois = [...new Set(W.map(w => w.date.slice(0, 7)))].map(mo => ({ mois: mo, ...cumul(complets.filter(w => w.date.startsWith(mo))),
-      joursIncomplets: W.filter(w => !w.complet && w.date.startsWith(mo)).map(w => w.date) }));
+      joursIncomplets: W.filter(w => !w.complet && w.date.startsWith(mo)).map(w => w.date),
+      indicateursCharge: cumulCharge(complets.filter(w => w.date.startsWith(mo))) }));
     return { debut: d.debut, fin: d.fin, decalages, services, equipes, joursTravail: W, mois,
-      periode: { ...cumul(complets), joursIncomplets: W.filter(w => !w.complet).map(w => w.date) } };
+      periode: { ...cumul(complets), joursIncomplets: W.filter(w => !w.complet).map(w => w.date), indicateursCharge: cumulCharge(complets) } };
   }
 
   const api = { JOUR, jourDecale, ecart, joursEntre, dateCourte, dateLongue, estDate, datesDu, volsDuJour, decrire, texteDuProgramme,

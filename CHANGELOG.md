@@ -5,6 +5,24 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-03 — Banc d'essai, évolution 12 (b) : les indicateurs de charge sur une période
+
+- `moteur/periode.js` : chaque journée de vols garde ses indicateurs de charge
+  (`extrait.indicateursCharge`). Le bilan gagne, par jour de travail et par
+  service, les ETP présents, les heures au travail, les pics et leur créneau,
+  l'occupation pondérée et les créneaux, ceux des journées de vols qui y
+  travaillent (J−2, J−1, J) réunis ; par jour de travail et par équipe,
+  l'occupation, le consommé sur disponible, le débit, la file la plus longue.
+  Totaux et moyennes par mois et sur la période, sur les jours complets
+  seulement. Le reste du bilan ne change pas.
+- `moteur/indicateurs.js` : chaque équipe dit ses heures du débit
+  (`heuresDebit` ; au handling, ses heures de chargement), que la période
+  additionne.
+- `index.html` charge `moteur/indicateurs.js` : la période de la page s'en sert.
+- Fichiers : `moteur/periode.js`, `moteur/indicateurs.js`, `index.html`,
+  `tests/indicateurs-periode.test.cjs` (nouveau), `docs/BANC_ESSAI.md` (§ 13),
+  `README.md`.
+
 ## 2026-11-03 — Banc d'essai, évolution 12 (a) : les indicateurs de charge d'une journée
 
 - `moteur/indicateurs.js` (nouveau), sans navigateur : il lit le résultat d'une

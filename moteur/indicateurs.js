@@ -224,11 +224,11 @@
       minutesPresence: presents ? longueur(reunir(presents)) : null, minutesDisponibles: dispo,
       minutesAuTravail: t ? t.minutes : null, auTravail, enPause: occupe ? longueur(pauses) * n : null, hommeMinutes: hm,
       occupation: occupe && n > 0 && base > 0 ? auTravail / base : null, consommeSurDisponible: occupe && n > 0 && base > 0 ? hm / base : null,
-      termines: fin.unite ? termines : null, debit: null, fileMax: file ? fileMax(file) : null, attente: v.attente || 0,
+      termines: fin.unite ? termines : null, debit: null, heuresDebit: null, fileMax: file ? fileMax(file) : null, attente: v.attente || 0,
       renfortsPretes: v.renfortsPretes || 0, renfortsRecus: v.renfortsRecus || 0, sansObjet };
     // Au handling, les heures de chargement : la réunion de ses chargements (un camion qui charge trois vols ne compte qu'une fois).
     const heures = v.type === 'handling' ? longueur(reunir(v.lots.filter(l => fini(l.fin) && fini(l.debut)).map(l => ({ de: l.debut, a: l.fin })))) / 60 : (t ? t.minutes / 60 : 0);
-    if (heures > 0 && fin.unite) e.debit = termines / heures;
+    if (heures > 0 && fin.unite) { e.debit = termines / heures; e.heuresDebit = heures; }
     if (occupe && !(n > 0 && base > 0)) sansObjet.occupation = sansObjet.consommeSurDisponible = 'aucune personne';
     if (raison && v.type !== 'handling') sansObjet.occupation = sansObjet.consommeSurDisponible = sansObjet.debit = raison;
     if (v.type === 'handling') sansObjet.occupation = sansObjet.consommeSurDisponible = raison;
