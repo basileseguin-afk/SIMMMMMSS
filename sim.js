@@ -2362,7 +2362,7 @@ function fermerChoixExport(focus){
   if(focus)b.focus();
 }
 /** Le classeur de la période simulée : le même que `node outils/simuler-periode.cjs … --xlsx`. */
-function exporterPeriode(){
+async function exporterPeriode(){
   const pe=Sim.periode;if(!pe||!pe.resultat||!pe.aJour())return;
   const r=pe.resultat,d=r.periode;
   // Avec une politique d'effectif (évolution 11 d) : le prévu calé de chaque ligne, sa bande P10–P90.
@@ -2373,7 +2373,8 @@ function exporterPeriode(){
   // Avec un prévu calé : d'où vient le σ de la bande du total (correction 16), dans le Lisez-moi.
   const avecPrevu=prevu&&window.OrlyEchangesCalage?OrlyEchangesCalage.avecSigmaUnite(classeur,prevu):classeur;
   const octets=OrlyTableur.ecrireClasseur(window.OrlyEchangesCharge?OrlyEchangesCharge.avecCharge(avecPrevu,r):avecPrevu);
-  OrlyTableur.telecharger('ory-periode-'+d.debut+'-au-'+d.fin+'.xlsx',octets);
+  // Compressé (correction 16 c), quand le navigateur le sait ; sinon tel quel, comme avant.
+  OrlyTableur.telecharger('ory-periode-'+d.debut+'-au-'+d.fin+'.xlsx',window.OrlyClasseurCompresse?await OrlyClasseurCompresse.compresser(octets):octets);
   toast('Période exportée : du '+OrlyPeriode.dateLongue(d.debut)+' au '+OrlyPeriode.dateLongue(d.fin)+', en Excel.');
 }
 function exporter() {

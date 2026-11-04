@@ -5,6 +5,23 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-04 — Banc d'essai, correction 16 (c) : le classeur compressé
+
+- `classeur-compresse.js` (nouveau, v1) : les entrées du classeur que
+  `tableur.js` écrit, compressées (deflate) — zlib sous Node,
+  `CompressionStream("deflate-raw")` dans le navigateur ; sans lui, le
+  classeur tel quel, comme avant. Une entrée qui grossirait reste stockée.
+  `tableur.js`, commun aux deux versions, ne change pas, et lit déjà les deux.
+- Compressés : les classeurs de la période, de la charge de la journée et du
+  calage, depuis la page et depuis les outils (`simuler-periode`,
+  `simuler-journee`, `caler-periode`). Le contenu ne change pas ; 60 journées
+  fictives passent d'environ 13 Mo à 1,1 Mo.
+- Fichiers : `classeur-compresse.js`, `tests/classeur-compresse.test.cjs`
+  (nouveaux), `sim.js`, `ateliers.js`, `calage-vue.js`,
+  `outils/simuler-periode.cjs`, `outils/simuler-journee.cjs`,
+  `outils/caler-periode.cjs`, `index.html`, `tests/periode-browser.cjs`,
+  `docs/FORMATS_EXCEL.md`, `README.md`.
+
 ## 2026-11-04 — Banc d'essai, correction 16 (b) : trois définitions des indicateurs de charge
 
 - `moteur/indicateurs.js` : le disponible de toute équipe = personnes ×

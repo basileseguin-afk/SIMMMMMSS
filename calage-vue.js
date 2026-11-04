@@ -230,7 +230,7 @@
       } catch (e) { this.erreurCorrespondance = 'Correspondance refusée — ' + e.message.replace(/^correspondance : /, ''); }
       this.rendre();
     }
-    exporterClasseur() {
+    async exporterClasseur() {
       const c = this.comparaison(); if (!c) return;
       const p = this.a.periode ? this.a.periode() : null;
       // Le rejeu et le calage du travail (évolution 11 f), s'ils sont faits.
@@ -238,7 +238,9 @@
         ...(this.rejeu && this.rejeu.cle === this.cleDuRejeu() ? { rejeu: this.comparaisonRejeu() } : {}),
         ...(this.travail && this.travail.cle === this.cleDuTravail() ? { travail: this.travail } : {}) },
         { periode: p || {}, reel: this.fichier, correspondance: 'la page', calculeLe: new Date() }));
-      T().telecharger('ory-calage' + (p ? '-' + p.debut + '-au-' + p.fin : '') + '.xlsx', octets);
+      // Compressé (correction 16 c), quand le navigateur le sait ; sinon tel quel.
+      const Z = root.OrlyClasseurCompresse;
+      T().telecharger('ory-calage' + (p ? '-' + p.debut + '-au-' + p.fin : '') + '.xlsx', Z ? await Z.compresser(octets) : octets);
     }
 
     /** Le calage de chaque ligne (moteur/calage-periode.js) : le même que l'outil. */

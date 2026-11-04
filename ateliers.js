@@ -2547,7 +2547,7 @@
     }
 
     /** Le classeur de la charge de la journée (banc d'essai, évolution 12 d) : le même que `simuler-journee --xlsx` (echanges-charge.js). */
-    exporterCharge() {
+    async exporterCharge() {
       const EC = root.OrlyEchangesCharge, T = root.OrlyTableur, r = this.resultat;
       if (!EC || !T || !r || !r.ok) return;
       // Une journée sans date prend la date du calcul, à l'heure locale : la même dans le nom du fichier et dans le classeur.
@@ -2556,7 +2556,9 @@
       const octets = T.ecrireClasseur(EC.journeeVersClasseur({ resultat: r, args: this.args }, { date: this.a.jourVols ? this.a.jourVols() : null,
         calculeLe: le, nomService: id => (services.find(s => s.id === id) || {}).nom || id, sauvegarde: 'l’unité enregistrée dans ce navigateur',
         vols: this.a.sourceVols ? this.a.sourceVols() : null }));
-      T.telecharger('ory-charge-' + date + '.xlsx', octets);
+      // Compressé (correction 16 c), quand le navigateur le sait ; sinon tel quel.
+      const Z = root.OrlyClasseurCompresse;
+      T.telecharger('ory-charge-' + date + '.xlsx', Z ? await Z.compresser(octets) : octets);
     }
 
     /* ---- couverture par classe --------------------------------------- */

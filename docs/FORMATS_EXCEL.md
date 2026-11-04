@@ -45,6 +45,17 @@ règles.
 - **Un import réussi est annulable** (bouton `↶`).
 - Le format `.xlsx` est lu et écrit. Un `.xls` (Excel 97-2003) doit être
   réenregistré en `.xlsx`. Le barème et les vols acceptent aussi le **CSV**.
+- **Les classeurs de résultats sont compressés** (version 1, correction 16) :
+  celui de la période (§ 4), de la charge de la journée (§ 6) et du calage
+  (§ 5), depuis la page et depuis les outils. Leurs entrées sont compressées
+  (deflate, comme Excel les écrit lui-même) : sous Node, par zlib ; dans le
+  navigateur, par `CompressionStream("deflate-raw")`. Un navigateur qui ne l'a
+  pas écrit le classeur sans compression, comme avant. Le contenu ne change
+  pas, et la lecture prend les deux : un classeur d'avant, non compressé, se
+  relit toujours. Deux mois fictifs de 50 vols par jour : environ 14 Mo avant,
+  une dizaine de fois moins après (`classeur-compresse.js` ; `tableur.js`,
+  commun aux deux versions, ne change pas). Les autres classeurs (ateliers,
+  barème, vols, horaires…) restent non compressés.
 
 ---
 
@@ -676,8 +687,9 @@ dit lesquels et pourquoi (« occupation, consommé sur disponible : handling »)
   `indicateursCharge` à côté de `resultat` (qui ne change pas) ;
   `simuler-periode`, le bilan (`indicateursCharge` par jour de travail, par
   mois, sur la période) et chaque journée de vols (`journees[].indicateursCharge`).
-- Taille : deux mois fictifs de 50 vols par jour, environ 14 Mo (la feuille
-  Créneaux en fait plus de la moitié).
+- Taille : deux mois fictifs de 50 vols par jour, environ 14 Mo sans
+  compression (la feuille Créneaux en fait plus de la moitié) ; compressé
+  (correction 16, règles communes), une dizaine de fois moins.
 
 ## Confidentialité
 

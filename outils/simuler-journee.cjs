@@ -25,6 +25,8 @@ const path = require('node:path');
 const J = require('../moteur/journee.js');
 const I = require('../moteur/indicateurs.js');
 const T = require('../tableur.js');
+// Le classeur compressé (correction 16 c) : le même contenu, bien plus léger.
+const Z = require('../classeur-compresse.js');
 const EC = require('../echanges-charge.js');
 
 const USAGE = 'Usage : node outils/simuler-journee.cjs [--arguments] [--xlsx charge.xlsx] sauvegarde.json vols.csv|vols.xlsx [options.json] > resultat.json';
@@ -68,8 +70,8 @@ async function simulerJournee(cheminSauvegarde, cheminVols, cheminOptions, { arg
 /** Le classeur de la charge de la journée : le même que la page écrit (echanges-charge.js). */
 function classeurDeLaJournee(sortie, calculeLe = new Date()) {
   const j = sortie.journee;
-  return T.ecrireClasseur(EC.journeeVersClasseur({ indicateurs: sortie.indicateursCharge }, {
-    date: j.date, sauvegarde: j.sauvegarde, vols: j.vols, calculeLe, nomService: id => ((sortie.args && sortie.args.noms) || {})[id] || id }));
+  return Z.compresserSync(T.ecrireClasseur(EC.journeeVersClasseur({ indicateurs: sortie.indicateursCharge }, {
+    date: j.date, sauvegarde: j.sauvegarde, vols: j.vols, calculeLe, nomService: id => ((sortie.args && sortie.args.noms) || {})[id] || id })));
 }
 
 if (require.main === module) {

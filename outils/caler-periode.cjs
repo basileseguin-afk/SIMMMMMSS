@@ -30,6 +30,8 @@ const path = require('node:path');
 const R = require('../moteur/reel.js');
 const C = require('../moteur/calage-periode.js');
 const T = require('../tableur.js');
+// Le classeur compressé (correction 16 c) : le même contenu, bien plus léger.
+const Z = require('../classeur-compresse.js');
 const EC = require('../echanges-calage.js');
 const { lireJson } = require('./simuler-journee.cjs');
 const { planningDuFichier } = require('./simuler-periode.cjs');
@@ -86,8 +88,8 @@ async function calerPeriode(cheminPeriode, cheminReel, cheminCorrespondance, tra
 
 /** Le classeur : le même que la page écrit (echanges.js). */
 function classeurDuCalage(sortie, calculeLe = new Date()) {
-  return T.ecrireClasseur(EC.calageVersClasseur({ comparaison: sortie.comparaison, reel: sortie._reel, rapport: sortie.rapport, ...(sortie.travail ? { travail: sortie.travail } : {}) }, {
-    periode: sortie.calage.periode, reel: sortie.calage.reel, correspondance: sortie.calage.correspondance, calculeLe }));
+  return Z.compresserSync(T.ecrireClasseur(EC.calageVersClasseur({ comparaison: sortie.comparaison, reel: sortie._reel, rapport: sortie.rapport, ...(sortie.travail ? { travail: sortie.travail } : {}) }, {
+    periode: sortie.calage.periode, reel: sortie.calage.reel, correspondance: sortie.calage.correspondance, calculeLe })));
 }
 
 if (require.main === module) {

@@ -234,6 +234,8 @@ const parse=t=>UI.parseFlights(t,{eta:true,spmlParCabine:true,date:true});
   const xlsx=await telecharger(()=>page.locator('#export-choix [data-export=periode]').click());
   assert.equal(path.basename(xlsx),'ory-periode-2026-10-25-au-2026-11-13.xlsx');
   const classeurPage=await T.lireClasseur(fs.readFileSync(xlsx));
+  // Compressé (correction 16 c) : des entrées deflate, que tableur.js relit.
+  assert.ok(require('../classeur-compresse.js').entrees(fs.readFileSync(xlsx)).some(e=>e.methode===8),'le classeur de la page est compressé');
   // Avec les feuilles de charge (évolution 12 d), après Équipes.
   assert.deepEqual(classeurPage.map(f=>f.nom),['Lisez-moi','Période','Équipes','Charge','Créneaux','Compagnies','Lots','Vols','Plonge','Jours']);
   // Le même classeur que l'outil, pour la sauvegarde de la page et les mêmes vols (seuls la sauvegarde nommée et l'instant du calcul diffèrent).
