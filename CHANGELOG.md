@@ -5,6 +5,35 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-04 — Banc d'essai, correction 16 (b) : trois définitions des indicateurs de charge
+
+- `moteur/indicateurs.js` : le disponible de toute équipe = personnes ×
+  (présence − les pauses vraiment prises) + heures sup. La plonge, qui ne
+  prend pas de pause dans le moteur, ne passe plus 100 % ; une pause du
+  réglage que l'équipe n'atteint pas reste disponible (« sans travail »). Le
+  consommé compte aussi le disponible des renforts reçus, et d'un lot coupé à
+  la fin de la présence la part faite : ni l'occupation ni le consommé ne
+  dépassent 100 %.
+- Une quatrième catégorie, « en appui ou à disposition » (`enAppui`) : les
+  équipes d'appui et les mises à disposition. Dans chaque créneau, présents =
+  au travail + en pause + sans travail + en appui, sauf au handling. Dans la
+  courbe de la page (un trait pointillé, discret), la feuille Créneaux et les
+  définitions des classeurs.
+- Une équipe dont tous les lots sont des catégories par compagnie (« @… » :
+  armement, dotation, roulés couverts) compte son débit en vols servis par
+  heure (unité « vols ») ; sans vol de ses compagnies, « sans objet ».
+- Le résultat de la journée ne change pas. Les indicateurs des autres équipes
+  non plus, sauf le disponible (et l'occupation, le consommé) d'une équipe
+  qui n'a pas pris toutes les pauses de son réglage, et les homme-minutes
+  d'une équipe dont un lot est coupé.
+- Fichiers : `moteur/indicateurs.js`, `moteur/periode.js`, `charge-vue.js`,
+  `charge.css`, `echanges-charge.js`, `index.html`,
+  `tests/indicateurs-definitions.test.cjs`,
+  `tests/indicateurs-definitions.attendu.json` (nouveaux),
+  `tests/indicateurs.test.cjs`, `tests/indicateurs-periode.test.cjs`,
+  `tests/charge-export.test.cjs`, `docs/BANC_ESSAI.md` (§ 13),
+  `docs/FORMATS_EXCEL.md` (§ 6), `README.md`.
+
 ## 2026-11-03 — Banc d'essai, correction 16 (a) : la bande du total de l'unité
 
 - `moteur/calage-periode.js` : le calage mesure σ du total directement, la

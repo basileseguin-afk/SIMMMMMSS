@@ -28,7 +28,8 @@
   const P = () => (enNode ? require('./production.js') : root.MoteurProduction);
 
   const PAS = 15, JOUR = 1440;
-  const MESURES = ['presents', 'auTravail', 'enPause', 'sansTravail', 'enFile', 'termines'];
+  // « En appui » (correction 16) : les équipes d'appui et les mises à disposition, présentes sans travail propre.
+  const MESURES = ['presents', 'auTravail', 'enPause', 'sansTravail', 'enAppui', 'enFile', 'termines'];
   const net = x => Math.round(x * 1e6) / 1e6;
   const somme = (l, f) => l.reduce((n, x) => n + (f(x) || 0), 0);
   const fini = x => Number.isFinite(x);
@@ -160,8 +161,22 @@
     return m;
   }
 
-  /** Les unités finies : [{ t, n }] et leur unité. */
-  function terminesDe(v, r, pax) {
+  /** Une catégorie par compagnie (armement, dotation, roulés couverts) : « CIE/@… », sans repas. */
+  const parCompagnie = id => /\/@/.test(String(id));
+
+  /**
+   * Les unités finies : [{ t, n }] et leur unité. Une équipe à la main dont tous les lots sont des catégories par
+   * compagnie (correction 16) compte les vols qu'elle sert : ceux de la compagnie de chaque lot ce jour-là (`volsDuJour` :
+   * ceux de toutes ses catégories, servies ou non).
+   */
+  function terminesDe(v, def, r, ctx) {
+    const pax = ctx.pax, classes = ((def && def.lots) || []).flat();
+    if (v.type === 'manuel' && (classes.length ? classes : v.lots.flatMap(l => l.classes || [])).every(parCompagnie) && (classes.length || v.lots.length)) {
+      // Un vol servi par deux catégories d'un même lot (NORD/@ARM et NORD/@DOT) ne compte qu'une fois.
+      const vols = ids => new Set(ids.flatMap(id => ctx.vols.get(id) || [])).size;
+      return { unite: 'vols', volsDuJour: vols(classes.length ? classes : v.lots.flatMap(l => l.classes || [])),
+        l: v.lots.filter(l => fini(l.fin) && !l.dispo).map(l => ({ t: l.fin, n: vols(l.classes || []), debut: l.debut })) };
+    }
     if (v.type === 'handling') return { unite: 'vols chargés', l: (r.vols || []).filter(x => x.atelier === v.id && fini(x.fin)).map(x => ({ t: x.fin, n: 1, debut: x.debut })) };
     if (v.type === 'lavage') {
       const parVol = v.lots.some(l => l.retourVol);
@@ -175,28 +190,26 @@
 
   /** Les homme-minutes des lots : le barème d'un lot à la main ; ailleurs, sa durée × les personnes qui le tiennent. */
   function hommeMinutesDe(v, def) {
-    return somme(v.lots.filter(l => !l.dispo), l => (fini(l.hommeMinutes) ? l.hommeMinutes
-      : (l.impossible ? +l.fait || 0 : +l.duree || 0) * (v.type === 'lavage' ? personnesDuLavage(v, def, l) : (v.personnes || 0))));
+    return somme(v.lots.filter(l => !l.dispo), l => {
+      const n = v.type === 'lavage' ? personnesDuLavage(v, def, l) : (v.personnes || 0);
+      // Un lot coupé à la fin de la présence (correction 16) : la part faite, pas toute la demande — le consommé ne passe pas 100 %.
+      if (l.impossible) return fini(l.hommeMinutes) && +l.duree > 0 ? l.hommeMinutes * Math.min(1, (+l.fait || 0) / l.duree) : (+l.fait || 0) * n;
+      return fini(l.hommeMinutes) ? l.hommeMinutes : (+l.duree || 0) * n;
+    });
   }
 
   /**
-   * Les minutes × personnes de présence hors pauses : le poste de l'équipe (sa présence moins ses pauses, comme
-   * l'effectif calculé le compte ; au robot, moins aussi les arrêts de sa ligne, que le moteur lui fait prendre
-   * comme des pauses) × ses personnes, plus ses heures sup en minutes × personnes (à une plonge à tunnels, celles
-   * des seuls tunnels qui finissent tard).
+   * Les minutes × personnes disponibles (correction 16), pour toutes les équipes : personnes × (présence − les
+   * pauses vraiment prises), plus les heures sup en minutes × personnes (à une plonge à tunnels, celles des seuls
+   * tunnels qui finissent tard). Au robot, les arrêts de sa ligne sont des pauses prises (le moteur les lui fait
+   * prendre ainsi) ; une pause du réglage que l'équipe n'a pas atteinte reste disponible (« sans travail »). Une
+   * plonge ne prend pas de pause dans le moteur : rien n'est retiré.
    */
   function disponibleDe(v, def, ctx, pauses) {
     const n = v.personnes || 0;
     if (!fini(v.presence)) return Math.max(0, finPresence(v) - v.debutPoste - longueur(pauses)) * n;
-    let poste = null;
-    try { poste = def ? P().minutesDuPoste(def, ctx.regime) : null; } catch (e) { poste = null; }
-    if (!fini(poste)) poste = v.presence - longueur(pauses);
-    if (v.type === 'robot' && def) {
-      const fixes = reunir(P().pausesDe(def)), fin = v.debutPoste + v.presence;
-      for (const x of ctx.arretsLigne(def)) for (const y of moins(Math.max(x.de, v.debutPoste), Math.min(x.a, fin), fixes)) poste -= y.a - y.de;
-    }
     const sup = fini(v.heuresSupPersonnes) ? v.heuresSupPersonnes : (v.heuresSup || 0) * n;
-    return Math.max(0, poste) * n + sup;
+    return Math.max(0, v.presence - longueur(pauses)) * n + sup;
   }
 
   /** Des personnes présentes `presence` minutes, rapportées à la présence du réglage général (sans présence : une par personne). */
@@ -212,7 +225,7 @@
     const presents = presencesDe(v, def, v.type === 'handling' ? chauffeursDe(v, def) : null);
     if (!presents) sansObjet.presents = v.type === 'handling' ? 'handling sans vacation de chauffeurs' : 'pas de poste';
     const occupe = !raison && fini(v.debutPoste);
-    const t = occupe ? travailDe(v, def, pauses) : null, file = occupe ? fileDe(v) : null, fin = terminesDe(v, r, ctx.pax);
+    const t = occupe ? travailDe(v, def, pauses) : null, file = occupe ? fileDe(v) : null, fin = terminesDe(v, def, r, ctx);
     for (const m of ['auTravail', 'enPause', 'sansTravail']) if (!occupe) sansObjet[m] = raison || 'pas de poste';
     if (!file) sansObjet.enFile = raison || (v.type === 'lavage' ? 'plonge au débit' : 'pas de poste');
     const n = v.personnes || 0, base = occupe ? disponibleDe(v, def, ctx, pauses) : null;
@@ -223,7 +236,8 @@
     const e = { id: v.id, nom: v.nom, service: v.service, type: v.type, jour, personnes: n, unite: fin.unite,
       minutesPresence: presents ? longueur(reunir(presents)) : null, minutesDisponibles: dispo,
       minutesAuTravail: t ? t.minutes : null, auTravail, enPause: occupe ? longueur(pauses) * n : null, hommeMinutes: hm,
-      occupation: occupe && n > 0 && base > 0 ? auTravail / base : null, consommeSurDisponible: occupe && n > 0 && base > 0 ? hm / base : null,
+      // Le consommé : ses homme-minutes, celles des renforts reçus comprises, ÷ le disponible de ses personnes et de ces renforts (correction 16).
+      occupation: occupe && n > 0 && base > 0 ? auTravail / base : null, consommeSurDisponible: occupe && n > 0 && base > 0 ? hm / (base + (v.renfortsRecus || 0)) : null,
       termines: fin.unite ? termines : null, debit: null, heuresDebit: null, fileMax: file ? fileMax(file) : null, attente: v.attente || 0,
       renfortsPretes: v.renfortsPretes || 0, renfortsRecus: v.renfortsRecus || 0, sansObjet };
     // Au handling, les heures de chargement : la réunion de ses chargements (un camion qui charge trois vols ne compte qu'une fois).
@@ -232,7 +246,8 @@
     if (occupe && !(n > 0 && base > 0)) sansObjet.occupation = sansObjet.consommeSurDisponible = 'aucune personne';
     if (raison && v.type !== 'handling') sansObjet.occupation = sansObjet.consommeSurDisponible = sansObjet.debit = raison;
     if (v.type === 'handling') sansObjet.occupation = sansObjet.consommeSurDisponible = raison;
-    if (e.debit === null && !sansObjet.debit) sansObjet.debit = fin.unite ? 'aucun travail' : 'pas d’unité';
+    if (e.debit === null && !sansObjet.debit) sansObjet.debit = fin.unite === 'vols' && !fin.volsDuJour ? 'aucun vol de ses compagnies ce jour-là'
+      : fin.unite ? 'aucun travail' : 'pas d’unité';
     return { e, jour, series: seriesDe(v, jour, presents, t, pauses, file, fin.l, occupe, fin.unite) };
   }
 
@@ -245,6 +260,8 @@
       s.enPause = serie(); for (const p of pauses) deposer(s.enPause, p.de - d, p.a - d, v.personnes || 0);
       s.sansTravail = serie();
     }
+    // Une équipe d'appui, une mise à disposition : ses présents sont « en appui ou à disposition » (correction 16).
+    if (presents && (v.type === 'appui' || v.type === 'dispo')) { s.enAppui = serie(); for (const x of presents) deposer(s.enAppui, x.de - d, x.a - d, x.n); }
     if (file) { s.enFile = serie(); for (const x of file) deposer(s.enFile, x.de - d, x.a - d, 1); }
     if (unite) { s.termines = serie(); for (const x of finis) compter(s.termines, x.t - d, x.n, fini(x.debut) ? x.debut - d : null); }
     return s;
@@ -285,7 +302,8 @@
   /** Les indicateurs d'un service un jour de travail, d'après ses équipes. */
   function service(id, jour, membres, regime) {
     const c = creneaux(membres.map(x => x.series)), equipes = membres.map(x => x.e), sansObjet = {};
-    for (const m of MESURES) if (!c[m]) sansObjet[m] = (equipes.find(e => e.sansObjet[m]) || { sansObjet: {} }).sansObjet[m] || 'sans objet';
+    for (const m of MESURES) if (!c[m]) sansObjet[m] = (equipes.find(e => e.sansObjet[m]) || { sansObjet: {} }).sansObjet[m]
+      || (m === 'enAppui' ? 'aucune équipe d’appui ni mise à disposition' : 'sans objet');
     const occ = equipes.filter(e => e.occupation !== null && e.personnes > 0);
     const travail = equipes.filter(e => e.auTravail !== null);
     return {
@@ -312,11 +330,9 @@
    */
   function journee(r, args) {
     const a = args || {}, defs = new Map((a.ateliers || []).map(x => [x.id, x]));
-    // Les arrêts de chaque ligne robot : ceux de toutes ses cases (comme le moteur).
-    const ligne = x => (x.lignePropre ? 'robot:' + x.id : 'robot:' + x.service), lignes = new Map();
-    for (const x of (a.ateliers || []).filter(x => x.type === 'robot')) { if (!lignes.has(ligne(x))) lignes.set(ligne(x), []); lignes.get(ligne(x)).push(x); }
-    const ctx = { regime: a.regime, pax: new Map((r.classes || []).map(c => [c.id, +c.pax || 0])),
-      arretsLigne: x => reunir(P().arretsDeLigne(lignes.get(ligne(x)) || [x])) };
+    // Les vols de chaque catégorie, pour les équipes aux lots par compagnie (correction 16).
+    const ctx = { pax: new Map((r.classes || []).map(c => [c.id, +c.pax || 0])),
+      vols: new Map((r.classes || []).map(c => [c.id, (c.vols || []).map(x => x.id)])) };
     const faites = (r.ateliers || []).map(v => {
       const def = defs.get(v.id), x = equipe(v, def, r, ctx);
       return { ...x, etp: etpDe(v, a.regime), e: { ...x.e, creneaux: creneaux([x.series]) } };

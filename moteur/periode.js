@@ -419,7 +419,7 @@
       const file = l.reduce((m, x) => (x.k.fileMax && x.k.fileMax.lots > (m ? m.lots : 0) ? { ...x.k.fileMax, date: x.date } : m), null);
       return [id, { jours: l.length, auTravail: t('auTravail'), disponible: dispo, hommeMinutes: t('hommeMinutes'), termines: t('termines'),
         occupation: dispo > 0 && l.some(x => x.k.occupation !== null) ? t('auTravail') / dispo : null,
-        consommeSurDisponible: dispo > 0 && l.some(x => x.k.consommeSurDisponible !== null) ? t('hommeMinutes') / dispo : null,
+        consommeSurDisponible: dispo > 0 && l.some(x => x.k.consommeSurDisponible !== null) ? t('hommeMinutes') / (dispo + t('renfortsRecus')) : null,
         debit: heures > 0 && l.some(x => x.k.debit !== null) ? t('termines') / heures : null, fileMax: file }];
     }));
     return { services: parService, equipes: parEquipe };

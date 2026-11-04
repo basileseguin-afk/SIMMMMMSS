@@ -100,7 +100,8 @@ test('la période : Charge et Créneaux après Équipes, le Lisez-moi les dit ; 
   for (const f of avant.filter(f => f.nom !== 'Lisez-moi')) assert.deepEqual(feuille(c, f.nom), f, f.nom);
   const lisez = feuille(c, 'Lisez-moi').lignes.map(l => l[0]).join('\n');
   assert.match(lisez, /Équipes — [^\n]*\n\s+Charge — [^\n]*\n\s+Créneaux — /);
-  assert.match(lisez, /Occupation = minutes au travail ÷ minutes de présence hors pauses/);
+  assert.match(lisez, /Disponible = personnes × \(présence − pauses vraiment prises\) \+ heures sup\. Occupation = minutes au travail ÷ disponible/);
+  assert.match(lisez, /En appui ou à disposition : les équipes d’appui/);
   // Charge : chaque équipe de chaque journée de vols, au jour des vols + son jour ; « Jour complet » comme le bilan.
   const ch = feuille(c, 'Charge');
   assert.equal(ch.lignes.length - 1, p.journees.reduce((n, j) => n + j.extrait.equipes.length, 0));

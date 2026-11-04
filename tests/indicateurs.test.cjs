@@ -42,16 +42,17 @@ test('une équipe de 2, un lot de 600 homme-minutes : au travail, en pause, sans
   assert.equal(c.presents.valeurs.length, 32, 'de 06:00 à 14:00');
   assert.equal(a(c.termines, '11:00'), 100, 'les 100 repas du lot, finis à 11:15');
   const e = equipe(k, 'mo');
-  proche(e.occupation, 300 / 420, 'occupation : 300 min au travail ÷ 420 min de présence hors pauses');
-  proche(e.consommeSurDisponible, 600 / (2 * 420));
-  assert.deepEqual([e.minutesAuTravail, e.minutesDisponibles, e.unite], [300, 420, 'repas']);
+  // La disponibilité retire les pauses vraiment prises (correction 16) : 480 − 15 ; la pause de 45 min n'est pas atteinte.
+  proche(e.occupation, 300 / 465, 'occupation : 300 min au travail ÷ 465 min de présence hors pauses prises');
+  proche(e.consommeSurDisponible, 600 / (2 * 465));
+  assert.deepEqual([e.minutesAuTravail, e.minutesDisponibles, e.unite], [300, 465, 'repas']);
   proche(e.debit, 100 / 5, '100 repas en 5 h au travail');
   const s = service(k, 'prepa');
   assert.deepEqual(s.picAuTravail, { personnes: 2, debut: h('06:00') });
   assert.deepEqual(s.picPresents, { personnes: 2, debut: h('06:00') });
   proche(s.etp, 2, '2 personnes × 480 ÷ 480');
   proche(s.heuresAuTravail, 10, '300 min × 2 personnes');
-  proche(s.occupation, 300 / 420);
+  proche(s.occupation, 300 / 465);
 });
 
 test('la somme des « au travail » d’une équipe = ses minutes au travail × ses personnes', () => {
@@ -101,7 +102,8 @@ test('un robot et un tunnel de plonge : au travail pendant la marche seulement',
   partout(pl, 'auTravail', '08:00', '10:30', 0); partout(pl, 'auTravail', '10:30', '11:00', 3); partout(pl, 'auTravail', '11:00', '16:00', 0);
   partout(pl, 'presents', '08:00', '16:00', 4); partout(pl, 'sansTravail', '10:30', '11:00', 1);
   assert.deepEqual([a(pl.termines, '10:45'), equipe(k, 'pl').unite], [1, 'vols lavés']);
-  proche(equipe(k, 'pl').occupation, 30 * 3 / (4 * 420), 'en minutes × personnes : 90 au travail, 4 × 420 disponibles');
+  // La plonge ne prend pas de pause : rien n'est retiré de sa présence (correction 16).
+  proche(equipe(k, 'pl').occupation, 30 * 3 / (4 * 480), 'en minutes × personnes : 90 au travail, 4 × 480 disponibles');
 });
 
 test('une mise à disposition, une équipe d’appui : présentes, mais leur occupation est « sans objet »', () => {
@@ -219,7 +221,7 @@ test('un robot sur une ligne qui s’arrête : l’arrêt compte comme une pause
   const r = P.simuler(args), e = equipe(I.journee(r, args), 'rb');
   assert.ok(r.ateliers[0].pausesPrises.some(p => p.de <= h('12:15') && p.a >= h('13:00')), JSON.stringify(r.ateliers[0].pausesPrises));
   partout(e.creneaux, 'enPause', '12:15', '13:00', 3);
-  assert.equal(e.minutesDisponibles, 420 - 45, 'le poste (420 min), moins les 45 min d’arrêt de la ligne');
+  assert.equal(e.minutesDisponibles, 420 - 45, 'la présence (480 min), moins ses pauses prises : 60 du réglage et 45 d’arrêt de la ligne');
 });
 
 test('les heures sup prolongent la présence jusqu’à la fin du travail, et s’ajoutent au disponible', () => {

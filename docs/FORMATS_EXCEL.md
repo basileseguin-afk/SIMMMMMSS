@@ -657,16 +657,21 @@ dit lesquels et pourquoi (« occupation, consommé sur disponible : handling »)
 
 | Feuille | Une ligne par | Colonnes |
 |---|---|---|
-| **Charge** | jour de travail × équipe (période : de chaque journée de vols) | `Jour de travail`, `Journée de vols`, (`Jour complet`, période), `Service`, `Équipe`, `Type`, `Personnes`, `Unité` (repas, plateaux, vols lavés, vols chargés), `Occupation (%)`, `Consommé sur disponible (%)`, `Débit (unités/h)`, `Unités terminées`, `Au travail (min × pers.)`, `Disponible (min × pers.)`, `Homme-minutes`, `Heures du débit (h)`, `File la plus longue` (lots), `File la plus longue à` (date et heure), `Attente (min)`, `Renforts prêtés (min)`, `Renforts reçus (min)`, `Sans objet` |
-| **Créneaux** | jour de travail × service × créneau de 15 min ; un créneau où rien ne se passe n'a pas de ligne | `Jour de travail`, (`Jour complet`, période), `Service`, `Créneau` (son début, date et heure), `Présents`, `Au travail`, `En pause`, `Sans travail`, `En file`, `Terminés` |
+| **Charge** | jour de travail × équipe (période : de chaque journée de vols) | `Jour de travail`, `Journée de vols`, (`Jour complet`, période), `Service`, `Équipe`, `Type`, `Personnes`, `Unité` (repas, plateaux, vols lavés, vols chargés ; vols, pour une équipe aux lots « @… »), `Occupation (%)`, `Consommé sur disponible (%)`, `Débit (unités/h)`, `Unités terminées`, `Au travail (min × pers.)`, `Disponible (min × pers.)`, `Homme-minutes`, `Heures du débit (h)`, `File la plus longue` (lots), `File la plus longue à` (date et heure), `Attente (min)`, `Renforts prêtés (min)`, `Renforts reçus (min)`, `Sans objet` |
+| **Créneaux** | jour de travail × service × créneau de 15 min ; un créneau où rien ne se passe n'a pas de ligne | `Jour de travail`, (`Jour complet`, période), `Service`, `Créneau` (son début, date et heure), `Présents`, `Au travail`, `En pause`, `Sans travail`, `En appui ou à disposition`, `En file`, `Terminés` |
 
 - Dans la période, les créneaux d'un jour de travail réunissent les journées
   de vols qui y travaillent (J−2, J−1, J), comme le bilan.
-- `Occupation` = minutes au travail ÷ minutes de présence hors pauses ;
-  `Consommé sur disponible` = homme-minutes ÷ (personnes × présence hors
-  pauses) ; `Débit` = unités terminées ÷ `Heures du débit` (au travail ; au
-  handling, de chargement). Les définitions et leurs limites :
-  `BANC_ESSAI.md`, § 13.
+- `Disponible` = personnes × (présence − pauses vraiment prises) + heures
+  sup (correction 16) ; `Occupation` = minutes au travail ÷ disponible ;
+  `Consommé sur disponible` = homme-minutes ÷ (disponible + renforts reçus) :
+  ni l'un ni l'autre ne dépasse 100 %. `Débit` = unités terminées ÷ `Heures
+  du débit` (au travail ; au handling, de chargement) ; une équipe aux lots
+  « @… » (armement, dotation, roulés couverts) compte les vols servis.
+- `En appui ou à disposition` (correction 16) : les équipes d'appui et les
+  mises à disposition, présentes sans travail propre ; présents = au travail
+  + en pause + sans travail + en appui ou à disposition, sauf au handling.
+  Les définitions et leurs limites : `BANC_ESSAI.md`, § 13.
 - Le JSON des outils les porte aussi : `simuler-journee` rend
   `indicateursCharge` à côté de `resultat` (qui ne change pas) ;
   `simuler-periode`, le bilan (`indicateursCharge` par jour de travail, par

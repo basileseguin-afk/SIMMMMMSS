@@ -2245,6 +2245,12 @@ la moitié d'un créneau compte 0,5) :
 - **en pause** : pendant les pauses prises (au robot, les arrêts de sa ligne
   en font partie : le moteur les lui fait prendre comme des pauses) ;
 - **sans travail** : présents − au travail − en pause, équipe par équipe ;
+- **en appui ou à disposition** (correction 16) : les personnes des équipes
+  d'appui et des mises à disposition, présentes sans travail propre. Dans
+  chaque créneau, présents = au travail + en pause + sans travail + en appui
+  ou à disposition, sauf au handling : ses chauffeurs sont présents, mais ses
+  trois autres catégories sont sans objet. Sans équipe d'appui ni mise à
+  disposition, la catégorie est « sans objet » ;
 - **en file** : le nombre de lots prêts à commencer (tous leurs fournisseurs
   ont livré) mais pas encore commencés. Un lot sans fournisseur est prêt dès
   l'arrivée de son équipe. À la plonge par vol, les vols revenus qui attendent
@@ -2252,24 +2258,39 @@ la moitié d'un créneau compte 0,5) :
 - **terminés** : les unités finies dans le créneau (un lot fini à 11:15 compte
   dans le créneau de 11:00) : les repas des commandes d'un lot à la main, les
   plateaux au robot, les vols lavés à la plonge (au débit, les unités lavées),
-  les vols chargés au handling.
+  les vols chargés au handling ; les vols servis par une équipe dont tous les
+  lots sont des catégories par compagnie (« @… » : armement, dotation, roulés
+  couverts), ceux de la compagnie de chaque lot ce jour-là (correction 16).
 
 ### Par équipe et par jour
 
-- **occupation** (K3) = minutes au travail ÷ minutes de présence hors pauses,
-  en minutes × personnes : pour une équipe à la main ou un robot, c'est la même
-  chose qu'en minutes ; à la plonge, seules les personnes d'un tunnel qui lave
-  sont au travail. Les minutes de présence hors pauses sont celles du poste (sa
-  présence moins ses pauses, comme l'effectif calculé les compte ; au robot,
-  moins aussi les arrêts de sa ligne), plus ses heures sup (à une plonge à
-  tunnels, celles des seuls tunnels qui finissent tard, `heuresSupPersonnes`) ;
-- **consommé sur disponible** (K6) = homme-minutes de ses lots ÷ (personnes ×
-  minutes de présence hors pauses). Les homme-minutes d'un lot à la main sont
+- **disponible** (correction 16), pour toutes les équipes = personnes ×
+  (présence − les pauses vraiment prises) + heures sup, en minutes ×
+  personnes (à une plonge à tunnels, les heures sup des seuls tunnels qui
+  finissent tard, `heuresSupPersonnes`). Une pause du réglage que l'équipe
+  n'atteint pas (elle n'a pas assez travaillé) reste disponible, « sans
+  travail » ; au robot, les arrêts de sa ligne sont des pauses prises. Une
+  plonge ne prend pas de pause dans le moteur : ses tunnels lavent sans
+  arrêt, heures sup comprises, et rien n'est retiré de sa présence. C'est un
+  choix du moteur, que les indicateurs ne corrigent pas. Avant la correction
+  16, le disponible retirait toutes les pauses du réglage et la plonge
+  pouvait passer 100 % ;
+- **occupation** (K3) = minutes au travail ÷ disponible, en minutes ×
+  personnes : pour une équipe à la main ou un robot, c'est la même chose
+  qu'en minutes ; à la plonge, seules les personnes d'un tunnel qui lave sont
+  au travail. Elle ne dépasse jamais 100 % ;
+- **consommé sur disponible** (K6) = homme-minutes de ses lots ÷ (disponible
+  + les minutes des renforts reçus). Les homme-minutes d'un lot à la main sont
   celles du barème ; au robot et à la plonge, sa durée × les personnes qui le
-  tiennent ;
+  tiennent ; d'un lot coupé à la fin de la présence, la part faite (pas toute
+  la demande). Il ne dépasse jamais 100 % ;
 - **débit** (K5) = unités terminées ÷ heures au travail, dans l'unité de
   l'équipe ; au handling, vols chargés ÷ heures de chargement (la réunion de
-  ses chargements : un camion qui charge trois vols ne compte qu'une fois).
+  ses chargements : un camion qui charge trois vols ne compte qu'une fois) ;
+  une équipe dont tous les lots sont des catégories par compagnie (« @… »),
+  vols servis ÷ heures au travail, en « vols » (un vol servi par deux
+  catégories d'un même lot compte une fois) ; sans vol de ses compagnies
+  ce jour-là, « sans objet » (« aucun vol de ses compagnies ce jour-là »).
   Ces heures sont dites à part (`heuresDebit`) : la période les additionne ;
 - **file la plus longue** (K4), et son premier instant ; l'attente de
   l'équipe (ses minutes à attendre un amont, du matériel, sa ligne).
@@ -2385,8 +2406,8 @@ sa raison dans la colonne `Sans objet`. Les colonnes : `FORMATS_EXCEL.md`, § 6.
 
 Les cas sans objet sont dits (`sansObjet`, avec la raison), pas mis à 0. Une
 mise à disposition et une équipe d'appui n'ont pas d'occupation, ni de
-travail, de pause ou de file : elles comptent seulement dans les présents de
-leur service et dans ses ETP. Le handling compte ses vols chargés et, quand il
+travail, de pause ou de file : elles comptent dans les présents de leur
+service, dans sa catégorie « en appui ou à disposition » et dans ses ETP. Le handling compte ses vols chargés et, quand il
 a des vacations, ses chauffeurs présents ; le reste est sans objet.
 
 ### Les renforts
@@ -2396,27 +2417,30 @@ et chez celle qui reçoit, mais pas dans les créneaux : le résultat ne dit pas
 quand ils ont lieu. Chez l'équipe qui prête, ses minutes × personnes prêtées
 s'ajoutent à son travail (et à son occupation) : ce sont ses personnes qui
 travaillent. Chez celle qui reçoit, elles sont dites à part (`renfortsRecus`),
-et le travail qu'elles font compte dans ses homme-minutes consommées (son
-consommé sur disponible peut alors passer 100 %) : ajoutées aussi à son
-travail, elles compteraient deux fois dans les heures au travail du service.
+et le travail qu'elles font compte dans ses homme-minutes consommées ; leurs
+minutes s'ajoutent donc au disponible de son consommé, qui ne passe plus 100 %
+(correction 16). Ajoutées aussi à son travail, elles compteraient deux fois
+dans les heures au travail du service : son occupation reste celle de ses
+personnes.
 Pendant qu'elle prête, l'équipe qui prête compte « sans travail » dans ses
 créneaux.
 
 ### Limites
 
 - Une pause du poste qui tombe quand l'équipe n'a rien à faire n'est pas
-  « prise » : elle compte « sans travail ». Les minutes de présence hors pauses,
-  elles, retirent toutes les pauses du poste.
+  « prise » : elle compte « sans travail », et reste dans le disponible.
+- La plonge ne prend pas de pause dans le moteur : son occupation se lit sur
+  toute sa présence.
 - Les mesures d'un créneau sont des moyennes sur ses 15 minutes : un pic d'une
   minute s'y lit atténué. La file la plus longue, elle, se lit à l'instant.
 - Une unité finie compte dans le créneau qui finit à son heure de fin ou après,
   jamais avant celui où son travail a commencé.
-- Au robot, l'arrêt de la ligne qui recouvre une pause de régime n'est retiré
-  qu'une fois du poste ; l'arrêt qui recouvre une pause fixe, pas du tout.
+- Une équipe qui mêle des lots de repas et de catégories par compagnie compte
+  ses repas : les vols de ses lots « @… » n'y entrent pas.
 
 Vérifications — `tests/indicateurs.test.cjs` : une équipe de 2 personnes, un
 lot de 600 homme-minutes (au travail, en pause, sans travail, créneau par
-créneau ; occupation 300 ÷ 420 ; consommé 600 ÷ (2 × 420) ; pic au travail 2 à
+créneau ; occupation 300 ÷ 465 ; consommé 600 ÷ (2 × 465) ; pic au travail 2 à
 06:00) ; deux équipes qui se chevauchent ; un lot prêt à 07:00 pour une équipe
 occupée jusqu'à 09:00 (en file 1 de 07:00 à 09:00) ; un robot et un tunnel de
 plonge ; une mise à disposition et une équipe d'appui (sans objet) ; le
@@ -2446,4 +2470,14 @@ l'horloge du jour de travail, pas de ligne vide) ; relu par `tableur.js`,
 déterministe, une journée sans date ; la période (les deux feuilles après
 Équipes, les autres inchangées, « Jour complet », les créneaux réunis ; sans
 indicateurs, le classeur d'avant) ; les outils (le JSON, `--xlsx`, les appels
-mal formés).
+mal formés). `tests/indicateurs-definitions.test.cjs` (correction 16,
+journées fictives) : une plonge qui lave sans pause et finit en heures sup
+(disponible 3 × 480 + 45, occupation ≤ 100 %) ; une équipe à la main qui
+n'atteint pas sa deuxième pause ; un service avec une équipe d'appui et une
+mise à disposition (les quatre catégories font les présents, créneau par
+créneau) ; l'armement de l'unité fictive (débit en vols par heure ; sans vol,
+« sans objet ») ; un lot qui sert deux catégories d'une compagnie (ses vols
+comptés une fois) ; une équipe qui reçoit des renforts et une équipe
+surchargée, son lot coupé (consommé ≤ 100 %) ; la
+non-régression sur les journées de référence (`tests/indicateurs-definitions.attendu.json`,
+les indicateurs d'avant la correction).

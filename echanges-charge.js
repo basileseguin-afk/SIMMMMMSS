@@ -30,7 +30,8 @@
   const feuille = (nom, lignes, figer) => ({ nom, lignes, filtres: true, figerColonnes: figer });
   const ouiNon = x => (x ? 'oui' : 'non');
   const TYPES = { manuel: 'manuel', robot: 'robot', lavage: 'plonge', dispo: 'mise à disposition', handling: 'handling', appui: 'hors tunnel' };
-  const NOMS = { presents: 'présents', auTravail: 'au travail', enPause: 'en pause', sansTravail: 'sans travail', enFile: 'en file', termines: 'terminés',
+  const NOMS = { presents: 'présents', auTravail: 'au travail', enPause: 'en pause', sansTravail: 'sans travail', enAppui: 'en appui ou à disposition',
+    enFile: 'en file', termines: 'terminés',
     occupation: 'occupation', consommeSurDisponible: 'consommé sur disponible', debit: 'débit' };
 
   /** Les cas sans objet d'une équipe : « occupation, débit : handling ; … », groupés par raison. */
@@ -61,7 +62,7 @@
 
   /* ---- la feuille « Créneaux » ----------------------------------------- */
 
-  const TETE_CRENEAUX = ['Jour de travail', 'Service', 'Créneau', 'Présents', 'Au travail', 'En pause', 'Sans travail', 'En file', 'Terminés'];
+  const TETE_CRENEAUX = ['Jour de travail', 'Service', 'Créneau', 'Présents', 'Au travail', 'En pause', 'Sans travail', 'En appui ou à disposition', 'En file', 'Terminés'];
 
   /** Les lignes d'un service un jour de travail : un créneau par ligne, sur l'horloge de ce jour ; un créneau où rien ne se passe n'en a pas. */
   function lignesCreneaux(w, nom, c, complet) {
@@ -80,22 +81,28 @@
   const parCle = (x, y) => x.cle.reduce((r, v, i) => r || (typeof v === 'number' ? v - y.cle[i] : String(v).localeCompare(String(y.cle[i]))), 0);
 
   /** Les définitions, pour les deux Lisez-moi. */
-  const DEFINITIONS = [
+  const FEUILLES = [
     '   Charge — chaque jour de travail × équipe : occupation, consommé sur disponible, débit, file la plus longue, attente, et ce qui les fait.',
-    '   Créneaux — chaque jour de travail × service × créneau de 15 min : présents, au travail, en pause, sans travail, en file, terminés.',
-    '',
+    '   Créneaux — chaque jour de travail × service × créneau de 15 min : présents, au travail, en pause, sans travail, en appui ou à disposition,',
+    '   en file, terminés.'
+  ];
+  const DEFINITIONS = [
     'Les indicateurs de charge (docs/BANC_ESSAI.md § 13) :',
     '   Créneaux de 15 minutes, alignés sur l’heure, sur l’horloge du jour de travail : une équipe à J−1 se place sur la veille des vols.',
     '   Une mesure en personnes est la moyenne de ses 15 minutes (une personne présente la moitié du créneau compte 0,5) ; en file aussi, en lots.',
     '   Présents : les personnes dont le poste couvre le créneau, heures sup comprises. Au travail : pendant un lot en cours, pauses prises retirées.',
-    '   En pause : pendant les pauses prises. Sans travail : présents − au travail − en pause. En file : les lots prêts pas encore commencés',
-    '   (à la plonge par vol, les vols revenus qui attendent). Terminés : les unités finies dans le créneau (repas, plateaux, vols lavés, vols chargés).',
-    '   Occupation = minutes au travail ÷ minutes de présence hors pauses, en minutes × personnes. Consommé sur disponible = homme-minutes de ses lots',
-    '   ÷ (personnes × présence hors pauses). Débit = unités terminées ÷ heures au travail (au handling, ÷ heures de chargement).',
+    '   En pause : pendant les pauses prises. Sans travail : présents − au travail − en pause. En appui ou à disposition : les équipes d’appui et les',
+    '   mises à disposition, présentes sans travail propre ; présents = au travail + en pause + sans travail + en appui (hors handling).',
+    '   En file : les lots prêts pas encore commencés (à la plonge par vol, les vols revenus qui attendent). Terminés : les unités finies dans le',
+    '   créneau (repas, plateaux, vols lavés, vols chargés ; vols servis aux équipes d’armement, de dotation, de roulés couverts).',
+    '   Disponible = personnes × (présence − pauses vraiment prises) + heures sup. Occupation = minutes au travail ÷ disponible ; consommé sur',
+    '   disponible = homme-minutes de ses lots ÷ disponible : ni l’un ni l’autre ne dépasse 100 %. Débit = unités terminées ÷ heures au travail',
+    '   (au handling, ÷ heures de chargement).',
     '   File la plus longue : le plus de lots en file à un instant, et ce premier instant. Les renforts comptent dans les totaux, pas dans les créneaux.',
     '   Sans objet (case vide, raison dans la colonne) : une mise à disposition et une équipe d’appui n’ont ni occupation, ni travail, ni file ;',
     '   le handling n’a ni occupation ni travail par créneau. Un créneau où rien ne se passe n’a pas de ligne.',
-    '   Limites : une pause du poste prise sans travail compte « sans travail » ; un pic d’une minute se lit atténué sur 15 minutes.'
+    '   Limites : la plonge ne prend pas de pause dans le moteur (ses tunnels lavent sans arrêt) ; une pause du réglage que l’équipe n’a pas',
+    '   atteinte reste disponible, « sans travail » ; un pic d’une minute se lit atténué sur 15 minutes.'
   ];
 
   /* ---- la journée ------------------------------------------------------- */
@@ -119,7 +126,7 @@
       [ctx.date ? 'Journée de vols du ' + dateFr(ctx.date) + '.' : 'Journée sans date : ses jours et ses heures portent la date du calcul (' + dateFr(date) + ') ; la veille, le jour d’avant.'],
       ['Sauvegarde : ' + (ctx.sauvegarde || '—') + ' ; vols : ' + (ctx.vols || '—') + '.'],
       ['Calculée le ' + deux(le.getDate()) + '/' + deux(le.getMonth() + 1) + '/' + le.getFullYear() + ' à ' + deux(le.getHours()) + ':' + deux(le.getMinutes()) + '.'],
-      [''], ['Les feuilles :'], ...DEFINITIONS.map(l => [l]),
+      [''], ['Les feuilles :'], ...FEUILLES.map(l => [l]), [''], ...DEFINITIONS.map(l => [l]),
       [''], ['PROTOTYPE — barème non calibré : résultats de simulation, à lire comme un ordre de grandeur, pas comme une mesure.']] };
     return [lisez, feuille('Charge', charge, 4), feuille('Créneaux', creneaux, 3)];
   }
@@ -166,10 +173,10 @@
     if (lisez) {
       // Dans la liste des feuilles, après « Équipes », comme dans le classeur.
       const ici = lisez.lignes.findIndex(l => /^\s*Équipes — /.test(l[0] || ''));
-      const lignes = lisez.lignes.slice(), definitions = DEFINITIONS.slice(0, 2);
-      lignes.splice(ici < 0 ? lignes.length : ici + 1, 0, ...definitions.map(l => [l]));
+      const lignes = lisez.lignes.slice();
+      lignes.splice(ici < 0 ? lignes.length : ici + 1, 0, ...FEUILLES.map(l => [l]));
       const fin = lignes.findIndex(l => /^PROTOTYPE/.test(l[0] || ''));
-      lignes.splice(fin < 0 ? lignes.length : fin, 0, ...DEFINITIONS.slice(3).map(l => [l]), ['   Feuille Charge : « Jour complet » dit si le jour de travail entre dans les totaux et les moyennes du bilan.'], ['']);
+      lignes.splice(fin < 0 ? lignes.length : fin, 0, ...DEFINITIONS.map(l => [l]), ['   Feuille Charge : « Jour complet » dit si le jour de travail entre dans les totaux et les moyennes du bilan.'], ['']);
       out[out.indexOf(lisez)] = { ...lisez, lignes };
     }
     return out;

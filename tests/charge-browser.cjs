@@ -106,6 +106,10 @@ const PIEGE='<img src=x onerror="window.__xss=1">';
   // Une mise à disposition seule : présents, mais travail « sans objet ».
   assert.match(await page.locator('#at-charge .ch-service[data-service="magasin"] .ch-note').first().textContent(),/travail sans objet/);
   assert.equal(await page.locator('#at-charge .ch-service[data-service="magasin"] path.ch-travail').count(),0);
+  // Ses présents sont « en appui ou à disposition » (correction 16) : un trait discret, et la légende le dit.
+  assert.equal(await page.locator('#at-charge .ch-service[data-service="magasin"] path.ch-appui').count(),1);
+  assert.equal(await page.locator('#at-charge .ch-service[data-service="prepa"] path.ch-appui').count(),0,'pas d’appui au montage');
+  assert.match(await page.locator('#at-charge .ch-legende').textContent(),/en appui ou à disposition/);
 
   // 3. Le tableau des équipes : une ligne par équipe ; ses colonnes ; « sans objet » avec sa raison.
   const entetes=await page.locator('#at-charge table.ch-equipes thead th').allTextContents();

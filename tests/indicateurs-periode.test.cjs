@@ -52,7 +52,8 @@ test('une équipe à J−1 compte au jour des vols − 1 ; un jour de travail ra
 test('par équipe et par jour de travail : occupation, consommé, débit, file la plus longue', () => {
   const b = periode(DATES), e = jourDe(b, '2026-11-02').equipes.mo.indicateursCharge;
   // 2 vols × 20 min, à 3 personnes : 40 homme-minutes, 40 / 3 min au travail.
-  proche(e.occupation, 40 / (3 * 420)); proche(e.consommeSurDisponible, 40 / (3 * 420));
+  // Aucune pause atteinte : 480 min disponibles par personne (correction 16).
+  proche(e.occupation, 40 / (3 * 480)); proche(e.consommeSurDisponible, 40 / (3 * 480));
   assert.deepEqual([e.unite, e.termines], ['repas', 200]);
   assert.ok(e.fileMax && Number.isFinite(e.fileMax.lots));
   assert.equal(jourDe(b, '2026-11-02').equipes.mo.vols, '2026-11-02');

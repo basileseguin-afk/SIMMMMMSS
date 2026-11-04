@@ -19,7 +19,8 @@
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const nombre = (x, k = 1) => (Math.round(x * 10 ** k) / 10 ** k + 0).toLocaleString('fr-FR', { maximumFractionDigits: k });
   const JOUR = 1440, HAUT = 56, FILE = 14, ECART = 6;
-  const MESURES = { presents: 'présents', auTravail: 'au travail', enPause: 'en pause', sansTravail: 'sans travail', enFile: 'en file', termines: 'terminés' };
+  const MESURES = { presents: 'présents', auTravail: 'au travail', enPause: 'en pause', sansTravail: 'sans travail', enAppui: 'en appui ou à disposition',
+    enFile: 'en file', termines: 'terminés' };
 
   /** Les créneaux d'un service sur l'horloge du jour J : ceux de chacun de ses jours de travail, décalés de leur jour, additionnés. */
   function creneauxDuService(groupes) {
@@ -99,6 +100,7 @@
         <line class="ch-base" x1="${marge}" y1="${base}" x2="${L - 16}" y2="${base}"/>
         ${aire ? `<path class="ch-travail" d="${aire}L${finAire} ${base}L${debutAire} ${base}Z"/>` : ''}
         ${c.presents ? `<path class="ch-presents" d="${escalier(c.presents, x, y, t0, t1, pas)}"/>` : ''}
+        ${c.enAppui && c.enAppui.valeurs.some(v => v > 0) ? `<path class="ch-appui" d="${escalier(c.enAppui, x, y, t0, t1, pas)}"/>` : ''}
         ${files}${marque}${bulles}
       </svg></div>`;
   }
@@ -154,6 +156,7 @@
       ${o.exporter ? '<button type="button" class="btn btn-sm" data-ch="exporter">Exporter la charge (Excel)</button>' : ''}</div>
       <p class="ch-legende mini-note"><span class="ch-cle ch-cle-presents" aria-hidden="true"></span>présents
       <span class="ch-cle ch-cle-travail" aria-hidden="true"></span>au travail
+      <span class="ch-cle ch-cle-appui" aria-hidden="true"></span>en appui ou à disposition
       <span class="ch-cle ch-cle-file" aria-hidden="true"></span>en file (ce qui attend son équipe, sous la courbe)
       <span class="ch-cle ch-cle-pic" aria-hidden="true"></span>pic au travail · par créneau de ${k.pas} min</p>
       ${services.length ? axeDesHeures(axe) : ''}${services.map(s => courbe(s, axe, k.pas)).join('') || '<p class="mini-note">Aucune équipe présente ce jour.</p>'}
