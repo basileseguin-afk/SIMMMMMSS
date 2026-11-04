@@ -2367,7 +2367,11 @@ axe des heures, ses repères en tête (`charge-vue.js`, `charge.css`) :
   ses six mesures. Le trait du rejeu y passe aussi ;
 - le tableau des équipes : occupation, consommé sur disponible, débit, file
   la plus longue (et son instant), attente. Un cas sans objet s'écrit « sans
-  objet », sa raison au survol.
+  objet », sa raison au survol. Il est replié par défaut (« Le tableau des
+  équipes (N) », correction 16) : avec une unité réelle, il faisait plusieurs
+  écrans et le planning était loin dessous. Un clic l'ouvre ; ce navigateur
+  se souvient du choix (une préférence d'affichage) ; sans stockage
+  (navigation privée), il reste replié.
 
 Les couleurs sont celles du design system : l'aire au travail dans la
 couleur de l'équipe du planning, la file dans celle de l'attente ; le thème
@@ -2463,7 +2467,8 @@ J−1, la veille) ; le tableau des équipes et ses « sans objet » ; la bulle d
 créneau ; les couleurs, en clair et en sombre ; un nom d'équipe piégé qui
 reste du texte ; la page Période, ses deux mesures, ses totaux et moyennes,
 et le clic qui ouvre la page Planning ; le classeur de la charge qui se
-télécharge. `tests/charge-export.test.cjs` : le classeur de la journée (une
+télécharge ; le tableau replié par défaut, ouvert d'un clic avant d'être lu,
+le choix gardé, un stockage qui refuse. `tests/charge-export.test.cjs` : le classeur de la journée (une
 ligne par équipe, les pourcents, la cuisine à J−1 datée de la veille, « sans
 objet » vide et dit) ; la feuille Créneaux (les sommes, les créneaux sur
 l'horloge du jour de travail, pas de ligne vide) ; relu par `tableur.js`,

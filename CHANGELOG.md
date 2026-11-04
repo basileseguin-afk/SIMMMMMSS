@@ -5,6 +5,18 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-04 — Banc d'essai, correction 16 (d) : le tableau des équipes replié
+
+- La vue « Charge » de la page Planning : les courbes restent visibles ; le
+  tableau des équipes est replié par défaut (« Le tableau des équipes (N) »)
+  et s'ouvre d'un clic. Ce navigateur se souvient du choix
+  (`ory-ui-charge-tableau`, une préférence d'affichage que le garde des
+  onglets laisse passer ; le stockage en try/catch).
+- Sa légende dit les définitions de la correction 16 (b).
+- Fichiers : `charge-vue.js`, `charge.css`, `index.html`,
+  `tests/charge-browser.cjs` (il ouvre le tableau avant de le lire),
+  `docs/BANC_ESSAI.md` (§ 13), `README.md`.
+
 ## 2026-11-04 — Banc d'essai, correction 16 (c) : le classeur compressé
 
 - `classeur-compresse.js` (nouveau, v1) : les entrées du classeur que

@@ -122,19 +122,30 @@
   }
 
   /** Le tableau des équipes : une ligne par équipe, dans l'ordre des services. */
+  /*
+   * Le tableau des équipes, replié par défaut (correction 16 d) : avec une unité réelle, il ferait plusieurs écrans
+   * et le planning serait loin dessous. Ce navigateur se souvient du choix (une préférence d'affichage, `ory-ui-…`,
+   * que le garde des onglets laisse passer) ; sans stockage, il reste replié.
+   */
+  const CLE_TABLEAU = 'ory-ui-charge-tableau';
+  function tableauOuvert() { try { return root.localStorage.getItem(CLE_TABLEAU) === 'ouvert'; } catch (e) { return false; } }
+  function retenirTableau(ouvert) { try { root.localStorage.setItem(CLE_TABLEAU, ouvert ? 'ouvert' : 'replie'); } catch (e) { /* sans stockage : le choix vaut pour la page */ } }
+
   function tableau(k, nom, noms) {
     const lignes = k.equipes.slice().sort((p, q) => nom(p.service).localeCompare(nom(q.service)) || (p.jour - q.jour) || String(p.nom).localeCompare(String(q.nom)));
     const file = f => (f.lots ? nombre(f.lots, 0) + ' lot' + (f.lots >= 2 ? 's' : '') + ' à ' + P().hhmm(f.a) : 'aucune');
-    return `<div class="table-scroll"><table class="svc-table ch-equipes">
-      <caption class="mini-note">Chaque équipe, sur sa journée : occupation = minutes au travail ÷ minutes de présence hors pauses ;
-        consommé = homme-minutes de ses lots ÷ (personnes × présence hors pauses) ; débit = unités finies ÷ heures au travail.</caption>
+    return `<details class="ch-tableau"${tableauOuvert() ? ' open' : ''}><summary>Le tableau des équipes (${lignes.length})</summary>
+      <div class="table-scroll"><table class="svc-table ch-equipes">
+      <caption class="mini-note">Chaque équipe, sur sa journée : disponible = personnes × (présence − pauses prises) + heures sup ;
+        occupation = minutes au travail ÷ disponible ; consommé = homme-minutes de ses lots ÷ (disponible + renforts reçus) ;
+        débit = unités finies ÷ heures au travail.</caption>
       <thead><tr><th scope="col">Équipe</th><th scope="col">Service</th><th scope="col">Personnes</th><th scope="col">Occupation</th>
         <th scope="col">Consommé sur disponible</th><th scope="col">Débit</th><th scope="col">File la plus longue</th><th scope="col">Attente</th></tr></thead>
       <tbody>${lignes.map(e => `<tr data-equipe="${esc(e.id)}"><th scope="row">${esc(noms.get(e.id) || e.nom)}${e.jour ? ' <small>J' + (e.jour > 0 ? '+' : '−') + Math.abs(e.jour) + '</small>' : ''}</th>
         <td>${esc(nom(e.service))}</td><td class="ch-n">${nombre(e.personnes, 1)}</td>
         ${caseDe(e, 'occupation', pourcent)}${caseDe(e, 'consommeSurDisponible', pourcent)}
         ${caseDe(e, 'debit', x => nombre(x, 1) + ' ' + esc(e.unite) + '/h')}
-        ${caseDe(e, 'fileMax', file)}<td class="ch-n">${nombre(e.attente || 0, 0)} min</td></tr>`).join('')}</tbody></table></div>`;
+        ${caseDe(e, 'fileMax', file)}<td class="ch-n">${nombre(e.attente || 0, 0)} min</td></tr>`).join('')}</tbody></table></div></details>`;
   }
 
   /**
@@ -161,6 +172,8 @@
       <span class="ch-cle ch-cle-pic" aria-hidden="true"></span>pic au travail · par créneau de ${k.pas} min</p>
       ${services.length ? axeDesHeures(axe) : ''}${services.map(s => courbe(s, axe, k.pas)).join('') || '<p class="mini-note">Aucune équipe présente ce jour.</p>'}
       ${tableau(k, nom, noms)}`;
+    const d = box.querySelector('details.ch-tableau');
+    if (d) d.addEventListener('toggle', () => retenirTableau(d.open));
     if (root.OrlyDS && root.OrlyDS.maintenant) root.OrlyDS.maintenant();
   }
 

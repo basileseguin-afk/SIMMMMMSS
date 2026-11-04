@@ -111,7 +111,28 @@ const PIEGE='<img src=x onerror="window.__xss=1">';
   assert.equal(await page.locator('#at-charge .ch-service[data-service="prepa"] path.ch-appui').count(),0,'pas d’appui au montage');
   assert.match(await page.locator('#at-charge .ch-legende').textContent(),/en appui ou à disposition/);
 
-  // 3. Le tableau des équipes : une ligne par équipe ; ses colonnes ; « sans objet » avec sa raison.
+  // 3. Le tableau des équipes, replié par défaut (correction 16 d) : les courbes se voient, le tableau s'ouvre d'un clic.
+  const replie=page.locator('#at-charge details.ch-tableau');
+  assert.equal(await replie.evaluate(d=>d.open),false,'replié par défaut');
+  assert.equal(await page.locator('#at-charge details.ch-tableau > summary').textContent(),'Le tableau des équipes ('+k.equipes.length+')');
+  assert.equal(await page.locator('#at-charge table.ch-equipes').isVisible(),false);
+  assert.equal(await page.locator('#at-charge .ch-service').first().isVisible(),true,'les courbes restent visibles');
+  await page.locator('#at-charge details.ch-tableau > summary').click();await attendre(100);
+  assert.equal(await replie.evaluate(d=>d.open),true);
+  assert.equal(await page.evaluate(()=>localStorage.getItem('ory-ui-charge-tableau')),'ouvert','ce navigateur s’en souvient');
+  // Redessinée, la vue le garde ouvert ; refermé, il le reste.
+  await page.evaluate(()=>{Sim.ateliers.aDessiner.add('at-planning');Sim.ateliers.surOnglet('at-planning');});await attendre(100);
+  assert.equal(await page.locator('#at-charge details.ch-tableau').evaluate(d=>d.open),true);
+  await page.locator('#at-charge details.ch-tableau > summary').click();await attendre(100);
+  await page.evaluate(()=>{Sim.ateliers.aDessiner.add('at-planning');Sim.ateliers.surOnglet('at-planning');});await attendre(100);
+  assert.deepEqual([await page.locator('#at-charge details.ch-tableau').evaluate(d=>d.open),await page.evaluate(()=>localStorage.getItem('ory-ui-charge-tableau'))],[false,'replie']);
+  // Un stockage qui refuse (navigation privée) : replié, sans erreur.
+  await page.evaluate(()=>{window.__getItem=Storage.prototype.getItem;Storage.prototype.getItem=function(){throw new Error('refusé');};
+    Sim.ateliers.aDessiner.add('at-planning');Sim.ateliers.surOnglet('at-planning');Storage.prototype.getItem=window.__getItem;});await attendre(100);
+  assert.equal(await page.locator('#at-charge details.ch-tableau').evaluate(d=>d.open),false);
+  // Le test l'ouvre avant de le lire.
+  await page.locator('#at-charge details.ch-tableau > summary').click();await attendre(100);
+  // Une ligne par équipe ; ses colonnes ; « sans objet » avec sa raison.
   const entetes=await page.locator('#at-charge table.ch-equipes thead th').allTextContents();
   assert.deepEqual(entetes,['Équipe','Service','Personnes','Occupation','Consommé sur disponible','Débit','File la plus longue','Attente']);
   assert.deepEqual((await page.locator('#at-charge tr[data-equipe]').evaluateAll(l=>l.map(x=>x.dataset.equipe))).sort(),k.equipes.map(e=>e.id).sort());

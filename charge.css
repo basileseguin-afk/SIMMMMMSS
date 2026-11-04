@@ -38,6 +38,10 @@
 .ch-cible{fill:transparent;pointer-events:all}
 .ch-cible:hover{fill:var(--ds-accent-doux);opacity:1}
 
+/* Le tableau des équipes, replié par défaut (correction 16 d). */
+.ch-tableau{margin:var(--ds-e-2) 0 0}
+.ch-tableau>summary{cursor:pointer;font-size:var(--ds-t-13);font-weight:var(--ds-g-fort);color:var(--ds-texte-2);padding:var(--ds-e-1) 0}
+.ch-tableau>summary:focus-visible{outline:2px solid var(--ds-accent);outline-offset:2px;border-radius:var(--ds-r-1)}
 .ch-equipes td.ch-n,.ch-equipes th.ch-n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .ch-equipes small{color:var(--ds-texte-3);font-weight:var(--ds-g-normal)}
 .ch-sans-objet{color:var(--ds-texte-4);font-style:italic}
