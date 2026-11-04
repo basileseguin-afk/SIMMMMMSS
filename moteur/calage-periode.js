@@ -340,8 +340,11 @@
       if (ok) { avant.push(moteur - reel); apres.push(cale - reel); apresSemaines.push(caleSemaines - reel); }
     }
     const m = e => ({ jours: e.length, mae: e.length ? moyenne(e.map(Math.abs)) : null, biais: moyenne(e) });
+    // Après : σ du total mesuré directement, la racine de la moyenne des carrés de ses erreurs hors échantillon (correction 16).
+    // Un décalage commun à toutes les lignes s'y voit ; √Σσ² des lignes le suppose absent.
+    const mApres = e => ({ ...m(e), sigma: e.length ? Math.sqrt(moyenne(e.map(x => x * x))) : null });
     const parMois = lignes.some(c => c._retenu && c._cle === 'mois');
-    return { avant: m(avant), apres: m(apres), ...(parMois ? { validation: 'mois', semaines: { avant: m(avant), apres: m(apresSemaines) } } : {}) };
+    return { avant: m(avant), apres: mApres(apres), ...(parMois ? { validation: 'mois', semaines: { avant: m(avant), apres: mApres(apresSemaines) } } : {}) };
   }
 
   /* ----------------------------------------------------------------------
@@ -372,15 +375,17 @@
    * La politique d'effectif d'un calage : par ligne calée, son modèle, ses
    * paramètres et σ, et les services qu'elle couvrait (`o.correspondance`) ;
    * la date du calage, la période apprise, et la signature de ce qu'il suppose
-   * (barème, équipes, correspondance). Aucune heure réelle.
+   * (barème, équipes, correspondance) ; σ du total de l'unité, mesuré hors
+   * échantillon (`sigmaUnite`, correction 16). Aucune heure réelle.
    */
   function politiqueDe(rapport, o = {}) {
     const parNom = new Map((((o.correspondance && o.correspondance.lignes) || [])).map(l => [l.nom, l]));
+    const su = rapport.unite && rapport.unite.apres ? rapport.unite.apres.sigma : null;
     return { date: o.date || null, periode: o.periode ? { debut: o.periode.debut, fin: o.periode.fin } : null, signature: o.signature || null,
       lignes: (rapport.lignes || []).filter(l => l.cale).map(l => {
         const c = parNom.get(l.nom);
         return { nom: l.nom, modele: l.retenu.modele, parametres: l.retenu.parametres, sigma: l.retenu.sigma, ...(c && c.services ? { services: c.services.slice() } : {}) };
-      }) };
+      }), ...(fini(su) ? { sigmaUnite: su } : {}) };
   }
 
   /** Les bornes d'un modèle gardé : celles du calage (a ∈ [0,5 ; 2], b ≥ 0), une constante et des facteurs du jour positifs, σ fini. */
@@ -423,8 +428,11 @@
       return { nom: l.nom.trim(), modele: l.modele, parametres: out, sigma: fini(l.sigma) ? l.sigma : null,
         ...(services ? { services: services.slice() } : {}), ...(l.applique === true ? { applique: true } : {}) };
     });
+    // σ du total (correction 16) : borné comme le σ d'une ligne ; absent, la politique d'avant (√Σσ²).
+    const su = p.sigmaUnite;
+    if (su !== null && su !== undefined && !(fini(su) && su >= 0 && su <= SIGMA_MAX)) throw new Error('politique d’effectif : σ du total est un nombre positif ou nul.');
     return { date, periode: p.periode ? { debut: p.periode.debut, fin: p.periode.fin } : null,
-      signature: typeof p.signature === 'string' && p.signature.length <= 64 ? p.signature : null, lignes };
+      signature: typeof p.signature === 'string' && p.signature.length <= 64 ? p.signature : null, lignes, ...(fini(su) ? { sigmaUnite: su } : {}) };
   }
 
   /** Un jour décalé de `k` jours (« 2026-11-02 » + 1) ; ce qui n'est pas une date reste tel quel. */
@@ -451,7 +459,9 @@
    * — un jour de travail du bilan, ou une journée), avec sa bande P10–P90 ;
    * une ligne sans modèle gardé (pas calée, ou ajoutée depuis) compte son
    * simulé (« moteur », σ nul). Le total de l'unité : toutes les lignes, sa
-   * bande à σ = √Σσ² (des écarts indépendants d'une ligne à l'autre).
+   * bande à σ du total mesuré par le calage (`sigmaUnite`, correction 16) ;
+   * une politique d'avant ne l'a pas : σ = √Σσ² (des écarts supposés
+   * indépendants d'une ligne à l'autre). `sigmaUniteSource` dit lequel.
    * `simuleDe(ligne, jour)` : le simulé d'une ligne de la correspondance (moteur/reel.js).
    */
   function prevuDesJours(politique, correspondance, jours, simuleDe) {
@@ -462,12 +472,20 @@
       return { nom: l.nom, modele: m.modele, nomModele: NOMS[m.modele], sigma: m.sigma || 0, ...(m.applique ? { applique: true } : {}), ...(m.nonCalee ? { nonCalee: true } : {}),
         jours: jours.map(w => { const simule = simuleDe(l, w); return { date: w.date, simule, ...prevuCale(m, { date: jourDeTravail(l, w), simule }) }; }) };
     });
-    const s = Math.sqrt(lignes.reduce((n, l) => n + l.sigma ** 2, 0));
+    const mesure = fini(politique.sigmaUnite), s = mesure ? politique.sigmaUnite : Math.sqrt(lignes.reduce((n, l) => n + l.sigma ** 2, 0));
     const unite = jours.map((w, i) => {
       const prevu = lignes.reduce((n, l) => n + l.jours[i].prevu, 0), simule = lignes.reduce((n, l) => n + l.jours[i].simule, 0);
       return { date: w.date, simule, prevu, p10: prevu - Z_P10_P90 * s, p90: prevu + Z_P10_P90 * s };
     });
-    return { calage: { date: politique.date, periode: politique.periode }, lignes, unite, sigmaUnite: s };
+    return { calage: { date: politique.date, periode: politique.periode }, lignes, unite, sigmaUnite: s, sigmaUniteSource: mesure ? 'mesuré' : 'lignes indépendantes' };
+  }
+
+  /** La ligne qui dit, sous la bande du total, d'où vient son σ (correction 16) : la page et les classeurs. */
+  function texteSigmaUnite(x) {
+    if (!x || !fini(x.sigmaUnite)) return '';
+    return 'Bande du total : σ = ' + fr(x.sigmaUnite) + ' ETP, ' + (x.sigmaUniteSource === 'mesuré'
+      ? 'mesuré par le calage sur le total de l’unité, hors échantillon.'
+      : '√Σσ² des lignes, supposées indépendantes (un calage plus ancien ne l’a pas mesuré : le refaire le mesure).');
   }
 
   /**
@@ -593,7 +611,7 @@
   }
 
   const api = { JOURS_MIN, CANDIDATS, NOMS, semaineIso, jourSemaine, apprendre, predire, facteursDuJour, decoupages, wilcoxon, phi,
-    calerLigne, caler, prevuCale, Z_P10_P90, politiqueDe, validerPolitique, prevuDesJours, jourDeLaJournee, jourDecale, appliquerFacteur, annulerFacteur,
+    calerLigne, caler, prevuCale, Z_P10_P90, politiqueDe, validerPolitique, prevuDesJours, texteSigmaUnite, jourDeLaJournee, jourDecale, appliquerFacteur, annulerFacteur,
     annulable, lignesDegradees, empreinte };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyCalagePeriode = api;

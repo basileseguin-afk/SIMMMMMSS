@@ -1785,9 +1785,14 @@ candidats et du modèle retenu, en moyenne et pour chaque semaine et chaque
 mois laissés de côté (dans la page, le tableau « Erreur de chaque
 découpage » ; dans la feuille, une rangée par découpage et par modèle) ; le verdict de chaque règle avec sa raison (« refusé : instable,
 ±23 % ») ; σ. Pour toute l'unité : l'erreur et le biais du total de chaque
-jour, avant (le moteur) et après (les modèles retenus), hors échantillon. Il
-se lit dans la page (« Caler »), dans le JSON de l'outil (`rapport`) et dans
-la feuille « Calage » du classeur.
+jour, avant (le moteur) et après (les modèles retenus), hors échantillon ;
+après, **σ du total** (correction 16) : la racine de la moyenne des carrés
+des erreurs du total, hors échantillon, dans la même validation que lui (par
+mois quand une ligne l'est, sinon par semaine ; `rapport.unite.apres.sigma`,
+et `rapport.unite.semaines.apres.sigma` quand il y a les deux). Il se lit
+dans la page (« Caler »), dans le JSON de l'outil (`rapport`) et dans la
+feuille « Calage » du classeur (σ et la bande de la rangée « Toute l'unité,
+après »).
 
 Vérifications — `tests/calage-periode.test.cjs` : réel = 0,8 × simulé et un
 peu de bruit, « × a » avec a = 0,80 à 2 % près ; un réel constant autour de
@@ -1809,20 +1814,35 @@ Un calage fait, deux usages, ligne par ligne.
 **« Garder comme politique d'effectif »** (le choix par défaut, sous le
 rapport du calage). La sauvegarde (`ory-calage-v1`, dans « Tout
 sauvegarder ») garde alors, par ligne calée, le modèle retenu, ses
-paramètres, σ et les services qu'elle couvre ; la date du calage, la période
+paramètres, σ et les services qu'elle couvre ; σ du total de l'unité,
+mesuré par le calage (`sigmaUnite`) ; la date du calage, la période
 apprise (du premier au dernier jour comparé), et l'empreinte de ce qu'il
 suppose (les réglages du barème, les liens, les équipes avec leur effectif
 saisi, les modes d'effectif, l'armement, l'encadrement, la correspondance).
 Aucune heure réelle. Une politique relue est refusée entière si elle est mal
 formée : un modèle inconnu, a hors de [0,5 ; 2], b ou une constante négatifs,
-deux lignes du même nom. Ensuite :
+deux lignes du même nom, un σ (d'une ligne ou du total) qui n'est pas un
+nombre fini, positif ou nul. Ensuite :
 
 - **Le prévu calé** : pour chaque ligne de la correspondance, son modèle
   appliqué au simulé du jour, à côté du simulé, avec sa bande P10–P90
   (± 1,2816 σ) ; une ligne sans modèle gardé (pas calée, ou ajoutée depuis)
   compte son simulé, sans bande. Pour toute l'unité, la somme de toutes les
-  lignes, sa bande à σ = √Σσ² (des écarts supposés indépendants d'une ligne
-  à l'autre). Dans la page Période, jour de travail par jour de travail ; dans
+  lignes, sa bande à **σ du total mesuré** par le calage (`sigmaUnite`).
+  Une politique gardée avant la correction 16 ne l'a pas : sa bande reste à
+  σ = √Σσ², des écarts supposés indépendants d'une ligne à l'autre, et son
+  prévu ne change pas. Or sur un mois jamais vu, ils ne le sont pas : un
+  décalage commun au mois pousse plusieurs lignes dans le même sens, et
+  √Σσ² donne une bande trop étroite (elle peut aussi être trop large, quand
+  des lignes se compensent). Le prévu dit lequel il a pris
+  (`sigmaUniteSource` : « mesuré » ou « lignes indépendantes »), et la page
+  et le classeur le disent en une ligne, sous la bande du total ; refaire le
+  calage le mesure. Le σ et la bande de chaque ligne ne changent pas. Sans
+  aucune ligne calée (trop peu de jours), le total « après » est celui du
+  moteur : σ mesuré est alors son erreur, et la bande du total n'est plus un
+  point. Une ligne ajoutée après le calage entre dans le total à son simulé,
+  sans bande ; σ mesuré n'a pas vu son erreur (comme √Σσ² avant). Dans la
+  page Période, jour de travail par jour de travail ; dans
   la Synthèse de la journée (« Politique d'effectif »), pour la journée
   affichée — la charge de ses équipes, quel que soit leur jour, et
   l'encadrement saisi. Le facteur du jour de « × a × jour » y est celui du
@@ -1832,13 +1852,14 @@ deux lignes du même nom. Ensuite :
 - **Un programme futur**, sans réel : le prévu calé est la prévision
   d'effectif. `node outils/simuler-periode.cjs` d'une sauvegarde qui a une
   politique rend `prevuCale` (`lignes` : par ligne et par jour de travail,
-  `simule`, `prevu`, `p10`, `p90` ; `unite` ; `sigmaUnite`) à côté du bilan,
+  `simule`, `prevu`, `p10`, `p90` ; `unite` ; `sigmaUnite`, `sigmaUniteSource`) à côté du bilan,
   qui ne change pas.
 - **La feuille Période** du classeur (la page, et l'outil `--xlsx`) : pour
   chaque jour de travail, une rangée « Ligne : … » par ligne et une rangée
   « Toute l'unité (prévu calé) », et quatre colonnes de plus : `Simulé de la
   ligne (ETP)`, `Prévu calé (ETP)`, `P10 (ETP)`, `P90 (ETP)` ; le Lisez-moi
-  dit la date du calage et la période apprise. Le « à refaire » ne se lit
+  dit la date du calage, la période apprise et, sous la ligne de la bande du
+  total, d'où vient son σ. Le « à refaire » ne se lit
   que dans la page : avant d'exporter un prévu, vérifiez-y que le calage est
   à jour.
 - **« À refaire »** : quand l'empreinte change (le barème, les équipes ou la
@@ -1896,7 +1917,15 @@ feuille Période avec et sans politique ; l'outil, avec et sans politique.
 `tests/calage-browser.cjs` fait le parcours dans la page : « Garder », le
 prévu de chaque jour, la Synthèse, la feuille Période, « Appliquer »,
 « Annuler », le refus sans période à jour, la période relancée, un nouveau
-calage à a ≈ 1, « à refaire ».
+calage à a ≈ 1, « à refaire » ; la ligne sous la bande du total.
+`tests/sigma-unite.test.cjs` (correction 16, trois lignes fictives,
+`tests/sigma-unite-fictif.cjs`) : le même décalage chaque mois, σ mesuré du
+total > √Σσ² et la bande le prend ; des écarts opposés, σ mesuré < √Σσ² ;
+une seule ligne, σ du total = le sien ; une politique sans `sigmaUnite`, le
+prévu d'avant champ par champ ; un `sigmaUnite` négatif ou non fini refusé ;
+le rapport, la politique et le prévu identiques à ceux d'avant la
+correction en dehors des nouveaux champs (`tests/sigma-unite.attendu.json`) ;
+la ligne de la page et des classeurs.
 
 ### Les vacations longues : des heures sup d'office (évolution 11 e)
 

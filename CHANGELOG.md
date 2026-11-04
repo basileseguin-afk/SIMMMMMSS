@@ -5,6 +5,27 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-03 — Banc d'essai, correction 16 (a) : la bande du total de l'unité
+
+- `moteur/calage-periode.js` : le calage mesure σ du total directement, la
+  racine de la moyenne des carrés des erreurs du total « après », hors
+  échantillon, dans la même validation que le total
+  (`rapport.unite.apres.sigma`, et `rapport.unite.semaines.apres.sigma`). La
+  politique d'effectif le garde (`sigmaUnite`, validé comme le σ d'une
+  ligne) ; le prévu calé le prend pour la bande du total, et dit lequel
+  (`sigmaUniteSource`). Une politique d'avant garde √Σσ² et le même prévu.
+- La page (sous la bande du total, la période et la Synthèse de la journée)
+  et le classeur de la période (Lisez-moi) disent d'où vient ce σ ; la
+  feuille Calage a σ et la bande du total, après.
+- Les modèles retenus, leurs paramètres, le σ et le prévu de chaque ligne ne
+  changent pas.
+- Fichiers : `moteur/calage-periode.js`, `calage-vue.js`,
+  `echanges-calage.js`, `sim.js`, `outils/simuler-periode.cjs`, `index.html`,
+  `tests/sigma-unite.test.cjs`, `tests/sigma-unite-fictif.cjs`,
+  `tests/sigma-unite.attendu.json` (nouveaux), `tests/politique-calage.test.cjs`,
+  `tests/reel-absent.test.cjs`, `tests/reel-vide.test.cjs`,
+  `tests/calage-browser.cjs`, `docs/BANC_ESSAI.md` (§ 10), `README.md`.
+
 ## 2026-11-03 — Banc d'essai, évolution 12 (d) : les indicateurs de charge dans les classeurs
 
 - `echanges-charge.js` (nouveau, v1) : le classeur de la journée (Lisez-moi,

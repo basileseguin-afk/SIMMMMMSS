@@ -167,6 +167,10 @@ const CLE='ory-calage-v1';
   assert.equal(await page.locator(`${B} tr[data-cal-prevu="${j5.date}"] [data-cal-prevu-total]`).textContent(),
     fr(prevu.unite[5].prevu)+' ['+fr(prevu.unite[5].p10)+' – '+fr(prevu.unite[5].p90)+']');
   assert.equal(await page.locator(`${B} [data-cal-refaire]`).count(),0,'un calage gardé à l’instant n’est pas à refaire');
+  // Sous la bande du total, d'où vient son σ (correction 16) : mesuré par le calage.
+  assert.equal(pol.sigmaUnite,rapport.unite.apres.sigma);
+  assert.equal(await page.locator(`${B} [data-cal-sigma-unite]`).getAttribute('data-cal-sigma-unite'),'mesuré');
+  assert.equal(await page.locator(`${B} [data-cal-sigma-unite]`).textContent(),C.texteSigmaUnite(prevu));
   // La Synthèse de la journée : le prévu calé de chaque ligne, sa bande, le total de l'unité.
   await nav.aller(page,'j-chiffres');await attendre();
   const jour=await page.evaluate(()=>Sim.calage.a.journee());
@@ -175,12 +179,16 @@ const CLE='ory-calage-v1';
   assert.deepEqual(await page.locator('#bilan-cale tr[data-cal-jour-ligne="Cuisinier"] td').allTextContents(),
     [fr(pj.lignes[0].jours[0].simule),fr(pj.lignes[0].jours[0].prevu),fr(pj.lignes[0].jours[0].p10)+' – '+fr(pj.lignes[0].jours[0].p90)]);
   assert.equal(await page.locator('#bilan-cale tr[data-cal-jour-ligne="Toute l’unité"]').count(),1);
+  assert.equal(await page.locator('#bilan-cale [data-cal-sigma-unite]').textContent(),C.texteSigmaUnite(pj));
   await nav.aller(page,'j-periode');await attendre();
   // La feuille Période : le prévu calé, P10 et P90, de chaque ligne et de l'unité.
   const xPeriode=await T.lireClasseur(new Uint8Array(fs.readFileSync(await telecharger(()=>page.locator('#journee-periode [data-pv=exporter]').click()))));
   const fPeriode=xPeriode.find(f=>f.nom==='Période').lignes;
   assert.deepEqual(fPeriode[0].slice(-4),['Simulé de la ligne (ETP)','Prévu calé (ETP)','P10 (ETP)','P90 (ETP)']);
   assert.ok(fPeriode.some(l=>l[7]==='Ligne : Cuisinier'&&l[l.length-3]===Math.round(prevu.lignes[0].jours[0].prevu*100)/100));
+  // Le Lisez-moi : sous la ligne de la bande du total, d'où vient son σ (correction 16).
+  const lu=xPeriode[0].lignes.map(l=>String(l[0]||'')),iBande=lu.findIndex(l=>/√Σσ²/.test(l));
+  assert.equal(lu[iBande+1].trim(),C.texteSigmaUnite(prevu));
 
   // « Appliquer au barème » le × a du cuisinier : le travail de la cuisine × a ; la période est à relancer ; « Annuler » revient exactement.
   const etatTravail=()=>page.evaluate(()=>JSON.parse(JSON.stringify({bareme:Sim.reglages.etat.bareme,complet:Sim.reglages.baremeComplet(),ateliers:Sim.ateliers.state.ateliers,categories:Sim.ateliers.state.categories||{}})));

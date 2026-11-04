@@ -16,6 +16,7 @@
   const enNode = typeof module !== 'undefined' && module.exports && typeof require === 'function';
   const T = () => (enNode ? require('./tableur.js') : root.OrlyTableur);
   const R = () => (enNode ? require('./moteur/reel.js') : root.OrlyReel);
+  const C = () => (enNode ? require('./moteur/calage-periode.js') : root.OrlyCalagePeriode);
   const n2 = x => (x == null || !Number.isFinite(+x) ? null : Math.round(+x * 100) / 100);
   const n3 = x => (x == null || !Number.isFinite(+x) ? null : Math.round(+x * 1000) / 1000);
   const dateFr = d => d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4);
@@ -184,8 +185,23 @@
     const parMois = u.validation === 'mois' && u.semaines;
     for (const [rang, x, v] of [['avant (moteur)', u.avant, ''], ['après (modèles retenus)', u.apres, parMois ? ' — validation par mois' : ''],
       ...(parMois ? [['après (modèles retenus), validation par semaines', u.semaines.apres, ' — validation par semaines']] : [])]) if (x)
-      lignes.push(rangee({ ligne: 'Toute l’unité', couvre: 'le total de chaque jour', rang, semaines: n3(x.mae), n: x.jours, validation: 'biais ' + fr(x.biais) + v }));
+      lignes.push(rangee({ ligne: 'Toute l’unité', couvre: 'le total de chaque jour', rang, semaines: n3(x.mae), n: x.jours, validation: 'biais ' + fr(x.biais) + v,
+        // Après : σ du total mesuré hors échantillon (correction 16), et sa bande.
+        ...(Number.isFinite(x.sigma) ? { sigma: n3(x.sigma), bande: n3(C().Z_P10_P90 * x.sigma) } : {}) }));
     return feuille('Calage', lignes, 3);
+  }
+
+  /**
+   * Le classeur de la période (echanges.js, commun aux deux versions) avec un prévu calé : dans son Lisez-moi,
+   * sous la ligne de la bande du total, d'où vient son σ (correction 16) — mesuré, ou √Σσ² d'une politique d'avant.
+   */
+  function avecSigmaUnite(classeur, prevu) {
+    const texte = prevu ? C().texteSigmaUnite(prevu) : '';
+    const lisez = texte && classeur.find(f => f.nom === 'Lisez-moi');
+    if (!lisez) return classeur;
+    const lignes = lisez.lignes.slice(), i = lignes.findIndex(l => /√Σσ²/.test(String(l[0] || '')));
+    lignes.splice(i < 0 ? lignes.length : i + 1, 0, ['   ' + texte]);
+    return classeur.map(f => (f === lisez ? { ...lisez, lignes } : f));
   }
 
   /**
@@ -198,7 +214,7 @@
     return [lisezMoi(c, ctx, x.reel), feuilleReel(c, x.reel), feuilleComparaison(c, x.rejeu || null)].concat(x.rapport || x.travail ? [feuilleCalage(x.rapport || { lignes: [] }, x.travail || null)] : []);
   }
 
-  const api = { calageVersClasseur };
+  const api = { avecSigmaUnite, calageVersClasseur };
   if (enNode) module.exports = api;
   else root.OrlyEchangesCalage = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

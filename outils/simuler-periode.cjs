@@ -31,6 +31,7 @@ const PE = require('../moteur/periode.js');
 const T = require('../tableur.js');
 const E = require('../echanges.js');
 const EC = require('../echanges-charge.js');
+const ECal = require('../echanges-calage.js');
 const { lireJson } = require('./simuler-journee.cjs');
 const R = require('../moteur/reel.js');
 const C = require('../moteur/calage-periode.js');
@@ -94,9 +95,11 @@ function prevuDeLaSauvegarde(sauvegarde, bilan) {
 function classeurDeLaPeriode(sortie, calculeLe = new Date()) {
   const { delaiChargement, decalage, ...autres } = sortie.periode.options || {};
   const p = { periode: sortie.periode, bilan: sortie.bilan, journees: sortie._journees };
-  return T.ecrireClasseur(EC.avecCharge(E.periodeVersClasseur(p, {
+  const classeur = E.periodeVersClasseur(p, {
     sauvegarde: sortie.periode.sauvegarde, vols: sortie.periode.vols, calculeLe, ...(sortie.prevuCale ? { prevu: sortie.prevuCale } : {}),
-    reglages: { delaiChargement: J.delaiDe(sortie.periode.options || {}), decalage: +decalage || 0, ...autres } }), p));
+    reglages: { delaiChargement: J.delaiDe(sortie.periode.options || {}), decalage: +decalage || 0, ...autres } });
+  // Avec un prévu calé : d'où vient le σ de la bande du total (correction 16), dans le Lisez-moi.
+  return T.ecrireClasseur(EC.avecCharge(sortie.prevuCale ? ECal.avecSigmaUnite(classeur, sortie.prevuCale) : classeur, p));
 }
 
 /** Le JSON, écrit morceau par morceau : une période de deux mois tient en mémoire, pas forcément en une seule chaîne. */

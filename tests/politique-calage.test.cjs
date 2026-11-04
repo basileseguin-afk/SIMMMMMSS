@@ -32,7 +32,9 @@ test('la politique garde le modèle, ses paramètres et σ, la date et la pério
   assert.equal(l.retenu.modele, 'x-a');
   assert.ok(Math.abs(l.retenu.parametres.a - 0.8) < 0.01, 'a ' + l.retenu.parametres.a);
   const p = C.politiqueDe(rapport0, { date: '2026-11-10', periode: { debut: B0.debut, fin: B0.fin }, signature: 'abc' });
-  assert.deepEqual(Object.keys(p).sort(), ['date', 'lignes', 'periode', 'signature']);
+  // σ du total, mesuré par le calage (correction 16).
+  assert.deepEqual(Object.keys(p).sort(), ['date', 'lignes', 'periode', 'sigmaUnite', 'signature']);
+  assert.equal(p.sigmaUnite, rapport0.unite.apres.sigma);
   assert.deepEqual(p.lignes.map(x => [x.nom, x.modele]), [['Cuisine', 'x-a']]);
   assert.deepEqual(C.validerPolitique(JSON.parse(JSON.stringify(p))), p, 'relue telle quelle');
   assert.throws(() => C.validerPolitique({ lignes: [{ nom: 'X', modele: 'x-a', parametres: {} }] }), /a manque/);

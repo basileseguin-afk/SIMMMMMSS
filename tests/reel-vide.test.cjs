@@ -55,7 +55,10 @@ test('non-régression : un réel sans case vide donne la même comparaison et le
   const comparaison = R.comparer(REF.bilan, lire(REF.csv), REF.correspondance);
   assert.deepEqual(JSON.parse(JSON.stringify(comparaison)), REF.comparaison);
   const { validation, semaines, ...unite } = C.caler(comparaison).unite;
-  assert.deepEqual(JSON.parse(JSON.stringify({ ...C.caler(comparaison), unite })), REF.calage);
+  // σ du total mesuré (correction 16) s'ajoute, après : sans lui, le calage de la référence.
+  const { sigma, ...apres } = unite.apres;
+  assert.deepEqual(JSON.parse(JSON.stringify({ ...C.caler(comparaison), unite: { ...unite, apres } })), REF.calage);
+  assert.ok(Number.isFinite(sigma));
   assert.ok(lire(REF.csv).lignes.every(l => !('vide' in l)));
 });
 

@@ -555,7 +555,7 @@
       <p class="mini-note">Un modèle par ligne, retenu seulement s’il prédit mieux que le moteur et qu’une constante sur des jours qu’il n’a pas appris,
         stable, dans ses bornes, confirmé par Wilcoxon et par un placebo. Toute l’unité, le total de chaque jour hors échantillon :
         erreur <b data-cal-avant>${nombre(u.avant.mae)}</b> ETP avec le moteur, <b data-cal-apres>${nombre(u.apres.mae)}</b> ETP avec les modèles retenus
-        (biais ${nombre(u.avant.biais)} puis ${nombre(u.apres.biais)})${u.semaines ? `, en validation par mois ; en validation par semaines,
+        (biais ${nombre(u.avant.biais)} puis ${nombre(u.apres.biais)}${Number.isFinite(u.apres.sigma) ? `, σ du total <span data-cal-sigma-total>${nombre(u.apres.sigma)}</span> ETP` : ''})${u.semaines ? `, en validation par mois ; en validation par semaines,
         <b data-cal-apres-semaines>${nombre(u.semaines.apres.mae)}</b> ETP (biais ${nombre(u.semaines.apres.biais)}) — avec deux mois, la validation par mois mêle l’effet du mois et celui du volume` : ''}.</p>
       <ul class="pc-liste pc-lignes">${r.lignes.map(ligne).join('')}</ul>
       <div class="pc-actions"><button type="button" class="btn btn-sm btn-play" data-cal="garder">Garder comme politique d’effectif</button></div></section>`;
@@ -588,7 +588,8 @@
       ${!b ? '<p class="mini-note pc-attente">Simulez la période (à jour) pour voir le prévu calé de chaque jour.</p>'
         : `<div class="table-scroll"><table class="svc-table pc-table pc-prevu"><thead><tr><th scope="col">Jour de travail</th>
         ${lignes.map(l => `<th scope="col">${esc(l.nom)}<br><small>simulé</small></th><th scope="col">${esc(l.nom)}<br><small>prévu calé (${esc(l.nomModele)}${l.applique ? ', a = 1 : appliqué au barème' : l.nonCalee ? ' : pas de calage' : ''})</small></th>`).join('')}
-        <th scope="col">Toute l’unité<br><small>prévu calé</small></th></tr></thead><tbody>${jours}</tbody></table></div>`}
+        <th scope="col">Toute l’unité<br><small>prévu calé</small></th></tr></thead><tbody>${jours}</tbody></table></div>
+        ${x ? `<p class="mini-note" data-cal-sigma-unite="${esc(x.sigmaUniteSource)}">${esc(C().texteSigmaUnite(x))}</p>` : ''}`}
       ${appliquer ? `<div class="pc-actions">${appliquer}</div>` : ''}
       <div class="pc-actions"><button type="button" class="btn btn-sm" data-cal="oublier">Oublier la politique</button></div></section>`;
   };
@@ -693,6 +694,7 @@
     box.innerHTML = `<section class="bilan-groupe pc-jour" aria-label="Politique d’effectif"><h4>Politique d’effectif (calage du ${esc((this.politique.date || '').slice(0, 10))})</h4>
       <table class="svc-table pc-table"><thead><tr><th scope="col">Ligne</th><th scope="col">Simulé (ETP)</th><th scope="col">Prévu calé</th><th scope="col">P10 – P90</th></tr></thead>
       <tbody>${x.lignes.map(l => ligne(l.nom, l.jours[0].simule, l.jours[0])).join('')}${ligne('Toute l’unité', x.unite[0].simule, x.unite[0])}</tbody></table>
+      <p class="mini-note" data-cal-sigma-unite="${esc(x.sigmaUniteSource)}">${esc(C().texteSigmaUnite(x))}</p>
       ${x.lignes.some(l => l.jours[0].sansJour) ? '<p class="mini-note">Une journée sans date : « × a × jour » y prend le facteur moyen, 1.</p>' : ''}</section>`;
   };
 

@@ -2370,7 +2370,9 @@ function exporterPeriode(){
   // Les feuilles « Charge » et « Créneaux » (évolution 12 d) : echanges-charge.js, comme l'outil.
   const classeur=OrlyEchanges.periodeVersClasseur(r,{sauvegarde:'l’unité enregistrée dans ce navigateur',vols:dataSource,
     calculeLe:pe.calculeLe,reglages:pe.reglages||{delaiChargement:CFG.loadDelay,decalage:CFG.shift},...(prevu?{prevu}:{})});
-  const octets=OrlyTableur.ecrireClasseur(window.OrlyEchangesCharge?OrlyEchangesCharge.avecCharge(classeur,r):classeur);
+  // Avec un prévu calé : d'où vient le σ de la bande du total (correction 16), dans le Lisez-moi.
+  const avecPrevu=prevu&&window.OrlyEchangesCalage?OrlyEchangesCalage.avecSigmaUnite(classeur,prevu):classeur;
+  const octets=OrlyTableur.ecrireClasseur(window.OrlyEchangesCharge?OrlyEchangesCharge.avecCharge(avecPrevu,r):avecPrevu);
   OrlyTableur.telecharger('ory-periode-'+d.debut+'-au-'+d.fin+'.xlsx',octets);
   toast('Période exportée : du '+OrlyPeriode.dateLongue(d.debut)+' au '+OrlyPeriode.dateLongue(d.fin)+', en Excel.');
 }

@@ -94,8 +94,10 @@ test('non-régression : un réel complet donne la même comparaison et le même 
   const comparaison = R.comparer(REF.bilan, lire(REF.csv), REF.correspondance);
   assert.deepEqual(JSON.parse(JSON.stringify(comparaison)), REF.comparaison);
   const { validation, semaines, ...unite } = C.caler(comparaison).unite;
-  assert.deepEqual(JSON.parse(JSON.stringify({ ...C.caler(comparaison), unite })), REF.calage, 'seul le total par semaines s’ajoute');
-  assert.ok(validation && semaines);
+  // σ du total mesuré (correction 16) s'ajoute aussi, après : sans lui, le calage de la référence.
+  const { sigma, ...apres } = unite.apres;
+  assert.deepEqual(JSON.parse(JSON.stringify({ ...C.caler(comparaison), unite: { ...unite, apres } })), REF.calage, 'seuls le total par semaines et σ du total s’ajoutent');
+  assert.ok(validation && semaines && Number.isFinite(sigma) && Number.isFinite(semaines.apres.sigma));
 });
 
 test('un rôle d’une ligne que le fichier n’a pas du tout : la ligne n’a aucun jour, et on le signale', () => {

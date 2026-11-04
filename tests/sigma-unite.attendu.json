@@ -1,0 +1,2890 @@
+{
+ "ensemble": {
+  "rapport": {
+   "schema": "ory-calage-rapport",
+   "version": 1,
+   "lignes": [
+    {
+     "nom": "Ligne 1",
+     "couvre": "fictif",
+     "cale": true,
+     "jours": 61,
+     "unSeulMois": false,
+     "validation": "semaines et mois",
+     "references": {
+      "moteur": {
+       "modele": "moteur",
+       "nom": "moteur",
+       "parametres": {},
+       "erreurs": {
+        "semaines": 3.101395820974613,
+        "parSemaine": [
+         {
+          "semaine": "2026-W36",
+          "erreur": 1.6463268050458275
+         },
+         {
+          "semaine": "2026-W37",
+          "erreur": 2.079842050320335
+         },
+         {
+          "semaine": "2026-W38",
+          "erreur": 1.4450079186287303
+         },
+         {
+          "semaine": "2026-W39",
+          "erreur": 2.1829970812957193
+         },
+         {
+          "semaine": "2026-W40",
+          "erreur": 3.461083444620349
+         },
+         {
+          "semaine": "2026-W41",
+          "erreur": 4.178635325389248
+         },
+         {
+          "semaine": "2026-W42",
+          "erreur": 3.904581445575291
+         },
+         {
+          "semaine": "2026-W43",
+          "erreur": 4.771224583286259
+         },
+         {
+          "semaine": "2026-W44",
+          "erreur": 4.242863734609757
+         }
+        ],
+        "mois": 3.0872185876266016,
+        "parMois": [
+         {
+          "mois": "2026-09",
+          "erreur": 1.9088062511042996
+         },
+         {
+          "mois": "2026-10",
+          "erreur": 4.265630924148904
+         }
+        ]
+       }
+      },
+      "constante": {
+       "modele": "constante",
+       "nom": "constante",
+       "parametres": {
+        "c": {
+         "tous": 12.32164415614985,
+         "min": 12.037901408754049,
+         "max": 12.614844995125509
+        }
+       },
+       "erreurs": {
+        "semaines": 2.9541124479159766,
+        "parSemaine": [
+         {
+          "semaine": "2026-W36",
+          "erreur": 2.281170165181217
+         },
+         {
+          "semaine": "2026-W37",
+          "erreur": 3.005302112775968
+         },
+         {
+          "semaine": "2026-W38",
+          "erreur": 3.2372155031056282
+         },
+         {
+          "semaine": "2026-W39",
+          "erreur": 3.1112875213356266
+         },
+         {
+          "semaine": "2026-W40",
+          "erreur": 3.0974715545743967
+         },
+         {
+          "semaine": "2026-W41",
+          "erreur": 2.2627576934220506
+         },
+         {
+          "semaine": "2026-W42",
+          "erreur": 4.17361199660818
+         },
+         {
+          "semaine": "2026-W43",
+          "erreur": 2.7869132543744013
+         },
+         {
+          "semaine": "2026-W44",
+          "erreur": 2.6312822298663248
+         }
+        ],
+        "mois": 2.9363080879127588,
+        "parMois": [
+         {
+          "mois": "2026-09",
+          "erreur": 2.852223601950813
+         },
+         {
+          "mois": "2026-10",
+          "erreur": 3.0203925738747044
+         }
+        ]
+       }
+      }
+     },
+     "candidats": [
+      {
+       "modele": "x-a",
+       "nom": "× a",
+       "parametres": {
+        "a": {
+         "tous": 0.7953378285459568,
+         "min": 0.7427743804487116,
+         "max": 0.8628047792035387
+        }
+       },
+       "erreurs": {
+        "semaines": 1.0952802198567186,
+        "parSemaine": [
+         {
+          "semaine": "2026-W36",
+          "erreur": 1.1234930889355201
+         },
+         {
+          "semaine": "2026-W37",
+          "erreur": 1.2031533183853718
+         },
+         {
+          "semaine": "2026-W38",
+          "erreur": 1.1105112985978287
+         },
+         {
+          "semaine": "2026-W39",
+          "erreur": 1.2209983204907597
+         },
+         {
+          "semaine": "2026-W40",
+          "erreur": 1.0060567870786878
+         },
+         {
+          "semaine": "2026-W41",
+          "erreur": 1.0379250916111142
+         },
+         {
+          "semaine": "2026-W42",
+          "erreur": 1.0490970736622869
+         },
+         {
+          "semaine": "2026-W43",
+          "erreur": 1.0969076163157978
+         },
+         {
+          "semaine": "2026-W44",
+          "erreur": 1.0093793836330993
+         }
+        ],
+        "mois": 1.9279565724140224,
+        "parMois": [
+         {
+          "mois": "2026-09",
+          "erreur": 1.8270489388540054
+         },
+         {
+          "mois": "2026-10",
+          "erreur": 2.028864205974039
+         }
+        ]
+       },
+       "regles": {
+        "battreReferences": {
+         "ok": true,
+         "raison": "accepté : plus juste que le moteur et la constante, chaque mois"
+        },
+        "stabilite": {
+         "ok": true,
+         "raison": "accepté : stable, ±1 %"
+        },
+        "bornes": {
+         "ok": true,
+         "raison": "accepté : a et b dans leurs bornes"
+        },
+        "wilcoxon": {
+         "ok": true,
+         "raison": "accepté : Wilcoxon contre « constante », p = 0,001 (par mois)"
+        },
+        "placebo": {
+         "ok": true,
+         "raison": "accepté : simulé mélangé, gain -1,14 ETP contre 1,86 ETP"
+        }
+       },
+       "accepte": true,
+       "placebo": -1.1427547526788198
+      },
+      {
+       "modele": "b-x-a",
+       "nom": "b + a ×",
+       "parametres": {
+        "a": {
+         "tous": 0.7564076223863545,
+         "min": 0.7403815138168125,
+         "max": 0.7988356521612758
+        },
+        "b": {
+         "tous": 0.6516504642282968,
+         "min": 0.2638383900291572,
+         "max": 1.0360835893705733
+        }
+       },
+       "erreurs": {
+        "semaines": 1.0862769865203314,
+        "parSemaine": [
+         {
+          "semaine": "2026-W36",
+          "erreur": 1.0320712573752056
+         },
+         {
+          "semaine": "2026-W37",
+          "erreur": 1.155661946731423
+         },
+         {
+          "semaine": "2026-W38",
+          "erreur": 1.0340737452885675
+         },
+         {
+          "semaine": "2026-W39",
+          "erreur": 1.1925172647194848
+         },
+         {
+          "semaine": "2026-W40",
+          "erreur": 1.042620049396041
+         },
+         {
+          "semaine": "2026-W41",
+          "erreur": 1.0770079355356372
+         },
+         {
+          "semaine": "2026-W42",
+          "erreur": 1.1954206752104664
+         },
+         {
+          "semaine": "2026-W43",
+          "erreur": 1.0225199846748747
+         },
+         {
+          "semaine": "2026-W44",
+          "erreur": 1.0246000197512835
+         }
+        ],
+        "mois": 1.9129124969337643,
+        "parMois": [
+         {
+          "mois": "2026-09",
+          "erreur": 1.8270489388540054
+         },
+         {
+          "mois": "2026-10",
+          "erreur": 1.9987760550135234
+         }
+        ]
+       },
+       "regles": {
+        "battreReferences": {
+         "ok": true,
+         "raison": "accepté : plus juste que le moteur et la constante, chaque mois"
+        },
+        "stabilite": {
+         "ok": true,
+         "raison": "accepté : stable, ±2 %"
+        },
+        "bornes": {
+         "ok": true,
+         "raison": "accepté : a et b dans leurs bornes"
+        },
+        "wilcoxon": {
+         "ok": true,
+         "raison": "accepté : Wilcoxon contre « constante », p < 0,001 (par mois)"
+        },
+        "placebo": {
+         "ok": true,
+         "raison": "accepté : simulé mélangé, gain -1,14 ETP contre 1,87 ETP"
+        }
+       },
+       "accepte": true,
+       "placebo": -1.1427547526788198
+      },
+      {
+       "modele": "x-a-jour",
+       "nom": "× a × jour",
+       "parametres": {
+        "a": {
+         "tous": 0.7953378285459568,
+         "min": 0.7427743804487116,
+         "max": 0.8628047792035387
+        },
+        "jours": [
+         {
+          "tous": 1.0001407806878029,
+          "min": 0.9928285384806825,
+          "max": 1.005424654865809
+         },
+         {
+          "tous": 1.0090990251334948,
+          "min": 1.0015330955524946,
+          "max": 1.0106900097366331
+         },
+         {
+          "tous": 0.9937436959341039,
+          "min": 0.987077795118873,
+          "max": 0.9969502185686768
+         },
+         {
+          "tous": 1.0055906920617717,
+          "min": 1.0026877694190128,
+          "max": 1.0173746997453803
+         },
+         {
+          "tous": 0.9903739565512573,
+          "min": 0.9879251672894809,
+          "max": 0.9957658640376919
+         },
+         {
+          "tous": 0.9941106030331996,
+          "min": 0.9925765573766421,
+          "max": 1.0021624154083466
+         },
+         {
+          "tous": 1.00694124659837,
+          "min": 1.0023887341602333,
+          "max": 1.012894844832853
+         }
+        ]
+       },
+       "erreurs": {
+        "semaines": 1.108469226195492,
+        "parSemaine": [
+         {
+          "semaine": "2026-W36",
+          "erreur": 1.144827637652188
+         },
+         {
+          "semaine": "2026-W37",
+          "erreur": 1.2080505602871052
+         },
+         {
+          "semaine": "2026-W38",
+          "erreur": 1.1228953107624227
+         },
+         {
+          "semaine": "2026-W39",
+          "erreur": 1.23955191293433
+         },
+         {
+          "semaine": "2026-W40",
+          "erreur": 1.0465474383451074
+         },
+         {
+          "semaine": "2026-W41",
+          "erreur": 1.0495594310182843
+         },
+         {
+          "semaine": "2026-W42",
+          "erreur": 1.05949538222535
+         },
+         {
+          "semaine": "2026-W43",
+          "erreur": 1.0879567193637514
+         },
+         {
+          "semaine": "2026-W44",
+          "erreur": 1.0173386431708888
+         }
+        ],
+        "mois": 1.9416715453746902,
+        "parMois": [
+         {
+          "mois": "2026-09",
+          "erreur": 1.8402816923307086
+         },
+         {
+          "mois": "2026-10",
+          "erreur": 2.0430613984186716
+         }
+        ]
+       },
+       "regles": {
+        "battreReferences": {
+         "ok": true,
+         "raison": "accepté : plus juste que le moteur et la constante, chaque mois"
+        },
+        "stabilite": {
+         "ok": true,
+         "raison": "accepté : stable, ±1 %"
+        },
+        "bornes": {
+         "ok": true,
+         "raison": "accepté : a et b dans leurs bornes"
+        },
+        "wilcoxon": {
+         "ok": true,
+         "raison": "accepté : Wilcoxon contre « constante », p = 0,002 (par mois)"
+        },
+        "placebo": {
+         "ok": true,
+         "raison": "accepté : simulé mélangé, gain -1,27 ETP contre 1,85 ETP"
+        }
+       },
+       "accepte": true,
+       "placebo": -1.2671100731669094
+      }
+     ],
+     "confondus": [],
+     "retenu": {
+      "modele": "x-a",
+      "nom": "× a",
+      "parametres": {
+       "a": 0.7953378285459568
+      },
+      "sigma": 1.9500571160700408,
+      "bande": 2.4991931999553643
+     }
+    },
+    {
+     "nom": "Ligne 2",
+     "couvre": "fictif",
+     "cale": true,
+     "jours": 61,
+     "unSeulMois": false,
+     "validation": "semaines et mois",
+     "references": {
+      "moteur": {
+       "modele": "moteur",
+       "nom": "moteur",
+       "parametres": {},
+       "erreurs": {
+        "semaines": 3.186071969221947,
+        "parSemaine": [
+         {
+          "semaine": "2026-W36",
+          "erreur": 2.1903033517068247
+         },
+         {
+          "semaine": "2026-W37",
+          "erreur": 2.24690200757967
+         },
+         {
+          "semaine": "2026-W38",
+          "erreur": 2.1539759659707274
+         },
+         {
+          "semaine": "2026-W39",
+          "erreur": 1.7964046959332851
+         },
+         {
+          "semaine": "2026-W40",
+          "erreur": 3.024720936970385
+         },
+         {
+          "semaine": "2026-W41",
+          "erreur": 4.795416367183705
+         },
+         {
+          "semaine": "2026-W42",
+          "erreur": 3.905481398195427
+         },
+         {
+          "semaine": "2026-W43",
+          "erreur": 4.353326108462974
+         },
+         {
+          "semaine": "2026-W44",
+          "erreur": 4.20811689099452
+         }
+        ],
+        "mois": 3.1682747447094135,
+        "parMois": [
+         {
+          "mois": "2026-09",
+          "erreur": 2.108920353702269
+         },
+         {
+          "mois": "2026-10",
+          "erreur": 4.227629135716557
+         }
+        ]
+       }
+      },
+      "constante": {
+       "modele": "constante",
+       "nom": "constante",
+       "parametres": {
+        "c": {
+         "tous": 12.651141232056315,
+         "min": 11.869988530971138,
+         "max": 13.458332356510995
+        }
+       },
+       "erreurs": {
+        "semaines": 3.25398086822624,
+        "parSemaine": [
+         {
+          "semaine": "2026-W36",
+          "erreur": 2.180888154683634
+         },
+         {
+          "semaine": "2026-W37",
+          "erreur": 4.02028281374332
+         },
+         {
+          "semaine": "2026-W38",
+          "erreur": 2.67722029344637
+         },
+         {
+          "semaine": "2026-W39",
+          "erreur": 3.6851575818161666
+         },
+         {
+          "semaine": "2026-W40",
+          "erreur": 3.8324901059131937
+         },
+         {
+          "semaine": "2026-W41",
+          "erreur": 3.946622574045791
+         },
+         {
+          "semaine": "2026-W42",
+          "erreur": 3.331916998629827
+         },
+         {
+          "semaine": "2026-W43",
+          "erreur": 3.0103498503573185
+         },
+         {
+          "semaine": "2026-W44",
+          "erreur": 2.600899441400543
+         }
+        ],
+        "mois": 3.4219616502779786,
+        "parMois": [
+         {
+          "mois": "2026-09",
+          "erreur": 3.2087429585949754
+         },
+         {
+          "mois": "2026-10",
+          "erreur": 3.635180341960982
+         }
+        ]
+       }
+      }
+     },
+     "candidats": [
+      {
+       "modele": "x-a",
+       "nom": "× a",
+       "parametres": {
+        "a": {
+         "tous": 0.7978283718525491,
+         "min": 0.7422553305471953,
+         "max": 0.8594905660442423
+        }
+       },
+       "erreurs": {
+        "semaines": 1.1102383435565533,
+        "parSemaine": [
+         {
+          "semaine": "2026-W36",
+          "erreur": 1.1098044985808881
+         },
+         {
+          "semaine": "2026-W37",
+          "erreur": 1.1793507190253578
+         },
+         {
+          "semaine": "2026-W38",
+          "erreur": 1.1482295231362893
+         },
+         {
+          "semaine": "2026-W39",
+          "erreur": 1.1600108562514115
+         },
+         {
+          "semaine": "2026-W40",
+          "erreur": 1.0087325455812768
+         },
+         {
+          "semaine": "2026-W41",
+          "erreur": 1.1551441828613185
+         },
+         {
+          "semaine": "2026-W42",
+          "erreur": 1.0762531350680622
+         },
+         {
+          "semaine": "2026-W43",
+          "erreur": 1.1217313046285737
+         },
+         {
+          "semaine": "2026-W44",
+          "erreur": 1.0328883268757985
+         }
+        ],
+        "mois": 1.934609019856995,
+        "parMois": [
+         {
+          "mois": "2026-09",
+          "erreur": 1.9034560503799267
+         },
+         {
+          "mois": "2026-10",
+          "erreur": 1.9657619893340632
+         }
+        ]
+       },
+       "regles": {
+        "battreReferences": {
+         "ok": true,
+         "raison": "accepté : plus juste que le moteur et la constante, chaque mois"
+        },
+        "stabilite": {
+         "ok": true,
+         "raison": "accepté : stable, ±1 %"
+        },
+        "bornes": {
+         "ok": true,
+         "raison": "accepté : a et b dans leurs bornes"
+        },
+        "wilcoxon": {
+         "ok": true,
+         "raison": "accepté : Wilcoxon contre « moteur », p < 0,001 (par mois)"
+        },
+        "placebo": {
+         "ok": true,
+         "raison": "accepté : simulé mélangé, gain -1,07 ETP contre 2,14 ETP"
+        }
+       },
+       "accepte": true,
+       "placebo": -1.0669366792372075
+      },
+      {
+       "modele": "b-x-a",
+       "nom": "b + a ×",
+       "parametres": {
+        "a": {
+         "tous": 0.786293732737518,
+         "min": 0.7422553305471953,
+         "max": 0.8045445613116745
+        },
+        "b": {
+         "tous": 0.19877845103312097,
+         "min": 0.041703373076448,
+         "max": 0.9958694407082564
+        }
+       },
+       "erreurs": {
+        "semaines": 1.1241433504207483,
+        "parSemaine": [
+         {
+          "semaine": "2026-W36",
+          "erreur": 1.1011331579353367
+         },
+         {
+          "semaine": "2026-W37",
+          "erreur": 1.1717446947232124
+         },
+         {
+          "semaine": "2026-W38",
+          "erreur": 1.1410797007988849
+         },
+         {
+          "semaine": "2026-W39",
+          "erreur": 1.1600108562514115
+         },
+         {
+          "semaine": "2026-W40",
+          "erreur": 1.0570377648253562
+         },
+         {
+          "semaine": "2026-W41",
+          "erreur": 1.1499312481830064
+         },
+         {
+          "semaine": "2026-W42",
+          "erreur": 1.1565753943185177
+         },
+         {
+          "semaine": "2026-W43",
+          "erreur": 1.1295201489801678
+         },
+         {
+          "semaine": "2026-W44",
+          "erreur": 1.0502571877708409
+         }
+        ],
+        "mois": 1.9581934532301712,
+        "parMois": [
+         {
+          "mois": "2026-09",
+          "erreur": 1.9034560503799267
+         },
+         {
+          "mois": "2026-10",
+          "erreur": 2.0129308560804158
+         }
+        ]
+       },
+       "regles": {
+        "battreReferences": {
+         "ok": true,
+         "raison": "accepté : plus juste que le moteur et la constante, chaque mois"
+        },
+        "stabilite": {
+         "ok": true,
+         "raison": "accepté : stable, ±2 %"
+        },
+        "bornes": {
+         "ok": true,
+         "raison": "accepté : a et b dans leurs bornes"
+        },
+        "wilcoxon": {
+         "ok": true,
+         "raison": "accepté : Wilcoxon contre « moteur », p < 0,001 (par mois)"
+        },
+        "placebo": {
+         "ok": true,
+         "raison": "accepté : simulé mélangé, gain -1,07 ETP contre 2,13 ETP"
+        }
+       },
+       "accepte": true,
+       "placebo": -1.0669366792372075
+      },
+      {
+       "modele": "x-a-jour",
+       "nom": "× a × jour",
+       "parametres": {
+        "a": {
+         "tous": 0.7978283718525491,
+         "min": 0.7422553305471953,
+         "max": 0.8594905660442423
+        },
+        "jours": [
+         {
+          "tous": 1.0045224806791118,
+          "min": 0.9989182519263607,
+          "max": 1.009048871030203
+         },
+         {
+          "tous": 1.0146284045519645,
+          "min": 1.0061723356248227,
+          "max": 1.019433427928547
+         },
+         {
+          "tous": 1.003423696111808,
+          "min": 0.9941803110998025,
+          "max": 1.0062413474905472
+         },
+         {
+          "tous": 0.9908800911307449,
+          "min": 0.9884946317912835,
+          "max": 0.9977094192869292
+         },
+         {
+          "tous": 0.9999663108288541,
+          "min": 0.9961123756275094,
+          "max": 1.010448704147264
+         },
+         {
+          "tous": 0.9935582717039363,
+          "min": 0.9911313309123915,
+          "max": 1.000916701949086
+         },
+         {
+          "tous": 0.9930207449935806,
+          "min": 0.9875435468290339,
+          "max": 0.9961933982686393
+         }
+        ]
+       },
+       "erreurs": {
+        "semaines": 1.1172037437619446,
+        "parSemaine": [
+         {
+          "semaine": "2026-W36",
+          "erreur": 1.1456364372018382
+         },
+         {
+          "semaine": "2026-W37",
+          "erreur": 1.18840201218018
+         },
+         {
+          "semaine": "2026-W38",
+          "erreur": 1.1534493120518885
+         },
+         {
+          "semaine": "2026-W39",
+          "erreur": 1.145755065606462
+         },
+         {
+          "semaine": "2026-W40",
+          "erreur": 0.9872631828545394
+         },
+         {
+          "semaine": "2026-W41",
+          "erreur": 1.161984572746976
+         },
+         {
+          "semaine": "2026-W42",
+          "erreur": 1.0828974015758894
+         },
+         {
+          "semaine": "2026-W43",
+          "erreur": 1.117418380875754
+         },
+         {
+          "semaine": "2026-W44",
+          "erreur": 1.072027328763972
+         }
+        ],
+        "mois": 1.9362216400882875,
+        "parMois": [
+         {
+          "mois": "2026-09",
+          "erreur": 1.9023495056534936
+         },
+         {
+          "mois": "2026-10",
+          "erreur": 1.9700937745230813
+         }
+        ]
+       },
+       "regles": {
+        "battreReferences": {
+         "ok": true,
+         "raison": "accepté : plus juste que le moteur et la constante, chaque mois"
+        },
+        "stabilite": {
+         "ok": true,
+         "raison": "accepté : stable, ±1 %"
+        },
+        "bornes": {
+         "ok": true,
+         "raison": "accepté : a et b dans leurs bornes"
+        },
+        "wilcoxon": {
+         "ok": true,
+         "raison": "accepté : Wilcoxon contre « moteur », p < 0,001 (par mois)"
+        },
+        "placebo": {
+         "ok": true,
+         "raison": "accepté : simulé mélangé, gain -1,19 ETP contre 2,14 ETP"
+        }
+       },
+       "accepte": true,
+       "placebo": -1.1875361402957083
+      }
+     ],
+     "confondus": [],
+     "retenu": {
+      "modele": "x-a",
+      "nom": "× a",
+      "parametres": {
+       "a": 0.7978283718525491
+      },
+      "sigma": 1.9569628100628766,
+      "bande": 2.508043537376583
+     }
+    },
+    {
+     "nom": "Ligne 3",
+     "couvre": "fictif",
+     "cale": true,
+     "jours": 61,
+     "unSeulMois": false,
+     "validation": "semaines et mois",
+     "references": {
+      "moteur": {
+       "modele": "moteur",
+       "nom": "moteur",
+       "parametres": {},
+       "erreurs": {
+        "semaines": 3.3694253661465283,
+        "parSemaine": [
+         {
+          "semaine": "2026-W36",
+          "erreur": 1.634279898367822
+         },
+         {
+          "semaine": "2026-W37",
+          "erreur": 2.9139619648390043
+         },
+         {
+          "semaine": "2026-W38",
+          "erreur": 2.834372584741296
+         },
+         {
+          "semaine": "2026-W39",
+          "erreur": 1.481240881999422
+         },
+         {
+          "semaine": "2026-W40",
+          "erreur": 3.9883584293204217
+         },
+         {
+          "semaine": "2026-W41",
+          "erreur": 4.012197408978161
+         },
+         {
+          "semaine": "2026-W42",
+          "erreur": 4.33495277938699
+         },
+         {
+          "semaine": "2026-W43",
+          "erreur": 4.33542763363969
+         },
+         {
+          "semaine": "2026-W44",
+          "erreur": 4.790036714045951
+         }
+        ],
+        "mois": 3.3576642351255566,
+        "parMois": [
+         {
+          "mois": "2026-09",
+          "erreur": 2.3257011229669056
+         },
+         {
+          "mois": "2026-10",
+          "erreur": 4.389627347284208
+         }
+        ]
+       }
+      },
+      "constante": {
+       "modele": "constante",
+       "nom": "constante",
+       "parametres": {
+        "c": {
+         "tous": 13.395392406323431,
+         "min": 12.534333717704364,
+         "max": 14.28515305122981
+        }
+       },
+       "erreurs": {
+        "semaines": 3.6376625202188695,
+        "parSemaine": [
+         {
+          "semaine": "2026-W36",
+          "erreur": 3.074515941322808
+         },
+         {
+          "semaine": "2026-W37",
+          "erreur": 4.539284071048589
+         },
+         {
+          "semaine": "2026-W38",
+          "erreur": 4.080578444841463
+         },
+         {
+          "semaine": "2026-W39",
+          "erreur": 3.9342614035789762
+         },
+         {
+          "semaine": "2026-W40",
+          "erreur": 4.005889454392336
+         },
+         {
+          "semaine": "2026-W41",
+          "erreur": 3.3327835186653125
+         },
+         {
+          "semaine": "2026-W42",
+          "erreur": 3.852360165071373
+         },
+         {
+          "semaine": "2026-W43",
+          "erreur": 3.284668233690823
+         },
+         {
+          "semaine": "2026-W44",
+          "erreur": 2.6346214493581406
+         }
+        ],
+        "mois": 3.7027995695597333,
+        "parMois": [
+         {
+          "mois": "2026-09",
+          "erreur": 3.9181879064429705
+         },
+         {
+          "mois": "2026-10",
+          "erreur": 3.4874112326764966
+         }
+        ]
+       }
+      }
+     },
+     "candidats": [
+      {
+       "modele": "x-a",
+       "nom": "× a",
+       "parametres": {
+        "a": {
+         "tous": 0.79841563432148,
+         "min": 0.7449587697956036,
+         "max": 0.8548078180262002
+        }
+       },
+       "erreurs": {
+        "semaines": 1.1019375157577085,
+        "parSemaine": [
+         {
+          "semaine": "2026-W36",
+          "erreur": 1.076309192040044
+         },
+         {
+          "semaine": "2026-W37",
+          "erreur": 1.1732539228204284
+         },
+         {
+          "semaine": "2026-W38",
+          "erreur": 1.241045570708226
+         },
+         {
+          "semaine": "2026-W39",
+          "erreur": 1.0622046543501058
+         },
+         {
+          "semaine": "2026-W40",
+          "erreur": 1.004290835629439
+         },
+         {
+          "semaine": "2026-W41",
+          "erreur": 1.0887809126833081
+         },
+         {
+          "semaine": "2026-W42",
+          "erreur": 1.0617033207489537
+         },
+         {
+          "semaine": "2026-W43",
+          "erreur": 1.068953399569032
+         },
+         {
+          "semaine": "2026-W44",
+          "erreur": 1.1408958332698382
+         }
+        ],
+        "mois": 1.9215760364924712,
+        "parMois": [
+         {
+          "mois": "2026-09",
+          "erreur": 1.9107515603660592
+         },
+         {
+          "mois": "2026-10",
+          "erreur": 1.9324005126188835
+         }
+        ]
+       },
+       "regles": {
+        "battreReferences": {
+         "ok": true,
+         "raison": "accepté : plus juste que le moteur et la constante, chaque mois"
+        },
+        "stabilite": {
+         "ok": true,
+         "raison": "accepté : stable, ±1 %"
+        },
+        "bornes": {
+         "ok": true,
+         "raison": "accepté : a et b dans leurs bornes"
+        },
+        "wilcoxon": {
+         "ok": true,
+         "raison": "accepté : Wilcoxon contre « moteur », p < 0,001 (par mois)"
+        },
+        "placebo": {
+         "ok": true,
+         "raison": "accepté : simulé mélangé, gain -0,99 ETP contre 2,54 ETP"
+        }
+       },
+       "accepte": true,
+       "placebo": -0.9887262324398787
+      },
+      {
+       "modele": "b-x-a",
+       "nom": "b + a ×",
+       "parametres": {
+        "a": {
+         "tous": 0.794246305378054,
+         "min": 0.7449587697956036,
+         "max": 0.8038638945271257
+        },
+        "b": {
+         "tous": 0.07590246032365222,
+         "min": 0.02673230849315189,
+         "max": 0.993462553905152
+        }
+       },
+       "erreurs": {
+        "semaines": 1.1193817839082758,
+        "parSemaine": [
+         {
+          "semaine": "2026-W36",
+          "erreur": 1.076309192040044
+         },
+         {
+          "semaine": "2026-W37",
+          "erreur": 1.1928912901468145
+         },
+         {
+          "semaine": "2026-W38",
+          "erreur": 1.2587429050575418
+         },
+         {
+          "semaine": "2026-W39",
+          "erreur": 1.0622046543501058
+         },
+         {
+          "semaine": "2026-W40",
+          "erreur": 1.0144304907898125
+         },
+         {
+          "semaine": "2026-W41",
+          "erreur": 1.165322534618077
+         },
+         {
+          "semaine": "2026-W42",
+          "erreur": 1.0772824476730656
+         },
+         {
+          "semaine": "2026-W43",
+          "erreur": 1.087400757590247
+         },
+         {
+          "semaine": "2026-W44",
+          "erreur": 1.1398517829087742
+         }
+        ],
+        "mois": 1.9560565450284062,
+        "parMois": [
+         {
+          "mois": "2026-09",
+          "erreur": 1.9107515603660592
+         },
+         {
+          "mois": "2026-10",
+          "erreur": 2.001361529690753
+         }
+        ]
+       },
+       "regles": {
+        "battreReferences": {
+         "ok": true,
+         "raison": "accepté : plus juste que le moteur et la constante, chaque mois"
+        },
+        "stabilite": {
+         "ok": true,
+         "raison": "accepté : stable, ±2 %"
+        },
+        "bornes": {
+         "ok": true,
+         "raison": "accepté : a et b dans leurs bornes"
+        },
+        "wilcoxon": {
+         "ok": true,
+         "raison": "accepté : Wilcoxon contre « moteur », p < 0,001 (par mois)"
+        },
+        "placebo": {
+         "ok": true,
+         "raison": "accepté : simulé mélangé, gain -0,99 ETP contre 2,52 ETP"
+        }
+       },
+       "accepte": true,
+       "placebo": -0.9887262324398787
+      },
+      {
+       "modele": "x-a-jour",
+       "nom": "× a × jour",
+       "parametres": {
+        "a": {
+         "tous": 0.79841563432148,
+         "min": 0.7449587697956036,
+         "max": 0.8548078180262002
+        },
+        "jours": [
+         {
+          "tous": 0.9958125140686815,
+          "min": 0.9902715162372902,
+          "max": 1.001339205284997
+         },
+         {
+          "tous": 1.0051074620257743,
+          "min": 0.9993080746624443,
+          "max": 1.0070480266214579
+         },
+         {
+          "tous": 1.0120479706991214,
+          "min": 1.0045441331155165,
+          "max": 1.0147744611812812
+         },
+         {
+          "tous": 0.9939485613732955,
+          "min": 0.9905917862406857,
+          "max": 1.0030603101251212
+         },
+         {
+          "tous": 0.997191608455998,
+          "min": 0.994769720290785,
+          "max": 1.004977834702198
+         },
+         {
+          "tous": 0.9929513607811661,
+          "min": 0.9900371772867391,
+          "max": 1.0015034459734258
+         },
+         {
+          "tous": 1.0029405225959622,
+          "min": 0.9990663729890716,
+          "max": 1.009175782669164
+         }
+        ]
+       },
+       "erreurs": {
+        "semaines": 1.1024064790960506,
+        "parSemaine": [
+         {
+          "semaine": "2026-W36",
+          "erreur": 1.084815559896025
+         },
+         {
+          "semaine": "2026-W37",
+          "erreur": 1.1661532292659094
+         },
+         {
+          "semaine": "2026-W38",
+          "erreur": 1.2357352131182322
+         },
+         {
+          "semaine": "2026-W39",
+          "erreur": 1.071864193917195
+         },
+         {
+          "semaine": "2026-W40",
+          "erreur": 1.0009699751697458
+         },
+         {
+          "semaine": "2026-W41",
+          "erreur": 1.096063382816983
+         },
+         {
+          "semaine": "2026-W42",
+          "erreur": 1.0518093539728628
+         },
+         {
+          "semaine": "2026-W43",
+          "erreur": 1.0713829082845208
+         },
+         {
+          "semaine": "2026-W44",
+          "erreur": 1.142864495422983
+         }
+        ],
+        "mois": 1.9178634273903947,
+        "parMois": [
+         {
+          "mois": "2026-09",
+          "erreur": 1.9057497465720175
+         },
+         {
+          "mois": "2026-10",
+          "erreur": 1.9299771082087718
+         }
+        ]
+       },
+       "regles": {
+        "battreReferences": {
+         "ok": true,
+         "raison": "accepté : plus juste que le moteur et la constante, chaque mois"
+        },
+        "stabilite": {
+         "ok": true,
+         "raison": "accepté : stable, ±1 %"
+        },
+        "bornes": {
+         "ok": true,
+         "raison": "accepté : a et b dans leurs bornes"
+        },
+        "wilcoxon": {
+         "ok": true,
+         "raison": "accepté : Wilcoxon contre « moteur », p < 0,001 (par mois)"
+        },
+        "placebo": {
+         "ok": true,
+         "raison": "accepté : simulé mélangé, gain -1,07 ETP contre 2,54 ETP"
+        }
+       },
+       "accepte": true,
+       "placebo": -1.0663436615164403
+      }
+     ],
+     "confondus": [],
+     "retenu": {
+      "modele": "x-a",
+      "nom": "× a",
+      "parametres": {
+       "a": 0.79841563432148
+      },
+      "sigma": 1.9409983893917924,
+      "bande": 2.487583535844521
+     }
+    }
+   ],
+   "unite": {
+    "avant": {
+     "jours": 61,
+     "mae": 9.666759695981046,
+     "biais": 9.666759695981046
+    },
+    "apres": {
+     "jours": 61,
+     "mae": 5.78648400711043,
+     "biais": 0.23770707307765157
+    },
+    "validation": "mois",
+    "semaines": {
+     "avant": {
+      "jours": 61,
+      "mae": 9.666759695981046,
+      "biais": 9.666759695981046
+     },
+     "apres": {
+      "jours": 61,
+      "mae": 3.309458404335025,
+      "biais": -0.06170635775219621
+     }
+    }
+   }
+  },
+  "politique": {
+   "date": "2026-11-10",
+   "periode": null,
+   "signature": null,
+   "lignes": [
+    {
+     "nom": "Ligne 1",
+     "modele": "x-a",
+     "parametres": {
+      "a": 0.7953378285459568
+     },
+     "sigma": 1.9500571160700408,
+     "services": [
+      "s1"
+     ]
+    },
+    {
+     "nom": "Ligne 2",
+     "modele": "x-a",
+     "parametres": {
+      "a": 0.7978283718525491
+     },
+     "sigma": 1.9569628100628766,
+     "services": [
+      "s2"
+     ]
+    },
+    {
+     "nom": "Ligne 3",
+     "modele": "x-a",
+     "parametres": {
+      "a": 0.79841563432148
+     },
+     "sigma": 1.9409983893917924,
+     "services": [
+      "s3"
+     ]
+    }
+   ]
+  },
+  "prevu": {
+   "calage": {
+    "date": "2026-11-10",
+    "periode": null
+   },
+   "lignes": [
+    {
+     "nom": "Ligne 1",
+     "modele": "x-a",
+     "nomModele": "× a",
+     "sigma": 1.9500571160700408,
+     "jours": [
+      {
+       "date": "2026-11-02",
+       "simule": 8,
+       "prevu": 6.362702628367654,
+       "p10": 3.86350942841229,
+       "p90": 8.861895828323018
+      },
+      {
+       "date": "2026-11-03",
+       "simule": 9,
+       "prevu": 7.158040456913612,
+       "p10": 4.658847256958247,
+       "p90": 9.657233656868975
+      },
+      {
+       "date": "2026-11-04",
+       "simule": 10,
+       "prevu": 7.953378285459568,
+       "p10": 5.454185085504204,
+       "p90": 10.452571485414932
+      }
+     ]
+    },
+    {
+     "nom": "Ligne 2",
+     "modele": "x-a",
+     "nomModele": "× a",
+     "sigma": 1.9569628100628766,
+     "jours": [
+      {
+       "date": "2026-11-02",
+       "simule": 9,
+       "prevu": 7.180455346672941,
+       "p10": 4.672411809296358,
+       "p90": 9.688498884049524
+      },
+      {
+       "date": "2026-11-03",
+       "simule": 10,
+       "prevu": 7.978283718525491,
+       "p10": 5.470240181148908,
+       "p90": 10.486327255902074
+      },
+      {
+       "date": "2026-11-04",
+       "simule": 11,
+       "prevu": 8.77611209037804,
+       "p10": 6.2680685530014575,
+       "p90": 11.284155627754624
+      }
+     ]
+    },
+    {
+     "nom": "Ligne 3",
+     "modele": "x-a",
+     "nomModele": "× a",
+     "sigma": 1.9409983893917924,
+     "jours": [
+      {
+       "date": "2026-11-02",
+       "simule": 10,
+       "prevu": 7.9841563432148,
+       "p10": 5.4965728073702795,
+       "p90": 10.47173987905932
+      },
+      {
+       "date": "2026-11-03",
+       "simule": 11,
+       "prevu": 8.78257197753628,
+       "p10": 6.294988441691759,
+       "p90": 11.270155513380802
+      },
+      {
+       "date": "2026-11-04",
+       "simule": 12,
+       "prevu": 9.58098761185776,
+       "p10": 7.093404076013238,
+       "p90": 12.068571147702281
+      }
+     ]
+    }
+   ],
+   "unite": [
+    {
+     "date": "2026-11-02",
+     "simule": 27,
+     "prevu": 21.527314318255396,
+     "p10": 17.20015348418829,
+     "p90": 25.8544751523225
+    },
+    {
+     "date": "2026-11-03",
+     "simule": 30,
+     "prevu": 23.918896152975385,
+     "p10": 19.591735318908285,
+     "p90": 28.246056987042486
+    },
+    {
+     "date": "2026-11-04",
+     "simule": 33,
+     "prevu": 26.310477987695364,
+     "p10": 21.983317153628263,
+     "p90": 30.637638821762465
+    }
+   ],
+   "sigmaUnite": 3.3763739341971775
+  }
+ },
+ "opposes": {
+  "rapport": {
+   "schema": "ory-calage-rapport",
+   "version": 1,
+   "lignes": [
+    {
+     "nom": "Ligne 1",
+     "couvre": "fictif",
+     "cale": true,
+     "jours": 61,
+     "unSeulMois": false,
+     "validation": "semaines et mois",
+     "references": {
+      "moteur": {
+       "modele": "moteur",
+       "nom": "moteur",
+       "parametres": {},
+       "erreurs": {
+        "semaines": 3.101395820974613,
+        "parSemaine": [
+         {
+          "semaine": "2026-W36",
+          "erreur": 1.6463268050458275
+         },
+         {
+          "semaine": "2026-W37",
+          "erreur": 2.079842050320335
+         },
+         {
+          "semaine": "2026-W38",
+          "erreur": 1.4450079186287303
+         },
+         {
+          "semaine": "2026-W39",
+          "erreur": 2.1829970812957193
+         },
+         {
+          "semaine": "2026-W40",
+          "erreur": 3.461083444620349
+         },
+         {
+          "semaine": "2026-W41",
+          "erreur": 4.178635325389248
+         },
+         {
+          "semaine": "2026-W42",
+          "erreur": 3.904581445575291
+         },
+         {
+          "semaine": "2026-W43",
+          "erreur": 4.771224583286259
+         },
+         {
+          "semaine": "2026-W44",
+          "erreur": 4.242863734609757
+         }
+        ],
+        "mois": 3.0872185876266016,
+        "parMois": [
+         {
+          "mois": "2026-09",
+          "erreur": 1.9088062511042996
+         },
+         {
+          "mois": "2026-10",
+          "erreur": 4.265630924148904
+         }
+        ]
+       }
+      },
+      "constante": {
+       "modele": "constante",
+       "nom": "constante",
+       "parametres": {
+        "c": {
+         "tous": 12.32164415614985,
+         "min": 12.037901408754049,
+         "max": 12.614844995125509
+        }
+       },
+       "erreurs": {
+        "semaines": 2.9541124479159766,
+        "parSemaine": [
+         {
+          "semaine": "2026-W36",
+          "erreur": 2.281170165181217
+         },
+         {
+          "semaine": "2026-W37",
+          "erreur": 3.005302112775968
+         },
+         {
+          "semaine": "2026-W38",
+          "erreur": 3.2372155031056282
+         },
+         {
+          "semaine": "2026-W39",
+          "erreur": 3.1112875213356266
+         },
+         {
+          "semaine": "2026-W40",
+          "erreur": 3.0974715545743967
+         },
+         {
+          "semaine": "2026-W41",
+          "erreur": 2.2627576934220506
+         },
+         {
+          "semaine": "2026-W42",
+          "erreur": 4.17361199660818
+         },
+         {
+          "semaine": "2026-W43",
+          "erreur": 2.7869132543744013
+         },
+         {
+          "semaine": "2026-W44",
+          "erreur": 2.6312822298663248
+         }
+        ],
+        "mois": 2.9363080879127588,
+        "parMois": [
+         {
+          "mois": "2026-09",
+          "erreur": 2.852223601950813
+         },
+         {
+          "mois": "2026-10",
+          "erreur": 3.0203925738747044
+         }
+        ]
+       }
+      }
+     },
+     "candidats": [
+      {
+       "modele": "x-a",
+       "nom": "× a",
+       "parametres": {
+        "a": {
+         "tous": 0.7953378285459568,
+         "min": 0.7427743804487116,
+         "max": 0.8628047792035387
+        }
+       },
+       "erreurs": {
+        "semaines": 1.0952802198567186,
+        "parSemaine": [
+         {
+          "semaine": "2026-W36",
+          "erreur": 1.1234930889355201
+         },
+         {
+          "semaine": "2026-W37",
+          "erreur": 1.2031533183853718
+         },
+         {
+          "semaine": "2026-W38",
+          "erreur": 1.1105112985978287
+         },
+         {
+          "semaine": "2026-W39",
+          "erreur": 1.2209983204907597
+         },
+         {
+          "semaine": "2026-W40",
+          "erreur": 1.0060567870786878
+         },
+         {
+          "semaine": "2026-W41",
+          "erreur": 1.0379250916111142
+         },
+         {
+          "semaine": "2026-W42",
+          "erreur": 1.0490970736622869
+         },
+         {
+          "semaine": "2026-W43",
+          "erreur": 1.0969076163157978
+         },
+         {
+          "semaine": "2026-W44",
+          "erreur": 1.0093793836330993
+         }
+        ],
+        "mois": 1.9279565724140224,
+        "parMois": [
+         {
+          "mois": "2026-09",
+          "erreur": 1.8270489388540054
+         },
+         {
+          "mois": "2026-10",
+          "erreur": 2.028864205974039
+         }
+        ]
+       },
+       "regles": {
+        "battreReferences": {
+         "ok": true,
+         "raison": "accepté : plus juste que le moteur et la constante, chaque mois"
+        },
+        "stabilite": {
+         "ok": true,
+         "raison": "accepté : stable, ±1 %"
+        },
+        "bornes": {
+         "ok": true,
+         "raison": "accepté : a et b dans leurs bornes"
+        },
+        "wilcoxon": {
+         "ok": true,
+         "raison": "accepté : Wilcoxon contre « constante », p = 0,001 (par mois)"
+        },
+        "placebo": {
+         "ok": true,
+         "raison": "accepté : simulé mélangé, gain -1,14 ETP contre 1,86 ETP"
+        }
+       },
+       "accepte": true,
+       "placebo": -1.1427547526788198
+      },
+      {
+       "modele": "b-x-a",
+       "nom": "b + a ×",
+       "parametres": {
+        "a": {
+         "tous": 0.7564076223863545,
+         "min": 0.7403815138168125,
+         "max": 0.7988356521612758
+        },
+        "b": {
+         "tous": 0.6516504642282968,
+         "min": 0.2638383900291572,
+         "max": 1.0360835893705733
+        }
+       },
+       "erreurs": {
+        "semaines": 1.0862769865203314,
+        "parSemaine": [
+         {
+          "semaine": "2026-W36",
+          "erreur": 1.0320712573752056
+         },
+         {
+          "semaine": "2026-W37",
+          "erreur": 1.155661946731423
+         },
+         {
+          "semaine": "2026-W38",
+          "erreur": 1.0340737452885675
+         },
+         {
+          "semaine": "2026-W39",
+          "erreur": 1.1925172647194848
+         },
+         {
+          "semaine": "2026-W40",
+          "erreur": 1.042620049396041
+         },
+         {
+          "semaine": "2026-W41",
+          "erreur": 1.0770079355356372
+         },
+         {
+          "semaine": "2026-W42",
+          "erreur": 1.1954206752104664
+         },
+         {
+          "semaine": "2026-W43",
+          "erreur": 1.0225199846748747
+         },
+         {
+          "semaine": "2026-W44",
+          "erreur": 1.0246000197512835
+         }
+        ],
+        "mois": 1.9129124969337643,
+        "parMois": [
+         {
+          "mois": "2026-09",
+          "erreur": 1.8270489388540054
+         },
+         {
+          "mois": "2026-10",
+          "erreur": 1.9987760550135234
+         }
+        ]
+       },
+       "regles": {
+        "battreReferences": {
+         "ok": true,
+         "raison": "accepté : plus juste que le moteur et la constante, chaque mois"
+        },
+        "stabilite": {
+         "ok": true,
+         "raison": "accepté : stable, ±2 %"
+        },
+        "bornes": {
+         "ok": true,
+         "raison": "accepté : a et b dans leurs bornes"
+        },
+        "wilcoxon": {
+         "ok": true,
+         "raison": "accepté : Wilcoxon contre « constante », p < 0,001 (par mois)"
+        },
+        "placebo": {
+         "ok": true,
+         "raison": "accepté : simulé mélangé, gain -1,14 ETP contre 1,87 ETP"
+        }
+       },
+       "accepte": true,
+       "placebo": -1.1427547526788198
+      },
+      {
+       "modele": "x-a-jour",
+       "nom": "× a × jour",
+       "parametres": {
+        "a": {
+         "tous": 0.7953378285459568,
+         "min": 0.7427743804487116,
+         "max": 0.8628047792035387
+        },
+        "jours": [
+         {
+          "tous": 1.0001407806878029,
+          "min": 0.9928285384806825,
+          "max": 1.005424654865809
+         },
+         {
+          "tous": 1.0090990251334948,
+          "min": 1.0015330955524946,
+          "max": 1.0106900097366331
+         },
+         {
+          "tous": 0.9937436959341039,
+          "min": 0.987077795118873,
+          "max": 0.9969502185686768
+         },
+         {
+          "tous": 1.0055906920617717,
+          "min": 1.0026877694190128,
+          "max": 1.0173746997453803
+         },
+         {
+          "tous": 0.9903739565512573,
+          "min": 0.9879251672894809,
+          "max": 0.9957658640376919
+         },
+         {
+          "tous": 0.9941106030331996,
+          "min": 0.9925765573766421,
+          "max": 1.0021624154083466
+         },
+         {
+          "tous": 1.00694124659837,
+          "min": 1.0023887341602333,
+          "max": 1.012894844832853
+         }
+        ]
+       },
+       "erreurs": {
+        "semaines": 1.108469226195492,
+        "parSemaine": [
+         {
+          "semaine": "2026-W36",
+          "erreur": 1.144827637652188
+         },
+         {
+          "semaine": "2026-W37",
+          "erreur": 1.2080505602871052
+         },
+         {
+          "semaine": "2026-W38",
+          "erreur": 1.1228953107624227
+         },
+         {
+          "semaine": "2026-W39",
+          "erreur": 1.23955191293433
+         },
+         {
+          "semaine": "2026-W40",
+          "erreur": 1.0465474383451074
+         },
+         {
+          "semaine": "2026-W41",
+          "erreur": 1.0495594310182843
+         },
+         {
+          "semaine": "2026-W42",
+          "erreur": 1.05949538222535
+         },
+         {
+          "semaine": "2026-W43",
+          "erreur": 1.0879567193637514
+         },
+         {
+          "semaine": "2026-W44",
+          "erreur": 1.0173386431708888
+         }
+        ],
+        "mois": 1.9416715453746902,
+        "parMois": [
+         {
+          "mois": "2026-09",
+          "erreur": 1.8402816923307086
+         },
+         {
+          "mois": "2026-10",
+          "erreur": 2.0430613984186716
+         }
+        ]
+       },
+       "regles": {
+        "battreReferences": {
+         "ok": true,
+         "raison": "accepté : plus juste que le moteur et la constante, chaque mois"
+        },
+        "stabilite": {
+         "ok": true,
+         "raison": "accepté : stable, ±1 %"
+        },
+        "bornes": {
+         "ok": true,
+         "raison": "accepté : a et b dans leurs bornes"
+        },
+        "wilcoxon": {
+         "ok": true,
+         "raison": "accepté : Wilcoxon contre « constante », p = 0,002 (par mois)"
+        },
+        "placebo": {
+         "ok": true,
+         "raison": "accepté : simulé mélangé, gain -1,27 ETP contre 1,85 ETP"
+        }
+       },
+       "accepte": true,
+       "placebo": -1.2671100731669094
+      }
+     ],
+     "confondus": [],
+     "retenu": {
+      "modele": "x-a",
+      "nom": "× a",
+      "parametres": {
+       "a": 0.7953378285459568
+      },
+      "sigma": 1.9500571160700408,
+      "bande": 2.4991931999553643
+     }
+    },
+    {
+     "nom": "Ligne 2",
+     "couvre": "fictif",
+     "cale": true,
+     "jours": 61,
+     "unSeulMois": false,
+     "validation": "semaines et mois",
+     "references": {
+      "moteur": {
+       "modele": "moteur",
+       "nom": "moteur",
+       "parametres": {},
+       "erreurs": {
+        "semaines": 3.154325937475915,
+        "parSemaine": [
+         {
+          "semaine": "2026-W36",
+          "erreur": 4.190303351706824
+         },
+         {
+          "semaine": "2026-W37",
+          "erreur": 4.24690200757967
+         },
+         {
+          "semaine": "2026-W38",
+          "erreur": 4.153975965970728
+         },
+         {
+          "semaine": "2026-W39",
+          "erreur": 3.7964046959332856
+         },
+         {
+          "semaine": "2026-W40",
+          "erreur": 2.7390066512561
+         },
+         {
+          "semaine": "2026-W41",
+          "erreur": 2.795416367183705
+         },
+         {
+          "semaine": "2026-W42",
+          "erreur": 1.9054813981954268
+         },
+         {
+          "semaine": "2026-W43",
+          "erreur": 2.353326108462974
+         },
+         {
+          "semaine": "2026-W44",
+          "erreur": 2.208116890994521
+         }
+        ],
+        "mois": 3.1682747447094126,
+        "parMois": [
+         {
+          "mois": "2026-09",
+          "erreur": 4.108920353702269
+         },
+         {
+          "mois": "2026-10",
+          "erreur": 2.227629135716556
+         }
+        ]
+       }
+      },
+      "constante": {
+       "modele": "constante",
+       "nom": "constante",
+       "parametres": {
+        "c": {
+         "tous": 12.68392811730222,
+         "min": 11.458332356510995,
+         "max": 13.86998853097114
+        }
+       },
+       "erreurs": {
+        "semaines": 3.388907945242768,
+        "parSemaine": [
+         {
+          "semaine": "2026-W36",
+          "erreur": 2.310954810504265
+         },
+         {
+          "semaine": "2026-W37",
+          "erreur": 4.25520776630744
+         },
+         {
+          "semaine": "2026-W38",
+          "erreur": 2.497431261097845
+         },
+         {
+          "semaine": "2026-W39",
+          "erreur": 4.536740084158788
+         },
+         {
+          "semaine": "2026-W40",
+          "erreur": 3.0646770224093447
+         },
+         {
+          "semaine": "2026-W41",
+          "erreur": 4.801361795684087
+         },
+         {
+          "semaine": "2026-W42",
+          "erreur": 2.658952985522116
+         },
+         {
+          "semaine": "2026-W43",
+          "erreur": 3.773946340100484
+         },
+         {
+          "semaine": "2026-W44",
+          "erreur": 2.600899441400543
+         }
+        ],
+        "mois": 3.719038752458629,
+        "parMois": [
+         {
+          "mois": "2026-09",
+          "erreur": 3.7206684594075647
+         },
+         {
+          "mois": "2026-10",
+          "erreur": 3.7174090455096938
+         }
+        ]
+       }
+      }
+     },
+     "candidats": [
+      {
+       "modele": "x-a",
+       "nom": "× a",
+       "parametres": {
+        "a": {
+         "tous": 0.8016737065088928,
+         "min": 0.7411332400016825,
+         "max": 0.8562357909425327
+        }
+       },
+       "erreurs": {
+        "semaines": 1.0981668585317357,
+        "parSemaine": [
+         {
+          "semaine": "2026-W36",
+          "erreur": 1.1565122954504468
+         },
+         {
+          "semaine": "2026-W37",
+          "erreur": 1.1469443122183043
+         },
+         {
+          "semaine": "2026-W38",
+          "erreur": 1.1541047787112284
+         },
+         {
+          "semaine": "2026-W39",
+          "erreur": 1.0857546203653294
+         },
+         {
+          "semaine": "2026-W40",
+          "erreur": 0.9895771871963713
+         },
+         {
+          "semaine": "2026-W41",
+          "erreur": 1.114760503831631
+         },
+         {
+          "semaine": "2026-W42",
+          "erreur": 1.0568045248447555
+         },
+         {
+          "semaine": "2026-W43",
+          "erreur": 1.0712661082609227
+         },
+         {
+          "semaine": "2026-W44",
+          "erreur": 1.10777739590663
+         }
+        ],
+        "mois": 1.9052077869856543,
+        "parMois": [
+         {
+          "mois": "2026-09",
+          "erreur": 1.8709065806207439
+         },
+         {
+          "mois": "2026-10",
+          "erreur": 1.9395089933505647
+         }
+        ]
+       },
+       "regles": {
+        "battreReferences": {
+         "ok": true,
+         "raison": "accepté : plus juste que le moteur et la constante, chaque mois"
+        },
+        "stabilite": {
+         "ok": true,
+         "raison": "accepté : stable, ±1 %"
+        },
+        "bornes": {
+         "ok": true,
+         "raison": "accepté : a et b dans leurs bornes"
+        },
+        "wilcoxon": {
+         "ok": true,
+         "raison": "accepté : Wilcoxon contre « moteur », p < 0,001 (par mois)"
+        },
+        "placebo": {
+         "ok": true,
+         "raison": "accepté : simulé mélangé, gain -1,01 ETP contre 2,29 ETP"
+        }
+       },
+       "accepte": true,
+       "placebo": -1.0083468696732032
+      },
+      {
+       "modele": "x-a-jour",
+       "nom": "× a × jour",
+       "parametres": {
+        "a": {
+         "tous": 0.8016737065088928,
+         "min": 0.7411332400016825,
+         "max": 0.8562357909425327
+        },
+        "jours": [
+         {
+          "tous": 0.9973931523724091,
+          "min": 0.992783361241445,
+          "max": 1.0035618076737123
+         },
+         {
+          "tous": 0.9844143359887504,
+          "min": 0.9802983245209229,
+          "max": 0.9908074933172228
+         },
+         {
+          "tous": 0.9978121122693131,
+          "min": 0.9951685862315645,
+          "max": 1.007242283088248
+         },
+         {
+          "tous": 1.0064465605780808,
+          "min": 0.9997708391209661,
+          "max": 1.0091829244903345
+         },
+         {
+          "tous": 0.9991709186972426,
+          "min": 0.9844182546156173,
+          "max": 1.0028184814781265
+         },
+         {
+          "tous": 1.0068796550546775,
+          "min": 0.9991786380523615,
+          "max": 1.0096523017396422
+         },
+         {
+          "tous": 1.0078832650395266,
+          "min": 1.004782835990485,
+          "max": 1.012716838524314
+         }
+        ]
+       },
+       "erreurs": {
+        "semaines": 1.106230219439787,
+        "parSemaine": [
+         {
+          "semaine": "2026-W36",
+          "erreur": 1.1890645040524432
+         },
+         {
+          "semaine": "2026-W37",
+          "erreur": 1.156841559652051
+         },
+         {
+          "semaine": "2026-W38",
+          "erreur": 1.161706285388399
+         },
+         {
+          "semaine": "2026-W39",
+          "erreur": 1.0717954256749442
+         },
+         {
+          "semaine": "2026-W40",
+          "erreur": 0.9723873234835484
+         },
+         {
+          "semaine": "2026-W41",
+          "erreur": 1.1255627158348709
+         },
+         {
+          "semaine": "2026-W42",
+          "erreur": 1.0636008868524272
+         },
+         {
+          "semaine": "2026-W43",
+          "erreur": 1.0680902669329446
+         },
+         {
+          "semaine": "2026-W44",
+          "erreur": 1.1470230070864549
+         }
+        ],
+        "mois": 1.908912765965518,
+        "parMois": [
+         {
+          "mois": "2026-09",
+          "erreur": 1.870483962901569
+         },
+         {
+          "mois": "2026-10",
+          "erreur": 1.9473415690294673
+         }
+        ]
+       },
+       "regles": {
+        "battreReferences": {
+         "ok": true,
+         "raison": "accepté : plus juste que le moteur et la constante, chaque mois"
+        },
+        "stabilite": {
+         "ok": true,
+         "raison": "accepté : stable, ±1 %"
+        },
+        "bornes": {
+         "ok": true,
+         "raison": "accepté : a et b dans leurs bornes"
+        },
+        "wilcoxon": {
+         "ok": true,
+         "raison": "accepté : Wilcoxon contre « moteur », p < 0,001 (par mois)"
+        },
+        "placebo": {
+         "ok": true,
+         "raison": "accepté : simulé mélangé, gain -1,14 ETP contre 2,28 ETP"
+        }
+       },
+       "accepte": true,
+       "placebo": -1.1417467475408336
+      }
+     ],
+     "confondus": [
+      {
+       "modele": "b-x-a",
+       "nom": "b + a ×",
+       "avec": "x-a",
+       "a": 0.8102701178619942,
+       "b": -0.14814345868751388,
+       "raison": "se confond avec « × a » : moindres carrés hors bornes (a = 0,81 ; b = -0,15)"
+      }
+     ],
+     "retenu": {
+      "modele": "x-a",
+      "nom": "× a",
+      "parametres": {
+       "a": 0.8016737065088928
+      },
+      "sigma": 1.9244017651907372,
+      "bande": 2.466313302268449
+     }
+    },
+    {
+     "nom": "Ligne 3",
+     "couvre": "fictif",
+     "cale": true,
+     "jours": 61,
+     "unSeulMois": false,
+     "validation": "semaines et mois",
+     "references": {
+      "moteur": {
+       "modele": "moteur",
+       "nom": "moteur",
+       "parametres": {},
+       "erreurs": {
+        "semaines": 3.3535523502735125,
+        "parSemaine": [
+         {
+          "semaine": "2026-W36",
+          "erreur": 2.6342798983678217
+         },
+         {
+          "semaine": "2026-W37",
+          "erreur": 3.913961964839004
+         },
+         {
+          "semaine": "2026-W38",
+          "erreur": 3.834372584741296
+         },
+         {
+          "semaine": "2026-W39",
+          "erreur": 2.481240881999422
+         },
+         {
+          "semaine": "2026-W40",
+          "erreur": 3.845501286463279
+         },
+         {
+          "semaine": "2026-W41",
+          "erreur": 3.012197408978161
+         },
+         {
+          "semaine": "2026-W42",
+          "erreur": 3.3349527793869904
+         },
+         {
+          "semaine": "2026-W43",
+          "erreur": 3.33542763363969
+         },
+         {
+          "semaine": "2026-W44",
+          "erreur": 3.7900367140459514
+         }
+        ],
+        "mois": 3.357664235125556,
+        "parMois": [
+         {
+          "mois": "2026-09",
+          "erreur": 3.325701122966905
+         },
+         {
+          "mois": "2026-10",
+          "erreur": 3.3896273472842076
+         }
+        ]
+       }
+      },
+      "constante": {
+       "modele": "constante",
+       "nom": "constante",
+       "parametres": {
+        "c": {
+         "tous": 13.411785848946382,
+         "min": 13.137333063056897,
+         "max": 13.875644049127756
+        }
+       },
+       "erreurs": {
+        "semaines": 3.5443635284534962,
+        "parSemaine": [
+         {
+          "semaine": "2026-W36",
+          "erreur": 3.7328180293933557
+         },
+         {
+          "semaine": "2026-W37",
+          "erreur": 3.719178250942766
+         },
+         {
+          "semaine": "2026-W38",
+          "erreur": 3.260472624735642
+         },
+         {
+          "semaine": "2026-W39",
+          "erreur": 4.754367223684796
+         },
+         {
+          "semaine": "2026-W40",
+          "erreur": 3.577318025820906
+         },
+         {
+          "semaine": "2026-W41",
+          "erreur": 2.8527954583093202
+         },
+         {
+          "semaine": "2026-W42",
+          "erreur": 3.693630006341214
+         },
+         {
+          "semaine": "2026-W43",
+          "erreur": 3.443398392420982
+         },
+         {
+          "semaine": "2026-W44",
+          "erreur": 2.8652937444324884
+         }
+        ],
+        "mois": 3.432262659847476,
+        "parMois": [
+         {
+          "mois": "2026-09",
+          "erreur": 3.5866550226354343
+         },
+         {
+          "mois": "2026-10",
+          "erreur": 3.2778702970595175
+         }
+        ]
+       }
+      }
+     },
+     "candidats": [
+      {
+       "modele": "x-a",
+       "nom": "× a",
+       "parametres": {
+        "a": {
+         "tous": 0.7998287809620142,
+         "min": 0.7994897667537516,
+         "max": 0.8001003651753316
+        }
+       },
+       "erreurs": {
+        "semaines": 0.04778473768755743,
+        "parSemaine": [
+         {
+          "semaine": "2026-W36",
+          "erreur": 0.031080350244940973
+         },
+         {
+          "semaine": "2026-W37",
+          "erreur": 0.04149406214041816
+         },
+         {
+          "semaine": "2026-W38",
+          "erreur": 0.06378378851606621
+         },
+         {
+          "semaine": "2026-W39",
+          "erreur": 0.02624644257998186
+         },
+         {
+          "semaine": "2026-W40",
+          "erreur": 0.02257224911403683
+         },
+         {
+          "semaine": "2026-W41",
+          "erreur": 0.057482505807924814
+         },
+         {
+          "semaine": "2026-W42",
+          "erreur": 0.05473611621785184
+         },
+         {
+          "semaine": "2026-W43",
+          "erreur": 0.04781240219675593
+         },
+         {
+          "semaine": "2026-W44",
+          "erreur": 0.08485472237004021
+         }
+        ],
+        "mois": 0.04592355287728134,
+        "parMois": [
+         {
+          "mois": "2026-09",
+          "erreur": 0.03599716679068005
+         },
+         {
+          "mois": "2026-10",
+          "erreur": 0.05584993896388262
+         }
+        ]
+       },
+       "regles": {
+        "battreReferences": {
+         "ok": true,
+         "raison": "accepté : plus juste que le moteur et la constante, chaque mois"
+        },
+        "stabilite": {
+         "ok": true,
+         "raison": "accepté : stable, ±0 %"
+        },
+        "bornes": {
+         "ok": true,
+         "raison": "accepté : a et b dans leurs bornes"
+        },
+        "wilcoxon": {
+         "ok": true,
+         "raison": "accepté : Wilcoxon contre « moteur », p < 0,001 (par mois)"
+        },
+        "placebo": {
+         "ok": true,
+         "raison": "accepté : simulé mélangé, gain -1,06 ETP contre 3,5 ETP"
+        }
+       },
+       "accepte": true,
+       "placebo": -1.0646080735922543
+      },
+      {
+       "modele": "x-a-jour",
+       "nom": "× a × jour",
+       "parametres": {
+        "a": {
+         "tous": 0.7998287809620142,
+         "min": 0.7994897667537516,
+         "max": 0.8001003651753316
+        },
+        "jours": [
+         {
+          "tous": 1.0000526355970998,
+          "min": 0.9996503651497621,
+          "max": 1.000578871769221
+         },
+         {
+          "tous": 0.9992992751969353,
+          "min": 0.9990054043036879,
+          "max": 0.9994591038328746
+         },
+         {
+          "tous": 1.001387409533248,
+          "min": 0.9999724222069866,
+          "max": 1.0030329305575354
+         },
+         {
+          "tous": 1.0001116838100015,
+          "min": 0.9990682173851471,
+          "max": 1.001316296332056
+         },
+         {
+          "tous": 1.000213895103645,
+          "min": 0.99928992565061,
+          "max": 1.0012691444413009
+         },
+         {
+          "tous": 0.9999839645776871,
+          "min": 0.9995410104032918,
+          "max": 1.0004201668218622
+         },
+         {
+          "tous": 0.998951136181383,
+          "min": 0.998375032637901,
+          "max": 0.9994285893234518
+         }
+        ]
+       },
+       "erreurs": {
+        "semaines": 0.04842067248046622,
+        "parSemaine": [
+         {
+          "semaine": "2026-W36",
+          "erreur": 0.02682971432270594
+         },
+         {
+          "semaine": "2026-W37",
+          "erreur": 0.043027336882501696
+         },
+         {
+          "semaine": "2026-W38",
+          "erreur": 0.07349266519042987
+         },
+         {
+          "semaine": "2026-W39",
+          "erreur": 0.024079939208906737
+         },
+         {
+          "semaine": "2026-W40",
+          "erreur": 0.030954649399774326
+         },
+         {
+          "semaine": "2026-W41",
+          "erreur": 0.05477742472541219
+         },
+         {
+          "semaine": "2026-W42",
+          "erreur": 0.05221834199607654
+         },
+         {
+          "semaine": "2026-W43",
+          "erreur": 0.04627068548450947
+         },
+         {
+          "semaine": "2026-W44",
+          "erreur": 0.08413529511387925
+         }
+        ],
+        "mois": 0.049386015402455005,
+        "parMois": [
+         {
+          "mois": "2026-09",
+          "erreur": 0.04150820168549207
+         },
+         {
+          "mois": "2026-10",
+          "erreur": 0.05726382911941795
+         }
+        ]
+       },
+       "regles": {
+        "battreReferences": {
+         "ok": true,
+         "raison": "accepté : plus juste que le moteur et la constante, chaque mois"
+        },
+        "stabilite": {
+         "ok": true,
+         "raison": "accepté : stable, ±0 %"
+        },
+        "bornes": {
+         "ok": true,
+         "raison": "accepté : a et b dans leurs bornes"
+        },
+        "wilcoxon": {
+         "ok": true,
+         "raison": "accepté : Wilcoxon contre « moteur », p < 0,001 (par mois)"
+        },
+        "placebo": {
+         "ok": true,
+         "raison": "accepté : simulé mélangé, gain -1,15 ETP contre 3,5 ETP"
+        }
+       },
+       "accepte": true,
+       "placebo": -1.1460231107878833
+      }
+     ],
+     "confondus": [
+      {
+       "modele": "b-x-a",
+       "nom": "b + a ×",
+       "avec": "x-a",
+       "a": 0.8007500925987322,
+       "b": -0.016772440097827968,
+       "raison": "se confond avec « × a » : moindres carrés hors bornes (a = 0,8 ; b = -0,02)"
+      }
+     ],
+     "retenu": {
+      "modele": "x-a",
+      "nom": "× a",
+      "parametres": {
+       "a": 0.7998287809620142
+      },
+      "sigma": 0.05624975841358998,
+      "bande": 0.07208969038285692
+     }
+    }
+   ],
+   "unite": {
+    "avant": {
+     "jours": 61,
+     "mae": 9.617579368112196,
+     "biais": 9.617579368112196
+    },
+    "apres": {
+     "jours": 61,
+     "mae": 0.3161576470693824,
+     "biais": 0.0682952452648895
+    },
+    "validation": "mois",
+    "semaines": {
+     "avant": {
+      "jours": 61,
+      "mae": 9.617579368112196,
+      "biais": 9.617579368112196
+     },
+     "apres": {
+      "jours": 61,
+      "mae": 0.0920061727632032,
+      "biais": -0.03465769299742935
+     }
+    }
+   }
+  },
+  "politique": {
+   "date": "2026-11-10",
+   "periode": null,
+   "signature": null,
+   "lignes": [
+    {
+     "nom": "Ligne 1",
+     "modele": "x-a",
+     "parametres": {
+      "a": 0.7953378285459568
+     },
+     "sigma": 1.9500571160700408,
+     "services": [
+      "s1"
+     ]
+    },
+    {
+     "nom": "Ligne 2",
+     "modele": "x-a",
+     "parametres": {
+      "a": 0.8016737065088928
+     },
+     "sigma": 1.9244017651907372,
+     "services": [
+      "s2"
+     ]
+    },
+    {
+     "nom": "Ligne 3",
+     "modele": "x-a",
+     "parametres": {
+      "a": 0.7998287809620142
+     },
+     "sigma": 0.05624975841358998,
+     "services": [
+      "s3"
+     ]
+    }
+   ]
+  },
+  "prevu": {
+   "calage": {
+    "date": "2026-11-10",
+    "periode": null
+   },
+   "lignes": [
+    {
+     "nom": "Ligne 1",
+     "modele": "x-a",
+     "nomModele": "× a",
+     "sigma": 1.9500571160700408,
+     "jours": [
+      {
+       "date": "2026-11-02",
+       "simule": 8,
+       "prevu": 6.362702628367654,
+       "p10": 3.86350942841229,
+       "p90": 8.861895828323018
+      },
+      {
+       "date": "2026-11-03",
+       "simule": 9,
+       "prevu": 7.158040456913612,
+       "p10": 4.658847256958247,
+       "p90": 9.657233656868975
+      },
+      {
+       "date": "2026-11-04",
+       "simule": 10,
+       "prevu": 7.953378285459568,
+       "p10": 5.454185085504204,
+       "p90": 10.452571485414932
+      }
+     ]
+    },
+    {
+     "nom": "Ligne 2",
+     "modele": "x-a",
+     "nomModele": "× a",
+     "sigma": 1.9244017651907372,
+     "jours": [
+      {
+       "date": "2026-11-02",
+       "simule": 9,
+       "prevu": 7.215063358580036,
+       "p10": 4.748750056311587,
+       "p90": 9.681376660848485
+      },
+      {
+       "date": "2026-11-03",
+       "simule": 10,
+       "prevu": 8.016737065088929,
+       "p10": 5.55042376282048,
+       "p90": 10.483050367357379
+      },
+      {
+       "date": "2026-11-04",
+       "simule": 11,
+       "prevu": 8.81841077159782,
+       "p10": 6.3520974693293715,
+       "p90": 11.284724073866268
+      }
+     ]
+    },
+    {
+     "nom": "Ligne 3",
+     "modele": "x-a",
+     "nomModele": "× a",
+     "sigma": 0.05624975841358998,
+     "jours": [
+      {
+       "date": "2026-11-02",
+       "simule": 10,
+       "prevu": 7.998287809620141,
+       "p10": 7.926198119237284,
+       "p90": 8.070377500002998
+      },
+      {
+       "date": "2026-11-03",
+       "simule": 11,
+       "prevu": 8.798116590582156,
+       "p10": 8.7260269001993,
+       "p90": 8.870206280965013
+      },
+      {
+       "date": "2026-11-04",
+       "simule": 12,
+       "prevu": 9.59794537154417,
+       "p10": 9.525855681161314,
+       "p90": 9.670035061927027
+      }
+     ]
+    }
+   ],
+   "unite": [
+    {
+     "date": "2026-11-02",
+     "simule": 27,
+     "prevu": 21.57605379656783,
+     "p10": 18.064093534960513,
+     "p90": 25.088014058175148
+    },
+    {
+     "date": "2026-11-03",
+     "simule": 30,
+     "prevu": 23.972894112584697,
+     "p10": 20.46093385097738,
+     "p90": 27.484854374192015
+    },
+    {
+     "date": "2026-11-04",
+     "simule": 33,
+     "prevu": 26.36973442860156,
+     "p10": 22.857774166994243,
+     "p90": 29.881694690208878
+    }
+   ],
+   "sigmaUnite": 2.7402935873964704
+  }
+ }
+}
