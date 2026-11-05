@@ -2486,3 +2486,153 @@ comptés une fois) ; une équipe qui reçoit des renforts et une équipe
 surchargée, son lot coupé (consommé ≤ 100 %) ; la
 non-régression sur les journées de référence (`tests/indicateurs-definitions.attendu.json`,
 les indicateurs d'avant la correction).
+
+## 14. Lire l'export Winrest tel quel (évolution 13)
+
+L'utilisateur importe tel quel l'export « Flights » de Winrest (l'onglet
+« Flights » d'un export-flights `.xlsx`, ou un CSV aux mêmes colonnes). Le
+site en tire le programme de vols daté de l'évolution 10, sans retraitement à
+la main, avec un rapport d'import (exigences D9 et D11 du cahier des charges).
+
+> ⚠ Les listes propres à l'unité (compagnies exclues, numéros de vol exclus,
+> vols fictifs, codes compagnie) sont des **réglages** de l'utilisateur :
+> jamais dans le code, les tests ou la doc. Les exemples ci-dessous sont
+> fictifs. Un export réel ne va jamais dans le dépôt (`.gitignore` refuse
+> `*.xlsx`, `*winrest*` et `*Winrest*` ; c'est pourquoi les fichiers de
+> l'évolution s'appellent `import-flights`).
+
+### Le module
+
+`moteur/import-flights.js`, sans navigateur (`OrlyWinrest` dans la page) :
+`convertir(lignes, regles, { fichier })` prend les lignes de l'onglet
+« Flights » (en-têtes en première ligne) et les règles d'import, et rend
+`{ vols, rapport }` : le programme daté (un objet par vol, aux colonnes du CSV
+daté) et le rapport. `lignesDeLExport(feuilles)` trouve l'onglet « Flights »
+d'un classeur lu par `tableur.js` (le nom sans casse ; une seule feuille, ou
+un CSV : la table elle-même). `versCsv(vols)` écrit le CSV daté, que l'import
+de la page et `simuler-periode` lisent tels quels. La page et l'outil
+appellent ce même module : un seul chemin de calcul.
+
+### Les règles, dans cet ordre
+
+1. **Les colonnes se trouvent par leur en-tête** (sans casse ni accents) :
+   Date (jj/mm/aaaa), Delivery No, Flight No, ICAO, ETD (hh:mm), Statut,
+   Guest type, Guest qty. Les autres colonnes sont ignorées : les prix et les
+   montants ne sont ni gardés, ni affichés, ni exportés. Une colonne manquante
+   refuse le fichier entier, en la nommant. Une cellule de date ou d'heure
+   d'Excel (un nombre) se lit aussi.
+2. **Une livraison (Delivery No) = un vol.** Sa date, son Flight No et son
+   ICAO sont ceux de sa première ligne ; son heure, la plus tôt de ses ETD.
+3. **Guest qty se compte une fois** par livraison et par Guest type : il est
+   répété sur chaque ligne de prestation. La première quantité écrite compte ;
+   une case vide ne dit rien (elle ne compte pas pour 0 si une autre ligne
+   donne la quantité).
+4. **Les classes** : une table Guest type → classe (BC, PC, YC, CREW,
+   SPML BC, SPML PC, SPML YC, ou « ignoré »). Par défaut : ECONOMY → YC ;
+   BUSINESS et FIRST → BC ; PREMIUM → PC ; CREW, PNC, PNT et CDB → CREW ;
+   ECO SPML → SPML YC ; BUSINESS SPML → SPML BC ; PREMIUM SPML → SPML PC.
+   Le type se compare en capitales, les espaces réduits. Tout autre type, ou
+   un type vide, est ignoré et listé au rapport avec ses quantités ; un type
+   que la table dit « ignoré » l'est sans être listé.
+5. **Les statuts exclus** : par défaut, Cancelled (sans tenir compte de la
+   casse).
+6. **Les ICAO exclus et les Flight No exclus** : deux listes, en égalité
+   exacte. Par défaut, vides.
+7. **Les codes compagnie** : une table ICAO → compagnie du programme. Sans
+   entrée, l'ICAO tel quel.
+8. **Le vol_id** : le Flight No, les espaces réduits (au début et à la fin
+   retirés, une suite d'espaces ramenée à un seul), sans suffixe d'équipage
+   final (« CREW » ou « CEW », précédé ou non de points ou d'espaces) :
+   « NR 101.CREW » donne « NR 101 ». Deux vols du même jour au même vol_id :
+   le deuxième prend « -2 », le troisième « -3 », dans l'ordre des heures puis
+   des vol_id. La numérotation se fait en dernier, après les règles 9 et 10 ;
+   les vols fictifs ne sont pas numérotés.
+9. **Un vol sans repas** (toutes classes à 0, SPML compris) est écarté et
+   listé au rapport.
+10. **Les réserves** : un Flight No qui contient le mot réglé (par défaut
+    « RESERVE », sans tenir compte de la casse) n'est pas un vol. Ses repas
+    rejoignent le premier vol, par heure, de la même compagnie le même jour.
+    Sans vol de la compagnie ce jour-là, la réserve est écartée et listée.
+11. **Les vols fictifs quotidiens** : une liste de règles { Flight No exact,
+    compagnie, vol_id, heure, Guest types à sommer, classe (YC par défaut) }.
+    Chaque jour qui a au moins un vol gardé, chaque règle crée un vol. Sa
+    quantité est la somme des Guest qty de ces types sur les lignes de ce
+    Flight No ce jour-là (une fois par livraison et par type), quel que soit
+    leur statut : ces lignes de production sont souvent au statut annulé. Un
+    jour sans ligne donne un vol à 0. Ces Flight No ne donnent aucun autre
+    vol. Un même Flight No peut nourrir deux vols fictifs (deux classes) ;
+    deux vols fictifs au même vol_id sont refusés. Une ligne de production
+    sans date ne compte pour aucun jour : elle se signale.
+12. **Le programme sort trié** par date, heure, vol_id, aux colonnes du
+    programme daté : date, vol_id, compagnie, type_avion (vide), sens (DEP),
+    heure_std, heure_sta (vide), nb_BC, nb_PC, nb_YC, nb_CREW, nb_SPML,
+    nb_SPML_BC, nb_SPML_PC, nb_SPML_YC ; nb_SPML est la somme des trois.
+
+Les vol_id et les compagnies se comparent caractère par caractère, jamais
+selon la langue du navigateur : la page et l'outil rendent le même ordre.
+
+### Le rapport d'import (D11)
+
+- le fichier et la période qu'il couvre (premier et dernier jour de ses
+  livraisons, nombre de jours), même si rien n'est gardé ;
+- les lignes lues (sans les lignes vides), les livraisons et leur nombre par
+  statut ;
+- les vols gardés, par jour et par compagnie, avec leurs repas par classe ;
+- les livraisons écartées, leur nombre par motif (statut, ICAO exclu,
+  Flight No exclu, sans repas, réserve sans vol) et leur liste (date,
+  Flight No, Delivery No, motif) ;
+- les Guest types ignorés, leurs quantités et le nombre de livraisons ;
+- les réserves fondues (la réserve, le vol qui la reçoit, ses repas) ;
+- les vol_id suffixés (« -2 », « -3 ») ;
+- les vols fictifs créés, jour par jour, avec leur quantité ;
+- les points à vérifier : dans une même livraison, une date, un Flight No,
+  un ICAO, un statut ou une Guest qty qui change d'une ligne à l'autre (la
+  première ligne compte ; l'écart se signale une fois par livraison) ; une
+  ligne de production sans date.
+
+Les trois mots de D11 s'y lisent ainsi : **acceptées**, les vols gardés ;
+**ambiguës**, les points à vérifier (et, à côté, les types ignorés, les
+réserves fondues, les vol_id suffixés) ; **rejetées**, les livraisons
+écartées avec leur motif.
+
+### Les refus
+
+Le fichier entier est refusé, sans rien importer, et le message dit où :
+
+- une colonne manquante (« colonne « ETD » absente de l'onglet Flights ») ;
+- une ligne illisible, nommée par son numéro dans l'onglet, même annulée :
+  Delivery No vide, date illisible (le 31/02 compris), ETD illisible,
+  Guest qty qui n'est pas un entier positif ou nul écrit en chiffres
+  (« 1,000 », « 1.5 », « 1e2 » sont refusés : séparateur ou notation
+  ambigus) ;
+- un vol gardé sans date, sans Flight No, sans ICAO ou sans aucune ETD,
+  nommé par sa livraison ; une livraison écartée (statut, exclusion, sans
+  repas) n'a besoin de rien de tout cela ;
+- un vol_id en double le même jour après la numérotation (un vrai « X-2 » à
+  côté d'un « X » numéroté) ;
+- un vol fictif dont le vol_id existe déjà ce jour-là parmi les vols gardés ;
+- une règle mal formée ou inconnue (une sauvegarde forgée, un réglage de
+  l'outil), nommée ; deux clés d'une table qui se confondent (« eco » et
+  « ECO ») aussi.
+
+Un texte du fichier qui porte le nom d'une propriété d'objet (« constructor »,
+« __proto__ ») reste un texte : les tables se lisent clé par clé.
+
+Vérifications — `tests/import-flights.test.cjs`, sur des exports fictifs
+calculés à la main (compagnies et vols inventés, une colonne de prix dans
+chaque export) : chaque règle de 1 à 12 a son cas ; une même Guest qty
+répétée sur dix lignes de prestation compte une fois ; deux livraisons du même
+Flight No le même jour donnent « X » et « X-2 », un Flight No suffixé
+« CREW » rejoint le même vol_id et prend « -3 » à son heure ; une réserve
+fondue et une réserve orpheline ; un vol fictif dont les lignes sont toutes au
+statut annulé, un jour sans ligne à 0, un jour sans vol gardé sans vol
+fictif, un vol fictif au vol_id d'un vol gardé refusé ; les règles 8, 9 et
+10 ensemble (une réserve rejoint le vol sans suffixe, jamais un vol sans
+repas) ; un type de convive inconnu, ignoré et au rapport ; chaque colonne
+manquante refusée ; aucun prix dans la sortie ni dans le rapport ; le CSV
+relu par l'import daté de la page ; les écarts d'une livraison signalés une
+fois ; une Guest qty vide qui ne compte pas ; un tri qui ne dépend pas de la
+langue ; les refus qui nomment la ligne ou la livraison ; des textes
+« constructor » et « __proto__ » ; des règles forgées ; 50 000 lignes
+fictives converties en moins de 10 s (environ 0,1 s), et un an d'export avec
+réserves et vols fictifs en moins de 3 s.

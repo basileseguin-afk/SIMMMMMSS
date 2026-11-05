@@ -5,6 +5,24 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-05 — Banc d'essai, évolution 13 (a) : le module qui lit l'export Winrest
+
+- `moteur/import-flights.js` (nouveau, v1, sans navigateur) : les lignes de
+  l'onglet « Flights » d'un export Winrest et les règles d'import donnent le
+  programme de vols daté de l'évolution 10 et le rapport d'import (D9, D11).
+  Les douze règles : les colonnes par leur en-tête (les prix ignorés), une
+  livraison = un vol, la Guest qty comptée une fois par livraison et par type,
+  la table des Guest types, les statuts, ICAO et Flight No exclus, les codes
+  compagnie, le vol_id et sa numérotation, les vols sans repas, les réserves,
+  les vols fictifs quotidiens, le programme trié. Une colonne manquante, une
+  ligne illisible : le fichier entier est refusé, le message dit où.
+- Les fichiers s'appellent `import-flights` : `.gitignore` refuse `*winrest*`
+  (les exports réels), et le garde reste tel quel.
+- Rien d'autre ne change : la page et les outils ne l'appellent pas encore
+  (parties c et d).
+- Fichiers : `moteur/import-flights.js`, `tests/import-flights.test.cjs`
+  (nouveaux), `docs/BANC_ESSAI.md` (§ 14), `README.md`.
+
 ## 2026-11-04 — Banc d'essai, correction 16 (d) : le tableau des équipes replié
 
 - La vue « Charge » de la page Planning : les courbes restent visibles ; le
