@@ -5,6 +5,31 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-05 — Banc d'essai, évolution 13 (c) : l'export Winrest dans la page
+
+- Vols › Programme des vols : l'import « Export Winrest (Flights) », à côté
+  de l'import des vols (30 Mo au plus pour ce seul import). Le programme
+  obtenu remplace le programme daté comme un import de CSV daté ; avant de
+  remplacer des vols importés, la question de « Revenir aux vols d'exemple ».
+- Le rapport d'import sous l'import : les totaux, puis les listes repliées ;
+  il se télécharge en classeur compressé (`echanges-import-flights.js`, le
+  même pour l'outil de la partie d).
+- La section repliée « Règles d'import Winrest » : statuts, ICAO et
+  Flight No exclus, codes compagnie, table des Guest types, mot des réserves,
+  vols fictifs ; chaque modification validée et enregistrée, un refus sous le
+  champ.
+- Un vol fictif à 0 (un jour sans ligne de production) reste au rapport,
+  « hors du programme », mais n'entre plus au programme : le CSV daté
+  (`ui-model.js`, commun aux deux versions) refuse un vol sans repas, et
+  l'import échouait chaque jour sans ligne de production.
+- L'aide du format et les limites connues de la page et du README le disent.
+  L'import des vols (Excel ou CSV) ne change pas.
+- Fichiers : `import-flights-vue.js`, `import-flights.css`,
+  `echanges-import-flights.js`, `tests/import-flights-browser.cjs`,
+  `tests/import-flights-classeur.test.cjs` (nouveaux), `sim.js`,
+  `index.html`, `moteur/import-flights.js`, `tests/import-flights.test.cjs`,
+  `docs/BANC_ESSAI.md` (§ 14), `README.md`.
+
 ## 2026-11-05 — Banc d'essai, évolution 13 (b) : les règles d'import Winrest sauvegardées
 
 - Une nouvelle clé de la version 1, `ory-import-winrest-v1` : les règles

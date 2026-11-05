@@ -148,7 +148,7 @@ test('règle 10 : une réserve rejoint le premier vol de sa compagnie ce jour-l�
   assert.deepEqual(d.rapport.ecartees.map(x => [x.flightNo, x.motif]), [['RESERVE SUD', 'réserve sans vol']]);
 });
 
-test('règle 11 : un vol fictif chaque jour qui a un vol gardé ; ses lignes comptent quel que soit leur statut ; un jour sans ligne, 0', () => {
+test('règle 11 : un vol fictif chaque jour qui a un vol gardé ; ses lignes comptent quel que soit leur statut ; un jour sans ligne, 0 (au rapport, hors du programme)', () => {
   const fictif = { flightNo: 'PROD JOUR', compagnie: 'PROD', volId: 'PROD1', heure: '10:00', types: ['ECONOMY', 'CREW'], classe: 'YC' };
   const r = conv(exp(
     L('02/03/2026', 'L1', 'NR 101', 'NRD', '07:30', 'Delivered', 'ECONOMY', 10),
@@ -158,15 +158,17 @@ test('règle 11 : un vol fictif chaque jour qui a un vol gardé ; ses lignes com
     L('02/03/2026', 'P1', 'PROD JOUR', 'PRD', '01:00', 'Cancelled', 'CREW', 5),
     L('02/03/2026', 'P2', 'PROD JOUR', 'PRD', '02:00', 'Cancelled', 'ECONOMY', 7),
     L('02/03/2026', 'P2', 'PROD JOUR', 'PRD', '02:00', 'Cancelled', 'BUSINESS', 99),
-    // Le 03 : un vol gardé, aucune ligne de production → un vol fictif à 0.
+    // Le 03 : un vol gardé, aucune ligne de production → un vol fictif à 0, au rapport ; le programme daté refuse un vol sans repas.
     L('03/03/2026', 'L2', 'NR 101', 'NRD', '07:30', 'Delivered', 'ECONOMY', 10),
     // Le 04 : des lignes de production, mais aucun vol gardé → pas de vol fictif.
     L('04/03/2026', 'P3', 'PROD JOUR', 'PRD', '01:00', 'Cancelled', 'ECONOMY', 12)), { fictifs: [fictif] });
   const f = r.vols.filter(v => v.vol_id === 'PROD1');
-  assert.deepEqual(f.map(v => [v.date, v.compagnie, v.heure_std, v.nb_YC, v.nb_BC]), [['2026-03-02', 'PROD', '10:00', 52, 0], ['2026-03-03', 'PROD', '10:00', 0, 0]]);
+  assert.deepEqual(f.map(v => [v.date, v.compagnie, v.heure_std, v.nb_YC, v.nb_BC]), [['2026-03-02', 'PROD', '10:00', 52, 0]]);
   // Ces Flight No ne donnent aucun autre vol ; le rapport liste les vols fictifs.
   assert.equal(r.vols.filter(v => /PROD JOUR/.test(v.vol_id)).length, 0);
-  assert.deepEqual(r.rapport.fictifs.map(x => [x.date, x.volId, x.quantite]), [['2026-03-02', 'PROD1', 52], ['2026-03-03', 'PROD1', 0]]);
+  assert.deepEqual(r.rapport.fictifs.map(x => [x.date, x.volId, x.quantite, x.auProgramme]), [['2026-03-02', 'PROD1', 52, true], ['2026-03-03', 'PROD1', 0, false]]);
+  // Le programme se relit comme un CSV daté : aucun vol sans repas.
+  assert.equal(UI.parseFlights(W.versCsv(r.vols), { eta: true, spmlParCabine: true, date: true }).length, r.vols.length);
   // Une autre classe.
   const c = conv(exp(L('02/03/2026', 'L1', 'NR 101', 'NRD', '07:30', 'Delivered', 'ECONOMY', 10), L('02/03/2026', 'P1', 'PROD NUIT', 'PRD', '01:00', 'Cancelled', 'CREW', 6)),
     { fictifs: [{ ...fictif, flightNo: 'PROD NUIT', volId: 'PROD2', types: ['CREW'], classe: 'CREW' }] });
@@ -199,7 +201,8 @@ test('règle 11 : un vol fictif n’est pas numéroté ; au vol_id d’un vol ga
   // Une ligne de production sans date ne compte pour aucun jour : elle se signale.
   const r = conv(exp(L('02/03/2026', 'L1', 'NR 101', 'NRD', '07:30', 'Delivered', 'ECONOMY', 10), L('', 'P1', 'PROD JOUR', 'PRD', '', 'Cancelled', 'ECONOMY', 9)),
     { fictifs: [{ ...f, volId: 'PROD1' }] });
-  assert.deepEqual([vol(r, 'PROD1').nb_YC, r.rapport.aVerifier.map(x => [x.deliveryNo, x.quoi])], [0, [['P1', 'ligne de production sans date : non comptée']]]);
+  assert.deepEqual([vol(r, 'PROD1'), r.rapport.fictifs.map(x => [x.quantite, x.auProgramme]), r.rapport.aVerifier.map(x => [x.deliveryNo, x.quoi])],
+    [undefined, [[0, false]], [['P1', 'ligne de production sans date : non comptée']]]);
 });
 
 test('règle 12 : le programme trié par date, heure, vol_id, aux colonnes du programme daté ; le CSV se relit comme un CSV daté', () => {

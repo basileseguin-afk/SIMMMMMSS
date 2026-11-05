@@ -2137,6 +2137,7 @@ function initControles() {
   // « Comparer J+1 et planche retour » : ici, dans les réglages et sur la planche.
   document.addEventListener('click', e => { if (e.target.closest('[data-comparer-retours]')) comparerRetours(); });
   document.getElementById('imp-vols').addEventListener('change', importVols);
+  installerWinrest();
   document.getElementById('exp-vols').addEventListener('click', exporterVols);
   document.getElementById('sauvegarde-export').addEventListener('click', sauvegardeComplete);
   document.getElementById('sauvegarde-import-btn').addEventListener('click', () => document.getElementById('sauvegarde-import').click());
@@ -2335,13 +2336,103 @@ async function importVols(e) {
     // le même fichier ne déclenche plus `change`.
     const data=await OrlyJournee.volsDuFichier(file,f=>new Promise((ok,ko)=>{const rd=new FileReader();rd.onload=()=>ok(rd.result);
       rd.onerror=()=>ko(new Error('Lecture du fichier impossible. Aucune donnée remplacée.'));rd.readAsText(f);}));
-    Sim.dataCourante=data;Sim.jourVols=null;dataSource=file.name;snaps={};majCompare();reset(data);updateSource();
-    // Un programme daté (évolution 10) : la période qu'il couvre, les vols de chaque jour, un jour sans vol signalé.
-    const periode=OrlyPeriode.decrire(data);
-    report.classList.remove('error');report.textContent=data.length+' lignes importées. '+data.filter(f=>f.sens==='DEP').length+' départs et '+data.filter(f=>f.sens==='RET').length+' retours.'
-      +(periode?'\n'+OrlyPeriode.texteDuProgramme(periode).join('\n'):'');
+    report.classList.remove('error');report.textContent=remplacerProgramme(data,file.name);
   } catch(err){fail(err.message);}
   finally{e.target.value='';}
+}
+/** Le programme de vols remplacé (un import de vols, l'export Winrest) ; rend le texte du compte rendu. */
+function remplacerProgramme(data,nom){
+  Sim.dataCourante=data;Sim.jourVols=null;dataSource=nom;snaps={};majCompare();reset(data);updateSource();
+  // Un programme daté (évolution 10) : la période qu'il couvre, les vols de chaque jour, un jour sans vol signalé.
+  const periode=OrlyPeriode.decrire(data);
+  return data.length+' lignes importées. '+data.filter(f=>f.sens==='DEP').length+' départs et '+data.filter(f=>f.sens==='RET').length+' retours.'
+    +(periode?'\n'+OrlyPeriode.texteDuProgramme(periode).join('\n'):'');
+}
+
+/* ==========================================================================
+ *  L'EXPORT WINREST DANS LA PAGE (banc d'essai, évolution 13 c —
+ *  docs/BANC_ESSAI.md, § 14). Vols › Programme des vols : « Export Winrest
+ *  (Flights) », à côté de l'import des vols ; le rapport sous l'import (les
+ *  totaux, puis les listes repliées, le classeur) ; la section repliée
+ *  « Règles d'import Winrest ». Le calcul est celui de l'outil
+ *  (moteur/import-flights.js) ; le programme obtenu remplace le programme daté
+ *  comme un import de CSV daté.
+ * ==========================================================================*/
+/** Ce seul import lit jusqu'à 30 Mo. */
+const MAX_WINREST=30*1024*1024;
+let rapportWinrest=null;
+function installerWinrest(){
+  const champ=document.getElementById('imp-winrest'),corps=document.getElementById('winrest-regles-corps');
+  if(!champ||!corps||!window.OrlyWinrestVue)return;
+  champ.addEventListener('change',importWinrest);
+  rendreReglesWinrest();
+  corps.addEventListener('change',e=>changerRegleWinrest(e.target));
+  corps.addEventListener('click',e=>{const b=e.target.closest('[data-wr-action]');if(b)agirRegleWinrest(b);});
+  document.getElementById('winrest-rapport').addEventListener('click',e=>{if(e.target.closest('[data-wr-action=rapport-classeur]'))telechargerRapportWinrest();});
+}
+async function importWinrest(e){
+  const file=e.target.files[0];if(!file)return;
+  const report=document.getElementById('import-report'),box=document.getElementById('winrest-rapport');
+  const fail=message=>{report.classList.add('error');report.textContent=message;};
+  box.hidden=true;
+  try{
+    const {regles,erreur}=reglesWinrest();
+    if(erreur)throw new Error('Les règles d’import Winrest gardées sont illisibles ('+erreur+') : corrigez-les dans « Règles d’import Winrest ». Aucune donnée remplacée.');
+    const feuilles=await OrlyTableur.lireFichier(file,MAX_WINREST);
+    const r=OrlyWinrest.convertir(OrlyWinrest.lignesDeLExport(feuilles),regles,{fichier:file.name});
+    // Le rapport se lit même quand rien n'est gardé : il dit pourquoi.
+    rapportWinrest=r.rapport;box.innerHTML=OrlyWinrestVue.rapportHTML(r.rapport);box.hidden=false;
+    if(window.OrlyIcones)box.querySelectorAll('[data-ico]').forEach(x=>{if(!x.firstChild)x.innerHTML=OrlyIcones.ico(x.dataset.ico);});
+    if(!r.vols.length)throw new Error('Aucun vol gardé dans « '+file.name+' » : le rapport dit pourquoi. Aucune donnée remplacée.');
+    // Le programme daté, lu par le même code qu'un CSV daté.
+    const data=OrlyUI.parseFlights(OrlyWinrest.versCsv(r.vols),{eta:true,spmlParCabine:true,date:true});
+    // La question d'avant de remplacer des vols importés (« Revenir aux vols d'exemple » la pose aussi).
+    if(dataSource!=='Jeu de démonstration'&&!await OrlyNotif.demander('Les vols importés et les scénarios capturés seront remplacés par le programme tiré de l’export Winrest ('
+      +r.vols.length+' vols).',{titre:'Remplacer le programme de vols ?',oui:'Remplacer le programme',danger:true})){
+      report.classList.remove('error');report.textContent='Import annulé : le programme de vols n’a pas changé.';return;
+    }
+    report.classList.remove('error');report.textContent=remplacerProgramme(data,file.name);
+  }catch(err){fail('Export Winrest non importé : '+err.message);}
+  finally{e.target.value='';}
+}
+async function telechargerRapportWinrest(){
+  if(!rapportWinrest)return;
+  const p=rapportWinrest.periode,octets=OrlyEchangesWinrest.classeurDuRapport(rapportWinrest);
+  // Compressé comme les classeurs de la correction 16 (c).
+  OrlyTableur.telecharger('ory-import-winrest'+(p?'-'+p.debut+'-au-'+p.fin:'')+'.xlsx',window.OrlyClasseurCompresse?await OrlyClasseurCompresse.compresser(octets):octets);
+}
+function rendreReglesWinrest(){
+  const {regles,erreur}=reglesWinrest();
+  document.getElementById('winrest-regles-corps').innerHTML=OrlyWinrestVue.reglesHTML(regles,erreur);
+}
+/** Le refus d'une règle : la section reprend les règles gardées, et la raison se lit sous le champ (ou celui que le refus nomme). */
+function refuserRegleWinrest(el,err,redessiner=true){
+  const motif=OrlyWinrestVue.raison(err.message),fictif=el.closest('[data-wr-fictif]');
+  const sel=OrlyWinrestVue.selecteur(el,fictif?OrlyWinrestVue.champNomme(err.message):null);
+  if(redessiner)rendreReglesWinrest();
+  const cible=redessiner?(sel&&document.querySelector('#winrest-regles-corps '+sel)):el;
+  if(cible)OrlyChamps.refuser(cible,motif);else toast('Refusé : '+motif);
+}
+/** Un champ des règles changé : validé, enregistré ; refusé, il reprend la valeur gardée. La ligne « nouveau » attend « Ajouter ». */
+function changerRegleWinrest(el){
+  if(el.closest('.wr-nouveau'))return;
+  const alerte=!!document.querySelector('#winrest-regles-corps .wr-alerte');
+  try{const x=OrlyWinrestVue.modifier(reglesWinrest().regles,el);if(!x)return;enregistrerReglesWinrest(x);}
+  catch(err){refuserRegleWinrest(el,err);return;}
+  if(alerte)rendreReglesWinrest();
+  toast('Règles d’import Winrest enregistrées.');
+}
+/** Un bouton des règles : ajouter ou retirer un Guest type, un vol fictif. Un ajout refusé garde ce qui est tapé. */
+function agirRegleWinrest(b){
+  const ajout=/-ajouter$/.test(b.dataset.wrAction),tr=b.closest('tr');
+  try{const x=OrlyWinrestVue.agir(reglesWinrest().regles,b);if(!x)return;enregistrerReglesWinrest(x);}
+  catch(err){
+    const champ=b.dataset.wrAction==='fictif-ajouter'?OrlyWinrestVue.champDuRefus(tr,err.message,'data-wr-nouveau-champ'):tr.querySelector('[data-wr-type-nouveau]');
+    if(ajout&&champ)refuserRegleWinrest(champ,err,false);else toast('Refusé : '+OrlyWinrestVue.raison(err.message));
+    return;
+  }
+  rendreReglesWinrest();
+  toast('Règles d’import Winrest enregistrées.');
 }
 function exporterVols() {
   const octets=OrlyTableur.ecrireClasseur(OrlyEchanges.volsVersClasseur(Sim.dataCourante||SAMPLE));

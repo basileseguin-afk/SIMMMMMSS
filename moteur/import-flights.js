@@ -185,7 +185,8 @@
       return f[k].trim();
     };
     const flightNo = txt('flightNo', 'le Flight No', LIMITE.texte), compagnie = txt('compagnie', 'la compagnie', LIMITE.compagnie), volId = txt('volId', 'le vol_id', LIMITE.volId);
-    if (INTERDIT.test(compagnie + volId)) throw new Error(ou + ' : la compagnie et le vol_id s’écrivent sans virgule ni point-virgule.');
+    if (INTERDIT.test(compagnie)) throw new Error(ou + ' : la compagnie s’écrit sans virgule, point-virgule ni guillemet.');
+    if (INTERDIT.test(volId)) throw new Error(ou + ' : le vol_id s’écrit sans virgule, point-virgule ni guillemet.');
     const heure = typeof f.heure === 'string' ? lireHeure(f.heure) : undefined;
     if (heure === null || heure === undefined) throw new Error(ou + ' : l’heure s’écrit HH:MM.');
     if (!Array.isArray(f.types) || !f.types.length || f.types.length > LIMITE.fictifs || !f.types.every(t => typeof t === 'string' && t.trim() && t.length <= LIMITE.texte))
@@ -354,9 +355,13 @@
     for (const d of jours) for (const f of R.fictifs) {
       if (idsDuJour.get(d).has(f.volId)) throw new Error('vol fictif « ' + f.volId + ' » : ce vol_id existe déjà le ' + dateFr(d) + '. Rien n’a été importé.');
       const q = (production.get(d + '|' + f.flightNo) || []).reduce((n, x) => n + f.types.reduce((t, ty) => t + (x.qtes.get(ty) || 0), 0), 0);
+      // Un jour sans ligne donne un vol à 0 : il reste au rapport, mais pas au programme, que le CSV daté refuse sans repas
+      // (comme la règle 9) ; un vol sans repas n'y ferait aucun travail.
+      const auProgramme = q > 0;
+      rapport.fictifs.push({ date: d, volId: f.volId, flightNo: f.flightNo, quantite: q, classe: f.classe, auProgramme });
+      if (!auProgramme) continue;
       const repas = Object.fromEntries(REPAS.map(c => [c, 0])); repas[COLONNE[f.classe]] = q;
       fictifs.push({ date: d, heure: lireHeure(f.heure), compagnie: f.compagnie, volId: f.volId, repas });
-      rapport.fictifs.push({ date: d, volId: f.volId, flightNo: f.flightNo, quantite: q, classe: f.classe });
     }
     // Règle 12 : le programme trié par date, heure, vol_id, aux colonnes du programme daté.
     const tous = gardes.concat(fictifs).sort((a, b) => cmp(a.date, b.date) || a.heure - b.heure || cmp(a.volId, b.volId));

@@ -2559,7 +2559,10 @@ appellent ce même module : un seul chemin de calcul.
     quantité est la somme des Guest qty de ces types sur les lignes de ce
     Flight No ce jour-là (une fois par livraison et par type), quel que soit
     leur statut : ces lignes de production sont souvent au statut annulé. Un
-    jour sans ligne donne un vol à 0. Ces Flight No ne donnent aucun autre
+    jour sans ligne donne un vol à 0 : il est au rapport (« hors du
+    programme »), mais pas au programme, car le CSV daté refuse un vol sans
+    repas (comme la règle 9 ; un tel vol n'y ferait aucun travail). Ces
+    Flight No ne donnent aucun autre
     vol. Un même Flight No peut nourrir deux vols fictifs (deux classes) ;
     deux vols fictifs au même vol_id sont refusés. Une ligne de production
     sans date ne compte pour aucun jour : elle se signale.
@@ -2618,6 +2621,40 @@ Le fichier entier est refusé, sans rien importer, et le message dit où :
 Un texte du fichier qui porte le nom d'une propriété d'objet (« constructor »,
 « __proto__ ») reste un texte : les tables se lisent clé par clé.
 
+### Dans la page
+
+Vols › Programme des vols : sous « Importer vos vols », l'import « Export
+Winrest (Flights) » (un `.xlsx` de 30 Mo au plus, ou un CSV aux mêmes
+colonnes). Pas de page de plus dans le menu.
+
+- Le programme obtenu remplace le programme daté comme un import de CSV
+  daté (le même code le relit : `UI.parseFlights`), et le compte rendu de
+  l'import dit la période et les vols de chaque jour. Avant de remplacer des
+  vols importés, la page pose la question que pose déjà « Revenir aux vols
+  d'exemple » ; sur les vols d'exemple, elle ne la pose pas. L'import des vols
+  (Excel ou CSV), lui, ne pose pas de question : il reste tel quel.
+- Le rapport d'import s'affiche sous l'import : les totaux, puis les listes
+  repliées (vols gardés par jour et par compagnie, livraisons écartées,
+  points à vérifier, Guest types ignorés, réserves fondues, vol_id suffixés,
+  vols fictifs ; 300 lignes au plus par liste, toutes dans le classeur). Il se
+  lit aussi quand rien n'est gardé : il dit pourquoi. Il se télécharge en
+  classeur (`echanges-import-flights.js`), compressé comme ceux de la
+  correction 16 (c) : un Lisez-moi (le fichier, la période, les totaux,
+  acceptées, ambiguës, rejetées), puis une feuille par liste.
+- La section repliée « Règles d'import Winrest » règle : les statuts exclus,
+  les ICAO exclus, les Flight No exclus (une valeur par ligne), les codes
+  compagnie (« ICAO = compagnie », un par ligne), la table des Guest types
+  (une classe par type ; ajouter, retirer), le mot des réserves et les vols
+  fictifs (un petit tableau ; ajouter, retirer). Chaque modification se
+  valide et s'enregistre ; refusée, elle se dit sous le champ, et le champ
+  reprend la valeur gardée.
+- Le texte venu du fichier ou des règles passe par l'échappement HTML ; les
+  couleurs et les espacements sont ceux du design system (`import-flights.css`),
+  en clair et en sombre.
+
+Un export de 50 000 lignes (30 jours, 1 800 vols) se lit et se convertit en
+moins de 10 s dans la page.
+
 ### Les règles, réglables et sauvegardées
 
 Les règles d'import se gardent dans la clé `ory-import-winrest-v1`, dans leur
@@ -2670,3 +2707,17 @@ règles mais dont une autre partie est invalide refusée sans retirer les
 règles, tout effacer et restaurer à l'identique ; une sauvegarde d'avant qui
 rend les défauts, et la question qui le dit ; une clé abîmée lue comme les défauts, l'erreur
 dite ; une règle invalide qui ne s'enregistre pas.
+`tests/import-flights-browser.cjs` (évolution 13 c, un export fictif avec une
+colonne de prix) : l'import à côté de celui des vols ; le programme daté
+chargé ; le rapport sous l'import, ses totaux, ses listes repliées ; un
+Flight No et un Guest type piégés qui restent du texte ; aucun prix ; le
+classeur du rapport, compressé, relu ; les règles (une exclusion, un code
+compagnie, un vol fictif ajouté, un Guest type ajouté puis retiré, un Guest
+type piégé de guillemets et de chevrons, des refus sous le champ, sous la
+bonne ligne quand il y a deux vols fictifs) ; des règles gardées illisibles
+(l'alerte, l'import refusé) ; le réimport, la question, « Non » qui ne change
+rien et le dit ; une
+colonne manquante et un fichier de plus de 30 Mo refusés ; 50 000 lignes en
+moins de 10 s ; les couleurs, en clair et en sombre.
+`tests/import-flights-classeur.test.cjs` : les totaux, les feuilles du
+classeur, de vraies dates, aucun prix, un rapport vide.
