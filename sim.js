@@ -2232,7 +2232,10 @@ const PARTIES = [
   { cle:'ory-graphes-v1',   nom:'disposition des diagrammes', valider:r => window.OrlyGraphe.validerPositions(r) },
   // Le calage sur le réel (banc d'essai, évolution 11) : des réglages seulement — la correspondance, les décisions —,
   // jamais les heures réelles, qui restent en mémoire le temps de la page.
-  { cle:'ory-calage-v1',    nom:'calage sur le réel',      valider:r => window.OrlyReel.validerReglages(r) }
+  { cle:'ory-calage-v1',    nom:'calage sur le réel',      valider:r => window.OrlyReel.validerReglages(r) },
+  // Les règles d'import de l'export Winrest (évolution 13 b) : absentes d'une sauvegarde (une sauvegarde d'avant), elles
+  // sont retirées à la restauration, et les règles par défaut reviennent.
+  { cle:'ory-import-winrest-v1', nom:'règles d’import Winrest', valider:r => window.OrlyWinrest.lireEnveloppe(r), siAbsente:'retirer' }
 ];
 
 function sauvegardeComplete() {
@@ -2272,24 +2275,52 @@ async function restaurerSauvegarde(e) {
     }
     // TOUT valider avant d'écrire QUOI QUE CE SOIT : une sauvegarde à moitié
     // restaurée serait pire qu'un refus.
-    const aEcrire = [];
+    const aEcrire = [], aRetirer = [];
     for (const p of PARTIES) {
       const part = brut.contenu[p.cle];
-      if (part === undefined) continue;
+      if (part === undefined) { if (p.siAbsente === 'retirer') aRetirer.push(p.cle); continue; }
       try { p.valider(JSON.parse(JSON.stringify(part))); }
-      catch (err) { throw new Error(p.nom + ' — ' + err.message); }
+      // Un message qui nomme déjà sa partie (« règles d’import Winrest, … ») ne la répète pas.
+      catch (err) { throw new Error(err.message.startsWith(p.nom) ? err.message : p.nom + ' — ' + err.message); }
       aEcrire.push([p.cle, JSON.stringify(part)]);
     }
     if (!aEcrire.length) throw new Error('la sauvegarde ne contient aucune partie connue.');
     // Une vraie question : la restauration remplace tout, et ne se défait pas.
     if (!await OrlyNotif.demander('Le plan, les équipes, les flux et les réglages enregistrés dans ce navigateur seront remplacés par ceux de la sauvegarde ('
-      + aEcrire.length + (aEcrire.length > 1 ? ' parties' : ' partie') + '). La page se rechargera. Les autres onglets ouverts du site devront être rechargés.',
+      + aEcrire.length + (aEcrire.length > 1 ? ' parties' : ' partie') + ').'
+      // Une sauvegarde d'avant, sans les règles d'import Winrest : elles reviennent aux défauts, et la question le dit.
+      + (aRetirer.includes(CLE_WINREST) ? ' Elle n’a pas de règles d’import Winrest : les règles d’import Winrest par défaut reviennent.' : '')
+      + ' La page se rechargera. Les autres onglets ouverts du site devront être rechargés.',
       { titre: 'Restaurer cette sauvegarde ?', oui: 'Restaurer la sauvegarde', danger: true })) { e.target.value = ''; return; }
     if (enRetard()) throw new Error(RETARD);
     aEcrire.forEach(([cle, valeur]) => localStorage.setItem(cle, valeur));
+    aRetirer.forEach(cle => localStorage.removeItem(cle));
     location.reload();
   } catch (err) { refuser(err.message); }
   finally { e.target.value = ''; }
+}
+
+/* ==========================================================================
+ *  LES RÈGLES D'IMPORT DE L'EXPORT WINREST (banc d'essai, évolution 13 b —
+ *  docs/BANC_ESSAI.md, § 14). Gardées dans « ory-import-winrest-v1 », dans
+ *  leur enveloppe (schéma, version), et dans « Tout sauvegarder ». Validées à
+ *  la lecture : une clé abîmée se lit comme les règles par défaut, et l'erreur
+ *  se dit. Une règle invalide ne s'enregistre pas.
+ * ==========================================================================*/
+const CLE_WINREST='ory-import-winrest-v1';
+/** Les règles gardées : { regles (complètes), erreur (null, ou pourquoi les défauts) }. */
+function reglesWinrest(){
+  let brut=null;
+  try{brut=localStorage.getItem(CLE_WINREST);}catch(e){/* stockage indisponible : les défauts */}
+  if(!brut)return{regles:OrlyWinrest.reglesCompletes(),erreur:null};
+  try{return{regles:OrlyWinrest.lireEnveloppe(JSON.parse(brut)),erreur:null};}
+  catch(err){return{regles:OrlyWinrest.reglesCompletes(),erreur:err.message};}
+}
+/** Enregistrer des règles : validées d'abord (une erreur remonte, rien n'est écrit) ; rend les règles complètes gardées. */
+function enregistrerReglesWinrest(regles){
+  const env=OrlyWinrest.enveloppe(regles);
+  localStorage.setItem(CLE_WINREST,JSON.stringify(env));
+  return env.regles;
 }
 
 /* Le programme de vols s'importe en Excel (feuilles « Départs » et
@@ -2937,6 +2968,8 @@ const Sim = { dataCourante:SAMPLE };
 // Réglages et état courant, publiés pour l'inspection et les parcours de test
 // au même titre que Sim.editor et Sim.ateliers : lecture seule côté appelant.
 Sim.cfg = CFG;
+// Les règles d'import Winrest (évolution 13 b) : lues validées, enregistrées validées.
+Sim.winrest = { regles:reglesWinrest, enregistrer:enregistrerReglesWinrest };
 window.Sim = Sim;
 /* Un démarrage qui ne va pas au bout (des données enregistrées que le calcul
  * ne sait pas relire, une boucle sans fin) laisse sa marque : au chargement

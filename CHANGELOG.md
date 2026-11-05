@@ -5,6 +5,26 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-05 — Banc d'essai, évolution 13 (b) : les règles d'import Winrest sauvegardées
+
+- Une nouvelle clé de la version 1, `ory-import-winrest-v1` : les règles
+  d'import dans leur enveloppe (schéma `ory-import-winrest`, version 1),
+  complètes. `moteur/import-flights.js` : `enveloppe(regles)`,
+  `lireEnveloppe(x)` (refuse une autre version, un champ inconnu, une règle
+  invalide, en la nommant).
+- « Tout sauvegarder » la prend ; « Restaurer » la valide avant d'écrire quoi
+  que ce soit. Une sauvegarde d'avant, sans elle, rend les règles par défaut
+  (la clé est retirée). Une clé abîmée se lit comme les défauts, l'erreur dite.
+- `sim.js` : la partie dans `PARTIES`, son retrait à la restauration,
+  `Sim.winrest` (lire, enregistrer). `index.html` charge le module.
+- Sans règles réglées, rien ne change : la page ne les emploie qu'à
+  l'import Winrest (partie c).
+- Fichiers : `moteur/import-flights.js`, `sim.js`, `index.html`,
+  `tests/import-flights-regles.test.cjs`,
+  `tests/import-flights-sauvegarde-browser.cjs` (nouveaux),
+  `tests/plusieurs-onglets.test.cjs` (la clé gardée),
+  `docs/BANC_ESSAI.md` (§ 14), `README.md`.
+
 ## 2026-11-05 — Banc d'essai, évolution 13 (a) : le module qui lit l'export Winrest
 
 - `moteur/import-flights.js` (nouveau, v1, sans navigateur) : les lignes de

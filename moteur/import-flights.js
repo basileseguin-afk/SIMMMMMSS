@@ -388,7 +388,28 @@
     return COLONNES.join(',') + '\n' + vols.map(v => COLONNES.map(c => cellule(v[c])).join(',')).join('\n') + '\n';
   }
 
-  const api = { ENTETES, CLASSES, COLONNES, REGLES_DEFAUT, reglesCompletes, lignesDeLExport, convertir, versCsv, volIdDe, lireDate, lireHeure };
+  /* ---- les règles gardées (évolution 13 b) ------------------------------------------------ */
+
+  /** La clé de stockage de la version 1 ; l'enveloppe des règles : un schéma, une version. */
+  const CLE_STOCKAGE = 'ory-import-winrest-v1', SCHEMA = 'ory-import-winrest', VERSION = 1;
+
+  /** Les règles à garder : complètes et validées, dans leur enveloppe. */
+  function enveloppe(regles) { return { schema: SCHEMA, version: VERSION, regles: reglesCompletes(regles) }; }
+
+  /**
+   * Une enveloppe relue (le stockage du navigateur, une sauvegarde) → les règles complètes. Une enveloppe d'un autre
+   * schéma, d'une autre version, ou une règle invalide est refusée, en disant laquelle.
+   */
+  function lireEnveloppe(x) {
+    if (!x || typeof x !== 'object' || Array.isArray(x) || x.schema !== SCHEMA) throw new Error(PREFIXE + ' : ce n’est pas un réglage « ' + SCHEMA + ' ».');
+    if (x.version !== VERSION) throw new Error(PREFIXE + ' : version ' + x.version + ' inconnue (' + VERSION + ' attendue).');
+    for (const k of Object.keys(x)) if (!['schema', 'version', 'regles'].includes(k)) throw new Error(PREFIXE + ' : champ inconnu « ' + k + ' ».');
+    if (!x.regles || typeof x.regles !== 'object' || Array.isArray(x.regles)) throw new Error(PREFIXE + ' : les règles manquent.');
+    return reglesCompletes(x.regles);
+  }
+
+  const api = { ENTETES, CLASSES, COLONNES, REGLES_DEFAUT, CLE_STOCKAGE, reglesCompletes, lignesDeLExport, convertir, versCsv, volIdDe, lireDate, lireHeure,
+    enveloppe, lireEnveloppe };
   if (enNode) module.exports = api;
   else root.OrlyWinrest = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

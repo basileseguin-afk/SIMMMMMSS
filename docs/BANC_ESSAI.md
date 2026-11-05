@@ -2618,6 +2618,29 @@ Le fichier entier est refusé, sans rien importer, et le message dit où :
 Un texte du fichier qui porte le nom d'une propriété d'objet (« constructor »,
 « __proto__ ») reste un texte : les tables se lisent clé par clé.
 
+### Les règles, réglables et sauvegardées
+
+Les règles d'import se gardent dans la clé `ory-import-winrest-v1`, dans leur
+enveloppe : `{ schema: "ory-import-winrest", version: 1, regles }`, les
+règles complètes (chaque champ écrit, la classe d'un vol fictif comprise).
+Elles partent dans « Tout sauvegarder » et reviennent par « Restaurer » :
+
+- elles sont validées comme les autres parties, avant que rien ne soit
+  écrit : une règle invalide ou inconnue refuse la sauvegarde entière, et le
+  message dit laquelle (« règles d'import Winrest, vol fictif 1 : l'heure
+  s'écrit HH:MM. ») ;
+- une sauvegarde d'avant, sans la clé, se restaure : la question le dit, la
+  clé est retirée, et les règles par défaut reviennent (pas celles qui
+  étaient dans le navigateur) ; le retrait vient après la validation de
+  toutes les parties, comme les écritures ;
+- dans le navigateur, la clé se valide à la lecture : abîmée (une autre
+  version, une règle forgée), elle se lit comme les règles par défaut, et
+  l'erreur se dit ; une règle invalide ne s'enregistre pas ;
+- le garde des onglets (correction 14) la protège comme les autres données.
+
+Dans la page, `Sim.winrest.regles()` rend `{ regles, erreur }` et
+`Sim.winrest.enregistrer(regles)` valide puis enregistre.
+
 Vérifications — `tests/import-flights.test.cjs`, sur des exports fictifs
 calculés à la main (compagnies et vols inventés, une colonne de prix dans
 chaque export) : chaque règle de 1 à 12 a son cas ; une même Guest qty
@@ -2636,3 +2659,14 @@ langue ; les refus qui nomment la ligne ou la livraison ; des textes
 « constructor » et « __proto__ » ; des règles forgées ; 50 000 lignes
 fictives converties en moins de 10 s (environ 0,1 s), et un an d'export avec
 réserves et vols fictifs en moins de 3 s.
+`tests/import-flights-regles.test.cjs` (évolution 13 b) : la clé et
+l'enveloppe ; l'aller-retour à l'identique ; une enveloppe ou une règle
+invalide refusée, nommée ; la clé dans les parties de « Tout sauvegarder »,
+retirée si elle manque. `tests/import-flights-sauvegarde-browser.cjs` : les
+défauts sans clé ; des règles fictives enregistrées dans leur enveloppe ;
+« Tout sauvegarder », une règle invalide puis une règle inconnue refusées sans
+rien remplacer (une autre partie valide non plus), une sauvegarde sans les
+règles mais dont une autre partie est invalide refusée sans retirer les
+règles, tout effacer et restaurer à l'identique ; une sauvegarde d'avant qui
+rend les défauts, et la question qui le dit ; une clé abîmée lue comme les défauts, l'erreur
+dite ; une règle invalide qui ne s'enregistre pas.

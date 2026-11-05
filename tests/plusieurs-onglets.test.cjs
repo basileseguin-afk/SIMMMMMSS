@@ -26,7 +26,8 @@ function stockage(depart = {}) {
 const onglet = vrai => { const vu = []; const g = G.creerGarde(vrai, { surRetard: () => vu.push(1) }); g.vu = vu; return g; };
 
 test('les données du site : les clés « ory-… » et « orly-… », hors préférences d’affichage, hors révision, hors version 2', () => {
-  for (const k of ['ory-ateliers-v1', 'orly-plan-v3', 'orly-plan-v3-backup', 'orly-flows-v1', 'ory-modele-v1', 'ory-graphes-v1', 'ory-calage-v1', 'ory-ateliers-v1-avant-fonte'])
+  for (const k of ['ory-ateliers-v1', 'orly-plan-v3', 'orly-plan-v3-backup', 'orly-flows-v1', 'ory-modele-v1', 'ory-graphes-v1', 'ory-calage-v1', 'ory-ateliers-v1-avant-fonte',
+    'ory-import-winrest-v1'])
     assert.equal(G.estDonnee(k), true, k);
   for (const k of ['ory-ui-theme', 'ory-ui-en-ce-moment', 'ory-menu-pages', 'ory-menu-pages-vues', 'ory-graphes-sens', 'ory-service-ouvert',
     'ory-demarrage-en-cours', G.REVISION, 'ory-v2:ory-ateliers-v1', 'ory-v2:__copie-de-la-v1', 'autre-site', null])
