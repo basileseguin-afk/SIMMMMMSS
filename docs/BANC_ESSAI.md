@@ -2655,6 +2655,25 @@ colonnes). Pas de page de plus dans le menu.
 Un export de 50 000 lignes (30 jours, 1 800 vols) se lit et se convertit en
 moins de 10 s dans la page.
 
+### L'outil
+
+```
+node outils/importer-flights.cjs EXPORT.xlsx [sauvegarde.json] [--rapport rapport.json] [--xlsx rapport.xlsx] > programme.csv
+node outils/simuler-periode.cjs sauvegarde.json programme.csv > periode.json
+```
+
+Le même module que la page : les règles viennent de la sauvegarde si on la
+donne (`reglesDeLaSauvegarde` : la clé `ory-import-winrest-v1`, validée comme à
+la restauration ; une sauvegarde d'avant, sans elle, donne les défauts), sinon
+des défauts. Le programme sort au format du CSV daté, que `simuler-periode`
+lit tel quel ; le résumé du rapport sur la sortie d'erreur ; `--rapport`, le
+rapport en JSON ; `--xlsx`, le classeur de la page, compressé. Un fichier
+refusé, ou rien de gardé : rien sur la sortie, la raison, code 1 (quand rien
+n'est gardé, le rapport demandé s'écrit quand même : il dit pourquoi) ; un
+appel mal formé (une option sans valeur ou répétée, une sortie qui
+écraserait l'export, la sauvegarde ou l'autre sortie) : l'usage, code 2, rien
+d'écrit. Les formats : `FORMATS_EXCEL.md`, § 7.
+
 ### Les règles, réglables et sauvegardées
 
 Les règles d'import se gardent dans la clé `ory-import-winrest-v1`, dans leur
@@ -2721,3 +2740,12 @@ colonne manquante et un fichier de plus de 30 Mo refusés ; 50 000 lignes en
 moins de 10 s ; les couleurs, en clair et en sombre.
 `tests/import-flights-classeur.test.cjs` : les totaux, les feuilles du
 classeur, de vraies dates, aucun prix, un rapport vide.
+`tests/importer-flights.test.cjs` (évolution 13 d) : un export fictif tiré des
+départs de l'unité fictive des tests (deux jours, deux prestations par type,
+un vol annulé, une colonne de prix) ; avec la sauvegarde et ses codes
+compagnie, le CSV du module ; `simuler-periode` qui le lit tel quel ; sans
+sauvegarde, ou une sauvegarde d'avant, les défauts ; `--rapport` et `--xlsx`
+(compressé, relu) ; aucun prix ; les refus (l'appel, une option sans valeur
+ou répétée, une sortie qui écraserait l'export ou la sauvegarde — rien n'est
+écrit —, une colonne manquante, une règle forgée dans la sauvegarde, un fichier qui n'est pas une sauvegarde, un
+fichier de plus de 30 Mo, un export où rien n'est gardé).

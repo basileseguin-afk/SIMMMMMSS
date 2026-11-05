@@ -5,6 +5,25 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-05 — Banc d'essai, évolution 13 (d) : l'outil et la doc de l'export Winrest
+
+- `outils/importer-flights.cjs` (nouveau) : `node outils/importer-flights.cjs
+  EXPORT.xlsx [sauvegarde.json] [--rapport rapport.json] [--xlsx rapport.xlsx]
+  > programme.csv`. Le même module que la page ; les règles de la sauvegarde
+  (`reglesDeLaSauvegarde`), sinon les défauts ; le programme au format du CSV
+  daté, que `simuler-periode` lit tel quel ; le rapport en JSON, le classeur
+  compressé de la page. Codes de sortie : 1 (refusé, ou rien de gardé), 2
+  (appel mal formé).
+- Le nom suit les autres fichiers de l'évolution : `.gitignore` refuse
+  `*winrest*` (les exports réels).
+- Docs : `docs/FORMATS_EXCEL.md` (§ 7, l'export Winrest : les colonnes lues,
+  les règles et leurs réglages, le programme, le rapport, l'outil),
+  `docs/BANC_ESSAI.md` (§ 14), `docs/CAHIER_DES_CHARGES.md` (D9 fait ; D11
+  fait pour l'export Winrest, ce qui reste), `README.md` (les fichiers, les
+  tests).
+- Fichiers : `outils/importer-flights.cjs`, `tests/importer-flights.test.cjs`
+  (nouveaux), `moteur/import-flights.js` (`reglesDeLaSauvegarde`), les docs.
+
 ## 2026-11-05 — Banc d'essai, évolution 13 (c) : l'export Winrest dans la page
 
 - Vols › Programme des vols : l'import « Export Winrest (Flights) », à côté

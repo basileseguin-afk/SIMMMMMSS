@@ -691,11 +691,129 @@ dit lesquels et pourquoi (« occupation, consommé sur disponible : handling »)
   compression (la feuille Créneaux en fait plus de la moitié) ; compressé
   (correction 16, règles communes), une dizaine de fois moins.
 
+## 7. L'export Winrest (version 1)
+
+Banc d'essai, évolution 13 (`BANC_ESSAI.md`, § 14), par le même code depuis la
+page (Vols › Programme des vols, « Export Winrest (Flights) ») et depuis l'outil
+`outils/importer-flights.cjs` : `moteur/import-flights.js`. L'export se lit
+**tel quel**, sans retraitement à la main ; il donne le programme daté (§ 3,
+le CSV daté de l'évolution 10) et un rapport d'import.
+
+### Ce qui est lu
+
+L'onglet **« Flights »** d'un export-flights `.xlsx` (son nom sans tenir compte
+de la casse ; un classeur d'une seule feuille, ou un CSV séparé par `;`, `,` ou
+une tabulation, est la table elle-même), les en-têtes en première ligne,
+**30 Mo** au plus. Les colonnes se trouvent par leur en-tête, sans casse ni
+accents, dans n'importe quel ordre :
+
+| Colonne | Sens | Format |
+|---|---|---|
+| `Date` | le jour de la livraison | jj/mm/aaaa, aaaa-mm-jj, ou une date Excel |
+| `Delivery No` | la livraison : un vol | jamais vide |
+| `Flight No` | le numéro de vol | texte |
+| `ICAO` | le code de la compagnie | texte |
+| `ETD` | l'heure de départ (la plus tôt d'une livraison) | hh:mm, hh:mm:ss, ou une heure Excel |
+| `Statut` | le statut de la livraison | texte |
+| `Guest type` | le type de convive | texte |
+| `Guest qty` | le nombre de convives de ce type, répété sur chaque ligne de prestation | entier positif ou nul, en chiffres ; une case vide ne dit rien |
+
+Les **autres colonnes** (articles, prix, montants…) sont ignorées : les prix et
+les montants ne sont ni lus, ni gardés, ni affichés, ni exportés. Une colonne
+manquante refuse le fichier entier, en la nommant ; une valeur illisible le
+refuse en nommant la ligne (même sur une ligne annulée) ; un vol gardé sans
+date, Flight No, ICAO ou ETD le refuse en nommant la livraison.
+
+### Les règles et leurs réglages
+
+Les douze règles s'appliquent dans l'ordre : `BANC_ESSAI.md`, § 14. En bref :
+une livraison est un vol (la date, le Flight No et l'ICAO de sa première ligne,
+l'ETD la plus tôt) ; la Guest qty compte une fois par livraison et par type ;
+le vol_id est le Flight No, les espaces réduits, sans suffixe d'équipage
+(« CREW », « CEW »), puis « -2 », « -3 » pour le même vol le même jour ; un vol
+sans repas est écarté ; une réserve rejoint le premier vol de sa compagnie ce
+jour-là ; les vols fictifs quotidiens somment leurs lignes, quel que soit leur
+statut.
+
+Les réglages, dans la page (« Règles d'import Winrest ») et dans « Tout
+sauvegarder » (clé `ory-import-winrest-v1`) ; l'outil les lit dans la
+sauvegarde qu'on lui donne, sinon il prend les défauts :
+
+| Réglage | Par défaut | Comparaison |
+|---|---|---|
+| Statuts exclus | `Cancelled` | sans tenir compte de la casse |
+| ICAO exclus, Flight No exclus | aucun | égalité exacte |
+| Codes compagnie (ICAO → compagnie du programme) | aucun : l'ICAO tel quel | égalité exacte |
+| Guest types → classe (BC, PC, YC, CREW, SPML BC, SPML PC, SPML YC, ignoré) | ECONOMY → YC ; BUSINESS, FIRST → BC ; PREMIUM → PC ; CREW, PNC, PNT, CDB → CREW ; ECO SPML → SPML YC ; BUSINESS SPML → SPML BC ; PREMIUM SPML → SPML PC | en capitales, les espaces réduits ; un type absent de la table est ignoré et listé au rapport |
+| Mot des réserves | `RESERVE` | contenu dans le Flight No, sans tenir compte de la casse |
+| Vols fictifs quotidiens : Flight No, compagnie, vol_id, heure, Guest types à sommer, classe (YC par défaut) | aucun | Flight No exact |
+
+⚠ Les listes propres à l'unité (compagnies exclues, numéros de vol exclus,
+vols fictifs, codes compagnie) sont des réglages : jamais dans le code, les
+tests ou la doc.
+
+### Le programme
+
+Le CSV daté (§ 3) : `date`, `vol_id`, `compagnie`, `type_avion` (vide),
+`sens` (`DEP`), `heure_std`, `heure_sta` (vide), `nb_BC`, `nb_PC`, `nb_YC`,
+`nb_CREW`, `nb_SPML` (la somme des trois suivantes), `nb_SPML_BC`,
+`nb_SPML_PC`, `nb_SPML_YC` ; trié par date, heure, vol_id. L'export ne donne
+que des départs : le programme n'a pas de retours. Un vol fictif à 0 (un jour
+sans ligne de production) reste au rapport, hors du programme : le CSV daté
+refuse un vol sans repas.
+
+### Le rapport d'import
+
+Le JSON (`--rapport`) : `fichier`, `periode` (`debut`, `fin`, `jours` : celle
+des livraisons du fichier), `lignes` (lues, sans les lignes vides),
+`livraisons`, `parStatut`, `vols` (gardés), `parJour` (par jour et par
+compagnie : `vols`, `BC`, `PC`, `YC`, `CREW`, `SPML_BC`, `SPML_PC`,
+`SPML_YC`), `parMotif` et `ecartees` (`date`, `flightNo`, `deliveryNo`,
+`motif` : `statut « … »`, `ICAO exclu`, `Flight No exclu`, `sans repas`,
+`réserve sans vol`), `typesIgnores` (`guestType`, `quantite`, `livraisons`),
+`reservesFondues` (`vers` : le vol qui la reçoit, `repas`), `suffixes`
+(`volId`), `fictifs` (`volId`, `quantite`, `classe`, `auProgramme`),
+`aVerifier` (`quoi` : une date, un Flight No, un ICAO, un statut ou une
+Guest qty qui change d'une ligne à l'autre d'une livraison ; une ligne de
+production sans date). Aucun prix.
+
+Le classeur (page : « Télécharger le rapport (Excel) » ; outil : `--xlsx`),
+compressé (règles communes, correction 16), produit par
+`echanges-import-flights.js` :
+
+| Feuille | Une ligne par | Colonnes |
+|---|---|---|
+| **Lisez-moi** | total | le fichier, la période, les lignes, les livraisons par statut, les vols gardés (acceptés), les livraisons écartées (rejetées) et leurs motifs, les points à vérifier (ambigus), les Guest types ignorés, les réserves fondues, les vol_id suffixés, les vols fictifs ; puis ce que veulent dire acceptées, ambiguës et rejetées |
+| **Par jour** | jour × compagnie | `Date`, `Compagnie`, `Vols`, `BC`, `PC`, `YC`, `CREW`, `SPML BC`, `SPML PC`, `SPML YC` |
+| **Écartées** | livraison écartée | `Date`, `Flight No`, `Delivery No`, `Motif` |
+| **À vérifier** | point à vérifier | `Date`, `Flight No`, `Delivery No`, `À vérifier` |
+| **Types ignorés** | Guest type | `Guest type`, `Quantité`, `Livraisons` |
+| **Réserves fondues** | réserve | `Date`, `Flight No`, `Delivery No`, `Fondue dans`, les sept classes |
+| **vol_id suffixés** | vol numéroté | `Date`, `Flight No`, `Delivery No`, `vol_id` |
+| **Vols fictifs** | jour × vol fictif | `Date`, `vol_id`, `Flight No`, `Quantité`, `Classe`, `Au programme` |
+
+Les dates sont de vraies dates Excel.
+
+### L'outil
+
+```
+node outils/importer-flights.cjs EXPORT.xlsx [sauvegarde.json] [--rapport rapport.json] [--xlsx rapport.xlsx] > programme.csv
+node outils/simuler-periode.cjs sauvegarde.json programme.csv > periode.json
+```
+
+Le programme sort sur la sortie standard, le résumé du rapport sur la sortie
+d'erreur. Un fichier refusé, ou un export où rien n'est gardé : rien sur la
+sortie standard, la raison sur la sortie d'erreur, code 1 (quand rien n'est
+gardé, le rapport demandé s'écrit quand même). Un appel mal formé (une option
+sans valeur ou répétée, une sortie qui écraserait l'export, la sauvegarde ou
+l'autre sortie) : l'usage, code 2, rien d'écrit.
+
 ## Confidentialité
 
 Les classeurs exportés contiennent **les données réelles de l'unité** dès qu'elle
 est saisie. Le dépôt est public : `.gitignore` refuse les `*.xlsx`, `*.xls`,
-`*.xlsm` et `vols*.csv`. Travaillez-les dans `prive/`.
+`*.xlsm`, `vols*.csv`, `*winrest*` et `*Winrest*` (les exports Winrest et
+leurs rapports). Travaillez-les dans `prive/`.
 
 ### Feuille « Par compagnie » (classeur des ateliers)
 

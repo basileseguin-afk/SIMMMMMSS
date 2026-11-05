@@ -75,9 +75,9 @@ de relire le cahier des charges initial :
 | D6 | Import des effectifs (staffing) | CdC §4 | ✅ | Classeur « Ateliers » (équipes, horaires, personnes) |
 | D7 | Piloter les ateliers depuis Excel : modifier, **ajouter** des compagnies × classes | 23/09 | ✅ | |
 | D8 | Passagers, nombre de vols et échéance **lus dans l'import**, jamais ressaisis | 22/09 | ✅ | |
-| D9 | Lire l'**export Winrest** réel (lignes de prestations, dossiers, `Qty` / `Final Qty`) | Feuille de route §2, étape 1 | ❌ | Seul le format simplifié est lu. Règles à fixer : dossier ≠ vol, équipages, fictifs, annulés |
+| D9 | Lire l'**export Winrest** réel (lignes de prestations, dossiers, `Qty` / `Final Qty`) | Feuille de route §2, étape 1 | ✅ | Version 1 (banc d'essai, évolution 13) : l'onglet « Flights » tel quel, dans la page et par `outils/importer-flights.cjs` ; une livraison = un vol, `Guest qty` une fois par type, équipages, réserves, vols fictifs, statuts annulés, par des règles réglables et sauvegardées (`FORMATS_EXCEL.md` § 7). L'export ne donne que des départs : pas de retours |
 | D10 | Jeu d'exemple embarqué (plusieurs compagnies, vague matin et soir) | CdC §9 | ✅ | Fictif : 12 départs, 6 retours |
-| D11 | Traçabilité des sources et rapport d'import (acceptées, ambiguës, rejetées) | Feuille de route étape 1 | 🟡 | Refus en bloc avec ligne et feuille ; pas de rapport « ambigu » |
+| D11 | Traçabilité des sources et rapport d'import (acceptées, ambiguës, rejetées) | Feuille de route étape 1 | ✅ | Pour l'export Winrest (évolution 13) : acceptées = les vols gardés, par jour et par compagnie ; ambiguës = les points à vérifier (une valeur qui change dans une livraison), avec les types ignorés, les réserves fondues, les vol_id suffixés ; rejetées = les livraisons écartées et leur motif ; dans la page et en classeur. Reste : les autres imports (vols Excel ou CSV, réel, planning, classeurs) refusent toujours en bloc, sans rapport « ambigu » ; le programme ne garde pas son fichier ni son rapport d'origine après un rechargement (l'outil les écrit, `--rapport`) |
 
 ## 5. Le modèle de production
 
@@ -221,7 +221,9 @@ de relire le cahier des charges initial :
 3. ~~**Indicateurs de charge**, par jour et sur la période~~ : faits (banc
    d'essai, évolution 12 — K3 à K8). Reste un débit global (K5), que des
    unités différentes ne permettent pas d'additionner.
-4. **Lire l'export Winrest réel** (D9), avec ses règles de dossiers.
+4. ~~**Lire l'export Winrest réel** (D9), avec ses règles de dossiers~~ : fait
+   (banc d'essai, évolution 13), avec son rapport d'import (D11). Restent les
+   retours, que l'export ne donne pas.
 5. **Stocks à capacité finie** (M12) — ils prennent tout leur sens sur
    plusieurs jours.
 6. **Décalage par vol** (W5), **export CSV des résultats** (W8), **loi de

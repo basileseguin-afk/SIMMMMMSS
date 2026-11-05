@@ -1,7 +1,7 @@
 /* ==========================================================================
  *  L'EXPORT « FLIGHTS » DE WINREST → LE PROGRAMME DE VOLS DATÉ
  *  (banc d'essai de la version 1, évolution 13 — exigences D9 et D11 ;
- *  docs/BANC_ESSAI.md § 14)
+ *  docs/BANC_ESSAI.md § 14, docs/FORMATS_EXCEL.md § 7)
  *  ------------------------------------------------------------------------
  *  Les lignes de l'onglet « Flights » (en-têtes en première ligne) et les
  *  règles d'import donnent le programme daté de l'évolution 10, sans
@@ -413,8 +413,18 @@
     return reglesCompletes(x.regles);
   }
 
+  /**
+   * Les règles d'une sauvegarde complète (« Tout sauvegarder ») : sa clé ory-import-winrest-v1, validée comme à la
+   * restauration ; sans elle (une sauvegarde d'avant), les défauts. Pour l'outil (outils/importer-flights.cjs).
+   */
+  function reglesDeLaSauvegarde(s) {
+    if (!s || typeof s !== 'object' || s.schema !== 'ory-sauvegarde' || s.version !== 1 || !s.contenu || typeof s.contenu !== 'object')
+      throw new Error('sauvegarde : ce n’est pas une sauvegarde complète (« Tout sauvegarder »).');
+    return aSoi(s.contenu, CLE_STOCKAGE) ? lireEnveloppe(s.contenu[CLE_STOCKAGE]) : reglesCompletes();
+  }
+
   const api = { ENTETES, CLASSES, COLONNES, REGLES_DEFAUT, CLE_STOCKAGE, reglesCompletes, lignesDeLExport, convertir, versCsv, volIdDe, lireDate, lireHeure,
-    enveloppe, lireEnveloppe };
+    enveloppe, lireEnveloppe, reglesDeLaSauvegarde };
   if (enNode) module.exports = api;
   else root.OrlyWinrest = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
