@@ -32,14 +32,16 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.waitForTimeout(5600);
   assert.equal(await page.locator('#at-status').textContent(),'','le message ne traîne pas de page en page');
 
-  // 2. Le planning : des heures lisibles, le jour écrit une fois.
+  // 2. Le planning : des heures lisibles, le jour écrit une fois — sur son propre niveau de l'axe (évolution 14 c).
   await nav.aller(page,'at-planning');await attendre();
-  const heures=await page.evaluate(()=>[...document.querySelectorAll('#at-planning .at-pl-heure')].map(t=>({x:+t.getAttribute('x'),s:t.textContent})));
+  const heures=await page.evaluate(()=>[...document.querySelectorAll('#at-planning .pg-axe-svg .at-pl-heure')].map(t=>({x:+t.getAttribute('x'),w:t.getComputedTextLength(),s:t.textContent})));
   assert.ok(heures.length>=3);
-  for(let i=1;i<heures.length;i++)assert.ok(heures[i].x-heures[i-1].x>=60,'deux heures ne se chevauchent pas : '+heures[i-1].s+' / '+heures[i].s);
-  assert.match(heures[0].s,/^J-1 /,'le premier repère dit le jour');
-  assert.equal(heures.filter(h=>/^J-1 /.test(h.s)).length,1,'une seule fois par jour');
-  assert.ok(heures.some(h=>/^J \d\d:\d\d$/.test(h.s)),'le jour J s’écrit à son premier repère');
+  for(let i=1;i<heures.length;i++)assert.ok(heures[i].x-heures[i-1].x>=heures[i-1].w+4,'deux heures ne se chevauchent pas : '+heures[i-1].s+' / '+heures[i].s);
+  assert.ok(heures.every(h=>/^\d\d:\d\d$/.test(h.s)),'les heures seules, le jour au-dessus');
+  const jours=await page.evaluate(()=>[...document.querySelectorAll('#at-planning .pg-jour text')].map(t=>t.textContent));
+  assert.equal(jours[0],'J-1','le premier jour se dit');
+  assert.equal(jours.filter(j=>j==='J-1').length,1,'une seule fois par jour');
+  assert.ok(jours.includes('J'),'le jour J aussi');
 
   // 3. « pas finie » dit pourquoi.
   await nav.aller(page,'at-repas');await attendre();

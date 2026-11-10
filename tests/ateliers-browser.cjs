@@ -125,7 +125,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 7. Le planning dessine une barre par lot.
   await onglet('at-planning');
-  assert.equal(await page.locator('#at-planning svg').count(),1);
+  assert.equal(await page.locator('#at-planning .pg-cadre').count(),1,'un planning (évolution 14 c : une ligne par équipe)');
   assert.equal(await page.locator('#at-planning .at-pl-lot').count(),4,'quatre lots fabriqués');
   assert.equal(await page.locator('#at-planning .at-pl-lot.robot').count(),1,'le robot se distingue');
   assert.ok(await page.locator('#at-planning .at-pl-attente').count()>0,'l’attente est dessinée');

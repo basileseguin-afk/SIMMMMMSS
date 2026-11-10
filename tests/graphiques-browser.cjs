@@ -41,58 +41,111 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.evaluate(()=>Sim.vue.auDebut());
    await nav.aller(page,'at-planning');await attendre();
 
+   if(version==='v1'){
+    // v1, évolution 14 (c) : le planning à échelle fixe (planning-vue.js) ; les mêmes intentions.
+    // 1. Le travail en accent ; l'attente garde sa couleur d'état ; chaque barre à l'heure de son lot.
+    await page.locator('[data-pg-zoom="six"]').click();await attendre();
+    const pal=await page.evaluate(()=>{const cs=getComputedStyle(document.documentElement),c=v=>{const d=document.createElement('i');d.style.color=cs.getPropertyValue(v);document.body.append(d);const x=getComputedStyle(d).color;d.remove();return x;};
+      const seg=document.querySelector('#at-planning .pg-lot:not(.robot):not(.chaine):not(.retard) .pg-seg'),att=document.querySelector('#at-planning .at-pl-attente');
+      return {lot:getComputedStyle(seg).fill,accent:c('--ds-accent'),att:att&&getComputedStyle(att).fill,attente:c('--ds-attente')};});
+    assert.equal(pal.lot,pal.accent,V+'une équipe prépare : une barre pleine, en accent');
+    assert.equal(pal.att,pal.attente,V+'l’attente garde la couleur d’état');
+    const place=await page.evaluate(()=>{const v=OrlyPlanningVue.etat.vue,lots=Sim.ateliers.resultat.lots.filter(l=>!l.dispo&&l.fin!=null);
+      const xs=[...document.querySelectorAll('#at-planning .pg-lot')].map(g=>+g.dataset.x).sort((a,b)=>a-b);
+      const attendus=lots.map(l=>(l.debut-v.t0)/60*v.pxh).sort((a,b)=>a-b);
+      return {n:xs.length,attendu:lots.length,ecart:Math.max(0,...xs.map((x,i)=>Math.abs(x-attendus[i])))};});
+    assert.equal(place.n,place.attendu,V+'une barre par lot fabriqué');
+    assert.ok(place.ecart<0.01,V+'chaque barre à l’heure de son lot '+place.ecart);
+    // 2. L'étiquette quand elle tient, et seulement alors.
+    const etiq=await page.evaluate(()=>[...document.querySelectorAll('#at-planning .at-pl-etiq')].map(t=>{
+      const g=t.closest('.pg-lot'),segs=[...g.querySelectorAll('.pg-seg')].map(r=>r.getBBox()),x=+t.getAttribute('x'),seg=segs.find(b=>Math.abs(b.x+5-x)<0.01);
+      return {mot:t.textContent,tient:seg?t.getComputedTextLength()+7<=seg.width:false};}));
+    assert.ok(etiq.length>=3,V+'des barres portent leur étiquette '+etiq.length);
+    assert.ok(etiq.every(e=>e.tient),V+'chaque étiquette tient dans sa barre '+JSON.stringify(etiq.filter(e=>!e.tient)));
+    assert.ok(etiq.some(e=>/ · /.test(e.mot)),V+'la commande en clair quand la place le permet');
+    // 3. L'infobulle, tout de suite.
+    assert.equal(await page.locator('#at-planning svg title').count(),0,V+'plus de <title> natif dans le planning');
+    // La barre au milieu du cadre, hors de la colonne des noms (collante) : le pointeur s'y pose sans faire défiler.
+    const lot=page.locator('#at-planning .pg-lot').first();
+    await lot.scrollIntoViewIfNeeded();
+    await lot.evaluate(g=>{const c=g.closest('.pg-cadre');c.scrollLeft=Math.max(0,+g.dataset.x-200);});await attendre(200);
+    await lot.locator('.pg-seg').first().hover();
+    const dit=await bulle();
+    assert.ok(dit,V+'la bulle s’ouvre au survol, sans attendre');
+    assert.equal(dit,await lot.getAttribute('data-info'),V+'elle dit ce que la barre porte');
+    assert.match(dit,/^[A-Z0-9]+ · .+\n\d\d:\d\d → \d\d:\d\d \(\d+ min/,V+'la commande en clair, puis ses heures');
+    await page.mouse.move(5,5);await attendre(50);
+    assert.equal(await bulle(),null,V+'elle se ferme en quittant la barre');
+    // 4. Le trait « maintenant » : rien avant le rejeu ; puis à l'heure rejouée, qui suit la lecture.
+    const maint=()=>page.evaluate(()=>{const m=document.querySelector('#at-planning .pg-maintenant'),h=document.querySelector('#at-planning .pg-maintenant-heure'),v=OrlyPlanningVue.etat.vue;
+      return m.hidden?null:{x:parseFloat(m.style.left),attendu:OrlyPlanningVue.NOMS+(OrlyDS.heure-v.t0)/60*v.pxh,texte:h.textContent,t:OrlyDS.heure};});
+    assert.equal(await maint(),null,V+'pas de trait tant que le rejeu n’a pas bougé');
+    const t=await page.evaluate(()=>{const v=Sim.vue;v.allerA(v.debut+(v.fin-v.debut)*0.4);return v.t;});await attendre(100);
+    const tp=await maint();
+    assert.ok(tp&&Math.abs(tp.x-tp.attendu)<0.05&&tp.t===t,V+'le trait à l’heure rejouée '+JSON.stringify(tp));
+    assert.equal(tp.texte,await page.evaluate(t=>MoteurProduction.hhmm(t),t),V+'l’heure écrite sur le trait');
+    // L'heure de l'axe sous l'étiquette du trait s'efface.
+    const chevauche=await page.evaluate(()=>{const h=document.querySelector('#at-planning .pg-maintenant-heure').getBoundingClientRect();
+      return [...document.querySelectorAll('#at-planning .pg-axe-svg .at-pl-heure')].filter(x=>getComputedStyle(x).opacity!=='0').map(x=>({b:x.getBoundingClientRect(),s:x.textContent}))
+        .filter(({b})=>b.left<h.right&&b.right>h.left).map(x=>x.s);});
+    assert.deepEqual(chevauche,[],V+'aucun repère sous l’heure du trait');
+    await page.evaluate(()=>Sim.vue.lancer());await attendre(400);await page.evaluate(()=>Sim.vue.pause());
+    const tp2=await maint();
+    assert.ok(tp2&&tp2.x>tp.x&&Math.abs(tp2.x-tp2.attendu)<0.05,V+'il suit la lecture');
+   }else{
    // 1. La palette des données, et les barres d'avant à leur place.
-   const pal=await page.evaluate(()=>{const cs=getComputedStyle(document.documentElement),c=v=>{const d=document.createElement('i');d.style.color=cs.getPropertyValue(v);document.body.append(d);const x=getComputedStyle(d).color;d.remove();return x;};
-     const lot=document.querySelector('#at-planning .at-pl-lot:not(.robot):not(.chaine)'),att=document.querySelector('#at-planning .at-pl-attente');
-     return {lot:getComputedStyle(lot).fill,d1:c('--ds-d1'),att:att&&getComputedStyle(att).fill,attente:c('--ds-attente')};});
-   assert.equal(pal.lot,pal.d1,V+'une équipe prépare en bleu, couleur de donnée');
-   assert.equal(pal.att,pal.attente,V+'l’attente garde la couleur d’état');
-   const place=await page.evaluate(()=>{const svg=document.querySelector('#at-planning svg'),[t0,t1,x0,x1]=svg.dataset.axe.split(' ').map(Number);
-     const lots=Sim.ateliers.resultat.lots.filter(l=>!l.dispo&&l.fin!=null);
-     const xs=[...svg.querySelectorAll('.at-pl-lot')].map(r=>+r.getAttribute('x')).sort((a,b)=>a-b);
-     const attendus=lots.map(l=>x0+(l.debut-t0)/(t1-t0)*(x1-x0)).sort((a,b)=>a-b);
-     return {n:xs.length,attendu:lots.length,ecart:Math.max(0,...xs.map((x,i)=>Math.abs(x-attendus[i])))};});
-   assert.equal(place.n,place.attendu,V+'une barre par lot fabriqué');
-   assert.ok(place.ecart<0.01,V+'chaque barre à l’heure de son lot '+place.ecart);
+    const pal=await page.evaluate(()=>{const cs=getComputedStyle(document.documentElement),c=v=>{const d=document.createElement('i');d.style.color=cs.getPropertyValue(v);document.body.append(d);const x=getComputedStyle(d).color;d.remove();return x;};
+      const lot=document.querySelector('#at-planning .at-pl-lot:not(.robot):not(.chaine)'),att=document.querySelector('#at-planning .at-pl-attente');
+      return {lot:getComputedStyle(lot).fill,d1:c('--ds-d1'),att:att&&getComputedStyle(att).fill,attente:c('--ds-attente')};});
+    assert.equal(pal.lot,pal.d1,V+'une équipe prépare en bleu, couleur de donnée');
+    assert.equal(pal.att,pal.attente,V+'l’attente garde la couleur d’état');
+    const place=await page.evaluate(()=>{const svg=document.querySelector('#at-planning svg'),[t0,t1,x0,x1]=svg.dataset.axe.split(' ').map(Number);
+      const lots=Sim.ateliers.resultat.lots.filter(l=>!l.dispo&&l.fin!=null);
+      const xs=[...svg.querySelectorAll('.at-pl-lot')].map(r=>+r.getAttribute('x')).sort((a,b)=>a-b);
+      const attendus=lots.map(l=>x0+(l.debut-t0)/(t1-t0)*(x1-x0)).sort((a,b)=>a-b);
+      return {n:xs.length,attendu:lots.length,ecart:Math.max(0,...xs.map((x,i)=>Math.abs(x-attendus[i])))};});
+    assert.equal(place.n,place.attendu,V+'une barre par lot fabriqué');
+    assert.ok(place.ecart<0.01,V+'chaque barre à l’heure de son lot '+place.ecart);
 
-   // 2. L'étiquette quand elle tient, et seulement alors.
-   const etiq=await page.evaluate(()=>[...document.querySelectorAll('#at-planning .at-pl-etiq')].map(t=>{
-     const x=+t.getAttribute('x'),bar=[...document.querySelectorAll('#at-planning .at-pl-lot')].find(r=>Math.abs(+r.getAttribute('x')+5-x)<0.01&&Math.abs(+r.getAttribute('y')+12-t.getAttribute('y'))<0.01);
-     return {mot:t.textContent,tient:bar?t.getComputedTextLength()+7<=+bar.getAttribute('width'):false};}));
-   assert.ok(etiq.length>=3,V+'des barres portent leur étiquette '+etiq.length);
-   assert.ok(etiq.every(e=>e.tient),V+'chaque étiquette tient dans sa barre '+JSON.stringify(etiq.filter(e=>!e.tient)));
-   assert.ok(etiq.some(e=>/ · /.test(e.mot)),V+'la commande en clair quand la place le permet');
+    // 2. L'étiquette quand elle tient, et seulement alors.
+    const etiq=await page.evaluate(()=>[...document.querySelectorAll('#at-planning .at-pl-etiq')].map(t=>{
+      const x=+t.getAttribute('x'),bar=[...document.querySelectorAll('#at-planning .at-pl-lot')].find(r=>Math.abs(+r.getAttribute('x')+5-x)<0.01&&Math.abs(+r.getAttribute('y')+12-t.getAttribute('y'))<0.01);
+      return {mot:t.textContent,tient:bar?t.getComputedTextLength()+7<=+bar.getAttribute('width'):false};}));
+    assert.ok(etiq.length>=3,V+'des barres portent leur étiquette '+etiq.length);
+    assert.ok(etiq.every(e=>e.tient),V+'chaque étiquette tient dans sa barre '+JSON.stringify(etiq.filter(e=>!e.tient)));
+    assert.ok(etiq.some(e=>/ · /.test(e.mot)),V+'la commande en clair quand la place le permet');
 
-   // 3. L'infobulle, tout de suite.
-   assert.equal(await page.locator('#at-planning svg title').count(),0,V+'plus de <title> natif dans le planning');
-   const lot=page.locator('#at-planning .at-pl-lot').first();
-   // En v1, la vue « Charge » (évolution 12 c) met le planning plus bas : la page défile d'abord (un défilement ferme la bulle).
-   await lot.scrollIntoViewIfNeeded();await attendre(200);
-   await lot.hover();
-   const dit=await bulle();
-   assert.ok(dit,V+'la bulle s’ouvre au survol, sans attendre');
-   assert.equal(dit,await lot.getAttribute('data-info'),V+'elle dit ce que la barre porte');
-   assert.match(dit,/^[A-Z0-9]+ · .+\n\d\d:\d\d → \d\d:\d\d \(\d+ min/,V+'la commande en clair, puis ses heures');
-   await page.mouse.move(5,5);await attendre(50);
-   assert.equal(await bulle(),null,V+'elle se ferme en quittant la barre');
+    // 3. L'infobulle, tout de suite.
+    assert.equal(await page.locator('#at-planning svg title').count(),0,V+'plus de <title> natif dans le planning');
+    const lot=page.locator('#at-planning .at-pl-lot').first();
+    // En v1, la vue « Charge » (évolution 12 c) met le planning plus bas : la page défile d'abord (un défilement ferme la bulle).
+    await lot.scrollIntoViewIfNeeded();await attendre(200);
+    await lot.hover();
+    const dit=await bulle();
+    assert.ok(dit,V+'la bulle s’ouvre au survol, sans attendre');
+    assert.equal(dit,await lot.getAttribute('data-info'),V+'elle dit ce que la barre porte');
+    assert.match(dit,/^[A-Z0-9]+ · .+\n\d\d:\d\d → \d\d:\d\d \(\d+ min/,V+'la commande en clair, puis ses heures');
+    await page.mouse.move(5,5);await attendre(50);
+    assert.equal(await bulle(),null,V+'elle se ferme en quittant la barre');
 
-   // 4. Le trait « maintenant ».
-   assert.equal(await trait('#at-planning svg.ds-graphique'),null,V+'pas de trait tant que le rejeu n’a pas bougé');
-   assert.equal(await page.locator('#at-planning .ds-legende-maintenant').isVisible(),false,V+'ni sa légende');
-   const t=await page.evaluate(()=>{const v=Sim.vue;v.allerA(v.debut+(v.fin-v.debut)*0.4);return v.t;});await attendre(100);
-   const tp=await trait('#at-planning svg.ds-graphique');
-   assert.ok(tp&&Math.abs(tp.x-tp.attendu)<0.01&&tp.t===t,V+'le trait à l’heure rejouée '+JSON.stringify(tp));
-   assert.equal(tp.texte,await page.evaluate(t=>MoteurProduction.hhmm(t),t),V+'l’heure écrite au bout du trait');
-   assert.equal(await page.locator('#at-planning .ds-legende-maintenant').isVisible(),true,V+'la légende dit ce qu’il marque');
-   // Le repère d'axe chevauché s'efface ; aucun repère visible ne touche l'heure du trait.
-   const chevauche=await page.evaluate(()=>{const p=document.querySelector('#at-planning .ds-maintenant rect').getBBox();
-     return [...document.querySelectorAll('#at-planning .at-pl-heure')].filter(x=>getComputedStyle(x).opacity!=='0').map(x=>({b:x.getBBox(),s:x.textContent}))
-       .filter(({b})=>b.x<p.x+p.width&&b.x+b.width>p.x).map(x=>x.s);});
-   assert.deepEqual(chevauche,[],V+'aucun repère sous l’heure du trait');
-   // La lecture le fait avancer.
-   await page.evaluate(()=>Sim.vue.lancer());await attendre(400);await page.evaluate(()=>Sim.vue.pause());
-   const tp2=await trait('#at-planning svg.ds-graphique');
-   assert.ok(tp2&&tp2.x>tp.x&&Math.abs(tp2.x-tp2.attendu)<0.01,V+'il suit la lecture');
+    // 4. Le trait « maintenant ».
+    assert.equal(await trait('#at-planning svg.ds-graphique'),null,V+'pas de trait tant que le rejeu n’a pas bougé');
+    assert.equal(await page.locator('#at-planning .ds-legende-maintenant').isVisible(),false,V+'ni sa légende');
+    const t=await page.evaluate(()=>{const v=Sim.vue;v.allerA(v.debut+(v.fin-v.debut)*0.4);return v.t;});await attendre(100);
+    const tp=await trait('#at-planning svg.ds-graphique');
+    assert.ok(tp&&Math.abs(tp.x-tp.attendu)<0.01&&tp.t===t,V+'le trait à l’heure rejouée '+JSON.stringify(tp));
+    assert.equal(tp.texte,await page.evaluate(t=>MoteurProduction.hhmm(t),t),V+'l’heure écrite au bout du trait');
+    assert.equal(await page.locator('#at-planning .ds-legende-maintenant').isVisible(),true,V+'la légende dit ce qu’il marque');
+    // Le repère d'axe chevauché s'efface ; aucun repère visible ne touche l'heure du trait.
+    const chevauche=await page.evaluate(()=>{const p=document.querySelector('#at-planning .ds-maintenant rect').getBBox();
+      return [...document.querySelectorAll('#at-planning .at-pl-heure')].filter(x=>getComputedStyle(x).opacity!=='0').map(x=>({b:x.getBBox(),s:x.textContent}))
+        .filter(({b})=>b.x<p.x+p.width&&b.x+b.width>p.x).map(x=>x.s);});
+    assert.deepEqual(chevauche,[],V+'aucun repère sous l’heure du trait');
+    // La lecture le fait avancer.
+    await page.evaluate(()=>Sim.vue.lancer());await attendre(400);await page.evaluate(()=>Sim.vue.pause());
+    const tp2=await trait('#at-planning svg.ds-graphique');
+    assert.ok(tp2&&tp2.x>tp.x&&Math.abs(tp2.x-tp2.attendu)<0.01,V+'il suit la lecture');
+   }
    // Sur la frise des vols aussi, avec l'heure dessous ; l'avion dit son vol au survol.
    await nav.aller(page,'v-departs');await attendre();
    const tf=await trait('#vols-frise svg.vf-svg');

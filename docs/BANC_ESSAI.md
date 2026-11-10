@@ -2355,8 +2355,10 @@ pratique ; la simulation de chaque journée, inchangée, n'est pas comptée).
 ### Dans la page
 
 La page Planning (Résultats › Planning des équipes, version 1) montre la
-charge de la journée affichée au-dessus du planning des équipes, sur le même
-axe des heures, ses repères en tête (`charge-vue.js`, `charge.css`) :
+charge de la journée affichée dans le planning des équipes (`charge-vue.js`,
+`charge.css`) ; depuis l'évolution 14 (c), chaque courbe est en tête du groupe
+de son service, en petit, sur l'échelle de ses barres (`planning-vue.js`), et
+le tableau des équipes est sous le planning :
 
 - par service, une courbe : les présents (un trait), les personnes au travail
   (une aire) et, en dessous, ce qui attend son équipe (des barres, à leur
@@ -2460,8 +2462,9 @@ des jours complets ; sans indicateurs dans les extraits, le bilan est celui
 d'avant, champ par champ ; le débit du handling sur la période et une mise à
 disposition sans objet ; un mois puis l'autre, et une période vide ; soixante
 journées de 50 vols en moins de 2 s. `tests/charge-browser.cjs` (une unité et
-des vols fictifs) : la vue au-dessus du planning, sur le même axe (même
-largeur, même `data-axe`) ; les indicateurs de la page égaux à ceux de l'outil
+des vols fictifs) : la courbe de chaque service en tête de son groupe du
+planning, sur l'échelle de ses barres (même largeur, même départ ; évolution
+14 c) ; les indicateurs de la page égaux à ceux de l'outil
 pour la même sauvegarde ; une courbe par service, le pic marqué (la cuisine à
 J−1, la veille) ; le tableau des équipes et ses « sans objet » ; la bulle d'un
 créneau ; les couleurs, en clair et en sombre ; un nom d'équipe piégé qui

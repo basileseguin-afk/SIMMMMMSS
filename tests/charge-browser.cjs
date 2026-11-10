@@ -1,10 +1,11 @@
-/* Banc d'essai, évolution 12 (c) — la vue « Charge » dans la page Planning (v1).
+/* Banc d'essai, évolution 12 (c) — la vue « Charge » dans la page Planning (v1) ;
+ * depuis l'évolution 14 (c), les courbes en tête de chaque groupe du planning.
  * Une unité fictive (celle de la référence de non-régression : une cuisine à
  * J−1, un montage, un robot, une plonge, une mise à disposition, une équipe
  * d'appui, un handling) et ses vols fictifs :
- *   1. la vue est dans la page Planning, au-dessus du planning des équipes, sur
- *      le même axe des heures (même largeur, même data-axe) ; l'intro de la
- *      page le dit ;
+ *   1. la courbe de chaque service est en tête de son groupe, dans le planning
+ *      des équipes, sur la même échelle que ses barres ; le tableau des
+ *      équipes, sous le planning ; l'intro de la page le dit ;
  *   2. par service, la courbe présents / au travail / en file, et son pic : les
  *      nombres de moteur/indicateurs.js, les mêmes que l'outil d'une journée
  *      pour la même sauvegarde (un seul chemin de calcul) ; la cuisine à J−1
@@ -63,15 +64,17 @@ const PIEGE='<img src=x onerror="window.__xss=1">';
   await importer('vols-fictifs.csv',SANS_DATE);
   await nav.aller(page,'at-planning');await attendre();
 
-  // 1. Dans la page Planning, au-dessus du planning des équipes, sur le même axe ; l'intro le dit.
+  // 1. En tête de chaque groupe du planning, sur l'échelle de ses barres ; le tableau dessous ; l'intro le dit.
   assert.equal(await page.locator('#at-charge').isVisible(),true,'la vue Charge se voit');
-  const boites=await page.evaluate(()=>['#at-charge .ch-courbe','#at-planning svg'].map(s=>{const b=document.querySelector(s).getBoundingClientRect();return [b.left,b.width,b.top];}));
-  assert.ok(boites[0][2]<boites[1][2],'la charge, au-dessus du planning');
-  assert.ok(Math.abs(boites[0][0]-boites[1][0])<1&&Math.abs(boites[0][1]-boites[1][1])<1,'même largeur, même départ : '+JSON.stringify(boites));
-  const axePlanning=(await page.locator('#at-planning svg').getAttribute('data-axe')).split(' ').slice(0,4).join(' ');
-  const axes=await page.locator('#at-charge .ch-courbe').evaluateAll(l=>l.map(s=>s.dataset.axe.split(' ').slice(0,4).join(' ')));
-  assert.ok(axes.length>=3&&axes.every(a=>a===axePlanning),'le même axe des heures : '+axes.join(' / ')+' ≠ '+axePlanning);
-  assert.match(await page.locator('#view-intro').textContent(),/charge de chaque service/);
+  const boites=await page.evaluate(()=>{const g=document.querySelector('#at-planning .pg-groupe[data-service="prepa"]'),c=g.querySelector('.ch-courbe').getBoundingClientRect(),b=g.querySelector('.pg-barres').getBoundingClientRect();
+    return {courbe:[c.left,c.width,c.top],barres:[b.left,b.width,b.top],tableau:document.getElementById('at-charge').getBoundingClientRect().top>=document.getElementById('at-planning').getBoundingClientRect().bottom-1};});
+  assert.ok(boites.courbe[2]<boites.barres[2],'la courbe, en tête du groupe, au-dessus de ses équipes');
+  assert.ok(Math.abs(boites.courbe[0]-boites.barres[0])<1&&Math.abs(boites.courbe[1]-boites.barres[1])<1,'même largeur, même départ : '+JSON.stringify(boites));
+  assert.ok(boites.tableau,'le tableau des équipes, sous le planning');
+  /** L'échelle du planning : l'heure à x = 0, et les pixels par minute. */
+  const echelle=await page.evaluate(()=>({t0:OrlyPlanningVue.etat.vue.t0,pxm:OrlyPlanningVue.etat.vue.pxh/60}));
+  assert.ok((await page.locator('#at-planning .ch-courbe').count())>=3);
+  assert.match(await page.locator('#view-intro').textContent(),/en tête de chaque service sa charge/);
   assert.equal(await page.locator('#at-charge h4').count(),1);
 
   // 2. Les nombres : ceux de moteur/indicateurs.js, pour la même sauvegarde que l'outil d'une journée.
@@ -81,7 +84,7 @@ const PIEGE='<img src=x onerror="window.__xss=1">';
   assert.deepEqual(pageK,JSON.parse(JSON.stringify(k)),'les indicateurs de la page = ceux de l’outil');
   // Un service par courbe : ceux qui ont des présents ou du travail ; la cuisine (à J−1) en fait partie.
   const attendus=[...new Set(k.services.filter(s=>s.creneaux.presents||s.creneaux.auTravail).map(s=>s.service))].sort();
-  const vus=await page.locator('#at-charge .ch-service').evaluateAll(l=>l.map(x=>x.dataset.service));
+  const vus=await page.locator('#at-planning .ch-service').evaluateAll(l=>l.map(x=>x.dataset.service));
   assert.deepEqual([...vus].sort(),attendus);
   assert.ok(vus.includes('cuisine')&&vus.includes('prepa'));
   // Le pic au travail, marqué : le plus haut créneau des journées réunies sur l'horloge du jour J (la veille : − 24 h).
@@ -90,33 +93,33 @@ const PIEGE='<img src=x onerror="window.__xss=1">';
       [m,m==='debut'?(c===null?null:c+s.jour*1440):c&&{debut:c.debut+s.jour*1440,valeurs:c.valeurs}]))}));
     const pic=I.pic(PE.sommeDesCreneaux(gs.map(g=>g.creneaux)).auTravail);
     assert.ok(pic&&pic.personnes>0,id);
-    assert.equal(await page.locator(`#at-charge .ch-service[data-service="${id}"]`).getAttribute('data-pic'),pic.personnes+'|'+pic.debut,id+' : le pic');
-    assert.equal(await page.locator(`#at-charge .ch-service[data-service="${id}"] .ch-pic`).count(),1);
-    assert.match(await page.locator(`#at-charge .ch-service[data-service="${id}"] .ch-note`).first().textContent(),
+    assert.equal(await page.locator(`#at-planning .ch-service[data-service="${id}"]`).getAttribute('data-pic'),pic.personnes+'|'+pic.debut,id+' : le pic');
+    assert.equal(await page.locator(`#at-planning .ch-service[data-service="${id}"] .ch-pic`).count(),1);
+    assert.match(await page.locator(`#at-planning .pg-groupe[data-service="${id}"] .ch-note`).first().textContent(),
       new RegExp('pic '+fr(pic.personnes,1).replace(/[.,]/g,'\\$&')+' au travail à '+P.hhmm(pic.debut)));
     if(id==='cuisine')assert.ok(pic.debut<0,'la cuisine travaille la veille : '+P.hhmm(pic.debut));
-    // Sa marque, au milieu de son créneau sur l'axe déclaré (la veille comprise), dans le dessin.
-    const [cx,axe]=await page.locator(`#at-charge .ch-service[data-service="${id}"]`).evaluate(d=>[+d.querySelector('.ch-pic').getAttribute('cx'),d.querySelector('svg').dataset.axe.split(' ').map(Number)]);
-    const [t0,t1,x0,x1]=axe,attendu=x0+(pic.debut+I.PAS/2-t0)/(t1-t0)*(x1-x0);
-    assert.ok(Math.abs(cx-attendu)<0.06&&cx>=x0&&cx<=x1,id+' : la marque du pic à x '+cx+', attendue '+attendu.toFixed(2));
+    // Sa marque, au milieu de son créneau sur l'échelle du planning (la veille comprise), dans le dessin.
+    const [cx,w]=await page.locator(`#at-planning .ch-service[data-service="${id}"]`).evaluate(d=>[+d.querySelector('.ch-pic').getAttribute('cx'),+d.querySelector('svg').getAttribute('width')]);
+    const attendu=(pic.debut+I.PAS/2-echelle.t0)*echelle.pxm;
+    assert.ok(Math.abs(cx-attendu)<0.06&&cx>=0&&cx<=w,id+' : la marque du pic à x '+cx+', attendue '+attendu.toFixed(2));
   }
   // Les courbes : présents (un trait), au travail (une aire), la file (des barres) là où il y en a.
-  assert.ok(await page.locator('#at-charge .ch-service[data-service="prepa"] path.ch-presents').count()===1);
-  assert.ok(await page.locator('#at-charge .ch-service[data-service="prepa"] path.ch-travail').count()===1);
+  assert.ok(await page.locator('#at-planning .ch-service[data-service="prepa"] path.ch-presents').count()===1);
+  assert.ok(await page.locator('#at-planning .ch-service[data-service="prepa"] path.ch-travail').count()===1);
   // Une mise à disposition seule : présents, mais travail « sans objet ».
-  assert.match(await page.locator('#at-charge .ch-service[data-service="magasin"] .ch-note').first().textContent(),/travail sans objet/);
-  assert.equal(await page.locator('#at-charge .ch-service[data-service="magasin"] path.ch-travail').count(),0);
+  assert.match(await page.locator('#at-planning .pg-groupe[data-service="magasin"] .ch-note').first().textContent(),/travail sans objet/);
+  assert.equal(await page.locator('#at-planning .ch-service[data-service="magasin"] path.ch-travail').count(),0);
   // Ses présents sont « en appui ou à disposition » (correction 16) : un trait discret, et la légende le dit.
-  assert.equal(await page.locator('#at-charge .ch-service[data-service="magasin"] path.ch-appui').count(),1);
-  assert.equal(await page.locator('#at-charge .ch-service[data-service="prepa"] path.ch-appui').count(),0,'pas d’appui au montage');
-  assert.match(await page.locator('#at-charge .ch-legende').textContent(),/en appui ou à disposition/);
+  assert.equal(await page.locator('#at-planning .ch-service[data-service="magasin"] path.ch-appui').count(),1);
+  assert.equal(await page.locator('#at-planning .ch-service[data-service="prepa"] path.ch-appui').count(),0,'pas d’appui au montage');
+  assert.match(await page.locator('#at-planning .pg-cle[title*="en appui ou à disposition"]').textContent(),/en appui/);
 
   // 3. Le tableau des équipes, replié par défaut (correction 16 d) : les courbes se voient, le tableau s'ouvre d'un clic.
   const replie=page.locator('#at-charge details.ch-tableau');
   assert.equal(await replie.evaluate(d=>d.open),false,'replié par défaut');
   assert.equal(await page.locator('#at-charge details.ch-tableau > summary').textContent(),'Le tableau des équipes ('+k.equipes.length+')');
   assert.equal(await page.locator('#at-charge table.ch-equipes').isVisible(),false);
-  assert.equal(await page.locator('#at-charge .ch-service').first().isVisible(),true,'les courbes restent visibles');
+  assert.equal(await page.locator('#at-planning .ch-service').first().isVisible(),true,'les courbes restent visibles');
   await page.locator('#at-charge details.ch-tableau > summary').click();await attendre(100);
   assert.equal(await replie.evaluate(d=>d.open),true);
   assert.equal(await page.evaluate(()=>localStorage.getItem('ory-ui-charge-tableau')),'ouvert','ce navigateur s’en souvient');
@@ -149,7 +152,7 @@ const PIEGE='<img src=x onerror="window.__xss=1">';
   assert.match(await page.locator('#at-charge tr[data-equipe="cu1"] th').innerText(),/J−1/);
 
   // 4. La bulle d'un créneau : ses mesures.
-  const cibles=page.locator('#at-charge .ch-service[data-service="prepa"] .ch-cible');
+  const cibles=page.locator('#at-planning .ch-service[data-service="prepa"] .ch-cible');
   assert.ok(await cibles.count()>20,'un créneau par quart d’heure');
   const cible=cibles.nth(20);
   // La page défile d'abord (un défilement ferme la bulle), puis le pointeur s'y pose.
@@ -159,11 +162,11 @@ const PIEGE='<img src=x onerror="window.__xss=1">';
   await page.mouse.move(5,5);
   // Les couleurs du design system : l'équipe au travail en d1, la file dans la couleur de l'attente ; en sombre, les jetons sombres.
   const couleurs=()=>page.evaluate(()=>{const cs=getComputedStyle(document.documentElement),c=v=>{const d=document.createElement('i');d.style.color=cs.getPropertyValue(v);document.body.append(d);const x=getComputedStyle(d).color;d.remove();return x;};
-    const travail=document.querySelector('#at-charge .ch-travail'),pic=document.querySelector('#at-charge .ch-pic');
-    return {travail:getComputedStyle(travail).stroke,d1:c('--ds-d1'),pic:getComputedStyle(pic).fill,presents:getComputedStyle(document.querySelector('#at-charge .ch-presents')).stroke,texte3:c('--ds-texte-3')};});
+    const travail=document.querySelector('#at-planning .ch-travail'),pic=document.querySelector('#at-planning .ch-pic');
+    return {travail:getComputedStyle(travail).stroke,d1:c('--ds-d1'),pic:getComputedStyle(pic).fill,presents:getComputedStyle(document.querySelector('#at-planning .ch-presents')).stroke,texte3:c('--ds-texte-3')};});
   const clair=await couleurs();
   assert.deepEqual([clair.travail,clair.pic,clair.presents],[clair.d1,clair.d1,clair.texte3]);
-  const file=await page.evaluate(()=>{const f=document.querySelector('#at-charge .ch-file');if(!f)return null;const d=document.createElement('i');d.style.color=getComputedStyle(document.documentElement).getPropertyValue('--ds-attente');document.body.append(d);const x=getComputedStyle(d).color;d.remove();return [getComputedStyle(f).fill,x];});
+  const file=await page.evaluate(()=>{const f=document.querySelector('#at-planning .ch-file');if(!f)return null;const d=document.createElement('i');d.style.color=getComputedStyle(document.documentElement).getPropertyValue('--ds-attente');document.body.append(d);const x=getComputedStyle(d).color;d.remove();return [getComputedStyle(f).fill,x];});
   assert.ok(file,'des lots en file dans cette journée');
   assert.equal(file[0],file[1],'la file : la couleur de l’attente');
   await page.evaluate(()=>{document.documentElement.dataset.theme='sombre';});await attendre(100);
@@ -174,18 +177,18 @@ const PIEGE='<img src=x onerror="window.__xss=1">';
   // Un nom d'équipe piégé (du HTML) : il s'affiche en texte, rien ne s'exécute.
   await page.evaluate(n=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.find(a=>a.id==='mo').nom=n;},''),PIEGE);await attendre(300);
   await nav.aller(page,'at-planning');await attendre();
-  assert.equal(await page.locator('#at-charge img').count(),0,'le nom piégé reste du texte');
+  assert.equal(await page.locator('#at-charge img, #at-planning img').count(),0,'le nom piégé reste du texte');
   assert.equal(await page.evaluate(()=>window.__xss),undefined);
   assert.equal(await page.locator('#at-charge tr[data-equipe="mo"] th').innerText(),PIEGE);
   await page.evaluate(()=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.find(a=>a.id==='mo').nom='Montage';},''));await attendre(300);
   // Un nom de service piégé : dans le titre de sa courbe, son aria-label, ses bulles et le tableau, du texte aussi.
   await page.evaluate(n=>{const A=Sim.ateliers,s0=A.a.services;window.__services=s0;A.a.services=()=>s0().map(s=>(s.id==='prepa'?{...s,nom:n}:s));
     A.aDessiner.add('at-planning');A.surOnglet('at-planning');},PIEGE);await attendre(200);
-  assert.equal(await page.locator('#at-charge img').count(),0,'le service piégé reste du texte');
+  assert.equal(await page.locator('#at-charge img, #at-planning img').count(),0,'le service piégé reste du texte');
   assert.equal(await page.evaluate(()=>window.__xss),undefined);
-  assert.equal(await page.locator('#at-charge .ch-service[data-service="prepa"] .ch-nom').textContent(),PIEGE);
-  assert.ok((await page.locator('#at-charge .ch-service[data-service="prepa"] svg').getAttribute('aria-label')).startsWith(PIEGE));
-  assert.ok((await page.locator('#at-charge .ch-service[data-service="prepa"] .ch-cible').first().getAttribute('data-info')).startsWith(PIEGE));
+  assert.equal(await page.locator('#at-planning .pg-groupe[data-service="prepa"] .pg-service').textContent(),PIEGE);
+  assert.ok((await page.locator('#at-planning .ch-service[data-service="prepa"] svg').getAttribute('aria-label')).startsWith(PIEGE));
+  assert.ok((await page.locator('#at-planning .ch-service[data-service="prepa"] .ch-cible').first().getAttribute('data-info')).startsWith(PIEGE));
   await page.evaluate(()=>{const A=Sim.ateliers;A.a.services=window.__services;A.aDessiner.add('at-planning');A.surOnglet('at-planning');});await attendre(200);
 
   // (évolution 12 d) Le classeur de la charge de la journée : le bouton de la vue ; les mêmes feuilles que l'outil, pour la même sauvegarde.

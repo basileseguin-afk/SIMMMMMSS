@@ -1,0 +1,127 @@
+/* ==========================================================================
+ *  LE PLANNING DES ÉQUIPES (version 1, évolution 14 c) — planning-vue.js
+ *  Une échelle fixe en pixels : lignes de 28 px, textes de 12 à 13 px, à
+ *  toutes les largeurs. L'axe (le jour, puis les heures) reste en haut et les
+ *  noms des équipes à gauche, pendant les défilements : le cadre défile dans
+ *  les deux sens, l'axe et les noms y sont collants. Couleurs, espacements et
+ *  rayons : les jetons de ds.css ; une couleur de statut ne dit qu'un état
+ *  (l'attente des amonts, le retard).
+ * ==========================================================================*/
+.at-planning.pg{display:flex;flex-direction:column;gap:var(--ds-e-2);min-width:0}
+
+/* La barre : les trois zooms, la période visible, l'aide des gestes. */
+.pg-barre{display:flex;flex-wrap:wrap;align-items:center;gap:var(--ds-e-2) var(--ds-e-4)}
+.pg-zooms{display:inline-flex;gap:0}
+.pg-zooms .btn{border-radius:0;margin-left:-1px}
+.pg-zooms .btn:first-child{border-radius:var(--ds-r-2) 0 0 var(--ds-r-2);margin-left:0}
+.pg-zooms .btn:last-child{border-radius:0 var(--ds-r-2) var(--ds-r-2) 0}
+.pg-zooms .btn[aria-pressed="true"]{background:var(--ds-accent-doux);border-color:var(--ds-accent-trait);color:var(--ds-accent-texte);position:relative;z-index:1}
+.pg-periode{font-size:var(--ds-t-13);font-weight:var(--ds-g-fort);color:var(--ds-texte-1);font-variant-numeric:tabular-nums}
+.pg-aide{margin:0 0 0 auto;font-size:var(--ds-t-12)}
+
+/* La légende : une ligne, en haut. Étroite, elle défile plutôt que de passer à la ligne. */
+.pg-legende{display:flex;flex-wrap:nowrap;align-items:center;gap:var(--ds-e-3);margin:0;overflow-x:auto;white-space:nowrap;
+  font-size:var(--ds-t-12);color:var(--ds-texte-2);scrollbar-width:thin}
+.pg-cle{display:inline-flex;align-items:center;gap:6px;flex:none}
+.pg-ex{display:inline-block;width:18px;height:10px;border-radius:2px;flex:none;background:var(--ds-accent)}
+.pg-ex.attente{height:4px;background:var(--ds-attente);opacity:.5}
+.pg-ex.pause{background:linear-gradient(to right,var(--ds-accent) 0 7px,transparent 7px 11px,var(--ds-accent) 11px)}
+.pg-ex.motif{background:repeating-linear-gradient(135deg,var(--ds-accent) 0 3px,color-mix(in srgb,var(--ds-accent) 62%,var(--ds-sur-accent)) 3px 5px)}
+.pg-ex.chaine{clip-path:polygon(0 0,3px 0,6px 45%,9px 0,100% 0,100% 100%,0 100%)}
+.pg-ex.retard{background:var(--ds-accent);box-shadow:0 0 0 2px var(--ds-retard)}
+.pg-ex.limite{width:12px;background:linear-gradient(to right,transparent 0 9px,var(--ds-texte-1) 9px 11px,transparent 11px),
+  linear-gradient(to bottom,transparent 4px,var(--ds-texte-3) 4px 5px,transparent 5px)}
+.pg-ex.presents{height:0;border-top:2px solid var(--ds-texte-3);border-radius:0}
+.pg-ex.autravail{background:color-mix(in srgb,var(--ds-d1) 32%,transparent);border-top:2px solid var(--ds-d1);border-radius:0}
+.pg-ex.appui{height:0;border-top:2px dotted var(--ds-texte-4);border-radius:0}
+.pg-ex.file{width:8px;background:var(--ds-attente)}
+.pg-ex.maintenant{width:2px;height:12px;border-radius:1px;background:var(--ds-texte-1)}
+
+/* Le cadre défile dans les deux sens ; il tient dans la page (sous l'en-tête et le titre) : une fois la page descendue
+ * jusqu'à lui, l'axe et les noms restent à la vue. */
+.pg-cadre{position:relative;overflow:auto;max-height:max(260px,calc(100vh - 160px));border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);
+  background:var(--ds-surface-1);cursor:grab}
+/* Les dessins du planning gardent leur taille en pixels (leur style la porte : la règle commune des graphiques de
+ * .at-planning les étirait) ; ni bordure ni fond de carte. */
+.at-planning.pg svg:is(.pg-barres,.pg-axe-svg,.ch-mini){border:0;border-radius:0;background-color:transparent}
+.at-planning.pg svg.pg-defs{width:0;height:0;border:0}
+.pg-cadre.glisse{cursor:grabbing;user-select:none}
+.pg-cadre:focus-visible{outline:2px solid var(--ds-accent);outline-offset:2px}
+.pg-toile{position:relative}
+.pg-defs{position:absolute}
+#pg-motif line{stroke:var(--ds-sur-accent);stroke-opacity:.4;stroke-width:2}
+
+/* L'axe : collant en haut ; son coin, collant aussi à gauche. */
+.pg-axe{position:sticky;top:0;z-index:4;display:flex;height:40px;background:var(--ds-surface-1);border-bottom:1px solid var(--ds-bordure-forte)}
+.pg-coin{position:sticky;left:0;z-index:5;flex:none;width:184px;box-sizing:border-box;display:flex;align-items:flex-end;padding:0 var(--ds-e-3) 6px;
+  background:var(--ds-surface-1);border-right:1px solid var(--ds-bordure-forte);font-size:var(--ds-t-12);font-weight:var(--ds-g-moyen);color:var(--ds-texte-3)}
+.pg-axe-svg{display:block;flex:none}
+.pg-jour rect{fill:var(--ds-surface-2);stroke:var(--ds-bordure);stroke-width:1}
+.pg-jour text{fill:var(--ds-texte-1);font-size:var(--ds-t-12);font-weight:var(--ds-g-fort)}
+.pg-tic{stroke:var(--ds-bordure-forte);stroke-width:1}
+.pg-tic.minuit{stroke:var(--ds-texte-3)}
+.pg .at-pl-heure{fill:var(--ds-texte-2);font-size:var(--ds-t-12);text-anchor:start;font-variant-numeric:tabular-nums}
+.pg .at-pl-heure.pg-sous-maintenant{opacity:0}
+
+/* Un groupe : son en-tête (le service, sa courbe de charge), ses équipes. */
+.pg-groupe{border-bottom:1px solid var(--ds-bordure)}
+.pg-groupe-tete{display:flex;height:44px;background:var(--ds-surface-2);border-bottom:1px solid var(--ds-bordure)}
+.pg-groupe-nom{position:sticky;left:0;z-index:3;flex:none;width:184px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;gap:1px;
+  padding:0 var(--ds-e-2) 0 var(--ds-e-1);background:var(--ds-surface-2);border-right:1px solid var(--ds-bordure-forte);min-width:0}
+.pg-replier{display:flex;align-items:center;gap:4px;min-width:0;padding:1px 4px;border:0;border-radius:var(--ds-r-1);background:none;color:var(--ds-texte-1);
+  font:inherit;font-size:var(--ds-t-13);font-weight:var(--ds-g-fort);text-align:left;cursor:pointer}
+.pg-replier:hover{background:var(--ds-survol)}
+.pg-replier:focus-visible{outline:2px solid var(--ds-accent);outline-offset:1px}
+.pg-replier .ico{width:14px;height:14px;flex:none;fill:none;stroke:currentColor;stroke-width:2;transition:transform .15s}
+.pg-groupe.replie .pg-replier .ico{transform:rotate(-90deg)}
+.pg-service{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pg-compte{flex:none;padding:0 6px;border-radius:999px;background:var(--ds-surface-1);border:1px solid var(--ds-bordure);font-size:var(--ds-t-12);font-weight:var(--ds-g-moyen);color:var(--ds-texte-3)}
+.pg .pg-note{display:block;padding-left:22px;font-size:var(--ds-t-12);line-height:16px;color:var(--ds-texte-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pg .ch-service{margin:0;flex:none}
+.pg .ch-mini{display:block;background:none;border:0;border-radius:0}
+.pg-lignes[hidden]{display:none}
+
+/* Une équipe : son nom collant à gauche, ses barres. Les heures en filigrane. */
+.pg-ligne{display:flex;height:28px}
+.pg-nom{position:sticky;left:0;z-index:3;flex:none;width:184px;box-sizing:border-box;display:flex;align-items:center;padding:0 var(--ds-e-2) 0 28px;
+  background:var(--ds-surface-1);border-right:1px solid var(--ds-bordure-forte);font-size:var(--ds-t-13);color:var(--ds-texte-1)}
+.pg-nom span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pg-ligne:nth-child(even) .pg-nom,.pg-ligne:nth-child(even) .pg-barres{background-color:var(--ds-surface-2)}
+.pg-barres,.pg .ch-mini{flex:none;display:block;overflow:visible;background-image:repeating-linear-gradient(to right,var(--ds-bordure) 0 1px,transparent 1px var(--pg-pas));
+  background-position:var(--pg-decalage) 0}
+.pg-minuit{position:absolute;top:40px;bottom:0;width:0;border-left:1px dashed var(--ds-texte-3);pointer-events:none;z-index:1}
+
+/* Les barres : le travail plein (accent) ; l'attente des amonts en bande fine ; le robot et le lavage avec un motif ;
+ * le travail à la chaîne avec une encoche ; un lot en retard, un contour critique et l'icône d'alerte. */
+.pg-lot{cursor:pointer;outline:none}
+.pg-lot .pg-seg{fill:var(--ds-accent)}
+.pg-lot .pg-motif{fill:url(#pg-motif);pointer-events:none}
+.pg-lot.retard .pg-contour{fill:none;stroke:var(--ds-retard);stroke-width:2}
+.pg-alerte circle{fill:var(--ds-surface-1);stroke:var(--ds-retard);stroke-width:1}
+.pg-alerte g{fill:none;stroke:var(--ds-retard);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.pg .at-pl-attente{fill:var(--ds-attente);opacity:.5}
+.pg .at-pl-etiq{fill:var(--ds-sur-accent);font-size:var(--ds-t-12);font-weight:var(--ds-g-moyen);pointer-events:none}
+.pg .ds-graphique .pg-lot[data-info]:hover{opacity:1}
+.pg-lot:hover .pg-seg{fill:color-mix(in srgb,var(--ds-accent) 82%,var(--ds-texte-1))}
+.pg-lot:focus-visible .pg-seg{stroke:var(--ds-texte-1);stroke-width:2}
+/* La limite de la commande : un petit trait au bout de la barre de son dernier lot ; le pointillé, la marge. */
+.pg-limite{stroke:var(--ds-texte-1);stroke-width:2;stroke-linecap:round}
+.pg-limite.depassee{stroke:var(--ds-surface-1);stroke-width:2}
+.pg-marge{stroke:var(--ds-texte-3);stroke-width:1;stroke-dasharray:2 2}
+/* Une commande choisie : ses lots restent nets, les autres pâlissent. */
+.pg-toile.choix .pg-lot:not(.net){opacity:.22}
+.pg-toile.choix .pg-lot.net .pg-seg{stroke:var(--ds-texte-1);stroke-width:1.5}
+
+/* Le trait de l'heure rejouée : sur toute la hauteur, son heure dans l'axe ; l'encre, pas la couleur des barres. */
+.pg-maintenant{position:absolute;top:40px;bottom:0;width:0;border-left:2px solid var(--ds-texte-1);margin-left:-1px;pointer-events:none;z-index:2}
+.pg-maintenant-heure{position:absolute;top:21px;transform:translateX(-50%);padding:0 6px;border-radius:var(--ds-r-1);background:var(--ds-texte-1);color:var(--ds-surface-1);
+  font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);line-height:16px;font-variant-numeric:tabular-nums;pointer-events:none;z-index:3}
+.pg-maintenant[hidden],.pg-maintenant-heure[hidden]{display:none}
+/* L'infobulle au focus clavier : la même que celle du survol (ds.css), posée sous la barre. */
+.pg-bulle{position:fixed;z-index:1000;left:0;top:0;max-width:280px;padding:6px 10px;border-radius:var(--ds-r-2);background:var(--ds-texte-1);color:var(--ds-surface-1);
+  font-size:var(--ds-t-12);line-height:1.5;white-space:pre-line;font-variant-numeric:tabular-nums;box-shadow:var(--ds-ombre-flottant);pointer-events:none}
+.pg-bulle::first-line{font-weight:var(--ds-g-fort)}
+.pg-bulle[hidden]{display:none}
+
+/* Sous le planning, le tableau des équipes et le classeur de la charge. */
+.at-planning.pg+.at-charge{margin:var(--ds-e-4) 0 0}

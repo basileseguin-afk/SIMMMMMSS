@@ -1751,6 +1751,7 @@ function peindreInstant(i) {
   document.body.classList.toggle('en-lecture', enLecture);
   // Le planning, la frise et les stocks marquent l'heure rejouée d'un trait.
   if (window.OrlyDS) OrlyDS.maintenant(enLecture ? i.t : null);
+  if (window.OrlyPlanningVue) OrlyPlanningVue.maintenant(enLecture ? i.t : null);
   const r = Sim.ateliers && Sim.ateliers.resultat;
   if (window.OrlyTemps && r) for (const s of servicesDisponibles()) {
     const n = OrlyTemps.enStockA(r, s.id, i.t);

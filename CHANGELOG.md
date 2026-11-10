@@ -5,6 +5,46 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-10 — Évolution 14 (c) : le planning des équipes
+
+- `planning-vue.js` et `planning-vue.css` (nouveaux, v1) : le planning des équipes.
+- Une échelle fixe en pixels : le planning ne s'étire plus avec la fenêtre ;
+  lignes de 28 px, textes de 12 à 13 px, à toutes les largeurs.
+- Trois zooms, par boutons et par Ctrl + molette : « Toute la chaîne » (de la
+  première à la dernière minute, dans la largeur visible), « Un jour » (40 px par
+  heure, le défaut, placé sur le jour où le plus de lots tournent) et « 6 h »
+  (160 px par heure). On se déplace en glissant ou par la barre de défilement ;
+  la période visible s'affiche (« J-1 06:00 → J 06:00 »).
+- L'axe des heures reste en haut, sur deux niveaux (le jour, puis les heures), et
+  les noms des équipes à gauche, pendant les défilements vertical et horizontal.
+- Les équipes sont groupées par service, de l'amont vers l'aval (les étapes de
+  chaque commande, le handling après ce qu'il charge, le lavage à la fin) ; chaque
+  groupe se replie. En tête, la courbe de charge du service, en petit, sur la même
+  échelle ; les grandes courbes au-dessus du planning disparaissent. Une équipe
+  d'appui sans lot garde son groupe, pour sa courbe. Le tableau des équipes
+  reste, replié, sous le planning, avec « Exporter la charge (Excel) ».
+- Les barres : le travail plein (accent), l'attente des amonts en bande fine
+  devant, une pause prise en trou, le robot et le lavage avec un motif discret, le
+  travail à la chaîne avec une encoche (plus de rose), un lot fini après la limite
+  de sa commande avec un contour critique et une icône.
+- La limite de chaque commande (« prête avant ») : un petit trait au bout de la
+  barre de son dernier lot, relié par un pointillé — la marge se voit.
+- L'étiquette d'une barre seulement quand elle y tient ; l'infobulle, au survol
+  comme au focus clavier : la commande, le début, la fin, la durée, l'attente et
+  la marge (ou le retard).
+- Un clic sur une barre met sa commande en évidence (ses autres lots restent nets,
+  les autres pâlissent) ; Échap annule.
+- Le trait de l'heure rejouée porte l'heure, à l'encre (pas la couleur des
+  barres). La légende tient en une ligne, en haut.
+- Aucun calcul ne change. La version 2 n'est pas touchée (ni ses fichiers, ni les
+  fichiers communs : ateliers.css reste tel quel, ses règles du planning sont
+  surclassées dans planning-vue.css).
+- Fichiers : `planning-vue.js`, `planning-vue.css`, `tests/planning-vue.test.cjs`,
+  `tests/planning-vue-browser.cjs` (nouveaux), `ateliers.js`, `charge-vue.js`,
+  `onglets.js`, `sim.js`, `index.html`, `tests/charge-browser.cjs`,
+  `tests/graphiques-browser.cjs` (sa partie v1), `tests/ateliers-browser.cjs`,
+  `tests/lisibilite-browser.cjs`, `README.md`, `docs/BANC_ESSAI.md`.
+
 ## 2026-11-09 — Évolution 14 (b) : le plan rejoué, ce qui se passe à l'heure rejouée
 
 - `plan-flux.js` et `plan-flux.css` (nouveaux, v1) : ce qui circule, le tracé des

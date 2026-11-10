@@ -997,8 +997,8 @@
   <button class="lien-discret" data-page="rg-simulation">Simulation › Réglages de la simulation →</button></p>
 <h3 class="at-titre" data-sous="at-planning">La journée des équipes <span class="pc-sous">qui travaille quand</span></h3>
 <div id="at-indicateurs" class="at-indicateurs" data-sous="at-planning"></div>
-<section id="at-charge" class="at-charge" data-sous="at-planning" aria-label="La charge de la journée, par service" hidden></section>
 <div id="at-planning" class="at-planning" data-sous="at-planning"></div>
+<section id="at-charge" class="at-charge" data-sous="at-planning" aria-label="La charge de la journée, équipe par équipe" hidden></section>
 
 <section class="recap-cases" data-sous="at-recap" aria-label="Récap des cases">
   <div class="rc-outils">
@@ -2467,83 +2467,24 @@
 
     /* ---- planning ---------------------------------------------------- */
 
+    /**
+     * Le planning des équipes (évolution 14 c, planning-vue.js) : une échelle fixe, trois zooms, l'axe et les noms
+     * toujours visibles, les équipes groupées par service dans l'ordre du chemin, la charge de chaque service en tête
+     * de son groupe. Sous lui, le tableau des équipes.
+     */
     rendrePlanning(r) {
-      const box = document.getElementById('at-planning');
-      if (!r.ok || !r.lots.length) {
-        box.innerHTML = '<p class="mini-note">Le planning apparaîtra dès qu’une équipe aura quelque chose à fabriquer.</p>';
-        this.rendreCharge(r, null);
-        return;
-      }
-      const t0 = Math.min(...r.lots.map(l => l.debut));
-      const t1 = Math.max(...r.lots.map(l => (l.fin == null ? l.debut : l.fin)), t0 + 60);
-      const lignes = r.ateliers.filter(a => a.lots.length);
-      const H = 26, marge = 190, L = 900, haut = lignes.length * H + 34;
-      const x = t => marge + (t - t0) / (t1 - t0) * (L - marge - 16);
-
-      // Repères horaires : assez espacés pour se lire (64 px au moins entre deux),
-      // sur deux jours comme sur un seul. Ils se chevauchaient (« J-1 04:00J-1 06:00 »).
-      const largeur = L - marge - 16, span = Math.max(60, t1 - t0);
-      const pas = [60, 120, 180, 240, 360, 480, 720, 1440].find(k => largeur * k / span >= 64) || 1440;
-      const reperes = [];
-      // Borné : une heure infinie ne doit jamais figer la page (BUG-050).
-      if (Number.isFinite(t0) && Number.isFinite(t1)) for (let t = Math.ceil(t0 / pas) * pas; t <= t1 && reperes.length < 400; t += pas) reperes.push(t);
-      // Le jour ne s'écrit qu'au premier repère de chaque jour, et à minuit.
-      const jourDe = t => Math.floor(t / 1440);
-      const heureSeule = t => P.hhmm(t - jourDe(t) * 1440);
-      const etiquette = (t, i) => {
-        const j = jourDe(t), neuf = i === 0 || jourDe(reperes[i - 1]) !== j;
-        return neuf && (j !== 0 || jourDe(t0) !== 0) ? jourEcrit(j) + ' ' + heureSeule(t) : heureSeule(t);
-      };
-
+      const box = document.getElementById('at-planning'), V = root.OrlyPlanningVue;
       const services = this.a.services(), nomSvc = id => (services.find(s => s.id === id) || {}).nom || id;
-      // L'étiquette d'une barre, quand elle y tient : la commande en clair, sinon son code.
-      const DS = root.OrlyDS;
-      const dansLaBarre = (l, w) => (DS ? [P.enClair(l.nom), String(l.nom).replace(/^Vol /, '')]
-        .find(s => s && DS.largeurTexte(s) + 10 <= w) || '' : '');
-      // Une ligne sur deux est teintée : l'œil suit l'équipe jusqu'au bout de sa journée.
-      const rangs = lignes.map((a, i) => (i % 2 ? `<rect class="at-pl-rang" x="0" y="${25 + i * H}" width="${L}" height="${H}"/>` : '')).join('');
-      const barres = lignes.map((a, i) => {
-        const y = 28 + i * H;
-        // Une équipe qui fait aussi l'étape d'avant, à la chaîne : son nom le dit, ses barres ont la teinte de la chaîne.
-        const fu = (a.lots.find(l => l.fusion) || {}).fusion;
-        const court = (t, n) => (t.length > n ? t.slice(0, n - 1) + '…' : t);
-        const nom = `<text class="at-pl-nom" x="8" y="${y + 14}" data-info="${esc(a.nom + (fu ? ' — fait aussi ' + nomSvc(fu) + ', à la chaîne' : ''))}">${esc(fu ? court(a.nom, 15) : a.nom)}${fu ? `<tspan class="at-pl-chaine"> +${esc(court(nomSvc(fu), 9))}</tspan>` : ''}</text>`;
-        const lots = a.lots.map(l => {
-          // Une mise à disposition n'a pas de durée : une barre de deux pixels
-          // se lirait comme une fabrication minuscule. C'est un repère.
-          if (l.dispo) return `<rect class="at-pl-dispo" x="${x(l.debut) - 3}" y="${y + 1}" width="6" height="18" rx="2" data-info="Disponible à partir de ${P.hhmm(l.debut)}"/>`;
-          if (l.fin == null) return `<rect class="at-pl-bloque" x="${x(l.debut)}" y="${y + 2}" width="10" height="16" rx="3" data-info="${esc(P.enClair(l.nom))} : ne tourne pas"/>`;
-          const att = l.attente ? `<rect class="at-pl-attente" x="${x(l.debut - l.attente)}" y="${y + 6}" width="${Math.max(1, x(l.debut) - x(l.debut - l.attente))}" height="8" rx="2" data-info="Attente des amonts : ${Math.round(l.attente)} min"/>` : '';
-          const w = Math.max(2, x(l.fin) - x(l.debut)), mot = dansLaBarre(l, w);
-          const info = P.enClair(l.nom) + '\n' + P.hhmm(l.debut) + ' → ' + P.hhmm(l.fin) + ' (' + Math.round(l.duree) + ' min'
-            + (l.arret ? ', dont ' + Math.round(l.arret) + ' min d’arrêt' : '') + ')'
-            + (l.attente ? '\nAttend les amonts ' + Math.round(l.attente) + ' min avant' : '')
-            + (l.fusion ? '\nÀ la chaîne : ' + nomSvc(l.fusion) + ' ' + Math.round(l.minutesFusion || 0) + ' min + ' + nomSvc(a.service) + ' ' + Math.round(l.minutesIci || 0) + ' min de travail' : '');
-          return att + `<rect class="at-pl-lot ${a.type === 'robot' ? 'robot' : ''}${l.fusion ? ' chaine' : ''}" x="${x(l.debut)}" y="${y + 2}" width="${w}" height="16" rx="3" data-info="${esc(info)}"/>`
-            + (mot ? `<text class="at-pl-etiq" x="${x(l.debut) + 5}" y="${y + 14}">${esc(mot)}</text>` : '');
-        }).join('');
-        return nom + lots;
-      }).join('');
-
-      // L'axe du temps est déclaré : le trait « maintenant » s'y pose (ds.js).
-      box.innerHTML = `<svg class="ds-graphique" viewBox="0 0 ${L} ${haut}" role="img" aria-label="La journée des équipes" data-axe="${t0} ${t1} ${marge} ${L - 16} 20 ${haut}">
-        ${rangs}
-        ${reperes.map((t, i) => `<g><line class="at-pl-grille${t % 1440 === 0 ? ' minuit' : ''}" x1="${x(t)}" y1="20" x2="${x(t)}" y2="${haut}"/><text class="at-pl-heure ds-axe-heure" x="${x(t)}" y="14">${etiquette(t, i)}</text></g>`).join('')}
-        ${barres}
-      </svg>
-      <p class="mini-note">Barre pleine : l’équipe prépare. Barre fine devant : elle attend le service d’avant.${r.lots.some(l => l.fusion)
-        ? ' <span class="at-pl-legende-chaine">Barre rose : deux étapes faites d’un bloc, à la chaîne.</span>' : ''}
-        <span class="ds-legende-maintenant"><i aria-hidden="true"></i>Le trait : l’heure où en est le rejeu.</span></p>`;
-      this.rendreCharge(r, { t0, t1, marge, L, reperes, etiquettes: reperes.map(etiquette) });
-      if (DS) DS.maintenant();
+      if (V) V.rendre(box, { resultat: r, args: this.args, nomService: nomSvc });
+      this.rendreCharge(r);
     }
 
-    /** La charge de la journée (banc d'essai, évolution 12 c) : au-dessus du planning, sur son axe des heures (charge-vue.js). */
-    rendreCharge(r, axe) {
+    /** La charge de la journée (évolutions 12 c et 14 c) : sous le planning, le tableau des équipes et le classeur (charge-vue.js). */
+    rendreCharge(r) {
       const box = document.getElementById('at-charge'), V = root.OrlyChargeVue;
       if (!box || !V) return;
       const services = this.a.services(), nomService = id => (services.find(s => s.id === id) || {}).nom || id;
-      V.rendre(box, { resultat: axe ? r : null, args: this.args, nomService, ...(root.OrlyEchangesCharge ? { exporter: () => this.exporterCharge() } : {}) }, axe);
+      V.rendre(box, { resultat: r && r.ok && r.lots.length ? r : null, args: this.args, nomService, ...(root.OrlyEchangesCharge ? { exporter: () => this.exporterCharge() } : {}) });
     }
 
     /** Le classeur de la charge de la journée (banc d'essai, évolution 12 d) : le même que `simuler-journee --xlsx` (echanges-charge.js). */
