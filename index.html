@@ -134,9 +134,9 @@ body>.bandeaux{grid-column:1/-1;grid-row:1;min-width:0}
 
 @media(max-width:1250px){ .app{grid-template-columns:260px 1fr 290px} }
 </style>
-<meta name="ory-version" content="95b9dcf113"/>
+<meta name="ory-version" content="368e41965a"/>
 <link href="interface.css?v=a79339df" rel="stylesheet"/><link href="editor.css?v=7c30f1f7" rel="stylesheet"/><link href="flow-center.css?v=62899a0b" rel="stylesheet"/><link href="ateliers.css?v=2da0c40c" rel="stylesheet"/>
-<link href="reglages.css?v=492a7bab" rel="stylesheet"/><link href="demarrage.css?v=9ef1de69" rel="stylesheet"/><link href="aide.css?v=6dc5aec0" rel="stylesheet"/><link href="usability.css?v=d05639c8" rel="stylesheet"/><link href="graphe.css?v=c6498078" rel="stylesheet"/><link href="histoire.css?v=768c5f75" rel="stylesheet"/><link href="temps.css?v=5b7080b2" rel="stylesheet"/><link href="unite.css?v=0de0aee2" rel="stylesheet"/><link href="ds.css?v=10e3eb8c" rel="stylesheet"/><link href="periode.css?v=c8d65865" rel="stylesheet"/><link href="charge.css?v=2183cba1" rel="stylesheet"/><link href="plan-rejoue.css?v=8d5656e7" rel="stylesheet"/><link href="import-flights.css?v=8383b5c0" rel="stylesheet"/></head>
+<link href="reglages.css?v=492a7bab" rel="stylesheet"/><link href="demarrage.css?v=9ef1de69" rel="stylesheet"/><link href="aide.css?v=6dc5aec0" rel="stylesheet"/><link href="usability.css?v=d05639c8" rel="stylesheet"/><link href="graphe.css?v=c6498078" rel="stylesheet"/><link href="histoire.css?v=768c5f75" rel="stylesheet"/><link href="temps.css?v=5b7080b2" rel="stylesheet"/><link href="unite.css?v=0de0aee2" rel="stylesheet"/><link href="ds.css?v=10e3eb8c" rel="stylesheet"/><link href="periode.css?v=c8d65865" rel="stylesheet"/><link href="charge.css?v=2183cba1" rel="stylesheet"/><link href="plan-rejoue.css?v=8d5656e7" rel="stylesheet"/><link href="plan-flux.css?v=72eea07c" rel="stylesheet"/><link href="import-flights.css?v=8383b5c0" rel="stylesheet"/></head>
 <body data-vue="plan"><a class="skip-link" href="#workspace">Aller au contenu</a>
 <!-- ============ NAVIGATION : la marque, les parties (celle qui est ouverte déplie ses pages), la sauvegarde ============ -->
 <aside aria-label="Navigation" class="barre" id="barre">
@@ -173,7 +173,7 @@ body>.bandeaux{grid-column:1/-1;grid-row:1;min-width:0}
 <label class="chk chk-mini chk-fond" hidden=""><input checked="" id="fond-plan" type="checkbox"/> Fond de plan</label>
 <button class="btn btn-mini" id="btn-edit" title="Ouvrir le plan de l’unité pour déplacer ou redimensionner les services" type="button">Modifier le plan</button>
 </div>
-<div class="plan-bande" id="plan-bande" data-sous="j-plan" role="group" aria-label="Les chiffres jusqu’à l’heure rejouée"><p class="pr-texte" id="plan-bande-texte"></p><span class="plan-etat" id="plan-etat"></span><div aria-label="Ce que dit la couleur des services" class="legende" id="legende-plan"></div></div>
+<div class="plan-bande" id="plan-bande" data-sous="j-plan" role="group" aria-label="Les chiffres jusqu’à l’heure rejouée"><p class="pr-texte" id="plan-bande-texte"></p><span class="plan-etat" id="plan-etat"></span><span class="pc-note" id="plan-circule-note"></span><div aria-label="Ce que dit la couleur des services" class="legende" id="legende-plan"></div></div>
 <div class="plan-wrap" id="view-plan" data-sous="j-plan u-plan">
 <svg tabindex="0" aria-label="Plan de l’unité. Choisissez un service dans la liste « Voir un service »." id="plan" preserveaspectratio="xMidYMid meet" viewbox="0 0 1075 835"></svg>
 <div class="zoom-ctrl plan-sur plan-zoom" role="group" aria-label="Zoom du plan" title="Molette : zoomer · Double-clic : cadrer un service · 0 : tout voir">
@@ -267,13 +267,13 @@ body>.bandeaux{grid-column:1/-1;grid-row:1;min-width:0}
 <script src="echanges.js?v=da61e977"></script>
 <script src="ateliers.js?v=9c1c0947"></script>
 <script src="reglages.js?v=71b88eea"></script>
-<script src="moteur/journee.js?v=1257fd1c"></script><script src="moteur/indicateurs.js?v=edd55e20"></script><script src="moteur/periode.js?v=042ea69e"></script><script src="periode-vue.js?v=d2996694"></script><script src="charge-vue.js?v=8490c513"></script><script src="plan-rejoue.js?v=8fb26f05"></script><script src="echanges-charge.js?v=0f6c3cc2"></script><script src="classeur-compresse.js?v=74f3647d"></script><script src="moteur/import-flights.js?v=7440280d"></script><script src="echanges-import-flights.js?v=401f6644"></script><script src="import-flights-vue.js?v=79070d93"></script><script src="moteur/reel.js?v=cb63ffca"></script><script src="moteur/planning.js?v=6d8ac712"></script><script src="moteur/calage-travail.js?v=6f307d8d"></script><script src="moteur/calage-periode.js?v=f97c07c3"></script><script src="echanges-calage.js?v=032cdd88"></script><script src="calage-vue.js?v=72992c84"></script>
+<script src="moteur/journee.js?v=1257fd1c"></script><script src="moteur/indicateurs.js?v=edd55e20"></script><script src="moteur/periode.js?v=042ea69e"></script><script src="periode-vue.js?v=d2996694"></script><script src="charge-vue.js?v=8490c513"></script><script src="plan-rejoue.js?v=8fb26f05"></script><script src="plan-flux.js?v=fe7bfadf"></script><script src="echanges-charge.js?v=0f6c3cc2"></script><script src="classeur-compresse.js?v=74f3647d"></script><script src="moteur/import-flights.js?v=7440280d"></script><script src="echanges-import-flights.js?v=401f6644"></script><script src="import-flights-vue.js?v=79070d93"></script><script src="moteur/reel.js?v=cb63ffca"></script><script src="moteur/planning.js?v=6d8ac712"></script><script src="moteur/calage-travail.js?v=6f307d8d"></script><script src="moteur/calage-periode.js?v=f97c07c3"></script><script src="echanges-calage.js?v=032cdd88"></script><script src="calage-vue.js?v=72992c84"></script>
 <script src="unite.js?v=36d1ddd2"></script>
 <script src="demarrage.js?v=7c44dc7e"></script>
 <script src="temps.js?v=e2f675cd"></script>
 <script src="replay.js?v=016adb42"></script>
 <script src="simulation.js?v=8d2f509a"></script>
 <script src="comparaison.js?v=390e35e8"></script>
-<script src="sim.js?v=bdc03ee6"></script>
+<script src="sim.js?v=dd9f84d6"></script>
 </body>
 </html>

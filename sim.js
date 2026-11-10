@@ -177,6 +177,9 @@ function construirePlan() {
     gZones.appendChild(g);
     positionnerZone(id);
   });
+  // Évolution 14 (b) : ce qui circule entre les services, et les véhicules du handling, au-dessus des zones.
+  gVue.appendChild(svgEl('g', { id:'plan-circule', 'aria-hidden':'true' }));
+  gVue.appendChild(svgEl('g', { id:'plan-vehicules', 'aria-hidden':'true' }));
 
   initInteractions();
 }
@@ -199,7 +202,7 @@ function positionnerZone(id) {
 }
 
 /* Redessine les arêtes : celles du Centre des flux, dès qu'il existe. */
-function redessinerEdges() { if (Sim.flows) dessinerFluxConfigures(); }
+function redessinerEdges() { if (Sim.flows) dessinerFluxConfigures(); oublierTraces(); peindrePlanFlux(); }
 
 function dessinerFluxConfigures(){
   const group=document.getElementById('flow-edges');group.replaceChildren();
@@ -1283,6 +1286,7 @@ function appliquerVue() {
   svg.classList.toggle('zoomed', vk >= 1.7);
   const z = document.getElementById('zoom-val'); if (z) z.textContent = Math.round(vk*100) + '%';
   ajusterTextesPlan();
+  peindrePlanFlux();
   if(Sim.editor)Sim.editor.renderCanvas();
 }
 /* Un nom plus large que sa zone s'arrête avant le bord, d'un « … » : il ne mord plus sur la zone voisine. `place`, en
@@ -1298,18 +1302,20 @@ function tenirNom(e, place) {
   let n = nom.length;
   while (n > 1 && e.titre.getComputedTextLength() > place) { n--; e.titre.textContent = nom.slice(0, n).trimEnd() + '…'; }
 }
-/* Les noms des services gardent leur taille à l'écran à tout zoom ; les sous-titres n'apparaissent que lisibles. */
+/* Les noms des services gardent leur taille à l'écran à tout zoom ; les sous-titres n'apparaissent que lisibles. Leur
+ * halo aussi garde son épaisseur (évolution 14 b) : 3 px, pas un aplat qui grossit avec le zoom. */
+const HALO_PX = 3;
 function ajusterTextesPlan() {
   const px = pxParUnite(); if (!(px > 0)) return;
-  const T = OrlyPlanRejoue.tailles(px);
+  const T = OrlyPlanRejoue.tailles(px), halo = HALO_PX / px + 'px';
   for (const id of Object.keys(zoneEls)) {
     const e = zoneEls[id], b = e.b; if (!b) continue;
-    e.titre.style.fontSize = T.nom + 'px';
+    e.titre.style.fontSize = T.nom + 'px'; e.titre.style.strokeWidth = halo;
     e.titre.setAttribute('x', b.x + T.retrait); e.titre.setAttribute('y', b.y + T.retrait + T.nom);
     tenirNom(e, b.w - 2 * T.retrait);
     e.sous.forEach((st, i) => {
       st.style.display = T.sousVisibles ? '' : 'none';
-      st.style.fontSize = T.sous + 'px';
+      st.style.fontSize = T.sous + 'px'; st.style.strokeWidth = halo;
       st.setAttribute('x', b.x + T.retrait); st.setAttribute('y', b.y + T.retrait + T.nom + (i + 1) * T.sous * 1.3);
     });
     if (e.stock && e.stock.texte) placerStock(e, px);
@@ -1585,7 +1591,7 @@ function majLegende(avant, compte) {
   _legendeCle = cle;
   // Évolution 14 (a) : dans la bande au-dessus du plan, un libellé court quand elle est étroite ; le long reste en titre.
   const COURT = { 'Attend le service d’avant':'attend', 'Pas commencé':'pas commencé', 'Au travail':'au travail', 'A fini':'a fini' };
-  const puce = (coul, texte, titre) => '<span title="' + escapeHTML(titre) + '"><span class="pastille" style="background:' + coul + '"></span>'
+  const puce = (coul, texte, titre, cls) => '<span title="' + escapeHTML(titre) + '"><span class="pastille' + (cls ? ' ' + cls : '') + '" style="background:' + coul + '"></span>'
     + (COURT[texte] ? '<span class="lg-long">' + escapeHTML(texte) + '</span><span class="lg-court" aria-hidden="true">' + escapeHTML(COURT[texte]) + '</span>' : escapeHTML(texte)) + '</span>';
   if (avant) {
     box.setAttribute('aria-label', 'Ce que dit la couleur des services');
@@ -1603,10 +1609,11 @@ function majLegende(avant, compte) {
     // Pendant la relecture : les quatre états de `replay.js`, et eux seuls.
     // L'attente est aussi en pointillé, pour ne pas dépendre de la couleur.
     box.setAttribute('aria-label', 'État des services à cet instant');
-    box.innerHTML = puce('var(--accent)', 'Au travail', 'Une équipe prépare des commandes à cette heure.')
-      + puce('var(--orange)', 'Attend le service d’avant', 'L’équipe est là, mais ce qu’elle doit recevoir n’est pas encore arrivé.')
-      + puce('var(--vert)', 'A fini', 'Tout ce que ce service avait à faire est prêt.')
-      + puce('var(--bordure2)', 'Pas commencé', 'Le service n’a pas encore ouvert.');
+    // Évolution 14 (b) : la pastille a la couleur du remplissage de la zone ; « pas commencé », son contour pointillé.
+    box.innerHTML = puce('var(--ds-accent)', 'Au travail', 'Une équipe prépare des commandes à cette heure.')
+      + puce('var(--ds-attente)', 'Attend le service d’avant', 'L’équipe est là, mais ce qu’elle doit recevoir n’est pas encore arrivé.')
+      + puce('var(--ds-texte-4)', 'A fini', 'Tout ce que ce service avait à faire est prêt.')
+      + puce('var(--ds-survol)', 'Pas commencé', 'Le service n’a pas encore ouvert.', 'pc-avenir');
     if (etat) { etat.textContent = ''; etat.className = 'plan-etat'; }
   }
 }
@@ -1761,6 +1768,7 @@ function peindreInstant(i) {
   majEtatPlan();
   majGoulotInfo();
   peindreBande(i);
+  peindrePlanFlux(i.t);
 }
 /* Évolution 14 (a) : la bande au-dessus du plan (les chiffres cumulés jusqu'à l'heure rejouée) et les repères du
  * curseur du temps (les jours, les départs des vols du jour relu). */
@@ -1770,6 +1778,186 @@ function peindreBande(i) {
   OrlyPlanRejoue.rendreBande(document.getElementById('plan-bande-texte'), quand, OrlyPlanRejoue.chiffresCumules(r, i.t));
   const departs = (flights || []).filter(f => f.sens === 'DEP' && Number.isFinite(f.std)).map(f => f.std);
   OrlyPlanRejoue.rendreReperes(document.getElementById('pr-reperes'), OrlyPlanRejoue.reperes(v.debut, v.fin, departs), MoteurProduction.hhmm);
+}
+
+/* ==========================================================================
+ *  Évolution 14 (b) : CE QUI SE PASSE À L'HEURE REJOUÉE (plan-flux.js)
+ *  « 4 au travail / 6 présents » au centre de chaque service (les créneaux de
+ *  15 min des indicateurs de charge), « Ce qui circule » (les séjours que le
+ *  moteur rend déjà, resultat.stocks.sejours), les véhicules du handling.
+ *  Rien n'est recalculé : on lit le résultat et ses indicateurs.
+ * ==========================================================================*/
+const flux = { r:null, k:null, charges:new Map(), cleZones:'', ref:0, tranche:null, traces:new Map(), cleTraits:'', mesures:new Map() };
+const mouvementReduit = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+const repasFr = n => Math.round(n).toLocaleString('fr-FR');
+/** Les indicateurs de charge de la journée relue, et les créneaux de chaque service : une fois par résultat. */
+function fluxDuResultat(r) {
+  if (flux.r === r) return flux;
+  Object.assign(flux, { r, k:null, charges:new Map(), cleZones:'', traces:new Map(), cleTraits:'' });
+  if (r && r.ok && window.OrlyIndicateurs && window.OrlyChargeVue) {
+    flux.k = OrlyIndicateurs.journee(r, (Sim.ateliers && Sim.ateliers.args) || {});
+    const par = new Map();
+    for (const g of flux.k.services) { if (!par.has(g.service)) par.set(g.service, []); par.get(g.service).push(g); }
+    for (const [id, gs] of par) flux.charges.set(id, OrlyChargeVue.creneauxDuService(gs));
+  }
+  return flux;
+}
+/** Une zone a bougé, est apparue ou a disparu : les tracés se refont. */
+function oublierTraces() {
+  flux.traces.clear(); flux.cleTraits = ''; flux.cleZones = '';
+  const g = document.getElementById('plan-vehicules'); if (g) delete g.dataset.cle;
+}
+/** Les services dessinés sur le plan : un trait ne relie que ceux-là. */
+const zonesDessinees = () => Object.keys(zoneEls).filter(id => ZONES[id] && zoneEls[id].g.style.display !== 'none' && !estRetire(id));
+function peindrePlanFlux(t) {
+  const v = Sim.vue; if (!window.OrlyPlanFlux) return;
+  if (t == null) t = v ? v.t : 0;
+  const r = Sim.ateliers && Sim.ateliers.resultat, lu = !!(v && !v.vide && r && r.ok);
+  const px = pxParUnite(); if (!(px > 0)) return;
+  peindreCharges(lu ? fluxDuResultat(r) : null, t, px);
+  peindreCirculation(lu ? r : null, t, px);
+  peindreVehicules(lu ? r : null, t, px);
+}
+
+/* ---- au travail / présents ---------------------------------------------------------------- */
+/** Les éléments du centre d'une zone, créés à la première lecture. */
+function elsCharge(e) {
+  if (e.charge) return e.charge;
+  const t = svgEl('text', { class:'zone-charge' }), g = svgEl('g', { class:'zone-file' }), r = svgEl('rect', {}), f = svgEl('text', {});
+  g.append(r, f); e.g.append(t, g);
+  e.charge = { t, g, r, f, cle:'' };
+  return e.charge;
+}
+function peindreCharges(f, t, px) {
+  for (const id of Object.keys(zoneEls)) {
+    const e = zoneEls[id], c = f && f.k ? f.charges.get(id) : null;
+    const n = c ? OrlyPlanFlux.chargeA(c, t, f.k.pas) : null;
+    poserCharge(e, n && (n.presents > 0 || n.auTravail > 0 || n.enFile > 0) ? n : null, px);
+  }
+}
+/* Au centre de la zone, sous le nom : « 4 au travail / 6 présents » sur une ligne, sinon sur deux, sinon « 4 / 6 » ;
+ * dessous, « 3 en file ». Textes de 12 px à l'écran ; rien quand rien ne tient. */
+function poserCharge(e, n, px) {
+  const b = e.b, el = n || e.charge ? elsCharge(e) : null; if (!el) return;
+  const cle = n ? [n.auTravail, n.presents, n.enFile, px, b.x, b.y, b.w, b.h].join('|') : '';
+  if (cle === el.cle) return;
+  el.cle = cle;
+  const u = 1 / px, cache = () => { el.t.style.display = 'none'; el.g.style.display = 'none'; e.g.classList.remove('avec-charge'); };
+  if (!n) { cache(); delete e.g.dataset.auTravail; delete e.g.dataset.presents; delete e.g.dataset.enFile; return; }
+  Object.assign(e.g.dataset, { auTravail:n.auTravail, presents:n.presents, enFile:n.enFile });
+  const a = n.auTravail + ' au travail', p = n.presents + (n.presents > 1 ? ' présents' : ' présent'), long = a + ' / ' + p;
+  el.t.style.display = ''; el.t.style.fontSize = (12 * u) + 'px'; el.t.style.strokeWidth = (3 * u) + 'px';
+  const place = b.w * px - 16, haut = b.h * px, titre = 8 + 13 + 6;
+  const file = n.enFile > 0 ? n.enFile + ' en file' : '';
+  const lignes = [[long], [a, p], [n.auTravail + ' / ' + n.presents]].find(ls => ls.every(x => mesurer(el.t, x) <= place)) || null;
+  const hLignes = lignes ? lignes.length * 16 : 0, hFile = file ? 24 : 0, hTout = hLignes + hFile;
+  if (!lignes || haut - titre - 6 < hTout) { cache(); return; }
+  e.g.classList.add('avec-charge');
+  // Centré dans la zone, jamais sur le nom.
+  const cx = b.x + b.w / 2, haut0 = Math.max(b.y + titre * u, b.y + b.h / 2 - hTout / 2 * u);
+  el.t.replaceChildren(...lignes.map((x, i) => { const s = svgEl('tspan', { x:cx, y:haut0 + (12 + i * 16) * u }); s.textContent = x; return s; }));
+  el.t.setAttribute('aria-label', long);
+  if (!file) { el.g.style.display = 'none'; return; }
+  el.g.style.display = ''; el.f.style.fontSize = (12 * u) + 'px';
+  const w = mesurer(el.f, file) + 16;
+  el.f.textContent = file;
+  const y = haut0 + (hLignes + 4) * u;
+  el.r.setAttribute('x', cx - w / 2 * u); el.r.setAttribute('y', y); el.r.setAttribute('width', w * u); el.r.setAttribute('height', 18 * u); el.r.setAttribute('rx', 9 * u);
+  el.f.setAttribute('x', cx); el.f.setAttribute('y', y + 13 * u);
+}
+/** La largeur (px d'écran, à 12 px) d'un texte, mesurée une fois sur l'élément qui le portera ; en attendant, estimée. */
+function mesurer(el, texte) {
+  if (flux.mesures.has(texte)) return flux.mesures.get(texte);
+  const avant = el.textContent; el.textContent = texte;
+  const n = el.getComputedTextLength ? el.getComputedTextLength() : 0, fs = parseFloat(el.style.fontSize) || 0;
+  el.textContent = avant;
+  if (!(n > 0 && fs > 0)) return texte.length * 7.2;
+  flux.mesures.set(texte, n / fs * 12);
+  return n / fs * 12;
+}
+
+/* ---- ce qui circule ----------------------------------------------------------------------- */
+function peindreCirculation(r, t, px) {
+  const g = document.getElementById('plan-circule'), note = document.getElementById('plan-circule-note'); if (!g) return;
+  if (!r || !Sim.flows || Sim.flows.mapFilter !== 'circule') {
+    if (g.firstChild) g.replaceChildren();
+    flux.cleTraits = ''; noteCirculation(note, [], null);
+    return;
+  }
+  const f = fluxDuResultat(r), ids = zonesDessinees(), sejours = (r.stocks && r.stocks.sejours) || [];
+  const connus = new Set(ids), cleZones = ids.map(id => id + ':' + [e => e.x, e => e.y, e => e.w, e => e.h].map(k => Math.round(k(zoneEls[id].b))).join(',')).join('|');
+  if (f.cleZones !== cleZones) { f.cleZones = cleZones; f.traces.clear(); f.cleTraits = ''; f.ref = OrlyPlanFlux.reference(sejours, connus); f.tranche = OrlyPlanFlux.tranche(f.ref); }
+  const paires = OrlyPlanFlux.circulation(sejours, t, connus), { traits } = OrlyPlanFlux.traits(paires, f.ref);
+  const cle = traits.map(x => x.de + '>' + x.vers + ':' + x.repas).join(',') + '|' + px;
+  if (cle !== f.cleTraits) { f.cleTraits = cle; dessinerTraits(g, traits, ids, px); }
+  const points = !!(Sim.vue && Sim.vue.enMarche) && !mouvementReduit() && traits.length > 0;
+  placerPoints(g, points ? traits : [], f.tranche, t, px);
+  noteCirculation(note, paires.slice(traits.length), points ? f.tranche : null);
+}
+function dessinerTraits(g, traits, ids, px) {
+  const u = 1 / px, boites = ids.map(id => zoneEls[id].b), noms = Object.fromEntries(servicesDisponibles().map(s => [s.id, nomLisible(s.nom)]));
+  const tout = traits.map(x => {
+    const k = x.de + '>' + x.vers;
+    if (!flux.traces.has(k)) flux.traces.set(k, OrlyPlanFlux.trace(zoneEls[x.de].b, zoneEls[x.vers].b, boites));
+    const tr = flux.traces.get(k), ch = OrlyPlanFlux.chemin(tr, (6 + 1.5 * x.epaisseur) * u);
+    const tg = svgEl('g', { class:'pc-trait', 'data-de':x.de, 'data-vers':x.vers, 'data-repas':x.repas, 'data-epaisseur':x.epaisseur.toFixed(2) });
+    const ligne = svgEl('path', { class:'pc-ligne', d:ch.d }); ligne.style.strokeWidth = x.epaisseur + 'px';
+    const titre = svgEl('title', {}); titre.textContent = (noms[x.de] || x.de) + ' → ' + (noms[x.vers] || x.vers) + ' : ' + repasFr(x.repas) + ' repas';
+    tg.append(titre, ligne, svgEl('path', { class:'pc-pointe', d:ch.pointe }));
+    if (x.etiquette) {
+      const e = svgEl('text', { class:'pc-etiquette', x:ch.milieu.x, y:ch.milieu.y - (x.epaisseur / 2 + 5) * u });
+      e.style.fontSize = (12 * u) + 'px'; e.style.strokeWidth = (3 * u) + 'px';
+      e.textContent = repasFr(x.repas) + ' repas';
+      tg.appendChild(e);
+    }
+    return tg;
+  });
+  g.replaceChildren(...tout, svgEl('g', { class:'pc-points' }));
+}
+/** Les points de chaque trait, à l'heure rejouée : un par tranche de repas ; ils avancent avec la lecture. */
+function placerPoints(g, traits, tranche, t, px) {
+  const box = g.querySelector('.pc-points'); if (!box) return;
+  const pos = [];
+  for (const x of traits) {
+    const tr = flux.traces.get(x.de + '>' + x.vers); if (!tr) continue;
+    for (const s of OrlyPlanFlux.points(x.repas, tranche, t)) pos.push(OrlyPlanFlux.sur(tr.p0, tr.c, tr.p1, s));
+  }
+  while (box.childNodes.length > pos.length) box.lastChild.remove();
+  while (box.childNodes.length < pos.length) box.appendChild(svgEl('circle', { class:'pc-point' }));
+  const rayon = 4 / px;
+  pos.forEach((p, i) => { const c = box.childNodes[i]; c.setAttribute('cx', p.x); c.setAttribute('cy', p.y); c.setAttribute('r', rayon); });
+}
+/** Dans la bande : « + n liens » (les plus petits, repliés) et la tranche des points. */
+function noteCirculation(note, replies, tranche) {
+  if (!note) return;
+  const noms = Object.fromEntries(servicesDisponibles().map(s => [s.id, nomLisible(s.nom)]));
+  const html = (replies.length ? '<span class="pc-plus" title="' + escapeHTML(replies.map(x => (noms[x.de] || x.de) + ' → ' + (noms[x.vers] || x.vers) + ' : ' + repasFr(x.repas) + ' repas').join(' ; ')) + '">+ ' + replies.length + (replies.length > 1 ? ' liens' : ' lien') + '</span>' : '')
+    + (tranche ? '<span class="pc-echelle">un point = ' + repasFr(tranche) + ' repas</span>' : '');
+  if (note.dataset.html !== html) { note.innerHTML = html; note.dataset.html = html; }
+}
+
+/* ---- le handling ---------------------------------------------------------------------------- */
+/* Pendant chaque trajet, un camion (ou un VL) va du quai vers le bord du plan, du côté des avions, puis revient. */
+function peindreVehicules(r, t, px) {
+  const g = document.getElementById('plan-vehicules'); if (!g) return;
+  const vs = r ? OrlyPlanFlux.vehiculesA(r.lots, t).filter(x => zoneEls[x.service] && zoneEls[x.service].g.style.display !== 'none') : [];
+  const cle = vs.map(x => x.cle + ':' + x.vehicule + ':' + x.avance.toFixed(3)).join(',') + '|' + px;
+  if (g.dataset.cle === cle) return;
+  g.dataset.cle = cle;
+  const plan = bornesDuPlan(), u = 1 / px, taille = 24 * u, rang = new Map();
+  g.replaceChildren(...vs.map(x => {
+    const quai = zoneEls[x.service].b, s = OrlyPlanFlux.versLesAvions(quai, plan, 48 * u), i = rang.get(x.service) || 0;
+    rang.set(x.service, i + 1);
+    // Plusieurs véhicules d'un même quai roulent côte à côte, pas l'un sur l'autre.
+    const lat = (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 28 * u, horiz = s.cote === 'gauche' || s.cote === 'droite';
+    const cx = s.depart.x + (s.arrivee.x - s.depart.x) * x.avance + (horiz ? 0 : lat), cy = s.depart.y + (s.arrivee.y - s.depart.y) * x.avance + (horiz ? lat : 0);
+    const v = svgEl('g', { class:'pv-vehicule', 'data-vehicule':x.vehicule, 'data-camion':x.camion == null ? '' : x.camion, 'data-avance':x.avance.toFixed(3) });
+    v.append(svgEl('circle', { class:'pv-fond', cx, cy, r:taille / 2 + 2 * u }));
+    const ico = svgEl('g', { class:'pv-trait', transform:'translate(' + (cx - taille / 2 * 0.75) + ',' + (cy - taille / 2 * 0.75) + ') scale(' + (taille * 0.75 / 24) + ')' });
+    ico.innerHTML = OrlyPlanFlux.VEHICULES[x.vehicule];
+    v.appendChild(ico);
+    return v;
+  }));
 }
 
 /* ==========================================================================
@@ -1899,6 +2087,9 @@ function initVueSimulation() {
   // celle choisie tant que la journée relue ne change pas (un autre programme de vols, un autre jour du programme).
   const recalculer = Sim.vue.recalculer.bind(Sim.vue);
   Sim.vue.recalculer = () => { recalculer(); placerAuPic(); };
+  // Les points de « Ce qui circule » n'avancent que pendant la lecture : la pause les retire.
+  const pauseVue = Sim.vue.pause.bind(Sim.vue);
+  Sim.vue.pause = () => { pauseVue(); peindrePlanFlux(); };
   placerAuPic();
 }
 /* Évolution 14 (a) : « Liens » en haut à gauche, avec « Voir un service » ; le zoom rejoint la barre du bas sur la page
@@ -1906,6 +2097,14 @@ function initVueSimulation() {
 function installerPlanRejoue() {
   const liens = document.querySelector('.plan-tete .fc-map-filter');
   if (liens) for (const n of liens.childNodes) if (n.nodeType === 3 && /Liens dessinés/.test(n.textContent)) n.textContent = 'Liens ';
+  // Évolution 14 (b) : « Ce qui circule », le défaut ; les choix d'avant restent, et dessinent comme avant.
+  const choix = document.getElementById('fc-map-filter');
+  if (choix && Sim.flows && !choix.querySelector('option[value="circule"]')) {
+    const o = document.createElement('option'); o.value = 'circule'; o.textContent = 'Ce qui circule';
+    choix.insertBefore(o, choix.firstChild);
+    Sim.flows.mapFilter = 'circule'; choix.value = 'circule';
+    redessinerEdges();
+  }
   const zoom = document.querySelector('.zoom-ctrl.plan-zoom'), lecteur = document.getElementById('lecteur'), toile = document.getElementById('view-plan');
   if (!zoom || !lecteur || !toile) return;
   const placer = () => {
@@ -1922,7 +2121,7 @@ function placerAuPic() {
   if (journeeRelue && journeeRelue[0] === cle[0] && journeeRelue[1] === cle[1]) return;
   journeeRelue = cle;
   if (!v || v.vide || !r || !r.ok || !window.OrlyIndicateurs || !window.OrlyChargeVue) return;
-  const t = OrlyPlanRejoue.heureDuPic(OrlyIndicateurs.journee(r, Sim.ateliers.args || {}), OrlyChargeVue.creneauxDuService, OrlyIndicateurs.pic);
+  const t = OrlyPlanRejoue.heureDuPic(fluxDuResultat(r).k, OrlyChargeVue.creneauxDuService, OrlyIndicateurs.pic);
   if (t != null && t >= v.debut && t <= v.fin) v.allerA(t);
 }
 
@@ -3165,6 +3364,8 @@ const Sim = { dataCourante:SAMPLE };
 Sim.cfg = CFG;
 // Les règles d'import Winrest (évolution 13 b) : lues validées, enregistrées validées.
 Sim.winrest = { regles:reglesWinrest, enregistrer:enregistrerReglesWinrest };
+// Le plan rejoué (évolution 14 b) : les services dessinés, la boîte de chacun, les bornes du plan.
+Sim.planRejoue = { zones:zonesDessinees, boite:id => (zoneEls[id] ? { ...zoneEls[id].b } : null), bornes:bornesDuPlan, existe:id => !!zoneParId(id) };
 window.Sim = Sim;
 /* Un démarrage qui ne va pas au bout (des données enregistrées que le calcul
  * ne sait pas relire, une boucle sans fin) laisse sa marque : au chargement

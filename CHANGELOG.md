@@ -5,6 +5,37 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-09 — Évolution 14 (b) : le plan rejoué, ce qui se passe à l'heure rejouée
+
+- `plan-flux.js` et `plan-flux.css` (nouveaux, v1) : ce qui circule, le tracé des
+  traits, « au travail / présents », les véhicules du handling.
+- Les quatre états se lisent sur toute la zone, par un remplissage franc : au
+  travail (accent), attend le service d'avant (avertissement), a fini (gris
+  neutre), pas commencé (gris clair, contour pointillé). Contrastes vérifiés en
+  thème clair et sombre : 3:1 entre un remplissage et la toile (pour « pas
+  commencé », son contour), 4,5:1 pour le texte. La légende prend les mêmes couleurs.
+- Au centre de chaque service : « 4 au travail / 6 présents », lus dans les
+  créneaux de 15 min des indicateurs de charge (sur une ligne, sinon deux, sinon
+  « 4 / 6 ») ; s'il y en a, un badge « 3 en file ».
+- « Liens » gagne « Ce qui circule », le nouveau défaut : un trait par paire de
+  services qui ont des repas en stock entre eux à l'heure rejouée (les séjours que
+  le moteur rend déjà, ceux de « Stocks et retours »), de 1 à 8 px en racine de la
+  quantité, les trois plus épais étiquetés, au plus 8 (« + n liens » dans la
+  bande), d'un bord de zone à l'autre en courbe douce qui contourne les zones
+  quand elle le peut, une pointe à l'arrivée. Rien n'attend : aucun trait. Les
+  choix d'avant (Tous… Aucun) dessinent comme avant.
+- Pendant la lecture, des points avancent le long des traits, un par tranche de
+  repas (« un point = 50 repas », dans la bande) ; ni à la pause, ni avec
+  prefers-reduced-motion.
+- Le handling : pendant chaque trajet, un camion (ou un VL) va du quai vers le
+  bord du plan le plus proche, puis revient ; un quai au bord du plan : le
+  véhicule part de son centre.
+- Le halo des noms et le contour de la pastille de stock gardent leur épaisseur à
+  tout zoom (ils grossissaient avec lui).
+- Aucun calcul ne change. La version 2 n'est pas touchée.
+- Fichiers : `plan-flux.js`, `plan-flux.css`, `tests/plan-flux.test.cjs`,
+  `tests/plan-flux-browser.cjs` (nouveaux), `sim.js`, `index.html`, `README.md`.
+
 ## 2026-11-09 — Évolution 14 (a) : le plan rejoué, le cadrage et les commandes
 
 - `plan-rejoue.js` et `plan-rejoue.css` (nouveaux, v1) : le cadrage, les tailles des

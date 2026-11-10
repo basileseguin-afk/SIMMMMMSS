@@ -461,10 +461,25 @@ La journée est **calculée d’un coup** par `moteur/production.js` et
   curseur du temps (les jours et les départs des vols y sont marqués), la vitesse,
   puis le zoom (−, %, +, « Cadrer » le service choisi, « Tout voir »). Les noms des
   services gardent la même taille à tout zoom ; les sous-titres n'apparaissent que
-  lorsqu'ils se lisent. Le plan montre quatre états par service : au travail,
-  attend le service d’avant (pointillé), a fini, pas commencé. Au tout début de la
-  journée (« Recommencer »), il montre plutôt ce qui reste à décrire (aucune
-  équipe, équipe sans travail, équipe au travail).
+  lorsqu'ils se lisent. Chaque service est rempli de la couleur de son état à
+  l'heure rejouée : au travail (la couleur d'accent), attend le service d’avant
+  (la couleur d'avertissement), a fini (gris), pas commencé (gris clair, contour
+  pointillé). Au centre, « 4 au travail / 6 présents » — les créneaux de 15 min des
+  indicateurs de charge — et, s'il y en a, « 3 en file ». « Liens » propose par
+  défaut **Ce qui circule** : un trait par paire de services qui ont des repas en
+  stock entre eux à l'heure rejouée (les séjours de « Stocks et retours »), d'un
+  bord de zone à l'autre, la pointe à l'arrivée ; plus il est épais, plus il y a
+  de repas (de 1 à 8 px, en racine de la quantité) ; les trois plus épais disent
+  leur quantité (« 120 repas ») ; au-delà de 8 traits, les plus petits se
+  replient dans « + n liens », dans la bande. Pendant la lecture, des points
+  avancent le long des traits, un par tranche de repas (« un point = 50 repas »,
+  dans la bande) : là où ils s'accumulent, le travail attend. Avec les animations
+  réduites (prefers-reduced-motion), pas de points : seules les épaisseurs
+  changent. Les autres choix (Tous, Humains… Aucun) dessinent les liens
+  configurés, comme avant. Pendant chaque tournée du handling, un camion (ou un
+  VL) va du quai vers le bord du plan, du côté des avions, puis revient. Au tout
+  début de la journée (« Recommencer »), le plan montre plutôt ce qui reste à
+  décrire (aucune équipe, équipe sans travail, équipe au travail).
 - **Départs** : le bilan de la journée, départ par départ ; un vol dont des
   repas n’ont pas d’équipe est dit « Des repas sans équipe ».
 - **Exporter les résultats** (Synthèse) : la journée calculée — départs, classes, journal des lots.
@@ -864,6 +879,8 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/etat-plan-browser.cjs` | État de paramétrage sur le plan, quatre états de la relecture, bascule des légendes |
 | `tests/zoom-browser.cjs` | Bornes du zoom, cadrage d'un service, raccourcis clavier, bridage du déplacement ; « Tout voir » fait tenir le plan entier (évolution 14 a) |
 | `tests/plan-rejoue.test.cjs` | Le plan rejoué sans navigateur (évolution 14 a, `plan-rejoue.js`) : le cadrage à 24 px des bords où que soit le plan, les tailles des textes à tout zoom, les chiffres cumulés de la bande (jamais « — »), l’heure d’ouverture au pic de travail sur l’unité fictive, les repères du curseur |
+| `tests/plan-flux.test.cjs` | Ce qui se passe à l’heure rejouée, sans navigateur (évolution 14 b, `plan-flux.js`) : les paires de services qui ont des repas en stock entre eux, l’épaisseur en racine de la quantité, au plus 8 traits et les trois étiquettes, les points d’une tranche qui avancent avec l’heure, le tracé de bord à bord qui contourne une zone, « au travail / présents » d’un créneau, les véhicules du handling |
+| `tests/plan-flux-browser.cjs` | Le plan rejoué : ce qui se passe à l’heure rejouée (évolution 14 b), sur un plan et des vols fictifs, en thème clair et sombre : les quatre états en remplissage franc et leurs contrastes (3:1 sur la toile, 4,5:1 pour le texte), « au travail / présents » et « en file » égaux aux indicateurs de charge, « Ce qui circule » par défaut (un trait par paire, l’épaisseur qui suit la quantité, trois étiquettes, aucun trait quand rien n’attend, jamais plus de 8), les points pendant la lecture seulement et jamais en reduced-motion, les choix d’avant qui dessinent comme avant, les véhicules du handling |
 | `tests/plan-rejoue-browser.cjs` | Le plan rejoué : le cadrage et les commandes (évolution 14 a), sur un plan et des vols fictifs (`tests/plan-rejoue-fictif.cjs`), à 1 280 et 1 920 px, sans fond et avec une tuile fictive : l’ouverture au pic de travail, le plan entier qui tient, « Tout voir » et « Cadrer », aucun texte sous 11 px, les noms entre 12 et 16 px, la bande des chiffres au-dessus du plan sans recouvrir de zone, une seule barre de commandes dans l’ordre, les repères du curseur, l’heure gardée tant que la journée ne change pas, « Fond de plan » seulement avec un fond |
 | `tests/annexe-browser.cjs` | Zone de production annexe (« Armement 2 ») : création, rattachement, aménagement, effectif |
 | `BUGS.md` | Registre des bugs connus — à lire avant de coder, à compléter après chaque revue |

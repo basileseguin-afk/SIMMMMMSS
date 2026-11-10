@@ -1,0 +1,59 @@
+/* ==========================================================================
+ *  LE PLAN REJOUÉ : CE QUI SE PASSE À L'HEURE REJOUÉE (version 1, évolution 14 b) — plan-flux.js
+ *  Les quatre états en remplissage franc, « au travail / présents » au centre
+ *  de chaque service, « Ce qui circule », les véhicules du handling. Couleurs :
+ *  les jetons de ds.css ; une couleur de statut (l'avertissement) ne dit que
+ *  l'attente. Contrastes vérifiés en thème clair et sombre par
+ *  tests/plan-flux-browser.cjs : 3:1 au moins entre un remplissage et la toile,
+ *  4,5:1 pour le texte. « Pas commencé » est un gris clair : c'est son contour
+ *  pointillé qui tient le 3:1.
+ * ==========================================================================*/
+
+/* Les quatre états, sur toute la zone. */
+body.en-lecture #plan .zone.s-travail .fond{fill:var(--ds-accent);fill-opacity:1;stroke:var(--ds-accent);stroke-dasharray:none}
+body.en-lecture #plan .zone.s-attente .fond{fill:var(--ds-attente);fill-opacity:1;stroke:var(--ds-attente);stroke-dasharray:none}
+body.en-lecture #plan .zone.s-fini .fond{fill:var(--ds-texte-4);fill-opacity:1;stroke:var(--ds-texte-4);stroke-dasharray:none}
+body.en-lecture #plan .zone.s-avenir .fond{fill:var(--ds-survol);fill-opacity:1;stroke:var(--ds-texte-3);stroke-opacity:1;stroke-width:1.5px;stroke-dasharray:6 4}
+body.en-lecture #plan .zone.selection .fond{stroke:var(--ds-texte-1);stroke-width:3px;stroke-dasharray:none}
+/* Le texte sur le remplissage, son halo de la couleur du fond (pas de liseré clair sur un aplat). */
+body.en-lecture #plan .zone.s-travail :is(.titre,.sous,.zone-charge){fill:var(--ds-sur-accent);stroke:var(--ds-accent)}
+body.en-lecture #plan .zone.s-attente :is(.titre,.sous,.zone-charge){fill:var(--ds-sur-attente);stroke:var(--ds-attente)}
+body.en-lecture #plan .zone.s-fini :is(.titre,.sous,.zone-charge){fill:var(--ds-texte-1);stroke:var(--ds-texte-4)}
+body.en-lecture #plan .zone.s-avenir :is(.titre,.sous,.zone-charge){fill:var(--ds-texte-2);stroke:var(--ds-survol)}
+/* Le pictogramme reste neutre : la couleur de la zone dit déjà l'état. */
+body.en-lecture #plan .zone:is(.s-travail,.s-attente,.s-fini,.s-avenir) .zone-ico circle{fill:var(--ds-surface-1);stroke:var(--ds-texte-3)}
+body.en-lecture #plan .zone:is(.s-travail,.s-attente,.s-fini,.s-avenir) .zone-ico-trait{stroke:var(--ds-texte-1)}
+
+/* La pastille « 120 repas en stock » garde son contour à tout zoom ; son texte, sur la pastille, n'a pas de halo. */
+#plan .zone-stock rect{stroke-width:1.5px;vector-effect:non-scaling-stroke}
+#plan .zone .zone-stock text{stroke:none}
+
+/* « 4 au travail / 6 présents » au centre, et « 3 en file ». Tailles fixes à l'écran (sim.js). */
+#plan .zone-charge{font-weight:var(--ds-g-fort);text-anchor:middle;fill:var(--ds-texte-1);font-variant-numeric:tabular-nums;pointer-events:none}
+#plan .zone-file{pointer-events:none}
+#plan .zone-file rect{fill:var(--ds-surface-1);stroke:var(--ds-texte-3);stroke-width:1px;vector-effect:non-scaling-stroke}
+#plan .zone .zone-file text{fill:var(--ds-texte-1);stroke:none;font-weight:var(--ds-g-moyen);text-anchor:middle;font-variant-numeric:tabular-nums}
+#plan .zone.avec-charge .zone-ico{display:none}
+body:not(.en-lecture) #plan :is(.zone-charge,.zone-file),body.editing #plan :is(.zone-charge,.zone-file){display:none}
+body:not(.en-lecture) #plan .zone.avec-charge .zone-ico{display:inline}
+
+/* Ce qui circule : un trait par paire de services, son épaisseur dit la quantité ; une pointe, à l'arrivée. */
+#plan-circule,#plan-vehicules{pointer-events:none}
+#plan-circule .pc-ligne{fill:none;stroke:var(--ds-texte-2);stroke-linecap:butt;vector-effect:non-scaling-stroke}
+#plan-circule .pc-pointe{fill:var(--ds-texte-2);stroke:none}
+#plan-circule .pc-etiquette{fill:var(--ds-texte-1);font-weight:var(--ds-g-moyen);text-anchor:middle;paint-order:stroke fill;stroke:var(--ds-surface-1);stroke-linejoin:round;font-variant-numeric:tabular-nums}
+#plan-circule .pc-point{fill:var(--ds-surface-1);stroke:var(--ds-texte-1);stroke-width:1.5px;vector-effect:non-scaling-stroke}
+body.editing #plan-circule,body.editing #plan-vehicules,body:not(.en-lecture) #plan-vehicules{display:none}
+
+/* Les véhicules du handling : un pictogramme sur une pastille, de taille fixe à l'écran. */
+#plan-vehicules .pv-fond{fill:var(--ds-surface-1);stroke:var(--ds-texte-2);stroke-width:1.5px;vector-effect:non-scaling-stroke}
+#plan-vehicules .pv-trait{fill:none;stroke:var(--ds-texte-1);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* La bande : « + n liens » et la tranche des points, à gauche de la légende des états. */
+.plan-bande .pc-note{flex:none;display:flex;gap:var(--ds-e-3);margin:0;color:var(--ds-texte-2);font-variant-numeric:tabular-nums}
+.plan-bande .pc-note:empty{display:none}
+.plan-bande .pc-echelle::before{content:"";display:inline-block;width:8px;height:8px;margin-right:6px;border:1.5px solid var(--ds-texte-1);border-radius:50%;
+  background:var(--ds-surface-1);vertical-align:-1px}
+/* La légende des états : la pastille de chacun a la couleur de son remplissage ; « pas commencé », son contour pointillé. */
+.plan-bande .legende .pastille.pc-avenir{border:1px dashed var(--ds-texte-3)}
+@container bande (max-width:640px){.plan-bande .pc-note{display:none}}
