@@ -14,14 +14,15 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  const setRange=(s,v)=>page.locator(s).evaluate((e,v)=>{e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));},v);
  try {
   await page.goto(file);
-  assert.equal(await page.locator('#kpi-ontime').textContent(),'—');
+  // Évolution 14 (a) : les chiffres de l'heure rejouée sont une bande au-dessus du plan, jamais « — ».
+  assert.doesNotMatch(await page.locator('#plan-bande-texte').textContent(),/—/);
   assert.equal(await page.locator('#source-count').textContent(),'12 départs · 6 retours');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await nav.vue(page,'reglages');
   // Les commandes de lecture ne vivent plus que dans la vue qu'elles pilotent :
   // ailleurs, un gros bouton « Lancer » invitait à lancer ce qu'on ne regardait pas.
   assert.equal(await page.locator('#btn-play').isVisible(),false,'pas de « Lancer » sur les réglages');
-  assert.equal(await page.locator('.kpi-grille').isVisible(),false,'ni les indicateurs de la simulation');
+  assert.equal(await page.locator('#plan-bande').isVisible(),false,'ni les chiffres de la journée rejouée');
   await nav.vue(page,'plan');
   assert.equal(await page.locator('#btn-play').isVisible(),true);
   // Rien n'est décrit : il n'y a pas de journée à relire, et le bouton le dit
@@ -67,8 +68,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('#btn-play').isDisabled(),false,'une journée existe : on peut la relire');
   await setRange('#vitesse','120');
   await click('#btn-play');await page.waitForFunction(()=>document.getElementById('run-state').textContent==='Fin de journée',{},{timeout:20000});
-  assert.equal(await page.locator('#kpi-ontime').textContent(),'0 %');
-  assert.equal(await page.locator('#kpi-overdue').textContent(),'0','sortie, elle n’est plus « en retard à venir »');
+  // En fin de journée : les trois commandes sont prêtes, aucune à l'heure ; sorties, elles ne sont plus « en retard à cette heure ».
+  const bande=await page.locator('#plan-bande-texte').textContent();
+  assert.match(bande,/commandes prêtes jusqu’ici : 3 sur 3, dont 3 en retard/);
+  assert.doesNotMatch(bande,/en retard à cette heure/,'sortie, elle n’est plus « en retard à venir »');
   // Le panneau de droite résume la journée entière et nomme qui attend.
   const bilan=await page.locator('#bilan-journee').textContent();
   assert.match(bilan,/0 sur 3/);assert.match(bilan,/Retard le plus long/);

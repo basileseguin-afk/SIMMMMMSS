@@ -86,8 +86,8 @@ Créez un dossier `plan-prive/` à la racine et déposez-y les 12 tuiles nommée
 
 **Sans ce dossier, l'application fonctionne normalement** : les zones, la
 simulation et les indicateurs sont inchangés, seul le fond d'architecte manque.
-La case du fond est alors désactivée et se lit « Dessin (absent) », à la place
-de « Dessin du bâtiment » : plus courte, elle ne réduit pas le plan.
+La case « Fond de plan » ne s'affiche alors pas (évolution 14) : elle n'apparaît
+que si les tuiles sont là.
 Aucun test ne dépend de ce dossier : celui qui a besoin d'un fond crée une
 tuile fictive, hors du dépôt (`tests/plan-fictif.cjs`).
 
@@ -450,24 +450,35 @@ tableur et se réimportent. Voir [les formats Excel](docs/FORMATS_EXCEL.md).
 La journée est **calculée d’un coup** par `moteur/production.js` et
 **recalculée à chaque modification** : aucun réglage ne se verrouille.
 
-- **Le plan rejoué** : rejoue la journée calculée. La barre de lecture, en bas :
-  « ▶ Rejouer », « ⏭ Pas à pas » (saute au prochain changement), « ↺ Début », un
-  curseur de temps qui va dans les deux sens, la vitesse. Le plan montre quatre états par service : au travail, attend le
-  service d’avant (pointillé), a fini, pas commencé. Au début de la journée, il
-  montre plutôt ce qui reste à décrire (aucune équipe, équipe sans travail,
-  équipe au travail).
+- **Le plan rejoué** : rejoue la journée calculée. Il s'ouvre sur le plan entier
+  (« Tout voir » : tout tient dans la zone visible, à 24 px des bords) et à l'heure
+  où le plus de personnes sont au travail ; cette heure reste tant que la journée
+  relue ne change pas. En haut, « Voir un service » et « Liens » ; au-dessus du
+  plan, une bande d'une ligne : les chiffres cumulés jusqu'à l'heure rejouée
+  (« commandes prêtes jusqu’ici : 12 sur 30, toutes à l’heure »), et à droite la
+  légende des quatre états. Une seule barre de commandes, en bas : « ▶ Rejouer »,
+  « ⏭ Pas à pas » (saute au prochain changement), « ↺ Recommencer », l'heure, le
+  curseur du temps (les jours et les départs des vols y sont marqués), la vitesse,
+  puis le zoom (−, %, +, « Cadrer » le service choisi, « Tout voir »). Les noms des
+  services gardent la même taille à tout zoom ; les sous-titres n'apparaissent que
+  lorsqu'ils se lisent. Le plan montre quatre états par service : au travail,
+  attend le service d’avant (pointillé), a fini, pas commencé. Au tout début de la
+  journée (« Recommencer »), il montre plutôt ce qui reste à décrire (aucune
+  équipe, équipe sans travail, équipe au travail).
 - **Départs** : le bilan de la journée, départ par départ ; un vol dont des
   repas n’ont pas d’équipe est dit « Des repas sans équipe ».
 - **Exporter les résultats** (Synthèse) : la journée calculée — départs, classes, journal des lots.
 
 ## Lire les indicateurs
 
-- **Prêts à l’heure** : parmi les repas dont l’heure de chargement est **déjà
-  passée** à l’heure rejouée, ceux prêts à temps. Avant le premier chargement : « — ».
-- **En retard** : repas dont l’heure de chargement est passée et qui ne sont pas
-  encore prêts.
-- **Services au travail** / **Services qui attendent** : services qui préparent,
-  et services dont l’équipe est là mais dont le service d’avant n’a pas encore livré.
+- **Commandes prêtes jusqu’ici** (la bande au-dessus du plan rejoué) : les
+  commandes prêtes depuis le début de la journée jusqu’à l’heure rejouée, sur
+  toutes celles de la journée, et combien l’ont été après leur heure de
+  chargement (« toutes à l’heure », « dont 2 en retard ») ; jamais « — ».
+- **En retard à cette heure** : commandes dont l’heure de chargement est passée
+  et qui ne sont pas encore prêtes.
+- **Services au travail** / **qui attendent** : services qui préparent, et
+  services dont l’équipe est là mais dont le service d’avant n’a pas encore livré.
 - **Point d’attention** : le poste qui attend son amont depuis le plus
   longtemps à cet instant, et, sur la journée, celui qui a le plus attendu.
   Pour un service choisi : ses équipes et ses lots avec leurs heures.
@@ -851,7 +862,9 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/v2-copie-browser.cjs` | La version 2 dit d’où viennent ses données (correction 14 b) : le bandeau discret et la date de la copie (JJ/MM/AAAA, celle enregistrée à la première ouverture), « Reprendre les données de la version 1 » refusé puis fait (la page rechargée, la date à jour, le budget de la v2 gardé), la v1 intacte octet pour octet et son onglet ouvert à côté sans bandeau, la révision de la v1 hors de la v2 |
 | `tests/ateliers-browser.cjs` | Onglet Ateliers de bout en bout : saisie, calcul, planning, persistance |
 | `tests/etat-plan-browser.cjs` | État de paramétrage sur le plan, quatre états de la relecture, bascule des légendes |
-| `tests/zoom-browser.cjs` | Bornes du zoom, cadrage d'un service, raccourcis clavier, bridage du déplacement |
+| `tests/zoom-browser.cjs` | Bornes du zoom, cadrage d'un service, raccourcis clavier, bridage du déplacement ; « Tout voir » fait tenir le plan entier (évolution 14 a) |
+| `tests/plan-rejoue.test.cjs` | Le plan rejoué sans navigateur (évolution 14 a, `plan-rejoue.js`) : le cadrage à 24 px des bords où que soit le plan, les tailles des textes à tout zoom, les chiffres cumulés de la bande (jamais « — »), l’heure d’ouverture au pic de travail sur l’unité fictive, les repères du curseur |
+| `tests/plan-rejoue-browser.cjs` | Le plan rejoué : le cadrage et les commandes (évolution 14 a), sur un plan et des vols fictifs (`tests/plan-rejoue-fictif.cjs`), à 1 280 et 1 920 px, sans fond et avec une tuile fictive : l’ouverture au pic de travail, le plan entier qui tient, « Tout voir » et « Cadrer », aucun texte sous 11 px, les noms entre 12 et 16 px, la bande des chiffres au-dessus du plan sans recouvrir de zone, une seule barre de commandes dans l’ordre, les repères du curseur, l’heure gardée tant que la journée ne change pas, « Fond de plan » seulement avec un fond |
 | `tests/annexe-browser.cjs` | Zone de production annexe (« Armement 2 ») : création, rattachement, aménagement, effectif |
 | `BUGS.md` | Registre des bugs connus — à lire avant de coder, à compléter après chaque revue |
 

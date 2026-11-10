@@ -30,11 +30,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
   // Le site s'ouvre sur l'étape à faire ensuite : ce parcours travaille sur le plan.
   const versPlan=async()=>{await nav.vue(page,'plan');await page.waitForTimeout(120);};await versPlan();
-  assert.equal((await vue()).k,1);
+  // Évolution 14 (a) : la vue d'ensemble fait tenir le plan entier à 24 px des bords (plus le zoom 1 d'office).
+  const ensemble=await vue();
+  assert.ok(ensemble.k>0.5&&ensemble.k<4,'la vue d’ensemble');
 
   // 1. Le pas des boutons est fin, et la borne haute est large.
   await page.locator('#zoom-in').click();
-  assert.ok(Math.abs((await vue()).k-1.25)<1e-6,'un cran = 1,25×');
+  assert.ok(Math.abs((await vue()).k-ensemble.k*1.25)<1e-6,'un cran = 1,25×');
   for(let i=0;i<30;i++)await page.locator('#zoom-in').click();
   assert.equal((await vue()).k,16,'borne haute à 16×');
   for(let i=0;i<40;i++)await page.locator('#zoom-out').click();
@@ -61,10 +63,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const vide=await videDuPlan();
   assert.ok(vide,'le plan doit avoir un endroit sans atelier');
   await page.mouse.dblclick(vide.x,vide.y);
-  assert.deepEqual(await vue(),{x:0,y:0,k:1});
+  assert.deepEqual(await vue(),ensemble);
   await page.locator('#zoom-in').click();
   await page.locator('#plan').focus();await page.keyboard.press('0');
-  assert.deepEqual(await vue(),{x:0,y:0,k:1},'la touche 0 revient à l’ensemble');
+  assert.deepEqual(await vue(),ensemble,'la touche 0 revient à l’ensemble');
   await page.keyboard.press('+');assert.ok((await vue()).k>1,'la touche + zoome');
 
   // 5. Le plan ne peut pas être poussé hors de l'écran.

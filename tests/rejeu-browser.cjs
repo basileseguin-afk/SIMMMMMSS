@@ -45,17 +45,29 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    const haut=await boite('.haut'),plan=await boite('#plan'),lecteur=await boite('#lecteur');
    // Le fond : présent, la case se coche ; absent, elle est désactivée et le dit.
    const fond=await page.evaluate(()=>{const c=document.getElementById('fond-plan');return {actif:!c.disabled,coche:c.checked,texte:c.closest('label').textContent.trim(),nom:c.getAttribute('aria-label')};});
-   assert.deepEqual(fond,SITES[0][0]===site?{actif:false,coche:false,texte:'Dessin (absent)',nom:'Dessin du bâtiment (absent)'}:{actif:true,coche:true,texte:'Dessin du bâtiment',nom:null},V+'la case du fond');
+   // v1 (évolution 14 a) : la case ne s'affiche que s'il y a un fond, et s'appelle « Fond de plan ». v2 : comme avant.
+   if(version==='v1'){
+     const visible=await page.evaluate(()=>{const l=document.getElementById('fond-plan').closest('label');return l.getBoundingClientRect().width>0;});
+     assert.deepEqual({...fond,visible},SITES[0][0]===site?{actif:false,coche:false,texte:'Fond de plan',nom:null,visible:false}:{actif:true,coche:true,texte:'Fond de plan',nom:null,visible:true},V+'la case du fond');
+   }else assert.deepEqual(fond,SITES[0][0]===site?{actif:false,coche:false,texte:'Dessin (absent)',nom:'Dessin du bâtiment (absent)'}:{actif:true,coche:true,texte:'Dessin du bâtiment',nom:null},V+'la case du fond');
    (hauteurs[version]=hauteurs[version]||{})[site]={large:plan.h,tete:(await boite('.plan-tete')).h};
    const part=plan.h/(900-haut.bas);
    assert.ok(part>=0.75,V+'le plan occupe '+Math.round(part*100)+' % de la hauteur utile');
    assert.ok(lecteur.y>=plan.bas-1&&lecteur.bas<=900+1,V+'la barre de lecture court en bas, sous la toile');
-   for(const s of ['.plan-kpi','.plan-legende','.plan-zoom']){
-     const b=await boite(s);assert.ok(b,V+s+' visible');
-     assert.ok(b.x>=plan.x&&b.droite<=plan.droite+1&&b.y>=plan.y&&b.bas<=plan.bas+1,V+s+' se pose sur la toile');
+   if(version==='v1'){
+     // Évolution 14 (a) : les chiffres sont une bande au-dessus de la toile, qui ne la recouvre pas ; le zoom rejoint la barre du bas.
+     const bande=await boite('#plan-bande');assert.ok(bande&&bande.bas<=plan.y+1,V+'la bande des chiffres, au-dessus de la toile');
+     assert.equal(await page.evaluate(()=>document.getElementById('lecteur').contains(document.querySelector('.plan-zoom'))),true,V+'le zoom, dans la barre du bas');
+     assert.equal(await page.locator('#plan-bande-texte').isVisible(),true,V+'les chiffres à cette heure');
+   }else{
+     for(const s of ['.plan-kpi','.plan-legende','.plan-zoom']){
+       const b=await boite(s);assert.ok(b,V+s+' visible');
+       assert.ok(b.x>=plan.x&&b.droite<=plan.droite+1&&b.y>=plan.y&&b.bas<=plan.bas+1,V+s+' se pose sur la toile');
+     }
+     assert.equal(await page.locator('.kpi-grille').isVisible(),true,V+'les indicateurs à cette heure');
    }
-   assert.equal(await page.locator('.kpi-grille').isVisible(),true,V+'les indicateurs à cette heure');
-   for(const id of ['#btn-play','#sim-pas','#btn-reset','#sim-curseur','#vitesse','#horloge','#zoom-in','#zoom-out','#zoom-fit','#zoom-reset','#zone-picker','#fond-plan','#btn-edit'])
+   for(const id of ['#btn-play','#sim-pas','#btn-reset','#sim-curseur','#vitesse','#horloge','#zoom-in','#zoom-out','#zoom-fit','#zoom-reset','#zone-picker',
+     ...(version==='v1'&&SITES[0][0]===site?[]:['#fond-plan']),'#btn-edit'])
      assert.equal(await page.locator(id).isVisible(),true,V+id+' reste à portée');
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,V+'sans débord');
 

@@ -1,0 +1,81 @@
+/* ==========================================================================
+ *  LE PLAN REJOUÉ (version 1, évolution 14 a) — plan-rejoue.js
+ *  La bande des chiffres au-dessus du plan, une seule barre de commandes en
+ *  bas, l'en-tête réduit à « Voir un service » et « Liens ». Couleurs, textes,
+ *  espacements et rayons : les jetons de ds.css ; le thème sombre suit.
+ * ==========================================================================*/
+
+/* L'en-tête : à gauche « Voir un service » et « Liens » ; à droite, le fond de plan (s'il y en a un) et « Modifier le plan ».
+ * Plus serré qu'avant (la bande des chiffres prend une ligne au-dessus du plan : le plan garde sa place). */
+.plan-tete{min-height:40px;padding-top:4px;padding-bottom:4px}
+.plan-tete>.zone-picker{order:0}
+.plan-tete>.fc-map-filter{order:1;margin-right:auto}
+.plan-tete>.chk-fond{order:2}
+.plan-tete>.chk-fond[hidden]{display:none}
+.plan-tete>#btn-edit{order:3;margin-left:0}
+
+/* La bande des chiffres : une ligne au-dessus du plan, la légende des états à droite. Elle ne recouvre rien. */
+.plan-bande{container:bande/inline-size;display:flex;align-items:center;gap:var(--ds-e-2) var(--ds-e-4);min-height:22px;padding:2px var(--ds-e-4);line-height:18px;
+  background:var(--ds-surface-1);border-bottom:1px solid var(--ds-bordure);font-size:var(--ds-t-12);color:var(--ds-texte-2);white-space:nowrap;overflow:hidden}
+.plan-bande .pr-texte{flex:1 1 auto;min-width:0;margin:0;overflow:hidden;text-overflow:ellipsis}
+.plan-bande .pr-quand{font-weight:var(--ds-g-fort);color:var(--ds-texte-1);font-variant-numeric:tabular-nums}
+.plan-bande .pr-chiffre{font-variant-numeric:tabular-nums}
+.plan-bande .pr-chiffre::before{content:"·";margin:0 var(--ds-e-2);color:var(--ds-texte-4)}
+/* Le retard dit un état : sa couleur de statut, et un mot (jamais la couleur seule). */
+.plan-bande .pr-chiffre[data-etat="retard"]{color:var(--ds-retard-texte);font-weight:var(--ds-g-moyen)}
+.plan-bande .pr-chiffre[data-etat="attente"]{color:var(--ds-attente-texte)}
+.plan-bande .plan-etat{flex:none;margin:0;font-size:var(--ds-t-12);color:var(--ds-texte-3)}
+.plan-bande .plan-etat:empty{display:none}
+.plan-bande .legende{flex:none;display:flex;flex-wrap:nowrap;gap:var(--ds-e-1) var(--ds-e-3);margin:0;font-size:var(--ds-t-12)}
+body.editing .plan-bande{display:none}
+/* La légende : le libellé long ; étroite, la bande prend le court (le long reste en titre et pour les lecteurs d'écran). */
+.plan-bande .lg-court{display:none}
+@container bande (max-width:1000px){
+  .plan-bande .lg-long{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .plan-bande .lg-court{display:inline}
+  .plan-bande .pr-quand,.plan-bande .pr-quand+.pr-chiffre::before{display:none}
+}
+@container bande (max-width:640px){.plan-bande .legende{display:none}}
+
+/* La barre du bas : lecture, pas à pas, recommencer, l'heure, le curseur, la vitesse, puis le zoom. */
+.lecteur{min-height:44px;padding-top:6px;padding-bottom:6px}
+.lecteur .horloge-box>div.transport{order:1;display:flex}
+.lecteur .horloge-box>div.pr-heure{order:2;flex:none;display:grid}
+.lecteur .pr-temps{order:3;position:relative;flex:1 1 160px;min-width:120px;padding-bottom:10px}
+.lecteur .pr-temps #sim-curseur{display:block;width:100%;min-width:0;height:16px;margin:0}
+.lecteur .run-state{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+body.journee-vide .lecteur .pr-temps{display:none}
+body.journee-vide .lecteur .run-state{position:static;width:auto;height:auto;overflow:visible;clip-path:none;white-space:normal}
+.lecteur .zoom-ctrl{position:static;order:9;flex:none;display:flex;align-items:center;gap:2px;margin:0;padding:0;border:0;border-left:1px solid var(--ds-bordure);
+  border-radius:0;padding-left:var(--ds-e-3);background:none;box-shadow:none}
+.lecteur .zoom-ctrl .btn{min-height:var(--ds-h-compact);padding:0 8px;border-color:transparent;background:transparent;box-shadow:none}
+.lecteur .zoom-ctrl .btn:hover:not(:disabled){background:var(--ds-survol)}
+.lecteur .zoom-ctrl .btn:focus-visible{box-shadow:var(--ds-focus);border-color:var(--ds-accent)}
+.lecteur .zoom-ctrl b{min-width:42px;font-size:var(--ds-t-12);font-weight:var(--ds-g-moyen);text-align:center;color:var(--ds-texte-2);font-variant-numeric:tabular-nums}
+body.journee-vide .lecteur .zoom-ctrl{margin-left:auto}
+
+/* Les repères du curseur : chaque jour (un trait et son nom), chaque départ (un trait fin). Le pouce fait 16 px : 8 de chaque côté. */
+.pr-reperes{position:absolute;left:8px;right:8px;bottom:0;height:10px;pointer-events:none}
+.pr-reperes>span{position:absolute;bottom:0;transform:translateX(-50%)}
+.pr-jour{height:10px;border-left:1px solid var(--ds-texte-3)}
+.pr-jour:not(.minuit){border-left-color:transparent}
+.pr-jour b{position:absolute;left:3px;bottom:-1px;font-size:var(--ds-t-11);font-weight:var(--ds-g-moyen);line-height:1;color:var(--ds-texte-3);white-space:nowrap}
+.pr-depart{width:0;height:6px;border-left:1px solid var(--ds-texte-4)}
+
+/* Les boutons du zoom : leur pictogramme sert quand la barre est étroite ; large, le mot suffit. */
+.lecteur .zoom-ctrl .btn .ico,.plan-zoom .btn .ico{display:none}
+/* Étroite, la barre range ses mots (ds.css garde les pictogrammes de la lecture) ; le pourcentage du zoom reste. */
+@container lecteur (max-width:1020px){
+  .lecteur .horloge-box{gap:10px}
+  .lecteur .vitesse-box{font-size:0;gap:6px}
+  .lecteur .vitesse-box b{font-size:var(--ds-t-12)}
+  .lecteur .vitesse-box input{width:64px}
+  .lecteur .pr-temps{min-width:100px}
+  .lecteur .zoom-ctrl{padding-left:var(--ds-e-2)}
+  .lecteur .zoom-ctrl .btn{padding:0 6px}
+}
+@container lecteur (max-width:860px){
+  .lecteur .zoom-ctrl .btn .ico{display:inline-block;width:15px;height:15px}
+  .lecteur .zoom-ctrl .pr-lib{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .lecteur .zoom-ctrl #zoom-fit,.lecteur .zoom-ctrl #zoom-reset{width:var(--ds-h-compact);justify-content:center;padding:0}
+}

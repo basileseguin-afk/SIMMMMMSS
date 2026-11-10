@@ -29,7 +29,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // 2. Une équipe sans rien à fabriquer n'est pas un état neutre : elle est
   //    décrite, mais elle ne produira rien.
   await nav.vue(page,'reglages');
-  assert.equal(await page.locator('.kpi-grille').isVisible(),false,'les indicateurs ne décrivent pas un réglage');
+  assert.equal(await page.locator('#plan-bande').isVisible(),false,'les chiffres de la journée rejouée ne décrivent pas un réglage');
   await nav.vue(page,'ateliers');
   await nav.aller(page,'at-equipes');await page.locator('#at-new').click();await page.waitForTimeout(150);
   const eq=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
@@ -41,23 +41,20 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.selectOption(`[data-at="${eq}"] [data-at-champ=lot-nouveau]`,'CRL/BC');await page.waitForTimeout(250);
   await nav.vue(page,'plan');
   assert.match(await etat('cuisine'),/\bp-pret\b/);
-  // Avant le lancement, les quatre indicateurs valent tous « — » ou « 0 » : une
-  // bande entière pour ne rien dire, juste au-dessus de ce qu'on vient voir.
-  // Tant qu'on est au début de la journée, les quatre indicateurs ne disent
-  // rien : une bande entière au-dessus de ce qu'on vient voir.
-  assert.equal(await page.locator('.kpi-grille').isVisible(),false,'rien à montrer au début');
-  // Les chiffres « à cette heure » accompagnent le plan rejoué : avancer dans
-  // la journée les fait apparaître, ils ont alors quelque chose à dire.
+  // Évolution 14 (a) : les chiffres de l'heure rejouée sont une bande d'une ligne au-dessus du plan, cumulés jusqu'à
+  // cette heure : au début, aucune commande prête encore (« 0 sur 1 »), jamais « — » ; en avançant, ils se cumulent.
+  assert.equal(await page.locator('#plan-bande').isVisible(),true,'la bande accompagne le plan rejoué');
+  assert.match(await page.locator('#plan-bande-texte').textContent(),/commandes prêtes jusqu’ici : 0 sur 1/,'rien de prêt au début');
   await page.evaluate(()=>Sim.vue.allerA(Sim.vue.fin));await page.waitForTimeout(200);
-  assert.equal(await page.locator('.kpi-grille').isVisible(),true,'ils apparaissent dès qu’on avance');
+  assert.match(await page.locator('#plan-bande-texte').textContent(),/commandes prêtes jusqu’ici : 1 sur 1/,'cumulés jusqu’à l’heure rejouée');
   // La synthèse, elle, parle de la journée entière, sans lecteur.
   await nav.aller(page,'j-chiffres');await page.waitForTimeout(200);
   assert.equal(await page.locator('#bilan-journee').isVisible(),true,'le bilan de la journée');
-  assert.equal(await page.locator('.kpi-grille').isVisible(),false,'pas les chiffres de l’instant');
+  assert.equal(await page.locator('#plan-bande').isVisible(),false,'pas les chiffres de l’instant');
   assert.equal(await page.locator('#btn-play').isVisible(),false,'ni le lecteur');
   await nav.aller(page,'j-plan');
   await page.locator('#btn-reset').click();await page.waitForTimeout(200);
-  assert.equal(await page.locator('.kpi-grille').isVisible(),false,'et repartent au début');
+  assert.match(await page.locator('#plan-bande-texte').textContent(),/commandes prêtes jusqu’ici : 0 sur 1/,'et repartent au début');
   await nav.aller(page,'j-plan');await page.waitForTimeout(150);
   // 3. Un second service décrit fait baisser le reste à faire.
   const avant=await page.locator('#plan-etat').textContent();

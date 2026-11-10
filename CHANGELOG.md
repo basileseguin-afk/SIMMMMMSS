@@ -5,6 +5,35 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-09 — Évolution 14 (a) : le plan rejoué, le cadrage et les commandes
+
+- `plan-rejoue.js` et `plan-rejoue.css` (nouveaux, v1) : le cadrage, les tailles des
+  textes, la bande des chiffres, les repères du curseur, l'heure d'ouverture.
+- À l'ouverture et sur « Tout voir », le plan entier (les zones, et le fond s'il est
+  affiché) tient dans la zone visible, à 24 px des bords ; « Cadrer » cadre le
+  service choisi dans « Voir un service ». Tant qu'on n'a pas zoomé, le cadrage suit
+  la zone visible (« En ce moment » replié, la fenêtre).
+- Les noms des services font 13 px à l'écran à tout zoom, et s'arrêtent d'un « … »
+  avant le bord de leur zone ; les sous-titres n'apparaissent que lorsqu'ils font
+  11 px ; la pastille de stock garde 12 px.
+- L'encart des chiffres ne recouvre plus le plan : une bande d'une ligne au-dessus,
+  les chiffres cumulés jusqu'à l'heure rejouée (« commandes prêtes jusqu’ici : 12
+  sur 30, toutes à l’heure »), jamais « — », et à droite la légende des quatre états.
+- Une seule barre de commandes, en bas : lecture, pas à pas, recommencer, l'heure,
+  le curseur du temps (les jours et les départs des vols marqués), la vitesse, le
+  zoom. En haut à gauche, « Voir un service » et « Liens » seulement.
+- À l'ouverture, l'heure rejouée est le créneau où le plus de personnes sont au
+  travail (indicateurs de charge) ; elle reste celle choisie tant que la journée
+  relue ne change pas.
+- La case « Fond de plan » ne s'affiche que s'il y a un fond.
+- Aucun calcul ne change. La version 2 n'est pas touchée (ni ses fichiers, ni les
+  fichiers communs).
+- Fichiers : `plan-rejoue.js`, `plan-rejoue.css`, `tests/plan-rejoue.test.cjs`,
+  `tests/plan-rejoue-browser.cjs`, `tests/plan-rejoue-fictif.cjs` (nouveaux),
+  `sim.js`, `index.html`, `tests/browser-smoke.cjs`, `tests/etat-plan-browser.cjs`,
+  `tests/rejeu-browser.cjs` (sa partie v1), `tests/zoom-browser.cjs`, `README.md`,
+  `docs/EDITEUR_PLAN.md`.
+
 ## 2026-11-05 — Banc d'essai, évolution 13 (d) : l'outil et la doc de l'export Winrest
 
 - `outils/importer-flights.cjs` (nouveau) : `node outils/importer-flights.cjs

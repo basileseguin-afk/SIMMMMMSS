@@ -1211,13 +1211,16 @@ let planVerifie = false;
 function verifierPlan() {
   if (planVerifie) return; planVerifie = true;
   const img = new Image();
+  // Évolution 14 (a) : la case ne s'affiche que s'il y a un fond, et s'appelle « Fond de plan ».
+  img.onload = function () { const c = document.getElementById('fond-plan'), l = c && c.closest('label'); if (l) l.hidden = false; };
   img.onerror = function () {
     svg.classList.add('sans-fond');
     const c = document.getElementById('fond-plan');
     if (c) {
       c.checked = false; c.disabled = true;
       const l = c.closest('label');
-      if (l) {
+      if (l && l.classList.contains('chk-fond')) { l.hidden = true; l.title = 'Plan confidentiel, absent de ce dépôt public.'; }
+      else if (l) {
         l.title = 'Plan confidentiel, absent de ce dépôt public. Placez ses tuiles ' +
                   'dans le dossier ' + DOSSIER_PLAN + '/ en local pour l\'afficher.';
         // La mention prend la place du nom au lieu de l'allonger : le premier mot seul (« Dessin
@@ -1239,31 +1242,78 @@ function verifierPlan() {
 
 /* --- Zoom / déplacement --------------------------------------------------- */
 let vk = 1, vtx = 0, vty = 0;
-const ZOOM_MIN = 0.5, ZOOM_MAX = 16;
-/* Le centre de l'écran reste toujours à portée du plan. Sans cela on peut
- * dériver jusqu'à l'écran vide, et le seul recours est « vue d'ensemble ». */
+let ZOOM_MIN = 0.5;
+const ZOOM_MAX = 16;
+/* Évolution 14 (a) : le plan entier, c'est ce qui est dessiné — les zones visibles et, s'il est affiché, le fond.
+ * « Tout voir » et l'ouverture le font tenir dans la zone visible, à 24 px des bords (plan-rejoue.js). */
+function bornesDuPlan() {
+  const zones = Object.keys(zoneEls).filter(id => zoneEls[id].g.style.display !== 'none' && ZONES[id]).map(id => boite(ZONES[id]));
+  const c = document.getElementById('fond-plan');
+  const fond = c && c.checked && !c.disabled && !svg.classList.contains('sans-fond') ? TILES.map(t => ({ x:t.x, y:t.y, w:t.w, h:t.h })) : [];
+  return OrlyPlanRejoue.bornes(zones.concat(fond)) || { x:VUE.x, y:VUE.y, w:VUE.w, h:VUE.h };
+}
+const ecranDuPlan = () => ({ w:svg.clientWidth, h:svg.clientHeight });
+/** Pixels d'écran par unité du plan, au zoom courant. */
+const pxParUnite = () => vk * OrlyPlanRejoue.echelle(VUE, ecranDuPlan());
+/* Le centre de l'écran reste toujours à portée du plan : sans cela on dériverait jusqu'à l'écran vide. */
 function brider() {
-  const m = 0.35;
+  const m = 0.35, B = bornesDuPlan();
   const cx = (VUE.x + VUE.w/2 - vtx) / vk, cy = (VUE.y + VUE.h/2 - vty) / vk;
-  const bx = Math.min(Math.max(cx, VUE.x - VUE.w*m), VUE.x + VUE.w*(1+m));
-  const by = Math.min(Math.max(cy, VUE.y - VUE.h*m), VUE.y + VUE.h*(1+m));
+  const bx = Math.min(Math.max(cx, B.x - B.w*m), B.x + B.w*(1+m));
+  const by = Math.min(Math.max(cy, B.y - B.h*m), B.y + B.h*(1+m));
   vtx = VUE.x + VUE.w/2 - bx*vk; vty = VUE.y + VUE.h/2 - by*vk;
 }
-/* Cadre une zone au centre. Le facteur de cadrage n'est plus un plafond :
- * on peut toujours s'approcher davantage pour tracer au carreau. */
-function cadrerZone(z) {
-  const b = boite(z);
-  vk = Math.min(ZOOM_MAX, zoomService(z)); 
-  vtx = VUE.x + VUE.w/2 - (b.x + b.w/2)*vk; vty = VUE.y + VUE.h/2 - (b.y + b.h/2)*vk;
+/* Fait tenir la boîte `b` (unités du plan) à 24 px des bords de la zone visible ; un plan caché attend d'être montré.
+ * `auto` : un cadrage « Tout voir », que la page refait quand la zone visible change, tant qu'on n'a pas zoomé. */
+let cadreAuto = true;
+function cadrerBoite(b, auto) {
+  const c = OrlyPlanRejoue.cadrage(b, VUE, ecranDuPlan());
+  cadreAuto = !!auto;
+  if (!c) { appliquerVue(); return; }
+  ZOOM_MIN = Math.min(0.5, c.k * 0.8);
+  vk = Math.min(ZOOM_MAX, c.k); vtx = c.tx; vty = c.ty;
   appliquerVue();
 }
-function vueEnsemble() { vk = 1; vtx = 0; vty = 0; appliquerVue(); }
+/* Cadre une zone : elle tient à 24 px des bords. On peut toujours s'approcher davantage pour tracer au carreau. */
+function cadrerZone(z) { cadrerBoite(boite(z), false); }
+function vueEnsemble() { cadrerBoite(bornesDuPlan(), true); }
 function appliquerVue() {
   brider();
   Sim._gVue.setAttribute('transform', 'translate(' + vtx + ' ' + vty + ') scale(' + vk + ')');
   svg.classList.toggle('zoomed', vk >= 1.7);
   const z = document.getElementById('zoom-val'); if (z) z.textContent = Math.round(vk*100) + '%';
+  ajusterTextesPlan();
   if(Sim.editor)Sim.editor.renderCanvas();
+}
+/* Un nom plus large que sa zone s'arrête avant le bord, d'un « … » : il ne mord plus sur la zone voisine. `place`, en
+ * unités du plan, comme la longueur mesurée. Le nom entier reste dans l'infobulle et pour les lecteurs d'écran.
+ * Mesuré seulement quand la place change. */
+function tenirNom(e, place) {
+  const nom = nomLisible(ZONES[e.g.dataset.id] ? ZONES[e.g.dataset.id].nom : e.titre.textContent);
+  const cle = nom + '|' + Math.round(place) + '|' + e.titre.style.fontSize;
+  if (e.nomTenu === cle) return;
+  e.nomTenu = cle;
+  e.titre.textContent = nom;
+  if (!(place > 0) || !e.titre.getComputedTextLength || e.g.style.display === 'none') return;
+  let n = nom.length;
+  while (n > 1 && e.titre.getComputedTextLength() > place) { n--; e.titre.textContent = nom.slice(0, n).trimEnd() + '…'; }
+}
+/* Les noms des services gardent leur taille à l'écran à tout zoom ; les sous-titres n'apparaissent que lisibles. */
+function ajusterTextesPlan() {
+  const px = pxParUnite(); if (!(px > 0)) return;
+  const T = OrlyPlanRejoue.tailles(px);
+  for (const id of Object.keys(zoneEls)) {
+    const e = zoneEls[id], b = e.b; if (!b) continue;
+    e.titre.style.fontSize = T.nom + 'px';
+    e.titre.setAttribute('x', b.x + T.retrait); e.titre.setAttribute('y', b.y + T.retrait + T.nom);
+    tenirNom(e, b.w - 2 * T.retrait);
+    e.sous.forEach((st, i) => {
+      st.style.display = T.sousVisibles ? '' : 'none';
+      st.style.fontSize = T.sous + 'px';
+      st.setAttribute('x', b.x + T.retrait); st.setAttribute('y', b.y + T.retrait + T.nom + (i + 1) * T.sous * 1.3);
+    });
+    if (e.stock && e.stock.texte) placerStock(e, px);
+  }
 }
 function ptSvg(e) {
   const m = svg.getScreenCTM(); if (!m) return { x:0, y:0 };
@@ -1271,6 +1321,7 @@ function ptSvg(e) {
   return p.matrixTransform(m.inverse());
 }
 function zoomer(f, p) {
+  cadreAuto = false;
   // Le cadrage du service servait de plafond en vue Ateliers : on ne pouvait
   // pas s'approcher d'un carreau de 50 cm pour le tracer. Même borne partout.
   const nk = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, vk * f));
@@ -1304,8 +1355,8 @@ function initInteractions() {
     const gestes = {
       '+':()=>zoomer(1.25), '=':()=>zoomer(1.25), '-':()=>zoomer(1/1.25), '_':()=>zoomer(1/1.25),
       '0':()=>vueEnsemble(),
-      ArrowLeft:()=>{vtx += pas; appliquerVue();}, ArrowRight:()=>{vtx -= pas; appliquerVue();},
-      ArrowUp:()=>{vty += pas; appliquerVue();},   ArrowDown:()=>{vty -= pas; appliquerVue();}
+      ArrowLeft:()=>{cadreAuto = false; vtx += pas; appliquerVue();}, ArrowRight:()=>{cadreAuto = false; vtx -= pas; appliquerVue();},
+      ArrowUp:()=>{cadreAuto = false; vty += pas; appliquerVue();},   ArrowDown:()=>{cadreAuto = false; vty -= pas; appliquerVue();}
     };
     const g = gestes[e.key]; if (g) { e.preventDefault(); g(); }
   });
@@ -1320,7 +1371,7 @@ function initInteractions() {
   svg.addEventListener('pointermove', e => {
     if (!act) return;
     if (!act.bouge && Math.hypot(e.clientX - act.cx, e.clientY - act.cy) < 4) return;
-    act.bouge = true; svg.setPointerCapture(e.pointerId);
+    act.bouge = true; cadreAuto = false; svg.setPointerCapture(e.pointerId);
     const p = ptSvg(e);
     vtx = act.tx + (p.x - act.p0.x); vty = act.ty + (p.y - act.p0.y); appliquerVue();
   });
@@ -1328,7 +1379,10 @@ function initInteractions() {
   svg.addEventListener('pointerup', fin);
   svg.addEventListener('pointercancel', fin);
 
-  appliquerVue();
+  // La zone visible change (l'ouverture de la page, « En ce moment » qui se replie, la fenêtre) : tant qu'on n'a
+  // ni zoomé ni déplacé, le plan entier y tient encore ; sinon, seuls les textes se remettent à leur taille.
+  if (window.ResizeObserver) new ResizeObserver(() => { if (cadreAuto) vueEnsemble(); else ajusterTextesPlan(); }).observe(svg);
+  vueEnsemble();
 }
 
 let selection = null;
@@ -1395,7 +1449,7 @@ function initEdition() {
     update(id,visible){
       positionnerZone(id);
       const e=zoneEls[id];if(!e)return;
-      e.titre.textContent=nomLisible(ZONES[id].nom);e.g.setAttribute('aria-label',nomLisible(ZONES[id].nom));
+      e.titre.textContent=nomLisible(ZONES[id].nom);e.g.setAttribute('aria-label',nomLisible(ZONES[id].nom));e.nomTenu=null;
       e.g.style.display=visible?'':'none';
       // Couleur choisie dans l'éditeur : elle tient le fond, l'état de
       // paramétrage passe dans le contour. Rien de choisi, rien ne change.
@@ -1403,7 +1457,7 @@ function initEdition() {
       e.g.classList.toggle('couleur-perso',!!c);
       if(c)e.g.style.setProperty('--zone-perso',c);else e.g.style.removeProperty('--zone-perso');
     },
-    refresh(){suivreNomsServices();if(Sim.flows)Sim.flows.refresh();redessinerEdges();majPicker();if(Sim.ateliers)Sim.ateliers.rendre();
+    refresh(){ajusterTextesPlan();suivreNomsServices();if(Sim.flows)Sim.flows.refresh();redessinerEdges();majPicker();if(Sim.ateliers)Sim.ateliers.rendre();
       if(Sim.reglages)Sim.reglages.rendre();majDemarrage();},
     pick(id){selectionner(id);},
     // Une zone de production supprimée ne laisse pas d'équipes orphelines : on
@@ -1529,7 +1583,10 @@ function majLegende(avant, compte) {
   const cle = avant ? 'param:' + compte.vide + '/' + compte.partiel + '/' + compte.pret : 'lecture';
   if (cle === _legendeCle) return;
   _legendeCle = cle;
-  const puce = (coul, texte, titre) => '<span title="' + escapeHTML(titre) + '"><span class="pastille" style="background:' + coul + '"></span>' + escapeHTML(texte) + '</span>';
+  // Évolution 14 (a) : dans la bande au-dessus du plan, un libellé court quand elle est étroite ; le long reste en titre.
+  const COURT = { 'Attend le service d’avant':'attend', 'Pas commencé':'pas commencé', 'Au travail':'au travail', 'A fini':'a fini' };
+  const puce = (coul, texte, titre) => '<span title="' + escapeHTML(titre) + '"><span class="pastille" style="background:' + coul + '"></span>'
+    + (COURT[texte] ? '<span class="lg-long">' + escapeHTML(texte) + '</span><span class="lg-court" aria-hidden="true">' + escapeHTML(COURT[texte]) + '</span>' : escapeHTML(texte)) + '</span>';
   if (avant) {
     box.setAttribute('aria-label', 'Ce que dit la couleur des services');
     box.innerHTML = puce('var(--txt3)', ETATS_PARAM.vide.lib, ETATS_PARAM.vide.aide)
@@ -1665,14 +1722,22 @@ function reset(data) {
 function peindreStock(id, texte, sale) {
   const e = zoneEls[id]; if (!e || !e.stock) return;
   const st = e.stock;
+  st.texte = texte || '';
   if (!texte) { st.g.style.display = 'none'; return; }
   st.g.style.display = ''; st.g.classList.toggle('sale', !!sale);
-  st.t.textContent = texte;
-  // Au-dessus de la zone, calée à droite : elle ne cache ni le nom ni le pictogramme.
-  const w = texte.length * 25 + 48, b = e.b, y = b.y - 82;
-  st.r.setAttribute('x', b.x + b.w - w); st.r.setAttribute('y', y);
-  st.r.setAttribute('width', w); st.r.setAttribute('height', 70);
-  st.t.setAttribute('x', b.x + b.w - w + 24); st.t.setAttribute('y', y + 49);
+  if (st.t.textContent !== texte) st.t.textContent = texte;
+  placerStock(e, pxParUnite());
+}
+/* Au-dessus de la zone, calée à droite : elle ne cache ni le nom ni le pictogramme. Son texte fait 12 px à l'écran. */
+function placerStock(e, px) {
+  if (!(px > 0)) return;
+  const st = e.stock, u = 1 / px, b = e.b, w = (st.texte.length * 6.6 + 16) * u, h = 20 * u, y = b.y - h - 4 * u;
+  // Calée à droite de la zone, sans jamais dépasser son bord gauche (le plan cadré ne la couperait pas).
+  const x = Math.max(b.x, b.x + b.w - w);
+  st.r.setAttribute('x', x); st.r.setAttribute('y', y);
+  st.r.setAttribute('width', w); st.r.setAttribute('height', h); st.r.setAttribute('rx', h / 2);
+  st.t.style.fontSize = (12 * u) + 'px';
+  st.t.setAttribute('x', x + 8 * u); st.t.setAttribute('y', y + 14 * u);
 }
 function peindreInstant(i) {
   const enLecture = Sim.vue ? Sim.vue.t > Sim.vue.debut : false;
@@ -1695,6 +1760,16 @@ function peindreInstant(i) {
   }
   majEtatPlan();
   majGoulotInfo();
+  peindreBande(i);
+}
+/* Évolution 14 (a) : la bande au-dessus du plan (les chiffres cumulés jusqu'à l'heure rejouée) et les repères du
+ * curseur du temps (les jours, les départs des vols du jour relu). */
+function peindreBande(i) {
+  const r = Sim.ateliers && Sim.ateliers.resultat, v = Sim.vue; if (!r || !v || !window.OrlyPlanRejoue) return;
+  const quand = (v.debut < 0 && i.t >= 0 ? 'J ' : '') + MoteurProduction.hhmm(i.t);
+  OrlyPlanRejoue.rendreBande(document.getElementById('plan-bande-texte'), quand, OrlyPlanRejoue.chiffresCumules(r, i.t));
+  const departs = (flights || []).filter(f => f.sens === 'DEP' && Number.isFinite(f.std)).map(f => f.std);
+  OrlyPlanRejoue.rendreReperes(document.getElementById('pr-reperes'), OrlyPlanRejoue.reperes(v.debut, v.fin, departs), MoteurProduction.hhmm);
 }
 
 /* ==========================================================================
@@ -1820,6 +1895,35 @@ function initVueSimulation() {
     selectionner: id => selectionner(id),
     surInstant: peindreInstant
   });
+  // Évolution 14 (a) : à l'ouverture, l'heure rejouée est le créneau où le plus de personnes sont au travail. Elle reste
+  // celle choisie tant que la journée relue ne change pas (un autre programme de vols, un autre jour du programme).
+  const recalculer = Sim.vue.recalculer.bind(Sim.vue);
+  Sim.vue.recalculer = () => { recalculer(); placerAuPic(); };
+  placerAuPic();
+}
+/* Évolution 14 (a) : « Liens » en haut à gauche, avec « Voir un service » ; le zoom rejoint la barre du bas sur la page
+ * du plan rejoué (une seule barre de commandes), et revient sur le plan ailleurs (le plan de l'unité). */
+function installerPlanRejoue() {
+  const liens = document.querySelector('.plan-tete .fc-map-filter');
+  if (liens) for (const n of liens.childNodes) if (n.nodeType === 3 && /Liens dessinés/.test(n.textContent)) n.textContent = 'Liens ';
+  const zoom = document.querySelector('.zoom-ctrl.plan-zoom'), lecteur = document.getElementById('lecteur'), toile = document.getElementById('view-plan');
+  if (!zoom || !lecteur || !toile) return;
+  const placer = () => {
+    const dans = document.body.dataset.sous === 'j-plan' ? lecteur : toile;
+    if (zoom.parentElement !== dans) dans.appendChild(zoom);
+  };
+  new MutationObserver(placer).observe(document.body, { attributes:true, attributeFilter:['data-sous'] });
+  placer();
+}
+let journeeRelue = null;
+function placerAuPic() {
+  const v = Sim.vue, r = Sim.ateliers && Sim.ateliers.resultat;
+  const cle = [Sim.dataCourante, Sim.jourVols];
+  if (journeeRelue && journeeRelue[0] === cle[0] && journeeRelue[1] === cle[1]) return;
+  journeeRelue = cle;
+  if (!v || v.vide || !r || !r.ok || !window.OrlyIndicateurs || !window.OrlyChargeVue) return;
+  const t = OrlyPlanRejoue.heureDuPic(OrlyIndicateurs.journee(r, Sim.ateliers.args || {}), OrlyChargeVue.creneauxDuService, OrlyIndicateurs.pic);
+  if (t != null && t >= v.debut && t <= v.fin) v.allerA(t);
 }
 
 /* ==========================================================================
@@ -2638,7 +2742,7 @@ function showView(name) {
   document.getElementById('view-plan').hidden=name!=='plan';
   document.getElementById('view-vols').hidden=name!=='vols';
   document.querySelector('.plan-tete').hidden=name!=='plan';
-  document.querySelector('.map-footer').hidden=name!=='plan';
+  document.getElementById('plan-bande').hidden=name!=='plan';
   majDemarrage();
   if(name==='vols')renderFlights();
   // La vue est affichée, son onglet connu : on dessine ce qu'il montre, et la
@@ -3089,7 +3193,7 @@ etape('réglages de la simulation',()=>{if(Sim.ateliers)Sim.ateliers.rendreMater
 etape('simulation',initVueSimulation);
 etape('problèmes',initProblemes);
 etape('période',initPeriode);
-etape('menu',initOnglets);
+etape('menu',initOnglets); etape('plan rejoué',installerPlanRejoue);
 etape('accueil',initDemarrage);
 etape('annuler',initAnnuler);
 etape('palette',initPalette);

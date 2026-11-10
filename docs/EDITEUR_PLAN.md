@@ -80,7 +80,9 @@ annulables.
 - Molette ou boutons + / − : zoom autour du curseur ou du centre de la vue.
 - **Main (H)**, Espace + glisser ou bouton central : déplacer la vue.
 - Glisser dans un endroit vide avec l’outil Sélection déplace aussi la vue.
-- **Tout voir** (touche 0), en bas à droite du plan, rétablit le cadrage initial.
+- **Tout voir** (touche 0), en bas à droite du plan, fait tenir le plan entier dans
+  la zone visible, à 24 px des bords (évolution 14) ; sur le plan rejoué, le zoom est
+  dans la barre de commandes du bas.
 - L’aimantation et la grille se règlent sur la barre d’outils du plan.
 - L’aimantation rapproche le pointeur des bords et sommets voisins. Des guides
   roses matérialisent cet alignement. Maintenir Alt la désactive temporairement.
