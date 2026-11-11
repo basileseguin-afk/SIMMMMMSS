@@ -1,0 +1,69 @@
+/* ==========================================================================
+ *  LES AUTRES PAGES DES RÉSULTATS (version 1, évolution 14 d) — resultats-vue.js
+ *  Couleurs, textes, espacements et rayons : les jetons de ds.css. Une couleur
+ *  de statut ne dit qu'un état : un retard nul n'est jamais en rouge.
+ * ==========================================================================*/
+
+/* Synthèse : la phrase de résumé en tête ; un compte « à l'heure » garde son chiffre à l'encre, sa carte dit l'état. */
+.bilan-resume{margin:0 0 var(--ds-e-4);font-size:var(--ds-t-16);font-weight:var(--ds-g-moyen);color:var(--ds-texte-1);font-variant-numeric:tabular-nums}
+.bilan-cle.bilan-compte .bilan-v{color:var(--ds-texte-1)}
+.bilan-cle[data-ton="neutre"]{--t:var(--ds-texte-4)}
+.journee-chiffres .bilan>div[data-ton="neutre"]{--t:var(--ds-texte-4)}
+
+/* Heure de chaque commande : les en-têtes qui trient, la marge et sa barre, le menu « … ». */
+.at-commandes th[aria-sort]{padding:0}
+.at-tri{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:4px;width:100%;padding:8px 10px;cursor:pointer;
+  font:inherit;color:inherit;text-transform:inherit;letter-spacing:inherit}
+.at-tri:hover{color:var(--ds-texte-1)}
+.at-tri:focus-visible{box-shadow:var(--ds-focus);border-radius:var(--ds-r-1)}
+.at-tri.actif{color:var(--ds-texte-1)}
+.at-tri-sens{font-size:var(--ds-t-11)}
+.at-marge{white-space:nowrap;font-variant-numeric:tabular-nums}
+.at-marge-val{display:inline-block;min-width:62px;text-align:right;margin-right:8px}
+.at-marge-barre{display:inline-block;width:80px;height:8px;vertical-align:middle;border-radius:2px;background:var(--ds-surface-2)}
+.at-marge-barre i{display:block;height:100%;border-radius:2px}
+.at-marge-barre.positive i{background:var(--ds-accent)}
+.at-marge-barre.negative i{background:var(--ds-retard)}
+.at-marge.vide{color:var(--ds-texte-3)}
+.at-ligne-actions{width:1%;white-space:nowrap;text-align:right}
+.at-menu{position:relative;display:inline-block}
+.at-menu>summary{list-style:none;cursor:pointer;padding:2px 8px;border-radius:var(--ds-r-1);color:var(--ds-texte-3);font-weight:var(--ds-g-fort);line-height:1.4}
+.at-menu>summary::-webkit-details-marker{display:none}
+.at-menu>summary:hover,.at-menu[open]>summary{background:var(--ds-survol);color:var(--ds-texte-1)}
+.at-menu>summary:focus-visible{box-shadow:var(--ds-focus)}
+.at-menu-liste{position:absolute;right:0;top:calc(100% + 4px);z-index:5;min-width:180px;padding:var(--ds-e-1);border:1px solid var(--ds-bordure);
+  border-radius:var(--ds-r-2);background:var(--ds-surface-3);box-shadow:var(--ds-ombre-flottant);text-align:left}
+.at-menu-liste .lien-discret{display:block;width:100%;padding:6px 10px;text-align:left;border-radius:var(--ds-r-1)}
+.at-menu-liste .lien-discret:hover{background:var(--ds-survol)}
+
+/* Étapes de chaque commande : le cadre tient dans la page ; la première colonne et les en-têtes restent à la vue ;
+ * « sert tout le monde » et « ne passe pas par là » en texte gris court, sans italique ni hachures. */
+.qf-scroll{max-height:max(320px,calc(100vh - 220px))}
+.qf-table thead tr:first-child th{box-sizing:border-box;height:24px;padding-top:2px;padding-bottom:2px;line-height:17px}
+.qf-table thead tr:nth-child(2) th{top:24px}
+.qf-table tbody th{box-shadow:inset -1px 0 0 var(--ds-bordure)}
+.qf-c.auto{font-style:normal;color:var(--ds-texte-3);font-size:var(--ds-t-12)}
+.qf-c.hors{background:none}
+.qf-c.hors:empty::after{content:"pas par là";color:var(--ds-texte-3);font-size:var(--ds-t-12);padding-left:6px}
+.qf-l.hors::before{background:var(--ds-surface-2)}
+
+/* Vols prêts au départ : un point de 10 px par vol, de la couleur de son état ; le numéro au survol, et toujours en retard. */
+.vf-svg.vf-points{width:auto;max-width:none;height:auto}
+.vf-cadre{overflow-x:auto}
+.vf-points .vf-vol circle{stroke:var(--ds-surface-1);stroke-width:1.5}
+.vf-points .vf-vol text{font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);fill:var(--ds-texte-1);paint-order:stroke fill;stroke:var(--ds-surface-1);stroke-width:3px;stroke-linejoin:round}
+.vf-points .vf-vol:not(.ecrit) text{display:none}
+.vf-points .vf-vol:not(.ecrit):hover text,.vf-points .vf-vol:not(.ecrit):focus-visible text{display:inline}
+.vf-points .vf-vol{outline:none}
+.vf-points .vf-vol:focus-visible{outline:2px solid var(--ds-accent);outline-offset:2px}
+.vf-points .vf-vol .vf-cible{fill:transparent;stroke:none}
+
+/* Stocks et retours : les en-têtes qui trient, l'échelle des petites courbes, plus de 24 h signalé. */
+.tp-tri{all:unset;cursor:pointer;font:inherit;color:inherit}
+.tp-tri:hover,.tp-tri[aria-pressed="true"]{color:var(--ds-texte-1)}
+.tp-tri[aria-pressed="true"]::after{content:" ▼";font-size:var(--ds-t-11)}
+.tp-tri:focus-visible{box-shadow:var(--ds-focus);border-radius:var(--ds-r-1)}
+.tp-echelle{color:var(--ds-texte-3)}
+.tp-plus24{display:inline-flex;align-items:center;gap:4px;margin-top:2px;padding:1px 8px;border-radius:999px;background:var(--ds-attente-doux);
+  color:var(--ds-attente-texte);font-size:var(--ds-t-12);font-weight:var(--ds-g-moyen)}
+.tp-plus24 .ico{width:13px;height:13px}

@@ -74,7 +74,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.doesNotMatch(bande,/en retard à cette heure/,'sortie, elle n’est plus « en retard à venir »');
   // Le panneau de droite résume la journée entière et nomme qui attend.
   const bilan=await page.locator('#bilan-journee').textContent();
-  assert.match(bilan,/0 sur 3/);assert.match(bilan,/Retard le plus long/);
+  assert.match(bilan,/0 sur 3/);assert.match(bilan,/Commande la plus en retard/);
+  assert.match(bilan,/^0 commande à l’heure sur 3/,'la phrase de résumé en tête (évolution 14 d)');
   await page.locator('#zone-picker').selectOption('prepa');
   assert.match(await page.locator('#goulot-info').textContent(),/TX · Économie/,'le service choisi liste ce qu’il prépare, en clair');
   await page.locator('#zone-picker').selectOption('');

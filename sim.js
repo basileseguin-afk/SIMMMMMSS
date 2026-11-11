@@ -238,6 +238,8 @@ function majStocks(){
   if(!window.OrlyTemps)return;
   const noms=Object.fromEntries(servicesDisponibles().map(s=>[s.id,s.nom]));
   OrlyTemps.rendre(document.getElementById('journee-stocks'),Sim.ateliers&&Sim.ateliers.resultat,id=>noms[id]);
+  // Évolution 14 (d) : le plus en stock d'abord, l'échelle des petites courbes, plus de 24 h signalé (resultats-vue.js).
+  if(window.OrlyResultatsVue)OrlyResultatsVue.completerStocks(document.getElementById('journee-stocks'),Sim.ateliers&&Sim.ateliers.resultat);
 }
 /* Un service du plan d'origine retiré de l'unité (Organisation › Services) :
  * il sort de toutes les listes, des liens et du plan, sans être effacé. */
@@ -2091,6 +2093,14 @@ function initVueSimulation() {
   // Les points de « Ce qui circule » n'avancent que pendant la lecture : la pause les retire.
   const pauseVue = Sim.vue.pause.bind(Sim.vue);
   Sim.vue.pause = () => { pauseVue(); peindrePlanFlux(); };
+  // Évolution 14 (d) : la Synthèse de la version 1 (resultats-vue.js) — la couleur suit l'état, une phrase de résumé.
+  // simulation.js, commun aux deux versions, garde la sienne pour la version 2.
+  if (window.OrlyResultatsVue) {
+    const titreDe = id => (window.OrlyOnglets && OrlyOnglets.page && (OrlyOnglets.page(id) || {}).nom) || '';
+    Sim.vue.rendreBilan = () => OrlyResultatsVue.rendreSynthese(document.getElementById('bilan-journee'),
+      Sim.vue.vide ? null : (Sim.vue.resultat && Sim.vue.resultat.indicateurs) || null, { titreDe });
+    Sim.vue.rendreBilan();
+  }
   placerAuPic();
 }
 /* Évolution 14 (a) : « Liens » en haut à gauche, avec « Voir un service » ; le zoom rejoint la barre du bas sur la page
@@ -3274,37 +3284,39 @@ function renderFriseVols(tous, etatDe, mot, icoEtat) {
     + '<b>' + nb + '</b><span>' + lib + '</span></button>';
   const t0 = Math.floor((Math.min(...tous.map(d => d.echeance)) - 30) / 60) * 60;
   const t1 = Math.ceil((Math.max(...tous.map(d => d.depart)) + 30) / 60) * 60;
-  const L = 1400, G = 24, W = L - 2 * G - 60, x = t => G + (t - t0) / Math.max(1, t1 - t0) * W;
-  // Des couloirs, pour que deux avions proches ne se couvrent pas.
-  const couloirs = [];
-  const points = tous.slice().sort((a, b) => a.depart - b.depart).map(d => {
-    let c = couloirs.findIndex(fin => x(d.depart) - fin > 38 + d.id.length * 8.5);
-    if (c < 0) { c = couloirs.length; couloirs.push(0); }
-    couloirs[c] = x(d.depart);
-    return { d, c, e: etatDe(d) };
-  });
-  const H = 20 + couloirs.length * 32 + 22;
+  // Évolution 14 (d) : des points de 10 px, à l'échelle de la page (plus d'avions étirés) ; le numéro au survol, et
+  // toujours pour un vol en retard ; des couloirs pour que deux points ne se couvrent pas (resultats-vue.js).
+  const RV = window.OrlyResultatsVue, larg = Math.max(640, (box.clientWidth || 0) - 2);
+  // Dessinée cachée (une autre page) ou la fenêtre change : elle se redessine à sa largeur.
+  box.__larg = box.clientWidth;
+  if (!box.__ro && typeof ResizeObserver === 'function') {
+    box.__ro = new ResizeObserver(() => { if (box.clientWidth && Math.abs(box.clientWidth - (box.__larg || 0)) > 16) renderFlights(); });
+    box.__ro.observe(box);
+  }
+  const L = larg, G = 24, W = L - 2 * G - 90, x = t => G + (t - t0) / Math.max(1, t1 - t0) * W;
+  const points = RV ? RV.couloirs(tous, etatDe, x) : [];
+  const nCouloirs = Math.max(1, ...points.map(p => p.c + 1)), PAS_C = 18;
+  const H = 18 + nCouloirs * PAS_C + 22;
   const heures = []; if (Number.isFinite(t0) && Number.isFinite(t1)) for (let h = t0; h <= t1 && heures.length < 400; h += 60) heures.push(h);
-  const pas = heures.length > 14 ? 2 : 1;
+  const pas = [1, 2, 3, 4, 6, 12].find(k => W / Math.max(1, heures.length - 1) * k >= 44) || 12;
   box.innerHTML = '<div class="vf-comptes">'
     + compteur('ok', 'ontime', n.ready, (n.ready > 1 ? 'vols prêts' : 'vol prêt') + ' à l’heure', 'check')
     + compteur('tard', 'late', n.late, (n.late > 1 ? 'vols prêts' : 'vol prêt') + ' en retard', 'sablier')
     + compteur('sans', 'pending', n.sans, (n.sans > 1 ? 'vols pas prêts' : 'vol pas prêt') + ' ou sans équipe', 'chrono')
     + (filtre !== 'all' ? '<button class="vf-tout" data-vf-filtre="all">Tout voir</button>' : '') + '</div>'
     // L'axe du temps est déclaré : le trait « maintenant » s'y pose, l'heure dessous (ds.js).
-    + '<svg class="vf-svg ds-graphique" viewBox="0 0 ' + L + ' ' + H + '" role="img" aria-label="Les départs de la journée, par heure et par état"'
+    + '<div class="vf-cadre"><svg class="vf-svg vf-points ds-graphique" width="' + L + '" height="' + H + '" style="width:' + L + 'px;height:' + H + 'px" viewBox="0 0 ' + L + ' ' + H + '" role="img" aria-label="Les départs de la journée, par heure et par état"'
     + ' data-axe="' + t0 + ' ' + t1 + ' ' + x(t0) + ' ' + x(t1) + ' 10 ' + (H - 17) + '" data-axe-etiquette="bas">'
-    + heures.map((h, i) => '<line class="vf-grille" x1="' + x(h) + '" y1="14" x2="' + x(h) + '" y2="' + (H - 18) + '"/>'
+    + heures.map((h, i) => '<line class="vf-grille" x1="' + x(h) + '" y1="12" x2="' + x(h) + '" y2="' + (H - 18) + '"/>'
         + (i % pas ? '' : '<text class="vf-heure ds-axe-heure" x="' + x(h) + '" y="' + (H - 4) + '" text-anchor="middle">' + hh(h) + '</text>')).join('')
     + points.map(p => {
-        const y = 16 + p.c * 32;
-        return '<g class="vf-vol vf-' + p.e + '" transform="translate(' + (x(p.d.depart) - 11) + ',' + y + ')"'
-          + ' data-info="' + escapeHTML(p.d.id + ' · départ ' + hh(p.d.depart) + '\n' + mot[p.e]) + '">'
-          + '<circle cx="11" cy="11" r="14"/>'
-          + (I ? '<g class="vf-avion">' + I.TRAITS.avion + '</g>' : '')
-          + '<text x="30" y="15">' + escapeHTML(p.d.id) + '</text></g>';
+        const y = 20 + p.c * PAS_C;
+        return '<g class="vf-vol vf-' + p.e + (p.ecrit ? ' ecrit' : '') + '" tabindex="0" data-vol="' + escapeHTML(p.d.id) + '" transform="translate(' + p.x.toFixed(1) + ',' + y + ')"'
+          + ' data-info="' + escapeHTML(p.d.id + ' · départ ' + hh(p.d.depart) + '\n' + mot[p.e]) + '" aria-label="' + escapeHTML(p.d.id + ', départ ' + hh(p.d.depart) + ', ' + mot[p.e]) + '">'
+          + '<circle class="vf-cible" cx="0" cy="0" r="9"/><circle cx="0" cy="0" r="' + (RV ? RV.RAYON : 5) + '"/>'
+          + '<text x="9" y="4">' + escapeHTML(p.d.id) + '</text></g>';
       }).join('')
-    + '</svg><p class="mini-note ds-legende-maintenant"><i aria-hidden="true"></i>Le trait : l’heure où en est le rejeu.</p>';
+    + '</svg></div><p class="mini-note ds-legende-maintenant"><i aria-hidden="true"></i>Le trait : l’heure où en est le rejeu.</p>';
   if (window.OrlyDS) OrlyDS.maintenant();
 }
 

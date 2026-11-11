@@ -5,6 +5,37 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-10 — Évolution 14 (d) : les autres pages des résultats
+
+- `resultats-vue.js` et `resultats-vue.css` (nouveaux, v1).
+- Synthèse : la couleur suit l'état, pas la case — un retard nul ne s'écrit jamais
+  en rouge, une attente nulle n'a pas la couleur de l'attente, une carte « à
+  l'heure » dit par son liseré si tout l'est. Les libellés disent de quoi il
+  s'agit : « Commande la plus en retard », « Vol le plus en retard ». Une phrase de
+  résumé en tête (« 30 commandes à l'heure sur 32 ; 1 vol chargé en retard, de
+  8 min. »). La page vient de simulation.js, commun aux deux versions : la version
+  1 lui donne son propre dessin, la version 2 garde le sien.
+- Heure de chaque commande : une colonne « Marge » (prête avant − prête à) avec sa
+  barre (accent si positive, critique si négative), le tri par défaut de la plus
+  petite à la plus grande, des en-têtes qui trient ; « Retirer », un réglage,
+  passe dans un menu « … » sur la ligne.
+- Étapes de chaque commande : le tableau tient dans la page, la première colonne
+  et les en-têtes restent à la vue pendant le défilement ; « sert tout le monde »
+  et « pas par là » en texte gris court, sans italique ni hachures (par une feuille
+  de style de la version 1 : parcours.js, commun, n'est pas touché).
+- Vols prêts au départ : les avions empilés deviennent des points de 10 px de la
+  couleur de leur état, en couloirs ; le numéro s'affiche au survol, et toujours
+  pour un vol en retard.
+- Stocks et retours : tri par défaut sur « le plus en stock » (ou « le plus
+  long »), l'échelle des petites courbes dite une fois, une attente de plus de
+  24 h signalée (temps.js, commun, n'est pas touché : la version 1 complète sa
+  page).
+- Aucun calcul ne change. La version 2 n'est pas touchée.
+- Fichiers : `resultats-vue.js`, `resultats-vue.css`, `tests/resultats-vue.test.cjs`,
+  `tests/resultats-browser.cjs` (nouveaux), `ateliers.js`, `sim.js`, `index.html`,
+  `tests/ateliers-browser.cjs`, `tests/synthese-browser.cjs` (sa partie v1),
+  `tests/browser-smoke.cjs`, `tests/graphiques-browser.cjs`, `README.md`.
+
 ## 2026-11-10 — Évolution 14 (c) : le planning des équipes
 
 - `planning-vue.js` et `planning-vue.css` (nouveaux, v1) : le planning des équipes.

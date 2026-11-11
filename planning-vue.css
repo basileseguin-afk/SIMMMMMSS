@@ -94,6 +94,7 @@
 /* Les barres : le travail plein (accent) ; l'attente des amonts en bande fine ; le robot et le lavage avec un motif ;
  * le travail à la chaîne avec une encoche ; un lot en retard, un contour critique et l'icône d'alerte. */
 .pg-lot{cursor:pointer;outline:none}
+.pg-lot:focus-visible{outline:2px solid var(--ds-accent);outline-offset:1px}
 .pg-lot .pg-seg{fill:var(--ds-accent)}
 .pg-lot .pg-motif{fill:url(#pg-motif);pointer-events:none}
 .pg-lot.retard .pg-contour{fill:none;stroke:var(--ds-retard);stroke-width:2}

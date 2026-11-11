@@ -151,7 +151,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    const tf=await trait('#vols-frise svg.vf-svg');
    assert.ok(tf&&Math.abs(tf.x-tf.attendu)<0.01,V+'le trait sur la frise des vols '+JSON.stringify(tf));
    assert.equal(await page.locator('#vols-frise svg.vf-svg title').count(),0,V+'plus de <title> natif sur la frise');
-   const avion=page.locator('#vols-frise .vf-vol circle').first();
+   // Le point visible du vol (v1, évolution 14 d : sous lui, une cible plus large, invisible ; v2 : l'avion).
+   const avion=page.locator('#vols-frise .vf-vol circle:last-of-type').first();
    await avion.hover();
    assert.match(await bulle()||'',/^\S+ · départ \d\d:\d\d\n\S/,V+'l’avion dit son vol, son départ, son état');
    await page.mouse.move(5,5);

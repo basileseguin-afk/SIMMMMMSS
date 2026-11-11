@@ -30,7 +30,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    o['Commandes prêtes à l’heure']=k.classesSuivies?k.aHeure+' sur '+k.classesSuivies+(k.partAHeure!=null?' · '+k.partAHeure+' %':''):'—';
    o['Commandes en retard']=String(k.enRetard??((k.classesSuivies||0)-(k.aHeure||0)));
    if(k.pasFinies)o['Commandes pas finies']=String(k.pasFinies);
-   o['Retard le plus long']=k.retardMax?P.dureeLisible(k.retardMax):k.classesSuivies?'aucun':'—';
+   // v1, évolution 14 (d) : la carte dit de quoi il s'agit (« commande la plus en retard ») ; la v2 garde son libellé.
+   if(document.querySelector('#bilan-journee .bilan-resume'))o['Commande la plus en retard']=k.retardMax?P.dureeLisible(k.retardMax):k.classesSuivies?'aucune':'—';
+   else o['Retard le plus long']=k.retardMax?P.dureeLisible(k.retardMax):k.classesSuivies?'aucun':'—';
    o['Dernière commande prête à']=k.finDerniere!=null&&Number.isFinite(k.finDerniere)?P.hhmm(k.finDerniere):'—';
    o['Temps passé à attendre']=(k.attenteTotale>=1?P.dureeLisible(k.attenteTotale):'aucun')+', tous services';
    o['Travail fourni']=(k.hommeHeures||0).toFixed(1).replace('.',',')+' heures de travail';
@@ -63,7 +65,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
    // 2. Hiérarchisée : quatre cartes avec un handling, trois groupes, le problème avec son lien.
    assert.deepEqual(await page.locator('#bilan-journee .bilan-q').allTextContents(),
-     ['Vols chargés à l’heure','Commandes prêtes à l’heure','Retard le plus long','Travail fourni'],V+'les chiffres qui comptent');
+     ['Vols chargés à l’heure','Commandes prêtes à l’heure',version==='v1'?'Commande la plus en retard':'Retard le plus long','Travail fourni'],V+'les chiffres qui comptent');
+   if(version==='v1')assert.match(await page.locator('#bilan-journee .bilan-resume').textContent(),/^\d+ commandes? à l’heure sur \d+/,V+'une phrase de résumé en tête');
    assert.deepEqual(await page.locator('#bilan-journee .bilan-groupe h4').allTextContents(),['Vols','Commandes','Équipes']);
    assert.ok(absentes>0);
    assert.match(await page.locator('#bilan-journee .bilan-probleme').innerText(),new RegExp(absentes+' commandes que personne ne prépare'),V+'un problème, plus une tuile');

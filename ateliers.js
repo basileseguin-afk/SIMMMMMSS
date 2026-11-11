@@ -1285,6 +1285,12 @@
           return this.changer(() => { for (const m of ['durees', 'allers', 'retours', 'volsCamion', 'escale', 'quaiDepart', 'dechargement', 'quaiRetour', 'volsVL', 'quaiParVol', 'dureesVL', 'dechargementVL']) if (a[m]) { const d = { ...a[m] }; delete d[data.cie]; a[m] = d; } },
             'Durée retirée : ' + data.cie + ' prend la durée de toutes les compagnies.');
         case 'classe-supprimer': return this.supprimerClasse(data.classe);
+        case 'classe-trier': {
+          // Évolution 14 (d) : un clic sur un en-tête trie ; un second, dans l'autre sens.
+          const t = this.triRepas || { cle: 'marge', sens: 1 };
+          this.triRepas = { cle: data.cle, sens: t.cle === data.cle ? -t.sens : 1 };
+          return this.rendreClasses(this.resultat);
+        }
         case 'classe-retablir':  return this.retablirClasse(data.classe);
         case 'classe-nouvelle':  return this.ouvrirAjout(data.lieu);
         case 'classe-annuler':   { this.ajout = null; return this.rendre(''); }
@@ -2811,12 +2817,23 @@
           : 'le poste de « ' + an.case + ' » finit avant';
         for (const id of an.classes || []) if (!pourquoi.has(id)) pourquoi.set(id, t);
       }
-      box.innerHTML = barre + ajout + exclues + `<table class="at-table"><thead><tr>
-        <th scope="col">Commande</th><th scope="col">Passagers</th><th scope="col">Vols</th>
-        <th scope="col">Prête avant</th><th scope="col">Prête à</th><th scope="col">Où elle en est</th>
-        <th scope="col"><span class="sr-only">Retirer</span></th>
+      // Évolution 14 (d) : la marge (prête avant − prête à) et sa barre ; triée par défaut de la plus petite à la plus
+      // grande ; « Retirer », un réglage, passe dans le menu « … » de la ligne (resultats-vue.js).
+      const RV = root.OrlyResultatsVue, tri = this.triRepas || { cle: 'marge', sens: 1 };
+      const marges = RV ? classes.map(c => RV.marge(par[c.id])).filter(m => m != null) : [];
+      const maxMarge = Math.max(1, ...marges.map(Math.abs));
+      const rangees = RV ? RV.trier(classes, par, tri.cle, tri.sens) : classes;
+      const entete = (mot, cle) => {
+        const actif = tri.cle === cle, sens = actif ? (tri.sens > 0 ? 'ascending' : 'descending') : 'none';
+        return `<th scope="col" aria-sort="${sens}"><button type="button" class="at-tri${actif ? ' actif' : ''}" data-at-action="classe-trier" data-cle="${cle}"
+          title="Trier par ${esc(mot.toLowerCase())}">${esc(mot)}<span class="at-tri-sens" aria-hidden="true">${actif ? (tri.sens > 0 ? '▲' : '▼') : ''}</span></button></th>`;
+      };
+      box.innerHTML = barre + ajout + exclues + `<table class="at-table at-commandes"><thead><tr>
+        ${entete('Commande', 'nom')}<th scope="col">Passagers</th><th scope="col">Vols</th>
+        ${entete('Prête avant', 'avant')}${entete('Prête à', 'a')}${entete('Marge', 'marge')}<th scope="col">Où elle en est</th>
+        <th scope="col"><span class="sr-only">Actions</span></th>
         </tr></thead><tbody>` +
-        classes.map(c => {
+        rangees.map(c => {
           const v = par[c.id] || {};
           const etat = v.absente ? '<span class="at-etat neutre">pas encore d’équipe</span>'
             : v.fin == null ? '<span class="at-etat neutre">pas finie</span>' + (pourquoi.has(c.id) ? '<small class="at-pourquoi">' + esc(pourquoi.get(c.id)) + '</small>' : '')
@@ -2827,11 +2844,16 @@
           const horsImport = c.origine === 'ajoutee' && !c.vols.length;
           const source = c.origine === 'ajoutee'
             ? '<span class="at-source">' + (horsImport ? 'pas dans les vols' : 'ajoutée') + '</span>' : '';
-          return `<tr><th scope="row" data-classe="${esc(c.id)}">${esc(P.libelleClasse(c.id))} ${source}</th>
+          const m = RV ? RV.marge(v) : null, bm = RV ? RV.barreMarge(m, maxMarge) : null;
+          const cellMarge = bm ? `<td class="at-marge" data-marge="${m}"><span class="at-marge-val">${esc(RV.ecrireMarge(m))}</span>`
+            + `<span class="at-marge-barre ${bm.signe}" aria-hidden="true"><i style="width:${bm.largeur}%"></i></span></td>` : '<td class="at-marge vide">—</td>';
+          const lib = P.libelleClasse(c.id);
+          return `<tr><th scope="row" data-classe="${esc(c.id)}">${esc(lib)} ${source}</th>
             <td>${horsImport ? '—' : c.pax}</td><td>${horsImport ? '—' : c.vols.length}</td>
-            <td>${horsImport ? '—' : P.hhmm(c.echeance)}</td><td>${v.fin == null ? '—' : P.hhmm(v.fin)}</td><td>${etat}</td>
-            <td><button class="lien-discret" data-at-action="classe-supprimer" data-classe="${esc(c.id)}"
-              title="Retirer ${esc(P.libelleClasse(c.id))} et couper ses liens avec les équipes">Retirer</button></td></tr>`;
+            <td>${horsImport ? '—' : P.hhmm(c.echeance)}</td><td>${v.fin == null ? '—' : P.hhmm(v.fin)}</td>${cellMarge}<td>${etat}</td>
+            <td class="at-ligne-actions"><details class="at-menu"><summary aria-label="Actions pour ${esc(lib)}" title="Actions">…</summary>
+              <div class="at-menu-liste"><button type="button" class="lien-discret" data-at-action="classe-supprimer" data-classe="${esc(c.id)}"
+              title="Retirer ${esc(lib)} et couper ses liens avec les équipes">Retirer du programme</button></div></details></td></tr>`;
         }).join('') + '</tbody></table>';
     }
   }

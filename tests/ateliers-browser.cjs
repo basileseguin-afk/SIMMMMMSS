@@ -132,7 +132,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 8. La couverture par classe dit ce qui sort et par où.
   await onglet('at-repas');
-  const etats=await page.locator('#at-classes tbody tr').evaluateAll(rs=>rs.map(r=>r.cells[0].dataset.classe+'|'+r.cells[5].textContent));
+  // (évolution 14 d : la colonne « Marge » vient avant « Où elle en est ».)
+  const etats=await page.locator('#at-classes tbody tr').evaluateAll(rs=>rs.map(r=>r.cells[0].dataset.classe+'|'+r.cells[6].textContent));
   assert.ok(etats.some(t=>t.startsWith('CRL/BC')&&/à l’heure/.test(t)));
   assert.equal(etats.filter(t=>/pas encore d’équipe/.test(t)).length,21,'24 commandes moins les 3 préparées');
   // Par où elle passe, et qui la fabrique : le tableau « Qui fabrique quoi » le dit case par case.
@@ -169,7 +170,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.deepEqual((await etat()).ateliers.find(a=>a.id===cui2).lots,[['CRL/BC','CRL/PC','CRL/YC']]);
   await onglet('at-repas');
   const avantLignes=await page.locator('#at-classes tbody tr').count();
-  await onglet('at-repas');await page.locator('[data-at-action=classe-supprimer][data-classe="CRL/PC"]').click();await attendre();
+  // « Retirer » est dans le menu « … » de la ligne (évolution 14 d).
+  const retirer=async id=>{await page.locator('#at-classes tbody tr',{has:page.locator(`th[data-classe="${id}"]`)}).locator('.at-menu > summary').click();
+    await page.locator(`[data-at-action=classe-supprimer][data-classe="${id}"]`).click();await attendre();};
+  await onglet('at-repas');await retirer('CRL/PC');
   assert.equal(await page.locator('#at-classes tbody tr').count(),avantLignes-1,'la ligne dispara\u00eet');
   assert.deepEqual((await etat()).ateliers.find(a=>a.id===cui2).lots,[['CRL/BC','CRL/YC']],
     'le lien est coup\u00e9 dans le lot, les autres classes restent');
@@ -180,7 +184,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const seul=await creer('Armement CRL','armement','05:00',2);
   await lot(seul,['CRL/YC']);
   assert.equal((await etat()).ateliers.find(a=>a.id===seul).lots.length,1);
-  await onglet('at-repas');await page.locator('[data-at-action=classe-supprimer][data-classe="CRL/YC"]').click();await attendre();
+  await onglet('at-repas');await retirer('CRL/YC');
   assert.deepEqual((await etat()).ateliers.find(a=>a.id===seul).lots,[],'plus de lot, puisqu\u2019il n\u2019avait que celle-l\u00e0');
   assert.deepEqual((await etat()).ateliers.find(a=>a.id===cui2).lots,[['CRL/BC']],'et l\u2019autre atelier perd juste le lien');
 
@@ -221,7 +225,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.ok(rz.parClasse['ZZ/BC'].fin!=null,'ZZ/BC sort bien de l\u2019unit\u00e9');
 
   // 16. Une ajoutée se retire comme les autres, et quitte la liste pour de bon.
-  await onglet('at-repas');await page.locator('[data-at-action=classe-supprimer][data-classe="ZZ/BC"]').click();await attendre();
+  await onglet('at-repas');await retirer('ZZ/BC');
   assert.equal((await etat()).ajoutees.length,0,'elle n\u2019est pas mise de c\u00f4t\u00e9, elle est supprim\u00e9e');
   assert.equal(await page.evaluate(()=>Sim.ateliers.a.vols().filter(v=>v.cie==='ZZ').length),0,'ses vols d’essai partent avec elle');
   assert.deepEqual((await etat()).ateliers.find(a=>a.id===cui2).lots,[['CRL/BC']]);

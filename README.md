@@ -401,11 +401,14 @@ le rouge ne sert qu’aux retards.
      corriger ; un service sans équipe s’y corrige d’un clic (« + Une équipe
      dans… »).
 5. **Résultats** — ce que la journée donne.
-   - *Synthèse* : la journée entière, hiérarchisée. En tête, les chiffres qui
-     comptent en cartes, avec ce sur quoi ils comptent (vols chargés à
-     l’heure, avec un handling ; commandes prêtes à l’heure ; retard le plus
-     long ; travail fourni) ; dessous, *Vols · Commandes · Équipes* en listes
-     sobres. Une carte ou une ligne mène à sa page (Vols prêts au départ,
+   - *Synthèse* : la journée entière, hiérarchisée. D’abord une phrase de
+     résumé (« 30 commandes à l’heure sur 32 ; 1 vol chargé en retard, de
+     8 min. ») ; puis les chiffres qui comptent en cartes, avec ce sur quoi ils
+     comptent (vols chargés à l’heure, avec un handling ; commandes prêtes à
+     l’heure ; commande la plus en retard ; travail fourni) ; dessous, *Vols ·
+     Commandes · Équipes* en listes sobres (dont le vol le plus en retard). La
+     couleur suit l’état, pas la case : un retard nul ne s’écrit jamais en
+     rouge, une attente nulle n’a pas la couleur de l’attente. Une carte ou une ligne mène à sa page (Vols prêts au départ,
      Heure de chaque commande, Planning des équipes, Stocks et retours). Des
      commandes que personne ne prépare sont un problème, avec son lien vers
      le service où les cocher. « Exporter les résultats ».
@@ -436,17 +439,29 @@ le rouge ne sert qu’aux retards.
      durée, l’attente et la marge ; un clic met sa commande en évidence
      (Échap annule). Le trait de l’heure rejouée porte l’heure. Dessous, le
      tableau des équipes, replié, et « Exporter la charge (Excel) ».
-   - *Heure de chaque commande* : chaque commande, prête à quelle heure, avant quand.
+   - *Heure de chaque commande* : chaque commande, prête à quelle heure, avant
+     quand, et sa marge (prête avant − prête à) avec une barre — accent si elle
+     est positive, couleur critique si elle est négative ; triées par défaut de
+     la plus petite marge à la plus grande (un clic sur un en-tête trie
+     autrement). « Retirer du programme », un réglage, est dans le menu « … »
+     de la ligne.
    - *Étapes de chaque commande* : une ligne par commande, un clic sur « Prête à »
      la déplie dans le temps ; en dessous, le tableau calculé, une ligne par commande, une
      colonne par service, la case et ses heures dans chaque cellule ; un clic
-     ouvre le chemin de la commande sur ce service.
+     ouvre le chemin de la commande sur ce service. La première colonne et les
+     en-têtes restent à la vue pendant le défilement ; « sert tout le monde »
+     et « pas par là » s’écrivent en gris, sans italique ni hachures.
    - *Vols prêts au départ* : une frise de la journée et un tableau qui dit, vol par vol, si
-     ses commandes sont prêtes à l’heure, en retard, ou sans équipe ; l’avion
+     ses commandes sont prêtes à l’heure, en retard, ou sans équipe. Sur la
+     frise, chaque vol est un point de 10 px de la couleur de son état ; son
+     numéro s’écrit au survol, et toujours pour un vol en retard ; le point
      survolé dit son vol, son départ et son état.
    - *Stocks et retours* : ce qui attend entre deux ateliers et avant le
-     chargement — sur chaque petite courbe, ce qui est en stock à l’heure
-     survolée ; les retours des vols face au débit de la plonge.
+     chargement, le plus en stock d’abord (ou le plus long, d’un clic sur
+     l’en-tête) — sur chaque petite courbe, ce qui est en stock à l’heure
+     survolée ; leur échelle commune est dite une fois, dans l’en-tête ; une
+     attente de plus de 24 h est signalée. Les retours des vols face au débit
+     de la plonge.
    - **Le trait « maintenant »** : dès que la journée est rejouée (ou le
      curseur déplacé), le planning, la frise des vols et les graphiques des
      stocks marquent l’heure rejouée d’un trait, l’heure écrite au bout ; il
@@ -703,6 +718,7 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `outils/caler-periode.cjs` | Comparer une période simulée au réel et la caler, ligne par ligne, hors du navigateur : `node outils/caler-periode.cjs periode.json reel.csv correspondance.json [--xlsx calage.xlsx]` ; d’un rejeu, la comparaison du rejeu ; `--travail sauvegarde.json vols-dates.csv planning.csv`, le calage du travail |
 | `outils/batterie.cjs` | La batterie complète dans un clone propre (correction 15) : `node outils/batterie.cjs` copie le dépôt sans les fichiers ignorés (ou `--commit HEAD`, un worktree Git), hors du dépôt, y joue les tests Node puis chaque test navigateur, une ligne par test, « FIN n OK, m ÉCHEC », les journaux dans un dossier temporaire |
 | `charge-vue.js` / `charge.css` | La charge dans la page Planning (v1, évolutions 12 c et 14 c) : par service la courbe présents / au travail / en file et son pic, en petit en tête de son groupe du planning ; sous le planning, le tableau des équipes (occupation, consommé sur disponible, débit, file la plus longue, attente) et le classeur |
+| `resultats-vue.js` / `resultats-vue.css` | Les autres pages des résultats (v1, évolution 14 d) : la Synthèse (la couleur suit l’état, la phrase de résumé), la marge de chaque commande et son tri, les points de la frise des départs, le tri et l’échelle des stocks, plus de 24 h signalé |
 | `planning-vue.js` / `planning-vue.css` | Le planning des équipes (v1, évolution 14 c) : l’échelle fixe et ses trois zooms, l’axe à deux niveaux et les noms collants, les groupes par service dans l’ordre du chemin, les barres (attente, pauses, motif, encoche, retard), la limite de chaque commande, la commande mise en évidence, le trait de l’heure rejouée |
 | `calage-vue.js` | « Réel et calage » dans la page Période (v1) : l’import du réel, la correspondance, les anomalies, la comparaison |
 | `echanges-calage.js` | Le classeur du calage sur le réel (v1), le même depuis la page et l’outil |
@@ -895,6 +911,8 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/etat-plan-browser.cjs` | État de paramétrage sur le plan, quatre états de la relecture, bascule des légendes |
 | `tests/zoom-browser.cjs` | Bornes du zoom, cadrage d'un service, raccourcis clavier, bridage du déplacement ; « Tout voir » fait tenir le plan entier (évolution 14 a) |
 | `tests/plan-rejoue.test.cjs` | Le plan rejoué sans navigateur (évolution 14 a, `plan-rejoue.js`) : le cadrage à 24 px des bords où que soit le plan, les tailles des textes à tout zoom, les chiffres cumulés de la bande (jamais « — »), l’heure d’ouverture au pic de travail sur l’unité fictive, les repères du curseur |
+| `tests/resultats-vue.test.cjs` | Les autres pages des résultats sans navigateur (évolution 14 d, `resultats-vue.js`) : la couleur de la Synthèse selon l’état (un retard nul jamais critique), ses libellés et sa phrase de résumé ; la marge, son écriture, sa barre et son tri ; les couloirs des points de la frise ; l’ordre des stocks, leur échelle, plus de 24 h |
+| `tests/resultats-browser.cjs` | Les autres pages des résultats (évolution 14 d), sur l’unité et les vols fictifs : la phrase de résumé et les libellés de la Synthèse, un retard nul jamais en rouge ; la marge de chaque commande, sa barre et son tri, « Retirer » dans le menu « … » ; les en-têtes et la première colonne des étapes à la vue après défilement ; les points de 10 px de la frise, le numéro d’un vol en retard toujours écrit ; les stocks triés, leur échelle dite une fois |
 | `tests/planning-vue.test.cjs` | Le planning des équipes sans navigateur (évolution 14 c, `planning-vue.js`) : l’échelle des trois zooms, les bornes de la chaîne, le jour le plus chargé, l’ordre des services le long du chemin et les groupes (une équipe d’appui garde le sien), une pause prise qui troue la barre, la limite de chaque commande sur son dernier lot, le retard et la marge, l’infobulle, la période visible, l’axe à deux niveaux, la commande mise en évidence |
 | `tests/planning-vue-browser.cjs` | Le planning des équipes (évolution 14 c), sur l’unité et les vols fictifs, à 1 280 et 1 920 px : 40 px par heure à toutes les largeurs, placé sur le jour le plus chargé, la période dite, lignes de 28 px et textes de 12 à 13 px, la légende en une ligne ; les trois zooms (boutons, Ctrl + molette) et le glissé ; l’axe et les noms à la vue après un défilement de 2 000 px ; les groupes dans l’ordre du chemin, leur courbe, replier ; la limite d’une commande en retard à gauche de la fin de sa barre ; le clic qui met une commande en évidence, Échap, l’infobulle au focus clavier ; le trait de l’heure rejouée |
 | `tests/plan-flux.test.cjs` | Ce qui se passe à l’heure rejouée, sans navigateur (évolution 14 b, `plan-flux.js`) : les paires de services qui ont des repas en stock entre eux, l’épaisseur en racine de la quantité, au plus 8 traits et les trois étiquettes, les points d’une tranche qui avancent avec l’heure, le tracé de bord à bord qui contourne une zone, « au travail / présents » d’un créneau, les véhicules du handling |
