@@ -5,6 +5,25 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-10 — Évolution 14 (e) : contrôle et doc
+
+- `tests/captures-browser.cjs` (nouveau) : les captures de contrôle, sur l'unité et
+  les vols fictifs, en thème clair et sombre, à 1 280 et 1 920 px — le plan rejoué
+  à l'ouverture, au pic sur le service le plus chargé et en lecture, le planning
+  dans ses trois zooms ; chacune vérifiée (sa taille, ce qu'elle montre), gardée
+  hors du dépôt (`ORY_CAPTURES`, sinon un dossier temporaire).
+- Ce que les captures ont montré, corrigé : deux étiquettes de « Ce qui circule »
+  qui se chevauchaient au sommet de deux courbes voisines ; une étiquette glisse
+  désormais le long de sa courbe jusqu'à une place libre (`plan-flux.js`).
+- Non-régression : `moteur/`, `tableur.js`, `echanges*.js` ne changent pas depuis
+  l'évolution 13 ; sur l'unité et les vols fictifs, les résultats d'une journée et
+  d'une période, les indicateurs et les classeurs (charge de la journée, période)
+  sont identiques, champ par champ, avant et après l'évolution 14 ;
+  `tests/non-regression.test.cjs` passe sans changer sa référence.
+- Doc : README, « Lire le plan rejoué et le planning » (ce qu'ils montrent, comment
+  les lire) ; `docs/DESIGN_SYSTEM.md` (le planning et le plan rejoué de la v1, la
+  carte indicateur dont le ton suit l'état).
+
 ## 2026-11-10 — Évolution 14 (d) : les autres pages des résultats
 
 - `resultats-vue.js` et `resultats-vue.css` (nouveaux, v1).

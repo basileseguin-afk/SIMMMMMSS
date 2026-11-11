@@ -110,8 +110,8 @@ violet, Économie vert, Équipage bleu, repas spéciaux orangés).
   vont toujours avec un mot ou une forme : « ▼ −25 min mieux », une
   pastille et son libellé.
 - **Les données** servent à reconnaître, pas à juger : les classes de
-  cabine (`--cab-*`), les séries d'un graphique, les barres du planning
-  (l'équipe en `d1`, le robot en `d2`, la chaîne en `--ds-chaine`), les
+  cabine (`--cab-*`), les séries d'un graphique, les barres du planning de
+  la v2 (l'équipe en `d1`, le robot en `d2`, la chaîne en `--ds-chaine`), les
   jauges du budget (vacations en `d1`, heures sup en `d4`), les colonnes de
   la carte des chemins (`d1` à `d6`, dans l'ordre). Un texte posé dessus
   prend `--ds-sur-donnee` (4,5:1 sur `d1`, `d2` et la chaîne).
@@ -194,8 +194,26 @@ tableau.
   au survol (`--ds-ombre-carte-survol`). Un état à gauche (« à faire »,
   « fait ») s'y ajoute en ombre intérieure : `inset 3px 0 0 <ton>,
   var(--ds-ombre-carte)`.
+- **Le planning des équipes de la v1** (évolution 14 c, `planning-vue.css`)
+  : le travail en barre pleine d'accent, une seule couleur ; le robot et le
+  lavage s'en distinguent par un motif discret, le travail à la chaîne par
+  une encoche — des formes, pas des couleurs. Les couleurs d'état ne disent
+  qu'un état : l'attente des amonts (avertissement, en bande fine), un lot
+  en retard (contour critique et icône). Le trait de l'heure rejouée est à
+  l'encre (`--ds-texte-1`), distinct des barres. Lignes de 28 px, textes de
+  12 à 13 px, à toute largeur.
+- **Le plan rejoué de la v1** (évolution 14 b, `plan-flux.css`) : les quatre
+  états en remplissage franc — `--ds-accent`, `--ds-attente`, `--ds-texte-4`,
+  `--ds-survol` à contour pointillé `--ds-texte-3` (le gris clair ne tient
+  pas 3:1 ; son contour, si) ; le texte sur le remplissage en
+  `--ds-sur-accent`, `--ds-sur-attente` ou à l'encre ; les traits de « Ce qui
+  circule » en `--ds-texte-2`, des épaisseurs de 1 à 8 px qui ne grossissent
+  pas avec le zoom.
 - La **carte indicateur** (`.bilan-cle`, la synthèse ; les tuiles du
-  budget la suivent) : un voyant de 4 px à gauche à la couleur de son ton,
+  budget la suivent) : un voyant de 4 px à gauche à la couleur de son ton —
+  dans la synthèse de la v1 (évolution 14 d), le ton suit l'état de la
+  valeur : un retard nul n'est jamais critique, un compte « à l'heure »
+  garde son chiffre à l'encre —,
   un libellé de 11 px en capitales, le chiffre en 32 px tabulaire, ce sur
   quoi il compte (« 0 sur 7 · 0 % »). Elle mène à sa page. Une tuile du
   budget prend la couleur de ce qu'elle résume dans la jauge (le budget en

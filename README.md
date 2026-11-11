@@ -514,6 +514,58 @@ La journée est **calculée d’un coup** par `moteur/production.js` et
   repas n’ont pas d’équipe est dit « Des repas sans équipe ».
 - **Exporter les résultats** (Synthèse) : la journée calculée — départs, classes, journal des lots.
 
+## Lire le plan rejoué et le planning
+
+**Le plan rejoué** (Résultats › Le plan rejoué) montre la journée calculée à
+l'heure rejouée — à l'ouverture, le créneau où le plus de personnes sont au
+travail. Rien n'y est recalculé : il lit le résultat du moteur et ses
+indicateurs.
+
+- **La couleur d'un service dit son état** : rempli d'accent, il travaille ;
+  de la couleur d'avertissement, son équipe est là mais attend le service
+  d'avant ; gris, il a fini ; gris clair à contour pointillé, il n'a pas
+  commencé. La légende, à droite de la bande, le rappelle.
+- **Au centre** : « 4 au travail / 6 présents » (le créneau de 15 min des
+  indicateurs de charge) et, s'il y en a, « 3 en file » — ce qui attend son
+  équipe. Au-dessus, la pastille « n repas en stock » ou « n u à laver ».
+- **Les traits de « Ce qui circule »** relient deux services qui ont des
+  repas en stock entre eux à cette heure ; plus le trait est épais, plus il y
+  en a, la pointe à l'arrivée ; les trois plus épais disent leur quantité.
+  Au-delà de huit, « + n liens » dans la bande. Pendant la lecture, des
+  points avancent le long des traits (« un point = 50 repas ») : là où ils
+  s'accumulent, le travail attend. Les autres choix de « Liens » montrent
+  les liens configurés de l'unité.
+- **Les camions (ou VL)** du handling vont du quai vers le bord du plan, du
+  côté des avions, pendant leur trajet, puis reviennent.
+- **La bande** au-dessus du plan cumule depuis le début de la journée :
+  « commandes prêtes jusqu'ici : 12 sur 30, toutes à l'heure », les commandes
+  en retard à cette heure, les services au travail et ceux qui attendent.
+
+**Le planning des équipes** (Résultats › Planning des équipes) dit qui
+travaille quand, une ligne par équipe, à une échelle fixe.
+
+- **Se déplacer** : « Toute la chaîne » pour la vue d'ensemble, « Un jour »
+  (le défaut, sur le jour le plus chargé) puis « 6 h » pour le détail ;
+  Ctrl + molette change de zoom sous le pointeur ; on glisse pour se
+  déplacer. La période visible est écrite à côté des zooms ; l'axe (le jour,
+  les heures) et les noms des équipes restent à la vue.
+- **Les groupes** suivent le chemin, de l'amont vers l'aval ; chaque service
+  porte en tête sa courbe de charge (présents en trait, au travail en aire,
+  ce qui est en file en barres dessous, le pic marqué) ; un clic sur son nom
+  le replie.
+- **Une barre** est un lot : pleine, l'équipe prépare ; la bande fine devant,
+  elle attend le service d'avant ; un trou, une pause prise ; un motif, le
+  robot ou le lavage ; une encoche, deux étapes faites à la chaîne. Un
+  contour critique et une alerte : le lot finit après la limite de sa
+  commande.
+- **La marge** : le petit trait après la barre du dernier lot d'une commande
+  est sa limite (« prête avant ») ; le pointillé qui l'y relie, c'est la
+  marge. En retard, le trait tombe dans la barre.
+- **Le détail à la demande** : survoler une barre, ou la rejoindre au
+  clavier, donne la commande, le début, la fin, la durée, l'attente et la
+  marge ; un clic met sa commande en évidence dans toutes les équipes
+  (Échap annule). Le trait vertical, à l'encre, porte l'heure rejouée.
+
 ## Lire les indicateurs
 
 - **Commandes prêtes jusqu’ici** (la bande au-dessus du plan rejoué) : les
@@ -911,6 +963,7 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/etat-plan-browser.cjs` | État de paramétrage sur le plan, quatre états de la relecture, bascule des légendes |
 | `tests/zoom-browser.cjs` | Bornes du zoom, cadrage d'un service, raccourcis clavier, bridage du déplacement ; « Tout voir » fait tenir le plan entier (évolution 14 a) |
 | `tests/plan-rejoue.test.cjs` | Le plan rejoué sans navigateur (évolution 14 a, `plan-rejoue.js`) : le cadrage à 24 px des bords où que soit le plan, les tailles des textes à tout zoom, les chiffres cumulés de la bande (jamais « — »), l’heure d’ouverture au pic de travail sur l’unité fictive, les repères du curseur |
+| `tests/captures-browser.cjs` | Les captures de contrôle (évolution 14 e), sur l’unité et les vols fictifs, en thème clair et sombre, à 1 280 et 1 920 px : le plan rejoué à l’ouverture, au pic sur le service le plus chargé, en lecture (points et camions) ; le planning dans ses trois zooms. Gardées hors du dépôt : `ORY_CAPTURES=dossier node tests/captures-browser.cjs`, sinon un dossier temporaire, dit à la fin |
 | `tests/resultats-vue.test.cjs` | Les autres pages des résultats sans navigateur (évolution 14 d, `resultats-vue.js`) : la couleur de la Synthèse selon l’état (un retard nul jamais critique), ses libellés et sa phrase de résumé ; la marge, son écriture, sa barre et son tri ; les couloirs des points de la frise ; l’ordre des stocks, leur échelle, plus de 24 h |
 | `tests/resultats-browser.cjs` | Les autres pages des résultats (évolution 14 d), sur l’unité et les vols fictifs : la phrase de résumé et les libellés de la Synthèse, un retard nul jamais en rouge ; la marge de chaque commande, sa barre et son tri, « Retirer » dans le menu « … » ; les en-têtes et la première colonne des étapes à la vue après défilement ; les points de 10 px de la frise, le numéro d’un vol en retard toujours écrit ; les stocks triés, leur échelle dite une fois |
 | `tests/planning-vue.test.cjs` | Le planning des équipes sans navigateur (évolution 14 c, `planning-vue.js`) : l’échelle des trois zooms, les bornes de la chaîne, le jour le plus chargé, l’ordre des services le long du chemin et les groupes (une équipe d’appui garde le sien), une pause prise qui troue la barre, la limite de chaque commande sur son dernier lot, le retard et la marge, l’infobulle, la période visible, l’axe à deux niveaux, la commande mise en évidence |

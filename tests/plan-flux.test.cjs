@@ -76,6 +76,19 @@ test('le tracé : d’un bord à l’autre, au point le plus proche ; il contour
   assert.ok(fin[0] < 400 && fin[0] > 400 - 10, 'le trait s’arrête à la base de la pointe : ' + fin);
 });
 
+test('l’étiquette d’un trait : au milieu, sinon à côté, sans chevaucher une autre', () => {
+  const tr = { p0: { x: 0, y: 100 }, c: { x: 100, y: 0 }, p1: { x: 200, y: 100 } };
+  const a = PF.etiquetteSur(tr, 60, 14, 5, []);
+  assert.deepEqual([a.x, a.y], [100, 45], 'au milieu de la courbe, au-dessus');
+  const b = PF.etiquetteSur(tr, 60, 14, 5, [a.boite]);
+  assert.ok(b.x !== a.x, 'la place est prise : un peu à côté');
+  const chevauche = (p, q) => p.x < q.x + q.w && q.x < p.x + p.w && p.y < q.y + q.h && q.y < p.y + p.h;
+  assert.equal(chevauche(a.boite, b.boite), false);
+  // Plus de place nulle part : le milieu, quand même.
+  const plein = [{ x: -1000, y: -1000, w: 3000, h: 3000 }];
+  assert.deepEqual(PF.etiquetteSur(tr, 60, 14, 5, plein), a);
+});
+
 test('« au travail / présents » d’un service : les créneaux de 15 min, arrondis', () => {
   const c = { presents: { debut: 300, valeurs: [2, 6, 5.6] }, auTravail: { debut: 300, valeurs: [1, 3.6, 4] }, enFile: { debut: 300, valeurs: [0, 2.4, 0] } };
   assert.deepEqual(PF.chargeA(c, 320, 15), { auTravail: 4, presents: 6, enFile: 2 });

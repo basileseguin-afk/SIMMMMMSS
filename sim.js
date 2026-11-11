@@ -1899,6 +1899,7 @@ function peindreCirculation(r, t, px) {
 }
 function dessinerTraits(g, traits, ids, px) {
   const u = 1 / px, boites = ids.map(id => zoneEls[id].b), noms = Object.fromEntries(servicesDisponibles().map(s => [s.id, nomLisible(s.nom)]));
+  const posees = [];
   const tout = traits.map(x => {
     const k = x.de + '>' + x.vers;
     if (!flux.traces.has(k)) flux.traces.set(k, OrlyPlanFlux.trace(zoneEls[x.de].b, zoneEls[x.vers].b, boites));
@@ -1908,9 +1909,12 @@ function dessinerTraits(g, traits, ids, px) {
     const titre = svgEl('title', {}); titre.textContent = (noms[x.de] || x.de) + ' → ' + (noms[x.vers] || x.vers) + ' : ' + repasFr(x.repas) + ' repas';
     tg.append(titre, ligne, svgEl('path', { class:'pc-pointe', d:ch.pointe }));
     if (x.etiquette) {
-      const e = svgEl('text', { class:'pc-etiquette', x:ch.milieu.x, y:ch.milieu.y - (x.epaisseur / 2 + 5) * u });
+      // Au milieu du trait, sinon un peu à côté : deux étiquettes ne se chevauchent pas.
+      const texte = repasFr(x.repas) + ' repas', ou = OrlyPlanFlux.etiquetteSur(tr, (texte.length * 7 + 6) * u, 15 * u, (x.epaisseur / 2 + 4) * u, posees);
+      posees.push(ou.boite);
+      const e = svgEl('text', { class:'pc-etiquette', x:ou.x, y:ou.y - 3 * u });
       e.style.fontSize = (12 * u) + 'px'; e.style.strokeWidth = (3 * u) + 'px';
-      e.textContent = repasFr(x.repas) + ' repas';
+      e.textContent = texte;
       tg.appendChild(e);
     }
     return tg;

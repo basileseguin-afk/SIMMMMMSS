@@ -189,6 +189,22 @@
     };
   }
 
+  /**
+   * Où poser l'étiquette d'un trait : au milieu de la courbe, sinon un peu avant ou après, pour ne pas chevaucher une
+   * étiquette déjà posée (`posees`, des boîtes { x, y, w, h }). `w`, `h` : la taille de l'étiquette ; `dy` : son écart
+   * au-dessus du trait (mêmes unités). Rend { x, y, boite } (x, y : le pied du texte, centré).
+   */
+  function etiquetteSur(tr, w, h, dy, posees) {
+    let premier = null;
+    for (const s of [0.5, 0.4, 0.6, 0.3, 0.7, 0.22, 0.78]) {
+      const p = sur(tr.p0, tr.c, tr.p1, s), boite = { x: p.x - w / 2, y: p.y - dy - h, w, h };
+      const place = { x: p.x, y: p.y - dy, boite };
+      if (!premier) premier = place;
+      if (!posees.some(b => b.x < boite.x + boite.w && boite.x < b.x + b.w && b.y < boite.y + boite.h && boite.y < b.y + b.h)) return place;
+    }
+    return premier;
+  }
+
   /* ---- au travail / présents -------------------------------------------------------- */
 
   /** La valeur d'une série de créneaux à `t` (null hors de la série). */
@@ -244,7 +260,7 @@
     vl: '<path d="M3 16.5v-3l2.2-4.5h10.6l3.2 4.5v3zM5.5 13h13"/><circle cx="7.5" cy="17" r="1.8"/><circle cx="16" cy="17" r="1.8"/>'
   };
 
-  const api = { VEHICULES, EPAISSEUR_MIN, EPAISSEUR_MAX, TRAITS_MAX, ETIQUETTES, PERIODE, circulation, reference, epaisseur, traits, tranche, points, bords, trace, chemin, sur,
+  const api = { VEHICULES, EPAISSEUR_MIN, EPAISSEUR_MAX, TRAITS_MAX, ETIQUETTES, PERIODE, circulation, reference, epaisseur, traits, tranche, points, bords, trace, chemin, sur, etiquetteSur,
     valeurA, chargeA, vehiculesA, versLesAvions };
   if (enNode) module.exports = api;
   else root.OrlyPlanFlux = api;
