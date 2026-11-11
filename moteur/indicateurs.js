@@ -140,17 +140,20 @@
     return { morceaux, minutes: longueur(reunir(morceaux)) };
   }
 
-  /** Les lots en file : prêts (tous leurs fournisseurs ont livré), pas encore commencés : [{ de, a }] ; null si sans objet. */
+  /**
+   * Les lots en file : prêts (tous leurs fournisseurs ont livré), pas encore commencés : [{ de, a, lot }] ; null si sans
+   * objet. `lot` : le lot qui attend (les réponses de l'évolution 15 y lisent son nom et son attente de matériel).
+   */
   function fileDe(v) {
     if (v.type === 'lavage') {
       // À la plonge par vol, les vols revenus qui attendent leur tunnel ; au débit, sans objet.
       const vols = v.lots.filter(l => l.retourVol && fini(l.arrivee));
       if (!vols.length && v.lots.some(l => !l.retourVol)) return null;
-      return vols.map(l => ({ de: l.arrivee, a: fini(l.debut) ? l.debut : finPresence(v) }));
+      return vols.map(l => ({ de: l.arrivee, a: fini(l.debut) ? l.debut : finPresence(v), lot: l }));
     }
     // Un lot sans fournisseur est prêt dès l'arrivée de l'équipe ; un lot jamais prêt n'a pas l'instant `pret`.
     return v.lots.filter(l => !l.dispo && 'pret' in l && fini(l.debut))
-      .map(l => ({ de: Math.max(fini(l.pret) ? l.pret : v.debutPoste, v.debutPoste), a: l.debut }));
+      .map(l => ({ de: Math.max(fini(l.pret) ? l.pret : v.debutPoste, v.debutPoste), a: l.debut, lot: l }));
   }
 
   /** La plus longue file, et son premier instant. */
@@ -348,7 +351,8 @@
     return { pas: PAS, equipes: faites.map(x => x.e), services };
   }
 
-  const api = { PAS, MESURES, journee, creneaux, pic, reunir, moins, deposer, compter };
+  // `etpDe`, `fileDe`, `fileMax`, `chauffeursDe` : lus par les réponses (moteur/reponses.js, évolution 15), un seul chemin.
+  const api = { PAS, MESURES, journee, creneaux, pic, reunir, moins, deposer, compter, etpDe, fileDe, fileMax, chauffeursDe };
   if (enNode) module.exports = api;
   else root.OrlyIndicateurs = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

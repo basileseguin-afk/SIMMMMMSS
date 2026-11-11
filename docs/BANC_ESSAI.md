@@ -63,6 +63,17 @@ formé). Il rend, sur la sortie standard, un objet JSON :
 `resultat` est **la journée que la page aurait calculée**, au champ près
 (les nombres non finis s'écrivent `null`, comme dans tout JSON).
 
+Avec `--reponses` (évolution 15), la sortie gagne `reponses` : les cinq
+réponses de la journée (`moteur/reponses.js` — combien de personnes il faut,
+où ça coince, à quelle heure chaque service finit, ce qui part en retard), aux
+seuils d'alerte de la sauvegarde (`ory-seuils-v1` ; sans eux, les défauts),
+celles que la page calcule. Sans l'option, la sortie est celle d'avant. Le
+contrat : `docs/CAHIER_DES_CHARGES.md`, § « Contrat des résultats ».
+
+```
+node outils/simuler-journee.cjs --reponses sauvegarde.json vols.csv > resultat.json
+```
+
 ### Les options
 
 | Option | Effet | Par défaut |

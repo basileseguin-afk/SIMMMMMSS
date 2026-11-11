@@ -121,6 +121,72 @@ de relire le cahier des charges initial :
 | V7 | Suivre un repas dans le temps et **expliquer son retard** | Feuille de route étape 6 | ✅ | Frise étape par étape et phrase (« le montage a attendu 25 min la dotation ») |
 | V8 | **Temporalité** : le temps entre la fin d'un atelier et le début du suivant est un **stock** ; les retours plus rapides que la plonge forment un **bouchon** | 24/09 | ✅ | Stocks par séjour, par lien et devant chaque service (et avant le chargement) ; file de sale, attente, heures en dépassement ; affichés sur le chemin, la frise, l'onglet « Stocks et retours » et le plan rejoué |
 
+## 6 bis. Contrat des résultats
+
+Les résultats d'une journée répondent à **cinq questions, dans cet ordre**. Tout
+le reste — le tableau des commandes, les vols un par un, les stocks, les
+créneaux — est du **détail**, qui sert à vérifier une réponse, pas à la donner.
+Lecteurs : le chef de projet et les responsables de service (version 1,
+évolution 15).
+
+| # | Question | Indicateur | Unité | Comparé à | Seuil d'alerte (défaut) |
+|---|---|---|---|---|---|
+| R1 | **Combien de personnes faut-il, par service ?** | Par service et jour de travail : le **besoin** (la charge du jour en homme-minutes ÷ les minutes utiles d'un poste, arrondie au service comme dans l'évolution 11 a), les **présents** (ETP présents, K8), l'**écart** (présents − besoin) ; le matin (avant 13:00 du jour de travail) et l'après-midi : présents et pic au travail ; le pic de la journée et son heure ; l'occupation (K3) | personnes (ETP) | les présents, au besoin | un écart d'**1 personne** |
+| R2 | **Où et quand ça coince ?** | Par service : la file la plus longue (K4) et son heure, l'attente la plus longue d'un lot, le cumul d'attente du jour, la **cause** (personnel, amont, matériel — K9). Le **goulot** : le service au plus grand cumul d'attente, et le moment où il s'accumule | lots ; minutes ; lots × minutes | l'attente d'un lot, au seuil ; l'occupation pendant la file, au seuil | une attente de **60 min** ; une occupation de **95 %** |
+| R3 | **À quelle heure chaque service finit-il, et avec combien d'heures sup ?** | Par service : la fin de son dernier lot, la fin de son horaire, ce qui dépasse ; ses heures sup (équipes, renforts prêtés, chauffeurs) | heure ; personnes × heures | la fin, à la fin de l'horaire | tout dépassement (une heure sup se dit dès la première minute) |
+| R4 | **Qu'est-ce qui part en retard ?** | Les **seules exceptions** : les vols chargés après leur limite, les commandes prêtes après leur limite, les vols pas prêts ou sans équipe ; pour chacune, le retard et sa cause (la phrase de V7). Sans exception : une liste vide | minutes | la limite (le départ, ou départ − marge au handling 24 h/24 ; l'échéance de la commande) | un retard d'**1 min** |
+| R5 | **Que change mon scénario ?** | Entre les deux essais de « Comparer deux essais » : B − A sur chacune des quatre réponses (besoin, présents, écart ; goulot, attentes ; fins, heures sup ; exceptions nouvelles et réglées) | celles des réponses | l'essai A | — |
+
+**Les règles de calcul.** Le module `moteur/reponses.js`, sans navigateur, **lit**
+le résultat de la journée et les indicateurs de charge (`moteur/indicateurs.js`) ;
+il ne recalcule rien de ce qui existe et ne change rien. La page, les outils
+(`simuler-journee --reponses`) et les exports l'appellent : un seul chemin.
+
+- **Le besoin d'une équipe**, en personnes sur son poste : à effectif calculé, son
+  besoin exact (homme-minutes ÷ poste ÷ rendement) ; un robot, une plonge saisis :
+  ce que ses lots occupent ÷ son poste (11 a) ; à la main, saisie : les
+  homme-minutes de ses lots ÷ poste ÷ rendement. Il est rapporté à la présence
+  générale, comme les présents (K8). Une équipe **sans charge mesurée** (aucun
+  travail, une mise à disposition, une équipe d'appui saisie, le handling) a pour
+  besoin ses présents : elle n'a pas d'écart. Le besoin d'un service : ⌈ somme ⌉.
+- **L'attente d'un lot** : du moment où il est prêt (tous ses fournisseurs ont
+  livré, l'équipe est là) à son début — son temps en file. Le cumul : la somme,
+  en lots × minutes.
+- **La cause d'une file** : « matériel » si les lots attendent surtout leur
+  matériel propre ; sinon « personnel » si les équipes qui tiennent ces lots sont
+  occupées au-delà du seuil pendant la file ; sinon « amont » si leurs personnes
+  attendent le service d'avant pendant la file (une équipe tenue à l'ordre de sa
+  liste) ; sinon « matériel » s'il en a manqué ; sinon aucune.
+- **Le goulot** : le service au plus grand cumul, si son attente la plus longue
+  **dépasse** le seuil ; son moment : le morceau d'un seul tenant de sa file où
+  l'attente s'accumule le plus. Sinon : aucun, « rien ne coince ».
+- **La fin d'horaire** : le début du poste + la présence ; au handling, la fin de
+  ses vacations de chauffeurs. Ce qui dépasse se compte équipe par équipe : le
+  plus grand dépassement d'une équipe du service (une équipe qui finit tard dans
+  son horaire n'en cache pas une autre qui déborde du sien).
+- **Une exception** : un retard au moins égal au seuil. La cause d'un vol chargé
+  en retard : celle du moteur (commande pas prête, faute de chauffeur, faute de
+  véhicule, fenêtre trop courte) ; celle d'une commande : l'étape de son chemin
+  qui a le plus attendu, et ce qu'elle attendait (« Le plus long à attendre :
+  Montage a attendu 25 min que Cuisine finisse. ») ; sans attente, l'étape qui
+  la finit.
+
+**Les seuils d'alerte**, réglables et sauvegardés (la clé `ory-seuils-v1`,
+comprise dans « Tout sauvegarder » et « Restaurer » ; sans elle, les défauts).
+Une valeur invalide est refusée, en la nommant.
+
+| Seuil | Défaut | Valeurs admises | Ce qu'il déclenche |
+|---|---|---|---|
+| Écart de personnes à signaler | 1 | de 0 à 100 personnes | un écart présents − besoin d'au moins ce nombre (R1) |
+| Attente d'un lot | 60 min | de 0 à 1 440 min | un goulot, si l'attente la plus longue le dépasse (R2) |
+| Occupation | 95 % | de 1 à 100 % | la cause « personnel », au-delà (R2) |
+| Durée maximale d'un stock | vide : pas d'alerte | vide, ou de 1 à 10 080 min | un stock plus long (le détail des stocks) |
+| Retard | 1 min | de 0 à 1 440 min | une exception, à partir de ce retard (R4) |
+
+| # | Exigence | Source | État | Écart |
+|---|---|---|---|---|
+| R1–R5 | Les cinq réponses, dans un module sans navigateur que la page, les outils et les exports appellent | Évolution 15 (a) | 🟡 | Le module, ses seuils et l'outil sont faits ; la Synthèse, les pages de détail et la feuille « Réponses » viennent ensuite (évolution 15 b à e) |
+
 ## 7. Indicateurs
 
 | # | Indicateur | Source | État | Écart |

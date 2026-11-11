@@ -669,7 +669,7 @@ function initAteliers(){
     // Le plan dit « aménagé » d'après les ateliers : il doit suivre leur saisie.
     // La liste du barème marque les services qui portent une équipe : elle doit
     // donc se redessiner quand les ateliers bougent.
-    change:r=>{if(suivreDemo()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.periode)Sim.periode.rendre();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();renderHeuresSup(r);renderRenforts(r);renderReglageRenforts();renderReglageOrdre();renderReglageSpml();if(Sim.calage)Sim.calage.rendreJour();},
+    change:r=>{if(suivreDemo()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.periode)Sim.periode.rendre();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();renderHeuresSup(r);renderRenforts(r);renderReglageRenforts();renderReglageOrdre();renderReglageSeuils();renderReglageSpml();if(Sim.calage)Sim.calage.rendreJour();},
     // Une case se règle dans le chemin d'une commande : l'ouvrir d'ailleurs y mène.
     onglet:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
     // Le chemin d'une commande mène à son flux (Chemins) et à ses services (Équipes).
@@ -2554,7 +2554,9 @@ const PARTIES = [
   { cle:'ory-calage-v1',    nom:'calage sur le réel',      valider:r => window.OrlyReel.validerReglages(r) },
   // Les règles d'import de l'export Winrest (évolution 13 b) : absentes d'une sauvegarde (une sauvegarde d'avant), elles
   // sont retirées à la restauration, et les règles par défaut reviennent.
-  { cle:'ory-import-winrest-v1', nom:'règles d’import Winrest', valider:r => window.OrlyWinrest.lireEnveloppe(r), siAbsente:'retirer' }
+  { cle:'ory-import-winrest-v1', nom:'règles d’import Winrest', valider:r => window.OrlyWinrest.lireEnveloppe(r), siAbsente:'retirer' },
+  // Les seuils d'alerte des résultats (évolution 15 a) : absents d'une sauvegarde d'avant, ils sont retirés, et les défauts reviennent.
+  { cle:'ory-seuils-v1',    nom:'seuils d’alerte',         valider:r => window.OrlyReponses.lireEnveloppe(r), siAbsente:'retirer' }
 ];
 
 function sauvegardeComplete() {
@@ -2609,6 +2611,7 @@ async function restaurerSauvegarde(e) {
       + aEcrire.length + (aEcrire.length > 1 ? ' parties' : ' partie') + ').'
       // Une sauvegarde d'avant, sans les règles d'import Winrest : elles reviennent aux défauts, et la question le dit.
       + (aRetirer.includes(CLE_WINREST) ? ' Elle n’a pas de règles d’import Winrest : les règles d’import Winrest par défaut reviennent.' : '')
+      + (aRetirer.includes(CLE_SEUILS) ? ' Elle n’a pas de seuils d’alerte : les seuils par défaut reviennent.' : '')
       + ' La page se rechargera. Les autres onglets ouverts du site devront être rechargés.',
       { titre: 'Restaurer cette sauvegarde ?', oui: 'Restaurer la sauvegarde', danger: true })) { e.target.value = ''; return; }
     if (enRetard()) throw new Error(RETARD);
@@ -2640,6 +2643,63 @@ function enregistrerReglesWinrest(regles){
   const env=OrlyWinrest.enveloppe(regles);
   localStorage.setItem(CLE_WINREST,JSON.stringify(env));
   return env.regles;
+}
+
+/* ==========================================================================
+ *  LES SEUILS D'ALERTE DES RÉSULTATS (évolution 15 a — docs/CAHIER_DES_CHARGES.md,
+ *  « Contrat des résultats »). Gardés dans « ory-seuils-v1 », dans leur
+ *  enveloppe, et dans « Tout sauvegarder ». Lus validés : une clé abîmée se lit
+ *  comme les défauts, et l'erreur se dit. Une valeur invalide ne s'enregistre
+ *  pas. Réglés dans « Réglages de la simulation » (seuils-vue.js).
+ * ==========================================================================*/
+const CLE_SEUILS='ory-seuils-v1';
+/** Les seuils gardés : { seuils (complets), erreur (null, ou pourquoi les défauts) }. */
+function seuilsAlerte(){
+  const R=window.OrlyReponses;if(!R)return{seuils:null,erreur:null};
+  let brut=null;
+  try{brut=localStorage.getItem(CLE_SEUILS);}catch(e){/* stockage indisponible : les défauts */}
+  if(!brut)return{seuils:R.seuilsComplets(),erreur:null};
+  try{return{seuils:R.lireEnveloppe(JSON.parse(brut)),erreur:null};}
+  catch(err){return{seuils:R.seuilsComplets(),erreur:err.message};}
+}
+/** Enregistrer des seuils : validés d'abord (une erreur remonte, rien n'est écrit) ; rend les seuils complets gardés. */
+function enregistrerSeuils(seuils){
+  const env=OrlyReponses.enveloppe(seuils);
+  localStorage.setItem(CLE_SEUILS,JSON.stringify(env));
+  return env.seuils;
+}
+/** Les réponses de la journée calculée (moteur/reponses.js), aux seuils gardés : le seul chemin de la page. */
+function reponsesDuJour(){
+  const at=Sim.ateliers,r=at&&at.resultat;
+  return r&&r.ok&&window.OrlyReponses?OrlyReponses.reponses(r,at.args||{},{seuils:seuilsAlerte().seuils}):null;
+}
+function reglerSeuils(e){
+  const t=e.target;if(!t.matches('[data-seuil]')||!window.OrlyReponses)return;
+  const k=t.dataset.seuil,s=OrlyReponses.SEUILS.find(x=>x.cle===k);
+  let n;
+  try{n=enregistrerSeuils({...seuilsAlerte().seuils,[k]:OrlySeuilsVue.lire(t.value)});}
+  // Le champ reprend la valeur gardée, puis la raison se lit sous lui (retrouvé par son seuil).
+  catch(err){renderReglageSeuils(true);refuserAuChamp(t,err.message.replace(/^seuils d’alerte : /,''));return;}
+  toast(s.nom+' : '+(n[k]===null?'vide, aucune alerte':nombreFr(n[k])+' '+s.unite)+'.');
+  renderReglageSeuils(true);if(Sim.vue&&Sim.vue.rendreBilan)Sim.vue.rendreBilan();
+}
+function revenirSeuils(e){
+  if(!e.target.closest('[data-seuils-defaut]'))return;
+  try{localStorage.removeItem(CLE_SEUILS);}catch(err){toast('Seuils non remis : '+err.message);return;}
+  toast('Seuils d’alerte : les défauts.');renderReglageSeuils(true);if(Sim.vue&&Sim.vue.rendreBilan)Sim.vue.rendreBilan();
+}
+/* Le réglage, dans « Réglages de la simulation », après l'ordre des lots. */
+function renderReglageSeuils(force){
+  const apres=document.getElementById('rg-sim-ordre');if(!apres||!window.OrlySeuilsVue||!window.OrlyReponses)return;
+  let box=document.getElementById('rg-sim-seuils');
+  if(!box){
+    box=document.createElement('div');box.className='panneau rg-sim-seuils';box.id='rg-sim-seuils';box.dataset.sous='rg-simulation';
+    apres.after(box);box.addEventListener('change',reglerSeuils);box.addEventListener('click',revenirSeuils);
+  }
+  // On ne redessine pas sous les doigts de quelqu'un qui tape une valeur.
+  if(!force&&box.contains(document.activeElement)&&document.activeElement.matches('input'))return;
+  const {seuils,erreur}=seuilsAlerte();
+  box.innerHTML=OrlySeuilsVue.html(seuils,erreur);
 }
 
 /* Le programme de vols s'importe en Excel (feuilles « Départs » et
@@ -2908,7 +2968,7 @@ function installerCentreReglages() {
       return [...new Set([...par].filter(([,manuel])=>!manuel).map(([s])=>s).concat(parCompagnie))];
     },
     delaiChargement:()=>CFG.loadDelay,
-    change:()=>{if(Sim.ateliers)Sim.ateliers.rendre();majDemarrage();if(Sim.vue)Sim.vue.recalculer();renderReglageHeuresSup();renderReglageRenforts();renderReglageOrdre();},
+    change:()=>{if(Sim.ateliers)Sim.ateliers.rendre();majDemarrage();if(Sim.vue)Sim.vue.recalculer();renderReglageHeuresSup();renderReglageRenforts();renderReglageOrdre();renderReglageSeuils();},
     notify:toast
   });
   // Les vols s'importent dans « Données › Vols » ; leurs horaires (décalage,
@@ -3368,6 +3428,7 @@ function initWorkbench() {
   renderReglageHeuresSup();
   renderReglageRenforts();
   renderReglageOrdre();
+  renderReglageSeuils();
   renderReglageSpml();
   updateSource();updateRunState();majCompare();
 }
@@ -3381,6 +3442,9 @@ const Sim = { dataCourante:SAMPLE };
 Sim.cfg = CFG;
 // Les règles d'import Winrest (évolution 13 b) : lues validées, enregistrées validées.
 Sim.winrest = { regles:reglesWinrest, enregistrer:enregistrerReglesWinrest };
+// Les seuils d'alerte et les réponses de la journée (évolution 15 a) : lus validés, enregistrés validés.
+Sim.seuils = { lire:seuilsAlerte, enregistrer:enregistrerSeuils };
+Sim.reponses = reponsesDuJour;
 // Le plan rejoué (évolution 14 b) : les services dessinés, la boîte de chacun, les bornes du plan.
 Sim.planRejoue = { zones:zonesDessinees, boite:id => (zoneEls[id] ? { ...zoneEls[id].b } : null), bornes:bornesDuPlan, existe:id => !!zoneParId(id) };
 window.Sim = Sim;

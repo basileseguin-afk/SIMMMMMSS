@@ -67,3 +67,9 @@
 .tp-plus24{display:inline-flex;align-items:center;gap:4px;margin-top:2px;padding:1px 8px;border-radius:999px;background:var(--ds-attente-doux);
   color:var(--ds-attente-texte);font-size:var(--ds-t-12);font-weight:var(--ds-g-moyen)}
 .tp-plus24 .ico{width:13px;height:13px}
+
+/* Seuils d'alerte (évolution 15 a, Réglages de la simulation) : un champ court par seuil, ce qu'il déclenche dessous, en grille. */
+.seuils-champs{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:var(--ds-e-4) var(--ds-e-5);margin:var(--ds-e-3) 0}
+.seuil .at-inline-champ{display:flex;flex-direction:column;align-items:flex-start;gap:var(--ds-e-1);font-weight:var(--ds-g-moyen)}
+.seuil .champ-unite>input{width:132px;max-width:none}
+.seuil .mini-note{margin:var(--ds-e-1) 0 0}

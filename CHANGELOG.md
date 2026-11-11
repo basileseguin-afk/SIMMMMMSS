@@ -5,6 +5,38 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-11 — Évolution 15 (a) : le contrat des résultats et le module des réponses
+
+- `docs/CAHIER_DES_CHARGES.md` : un § 6 bis « Contrat des résultats », avant le
+  § 7. Les résultats répondent à cinq questions, dans cet ordre — combien de
+  personnes il faut par service, où et quand ça coince, à quelle heure chaque
+  service finit et avec combien d'heures sup, ce qui part en retard, ce que
+  change un essai ; tout le reste est du détail. Pour chacune : l'indicateur, son
+  unité, ce à quoi il se compare, son seuil d'alerte ; les règles de calcul.
+- `moteur/reponses.js` (nouveau, sans navigateur) : il lit le résultat de la
+  journée et les indicateurs de charge, ne recalcule rien et ne change rien.
+  Par service et jour de travail, le besoin (homme-minutes ÷ minutes utiles d'un
+  poste, arrondi au service), les présents (K8), l'écart, le matin et
+  l'après-midi, le pic, l'occupation ; par service, la file la plus longue,
+  l'attente la plus longue d'un lot, le cumul, la cause (personnel, amont,
+  matériel) et le goulot du jour ; la fin, la fin d'horaire, les heures sup ;
+  les seules exceptions (vols en retard, pas chargés, pas prêts ou sans équipe,
+  commandes en retard), chacune avec son retard et sa cause ; la différence
+  entre deux essais.
+- Les seuils d'alerte (écart de personnes 1, attente d'un lot 60 min,
+  occupation 95 %, durée maximale d'un stock vide, retard 1 min) : réglables
+  dans « Réglages de la simulation » (`seuils-vue.js`, nouveau), gardés dans
+  `ory-seuils-v1`, compris dans « Tout sauvegarder » et « Restaurer » ; sans
+  eux, les défauts. Une valeur invalide est refusée, en la nommant.
+- `moteur/indicateurs.js` expose `etpDe`, `fileDe` (chaque lot en file porte son
+  lot), `fileMax` et `chauffeursDe`, pour un seul chemin ; aucun calcul ne change.
+- `outils/simuler-journee.cjs --reponses` ajoute les réponses à la sortie, aux
+  seuils de la sauvegarde ; sans l'option, la sortie est celle d'avant.
+- Tests : `tests/reponses.test.cjs`, `tests/seuils-alerte-browser.cjs` (nouveaux),
+  `tests/plusieurs-onglets.test.cjs` (la clé des seuils est une donnée). Aucun
+  résultat d'une journée ou d'une période, aucun indicateur ni aucun export ne
+  change.
+
 ## 2026-11-10 — Évolution 14 (e) : contrôle et doc
 
 - `tests/captures-browser.cjs` (nouveau) : les captures de contrôle, sur l'unité et
