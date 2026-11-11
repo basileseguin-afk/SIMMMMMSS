@@ -22,6 +22,15 @@ const TETE = 'vol_id,compagnie,type_avion,sens,heure_std,heure_sta,nb_BC,nb_PC,n
 /** Les vols fictifs de l'unité, en CSV ; `decalage` minutes plus tard (un autre programme). */
 const volsCsv = (decalage = 0) => TETE + '\n' + S.args.vols.map(v => LIGNE(v, decalage)).join('\n') + '\n';
 
+/**
+ * Une journée sans retard (évolution 15 b) : les mêmes vols, partis 5 h plus tard (23:50 au plus tard), sans la compagnie
+ * que personne ne prépare (ZEN) ni le vol qui manquerait de chauffeurs (OU405). Fictive, comme les autres.
+ */
+function volsSansRetardCsv() {
+  const garde = S.args.vols.filter(v => v.cie !== 'ZEN' && v.id !== 'OU405');
+  return TETE + '\n' + garde.map(v => LIGNE({ ...v, std: v.sens === 'DEP' ? Math.min(23 * 60 + 50, v.std + 300) : v.std })).join('\n') + '\n';
+}
+
 /** La sauvegarde de l'unité fictive, ses zones en grille : `colonnes` par rang, chaque zone `w` × `h` unités, depuis (x0, y0). */
 function sauvegardeFictive({ x0 = 900, y0 = 700, colonnes = 6, w = 520, h = 380, ecart = 140 } = {}) {
   const s = JSON.parse(JSON.stringify(S.sauvegarde));
@@ -67,4 +76,4 @@ async function importerVols(page, nav, fichier, nom, csv) {
   await page.waitForFunction(n => document.getElementById('source-label').textContent === n, nom);await page.waitForTimeout(200);
 }
 
-module.exports = { S, volsCsv, sauvegardeFictive, heureDuPicAttendue, charger, importerVols, hh };
+module.exports = { S, volsCsv, volsSansRetardCsv, sauvegardeFictive, heureDuPicAttendue, charger, importerVols, hh };

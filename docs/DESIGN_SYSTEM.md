@@ -221,6 +221,17 @@ tableau.
 - Un groupe de lignes (`.bilan-groupe`) : un titre de 11 px en capitales à
   l'accent, souligné d'un trait de 2 px à l'encre, puis des lignes sobres,
   chacune avec son lien.
+- **La Synthèse de la v1** (évolution 15 b, `synthese-vue.css`) : deux phrases
+  en 16 px ; des cartes réponse (`.sy-carte`) au voyant de 4 px, dont le ton
+  dit l'état — `--ds-ok` quand rien ne coince ou rien n'est en retard,
+  `--ds-attente` pour un goulot, `--ds-retard` seulement pour des retards —,
+  autant de colonnes que de cartes ; le tableau « Les services », ses barres
+  de 44 px (l'écart centré sur zéro, en `--ds-texte-4` ; l'occupation en
+  `--ds-d1`), une case au-delà de son seuil sur fond `--ds-attente-doux`, avec
+  son icône et des mots, jamais la couleur seule ; la courbe de la journée
+  aux couleurs de la vue Charge (`.ch-presents`, `.ch-travail`, `.ch-file`),
+  les départs en traits `--ds-texte-2`, une bulle qui suit la souris et les
+  flèches.
 
 ### Pastilles et étiquettes
 

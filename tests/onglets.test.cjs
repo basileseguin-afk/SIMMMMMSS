@@ -131,6 +131,10 @@ test('la page Période ne se montre qu’avec un programme daté (évolution 10)
     assert.equal(O.montree('j-periode'), true);
     assert.deepEqual(O.pagesDe('resultats').slice(0, 2).map(x => x.id), ['j-chiffres', 'j-periode']);
   } finally { delete O.conditions.periode; }
+  // « Détails » (évolution 15 b) : seulement avec des heures sup ou des renforts permis, après le planning.
+  assert.equal(O.page('j-details').si, 'details');
+  O.conditions.details = () => true;
+  try { assert.deepEqual(O.pagesDe('resultats').slice(2, 4).map(x => x.id), ['at-planning', 'j-details']); } finally { delete O.conditions.details; }
   assert.equal(O.montree('j-chiffres'), true);
   assert.equal(O.montree('rien'), false);
 });

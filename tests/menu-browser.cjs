@@ -51,6 +51,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     // Le plan de l'unité a sa page dans Équipes (refonte, étape 5).
     organisation:['mu-services','at-recap','rg-recap','u-plan','u-services','at-equipes','rg-minutes'],
     reglages:['mu-pas','rg-simulation','u-lecture'],
+    // « Détails » (évolution 15 b) ne paraît qu'avec des heures sup ou des renforts permis.
     resultats:['j-chiffres','j-plan','at-planning','at-repas','at-grille','v-departs','j-stocks','j-comparer']};
   const noms={donnees:'Vols',chemins:'Chemins',organisation:'Équipes',reglages:'Simulation',resultats:'Résultats'};
   const plus={chemins:['u-liens'],organisation:['u-services','at-equipes','rg-minutes'],reglages:['u-lecture']};
@@ -150,9 +151,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await tuile('resultats').textContent(),/en retard|à l’heure/,'la journée a un résultat');
   await nav.aller(page,'j-chiffres');
   assert.equal(await page.locator('#bilan-journee').isVisible(),true,'la synthèse : la journée entière d’abord');
-  // Hiérarchisée (étape 9) : les chiffres qui comptent en cartes, le reste par groupe.
-  assert.ok(await page.locator('#bilan-journee .bilan-cle').count()>=3,'les chiffres qui comptent, en cartes');
-  assert.ok(await page.locator('#bilan-journee .bilan-groupe').count()>=2,'le reste, par groupe');
+  // Évolution 15 (b) : elle répond aux cinq questions — deux phrases, les cartes, le tableau des services, la courbe.
+  assert.equal(await page.locator('#bilan-journee .sy-tete .bilan-resume').count(),2,'deux phrases en tête');
+  assert.ok(await page.locator('#bilan-journee .sy-carte').count()>=2,'où ça coince, ce qui part en retard');
+  assert.ok(await page.locator('#bilan-journee .sy-table tbody tr').count()>=1,'les services');
   // Le tableau se calcule : une case mène au chemin de sa commande.
   await nav.aller(page,'at-grille');
   assert.equal(await page.locator('.qf-table').isVisible(),true,'le tableau se dessine à l’ouverture de sa page');

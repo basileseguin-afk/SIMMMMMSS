@@ -669,7 +669,7 @@ function initAteliers(){
     // Le plan dit « aménagé » d'après les ateliers : il doit suivre leur saisie.
     // La liste du barème marque les services qui portent une équipe : elle doit
     // donc se redessiner quand les ateliers bougent.
-    change:r=>{if(suivreDemo()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.periode)Sim.periode.rendre();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();renderHeuresSup(r);renderRenforts(r);renderReglageRenforts();renderReglageOrdre();renderReglageSeuils();renderReglageSpml();if(Sim.calage)Sim.calage.rendreJour();},
+    change:r=>{if(suivreDemo()){Sim.ateliers.rendre();return;}majEtatPlan();majDemarrage();if(Sim.periode)Sim.periode.rendre();if(Sim.reglages)Sim.reglages.rendre();if(Sim.vue)Sim.vue.recalculer();majStocks();renderPlanche();renderControles();if(Sim.unite)Sim.unite.rendre();renderHeuresSup(r);renderRenforts(r);majDetails();renderReglageRenforts();renderReglageOrdre();renderReglageSeuils();renderReglageSpml();if(Sim.calage)Sim.calage.rendreJour();},
     // Une case se règle dans le chemin d'une commande : l'ouvrir d'ailleurs y mène.
     onglet:id=>{if(Sim.onglets)Sim.onglets.choisir(id);},
     // Le chemin d'une commande mène à son flux (Chemins) et à ses services (Équipes).
@@ -1992,6 +1992,8 @@ function entreeDeLaJournee(){
 function initPeriode(){
   if(!window.OrlyPeriodeVue||!Sim.ateliers)return;
   if(window.OrlyOnglets)OrlyOnglets.conditions.periode=()=>!!programmeDate();
+  // « Détails » (évolution 15 b) : seulement quand des heures sup ou des renforts sont permis.
+  if(window.OrlyOnglets)OrlyOnglets.conditions.details=()=>heuresSup().actif||renforts().actif;
   Sim.periode=new OrlyPeriodeVue.VuePeriode({
     programme:programmeDate,
     // Une copie : ce qu'on modifie pendant le calcul ne s'y mêle pas (la période devient « à relancer »).
@@ -2099,7 +2101,15 @@ function initVueSimulation() {
   Sim.vue.pause = () => { pauseVue(); peindrePlanFlux(); };
   // Évolution 14 (d) : la Synthèse de la version 1 (resultats-vue.js) — la couleur suit l'état, une phrase de résumé.
   // simulation.js, commun aux deux versions, garde la sienne pour la version 2.
-  if (window.OrlyResultatsVue) {
+  // Évolution 15 b : elle répond aux cinq questions (synthese-vue.js), d'après les réponses de la journée (moteur/reponses.js).
+  if (window.OrlySyntheseVue) {
+    Sim.vue.rendreBilan = () => {
+      const j = Sim.vue.vide ? null : journeeLue(), box = document.getElementById('bilan-journee');
+      OrlySyntheseVue.rendre(box, j ? { reponses: j.reponses, resultat: j.r, k: j.k, essais: essaisRetenus(),
+        ordre: window.OrlyPlanningVue ? OrlyPlanningVue.ordreDesServices(j.r) : [] } : null);
+    };
+    Sim.vue.rendreBilan();
+  } else if (window.OrlyResultatsVue) {
     const titreDe = id => (window.OrlyOnglets && OrlyOnglets.page && (OrlyOnglets.page(id) || {}).nom) || '';
     Sim.vue.rendreBilan = () => OrlyResultatsVue.rendreSynthese(document.getElementById('bilan-journee'),
       Sim.vue.vide ? null : (Sim.vue.resultat && Sim.vue.resultat.indicateurs) || null, { titreDe });
@@ -2191,7 +2201,8 @@ function renderReglageHeuresSup(force){
 /* Dans la Synthèse : les heures sup de la journée, par service et par équipe, en heures × personnes (heuresSupPersonnes) :
  * d'une plonge, seules les personnes des tunnels qui finissent un vol après sa présence comptent. */
 function renderHeuresSup(r){
-  const sec=document.getElementById('journee-chiffres');if(!sec)return;
+  // Évolution 15 b : le détail des heures sup quitte la Synthèse pour « Détails ».
+  const sec=document.getElementById('journee-details');if(!sec)return;
   let box=document.getElementById('bilan-heures-sup');
   if(!heuresSup().actif||!r||!r.ok){if(box)box.remove();return;}
   if(!box){box=document.createElement('div');box.className='panneau panneau-heures-sup';box.id='bilan-heures-sup';sec.appendChild(box);}
@@ -2373,7 +2384,8 @@ function renderReglageRenforts(force){
 }
 /* Dans la Synthèse : qui a aidé qui, et combien de temps (minutes-personne, délai d'arrivée compris). */
 function renderRenforts(r){
-  const sec=document.getElementById('journee-chiffres');if(!sec)return;
+  // Évolution 15 b : le détail des renforts quitte la Synthèse pour « Détails ».
+  const sec=document.getElementById('journee-details');if(!sec)return;
   let box=document.getElementById('bilan-renforts');
   if(!renforts().actif||!r||!r.ok||!Array.isArray(r.renforts)){if(box)box.remove();return;}
   if(!box){box=document.createElement('div');box.className='panneau panneau-renforts';box.id='bilan-renforts';sec.appendChild(box);}
@@ -2490,6 +2502,8 @@ function capturer(slot, silencieux) {
     liaisons: liaisonsServices(),
     decalage: CFG.shift
   });
+  // Évolution 15 b : les réponses de l'essai, pour « Ce que change l'essai » dans la Synthèse.
+  snaps[slot].reponses = reponsesDuJour();
   if (silencieux) return;
   majCompare();
   toast('Scénario ' + slot + ' capturé');
@@ -2508,7 +2522,12 @@ function comparerRetours() {
   allerPage('j-comparer');
   toast(m.actif ? 'Essai A : retours J+1 · essai B : planche retour' : 'Essais retenus — cochez « Matériel en boucle » pour suivre ce que lave la plonge');
 }
+/** Les réponses des deux essais retenus, ou null s'il en manque un (la carte « Ce que change l'essai » de la Synthèse). */
+function essaisRetenus() {
+  return snaps.A && snaps.B && snaps.A.reponses && snaps.B.reponses ? { A: snaps.A.reponses, B: snaps.B.reponses } : null;
+}
 function majCompare() {
+  if (Sim.vue && Sim.vue.rendreBilan) Sim.vue.rendreBilan();
   const lignes = OrlyComparaison.lignes(snaps.A, snaps.B);
   // L'écart en face de chaque résultat (étape 9) : signé, fléché, coloré — et le mot.
   let groupe = '', html = '<thead><tr><th scope="col">Indicateur</th><th scope="col">A</th><th scope="col">B</th><th scope="col">Écart</th></tr></thead><tbody>';
@@ -2668,10 +2687,19 @@ function enregistrerSeuils(seuils){
   localStorage.setItem(CLE_SEUILS,JSON.stringify(env));
   return env.seuils;
 }
-/** Les réponses de la journée calculée (moteur/reponses.js), aux seuils gardés : le seul chemin de la page. */
-function reponsesDuJour(){
+/** La journée calculée, lue une fois : { r, args, k (les indicateurs), reponses } ; null sans journée. */
+function journeeLue(){
   const at=Sim.ateliers,r=at&&at.resultat;
-  return r&&r.ok&&window.OrlyReponses?OrlyReponses.reponses(r,at.args||{},{seuils:seuilsAlerte().seuils}):null;
+  if(!r||!r.ok||!window.OrlyReponses||!window.OrlyIndicateurs)return null;
+  const args=at.args||{},k=OrlyIndicateurs.journee(r,args);
+  return{r,args,k,reponses:OrlyReponses.reponses(r,args,{seuils:seuilsAlerte().seuils,k})};
+}
+/** Les réponses de la journée calculée (moteur/reponses.js), aux seuils gardés : le seul chemin de la page. */
+function reponsesDuJour(){const j=journeeLue();return j?j.reponses:null;}
+/** « Détails » (évolution 15 b) : sans heures sup ni renforts à montrer, une phrase le dit. */
+function majDetails(){
+  const vide=document.getElementById('details-vide');if(!vide)return;
+  vide.hidden=!!(document.getElementById('bilan-heures-sup')||document.getElementById('bilan-renforts'));
 }
 function reglerSeuils(e){
   const t=e.target;if(!t.matches('[data-seuil]')||!window.OrlyReponses)return;
@@ -3397,6 +3425,14 @@ function initWorkbench() {
     if(b.dataset.onglet&&Sim.onglets)Sim.onglets.choisir(b.dataset.onglet);else showView(b.dataset.aller);});
   // Le menu : une page ([data-page]) ou une partie ([data-vers-partie]), depuis
   // l'en-tête, l'accueil ou n'importe quel lien de la page.
+  // Évolution 15 b : une ligne de la Synthèse (ou sa carte) ouvre ce service dans « Planning des équipes ».
+  const bilan=document.getElementById('bilan-journee');
+  if(bilan)bilan.addEventListener('click',e=>{
+    const b=e.target.closest('[data-pg-viser]');
+    if(b){if(window.OrlyPlanningVue)OrlyPlanningVue.viser(b.dataset.pgViser);return;}
+    const tr=e.target.closest('tr[data-service]');
+    if(tr&&!e.target.closest('button,a,input'))tr.querySelector('[data-pg-viser]').click();
+  });
   document.addEventListener('click',e=>{
     const pg=e.target.closest('[data-page]');
     if(pg&&!pg.disabled){allerPage(pg.dataset.page);return;}

@@ -35,8 +35,8 @@ const UNITE=()=>{
   await page.waitForFunction(()=>document.getElementById('source-label').textContent==='vols-hsp.csv');
   assert.deepEqual(await page.evaluate(()=>{const v=Sim.ateliers.resultat.ateliers.find(a=>a.id==='pl');return [v.heuresSup,v.heuresSupPersonnes];}),[40,150]);
 
-  // La Synthèse : 2 h 30 pour la plonge (40 × 3 + 10 × 3), pas 9 × 40 min.
-  await nav.aller(page,'j-chiffres');
+  // « Détails » (la Synthèse jusqu'à l'évolution 15 b) : 2 h 30 pour la plonge (40 × 3 + 10 × 3), pas 9 × 40 min.
+  await nav.aller(page,'j-details');
   const ligne=page.locator('#bilan-heures-sup tr[data-hs-service=plonge]');
   assert.match(await ligne.textContent(),/2 h 30/);
   assert.match(await ligne.textContent(),/Plonge jour : 2 h 30 \(les personnes des tunnels qui finissent un vol ; la dernière part 40 min après sa présence\)/);

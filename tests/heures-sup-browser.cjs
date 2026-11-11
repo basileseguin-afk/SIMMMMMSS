@@ -61,8 +61,8 @@ const UNITE=()=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
   await page.locator('#rg-sim-heures-sup [data-hs-plafond]').fill('3');await page.locator('#rg-sim-heures-sup [data-hs-plafond]').press('Tab');await attendre();
   assert.equal((await modele()).heuresSup.plafond,180);
 
-  // 4. La Synthèse : par service (personnes × heures) et par équipe.
-  await nav.aller(page,'j-chiffres');
+  // 4. « Détails » (la Synthèse jusqu'à l'évolution 15 b) : par service (personnes × heures) et par équipe.
+  await nav.aller(page,'j-details');
   const bilan=page.locator('#bilan-heures-sup');
   assert.equal(await bilan.isVisible(),true);
   const dl=await page.evaluate(()=>{const a=Sim.ateliers.resultat.ateliers.find(x=>x.id==='mo');return MoteurProduction.dureeLisible(a.personnes*a.heuresSup);});

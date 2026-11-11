@@ -5,6 +5,43 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-11 — Évolution 15 (b) : la Synthèse
+
+- `synthese-vue.js` et `synthese-vue.css` (nouveaux, v1) : la Synthèse répond aux
+  cinq questions, d'après les réponses de la journée (`moteur/reponses.js`).
+  - En tête, deux phrases (« Il faut 26 personnes, 35,3 sont présentes. Cuisine
+    froide coince de J-1 20:00 à 01:14 ; 15 vols et 14 commandes partent en
+    retard. » sur l'unité fictive).
+  - Trois cartes : « Où ça coince » (le goulot, son moment, sa cause, les
+    autres services où un lot attend trop), « Ce qui part en retard » (les
+    exceptions et leur cause, puis les comptes de la journée avec leurs mots
+    d'avant), « Ce que change l'essai » (seulement avec deux essais retenus).
+  - « Les services », dans l'ordre du chemin : besoin, présents, écart et sa
+    barre centrée sur zéro, matin et après-midi, pic au travail, occupation et
+    sa barre, file la plus longue, fin et fin d'horaire, heures sup. Seule une
+    valeur au-delà de son seuil prend la couleur de l'attente, avec une icône ;
+    le rouge reste aux retards. Un clic sur une ligne ouvre ce service dans
+    « Planning des équipes », déplié, marqué, à la vue (`planning-vue.js`,
+    `viser`).
+  - La courbe de la journée : présents et au travail, lots en file, départs des
+    vols, par créneau de 15 min, sur tous les jours de travail ; une bulle qui
+    suit la souris et les flèches.
+  - La page tient sur la largeur à 1 280 et 1 920 px ; le problème des commandes
+    que personne ne prépare reste, avec son lien.
+- Une page « Détails » (Résultats) reçoit les tableaux des heures sup et des
+  renforts, qui quittent la Synthèse ; elle ne paraît que s'ils sont permis
+  (huit pages au plus par partie du menu).
+- `sim.js` : la journée lue une fois (indicateurs et réponses) ; les essais
+  retenus gardent leurs réponses.
+- Tests : `tests/synthese-vue.test.cjs`, `tests/synthese-questions-browser.cjs`
+  (nouveaux) ; `tests/plan-rejoue-fictif.cjs` gagne une journée sans retard ;
+  les tests qui lisaient l'ancienne Synthèse lisent la nouvelle
+  (`synthese-browser`, sa partie v1 ; `browser-smoke`, `menu-browser`) ou
+  « Détails » (`heures-sup-browser`, `heures-sup-personnes-browser`,
+  `renforts-browser`) ; `resultats-browser` vérifie le dessin de l'évolution
+  14 (d), resté en repli, dans une boîte à part ; `onglets.test` dit quand
+  « Détails » paraît. La v2 garde sa Synthèse ; aucun calcul ne change.
+
 ## 2026-11-11 — Évolution 15 (a) : le contrat des résultats et le module des réponses
 
 - `docs/CAHIER_DES_CHARGES.md` : un § 6 bis « Contrat des résultats », avant le

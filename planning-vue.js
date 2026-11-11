@@ -213,7 +213,7 @@
   /* ==== le dessin (navigateur) ======================================================== */
 
   /** Ce que la page garde d'un dessin à l'autre : le zoom, les groupes repliés, l'heure à gauche, la commande choisie. */
-  const etat = { zoom: 'jour', replis: new Set(), gauche: null, choix: null, vue: null };
+  const etat = { zoom: 'jour', replis: new Set(), gauche: null, choix: null, vue: null, vise: null, amener: false };
 
   const ico = nom => (root.OrlyIcones ? root.OrlyIcones.TRAITS[nom] || '' : '');
 
@@ -340,6 +340,7 @@
     appliquerChoix(box);
     direPeriode(box);
     maintenant();
+    appliquerVise(box);
   }
 
   function appliquerChoix(box) {
@@ -463,6 +464,30 @@
     tracer(box, o);
   }
 
+  /**
+   * Montrer un service (un clic dans la Synthèse, évolution 15 b) : déplié, amené à la vue une fois, marqué ; son bouton
+   * reçoit le focus. Appliqué après la navigation vers la page, et à chaque tracé tant qu'il reste visé.
+   */
+  function viser(service) {
+    etat.vise = service == null || service === '' ? null : String(service);
+    etat.amener = !!etat.vise;
+    if (etat.vise) etat.replis.delete(etat.vise);
+    if (typeof document !== 'undefined') setTimeout(() => appliquerVise(document.getElementById('at-planning')), 0);
+  }
+  function appliquerVise(box) {
+    if (!box) return;
+    for (const g of box.querySelectorAll('.pg-groupe.pg-vise')) g.classList.remove('pg-vise');
+    const g = etat.vise ? [...box.querySelectorAll('.pg-groupe')].find(x => x.dataset.service === etat.vise) : null;
+    if (!g) return;
+    const b = g.querySelector('.pg-replier');
+    if (g.classList.contains('replie') && b) b.click();
+    g.classList.add('pg-vise');
+    if (!etat.amener || !g.offsetParent) return;
+    etat.amener = false;
+    g.scrollIntoView({ block: 'start' });
+    if (b) b.focus({ preventScroll: true });
+  }
+
   /** L'heure rejouée : un trait sur toute la hauteur, son heure dans l'axe. `t` : minutes, ou null avant le rejeu. */
   let heure = null;
   function maintenant(t) {
@@ -486,7 +511,7 @@
   }
 
   const api = { ZOOMS, PX_HEURE, HAUT_LIGNE, HAUT_GROUPE, NOMS, pxParHeure, zoomVoisin, bornes, jourLePlusCharge, ordreDesServices, groupes, segments, limites, enRetard,
-    marge, info, periode, visible, reperes, commandeDe, porte, rendre, maintenant, etat };
+    marge, info, periode, visible, reperes, commandeDe, porte, rendre, maintenant, viser, etat };
   if (enNode) module.exports = api;
   else root.OrlyPlanningVue = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -126,8 +126,8 @@ const UNITE=()=>{
   await page.locator('[data-at="mb"] [data-at-champ=personnesMax]').fill('');await page.locator('[data-at="mb"] [data-at-champ=personnesMax]').press('Tab');await attendre();
   assert.equal('personnesMax' in (await cases()).ateliers.find(a=>a.id==='mb'),false);
 
-  // 6. La Synthèse : qui a aidé qui, et combien de temps.
-  await nav.aller(page,'j-chiffres');
+  // 6. « Détails » (la Synthèse jusqu'à l'évolution 15 b) : qui a aidé qui, et combien de temps.
+  await nav.aller(page,'j-details');
   const bilan=page.locator('#bilan-renforts');
   assert.equal(await bilan.isVisible(),true);
   const rangee=bilan.locator('tr[data-rf-de=ma][data-rf-vers=mb]');

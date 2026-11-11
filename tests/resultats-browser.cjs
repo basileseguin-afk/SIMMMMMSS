@@ -31,27 +31,30 @@ const sauvegarde=F.sauvegardeFictive(),CSV=F.volsCsv(),J=F.heureDuPicAttendue(sa
  /** Une couleur de jeton, telle que le navigateur la calcule. */
  const jeton=v=>page.evaluate(v=>{const d=document.createElement('i');d.style.color='var('+v+')';document.body.append(d);const c=getComputedStyle(d).color;d.remove();return c;},v);
  try{
-  // 1. Synthèse.
+  // 1. La Synthèse de l'évolution 14 (d) : celle de l'évolution 15 (b) la remplace dans la page (synthese-questions-browser) ;
+  //    son dessin reste le repli de resultats-vue.js, vérifié ici dans une boîte à part, sous les mêmes styles.
+  await page.evaluate(()=>{const d=document.createElement('div');d.id='bilan-14d';document.getElementById('journee-chiffres').append(d);
+    OrlyResultatsVue.rendreSynthese(d,Sim.ateliers.resultat.indicateurs,{});});
   const k=await page.evaluate(()=>JSON.parse(JSON.stringify(Sim.ateliers.resultat.indicateurs)));
-  assert.equal(await page.locator('#bilan-journee .bilan-resume').textContent(),RV.resume(k),'la phrase de résumé');
-  assert.equal(await page.locator('#bilan-journee > *').first().evaluate(e=>e.className),'bilan-resume','en tête de page');
-  assert.deepEqual(await page.locator('#bilan-journee .bilan-q').allTextContents(),['Vols chargés à l’heure','Commandes prêtes à l’heure','Commande la plus en retard','Travail fourni']);
-  assert.ok((await page.locator('#bilan-journee .bilan-lien').allTextContents()).includes('Vol le plus en retard'));
+  assert.equal(await page.locator('#bilan-14d .bilan-resume').textContent(),RV.resume(k),'la phrase de résumé');
+  assert.equal(await page.locator('#bilan-14d > *').first().evaluate(e=>e.className),'bilan-resume','en tête de page');
+  assert.deepEqual(await page.locator('#bilan-14d .bilan-q').allTextContents(),['Vols chargés à l’heure','Commandes prêtes à l’heure','Commande la plus en retard','Travail fourni']);
+  assert.ok((await page.locator('#bilan-14d .bilan-lien').allTextContents()).includes('Vol le plus en retard'));
   const retard=await jeton('--ds-retard'),retardTexte=await jeton('--ds-retard-texte');
   /** Les éléments colorés comme un retard : la marque des lignes, le liseré et le chiffre des cartes. */
   const enRouge=()=>page.evaluate(([r,rt])=>[
-    ...[...document.querySelectorAll('#bilan-journee .bilan>div')].filter(d=>getComputedStyle(d.querySelector('dt'),'::before').backgroundColor===r).map(d=>[d.querySelector('dt').textContent.trim(),d.querySelector('dd').textContent.trim()]),
-    ...[...document.querySelectorAll('#bilan-journee .bilan-cle')].filter(c=>getComputedStyle(c).borderLeftColor===r||getComputedStyle(c.querySelector('.bilan-v')).color===rt).map(c=>[c.querySelector('.bilan-q').textContent,c.querySelector('.bilan-v').textContent])],[retard,retardTexte]);
+    ...[...document.querySelectorAll('#bilan-14d .bilan>div')].filter(d=>getComputedStyle(d.querySelector('dt'),'::before').backgroundColor===r).map(d=>[d.querySelector('dt').textContent.trim(),d.querySelector('dd').textContent.trim()]),
+    ...[...document.querySelectorAll('#bilan-14d .bilan-cle')].filter(c=>getComputedStyle(c).borderLeftColor===r||getComputedStyle(c.querySelector('.bilan-v')).color===rt).map(c=>[c.querySelector('.bilan-q').textContent,c.querySelector('.bilan-v').textContent])],[retard,retardTexte]);
   const rouges=await enRouge();
   for(const [q,v] of rouges)assert.ok(!/^(0|aucun|aucune)\b/.test(v),'« '+q+' » : '+v+' n’est pas un retard et ne s’écrit pas en rouge');
   assert.ok(rouges.some(([q])=>q==='Commande la plus en retard'),'la journée fictive a des retards : ils se disent en rouge');
   assert.ok(!rouges.some(([q])=>q==='Vols non chargés'),'0 vol non chargé : pas de rouge');
   // La même Synthèse, sans aucun retard : rien de rouge.
-  await page.evaluate(()=>{const k=Sim.ateliers.resultat.indicateurs;OrlyResultatsVue.rendreSynthese(document.getElementById('bilan-journee'),
+  await page.evaluate(()=>{const k=Sim.ateliers.resultat.indicateurs;OrlyResultatsVue.rendreSynthese(document.getElementById('bilan-14d'),
     {...k,aHeure:k.classesSuivies,enRetard:0,retardMax:0,pasFinies:0,volsCharges:k.volsSuivis,volsAHeure:k.volsSuivis,retardVolMax:0,attenteTotale:0},{});});
   assert.deepEqual(await enRouge(),[],'aucun retard : aucune couleur critique');
-  assert.equal(await page.locator('#bilan-journee .bilan-cle').filter({hasText:'Commande la plus en retard'}).locator('.bilan-v').textContent(),'aucune');
-  await page.evaluate(()=>Sim.vue.rendreBilan());
+  assert.equal(await page.locator('#bilan-14d .bilan-cle').filter({hasText:'Commande la plus en retard'}).locator('.bilan-v').textContent(),'aucune');
+  await page.evaluate(()=>document.getElementById('bilan-14d').remove());
 
   // 2. Heure de chaque commande : la marge et son tri ; « Retirer » dans le menu.
   await nav.aller(page,'at-repas');await attendre();

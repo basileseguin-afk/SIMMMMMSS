@@ -60,6 +60,9 @@
       // Seulement avec un programme de vols daté (banc d'essai, évolution 10).
       { id: 'j-periode', nom: 'Période', ico: 'journee', si: 'periode' },
       { id: 'j-stocks', nom: 'Stocks et retours', ico: 'boite' },
+      // Le détail derrière la Synthèse (évolution 15 b) : les heures sup et les renforts, équipe par équipe ; seulement
+      // quand ils sont permis.
+      { id: 'j-details', nom: 'Détails', ico: 'info', si: 'details' },
       { id: 'j-comparer', nom: 'Comparer deux essais', ico: 'lecture' },
       // La même toile, pour la modifier : une page de passage, jamais retenue.
       { id: 'u-plan', nom: 'Plan de l’unité', ico: 'unite', passage: true }
@@ -111,10 +114,11 @@
     { id: 'resultats', nom: 'Résultats', ico: 'journee', couleur: 'var(--c-journee)',
       resume: 'Ce que la journée donne',
       pages: [
-        { id: 'j-chiffres', intro: 'La journée en chiffres : commandes à l’heure, retards, attentes, travail fourni.' },
+        { id: 'j-chiffres', intro: 'Combien de personnes il faut, où ça coince, quand chaque service finit, ce qui part en retard, ce que change un essai.' },
         { id: 'j-periode', intro: 'La période jour après jour : les personnes, le besoin exact, les heures sup et les retards de chaque service.' },
         { id: 'j-plan', intro: 'Rejouez la journée sur le plan de l’unité : qui travaille, qui attend, ce qui est prêt.' },
         { id: 'at-planning', intro: 'Qui travaille quand, à une échelle fixe : les équipes groupées par service, de l’amont vers l’aval, et en tête de chaque service sa charge (présents, au travail, en file) ; trois zooms, l’axe des heures toujours visible ; le tableau des équipes dessous.' },
+        { id: 'j-details', intro: 'Le détail derrière la Synthèse : les heures supplémentaires et les renforts, équipe par équipe.' },
         { id: 'at-repas', intro: 'Chaque commande : à quelle heure elle est prête, et avant quand elle devait l’être.' },
         { id: 'at-grille', intro: 'Chaque commande, étape par étape : cliquez « Prête à » pour la suivre dans le temps.' },
         { id: 'v-departs', intro: 'Chaque vol : ses repas sont-ils prêts avant son départ ?' },

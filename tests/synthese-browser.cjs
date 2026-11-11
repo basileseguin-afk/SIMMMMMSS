@@ -8,7 +8,9 @@
  *   3. Chaque indicateur mène à sa page.
  *   4. Comparer deux essais : un écart signé et fléché en face de chaque
  *      résultat, coloré selon qu'il est mieux ou moins bien — et le mot.
- * v1 et v2. */
+ * v1 et v2. Depuis l'évolution 15 (b), la Synthèse de la v1 répond aux cinq
+ * questions : ses comptes gardent les mots et les nombres d'avant, les deux
+ * cartes et le problème mènent à leur page ; 1 à 3 restent ceux de la v2. */
 const assert=require('node:assert/strict'),path=require('node:path');
 const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
@@ -53,6 +55,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await decrire();await page.evaluate(()=>Sim.ateliers.brancherHandling());await attendre();
    await nav.aller(page,'j-chiffres');await attendre();
 
+   // v1, évolution 15 (b) : la Synthèse répond aux cinq questions ; ses comptes gardent les mots et les nombres d'avant.
+   if(version==='v1'){await synthesev1(V);continue;}
    // 1. Les mêmes nombres qu'avant.
    const {o,absentes}=await attendu(),l=await lu();
    const travail=o['Travail fourni'];delete o['Travail fourni'];
@@ -82,6 +86,33 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    await page.locator('#bilan-journee .bilan-probleme [data-page]').click();await attendre(200);
    assert.equal(await actif(),'mu-services',V+'le problème mène où il se règle');
 
+   await comparer(V);
+  }
+  console.log('synthese-browser : ok');
+ }catch(e){console.error(e);process.exitCode=1;}finally{await browser.close();}
+ /** v1 : les comptes de la carte « Ce qui part en retard », les phrases en tête, les cartes, le problème et les liens. */
+ async function synthesev1(V){
+   const k=await page.evaluate(()=>Sim.ateliers.resultat.indicateurs);
+   const comptes=await page.evaluate(()=>Object.fromEntries([...document.querySelectorAll('#bilan-journee .sy-comptes>div')].map(d=>[d.querySelector('dt').textContent,d.querySelector('dd').textContent])));
+   const attendus={'Commandes prêtes à l’heure':k.aHeure+' sur '+k.classesSuivies,'Commandes en retard':String(k.enRetard)};
+   if(k.pasFinies)attendus['Commandes pas finies']=String(k.pasFinies);
+   if(k.volsSuivis)attendus['Vols chargés à l’heure']=k.volsAHeure+' sur '+k.volsSuivis;
+   for(const [q,v] of Object.entries(attendus))assert.equal(comptes[q],v,V+q);
+   assert.match(await page.locator('#bilan-journee .bilan-resume').first().textContent(),/^Il faut \d+ personnes?, [\d,]+ (sont présentes|est présente)\.$/,V+'la première phrase');
+   assert.deepEqual(await page.locator('#bilan-journee .sy-carte h4').allTextContents(),['Où ça coince','Ce qui part en retard'],V+'deux cartes sans essais');
+   assert.ok(k.classesAbsentes>0);
+   assert.match(await page.locator('#bilan-journee .bilan-probleme').innerText(),new RegExp(k.classesAbsentes+' commandes que personne ne prépare'),V+'le problème');
+   await page.locator('#bilan-journee .bilan-probleme [data-page]').click();await attendre(200);
+   assert.equal(await actif(),'mu-services',V+'le problème mène où il se règle');
+   await nav.aller(page,'j-chiffres');await attendre(150);
+   const vers=await page.locator('#bilan-journee .sy-carte[aria-label="Ce qui part en retard"] .sy-vers').getAttribute('data-page');
+   await page.locator('#bilan-journee .sy-carte[aria-label="Ce qui part en retard"] .sy-vers').click();await attendre(200);
+   assert.equal(await actif(),vers,V+'« Voir le détail » mène à sa page');
+   await comparer(V);
+   assert.deepEqual(errors,[],V+errors.join(' | '));
+ }
+ /** Comparer deux essais : un écart signé en face de chaque résultat. */
+ async function comparer(V){
    // 4. Comparer : un écart signé en face de chaque résultat.
    await nav.aller(page,'j-comparer');await attendre();
    await page.locator('#snap-a').click();await attendre();
@@ -96,9 +127,6 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    assert.match(fin.classe,/\bmieux\b/,V+'en couleur du mieux');
    assert.equal(lignes.find(x=>x.lib==='Personnes au travail').ecart,'',V+'un réglage n’a pas d’écart');
    assert.ok(lignes.filter(x=>x.ecart).every(x=>/^[▲▼] [+−]/.test(x.ecart)),V+'chaque écart est signé et fléché');
-
    assert.deepEqual(errors,[],V+errors.join(' | '));
-  }
-  console.log('synthese-browser : ok');
- }catch(e){console.error(e);process.exitCode=1;}finally{await browser.close();}
+ }
 })();

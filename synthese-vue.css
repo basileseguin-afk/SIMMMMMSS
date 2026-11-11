@@ -1,0 +1,82 @@
+/* ==========================================================================
+ *  LA SYNTHÈSE (version 1, évolution 15 b) — synthese-vue.js
+ *  Couleurs, textes, espacements et rayons : les jetons de ds.css. Une couleur
+ *  de statut ne dit qu'un état au-delà de son seuil ; le rouge, un retard.
+ * ==========================================================================*/
+
+/* En tête : deux phrases. */
+.sy-tete{margin:0 0 var(--ds-e-4)}
+.sy-tete .bilan-resume{margin:0 0 var(--ds-e-1)}
+
+/* Les trois cartes : sur toute la largeur, autant de colonnes que de cartes. */
+.sy-cartes{display:grid;grid-template-columns:repeat(var(--n,2),minmax(0,1fr));align-items:start;gap:var(--ds-e-4);margin:0 0 var(--ds-e-5)}
+.sy-cartes[data-n="3"]{--n:3}
+.sy-carte{--t:var(--ds-texte-4);display:flex;flex-direction:column;gap:var(--ds-e-2);padding:var(--ds-e-4);border:1px solid var(--ds-bordure);
+  border-left:4px solid var(--t);border-radius:var(--ds-r-2);background:var(--ds-surface-1);box-shadow:var(--ds-ombre-carte);min-width:0}
+.sy-carte[data-ton="ok"]{--t:var(--ds-ok)}
+.sy-carte[data-ton="attente"]{--t:var(--ds-attente)}
+.sy-carte[data-ton="retard"]{--t:var(--ds-retard)}
+.sy-carte h4{margin:0;font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);letter-spacing:.04em;text-transform:uppercase;color:var(--ds-texte-2)}
+.sy-carte p{margin:0}
+.sy-grand{font-size:var(--ds-t-20);font-weight:var(--ds-g-fort);color:var(--ds-texte-1)}
+.sy-exceptions,.sy-essai{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:var(--ds-e-2);font-size:var(--ds-t-13)}
+.sy-exceptions small{display:block;color:var(--ds-texte-3);font-size:var(--ds-t-12)}
+.sy-vers{align-self:flex-start}
+.sy-comptes{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:var(--ds-e-1) var(--ds-e-4);margin:var(--ds-e-2) 0 0;padding-top:var(--ds-e-2);border-top:1px solid var(--ds-bordure);font-size:var(--ds-t-12)}
+.sy-comptes div{display:flex;justify-content:space-between;gap:var(--ds-e-2)}
+.sy-comptes dt{color:var(--ds-texte-2)}
+.sy-comptes dd{margin:0;font-weight:var(--ds-g-moyen);color:var(--ds-texte-1);font-variant-numeric:tabular-nums}
+.sy-aussi{margin-top:var(--ds-e-2) !important;font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);color:var(--ds-texte-2)}
+
+/* Les blocs : « Les services », « La journée ». */
+.sy-bloc{margin:0 0 var(--ds-e-5)}
+.sy-bloc>h4{margin:0 0 var(--ds-e-2);font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);letter-spacing:.04em;text-transform:uppercase;color:var(--ds-texte-2)}
+
+/* Le tableau des services : une ligne cliquable par service et jour de travail. */
+.sy-table{width:100%;font-size:var(--ds-t-13);font-variant-numeric:tabular-nums}
+.sy-table tbody tr{cursor:pointer}
+.sy-table tbody tr:hover{background:var(--ds-survol)}
+.sy-table td,.sy-table th{vertical-align:top;padding:8px 6px}
+.sy-table th:first-child,.sy-table td:first-child{padding-left:10px}
+.sy-table small{display:block;color:var(--ds-texte-3);font-size:var(--ds-t-12);white-space:nowrap}
+.sy-service{all:unset;cursor:pointer;font-weight:var(--ds-g-moyen);color:var(--ds-texte-1)}
+.sy-service:hover{text-decoration:underline}
+.sy-service:focus-visible{box-shadow:var(--ds-focus);border-radius:var(--ds-r-1)}
+.sy-jour{display:inline-block;margin-left:var(--ds-e-1);padding:0 6px;border-radius:999px;background:var(--ds-surface-2);color:var(--ds-texte-3);font-size:var(--ds-t-11)}
+.sy-sur{color:var(--ds-texte-3)}
+.sy-vide{color:var(--ds-texte-3)}
+.sy-table [data-ton="attente"]{background:var(--ds-attente-doux);color:var(--ds-attente-texte)}
+.sy-table [data-ton="attente"] .ico{width:13px;height:13px;margin-right:4px;vertical-align:-2px}
+.sy-ecart,.sy-occ{white-space:nowrap}
+.sy-ecart .sy-v,.sy-occ .sy-v{display:inline-block;min-width:30px;text-align:right;margin-right:6px}
+/* L'écart : une barre centrée sur zéro ; à gauche, il manque du monde, à droite, il y en a de trop. */
+.sy-ecart-barre{position:relative;display:inline-block;width:44px;height:8px;vertical-align:middle;border-radius:2px;background:var(--ds-surface-2)}
+.sy-ecart-barre::before{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--ds-bordure-forte)}
+.sy-ecart-barre i{position:absolute;top:0;bottom:0;border-radius:2px;background:var(--ds-texte-4)}
+[data-ton="attente"] .sy-ecart-barre i,[data-ton="attente"] .sy-occ-barre i{background:var(--ds-attente)}
+.sy-occ-barre{display:inline-block;width:44px;height:8px;vertical-align:middle;border-radius:2px;background:var(--ds-surface-2)}
+.sy-occ-barre i{display:block;height:100%;border-radius:2px;background:var(--ds-d1)}
+.sy-legende{margin-top:var(--ds-e-2)}
+
+/* La courbe de la journée : à la largeur du bloc ; la bulle dessous. */
+.sy-legende-courbe{display:flex;flex-wrap:wrap;gap:var(--ds-e-4);margin:0 0 var(--ds-e-2);font-size:var(--ds-t-12);color:var(--ds-texte-2)}
+.sy-legende-courbe span::before{content:"";display:inline-block;width:14px;height:10px;margin-right:6px;vertical-align:-1px;border-radius:2px}
+.sy-l-presents::before{height:0 !important;border-top:2px solid var(--ds-texte-3);vertical-align:3px !important}
+.sy-l-travail::before{background:color-mix(in srgb,var(--ds-d1) 32%,transparent);border:2px solid var(--ds-d1)}
+.sy-l-file::before{background:var(--ds-attente)}
+.sy-l-depart::before{width:0 !important;height:12px !important;border-left:2px solid var(--ds-texte-2)}
+.sy-trace{position:relative;width:100%;overflow:hidden;border-radius:var(--ds-r-2)}
+.sy-trace:focus-visible{box-shadow:var(--ds-focus)}
+.sy-courbe-svg{display:block}
+.sy-grille{stroke:var(--ds-bordure);stroke-width:1}
+.sy-echelle{fill:var(--ds-texte-3);font-size:var(--ds-t-11);text-anchor:end}
+.sy-heure{fill:var(--ds-texte-3);font-size:var(--ds-t-11);text-anchor:middle}
+.sy-depart{stroke:var(--ds-texte-2);stroke-width:2;stroke-linecap:round}
+.sy-curseur{stroke:var(--ds-texte-1);stroke-width:1;stroke-dasharray:3 3}
+.sy-bulle{min-height:1.4em;margin-top:var(--ds-e-1)}
+
+/* « Détails » : les heures sup et les renforts, sous un titre. */
+.details-titre{margin:0 0 var(--ds-e-3)}
+
+/* Moins de 1 100 px : les cartes s'empilent. */
+@media (max-width:1100px){.sy-cartes,.sy-cartes[data-n="3"]{grid-template-columns:minmax(0,1fr)}}

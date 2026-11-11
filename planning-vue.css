@@ -126,3 +126,6 @@
 
 /* Sous le planning, le tableau des équipes et le classeur de la charge. */
 .at-planning.pg+.at-charge{margin:var(--ds-e-4) 0 0}
+
+/* Un service visé depuis la Synthèse (évolution 15 b) : un liseré d'accent sur son en-tête. */
+.pg-groupe.pg-vise>.pg-groupe-tete{box-shadow:inset 3px 0 0 var(--ds-accent);background:var(--ds-accent-pale)}
