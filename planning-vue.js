@@ -178,11 +178,13 @@
   /** L'infobulle d'une barre : la commande, le début, la fin, la durée, l'attente et la marge. */
   function info(l, a, o) {
     const nomSvc = id => ((o && o.nomService) ? o.nomService(id) : id) || id, m = marge(l, (o && o.parClasse) || {});
-    return P().enClair(l.nom) + '\n' + P().hhmm(l.debut) + ' → ' + P().hhmm(l.fin) + ' (' + Math.round(l.duree) + ' min'
-      + (l.arret ? ', dont ' + Math.round(l.arret) + ' min d’arrêt' : '') + ')'
-      + (l.fusion ? '\nÀ la chaîne : ' + nomSvc(l.fusion) + ' ' + Math.round(l.minutesFusion || 0) + ' min + ' + nomSvc(a.service) + ' ' + Math.round(l.minutesIci || 0) + ' min de travail' : '')
-      + '\nAttente : ' + (l.attente >= 0.5 ? Math.round(l.attente) + ' min' : 'aucune')
-      + (m == null ? '' : m < -0.5 ? '\nRetard : ' + Math.round(-m) + ' min' : '\nMarge : ' + Math.round(Math.max(0, m)) + ' min');
+    // Une seule écriture du temps (évolution 15 c) : « 45 min » sous une heure, « 2 h 05 » au-delà.
+    const dl = x => P().dureeLisible(x);
+    return P().enClair(l.nom) + '\n' + P().hhmm(l.debut) + ' → ' + P().hhmm(l.fin) + ' (' + dl(l.duree)
+      + (l.arret ? ', dont ' + dl(l.arret) + ' d’arrêt' : '') + ')'
+      + (l.fusion ? '\nÀ la chaîne : ' + nomSvc(l.fusion) + ' ' + dl(l.minutesFusion || 0) + ' + ' + nomSvc(a.service) + ' ' + dl(l.minutesIci || 0) + ' de travail' : '')
+      + '\nAttente : ' + (l.attente >= 0.5 ? dl(l.attente) : 'aucune')
+      + (m == null ? '' : m < -0.5 ? '\nRetard : ' + dl(-m) : '\nMarge : ' + dl(Math.max(0, m)));
   }
 
   /* ---- l'axe ---------------------------------------------------------------------- */

@@ -73,3 +73,17 @@
 .seuil .at-inline-champ{display:flex;flex-direction:column;align-items:flex-start;gap:var(--ds-e-1);font-weight:var(--ds-g-moyen)}
 .seuil .champ-unite>input{width:132px;max-width:none}
 .seuil .mini-note{margin:var(--ds-e-1) 0 0}
+
+/* « Détails » (évolution 15 c) : ses onglets internes, en tête de page, sous l'introduction. */
+.onglets-internes{display:flex;flex-wrap:wrap;gap:var(--ds-e-1);margin:var(--ds-e-3) 0 0;border-bottom:1px solid var(--ds-bordure)}
+.onglets-internes[hidden]{display:none}
+.oi-onglet{all:unset;cursor:pointer;padding:6px var(--ds-e-3);margin-bottom:-1px;border-bottom:2px solid transparent;font-size:var(--ds-t-13);font-weight:var(--ds-g-moyen);color:var(--ds-texte-2)}
+.oi-onglet:hover{color:var(--ds-texte-1)}
+.oi-onglet.actif{color:var(--ds-texte-1);border-bottom-color:var(--ds-accent)}
+.oi-onglet:focus-visible{box-shadow:var(--ds-focus);border-radius:var(--ds-r-1)}
+
+/* Commandes et Vols (évolution 15 c) : les exceptions d'abord ; le reste, replié en une ligne qui se déplie. */
+.at-replie td,.vol-replie td{padding:6px 10px;background:var(--ds-surface-2)}
+.at-deplier,.vol-deplier{font-weight:var(--ds-g-moyen)}
+.at-sans-exception td,.vol-sans-exception td{color:var(--ds-texte-3);font-size:var(--ds-t-13)}
+#at-classes>.sy-comptes,#vols-comptes>.sy-comptes{grid-template-columns:repeat(auto-fill,minmax(260px,1fr));max-width:1100px;margin:0 0 var(--ds-e-3);border-top:0;padding-top:0;font-size:var(--ds-t-13)}

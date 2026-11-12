@@ -224,6 +224,39 @@ test('5. deux essais : la différence sur chacune des quatre réponses (B − A)
   assert.deepEqual([meme.exceptions.nouvelles, meme.exceptions.reglees], [[], []]);
 });
 
+/* ---- Les comptes (évolution 15 c) ------------------------------------------------------------------- */
+
+test('les comptes disent leur périmètre : les vols que le handling charge, à part les commandes sans avion ; les repas, à part l’équipement', () => {
+  // NO1 (08:15) chargé en retard ; SU1 (20:00) à l'heure ; PR1, un vol que le handling ne charge pas (une compagnie qu'il ne sert pas).
+  const h = { ...quais, compagnies: ['NORD', 'SUD'] };
+  const { r, args } = jouer({ vols: [dep('NO1', 'NORD', '08:15'), dep('SU1', 'SUD', '20:00'), dep('PR1', 'PROD', '12:00')],
+    bareme: { cuisine: { '*/YC': 120 }, prepa: { '*/YC': 30 } },
+    ateliers: [eq('cu', 'cuisine', '06:00', 1, [['NORD/YC'], ['SUD/YC'], ['PROD/YC']]), eq('mo', 'prepa', '06:00', 1, [['NORD/YC'], ['SUD/YC'], ['PROD/YC']]), h],
+    parcours: [chemin('c1', ['cuisine', 'prepa', 'quais'])], parcoursCabine: { YC: 'c1' } });
+  const c = R.reponses(r, args).comptes, par = Object.values(r.parClasse).filter(x => !x.absente);
+  assert.deepEqual(c.vols, { suivis: r.vols.length, charges: r.vols.filter(v => v.fin != null).length, aHeure: r.vols.filter(v => v.aHeure).length });
+  assert.ok(!r.vols.some(v => v.id === 'PR1'), 'PR1 n’est pas chargé par le handling');
+  assert.equal(c.sansAvion, 1, 'PROD/YC : une commande sans avion');
+  const repas = par.filter(x => !x.id.includes('/@')), equip = par.filter(x => x.id.includes('/@'));
+  assert.deepEqual(c.repas, { suivies: repas.length, aHeure: repas.filter(x => x.aHeure).length, enRetard: repas.filter(x => x.fin != null && !x.aHeure).length,
+    pasFinies: repas.filter(x => x.fin == null).length });
+  assert.deepEqual(c.equipement, { suivies: 0, aHeure: 0, enRetard: 0, pasFinies: 0 }); assert.equal(equip.length, 0);
+  // L'unité fictive : l'armement de chaque compagnie (« CIE/@ARM ») est une commande d'équipement, compté à part.
+  const F = require('./plan-rejoue-fictif.cjs'), f = F.heureDuPicAttendue(F.sauvegardeFictive(), F.volsCsv()), cf = R.reponses(f.resultat, f.args).comptes;
+  const arm = Object.values(f.resultat.parClasse).filter(x => !x.absente && x.id.includes('/@ARM'));
+  assert.ok(arm.length >= 1); assert.equal(cf.equipement.suivies, arm.length);
+  assert.equal(cf.repas.suivies + cf.equipement.suivies, f.resultat.indicateurs.classesSuivies);
+  // Les mêmes nombres que les indicateurs de la journée, réunis.
+  const k = r.indicateurs;
+  assert.equal(c.repas.suivies + c.equipement.suivies, k.classesSuivies);
+  assert.equal(c.repas.aHeure + c.equipement.aHeure, k.aHeure);
+  assert.equal(c.repas.enRetard + c.equipement.enRetard, k.enRetard);
+  assert.equal(c.sansEquipe, k.classesAbsentes);
+  // Sans handling : pas de vols chargés, pas de commande « sans avion ».
+  const p = PERSONNEL(), c2 = R.reponses(p.r, p.args).comptes;
+  assert.deepEqual([c2.vols.suivis, c2.sansAvion], [0, 0]);
+});
+
 /* ---- Les seuils ------------------------------------------------------------------------------------ */
 
 test('les seuils : les défauts quand la sauvegarde ne les a pas', () => {

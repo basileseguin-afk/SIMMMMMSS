@@ -33,7 +33,8 @@
     vols: [
       { id: 'v-programme', nom: 'Programme des vols', ico: 'avion' },
       { id: 'v-planche', nom: 'Planche retour', ico: 'camion' },
-      { id: 'v-departs', nom: 'Vols prêts au départ', ico: 'depart' }
+      // Évolution 15 (c) : un onglet de « Détails » ; son ancien nom se cherche toujours (« Aller à… »).
+      { id: 'v-departs', nom: 'Vols', ancien: 'Vols prêts au départ', ico: 'depart' }
     ],
     ateliers: [
       { id: 'mu-pas', nom: 'Prêt à simuler ?', ico: 'check' },
@@ -44,7 +45,7 @@
       { id: 'at-equipes', nom: 'Équipes une par une', ico: 'service' },
       { id: 'at-grille', nom: 'Étapes de chaque commande', ico: 'fleche' },
       { id: 'at-planning', nom: 'Planning des équipes', ico: 'journee' },
-      { id: 'at-repas', nom: 'Heure de chaque commande', ico: 'plateau' },
+      { id: 'at-repas', nom: 'Commandes', ancien: 'Heure de chaque commande', ico: 'plateau' },
       { id: 'at-recap', nom: 'Horaires des équipes', ico: 'journee' }
     ],
     reglages: [
@@ -60,9 +61,8 @@
       // Seulement avec un programme de vols daté (banc d'essai, évolution 10).
       { id: 'j-periode', nom: 'Période', ico: 'journee', si: 'periode' },
       { id: 'j-stocks', nom: 'Stocks et retours', ico: 'boite' },
-      // Le détail derrière la Synthèse (évolution 15 b) : les heures sup et les renforts, équipe par équipe ; seulement
-      // quand ils sont permis.
-      { id: 'j-details', nom: 'Détails', ico: 'info', si: 'details' },
+      // Le détail derrière la Synthèse (évolution 15 b) : les heures sup et les renforts, équipe par équipe.
+      { id: 'j-details', nom: 'Heures sup et renforts', ancien: 'Détails', ico: 'sablier' },
       { id: 'j-comparer', nom: 'Comparer deux essais', ico: 'lecture' },
       // La même toile, pour la modifier : une page de passage, jamais retenue.
       { id: 'u-plan', nom: 'Plan de l’unité', ico: 'unite', passage: true }
@@ -91,6 +91,8 @@
         { id: 'mu-carte', intro: 'Tous les chemins d’un coup d’œil : une colonne par flux, une ligne par service, rangée par étape.' },
         { id: 'mu-flux', intro: 'Les flux de production : par où ils passent, et quelle commande (compagnie × classe) suit quel chemin.' },
         { id: 'at-chemins', intro: 'Le chemin d’une commande, de bout en bout, avec l’équipe qui la prépare sur chaque service.' },
+        // Un réglage (évolution 15 c) : elle quitte les Résultats pour les Chemins.
+        { id: 'at-grille', intro: 'Chaque commande, étape par étape : cliquez « Prête à » pour la suivre dans le temps.' },
         { id: 'u-liens', plus: true, intro: 'Qui livre qui dans l’unité : ces liens ne servent qu’aux commandes sans chemin.' }
       ] },
     { id: 'organisation', nom: 'Équipes', ico: 'equipe', couleur: 'var(--c-equipes)',
@@ -118,11 +120,11 @@
         { id: 'j-periode', intro: 'La période jour après jour : les personnes, le besoin exact, les heures sup et les retards de chaque service.' },
         { id: 'j-plan', intro: 'Rejouez la journée sur le plan de l’unité : qui travaille, qui attend, ce qui est prêt.' },
         { id: 'at-planning', intro: 'Qui travaille quand, à une échelle fixe : les équipes groupées par service, de l’amont vers l’aval, et en tête de chaque service sa charge (présents, au travail, en file) ; trois zooms, l’axe des heures toujours visible ; le tableau des équipes dessous.' },
-        { id: 'j-details', intro: 'Le détail derrière la Synthèse : les heures supplémentaires et les renforts, équipe par équipe.' },
-        { id: 'at-repas', intro: 'Chaque commande : à quelle heure elle est prête, et avant quand elle devait l’être.' },
-        { id: 'at-grille', intro: 'Chaque commande, étape par étape : cliquez « Prête à » pour la suivre dans le temps.' },
-        { id: 'v-departs', intro: 'Chaque vol : ses repas sont-ils prêts avant son départ ?' },
-        { id: 'j-stocks', intro: 'Ce qui attend entre deux services, et les retours des vols à la plonge.' },
+        // « Détails » (évolution 15 c) : quatre pages en onglets internes, une seule entrée au menu (GROUPES).
+        { id: 'at-repas', groupe: 'details', intro: 'Chaque commande : les exceptions d’abord ; celles qui sont à l’heure se déplient.' },
+        { id: 'v-departs', groupe: 'details', intro: 'Chaque vol : les exceptions d’abord ; ceux qui sont chargés à l’heure se déplient.' },
+        { id: 'j-stocks', groupe: 'details', intro: 'Ce qui attend entre deux services, et les retours des vols à la plonge.' },
+        { id: 'j-details', groupe: 'details', intro: 'Les heures supplémentaires et les renforts, équipe par équipe.' },
         { id: 'j-comparer', intro: 'Retenez deux essais et voyez ce qui a bougé.' }
       ] },
     { id: 'fichier', nom: 'Sauvegarde', ico: 'boite', couleur: 'var(--c-unite)', cache: true,
@@ -132,6 +134,11 @@
       ] }
   ];
   const CLE = 'ory-menu-pages';
+  /**
+   * Les groupes de pages (évolution 15 c) : une seule entrée au menu, ses pages en onglets internes, en tête de page.
+   * « Détails » : les commandes, les vols, les stocks et les heures sup, derrière la Synthèse.
+   */
+  const GROUPES = { details: { nom: 'Détails', ico: 'info' } };
 
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
     c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -152,6 +159,23 @@
   const montree = id => { const o = page(id); return !!o && (!o.si || !!(conditions[o.si] && conditions[o.si]())); };
   /** Les pages d'une partie qui se montrent, dans l'ordre du menu. */
   const pagesDe = partie => ((PARTIES.find(p => p.id === partie) || {}).pages || []).map(x => page(x.id)).filter(x => montree(x.id));
+  /** Les pages d'un groupe qui se montrent, dans l'ordre du menu. */
+  const pagesDuGroupe = g => PARTIES.flatMap(p => pagesDe(p.id)).filter(x => x.groupe === g);
+  /**
+   * Les entrées du menu d'une partie : ses pages, un groupe une seule fois (à la place de sa première page), avec son
+   * nom et son pictogramme ; `cible` : la page qu'il ouvre (la dernière ouverte du groupe, sinon la première).
+   */
+  function menuDe(partie, choix = {}) {
+    const vus = new Set(), out = [];
+    for (const o of pagesDe(partie)) {
+      if (!o.groupe) { out.push(o); continue; }
+      if (vus.has(o.groupe)) continue;
+      vus.add(o.groupe);
+      const pages = pagesDuGroupe(o.groupe), c = choix['groupe:' + o.groupe];
+      out.push({ ...GROUPES[o.groupe], groupe: o.groupe, id: pages.some(x => x.id === c) ? c : o.id, pages: pages.map(x => x.id) });
+    }
+    return out;
+  }
 
   /* Une règle par onglet : dans l'onglet X, tout élément découpé qui n'est
    * pas de X disparaît. Les éléments des autres vues sont déjà masqués. */
@@ -185,6 +209,11 @@
           this.choisir(b.dataset.sousOnglet);
         });
         h.addEventListener('keydown', e => this.clavier(e));
+      }
+      const n = a.interne ? a.interne() : null;
+      if (n) {
+        n.addEventListener('click', e => { const b = e.target.closest('[data-sous-onglet]'); if (b) this.choisir(b.dataset.sousOnglet); });
+        n.addEventListener('keydown', e => this.clavier(e, n));
       }
     }
 
@@ -220,6 +249,8 @@
       // Une page de passage n'est pas retenue : sa partie et sa vue rouvrent la page d'avant.
       if (!ONGLETS[vue].find(o => o.id === id).passage) {
         this.choix[p.id] = id;
+        const g = page(id).groupe;
+        if (g) this.choix['groupe:' + g] = id;
         (this.parVue || (this.parVue = {}))[vue] = id;
         try { localStorage.setItem(CLE, JSON.stringify(this.choix)); localStorage.setItem(CLE + '-vues', JSON.stringify(this.parVue)); } catch (e) { /* stockage indisponible */ }
       }
@@ -229,7 +260,8 @@
       if (this.a.change) this.a.change(vue, id);
       this.rendre();
       if (this.a.apres) this.a.apres(id);
-      if (focus) { const b = this.a.hote()?.querySelector(`[data-sous-onglet="${id}"]`); if (b) b.focus(); }
+      // Le focus reste dans la barre d'où vient le geste : le menu, ou les onglets internes d'un groupe.
+      if (focus) { const h = typeof focus === 'object' ? focus : this.a.hote(), b = h?.querySelector(`[data-sous-onglet="${id}"]`); if (b) b.focus(); }
     }
 
     rendre() {
@@ -242,11 +274,12 @@
         if (actif) document.body.dataset.sous = actif; else delete document.body.dataset.sous;
         if (p) document.body.dataset.partie = p.id; else delete document.body.dataset.partie;
       }
+      this.rendreInterne(actif);
       const h = this.a.hote(); if (!h) return;
-      const liste = p ? pagesDe(p.id) : [];
+      const liste = p ? menuDe(p.id, this.choix) : [], dans = actif ? (page(actif) || {}).groupe : null;
       const I = root.OrlyIcones;
       const html = liste.map((o, i) => {
-        const on = o.id === actif, b = this.a.badge ? this.a.badge(o.id) : null;
+        const on = o.groupe ? o.groupe === dans : o.id === actif, b = !o.groupe && this.a.badge ? this.a.badge(o.id) : null;
         // Les outils fins du sujet, après la mention « Plus » (05/10).
         const sep = o.plus && !(liste[i - 1] || {}).plus ? '<span class="so-plus" aria-hidden="true">Plus</span>' : '';
         return sep + `<button type="button" role="tab" class="so-onglet${on ? ' actif' : ''}${o.plus ? ' so-secondaire' : ''}" data-sous-onglet="${o.id}"
@@ -281,20 +314,31 @@
       this.vu = actif;
     }
 
+    /** Les onglets internes d'un groupe (« Détails ») : en tête de page, seulement sur une page du groupe. */
+    rendreInterne(actif) {
+      const n = this.a.interne ? this.a.interne() : null; if (!n) return;
+      const g = actif ? (page(actif) || {}).groupe : null, pages = g ? pagesDuGroupe(g) : [];
+      n.hidden = !pages.length;
+      const html = pages.map(o => `<button type="button" role="tab" class="oi-onglet${o.id === actif ? ' actif' : ''}" data-sous-onglet="${o.id}"
+        aria-selected="${o.id === actif}" tabindex="${o.id === actif ? 0 : -1}">${esc(o.nom)}</button>`).join('');
+      if (n.__html !== html) { n.innerHTML = html; n.__html = html; }
+      if (g) n.setAttribute('aria-label', GROUPES[g].nom);
+    }
+
     /* Flèches, Début et Fin : le parcours clavier des onglets. Les pages se
      * suivent en colonne dans la barre latérale : haut et bas valent gauche et droite. */
-    clavier(e) {
+    clavier(e, hote = this.a.hote()) {
       const b = e.target.closest('[data-sous-onglet]'); if (!b) return;
-      const tous = [...this.a.hote().querySelectorAll('[data-sous-onglet]')], i = tous.indexOf(b);
+      const tous = [...hote.querySelectorAll('[data-sous-onglet]')], i = tous.indexOf(b);
       const j = { ArrowRight: i + 1, ArrowDown: i + 1, ArrowLeft: i - 1, ArrowUp: i - 1, Home: 0, End: tous.length - 1 }[e.key];
       if (j === undefined) return;
       e.preventDefault();
       const cible = tous[(j + tous.length) % tous.length];
-      this.choisir(cible.dataset.sousOnglet, true);
+      this.choisir(cible.dataset.sousOnglet, hote);
     }
   }
 
-  const api = { ONGLETS, PARTIES, conditions, montree, defaut, vueDe, partieDe, page, pagesDe, regles, SousOnglets };
+  const api = { ONGLETS, PARTIES, GROUPES, conditions, montree, defaut, vueDe, partieDe, page, pagesDe, pagesDuGroupe, menuDe, regles, SousOnglets };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyOnglets = api;
 })(typeof window !== 'undefined' ? window : globalThis);

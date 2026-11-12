@@ -239,7 +239,8 @@ function majStocks(){
   const noms=Object.fromEntries(servicesDisponibles().map(s=>[s.id,s.nom]));
   OrlyTemps.rendre(document.getElementById('journee-stocks'),Sim.ateliers&&Sim.ateliers.resultat,id=>noms[id]);
   // Évolution 14 (d) : le plus en stock d'abord, l'échelle des petites courbes, plus de 24 h signalé (resultats-vue.js).
-  if(window.OrlyResultatsVue)OrlyResultatsVue.completerStocks(document.getElementById('journee-stocks'),Sim.ateliers&&Sim.ateliers.resultat);
+  // Évolution 15 (c) : une alerte de stock, ou un bouchon, seulement au-delà des seuils d'alerte.
+  if(window.OrlyResultatsVue)OrlyResultatsVue.completerStocks(document.getElementById('journee-stocks'),Sim.ateliers&&Sim.ateliers.resultat,seuilsAlerte().seuils);
 }
 /* Un service du plan d'origine retiré de l'unité (Organisation › Services) :
  * il sort de toutes les listes, des liens et du plan, sans être effacé. */
@@ -974,6 +975,8 @@ function initOnglets(){
   if(!window.OrlyOnglets)return;
   Sim.onglets=new OrlyOnglets.SousOnglets({
     hote:()=>document.getElementById('sous-onglets'),
+    // Les onglets internes d'un groupe (« Détails », évolution 15 c), en tête de page.
+    interne:()=>document.getElementById('onglets-internes'),
     vue:()=>activeView,
     badge:badgeOnglet,
     // Une fois la page ouverte : son titre, et le menu qui marque sa partie.
@@ -1038,11 +1041,13 @@ function allerPartie(p){
 function afficherTitre(){
   const O=window.OrlyOnglets, accueil=activeView==='accueil', id=document.body.dataset.sous;
   const pg=!accueil&&O&&id?O.page(id):null, partie=pg&&O.PARTIES.find(p=>p.id===pg.partie);
-  document.getElementById('view-title').textContent=accueil?'Accueil':pg?pg.nom:'';
+  // Une page d'un groupe (« Détails », évolution 15 c) : le groupe en titre ; ses onglets internes disent laquelle.
+  const titre=pg&&pg.groupe&&O.GROUPES?O.GROUPES[pg.groupe].nom:pg?pg.nom:'';
+  document.getElementById('view-title').textContent=accueil?'Accueil':titre;
   // Au-dessus de la page (15/10) : la partie en surtitre, le nom de la page en grand.
   const surtitre=document.getElementById('tete-partie'),grand=document.getElementById('tete-titre');
   if(surtitre)surtitre.textContent=partie?partie.nom:'';
-  if(grand)grand.textContent=pg?pg.nom:'';
+  if(grand)grand.textContent=titre;
   const lien=document.getElementById('ariane-partie'),sep=document.querySelector('#ariane .ariane-sep');
   const premiere=partie?O.pagesDe(partie.id)[0]:null;
   if(lien){
@@ -1149,7 +1154,9 @@ function elementsPalette(){
   geste('Exporter les résultats',()=>{allerPage('j-chiffres');const b=document.getElementById('btn-export');if(b)b.click();},{ico:'telecharger',indice:'Synthèse',mots:'json fichier excel période'});
   geste('Raccourcis clavier',()=>OrlyPalette.raccourcis(),{ico:'clavier',indice:'?',mots:'touches aide'});
   out.push({groupe:'Pages',nom:'Accueil',ico:'unite',faire:()=>{allerPartie('accueil');ici();}});
-  if(O)for(const p of O.PARTIES)for(const pg of O.pagesDe(p.id))if(pg)out.push({groupe:'Pages',nom:pg.nom,indice:p.nom,ico:pg.ico,faire:()=>vers(pg.id)});
+  // Une page d'un groupe se dit avec lui (« Détails › Commandes ») ; son ancien nom se cherche toujours (évolution 15 c).
+  if(O)for(const p of O.PARTIES)for(const pg of O.pagesDe(p.id))if(pg)out.push({groupe:'Pages',nom:(pg.groupe&&O.GROUPES?O.GROUPES[pg.groupe].nom+' › ':'')+pg.nom,
+    indice:p.nom,ico:pg.ico,...(pg.ancien?{mots:pg.ancien}:{}),faire:()=>vers(pg.id)});
   const svcs=servicesDisponibles(),noms=Object.fromEntries(svcs.map(s=>[s.id,s.nom]));
   for(const s of svcs)out.push({groupe:'Services',nom:s.nom,indice:'Service',ico:'service',faire:()=>{if(Sim.unite)Sim.unite.ouvrir(s.id);ici();}});
   for(const a of ((Sim.ateliers&&Sim.ateliers.state.ateliers)||[]))
@@ -1661,7 +1668,7 @@ function majGoulotInfo() {
       html+='<ul class="detail-jobs">'+ici.slice(0,8).map(l=>{
         const encours=t>=l.debut&&(l.fin==null||t<l.fin);
         return '<li'+(encours?' class="en-cours"':'')+'>'+hh(l.debut)+(l.dispo?'':'–'+(l.fin==null?'?':hh(l.fin)))
-          +' · '+escapeHTML(MoteurProduction.enClair(l.nom||''))+(l.attente>=1?' · attend '+Math.round(l.attente)+' min':'')
+          +' · '+escapeHTML(MoteurProduction.enClair(l.nom||''))+(l.attente>=1?' · attend '+MoteurProduction.dureeLisible(l.attente):'')
           +(l.impossible?' · <strong>ne tient pas dans le poste</strong>':'')+'</li>';
       }).join('')+'</ul>';
       if(ici.length>8)html+='<p>Et '+(ici.length-8)+(ici.length-8>1?' autres préparations':' autre préparation')+'.</p>';
@@ -1680,15 +1687,15 @@ function majGoulotInfo() {
     }
     const I=window.OrlyIcones;
     if(pire)html='<div class="goulot-tete attente">'+(I?I.ico('sablier'):'')+'<strong>'+escapeHTML(noms[pire.id]||pire.id)+'</strong></div><p>attend le service d’avant'
-      +(pire.depuis>=1?' depuis '+Math.round(pire.depuis)+' min':'')+' pour « '+escapeHTML(MoteurProduction.enClair(pire.lot.nom||''))+' » ; il se met au travail à '+hh(pire.lot.debut)+'.</p>';
-    else html=Sim.vue&&t<=Sim.vue.debut
-      ?'Rejouez la journée, ou cliquez un service sur le plan pour voir ce qu’il prépare.'
-      :'<div class="goulot-tete ok">'+(I?I.ico('check'):'')+'<span>Personne n’attend à cet instant.</span></div>';
+      +(pire.depuis>=1?' depuis '+MoteurProduction.dureeLisible(pire.depuis):'')+' pour « '+escapeHTML(MoteurProduction.enClair(pire.lot.nom||''))+' » ; il se met au travail à '+hh(pire.lot.debut)+'.</p>';
+    // Évolution 15 (c) : rien à dire (personne n'attend), rien d'écrit ; le panneau se masque plus bas.
     // Et sur toute la journée : le service qui a le plus attendu.
     const cumul={};for(const l of lots)if(l.attente>=1)cumul[l.service]=(cumul[l.service]||0)+l.attente;
     const top=Object.entries(cumul).sort((x,y)=>y[1]-x[1])[0];
-    if(top)html+='<p class="mini-note">Sur toute la journée, c’est <strong>'+escapeHTML(noms[top[0]]||top[0])+'</strong> qui attend le plus : '
-      +Math.round(top[1])+' min en tout.</p>';
+    // Évolution 15 (c) : une durée en heures au-delà d'une heure ; seulement si cette attente passe le seuil d'attente d'un lot.
+    const seuilAttente=(seuilsAlerte().seuils||{attenteLot:60}).attenteLot;
+    if(top&&top[1]>seuilAttente)html+='<p class="mini-note">Sur toute la journée, c’est <strong>'+escapeHTML(noms[top[0]]||top[0])+'</strong> qui attend le plus : '
+      +MoteurProduction.dureeLisible(top[1])+' en tout.</p>';
   }
   // Ce qui attend à cette heure : les repas en stock, le sale à laver.
   if(window.OrlyTemps&&lots.length&&Sim.vue&&t>Sim.vue.debut){
@@ -1703,6 +1710,8 @@ function majGoulotInfo() {
     if(bouts.length)html+='<p class="stock-instant">'+(window.OrlyIcones?OrlyIcones.ico('boite'):'')+'<span>À '+hh(t)+', en attente : '+bouts.join(' · ')+'.</span></p>';
   }
   if(el._detailHTML!==html){el.querySelector('[data-detail-body]').innerHTML=html;el._detailHTML=html;}
+  // « À regarder » ne s'affiche que s'il a quelque chose à dire (évolution 15 c).
+  const panneau=el.closest('.panneau');if(panneau)panneau.hidden=!html;
   document.body.classList.toggle('journee-vide',!lots.length);
 }
 
@@ -1992,8 +2001,6 @@ function entreeDeLaJournee(){
 function initPeriode(){
   if(!window.OrlyPeriodeVue||!Sim.ateliers)return;
   if(window.OrlyOnglets)OrlyOnglets.conditions.periode=()=>!!programmeDate();
-  // « Détails » (évolution 15 b) : seulement quand des heures sup ou des renforts sont permis.
-  if(window.OrlyOnglets)OrlyOnglets.conditions.details=()=>heuresSup().actif||renforts().actif;
   Sim.periode=new OrlyPeriodeVue.VuePeriode({
     programme:programmeDate,
     // Une copie : ce qu'on modifie pendant le calcul ne s'y mêle pas (la période devient « à relancer »).
@@ -2528,7 +2535,9 @@ function essaisRetenus() {
 }
 function majCompare() {
   if (Sim.vue && Sim.vue.rendreBilan) Sim.vue.rendreBilan();
-  const lignes = OrlyComparaison.lignes(snaps.A, snaps.B);
+  // Évolution 15 (c) : rangé selon les cinq questions (comparer-vue.js), les durées en heures au-delà d'une heure.
+  const lignes = window.OrlyComparerVue ? OrlyComparerVue.rubriques(snaps.A, snaps.B).flatMap(g => g.lignes.map(l => ({ ...l, groupe: g.titre })))
+    : OrlyComparaison.lignes(snaps.A, snaps.B);
   // L'écart en face de chaque résultat (étape 9) : signé, fléché, coloré — et le mot.
   let groupe = '', html = '<thead><tr><th scope="col">Indicateur</th><th scope="col">A</th><th scope="col">B</th><th scope="col">Écart</th></tr></thead><tbody>';
   for (const l of lignes) {
@@ -2709,12 +2718,17 @@ function reglerSeuils(e){
   // Le champ reprend la valeur gardée, puis la raison se lit sous lui (retrouvé par son seuil).
   catch(err){renderReglageSeuils(true);refuserAuChamp(t,err.message.replace(/^seuils d’alerte : /,''));return;}
   toast(s.nom+' : '+(n[k]===null?'vide, aucune alerte':nombreFr(n[k])+' '+s.unite)+'.');
-  renderReglageSeuils(true);if(Sim.vue&&Sim.vue.rendreBilan)Sim.vue.rendreBilan();
+  renderReglageSeuils(true);apresSeuils();
 }
 function revenirSeuils(e){
   if(!e.target.closest('[data-seuils-defaut]'))return;
   try{localStorage.removeItem(CLE_SEUILS);}catch(err){toast('Seuils non remis : '+err.message);return;}
-  toast('Seuils d’alerte : les défauts.');renderReglageSeuils(true);if(Sim.vue&&Sim.vue.rendreBilan)Sim.vue.rendreBilan();
+  toast('Seuils d’alerte : les défauts.');renderReglageSeuils(true);apresSeuils();
+}
+/** Après un changement de seuil : ce qui en dépend se redessine (la Synthèse, les stocks, les commandes, les vols). */
+function apresSeuils(){
+  if(Sim.vue&&Sim.vue.rendreBilan)Sim.vue.rendreBilan();
+  majStocks();renderFlights();if(Sim.ateliers&&Sim.ateliers.resultat)Sim.ateliers.rendreClasses(Sim.ateliers.resultat);
 }
 /* Le réglage, dans « Réglages de la simulation », après l'ordre des lots. */
 function renderReglageSeuils(force){
@@ -3143,6 +3157,12 @@ function renderFlights() {
     return (!search || (d.id + ' ' + d.cie).toLowerCase().includes(search))
       && (filtre === 'all' || (groupe[filtre] || [filtre]).includes(e));
   });
+  // Évolution 15 (c) : sans filtre, les exceptions d'abord ; les vols prêts (ou chargés) à l'heure, repliés en une ligne
+  // qui se déplie. En tête, les comptes, les mêmes mots que la Synthèse.
+  const r15 = (Sim.ateliers && Sim.ateliers.resultat) || null, comptes = document.getElementById('vols-comptes');
+  if (comptes) comptes.innerHTML = r15 && r15.ok && window.OrlyReponses && window.OrlySyntheseVue ? OrlySyntheseVue.listeDesComptes(OrlyReponses.comptes(r15), 'vols') : '';
+  const replier = filtre === 'all' && !search, aLHeure = replier ? lignes.filter(d => etatDe(d) === 'ready') : [];
+  const exceptions = replier ? lignes.filter(d => etatDe(d) !== 'ready') : lignes;
 
   const I = window.OrlyIcones, hh = MoteurProduction.hhmm;
   const icoEtat = { ready: 'check', late: 'sablier', overdue: 'alerte', pending: 'chrono', orphan: 'equipe' };
@@ -3152,12 +3172,17 @@ function renderFlights() {
     const k = c.cabine || c.id.slice(c.id.lastIndexOf('/') + 1), e = c.etat;
     const etat = e.absente ? 'sans' : e.fin == null ? 'attente' : e.aHeure === false || (e.retard > 0) ? 'tard' : 'ok';
     const dit = e.absente ? 'pas encore d’équipe' : e.fin == null ? 'pas prête'
-      : 'prête à ' + hh(e.fin) + (e.retard > 0 ? ' (+' + Math.round(e.retard) + ' min)' : '');
+      : 'prête à ' + hh(e.fin) + (e.retard > 0 ? ' (+' + MoteurProduction.dureeLisible(e.retard) + ')' : '');
     return '<span class="rc ' + etat + '" title="' + escapeHTML(nomCab(k) + ' : ' + dit) + '">'
       + '<span class="puce-classe" data-cab="' + escapeHTML(k) + '"></span>' + escapeHTML(nomCab(k))
       + (etat === 'sans' ? '<span class="sr-only"> : pas encore d’équipe</span>' : '') + '</span>';
   };
-  const html = lignes.map(d => {
+  const charge = lignes.some(d => d.handling);
+  const pli = aLHeure.length ? '<tr class="vol-replie"><td colspan="5"><button type="button" class="lien-discret vol-deplier" data-vol-deplier aria-expanded="' + !!Sim.volsDeplies + '">'
+    + (Sim.volsDeplies ? '▾ ' : '▸ ') + aLHeure.length + (aLHeure.length > 1 ? ' vols ' + (charge ? 'chargés' : 'prêts') : ' vol ' + (charge ? 'chargé' : 'prêt')) + ' à l’heure</button></td></tr>' : '';
+  const sans = replier && !exceptions.length && aLHeure.length ? '<tr class="vol-sans-exception"><td colspan="5">Aucun vol en retard, pas prêt ou sans équipe.</td></tr>' : '';
+  const html = sans + [...exceptions, ...(pli ? [null] : []), ...(Sim.volsDeplies ? aLHeure : [])].map(d => {
+    if (d === null) return pli;
     const e = etatDe(d);
     return '<tr class="vol-' + e + '"><td class="vol-heure">' + hh(d.depart) + '</td>'
       + '<td><strong>' + escapeHTML(d.id) + '</strong><small>' + escapeHTML(d.cie)
@@ -3165,9 +3190,9 @@ function renderFlights() {
       + '<td class="vol-avant">' + hh(d.echeance) + '</td>'
       + '<td><span class="status ' + e + '">' + (I ? I.ico(icoEtat[e]) : '') + mot[e] + '</span>'
       + (d.fin != null && d.fin <= t ? '<small>' + (d.handling ? 'chargé à ' : 'prêt à ') + hh(d.fin)
-          + (d.retard ? ' · +' + d.retard + ' min' : '')
+          + (d.retard ? ' · +' + MoteurProduction.dureeLisible(d.retard) : '')
           + (d.handling && d.handling.chauffeurs ? ' · ' + d.handling.chauffeurs + (d.handling.chauffeurs > 1 ? ' chauffeurs' : ' chauffeur')
-            + (d.handling.attenteChauffeurs >= 1 ? ' (attendus ' + Math.round(d.handling.attenteChauffeurs) + ' min)' : '') : '') + '</small>'
+            + (d.handling.attenteChauffeurs >= 1 ? ' (attendus ' + MoteurProduction.dureeLisible(d.handling.attenteChauffeurs) + ')' : '') : '') + '</small>'
         : d.handling && d.handling.etat === 'chauffeurs' ? '<small>pas assez de chauffeurs (' + d.handling.chauffeurs + ' pour un ' + (d.handling.categorie === 'long' ? 'long' : 'court') + ' courrier)</small>'
         : d.handling && d.handling.etat === 'bloque' ? '<small>le handling attend ' + escapeHTML((d.handling.attendu || []).map(x => MoteurProduction.libelleClasse(x.classe)).join(', ') || 'un vol précédent') + '</small>'
         : d.handling && d.handling.etat === 'poste' ? '<small>poste du handling fini</small>'
@@ -3391,10 +3416,12 @@ function renderFriseVols(tous, etatDe, mot, icoEtat) {
   const H = 18 + nCouloirs * PAS_C + 22;
   const heures = []; if (Number.isFinite(t0) && Number.isFinite(t1)) for (let h = t0; h <= t1 && heures.length < 400; h += 60) heures.push(h);
   const pas = [1, 2, 3, 4, 6, 12].find(k => W / Math.max(1, heures.length - 1) * k >= 44) || 12;
+  // Évolution 15 (c) : les mêmes mots que la Synthèse — un vol que le handling charge est « chargé », sinon « prêt ».
+  const pret = tous.some(d => d.handling) ? ['vol chargé', 'vols chargés', 'vol pas chargé', 'vols pas chargés'] : ['vol prêt', 'vols prêts', 'vol pas prêt', 'vols pas prêts'];
   box.innerHTML = '<div class="vf-comptes">'
-    + compteur('ok', 'ontime', n.ready, (n.ready > 1 ? 'vols prêts' : 'vol prêt') + ' à l’heure', 'check')
-    + compteur('tard', 'late', n.late, (n.late > 1 ? 'vols prêts' : 'vol prêt') + ' en retard', 'sablier')
-    + compteur('sans', 'pending', n.sans, (n.sans > 1 ? 'vols pas prêts' : 'vol pas prêt') + ' ou sans équipe', 'chrono')
+    + compteur('ok', 'ontime', n.ready, (n.ready > 1 ? pret[1] : pret[0]) + ' à l’heure', 'check')
+    + compteur('tard', 'late', n.late, (n.late > 1 ? pret[1] : pret[0]) + ' en retard', 'sablier')
+    + compteur('sans', 'pending', n.sans, (n.sans > 1 ? pret[3] : pret[2]) + ' ou sans équipe', 'chrono')
     + (filtre !== 'all' ? '<button class="vf-tout" data-vf-filtre="all">Tout voir</button>' : '') + '</div>'
     // L'axe du temps est déclaré : le trait « maintenant » s'y pose, l'heure dessous (ds.js).
     + '<div class="vf-cadre"><svg class="vf-svg vf-points ds-graphique" width="' + L + '" height="' + H + '" style="width:' + L + 'px;height:' + H + 'px" viewBox="0 0 ' + L + ' ' + H + '" role="img" aria-label="Les départs de la journée, par heure et par état"'
@@ -3441,6 +3468,8 @@ function initWorkbench() {
   });
   document.getElementById('flight-search').addEventListener('input',renderFlights);
   document.getElementById('flight-filter').addEventListener('change',renderFlights);
+  // Évolution 15 (c) : les vols à l'heure, repliés en une ligne, se déplient.
+  document.getElementById('flight-rows').addEventListener('click',e=>{if(!e.target.closest('[data-vol-deplier]'))return;Sim.volsDeplies=!Sim.volsDeplies;renderFlights();});
   document.getElementById('vols-frise').addEventListener('click',e=>{const b=e.target.closest('[data-vf-filtre]');if(!b)return;
     const f=document.getElementById('flight-filter');f.value=f.value===b.dataset.vfFiltre?'all':b.dataset.vfFiltre;renderFlights();});
   document.getElementById('csv-template').addEventListener('click',()=>{

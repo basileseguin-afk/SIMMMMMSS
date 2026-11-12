@@ -356,7 +356,7 @@ le rouge ne sert qu’aux retards.
      strictement dans l’ordre des départs, avec une durée par compagnie, un
      nombre de vols en même temps et une heure au plus tôt (« pas avant 3 h
      avant le départ »). Il travaille le jour J des vols, jamais la veille. Ajouter le handling à un chemin crée cette case, une
-     seule pour toutes les commandes. Plus simple : **Résultats › Vols prêts au départ ›
+     seule pour toutes les commandes. Plus simple : **Résultats › Détails › Vols ›
      « Mettre en place le handling »** crée la case et l’ajoute au bout de
      tous les chemins d’un coup ; le même bandeau dit ensuite combien de vols
      sont chargés à l’heure et ouvre la fiche (« Régler le handling »). Des cases de handling d’avant, une par
@@ -408,8 +408,8 @@ le rouge ne sert qu’aux retards.
      l’heure ; commande la plus en retard ; travail fourni) ; dessous, *Vols ·
      Commandes · Équipes* en listes sobres (dont le vol le plus en retard). La
      couleur suit l’état, pas la case : un retard nul ne s’écrit jamais en
-     rouge, une attente nulle n’a pas la couleur de l’attente. Une carte ou une ligne mène à sa page (Vols prêts au départ,
-     Heure de chaque commande, Planning des équipes, Stocks et retours). Des
+     rouge, une attente nulle n’a pas la couleur de l’attente. Une carte ou une ligne mène à sa page (Détails › Vols,
+     Détails › Commandes, Planning des équipes, Détails › Stocks et retours). Des
      commandes que personne ne prépare sont un problème, avec son lien vers
      le service où les cocher. « Exporter les résultats ».
    - *Le plan rejoué* : rejouer la journée sur le plan de l’unité, en pleine
@@ -439,35 +439,48 @@ le rouge ne sert qu’aux retards.
      durée, l’attente et la marge ; un clic met sa commande en évidence
      (Échap annule). Le trait de l’heure rejouée porte l’heure. Dessous, le
      tableau des équipes, replié, et « Exporter la charge (Excel) ».
-   - *Heure de chaque commande* : chaque commande, prête à quelle heure, avant
+   - *Détails* (évolution 15 c) : une seule entrée du menu, quatre onglets en tête
+     de page, dans cet ordre — Commandes, Vols, Stocks et retours, Heures sup et
+     renforts ; l’entrée rouvre le dernier onglet ouvert, les flèches du clavier
+     passent d’un onglet à l’autre. Les anciens noms (« Heure de chaque
+     commande », « Vols prêts au départ ») se cherchent toujours dans « Aller
+     à… ». Commandes et Vols disent d’abord leurs comptes, avec les mêmes mots
+     que la Synthèse, puis les exceptions ; le reste tient en une ligne qui se
+     déplie (« 28 commandes à l’heure »).
+   - *Détails › Commandes* : chaque commande, prête à quelle heure, avant
      quand, et sa marge (prête avant − prête à) avec une barre — accent si elle
      est positive, couleur critique si elle est négative ; triées par défaut de
      la plus petite marge à la plus grande (un clic sur un en-tête trie
      autrement). « Retirer du programme », un réglage, est dans le menu « … »
      de la ligne.
-   - *Étapes de chaque commande* : une ligne par commande, un clic sur « Prête à »
+   - *Étapes de chaque commande* (un réglage : dans le menu Chemins depuis
+     l’évolution 15 c) : une ligne par commande, un clic sur « Prête à »
      la déplie dans le temps ; en dessous, le tableau calculé, une ligne par commande, une
      colonne par service, la case et ses heures dans chaque cellule ; un clic
      ouvre le chemin de la commande sur ce service. La première colonne et les
      en-têtes restent à la vue pendant le défilement ; « sert tout le monde »
      et « pas par là » s’écrivent en gris, sans italique ni hachures.
-   - *Vols prêts au départ* : une frise de la journée et un tableau qui dit, vol par vol, si
+   - *Détails › Vols* : une frise de la journée et un tableau qui dit, vol par vol, si
      ses commandes sont prêtes à l’heure, en retard, ou sans équipe. Sur la
      frise, chaque vol est un point de 10 px de la couleur de son état ; son
      numéro s’écrit au survol, et toujours pour un vol en retard ; le point
      survolé dit son vol, son départ et son état.
-   - *Stocks et retours* : ce qui attend entre deux ateliers et avant le
+   - *Détails › Stocks et retours* : ce qui attend entre deux ateliers et avant le
      chargement, le plus en stock d’abord (ou le plus long, d’un clic sur
      l’en-tête) — sur chaque petite courbe, ce qui est en stock à l’heure
-     survolée ; leur échelle commune est dite une fois, dans l’en-tête ; une
-     attente de plus de 24 h est signalée. Les retours des vols face au débit
-     de la plonge.
+     survolée ; leur échelle commune est dite une fois, dans l’en-tête ; un
+     stock plus long que la durée maximale réglée est signalé (aucun tant
+     qu’elle n’est pas réglée). Les retours des vols face au débit de la
+     plonge ; « Bouchon » seulement s’il reste du sale le soir ou si
+     l’attente passe le seuil.
    - **Le trait « maintenant »** : dès que la journée est rejouée (ou le
      curseur déplacé), le planning, la frise des vols et les graphiques des
      stocks marquent l’heure rejouée d’un trait, l’heure écrite au bout ; il
      suit la lecture, et s’en va quand on revient au début.
-   - *Comparer deux essais* : A / B, et l’écart de B sur A en face de chaque
-     résultat (« ▼ −25 min », « ▲ +5 pts »), vert s’il est mieux, rouge s’il
+   - *Comparer deux essais* : A / B, rangé selon les cinq questions (le
+     scénario, puis combien de personnes, où ça coince, à quelle heure chaque
+     service finit, ce qui part en retard), et l’écart de B sur A en face de chaque
+     résultat (« ▼ −25 min », « ▲ +1 h 05 », « ▲ +5 pts »), vert s’il est mieux, rouge s’il
      est moins bien, et le mot.
 
 **Sauvegarde** (au pied de la barre latérale) : tout le travail dans un fichier, et les limites
@@ -831,6 +844,8 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/seuils-alerte-browser.cjs` | Les seuils d’alerte dans la page (v1, évolution 15 a), sur l’unité fictive : les réponses de la page égales à celles du module, le réglage dans « Réglages de la simulation » gardé dans `ory-seuils-v1`, une valeur refusée en la nommant sans rien écrire, « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant qui rend les défauts, une clé abîmée |
 | `tests/synthese-vue.test.cjs` | La Synthèse sans navigateur (v1, évolution 15 b, `synthese-vue.js`) : les deux phrases en tête, « Les services » dans l’ordre du chemin (une ligne par service et jour, la file, la fin et les heures sup une fois par service), les tons seulement au-delà d’un seuil et jamais le rouge, la courbe (les créneaux de l’unité, un repère par départ, la bulle), les cartes (rien ne coince, rien en retard, l’essai seulement avec deux essais) |
 | `tests/synthese-questions-browser.cjs` | La Synthèse dans la page (v1, évolution 15 b), sur l’unité fictive, à 1 280 et 1 920 px : les phrases et les chiffres du tableau égaux à ceux du module, la page tient sur la largeur, la bulle de la courbe (souris, flèches), le clic sur une ligne qui ouvre ce service dans le planning, la carte de l’essai seulement avec deux essais, une journée sans retard sans couleur critique |
+| `tests/comparer-vue.test.cjs` | « Comparer deux essais » rangé selon les cinq questions (v1, évolution 15 c, `comparer-vue.js`) : le scénario d’abord, puis personnes, goulot, fins et heures sup, retards ; chaque ligne de `comparaison.js` trouve sa place ; une seule écriture du temps (« 3 h 47 », jamais « 227 min » ; « 69 h » de travail, l’écart et le verdict lus sur les heures affichées) ; un nom de fichier qui contient « 90 min » reste tel quel |
+| `tests/details-browser.cjs` | Moins de pages (v1, évolution 15 c), sur l’unité fictive : le menu des Résultats et les onglets de « Détails » dans l’ordre (au clavier, le focus reste dans les onglets), les anciens identifiants et « Aller à… », les compteurs égaux sur la Synthèse et dans « Détails », les exceptions d’abord, aucune durée en minutes au-delà de 60, pas d’alerte de stock sans seuil, « Bouchon » selon le sale du soir et le seuil d’attente, « À regarder » qui se tait |
 | `tests/classeur-compresse.test.cjs` | Le classeur compressé (v1, banc d’essai, correction 16 c) : 60 journées fictives, relu identique feuille par feuille, au moins trois fois plus léger, le même fichier pour les mêmes données ; le chemin du navigateur (CompressionStream), et sans lui le classeur tel quel ; un classeur d’avant non compressé qui se relit ; les outils `simuler-periode` et `simuler-journee` qui écrivent compressé |
 | `tests/indicateurs-definitions.test.cjs` | Trois définitions des indicateurs de charge (v1, banc d’essai, correction 16), sur des journées fictives : le disponible = personnes × (présence − pauses prises) + heures sup, une plonge en heures sup sous 100 %, une équipe qui n’atteint pas sa pause ; « en appui ou à disposition », les quatre catégories font les présents ; le débit en vols servis d’une équipe aux lots « @… », sans vol « sans objet » ; les renforts reçus et un lot coupé dans le consommé ; la non-régression sur les journées de référence |
 | `tests/import-flights.test.cjs` | L’export « Flights » de Winrest lu tel quel (v1, banc d’essai, évolution 13 a, `moteur/import-flights.js`), sur des exports fictifs calculés à la main : chaque règle de 1 à 12 (les colonnes par leur en-tête, une livraison = un vol, la Guest qty comptée une fois, la table des Guest types, les statuts, ICAO et Flight No exclus, les codes compagnie, le vol_id et « -2 », le vol sans repas, les réserves fondues ou orphelines, les vols fictifs aux lignes annulées, le tri et les colonnes du CSV daté) ; le rapport d’import ; les points à vérifier ; aucun prix dans la sortie ; les refus qui nomment la colonne ou la ligne ; 50 000 lignes en moins de 10 s |

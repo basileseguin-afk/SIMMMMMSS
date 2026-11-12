@@ -5,6 +5,53 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-11 — Évolution 15 (c) : moins de pages, et des chiffres qui ne se contredisent plus
+
+- Le menu des Résultats : Synthèse ; Période (avec un programme daté) ; Le plan
+  rejoué ; Planning des équipes ; Détails ; Comparer deux essais. « Détails »
+  réunit en onglets internes Commandes, Vols, Stocks et retours, Heures sup et
+  renforts (`onglets.js`, les groupes de pages ; une seule entrée au menu, qui
+  rouvre le dernier onglet ; au clavier, les flèches passent d'un onglet à
+  l'autre et le focus y reste). « Étapes de chaque commande », un réglage, passe dans
+  Chemins. Les anciens identifiants de page mènent toujours à leur page ; « Aller
+  à… » trouve aussi les anciens noms (« Heure de chaque commande », « Vols prêts
+  au départ »).
+- Commandes et Vols montrent d'abord les exceptions ; celles et ceux qui sont à
+  l'heure se résument en une ligne qui se déplie (« 12 commandes à l'heure »).
+- Les comptes disent leur périmètre (`moteur/reponses.js`, `comptes` ;
+  `synthese-vue.js`, `motsDesComptes`) : les vols que le handling charge et, à
+  part, les commandes sans avion ; les commandes de repas et, à part, celles
+  d'équipement (armement, dotation, roulés couverts). La Synthèse, Commandes et
+  Vols donnent les mêmes nombres, avec les mêmes mots ; un compte nul ne se dit
+  pas.
+- Une seule écriture du temps dans les résultats : « 45 min » sous une heure,
+  « 2 h 05 » au-delà (la marge et le retard d'une commande, le retard d'un vol,
+  l'infobulle du planning, « À regarder » du plan rejoué, « Comparer deux
+  essais ») ; un total d'heures de travail en heures entières.
+- Une quantité porte son unité : un lien qui ne porte que de l'équipement se
+  compte en commandes d'équipement, plus « 0 repas ».
+- Une alerte ne s'affiche que si un seuil est dépassé : « plus de 24 h » devient
+  « plus de » la durée maximale d'un stock, et seulement quand elle est réglée ;
+  « Bouchon » à la plonge, seulement s'il reste du sale le soir ou si l'attente
+  passe le seuil (retiré ou ajouté après `temps.js`, commun, non modifié) ; « À regarder » du plan rejoué se tait quand il n'a rien à
+  dire ; le bandeau d'organisation (« Points à regarder ici ») ne paraît plus
+  dans les résultats.
+- « Comparer deux essais » se range selon les cinq questions (`comparer-vue.js`,
+  nouveau) : le scénario d'abord, puis personnes, goulot, fins et heures sup,
+  retards ; les lignes de `comparaison.js` (commun aux deux versions, non
+  modifié) et les différences des réponses. Les heures de travail en heures
+  entières : l'écart et le verdict se lisent sur les nombres affichés ; seules
+  les durées se réécrivent (un nom de fichier reste tel quel).
+- Tests : `tests/details-browser.cjs`, `tests/comparer-vue.test.cjs` (nouveaux) ;
+  `reponses.test` (les comptes), `synthese-vue.test`, `onglets.test`,
+  `resultats-vue.test`, `planning-vue.test` ; les tests navigateur qui lisaient
+  les anciennes pages ou l'ancienne écriture du temps (`menu`, `coquille`,
+  `resultats`, `synthese`, `handling`, `handling-24h`, `lisibilite`,
+  `ateliers`, `graphiques`, `import`, `periode`, `browser-smoke`,
+  `planning-vue`) ; `tests/nav.cjs` va à une page de « Détails »
+  par son entrée puis son onglet. Aucun calcul ne change ; la v2 n'est pas
+  touchée.
+
 ## 2026-11-11 — Évolution 15 (b) : la Synthèse
 
 - `synthese-vue.js` et `synthese-vue.css` (nouveaux, v1) : la Synthèse répond aux

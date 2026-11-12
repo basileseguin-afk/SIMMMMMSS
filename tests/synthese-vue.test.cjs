@@ -65,15 +65,27 @@ test('la courbe : les créneaux de l’unité (tous ses services, à leur jour),
 
 test('les cartes : rien ne coince, rien ne part en retard ; et l’essai seulement avec deux essais', () => {
   const sans = fictive(F.volsSansRetardCsv());
-  const r1 = SV.carteRetard(sans.rep, sans.resultat.indicateurs);
+  const r1 = SV.carteRetard(sans.rep);
   assert.equal(r1.ton, 'ok'); assert.match(r1.corps, /Rien\./);
-  assert.match(r1.corps, /Commandes prêtes à l’heure<\/dt><dd>\d+ sur \d+/);
+  assert.match(r1.corps, /Commandes de repas à l’heure<\/dt><dd>\d+ sur \d+/);
   const libre = SV.carteCoince({ ...sans.rep, coince: { ...sans.rep.coince, goulot: null } });
   assert.equal(libre.ton, 'ok'); assert.match(libre.corps, /Rien ne coince\./);
-  const avec = fictive(), r2 = SV.carteRetard(avec.rep, avec.resultat.indicateurs);
+  const avec = fictive(), r2 = SV.carteRetard(avec.rep);
   assert.equal(r2.ton, 'retard'); assert.match(r2.corps, /Et \d+ autres\./);
   assert.equal(SV.carteCoince(avec.rep).ton, 'attente');
   assert.equal(SV.carteEssai(null), null); assert.equal(SV.carteEssai({ A: avec.rep, B: null }), null);
   const e = SV.carteEssai({ A: avec.rep, B: sans.rep });
   assert.match(e.corps, /En retard : \d+ → <b>0<\/b>/); assert.equal(e.page, 'j-comparer');
+});
+
+test('les comptes en mots (évolution 15 c) : chacun dit son périmètre ; les mêmes nombres que les indicateurs', () => {
+  const { resultat: r, rep } = fictive(), k = r.indicateurs, mots = SV.motsDesComptes(rep.comptes), v = q => (mots.find(x => x.q === q) || {}).v;
+  assert.equal(v('Vols chargés à l’heure'), k.volsAHeure + ' sur ' + k.volsSuivis);
+  const c = rep.comptes;
+  assert.equal(v('Commandes de repas à l’heure'), c.repas.aHeure + ' sur ' + c.repas.suivies);
+  assert.equal(v('Commandes d’équipement à l’heure'), c.equipement.aHeure + ' sur ' + c.equipement.suivies);
+  assert.equal(c.repas.aHeure + c.equipement.aHeure, k.aHeure);
+  assert.ok(mots.every(x => x.sujet === 'vols' || x.sujet === 'commandes'));
+  assert.equal(SV.listeDesComptes(rep.comptes, 'vols').includes('Commandes de repas'), false, 'les vols seuls');
+  assert.deepEqual(SV.motsDesComptes(null), []);
 });

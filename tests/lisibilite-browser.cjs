@@ -56,8 +56,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   const r=await page.evaluate(()=>Sim.ateliers.resultat.indicateurs);
   assert.equal(r.enRetard+r.pasFinies+r.aHeure,r.classesSuivies);
   assert.ok(r.pasFinies>0);
-  assert.match(bilan,new RegExp('Commandes en retard\\s*'+r.enRetard+'\\b'));
-  assert.match(bilan,new RegExp('Commandes pas finies\\s*'+r.pasFinies+'\\b'));
+  // Évolution 15 (c) : un compteur dit son périmètre (les commandes de repas), et un compte nul ne se dit pas.
+  if(r.enRetard)assert.match(bilan,new RegExp('Commandes de repas en retard\\s*'+r.enRetard+'\\b'));
+  else assert.doesNotMatch(bilan,/en retard\s*0\b/,'aucune en retard : rien à dire');
+  assert.match(bilan,new RegExp('Commandes de repas pas finies\\s*'+r.pasFinies+'\\b'));
 
   // 5. Le plan rejoué : « J 00:00 », pas « 00:00 », sur une journée qui commence la veille.
   await nav.aller(page,'j-plan');await attendre();

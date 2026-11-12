@@ -179,7 +179,9 @@ const B=PV.bornes(R),jour=PV.jourLePlusCharge(R);
     await page.locator(`#at-planning .pg-lot[data-lot="${choisi}"]`).focus();await page.keyboard.press('Shift+Tab');await page.keyboard.press('Tab');await attendre();
     const bulle=await page.evaluate(()=>{const b=document.querySelector('.pg-bulle');return b&&!b.hidden?b.textContent:null;});
     assert.ok(bulle,V+'une bulle au focus clavier');
-    assert.match(bulle,/\n\d\d:\d\d → \d\d:\d\d \(\d+ min[^)]*\)\nAttente : (aucune|\d+ min)\n(Marge|Retard) : \d+ min$/,V+'la bulle : '+bulle);
+    // Une seule écriture du temps (évolution 15 c) : « 45 min » sous une heure, « 2 h 30 » au-delà.
+    const D='(?:[1-5]?\\d min|\\d+ h \\d\\d)';
+    assert.match(bulle,new RegExp('\\n\\d\\d:\\d\\d → \\d\\d:\\d\\d \\('+D+'[^)]*\\)\\nAttente : (aucune|'+D+')\\n(Marge|Retard) : '+D+'$'),V+'la bulle : '+bulle);
     await page.keyboard.press('Enter');await attendre();
     assert.equal(await page.locator('#at-planning .pg-toile.choix').count(),1,V+'Entrée choisit aussi la commande');
     await page.keyboard.press('Escape');

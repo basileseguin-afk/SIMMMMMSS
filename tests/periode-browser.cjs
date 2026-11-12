@@ -69,7 +69,8 @@ const parse=t=>UI.parseFlights(t,{eta:true,spmlParCabine:true,date:true});
   await importer('vols-fictifs.csv',SANS_DATE);
   assert.equal(await page.locator('#periode-bandeau').isHidden(),true,'sans date : pas de bandeau');
   assert.equal(await etat(),'absente');
-  assert.deepEqual(await pagesResultats(),['j-chiffres','j-plan','at-planning','at-repas','at-grille','v-departs','j-stocks','j-comparer']);
+  // Évolution 15 (c) : « Étapes de chaque commande » est dans Chemins ; « Détails » réunit commandes, vols, stocks, heures sup.
+  assert.deepEqual(await pagesResultats(),['j-chiffres','j-plan','at-planning','at-repas','v-departs','j-stocks','j-details','j-comparer']);
   assert.equal(await page.evaluate(()=>Sim.jourVols),null);
   await verifier(null,null,'sans date : la journée d’aujourd’hui');
 

@@ -246,21 +246,35 @@
     return '<li><b>' + esc(nom) + '</b> ' + esc(quoi) + (x.cause && x.cause.mot && x.type !== 'sans-equipe' && x.type !== 'vol-pas-charge' ? ' — ' + esc(x.cause.mot) : '')
       + (x.cause && x.cause.phrase ? '<small>' + esc(x.cause.phrase) + '</small>' : '') + '</li>';
   }
-  /** Les comptes de la journée, avec les mots des pages de détail : vols chargés, commandes prêtes, en retard, pas finies. */
-  function comptes(k) {
-    if (!k) return [];
-    const l = [], non = (k.volsSuivis || 0) - (k.volsCharges || 0);
-    if (k.volsSuivis) l.push(['Vols chargés à l’heure', k.volsAHeure + ' sur ' + k.volsSuivis]);
-    if (non > 0) l.push(['Vols pas chargés', String(non)]);
-    l.push(['Commandes prêtes à l’heure', (k.aHeure || 0) + ' sur ' + (k.classesSuivies || 0)]);
-    l.push(['Commandes en retard', String(k.enRetard || 0)]);
-    if (k.pasFinies) l.push(['Commandes pas finies', String(k.pasFinies)]);
+  /**
+   * Les comptes de la journée en mots (évolution 15 c), les mêmes sur la Synthèse et dans « Détails » : chacun dit son
+   * périmètre — les vols que le handling charge et, à part, les commandes sans avion ; les commandes de repas et, à part,
+   * celles d'équipement. `c` : les comptes des réponses. Rend [{ sujet: 'vols' | 'commandes', q, v }].
+   */
+  function motsDesComptes(c) {
+    if (!c) return [];
+    const l = [], dire = (sujet, q, v) => l.push({ sujet, q, v: String(v) });
+    if (c.vols.suivis) {
+      dire('vols', 'Vols chargés à l’heure', c.vols.aHeure + ' sur ' + c.vols.suivis);
+      if (c.vols.suivis > c.vols.charges) dire('vols', 'Vols pas chargés', c.vols.suivis - c.vols.charges);
+    }
+    if (c.sansAvion) dire('vols', 'Commandes sans avion', c.sansAvion);
+    for (const [x, nom] of [[c.repas, 'de repas'], [c.equipement, 'd’équipement']]) {
+      if (!x.suivies) continue;
+      dire('commandes', 'Commandes ' + nom + ' à l’heure', x.aHeure + ' sur ' + x.suivies);
+      if (x.enRetard) dire('commandes', 'Commandes ' + nom + ' en retard', x.enRetard);
+      if (x.pasFinies) dire('commandes', 'Commandes ' + nom + ' pas finies', x.pasFinies);
+    }
     return l;
   }
+  /** Les comptes en liste de définitions (`sujet` : n'en garder qu'une sorte). */
+  const listeDesComptes = (c, sujet) => {
+    const l = motsDesComptes(c).filter(x => !sujet || x.sujet === sujet);
+    return l.length ? '<dl class="sy-comptes">' + l.map(x => '<div><dt>' + esc(x.q) + '</dt><dd>' + esc(x.v) + '</dd></div>').join('') + '</dl>' : '';
+  };
   /** « Ce qui part en retard » : les seules exceptions (les cinq premières), et les comptes de la journée. */
-  function carteRetard(rep, k) {
-    const ex = rep.exceptions, n = compteRetards(ex), c = comptes(k);
-    const compte = c.length ? '<dl class="sy-comptes">' + c.map(([q, v]) => '<div><dt>' + esc(q) + '</dt><dd>' + esc(v) + '</dd></div>').join('') + '</dl>' : '';
+  function carteRetard(rep) {
+    const ex = rep.exceptions, n = compteRetards(ex), compte = listeDesComptes(rep.comptes);
     if (!ex.length) return { ton: 'ok', titre: 'Ce qui part en retard', corps: '<p class="sy-grand">Rien.</p>' + compte };
     const reste = ex.length - 5, qui = [n.vols ? pluriel(n.vols, 'vol', 'vols') : '', n.commandes ? pluriel(n.commandes, 'commande', 'commandes') : ''].filter(Boolean).join(' et ');
     return { ton: 'retard', titre: 'Ce qui part en retard', page: n.vols ? 'v-departs' : 'at-repas', corps: '<p class="sy-grand">' + esc(qui) + '</p><ul class="sy-exceptions">'
@@ -307,7 +321,7 @@
     if (!box) return;
     const rep = o && o.reponses;
     if (!rep) { box.innerHTML = '<p class="mini-note">Rien à résumer : aucune équipe ne prépare encore de commande.</p>'; return; }
-    const k = o.resultat && o.resultat.indicateurs, cartes = [carteCoince(rep), carteRetard(rep, k), carteEssai(o.essais)].filter(Boolean);
+    const k = o.resultat && o.resultat.indicateurs, cartes = [carteCoince(rep), carteRetard(rep), carteEssai(o.essais)].filter(Boolean);
     box.innerHTML = '<div class="sy-tete">' + phrases(rep).map(p => '<p class="bilan-resume">' + esc(p) + '</p>').join('') + '</div>' + probleme(k)
       + '<div class="sy-cartes" data-n="' + cartes.length + '">' + cartes.map(carte).join('') + '</div>'
       + '<section class="sy-bloc" aria-label="Les services"><h4>Les services</h4>' + tableau(rep, o.ordre) + '</section>'
@@ -343,7 +357,7 @@
     });
   }
 
-  const api = { CAUSES, nombre, phrases, compteRetards, comptes, lignes, tons, tableau, creneauxDeLUnite, departs, points, decrire, courbe, bulle,
+  const api = { CAUSES, nombre, phrases, compteRetards, motsDesComptes, listeDesComptes, lignes, tons, tableau, creneauxDeLUnite, departs, points, decrire, courbe, bulle,
     carteCoince, carteRetard, carteEssai, rendre };
   if (enNode) module.exports = api;
   else root.OrlySyntheseVue = api;

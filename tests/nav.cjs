@@ -22,8 +22,20 @@ async function aller(page, id) {
   } else {
     await page.locator('#btn-sauvegarde').click(); await page.waitForTimeout(120);
   }
-  if (await page.evaluate(() => document.body.dataset.sous) !== id)
-    await page.locator(`#sous-onglets [data-sous-onglet=${id}]`).click();
+  if (await page.evaluate(() => document.body.dataset.sous) !== id) {
+    const direct = page.locator(`#sous-onglets [data-sous-onglet=${id}]`);
+    if (await direct.count()) await direct.click();
+    else {
+      // Une page d'un groupe (« Détails », évolution 15 c) : son entrée au menu, puis son onglet interne, comme à la main.
+      const entree = await page.evaluate(id => {
+        const g = OrlyOnglets.page(id).groupe, o = g && OrlyOnglets.menuDe(document.body.dataset.partie, Sim.onglets.choix).find(x => x.groupe === g);
+        return o ? o.id : null;
+      }, id);
+      if (!entree) throw new Error('page absente du menu : ' + id);
+      await page.locator(`#sous-onglets [data-sous-onglet=${entree}]`).click(); await page.waitForTimeout(120);
+      if (await page.evaluate(() => document.body.dataset.sous) !== id) await page.locator(`#onglets-internes [data-sous-onglet=${id}]`).click();
+    }
+  }
   await page.waitForTimeout(150);
 }
 /* Comme l'ancienne barre d'étapes : aller à une vue, c'est retrouver sa

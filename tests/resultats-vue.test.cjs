@@ -50,7 +50,9 @@ test('la marge : prête avant − prête à ; le tri, de la plus petite à la pl
   assert.equal(RV.marge({ echeance: 600, fin: null }), null);
   assert.equal(RV.marge({ echeance: 600, absente: true }), null);
   assert.equal(RV.marge(undefined), null);
-  assert.equal(RV.ecrireMarge(60), '+60 min');
+  assert.equal(RV.ecrireMarge(60), '+1 h 00', 'une heure et plus : en heures (évolution 15 c)');
+  assert.equal(RV.ecrireMarge(-227), '−3 h 47');
+  assert.equal(RV.ecrireMarge(45), '+45 min');
   assert.equal(RV.ecrireMarge(-15.4), '−15 min');
   assert.equal(RV.ecrireMarge(0.2), '0 min');
   assert.equal(RV.ecrireMarge(null), '—');
@@ -86,4 +88,10 @@ test('les stocks : le plus en stock d’abord ; l’échelle des petites courbes
   assert.deepEqual(RV.ordreStocks(liens, 'long'), [1, 3, 0, 2]);
   assert.equal(RV.echelleStocks(liens), 'hauteur : de 0 à 120 repas');
   assert.deepEqual(liens.map(l => RV.plusDe24h(l)), [false, true, false, true]);
+  // Évolution 15 (c) : le bouchon de la plonge, seulement s'il reste du sale le soir ou si l'attente passe le seuil.
+  const S = require('../moteur/reponses.js').SEUILS_DEFAUT;
+  assert.equal(RV.bouchon({ resteSale: 0, attenteMax: 60 }, S), false, 'une heure d’attente, au seuil : pas de bouchon');
+  assert.equal(RV.bouchon({ resteSale: 0, attenteMax: 61 }, S), true);
+  assert.equal(RV.bouchon({ resteSale: 3, attenteMax: 5 }, S), true, 'du sale reste le soir');
+  assert.equal(RV.bouchon(null, S), false);
 });

@@ -185,7 +185,7 @@ Une valeur invalide est refusée, en la nommant.
 
 | # | Exigence | Source | État | Écart |
 |---|---|---|---|---|
-| R1–R5 | Les cinq réponses, dans un module sans navigateur que la page, les outils et les exports appellent | Évolution 15 (a, b) | 🟡 | Le module, ses seuils, l'outil et la Synthèse (les phrases, « Les services », la courbe, les trois cartes) sont faits ; les pages de détail et la feuille « Réponses » viennent ensuite (évolution 15 c à e) |
+| R1–R5 | Les cinq réponses, dans un module sans navigateur que la page, les outils et les exports appellent | Évolution 15 (a à c) | 🟡 | Le module, ses seuils, l'outil, la Synthèse (les phrases, « Les services », la courbe, les trois cartes), « Détails » et « Comparer deux essais » rangés selon les questions, des comptes qui disent leur périmètre et une seule écriture du temps sont faits ; la page Période et la feuille « Réponses » viennent ensuite (évolution 15 d, e) |
 
 ## 7. Indicateurs
 

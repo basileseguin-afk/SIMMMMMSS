@@ -73,7 +73,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     const dit=await bulle();
     assert.ok(dit,V+'la bulle s’ouvre au survol, sans attendre');
     assert.equal(dit,await lot.getAttribute('data-info'),V+'elle dit ce que la barre porte');
-    assert.match(dit,/^[A-Z0-9]+ · .+\n\d\d:\d\d → \d\d:\d\d \(\d+ min/,V+'la commande en clair, puis ses heures');
+    assert.match(dit,/^[A-Z0-9]+ · .+\n\d\d:\d\d → \d\d:\d\d \((\d+ min|\d+ h \d\d)/,V+'la commande en clair, puis ses heures (une heure ou plus : en heures, évolution 15 c)');
     await page.mouse.move(5,5);await attendre(50);
     assert.equal(await bulle(),null,V+'elle se ferme en quittant la barre');
     // 4. Le trait « maintenant » : rien avant le rejeu ; puis à l'heure rejouée, qui suit la lecture.
@@ -124,7 +124,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     const dit=await bulle();
     assert.ok(dit,V+'la bulle s’ouvre au survol, sans attendre');
     assert.equal(dit,await lot.getAttribute('data-info'),V+'elle dit ce que la barre porte');
-    assert.match(dit,/^[A-Z0-9]+ · .+\n\d\d:\d\d → \d\d:\d\d \(\d+ min/,V+'la commande en clair, puis ses heures');
+    assert.match(dit,/^[A-Z0-9]+ · .+\n\d\d:\d\d → \d\d:\d\d \((\d+ min|\d+ h \d\d)/,V+'la commande en clair, puis ses heures (une heure ou plus : en heures, évolution 15 c)');
     await page.mouse.move(5,5);await attendre(50);
     assert.equal(await bulle(),null,V+'elle se ferme en quittant la barre');
 

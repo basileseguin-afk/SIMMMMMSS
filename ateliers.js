@@ -980,7 +980,7 @@
 </div>
 <!-- Le dernier message, caché : il s'affiche en notification (notifications.js). -->
 <p id="at-status" hidden></p>
-<details id="at-anomalies" class="at-anomalies" data-sous="at-chemins at-equipes at-grille at-planning at-repas at-recap" hidden></details>
+<details id="at-anomalies" class="at-anomalies" data-sous="at-chemins at-equipes at-grille at-recap" hidden></details>
 <section id="mu-pas" class="mu mu-pas" data-sous="mu-pas" aria-label="Pas à pas"></section>
 <section id="mu-carte" class="mu mu-carte" data-sous="mu-carte" aria-label="Vue d’ensemble des chemins"></section>
 <section id="mu-flux" class="mu mu-flux" data-sous="mu-flux" aria-label="Les flux de production"></section>
@@ -1285,6 +1285,10 @@
           return this.changer(() => { for (const m of ['durees', 'allers', 'retours', 'volsCamion', 'escale', 'quaiDepart', 'dechargement', 'quaiRetour', 'volsVL', 'quaiParVol', 'dureesVL', 'dechargementVL']) if (a[m]) { const d = { ...a[m] }; delete d[data.cie]; a[m] = d; } },
             'Durée retirée : ' + data.cie + ' prend la durée de toutes les compagnies.');
         case 'classe-supprimer': return this.supprimerClasse(data.classe);
+        case 'commandes-deplier':
+          // Évolution 15 (c) : les commandes à l'heure, repliées en une ligne, se déplient.
+          this.repasDeplie = !this.repasDeplie;
+          return this.rendreClasses(this.resultat);
         case 'classe-trier': {
           // Évolution 14 (d) : un clic sur un en-tête trie ; un second, dans l'autre sens.
           const t = this.triRepas || { cle: 'marge', sens: 1 };
@@ -1814,7 +1818,7 @@
         // des commandes pas encore commencées) : on le dit autrement.
         const cmd = new Set(trous.flatMap(a => a.classes || [])).size;
         list.push((cmd > 1 ? cmd + ' commandes commencées sautent' : '1 commande commencée saute') + ' une étape sans équipe ('
-          + trous.map(a => esc(nomSv(a.service))).join(', ') + ') : à compléter dans Équipes › Services et équipes (cochez-les dans une équipe) ; « Étapes de chaque commande », dans Résultats, montre les étapes sautées.');
+          + trous.map(a => esc(nomSv(a.service))).join(', ') + ') : à compléter dans Équipes › Services et équipes (cochez-les dans une équipe) ; « Étapes de chaque commande », dans Chemins, montre les étapes sautées.');
       }
       // Un service supprimé que des cases ou des chemins citent encore : il fait
       // des alertes, et aucune liste ne le montre. Le geste qui l'efface est ici.
@@ -2828,17 +2832,28 @@
         return `<th scope="col" aria-sort="${sens}"><button type="button" class="at-tri${actif ? ' actif' : ''}" data-at-action="classe-trier" data-cle="${cle}"
           title="Trier par ${esc(mot.toLowerCase())}">${esc(mot)}<span class="at-tri-sens" aria-hidden="true">${actif ? (tri.sens > 0 ? '▲' : '▼') : ''}</span></button></th>`;
       };
-      box.innerHTML = barre + ajout + exclues + `<table class="at-table at-commandes"><thead><tr>
+      // Évolution 15 (c) : les exceptions d'abord (pas d'équipe, pas finie, en retard d'au moins le seuil) ; les commandes à
+      // l'heure, repliées en une ligne qui se déplie ; en tête, les comptes, les mêmes mots que la Synthèse.
+      const S = root.Sim && root.Sim.seuils ? root.Sim.seuils.lire().seuils : null, seuilRetard = S ? S.retard : 1;
+      const exception = c => { const v = par[c.id] || {}; return !!v.absente || v.fin == null || (!v.aHeure && v.retard >= seuilRetard - 1e-9); };
+      const enTete = rangees.filter(exception), aLHeure = rangees.filter(c => !exception(c)), presque = aLHeure.filter(c => (par[c.id] || {}).aHeure === false).length;
+      const comptes = root.OrlyReponses && root.OrlySyntheseVue && r && r.ok ? root.OrlySyntheseVue.listeDesComptes(root.OrlyReponses.comptes(r), 'commandes') : '';
+      const deplie = !!this.repasDeplie;
+      const replie = aLHeure.length ? `<tbody class="at-replie"><tr><td colspan="8"><button type="button" class="lien-discret at-deplier" data-at-action="commandes-deplier"
+        aria-expanded="${deplie}">${deplie ? '▾' : '▸'} ${aLHeure.length} commande${aLHeure.length > 1 ? 's' : ''} à l’heure${presque
+          ? ', dont ' + presque + ' de moins de ' + esc(P.dureeLisible(seuilRetard)) + ' en retard' : ''}</button></td></tr></tbody>` : '';
+      box.innerHTML = barre + ajout + exclues + comptes + `<table class="at-table at-commandes"><thead><tr>
         ${entete('Commande', 'nom')}<th scope="col">Passagers</th><th scope="col">Vols</th>
         ${entete('Prête avant', 'avant')}${entete('Prête à', 'a')}${entete('Marge', 'marge')}<th scope="col">Où elle en est</th>
         <th scope="col"><span class="sr-only">Actions</span></th>
-        </tr></thead><tbody>` +
-        rangees.map(c => {
+        </tr></thead><tbody>` + (enTete.length ? '' : '<tr class="at-sans-exception"><td colspan="8">Aucune commande en retard, pas finie ou sans équipe.</td></tr>') +
+        [...enTete, null, ...(deplie ? aLHeure : [])].map(c => {
+          if (c === null) return '</tbody>' + replie + '<tbody' + (deplie ? '' : ' hidden') + '>';
           const v = par[c.id] || {};
           const etat = v.absente ? '<span class="at-etat neutre">pas encore d’équipe</span>'
             : v.fin == null ? '<span class="at-etat neutre">pas finie</span>' + (pourquoi.has(c.id) ? '<small class="at-pourquoi">' + esc(pourquoi.get(c.id)) + '</small>' : '')
             : v.aHeure ? '<span class="at-etat ok">à l’heure</span>'
-            : '<span class="at-etat retard">+' + Math.round(v.retard) + ' min</span>';
+            : '<span class="at-etat retard">+' + esc(P.dureeLisible(v.retard)) + '</span>';
           // Une classe déclarée que l'import ne porte pas n'a ni volume ni
           // échéance : afficher zéro et une heure ferait croire à une donnée.
           const horsImport = c.origine === 'ajoutee' && !c.vols.length;

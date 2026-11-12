@@ -132,8 +132,10 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 8. La couverture par classe dit ce qui sort et par où.
   await onglet('at-repas');
-  // (évolution 14 d : la colonne « Marge » vient avant « Où elle en est ».)
-  const etats=await page.locator('#at-classes tbody tr').evaluateAll(rs=>rs.map(r=>r.cells[0].dataset.classe+'|'+r.cells[6].textContent));
+  // (évolution 14 d : la colonne « Marge » vient avant « Où elle en est » ; évolution 15 c : les commandes à l'heure,
+  // repliées en une ligne, se déplient.)
+  if(await page.locator('#at-classes .at-deplier[aria-expanded=false]').count()){await page.locator('#at-classes .at-deplier').click();await attendre();}
+  const etats=await page.locator('#at-classes tbody tr:has(th[data-classe])').evaluateAll(rs=>rs.map(r=>r.cells[0].dataset.classe+'|'+r.cells[6].textContent));
   assert.ok(etats.some(t=>t.startsWith('CRL/BC')&&/à l’heure/.test(t)));
   assert.equal(etats.filter(t=>/pas encore d’équipe/.test(t)).length,21,'24 commandes moins les 3 préparées');
   // Par où elle passe, et qui la fabrique : le tableau « Qui fabrique quoi » le dit case par case.
@@ -169,9 +171,12 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   await page.selectOption(`[data-at="${cui2}"] [data-at-champ=lot-ajout][data-index="${iLot}"]`,'CRL/YC');await attendre();
   assert.deepEqual((await etat()).ateliers.find(a=>a.id===cui2).lots,[['CRL/BC','CRL/PC','CRL/YC']]);
   await onglet('at-repas');
+  // Évolution 15 (c) : les commandes à l'heure sont repliées ; on les déplie pour les voir toutes.
+  const deplier=async()=>{if(await page.locator('#at-classes .at-deplier[aria-expanded=false]').count()){await page.locator('#at-classes .at-deplier').click();await attendre();}};
+  await deplier();
   const avantLignes=await page.locator('#at-classes tbody tr').count();
   // « Retirer » est dans le menu « … » de la ligne (évolution 14 d).
-  const retirer=async id=>{await page.locator('#at-classes tbody tr',{has:page.locator(`th[data-classe="${id}"]`)}).locator('.at-menu > summary').click();
+  const retirer=async id=>{await deplier();await page.locator('#at-classes tbody tr',{has:page.locator(`th[data-classe="${id}"]`)}).locator('.at-menu > summary').click();
     await page.locator(`[data-at-action=classe-supprimer][data-classe="${id}"]`).click();await attendre();};
   await onglet('at-repas');await retirer('CRL/PC');
   assert.equal(await page.locator('#at-classes tbody tr').count(),avantLignes-1,'la ligne dispara\u00eet');

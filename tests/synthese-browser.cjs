@@ -94,10 +94,19 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  async function synthesev1(V){
    const k=await page.evaluate(()=>Sim.ateliers.resultat.indicateurs);
    const comptes=await page.evaluate(()=>Object.fromEntries([...document.querySelectorAll('#bilan-journee .sy-comptes>div')].map(d=>[d.querySelector('dt').textContent,d.querySelector('dd').textContent])));
-   const attendus={'Commandes prêtes à l’heure':k.aHeure+' sur '+k.classesSuivies,'Commandes en retard':String(k.enRetard)};
-   if(k.pasFinies)attendus['Commandes pas finies']=String(k.pasFinies);
+   // Évolution 15 (c) : un compteur dit son périmètre — les commandes de repas et, à part, celles d'équipement (« CIE/@… »).
+   const par=await page.evaluate(()=>Object.values(Sim.ateliers.resultat.parClasse).filter(c=>!c.absente).map(c=>({id:c.id,aHeure:c.aHeure,fin:c.fin})));
+   const attendus={};
+   for(const [nom,l] of [['de repas',par.filter(c=>!c.id.includes('/@'))],['d’équipement',par.filter(c=>c.id.includes('/@'))]]){
+     if(!l.length)continue;
+     attendus['Commandes '+nom+' à l’heure']=l.filter(c=>c.aHeure).length+' sur '+l.length;
+     const tard=l.filter(c=>c.fin!=null&&!c.aHeure).length,pas=l.filter(c=>c.fin==null).length;
+     if(tard)attendus['Commandes '+nom+' en retard']=String(tard);
+     if(pas)attendus['Commandes '+nom+' pas finies']=String(pas);
+   }
    if(k.volsSuivis)attendus['Vols chargés à l’heure']=k.volsAHeure+' sur '+k.volsSuivis;
    for(const [q,v] of Object.entries(attendus))assert.equal(comptes[q],v,V+q);
+   assert.equal(par.length,k.classesSuivies,V+'toutes les commandes suivies sont comptées');
    assert.match(await page.locator('#bilan-journee .bilan-resume').first().textContent(),/^Il faut \d+ personnes?, [\d,]+ (sont présentes|est présente)\.$/,V+'la première phrase');
    assert.deepEqual(await page.locator('#bilan-journee .sy-carte h4').allTextContents(),['Où ça coince','Ce qui part en retard'],V+'deux cartes sans essais');
    assert.ok(k.classesAbsentes>0);
@@ -123,7 +132,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    const lignes=await page.locator('#compare tbody tr:not(.compare-groupe)').evaluateAll(trs=>trs.map(tr=>({lib:tr.cells[0].textContent,ecart:tr.cells[3].textContent.trim(),
      classe:(tr.cells[3].querySelector('.ecart')||{}).className||''})));
    const fin=lignes.find(x=>x.lib==='Dernière commande prête');
-   assert.match(fin.ecart,/^▼ −\d+ min mieux$/,V+'une heure plus tôt : on finit plus tôt, et c’est dit '+fin.ecart);
+   // v1 (évolution 15 c) : une heure ou plus s'écrit en heures.
+   assert.match(fin.ecart,/^▼ −(\d+ min|\d+ h \d\d) mieux$/,V+'une heure plus tôt : on finit plus tôt, et c’est dit '+fin.ecart);
    assert.match(fin.classe,/\bmieux\b/,V+'en couleur du mieux');
    assert.equal(lignes.find(x=>x.lib==='Personnes au travail').ecart,'',V+'un réglage n’a pas d’écart');
    assert.ok(lignes.filter(x=>x.ecart).every(x=>/^[▲▼] [+−]/.test(x.ecart)),V+'chaque écart est signé et fléché');

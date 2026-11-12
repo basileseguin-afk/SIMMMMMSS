@@ -101,7 +101,8 @@
     if (!v || v.absente || v.fin == null || !Number.isFinite(v.echeance)) return null;
     return Math.round((v.echeance - v.fin) * 10) / 10;
   }
-  const ecrireMarge = m => (m == null ? '—' : Math.abs(m) < 0.5 ? '0 min' : (m > 0 ? '+' : '−') + Math.round(Math.abs(m)) + ' min');
+  // Une seule écriture du temps (évolution 15 c) : « 45 min » sous une heure, « 2 h 05 » au-delà.
+  const ecrireMarge = m => (m == null ? '—' : Math.abs(m) < 0.5 ? '0 min' : (m > 0 ? '+' : '−') + P().dureeLisible(Math.abs(m)));
   /** La barre d'une marge : sa largeur (en % de la plus grande marge, en valeur absolue), et son signe. */
   function barreMarge(m, max) {
     if (m == null) return null;
@@ -154,22 +155,58 @@
   }
   const echelleStocks = liens => 'hauteur : de 0 à ' + Math.round(Math.max(1, ...liens.map(l => l.repasMax || 0))).toLocaleString('fr-FR') + ' repas';
   const plusDe24h = l => (l.dureeMax || 0) > 1440;
+  const REP = () => (enNode ? require('./moteur/reponses.js') : root.OrlyReponses);
+
+  /**
+   * Le bouchon de la plonge (évolution 15 c) : seulement s'il reste du sale le soir, ou si l'attente la plus longue passe
+   * le seuil d'attente d'un lot. temps.js (commun aux deux versions) le dit dès une heure d'attente : la version 1 le
+   * corrige d'après ce seuil — l'étiquette, et la couleur des deux tuiles qui le portent, retirées ou ajoutées.
+   */
+  const bouchon = (p, seuils) => !!p && ((p.resteSale || 0) > 0 || (p.attenteMax || 0) > seuils.attenteLot + 1e-9);
+  function corrigerBouchon(box, p, seuils) {
+    if (!box || !p) return;
+    const oui = bouchon(p, seuils), etiquette = [...box.querySelectorAll('.tp-etiquette.alerte')].find(b => /Bouchon/.test(b.textContent));
+    if (!oui && etiquette) {
+      const apres = etiquette.nextSibling;
+      if (apres && apres.nodeType === 3) apres.textContent = apres.textContent.replace(/^ /, '');
+      etiquette.remove();
+    }
+    const phrase = box.querySelector('.tp-phrase');
+    if (oui && !etiquette && phrase) phrase.insertAdjacentHTML('afterbegin', '<b class="tp-etiquette alerte">▲ Bouchon</b> ');
+    for (const t of box.querySelectorAll('.tp-tuile')) {
+      const lab = (t.querySelector('span') || {}).textContent;
+      if (lab === 'Le plus de sale pas encore lavé' || lab === 'Attente la plus longue') t.classList.toggle('alerte', oui);
+    }
+  }
 
   /**
    * La page des stocks, complétée (temps.js l'a dessinée) : les lignes triées (le plus en stock d'abord, ou le plus
-   * long), les en-têtes qui trient, l'échelle des petites courbes dite une fois, une attente de plus de 24 h signalée.
+   * long), les en-têtes qui trient, l'échelle des petites courbes dite une fois. Une alerte ne s'affiche que si un seuil
+   * est dépassé (évolution 15 c) : un stock plus long que la durée maximale réglée (aucune tant qu'elle ne l'est pas) ;
+   * le bouchon de la plonge. `seuils` : les seuils d'alerte (sans eux, les défauts).
    */
   const triStocks = { cle: 'stock' };
-  function completerStocks(box, r) {
+  function completerStocks(box, r, seuils) {
+    const S = seuils || REP().SEUILS_DEFAUT;
+    corrigerBouchon(box, r && r.plonge, S);
     const table = box && box.querySelector('.tp-table'), liens = (r && r.stocks && r.stocks.parLien) || [];
     if (!table || !liens.length) return;
     const corps = table.tBodies[0], lignes = [...corps.rows], ths = table.tHead.rows[0].cells;
     lignes.forEach((tr, i) => {
       tr.dataset.lien = i;
-      if (!plusDe24h(liens[i])) return;
+      // Une quantité porte son unité (évolution 15 c) : un lien qui ne porte que de l'équipement (armement, dotation) ne
+      // s'écrit pas « 0 repas », mais ses commandes d'équipement.
+      const q = tr.cells[1];
+      if (q && !(liens[i].repasMax > 0) && !q.dataset.equipement) {
+        const n = liens[i].sejours || 0, petit = q.querySelector('small');
+        q.dataset.equipement = '1';
+        q.innerHTML = '<b>' + n + '</b> ' + (n > 1 ? 'commandes' : 'commande') + ' d’équipement' + (petit ? petit.outerHTML : '');
+      }
+      if (!REP().stockTropLong(liens[i].dureeMax, S)) return;
       tr.classList.add('tp-24h');
       const td = tr.cells[2];
-      if (td && !td.querySelector('.tp-plus24')) td.insertAdjacentHTML('beforeend', '<span class="tp-plus24">' + (root.OrlyIcones ? root.OrlyIcones.ico('alerte') : '') + 'plus de 24 h</span>');
+      if (td && !td.querySelector('.tp-plus24')) td.insertAdjacentHTML('beforeend', '<span class="tp-plus24">' + (root.OrlyIcones ? root.OrlyIcones.ico('alerte') : '')
+        + 'plus de ' + esc(P().dureeLisible(S.dureeStockMax)) + '</span>');
     });
     const ranger = () => {
       for (const i of ordreStocks(liens, triStocks.cle)) corps.appendChild(lignes[i]);
@@ -189,7 +226,7 @@
     ranger();
   }
 
-  const api = { synthese, resume, rendreSynthese, marge, ecrireMarge, barreMarge, trier, EN_RETARD, RAYON, couloirs, ordreStocks, echelleStocks, plusDe24h, completerStocks };
+  const api = { synthese, resume, rendreSynthese, marge, ecrireMarge, barreMarge, trier, EN_RETARD, RAYON, couloirs, ordreStocks, echelleStocks, plusDe24h, bouchon, completerStocks };
   if (enNode) module.exports = api;
   else root.OrlyResultatsVue = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

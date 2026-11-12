@@ -72,7 +72,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.deepEqual((await ligne('Personnes au travail')).slice(1),['2','12',''],'un réglage n’a pas d’écart');
   assert.deepEqual((await ligne('Vols')).slice(1),['Jeu de démonstration','Jeu de démonstration','']);
   // L'écart (étape 9) : signé et fléché, et le mot.
-  assert.match((await ligne('Dernière commande prête'))[3],/^▼ −\d+ min mieux$/,'à douze, la cuisine finit plus tôt, et le tableau le dit en mots');
+  // Évolution 15 (c) : une heure ou plus s'écrit en heures.
+  assert.match((await ligne('Dernière commande prête'))[3],/^▼ −(\d+ min|\d+ h \d\d) mieux$/,'à douze, la cuisine finit plus tôt, et le tableau le dit en mots');
   assert.equal(await page.locator('#compare tr.diff').count()>0,true);
   assert.equal(await page.locator('#compare tr.moins-bien').count(),0,'plus de monde ne dégrade rien');
   assert.match(await page.locator('#compare-note').textContent(),/seul ce que vous avez changé/);

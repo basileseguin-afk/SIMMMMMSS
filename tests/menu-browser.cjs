@@ -47,12 +47,13 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   //    elles ; ses outils fins viennent après la mention « Plus ». Le fil
   //    d'Ariane dit la partie, le titre la page.
   const attendues={donnees:['v-programme','v-planche'],
-    chemins:['mu-carte','mu-flux','at-chemins','u-liens'],
+    // « Étapes de chaque commande » : un réglage, dans Chemins (évolution 15 c).
+    chemins:['mu-carte','mu-flux','at-chemins','at-grille','u-liens'],
     // Le plan de l'unité a sa page dans Équipes (refonte, étape 5).
     organisation:['mu-services','at-recap','rg-recap','u-plan','u-services','at-equipes','rg-minutes'],
     reglages:['mu-pas','rg-simulation','u-lecture'],
-    // « Détails » (évolution 15 b) ne paraît qu'avec des heures sup ou des renforts permis.
-    resultats:['j-chiffres','j-plan','at-planning','at-repas','at-grille','v-departs','j-stocks','j-comparer']};
+    // Évolution 15 (c) : six entrées ; « Détails » (ses commandes d'abord) réunit commandes, vols, stocks, heures sup.
+    resultats:['j-chiffres','j-plan','at-planning','at-repas','j-comparer']};
   const noms={donnees:'Vols',chemins:'Chemins',organisation:'Équipes',reglages:'Simulation',resultats:'Résultats'};
   const plus={chemins:['u-liens'],organisation:['u-services','at-equipes','rg-minutes'],reglages:['u-lecture']};
   for(const [p,pages] of Object.entries(attendues)){

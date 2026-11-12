@@ -339,6 +339,31 @@
   }
 
   /* ----------------------------------------------------------------------
+   *  Les comptes (évolution 15 c) : chacun dit son périmètre
+   * --------------------------------------------------------------------*/
+
+  /** Une commande d'équipement (armement, dotation, roulés couverts) : une catégorie par compagnie, « CIE/@… », sans repas. */
+  const equipement = id => /\/@/.test(String(id));
+  /**
+   * Les comptes de la journée, les mêmes pour la Synthèse et les pages de détail : les vols que le handling charge ; à
+   * part, les commandes sans avion (aucun de leurs vols n'est chargé par le handling) ; les commandes de repas et, à part,
+   * celles d'équipement ; les commandes que personne ne prépare. Ils réunissent les indicateurs de la journée, sans rien
+   * recompter autrement : à l'heure, en retard, pas finies, comme K1 et K2.
+   */
+  function comptes(r) {
+    const toutes = Object.values(r.parClasse || {}), suivies = toutes.filter(c => !c.absente), vols = r.vols || [];
+    const groupe = l => ({ suivies: l.length, aHeure: l.filter(c => c.aHeure).length, enRetard: l.filter(c => c.fin != null && !c.aHeure).length,
+      pasFinies: l.filter(c => c.fin == null).length });
+    const charges = new Set(vols.map(v => v.id)), volsDe = new Map((r.classes || []).map(c => [c.id, (c.vols || []).map(v => v.id)]));
+    return {
+      vols: { suivis: vols.length, charges: vols.filter(v => v.fin != null).length, aHeure: vols.filter(v => v.aHeure).length },
+      sansAvion: charges.size ? suivies.filter(c => !(volsDe.get(c.id) || []).some(id => charges.has(id))).length : 0,
+      repas: groupe(suivies.filter(c => !equipement(c.id))), equipement: groupe(suivies.filter(c => equipement(c.id))),
+      sansEquipe: toutes.length - suivies.length
+    };
+  }
+
+  /* ----------------------------------------------------------------------
    *  Les réponses, et 5. ce que change un scénario
    * --------------------------------------------------------------------*/
 
@@ -352,7 +377,7 @@
   function reponses(r, args, o = {}) {
     if (!r || r.ok === false) return null;
     const a = args || {}, seuils = seuilsComplets(o.seuils), k = o.k || IND().journee(r, a);
-    return { seuils, personnes: personnes(r, a, k, seuils), coince: coince(r, a, k, seuils), fins: fins(r, a), exceptions: exceptions(r, a, seuils) };
+    return { seuils, personnes: personnes(r, a, k, seuils), coince: coince(r, a, k, seuils), fins: fins(r, a), exceptions: exceptions(r, a, seuils), comptes: comptes(r) };
   }
 
   /** Une différence : la valeur de A, celle de B, et B − A (null si l'une manque). */
@@ -385,7 +410,7 @@
   }
 
   const api = { CLE_STOCKAGE, SEUILS_DEFAUT, SEUILS, CAUSES_VOL, seuilsComplets, enveloppe, lireEnveloppe, seuilsDeLaSauvegarde, stockTropLong,
-    reponses, comparer };
+    reponses, comparer, comptes, equipement };
   if (enNode) module.exports = api;
   else root.OrlyReponses = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

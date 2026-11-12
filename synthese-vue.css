@@ -75,8 +75,5 @@
 .sy-curseur{stroke:var(--ds-texte-1);stroke-width:1;stroke-dasharray:3 3}
 .sy-bulle{min-height:1.4em;margin-top:var(--ds-e-1)}
 
-/* « Détails » : les heures sup et les renforts, sous un titre. */
-.details-titre{margin:0 0 var(--ds-e-3)}
-
 /* Moins de 1 100 px : les cartes s'empilent. */
 @media (max-width:1100px){.sy-cartes,.sy-cartes[data-n="3"]{grid-template-columns:minmax(0,1fr)}}

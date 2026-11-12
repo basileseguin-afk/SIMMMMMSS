@@ -72,15 +72,15 @@ test('une page se range selon sa nature, pas selon l’écran qui la porte', () 
     assert.deepEqual(l, [...l].sort(), p.id + ' : les pages « Plus » viennent après les principales');
     assert.ok(!l[0], p.id + ' : une partie commence par une page principale');
   }
-  // Suivre une commande étape par étape est un résultat : il est dans le menu.
-  assert.equal(partie('at-grille'), 'resultats');
+  // Suivre une commande étape par étape : un réglage du chemin, dans Chemins (évolution 15 c ; c'était un résultat).
+  assert.equal(partie('at-grille'), 'chemins');
   // Vérifier, régler, lancer : la simulation, qui commence par « Prêt à simuler ? ».
   for (const id of ['mu-pas', 'rg-simulation', 'u-lecture']) assert.equal(partie(id), 'reglages', id);
   assert.equal(O.pagesDe('reglages')[0].id, 'mu-pas');
   // Ce qu'on essaie.
   assert.equal(partie('rg-simulation'), 'reglages');
   // Ce qu'on observe : même quand l'écran vit dans la vue des vols ou des équipes.
-  for (const id of ['j-chiffres', 'j-plan', 'at-planning', 'at-repas', 'at-grille', 'v-departs', 'j-stocks', 'j-comparer'])
+  for (const id of ['j-chiffres', 'j-plan', 'at-planning', 'at-repas', 'v-departs', 'j-stocks', 'j-details', 'j-comparer'])
     assert.equal(partie(id), 'resultats', id);
   assert.equal(O.pagesDe('resultats')[0].id, 'j-chiffres', 'les résultats commencent par la synthèse');
   assert.equal(O.defaut('plan'), 'j-plan', 'arriver « sur le plan », c’est arriver sur la carte');
@@ -125,16 +125,33 @@ test('la page Période ne se montre qu’avec un programme daté (évolution 10)
   // Sans condition posée (aucun programme daté) : absente des pages de sa partie.
   assert.equal(O.montree('j-periode'), false);
   assert.ok(!O.pagesDe('resultats').some(x => x.id === 'j-periode'));
-  assert.deepEqual(O.pagesDe('resultats').map(x => x.id), ['j-chiffres', 'j-plan', 'at-planning', 'at-repas', 'at-grille', 'v-departs', 'j-stocks', 'j-comparer']);
+  assert.deepEqual(O.pagesDe('resultats').map(x => x.id), ['j-chiffres', 'j-plan', 'at-planning', 'at-repas', 'v-departs', 'j-stocks', 'j-details', 'j-comparer']);
   O.conditions.periode = () => true;
   try {
     assert.equal(O.montree('j-periode'), true);
     assert.deepEqual(O.pagesDe('resultats').slice(0, 2).map(x => x.id), ['j-chiffres', 'j-periode']);
   } finally { delete O.conditions.periode; }
-  // « Détails » (évolution 15 b) : seulement avec des heures sup ou des renforts permis, après le planning.
-  assert.equal(O.page('j-details').si, 'details');
-  O.conditions.details = () => true;
-  try { assert.deepEqual(O.pagesDe('resultats').slice(2, 4).map(x => x.id), ['at-planning', 'j-details']); } finally { delete O.conditions.details; }
+
   assert.equal(O.montree('j-chiffres'), true);
   assert.equal(O.montree('rien'), false);
+});
+
+test('le menu des Résultats (évolution 15 c) : six entrées ; « Détails » en quatre onglets internes ; les anciennes pages restent', () => {
+  assert.deepEqual(O.menuDe('resultats').map(o => o.groupe ? 'Détails' : o.id), ['j-chiffres', 'j-plan', 'at-planning', 'Détails', 'j-comparer']);
+  O.conditions.periode = () => true;
+  try { assert.deepEqual(O.menuDe('resultats').map(o => o.groupe ? 'Détails' : o.id), ['j-chiffres', 'j-periode', 'j-plan', 'at-planning', 'Détails', 'j-comparer']); }
+  finally { delete O.conditions.periode; }
+  // L'ordre des onglets internes : Commandes, Vols, Stocks et retours, Heures sup et renforts.
+  assert.deepEqual(O.pagesDuGroupe('details').map(x => [x.id, x.nom]),
+    [['at-repas', 'Commandes'], ['v-departs', 'Vols'], ['j-stocks', 'Stocks et retours'], ['j-details', 'Heures sup et renforts']]);
+  // « Détails » ouvre la dernière page ouverte du groupe, sinon la première.
+  assert.equal(O.menuDe('resultats').find(o => o.groupe).id, 'at-repas');
+  assert.equal(O.menuDe('resultats', { 'groupe:details': 'j-stocks' }).find(o => o.groupe).id, 'j-stocks');
+  // Les anciens identifiants mènent toujours à leur page ; leur ancien nom se cherche encore.
+  for (const id of ['at-repas', 'v-departs', 'j-stocks', 'j-details']) assert.equal(O.partieDe(id).id, 'resultats', id);
+  assert.equal(O.page('at-repas').ancien, 'Heure de chaque commande');
+  assert.equal(O.page('v-departs').ancien, 'Vols prêts au départ');
+  // « Étapes de chaque commande » : un réglage, dans Chemins.
+  assert.equal(O.partieDe('at-grille').id, 'chemins');
+  assert.ok(O.menuDe('chemins').some(o => o.id === 'at-grille'));
 });

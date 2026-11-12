@@ -58,7 +58,10 @@ const sauvegarde=F.sauvegardeFictive(),CSV=F.volsCsv(),J=F.heureDuPicAttendue(sa
 
   // 2. Heure de chaque commande : la marge et son tri ; « Retirer » dans le menu.
   await nav.aller(page,'at-repas');await attendre();
-  const lignes=await page.locator('#at-classes tbody tr').evaluateAll(trs=>trs.map(tr=>({id:tr.querySelector('th').dataset.classe,
+  // Évolution 15 (c) : les exceptions d'abord, les commandes à l'heure repliées ; on déplie, et le tri vaut dans chaque groupe.
+  if(await page.locator('#at-classes .at-deplier[aria-expanded=false]').count()){await page.locator('#at-classes .at-deplier').click();await attendre();}
+  const groupes=await page.locator('#at-classes tbody').evaluateAll(bs=>bs.map(b=>[...b.querySelectorAll('tr')].filter(tr=>tr.querySelector('th[data-classe]')).map(tr=>tr.querySelector('.at-marge').dataset.marge)).filter(g=>g.length));
+  const lignes=await page.locator('#at-classes tbody tr:has(th[data-classe])').evaluateAll(trs=>trs.map(tr=>({id:tr.querySelector('th').dataset.classe,
     marge:tr.querySelector('.at-marge').dataset.marge,texte:tr.querySelector('.at-marge').textContent.trim(),
     barre:tr.querySelector('.at-marge-barre i')&&getComputedStyle(tr.querySelector('.at-marge-barre i')).backgroundColor})));
   const accent=await jeton('--ds-accent');
@@ -72,12 +75,15 @@ const sauvegarde=F.sauvegardeFictive(),CSV=F.volsCsv(),J=F.heureDuPicAttendue(sa
   }
   const avec=marges.filter(m=>m!=null);
   assert.ok(avec.some(m=>m>0)&&avec.some(m=>m<0),'des marges positives et négatives dans la journée fictive');
-  assert.deepEqual(avec,[...avec].sort((a,b)=>a-b),'de la plus petite marge à la plus grande');
-  assert.ok(marges.indexOf(null)<0||marges.slice(marges.indexOf(null)).every(m=>m==null),'les commandes sans marge à la fin');
+  for(const g of groupes.map(l=>l.map(m=>(m===undefined?null:+m)))){
+   const av=g.filter(m=>m!=null);
+   assert.deepEqual(av,[...av].sort((a,b)=>a-b),'de la plus petite marge à la plus grande, dans chaque groupe');
+   assert.ok(g.indexOf(null)<0||g.slice(g.indexOf(null)).every(m=>m==null),'les commandes sans marge à la fin de leur groupe');
+  }
   assert.equal(await page.locator('#at-classes th[aria-sort="ascending"]').textContent().then(t=>t.trim()),'Marge▲');
   await page.locator('#at-classes [data-at-action=classe-trier][data-cle=marge]').click();await attendre();
-  const inverse=(await page.locator('#at-classes tbody tr .at-marge').evaluateAll(t=>t.map(x=>x.dataset.marge))).filter(m=>m!==undefined).map(Number);
-  assert.deepEqual(inverse,[...avec].sort((a,b)=>b-a),'un second clic : de la plus grande à la plus petite');
+  const inverses=await page.locator('#at-classes tbody').evaluateAll(bs=>bs.map(b=>[...b.querySelectorAll('.at-marge')].map(x=>x.dataset.marge).filter(m=>m!==undefined).map(Number)).filter(g=>g.length));
+  for(const g of inverses)assert.deepEqual(g,[...g].sort((a,b)=>b-a),'un second clic : de la plus grande à la plus petite');
   await page.locator('#at-classes [data-at-action=classe-trier][data-cle=marge]').click();await attendre();
   // « Retirer » n'est plus à la vue : il est dans le menu « … » de la ligne.
   const premier=lignes[0].id,retirer=page.locator(`#at-classes [data-at-action=classe-supprimer][data-classe="${premier}"]`);
@@ -142,7 +148,8 @@ const sauvegarde=F.sauvegardeFictive(),CSV=F.volsCsv(),J=F.heureDuPicAttendue(sa
   assert.match(st.echelle,/hauteur : de 0 à [\d\s ]+ repas/);
   await page.locator('#journee-stocks [data-tp-tri=long]').click();await attendre(100);
   assert.deepEqual(await page.locator('#journee-stocks .tp-table tbody tr').evaluateAll(t=>t.map(x=>+x.dataset.lien)),RV.ordreStocks(R.stocks.parLien,'long'),'ou le plus long');
-  assert.equal(await page.locator('#journee-stocks .tp-plus24').count(),R.stocks.parLien.filter(RV.plusDe24h).length,'plus de 24 h : signalé là où il y en a');
+  // Évolution 15 (c) : une alerte de stock seulement au-delà de la durée maximale réglée ; sans elle, aucune (details-browser).
+  assert.equal(await page.locator('#journee-stocks .tp-plus24').count(),0,'sans durée maximale réglée, aucune alerte');
 
   assert.deepEqual(errors,[],errors.join(' | '));
   console.log('resultats-browser : ok');

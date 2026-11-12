@@ -41,18 +41,28 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
    // 1. Toute page en deux clics : sa partie, puis elle. Les pages de la partie
    //    ouverte se déplient juste sous elle ; le fil d'Ariane dit la partie, le titre la page.
-   const parties=await page.evaluate(()=>OrlyOnglets.PARTIES.filter(p=>!p.cache).map(p=>({id:p.id,nom:p.nom,pages:OrlyOnglets.pagesDe(p.id).map(x=>x.id)})));
+   //    Une page d'un groupe (« Détails », évolution 15 c) : l'entrée du groupe, puis son onglet interne ; le titre, le groupe.
+   const parties=await page.evaluate(()=>OrlyOnglets.PARTIES.filter(p=>!p.cache).map(p=>({id:p.id,nom:p.nom,pages:OrlyOnglets.pagesDe(p.id).map(x=>x.id),
+     groupes:Object.fromEntries(OrlyOnglets.pagesDe(p.id).filter(x=>x.groupe).map(x=>[x.id,OrlyOnglets.GROUPES[x.groupe].nom]))})));
    for(const p of parties){
     await page.locator(`#menu [data-vers-partie=${p.id}]`).click();await attendre();
     assert.equal(await page.evaluate(()=>{const on=document.querySelector('#menu .menu-partie.actif');
       return !!on&&on.nextElementSibling===document.getElementById('sous-onglets');}),true,V+p.id+' : ses pages sous elle');
     for(const id of p.pages){
-     const bouton=page.locator(`#sous-onglets [data-sous-onglet=${id}]`);
-     assert.equal(await bouton.isVisible(),true,V+id+' : à un clic');
-     await bouton.click();await attendre(100);
+     const groupe=p.groupes[id];
+     if(groupe){
+      const entree=page.locator('#sous-onglets [data-sous-onglet]').filter({hasText:groupe});
+      assert.equal(await entree.isVisible(),true,V+id+' : son groupe à un clic');
+      await entree.click();await attendre(100);
+      await page.locator(`#onglets-internes [data-sous-onglet=${id}]`).click();await attendre(100);
+     }else{
+      const bouton=page.locator(`#sous-onglets [data-sous-onglet=${id}]`);
+      assert.equal(await bouton.isVisible(),true,V+id+' : à un clic');
+      await bouton.click();await attendre(100);
+     }
      assert.equal(await actif(),id);
      assert.equal(await page.locator('#ariane-partie').textContent(),p.nom);
-     assert.equal(await page.locator('#view-title').textContent(),await page.evaluate(id=>OrlyOnglets.page(id).nom,id));
+     assert.equal(await page.locator('#view-title').textContent(),groupe||await page.evaluate(id=>OrlyOnglets.page(id).nom,id));
      // Le plan de l'unité ouvre l'édition ; « Terminer » ramène à la page d'avant.
      if(id==='u-plan'){
       const avant=p.pages[p.pages.indexOf(id)-1];

@@ -120,6 +120,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.evaluate(()=>document.body.dataset.sous),'at-equipes');
   assert.equal(await page.evaluate(()=>Sim.ateliers.ouvert),id);
   await nav.aller(page,'v-departs');
+  // Évolution 15 (c) : les vols chargés à l'heure sont repliés en une ligne ; on la déplie.
+  if(await page.locator('#flight-rows [data-vol-deplier][aria-expanded=false]').count()){await page.locator('#flight-rows [data-vol-deplier]').click();await attendre();}
   assert.match(await page.locator('#flight-rows').innerText(),/chargé à \d\d:\d\d/);
   await nav.aller(page,'j-chiffres');
   // Le texte de la page, pas son rendu : le libellé s'affiche en petites capitales (15/10).

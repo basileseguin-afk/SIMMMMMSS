@@ -74,6 +74,8 @@ const UNITE=H=>Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;
 
   // 4. Les départs : l'échéance d'un vol est sa limite de chargement.
   await nav.aller(page,'v-departs');
+  // Évolution 15 (c) : les vols chargés à l'heure sont repliés en une ligne ; on la déplie.
+  if(await page.locator('#flight-rows [data-vol-deplier][aria-expanded=false]').count()){await page.locator('#flight-rows [data-vol-deplier]').click();await page.waitForTimeout(200);}
   const ligne=page.locator('#flight-rows tr',{hasText:'NO1'});
   assert.equal((await ligne.locator('.vol-avant').innerText()).trim(),'09:15');
   assert.match(await page.locator('#vols-handling').innerText(),/24 h\/24, en tournées/);

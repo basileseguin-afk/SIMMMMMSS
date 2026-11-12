@@ -109,8 +109,9 @@ test('la limite de chaque commande, au bout de la barre de son dernier lot ; le 
 
 test('l’infobulle : la commande, le début, la fin, la durée, l’attente et la marge', () => {
   const info = PV.info(lot('mo', 0), R.ateliers[1], { parClasse: R.parClasse, nomService: id => id });
-  assert.equal(info, 'A · Business\n07:00 → 09:00 (105 min, dont 15 min d’arrêt)\nAttente : 30 min\nMarge : 60 min');
-  assert.match(PV.info(lot('mo', 1), R.ateliers[1], { parClasse: R.parClasse, nomService: id => id }), /\nAttente : aucune\nRetard : 60 min$/);
+  // Une seule écriture du temps (évolution 15 c) : au-delà d'une heure, en heures.
+  assert.equal(info, 'A · Business\n07:00 → 09:00 (1 h 45, dont 15 min d’arrêt)\nAttente : 30 min\nMarge : 1 h 00');
+  assert.match(PV.info(lot('mo', 1), R.ateliers[1], { parClasse: R.parClasse, nomService: id => id }), /\nAttente : aucune\nRetard : 1 h 00$/);
   assert.match(PV.info(lot('mo', 2), R.ateliers[1], { parClasse: R.parClasse, nomService: id => id }), /À la chaîne : cuisine/);
   assert.match(PV.info(lot('pl', 0), R.ateliers[0], { parClasse: R.parClasse, nomService: id => id }), /\nAttente : aucune$/, 'sans limite, pas de marge');
 });

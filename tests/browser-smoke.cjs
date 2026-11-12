@@ -75,7 +75,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // Le panneau de droite résume la journée entière et nomme qui attend.
   const bilan=await page.locator('#bilan-journee').textContent();
   // Évolution 15 (b) : la Synthèse répond d'abord « combien de personnes » ; ses comptes et ses exceptions suivent.
-  assert.match(bilan,/Commandes prêtes à l’heure0 sur 3/);assert.match(bilan,/Ce qui part en retard/);
+  // Évolution 15 (c) : un compteur dit son périmètre (les commandes de repas).
+  assert.match(bilan,/Commandes de repas à l’heure0 sur 3/);assert.match(bilan,/Ce qui part en retard/);
   assert.match(bilan,/^Il faut \d+ personnes?, /,'les phrases en tête (évolution 15 b)');
   await page.locator('#zone-picker').selectOption('prepa');
   assert.match(await page.locator('#goulot-info').textContent(),/TX · Économie/,'le service choisi liste ce qu’il prépare, en clair');
