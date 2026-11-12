@@ -425,6 +425,24 @@
     return { services: parService, equipes: parEquipe };
   }
 
+  /**
+   * La charge de toute l'unité sur des jours de travail du bilan (évolution 15 d), lue sans rien y ajouter : chaque jour,
+   * le pic au travail de ses services réunis (leurs créneaux additionnés à la même heure) ; le plus haut de ces pics, et
+   * leur moyenne sur les jours donnés ; l'occupation de toutes les équipes, pondérée par leurs personnes, comme celle d'un
+   * service. Pour un jour : chargeDeLUnite([w]).
+   */
+  function chargeDeLUnite(jours) {
+    const pics = jours.map(w => {
+      const c = sommeDesCreneaux(Object.values(w.services).map(s => s.indicateursCharge && s.indicateursCharge.creneaux).filter(Boolean));
+      const p = IND().pic(c.auTravail);
+      return p ? { ...p, date: w.date } : null;
+    }).filter(Boolean);
+    const occ = jours.flatMap(w => Object.values(w.equipes).map(e => e.indicateursCharge).filter(k => k && k.occupation !== null && k.personnes > 0));
+    return { picAuTravail: pics.reduce((m, p) => (!m || p.personnes > m.personnes ? p : m), null),
+      picAuTravailMoyen: jours.length ? somme(pics, p => p.personnes) / jours.length : 0,
+      occupation: occ.length ? somme(occ, k => k.occupation * k.personnes) / somme(occ, k => k.personnes) : null };
+  }
+
   /* ----------------------------------------------------------------------
    *  Le bilan par jour de travail
    * --------------------------------------------------------------------*/
@@ -548,7 +566,7 @@
   }
 
   const api = { JOUR, jourDecale, ecart, joursEntre, dateCourte, dateLongue, estDate, datesDu, volsDuJour, decrire, texteDuProgramme,
-    jouerJournee, jouerAvecEntree, creerPeriode, simulerPeriode, depuisSauvegarde, optionsDeRejeu, extraire, bilan, encadrementDuJour, sommeDesCreneaux, ADDITIVES };
+    jouerJournee, jouerAvecEntree, creerPeriode, simulerPeriode, depuisSauvegarde, optionsDeRejeu, extraire, bilan, encadrementDuJour, sommeDesCreneaux, chargeDeLUnite, ADDITIVES };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyPeriode = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

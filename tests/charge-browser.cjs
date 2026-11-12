@@ -209,18 +209,25 @@ const PIEGE='<img src=x onerror="window.__xss=1">';
   const services=b.services.filter(s=>b.joursTravail.some(w=>w.services[s.id]));
   const w=b.joursTravail.find(x=>x.complet);
   const valeur=(x,f)=>(x&&x.indicateursCharge?f(x.indicateursCharge):null);
-  for(const [m,lire,ecrire,cumul] of [
-    ['picAuTravail',k=>(k.picAuTravail?k.picAuTravail.personnes:null),x=>fr(x,1),(k,moy)=>(moy?k.picAuTravailMoyen:k.picAuTravail&&k.picAuTravail.personnes)],
-    ['occupation',k=>k.occupation,x=>fr(x*100,0)+' %',k=>k.occupation]]){
+  // Évolution 15 (d) : la colonne « Unité » donne la charge de toute l'unité (moteur/periode.js, chargeDeLUnite) ; le pic au
+  // travail, une mesure en personnes, n'a plus de ligne Total, seulement sa moyenne par jour.
+  const complets=b.joursTravail.filter(x=>x.complet);
+  for(const [m,lire,ecrire,cumul,unite,avecTotal] of [
+    ['picAuTravail',k=>(k.picAuTravail?k.picAuTravail.personnes:null),x=>fr(x,1),(k,moy)=>(moy?k.picAuTravailMoyen:k.picAuTravail&&k.picAuTravail.personnes),
+      (k,moy)=>(moy?k.picAuTravailMoyen:k.picAuTravail&&k.picAuTravail.personnes),false],
+    ['occupation',k=>k.occupation,x=>fr(x*100,0)+' %',k=>k.occupation,k=>k.occupation,true]]){
     await page.locator('#periode-mesure').selectOption(m);await attendre(100);
     assert.equal(await page.locator('#journee-periode table.pv-table').getAttribute('data-mesure'),m);
     const ecrit=x=>(x==null?'—':ecrire(x));
     assert.deepEqual(await page.locator(`#journee-periode tr[data-pv-jour="${w.date}"] td`).allInnerTexts(),
-      [...services.map(s=>ecrit(valeur(w.services[s.id],lire))),'—'],m+' : un jour, service par service ; pas de total');
-    const total=page.locator('#journee-periode tr.pv-cumul:not(.pv-moyenne)').last(),moyenne=page.locator('#journee-periode tr.pv-cumul.pv-moyenne').last();
+      [...services.map(s=>ecrit(valeur(w.services[s.id],lire))),ecrit(unite(PE.chargeDeLUnite([w]),false))],m+' : un jour, service par service, et l’unité');
+    const moyenne=page.locator('#journee-periode tr.pv-cumul.pv-moyenne').last();
     const pc=b.periode.indicateursCharge.services;
-    assert.deepEqual(await total.locator('td').allInnerTexts(),[...services.map(s=>ecrit(pc[s.id]?cumul(pc[s.id],false):null)),'—'],m+' : la période');
-    assert.deepEqual(await moyenne.locator('td').allInnerTexts(),[...services.map(s=>ecrit(pc[s.id]?cumul(pc[s.id],true):null)),'—'],m+' : la moyenne');
+    if(avecTotal){
+     const total=page.locator('#journee-periode tr.pv-cumul:not(.pv-moyenne)').last();
+     assert.deepEqual(await total.locator('td').allInnerTexts(),[...services.map(s=>ecrit(pc[s.id]?cumul(pc[s.id],false):null)),ecrit(unite(PE.chargeDeLUnite(complets),false))],m+' : la période');
+    }else assert.equal(await page.locator('#journee-periode tr.pv-cumul:not(.pv-moyenne)').count(),0,m+' : pas de total de personnes');
+    assert.deepEqual(await moyenne.locator('td').allInnerTexts(),[...services.map(s=>ecrit(pc[s.id]?cumul(pc[s.id],true):null)),ecrit(unite(PE.chargeDeLUnite(complets),true))],m+' : la moyenne');
     assert.ok(await page.locator('#journee-periode .pv-note-mesure').count()===1);
   }
   assert.ok(valeur(w.services.prepa,k=>k.picAuTravail.personnes)>0,'un pic au travail au montage');

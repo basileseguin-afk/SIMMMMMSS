@@ -8,7 +8,7 @@
  *   — la journée affichée part du sale que la veille lui laisse dans la période,
  *     au champ près, tant que rien n'a changé ; un réglage modifié la marque
  *     « à relancer », et la journée repart du sale de la veille saisi ;
- *   — la page Période : jours incomplets, totaux et moyennes par mois, un clic
+ *   — la page Période : jours incomplets, moyennes par mois (évolution 15 d), un clic
  *     ouvre la journée, le détail par équipe et par compagnie se déplie ;
  *   — (e) « Exporter les résultats » propose le classeur de la période, le même
  *     que celui de l'outil (--xlsx) ; la journée reste en JSON.
@@ -153,15 +153,16 @@ const parse=t=>UI.parseFlights(t,{eta:true,spmlParCabine:true,date:true});
   const incomplets=await page.locator('#journee-periode tr.pv-incomplet').evaluateAll(l=>l.map(x=>x.dataset.pvJour));
   assert.deepEqual(incomplets,periode.periode.joursIncomplets);
   assert.equal(await page.locator('#journee-periode tr.pv-incomplet .pv-badge').count(),incomplets.length);
+  // Évolution 15 (d) : pour les personnes, la moyenne par jour seule ; des personnes de jours différents ne s'additionnent pas.
   const cumuls=await page.locator('#journee-periode tr.pv-cumul th').allInnerTexts();
-  assert.deepEqual(cumuls.map(t=>t.replace(/\s*\(.*\)/,'')),['Total octobre 2026','Moyenne par jour, octobre 2026','Total novembre 2026','Moyenne par jour, novembre 2026','Total de la période','Moyenne par jour sur la période']);
+  assert.deepEqual(cumuls.map(t=>t.replace(/\s*\(.*\)/,'')),['Moyenne par jour, octobre 2026','Moyenne par jour, novembre 2026','Moyenne par jour sur la période']);
   // Les personnes d'un jour, service par service : celles du bilan.
   const w=periode.bilan.joursTravail.find(x=>x.date==='2026-10-28');
   const services=periode.bilan.services.filter(s=>periode.bilan.joursTravail.some(x=>x.services[s.id]));
   const cases=await page.locator('#journee-periode tr[data-pv-jour="2026-10-28"] td').allInnerTexts();
   assert.deepEqual(cases,[...services.map(s=>w.services[s.id]?String(w.services[s.id].personnes):'—'),String(w.total.personnes)]);
-  const totalPeriode=await page.locator('#journee-periode tr.pv-cumul:not(.pv-moyenne)').last().locator('td[data-pv-total]').innerText();
-  assert.equal(totalPeriode,periode.bilan.periode.total.personnes.toLocaleString('fr-FR'));
+  const moyennePeriode=await page.locator('#journee-periode tr.pv-cumul.pv-moyenne').last().locator('td[data-pv-total]').innerText();
+  assert.equal(moyennePeriode,(Math.round(periode.bilan.periode.moyenne.personnes)+0).toLocaleString('fr-FR'));
   // L'arrondi au service (banc d'essai, évolution 11 a) : la charge, ⌈charge⌉ par service, le surplus d'arrondi.
   const fr=(x,k)=>(Math.round(x*10**k)/10**k+0).toLocaleString('fr-FR',{maximumFractionDigits:k});
   for(const [m,k] of [['personnesService',0],['surplusArrondi',0],['charge',2]]){

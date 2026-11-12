@@ -1380,7 +1380,18 @@ Avec un programme daté :
   d'arrondi, heures sup en heures × personnes, commandes en retard, retard
   max, homme-heures), avec le total du jour ; les
   totaux et les moyennes par jour de chaque mois et de la période ; les jours
-  incomplets marqués « incomplet », hors des totaux. **Un clic sur un jour**
+  incomplets marqués « incomplet », hors des totaux. Depuis l'évolution 15 (d) :
+  la colonne **« Unité »** (le total des services, chaque jour ; pour le pic
+  au travail et l'occupation, tous les services réunis), une **courbe** de
+  l'unité jour par jour au-dessus du tableau (et le réel s'il est importé,
+  pour une mesure qui se compare à des ETP par jour), la première colonne qui reste quand le
+  tableau défile sur le côté (une ombre, un fondu et une phrase le disent) ;
+  pour une mesure en personnes, la **moyenne par jour seule** (des personnes
+  de jours différents ne s'additionnent pas), le total restant pour les
+  heures ; un seul bloc de totaux quand les jours complets tiennent dans un
+  mois ; les jours complets comptés d'abord (« 14 jours complets, 6
+  incomplets »), l'incomplet expliqué en une phrase ; une durée s'écrit
+  « 45 min » ou « 2 h 05 », des homme-heures en heures entières. **Un clic sur un jour**
   ouvre sa journée de vols (la Synthèse ; un jour de travail avant la période,
   la première journée) ; **▸ déplie son détail** par équipe (service, jour
   des vols, personnes, besoin exact, charge, homme-heures, heures sup, lots en
@@ -1654,8 +1665,11 @@ couvre (son simulé compterait deux fois dans le total de l'unité) :
 | hors simulation | 0 |
 
 Un ETP, c'est `heures_titulaires ÷ base des titulaires + heures_interim ÷
-base de l'intérim` ; les bases sont de 7 h et 7 h par défaut, et se règlent
-pour un rôle. La correspondance s'importe et s'exporte en JSON pour l'outil
+base de l'intérim` ; les bases sont de 7 h et 7 h par défaut (le moteur, et
+un fichier de correspondance sans bases), et se règlent pour un rôle. Dans la
+page, quand rien n'est encore réglé, la correspondance propose 7,5 h par ETP
+titulaire et 7 h par ETP intérimaire (évolution 15 d), sans l'enregistrer ;
+un réglage enregistré garde ses bases. La correspondance s'importe et s'exporte en JSON pour l'outil
 (`FORMATS_EXCEL.md` § 5).
 
 **La comparaison** se fait sur les jours de travail **complets** de la
@@ -2389,10 +2403,13 @@ le tableau des équipes est sous le planning :
 Les couleurs sont celles du design system : l'aire au travail dans la
 couleur de l'équipe du planning, la file dans celle de l'attente ; le thème
 sombre suit. La page Période a deux mesures de plus, par jour de travail et
-par service : le **pic au travail** et l'**occupation**. Sur une ligne Total,
-le plus haut pic des jours complets (l'occupation de tous ces jours) ; sur
-une ligne Moyenne, la moyenne des pics. Pas de colonne Total : un pic ne
-s'additionne pas d'un service à l'autre. Avec ces deux mesures, un clic sur
+par service : le **pic au travail** et l'**occupation**. Sur une ligne Moyenne,
+la moyenne des pics des jours complets (l'occupation de tous ces jours) ; le
+pic, en personnes, n'a plus de ligne Total (évolution 15 d). Un pic ne
+s'additionne pas d'un service à l'autre : la colonne « Unité » (évolution
+15 d) réunit les services créneau par créneau (`OrlyPeriode.chargeDeLUnite`,
+lu dans le bilan sans rien y ajouter), et l'occupation de l'unité pondère
+toutes ses équipes par leurs personnes. Avec ces deux mesures, un clic sur
 un jour ouvre sa journée de vols dans la page Planning ; avec les autres,
 Les chiffres, comme avant. La journée de vols du même jour n'est pas tout son
 jour de travail : ses équipes à J−1 travaillent la veille.

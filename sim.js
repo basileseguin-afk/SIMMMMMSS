@@ -2014,7 +2014,9 @@ function initPeriode(){
     mesurer:majHauteurEntete,
     exporter:exporterPeriode,
     notifier:toast,
-    rendu:()=>{if(Sim.calage)Sim.calage.rafraichir();}
+    rendu:()=>{if(Sim.calage)Sim.calage.rafraichir();},
+    // Le réel de l'unité jour par jour, pour la courbe (évolution 15 d) : celui du dernier rendu de « Réel et calage ».
+    reel:()=>(Sim.calage?Sim.calage.reelDeLUnite():null)
   });
   initCalage();
   Sim.periode.rendre();
@@ -2050,7 +2052,9 @@ function initCalage(){
     // Le rejeu à effectif imposé (évolution 11 f) : les équipes, pour lire un planning ; la période à rejouer, et sa signature.
     ateliers:()=>(Sim.ateliers?Sim.ateliers.state.ateliers:[]),
     periodeDuRejeu:()=>(Sim.periode&&programmeDate()?{unite:Sim.periode.a.unite(),vols:programmeDate(),options:Sim.periode.a.options()}:null),
-    signaturePeriode:signaturePeriode
+    signaturePeriode:signaturePeriode,
+    // Un réel importé, écarté, une correspondance changée : la courbe de la page Période suit (évolution 15 d).
+    apres:()=>{if(Sim.periode)Sim.periode.rendreCourbe();}
   });
 }
 /**

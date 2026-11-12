@@ -9,7 +9,12 @@
  *    — la page Résultats › Période : le tableau jour de travail × service,
  *      les totaux et moyennes par mois et sur la période, les jours
  *      incomplets marqués ; un clic sur un jour ouvre sa journée de vols ; le
- *      détail par équipe et par compagnie se déplie.
+ *      détail par équipe et par compagnie se déplie. Évolution 15 (d) : la
+ *      colonne « Unité » (le total des services, chaque jour), la courbe de
+ *      l'unité au-dessus du tableau (et le réel s'il est importé), la première
+ *      colonne qui reste quand le tableau défile, les personnes en moyenne par
+ *      jour seulement, les jours complets comptés d'abord ; une durée s'écrit
+ *      « 45 min » ou « 2 h 05 », des heures de travail en heures entières.
  *  La période ne se recalcule pas à chaque frappe : un réglage ou des vols
  *  modifiés la marquent « à relancer ». Tant qu'elle est à jour, la journée
  *  affichée part de ce que la veille lui laisse dans la période (son sale, son
@@ -19,7 +24,10 @@
 (function (root) {
   'use strict';
 
-  const PE = () => root.OrlyPeriode;
+  const enNode = typeof module !== 'undefined' && module.exports && typeof require === 'function';
+  const PE = () => (enNode ? require('./moteur/periode.js') : root.OrlyPeriode);
+  const P = () => (enNode ? require('./moteur/production.js') : root.MoteurProduction);
+  const PC = () => (enNode ? require('./periode-courbe.js') : root.OrlyPeriodeCourbe);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const JOURS = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
   const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
@@ -40,33 +48,91 @@
   // « + 0 » : un −0 (une moyenne négative arrondie) s'écrit 0.
   const nombre = (x, k = 1) => (x == null || !Number.isFinite(x) ? '—'
     : (Math.round(x * 10 ** k) / 10 ** k + 0).toLocaleString('fr-FR', { maximumFractionDigits: k }));
+  /** Une durée (évolution 15 d) : « 45 min » sous une heure, « 2 h 05 » au-delà ; un total d'heures de travail en heures entières. */
+  const duree = x => (x == null || !Number.isFinite(x) ? '—' : P().dureeLisible(x));
+  // Moins d'une demi-heure de travail ne s'écrit pas « 0 h » : « < 1 h ».
+  const heuresEntieres = x => (x == null || !Number.isFinite(x) ? '—' : x > 0 && x < 30 ? '< 1 h' : nombre(x / 60, 0) + ' h');
 
   /** Les mesures du tableau : ce qu'une case montre, et comment l'écrire. */
+  // `personnes` (évolution 15 d) : une mesure en personnes ; ses lignes de cumul ne donnent que la moyenne par jour
+  // (des personnes de jours différents ne s'additionnent pas). `reel` : une mesure qui se compare au réel en ETP par jour
+  // (« Réel et calage ») ; la courbe y montre le réel s'il est importé — pas sur un surplus d'arrondi ni sur un pic de 15 min.
   const MESURES = [
-    { id: 'personnes', nom: 'Personnes', ecrire: x => nombre(x, 0) },
-    { id: 'besoin', nom: 'Besoin exact (pers.)', ecrire: x => nombre(x, 1) },
+    { id: 'personnes', nom: 'Personnes', ecrire: x => nombre(x, 0), personnes: true, reel: true },
+    { id: 'besoin', nom: 'Besoin exact (pers.)', ecrire: x => nombre(x, 1), personnes: true, reel: true },
     // L'arrondi au service (banc d'essai, évolution 11 a).
-    { id: 'charge', nom: 'Charge (ETP)', ecrire: x => nombre(x, 2) },
-    { id: 'personnesService', nom: 'Personnes du service (⌈charge⌉)', ecrire: x => nombre(x, 0) },
-    { id: 'surplusArrondi', nom: 'Surplus d’arrondi (pers.)', ecrire: x => nombre(x, 0) },
-    { id: 'heuresSup', nom: 'Heures sup (h × pers.)', ecrire: x => nombre(x / 60, 1) },
+    { id: 'charge', nom: 'Charge (ETP)', ecrire: x => nombre(x, 2), personnes: true, reel: true },
+    { id: 'personnesService', nom: 'Personnes du service (⌈charge⌉)', ecrire: x => nombre(x, 0), personnes: true, reel: true },
+    { id: 'surplusArrondi', nom: 'Surplus d’arrondi (pers.)', ecrire: x => nombre(x, 0), personnes: true },
+    { id: 'heuresSup', nom: 'Heures sup (heures × personnes)', ecrire: duree },
     { id: 'commandesEnRetard', nom: 'Commandes en retard', ecrire: x => nombre(x, 0) },
-    { id: 'retardMax', nom: 'Retard max (min)', ecrire: x => (x == null ? '—' : nombre(x, 0)) },
-    { id: 'hommeMinutes', nom: 'Homme-heures', ecrire: x => nombre(x / 60, 1) },
+    { id: 'retardMax', nom: 'Retard max', ecrire: duree },
+    { id: 'hommeMinutes', nom: 'Homme-heures', ecrire: heuresEntieres },
     // Les vacations longues (banc d'essai, évolution 11 e) : seulement quand la période en a.
-    { id: 'heuresSupOffice', nom: 'Heures sup d’office (h × pers.)', ecrire: x => nombre(x / 60, 1), office: true },
-    { id: 'heuresSupOfficeEncadrement', nom: 'Heures sup d’office de l’encadrement (h × pers.)', ecrire: x => nombre(x / 60, 1), office: true },
-    // Les indicateurs de charge (banc d'essai, évolution 12 c) : par jour de travail et par service ; pas de colonne Total.
+    { id: 'heuresSupOffice', nom: 'Heures sup d’office (heures × personnes)', ecrire: duree, office: true },
+    { id: 'heuresSupOfficeEncadrement', nom: 'Heures sup d’office de l’encadrement (heures × personnes)', ecrire: duree, office: true },
+    // Les indicateurs de charge (banc d'essai, évolution 12 c) : par jour de travail et par service ; dans la colonne
+    // « Unité » (évolution 15 d), tous les services réunis (moteur/periode.js, chargeDeLUnite).
     // Un jour s'ouvre alors dans la page Planning, où est sa vue « Charge ».
-    { id: 'picAuTravail', nom: 'Pic au travail (pers.)', ecrire: x => nombre(x, 1), page: 'at-planning',
+    { id: 'picAuTravail', nom: 'Pic au travail (pers.)', ecrire: x => nombre(x, 1), page: 'at-planning', personnes: true,
       jour: k => (k.picAuTravail ? k.picAuTravail.personnes : null), cumul: (k, moyenne) => (moyenne ? k.picAuTravailMoyen : k.picAuTravail ? k.picAuTravail.personnes : null),
-      note: 'Pic au travail : le plus haut créneau de 15 min du jour ; sur une ligne Total, le plus haut des jours complets ; sur une ligne Moyenne, la moyenne de leurs pics.' },
+      unite: (k, moyenne) => (moyenne ? k.picAuTravailMoyen : k.picAuTravail ? k.picAuTravail.personnes : null),
+      note: 'Pic au travail : le plus haut créneau de 15 min du jour ; sur une ligne Moyenne, la moyenne des pics des jours complets ; dans la colonne Unité, tous les services réunis, créneau par créneau.' },
     { id: 'occupation', nom: 'Occupation (%)', ecrire: x => nombre(x * 100, 0) + ' %', page: 'at-planning',
-      jour: k => k.occupation, cumul: k => k.occupation,
-      note: 'Occupation : minutes au travail ÷ minutes de présence hors pauses, pondérée par les personnes des équipes ; sur un Total ou une Moyenne, celle de tous les jours complets.' }
+      jour: k => k.occupation, cumul: k => k.occupation, unite: k => k.occupation,
+      note: 'Occupation : minutes au travail ÷ minutes de présence hors pauses, pondérée par les personnes des équipes ; sur un Total ou une Moyenne, celle de tous les jours complets ; dans la colonne Unité, toutes les équipes.' }
   ];
   const chargeDe = s => (s && s.indicateursCharge) || null;
+  /** Le débordement (en pixels) à partir duquel le tableau se dit « défiler » sur le côté. */
+  const DEFILE_MIN = 8;
   const avecOffice = b => (b.joursTravail || []).some(w => w.total && (w.total.heuresSupOffice > 0 || w.total.heuresSupOfficeEncadrement > 0));
+
+  /**
+   * La valeur d'un service : un jour (`w`), ou sur une ligne de cumul (`cumul` : { bloc, moyenne }, le bloc d'un mois ou de
+   * la période du bilan).
+   */
+  function valeurService(m, id, cumul, w) {
+    if (cumul) {
+      if (m.cumul) { const k = cumul.bloc.indicateursCharge && cumul.bloc.indicateursCharge.services[id]; return k ? m.cumul(k, cumul.moyenne) : null; }
+      const x = (cumul.moyenne ? cumul.bloc.moyenne : cumul.bloc.total).services[id];
+      return x ? x[m.id] : null;
+    }
+    const s = w.services[id];
+    return m.jour ? (chargeDe(s) ? m.jour(chargeDe(s)) : null) : s ? s[m.id] : null;
+  }
+
+  /**
+   * La colonne « Unité » (évolution 15 d) : le total des services d'un jour (`jours` = [w]) ou d'une ligne de cumul (`jours` :
+   * ses jours complets ; `cumul` : { bloc, moyenne }). Une mesure de charge : tous les services réunis (moteur/periode.js).
+   */
+  function valeurUnite(m, jours, cumul) {
+    if (m.unite) return m.unite(PE().chargeDeLUnite(jours), cumul ? cumul.moyenne : false);
+    if (cumul) return (cumul.moyenne ? cumul.bloc.moyenne : cumul.bloc.total)[m.id];
+    return jours[0] && jours[0].total ? jours[0].total[m.id] : null;
+  }
+
+  /**
+   * Les lignes de cumul du tableau, dans l'ordre : par mois (seulement les mois qui ont des jours complets, et seulement s'il
+   * y en a plusieurs), puis sur la période. Une mesure en personnes : la moyenne par jour seule, qui dit sur combien de jours ;
+   * les autres : le total et la moyenne. [{ lib, mois (null : la période), bloc, moyenne, jours }]
+   */
+  function lignesDeCumul(b, m) {
+    const complets = b.joursTravail.filter(w => w.complet), nb = n => n + (n > 1 ? ' jours complets' : ' jour complet');
+    const bloc = (mois, total, moyenne, x, jours) => [
+      ...(m.personnes ? [] : [{ lib: total + ' (' + nb(x.jours) + ')', mois, bloc: x, moyenne: false, jours }]),
+      { lib: moyenne + (m.personnes ? ' (' + nb(x.jours) + ')' : ''), mois, bloc: x, moyenne: true, jours }];
+    const mois = b.mois.filter(mo => mo.jours > 0);
+    return (mois.length > 1 ? mois.flatMap(mo => bloc(mo.mois, 'Total ' + nomDuMois(mo.mois), 'Moyenne par jour, ' + nomDuMois(mo.mois), mo,
+      complets.filter(w => w.date.startsWith(mo.mois)))) : [])
+      .concat(bloc(null, 'Total de la période', 'Moyenne par jour sur la période', b.periode, complets));
+  }
+
+  /** Les jours de travail comptés, les complets d'abord (« 4 jours complets, 6 incomplets »), et ce qu'est un jour incomplet. */
+  function comptesDesJours(b) {
+    const n = b.joursTravail.filter(w => w.complet).length, i = b.joursTravail.length - n;
+    return { complets: n, incomplets: i, texte: n + (n > 1 ? ' jours complets' : ' jour complet') + (i ? ', ' + i + (i > 1 ? ' incomplets' : ' incomplet') : ''),
+      explication: 'un jour incomplet manque des vols d’un jour voisin, hors de la période ; il est montré, mais sort des totaux et des moyennes' };
+  }
 
   class VuePeriode {
     /* a = {
@@ -136,8 +202,7 @@
         this.reglages = c.reglages; this.calculeLe = new Date();
         this.rendre(); this.a.recalculer();
         const r = this.resultat.periode;
-        this.a.notifier('Période simulée : ' + r.jours + (r.jours > 1 ? ' journées' : ' journée') + ' de vols, ' + r.joursIncomplets.length
-          + (r.joursIncomplets.length > 1 ? ' jours de travail incomplets.' : ' jour de travail incomplet.'));
+        this.a.notifier('Période simulée : ' + r.jours + (r.jours > 1 ? ' journées' : ' journée') + ' de vols ; ' + comptesDesJours(this.resultat.bilan).texte + '.');
       };
       this.rendre(); setTimeout(pas, 0);
     }
@@ -195,15 +260,16 @@
     rendre() { this.rendreBandeau(); this.rendreVue(); }
 
     /** La ligne d'état : où en est la période, et d'où vient le sale de la veille de la journée affichée. */
-    texteEtat(d) {
+    /** `court` : pour le bandeau d'en-tête, sans la phrase qui explique l'incomplet (la page Période la donne). */
+    texteEtat(d, court) {
       const e = this.etat(), jour = this.a.jour();
       if (this.erreur) return '<span class="pj-erreur">Période non simulée : ' + esc(this.erreur) + '</span>';
       if (e === 'en-cours') return this.texteProgression();
       if (e === 'jamais') return 'Période de ' + d.jours + (d.jours > 1 ? ' jours' : ' jour') + ' : pas encore simulée. La journée affichée part du sale de la veille saisi.';
       if (e === 'a-relancer') return '<b class="pj-relancer">À relancer</b> : un réglage ou les vols ont changé depuis le calcul. La journée affichée part du sale de la veille saisi.';
-      const r = this.resultat.periode, j = this.resultat.journees.find(x => x.date === jour);
-      return 'Période simulée : ' + r.jours + (r.jours > 1 ? ' journées' : ' journée') + ', ' + r.joursIncomplets.length
-        + (r.joursIncomplets.length > 1 ? ' jours de travail incomplets' : ' jour de travail incomplet') + '.'
+      const r = this.resultat.periode, j = this.resultat.journees.find(x => x.date === jour), c = comptesDesJours(this.resultat.bilan);
+      return 'Période simulée : ' + r.jours + (r.jours > 1 ? ' journées' : ' journée') + ' de vols ; ' + c.texte
+        + (c.incomplets && !court ? ' <span class="pv-explique">(' + c.explication + ')</span>' : '') + '.'
         + (j && j.date !== r.debut ? ' Cette journée part du sale laissé la veille dans la période (' + nombre(j.extrait.saleInitial, 0) + ' u).' : '');
     }
     texteProgression() {
@@ -231,7 +297,7 @@
           <button type="button" class="btn btn-sm" data-pv="precedent" aria-label="Journée précédente"${jour === d.debut ? ' disabled' : ''}>‹</button>
           <select id="periode-jour">${options}</select>
           <button type="button" class="btn btn-sm" data-pv="suivant" aria-label="Journée suivante"${jour === d.fin ? ' disabled' : ''}>›</button></div>
-        <p class="pj-etat" role="status" aria-live="polite">${this.texteEtat(d)}</p>
+        <p class="pj-etat" role="status" aria-live="polite">${this.texteEtat(d, true)}</p>
         <div class="pj-actions">${e === 'en-cours' ? '<button type="button" class="btn btn-sm" data-pv="annuler">Annuler</button>'
           : `<button type="button" class="btn btn-sm${e === 'a-jour' ? '' : ' btn-play'}" data-pv="lancer">${e === 'jamais' ? 'Simuler la période' : 'Relancer la période'}</button>`}
           <button type="button" class="lien-fort" data-pv="voir">La période →</button></div>`);
@@ -257,9 +323,8 @@
           : `<button type="button" class="btn btn-sm${e === 'a-jour' ? '' : ' btn-play'}" data-pv="lancer">${e === 'jamais' ? 'Simuler la période' : 'Relancer la période'}</button>`}
           ${e === 'a-jour' ? '<button type="button" class="btn btn-sm" data-pv="exporter">Exporter la période (Excel)</button>' : ''}</div></div>`;
       if (!r) { dessiner(box, tete); return; }
-      const b = r.bilan, mesures = MESURES.filter(x => !x.office || avecOffice(b)), m = mesures.find(x => x.id === this.mesure) || mesures[0];
+      const b = r.bilan, mesures = MESURES.filter(x => !x.office || avecOffice(b)), m = this.mesureChoisie();
       const services = b.services.filter(s => b.joursTravail.some(w => w.services[s.id]));
-      const valeur = s => (m.jour ? (chargeDe(s) ? m.jour(chargeDe(s)) : null) : s ? s[m.id] : null);
       const cellule = (x, extra = '') => `<td class="pv-n"${extra}>${x == null || (m.id !== 'retardMax' && !x) ? '<span class="pv-zero">' + (x == null ? '—' : m.ecrire(x)) + '</span>' : m.ecrire(x)}</td>`;
       const ligneJour = w => {
         const titre = w.complet ? 'Ouvrir la journée de vols du ' + PE().dateLongue(w.date) : 'Incomplet : il manque les vols du ' + w.manque.map(PE().dateLongue).join(', ');
@@ -267,25 +332,57 @@
         return `<tr data-pv-jour="${w.date}" class="${w.complet ? '' : 'pv-incomplet'}" title="${esc(titre)}">
             <th scope="row"><button type="button" class="pv-deplier" data-pv="detail" data-date="${w.date}" aria-expanded="${ouvert}" aria-label="Détail du ${PE().dateLongue(w.date)} par équipe et par compagnie">${ouvert ? '▾' : '▸'}</button>
               <button type="button" class="pv-ouvrir" data-pv="ouvrir" data-date="${w.date}">${jourDeSemaine(w.date)} ${PE().dateCourte(w.date)}</button>${w.complet ? '' : ' <span class="pv-badge">incomplet</span>'}</th>
-            ${services.map(s => cellule(valeur(w.services[s.id]))).join('')}${cellule(valeur(w.total), ' data-pv-total')}</tr>`
+            ${services.map(s => cellule(valeurService(m, s.id, null, w))).join('')}${cellule(valeurUnite(m, [w]), ' data-pv-total')}</tr>`
           + (ouvert ? `<tr class="pv-detail"><td colspan="${services.length + 2}">${this.detail(w, b)}</td></tr>` : '');
       };
-      const ligneCumul = (lib, cumul, moyenne) => `<tr class="pv-cumul${moyenne ? ' pv-moyenne' : ''}"><th scope="row">${esc(lib)}</th>${services.map(s => {
-        if (m.cumul) { const k = cumul.indicateursCharge && cumul.indicateursCharge.services[s.id]; return cellule(k ? m.cumul(k, moyenne) : null); }
-        const x = (moyenne ? cumul.moyenne : cumul.total).services[s.id];
-        return cellule(x ? x[m.id] : null); }).join('')}${cellule(m.cumul ? null : (moyenne ? cumul.moyenne : cumul.total)[m.id], ' data-pv-total')}</tr>`;
+      // Le premier rang d'un bloc de cumul porte le trait qui le sépare des jours.
+      const ligneCumul = (l, i, tous) => `<tr class="pv-cumul${l.moyenne ? ' pv-moyenne' : ''}${i === 0 || tous[i - 1].mois !== l.mois ? ' pv-tete-bloc' : ''}"><th scope="row">${esc(l.lib)}</th>${
+        services.map(s => cellule(valeurService(m, s.id, l))).join('')}${cellule(valeurUnite(m, l.jours, l), ' data-pv-total')}</tr>`;
+      const cumuls = lignesDeCumul(b, m), rangs = cumuls.map((l, i) => ({ mois: l.mois, html: ligneCumul(l, i, cumuls) }));
       const corps = b.mois.map(mo => b.joursTravail.filter(w => w.date.startsWith(mo.mois)).map(ligneJour).join('')
-        + ligneCumul('Total ' + nomDuMois(mo.mois) + ' (' + mo.jours + ' jour' + (mo.jours > 1 ? 's' : '') + ' complet' + (mo.jours > 1 ? 's' : '') + ')', mo, false)
-        + ligneCumul('Moyenne par jour, ' + nomDuMois(mo.mois), mo, true)).join('')
-        + ligneCumul('Total de la période (' + b.periode.jours + ' jour' + (b.periode.jours > 1 ? 's' : '') + ' complet' + (b.periode.jours > 1 ? 's' : '') + ')', b.periode, false)
-        + ligneCumul('Moyenne par jour sur la période', b.periode, true);
+        + rangs.filter(x => x.mois === mo.mois).map(x => x.html).join('')).join('') + rangs.filter(x => !x.mois).map(x => x.html).join('');
       dessiner(box, tete + `<div class="panneau pv-tableau">
         <div class="pv-outils"><label>Mesure <select id="periode-mesure">${mesures.map(x => `<option value="${x.id}"${x.id === m.id ? ' selected' : ''}>${esc(x.nom)}</option>`).join('')}</select></label>
           <span class="mini-note">Un clic sur un jour ouvre sa journée de vols${m.page ? ', dans la page Planning (sa charge, puis le planning des équipes)' : ''} ; ▸ déplie son détail par équipe et par compagnie.</span></div>
         ${m.note ? `<p class="mini-note pv-note-mesure">${esc(m.note)}</p>` : ''}
-        <div class="table-scroll"><table class="svc-table pv-table" data-mesure="${m.id}">
-          <thead><tr><th scope="col">Jour de travail</th>${services.map(s => `<th scope="col">${esc(s.nom)}</th>`).join('')}<th scope="col">Total</th></tr></thead>
-          <tbody>${corps}</tbody></table></div></div>`);
+        <figure class="pv-courbe"><div class="pv-trace" id="pv-trace" tabindex="0" aria-label="La courbe de l’unité : les flèches gauche et droite lisent un jour"></div>
+          <figcaption class="pv-bulle mini-note" role="status" aria-live="polite"></figcaption></figure>
+        <p class="mini-note pv-defile-aide" aria-hidden="true">Le tableau défile sur le côté ; la colonne des jours reste.</p>
+        <div class="pv-defile"><div class="table-scroll"><table class="svc-table pv-table" data-mesure="${m.id}">
+          <thead><tr><th scope="col">Jour de travail</th>${services.map(s => `<th scope="col">${esc(s.nom)}</th>`).join('')}<th scope="col">Unité</th></tr></thead>
+          <tbody>${corps}</tbody></table></div></div></div>`);
+      this.rendreCourbe(box);
+      this.suivreDefilement(box);
+    }
+
+    /** La mesure choisie, parmi celles que la période montre. */
+    mesureChoisie() {
+      const b = this.resultat.bilan, mesures = MESURES.filter(x => !x.office || avecOffice(b));
+      return mesures.find(x => x.id === this.mesure) || mesures[0];
+    }
+
+    /** La courbe de l'unité, jour par jour, à la largeur de son cadre ; le réel (« Réel et calage ») pour une mesure en personnes. */
+    rendreCourbe(box = document.getElementById('pv-periode') || document.getElementById('journee-periode')) {
+      const trace = box && box.querySelector('.pv-trace'); if (!trace || !this.resultat) return;
+      const m = this.mesureChoisie(), reel = m.reel && this.a.reel ? this.a.reel() : null;
+      PC().peindre(trace, box.querySelector('.pv-bulle'), PC().points(this.resultat.bilan, w => valeurUnite(m, [w]), reel),
+        { ecrire: m.ecrire, nom: m.nom.replace(/\s*\(.*\)$/, '') });
+    }
+
+    /** Le défilement sur le côté se voit : une ombre au bord de la colonne des jours, un fondu du côté où le tableau continue. */
+    suivreDefilement(box) {
+      const t = box.querySelector('.pv-tableau'), sc = t && t.querySelector('.table-scroll'); if (!sc) return;
+      // Quelques pixels cachés ne se signalent pas : le tableau « défile » au-delà de DEFILE_MIN.
+      const marquer = () => {
+        const max = sc.scrollWidth - sc.clientWidth, x = sc.scrollLeft, defile = max > DEFILE_MIN;
+        const d = [defile && x > 1 ? 'gauche' : '', defile && x < max - 1 ? 'droite' : ''].filter(Boolean).join(' ');
+        if (t.dataset.defile !== d) t.dataset.defile = d;
+      };
+      marquer();
+      if (sc.__suivi) return;
+      sc.__suivi = true;
+      sc.addEventListener('scroll', marquer, { passive: true });
+      if (root.ResizeObserver) new root.ResizeObserver(marquer).observe(sc);
     }
 
     /** Le détail d'un jour de travail : ses équipes, et ses compagnies par service. */
@@ -297,20 +394,20 @@
         .sort((x, y) => (nomService.get(x.service) || '').localeCompare(nomService.get(y.service) || '') || x.cie.localeCompare(y.cie));
       return `<div class="pv-detail-corps"><table class="svc-table pv-equipes"><caption>Par équipe</caption>
           <thead><tr><th scope="col">Service</th><th scope="col">Équipe</th><th scope="col">Vols du</th><th scope="col">Personnes</th><th scope="col">Besoin exact</th><th scope="col">Charge (ETP)</th>
-            <th scope="col">Homme-heures</th><th scope="col">Heures sup (h × pers.)</th><th scope="col">Lots en retard</th><th scope="col">Retard max</th></tr></thead>
+            <th scope="col">Homme-heures</th><th scope="col">Heures sup (heures × personnes)</th><th scope="col">Lots en retard</th><th scope="col">Retard max</th></tr></thead>
           <tbody>${eq.map(x => `<tr data-pv-equipe="${esc(x.id)}"><td>${esc(nomService.get(x.service) || x.service)}</td><td>${esc(x.nom)}${'ouverte' in x ? ' <small>' + (x.ouverte ? 'nuit ouverte' : 'nuit fermée') + '</small>' : ''}</td>
-            <td>${PE().dateCourte(x.vols)}</td><td class="pv-n">${nombre(x.personnes, 0)}</td><td class="pv-n">${nombre(x.besoin, 1)}</td><td class="pv-n">${nombre(x.charge, 2)}</td><td class="pv-n">${nombre(x.hommeMinutes / 60, 1)}</td>
-            <td class="pv-n">${nombre(x.heuresSup / 60, 1)}</td><td class="pv-n">${nombre(x.lotsEnRetard, 0)}</td><td class="pv-n">${x.retardMax == null ? '—' : nombre(x.retardMax, 0) + ' min'}</td></tr>`).join('')}</tbody></table>
+            <td>${PE().dateCourte(x.vols)}</td><td class="pv-n">${nombre(x.personnes, 0)}</td><td class="pv-n">${nombre(x.besoin, 1)}</td><td class="pv-n">${nombre(x.charge, 2)}</td><td class="pv-n">${heuresEntieres(x.hommeMinutes)}</td>
+            <td class="pv-n">${duree(x.heuresSup)}</td><td class="pv-n">${nombre(x.lotsEnRetard, 0)}</td><td class="pv-n">${duree(x.retardMax)}</td></tr>`).join('')}</tbody></table>
         <table class="svc-table pv-compagnies"><caption>Par compagnie</caption>
           <thead><tr><th scope="col">Service</th><th scope="col">Compagnie</th><th scope="col">Commandes</th><th scope="col">Vols</th><th scope="col">Passagers</th>
             <th scope="col">Homme-heures</th><th scope="col">Retard max</th></tr></thead>
           <tbody>${cies.map(c => `<tr data-pv-cie="${esc(c.service + '|' + c.cie)}"><td>${esc(nomService.get(c.service) || c.service)}</td><td>${esc(c.cie)}</td><td class="pv-n">${nombre(c.commandes, 0)}</td>
-            <td class="pv-n">${nombre(c.vols, 0)}</td><td class="pv-n">${nombre(c.pax, 0)}</td><td class="pv-n">${nombre(c.hommeMinutes / 60, 1)}</td>
-            <td class="pv-n">${c.retardMax == null ? '—' : nombre(c.retardMax, 0) + ' min'}</td></tr>`).join('')}</tbody></table></div>`;
+            <td class="pv-n">${nombre(c.vols, 0)}</td><td class="pv-n">${nombre(c.pax, 0)}</td><td class="pv-n">${heuresEntieres(c.hommeMinutes)}</td>
+            <td class="pv-n">${duree(c.retardMax)}</td></tr>`).join('')}</tbody></table></div>`;
     }
   }
 
-  const api = { VuePeriode, MESURES };
+  const api = { VuePeriode, MESURES, valeurService, valeurUnite, lignesDeCumul, comptesDesJours };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyPeriodeVue = api;
 })(typeof window !== 'undefined' ? window : globalThis);

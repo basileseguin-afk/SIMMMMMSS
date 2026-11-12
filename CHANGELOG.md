@@ -5,6 +5,44 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-12 — Évolution 15 (d) : la page Période
+
+- Une colonne « Unité » : le total des services, chaque jour ; pour le pic au
+  travail et l'occupation, tous les services réunis (`moteur/periode.js`,
+  `chargeDeLUnite` : les créneaux des services additionnés à la même heure,
+  l'occupation de toutes les équipes pondérée par leurs personnes ; lu dans le
+  bilan, sans rien y ajouter).
+- Une courbe au-dessus du tableau (`periode-courbe.js`, nouveau) : la colonne
+  Unité jour par jour, un rond plein par jour complet, un rond creux par jour
+  incomplet ; le réel de « Réel et calage » s'il est importé, pour une mesure
+  qui se compare à des ETP par jour (personnes, besoin, charge, personnes du
+  service ; pas un surplus d'arrondi ni un pic de 15 min), en tirets d'une
+  encre neutre ; la bulle suit la souris et les flèches.
+- La première colonne reste quand le tableau défile sur le côté ; le
+  défilement se voit (une ombre au bord de la colonne des jours, un fondu du
+  côté où il continue, une phrase), au-delà de quelques pixels.
+- La ligne de total n'additionne plus des personnes de jours différents :
+  pour une mesure en personnes, seule la moyenne par jour s'affiche, avec son
+  nombre de jours complets ; le total reste pour les heures. Un seul bloc de
+  totaux quand les jours complets tiennent dans un mois.
+- « Jours de travail incomplets » s'explique en une phrase à côté du mot, et
+  les jours complets se comptent d'abord (« 14 jours complets, 6
+  incomplets »), dans la page et dans l'avis de fin de calcul ; le bandeau
+  d'en-tête donne les comptes, la page Période la phrase.
+- Une seule écriture du temps dans la page : une durée « 45 min » ou
+  « 2 h 05 » (heures sup, retard max), des homme-heures en heures entières
+  (« < 1 h » sous la demi-heure, jamais « 0 h » pour un travail fait) ; le
+  détail d'un jour aussi.
+- La correspondance propose 7,5 h par ETP titulaire et 7 h par ETP
+  intérimaire, seulement quand rien n'est encore réglé, sans l'enregistrer ;
+  un réglage enregistré garde ses bases, et le moteur ses défauts de 7 h
+  (`calage-vue.js`).
+- Tests : `tests/periode-unite.test.cjs`, `tests/calage-bases.test.cjs`,
+  `tests/periode-page-browser.cjs` (nouveaux) ; `periode-browser`,
+  `charge-browser` et `calage-browser` lisent les moyennes, la colonne Unité
+  et l'écriture du temps. Le résultat d'une période, ses indicateurs et son
+  classeur ne changent pas ; la v2 n'est pas touchée.
+
 ## 2026-11-11 — Évolution 15 (c) : moins de pages, et des chiffres qui ne se contredisent plus
 
 - Le menu des Résultats : Synthèse ; Période (avec un programme daté) ; Le plan

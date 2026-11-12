@@ -294,7 +294,8 @@ const CLE='ory-calage-v1';
   assert.ok(w3.services.cuisine.heuresSupOffice>0,'l’équipe aussi');
   await page.locator('#periode-mesure').selectOption('heuresSupOfficeEncadrement');await attendre(100);
   const iCuisine=b3.services.filter(x=>Object.values(b3.joursTravail).some(w=>w.services[x.id])).findIndex(x=>x.id==='cuisine');
-  assert.equal((await page.locator(`#journee-periode tr[data-pv-jour="${w3.date}"] td`).allInnerTexts())[iCuisine],'5');
+  // Une seule écriture du temps (évolution 15 d) : 300 minutes × personnes s'écrivent « 5 h 00 ».
+  assert.equal((await page.locator(`#journee-periode tr[data-pv-jour="${w3.date}"] td`).allInnerTexts())[iCuisine],'5 h 00');
   const x3=await T.lireClasseur(new Uint8Array(fs.readFileSync(await telecharger(()=>page.locator('#journee-periode [data-pv=exporter]').click()))));
   assert.ok(x3.find(f=>f.nom==='Période').lignes[0].includes('Heures sup d’office de l’encadrement (min × pers.)'));
   assert.ok(x3.find(f=>f.nom==='Équipes').lignes[0].includes('Heures sup d’office (min × pers.)'));

@@ -35,7 +35,7 @@ body[data-vue="plan"][data-sous="j-periode"] .app{grid-template-columns:minmax(0
 
 /* Le tableau : la tête et la colonne des jours restent en place quand il défile. */
 .pv-tableau .table-scroll{max-height:min(70vh,900px);overflow:auto;border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3)}
-.pv-table{width:100%;border-collapse:separate;border-spacing:0;font-size:var(--ds-t-13);box-shadow:none}
+.pv-table{width:100%;border-collapse:separate;border-spacing:0;font-size:var(--ds-t-13);box-shadow:none;border:0}
 .pv-table thead th{position:sticky;top:0;z-index:2;background:var(--ds-surface-1);text-align:right;white-space:nowrap}
 .pv-table thead th:first-child,.pv-table tbody th{text-align:left;position:sticky;left:0;z-index:1;background:var(--ds-surface-1)}
 .pv-table thead th:first-child{z-index:3}
@@ -55,7 +55,8 @@ body[data-vue="plan"][data-sous="j-periode"] .app{grid-template-columns:minmax(0
 .pv-badge{display:inline-block;margin-left:6px;padding:0 6px;border-radius:999px;font-size:var(--ds-t-11);font-weight:var(--ds-g-fort);
   line-height:1.6;color:var(--ds-attente-texte);background:var(--ds-attente-doux)}
 .pv-cumul>*{background:var(--ds-surface-2);font-weight:var(--ds-g-fort);color:var(--ds-texte-1)}
-.pv-cumul:not(.pv-moyenne)>*{border-top:1px solid var(--ds-bordure-forte)}
+/* Le premier rang d'un bloc de cumul (évolution 15 d : pour les personnes, la moyenne seule) le sépare des jours. */
+.pv-cumul.pv-tete-bloc>*{border-top:1px solid var(--ds-bordure-forte)}
 .pv-moyenne>*{font-weight:var(--ds-g-moyen);color:var(--ds-texte-2)}
 .pv-table .pv-cumul th,.pv-table .pv-moyenne th{white-space:normal}
 
@@ -120,3 +121,37 @@ body[data-vue="plan"][data-sous="j-periode"] .app{grid-template-columns:minmax(0
 .pc-rejeu progress{width:min(320px,100%)}
 .pc-rejeu h4,.pc-travail h4{margin:var(--ds-e-3) 0 var(--ds-e-2)}
 
+/* ---- Évolution 15 (d) : la courbe de l'unité, le défilement qui se voit ---- */
+.pv-explique{color:var(--ds-texte-3);font-size:var(--ds-t-12)}
+.pv-courbe{margin:0 0 var(--ds-e-3)}
+.pv-trace{position:relative;width:100%;overflow:hidden;border-radius:var(--ds-r-2)}
+.pv-trace:focus-visible{outline:2px solid var(--ds-focus);outline-offset:2px}
+.pv-bulle{min-height:1.4em;margin:var(--ds-e-1) 0 0}
+.pvc-legende{display:flex;flex-wrap:wrap;gap:var(--ds-e-4);margin:0 0 var(--ds-e-2);font-size:var(--ds-t-12);color:var(--ds-texte-2)}
+.pvc-legende span::before{content:"";display:inline-block;margin-right:6px;vertical-align:middle}
+.pvc-l-unite::before{width:14px;height:0;border-top:2px solid var(--ds-d1)}
+.pvc-l-incomplet::before{width:8px;height:8px;box-sizing:border-box;border:2px solid var(--ds-d1);border-radius:50%;background:var(--ds-surface-1)}
+.pvc-l-reel::before{width:14px;height:0;border-top:2px dashed var(--ds-texte-2)}
+.pvc-svg{display:block}
+.pvc-grille{stroke:var(--ds-bordure);stroke-width:1}
+.pvc-echelle{fill:var(--ds-texte-3);font-size:var(--ds-t-11);text-anchor:end}
+.pvc-jour{fill:var(--ds-texte-3);font-size:var(--ds-t-11);text-anchor:middle}
+.pvc-unite{fill:none;stroke:var(--ds-d1);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.pvc-point{fill:var(--ds-d1);stroke:var(--ds-surface-1);stroke-width:2}
+.pvc-point.pvc-incomplet{fill:var(--ds-surface-1);stroke:var(--ds-d1)}
+.pvc-reel{fill:none;stroke:var(--ds-texte-2);stroke-width:2;stroke-dasharray:5 4;stroke-linejoin:round}
+.pvc-reel-point{fill:var(--ds-texte-2);stroke:var(--ds-surface-1);stroke-width:1.5}
+.pvc-curseur{stroke:var(--ds-texte-1);stroke-width:1;stroke-dasharray:3 3}
+
+/* Le tableau défile sur le côté : la colonne des jours reste (collante), une ombre la borde dès qu'on a défilé, un fondu
+   dit qu'il continue à droite, et la barre de défilement reste dessinée. */
+.pv-defile{position:relative}
+.pv-defile::after{content:"";position:absolute;top:1px;right:1px;bottom:1px;width:28px;pointer-events:none;opacity:0;
+  border-radius:0 var(--ds-r-3) var(--ds-r-3) 0;background:linear-gradient(to right,transparent,color-mix(in srgb,var(--ds-texte-1) 12%,transparent));
+  transition:opacity var(--ds-t-rapide)}
+.pv-tableau[data-defile~="droite"] .pv-defile::after{opacity:1}
+.pv-tableau .table-scroll{scrollbar-width:thin;scrollbar-color:var(--ds-bordure-forte) var(--ds-surface-2)}
+.pv-tableau[data-defile~="gauche"] .pv-table thead th:first-child,
+.pv-tableau[data-defile~="gauche"] .pv-table tbody th{box-shadow:6px 0 6px -4px color-mix(in srgb,var(--ds-texte-1) 22%,transparent)}
+.pv-defile-aide{display:none;margin:0 0 var(--ds-e-1)}
+.pv-tableau[data-defile~="droite"] .pv-defile-aide,.pv-tableau[data-defile~="gauche"] .pv-defile-aide{display:block}

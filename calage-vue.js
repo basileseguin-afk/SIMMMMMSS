@@ -24,6 +24,8 @@
   const nombre = (x, k = 2) => (x == null || !Number.isFinite(x) ? '—' : (Math.round(x * 10 ** k) / 10 ** k + 0).toLocaleString('fr-FR', { maximumFractionDigits: k }));
   const dateFr = d => d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4);
   const MAX_REEL = 50 * 1024 * 1024;
+  /** Les heures d'un ETP que la correspondance propose quand rien n'est réglé (évolution 15 d). */
+  const BASE_PROPOSEE = Object.freeze({ titulaires: 7.5, interim: 7 });
   const COUVRE = [['services', 'Des services'], ['encadrement', 'L’encadrement d’un service'], ['camion', 'Les chauffeurs camion'], ['vl', 'Les chauffeurs VL'], ['hors', 'Hors simulation']];
 
   class VueCalage {
@@ -38,6 +40,7 @@
      *   journee()       — la journée affichée en jour de travail (moteur/calage-periode.js, jourDeLaJournee), ou null
      *   ateliers()      — les équipes de l'unité (pour lire un planning)
      *   periodeDuRejeu() — { unite, vols, options } : la période à rejouer avec le planning ; signaturePeriode() — ce qui la rend « à relancer »
+     *   apres()         — après chaque rendu (facultatif) : la courbe de la page Période montre le réel (évolution 15 d)
      * } */
     constructor(a) {
       this.a = a; this.lu = null; this.fichier = null; this.erreur = null; this.erreurCorrespondance = null; this.rapport = null;
@@ -48,10 +51,18 @@
       this.planning = null; this.fichierPlanning = null; this.erreurPlanning = null; this.rejeu = null; this.travail = null; this.calcul = null;
       this.box = null;
     }
-    /** Les réglages gardés, relus ; vides s'ils sont illisibles. */
+    /**
+     * Les réglages gardés, relus ; vides s'ils sont illisibles. Rien de réglé (évolution 15 d) : la correspondance propose
+     * 7,5 h par ETP titulaire et 7 h par ETP intérimaire, sans l'enregistrer (le premier changement l'enregistre avec la
+     * correspondance) ; un réglage enregistré garde ses bases (sans bases, celles du moteur, 7 h), et un réglage enregistré
+     * illisible se relit vide, avec celles du moteur.
+     */
     relire() {
-      try { return R().validerReglages(this.a.reglages ? this.a.reglages() : null); }
-      catch (e) { return R().validerReglages(null); }
+      try {
+        const garde = this.a.reglages ? this.a.reglages() : null, r = R().validerReglages(garde);
+        if (garde === null || garde === undefined) r.correspondance.bases.defaut = { ...BASE_PROPOSEE };
+        return r;
+      } catch (e) { return R().validerReglages(null); }
     }
     enregistrer() {
       if (this.a.enregistrer) this.a.enregistrer({ correspondance: this.correspondance, decisions: this.decisions,
@@ -382,6 +393,8 @@
       const box = this.box || document.getElementById('pv-reel'); if (!box) return;
       this.attacher(box);
       const b = this.a.bilan(), ctrl = this.controle(), comp = this.comparaison();
+      // Le total de l'unité, réel et simulé, jour par jour : la courbe de la page Période le montre (évolution 15 d).
+      this.uniteReelle = comp ? comp.unite.jours : null;
       // Le rapport ne vaut que pour la comparaison d'où il vient : elle change, il s'efface.
       const cle = comp ? JSON.stringify([comp.lignes.map(l => [l.nom, l.jours]), comp.unite.jours]) : null;
       if (this.rapport && this.rapport.cle !== cle) this.rapport = null;
@@ -412,7 +425,10 @@
       </div>`;
       VueCalage.rendreFocus(box, focus);
       this.rendreJour();
+      if (this.a.apres) this.a.apres();
     }
+    /** Le total de l'unité du dernier rendu, jour par jour ({ date, reel, simule, ecart }), ou null sans comparaison. */
+    reelDeLUnite() { return this.uniteReelle || null; }
 
     /** Le geste qui a le focus, pour le retrouver après le rendu. */
     static cleDuFocus(box) {
