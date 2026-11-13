@@ -1,12 +1,13 @@
-/* Évolution 14 (c) — le planning des équipes, sans navigateur (planning-vue.js) :
- * l'échelle fixe des trois zooms, les bornes de la chaîne, le jour où le plus
- * de lots tournent, l'ordre des services le long du chemin, les groupes, une
+/* Évolution 14 (c), correction 18 (b) — le planning des équipes, sans navigateur
+ * (planning-vue.js) : l'échelle des trois zooms, les bornes de la chaîne, le
+ * jour qu'on ouvre, l'ordre des services le long du chemin, les lignes, une
  * pause prise qui troue la barre, la limite de chaque commande au bout de son
  * dernier lot, le retard et la marge, la période visible, les repères de l'axe
  * à deux niveaux, la commande mise en évidence. Données fictives. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const PV = require('../planning-vue.js');
+const E = require('../planning-ensemble.js');
 
 /* Une journée fictive : une cuisine la veille, un montage, un robot, un handling, une plonge. */
 const R = {
@@ -35,9 +36,13 @@ const R = {
 R.lots = R.ateliers.flatMap(a => a.lots);
 const lot = (at, i) => R.ateliers.find(a => a.id === at).lots[i];
 
-test('l’échelle : « Un jour » 40 px par heure, « 6 h » 160, « Toute la chaîne » tient dans la largeur visible', () => {
-  assert.equal(PV.pxParHeure('jour', 800, 0, 1440), 40);
-  assert.equal(PV.pxParHeure('jour', 1600, 0, 1440), 40, 'la largeur de la fenêtre n’y change rien');
+test('l’échelle : « Un jour » remplit la largeur (40 px par heure au moins), « 6 h » 160, « Toute la chaîne » tient dans la largeur visible', () => {
+  assert.equal(PV.pxParHeure('jour', 800, 0, 1440), 40, '24 h dans 800 px : 40 px par heure, on défile');
+  assert.equal(PV.pxParHeure('jour', 1600, 0, 1440), 1600 / 24, '24 h dans 1 600 px : la fenêtre remplit la largeur');
+  assert.equal(PV.pxParHeure('jour', 800, 360, 1020), 800 / 11, '11 h de travail dans 800 px');
+  assert.deepEqual(PV.PX_HEURE, { jour: 40, six: 160 });
+  assert.equal(PV.BARRE_MIN, 3, 'une barre fait au moins 3 px');
+  assert.equal(PV.HAUT_GROUPE, 32, 'la ligne d’un service : 32 px');
   assert.equal(PV.pxParHeure('six', 800, 0, 1440), 160);
   assert.equal(PV.pxParHeure('six', 1600, 0, 1440), 160);
   assert.equal(PV.pxParHeure('chaine', 800, 0, 1200), 40, '20 h dans 800 px');
@@ -57,25 +62,29 @@ test('les bornes : de la première à la dernière minute, à l’heure ronde, l
   assert.deepEqual(PV.bornes({ lots: [{ debut: 10, fin: 20 }], ateliers: [], parClasse: {} }), { t0: 0, t1: 60 });
 });
 
-test('le jour où le plus de lots tournent', () => {
-  assert.equal(PV.jourLePlusCharge(R), 0);
-  assert.equal(PV.jourLePlusCharge({ lots: [{ debut: -100, fin: -50 }, { debut: -90, fin: -40 }, { debut: 30, fin: 60 }] }), -1);
-  assert.equal(PV.jourLePlusCharge({ lots: [{ debut: -100, fin: -50 }, { debut: 30, fin: 60 }] }), -1, 'à égalité, le premier');
-  assert.equal(PV.jourLePlusCharge({ lots: [] }), 0);
+test('le jour qu’on ouvre : le jour de travail qui a le plus de lots (planning-ensemble.js)', () => {
+  // Le jour de travail est celui de l'équipe : la cuisine de la veille, un lot ; le jour des vols, six.
+  assert.deepEqual(E.joursAvecLots(R), [{ jour: -1, lots: 1, equipes: 1 }, { jour: 0, lots: 6, equipes: 3 }]);
+  assert.equal(E.jourAOuvrir(R), 0);
+  assert.equal(E.jourAOuvrir({ ateliers: [{ jour: -1, lots: [{ debut: -100, fin: -50 }, { debut: -90, fin: -40 }] }, { jour: 0, lots: [{ debut: 30, fin: 60 }] }] }), -1);
+  assert.equal(E.jourAOuvrir({ ateliers: [{ jour: -1, lots: [{ debut: -100, fin: -50 }] }, { jour: 0, lots: [{ debut: 30, fin: 60 }] }] }), -1, 'à égalité, le premier');
+  assert.equal(E.jourAOuvrir({ ateliers: [] }), null);
 });
 
 test('l’ordre des services : le long du chemin, de l’amont vers l’aval ; le handling après ce qu’il charge, la plonge à la fin', () => {
-  assert.deepEqual(PV.ordreDesServices(R), ['magasin', 'cuisine', 'montage', 'quais', 'plonge']);
-  const g = PV.groupes(R, id => id.toUpperCase());
-  assert.deepEqual(g.map(x => [x.service, x.nom, x.equipes.map(a => a.id)]), [
-    ['magasin', 'MAGASIN', ['mg']], ['cuisine', 'CUISINE', ['cu']], ['montage', 'MONTAGE', ['mo']], ['quais', 'QUAIS', ['h']], ['plonge', 'PLONGE', ['pl']]
-  ], 'une équipe sans lot n’a pas de ligne');
-  // Un service sans lot mais avec une courbe de charge (une équipe d'appui) garde son groupe, ses équipes en lignes vides.
+  const ordre = PV.ordreDesServices(R);
+  assert.deepEqual(ordre, ['magasin', 'cuisine', 'montage', 'quais', 'plonge']);
+  // Les lignes du jour des vols (correction 18 b) : les services qui ont des lots ; la mise à disposition et le robot sans
+  // lot se rangent à part, sous « Sans lot ce jour » ; la cuisine travaille la veille.
+  const jour = E.lignes(R, 0, ordre, id => id.toUpperCase());
+  assert.deepEqual(jour.services.map(x => [x.service, x.nom, x.equipes.map(a => a.id), x.lots]), [['montage', 'MONTAGE', ['mo'], 3], ['quais', 'QUAIS', ['h'], 2], ['plonge', 'PLONGE', ['pl'], 1]]);
+  assert.deepEqual(jour.sansLot.map(x => [x.service, x.equipe.id]), [['magasin', 'mg'], ['montage', 'rb']]);
+  assert.deepEqual(E.lignes(R, -1, ordre).services.map(x => [x.service, x.equipes.map(a => a.id)]), [['cuisine', ['cu']]]);
+  // « Toute la chaîne » : tous les jours, le lavage reste à la fin ; une équipe d'appui, sans lot, est à part.
   const appui = { ...R, ateliers: R.ateliers.concat({ id: 'ap', nom: 'Appui', service: 'appui', type: 'appui', pausesPrises: [], lots: [] }) };
-  assert.deepEqual(PV.groupes(appui, null, new Set(['appui', 'montage'])).map(x => [x.service, x.equipes.map(a => a.id)]).slice(-2),
-    [['appui', ['ap']], ['plonge', ['pl']]], 'le lavage reste à la fin');
-  assert.deepEqual(PV.groupes(appui, null, new Set(['montage'])).find(x => x.service === 'montage').equipes.map(a => a.id), ['mo'], 'le robot sans lot reste caché');
-  assert.equal(PV.groupes(appui, null).some(x => x.service === 'appui'), false);
+  const tout = E.lignes(appui, null, PV.ordreDesServices(appui));
+  assert.deepEqual(tout.services.map(x => x.service), ['cuisine', 'montage', 'quais', 'plonge']);
+  assert.deepEqual(tout.sansLot.map(x => x.equipe.id).sort(), ['ap', 'mg', 'rb']);
   // Un cycle dans les chemins ne fige rien : chaque service sort une fois.
   const boucle = { ateliers: [{ id: 'a', service: 'x', lots: [{}] }, { id: 'b', service: 'y', lots: [{}] }], lots: [], parClasse: { c: { services: ['x', 'y'] }, d: { services: ['y', 'x'] } } };
   assert.deepEqual(PV.ordreDesServices(boucle).sort(), ['x', 'y']);

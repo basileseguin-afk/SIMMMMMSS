@@ -1,27 +1,45 @@
 /* ==========================================================================
- *  LE PLANNING DES ÉQUIPES (version 1, évolution 14 c) — planning-vue.js
- *  Une échelle fixe en pixels : lignes de 28 px, textes de 12 à 13 px, à
- *  toutes les largeurs. L'axe (le jour, puis les heures) reste en haut et les
- *  noms des équipes à gauche, pendant les défilements : le cadre défile dans
- *  les deux sens, l'axe et les noms y sont collants. Couleurs, espacements et
- *  rayons : les jetons de ds.css ; une couleur de statut ne dit qu'un état
- *  (l'attente des amonts, le retard).
+ *  LE PLANNING DES ÉQUIPES (version 1, évolution 14 c, correction 18 b) —
+ *  planning-vue.js
+ *  D'abord toute l'unité : une ligne de 32 px par service, repliée ; dépliée,
+ *  ses équipes en lignes de 28 px. Textes de 12 à 13 px, à toutes les
+ *  largeurs. L'axe (le jour, puis les heures) reste en haut et les noms à
+ *  gauche (jusqu'à 260 px, `--pg-noms`), pendant les défilements : le cadre
+ *  défile dans les deux sens, l'axe et les noms y sont collants ; il prend la
+ *  hauteur qui reste dans la fenêtre. Les boutons et la légende tiennent sur
+ *  une ligne. Couleurs, espacements et rayons : les jetons de ds.css ; une
+ *  couleur de statut ne dit qu'un état (l'attente des amonts, le retard).
  * ==========================================================================*/
 .at-planning.pg{display:flex;flex-direction:column;gap:var(--ds-e-2);min-width:0}
 
-/* La barre : les trois zooms, la période visible, l'aide des gestes. */
-.pg-barre{display:flex;flex-wrap:wrap;align-items:center;gap:var(--ds-e-2) var(--ds-e-4)}
-.pg-zooms{display:inline-flex;gap:0}
+/* Le plein écran : le planning recouvre le menu et l'en-tête (sous les infobulles et les notifications). */
+.at-planning.pg.pg-plein{position:fixed;inset:0;z-index:900;margin:0;padding:var(--ds-e-3) var(--ds-e-4);box-sizing:border-box;background:var(--ds-fond)}
+
+/* La barre, sur une ligne : les jours (des onglets), les trois zooms, tout déplier ou replier, la légende, le plein écran. */
+.pg-barre{display:flex;flex-wrap:nowrap;align-items:center;gap:var(--ds-e-2) var(--ds-e-3);min-width:0}
+.pg-jours,.pg-plis{display:inline-flex;flex:none;gap:var(--ds-e-1)}
+.pg-onglet{display:inline-flex;align-items:center;gap:6px;border-color:transparent;background:none;border-radius:var(--ds-r-2) var(--ds-r-2) 0 0;box-shadow:inset 0 -2px 0 var(--ds-bordure)}
+.pg-onglet[aria-pressed="true"]{color:var(--ds-accent-texte);font-weight:var(--ds-g-fort);box-shadow:inset 0 -2px 0 var(--ds-accent)}
+.pg-onglet .pg-compte{background:var(--ds-surface-2)}
+.pg-plein-bouton{flex:none}
+.pg-plein-bouton[aria-pressed="true"]{background:var(--ds-accent-doux);border-color:var(--ds-accent-trait);color:var(--ds-accent-texte)}
+.pg-zooms{display:inline-flex;flex:none;gap:0}
 .pg-zooms .btn{border-radius:0;margin-left:-1px}
 .pg-zooms .btn:first-child{border-radius:var(--ds-r-2) 0 0 var(--ds-r-2);margin-left:0}
 .pg-zooms .btn:last-child{border-radius:0 var(--ds-r-2) var(--ds-r-2) 0}
 .pg-zooms .btn[aria-pressed="true"]{background:var(--ds-accent-doux);border-color:var(--ds-accent-trait);color:var(--ds-accent-texte);position:relative;z-index:1}
-.pg-periode{font-size:var(--ds-t-13);font-weight:var(--ds-g-fort);color:var(--ds-texte-1);font-variant-numeric:tabular-nums}
-.pg-aide{margin:0 0 0 auto;font-size:var(--ds-t-12)}
+/* La période visible : dans le coin de l'axe, sous « Équipes ». */
+.pg-periode{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--ds-t-12);font-weight:var(--ds-g-fort);color:var(--ds-texte-1);font-variant-numeric:tabular-nums}
 
-/* La légende : une ligne, en haut. Étroite, elle défile plutôt que de passer à la ligne. */
-.pg-legende{display:flex;flex-wrap:nowrap;align-items:center;gap:var(--ds-e-3);margin:0;overflow-x:auto;white-space:nowrap;
+/* La légende : sur la ligne des boutons, les seuls signes présents à l'écran ; étroite, elle défile plutôt que de passer à
+ * la ligne ; son bouton la replie. */
+.pg-legende-bloc{display:flex;align-items:center;gap:var(--ds-e-2);flex:1 1 0;min-width:0}
+.pg-legende-bouton{display:inline-flex;align-items:center;gap:4px;flex:none}
+.pg-legende-bouton .ico{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;transition:transform .15s}
+.pg-legende-bouton[aria-expanded="false"] .ico{transform:rotate(-90deg)}
+.pg-legende{display:flex;flex:1 1 0;min-width:0;flex-wrap:nowrap;align-items:center;gap:var(--ds-e-3);margin:0;overflow-x:auto;white-space:nowrap;
   font-size:var(--ds-t-12);color:var(--ds-texte-2);scrollbar-width:thin}
+.pg-legende[hidden]{display:none}
 .pg-cle{display:inline-flex;align-items:center;gap:6px;flex:none}
 .pg-ex{display:inline-block;width:18px;height:10px;border-radius:2px;flex:none;background:var(--ds-accent)}
 .pg-ex.attente{height:4px;background:var(--ds-attente);opacity:.5}
@@ -34,27 +52,31 @@
 .pg-ex.presents{height:0;border-top:2px solid var(--ds-texte-3);border-radius:0}
 .pg-ex.autravail{background:color-mix(in srgb,var(--ds-d1) 32%,transparent);border-top:2px solid var(--ds-d1);border-radius:0}
 .pg-ex.appui{height:0;border-top:2px dotted var(--ds-texte-4);border-radius:0}
-.pg-ex.file{width:8px;background:var(--ds-attente)}
+.pg-ex.trait{height:2px;border-radius:0}
+.pg-ex.avant{background:repeating-linear-gradient(135deg,var(--ds-texte-4) 0 1.5px,transparent 1.5px 4px)}
+.pg-ex.fleche{width:8px;height:8px;border-radius:0;background:none;border-top:1.5px solid var(--ds-texte-2);border-right:1.5px solid var(--ds-texte-2);transform:rotate(45deg) scale(.8)}
 .pg-ex.maintenant{width:2px;height:12px;border-radius:1px;background:var(--ds-texte-1)}
 
-/* Le cadre défile dans les deux sens ; il tient dans la page (sous l'en-tête et le titre) : une fois la page descendue
- * jusqu'à lui, l'axe et les noms restent à la vue. */
-.pg-cadre{position:relative;overflow:auto;max-height:max(260px,calc(100vh - 160px));border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);
+/* Le cadre défile dans les deux sens ; il prend toute la hauteur qui reste dans la fenêtre, sous les boutons
+ * (planning-vue.js la mesure et la pose) : l'axe et les noms restent à la vue. La place de la barre de défilement
+ * verticale est réservée : déplier un service ne change pas la largeur des heures. */
+.pg-cadre{position:relative;overflow:auto;scrollbar-gutter:stable;max-height:max(260px,calc(100vh - 160px));border:1px solid var(--ds-bordure);border-radius:var(--ds-r-3);
   background:var(--ds-surface-1);cursor:grab}
 /* Les dessins du planning gardent leur taille en pixels (leur style la porte : la règle commune des graphiques de
  * .at-planning les étirait) ; ni bordure ni fond de carte. */
-.at-planning.pg svg:is(.pg-barres,.pg-axe-svg,.ch-mini){border:0;border-radius:0;background-color:transparent}
+.at-planning.pg svg:is(.pg-barres,.pg-axe-svg,.ch-mini,.pg-traits){border:0;border-radius:0;background-color:transparent}
 .at-planning.pg svg.pg-defs{width:0;height:0;border:0}
 .pg-cadre.glisse{cursor:grabbing;user-select:none}
 .pg-cadre:focus-visible{outline:2px solid var(--ds-accent);outline-offset:2px}
 .pg-toile{position:relative}
 .pg-defs{position:absolute}
 #pg-motif line{stroke:var(--ds-sur-accent);stroke-opacity:.4;stroke-width:2}
+#pg-hachure line{stroke:var(--ds-texte-4);stroke-width:1.5}
 
 /* L'axe : collant en haut ; son coin, collant aussi à gauche. */
 .pg-axe{position:sticky;top:0;z-index:4;display:flex;height:40px;background:var(--ds-surface-1);border-bottom:1px solid var(--ds-bordure-forte)}
-.pg-coin{position:sticky;left:0;z-index:5;flex:none;width:184px;box-sizing:border-box;display:flex;align-items:flex-end;padding:0 var(--ds-e-3) 6px;
-  background:var(--ds-surface-1);border-right:1px solid var(--ds-bordure-forte);font-size:var(--ds-t-12);font-weight:var(--ds-g-moyen);color:var(--ds-texte-3)}
+.pg-coin{position:sticky;left:0;z-index:5;flex:none;width:var(--pg-noms,184px);box-sizing:border-box;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;
+  padding:0 var(--ds-e-3) 4px;background:var(--ds-surface-1);border-right:1px solid var(--ds-bordure-forte);font-size:var(--ds-t-12);font-weight:var(--ds-g-moyen);color:var(--ds-texte-3);line-height:16px}
 .pg-axe-svg{display:block;flex:none}
 .pg-jour rect{fill:var(--ds-surface-2);stroke:var(--ds-bordure);stroke-width:1}
 .pg-jour text{fill:var(--ds-texte-1);font-size:var(--ds-t-12);font-weight:var(--ds-g-fort)}
@@ -63,29 +85,44 @@
 .pg .at-pl-heure{fill:var(--ds-texte-2);font-size:var(--ds-t-12);text-anchor:start;font-variant-numeric:tabular-nums}
 .pg .at-pl-heure.pg-sous-maintenant{opacity:0}
 
-/* Un groupe : son en-tête (le service, sa courbe de charge), ses équipes. */
-.pg-groupe{border-bottom:1px solid var(--ds-bordure)}
-.pg-groupe-tete{display:flex;height:44px;background:var(--ds-surface-2);border-bottom:1px solid var(--ds-bordure)}
-.pg-groupe-nom{position:sticky;left:0;z-index:3;flex:none;width:184px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;gap:1px;
+/* Un service : sa ligne de 32 px (son nom, le nombre de ses équipes, « pic au travail / présents » ; sa courbe de charge
+ * et un trait fin par lot) ; dépliée, son résumé en entier puis ses équipes. Un clic sur la ligne la déplie. */
+/* Amené à la vue (un service visé depuis la Synthèse), un service s'arrête sous l'axe collant, pas dessous. */
+.pg-groupe{border-bottom:1px solid var(--ds-bordure);scroll-margin-top:44px}
+.pg-groupe-tete{display:flex;height:32px;background:var(--ds-surface-2);cursor:pointer}
+.pg-groupe:not(.replie)>.pg-groupe-tete{border-bottom:1px solid var(--ds-bordure)}
+.pg-groupe-nom{position:sticky;left:0;z-index:3;flex:none;width:var(--pg-noms,184px);box-sizing:border-box;display:flex;align-items:center;gap:6px;
   padding:0 var(--ds-e-2) 0 var(--ds-e-1);background:var(--ds-surface-2);border-right:1px solid var(--ds-bordure-forte);min-width:0}
-.pg-replier{display:flex;align-items:center;gap:4px;min-width:0;padding:1px 4px;border:0;border-radius:var(--ds-r-1);background:none;color:var(--ds-texte-1);
+.pg-groupe-tete:hover .pg-groupe-nom{background:var(--ds-survol)}
+.pg-replier{display:flex;align-items:center;gap:4px;flex:1 1 auto;min-width:0;padding:1px 4px;border:0;border-radius:var(--ds-r-1);background:none;color:var(--ds-texte-1);
   font:inherit;font-size:var(--ds-t-13);font-weight:var(--ds-g-fort);text-align:left;cursor:pointer}
-.pg-replier:hover{background:var(--ds-survol)}
 .pg-replier:focus-visible{outline:2px solid var(--ds-accent);outline-offset:1px}
 .pg-replier .ico{width:14px;height:14px;flex:none;fill:none;stroke:currentColor;stroke-width:2;transition:transform .15s}
 .pg-groupe.replie .pg-replier .ico{transform:rotate(-90deg)}
 .pg-service{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pg-compte{flex:none;padding:0 6px;border-radius:999px;background:var(--ds-surface-1);border:1px solid var(--ds-bordure);font-size:var(--ds-t-12);font-weight:var(--ds-g-moyen);color:var(--ds-texte-3)}
-.pg .pg-note{display:block;padding-left:22px;font-size:var(--ds-t-12);line-height:16px;color:var(--ds-texte-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pg-pic{flex:none;font-size:var(--ds-t-12);color:var(--ds-texte-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pg-sans-lot .pg-service{font-weight:var(--ds-g-moyen);color:var(--ds-texte-2)}
+.pg-courbe{position:relative;flex:none;height:32px}
+.pg-sans-courbe{flex:none;height:32px}
 .pg .ch-service{margin:0;flex:none}
 .pg .ch-mini{display:block;background:none;border:0;border-radius:0}
+.pg-traits{position:absolute;left:0;top:0;display:block;pointer-events:none}
+.pg-trait{stroke:var(--ds-accent);stroke-width:2}
+.pg-trait.retard{stroke:var(--ds-retard)}
 .pg-lignes[hidden]{display:none}
+/* Le résumé du service, en entier : il reste à gauche pendant les défilements, et passe à la ligne plutôt que d'être coupé. */
+.pg-detail{display:flex;background:var(--ds-surface-1);border-bottom:1px solid var(--ds-bordure)}
+.pg-detail-texte{position:sticky;left:0;box-sizing:border-box;max-width:var(--pg-vue,100%);margin:0;padding:4px var(--ds-e-3) 4px 28px;font-size:var(--ds-t-12);line-height:16px;color:var(--ds-texte-2);
+  font-variant-numeric:tabular-nums}
 
-/* Une équipe : son nom collant à gauche, ses barres. Les heures en filigrane. */
+/* Une équipe : son nom collant à gauche (entier au survol), ses personnes ; ses barres. Les heures en filigrane. */
 .pg-ligne{display:flex;height:28px}
-.pg-nom{position:sticky;left:0;z-index:3;flex:none;width:184px;box-sizing:border-box;display:flex;align-items:center;padding:0 var(--ds-e-2) 0 28px;
-  background:var(--ds-surface-1);border-right:1px solid var(--ds-bordure-forte);font-size:var(--ds-t-13);color:var(--ds-texte-1)}
-.pg-nom span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pg-nom{position:sticky;left:0;z-index:3;flex:none;width:var(--pg-noms,184px);box-sizing:border-box;display:flex;align-items:center;gap:6px;padding:0 var(--ds-e-2) 0 28px;
+  background:var(--ds-surface-1);border-right:1px solid var(--ds-bordure-forte);font-size:var(--ds-t-13);color:var(--ds-texte-1);min-width:0}
+.pg-nom-texte{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pg-nom-service{flex:0 2 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--ds-t-12);color:var(--ds-texte-3)}
+.pg-pers{flex:none;margin-left:auto;font-size:var(--ds-t-12);color:var(--ds-texte-3);font-variant-numeric:tabular-nums;white-space:nowrap}
 .pg-ligne:nth-child(even) .pg-nom,.pg-ligne:nth-child(even) .pg-barres{background-color:var(--ds-surface-2)}
 .pg-barres,.pg .ch-mini{flex:none;display:block;overflow:visible;background-image:repeating-linear-gradient(to right,var(--ds-bordure) 0 1px,transparent 1px var(--pg-pas));
   background-position:var(--pg-decalage) 0}
@@ -105,7 +142,12 @@
 .pg .ds-graphique .pg-lot[data-info]:hover{opacity:1}
 .pg-lot:hover .pg-seg{fill:color-mix(in srgb,var(--ds-accent) 82%,var(--ds-texte-1))}
 .pg-lot:focus-visible .pg-seg{stroke:var(--ds-texte-1);stroke-width:2}
-/* La limite de la commande : un petit trait au bout de la barre de son dernier lot ; le pointillé, la marge. */
+/* Avant le premier lot : l'équipe est là, sans travail — une bande hachurée, discrète. */
+.pg-avant{fill:url(#pg-hachure);stroke:var(--ds-bordure);stroke-width:1}
+.pg .ds-graphique .pg-avant[data-info]:hover{opacity:1;stroke:var(--ds-texte-3)}
+/* La limite de la commande : un petit trait au bout de la barre de son dernier lot ; le pointillé, la marge ; une flèche au
+ * bord droit quand la limite est après la fenêtre affichée. */
+.pg-fleche{fill:none;stroke:var(--ds-texte-2);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;pointer-events:all}
 .pg-limite{stroke:var(--ds-texte-1);stroke-width:2;stroke-linecap:round}
 .pg-limite.depassee{stroke:var(--ds-surface-1);stroke-width:2}
 .pg-marge{stroke:var(--ds-texte-3);stroke-width:1;stroke-dasharray:2 2}

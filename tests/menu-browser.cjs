@@ -69,7 +69,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     for(const id of pages){
       await nav.aller(page,id);
       assert.equal(await actif(),id);
-      assert.ok((await page.locator('#view-intro').textContent()).length>20,id+' : une phrase dit ce qu’on voit');
+      // Le planning des équipes occupe sa page (correction 18 b) : sa phrase n'est pas affichée.
+      if(await page.evaluate(i=>!!OrlyOnglets.page(i).sansIntro,id)){assert.equal(id,'at-planning');assert.equal(await page.locator('#view-intro').textContent(),'',id+' : sans phrase d’introduction');}
+      else assert.ok((await page.locator('#view-intro').textContent()).length>20,id+' : une phrase dit ce qu’on voit');
     }
   }
 

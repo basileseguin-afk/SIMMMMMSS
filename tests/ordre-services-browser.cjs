@@ -39,10 +39,20 @@ const troisJours=()=>{const [tete,...l]=F.volsCsv().trim().split('\n');return 'd
   const synthese=await page.evaluate(()=>[...new Set([...document.querySelectorAll('#bilan-journee .sy-table tbody tr')].map(tr=>tr.dataset.service))]);
   verifier('la Synthèse',synthese);
 
-  // 2. Le planning des équipes : ses groupes.
-  await nav.aller(page,'at-planning');await attendre(500);
-  const planning=await page.evaluate(()=>[...document.querySelectorAll('#at-planning .pg-groupe[data-service]')].map(g=>g.dataset.service));
+  // 2. Le planning des équipes : ses lignes de service (correction 18 b), pour toute la chaîne puis pour le jour ouvert ; les
+  //    services sans lot sont à part, en bas, sous une seule ligne.
+  await nav.aller(page,'at-planning');await page.waitForSelector('#at-planning .pg-groupe');
+  const lignes=()=>page.evaluate(()=>[...document.querySelectorAll('#at-planning .pg-groupe[data-service]:not(.pg-sans-lot)')].map(g=>g.dataset.service));
+  const duJour=await lignes();
+  assert.deepEqual(duJour,m.ordre.filter(s=>duJour.includes(s)),'le planning du jour ouvert : l’ordre du module');
+  await page.locator('#at-planning [data-pg-zoom="chaine"]').click();
+  await page.waitForFunction(()=>OrlyPlanningVue.etat.vue&&OrlyPlanningVue.etat.vue.jour===null);
+  const planning=await lignes();
   verifier('le planning des équipes',planning);
+  assert.ok(duJour.every(s=>planning.includes(s)));
+  assert.equal(await page.locator('#at-planning .pg-groupe.pg-sans-lot').count(),await page.evaluate(()=>Sim.ateliers.resultat.ateliers.some(a=>!(a.lots||[]).some(l=>!l.dispo))?1:0),'les équipes sans lot, sous une seule ligne');
+  assert.equal(await page.evaluate(()=>{const g=[...document.querySelectorAll('#at-planning .pg-groupe')];return g.findIndex(x=>x.classList.contains('pg-sans-lot'));}),
+    await page.locator('#at-planning .pg-groupe.pg-sans-lot').count()?planning.length:-1,'en bas');
 
   // 3. La page Période : les colonnes des services (leurs noms, ramenés à leurs identifiants).
   await F.importerVols(page,nav,ch.fichier,'trois-jours.csv',troisJours());

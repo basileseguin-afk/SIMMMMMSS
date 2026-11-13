@@ -995,8 +995,7 @@
 <div id="at-liste" data-sous="at-equipes"></div>
 <p class="mini-note at-materiel-renvoi" data-sous="at-equipes">La boucle du matériel et les retours des vols à la plonge se règlent dans
   <button class="lien-discret" data-page="rg-simulation">Simulation › Réglages de la simulation →</button></p>
-<h3 class="at-titre" data-sous="at-planning">La journée des équipes <span class="pc-sous">qui travaille quand</span></h3>
-<div id="at-indicateurs" class="at-indicateurs" data-sous="at-planning"></div>
+<div id="at-indicateurs" class="at-indicateurs" data-sous="hors-page"></div>
 <div id="at-planning" class="at-planning" data-sous="at-planning"></div>
 <section id="at-charge" class="at-charge" data-sous="at-planning" aria-label="La charge de la journée, équipe par équipe" hidden></section>
 
@@ -2478,14 +2477,17 @@
     /* ---- planning ---------------------------------------------------- */
 
     /**
-     * Le planning des équipes (évolution 14 c, planning-vue.js) : une échelle fixe, trois zooms, l'axe et les noms
-     * toujours visibles, les équipes groupées par service dans l'ordre du chemin, la charge de chaque service en tête
-     * de son groupe. Sous lui, le tableau des équipes.
+     * Le planning des équipes (évolution 14 c, correction 18 b, planning-vue.js) : d'abord toute l'unité, une ligne par
+     * service dans l'ordre du chemin (sa charge, un trait par lot) ; un clic déplie ses équipes ; un jour à la fois,
+     * trois zooms, l'axe et les noms toujours visibles. Sous lui, le tableau des équipes. Le planning occupe la page :
+     * ni titre ni résumé de la journée au-dessus (ils sont dans la Synthèse).
      */
     rendrePlanning(r) {
       const box = document.getElementById('at-planning'), V = root.OrlyPlanningVue;
       const services = this.a.services(), nomSvc = id => (services.find(s => s.id === id) || {}).nom || id;
-      if (V) V.rendre(box, { resultat: r, args: this.args, nomService: nomSvc });
+      // Les indicateurs et les réponses de la journée : ceux que la page a déjà lus (sim.js), pour ce résultat.
+      const journee = () => (typeof root.journeeLue === 'function' ? root.journeeLue() : null);
+      if (V) V.rendre(box, { resultat: r, args: this.args, nomService: nomSvc, journee });
       this.rendreCharge(r);
     }
 

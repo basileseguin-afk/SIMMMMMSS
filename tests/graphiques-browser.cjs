@@ -44,17 +44,20 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    if(version==='v1'){
     // v1, évolution 14 (c) : le planning à échelle fixe (planning-vue.js) ; les mêmes intentions.
     // 1. Le travail en accent ; l'attente garde sa couleur d'état ; chaque barre à l'heure de son lot.
+    //    Correction 18 (b) : le planning s'ouvre replié, sur un jour de travail — on déplie tout, les barres sont celles de ce jour.
+    await page.locator('#at-planning [data-pg-tout="deplier"]').click();await attendre();
     await page.locator('[data-pg-zoom="six"]').click();await attendre();
     const pal=await page.evaluate(()=>{const cs=getComputedStyle(document.documentElement),c=v=>{const d=document.createElement('i');d.style.color=cs.getPropertyValue(v);document.body.append(d);const x=getComputedStyle(d).color;d.remove();return x;};
       const seg=document.querySelector('#at-planning .pg-lot:not(.robot):not(.chaine):not(.retard) .pg-seg'),att=document.querySelector('#at-planning .at-pl-attente');
       return {lot:getComputedStyle(seg).fill,accent:c('--ds-accent'),att:att&&getComputedStyle(att).fill,attente:c('--ds-attente')};});
     assert.equal(pal.lot,pal.accent,V+'une équipe prépare : une barre pleine, en accent');
     assert.equal(pal.att,pal.attente,V+'l’attente garde la couleur d’état');
-    const place=await page.evaluate(()=>{const v=OrlyPlanningVue.etat.vue,lots=Sim.ateliers.resultat.lots.filter(l=>!l.dispo&&l.fin!=null);
+    const place=await page.evaluate(()=>{const v=OrlyPlanningVue.etat.vue,lots=Sim.ateliers.resultat.ateliers.filter(a=>(a.jour||0)===v.jour).flatMap(a=>a.lots).filter(l=>!l.dispo&&l.fin!=null);
       const xs=[...document.querySelectorAll('#at-planning .pg-lot')].map(g=>+g.dataset.x).sort((a,b)=>a-b);
       const attendus=lots.map(l=>(l.debut-v.t0)/60*v.pxh).sort((a,b)=>a-b);
       return {n:xs.length,attendu:lots.length,ecart:Math.max(0,...xs.map((x,i)=>Math.abs(x-attendus[i])))};});
-    assert.equal(place.n,place.attendu,V+'une barre par lot fabriqué');
+    assert.ok(place.attendu>=3,V+'le jour ouvert a des lots');
+    assert.equal(place.n,place.attendu,V+'une barre par lot fabriqué ce jour-là');
     assert.ok(place.ecart<0.01,V+'chaque barre à l’heure de son lot '+place.ecart);
     // 2. L'étiquette quand elle tient, et seulement alors.
     const etiq=await page.evaluate(()=>[...document.querySelectorAll('#at-planning .at-pl-etiq')].map(t=>{
@@ -78,7 +81,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
     assert.equal(await bulle(),null,V+'elle se ferme en quittant la barre');
     // 4. Le trait « maintenant » : rien avant le rejeu ; puis à l'heure rejouée, qui suit la lecture.
     const maint=()=>page.evaluate(()=>{const m=document.querySelector('#at-planning .pg-maintenant'),h=document.querySelector('#at-planning .pg-maintenant-heure'),v=OrlyPlanningVue.etat.vue;
-      return m.hidden?null:{x:parseFloat(m.style.left),attendu:OrlyPlanningVue.NOMS+(OrlyDS.heure-v.t0)/60*v.pxh,texte:h.textContent,t:OrlyDS.heure};});
+      return m.hidden?null:{x:parseFloat(m.style.left),attendu:v.noms+(OrlyDS.heure-v.t0)/60*v.pxh,texte:h.textContent,t:OrlyDS.heure};});
     assert.equal(await maint(),null,V+'pas de trait tant que le rejeu n’a pas bougé');
     const t=await page.evaluate(()=>{const v=Sim.vue;v.allerA(v.debut+(v.fin-v.debut)*0.4);return v.t;});await attendre(100);
     const tp=await maint();

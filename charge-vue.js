@@ -2,8 +2,8 @@
  *  LA CHARGE DANS LA PAGE PLANNING (banc d'essai de la version 1, évolution
  *  12 c — docs/BANC_ESSAI.md § 13 ; évolution 14 c)
  *  ------------------------------------------------------------------------
- *    — par service, la courbe de la journée, en petit, en tête de son groupe
- *      dans le planning des équipes (planning-vue.js), sur son échelle :
+ *    — par service, la courbe de la journée, en petit, sur la ligne de son
+ *      service dans le planning des équipes (planning-vue.js), sur son échelle :
  *      présents (un trait), au travail (une aire), et sous elle les lots en
  *      file (des barres), le pic des personnes au travail marqué ;
  *    — sous le planning, le tableau des équipes, replié : occupation,
@@ -67,19 +67,20 @@
   }
 
   /**
-   * La courbe d'un service en petit, en tête de son groupe dans le planning (évolution 14 c) : sur l'échelle fixe du
+   * La courbe d'un service en petit, sur sa ligne dans le planning (évolution 14 c, correction 18 b) : sur l'échelle du
    * planning (`pxm` pixels par minute, de `t0` à `t1`), `haut` pixels de haut. Présents (un trait), au travail (une
-   * aire), en file (des barres, en bas), le pic marqué ; la bulle de chaque créneau. { html, note }.
+   * aire), en file (des barres, en bas), le pic marqué ; la bulle de chaque créneau. { html, note }. `sansFile`
+   * (correction 18 b) : sans les barres de la file ni sa note — le planning y met un trait par lot.
    */
   function mini(s, ax, pas) {
     const { t0, t1, pxm, haut } = ax, c = s.c, L = Math.ceil((t1 - t0) * pxm), x = t => (t - t0) * pxm;
     const bas = 7, hc = haut - bas - 6, max = Math.max(1, ...['presents', 'auTravail'].flatMap(m => (c[m] ? c[m].valeurs : [0])));
     const y = v => 3 + hc - v / max * hc, base = y(0).toFixed(1), yF = haut - bas - 1;
-    const maxFile = c.enFile ? Math.max(0, ...c.enFile.valeurs) : 0, pic = picDe(c, 'auTravail'), picP = picDe(c, 'presents');
+    const avecFile = !ax.sansFile && !!c.enFile, maxFile = avecFile ? Math.max(0, ...c.enFile.valeurs) : 0, pic = picDe(c, 'auTravail'), picP = picDe(c, 'presents');
     const aire = c.auTravail ? escalier(c.auTravail, x, y, t0, t1, pas) : '';
     const debutAire = c.auTravail ? x(Math.max(t0, c.auTravail.debut)).toFixed(1) : 0;
     const finAire = c.auTravail ? x(Math.min(t1, c.auTravail.debut + c.auTravail.valeurs.length * pas)).toFixed(1) : 0;
-    const files = c.enFile && maxFile > 0 ? c.enFile.valeurs.map((v, i) => {
+    const files = avecFile && maxFile > 0 ? c.enFile.valeurs.map((v, i) => {
       const a = Math.max(t0, c.enFile.debut + i * pas), b = Math.min(t1, c.enFile.debut + (i + 1) * pas), h = v / maxFile * bas;
       return b > a && v > 0 ? `<rect class="ch-file" x="${x(a).toFixed(1)}" y="${(yF + bas - h).toFixed(1)}" width="${Math.max(1, x(b) - x(a) - 1).toFixed(1)}" height="${h.toFixed(1)}" rx="1"/>` : '';
     }).join('') : '';
@@ -91,7 +92,7 @@
     const marque = pic && pic.personnes > 0 && pic.debut + pas > t0 && pic.debut < t1
       ? `<circle class="ch-pic" cx="${x(Math.min(t1, Math.max(t0, pic.debut + pas / 2))).toFixed(1)}" cy="${y(pic.personnes).toFixed(1)}" r="3.5"/>` : '';
     const texte = [!pic ? 'travail sans objet' : pic.personnes > 0 ? 'pic ' + nombre(pic.personnes) + ' au travail à ' + P().hhmm(pic.debut) : 'personne au travail',
-      picP ? 'présents jusqu’à ' + nombre(picP.personnes) : null, !c.enFile ? null : maxFile > 0 ? 'en file jusqu’à ' + nombre(maxFile) : 'rien en file'].filter(Boolean);
+      picP ? 'présents jusqu’à ' + nombre(picP.personnes) : null, !avecFile ? null : maxFile > 0 ? 'en file jusqu’à ' + nombre(maxFile) : 'rien en file'].filter(Boolean);
     const html = `<div class="ch-service" data-service="${esc(s.id)}" data-pic="${pic ? pic.personnes + '|' + pic.debut : ''}" data-max="${max}">
       <svg class="ds-graphique ch-courbe ch-mini" width="${L}" height="${haut}" style="width:${L}px;height:${haut}px" viewBox="0 0 ${L} ${haut}" role="img" aria-label="${esc(s.nom + ' : ' + texte.join(', '))}">
         <line class="ch-base" x1="0" y1="${base}" x2="${L}" y2="${base}"/>
@@ -140,7 +141,7 @@
 
   /**
    * Sous le planning (évolution 14 c) : le classeur de la charge et le tableau des équipes, replié. Les courbes de
-   * chaque service vivent en tête de son groupe, dans le planning (`mini`). `o` : { resultat, args, nomService(id),
+   * chaque service vivent sur la ligne de leur service, dans le planning (`mini`). `o` : { resultat, args, nomService(id),
    * exporter() (le bouton du classeur, facultatif) }. Sans résultat, la boîte se cache.
    */
   function rendre(box, o) {
@@ -152,7 +153,7 @@
     box.hidden = false;
     // Le classeur de la charge de la journée (évolution 12 d) : echanges-charge.js, comme l'outil.
     box.onclick = e => { if (e.target.closest('[data-ch="exporter"]') && o.exporter) o.exporter(); };
-    box.innerHTML = `<div class="ch-tete"><h4 class="at-sous-titre ch-titre">La charge, équipe par équipe <span class="mini-note">la courbe de chaque service est en tête de son groupe, dans le planning</span></h4>
+    box.innerHTML = `<div class="ch-tete"><h4 class="at-sous-titre ch-titre">La charge, équipe par équipe <span class="mini-note">la courbe de chaque service est sur sa ligne, dans le planning</span></h4>
       ${o.exporter ? '<button type="button" class="btn btn-sm" data-ch="exporter">Exporter la charge (Excel)</button>' : ''}</div>
       ${tableau(k, nom, noms)}`;
     const d = box.querySelector('details.ch-tableau');

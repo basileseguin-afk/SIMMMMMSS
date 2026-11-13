@@ -5,6 +5,60 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-13 — Correction 18 (b) : le planning des équipes, d'abord toute l'unité sur un écran
+
+- Constat, sur une unité d'une quinzaine de services et d'une cinquantaine
+  d'équipes : à 1 366 × 768, le titre, l'introduction, la bande « Sur la
+  journée », les boutons et la légende prenaient la moitié de la hauteur ; les
+  premiers groupes étaient des services sans lot ; chaque groupe prenait deux
+  lignes d'en-tête puis une ligne par équipe ; « Un jour » commençait à 00:00,
+  plus de la moitié de la largeur était vide ; les résumés et les noms
+  étaient coupés.
+- **La vue d'ensemble d'abord** : à l'ouverture, tous les services sont
+  repliés — une ligne de 32 px par service, dans l'ordre des chemins, avec
+  son nom, le nombre de ses équipes, « pic au travail / présents », sa courbe
+  de charge (celle de `charge-vue.js`, sans la file) et un trait fin par lot.
+  Un clic sur un service le déplie (son résumé en entier, puis ses équipes) ;
+  « Tout déplier », « Tout replier » ; le navigateur retient les services
+  dépliés (une préférence d'affichage, `ory-ui-planning-deplies`). Une unité
+  de 15 services tient sur un écran à 1 366 × 768, sans défilement vertical.
+- **« Sans lot ce jour (n) »** : les services et les équipes sans lot le jour
+  affiché (mises à disposition, équipes d'appui, équipes sans commande) se
+  rangent en bas, sous une ligne repliée.
+- **Un jour à la fois, par onglets** : un onglet par jour de travail qui a
+  des lots, avec le nombre d'équipes qui y travaillent ; à l'ouverture, celui
+  qui a le plus de lots. « Un jour » cadre du premier début de lot moins
+  30 min à la dernière fin plus 30 min et remplit la largeur (une heure fait
+  au moins 40 px) ; « Toute la chaîne » (tous les jours) et « 6 h » restent.
+  Le trait vers la limite d'une commande ne dépasse pas la fenêtre : au-delà,
+  une flèche au bord droit, avec la limite au survol.
+- **Plus de place** : le texte d'introduction et la bande « Sur la journée »
+  quittent cette page ; les boutons et la légende tiennent sur une ligne ; la
+  légende ne montre que les signes présents à l'écran et se replie ; la
+  période visible est dans le coin de l'axe. Le planning prend toute la
+  hauteur qui reste, avec son propre défilement et son axe toujours visible.
+  « Plein écran » recouvre le menu et l'en-tête ; Échap en sort.
+- **Les noms entiers** : la colonne des noms s'élargit jusqu'à 260 px ; chaque
+  équipe porte son nombre de personnes ; un texte coupé a son infobulle ; le
+  résumé d'un service (pic, heure du pic, présents, occupation, heures sup)
+  se lit au survol de son nom et, déplié, dans son panneau de détail.
+- Une barre fait au moins 3 px de large. Le temps sans travail avant le
+  premier lot d'une équipe se voit : une bande hachurée de son arrivée à son
+  premier lot, avec au survol sa durée et ce qu'elle attendait (les réponses
+  de la correction 18 a).
+- Depuis la Synthèse, un clic sur un service l'ouvre ici, sur son jour de
+  travail.
+- `planning-ensemble.js` (nouveau, sans navigateur) décide ce que le planning
+  montre ; `planning-vue.js` le dessine. Rien n'est calculé : le résultat du
+  moteur, ses indicateurs et les réponses sont lus tels quels. Le moteur, les
+  indicateurs, les classeurs et la version 2 ne changent pas.
+- Tests : `tests/planning-ensemble.test.cjs` (journées fictives calculées à
+  la main), `tests/planning-ensemble-browser.cjs` sur l'unité fictive de
+  15 services et 50 équipes (`tests/unite-15-services.cjs`), à 1 366 × 768 et
+  1 920 × 1 080 ; les tests du planning, de la charge, des graphiques, du
+  menu, de la lisibilité et de l'ordre des services adaptés.
+- Doc : README (« Lire le plan rejoué et le planning », les fichiers).
+
 ## 2026-11-13 — Correction 18 (a) : l'attente et « Où ça coince », ne signaler que ce qui gêne
 
 - Constat : la Synthèse affichait « un lot y attend jusqu'à 6 h » pour un

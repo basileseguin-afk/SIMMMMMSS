@@ -214,7 +214,7 @@
     const ligne = l => {
       const t = tons(l, rep.seuils), pic = l.pic && l.pic.personnes > 0 ? '<span class="sy-v">' + esc(nombre(l.pic.personnes)) + '</span><span class="sy-sur"> à ' + esc(heure(l.pic.a)) + '</span>' : '—';
       return '<tr data-service="' + esc(l.service) + '" data-jour="' + l.jour + '"><th scope="row"><button type="button" class="sy-service" data-page="at-planning" data-pg-viser="'
-        + esc(l.service) + '" title="Voir ce service dans le planning des équipes">' + esc(l.nom) + '</button>' + jour(l.mot) + '</th>'
+        + esc(l.service) + '" data-pg-viser-jour="' + l.jour + '" title="Voir ce service dans le planning des équipes">' + esc(l.nom) + '</button>' + jour(l.mot) + '</th>'
         + caseBesoin(l) + casePresents(l) + caseEcart(l, t.ecart, max)
         + '<td class="num">' + moitie(l.matin) + '</td><td class="num">' + moitie(l.apresMidi) + '</td><td class="num">' + pic + '</td>'
         + caseOccupation(l, t.occupation) + caseSansTravail(l) + caseArrivage(l, t.attente) + casesDeLaFin(l, t.fin) + '</tr>';
@@ -342,7 +342,7 @@
     }
     const g = goulots[0], autres = goulots.slice(1, 3), reste = goulots.length - 1 - autres.length;
     const ligne = x => '<li><b>' + esc(x.nom) + '</b>' + jourDe(x) + ' ' + esc(consequences(x)) + '<small>' + esc(motsDeLaCause(x.cause)) + '</small></li>';
-    return { ton: 'attente', titre: 'Où ça coince', page: 'at-planning', service: g.service,
+    return { ton: 'attente', titre: 'Où ça coince', page: 'at-planning', service: g.service, jour: g.jour || 0,
       corps: '<p class="sy-grand">' + esc(g.nom) + jourDe(g) + '</p><p>' + esc(consequences(g)) + (g.heuresSup > EPS ? ' ; heures sup : ' + esc(duree(g.heuresSup)) + ' (personnes × heures)' : '') + '.</p>'
       + '<p class="mini-note sy-cause">Cause : ' + esc(motsDeLaCause(g.cause)) + '.</p>'
       + (autres.length ? '<p class="sy-aussi">Coincent aussi :</p><ul class="sy-exceptions">' + autres.map(ligne).join('') + '</ul>' : '')
@@ -408,7 +408,7 @@
   }
   /** Une carte : son titre, son ton (l'état qu'elle dit), son contenu, et la page où regarder de plus près. */
   function carte(c) {
-    const vers = c.page ? '<button type="button" class="lien-fort sy-vers" data-page="' + esc(c.page) + '"' + (c.service ? ' data-pg-viser="' + esc(c.service) + '"' : '') + '>Voir le détail →</button>' : '';
+    const vers = c.page ? '<button type="button" class="lien-fort sy-vers" data-page="' + esc(c.page) + '"' + (c.service ? ' data-pg-viser="' + esc(c.service) + '"' + (c.jour == null ? '' : ' data-pg-viser-jour="' + c.jour + '"') : '') + '>Voir le détail →</button>' : '';
     return '<section class="sy-carte" data-ton="' + c.ton + '" aria-label="' + esc(c.titre) + '"><h4>' + esc(c.titre) + '</h4>' + c.corps + vers + '</section>';
   }
 

@@ -33,7 +33,9 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(await page.locator('#at-status').textContent(),'','le message ne traîne pas de page en page');
 
   // 2. Le planning : des heures lisibles, le jour écrit une fois — sur son propre niveau de l'axe (évolution 14 c).
+  // « Toute la chaîne » (correction 18 b : le planning s'ouvre sur un jour de travail) : la veille et le jour J, sur un axe.
   await nav.aller(page,'at-planning');await attendre();
+  await page.locator('#at-planning [data-pg-zoom="chaine"]').click();await page.waitForFunction(()=>OrlyPlanningVue.etat.vue&&OrlyPlanningVue.etat.vue.jour===null);await attendre();
   const heures=await page.evaluate(()=>[...document.querySelectorAll('#at-planning .pg-axe-svg .at-pl-heure')].map(t=>({x:+t.getAttribute('x'),w:t.getComputedTextLength(),s:t.textContent})));
   assert.ok(heures.length>=3);
   for(let i=1;i<heures.length;i++)assert.ok(heures[i].x-heures[i-1].x>=heures[i-1].w+4,'deux heures ne se chevauchent pas : '+heures[i-1].s+' / '+heures[i].s);

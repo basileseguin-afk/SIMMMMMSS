@@ -1,25 +1,38 @@
 /* ==========================================================================
- *  LE PLANNING DES ÉQUIPES (version 1, évolution 14 c — README, « Le planning
- *  des équipes »)
+ *  LE PLANNING DES ÉQUIPES (version 1, évolution 14 c, correction 18 b —
+ *  README, « Lire le plan rejoué et le planning »)
  *  ------------------------------------------------------------------------
- *  Une échelle fixe en pixels : le planning ne s'étire plus avec la fenêtre.
- *  — trois zooms : « Toute la chaîne » (de la première à la dernière minute,
- *    dans la largeur visible), « Un jour » (40 px par heure) et « 6 h »
- *    (160 px par heure) ; par boutons et par Ctrl + molette ; on se déplace en
- *    glissant ou par la barre de défilement ; la période visible s'affiche ;
+ *  D'abord toute l'unité sur un écran, puis le détail d'un service :
+ *  — à l'ouverture, tous les services sont repliés : une ligne de 32 px par
+ *    service, dans l'ordre des chemins, avec son nom, le nombre de ses
+ *    équipes, « pic au travail / présents », et sur l'axe du temps sa courbe
+ *    de charge (présents, au travail) et un trait fin par lot ; un clic sur
+ *    un service le déplie (son résumé en entier, puis ses équipes) ; « Tout
+ *    déplier », « Tout replier » ; la page se souvient du choix ;
+ *  — les services et les équipes sans lot le jour affiché se rangent en bas,
+ *    sous une ligne repliée « Sans lot ce jour (n) » ;
+ *  — un jour de travail à la fois, par onglets (les jours qui ont des lots) ;
+ *    trois zooms : « Toute la chaîne » (tous les jours, dans la largeur
+ *    visible), « Un jour » (du premier lot moins 30 min au dernier plus
+ *    30 min, dans la largeur : une heure fait au moins 40 px) et « 6 h »
+ *    (160 px par heure) ; par boutons et par Ctrl + molette ; on se déplace
+ *    en glissant ou par la barre de défilement ; la période visible s'affiche ;
  *  — l'axe des heures reste en haut, sur deux niveaux (le jour, les heures),
- *    et les noms des équipes à gauche, pendant les défilements ;
- *  — les équipes sont groupées par service, dans l'ordre du chemin ; chaque
- *    groupe se replie ; en tête, la courbe de charge du service, en petit
- *    (charge-vue.js), sur le même axe ;
- *  — les barres : le travail plein, l'attente des amonts en bande fine devant,
- *    une pause prise en trou, le robot et le lavage avec un motif, le travail
- *    à la chaîne avec une encoche, un lot fini après la limite de sa commande
- *    avec un contour critique et une icône ; la limite de chaque commande, un
- *    petit trait au bout de la barre de son dernier lot ;
+ *    et les noms à gauche (jusqu'à 260 px, chaque équipe avec son nombre de
+ *    personnes), pendant les défilements ; le cadre prend la hauteur qui
+ *    reste ; « Plein écran » recouvre le menu et l'en-tête, Échap en sort ;
+ *  — les barres : le travail plein (3 px au moins), l'attente des amonts en
+ *    bande fine devant, le temps sans travail avant le premier lot en bande
+ *    hachurée, une pause prise en trou, le robot et le lavage avec un motif,
+ *    le travail à la chaîne avec une encoche, un lot fini après la limite de
+ *    sa commande avec un contour critique et une icône ; la limite de chaque
+ *    commande, un petit trait au bout de la barre de son dernier lot — une
+ *    flèche au bord droit quand elle est après la fenêtre ;
+ *  — la légende ne montre que les signes présents à l'écran, et se replie ;
  *  — un clic sur une barre met sa commande en évidence ; Échap annule.
- *  Rien n'est calculé ici : on lit le résultat du moteur et ses indicateurs.
- *  Les fonctions sans navigateur se testent sous Node.
+ *  Rien n'est calculé ici : on lit le résultat du moteur, ses indicateurs et
+ *  les réponses ; ce que le planning montre se décide dans
+ *  planning-ensemble.js. Les fonctions sans navigateur se testent sous Node.
  * ==========================================================================*/
 (function (root) {
   'use strict';
@@ -27,13 +40,18 @@
   const enNode = typeof module !== 'undefined' && module.exports && typeof require === 'function';
   const P = () => (enNode ? require('./moteur/production.js') : root.MoteurProduction);
   const ORDRE = () => (enNode ? require('./moteur/ordre-services.js') : root.OrlyOrdreServices);
+  const E = () => (enNode ? require('./planning-ensemble.js') : root.OrlyPlanningEnsemble);
+  const REP = () => (enNode ? require('./moteur/reponses.js') : root.OrlyReponses);
+  const IND = () => (enNode ? require('./moteur/indicateurs.js') : root.OrlyIndicateurs);
 
   const JOUR = 1440;
-  /** Les trois zooms ; les deux derniers ont une heure de largeur fixe, en pixels. */
+  /** Les trois zooms : « Un jour » remplit la largeur (40 px par heure au moins), « 6 h » a une heure de 160 px. */
   const ZOOMS = [{ id: 'chaine', nom: 'Toute la chaîne' }, { id: 'jour', nom: 'Un jour' }, { id: 'six', nom: '6 h' }];
-  const PX_HEURE = { jour: 40, six: 160 }, PX_HEURE_MIN = 4;
-  /** Les hauteurs, en pixels : une ligne d'équipe, l'en-tête d'un groupe, l'axe (le jour, puis les heures). */
-  const HAUT_LIGNE = 28, HAUT_GROUPE = 44, HAUT_AXE = 40, NOMS = 184;
+  const PX_HEURE = { jour: 40, six: 160 };
+  /** Les hauteurs, en pixels : une ligne d'équipe, la ligne d'un service, l'axe (le jour, puis les heures). */
+  const HAUT_LIGNE = 28, HAUT_GROUPE = 32, HAUT_AXE = 40;
+  /** Une barre fait au moins 3 px de large. */
+  const BARRE_MIN = 3;
   /** Deux repères de l'axe à 40 px au moins : « 06:00 » s'y lit. */
   const PAS = [30, 60, 120, 180, 240, 360, 720, 1440], ECART_REPERES = 40;
 
@@ -44,12 +62,11 @@
 
   /* ---- l'échelle ---------------------------------------------------------------- */
 
-  /** La largeur d'une heure, en pixels : fixe pour « Un jour » et « 6 h » ; « Toute la chaîne » tient dans `largeur`. */
-  function pxParHeure(zoom, largeur, t0, t1) {
-    if (PX_HEURE[zoom]) return PX_HEURE[zoom];
-    const heures = Math.max(1, (t1 - t0) / 60);
-    return Math.max(PX_HEURE_MIN, largeur / heures);
-  }
+  /**
+   * La largeur d'une heure, en pixels (planning-ensemble.js) : « Un jour » remplit `largeur`, sans descendre sous 40 px ;
+   * « 6 h » : 160 px ; « Toute la chaîne » tient dans `largeur`.
+   */
+  const pxParHeure = (zoom, largeur, t0, t1) => E().pxParHeure(zoom, largeur, t0, t1);
   /** Le zoom d'à côté : `sens` > 0 pour s'approcher. Aux bouts, on reste. */
   function zoomVoisin(zoom, sens) {
     const i = ZOOMS.findIndex(z => z.id === zoom), j = Math.max(0, Math.min(ZOOMS.length - 1, (i < 0 ? 1 : i) + (sens > 0 ? 1 : -1)));
@@ -96,15 +113,6 @@
     return { t0, t1: Math.max(t0 + 60, Math.ceil(b / 60) * 60) };
   }
 
-  /** Le jour de travail où le plus de lots tournent (0 : le jour J) ; à égalité, le premier. */
-  function jourLePlusCharge(r) {
-    const n = new Map();
-    for (const l of (r && r.lots) || []) if (tourne(l)) n.set(jourDe(l.debut), (n.get(jourDe(l.debut)) || 0) + 1);
-    let mieux = 0, max = 0;
-    for (const j of [...n.keys()].sort((a, b) => a - b)) if (n.get(j) > max) { max = n.get(j); mieux = j; }
-    return mieux;
-  }
-
   /**
    * Les services de l'amont vers l'aval. Avec des chemins (`parcours`, correction 17 b) : l'ordre tiré de tous les chemins à
    * la fois (moteur/ordre-services.js) — un service après tous ceux qui l'alimentent, à égalité l'ordre du premier chemin,
@@ -145,19 +153,6 @@
       ordre.push(s); reste.delete(s);
     }
     return ordre;
-  }
-
-  /**
-   * Les groupes du planning : un par service, dans l'ordre des chemins (`parcours`), ses équipes qui ont des lots. Un service dont
-   * aucune équipe n'a de lot garde son groupe s'il a une courbe de charge (`avecCharge`, un Set) : une équipe d'appui
-   * est là, sa charge se lit ; ses équipes ont alors une ligne vide.
-   */
-  function groupes(r, nomService, avecCharge, parcours) {
-    const nom = id => (nomService ? nomService(id) : id) || id;
-    return ordreDesServices(r, parcours).map(s => {
-      const toutes = r.ateliers.filter(a => a.service === s), avec = toutes.filter(a => (a.lots || []).length);
-      return { service: s, nom: nom(s), equipes: avec.length ? avec : avecCharge && avecCharge.has(s) ? toutes : [] };
-    }).filter(g => g.equipes.length);
   }
 
   /** Les morceaux d'une barre, de `debut` à `fin`, sans les pauses prises ([{ de, a }]). */
@@ -226,27 +221,58 @@
 
   /* ==== le dessin (navigateur) ======================================================== */
 
-  /** Ce que la page garde d'un dessin à l'autre : le zoom, les groupes repliés, l'heure à gauche, la commande choisie. */
-  const etat = { zoom: 'jour', replis: new Set(), gauche: null, choix: null, vue: null, vise: null, amener: false };
+  /**
+   * Ce que la page garde d'un dessin à l'autre : le zoom, le jour affiché, les services dépliés (tous repliés à l'ouverture),
+   * l'heure à gauche, la commande choisie, la légende (repliée ou non), le plein écran.
+   */
+  const etat = { zoom: 'jour', jour: null, deplies: new Set(), gauche: null, choix: null, vue: null, vise: null, amener: false, legende: true, plein: false };
+
+  /*
+   * Les services dépliés : ce navigateur s'en souvient (une préférence d'affichage, `ory-ui-…`, que le garde des onglets
+   * laisse passer, comme le tableau des équipes de charge-vue.js) ; sans stockage, le choix vaut pour la page. Ce qui est lu
+   * est vérifié : une liste de noms de services, rien d'autre.
+   */
+  const CLE_DEPLIES = 'ory-ui-planning-deplies';
+  function lireDeplies() {
+    try {
+      const l = JSON.parse(root.localStorage.getItem(CLE_DEPLIES) || '[]');
+      return new Set(Array.isArray(l) ? l.filter(x => typeof x === 'string' && x.length <= 200).slice(0, 500) : []);
+    } catch (e) { return new Set(); }
+  }
+  /** Avant le premier dessin (ou la première écriture) : les services que ce navigateur avait laissés dépliés — aucun, la première fois. */
+  function relire() { if (!etat.relu) { etat.relu = true; for (const x of lireDeplies()) etat.deplies.add(x); } }
+  function retenirDeplies() { try { root.localStorage.setItem(CLE_DEPLIES, JSON.stringify([...etat.deplies])); } catch (e) { /* sans stockage : le choix vaut pour la page */ } }
 
   const ico = nom => (root.OrlyIcones ? root.OrlyIcones.TRAITS[nom] || '' : '');
+  const pluriel = (n, un, des) => n + ' ' + (n > 1 ? des : un);
 
-  function legende() {
-    const cle = (cls, mot, titre) => `<span class="pg-cle" title="${esc(titre)}"><i class="pg-ex ${cls}" aria-hidden="true"></i>${esc(mot)}</span>`;
-    return `<p class="pg-legende" aria-label="Ce que disent les barres">
-      ${cle('travail', 'travail', 'Barre pleine : l’équipe prépare.')}
-      ${cle('attente', 'attente', 'Bande fine devant la barre : l’équipe attend le service d’avant.')}
-      ${cle('pause', 'pause', 'Un trou dans la barre : une pause prise.')}
-      ${cle('motif', 'robot, lavage', 'Un motif : le robot, ou le lavage.')}
-      ${cle('chaine', 'à la chaîne', 'Une encoche : deux étapes faites d’un bloc, à la chaîne.')}
-      ${cle('retard', 'en retard', 'Contour et alerte : le lot finit après la limite de sa commande.')}
-      ${cle('limite', 'prête avant', 'Le petit trait après la barre : la limite de la commande. L’écart, c’est la marge.')}
-      ${cle('presents', 'présents', 'En tête de chaque service : les personnes présentes, par créneau de 15 min.')}
-      ${cle('autravail', 'au travail', 'En tête de chaque service : les personnes au travail.')}
-      ${cle('appui', 'en appui', 'En tête de chaque service, en pointillé : les personnes en appui ou à disposition.')}
-      ${cle('file', 'en file', 'En tête de chaque service : ce qui attend son équipe.')}
-      <span class="pg-cle pg-cle-maintenant" title="Le trait vertical : l’heure où en est le rejeu."><i class="pg-ex maintenant" aria-hidden="true"></i>heure rejouée</span>
-    </p>`;
+  /** Les signes de la légende : [classe, mot, ce qu'il dit, ce qui le montre à l'écran]. Seuls ceux qui sont à l'écran s'affichent. */
+  const SIGNES = [
+    ['presents', 'présents', 'Sur la ligne d’un service : les personnes présentes, par créneau de 15 min.', '.ch-presents'],
+    ['autravail', 'au travail', 'Sur la ligne d’un service : les personnes au travail ; le point marque le pic.', '.ch-travail'],
+    ['appui', 'en appui', 'Sur la ligne d’un service, en pointillé : les personnes en appui ou à disposition.', '.ch-appui'],
+    ['trait', 'un lot', 'Sur la ligne d’un service : un trait fin par lot, de son début à sa fin ; un lot en retard prend la couleur du retard.', '.pg-trait'],
+    ['travail', 'travail', 'Barre pleine : l’équipe prépare.', '.pg-lot .pg-seg'],
+    ['attente', 'attend l’amont', 'Bande fine devant la barre : le lot attend le service d’avant.', '.at-pl-attente'],
+    ['avant', 'sans travail', 'Bande hachurée : l’équipe est là, sans travail, avant son premier lot. Au survol : sa durée, et ce qu’elle attendait.', '.pg-avant'],
+    ['pause', 'pause', 'Un trou dans la barre : une pause prise.', '.pg-lot.troue'],
+    ['motif', 'robot, lavage', 'Un motif : le robot, ou le lavage.', '.pg-lot .pg-motif'],
+    ['chaine', 'à la chaîne', 'Une encoche : deux étapes faites d’un bloc, à la chaîne.', '.pg-lot.chaine'],
+    ['retard', 'en retard', 'Contour et alerte : le lot finit après la limite de sa commande.', '.pg-lot.retard'],
+    ['limite', 'prête avant', 'Le petit trait après la barre : la limite de la commande. L’écart, c’est la marge.', '.pg-limite'],
+    ['fleche', 'limite plus tard', 'Une flèche au bord droit : la limite de la commande est après la fenêtre affichée. Au survol : son heure.', '.pg-fleche'],
+    ['maintenant', 'heure rejouée', 'Le trait vertical : l’heure où en est le rejeu.', '.pg-maintenant:not([hidden])']
+  ];
+  /** La légende : les signes présents à l'écran (pas ceux d'un service replié), sur la ligne des boutons ; elle se replie. */
+  function direLegende(box) {
+    const p = box.querySelector('.pg-legende'), b = box.querySelector('.pg-legende-bouton'), cadre = box.querySelector('.pg-cadre');
+    if (!p || !b || !cadre) return;
+    const present = sel => [...cadre.querySelectorAll(sel)].some(e => !e.closest('[hidden]'));
+    const signes = SIGNES.filter(x => present(x[3]));
+    p.innerHTML = signes.map(([cls, mot, titre]) => `<span class="pg-cle" data-signe="${cls}" title="${esc(titre)}"><i class="pg-ex ${cls}" aria-hidden="true"></i>${esc(mot)}</span>`).join('');
+    p.hidden = !etat.legende;
+    b.setAttribute('aria-expanded', String(!!etat.legende));
+    b.title = (etat.legende ? 'Replier' : 'Déplier') + ' la légende : ' + pluriel(signes.length, 'signe', 'signes') + ' à l’écran';
   }
 
   /** Une barre : ses morceaux (les pauses prises y font des trous), son attente devant, son étiquette, sa limite. */
@@ -254,7 +280,7 @@
     const { x, par, lim, nomSvc } = v, y = 5, h = HAUT_LIGNE - 10;
     if (l.dispo) return `<rect class="at-pl-dispo" x="${(x(l.debut) - 3).toFixed(1)}" y="${y - 1}" width="6" height="${h + 2}" rx="2" data-info="Disponible à partir de ${P().hhmm(l.debut)}"/>`;
     if (l.fin == null) return `<rect class="at-pl-bloque" x="${x(l.debut).toFixed(1)}" y="${y}" width="10" height="${h}" rx="3" data-info="${esc(P().enClair(l.nom))} : ne tourne pas"/>`;
-    const motif = a.type === 'robot' || a.type === 'lavage', retard = enRetard(l, par), x0 = x(l.debut), x1 = Math.max(x0 + 2, x(l.fin));
+    const motif = a.type === 'robot' || a.type === 'lavage', retard = enRetard(l, par), x0 = x(l.debut), x1 = Math.max(x0 + BARRE_MIN, x(l.fin));
     const pauses = (a.pausesPrises || []).filter(p => p.a > l.debut && p.de < l.fin);
     const morceaux = segments(l.debut, l.fin, x1 - x0 >= 6 ? pauses : []).map(([d, f]) => [x(d), Math.max(x(d) + 1, x(f))]);
     if (!morceaux.length) morceaux.push([x0, x1]);
@@ -270,11 +296,16 @@
     const DS = root.OrlyDS, mot = DS ? [P().enClair(l.nom), String(l.nom).replace(/^Vol /, '')].find(s => s && DS.largeurTexte(s, 12) + 10 <= place) || '' : '';
     const contour = retard ? `<rect class="pg-contour" x="${(x0 - 1).toFixed(1)}" y="${y - 1}" width="${(x1 - x0 + 2).toFixed(1)}" height="${h + 2}" rx="4"/>`
       + (x1 - x0 >= 16 ? `<g class="pg-alerte" transform="translate(${(x1 - 15).toFixed(1)} ${y + 2}) scale(.58)">${ico('alerte')}</g>` : '') : '';
-    // La limite de la commande : un petit trait, relié au bout de la barre — l'écart, c'est la marge.
-    const traits = (lim.get(l) || []).map(e => `<line class="pg-marge" x1="${Math.min(x1, x(e)).toFixed(1)}" y1="${y + h / 2}" x2="${Math.max(x1, x(e)).toFixed(1)}" y2="${y + h / 2}"/>`
-      + `<line class="pg-limite${e < l.fin ? ' depassee' : ''}" data-limite="${e}" x1="${x(e).toFixed(1)}" y1="${y - 3}" x2="${x(e).toFixed(1)}" y2="${y + h + 3}"/>`).join('');
+    // La limite de la commande : un petit trait, relié au bout de la barre — l'écart, c'est la marge. Après la fenêtre : le
+    // trait s'arrête au bord droit, où une flèche dit l'heure de la limite au survol.
+    const ym = y + h / 2, bord = v.L - 9;
+    const traits = (lim.get(l) || []).map(e => (x(e) > v.L - 1
+      ? (bord > x1 ? `<line class="pg-marge" x1="${x1.toFixed(1)}" y1="${ym}" x2="${bord.toFixed(1)}" y2="${ym}"/>` : '')
+        + `<path class="pg-fleche" data-limite="${e}" d="M${(v.L - 8).toFixed(1)} ${ym - 4}L${(v.L - 2).toFixed(1)} ${ym}L${(v.L - 8).toFixed(1)} ${ym + 4}" data-info="${esc('Prête avant ' + instant(e) + ' : après la fenêtre affichée')}"/>`
+      : `<line class="pg-marge" x1="${Math.min(x1, x(e)).toFixed(1)}" y1="${ym}" x2="${Math.max(x1, x(e)).toFixed(1)}" y2="${ym}"/>`
+        + `<line class="pg-limite${e < l.fin ? ' depassee' : ''}" data-limite="${e}" x1="${x(e).toFixed(1)}" y1="${y - 3}" x2="${x(e).toFixed(1)}" y2="${y + h + 3}"/>`)).join('');
     const dit = info(l, a, { parClasse: par, nomService: nomSvc });
-    return `<g class="at-pl-lot pg-lot${a.type === 'robot' ? ' robot' : ''}${a.type === 'lavage' ? ' lavage' : ''}${l.fusion ? ' chaine' : ''}${retard ? ' retard' : ''}" tabindex="0" role="button"
+    return `<g class="at-pl-lot pg-lot${a.type === 'robot' ? ' robot' : ''}${a.type === 'lavage' ? ' lavage' : ''}${l.fusion ? ' chaine' : ''}${retard ? ' retard' : ''}${morceaux.length > 1 ? ' troue' : ''}" tabindex="0" role="button"
       data-lot="${i}" data-debut="${l.debut}" data-fin="${l.fin}" data-x="${x0.toFixed(2)}" data-x1="${x1.toFixed(2)}" data-info="${esc(dit)}" aria-label="${esc(dit.replace(/\n/g, ', '))}">${att}${morceaux.map(forme).join('')}${contour}${
       mot ? `<text class="at-pl-etiq" x="${(large[0] + 5).toFixed(1)}" y="${y + 13}">${esc(mot)}</text>` : ''}${traits}</g>`;
   }
@@ -290,50 +321,120 @@
     </svg>`;
   }
 
+  /** La ligne d'une équipe : son nom entier (au survol s'il est coupé), ses personnes ; ses barres, et la bande d'avant son premier lot. */
+  function ligne(a, v, r, service) {
+    const fu = (a.lots.find(l => l.fusion) || {}).fusion, pers = E().motsDesPersonnes(a), nom = a.nom + (fu ? ' +' + v.nomSvc(fu) : '');
+    const titre = a.nom + ' — ' + pers + (service ? ' — ' + service : '') + (fu ? ' — fait aussi ' + v.nomSvc(fu) + ', à la chaîne' : '');
+    const av = v.avant.get(a.id), x0 = av ? Math.max(0, v.x(av.de)) : 0, x1 = av ? Math.min(v.L, v.x(av.a)) : 0;
+    const bande = av && x1 - x0 >= 2 ? `<rect class="pg-avant" x="${x0.toFixed(1)}" y="7" width="${(x1 - x0).toFixed(1)}" height="${HAUT_LIGNE - 14}" rx="2" data-de="${av.de}" data-a="${av.a}" data-info="${esc(E().motsDAvant(av))}"/>` : '';
+    return `<div class="pg-ligne" data-equipe="${esc(a.id)}" data-service="${esc(a.service)}"><div class="pg-nom" title="${esc(titre)}"><span class="pg-nom-texte">${esc(nom)}</span>${
+      service ? `<small class="pg-nom-service">${esc(service)}</small>` : ''}<small class="pg-pers">${esc(pers)}</small></div>
+      <svg class="ds-graphique pg-barres" width="${v.L}" height="${HAUT_LIGNE}" style="width:${v.L}px;height:${HAUT_LIGNE}px" viewBox="0 0 ${v.L} ${HAUT_LIGNE}" role="group" aria-label="${esc(a.nom)}">${bande}${
+      a.lots.map((l, i) => barre(l, r.lots.indexOf(l) >= 0 ? r.lots.indexOf(l) : 'x' + i, a, v)).join('')}</svg></div>`;
+  }
+
+  /**
+   * Sur la ligne d'un service : sa courbe de charge, la même que sur la page de la charge (charge-vue.js : présents, au
+   * travail, le pic marqué, la bulle de chaque créneau), sans la file ; et, dessous, un trait fin par lot.
+   */
+  function courbe(g, v) {
+    const C = root.OrlyChargeVue, H = HAUT_GROUPE, EN = E();
+    const lus = v.k && C && C.mini ? v.k.services.filter(s => s.service === g.service && (v.jour == null || s.jour === v.jour) && (s.creneaux.presents || s.creneaux.auTravail)) : [];
+    const m = lus.length ? C.mini({ id: g.service, nom: g.nom, c: C.creneauxDuService(lus) }, { t0: v.t0, t1: v.t1, pxm: v.pxh / 60, haut: H, sansFile: true }, v.k.pas) : null;
+    // Un trait fin par lot, sous la courbe : sur deux rangs, pour que deux lots qui se suivent se distinguent.
+    let n = 0;
+    const traits = g.equipes.map(a => a.lots.filter(EN.estUnLot).map(l => {
+      const x0 = v.x(l.debut), x1 = Math.max(x0 + BARRE_MIN, v.x(l.fin == null ? l.debut : l.fin)), yt = H - 5 + (n++ % 2) * 3;
+      return x1 < 0 || x0 > v.L ? '' : `<line class="pg-trait${enRetard(l, v.par) ? ' retard' : ''}" x1="${x0.toFixed(1)}" y1="${yt}" x2="${x1.toFixed(1)}" y2="${yt}"/>`;
+    }).join('')).join('');
+    return `<div class="pg-courbe" style="width:${v.L}px">${m ? m.html : ''}<svg class="pg-traits" width="${v.L}" height="${H}" style="width:${v.L}px;height:${H}px" viewBox="0 0 ${v.L} ${H}" aria-hidden="true">${traits}</svg></div>`;
+  }
+
+  /** Les résumés d'un service (un par jour de travail affiché), et leur phrase entière. */
+  function resumesDe(g, v) {
+    const EN = E(), jours = v.jour == null ? [...new Set(g.equipes.map(EN.jourDeLEquipe))].sort((a, b) => a - b) : [v.jour];
+    const liste = jours.map(j => EN.resume(v.k, v.rep, g.service, j)).filter(Boolean);
+    // Le jour se dit quand ce n'est pas le jour affiché ; pour toute la chaîne : hors du jour des vols, ou si le service a deux jours.
+    const affiche = v.jour == null ? (liste.length > 1 ? null : 0) : v.jour;
+    return { liste, phrase: liste.map(x => EN.phraseDuResume(x, affiche)).join('\n'),
+      principal: liste.reduce((m, x) => (!m || (x.pic || 0) > (m.pic || 0) ? x : m), null) };
+  }
+
+  /** Un service : sa ligne de 32 px (repliée à l'ouverture), puis, déplié, son résumé en entier et ses équipes. */
+  function groupe(g, n, v, r) {
+    const deplie = etat.deplies.has(g.service), R = resumesDe(g, v), pic = E().motsDuPic(R.principal);
+    const titre = g.nom + ' — ' + pluriel(g.equipes.length, 'équipe', 'équipes') + (R.phrase ? '\n' + R.phrase : '');
+    return `<section class="pg-groupe${deplie ? '' : ' replie'}" data-service="${esc(g.service)}" data-lots="${g.lots}">
+      <div class="pg-groupe-tete"><div class="pg-groupe-nom" title="${esc(titre)}"><button type="button" class="pg-replier" aria-expanded="${deplie}" aria-controls="pg-lignes-${n}">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${ico('bas')}</svg><span class="pg-service">${esc(g.nom)}</span><span class="pg-compte">${g.equipes.length}</span></button>
+        <span class="pg-pic" aria-label="Pic au travail, sur les présents">${esc(pic)}</span></div>${courbe(g, v)}</div>
+      <div class="pg-lignes" id="pg-lignes-${n}"${deplie ? '' : ' hidden'}>${R.phrase ? `<div class="pg-detail"><p class="pg-detail-texte">${esc(R.phrase).replace(/\n/g, '<br>')}</p></div>` : ''}${
+        g.equipes.map(a => ligne(a, v, r)).join('')}</div></section>`;
+  }
+
+  /** Les équipes sans lot le jour affiché (services entiers compris), en bas, sous une ligne repliée « Sans lot ce jour (n) ». */
+  function sansLot(liste, n, v, r) {
+    const cle = E().SANS_LOT, deplie = etat.deplies.has(cle), mot = (v.jour == null ? 'Sans lot' : 'Sans lot ce jour') + ' (' + liste.length + ')';
+    const services = [...new Set(liste.map(x => x.nom))];
+    const titre = pluriel(liste.length, 'équipe', 'équipes') + ' sans lot' + (v.jour == null ? '' : ' ce jour') + ' : ' + services.join(', ') + '.';
+    return `<section class="pg-groupe pg-sans-lot${deplie ? '' : ' replie'}" data-service="${esc(cle)}" data-lots="0">
+      <div class="pg-groupe-tete"><div class="pg-groupe-nom" title="${esc(titre)}"><button type="button" class="pg-replier" aria-expanded="${deplie}" aria-controls="pg-lignes-${n}">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${ico('bas')}</svg><span class="pg-service">${esc(mot)}</span></button></div><div class="pg-sans-courbe" style="width:${v.L}px"></div></div>
+      <div class="pg-lignes" id="pg-lignes-${n}"${deplie ? '' : ' hidden'}>${liste.map(x => ligne(x.equipe, v, r, x.nom)).join('')}</div></section>`;
+  }
+
   /** Le planning entier, à l'échelle `pxh` (pixels par heure). */
   function toile(o, v) {
-    const r = o.resultat, C = root.OrlyChargeVue, k = v.k, courbes = v.courbes;
-    const R = reperes(v.t0, v.t1, v.pxh);
-    const corps = v.groupes.map((g, n) => {
-      const replie = etat.replis.has(g.service), s = courbes.get(g.service), m = s && C.mini ? C.mini(s, { t0: v.t0, t1: v.t1, pxm: v.pxh / 60, haut: HAUT_GROUPE }, k.pas) : null;
-      const lignes = g.equipes.map(a => {
-        const fu = (a.lots.find(l => l.fusion) || {}).fusion, nom = a.nom + (fu ? ' +' + v.nomSvc(fu) : '');
-        return `<div class="pg-ligne" data-equipe="${esc(a.id)}"><div class="pg-nom" title="${esc(a.nom + (fu ? ' — fait aussi ' + v.nomSvc(fu) + ', à la chaîne' : ''))}"><span>${esc(nom)}</span></div>
-          <svg class="ds-graphique pg-barres" width="${v.L}" height="${HAUT_LIGNE}" style="width:${v.L}px;height:${HAUT_LIGNE}px" viewBox="0 0 ${v.L} ${HAUT_LIGNE}" role="group" aria-label="${esc(a.nom)}">${a.lots.map((l, i) => barre(l, r.lots.indexOf(l) >= 0 ? r.lots.indexOf(l) : 'x' + i, a, v)).join('')}</svg></div>`;
-      }).join('');
-      return `<section class="pg-groupe${replie ? ' replie' : ''}" data-service="${esc(g.service)}">
-        <div class="pg-groupe-tete"><div class="pg-groupe-nom"><button type="button" class="pg-replier" aria-expanded="${!replie}" aria-controls="pg-lignes-${n}" title="${replie ? 'Déplier' : 'Replier'} ce service">
-          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${ico('bas')}</svg><span class="pg-service">${esc(g.nom)}</span><span class="pg-compte">${g.equipes.length}</span></button>
-          <span class="pg-note ch-note" title="${esc(m ? m.note : '')}">${esc(m ? m.note : '')}</span></div>${m ? m.html : `<div class="pg-sans-courbe" style="width:${v.L}px"></div>`}</div>
-        <div class="pg-lignes" id="pg-lignes-${n}"${replie ? ' hidden' : ''}>${lignes}</div></section>`;
-    }).join('');
-    const minuits = R.jours.filter(j => j.de === j.j * JOUR && j.de > v.t0).map(j => `<i class="pg-minuit" style="left:${(NOMS + v.x(j.de)).toFixed(1)}px"></i>`).join('');
-    return `<div class="pg-toile" style="width:${NOMS + v.L}px;--pg-pas:${(R.pas / 60 * v.pxh).toFixed(2)}px;--pg-decalage:${v.x(Math.ceil(v.t0 / R.pas) * R.pas).toFixed(2)}px">
-      <svg class="pg-defs" width="0" height="0" aria-hidden="true"><defs><pattern id="pg-motif" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6"/></pattern></defs></svg>
-      <div class="pg-axe"><div class="pg-coin">Équipes</div>${axe(v)}<span class="pg-maintenant-heure" hidden></span></div>
+    const r = o.resultat, R = reperes(v.t0, v.t1, v.pxh);
+    const corps = v.lignes.services.map((g, n) => groupe(g, n, v, r)).join('') + (v.lignes.sansLot.length ? sansLot(v.lignes.sansLot, v.lignes.services.length, v, r) : '');
+    const minuits = R.jours.filter(j => j.de === j.j * JOUR && j.de > v.t0).map(j => `<i class="pg-minuit" style="left:${(v.noms + v.x(j.de)).toFixed(1)}px"></i>`).join('');
+    return `<div class="pg-toile" style="width:${v.noms + v.L}px;--pg-noms:${v.noms}px;--pg-pas:${(R.pas / 60 * v.pxh).toFixed(2)}px;--pg-decalage:${v.x(Math.ceil(v.t0 / R.pas) * R.pas).toFixed(2)}px">
+      <svg class="pg-defs" width="0" height="0" aria-hidden="true"><defs><pattern id="pg-motif" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6"/></pattern>
+        <pattern id="pg-hachure" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><line x1="0" y1="0" x2="0" y2="5"/></pattern></defs></svg>
+      <div class="pg-axe"><div class="pg-coin"><span class="pg-coin-mot">Équipes</span><span class="pg-periode" role="status" aria-label="La période visible"></span></div>${axe(v)}<span class="pg-maintenant-heure" hidden></span></div>
       ${corps}${minuits}<i class="pg-maintenant" hidden></i></div>`;
   }
 
-  /** La vue courante : l'échelle, la largeur, la position des heures. */
+  /** Les indicateurs et les réponses de la journée : ceux que la page a déjà lus (`o.journee`), sinon calculés une fois par résultat. */
+  function journeeDe(o) {
+    const r = o.resultat, donnee = typeof o.journee === 'function' ? o.journee() : o.journee;
+    if (donnee && donnee.r === r && donnee.k) return donnee;
+    if (etat.lu && etat.lu.r === r) return etat.lu;
+    const k = IND() ? IND().journee(r, o.args || {}) : null;
+    return (etat.lu = { r, k, reponses: k && REP() ? REP().reponses(r, o.args || {}, { k }) : null });
+  }
+
+  /** La largeur de la colonne des noms pour ce résultat : celle du nom le plus long (services et équipes), jusqu'à 260 px. */
+  function largeurDesNoms(r, nomSvc) {
+    const DS = root.OrlyDS, mesurer = (t, taille) => (DS && DS.largeurTexte ? DS.largeurTexte(t, taille) : String(t).length * taille * 0.55), EN = E();
+    const services = [...new Set(r.ateliers.map(a => a.service))];
+    // Un service : le chevron, le nom (en gras), la pastille, « pic / présents ». Une équipe : le retrait, le nom, « n pers. ».
+    return EN.largeurDesNoms([
+      ...services.map(s => ({ texte: nomSvc(s), taille: 13.8, marge: 118 })),
+      ...r.ateliers.map(a => ({ texte: a.nom, taille: 13, marge: 44 + Math.ceil(mesurer(EN.motsDesPersonnes(a), 12)) })),
+      { texte: 'Sans lot ce jour (' + r.ateliers.length + ')', taille: 13.8, marge: 40 }], mesurer);
+  }
+
+  /** La vue courante : le jour affiché, l'échelle, la largeur, la position des heures, les lignes. */
   function vueDe(box, o) {
-    const r = o.resultat, b = bornes(r), cadre = box.querySelector('.pg-cadre');
-    const largeur = Math.max(120, (cadre ? cadre.clientWidth : 0) - NOMS - 2), pxh = pxParHeure(etat.zoom, largeur, b.t0, b.t1);
+    const r = o.resultat, cadre = box.querySelector('.pg-cadre'), EN = E();
     const nomSvc = id => ((o.nomService ? o.nomService(id) : id) || id);
-    const x = t => (t - b.t0) / 60 * pxh;
-    // La charge de chaque service (moteur/indicateurs.js, comme partout) : sa courbe en tête de son groupe.
-    const C = root.OrlyChargeVue, I = root.OrlyIndicateurs, k = C && I && C.servicesDe ? I.journee(r, o.args || {}) : null;
-    const courbes = new Map((k ? C.servicesDe(k, nomSvc) : []).map(s => [s.id, s]));
-    return { t0: b.t0, t1: b.t1, pxh, largeur, L: Math.ceil((b.t1 - b.t0) / 60 * pxh), x, par: r.parClasse || {}, lim: limites(r), nomSvc, k, courbes,
-      groupes: groupes(r, nomSvc, new Set(courbes.keys()), (o.args || {}).parcours) };
+    // « Toute la chaîne » : tous les jours, de la première à la dernière minute ; sinon le cadre du jour affiché.
+    const jour = etat.zoom === 'chaine' ? null : etat.jour, b = (jour == null ? null : EN.cadreDuJour(r, jour)) || bornes(r);
+    const noms = largeurDesNoms(r, nomSvc), largeur = Math.max(120, (cadre ? cadre.clientWidth : 0) - noms - 2), pxh = pxParHeure(etat.zoom, largeur, b.t0, b.t1);
+    const x = t => (t - b.t0) / 60 * pxh, j = journeeDe(o);
+    return { jour, t0: b.t0, t1: b.t1, pxh, largeur, noms, L: Math.ceil((b.t1 - b.t0) / 60 * pxh - 0.01), x, par: r.parClasse || {}, lim: limites(r), nomSvc, k: j.k, rep: j.reponses,
+      lignes: EN.lignes(r, jour, ordreDesServices(r, (o.args || {}).parcours), nomSvc), avant: EN.avantLePremierLot(r, j.reponses) };
   }
 
   function direPeriode(box) {
     const v = etat.vue, cadre = box.querySelector('.pg-cadre'), p = box.querySelector('.pg-periode');
     // Caché (une autre page), le cadre n'a pas de largeur : l'heure à gauche reste celle d'avant.
     if (!v || !cadre || !p || !(cadre.clientWidth > 0)) return;
-    const vis = visible({ t0: v.t0, pxh: v.pxh, gauche: cadre.scrollLeft, largeur: Math.max(0, cadre.clientWidth - NOMS) });
+    const vis = visible({ t0: v.t0, pxh: v.pxh, gauche: cadre.scrollLeft, largeur: Math.max(0, cadre.clientWidth - v.noms) });
     const de = Math.max(v.t0, vis.de), a = Math.min(v.t1, vis.a);
     p.textContent = periode(Math.round(de), Math.round(a));
+    p.title = 'La période visible : ' + p.textContent;
     p.dataset.de = Math.round(de); p.dataset.a = Math.round(a);
     etat.gauche = de;
     // Le nom du jour reste à la vue tant qu'on est dans ce jour : il suit le bord gauche, sans sortir de son jour.
@@ -343,18 +444,39 @@
     }
   }
 
+  /** Le cadre prend la hauteur qui reste dans la fenêtre, sous les boutons : il défile seul, l'axe toujours visible. */
+  function ajusterHauteur(box) {
+    const cadre = box.querySelector('.pg-cadre');
+    if (!cadre || !(cadre.clientWidth > 0)) return;
+    // La place du cadre quand la page n'a pas défilé : son haut à l'écran, plus ce que ses parents ont défilé.
+    let haut = cadre.getBoundingClientRect().top + (root.scrollY || 0);
+    if (!etat.plein) for (let p = cadre.parentElement; p; p = p.parentElement) haut += p.scrollTop || 0;
+    cadre.style.height = cadre.style.maxHeight = Math.max(260, Math.floor(root.innerHeight - haut - 12)) + 'px';
+    cadre.style.setProperty('--pg-vue', Math.max(0, cadre.clientWidth - 2) + 'px');
+  }
+
+  /** L'état des boutons : le zoom, le jour affiché (aucun pour « Toute la chaîne »), le plein écran. */
+  function direBoutons(box) {
+    for (const b of box.querySelectorAll('[data-pg-zoom]')) b.setAttribute('aria-pressed', String(b.dataset.pgZoom === etat.zoom));
+    for (const b of box.querySelectorAll('[data-pg-jour]')) b.setAttribute('aria-pressed', String(etat.zoom !== 'chaine' && +b.dataset.pgJour === etat.jour));
+    const plein = box.querySelector('[data-pg-plein]');
+    if (plein) { plein.setAttribute('aria-pressed', String(!!etat.plein)); plein.title = etat.plein ? 'Échap : quitter le plein écran' : 'Le planning sur tout l’écran, sans le menu ni l’en-tête ; Échap en sort'; }
+  }
+
   /** Redessine la toile à l'échelle courante ; `ancre` : { t, px } garde cette heure à ce pixel de la zone visible. */
   function tracer(box, o, ancre) {
     const cadre = box.querySelector('.pg-cadre'); if (!cadre) return;
     const v = etat.vue = vueDe(box, o);
     cadre.innerHTML = toile(o, v);
-    for (const b of box.querySelectorAll('[data-pg-zoom]')) b.setAttribute('aria-pressed', String(b.dataset.pgZoom === etat.zoom));
-    const t = ancre ? ancre.t : etat.gauche != null ? etat.gauche : Math.max(v.t0, jourLePlusCharge(o.resultat) * JOUR);
+    direBoutons(box);
+    const t = ancre ? ancre.t : etat.gauche != null ? etat.gauche : v.t0;
     cadre.scrollLeft = Math.max(0, v.x(t) - (ancre ? ancre.px : 0));
     appliquerChoix(box);
     direPeriode(box);
     maintenant();
     appliquerVise(box);
+    direLegende(box);
+    ajusterHauteur(box);
   }
 
   function appliquerChoix(box) {
@@ -378,34 +500,57 @@
     bulle.style.top = Math.round(b.bottom + 8 + h > vh ? Math.max(8, b.top - h - 8) : b.bottom + 8) + 'px';
   }
 
-  /** Les gestes : les zooms (boutons, Ctrl + molette), replier, glisser, choisir une commande, Échap. Une fois par boîte. */
+  /** Déplier ou replier un groupe (un service, ou « Sans lot ce jour ») : la page s'en souvient. */
+  function plier(box, g, deplie) {
+    const b = g.querySelector('.pg-replier'), lignes = g.querySelector('.pg-lignes');
+    g.classList.toggle('replie', !deplie);
+    if (b) b.setAttribute('aria-expanded', String(deplie));
+    if (lignes) lignes.hidden = !deplie;
+    if (deplie) etat.deplies.add(g.dataset.service); else etat.deplies.delete(g.dataset.service);
+  }
+  function apresPli(box) { retenirDeplies(); maintenant(); direLegende(box); }
+
+  /** Le plein écran : le planning recouvre le menu et l'en-tête ; Échap en sort. */
+  function pleinEcran(box, oui) {
+    etat.plein = !!oui;
+    box.classList.toggle('pg-plein', etat.plein);
+    direBoutons(box);
+    // La largeur change : « Un jour » et « Toute la chaîne » se redessinent dans la nouvelle largeur.
+    if (etat.o && etat.vue) tracer(box, etat.o); else ajusterHauteur(box);
+  }
+
+  /** Les gestes : les jours, les zooms (boutons, Ctrl + molette), déplier, glisser, choisir une commande, le plein écran, Échap. Une fois par boîte. */
   function brancher(box) {
     if (box.__pg) return;
     box.__pg = true;
     const cadreDe = () => box.querySelector('.pg-cadre');
-    const zoomer = (zoom, ancre) => { if (zoom === etat.zoom) return; etat.zoom = zoom; tracer(box, etat.o, ancre); };
+    const zoomer = (zoom, ancre) => { if (zoom === etat.zoom) return; const chaine = zoom === 'chaine' || etat.zoom === 'chaine'; etat.zoom = zoom; if (chaine) etat.gauche = null; tracer(box, etat.o, chaine ? null : ancre); };
     box.addEventListener('click', e => {
       const z = e.target.closest('[data-pg-zoom]');
-      if (z) { const c = cadreDe(), v = etat.vue; zoomer(z.dataset.pgZoom, v && c ? { t: v.t0 + (c.scrollLeft + (c.clientWidth - NOMS) / 2) / v.pxh * 60, px: (c.clientWidth - NOMS) / 2 } : null); return; }
-      const rp = e.target.closest('.pg-replier');
-      if (rp) {
-        const g = rp.closest('.pg-groupe'), replie = !g.classList.contains('replie');
-        g.classList.toggle('replie', replie); rp.setAttribute('aria-expanded', String(!replie)); rp.title = (replie ? 'Déplier' : 'Replier') + ' ce service';
-        g.querySelector('.pg-lignes').hidden = replie;
-        if (replie) etat.replis.add(g.dataset.service); else etat.replis.delete(g.dataset.service);
-        maintenant();
-        return;
-      }
+      if (z) { const c = cadreDe(), v = etat.vue; zoomer(z.dataset.pgZoom, v && c ? { t: v.t0 + (c.scrollLeft + (c.clientWidth - v.noms) / 2) / v.pxh * 60, px: (c.clientWidth - v.noms) / 2 } : null); return; }
+      // Un onglet de jour : ce jour de travail, dans son cadre ; depuis « Toute la chaîne », on passe à « Un jour ».
+      const j = e.target.closest('[data-pg-jour]');
+      if (j) { etat.jour = +j.dataset.pgJour; if (etat.zoom === 'chaine') etat.zoom = 'jour'; etat.gauche = null; tracer(box, etat.o); return; }
+      const tout = e.target.closest('[data-pg-tout]');
+      if (tout) { for (const g of box.querySelectorAll('.pg-groupe')) plier(box, g, tout.dataset.pgTout === 'deplier'); if (tout.dataset.pgTout !== 'deplier') etat.deplies.clear(); apresPli(box); return; }
+      if (e.target.closest('.pg-legende-bouton')) { etat.legende = !etat.legende; direLegende(box); ajusterHauteur(box); return; }
+      if (e.target.closest('[data-pg-plein]')) { pleinEcran(box, !etat.plein); return; }
       if (box.__glisse) { box.__glisse = false; return; }
+      // Un clic sur la ligne d'un service (son nom ou sa courbe) le déplie, ou le replie.
+      const tete = e.target.closest('.pg-groupe-tete');
+      if (tete) { const g = tete.closest('.pg-groupe'); plier(box, g, g.classList.contains('replie')); apresPli(box); return; }
       const lot = e.target.closest('.pg-lot'), r = etat.o && etat.o.resultat;
       if (lot && r && r.lots[+lot.dataset.lot]) { etat.choix = commandeDe(r.lots[+lot.dataset.lot]); if (!etat.choix.length) etat.choix = null; appliquerChoix(box); }
       else if (e.target.closest('.pg-cadre') && etat.choix) { etat.choix = null; appliquerChoix(box); }
     });
     box.addEventListener('keydown', e => {
-      if (e.key === 'Escape' && etat.choix) { etat.choix = null; appliquerChoix(box); return; }
+      // En plein écran, Échap en sort (l'écoute du document) ; sinon elle annule la commande choisie.
+      if (e.key === 'Escape' && etat.choix && !etat.plein) { etat.choix = null; appliquerChoix(box); return; }
       const lot = (e.key === 'Enter' || e.key === ' ') && e.target.closest && e.target.closest('.pg-lot');
       if (lot) { e.preventDefault(); lot.dispatchEvent(new MouseEvent('click', { bubbles: true })); }
     });
+    // Échap sort du plein écran, où que soit le focus — tant que le planning est à l'écran (une boîte fixe n'a pas de parent de position).
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && etat.plein && box.getClientRects().length) { e.preventDefault(); pleinEcran(box, false); } });
     box.addEventListener('focusin', e => { const g = e.target.closest && e.target.closest('.pg-lot'); bulleAuFocus(g && g.matches(':focus-visible') ? g : null); });
     box.addEventListener('focusout', () => bulleAuFocus(null));
     // Ctrl + molette : le zoom d'à côté, l'heure sous le pointeur reste à sa place.
@@ -413,7 +558,7 @@
       const c = e.target.closest && e.target.closest('.pg-cadre'), v = etat.vue;
       if (!c || !e.ctrlKey || !v) return;
       e.preventDefault();
-      const px = Math.max(0, e.clientX - c.getBoundingClientRect().left - NOMS);
+      const px = Math.max(0, e.clientX - c.getBoundingClientRect().left - v.noms);
       zoomer(zoomVoisin(etat.zoom, e.deltaY < 0 ? 1 : -1), { t: v.t0 + (c.scrollLeft + px) / v.pxh * 60, px });
     }, { passive: false });
     // Glisser pour se déplacer ; un simple clic reste un clic.
@@ -436,69 +581,104 @@
       depart = null;
     });
     box.addEventListener('scroll', e => { if (e.target.classList && e.target.classList.contains('pg-cadre')) direPeriode(box); }, true);
+    root.addEventListener('resize', () => ajusterHauteur(box));
     if (typeof ResizeObserver === 'function') {
       let largeur = 0;
       new ResizeObserver(() => {
         const c = cadreDe(); if (!c || !etat.o || !etat.vue) return;
-        if (c.clientWidth === largeur) return;
+        if (c.clientWidth === largeur) { ajusterHauteur(box); return; }
         const montre = !largeur && c.clientWidth > 0;
         largeur = c.clientWidth;
-        // Montré après avoir été dessiné caché, ou « Toute la chaîne » dans une autre largeur : on redessine.
-        if (c.clientWidth > 0 && (montre || etat.zoom === 'chaine')) tracer(box, etat.o); else direPeriode(box);
+        // Montré après avoir été dessiné caché, ou une échelle qui remplit la largeur (« Un jour », « Toute la chaîne ») : on redessine.
+        if (c.clientWidth > 0 && (montre || etat.zoom !== 'six')) tracer(box, etat.o); else { direPeriode(box); ajusterHauteur(box); }
       }).observe(box);
     }
   }
 
   /**
-   * Le planning dans `box`. `o` : { resultat, args, nomService(id) }. Sans lot, une phrase.
+   * Le planning dans `box`. `o` : { resultat, args, nomService(id), journee } — `journee` : les indicateurs et les réponses que
+   * la page a déjà lus ({ r, k, reponses }, ou une fonction qui les rend). Sans lot, une phrase.
    */
   function rendre(box, o) {
     if (!box) return;
-    const r = o.resultat;
+    const r = o.resultat, jours = r && r.ok ? E().joursAvecLots(r) : [];
     etat.o = o;
-    if (!r || !r.ok || !(r.lots || []).length || !bornes(r)) {
+    if (!r || !r.ok || !(r.lots || []).length || !bornes(r) || !jours.length) {
       etat.vue = null;
-      box.classList.remove('pg');
+      box.classList.remove('pg', 'pg-plein');
       box.innerHTML = '<p class="mini-note">Le planning apparaîtra dès qu’une équipe aura quelque chose à fabriquer.</p>';
       return;
     }
     box.classList.add('pg');
-    // Une autre journée (un autre programme, un autre jour) : le planning revient au jour où le plus de lots tournent.
-    const b = bornes(r), cle = b.t0 + '|' + b.t1 + '|' + jourLePlusCharge(r);
-    if (etat.cle !== cle) { etat.cle = cle; etat.gauche = null; }
+    box.classList.toggle('pg-plein', !!etat.plein);
+    relire();
+    // Une autre journée (un autre programme, un autre jour) : le planning revient au jour qui a le plus de lots.
+    const b = bornes(r), cle = b.t0 + '|' + b.t1 + '|' + jours.map(x => x.jour + ':' + x.lots).join(',');
+    if (etat.cle !== cle) { etat.cle = cle; etat.gauche = null; etat.jour = E().jourAOuvrir(r); }
+    if (!jours.some(x => x.jour === etat.jour)) { etat.jour = E().jourAOuvrir(r); etat.gauche = null; }
+    // Un service visé depuis la Synthèse, pas encore montré : son jour de travail.
+    if (etat.vise && etat.amener) { const j = jourDuVise(r); if (j !== etat.jour) { etat.jour = j; etat.gauche = null; } }
     // Une commande choisie qui n'existe plus ne reste pas en évidence.
     if (etat.choix && !r.lots.some(l => porte(l, etat.choix))) etat.choix = null;
-    box.innerHTML = `<div class="pg-barre"><div class="pg-zooms" role="group" aria-label="Le zoom du planning">${ZOOMS.map(z =>
+    const mot = E().motDuJour, onglet = x => `<button type="button" class="btn btn-sm pg-onglet" data-pg-jour="${x.jour}" aria-pressed="false" title="${esc(mot(x.jour) + ' : ' + pluriel(x.equipes, 'équipe y travaille', 'équipes y travaillent') + ', ' + pluriel(x.lots, 'lot', 'lots'))}">${
+      esc(mot(x.jour))}<span class="pg-compte">${x.equipes}</span></button>`;
+    box.innerHTML = `<div class="pg-barre">
+      <div class="pg-jours" role="group" aria-label="Le jour de travail affiché">${jours.map(onglet).join('')}</div>
+      <div class="pg-zooms" role="group" aria-label="Le zoom du planning" title="Ctrl + molette : zoomer · glisser : se déplacer · un clic sur une barre : sa commande">${ZOOMS.map(z =>
       `<button type="button" class="btn btn-sm" data-pg-zoom="${z.id}" aria-pressed="${z.id === etat.zoom}">${esc(z.nom)}</button>`).join('')}</div>
-      <span class="pg-periode" role="status" aria-label="La période visible"></span>
-      <span class="pg-aide mini-note">Ctrl + molette : zoomer · glisser : se déplacer · un clic sur une barre : sa commande</span></div>
-      ${legende()}
+      <div class="pg-plis" role="group" aria-label="Les services"><button type="button" class="btn btn-sm" data-pg-tout="deplier">Tout déplier</button><button type="button" class="btn btn-sm" data-pg-tout="replier">Tout replier</button></div>
+      <div class="pg-legende-bloc"><button type="button" class="btn btn-sm pg-legende-bouton" aria-expanded="true" aria-controls="pg-legende"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${ico('bas')}</svg>Légende</button>
+        <p class="pg-legende" id="pg-legende" aria-label="Ce que disent les signes à l’écran"></p></div>
+      <button type="button" class="btn btn-sm pg-plein-bouton" data-pg-plein aria-pressed="false">Plein écran</button></div>
       <div class="pg-cadre" tabindex="0" role="region" aria-label="La journée des équipes"></div>`;
     brancher(box);
     tracer(box, o);
   }
 
   /**
-   * Montrer un service (un clic dans la Synthèse, évolution 15 b) : déplié, amené à la vue une fois, marqué ; son bouton
-   * reçoit le focus. Appliqué après la navigation vers la page, et à chaque tracé tant qu'il reste visé.
+   * Le jour à afficher pour le service visé : celui qu'on demande s'il y a des lots ; sinon le jour affiché s'il y en a ;
+   * sinon le jour des vols, ou son premier jour. Un service sans lot ne change pas de jour.
    */
-  function viser(service) {
+  function jourDuVise(r) {
+    const EN = E(), sesJours = [...new Set(r.ateliers.filter(a => a.service === etat.vise && EN.lotsDe(a).length).map(EN.jourDeLEquipe))].sort((a, b) => a - b);
+    if (!sesJours.length) return etat.jour;
+    return etat.viseJour != null && sesJours.includes(etat.viseJour) ? etat.viseJour : sesJours.includes(etat.jour) ? etat.jour : sesJours.includes(0) ? 0 : sesJours[0];
+  }
+  /**
+   * Montrer un service (un clic dans la Synthèse, évolution 15 b) : son jour de travail affiché (`jour`, sinon un jour où il a
+   * des lots), déplié, amené à la vue une fois, marqué ; son bouton reçoit le focus. Un service sans lot : la ligne « Sans
+   * lot ce jour », dépliée. Appliqué après la navigation vers la page, et à chaque tracé tant qu'il reste visé.
+   */
+  function viser(service, jour) {
     etat.vise = service == null || service === '' ? null : String(service);
+    etat.viseJour = etat.vise && jour != null && jour !== '' && Number.isFinite(+jour) ? +jour : null;
     etat.amener = !!etat.vise;
-    if (etat.vise) etat.replis.delete(etat.vise);
-    if (typeof document !== 'undefined') setTimeout(() => appliquerVise(document.getElementById('at-planning')), 0);
+    const r = etat.o && etat.o.resultat;
+    if (etat.vise) {
+      relire();
+      etat.deplies.add(etat.vise);
+      retenirDeplies();
+      if (r && r.ok) { const j = jourDuVise(r); if (j !== etat.jour) { etat.jour = j; etat.gauche = null; } }
+    }
+    if (typeof document !== 'undefined') setTimeout(() => {
+      const box = document.getElementById('at-planning');
+      if (box && etat.o && etat.vue && etat.vue.jour != null && etat.vue.jour !== etat.jour && box.querySelector('.pg-cadre')) tracer(box, etat.o); else appliquerVise(box);
+    }, 0);
   }
   function appliquerVise(box) {
     if (!box) return;
     for (const g of box.querySelectorAll('.pg-groupe.pg-vise')) g.classList.remove('pg-vise');
-    const g = etat.vise ? [...box.querySelectorAll('.pg-groupe')].find(x => x.dataset.service === etat.vise) : null;
+    if (!etat.vise) return;
+    // La ligne du service ; sans lot, la ligne « Sans lot ce jour » qui porte ses équipes.
+    const groupes = [...box.querySelectorAll('.pg-groupe')];
+    const g = groupes.find(x => x.dataset.service === etat.vise) || groupes.find(x => x.classList.contains('pg-sans-lot') && [...x.querySelectorAll('.pg-ligne')].some(l => l.dataset.service === etat.vise));
     if (!g) return;
     const b = g.querySelector('.pg-replier');
-    if (g.classList.contains('replie') && b) b.click();
+    if (g.classList.contains('replie')) { plier(box, g, true); retenirDeplies(); direLegende(box); }
     g.classList.add('pg-vise');
-    if (!etat.amener || !g.offsetParent) return;
+    if (!etat.amener || !g.getClientRects().length) return;
     etat.amener = false;
-    g.scrollIntoView({ block: 'start' });
+    g.scrollIntoView({ block: 'nearest' });
     if (b) b.focus({ preventScroll: true });
   }
 
@@ -510,10 +690,11 @@
     const box = document.getElementById('at-planning'), v = etat.vue;
     const trait = box && box.querySelector('.pg-maintenant'), mot = box && box.querySelector('.pg-maintenant-heure');
     if (!trait || !mot || !v) return;
-    const dedans = heure != null && heure >= v.t0 && heure <= v.t1;
+    const dedans = heure != null && heure >= v.t0 && heure <= v.t1, change = trait.hidden === dedans;
     trait.hidden = mot.hidden = !dedans;
+    if (change) direLegende(box);
     if (!dedans) { for (const h of box.querySelectorAll('.pg-sous-maintenant')) h.classList.remove('pg-sous-maintenant'); return; }
-    const gauche = NOMS + v.x(heure);
+    const gauche = v.noms + v.x(heure);
     trait.style.left = gauche.toFixed(1) + 'px'; mot.style.left = gauche.toFixed(1) + 'px';
     mot.textContent = P().hhmm(heure); mot.dataset.t = heure;
     // L'heure de l'axe que l'étiquette du trait recouvre s'efface : on lit l'une ou l'autre, pas les deux mêlées.
@@ -524,7 +705,7 @@
     }
   }
 
-  const api = { ZOOMS, PX_HEURE, HAUT_LIGNE, HAUT_GROUPE, NOMS, pxParHeure, zoomVoisin, bornes, jourLePlusCharge, ordreDesServices, groupes, segments, limites, enRetard,
+  const api = { ZOOMS, PX_HEURE, HAUT_LIGNE, HAUT_GROUPE, BARRE_MIN, pxParHeure, zoomVoisin, bornes, ordreDesServices, segments, limites, enRetard,
     marge, info, periode, visible, reperes, commandeDe, porte, rendre, maintenant, viser, etat };
   if (enNode) module.exports = api;
   else root.OrlyPlanningVue = api;

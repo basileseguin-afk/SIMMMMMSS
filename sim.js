@@ -1056,7 +1056,7 @@ function afficherTitre(){
     lien.hidden=!premiere;if(sep)sep.hidden=!premiere;
     if(premiere){lien.textContent=partie.nom;lien.dataset.page=premiere.id;lien.title='Aller à la première page de '+partie.nom+' : '+premiere.nom;}
   }
-  const intro=document.getElementById('view-intro');if(intro)intro.textContent=pg?pg.intro:'';
+  const intro=document.getElementById('view-intro');if(intro)intro.textContent=pg&&!pg.sansIntro?pg.intro:'';
   // La sauvegarde n'est pas une partie du travail : son bouton, au pied de la barre, dit qu'on y est.
   const sv=document.getElementById('btn-sauvegarde');
   if(sv){const ici=!!partie&&partie.id==='fichier';sv.classList.toggle('actif',ici);if(ici)sv.setAttribute('aria-current','page');else sv.removeAttribute('aria-current');}
@@ -3470,7 +3470,7 @@ function initWorkbench() {
   const bilan=document.getElementById('bilan-journee');
   if(bilan)bilan.addEventListener('click',e=>{
     const b=e.target.closest('[data-pg-viser]');
-    if(b){if(window.OrlyPlanningVue)OrlyPlanningVue.viser(b.dataset.pgViser);return;}
+    if(b){if(window.OrlyPlanningVue)OrlyPlanningVue.viser(b.dataset.pgViser,b.dataset.pgViserJour);return;}
     const tr=e.target.closest('tr[data-service]');
     if(tr&&!e.target.closest('button,a,input'))tr.querySelector('[data-pg-viser]').click();
   });

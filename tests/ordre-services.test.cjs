@@ -95,9 +95,10 @@ test('le même ordre pour la Synthèse, le planning des équipes et la page Pér
     .map(s => ({ id: 'e-' + s, nom: s, service: s, type: 'manuel', lots: [{}], pausesPrises: [] }));
   const r = { ateliers: equipes, lots: [], parClasse: {} };
   const attendu = ['legumerie', 'cuisine', 'plonge', 'dotation', 'montage', 'quais', 'encadrement'];
-  // Le planning des équipes : ses groupes.
+  // Le planning des équipes : ses lignes de service (planning-ensemble.js), dans cet ordre.
   assert.deepEqual(PV.ordreDesServices(r, CHEMINS), attendu);
-  assert.deepEqual(PV.groupes(r, null, null, CHEMINS).map(g => g.service), attendu);
+  const avecLots = { ...r, ateliers: equipes.map(e => ({ ...e, lots: [{ debut: 0, fin: 10 }] })) };
+  assert.deepEqual(require('../planning-ensemble.js').lignes(avecLots, 0, PV.ordreDesServices(avecLots, CHEMINS)).services.map(g => g.service), attendu);
   // La Synthèse : ses lignes.
   const ligne = s => ({ service: s, nom: s, jour: 0, presents: 1, besoin: 1, ecart: 0 });
   const rep = { personnes: { services: equipes.map(e => ligne(e.service)) }, coince: { services: [] }, fins: { services: [] } };

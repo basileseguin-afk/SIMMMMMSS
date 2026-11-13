@@ -600,25 +600,50 @@ indicateurs.
   en retard à cette heure, les services au travail et ceux qui attendent.
 
 **Le planning des équipes** (Résultats › Planning des équipes) dit qui
-travaille quand, une ligne par équipe, à une échelle fixe.
+travaille quand : d'abord toute l'unité sur un écran, puis le détail d'un
+service.
 
-- **Se déplacer** : « Toute la chaîne » pour la vue d'ensemble, « Un jour »
-  (le défaut, sur le jour le plus chargé) puis « 6 h » pour le détail ;
-  Ctrl + molette change de zoom sous le pointeur ; on glisse pour se
-  déplacer. La période visible est écrite à côté des zooms ; l'axe (le jour,
-  les heures) et les noms des équipes restent à la vue.
-- **Les groupes** suivent le chemin, de l'amont vers l'aval ; chaque service
-  porte en tête sa courbe de charge (présents en trait, au travail en aire,
-  ce qui est en file en barres dessous, le pic marqué) ; un clic sur son nom
-  le replie.
-- **Une barre** est un lot : pleine, l'équipe prépare ; la bande fine devant,
-  elle attend le service d'avant ; un trou, une pause prise ; un motif, le
-  robot ou le lavage ; une encoche, deux étapes faites à la chaîne. Un
-  contour critique et une alerte : le lot finit après la limite de sa
-  commande.
+- **La vue d'ensemble** : à l'ouverture, tous les services sont repliés — une
+  ligne par service, de l'amont vers l'aval, avec son nom, le nombre de ses
+  équipes et « pic au travail / présents » ; sur l'axe du temps, sa courbe de
+  charge (présents en trait, au travail en aire, le pic marqué) et un trait
+  fin par lot (dans la couleur du retard s'il finit après sa limite).
+  Survoler le nom d'un service donne son résumé : le pic, son heure, les
+  présents, l'occupation, les heures sup.
+- **Déplier** : un clic sur la ligne d'un service montre son résumé en entier,
+  puis ses équipes, une ligne chacune, avec leur nombre de personnes ; « Tout
+  déplier », « Tout replier ». Le navigateur retient les services dépliés.
+- **« Sans lot ce jour (n) »** : en bas, repliée, la ligne des équipes qui
+  n'ont aucun lot le jour affiché — mises à disposition, équipes d'appui,
+  équipes sans commande, services entiers compris.
+- **Un jour à la fois** : un onglet par jour de travail qui a des lots
+  (« veille », « jour des vols »…), avec le nombre d'équipes qui y
+  travaillent ; à l'ouverture, celui qui a le plus de lots. « Un jour » cadre
+  du premier début de lot moins 30 min à la dernière fin plus 30 min, et
+  remplit la largeur (une heure fait au moins 40 px) ; « 6 h » pour le
+  détail ; « Toute la chaîne » montre tous les jours à la fois. Ctrl + molette
+  change de zoom sous le pointeur ; on glisse pour se déplacer. La période
+  visible est écrite dans le coin de l'axe ; l'axe (le jour, les heures) et
+  les noms restent à la vue.
+- **La place** : le planning prend toute la hauteur qui reste dans la
+  fenêtre ; « Plein écran » recouvre le menu et l'en-tête, Échap en sort. La
+  légende, sur la ligne des boutons, ne montre que les signes présents à
+  l'écran ; son bouton la replie. La colonne des noms s'élargit jusqu'à
+  260 px ; un nom coupé se lit en entier au survol.
+- **Une barre** est un lot (3 px de large au moins) : pleine, l'équipe
+  prépare ; la bande fine devant, le lot attend le service d'avant ; un trou,
+  une pause prise ; un motif, le robot ou le lavage ; une encoche, deux
+  étapes faites à la chaîne. Un contour critique et une alerte : le lot finit
+  après la limite de sa commande.
+- **La bande hachurée** devant le premier lot d'une équipe : elle est là,
+  sans travail, de son arrivée à son premier lot. Au survol : sa durée, et ce
+  qu'elle attendait (l'ouverture d'une mise à disposition, avec son heure ;
+  son amont ; son matériel).
 - **La marge** : le petit trait après la barre du dernier lot d'une commande
   est sa limite (« prête avant ») ; le pointillé qui l'y relie, c'est la
-  marge. En retard, le trait tombe dans la barre.
+  marge. En retard, le trait tombe dans la barre. Quand la limite est après
+  la fenêtre affichée, le pointillé s'arrête au bord droit, où une flèche
+  dit son heure au survol.
 - **Le détail à la demande** : survoler une barre, ou la rejoindre au
   clavier, donne la commande, le début, la fin, la durée, l'attente et la
   marge ; un clic met sa commande en évidence dans toutes les équipes
@@ -830,9 +855,10 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `outils/importer-flights.cjs` | Lire l’export Winrest hors du navigateur : `node outils/importer-flights.cjs EXPORT.xlsx [sauvegarde.json] [--rapport rapport.json] [--xlsx rapport.xlsx] > programme.csv` ; le programme au format du CSV daté, que `simuler-periode` lit tel quel ; les règles de la sauvegarde, sinon les défauts |
 | `outils/caler-periode.cjs` | Comparer une période simulée au réel et la caler, ligne par ligne, hors du navigateur : `node outils/caler-periode.cjs periode.json reel.csv correspondance.json [--xlsx calage.xlsx]` ; d’un rejeu, la comparaison du rejeu ; `--travail sauvegarde.json vols-dates.csv planning.csv`, le calage du travail |
 | `outils/batterie.cjs` | La batterie complète dans un clone propre (correction 15) : `node outils/batterie.cjs` copie le dépôt sans les fichiers ignorés (ou `--commit HEAD`, un worktree Git), hors du dépôt, y joue les tests Node puis chaque test navigateur, une ligne par test, « FIN n OK, m ÉCHEC », les journaux dans un dossier temporaire |
-| `charge-vue.js` / `charge.css` | La charge dans la page Planning (v1, évolutions 12 c et 14 c) : par service la courbe présents / au travail / en file et son pic, en petit en tête de son groupe du planning ; sous le planning, le tableau des équipes (occupation, consommé sur disponible, débit, file la plus longue, attente) et le classeur |
+| `charge-vue.js` / `charge.css` | La charge dans la page Planning (v1, évolutions 12 c et 14 c) : par service la courbe présents / au travail et son pic, en petit sur la ligne de son service dans le planning (sans la file, correction 18 b) ; sous le planning, le tableau des équipes (occupation, consommé sur disponible, débit, file la plus longue, attente) et le classeur |
 | `resultats-vue.js` / `resultats-vue.css` | Les autres pages des résultats (v1, évolution 14 d) : la Synthèse (la couleur suit l’état, la phrase de résumé), la marge de chaque commande et son tri, les points de la frise des départs, le tri et l’échelle des stocks, plus de 24 h signalé |
-| `planning-vue.js` / `planning-vue.css` | Le planning des équipes (v1, évolution 14 c) : l’échelle fixe et ses trois zooms, l’axe à deux niveaux et les noms collants, les groupes par service dans l’ordre du chemin, les barres (attente, pauses, motif, encoche, retard), la limite de chaque commande, la commande mise en évidence, le trait de l’heure rejouée |
+| `planning-vue.js` / `planning-vue.css` | Le planning des équipes (v1, évolution 14 c, correction 18 b) : d’abord toute l’unité (une ligne de 32 px par service, repliée, avec sa courbe et un trait par lot ; un clic la déplie), les onglets des jours de travail et les trois zooms, l’axe à deux niveaux et les noms collants (jusqu’à 260 px), le cadre sur la hauteur qui reste et le plein écran, les barres (attente, temps sans travail avant le premier lot, pauses, motif, encoche, retard), la limite de chaque commande (une flèche au bord quand elle est après la fenêtre), la légende des signes à l’écran, la commande mise en évidence, le trait de l’heure rejouée |
+| `planning-ensemble.js` | Ce que le planning montre, avant de le dessiner (v1, correction 18 b), sans navigateur : les jours de travail qui ont des lots et celui qu’on ouvre, le cadre d’un jour (30 min avant le premier lot, 30 min après le dernier) et l’échelle qui remplit la largeur, les lignes (les services qui ont des lots, les équipes sans lot à part), le résumé d’un service, le temps sans travail avant le premier lot et ce que l’équipe attendait, la largeur de la colonne des noms |
 | `calage-vue.js` | « Réel et calage » dans la page Période (v1) : l’import du réel, la correspondance, les anomalies, la comparaison |
 | `echanges-calage.js` | Le classeur du calage sur le réel (v1), le même depuis la page et l’outil |
 | `classeur-compresse.js` | Le classeur compressé (v1, banc d’essai, correction 16 c) : les entrées du classeur que `tableur.js` écrit, compressées (deflate) — zlib sous Node, `CompressionStream("deflate-raw")` dans le navigateur, sinon tel quel ; pour les classeurs de la période, de la charge et du calage, depuis la page et les outils |
@@ -915,7 +941,7 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/import-flights-classeur.test.cjs` | Le classeur du rapport d’import Winrest (évolution 13 c, `echanges-import-flights.js`) : les totaux de la page et du Lisez-moi, une feuille par liste, de vraies dates Excel, aucun prix, un rapport vide |
 | `tests/importer-flights.test.cjs` | L’outil `outils/importer-flights.cjs` (évolution 13 d), sur un export fictif tiré de l’unité fictive des tests : le CSV daté du module avec les règles de la sauvegarde, `simuler-periode` qui le lit tel quel, les défauts sans sauvegarde ou avec une sauvegarde d’avant, `--rapport` et `--xlsx` (compressé), aucun prix, les refus (appel, option sans valeur ou répétée, sortie qui écraserait l’export ou la sauvegarde, colonne manquante, règle forgée, fichier trop gros, rien de gardé) |
 | `tests/indicateurs-periode.test.cjs` | Les indicateurs de charge sur une période (évolution 12 b) : une équipe à J−1 au jour des vols − 1, un jour de travail qui réunit J−1 et J ; par équipe et par jour de travail ; un jour incomplet hors des moyennes, la somme sur la période égale à celle des jours, le plus haut pic ; sans indicateurs dans les extraits, le bilan d’avant champ par champ ; le débit du handling sur la période, une mise à disposition sans objet ; deux mois, une période vide ; 60 journées de 50 vols en moins de 2 s |
-| `tests/charge-browser.cjs` | La vue « Charge » de la page Planning (v1, évolution 12 c), sur une unité et des vols fictifs : la courbe de chaque service en tête de son groupe du planning, sur l’échelle de ses barres (évolution 14 c), le tableau dessous ; les indicateurs de la page égaux à ceux de l’outil ; une courbe par service et son pic (la cuisine à J−1, la veille) ; le tableau des équipes et ses « sans objet » ; la bulle d’un créneau ; les couleurs en clair et en sombre ; un nom piégé qui reste du texte ; la page Période (pic au travail, occupation, totaux et moyennes) et le clic qui ouvre la page Planning ; le tableau des équipes replié par défaut et le choix gardé (correction 16 d) |
+| `tests/charge-browser.cjs` | La vue « Charge » de la page Planning (v1, évolution 12 c), sur une unité et des vols fictifs : la courbe de chaque service sur sa ligne du planning, sur l’échelle de ses barres (évolution 14 c, correction 18 b : un trait par lot, plus de barres de file), le tableau dessous ; les indicateurs de la page égaux à ceux de l’outil ; une courbe par service et son pic (la cuisine à J−1, la veille) ; le tableau des équipes et ses « sans objet » ; la bulle d’un créneau ; les couleurs en clair et en sombre ; un nom piégé qui reste du texte ; la page Période (pic au travail, occupation, totaux et moyennes) et le clic qui ouvre la page Planning ; le tableau des équipes replié par défaut et le choix gardé (correction 16 d) |
 | `tests/charge-export.test.cjs` | Les indicateurs de charge dans les classeurs et le JSON des outils (v1, évolution 12 d), sur une unité et des vols fictifs : le classeur de la journée (Charge, une ligne par équipe ; la veille datée ; « sans objet » vide et dit), la feuille Créneaux (sommes, horloge du jour de travail, pas de ligne vide), relu par `tableur.js` et déterministe ; la période (deux feuilles après Équipes, les autres inchangées ; sans indicateurs, le classeur d’avant) ; `simuler-journee` et `simuler-periode`, leur JSON et `--xlsx` |
 | `tests/vacations-longues.test.cjs` | Les vacations longues (v1, banc d’essai, évolution 11 e) : une présence au contrat sur l’encadrement d’un service et sur une équipe, les heures sup d’office (2 personnes 10 h pour 7 h 30 : 5 h par jour) ; l’ancienne forme de l’encadrement lue et inchangée ; la comparaison au réel qui les ajoute ; la non-régression ; le classeur de la période avec et sans |
 | `tests/periode-export.test.cjs` | Le classeur d’une période (v1, banc d’essai, évolution 10) : les huit feuilles et leurs colonnes, le Lisez-moi, de vraies dates Excel (la veille comprise), les lignes du bilan et de chaque journée, la charge et l’arrondi au service (évolution 11 a), relu par `tableur.js`, filtres et volets figés, déterministe ; deux mois fictifs écrits en quelques secondes |
@@ -1045,8 +1071,11 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/captures-browser.cjs` | Les captures de contrôle (évolution 14 e), sur l’unité et les vols fictifs, en thème clair et sombre, à 1 280 et 1 920 px : le plan rejoué à l’ouverture, au pic sur le service le plus chargé, en lecture (points et camions) ; le planning dans ses trois zooms. Gardées hors du dépôt : `ORY_CAPTURES=dossier node tests/captures-browser.cjs`, sinon un dossier temporaire, dit à la fin |
 | `tests/resultats-vue.test.cjs` | Les autres pages des résultats sans navigateur (évolution 14 d, `resultats-vue.js`) : la couleur de la Synthèse selon l’état (un retard nul jamais critique), ses libellés et sa phrase de résumé ; la marge, son écriture, sa barre et son tri ; les couloirs des points de la frise ; l’ordre des stocks, leur échelle, plus de 24 h |
 | `tests/resultats-browser.cjs` | Les autres pages des résultats (évolution 14 d), sur l’unité et les vols fictifs : la phrase de résumé et les libellés de la Synthèse, un retard nul jamais en rouge ; la marge de chaque commande, sa barre et son tri, « Retirer » dans le menu « … » ; les en-têtes et la première colonne des étapes à la vue après défilement ; les points de 10 px de la frise, le numéro d’un vol en retard toujours écrit ; les stocks triés, leur échelle dite une fois |
-| `tests/planning-vue.test.cjs` | Le planning des équipes sans navigateur (évolution 14 c, `planning-vue.js`) : l’échelle des trois zooms, les bornes de la chaîne, le jour le plus chargé, l’ordre des services le long du chemin et les groupes (une équipe d’appui garde le sien), une pause prise qui troue la barre, la limite de chaque commande sur son dernier lot, le retard et la marge, l’infobulle, la période visible, l’axe à deux niveaux, la commande mise en évidence |
-| `tests/planning-vue-browser.cjs` | Le planning des équipes (évolution 14 c), sur l’unité et les vols fictifs, à 1 280 et 1 920 px : 40 px par heure à toutes les largeurs, placé sur le jour le plus chargé, la période dite, lignes de 28 px et textes de 12 à 13 px, la légende en une ligne ; les trois zooms (boutons, Ctrl + molette) et le glissé ; l’axe et les noms à la vue après un défilement de 2 000 px ; les groupes dans l’ordre du chemin, leur courbe, replier ; la limite d’une commande en retard à gauche de la fin de sa barre ; le clic qui met une commande en évidence, Échap, l’infobulle au focus clavier ; le trait de l’heure rejouée |
+| `tests/planning-ensemble.test.cjs` | Le planning, d’abord toute l’unité, sans navigateur (correction 18 b, `planning-ensemble.js`), sur des journées fictives calculées à la main puis sur l’unité fictive de 15 services : les jours qui ont des lots et celui qu’on ouvre, le cadre d’un jour et l’échelle (une heure ≥ 40 px), les lignes d’un jour et les équipes sans lot, le résumé d’un service en entier, le temps sans travail avant le premier lot et ce que l’équipe attendait, la colonne des noms (160 à 260 px), la courbe en escalier |
+| `tests/planning-ensemble-browser.cjs` | Le planning des équipes, d’abord toute l’unité sur un écran (correction 18 b), sur l’unité fictive de 15 services et 50 équipes, à 1 366 × 768 et 1 920 × 1 080 : les 15 lignes de service repliées et « Sans lot ce jour (n) » visibles sans défilement, au moins 60 % de la hauteur de la fenêtre, ni introduction ni bande, les boutons et la légende sur une ligne ; aucun service sans lot dans les premières lignes ; « Un jour » cadré 30 min avant le premier lot, dans la largeur ; les onglets des seuls jours qui ont des lots ; déplier (le résumé entier, les équipes et leurs personnes, la bande hachurée), le choix retenu, le clic depuis la Synthèse ; des barres de 3 px au moins ; la flèche d’une limite hors fenêtre ; « Plein écran » puis Échap ; aucun nom coupé sans infobulle |
+| `tests/unite-15-services.cjs` | L’unité fictive des tests du planning (correction 18 b) : 15 services qui ont des lots le jour des vols (dont huit services « à part entière » ajoutés après le montage), 3 mises à disposition sans lot, 50 équipes, un nom d’équipe long, une commande finie la veille |
+| `tests/planning-vue.test.cjs` | Le planning des équipes sans navigateur (évolution 14 c, correction 18 b, `planning-vue.js`) : l’échelle des trois zooms (« Un jour » remplit la largeur), les bornes de la chaîne, le jour qu’on ouvre, l’ordre des services le long du chemin et les lignes (les équipes sans lot à part), une pause prise qui troue la barre, la limite de chaque commande sur son dernier lot, le retard et la marge, l’infobulle, la période visible, l’axe à deux niveaux, la commande mise en évidence |
+| `tests/planning-vue-browser.cjs` | Le planning des équipes (évolution 14 c, correction 18 b), sur l’unité et les vols fictifs, à 1 280 et 1 920 px, les services dépliés : « Un jour » sur le jour qui a le plus de lots, cadré sur ses lots, dans la largeur (40 px par heure au moins), la période dite, lignes de 28 px (services : 32 px) et textes de 12 à 13 px, la légende sur la ligne des boutons ; les trois zooms (boutons, Ctrl + molette) et le glissé ; l’axe et les noms à la vue après un défilement ; une ligne par service qui a des lots dans l’ordre du chemin, sa courbe, les équipes sans lot à part, replier ; la limite d’une commande en retard à gauche de la fin de sa barre ; le clic qui met une commande en évidence, Échap, l’infobulle au focus clavier ; le trait de l’heure rejouée |
 | `tests/plan-flux.test.cjs` | Ce qui se passe à l’heure rejouée, sans navigateur (évolution 14 b, `plan-flux.js`) : les paires de services qui ont des repas en stock entre eux, l’épaisseur en racine de la quantité, au plus 8 traits et les trois étiquettes, les points d’une tranche qui avancent avec l’heure, le tracé de bord à bord qui contourne une zone, « au travail / présents » d’un créneau, les véhicules du handling |
 | `tests/plan-flux-browser.cjs` | Le plan rejoué : ce qui se passe à l’heure rejouée (évolution 14 b), sur un plan et des vols fictifs, en thème clair et sombre : les quatre états en remplissage franc et leurs contrastes (3:1 sur la toile, 4,5:1 pour le texte), « au travail / présents » et « en file » égaux aux indicateurs de charge, « Ce qui circule » par défaut (un trait par paire, l’épaisseur qui suit la quantité, trois étiquettes, aucun trait quand rien n’attend, jamais plus de 8), les points pendant la lecture seulement et jamais en reduced-motion, les choix d’avant qui dessinent comme avant, les véhicules du handling |
 | `tests/plan-rejoue-browser.cjs` | Le plan rejoué : le cadrage et les commandes (évolution 14 a), sur un plan et des vols fictifs (`tests/plan-rejoue-fictif.cjs`), à 1 280 et 1 920 px, sans fond et avec une tuile fictive : l’ouverture au pic de travail, le plan entier qui tient, « Tout voir » et « Cadrer », aucun texte sous 11 px, les noms entre 12 et 16 px, la bande des chiffres au-dessus du plan sans recouvrir de zone, une seule barre de commandes dans l’ordre, les repères du curseur, l’heure gardée tant que la journée ne change pas, « Fond de plan » seulement avec un fond |
