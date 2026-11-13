@@ -13,7 +13,7 @@ const R = require('../moteur/reel.js');
 const C = require('../moteur/calage-periode.js');
 const T = require('../tableur.js');
 const REF = require('./reel-complet.attendu.json');
-const { sansEvolution17 } = require('./calage-avant-17.cjs');
+const { sansEvolution17, comparaisonSansEvolution17 } = require('./calage-avant-17.cjs');
 
 const lire = lignes => R.lireReel([{ nom: 'reel.csv', lignes: T.lireCsv(['date;role;heures_titulaires;heures_interim;heures_supp'].concat(lignes).join('\n')) }]);
 const jours = n => Array.from({ length: n }, (_, i) => new Date(Date.UTC(2026, 9, 1 + i)).toISOString().slice(0, 10));
@@ -93,7 +93,9 @@ test('le total de l’unité, avant et après calage, aussi en validation par se
 
 test('non-régression : un réel complet donne la même comparaison et le même calage, champ par champ', () => {
   const comparaison = R.comparer(REF.bilan, lire(REF.csv), REF.correspondance);
-  assert.deepEqual(JSON.parse(JSON.stringify(comparaison)), REF.comparaison);
+  // Avec la colonne des heures supp, chaque jour d'une ligne porte aussi ses heures et ses heures supp (évolution 17 b) : sans elles, la référence.
+  assert.deepEqual(comparaisonSansEvolution17(comparaison), REF.comparaison);
+  assert.ok(comparaison.lignes.every(l => l.jours.every(j => Number.isFinite(j.heures) && j.heuresSupp !== undefined)));
   const { validation, semaines, ...unite } = C.caler(comparaison).unite;
   // σ du total mesuré (correction 16) s'ajoute aussi, après : sans lui, le calage de la référence.
   const { sigma, ...apres } = unite.apres;

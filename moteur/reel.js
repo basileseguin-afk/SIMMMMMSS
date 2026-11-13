@@ -378,9 +378,18 @@
       }
       if (raisons.length) { sans.push({ date: w.date, raison: raisons.join(' ; ') }); continue; }
       const reel = somme(etps, x => x), simule = simuleDe(l, w);
-      out.push({ date: w.date, reel, simule, ecart: simule - reel });
+      out.push({ date: w.date, reel, simule, ecart: simule - reel, ...(ctrl.avecSupp ? heuresDuJour(l, w, ctrl) : {}) });
     }
     return { jours: out, joursSansReel: sans };
+  }
+  /**
+   * Avec la colonne des heures supp : les heures (titulaires et intérim) d'une ligne un jour où elle a son réel, et
+   * ses heures supp — inconnues (null) si celles d'un de ses rôles le sont. Le statut d'une ligne calée les lit
+   * (évolution 17 b, moteur/calage-statut.js).
+   */
+  function heuresDuJour(l, w, ctrl) {
+    const cs = l.roles.map(r => ctrl.cellules.get(cle(w.date, r)));
+    return { heures: somme(cs, c => c.titulaires + c.interim), heuresSupp: cs.every(c => Number.isFinite(c.supp)) ? somme(cs, c => c.supp) : null };
   }
   /** Les raisons des cellules écartées (entières, ou l'une de leurs heures), par jour × rôle. */
   function raisonsEcartees(ctrl) {

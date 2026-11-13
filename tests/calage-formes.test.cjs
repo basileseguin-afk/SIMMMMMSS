@@ -328,7 +328,7 @@ test('une politique garde les nouvelles formes, relues dans leurs bornes ; hors 
   const comparaison = { lignes: [{ nom: 'Lavage', couvre: 'fictif', jours: jours((s, h) => 3.2 * Math.pow(s, 0.6) + bruit(h, 0.3)) }] };
   comparaison.unite = { jours: comparaison.lignes[0].jours.map(j => ({ date: j.date })) };
   const rapport = C.caler(comparaison), politique = C.politiqueDe(rapport, { date: '2026-12-01' });
-  assert.deepEqual(Object.keys(politique.lignes[0]), ['nom', 'modele', 'parametres', 'sigma']);
+  assert.deepEqual(Object.keys(politique.lignes[0]), ['nom', 'modele', 'parametres', 'sigma', 'statut'], 'et son statut (évolution 17 b)');
   assert.deepEqual([politique.lignes[0].modele, Object.keys(politique.lignes[0].parametres)], ['puissance', ['a', 'p']]);
   assert.deepEqual(C.validerPolitique(JSON.parse(JSON.stringify(politique))).lignes, politique.lignes);
   // Le prévu d'un jour : la formule gardée, appliquée au travail au barème du jour.

@@ -5,6 +5,47 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-13 — Banc d'essai, évolution 17 (b) : à la limite, ou en sur-effectif — le statut d'une ligne calée et la borne de son besoin
+
+Une formule apprise sur les heures dit ce que l'unité met, pas toujours ce
+qu'il faut : un service en sur-effectif ne montre pas son besoin dans ses
+heures. Le rapport du calage le dit maintenant, ligne par ligne.
+
+- **Un statut par ligne calée** (`moteur/calage-statut.js`) : « à la limite »
+  quand les heures réelles suivent le travail au barème (corrélation de rang
+  d'au moins 0,3) et que la part des heures supp est plus haute dans le tiers
+  des jours les plus chargés que dans le tiers des moins chargés ; « en
+  sur-effectif » quand ni l'un ni l'autre ; « indéterminé » entre les deux, et
+  le rapport dit lequel des deux critères manque. Sans heures supp dans le
+  fichier du réel, la corrélation seule décide, et le rapport le dit. Les deux
+  seuils sont des constantes nommées.
+- **À la limite**, la formule retenue est aussi le besoin. **En sur-effectif
+  ou indéterminée**, elle s'appelle « effectif mis », et le besoin se borne :
+  au plus le travail au barème du jour × le rythme des jours chargés (la
+  médiane de heures réelles ÷ travail au barème sur le dixième des jours les
+  plus chargés, cinq jours au moins ; sinon pas de borne), sans dépasser le
+  prévu.
+- **La politique d'effectif** garde le statut et le rythme des jours chargés,
+  sans aucune heure réelle ; le prévu calé donne le statut de chaque ligne et
+  son besoin « au plus ». Un « × a » appliqué au barème divise le rythme par
+  a : la borne reste la même.
+- La comparaison donne, avec la colonne des heures supp, les heures et les
+  heures supp de chaque jour d'une ligne (elles ne vont ni dans la sauvegarde
+  ni dans la politique).
+
+Ce qui ne change pas : le moteur, le résultat d'une journée et d'une période,
+les indicateurs, le prévu calé et sa bande, la version 2. Une politique
+gardée avant n'a ni statut ni borne et donne le prévu d'avant.
+
+Fichiers : `moteur/calage-statut.js` (nouveau), `moteur/calage-periode.js`,
+`moteur/reel.js`, `calage-vue.js`, `index.html`,
+`tests/calage-statut.test.cjs` (nouveau), `tests/calage-avant-17.cjs`,
+`tests/calage-formes.test.cjs`, `tests/reel-absent.test.cjs`,
+`tests/reel-vide.test.cjs`, `tests/sigma-unite.test.cjs`,
+`docs/BANC_ESSAI.md` (§ 10), `README.md`.
+
+---
+
 ## 2026-11-13 — Banc d'essai, évolution 17 (a) : un catalogue de formes pour le calage, le choix hors échantillon
 
 Les temps par vol du barème ne changent pas : ils restent des entrées. Mais le

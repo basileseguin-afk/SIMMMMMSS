@@ -305,7 +305,7 @@
       if (refus || r.refus) { this.a.notifier(nom + ' : pas appliqué — ' + (refus || r.refus) + '.'); return this.rendre(); }
       this.applications.push({ ligne: nom, services: l.services.slice(), a: m.parametres.a, date: new Date().toISOString(), avant: r.avant, erreursAvant, modele: m });
       // Le facteur est maintenant dans le barème : le prévu calé de la ligne ne le compte pas deux fois (a = 1 jusqu'au prochain calage).
-      this.politique = { ...this.politique, lignes: this.politique.lignes.map(x => (x === m ? { ...m, parametres: { a: 1 }, applique: true } : x)) };
+      this.politique = { ...this.politique, lignes: this.politique.lignes.map(x => (x === m ? C().ligneAppliquee(m) : x)) };
       this.enregistrer();
       this.a.notifier(nom + ' : travail × ' + nombre(m.parametres.a, 3) + ' au barème. La période est à relancer, puis un nouveau calage doit trouver a ≈ 1.');
       this.rendre();

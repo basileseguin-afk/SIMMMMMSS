@@ -12,7 +12,7 @@ const R = require('../moteur/reel.js');
 const C = require('../moteur/calage-periode.js');
 const T = require('../tableur.js');
 const REF = require('./reel-complet.attendu.json');
-const { sansEvolution17 } = require('./calage-avant-17.cjs');
+const { sansEvolution17, comparaisonSansEvolution17 } = require('./calage-avant-17.cjs');
 
 const ENTETE = 'date;role;heures_titulaires;heures_interim;heures_supp';
 const lire = (lignes, entete = ENTETE) => R.lireReel([{ nom: 'reel.csv', lignes: T.lireCsv([entete].concat(lignes).join('\n')) }]);
@@ -54,7 +54,8 @@ test('l’intérim vide, les titulaires remplies : l’intérim vaut 0 ; et l’
 
 test('non-régression : un réel sans case vide donne la même comparaison et le même calage, champ par champ', () => {
   const comparaison = R.comparer(REF.bilan, lire(REF.csv), REF.correspondance);
-  assert.deepEqual(JSON.parse(JSON.stringify(comparaison)), REF.comparaison);
+  // Sans les heures ni les heures supp de chaque jour d'une ligne (évolution 17 b) : la comparaison de la référence.
+  assert.deepEqual(comparaisonSansEvolution17(comparaison), REF.comparaison);
   const { validation, semaines, ...unite } = C.caler(comparaison).unite;
   // σ du total mesuré (correction 16) s'ajoute, après : sans lui, le calage de la référence.
   const { sigma, ...apres } = unite.apres;

@@ -13,7 +13,7 @@ const C = require('../moteur/calage-periode.js');
 const R = require('../moteur/reel.js');
 const F = require('./sigma-unite-fictif.cjs');
 const AVANT = require('./sigma-unite.attendu.json');
-const { sansEvolution17 } = require('./calage-avant-17.cjs');
+const { sansEvolution17, politiqueSansEvolution17, prevuSansEvolution17 } = require('./calage-avant-17.cjs');
 
 const json = x => JSON.parse(JSON.stringify(x));
 const proche = (x, y, m) => assert.ok(Math.abs(x - y) < 1e-9, (m ? m + ' : ' : '') + x + ' attendu ' + y);
@@ -21,13 +21,14 @@ const sigmaLignes = r => Math.sqrt(r.lignes.reduce((n, l) => n + l.retenu.sigma 
 
 /**
  * Sans les nouveaux champs : σ du total dans le rapport et la politique, la source dans le prévu ; et ce que
- * l'évolution 17 (a) ajoute au rapport (des candidats, la formule en clair, le seuil corrigé : tests/calage-avant-17.cjs).
+ * l'évolution 17 ajoute (des candidats, la formule en clair, le seuil corrigé ; le statut de chaque ligne et le
+ * besoin « au plus », dans le rapport, la politique et le prévu : tests/calage-avant-17.cjs).
  */
 function sansNouveaux(x) {
   const y = json(x);
   if (y.rapport) { y.rapport = sansEvolution17(y.rapport); delete y.rapport.unite.apres.sigma; if (y.rapport.unite.semaines) delete y.rapport.unite.semaines.apres.sigma; }
-  if (y.politique) delete y.politique.sigmaUnite;
-  if (y.prevu) delete y.prevu.sigmaUniteSource;
+  if (y.politique) { y.politique = politiqueSansEvolution17(y.politique); delete y.politique.sigmaUnite; }
+  if (y.prevu) { y.prevu = prevuSansEvolution17(y.prevu); delete y.prevu.sigmaUniteSource; }
   return y;
 }
 
@@ -63,9 +64,10 @@ test('le rapport, la politique et le prévu identiques à ceux d’avant, en deh
     const x = jouer(f);
     assert.deepEqual(sansNouveaux({ rapport: x.rapport, politique: x.politique }), { rapport: sansEvolution17(AVANT[n].rapport), politique: json(AVANT[n].politique) }, n);
     // Les lignes du prévu, leur σ et leur bande : les mêmes ; le total aussi, hors de sa bande.
-    assert.deepEqual(json(x.prevu.lignes), AVANT[n].prevu.lignes, n + ' : les lignes du prévu');
+    const prevu = prevuSansEvolution17(x.prevu);
+    assert.deepEqual(prevu.lignes, AVANT[n].prevu.lignes, n + ' : les lignes du prévu');
     const sansBande = u => u.map(({ p10, p90, ...y }) => y);
-    assert.deepEqual(sansBande(json(x.prevu.unite)), sansBande(AVANT[n].prevu.unite), n + ' : le total du prévu, hors de sa bande');
+    assert.deepEqual(sansBande(prevu.unite), sansBande(AVANT[n].prevu.unite), n + ' : le total du prévu, hors de sa bande');
     assert.deepEqual(Object.keys(x.rapport.unite.apres), ['jours', 'mae', 'biais', 'sigma']);
     assert.ok(!('sigma' in x.rapport.unite.avant), 'avant : pas de σ');
   }

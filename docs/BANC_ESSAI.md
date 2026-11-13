@@ -2226,6 +2226,91 @@ l'évolution (`tests/reel-absent.test.cjs`, `tests/reel-vide.test.cjs`,
 (`tests/calage-avant-17.cjs`) : les modèles retenus, leurs paramètres, leurs
 erreurs et σ y sont les mêmes.
 
+### À la limite, ou en sur-effectif (évolution 17 b)
+
+Une formule apprise sur les heures dit ce que l'unité **met**, pas toujours ce
+qu'il **faut** : un service en sur-effectif ne montre pas son besoin dans ses
+heures. Chaque ligne calée dont le travail au barème varie reçoit donc un
+**statut**, jugé sur ses jours appris (`moteur/calage-statut.js`) par deux
+critères :
+
+1. **les heures réelles suivent le travail au barème** : leur corrélation de
+   rang (Spearman, les ex aequo à leur rang moyen) vaut au moins **0,3**
+   (`CORRELATION_LIMITE`) ;
+2. **les heures supp montent avec la charge** : leur part (Σ heures supp ÷
+   Σ heures, titulaires et intérim) est plus haute dans le **tiers** des jours
+   les plus chargés que dans le tiers des moins chargés (`PART_DES_TIERS` ; les
+   jours rangés par travail au barème, ceux dont les heures supp sont connues).
+
+| Statut | Quand | Ce que dit la formule retenue |
+|---|---|---|
+| « à la limite » (`limite`) | les deux critères | le **besoin** de la ligne |
+| « en sur-effectif » (`sur-effectif`) | aucun des deux | l'**effectif mis** |
+| « indéterminé » (`indetermine`) | un seul ; le rapport dit lequel manque (`manque` : `correlation` ou `supp`) | l'**effectif mis** |
+
+- **Sans heures supp dans le fichier du réel**, le statut se juge sur la
+  corrélation seule (« à la limite » à partir de 0,3, sinon « en
+  sur-effectif »), et le rapport le dit. De même si les heures supp ne sont
+  connues que sur moins de 20 jours.
+- Une ligne hors simulation, ou dont le travail au barème ne varie pas, n'a
+  pas de statut (`statut: null`) : il n'y a rien à suivre. Des heures réelles
+  qui ne varient pas du tout ne suivent pas le travail : la corrélation ne se
+  calcule pas (`correlation: null`), et la raison le dit (« elles ne varient
+  pas »).
+- **Le besoin « au plus »**, pour une ligne « en sur-effectif » ou
+  « indéterminée » : le travail au barème du jour × **le rythme des jours
+  chargés**, sans dépasser le prévu. Le rythme : la médiane de heures réelles
+  ÷ travail au barème (en ETP l'un et l'autre) sur le **dixième** des jours
+  les plus chargés (`PART_JOURS_CHARGES`), s'il compte **cinq jours au
+  moins** (`JOURS_CHARGES_MIN`) ; sinon, pas de borne, et le rapport le dit
+  (« pas de borne : 4 jours dans le dixième des jours les plus chargés, il en
+  faut 5 »). Un rythme nul (aucune heure réelle ces jours-là) ou démesuré ne
+  borne rien non plus, et ne se garde pas. L'idée : les jours les plus
+  chargés, l'effectif mis est au plus
+  près du travail ; ce rythme, appliqué à un jour plus calme, borne ce qu'il
+  y faudrait. Une ligne « à la limite » n'a pas de borne : sa formule est son
+  besoin.
+- **Le rapport d'une ligne** gagne `statut` (`code`, `nom`, `raison`,
+  `correlation`, `suit`, `supp` : les deux parts, le nombre de jours, `monte`),
+  `lecture` (« besoin » ou « effectif mis ») et `rythmeCharge` (`rythme`,
+  `jours`, ou `raison` sans borne). La raison s'écrit en clair : « en
+  sur-effectif : les heures réelles ne suivent pas le travail au barème
+  (corrélation de rang 0,04, sous 0,3) et la part des heures supp ne monte
+  pas avec la charge (0 % le tiers des jours les plus chargés, 0 % le tiers
+  des moins chargés) ».
+- **La comparaison** (`moteur/reel.js`) donne pour cela, quand le fichier du
+  réel a la colonne des heures supp, les heures (`heures`) et les heures supp
+  (`heuresSupp`, `null` si celles d'un rôle de la ligne sont inconnues) de
+  chaque jour d'une ligne. Elles ne vont ni dans la sauvegarde ni dans la
+  politique.
+- **La politique d'effectif** garde, par ligne, le statut (`statut`) et le
+  rythme des jours chargés (`rythmeCharge`) : deux résumés, aucune heure
+  réelle. Relue d'une sauvegarde, un statut inconnu ou un rythme qui n'est pas
+  un nombre positif la font refuser entière ; une politique gardée avant n'a
+  ni l'un ni l'autre, et donne le prévu d'avant.
+- **Le prévu calé** (`prevuDesJours`) donne, par ligne, son statut
+  (`statut`, `nomStatut`, `lecture`) et, chaque jour, son besoin « au plus »
+  (`besoinAuPlus`) quand elle en a un ; pour l'unité, dès qu'une ligne a une
+  borne, la somme de chaque ligne à sa borne, sinon à son prévu.
+- **« Appliquer au barème »** un « × a » multiplie le travail au barème de la
+  ligne par a : son rythme des jours chargés se divise par a
+  (`ligneAppliquee`), et son besoin « au plus » reste le même.
+
+Vérifications — `tests/calage-statut.test.cjs`, sur des jours fabriqués : la
+corrélation de rang sur un petit exemple calculé à la main ; des heures qui
+suivent la charge avec des heures supp les jours chargés, « à la limite » ;
+des heures constantes sans heures supp, « en sur-effectif », avec le rythme
+et la borne calculés à la main (60 jours, un travail de 1 à 60 ETP : la
+médiane des six jours les plus chargés) ; des heures exactement constantes ;
+un rythme nul ou démesuré, qui ne se garde pas ; « indéterminé » dans les deux sens,
+le critère qui manque nommé ; sans colonne d'heures supp, et avec trop peu
+de jours connus ; moins de cinq jours chargés, pas de borne ; une ligne hors
+simulation, pas de statut ; la politique garde le statut et le rythme, sans
+aucune heure réelle, et se relit ; un statut inconnu, un rythme nul ou non
+fini, refusés ; le prévu d'un jour, sa borne plafonnée au prévu, le total de
+l'unité ; un « × a » appliqué au barème, la même borne ; les heures et les
+heures supp de chaque jour dans la comparaison.
+
 ## 11. Plusieurs onglets ne s'écrasent plus (correction 14)
 
 Le banc lit le fichier « Tout sauvegarder », qui exporte ce qui est enregistré

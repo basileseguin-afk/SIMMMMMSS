@@ -24,6 +24,10 @@
  *  la ligne ; une forme plus riche n'est retenue que si elle bat le plus
  *  simple des candidats acceptés de plus de 0,1 ETP. Les temps par vol du
  *  barème ne changent pas : ils restent des entrées.
+ *  Évolution 17 (b) : chaque ligne calée reçoit un statut — « à la limite »,
+ *  « en sur-effectif », « indéterminé » (moteur/calage-statut.js). Hors « à
+ *  la limite », la formule retenue est l'effectif mis, et le besoin se borne
+ *  (« au plus ») ; la politique garde le statut et le rythme des jours chargés.
  * ==========================================================================*/
 (function (root) {
   'use strict';
@@ -31,6 +35,8 @@
   const enNode = typeof module !== 'undefined' && module.exports && typeof require === 'function';
   /** Le catalogue de formes : chargé avant ce module dans la page. */
   const F = enNode ? require('./calage-formes.js') : root.OrlyCalageFormes;
+  /** Le statut d'une ligne calée et la borne de son besoin (évolution 17 b) : chargé avant ce module, lui aussi. */
+  const ST = enNode ? require('./calage-statut.js') : root.OrlyCalageStatut;
 
   const JOURS_MIN = 20, JOURS_MOIS_MIN = 14;
   const A_MIN = F.A_MIN, A_MAX = F.A_MAX, STABILITE = 0.15, SEUIL_P = 0.05, PLACEBOS = 20, GRAINE = 20261102, PART_PLACEBO = 0.25;
@@ -323,7 +329,9 @@
     const formes = o.formes || CANDIDATS;
     const variables = [...new Set(formes.flatMap(x => (fiche(x) && fiche(x).variables) || []))].filter(c => c !== 'simule');
     // La semaine, le mois et le jour de la semaine de chaque jour, une fois pour toutes.
+    // Avec la colonne des heures supp, ses heures et ses heures supp du jour (moteur/reel.js) : le statut les lit.
     const l = (jours || []).map(j => ({ date: j.date, reel: j.reel, simule: j.simule, ...Object.fromEntries(variables.map(c => [c, j[c]])),
+      ...(j.heuresSupp !== undefined ? { heures: j.heures, heuresSupp: j.heuresSupp } : {}),
       _s: semaineIso(j.date), _m: j.date.slice(0, 7), _k: jourSemaine(j.date) }))
       .sort((x, y) => x.date.localeCompare(y.date));
     if (l.length < JOURS_MIN) return { cale: false, raison: 'moins de ' + JOURS_MIN + ' jours utilisables (' + l.length + ')', jours: l.length };
@@ -342,6 +350,9 @@
       c.accepte = Object.values(c.regles).every(r => r.ok);
     }
     const retenu = choisir(candidats, refs, o.hors), sg = sigma(retenu[v.cle].erreurs);
+    // Le statut (évolution 17 b) : seulement si la ligne a un travail au barème qui varie. Hors « à la limite », le rythme des jours chargés borne le besoin.
+    const statut = o.hors || !varie ? null : ST.statutDe(l, { joursMin: JOURS_MIN }), lecture = statut ? ST.lectureDe(statut.code) : null;
+    const rythmeCharge = lecture === 'effectif mis' ? ST.rythmeDesJoursCharges(l) : null;
     return { cale: true, jours: l.length, unSeulMois: d.unSeulMois, validation: d.mois.length ? 'semaines et mois' : 'semaines',
       ...(essayes ? { essayes, seuil: SEUIL_P / essayes } : {}),
       references: Object.fromEntries(REFERENCES.map(n => [n, resume(refs[n])])),
@@ -351,6 +362,7 @@
           + ' ; b = ' + fr(c.parametres.bLibre) + ')' : '') })),
       ...(o.hors ? { raison: 'hors simulation : la constante' } : !varie ? { raison: 'le simulé ne varie pas : pas de candidat' } : {}),
       retenu: { modele: retenu.modele, nom: retenu.nom, formule: formuleDe(retenu), parametres: parametresRetenus(retenu), sigma: sg, bande: sg === null ? null : Z_P10_P90 * sg },
+      statut, ...(lecture ? { lecture } : {}), rythmeCharge,
       _retenu: retenu, _cle: v.cle };
   }
 
@@ -467,8 +479,21 @@
     return { date: o.date || null, periode: o.periode ? { debut: o.periode.debut, fin: o.periode.fin } : null, signature: o.signature || null,
       lignes: (rapport.lignes || []).filter(l => l.cale).map(l => {
         const c = parNom.get(l.nom);
-        return { nom: l.nom, modele: l.retenu.modele, parametres: l.retenu.parametres, sigma: l.retenu.sigma, ...(c && c.services ? { services: c.services.slice() } : {}) };
+        return { nom: l.nom, modele: l.retenu.modele, parametres: l.retenu.parametres, sigma: l.retenu.sigma, ...(c && c.services ? { services: c.services.slice() } : {}),
+          // Le statut et le rythme des jours chargés (évolution 17 b) : deux résumés, aucune heure réelle.
+          ...(l.statut ? { statut: l.statut.code } : {}), ...(l.rythmeCharge && ST.rythmeValide(l.rythmeCharge.rythme) ? { rythmeCharge: l.rythmeCharge.rythme } : {}) };
       }), ...(fini(su) ? { sigmaUnite: su } : {}) };
+  }
+
+  /**
+   * La ligne d'une politique une fois son « × a » appliqué au barème : a = 1 jusqu'au prochain calage (le prévu ne
+   * compte pas le facteur deux fois). Son travail au barème est maintenant multiplié par a : le rythme des jours
+   * chargés (réel ÷ travail au barème) se divise par a, pour que le besoin « au plus » reste le même (évolution 17 b).
+   */
+  function ligneAppliquee(m) {
+    // Un rythme qui sortirait de ce qu'une politique garde ne se garde pas : la ligne n'a alors plus de borne.
+    const { rythmeCharge, ...ligne } = m, r = rythmeCharge / m.parametres.a;
+    return { ...ligne, parametres: { a: 1 }, applique: true, ...(ST.rythmeValide(r) ? { rythmeCharge: r } : {}) };
   }
 
   /** Les bornes d'un modèle gardé : celles du calage (a ∈ [0,5 ; 2], b ≥ 0), une constante et des facteurs du jour positifs, σ fini. */
@@ -510,7 +535,7 @@
       if (services !== null && !(Array.isArray(services) && services.length <= 100 && services.every(x => typeof x === 'string' && x && x.length <= 160)))
         throw new Error(ou + ' : les services sont une liste de noms.');
       return { nom: l.nom.trim(), modele: l.modele, parametres: out, sigma: fini(l.sigma) ? l.sigma : null,
-        ...(services ? { services: services.slice() } : {}), ...(l.applique === true ? { applique: true } : {}) };
+        ...(services ? { services: services.slice() } : {}), ...(l.applique === true ? { applique: true } : {}), ...ST.relire(l, ou) };
     });
     // σ du total (correction 16) : borné comme le σ d'une ligne ; absent, la politique d'avant (√Σσ²).
     const su = p.sigmaUnite;
@@ -554,12 +579,19 @@
     const lignes = (((correspondance && correspondance.lignes) || [])).map(l => {
       const m = modeles.get(l.nom) || { modele: 'moteur', parametres: {}, sigma: 0, nonCalee: true };
       return { nom: l.nom, modele: m.modele, nomModele: NOMS[m.modele], sigma: m.sigma || 0, ...(m.applique ? { applique: true } : {}), ...(m.nonCalee ? { nonCalee: true } : {}),
-        jours: jours.map(w => { const simule = simuleDe(l, w); return { date: w.date, simule, ...prevuCale(m, { date: jourDeTravail(l, w), simule }) }; }) };
+        ...(ST.connu(m.statut) ? { statut: m.statut, nomStatut: ST.NOMS[m.statut], lecture: ST.lectureDe(m.statut) } : {}),
+        jours: jours.map(w => {
+          const simule = simuleDe(l, w), p = prevuCale(m, { date: jourDeTravail(l, w), simule }), auPlus = ST.besoinAuPlus(m, simule, p.prevu);
+          return { date: w.date, simule, ...p, ...(auPlus === null ? {} : { besoinAuPlus: auPlus }) };
+        }) };
     });
+    // Le besoin « au plus » de l'unité, dès qu'une ligne a le sien : chaque ligne à sa borne, sinon à son prévu.
+    const borne = lignes.some(l => l.jours.some(j => j.besoinAuPlus !== undefined));
     const mesure = fini(politique.sigmaUnite), s = mesure ? politique.sigmaUnite : Math.sqrt(lignes.reduce((n, l) => n + l.sigma ** 2, 0));
     const unite = jours.map((w, i) => {
       const prevu = lignes.reduce((n, l) => n + l.jours[i].prevu, 0), simule = lignes.reduce((n, l) => n + l.jours[i].simule, 0);
-      return { date: w.date, simule, prevu, p10: prevu - Z_P10_P90 * s, p90: prevu + Z_P10_P90 * s };
+      return { date: w.date, simule, prevu, p10: prevu - Z_P10_P90 * s, p90: prevu + Z_P10_P90 * s,
+        ...(borne ? { besoinAuPlus: lignes.reduce((n, l) => n + (l.jours[i].besoinAuPlus !== undefined ? l.jours[i].besoinAuPlus : l.jours[i].prevu), 0) } : {}) };
     });
     return { calage: { date: politique.date, periode: politique.periode }, lignes, unite, sigmaUnite: s, sigmaUniteSource: mesure ? 'mesuré' : 'lignes indépendantes' };
   }
@@ -695,7 +727,7 @@
   }
 
   const api = { JOURS_MIN, CANDIDATS, NOMS, SEUIL_P, ECART_SIMPLE, semaineIso, jourSemaine, apprendre, predire, facteursDuJour, decoupages, wilcoxon, phi,
-    calerLigne, caler, choisir, formule, prevuCale, Z_P10_P90, politiqueDe, validerPolitique, prevuDesJours, texteSigmaUnite, jourDeLaJournee, jourDecale, appliquerFacteur, annulerFacteur,
+    calerLigne, caler, choisir, formule, ligneAppliquee, prevuCale, Z_P10_P90, politiqueDe, validerPolitique, prevuDesJours, texteSigmaUnite, jourDeLaJournee, jourDecale, appliquerFacteur, annulerFacteur,
     annulable, lignesDegradees, empreinte };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyCalagePeriode = api;
