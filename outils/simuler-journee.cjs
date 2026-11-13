@@ -32,6 +32,8 @@ const REP = require('../moteur/reponses.js');
 const T = require('../tableur.js');
 // Le classeur compressé (correction 16 c) : le même contenu, bien plus léger.
 const Z = require('../classeur-compresse.js');
+// La feuille « Réponses » du classeur (évolution 15 e).
+const ER = require('../echanges-reponses.js');
 const EC = require('../echanges-charge.js');
 
 const USAGE = 'Usage : node outils/simuler-journee.cjs [--arguments] [--reponses] [--xlsx charge.xlsx] sauvegarde.json vols.csv|vols.xlsx [options.json] > resultat.json';
@@ -69,16 +71,23 @@ async function simulerJournee(cheminSauvegarde, cheminVols, cheminOptions, { arg
     indicateursCharge: I.journee(resultat, args)
   };
   // Les cinq réponses (évolution 15), aux seuils de la sauvegarde (sans eux, les défauts) : seulement sur demande.
-  if (reponses) sortie.reponses = REP.reponses(resultat, args, { seuils: REP.seuilsDeLaSauvegarde(sauvegarde), k: sortie.indicateursCharge });
-  // Les arguments restent, hors du JSON (non énumérables) : les noms des services, pour le classeur.
+  const seuils = REP.seuilsDeLaSauvegarde(sauvegarde);
+  if (reponses) sortie.reponses = REP.reponses(resultat, args, { seuils, k: sortie.indicateursCharge });
+  // Les arguments et les seuils restent, hors du JSON (non énumérables) : les noms des services et la feuille « Réponses », pour le classeur.
+  Object.defineProperty(sortie, 'seuils', { value: seuils, enumerable: false });
   return Object.defineProperty(sortie, 'args', { value: args, enumerable: false });
 }
 
-/** Le classeur de la charge de la journée : le même que la page écrit (echanges-charge.js). */
+/**
+ * Le classeur de la charge de la journée : le même que la page écrit (echanges-charge.js), et à la fin la feuille « Réponses »
+ * (évolution 15 e, echanges-reponses.js) : les cinq réponses aux seuils de la sauvegarde.
+ */
 function classeurDeLaJournee(sortie, calculeLe = new Date()) {
   const j = sortie.journee;
-  return Z.compresserSync(T.ecrireClasseur(EC.journeeVersClasseur({ indicateurs: sortie.indicateursCharge }, {
-    date: j.date, sauvegarde: j.sauvegarde, vols: j.vols, calculeLe, nomService: id => ((sortie.args && sortie.args.noms) || {})[id] || id })));
+  const classeur = EC.journeeVersClasseur({ indicateurs: sortie.indicateursCharge }, {
+    date: j.date, sauvegarde: j.sauvegarde, vols: j.vols, calculeLe, nomService: id => ((sortie.args && sortie.args.noms) || {})[id] || id });
+  const rep = sortie.reponses || (sortie.args ? REP.reponses(sortie.resultat, sortie.args, { seuils: sortie.seuils, k: sortie.indicateursCharge }) : null);
+  return Z.compresserSync(T.ecrireClasseur(ER.avecReponses(classeur, rep, { date: j.date || null, calculeLe })));
 }
 
 if (require.main === module) {

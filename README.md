@@ -401,17 +401,40 @@ le rouge ne sert qu’aux retards.
      corriger ; un service sans équipe s’y corrige d’un clic (« + Une équipe
      dans… »).
 5. **Résultats** — ce que la journée donne.
-   - *Synthèse* : la journée entière, hiérarchisée. D’abord une phrase de
-     résumé (« 30 commandes à l’heure sur 32 ; 1 vol chargé en retard, de
-     8 min. ») ; puis les chiffres qui comptent en cartes, avec ce sur quoi ils
-     comptent (vols chargés à l’heure, avec un handling ; commandes prêtes à
-     l’heure ; commande la plus en retard ; travail fourni) ; dessous, *Vols ·
-     Commandes · Équipes* en listes sobres (dont le vol le plus en retard). La
-     couleur suit l’état, pas la case : un retard nul ne s’écrit jamais en
-     rouge, une attente nulle n’a pas la couleur de l’attente. Une carte ou une ligne mène à sa page (Détails › Vols,
-     Détails › Commandes, Planning des équipes, Détails › Stocks et retours). Des
-     commandes que personne ne prépare sont un problème, avec son lien vers
-     le service où les cocher. « Exporter les résultats ».
+   - *Synthèse* : la journée répond à cinq questions, dans cet ordre
+     (évolution 15 ; le contrat : `docs/CAHIER_DES_CHARGES.md`, § 6 bis).
+     **Lire la Synthèse**, de haut en bas :
+     1. **Deux phrases.** La première dit combien de personnes il faut et
+        combien sont présentes (« Il faut 26 personnes, 35,3 sont
+        présentes. ») ; la seconde, ce qui coince et ce qui part en retard
+        (« Cuisine froide coince de J-1 20:00 à 01:14 ; 15 vols et
+        14 commandes partent en retard. »), ou que rien ne coince.
+     2. **Trois cartes** : *Où ça coince* (le goulot, son moment, la file, la
+        plus longue attente d'un lot et sa cause — il manque du monde, le
+        service d'avant, le matériel ; les autres services qui attendent) ;
+        *Ce qui part en retard* (les seules exceptions, chacune avec son
+        retard et sa cause, puis les comptes : les vols que le handling
+        charge, les commandes de repas, celles d'équipement, chacun avec son
+        périmètre) ; *L'essai* (avec deux essais retenus dans « Comparer deux
+        essais » : ce qui change entre A et B). Une carte mène à son détail.
+     3. **Les services**, de l'amont vers l'aval : il faut, présents et
+        l'écart ; le matin et l'après-midi ; le pic au travail ; l'occupation ;
+        la file la plus longue ; la fin et les heures sup. Un clic sur un
+        service l'ouvre dans le planning des équipes.
+     4. **La journée** : la courbe des présents, des personnes au travail et
+        des lots en file, avec un repère par départ ; la bulle suit la souris
+        ou les flèches du clavier.
+
+     **Ce que veulent dire les couleurs.** Une case ne se colore que si un
+     seuil est dépassé (« Réglages de la simulation › Seuils d'alerte » : un
+     écart d'1 personne, une attente de 60 min, une occupation de 95 %, une
+     durée de stock, un retard d'1 min) ; la couleur de l'attente dit ce qui
+     coince, le rouge ne sert qu'à un retard ; un retard nul ne s'écrit jamais
+     en rouge. Une durée s'écrit « 45 min » sous une heure, « 2 h 05 » au-delà.
+     Des commandes que personne ne prépare sont un problème, avec son lien
+     vers le service où les cocher. « Exporter les résultats » ; le classeur
+     de la charge de la journée porte aussi la feuille « Réponses »
+     (`docs/FORMATS_EXCEL.md`, § 8).
    - *Le plan rejoué* : rejouer la journée sur le plan de l’unité, en pleine
      hauteur, la barre de lecture en bas ; les chiffres de l’instant, la
      légende et le zoom posés sur le plan ; « En ce moment » à droite, qui se
@@ -772,6 +795,7 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `moteur/periode.js` | Une période : un programme de vols daté joué jour après jour (le sale, le stock propre et, en « J+1 », les départs de la veille passent au lendemain), le bilan par jour de travail, par mois et sur la période ; pour la page et pour `outils/simuler-periode.cjs` ([le banc d’essai](docs/BANC_ESSAI.md), § 9) |
 | `outils/simuler-periode.cjs` | Jouer une période hors du navigateur : `node outils/simuler-periode.cjs sauvegarde.json vols-dates.csv [options.json] > periode.json` rend la période, son bilan et chaque journée, comme la page les calcule ; `--sans-detail` ; `--xlsx periode.xlsx`, le classeur de la page ; une sauvegarde qui a une politique d’effectif rend aussi `prevuCale`, le prévu calé de chaque jour ([le banc d’essai](docs/BANC_ESSAI.md), § 9 et § 10) ; `--planning planning.csv`, un rejeu à effectif imposé (évolution 11 f) |
 | `periode-vue.js` / `periode.css` | La période dans la page (v1) : le bandeau de la journée de vols affichée et « Simuler la période » (par étapes, Annuler, « à relancer »), la page Résultats › Période ; rien sans programme daté ; dessous, « Réel et calage » (évolution 11) ; la colonne « Unité », les personnes en moyenne par jour, la première colonne collante (évolution 15 d) |
+| `echanges-reponses.js` | La feuille « Réponses » du classeur de la journée (v1, évolution 15 e) : les cinq réponses du module, dans l’ordre du contrat ; la page et l’outil `simuler-journee --xlsx` l’écrivent ; les autres feuilles ne changent pas |
 | `periode-courbe.js` | La courbe de la page Période (v1, évolution 15 d) : la colonne Unité jour par jour, les jours incomplets en creux, le réel importé pour une mesure qui se compare à des ETP par jour ; la bulle à la souris et aux flèches |
 | `moteur/reel.js` | Le réel par jour et par rôle, sa correspondance avec la simulation et la comparaison, sans navigateur (v1, banc d’essai, évolution 11 b) : la page et l’outil `caler-periode` |
 | `moteur/planning.js` | Le planning daté, sans navigateur (v1, banc d’essai, évolution 11 f) : le fichier « Planning » lu et validé, un jour rejoué avec ses équipes, leurs horaires et leurs personnes, le facteur de travail de chaque service |
@@ -846,6 +870,9 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/synthese-vue.test.cjs` | La Synthèse sans navigateur (v1, évolution 15 b, `synthese-vue.js`) : les deux phrases en tête, « Les services » dans l’ordre du chemin (une ligne par service et jour, la file, la fin et les heures sup une fois par service), les tons seulement au-delà d’un seuil et jamais le rouge, la courbe (les créneaux de l’unité, un repère par départ, la bulle), les cartes (rien ne coince, rien en retard, l’essai seulement avec deux essais) |
 | `tests/synthese-questions-browser.cjs` | La Synthèse dans la page (v1, évolution 15 b), sur l’unité fictive, à 1 280 et 1 920 px : les phrases et les chiffres du tableau égaux à ceux du module, la page tient sur la largeur, la bulle de la courbe (souris, flèches), le clic sur une ligne qui ouvre ce service dans le planning, la carte de l’essai seulement avec deux essais, une journée sans retard sans couleur critique |
 | `tests/comparer-vue.test.cjs` | « Comparer deux essais » rangé selon les cinq questions (v1, évolution 15 c, `comparer-vue.js`) : le scénario d’abord, puis personnes, goulot, fins et heures sup, retards ; chaque ligne de `comparaison.js` trouve sa place ; une seule écriture du temps (« 3 h 47 », jamais « 227 min » ; « 69 h » de travail, l’écart et le verdict lus sur les heures affichées) ; un nom de fichier qui contient « 90 min » reste tel quel |
+| `tests/reponses-classeur.test.cjs` | La feuille « Réponses » du classeur de la journée (v1, évolution 15 e, `echanges-reponses.js`) : à la fin, les autres feuilles telles quelles ; les cinq réponses dans l’ordre du contrat, celles du module ; « Aucune exception », « Sans second essai » ; avec deux essais, ce que change le scénario ; de vraies heures Excel ; l’outil `simuler-journee --xlsx` écrit la même feuille |
+| `tests/non-regression-15.test.cjs` / `tests/empreintes-resultats.cjs` | La non-régression de l’évolution 15 : le JSON de `simuler-journee` et de `simuler-periode`, et chaque feuille de leurs classeurs, ont les empreintes calculées sur le commit d’avant l’évolution (unité et vols fictifs) ; le classeur de la journée gagne la seule feuille « Réponses » |
+| `tests/captures-resultats-browser.cjs` | Les captures de contrôle des résultats (v1, évolution 15 e), sur l’unité et les vols fictifs, en thème clair et sombre, à 1 280 et 1 920 px : la Synthèse avec et sans goulot, avec et sans retard ; Détails (Commandes, Vols) ; la Période ; chacune vérifiée, gardée hors du dépôt (`$ORY_CAPTURES`) |
 | `tests/periode-unite.test.cjs` | La page Période sans navigateur (v1, évolution 15 d) : la colonne « Unité » égale à la somme des services, le pic et l'occupation de l'unité (`chargeDeLUnite`), la moyenne des personnes seule, un seul bloc dans un mois, les jours complets d'abord, une seule écriture du temps, la courbe (un point par jour, le réel) |
 | `tests/calage-bases.test.cjs` | La correspondance propose 7,5 h / 7 h par ETP quand rien n'est réglé, sans l'enregistrer ; un réglage enregistré ne change pas ; le moteur garde ses 7 h (v1, évolution 15 d) |
 | `tests/periode-page-browser.cjs` | La page Période dans la page (v1, évolution 15 d), sur l'unité fictive : la colonne Unité, la courbe (souris, flèches) et le réel importé, la première colonne collante et le défilement qui se voit à 760 px, les moyennes des personnes, un seul bloc dans un mois, les jours complets d'abord, aucune durée en minutes au-delà de 60, les bases de la correspondance |

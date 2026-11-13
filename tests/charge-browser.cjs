@@ -24,6 +24,7 @@
 const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs'),os=require('node:os');
 const nav=require('./nav.cjs');
 const J=require('../moteur/journee.js'),PE=require('../moteur/periode.js'),I=require('../moteur/indicateurs.js'),P=require('../moteur/production.js');
+const ER=require('../echanges-reponses.js'),REP=require('../moteur/reponses.js');
 const T=require('../tableur.js'),EC=require('../echanges-charge.js');
 const REF=require('./non-regression.attendu.json');
 const {pathToFileURL}=require('node:url');
@@ -195,10 +196,13 @@ const PIEGE='<img src=x onerror="window.__xss=1">';
   const fj=await telecharger(()=>page.locator('#at-charge [data-ch=exporter]').click());
   assert.match(path.basename(fj),/^ory-charge-\d{4}-\d\d-\d\d\.xlsx$/);
   const relu=await T.lireClasseur(fs.readFileSync(fj));
-  assert.deepEqual(relu.map(f=>f.nom),['Lisez-moi','Charge','Créneaux']);
+  // (évolution 15 e) La feuille « Réponses » à la fin ; les autres, celles d'avant.
+  assert.deepEqual(relu.map(f=>f.nom),['Lisez-moi','Charge','Créneaux','Réponses']);
   const outil=EC.journeeVersClasseur({resultat:r,args},{calculeLe:new Date()});
   const net=l=>{const x=l.map(c=>(c==null||c===''?null:c&&typeof c==='object'&&'excel' in c?c.excel:c));while(x.length&&x[x.length-1]==null)x.pop();return x;};
   for(const i of [1,2])assert.deepEqual(relu[i].lignes.map(net).filter(l=>l.length),outil[i].lignes.map(net).filter(l=>l.length),relu[i].nom+' : celle de l’outil');
+  const reponses=ER.feuilleDesReponses(REP.reponses(r,args),{calculeLe:new Date()});
+  assert.deepEqual(relu[3].lignes.map(net).filter(l=>l.length),reponses.lignes.map(net).filter(l=>l.length),'Réponses : celle du module');
 
   // 5. La page Période : le pic au travail et l'occupation, par jour de travail et par service.
   await importer('vols-dates.csv',CSV);

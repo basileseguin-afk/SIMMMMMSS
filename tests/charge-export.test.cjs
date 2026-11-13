@@ -133,7 +133,8 @@ test('les outils : le JSON porte les indicateurs ; --xlsx écrit les classeurs ;
     assert.deepStrictEqual(sortie.indicateursCharge, json(K), 'les indicateurs : ceux de moteur/indicateurs.js');
     assert.deepEqual(Object.keys(sortie), ['journee', 'resultat', 'indicateursCharge']);
     const relu = await T.lireClasseur(fs.readFileSync(xj));
-    assert.deepEqual(relu.map(f => f.nom), ['Lisez-moi', 'Charge', 'Créneaux']);
+    // Évolution 15 (e) : la feuille « Réponses » à la fin ; les trois autres, celles d'avant.
+    assert.deepEqual(relu.map(f => f.nom), ['Lisez-moi', 'Charge', 'Créneaux', 'Réponses']);
     assert.equal(relu[1].lignes.length, K.equipes.length + 1);
     for (const faux of [['--xlsx', path.join(dossier, 'x.csv'), sv, vols], ['--xlsx'], ['--arguments', '--xlsx', xj, sv, vols]]) {
       const u = spawnSync(process.execPath, [outilJ, ...faux], { encoding: 'utf8' });

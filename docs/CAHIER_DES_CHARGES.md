@@ -115,7 +115,7 @@ de relire le cahier des charges initial :
 | V1 | Rejouer la journée : horloge, lecture, pause, pas à pas, vitesse | CdC §6 | ✅ | |
 | V2 | **Jetons animés** (trolleys, flux) circulant le long des liens | CdC §6 | ⏸ | **Reporté le 23/09** : les animations viendront plus tard |
 | V3 | **Couleur de congestion** par service (vert → orange → rouge selon l'occupation et la file) | CdC §6 | 🟡 | Quatre états (au travail, attend, a fini, pas commencé) avec médaillon coloré ; **pas de gradient d'occupation** |
-| V4 | Mettre en évidence le **goulot courant** | CdC §6 | 🟡 | « À regarder » nomme le service qui attend depuis le plus longtemps, et celui qui a le plus attendu sur la journée |
+| V4 | Mettre en évidence le **goulot courant** | CdC §6 | ✅ | La Synthèse nomme le goulot de la journée (le service au plus grand cumul d'attente, au-delà du seuil), son moment, sa file et sa cause (évolution 15, R2) ; dans le plan rejoué, « À regarder » nomme le service qui attend depuis le plus longtemps, seulement au-delà du seuil |
 | V5 | **Robot** et **tunnels de plonge** visibles sur le plan avec leur cadence en direct | CdC §6 | ⏸ | **Reporté le 23/09** avec les animations |
 | V6 | Plan et tableau de bord visibles en même temps | CdC §9 | ✅ | « La journée » : plan + panneau « En ce moment » |
 | V7 | Suivre un repas dans le temps et **expliquer son retard** | Feuille de route étape 6 | ✅ | Frise étape par étape et phrase (« le montage a attendu 25 min la dotation ») |
@@ -140,7 +140,20 @@ Lecteurs : le chef de projet et les responsables de service (version 1,
 **Les règles de calcul.** Le module `moteur/reponses.js`, sans navigateur, **lit**
 le résultat de la journée et les indicateurs de charge (`moteur/indicateurs.js`) ;
 il ne recalcule rien de ce qui existe et ne change rien. La page, les outils
-(`simuler-journee --reponses`) et les exports l'appellent : un seul chemin.
+(`simuler-journee --reponses`) et les exports l'appellent : un seul chemin. Le
+classeur de la journée porte ses réponses dans une feuille « Réponses », à la
+fin, depuis la page et depuis `simuler-journee --xlsx` (`echanges-reponses.js`,
+`FORMATS_EXCEL.md` § 8) ; les autres feuilles ne changent pas.
+
+**La présentation**, la même partout dans les résultats : une durée s'écrit
+« 45 min » sous une heure, « 2 h 05 » au-delà, jamais en heures décimales ; un
+total d'heures de travail, en heures entières (« 525 h ») ; une quantité porte
+son unité ; un compteur dit son périmètre (les vols que le handling charge ;
+les commandes de repas, et à part celles d'équipement) et donne les mêmes
+nombres, avec les mêmes mots, sur la Synthèse et dans « Détails » ; une
+alerte ne s'affiche que si un seuil est dépassé. Pour une période, des
+personnes de jours différents ne s'additionnent pas : seule leur moyenne par
+jour s'affiche.
 
 - **Le besoin d'une équipe**, en personnes sur son poste : à effectif calculé, son
   besoin exact (homme-minutes ÷ poste ÷ rendement) ; un robot, une plonge saisis :
@@ -185,7 +198,7 @@ Une valeur invalide est refusée, en la nommant.
 
 | # | Exigence | Source | État | Écart |
 |---|---|---|---|---|
-| R1–R5 | Les cinq réponses, dans un module sans navigateur que la page, les outils et les exports appellent | Évolution 15 (a à d) | 🟡 | Le module, ses seuils, l'outil, la Synthèse (les phrases, « Les services », la courbe, les trois cartes), « Détails » et « Comparer deux essais » rangés selon les questions, des comptes qui disent leur périmètre et une seule écriture du temps sont faits ; la page Période aussi (la colonne « Unité », la courbe et le réel, les personnes en moyenne par jour, les jours complets d'abord) ; la feuille « Réponses » vient ensuite (évolution 15 e) |
+| R1–R5 | Les cinq réponses, dans un module sans navigateur que la page, les outils et les exports appellent | Évolution 15 (a à e) | ✅ | Le module et ses seuils (`moteur/reponses.js`), l'outil (`--reponses`), la Synthèse (deux phrases, trois cartes, « Les services », la courbe), « Détails » et « Comparer deux essais » rangés selon les questions, des comptes qui disent leur périmètre, une seule écriture du temps, la page Période (la colonne « Unité », la courbe et le réel, les personnes en moyenne par jour, les jours complets d'abord) et la feuille « Réponses » du classeur de la journée. Sans ses seuils ni la nouvelle feuille, tout résultat, indicateur et classeur d'avant reste identique (`tests/non-regression-15.test.cjs`). La période n'a pas encore ses cinq réponses jour par jour |
 
 ## 7. Indicateurs
 

@@ -654,8 +654,9 @@ page et les outils (`echanges-charge.js`). Deux classeurs les portent :
 - **le classeur de la journée** : page Planning, bouton « Exporter la charge
   (Excel) » de la vue Charge ; `node outils/simuler-journee.cjs --xlsx
   charge.xlsx sauvegarde.json vols.csv`. Trois feuilles : Lisez-moi, Charge,
-  Créneaux. Une journée sans date (des vols sans colonne `date`) prend la date
-  du calcul ; le Lisez-moi le dit ;
+  Créneaux ; depuis l'évolution 15 (e), une quatrième à la fin, **Réponses**
+  (§ 8), sans que les trois autres changent. Une journée sans date (des vols
+  sans colonne `date`) prend la date du calcul ; le Lisez-moi le dit ;
 - **le classeur de la période** (§ 4) : les feuilles Charge et Créneaux après
   Équipes, une colonne `Jour complet` en plus, et leurs définitions dans le
   Lisez-moi. Une période d'avant l'évolution 12 (des extraits sans
@@ -807,6 +808,53 @@ sortie standard, la raison sur la sortie d'erreur, code 1 (quand rien n'est
 gardé, le rapport demandé s'écrit quand même). Un appel mal formé (une option
 sans valeur ou répétée, une sortie qui écraserait l'export, la sauvegarde ou
 l'autre sortie) : l'usage, code 2, rien d'écrit.
+
+## 8. La feuille « Réponses » (version 1)
+
+Évolution 15 (e) (`CAHIER_DES_CHARGES.md`, § 6 bis) : les **cinq réponses** de
+la journée, à la fin du classeur de la journée (§ 6), par le même code depuis
+la page et l'outil (`echanges-reponses.js`) ; les valeurs sont celles du module
+`moteur/reponses.js`, aux seuils gardés (la page : « Réglages de la
+simulation » ; l'outil : ceux de la sauvegarde, sinon les défauts). Les
+autres feuilles du classeur ne changent pas.
+
+Une ligne par mesure, dans l'ordre du contrat :
+
+| Colonne | Sens |
+|---|---|
+| `Question` | « 1. Combien de personnes faut-il, par service ? », « 2. Où et quand ça coince ? », « 3. À quelle heure chaque service finit-il, et avec combien d’heures sup ? », « 4. Qu’est-ce qui part en retard ? », « 5. Que change mon scénario ? » |
+| `Sujet` | le service, « Toute l’unité », le goulot, ou le vol ou la commande d'une exception |
+| `Jour de travail` | pour la question 1 : la date du jour de travail du service (une vraie date Excel ; une cuisine à J−1, la veille) |
+| `Mesure` | ce qui est mesuré (ci-dessous) |
+| `Valeur` | un nombre ; pour une heure (question 3), une vraie date et heure Excel ; vide quand la mesure n'a pas de valeur (une cause, le goulot de la comparaison) |
+| `Unité` | personnes, ETP, %, lots, min, lots × minutes, min × personnes, heure, exceptions |
+| `Seuil` | le seuil d'alerte réglé, quand la mesure en a un |
+| `Au-delà du seuil` | `oui` ou `non` ; `oui` pour chaque exception (question 4) |
+| `Détail` | ce qui explique la valeur : l'heure d'un pic ou d'une file, le lot qui attend, la cause, la phrase d'un retard |
+
+- **1.** Par service et jour de travail : `Il faut` (le besoin), `Présentes
+  (ETP)`, `Écart (présentes − il faut)` (au seuil d'écart), `Matin, au travail
+  au plus` et `Après-midi, au travail au plus` (et les présentes, en détail),
+  `Pic au travail`, `Occupation` (au seuil d'occupation) ; puis toute l'unité.
+- **2.** `Goulot` (le service au plus grand cumul d'attente, son cumul, de
+  quand à quand, sa cause ; sinon « aucun ») ; puis, pour chaque service où un
+  lot attend : `File la plus longue`, `Attente la plus longue d’un lot` (au
+  seuil d'attente), `Cumul d’attente`, `Cause` (en détail : personnel, l'amont
+  ou le matériel). Les heures écrites en détail sont arrondies à la minute,
+  comme la cellule et comme la page.
+- **3.** Par service : `Fin du dernier lot`, `Fin de l’horaire`, `Dépassement`
+  (min), `Heures sup` (min × personnes ; équipes, renforts prêtés, chauffeurs
+  en détail).
+- **4.** Une ligne par exception (vol chargé en retard, vol pas chargé, vol
+  pas prêt, vol sans équipe, commande en retard) : son retard en
+  minutes, au seuil de retard, et sa cause ; sans exception, une ligne
+  « Aucune exception ».
+- **5.** Depuis la page, avec deux essais retenus dans « Comparer deux
+  essais » : B − A sur le besoin et les présentes de l'unité et des services
+  qui changent (un service présent dans un seul essai aussi : « absent →
+  3 »), le goulot, les fins et les heures sup qui changent, le nombre
+  d'exceptions, celles réglées et celles nouvelles dans B. Sans second essai
+  (et toujours dans l'outil) : une ligne « Sans second essai ».
 
 ## Confidentialité
 

@@ -5,6 +5,34 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-12 — Évolution 15 (e) : contrôle et doc
+
+- Le classeur de la journée gagne une feuille **« Réponses »**, à la fin :
+  les cinq réponses du module, dans l'ordre du contrat, une ligne par mesure
+  (la question, le sujet, la mesure, la valeur et son unité, le seuil, s'il
+  est dépassé, le détail) ; de vraies heures Excel ; « Aucune exception »
+  quand rien ne part en retard ; ce que change le scénario quand deux essais
+  sont retenus. La page (« Exporter la charge (Excel) ») et l'outil
+  (`simuler-journee --xlsx`, aux seuils de la sauvegarde) écrivent la même
+  feuille (`echanges-reponses.js`, nouveau) ; les autres feuilles ne changent
+  pas, et `tableur.js`, `echanges.js` non plus.
+- Des captures de contrôle (`tests/captures-resultats-browser.cjs`) : la
+  Synthèse avec et sans goulot, avec et sans retard ; « Détails » (Commandes,
+  Vols) ; la Période ; en thème clair et sombre, à 1 280 et 1 920 px, sur des
+  données fictives, chacune vérifiée et gardée hors du dépôt.
+- La non-régression (`tests/non-regression-15.test.cjs`,
+  `tests/empreintes-resultats.cjs`) : le JSON de `simuler-journee` et de
+  `simuler-periode`, et chaque feuille de leurs classeurs, ont les empreintes
+  calculées sur le commit d'avant l'évolution 15 ; le classeur de la journée
+  ne gagne que la feuille « Réponses ».
+- La doc : `docs/CAHIER_DES_CHARGES.md` (le contrat : la feuille, la
+  présentation commune ; R1–R5 et V4 faits), le README (« Lire la
+  Synthèse »), `docs/FORMATS_EXCEL.md` (§ 8, la feuille « Réponses »).
+- Tests : `tests/reponses-classeur.test.cjs` (nouveau) ; `charge-browser` lit
+  la feuille du classeur de la page, celle du module ; `charge-export.test`,
+  la quatrième feuille du classeur de l'outil. Aucun calcul ne change ; la v2
+  n'est pas touchée.
+
 ## 2026-11-12 — Évolution 15 (d) : la page Période
 
 - Une colonne « Unité » : le total des services, chaque jour ; pour le pic au

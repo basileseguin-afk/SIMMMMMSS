@@ -3514,6 +3514,8 @@ Sim.winrest = { regles:reglesWinrest, enregistrer:enregistrerReglesWinrest };
 // Les seuils d'alerte et les réponses de la journée (évolution 15 a) : lus validés, enregistrés validés.
 Sim.seuils = { lire:seuilsAlerte, enregistrer:enregistrerSeuils };
 Sim.reponses = reponsesDuJour;
+// Les réponses des deux essais retenus dans « Comparer deux essais » ({ A, B }), ou null : pour la feuille « Réponses » (évolution 15 e).
+Sim.essais = essaisRetenus;
 // Le plan rejoué (évolution 14 b) : les services dessinés, la boîte de chacun, les bornes du plan.
 Sim.planRejoue = { zones:zonesDessinees, boite:id => (zoneEls[id] ? { ...zoneEls[id].b } : null), bornes:bornesDuPlan, existe:id => !!zoneParId(id) };
 window.Sim = Sim;

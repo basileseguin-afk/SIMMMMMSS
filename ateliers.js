@@ -2497,16 +2497,23 @@
       V.rendre(box, { resultat: r && r.ok && r.lots.length ? r : null, args: this.args, nomService, ...(root.OrlyEchangesCharge ? { exporter: () => this.exporterCharge() } : {}) });
     }
 
-    /** Le classeur de la charge de la journée (banc d'essai, évolution 12 d) : le même que `simuler-journee --xlsx` (echanges-charge.js). */
+    /** Le classeur de la charge de la journée (banc d'essai, évolution 12 d) : le même que `simuler-journee --xlsx` (echanges-charge.js),
+     *  et la feuille « Réponses » (évolution 15 e). */
     async exporterCharge() {
       const EC = root.OrlyEchangesCharge, T = root.OrlyTableur, r = this.resultat;
       if (!EC || !T || !r || !r.ok) return;
       // Une journée sans date prend la date du calcul, à l'heure locale : la même dans le nom du fichier et dans le classeur.
       const le = new Date(), deux = n => String(n).padStart(2, '0'), services = this.a.services();
       const date = (this.a.jourVols ? this.a.jourVols() : null) || le.getFullYear() + '-' + deux(le.getMonth() + 1) + '-' + deux(le.getDate());
-      const octets = T.ecrireClasseur(EC.journeeVersClasseur({ resultat: r, args: this.args }, { date: this.a.jourVols ? this.a.jourVols() : null,
+      const classeur = EC.journeeVersClasseur({ resultat: r, args: this.args }, { date: this.a.jourVols ? this.a.jourVols() : null,
         calculeLe: le, nomService: id => (services.find(s => s.id === id) || {}).nom || id, sauvegarde: 'l’unité enregistrée dans ce navigateur',
-        vols: this.a.sourceVols ? this.a.sourceVols() : null }));
+        vols: this.a.sourceVols ? this.a.sourceVols() : null });
+      // La feuille « Réponses » à la fin (évolution 15 e, echanges-reponses.js) : les cinq réponses aux seuils gardés, et ce que
+      // change le scénario quand deux essais sont retenus ; les autres feuilles, telles quelles.
+      const ER = root.OrlyEchangesReponses, S = root.Sim, REP = root.OrlyReponses;
+      const essais = S && S.essais ? S.essais() : null, rep = ER && S && S.reponses ? S.reponses() : null;
+      const octets = T.ecrireClasseur(rep ? ER.avecReponses(classeur, rep, { date: this.a.jourVols ? this.a.jourVols() : null, calculeLe: le,
+        comparaison: essais && REP ? REP.comparer(essais.A, essais.B) : null }) : classeur);
       // Compressé (correction 16 c), quand le navigateur le sait ; sinon tel quel.
       const Z = root.OrlyClasseurCompresse;
       T.telecharger('ory-charge-' + date + '.xlsx', Z ? await Z.compresser(octets) : octets);
