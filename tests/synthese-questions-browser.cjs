@@ -48,8 +48,11 @@ const critiques=page=>page.evaluate(()=>{
         // Correction 17 (a) : chaque ligne dit son jour, et porte sa propre fin et ses propres heures sup.
         mots:ls.map(l=>l.mot),jours:[...document.querySelectorAll('#bilan-journee .sy-table tbody tr')].map(tr=>(tr.querySelector('.sy-jour')||{}).textContent||null),
         cases:[...document.querySelectorAll('#bilan-journee .sy-table tbody tr')].map(tr=>tr.cells.length),
-        sup:ls.map(l=>(l.fin&&l.fin.heuresSup.total>1e-9?D(l.fin.heuresSup.total):'—')),
-        supLu:[...document.querySelectorAll('#bilan-journee .sy-table tbody tr')].map(tr=>tr.cells[11].textContent),
+        // Correction 18 (retouches) : les heures sup se lisent sous la fin, dans la même case ; l'équipe qui dépasse y est nommée.
+        sup:ls.map(l=>(l.fin&&l.fin.heuresSup.total>1e-9?'heures sup '+D(l.fin.heuresSup.total):null)),
+        supLu:[...document.querySelectorAll('#bilan-journee .sy-table tbody tr')].map(tr=>(tr.cells[10].querySelector('.sy-hs')||{}).textContent||null),
+        depasse:ls.map(l=>(l.fin&&l.fin.equipeQuiDepasse?'l’équipe '+l.fin.equipeQuiDepasse.nom+' finit à '+MoteurProduction.hhmm(l.fin.equipeQuiDepasse.fin)+' pour '+MoteurProduction.hhmm(l.fin.equipeQuiDepasse.finHoraire):null)),
+        depasseLu:[...document.querySelectorAll('#bilan-journee .sy-table tbody tr')].map(tr=>(tr.cells[10].querySelector('.sy-depasse')||{}).textContent||null),
         tete:[...document.querySelectorAll('#bilan-journee .sy-tete .bilan-resume')].map(p=>p.textContent),
         lignes:[...document.querySelectorAll('#bilan-journee .sy-table tbody tr')].map(tr=>[tr.dataset.service,tr.dataset.jour,tr.cells[1].textContent,tr.cells[2].textContent])};});
     assert.deepEqual(lu.tete,lu.phrases,V+'les phrases en tête');
@@ -57,8 +60,9 @@ const critiques=page=>page.evaluate(()=>{
     assert.deepEqual(lu.lignes,lu.attendu,V+'besoin et présents, ligne par ligne, dans l’ordre du chemin');
     assert.deepEqual(lu.jours,lu.mots,V+'chaque ligne dit son jour');
     assert.ok(lu.mots.some(m=>m==='veille'),V+'la cuisine fictive travaille la veille');
-    assert.ok(lu.cases.every(n=>n===12),V+'douze cases par ligne (correction 18 a : deux colonnes à la place de « File la plus longue ») ; aucune case partagée entre deux jours');
-    assert.deepEqual(lu.supLu,lu.sup,V+'les heures sup de chaque ligne');
+    assert.ok(lu.cases.every(n=>n===11),V+'onze cases par ligne (correction 18 : deux colonnes à la place de « File la plus longue », les heures sup sous la fin) ; aucune case partagée entre deux jours');
+    assert.deepEqual(lu.supLu,lu.sup,V+'les heures sup de chaque ligne, sous sa fin');
+    assert.deepEqual(lu.depasseLu,lu.depasse,V+'l’équipe qui dépasse, nommée avec sa fin et son horaire');
 
     // 2. La largeur : le tableau tient, les cartes occupent la ligne entière.
     const place=await page.evaluate(()=>{const c=document.querySelector('.sy-cadre'),g=document.querySelector('.sy-cartes'),cs=[...g.children];
@@ -111,7 +115,7 @@ const critiques=page=>page.evaluate(()=>{
         goulots:rep.coince.goulots.map(g=>({nom:g.nom,depasse:g.depasse,enRetard:g.enRetard})),
         carte:document.querySelector('#bilan-journee .sy-carte[aria-label="Où ça coince"]').innerText,
         notes:[...document.querySelectorAll('#bilan-journee .sy-explique-occ')].map(x=>x.textContent),texte:document.getElementById('bilan-journee').innerText};});
-    assert.deepEqual(att.tetes,['Service','Besoin','Présents','Écart','Matin','Après-midi','Pic au travail','Occupation','Personnes sans travail','Attente d’un arrivage','Fin','Heures sup'],V+'les colonnes');
+    assert.deepEqual(att.tetes,['Service','Besoin','Présents','Écart','Matin','Après-midi','Pic au travail','Occupation','Personnes sans travail','Attente d’un arrivage','Fin et heures sup'],V+'les colonnes');
     assert.ok(att.sans.length>=5,V+'des lignes avec des personnes sans travail');
     for(const x of att.sans){
      assert.ok(x.texte.includes(x.attendu)&&x.texte.includes(x.part)&&x.barre,V+'les heures, la part et la barre : '+JSON.stringify(x));

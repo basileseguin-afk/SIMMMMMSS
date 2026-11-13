@@ -124,7 +124,7 @@ test('2. un goulot « personnel » : la file, l’attente la plus longue, le cum
   // finit après la limite. La cuisine, par qui passe cette commande, coince aussi : son lot a fini avant la limite, la
   // commande prend son retard en aval ; le montage, au plus grand cumul d'attente, passe devant.
   assert.deepEqual([mo.enRetard, mo.apresLimite, cu.enRetard, cu.apresLimite], [1, 1, 1, 0]);
-  assert.deepEqual(c.goulot, { service: 'prepa', nom: 'Montage', jour: 0, depasse: 0, heuresSup: 0, enRetard: 1, apresLimite: 1, cumul: 120, attenteMax: 120,
+  assert.deepEqual(c.goulot, { service: 'prepa', nom: 'Montage', jour: 0, depasse: 0, heuresSup: 0, enRetard: 1, apresLimite: 1, equipe: null, cumul: 120, attenteMax: 120,
     cause: { code: 'limite' } });
   assert.deepEqual(c.goulots.map(g => [g.service, g.enRetard, g.cumul, g.cause.code]), [['prepa', 1, 120, 'limite'], ['cuisine', 1, 0, 'aval']]);
   // Le même arrivage qui attend, tout à l'heure (le vol de 18:00), dans l'horaire : la ligne garde son attente et sa cause, mais rien ne coince.
@@ -151,7 +151,7 @@ test('2. un goulot « amont » : les personnes attendent le service d’avant pe
   assert.equal(mo.cause, 'amont');
   // NORD/YC part en retard (finie à 09:00, due à 08:45 : 15 min) ; avant son premier lot (NORD/BC, à 08:00), le montage
   // attendait la cuisine depuis 06:00 : ces 2 h perdues couvrent le retard, la cause les nomme.
-  assert.deepEqual(c.goulot, { service: 'prepa', nom: 'Montage', jour: 0, depasse: 0, heuresSup: 0, enRetard: 1, apresLimite: 1, cumul: 150, attenteMax: 150,
+  assert.deepEqual(c.goulot, { service: 'prepa', nom: 'Montage', jour: 0, depasse: 0, heuresSup: 0, enRetard: 1, apresLimite: 1, equipe: null, cumul: 150, attenteMax: 150,
     cause: { code: 'amont', service: 'cuisine', nom: 'Cuisine', a: h('08:00') } });
 });
 
@@ -175,13 +175,16 @@ test('3. un service qui finit après son horaire : sa fin, la fin de son horaire
   const { r, args } = jouer({ vols: [dep('NO1', 'NORD', '20:00')], bareme: { prepa: { '*/YC': 480 } }, heuresSup: { actif: true, plafond: 120 },
     ateliers: [eq('mo', 'prepa', '06:00', 1, [['NORD/YC']])], parcours: [chemin('c1', ['prepa'])], parcoursCabine: { YC: 'c1' } });
   const f = R.reponses(r, args).fins.services.find(s => s.service === 'prepa');
+  // L'équipe qui dépasse est nommée, avec sa propre fin et son propre horaire (correction 18, retouches).
   assert.deepEqual(f, { service: 'prepa', nom: 'Montage', jour: 0, fin: h('15:00'), finHoraire: h('14:00'), depasse: 60,
+    equipeQuiDepasse: { id: 'mo', nom: 'mo', fin: h('15:00'), finHoraire: h('14:00'), depasse: 60 },
     heuresSup: { equipes: 60, renforts: 0, chauffeurs: 0, total: 60 }, equipes: [{ id: 'mo', nom: 'mo', fin: h('15:00'), finHoraire: h('14:00'), depasse: 60 }] });
   // Une seconde équipe dont l'horaire finit plus tard ne cache pas le dépassement de la première.
   const deux = jouer({ vols: [dep('NO1', 'NORD', '20:00'), dep('SU1', 'SUD', '22:00')], bareme: { prepa: { '*/YC': 480 } }, heuresSup: { actif: true, plafond: 120 },
     ateliers: [eq('mo', 'prepa', '06:00', 1, [['NORD/YC']]), eq('soir', 'prepa', '12:00', 2, [['SUD/YC']])], parcours: [chemin('c1', ['prepa'])], parcoursCabine: { YC: 'c1' } });
   const f2 = R.reponses(deux.r, deux.args).fins.services.find(s => s.service === 'prepa');
   assert.deepEqual([f2.finHoraire, f2.depasse], [h('20:00'), 60], 'le soir finit dans son horaire (20:00) ; le matin dépasse le sien de 60 min');
+  assert.deepEqual([f2.equipeQuiDepasse.id, f2.equipeQuiDepasse.fin, f2.equipeQuiDepasse.finHoraire], ['mo', h('15:00'), h('14:00')], 'c’est le matin qui est nommé');
   // Dans son horaire : rien ne dépasse, aucune heure sup.
   const p = PERSONNEL(), g = R.reponses(p.r, p.args).fins.services.find(s => s.service === 'prepa');
   assert.deepEqual([g.fin, g.finHoraire, g.depasse, g.heuresSup.total], [h('09:45'), h('14:00'), 0, 0]);

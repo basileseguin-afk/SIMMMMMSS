@@ -66,6 +66,11 @@
 .sy-sans-barre{display:inline-block;width:36px;height:8px;margin-left:6px;vertical-align:middle;border-radius:2px;background:var(--ds-surface-2)}
 .sy-sans-barre i{display:block;height:100%;border-radius:2px;background:var(--ds-texte-4)}
 .sy-table small.sy-attend{white-space:normal;max-width:19ch;margin-left:auto;text-align:right}
+/* L'équipe qui dépasse, avec sa fin et son horaire : sur deux lignes au besoin, la colonne reste étroite ; de même les
+ * postes fixes ou non mesurés, sous le besoin. À 1 366 px de large, le tableau garde de la marge pour des textes plus longs. */
+.sy-table small.sy-depasse{white-space:normal;max-width:21ch}
+.sy-table tbody td:nth-child(2) small{white-space:normal;max-width:13ch;margin-left:auto}
+.sy-table td.sy-fin[data-ton="attente"] small{color:inherit}
 .sy-arrivage{white-space:nowrap}
 .sy-cause{margin-top:var(--ds-e-1)}
 .sy-legende{margin-top:var(--ds-e-2)}

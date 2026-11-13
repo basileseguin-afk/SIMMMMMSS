@@ -471,7 +471,10 @@
       .map(g => {
         // Ce que chaque équipe de la ligne attendait avant son premier lot, et le temps qu'elle y a perdu (sur l'horloge).
         const attendus = new Map(g.eqs.map(v => { const a = attenduAvant(v, r, args, ctx), l = premierLot(v); return [v.id, a ? { ...a, perdu: l.debut - v.debutPoste } : null]; }));
+        // Quand il dépasse son horaire (un quart d'heure au moins) : l'équipe qui dépasse, avec sa propre fin et son propre horaire.
+        const f = finDe.get(g.service + '|' + g.jour) || {};
         return { service: g.service, nom: g.nom, jour: g.jour, depasse: net(depasseDe(g)), heuresSup: net(supDe(g)), enRetard: g.enRetard, apresLimite: g.apresLimite,
+          equipe: depasseDe(g) >= DEPASSEMENT_MIN - EPS && f.equipeQuiDepasse ? { ...f.equipeQuiDepasse } : null,
           cumul: g.cumul, attenteMax: g.attenteMax ? g.attenteMax.minutes : null,
           cause: causeDuGoulot(g, finDe.get(g.service + '|' + g.jour), g.eqs, attendus, depasseDe(g)) };
       });
@@ -491,22 +494,31 @@
     return fini(v.debutPoste) && fini(v.presence) ? v.debutPoste + v.presence : null;
   }
   /**
-   * Par service et jour de travail (les lignes des indicateurs) : la fin de son dernier lot, la fin de son horaire (les
-   * équipes qui travaillent, pas une mise à disposition), ce qui dépasse — équipe par équipe, le plus grand dépassement (une
-   * équipe qui finit tard dans son horaire n'en cache pas une autre qui déborde du sien) ; ses heures sup (équipes, renforts
-   * prêtés, chauffeurs). Les équipes de la veille ne prêtent ni leur fin ni leurs heures sup à celles du jour des vols.
+   * Une équipe travaille ce jour-là : elle a des lots à elle. Une équipe dont la commande n'a pas de vol ce jour-là n'a pas
+   * d'horaire à tenir : elle ne prête pas le sien à son service. Une équipe d'appui, sans lot à elle, travaille quand elle
+   * est là ; une mise à disposition ne compte pas.
+   */
+  const travailleCeJour = v => v.type !== 'dispo' && (v.type === 'appui' ? (+v.personnes || 0) > 0 : (v.lots || []).some(l => !l.dispo));
+  /**
+   * Par service et jour de travail (les lignes des indicateurs) : la fin de son dernier lot, la fin de son horaire — celui
+   * des équipes qui travaillent ce jour-là (`travailleCeJour`) —, ce qui dépasse — équipe par équipe, le plus grand
+   * dépassement (une équipe qui finit tard dans son horaire n'en cache pas une autre qui déborde du sien), et cette équipe
+   * (`equipeQuiDepasse` : son nom, sa propre fin, son propre horaire ; null si aucune ne dépasse) ; ses heures sup (équipes,
+   * renforts prêtés, chauffeurs). Les équipes de la veille ne prêtent ni leur fin ni leurs heures sup à celles du jour des vols.
    */
   function fins(r, args, k) {
     const nom = nomDe(args), defs = new Map((args.ateliers || []).map(a => [a.id, a]));
     const max = l => (l.length ? Math.max(...l) : null);
     const services = k.services.map(s => {
-      const eqs = equipesDe(r, s), travail = eqs.filter(v => v.type !== 'dispo');
+      const eqs = equipesDe(r, s), travail = eqs.filter(travailleCeJour);
       const parEquipe = travail.map(v => ({ id: v.id, nom: v.nom, fin: fini(v.fin) ? v.fin : null, finHoraire: finHoraireDe(v, defs.get(v.id)) }))
         .map(e => ({ ...e, depasse: e.fin !== null && fini(e.finHoraire) ? net(Math.max(0, e.fin - e.finHoraire)) : null }));
       const hs = { equipes: net(somme(eqs, heuresSupDe)), renforts: net(somme(eqs, v => v.renfortsHeuresSup)), chauffeurs: net(somme(eqs, v => v.heuresSupChauffeurs)) };
+      // L'équipe qui dépasse le plus ; à égalité, la première de la liste.
+      const pire = parEquipe.reduce((m, e) => (e.depasse > EPS && (!m || e.depasse > m.depasse + EPS) ? e : m), null);
       return { service: s.service, nom: nom(s.service), jour: s.jour, fin: max(parEquipe.map(e => e.fin).filter(fini)),
         finHoraire: max(parEquipe.map(e => e.finHoraire).filter(fini)), depasse: max(parEquipe.map(e => e.depasse).filter(fini)),
-        heuresSup: { ...hs, total: net(hs.equipes + hs.renforts + hs.chauffeurs) }, equipes: parEquipe };
+        equipeQuiDepasse: pire ? { ...pire } : null, heuresSup: { ...hs, total: net(hs.equipes + hs.renforts + hs.chauffeurs) }, equipes: parEquipe };
     });
     return { services };
   }

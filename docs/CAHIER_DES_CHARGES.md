@@ -239,9 +239,16 @@ jour s'affiche.
   sur le chemin d'une commande en retard, dit que la commande ou le vol prend
   son retard en aval. Sinon : « rien ne coince ».
 - **La fin d'horaire** : le début du poste + la présence ; au handling, la fin de
-  ses vacations de chauffeurs. Ce qui dépasse se compte équipe par équipe : le
-  plus grand dépassement d'une équipe du service (une équipe qui finit tard dans
-  son horaire n'en cache pas une autre qui déborde du sien).
+  ses vacations de chauffeurs. Celle d'un service est celle de ses équipes
+  **qui travaillent ce jour-là** (correction 18, retouches) : une équipe sans
+  lot ce jour-là — sa commande n'a pas de vol — ne prête pas son horaire à son
+  service ; une équipe d'appui, sans lot à elle, compte quand elle est là. Ce
+  qui dépasse se compte équipe par équipe : le plus grand dépassement d'une
+  équipe du service (une équipe qui finit tard dans son horaire n'en cache pas
+  une autre qui déborde du sien) ; l'équipe qui dépasse est nommée, avec sa
+  propre fin et son propre horaire (« l'équipe … finit à 21:30 pour 21:00 »),
+  dans la ligne de la Synthèse, la carte « Où ça coince » et la feuille
+  « Réponses ».
 - **Une exception** : un retard au moins égal au seuil. La cause d'un vol chargé
   en retard : celle du moteur (commande pas prête, faute de chauffeur, faute de
   véhicule, fenêtre trop courte) ; celle d'une commande : l'étape de son chemin

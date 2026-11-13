@@ -443,7 +443,7 @@ le rouge ne sert qu’aux retards.
         équipes et la page Période —, une ligne par service et
         par jour de travail : il faut, présents et l'écart ; le matin et
         l'après-midi ; le pic au travail ; l'occupation ; les personnes sans
-        travail ; l'attente d'un arrivage ; la fin et les heures sup — ceux
+        travail ; l'attente d'un arrivage ; la fin et, dessous, les heures sup — ceux
         des équipes de ce jour-là. Chaque ligne dit son jour (« J−2 »,
         « veille », « J+1 » ; « jour des vols » quand le service a plusieurs
         lignes). Un clic sur un service l'ouvre dans le planning des
@@ -476,8 +476,14 @@ le rouge ne sert qu’aux retards.
           Un service qui reçoit sa journée en une fois n'a aucune attente ;
           celui où le travail arrive au fil de la journée (des retours à
           laver, des vols à contrôler) peut en avoir.
-        - *Fin* : elle ne prend la couleur de statut que si le dépassement
-          atteint le quart d'heure.
+        - *Fin et heures sup* : la fin du dernier lot ; dessous, l'horaire
+          des équipes qui travaillent ce jour-là (une équipe sans lot ce
+          jour-là ne prête pas le sien) — ou, quand une équipe dépasse, cette
+          équipe, avec sa propre fin et son propre horaire (« l'équipe …
+          finit à 21:30 pour 21:00 ») ; puis les heures sup, en personnes ×
+          heures. La case ne prend la couleur de statut que si le
+          dépassement atteint le quart d'heure. À 1 366 px de large, tout le
+          tableau tient sans défilement horizontal.
      4. **La journée** : la courbe des présents, des personnes au travail et
         des lots à faire (prêts, pas commencés), avec un repère par départ ;
         la bulle suit la souris ou les flèches du clavier.
@@ -960,6 +966,8 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/periode-lisible-browser.cjs` | La page Période se lit sans chercher (v1, correction 17 d), sur l'unité fictive, à 1 280 px : la colonne « Unité » juste après le jour, visible sans faire défiler ; les champs « 7,5 h titulaire » et « 7 h intérim » montrent leur valeur entière, à la française (une valeur refusée est nommée) ; les jours incomplets expliqués une seule fois, en une phrase, le détail dépliable ; (correction 18 c) « Période simulée : … » une seule fois sur la page Période, dans sa carte — ni dans la bande du haut, ni en notification ; ailleurs, la bande la garde |
 | `tests/reponses-vrai.test.cjs` | Des lignes qui disent vrai (v1, correction 17 c), sur des journées fictives calculées à la main : un service permanent et un d'appui (« fixe », pas d'écart, hors de « Il faut ») ; un handling à chauffeurs (les mêmes personnes dans Présents, Matin et Après-midi, une note sur ce qui n'est pas compté) ; un surplus sans couleur d'alerte et un manque avec ; les seuils par défaut (6 h, 3 personnes) et un réglage enregistré inchangé ; des lots qui attendent 2 h dans l'horaire (« rien ne coince ») ; un service qui dépasse le seuil et son horaire, ou fait partir une commande en retard (le goulot) ; deux essais (« fixe », pas « absent ») |
 | `tests/reponses-jours.test.cjs` | Le jour de travail jusqu'au bout de la ligne (v1, correction 17 a), sur une journée fictive calculée à la main : un service avec une équipe la veille et une le jour des vols a deux lignes, chacune avec sa fin, sa fin d'horaire, son dépassement, ses heures sup, sa file et son attente ; la somme des lignes fait le service ; chaque ligne dit son jour ; le goulot dit le sien ; la feuille « Réponses » et « Comparer deux essais » aussi |
+| `tests/reponses-fins.test.cjs` | La fin d'un service contre l'horaire de ses équipes du jour (v1, correction 18, retouches), sur des journées fictives calculées à la main : trois équipes, une absente, une qui dépasse — la fin d'horaire est celle des équipes qui travaillent ; l'équipe qui dépasse est nommée avec sa fin et son horaire (la ligne, la carte « Où ça coince », la feuille « Réponses ») ; un petit dépassement ; un service dont aucune équipe ne travaille ; une équipe d'appui ; le tableau à onze colonnes |
+| `tests/synthese-largeur-browser.cjs` | Le tableau « Les services » à 1 366 × 768 (v1, correction 18, retouches), sur l'unité fictive (des retards ; une équipe qui dépasse ; des noms longs) et l'unité fictive de 15 services : onze colonnes à l'écran, ni le tableau ni la page ne défilent en largeur, 100 px de marge au moins ; l'équipe qui dépasse et les heures sup sous la fin |
 | `tests/periode-unite.test.cjs` | La page Période sans navigateur (v1, évolution 15 d) : la colonne « Unité » égale à la somme des services, le pic et l'occupation de l'unité (`chargeDeLUnite`), la moyenne des personnes seule, un seul bloc dans un mois, les jours complets d'abord, une seule écriture du temps, la courbe (un point par jour, le réel) |
 | `tests/calage-bases.test.cjs` | La correspondance propose 7,5 h / 7 h par ETP quand rien n'est réglé, sans l'enregistrer ; un réglage enregistré ne change pas ; le moteur garde ses 7 h (v1, évolution 15 d) |
 | `tests/periode-page-browser.cjs` | La page Période dans la page (v1, évolution 15 d), sur l'unité fictive : la colonne Unité, la courbe (souris, flèches) et le réel importé, la première colonne collante et le défilement qui se voit à 760 px, les moyennes des personnes, un seul bloc dans un mois, les jours complets d'abord, aucune durée en minutes au-delà de 60, les bases de la correspondance |

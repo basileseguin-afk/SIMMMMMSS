@@ -133,7 +133,9 @@
       return [ligne(2, s.nom, j, 'Fin du dernier lot', quand(s.fin), 'heure', null, null, fini(s.fin) ? heure(s.fin) : null),
         ligne(2, s.nom, j, 'Fin de l’horaire', quand(s.finHoraire), 'heure', null, null, fini(s.finHoraire) ? heure(s.finHoraire) : null),
         // Le dépassement compte à partir du quart d'heure (une règle fixe, correction 18 a) : en dessous, il s'écrit sans compter.
-        ligne(2, s.nom, j, 'Dépassement', entier(s.depasse), 'min', REP().DEPASSEMENT_MIN, fini(s.depasse) ? ouiNon(s.depasse >= REP().DEPASSEMENT_MIN - EPS) : null),
+        // En détail : l'équipe qui dépasse, avec sa propre fin et son propre horaire.
+        ligne(2, s.nom, j, 'Dépassement', entier(s.depasse), 'min', REP().DEPASSEMENT_MIN, fini(s.depasse) ? ouiNon(s.depasse >= REP().DEPASSEMENT_MIN - EPS) : null,
+          s.equipeQuiDepasse ? 'l’équipe ' + s.equipeQuiDepasse.nom + ' finit à ' + heure(s.equipeQuiDepasse.fin) + ' pour ' + heure(s.equipeQuiDepasse.finHoraire) : null),
         ligne(2, s.nom, j, 'Heures sup', entier(h.total), 'min × personnes', null, null,
           'équipes ' + (entier(h.equipes) ?? 0) + ', renforts prêtés ' + (entier(h.renforts) ?? 0) + ', chauffeurs ' + (entier(h.chauffeurs) ?? 0))];
     });

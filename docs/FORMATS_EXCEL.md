@@ -864,8 +864,10 @@ Une ligne par mesure, dans l'ordre du contrat :
   le dernier lot, et ce que l'équipe attendait) et `Part de la présence sans
   travail` (%). Les heures écrites en détail sont arrondies à la minute,
   comme la cellule et comme la page.
-- **3.** Par service et jour de travail : `Fin du dernier lot`, `Fin de l’horaire`, `Dépassement`
-  (min ; « au-delà du seuil » à partir d'un quart d'heure, une règle fixe), `Heures sup` (min × personnes ; équipes, renforts prêtés, chauffeurs
+- **3.** Par service et jour de travail : `Fin du dernier lot`, `Fin de l’horaire` (celle des
+  équipes qui travaillent ce jour-là : correction 18, retouches), `Dépassement`
+  (min ; « au-delà du seuil » à partir d'un quart d'heure, une règle fixe ; en détail, l'équipe qui
+  dépasse, avec sa propre fin et son propre horaire), `Heures sup` (min × personnes ; équipes, renforts prêtés, chauffeurs
   en détail).
 - **4.** Une ligne par exception (vol chargé en retard, vol pas chargé, vol
   pas prêt, vol sans équipe, commande en retard) : son retard en

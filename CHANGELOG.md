@@ -5,6 +5,29 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-13 — Correction 18, retouches d'affichage : la fin d'un service, le tableau à 1 366 px
+
+- **La fin d'un service se lit contre l'horaire de ses équipes du jour.** Un
+  service à trois équipes dont celle de nuit ne travaillait pas ce jour-là
+  affichait l'horaire de cette équipe (le lendemain matin) et « dépasse de … »
+  pour une fin bien plus tôt. La fin d'horaire d'un service ne compte plus que
+  les équipes qui travaillent ce jour-là (une équipe sans lot ne prête pas son
+  horaire ; une équipe d'appui compte quand elle est là). Quand une équipe
+  dépasse, la ligne de la Synthèse, la carte « Où ça coince » et la feuille
+  « Réponses » la nomment, avec sa propre fin et son propre horaire
+  (« l'équipe … finit à 21:30 pour 21:00 »).
+- **Le tableau « Les services » tient à 1 366 px de large**, sans défilement
+  horizontal : les heures sup se lisent sous la fin, dans la même colonne
+  (« Fin et heures sup », onze colonnes) ; le tableau garde 100 px de marge au
+  moins pour des textes plus longs (avant : 13 px sur l'unité fictive).
+- Le moteur et les indicateurs ne changent pas ; les autres feuilles des
+  classeurs non plus. La version 2 n'est pas touchée.
+- Tests : `tests/reponses-fins.test.cjs` (trois équipes, une absente, une qui
+  dépasse, calculées à la main), `tests/synthese-largeur-browser.cjs`
+  (1 366 × 768) ; les tests des réponses et de la Synthèse adaptés.
+- Doc : README (« Lire la Synthèse »), `docs/CAHIER_DES_CHARGES.md` (la fin
+  d'horaire), `docs/FORMATS_EXCEL.md` (la feuille « Réponses »).
+
 ## 2026-11-13 — Correction 18 (c) : contrôle et doc
 
 - **Page Période** : la phrase « Période simulée : n journées de vols ;

@@ -51,10 +51,15 @@
     if (c.code === 'aval') return 'ses lots finissent avant la limite : la commande ou le vol prend son retard en aval';
     return 'la charge du jour ne tient pas dans l’horaire';
   }
-  /** Ce qui fait qu'un service coince : son dépassement, ce qu'il fait partir en retard. `sujet` : « il » dans une phrase. */
-  function consequences(g, sujet) {
+  /** « l'équipe … finit à hh:mm pour hh:mm » : l'équipe qui dépasse, avec sa propre fin et son propre horaire. */
+  const motsDeLEquipe = e => 'l’équipe ' + e.nom + ' finit à ' + heure(e.fin) + ' pour ' + heure(e.finHoraire);
+  /**
+   * Ce qui fait qu'un service coince : son dépassement, ce qu'il fait partir en retard. `sujet` : « il » dans une
+   * phrase. `avecEquipe` : nomme aussi l'équipe qui dépasse (la carte « Où ça coince »).
+   */
+  function consequences(g, sujet, avecEquipe) {
     const QUART = REP().DEPASSEMENT_MIN, l = [];
-    if (g.depasse >= QUART - EPS) l.push((sujet ? sujet + ' ' : '') + 'finit ' + duree(g.depasse) + ' après son horaire');
+    if (g.depasse >= QUART - EPS) l.push((sujet ? sujet + ' ' : '') + 'finit ' + duree(g.depasse) + ' après son horaire' + (avecEquipe && g.equipe ? ' : ' + motsDeLEquipe(g.equipe) : ''));
     if (g.enRetard > 0) l.push(l.length ? 'fait partir ' + pluriel(g.enRetard, 'commande ou vol', 'commandes ou vols') + ' en retard'
       : pluriel(g.enRetard, 'commande ou vol part', 'commandes ou vols partent') + ' en retard par ses lots');
     return l.join(' et ');
@@ -197,13 +202,17 @@
     return '<td class="sy-arrivage"' + (ton ? '' : ' title="' + esc(titre) + '"') + marque(ton, n + '<small' + (ton ? ' title="' + esc(titre) + '"' : '') + '>'
       + (a ? esc(duree(a.minutes)) + ' à ' + esc(heure(a.de)) : '—') + '</small>') + '</td>';
   }
-  /** Les cases de la fin d'une ligne (sa fin, ses heures sup) : celles de son service ce jour de travail-là. */
-  function casesDeLaFin(l, ton) {
-    const f = l.fin;
-    const fin = f && f.fin != null ? '<span class="sy-v">' + esc(heure(f.fin)) + '</span>' + (f.finHoraire != null ? '<small>horaire ' + esc(heure(f.finHoraire))
-      + (f.depasse > EPS ? ', dépasse de ' + esc(duree(f.depasse)) : '') + '</small>' : '') : f && f.finHoraire != null ? '<span class="sy-sur">pas fini</span>' : '—';
-    const hs = f && f.heuresSup.total > EPS ? esc(duree(f.heuresSup.total)) : '—';
-    return '<td class="sy-fin"' + marque(ton, fin) + '</td><td class="num">' + hs + '</td>';
+  /**
+   * La case de la fin d'une ligne : la fin de son service ce jour de travail-là ; dessous, l'horaire de ses équipes qui
+   * travaillent — ou, quand une équipe dépasse, cette équipe, avec sa propre fin et son propre horaire — puis ses heures sup
+   * (personnes × heures), dans la même case : le tableau tient sur la largeur d'un écran de 1 366 px.
+   */
+  function caseDeLaFin(l, ton) {
+    const f = l.fin, e = f && f.equipeQuiDepasse;
+    const sous = !f || f.finHoraire == null ? '' : e ? '<small class="sy-depasse">' + esc(motsDeLEquipe(e)) + '</small>' : '<small>horaire ' + esc(heure(f.finHoraire)) + '</small>';
+    const fin = f && f.fin != null ? '<span class="sy-v">' + esc(heure(f.fin)) + '</span>' + sous : f && f.finHoraire != null ? '<span class="sy-sur">pas fini</span>' : '—';
+    const hs = f && f.heuresSup.total > EPS ? '<small class="sy-hs" title="Heures sup, en personnes × heures">heures sup ' + esc(duree(f.heuresSup.total)) + '</small>' : '';
+    return '<td class="sy-fin"' + marque(ton, fin + hs) + '</td>';
   }
 
   /** Le tableau « Les services ». Un clic sur une ligne ouvre ce service dans « Planning des équipes ». */
@@ -217,21 +226,21 @@
         + esc(l.service) + '" data-pg-viser-jour="' + l.jour + '" title="Voir ce service dans le planning des équipes">' + esc(l.nom) + '</button>' + jour(l.mot) + '</th>'
         + caseBesoin(l) + casePresents(l) + caseEcart(l, t.ecart, max)
         + '<td class="num">' + moitie(l.matin) + '</td><td class="num">' + moitie(l.apresMidi) + '</td><td class="num">' + pic + '</td>'
-        + caseOccupation(l, t.occupation) + caseSansTravail(l) + caseArrivage(l, t.attente) + casesDeLaFin(l, t.fin) + '</tr>';
+        + caseOccupation(l, t.occupation) + caseSansTravail(l) + caseArrivage(l, t.attente) + caseDeLaFin(l, t.fin) + '</tr>';
     };
     return '<div class="table-scroll sy-cadre"><table class="svc-table sy-table"><caption class="sr-only">Les services, de l’amont vers l’aval</caption><thead><tr>'
       + '<th scope="col">Service</th><th scope="col" class="num">Besoin</th><th scope="col" class="num">Présents</th><th scope="col" class="num">Écart</th>'
       + '<th scope="col" class="num" title="Avant 13:00 du jour de travail : au travail au plus / présents">Matin</th><th scope="col" class="num" title="À partir de 13:00 : au travail au plus / présents">Après-midi</th>'
       + '<th scope="col" class="num">Pic au travail</th><th scope="col" class="num">Occupation</th>'
       + '<th scope="col" class="num" title="Les heures (personnes × heures) sans travail, et leur part de la présence">Personnes sans travail</th>'
-      + '<th scope="col" title="Un arrivage : les lots livrés ensemble. Son attente va de sa livraison au début de son premier lot">Attente d’un arrivage</th><th scope="col">Fin</th>'
-      + '<th scope="col" class="num">Heures sup</th></tr></thead><tbody>' + ls.map(ligne).join('') + '</tbody></table></div>'
+      + '<th scope="col" title="Un arrivage : les lots livrés ensemble. Son attente va de sa livraison au début de son premier lot">Attente d’un arrivage</th><th scope="col" title="La fin du dernier lot ; dessous, l’horaire des équipes qui travaillent ce jour-là (ou l’équipe qui le dépasse), puis les heures sup, en personnes × heures">Fin et heures sup</th>'
+      + '</tr></thead><tbody>' + ls.map(ligne).join('') + '</tbody></table></div>'
       + '<p class="mini-note sy-legende">Besoin : la charge du jour ÷ un poste, arrondie au service ; « fixe » : un service permanent, d’appui ou un handling, '
       + 'sans besoin calculé (il ne compte pas dans « Il faut »). Présents en équivalents temps plein. Matin et après-midi : au travail au plus / présents. '
       + 'Personnes sans travail : les heures (personnes × heures) et leur part de la présence ; au survol, avant le premier lot, entre deux lots, après le dernier. '
       + 'Un arrivage : les lots livrés ensemble ; il attend de sa livraison au début de son premier lot — les lots suivants sont à faire, dans l’ordre de travail. '
       + 'En couleur : il manque au moins ' + esc(pluriel(rep.seuils.ecartPersonnes, 'personne', 'personnes')) + ' (un surplus n’est pas une alerte), un arrivage qui attend plus de '
-      + esc(duree(rep.seuils.attenteLot)) + ', une occupation de plus de ' + esc(nombre(rep.seuils.occupation)) + ' %, une fin au moins un quart d’heure après l’horaire.</p>'
+      + esc(duree(rep.seuils.attenteLot)) + ', une occupation de plus de ' + esc(nombre(rep.seuils.occupation)) + ' %, une fin au moins un quart d’heure après l’horaire — celui des équipes qui travaillent ce jour-là ; l’équipe qui dépasse est nommée, avec sa fin et son horaire.</p>'
       + '<p class="mini-note sy-explique-occ">Occupation : la part du temps de présence couverte par le travail du barème. Elle dépend des temps par vol et des effectifs réglés.</p>'
       + horsCompte(ls).map(n => '<p class="mini-note sy-note">' + esc(n) + '</p>').join('');
   }
@@ -341,9 +350,9 @@
           + attendent.map(x => '<li><b>' + esc(x.nom) + '</b>' + jourDe(x) + ' ' + esc(duree(x.attenteMax.minutes)) + ', à ' + esc(heure(x.attenteMax.de)) + '</li>').join('') + '</ul>' : '') };
     }
     const g = goulots[0], autres = goulots.slice(1, 3), reste = goulots.length - 1 - autres.length;
-    const ligne = x => '<li><b>' + esc(x.nom) + '</b>' + jourDe(x) + ' ' + esc(consequences(x)) + '<small>' + esc(motsDeLaCause(x.cause)) + '</small></li>';
+    const ligne = x => '<li><b>' + esc(x.nom) + '</b>' + jourDe(x) + ' ' + esc(consequences(x, '', true)) + '<small>' + esc(motsDeLaCause(x.cause)) + '</small></li>';
     return { ton: 'attente', titre: 'Où ça coince', page: 'at-planning', service: g.service, jour: g.jour || 0,
-      corps: '<p class="sy-grand">' + esc(g.nom) + jourDe(g) + '</p><p>' + esc(consequences(g)) + (g.heuresSup > EPS ? ' ; heures sup : ' + esc(duree(g.heuresSup)) + ' (personnes × heures)' : '') + '.</p>'
+      corps: '<p class="sy-grand">' + esc(g.nom) + jourDe(g) + '</p><p>' + esc(consequences(g, '', true)) + (g.heuresSup > EPS ? ' ; heures sup : ' + esc(duree(g.heuresSup)) + ' (personnes × heures)' : '') + '.</p>'
       + '<p class="mini-note sy-cause">Cause : ' + esc(motsDeLaCause(g.cause)) + '.</p>'
       + (autres.length ? '<p class="sy-aussi">Coincent aussi :</p><ul class="sy-exceptions">' + autres.map(ligne).join('') + '</ul>' : '')
       + (reste > 0 ? '<p class="mini-note">Et ' + esc(pluriel(reste, 'autre service', 'autres services')) + '.</p>' : '') };
