@@ -142,7 +142,7 @@
   function comptesDesJours(b) {
     const n = b.joursTravail.filter(w => w.complet).length, i = b.joursTravail.length - n;
     return { complets: n, incomplets: i, texte: n + (n > 1 ? ' jours complets' : ' jour complet') + (i ? ', ' + i + (i > 1 ? ' incomplets' : ' incomplet') : ''),
-      explication: 'un jour incomplet manque des vols d’un jour voisin, hors de la période ; il est montré, mais sort des totaux et des moyennes' };
+      explication: 'Un jour incomplet manque des vols d’un jour voisin, hors de la période : il est montré, mais sort des totaux et des moyennes.' };
   }
 
   class VuePeriode {
@@ -161,12 +161,14 @@
      * } */
     constructor(a) {
       this.a = a; this.resultat = null; this.signature = null; this.calcul = null; this.erreur = null;
-      this.mesure = 'personnes'; this.ouverts = new Set(); this.programme = null; this.desc = null;
+      this.mesure = 'personnes'; this.ouverts = new Set(); this.programme = null; this.desc = null; this.commentOuvert = false;
       const bandeau = document.getElementById('periode-bandeau'), vue = document.getElementById('journee-periode');
       for (const el of [bandeau, vue]) if (el) {
         el.addEventListener('click', e => this.clic(e));
         el.addEventListener('change', e => this.choix(e));
       }
+      // « Comment les jours sont comptés » reste déplié d'un rendu à l'autre (`toggle` ne remonte pas : on l'écoute à la capture).
+      if (vue) vue.addEventListener('toggle', e => { if (e.target.classList && e.target.classList.contains('pv-comment')) this.commentOuvert = e.target.open; }, true);
     }
 
     /** La période qu'on regarde : celle du programme daté. Un autre programme arrête le calcul en cours ;
@@ -271,17 +273,18 @@
 
     rendre() { this.rendreBandeau(); this.rendreVue(); }
 
-    /** La ligne d'état : où en est la période, et d'où vient le sale de la veille de la journée affichée. */
-    /** `court` : pour le bandeau d'en-tête, sans la phrase qui explique l'incomplet (la page Période la donne). */
-    texteEtat(d, court) {
+    /**
+     * La ligne d'état : où en est la période, et d'où vient le sale de la veille de la journée affichée. Elle compte les jours
+     * incomplets sans les expliquer : la page Période le fait, une seule fois (correction 17 d).
+     */
+    texteEtat(d) {
       const e = this.etat(), jour = this.a.jour();
       if (this.erreur) return '<span class="pj-erreur">Période non simulée : ' + esc(this.erreur) + '</span>';
       if (e === 'en-cours') return this.texteProgression();
       if (e === 'jamais') return 'Période de ' + d.jours + (d.jours > 1 ? ' jours' : ' jour') + ' : pas encore simulée. La journée affichée part du sale de la veille saisi.';
       if (e === 'a-relancer') return '<b class="pj-relancer">À relancer</b> : un réglage ou les vols ont changé depuis le calcul. La journée affichée part du sale de la veille saisi.';
       const r = this.resultat.periode, j = this.resultat.journees.find(x => x.date === jour), c = comptesDesJours(this.resultat.bilan);
-      return 'Période simulée : ' + r.jours + (r.jours > 1 ? ' journées' : ' journée') + ' de vols ; ' + c.texte
-        + (c.incomplets && !court ? ' <span class="pv-explique">(' + c.explication + ')</span>' : '') + '.'
+      return 'Période simulée : ' + r.jours + (r.jours > 1 ? ' journées' : ' journée') + ' de vols ; ' + c.texte + '.'
         + (j && j.date !== r.debut ? ' Cette journée part du sale laissé la veille dans la période (' + nombre(j.extrait.saleInitial, 0) + ' u).' : '');
     }
     texteProgression() {
@@ -309,7 +312,7 @@
           <button type="button" class="btn btn-sm" data-pv="precedent" aria-label="Journée précédente"${jour === d.debut ? ' disabled' : ''}>‹</button>
           <select id="periode-jour">${options}</select>
           <button type="button" class="btn btn-sm" data-pv="suivant" aria-label="Journée suivante"${jour === d.fin ? ' disabled' : ''}>›</button></div>
-        <p class="pj-etat" role="status" aria-live="polite">${this.texteEtat(d, true)}</p>
+        <p class="pj-etat" role="status" aria-live="polite">${this.texteEtat(d)}</p>
         <div class="pj-actions">${e === 'en-cours' ? '<button type="button" class="btn btn-sm" data-pv="annuler">Annuler</button>'
           : `<button type="button" class="btn btn-sm${e === 'a-jour' ? '' : ' btn-play'}" data-pv="lancer">${e === 'jamais' ? 'Simuler la période' : 'Relancer la période'}</button>`}
           <button type="button" class="lien-fort" data-pv="voir">La période →</button></div>`);
@@ -326,11 +329,17 @@
       const d = this.description();
       if (!d) { dessiner(box, '<p class="mini-note">Importez un programme de vols daté (colonne date) pour simuler une période.</p>'); return; }
       const e = this.etat(), r = this.resultat;
+      // Les jours incomplets s'expliquent une seule fois, en une phrase, seulement s'il y en a ; le détail se déplie (correction 17 d).
+      const c = r && e !== 'en-cours' && !this.erreur ? comptesDesJours(r.bilan) : null;
       const tete = `<div class="panneau pv-tete"><p class="pv-etat" role="status">${this.texteEtat(d)}</p>
-        <p class="mini-note">Du ${PE().dateLongue(d.debut)} au ${PE().dateLongue(d.fin)}, ${d.jours} ${d.jours > 1 ? 'journées' : 'journée'} de vols. Chaque équipe compte au
-          jour des vols + son jour (la cuisine à J−2 des vols du 12 travaille le 10). Un jour de travail <b>incomplet</b> — une de ses journées de vols manque, avant
-          le premier jour ou en fin de période — est montré, et sort des totaux et des moyennes. Passent d’un jour au suivant : le sale non lavé, le stock propre
-          (boucle du matériel), et en « J+1 » les départs de la veille ; pas encore les lots non finis ni les retards.</p>
+        ${c && c.incomplets ? `<p class="mini-note pv-explique">${esc(c.explication)}</p>` : ''}
+        <details class="aide bloc pv-comment"${this.commentOuvert ? ' open' : ''}><summary>Comment les jours sont comptés</summary><span class="aide-corps">
+          <p>Du ${PE().dateLongue(d.debut)} au ${PE().dateLongue(d.fin)}, ${d.jours} ${d.jours > 1 ? 'journées' : 'journée'} de vols. Chaque équipe compte au
+          jour des vols + son jour (la cuisine à J−2 des vols du 12 travaille le 10).</p>
+          <p>Un jour de travail est <b>incomplet</b> quand une de ses journées de vols manque, avant le premier jour ou en fin de période ; sa ligne le dit, et
+          son infobulle nomme les vols qui manquent.</p>
+          <p>Passent d’un jour au suivant : le sale non lavé, le stock propre (boucle du matériel), et en « J+1 » les départs de la veille ; pas encore les
+          lots non finis ni les retards.</p></span></details>
         <div class="pv-actions">${e === 'en-cours' ? '<button type="button" class="btn btn-sm" data-pv="annuler">Annuler</button>'
           : `<button type="button" class="btn btn-sm${e === 'a-jour' ? '' : ' btn-play'}" data-pv="lancer">${e === 'jamais' ? 'Simuler la période' : 'Relancer la période'}</button>`}
           ${e === 'a-jour' ? '<button type="button" class="btn btn-sm" data-pv="exporter">Exporter la période (Excel)</button>' : ''}</div></div>`;
@@ -344,12 +353,12 @@
         return `<tr data-pv-jour="${w.date}" class="${w.complet ? '' : 'pv-incomplet'}" title="${esc(titre)}">
             <th scope="row"><button type="button" class="pv-deplier" data-pv="detail" data-date="${w.date}" aria-expanded="${ouvert}" aria-label="Détail du ${PE().dateLongue(w.date)} par équipe et par compagnie">${ouvert ? '▾' : '▸'}</button>
               <button type="button" class="pv-ouvrir" data-pv="ouvrir" data-date="${w.date}">${jourDeSemaine(w.date)} ${PE().dateCourte(w.date)}</button>${w.complet ? '' : ' <span class="pv-badge">incomplet</span>'}</th>
-            ${services.map(s => cellule(valeurService(m, s.id, null, w))).join('')}${cellule(valeurUnite(m, [w]), ' data-pv-total')}</tr>`
+            ${cellule(valeurUnite(m, [w]), ' data-pv-total')}${services.map(s => cellule(valeurService(m, s.id, null, w))).join('')}</tr>`
           + (ouvert ? `<tr class="pv-detail"><td colspan="${services.length + 2}">${this.detail(w, b)}</td></tr>` : '');
       };
       // Le premier rang d'un bloc de cumul porte le trait qui le sépare des jours.
       const ligneCumul = (l, i, tous) => `<tr class="pv-cumul${l.moyenne ? ' pv-moyenne' : ''}${i === 0 || tous[i - 1].mois !== l.mois ? ' pv-tete-bloc' : ''}"><th scope="row">${esc(l.lib)}</th>${
-        services.map(s => cellule(valeurService(m, s.id, l))).join('')}${cellule(valeurUnite(m, l.jours, l), ' data-pv-total')}</tr>`;
+        cellule(valeurUnite(m, l.jours, l), ' data-pv-total')}${services.map(s => cellule(valeurService(m, s.id, l))).join('')}</tr>`;
       const cumuls = lignesDeCumul(b, m), rangs = cumuls.map((l, i) => ({ mois: l.mois, html: ligneCumul(l, i, cumuls) }));
       const corps = b.mois.map(mo => b.joursTravail.filter(w => w.date.startsWith(mo.mois)).map(ligneJour).join('')
         + rangs.filter(x => x.mois === mo.mois).map(x => x.html).join('')).join('') + rangs.filter(x => !x.mois).map(x => x.html).join('');
@@ -361,7 +370,7 @@
           <figcaption class="pv-bulle mini-note" role="status" aria-live="polite"></figcaption></figure>
         <p class="mini-note pv-defile-aide" aria-hidden="true">Le tableau défile sur le côté ; la colonne des jours reste.</p>
         <div class="pv-defile"><div class="table-scroll"><table class="svc-table pv-table" data-mesure="${m.id}">
-          <thead><tr><th scope="col">Jour de travail</th>${services.map(s => `<th scope="col">${esc(s.nom)}</th>`).join('')}<th scope="col">Unité</th></tr></thead>
+          <thead><tr><th scope="col">Jour de travail</th><th scope="col" data-pv-total title="Tous les services réunis">Unité</th>${services.map(s => `<th scope="col">${esc(s.nom)}</th>`).join('')}</tr></thead>
           <tbody>${corps}</tbody></table></div></div></div>`);
       this.rendreCourbe(box);
       this.suivreDefilement(box);

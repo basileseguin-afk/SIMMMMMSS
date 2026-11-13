@@ -225,14 +225,14 @@ const PIEGE='<img src=x onerror="window.__xss=1">';
     assert.equal(await page.locator('#journee-periode table.pv-table').getAttribute('data-mesure'),m);
     const ecrit=x=>(x==null?'—':ecrire(x));
     assert.deepEqual(await page.locator(`#journee-periode tr[data-pv-jour="${w.date}"] td`).allInnerTexts(),
-      [...services.map(s=>ecrit(valeur(w.services[s.id],lire))),ecrit(unite(PE.chargeDeLUnite([w]),false))],m+' : un jour, service par service, et l’unité');
+      [ecrit(unite(PE.chargeDeLUnite([w]),false)),...services.map(s=>ecrit(valeur(w.services[s.id],lire)))],m+' : un jour, l’unité d’abord (correction 17 d), puis service par service');
     const moyenne=page.locator('#journee-periode tr.pv-cumul.pv-moyenne').last();
     const pc=b.periode.indicateursCharge.services;
     if(avecTotal){
      const total=page.locator('#journee-periode tr.pv-cumul:not(.pv-moyenne)').last();
-     assert.deepEqual(await total.locator('td').allInnerTexts(),[...services.map(s=>ecrit(pc[s.id]?cumul(pc[s.id],false):null)),ecrit(unite(PE.chargeDeLUnite(complets),false))],m+' : la période');
+     assert.deepEqual(await total.locator('td').allInnerTexts(),[ecrit(unite(PE.chargeDeLUnite(complets),false)),...services.map(s=>ecrit(pc[s.id]?cumul(pc[s.id],false):null))],m+' : la période');
     }else assert.equal(await page.locator('#journee-periode tr.pv-cumul:not(.pv-moyenne)').count(),0,m+' : pas de total de personnes');
-    assert.deepEqual(await moyenne.locator('td').allInnerTexts(),[...services.map(s=>ecrit(pc[s.id]?cumul(pc[s.id],true):null)),ecrit(unite(PE.chargeDeLUnite(complets),true))],m+' : la moyenne');
+    assert.deepEqual(await moyenne.locator('td').allInnerTexts(),[ecrit(unite(PE.chargeDeLUnite(complets),true)),...services.map(s=>ecrit(pc[s.id]?cumul(pc[s.id],true):null))],m+' : la moyenne');
     assert.ok(await page.locator('#journee-periode .pv-note-mesure').count()===1);
   }
   assert.ok(valeur(w.services.prepa,k=>k.picAuTravail.personnes)>0,'un pic au travail au montage');

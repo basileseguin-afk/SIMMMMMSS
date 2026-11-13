@@ -43,7 +43,9 @@ body[data-vue="plan"][data-sous="j-periode"] .app{grid-template-columns:minmax(0
 .pv-table tbody th{font-weight:var(--ds-g-normal);white-space:nowrap}
 .pv-n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .pv-zero{color:var(--ds-texte-4)}
+/* « Unité » : la première colonne de chiffres, juste après le jour (correction 17 d) ; un trait la sépare des services. */
 .pv-table td[data-pv-total]{font-weight:var(--ds-g-fort);color:var(--ds-texte-1)}
+.pv-table [data-pv-total]{border-right:1px solid var(--ds-bordure-forte)}
 .pv-table tr[data-pv-jour]{cursor:pointer}
 .pv-table tr[data-pv-jour]:hover>*{background:var(--ds-survol)}
 .pv-ouvrir{all:unset;cursor:pointer;color:var(--ds-accent-texte);font-weight:var(--ds-g-moyen);text-decoration:underline;text-decoration-color:var(--ds-trait-lien);text-underline-offset:2px}
@@ -104,7 +106,8 @@ body[data-vue="plan"][data-sous="j-periode"] .app{grid-template-columns:minmax(0
 .pc-services{display:flex;flex-wrap:wrap;gap:2px 10px;margin-top:4px;max-width:60ch}
 .pc-services label{display:flex;align-items:center;gap:4px;font-weight:var(--ds-g-normal)}
 .pc-bases{display:flex;flex-wrap:wrap;align-items:center;gap:var(--ds-e-2) var(--ds-e-4);margin-bottom:var(--ds-e-2)}
-.pc-base input{width:6ch}
+/* Les heures d'un ETP (« 7,5 », jusqu'à « 23,75 ») : le champ montre sa valeur entière (correction 17 d). */
+.pc-base input{width:calc(5ch + 2 * var(--ds-e-3) + 2px);box-sizing:border-box;text-align:right;font-variant-numeric:tabular-nums}
 .pc-liste{margin:0 0 var(--ds-e-2);padding-left:1.2em;font-size:var(--ds-t-13)}
 .pc-liste li{margin:2px 0}
 .pc-mesures .pc-tete-ligne th{background:var(--ds-surface-2);font-weight:var(--ds-g-fort)}
@@ -122,7 +125,9 @@ body[data-vue="plan"][data-sous="j-periode"] .app{grid-template-columns:minmax(0
 .pc-rejeu h4,.pc-travail h4{margin:var(--ds-e-3) 0 var(--ds-e-2)}
 
 /* ---- Évolution 15 (d) : la courbe de l'unité, le défilement qui se voit ---- */
-.pv-explique{color:var(--ds-texte-3);font-size:var(--ds-t-12)}
+/* Les jours incomplets, expliqués une fois, en une phrase ; le détail du compte des jours se déplie (correction 17 d). */
+.pv-tete .pv-explique{margin:0 0 var(--ds-e-2)}
+.pv-tete .pv-comment{margin:0 0 var(--ds-e-3);max-width:110ch}
 .pv-courbe{margin:0 0 var(--ds-e-3)}
 .pv-trace{position:relative;width:100%;overflow:hidden;border-radius:var(--ds-r-2)}
 .pv-trace:focus-visible{outline:2px solid var(--ds-focus);outline-offset:2px}

@@ -5,6 +5,35 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-13 — Correction 17 (d) : la page Période, et la doc
+
+- **La colonne « Unité »** est la première colonne de chiffres, juste après
+  le jour, sur chaque ligne (jours, totaux, moyennes) ; un trait la sépare des
+  services. Elle se voit sans faire défiler, même quand le tableau déborde
+  (`periode-vue.js`, `periode.css`). Les chiffres ne changent pas.
+- **Les heures d'un ETP** de la correspondance (« 7,5 h titulaire », « 7 h
+  intérim ») montrent leur valeur entière : un champ de texte, écrit à la
+  française, assez large pour « 23,75 » (le champ de nombre et ses flèches
+  coupaient « 7,5 »). La virgule et le point sont acceptés ; une valeur hors
+  de 0 à 24 h est refusée, en la nommant, comme avant (`calage-vue.js`).
+- **Les jours incomplets** ne s'expliquent qu'une fois, en une phrase, sous
+  la ligne d'état, et seulement s'il y en a ; la ligne d'état et le bandeau
+  les comptent sans les expliquer. Le détail — comment les jours sont
+  comptés, ce qui passe d'un jour au suivant — se déplie (« Comment les jours
+  sont comptés ») et reste déplié d'un rendu à l'autre.
+- Les captures de contrôle (`tests/captures-resultats-browser.cjs`) suivent :
+  la Synthèse dans ses quatre cas, selon la règle du goulot de la partie (c),
+  et la Période avec « Unité » juste après le jour.
+- Doc : README (« Lire la Synthèse » : les postes fixes, les chauffeurs,
+  l'écart, le goulot, les seuils par défaut), `docs/CAHIER_DES_CHARGES.md`
+  (pourquoi ces seuils par défaut ; l'état de la correction 17).
+- Tests : `tests/periode-lisible-browser.cjs` (à 1 280 px : « Unité » visible
+  sans défilement ; le champ affiche « 7,5 » en entier ; l'explication une
+  seule fois, le détail dépliable) ; les tests de la Période adaptés à
+  l'ordre des colonnes.
+- Aucun calcul ne change ; les classeurs exportés gardent leurs colonnes. La
+  version 2 n'est pas touchée.
+
 ## 2026-11-13 — Correction 17 (c) : des lignes qui disent vrai
 
 - **Les postes fixes.** Un service permanent (une mise à disposition), d'appui

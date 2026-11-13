@@ -53,17 +53,17 @@ const tropDeMinutes=t=>[...String(t).matchAll(/(\d[\d   ]*) ?min\b/g)].map(m=>+m
   await importer('vols-deux-mois.csv',programme('2026-10-25','2026-11-13'));
   await simuler();
 
-  // 1. Les jours complets d'abord, l'incomplet expliqué en une phrase.
+  // 1. Les jours complets d'abord ; l'incomplet expliqué une seule fois, en une phrase, sous la ligne d'état (correction 17 d).
   const b=await page.evaluate(()=>JSON.parse(JSON.stringify(Sim.periode.resultat.bilan)));
   const complets=b.joursTravail.filter(w=>w.complet).length,incomplets=b.joursTravail.length-complets;
   assert.ok(complets>1&&incomplets>1);
-  assert.match(await page.locator('#journee-periode .pv-etat').innerText(),
-    new RegExp(complets+' jours complets, '+incomplets+' incomplets \\(un jour incomplet manque des vols d’un jour voisin'));
-  // Le bandeau d'en-tête, plus court : les comptes, sans la phrase (la page la donne).
+  assert.match(await page.locator('#journee-periode .pv-etat').innerText(),new RegExp(complets+' jours complets, '+incomplets+' incomplets\\.$'));
+  assert.match(await page.locator('#journee-periode .pv-explique').innerText(),/^Un jour incomplet manque des vols d’un jour voisin, hors de la période : il est montré, mais sort des totaux et des moyennes\.$/);
+  // Le bandeau d'en-tête : les comptes, sans la phrase (la page la donne).
   assert.match(await page.locator('#periode-bandeau .pj-etat').innerText(),new RegExp(complets+' jours complets, '+incomplets+' incomplets\\.'));
 
   // 2. La colonne « Unité » : le total des services, chaque jour, celui du module, pour chaque mesure.
-  assert.equal(await page.locator('#journee-periode .pv-table thead th').last().textContent(),'Unité');
+  assert.equal(await page.locator('#journee-periode .pv-table thead th').nth(1).textContent(),'Unité','la première colonne de chiffres (correction 17 d)');
   for(const id of ['personnes','charge','heuresSup','hommeMinutes','picAuTravail','occupation']){
    await mesure(id);
    const r=await page.evaluate(id=>{

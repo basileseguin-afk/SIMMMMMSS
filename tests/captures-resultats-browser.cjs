@@ -90,7 +90,7 @@ const taillePng=f=>{const b=fs.readFileSync(f);assert.equal(b.toString('latin1',
     await F.importerVols(page,nav,ch.fichier,'semaine.csv',semaine());
     await nav.aller(page,'j-periode');await page.locator('#journee-periode [data-pv=lancer]').click();
     await page.waitForFunction(()=>Sim.periode.etat()==='a-jour',null,{timeout:120000});await attendre(400);
-    assert.equal(await page.locator('#journee-periode .pv-table thead th').last().textContent(),'Unité',V+'la colonne Unité');
+    assert.equal(await page.locator('#journee-periode .pv-table thead th').nth(1).textContent(),'Unité',V+'la colonne Unité, juste après le jour');
     assert.ok(await page.locator('#journee-periode .pvc-point').count()>=7,V+'la courbe');
     await capturer('periode');
     assert.deepEqual(errors,[],V+errors.join(' | '));

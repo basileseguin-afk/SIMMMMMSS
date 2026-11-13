@@ -217,7 +217,11 @@ jour s'affiche.
 
 **Les seuils d'alerte**, réglables et sauvegardés (la clé `ory-seuils-v1`,
 comprise dans « Tout sauvegarder » et « Restaurer » ; sans elle, les défauts).
-Une valeur invalide est refusée, en la nommant.
+Une valeur invalide est refusée, en la nommant. Les défauts (correction 17 c)
+ne valent que tant que rien n'est réglé : un réglage enregistré ne change pas.
+L'attente d'un lot est à 6 h parce que, dans une production par lots, un lot
+attend normalement son tour plusieurs heures : à 1 h, la plupart des services
+étaient signalés. L'écart est à 3 personnes, et ne signale qu'un manque.
 
 | Seuil | Défaut | Valeurs admises | Ce qu'il déclenche |
 |---|---|---|---|
@@ -229,7 +233,7 @@ Une valeur invalide est refusée, en la nommant.
 
 | # | Exigence | Source | État | Écart |
 |---|---|---|---|---|
-| R1–R5 | Les cinq réponses, dans un module sans navigateur que la page, les outils et les exports appellent | Évolution 15 (a à e) | ✅ | Le module et ses seuils (`moteur/reponses.js`), l'outil (`--reponses`), la Synthèse (deux phrases, trois cartes, « Les services », la courbe), « Détails » et « Comparer deux essais » rangés selon les questions, des comptes qui disent leur périmètre, une seule écriture du temps, la page Période (la colonne « Unité », la courbe et le réel, les personnes en moyenne par jour, les jours complets d'abord) et la feuille « Réponses » du classeur de la journée. Sans ses seuils ni la nouvelle feuille, tout résultat, indicateur et classeur d'avant reste identique (`tests/non-regression-15.test.cjs`). La période n'a pas encore ses cinq réponses jour par jour |
+| R1–R5 | Les cinq réponses, dans un module sans navigateur que la page, les outils et les exports appellent | Évolution 15 (a à e) | ✅ | Le module et ses seuils (`moteur/reponses.js`), l'outil (`--reponses`), la Synthèse (deux phrases, trois cartes, « Les services », la courbe), « Détails » et « Comparer deux essais » rangés selon les questions, des comptes qui disent leur périmètre, une seule écriture du temps, la page Période (la colonne « Unité », la courbe et le réel, les personnes en moyenne par jour, les jours complets d'abord) et la feuille « Réponses » du classeur de la journée. Correction 17 (a à d), sur une vraie unité : le jour de travail jusqu'au bout de chaque ligne, un seul ordre des services tiré de tous les chemins, des lignes qui disent vrai (postes fixes, chauffeurs, un manque seul signalé, les seuils par défaut, le goulot) ; la page Période : « Unité » en première colonne de chiffres, visible sans défiler, les heures d'un ETP écrites en entier (« 7,5 »), les jours incomplets expliqués une fois, le détail dépliable. Sans ses seuils ni la nouvelle feuille, tout résultat, indicateur et classeur d'avant reste identique (`tests/non-regression-15.test.cjs`). La période n'a pas encore ses cinq réponses jour par jour |
 
 ## 7. Indicateurs
 

@@ -163,7 +163,8 @@ const parse=t=>UI.parseFlights(t,{eta:true,spmlParCabine:true,date:true});
   const services=ordreColonnes.map(id=>periode.bilan.services.find(s=>s.id===id));
   assert.deepEqual(ordreColonnes.slice().sort(),periode.bilan.services.filter(s=>periode.bilan.joursTravail.some(x=>x.services[s.id])).map(s=>s.id).sort(),'les mêmes services, dans un autre ordre');
   const cases=await page.locator('#journee-periode tr[data-pv-jour="2026-10-28"] td').allInnerTexts();
-  assert.deepEqual(cases,[...services.map(s=>w.services[s.id]?String(w.services[s.id].personnes):'—'),String(w.total.personnes)]);
+  // « Unité » d'abord, juste après le jour (correction 17 d), puis les services.
+  assert.deepEqual(cases,[String(w.total.personnes),...services.map(s=>w.services[s.id]?String(w.services[s.id].personnes):'—')]);
   const moyennePeriode=await page.locator('#journee-periode tr.pv-cumul.pv-moyenne').last().locator('td[data-pv-total]').innerText();
   assert.equal(moyennePeriode,(Math.round(periode.bilan.periode.moyenne.personnes)+0).toLocaleString('fr-FR'));
   // L'arrondi au service (banc d'essai, évolution 11 a) : la charge, ⌈charge⌉ par service, le surplus d'arrondi.
@@ -172,7 +173,7 @@ const parse=t=>UI.parseFlights(t,{eta:true,spmlParCabine:true,date:true});
     await page.locator('#periode-mesure').selectOption(m);await attendre(100);
     assert.equal(await page.locator('#journee-periode table.pv-table').getAttribute('data-mesure'),m);
     assert.deepEqual(await page.locator('#journee-periode tr[data-pv-jour="2026-10-28"] td').allInnerTexts(),
-      [...services.map(s=>w.services[s.id]?fr(w.services[s.id][m],k):'—'),fr(w.total[m],k)],m);
+      [fr(w.total[m],k),...services.map(s=>w.services[s.id]?fr(w.services[s.id][m],k):'—')],m);
   }
   // Une autre mesure : les heures sup.
   await page.locator('#periode-mesure').selectOption('heuresSup');await attendre(100);

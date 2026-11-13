@@ -461,9 +461,12 @@
             ${libres.length ? `<select data-cal-champ="ajout-role" data-ligne="${i}" aria-label="Ajouter un rôle à ${esc(l.nom)}"><option value="">+ un rôle</option>${libres.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('')}</select>` : ''}</td>
           <td><select data-cal-champ="couvre" data-ligne="${i}" aria-label="Ce que couvre ${esc(l.nom)}">${COUVRE.map(([k, t]) => `<option value="${k}"${k === couvre(l) ? ' selected' : ''}>${t}</option>`).join('')}</select>${detail(l, i)}</td>
           <td><button type="button" class="btn btn-sm" data-cal="supprimer" data-ligne="${i}" aria-label="Supprimer la ligne ${esc(l.nom)}">Supprimer</button></td></tr>`;
+      // Les heures d'un ETP, écrites à la française et montrées en entier (correction 17 d) : « 7,5 », pas un champ de nombre
+      // dont les flèches coupent la valeur. La virgule et le point sont acceptés ; une valeur hors de 0 à 24 h est refusée, en la nommant.
+      const heuresFr = x => String(x).replace('.', ',');
       const bases = Object.entries(c.bases).map(([role, b]) => `<label class="pc-base">${role === 'defaut' ? 'Par défaut' : esc(role)}
-          <input type="number" min="0.5" max="24" step="0.25" value="${b.titulaires}" data-cal-champ="base-titulaires"${role === 'defaut' ? '' : ` data-role="${esc(role)}"`} aria-label="Heures d’un ETP titulaire${role === 'defaut' ? '' : ', ' + esc(role)}"> h titulaire,
-          <input type="number" min="0.5" max="24" step="0.25" value="${b.interim}" data-cal-champ="base-interim"${role === 'defaut' ? '' : ` data-role="${esc(role)}"`} aria-label="Heures d’un ETP intérimaire${role === 'defaut' ? '' : ', ' + esc(role)}"> h intérim</label>`).join('');
+          <input type="text" inputmode="decimal" value="${esc(heuresFr(b.titulaires))}" data-cal-champ="base-titulaires"${role === 'defaut' ? '' : ` data-role="${esc(role)}"`} aria-label="Heures d’un ETP titulaire${role === 'defaut' ? '' : ', ' + esc(role)}"> h titulaire,
+          <input type="text" inputmode="decimal" value="${esc(heuresFr(b.interim))}" data-cal-champ="base-interim"${role === 'defaut' ? '' : ` data-role="${esc(role)}"`} aria-label="Heures d’un ETP intérimaire${role === 'defaut' ? '' : ', ' + esc(role)}"> h intérim</label>`).join('');
       const sansBase = roles.filter(r => !c.bases[r]);
       return `<section class="pc-correspondance" aria-label="La correspondance">
         <h3>La correspondance</h3>

@@ -404,14 +404,22 @@ le rouge ne sert qu’aux retards.
    - *Synthèse* : la journée répond à cinq questions, dans cet ordre
      (évolution 15 ; le contrat : `docs/CAHIER_DES_CHARGES.md`, § 6 bis).
      **Lire la Synthèse**, de haut en bas :
-     1. **Deux phrases.** La première dit combien de personnes il faut et
-        combien sont présentes (« Il faut 26 personnes, 35,3 sont
-        présentes. ») ; la seconde, ce qui coince et ce qui part en retard
-        (« Cuisine froide (veille) coince de J-1 20:00 à 01:14 ; 15 vols et
-        14 commandes partent en retard. »), ou que rien ne coince.
-     2. **Trois cartes** : *Où ça coince* (le goulot, son moment, la file, la
-        plus longue attente d'un lot et sa cause — il manque du monde, le
-        service d'avant, le matériel ; les autres services qui attendent) ;
+     1. **Deux phrases.** La première dit combien de personnes il faut,
+        combien sont présentes, et combien d'entre elles tiennent un poste
+        fixe (« Il faut 19 personnes, 37,8 sont présentes, dont 9,5 en postes
+        fixes. ») : un poste fixe — un service permanent, d'appui, un
+        handling — n'a pas de besoin calculé depuis une charge et ne compte
+        pas dans « Il faut ». La seconde dit ce qui coince et ce qui part en
+        retard (« Cuisine froide (veille) coince de J-1 20:00 à 01:14 ;
+        15 vols et 14 commandes partent en retard. »), ou que rien ne coince.
+     2. **Trois cartes** : *Où ça coince* — le goulot : le service qui attend
+        plus que le seuil **et** qui finit après son horaire ou fait partir
+        une commande ou un vol en retard ; la carte dit son jour, son moment,
+        la file, la plus longue attente d'un lot, pourquoi il coince et sa
+        cause (il manque du monde, le service d'avant, le matériel), puis les
+        autres services qui attendent. Des lots qui attendent leur tour
+        sans retard ni dépassement ne font pas un goulot : « Rien ne
+        coince », et leurs attentes se lisent dans le tableau ;
         *Ce qui part en retard* (les seules exceptions, chacune avec son
         retard et sa cause, puis les comptes : les vols que le handling
         charge, les commandes de repas, celles d'équipement, chacun avec son
@@ -426,7 +434,14 @@ le rouge ne sert qu’aux retards.
         longue ; la fin et les heures sup — ceux des équipes de ce jour-là.
         Chaque ligne dit son jour (« J−2 », « veille », « J+1 » ; « jour des
         vols » quand le service a plusieurs lignes). Un clic sur un service
-        l'ouvre dans le planning des équipes.
+        l'ouvre dans le planning des équipes. Dans la colonne *Besoin*,
+        « fixe » marque un poste fixe : pas de besoin, pas d'écart ; « 3
+        + 2 fixes », un service qui a des postes fixes à côté de son besoin.
+        Un handling à chauffeurs compte ses chauffeurs dans *Présents*, comme
+        dans *Matin* et *Après-midi* ; une note sous le tableau dit les
+        personnes saisies à l'équipe qui ne sont pas comptées. L'*Écart* ne
+        prend la couleur de statut que s'il manque des personnes ; un surplus
+        garde sa barre, sans couleur d'alerte.
      4. **La journée** : la courbe des présents, des personnes au travail et
         des lots en file, avec un repère par départ ; la bulle suit la souris
         ou les flèches du clavier.
@@ -434,8 +449,9 @@ le rouge ne sert qu’aux retards.
      **Ce que veulent dire les couleurs.** Une case ne se colore que si un
      seuil est dépassé (« Réglages de la simulation › Seuils d'alerte » : un
      manque de 3 personnes, une attente de 6 h, une occupation de 95 %, une
-     durée de stock, un retard d'1 min) ; la couleur de l'attente dit ce qui
-     coince, le rouge ne sert qu'à un retard ; un retard nul ne s'écrit jamais
+     durée de stock, un retard d'1 min — les défauts, tant que rien n'est
+     réglé ; un réglage enregistré reste) ; la couleur de l'attente dit ce qui
+     attend au-delà du seuil, le rouge ne sert qu'à un retard ; un retard nul ne s'écrit jamais
      en rouge. Une durée s'écrit « 45 min » sous une heure, « 2 h 05 » au-delà.
      Des commandes que personne ne prépare sont un problème, avec son lien
      vers le service où les cocher. « Exporter les résultats » ; le classeur
@@ -800,7 +816,7 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `outils/simuler-journee.cjs` | Jouer une journée hors du navigateur : `node outils/simuler-journee.cjs sauvegarde.json vols.csv [options.json]` rend la journée que la page aurait calculée, et ses indicateurs de charge ; `--xlsx charge.xlsx`, le classeur de la charge de la journée ([le banc d’essai](docs/BANC_ESSAI.md)) |
 | `moteur/periode.js` | Une période : un programme de vols daté joué jour après jour (le sale, le stock propre et, en « J+1 », les départs de la veille passent au lendemain), le bilan par jour de travail, par mois et sur la période ; pour la page et pour `outils/simuler-periode.cjs` ([le banc d’essai](docs/BANC_ESSAI.md), § 9) |
 | `outils/simuler-periode.cjs` | Jouer une période hors du navigateur : `node outils/simuler-periode.cjs sauvegarde.json vols-dates.csv [options.json] > periode.json` rend la période, son bilan et chaque journée, comme la page les calcule ; `--sans-detail` ; `--xlsx periode.xlsx`, le classeur de la page ; une sauvegarde qui a une politique d’effectif rend aussi `prevuCale`, le prévu calé de chaque jour ([le banc d’essai](docs/BANC_ESSAI.md), § 9 et § 10) ; `--planning planning.csv`, un rejeu à effectif imposé (évolution 11 f) |
-| `periode-vue.js` / `periode.css` | La période dans la page (v1) : le bandeau de la journée de vols affichée et « Simuler la période » (par étapes, Annuler, « à relancer »), la page Résultats › Période ; rien sans programme daté ; dessous, « Réel et calage » (évolution 11) ; la colonne « Unité », les personnes en moyenne par jour, la première colonne collante (évolution 15 d) |
+| `periode-vue.js` / `periode.css` | La période dans la page (v1) : le bandeau de la journée de vols affichée et « Simuler la période » (par étapes, Annuler, « à relancer »), la page Résultats › Période ; rien sans programme daté ; dessous, « Réel et calage » (évolution 11) ; la colonne « Unité », les personnes en moyenne par jour, la première colonne collante (évolution 15 d) ; « Unité » en première colonne de chiffres, les jours incomplets expliqués une fois, le détail dépliable (correction 17 d) |
 | `moteur/ordre-services.js` | L'ordre des services, de l'amont vers l'aval (v1, correction 17 b), tiré de tous les chemins à la fois : un service après tous ceux qui l'alimentent, à égalité l'ordre du premier chemin, les services hors chemin à la fin, une boucle sans effet ; pour la Synthèse, le planning des équipes et la page Période |
 | `echanges-reponses.js` | La feuille « Réponses » du classeur de la journée (v1, évolution 15 e) : les cinq réponses du module, dans l’ordre du contrat ; la page et l’outil `simuler-journee --xlsx` l’écrivent ; les autres feuilles ne changent pas |
 | `periode-courbe.js` | La courbe de la page Période (v1, évolution 15 d) : la colonne Unité jour par jour, les jours incomplets en creux, le réel importé pour une mesure qui se compare à des ETP par jour ; la bulle à la souris et aux flèches |
@@ -882,6 +898,7 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/captures-resultats-browser.cjs` | Les captures de contrôle des résultats (v1, évolution 15 e), sur l’unité et les vols fictifs, en thème clair et sombre, à 1 280 et 1 920 px : la Synthèse avec et sans goulot, avec et sans retard ; Détails (Commandes, Vols) ; la Période ; chacune vérifiée, gardée hors du dépôt (`$ORY_CAPTURES`) |
 | `tests/ordre-services.test.cjs` | L'ordre des services (v1, correction 17 b, `moteur/ordre-services.js`) : trois chemins fictifs qui se croisent, l'égalité (l'ordre du premier chemin), un service hors chemin en fin de liste, une case sans équipe, les boucles et les chemins mal formés ; le même ordre pour les lignes de la Synthèse, les groupes du planning et les colonnes de la Période ; sans chemin, l'ordre d'avant |
 | `tests/ordre-services-browser.cjs` | L'ordre des services dans la page (v1, correction 17 b), sur l'unité fictive : la Synthèse, le planning des équipes et la page Période affichent l'ordre du module ; aucun service avant un service qui l'alimente ; les services hors chemin à la fin |
+| `tests/periode-lisible-browser.cjs` | La page Période se lit sans chercher (v1, correction 17 d), sur l'unité fictive, à 1 280 px : la colonne « Unité » juste après le jour, visible sans faire défiler ; les champs « 7,5 h titulaire » et « 7 h intérim » montrent leur valeur entière, à la française (une valeur refusée est nommée) ; les jours incomplets expliqués une seule fois, en une phrase, le détail dépliable |
 | `tests/reponses-vrai.test.cjs` | Des lignes qui disent vrai (v1, correction 17 c), sur des journées fictives calculées à la main : un service permanent et un d'appui (« fixe », pas d'écart, hors de « Il faut ») ; un handling à chauffeurs (les mêmes personnes dans Présents, Matin et Après-midi, une note sur ce qui n'est pas compté) ; un surplus sans couleur d'alerte et un manque avec ; les seuils par défaut (6 h, 3 personnes) et un réglage enregistré inchangé ; des lots qui attendent 2 h dans l'horaire (« rien ne coince ») ; un service qui dépasse le seuil et son horaire, ou fait partir une commande en retard (le goulot) ; deux essais (« fixe », pas « absent ») |
 | `tests/reponses-jours.test.cjs` | Le jour de travail jusqu'au bout de la ligne (v1, correction 17 a), sur une journée fictive calculée à la main : un service avec une équipe la veille et une le jour des vols a deux lignes, chacune avec sa fin, sa fin d'horaire, son dépassement, ses heures sup, sa file et son attente ; la somme des lignes fait le service ; chaque ligne dit son jour ; le goulot dit le sien ; la feuille « Réponses » et « Comparer deux essais » aussi |
 | `tests/periode-unite.test.cjs` | La page Période sans navigateur (v1, évolution 15 d) : la colonne « Unité » égale à la somme des services, le pic et l'occupation de l'unité (`chargeDeLUnite`), la moyenne des personnes seule, un seul bloc dans un mois, les jours complets d'abord, une seule écriture du temps, la courbe (un point par jour, le réel) |
