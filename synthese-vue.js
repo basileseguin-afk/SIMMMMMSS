@@ -50,7 +50,9 @@
   /** En tête : deux phrases au plus — combien de personnes ; où ça coince et ce qui part en retard. */
   function phrases(rep) {
     const t = rep.personnes.total;
-    const un = 'Il faut ' + pluriel(t.besoin, 'personne', 'personnes') + ', ' + nombre(t.presents) + (t.presents >= 2 ? ' sont présentes.' : ' est présente.');
+    // Les postes fixes (permanents, appui, handling) ne comptent pas dans « il faut » : la phrase dit combien ils sont (correction 17 c).
+    const un = 'Il faut ' + pluriel(t.besoin, 'personne', 'personnes') + ', ' + nombre(t.presents) + (t.presents >= 2 ? ' sont présentes' : ' est présente')
+      + (t.fixes > EPS ? ', dont ' + nombre(t.fixes) + (t.fixes >= 2 ? ' en postes fixes' : ' en poste fixe') : '') + '.';
     const g = rep.coince.goulot, n = compteRetards(rep.exceptions);
     // Le goulot dit son jour de travail comme sa ligne du tableau (correction 17 a) : « Cuisine (veille) coince de … à … ».
     const mot = g ? motDuGoulot(rep.coince) : null;
@@ -98,6 +100,7 @@
 
   /** L'écart, sa barre centrée sur zéro (`max` : le plus grand écart du tableau, en valeur absolue). */
   function caseEcart(l, ton, max) {
+    if (l.fixe || !fini(l.ecart)) return '<td class="num sy-ecart sy-vide">—</td>';
     const part = max > EPS ? Math.min(1, Math.abs(l.ecart) / max) * 50 : 0, cote = l.ecart < 0 ? 'right:50%' : 'left:50%';
     const barre = '<span class="sy-ecart-barre" aria-hidden="true"><i style="' + cote + ';width:' + part.toFixed(1) + '%"></i></span>';
     return '<td class="num sy-ecart"' + marque(ton, '<span class="sy-v">' + esc(signe(l.ecart)) + '</span>' + barre) + '</td>';
@@ -111,6 +114,20 @@
   }
   // Au travail au plus / présents ; une équipe sans travail mesuré (une mise à disposition) : « — / présents ».
   const moitie = m => (m && fini(m.presents) ? '<span class="sy-v">' + esc(fini(m.auTravail) ? nombre(m.auTravail) : '—') + '</span><span class="sy-sur"> / ' + esc(nombre(m.presents)) + '</span>' : '—');
+
+  /**
+   * Le besoin d'une ligne (correction 17 c) : « fixe » pour un service permanent, d'appui ou un handling, sans besoin calculé
+   * depuis une charge ; sinon son besoin, et ce qu'il a de postes fixes à côté.
+   */
+  function caseBesoin(l) {
+    if (l.fixe) return '<td class="num sy-fixe" title="Un poste fixe : pas de besoin calculé depuis une charge, pas d’écart ; il ne compte pas dans « Il faut ».">fixe</td>';
+    return '<td class="num">' + esc(nombre(l.besoin)) + (l.fixes > EPS ? '<small>+ ' + esc(nombre(l.fixes)) + (l.fixes >= 2 ? ' fixes' : ' fixe') + '</small>' : '') + '</td>';
+  }
+  /** Les présents d'une ligne ; un handling à chauffeurs le dit : ce sont eux que comptent aussi le matin et l'après-midi. */
+  const casePresents = l => '<td class="num">' + esc(nombre(l.presents)) + (l.chauffeurs ? '<small>chauffeurs</small>' : '') + '</td>';
+  /** Ce qui n'est pas compté, ligne par ligne : les personnes saisies à l'équipe d'un handling à chauffeurs. */
+  const horsCompte = ls => ls.filter(l => l.chauffeurs && l.horsCompte > EPS).map(l => l.nom + ' : les présents sont ses chauffeurs ; '
+    + (l.horsCompte >= 2 ? 'les ' + nombre(l.horsCompte) + ' personnes saisies à l’équipe ne sont pas comptées.' : 'la personne saisie à l’équipe n’est pas comptée.'));
 
   /** Les trois cases d'une ligne (sa file, sa fin, ses heures sup) : celles de son service ce jour de travail-là. */
   function casesDeLaLigne(l, ton) {
@@ -132,7 +149,7 @@
       const t = tons(l, rep.seuils), pic = l.pic && l.pic.personnes > 0 ? '<span class="sy-v">' + esc(nombre(l.pic.personnes)) + '</span><span class="sy-sur"> à ' + esc(heure(l.pic.a)) + '</span>' : '—';
       return '<tr data-service="' + esc(l.service) + '" data-jour="' + l.jour + '"><th scope="row"><button type="button" class="sy-service" data-page="at-planning" data-pg-viser="'
         + esc(l.service) + '" title="Voir ce service dans le planning des équipes">' + esc(l.nom) + '</button>' + jour(l.mot) + '</th>'
-        + '<td class="num">' + esc(nombre(l.besoin)) + '</td><td class="num">' + esc(nombre(l.presents)) + '</td>' + caseEcart(l, t.ecart, max)
+        + caseBesoin(l) + casePresents(l) + caseEcart(l, t.ecart, max)
         + '<td class="num">' + moitie(l.matin) + '</td><td class="num">' + moitie(l.apresMidi) + '</td><td class="num">' + pic + '</td>'
         + caseOccupation(l, t.occupation) + casesDeLaLigne(l, t.attente) + '</tr>';
     };
@@ -141,9 +158,11 @@
       + '<th scope="col" class="num" title="Avant 13:00 du jour de travail : au travail au plus / présents">Matin</th><th scope="col" class="num" title="À partir de 13:00 : au travail au plus / présents">Après-midi</th>'
       + '<th scope="col" class="num">Pic au travail</th><th scope="col" class="num">Occupation</th><th scope="col">File la plus longue</th><th scope="col">Fin</th>'
       + '<th scope="col" class="num">Heures sup</th></tr></thead><tbody>' + ls.map(ligne).join('') + '</tbody></table></div>'
-      + '<p class="mini-note sy-legende">Besoin : la charge du jour ÷ un poste, arrondie au service ; présents en équivalents temps plein. Matin et après-midi : au travail au plus / présents. '
-      + 'En couleur : un écart d’au moins ' + esc(pluriel(rep.seuils.ecartPersonnes, 'personne', 'personnes')) + ', une attente de plus de ' + esc(duree(rep.seuils.attenteLot))
-      + ', une occupation de plus de ' + esc(nombre(rep.seuils.occupation)) + ' %.</p>';
+      + '<p class="mini-note sy-legende">Besoin : la charge du jour ÷ un poste, arrondie au service ; « fixe » : un service permanent, d’appui ou un handling, '
+      + 'sans besoin calculé (il ne compte pas dans « Il faut »). Présents en équivalents temps plein. Matin et après-midi : au travail au plus / présents. '
+      + 'En couleur : il manque au moins ' + esc(pluriel(rep.seuils.ecartPersonnes, 'personne', 'personnes')) + ' (un surplus n’est pas une alerte), une attente de plus de '
+      + esc(duree(rep.seuils.attenteLot)) + ', une occupation de plus de ' + esc(nombre(rep.seuils.occupation)) + ' %.</p>'
+      + horsCompte(ls).map(n => '<p class="mini-note sy-note">' + esc(n) + '</p>').join('');
   }
 
   /* ---- la courbe de la journée ---------------------------------------------------- */
@@ -233,21 +252,29 @@
 
   /* ---- les trois cartes ----------------------------------------------------------- */
 
-  /** « Où ça coince » : le goulot, son jour de travail (correction 17 a), son moment, sa cause ; sinon, rien ne coince. */
+  /**
+   * « Où ça coince » : le goulot, son jour de travail (correction 17 a), son moment, sa cause, et ce qui en fait un goulot
+   * (correction 17 c) : il finit après son horaire, ou fait partir une commande ou un vol en retard. Sinon, rien ne coince ;
+   * les lignes qui attendent au-delà du seuil sont nommées, sans en faire un goulot.
+   */
   function carteCoince(rep) {
-    const g = rep.coince.goulot;
-    if (!g) return { ton: 'ok', titre: 'Où ça coince', corps: '<p class="sy-grand">Rien ne coince.</p><p class="mini-note">Aucun lot n’attend plus de ' + esc(duree(rep.seuils.attenteLot)) + '.</p>' };
-    const s = rep.coince.services.find(x => cleDe(x) === cleDe(g)) || {};
-    // Les autres lignes où un lot attend plus que le seuil : les trois plus chargées, après le goulot ; chacune dit son jour.
-    const aussi = rep.coince.services.filter(x => cleDe(x) !== cleDe(g) && x.attenteMax && x.attenteMax.minutes > rep.seuils.attenteLot + EPS)
-      .sort((p, q) => q.cumul - p.cumul).slice(0, 3);
+    const g = rep.coince.goulot, seuil = rep.seuils.attenteLot;
     const badge = mot => (mot ? ' <span class="sy-jour">' + esc(mot) + '</span>' : ''), jourDe = x => badge(REP().motDeLaLigne(x, rep.coince.services));
+    // Les lignes où un lot attend plus que le seuil (hors goulot) : les trois plus chargées ; chacune dit son jour.
+    const attendent = rep.coince.services.filter(x => (!g || cleDe(x) !== cleDe(g)) && x.attenteMax && x.attenteMax.minutes > seuil + EPS)
+      .sort((p, q) => q.cumul - p.cumul).slice(0, 3);
+    const liste = titre => (attendent.length ? '<p class="sy-aussi">' + titre + '</p><ul class="sy-exceptions">' + attendent.map(x => '<li><b>' + esc(x.nom) + '</b>' + jourDe(x)
+      + ' un lot jusqu’à ' + esc(duree(x.attenteMax.minutes)) + (x.cause ? ' — ' + esc({ personnel: 'personnel', amont: 'l’amont', materiel: 'le matériel' }[x.cause]) : '') + '</li>').join('') + '</ul>' : '');
+    if (!g) return { ton: 'ok', titre: 'Où ça coince', corps: '<p class="sy-grand">Rien ne coince.</p><p class="mini-note">Aucun service n’attend plus de ' + esc(duree(seuil))
+      + ' en finissant après son horaire ou en faisant partir une commande ou un vol en retard.</p>' + liste('Attendent plus de ' + esc(duree(seuil)) + ', sans retard ni dépassement :') };
+    const s = rep.coince.services.find(x => cleDe(x) === cleDe(g)) || {};
+    const pourquoi = [g.depasse > EPS ? 'il finit ' + duree(g.depasse) + ' après son horaire' : null,
+      g.enRetard > 0 ? pluriel(g.enRetard, 'commande ou vol qui passe par lui part', 'commandes ou vols qui passent par lui partent') + ' en retard' : null].filter(Boolean);
     return { ton: 'attente', titre: 'Où ça coince', page: 'at-planning', service: g.service,
       corps: '<p class="sy-grand">' + esc(g.nom) + badge(motDuGoulot(rep.coince)) + '</p><p>de <b>' + esc(heure(g.de)) + '</b> à <b>' + esc(heure(g.a)) + '</b>'
-      + (s.file ? ', jusqu’à ' + esc(pluriel(s.file.lots, 'lot', 'lots')) + ' en file' : '') + ' ; un lot y attend jusqu’à <b>' + esc(duree(g.attenteMax)) + '</b>.</p>'
-      + '<p class="mini-note">Cause : ' + esc(g.cause ? CAUSES[g.cause] : 'non établie (une pause, la ligne d’un robot…)') + '.</p>'
-      + (aussi.length ? '<p class="sy-aussi">Attendent aussi :</p><ul class="sy-exceptions">' + aussi.map(x => '<li><b>' + esc(x.nom) + '</b>' + jourDe(x) + ' un lot jusqu’à ' + esc(duree(x.attenteMax.minutes))
-        + (x.cause ? ' — ' + esc({ personnel: 'personnel', amont: 'l’amont', materiel: 'le matériel' }[x.cause]) : '') + '</li>').join('') + '</ul>' : '') };
+      + (s.file ? ', jusqu’à ' + esc(pluriel(s.file.lots, 'lot', 'lots')) + ' en file' : '') + ' ; un lot y attend jusqu’à <b>' + esc(duree(g.attenteMax)) + '</b>'
+      + (pourquoi.length ? ' ; ' + esc(pourquoi.join(' ; ')) : '') + '.</p>'
+      + '<p class="mini-note">Cause : ' + esc(g.cause ? CAUSES[g.cause] : 'non établie (une pause, la ligne d’un robot…)') + '.</p>' + liste('Attendent aussi :') };
   }
   /** Une exception, en une ligne : quoi, de combien, pourquoi. */
   function exception(x) {

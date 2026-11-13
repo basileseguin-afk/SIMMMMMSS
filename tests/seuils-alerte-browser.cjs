@@ -3,7 +3,10 @@
  * du module (un seul chemin) ; le réglage dans « Réglages de la simulation »,
  * gardé dans ory-seuils-v1 ; une valeur invalide refusée, en la nommant, sans
  * rien écrire ; « Tout sauvegarder » emporte la clé ; une sauvegarde d'avant
- * (sans la clé) rend les défauts ; une clé abîmée se lit comme les défauts. */
+ * (sans la clé) rend les défauts ; une clé abîmée se lit comme les défauts.
+ * Correction 17 (c) : les défauts changent (attente d'un lot 6 h, écart
+ * 3 personnes), seulement quand rien n'est réglé — un réglage enregistré avant
+ * ne change pas. */
 const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs');
 const nav=require('./nav.cjs');
 const F=require('./plan-rejoue-fictif.cjs');
@@ -34,6 +37,10 @@ const K='ory-seuils-v1';
   assert.equal(await page.locator('#rg-sim-seuils [data-seuil]').count(),5);
   assert.equal(await champ('dureeStockMax').inputValue(),'','la durée d’un stock : vide par défaut');
   assert.equal(await champ('occupation').inputValue(),'95');
+  // Correction 17 (c) : les défauts — un écart de 3 personnes, une attente de 6 h ; chaque champ dit le sien.
+  assert.deepEqual([await champ('ecartPersonnes').inputValue(),await champ('attenteLot').inputValue()],['3','360']);
+  assert.match(await page.locator('#seuil-effet-ecartPersonnes').textContent(),/s’il lui manque au moins .*un surplus n’est pas une alerte.* Défaut : 3\u00a0personnes\./);
+  assert.match(await page.locator('#seuil-effet-attenteLot').textContent(),/finit après son horaire ou fait partir .* en retard\. Défaut : 360\u00a0min\./);
   assert.equal(await page.locator('#rg-sim-seuils [data-seuils-defaut]').count(),0,'aux défauts : rien à remettre');
   await champ('attenteLot').fill('30');await champ('attenteLot').press('Tab');
   await page.waitForFunction(k=>!!localStorage.getItem(k),K);
@@ -88,7 +95,16 @@ const K='ory-seuils-v1';
   await page.reload();await page.waitForTimeout(400);await nav.aller(page,'rg-simulation');
   assert.match(await page.locator('#rg-sim-seuils [role="alert"]').textContent(),/illisibles .*version 9 inconnue.* les défauts s’appliquent/);
 
+  // 7. Un réglage enregistré avant la correction 17 (c), aux défauts d'alors (écart 1, attente 60 min) : il ne change pas.
+  const ancien={schema:'ory-seuils',version:1,seuils:{ecartPersonnes:1,attenteLot:60,occupation:95,dureeStockMax:null,retard:1}};
+  await page.evaluate(([k,v])=>localStorage.setItem(k,JSON.stringify(v)),[K,ancien]);
+  await page.reload();await page.waitForTimeout(400);await nav.aller(page,'rg-simulation');
+  assert.deepEqual(await page.evaluate(()=>Sim.seuils.lire()),{seuils:ancien.seuils,erreur:null});
+  assert.deepEqual([await champ('ecartPersonnes').inputValue(),await champ('attenteLot').inputValue()],['1','60']);
+  assert.deepEqual(JSON.parse(await garde()),ancien,'rien n’est réécrit');
+  assert.equal(await page.locator('#rg-sim-seuils [data-seuils-defaut]').count(),1,'un réglage qui n’est plus aux défauts : on peut y revenir');
+
   assert.deepEqual(errors,[]);
-  console.log('seuils-alerte-browser : ok — réponses de la page = module, réglage gardé, refus nommé, sauvegarde et restauration, clé abîmée.');
+  console.log('seuils-alerte-browser : ok — réponses de la page = module, réglage gardé, refus nommé, sauvegarde et restauration, clé abîmée, un réglage d’avant inchangé.');
  }catch(e){console.error(e);process.exitCode=1;}finally{ch.effacer();site.effacer();await browser.close();}
 })();

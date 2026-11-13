@@ -29,6 +29,9 @@ const DEUX_JOURS = () => {
     parcours: [chemin('c1', ['prepa'])], parcoursCabine: { YC: 'c1', BC: 'c1' } };
   return { r: P.simuler(args), args };
 };
+// Le goulot (correction 17 c) : une attente au-delà du seuil ET une fin après l'horaire. La veille attend 3 h et finit 1 h après
+// son horaire : elle coince dès qu'on règle l'attente d'un lot sous 3 h (le défaut, 6 h, ne la retient pas).
+const UNE_HEURE = { seuils: { attenteLot: 60 } };
 
 test('la fin, la fin d’horaire, le dépassement et les heures sup : par service et par jour de travail', () => {
   const { r, args } = DEUX_JOURS(), f = R.reponses(r, args).fins.services.filter(s => s.service === 'prepa');
@@ -44,7 +47,7 @@ test('la fin, la fin d’horaire, le dépassement et les heures sup : par servic
 });
 
 test('la file et l’attente : par service et par jour de travail ; le goulot dit son jour', () => {
-  const { r, args } = DEUX_JOURS(), c = R.reponses(r, args).coince, lignes = c.services.filter(s => s.service === 'prepa');
+  const { r, args } = DEUX_JOURS(), c = R.reponses(r, args, UNE_HEURE).coince, lignes = c.services.filter(s => s.service === 'prepa');
   assert.deepEqual(lignes.map(s => s.jour), [-1, 0]);
   const [v, j] = lignes;
   assert.deepEqual(v.file, { lots: 1, a: VEILLE + h('06:00') });
@@ -52,6 +55,7 @@ test('la file et l’attente : par service et par jour de travail ; le goulot di
   assert.equal(v.cumul, 180);
   assert.deepEqual([j.file, j.attenteMax, j.cumul, j.cause], [null, null, 0, null], 'le jour des vols : rien n’attend');
   assert.deepEqual([c.goulot.service, c.goulot.jour, c.goulot.de, c.goulot.a], ['prepa', -1, VEILLE + h('06:00'), VEILLE + h('09:00')]);
+  assert.equal(R.reponses(r, args).coince.goulot, null, 'au seuil par défaut (6 h), 3 h d’attente ne coincent pas');
 });
 
 test('les personnes, la file et les fins portent les mêmes lignes (service, jour)', () => {
@@ -90,7 +94,7 @@ test('les mots du jour : J−2, veille, jour des vols, J+1 ; le jour des vols se
 });
 
 test('la phrase de tête et la carte « Où ça coince » disent le jour du goulot', () => {
-  const { r, args } = DEUX_JOURS(), rep = R.reponses(r, args);
+  const { r, args } = DEUX_JOURS(), rep = R.reponses(r, args, UNE_HEURE);
   assert.match(SV.phrases(rep)[1], /^Montage \(veille\) coince de J-1 06:00 à J-1 09:00 ; /);
   assert.match(SV.carteCoince(rep).corps, /Montage <span class="sy-jour">veille<\/span>/);
   // Un goulot le jour des vols le dit aussi, quand son service a une autre ligne : comme la ligne du tableau.
@@ -105,7 +109,7 @@ test('la phrase de tête et la carte « Où ça coince » disent le jour du goul
 
 test('la feuille « Réponses » et « Comparer deux essais » portent le jour de chaque ligne', () => {
   const ER = require('../echanges-reponses.js'), CV = require('../comparer-vue.js');
-  const { r, args } = DEUX_JOURS(), rep = R.reponses(r, args), f = ER.feuilleDesReponses(rep, { date: '2026-11-02' });
+  const { r, args } = DEUX_JOURS(), rep = R.reponses(r, args, UNE_HEURE), f = ER.feuilleDesReponses(rep, { date: '2026-11-02' });
   const col = nom => ER.TETE.indexOf(nom);
   const fins = f.lignes.filter(l => l[col('Sujet')] === 'Montage' && l[col('Mesure')] === 'Fin du dernier lot');
   assert.equal(fins.length, 2, 'une ligne par jour de travail');
@@ -115,7 +119,7 @@ test('la feuille « Réponses » et « Comparer deux essais » portent le jour d
   assert.equal(f.lignes.find(l => l[col('Mesure')] === 'Goulot')[col('Jour de travail')].excel, fins[0][col('Jour de travail')].excel, 'le goulot dit son jour');
   // Un second essai où la veille a deux personnes : sa ligne change, et se nomme « Montage (veille) ».
   const B = (() => { const x = DEUX_JOURS().args; x.ateliers[0].personnes = 2; return { r: P.simuler(x), args: x }; })();
-  const lignes = CV.lignesDesReponses(rep, R.reponses(B.r, B.args));
+  const lignes = CV.lignesDesReponses(rep, R.reponses(B.r, B.args, UNE_HEURE));
   assert.ok(lignes[3].some(l => l.lib === 'Montage (veille) finit à'), lignes[3].map(l => l.lib).join(' | '));
   assert.ok(!lignes[3].some(l => l.lib === 'Montage (jour des vols) finit à'), 'le jour des vols ne change pas');
   assert.match(lignes[2][0].a, /^Montage \(veille\)$/, 'le goulot dit son jour');

@@ -131,8 +131,8 @@ Lecteurs : le chef de projet et les responsables de service (version 1,
 
 | # | Question | Indicateur | Unité | Comparé à | Seuil d'alerte (défaut) |
 |---|---|---|---|---|---|
-| R1 | **Combien de personnes faut-il, par service ?** | Par service et jour de travail : le **besoin** (la charge du jour en homme-minutes ÷ les minutes utiles d'un poste, arrondie au service comme dans l'évolution 11 a), les **présents** (ETP présents, K8), l'**écart** (présents − besoin) ; le matin (avant 13:00 du jour de travail) et l'après-midi : présents et pic au travail ; le pic de la journée et son heure ; l'occupation (K3) | personnes (ETP) | les présents, au besoin | un écart d'**1 personne** |
-| R2 | **Où et quand ça coince ?** | Par service et jour de travail : la file la plus longue (K4) et son heure, l'attente la plus longue d'un lot, le cumul d'attente du jour, la **cause** (personnel, amont, matériel — K9). Le **goulot** : le service au plus grand cumul d'attente, et le moment où il s'accumule | lots ; minutes ; lots × minutes | l'attente d'un lot, au seuil ; l'occupation pendant la file, au seuil | une attente de **60 min** ; une occupation de **95 %** |
+| R1 | **Combien de personnes faut-il, par service ?** | Par service et jour de travail : le **besoin** (la charge du jour en homme-minutes ÷ les minutes utiles d'un poste, arrondie au service comme dans l'évolution 11 a), les **présents** (ETP présents, K8 ; un handling à chauffeurs : ses chauffeurs), l'**écart** (présents − besoin ; seul un manque se signale) ; un **poste fixe** (une mise à disposition, une équipe d'appui saisie, un handling : pas de besoin calculé depuis une charge) n'a ni besoin ni écart et ne compte pas dans « Il faut » ; le matin (avant 13:00 du jour de travail) et l'après-midi : présents et pic au travail ; le pic de la journée et son heure ; l'occupation (K3) | personnes (ETP) | les présents, au besoin | un manque de **3 personnes** |
+| R2 | **Où et quand ça coince ?** | Par service et jour de travail : la file la plus longue (K4) et son heure, l'attente la plus longue d'un lot, le cumul d'attente du jour, la **cause** (personnel, amont, matériel — K9). Le **goulot** : parmi les services dont un lot attend plus que le seuil **et** qui finissent après leur horaire ou font partir une commande ou un vol en retard, celui au plus grand cumul d'attente, et le moment où il s'accumule | lots ; minutes ; lots × minutes | l'attente d'un lot, au seuil ; l'occupation pendant la file, au seuil | une attente de **6 h** ; une occupation de **95 %** |
 | R3 | **À quelle heure chaque service finit-il, et avec combien d'heures sup ?** | Par service et jour de travail : la fin de son dernier lot, la fin de son horaire, ce qui dépasse ; ses heures sup (équipes, renforts prêtés, chauffeurs) | heure ; personnes × heures | la fin, à la fin de l'horaire | tout dépassement (une heure sup se dit dès la première minute) |
 | R4 | **Qu'est-ce qui part en retard ?** | Les **seules exceptions** : les vols chargés après leur limite, les commandes prêtes après leur limite, les vols pas prêts ou sans équipe ; pour chacune, le retard et sa cause (la phrase de V7). Sans exception : une liste vide | minutes | la limite (le départ, ou départ − marge au handling 24 h/24 ; l'échéance de la commande) | un retard d'**1 min** |
 | R5 | **Que change mon scénario ?** | Entre les deux essais de « Comparer deux essais » : B − A sur chacune des quatre réponses (besoin, présents, écart ; goulot, attentes ; fins, heures sup ; exceptions nouvelles et réglées) | celles des réponses | l'essai A | — |
@@ -171,9 +171,23 @@ jour s'affiche.
   besoin exact (homme-minutes ÷ poste ÷ rendement) ; un robot, une plonge saisis :
   ce que ses lots occupent ÷ son poste (11 a) ; à la main, saisie : les
   homme-minutes de ses lots ÷ poste ÷ rendement. Il est rapporté à la présence
-  générale, comme les présents (K8). Une équipe **sans charge mesurée** (aucun
-  travail, une mise à disposition, une équipe d'appui saisie, le handling) a pour
-  besoin ses présents : elle n'a pas d'écart. Le besoin d'un service : ⌈ somme ⌉.
+  générale, comme les présents (K8). Une équipe d'un service mesuré **sans
+  travail ce jour-là** a pour besoin ses présents : elle n'a pas d'écart. Le
+  besoin d'un service : ⌈ somme ⌉.
+- **Les postes fixes** (correction 17 c) : une mise à disposition (un service
+  permanent), une équipe d'appui saisie, un handling n'ont pas de besoin calculé
+  depuis une charge. Leur ligne dit « fixe », n'a pas d'écart, et ne compte pas
+  dans « Il faut n personnes ». L'unité : il faut n personnes (hors postes
+  fixes), p sont présentes, dont f en postes fixes ; son écart compare les
+  présents hors postes fixes au besoin (p − f − n). Un service qui a une équipe
+  mesurée et un poste fixe garde son besoin et son écart, hors poste fixe.
+- **Les présents d'un handling à chauffeurs** (son plan, ou ses créneaux
+  saisis) : ses chauffeurs — leurs minutes de vacation ÷ la présence générale —,
+  les mêmes personnes que les colonnes Matin et Après-midi. Les personnes
+  saisies à l'équipe ne sont pas comptées à leur place : une note le dit. Les
+  indicateurs de charge (K8) ne changent pas.
+- **L'écart signalé** : seulement s'il **manque** des personnes (présents sous
+  le besoin), d'au moins le seuil. Un surplus s'affiche, sans couleur d'alerte.
 - **L'attente d'un lot** : du moment où il est prêt (tous ses fournisseurs ont
   livré, l'équipe est là) à son début — son temps en file. Le cumul : la somme,
   en lots × minutes.
@@ -182,9 +196,14 @@ jour s'affiche.
   occupées au-delà du seuil pendant la file ; sinon « amont » si leurs personnes
   attendent le service d'avant pendant la file (une équipe tenue à l'ordre de sa
   liste) ; sinon « matériel » s'il en a manqué ; sinon aucune.
-- **Le goulot** : le service au plus grand cumul, si son attente la plus longue
-  **dépasse** le seuil ; son moment : le morceau d'un seul tenant de sa file où
-  l'attente s'accumule le plus. Sinon : aucun, « rien ne coince ».
+- **Le goulot** (correction 17 c) : parmi les services (et jours de travail)
+  dont l'attente la plus longue **dépasse** le seuil **et** qui finissent après
+  leur horaire ou font partir une commande ou un vol en retard, celui au plus
+  grand cumul ; son moment : le morceau d'un seul tenant de sa file où l'attente
+  s'accumule le plus. « Fait partir en retard » : une commande prête après sa
+  limite, ou pas finie, que portent ses lots ; au handling, un vol chargé après
+  sa limite ou pas chargé (un retard au moins égal au seuil de retard). Sinon :
+  aucun, « rien ne coince » — les attentes restent lisibles ligne par ligne.
 - **La fin d'horaire** : le début du poste + la présence ; au handling, la fin de
   ses vacations de chauffeurs. Ce qui dépasse se compte équipe par équipe : le
   plus grand dépassement d'une équipe du service (une équipe qui finit tard dans
@@ -202,8 +221,8 @@ Une valeur invalide est refusée, en la nommant.
 
 | Seuil | Défaut | Valeurs admises | Ce qu'il déclenche |
 |---|---|---|---|
-| Écart de personnes à signaler | 1 | de 0 à 100 personnes | un écart présents − besoin d'au moins ce nombre (R1) |
-| Attente d'un lot | 60 min | de 0 à 1 440 min | un goulot, si l'attente la plus longue le dépasse (R2) |
+| Écart de personnes à signaler | 3 | de 0 à 100 personnes | un manque (présents sous le besoin) d'au moins ce nombre (R1) ; un surplus n'est pas une alerte |
+| Attente d'un lot | 360 min (6 h) | de 0 à 1 440 min | un goulot, si l'attente la plus longue le dépasse **et** si le service finit après son horaire ou fait partir une commande ou un vol en retard (R2) ; la couleur d'une attente dans le tableau ; le « Bouchon » de la plonge |
 | Occupation | 95 % | de 1 à 100 % | la cause « personnel », au-delà (R2) |
 | Durée maximale d'un stock | vide : pas d'alerte | vide, ou de 1 à 10 080 min | un stock plus long (le détail des stocks) |
 | Retard | 1 min | de 0 à 1 440 min | une exception, à partir de ce retard (R4) |

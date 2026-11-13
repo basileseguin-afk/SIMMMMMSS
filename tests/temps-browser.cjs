@@ -50,7 +50,20 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   // Le panneau défile : sans cela le graphique de la plonge, en bas, était coupé et hors d'atteinte.
   const defile=await page.locator('#journee-stocks').evaluate(s=>{s.scrollTop=1e5;const r=s.getBoundingClientRect(),g=s.querySelectorAll('.tp-svg')[1].getBoundingClientRect();return {bas:g.bottom<=r.bottom+1&&g.bottom<=innerHeight+1,pleine:r.right>innerWidth-40};});
   assert.deepEqual(defile,{bas:true,pleine:true},'le bas des stocks s’atteint, sur toute la largeur');
-  assert.match(await page.locator('#journee-stocks .tp-phrase').textContent(),/Bouchon[\s\S]*dépassent ce que la plonge lave/);
+  // « Bouchon » suit le seuil d'attente d'un lot (évolution 15 c) : au défaut de 6 h (correction 17 c), la plonge du jeu d'essai,
+  // qui attend plus d'une heure sans rien laisser de sale le soir, n'en est pas un — la phrase reste, sans l'étiquette ; au
+  // seuil d'une heure, elle l'est.
+  const plonge=await page.evaluate(()=>{const p=Sim.ateliers.resultat.plonge;return {attente:p.attenteMax,sale:p.resteSale||0,seuil:Sim.reponses().seuils.attenteLot};});
+  assert.ok(plonge.seuil===360&&plonge.attente>60&&plonge.attente<=360&&plonge.sale===0,JSON.stringify(plonge));
+  const phrase=()=>page.locator('#journee-stocks .tp-phrase').textContent();
+  assert.match(await phrase(),/dépassent ce que la plonge lave/);
+  assert.doesNotMatch(await phrase(),/Bouchon/,'au seuil par défaut : pas de bouchon');
+  await page.evaluate(()=>Sim.seuils.enregistrer({attenteLot:60}));await page.evaluate(()=>Sim.ateliers.changer(()=>{},''));await attendre(400);
+  await nav.aller(page,'j-stocks');await attendre();
+  assert.match(await phrase(),/Bouchon[\s\S]*dépassent ce que la plonge lave/,'au seuil d’une heure : un bouchon');
+  await page.evaluate(()=>localStorage.removeItem('ory-seuils-v1'));await page.evaluate(()=>Sim.ateliers.changer(()=>{},''));await attendre(400);
+  await nav.aller(page,'j-stocks');await attendre();
+  await page.locator('#journee-stocks').evaluate(s=>{s.scrollTop=1e5;});
   assert.ok(await page.locator('#journee-stocks .tp-barre.trop').count()>=1,'les heures en dépassement sont marquées');
   assert.match(await page.locator('#journee-stocks .tp-barre.trop .tp-val').first().textContent(),/^▲ /,'et étiquetées, pas seulement colorées');
   // Survol : une bulle sur une barre, un curseur sur la courbe.

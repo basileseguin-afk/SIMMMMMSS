@@ -5,6 +5,57 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-13 — Correction 17 (c) : des lignes qui disent vrai
+
+- **Les postes fixes.** Un service permanent (une mise à disposition), d'appui
+  (une équipe d'appui saisie) ou un handling n'a pas de besoin calculé depuis
+  une charge : son besoin recopiait ses présents. Sa ligne affiche « fixe »
+  dans la colonne Besoin, n'a pas d'écart, et ne compte pas dans « Il faut
+  n personnes » ; la phrase de tête dit « dont n en postes fixes ». Une
+  équipe d'un service mesuré, sans travail ce jour-là, garde son besoin égal à
+  ses présents, comme avant (`moteur/reponses.js` : `fixe`, `fixes` par
+  ligne ; `total.fixes` ; l'écart de l'unité compare les présents hors postes
+  fixes au besoin).
+- **Un handling à chauffeurs** compte les mêmes personnes dans Présents, Matin
+  et Après-midi : ses chauffeurs (leurs minutes de vacation ÷ la présence
+  générale). Les personnes saisies à l'équipe ne sont plus comptées à leur
+  place ; une note sous le tableau le dit (`chauffeurs`, `horsCompte`). Les
+  indicateurs de charge (K8) ne changent pas.
+- **L'écart** ne prend la couleur de statut que s'il **manque** des personnes
+  (présents sous le besoin, d'au moins le seuil). Un surplus s'affiche sans
+  couleur d'alerte, avec sa barre.
+- **Les seuils par défaut**, seulement quand rien n'est réglé : l'attente d'un
+  lot passe de 1 h à **6 h** (dans une production par lots, un lot attend
+  normalement son tour plusieurs heures : à 1 h, la plupart des services
+  étaient signalés) ; l'écart de personnes, de 1 à **3**. Un réglage enregistré
+  (`ory-seuils-v1`) ne change pas. Ce que le seuil d'attente déclenche
+  ailleurs suit le nouveau défaut : la couleur d'une attente dans le tableau,
+  l'étiquette « Bouchon » de la plonge, la phrase « qui attend le plus » du
+  plan rejoué.
+- **« Où ça coince »** ne retient comme goulot qu'un service qui dépasse le
+  seuil d'attente **et** qui finit après son horaire ou fait partir une
+  commande ou un vol en retard (une commande prête après sa limite ou pas
+  finie que portent ses lots ; au handling, un vol chargé après sa limite ou
+  pas chargé). La carte dit pourquoi. Sinon : « Rien ne coince », et les
+  attentes restent lisibles dans le tableau (`coince` : `enRetard` par ligne ;
+  le goulot porte `depasse` et `enRetard`).
+- « Comparer deux essais » et la feuille « Réponses » suivent : un poste fixe
+  s'y lit « fixe » (pas « absent ») ; la feuille dit les postes fixes de
+  l'unité et la raison du goulot. Le réglage des seuils dit ce que chaque seuil
+  déclenche désormais (`seuils-vue.js`).
+- Tests : `tests/reponses-vrai.test.cjs` (un service permanent et un d'appui,
+  un handling à chauffeurs, un surplus sans couleur d'alerte et un manque
+  avec, une ligne mixte, les nouveaux défauts et un réglage existant inchangé, des lots qui
+  attendent 2 h dans l'horaire — « rien ne coince » —, un service qui dépasse
+  le seuil et son horaire — le goulot —, deux essais) ; les tests des réponses,
+  de la Synthèse, de la feuille, des seuils, des détails, du temps entre les
+  ateliers (le « Bouchon ») et des captures de contrôle adaptés aux nouveaux
+  défauts.
+- Aucun calcul du moteur ne change : le résultat d'une journée et d'une
+  période, les indicateurs et les autres feuilles des classeurs sont
+  identiques (seule la feuille « Réponses » change). La version 2 n'est pas
+  touchée.
+
 ## 2026-11-13 — Correction 17 (b) : l'ordre des services
 
 - Constat : le tableau annonce « de l'amont vers l'aval », mais un service

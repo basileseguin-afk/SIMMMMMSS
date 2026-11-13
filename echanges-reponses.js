@@ -63,25 +63,32 @@
     for (const s of rep.personnes.services) {
       const j = jour(s.jour), mi = (x, nom) => ligne(0, s.nom, j, nom + ', au travail au plus', x && fini(x.auTravail) ? r2(x.auTravail) : null, 'personnes', null, null,
         x && fini(x.presents) ? 'sur ' + r2(x.presents) + ' présentes' + (fini(x.a) ? ', à ' + heure(x.a) : '') : null);
-      out.push(ligne(0, s.nom, j, 'Il faut', s.besoin, 'personnes', null, null, 'la charge du jour : ' + r2(s.charge) + ' ETP'),
-        ligne(0, s.nom, j, 'Présentes (ETP)', r2(s.presents), 'ETP'),
-        ligne(0, s.nom, j, 'Écart (présentes − il faut)', r2(s.ecart), 'personnes', S.ecartPersonnes, ouiNon(s.signale),
-          s.sens === 'sous' ? 'il manque du monde' : s.sens === 'sur' ? 'du monde en trop' : null),
+      // Un poste fixe (correction 17 c) : pas de besoin calculé depuis une charge, pas d'écart ; un handling à chauffeurs les compte.
+      const present = s.chauffeurs ? 'ses chauffeurs' + (s.horsCompte > 0 ? ' ; ' + r2(s.horsCompte) + ' personne(s) saisie(s) à l’équipe non comptée(s)' : '')
+        : s.fixes > 0 && !s.fixe ? 'dont ' + r2(s.fixes) + ' en postes fixes' : null;
+      out.push(ligne(0, s.nom, j, 'Il faut', s.besoin, 'personnes', null, null, s.fixe ? 'poste fixe : pas de besoin calculé depuis une charge' : 'la charge du jour : ' + r2(s.charge) + ' ETP'),
+        ligne(0, s.nom, j, 'Présentes (ETP)', r2(s.presents), 'ETP', null, null, present),
+        ligne(0, s.nom, j, 'Écart (présentes − il faut)', r2(s.ecart), 'personnes', S.ecartPersonnes, s.fixe ? null : ouiNon(s.signale),
+          s.fixe ? 'poste fixe : pas d’écart' : s.sens === 'sous' ? 'il manque du monde' : s.sens === 'sur' ? 'du monde en trop (pas une alerte)' : null),
         mi(s.matin, 'Matin'), mi(s.apresMidi, 'Après-midi'),
         ligne(0, s.nom, j, 'Pic au travail', s.pic ? r2(s.pic.personnes) : null, 'personnes', null, null, s.pic ? 'à ' + heure(s.pic.a) : null),
         ligne(0, s.nom, j, 'Occupation', pc(s.occupation), '%', S.occupation, fini(s.occupation) ? ouiNon(s.occupation * 100 > S.occupation + EPS) : null));
     }
     const t = rep.personnes.total;
-    return out.concat([ligne(0, 'Toute l’unité', null, 'Il faut', t.besoin, 'personnes'), ligne(0, 'Toute l’unité', null, 'Présentes (ETP)', r2(t.presents), 'ETP'),
-      ligne(0, 'Toute l’unité', null, 'Écart (présentes − il faut)', r2(t.ecart), 'personnes')]);
+    return out.concat([ligne(0, 'Toute l’unité', null, 'Il faut', t.besoin, 'personnes', null, null, 'hors postes fixes'),
+      ligne(0, 'Toute l’unité', null, 'Présentes (ETP)', r2(t.presents), 'ETP'),
+      ligne(0, 'Toute l’unité', null, 'Dont postes fixes (ETP)', r2(t.fixes), 'ETP', null, null, 'permanents, appui, handling : sans besoin calculé'),
+      ligne(0, 'Toute l’unité', null, 'Écart (présentes hors postes fixes − il faut)', r2(t.ecart), 'personnes')]);
   }
 
   /** R2 : le goulot, puis chaque service et jour de travail où un lot attend : la file la plus longue, l'attente la plus longue, le cumul, la cause. */
   function coince(rep, jour) {
     const S = rep.seuils, g = rep.coince.goulot;
     const out = [ligne(1, g ? g.nom : 'aucun', g ? jour(g.jour) : null, 'Goulot', g ? entier(g.cumul) : null, 'lots × minutes', S.attenteLot, g ? 'oui' : 'non',
-      g ? 'de ' + heure(g.de) + ' à ' + heure(g.a) + ' ; un lot y attend jusqu’à ' + entier(g.attenteMax) + ' min' + (g.cause ? ' ; cause : ' + CAUSES[g.cause] : '')
-        : 'aucun lot n’attend plus de ' + S.attenteLot + ' min')];
+      g ? 'de ' + heure(g.de) + ' à ' + heure(g.a) + ' ; un lot y attend jusqu’à ' + entier(g.attenteMax) + ' min'
+        + (g.depasse > 0 ? ' ; finit ' + entier(g.depasse) + ' min après son horaire' : '') + (g.enRetard > 0 ? ' ; ' + g.enRetard + ' commande(s) ou vol(s) en retard par ses lots' : '')
+        + (g.cause ? ' ; cause : ' + CAUSES[g.cause] : '')
+        : 'aucun service n’attend plus de ' + S.attenteLot + ' min en finissant après son horaire ou en faisant partir une commande ou un vol en retard')];
     for (const s of rep.coince.services.filter(x => x.file || x.attenteMax)) {
       const a = s.attenteMax, j = jour(s.jour);
       out.push(ligne(1, s.nom, j, 'File la plus longue', s.file ? s.file.lots : null, 'lots', null, null, s.file ? 'à ' + heure(s.file.a) : null),
@@ -120,6 +127,8 @@
       'retenez deux essais dans « Comparer deux essais » : le classeur de la page donne alors ce que change le scénario')];
     const nom = id => ((rep.personnes.services.find(s => s.service === id) || {}).nom) || id || 'aucun', t = d.personnes.total, x = d.exceptions;
     const de = (s, lignes) => { const mot = REP().motDeLaLigne(s, lignes); return s.nom + (mot ? ' (' + mot + ')' : ''); };
+    // Un poste fixe (correction 17 c) n'a pas de besoin : « fixe », pas « absent ».
+    const faut = (s, c) => ((s.fixe || {})[c] ? 'fixe' : ouAbsent(s.besoin[c]));
     const g = d.coince.goulot, goulot = (id, j) => {
       const mot = id ? REP().motDeLaLigne({ service: id, jour: j || 0 }, d.coince.services) : null;
       return id ? nom(id) + (mot ? ' (' + mot + ')' : '') : 'aucun';
@@ -128,7 +137,7 @@
       ligne(4, 'Toute l’unité', null, 'Présentes, toute l’unité (B − A)', r2(t.presents.d), 'ETP', null, null, r2(t.presents.a) + ' → ' + r2(t.presents.b)),
       // Un service qui n'existe que dans l'un des deux essais compte aussi : « absent → 3 ».
       ...d.personnes.services.filter(s => change(s.besoin) || change(s.presents)).map(s => ligne(4, de(s, d.personnes.services), null, 'Il faut / présentes (B − A)', r2(s.besoin.d), 'personnes', null, null,
-        'il faut ' + ouAbsent(s.besoin.a) + ' → ' + ouAbsent(s.besoin.b) + ' ; présentes ' + ouAbsent(s.presents.a) + ' → ' + ouAbsent(s.presents.b))),
+        'il faut ' + faut(s, 'a') + ' → ' + faut(s, 'b') + ' ; présentes ' + ouAbsent(s.presents.a) + ' → ' + ouAbsent(s.presents.b))),
       ligne(4, nom(g.b || g.a), null, 'Goulot', null, null, null, null,
         (g.change ? 'change : ' : 'le même : ') + goulot(g.a, g.jourA) + ' → ' + goulot(g.b, g.jourB)),
       ...d.fins.services.filter(s => change(s.fin) || change(s.heuresSup)).map(s => ligne(4, de(s, d.fins.services), null, 'Fin (B − A)', entier(s.fin.d), 'min', null, null,

@@ -42,8 +42,13 @@
    * --------------------------------------------------------------------*/
 
   const CLE_STOCKAGE = 'ory-seuils-v1', SCHEMA = 'ory-seuils', VERSION = 1, PREFIXE = 'seuils d’alerte';
-  /** Les défauts : écart de 1 personne, attente d'un lot de 60 min, occupation de 95 %, pas de durée de stock, retard de 1 min. */
-  const SEUILS_DEFAUT = Object.freeze({ ecartPersonnes: 1, attenteLot: 60, occupation: 95, dureeStockMax: null, retard: 1 });
+  /**
+   * Les défauts, quand rien n'est réglé : un écart de 3 personnes, une attente d'un lot de 6 h (correction 17 c : dans une
+   * production par lots, un lot attend normalement son tour plusieurs heures ; à 1 h, la plupart des services étaient
+   * signalés), une occupation de 95 %, pas de durée de stock, un retard de 1 min. Un réglage enregistré écrit ses cinq
+   * seuils : il ne change pas.
+   */
+  const SEUILS_DEFAUT = Object.freeze({ ecartPersonnes: 3, attenteLot: 360, occupation: 95, dureeStockMax: null, retard: 1 });
   /** Chaque seuil : son nom, son unité, ses bornes ; `vide` : il peut rester vide (pas d'alerte). */
   const SEUILS = Object.freeze([
     { cle: 'ecartPersonnes', nom: 'Écart de personnes à signaler', unite: 'personnes', min: 0, max: 100 },
@@ -133,15 +138,27 @@
     const hm = somme(lots, l => l.hommeMinutes), rendement = args.rendement > 0 ? args.rendement : 1;
     return hm > 0 ? hm / poste / rendement : null;
   }
-  /** Les équipes : leurs présents (ETP, K8) et leur besoin, rapporté à la présence générale comme les présents. */
+  /** Les équipes qui n'ont pas de besoin calculé depuis une charge : une mise à disposition (permanente), une équipe d'appui saisie, un handling. */
+  const TYPES_FIXES = new Set(['dispo', 'appui', 'handling']);
+  /**
+   * Les équipes : leurs présents (ETP, K8) et leur besoin, rapporté à la présence générale comme les présents.
+   * Correction 17 (c) : un **poste fixe** (`fixe`) — une mise à disposition, une équipe d'appui saisie, un handling, sans
+   * charge mesurée — n'a pas de besoin ; un handling à chauffeurs (son plan, ou ses créneaux saisis) compte ses chauffeurs,
+   * les personnes de ses colonnes Matin et Après-midi : leurs minutes de vacation ÷ la présence générale ; les personnes
+   * saisies à l'équipe ne sont alors pas comptées (`horsCompte`).
+   */
   function equipesDuJour(r, args, k) {
     const defs = new Map((args.ateliers || []).map(a => [a.id, a])), ke = new Map(k.equipes.map(e => [e.id, e])), lots = new Map();
     for (const l of r.lots || []) if (l.atelier && !l.dispo) { if (!lots.has(l.atelier)) lots.set(l.atelier, []); lots.get(l.atelier).push(l); }
+    const generale = P().normaliserRegime(null, args.regime).presence;
     return (r.ateliers || []).map(v => {
-      const x = ke.get(v.id) || {}, presents = IND().etpDe(v, args.regime);
-      const t = tetesDe(v, defs.get(v.id), (r.effectifs || {})[v.id], x, lots.get(v.id) || [], args);
-      return { id: v.id, nom: v.nom, service: v.service, jour: fini(x.jour) ? x.jour : 0, presents, mesure: t !== null,
-        besoin: t === null ? presents : t * IND().etpDe({ personnes: 1, presence: v.presence }, args.regime) };
+      const x = ke.get(v.id) || {}, def = defs.get(v.id);
+      const chauffeurs = v.type === 'handling' && generale > 0 ? IND().chauffeursDe(v, def) : null;
+      const presents = chauffeurs ? somme(chauffeurs, c => (+c.n || 0) * Math.max(0, c.a - c.de)) / generale : IND().etpDe(v, args.regime);
+      const t = tetesDe(v, def, (r.effectifs || {})[v.id], x, lots.get(v.id) || [], args), fixe = t === null && TYPES_FIXES.has(v.type);
+      return { id: v.id, nom: v.nom, service: v.service, jour: fini(x.jour) ? x.jour : 0, presents, mesure: t !== null, fixe,
+        chauffeurs: !!chauffeurs, horsCompte: chauffeurs ? +v.personnes || 0 : 0,
+        besoin: fixe ? 0 : t === null ? presents : t * IND().etpDe({ personnes: 1, presence: v.presence }, args.regime) };
     });
   }
   /** Le plus haut d'une série de créneaux sur un intervalle de l'horloge du jour de travail : { valeur, debut }. */
@@ -155,21 +172,31 @@
     const p = maxSur(c, c.presents, garder), t = maxSur(c, c.auTravail, garder);
     return { presents: p ? p.valeur : null, auTravail: t ? t.valeur : null, a: t && t.valeur > 0 ? t.debut + jour * JOUR : null };
   }
-  /** Par service et jour de travail : besoin, présents, écart ; matin, après-midi ; pic et occupation, ceux des indicateurs. */
+  /**
+   * Par service et jour de travail : besoin, présents, écart ; matin, après-midi ; pic et occupation, ceux des indicateurs.
+   * Correction 17 (c) : une ligne dont toutes les équipes sont des postes fixes est `fixe` — pas de besoin, pas d'écart ;
+   * `fixes` : ses présents en postes fixes, qui ne comptent ni dans le besoin ni dans l'écart ; l'écart ne se signale que
+   * s'il **manque** des personnes (un surplus n'est pas une alerte). L'unité : il faut `besoin` personnes (hors postes
+   * fixes), `presents` sont présentes, dont `fixes` en postes fixes ; l'écart compare les présents hors postes fixes au besoin.
+   */
   function personnes(r, args, k, seuils) {
     const equipes = equipesDuJour(r, args, k), nom = nomDe(args);
     const services = k.services.map(s => {
-      const eqs = equipes.filter(e => e.service === s.service && e.jour === s.jour), charge = net(somme(eqs, e => e.besoin));
-      const besoin = Math.ceil(charge - EPS) || 0, presents = net(s.etp), ecart = net(presents - besoin);
-      return { service: s.service, nom: nom(s.service), jour: s.jour, besoin, charge, presents, ecart,
-        sens: ecart > EPS ? 'sur' : ecart < -EPS ? 'sous' : null, signale: Math.abs(ecart) > EPS && Math.abs(ecart) >= seuils.ecartPersonnes - EPS,
+      const eqs = equipes.filter(e => e.service === s.service && e.jour === s.jour), calculees = eqs.filter(e => !e.fixe);
+      const fixe = eqs.length > 0 && !calculees.length, charge = net(somme(calculees, e => e.besoin));
+      const presents = net(somme(eqs, e => e.presents)), fixes = net(somme(eqs.filter(e => e.fixe), e => e.presents));
+      const besoin = fixe ? null : Math.ceil(charge - EPS) || 0, ecart = fixe ? null : net(presents - fixes - besoin);
+      const sens = ecart === null ? null : ecart > EPS ? 'sur' : ecart < -EPS ? 'sous' : null;
+      return { service: s.service, nom: nom(s.service), jour: s.jour, besoin, charge, presents, fixes, fixe, ecart, sens,
+        signale: sens === 'sous' && Math.abs(ecart) >= seuils.ecartPersonnes - EPS,
+        chauffeurs: eqs.some(e => e.chauffeurs), horsCompte: somme(eqs, e => e.horsCompte),
         matin: moitie(s.creneaux, s.jour, t => t < MIDI), apresMidi: moitie(s.creneaux, s.jour, t => t >= MIDI),
         pic: s.picAuTravail ? { personnes: s.picAuTravail.personnes, a: s.picAuTravail.debut + s.jour * JOUR } : null,
         occupation: s.occupation,
-        equipes: eqs.map(e => ({ id: e.id, nom: e.nom, presents: net(e.presents), besoin: net(e.besoin), mesure: e.mesure })) };
+        equipes: eqs.map(e => ({ id: e.id, nom: e.nom, presents: net(e.presents), besoin: net(e.besoin), mesure: e.mesure, fixe: e.fixe })) };
     });
-    const total = { besoin: somme(services, s => s.besoin), presents: net(somme(services, s => s.presents)) };
-    return { services, total: { ...total, ecart: net(total.presents - total.besoin) } };
+    const total = { besoin: somme(services, s => s.besoin), presents: net(somme(services, s => s.presents)), fixes: net(somme(services, s => s.fixes)) };
+    return { services, total: { ...total, ecart: net(total.presents - total.fixes - total.besoin) } };
   }
 
   /* ----------------------------------------------------------------------
@@ -244,11 +271,30 @@
     return morceaux.reduce((m, x) => (!m || x.cumul > m.cumul + EPS ? x : m), null);
   }
   /**
-   * Par service et jour de travail (les lignes des indicateurs) : sa file la plus longue, l'attente la plus longue d'un lot,
-   * le cumul ; la cause ; le goulot du jour, qui dit son jour de travail.
+   * Ce qui part en retard par les lots d'une ligne (ses équipes) : les commandes prêtes après leur limite ou pas finies
+   * qu'ils portent ; au handling, les vols chargés après leur limite ou pas chargés. Rend leur nombre.
    */
-  function coince(r, args, k, seuils) {
+  function retardsDe(equipes, r, seuils) {
+    const ids = new Set(equipes.map(v => v.id)), par = r.parClasse || {}, vus = new Set();
+    const tard = c => c && !c.absente && (c.fin == null || (c.fin > c.echeance + EPS && c.fin - c.echeance >= seuils.retard - EPS));
+    for (const l of r.lots || []) {
+      if (!ids.has(l.atelier) || l.dispo) continue;
+      if (l.handling) { if (l.fin == null || (l.aHeure === false && (+l.retard || 0) >= seuils.retard - EPS)) vus.add('vol ' + l.vol); }
+      else for (const c of l.classes || []) if (tard(par[c])) vus.add(c);
+    }
+    return vus.size;
+  }
+
+  /**
+   * Par service et jour de travail (les lignes des indicateurs) : sa file la plus longue, l'attente la plus longue d'un lot,
+   * le cumul ; la cause ; ce qui part en retard par ses lots (`enRetard`). Le goulot du jour, qui dit son jour de travail
+   * (correction 17 c) : parmi les lignes qui dépassent le seuil d'attente ET qui finissent après leur horaire (`fins`) ou
+   * font partir une commande ou un vol en retard, celle au plus grand cumul d'attente. Sinon : rien ne coince — les attentes
+   * restent dans les lignes.
+   */
+  function coince(r, args, k, seuils, fins) {
     const ke = new Map(k.equipes.map(e => [e.id, e])), nom = nomDe(args);
+    const depasse = new Map(((fins && fins.services) || []).map(f => [f.service + '|' + f.jour, f.depasse]));
     const services = k.services.map(s => {
       const membres = new Set(s.equipes || []), file = fileDuService(equipesDe(r, s), ke), cumul = net(somme(file, f => f.minutes));
       const pire = file.reduce((m, f) => (f.minutes > EPS && (!m || f.minutes > m.minutes + EPS) ? f : m), null);
@@ -256,13 +302,16 @@
       const occupationFile = occupationPendant(k.equipes.filter(e => membres.has(e.id) && e.creneaux));
       const plus = IND().fileMax(file);
       return { service: s.service, nom: nom(s.service), jour: s.jour, file: plus.lots ? plus : null, cumul, parts, occupationFile,
-        cause: causeDe(cumul, parts, occupationFile, seuils),
+        cause: causeDe(cumul, parts, occupationFile, seuils), enRetard: retardsDe(equipesDe(r, s), r, seuils),
         attenteMax: pire ? { minutes: net(pire.minutes), lot: pire.lot.nom, equipe: pire.equipe, de: pire.de, a: pire.a } : null, fenetre: fenetreDe(file) };
     });
-    // Le goulot : la ligne au plus grand cumul d'attente, si son attente la plus longue dépasse le seuil (le contrat, R2).
-    const g = services.reduce((m, s) => (s.cumul > EPS && (!m || s.cumul > m.cumul + EPS) ? s : m), null);
-    const goulot = g && g.attenteMax && g.fenetre && g.attenteMax.minutes > seuils.attenteLot + EPS
-      ? { service: g.service, nom: g.nom, jour: g.jour, cause: g.cause, de: g.fenetre.de, a: g.fenetre.a, attenteMax: g.attenteMax.minutes, cumul: g.cumul } : null;
+    // Le goulot (le contrat, R2) : une attente au-delà du seuil ET une fin après l'horaire ou un départ en retard ; le plus grand cumul.
+    const apres = s => +depasse.get(s.service + '|' + s.jour) || 0;
+    const candidats = services.filter(s => s.cumul > EPS && s.attenteMax && s.fenetre && s.attenteMax.minutes > seuils.attenteLot + EPS
+      && (apres(s) > EPS || s.enRetard > 0));
+    const g = candidats.reduce((m, s) => (!m || s.cumul > m.cumul + EPS ? s : m), null);
+    const goulot = g ? { service: g.service, nom: g.nom, jour: g.jour, cause: g.cause, de: g.fenetre.de, a: g.fenetre.a, attenteMax: g.attenteMax.minutes,
+      cumul: g.cumul, depasse: net(apres(g)), enRetard: g.enRetard } : null;
     return { services: services.map(({ fenetre, ...s }) => s), goulot };
   }
 
@@ -407,7 +456,8 @@
   function reponses(r, args, o = {}) {
     if (!r || r.ok === false) return null;
     const a = args || {}, seuils = seuilsComplets(o.seuils), k = o.k || IND().journee(r, a);
-    return { seuils, personnes: personnes(r, a, k, seuils), coince: coince(r, a, k, seuils), fins: fins(r, a, k), exceptions: exceptions(r, a, seuils), comptes: comptes(r) };
+    const f = fins(r, a, k);
+    return { seuils, personnes: personnes(r, a, k, seuils), coince: coince(r, a, k, seuils, f), fins: f, exceptions: exceptions(r, a, seuils), comptes: comptes(r) };
   }
 
   /** Une différence : la valeur de A, celle de B, et B − A (null si l'une manque). */
@@ -423,7 +473,9 @@
     const champ = (x, f) => (x ? f(x) : null), cleEx = x => x.type + '|' + x.id, ligne = s => s.service + '|' + s.jour;
     const services = reunirAB(A.personnes.services, B.personnes.services, ligne).map(([a, b]) => ({ service: (a || b).service, jour: (a || b).jour, nom: (a || b).nom,
       besoin: ecartAB(champ(a, x => x.besoin), champ(b, x => x.besoin)), presents: ecartAB(champ(a, x => x.presents), champ(b, x => x.presents)),
-      ecart: ecartAB(champ(a, x => x.ecart), champ(b, x => x.ecart)) }));
+      ecart: ecartAB(champ(a, x => x.ecart), champ(b, x => x.ecart)),
+      // Un poste fixe n'a ni besoin ni écart (null) : `fixe` le dit, pour ne pas le lire comme un service absent de l'essai.
+      fixe: { a: champ(a, x => !!x.fixe), b: champ(b, x => !!x.fixe) } }));
     const t = k => ecartAB(A.personnes.total[k], B.personnes.total[k]), ga = A.coince.goulot, gb = B.coince.goulot;
     const exA = new Set(A.exceptions.map(cleEx)), exB = new Set(B.exceptions.map(cleEx));
     return {

@@ -70,8 +70,11 @@
     const de = (s, lignes) => { const mot = REP().motDeLaLigne(s, lignes); return s.nom + (mot ? ' (' + mot + ')' : ''); };
     out[1].push(ligne('Il faut (personnes)', n(t.besoin.a), n(t.besoin.b), ecartSigne(t.besoin.d, -1, n)));
     out[1].push(ligne('Présentes (équivalents temps plein)', n(t.presents.a), n(t.presents.b), ecartSigne(t.presents.d, 0, n)));
-    for (const s of d.personnes.services.filter(x => x.besoin.d || x.presents.d))
-      out[1].push(ligne(de(s, d.personnes.services) + ' : il faut / présentes', n(s.besoin.a) + ' / ' + n(s.presents.a), n(s.besoin.b) + ' / ' + n(s.presents.b)));
+    // Un poste fixe (correction 17 c) n'a pas de besoin : « fixe / 2 ».
+    const faut = (s, c) => ((s.fixe || {})[c] ? 'fixe' : n(s.besoin[c]));
+    // Une ligne qui devient un poste fixe (ou cesse de l'être) change aussi, même à présents égaux.
+    for (const s of d.personnes.services.filter(x => x.besoin.d || x.presents.d || (x.fixe && x.fixe.a !== null && x.fixe.b !== null && x.fixe.a !== x.fixe.b)))
+      out[1].push(ligne(de(s, d.personnes.services) + ' : il faut / présentes', faut(s, 'a') + ' / ' + n(s.presents.a), faut(s, 'b') + ' / ' + n(s.presents.b)));
     out[2].push(ligne('Goulot', nom(A), nom(B)));
     for (const s of d.coince.services.filter(x => x.attenteMax.d))
       out[2].push(ligne(de(s, d.coince.services) + ' : un lot attend jusqu’à', s.attenteMax.a == null ? '—' : dl(s.attenteMax.a), s.attenteMax.b == null ? '—' : dl(s.attenteMax.b), ecartSigne(s.attenteMax.d, -1, dl)));

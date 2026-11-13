@@ -1693,7 +1693,7 @@ function majGoulotInfo() {
     const cumul={};for(const l of lots)if(l.attente>=1)cumul[l.service]=(cumul[l.service]||0)+l.attente;
     const top=Object.entries(cumul).sort((x,y)=>y[1]-x[1])[0];
     // Évolution 15 (c) : une durée en heures au-delà d'une heure ; seulement si cette attente passe le seuil d'attente d'un lot.
-    const seuilAttente=(seuilsAlerte().seuils||{attenteLot:60}).attenteLot;
+    const seuilAttente=(seuilsAlerte().seuils||{attenteLot:360}).attenteLot;
     if(top&&top[1]>seuilAttente)html+='<p class="mini-note">Sur toute la journée, c’est <strong>'+escapeHTML(noms[top[0]]||top[0])+'</strong> qui attend le plus : '
       +MoteurProduction.dureeLisible(top[1])+' en tout.</p>';
   }

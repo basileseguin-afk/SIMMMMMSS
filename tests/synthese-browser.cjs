@@ -107,7 +107,7 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
    if(k.volsSuivis)attendus['Vols chargés à l’heure']=k.volsAHeure+' sur '+k.volsSuivis;
    for(const [q,v] of Object.entries(attendus))assert.equal(comptes[q],v,V+q);
    assert.equal(par.length,k.classesSuivies,V+'toutes les commandes suivies sont comptées');
-   assert.match(await page.locator('#bilan-journee .bilan-resume').first().textContent(),/^Il faut \d+ personnes?, [\d,]+ (sont présentes|est présente)\.$/,V+'la première phrase');
+   assert.match(await page.locator('#bilan-journee .bilan-resume').first().textContent(),/^Il faut \d+ personnes?, [\d,]+ (sont présentes|est présente)(, dont [\d,]+ en postes? fixes?)?\.$/,V+'la première phrase');
    assert.deepEqual(await page.locator('#bilan-journee .sy-carte h4').allTextContents(),['Où ça coince','Ce qui part en retard'],V+'deux cartes sans essais');
    assert.ok(k.classesAbsentes>0);
    assert.match(await page.locator('#bilan-journee .bilan-probleme').innerText(),new RegExp(k.classesAbsentes+' commandes que personne ne prépare'),V+'le problème');

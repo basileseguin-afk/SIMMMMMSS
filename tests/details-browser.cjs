@@ -131,12 +131,13 @@ const tropDeMinutes=texte=>[...String(texte).matchAll(/(\d[\d   ]*) ?min\b/g)
   await page.evaluate(()=>localStorage.removeItem('ory-seuils-v1'));
 
   // 7. « À regarder » se tait quand il n'a rien à dire : au début de la journée rejouée, personne n'attend ; et aucune attente
-  //    de la journée ne passe un seuil de 24 h. Aux seuils par défaut, il dit qui attend le plus sur la journée.
+  //    de la journée ne passe un seuil de 24 h. Au seuil d'une heure, il dit qui attend le plus sur la journée.
   await page.evaluate(()=>Sim.seuils.enregistrer({attenteLot:1440}));
   await nav.aller(page,'j-plan');await page.evaluate(()=>Sim.vue.allerA(Sim.vue.debut));await attendre(300);
   assert.equal(await page.locator('#goulot-info').isVisible(),false,'rien à dire : rien d’affiché');
-  await page.evaluate(()=>localStorage.removeItem('ory-seuils-v1'));await page.evaluate(()=>Sim.vue.allerA(Sim.vue.debut+1));await attendre(300);
+  await page.evaluate(()=>Sim.seuils.enregistrer({attenteLot:60}));await page.evaluate(()=>Sim.vue.allerA(Sim.vue.debut+1));await attendre(300);
   assert.match(await page.locator('#goulot-info').innerText(),/qui attend le plus : \d+ h \d\d en tout/,'au-delà du seuil : il le dit, en heures');
+  await page.evaluate(()=>localStorage.removeItem('ory-seuils-v1'));
 
   assert.deepEqual(errors,[],errors.join(' | '));
   console.log('details-browser : ok — menu et onglets (clavier compris), anciens identifiants, compteurs égaux, exceptions d’abord, durées en heures, alertes au seuil (stocks, bouchon).');

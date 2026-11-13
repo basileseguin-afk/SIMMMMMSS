@@ -40,7 +40,9 @@ const critiques=page=>page.evaluate(()=>{
     // 1. Les phrases et les chiffres du tableau : ceux du module.
     const lu=await page.evaluate(()=>{const rep=Sim.reponses(),SV=OrlySyntheseVue;
       const ls=SV.lignes(rep,OrlyPlanningVue.ordreDesServices(Sim.ateliers.resultat,Sim.ateliers.args.parcours)),D=MoteurProduction.dureeLisible;
-      return {phrases:SV.phrases(rep),attendu:ls.map(l=>[l.service,String(l.jour),SV.nombre(l.besoin),SV.nombre(l.presents)]),
+      // Correction 17 (c) : un poste fixe écrit « fixe » ; un service qui en a à côté de son besoin les dit ; un handling compte ses chauffeurs.
+      const besoin=l=>l.fixe?'fixe':SV.nombre(l.besoin)+(l.fixes>1e-9?'+ '+SV.nombre(l.fixes)+(l.fixes>=2?' fixes':' fixe'):'');
+      return {phrases:SV.phrases(rep),attendu:ls.map(l=>[l.service,String(l.jour),besoin(l),SV.nombre(l.presents)+(l.chauffeurs?'chauffeurs':'')]),
         // Correction 17 (a) : chaque ligne dit son jour, et porte sa propre fin et ses propres heures sup.
         mots:ls.map(l=>l.mot),jours:[...document.querySelectorAll('#bilan-journee .sy-table tbody tr')].map(tr=>(tr.querySelector('.sy-jour')||{}).textContent||null),
         cases:[...document.querySelectorAll('#bilan-journee .sy-table tbody tr')].map(tr=>tr.cells.length),
@@ -76,6 +78,39 @@ const critiques=page=>page.evaluate(()=>{
     // 4. Pas d'essai : pas de carte « Ce que change l'essai ».
     assert.equal(await page.locator('#bilan-journee .sy-carte[aria-label="Ce que change l’essai"]').count(),0,V+'sans essais');
 
+    // 4 bis. Correction 17 (c) : des lignes qui disent vrai.
+    const vrai=await page.evaluate(()=>{const rep=Sim.reponses(),rangs=[...document.querySelectorAll('#bilan-journee .sy-table tbody tr')];
+      const c=(l,i)=>rangs.find(tr=>tr.dataset.service===l.service&&tr.dataset.jour===String(l.jour)).cells[i];
+      const fixe=rep.personnes.services.find(x=>x.fixe&&x.presents>0),sur=rep.personnes.services.find(x=>x.sens==='sur'&&x.ecart>=rep.seuils.ecartPersonnes),ch=rep.personnes.services.find(x=>x.chauffeurs);
+      return {total:rep.personnes.total,seuils:rep.seuils,goulot:rep.coince.goulot,
+        fixe:[c(fixe,1).textContent,c(fixe,3).textContent,c(fixe,3).dataset.ton||null],
+        sur:[c(sur,3).dataset.ton||null,!!c(sur,3).querySelector('.sy-ecart-barre i'),c(sur,3).querySelector('.sy-v').textContent],
+        chauffeurs:[c(ch,1).textContent,c(ch,2).querySelector('small').textContent,ch.horsCompte],
+        notes:[...document.querySelectorAll('#bilan-journee .sy-note')].map(x=>x.textContent),
+        legende:document.querySelector('#bilan-journee .sy-legende').textContent,
+        carte:document.querySelector('#bilan-journee .sy-carte[aria-label="Où ça coince"]').innerText};});
+    assert.ok(vrai.total.fixes>0,V+'l’unité fictive a des postes fixes');
+    assert.match(lu.tete[0],/^Il faut \d+ personnes?, [\d,]+ sont présentes, dont [\d,]+ en postes? fixes?\.$/,V+'la phrase de tête dit les postes fixes');
+    assert.deepEqual(vrai.fixe,['fixe','—',null],V+'un poste fixe : « fixe », pas d’écart');
+    assert.deepEqual(vrai.sur.slice(0,2),[null,true],V+'un surplus de '+vrai.sur[2]+' : sans couleur d’alerte, avec sa barre');
+    assert.deepEqual(vrai.chauffeurs.slice(0,2),['fixe','chauffeurs'],V+'le handling : ses chauffeurs');
+    assert.ok(vrai.chauffeurs[2]>0&&vrai.notes.length===1,V+'une note pour ce qui n’est pas compté');
+    assert.match(vrai.notes[0],/ : les présents sont ses chauffeurs ; les \d+ personnes saisies à l’équipe ne sont pas comptées\.$/,V+'la note');
+    assert.match(vrai.legende,/il manque au moins 3 personnes \(un surplus n’est pas une alerte\), une attente de plus de 6 h 00/,V+'la légende dit les seuils par défaut');
+    // Aux seuils par défaut : des lots attendent, mais aucun plus de 6 h — rien ne coince.
+    assert.deepEqual([vrai.seuils.attenteLot,vrai.seuils.ecartPersonnes,vrai.goulot],[360,3,null],V+'les défauts');
+    assert.match(vrai.carte,/Rien ne coince\.\s*Aucun service n’attend plus de 6 h 00 en finissant après son horaire ou en faisant partir une commande ou un vol en retard\./,V+'la carte : rien ne coince');
+    assert.match(lu.tete[1],/^Rien ne coince ; /,V+'la phrase de tête');
+    // Au seuil d'une heure : le service qui attend plus que le seuil ET fait partir des commandes en retard coince ; la carte dit pourquoi.
+    await page.evaluate(()=>Sim.seuils.enregistrer({attenteLot:60}));await page.evaluate(()=>Sim.ateliers.changer(()=>{},''));await attendre(400);
+    const une=await page.evaluate(()=>{const g=Sim.reponses().coince.goulot;return {g,carte:document.querySelector('#bilan-journee .sy-carte[aria-label="Où ça coince"]').innerText,
+      tete:document.querySelectorAll('#bilan-journee .sy-tete .bilan-resume')[1].textContent};});
+    assert.ok(une.g&&une.g.attenteMax>60&&(une.g.depasse>0||une.g.enRetard>0),V+'un goulot : '+JSON.stringify(une.g));
+    assert.ok(une.carte.includes(une.g.nom)&&/part(ent)? en retard|après son horaire/.test(une.carte),V+'la carte nomme le goulot et dit pourquoi : '+une.carte);
+    assert.ok(une.tete.startsWith(une.g.nom),V+'la phrase de tête le nomme');
+    await page.evaluate(()=>localStorage.removeItem('ory-seuils-v1'));await page.evaluate(()=>Sim.ateliers.changer(()=>{},''));await attendre(400);
+    assert.equal(await page.locator('#bilan-journee .sy-carte[aria-label="Où ça coince"] .sy-grand').textContent(),'Rien ne coince.',V+'retour aux défauts');
+
     // 5. Un clic sur une ligne ouvre ce service dans le planning, déplié, à la vue.
     const service=await page.locator('#bilan-journee .sy-table tbody tr').nth(2).getAttribute('data-service');
     await page.locator('#bilan-journee .sy-table tbody tr').nth(2).locator('td').first().click();await attendre(500);
@@ -110,8 +145,21 @@ const critiques=page=>page.evaluate(()=>{
    assert.match(await page.locator('#bilan-journee .sy-tete').innerText(),/rien ne part en retard\./);
    assert.equal(await page.locator('#bilan-journee .sy-carte[aria-label="Ce qui part en retard"] .sy-grand').textContent(),'Rien.');
    assert.deepEqual(await critiques(page),[],'aucune couleur critique');
+   // 8. Correction 17 (c) : l'écart ne prend la couleur de statut que s'il manque des personnes. Le montage garde 1 personne
+   // (ni seconde équipe, ni robot) : il lui en manque plus d'une, au seuil de 1 → sa case se colore ; les surplus du tableau
+   // restent sans couleur.
+   await page.evaluate(()=>Sim.seuils.enregistrer({ecartPersonnes:1}));
+   await page.evaluate(()=>Sim.ateliers.changer(()=>{const de=id=>Sim.ateliers.state.ateliers.find(x=>x.id===id);de('mo').personnes=1;de('mo2').personnes=0;de('rb').personnes=0;},''));await page.waitForTimeout(500);
+   const ecarts=await page.evaluate(()=>{const rangs=[...document.querySelectorAll('#bilan-journee .sy-table tbody tr')];
+     return Sim.reponses().personnes.services.filter(x=>!x.fixe).map(x=>{const tr=rangs.find(t=>t.dataset.service===x.service&&t.dataset.jour===String(x.jour));
+       return tr?{service:x.service,sens:x.sens,ecart:x.ecart,ton:tr.cells[3].dataset.ton||null,mots:(tr.cells[3].querySelector('.sr-only')||{}).textContent||null}:null;}).filter(Boolean);});
+   const manque=ecarts.find(x=>x.service==='prepa');
+   assert.deepEqual([manque.sens,manque.ecart<=-1,manque.ton,manque.mots],['sous',true,'attente','au-delà du seuil : '],'un manque : la couleur de statut, une icône et des mots — '+JSON.stringify(manque));
+   const surplus=ecarts.filter(x=>x.sens==='sur'&&x.ecart>=1);
+   assert.ok(surplus.length>=1&&surplus.every(x=>x.ton===null),'un surplus : sans couleur d’alerte — '+JSON.stringify(surplus));
+   await page.evaluate(()=>localStorage.removeItem('ory-seuils-v1'));
    assert.deepEqual(errors,[],errors.join(' | '));
   }finally{ch.effacer();await page.close();}
-  console.log('synthese-questions-browser : ok — chiffres du module, largeur, courbe, clic vers le planning, carte de l’essai, journée sans retard sans rouge.');
+  console.log('synthese-questions-browser : ok — chiffres du module, largeur, courbe, clic vers le planning, carte de l’essai, journée sans retard sans rouge, postes fixes, chauffeurs, manque et surplus, goulot.');
  }catch(e){console.error(e);process.exitCode=1;}finally{site.effacer();await browser.close();}
 })();

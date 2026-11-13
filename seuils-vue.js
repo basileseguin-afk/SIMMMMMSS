@@ -18,8 +18,8 @@
 
   /** Ce que chaque seuil déclenche, en une ligne sous son champ. */
   const EFFET = Object.freeze({
-    ecartPersonnes: 'Un service a trop ou pas assez de monde à partir de cet écart.',
-    attenteLot: 'Le service qui attend le plus coince si l’un de ses lots attend plus longtemps.',
+    ecartPersonnes: 'Un service est signalé s’il lui manque au moins ce nombre de personnes (un surplus n’est pas une alerte).',
+    attenteLot: 'Un service coince si l’un de ses lots attend plus longtemps et s’il finit après son horaire ou fait partir une commande ou un vol en retard.',
     occupation: 'Au-delà, une file est due au manque de personnel.',
     dureeStockMax: 'Vide : aucune alerte de stock.',
     retard: 'Un vol ou une commande en retard d’au moins autant est une exception.'

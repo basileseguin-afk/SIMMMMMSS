@@ -832,7 +832,9 @@ revient plus qu'ils n'en lavent, **une file se forme**. Le calcul la suit :
   tournent) : les heures où il revient plus qu'ils ne lavent sont nommées.
 
 Au-delà d'une heure d'attente, un point à regarder le dit (« Bouchon à la
-plonge : jusqu'à 740 u… »), sans bloquer la journée.
+plonge : jusqu'à 740 u… »), sans bloquer la journée. Dans les résultats de la
+version 1, l'étiquette « Bouchon » suit le seuil d'attente d'un lot (6 h par
+défaut, correction 17 c) ou le sale resté le soir.
 
 ## 3 bis. Le temps entre deux ateliers : les stocks
 

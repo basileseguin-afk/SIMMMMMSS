@@ -51,8 +51,8 @@ test('« Les services » : dans l’ordre du chemin, une ligne par service et jo
 test('les tons : seulement au-delà du seuil, et jamais le rouge (il est aux retards)', () => {
   const S = R.SEUILS_DEFAUT, l = x => ({ signale: false, occupation: 0.5, coince: { attenteMax: { minutes: 30 } }, ...x });
   assert.deepEqual(SV.tons(l(), S), { ecart: null, attente: null, occupation: null });
-  assert.deepEqual(SV.tons(l({ signale: true, occupation: 0.96, coince: { attenteMax: { minutes: 61 } } }), S), { ecart: 'attente', attente: 'attente', occupation: 'attente' });
-  assert.deepEqual(SV.tons(l({ occupation: 0.95, coince: { attenteMax: { minutes: 60 } } }), S), { ecart: null, attente: null, occupation: null }, 'au seuil : rien');
+  assert.deepEqual(SV.tons(l({ signale: true, occupation: 0.96, coince: { attenteMax: { minutes: S.attenteLot + 1 } } }), S), { ecart: 'attente', attente: 'attente', occupation: 'attente' });
+  assert.deepEqual(SV.tons(l({ occupation: 0.95, coince: { attenteMax: { minutes: S.attenteLot } } }), S), { ecart: null, attente: null, occupation: null }, 'au seuil : rien');
   const { rep } = fictive();
   assert.doesNotMatch(SV.tableau(rep, []), /data-ton="retard"/);
 });
@@ -77,7 +77,11 @@ test('les cartes : rien ne coince, rien ne part en retard ; et l’essai seuleme
   assert.equal(libre.ton, 'ok'); assert.match(libre.corps, /Rien ne coince\./);
   const avec = fictive(), r2 = SV.carteRetard(avec.rep);
   assert.equal(r2.ton, 'retard'); assert.match(r2.corps, /Et \d+ autres\./);
-  assert.equal(SV.carteCoince(avec.rep).ton, 'attente');
+  // Au seuil par défaut (6 h), l'unité fictive ne coince pas, même avec des retards : les attentes restent dans le tableau.
+  assert.equal(avec.rep.coince.goulot, null); assert.equal(SV.carteCoince(avec.rep).ton, 'ok');
+  // Au seuil d'une heure : un service attend plus que le seuil ET fait partir des commandes en retard — il coince, et la carte dit pourquoi.
+  const p = F.heureDuPicAttendue(F.sauvegardeFictive(), F.volsCsv()), une = R.reponses(p.resultat, p.args, { k: p.k, seuils: { attenteLot: 60 } }), c = SV.carteCoince(une);
+  assert.equal(c.ton, 'attente'); assert.match(c.corps, /part(ent)? en retard/);
   assert.equal(SV.carteEssai(null), null); assert.equal(SV.carteEssai({ A: avec.rep, B: null }), null);
   const e = SV.carteEssai({ A: avec.rep, B: sans.rep });
   assert.match(e.corps, /En retard : \d+ → <b>0<\/b>/); assert.equal(e.page, 'j-comparer');

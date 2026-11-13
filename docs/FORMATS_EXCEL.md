@@ -835,9 +835,19 @@ Une ligne par mesure, dans l'ordre du contrat :
 - **1.** Par service et jour de travail : `Il faut` (le besoin), `Présentes
   (ETP)`, `Écart (présentes − il faut)` (au seuil d'écart), `Matin, au travail
   au plus` et `Après-midi, au travail au plus` (et les présentes, en détail),
-  `Pic au travail`, `Occupation` (au seuil d'occupation) ; puis toute l'unité.
-- **2.** `Goulot` (le service et son jour de travail au plus grand cumul
-  d'attente, son cumul, de quand à quand, sa cause ; sinon « aucun ») ; puis,
+  `Pic au travail`, `Occupation` (au seuil d'occupation) ; puis toute l'unité
+  (`Il faut`, hors postes fixes ; `Présentes (ETP)` ; `Dont postes fixes
+  (ETP)` ; `Écart (présentes hors postes fixes − il faut)`). Un **poste fixe**
+  (correction 17 c : un service permanent, d'appui, un handling) n'a ni besoin
+  ni écart : `Il faut` et l'écart sont vides, le détail dit « poste fixe » ;
+  seul un manque est « au-delà du seuil » (un surplus : `non`). Un handling à
+  chauffeurs compte ses chauffeurs dans `Présentes (ETP)` ; le détail le dit,
+  avec les personnes saisies à l'équipe qui ne sont pas comptées.
+- **2.** `Goulot` (parmi les services et jours de travail qui attendent plus
+  que le seuil **et** qui finissent après leur horaire ou font partir une
+  commande ou un vol en retard, celui au plus grand cumul d'attente : son
+  cumul, de quand à quand, ce qui en fait un goulot, sa cause ; sinon
+  « aucun ») ; puis,
   pour chaque service et jour de travail où un lot attend : `File la plus longue`, `Attente la plus longue d’un lot` (au
   seuil d'attente), `Cumul d’attente`, `Cause` (en détail : personnel, l'amont
   ou le matériel). Les heures écrites en détail sont arrondies à la minute,
@@ -852,7 +862,7 @@ Une ligne par mesure, dans l'ordre du contrat :
 - **5.** Depuis la page, avec deux essais retenus dans « Comparer deux
   essais » : B − A sur le besoin et les présentes de l'unité et des services
   qui changent (un service présent dans un seul essai aussi : « absent →
-  3 »), le goulot, les fins et les heures sup qui changent, le nombre
+  3 » ; un poste fixe : « fixe »), le goulot, les fins et les heures sup qui changent, le nombre
   d'exceptions, celles réglées et celles nouvelles dans B. Sans second essai
   (et toujours dans l'outil) : une ligne « Sans second essai ».
 

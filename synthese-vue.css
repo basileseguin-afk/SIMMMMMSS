@@ -45,6 +45,9 @@
 .sy-jour{display:inline-block;margin-left:var(--ds-e-1);padding:0 6px;border-radius:999px;background:var(--ds-surface-2);color:var(--ds-texte-3);font-size:var(--ds-t-11)}
 .sy-sur{color:var(--ds-texte-3)}
 .sy-vide{color:var(--ds-texte-3)}
+/* Correction 17 (c) : un poste fixe n'a pas de besoin calculé ; la note dit ce qu'une ligne ne compte pas. */
+.sy-fixe{color:var(--ds-texte-3)}
+.sy-note{margin-top:var(--ds-e-1)}
 .sy-table [data-ton="attente"]{background:var(--ds-attente-doux);color:var(--ds-attente-texte)}
 .sy-table [data-ton="attente"] .ico{width:13px;height:13px;margin-right:4px;vertical-align:-2px}
 .sy-ecart,.sy-occ{white-space:nowrap}

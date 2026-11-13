@@ -90,8 +90,9 @@ test('les stocks : le plus en stock d’abord ; l’échelle des petites courbes
   assert.deepEqual(liens.map(l => RV.plusDe24h(l)), [false, true, false, true]);
   // Évolution 15 (c) : le bouchon de la plonge, seulement s'il reste du sale le soir ou si l'attente passe le seuil.
   const S = require('../moteur/reponses.js').SEUILS_DEFAUT;
-  assert.equal(RV.bouchon({ resteSale: 0, attenteMax: 60 }, S), false, 'une heure d’attente, au seuil : pas de bouchon');
-  assert.equal(RV.bouchon({ resteSale: 0, attenteMax: 61 }, S), true);
+  assert.equal(RV.bouchon({ resteSale: 0, attenteMax: S.attenteLot }, S), false, 'une attente au seuil (6 h par défaut) : pas de bouchon');
+  assert.equal(RV.bouchon({ resteSale: 0, attenteMax: S.attenteLot + 1 }, S), true);
+  assert.equal(RV.bouchon({ resteSale: 0, attenteMax: 61 }, { ...S, attenteLot: 60 }), true, 'un seuil réglé à une heure');
   assert.equal(RV.bouchon({ resteSale: 3, attenteMax: 5 }, S), true, 'du sale reste le soir');
   assert.equal(RV.bouchon(null, S), false);
 });

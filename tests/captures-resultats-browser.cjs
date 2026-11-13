@@ -2,7 +2,9 @@
  * vols fictifs (tests/plan-rejoue-fictif.cjs), en thème clair et sombre, à
  * 1 280 et 1 920 px de large :
  *   — la Synthèse, dans ses quatre cas : avec un goulot et des retards, des
- *     retards sans goulot, ni l'un ni l'autre, un goulot sans retard ;
+ *     retards sans goulot, ni l'un ni l'autre, un goulot sans retard (un goulot,
+ *     correction 17 c : un service qui attend plus que le seuil ET qui finit
+ *     après son horaire ou fait partir une commande ou un vol en retard) ;
  *   — « Détails » : Commandes (les exceptions d'abord) et Vols ;
  *   — la Période : la colonne « Unité » et la courbe de l'unité.
  * Chaque capture est vérifiée (sa taille, ce qu'elle doit montrer, la page qui
@@ -59,7 +61,8 @@ const taillePng=f=>{const b=fs.readFileSync(f);assert.equal(b.toString('latin1',
     const fond=await page.evaluate(()=>getComputedStyle(document.body).backgroundColor);
     assert.notEqual(fond,'rgba(0, 0, 0, 0)',V+'un fond');
 
-    // La Synthèse : un goulot et des retards (les seuils par défaut).
+    // La Synthèse : un goulot et des retards — au seuil d'une heure, un service attend plus que le seuil et fait partir des commandes en retard.
+    await seuils({attenteLot:60});
     await synthese('goulot-retards',true,true);
     // « Détails » : Commandes, les exceptions d'abord ; Vols.
     await nav.aller(page,'at-repas');await attendre(300);
@@ -69,15 +72,19 @@ const taillePng=f=>{const b=fs.readFileSync(f);assert.equal(b.toString('latin1',
     await nav.aller(page,'v-departs');await attendre(300);
     assert.ok(await page.locator('#vols-comptes .sy-comptes').count()===1,V+'les comptes des vols');
     await capturer('details-vols');
-    // Des retards, sans goulot : aucun lot n'attend plus de 24 h.
-    await seuils({attenteLot:1440});
+    // Des retards, sans goulot : les seuils par défaut (aucun lot n'attend plus de 6 h).
+    await seuils(null);
     await synthese('retards',false,true);
     // Ni retard ni goulot : les vols fictifs partis plus tard.
     await F.importerVols(page,nav,ch.fichier,'vols-sans-retard.csv',F.volsSansRetardCsv());
     await synthese('calme',false,false);
-    // Un goulot, sans retard : les seuils par défaut.
-    await seuils(null);
+    // Un goulot, sans retard : les heures sup permises, la plonge finit après son horaire ; au seuil de 5 min, elle attend plus que le seuil.
+    const hs=await page.evaluate(()=>{const avant=Sim.reglages.etat.heuresSup;Sim.reglages.changer(()=>{Sim.reglages.etat.heuresSup={actif:true,plafond:120};},'');return avant||null;});
+    await seuils({attenteLot:5});
     await synthese('goulot',true,false);
+    assert.match(await page.locator('#bilan-journee .sy-carte[aria-label="Où ça coince"]').innerText(),/après son horaire/,V+'le goulot dit pourquoi');
+    await page.evaluate(h=>Sim.reglages.changer(()=>{if(h)Sim.reglages.etat.heuresSup=h;else delete Sim.reglages.etat.heuresSup;},''),hs);
+    await seuils(null);
 
     // La Période : une semaine datée fictive, simulée ; la colonne Unité et la courbe.
     await F.importerVols(page,nav,ch.fichier,'semaine.csv',semaine());
