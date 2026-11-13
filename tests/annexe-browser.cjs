@@ -1,5 +1,8 @@
 /* Une zone de production annexe — « Armement 2 » — doit pouvoir être dessinée,
- * rattachée à un atelier du moteur, aménagée, et ses personnes comptées. */
+ * rattachée à un atelier du moteur, aménagée, et ses personnes comptées.
+ * Chaque étape attend son effet (l'équipe créée, le champ enregistré, le plan
+ * écrit dans le navigateur, la page redémarrée), pas un délai (correction
+ * 18 c) : le test ne dépend pas de la vitesse de la machine. */
 const assert=require('node:assert/strict'),path=require('node:path');
 const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
@@ -10,9 +13,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
  page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
  const click=s=>page.locator(s).click();
  try{
-  await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);
+  await page.goto(pathToFileURL(path.resolve(__dirname,'../index.html')).href);await nav.pret(page);
   // Le site s'ouvre sur l'étape à faire ensuite : ce parcours travaille sur le plan.
-  const versPlan=async()=>{await nav.vue(page,'plan');await page.waitForTimeout(120);};await versPlan();
+  const versPlan=async()=>{await nav.vue(page,'plan');await page.waitForFunction(()=>document.body.dataset.vue==='plan'&&!!document.querySelector('#zone-picker option'));};await versPlan();
+  /** L'équipe `id` porte cette valeur : on attend que la saisie soit prise. */
+  const equipe=(id,dit,arg)=>page.waitForFunction(([id,source,x])=>{const a=Sim.ateliers.state.ateliers.find(y=>y.id===id);return !!a&&!!(new Function('a','x','return ('+source+')(a,x);'))(a,x);},[id,dit.toString(),arg===undefined?null:arg]);
 
   // 1. Dessiner un rectangle libre dans l'éditeur du plan.
   await click('#btn-edit');
@@ -42,12 +47,15 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
 
   // 4. Elle accueille des ateliers de travail comme n'importe quel service.
   await nav.vue(page,'ateliers');
-  await nav.aller(page,'at-equipes');await page.locator('#at-new').click();await page.waitForTimeout(150);
+  await nav.aller(page,'at-equipes');
+  const nombre=await page.evaluate(()=>Sim.ateliers.state.ateliers.length);
+  await page.locator('#at-new').click();await page.waitForFunction(n=>Sim.ateliers.state.ateliers.length===n+1,nombre);
   const at=await page.evaluate(()=>Sim.ateliers.state.ateliers.at(-1).id);
-  await page.selectOption(`[data-at="${at}"] [data-at-champ=service]`,zone.id);await page.waitForTimeout(150);
+  await page.selectOption(`[data-at="${at}"] [data-at-champ=service]`,zone.id);await equipe(at,(a,z)=>a.service===z,zone.id);
   await page.fill(`[data-at="${at}"] [data-at-champ=debut]`,'05:00');
-  await page.dispatchEvent(`[data-at="${at}"] [data-at-champ=debut]`,'change');await page.waitForTimeout(150);
-  await page.selectOption(`[data-at="${at}"] [data-at-champ=lot-nouveau]`,'CRL/BC');await page.waitForTimeout(250);
+  await page.dispatchEvent(`[data-at="${at}"] [data-at-champ=debut]`,'change');await equipe(at,a=>a.debut==='05:00');
+  await page.selectOption(`[data-at="${at}"] [data-at-champ=lot-nouveau]`,'CRL/BC');await equipe(at,a=>(a.lots||[]).some(l=>l.includes('CRL/BC')));
+  await page.waitForFunction(()=>!!Sim.ateliers.resultat&&Sim.ateliers.resultat.ok!==undefined);
   assert.equal(await page.evaluate(id=>Sim.ateliers.state.ateliers.find(a=>a.id===id).service,at),zone.id);
 
   // 5. Elle hérite des liaisons de son atelier : ses amonts sont ceux d'ARMEMENT.
@@ -62,7 +70,8 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.equal(r.ok,true);
   assert.ok(!r.services.includes(zone.id),'hors de son chemin : pas préparée dans l’annexe');
   assert.ok(r.hors.some(m=>/CRL\/BC est cochée ici, mais son chemin ne passe pas par/.test(m)),'et c’est dit');
-  await page.evaluate(id=>Sim.ateliers.changer(()=>{OrlyParcours.adapter(Sim.ateliers.state,['CRL/BC'],id,true,Sim.unite.options());},''),zone.id);await page.waitForTimeout(250);
+  await page.evaluate(id=>Sim.ateliers.changer(()=>{OrlyParcours.adapter(Sim.ateliers.state,['CRL/BC'],id,true,Sim.unite.options());},''),zone.id);
+  await page.waitForFunction(id=>((Sim.ateliers.resultat.parClasse['CRL/BC']||{}).services||[]).includes(id),zone.id);
   r=await page.evaluate(()=>({ok:Sim.ateliers.resultat.ok,services:(Sim.ateliers.resultat.parClasse['CRL/BC']||{}).services||[]}));
   assert.ok(r.services.includes(zone.id),'sur son chemin : le parcours de CRL/BC passe par l’annexe');
 
@@ -88,8 +97,11 @@ const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.joi
   assert.match(await page.locator('#goulot-info').textContent(),/Annexe de/);
   assert.match(await page.locator('#goulot-info').textContent(),/Armement/);
 
-  // 8. Elle survit au rechargement.
-  await page.reload();await versPlan();
+  // 8. Elle survit au rechargement : le plan est écrit dans le navigateur, la page redémarre, l'annexe est relue.
+  await nav.enregistre(page,'orly-plan-v3',v=>v.zones.filter(z=>z.kind==='annexe').length===1);
+  await nav.recharger(page);await versPlan();
+  await nav.enregistre(page,'orly-plan-v3',v=>v.zones.filter(z=>z.kind==='annexe').length===1);
+  await page.waitForFunction(()=>Sim.editor.state.zones.some(z=>z.kind==='annexe'));
   assert.equal(await page.evaluate(()=>Sim.editor.state.zones.filter(z=>z.kind==='annexe').length),1);
   assert.ok((await page.locator('#zone-picker option').allTextContents()).some(t=>t.includes('Armement 2')),'affichée en minuscules lisibles');
 

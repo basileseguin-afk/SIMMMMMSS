@@ -86,4 +86,25 @@ async function repondre(page, oui = true) {
   await page.waitForTimeout(150);
 }
 
-module.exports = { aller, vue, accueil, terminerPlan, creerChemin, deplier, effectifSaisi, repondre, PREMIERE };
+/* Le site a fini de démarrer (après une ouverture ou un rechargement) : ses objets sont là, et la marque du démarrage
+ * (sim.js, « ory-demarrage-en-cours ») est effacée. On attend cet état plutôt qu'un délai (correction 18 c) : sur une machine
+ * chargée, le démarrage prend le temps qu'il lui faut. */
+async function pret(page) {
+  await page.waitForFunction(() => {
+    try { return !!(window.Sim && Sim.editor && Sim.ateliers && Sim.onglets && window.OrlyOnglets) && document.readyState === 'complete' && localStorage.getItem('ory-demarrage-en-cours') === null; }
+    catch (e) { return false; }
+  }, null, { timeout: 120000 });
+}
+/** Recharger la page, puis attendre qu'elle ait redémarré. */
+async function recharger(page) { await page.reload(); await pret(page); }
+/**
+ * Attendre qu'une donnée soit enregistrée dans ce navigateur : `lire(valeur)` (une fonction passée à la page) dit si la clé
+ * `cle` du stockage porte ce qu'on attend. Avant un rechargement : ce qui n'est pas encore écrit ne sera pas relu.
+ */
+async function enregistre(page, cle, lire, arg) {
+  await page.waitForFunction(([k, source, x]) => {
+    try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v != null && !!(new Function('v', 'x', 'return (' + source + ')(v, x);'))(v, x); } catch (e) { return false; }
+  }, [cle, lire.toString(), arg === undefined ? null : arg], { timeout: 60000 });
+}
+
+module.exports = { aller, vue, accueil, terminerPlan, creerChemin, deplier, effectifSaisi, repondre, pret, recharger, enregistre, PREMIERE };

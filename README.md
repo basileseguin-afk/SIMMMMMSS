@@ -405,21 +405,33 @@ le rouge ne sert qu’aux retards.
      (évolution 15 ; le contrat : `docs/CAHIER_DES_CHARGES.md`, § 6 bis).
      **Lire la Synthèse**, de haut en bas :
      1. **Deux phrases.** La première dit combien de personnes il faut,
-        combien sont présentes, et combien d'entre elles tiennent un poste
-        fixe (« Il faut 19 personnes, 37,8 sont présentes, dont 9,5 en postes
-        fixes. ») : un poste fixe — un service permanent, d'appui, un
-        handling — n'a pas de besoin calculé depuis une charge et ne compte
-        pas dans « Il faut ». La seconde dit ce qui coince et ce qui part en
-        retard (« Cuisine froide (veille) coince de J-1 20:00 à 01:14 ;
-        15 vols et 14 commandes partent en retard. »), ou que rien ne coince.
-     2. **Trois cartes** : *Où ça coince* — le goulot : le service qui attend
-        plus que le seuil **et** qui finit après son horaire ou fait partir
-        une commande ou un vol en retard ; la carte dit son jour, son moment,
-        la file, la plus longue attente d'un lot, pourquoi il coince et sa
-        cause (il manque du monde, le service d'avant, le matériel), puis les
-        autres services qui attendent. Des lots qui attendent leur tour
-        sans retard ni dépassement ne font pas un goulot : « Rien ne
-        coince », et leurs attentes se lisent dans le tableau ;
+        combien sont présentes, et combien d'entre elles ne comptent pas dans
+        le besoin (« Il faut 16 personnes, 37,8 sont présentes, dont 12,5 en
+        postes fixes ou non mesurés. ») : un poste fixe — un service
+        permanent, d'appui, un handling — n'a pas de besoin calculé depuis
+        une charge ; une équipe d'un service mesuré dont le besoin ne se
+        mesure pas (pas de travail au barème) se range avec eux. La seconde
+        dit ce qui coince et ce qui part en retard (« Montage coince : il
+        finit 40 min après son horaire (et 2 autres services) ; 15 vols et
+        14 commandes partent en retard. »), ou que rien ne coince.
+     2. **Trois cartes** : *Où ça coince* se juge sur les conséquences, sans
+        seuil à régler. Un service coince, un jour de travail donné, s'il
+        finit après son horaire d'**au moins un quart d'heure** (une règle
+        fixe : en dessous, le dépassement s'affiche mais ne compte pas), ou
+        si un de ses lots fait partir une commande ou un vol en retard. Ils
+        se rangent par heures sup du dépassement (personnes × heures), puis
+        par cumul d'attente : le premier est le goulot, la carte en montre
+        trois au plus. Chacun dit son jour, son dépassement et sa cause :
+        « attend l'ouverture de …, à 07:00 » (une mise à disposition réglée
+        comme une boutique) ou « attend … » (son amont) quand le temps perdu
+        avant son premier lot explique le dépassement ou le retard ; son
+        matériel ; « la charge du jour ne tient pas dans l'horaire » ;
+        « finit dans son horaire, mais après la limite d'une commande ou
+        d'un vol » ; ou, pour un service dont les lots finissent à temps sur
+        le chemin d'une commande en retard, « la commande prend son retard
+        en aval ». Sinon : « Rien ne coince » — un arrivage qui attend plus
+        que le seuil, sans retard ni dépassement, y est nommé sans devenir
+        un goulot ;
         *Ce qui part en retard* (les seules exceptions, chacune avec son
         retard et sa cause, puis les comptes : les vols que le handling
         charge, les commandes de repas, celles d'équipement, chacun avec son
@@ -430,29 +442,55 @@ le rouge ne sert qu’aux retards.
         les services hors chemin à la fin ; le même ordre que le planning des
         équipes et la page Période —, une ligne par service et
         par jour de travail : il faut, présents et l'écart ; le matin et
-        l'après-midi ; le pic au travail ; l'occupation ; la file la plus
-        longue ; la fin et les heures sup — ceux des équipes de ce jour-là.
-        Chaque ligne dit son jour (« J−2 », « veille », « J+1 » ; « jour des
-        vols » quand le service a plusieurs lignes). Un clic sur un service
-        l'ouvre dans le planning des équipes. Dans la colonne *Besoin*,
-        « fixe » marque un poste fixe : pas de besoin, pas d'écart ; « 3
-        + 2 fixes », un service qui a des postes fixes à côté de son besoin.
-        Un handling à chauffeurs compte ses chauffeurs dans *Présents*, comme
-        dans *Matin* et *Après-midi* ; une note sous le tableau dit les
-        personnes saisies à l'équipe qui ne sont pas comptées. L'*Écart* ne
-        prend la couleur de statut que s'il manque des personnes ; un surplus
-        garde sa barre, sans couleur d'alerte.
+        l'après-midi ; le pic au travail ; l'occupation ; les personnes sans
+        travail ; l'attente d'un arrivage ; la fin et les heures sup — ceux
+        des équipes de ce jour-là. Chaque ligne dit son jour (« J−2 »,
+        « veille », « J+1 » ; « jour des vols » quand le service a plusieurs
+        lignes). Un clic sur un service l'ouvre dans le planning des
+        équipes, sur ce jour-là.
+        - *Besoin* : « fixe » marque un poste fixe, « non mesuré » un service
+          dont aucune équipe n'a de besoin mesurable : pas de besoin, pas
+          d'écart ; « 3 + 2 fixes ou non mesurés », un service qui en a à
+          côté de son besoin. Un handling à chauffeurs compte ses chauffeurs
+          dans *Présents*, comme dans *Matin* et *Après-midi* ; une note sous
+          le tableau dit les personnes saisies à l'équipe qui ne sont pas
+          comptées. L'*Écart* ne prend la couleur de statut que s'il manque
+          des personnes ; un surplus garde sa barre, sans couleur d'alerte.
+        - *Occupation* : la part du temps de présence couverte par le travail
+          du barème. Elle dépend des temps par vol et des effectifs réglés
+          (la ligne sous le tableau le rappelle).
+        - *Personnes sans travail* : les heures (personnes × heures) où des
+          personnes sont présentes sans travail, et leur part de la présence,
+          avec une barre, sans couleur d'alerte. Au survol : les trois
+          moments — avant le premier lot du poste, entre deux lots, après le
+          dernier — et ce que l'équipe attendait avant son premier lot
+          (« attend l'ouverture de …, à 07:00 », « attend … » : son amont).
+        - *Attente d'un arrivage* : un arrivage, ce sont les lots d'une
+          équipe qui deviennent prêts au même instant (ceux prêts avant son
+          arrivée forment celui de son arrivée ; à une plonge par vol, chaque
+          vol revenu). Son attente va de son instant au début de son premier
+          lot ; les lots suivants du même arrivage n'attendent pas : ils sont
+          à faire, dans l'ordre de travail. La case dit le nombre d'arrivages
+          du jour, puis l'attente la plus longue et son heure (« — » si aucun
+          n'a attendu), dans la couleur de statut au-delà du seuil d'attente.
+          Un service qui reçoit sa journée en une fois n'a aucune attente ;
+          celui où le travail arrive au fil de la journée (des retours à
+          laver, des vols à contrôler) peut en avoir.
+        - *Fin* : elle ne prend la couleur de statut que si le dépassement
+          atteint le quart d'heure.
      4. **La journée** : la courbe des présents, des personnes au travail et
-        des lots en file, avec un repère par départ ; la bulle suit la souris
-        ou les flèches du clavier.
+        des lots à faire (prêts, pas commencés), avec un repère par départ ;
+        la bulle suit la souris ou les flèches du clavier.
 
      **Ce que veulent dire les couleurs.** Une case ne se colore que si un
      seuil est dépassé (« Réglages de la simulation › Seuils d'alerte » : un
-     manque de 3 personnes, une attente de 6 h, une occupation de 95 %, une
-     durée de stock, un retard d'1 min — les défauts, tant que rien n'est
-     réglé ; un réglage enregistré reste) ; la couleur de l'attente dit ce qui
-     attend au-delà du seuil, le rouge ne sert qu'à un retard ; un retard nul ne s'écrit jamais
-     en rouge. Une durée s'écrit « 45 min » sous une heure, « 2 h 05 » au-delà.
+     manque de 3 personnes, l'attente d'un arrivage de 6 h, une occupation de
+     95 %, une durée de stock, un retard d'1 min — les défauts, tant que rien
+     n'est réglé ; un réglage enregistré reste ; la correction 18 n'ajoute
+     aucun réglage) ; la couleur de l'attente dit un arrivage qui attend
+     au-delà du seuil, ou un service qui finit un quart d'heure au moins
+     après son horaire ; le rouge ne sert qu'à un retard ; un retard nul ne
+     s'écrit jamais en rouge. Une durée s'écrit « 45 min » sous une heure, « 2 h 05 » au-delà.
      Des commandes que personne ne prépare sont un problème, avec son lien
      vers le service où les cocher. « Exporter les résultats » ; le classeur
      de la charge de la journée porte aussi la feuille « Réponses »
@@ -463,27 +501,20 @@ le rouge ne sert qu’aux retards.
      replie (bouton dans le titre de la page) pour lui laisser toute la
      largeur ; au-dessus des services, ce qui attend en stock ou à laver.
      « Modifier le plan » ouvre *Équipes › Plan de l’unité*.
-   - *Planning des équipes* : qui travaille quand, à une échelle fixe (lignes
-     de 28 px, textes de 12 à 13 px, à toutes les largeurs). Trois zooms, par
-     boutons et par Ctrl + molette : « Toute la chaîne » (de la première à la
-     dernière minute), « Un jour » (40 px par heure, le défaut, placé sur le
-     jour où le plus de lots tournent) et « 6 h » (160 px par heure) ; on se
-     déplace en glissant ou par la barre de défilement, et la période visible
-     s’affiche (« J-1 06:00 → J 06:00 »). L’axe des heures reste en haut, sur
-     deux niveaux (le jour, puis les heures), et les noms des équipes à
-     gauche, pendant les défilements. Les équipes sont groupées par service,
-     de l’amont vers l’aval ; chaque groupe se replie et porte en tête la
-     courbe de charge du service (présents, au travail, en file). Les barres :
-     le travail plein (accent), l’attente des amonts en bande fine devant, une
-     pause prise en trou, le robot et le lavage avec un motif, le travail à la
-     chaîne avec une encoche, un lot fini après la limite de sa commande avec
-     un contour critique et une icône ; la limite de chaque commande (« prête
-     avant ») est un petit trait au bout de la barre de son dernier lot : la
-     marge se voit. Une barre porte sa commande quand elle y tient ; au survol
-     comme au focus clavier, une bulle dit la commande, le début, la fin, la
-     durée, l’attente et la marge ; un clic met sa commande en évidence
-     (Échap annule). Le trait de l’heure rejouée porte l’heure. Dessous, le
-     tableau des équipes, replié, et « Exporter la charge (Excel) ».
+   - *Planning des équipes* : qui travaille quand — d'abord toute l'unité sur
+     un écran, une ligne de 32 px par service (son nom, ses équipes, « pic au
+     travail / présents », sa courbe de charge, un trait par lot), de l'amont
+     vers l'aval ; un clic déplie un service en lignes d'équipe de 28 px. Un
+     onglet par jour de travail qui a des lots ; trois zooms, par boutons et
+     par Ctrl + molette : « Toute la chaîne » (tous les jours), « Un jour »
+     (le défaut : du premier lot moins 30 min au dernier plus 30 min, dans la
+     largeur, 40 px par heure au moins) et « 6 h » (160 px par heure). Les
+     équipes sans lot ce jour-là sont en bas, sous « Sans lot ce jour (n) ».
+     Le planning prend la hauteur qui reste, l'axe et les noms toujours à la
+     vue ; « Plein écran » recouvre le menu et l'en-tête. Le détail des
+     barres, de la marge et de la légende : « Lire le plan rejoué et le
+     planning », plus bas. Dessous, le tableau des équipes, replié, et
+     « Exporter la charge (Excel) ».
    - *Détails* (évolution 15 c) : une seule entrée du menu, quatre onglets en tête
      de page, dans cet ordre — Commandes, Vols, Stocks et retours, Heures sup et
      renforts ; l’entrée rouvre le dernier onglet ouvert, les flèches du clavier
@@ -922,10 +953,11 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/reponses-classeur.test.cjs` | La feuille « Réponses » du classeur de la journée (v1, évolution 15 e, `echanges-reponses.js`) : à la fin, les autres feuilles telles quelles ; les cinq réponses dans l’ordre du contrat, celles du module ; « Aucune exception », « Sans second essai » ; avec deux essais, ce que change le scénario ; de vraies heures Excel ; l’outil `simuler-journee --xlsx` écrit la même feuille |
 | `tests/non-regression-15.test.cjs` / `tests/empreintes-resultats.cjs` | La non-régression de l’évolution 15 : le JSON de `simuler-journee` et de `simuler-periode`, et chaque feuille de leurs classeurs, ont les empreintes calculées sur le commit d’avant l’évolution (unité et vols fictifs) ; le classeur de la journée gagne la seule feuille « Réponses » |
 | `tests/captures-resultats-browser.cjs` | Les captures de contrôle des résultats (v1, évolution 15 e), sur l’unité et les vols fictifs, en thème clair et sombre, à 1 280 et 1 920 px : la Synthèse avec et sans goulot, avec et sans retard ; Détails (Commandes, Vols) ; la Période ; chacune vérifiée, gardée hors du dépôt (`$ORY_CAPTURES`) |
+| `tests/captures-correction-18-browser.cjs` | Les captures de contrôle de la correction 18 (v1), sur des données fictives, en thème clair et sombre, à 1 366 × 768 et 1 920 × 1 080 : la Synthèse (« rien ne coince » ; un goulot dû à une mise à disposition fermée ; le tableau avec « Personnes sans travail » et « Attente d’un arrivage ») et le planning des équipes de l’unité fictive de 15 services (replié, un service déplié, en plein écran) ; chaque capture vérifiée et gardée hors du dépôt (`$ORY_CAPTURES`) |
 | `tests/ordre-services.test.cjs` | L'ordre des services (v1, correction 17 b, `moteur/ordre-services.js`) : trois chemins fictifs qui se croisent, l'égalité (l'ordre du premier chemin), un service hors chemin en fin de liste, une case sans équipe, les boucles et les chemins mal formés ; le même ordre pour les lignes de la Synthèse, les groupes du planning et les colonnes de la Période ; sans chemin, l'ordre d'avant |
 | `tests/ordre-services-browser.cjs` | L'ordre des services dans la page (v1, correction 17 b), sur l'unité fictive : la Synthèse, le planning des équipes et la page Période affichent l'ordre du module ; aucun service avant un service qui l'alimente ; les services hors chemin à la fin |
 | `tests/reponses-arrivages.test.cjs` | Des attentes qui disent vrai (v1, correction 18 a), sur des journées fictives calculées à la main : des lots livrés ensemble (à l'ouverture, ou une heure après) n'attendent pas ; trois arrivages dont le deuxième attend 3 h ; une plonge par vol ; les personnes sans travail en trois moments, dont la somme est le temps sans travail des indicateurs ; une équipe arrivée avant l'ouverture d'une mise à disposition (nommée, avec son heure, jusque dans la cause du goulot) ; un dépassement de 10 min ne fait pas un goulot, un de 40 min en fait un ; deux services rangés par heures sup ; un vol en retard sans dépassement ; un besoin non mesuré hors du besoin ; cinq seuils, les mêmes clés et les mêmes défauts ; la non-régression du résultat et des indicateurs |
-| `tests/periode-lisible-browser.cjs` | La page Période se lit sans chercher (v1, correction 17 d), sur l'unité fictive, à 1 280 px : la colonne « Unité » juste après le jour, visible sans faire défiler ; les champs « 7,5 h titulaire » et « 7 h intérim » montrent leur valeur entière, à la française (une valeur refusée est nommée) ; les jours incomplets expliqués une seule fois, en une phrase, le détail dépliable |
+| `tests/periode-lisible-browser.cjs` | La page Période se lit sans chercher (v1, correction 17 d), sur l'unité fictive, à 1 280 px : la colonne « Unité » juste après le jour, visible sans faire défiler ; les champs « 7,5 h titulaire » et « 7 h intérim » montrent leur valeur entière, à la française (une valeur refusée est nommée) ; les jours incomplets expliqués une seule fois, en une phrase, le détail dépliable ; (correction 18 c) « Période simulée : … » une seule fois sur la page Période, dans sa carte — ni dans la bande du haut, ni en notification ; ailleurs, la bande la garde |
 | `tests/reponses-vrai.test.cjs` | Des lignes qui disent vrai (v1, correction 17 c), sur des journées fictives calculées à la main : un service permanent et un d'appui (« fixe », pas d'écart, hors de « Il faut ») ; un handling à chauffeurs (les mêmes personnes dans Présents, Matin et Après-midi, une note sur ce qui n'est pas compté) ; un surplus sans couleur d'alerte et un manque avec ; les seuils par défaut (6 h, 3 personnes) et un réglage enregistré inchangé ; des lots qui attendent 2 h dans l'horaire (« rien ne coince ») ; un service qui dépasse le seuil et son horaire, ou fait partir une commande en retard (le goulot) ; deux essais (« fixe », pas « absent ») |
 | `tests/reponses-jours.test.cjs` | Le jour de travail jusqu'au bout de la ligne (v1, correction 17 a), sur une journée fictive calculée à la main : un service avec une équipe la veille et une le jour des vols a deux lignes, chacune avec sa fin, sa fin d'horaire, son dépassement, ses heures sup, sa file et son attente ; la somme des lignes fait le service ; chaque ligne dit son jour ; le goulot dit le sien ; la feuille « Réponses » et « Comparer deux essais » aussi |
 | `tests/periode-unite.test.cjs` | La page Période sans navigateur (v1, évolution 15 d) : la colonne « Unité » égale à la somme des services, le pic et l'occupation de l'unité (`chargeDeLUnite`), la moyenne des personnes seule, un seul bloc dans un mois, les jours complets d'abord, une seule écriture du temps, la courbe (un point par jour, le réel) |
@@ -1026,7 +1058,7 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/secours-browser.cjs` | Un démarrage resté en plan ouvre la page de secours ; elle rend les données en sauvegarde, repart sans les cases, puis les remet |
 | `tests/recap-cases-browser.cjs` | Récap des cases : une ligne par case, tâche unique / à la suite / ensemble, départ et jour modifiables, chercher, fichier de paramétrage exporté puis réimporté |
 | `tests/robot-browser.cjs` | Le Robot : service créé et rattaché au Montage, remplace le Montage sur TX, CRL et FBU Économie (une fois), une case Robot, plateaux ÷ débit, débit et effectif dans le récap et la fiche |
-| `tests/robot-calcule-browser.cjs` | Le robot calculé dans la page (v1, banc d’essai, évolution 9) : sous le Montage, son effectif saisi et son débit au récap ; ses heures par vol saisies dans Barème, il se calcule (au moins son minimum), « calculé » dans sa fiche, ses heures par vol au récap, sa ligne à la même durée ; « Constant (saisi) » rend son effectif ; le barème exporté lui donne ses lignes ; après rechargement, le même calcul ; ses heures par vol retirées, son effectif saisi revient |
+| `tests/robot-calcule-browser.cjs` | Le robot calculé dans la page (v1, banc d’essai, évolution 9) : sous le Montage, son effectif saisi et son débit au récap ; ses heures par vol saisies dans Barème, il se calcule (au moins son minimum), « calculé » dans sa fiche, ses heures par vol au récap, sa ligne à la même durée ; « Constant (saisi) » rend son effectif ; le barème exporté lui donne ses lignes ; après rechargement, le même calcul ; ses heures par vol retirées, son effectif saisi revient ; chaque étape attend son effet, pas un délai (correction 18 c) |
 | `tests/calage-browser.cjs` | « Réel et calage » dans la page Période (v1, banc d’essai, évolution 11), avec des fichiers fictifs : le modèle CSV ; la période simulée, le réel importé ; la correspondance faite dans la page (une ligne depuis un rôle, ce qu’elle couvre), les rôles sans ligne ; une cellule en double écartée puis réintégrée ; la comparaison = celle du module ; « Caler », le rapport du module ; « Garder comme politique d’effectif », le prévu calé de chaque jour, dans la Synthèse et la feuille Période ; « Appliquer au barème » puis « Annuler » à l’identique, la période à relancer, un nouveau calage à a ≈ 1, « à refaire » ; les vacations longues saisies dans la page, leurs heures sup d’office dans la période ; le planning importé, le rejeu et sa progression, « Caler le travail » annulé puis fait, un facteur de travail appliqué puis annulé ; les exports JSON et Excel ; « Tout sauvegarder » emporte les réglages, sans heure ; après rechargement, la correspondance reste, le réel non |
 | `tests/recap.test.cjs` | Récap des man-minutes : d’où vient chaque valeur, totaux, fichier de paramétrage (aller-retour sans changement, grosses modifications, erreurs), ligne récap par compagnie (armement) |
 | `tests/recap-browser.cjs` | Équipes › Minutes de travail : une ligne par commande, modifier / vider une case, sur la journée, chercher, export puis import |
@@ -1054,7 +1086,7 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/handling.test.cjs` | Le handling par vol : classes d’un même vol réunies, ordre strict des départs, pas avant départ − X h, plusieurs quais, vol bloqué, poste fini, durée par compagnie, stocks devant le handling |
 | `tests/handling-browser.cjs` | Le handling dans l’interface : une case partagée posée depuis un chemin, sa fiche, les départs « chargé à », la synthèse |
 | `tests/services-browser.cjs` | Équipes › Liste des services : une ligne par service, « + Une équipe » (depuis la page, les contrôles, le plan), renommer, voir et modifier sur le plan, pas d’alerte pour une plonge ; cycle de vie : créer, doublon refusé, changer de rattachement, supprimer, retirer et remettre |
-| `tests/nav.cjs` | Aide partagée des tests navigateur : aller à une page comme à la main (la partie, puis l’onglet) |
+| `tests/nav.cjs` | Aide partagée des tests navigateur : aller à une page comme à la main (la partie, puis l’onglet) ; attendre que le site ait démarré, recharger, attendre qu’une donnée soit enregistrée (correction 18 c : un état attendu plutôt qu’un délai) |
 | `tests/icones.test.cjs` | Chaque service reconnaît son pictogramme |
 | `tests/graphe.test.cjs` | Diagramme : colonnes, nœud au milieu de ses amonts, couloirs des longs liens, boucles, dispositions retenues |
 | `tests/graphe-browser.cjs` | Diagrammes dans la page : tirer un trait, clavier, doublon et boucle refusés, équipe créée depuis un nœud, disposition retenue, liens de l’unité |
@@ -1079,7 +1111,7 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/plan-flux.test.cjs` | Ce qui se passe à l’heure rejouée, sans navigateur (évolution 14 b, `plan-flux.js`) : les paires de services qui ont des repas en stock entre eux, l’épaisseur en racine de la quantité, au plus 8 traits et les trois étiquettes, les points d’une tranche qui avancent avec l’heure, le tracé de bord à bord qui contourne une zone, « au travail / présents » d’un créneau, les véhicules du handling |
 | `tests/plan-flux-browser.cjs` | Le plan rejoué : ce qui se passe à l’heure rejouée (évolution 14 b), sur un plan et des vols fictifs, en thème clair et sombre : les quatre états en remplissage franc et leurs contrastes (3:1 sur la toile, 4,5:1 pour le texte), « au travail / présents » et « en file » égaux aux indicateurs de charge, « Ce qui circule » par défaut (un trait par paire, l’épaisseur qui suit la quantité, trois étiquettes, aucun trait quand rien n’attend, jamais plus de 8), les points pendant la lecture seulement et jamais en reduced-motion, les choix d’avant qui dessinent comme avant, les véhicules du handling |
 | `tests/plan-rejoue-browser.cjs` | Le plan rejoué : le cadrage et les commandes (évolution 14 a), sur un plan et des vols fictifs (`tests/plan-rejoue-fictif.cjs`), à 1 280 et 1 920 px, sans fond et avec une tuile fictive : l’ouverture au pic de travail, le plan entier qui tient, « Tout voir » et « Cadrer », aucun texte sous 11 px, les noms entre 12 et 16 px, la bande des chiffres au-dessus du plan sans recouvrir de zone, une seule barre de commandes dans l’ordre, les repères du curseur, l’heure gardée tant que la journée ne change pas, « Fond de plan » seulement avec un fond |
-| `tests/annexe-browser.cjs` | Zone de production annexe (« Armement 2 ») : création, rattachement, aménagement, effectif |
+| `tests/annexe-browser.cjs` | Zone de production annexe (« Armement 2 ») : création, rattachement, aménagement, effectif ; elle survit au rechargement — chaque étape attend son effet, pas un délai (correction 18 c) |
 | `BUGS.md` | Registre des bugs connus — à lire avant de coder, à compléter après chaque revue |
 
 Tests purs, avec Node : `node --test tests/*test.cjs`.

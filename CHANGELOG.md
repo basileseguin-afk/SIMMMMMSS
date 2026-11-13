@@ -5,6 +5,31 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-13 — Correction 18 (c) : contrôle et doc
+
+- **Page Période** : la phrase « Période simulée : n journées de vols ;
+  n jours complets, n incomplets » s'affichait trois fois (la bande du haut,
+  la carte, la notification). Sur la page Période, elle ne se lit plus qu'une
+  fois, dans sa carte ; sur les autres pages, la bande du haut la garde, et
+  l'avis de fin de calcul n'y passe que là.
+- **Captures de contrôle** (`tests/captures-correction-18-browser.cjs`), sur
+  des données fictives, en thème clair et sombre, à 1 366 × 768 et
+  1 920 × 1 080 : la Synthèse avec « rien ne coince », avec un goulot dû à
+  une mise à disposition fermée, et son tableau avec les deux nouvelles
+  colonnes ; le planning replié, un service déplié, en plein écran. Chaque
+  capture est vérifiée ; elles restent hors du dépôt (`$ORY_CAPTURES`).
+- **Des tests indépendants de la vitesse de la machine** :
+  `tests/robot-calcule-browser.cjs`, `tests/annexe-browser.cjs` et
+  `tests/storage-browser.cjs` attendent l'effet de chaque étape (le bouton
+  présent, la donnée enregistrée dans le navigateur, la page redémarrée, le
+  service choisi) au lieu d'un délai ; `tests/nav.cjs` porte ces attentes
+  (`pret`, `recharger`, `enregistre`).
+- Doc : README (« Lire la Synthèse » : les personnes sans travail, l'attente
+  d'un arrivage, où ça coince, l'occupation ; le planning des équipes),
+  `docs/CAHIER_DES_CHARGES.md` (l'état de la correction 18),
+  `docs/FORMATS_EXCEL.md` (la feuille « Réponses »).
+- Aucun calcul ne change ; la version 2 n'est pas touchée.
+
 ## 2026-11-13 — Correction 18 (b) : le planning des équipes, d'abord toute l'unité sur un écran
 
 - Constat, sur une unité d'une quinzaine de services et d'une cinquantaine

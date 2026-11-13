@@ -139,6 +139,8 @@
   }
 
   /** Les jours de travail comptés, les complets d'abord (« 4 jours complets, 6 incomplets »), et ce qu'est un jour incomplet. */
+  /** La page Période est ouverte : sa carte dit déjà l'état de la période. */
+  const surLaPagePeriode = () => typeof document !== 'undefined' && !!document.body && document.body.dataset.sous === 'j-periode';
   function comptesDesJours(b) {
     const n = b.joursTravail.filter(w => w.complet).length, i = b.joursTravail.length - n;
     return { complets: n, incomplets: i, texte: n + (n > 1 ? ' jours complets' : ' jour complet') + (i ? ', ' + i + (i > 1 ? ' incomplets' : ' incomplet') : ''),
@@ -215,8 +217,9 @@
         // Pour le Lisez-moi du classeur : les réglages du calcul, et quand il a été fait.
         this.reglages = c.reglages; this.calculeLe = new Date();
         this.rendre(); this.a.recalculer();
+        // Sur la page Période, sa carte le dit déjà (correction 18 c) : l'avis ne passe que sur les autres pages.
         const r = this.resultat.periode;
-        this.a.notifier('Période simulée : ' + r.jours + (r.jours > 1 ? ' journées' : ' journée') + ' de vols ; ' + comptesDesJours(this.resultat.bilan).texte + '.');
+        if (!surLaPagePeriode()) this.a.notifier('Période simulée : ' + r.jours + (r.jours > 1 ? ' journées' : ' journée') + ' de vols ; ' + comptesDesJours(this.resultat.bilan).texte + '.');
       };
       this.rendre(); setTimeout(pas, 0);
     }
@@ -275,7 +278,9 @@
 
     /**
      * La ligne d'état : où en est la période, et d'où vient le sale de la veille de la journée affichée. Elle compte les jours
-     * incomplets sans les expliquer : la page Période le fait, une seule fois (correction 17 d).
+     * incomplets sans les expliquer : la page Période le fait, une seule fois (correction 17 d). La phrase « Période
+     * simulée : … » porte la classe `pj-simulee` : sur la page Période, seule sa carte la montre — la bande du haut la
+     * garde pour les autres pages (correction 18 c, periode.css).
      */
     texteEtat(d) {
       const e = this.etat(), jour = this.a.jour();
@@ -284,7 +289,7 @@
       if (e === 'jamais') return 'Période de ' + d.jours + (d.jours > 1 ? ' jours' : ' jour') + ' : pas encore simulée. La journée affichée part du sale de la veille saisi.';
       if (e === 'a-relancer') return '<b class="pj-relancer">À relancer</b> : un réglage ou les vols ont changé depuis le calcul. La journée affichée part du sale de la veille saisi.';
       const r = this.resultat.periode, j = this.resultat.journees.find(x => x.date === jour), c = comptesDesJours(this.resultat.bilan);
-      return 'Période simulée : ' + r.jours + (r.jours > 1 ? ' journées' : ' journée') + ' de vols ; ' + c.texte + '.'
+      return '<span class="pj-simulee">Période simulée : ' + r.jours + (r.jours > 1 ? ' journées' : ' journée') + ' de vols ; ' + c.texte + '.</span>'
         + (j && j.date !== r.debut ? ' Cette journée part du sale laissé la veille dans la période (' + nombre(j.extrait.saleInitial, 0) + ' u).' : '');
     }
     texteProgression() {

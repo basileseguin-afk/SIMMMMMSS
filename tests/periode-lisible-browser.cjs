@@ -7,7 +7,11 @@
  *     est nommée, rien n'est écrit ;
  *   — l'explication des jours incomplets ne s'affiche qu'une fois, en une
  *     phrase ; le détail (comment les jours sont comptés) se déplie, et reste
- *     déplié d'un rendu à l'autre.
+ *     déplié d'un rendu à l'autre ;
+ *   — (correction 18 c) la phrase « Période simulée : n journées de vols ;
+ *     n jours complets, n incomplets » ne s'affiche qu'une fois sur la page
+ *     Période, dans sa carte : ni dans la bande du haut, ni en notification ;
+ *     sur les autres pages, la bande la garde.
  * Aucune donnée de l'unité : tout est fictif. */
 const assert=require('node:assert/strict'),path=require('node:path');
 const nav=require('./nav.cjs');
@@ -29,6 +33,23 @@ const semaine=()=>{const [tete,...l]=F.volsCsv().trim().split('\n');return 'date
   await F.importerVols(page,nav,ch.fichier,'semaine.csv',semaine());
   await nav.aller(page,'j-periode');await page.locator('#journee-periode [data-pv=lancer]').click();
   await page.waitForFunction(()=>Sim.periode.etat()==='a-jour',null,{timeout:120000});await attendre(400);
+
+  // 0. « Période simulée : … » : une seule fois sur la page Période, dans sa carte (correction 18 c).
+  const phrase18=/Période simulée : \d+ journées? de vols ; \d+ jours? complets?, \d+ incomplets?\./g;
+  const lus=await page.evaluate(()=>({carte:document.querySelector('#journee-periode .pv-etat').innerText,page:document.getElementById('journee-periode').innerText,
+    bande:document.getElementById('periode-bandeau').innerText,bandeVisible:document.getElementById('periode-bandeau').getClientRects().length>0,
+    avis:[...document.querySelectorAll('.notifs .notif-texte')].map(n=>n.innerText).join('\n'),tout:document.body.innerText}));
+  assert.equal((lus.carte.match(phrase18)||[]).length,1,'la carte la dit : « '+lus.carte+' »');
+  assert.equal((lus.page.match(phrase18)||[]).length,1,'une seule fois dans la page');
+  assert.ok(lus.bandeVisible,'la bande du haut est là (le choix de la journée, « Relancer la période »)');
+  assert.doesNotMatch(lus.bande,/Période simulée/,'la bande du haut ne la redit pas : « '+lus.bande.replace(/\n/g,' | ')+' »');
+  assert.doesNotMatch(lus.avis,/Période simulée/,'pas de notification qui la redit');
+  assert.equal((lus.tout.match(/Période simulée :/g)||[]).length,1,'une seule fois à l’écran');
+  // Sur une autre page (la Synthèse), la carte n'est pas là : la bande du haut la dit, une fois.
+  await nav.aller(page,'j-chiffres');
+  await page.waitForFunction(()=>/Période simulée :/.test(document.getElementById('periode-bandeau').innerText));
+  assert.equal(((await page.evaluate(()=>document.body.innerText)).match(/Période simulée :/g)||[]).length,1,'ailleurs : une fois, dans la bande');
+  await nav.aller(page,'j-periode');await page.waitForSelector('#journee-periode .pv-etat');
 
   // 1. « Unité » : la première colonne de chiffres, juste après le jour, sur chaque ligne.
   const tetes=await page.locator('#journee-periode .pv-table thead th').allTextContents();
@@ -68,7 +89,7 @@ const semaine=()=>{const [tete,...l]=F.volsCsv().trim().split('\n');return 'date
   const phrase=await page.locator('#journee-periode .pv-explique').innerText();
   assert.equal(fois(phrase,/[.!?](\s|$)/g),1,'en une phrase : « '+phrase+' »');
   assert.match(await page.locator('#journee-periode .pv-etat').innerText(),/jours? complets?, \d+ incomplets?\.$/,'la ligne d’état compte, sans expliquer');
-  assert.match(textes.bandeau,/jours? complets?, \d+ incomplets?\./);
+  assert.doesNotMatch(textes.bandeau,/jours? complets?, \d+ incomplets?\./,'sur la page Période, la bande du haut ne redit pas les comptes (correction 18 c)');
   const comment=page.locator('#journee-periode details.pv-comment');
   assert.equal(await comment.count(),1);assert.equal(await comment.evaluate(d=>d.open),false,'le détail, replié');
   assert.doesNotMatch(textes.page,/Chaque équipe compte au/,'le détail ne se lit pas tant qu’il est replié');

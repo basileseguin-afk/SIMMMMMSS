@@ -59,8 +59,8 @@ const tropDeMinutes=t=>[...String(t).matchAll(/(\d[\d   ]*) ?min\b/g)].map(m=>+m
   assert.ok(complets>1&&incomplets>1);
   assert.match(await page.locator('#journee-periode .pv-etat').innerText(),new RegExp(complets+' jours complets, '+incomplets+' incomplets\\.$'));
   assert.match(await page.locator('#journee-periode .pv-explique').innerText(),/^Un jour incomplet manque des vols d’un jour voisin, hors de la période : il est montré, mais sort des totaux et des moyennes\.$/);
-  // Le bandeau d'en-tête : les comptes, sans la phrase (la page la donne).
-  assert.match(await page.locator('#periode-bandeau .pj-etat').innerText(),new RegExp(complets+' jours complets, '+incomplets+' incomplets\\.'));
+  // Sur la page Période, la bande du haut ne redit pas « Période simulée : … » (correction 18 c) : sa carte la donne, une fois.
+  assert.doesNotMatch(await page.locator('#periode-bandeau').innerText(),/Période simulée|jours complets/);
 
   // 2. La colonne « Unité » : le total des services, chaque jour, celui du module, pour chaque mesure.
   assert.equal(await page.locator('#journee-periode .pv-table thead th').nth(1).textContent(),'Unité','la première colonne de chiffres (correction 17 d)');

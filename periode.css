@@ -17,6 +17,8 @@
 .pj-etat{flex:1 1 28ch;min-width:0;margin:0;line-height:1.4}
 .pj-actions,.pv-actions{display:flex;align-items:center;gap:var(--ds-e-3)}
 body[data-sous="j-periode"] .periode-bandeau [data-pv="voir"]{display:none}
+/* Sur la page Période, la phrase « Période simulée : … » ne se lit qu'une fois, dans sa carte (correction 18 c). */
+body[data-sous="j-periode"] .periode-bandeau .pj-simulee{display:none}
 .pj-relancer{color:var(--ds-attente-texte)}
 .pj-erreur{color:var(--ds-retard-texte)}
 .pj-progression{font-variant-numeric:tabular-nums;font-weight:var(--ds-g-fort);color:var(--ds-texte-1);margin-right:8px}

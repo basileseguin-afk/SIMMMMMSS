@@ -837,7 +837,9 @@ Une ligne par mesure, dans l'ordre du contrat :
   au plus` et `Après-midi, au travail au plus` (et les présentes, en détail),
   `Pic au travail`, `Occupation` (au seuil d'occupation) ; puis toute l'unité
   (`Il faut`, hors postes fixes ; `Présentes (ETP)` ; `Dont postes fixes
-  (ETP)` ; `Écart (présentes hors postes fixes − il faut)`). Un **poste fixe**
+  (ETP)` — les équipes au besoin non mesuré comprises, le détail dit
+  combien (correction 18 a) ; `Écart (présentes hors postes fixes − il
+  faut)`). Un **poste fixe**
   (correction 17 c : un service permanent, d'appui, un handling) n'a ni besoin
   ni écart : `Il faut` et l'écart sont vides, le détail dit « poste fixe » ; de
   même une ligne dont le besoin ne se mesure pas (correction 18 a : « besoin
