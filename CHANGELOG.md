@@ -5,6 +5,40 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-13 — Correction 17 (a) : le jour de travail va jusqu'au bout de la ligne
+
+- Constat : « Les services » a une ligne par service et par jour de travail,
+  mais la fin, les heures sup, la file et l'attente venaient du service
+  entier ; un service qui travaille la veille et le jour des vols affichait
+  sur sa ligne de la veille la fin et les heures sup du lendemain, et ses
+  deux lignes portaient le même nom.
+- `moteur/reponses.js` : la file, l'attente la plus longue, le cumul et la
+  cause (réponse 2), la fin, la fin d'horaire, le dépassement et les heures
+  sup (réponse 3) se rendent **par service et par jour de travail**, comme les
+  personnes — les mêmes lignes, dans le même ordre, dans les trois réponses.
+  Le goulot dit son jour (`jour`) ; la comparaison de deux essais suit les
+  mêmes lignes.
+- La Synthèse : chaque ligne a sa file, sa fin et ses heures sup (plus de
+  case partagée entre deux jours) et dit son jour — « J−2 », « veille »,
+  « J+1 », et « jour des vols » quand le service a plusieurs lignes. La
+  phrase de tête et la carte « Où ça coince » disent le jour du goulot, comme
+  sa ligne (« Cuisine (veille) coince de … à … ») ; un service qui ne
+  travaille que le jour des vols garde sa phrase d'avant.
+- La file et les fins suivent maintenant l'ordre des lignes des personnes
+  (celui des indicateurs), et non plus leur propre tri : l'ordre des lignes de
+  la feuille « Réponses » peut changer pour des identifiants de service en
+  majuscules ou accentués.
+- « Comparer deux essais » et la feuille « Réponses » (sa colonne `Jour de
+  travail`, pour les questions 1 à 3 et le goulot) portent le jour de chaque
+  ligne.
+- Tests : `tests/reponses-jours.test.cjs` (nouveau), une journée fictive
+  calculée à la main — une équipe la veille, une le jour des vols : deux
+  lignes, chacune avec sa fin et ses heures sup ; leur somme fait le service ;
+  chaque ligne porte son jour. `reponses.test`, `synthese-vue.test`,
+  `synthese-questions-browser` suivent. Aucun calcul du moteur ne change : le
+  résultat d'une journée et d'une période, les indicateurs et les feuilles
+  existantes des classeurs sont identiques (`tests/non-regression-15.test.cjs`).
+
 ## 2026-11-12 — Évolution 15 (e) : contrôle et doc
 
 - Le classeur de la journée gagne une feuille **« Réponses »**, à la fin :

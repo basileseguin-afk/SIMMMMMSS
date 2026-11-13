@@ -18,6 +18,10 @@
  *
  *  Les heures sont en minutes du jour J (la veille est négative), comme dans
  *  le résultat ; « le matin » se lit sur l'horloge du jour de travail.
+ *  Les réponses 1, 2 et 3 se rendent par service ET par jour de travail
+ *  (correction 17 a) : un service qui travaille la veille et le jour des vols
+ *  a deux lignes, chacune avec ses personnes, sa file, sa fin et ses heures
+ *  sup ; les mêmes lignes, dans le même ordre, dans les trois réponses.
  *  Les seuils d'alerte sont réglables et gardés dans « ory-seuils-v1 ».
  * ==========================================================================*/
 (function (root) {
@@ -84,6 +88,26 @@
   }
   /** Un stock trop long : seulement si une durée maximale est réglée, et dépassée. */
   const stockTropLong = (duree, seuils) => seuils.dureeStockMax !== null && fini(duree) && duree > seuils.dureeStockMax;
+
+  /* ----------------------------------------------------------------------
+   *  Le jour de travail d'une ligne (correction 17 a)
+   * --------------------------------------------------------------------*/
+
+  /** Le jour de travail, en mots : « J−2 », « veille », « jour des vols », « J+1 ». */
+  const motDuJour = j => (j === 0 ? 'jour des vols' : j === -1 ? 'veille' : 'J' + (j > 0 ? '+' : '−') + Math.abs(j));
+  /**
+   * Le mot du jour d'une ligne (service, jour) parmi les lignes affichées : toujours hors du jour des vols ; le jour des vols,
+   * seulement quand le service a d'autres lignes (deux lignes ne portent pas le même nom). Sinon null.
+   */
+  function motDeLaLigne(l, lignes) {
+    if (l.jour) return motDuJour(l.jour);
+    return (lignes || []).some(x => x.service === l.service && x.jour !== l.jour) ? motDuJour(0) : null;
+  }
+  /** Les équipes du résultat d'une ligne (service, jour) des indicateurs : celles du groupe, dans l'ordre du résultat. */
+  function equipesDe(r, s) {
+    const ids = new Set(s.equipes || []);
+    return (r.ateliers || []).filter(v => ids.has(v.id));
+  }
 
   /* ----------------------------------------------------------------------
    *  1. Combien de personnes faut-il, par service ?
@@ -219,22 +243,26 @@
     }
     return morceaux.reduce((m, x) => (!m || x.cumul > m.cumul + EPS ? x : m), null);
   }
-  /** Par service : sa file la plus longue, l'attente la plus longue d'un lot, le cumul ; la cause ; le goulot du jour. */
+  /**
+   * Par service et jour de travail (les lignes des indicateurs) : sa file la plus longue, l'attente la plus longue d'un lot,
+   * le cumul ; la cause ; le goulot du jour, qui dit son jour de travail.
+   */
   function coince(r, args, k, seuils) {
     const ke = new Map(k.equipes.map(e => [e.id, e])), nom = nomDe(args);
-    const services = [...new Set((r.ateliers || []).map(v => v.service))].sort().map(id => {
-      const file = fileDuService((r.ateliers || []).filter(v => v.service === id), ke), cumul = net(somme(file, f => f.minutes));
+    const services = k.services.map(s => {
+      const membres = new Set(s.equipes || []), file = fileDuService(equipesDe(r, s), ke), cumul = net(somme(file, f => f.minutes));
       const pire = file.reduce((m, f) => (f.minutes > EPS && (!m || f.minutes > m.minutes + EPS) ? f : m), null);
       const parts = { materiel: net(somme(file, f => f.materiel)), amont: net(somme(file, f => f.amont)) };
-      const occupationFile = occupationPendant(k.equipes.filter(e => e.service === id && e.creneaux));
+      const occupationFile = occupationPendant(k.equipes.filter(e => membres.has(e.id) && e.creneaux));
       const plus = IND().fileMax(file);
-      return { service: id, nom: nom(id), file: plus.lots ? plus : null, cumul, parts, occupationFile, cause: causeDe(cumul, parts, occupationFile, seuils),
+      return { service: s.service, nom: nom(s.service), jour: s.jour, file: plus.lots ? plus : null, cumul, parts, occupationFile,
+        cause: causeDe(cumul, parts, occupationFile, seuils),
         attenteMax: pire ? { minutes: net(pire.minutes), lot: pire.lot.nom, equipe: pire.equipe, de: pire.de, a: pire.a } : null, fenetre: fenetreDe(file) };
     });
-    // Le goulot : le service au plus grand cumul d'attente, si son attente la plus longue dépasse le seuil (le contrat, R2).
+    // Le goulot : la ligne au plus grand cumul d'attente, si son attente la plus longue dépasse le seuil (le contrat, R2).
     const g = services.reduce((m, s) => (s.cumul > EPS && (!m || s.cumul > m.cumul + EPS) ? s : m), null);
     const goulot = g && g.attenteMax && g.fenetre && g.attenteMax.minutes > seuils.attenteLot + EPS
-      ? { service: g.service, nom: g.nom, cause: g.cause, de: g.fenetre.de, a: g.fenetre.a, attenteMax: g.attenteMax.minutes, cumul: g.cumul } : null;
+      ? { service: g.service, nom: g.nom, jour: g.jour, cause: g.cause, de: g.fenetre.de, a: g.fenetre.a, attenteMax: g.attenteMax.minutes, cumul: g.cumul } : null;
     return { services: services.map(({ fenetre, ...s }) => s), goulot };
   }
 
@@ -251,20 +279,22 @@
     return fini(v.debutPoste) && fini(v.presence) ? v.debutPoste + v.presence : null;
   }
   /**
-   * Par service : la fin de son dernier lot, la fin de son horaire (les équipes qui travaillent, pas une mise à disposition),
-   * ce qui dépasse — équipe par équipe, le plus grand dépassement (une équipe qui finit tard dans son horaire n'en cache pas
-   * une autre qui déborde du sien) ; ses heures sup (équipes, renforts prêtés, chauffeurs).
+   * Par service et jour de travail (les lignes des indicateurs) : la fin de son dernier lot, la fin de son horaire (les
+   * équipes qui travaillent, pas une mise à disposition), ce qui dépasse — équipe par équipe, le plus grand dépassement (une
+   * équipe qui finit tard dans son horaire n'en cache pas une autre qui déborde du sien) ; ses heures sup (équipes, renforts
+   * prêtés, chauffeurs). Les équipes de la veille ne prêtent ni leur fin ni leurs heures sup à celles du jour des vols.
    */
-  function fins(r, args) {
-    const nom = nomDe(args), equipes = r.ateliers || [], defs = new Map((args.ateliers || []).map(a => [a.id, a]));
+  function fins(r, args, k) {
+    const nom = nomDe(args), defs = new Map((args.ateliers || []).map(a => [a.id, a]));
     const max = l => (l.length ? Math.max(...l) : null);
-    const services = [...new Set(equipes.map(v => v.service))].sort().map(id => {
-      const eqs = equipes.filter(v => v.service === id), travail = eqs.filter(v => v.type !== 'dispo');
+    const services = k.services.map(s => {
+      const eqs = equipesDe(r, s), travail = eqs.filter(v => v.type !== 'dispo');
       const parEquipe = travail.map(v => ({ id: v.id, nom: v.nom, fin: fini(v.fin) ? v.fin : null, finHoraire: finHoraireDe(v, defs.get(v.id)) }))
         .map(e => ({ ...e, depasse: e.fin !== null && fini(e.finHoraire) ? net(Math.max(0, e.fin - e.finHoraire)) : null }));
       const hs = { equipes: net(somme(eqs, heuresSupDe)), renforts: net(somme(eqs, v => v.renfortsHeuresSup)), chauffeurs: net(somme(eqs, v => v.heuresSupChauffeurs)) };
-      return { service: id, nom: nom(id), fin: max(parEquipe.map(e => e.fin).filter(fini)), finHoraire: max(parEquipe.map(e => e.finHoraire).filter(fini)),
-        depasse: max(parEquipe.map(e => e.depasse).filter(fini)), heuresSup: { ...hs, total: net(hs.equipes + hs.renforts + hs.chauffeurs) }, equipes: parEquipe };
+      return { service: s.service, nom: nom(s.service), jour: s.jour, fin: max(parEquipe.map(e => e.fin).filter(fini)),
+        finHoraire: max(parEquipe.map(e => e.finHoraire).filter(fini)), depasse: max(parEquipe.map(e => e.depasse).filter(fini)),
+        heuresSup: { ...hs, total: net(hs.equipes + hs.renforts + hs.chauffeurs) }, equipes: parEquipe };
     });
     return { services };
   }
@@ -377,7 +407,7 @@
   function reponses(r, args, o = {}) {
     if (!r || r.ok === false) return null;
     const a = args || {}, seuils = seuilsComplets(o.seuils), k = o.k || IND().journee(r, a);
-    return { seuils, personnes: personnes(r, a, k, seuils), coince: coince(r, a, k, seuils), fins: fins(r, a), exceptions: exceptions(r, a, seuils), comptes: comptes(r) };
+    return { seuils, personnes: personnes(r, a, k, seuils), coince: coince(r, a, k, seuils), fins: fins(r, a, k), exceptions: exceptions(r, a, seuils), comptes: comptes(r) };
   }
 
   /** Une différence : la valeur de A, celle de B, et B − A (null si l'une manque). */
@@ -390,19 +420,20 @@
   /** 5. Ce que change un scénario : B − A sur chacune des quatre réponses ; null s'il manque l'un des deux essais. */
   function comparer(A, B) {
     if (!A || !B) return null;   // un essai qui n'a pas pu se jouer : rien à comparer
-    const champ = (x, f) => (x ? f(x) : null), cleEx = x => x.type + '|' + x.id;
-    const services = reunirAB(A.personnes.services, B.personnes.services, s => s.service + '|' + s.jour).map(([a, b]) => ({ service: (a || b).service, jour: (a || b).jour, nom: (a || b).nom,
+    const champ = (x, f) => (x ? f(x) : null), cleEx = x => x.type + '|' + x.id, ligne = s => s.service + '|' + s.jour;
+    const services = reunirAB(A.personnes.services, B.personnes.services, ligne).map(([a, b]) => ({ service: (a || b).service, jour: (a || b).jour, nom: (a || b).nom,
       besoin: ecartAB(champ(a, x => x.besoin), champ(b, x => x.besoin)), presents: ecartAB(champ(a, x => x.presents), champ(b, x => x.presents)),
       ecart: ecartAB(champ(a, x => x.ecart), champ(b, x => x.ecart)) }));
     const t = k => ecartAB(A.personnes.total[k], B.personnes.total[k]), ga = A.coince.goulot, gb = B.coince.goulot;
     const exA = new Set(A.exceptions.map(cleEx)), exB = new Set(B.exceptions.map(cleEx));
     return {
       personnes: { total: { besoin: t('besoin'), presents: t('presents'), ecart: t('ecart') }, services },
-      coince: { goulot: { a: ga ? ga.service : null, b: gb ? gb.service : null, change: (ga ? ga.service : null) !== (gb ? gb.service : null) },
-        services: reunirAB(A.coince.services, B.coince.services, s => s.service).map(([a, b]) => ({ service: (a || b).service, nom: (a || b).nom,
+      coince: { goulot: { a: ga ? ga.service : null, b: gb ? gb.service : null, jourA: ga ? ga.jour : null, jourB: gb ? gb.jour : null,
+        change: (ga ? ligne(ga) : null) !== (gb ? ligne(gb) : null) },
+        services: reunirAB(A.coince.services, B.coince.services, ligne).map(([a, b]) => ({ service: (a || b).service, jour: (a || b).jour, nom: (a || b).nom,
           attenteMax: ecartAB(champ(a, x => (x.attenteMax ? x.attenteMax.minutes : 0)), champ(b, x => (x.attenteMax ? x.attenteMax.minutes : 0))),
           cumul: ecartAB(champ(a, x => x.cumul), champ(b, x => x.cumul)) })) },
-      fins: { services: reunirAB(A.fins.services, B.fins.services, s => s.service).map(([a, b]) => ({ service: (a || b).service, nom: (a || b).nom,
+      fins: { services: reunirAB(A.fins.services, B.fins.services, ligne).map(([a, b]) => ({ service: (a || b).service, jour: (a || b).jour, nom: (a || b).nom,
         fin: ecartAB(champ(a, x => x.fin), champ(b, x => x.fin)), heuresSup: ecartAB(champ(a, x => x.heuresSup.total), champ(b, x => x.heuresSup.total)) })) },
       exceptions: { nombre: ecartAB(A.exceptions.length, B.exceptions.length),
         nouvelles: B.exceptions.filter(x => !exA.has(cleEx(x))), reglees: A.exceptions.filter(x => !exB.has(cleEx(x))) }
@@ -410,7 +441,7 @@
   }
 
   const api = { CLE_STOCKAGE, SEUILS_DEFAUT, SEUILS, CAUSES_VOL, seuilsComplets, enveloppe, lireEnveloppe, seuilsDeLaSauvegarde, stockTropLong,
-    reponses, comparer, comptes, equipement };
+    reponses, comparer, comptes, equipement, motDuJour, motDeLaLigne };
   if (enNode) module.exports = api;
   else root.OrlyReponses = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

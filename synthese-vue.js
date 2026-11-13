@@ -4,8 +4,9 @@
  *  La page répond aux cinq questions du contrat des résultats
  *  (docs/CAHIER_DES_CHARGES.md, § 6 bis), dans leur ordre :
  *    — en tête, deux phrases au plus, tirées des réponses ;
- *    — « Les services », dans l'ordre du chemin : besoin, présents, écart,
- *      matin et après-midi, pic, occupation, file, fin, heures sup ;
+ *    — « Les services », dans l'ordre du chemin, une ligne par service et
+ *      jour de travail, qui dit son jour (correction 17 a) : besoin, présents,
+ *      écart, matin et après-midi, pic, occupation, file, fin, heures sup ;
  *    — la courbe de la journée : présents et au travail, lots en file,
  *      départs des vols, par créneau de 15 min ;
  *    — trois cartes : où ça coince, ce qui part en retard, ce que change
@@ -51,7 +52,9 @@
     const t = rep.personnes.total;
     const un = 'Il faut ' + pluriel(t.besoin, 'personne', 'personnes') + ', ' + nombre(t.presents) + (t.presents >= 2 ? ' sont présentes.' : ' est présente.');
     const g = rep.coince.goulot, n = compteRetards(rep.exceptions);
-    const coince = g ? g.nom + ' coince de ' + heure(g.de) + ' à ' + heure(g.a) : 'Rien ne coince';
+    // Le goulot dit son jour de travail comme sa ligne du tableau (correction 17 a) : « Cuisine (veille) coince de … à … ».
+    const mot = g ? motDuGoulot(rep.coince) : null;
+    const coince = g ? g.nom + (mot ? ' (' + mot + ')' : '') + ' coince de ' + heure(g.de) + ' à ' + heure(g.a) : 'Rien ne coince';
     const qui = [n.vols ? pluriel(n.vols, 'vol', 'vols') : null, n.commandes ? pluriel(n.commandes, 'commande', 'commandes') : null].filter(Boolean);
     const retard = !qui.length ? 'rien ne part en retard' : qui.join(' et ') + (n.vols + n.commandes >= 2 ? ' partent en retard' : ' part en retard');
     return [un, coince + ' ; ' + retard + '.'];
@@ -59,21 +62,27 @@
 
   /* ---- « Les services » ----------------------------------------------------------- */
 
+  /** Le jour de travail, en mots : « J−2 », « veille », « jour des vols », « J+1 » (moteur/reponses.js). */
+  const motDuJour = j => REP().motDuJour(j);
+  const cleDe = s => s.service + '|' + s.jour;
+  /**
+   * Le mot du jour du goulot, celui de sa ligne : toujours hors du jour des vols ; « jour des vols » quand son service a
+   * d'autres lignes ; sinon rien (une journée où le service ne travaille que le jour des vols se lit comme avant).
+   */
+  const motDuGoulot = c => (c && c.goulot ? REP().motDeLaLigne({ service: c.goulot.service, jour: c.goulot.jour || 0 }, c.services || []) : null);
+
   /**
    * Les lignes du tableau, dans l'ordre du chemin (`ordre` : les services de l'amont vers l'aval), une par service et
-   * jour de travail ; la file, la fin et les heures sup (réponses 2 et 3, par service) sur la première ligne du service,
-   * sur toute sa hauteur (`rang` lignes). Un service sans personne ni besoin ni travail ne s'affiche pas.
+   * jour de travail ; chacune a sa file, sa fin et ses heures sup (réponses 2 et 3, par service et jour : correction 17 a),
+   * et dit son jour (`mot`) : toujours hors du jour des vols ; le jour des vols, quand le service a plusieurs lignes. Une
+   * ligne sans personne ni besoin ni travail ne s'affiche pas.
    */
   function lignes(rep, ordre) {
     const rang = id => { const i = (ordre || []).indexOf(id); return i < 0 ? Infinity : i; };
-    const coince = new Map(rep.coince.services.map(s => [s.service, s])), fins = new Map(rep.fins.services.map(s => [s.service, s]));
-    const vivantes = rep.personnes.services.filter(s => s.presents > EPS || s.besoin > 0 || (fins.get(s.service) || {}).fin != null)
+    const coince = new Map(rep.coince.services.map(s => [cleDe(s), s])), fins = new Map(rep.fins.services.map(s => [cleDe(s), s]));
+    const vivantes = rep.personnes.services.filter(s => s.presents > EPS || s.besoin > 0 || (fins.get(cleDe(s)) || {}).fin != null)
       .slice().sort((p, q) => rang(p.service) - rang(q.service) || String(p.service).localeCompare(String(q.service)) || p.jour - q.jour);
-    return vivantes.map((s, i, l) => {
-      const premiere = !i || l[i - 1].service !== s.service;
-      return { ...s, premiere, rang: premiere ? l.filter(x => x.service === s.service).length : 0,
-        coince: coince.get(s.service) || null, fin: fins.get(s.service) || null };
-    });
+    return vivantes.map(s => ({ ...s, mot: REP().motDeLaLigne(s, vivantes), coince: coince.get(cleDe(s)) || null, fin: fins.get(cleDe(s)) || null }));
   }
 
   /** Les tons de statut d'une ligne : seulement ce qui passe son seuil (l'écart, l'attente, l'occupation) ; jamais le rouge. */
@@ -103,29 +112,29 @@
   // Au travail au plus / présents ; une équipe sans travail mesuré (une mise à disposition) : « — / présents ».
   const moitie = m => (m && fini(m.presents) ? '<span class="sy-v">' + esc(fini(m.auTravail) ? nombre(m.auTravail) : '—') + '</span><span class="sy-sur"> / ' + esc(nombre(m.presents)) + '</span>' : '—');
 
-  /** Les trois cases d'un service (sa file, sa fin, ses heures sup), sur toute la hauteur de ses lignes. */
-  function casesDuService(l, ton) {
-    const rs = l.rang > 1 ? ' rowspan="' + l.rang + '"' : '', c = l.coince, f = l.fin;
+  /** Les trois cases d'une ligne (sa file, sa fin, ses heures sup) : celles de son service ce jour de travail-là. */
+  function casesDeLaLigne(l, ton) {
+    const c = l.coince, f = l.fin;
     const file = c && c.file ? '<span class="sy-v">' + esc(pluriel(c.file.lots, 'lot', 'lots')) + '</span><span class="sy-sur"> à ' + esc(heure(c.file.a)) + '</span>'
       + (c.attenteMax ? '<small>attente jusqu’à ' + esc(duree(c.attenteMax.minutes)) + '</small>' : '') : '—';
     const fin = f && f.fin != null ? '<span class="sy-v">' + esc(heure(f.fin)) + '</span>' + (f.finHoraire != null ? '<small>horaire ' + esc(heure(f.finHoraire))
       + (f.depasse > EPS ? ', dépasse de ' + esc(duree(f.depasse)) : '') + '</small>' : '') : f && f.finHoraire != null ? '<span class="sy-sur">pas fini</span>' : '—';
     const hs = f && f.heuresSup.total > EPS ? esc(duree(f.heuresSup.total)) : '—';
-    return '<td class="sy-file"' + rs + marque(ton, file) + '</td><td class="sy-fin"' + rs + '>' + fin + '</td><td class="num"' + rs + '>' + hs + '</td>';
+    return '<td class="sy-file"' + marque(ton, file) + '</td><td class="sy-fin">' + fin + '</td><td class="num">' + hs + '</td>';
   }
 
   /** Le tableau « Les services ». Un clic sur une ligne ouvre ce service dans « Planning des équipes ». */
   function tableau(rep, ordre) {
     const ls = lignes(rep, ordre), max = Math.max(0, ...ls.map(l => Math.abs(l.ecart)));
     if (!ls.length) return '<p class="mini-note">Aucun service n’a de personne ni de travail ce jour-là.</p>';
-    const jour = j => (j ? ' <span class="sy-jour">' + (j === -1 ? 'veille' : 'J' + (j > 0 ? '+' : '−') + Math.abs(j)) + '</span>' : '');
+    const jour = mot => (mot ? ' <span class="sy-jour">' + esc(mot) + '</span>' : '');
     const ligne = l => {
       const t = tons(l, rep.seuils), pic = l.pic && l.pic.personnes > 0 ? '<span class="sy-v">' + esc(nombre(l.pic.personnes)) + '</span><span class="sy-sur"> à ' + esc(heure(l.pic.a)) + '</span>' : '—';
       return '<tr data-service="' + esc(l.service) + '" data-jour="' + l.jour + '"><th scope="row"><button type="button" class="sy-service" data-page="at-planning" data-pg-viser="'
-        + esc(l.service) + '" title="Voir ce service dans le planning des équipes">' + esc(l.nom) + '</button>' + jour(l.jour) + '</th>'
+        + esc(l.service) + '" title="Voir ce service dans le planning des équipes">' + esc(l.nom) + '</button>' + jour(l.mot) + '</th>'
         + '<td class="num">' + esc(nombre(l.besoin)) + '</td><td class="num">' + esc(nombre(l.presents)) + '</td>' + caseEcart(l, t.ecart, max)
         + '<td class="num">' + moitie(l.matin) + '</td><td class="num">' + moitie(l.apresMidi) + '</td><td class="num">' + pic + '</td>'
-        + caseOccupation(l, t.occupation) + (l.premiere ? casesDuService(l, t.attente) : '') + '</tr>';
+        + caseOccupation(l, t.occupation) + casesDeLaLigne(l, t.attente) + '</tr>';
     };
     return '<div class="table-scroll sy-cadre"><table class="svc-table sy-table"><caption class="sr-only">Les services, de l’amont vers l’aval</caption><thead><tr>'
       + '<th scope="col">Service</th><th scope="col" class="num">Besoin</th><th scope="col" class="num">Présents</th><th scope="col" class="num">Écart</th>'
@@ -224,18 +233,20 @@
 
   /* ---- les trois cartes ----------------------------------------------------------- */
 
-  /** « Où ça coince » : le goulot, son moment, sa cause ; sinon, rien ne coince. */
+  /** « Où ça coince » : le goulot, son jour de travail (correction 17 a), son moment, sa cause ; sinon, rien ne coince. */
   function carteCoince(rep) {
     const g = rep.coince.goulot;
     if (!g) return { ton: 'ok', titre: 'Où ça coince', corps: '<p class="sy-grand">Rien ne coince.</p><p class="mini-note">Aucun lot n’attend plus de ' + esc(duree(rep.seuils.attenteLot)) + '.</p>' };
-    const s = rep.coince.services.find(x => x.service === g.service) || {};
-    // Les autres services où un lot attend plus que le seuil : les trois plus chargés, après le goulot.
-    const aussi = rep.coince.services.filter(x => x.service !== g.service && x.attenteMax && x.attenteMax.minutes > rep.seuils.attenteLot + EPS)
+    const s = rep.coince.services.find(x => cleDe(x) === cleDe(g)) || {};
+    // Les autres lignes où un lot attend plus que le seuil : les trois plus chargées, après le goulot ; chacune dit son jour.
+    const aussi = rep.coince.services.filter(x => cleDe(x) !== cleDe(g) && x.attenteMax && x.attenteMax.minutes > rep.seuils.attenteLot + EPS)
       .sort((p, q) => q.cumul - p.cumul).slice(0, 3);
-    return { ton: 'attente', titre: 'Où ça coince', page: 'at-planning', service: g.service, corps: '<p class="sy-grand">' + esc(g.nom) + '</p><p>de <b>' + esc(heure(g.de)) + '</b> à <b>' + esc(heure(g.a)) + '</b>'
+    const badge = mot => (mot ? ' <span class="sy-jour">' + esc(mot) + '</span>' : ''), jourDe = x => badge(REP().motDeLaLigne(x, rep.coince.services));
+    return { ton: 'attente', titre: 'Où ça coince', page: 'at-planning', service: g.service,
+      corps: '<p class="sy-grand">' + esc(g.nom) + badge(motDuGoulot(rep.coince)) + '</p><p>de <b>' + esc(heure(g.de)) + '</b> à <b>' + esc(heure(g.a)) + '</b>'
       + (s.file ? ', jusqu’à ' + esc(pluriel(s.file.lots, 'lot', 'lots')) + ' en file' : '') + ' ; un lot y attend jusqu’à <b>' + esc(duree(g.attenteMax)) + '</b>.</p>'
       + '<p class="mini-note">Cause : ' + esc(g.cause ? CAUSES[g.cause] : 'non établie (une pause, la ligne d’un robot…)') + '.</p>'
-      + (aussi.length ? '<p class="sy-aussi">Attendent aussi :</p><ul class="sy-exceptions">' + aussi.map(x => '<li><b>' + esc(x.nom) + '</b> un lot jusqu’à ' + esc(duree(x.attenteMax.minutes))
+      + (aussi.length ? '<p class="sy-aussi">Attendent aussi :</p><ul class="sy-exceptions">' + aussi.map(x => '<li><b>' + esc(x.nom) + '</b>' + jourDe(x) + ' un lot jusqu’à ' + esc(duree(x.attenteMax.minutes))
         + (x.cause ? ' — ' + esc({ personnel: 'personnel', amont: 'l’amont', materiel: 'le matériel' }[x.cause]) : '') + '</li>').join('') + '</ul>' : '') };
   }
   /** Une exception, en une ligne : quoi, de combien, pourquoi. */
@@ -284,7 +295,7 @@
   function carteEssai(e) {
     const d = e && e.A && e.B ? REP().comparer(e.A, e.B) : null;
     if (!d) return null;
-    const nomG = x => (x.coince.goulot ? x.coince.goulot.nom : null);
+    const nomG = x => { const mot = motDuGoulot(x.coince); return x.coince.goulot ? x.coince.goulot.nom + (mot ? ' (' + mot + ')' : '') : null; };
     const fl = x => (x.a === x.b ? esc(nombre(x.b)) : esc(nombre(x.a)) + ' → <b>' + esc(nombre(x.b)) + '</b>');
     const hs = d.fins.services.reduce((m, s) => ({ a: m.a + (s.heuresSup.a || 0), b: m.b + (s.heuresSup.b || 0) }), { a: 0, b: 0 });
     const goulot = g => (g ? esc(g) : 'aucun');
@@ -357,7 +368,7 @@
     });
   }
 
-  const api = { CAUSES, nombre, phrases, compteRetards, motsDesComptes, listeDesComptes, lignes, tons, tableau, creneauxDeLUnite, departs, points, decrire, courbe, bulle,
+  const api = { CAUSES, nombre, motDuJour, phrases, compteRetards, motsDesComptes, listeDesComptes, lignes, tons, tableau, creneauxDeLUnite, departs, points, decrire, courbe, bulle,
     carteCoince, carteRetard, carteEssai, rendre };
   if (enNode) module.exports = api;
   else root.OrlySyntheseVue = api;

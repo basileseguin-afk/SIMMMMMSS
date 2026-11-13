@@ -132,8 +132,8 @@ Lecteurs : le chef de projet et les responsables de service (version 1,
 | # | Question | Indicateur | Unité | Comparé à | Seuil d'alerte (défaut) |
 |---|---|---|---|---|---|
 | R1 | **Combien de personnes faut-il, par service ?** | Par service et jour de travail : le **besoin** (la charge du jour en homme-minutes ÷ les minutes utiles d'un poste, arrondie au service comme dans l'évolution 11 a), les **présents** (ETP présents, K8), l'**écart** (présents − besoin) ; le matin (avant 13:00 du jour de travail) et l'après-midi : présents et pic au travail ; le pic de la journée et son heure ; l'occupation (K3) | personnes (ETP) | les présents, au besoin | un écart d'**1 personne** |
-| R2 | **Où et quand ça coince ?** | Par service : la file la plus longue (K4) et son heure, l'attente la plus longue d'un lot, le cumul d'attente du jour, la **cause** (personnel, amont, matériel — K9). Le **goulot** : le service au plus grand cumul d'attente, et le moment où il s'accumule | lots ; minutes ; lots × minutes | l'attente d'un lot, au seuil ; l'occupation pendant la file, au seuil | une attente de **60 min** ; une occupation de **95 %** |
-| R3 | **À quelle heure chaque service finit-il, et avec combien d'heures sup ?** | Par service : la fin de son dernier lot, la fin de son horaire, ce qui dépasse ; ses heures sup (équipes, renforts prêtés, chauffeurs) | heure ; personnes × heures | la fin, à la fin de l'horaire | tout dépassement (une heure sup se dit dès la première minute) |
+| R2 | **Où et quand ça coince ?** | Par service et jour de travail : la file la plus longue (K4) et son heure, l'attente la plus longue d'un lot, le cumul d'attente du jour, la **cause** (personnel, amont, matériel — K9). Le **goulot** : le service au plus grand cumul d'attente, et le moment où il s'accumule | lots ; minutes ; lots × minutes | l'attente d'un lot, au seuil ; l'occupation pendant la file, au seuil | une attente de **60 min** ; une occupation de **95 %** |
+| R3 | **À quelle heure chaque service finit-il, et avec combien d'heures sup ?** | Par service et jour de travail : la fin de son dernier lot, la fin de son horaire, ce qui dépasse ; ses heures sup (équipes, renforts prêtés, chauffeurs) | heure ; personnes × heures | la fin, à la fin de l'horaire | tout dépassement (une heure sup se dit dès la première minute) |
 | R4 | **Qu'est-ce qui part en retard ?** | Les **seules exceptions** : les vols chargés après leur limite, les commandes prêtes après leur limite, les vols pas prêts ou sans équipe ; pour chacune, le retard et sa cause (la phrase de V7). Sans exception : une liste vide | minutes | la limite (le départ, ou départ − marge au handling 24 h/24 ; l'échéance de la commande) | un retard d'**1 min** |
 | R5 | **Que change mon scénario ?** | Entre les deux essais de « Comparer deux essais » : B − A sur chacune des quatre réponses (besoin, présents, écart ; goulot, attentes ; fins, heures sup ; exceptions nouvelles et réglées) | celles des réponses | l'essai A | — |
 
@@ -155,6 +155,11 @@ alerte ne s'affiche que si un seuil est dépassé. Pour une période, des
 personnes de jours différents ne s'additionnent pas : seule leur moyenne par
 jour s'affiche.
 
+- **Une ligne par service et par jour de travail** (correction 17 a), dans les
+  réponses 1, 2 et 3 : un service qui travaille la veille et le jour des vols a
+  deux lignes, chacune avec ses personnes, sa file, son attente, sa fin et ses
+  heures sup — celles des équipes de ce jour-là. Chaque ligne dit son jour
+  (« J−2 », « veille », « jour des vols », « J+1 ») ; le goulot aussi.
 - **Le besoin d'une équipe**, en personnes sur son poste : à effectif calculé, son
   besoin exact (homme-minutes ÷ poste ÷ rendement) ; un robot, une plonge saisis :
   ce que ses lots occupent ÷ son poste (11 a) ; à la main, saisie : les

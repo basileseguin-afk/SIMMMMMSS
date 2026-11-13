@@ -61,17 +61,23 @@
   function lignesDesReponses(A, B) {
     const d = A && B ? REP().comparer(A, B) : null, out = { 1: [], 2: [], 3: [], 4: [] };
     if (!d) return out;
-    const t = d.personnes.total, dl = m => P().dureeLisible(m), nom = x => (x.coince.goulot ? x.coince.goulot.nom : 'aucun');
+    const t = d.personnes.total, dl = m => P().dureeLisible(m);
+    // Le goulot dit son jour de travail ; une ligne (service, jour) aussi, quand son service en a plusieurs (correction 17 a).
+    const nom = x => {
+      const g = x.coince.goulot, mot = g ? REP().motDeLaLigne({ service: g.service, jour: g.jour || 0 }, x.coince.services || []) : null;
+      return g ? g.nom + (mot ? ' (' + mot + ')' : '') : 'aucun';
+    };
+    const de = (s, lignes) => { const mot = REP().motDeLaLigne(s, lignes); return s.nom + (mot ? ' (' + mot + ')' : ''); };
     out[1].push(ligne('Il faut (personnes)', n(t.besoin.a), n(t.besoin.b), ecartSigne(t.besoin.d, -1, n)));
     out[1].push(ligne('Présentes (équivalents temps plein)', n(t.presents.a), n(t.presents.b), ecartSigne(t.presents.d, 0, n)));
     for (const s of d.personnes.services.filter(x => x.besoin.d || x.presents.d))
-      out[1].push(ligne(s.nom + ' : il faut / présentes', n(s.besoin.a) + ' / ' + n(s.presents.a), n(s.besoin.b) + ' / ' + n(s.presents.b)));
+      out[1].push(ligne(de(s, d.personnes.services) + ' : il faut / présentes', n(s.besoin.a) + ' / ' + n(s.presents.a), n(s.besoin.b) + ' / ' + n(s.presents.b)));
     out[2].push(ligne('Goulot', nom(A), nom(B)));
     for (const s of d.coince.services.filter(x => x.attenteMax.d))
-      out[2].push(ligne(s.nom + ' : un lot attend jusqu’à', s.attenteMax.a == null ? '—' : dl(s.attenteMax.a), s.attenteMax.b == null ? '—' : dl(s.attenteMax.b), ecartSigne(s.attenteMax.d, -1, dl)));
+      out[2].push(ligne(de(s, d.coince.services) + ' : un lot attend jusqu’à', s.attenteMax.a == null ? '—' : dl(s.attenteMax.a), s.attenteMax.b == null ? '—' : dl(s.attenteMax.b), ecartSigne(s.attenteMax.d, -1, dl)));
     const hs = d.fins.services.reduce((m, s) => ({ a: m.a + (s.heuresSup.a || 0), b: m.b + (s.heuresSup.b || 0) }), { a: 0, b: 0 });
     out[3].push(ligne('Heures sup (personnes × heures)', dl(hs.a), dl(hs.b), ecartSigne(hs.b - hs.a, -1, dl)));
-    for (const s of d.fins.services.filter(x => x.fin.d)) out[3].push(ligne(s.nom + ' finit à', P().hhmm(s.fin.a), P().hhmm(s.fin.b), ecartSigne(s.fin.d, -1, dl)));
+    for (const s of d.fins.services.filter(x => x.fin.d)) out[3].push(ligne(de(s, d.fins.services) + ' finit à', P().hhmm(s.fin.a), P().hhmm(s.fin.b), ecartSigne(s.fin.d, -1, dl)));
     const e = d.exceptions;
     out[4].push(ligne('Exceptions (en retard, pas prêtes, sans équipe)', String(e.nombre.a), String(e.nombre.b), ecartSigne(e.nombre.d, -1, n)));
     if (e.reglees.length) out[4].push(ligne('Réglées dans B', '', e.reglees.map(x => x.id).join(', ')));

@@ -407,7 +407,7 @@ le rouge ne sert qu’aux retards.
      1. **Deux phrases.** La première dit combien de personnes il faut et
         combien sont présentes (« Il faut 26 personnes, 35,3 sont
         présentes. ») ; la seconde, ce qui coince et ce qui part en retard
-        (« Cuisine froide coince de J-1 20:00 à 01:14 ; 15 vols et
+        (« Cuisine froide (veille) coince de J-1 20:00 à 01:14 ; 15 vols et
         14 commandes partent en retard. »), ou que rien ne coince.
      2. **Trois cartes** : *Où ça coince* (le goulot, son moment, la file, la
         plus longue attente d'un lot et sa cause — il manque du monde, le
@@ -417,10 +417,13 @@ le rouge ne sert qu’aux retards.
         charge, les commandes de repas, celles d'équipement, chacun avec son
         périmètre) ; *L'essai* (avec deux essais retenus dans « Comparer deux
         essais » : ce qui change entre A et B). Une carte mène à son détail.
-     3. **Les services**, de l'amont vers l'aval : il faut, présents et
-        l'écart ; le matin et l'après-midi ; le pic au travail ; l'occupation ;
-        la file la plus longue ; la fin et les heures sup. Un clic sur un
-        service l'ouvre dans le planning des équipes.
+     3. **Les services**, de l'amont vers l'aval, une ligne par service et
+        par jour de travail : il faut, présents et l'écart ; le matin et
+        l'après-midi ; le pic au travail ; l'occupation ; la file la plus
+        longue ; la fin et les heures sup — ceux des équipes de ce jour-là.
+        Chaque ligne dit son jour (« J−2 », « veille », « J+1 » ; « jour des
+        vols » quand le service a plusieurs lignes). Un clic sur un service
+        l'ouvre dans le planning des équipes.
      4. **La journée** : la courbe des présents, des personnes au travail et
         des lots en file, avec un repère par départ ; la bulle suit la souris
         ou les flèches du clavier.
@@ -873,6 +876,7 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/reponses-classeur.test.cjs` | La feuille « Réponses » du classeur de la journée (v1, évolution 15 e, `echanges-reponses.js`) : à la fin, les autres feuilles telles quelles ; les cinq réponses dans l’ordre du contrat, celles du module ; « Aucune exception », « Sans second essai » ; avec deux essais, ce que change le scénario ; de vraies heures Excel ; l’outil `simuler-journee --xlsx` écrit la même feuille |
 | `tests/non-regression-15.test.cjs` / `tests/empreintes-resultats.cjs` | La non-régression de l’évolution 15 : le JSON de `simuler-journee` et de `simuler-periode`, et chaque feuille de leurs classeurs, ont les empreintes calculées sur le commit d’avant l’évolution (unité et vols fictifs) ; le classeur de la journée gagne la seule feuille « Réponses » |
 | `tests/captures-resultats-browser.cjs` | Les captures de contrôle des résultats (v1, évolution 15 e), sur l’unité et les vols fictifs, en thème clair et sombre, à 1 280 et 1 920 px : la Synthèse avec et sans goulot, avec et sans retard ; Détails (Commandes, Vols) ; la Période ; chacune vérifiée, gardée hors du dépôt (`$ORY_CAPTURES`) |
+| `tests/reponses-jours.test.cjs` | Le jour de travail jusqu'au bout de la ligne (v1, correction 17 a), sur une journée fictive calculée à la main : un service avec une équipe la veille et une le jour des vols a deux lignes, chacune avec sa fin, sa fin d'horaire, son dépassement, ses heures sup, sa file et son attente ; la somme des lignes fait le service ; chaque ligne dit son jour ; le goulot dit le sien ; la feuille « Réponses » et « Comparer deux essais » aussi |
 | `tests/periode-unite.test.cjs` | La page Période sans navigateur (v1, évolution 15 d) : la colonne « Unité » égale à la somme des services, le pic et l'occupation de l'unité (`chargeDeLUnite`), la moyenne des personnes seule, un seul bloc dans un mois, les jours complets d'abord, une seule écriture du temps, la courbe (un point par jour, le réel) |
 | `tests/calage-bases.test.cjs` | La correspondance propose 7,5 h / 7 h par ETP quand rien n'est réglé, sans l'enregistrer ; un réglage enregistré ne change pas ; le moteur garde ses 7 h (v1, évolution 15 d) |
 | `tests/periode-page-browser.cjs` | La page Période dans la page (v1, évolution 15 d), sur l'unité fictive : la colonne Unité, la courbe (souris, flèches) et le réel importé, la première colonne collante et le défilement qui se voit à 760 px, les moyennes des personnes, un seul bloc dans un mois, les jours complets d'abord, aucune durée en minutes au-delà de 60, les bases de la correspondance |

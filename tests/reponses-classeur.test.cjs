@@ -39,8 +39,11 @@ test('les cinq réponses, dans l’ordre du contrat, celles du module', () => {
   assert.deepEqual(f.lignes[0], ER.TETE);
   assert.deepEqual([...new Set(f.lignes.slice(1).map(l => l[0]))], QUESTIONS);
   // 1. Par service : il faut, présentes, l'écart et son seuil.
+  // Une ligne par service et par jour de travail (correction 17 a) : on la cherche par son service et par son jour.
+  const jourDe = s => T.celluleDate(new Date(Date.UTC(2026, 10, 2 + s.jour)).toISOString().slice(0, 10)).excel;
+  const duJour = (l, s) => l[col('Sujet')] === s.nom && l[col('Jour de travail')] && l[col('Jour de travail')].excel === jourDe(s);
   for (const s of A.personnes.services) {
-    const d = lignes(f, 0).filter(l => l[col('Sujet')] === s.nom), v = m => (d.find(l => l[col('Mesure')] === m) || [])[col('Valeur')];
+    const d = lignes(f, 0).filter(l => duJour(l, s)), v = m => (d.find(l => l[col('Mesure')] === m) || [])[col('Valeur')];
     assert.equal(v('Il faut'), s.besoin, s.nom);
     assert.equal(v('Présentes (ETP)'), r2(s.presents), s.nom);
     assert.equal(v('Écart (présentes − il faut)'), r2(s.ecart), s.nom);
@@ -54,12 +57,12 @@ test('les cinq réponses, dans l’ordre du contrat, celles du module', () => {
   assert.equal(g[col('Valeur')], Math.round(A.coince.goulot.cumul), 'son cumul d’attente');
   // 3. Les heures sup de chaque service.
   for (const s of A.fins.services) {
-    const h = lignes(f, 2).find(l => l[col('Sujet')] === s.nom && l[col('Mesure')] === 'Heures sup');
+    const h = lignes(f, 2).find(l => duJour(l, s) && l[col('Mesure')] === 'Heures sup');
     assert.equal(h[col('Valeur')], Math.round(s.heuresSup.total), s.nom);
   }
   // Les heures du détail : arrondies à la minute, comme la cellule et comme la page (P.hhmm).
   for (const s of A.fins.services.filter(x => x.fin != null && x.fin >= 0 && x.fin < 1440)) {
-    const l = lignes(f, 2).find(x => x[col('Sujet')] === s.nom && x[col('Mesure')] === 'Fin du dernier lot');
+    const l = lignes(f, 2).find(x => duJour(x, s) && x[col('Mesure')] === 'Fin du dernier lot');
     assert.equal(l[col('Détail')], P.hhmm(s.fin), s.nom);
   }
   // La cause d'une file : un texte, dans « Détail » ; « Valeur » ne porte que des nombres, des heures, ou rien.

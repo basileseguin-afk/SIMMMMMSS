@@ -6,7 +6,9 @@
  *  Les cinq réponses de la journée, dans l'ordre du contrat, une ligne par
  *  mesure : combien de personnes il faut, où et quand ça coince, à quelle
  *  heure chaque service finit, ce qui part en retard, ce que change le
- *  scénario (avec deux essais retenus). Les valeurs sont celles du module
+ *  scénario (avec deux essais retenus). Les réponses 1, 2 et 3 ont une ligne
+ *  par service et jour de travail (correction 17 a), chacune avec son jour.
+ *  Les valeurs sont celles du module
  *  (moteur/reponses.js) : la page et l'outil (simuler-journee --xlsx) écrivent
  *  la même feuille. Elle s'ajoute à la fin du classeur de la journée
  *  (echanges-charge.js), sans changer les autres feuilles ; tableur.js et
@@ -20,6 +22,7 @@
 
   const enNode = typeof module !== 'undefined' && module.exports && typeof require === 'function';
   const T = () => (enNode ? require('./tableur.js') : root.OrlyTableur);
+  const REP = () => (enNode ? require('./moteur/reponses.js') : root.OrlyReponses);
   const fini = x => x != null && Number.isFinite(+x);
   const r2 = x => (fini(x) ? Math.round(+x * 100) / 100 : null);
   const entier = x => (fini(x) ? Math.round(+x) : null);
@@ -73,32 +76,32 @@
       ligne(0, 'Toute l’unité', null, 'Écart (présentes − il faut)', r2(t.ecart), 'personnes')]);
   }
 
-  /** R2 : le goulot, puis chaque service où un lot attend : la file la plus longue, l'attente la plus longue, le cumul, la cause. */
-  function coince(rep) {
+  /** R2 : le goulot, puis chaque service et jour de travail où un lot attend : la file la plus longue, l'attente la plus longue, le cumul, la cause. */
+  function coince(rep, jour) {
     const S = rep.seuils, g = rep.coince.goulot;
-    const out = [ligne(1, g ? g.nom : 'aucun', null, 'Goulot', g ? entier(g.cumul) : null, 'lots × minutes', S.attenteLot, g ? 'oui' : 'non',
+    const out = [ligne(1, g ? g.nom : 'aucun', g ? jour(g.jour) : null, 'Goulot', g ? entier(g.cumul) : null, 'lots × minutes', S.attenteLot, g ? 'oui' : 'non',
       g ? 'de ' + heure(g.de) + ' à ' + heure(g.a) + ' ; un lot y attend jusqu’à ' + entier(g.attenteMax) + ' min' + (g.cause ? ' ; cause : ' + CAUSES[g.cause] : '')
         : 'aucun lot n’attend plus de ' + S.attenteLot + ' min')];
     for (const s of rep.coince.services.filter(x => x.file || x.attenteMax)) {
-      const a = s.attenteMax;
-      out.push(ligne(1, s.nom, null, 'File la plus longue', s.file ? s.file.lots : null, 'lots', null, null, s.file ? 'à ' + heure(s.file.a) : null),
-        ligne(1, s.nom, null, 'Attente la plus longue d’un lot', a ? entier(a.minutes) : null, 'min', S.attenteLot, a ? ouiNon(a.minutes > S.attenteLot) : null,
+      const a = s.attenteMax, j = jour(s.jour);
+      out.push(ligne(1, s.nom, j, 'File la plus longue', s.file ? s.file.lots : null, 'lots', null, null, s.file ? 'à ' + heure(s.file.a) : null),
+        ligne(1, s.nom, j, 'Attente la plus longue d’un lot', a ? entier(a.minutes) : null, 'min', S.attenteLot, a ? ouiNon(a.minutes > S.attenteLot) : null,
           a ? a.lot + ', de ' + heure(a.de) + ' à ' + heure(a.a) : null),
-        ligne(1, s.nom, null, 'Cumul d’attente', entier(s.cumul), 'lots × minutes'),
-        ligne(1, s.nom, null, 'Cause', null, null, null, null, s.cause ? CAUSES[s.cause] : 'aucune établie'));
+        ligne(1, s.nom, j, 'Cumul d’attente', entier(s.cumul), 'lots × minutes'),
+        ligne(1, s.nom, j, 'Cause', null, null, null, null, s.cause ? CAUSES[s.cause] : 'aucune établie'));
     }
     return out;
   }
 
-  /** R3 : par service, la fin de son dernier lot et de son horaire (de vraies heures Excel), ce qui dépasse, ses heures sup. */
-  function fins(rep, date) {
+  /** R3 : par service et jour de travail, la fin de son dernier lot et de son horaire (de vraies heures Excel), ce qui dépasse, ses heures sup. */
+  function fins(rep, date, jour) {
     const quand = t => (fini(t) ? T().celluleDate(date, t) : null);
     return rep.fins.services.flatMap(s => {
-      const h = s.heuresSup || {};
-      return [ligne(2, s.nom, null, 'Fin du dernier lot', quand(s.fin), 'heure', null, null, fini(s.fin) ? heure(s.fin) : null),
-        ligne(2, s.nom, null, 'Fin de l’horaire', quand(s.finHoraire), 'heure', null, null, fini(s.finHoraire) ? heure(s.finHoraire) : null),
-        ligne(2, s.nom, null, 'Dépassement', entier(s.depasse), 'min', 0, fini(s.depasse) ? ouiNon(s.depasse > 0) : null),
-        ligne(2, s.nom, null, 'Heures sup', entier(h.total), 'min × personnes', null, null,
+      const h = s.heuresSup || {}, j = jour(s.jour);
+      return [ligne(2, s.nom, j, 'Fin du dernier lot', quand(s.fin), 'heure', null, null, fini(s.fin) ? heure(s.fin) : null),
+        ligne(2, s.nom, j, 'Fin de l’horaire', quand(s.finHoraire), 'heure', null, null, fini(s.finHoraire) ? heure(s.finHoraire) : null),
+        ligne(2, s.nom, j, 'Dépassement', entier(s.depasse), 'min', 0, fini(s.depasse) ? ouiNon(s.depasse > 0) : null),
+        ligne(2, s.nom, j, 'Heures sup', entier(h.total), 'min × personnes', null, null,
           'équipes ' + (entier(h.equipes) ?? 0) + ', renforts prêtés ' + (entier(h.renforts) ?? 0) + ', chauffeurs ' + (entier(h.chauffeurs) ?? 0))];
     });
   }
@@ -116,14 +119,19 @@
     if (!d) return [ligne(4, null, null, 'Sans second essai', null, null, null, null,
       'retenez deux essais dans « Comparer deux essais » : le classeur de la page donne alors ce que change le scénario')];
     const nom = id => ((rep.personnes.services.find(s => s.service === id) || {}).nom) || id || 'aucun', t = d.personnes.total, x = d.exceptions;
+    const de = (s, lignes) => { const mot = REP().motDeLaLigne(s, lignes); return s.nom + (mot ? ' (' + mot + ')' : ''); };
+    const g = d.coince.goulot, goulot = (id, j) => {
+      const mot = id ? REP().motDeLaLigne({ service: id, jour: j || 0 }, d.coince.services) : null;
+      return id ? nom(id) + (mot ? ' (' + mot + ')' : '') : 'aucun';
+    };
     return [ligne(4, 'Toute l’unité', null, 'Il faut, toute l’unité (B − A)', r2(t.besoin.d), 'personnes', null, null, t.besoin.a + ' → ' + t.besoin.b),
       ligne(4, 'Toute l’unité', null, 'Présentes, toute l’unité (B − A)', r2(t.presents.d), 'ETP', null, null, r2(t.presents.a) + ' → ' + r2(t.presents.b)),
       // Un service qui n'existe que dans l'un des deux essais compte aussi : « absent → 3 ».
-      ...d.personnes.services.filter(s => change(s.besoin) || change(s.presents)).map(s => ligne(4, s.nom, null, 'Il faut / présentes (B − A)', r2(s.besoin.d), 'personnes', null, null,
+      ...d.personnes.services.filter(s => change(s.besoin) || change(s.presents)).map(s => ligne(4, de(s, d.personnes.services), null, 'Il faut / présentes (B − A)', r2(s.besoin.d), 'personnes', null, null,
         'il faut ' + ouAbsent(s.besoin.a) + ' → ' + ouAbsent(s.besoin.b) + ' ; présentes ' + ouAbsent(s.presents.a) + ' → ' + ouAbsent(s.presents.b))),
-      ligne(4, nom(d.coince.goulot.b || d.coince.goulot.a), null, 'Goulot', null, null, null, null,
-        (d.coince.goulot.change ? 'change : ' : 'le même : ') + nom(d.coince.goulot.a) + ' → ' + nom(d.coince.goulot.b)),
-      ...d.fins.services.filter(s => change(s.fin) || change(s.heuresSup)).map(s => ligne(4, s.nom, null, 'Fin (B − A)', entier(s.fin.d), 'min', null, null,
+      ligne(4, nom(g.b || g.a), null, 'Goulot', null, null, null, null,
+        (g.change ? 'change : ' : 'le même : ') + goulot(g.a, g.jourA) + ' → ' + goulot(g.b, g.jourB)),
+      ...d.fins.services.filter(s => change(s.fin) || change(s.heuresSup)).map(s => ligne(4, de(s, d.fins.services), null, 'Fin (B − A)', entier(s.fin.d), 'min', null, null,
         'fin ' + ouAbsent(s.fin.a, heure) + ' → ' + ouAbsent(s.fin.b, heure) + ' ; heures sup ' + ouAbsent(s.heuresSup.a, entier) + ' → ' + ouAbsent(s.heuresSup.b, entier) + ' min × personnes')),
       ligne(4, 'Toute l’unité', null, 'Exceptions (B − A)', x.nombre.d, 'exceptions', null, null, x.nombre.a + ' → ' + x.nombre.b),
       ligne(4, 'Toute l’unité', null, 'Exceptions réglées dans B', x.reglees.length, 'exceptions', null, null, x.reglees.map(e => e.id).join(', ') || null),
@@ -139,7 +147,7 @@
     const date = ctx.date || le.getFullYear() + '-' + deux(le.getMonth() + 1) + '-' + deux(le.getDate());
     const jour = k => T().celluleDate(decalerJour(date, k || 0));
     return { nom: 'Réponses', filtres: true, figerColonnes: 2, largeurs: [44, 24, 14, 34, 12, 16, 10, 10, 60],
-      lignes: [TETE.slice(), ...personnes(rep, jour), ...coince(rep), ...fins(rep, date), ...retards(rep), ...scenario(rep, ctx.comparaison || null)] };
+      lignes: [TETE.slice(), ...personnes(rep, jour), ...coince(rep, jour), ...fins(rep, date, jour), ...retards(rep), ...scenario(rep, ctx.comparaison || null)] };
   }
 
   /** Le classeur de la journée (echanges-charge.js, journeeVersClasseur) avec la feuille « Réponses » à la fin ; les autres, telles quelles. */

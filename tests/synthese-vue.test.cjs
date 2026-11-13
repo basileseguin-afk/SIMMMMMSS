@@ -17,8 +17,11 @@ const fictive = (csv = F.volsCsv()) => { const p = F.heureDuPicAttendue(F.sauveg
 
 test('en tête, deux phrases : combien de personnes ; où ça coince et ce qui part en retard', () => {
   const rep = (goulot, exceptions) => ({ personnes: { total: { besoin: 42, presents: 45, ecart: 3 } }, coince: { goulot }, exceptions });
-  assert.deepEqual(SV.phrases(rep({ nom: 'Montage', de: h('14:00'), a: h('16:30') }, [])),
+  assert.deepEqual(SV.phrases(rep({ service: 'prepa', nom: 'Montage', jour: 0, de: h('14:00'), a: h('16:30') }, [])),
     ['Il faut 42 personnes, 45 sont présentes.', 'Montage coince de 14:00 à 16:30 ; rien ne part en retard.']);
+  // Le goulot dit son jour de travail (correction 17 a) : toujours hors du jour des vols.
+  assert.equal(SV.phrases(rep({ service: 'cuisine', nom: 'Cuisine', jour: -1, de: h('14:00') - 1440, a: h('16:30') - 1440 }, []))[1],
+    'Cuisine (veille) coince de J-1 14:00 à J-1 16:30 ; rien ne part en retard.');
   const ex = [{ type: 'vol-en-retard', id: 'NO1' }, { type: 'commande-en-retard', id: 'NORD/YC' }, { type: 'sans-equipe', id: 'NO1' }, { type: 'vol-pas-charge', id: 'SU2' }];
   assert.deepEqual(SV.phrases(rep(null, ex))[1], 'Rien ne coince ; 2 vols et 1 commande partent en retard.', 'un vol compté une fois');
   assert.deepEqual(SV.phrases(rep(null, [ex[1]]))[1], 'Rien ne coince ; 1 commande part en retard.');
@@ -26,7 +29,7 @@ test('en tête, deux phrases : combien de personnes ; où ça coince et ce qui p
   assert.deepEqual(SV.phrases({ personnes: { total: { besoin: 1, presents: 2 } }, coince: { goulot: null }, exceptions: [] })[0], 'Il faut 1 personne, 2 sont présentes.');
 });
 
-test('« Les services » : dans l’ordre du chemin, une ligne par service et jour ; la file, la fin et les heures sup une fois par service', () => {
+test('« Les services » : dans l’ordre du chemin, une ligne par service et jour, chacune avec sa file, sa fin et ses heures sup', () => {
   const { resultat: r, rep } = fictive(), ordre = require('../planning-vue.js').ordreDesServices(r);
   const l = SV.lignes(rep, ordre), rang = id => ordre.indexOf(id);
   for (let i = 1; i < l.length; i++) assert.ok(rang(l[i - 1].service) <= rang(l[i].service), 'de l’amont vers l’aval');
@@ -36,11 +39,13 @@ test('« Les services » : dans l’ordre du chemin, une ligne par service et jo
   for (const x of l) {
     const s = rep.personnes.services.find(y => y.service === x.service && y.jour === x.jour);
     assert.deepEqual([x.besoin, x.presents, x.ecart], [s.besoin, s.presents, s.ecart], x.service);
-    if (x.premiere) assert.equal(x.fin, rep.fins.services.find(y => y.service === x.service));
+    // La file, la fin et les heures sup : celles de la ligne (service, jour), pas du service entier (correction 17 a).
+    assert.equal(x.fin, rep.fins.services.find(y => y.service === x.service && y.jour === x.jour));
+    assert.equal(x.coince, rep.coince.services.find(y => y.service === x.service && y.jour === x.jour));
   }
-  // Un service à deux jours de travail : deux lignes, la première porte la hauteur.
+  // Un service à deux jours de travail : deux lignes, chacune dit son jour.
   const deux = { ...rep, personnes: { ...rep.personnes, services: [{ ...rep.personnes.services[0], service: 'x', jour: -1 }, { ...rep.personnes.services[0], service: 'x', jour: 0 }] } };
-  assert.deepEqual(SV.lignes(deux, ['x']).map(y => [y.jour, y.premiere, y.rang]), [[-1, true, 2], [0, false, 0]]);
+  assert.deepEqual(SV.lignes(deux, ['x']).map(y => [y.jour, y.mot]), [[-1, 'veille'], [0, 'jour des vols']]);
 });
 
 test('les tons : seulement au-delà du seuil, et jamais le rouge (il est aux retards)', () => {

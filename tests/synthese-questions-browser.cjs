@@ -39,12 +39,22 @@ const critiques=page=>page.evaluate(()=>{
    try{
     // 1. Les phrases et les chiffres du tableau : ceux du module.
     const lu=await page.evaluate(()=>{const rep=Sim.reponses(),SV=OrlySyntheseVue;
-      return {phrases:SV.phrases(rep),attendu:SV.lignes(rep,OrlyPlanningVue.ordreDesServices(Sim.ateliers.resultat)).map(l=>[l.service,String(l.jour),SV.nombre(l.besoin),SV.nombre(l.presents)]),
+      const ls=SV.lignes(rep,OrlyPlanningVue.ordreDesServices(Sim.ateliers.resultat)),D=MoteurProduction.dureeLisible;
+      return {phrases:SV.phrases(rep),attendu:ls.map(l=>[l.service,String(l.jour),SV.nombre(l.besoin),SV.nombre(l.presents)]),
+        // Correction 17 (a) : chaque ligne dit son jour, et porte sa propre fin et ses propres heures sup.
+        mots:ls.map(l=>l.mot),jours:[...document.querySelectorAll('#bilan-journee .sy-table tbody tr')].map(tr=>(tr.querySelector('.sy-jour')||{}).textContent||null),
+        cases:[...document.querySelectorAll('#bilan-journee .sy-table tbody tr')].map(tr=>tr.cells.length),
+        sup:ls.map(l=>(l.fin&&l.fin.heuresSup.total>1e-9?D(l.fin.heuresSup.total):'—')),
+        supLu:[...document.querySelectorAll('#bilan-journee .sy-table tbody tr')].map(tr=>tr.cells[10].textContent),
         tete:[...document.querySelectorAll('#bilan-journee .sy-tete .bilan-resume')].map(p=>p.textContent),
         lignes:[...document.querySelectorAll('#bilan-journee .sy-table tbody tr')].map(tr=>[tr.dataset.service,tr.dataset.jour,tr.cells[1].textContent,tr.cells[2].textContent])};});
     assert.deepEqual(lu.tete,lu.phrases,V+'les phrases en tête');
     assert.ok(lu.lignes.length>=5,V+'les services');
     assert.deepEqual(lu.lignes,lu.attendu,V+'besoin et présents, ligne par ligne, dans l’ordre du chemin');
+    assert.deepEqual(lu.jours,lu.mots,V+'chaque ligne dit son jour');
+    assert.ok(lu.mots.some(m=>m==='veille'),V+'la cuisine fictive travaille la veille');
+    assert.ok(lu.cases.every(n=>n===11),V+'onze cases par ligne : plus de case partagée entre deux jours');
+    assert.deepEqual(lu.supLu,lu.sup,V+'les heures sup de chaque ligne');
 
     // 2. La largeur : le tableau tient, les cartes occupent la ligne entière.
     const place=await page.evaluate(()=>{const c=document.querySelector('.sy-cadre'),g=document.querySelector('.sy-cartes'),cs=[...g.children];

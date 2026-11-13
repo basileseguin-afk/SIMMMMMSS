@@ -824,7 +824,7 @@ Une ligne par mesure, dans l'ordre du contrat :
 |---|---|
 | `Question` | « 1. Combien de personnes faut-il, par service ? », « 2. Où et quand ça coince ? », « 3. À quelle heure chaque service finit-il, et avec combien d’heures sup ? », « 4. Qu’est-ce qui part en retard ? », « 5. Que change mon scénario ? » |
 | `Sujet` | le service, « Toute l’unité », le goulot, ou le vol ou la commande d'une exception |
-| `Jour de travail` | pour la question 1 : la date du jour de travail du service (une vraie date Excel ; une cuisine à J−1, la veille) |
+| `Jour de travail` | pour les questions 1 à 3 et le goulot : la date du jour de travail de la ligne (une vraie date Excel ; une cuisine à J−1, la veille). Un service qui travaille deux jours a deux lignes par mesure (correction 17 a) |
 | `Mesure` | ce qui est mesuré (ci-dessous) |
 | `Valeur` | un nombre ; pour une heure (question 3), une vraie date et heure Excel ; vide quand la mesure n'a pas de valeur (une cause, le goulot de la comparaison) |
 | `Unité` | personnes, ETP, %, lots, min, lots × minutes, min × personnes, heure, exceptions |
@@ -836,13 +836,13 @@ Une ligne par mesure, dans l'ordre du contrat :
   (ETP)`, `Écart (présentes − il faut)` (au seuil d'écart), `Matin, au travail
   au plus` et `Après-midi, au travail au plus` (et les présentes, en détail),
   `Pic au travail`, `Occupation` (au seuil d'occupation) ; puis toute l'unité.
-- **2.** `Goulot` (le service au plus grand cumul d'attente, son cumul, de
-  quand à quand, sa cause ; sinon « aucun ») ; puis, pour chaque service où un
-  lot attend : `File la plus longue`, `Attente la plus longue d’un lot` (au
+- **2.** `Goulot` (le service et son jour de travail au plus grand cumul
+  d'attente, son cumul, de quand à quand, sa cause ; sinon « aucun ») ; puis,
+  pour chaque service et jour de travail où un lot attend : `File la plus longue`, `Attente la plus longue d’un lot` (au
   seuil d'attente), `Cumul d’attente`, `Cause` (en détail : personnel, l'amont
   ou le matériel). Les heures écrites en détail sont arrondies à la minute,
   comme la cellule et comme la page.
-- **3.** Par service : `Fin du dernier lot`, `Fin de l’horaire`, `Dépassement`
+- **3.** Par service et jour de travail : `Fin du dernier lot`, `Fin de l’horaire`, `Dépassement`
   (min), `Heures sup` (min × personnes ; équipes, renforts prêtés, chauffeurs
   en détail).
 - **4.** Une ligne par exception (vol chargé en retard, vol pas chargé, vol
