@@ -5,6 +5,34 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-13 — Banc d'essai, évolution 17 (d) : contrôle et doc
+
+- **Captures de contrôle**, sur des données fictives
+  (`tests/captures-evolution-17-browser.cjs`, l'unité de
+  `tests/calage-17-fictif.cjs`), en clair et en sombre, à 1 366 × 768 et
+  1 920 × 1 080 : le rapport du calage avec une forme en puissance et une
+  ligne en sur-effectif ; la Synthèse avec la politique. Seize captures,
+  vérifiées une à une, gardées hors du dépôt.
+- **Non-régression** (`tests/evolution-17-non-regression.test.cjs`) : une
+  sauvegarde d'avant se relit champ par champ et donne le prévu d'avant ; le
+  résultat d'une journée, ses indicateurs et le bilan d'une période ne
+  dépendent pas de la politique gardée ; les feuilles existantes du classeur
+  de la période sont celles d'avant.
+- **Doc** : `docs/BANC_ESSAI.md` § 10 (le catalogue, les garde-fous ajoutés,
+  le statut et la borne, leurs limites : une formule apprise sur trois mois
+  ne vaut que pour des jours qui leur ressemblent ; le statut ne mesure pas
+  l'occupation réelle, qui demande une observation sur place),
+  `docs/CAHIER_DES_CHARGES.md` (M25), `README.md`. Les colonnes ajoutées aux
+  classeurs sont dans `docs/FORMATS_EXCEL.md` depuis la partie (c).
+
+Aucun code de la page ni du moteur ne change dans cette partie.
+
+Fichiers : `tests/captures-evolution-17-browser.cjs` et
+`tests/evolution-17-non-regression.test.cjs` (nouveaux), `docs/BANC_ESSAI.md`,
+`docs/CAHIER_DES_CHARGES.md`, `README.md`.
+
+---
+
 ## 2026-11-13 — Banc d'essai, évolution 17 (c) : une formule par service, dans les pages, les outils et les classeurs
 
 - **La page du calage** : par ligne, la formule retenue en clair et son

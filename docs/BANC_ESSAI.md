@@ -2370,6 +2370,60 @@ candidats ; le nuage, la part choisie, le jour survolé ; le prévu de la
 Période et celui de la Synthèse égaux à ceux du module ; la phrase de tête ;
 les classeurs exportés).
 
+### Une formule par service : contrôle et limites (évolution 17 d)
+
+**Ce que dit une formule, et ce qu'elle ne dit pas.**
+
+- Les temps par vol du barème restent des entrées : l'évolution 17 n'en
+  change aucun, et ne propose pas d'en changer (« Appliquer au barème » reste
+  réservé à « × a »). Une forme dit comment les heures réelles ont suivi le
+  travail au barème ; elle ne corrige pas le barème.
+- **Une formule apprise sur trois mois ne vaut que pour des jours qui leur
+  ressemblent.** Hors de l'étendue du travail au barème apprise (un jour bien
+  plus chargé, ou bien plus calme, que tous ceux du réel), une puissance, un
+  logarithme, un plancher ou un plafond prolongent une courbe que rien n'a
+  vérifiée ; le nuage de points montre cette étendue. Un changement
+  d'organisation, de barème ou de correspondance demande un nouveau calage
+  (« à refaire »).
+- **Une formule apprise sur les heures dit ce que l'unité met, pas toujours
+  ce qu'il faut.** C'est pourquoi chaque ligne a un statut. Mais **le statut
+  ne mesure pas l'occupation réelle** des postes : il lit deux indices dans
+  les heures (elles suivent ou non la charge ; les heures supp montent ou non
+  avec elle). Une ligne « à la limite » peut cacher un rythme lent ; une
+  ligne « en sur-effectif » peut tenir un effectif minimal de sécurité ou de
+  poste. Seule une observation sur place le dit.
+- **Le besoin « au plus »** suppose que les jours les plus chargés donnent le
+  rythme tenable : c'est une borne haute, pas une cible. Elle ne descend pas
+  sous ce rythme, et ne vaut pas si ces jours-là étaient eux-mêmes en
+  sur-effectif.
+- Le remplissage des vols n'est pas une variable : il viendra par une
+  colonne du fichier des vols, et par une fiche de plus dans le catalogue.
+- Sept candidats par ligne, un seuil corrigé (0,05 ÷ 7) : avec peu de jours
+  (20 à 30), un vrai effet peut ne pas passer le test. La ligne garde alors
+  une référence (« moteur » ou « constante »), et le rapport dit pourquoi
+  chaque candidat est refusé.
+
+**Contrôle.**
+
+- Captures de contrôle (`tests/captures-evolution-17-browser.cjs`), sur
+  l'unité fictive de `tests/calage-17-fictif.cjs`, en clair et en sombre, à
+  1 366 × 768 et 1 920 × 1 080 : le rapport du calage avec une forme en
+  puissance (sa formule, son statut, son nuage de points) et une ligne en
+  sur-effectif (l'effectif mis, sa borne) ; la Synthèse avec la politique (la
+  phrase de tête, le bloc « Politique d'effectif »). Seize captures,
+  vérifiées une à une et gardées hors du dépôt (`$ORY_CAPTURES`).
+- Non-régression (`tests/evolution-17-non-regression.test.cjs`) : une
+  sauvegarde d'avant (une politique gardée avant l'évolution) se relit champ
+  par champ et donne le prévu d'avant ; le résultat d'une journée, ses
+  indicateurs et le bilan d'une période ne dépendent pas de la politique
+  gardée ; sans politique, ou avec une politique d'avant, le classeur de la
+  période est celui d'avant, par le module comme par l'outil. Le résultat
+  d'une journée et le bilan d'une période restent comparés à leurs
+  références figées (`tests/non-regression.test.cjs`, `tests/periode.test.cjs`),
+  et le calage aux siennes (`tests/reel-absent.test.cjs`,
+  `tests/reel-vide.test.cjs`, `tests/sigma-unite.test.cjs`), sans les champs
+  ajoutés (`tests/calage-avant-17.cjs`).
+
 ## 11. Plusieurs onglets ne s'écrasent plus (correction 14)
 
 Le banc lit le fichier « Tout sauvegarder », qui exporte ce qui est enregistré
