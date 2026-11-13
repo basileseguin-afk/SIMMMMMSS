@@ -2311,6 +2311,65 @@ fini, refusés ; le prévu d'un jour, sa borne plafonnée au prévu, le total de
 l'unité ; un « × a » appliqué au barème, la même borne ; les heures et les
 heures supp de chaque jour dans la comparaison.
 
+### Une formule par service, dans les pages, les outils et les classeurs (évolution 17 c)
+
+- **La page du calage** (« Réel et calage », page Période). Chaque ligne du
+  rapport écrit, dans son titre, la formule retenue en clair et son statut
+  (« Cuisine — puissance : heures réelles ≈ 4,4 × (travail au barème)
+  puissance 0,4 [à la limite : besoin] »). Dépliée, elle donne la raison du
+  statut, la borne (« besoin au plus 5,5 × le travail au barème du jour, sans
+  dépasser le prévu ») ou pourquoi il n'y en a pas, le tableau des candidats
+  (les deux références et tous les candidats : leur erreur par semaine et par
+  mois, leur formule, leurs paramètres et leur plage, leurs règles, et
+  pourquoi un candidat accepté n'est pas retenu), le seuil du test corrigé,
+  puis l'erreur de chaque découpage.
+- **Le nuage de points** d'une ligne (`calage-nuage.js`) : ses jours appris,
+  le travail au barème en abscisse, les heures réelles en ordonnée (en ETP),
+  la courbe retenue (trait plein) et celle de « × a » (tirets). **Les jours
+  laissés de côté sont marqués** d'un cercle vide : la part se choisit (un
+  mois de la validation, une semaine ISO, ou aucune), et les deux courbes
+  sont alors apprises sans ces jours, par le module du calage — ce que la
+  validation a jugé. Un jour survolé dit sa date, son travail au barème, ses
+  heures réelles et ce qu'en prévoient les deux courbes ; une phrase décrit
+  le nuage pour qui ne le voit pas ; les jours un à un sont dans la feuille
+  « Comparaison » du classeur.
+- **La page Période** (le prévu calé de la politique gardée) : la formule et
+  le statut de chaque ligne, puis le tableau des jours comme avant ; une
+  ligne « en sur-effectif » ou « indéterminée » qui a une borne gagne une
+  colonne « besoin au plus », et l'unité aussi (chaque ligne à sa borne,
+  sinon à son prévu).
+- **La Synthèse d'une journée**, bloc « Politique d'effectif » : par ligne,
+  les ETP au barème, le prévu et sa bande, le statut, et le besoin — « au
+  plus n » s'il y en a un, « le prévu » pour une ligne à la limite. La phrase
+  de tête gagne une phrase : « D'après les heures réelles, l'unité mettrait
+  n personnes (de p10 à p90). » Le tableau « Les services » ne change pas.
+  Une politique gardée avant l'évolution : le bloc d'avant, sans statut.
+- **Les outils.** `outils/caler-periode.cjs` rend le rapport du module avec
+  ses nouveaux champs (`formule`, `choix`, `essayes`, `seuil`, `statut`,
+  `lecture`, `rythmeCharge`) et dit sur sa sortie d'erreur, par ligne, la
+  formule, le statut et la borne. `outils/simuler-periode.cjs` rend dans
+  `prevuCale` la formule et le statut de chaque ligne et le besoin « au
+  plus » de chaque jour (`besoinAuPlus`), pour la ligne et pour l'unité.
+  Une politique gardée avant l'évolution (aucune ligne n'a de statut) rend
+  le prévu d'avant, champ par champ, sans formule.
+- **Les classeurs** (`docs/FORMATS_EXCEL.md`, § 5). Feuille « Calage » : à
+  droite des colonnes d'avant, `p`, `p min`, `p max`, `Formule`, `Choix`,
+  `Statut`, `Ce que dit la formule`, `Rythme des jours chargés`, `Raison du
+  statut`. Feuille « Période » : `Statut` et `Besoin au plus (ETP)`, à droite
+  du prévu calé, quand la politique porte le statut de ses lignes — ajoutées
+  par `echanges-calage.js` (`avecPrevuCale`), sans toucher à `echanges.js`,
+  commun aux deux versions.
+
+Vérifications — `tests/calage-sorties.test.cjs` (le nuage : un point par
+jour, les parts, les courbes apprises sans la part laissée de côté, les
+axes, le dessin, les mots ; les colonnes des deux feuilles, et le classeur
+d'avant sans statut ; les deux outils) et `tests/calage-formes-browser.cjs`
+(dans la page, sur l'unité fictive de `tests/calage-17-fictif.cjs` : la
+formule en clair et le statut de chaque ligne, ceux du module ; les
+candidats ; le nuage, la part choisie, le jour survolé ; le prévu de la
+Période et celui de la Synthèse égaux à ceux du module ; la phrase de tête ;
+les classeurs exportés).
+
 ## 11. Plusieurs onglets ne s'écrasent plus (correction 14)
 
 Le banc lit le fichier « Tout sauvegarder », qui exporte ce qui est enregistré

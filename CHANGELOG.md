@@ -5,6 +5,46 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-13 — Banc d'essai, évolution 17 (c) : une formule par service, dans les pages, les outils et les classeurs
+
+- **La page du calage** : par ligne, la formule retenue en clair et son
+  statut dans le titre ; dépliée, la raison du statut, la borne du besoin, le
+  tableau des candidats (erreur par semaine et par mois, formule, paramètres,
+  règles, pourquoi un candidat accepté n'est pas retenu) et **un nuage de
+  points** — le travail au barème en abscisse, les heures réelles en
+  ordonnée, la courbe retenue et celle de « × a », les jours laissés de côté
+  marqués (la part se choisit ; les courbes sont alors apprises sans elle).
+- **La page Période** : le prévu calé comme avant, avec les nouvelles
+  formes ; la formule et le statut de chaque ligne ; une colonne « besoin au
+  plus » pour une ligne qui a une borne, et pour l'unité.
+- **La Synthèse d'une journée**, bloc « Politique d'effectif » : par ligne,
+  les ETP au barème, le prévu et sa bande, le statut, le besoin « au plus
+  n ». La phrase de tête gagne une phrase quand une politique est gardée :
+  « D'après les heures réelles, l'unité mettrait n personnes (de p10 à
+  p90). » Le tableau « Les services » ne change pas.
+- **Les outils** : `caler-periode` rend les nouveaux champs et dit la
+  formule, le statut et la borne de chaque ligne ; `simuler-periode` rend le
+  statut et le besoin « au plus » dans le prévu.
+- **Les classeurs** : feuille « Calage », neuf colonnes de plus à droite (`p`,
+  `Formule`, `Choix`, `Statut`…) ; feuille « Période », « Statut » et « Besoin
+  au plus (ETP) » — ajoutées par un module de la version 1, sans toucher à
+  `echanges.js`, commun aux deux versions.
+
+Ce qui ne change pas : le moteur, le résultat d'une journée et d'une période,
+les indicateurs, la version 2. Sans politique, les pages et les classeurs
+d'avant ; avec une politique gardée avant l'évolution, le prévu d'avant et
+les colonnes d'avant.
+
+Fichiers : `calage-nuage.js` (nouveau), `calage-vue.js`, `synthese-vue.js`,
+`sim.js`, `periode.css`, `echanges-calage.js`, `moteur/calage-periode.js`,
+`outils/caler-periode.cjs`, `outils/simuler-periode.cjs`, `index.html`,
+`tests/calage-sorties.test.cjs`, `tests/calage-formes-browser.cjs` et
+`tests/calage-17-fictif.cjs` (nouveaux), `tests/calage-browser.cjs`,
+`tests/caler-periode.test.cjs`, `tests/calage-avant-17.cjs`,
+`docs/BANC_ESSAI.md` (§ 10), `docs/FORMATS_EXCEL.md` (§ 4 et 5), `README.md`.
+
+---
+
 ## 2026-11-13 — Banc d'essai, évolution 17 (b) : à la limite, ou en sur-effectif — le statut d'une ligne calée et la borne de son besoin
 
 Une formule apprise sur les heures dit ce que l'unité met, pas toujours ce

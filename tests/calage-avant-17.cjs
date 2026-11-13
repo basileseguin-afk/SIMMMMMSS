@@ -47,10 +47,10 @@ function politiqueSansEvolution17(politique) {
   return y;
 }
 
-/** Le prévu calé d'avant : sans le statut de ses lignes ni le besoin « au plus » de ses jours. */
+/** Le prévu calé d'avant : sans la formule ni le statut de ses lignes, ni le besoin « au plus » de ses jours. */
 function prevuSansEvolution17(prevu) {
   const y = JSON.parse(JSON.stringify(prevu));
-  for (const l of y.lignes || []) { delete l.statut; delete l.nomStatut; delete l.lecture; for (const j of l.jours || []) delete j.besoinAuPlus; }
+  for (const l of y.lignes || []) { delete l.formule; delete l.statut; delete l.nomStatut; delete l.lecture; for (const j of l.jours || []) delete j.besoinAuPlus; }
   for (const j of y.unite || []) delete j.besoinAuPlus;
   return y;
 }

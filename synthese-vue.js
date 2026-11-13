@@ -71,8 +71,12 @@
     return { vols: vols.size, commandes: exceptions.filter(x => x.type === 'commande-en-retard').length };
   }
 
-  /** En tête : deux phrases au plus — combien de personnes ; où ça coince et ce qui part en retard. */
-  function phrases(rep) {
+  /**
+   * En tête : deux phrases — combien de personnes ; où ça coince et ce qui part en retard. Une troisième quand une
+   * politique d'effectif est gardée (évolution 17 c) : ce que l'unité mettrait d'après les heures réelles, `prevu` =
+   * { prevu, p10, p90 } du total de l'unité (moteur/calage-periode.js), en personnes entières.
+   */
+  function phrases(rep, prevu) {
     const t = rep.personnes.total;
     // Les postes fixes (permanents, appui, handling) ne comptent pas dans « il faut » : la phrase dit combien ils sont (correction 17 c).
     // Hors du besoin : les postes fixes, et les équipes dont le besoin ne se mesure pas (correction 18 a).
@@ -86,7 +90,10 @@
       + (autres > 0 ? ' (et ' + pluriel(autres, 'autre service', 'autres services') + ')' : '') : 'Rien ne coince';
     const qui = [n.vols ? pluriel(n.vols, 'vol', 'vols') : null, n.commandes ? pluriel(n.commandes, 'commande', 'commandes') : null].filter(Boolean);
     const retard = !qui.length ? 'rien ne part en retard' : qui.join(' et ') + (n.vols + n.commandes >= 2 ? ' partent en retard' : ' part en retard');
-    return [un, coince + ' ; ' + retard + '.'];
+    const entier = x => nombre(Math.max(0, Math.round(x)));
+    const mis = prevu && [prevu.prevu, prevu.p10, prevu.p90].every(Number.isFinite)
+      ? 'D’après les heures réelles, l’unité mettrait ' + pluriel(Math.max(0, Math.round(prevu.prevu)), 'personne', 'personnes') + ' (de ' + entier(prevu.p10) + ' à ' + entier(prevu.p90) + ').' : null;
+    return [un, coince + ' ; ' + retard + '.'].concat(mis ? [mis] : []);
   }
 
   /** « postes fixes », « postes non mesurés », ou les deux : ce qui ne compte pas dans le besoin. */
@@ -434,14 +441,15 @@
 
   /**
    * La Synthèse dans `box`. `o` : { reponses, resultat, k (les indicateurs), ordre (les services, de l'amont vers l'aval),
-   * essais ({ A, B } : les réponses des deux essais retenus, ou null) }. Sans réponses : la page le dit.
+   * essais ({ A, B } : les réponses des deux essais retenus, ou null), prevuCale (le prévu du total de l'unité d'après une
+   * politique d'effectif gardée, ou null) }. Sans réponses : la page le dit.
    */
   function rendre(box, o) {
     if (!box) return;
     const rep = o && o.reponses;
     if (!rep) { box.innerHTML = '<p class="mini-note">Rien à résumer : aucune équipe ne prépare encore de commande.</p>'; return; }
     const k = o.resultat && o.resultat.indicateurs, cartes = [carteCoince(rep), carteRetard(rep), carteEssai(o.essais)].filter(Boolean);
-    box.innerHTML = '<div class="sy-tete">' + phrases(rep).map(p => '<p class="bilan-resume">' + esc(p) + '</p>').join('') + '</div>' + probleme(k)
+    box.innerHTML = '<div class="sy-tete">' + phrases(rep, o.prevuCale).map(p => '<p class="bilan-resume">' + esc(p) + '</p>').join('') + '</div>' + probleme(k)
       + '<div class="sy-cartes" data-n="' + cartes.length + '">' + cartes.map(carte).join('') + '</div>'
       + '<section class="sy-bloc" aria-label="Les services"><h4>Les services</h4>' + tableau(rep, o.ordre) + '</section>'
       + '<section class="sy-bloc sy-courbe" aria-label="La journée"><h4>La journée</h4><div class="sy-legende-courbe" aria-hidden="true"><span class="sy-l-presents">présents</span>'

@@ -100,8 +100,9 @@ function classeurDeLaPeriode(sortie, calculeLe = new Date()) {
   const classeur = E.periodeVersClasseur(p, {
     sauvegarde: sortie.periode.sauvegarde, vols: sortie.periode.vols, calculeLe, ...(sortie.prevuCale ? { prevu: sortie.prevuCale } : {}),
     reglages: { delaiChargement: J.delaiDe(sortie.periode.options || {}), decalage: +decalage || 0, ...autres } });
-  // Avec un prévu calé : d'où vient le σ de la bande du total (correction 16), dans le Lisez-moi.
-  return Z.compresserSync(T.ecrireClasseur(EC.avecCharge(sortie.prevuCale ? ECal.avecSigmaUnite(classeur, sortie.prevuCale) : classeur, p)));
+  // Avec un prévu calé : d'où vient le σ de la bande du total (correction 16), dans le Lisez-moi ; le statut de chaque
+  // ligne et son besoin « au plus », deux colonnes de plus dans la feuille Période (évolution 17 c).
+  return Z.compresserSync(T.ecrireClasseur(EC.avecCharge(sortie.prevuCale ? ECal.avecPrevuCale(classeur, sortie.prevuCale) : classeur, p)));
 }
 
 /** Le JSON, écrit morceau par morceau : une période de deux mois tient en mémoire, pas forcément en une seule chaîne. */

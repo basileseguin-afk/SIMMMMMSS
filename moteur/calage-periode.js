@@ -576,9 +576,12 @@
   function prevuDesJours(politique, correspondance, jours, simuleDe) {
     if (!politique) return null;
     const modeles = new Map(politique.lignes.map(m => [m.nom, m]));
+    // Une politique gardée depuis l'évolution 17 (une ligne au moins a son statut) dit aussi la formule de chaque ligne ;
+    // une politique d'avant rend le prévu d'avant, champ par champ.
+    const avecFormule = politique.lignes.some(m => ST.connu(m.statut));
     const lignes = (((correspondance && correspondance.lignes) || [])).map(l => {
       const m = modeles.get(l.nom) || { modele: 'moteur', parametres: {}, sigma: 0, nonCalee: true };
-      return { nom: l.nom, modele: m.modele, nomModele: NOMS[m.modele], sigma: m.sigma || 0, ...(m.applique ? { applique: true } : {}), ...(m.nonCalee ? { nonCalee: true } : {}),
+      return { nom: l.nom, modele: m.modele, nomModele: NOMS[m.modele], ...(avecFormule ? { formule: formule(m) } : {}), sigma: m.sigma || 0, ...(m.applique ? { applique: true } : {}), ...(m.nonCalee ? { nonCalee: true } : {}),
         ...(ST.connu(m.statut) ? { statut: m.statut, nomStatut: ST.NOMS[m.statut], lecture: ST.lectureDe(m.statut) } : {}),
         jours: jours.map(w => {
           const simule = simuleDe(l, w), p = prevuCale(m, { date: jourDeTravail(l, w), simule }), auPlus = ST.besoinAuPlus(m, simule, p.prevu);

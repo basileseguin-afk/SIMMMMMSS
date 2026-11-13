@@ -99,7 +99,9 @@ test('--xlsx : le classeur du calage, celui de la page ; un classeur pour le ré
   const calage = feuilles.find(x => x.nom === 'Calage').lignes;
   assert.deepEqual(calage[0], ['Ligne', 'Couvre', 'Rang', 'Modèle', 'Accepté', 'a', 'a min', 'a max', 'b', 'b min', 'b max', 'Constante', 'Constante min',
     'Constante max', 'Facteurs du jour (lun. → dim.)', 'Erreur par semaine (ETP)', 'Erreur par mois (ETP)', 'Plus juste que les références', 'Stable', 'Bornes',
-    'Wilcoxon', 'Placebo', 'σ (ETP)', 'Bande P10–P90 (± ETP)', 'Jours', 'Validation', 'Laissé de côté']);
+    'Wilcoxon', 'Placebo', 'σ (ETP)', 'Bande P10–P90 (± ETP)', 'Jours', 'Validation', 'Laissé de côté',
+    // Évolution 17 (c) : les colonnes ajoutées, à droite.
+    'p', 'p min', 'p max', 'Formule', 'Choix', 'Statut', 'Ce que dit la formule', 'Rythme des jours chargés', 'Raison du statut']);
   assert.ok(calage.every(l => l.length <= calage[0].length));
   assert.ok(calage.some(l => l[0] === 'Cuisine' && l[2] === 'pas de calage'));
   const reel = feuilles.find(x => x.nom === 'Réel').lignes;

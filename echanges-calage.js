@@ -142,13 +142,19 @@
   function feuilleCalage(rapport, travail) {
     const REGLES = [['battreReferences', 'Plus juste que les références'], ['stabilite', 'Stable'], ['bornes', 'Bornes'], ['wilcoxon', 'Wilcoxon'], ['placebo', 'Placebo']];
     const JOURS = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'], fr = x => (n3(x) === null ? '—' : String(n3(x)).replace('.', ','));
+    // Les colonnes de l'évolution 17 s'ajoutent à droite : p (la puissance), la formule en clair, le choix, le statut de la ligne et sa borne.
     const lignes = [['Ligne', 'Couvre', 'Rang', 'Modèle', 'Accepté', 'a', 'a min', 'a max', 'b', 'b min', 'b max', 'Constante', 'Constante min', 'Constante max',
-      'Facteurs du jour (lun. → dim.)', 'Erreur par semaine (ETP)', 'Erreur par mois (ETP)', ...REGLES.map(r => r[1]), 'σ (ETP)', 'Bande P10–P90 (± ETP)', 'Jours', 'Validation', 'Laissé de côté']];
-    const vide = n => new Array(n).fill(null);
+      'Facteurs du jour (lun. → dim.)', 'Erreur par semaine (ETP)', 'Erreur par mois (ETP)', ...REGLES.map(r => r[1]), 'σ (ETP)', 'Bande P10–P90 (± ETP)', 'Jours', 'Validation', 'Laissé de côté',
+      'p', 'p min', 'p max', 'Formule', 'Choix', 'Statut', 'Ce que dit la formule', 'Rythme des jours chargés', 'Raison du statut']];
+    const vide = n => new Array(n).fill(null), ou = v => (v == null ? null : v);
     // Une ligne de la feuille : les colonnes nommées, les autres vides.
     const rangee = x => [x.ligne, x.couvre, x.rang, x.modele == null ? null : x.modele, x.accepte == null ? null : x.accepte, ...(x.parametres || vide(9)),
       x.jours == null ? null : x.jours, x.semaines == null ? null : x.semaines, x.mois == null ? null : x.mois, ...(x.regles || vide(REGLES.length)),
-      x.sigma == null ? null : x.sigma, x.bande == null ? null : x.bande, x.n == null ? null : x.n, x.validation == null ? null : x.validation, x.part == null ? null : x.part];
+      x.sigma == null ? null : x.sigma, x.bande == null ? null : x.bande, x.n == null ? null : x.n, x.validation == null ? null : x.validation, x.part == null ? null : x.part,
+      ...(x.p || vide(3)), ou(x.formule), ou(x.choix), ou(x.statut), ou(x.lecture), ou(x.rythme), ou(x.raisonStatut)];
+    /** Le statut d'une ligne calée, ce que dit sa formule, son rythme des jours chargés, et la raison (celle du statut, puis celle d'une borne absente). */
+    const statutDe = l => (!l.statut ? {} : { statut: l.statut.nom, lecture: l.lecture, rythme: l.rythmeCharge && n3(l.rythmeCharge.rythme),
+      raisonStatut: l.statut.raison + (l.rythmeCharge && l.rythmeCharge.raison ? ' ; ' + l.rythmeCharge.raison : '') });
     const plage = (m, k) => { const q = (m.parametres && m.parametres[k]) || {}; return [n3(q.tous), n3(q.min), n3(q.max)]; };
     const facteurs = m => (m.parametres && m.parametres.jours ? m.parametres.jours.map((f, k) => JOURS[k] + ' ' + fr(f.tous)
       + (f.min === null ? '' : ' (' + fr(f.min) + ' – ' + fr(f.max) + ')')).join(' ; ') : null);
@@ -158,11 +164,12 @@
       const r = l.retenu, pr = r.parametres;
       lignes.push(rangee({ ...id, rang: 'retenu', modele: r.nom, parametres: [n3(pr.a), null, null, n3(pr.b), null, null, n3(pr.c), null, null],
         jours: pr.jours ? pr.jours.map(x => fr(x)).join(' ; ') : null, sigma: n3(r.sigma), bande: n3(r.bande), n: l.jours,
-        validation: l.validation + (l.unSeulMois ? ' (un seul mois)' : '') + (l.raison ? ' — ' + l.raison : '') }));
+        validation: l.validation + (l.unSeulMois ? ' (un seul mois)' : '') + (l.raison ? ' — ' + l.raison : ''),
+        p: [n3(pr.p), null, null], formule: r.formule, ...statutDe(l) }));
       const modeles = [...['moteur', 'constante'].map(n => [l.references[n], 'référence']), ...l.candidats.map(c => [c, 'candidat'])];
       for (const [m, rang] of modeles) lignes.push(rangee({ ...id, rang, modele: m.nom, accepte: rang === 'candidat' ? (m.accepte ? 'oui' : 'non') : null,
         parametres: [...plage(m, 'a'), ...plage(m, 'b'), ...plage(m, 'c')], jours: facteurs(m), semaines: n3(m.erreurs.semaines), mois: n3(m.erreurs.mois),
-        regles: REGLES.map(([k]) => (m.regles && m.regles[k] ? m.regles[k].raison : null)) }));
+        regles: REGLES.map(([k]) => (m.regles && m.regles[k] ? m.regles[k].raison : null)), p: plage(m, 'p'), formule: m.formule, choix: m.choix }));
       for (const x of l.confondus || []) lignes.push(rangee({ ...id, rang: 'candidat', modele: x.nom, accepte: 'non : ' + x.raison,
         parametres: [n3(x.a), null, null, n3(x.b), null, null, null, null, null] }));
       // L'erreur de chaque découpage : la semaine ou le mois laissé de côté, pour chaque modèle.
@@ -205,6 +212,31 @@
   }
 
   /**
+   * Le classeur de la période avec un prévu calé dont une ligne au moins a son statut (évolution 17 c) : dans la
+   * feuille « Période », deux colonnes de plus à droite — « Statut » et « Besoin au plus (ETP) » — sur les rangées
+   * des lignes et du total du prévu. Le classeur de la période vient d'echanges.js, commun aux deux versions : il
+   * n'est pas modifié, ces colonnes s'ajoutent ici. Sans statut (une politique gardée avant), le classeur d'avant.
+   */
+  function avecBesoin(classeur, prevu) {
+    const feuillePeriode = prevu && prevu.lignes.some(l => l.statut) && classeur.find(f => f.nom === 'Période');
+    if (!feuillePeriode) return classeur;
+    const jourDe = new Map(prevu.unite.map((j, i) => [T().dateExcel(j.date), i])), parNom = new Map(prevu.lignes.map(l => ['Ligne : ' + l.nom, l]));
+    const SERVICE = feuillePeriode.lignes[0].indexOf('Service'), largeur = feuillePeriode.lignes[0].length;
+    const lignes = feuillePeriode.lignes.map((r, k) => {
+      if (!k) return r.concat(['Statut', 'Besoin au plus (ETP)']);
+      const i = r[1] && typeof r[1] === 'object' ? jourDe.get(r[1].excel) : undefined, l = parNom.get(r[SERVICE]);
+      // Une rangée du prévu : un jour, le nom d'une ligne (ou le total), et les quatre cases du prévu — un service de ce nom n'en a pas.
+      if (i === undefined || r.length !== largeur || !(l || r[SERVICE] === 'Toute l’unité (prévu calé)')) return r;
+      const j = l ? l.jours[i] : prevu.unite[i], complete = r.concat(new Array(Math.max(0, largeur - r.length)).fill(null));
+      return complete.concat([l && l.nomStatut ? l.nomStatut : null, n2(j.besoinAuPlus)]);
+    });
+    return classeur.map(f => (f === feuillePeriode ? { ...feuillePeriode, lignes } : f));
+  }
+
+  /** Le classeur de la période avec son prévu calé : d'où vient σ du total (correction 16), puis le statut et le besoin « au plus » (évolution 17 c). */
+  const avecPrevuCale = (classeur, prevu) => avecBesoin(avecSigmaUnite(classeur, prevu), prevu);
+
+  /**
    * Le classeur. `x` : { comparaison (moteur/reel.js, comparer), reel (controler), rapport (moteur/calage-periode.js, caler ; facultatif),
    *   rejeu (la comparaison d'un rejeu ; facultatif), travail (moteur/calage-travail.js ; facultatif) } ;
    * `ctx` : { periode: { debut, fin, sauvegarde, vols }, reel, correspondance (noms des fichiers), calculeLe }.
@@ -214,7 +246,7 @@
     return [lisezMoi(c, ctx, x.reel), feuilleReel(c, x.reel), feuilleComparaison(c, x.rejeu || null)].concat(x.rapport || x.travail ? [feuilleCalage(x.rapport || { lignes: [] }, x.travail || null)] : []);
   }
 
-  const api = { avecSigmaUnite, calageVersClasseur };
+  const api = { avecSigmaUnite, avecBesoin, avecPrevuCale, calageVersClasseur };
   if (enNode) module.exports = api;
   else root.OrlyEchangesCalage = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -32,6 +32,19 @@ test('en tête, deux phrases : combien de personnes ; où ça coince et ce qui p
   assert.deepEqual(SV.phrases({ personnes: { total: { besoin: 1, presents: 2 } }, coince: { goulot: null }, exceptions: [] })[0], 'Il faut 1 personne, 2 sont présentes.');
 });
 
+test('une politique d’effectif gardée (évolution 17 c) : une troisième phrase, ce que l’unité mettrait d’après les heures réelles', () => {
+  const rep = { personnes: { total: { besoin: 80, presents: 85 } }, coince: { goulot: null }, exceptions: [] };
+  // Sans politique : les deux phrases d'avant, rien de plus.
+  assert.deepEqual(SV.phrases(rep), ['Il faut 80 personnes, 85 sont présentes.', 'Rien ne coince ; rien ne part en retard.']);
+  assert.deepEqual(SV.phrases(rep, null), SV.phrases(rep));
+  // Avec : le prévu du total de l'unité et sa bande P10–P90, en personnes entières.
+  assert.deepEqual(SV.phrases(rep, { prevu: 87.4, p10: 82.2, p90: 92.6 }),
+    ['Il faut 80 personnes, 85 sont présentes.', 'Rien ne coince ; rien ne part en retard.', 'D’après les heures réelles, l’unité mettrait 87 personnes (de 82 à 93).']);
+  assert.equal(SV.phrases(rep, { prevu: 1.2, p10: -0.4, p90: 2.8 })[2], 'D’après les heures réelles, l’unité mettrait 1 personne (de 0 à 3).', 'jamais sous zéro');
+  // Un prévu qui n'est pas un nombre : pas de phrase.
+  assert.equal(SV.phrases(rep, { prevu: NaN, p10: 1, p90: 2 }).length, 2);
+});
+
 test('« Les services » : dans l’ordre du chemin, une ligne par service et jour, chacune avec sa file, sa fin et ses heures sup', () => {
   const { resultat: r, rep } = fictive(), ordre = require('../planning-vue.js').ordreDesServices(r);
   const l = SV.lignes(rep, ordre), rang = id => ordre.indexOf(id);

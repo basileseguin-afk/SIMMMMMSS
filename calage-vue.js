@@ -17,7 +17,7 @@
 (function (root) {
   'use strict';
 
-  const R = () => root.OrlyReel, T = () => root.OrlyTableur, C = () => root.OrlyCalagePeriode;
+  const R = () => root.OrlyReel, T = () => root.OrlyTableur, C = () => root.OrlyCalagePeriode, N = () => root.OrlyCalageNuage;
   const PE = () => root.OrlyPeriode, PL = () => root.OrlyPlanning, CT = () => root.OrlyCalageTravail;
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   // « + 0 » : un −0 (un biais négatif arrondi) s'écrit 0.
@@ -50,6 +50,10 @@
       // Le planning, le rejeu et le calage du travail (évolution 11 f) : en mémoire, le temps de la page.
       this.planning = null; this.fichierPlanning = null; this.erreurPlanning = null; this.rejeu = null; this.travail = null; this.calcul = null;
       this.box = null;
+      // Le rapport du calage (évolution 17 c) : les lignes dépliées, et la part laissée de côté dans le nuage de chacune ; le temps de la page.
+      this.ouvertes = new Set(); this.partsNuage = new Map();
+      // Les données de chaque nuage dessiné : calculées au rendu, relues au survol.
+      this.nuages = new Map();
     }
     /**
      * Les réglages gardés, relus ; vides s'ils sont illisibles. Rien de réglé (évolution 15 d) : la correspondance propose
@@ -79,6 +83,13 @@
       this.box = box;
       box.addEventListener('click', e => this.clic(e));
       box.addEventListener('change', e => this.choix(e));
+      // Le rapport du calage (évolution 17 c) : une ligne dépliée le reste au rendu suivant ; le nuage dit le jour survolé.
+      box.addEventListener('toggle', e => {
+        const li = e.target.closest && e.target.closest('[data-cal-rapport]'); if (!li || e.target.tagName !== 'DETAILS') return;
+        if (e.target.open) this.ouvertes.add(li.dataset.calRapport); else this.ouvertes.delete(li.dataset.calRapport);
+      }, true);
+      box.addEventListener('pointermove', e => this.survolerNuage(e));
+      box.addEventListener('pointerleave', e => this.survolerNuage(e), true);
     }
 
     /* ---- le réel --------------------------------------------------------- */
@@ -360,6 +371,13 @@
       if (t.id === 'calage-reel') { this.importer(t.files[0]); t.value = ''; return; }
       if (t.id === 'calage-correspondance') { this.importerCorrespondance(t.files[0]); t.value = ''; return; }
       if (t.id === 'calage-planning') { this.importerPlanning(t.files[0]); t.value = ''; return; }
+      // La part laissée de côté dans le nuage d'une ligne : seul son nuage se redessine.
+      if (t.dataset.calPart !== undefined) {
+        this.partsNuage.set(t.dataset.calPart, t.value);
+        const figure = t.closest('[data-cal-nuage]'), l = this.rapport && this.rapport.lignes.find(x => x.nom === t.dataset.calPart);
+        if (figure && l) { figure.outerHTML = this.rendreNuage(l); const choix = this.box.querySelector('[data-cal-part="' + CSS.escape(l.nom) + '"]'); if (choix) choix.focus(); }
+        return;
+      }
       const f = t.dataset.calChamp; if (!f) return;
       if (f === 'nom') this.changerCorrespondance(c => { c.lignes[i].nom = t.value; });
       else if (f === 'ajout-role' && t.value) this.changerCorrespondance(c => { c.lignes[i].roles.push(t.value); });
@@ -418,7 +436,7 @@
         ${ctrl ? this.rendreAnomalies(ctrl) : ''}
         ${!this.lu ? '' : !b ? '<p class="mini-note pc-attente">Simulez la période (à jour) pour comparer.</p>'
           : !this.correspondance.lignes.length ? '<p class="mini-note pc-attente">Ajoutez une ligne à la correspondance pour comparer.</p>'
-          : comp ? this.rendreComparaison(comp) + this.rendreRapport() : this.erreurComparaison ? `<p class="pj-erreur" role="alert">Comparaison impossible — ${esc(this.erreurComparaison)}</p>` : ''}
+          : comp ? this.rendreComparaison(comp) + this.rendreRapport(comp) : this.erreurComparaison ? `<p class="pj-erreur" role="alert">Comparaison impossible — ${esc(this.erreurComparaison)}</p>` : ''}
         ${this.rendrePolitique(b, comp)}
         ${this.rendreApplications(comp)}
         ${this.rendreRejeu()}
@@ -536,15 +554,12 @@
     }
   }
 
-  /** Les paramètres d'un modèle, en mots : « a = 0,8 », « b = 1,2 ; a = 0,9 », « 15,3 », « a = 0,8 ; lun. 1,1 … ». */
   const JOURS = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'];
-  function parametresEnMots(m) {
-    const p = m.parametres || {};
-    if (m.modele === 'moteur') return 'réel = simulé';
-    if (m.modele === 'constante') return nombre(p.c);
-    return (p.b !== undefined ? 'b = ' + nombre(p.b) + ' ; ' : '') + 'a = ' + nombre(p.a, 3)
-      + (p.jours ? ' ; ' + p.jours.map((x, i) => JOURS[i] + ' ' + nombre(x, 2)).join(', ') : '');
-  }
+  /** Le statut d'une ligne, en une étiquette : « en sur-effectif : effectif mis » (évolution 17 c). Sans statut, rien. */
+  const etiquetteStatut = (code, nom, lecture) => (code ? `<span class="pc-statut" data-cal-statut="${esc(code)}">${esc(nom)} : ${esc(lecture)}</span>` : '');
+  /** Le besoin « au plus » d'une ligne qui n'est pas à la limite, en mots : son rythme des jours chargés, ou pourquoi elle n'a pas de borne. */
+  const motsDeLaBorne = r => (!r ? '' : r.rythme === null ? r.raison : 'besoin au plus ' + nombre(r.rythme) + ' × le travail au barème du jour, sans dépasser le prévu (le rythme des '
+    + r.jours + ' jours les plus chargés)');
   /** L'erreur de chaque découpage laissé de côté (une semaine, un mois), pour chaque modèle ; le retenu est marqué. */
   function rendreDecoupages(l) {
     const modeles = [l.references.moteur, l.references.constante, ...l.candidats];
@@ -554,23 +569,37 @@
       <thead><tr><th scope="col">Laissé de côté</th>${modeles.map(m => `<th scope="col">${esc(m.nom)}${m.modele === l.retenu.modele ? ' <small>retenu</small>' : ''}</th>`).join('')}</tr></thead>
       <tbody>${parts.map(pt => `<tr><th scope="row">${pt[0]} ${esc(pt[1])}</th>${modeles.map(m => `<td class="pv-n">${erreur(m, pt)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
   }
-  VueCalage.prototype.rendreRapport = function () {
+  VueCalage.prototype.rendreRapport = function (comp) {
     const r = this.rapport; if (!r) return '';
+    // La comparaison du rendu en cours : les nuages de points y lisent les jours de chaque ligne.
+    this.comparaisonDuRapport = comp || null;
     const plage = (x, k = 3) => (x && x.min !== null ? ' (' + nombre(x.min, k) + ' – ' + nombre(x.max, k) + ')' : '');
-    const parametres = p => [p.b ? 'b : ' + nombre(p.b.tous) + plage(p.b, 2) : '', p.a ? 'a : ' + nombre(p.a.tous, 3) + plage(p.a) : '',
-      p.c ? nombre(p.c.tous) + plage(p.c, 2) : '', p.jours ? p.jours.map((x, i) => JOURS[i] + ' ' + nombre(x.tous) + plage(x, 2)).join(', ') : ''].filter(Boolean).join(' ; ');
+    // Les paramètres d'un modèle : a, b, p (la puissance), c (la constante, le plancher ou le plafond), les facteurs du jour.
+    const parametres = p => [p.b ? 'b : ' + nombre(p.b.tous) + plage(p.b, 2) : '', p.a ? 'a : ' + nombre(p.a.tous, 3) + plage(p.a) : '', p.p ? 'p : ' + nombre(p.p.tous) + plage(p.p, 2) : '',
+      p.c ? (p.a ? 'c : ' : '') + nombre(p.c.tous) + plage(p.c, 2) : '', p.jours ? p.jours.map((x, i) => JOURS[i] + ' ' + nombre(x.tous) + plage(x, 2)).join(', ') : ''].filter(Boolean).join(' ; ');
+    // Un candidat : son erreur hors échantillon (par semaine, par mois), sa formule en clair, ses paramètres, ses règles, et pourquoi il n'est pas retenu.
     const modele = (m, rang) => `<tr data-cal-modele="${esc(m.modele)}"><th scope="row">${esc(m.nom)} <small>${rang}</small></th>
         <td class="pv-n">${nombre(m.erreurs.semaines)}</td><td class="pv-n">${m.erreurs.mois === null ? '—' : nombre(m.erreurs.mois)}</td>
-        <td>${esc(parametres(m.parametres))}</td>
-        <td>${m.regles ? Object.values(m.regles).map(x => `<span class="pc-regle ${x.ok ? 'ok' : 'non'}">${esc(x.raison)}</span>`).join('') : ''}</td></tr>`;
+        <td><span data-cal-formule-modele>${esc(m.formule || '')}</span><small class="pc-parametres">${esc(parametres(m.parametres))}</small></td>
+        <td>${m.regles ? Object.values(m.regles).map(x => `<span class="pc-regle ${x.ok ? 'ok' : 'non'}">${esc(x.raison)}</span>`).join('') : ''}${
+          m.choix && m.choix !== 'retenu' ? `<span class="pc-regle pc-choix" data-cal-choix>${esc(m.choix)}</span>` : ''}</td></tr>`;
+    // Le statut d'une ligne et sa borne (évolution 17 b), sous sa formule ; le seuil du test, corrigé du nombre de candidats.
+    const statut = l => (!l.statut ? '' : `<p class="mini-note pc-statut-raison" data-cal-statut-raison>${esc(l.statut.raison.charAt(0).toUpperCase() + l.statut.raison.slice(1))}.
+        ${l.lecture === 'besoin' ? 'La formule retenue est aussi le besoin de la ligne.' : 'La formule retenue dit l’effectif mis, pas le besoin'
+          + (l.rythmeCharge ? ' : <span data-cal-borne>' + esc(motsDeLaBorne(l.rythmeCharge)) + '</span>' : '') + '.'}</p>`);
+    const seuil = l => (l.essayes ? `<p class="mini-note" data-cal-seuil>${l.essayes} candidats essayés : le test de Wilcoxon se juge à ${nombre(0.05)} ÷ ${l.essayes} = ${nombre(l.seuil, 4)}.
+        Une forme plus riche n’est retenue que si elle bat la plus simple des acceptées de plus de 0,1 ETP.</p>` : '');
     const confondus = l => (l.confondus || []).map(x => `<p class="mini-note" data-cal-confondu="${esc(x.modele)}">« ${esc(x.nom)} » ${esc(x.raison)}.</p>`).join('');
     const ligne = l => (!l.cale ? `<li data-cal-rapport="${esc(l.nom)}"><b>${esc(l.nom)}</b> — pas de calage : ${esc(l.raison)}.</li>`
-      : `<li data-cal-rapport="${esc(l.nom)}"><details><summary><b>${esc(l.nom)}</b> — <span data-cal-retenu>${esc(l.retenu.nom)}</span> (${esc(parametresEnMots(l.retenu))}),
+      : `<li data-cal-rapport="${esc(l.nom)}"><details${this.ouvertes.has(l.nom) ? ' open' : ''}><summary><b>${esc(l.nom)}</b> — <span data-cal-retenu>${esc(l.retenu.nom)}</span> :
+          <span data-cal-formule>${esc(l.retenu.formule)}</span> ${etiquetteStatut(l.statut && l.statut.code, l.statut && l.statut.nom, l.lecture)},
           σ ${nombre(l.retenu.sigma)} ETP, bande P10–P90 ± ${nombre(l.retenu.bande)} ; ${l.jours} jours, validation par ${esc(l.validation)}${l.unSeulMois ? ' (un seul mois)' : ''}${l.raison ? ' — ' + esc(l.raison) : ''}</summary>
-          <div class="table-scroll"><table class="svc-table pc-table"><thead><tr><th scope="col">Modèle</th><th scope="col">Erreur par semaine (ETP)</th><th scope="col">Erreur par mois (ETP)</th>
-            <th scope="col">Paramètres, sur tous les jours (min – max sur les découpages)</th><th scope="col">Règles</th></tr></thead>
-          <tbody>${['moteur', 'constante'].map(n => modele(l.references[n], 'référence')).join('')}${l.candidats.map(c => modele(c, c.accepte ? 'accepté' : 'refusé')).join('')}</tbody></table></div>
-          ${confondus(l)}${rendreDecoupages(l)}</details></li>`);
+          ${statut(l)}
+          ${this.rendreNuage(l)}
+          <div class="table-scroll"><table class="svc-table pc-table" data-cal-candidats><thead><tr><th scope="col">Modèle</th><th scope="col">Erreur par semaine (ETP)</th><th scope="col">Erreur par mois (ETP)</th>
+            <th scope="col">Formule, et ses paramètres sur tous les jours (min – max sur les découpages)</th><th scope="col">Règles</th></tr></thead>
+          <tbody>${['moteur', 'constante'].map(n => modele(l.references[n], 'référence')).join('')}${l.candidats.map(c => modele(c, c.accepte ? (c.choix === 'retenu' ? 'retenu' : 'accepté') : 'refusé')).join('')}</tbody></table></div>
+          ${seuil(l)}${confondus(l)}${rendreDecoupages(l)}</details></li>`);
     const u = r.unite;
     return `<section class="pc-rapport" aria-label="Le calage"><h3>Le calage</h3>
       <p class="mini-note">Un modèle par ligne, retenu seulement s’il prédit mieux que le moteur et qu’une constante sur des jours qu’il n’a pas appris,
@@ -583,6 +612,38 @@
   };
 
   /**
+   * Le nuage de points d'une ligne calée (évolution 17 c, calage-nuage.js) : ses jours appris, la courbe retenue et
+   * celle de « × a » ; la part laissée de côté se choisit, ses jours sont marqués et les courbes apprises sans eux.
+   */
+  VueCalage.prototype.rendreNuage = function (l) {
+    const comp = this.comparaisonDuRapport, ligne = comp && comp.lignes.find(x => x.nom === l.nom);
+    this.nuages.delete(l.nom);
+    if (!N() || !ligne || !l.cale || !ligne.jours.length) return '';
+    const d = N().donnees(ligne.jours, l.retenu, this.partsNuage.get(l.nom));
+    this.nuages.set(l.nom, d);
+    const choix = [{ id: N().AUCUNE, nom: 'aucun jour (les courbes apprises sur tous)' }].concat(d.parts);
+    return `<figure class="pcn" data-cal-nuage="${esc(l.nom)}">
+      <figcaption class="pcn-tete"><span class="pcn-titre">Les jours appris : heures réelles contre travail au barème</span>
+        <label class="pcn-part">Laissé de côté <select data-cal-part="${esc(l.nom)}">${choix.map(x => `<option value="${esc(x.id)}"${(d.part ? d.part.id : N().AUCUNE) === x.id ? ' selected' : ''}>${esc(x.nom)}</option>`).join('')}</select></label></figcaption>
+      ${N().legende(d)}${N().svg(d)}
+      <p class="mini-note pcn-bulle" data-cal-bulle role="status">${esc(N().decrire(d))}</p></figure>`;
+  };
+  /** Le survol du nuage : le jour le plus proche du pointeur, entouré, et ses chiffres sous le dessin ; hors de portée, la phrase qui décrit le nuage. */
+  VueCalage.prototype.survolerNuage = function (e) {
+    const dessin = e.target.closest && e.target.closest('.pcn-svg'), figure = dessin && dessin.closest('[data-cal-nuage]');
+    // Quitter un point pour le fond du dessin n'est pas quitter le dessin.
+    if (!figure || (e.type === 'pointerleave' && e.target !== dessin)) return;
+    const d = this.nuages.get(figure.dataset.calNuage);
+    if (!d) return;
+    const r = dessin.getBoundingClientRect();
+    const i = e.type === 'pointerleave' || !r.width ? -1 : N().plusProche(d, (e.clientX - r.left) * N().L / r.width, (e.clientY - r.top) * N().H / r.height);
+    const curseur = dessin.querySelector('.pcn-curseur'), bulle = figure.querySelector('[data-cal-bulle]');
+    if (i < 0) { curseur.setAttribute('hidden', ''); bulle.textContent = N().decrire(d); return; }
+    curseur.removeAttribute('hidden'); curseur.setAttribute('cx', N().px(d, d.points[i].x).toFixed(1)); curseur.setAttribute('cy', N().py(d, d.points[i].y).toFixed(1));
+    bulle.textContent = N().bulle(d, i);
+  };
+
+  /**
    * La politique d'effectif : sa date, la période apprise, « à refaire » ; le
    * prévu calé de chaque jour de la période (`b`, le bilan à jour, ou null :
    * la période est à relancer) ; appliquer un × a au barème, l'annuler.
@@ -592,6 +653,10 @@
     const refaire = this.a.signature && this.a.signature(this.correspondance) !== p.signature;
     const x = b ? this.prevuPeriode() : null, lignes = x ? x.lignes : [];
     const bande = j => nombre(j.prevu) + ' <small>[' + nombre(j.p10) + ' – ' + nombre(j.p90) + ']</small>';
+    // Évolution 17 c : une ligne dit son statut ; hors « à la limite », une colonne de plus, son besoin « au plus » ; de même pour l'unité.
+    const bornee = l => l.jours.some(j => j.besoinAuPlus !== undefined), uniteBornee = !!x && x.unite.some(j => j.besoinAuPlus !== undefined);
+    const formules = lignes.filter(l => l.formule && !l.nonCalee).map(l => `<li data-cal-politique-ligne="${esc(l.nom)}"><b>${esc(l.nom)}</b> : ${esc(l.formule)}${l.applique ? ' (a = 1 : appliqué au barème)' : ''}
+        ${etiquetteStatut(l.statut, l.nomStatut, l.lecture)}</li>`).join('');
     // « Appliquer au barème » : un × a de services ; refusé, le bouton dit pourquoi.
     const ligneDe = nom => this.correspondance.lignes.find(l => l.nom === nom) || {};
     const appliquer = p.lignes.filter(m => m.modele === 'x-a' && !m.applique && ligneDe(m.nom).services).map((m, k) => {
@@ -600,16 +665,19 @@
         ${refus ? `<small class="pc-refus-appliquer" id="pc-refus-${k}" data-cal-refus-appliquer="${esc(m.nom)}">Pas maintenant : ${esc(refus)}.</small>` : ''}</div>`;
     }).join('');
     const jours = !b ? '' : b.joursTravail.map((w, i) => `<tr data-cal-prevu="${w.date}"${w.complet ? '' : ' class="pv-incomplet"'}><th scope="row">${dateFr(w.date)}</th>
-        ${lignes.map(l => `<td class="pv-n">${nombre(l.jours[i].simule)}</td><td class="pv-n">${bande(l.jours[i])}</td>`).join('')}
-        <td class="pv-n" data-cal-prevu-total>${x ? bande(x.unite[i]) : '—'}</td></tr>`).join('');
+        ${lignes.map(l => `<td class="pv-n">${nombre(l.jours[i].simule)}</td><td class="pv-n">${bande(l.jours[i])}</td>${bornee(l) ? `<td class="pv-n" data-cal-au-plus="${esc(l.nom)}">${nombre(l.jours[i].besoinAuPlus)}</td>` : ''}`).join('')}
+        <td class="pv-n" data-cal-prevu-total>${x ? bande(x.unite[i]) : '—'}</td>${uniteBornee ? `<td class="pv-n" data-cal-au-plus-total>${nombre(x.unite[i].besoinAuPlus)}</td>` : ''}</tr>`).join('');
     return `<section class="pc-politique" aria-label="La politique d’effectif"><h3>La politique d’effectif</h3>
       <p class="mini-note">Calage du ${esc((p.date || '').slice(0, 10))}${p.periode ? ', appris du ' + dateFr(p.periode.debut) + ' au ' + dateFr(p.periode.fin) : ''}.
         ${refaire ? '<b class="pj-relancer" data-cal-refaire>À refaire</b> : le barème, les équipes ou la correspondance ont changé depuis.' : ''}
         Le prévu calé : le modèle de chaque ligne appliqué au simulé du jour, entre crochets sa bande P10–P90 ; il vaut aussi pour un programme sans réel.</p>
+      ${formules ? `<ul class="pc-liste pc-formules">${formules}</ul>` : ''}
+      ${uniteBornee ? '<p class="mini-note" data-cal-note-au-plus>Une ligne « en sur-effectif » ou « indéterminée » dit l’effectif mis ; son besoin est « au plus » son travail au barème du jour × le rythme de ses jours les plus chargés, sans dépasser le prévu. Pour l’unité : chaque ligne à sa borne, sinon à son prévu.</p>' : ''}
       ${!b ? '<p class="mini-note pc-attente">Simulez la période (à jour) pour voir le prévu calé de chaque jour.</p>'
         : `<div class="table-scroll"><table class="svc-table pc-table pc-prevu"><thead><tr><th scope="col">Jour de travail</th>
-        ${lignes.map(l => `<th scope="col">${esc(l.nom)}<br><small>simulé</small></th><th scope="col">${esc(l.nom)}<br><small>prévu calé (${esc(l.nomModele)}${l.applique ? ', a = 1 : appliqué au barème' : l.nonCalee ? ' : pas de calage' : ''})</small></th>`).join('')}
-        <th scope="col">Toute l’unité<br><small>prévu calé</small></th></tr></thead><tbody>${jours}</tbody></table></div>
+        ${lignes.map(l => `<th scope="col">${esc(l.nom)}<br><small>simulé</small></th><th scope="col">${esc(l.nom)}<br><small>prévu calé (${esc(l.nomModele)}${l.applique ? ', a = 1 : appliqué au barème' : l.nonCalee ? ' : pas de calage' : ''})${
+          l.nomStatut ? '<br>' + esc(l.nomStatut) : ''}</small></th>${bornee(l) ? `<th scope="col">${esc(l.nom)}<br><small>besoin au plus</small></th>` : ''}`).join('')}
+        <th scope="col">Toute l’unité<br><small>prévu calé</small></th>${uniteBornee ? '<th scope="col">Toute l’unité<br><small>besoin au plus</small></th>' : ''}</tr></thead><tbody>${jours}</tbody></table></div>
         ${x ? `<p class="mini-note" data-cal-sigma-unite="${esc(x.sigmaUniteSource)}">${esc(C().texteSigmaUnite(x))}</p>` : ''}`}
       ${appliquer ? `<div class="pc-actions">${appliquer}</div>` : ''}
       <div class="pc-actions"><button type="button" class="btn btn-sm" data-cal="oublier">Oublier la politique</button></div></section>`;
@@ -703,18 +771,28 @@
       <ul class="pc-liste">${l}</ul></section>`;
   };
 
+  /** Le prévu calé de la journée affichée (une politique gardée, une journée jouée), ou null : le même que le bloc de la Synthèse. */
+  VueCalage.prototype.prevuDuJour = function () {
+    const j = this.politique && this.a.journee ? this.a.journee() : null;
+    const x = j ? C().prevuDesJours(this.politique, this.correspondance, [j], R().simuleDe) : null;
+    return x && x.lignes.length ? x : null;
+  };
   /** Dans la Synthèse de la journée : le prévu calé de chaque ligne, sa bande, le total de l'unité. */
   VueCalage.prototype.rendreJour = function () {
     const box = document.getElementById('bilan-cale'); if (!box) return;
-    const j = this.politique && this.a.journee ? this.a.journee() : null;
-    if (!j) { box.innerHTML = ''; return; }
-    const x = C().prevuDesJours(this.politique, this.correspondance, [j], R().simuleDe);
-    if (!x || !x.lignes.length) { box.innerHTML = ''; return; }
-    const ligne = (nom, s, v) => `<tr data-cal-jour-ligne="${esc(nom)}"><th scope="row">${esc(nom)}</th><td class="pv-n">${nombre(s)}</td><td class="pv-n">${nombre(v.prevu)}</td>
-        <td class="pv-n">${nombre(v.p10)} – ${nombre(v.p90)}</td></tr>`;
+    const x = this.prevuDuJour();
+    if (!x) { box.innerHTML = ''; return; }
+    // Évolution 17 c : par ligne, les ETP au barème, le prévu et sa bande, le statut, et le besoin « au plus » s'il y en a un
+    // (à la limite, le prévu est le besoin). Une politique gardée avant n'a pas de statut : les deux colonnes ne s'affichent pas.
+    const avecStatut = x.lignes.some(l => l.statut);
+    const besoin = (l, v) => (v.besoinAuPlus !== undefined ? 'au plus ' + nombre(v.besoinAuPlus) : l && l.lecture === 'besoin' ? 'le prévu' : '—');
+    const ligne = (nom, s, v, l) => `<tr data-cal-jour-ligne="${esc(nom)}"><th scope="row">${esc(nom)}</th><td class="pv-n">${nombre(s)}</td><td class="pv-n">${nombre(v.prevu)}</td>
+        <td class="pv-n">${nombre(v.p10)} – ${nombre(v.p90)}</td>${avecStatut ? `<td data-cal-jour-statut>${l && l.statut ? esc(l.nomStatut) + ' <small>' + esc(l.lecture) + '</small>' : '—'}</td>
+        <td class="pv-n" data-cal-jour-besoin>${besoin(l, v)}</td>` : ''}</tr>`;
     box.innerHTML = `<section class="bilan-groupe pc-jour" aria-label="Politique d’effectif"><h4>Politique d’effectif (calage du ${esc((this.politique.date || '').slice(0, 10))})</h4>
-      <table class="svc-table pc-table"><thead><tr><th scope="col">Ligne</th><th scope="col">Simulé (ETP)</th><th scope="col">Prévu calé</th><th scope="col">P10 – P90</th></tr></thead>
-      <tbody>${x.lignes.map(l => ligne(l.nom, l.jours[0].simule, l.jours[0])).join('')}${ligne('Toute l’unité', x.unite[0].simule, x.unite[0])}</tbody></table>
+      <table class="svc-table pc-table"><thead><tr><th scope="col">Ligne</th><th scope="col">${avecStatut ? 'Au barème (ETP)' : 'Simulé (ETP)'}</th><th scope="col">${avecStatut ? 'Prévu (ETP)' : 'Prévu calé'}</th><th scope="col">P10 – P90</th>${
+        avecStatut ? '<th scope="col">Statut</th><th scope="col">Besoin (ETP)</th>' : ''}</tr></thead>
+      <tbody>${x.lignes.map(l => ligne(l.nom, l.jours[0].simule, l.jours[0], l)).join('')}${ligne('Toute l’unité', x.unite[0].simule, x.unite[0], null)}</tbody></table>
       <p class="mini-note" data-cal-sigma-unite="${esc(x.sigmaUniteSource)}">${esc(C().texteSigmaUnite(x))}</p>
       ${x.lignes.some(l => l.jours[0].sansJour) ? '<p class="mini-note">Une journée sans date : « × a × jour » y prend le facteur moyen, 1.</p>' : ''}</section>`;
   };

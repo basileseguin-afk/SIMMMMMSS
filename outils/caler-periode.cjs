@@ -116,7 +116,11 @@ if (require.main === module) {
         + ' (' + [...new Set(l.joursSansReel.map(j => j.raison))].slice(0, 3).join(' ; ') + (new Set(l.joursSansReel.map(j => j.raison)).size > 3 ? ' ; …' : '') + ').');
       if (c.unite.joursRetires) console.error('Retirés du total de l’unité : ' + c.unite.joursRetires.length + ' jour' + (c.unite.joursRetires.length > 1 ? 's' : '')
         + ' (' + c.unite.joursRetires.slice(0, 5).map(w => w.date + ' : ' + w.lignes.join(', ')).join(' ; ') + (c.unite.joursRetires.length > 5 ? ' ; …' : '') + ').');
-      for (const l of sortie.rapport.lignes) console.error('Calage, ' + l.nom + ' : ' + (l.cale ? l.retenu.nom + (l.raison ? ' (' + l.raison + ')' : '') : 'pas de calage, ' + l.raison) + '.');
+      // Évolution 17 : la formule retenue en clair, le statut de la ligne, et sa borne quand la formule n'est que l'effectif mis.
+      for (const l of sortie.rapport.lignes) console.error('Calage, ' + l.nom + ' : ' + (l.cale ? l.retenu.nom + (l.raison ? ' (' + l.raison + ')' : '')
+        + (l.retenu.formule ? ' — ' + l.retenu.formule : '') + (l.statut ? ' ; ' + l.statut.nom + ' (' + l.lecture + ')' : '')
+        + (l.rythmeCharge ? (l.rythmeCharge.rythme === null ? ', ' + l.rythmeCharge.raison : ', besoin au plus ' + String(Math.round(l.rythmeCharge.rythme * 100) / 100).replace('.', ',') + ' × le travail au barème du jour') : '')
+        : 'pas de calage, ' + l.raison) + '.');
       for (const l of (sortie.travail || {}).lignes || []) console.error('Travail, ' + l.nom + ' : ' + (l.cale ? '× ' + String(l.facteur).replace('.', ',')
         + (l.accepte ? ', accepté' : ', refusé — ' + Object.values(l.regles).filter(x => !x.ok).map(x => x.raison).join(' ; ')) : 'pas de calage, ' + l.raison) + '.');
       console.error('Comparaison : ' + c.lignes.length + ' ligne' + (c.lignes.length > 1 ? 's' : '') + ', ' + c.jours.length + ' jour' + (c.jours.length > 1 ? 's' : '')

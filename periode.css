@@ -121,6 +121,37 @@ body[data-vue="plan"][data-sous="j-periode"] .app{grid-template-columns:minmax(0
 .pc-regle.non{color:var(--ds-retard-texte)}
 .pc-prevu small{color:var(--ds-texte-3);font-weight:var(--ds-g-normal)}
 .pc-jour{margin-top:var(--ds-e-4)}
+/* Évolution 17 (c) : la formule en clair, le statut d'une ligne, le nuage de points de ses jours appris. */
+.pc-statut{display:inline-block;padding:1px 8px;border:1px solid var(--ds-bordure);border-radius:999px;font-size:var(--ds-t-12);color:var(--ds-texte-2);white-space:nowrap}
+.pc-statut[data-cal-statut="limite"]{border-color:var(--ds-accent-trait);color:var(--ds-accent-texte)}
+.pc-statut[data-cal-statut="sur-effectif"]{border-color:var(--ds-attente);background:var(--ds-attente-doux);color:var(--ds-attente-texte)}
+.pc-parametres{display:block;color:var(--ds-texte-3);font-size:var(--ds-t-12)}
+.pc-regle.pc-choix{color:var(--ds-texte-2);font-style:italic}
+.pc-formules{margin:0 0 var(--ds-e-3)}
+.pc-formules li{margin-bottom:2px}
+.pcn{margin:var(--ds-e-3) 0;max-width:720px}
+.pcn-tete{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--ds-e-2) var(--ds-e-4);margin-bottom:var(--ds-e-2)}
+.pcn-titre{font-weight:var(--ds-g-fort,600);font-size:var(--ds-t-13,13px)}
+.pcn-part{font-size:var(--ds-t-12);color:var(--ds-texte-2)}
+.pcn-part select{margin-left:6px;max-width:100%}
+.pcn-legende{display:flex;flex-wrap:wrap;gap:var(--ds-e-4);margin:0 0 var(--ds-e-2);font-size:var(--ds-t-12);color:var(--ds-texte-2)}
+.pcn-legende span::before{content:"";display:inline-block;margin-right:6px;vertical-align:middle}
+.pcn-l-point::before{width:8px;height:8px;border-radius:50%;background:var(--ds-texte-3)}
+.pcn-l-cote::before{width:9px;height:9px;box-sizing:border-box;border:2px solid var(--ds-texte-1);border-radius:50%;background:var(--ds-surface-1)}
+.pcn-l-retenue::before{width:14px;height:0;border-top:2px solid var(--ds-d1)}
+.pcn-l-xa::before{width:14px;height:0;border-top:2px dashed var(--ds-texte-2)}
+.pcn-svg{display:block;width:100%;height:auto;touch-action:pan-y}
+.pcn-grille{stroke:var(--ds-bordure);stroke-width:1}
+.pcn-echelle{fill:var(--ds-texte-3);font-size:11px;text-anchor:end}
+.pcn-abscisse{fill:var(--ds-texte-3);font-size:11px;text-anchor:middle}
+.pcn-titre-axe{fill:var(--ds-texte-2);font-size:11px}
+.pcn-titre-x{text-anchor:end}
+.pcn-retenue{fill:none;stroke:var(--ds-d1);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.pcn-xa{fill:none;stroke:var(--ds-texte-2);stroke-width:2;stroke-dasharray:5 4;stroke-linejoin:round}
+.pcn-point{fill:var(--ds-texte-3);stroke:var(--ds-surface-1);stroke-width:1.5}
+.pcn-point.pcn-cote{fill:var(--ds-surface-1);stroke:var(--ds-texte-1);stroke-width:2}
+.pcn-curseur{fill:none;stroke:var(--ds-texte-1);stroke-width:1.5}
+.pcn-bulle{min-height:2.8em;margin-top:var(--ds-e-1)}
 .pc-appliquer{display:flex;flex-direction:column;gap:2px}
 .pc-refus-appliquer{color:var(--ds-texte-3);max-width:46ch}
 .pc-rejeu progress{width:min(320px,100%)}

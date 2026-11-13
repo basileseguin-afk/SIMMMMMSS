@@ -176,16 +176,19 @@ const CLE='ory-calage-v1';
   const jour=await page.evaluate(()=>Sim.calage.a.journee());
   const pj=C.prevuDesJours(pol,(await reglages()).correspondance,[jour],R.simuleDe);
   assert.ok(pj.lignes[0].jours[0].simule>0);
+  // Le statut de la ligne et son besoin s'ajoutent à droite (évolution 17 c : tests/calage-formes-browser.cjs) : ici, le cuisinier suit la charge, « à la limite ».
   assert.deepEqual(await page.locator('#bilan-cale tr[data-cal-jour-ligne="Cuisinier"] td').allTextContents(),
-    [fr(pj.lignes[0].jours[0].simule),fr(pj.lignes[0].jours[0].prevu),fr(pj.lignes[0].jours[0].p10)+' – '+fr(pj.lignes[0].jours[0].p90)]);
+    [fr(pj.lignes[0].jours[0].simule),fr(pj.lignes[0].jours[0].prevu),fr(pj.lignes[0].jours[0].p10)+' – '+fr(pj.lignes[0].jours[0].p90),pj.lignes[0].nomStatut+' '+pj.lignes[0].lecture,'le prévu']);
+  assert.deepEqual([pj.lignes[0].statut,pol.lignes[0].statut],['limite','limite']);
   assert.equal(await page.locator('#bilan-cale tr[data-cal-jour-ligne="Toute l’unité"]').count(),1);
   assert.equal(await page.locator('#bilan-cale [data-cal-sigma-unite]').textContent(),C.texteSigmaUnite(pj));
   await nav.aller(page,'j-periode');await attendre();
   // La feuille Période : le prévu calé, P10 et P90, de chaque ligne et de l'unité.
   const xPeriode=await T.lireClasseur(new Uint8Array(fs.readFileSync(await telecharger(()=>page.locator('#journee-periode [data-pv=exporter]').click()))));
   const fPeriode=xPeriode.find(f=>f.nom==='Période').lignes;
-  assert.deepEqual(fPeriode[0].slice(-4),['Simulé de la ligne (ETP)','Prévu calé (ETP)','P10 (ETP)','P90 (ETP)']);
-  assert.ok(fPeriode.some(l=>l[7]==='Ligne : Cuisinier'&&l[l.length-3]===Math.round(prevu.lignes[0].jours[0].prevu*100)/100));
+  // Avec le statut des lignes (évolution 17 c), deux colonnes de plus à droite : « Statut », « Besoin au plus (ETP) ».
+  assert.deepEqual(fPeriode[0].slice(-6),['Simulé de la ligne (ETP)','Prévu calé (ETP)','P10 (ETP)','P90 (ETP)','Statut','Besoin au plus (ETP)']);
+  assert.ok(fPeriode.some(l=>l[7]==='Ligne : Cuisinier'&&l[fPeriode[0].indexOf('Prévu calé (ETP)')]===Math.round(prevu.lignes[0].jours[0].prevu*100)/100&&l[fPeriode[0].indexOf('Statut')]==='à la limite'));
   // Le Lisez-moi : sous la ligne de la bande du total, d'où vient son σ (correction 16).
   const lu=xPeriode[0].lignes.map(l=>String(l[0]||'')),iBande=lu.findIndex(l=>/√Σσ²/.test(l));
   assert.equal(lu[iBande+1].trim(),C.texteSigmaUnite(prevu));

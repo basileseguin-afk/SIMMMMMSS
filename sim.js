@@ -2058,7 +2058,8 @@ function initCalage(){
     periodeDuRejeu:()=>(Sim.periode&&programmeDate()?{unite:Sim.periode.a.unite(),vols:programmeDate(),options:Sim.periode.a.options()}:null),
     signaturePeriode:signaturePeriode,
     // Un réel importé, écarté, une correspondance changée : la courbe de la page Période suit (évolution 15 d).
-    apres:()=>{if(Sim.periode)Sim.periode.rendreCourbe();}
+    // Une politique gardée ou oubliée : la phrase de tête de la Synthèse suit (évolution 17 c).
+    apres:()=>{if(Sim.periode)Sim.periode.rendreCourbe();if(Sim.vue&&Sim.vue.rendreBilan)Sim.vue.rendreBilan();}
   });
 }
 /**
@@ -2120,7 +2121,9 @@ function initVueSimulation() {
   if (window.OrlySyntheseVue) {
     Sim.vue.rendreBilan = () => {
       const j = Sim.vue.vide ? null : journeeLue(), box = document.getElementById('bilan-journee');
-      OrlySyntheseVue.rendre(box, j ? { reponses: j.reponses, resultat: j.r, k: j.k, essais: essaisRetenus(),
+      // Une politique d'effectif gardée (évolution 17 c) : la phrase de tête dit ce que l'unité mettrait, d'après les heures réelles.
+      const cale = j && Sim.calage ? Sim.calage.prevuDuJour() : null;
+      OrlySyntheseVue.rendre(box, j ? { reponses: j.reponses, resultat: j.r, k: j.k, essais: essaisRetenus(), prevuCale: cale ? cale.unite[0] : null,
         // L'ordre des services, tiré de tous les chemins (correction 17 b) : le même que le planning et la page Période.
         ordre: window.OrlyPlanningVue ? OrlyPlanningVue.ordreDesServices(j.r, (j.args || {}).parcours) : [] } : null);
     };
@@ -2926,8 +2929,9 @@ async function exporterPeriode(){
   // Les feuilles « Charge » et « Créneaux » (évolution 12 d) : echanges-charge.js, comme l'outil.
   const classeur=OrlyEchanges.periodeVersClasseur(r,{sauvegarde:'l’unité enregistrée dans ce navigateur',vols:dataSource,
     calculeLe:pe.calculeLe,reglages:pe.reglages||{delaiChargement:CFG.loadDelay,decalage:CFG.shift},...(prevu?{prevu}:{})});
-  // Avec un prévu calé : d'où vient le σ de la bande du total (correction 16), dans le Lisez-moi.
-  const avecPrevu=prevu&&window.OrlyEchangesCalage?OrlyEchangesCalage.avecSigmaUnite(classeur,prevu):classeur;
+  // Avec un prévu calé : d'où vient le σ de la bande du total (correction 16), dans le Lisez-moi ; le statut et le besoin
+  // « au plus » de chaque ligne, deux colonnes de plus dans la feuille Période (évolution 17 c).
+  const avecPrevu=prevu&&window.OrlyEchangesCalage?OrlyEchangesCalage.avecPrevuCale(classeur,prevu):classeur;
   const octets=OrlyTableur.ecrireClasseur(window.OrlyEchangesCharge?OrlyEchangesCharge.avecCharge(avecPrevu,r):avecPrevu);
   // Compressé (correction 16 c), quand le navigateur le sait ; sinon tel quel, comme avant.
   OrlyTableur.telecharger('ory-periode-'+d.debut+'-au-'+d.fin+'.xlsx',window.OrlyClasseurCompresse?await OrlyClasseurCompresse.compresser(octets):octets);
