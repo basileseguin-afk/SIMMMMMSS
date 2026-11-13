@@ -13,15 +13,19 @@ const C = require('../moteur/calage-periode.js');
 const R = require('../moteur/reel.js');
 const F = require('./sigma-unite-fictif.cjs');
 const AVANT = require('./sigma-unite.attendu.json');
+const { sansEvolution17 } = require('./calage-avant-17.cjs');
 
 const json = x => JSON.parse(JSON.stringify(x));
 const proche = (x, y, m) => assert.ok(Math.abs(x - y) < 1e-9, (m ? m + ' : ' : '') + x + ' attendu ' + y);
 const sigmaLignes = r => Math.sqrt(r.lignes.reduce((n, l) => n + l.retenu.sigma ** 2, 0));
 
-/** Sans les nouveaux champs : σ du total dans le rapport et la politique, la source dans le prévu. */
+/**
+ * Sans les nouveaux champs : σ du total dans le rapport et la politique, la source dans le prévu ; et ce que
+ * l'évolution 17 (a) ajoute au rapport (des candidats, la formule en clair, le seuil corrigé : tests/calage-avant-17.cjs).
+ */
 function sansNouveaux(x) {
   const y = json(x);
-  if (y.rapport) { delete y.rapport.unite.apres.sigma; if (y.rapport.unite.semaines) delete y.rapport.unite.semaines.apres.sigma; }
+  if (y.rapport) { y.rapport = sansEvolution17(y.rapport); delete y.rapport.unite.apres.sigma; if (y.rapport.unite.semaines) delete y.rapport.unite.semaines.apres.sigma; }
   if (y.politique) delete y.politique.sigmaUnite;
   if (y.prevu) delete y.prevu.sigmaUniteSource;
   return y;
@@ -57,7 +61,7 @@ test('trois lignes aux écarts opposés : σ mesuré du total < √Σσ²', () =
 test('le rapport, la politique et le prévu identiques à ceux d’avant, en dehors des nouveaux champs', () => {
   for (const [n, f] of [['ensemble', F.ensemble], ['opposes', F.opposes]]) {
     const x = jouer(f);
-    assert.deepEqual(sansNouveaux({ rapport: x.rapport, politique: x.politique }), json({ rapport: AVANT[n].rapport, politique: AVANT[n].politique }), n);
+    assert.deepEqual(sansNouveaux({ rapport: x.rapport, politique: x.politique }), { rapport: sansEvolution17(AVANT[n].rapport), politique: json(AVANT[n].politique) }, n);
     // Les lignes du prévu, leur σ et leur bande : les mêmes ; le total aussi, hors de sa bande.
     assert.deepEqual(json(x.prevu.lignes), AVANT[n].prevu.lignes, n + ' : les lignes du prévu');
     const sansBande = u => u.map(({ p10, p90, ...y }) => y);

@@ -12,6 +12,7 @@ const R = require('../moteur/reel.js');
 const C = require('../moteur/calage-periode.js');
 const T = require('../tableur.js');
 const REF = require('./reel-complet.attendu.json');
+const { sansEvolution17 } = require('./calage-avant-17.cjs');
 
 const ENTETE = 'date;role;heures_titulaires;heures_interim;heures_supp';
 const lire = (lignes, entete = ENTETE) => R.lireReel([{ nom: 'reel.csv', lignes: T.lireCsv([entete].concat(lignes).join('\n')) }]);
@@ -57,7 +58,8 @@ test('non-régression : un réel sans case vide donne la même comparaison et le
   const { validation, semaines, ...unite } = C.caler(comparaison).unite;
   // σ du total mesuré (correction 16) s'ajoute, après : sans lui, le calage de la référence.
   const { sigma, ...apres } = unite.apres;
-  assert.deepEqual(JSON.parse(JSON.stringify({ ...C.caler(comparaison), unite: { ...unite, apres } })), REF.calage);
+  // Sans ce que l'évolution 17 (a) ajoute au rapport (tests/calage-avant-17.cjs) : le calage de la référence.
+  assert.deepEqual(sansEvolution17({ ...C.caler(comparaison), unite: { ...unite, apres } }), sansEvolution17(REF.calage));
   assert.ok(Number.isFinite(sigma));
   assert.ok(lire(REF.csv).lignes.every(l => !('vide' in l)));
 });

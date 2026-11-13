@@ -1754,7 +1754,9 @@ Une ligne se cale à partir de **20 jours utilisables** (sinon : « moins de
 
 - **Deux références** : « moteur » (réel = simulé) et « constante » (la
   moyenne des jours appris).
-- **Trois candidats**, seulement pour une ligne simulée dont le simulé varie :
+- **Trois candidats** (quatre de plus depuis l'évolution 17 a : « puissance »,
+  « logarithme », « plancher », « plafond », plus bas), seulement pour une
+  ligne simulée dont le simulé varie :
   - « × a » : a = Σ simulé × réel ÷ Σ simulé², borné à [0,5 ; 2] ;
   - « b + a × » : les moindres carrés, gardés seulement si a ∈ [0,5 ; 2] et
     b ≥ 0 ; sinon il se confond avec « × a », n'est pas candidat, et le
@@ -1781,7 +1783,8 @@ Une ligne se cale à partir de **20 jours utilisables** (sinon : « moins de
   4. le test de Wilcoxon apparié (rangs signés, approximation normale,
      correction des ex aequo) des erreurs absolues de chaque jour, contre la
      meilleure référence de ce découpage — sur la validation par mois s'il y a
-     deux mois, sinon par semaine : p bilatéral < 0,05, et le candidat
+     deux mois, sinon par semaine : p bilatéral < 0,05 (depuis l'évolution
+     17 a : 0,05 ÷ le nombre de candidats essayés sur la ligne), et le candidat
      meilleur (W+ au-dessus de sa moyenne), soit un test unilatéral à 2,5 %. La
      référence peut être la constante quand la règle 1 se juge aussi contre le
      moteur ; un p sous 0,001 s'écrit « p < 0,001 » ;
@@ -1791,7 +1794,9 @@ Une ligne se cale à partir de **20 jours utilisables** (sinon : « moins de
 - **Le choix** : parmi les candidats acceptés, le plus juste ; à 0,1 ETP près,
   le plus simple (« × a », puis « b + a × », puis « × a × jour »). Sans
   candidat accepté, la meilleure référence en validation. Une ligne hors
-  simulation prend la constante.
+  simulation prend la constante. Depuis l'évolution 17 a, une forme plus
+  riche doit d'abord battre le plus simple des candidats acceptés de plus de
+  0,1 ETP (plus bas).
 - **Le total de l'unité**, avant (le moteur) et après (les modèles retenus) :
   chaque ligne validée par mois quand elle en a deux, sinon par semaine ; avec
   une validation par mois, il se donne aussi en validation par semaines
@@ -2107,6 +2112,119 @@ fait le parcours dans la page : un planning refusé, puis importé ; le rejeu et
 sa progression ; la comparaison du rejeu ; « Caler le travail », annulé puis
 fait ; un facteur appliqué au barème puis annulé ; le classeur ; le planning
 n'est pas dans la sauvegarde.
+
+### Une formule par service : le catalogue de formes (évolution 17 a)
+
+Les temps par vol du barème ne changent pas : ils restent des entrées, et cette
+évolution n'en modifie aucune valeur (« Appliquer au barème » reste réservé à
+« × a »). Mais le travail d'un service ne suit pas forcément le barème en ligne
+droite. Pour chaque ligne de la correspondance, le calage cherche maintenant la
+**forme** qui passe le mieux du travail au barème (x, les ETP simulés de la
+ligne, comme avant) aux heures réelles (en ETP elles aussi), parmi un
+catalogue, et la juge sur des jours qu'elle n'a pas appris. C'est le calage de
+l'évolution 11 c, avec plus de formes. Le catalogue est dans
+`moteur/calage-formes.js` ; `moteur/calage-periode.js` l'essaie, la page et les
+outils appellent toujours ce seul module.
+
+Les références restent « moteur » et « constante ». Les candidats, du plus
+simple au plus riche :
+
+| Candidat | Forme | Ajustement (moindres carrés, déterministe) | Bornes |
+|---|---|---|---|
+| « × a » | a × x | comme avant | a entre 0,5 et 2 |
+| « b + a × » | b + a × x | comme avant | a entre 0,5 et 2, b ≥ 0 ; sinon il se confond avec « × a » |
+| « × a × jour » | a × x × le facteur du jour | comme avant | a entre 0,5 et 2 |
+| « puissance » | a × x^p | p sur la grille 0,20 ; 0,25 ; … ; 1 ; pour chaque p, a = Σ réel × x^p ÷ Σ x^2p ; le p de plus petite somme des carrés | p hors des deux bouts de sa grille (à 1, c'est « × a ») ; a positif ; le **niveau** entre 0,5 et 2 |
+| « logarithme » | b + a × ln(1 + x) | la droite des moindres carrés de réel sur ln(1 + x) | a positif et b ≥ 0 (sinon b est mis à 0 : en butée) ; le **niveau** entre 0,5 et 2 |
+| « plancher » | le plus grand de c et a × x | c = a × s, le seuil s sur une grille de 41 valeurs régulières du plus petit au plus grand travail au barème des jours appris ; pour chaque s, a = Σ réel × z ÷ Σ z², z le plus grand de x et s | s hors des deux bouts de sa grille ; a entre 0,5 et 2 |
+| « plafond » | le plus petit de c et a × x | de même, z le plus petit de x et s | s hors des deux bouts de sa grille ; a entre 0,5 et 2 |
+
+- **Le niveau** d'une puissance ou d'un logarithme : sa prédiction au travail
+  moyen ÷ ce travail. Il reste entre 0,5 et 2, comme a : le réel d'un jour
+  moyen ne vaut ni moins de la moitié ni plus du double du travail au barème.
+- **Un paramètre en butée écarte le candidat** : la règle « bornes » le refuse
+  et dit pourquoi. « p en butée (1 : c'est « × a ») » ; « p en butée (0,2) » ;
+  « b en butée (moindres carrés libres : a = … ; b = …) » ; « c en butée (le
+  plancher ne joue aucun jour : c'est « × a ») » ; « c en butée (le plafond
+  joue tous les jours : c'est « constante ») ». Aux deux bouts de leur grille,
+  le plancher et le plafond sont exactement « × a » ou « constante ».
+- **Les garde-fous de l'évolution 11 c valent pour toutes les formes** : une
+  semaine ISO laissée de côté, un mois quand il y en a deux de 14 jours, plus
+  juste que les deux références, stable, dans ses bornes, le test de Wilcoxon
+  apparié contre la meilleure référence, le placebo.
+  - *Stable*, pour une forme du catalogue : sa **courbe** ne bouge pas de plus
+    de 15 % d'une semaine laissée de côté à l'autre, en trois jours repères —
+    un jour calme, le jour médian, un jour chargé (les quantiles 10 %, 50 % et
+    90 % du travail au barème). Ses paramètres, eux, se compensent (a et p
+    d'une puissance) : on ne les compare pas un à un.
+- **Deux garde-fous de plus** :
+  1. **le seuil du test se corrige du nombre de candidats essayés sur la
+     ligne** : p bilatéral < 0,05 ÷ n (sept candidats : 0,0071). Plus on en
+     essaie, plus le hasard en fait gagner un. Tous les candidats essayés
+     comptent : « b + a × » confondu, les candidats en butée, et celui qui ne
+     s'apprend pas sur la ligne. La
+     raison de la règle l'écrit : « accepté : Wilcoxon contre « constante »,
+     p < 0,001 (par mois ; seuil 0,05 ÷ 7 = 0,0071) » ; le rapport de la ligne
+     donne `essayes` et `seuil` ;
+  2. **une forme plus riche n'est retenue que si elle bat la plus simple de
+     plus de 0,1 ETP** (l'écart déjà en vigueur). Le plus simple des candidats
+     acceptés sert de base ; une forme plus riche n'entre en lice que si son
+     erreur par semaine est sous la sienne de plus de 0,1 ETP ; parmi
+     celles-là, la plus juste, et à 0,1 ETP près la plus simple (la règle
+     d'avant). Chaque candidat accepté porte son `choix` : « retenu », ou
+     pourquoi il ne l'est pas (« accepté, pas retenu : ne bat pas « × a », plus
+     simple, de plus de 0,1 ETP »).
+- **Le rapport d'une ligne** donne tous les candidats, avec leur erreur hors
+  échantillon (par semaine, par mois, et pour chaque semaine et chaque mois
+  laissés de côté), leurs paramètres et leur plage, leurs règles, et leur
+  formule en clair (`formule`). La formule retenue s'écrit avec ses paramètres
+  (`retenu.formule`) : « heures réelles ≈ 3,2 × (travail au barème)
+  puissance 0,6 » ; « heures réelles ≈ 7,9 + 4,04 × ln(1 + travail au
+  barème) » ; « heures réelles ≈ le plus grand de 12,17 et 0,8 × (travail au
+  barème) » ; « heures réelles ≈ 15,04, quel que soit le travail au barème »
+  (la constante). Les deux côtés se comptent en ETP par jour.
+- **La politique d'effectif** garde le modèle retenu et ses paramètres
+  (« puissance » : a et p ; « logarithme » : a et b ; « plancher », « plafond » :
+  a et c), sans aucune heure réelle. Relue d'une sauvegarde, une forme du
+  catalogue est vérifiée dans ses bornes (p de 0,2 à 1 ; a positif ; b et c
+  positifs ou nuls ; a de 0,5 à 2 pour un plancher ou un plafond), sinon la
+  politique est refusée entière. **Une politique gardée avant cette évolution
+  se relit telle quelle et donne le même prévu.**
+- **Une seconde variable** (le remplissage des vols, plus tard) s'ajoutera
+  sans refaire le catalogue : une forme est une fiche (`variables`,
+  `apprendre`, `predire`, `verdict`, `garder`, `relire`, `formule`) ; une
+  fiche de plus nomme sa variable et la lit dans le jour. `calerLigne(jours,
+  { formes })` essaie les fiches qu'on lui donne ; le placebo mélange les
+  variables d'une fiche avec le simulé, du même jour.
+
+Ce qui change pour un calage refait : les quatre formes peuvent être
+retenues ; un candidat qui passait le test entre 0,0071 et 0,05 est
+maintenant refusé ; « b + a × » ou « × a × jour » ne sont plus retenus quand
+ils ne battent pas « × a » accepté de plus de 0,1 ETP. Le moteur ne change
+pas : le résultat d'une journée et d'une période, les indicateurs et les
+valeurs du barème sont les mêmes.
+
+Vérifications — `tests/calage-formes.test.cjs`, sur des jours fabriqués avec
+une graine (trois mois, un travail au barème de 2 à 40 ETP) : des heures en
+puissance (3,2 × x^0,6), en logarithme (8 + 4 × ln(1 + x)), avec un plancher
+(le plus grand de 12 et 0,8 × x), avec un plafond (le plus petit de 18 et
+0,9 × x), plus un bruit : la bonne forme est retenue, ses paramètres retrouvés
+à 10 % près, sa formule écrite en clair ; des heures constantes plus un
+bruit : « constante », les formes qui l'imitent en butée ; des heures en ligne
+droite : « × a », p en butée sur 1, le plancher et le plafond qui ne jouent
+aucun jour ; un bruit sans lien avec le travail : rien de retenu ; vingt
+candidats sur du bruit pur (vingt colonnes tirées au hasard, quarante
+tirages) : aucun n'est retenu, alors qu'essayé seul, au seuil de 0,05, le
+hasard en fait gagner ; une seconde variable lue par une fiche ; le choix,
+cas par cas ; le logarithme en butée, un niveau hors bornes ; la formule de
+chaque modèle ; le prévu des nouvelles formes calculé à la main ; une ancienne
+politique relue, champ par champ, avec le prévu d'avant ; une politique des
+nouvelles formes, refusée hors bornes ; deux passages, le même rapport ; trois
+mois et 20 lignes en moins de 3 secondes. Les références figées avant
+l'évolution (`tests/reel-absent.test.cjs`, `tests/reel-vide.test.cjs`,
+`tests/sigma-unite.test.cjs`) se comparent sans ces ajouts
+(`tests/calage-avant-17.cjs`) : les modèles retenus, leurs paramètres, leurs
+erreurs et σ y sont les mêmes.
 
 ## 11. Plusieurs onglets ne s'écrasent plus (correction 14)
 

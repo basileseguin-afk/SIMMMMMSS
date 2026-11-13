@@ -5,6 +5,48 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-13 — Banc d'essai, évolution 17 (a) : un catalogue de formes pour le calage, le choix hors échantillon
+
+Les temps par vol du barème ne changent pas : ils restent des entrées. Mais le
+travail d'un service ne suit pas forcément le barème en ligne droite : pour
+chaque ligne de la correspondance, le calage cherche la forme qui passe le
+mieux du travail au barème aux heures réelles, parmi un catalogue, et la juge
+sur des jours qu'elle n'a pas appris.
+
+- **Quatre candidats de plus** (`moteur/calage-formes.js`), après « × a »,
+  « b + a × » et « × a × jour » : « puissance » (a × x^p, p sur une grille de
+  0,2 à 1), « logarithme » (b + a × ln(1 + x)), « plancher » (le plus grand de
+  c et a × x), « plafond » (le plus petit de c et a × x). Moindres carrés,
+  déterministes, une grille pour p et pour le seuil. Chaque forme a ses bornes,
+  écrites ; un paramètre en butée écarte le candidat, et la règle dit pourquoi.
+- **Les garde-fous de l'évolution 11 c valent pour toutes** (semaine et mois
+  laissés de côté, stabilité, bornes, Wilcoxon, placebo), et **deux
+  s'ajoutent** : le seuil du test se divise par le nombre de candidats essayés
+  sur la ligne (sept : 0,0071) ; une forme plus riche n'est retenue que si
+  elle bat le plus simple des candidats acceptés de plus de 0,1 ETP.
+- **Le rapport d'une ligne** donne tous les candidats, leur erreur hors
+  échantillon par semaine et par mois, leur formule, pourquoi un candidat
+  accepté n'est pas retenu, et écrit la formule retenue en clair : « heures
+  réelles ≈ 3,2 × (travail au barème) puissance 0,6 ».
+- **La politique d'effectif** garde les nouvelles formes, relues dans leurs
+  bornes ; une politique gardée avant se relit telle quelle et donne le même
+  prévu.
+- Le catalogue est fait de fiches : une seconde variable (le remplissage des
+  vols, plus tard) s'y ajoutera par une fiche de plus.
+
+Ce qui ne change pas : le moteur, le résultat d'une journée et d'une période,
+les indicateurs, les valeurs du barème (« Appliquer au barème » reste réservé
+à « × a »), la version 2. Un calage refait peut retenir une des nouvelles
+formes, et refuser un candidat qui ne passait le test qu'entre 0,0071 et 0,05.
+
+Fichiers : `moteur/calage-formes.js` (nouveau), `moteur/calage-periode.js`,
+`index.html`, `tests/calage-formes.test.cjs` et `tests/calage-avant-17.cjs`
+(nouveaux), `tests/calage-periode.test.cjs`, `tests/reel-absent.test.cjs`,
+`tests/reel-vide.test.cjs`, `tests/sigma-unite.test.cjs`,
+`docs/BANC_ESSAI.md` (§ 10), `README.md`.
+
+---
+
 ## 2026-11-13 — Correction 18, retouches d'affichage : la fin d'un service, le tableau à 1 366 px
 
 - **La fin d'un service se lit contre l'horaire de ses équipes du jour.** Un

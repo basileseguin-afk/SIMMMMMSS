@@ -16,16 +16,33 @@
  *  Wilcoxon apparié le dit meilleur que la meilleure référence, et s'il perd
  *  son avance quand on mélange le simulé (placebo). Déterministe, sans
  *  navigateur : la page et l'outil appellent ce module.
+ *  ------------------------------------------------------------------------
+ *  Évolution 17 (a) : un catalogue de formes (moteur/calage-formes.js) ajoute
+ *  quatre candidats — « puissance », « logarithme », « plancher »,
+ *  « plafond ». Les garde-fous valent pour tous, et deux s'ajoutent : le
+ *  seuil du test de Wilcoxon se divise par le nombre de candidats essayés sur
+ *  la ligne ; une forme plus riche n'est retenue que si elle bat le plus
+ *  simple des candidats acceptés de plus de 0,1 ETP. Les temps par vol du
+ *  barème ne changent pas : ils restent des entrées.
  * ==========================================================================*/
 (function (root) {
   'use strict';
 
+  const enNode = typeof module !== 'undefined' && module.exports && typeof require === 'function';
+  /** Le catalogue de formes : chargé avant ce module dans la page. */
+  const F = enNode ? require('./calage-formes.js') : root.OrlyCalageFormes;
+
   const JOURS_MIN = 20, JOURS_MOIS_MIN = 14;
-  const A_MIN = 0.5, A_MAX = 2, STABILITE = 0.15, SEUIL_P = 0.05, PLACEBOS = 20, GRAINE = 20261102, PART_PLACEBO = 0.25;
+  const A_MIN = F.A_MIN, A_MAX = F.A_MAX, STABILITE = 0.15, SEUIL_P = 0.05, PLACEBOS = 20, GRAINE = 20261102, PART_PLACEBO = 0.25;
   const ECART_SIMPLE = 0.1, Z_P10_P90 = 1.2816;
+  /** Les jours repères de la stabilité d'une forme du catalogue : un jour calme, le jour médian, un jour chargé (les quantiles du simulé). */
+  const REPERES = [0.1, 0.5, 0.9];
   /** Les candidats, du plus simple au plus riche ; les références. */
-  const CANDIDATS = ['x-a', 'b-x-a', 'x-a-jour'], REFERENCES = ['moteur', 'constante'];
-  const NOMS = { 'moteur': 'moteur', 'constante': 'constante', 'x-a': '× a', 'b-x-a': 'b + a ×', 'x-a-jour': '× a × jour' };
+  const CANDIDATS = ['x-a', 'b-x-a', 'x-a-jour', ...F.ORDRE], REFERENCES = ['moteur', 'constante'];
+  const NOMS = { 'moteur': 'moteur', 'constante': 'constante', 'x-a': '× a', 'b-x-a': 'b + a ×', 'x-a-jour': '× a × jour',
+    ...Object.fromEntries(F.ORDRE.map(n => [n, F.FORMES[n].nom])) };
+  /** La fiche d'une forme du catalogue (par son nom), ou une fiche donnée telle quelle (`o.formes`) ; rien pour les modèles de l'évolution 11 c. */
+  const fiche = m => (typeof m === 'string' ? F.FORMES[m] : m) || null;
   const moyenne = l => (l.length ? l.reduce((a, b) => a + b, 0) / l.length : null);
   const somme = l => l.reduce((a, b) => a + b, 0);
   const borne = a => Math.min(A_MAX, Math.max(A_MIN, a));
@@ -57,6 +74,8 @@
 
   /** Les paramètres d'un modèle appris sur `jours` ({ date, reel, simule }) ; null s'il ne s'applique pas. */
   function apprendre(modele, jours) {
+    const f = fiche(modele);
+    if (f) return f.apprendre(jours);
     const r = jours.map(j => j.reel), s = jours.map(j => j.simule);
     if (modele === 'moteur') return {};
     if (modele === 'constante') return { c: moyenne(r) };
@@ -86,6 +105,8 @@
 
   /** La prédiction d'un modèle pour un jour. */
   function predire(modele, p, j) {
+    const f = fiche(modele);
+    if (f) return f.predire(p, j);
     if (modele === 'moteur') return j.simule;
     if (modele === 'constante') return p.c;
     if (modele === 'x-a-jour') return p.a * p.jours[jourDe(j)] * j.simule;
@@ -177,11 +198,14 @@
     return out;
   }
 
-  /** Le gain moyen d'un candidat sur la constante, le simulé mélangé entre les jours (20 mélanges, graine fixe). */
+  /**
+   * Le gain moyen d'un candidat sur la constante, le simulé mélangé entre les jours (20 mélanges, graine fixe).
+   * Une forme du catalogue qui lit d'autres variables les voit mélangées avec lui, du même jour.
+   */
   function gainPlacebo(modele, jours, parts, quelle, erreurConstante) {
-    const h = hasard(GRAINE), gains = [];
+    const h = hasard(GRAINE), gains = [], f = fiche(modele), autres = ((f && f.variables) || []).filter(c => c !== 'simule');
     for (let k = 0; k < PLACEBOS; k++) {
-      const s = melanger(jours.map(j => j.simule), h), faux = jours.map((j, i) => ({ ...j, simule: s[i] }));
+      const d = melanger(jours, h), faux = jours.map((j, i) => { const x = { ...j, simule: d[i].simule }; for (const c of autres) x[c] = d[i][c]; return x; });
       const v = valider(modele, faux, parts, quelle);
       if (v.erreur !== null) gains.push(erreurConstante - v.erreur);
     }
@@ -194,6 +218,8 @@
 
   /** Les paramètres qui doivent rester stables, et leur écart relatif le plus grand d'un découpage à l'autre. */
   function instabilite(modele, tous, splits, jours) {
+    const f = fiche(modele);
+    if (f) return instabiliteDeLaCourbe(f, tous, splits, jours);
     const niveau = p => p.b + p.a * moyenne(jours.map(j => j.simule));
     const valeurs = p => [p.a].concat(modele === 'b-x-a' && !p.confondu ? [niveau(p)] : []).concat(modele === 'x-a-jour' ? p.jours : []);
     const ref = valeurs(tous);
@@ -202,15 +228,34 @@
     return max;
   }
 
-  /** Les cinq règles d'un candidat, chacune avec son verdict et sa raison. */
+  /**
+   * Une forme du catalogue est stable si sa courbe l'est : sa prédiction de trois jours repères (un jour calme, le
+   * jour médian, un jour chargé : les quantiles 10 %, 50 % et 90 % du simulé) ne bouge pas de plus de 15 % d'une
+   * semaine laissée de côté à l'autre. Ses paramètres, eux, se compensent (a et p d'une puissance).
+   */
+  function instabiliteDeLaCourbe(f, tous, splits, jours) {
+    const tri = jours.slice().sort((x, y) => x.simule - y.simule || x.date.localeCompare(y.date));
+    const reperes = REPERES.map(q => tri[Math.round(q * (tri.length - 1))]), ref = reperes.map(j => f.predire(tous, j));
+    let max = 0;
+    for (const s of splits) reperes.forEach((j, i) => { if (ref[i] > 0) max = Math.max(max, Math.abs(f.predire(s.parametres, j) / ref[i] - 1)); });
+    return max;
+  }
+
+  /**
+   * Les cinq règles d'un candidat, chacune avec son verdict et sa raison. Le seuil du test de Wilcoxon se divise
+   * par le nombre de candidats essayés sur la ligne (`v.essayes`) : plus on en essaie, plus le hasard en fait gagner un.
+   */
   function regles(c, refs, v) {
     const ok = (oui, raison) => ({ ok: !!oui, raison });
     // Un candidat qui ne s'apprend pas sur une part (aucun simulé sur les jours appris) n'est pas comparé sur moins de jours que les références.
     const manque = v.semaines.length - c.semaines.splits.length + v.mois.length - c.mois.splits.length;
     const r1 = !manque && c.semaines.erreur !== null && c.semaines.erreur < Math.min(refs.moteur.semaines.erreur, refs.constante.semaines.erreur)
       && (!v.mois.length || c.mois.splits.every(s => s.erreur < Math.min(...REFERENCES.map(n => refs[n].mois.splits.find(x => x.part === s.part).erreur))));
-    const instable = instabilite(c.modele, c.parametres, c.semaines.splits, v.jours);
+    const instable = instabilite(c._f || c.modele, c.parametres, c.semaines.splits, v.jours);
     const p = c.parametres, bornes = p.aBrut >= A_MIN && p.aBrut <= A_MAX && !(p.b < 0);
+    // Une forme du catalogue juge ses bornes elle-même (un paramètre en butée l'écarte) ; une fiche sans bornes les tient.
+    const sesBornes = !c._f ? null : c._f.verdict ? c._f.verdict(p, { moyenne: moyenne(v.jours.map(j => j.simule)) }) : { ok: true, raison: 'accepté : pas de borne' };
+    const essayes = v.essayes || 1, seuil = SEUIL_P / essayes, gagne = w => w.p < seuil && w.wPlus > w.n * (w.n + 1) / 4;
     const meilleure = refs.moteur[v.cle].erreur <= refs.constante[v.cle].erreur ? 'moteur' : 'constante';
     const dates = [...c[v.cle].erreurs.keys()].filter(d => refs[meilleure][v.cle].erreurs.has(d));
     const w = wilcoxon(dates.map(d => Math.abs(refs[meilleure][v.cle].erreurs.get(d))), dates.map(d => Math.abs(c[v.cle].erreurs.get(d))));
@@ -220,10 +265,11 @@
         : r1 ? 'accepté : plus juste que le moteur et la constante' + (v.mois.length ? ', chaque mois' : '')
           : 'refusé : pas plus juste que le moteur et la constante' + (v.mois.length ? ' sur chaque mois' : '')),
       stabilite: ok(instable <= STABILITE, (instable <= STABILITE ? 'accepté : stable, ±' : 'refusé : instable, ±') + pct(instable)),
-      bornes: ok(bornes, bornes ? 'accepté : a et b dans leurs bornes' : 'refusé : hors bornes (a = ' + fr(p.aBrut)
+      bornes: sesBornes ? ok(sesBornes.ok, sesBornes.raison) : ok(bornes, bornes ? 'accepté : a et b dans leurs bornes' : 'refusé : hors bornes (a = ' + fr(p.aBrut)
         + (p.b !== undefined ? ' ; b = ' + fr(p.b) : '') + ')'),
-      wilcoxon: ok(w.p < SEUIL_P && w.wPlus > w.n * (w.n + 1) / 4, (w.p < SEUIL_P && w.wPlus > w.n * (w.n + 1) / 4 ? 'accepté' : 'refusé')
-        + ' : Wilcoxon contre « ' + NOMS[meilleure] + ' », ' + (w.p < 0.001 ? 'p < 0,001' : 'p = ' + fr(w.p, 3)) + ' (' + (v.cle === 'mois' ? 'par mois' : 'par semaine') + ')'),
+      wilcoxon: ok(gagne(w), (gagne(w) ? 'accepté' : 'refusé')
+        + ' : Wilcoxon contre « ' + NOMS[meilleure] + ' », ' + (w.p < 0.001 ? 'p < 0,001' : 'p = ' + fr(w.p, essayes > 1 ? 4 : 3)) + ' (' + (v.cle === 'mois' ? 'par mois' : 'par semaine')
+        + (essayes > 1 ? ' ; seuil ' + fr(SEUIL_P) + ' ÷ ' + essayes + ' = ' + fr(seuil, 4) : '') + ')'),
       placebo: ok(gain > 0 && faux !== null && faux <= PART_PLACEBO * gain, (gain > 0 && faux !== null && faux <= PART_PLACEBO * gain ? 'accepté' : 'refusé')
         + ' : simulé mélangé, gain ' + (faux === null ? '—' : fr(faux)) + ' ETP contre ' + fr(gain) + ' ETP')
     };
@@ -235,14 +281,19 @@
     if (!p) return null;
     const semaines = valider(modele, jours, v.semaines, j => j._s);
     const mois = valider(modele, jours, v.mois, j => j._m);
-    return { modele, nom: NOMS[modele], parametres: p, semaines, mois };
+    const f = fiche(modele);
+    return f ? { modele: f.id, nom: f.nom || f.id, parametres: p, semaines, mois, _f: f } : { modele, nom: NOMS[modele], parametres: p, semaines, mois };
   }
+
+  /** Les paramètres d'une forme du catalogue que la politique garde (une fiche sans `garder` : ses nombres). */
+  const gardes = (f, p) => (f.garder ? f.garder(p) : Object.fromEntries(Object.entries(p).filter(([, x]) => typeof x === 'number')));
 
   /** Les paramètres d'un modèle sur tous les jours, et leur plage (min–max) sur tous les découpages, semaines et mois. */
   function plages(e) {
     const splits = e.semaines.splits.concat(e.mois.splits);
     const plage = (tous, l) => ({ tous, min: l.length ? Math.min(...l) : null, max: l.length ? Math.max(...l) : null });
-    const cles = Object.keys(e.parametres).filter(k => typeof e.parametres[k] === 'number' && k !== 'aBrut' && k !== 'aLibre' && k !== 'bLibre');
+    const cles = e._f ? Object.keys(gardes(e._f, e.parametres))
+      : Object.keys(e.parametres).filter(k => typeof e.parametres[k] === 'number' && k !== 'aBrut' && k !== 'aLibre' && k !== 'bLibre');
     const out = Object.fromEntries(cles.map(k => [k, plage(e.parametres[k], splits.map(s => s.parametres[k]).filter(Number.isFinite))]));
     if (e.parametres.jours) out.jours = e.parametres.jours.map((f, k) => plage(f, splits.map(s => s.parametres.jours[k])));
     return out;
@@ -251,49 +302,80 @@
   /** L'écart quadratique moyen des erreurs hors échantillon : la bande P10–P90 est la prédiction ± 1,2816 σ (`bande`). */
   const sigma = erreurs => (erreurs.size ? Math.sqrt(moyenne([...erreurs.values()].map(e => e * e))) : null);
 
+  /** La formule d'un modèle en clair, avec ses paramètres gardés ({ modele, parametres }) : « heures réelles ≈ 3,2 × (travail au barème) puissance 0,6 ». */
+  const formule = m => F.formule(m.modele, m.parametres);
+  /** La formule d'un modèle évalué (une fiche donnée à la main dit la sienne, ou n'en a pas). */
+  const formuleDe = e => (e._f && !F.FORMES[e.modele] ? (e._f.formule ? 'heures réelles ≈ ' + e._f.formule(gardes(e._f, e.parametres)) : '') : F.formule(e.modele, parametresRetenus(e)));
+
   /** Le rapport d'un modèle, sans ses erreurs jour par jour. */
-  const resume = e => e && ({ modele: e.modele, nom: e.nom, parametres: plages(e),
+  const resume = e => e && ({ modele: e.modele, nom: e.nom, formule: formuleDe(e), parametres: plages(e),
     erreurs: { semaines: e.semaines.erreur, parSemaine: e.semaines.splits.map(s => ({ semaine: s.part, erreur: s.erreur })),
       mois: e.mois.splits.length ? e.mois.erreur : null, parMois: e.mois.splits.map(s => ({ mois: s.part, erreur: s.erreur })) } });
 
   /**
    * Cale une ligne : `jours` = [{ date, reel, simule }] (ses jours utilisables),
-   * `hors` : une ligne hors simulation (la constante).
+   * `hors` : une ligne hors simulation (la constante). `formes` : les candidats
+   * à essayer, du plus simple au plus riche — par défaut tout le catalogue ;
+   * une fiche donnée telle quelle (moteur/calage-formes.js) s'essaie comme les
+   * autres, et ses variables se lisent dans le jour.
    */
   function calerLigne(jours, o = {}) {
+    const formes = o.formes || CANDIDATS;
+    const variables = [...new Set(formes.flatMap(x => (fiche(x) && fiche(x).variables) || []))].filter(c => c !== 'simule');
     // La semaine, le mois et le jour de la semaine de chaque jour, une fois pour toutes.
-    const l = (jours || []).map(j => ({ date: j.date, reel: j.reel, simule: j.simule, _s: semaineIso(j.date), _m: j.date.slice(0, 7), _k: jourSemaine(j.date) }))
+    const l = (jours || []).map(j => ({ date: j.date, reel: j.reel, simule: j.simule, ...Object.fromEntries(variables.map(c => [c, j[c]])),
+      _s: semaineIso(j.date), _m: j.date.slice(0, 7), _k: jourSemaine(j.date) }))
       .sort((x, y) => x.date.localeCompare(y.date));
     if (l.length < JOURS_MIN) return { cale: false, raison: 'moins de ' + JOURS_MIN + ' jours utilisables (' + l.length + ')', jours: l.length };
     const d = decoupages(l), v = { ...d, jours: l, cle: d.mois.length ? 'mois' : 'semaines' };
     const refs = Object.fromEntries(REFERENCES.map(n => [n, evaluer(n, l, v)]));
     const s = l.map(j => j.simule), varie = Math.max(...s) - Math.min(...s) > 1e-9;
     // « b + a × » hors de ses bornes se confond avec « × a » : il n'est pas candidat, le rapport le dit.
-    const evalues = o.hors || !varie ? [] : CANDIDATS.map(n => evaluer(n, l, v)).filter(Boolean);
+    const evalues = o.hors || !varie ? [] : formes.map(n => evaluer(n, l, v)).filter(Boolean);
     const confondu = c => c.modele === 'b-x-a' && c.parametres.confondu, candidats = evalues.filter(c => !confondu(c));
+    // Tous les candidats essayés comptent pour le seuil du test : « b + a × » confondu, et celui qui ne s'apprend pas, compris.
+    const essayes = o.hors || !varie ? 0 : formes.length;
+    v.essayes = essayes;
     for (const c of candidats) {
-      c.placebo = gainPlacebo(c.modele, l, v.semaines, j => j._s, refs.constante.semaines.erreur);
+      c.placebo = gainPlacebo(c._f || c.modele, l, v.semaines, j => j._s, refs.constante.semaines.erreur);
       c.regles = regles(c, refs, v);
       c.accepte = Object.values(c.regles).every(r => r.ok);
     }
     const retenu = choisir(candidats, refs, o.hors), sg = sigma(retenu[v.cle].erreurs);
     return { cale: true, jours: l.length, unSeulMois: d.unSeulMois, validation: d.mois.length ? 'semaines et mois' : 'semaines',
+      ...(essayes ? { essayes, seuil: SEUIL_P / essayes } : {}),
       references: Object.fromEntries(REFERENCES.map(n => [n, resume(refs[n])])),
-      candidats: candidats.map(c => ({ ...resume(c), regles: c.regles, accepte: c.accepte, placebo: c.placebo })),
+      candidats: candidats.map(c => ({ ...resume(c), regles: c.regles, accepte: c.accepte, placebo: c.placebo, ...(c.choix ? { choix: c.choix } : {}) })),
       confondus: evalues.filter(confondu).map(c => ({ modele: c.modele, nom: c.nom, avec: 'x-a', a: c.parametres.aLibre, b: c.parametres.bLibre,
         raison: 'se confond avec « × a »' + (Number.isFinite(c.parametres.aLibre) ? ' : moindres carrés hors bornes (a = ' + fr(c.parametres.aLibre)
           + ' ; b = ' + fr(c.parametres.bLibre) + ')' : '') })),
       ...(o.hors ? { raison: 'hors simulation : la constante' } : !varie ? { raison: 'le simulé ne varie pas : pas de candidat' } : {}),
-      retenu: { modele: retenu.modele, nom: retenu.nom, parametres: parametresRetenus(retenu), sigma: sg, bande: sg === null ? null : Z_P10_P90 * sg },
+      retenu: { modele: retenu.modele, nom: retenu.nom, formule: formuleDe(retenu), parametres: parametresRetenus(retenu), sigma: sg, bande: sg === null ? null : Z_P10_P90 * sg },
       _retenu: retenu, _cle: v.cle };
   }
 
-  /** Le plus juste des candidats acceptés ; à 0,1 ETP près, le plus simple ; sans candidat, la meilleure référence (la constante hors simulation). */
+  /**
+   * Le choix, parmi les candidats acceptés (rangés du plus simple au plus riche). Le plus simple sert de base : une
+   * forme plus riche n'entre en lice que si elle le bat de plus de 0,1 ETP (évolution 17 a). Parmi celles-là, la plus
+   * juste ; à 0,1 ETP près, la plus simple. Sans candidat accepté, la meilleure référence (la constante hors
+   * simulation). Chaque candidat accepté reçoit son `choix` : « retenu », ou pourquoi il ne l'est pas.
+   */
   function choisir(candidats, refs, hors) {
-    const acceptes = candidats.filter(c => c.accepte);
+    const acceptes = candidats.filter(c => c.accepte), e = c => c.semaines.erreur, dit = c => '« ' + (c.nom || c.modele) + ' »', ecart = fr(ECART_SIMPLE) + ' ETP';
     if (acceptes.length) {
-      const min = Math.min(...acceptes.map(c => c.semaines.erreur));
-      return acceptes.filter(c => c.semaines.erreur <= min + ECART_SIMPLE).sort((x, y) => CANDIDATS.indexOf(x.modele) - CANDIDATS.indexOf(y.modele))[0];
+      const simple = acceptes[0], riches = acceptes.slice(1).filter(c => e(c) < e(simple) - ECART_SIMPLE);
+      const min = riches.length ? Math.min(...riches.map(e)) : null, retenu = riches.length ? riches.find(c => e(c) <= min + ECART_SIMPLE) : simple;
+      const rang = c => acceptes.indexOf(c);
+      for (const c of acceptes) {
+        c.choix = c === retenu ? 'retenu'
+          : c === simple ? 'accepté, pas retenu : ' + dit(retenu) + ' le bat de plus de ' + ecart
+            : !riches.includes(c) ? 'accepté, pas retenu : ne bat pas ' + dit(simple) + ', plus simple, de plus de ' + ecart
+              : e(retenu) < e(c) - ECART_SIMPLE ? 'accepté, pas retenu : ' + dit(retenu) + ' est plus juste de plus de ' + ecart
+                : rang(c) > rang(retenu) ? 'accepté, pas retenu : ' + dit(retenu) + ', plus simple, est à ' + ecart + ' près'
+                  // Plus simple que le retenu, mais loin du plus juste, que le retenu vaut à 0,1 ETP près.
+                  : 'accepté, pas retenu : ' + dit(riches.find(x => e(x) === min)) + ' est plus juste de plus de ' + ecart + ', et ' + dit(retenu) + ' le vaut à ' + ecart + ' près';
+      }
+      return retenu;
     }
     if (hors) return refs.constante;
     return refs.moteur.semaines.erreur <= refs.constante.semaines.erreur ? refs.moteur : refs.constante;
@@ -302,6 +384,7 @@
   /** Les paramètres que la politique d'effectif garde. */
   function parametresRetenus(e) {
     const p = e.parametres;
+    if (e._f) return gardes(e._f, p);
     if (e.modele === 'constante') return { c: p.c };
     if (e.modele === 'moteur') return {};
     return { a: p.a, ...(e.modele === 'b-x-a' ? { b: p.b } : {}), ...(e.modele === 'x-a-jour' ? { jours: p.jours.slice() } : {}) };
@@ -367,7 +450,7 @@
    *  (banc d'essai, évolution 11 d)
    * --------------------------------------------------------------------*/
 
-  const MODELES = ['moteur', 'constante', 'x-a', 'b-x-a', 'x-a-jour'];
+  const MODELES = ['moteur', 'constante', 'x-a', 'b-x-a', 'x-a-jour', ...F.ORDRE];
   const objet = x => !!x && typeof x === 'object' && !Array.isArray(x);
   const fini = x => typeof x === 'number' && Number.isFinite(x);
 
@@ -408,12 +491,13 @@
       noms.add(l.nom.trim());
       if (!MODELES.includes(l.modele)) throw new Error(ou + ' : modèle inconnu « ' + l.modele + ' ».');
       const q = objet(l.parametres) ? l.parametres : {};
-      const out = {};
-      for (const k of ['a', 'b', 'c']) if (q[k] !== undefined) {
+      // Une forme du catalogue relit ses paramètres elle-même, dans ses bornes (évolution 17 a).
+      const f = F.FORMES[l.modele], out = f ? f.relire(q, ou) : {};
+      for (const k of f ? [] : ['a', 'b', 'c']) if (q[k] !== undefined) {
         if (!fini(q[k]) || q[k] < BORNES[k][0] || q[k] > BORNES[k][1]) throw new Error(ou + ' : ' + k + ' hors de ses bornes (' + BORNES[k].map(x => fr(x)).join(' à ') + ').');
         out[k] = q[k];
       }
-      if (q.jours !== undefined) {
+      if (!f && q.jours !== undefined) {
         if (!Array.isArray(q.jours) || q.jours.length !== 7 || !q.jours.every(x => fini(x) && x > 0 && x <= FACTEUR_MAX)) throw new Error(ou + ' : sept facteurs du jour, positifs.');
         out.jours = q.jours.slice();
       }
@@ -610,8 +694,8 @@
     return h.toString(16).padStart(8, '0');
   }
 
-  const api = { JOURS_MIN, CANDIDATS, NOMS, semaineIso, jourSemaine, apprendre, predire, facteursDuJour, decoupages, wilcoxon, phi,
-    calerLigne, caler, prevuCale, Z_P10_P90, politiqueDe, validerPolitique, prevuDesJours, texteSigmaUnite, jourDeLaJournee, jourDecale, appliquerFacteur, annulerFacteur,
+  const api = { JOURS_MIN, CANDIDATS, NOMS, SEUIL_P, ECART_SIMPLE, semaineIso, jourSemaine, apprendre, predire, facteursDuJour, decoupages, wilcoxon, phi,
+    calerLigne, caler, choisir, formule, prevuCale, Z_P10_P90, politiqueDe, validerPolitique, prevuDesJours, texteSigmaUnite, jourDeLaJournee, jourDecale, appliquerFacteur, annulerFacteur,
     annulable, lignesDegradees, empreinte };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyCalagePeriode = api;

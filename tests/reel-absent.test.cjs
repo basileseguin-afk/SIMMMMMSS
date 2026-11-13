@@ -13,6 +13,7 @@ const R = require('../moteur/reel.js');
 const C = require('../moteur/calage-periode.js');
 const T = require('../tableur.js');
 const REF = require('./reel-complet.attendu.json');
+const { sansEvolution17 } = require('./calage-avant-17.cjs');
 
 const lire = lignes => R.lireReel([{ nom: 'reel.csv', lignes: T.lireCsv(['date;role;heures_titulaires;heures_interim;heures_supp'].concat(lignes).join('\n')) }]);
 const jours = n => Array.from({ length: n }, (_, i) => new Date(Date.UTC(2026, 9, 1 + i)).toISOString().slice(0, 10));
@@ -96,7 +97,10 @@ test('non-régression : un réel complet donne la même comparaison et le même 
   const { validation, semaines, ...unite } = C.caler(comparaison).unite;
   // σ du total mesuré (correction 16) s'ajoute aussi, après : sans lui, le calage de la référence.
   const { sigma, ...apres } = unite.apres;
-  assert.deepEqual(JSON.parse(JSON.stringify({ ...C.caler(comparaison), unite: { ...unite, apres } })), REF.calage, 'seuls le total par semaines et σ du total s’ajoutent');
+  // L'évolution 17 (a) ajoute des candidats, la formule en clair et le seuil corrigé (tests/calage-avant-17.cjs) : sans eux, le calage de la référence.
+  assert.deepEqual(sansEvolution17({ ...C.caler(comparaison), unite: { ...unite, apres } }), sansEvolution17(REF.calage), 'seuls le total par semaines et σ du total s’ajoutent');
+  for (const [i, l] of C.caler(comparaison).lignes.entries())
+    assert.deepEqual([l.retenu.modele, l.retenu.parametres, l.retenu.sigma], [REF.calage.lignes[i].retenu.modele, REF.calage.lignes[i].retenu.parametres, REF.calage.lignes[i].retenu.sigma], l.nom + ' : le même modèle retenu');
   assert.ok(validation && semaines && Number.isFinite(sigma) && Number.isFinite(semaines.apres.sigma));
 });
 

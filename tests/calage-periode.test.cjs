@@ -1,6 +1,7 @@
 /* Banc d'essai, évolution 11 (c) — le calage sur le réel (moteur/calage-periode.js) :
  * par ligne de la correspondance, deux références (moteur, constante), trois
- * candidats (× a, b + a ×, × a × jour), validés hors échantillon (une semaine
+ * candidats (× a, b + a ×, × a × jour ; quatre de plus depuis l'évolution 17 a :
+ * tests/calage-formes.test.cjs), validés hors échantillon (une semaine
  * ISO laissée de côté ; un mois, s'il y en a deux de 14 jours), cinq règles
  * (plus juste que les références, stable, dans ses bornes, Wilcoxon, placebo),
  * le choix, σ et la bande P10–P90 (docs/BANC_ESSAI.md § 10). Des jours
@@ -42,8 +43,9 @@ test('réel = 0,8 × simulé, peu de bruit : « × a », a = 0,80 à 2 % près',
   // Le placebo : le gain du simulé mélangé tombe au quart, au plus, du vrai gain sur la constante.
   const gain = r.references.constante.erreurs.semaines - c.erreurs.semaines;
   assert.ok(gain > 0 && c.placebo <= 0.25 * gain, 'placebo ' + c.placebo + ', gain ' + gain);
-  // Wilcoxon contre la meilleure référence (la constante : le moteur se trompe de 20 %), par mois : p tout petit, écrit « p < 0,001 ».
-  assert.match(c.regles.wilcoxon.raison, /^accepté : Wilcoxon contre « constante », p < 0,001 \(par mois\)$/);
+  // Wilcoxon contre la meilleure référence (la constante : le moteur se trompe de 20 %), par mois : p tout petit, écrit « p < 0,001 » ;
+  // le seuil se divise par le nombre de candidats essayés sur la ligne (évolution 17 a : sept).
+  assert.match(c.regles.wilcoxon.raison, /^accepté : Wilcoxon contre « constante », p < 0,001 \(par mois ; seuil 0,05 ÷ 7 = 0,0071\)$/);
   assert.equal(r.retenu.bande, C.Z_P10_P90 * r.retenu.sigma);
 });
 
