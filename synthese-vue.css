@@ -47,7 +47,7 @@
 .sy-vide{color:var(--ds-texte-3)}
 /* Correction 17 (c) : un poste fixe n'a pas de besoin calculé ; la note dit ce qu'une ligne ne compte pas. */
 .sy-fixe{color:var(--ds-texte-3)}
-.sy-note{margin-top:var(--ds-e-1)}
+.sy-note,.sy-explique-occ{margin-top:var(--ds-e-1)}
 .sy-table [data-ton="attente"]{background:var(--ds-attente-doux);color:var(--ds-attente-texte)}
 .sy-table [data-ton="attente"] .ico{width:13px;height:13px;margin-right:4px;vertical-align:-2px}
 .sy-ecart,.sy-occ{white-space:nowrap}
@@ -59,6 +59,15 @@
 [data-ton="attente"] .sy-ecart-barre i,[data-ton="attente"] .sy-occ-barre i{background:var(--ds-attente)}
 .sy-occ-barre{display:inline-block;width:44px;height:8px;vertical-align:middle;border-radius:2px;background:var(--ds-surface-2)}
 .sy-occ-barre i{display:block;height:100%;border-radius:2px;background:var(--ds-d1)}
+/* Correction 18 (a) : les personnes sans travail — les heures, leur part, une barre neutre (jamais une couleur d'alerte) ;
+   l'attente d'un arrivage ; ce que l'équipe attendait avant son premier lot, sur deux lignes au besoin. */
+.sy-sans{white-space:nowrap}
+.sy-sans .sy-v{display:inline-block;min-width:38px;text-align:right}
+.sy-sans-barre{display:inline-block;width:36px;height:8px;margin-left:6px;vertical-align:middle;border-radius:2px;background:var(--ds-surface-2)}
+.sy-sans-barre i{display:block;height:100%;border-radius:2px;background:var(--ds-texte-4)}
+.sy-table small.sy-attend{white-space:normal;max-width:19ch;margin-left:auto;text-align:right}
+.sy-arrivage{white-space:nowrap}
+.sy-cause{margin-top:var(--ds-e-1)}
 .sy-legende{margin-top:var(--ds-e-2)}
 
 /* La courbe de la journée : à la largeur du bloc ; la bulle dessous. */

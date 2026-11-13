@@ -8,9 +8,10 @@
  *   — l'écart ne prend la couleur de statut que s'il manque des personnes ;
  *   — les seuils par défaut : une attente de 6 h, un écart de 3 personnes,
  *     seulement quand rien n'est réglé ;
- *   — le goulot : un service qui dépasse le seuil d'attente ET finit après son
- *     horaire ou fait partir une commande ou un vol en retard ; sinon, rien ne
- *     coince, et les attentes restent lisibles dans le tableau.
+ *   — le goulot, depuis la correction 18 (a) : un service qui finit après son
+ *     horaire d'au moins un quart d'heure, ou dont un lot fait partir une
+ *     commande ou un vol en retard — le seuil d'attente n'y joue plus ; sinon,
+ *     rien ne coince, et les attentes restent lisibles dans le tableau.
  * Vols, compagnies et équipes fictifs. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -47,7 +48,7 @@ test('un service permanent ou d’appui : « fixe », pas d’écart, hors de «
   assert.deepEqual([ap.fixe, ap.besoin, ap.presents, ap.fixes, ap.ecart, ap.signale], [true, null, 1, 1, null, false]);
   assert.deepEqual(mag.equipes.map(e => [e.id, e.fixe]), [['mag', true]]);
   // L'unité : il faut 1 personne (le montage) ; 5 sont présentes, dont 3 en postes fixes ; l'écart compare ce qui se compare.
-  assert.deepEqual(rep.personnes.total, { besoin: 1, presents: 5, fixes: 3, ecart: 1 });
+  assert.deepEqual(rep.personnes.total, { besoin: 1, presents: 5, fixes: 3, nonMesures: 0, ecart: 1 });
   assert.equal(SV.phrases(rep)[0], 'Il faut 1 personne, 5 sont présentes, dont 3 en postes fixes.');
   // Dans le tableau : « fixe » dans la colonne Besoin, pas d'écart.
   const html = SV.tableau(rep, ['magasin', 'prepa', 'dotation']), rang = id => html.split('<tr data-service="' + id + '"')[1].split('</tr>')[0];
@@ -55,7 +56,7 @@ test('un service permanent ou d’appui : « fixe », pas d’écart, hors de «
   assert.match(rang('magasin'), /class="num sy-ecart sy-vide">—</);
   assert.doesNotMatch(rang('prepa'), /sy-fixe/);
   // Sans poste fixe : la phrase d'avant.
-  const sans = { ...rep, personnes: { ...rep.personnes, total: { besoin: 1, presents: 2, fixes: 0, ecart: 1 } } };
+  const sans = { ...rep, personnes: { ...rep.personnes, total: { besoin: 1, presents: 2, fixes: 0, nonMesures: 0, ecart: 1 } } };
   assert.equal(SV.phrases(sans)[0], 'Il faut 1 personne, 2 sont présentes.');
 });
 
@@ -67,7 +68,7 @@ test('une ligne mixte : une équipe mesurée et un poste fixe dans le même serv
   assert.deepEqual([mo.fixe, mo.besoin, mo.presents, mo.fixes, mo.ecart, mo.sens], [false, 1, 4, 2, 1, 'sur']);
   assert.deepEqual(mo.equipes.map(e => [e.id, e.fixe]), [['mo', false], ['ap', true]]);
   // L'unité : le magasin (2) et l'appui (2) en postes fixes.
-  assert.deepEqual(rep.personnes.total, { besoin: 1, presents: 6, fixes: 4, ecart: 1 });
+  assert.deepEqual(rep.personnes.total, { besoin: 1, presents: 6, fixes: 4, nonMesures: 0, ecart: 1 });
   const html = SV.tableau(rep, ['magasin', 'prepa']), rang = html.split('<tr data-service="prepa"')[1].split('</tr>')[0];
   assert.match(rang, /<td class="num">1<small>\+ 2 fixes<\/small><\/td>/, 'le besoin, et ses postes fixes à côté');
   assert.doesNotMatch(rang, /sy-fixe/);
@@ -101,11 +102,16 @@ test('deux essais : un poste fixe se lit « fixe », pas « absent » — dans �
   assert.equal(u[col('Valeur')], 4, '3 au magasin, 1 à la dotation');
 });
 
-test('une équipe sans travail ce jour-là n’est pas un poste fixe : son besoin reste ses présents, comme avant', () => {
+test('une équipe sans travail ce jour-là n’est pas un poste fixe : son besoin ne se mesure pas (correction 18 a), elle ne compte plus dans « Il faut »', () => {
   const { r, args } = jouer({ vols: [dep('NO1', 'NORD', '20:00')], bareme: { prepa: { '*/YC': 420 } },
     ateliers: [eq('mo', 'prepa', '06:00', 1, [['NORD/YC']]), eq('vide', 'cuisine', '06:00', 2, [])], parcours: [chemin('c1', ['prepa'])], parcoursCabine: { YC: 'c1' } });
-  const cu = ligne(R.reponses(r, args), 'cuisine');
-  assert.deepEqual([cu.fixe, cu.besoin, cu.presents, cu.fixes, cu.ecart], [false, 2, 2, 0, 0]);
+  const rep = R.reponses(r, args), cu = ligne(rep, 'cuisine');
+  assert.deepEqual([cu.fixe, cu.nonMesure, cu.besoin, cu.presents, cu.fixes, cu.nonMesures, cu.ecart], [false, true, null, 2, 2, 2, null]);
+  assert.deepEqual(rep.personnes.total, { besoin: 1, presents: 3, fixes: 2, nonMesures: 2, ecart: 0 });
+  // Dans « Comparer deux essais », elle se lit « non mesuré », pas « absent ».
+  const CV = require('../comparer-vue.js'), b = JSON.parse(JSON.stringify(args)); b.ateliers.find(e => e.id === 'vide').personnes = 3;
+  const l = CV.lignesDesReponses(rep, R.reponses(P.simuler(b), b))[1].find(x => x.lib === 'Cuisine : il faut / présentes');
+  assert.deepEqual([l.a, l.b], ['non mesuré / 2', 'non mesuré / 3']);
 });
 
 /* ---- un handling à chauffeurs ----------------------------------------------------------------------- */
@@ -175,7 +181,7 @@ const ATTENTE = depart => jouer({ vols: [dep('NO1', 'NORD', depart, { bc: 10 })]
   ateliers: [eq('cu', 'cuisine', '06:00', 1, [['NORD/YC']]), eq('mo', 'prepa', '06:00', 1, [['NORD/BC'], ['NORD/YC']])],
   parcours: [chemin('c1', ['cuisine', 'prepa']), chemin('c2', ['prepa'])], parcoursCabine: { YC: 'c1', BC: 'c2' } });
 
-test('des lots qui attendent 2 h, mais tout finit dans l’horaire et rien ne part en retard : rien ne coince', () => {
+test('un arrivage qui attend 2 h, mais tout finit dans l’horaire et rien ne part en retard : rien ne coince', () => {
   const { r, args } = ATTENTE('18:00');
   for (const seuils of [undefined, { attenteLot: 60 }]) {
     const rep = R.reponses(r, args, { seuils }), mo = rep.coince.services.find(s => s.service === 'prepa');
@@ -192,33 +198,30 @@ test('des lots qui attendent 2 h, mais tout finit dans l’horaire et rien ne pa
   assert.match(SV.carteCoince(rep).corps, /Montage[\s\S]*2 h 00/, 'la carte nomme ce qui attend au-delà du seuil, sans en faire un goulot');
 });
 
-test('un service qui dépasse le seuil d’attente et son horaire : le goulot', () => {
-  // La veille : NORD/YC attend 3 h (06:00–09:00) ; l'équipe finit à 15:00 pour un horaire à 14:00 (60 min de dépassement).
+test('un service qui dépasse son horaire d’au moins un quart d’heure : le goulot, à n’importe quel seuil d’attente', () => {
+  // La veille : NORD/BC et NORD/YC, prêtes à l'arrivée de l'équipe, forment un seul arrivage, commencé à 06:00 : aucune attente
+  // (NORD/YC, faite après NORD/BC, est simplement à faire). L'équipe finit à 15:00 pour un horaire à 14:00 : 60 min de dépassement.
   const args = { liaisons: [], rendement: 1, noms: NOMS, heuresSup: { actif: true, plafond: 120 }, vols: [dep('NO1', 'NORD', '20:00', { bc: 10 })],
     bareme: { prepa: { 'NORD/BC': 180, 'NORD/YC': 300 } }, ateliers: [eq('veille', 'prepa', '06:00', 1, [['NORD/BC'], ['NORD/YC']], { jour: -1 })],
     parcours: [chemin('c1', ['prepa'])], parcoursCabine: { YC: 'c1', BC: 'c1' } };
   const r = P.simuler(args), rep = R.reponses(r, args, { seuils: { attenteLot: 60 } }), g = rep.coince.goulot;
-  assert.deepEqual([g.service, g.jour, g.attenteMax, g.depasse, g.enRetard], ['prepa', -1, 180, 60, 0]);
-  assert.deepEqual([g.de, g.a], [VEILLE + h('06:00'), VEILLE + h('09:00')]);
+  assert.deepEqual([g.service, g.jour, g.attenteMax, g.depasse, g.heuresSup, g.enRetard, g.cause], ['prepa', -1, null, 60, 60, 0, { code: 'charge' }]);
   assert.match(SV.carteCoince(rep).corps, /finit 1 h 00 après son horaire/);
-  // Au seuil par défaut (6 h), 3 h d'attente ne font pas un goulot, même avec le dépassement.
-  assert.equal(R.reponses(r, args).coince.goulot, null);
-  // Un service qui dépasse son horaire sans que rien n'attende n'est pas un goulot non plus.
-  const seul = { ...args, bareme: { prepa: { 'NORD/BC': 480 } }, ateliers: [eq('veille', 'prepa', '06:00', 1, [['NORD/BC']], { jour: -1 })], vols: [dep('NO1', 'NORD', '20:00', { bc: 10, yc: 0 })] };
-  const rs = R.reponses(P.simuler(seul), seul, { seuils: { attenteLot: 0 } });
-  assert.ok(rs.fins.services[0].depasse > 0);
-  assert.equal(rs.coince.goulot, null);
+  // Le seuil d'attente n'y joue pas : au défaut (6 h), le même goulot.
+  assert.equal(R.reponses(r, args).coince.goulot.service, 'prepa');
+  assert.equal(SV.phrases(rep)[1], 'Montage (veille) coince : il finit 1 h 00 après son horaire ; rien ne part en retard.');
 });
 
-test('un service qui dépasse le seuil d’attente et fait partir une commande en retard : le goulot, sans dépasser son horaire', () => {
+test('un service qui fait partir une commande en retard : le goulot, sans dépasser son horaire', () => {
   // Le même montage, mais le vol part à 09:00 : NORD/YC, prête à 09:45, part 45 min en retard.
   const { r, args } = ATTENTE('09:00'), rep = R.reponses(r, args, { seuils: { attenteLot: 60 } }), g = rep.coince.goulot;
   assert.ok(rep.exceptions.some(x => x.type === 'commande-en-retard' && x.id === 'NORD/YC'));
   assert.deepEqual([g.service, g.jour, g.attenteMax, g.depasse], ['prepa', 0, 120, 0]);
   assert.ok(g.enRetard >= 1, 'une commande en retard passe par lui');
   assert.match(SV.carteCoince(rep).corps, /part(ent)? en retard/);
-  // La cuisine, sans attente, n'est pas candidate ; au seuil par défaut (6 h), rien ne coince.
-  assert.equal(R.reponses(r, args).coince.goulot, null);
+  // La cuisine, par qui passe la commande en retard, coince aussi, après le montage ; au seuil d'attente par défaut, les mêmes.
+  assert.deepEqual(rep.coince.goulots.map(x => x.service), ['prepa', 'cuisine']);
+  assert.deepEqual(R.reponses(r, args).coince.goulots.map(x => x.service), ['prepa', 'cuisine']);
 });
 
 test('ce qui part en retard par une ligne : une commande pas finie, un vol chargé en retard au handling', () => {
@@ -238,6 +241,9 @@ test('ce qui part en retard par une ligne : une commande pas finie, un vol charg
   // Un retard sous le seuil de retard ne compte pas.
   const large = R.reponses(r, args, { seuils: { retard: 61 } });
   assert.deepEqual(large.coince.services.map(x => x.enRetard), [0, 0, 0]);
-  // Sans attente au-delà du seuil, aucun de ces services n'est un goulot : un retard seul ne suffit pas.
-  assert.equal(rep.coince.goulot, null);
+  // Un départ en retard suffit (correction 18 a) : ces services coincent, sans attente ni dépassement. À heures sup et cumul
+  // égaux, l'ordre des lignes. Le montage attendait la cuisine avant son premier lot : sa cause le dit.
+  assert.deepEqual(rep.coince.goulots.map(g => [g.service, g.depasse, g.cumul]), [['cuisine', 0, 0], ['prepa', 0, 0], ['quais', 0, 0]]);
+  assert.deepEqual(rep.coince.goulots[1].cause, { code: 'amont', service: 'cuisine', nom: 'Cuisine', a: h('08:00') });
+  assert.deepEqual(large.coince.goulots, []);
 });

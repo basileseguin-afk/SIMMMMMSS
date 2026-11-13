@@ -47,7 +47,7 @@ test('1. un service en sur-effectif, un en sous-effectif : besoin, présents, é
   proche(mo.charge, 600 / 420);
   assert.deepEqual(mo.equipes.map(e => [e.id, e.mesure]), [['mo', true]]);
   // L'unité : 3 personnes nécessaires, 4 présentes, aucune en poste fixe.
-  assert.deepEqual(rep.personnes.total, { besoin: 3, presents: 4, fixes: 0, ecart: 1 });
+  assert.deepEqual(rep.personnes.total, { besoin: 3, presents: 4, fixes: 0, nonMesures: 0, ecart: 1 });
   // Un écart sous le seuil ne se signale pas : au seuil par défaut (3 personnes), il manque 1 personne au montage, sans alerte.
   const large = R.reponses(r, args);
   assert.equal(large.seuils.ecartPersonnes, 3);
@@ -81,17 +81,21 @@ test('1. l’arrondi au service : deux équipes calculées à 0,4 poste chacune 
   assert.deepEqual([s.besoin, s.presents, s.ecart, s.sens], [1, 2, 1, 'sur']);
 });
 
-test('1. une équipe sans charge mesurée (aucun lot) : son besoin est ses présents, sans écart', () => {
+test('1. une équipe sans charge mesurée (aucun lot) ne compte plus dans le besoin (correction 18 a) : rangée avec les postes fixes', () => {
   const { r, args } = jouer({ vols: [dep('NO1', 'NORD', '20:00')], bareme: { prepa: { '*/YC': 420 } },
     ateliers: [eq('mo', 'prepa', '06:00', 1, [['NORD/YC']]), eq('vide', 'prepa', '06:00', 2, [])],
     parcours: [chemin('c1', ['prepa'])], parcoursCabine: { YC: 'c1' } });
   const s = R.reponses(r, args).personnes.services.find(x => x.service === 'prepa');
-  assert.deepEqual(s.equipes.map(e => [e.id, e.mesure, e.besoin]), [['mo', true, 1], ['vide', false, 2]]);
-  assert.deepEqual([s.besoin, s.presents, s.ecart, s.sens, s.signale], [3, 3, 0, null, false]);
+  assert.deepEqual(s.equipes.map(e => [e.id, e.mesure, e.nonMesure, e.besoin]), [['mo', true, false, 1], ['vide', false, true, 0]]);
+  // Il faut 1 personne (l'équipe mesurée) ; 3 présentes, dont 2 au besoin non mesuré ; écart (3 − 2) − 1 = 0.
+  assert.deepEqual([s.besoin, s.presents, s.fixes, s.nonMesures, s.ecart, s.sens, s.signale], [1, 3, 2, 2, 0, null, false]);
 });
 
 /* ---- 2. Où et quand ça coince ? -------------------------------------------------------------------- */
 
+// Correction 18 (a) : la file et l'attente se comptent en arrivages (les lots d'une équipe prêts au même instant) ; ici, chaque
+// lot est son propre arrivage. « Où ça coince » se juge sur les conséquences : un dépassement d'un quart d'heure, ou un lot qui
+// fait partir une commande ou un vol en retard — le seuil d'attente n'y joue plus.
 // Le montage fait d'abord NORD/BC (3 h, sans fournisseur), puis NORD/YC, que la cuisine livre à 07:00 : YC attend le montage
 // de 07:00 à 09:00, pendant que le montage travaille (occupé à 100 %) → « personnel ». Il la finit à 09:45 : à l'heure pour un
 // vol de 18:00 ; en retard pour un vol de 10:00 (sa commande est due à 09:15).
@@ -108,21 +112,25 @@ const AMONT = (std = '18:00') => jouer({ vols: [dep('NO1', 'NORD', std, { bc: 10
 test('2. un goulot « personnel » : la file, l’attente la plus longue, le cumul, la fenêtre', () => {
   const { r, args } = PERSONNEL('10:00'), c = R.reponses(r, args, { seuils: { attenteLot: 60 } }).coince;
   const mo = c.services.find(s => s.service === 'prepa'), cu = c.services.find(s => s.service === 'cuisine');
-  assert.deepEqual(mo.file, { lots: 1, a: h('07:00') });
-  assert.deepEqual(mo.attenteMax, { minutes: 120, lot: 'NORD/YC', equipe: 'mo', de: h('07:00'), a: h('09:00') });
-  assert.equal(mo.cumul, 120, '1 lot × 120 min');
+  assert.equal(mo.arrivages, 2, 'NORD/BC à 06:00 (l’arrivée de l’équipe), NORD/YC à 07:00');
+  assert.deepEqual(mo.file, { arrivages: 1, a: h('07:00') });
+  assert.deepEqual(mo.attenteMax, { minutes: 120, lot: 'NORD/YC', lots: 1, equipe: 'mo', de: h('07:00'), a: h('09:00') });
+  assert.equal(mo.cumul, 120, '1 arrivage × 120 min');
   assert.deepEqual(mo.parts, { materiel: 0, amont: 0 });
   proche(mo.occupationFile, 1, 'au travail tout le temps de la file');
   assert.equal(mo.cause, 'personnel');
   assert.deepEqual([cu.cumul, cu.cause, cu.attenteMax], [0, null, null], 'la cuisine : rien n’attend');
-  // Le goulot (correction 17 c) : il dépasse le seuil d'attente ET sa commande NORD/YC part en retard (finie à 09:45, due à 09:15).
-  assert.equal(mo.enRetard, 1);
-  assert.deepEqual(c.goulot, { service: 'prepa', nom: 'Montage', jour: 0, cause: 'personnel', de: h('07:00'), a: h('09:00'), attenteMax: 120, cumul: 120,
-    depasse: 0, enRetard: 1 });
-  // La même file, tout à l'heure (le vol de 18:00), dans l'horaire : la ligne garde sa file et sa cause, mais rien ne coince.
+  // Le goulot : sa commande NORD/YC part en retard (finie à 09:45, due à 09:15) ; il finit dans son horaire, mais son lot
+  // finit après la limite. La cuisine, par qui passe cette commande, coince aussi : son lot a fini avant la limite, la
+  // commande prend son retard en aval ; le montage, au plus grand cumul d'attente, passe devant.
+  assert.deepEqual([mo.enRetard, mo.apresLimite, cu.enRetard, cu.apresLimite], [1, 1, 1, 0]);
+  assert.deepEqual(c.goulot, { service: 'prepa', nom: 'Montage', jour: 0, depasse: 0, heuresSup: 0, enRetard: 1, apresLimite: 1, cumul: 120, attenteMax: 120,
+    cause: { code: 'limite' } });
+  assert.deepEqual(c.goulots.map(g => [g.service, g.enRetard, g.cumul, g.cause.code]), [['prepa', 1, 120, 'limite'], ['cuisine', 1, 0, 'aval']]);
+  // Le même arrivage qui attend, tout à l'heure (le vol de 18:00), dans l'horaire : la ligne garde son attente et sa cause, mais rien ne coince.
   const p = PERSONNEL(), d = R.reponses(p.r, p.args, { seuils: { attenteLot: 60 } }).coince, mo2 = d.services.find(s => s.service === 'prepa');
   assert.deepEqual([mo2.attenteMax.minutes, mo2.cumul, mo2.cause, mo2.enRetard], [120, 120, 'personnel', 0]);
-  assert.equal(d.goulot, null);
+  assert.deepEqual([d.goulot, d.goulots], [null, []]);
 });
 
 test('2. une équipe inoccupée du même service ne dilue pas l’occupation de celle qui tient la file', () => {
@@ -137,21 +145,27 @@ test('2. une équipe inoccupée du même service ne dilue pas l’occupation de 
 
 test('2. un goulot « amont » : les personnes attendent le service d’avant pendant que la file monte', () => {
   const { r, args } = AMONT('09:30'), c = R.reponses(r, args, { seuils: { attenteLot: 60 } }).coince, mo = c.services.find(s => s.service === 'prepa');
-  assert.deepEqual(mo.attenteMax, { minutes: 150, lot: 'NORD/YC', equipe: 'mo', de: h('06:00'), a: h('08:30') });
+  assert.deepEqual(mo.attenteMax, { minutes: 150, lot: 'NORD/YC', lots: 1, equipe: 'mo', de: h('06:00'), a: h('08:30') });
   assert.deepEqual(mo.parts, { materiel: 0, amont: 120 }, 'de 06:00 à 08:00, le montage attend la cuisine');
   proche(mo.occupationFile, 0.2, '30 min au travail sur 150 de file');
   assert.equal(mo.cause, 'amont');
-  assert.deepEqual(c.goulot, { service: 'prepa', nom: 'Montage', jour: 0, cause: 'amont', de: h('06:00'), a: h('08:30'), attenteMax: 150, cumul: 150,
-    depasse: 0, enRetard: 1 });
+  // NORD/YC part en retard (finie à 09:00, due à 08:45 : 15 min) ; avant son premier lot (NORD/BC, à 08:00), le montage
+  // attendait la cuisine depuis 06:00 : ces 2 h perdues couvrent le retard, la cause les nomme.
+  assert.deepEqual(c.goulot, { service: 'prepa', nom: 'Montage', jour: 0, depasse: 0, heuresSup: 0, enRetard: 1, apresLimite: 1, cumul: 150, attenteMax: 150,
+    cause: { code: 'amont', service: 'cuisine', nom: 'Cuisine', a: h('08:00') } });
 });
 
-test('2. une journée sans goulot : rien n’attend, ou rien n’attend plus que le seuil', () => {
+test('2. une journée sans goulot : tout finit dans l’horaire et rien ne part en retard ; le seuil d’attente n’y joue pas', () => {
+  // Un arrivage attend 2 h, mais tout finit à l'heure : rien ne coince, au seuil d'attente le plus bas comme au plus haut.
+  const p = PERSONNEL();
+  for (const attenteLot of [0, 119, 360, 1440]) assert.equal(R.reponses(p.r, p.args, { seuils: { attenteLot } }).coince.goulot, null, 'au seuil de ' + attenteLot + ' min');
+  // Avec un départ en retard (le vol de 10:00), le même service coince, à n'importe quel seuil d'attente.
+  const q = PERSONNEL('10:00');
+  for (const attenteLot of [0, 120, 1440]) assert.equal(R.reponses(q.r, q.args, { seuils: { attenteLot } }).coince.goulot.service, 'prepa');
+  // Une commande pas finie (le montage, à 1 personne pour 1,43 poste, est coupé par la fin de son poste) : ses services
+  // coincent. Le montage, qui ne finit pas son lot, d'abord ; la cuisine a fini le sien : le retard se prend en aval.
   const { r, args } = SOUS_SUR();
-  assert.equal(R.reponses(r, args).coince.goulot, null, 'aucune file');
-  const p = PERSONNEL('10:00');
-  assert.equal(R.reponses(p.r, p.args, { seuils: { attenteLot: 120 } }).coince.goulot, null, '120 min ne dépassent pas un seuil de 120');
-  assert.equal(R.reponses(p.r, p.args, { seuils: { attenteLot: 119 } }).coince.goulot.service, 'prepa');
-  assert.equal(R.reponses(p.r, p.args).coince.goulot, null, 'au seuil par défaut (6 h), une attente de 2 h ne coince pas');
+  assert.deepEqual(R.reponses(r, args).coince.goulots.map(g => [g.service, g.enRetard, g.cause.code]), [['prepa', 1, 'limite'], ['cuisine', 1, 'aval']]);
 });
 
 /* ---- 3. À quelle heure chaque service finit-il, avec combien d'heures sup ? ------------------------ */
@@ -222,7 +236,8 @@ test('5. deux essais : la différence sur chacune des quatre réponses (B − A)
   assert.deepEqual(d.personnes.total, { besoin: { a: 3, b: 3, d: 0 }, presents: { a: 4, b: 5, d: 1 }, ecart: { a: 1, b: 2, d: 1 } });
   const mo = d.personnes.services.find(s => s.service === 'prepa');
   assert.deepEqual([mo.presents, mo.ecart], [{ a: 1, b: 2, d: 1 }, { a: -1, b: 0, d: 1 }]);
-  assert.deepEqual(d.coince.goulot, { a: null, b: null, jourA: null, jourB: null, change: false });
+  // A : la commande n'est pas finie, ses services coincent (à égalité, celui qui ne finit pas son lot d'abord) ; B : rien ne coince.
+  assert.deepEqual(d.coince.goulot, { a: 'prepa', b: null, jourA: 0, jourB: null, change: true });
   // Avec deux personnes, le montage finit (A : pas fini) ; la commande devient prête.
   const fin = d.fins.services.find(s => s.service === 'prepa').fin;
   assert.equal(fin.a, null); assert.ok(fin.b > h('08:20'));
@@ -290,7 +305,7 @@ test('les seuils : les défauts quand la sauvegarde ne les a pas', () => {
 
 test('les seuils : une valeur invalide est refusée, en la nommant', () => {
   assert.throws(() => R.seuilsComplets({ occupation: 120 }), /Occupation/);
-  assert.throws(() => R.seuilsComplets({ attenteLot: -5 }), /Attente d’un lot/);
+  assert.throws(() => R.seuilsComplets({ attenteLot: -5 }), /Attente d’un arrivage/);
   assert.throws(() => R.seuilsComplets({ retard: 'vite' }), /Retard/);
   assert.throws(() => R.seuilsComplets({ ecartPersonnes: null }), /Écart de personnes/);
   assert.throws(() => R.seuilsComplets({ dureeStockMax: 0 }), /Durée maximale d’un stock/);
@@ -324,10 +339,11 @@ test('l’outil simuler-journee : --reponses ajoute les réponses, aux seuils de
     const args = J.argumentsDeLaJournee(sauvegarde, await J.volsDuFichier(new File([F.volsCsv()], 'vols.csv')), {});
     assert.deepStrictEqual(avec.reponses, JSON.parse(JSON.stringify(R.reponses(J.jouer(args), args))));
     assert.deepEqual(avec.reponses.seuils, R.SEUILS_DEFAUT, 'sans seuils dans la sauvegarde : les défauts');
-    assert.equal(avec.reponses.coince.goulot, null, 'au seuil par défaut, aucune attente ne dépasse 6 h');
+    const g = avec.reponses.coince.goulot;
+    assert.ok(g && (g.depasse >= R.DEPASSEMENT_MIN || g.enRetard > 0), 'l’unité fictive coince : des départs en retard');
     assert.deepEqual(seuils.reponses.seuils, { ...R.SEUILS_DEFAUT, attenteLot: 60 }, 'les seuils de la sauvegarde');
-    const g = seuils.reponses.coince.goulot;
-    assert.ok(g && g.attenteMax > 60 && (g.depasse > 0 || g.enRetard > 0), 'au seuil d’une heure, l’unité fictive coince : une attente et des départs en retard');
+    // « Où ça coince » se juge sur les conséquences (correction 18 a) : le seuil d'attente réglé n'y change rien.
+    assert.deepEqual(seuils.reponses.coince.goulots, avec.reponses.coince.goulots);
   } finally { fs.rmSync(dossier, { recursive: true, force: true }); }
 });
 

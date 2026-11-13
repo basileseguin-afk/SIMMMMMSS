@@ -136,7 +136,8 @@ const tropDeMinutes=texte=>[...String(texte).matchAll(/(\d[\d   ]*) ?min\b/g)
   await nav.aller(page,'j-plan');await page.evaluate(()=>Sim.vue.allerA(Sim.vue.debut));await attendre(300);
   assert.equal(await page.locator('#goulot-info').isVisible(),false,'rien à dire : rien d’affiché');
   await page.evaluate(()=>Sim.seuils.enregistrer({attenteLot:60}));await page.evaluate(()=>Sim.vue.allerA(Sim.vue.debut+1));await attendre(300);
-  assert.match(await page.locator('#goulot-info').innerText(),/qui attend le plus : \d+ h \d\d en tout/,'au-delà du seuil : il le dit, en heures');
+  // Correction 18 (a) : la phrase suit l'attente d'un arrivage (les lots livrés ensemble), celle de la Synthèse.
+  assert.match(await page.locator('#goulot-info').innerText(),/ce sont les arrivages de .* qui attendent le plus : \d+ h \d\d en tout/,'au-delà du seuil : il le dit, en heures');
   await page.evaluate(()=>localStorage.removeItem('ory-seuils-v1'));
 
   assert.deepEqual(errors,[],errors.join(' | '));

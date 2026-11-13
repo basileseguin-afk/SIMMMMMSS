@@ -8,9 +8,14 @@
  *   — le jour des vols (J, 06:00, 1 personne) : SUD/YC, 450 homme-minutes, de
  *     06:00 à 09:00, de 09:15 à 12:15, de 13:00 à 14:30 ; 30 min d'heures sup,
  *     aucune file.
- * Chaque ligne a sa fin, sa fin d'horaire, son dépassement, ses heures sup, sa
- * file et son attente ; la somme des lignes fait le service ; chaque ligne dit
- * son jour ; le goulot dit le sien. Vols, compagnies et équipes fictifs. */
+ * Chaque ligne a sa fin, sa fin d'horaire, son dépassement, ses heures sup, ses
+ * arrivages et leur attente ; la somme des lignes fait le service ; chaque ligne
+ * dit son jour ; le goulot dit le sien. Depuis la correction 18 (a), l'attente
+ * se compte en arrivages : les deux lots de la veille, prêts à l'arrivée de
+ * l'équipe, forment un seul arrivage, sans attente (NORD/YC est « à faire ») ;
+ * et un service coince s'il dépasse son horaire d'au moins un quart d'heure :
+ * la veille (60 min), puis le jour des vols (30 min).
+ * Vols, compagnies et équipes fictifs. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const P = require('../moteur/production.js');
@@ -29,8 +34,7 @@ const DEUX_JOURS = () => {
     parcours: [chemin('c1', ['prepa'])], parcoursCabine: { YC: 'c1', BC: 'c1' } };
   return { r: P.simuler(args), args };
 };
-// Le goulot (correction 17 c) : une attente au-delà du seuil ET une fin après l'horaire. La veille attend 3 h et finit 1 h après
-// son horaire : elle coince dès qu'on règle l'attente d'un lot sous 3 h (le défaut, 6 h, ne la retient pas).
+// Le goulot (correction 18 a) ne dépend d'aucun seuil réglable : à une heure comme au défaut, le même.
 const UNE_HEURE = { seuils: { attenteLot: 60 } };
 
 test('la fin, la fin d’horaire, le dépassement et les heures sup : par service et par jour de travail', () => {
@@ -46,16 +50,17 @@ test('la fin, la fin d’horaire, le dépassement et les heures sup : par servic
   assert.equal(f.reduce((n, s) => n + s.heuresSup.total, 0), service);
 });
 
-test('la file et l’attente : par service et par jour de travail ; le goulot dit son jour', () => {
+test('les arrivages et leur attente : par service et par jour de travail ; le goulot dit son jour', () => {
   const { r, args } = DEUX_JOURS(), c = R.reponses(r, args, UNE_HEURE).coince, lignes = c.services.filter(s => s.service === 'prepa');
   assert.deepEqual(lignes.map(s => s.jour), [-1, 0]);
   const [v, j] = lignes;
-  assert.deepEqual(v.file, { lots: 1, a: VEILLE + h('06:00') });
-  assert.deepEqual(v.attenteMax, { minutes: 180, lot: 'NORD/YC', equipe: 'veille', de: VEILLE + h('06:00'), a: VEILLE + h('09:00') });
-  assert.equal(v.cumul, 180);
-  assert.deepEqual([j.file, j.attenteMax, j.cumul, j.cause], [null, null, 0, null], 'le jour des vols : rien n’attend');
-  assert.deepEqual([c.goulot.service, c.goulot.jour, c.goulot.de, c.goulot.a], ['prepa', -1, VEILLE + h('06:00'), VEILLE + h('09:00')]);
-  assert.equal(R.reponses(r, args).coince.goulot, null, 'au seuil par défaut (6 h), 3 h d’attente ne coincent pas');
+  // La veille : NORD/BC et NORD/YC, prêtes à 06:00, forment un arrivage, commencé à 06:00 ; le jour des vols : un arrivage aussi.
+  assert.deepEqual([v.arrivages, v.file, v.attenteMax, v.cumul], [1, null, null, 0], 'la veille : un arrivage, sans attente');
+  assert.deepEqual([j.arrivages, j.file, j.attenteMax, j.cumul, j.cause], [1, null, null, 0, null], 'le jour des vols : rien n’attend');
+  // Les deux lignes dépassent leur horaire d'au moins un quart d'heure : la veille (60 min d'heures sup), puis le jour des vols (30).
+  assert.deepEqual(c.goulots.map(g => [g.service, g.jour, g.depasse, g.heuresSup]), [['prepa', -1, 60, 60], ['prepa', 0, 30, 30]]);
+  assert.deepEqual([c.goulot.service, c.goulot.jour], ['prepa', -1]);
+  assert.deepEqual(R.reponses(r, args).coince.goulots, c.goulots, 'au seuil d’attente par défaut, les mêmes');
 });
 
 test('les personnes, la file et les fins portent les mêmes lignes (service, jour)', () => {
@@ -73,14 +78,15 @@ test('la Synthèse : deux lignes pour le service, chacune avec sa fin, ses heure
   const { r, args } = DEUX_JOURS(), rep = R.reponses(r, args), ls = SV.lignes(rep, ['prepa']);
   assert.deepEqual(ls.map(l => [l.service, l.jour, l.mot]), [['prepa', -1, 'veille'], ['prepa', 0, 'jour des vols']]);
   assert.deepEqual(ls.map(l => [l.fin.fin, l.fin.heuresSup.total]), [[VEILLE + h('15:00'), 60], [h('14:30'), 30]]);
-  assert.deepEqual(ls.map(l => (l.coince.attenteMax ? l.coince.attenteMax.minutes : null)), [180, null]);
+  assert.deepEqual(ls.map(l => [l.coince.arrivages, l.coince.attenteMax]), [[1, null], [1, null]]);
+  assert.deepEqual(ls.map(l => [l.sans.minutes, l.sans.apres]), [[0, 0], [0, 0]], 'les deux équipes travaillent jusqu’au bout : aucune heure sans travail');
   // Dans le tableau : chaque ligne porte son jour, et ses propres cases de file, de fin et d'heures sup.
   const html = SV.tableau(rep, ['prepa']), rangs = html.split('<tr data-service="prepa"').slice(1);
   assert.equal(rangs.length, 2);
   assert.match(rangs[0], /data-jour="-1"[\s\S]*<span class="sy-jour">veille<\/span>[\s\S]*J-1 15:00[\s\S]*1 h 00/);
   assert.match(rangs[1], /data-jour="0"[\s\S]*<span class="sy-jour">jour des vols<\/span>[\s\S]*14:30[\s\S]*30 min/);
   assert.doesNotMatch(html, /rowspan/, 'plus de case partagée entre deux jours');
-  for (const rang of rangs) assert.equal((rang.match(/class="sy-file"/g) || []).length, 1);
+  for (const rang of rangs) assert.equal((rang.match(/class="sy-arrivage"/g) || []).length, 1);
 });
 
 test('les mots du jour : J−2, veille, jour des vols, J+1 ; le jour des vols se dit quand le service a plusieurs lignes', () => {
@@ -95,28 +101,34 @@ test('les mots du jour : J−2, veille, jour des vols, J+1 ; le jour des vols se
 
 test('la phrase de tête et la carte « Où ça coince » disent le jour du goulot', () => {
   const { r, args } = DEUX_JOURS(), rep = R.reponses(r, args, UNE_HEURE);
-  assert.match(SV.phrases(rep)[1], /^Montage \(veille\) coince de J-1 06:00 à J-1 09:00 ; /);
-  assert.match(SV.carteCoince(rep).corps, /Montage <span class="sy-jour">veille<\/span>/);
+  assert.equal(SV.phrases(rep)[1], 'Montage (veille) coince : il finit 1 h 00 après son horaire (et 1 autre service) ; rien ne part en retard.');
+  const carte = SV.carteCoince(rep).corps;
+  assert.match(carte, /Montage <span class="sy-jour">veille<\/span>[\s\S]*Coincent aussi[\s\S]*Montage<\/b> <span class="sy-jour">jour des vols<\/span> finit 30 min après son horaire/);
   // Un goulot le jour des vols le dit aussi, quand son service a une autre ligne : comme la ligne du tableau.
-  const g0 = { ...rep, coince: { ...rep.coince, goulot: { ...rep.coince.goulot, jour: 0, de: h('06:00'), a: h('09:00') } } };
-  assert.match(SV.phrases(g0)[1], /^Montage \(jour des vols\) coince de 06:00 à 09:00 ; /);
+  const j0 = rep.coince.goulots[1], g0 = { ...rep, coince: { ...rep.coince, goulot: j0, goulots: [j0] } };
+  assert.equal(SV.phrases(g0)[1], 'Montage (jour des vols) coince : il finit 30 min après son horaire ; rien ne part en retard.');
   assert.match(SV.carteCoince(g0).corps, /Montage <span class="sy-jour">jour des vols<\/span>/);
-  // Un service qui ne travaille que le jour des vols : la phrase d'avant, sans mention.
+  // Un service qui ne travaille que le jour des vols : sans mention de jour.
   const seul = { ...g0, coince: { ...g0.coince, services: g0.coince.services.filter(s => s.jour === 0) } };
-  assert.match(SV.phrases(seul)[1], /^Montage coince de 06:00 à 09:00 ; /);
+  assert.equal(SV.phrases(seul)[1], 'Montage coince : il finit 30 min après son horaire ; rien ne part en retard.');
   assert.doesNotMatch(SV.carteCoince(seul).corps, /sy-jour">jour des vols/);
 });
 
 test('la feuille « Réponses » et « Comparer deux essais » portent le jour de chaque ligne', () => {
   const ER = require('../echanges-reponses.js'), CV = require('../comparer-vue.js');
   const { r, args } = DEUX_JOURS(), rep = R.reponses(r, args, UNE_HEURE), f = ER.feuilleDesReponses(rep, { date: '2026-11-02' });
-  const col = nom => ER.TETE.indexOf(nom);
+  const col = nom => ER.TETE.indexOf(nom), jourDe = l => l[col('Jour de travail')].excel;
   const fins = f.lignes.filter(l => l[col('Sujet')] === 'Montage' && l[col('Mesure')] === 'Fin du dernier lot');
   assert.equal(fins.length, 2, 'une ligne par jour de travail');
-  assert.equal(fins[1][col('Jour de travail')].excel - fins[0][col('Jour de travail')].excel, 1, 'la veille, puis le jour des vols');
-  const files = f.lignes.filter(l => l[col('Sujet')] === 'Montage' && l[col('Mesure')] === 'File la plus longue');
-  assert.deepEqual(files.map(l => l[col('Jour de travail')].excel), [fins[0][col('Jour de travail')].excel], 'la file de la veille, à son jour');
-  assert.equal(f.lignes.find(l => l[col('Mesure')] === 'Goulot')[col('Jour de travail')].excel, fins[0][col('Jour de travail')].excel, 'le goulot dit son jour');
+  assert.equal(jourDe(fins[1]) - jourDe(fins[0]), 1, 'la veille, puis le jour des vols');
+  // Les arrivages et les personnes sans travail : une ligne par jour de travail aussi.
+  for (const mesure of ['Arrivages du jour', 'Attente la plus longue d’un arrivage', 'Personnes sans travail']) {
+    const l = f.lignes.filter(x => x[col('Sujet')] === 'Montage' && x[col('Mesure')] === mesure);
+    assert.deepEqual(l.map(jourDe), fins.map(jourDe), mesure);
+  }
+  // Le goulot dit son jour (la veille) ; le jour des vols « coince aussi », à son jour.
+  assert.equal(jourDe(f.lignes.find(l => l[col('Mesure')] === 'Goulot')), jourDe(fins[0]), 'le goulot dit son jour');
+  assert.equal(jourDe(f.lignes.find(l => l[col('Mesure')] === 'Coince aussi')), jourDe(fins[1]));
   // Un second essai où la veille a deux personnes : sa ligne change, et se nomme « Montage (veille) ».
   const B = (() => { const x = DEUX_JOURS().args; x.ateliers[0].personnes = 2; return { r: P.simuler(x), args: x }; })();
   const lignes = CV.lignesDesReponses(rep, R.reponses(B.r, B.args, UNE_HEURE));

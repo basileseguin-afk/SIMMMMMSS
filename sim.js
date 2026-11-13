@@ -240,7 +240,9 @@ function majStocks(){
   OrlyTemps.rendre(document.getElementById('journee-stocks'),Sim.ateliers&&Sim.ateliers.resultat,id=>noms[id]);
   // Évolution 14 (d) : le plus en stock d'abord, l'échelle des petites courbes, plus de 24 h signalé (resultats-vue.js).
   // Évolution 15 (c) : une alerte de stock, ou un bouchon, seulement au-delà des seuils d'alerte.
-  if(window.OrlyResultatsVue)OrlyResultatsVue.completerStocks(document.getElementById('journee-stocks'),Sim.ateliers&&Sim.ateliers.resultat,seuilsAlerte().seuils);
+  // Correction 18 (a) : le bouchon suit l'attente d'un arrivage (à une plonge par vol, un vol revenu qui attend son tunnel).
+  if(window.OrlyResultatsVue)OrlyResultatsVue.completerStocks(document.getElementById('journee-stocks'),Sim.ateliers&&Sim.ateliers.resultat,seuilsAlerte().seuils,
+    ((typeof reponsesDuJour==='function'&&reponsesDuJour())||{}).plonge);
 }
 /* Un service du plan d'origine retiré de l'unité (Organisation › Services) :
  * il sort de toutes les listes, des liens et du plan, sans être effacé. */
@@ -1689,13 +1691,12 @@ function majGoulotInfo() {
     if(pire)html='<div class="goulot-tete attente">'+(I?I.ico('sablier'):'')+'<strong>'+escapeHTML(noms[pire.id]||pire.id)+'</strong></div><p>attend le service d’avant'
       +(pire.depuis>=1?' depuis '+MoteurProduction.dureeLisible(pire.depuis):'')+' pour « '+escapeHTML(MoteurProduction.enClair(pire.lot.nom||''))+' » ; il se met au travail à '+hh(pire.lot.debut)+'.</p>';
     // Évolution 15 (c) : rien à dire (personne n'attend), rien d'écrit ; le panneau se masque plus bas.
-    // Et sur toute la journée : le service qui a le plus attendu.
-    const cumul={};for(const l of lots)if(l.attente>=1)cumul[l.service]=(cumul[l.service]||0)+l.attente;
-    const top=Object.entries(cumul).sort((x,y)=>y[1]-x[1])[0];
-    // Évolution 15 (c) : une durée en heures au-delà d'une heure ; seulement si cette attente passe le seuil d'attente d'un lot.
-    const seuilAttente=(seuilsAlerte().seuils||{attenteLot:360}).attenteLot;
-    if(top&&top[1]>seuilAttente)html+='<p class="mini-note">Sur toute la journée, c’est <strong>'+escapeHTML(noms[top[0]]||top[0])+'</strong> qui attend le plus : '
-      +MoteurProduction.dureeLisible(top[1])+' en tout.</p>';
+    // Et sur toute la journée (correction 18 a) : le service dont les arrivages attendent le plus — un arrivage, les lots
+    // livrés ensemble ; seulement si l'un d'eux attend plus que le seuil d'attente. Les mêmes chiffres que la Synthèse.
+    const rep=typeof reponsesDuJour==='function'?reponsesDuJour():null;
+    const top=rep?rep.coince.services.filter(x=>x.attenteMax&&x.attenteMax.minutes>rep.seuils.attenteLot).sort((x,y)=>y.cumul-x.cumul)[0]:null;
+    if(top)html+='<p class="mini-note">Sur toute la journée, ce sont les arrivages de <strong>'+escapeHTML(top.nom)+'</strong> qui attendent le plus : '
+      +MoteurProduction.dureeLisible(top.cumul)+' en tout.</p>';
   }
   // Ce qui attend à cette heure : les repas en stock, le sale à laver.
   if(window.OrlyTemps&&lots.length&&Sim.vue&&t>Sim.vue.debut){
@@ -2705,11 +2706,16 @@ function enregistrerSeuils(seuils){
   return env.seuils;
 }
 /** La journée calculée, lue une fois : { r, args, k (les indicateurs), reponses } ; null sans journée. */
+let journeeGardee=null;
 function journeeLue(){
   const at=Sim.ateliers,r=at&&at.resultat;
   if(!r||!r.ok||!window.OrlyReponses||!window.OrlyIndicateurs)return null;
-  const args=at.args||{},k=OrlyIndicateurs.journee(r,args);
-  return{r,args,k,reponses:OrlyReponses.reponses(r,args,{seuils:seuilsAlerte().seuils,k})};
+  const args=at.args||{},seuils=seuilsAlerte().seuils,cle=JSON.stringify(seuils);
+  // Le même résultat, les mêmes arguments, les mêmes seuils : la même lecture, gardée (le plan rejoué la relit à chaque pas).
+  if(journeeGardee&&journeeGardee.r===r&&journeeGardee.args===at.args&&journeeGardee.cle===cle)return journeeGardee.j;
+  const k=OrlyIndicateurs.journee(r,args),j={r,args,k,reponses:OrlyReponses.reponses(r,args,{seuils,k})};
+  journeeGardee={r,args:at.args,cle,j};
+  return j;
 }
 /** Les réponses de la journée calculée (moteur/reponses.js), aux seuils gardés : le seul chemin de la page. */
 function reponsesDuJour(){const j=journeeLue();return j?j.reponses:null;}

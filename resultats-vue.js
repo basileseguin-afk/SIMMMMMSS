@@ -159,13 +159,19 @@
 
   /**
    * Le bouchon de la plonge (évolution 15 c) : seulement s'il reste du sale le soir, ou si l'attente la plus longue passe
-   * le seuil d'attente d'un lot. temps.js (commun aux deux versions) le dit dès une heure d'attente : la version 1 le
-   * corrige d'après ce seuil — l'étiquette, et la couleur des deux tuiles qui le portent, retirées ou ajoutées.
+   * le seuil d'attente. temps.js (commun aux deux versions) le dit dès une heure d'attente : la version 1 le corrige
+   * d'après ce seuil — l'étiquette, et la couleur des deux tuiles qui le portent, retirées ou ajoutées. Correction 18 (a) :
+   * l'attente est celle d'un arrivage (`plonge` : celle des réponses — à une plonge par vol, un vol revenu qui attend son
+   * tunnel) ; au débit, sans arrivage, celle du moteur, par unité.
    */
-  const bouchon = (p, seuils) => !!p && ((p.resteSale || 0) > 0 || (p.attenteMax || 0) > seuils.attenteLot + 1e-9);
-  function corrigerBouchon(box, p, seuils) {
+  const bouchon = (p, seuils, plonge) => {
+    if (!p) return false;
+    const attente = plonge && Number.isFinite(plonge.attenteMax) ? plonge.attenteMax : (p.attenteMax || 0);
+    return (p.resteSale || 0) > 0 || attente > seuils.attenteLot + 1e-9;
+  };
+  function corrigerBouchon(box, p, seuils, plonge) {
     if (!box || !p) return;
-    const oui = bouchon(p, seuils), etiquette = [...box.querySelectorAll('.tp-etiquette.alerte')].find(b => /Bouchon/.test(b.textContent));
+    const oui = bouchon(p, seuils, plonge), etiquette = [...box.querySelectorAll('.tp-etiquette.alerte')].find(b => /Bouchon/.test(b.textContent));
     if (!oui && etiquette) {
       const apres = etiquette.nextSibling;
       if (apres && apres.nodeType === 3) apres.textContent = apres.textContent.replace(/^ /, '');
@@ -183,12 +189,13 @@
    * La page des stocks, complétée (temps.js l'a dessinée) : les lignes triées (le plus en stock d'abord, ou le plus
    * long), les en-têtes qui trient, l'échelle des petites courbes dite une fois. Une alerte ne s'affiche que si un seuil
    * est dépassé (évolution 15 c) : un stock plus long que la durée maximale réglée (aucune tant qu'elle ne l'est pas) ;
-   * le bouchon de la plonge. `seuils` : les seuils d'alerte (sans eux, les défauts).
+   * le bouchon de la plonge. `seuils` : les seuils d'alerte (sans eux, les défauts) ; `plonge` : la plonge des réponses
+   * (l'attente d'un arrivage), si on l'a.
    */
   const triStocks = { cle: 'stock' };
-  function completerStocks(box, r, seuils) {
+  function completerStocks(box, r, seuils, plonge) {
     const S = seuils || REP().SEUILS_DEFAUT;
-    corrigerBouchon(box, r && r.plonge, S);
+    corrigerBouchon(box, r && r.plonge, S, plonge);
     const table = box && box.querySelector('.tp-table'), liens = (r && r.stocks && r.stocks.parLien) || [];
     if (!table || !liens.length) return;
     const corps = table.tBodies[0], lignes = [...corps.rows], ths = table.tHead.rows[0].cells;

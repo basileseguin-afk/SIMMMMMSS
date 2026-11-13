@@ -41,13 +41,15 @@ const critiques=page=>page.evaluate(()=>{
     const lu=await page.evaluate(()=>{const rep=Sim.reponses(),SV=OrlySyntheseVue;
       const ls=SV.lignes(rep,OrlyPlanningVue.ordreDesServices(Sim.ateliers.resultat,Sim.ateliers.args.parcours)),D=MoteurProduction.dureeLisible;
       // Correction 17 (c) : un poste fixe écrit « fixe » ; un service qui en a à côté de son besoin les dit ; un handling compte ses chauffeurs.
-      const besoin=l=>l.fixe?'fixe':SV.nombre(l.besoin)+(l.fixes>1e-9?'+ '+SV.nombre(l.fixes)+(l.fixes>=2?' fixes':' fixe'):'');
+      // Correction 18 (a) : une ligne dont le besoin ne se mesure pas écrit « non mesuré ».
+      const hors=l=>{const nm=l.nonMesures>1e-9,fx=l.fixes-(l.nonMesures||0)>1e-9,p=l.fixes>=2;return nm&&fx?' fixes ou non mesurés':nm?(p?' non mesurés':' non mesuré'):(p?' fixes':' fixe');};
+      const besoin=l=>l.fixe?'fixe':l.nonMesure?'non mesuré':SV.nombre(l.besoin)+(l.fixes>1e-9?'+ '+SV.nombre(l.fixes)+hors(l):'');
       return {phrases:SV.phrases(rep),attendu:ls.map(l=>[l.service,String(l.jour),besoin(l),SV.nombre(l.presents)+(l.chauffeurs?'chauffeurs':'')]),
         // Correction 17 (a) : chaque ligne dit son jour, et porte sa propre fin et ses propres heures sup.
         mots:ls.map(l=>l.mot),jours:[...document.querySelectorAll('#bilan-journee .sy-table tbody tr')].map(tr=>(tr.querySelector('.sy-jour')||{}).textContent||null),
         cases:[...document.querySelectorAll('#bilan-journee .sy-table tbody tr')].map(tr=>tr.cells.length),
         sup:ls.map(l=>(l.fin&&l.fin.heuresSup.total>1e-9?D(l.fin.heuresSup.total):'—')),
-        supLu:[...document.querySelectorAll('#bilan-journee .sy-table tbody tr')].map(tr=>tr.cells[10].textContent),
+        supLu:[...document.querySelectorAll('#bilan-journee .sy-table tbody tr')].map(tr=>tr.cells[11].textContent),
         tete:[...document.querySelectorAll('#bilan-journee .sy-tete .bilan-resume')].map(p=>p.textContent),
         lignes:[...document.querySelectorAll('#bilan-journee .sy-table tbody tr')].map(tr=>[tr.dataset.service,tr.dataset.jour,tr.cells[1].textContent,tr.cells[2].textContent])};});
     assert.deepEqual(lu.tete,lu.phrases,V+'les phrases en tête');
@@ -55,7 +57,7 @@ const critiques=page=>page.evaluate(()=>{
     assert.deepEqual(lu.lignes,lu.attendu,V+'besoin et présents, ligne par ligne, dans l’ordre du chemin');
     assert.deepEqual(lu.jours,lu.mots,V+'chaque ligne dit son jour');
     assert.ok(lu.mots.some(m=>m==='veille'),V+'la cuisine fictive travaille la veille');
-    assert.ok(lu.cases.every(n=>n===11),V+'onze cases par ligne : plus de case partagée entre deux jours');
+    assert.ok(lu.cases.every(n=>n===12),V+'douze cases par ligne (correction 18 a : deux colonnes à la place de « File la plus longue ») ; aucune case partagée entre deux jours');
     assert.deepEqual(lu.supLu,lu.sup,V+'les heures sup de chaque ligne');
 
     // 2. La largeur : le tableau tient, les cartes occupent la ligne entière.
@@ -71,7 +73,7 @@ const critiques=page=>page.evaluate(()=>{
     await svg.scrollIntoViewIfNeeded();const b=await svg.boundingBox();
     await page.mouse.move(b.x+b.width/2,b.y+40);await attendre(100);
     const bulle1=await page.locator('#sy-bulle').textContent();
-    assert.match(bulle1,/^\S+–\S+ : \d+ présents?, [\d,]+ au travail, \d+ lots? en file/,V+'la bulle : '+bulle1);
+    assert.match(bulle1,/^\S+–\S+ : \d+ présents?, [\d,]+ au travail, \d+ lots? à faire/,V+'la bulle : '+bulle1);
     await page.locator('#bilan-journee .sy-trace').focus();await page.keyboard.press('ArrowRight');await attendre(100);
     assert.notEqual(await page.locator('#sy-bulle').textContent(),bulle1,V+'la flèche avance d’un créneau');
 
@@ -90,26 +92,53 @@ const critiques=page=>page.evaluate(()=>{
         legende:document.querySelector('#bilan-journee .sy-legende').textContent,
         carte:document.querySelector('#bilan-journee .sy-carte[aria-label="Où ça coince"]').innerText};});
     assert.ok(vrai.total.fixes>0,V+'l’unité fictive a des postes fixes');
-    assert.match(lu.tete[0],/^Il faut \d+ personnes?, [\d,]+ sont présentes, dont [\d,]+ en postes? fixes?\.$/,V+'la phrase de tête dit les postes fixes');
+    assert.match(lu.tete[0],/^Il faut \d+ personnes?, [\d,]+ sont présentes, dont [\d,]+ en postes fixes ou non mesurés\.$/,V+'la phrase de tête dit les postes fixes et les besoins non mesurés');
     assert.deepEqual(vrai.fixe,['fixe','—',null],V+'un poste fixe : « fixe », pas d’écart');
     assert.deepEqual(vrai.sur.slice(0,2),[null,true],V+'un surplus de '+vrai.sur[2]+' : sans couleur d’alerte, avec sa barre');
     assert.deepEqual(vrai.chauffeurs.slice(0,2),['fixe','chauffeurs'],V+'le handling : ses chauffeurs');
     assert.ok(vrai.chauffeurs[2]>0&&vrai.notes.length===1,V+'une note pour ce qui n’est pas compté');
     assert.match(vrai.notes[0],/ : les présents sont ses chauffeurs ; les \d+ personnes saisies à l’équipe ne sont pas comptées\.$/,V+'la note');
-    assert.match(vrai.legende,/il manque au moins 3 personnes \(un surplus n’est pas une alerte\), une attente de plus de 6 h 00/,V+'la légende dit les seuils par défaut');
-    // Aux seuils par défaut : des lots attendent, mais aucun plus de 6 h — rien ne coince.
-    assert.deepEqual([vrai.seuils.attenteLot,vrai.seuils.ecartPersonnes,vrai.goulot],[360,3,null],V+'les défauts');
-    assert.match(vrai.carte,/Rien ne coince\.\s*Aucun service n’attend plus de 6 h 00 en finissant après son horaire ou en faisant partir une commande ou un vol en retard\./,V+'la carte : rien ne coince');
-    assert.match(lu.tete[1],/^Rien ne coince ; /,V+'la phrase de tête');
-    // Au seuil d'une heure : le service qui attend plus que le seuil ET fait partir des commandes en retard coince ; la carte dit pourquoi.
+    assert.match(vrai.legende,/il manque au moins 3 personnes \(un surplus n’est pas une alerte\), un arrivage qui attend plus de 6 h 00/,V+'la légende dit les seuils par défaut');
+    assert.deepEqual([vrai.seuils.attenteLot,vrai.seuils.ecartPersonnes],[360,3],V+'les défauts');
+
+    // 4 ter. Correction 18 (a) : des attentes qui disent vrai.
+    const att=await page.evaluate(()=>{const rep=Sim.reponses(),rangs=[...document.querySelectorAll('#bilan-journee .sy-table tbody tr')];
+      const rang=l=>rangs.find(tr=>tr.dataset.service===l.service&&tr.dataset.jour===String(l.jour)),D=MoteurProduction.dureeLisible;
+      const sans=rep.sansTravail.services.filter(x=>x.minutes!=null&&rang(x)),arr=rep.coince.services.filter(x=>x.arrivages!=null&&rang(x));
+      return {tetes:[...document.querySelectorAll('#bilan-journee .sy-table thead th')].map(th=>th.textContent),
+        sans:sans.map(x=>{const td=rang(x).cells[8];return {attendu:D(x.minutes),part:Math.round(x.part*100)+' %',texte:td.textContent,titre:td.title,ton:td.dataset.ton||null,barre:!!td.querySelector('.sy-sans-barre i')};}),
+        arr:arr.map(x=>{const td=rang(x).cells[9];return {n:x.arrivages,max:x.attenteMax?D(x.attenteMax.minutes):null,texte:td.textContent,ton:td.dataset.ton||null};}),
+        goulots:rep.coince.goulots.map(g=>({nom:g.nom,depasse:g.depasse,enRetard:g.enRetard})),
+        carte:document.querySelector('#bilan-journee .sy-carte[aria-label="Où ça coince"]').innerText,
+        notes:[...document.querySelectorAll('#bilan-journee .sy-explique-occ')].map(x=>x.textContent),texte:document.getElementById('bilan-journee').innerText};});
+    assert.deepEqual(att.tetes,['Service','Besoin','Présents','Écart','Matin','Après-midi','Pic au travail','Occupation','Personnes sans travail','Attente d’un arrivage','Fin','Heures sup'],V+'les colonnes');
+    assert.ok(att.sans.length>=5,V+'des lignes avec des personnes sans travail');
+    for(const x of att.sans){
+     assert.ok(x.texte.includes(x.attendu)&&x.texte.includes(x.part)&&x.barre,V+'les heures, la part et la barre : '+JSON.stringify(x));
+     assert.equal(x.ton,null,V+'sans couleur d’alerte');
+     assert.match(x.titre,/avant le premier lot : .* ; entre deux lots : .* ; après le dernier lot : /,V+'au survol, les trois moments');
+    }
+    assert.ok(att.arr.length>=4,V+'des lignes avec des arrivages');
+    for(const x of att.arr){
+     assert.ok(x.texte.startsWith(x.n+(x.n>=2?' arrivages':' arrivage')),V+'le nombre d’arrivages : '+JSON.stringify(x));
+     assert.ok(x.max?x.texte.includes(x.max):x.texte.endsWith('—'),V+'l’attente la plus longue, ou « — » : '+JSON.stringify(x));
+     assert.equal(x.ton,null,V+'aucun arrivage n’attend plus de 6 h : pas de couleur');
+    }
+    assert.ok(att.notes.some(n=>n==='Occupation : la part du temps de présence couverte par le travail du barème. Elle dépend des temps par vol et des effectifs réglés.'),V+'l’occupation s’explique sous le tableau');
+    // Les mots : jamais « un lot attend » pour un lot simplement à faire, plus de « file la plus longue ».
+    assert.doesNotMatch(att.texte,/un lot (y )?attend|File la plus longue|lots en file/i,V+'les mots');
+    // « Où ça coince », sur les conséquences : avec ses départs en retard, l'unité fictive coince ; la carte en montre trois au plus.
+    assert.ok(att.goulots.length>=1&&att.goulots.every(g=>g.depasse>=15||g.enRetard>0),V+'des goulots : '+JSON.stringify(att.goulots));
+    assert.ok(att.carte.includes(att.goulots[0].nom)&&/part(ent)? en retard par ses lots|après son horaire/.test(att.carte),V+'la carte nomme le goulot et dit pourquoi : '+att.carte);
+    assert.ok(lu.tete[1].startsWith(att.goulots[0].nom),V+'la phrase de tête le nomme');
+    assert.ok((await page.locator('#bilan-journee .sy-carte[aria-label="Où ça coince"] li').count())<=2,V+'trois services au plus');
+    // Le seuil d'attente n'y change rien ; il colore l'attente d'un arrivage.
     await page.evaluate(()=>Sim.seuils.enregistrer({attenteLot:60}));await page.evaluate(()=>Sim.ateliers.changer(()=>{},''));await attendre(400);
-    const une=await page.evaluate(()=>{const g=Sim.reponses().coince.goulot;return {g,carte:document.querySelector('#bilan-journee .sy-carte[aria-label="Où ça coince"]').innerText,
-      tete:document.querySelectorAll('#bilan-journee .sy-tete .bilan-resume')[1].textContent};});
-    assert.ok(une.g&&une.g.attenteMax>60&&(une.g.depasse>0||une.g.enRetard>0),V+'un goulot : '+JSON.stringify(une.g));
-    assert.ok(une.carte.includes(une.g.nom)&&/part(ent)? en retard|après son horaire/.test(une.carte),V+'la carte nomme le goulot et dit pourquoi : '+une.carte);
-    assert.ok(une.tete.startsWith(une.g.nom),V+'la phrase de tête le nomme');
+    const une=await page.evaluate(()=>({goulots:Sim.reponses().coince.goulots.map(g=>g.nom),tons:[...document.querySelectorAll('#bilan-journee .sy-arrivage[data-ton="attente"]')].length,
+      attendus:Sim.reponses().coince.services.filter(x=>x.attenteMax&&x.attenteMax.minutes>60).length}));
+    assert.deepEqual(une.goulots,att.goulots.map(g=>g.nom),V+'au seuil d’une heure, les mêmes goulots');
+    assert.ok(une.attendus>=1&&une.tons>=1,V+'un arrivage qui attend plus d’une heure est signalé : '+JSON.stringify(une));
     await page.evaluate(()=>localStorage.removeItem('ory-seuils-v1'));await page.evaluate(()=>Sim.ateliers.changer(()=>{},''));await attendre(400);
-    assert.equal(await page.locator('#bilan-journee .sy-carte[aria-label="Où ça coince"] .sy-grand').textContent(),'Rien ne coince.',V+'retour aux défauts');
 
     // 5. Un clic sur une ligne ouvre ce service dans le planning, déplié, à la vue.
     const service=await page.locator('#bilan-journee .sy-table tbody tr').nth(2).getAttribute('data-service');
@@ -123,15 +152,12 @@ const critiques=page=>page.evaluate(()=>{
 
     // 6. Deux essais retenus : la carte de l'essai apparaît, B − A.
     await nav.aller(page,'j-comparer');await page.locator('#snap-a').click();await attendre();
-    await page.evaluate(()=>Sim.seuils.enregistrer({attenteLot:600}));
     await page.evaluate(()=>Sim.ateliers.changer(()=>{const a=Sim.ateliers.state.ateliers.find(x=>x.id==='mo');a.personnes=(a.personnes||0)+2;},''));await attendre();
     await nav.aller(page,'j-comparer');await page.locator('#snap-b').click();await attendre();
     await nav.aller(page,'j-chiffres');await attendre();
     const essai=page.locator('#bilan-journee .sy-carte[aria-label="Ce que change l’essai"]');
     assert.equal(await essai.count(),1,V+'avec deux essais');
     assert.match(await essai.innerText(),/Il faut .*personnes ;[\s\S]*Goulot : [\s\S]*Heures sup : [\s\S]*En retard : /,V+'les quatre réponses');
-    assert.equal(await page.locator('#bilan-journee .sy-carte[aria-label="Où ça coince"] .sy-grand').textContent(),'Rien ne coince.',V+'au seuil de 600 min, rien ne coince');
-    await page.evaluate(()=>localStorage.removeItem('ory-seuils-v1'));
     assert.deepEqual(errors,[],V+errors.join(' | '));
    }finally{ch.effacer();await page.close();}
   }
@@ -144,6 +170,10 @@ const critiques=page=>page.evaluate(()=>{
    assert.deepEqual(await page.evaluate(()=>Sim.reponses().exceptions),[],'la journée n’a pas de retard');
    assert.match(await page.locator('#bilan-journee .sy-tete').innerText(),/rien ne part en retard\./);
    assert.equal(await page.locator('#bilan-journee .sy-carte[aria-label="Ce qui part en retard"] .sy-grand').textContent(),'Rien.');
+   // Sans retard ni dépassement d'un quart d'heure : rien ne coince, et la phrase de tête le dit (correction 18 a).
+   assert.deepEqual(await page.evaluate(()=>Sim.reponses().coince.goulots),[],'aucun goulot');
+   assert.equal(await page.locator('#bilan-journee .sy-carte[aria-label="Où ça coince"] .sy-grand').textContent(),'Rien ne coince.');
+   assert.match(await page.locator('#bilan-journee .sy-tete').innerText(),/Rien ne coince ; rien ne part en retard\./);
    assert.deepEqual(await critiques(page),[],'aucune couleur critique');
    // 8. Correction 17 (c) : l'écart ne prend la couleur de statut que s'il manque des personnes. Le montage garde 1 personne
    // (ni seconde équipe, ni robot) : il lui en manque plus d'une, au seuil de 1 → sa case se colore ; les surplus du tableau
@@ -160,6 +190,6 @@ const critiques=page=>page.evaluate(()=>{
    await page.evaluate(()=>localStorage.removeItem('ory-seuils-v1'));
    assert.deepEqual(errors,[],errors.join(' | '));
   }finally{ch.effacer();await page.close();}
-  console.log('synthese-questions-browser : ok — chiffres du module, largeur, courbe, clic vers le planning, carte de l’essai, journée sans retard sans rouge, postes fixes, chauffeurs, manque et surplus, goulot.');
+  console.log('synthese-questions-browser : ok — chiffres du module, largeur, courbe, clic vers le planning, carte de l’essai, journée sans retard sans rouge, postes fixes, chauffeurs, manque et surplus, personnes sans travail, attente d’un arrivage, goulot sur les conséquences.');
  }catch(e){console.error(e);process.exitCode=1;}finally{site.effacer();await browser.close();}
 })();

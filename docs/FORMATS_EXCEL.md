@@ -827,7 +827,7 @@ Une ligne par mesure, dans l'ordre du contrat :
 | `Jour de travail` | pour les questions 1 à 3 et le goulot : la date du jour de travail de la ligne (une vraie date Excel ; une cuisine à J−1, la veille). Un service qui travaille deux jours a deux lignes par mesure (correction 17 a) |
 | `Mesure` | ce qui est mesuré (ci-dessous) |
 | `Valeur` | un nombre ; pour une heure (question 3), une vraie date et heure Excel ; vide quand la mesure n'a pas de valeur (une cause, le goulot de la comparaison) |
-| `Unité` | personnes, ETP, %, lots, min, lots × minutes, min × personnes, heure, exceptions |
+| `Unité` | personnes, ETP, %, arrivages, min, arrivages × minutes, min × personnes, heure, exceptions |
 | `Seuil` | le seuil d'alerte réglé, quand la mesure en a un |
 | `Au-delà du seuil` | `oui` ou `non` ; `oui` pour chaque exception (question 4) |
 | `Détail` | ce qui explique la valeur : l'heure d'un pic ou d'une file, le lot qui attend, la cause, la phrase d'un retard |
@@ -839,21 +839,31 @@ Une ligne par mesure, dans l'ordre du contrat :
   (`Il faut`, hors postes fixes ; `Présentes (ETP)` ; `Dont postes fixes
   (ETP)` ; `Écart (présentes hors postes fixes − il faut)`). Un **poste fixe**
   (correction 17 c : un service permanent, d'appui, un handling) n'a ni besoin
-  ni écart : `Il faut` et l'écart sont vides, le détail dit « poste fixe » ;
+  ni écart : `Il faut` et l'écart sont vides, le détail dit « poste fixe » ; de
+  même une ligne dont le besoin ne se mesure pas (correction 18 a : « besoin
+  non mesuré ») ;
   seul un manque est « au-delà du seuil » (un surplus : `non`). Un handling à
   chauffeurs compte ses chauffeurs dans `Présentes (ETP)` ; le détail le dit,
   avec les personnes saisies à l'équipe qui ne sont pas comptées.
-- **2.** `Goulot` (parmi les services et jours de travail qui attendent plus
-  que le seuil **et** qui finissent après leur horaire ou font partir une
-  commande ou un vol en retard, celui au plus grand cumul d'attente : son
-  cumul, de quand à quand, ce qui en fait un goulot, sa cause ; sinon
-  « aucun ») ; puis,
-  pour chaque service et jour de travail où un lot attend : `File la plus longue`, `Attente la plus longue d’un lot` (au
-  seuil d'attente), `Cumul d’attente`, `Cause` (en détail : personnel, l'amont
-  ou le matériel). Les heures écrites en détail sont arrondies à la minute,
+- **2.** (correction 18 a) `Goulot`, puis une ligne `Coince aussi` par autre
+  service qui coince : un service qui finit après son horaire d'au moins un
+  quart d'heure, ou dont un lot fait partir une commande ou un vol en retard,
+  rangés par heures sup puis par cumul d'attente ; la valeur est son
+  dépassement (min), face au quart d'heure qui compte (`Seuil` : 15 ; `Au-delà
+  du seuil` : `oui` à partir du quart d'heure) ; le détail : ses heures sup
+  (min × personnes), ce qu'il fait partir en retard et sa cause ; sinon
+  « aucun ». Puis, pour chaque service et jour de
+  travail qui reçoit des arrivages (les lots livrés ensemble) : `Arrivages du
+  jour`, `File d’arrivages la plus longue`, `Attente la plus longue d’un
+  arrivage` (au seuil d'attente), `Cumul d’attente des arrivages`, `Cause de
+  l’attente des arrivages` (en détail : personnel, l'amont ou le matériel).
+  Puis, pour chaque service et jour de travail : `Personnes sans travail`
+  (min × personnes ; en détail, avant le premier lot, entre deux lots, après
+  le dernier lot, et ce que l'équipe attendait) et `Part de la présence sans
+  travail` (%). Les heures écrites en détail sont arrondies à la minute,
   comme la cellule et comme la page.
 - **3.** Par service et jour de travail : `Fin du dernier lot`, `Fin de l’horaire`, `Dépassement`
-  (min), `Heures sup` (min × personnes ; équipes, renforts prêtés, chauffeurs
+  (min ; « au-delà du seuil » à partir d'un quart d'heure, une règle fixe), `Heures sup` (min × personnes ; équipes, renforts prêtés, chauffeurs
   en détail).
 - **4.** Une ligne par exception (vol chargé en retard, vol pas chargé, vol
   pas prêt, vol sans équipe, commande en retard) : son retard en

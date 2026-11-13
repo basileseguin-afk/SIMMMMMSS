@@ -5,6 +5,69 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-13 — Correction 18 (a) : l'attente et « Où ça coince », ne signaler que ce qui gêne
+
+- Constat : la Synthèse affichait « un lot y attend jusqu'à 6 h » pour un
+  service où personne n'attend — ses lots du jour lui sont livrés ensemble, il
+  les fait l'un après l'autre, le dernier « attendait » toute la journée ; ce
+  service était retenu comme goulot pour quelques minutes de dépassement ; une
+  équipe arrivée avant l'ouverture d'une mise à disposition l'attendait sans
+  que rien ne le nomme ; une équipe au besoin non mesuré gonflait « Il faut ».
+- **L'arrivage** (`moteur/reponses.js`, sans toucher au moteur ni aux
+  indicateurs) : les lots d'une équipe qui deviennent prêts au même instant
+  (ceux prêts avant son arrivée forment celui de son arrivée ; à une plonge
+  par vol, chaque vol revenu). Son attente va de son instant au début de son
+  premier lot ; les lots suivants sont « à faire », dans l'ordre de travail.
+  La file, l'attente la plus longue et le cumul se comptent en arrivages. Le
+  seuil d'attente garde sa clé (`attenteLot`) et son défaut ; il s'applique à
+  l'attente d'un arrivage, et se nomme « Attente d'un arrivage ».
+- **Les personnes sans travail**, par service et jour de travail : les heures
+  (personnes × heures) et leur part de la présence, lues dans les créneaux
+  « sans travail » des indicateurs ; en trois moments (avant le premier lot,
+  entre deux lots, après le dernier), dont la somme est le total des
+  indicateurs. Avant son premier lot, la ligne nomme ce que l'équipe attendait :
+  l'ouverture d'une mise à disposition, avec son heure, ou son amont.
+- **« Où ça coince » se juge sur les conséquences**, sans seuil réglable : un
+  service coince s'il finit après son horaire d'au moins un quart d'heure (une
+  règle fixe, `DEPASSEMENT_MIN`), ou si un de ses lots fait partir une commande
+  ou un vol en retard. Rangés par heures sup (un dépassement sous le quart
+  d'heure n'y compte pas), puis par cumul d'attente ; à égalité, le service
+  dont un lot finit lui-même après la limite d'abord. La carte en montre trois
+  au plus, chacun avec son jour, son dépassement et sa cause : « attend
+  l'ouverture de … » ou « attend … » quand ce temps perdu explique le
+  dépassement ou le retard, le matériel, « la charge du jour ne tient pas dans
+  l'horaire », « finit dans son horaire, mais après la limite d'une commande
+  ou d'un vol », ou — pour un service dont les lots finissent à temps, sur le
+  chemin d'une commande en retard — « la commande ou le vol prend son retard
+  en aval ». La phrase de tête suit.
+- **Le besoin non mesuré** : une équipe d'un service mesuré dont le besoin ne
+  se mesure pas ne compte plus dans le besoin ; « non mesuré » dans la colonne
+  Besoin, sans écart ; « dont n en postes fixes ou non mesurés ».
+- La Synthèse : « File la plus longue » laisse la place à « Personnes sans
+  travail » (heures, part, barre neutre ; au survol, les trois moments et ce
+  que l'équipe attendait) et « Attente d'un arrivage » (le nombre d'arrivages,
+  l'attente la plus longue et son heure, la couleur au-delà du seuil) ; la fin
+  ne se colore qu'à partir du quart d'heure ; une ligne explique l'occupation ;
+  sur la courbe, « lots à faire » (prêts, pas commencés). Le « Bouchon » de la
+  plonge, la phrase du plan rejoué, « Comparer deux essais » et la feuille
+  « Réponses » suivent ces définitions.
+- Aucun réglage nouveau : cinq seuils, les mêmes clés, les mêmes défauts.
+- Tests : `tests/reponses-arrivages.test.cjs`, sur des journées fictives
+  calculées à la main (des lots livrés ensemble, à l'ouverture ou une heure
+  après : aucune attente ; trois arrivages dont le deuxième attend 3 h ; une
+  plonge par vol ; les trois moments et leur somme ; une mise à disposition
+  qui ouvre une heure après l'arrivée de l'équipe ; un dépassement de 10 min
+  et un de 40 min ; deux services rangés par heures sup ; un vol en retard
+  sans dépassement ; le rang à égalité ; une cause qui ne nomme une attente
+  que si elle explique ; la cause « matériel » ; une équipe sans lot, une
+  équipe de la veille, un lot jamais fini ; un besoin non mesuré ; les seuils
+  inchangés ; la non-régression) ; les tests des réponses, de la Synthèse, de la feuille, des
+  seuils et des captures adaptés.
+- Aucun calcul du moteur ne change : le résultat d'une journée et d'une
+  période, les indicateurs de charge et les autres feuilles des classeurs sont
+  identiques (seule la feuille « Réponses » change). La version 2 n'est pas
+  touchée.
+
 ## 2026-11-13 — Correction 17 (d) : la page Période, et la doc
 
 - **La colonne « Unité »** est la première colonne de chiffres, juste après

@@ -40,7 +40,10 @@ const K='ory-seuils-v1';
   // Correction 17 (c) : les défauts — un écart de 3 personnes, une attente de 6 h ; chaque champ dit le sien.
   assert.deepEqual([await champ('ecartPersonnes').inputValue(),await champ('attenteLot').inputValue()],['3','360']);
   assert.match(await page.locator('#seuil-effet-ecartPersonnes').textContent(),/s’il lui manque au moins .*un surplus n’est pas une alerte.* Défaut : 3\u00a0personnes\./);
-  assert.match(await page.locator('#seuil-effet-attenteLot').textContent(),/finit après son horaire ou fait partir .* en retard\. Défaut : 360\u00a0min\./);
+  // Correction 18 (a) : aucun champ de plus ; le seuil d'attente garde sa clé et son défaut, et s'applique à l'attente d'un arrivage.
+  assert.match(await page.locator('#seuil-effet-attenteLot').textContent(),/^Un arrivage \(les lots livrés ensemble\) qui attend plus longtemps .*« Bouchon »\. Défaut : 360\u00a0min\.$/);
+  assert.deepEqual(await page.locator('#rg-sim-seuils [data-seuil]').evaluateAll(l=>l.map(x=>x.dataset.seuil)),['ecartPersonnes','attenteLot','occupation','dureeStockMax','retard']);
+  assert.match(await page.locator('#rg-sim-seuils .seuil').nth(1).locator('label').textContent(),/^Attente d’un arrivage/);
   assert.equal(await page.locator('#rg-sim-seuils [data-seuils-defaut]').count(),0,'aux défauts : rien à remettre');
   await champ('attenteLot').fill('30');await champ('attenteLot').press('Tab');
   await page.waitForFunction(k=>!!localStorage.getItem(k),K);
@@ -58,7 +61,7 @@ const K='ory-seuils-v1';
   await champ('retard').fill('vite');await champ('retard').press('Tab');
   await page.waitForFunction(()=>/« Retard » refusé \("vite"\)/.test(document.body.innerText));
   assert.equal(await garde(),avant);
-  await assert.rejects(page.evaluate(()=>Sim.seuils.enregistrer({attenteLot:-1})),/Attente d’un lot/);
+  await assert.rejects(page.evaluate(()=>Sim.seuils.enregistrer({attenteLot:-1})),/Attente d’un arrivage/);
   assert.equal(await garde(),avant);
 
   // 3. Tout sauvegarder : la clé y est, telle quelle.

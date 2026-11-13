@@ -132,7 +132,7 @@ Lecteurs : le chef de projet et les responsables de service (version 1,
 | # | Question | Indicateur | Unité | Comparé à | Seuil d'alerte (défaut) |
 |---|---|---|---|---|---|
 | R1 | **Combien de personnes faut-il, par service ?** | Par service et jour de travail : le **besoin** (la charge du jour en homme-minutes ÷ les minutes utiles d'un poste, arrondie au service comme dans l'évolution 11 a), les **présents** (ETP présents, K8 ; un handling à chauffeurs : ses chauffeurs), l'**écart** (présents − besoin ; seul un manque se signale) ; un **poste fixe** (une mise à disposition, une équipe d'appui saisie, un handling : pas de besoin calculé depuis une charge) n'a ni besoin ni écart et ne compte pas dans « Il faut » ; le matin (avant 13:00 du jour de travail) et l'après-midi : présents et pic au travail ; le pic de la journée et son heure ; l'occupation (K3) | personnes (ETP) | les présents, au besoin | un manque de **3 personnes** |
-| R2 | **Où et quand ça coince ?** | Par service et jour de travail : la file la plus longue (K4) et son heure, l'attente la plus longue d'un lot, le cumul d'attente du jour, la **cause** (personnel, amont, matériel — K9). Le **goulot** : parmi les services dont un lot attend plus que le seuil **et** qui finissent après leur horaire ou font partir une commande ou un vol en retard, celui au plus grand cumul d'attente, et le moment où il s'accumule | lots ; minutes ; lots × minutes | l'attente d'un lot, au seuil ; l'occupation pendant la file, au seuil | une attente de **6 h** ; une occupation de **95 %** |
+| R2 | **Où et quand ça coince ?** | Par service et jour de travail : ses **arrivages** (les lots livrés ensemble), la file la plus longue en arrivages qui n'ont pas commencé et son heure, l'attente la plus longue d'un arrivage, le cumul, la **cause** de cette attente (personnel, amont, matériel — K9) ; les **personnes sans travail** (heures, part de la présence, avant le premier lot, entre deux lots, après le dernier, et ce que l'équipe attendait). **Où ça coince**, sur les conséquences : un service qui finit après son horaire d'au moins **un quart d'heure** (une règle fixe, pas un réglage), ou dont un lot fait partir une commande ou un vol en retard ; rangés par heures sup, puis par cumul d'attente — le premier est le goulot | arrivages ; minutes ; arrivages × minutes ; personnes × heures | l'attente d'un arrivage, au seuil ; la fin, à l'horaire + un quart d'heure | une attente de **6 h** ; une occupation de **95 %** |
 | R3 | **À quelle heure chaque service finit-il, et avec combien d'heures sup ?** | Par service et jour de travail : la fin de son dernier lot, la fin de son horaire, ce qui dépasse ; ses heures sup (équipes, renforts prêtés, chauffeurs) | heure ; personnes × heures | la fin, à la fin de l'horaire | tout dépassement (une heure sup se dit dès la première minute) |
 | R4 | **Qu'est-ce qui part en retard ?** | Les **seules exceptions** : les vols chargés après leur limite, les commandes prêtes après leur limite, les vols pas prêts ou sans équipe ; pour chacune, le retard et sa cause (la phrase de V7). Sans exception : une liste vide | minutes | la limite (le départ, ou départ − marge au handling 24 h/24 ; l'échéance de la commande) | un retard d'**1 min** |
 | R5 | **Que change mon scénario ?** | Entre les deux essais de « Comparer deux essais » : B − A sur chacune des quatre réponses (besoin, présents, écart ; goulot, attentes ; fins, heures sup ; exceptions nouvelles et réglées) | celles des réponses | l'essai A | — |
@@ -171,9 +171,12 @@ jour s'affiche.
   besoin exact (homme-minutes ÷ poste ÷ rendement) ; un robot, une plonge saisis :
   ce que ses lots occupent ÷ son poste (11 a) ; à la main, saisie : les
   homme-minutes de ses lots ÷ poste ÷ rendement. Il est rapporté à la présence
-  générale, comme les présents (K8). Une équipe d'un service mesuré **sans
-  travail ce jour-là** a pour besoin ses présents : elle n'a pas d'écart. Le
-  besoin d'un service : ⌈ somme ⌉.
+  générale, comme les présents (K8). Le besoin d'un service : ⌈ somme ⌉.
+- **Le besoin non mesuré** (correction 18 a) : une équipe d'un service mesuré
+  dont le besoin ne se mesure pas (aucun travail au barème ce jour-là) ne compte
+  plus dans le besoin ; elle se range avec les postes fixes. Si toutes les
+  équipes d'une ligne sont dans ce cas, la ligne dit « non mesuré », sans écart.
+  La phrase de tête dit « dont n en postes fixes ou non mesurés ».
 - **Les postes fixes** (correction 17 c) : une mise à disposition (un service
   permanent), une équipe d'appui saisie, un handling n'ont pas de besoin calculé
   depuis une charge. Leur ligne dit « fixe », n'a pas d'écart, et ne compte pas
@@ -188,22 +191,53 @@ jour s'affiche.
   indicateurs de charge (K8) ne changent pas.
 - **L'écart signalé** : seulement s'il **manque** des personnes (présents sous
   le besoin), d'au moins le seuil. Un surplus s'affiche, sans couleur d'alerte.
-- **L'attente d'un lot** : du moment où il est prêt (tous ses fournisseurs ont
-  livré, l'équipe est là) à son début — son temps en file. Le cumul : la somme,
-  en lots × minutes.
-- **La cause d'une file** : « matériel » si les lots attendent surtout leur
-  matériel propre ; sinon « personnel » si les équipes qui tiennent ces lots sont
-  occupées au-delà du seuil pendant la file ; sinon « amont » si leurs personnes
-  attendent le service d'avant pendant la file (une équipe tenue à l'ordre de sa
+- **L'arrivage et son attente** (correction 18 a) : les lots d'une équipe qui
+  deviennent prêts au même instant forment un **arrivage** — ceux prêts avant
+  l'arrivée de l'équipe forment celui de son arrivée ; à une plonge par vol,
+  chaque vol revenu est un arrivage. L'attente d'un arrivage va de son instant
+  au début de son premier lot. Les lots suivants du même arrivage n'attendent
+  pas : ils sont « à faire », dans l'ordre de travail. La file, la file la plus
+  longue, l'attente la plus longue et le cumul (arrivages × minutes) se comptent
+  en arrivages qui n'ont pas commencé. Un service qui reçoit sa journée en une
+  fois n'a donc aucune attente ; seul celui où le travail arrive au fil de la
+  journée peut en avoir. Les indicateurs de charge (K4) gardent leur file lot
+  par lot : ils ne changent pas. Le seuil d'attente, sa clé et son défaut
+  inchangés, s'applique à l'attente d'un arrivage.
+- **La cause de l'attente des arrivages** : « matériel » s'ils attendent surtout
+  leur matériel propre ; sinon « personnel » si les équipes qui les tiennent sont
+  occupées au-delà du seuil pendant qu'ils attendent ; sinon « amont » si leurs
+  personnes attendent le service d'avant (une équipe tenue à l'ordre de sa
   liste) ; sinon « matériel » s'il en a manqué ; sinon aucune.
-- **Le goulot** (correction 17 c) : parmi les services (et jours de travail)
-  dont l'attente la plus longue **dépasse** le seuil **et** qui finissent après
-  leur horaire ou font partir une commande ou un vol en retard, celui au plus
-  grand cumul ; son moment : le morceau d'un seul tenant de sa file où l'attente
-  s'accumule le plus. « Fait partir en retard » : une commande prête après sa
-  limite, ou pas finie, que portent ses lots ; au handling, un vol chargé après
-  sa limite ou pas chargé (un retard au moins égal au seuil de retard). Sinon :
-  aucun, « rien ne coince » — les attentes restent lisibles ligne par ligne.
+- **Les personnes sans travail** (correction 18 a), par service et jour de
+  travail : les heures (personnes × heures) et leur part de la présence, lues
+  dans les créneaux « sans travail » des indicateurs ; réparties en trois
+  moments — avant le premier lot du poste, entre deux lots, après le dernier lot
+  —, dont la somme est le total des indicateurs. Quand une équipe attend, avant
+  son premier lot, l'ouverture d'une mise à disposition réglée « comme une
+  boutique », la ligne la nomme, avec son heure (« attend l'ouverture de …, à
+  07:00 ») ; quand elle attend son amont, elle nomme le service.
+- **Où ça coince** (correction 18 a) se juge sur les conséquences, **sans seuil
+  réglable**. Un service coince, un jour de travail donné, (i) s'il finit après
+  son horaire d'au moins **un quart d'heure** — une règle fixe, pas un réglage :
+  en dessous, le dépassement s'affiche mais ne compte pas — ou (ii) si un de ses
+  lots fait partir une commande ou un vol en retard : une commande prête après
+  sa limite, ou pas finie, que portent ses lots ; au handling, un vol chargé
+  après sa limite ou pas chargé (un retard au moins égal au seuil de retard).
+  Ils se rangent par heures sup du dépassement (personnes × heures : un
+  dépassement sous le quart d'heure n'y compte pas), puis par cumul d'attente ;
+  à égalité, le service dont un lot finit lui-même après la limite d'abord,
+  puis l'ordre des lignes. Le premier est le **goulot**, la carte en montre
+  trois au plus. Chacun dit son jour, son dépassement et sa cause. Une attente
+  n'est nommée que si elle explique : « attend l'ouverture de … » ou
+  « attend … » (l'amont) quand le temps perdu avant le premier lot couvre le
+  dépassement (l'équipe aurait fini dans son horaire en commençant à son
+  arrivée) ou, sans dépassement, le plus grand retard des commandes que ses
+  lots font partir en retard (une commande pas finie ne s'explique par aucun
+  temps perdu) ; le matériel ; sinon « la charge du jour ne tient pas dans
+  l'horaire ». Un service qui finit dans son horaire mais dont un lot finit
+  après la limite le dit ainsi ; celui dont les lots finissent avant la limite,
+  sur le chemin d'une commande en retard, dit que la commande ou le vol prend
+  son retard en aval. Sinon : « rien ne coince ».
 - **La fin d'horaire** : le début du poste + la présence ; au handling, la fin de
   ses vacations de chauffeurs. Ce qui dépasse se compte équipe par équipe : le
   plus grand dépassement d'une équipe du service (une équipe qui finit tard dans
@@ -226,7 +260,7 @@ attend normalement son tour plusieurs heures : à 1 h, la plupart des services
 | Seuil | Défaut | Valeurs admises | Ce qu'il déclenche |
 |---|---|---|---|
 | Écart de personnes à signaler | 3 | de 0 à 100 personnes | un manque (présents sous le besoin) d'au moins ce nombre (R1) ; un surplus n'est pas une alerte |
-| Attente d'un lot | 360 min (6 h) | de 0 à 1 440 min | un goulot, si l'attente la plus longue le dépasse **et** si le service finit après son horaire ou fait partir une commande ou un vol en retard (R2) ; la couleur d'une attente dans le tableau ; le « Bouchon » de la plonge |
+| Attente d'un arrivage (la clé `attenteLot`, inchangée) | 360 min (6 h) | de 0 à 1 440 min | la couleur de l'attente d'un arrivage dans le tableau (R2) ; le « Bouchon » de la plonge ; il ne décide plus du goulot (correction 18 a) |
 | Occupation | 95 % | de 1 à 100 % | la cause « personnel », au-delà (R2) |
 | Durée maximale d'un stock | vide : pas d'alerte | vide, ou de 1 à 10 080 min | un stock plus long (le détail des stocks) |
 | Retard | 1 min | de 0 à 1 440 min | une exception, à partir de ce retard (R4) |

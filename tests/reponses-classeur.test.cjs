@@ -23,7 +23,8 @@ const QUESTIONS = ['1. Combien de personnes faut-il, par service ?', '2. Où et 
 const lignes = (f, i) => f.lignes.slice(1).filter(l => l[0] === QUESTIONS[i]);
 const col = nom => ER.TETE.indexOf(nom);
 const r2 = x => (x == null ? null : Math.round(x * 100) / 100);
-// Au seuil d'attente d'une heure, l'unité fictive coince (au défaut, 6 h, rien ne coince) : le goulot se lit sur cet essai.
+// « Où ça coince » se juge sur les conséquences (correction 18 a) : avec ses départs en retard, l'unité fictive coince, à
+// n'importe quel seuil d'attente ; sans retard (B), rien ne coince.
 const A60 = REP.reponses(p.resultat, p.args, { seuils: { attenteLot: 60 } });
 
 test('le classeur de la journée gagne la feuille « Réponses », à la fin ; les autres ne changent pas', () => {
@@ -51,10 +52,12 @@ test('les cinq réponses, dans l’ordre du contrat, celles du module', () => {
     assert.equal(v('Écart (présentes − il faut)'), r2(s.ecart), s.nom);
     // Un poste fixe (correction 17 c) : ni besoin, ni écart, ni seuil — le détail le dit ; ailleurs, seul un manque est au-delà du seuil.
     const e = d.find(l => l[col('Mesure')] === 'Écart (présentes − il faut)');
-    assert.equal(e[col('Au-delà du seuil')], s.fixe ? null : s.signale ? 'oui' : 'non', s.nom);
+    assert.equal(e[col('Au-delà du seuil')], s.fixe || s.nonMesure ? null : s.signale ? 'oui' : 'non', s.nom);
     if (s.fixe) { assert.equal(v('Il faut'), null); assert.match(e[col('Détail')], /poste fixe/); }
+    // Un besoin qui ne se mesure pas (correction 18 a) : ni besoin, ni écart — le détail le dit.
+    if (s.nonMesure) { assert.equal(v('Il faut'), null); assert.match(e[col('Détail')], /besoin non mesuré/); }
   }
-  assert.ok(A.personnes.services.some(s => s.fixe) && A.personnes.services.some(s => !s.fixe));
+  assert.ok(A.personnes.services.some(s => s.fixe) && A.personnes.services.some(s => s.nonMesure) && A.personnes.services.some(s => !s.fixe && !s.nonMesure));
   const unite = lignes(f, 0).filter(l => l[col('Sujet')] === 'Toute l’unité'), u = m => unite.find(l => l[col('Mesure')] === m)[col('Valeur')];
   assert.equal(u('Il faut'), A.personnes.total.besoin);
   assert.equal(u('Dont postes fixes (ETP)'), r2(A.personnes.total.fixes));
@@ -62,13 +65,39 @@ test('les cinq réponses, dans l’ordre du contrat, celles du module', () => {
   // Un handling à chauffeurs : la ligne des présentes dit qu'elle compte ses chauffeurs.
   const ch = A.personnes.services.find(s => s.chauffeurs);
   assert.match(lignes(f, 0).find(l => duJour(l, ch) && l[col('Mesure')] === 'Présentes (ETP)')[col('Détail')], /^ses chauffeurs/);
-  // 2. Le goulot : aucun au seuil par défaut ; au seuil d'une heure, le service qui attend ET fait partir en retard.
-  const g0 = lignes(f, 1).find(l => l[col('Mesure')] === 'Goulot');
-  assert.deepEqual([A.coince.goulot, g0[col('Sujet')], g0[col('Valeur')], g0[col('Au-delà du seuil')]], [null, 'aucun', null, 'non']);
-  const g = lignes(ER.feuilleDesReponses(A60, { date: DATE }), 1).find(l => l[col('Mesure')] === 'Goulot');
-  assert.equal(g[col('Sujet')], A60.coince.goulot.nom);
-  assert.equal(g[col('Valeur')], Math.round(A60.coince.goulot.cumul), 'son cumul d’attente');
-  assert.match(g[col('Détail')], /commande\(s\) ou vol\(s\) en retard par ses lots/);
+  // 2. Les goulots, sur les conséquences : le premier, puis ceux qui coincent aussi ; son dépassement, face au quart d'heure
+  //    qui compte ; en détail, ses heures sup, ce qu'il fait partir en retard et sa cause. Le seuil d'attente n'y change rien.
+  //    Sans retard ni dépassement (B) : aucun.
+  const g = lignes(f, 1).find(l => l[col('Mesure')] === 'Goulot');
+  assert.equal(g[col('Sujet')], A.coince.goulot.nom);
+  assert.deepEqual([g[col('Valeur')], g[col('Unité')], g[col('Seuil')], g[col('Au-delà du seuil')]],
+    [Math.round(A.coince.goulot.depasse), 'min', 15, A.coince.goulot.depasse >= 15 ? 'oui' : 'non'], 'son dépassement, en minutes, face au quart d’heure');
+  assert.match(g[col('Détail')], /^heures sup \d+ min × personnes ; \d+ commande\(s\) ou vol\(s\) en retard par ses lots ; cause : /);
+  // Un goulot qui dépasse : sa valeur est son dépassement, pas ses heures sup.
+  const depasse = A.coince.goulots.findIndex(x => x.depasse >= 15);
+  if (depasse >= 0) {
+    const l = lignes(f, 1).filter(x => /^(Goulot|Coince aussi)$/.test(x[col('Mesure')]))[depasse];
+    assert.deepEqual([l[col('Valeur')], l[col('Au-delà du seuil')]], [Math.round(A.coince.goulots[depasse].depasse), 'oui']);
+  }
+  assert.equal(lignes(f, 1).filter(l => l[col('Mesure')] === 'Coince aussi').length, A.coince.goulots.length - 1);
+  assert.deepEqual(lignes(ER.feuilleDesReponses(A60, { date: DATE }), 1).filter(l => /^(Goulot|Coince aussi)$/.test(l[col('Mesure')])), lignes(f, 1).filter(l => /^(Goulot|Coince aussi)$/.test(l[col('Mesure')])));
+  const g0 = lignes(ER.feuilleDesReponses(B, { date: DATE }), 1).find(l => l[col('Mesure')] === 'Goulot');
+  assert.deepEqual([B.coince.goulot, g0[col('Sujet')], g0[col('Valeur')], g0[col('Au-delà du seuil')]], [null, 'aucun', null, 'non']);
+  // Les arrivages (les lots livrés ensemble) et les personnes sans travail, par service et jour de travail.
+  for (const c of A.coince.services.filter(x => x.arrivages != null)) {
+    const d = lignes(f, 1).filter(l => duJour(l, c)), v = m => (d.find(l => l[col('Mesure')] === m) || [])[col('Valeur')];
+    assert.equal(v('Arrivages du jour'), c.arrivages, c.nom);
+    assert.equal(v('Attente la plus longue d’un arrivage'), c.attenteMax ? Math.round(c.attenteMax.minutes) : 0, c.nom);
+    assert.equal(v('Cumul d’attente des arrivages'), Math.round(c.cumul), c.nom);
+  }
+  const sansT = A.sansTravail.services.filter(x => x.minutes != null);
+  assert.ok(sansT.length >= 5);
+  for (const t of sansT) {
+    const l = lignes(f, 1).find(x => duJour(x, t) && x[col('Mesure')] === 'Personnes sans travail');
+    assert.equal(l[col('Valeur')], Math.round(t.minutes), t.nom);
+    assert.match(l[col('Détail')], /^avant le premier lot \d+, entre deux lots \d+, après le dernier lot \d+/);
+  }
+  assert.ok(!f.lignes.some(l => /un lot (y )?attend|File la plus longue/.test([l[col('Mesure')], l[col('Détail')]].join(' '))), 'les mots : un arrivage attend, un lot est à faire');
   // 3. Les heures sup de chaque service.
   for (const s of A.fins.services) {
     const h = lignes(f, 2).find(l => duJour(l, s) && l[col('Mesure')] === 'Heures sup');

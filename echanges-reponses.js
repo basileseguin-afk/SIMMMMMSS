@@ -65,37 +65,62 @@
         x && fini(x.presents) ? 'sur ' + r2(x.presents) + ' présentes' + (fini(x.a) ? ', à ' + heure(x.a) : '') : null);
       // Un poste fixe (correction 17 c) : pas de besoin calculé depuis une charge, pas d'écart ; un handling à chauffeurs les compte.
       const present = s.chauffeurs ? 'ses chauffeurs' + (s.horsCompte > 0 ? ' ; ' + r2(s.horsCompte) + ' personne(s) saisie(s) à l’équipe non comptée(s)' : '')
-        : s.fixes > 0 && !s.fixe ? 'dont ' + r2(s.fixes) + ' en postes fixes' : null;
-      out.push(ligne(0, s.nom, j, 'Il faut', s.besoin, 'personnes', null, null, s.fixe ? 'poste fixe : pas de besoin calculé depuis une charge' : 'la charge du jour : ' + r2(s.charge) + ' ETP'),
+        : s.fixes > 0 && !s.fixe && !s.nonMesure ? 'dont ' + r2(s.fixes) + ' en ' + (s.nonMesures > 0 ? (s.fixes - s.nonMesures > EPS ? 'postes fixes ou non mesurés' : 'postes non mesurés') : 'postes fixes') : null;
+      // Sans besoin : un poste fixe, ou des équipes dont le besoin ne se mesure pas (correction 18 a).
+      const sans = s.fixe || s.nonMesure, pourquoi = s.fixe ? 'poste fixe' : 'besoin non mesuré';
+      out.push(ligne(0, s.nom, j, 'Il faut', s.besoin, 'personnes', null, null, s.fixe ? 'poste fixe : pas de besoin calculé depuis une charge'
+          : s.nonMesure ? 'besoin non mesuré : aucun travail au barème pour ses équipes' : 'la charge du jour : ' + r2(s.charge) + ' ETP'),
         ligne(0, s.nom, j, 'Présentes (ETP)', r2(s.presents), 'ETP', null, null, present),
-        ligne(0, s.nom, j, 'Écart (présentes − il faut)', r2(s.ecart), 'personnes', S.ecartPersonnes, s.fixe ? null : ouiNon(s.signale),
-          s.fixe ? 'poste fixe : pas d’écart' : s.sens === 'sous' ? 'il manque du monde' : s.sens === 'sur' ? 'du monde en trop (pas une alerte)' : null),
+        ligne(0, s.nom, j, 'Écart (présentes − il faut)', r2(s.ecart), 'personnes', S.ecartPersonnes, sans ? null : ouiNon(s.signale),
+          sans ? pourquoi + ' : pas d’écart' : s.sens === 'sous' ? 'il manque du monde' : s.sens === 'sur' ? 'du monde en trop (pas une alerte)' : null),
         mi(s.matin, 'Matin'), mi(s.apresMidi, 'Après-midi'),
         ligne(0, s.nom, j, 'Pic au travail', s.pic ? r2(s.pic.personnes) : null, 'personnes', null, null, s.pic ? 'à ' + heure(s.pic.a) : null),
         ligne(0, s.nom, j, 'Occupation', pc(s.occupation), '%', S.occupation, fini(s.occupation) ? ouiNon(s.occupation * 100 > S.occupation + EPS) : null));
     }
     const t = rep.personnes.total;
-    return out.concat([ligne(0, 'Toute l’unité', null, 'Il faut', t.besoin, 'personnes', null, null, 'hors postes fixes'),
+    return out.concat([ligne(0, 'Toute l’unité', null, 'Il faut', t.besoin, 'personnes', null, null, 'hors postes fixes et besoins non mesurés'),
       ligne(0, 'Toute l’unité', null, 'Présentes (ETP)', r2(t.presents), 'ETP'),
-      ligne(0, 'Toute l’unité', null, 'Dont postes fixes (ETP)', r2(t.fixes), 'ETP', null, null, 'permanents, appui, handling : sans besoin calculé'),
+      ligne(0, 'Toute l’unité', null, 'Dont postes fixes (ETP)', r2(t.fixes), 'ETP', null, null,
+        'permanents, appui, handling : sans besoin calculé' + (t.nonMesures > 0 ? ' ; dont ' + r2(t.nonMesures) + ' au besoin non mesuré' : '')),
       ligne(0, 'Toute l’unité', null, 'Écart (présentes hors postes fixes − il faut)', r2(t.ecart), 'personnes')]);
   }
 
-  /** R2 : le goulot, puis chaque service et jour de travail où un lot attend : la file la plus longue, l'attente la plus longue, le cumul, la cause. */
+  /** Ce qu'une équipe attendait avant son premier lot, en mots (les mêmes que la Synthèse). */
+  const attendu = a => (a.quoi === 'ouverture' ? 'attend l’ouverture de ' + (a.nom || 'la mise à disposition') + ', à ' + heure(a.a)
+    : a.quoi === 'amont' ? 'attend ' + (a.nom || 'son amont') + ', jusqu’à ' + heure(a.a) : 'attend son matériel');
+  /** La cause d'un service qui coince, en mots. */
+  const causeDuGoulot = c => (!c ? null : c.code === 'ouverture' || c.code === 'amont' ? attendu({ quoi: c.code, nom: c.nom, a: c.a })
+    : c.code === 'materiel' ? 'ses arrivages attendent leur matériel' : c.code === 'limite' ? 'finit dans son horaire, mais après la limite d’une commande ou d’un vol'
+      : c.code === 'aval' ? 'ses lots finissent avant la limite : la commande ou le vol prend son retard en aval' : 'la charge du jour ne tient pas dans l’horaire');
+
+  /**
+   * R2 (correction 18 a). Les goulots, sur les conséquences : un service qui finit après son horaire d'au moins un quart
+   * d'heure, ou dont un lot fait partir une commande ou un vol en retard — rangés par heures sup, puis par cumul d'attente.
+   * Puis, par service et jour de travail : ses arrivages, la file la plus longue (en arrivages), l'attente la plus longue
+   * d'un arrivage, le cumul, la cause ; et les personnes sans travail, en trois moments, avec ce que l'équipe attendait.
+   */
   function coince(rep, jour) {
-    const S = rep.seuils, g = rep.coince.goulot;
-    const out = [ligne(1, g ? g.nom : 'aucun', g ? jour(g.jour) : null, 'Goulot', g ? entier(g.cumul) : null, 'lots × minutes', S.attenteLot, g ? 'oui' : 'non',
-      g ? 'de ' + heure(g.de) + ' à ' + heure(g.a) + ' ; un lot y attend jusqu’à ' + entier(g.attenteMax) + ' min'
-        + (g.depasse > 0 ? ' ; finit ' + entier(g.depasse) + ' min après son horaire' : '') + (g.enRetard > 0 ? ' ; ' + g.enRetard + ' commande(s) ou vol(s) en retard par ses lots' : '')
-        + (g.cause ? ' ; cause : ' + CAUSES[g.cause] : '')
-        : 'aucun service n’attend plus de ' + S.attenteLot + ' min en finissant après son horaire ou en faisant partir une commande ou un vol en retard')];
-    for (const s of rep.coince.services.filter(x => x.file || x.attenteMax)) {
+    const S = rep.seuils, QUART = REP().DEPASSEMENT_MIN, goulots = rep.coince.goulots || (rep.coince.goulot ? [rep.coince.goulot] : []);
+    // La valeur : son dépassement, en minutes, au quart d'heure qui compte ; le détail : ses heures sup, ce qu'il fait partir en retard, sa cause.
+    const out = goulots.length ? goulots.map((g, i) => ligne(1, g.nom, jour(g.jour), i ? 'Coince aussi' : 'Goulot', entier(g.depasse), 'min', QUART,
+      ouiNon(g.depasse >= QUART - EPS), 'heures sup ' + entier(g.heuresSup) + ' min × personnes ; ' + g.enRetard + ' commande(s) ou vol(s) en retard par ses lots ; cause : ' + causeDuGoulot(g.cause)))
+      : [ligne(1, 'aucun', null, 'Goulot', null, 'min', QUART, 'non',
+        'aucun service ne finit au moins ' + QUART + ' min après son horaire ni ne fait partir une commande ou un vol en retard')];
+    for (const s of rep.coince.services.filter(x => fini(x.arrivages))) {
       const a = s.attenteMax, j = jour(s.jour);
-      out.push(ligne(1, s.nom, j, 'File la plus longue', s.file ? s.file.lots : null, 'lots', null, null, s.file ? 'à ' + heure(s.file.a) : null),
-        ligne(1, s.nom, j, 'Attente la plus longue d’un lot', a ? entier(a.minutes) : null, 'min', S.attenteLot, a ? ouiNon(a.minutes > S.attenteLot) : null,
-          a ? a.lot + ', de ' + heure(a.de) + ' à ' + heure(a.a) : null),
-        ligne(1, s.nom, j, 'Cumul d’attente', entier(s.cumul), 'lots × minutes'),
-        ligne(1, s.nom, j, 'Cause', null, null, null, null, s.cause ? CAUSES[s.cause] : 'aucune établie'));
+      out.push(ligne(1, s.nom, j, 'Arrivages du jour', s.arrivages, 'arrivages', null, null, 'les lots livrés ensemble forment un arrivage'),
+        ligne(1, s.nom, j, 'File d’arrivages la plus longue', s.file ? s.file.arrivages : 0, 'arrivages', null, null, s.file ? 'à ' + heure(s.file.a) : null),
+        ligne(1, s.nom, j, 'Attente la plus longue d’un arrivage', a ? entier(a.minutes) : 0, 'min', S.attenteLot, ouiNon(!!a && a.minutes > S.attenteLot),
+          a ? a.lot + (a.lots > 1 ? ' (et ' + (a.lots - 1) + ' autre(s) lot(s))' : '') + ', de ' + heure(a.de) + ' à ' + heure(a.a) : 'aucun arrivage n’a attendu'),
+        ligne(1, s.nom, j, 'Cumul d’attente des arrivages', entier(s.cumul), 'arrivages × minutes'),
+        ligne(1, s.nom, j, 'Cause de l’attente des arrivages', null, null, null, null, s.cause ? CAUSES[s.cause] : 'aucune établie'));
+    }
+    for (const s of ((rep.sansTravail || {}).services || []).filter(x => fini(x.minutes))) {
+      const j = jour(s.jour);
+      out.push(ligne(1, s.nom, j, 'Personnes sans travail', entier(s.minutes), 'min × personnes', null, null,
+          'avant le premier lot ' + entier(s.avant) + ', entre deux lots ' + entier(s.entre) + ', après le dernier lot ' + entier(s.apres)
+          + (s.attendait.length ? ' ; ' + s.attendait.map(attendu).join(' ; ') : '')),
+        ligne(1, s.nom, j, 'Part de la présence sans travail', pc(s.part), '%'));
     }
     return out;
   }
@@ -107,7 +132,8 @@
       const h = s.heuresSup || {}, j = jour(s.jour);
       return [ligne(2, s.nom, j, 'Fin du dernier lot', quand(s.fin), 'heure', null, null, fini(s.fin) ? heure(s.fin) : null),
         ligne(2, s.nom, j, 'Fin de l’horaire', quand(s.finHoraire), 'heure', null, null, fini(s.finHoraire) ? heure(s.finHoraire) : null),
-        ligne(2, s.nom, j, 'Dépassement', entier(s.depasse), 'min', 0, fini(s.depasse) ? ouiNon(s.depasse > 0) : null),
+        // Le dépassement compte à partir du quart d'heure (une règle fixe, correction 18 a) : en dessous, il s'écrit sans compter.
+        ligne(2, s.nom, j, 'Dépassement', entier(s.depasse), 'min', REP().DEPASSEMENT_MIN, fini(s.depasse) ? ouiNon(s.depasse >= REP().DEPASSEMENT_MIN - EPS) : null),
         ligne(2, s.nom, j, 'Heures sup', entier(h.total), 'min × personnes', null, null,
           'équipes ' + (entier(h.equipes) ?? 0) + ', renforts prêtés ' + (entier(h.renforts) ?? 0) + ', chauffeurs ' + (entier(h.chauffeurs) ?? 0))];
     });
@@ -128,7 +154,7 @@
     const nom = id => ((rep.personnes.services.find(s => s.service === id) || {}).nom) || id || 'aucun', t = d.personnes.total, x = d.exceptions;
     const de = (s, lignes) => { const mot = REP().motDeLaLigne(s, lignes); return s.nom + (mot ? ' (' + mot + ')' : ''); };
     // Un poste fixe (correction 17 c) n'a pas de besoin : « fixe », pas « absent ».
-    const faut = (s, c) => ((s.fixe || {})[c] ? 'fixe' : ouAbsent(s.besoin[c]));
+    const faut = (s, c) => ((s.nonMesure || {})[c] ? 'non mesuré' : (s.fixe || {})[c] ? 'fixe' : ouAbsent(s.besoin[c]));
     const g = d.coince.goulot, goulot = (id, j) => {
       const mot = id ? REP().motDeLaLigne({ service: id, jour: j || 0 }, d.coince.services) : null;
       return id ? nom(id) + (mot ? ' (' + mot + ')' : '') : 'aucun';

@@ -71,13 +71,13 @@
     out[1].push(ligne('Il faut (personnes)', n(t.besoin.a), n(t.besoin.b), ecartSigne(t.besoin.d, -1, n)));
     out[1].push(ligne('Présentes (équivalents temps plein)', n(t.presents.a), n(t.presents.b), ecartSigne(t.presents.d, 0, n)));
     // Un poste fixe (correction 17 c) n'a pas de besoin : « fixe / 2 ».
-    const faut = (s, c) => ((s.fixe || {})[c] ? 'fixe' : n(s.besoin[c]));
+    const faut = (s, c) => ((s.nonMesure || {})[c] ? 'non mesuré' : (s.fixe || {})[c] ? 'fixe' : n(s.besoin[c]));
     // Une ligne qui devient un poste fixe (ou cesse de l'être) change aussi, même à présents égaux.
     for (const s of d.personnes.services.filter(x => x.besoin.d || x.presents.d || (x.fixe && x.fixe.a !== null && x.fixe.b !== null && x.fixe.a !== x.fixe.b)))
       out[1].push(ligne(de(s, d.personnes.services) + ' : il faut / présentes', faut(s, 'a') + ' / ' + n(s.presents.a), faut(s, 'b') + ' / ' + n(s.presents.b)));
     out[2].push(ligne('Goulot', nom(A), nom(B)));
     for (const s of d.coince.services.filter(x => x.attenteMax.d))
-      out[2].push(ligne(de(s, d.coince.services) + ' : un lot attend jusqu’à', s.attenteMax.a == null ? '—' : dl(s.attenteMax.a), s.attenteMax.b == null ? '—' : dl(s.attenteMax.b), ecartSigne(s.attenteMax.d, -1, dl)));
+      out[2].push(ligne(de(s, d.coince.services) + ' : un arrivage attend jusqu’à', s.attenteMax.a == null ? '—' : dl(s.attenteMax.a), s.attenteMax.b == null ? '—' : dl(s.attenteMax.b), ecartSigne(s.attenteMax.d, -1, dl)));
     const hs = d.fins.services.reduce((m, s) => ({ a: m.a + (s.heuresSup.a || 0), b: m.b + (s.heuresSup.b || 0) }), { a: 0, b: 0 });
     out[3].push(ligne('Heures sup (personnes × heures)', dl(hs.a), dl(hs.b), ecartSigne(hs.b - hs.a, -1, dl)));
     for (const s of d.fins.services.filter(x => x.fin.d)) out[3].push(ligne(de(s, d.fins.services) + ' finit à', P().hhmm(s.fin.a), P().hhmm(s.fin.b), ecartSigne(s.fin.d, -1, dl)));

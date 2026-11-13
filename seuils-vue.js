@@ -3,7 +3,7 @@
  *  ------------------------------------------------------------------------
  *  Dans « Réglages de la simulation » : les cinq seuils qui décident de ce
  *  que les résultats signalent (moteur/reponses.js) — un écart de personnes,
- *  l'attente d'un lot, l'occupation, la durée maximale d'un stock, le
+ *  l'attente d'un arrivage, l'occupation, la durée maximale d'un stock, le
  *  retard. Gardés dans « ory-seuils-v1 » (sim.js) ; sans eux, les défauts.
  *  Ce module écrit le panneau et lit un champ ; il ne garde rien lui-même.
  * ==========================================================================*/
@@ -19,8 +19,8 @@
   /** Ce que chaque seuil déclenche, en une ligne sous son champ. */
   const EFFET = Object.freeze({
     ecartPersonnes: 'Un service est signalé s’il lui manque au moins ce nombre de personnes (un surplus n’est pas une alerte).',
-    attenteLot: 'Un service coince si l’un de ses lots attend plus longtemps et s’il finit après son horaire ou fait partir une commande ou un vol en retard.',
-    occupation: 'Au-delà, une file est due au manque de personnel.',
+    attenteLot: 'Un arrivage (les lots livrés ensemble) qui attend plus longtemps avant son premier lot se signale ; la plonge est alors en « Bouchon ».',
+    occupation: 'Au-delà, l’occupation se signale, et l’attente d’un arrivage est due au manque de personnel.',
     dureeStockMax: 'Vide : aucune alerte de stock.',
     retard: 'Un vol ou une commande en retard d’au moins autant est une exception.'
   });

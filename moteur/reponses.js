@@ -43,16 +43,16 @@
 
   const CLE_STOCKAGE = 'ory-seuils-v1', SCHEMA = 'ory-seuils', VERSION = 1, PREFIXE = 'seuils d’alerte';
   /**
-   * Les défauts, quand rien n'est réglé : un écart de 3 personnes, une attente d'un lot de 6 h (correction 17 c : dans une
-   * production par lots, un lot attend normalement son tour plusieurs heures ; à 1 h, la plupart des services étaient
-   * signalés), une occupation de 95 %, pas de durée de stock, un retard de 1 min. Un réglage enregistré écrit ses cinq
-   * seuils : il ne change pas.
+   * Les défauts, quand rien n'est réglé : un écart de 3 personnes, une attente de 6 h (correction 17 c), une occupation de
+   * 95 %, pas de durée de stock, un retard de 1 min. Un réglage enregistré écrit ses cinq seuils : il ne change pas. Depuis
+   * la correction 18 (a), l'attente est celle d'un arrivage (les lots livrés ensemble) ; la clé et le défaut ne changent pas.
    */
   const SEUILS_DEFAUT = Object.freeze({ ecartPersonnes: 3, attenteLot: 360, occupation: 95, dureeStockMax: null, retard: 1 });
   /** Chaque seuil : son nom, son unité, ses bornes ; `vide` : il peut rester vide (pas d'alerte). */
   const SEUILS = Object.freeze([
     { cle: 'ecartPersonnes', nom: 'Écart de personnes à signaler', unite: 'personnes', min: 0, max: 100 },
-    { cle: 'attenteLot', nom: 'Attente d’un lot', unite: 'min', min: 0, max: JOUR },
+    // Sa clé et son défaut ne changent pas ; depuis la correction 18 (a), il s'applique à l'attente d'un arrivage.
+    { cle: 'attenteLot', nom: 'Attente d’un arrivage', unite: 'min', min: 0, max: JOUR },
     { cle: 'occupation', nom: 'Occupation', unite: '%', min: 1, max: 100 },
     { cle: 'dureeStockMax', nom: 'Durée maximale d’un stock', unite: 'min', min: 1, max: 7 * JOUR, vide: true },
     { cle: 'retard', nom: 'Retard', unite: 'min', min: 0, max: JOUR }
@@ -91,6 +91,11 @@
       throw new Error('sauvegarde : ce n’est pas une sauvegarde complète (« Tout sauvegarder »).');
     return Object.prototype.hasOwnProperty.call(s.contenu, CLE_STOCKAGE) ? lireEnveloppe(s.contenu[CLE_STOCKAGE]) : { ...SEUILS_DEFAUT };
   }
+  /**
+   * Le dépassement qui compte (correction 18 a) : un service qui finit après son horaire d'au moins un quart d'heure coince.
+   * Une règle fixe, écrite dans le contrat des résultats, pas un réglage : en dessous, le dépassement s'affiche sans compter.
+   */
+  const DEPASSEMENT_MIN = 15;
   /** Un stock trop long : seulement si une durée maximale est réglée, et dépassée. */
   const stockTropLong = (duree, seuils) => seuils.dureeStockMax !== null && fini(duree) && duree > seuils.dureeStockMax;
 
@@ -156,9 +161,10 @@
       const chauffeurs = v.type === 'handling' && generale > 0 ? IND().chauffeursDe(v, def) : null;
       const presents = chauffeurs ? somme(chauffeurs, c => (+c.n || 0) * Math.max(0, c.a - c.de)) / generale : IND().etpDe(v, args.regime);
       const t = tetesDe(v, def, (r.effectifs || {})[v.id], x, lots.get(v.id) || [], args), fixe = t === null && TYPES_FIXES.has(v.type);
-      return { id: v.id, nom: v.nom, service: v.service, jour: fini(x.jour) ? x.jour : 0, presents, mesure: t !== null, fixe,
+      // Une équipe d'un service mesuré dont le besoin ne se mesure pas (correction 18 a) : rangée avec les postes fixes, hors du besoin.
+      return { id: v.id, nom: v.nom, service: v.service, jour: fini(x.jour) ? x.jour : 0, presents, mesure: t !== null, fixe, nonMesure: t === null && !fixe,
         chauffeurs: !!chauffeurs, horsCompte: chauffeurs ? +v.personnes || 0 : 0,
-        besoin: fixe ? 0 : t === null ? presents : t * IND().etpDe({ personnes: 1, presence: v.presence }, args.regime) };
+        besoin: t === null ? 0 : t * IND().etpDe({ personnes: 1, presence: v.presence }, args.regime) };
     });
   }
   /** Le plus haut d'une série de créneaux sur un intervalle de l'horloge du jour de travail : { valeur, debut }. */
@@ -182,20 +188,24 @@
   function personnes(r, args, k, seuils) {
     const equipes = equipesDuJour(r, args, k), nom = nomDe(args);
     const services = k.services.map(s => {
-      const eqs = equipes.filter(e => e.service === s.service && e.jour === s.jour), calculees = eqs.filter(e => !e.fixe);
-      const fixe = eqs.length > 0 && !calculees.length, charge = net(somme(calculees, e => e.besoin));
-      const presents = net(somme(eqs, e => e.presents)), fixes = net(somme(eqs.filter(e => e.fixe), e => e.presents));
-      const besoin = fixe ? null : Math.ceil(charge - EPS) || 0, ecart = fixe ? null : net(presents - fixes - besoin);
+      const eqs = equipes.filter(e => e.service === s.service && e.jour === s.jour), calculees = eqs.filter(e => e.mesure);
+      // Sans équipe mesurée : « fixe » si toutes sont des postes fixes, sinon « non mesuré » ; ni besoin, ni écart.
+      const sans = eqs.length > 0 && !calculees.length, fixe = sans && eqs.every(e => e.fixe), nonMesure = sans && !fixe;
+      const charge = net(somme(calculees, e => e.besoin));
+      const presents = net(somme(eqs, e => e.presents)), fixes = net(somme(eqs.filter(e => !e.mesure), e => e.presents));
+      const nonMesures = net(somme(eqs.filter(e => e.nonMesure), e => e.presents));
+      const besoin = sans ? null : Math.ceil(charge - EPS) || 0, ecart = sans ? null : net(presents - fixes - besoin);
       const sens = ecart === null ? null : ecart > EPS ? 'sur' : ecart < -EPS ? 'sous' : null;
-      return { service: s.service, nom: nom(s.service), jour: s.jour, besoin, charge, presents, fixes, fixe, ecart, sens,
+      return { service: s.service, nom: nom(s.service), jour: s.jour, besoin, charge, presents, fixes, nonMesures, fixe, nonMesure, ecart, sens,
         signale: sens === 'sous' && Math.abs(ecart) >= seuils.ecartPersonnes - EPS,
         chauffeurs: eqs.some(e => e.chauffeurs), horsCompte: somme(eqs, e => e.horsCompte),
         matin: moitie(s.creneaux, s.jour, t => t < MIDI), apresMidi: moitie(s.creneaux, s.jour, t => t >= MIDI),
         pic: s.picAuTravail ? { personnes: s.picAuTravail.personnes, a: s.picAuTravail.debut + s.jour * JOUR } : null,
         occupation: s.occupation,
-        equipes: eqs.map(e => ({ id: e.id, nom: e.nom, presents: net(e.presents), besoin: net(e.besoin), mesure: e.mesure, fixe: e.fixe })) };
+        equipes: eqs.map(e => ({ id: e.id, nom: e.nom, presents: net(e.presents), besoin: net(e.besoin), mesure: e.mesure, fixe: e.fixe, nonMesure: e.nonMesure })) };
     });
-    const total = { besoin: somme(services, s => s.besoin), presents: net(somme(services, s => s.presents)), fixes: net(somme(services, s => s.fixes)) };
+    const total = { besoin: somme(services, s => s.besoin), presents: net(somme(services, s => s.presents)), fixes: net(somme(services, s => s.fixes)),
+      nonMesures: net(somme(services, s => s.nonMesures)) };
     return { services, total: { ...total, ecart: net(total.presents - total.fixes - total.besoin) } };
   }
 
@@ -217,42 +227,55 @@
   }
   const chevauche = (x, liste) => somme(liste, y => Math.max(0, Math.min(x.a, y.a) - Math.max(x.de, y.de)));
 
-  /** Les lots en file d'un service, chacun avec son attente, sa part de matériel et sa part passée à attendre l'amont. */
-  function fileDuService(equipes, ke) {
-    const out = [];
-    for (const v of equipes) {
-      const x = ke.get(v.id);
-      if (!x || (x.sansObjet && x.sansObjet.enFile)) continue;
-      const amont = attentesAmont(v);
-      for (const f of IND().fileDe(v) || []) {
-        const minutes = Math.max(0, f.a - f.de);
-        out.push({ ...f, equipe: v.id, minutes, materiel: Math.min(minutes, +f.lot.attenteMateriel || 0), amont: chevauche(f, amont) });
-      }
+  /**
+   * Les arrivages d'une équipe (correction 18 a) : ses lots qui deviennent prêts au même instant — ceux prêts avant son
+   * arrivée forment celui de son arrivée ; à une plonge par vol, chaque vol revenu est un arrivage. L'attente d'un arrivage
+   * va de son instant au début de son premier lot ; les lots suivants du même arrivage sont « à faire », dans l'ordre de
+   * travail : ils n'attendent pas. Les indicateurs (K4) gardent leur file lot par lot ; ici, on les réunit sans rien changer.
+   * Rend [{ equipe, de, a, minutes, lots, lot, materiel, amont }] dans l'ordre des instants ; null si la file est sans objet.
+   */
+  function arrivagesDe(v, x) {
+    if (!x || (x.sansObjet && x.sansObjet.enFile)) return null;
+    const file = IND().fileDe(v);
+    if (!file) return null;
+    const amont = attentesAmont(v), groupes = new Map();
+    for (const f of file) {
+      // À la plonge par vol, chaque vol est son arrivage, même revenu au même instant qu'un autre.
+      const cle = v.type === 'lavage' ? groupes.size : Math.round(f.de * 1e6);
+      const g = groupes.get(cle);
+      if (!g) groupes.set(cle, { equipe: v.id, de: f.de, a: f.a, lots: 1, lot: f.lot });
+      else { g.lots++; if (f.a < g.a - EPS) { g.a = f.a; g.lot = f.lot; } }
     }
-    return out;
+    return [...groupes.values()].sort((p, q) => p.de - q.de).map(g => {
+      const minutes = net(Math.max(0, g.a - g.de));
+      return { ...g, minutes, materiel: Math.min(minutes, +g.lot.attenteMateriel || 0), amont: chevauche(g, amont) };
+    });
   }
   /**
-   * L'occupation d'un service pendant sa file : au travail ÷ (présents − en pause) des équipes qui tiennent les lots en
-   * file, sur les créneaux où l'un d'eux attend (un robot inoccupé à côté d'une équipe débordée ne la dilue pas).
+   * L'occupation d'un service pendant que ses arrivages attendent : au travail ÷ (présents − en pause) des équipes qui
+   * tiennent ces arrivages, sur les créneaux où l'un d'eux attend (un robot inoccupé à côté d'une équipe débordée ne la
+   * dilue pas).
    */
-  function occupationPendant(equipes) {
+  function occupationPendant(equipes, attentes) {
     let travail = 0, dispo = 0;
+    const PAS = IND().PAS;
     for (const e of equipes) {
-      const c = e.creneaux;
-      if (!c.enFile || !c.auTravail || !c.presents) continue;
-      c.enFile.valeurs.forEach((n, i) => {
-        if (!(n > EPS)) return;
-        const t = c.enFile.debut + i * IND().PAS, j = (t - c.auTravail.debut) / IND().PAS, p = (t - c.presents.debut) / IND().PAS;
-        travail += c.auTravail.valeurs[j] || 0;
-        dispo += Math.max(0, (c.presents.valeurs[p] || 0) - ((c.enPause && c.enPause.valeurs[(t - c.enPause.debut) / IND().PAS]) || 0));
+      const c = e.creneaux, miennes = attentes.filter(a => a.equipe === e.id);
+      if (!miennes.length || !c.auTravail || !c.presents) continue;
+      const d = (e.jour || 0) * JOUR, a = (serie, t) => (serie ? serie.valeurs[Math.round((t - serie.debut) / PAS)] || 0 : 0);
+      c.auTravail.valeurs.forEach((x, i) => {
+        const t = c.auTravail.debut + i * PAS;
+        if (!miennes.some(w => w.de < t + d + PAS - EPS && w.a > t + d + EPS)) return;
+        travail += x || 0;
+        dispo += Math.max(0, a(c.presents, t) - a(c.enPause, t));
       });
     }
     return dispo > EPS ? travail / dispo : null;
   }
   /**
-   * La cause d'une file : « matériel » si les lots attendent surtout leur matériel (K9) ; sinon « personnel » si le service est
-   * occupé au-delà du seuil pendant sa file ; sinon « amont » si ses personnes attendent le service d'avant ; sinon
-   * « matériel » s'il en a manqué ; sinon aucune.
+   * La cause de l'attente des arrivages : « matériel » s'ils attendent surtout leur matériel (K9) ; sinon « personnel » si le
+   * service est occupé au-delà du seuil pendant qu'ils attendent ; sinon « amont » si ses personnes attendent le service
+   * d'avant ; sinon « matériel » s'il en a manqué ; sinon aucune.
    */
   function causeDe(cumul, parts, occupation, seuils) {
     if (!(cumul > EPS)) return null;
@@ -261,58 +284,198 @@
     if (parts.amont > EPS) return 'amont';
     return parts.materiel > EPS ? 'materiel' : null;
   }
-  /** Le moment où ça coince : le morceau d'un seul tenant de la file où l'attente s'accumule le plus. */
-  function fenetreDe(file) {
-    const tries = file.filter(f => f.minutes > EPS).sort((p, q) => p.de - q.de), morceaux = [];
-    for (const f of tries) {
-      const d = morceaux[morceaux.length - 1];
-      if (d && f.de <= d.a + EPS) { d.a = Math.max(d.a, f.a); d.cumul += f.minutes; } else morceaux.push({ de: f.de, a: f.a, cumul: f.minutes });
-    }
-    return morceaux.reduce((m, x) => (!m || x.cumul > m.cumul + EPS ? x : m), null);
-  }
   /**
    * Ce qui part en retard par les lots d'une ligne (ses équipes) : les commandes prêtes après leur limite ou pas finies
-   * qu'ils portent ; au handling, les vols chargés après leur limite ou pas chargés. Rend leur nombre.
+   * qu'ils portent ; au handling, les vols chargés après leur limite ou pas chargés. Rend leur nombre (`n`) ; parmi elles,
+   * celles que le lot de la ligne finit lui-même après la limite, ou ne finit pas (`apres` : les autres prennent leur retard
+   * en aval) ; et le plus grand de ces retards, en minutes (`retardMax` : Infinity pour une commande pas finie).
    */
   function retardsDe(equipes, r, seuils) {
-    const ids = new Set(equipes.map(v => v.id)), par = r.parClasse || {}, vus = new Set();
+    const ids = new Set(equipes.map(v => v.id)), par = r.parClasse || {}, vus = new Set(), apres = new Set();
     const tard = c => c && !c.absente && (c.fin == null || (c.fin > c.echeance + EPS && c.fin - c.echeance >= seuils.retard - EPS));
+    let retardMax = 0;
     for (const l of r.lots || []) {
       if (!ids.has(l.atelier) || l.dispo) continue;
-      if (l.handling) { if (l.fin == null || (l.aHeure === false && (+l.retard || 0) >= seuils.retard - EPS)) vus.add('vol ' + l.vol); }
-      else for (const c of l.classes || []) if (tard(par[c])) vus.add(c);
+      if (l.handling) {
+        if (l.fin == null || (l.aHeure === false && (+l.retard || 0) >= seuils.retard - EPS)) {
+          vus.add('vol ' + l.vol); apres.add('vol ' + l.vol);
+          retardMax = Math.max(retardMax, l.fin == null ? Infinity : +l.retard || 0);
+        }
+      } else for (const c of l.classes || []) if (tard(par[c])) {
+        vus.add(c);
+        if (l.fin == null || l.fin > par[c].echeance + EPS) apres.add(c);
+        retardMax = Math.max(retardMax, par[c].fin == null ? Infinity : par[c].fin - par[c].echeance);
+      }
     }
-    return vus.size;
+    return { n: vus.size, apres: apres.size, retardMax };
+  }
+
+  /* ----------------------------------------------------------------------
+   *  Les personnes sans travail (correction 18 a)
+   * --------------------------------------------------------------------*/
+
+  /** Ce que la journée donne à lire une fois : ses commandes, ses mises à disposition réglées « comme une boutique », ses noms. */
+  function contexteDe(r, args) {
+    const boutiques = new Map((args.ateliers || []).filter(a => P().ouvertureDe(a)).map(a => [a.service, a]));
+    return { classes: new Map((r.classes || []).map(c => [c.id, c])), boutiques, nom: nomDe(args), amonts: new Map() };
+  }
+  /** Le premier lot d'une équipe : celui qu'elle commence le premier (une mise à disposition n'en a pas). */
+  function premierLot(v) {
+    return (v.lots || []).filter(l => !l.dispo && fini(l.debut)).reduce((m, l) => (!m || l.debut < m.debut - EPS ? l : m), null);
+  }
+  /**
+   * Les services qui alimentent une commande dans un service, d'après son chemin : ceux d'avant, en enjambant une case où
+   * personne ne la travaille (comme le moteur) ; une mise à disposition « boutique » sur le chemin compte toujours.
+   */
+  function amontsDe(service, id, r, args, ctx) {
+    const cle = service + '|' + id;
+    if (ctx.amonts.has(cle)) return ctx.amonts.get(cle);
+    const c = ctx.classes.get(id), parcours = c ? PARC().fluxDe(args, c) : null, out = [];
+    if (parcours) {
+      const arcs = P().arcsDuParcours(parcours), par = new Map(PARC().chronogramme(r, parcours, id).etapes.map(e => [e.service, e]));
+      const remonter = (s, vus) => arcs.filter(a => a.to === s && !vus.has(a.from)).forEach(a => {
+        vus.add(a.from);
+        const e = par.get(a.from);
+        if (ctx.boutiques.has(a.from) || (e && !e.absent && !e.commun)) out.push(a.from); else remonter(a.from, vus);
+      });
+      remonter(service, new Set());
+    }
+    ctx.amonts.set(cle, out);
+    return out;
+  }
+  /**
+   * Ce qu'une équipe attendait avant son premier lot : l'ouverture d'une mise à disposition réglée « comme une boutique »
+   * (nommée, avec son heure) ; sinon son amont, le service qui lui livre ce lot le dernier ; sinon son matériel. Rend
+   * { quoi: 'ouverture' | 'amont' | 'materiel', service, nom, a } ; null si elle commence dès son arrivée ou sans cause lisible.
+   */
+  function attenduAvant(v, r, args, ctx) {
+    // Un handling attend ses vols, une mise à disposition ou une équipe d'appui n'a pas de lot à elle : sans objet.
+    if (TYPES_FIXES.has(v.type)) return null;
+    const l = premierLot(v);
+    if (!l || !fini(v.debutPoste) || !(l.debut > v.debutPoste + EPS)) return null;
+    if (!fini(l.pret) || l.pret <= v.debutPoste + EPS) return (+l.attenteMateriel || 0) > EPS ? { quoi: 'materiel', service: null, nom: null, a: l.debut } : null;
+    const amonts = [...new Set((l.classes || []).flatMap(id => amontsDe(v.service, id, r, args, ctx)))];
+    const ouverte = amonts.filter(s => ctx.boutiques.has(s)).map(s => ({ s, a: P().prochaineOuverture(ctx.boutiques.get(s), v.debutPoste) }))
+      .filter(x => x.a > v.debutPoste + EPS).sort((p, q) => q.a - p.a)[0];
+    if (ouverte && ouverte.a >= l.pret - EPS) return { quoi: 'ouverture', service: ouverte.s, nom: ctx.nom(ouverte.s), a: ouverte.a };
+    const classes = new Set(l.classes || []);
+    const dernier = amonts.map(s => ({ s, fin: Math.max(-Infinity, ...(r.lots || []).filter(x => x.service === s && fini(x.fin) && (x.classes || []).some(id => classes.has(id))).map(x => x.fin)) }))
+      .filter(x => fini(x.fin)).sort((p, q) => q.fin - p.fin)[0];
+    return { quoi: 'amont', service: dernier ? dernier.s : null, nom: dernier ? ctx.nom(dernier.s) : null, a: l.pret };
+  }
+  /**
+   * Le temps sans travail d'une équipe, lu dans ses créneaux « sans travail » des indicateurs (minutes × personnes), et
+   * réparti en trois moments : avant son premier lot, entre deux lots, après son dernier lot. Créneau par créneau, la part
+   * d'avant est bornée par ses personnes × le temps du créneau qui précède le premier lot, celle d'après de même : la somme
+   * des trois est exactement le total des indicateurs. Sans lot ce jour-là, tout est « avant » (`sansLot`). Null sans objet.
+   */
+  function sansTravailDe(v, x) {
+    const c = x && x.creneaux;
+    if (!c || !c.sansTravail || !c.presents) return null;
+    const PAS = IND().PAS, d = (x.jour || 0) * JOUR, n = +v.personnes || 0;
+    const lots = (v.lots || []).filter(l => !l.dispo && fini(l.debut));
+    const t1 = lots.length ? Math.min(...lots.map(l => l.debut)) : null, t2 = lots.length ? Math.max(...lots.map(l => (fini(l.fin) ? l.fin : Infinity))) : null;
+    const arrivee = fini(v.debutPoste) ? v.debutPoste : -Infinity;
+    let avant = 0, entre = 0, apres = 0;
+    c.sansTravail.valeurs.forEach((val, i) => {
+      const s = val * PAS;
+      if (!(s > 0)) return;
+      if (t1 === null) { avant += s; return; }
+      const a = c.sansTravail.debut + i * PAS + d, b = a + PAS;
+      const av = Math.min(s, n * Math.max(0, Math.min(b, t1) - Math.max(a, arrivee))), ap = Math.min(s - av, n * Math.max(0, b - Math.max(a, t2)));
+      avant += av; apres += ap; entre += s - av - ap;
+    });
+    // Les créneaux des indicateurs sont arrondis : chaque moment l'est au dix-millième de minute, « entre » prend le reste du
+    // total ; un reste plus petit que cet arrondi n'est pas un temps entre deux lots, il va au plus grand des deux autres.
+    const total = net(avant + entre + apres), fin = y => Math.round(y * 1e4) / 1e4;
+    let av = Math.min(total, fin(avant)), ap = Math.min(net(total - av), fin(apres)), en = net(total - av - ap);
+    if (en < 1e-4 && (av > 0 || ap > 0)) { if (av >= ap) av = net(av + en); else ap = net(ap + en); en = 0; }
+    return { minutes: total, presence: net(somme(c.presents.valeurs, y => y) * PAS), avant: av, entre: en, apres: ap, sansLot: t1 === null };
+  }
+  /**
+   * Les personnes sans travail, par service et jour de travail (les lignes des indicateurs) : les minutes × personnes, leur
+   * part de la présence des mêmes équipes, les trois moments, et ce que chaque équipe attendait avant son premier lot
+   * (`attendait`, le plus de temps perdu d'abord). Une ligne sans équipe au travail mesurable : `minutes` null.
+   */
+  function sansTravail(r, args, k, ctx) {
+    const ke = new Map(k.equipes.map(e => [e.id, e])), nom = nomDe(args);
+    const services = k.services.map(s => {
+      const eqs = equipesDe(r, s).map(v => ({ v, t: sansTravailDe(v, ke.get(v.id)) })).filter(x => x.t);
+      const base = { service: s.service, nom: nom(s.service), jour: s.jour };
+      if (!eqs.length) return { ...base, minutes: null, presence: null, part: null, avant: null, entre: null, apres: null, attendait: [] };
+      const m = c => net(somme(eqs, x => x.t[c])), minutes = m('minutes'), presence = m('presence');
+      const attendait = eqs.filter(x => x.t.avant > EPS && !x.t.sansLot).map(x => ({ x, quoi: attenduAvant(x.v, r, args, ctx) })).filter(y => y.quoi)
+        .map(y => ({ equipe: y.x.v.id, ...y.quoi, minutes: y.x.t.avant })).sort((p, q) => q.minutes - p.minutes);
+      return { ...base, minutes, presence, part: presence > EPS ? minutes / presence : null, avant: m('avant'), entre: m('entre'), apres: m('apres'), attendait };
+    });
+    return { services };
+  }
+
+  /* ----------------------------------------------------------------------
+   *  2. Où et quand ça coince ? (suite)
+   * --------------------------------------------------------------------*/
+
+  /**
+   * La cause d'un service qui coince (correction 18 a). Il dépasse son horaire : « ouverture » ou « amont » quand le temps
+   * perdu avant le premier lot de l'équipe qui dépasse le plus explique son dépassement (elle aurait fini dans son horaire en
+   * commençant à son arrivée) ; « matériel » si ses arrivages attendent surtout leur matériel ; sinon « charge » : la charge du
+   * jour ne tient pas dans l'horaire. Il ne dépasse pas, mais un de ses lots fait partir en retard : ce que son équipe
+   * attendait avant son premier lot, si ce temps perdu couvre le retard ; le matériel ; sinon « limite » — un de ses lots
+   * finit après la limite de la commande — ou « aval » : ses lots finissent à temps, la commande prend son retard après lui.
+   */
+  function causeDuGoulot(ligne, fin, eqs, attendus, depasse) {
+    const dire = a => (a.quoi === 'materiel' ? { code: 'materiel' } : { code: a.quoi, service: a.service, nom: a.nom, a: a.a });
+    if (depasse >= DEPASSEMENT_MIN - EPS) {
+      const pire = ((fin && fin.equipes) || []).filter(e => fini(e.depasse)).sort((p, q) => q.depasse - p.depasse)[0];
+      const v = pire ? eqs.find(x => x.id === pire.id) : null, a = v ? attendus.get(v.id) : null;
+      if (a && a.perdu >= pire.depasse - EPS) return dire(a);
+      return ligne.cause === 'materiel' ? { code: 'materiel' } : { code: 'charge' };
+    }
+    const a = eqs.map(v => attendus.get(v.id)).filter(Boolean).sort((p, q) => q.perdu - p.perdu)[0];
+    if (a && a.perdu >= ligne.retardMax - EPS) return dire(a);
+    if (ligne.cause === 'materiel') return { code: 'materiel' };
+    return { code: ligne.apresLimite > 0 ? 'limite' : 'aval' };
   }
 
   /**
-   * Par service et jour de travail (les lignes des indicateurs) : sa file la plus longue, l'attente la plus longue d'un lot,
-   * le cumul ; la cause ; ce qui part en retard par ses lots (`enRetard`). Le goulot du jour, qui dit son jour de travail
-   * (correction 17 c) : parmi les lignes qui dépassent le seuil d'attente ET qui finissent après leur horaire (`fins`) ou
-   * font partir une commande ou un vol en retard, celle au plus grand cumul d'attente. Sinon : rien ne coince — les attentes
-   * restent dans les lignes.
+   * Par service et jour de travail (les lignes des indicateurs) : ses arrivages du jour, sa file la plus longue (en
+   * arrivages qui n'ont pas commencé), l'attente la plus longue d'un arrivage, le cumul ; la cause de cette attente ; ce qui
+   * part en retard par ses lots (`enRetard`). Sans objet (un handling, une plonge au débit) : `arrivages` null.
+   * « Où ça coince » se juge sur les conséquences, sans seuil réglable (correction 18 a) : un service coince, un jour de
+   * travail donné, s'il finit après son horaire d'au moins un quart d'heure (DEPASSEMENT_MIN), ou si un de ses lots fait
+   * partir une commande ou un vol en retard. `goulots` : rangés par heures sup du dépassement (minutes × personnes ; un
+   * dépassement sous le quart d'heure n'y compte pas), puis par cumul d'attente ; à égalité, ceux dont un lot finit lui-même
+   * après la limite d'abord, puis l'ordre des lignes. `goulot` : le premier, ou null — rien ne coince.
    */
-  function coince(r, args, k, seuils, fins) {
+  function coince(r, args, k, seuils, fins, ctx) {
     const ke = new Map(k.equipes.map(e => [e.id, e])), nom = nomDe(args);
-    const depasse = new Map(((fins && fins.services) || []).map(f => [f.service + '|' + f.jour, f.depasse]));
+    const finDe = new Map(((fins && fins.services) || []).map(f => [f.service + '|' + f.jour, f]));
     const services = k.services.map(s => {
-      const membres = new Set(s.equipes || []), file = fileDuService(equipesDe(r, s), ke), cumul = net(somme(file, f => f.minutes));
-      const pire = file.reduce((m, f) => (f.minutes > EPS && (!m || f.minutes > m.minutes + EPS) ? f : m), null);
-      const parts = { materiel: net(somme(file, f => f.materiel)), amont: net(somme(file, f => f.amont)) };
-      const occupationFile = occupationPendant(k.equipes.filter(e => membres.has(e.id) && e.creneaux));
-      const plus = IND().fileMax(file);
-      return { service: s.service, nom: nom(s.service), jour: s.jour, file: plus.lots ? plus : null, cumul, parts, occupationFile,
-        cause: causeDe(cumul, parts, occupationFile, seuils), enRetard: retardsDe(equipesDe(r, s), r, seuils),
-        attenteMax: pire ? { minutes: net(pire.minutes), lot: pire.lot.nom, equipe: pire.equipe, de: pire.de, a: pire.a } : null, fenetre: fenetreDe(file) };
+      const membres = new Set(s.equipes || []), eqs = equipesDe(r, s), parEquipe = eqs.map(v => arrivagesDe(v, ke.get(v.id))).filter(Boolean);
+      const tous = parEquipe.flat(), attendent = tous.filter(a => a.minutes > EPS), cumul = net(somme(attendent, a => a.minutes));
+      const pire = attendent.reduce((m, a) => (!m || a.minutes > m.minutes + EPS ? a : m), null);
+      const parts = { materiel: net(somme(attendent, a => a.materiel)), amont: net(somme(attendent, a => a.amont)) };
+      const occupationFile = occupationPendant(k.equipes.filter(e => membres.has(e.id) && e.creneaux), attendent);
+      const plus = IND().fileMax(attendent), retards = retardsDe(eqs, r, seuils);
+      return { service: s.service, nom: nom(s.service), jour: s.jour, arrivages: parEquipe.length ? tous.length : null,
+        file: plus.lots ? { arrivages: plus.lots, a: plus.a } : null, cumul, parts, occupationFile,
+        cause: causeDe(cumul, parts, occupationFile, seuils), enRetard: retards.n, apresLimite: retards.apres,
+        attenteMax: pire ? { minutes: net(pire.minutes), lot: pire.lot.nom, lots: pire.lots, equipe: pire.equipe, de: pire.de, a: pire.a } : null,
+        retardMax: retards.retardMax, eqs };
     });
-    // Le goulot (le contrat, R2) : une attente au-delà du seuil ET une fin après l'horaire ou un départ en retard ; le plus grand cumul.
-    const apres = s => +depasse.get(s.service + '|' + s.jour) || 0;
-    const candidats = services.filter(s => s.cumul > EPS && s.attenteMax && s.fenetre && s.attenteMax.minutes > seuils.attenteLot + EPS
-      && (apres(s) > EPS || s.enRetard > 0));
-    const g = candidats.reduce((m, s) => (!m || s.cumul > m.cumul + EPS ? s : m), null);
-    const goulot = g ? { service: g.service, nom: g.nom, jour: g.jour, cause: g.cause, de: g.fenetre.de, a: g.fenetre.a, attenteMax: g.attenteMax.minutes,
-      cumul: g.cumul, depasse: net(apres(g)), enRetard: g.enRetard } : null;
-    return { services: services.map(({ fenetre, ...s }) => s), goulot };
+    const depasseDe = s => +((finDe.get(s.service + '|' + s.jour) || {}).depasse) || 0;
+    // Les heures sup du dépassement : celles de la ligne, quand son dépassement compte (un quart d'heure au moins).
+    const supDe = s => (depasseDe(s) >= DEPASSEMENT_MIN - EPS ? +(((finDe.get(s.service + '|' + s.jour) || {}).heuresSup || {}).total) || 0 : 0);
+    const goulots = services.filter(s => depasseDe(s) >= DEPASSEMENT_MIN - EPS || s.enRetard > 0)
+      .sort((p, q) => supDe(q) - supDe(p) || q.cumul - p.cumul || (q.apresLimite > 0) - (p.apresLimite > 0))
+      .map(g => {
+        // Ce que chaque équipe de la ligne attendait avant son premier lot, et le temps qu'elle y a perdu (sur l'horloge).
+        const attendus = new Map(g.eqs.map(v => { const a = attenduAvant(v, r, args, ctx), l = premierLot(v); return [v.id, a ? { ...a, perdu: l.debut - v.debutPoste } : null]; }));
+        return { service: g.service, nom: g.nom, jour: g.jour, depasse: net(depasseDe(g)), heuresSup: net(supDe(g)), enRetard: g.enRetard, apresLimite: g.apresLimite,
+          cumul: g.cumul, attenteMax: g.attenteMax ? g.attenteMax.minutes : null,
+          cause: causeDuGoulot(g, finDe.get(g.service + '|' + g.jour), g.eqs, attendus, depasseDe(g)) };
+      });
+    return { services: services.map(({ retardMax, eqs, ...s }) => s), goulots, goulot: goulots[0] || null };
   }
 
   /* ----------------------------------------------------------------------
@@ -455,9 +618,20 @@
    */
   function reponses(r, args, o = {}) {
     if (!r || r.ok === false) return null;
-    const a = args || {}, seuils = seuilsComplets(o.seuils), k = o.k || IND().journee(r, a);
-    const f = fins(r, a, k);
-    return { seuils, personnes: personnes(r, a, k, seuils), coince: coince(r, a, k, seuils, f), fins: f, exceptions: exceptions(r, a, seuils), comptes: comptes(r) };
+    const a = args || {}, seuils = seuilsComplets(o.seuils), k = o.k || IND().journee(r, a), ctx = contexteDe(r, a);
+    const f = fins(r, a, k), c = coince(r, a, k, seuils, f, ctx);
+    return { seuils, personnes: personnes(r, a, k, seuils), coince: c, sansTravail: sansTravail(r, a, k, ctx), fins: f, exceptions: exceptions(r, a, seuils),
+      comptes: comptes(r), plonge: plongeDe(r, k) };
+  }
+
+  /**
+   * La plonge, pour son « Bouchon » (correction 18 a) : l'attente la plus longue d'un arrivage — à une plonge par vol, un vol
+   * revenu qui attend son tunnel. Au débit, sans arrivage : `attenteMax` null (le moteur garde alors son attente par unité).
+   */
+  function plongeDe(r, k) {
+    const ke = new Map(k.equipes.map(e => [e.id, e]));
+    const l = (r.ateliers || []).filter(v => v.type === 'lavage').map(v => arrivagesDe(v, ke.get(v.id))).filter(Boolean).flat();
+    return { attenteMax: l.length ? net(Math.max(0, ...l.map(a => a.minutes))) : null };
   }
 
   /** Une différence : la valeur de A, celle de B, et B − A (null si l'une manque). */
@@ -475,7 +649,7 @@
       besoin: ecartAB(champ(a, x => x.besoin), champ(b, x => x.besoin)), presents: ecartAB(champ(a, x => x.presents), champ(b, x => x.presents)),
       ecart: ecartAB(champ(a, x => x.ecart), champ(b, x => x.ecart)),
       // Un poste fixe n'a ni besoin ni écart (null) : `fixe` le dit, pour ne pas le lire comme un service absent de l'essai.
-      fixe: { a: champ(a, x => !!x.fixe), b: champ(b, x => !!x.fixe) } }));
+      fixe: { a: champ(a, x => !!x.fixe), b: champ(b, x => !!x.fixe) }, nonMesure: { a: champ(a, x => !!x.nonMesure), b: champ(b, x => !!x.nonMesure) } }));
     const t = k => ecartAB(A.personnes.total[k], B.personnes.total[k]), ga = A.coince.goulot, gb = B.coince.goulot;
     const exA = new Set(A.exceptions.map(cleEx)), exB = new Set(B.exceptions.map(cleEx));
     return {
@@ -492,7 +666,7 @@
     };
   }
 
-  const api = { CLE_STOCKAGE, SEUILS_DEFAUT, SEUILS, CAUSES_VOL, seuilsComplets, enveloppe, lireEnveloppe, seuilsDeLaSauvegarde, stockTropLong,
+  const api = { CLE_STOCKAGE, SEUILS_DEFAUT, SEUILS, DEPASSEMENT_MIN, CAUSES_VOL, seuilsComplets, enveloppe, lireEnveloppe, seuilsDeLaSauvegarde, stockTropLong,
     reponses, comparer, comptes, equipement, motDuJour, motDeLaLigne };
   if (enNode) module.exports = api;
   else root.OrlyReponses = api;
