@@ -210,7 +210,8 @@ const PIEGE='<img src=x onerror="window.__xss=1">';
   await page.locator('#journee-periode [data-pv=lancer]').click();
   await page.waitForFunction(()=>Sim.periode.etat()==='a-jour',null,{timeout:120000});
   const b=JSON.parse(await page.evaluate(()=>JSON.stringify(Sim.periode.resultat.bilan)));
-  const services=b.services.filter(s=>b.joursTravail.some(w=>w.services[s.id]));
+  // Les colonnes des services : dans l'ordre des chemins (correction 17 b), celui de la page.
+  const services=(await page.evaluate(()=>OrlyPeriodeVue.servicesOrdonnes(Sim.periode.resultat.bilan,Sim.periode.a.ordre).map(s=>s.id))).map(id=>b.services.find(s=>s.id===id));
   const w=b.joursTravail.find(x=>x.complet);
   const valeur=(x,f)=>(x&&x.indicateursCharge?f(x.indicateursCharge):null);
   // Évolution 15 (d) : la colonne « Unité » donne la charge de toute l'unité (moteur/periode.js, chargeDeLUnite) ; le pic au

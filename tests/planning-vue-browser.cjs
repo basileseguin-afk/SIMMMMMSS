@@ -116,10 +116,11 @@ const B=PV.bornes(R),jour=PV.jourLePlusCharge(R);
     // 4. Les groupes : l'ordre du chemin, la courbe en tête, replier.
     const g=await page.evaluate(()=>({ordre:[...document.querySelectorAll('#at-planning .pg-groupe')].map(x=>x.dataset.service),
       equipes:Object.fromEntries([...document.querySelectorAll('#at-planning .pg-groupe')].map(x=>[x.dataset.service,[...x.querySelectorAll('.pg-ligne')].map(l=>l.dataset.equipe)]))}));
-    for(const k of Object.values(R.parClasse)){
-     const i=(k.services||[]).map(s=>g.ordre.indexOf(s)).filter(i=>i>=0);
-     assert.deepEqual(i,[...i].sort((a,b)=>a-b),V+k.id+' : ses services de l’amont vers l’aval : '+k.services);
-    }
+    // Correction 17 (b) : l'ordre tiré de tous les chemins — celui du module, un service après tous ceux qui l'alimentent.
+    const O=require('../moteur/ordre-services.js'),chemins=J.args.parcours;
+    assert.deepEqual(g.ordre,O.ordreDesServices(chemins,[...new Set(R.ateliers.map(a=>a.service))]).filter(s=>g.ordre.includes(s)),V+'l’ordre des chemins');
+    for(const l of chemins.flatMap(c=>c.liens))if(g.ordre.includes(l.de)&&g.ordre.includes(l.vers))
+     assert.ok(g.ordre.indexOf(l.de)<g.ordre.indexOf(l.vers),V+l.de+' avant '+l.vers);
     assert.ok(g.ordre.indexOf('quais')>g.ordre.indexOf('prepa'),V+'le handling après le montage');
     for(const [s,eqs] of Object.entries(g.equipes)){
      const avec=R.ateliers.filter(a=>a.service===s&&a.lots.length);

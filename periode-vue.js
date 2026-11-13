@@ -88,6 +88,17 @@
   const avecOffice = b => (b.joursTravail || []).some(w => w.total && (w.total.heuresSupOffice > 0 || w.total.heuresSupOfficeEncadrement > 0));
 
   /**
+   * Les colonnes des services : ceux qui ont travaillé un jour de la période, dans l'ordre des chemins (`ordonner(ids)` rend
+   * les identifiants de l'amont vers l'aval : correction 17 b, moteur/ordre-services.js) ; sans lui, l'ordre du bilan.
+   */
+  function servicesOrdonnes(b, ordonner) {
+    const avec = b.services.filter(s => b.joursTravail.some(w => w.services[s.id]));
+    if (!ordonner) return avec;
+    const rang = new Map(ordonner(avec.map(s => s.id)).map((id, i) => [id, i])), place = s => (rang.has(s.id) ? rang.get(s.id) : Infinity);
+    return avec.map((s, i) => ({ s, i })).sort((x, y) => place(x.s) - place(y.s) || x.i - y.i).map(x => x.s);
+  }
+
+  /**
    * La valeur d'un service : un jour (`w`), ou sur une ligne de cumul (`cumul` : { bloc, moyenne }, le bloc d'un mois ou de
    * la période du bilan).
    */
@@ -146,6 +157,7 @@
      *   mesurer()         — la hauteur de l'en-tête a changé (le bandeau paraît, s'en va, s'agrandit)
      *   exporter()        — le classeur Excel de la période simulée
      *   rendu()           — après chaque rendu de la vue (facultatif) : « Réel et calage » se met à jour
+     *   ordre(ids)        — les services de l'amont vers l'aval (facultatif, correction 17 b) : l'ordre des colonnes
      * } */
     constructor(a) {
       this.a = a; this.resultat = null; this.signature = null; this.calcul = null; this.erreur = null;
@@ -324,7 +336,7 @@
           ${e === 'a-jour' ? '<button type="button" class="btn btn-sm" data-pv="exporter">Exporter la période (Excel)</button>' : ''}</div></div>`;
       if (!r) { dessiner(box, tete); return; }
       const b = r.bilan, mesures = MESURES.filter(x => !x.office || avecOffice(b)), m = this.mesureChoisie();
-      const services = b.services.filter(s => b.joursTravail.some(w => w.services[s.id]));
+      const services = servicesOrdonnes(b, this.a.ordre);
       const cellule = (x, extra = '') => `<td class="pv-n"${extra}>${x == null || (m.id !== 'retardMax' && !x) ? '<span class="pv-zero">' + (x == null ? '—' : m.ecrire(x)) + '</span>' : m.ecrire(x)}</td>`;
       const ligneJour = w => {
         const titre = w.complet ? 'Ouvrir la journée de vols du ' + PE().dateLongue(w.date) : 'Incomplet : il manque les vols du ' + w.manque.map(PE().dateLongue).join(', ');
@@ -407,7 +419,7 @@
     }
   }
 
-  const api = { VuePeriode, MESURES, valeurService, valeurUnite, lignesDeCumul, comptesDesJours };
+  const api = { VuePeriode, MESURES, valeurService, valeurUnite, lignesDeCumul, comptesDesJours, servicesOrdonnes };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyPeriodeVue = api;
 })(typeof window !== 'undefined' ? window : globalThis);

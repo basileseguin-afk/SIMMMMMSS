@@ -39,7 +39,7 @@ const critiques=page=>page.evaluate(()=>{
    try{
     // 1. Les phrases et les chiffres du tableau : ceux du module.
     const lu=await page.evaluate(()=>{const rep=Sim.reponses(),SV=OrlySyntheseVue;
-      const ls=SV.lignes(rep,OrlyPlanningVue.ordreDesServices(Sim.ateliers.resultat)),D=MoteurProduction.dureeLisible;
+      const ls=SV.lignes(rep,OrlyPlanningVue.ordreDesServices(Sim.ateliers.resultat,Sim.ateliers.args.parcours)),D=MoteurProduction.dureeLisible;
       return {phrases:SV.phrases(rep),attendu:ls.map(l=>[l.service,String(l.jour),SV.nombre(l.besoin),SV.nombre(l.presents)]),
         // Correction 17 (a) : chaque ligne dit son jour, et porte sa propre fin et ses propres heures sup.
         mots:ls.map(l=>l.mot),jours:[...document.querySelectorAll('#bilan-journee .sy-table tbody tr')].map(tr=>(tr.querySelector('.sy-jour')||{}).textContent||null),

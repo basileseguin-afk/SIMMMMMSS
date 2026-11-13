@@ -293,7 +293,8 @@ const CLE='ory-calage-v1';
   assert.equal(w3.services.cuisine.heuresSupOfficeEncadrement,2*150,'5 h d’office par jour pour l’encadrement');
   assert.ok(w3.services.cuisine.heuresSupOffice>0,'l’équipe aussi');
   await page.locator('#periode-mesure').selectOption('heuresSupOfficeEncadrement');await attendre(100);
-  const iCuisine=b3.services.filter(x=>Object.values(b3.joursTravail).some(w=>w.services[x.id])).findIndex(x=>x.id==='cuisine');
+  // La colonne de la cuisine : à sa place dans l'ordre des chemins (correction 17 b).
+  const iCuisine=(await page.evaluate(()=>OrlyPeriodeVue.servicesOrdonnes(Sim.periode.resultat.bilan,Sim.periode.a.ordre).map(s=>s.id))).indexOf('cuisine');
   // Une seule écriture du temps (évolution 15 d) : 300 minutes × personnes s'écrivent « 5 h 00 ».
   assert.equal((await page.locator(`#journee-periode tr[data-pv-jour="${w3.date}"] td`).allInnerTexts())[iCuisine],'5 h 00');
   const x3=await T.lireClasseur(new Uint8Array(fs.readFileSync(await telecharger(()=>page.locator('#journee-periode [data-pv=exporter]').click()))));

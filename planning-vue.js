@@ -26,6 +26,7 @@
 
   const enNode = typeof module !== 'undefined' && module.exports && typeof require === 'function';
   const P = () => (enNode ? require('./moteur/production.js') : root.MoteurProduction);
+  const ORDRE = () => (enNode ? require('./moteur/ordre-services.js') : root.OrlyOrdreServices);
 
   const JOUR = 1440;
   /** Les trois zooms ; les deux derniers ont une heure de largeur fixe, en pixels. */
@@ -105,11 +106,22 @@
   }
 
   /**
-   * Les services dans l'ordre du chemin, de l'amont vers l'aval : les étapes de chaque commande (parClasse.services),
+   * Les services de l'amont vers l'aval. Avec des chemins (`parcours`, correction 17 b) : l'ordre tiré de tous les chemins à
+   * la fois (moteur/ordre-services.js) — un service après tous ceux qui l'alimentent, à égalité l'ordre du premier chemin,
+   * les services hors chemin à la fin ; le même ordre pour la Synthèse, le planning et la page Période. Sans chemin : l'ordre
+   * d'avant, tiré de la journée (`ordreDeLaJournee`).
+   */
+  function ordreDesServices(r, parcours) {
+    if (!ORDRE() || !ORDRE().avecCases(parcours)) return ordreDeLaJournee(r);
+    return ORDRE().ordreDesServices(parcours, [...new Set(((r && r.ateliers) || []).map(a => a.service))]);
+  }
+
+  /**
+   * Les services dans l'ordre de la journée, sans chemin : les étapes de chaque commande (parClasse.services),
    * le handling après ce qu'il charge ; à rang égal, les mises à disposition d'abord, le lavage à la fin, puis l'ordre
    * des équipes. Un cycle ne fige rien.
    */
-  function ordreDesServices(r) {
+  function ordreDeLaJournee(r) {
     const ateliers = (r && r.ateliers) || [], par = (r && r.parClasse) || {};
     const rang = new Map(), types = new Map();
     ateliers.forEach((a, i) => {
@@ -136,13 +148,13 @@
   }
 
   /**
-   * Les groupes du planning : un par service, dans l'ordre du chemin, ses équipes qui ont des lots. Un service dont
+   * Les groupes du planning : un par service, dans l'ordre des chemins (`parcours`), ses équipes qui ont des lots. Un service dont
    * aucune équipe n'a de lot garde son groupe s'il a une courbe de charge (`avecCharge`, un Set) : une équipe d'appui
    * est là, sa charge se lit ; ses équipes ont alors une ligne vide.
    */
-  function groupes(r, nomService, avecCharge) {
+  function groupes(r, nomService, avecCharge, parcours) {
     const nom = id => (nomService ? nomService(id) : id) || id;
-    return ordreDesServices(r).map(s => {
+    return ordreDesServices(r, parcours).map(s => {
       const toutes = r.ateliers.filter(a => a.service === s), avec = toutes.filter(a => (a.lots || []).length);
       return { service: s, nom: nom(s), equipes: avec.length ? avec : avecCharge && avecCharge.has(s) ? toutes : [] };
     }).filter(g => g.equipes.length);
@@ -312,7 +324,7 @@
     const C = root.OrlyChargeVue, I = root.OrlyIndicateurs, k = C && I && C.servicesDe ? I.journee(r, o.args || {}) : null;
     const courbes = new Map((k ? C.servicesDe(k, nomSvc) : []).map(s => [s.id, s]));
     return { t0: b.t0, t1: b.t1, pxh, largeur, L: Math.ceil((b.t1 - b.t0) / 60 * pxh), x, par: r.parClasse || {}, lim: limites(r), nomSvc, k, courbes,
-      groupes: groupes(r, nomSvc, new Set(courbes.keys())) };
+      groupes: groupes(r, nomSvc, new Set(courbes.keys()), (o.args || {}).parcours) };
   }
 
   function direPeriode(box) {

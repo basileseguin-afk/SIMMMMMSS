@@ -2016,7 +2016,10 @@ function initPeriode(){
     notifier:toast,
     rendu:()=>{if(Sim.calage)Sim.calage.rafraichir();},
     // Le réel de l'unité jour par jour, pour la courbe (évolution 15 d) : celui du dernier rendu de « Réel et calage ».
-    reel:()=>(Sim.calage?Sim.calage.reelDeLUnite():null)
+    reel:()=>(Sim.calage?Sim.calage.reelDeLUnite():null),
+    // Les colonnes des services dans l'ordre des chemins (correction 17 b), comme la Synthèse et le planning ; sans chemin, l'ordre du bilan.
+    ordre:ids=>{const p=((Sim.ateliers&&Sim.ateliers.args)||{}).parcours;
+      return window.OrlyOrdreServices&&OrlyOrdreServices.avecCases(p)?OrlyOrdreServices.ordreDesServices(p,ids):ids;}
   });
   initCalage();
   Sim.periode.rendre();
@@ -2117,7 +2120,8 @@ function initVueSimulation() {
     Sim.vue.rendreBilan = () => {
       const j = Sim.vue.vide ? null : journeeLue(), box = document.getElementById('bilan-journee');
       OrlySyntheseVue.rendre(box, j ? { reponses: j.reponses, resultat: j.r, k: j.k, essais: essaisRetenus(),
-        ordre: window.OrlyPlanningVue ? OrlyPlanningVue.ordreDesServices(j.r) : [] } : null);
+        // L'ordre des services, tiré de tous les chemins (correction 17 b) : le même que le planning et la page Période.
+        ordre: window.OrlyPlanningVue ? OrlyPlanningVue.ordreDesServices(j.r, (j.args || {}).parcours) : [] } : null);
     };
     Sim.vue.rendreBilan();
   } else if (window.OrlyResultatsVue) {

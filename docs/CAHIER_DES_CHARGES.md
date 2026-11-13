@@ -160,6 +160,13 @@ jour s'affiche.
   deux lignes, chacune avec ses personnes, sa file, son attente, sa fin et ses
   heures sup — celles des équipes de ce jour-là. Chaque ligne dit son jour
   (« J−2 », « veille », « jour des vols », « J+1 ») ; le goulot aussi.
+- **L'ordre des services**, de l'amont vers l'aval (correction 17 b,
+  `moteur/ordre-services.js`) : tiré de tous les chemins à la fois — un service
+  vient après tous ceux qui l'alimentent, dans n'importe quel chemin ; à
+  égalité, l'ordre du premier chemin où il apparaît ; les services hors chemin
+  (permanents, appui) à la fin ; une boucle ne bloque pas. Le même ordre sert
+  au tableau de la Synthèse, aux groupes du planning des équipes et aux
+  colonnes de la page Période.
 - **Le besoin d'une équipe**, en personnes sur son poste : à effectif calculé, son
   besoin exact (homme-minutes ÷ poste ÷ rendement) ; un robot, une plonge saisis :
   ce que ses lots occupent ÷ son poste (11 a) ; à la main, saisie : les

@@ -5,6 +5,33 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-13 — Correction 17 (b) : l'ordre des services
+
+- Constat : le tableau annonce « de l'amont vers l'aval », mais un service
+  amont (une cuisine) pouvait s'afficher après ses services aval (un montage,
+  un handling) : l'ordre venait des étapes des commandes de la journée, pas des
+  liens des chemins.
+- `moteur/ordre-services.js` (nouveau, sans navigateur) : un ordre tiré de
+  **tous les chemins à la fois**. Un service vient après tous ceux qui
+  l'alimentent, dans n'importe quel chemin ; à égalité, l'ordre du premier
+  chemin où il apparaît (un amont venu d'un autre chemin se place juste avant
+  lui) ; les services hors chemin (permanents, appui) à la fin, dans l'ordre
+  des équipes ; une boucle ne bloque pas : ses services forment un bloc,
+  rangés entre eux dans l'ordre du premier chemin, et ce qui l'alimente reste
+  avant elle. Les chemins se lisent comme le moteur les lit (l'ancienne
+  écriture en branches comprise).
+- Le même ordre sert au tableau de la Synthèse, aux groupes du planning des
+  équipes (`planning-vue.js`, `ordreDesServices(r, parcours)`) et aux colonnes
+  de la page Période (`periode-vue.js`, `servicesOrdonnes`), qui étaient
+  rangées par nom. Une unité sans chemin garde l'ordre d'avant.
+- Tests : `tests/ordre-services.test.cjs` (trois chemins fictifs qui se
+  croisent, l'égalité, un service hors chemin en fin de liste, une case sans
+  équipe, les boucles, le même ordre pour les trois vues),
+  `tests/ordre-services-browser.cjs` (les trois pages affichent l'ordre du
+  module) ; `planning-vue-browser`, `periode-browser`, `charge-browser` et
+  `calage-browser` lisent les colonnes et les groupes dans cet ordre. Aucun
+  calcul ne change.
+
 ## 2026-11-13 — Correction 17 (a) : le jour de travail va jusqu'au bout de la ligne
 
 - Constat : « Les services » a une ligne par service et par jour de travail,

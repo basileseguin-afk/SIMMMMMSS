@@ -158,7 +158,10 @@ const parse=t=>UI.parseFlights(t,{eta:true,spmlParCabine:true,date:true});
   assert.deepEqual(cumuls.map(t=>t.replace(/\s*\(.*\)/,'')),['Moyenne par jour, octobre 2026','Moyenne par jour, novembre 2026','Moyenne par jour sur la période']);
   // Les personnes d'un jour, service par service : celles du bilan.
   const w=periode.bilan.joursTravail.find(x=>x.date==='2026-10-28');
-  const services=periode.bilan.services.filter(s=>periode.bilan.joursTravail.some(x=>x.services[s.id]));
+  // Les colonnes des services : dans l'ordre des chemins (correction 17 b), celui de la page.
+  const ordreColonnes=await page.evaluate(()=>OrlyPeriodeVue.servicesOrdonnes(Sim.periode.resultat.bilan,Sim.periode.a.ordre).map(s=>s.id));
+  const services=ordreColonnes.map(id=>periode.bilan.services.find(s=>s.id===id));
+  assert.deepEqual(ordreColonnes.slice().sort(),periode.bilan.services.filter(s=>periode.bilan.joursTravail.some(x=>x.services[s.id])).map(s=>s.id).sort(),'les mêmes services, dans un autre ordre');
   const cases=await page.locator('#journee-periode tr[data-pv-jour="2026-10-28"] td').allInnerTexts();
   assert.deepEqual(cases,[...services.map(s=>w.services[s.id]?String(w.services[s.id].personnes):'—'),String(w.total.personnes)]);
   const moyennePeriode=await page.locator('#journee-periode tr.pv-cumul.pv-moyenne').last().locator('td[data-pv-total]').innerText();
