@@ -5,6 +5,66 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-14 — Banc d'essai, évolution 18 (a) : le relais à la plonge par vol, dans le moteur
+
+Sur le terrain, deux équipes de plonge qui se suivent se passent le relais :
+celle qui part laisse à celle qui est là le vol en cours dans son tunnel. Le
+moteur le faisait finir en heures sup par l'équipe qui partait. Un seul calcul
+change : la plonge par vol (`moteur/production.js`). Aucun réglage.
+
+- **Une équipe prend un vol tant qu'elle est présente**, même si elle ne peut
+  pas le finir. À la fin de sa présence, une autre équipe de la même plonge
+  présente à cet instant sur la même machine (un tunnel du même nom) continue
+  le lavage, sans interruption : **un seul lot, avec ses `parts`** (qui a lavé,
+  de quand à quand, pour combien de travail). Chaque équipe est créditée de sa
+  part et finit avec elle ; le matériel du vol est propre à la fin du lavage.
+- **Sans équipe pour le reprendre**, le lavage s'arrête à la fin de la
+  présence : le lot porte `fait` et `reste`, le vol reste sale et passe au
+  lendemain dans `saleFinal` avec sa durée restante (`reste`, en minutes d'un
+  tunnel normal). Le lendemain, il est lavé d'abord, pour cette seule durée.
+  La sauvegarde (`ateliers.js`) et la période la gardent.
+- **Une plonge par vol ne fait plus d'heures sup** : `heuresSup` et
+  `heuresSupPersonnes` valent 0, le plafond ne joue plus pour elle.
+- **La nuit « absorbable »** : par vol, le dépassement devient le lavage que
+  le retard pousse au-delà de la présence de l'équipe du matin (ce qu'elle
+  laverait après sa présence avec le retard, moins ce qu'elle y laverait sans
+  lui). Un long vol passé en relais chaque jour ne joue plus contre elle. La
+  mesure « sale » ne change pas (un vol entré dans un tunnel n'attend plus).
+- **La période** (`moteur/periode.js`) : la charge d'une équipe compte le
+  travail de ses parts ; un vol en relais compte pour l'équipe qui le finit ;
+  un vol dont le lavage s'est arrêté n'est pas un vol lavé.
+- **Les indicateurs de charge** (`moteur/indicateurs.js`) lisent les parts :
+  une équipe est au travail pendant sa part, à son tunnel. Le lot en relais
+  est dans la liste des lots des deux équipes : sans cela, il comptait deux
+  fois (relevé à la relecture). La fiche d'une équipe de plonge compte un vol
+  en relais pour l'équipe qui le finit.
+- `P.partsDuLot(lot)` : les parts de tout lot ; `I.partDe(lot, equipe)` : la
+  part d'une équipe.
+
+Ne changent pas : l'ordre des retours, le choix du tunnel (celui où le lavage
+finirait le plus tôt), les pauses, la vitesse d'un tunnel, le sale de la
+veille lavé d'abord, la plonge au débit, les autres équipes. Une journée où
+aucun lavage n'atteint une fin de présence, et une journée sans plonge par
+vol, rendent le résultat d'avant, champ par champ (empreintes relevées avant
+la modification). La version 2 n'est pas touchée.
+
+Tests dont la valeur attendue change (l'ancienne valeur est dite dans chaque
+test) : `tests/heures-sup-personnes.test.cjs`, `tests/heures-sup.test.cjs`,
+`tests/indicateurs-definitions.test.cjs`, `tests/plonge-equipes.test.cjs`,
+`tests/plonge-heures-sup.test.cjs`, `tests/plonge-absorbable-seule.test.cjs`,
+`tests/heures-sup-personnes-browser.cjs`. Deux tests navigateur montraient un
+service qui dépasse son horaire avec la plonge de l'unité fictive, qui
+finissait un vol en heures sup : ils le montrent maintenant avec le montage
+(`tests/synthese-largeur-browser.cjs`, `tests/captures-resultats-browser.cjs`,
+par `faireDepasser` de `tests/plan-rejoue-fictif.cjs`).
+
+Fichiers : `moteur/production.js`, `moteur/periode.js`,
+`moteur/indicateurs.js`, `ateliers.js`, `index.html` (empreintes),
+`tests/plonge-relais.test.cjs` (nouveau), les tests ci-dessus,
+`docs/BANC_ESSAI.md` (§ 2, § 6), `CHANGELOG.md`.
+
+---
+
 ## 2026-11-13 — Banc d'essai, évolution 17 (d) : contrôle et doc
 
 - **Captures de contrôle**, sur des données fictives

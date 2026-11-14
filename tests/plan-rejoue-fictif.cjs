@@ -76,4 +76,23 @@ async function importerVols(page, nav, fichier, nom, csv) {
   await page.waitForFunction(n => document.getElementById('source-label').textContent === n, nom);await page.waitForTimeout(200);
 }
 
-module.exports = { S, volsCsv, volsSansRetardCsv, sauvegardeFictive, heureDuPicAttendue, charger, importerVols, hh };
+/**
+ * Dans la page : fait dépasser son horaire de `minutes` à une équipe à la main de l'unité fictive (le montage). Sa
+ * présence finit `minutes` avant la fin de son dernier lot, commencé avant : avec les heures sup permises, elle le finit
+ * après son horaire, sans rien changer aux heures de ses lots. (Une plonge par vol ne dépasse plus le sien : elle passe le
+ * relais, ou s'arrête — évolution 18.) Rend son identifiant, son nom, et son poste d'avant pour `retablirEquipe`.
+ */
+async function faireDepasser(page, minutes = 20, id = 'mo') {
+  await page.waitForFunction(i => !!(window.Sim && Sim.ateliers && Sim.ateliers.resultat && (Sim.ateliers.resultat.ateliers || []).some(a => a.id === i && a.fin != null)), id);
+  return page.evaluate(([i, m]) => {
+    const v = Sim.ateliers.resultat.ateliers.find(a => a.id === i), avant = JSON.parse(JSON.stringify(Sim.ateliers.state.ateliers.find(a => a.id === i).regime || null));
+    Sim.ateliers.changer(() => { const e = Sim.ateliers.state.ateliers.find(a => a.id === i); e.regime = { ...(e.regime || {}), actif: true, presence: Math.round(v.fin - m - v.debutPoste) }; }, '');
+    return { id: i, nom: v.nom, avant };
+  }, [id, minutes]);
+}
+/** Dans la page : rend à l'équipe son poste d'avant `faireDepasser`. */
+async function retablirEquipe(page, x) {
+  await page.evaluate(y => Sim.ateliers.changer(() => { const e = Sim.ateliers.state.ateliers.find(a => a.id === y.id); if (y.avant) e.regime = y.avant; else delete e.regime; }, ''), x);
+}
+
+module.exports = { S, volsCsv, volsSansRetardCsv, sauvegardeFictive, heureDuPicAttendue, charger, importerVols, faireDepasser, retablirEquipe, hh };

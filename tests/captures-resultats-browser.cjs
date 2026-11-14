@@ -80,12 +80,15 @@ const taillePng=f=>{const b=fs.readFileSync(f);assert.equal(b.toString('latin1',
     // Ni retard ni goulot : les vols fictifs partis plus tard.
     await F.importerVols(page,nav,ch.fichier,'vols-sans-retard.csv',F.volsSansRetardCsv());
     await synthese('calme',false,false);
-    // Un goulot, sans retard : les heures sup permises, la plonge finit 20 min après son horaire — plus d'un quart d'heure.
+    // Un goulot, sans retard : les heures sup permises, le montage finit 20 min après son horaire — plus d'un quart d'heure
+    // (sa présence est raccourcie pour cela ; avant l'évolution 18, c'était la plonge, qui finissait un vol en heures sup).
+    const court=await F.faireDepasser(page);
     const hs=await page.evaluate(()=>{const avant=Sim.reglages.etat.heuresSup;Sim.reglages.changer(()=>{Sim.reglages.etat.heuresSup={actif:true,plafond:120};},'');return avant||null;});
     await attendre(400);
     await synthese('goulot',true,false);
     assert.match(await page.locator('#bilan-journee .sy-carte[aria-label="Où ça coince"]').innerText(),/après son horaire/,V+'le goulot dit pourquoi');
     await page.evaluate(h=>Sim.reglages.changer(()=>{if(h)Sim.reglages.etat.heuresSup=h;else delete Sim.reglages.etat.heuresSup;},''),hs);
+    await F.retablirEquipe(page,court);
     await seuils(null);
 
     // La Période : une semaine datée fictive, simulée ; la colonne Unité et la courbe.

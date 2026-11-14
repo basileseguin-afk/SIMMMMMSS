@@ -92,6 +92,18 @@
     return somme(qui, t => +t.personnes);
   }
 
+  /**
+   * La part d'une équipe dans un lot (évolution 18). Un lavage par vol passé en relais, ou arrêté à une fin de présence,
+   * porte ses `parts` : qui a lavé, de quand à quand, pour combien de travail. Rend la part de l'équipe (avec son `rang`,
+   * et `derniere` : elle tient le lot en dernier) ; null si elle n'en a pas ; `undefined` pour un lot sans parts — il est
+   * à son équipe, en entier. Chaque équipe est au travail pendant sa part, pas au-delà.
+   */
+  function partDe(l, v) {
+    if (!l || !Array.isArray(l.parts)) return undefined;
+    const i = l.parts.findIndex(x => x.atelier === v.id);
+    return i < 0 ? null : { ...l.parts[i], rang: i, derniere: i === l.parts.length - 1 };
+  }
+
   /** La fin de la présence d'une équipe : son début de poste + sa présence + ses heures sup ; sans présence, la fin de son travail. */
   function finPresence(v) {
     if (fini(v.presence)) return v.debutPoste + v.presence + (v.heuresSup || 0);
@@ -132,10 +144,13 @@
     const fin = finPresence(v), morceaux = [];
     for (const l of v.lots) {
       if (l.dispo || v.type === 'handling') continue;
-      const a = fini(l.fin) ? l.fin : (l.horsPoste && l.fait > 0 ? fin : null);
-      if (!fini(a) || !fini(l.debut)) continue;
-      const n = v.type === 'lavage' ? personnesDuLavage(v, def, l) : (v.personnes || 0);
-      for (const x of moins(l.debut, a, pauses)) morceaux.push({ ...x, n });
+      // Un lavage en relais (évolution 18) : l'équipe y travaille pendant sa part, à son tunnel.
+      const p = partDe(l, v);
+      if (p === null) continue;
+      const de = p ? p.debut : l.debut, a = p ? p.fin : fini(l.fin) ? l.fin : (l.horsPoste && l.fait > 0 ? fin : null);
+      if (!fini(a) || !fini(de)) continue;
+      const n = v.type === 'lavage' ? personnesDuLavage(v, def, p || l) : (v.personnes || 0);
+      for (const x of moins(de, a, pauses)) morceaux.push({ ...x, n });
     }
     return { morceaux, minutes: longueur(reunir(morceaux)) };
   }
@@ -146,8 +161,10 @@
    */
   function fileDe(v) {
     if (v.type === 'lavage') {
-      // À la plonge par vol, les vols revenus qui attendent leur tunnel ; au débit, sans objet.
-      const vols = v.lots.filter(l => l.retourVol && fini(l.arrivee));
+      // À la plonge par vol, les vols revenus qui attendent leur tunnel ; au débit, sans objet. Un vol repris en relais
+      // (évolution 18) n'attend pas l'équipe qui le reprend : il est dans la file de celle qui l'a commencé.
+      const sien = l => { const p = partDe(l, v); return p === undefined || (p !== null && p.rang === 0); };
+      const vols = v.lots.filter(l => l.retourVol && fini(l.arrivee) && sien(l));
       if (!vols.length && v.lots.some(l => !l.retourVol)) return null;
       return vols.map(l => ({ de: l.arrivee, a: fini(l.debut) ? l.debut : finPresence(v), lot: l }));
     }
@@ -183,8 +200,10 @@
     if (v.type === 'handling') return { unite: 'vols chargés', l: (r.vols || []).filter(x => x.atelier === v.id && fini(x.fin)).map(x => ({ t: x.fin, n: 1, debut: x.debut })) };
     if (v.type === 'lavage') {
       const parVol = v.lots.some(l => l.retourVol);
+      // Un vol passé en relais (évolution 18) compte pour l'équipe qui le finit, depuis le début de sa part.
+      const part = l => partDe(l, v), fini_ = l => { const p = part(l); return p === undefined || (p !== null && p.derniere); };
       return { unite: parVol ? 'vols lavés' : 'unités lavées',
-        l: v.lots.filter(l => fini(l.fin)).map(l => ({ t: l.fin, n: parVol ? 1 : (+l.unites || 0), debut: l.debut })) };
+        l: v.lots.filter(l => fini(l.fin) && fini_(l)).map(l => ({ t: l.fin, n: parVol ? 1 : (+l.unites || 0), debut: part(l) ? part(l).debut : l.debut })) };
     }
     if (v.type !== 'manuel' && v.type !== 'robot') return { unite: null, l: [] };
     return { unite: UNITES[v.type], l: v.lots.filter(l => fini(l.fin) && !l.dispo)
@@ -194,6 +213,9 @@
   /** Les homme-minutes des lots : le barème d'un lot à la main ; ailleurs, sa durée × les personnes qui le tiennent. */
   function hommeMinutesDe(v, def) {
     return somme(v.lots.filter(l => !l.dispo), l => {
+      // Un lavage en relais, ou arrêté (évolution 18) : le travail de sa part × les personnes de son tunnel.
+      const p = partDe(l, v);
+      if (p !== undefined) return p ? p.travail * personnesDuLavage(v, def, p) : 0;
       const n = v.type === 'lavage' ? personnesDuLavage(v, def, l) : (v.personnes || 0);
       // Un lot coupé à la fin de la présence (correction 16) : la part faite, pas toute la demande — le consommé ne passe pas 100 %.
       if (l.impossible) return fini(l.hommeMinutes) && +l.duree > 0 ? l.hommeMinutes * Math.min(1, (+l.fait || 0) / l.duree) : (+l.fait || 0) * n;
@@ -352,7 +374,7 @@
   }
 
   // `etpDe`, `fileDe`, `fileMax`, `chauffeursDe` : lus par les réponses (moteur/reponses.js, évolution 15), un seul chemin.
-  const api = { PAS, MESURES, journee, creneaux, pic, reunir, moins, deposer, compter, etpDe, fileDe, fileMax, chauffeursDe };
+  const api = { PAS, MESURES, journee, creneaux, pic, reunir, moins, deposer, compter, etpDe, fileDe, fileMax, chauffeursDe, partDe };
   if (enNode) module.exports = api;
   else root.OrlyIndicateurs = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

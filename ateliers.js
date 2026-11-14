@@ -460,9 +460,14 @@
       ...(Object.keys(polyvalence).length ? { polyvalence } : {}), ...(Object.keys(spmlCabines).length ? { spmlCabines } : {}) };
   }
 
+  /** La durée restante d'un lavage arrêté, au plus : une journée, en minutes. */
+  const RESTE_MAX = 1440;
   function saleInitialDe(v) {
     if (Array.isArray(v)) return { saleInitial: v.slice(0, 5000).filter(x => x && typeof x === 'object' && Number.isFinite(+x.unites) && +x.unites > 0)
-      .map(x => ({ vol: String(x.vol ?? '').slice(0, 80), cie: String(x.cie ?? '*').trim().toUpperCase().slice(0, 40) || '*', unites: Math.round(+x.unites * 100) / 100 })) };
+      // `reste` (évolution 18) : la durée restante d'un vol dont le lavage s'est arrêté à une fin de présence, en minutes —
+      // au centième, d'un centième au moins (un reste ne s'arrondit pas à rien), d'une journée au plus.
+      .map(x => ({ vol: String(x.vol ?? '').slice(0, 80), cie: String(x.cie ?? '*').trim().toUpperCase().slice(0, 40) || '*', unites: Math.round(+x.unites * 100) / 100,
+        ...(Number.isFinite(+x.reste) && +x.reste > 0 ? { reste: Math.min(RESTE_MAX, Math.max(0.01, Math.round(+x.reste * 100) / 100)) } : {}) })) };
     const n = +v;
     return v !== undefined && v !== null && v !== '' && Number.isFinite(n) && n >= 0 ? { saleInitial: Math.round(n * 100) / 100 } : {};
   }
@@ -2717,7 +2722,8 @@
         }
         if (a.type === 'lavage') {
           if (!a.parVol) return `<span class="mini-note">lave les retours de vols, à mesure qu’ils arrivent · ${P.debitLavage(a)} u/h</span>`;
-          const lav = vue.lots.filter(l => l.retourVol), faits = lav.filter(l => !l.impossible);
+          // Un vol passé en relais (évolution 18) compte pour l'équipe qui le tient en dernier.
+          const lav = vue.lots.filter(l => l.retourVol && (!Array.isArray(l.parts) || l.parts[l.parts.length - 1].atelier === a.id)), faits = lav.filter(l => !l.impossible);
           return `<span class="mini-note">lave ${faits.length} vol${faits.length > 1 ? 's' : ''} revenu${faits.length > 1 ? 's' : ''}, dans l’ordre des retours`
             + (lav.length > faits.length ? ` · <b>${lav.length - faits.length} non lavé${lav.length - faits.length > 1 ? 's' : ''}</b>` : '')
             + ` · ${(a.durees || {})[P.TOUTES] ?? '—'} min par vol (toutes compagnies)</span>`;

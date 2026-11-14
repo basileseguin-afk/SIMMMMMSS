@@ -109,7 +109,7 @@ options des évolutions suivantes s'ajoutent à ce tableau ; celles d'une
 | `personnes` | Ses personnes : saisies, ou calculées (effectif calculé) |
 | `travail`, `attente`, `arret` | Ses minutes de travail, d'attente (un amont, du matériel, une ligne) et d'arrêt (pauses) |
 | `heuresSup` | Ses heures supplémentaires, en minutes **par personne** (§ 2) : l'heure où l'équipe part, moins la fin de sa présence ; 0 sans l'option |
-| `heuresSupPersonnes` | Ses heures supplémentaires en minutes × personnes (§ 2) : le seul champ à additionner pour un service. D'une plonge à tunnels, les personnes des tunnels qui finissent un vol après sa présence seulement ; de toute autre équipe, `heuresSup` × `personnes` ; 0 sans l'option |
+| `heuresSupPersonnes` | Ses heures supplémentaires en minutes × personnes (§ 2) : le seul champ à additionner pour un service : `heuresSup` × `personnes` ; 0 sans l'option, et toujours 0 pour une plonge par vol (elle passe le relais, § 2) |
 | `tournees`, `conducteurs`, `heuresSupChauffeurs`, `vehiculesMax` | Un handling 24 h/24 : ses tournées, ses chauffeurs et leurs heures sup, ses véhicules (§ 3) |
 | `planChauffeurs` | Un handling 24 h/24 aux chauffeurs calculés : son plan de vacations, sa borne basse (§ 4) |
 | `renfortsPretes`, `renfortsRecus` | Avec les renforts (§ 5) : les minutes-personne que l'équipe a prêtées à d'autres, et reçues d'autres |
@@ -119,7 +119,9 @@ options des évolutions suivantes s'ajoutent à ce tableau ; celles d'une
 | `pausesPrises` | Les pauses qu'elle a vraiment prises, `[{ de, a }]` en minutes du jour J, dans l'ordre (§ 13) : celles que le moteur place en exécutant ses lots (pauses de régime, pauses fixes, arrêts de la ligne d'un robot). Une pause du poste qui tombe quand l'équipe n'a rien à faire n'y est pas |
 
 Et pour la journée, quand l'unité a une plonge : `saleFinal`, le sale non lavé
-à la fin de la journée, vol par vol (§ 6).
+à la fin de la journée, vol par vol (§ 6) ; un vol dont le lavage s'est arrêté
+à une fin de présence y porte `reste`, sa durée restante (§ 2, le relais). Un
+lot de plonge par vol passé en relais, ou arrêté, porte ses `parts` (§ 2).
 
 Chaque lot à la main ou au robot porte aussi `pret` (§ 13) : l'instant où il
 est prêt, c'est-à-dire la dernière livraison de ses fournisseurs ou l'ouverture
@@ -250,18 +252,12 @@ en laissant ses lots « hors poste ».
   (`finPoste`) est alors la fin de la présence plus le plafond : l'heure où
   l'équipe part au plus tard, comme en version 2.
 - **En minutes × personnes** (correction du banc d'essai) :
-  `heuresSupPersonnes`, le champ qu'un banc additionne. D'une **plonge à
-  tunnels**, seules les personnes des tunnels encore en marche restent : la
-  somme, sur ses tunnels qui finissent un vol après la fin de sa présence, de
-  (fin de ce vol − fin de présence) × personnes du tunnel ; les autres partent
-  à la fin de leur présence. Une plonge **sans liste de tunnels** compte toutes
-  ses personnes. `heuresSup`, par personne, reste la fin du dernier vol moins
-  la fin de présence : l'heure de départ de l'équipe. Pour **toute autre
-  équipe**, `heuresSupPersonnes` = `heuresSup` × `personnes`. La Synthèse et le
-  récap des cases (Excel, colonne « Heures sup (h × pers.) ») comptent avec
-  lui. Avant, toute l'équipe comptait : quand un seul tunnel sur trois finissait
-  un vol, les 9 personnes comptaient, alors que seules les 3 de ce tunnel
-  restaient.
+  `heuresSupPersonnes`, le champ qu'un banc additionne :
+  `heuresSup` × `personnes`. La Synthèse et le récap des cases (Excel, colonne
+  « Heures sup (h × pers.) ») comptent avec lui. Une **plonge par vol** n'en
+  fait plus (évolution 18, plus bas) : 0 et 0. Avant elle, d'une plonge à
+  tunnels, seules les personnes des tunnels qui finissaient un vol après la
+  fin de sa présence restaient, chacun jusqu'à la fin de son vol.
 - **Qui en fait** :
   - une équipe à la main et un **robot** : on ne paie personne à attendre
     (correction du banc d'essai). Passé la fin de sa présence, elle finit le
@@ -275,22 +271,20 @@ en laissant ses lots « hors poste ».
     attend qu'il la libère. Elle restait avant à attendre son amont ou une
     mise à disposition, et cette attente comptait en heures sup : rejouées sur
     61 journées réelles, 89 % des heures sup simulées étaient de l'attente ;
-  - la **plonge** finit le vol en cours, mais n'en commence pas d'autre
-    (correction du banc d'essai). Par vol : passé la fin de sa présence, elle
-    finit les vols **déjà dans un tunnel** — en heures sup, jusqu'au plafond ;
-    un vol qui ne finirait pas avant lui n'est pas commencé — et n'en commence
-    **aucun autre**. Ce qui attend va à la plonge suivante présente (la nuit,
-    si elle est ouverte ; le matin du lendemain, si une plonge est réglée sur
-    J+1) ; sinon au sale de fin de journée (`saleFinal`), donc au retard que
-    mesure une plonge de nuit sur le retard (§ 6). Ses `heuresSup` : la fin
-    du dernier vol commencé moins la fin de sa présence. Entre deux tunnels
-    qui rendent un vol propre à la même heure, celui d'une équipe encore dans
-    ses heures passe d'abord (comme en version 2). Au débit : elle s'arrête à
-    la fin de sa présence, heures sup permises ou non (sa `finPoste` est la fin
-    de sa présence) ; le sale qui reste suit le même chemin. Elle lavait
-    avant tout ce qui l'attendait à la fin de sa présence : rejouée avec une
-    nuit et 90 min par vol, l'équipe de l'après-midi commençait encore un vol à
-    03:00, et ses heures sup avalaient le travail de la nuit ;
+  - la **plonge** n'en fait pas. Passé la fin de sa présence, elle ne commence
+    **aucun vol** (correction du banc d'essai) : ce qui attend va à la plonge
+    suivante présente (la nuit, si elle est ouverte ; le matin du lendemain,
+    si une plonge est réglée sur J+1) ; sinon au sale de fin de journée
+    (`saleFinal`), donc au retard que mesure une plonge de nuit sur le retard
+    (§ 6). Par vol, le vol **déjà dans un tunnel** à la fin de sa présence
+    passe en **relais** à l'équipe présente sur la même machine, sinon son
+    lavage s'arrête (évolution 18, plus bas) ; elle le finissait avant en
+    heures sup, jusqu'au plafond. Au débit : elle s'arrête à la fin de sa
+    présence, heures sup permises ou non (sa `finPoste` est la fin de sa
+    présence) ; le sale qui reste suit le même chemin. Elle lavait d'abord
+    tout ce qui l'attendait à la fin de sa présence : rejouée avec une nuit et
+    90 min par vol, l'équipe de l'après-midi commençait encore un vol à 03:00,
+    et ses heures sup avalaient le travail de la nuit ;
   - le **handling** d'une équipe (sans créneaux de chauffeurs) charge ses vols
     jusqu'au plafond. Un handling **à créneaux** n'en fait pas : ses chauffeurs
     viennent à leurs créneaux. Un handling **24 h/24** non plus : ce sont ses
@@ -309,23 +303,107 @@ poste a 0, une équipe qui déborde de 40 min a 40 min, le plafond coupe, une
 mise à disposition et un appui ont 0, l'option désactivée rend la journée
 d'avant, robot, plonge par vol et au débit, handling avec et sans créneaux,
 effectif calculé inchangé, validation, options du banc) ;
-`tests/heures-sup-personnes.test.cjs` (9 personnes, trois tunnels de 3, un seul
-qui finit un vol 40 min après la présence : 120 et 40 ; deux tunnels, 40 et
-10 min : 150 ; un tunnel à vitesse 2 ; une plonge sans tunnels et une équipe à
-la main : heures sup × personnes ; sans l'option, 0 ; le récap des cases) ;
+`tests/heures-sup-personnes.test.cjs` (une équipe à la main : heures sup ×
+personnes ; une plonge par vol, un ou deux tunnels en cours à la fin de sa
+présence, un tunnel à vitesse 2, sans liste de tunnels : 0, le vol s'arrête
+avec sa durée restante ; sans l'option, 0 ; le récap des cases) ;
 `tests/heures-sup-personnes-browser.cjs` (la Synthèse) ;
 `tests/heures-sup-sans-attente.test.cjs` (une équipe dont le dernier lot n'est
 prêt que 2 h après sa présence part à sa fin, sans heure sup, le lot hors
 poste ; un lot commencé fini 40 min après : 40 min ; un lot prêt à la fin de
 la présence est fait en heures sup, puis elle part au premier lot pas prêt ;
 le robot ; le renfort en heures sup ; sans l'option, comme avant) ;
-`tests/plonge-heures-sup.test.cjs` (la plonge finit le vol dans son tunnel et
-ne commence pas celui qui attend : il va à la nuit, ou au sale de fin de
-journée ; une nuit ne commence aucun vol après la fin de sa présence ; le
-retard d'une plonge sur le retard compte ce que l'après-midi n'a pas commencé ;
-sans l'option, rien ne change) ;
+`tests/plonge-heures-sup.test.cjs` (sans équipe pour le reprendre, la plonge
+arrête le vol dans son tunnel et ne commence pas celui qui attend : il va à
+la nuit, ou au sale de fin de journée ; une nuit ne commence aucun vol après
+la fin de sa présence ; le retard d'une plonge sur le retard compte le vol
+arrêté et ce que l'après-midi n'a pas commencé ; l'option des heures sup n'y
+change rien) ;
 `tests/heures-sup-browser.cjs` (le réglage, son enregistrement, la Synthèse) ;
 `tests/non-regression.test.cjs` (réglées mais désactivées : la même journée).
+
+### Le relais à la plonge par vol (évolution 18 a)
+
+Sur le terrain, deux équipes de plonge qui se suivent se passent le relais :
+celle qui part laisse à celle qui est là le vol en cours dans son tunnel ;
+elle ne reste pas pour le finir. Le moteur faisait finir ce vol en heures
+sup par l'équipe qui partait, alors que la suivante était là, sur le même
+tunnel. La règle est automatique : aucun réglage. Elle ne change qu'un
+calcul, la plonge **par vol** (`parVol`) ; la plonge au débit, les autres
+équipes et le reste de la journée ne changent pas.
+
+- **Une équipe prend un vol tant qu'elle est présente**, même si elle ne peut
+  pas le finir avant la fin de sa présence. Passé sa fin, elle n'en commence
+  aucun.
+- **Le relais.** À la fin de sa présence, si le lavage n'est pas fini et
+  qu'une autre équipe de la même plonge est **présente à cet instant sur la
+  même machine** (un tunnel du même nom : une machine pour deux équipes), elle
+  continue le lavage, sans interruption — une équipe qui commence à cet
+  instant est là ; à plusieurs, celle qui part le plus tard. Ce qu'il reste à
+  laver passe tel quel, en minutes d'un tunnel normal : l'équipe qui continue
+  le lave à la vitesse de son tunnel, avec ses pauses. C'est **un seul lot**,
+  celui de l'équipe qui l'a commencé (`atelier`), avec ses `parts` :
+  `[{ atelier, debut, fin, travail, arret, tunnel, nomTunnel, vitesse }]`, une
+  par équipe, dans l'ordre. Sa durée (`duree`) est la somme du travail de ses
+  parts ; sa fin, la fin du lavage : le matériel du vol est propre à cet
+  instant. Chaque équipe est créditée de sa part (`travail`, `arret`) et
+  **finit avec elle** : la fin (`fin`) d'une équipe de plonge est la fin de sa
+  dernière part. Le lot est dans la liste des lots des deux équipes.
+- **Sans équipe pour le reprendre**, le lavage s'arrête à la fin de la
+  présence. Le lot est celui d'une équipe qui part en laissant un lot
+  (`impossible`, `horsPoste`, `fin: null`) : `fait` est le travail fait,
+  `reste` ce qu'il reste à laver (en minutes d'un tunnel normal), `parts` qui
+  a lavé. Le vol n'est pas propre : il est dans `saleFinal`, avec sa durée
+  restante — `{ vol, cie, unites, reste }`. **Le lendemain**, le sale de la
+  veille (`saleInitial`, § 6) le rend à la plonge, qui le lave d'abord, pour
+  cette seule durée (÷ la vitesse du tunnel). La sauvegarde et la période
+  gardent `reste` ; un vol que personne ne reprend le garde ; repris et encore
+  arrêté, il rend ce qu'il en reste. Une équipe qui arrive plus tard dans la
+  journée, sans toucher la précédente, ne le reprend pas : il passe au
+  lendemain.
+- **Plus d'heures sup** : `heuresSup` et `heuresSupPersonnes` valent 0 pour
+  une plonge par vol, l'option cochée ou non ; le plafond ne joue plus pour
+  elle. Son `finPoste` ne change pas.
+- **Ce qui ne change pas** : l'ordre des retours ; le sale de la veille lavé
+  d'abord ; les pauses ; la vitesse d'un tunnel ; deux équipes présentes
+  ensemble ne lavent pas plus vite sur une même machine ; le choix du tunnel —
+  celui où le lavage finirait le plus tôt s'il allait à son terme, comme hier
+  avec les heures sup ; à égalité, un tunnel dont l'équipe le finit dans sa
+  présence, puis le plus anciennement libre. Une équipe qui ne laverait rien
+  avant de partir (en pause jusqu'à sa fin) ne prend pas le vol.
+- **La mesure du sale d'une nuit** (§ 6) ne change pas : le sale en attente
+  est celui qui n'est pas entré dans un tunnel ; un vol dont le lavage s'est
+  arrêté y est entré. La condition sur le retard se juge autrement (§ 6).
+- **Dans une période** (§ 9), la charge d'une équipe compte le travail de ses
+  parts ; un vol passé en relais compte, en vols et en lots, pour l'équipe qui
+  le tient en dernier ; un vol dont le lavage s'est arrêté n'est pas un vol
+  lavé (`volsLaves`).
+- **Les indicateurs de charge** (§ 13) lisent les parts : une équipe est au
+  travail pendant sa part, à son tunnel, pas au-delà ; un vol repris en relais
+  n'est dans la file que de l'équipe qui l'a commencé, et compte, en vols
+  lavés, pour celle qui le finit (`I.partDe(lot, equipe)` rend la part d'une
+  équipe). Sans cela, le même lot, présent dans la liste des deux équipes,
+  aurait compté deux fois.
+- **La durée restante dans une sauvegarde** : au centième de minute, d'un
+  centième au moins, d'une journée au plus ; négative ou illisible, elle
+  s'efface (le vol se lave alors en entier).
+
+`P.partsDuLot(lot)` rend les parts de tout lot : celles d'un relais, sinon le
+lot entier pour son équipe ; aucune pour un lot que personne n'a commencé.
+
+Une journée où aucun lavage n'atteint une fin de présence, et une journée
+sans plonge par vol, rendent le résultat d'avant, champ par champ.
+
+Vérifications : `tests/plonge-relais.test.cjs` (journées fictives calculées à
+la main : deux équipes qui se chevauchent, un seul lot et deux parts, la
+première finit à la fin de sa présence, sans heures sup, le vol propre à la
+même heure qu'avant ; le matériel propre à la fin du lavage ; la somme du
+travail des parts et le travail de la plonge ; un tunnel plus rapide, une
+pause au relais ; deux équipes qui ne se touchent pas ; une seule équipe ; une
+équipe suivante sans tunnel du même nom ; trois équipes dont une nuit sous
+condition ; la condition sur le retard ; deux jours ; la durée restante dans
+une sauvegarde ; `partsDuLot` ; la période ; les indicateurs de charge ; les
+empreintes de quatre journées d'avant ; le déterminisme).
 
 ## 3. Le handling 24 h/24 : des tournées qui chargent puis déchargent
 
@@ -1002,11 +1080,12 @@ son nom : une équipe inconnue est refusée en le nommant).
 **Le calcul** :
 
 1. La journée se joue **avec l'équipe fermée** : le sale non lavé à la fin
-   (`saleFinal`) est **le retard**. Une plonge en heures sup ne commence pas
-   de nouveau vol (§ 2) : le retard compte ce que l'après-midi n'a pas
-   commencé.
+   (`saleFinal`) est **le retard**. Passé la fin de sa présence, une plonge
+   ne commence pas de nouveau vol (§ 2) : le retard compte ce que l'après-midi
+   n'a pas commencé et, par vol, le vol dont le lavage s'est arrêté (pour sa
+   durée restante).
 2. **L'équipe désignée l'absorbe** si, **seule**, sans limite de fin, elle
-   lave avant la fin de sa présence et sans heures sup :
+   lave pendant sa présence :
    - le retard, présent dès le début de la journée (00:00 du jour J, comme
      tout sale de la veille) ;
    - **ses propres retours** : ceux qu'elle lave dans la journée jouée sans
@@ -1016,10 +1095,17 @@ son nom : une équipe inconnue est refusée en le nommant).
    Seule : par vol, chacun de ses tunnels qui tournent prend le vol suivant,
    dans l'ordre des arrivées (le retard d'abord) ; au débit, à son débit, ce
    qui est là d'un bloc ; ses pauses comprises. Autrement dit, elle l'absorbe
-   si et seulement si son **dépassement** — de combien de minutes elle
-   finirait après la fin de sa présence — vaut 0. La façon dont la journée
-   répartit les vols entre deux équipes qui se chevauchent n'entre pas dans
-   la décision.
+   si et seulement si son **dépassement** vaut 0. Au débit : de combien de
+   minutes elle finirait après la fin de sa présence. **Par vol**
+   (évolution 18), une plonge ne dépasse plus sa présence — elle passe le
+   relais, ou s'arrête — : le dépassement est **le lavage que le retard pousse
+   au-delà de sa présence**, en minutes de tunnel — ce qu'elle laverait après
+   la fin de sa présence avec le retard, moins ce qu'elle y laverait sans lui.
+   Un long vol qu'elle passe en relais chaque jour ne joue donc pas contre
+   elle ; un retard qui retarde ses propres vols jusqu'après sa présence,
+   si. Ses propres retours sont alors les vols qu'elle a commencés et les
+   relais qu'elle a repris. La façon dont la journée répartit les vols entre
+   deux équipes qui se chevauchent n'entre pas dans la décision.
 3. Si elle l'absorbe, le shift de nuit **reste fermé** : le retard passe au
    lendemain par `saleFinal`, comme aujourd'hui. Sinon, **il s'ouvre**, et la
    journée se joue avec lui. Sans retard, il reste fermé ; sans autre plonge
@@ -1057,7 +1143,7 @@ journée sans elle est la journée retenue.
 | `equipe` | L'équipe qui doit absorber le retard (son identifiant ; `null` sans autre plonge) |
 | `retard` | `{ vols, unites }` : le retard de la journée jouée sans elle, en vols (ceux de `saleFinal`) et en unités |
 | `absorbe` | L'équipe désignée l'absorbe-t-elle |
-| `depassement` | De combien de minutes elle dépasserait sa présence, seule (voir plus haut) : 0 quand elle l'absorbe ; `null` sans équipe qui lave ce jour-là |
+| `depassement` | De combien de minutes elle dépasserait sa présence, seule ; par vol, les minutes de lavage que le retard pousse au-delà de sa présence (voir plus haut) : 0 quand elle l'absorbe ; `null` sans équipe qui lave ce jour-là |
 | `lavees`, `reste`, `fin` | Comme pour le sale : ce qu'elle a lavé, le sale pas encore propre à sa fin |
 
 Dans la page, la fiche dit « Ouverte ce jour » ou « Fermée ce jour », le
@@ -1073,10 +1159,11 @@ dépassement ; une seule plonge ; une équipe désignée qui ferait des heures s
 pour l'absorber ne l'absorbe pas ; l'équipe par défaut et l'équipe désignée ;
 au débit ; avec une plonge sur le sale ; le déterminisme ; la validation ; les
 options du banc ; Excel) ; `tests/plonge-absorbable-seule.test.cjs` (le matin
-seul lave le retard et ses retours avant la fin de sa présence : la nuit reste
-fermée, même si au rejeu l'après-midi prend un de ses retours ; 20 min de
-dépassement l'ouvrent ; les autres cas et la condition « sale » ne changent
-pas ; le déterminisme) ; `tests/plonge-absorbable-browser.cjs` (la règle,
+seul lave le retard sans rien pousser au-delà de sa présence : la nuit reste
+fermée ; 5 min de lavage poussées au-delà l'ouvrent ; sans retard, sans équipe
+pour absorber, la condition « sale » ; le déterminisme) ;
+`tests/plonge-relais.test.cjs` (un long vol passé en relais ne joue pas contre
+le matin) ; `tests/plonge-absorbable-browser.cjs` (la règle,
 l'équipe désignée, le bilan, l'enregistrement) ; `tests/non-regression.test.cjs`
 (sans cette règle : la même journée).
 

@@ -26,19 +26,21 @@ const json = x => JSON.parse(JSON.stringify(x));
 const equipe = (k, id) => k.equipes.find(e => e.id === id);
 const service = (k, id, jour = 0) => k.services.find(s => s.service === id && s.jour === jour);
 
-test('une plonge qui lave sans pause et finit en heures supp : sa disponibilité compte ses heures supp, sans pause retirée ; occupation ≤ 100 %', () => {
+test('une plonge qui lave sans pause jusqu’à la fin de sa présence : sa disponibilité ne retire aucune pause ; occupation ≤ 100 %', () => {
   // 3 personnes, un tunnel de 3, le poste par défaut (8 h, deux pauses au réglage : 15 et 45 min) ; un vol revient toutes
-  // les 30 min de 07:30 à 14:30, puis un à 15:15 : le tunnel lave de 08:00 à 15:30 et de 15:45 à 16:15, sans pause.
+  // les 30 min de 07:30 à 14:30, puis un à 15:15 : le tunnel lave de 08:00 à 15:30 et de 15:45 à 16:00, sans pause. Le
+  // dernier vol s'arrête à la fin de sa présence (évolution 18) ; avant, elle le finissait à 16:15, en heures supp.
   const retours = Array.from({ length: 15 }, (_, k) => ret('R' + k, P.hhmm(h('07:30') + 30 * k))).concat([ret('R15', '15:15')]);
   const args = { vols: [dep('NO1', 'NORD', '18:00'), ...retours], liaisons: [], bareme: {}, rendement: 1, materiel: { actif: true, retours: 'j0' },
     heuresSup: { actif: true, plafond: 180 }, parcours: [{ id: 'c1', nom: 'R', noeuds: ['prepa'], liens: [] }], parcoursCabine: { YC: 'c1' },
     ateliers: [{ id: 'pl', nom: 'Plonge', service: 'plonge', type: 'lavage', debut: '08:00', jour: 0, personnes: 3, lots: [], regime: { actif: true },
       parVol: true, durees: { '*': 30 }, tunnels: [{ nom: 'T1', debit: 300, personnes: 3, actif: true }] }] };
   const r = P.simuler(args), v = r.ateliers[0], e = equipe(I.journee(r, args), 'pl');
-  assert.deepEqual([v.pausesPrises, v.presence, v.heuresSup, v.heuresSupPersonnes], [[], 480, 15, 45], 'aucune pause prise ; 15 min d’heures supp');
-  // 450 + 30 min au travail, à 3 : 1 440 ; disponible : 3 × (480 − 0) + 45 = 1 485 (avant : 3 × 420 + 45 = 1 305, 110 %).
-  assert.deepEqual([e.auTravail, e.minutesDisponibles * e.personnes], [1440, 1485]);
-  proche(e.occupation, 1440 / 1485);
+  assert.deepEqual([v.pausesPrises, v.presence, v.heuresSup, v.heuresSupPersonnes], [[], 480, 0, 0], 'aucune pause prise ; plus d’heures supp (avant : 15 min, 45 min × personnes)');
+  // 450 + 15 min au travail, à 3 : 1 395 ; disponible : 3 × (480 − 0) = 1 440 (avant l'évolution 18 : 1 440 sur 1 485 ; avant
+  // la correction 16 : 3 × 420 + 45 = 1 305, 110 %).
+  assert.deepEqual([e.auTravail, e.minutesDisponibles * e.personnes], [1395, 1440]);
+  proche(e.occupation, 1395 / 1440);
   assert.ok(e.occupation <= 1 && e.consommeSurDisponible <= 1);
 });
 

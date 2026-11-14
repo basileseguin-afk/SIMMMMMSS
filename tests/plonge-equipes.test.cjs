@@ -19,10 +19,14 @@ test('deux équipes de plonge : chaque vol n’est lavé qu’une fois', () => {
   assert.equal(tous.length, 5, 'cinq vols revenus, cinq lavages');
   assert.equal(new Set(tous.map(l => l.vol)).size, 5, 'aucun vol lavé deux fois');
   assert.equal(r.materiel.lavees, 50, 'le propre n’est pas compté deux fois');
-  // Le matin lave ce qu'il a le temps de finir avant son départ (13:00) ; le vol
-  // revenu à 12:30 (une heure de tunnel) passe à l'équipe du soir, dès 13:00.
-  assert.deepEqual(laves(r, 'm').map(l => l.vol), ['AF0 (J-1)', 'AF1 (J-1)']);
-  assert.deepEqual(laves(r, 's').map(l => [l.vol, P.hhmm(l.debut)]), [['AF2 (J-1)', '13:00'], ['AF3 (J-1)', '16:30'], ['AF4 (J-1)', '18:30']]);
+  // Le vol revenu à 12:30 (une heure de tunnel) : le matin le prend, et le passe à 13:00 à l'équipe du soir, là sur le même
+  // tunnel (évolution 18). Un seul lot, celui du matin, avec ses deux parts : propre à 13:30. Avant, il attendait le soir :
+  // lavé de 13:00 à 14:00 (le matin : AF0, AF1 ; le soir : AF2 à 13:00, AF3, AF4).
+  assert.deepEqual(laves(r, 'm').map(l => l.vol), ['AF0 (J-1)', 'AF1 (J-1)', 'AF2 (J-1)']);
+  assert.deepEqual(laves(r, 's').map(l => [l.vol, P.hhmm(l.debut)]), [['AF3 (J-1)', '16:30'], ['AF4 (J-1)', '18:30']]);
+  const af2 = tous.find(l => l.vol === 'AF2 (J-1)');
+  assert.deepEqual(af2.parts.map(x => [x.atelier, P.hhmm(x.debut), P.hhmm(x.fin), x.travail]), [['m', '12:30', '13:00', 30], ['s', '13:00', '13:30', 30]]);
+  assert.deepEqual([r.ateliers.find(a => a.id === 'm').travail, r.ateliers.find(a => a.id === 's').travail], [150, 150], 'le travail : 5 heures, comme avant (120 + 180)');
 });
 
 test('un vol revenu après toutes les équipes est dit à celle du soir', () => {

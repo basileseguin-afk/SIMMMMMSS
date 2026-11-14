@@ -218,7 +218,10 @@
       let poste = null;
       try { poste = P().minutesDuPoste(def, regime); } catch (x) { poste = null; }
       const fait = l => (l.impossible ? +l.fait || 0 : l.duree || 0);
-      if (poste > 0) return somme(ls, l => fait(l) * personnesDuLot(v, def, l)) / poste;
+      // Un lavage passé en relais, ou arrêté à une fin de présence (évolution 18) : chaque équipe pour sa part, à son tunnel.
+      const sien = l => (Array.isArray(l.parts) ? somme(l.parts.filter(x => x.atelier === v.id), x => x.travail * personnesDuLot(v, def, x))
+        : fait(l) * personnesDuLot(v, def, l));
+      if (poste > 0) return somme(ls, sien) / poste;
     }
     return presenceRelative(v.personnes || 0, v.presence, regime);
   }
@@ -261,8 +264,16 @@
     const parClasse = r.parClasse || {}, classes = new Map((r.classes || []).map(c => [c.id, c]));
     const bareme = args.bareme || {}, effectifs = r.effectifs || {};
     const lots = (r.lots || []).filter(l => l.atelier && !l.dispo);
-    const parEquipe = new Map();
-    for (const l of lots) { if (!parEquipe.has(l.atelier)) parEquipe.set(l.atelier, []); parEquipe.get(l.atelier).push(l); }
+    // Un lavage passé en relais (évolution 18) compte, en lots et en vols, pour l'équipe qui le tient en dernier ; son
+    // travail, lui, va à chaque équipe pour sa part (`enRelais` : les lots où elle a une part sans le tenir).
+    const tenuPar = l => (Array.isArray(l.parts) && l.parts.length ? l.parts[l.parts.length - 1].atelier : l.atelier);
+    const parEquipe = new Map(), enRelais = new Map();
+    const ranger = (m, k, l) => { if (!m.has(k)) m.set(k, []); m.get(k).push(l); };
+    for (const l of lots) {
+      const k = tenuPar(l);
+      ranger(parEquipe, k, l);
+      for (const id of new Set((Array.isArray(l.parts) ? l.parts : []).map(x => x.atelier))) if (id !== k) ranger(enRelais, id, l);
+    }
     // L'échéance d'un lot : la limite du vol qu'il charge (handling), sinon la plus proche de ses commandes.
     const echeanceDe = l => (Number.isFinite(l.limite) ? l.limite
       : (l.classes || []).reduce((m, id) => Math.min(m, parClasse[id] && Number.isFinite(parClasse[id].echeance) ? parClasse[id].echeance : Infinity), Infinity));
@@ -306,7 +317,7 @@
         personnes: a.personnes || 0, calcule: !!e,
         besoin,
         // Sa charge, en ETP (évolution 11 a) : son besoin exact, ou ce que ses personnes occupent.
-        charge: chargeEquipe(definitions.get(a.id), a, ls, e, besoin, args.regime),
+        charge: chargeEquipe(definitions.get(a.id), a, enRelais.has(a.id) ? ls.concat(enRelais.get(a.id)) : ls, e, besoin, args.regime),
         // Ses heures sup d'office (évolution 11 e) : sa présence au-delà de son contrat.
         heuresSupOffice: heuresSupOffice(a.personnes, a.presence, (definitions.get(a.id) || {}).presenceContrat, args.regime),
         hommeMinutes: somme(ls, l => l.hommeMinutes),
@@ -315,7 +326,8 @@
         heuresSup: (a.heuresSupPersonnes || 0) + (a.renfortsHeuresSup || 0), renfortsPretes: a.renfortsPretes || 0, renfortsRecus: a.renfortsRecus || 0,
         lots: ls.length, lotsEnRetard: ls.filter(enRetard).length, commandesEnRetard: [...tard].sort(), retardMax,
         ...(a.conditionSale ? { ouverte: !!a.conditionSale.ouverte } : {}),
-        ...(a.type === 'lavage' ? { volsLaves: ls.filter(l => l.vol != null).length } : {}),
+        // Un vol dont le lavage s'est arrêté à une fin de présence (évolution 18) n'est pas lavé : il le sera le lendemain.
+        ...(a.type === 'lavage' ? { volsLaves: ls.filter(l => l.vol != null && !(l.impossible && l.fait > 0)).length } : {}),
         ...(a.type === 'handling' ? { volsCharges: volsH.filter(v => v.fin != null).length, volsEnRetard: volsH.filter(v => !v.aHeure).length,
           chauffeurs: plan ? { camion: plan.chauffeurs.camion, vl: plan.chauffeurs.vl } : null, borneBasse: plan ? plan.borneBasse.total : null,
           heuresSupChauffeurs: a.heuresSupChauffeurs || 0 } : {}),

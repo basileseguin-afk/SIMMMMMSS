@@ -89,14 +89,16 @@ const plongeur = (id, debut, tunnels) => ({ id, nom: id, service: 'plonge', type
 const retour = (id, sta) => ({ id, cie: 'NORD', sens: 'RET', sta: h(sta), bc: 0, pc: 0, yc: 100 });
 const MAT = { actif: true, delaiRetour: 0, retours: 'programme', stockInitial: 0, unites: { YC: { parVol: 10 } } };
 
-test('plonge par vol : en heures sup, l’équipe finit le vol commencé ; un vol revenu après va à l’équipe suivante', () => {
+test('plonge par vol : à la fin de sa présence, l’équipe passe le relais du vol commencé ; un vol revenu après va à l’équipe suivante', () => {
   const r = P.simuler({ vols: [retour('NO8', '12:50'), retour('NO9', '13:10')], liaisons: [], rendement: 1, materiel: MAT,
     ateliers: [plongeur('matin', '05:00', ['T1']), plongeur('soir', '13:00', ['T1'])], heuresSup: { actif: true, plafond: 60 } });
   const l8 = r.lots.find(l => l.vol === 'NO8'), l9 = r.lots.find(l => l.vol === 'NO9');
-  assert.deepEqual([l8.atelier, P.hhmm(l8.debut), P.hhmm(l8.fin)], ['matin', '12:50', '13:20'], 'revenu à 12:50 : le matin le finit');
+  assert.deepEqual([l8.atelier, P.hhmm(l8.debut), P.hhmm(l8.fin)], ['matin', '12:50', '13:20'], 'revenu à 12:50 : le matin le commence, il est propre à la même heure');
+  // Évolution 18 : le soir, là à 13:00 sur le même tunnel, le finit. Avant, le matin restait 20 min en heures sup.
+  assert.deepEqual(l8.parts.map(x => [x.atelier, P.hhmm(x.debut), P.hhmm(x.fin), x.travail]), [['matin', '12:50', '13:00', 10], ['soir', '13:00', '13:20', 20]]);
   assert.equal(l9.atelier, 'soir', 'revenu à 13:10, après la présence du matin');
   assert.equal(P.hhmm(l9.debut), '13:20', 'le même tunnel, libre à 13:20');
-  assert.equal(vue(r, 'matin').heuresSup, 20);
+  assert.equal(vue(r, 'matin').heuresSup, 0);
   assert.equal(vue(r, 'soir').heuresSup, 0);
 });
 

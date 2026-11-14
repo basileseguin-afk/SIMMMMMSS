@@ -61,7 +61,10 @@ const nomsLongs=()=>{const s=F.sauvegardeFictive();
   assert.ok(m.lignes>=8,'les services de l’unité fictive');
 
   // 2. Sans retard, les heures sup permises : un service dépasse son horaire — son équipe est nommée, ses heures sup dessous.
+  //    C'est le montage, dont la présence finit 20 min avant la fin de son dernier lot (avant l'évolution 18, la plonge, qui
+  //    finissait un vol en heures sup : elle passe maintenant le relais, ou s'arrête).
   const ch=await F.charger(page,nav,site.url('index.html'),{csv:F.volsSansRetardCsv(),pageId:'j-chiffres'});effacer.push(ch.effacer);
+  await F.faireDepasser(page);
   await page.evaluate(()=>Sim.reglages.changer(()=>{Sim.reglages.etat.heuresSup={actif:true,plafond:120};},''));
   await page.waitForFunction(()=>{const r=Sim.reponses();return !!r&&r.fins.services.some(s=>s.equipeQuiDepasse);});
   await page.waitForFunction(()=>!!document.querySelector('#bilan-journee .sy-table .sy-depasse'));

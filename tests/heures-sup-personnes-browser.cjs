@@ -1,13 +1,15 @@
-/* Banc d'essai, correction 9 — dans la Synthèse (v1), les heures sup d'une
- * plonge comptent seulement les personnes des tunnels qui finissent un vol
- * après sa présence (heuresSupPersonnes). Données fictives ; aucune capture
- * d'écran (le plan est confidentiel). */
+/* Banc d'essai, correction 9, puis évolution 18 — dans « Détails » (v1), une
+ * plonge par vol ne fait plus d'heures sup : le vol en cours à la fin de sa
+ * présence s'arrête (personne pour le reprendre), avec sa durée restante.
+ * Avant l'évolution 18, les personnes des tunnels qui finissaient un vol
+ * restaient (heuresSupPersonnes : 40 × 3 + 10 × 3 = 150 min, « 2 h 30 »).
+ * Données fictives ; aucune capture d'écran (le plan est confidentiel). */
 const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs'),os=require('node:os');
 const nav=require('./nav.cjs');
 const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright'):'playwright');
 
-// Deux retours, à la plonge à 14:40 et 15:10 : lavés en 90 min, ils finissent 10 et 40 min après 16:00.
+// Deux retours, à la plonge à 14:40 et 15:10 : lavés en 90 min, ils finiraient 10 et 40 min après 16:00.
 const VOLS_CSV='vol_id,compagnie,type_avion,sens,heure_std,heure_sta,nb_BC,nb_PC,nb_YC\n'
   +'NO1,NORD,MOYEN,DEP,12:00,,0,0,100\nR1,NORD,MOYEN,RET,,14:10,0,0,100\nR2,NORD,MOYEN,RET,,14:40,0,0,100\n';
 // La plonge : 08:00 à 16:00, 9 personnes, trois tunnels de 3.
@@ -33,16 +35,18 @@ const UNITE=()=>{
   await nav.aller(page,'v-programme');
   await page.locator('#imp-vols').setInputFiles(csv);
   await page.waitForFunction(()=>document.getElementById('source-label').textContent==='vols-hsp.csv');
-  assert.deepEqual(await page.evaluate(()=>{const v=Sim.ateliers.resultat.ateliers.find(a=>a.id==='pl');return [v.heuresSup,v.heuresSupPersonnes];}),[40,150]);
+  assert.deepEqual(await page.evaluate(()=>{const v=Sim.ateliers.resultat.ateliers.find(a=>a.id==='pl');return [v.heuresSup,v.heuresSupPersonnes];}),[0,0]);
+  // Chaque vol s'arrête à 16:00 dans son tunnel : 80 et 50 min lavées, 10 et 40 restent, pour le lendemain.
+  assert.deepEqual(await page.evaluate(()=>Sim.ateliers.resultat.lots.filter(l=>l.retourVol).map(l=>[l.vol,l.tunnel,l.fin,l.fait,l.reste])),[['R1',1,null,80,10],['R2',2,null,50,40]]);
+  assert.deepEqual(await page.evaluate(()=>Sim.ateliers.resultat.saleFinal.map(x=>[x.vol,x.reste])),[['R1',10],['R2',40]]);
 
-  // « Détails » (la Synthèse jusqu'à l'évolution 15 b) : 2 h 30 pour la plonge (40 × 3 + 10 × 3), pas 9 × 40 min.
+  // « Détails » (la Synthèse jusqu'à l'évolution 15 b) : plus de ligne d'heures sup pour la plonge.
   await nav.aller(page,'j-details');
-  const ligne=page.locator('#bilan-heures-sup tr[data-hs-service=plonge]');
-  assert.match(await ligne.textContent(),/2 h 30/);
-  assert.match(await ligne.textContent(),/Plonge jour : 2 h 30 \(les personnes des tunnels qui finissent un vol ; la dernière part 40 min après sa présence\)/);
-  assert.doesNotMatch(await ligne.textContent(),/9 pers\./);
+  await page.waitForSelector('#bilan-heures-sup');
+  assert.equal(await page.locator('#bilan-heures-sup tr[data-hs-service=plonge]').count(),0);
+  assert.match(await page.locator('#bilan-heures-sup').textContent(),/Aucune : chaque équipe finit dans sa présence\./);
 
   assert.deepEqual(errors,[]);
-  console.log('heures-sup-personnes-browser : ok — la Synthèse compte les personnes restées');
+  console.log('heures-sup-personnes-browser : ok — une plonge par vol ne fait plus d’heures sup ; le vol en cours s’arrête, avec sa durée restante');
  }catch(e){console.error(e);process.exitCode=1;}finally{await browser.close();fs.rmSync(dossier,{recursive:true,force:true});}
 })();
