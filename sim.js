@@ -919,6 +919,9 @@ function initUnite(){
   // Le temps de travail d'un service se règle aussi dans sa fiche.
   const box=document.getElementById('mu-services');
   if(box&&Sim.reglages)Sim.reglages.ecouter(box);
+  // Évolution 16 (a) : la part de surface du service dans la vue en direct, dans la section « Avancé » de sa fiche. La
+  // fiche est dessinée par unite.js, commun aux deux versions : un module de la version 1 y ajoute son champ.
+  if(box&&window.OrlySiteReglages)OrlySiteReglages.ecouter(box,()=>Sim.ateliers,()=>(Sim.reglages&&Sim.reglages.etat?Sim.reglages.etat.regime:undefined));
 }
 /* La hauteur de l'en-tête (la barre du haut et le titre de la page, avec ses
  * outils) : les listes collées en haut d'une vue (services, commandes) s'y

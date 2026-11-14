@@ -5,6 +5,47 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-14 — Évolution 16 (a) : la vue en direct — le site, généré par des règles
+
+La vue en relief ne recopiera pas le plan dessiné : elle montre un site
+schématique, généré à partir des réglages de la simulation. Cette partie pose
+la génération et son réglage ; le dessin vient avec la partie (b).
+
+- **`moteur/site.js`** (nouveau, sans navigateur) : `generer({ ateliers,
+  parcours, noms, surfaces, regime })` rend le site — un rectangle, deux
+  bandes de zones de part et d'autre d'un couloir central, l'entrée et l'aire
+  de pause, les avions à droite. Les mêmes réglages donnent le même site.
+- **Les zones** : une par service qui a un atelier ; la préparation et le
+  montage dans une seule zone, « FOOD ». Dans l'ordre du chemin : le magasin
+  d'abord, le quai du handling au bout côté avions, la plonge au bout de
+  l'autre bande.
+- **Les parts de surface** : par défaut le magasin 1/5, la production 1/5,
+  l'armement 1/5, les autres services 2/5 au prorata de leurs personnes ;
+  les parts se ramènent à 1 ; aucune, réglée ou par défaut, ne descend sous
+  la place des ateliers du service.
+- **Le robot** : autant de lignes robotisées, dans la zone FOOD, que
+  d'ateliers robot présents en même temps. **La plonge** : le plus grand
+  nombre de tunnels tenus en même temps. **Le magasin** : des rayonnages.
+  Les machines se rangent en rangs puis en colonnes (en long dans une zone
+  étroite), dans leur zone, sans jamais se recouvrir.
+- **Un réglage par service**, « Part de surface, dans la vue en direct »
+  (Équipes › Services, section « Avancé »), en %, vide pour le défaut. Il est
+  gardé avec les ateliers (`surfaces`), donc dans « Tout sauvegarder » et
+  « Restaurer » ; une sauvegarde d'avant prend les défauts.
+
+Ce qui ne change pas : aucun calcul — le réglage n'entre pas dans la journée ;
+les résultats, les indicateurs et les exports sont ceux d'avant. La fiche du
+service est dessinée par `unite.js`, commun aux deux versions : il n'est pas
+modifié, le champ est ajouté par un module de la version 1
+(`site-reglages.js`). La version 2 n'est pas touchée.
+
+Fichiers : `moteur/site.js` et `site-reglages.js` (nouveaux), `ateliers.js`
+(la part gardée, lue et réglée), `sim.js`, `index.html`,
+`tests/site-genere.test.cjs` et `tests/site-surface-browser.cjs` (nouveaux),
+`README.md`, `CHANGELOG.md`.
+
+---
+
 ## 2026-11-14 — Banc d'essai, correction 19 (retouche) : la reprise sur n'importe quel tunnel de l'équipe qui arrive
 
 Constat du banc : une nuit qui ne tient qu'un tunnel venait encore sans rien

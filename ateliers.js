@@ -453,11 +453,17 @@
     // un service absent les prépare toutes. Gardées une fois réglées.
     const spmlCabines = Object.fromEntries(Object.entries(brut.spmlCabines && typeof brut.spmlCabines === 'object' && !Array.isArray(brut.spmlCabines) ? brut.spmlCabines : {})
       .filter(([k, x]) => k && k.length <= 160 && Array.isArray(x)).slice(0, 300).map(([k, x]) => [k, ['BC', 'PC', 'YC'].filter(c => x.includes(c))]));
+    // La part de surface de chaque service dans la vue en direct (évolution 16 a), en % : { service: part }. Un réglage
+    // d'affichage : il ne change aucun calcul. Sans lui (une sauvegarde d'avant), la vue prend ses défauts.
+    const surfaces = Object.fromEntries(Object.entries(brut.surfaces && typeof brut.surfaces === 'object' && !Array.isArray(brut.surfaces) ? brut.surfaces : {})
+      .filter(([k, x]) => k && k.length <= 160 && (typeof x === 'number' || (typeof x === 'string' && x.trim() !== '')) && Number.isFinite(+x) && +x > 0 && +x <= 100).slice(0, 500)
+      .map(([k, x]) => [k, Math.round(+x * 10) / 10]).filter(([, x]) => x > 0));
     return { schema: 'ory-ateliers', version: 1, ateliers, exclues, ajoutees, materiel,
       parcours, parcoursCabine, parcoursClasse, ...(Object.keys(categories).length ? { categories } : {}),
       ...(Object.keys(effectifs).length ? { effectifs } : {}), ...(Object.keys(encadrement).length ? { encadrement } : {}),
       ...(Object.keys(paralleles).length ? { paralleles } : {}), ...(migrations.length ? { migrations } : {}),
-      ...(Object.keys(polyvalence).length ? { polyvalence } : {}), ...(Object.keys(spmlCabines).length ? { spmlCabines } : {}) };
+      ...(Object.keys(polyvalence).length ? { polyvalence } : {}), ...(Object.keys(spmlCabines).length ? { spmlCabines } : {}),
+      ...(Object.keys(surfaces).length ? { surfaces } : {}) };
   }
 
   /** La durée restante d'un lavage arrêté, au plus : une journée, en minutes. */
@@ -832,6 +838,31 @@
     encadrementDe(service) {
       const x = (this.state.encadrement || {})[service];
       return x && typeof x === 'object' ? { presence: null, presenceContrat: null, ...x } : { personnes: x || 0, presence: null, presenceContrat: null };
+    }
+
+    /** La part de surface réglée d'un service dans la vue en direct, en % (évolution 16 a) ; null : la part par défaut. */
+    surface(service) { const x = (this.state.surfaces || {})[service]; return Number.isFinite(+x) && +x > 0 ? +x : null; }
+    /**
+     * Règle la part de surface d'un service (de 1 à 100 %, au dixième) ; vide, nulle ou illisible : la part par défaut.
+     * Un réglage d'affichage : il ne change aucun calcul.
+     */
+    regleSurface(service, valeur) {
+      const v = valeur === null || valeur === undefined || String(valeur).trim() === '' ? null : +String(valeur).replace(',', '.');
+      const p = v !== null && Number.isFinite(v) && v > 0 ? Math.min(100, Math.max(0.1, Math.round(v * 10) / 10)) : null;
+      if (p === this.surface(service)) return;
+      const nom = (this.a.services().find(x => x.id === service) || {}).nom || service;
+      this.changer(() => {
+        const e = { ...(this.state.surfaces || {}) };
+        if (p === null) delete e[service]; else e[service] = p;
+        if (Object.keys(e).length) this.state.surfaces = e; else delete this.state.surfaces;
+      }, nom + ' : ' + (p === null ? 'la part de surface par défaut.' : String(p).replace('.', ',') + ' % de la surface, dans la vue en direct.'));
+    }
+    /** Le site de la vue en direct, généré à partir des réglages (moteur/site.js) ; `regime` : la règle de poste générale. */
+    site(regime) {
+      const S = root.OrlySite || (typeof require === 'function' ? require('./moteur/site.js') : null);
+      if (!S) return null;
+      return S.generer({ ateliers: this.state.ateliers, parcours: this.state.parcours, surfaces: this.state.surfaces, regime,
+        noms: Object.fromEntries(this.a.services().map(x => [x.id, x.nom])) });
     }
 
     regleEncadrement(service, n) {
