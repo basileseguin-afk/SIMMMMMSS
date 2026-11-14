@@ -867,12 +867,17 @@ Une ligne par mesure, dans l'ordre du contrat :
   dépassement (min), face au quart d'heure qui compte (`Seuil` : 15 ; `Au-delà
   du seuil` : `oui` à partir du quart d'heure) ; le détail : ses heures sup
   (min × personnes), ce qu'il fait partir en retard et sa cause ; sinon
-  « aucun ». Une plonge par vol qui laisse des vols à laver le lendemain
-  coince aussi (évolution 18), rangée après les autres : son détail ajoute
-  « laisse n vol(s) à laver le lendemain (m min de lavage) », et sa cause
-  est « ses équipes partent à la fin de leur présence… » ; sa ligne a alors
-  une mesure de plus, `Reste à laver le lendemain` (vols ; `Seuil` : 0 ;
-  `Au-delà du seuil` : `oui` ; en détail, les minutes de lavage). Puis, pour chaque service et jour de
+  « aucun ». Une plonge par vol qui laisse à laver le lendemain plus que la
+  première équipe du lendemain ne peut en absorber pendant sa présence
+  coince aussi (évolution 18, correction 19 b), rangée après les autres : son
+  détail ajoute « laisse n vol(s) à laver le lendemain (m min de lavage),
+  plus que l'équipe du matin ne peut en laver pendant sa présence (son nom :
+  k min de lavage au-delà) », et sa cause est « ses équipes partent à la fin
+  de leur présence… ». Dès qu'il reste un vol le soir, sa ligne a une mesure
+  de plus, `Reste à laver le lendemain` (vols ; sans seuil ; `Au-delà du
+  seuil` : `oui` si l'équipe du matin ne peut pas l'absorber, `non` sinon ;
+  en détail, les minutes de lavage, l'équipe qui juge et, s'il déborde, de
+  combien). Puis, pour chaque service et jour de
   travail qui reçoit des arrivages (les lots livrés ensemble) : `Arrivages du
   jour`, `File d’arrivages la plus longue`, `Attente la plus longue d’un
   arrivage` (au seuil d'attente), `Cumul d’attente des arrivages`, `Cause de
@@ -888,8 +893,10 @@ Une ligne par mesure, dans l'ordre du contrat :
   dépasse, avec sa propre fin et son propre horaire), `Heures sup` (min × personnes ; équipes, renforts prêtés, chauffeurs
   en détail). Une plonge par vol (évolution 18) n'a plus d'heures sup ; elle a une ligne `Lavage en relais` par vol passé
   d'une équipe à l'autre (min de tunnel ; en détail, ses parts : « L1 : Plonge matin 12:00 → 14:00 (120 min), Plonge
-  après-midi 14:00 → 15:00 (60 min) ; propre à 15:00 ») et une ligne `Lavage arrêté` par vol arrêté à une fin de présence
-  (en détail, sa part faite et « reste m min à laver le lendemain »).
+  après-midi 14:00 → 15:00 (60 min) ; propre à 15:00 »), une ligne `Lavage repris` par vol arrêté puis repris par
+  l'équipe qui arrive (correction 19 : « W1 : Plonge après-midi 20:00 → 21:00 (60 min), arrêté à 21:00, repris par
+  Plonge nuit 22:00 → 22:30 (30 min) ; propre à 22:30 ») et une ligne `Lavage arrêté` par vol arrêté à une fin de
+  présence que personne ne reprend ce jour-là (en détail, sa part faite et « reste m min à laver le lendemain »).
 - **4.** Une ligne par exception (vol chargé en retard, vol pas chargé, vol
   pas prêt, vol sans équipe, commande en retard) : son retard en
   minutes, au seuil de retard, et sa cause ; sans exception, une ligne

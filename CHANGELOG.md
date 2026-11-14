@@ -5,6 +5,60 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-14 — Banc d'essai, correction 19 (b) : un reste normal ne fait pas coincer la plonge
+
+Constat du banc : la plupart des jours, il reste du sale le soir, et la
+Synthèse disait alors que la plonge coince. Or un vol revenu en fin de soirée
+se lave normalement le lendemain matin : c'est le fonctionnement ordinaire,
+pas un blocage.
+
+- **La règle**, sans seuil ni réglage : la plonge par vol ne coince pour son
+  reste du soir que si la première équipe du lendemain ne peut pas
+  l'absorber pendant sa présence — le jugement de la mesure `absorbable`,
+  calculé qu'il y ait ou non une équipe sous condition
+  (`P.absorptionDuReste(resultat, opts, service)`, une lecture du résultat :
+  rien n'est rejoué, le résultat de la journée n'en porte rien).
+- **Les réponses** : `lendemain` porte `absorbe`, `equipe` et `depassement`
+  sur la ligne de la plonge ; le goulot ne le porte que s'il n'est pas
+  absorbé ; `plonge.lendemain.absorbe`.
+- **La Synthèse** : un reste absorbé s'affiche sur la ligne de la plonge,
+  « reste à laver le lendemain : n vols (h de lavage) », sans couleur
+  d'alerte, et « Où ça coince » ne la cite pas. Quand elle coince, la phrase
+  dit pourquoi : « laisse n vols à laver le lendemain, plus que l'équipe du
+  matin ne peut en laver pendant sa présence ».
+- **Le planning des équipes** : une reprise se dessine comme un relais, avec
+  son trou ; au survol, « Arrêté à hh:mm, repris par … à hh:mm » et, sur la
+  part de l'équipe qui reprend, « Reprise : commencé par …, arrêté à hh:mm ».
+- **Le « Bouchon »** et la tuile « Reste sale le soir » suivent ; le plan
+  rejoué ne dit le reste que s'il fait coincer ; la feuille « Réponses »
+  aussi : `Reste à laver le lendemain` sans seuil (« oui » s'il n'est pas
+  absorbé, avec l'équipe qui juge et ce dont il déborde), le goulot avec sa
+  raison, et une ligne `Lavage repris` par lavage arrêté puis repris.
+
+Ce qui ne change pas : le résultat de la journée, les indicateurs, la
+période, le reste lui-même (`saleFinal`, les vols et les minutes de la ligne,
+les colonnes de la feuille « Charge »). Sans reste, aucun champ ni aucun mot
+de plus. La version 2 n'est pas touchée.
+
+Tests dont la valeur attendue change : l'unité fictive ne coince plus pour
+son reste, que l'équipe du matin absorbe (`tests/reponses-classeur.test.cjs`,
+`tests/synthese-vue.test.cjs`, `tests/synthese-questions-browser.cjs`,
+`tests/details-browser.cjs`, `tests/captures-resultats-browser.cjs`,
+`tests/captures-correction-18-browser.cjs`) ; les tests du relais jugent sur
+un reste que le matin n'absorbe pas (`tests/plonge-relais-resultats.test.cjs`,
+`tests/captures-evolution-18-browser.cjs`), et un reste absorbé n'y fait plus
+coincer (`tests/plonge-relais-browser.cjs`).
+
+Fichiers : `moteur/production.js`, `moteur/reponses.js`, `synthese-vue.js`,
+`planning-vue.js`, `resultats-vue.js`, `sim.js`, `echanges-reponses.js`,
+`tests/plonge-reste-lendemain.test.cjs` et
+`tests/plonge-reprise-browser.cjs` (nouveaux), les tests cités,
+`tests/plonge-reprise.test.cjs`, `docs/BANC_ESSAI.md`,
+`docs/CAHIER_DES_CHARGES.md`, `docs/FORMATS_EXCEL.md`, `README.md`,
+`CHANGELOG.md`, `index.html` (les empreintes).
+
+---
+
 ## 2026-11-14 — Banc d'essai, correction 19 (a) : la reprise à l'arrivée, à la plonge par vol
 
 Constat du banc : une équipe de nuit sous condition (`absorbable`) pouvait

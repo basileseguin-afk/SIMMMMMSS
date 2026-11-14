@@ -424,29 +424,41 @@ lot entier pour son équipe ; aucune pour un lot que personne n'a commencé.
   autour de sa part ; la fin d'une équipe de plonge est la fin de sa dernière
   part, sans heures sup. `fins.services[].relais` (seulement s'il y en a)
   liste les lavages passés en relais ou arrêtés, avec leurs parts.
-- **Une conséquence de plus** pour « Où ça coince » : une plonge par vol qui
-  laisse des vols à laver le lendemain coince — `lendemain: { vols, minutes }`
-  sur sa ligne (`coince.services[]`), sur son goulot et sur `plonge`,
-  seulement s'il y en a ; les minutes sont celles du lavage qui reste (la
-  durée restante d'un vol arrêté, la durée entière d'un vol pas commencé).
-  Quand c'est sa seule conséquence, elle est rangée **après** les services
-  qui dépassent leur horaire ou font partir en retard (le rang des autres ne
+- **Une conséquence de plus** pour « Où ça coince » : une plonge par vol
+  coince pour son reste du soir **quand la première équipe du lendemain ne
+  peut pas l'absorber pendant sa présence** (correction 19 b, plus bas ; avec
+  l'évolution 18, tout vol non lavé le soir la faisait coincer). Ce qu'elle
+  laisse est sur sa ligne (`coince.services[]`) dès qu'il reste un vol :
+  `lendemain: { vols, minutes, absorbe, equipe, depassement }` — les minutes
+  sont celles du lavage qui reste (la durée restante d'un vol arrêté, la
+  durée entière d'un vol pas commencé) ; sur son goulot, seulement quand il
+  n'est pas absorbé ; sur `plonge` : `{ vols, minutes, absorbe }`. Quand
+  c'est sa seule conséquence, elle est rangée **après** les services qui
+  dépassent leur horaire ou font partir en retard (le rang des autres ne
   change pas) ; sa cause : ses équipes partent à la fin de leur présence.
   Tout lavé dans les présences, la plonge n'est plus citée : le dépassement
   d'une équipe qui finissait un vol en heures sup n'existe plus.
 - **La Synthèse** : sur la ligne de la plonge, sous sa fin, « reste à laver
-  le lendemain : n vols (h de lavage) » ; plus d'heures sup. La phrase de
-  tête et la carte « Où ça coince » disent « laisse n vols à laver le
-  lendemain ». L'étiquette « Bouchon » de la plonge suit la même règle, et
-  le plan rejoué le dit en une phrase.
+  le lendemain : n vols (h de lavage) » ; plus d'heures sup. Un reste que le
+  matin absorbe s'affiche **sans couleur d'alerte**, et « Où ça coince » ne
+  cite pas la plonge. Sinon la case porte l'alerte, et la phrase de tête et
+  la carte disent pourquoi : « laisse n vols à laver le lendemain, plus que
+  l'équipe du matin ne peut en laver pendant sa présence ». L'étiquette
+  « Bouchon » de la plonge et la tuile « Reste sale le soir » suivent la
+  même règle ; le plan rejoué ne le dit, en une phrase, que si elle coince.
 - **Le planning des équipes** : un lot passé en relais se dessine sur les
   deux lignes, chacune pour sa part, avec un petit triangle à la jointure ;
   au survol, « repris par … à hh:mm » et « commencé par … », et l'heure où le
-  vol est propre. Un lavage arrêté se dessine jusqu'à la fin de la présence,
-  avec un petit carré ; au survol, ce qu'il reste à laver le lendemain. La
-  bande « sans travail » d'avant le premier lot s'arrête au début de la part.
+  vol est propre. **Une reprise** (correction 19) se dessine comme un relais,
+  avec son trou entre les deux parts ; au survol : « Arrêté à hh:mm, repris
+  par … à hh:mm » et, sur la part de l'équipe qui reprend, « Reprise :
+  commencé par …, arrêté à hh:mm ». Un lavage arrêté que personne ne reprend
+  se dessine jusqu'à la fin de la présence, avec un petit carré ; au survol,
+  ce qu'il reste à laver le lendemain. La bande « sans travail » d'avant le
+  premier lot s'arrête au début de la part.
 - **Le plan rejoué** : un vol en relais reste dans son tunnel, sans coupure
-  (c'est un seul lot).
+  (c'est un seul lot) ; pendant le trou d'une reprise aussi — il y attend
+  l'équipe qui arrive.
 - **Le classeur de la journée** : la feuille « Réponses » et la feuille
   « Charge » donnent les parts et le reste du lendemain
   ([`FORMATS_EXCEL.md`](FORMATS_EXCEL.md), § 6 et § 8). Les indicateurs d'une
@@ -455,6 +467,65 @@ lot entier pour son équipe ; aucune pour un lot que personne n'a commencé.
 Le résultat de la journée, les indicateurs et le JSON des outils ne changent
 pas pour une journée sans relais ; les réponses n'ont un champ de plus que
 s'il y a un relais ou un reste.
+
+**Quand un reste fait coincer** (correction 19 b). Constat du banc : la
+plupart des jours, il reste du sale le soir, et la Synthèse disait alors que
+la plonge coince. Or un vol revenu en fin de soirée se lave normalement le
+lendemain matin : c'est le fonctionnement ordinaire, pas un blocage. La règle,
+sans seuil ni réglage :
+
+- **La plonge ne coince pour son reste du soir que si la première équipe du
+  lendemain ne peut pas l'absorber pendant sa présence.** C'est le jugement
+  de la mesure `absorbable` (§ 6), porté sur la journée telle qu'elle s'est
+  jouée, **qu'il y ait ou non une équipe sous condition** : seule, cette
+  équipe laverait-elle pendant sa présence le reste du soir (`saleFinal`,
+  présent dès le début de la journée, comme le sale de la veille) et ses
+  propres retours — ceux qu'elle a lavés ce jour, à leur heure ? Le
+  lendemain ressemble au jour : la même hypothèse. Elle l'absorbe si le
+  reste ne pousse aucun lavage au-delà de sa présence.
+- **La première équipe du lendemain** : celle que désigne une équipe « sur
+  le retard » de cette plonge (`equipe`), si elle lave ce jour-là ; sinon,
+  parmi ses équipes qui viennent d'office (sans condition de plonge), celle
+  qui commence le plus tôt.
+- **`P.absorptionDuReste(resultat, opts, service)`** (moteur/production.js)
+  rend `{ equipe, retard: { vols, unites }, absorbe, depassement }` :
+  `depassement`, les minutes de lavage que le reste pousse au-delà de sa
+  présence (0 si elle l'absorbe ; `null` si personne ne peut le laver —
+  aucune équipe, aucun tunnel qui tourne) ; `null` pour un service qui n'est
+  pas une plonge par vol (ou dont l'équipe qui juge lave au débit : une
+  plonge mêlée, que la journée refuse). C'est une lecture du résultat : rien
+  n'est rejoué, et le résultat de la journée n'en porte rien. Le sale de la
+  veille que cette équipe a lavé ce jour ne compte pas parmi ses retours :
+  demain, il sera le reste d'aujourd'hui. C'est, au champ près, ce que rend
+  la décision d'une nuit « sur le retard » pour la journée jouée sans elle
+  (`conditionSale` : `equipe`, `retard`, `absorbe`, `depassement`). Une nuit
+  restée fermée a jugé la journée jouée : les résultats disent comme elle.
+  Une nuit qui s'est ouverte a jugé la journée sans elle ; les résultats
+  jugent ce qui reste après elle.
+- **Sinon**, la ligne de la plonge affiche « reste à laver le lendemain :
+  n vols (h de lavage) », sans couleur d'alerte, et « Où ça coince » ne la
+  cite pas. **Quand elle coince**, la phrase dit pourquoi : « laisse n vols
+  à laver le lendemain, plus que l'équipe du matin ne peut en laver pendant
+  sa présence ».
+
+Ce que cette règle change aux mesures passées : la plonge n'est plus un
+goulot les jours où son reste est absorbé — le plus souvent. Le reste
+lui-même (`saleFinal`, les vols et les minutes de sa ligne, les colonnes de la
+feuille « Charge ») ne change pas ; le résultat de la journée, les
+indicateurs et la période non plus.
+
+Vérifications : `tests/plonge-reste-lendemain.test.cjs` (journées fictives
+calculées à la main : le jugement du moteur ; le même que la mesure
+`absorbable`, avec ou sans équipe sous condition, et avec une équipe
+désignée ; le sale de la veille, qui ne compte pas parmi les retours du
+matin ; une plonge mêlée, non jugée ; un reste que le matin absorbe — la
+plonge ne coince pas, sa ligne l'affiche sans alerte ; un reste qu'il
+n'absorbe pas — elle coince, avec la
+phrase ; sans reste, rien ; le « Bouchon » ; la reprise dans le planning et
+dans la feuille « Réponses ») ; `tests/plonge-reprise-browser.cjs` (sur une
+unité fictive : la reprise sur les deux lignes du planning, avec son trou et
+ses mots ; un reste que le matin n'absorbe pas dans la Synthèse et le plan
+rejoué).
 
 **Ce que le relais change aux mesures passées de la plonge** (évolution
 18 c). Un banc qui a déjà mesuré des journées avec une plonge par vol les
@@ -470,8 +541,8 @@ retrouve changées sur trois points, et sur eux seulement :
 - **La fin des équipes.** Une équipe de plonge finit au plus tard à la fin de
   sa présence. La fin du service ne recule pas pour autant : le vol passé en
   relais est propre à la même heure qu'avant. « Où ça coince » ne désigne
-  plus la plonge pour un dépassement ; il la désigne quand elle laisse des
-  vols à laver le lendemain.
+  plus la plonge pour un dépassement ; il la désigne quand elle laisse au
+  lendemain plus que l'équipe du matin ne peut en absorber (correction 19 b).
 - **La condition de la nuit.** Sur le retard (`absorbable`), le retard compte
   maintenant le vol arrêté à la fin de la dernière présence (pour sa durée
   restante), et le matin n'est plus jugé sur un dépassement qu'il ne ferait
@@ -525,19 +596,22 @@ journées d'avant ; le déterminisme).
 **Contrôle** : `tests/captures-evolution-18-browser.cjs` fait douze captures
 sur une unité fictive, en clair et en sombre, à 1 366 × 768 et 1 920 × 1 080 —
 le planning des équipes avec un relais (le lot sur les deux lignes, le repère
-à la jointure, la légende) ; la Synthèse avec un reste au lendemain (la ligne
-de la plonge, la carte « Où ça coince »). Chacune est vérifiée (sa taille, ce
+à la jointure, la légende) ; la Synthèse avec un reste au lendemain que le
+matin n'absorbe pas (la ligne de la plonge, la carte « Où ça coince »).
+Chacune est vérifiée (sa taille, ce
 qu'elle montre, la page qui tient sur la largeur) et gardée hors du dépôt
 (`ORY_CAPTURES`).
 
 Vérifications : `tests/plonge-relais-resultats.test.cjs` (un relais : les
-fins, les personnes sans travail, rien ne coince ; un reste : la plonge
-coince, sa cause, son rang après un service qui dépasse ; la Synthèse ; le
+fins, les personnes sans travail, rien ne coince ; un reste que le matin
+n'absorbe pas : la plonge coince, sa cause, son rang après un service qui
+dépasse ; un reste qu'il absorbe : elle ne coince pas ; la Synthèse ; le
 « Bouchon » ; les feuilles « Réponses » et « Charge » ; le planning ; sans
 relais ni reste, aucun champ de plus) ; `tests/plonge-relais-browser.cjs`
 (sur une unité fictive : le lot en relais sur deux lignes avec son repère et
 ses mots, la Synthèse sans heures sup à la plonge et avec le reste du
-lendemain, « Où ça coince », le plan rejoué sans coupure).
+lendemain — sans alerte quand le matin l'absorbe —, le plan rejoué sans
+coupure).
 
 Une journée où aucun lavage n'atteint une fin de présence, et une journée
 sans plonge par vol, rendent le résultat d'avant, champ par champ.

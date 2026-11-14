@@ -5,10 +5,12 @@
  *     survol, « repris par … à hh:mm » et « commencé par … » ; un lavage arrêté
  *     à la fin d'une présence porte un petit carré, et dit ce qu'il en reste ;
  *   — la Synthèse : plus d'heures sup à la plonge ; « reste à laver le
- *     lendemain : n vols (h de lavage) » quand il y en a ; « Où ça coince » ne
- *     cite la plonge que si elle laisse des vols au lendemain ;
+ *     lendemain : n vols (h de lavage) » quand il y en a — sans alerte quand
+ *     l'équipe du matin l'absorbe pendant sa présence (correction 19 b : un
+ *     reste normal ne fait pas coincer ; tests/plonge-reprise-browser.cjs
+ *     montre le reste qui fait coincer) ;
  *   — le plan rejoué : un vol en relais reste dans son tunnel, sans coupure ;
- *     sa phrase dit le reste du lendemain.
+ *     sa phrase ne dit rien d'un reste normal.
  * Chaque étape attend son effet, pas un délai. Vols, compagnies et équipes
  * fictifs ; aucune capture d'écran. */
 const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs'),os=require('node:os');
@@ -123,16 +125,16 @@ const h=s=>{const [a,b]=s.split(':').map(Number);return a*60+b;};
   const r2=await page.evaluate(()=>{const r=Sim.ateliers.resultat,l=r.lots.find(x=>x.vol==='V1');return {fin:l.fin,fait:l.fait,reste:l.reste,sale:r.saleFinal.map(x=>[x.vol,x.reste||null]),hs:r.ateliers[0].heuresSup};});
   assert.deepEqual(r2,{fin:null,fait:60,reste:30,sale:[['V1',30],['V2',null]],hs:0});
 
-  // La Synthèse : la plonge laisse deux vols au lendemain (30 min restantes + 90 min) ; c'est ce qui la fait coincer.
+  // La Synthèse : la plonge laisse deux vols au lendemain (30 min restantes + 90 min). Le matin les lavera d'abord, de 06:00 à
+  // 08:00, sans retarder son vol de 13:00 : un reste normal (correction 19 b) — sur sa ligne, sans couleur d'alerte ni mot
+  // « à signaler » ; rien ne coince. (Évolution 18 : « coince : il laisse 2 vols à laver le lendemain », la case en alerte.)
   const s2=await synthese();
-  assert.equal(s2.tete[1].split(' ; ')[0],s2.nom+' coince : il laisse 2 vols à laver le lendemain');
-  // (La case marquée dit d'abord, pour un lecteur d'écran, qu'elle est signalée — sans seuil à dépasser.)
-  assert.match(s2.fin,/^à signaler : 14:00horaire 14:00reste à laver le lendemain : 2 vols \(2 h 00 de lavage\)$/,s2.fin);
-  assert.equal(s2.ton,'attente','la case porte le statut, avec une icône et des mots');
+  assert.match(s2.tete[1],/^Rien ne coince ; /,s2.tete[1]);
+  assert.match(s2.fin,/^14:00horaire 14:00reste à laver le lendemain : 2 vols \(2 h 00 de lavage\)$/,s2.fin);
+  assert.equal(s2.ton,null,'la case n’a pas de statut : le reste est normal');
   assert.doesNotMatch(s2.fin,/heures sup/);
-  assert.match(s2.coince,/laisse 2 vols à laver le lendemain\./);
-  assert.match(s2.coince,/Cause : ses équipes partent à la fin de leur présence/);
-  assert.ok(s2.coince.includes(s2.nom),'« Où ça coince » cite la plonge');
+  assert.match(s2.coince,/Rien ne coince\./);
+  assert.ok(!s2.coince.includes(s2.nom),'« Où ça coince » ne cite pas la plonge');
   assert.equal(s2.large,0,'la page tient sur la largeur');
 
   // Le planning : le lavage arrêté se dessine jusqu'à la fin de la présence, avec son petit carré ; il dit ce qu'il en reste.
@@ -141,12 +143,12 @@ const h=s=>{const [a,b]=s.split(':').map(Number);return a*60+b;};
   assert.match(v1.info,/^Vol V1\n13:00 → 14:00 \(1 h 00\)\nAttente : aucune\nArrêté à 14:00, à la fin de la présence : reste 30 min à laver le lendemain$/);
   assert.ok(await page.locator('#at-planning .pg-legende .pg-cle[data-signe="arrete"]').count()===1,'la légende : le lavage arrêté');
 
-  // Le plan rejoué : sa phrase dit le reste du lendemain, comme la Synthèse.
+  // Le plan rejoué : un reste que le matin absorbe n'est pas à regarder — sa phrase n'en dit rien (correction 19 b ; avec
+  // l'évolution 18 : « … laisse 2 vols à laver le lendemain (2 h 00 de lavage). »).
   await nav.aller(page,'j-plan');
-  await page.waitForSelector('#goulot-info [data-reste-lendemain="plonge"]');
-  assert.match(await page.locator('#goulot-info [data-reste-lendemain="plonge"]').textContent(),/ laisse 2 vols à laver le lendemain \(2 h 00 de lavage\)\.$/);
+  await page.waitForFunction(()=>document.getElementById('goulot-info')&&!document.querySelector('#goulot-info [data-reste-lendemain]'));
 
   assert.deepEqual(errors,[]);
-  console.log('plonge-relais-browser : ok — le lot en relais sur les deux lignes du planning, avec son repère et ses mots ; la Synthèse sans heures sup à la plonge, avec le reste du lendemain quand il y en a ; « Où ça coince » ne cite la plonge que si elle laisse des vols ; le plan rejoué sans coupure');
+  console.log('plonge-relais-browser : ok — le lot en relais sur les deux lignes du planning, avec son repère et ses mots ; la Synthèse sans heures sup à la plonge, avec le reste du lendemain quand il y en a ; un reste que le matin absorbe s’affiche sans alerte ; le plan rejoué sans coupure');
  }catch(e){console.error(e);process.exitCode=1;}finally{await browser.close();fs.rmSync(dossier,{recursive:true,force:true});}
 })();

@@ -59,16 +59,15 @@ const OUVERTURE={de:'05:00',a:'23:00'};
     await page.waitForSelector('#bilan-journee .sy-table tbody tr');
     await poserTheme();
 
-    // 1. « Rien ne coince » : ni dépassement d'un quart d'heure, ni retard — sans la plonge, qui laisse des vols à laver le
-    //    lendemain et coince pour cela (évolution 18) ; elle revient pour la suite.
-    const equipes=await F.sansPlonge(page);
+    // 1. « Rien ne coince » : ni dépassement d'un quart d'heure, ni retard. La plonge laisse des vols à laver le lendemain,
+    //    que l'équipe du matin lave pendant sa présence : un reste normal, qui ne fait pas coincer (correction 19 b ; avec
+    //    l'évolution 18, elle en coinçait, et la capture se faisait sans elle).
     await page.waitForFunction(()=>{const x=Sim.reponses();return !!x&&x.coince.goulots.length===0&&/Rien ne coince/.test(document.getElementById('bilan-journee').innerText);});
     let r=await reponses();
     assert.deepEqual([r.goulot,r.exceptions],[null,0],V+'la journée fictive sans retard');
     assert.match(await carte(),/Rien ne coince\./,V+'la carte le dit');
     assert.match(await page.locator('#bilan-journee').innerText(),/Rien ne coince ; rien ne part en retard\./,V+'la phrase de tête aussi');
     await capturer('synthese-rien-ne-coince');
-    await F.remettreEquipes(page,equipes);
 
     // 2. Un goulot dû à une mise à disposition fermée : le magasin ouvre à 05:00, le montage l'attend.
     await page.evaluate(o=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers.find(a=>a.id==='mag').ouverture=o;},''),OUVERTURE);

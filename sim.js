@@ -1698,9 +1698,11 @@ function majGoulotInfo() {
     if(top)html+='<p class="mini-note">Sur toute la journée, ce sont les arrivages de <strong>'+escapeHTML(top.nom)+'</strong> qui attendent le plus : '
       +MoteurProduction.dureeLisible(top.cumul)+' en tout.</p>';
     // Évolution 18 : la plonge par vol qui laisse des vols à laver le lendemain — la même conséquence que dans la Synthèse.
-    const reste=rep?rep.coince.services.filter(x=>x.lendemain&&x.lendemain.vols>0):[];
+    // Correction 19 (b) : seulement si la première équipe du lendemain ne peut pas les absorber pendant sa présence — un reste
+    // qu'elle lave pendant sa présence est le fonctionnement ordinaire : le panneau n'a rien à en dire.
+    const reste=rep?rep.coince.services.filter(x=>x.lendemain&&x.lendemain.vols>0&&!x.lendemain.absorbe):[];
     for(const x of reste)html+='<p class="mini-note" data-reste-lendemain="'+escapeHTML(x.service)+'">À la fin de la journée, <strong>'+escapeHTML(x.nom)+'</strong> laisse '
-      +x.lendemain.vols+(x.lendemain.vols>1?' vols':' vol')+' à laver le lendemain ('+MoteurProduction.dureeLisible(x.lendemain.minutes)+' de lavage).</p>';
+      +x.lendemain.vols+(x.lendemain.vols>1?' vols':' vol')+' à laver le lendemain ('+MoteurProduction.dureeLisible(x.lendemain.minutes)+' de lavage), plus que l’équipe du matin ne peut en laver pendant sa présence.</p>';
   }
   // Ce qui attend à cette heure : les repas en stock, le sale à laver.
   if(window.OrlyTemps&&lots.length&&Sim.vue&&t>Sim.vue.debut){

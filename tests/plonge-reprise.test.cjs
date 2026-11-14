@@ -189,8 +189,9 @@ test('le planning des équipes lit l’heure de la reprise : « repris par … �
   const PV = require('../planning-vue.js');
   const r = jouer(SOIR.slice(0, 1), [MATIN(), APM(), NUIT()]), w1 = lot(r, 'W1');
   const apm = PV.lotTenu(w1, { id: 'apm' }), nuit = PV.lotTenu(w1, { id: 'nuit' });
-  assert.deepEqual([apm.debut, apm.fin, apm.relais.vers, apm.relais.propre], [h('20:00'), h('21:00'), { nom: 'nuit', a: h('22:00') }, h('22:30')]);
-  assert.deepEqual([nuit.debut, nuit.fin, nuit.relais.de, nuit.relais.propre], [h('22:00'), h('22:30'), { nom: 'apm' }, h('22:30')]);
+  // (L'heure de l'arrêt, `arrete`, et les mots de la reprise : correction 19 b, tests/plonge-reste-lendemain.test.cjs.)
+  assert.deepEqual([apm.debut, apm.fin, apm.relais.vers, apm.relais.propre], [h('20:00'), h('21:00'), { nom: 'nuit', a: h('22:00'), arrete: h('21:00') }, h('22:30')]);
+  assert.deepEqual([nuit.debut, nuit.fin, nuit.relais.de, nuit.relais.propre], [h('22:00'), h('22:30'), { nom: 'apm', arrete: h('21:00') }, h('22:30')]);
   // Un relais : l'équipe suivante le prend à la fin de la part, comme avant.
   const relais = jouer([ret('L1', 'LONG', '11:30')], [MATIN(), APM()]);
   assert.deepEqual(PV.lotTenu(lot(relais, 'L1'), { id: 'matin' }).relais.vers, { nom: 'apm', a: h('14:00') });

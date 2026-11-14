@@ -162,13 +162,16 @@
    * le seuil d'attente. temps.js (commun aux deux versions) le dit dès une heure d'attente : la version 1 le corrige
    * d'après ce seuil — l'étiquette, et la couleur des deux tuiles qui le portent, retirées ou ajoutées. Correction 18 (a) :
    * l'attente est celle d'un arrivage (`plonge` : celle des réponses — à une plonge par vol, un vol revenu qui attend son
-   * tunnel) ; au débit, sans arrivage, celle du moteur, par unité. Évolution 18 : une plonge par vol qui laisse des vols à
-   * laver le lendemain (`plonge.lendemain`) est en bouchon, comme elle coince dans la Synthèse.
+   * tunnel) ; au débit, sans arrivage, celle du moteur, par unité. Évolution 18, correction 19 (b) : pour une plonge par
+   * vol, le sale du soir se lit dans `plonge.lendemain` — elle n'est en bouchon pour lui que si la première équipe du
+   * lendemain ne peut pas l'absorber pendant sa présence (`absorbe`), comme elle coince dans la Synthèse ; un reste absorbé
+   * est le fonctionnement ordinaire.
    */
   const bouchon = (p, seuils, plonge) => {
     if (!p) return false;
     const attente = plonge && Number.isFinite(plonge.attenteMax) ? plonge.attenteMax : (p.attenteMax || 0);
-    return (p.resteSale || 0) > 0 || attente > seuils.attenteLot + 1e-9 || !!(plonge && plonge.lendemain && plonge.lendemain.vols > 0);
+    const reste = plonge && plonge.lendemain ? plonge.lendemain.vols > 0 && !plonge.lendemain.absorbe : (p.resteSale || 0) > 0;
+    return reste || attente > seuils.attenteLot + 1e-9;
   };
   function corrigerBouchon(box, p, seuils, plonge) {
     if (!box || !p) return;
@@ -183,6 +186,13 @@
     for (const t of box.querySelectorAll('.tp-tuile')) {
       const lab = (t.querySelector('span') || {}).textContent;
       if (lab === 'Le plus de sale pas encore lavé' || lab === 'Attente la plus longue') t.classList.toggle('alerte', oui);
+      // Le sale du soir d'une plonge par vol (correction 19 b) : il se lave le lendemain — temps.js, commun, le dit « jamais
+      // lavé ». Une alerte seulement si la première équipe du lendemain ne peut pas l'absorber pendant sa présence.
+      if (lab === 'Reste sale le soir' && plonge && plonge.lendemain) {
+        t.classList.toggle('alerte', !plonge.lendemain.absorbe);
+        const note = t.querySelector('em');
+        if (note) note.textContent = plonge.lendemain.absorbe ? 'lavé le lendemain matin' : 'plus que le matin du lendemain ne peut en laver';
+      }
     }
   }
 

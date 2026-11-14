@@ -52,6 +52,8 @@
     if (c.code === 'presences') return 'ses équipes partent à la fin de leur présence : personne ne reste pour finir, ce qui n’est pas lavé passe au lendemain';
     return 'la charge du jour ne tient pas dans l’horaire';
   }
+  /** Pourquoi un reste fait coincer la plonge (correction 19 b) : la première équipe du lendemain ne l'absorbe pas. */
+  const PLUS_QUE_LE_MATIN = 'plus que l’équipe du matin ne peut en laver pendant sa présence';
   /** « 2 vols (2 h de lavage) » : ce qu'une plonge laisse à laver le lendemain (évolution 18). */
   const motsDuLendemain = x => pluriel(x.vols, 'vol', 'vols') + ' (' + duree(x.minutes) + ' de lavage)';
   /** « l'équipe … finit à hh:mm pour hh:mm » : l'équipe qui dépasse, avec sa propre fin et son propre horaire. */
@@ -65,8 +67,9 @@
     if (g.depasse >= QUART - EPS) l.push((sujet ? sujet + ' ' : '') + 'finit ' + duree(g.depasse) + ' après son horaire' + (avecEquipe && g.equipe ? ' : ' + motsDeLEquipe(g.equipe) : ''));
     if (g.enRetard > 0) l.push(l.length ? 'fait partir ' + pluriel(g.enRetard, 'commande ou vol', 'commandes ou vols') + ' en retard'
       : pluriel(g.enRetard, 'commande ou vol part', 'commandes ou vols partent') + ' en retard par ses lots');
-    // Une plonge par vol (évolution 18) : ce qu'elle laisse à laver le lendemain.
-    if (g.lendemain && g.lendemain.vols > 0) l.push((!l.length && sujet ? sujet + ' ' : '') + 'laisse ' + pluriel(g.lendemain.vols, 'vol', 'vols') + ' à laver le lendemain');
+    // Une plonge par vol (évolution 18) : ce qu'elle laisse à laver le lendemain — et pourquoi elle en coince (correction 19 b :
+    // un goulot ne porte ce reste que si la première équipe du lendemain ne peut pas l'absorber).
+    if (g.lendemain && g.lendemain.vols > 0) l.push((!l.length && sujet ? sujet + ' ' : '') + 'laisse ' + pluriel(g.lendemain.vols, 'vol', 'vols') + ' à laver le lendemain, ' + PLUS_QUE_LE_MATIN);
     return l.length > 2 ? l.slice(0, -1).join(', ') + ' et ' + l[l.length - 1] : l.join(' et ');
   }
 
@@ -143,8 +146,9 @@
     return { ecart: l.signale ? 'attente' : null,
       attente: l.coince && l.coince.attenteMax && l.coince.attenteMax.minutes > seuils.attenteLot + EPS ? 'attente' : null,
       occupation: fini(l.occupation) && l.occupation * 100 > seuils.occupation + EPS ? 'attente' : null,
-      // … ou si la plonge laisse des vols à laver le lendemain (évolution 18) : c'est ce qui la fait coincer.
-      fin: (l.fin && l.fin.depasse >= REP().DEPASSEMENT_MIN - EPS) || (l.coince && l.coince.lendemain) ? 'attente' : null };
+      // … ou si la plonge laisse à laver le lendemain plus que le matin ne peut en absorber (évolution 18, correction 19 b) :
+      // c'est ce qui la fait coincer. Un reste absorbé s'affiche sans couleur : le fonctionnement ordinaire.
+      fin: (l.fin && l.fin.depasse >= REP().DEPASSEMENT_MIN - EPS) || (l.coince && l.coince.lendemain && !l.coince.lendemain.absorbe) ? 'attente' : null };
   }
 
   const ICONE = () => (root.OrlyIcones ? root.OrlyIcones.ico('alerte') : '');
@@ -227,11 +231,14 @@
     const hs = f && f.heuresSup.total > EPS ? '<small class="sy-hs" title="Heures sup, en personnes × heures">heures sup ' + esc(duree(f.heuresSup.total)) + '</small>' : '';
     // La plonge par vol (évolution 18) : ce qu'elle laisse à laver le lendemain — les vols de la fin de journée, et leur temps de lavage.
     const x = l.coince && l.coince.lendemain;
-    const reste = x ? '<small class="sy-lendemain" title="Les vols qui ne sont pas propres à la fin de la journée : ils sont lavés le lendemain, d’abord ; un lavage arrêté, pour sa seule durée restante.">reste à laver le lendemain : '
+    // Correction 19 (b) : le reste s'affiche toujours ; il n'est une alerte que si la première équipe du lendemain ne peut pas
+    // l'absorber pendant sa présence.
+    const reste = x ? '<small class="sy-lendemain" title="Les vols qui ne sont pas propres à la fin de la journée : ils sont lavés le lendemain, d’abord ; un lavage arrêté, pour sa seule durée restante. '
+      + (x.absorbe ? 'L’équipe du matin les lave pendant sa présence : le fonctionnement ordinaire.' : 'C’est ' + PLUS_QUE_LE_MATIN + ' : la plonge coince.') + '">reste à laver le lendemain : '
       + esc(motsDuLendemain(x)) + '</small>' : '';
     // Signalée pour ce seul reste, la case n'a pas de seuil à dépasser : un lecteur d'écran entend « à signaler ».
     const depasse = f && f.depasse >= REP().DEPASSEMENT_MIN - EPS;
-    return '<td class="sy-fin"' + marque(ton, fin + hs + reste, x && !depasse ? 'à signaler : ' : undefined) + '</td>';
+    return '<td class="sy-fin"' + marque(ton, fin + hs + reste, x && !x.absorbe && !depasse ? 'à signaler : ' : undefined) + '</td>';
   }
 
   /** Le tableau « Les services ». Un clic sur une ligne ouvre ce service dans « Planning des équipes ». */
@@ -260,8 +267,9 @@
       + 'Un arrivage : les lots livrés ensemble ; il attend de sa livraison au début de son premier lot — les lots suivants sont à faire, dans l’ordre de travail. '
       + 'En couleur : il manque au moins ' + esc(pluriel(rep.seuils.ecartPersonnes, 'personne', 'personnes')) + ' (un surplus n’est pas une alerte), un arrivage qui attend plus de '
       + esc(duree(rep.seuils.attenteLot)) + ', une occupation de plus de ' + esc(nombre(rep.seuils.occupation)) + ' %, une fin au moins un quart d’heure après l’horaire — celui des équipes qui travaillent ce jour-là ; l’équipe qui dépasse est nommée, avec sa fin et son horaire.'
-      // Évolution 18 : une plonge qui laisse des vols au lendemain est signalée elle aussi — la note le dit quand il y en a une.
-      + (ls.some(l => l.coince && l.coince.lendemain) ? ' Une plonge qui laisse des vols à laver le lendemain est signalée aussi : personne ne reste en heures sup, ils sont lavés le lendemain, d’abord.' : '') + '</p>'
+      // Évolution 18, correction 19 (b) : le reste du lendemain d'une plonge — la note le dit quand il y en a un.
+      + (ls.some(l => l.coince && l.coince.lendemain) ? ' Reste à laver le lendemain : personne ne reste en heures sup, les vols du soir sont lavés le lendemain, d’abord — le fonctionnement ordinaire, sans couleur ; signalé seulement s’il y en a '
+        + PLUS_QUE_LE_MATIN + '.' : '') + '</p>'
       + '<p class="mini-note sy-explique-occ">Occupation : la part du temps de présence couverte par le travail du barème. Elle dépend des temps par vol et des effectifs réglés.</p>'
       + horsCompte(ls).map(n => '<p class="mini-note sy-note">' + esc(n) + '</p>').join('');
   }

@@ -484,8 +484,13 @@ le rouge ne sert qu’aux retards.
           heures. À la plonge par vol, deux équipes qui se suivent se passent
           le relais du vol en cours : elle n'a pas d'heures sup, et sa ligne
           dit, s'il y en a, « reste à laver le lendemain : n vols (h de
-          lavage) » — elle coince alors, après les autres (évolution 18). La case ne prend la couleur de statut que si le
-          dépassement atteint le quart d'heure. À 1 366 px de large, tout le
+          lavage) » (évolution 18). Un vol revenu en fin de soirée se lave
+          le lendemain matin : ce reste est normal, sans couleur d'alerte,
+          tant que l'équipe du matin peut le laver pendant sa présence ;
+          sinon la plonge coince, après les autres, et la phrase dit
+          pourquoi — « laisse n vols à laver le lendemain, plus que l'équipe
+          du matin ne peut en laver pendant sa présence » (correction 19). La case ne prend la couleur de statut que si le
+          dépassement atteint le quart d'heure, ou pour un tel reste. À 1 366 px de large, tout le
           tableau tient sans défilement horizontal.
      4. **La journée** : la courbe des présents, des personnes au travail et
         des lots à faire (prêts, pas commencés), avec un repère par départ ;
@@ -654,8 +659,11 @@ service.
 - **Le relais à la plonge** (évolution 18) : un vol que deux équipes de
   plonge se passent se dessine sur leurs deux lignes, chacune pour sa part,
   avec un petit triangle à la jointure ; au survol, « repris par … à hh:mm »
-  et « commencé par … ». Un lavage arrêté à la fin d'une présence va jusqu'à
-  elle, avec un petit carré, et dit ce qu'il reste à laver le lendemain.
+  et « commencé par … ». Une équipe qui arrive après un trou reprend d'abord
+  le lavage arrêté (correction 19) : la reprise se dessine comme un relais,
+  avec son trou ; au survol, « arrêté à hh:mm, repris par … à hh:mm ». Un
+  lavage arrêté que personne ne reprend ce jour-là va jusqu'à la fin de la
+  présence, avec un petit carré, et dit ce qu'il reste à laver le lendemain.
 - **Déplier** : un clic sur la ligne d'un service montre son résumé en entier,
   puis ses équipes, une ligne chacune, avec leur nombre de personnes ; « Tout
   déplier », « Tout replier ». Le navigateur retient les services dépliés.
@@ -1019,7 +1027,9 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/plonge-heures-sup.test.cjs` | La plonge à la fin de sa présence (v1, banc d’essai) : sans équipe pour le reprendre, elle arrête le vol dans son tunnel et ne commence pas celui qui attend (il va à la nuit, ou au sale de fin de journée) ; une nuit ne commence aucun vol après la fin de sa présence ; le retard compte le vol arrêté et ce que l’après-midi n’a pas commencé ; l’option des heures sup n’y change rien ; déterminisme |
 | `tests/plonge-relais.test.cjs` | Le relais à la plonge par vol (v1, banc d’essai, évolution 18 a), sur des journées fictives calculées à la main : deux équipes qui se chevauchent, un seul lot et deux parts, sans heures sup, le vol propre à la même heure ; deux équipes qui ne se touchent pas (la reprise à l’arrivée, correction 19) ; une seule équipe ; un tunnel d’un autre nom ; trois équipes dont une nuit sous condition ; la condition sur le retard ; deux jours (la durée restante) ; la période ; les indicateurs de charge ; les non-régressions ; le déterminisme |
 | `tests/plonge-reprise.test.cjs` | La reprise à l’arrivée, à la plonge par vol (v1, banc d’essai, correction 19 a), sur des journées fictives calculées à la main : la nuit arrive une heure après le départ de l’après-midi et reprend d’abord le vol arrêté, pour sa durée restante ; la même journée sans nuit ; une équipe sans tunnel du même nom ; deux vols arrêtés repris dans l’ordre de leur arrêt ; la somme du travail des parts ; un tunnel plus rapide, une pause, une reprise trop courte ; une nuit sous condition qui s’ouvre lave ce qui l’a fait venir ; des chaînes (relais, arrêt, reprise, relais ; deux reprises) ; qui reprend ; l’heure de la reprise dans le planning ; les non-régressions ; le déterminisme |
-| `tests/plonge-relais-resultats.test.cjs` | Le relais dans les résultats (v1, évolution 18 b) : les réponses lisent les parts ; une plonge qui laisse des vols à laver le lendemain coince, après les autres ; la Synthèse (« reste à laver le lendemain »), le « Bouchon », les feuilles « Réponses » et « Charge », le planning ; sans relais ni reste, aucun champ de plus |
+| `tests/plonge-reste-lendemain.test.cjs` | Un reste normal ne fait pas coincer la plonge (v1, banc d’essai, correction 19 b), sur des journées fictives calculées à la main : le jugement du moteur (`P.absorptionDuReste`), le même que la mesure « absorbable » avec ou sans équipe sous condition ; un reste que le matin absorbe (la plonge ne coince pas, sa ligne l’affiche sans alerte) ; un reste qu’il n’absorbe pas (elle coince, avec la phrase) ; sans reste, rien ; le « Bouchon » ; la reprise dans le planning et la feuille « Réponses » |
+| `tests/plonge-reprise-browser.cjs` | La reprise et le reste du lendemain dans les pages (v1, correction 19), sur une unité fictive : la reprise sur les deux lignes du planning, avec son trou et ses mots (« arrêté à 21:00, repris par … à 22:00 ») ; un reste que le matin n’absorbe pas : la Synthèse (la phrase, la case en alerte, la carte) et le plan rejoué |
+| `tests/plonge-relais-resultats.test.cjs` | Le relais dans les résultats (v1, évolution 18 b) : les réponses lisent les parts ; une plonge qui laisse au lendemain plus que le matin ne peut en absorber coince, après les autres (correction 19 b) ; la Synthèse (« reste à laver le lendemain »), le « Bouchon », les feuilles « Réponses » et « Charge », le planning ; sans relais ni reste, aucun champ de plus |
 | `tests/plonge-relais-browser.cjs` | Le relais dans les pages (v1, évolution 18 b), sur une unité fictive : le lot en relais sur les deux lignes du planning, avec son repère et ses mots ; la Synthèse sans heures sup à la plonge, avec le reste du lendemain ; « Où ça coince » ; le plan rejoué sans coupure |
 | `tests/captures-evolution-18-browser.cjs` | Les captures de contrôle de l’évolution 18 (v1), sur une unité fictive, en thème clair et sombre, à 1 366 × 768 et 1 920 × 1 080 : le planning des équipes avec un relais ; la Synthèse avec un reste au lendemain, sa ligne et sa carte « Où ça coince ». Douze captures, vérifiées une à une et gardées hors du dépôt (`ORY_CAPTURES`) |
 | `tests/plonge-absorbable.test.cjs` | La plonge de nuit qui ne vient que si le matin ne peut pas absorber le retard (v1, banc d’essai) : un petit retard absorbé la laisse fermée (la journée de l’unité sans elle), tout juste à la fin de la présence ; un gros retard l’ouvre, avec le dépassement du matin ; une seule plonge ; des heures sup pour l’absorber ne comptent pas ; l’équipe par défaut et l’équipe désignée ; au débit ; avec une plonge sur le sale ; déterminisme, validation, options du banc, Excel |

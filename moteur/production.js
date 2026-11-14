@@ -2311,6 +2311,86 @@
     return Math.max(0, fin - finPresence);
   }
 
+  /** Les vols du sale de la veille d'une journée (`materiel.saleInitial`), par leur nom dans le résultat : un prédicat. */
+  function volsDeLaVeille(opts) {
+    const saisi = ((opts && opts.materiel) || {}).saleInitial;
+    const noms = Array.isArray(saisi) ? new Set(saleDeLaVeille(saisi, [], 0).map(x => x.vol)) : null;
+    return vol => (noms ? noms.has(vol) : +saisi > 0 && /^veille \d+$/.test(String(vol)));
+  }
+
+  /**
+   * Ce que l'équipe de plonge par vol `d` a lavé dans la journée, hors sale de la veille, part par part : ce que la
+   * journée note pour la décision sur le retard (`_suiviLavage`), relu dans son résultat. Pour chaque part : l'heure
+   * (l'arrivée du vol pour la part qui le commence ; le début de la part pour un relais ou une reprise) et ce qu'il
+   * restait alors à laver, en minutes d'un tunnel normal. Dans l'ordre où la journée a traité les vols : leur arrivée,
+   * puis leur rang dans le programme.
+   */
+  function lavagesDuJour(resultat, d, opts) {
+    const o = opts || {}, deLaVeille = volsDeLaVeille(o);
+    const defs = new Map((o.ateliers || []).map(a => [a.id, a])), rangs = new Map((o.vols || []).map((v, i) => [v.id, i]));
+    const rang = l => (rangs.has(l.vol) ? rangs.get(l.vol) : Infinity);
+    const lots = (resultat.lots || []).filter(l => l.retourVol && l.service === d.service && !deLaVeille(l.vol));
+    const out = [];
+    for (const l of lots.slice().sort((x, y) => x.arrivee - y.arrivee || rang(x) - rang(y))) {
+      const parts = partsDuLot(l);
+      if (!parts.length) continue;
+      // La durée du vol est celle que lui donne l'équipe qui le commence ; chaque part en retire son travail, à sa vitesse.
+      let reste = dureeLavageVol(defs.get(parts[0].atelier), l.cie)
+        ?? parts.reduce((n, p) => n + p.travail * (p.vitesse || 1), 0) + (l.fin == null ? +l.reste || 0 : 0);
+      for (const [i, p] of parts.entries()) {
+        if (p.atelier === d.id) out.push({ t: i ? p.debut : l.arrivee, normal: reste });
+        reste = Math.max(0, reste - p.travail * (p.vitesse || 1));
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Le reste du soir d'une plonge par vol se lave-t-il le lendemain sans déborder ? (correction 19 b) Le jugement de la
+   * mesure `absorbable` (plus haut), porté sur la journée telle qu'elle s'est jouée — `resultat`, rendu pour `opts` —,
+   * qu'il y ait ou non une équipe sous condition : la première équipe du lendemain laverait-elle seule, pendant sa
+   * présence, ce que la journée laisse sale (`saleFinal`, présent dès le début de la journée, comme le sale de la
+   * veille) et ses propres retours (ceux qu'elle a lavés ce jour, à leur heure) ? Le lendemain ressemble au jour : la
+   * même hypothèse.
+   * La première équipe du lendemain : celle que désigne une équipe « sur le retard » de cette plonge (`condition.equipe`),
+   * si elle lave ce jour-là ; sinon, parmi ses équipes qui viennent d'office (sans condition de plonge), celle qui
+   * commence le plus tôt.
+   * Rend { equipe, retard: { vols, unites }, absorbe, depassement } — `equipe` : son identifiant (null sans équipe) ;
+   * `depassement` : les minutes de lavage que le reste pousse au-delà de sa présence (0 si elle l'absorbe ; null si
+   * personne ne peut le laver). null si `service` n'est pas une plonge par vol (ou si l'équipe qui juge lave au débit :
+   * une plonge mêlée, que la journée refuse). Une lecture : rien n'est rejoué, et le résultat de la journée n'en porte
+   * rien.
+   */
+  function absorptionDuReste(resultat, opts, service) {
+    const o = opts || {}, plonges = (o.ateliers || []).filter(x => x && x.type === 'lavage' && x.service === service);
+    if (!resultat || !plonges.some(x => x.parVol)) return null;
+    const retard = (resultat.saleFinal || []).filter(x => +x.unites > 1e-9);
+    const vues = new Map((resultat.ateliers || []).map(v => [v.id, v]));
+    // Une équipe sous condition ne lave ce jour-là que si elle s'est ouverte.
+    const lave = x => !plongeConditionnelle(x) || !!((vues.get(x.id) || {}).conditionSale || {}).ouverte;
+    const nuit = plonges.find(x => plongeConditionnelle(x) && surLeRetard(x) && x.condition.equipe);
+    const d = nuit ? plonges.find(x => x.id === nuit.condition.equipe && x.id !== nuit.id && lave(x)) || null
+      : plonges.filter(x => !plongeConditionnelle(x)).reduce((m, x) => (!m || plusTot(x, m) ? x : m), null);
+    // Une plonge qui mêle le débit et le vol est refusée (`plonge-mixte`) : pas de jugement si l'équipe qui juge lave au débit.
+    if (d && !d.parVol) return null;
+    const m = { equipe: d ? d.id : nuit ? nuit.condition.equipe : null,
+      retard: { vols: retard.length, unites: retard.reduce((n, x) => n + x.unites, 0) }, absorbe: true, depassement: 0 };
+    if (!retard.length) return m;
+    if (!d) return { ...m, absorbe: false, depassement: null };
+    const v = vues.get(d.id), reg = normaliserRegime(d.regime, o.regime);
+    const debut = v ? v.debutPoste : minutes(d.debut) + (d.jour || 0) * MINUTES_PAR_JOUR;
+    const finPresence = reg.actif ? debut + reg.presence : Infinity;
+    // Le reste est présent au début de la journée jouée, comme le sale de la veille : l'heure d'arrivée d'un vol de la
+    // veille quand la journée en a un ; sinon le plus tôt des débuts de ses équipes et de ses lots, jamais avant 00:00.
+    const deLaVeille = volsDeLaVeille(o), lots = resultat.lots || [];
+    const veille = lots.find(l => l.retourVol && deLaVeille(l.vol) && Number.isFinite(l.arrivee));
+    const debutJournee = veille ? veille.arrivee : Math.max(0, (resultat.ateliers || []).filter(x => !(x.conditionSale && !x.conditionSale.ouverte)).map(x => x.debut)
+      .concat(lots.map(l => l.debut)).filter(Number.isFinite).reduce((n, t) => Math.min(n, t), Infinity));
+    const depassement = depassementSeule(d, o, saleDeLaVeille(retard, [], Number.isFinite(debutJournee) ? debutJournee : 0), lavagesDuJour(resultat, d, o), debut, finPresence);
+    const absorbe = depassement != null && depassement <= 1e-9;
+    return { ...m, absorbe, depassement: absorbe ? 0 : depassement };
+  }
+
   /** Les heures sup d'une plonge à tunnels, en minutes × personnes : pour chaque tunnel qui finit un vol après la fin de
    *  sa présence, (fin de son dernier vol − fin de présence) × ses personnes, plafonné comme ses heures sup. */
   function heuresSupDesTunnels(a, v, plafond) {
@@ -4877,7 +4957,7 @@
     arcsDuParcours, servicesDuParcours, routesDesClasses,
     fournisseurs, cycles, validerAteliers, debitLavage, tunnelsQuiTournent, NOM_CABINE,
     pausesDe, fusionnerPauses, arretsDeLigne, finAvecPauses, vaguesDe, disponibleDes, debitRobot, ouvertureDe, prochaineOuverture,
-    categorieVol, chauffeursDe, creneauxDe, chauffeursPresents, dureeLavageVol, trajetHandling, debutTrajet, volsParCamionDe, volsParTourneeDe, quaiParVolDe, vitesseTunnel, machinesDesTunnels, partsDuLot,
+    categorieVol, chauffeursDe, creneauxDe, chauffeursPresents, dureeLavageVol, trajetHandling, debutTrajet, volsParCamionDe, volsParTourneeDe, quaiParVolDe, vitesseTunnel, machinesDesTunnels, partsDuLot, absorptionDuReste,
     parCompagnie, escaleDe, quaiDepartDe, quaiRetourDe, dechargementDe, vehiculeDe, vlDesDe, echangeDe, reglages24h, arriveeDe, besoin24h,
     reglagesChauffeurs, besoinDesTournees, vacationsPourTournees, borneBasse,
     UNITES_DEFAUT, unitesDe, retoursDeVols, besoinMateriel, sourceRetours, SOURCES_RETOURS,

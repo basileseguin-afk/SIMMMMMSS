@@ -91,15 +91,17 @@ test('les cartes : rien ne coince, rien ne part en retard ; et l’essai seuleme
   const r1 = SV.carteRetard(sans.rep);
   assert.equal(r1.ton, 'ok'); assert.match(r1.corps, /Rien\./);
   assert.match(r1.corps, /Commandes de repas à l’heure<\/dt><dd>\d+ sur \d+/);
-  // Sans retard ni dépassement, seule la plonge de l'unité fictive coince (évolution 18) : elle laisse 5 vols à laver le
-  // lendemain. Avant, rien ne coinçait (correction 18 a : sur les conséquences). Avant la correction 19 : 6 vols (200 min),
-  // avec un vol arrêté au départ de l'équipe du matin, que l'après-midi reprend désormais à son arrivée.
-  assert.deepEqual(sans.rep.coince.goulots.map(g => [g.service, g.lendemain]), [['plonge', { vols: 5, minutes: 180 }]]);
-  const plonge = SV.carteCoince(sans.rep);
-  assert.equal(plonge.ton, 'attente'); assert.match(plonge.corps, /laisse 5 vols à laver le lendemain\./);
-  // Sans elle, rien ne coince.
-  const libre = SV.carteCoince({ ...sans.rep, coince: { ...sans.rep.coince, goulot: null, goulots: [] } });
+  // Sans retard ni dépassement, rien ne coince (correction 18 a : sur les conséquences). La plonge de l'unité fictive laisse
+  // 5 vols à laver le lendemain (3 h de lavage), que l'équipe du matin lave pendant sa présence : un reste normal, affiché sur
+  // sa ligne sans alerte (correction 19 b). Avec l'évolution 18, elle en coinçait (goulot « plonge », { vols: 5, minutes: 180 }
+  // après la correction 19 a ; 6 vols et 200 min avant elle).
+  assert.deepEqual(sans.rep.coince.goulots, []);
+  assert.deepEqual(sans.rep.plonge.lendemain, { vols: 5, minutes: 180, absorbe: true });
+  const libre = SV.carteCoince(sans.rep);
   assert.equal(libre.ton, 'ok'); assert.match(libre.corps, /Rien ne coince\./);
+  const ligne = SV.tableau(sans.rep, []).split('<tr data-service="plonge"')[1].split('</tr>')[0];
+  assert.match(ligne, /<td class="sy-fin">/);
+  assert.match(ligne, /reste à laver le lendemain : 5 vols \(3 h 00 de lavage\)<\/small>/);
   const avec = fictive(), r2 = SV.carteRetard(avec.rep);
   assert.equal(r2.ton, 'retard'); assert.match(r2.corps, /Et \d+ autres\./);
   // Avec des départs en retard, des services coincent, à n'importe quel seuil d'attente ; la carte en montre trois au plus, et dit pourquoi.

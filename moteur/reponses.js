@@ -429,8 +429,8 @@
    * jour ne tient pas dans l'horaire. Il ne dépasse pas, mais un de ses lots fait partir en retard : ce que son équipe
    * attendait avant son premier lot, si ce temps perdu couvre le retard ; le matériel ; sinon « limite » — un de ses lots
    * finit après la limite de la commande — ou « aval » : ses lots finissent à temps, la commande prend son retard après lui.
-   * Une plonge par vol qui ne fait que laisser des vols à laver le lendemain (évolution 18) : « presences » — ses équipes
-   * partent à la fin de leur présence.
+   * Une plonge par vol qui ne fait que laisser à laver le lendemain plus que la première équipe ne peut en absorber
+   * (évolution 18, correction 19 b) : « presences » — ses équipes partent à la fin de leur présence.
    */
   function causeDuGoulot(ligne, fin, eqs, attendus, depasse) {
     const dire = a => (a.quoi === 'materiel' ? { code: 'materiel' } : { code: a.quoi, service: a.service, nom: a.nom, a: a.a });
@@ -440,9 +440,9 @@
       if (a && a.perdu >= pire.depasse - EPS) return dire(a);
       return ligne.cause === 'materiel' ? { code: 'materiel' } : { code: 'charge' };
     }
-    // Une plonge qui ne dépasse pas et ne fait rien partir en retard, mais laisse des vols à laver le lendemain (évolution 18) :
-    // ses équipes partent à la fin de leur présence, personne ne reste pour finir.
-    if (!(ligne.enRetard > 0) && ligne.lendemain) return { code: 'presences' };
+    // Une plonge qui ne dépasse pas et ne fait rien partir en retard, mais laisse à laver le lendemain plus que le matin ne
+    // peut en absorber (évolution 18, correction 19 b) : ses équipes partent à la fin de leur présence, personne ne reste pour finir.
+    if (!(ligne.enRetard > 0) && ligne.lendemain && !ligne.lendemain.absorbe) return { code: 'presences' };
     const a = eqs.map(v => attendus.get(v.id)).filter(Boolean).sort((p, q) => q.perdu - p.perdu)[0];
     if (a && a.perdu >= ligne.retardMax - EPS) return dire(a);
     if (ligne.cause === 'materiel') return { code: 'materiel' };
@@ -458,10 +458,14 @@
    * partir une commande ou un vol en retard. `goulots` : rangés par heures sup du dépassement (minutes × personnes ; un
    * dépassement sous le quart d'heure n'y compte pas), puis par cumul d'attente ; à égalité, ceux dont un lot finit lui-même
    * après la limite d'abord, puis l'ordre des lignes. `goulot` : le premier, ou null — rien ne coince.
-   * Une troisième conséquence (évolution 18) : une plonge par vol qui laisse des vols à laver le lendemain coince
-   * (`lendemain` : { vols, minutes }, sur sa ligne et sur son goulot, seulement s'il y en a). Quand c'est sa seule
-   * conséquence, elle est rangée après les services qui dépassent leur horaire ou font partir en retard — les plus grands
-   * restes d'abord : le rang des autres goulots ne change pas.
+   * Une troisième conséquence (évolution 18, correction 19 b) : une plonge par vol coince pour son reste du soir quand la
+   * première équipe du lendemain ne peut pas l'absorber pendant sa présence — le jugement de la mesure `absorbable`,
+   * qu'il y ait ou non une équipe sous condition (`P.absorptionDuReste`), sans seuil ni réglage. `lendemain` :
+   * { vols, minutes, absorbe, equipe, depassement } sur sa ligne dès qu'il reste un vol (`equipe` : { id, nom }, celle qui
+   * doit l'absorber, ou null ; `depassement` : les minutes de lavage que le reste pousse au-delà de sa présence) ; sur son
+   * goulot, seulement quand il n'est pas absorbé : un reste que le matin lave pendant sa présence est le fonctionnement
+   * ordinaire, il ne fait pas coincer. Quand c'est sa seule conséquence, elle est rangée après les services qui dépassent
+   * leur horaire ou font partir en retard — les plus grands restes d'abord : le rang des autres goulots ne change pas.
    */
   function coince(r, args, k, seuils, fins, ctx) {
     const ke = new Map(k.equipes.map(e => [e.id, e])), nom = nomDe(args), restes = lendemainParLigne(r, args, k);
@@ -486,9 +490,10 @@
     const depasse = s => depasseDe(s) >= DEPASSEMENT_MIN - EPS;
     const rangs = services.filter(s => depasse(s) || s.enRetard > 0)
       .sort((p, q) => supDe(q) - supDe(p) || q.cumul - p.cumul || (q.apresLimite > 0) - (p.apresLimite > 0));
-    // Une plonge qui laisse des vols au lendemain, sans autre conséquence : après les services qui dépassent leur horaire ou
-    // font partir en retard — un travail remis au lendemain pèse moins qu'un départ en retard.
-    rangs.push(...services.filter(s => s.lendemain && !depasse(s) && !(s.enRetard > 0)).sort((p, q) => q.lendemain.minutes - p.lendemain.minutes || q.lendemain.vols - p.lendemain.vols));
+    // Une plonge qui laisse au lendemain plus que le matin ne peut en absorber, sans autre conséquence : après les services qui
+    // dépassent leur horaire ou font partir en retard — un travail remis au lendemain pèse moins qu'un départ en retard.
+    const deborde = s => !!s.lendemain && !s.lendemain.absorbe;
+    rangs.push(...services.filter(s => deborde(s) && !depasse(s) && !(s.enRetard > 0)).sort((p, q) => q.lendemain.minutes - p.lendemain.minutes || q.lendemain.vols - p.lendemain.vols));
     const goulots = rangs
       .map(g => {
         // Ce que chaque équipe de la ligne attendait avant son premier lot, et le temps qu'elle y a perdu (sur l'horloge).
@@ -497,7 +502,7 @@
         const f = finDe.get(g.service + '|' + g.jour) || {};
         return { service: g.service, nom: g.nom, jour: g.jour, depasse: net(depasseDe(g)), heuresSup: net(supDe(g)), enRetard: g.enRetard, apresLimite: g.apresLimite,
           equipe: depasseDe(g) >= DEPASSEMENT_MIN - EPS && f.equipeQuiDepasse ? { ...f.equipeQuiDepasse } : null,
-          cumul: g.cumul, attenteMax: g.attenteMax ? g.attenteMax.minutes : null, ...(g.lendemain ? { lendemain: { ...g.lendemain } } : {}),
+          cumul: g.cumul, attenteMax: g.attenteMax ? g.attenteMax.minutes : null, ...(deborde(g) ? { lendemain: { ...g.lendemain } } : {}),
           cause: causeDuGoulot(g, finDe.get(g.service + '|' + g.jour), g.eqs, attendus, depasseDe(g)) };
       });
     return { services: services.map(({ retardMax, eqs, ...s }) => s), goulots, goulot: goulots[0] || null };
@@ -536,7 +541,7 @@
     const nomEquipe = new Map((r.ateliers || []).map(v => [v.id, v.nom]));
     const relaisDe = eqs => { const ids = new Set(eqs.map(v => v.id)); return (r.lots || []).filter(l => l.retourVol && Array.isArray(l.parts) && l.parts.length && ids.has(l.parts[0].atelier))
       .map(l => ({ vol: l.vol, debut: l.debut, fin: fini(l.fin) ? l.fin : null, reste: +l.reste || 0,
-        parts: l.parts.map(p => ({ id: p.atelier, nom: nomEquipe.get(p.atelier) || p.atelier, debut: p.debut, fin: p.fin, travail: p.travail })) })); };
+        parts: l.parts.map(p => ({ id: p.atelier, nom: nomEquipe.get(p.atelier) || p.atelier, debut: p.debut, fin: p.fin, travail: p.travail, ...(p.reprise ? { reprise: true } : {}) })) })); };
     const max = l => (l.length ? Math.max(...l) : null);
     const services = k.services.map(s => {
       const eqs = equipesDe(r, s), travail = eqs.filter(travailleCeJour);
@@ -691,6 +696,9 @@
    * et leur temps de lavage (`restesDuJour`), plus les vols de `saleFinal` qu'aucune équipe n'a reçus (toutes ses équipes
    * fermées), à la durée que leur donne la première équipe par vol. Le reste va à la dernière ligne (le dernier jour de
    * travail) de sa plonge. Une plonge au débit n'y est pas : son sale se compte en unités.
+   * Correction 19 (b) : chaque reste dit si la première équipe du lendemain l'absorbe pendant sa présence (`absorbe`),
+   * qui elle est (`equipe` : { id, nom }, ou null) et, sinon, de combien de minutes de lavage il déborde (`depassement`) —
+   * le jugement du moteur (`P.absorptionDuReste`), celui de la mesure `absorbable`.
    */
   function lendemainParLigne(r, args, k) {
     const out = new Map(), parVol = (args.ateliers || []).filter(x => x.type === 'lavage' && x.parVol);
@@ -699,9 +707,13 @@
     const restes = restesDuJour(r), avecLot = new Set(restes.map(x => String(x.lot.vol).replace(/ \(veille\)$/, '') + '|' + x.lot.cie));
     for (const x of restes) ajouter(x.lot.service, x.minutes);
     for (const x of r.saleFinal) if (+x.unites > 0 && !avecLot.has(x.vol + '|' + x.cie)) ajouter(parVol[0].service, fini(x.reste) ? x.reste : P().dureeLavageVol(parVol[0], x.cie) ?? 0);
+    const nomEquipe = new Map((r.ateliers || []).map(v => [v.id, v.nom]));
     for (const [service, o] of parService) {
       const jours = k.services.filter(s => s.service === service).map(s => s.jour);
-      if (jours.length) out.set(service + '|' + Math.max(...jours), o);
+      if (!jours.length) continue;
+      const a = P().absorptionDuReste(r, args, service);
+      out.set(service + '|' + Math.max(...jours), { ...o, absorbe: !!(a && a.absorbe), equipe: a && a.equipe != null ? { id: a.equipe, nom: nomEquipe.get(a.equipe) || a.equipe } : null,
+        depassement: a && fini(a.depassement) ? net(a.depassement) : null });
     }
     return out;
   }
@@ -718,14 +730,15 @@
   /**
    * La plonge, pour son « Bouchon » (correction 18 a) : l'attente la plus longue d'un arrivage — à une plonge par vol, un vol
    * revenu qui attend son tunnel. Au débit, sans arrivage : `attenteMax` null (le moteur garde alors son attente par unité).
-   * Évolution 18 : `lendemain`, ce qu'elle laisse à laver le lendemain, toutes ses lignes réunies — seulement s'il y en a.
+   * Évolution 18 : `lendemain`, ce qu'elle laisse à laver le lendemain, toutes ses lignes réunies — seulement s'il y en a ;
+   * `absorbe` (correction 19 b) : la première équipe du lendemain l'absorbe pendant sa présence, sur toutes ses lignes.
    */
   function plongeDe(r, k, c) {
     const ke = new Map(k.equipes.map(e => [e.id, e]));
     const l = (r.ateliers || []).filter(v => v.type === 'lavage').map(v => arrivagesDe(v, ke.get(v.id))).filter(Boolean).flat();
     const restes = ((c && c.services) || []).filter(s => s.lendemain).map(s => s.lendemain);
     return { attenteMax: l.length ? net(Math.max(0, ...l.map(a => a.minutes))) : null,
-      ...(restes.length ? { lendemain: { vols: somme(restes, x => x.vols), minutes: net(somme(restes, x => x.minutes)) } } : {}) };
+      ...(restes.length ? { lendemain: { vols: somme(restes, x => x.vols), minutes: net(somme(restes, x => x.minutes)), absorbe: restes.every(x => x.absorbe) } } : {}) };
   }
 
   /** Une différence : la valeur de A, celle de B, et B − A (null si l'une manque). */

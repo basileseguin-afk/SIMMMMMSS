@@ -108,17 +108,32 @@ const tropDeMinutes=texte=>[...String(texte).matchAll(/(\d[\d   ]*) ?min\b/g)
   assert.match(await page.locator('#journee-stocks .tp-plus24').first().textContent(),/plus de 10 h 00/);
   // Une quantité porte son unité : un lien d'équipement ne s'écrit pas « 0 repas ».
   assert.doesNotMatch(await page.locator('#journee-stocks .tp-table').innerText(),/\b0\s+repas/);
-  // « Bouchon » à la plonge : du sale reste le soir dans l'unité fictive, l'attente reste sous l'heure ; temps.js (commun,
-  // non modifié) ne le dit pas, la version 1 l'ajoute, quel que soit le seuil d'attente.
-  const plonge=await page.evaluate(()=>Sim.ateliers.resultat.plonge);
-  assert.ok(plonge&&plonge.resteSale>0&&plonge.attenteMax<60,JSON.stringify(plonge&&{a:plonge.attenteMax,s:plonge.resteSale}));
+  // « Bouchon » à la plonge (correction 19 b) : du sale reste le soir dans l'unité fictive, et l'équipe du matin le lave
+  // pendant sa présence — un reste normal, sans alerte ni bouchon (avec l'évolution 18, tout reste était un bouchon). Le
+  // bouchon ne tient plus qu'à l'attente d'un vol revenu : au seuil d'une minute, oui ; au seuil d'un jour, non. temps.js
+  // (commun, non modifié) dit ce sale « jamais lavé », en alerte : la version 1 le corrige.
+  const plonge=await page.evaluate(()=>({moteur:Sim.ateliers.resultat.plonge,rep:Sim.reponses().plonge}));
+  assert.ok(plonge.moteur&&plonge.moteur.resteSale>0&&plonge.moteur.attenteMax<60,JSON.stringify(plonge.moteur&&{a:plonge.moteur.attenteMax,s:plonge.moteur.resteSale}));
+  assert.ok(plonge.rep.lendemain&&plonge.rep.lendemain.absorbe===true&&plonge.rep.attenteMax>1&&plonge.rep.attenteMax<60,JSON.stringify(plonge.rep));
   const etiquette=()=>page.locator('#journee-stocks .tp-etiquette.alerte',{hasText:'Bouchon'}).count();
-  for(const attenteLot of [1,1440]){
+  const tuileDuSoir=()=>page.evaluate(()=>{const t=[...document.querySelectorAll('#journee-stocks .tp-tuile')].find(x=>x.querySelector('span').textContent==='Reste sale le soir');
+    return [t.classList.contains('alerte'),t.querySelector('em').textContent];});
+  for(const [attenteLot,bouchon] of [[1,1],[1440,0]]){
    await page.evaluate(a=>Sim.seuils.enregistrer({attenteLot:a}),attenteLot);await page.evaluate(()=>Sim.ateliers.changer(()=>{},''));await attendre(400);
    await nav.aller(page,'j-stocks');
-   assert.equal(await etiquette(),1,'du sale reste le soir : bouchon, au seuil de '+attenteLot+' min');
-   assert.equal(await page.locator('#journee-stocks .tp-tuile.alerte').count(),3,'les deux tuiles du bouchon, et le sale du soir');
+   assert.equal(await etiquette(),bouchon,'un vol attend son tunnel quelques minutes : bouchon au seuil d’une minute, pas au seuil d’un jour ('+attenteLot+' min)');
+   assert.equal(await page.locator('#journee-stocks .tp-tuile.alerte').count(),2*bouchon,'les deux tuiles du bouchon ; le sale du soir, absorbé, n’est pas une alerte');
+   assert.deepEqual(await tuileDuSoir(),[false,'lavé le lendemain matin']);
   }
+  // Un reste que le matin ne peut pas absorber : bouchon, quel que soit le seuil, et le sale du soir en alerte.
+  const deborde=await page.evaluate(()=>{
+   const box=document.createElement('div');
+   box.innerHTML='<div class="tp-tuile"><span>Le plus de sale pas encore lavé</span></div><div class="tp-tuile"><span>Attente la plus longue</span></div>'
+     +'<div class="tp-tuile alerte"><span>Reste sale le soir</span><b>380 u</b><em>jamais lavé</em></div><p class="tp-phrase">La plonge lave par vol.</p>';
+   OrlyResultatsVue.completerStocks(box,{plonge:{attenteMax:0,resteSale:380},stocks:{parLien:[]}},{...OrlyReponses.SEUILS_DEFAUT,attenteLot:1440},{attenteMax:0,lendemain:{vols:2,minutes:150,absorbe:false}});
+   return {etiquettes:box.querySelectorAll('.tp-etiquette').length,alertes:box.querySelectorAll('.tp-tuile.alerte').length,note:box.querySelector('em').textContent};
+  });
+  assert.deepEqual(deborde,{etiquettes:1,alertes:3,note:'plus que le matin du lendemain ne peut en laver'});
   // Et l'inverse, sur une plonge dessinée comme temps.js la dessine : une heure et demie d'attente, rien de sale le soir, un seuil de 2 h.
   const retire=await page.evaluate(()=>{
    const box=document.createElement('div');
@@ -133,14 +148,12 @@ const tropDeMinutes=texte=>[...String(texte).matchAll(/(\d[\d   ]*) ?min\b/g)
   // 7. « À regarder » se tait quand il n'a rien à dire : au début de la journée rejouée, personne n'attend ; et aucune attente
   //    de la journée ne passe un seuil de 24 h. Au seuil d'une heure, il dit qui attend le plus sur la journée.
   await page.evaluate(()=>Sim.seuils.enregistrer({attenteLot:1440}));
-  //    La plonge de l'unité fictive laisse des vols à laver le lendemain : le panneau le dit, et rien d'autre (évolution 18) ;
-  //    sans elle, il n'a rien à dire.
+  //    La plonge de l'unité fictive laisse des vols à laver le lendemain, que l'équipe du matin lave pendant sa présence : un
+  //    reste normal, dont le panneau n'a rien à dire (correction 19 b ; avec l'évolution 18, il disait « … laisse 2 vols à
+  //    laver le lendemain (1 h 15 de lavage). », et ne se taisait que sans la plonge).
   await nav.aller(page,'j-plan');await page.evaluate(()=>Sim.vue.allerA(Sim.vue.debut));await attendre(300);
-  assert.match(await page.locator('#goulot-info').innerText(),/^\s*À la fin de la journée, .+ laisse 2 vols à laver le lendemain \(1 h 15 de lavage\)\.\s*$/,'le reste du lendemain, seul');
-  const equipes=await F.sansPlonge(page);
-  await page.evaluate(()=>Sim.vue.allerA(Sim.vue.debut));await attendre(300);
+  assert.deepEqual(await page.evaluate(()=>Sim.reponses().plonge.lendemain),{vols:2,minutes:75,absorbe:true});
   assert.equal(await page.locator('#goulot-info').isVisible(),false,'rien à dire : rien d’affiché');
-  await F.remettreEquipes(page,equipes);
   await page.evaluate(()=>Sim.seuils.enregistrer({attenteLot:60}));await page.evaluate(()=>Sim.vue.allerA(Sim.vue.debut+1));await attendre(300);
   // Correction 18 (a) : la phrase suit l'attente d'un arrivage (les lots livrés ensemble), celle de la Synthèse.
   assert.match(await page.locator('#goulot-info').innerText(),/ce sont les arrivages de .* qui attendent le plus : \d+ h \d\d en tout/,'au-delà du seuil : il le dit, en heures');

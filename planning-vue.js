@@ -189,6 +189,8 @@
    * porte ses parts : l'équipe le tient pendant la sienne — son début, sa fin, son travail. `relais` dit ce qu'il y a
    * autour : qui l'a commencé (`de`), qui le reprend et quand (`vers`), s'il s'arrête là (`arrete` : l'heure, ce qu'il
    * reste à laver) et, passé en relais, l'heure où il est propre. Tout autre lot : tel quel. Null si elle n'y a pas de part.
+   * Une reprise (correction 19) : le lavage s'est arrêté, l'équipe qui arrive le reprend après un trou — `vers.arrete` et
+   * `de.arrete` portent l'heure de l'arrêt, seulement alors.
    */
   function lotTenu(l, a, nomEquipe) {
     if (!Array.isArray(l.parts)) return l;
@@ -197,12 +199,19 @@
     const p = l.parts[i], nom = id => (nomEquipe ? nomEquipe(id) : id) || id, dernier = i === n - 1;
     return { ...l, debut: p.debut, fin: p.fin, duree: p.travail, arret: p.arret, attente: i ? 0 : l.attente,
       // `vers.a` : l'heure où l'équipe suivante le prend — la fin de la part pour un relais ; son arrivée pour une reprise (correction 19).
-      relais: { rang: i, n, de: i ? { nom: nom(l.parts[i - 1].atelier) } : null, vers: dernier ? null : { nom: nom(l.parts[i + 1].atelier), a: l.parts[i + 1].debut },
+      relais: { rang: i, n, de: i ? { nom: nom(l.parts[i - 1].atelier), ...(p.reprise ? { arrete: l.parts[i - 1].fin } : {}) } : null,
+        vers: dernier ? null : { nom: nom(l.parts[i + 1].atelier), a: l.parts[i + 1].debut, ...(l.parts[i + 1].reprise ? { arrete: p.fin } : {}) },
         arrete: dernier && l.fin == null ? { a: p.fin, reste: +l.reste || 0 } : null, propre: n > 1 && Number.isFinite(l.fin) ? l.fin : null } };
   }
-  /** Les mots d'un lavage en relais : « commencé par … », « repris par … à hh:mm » ; arrêté, ce qu'il en reste pour le lendemain. */
+  /**
+   * Les mots d'un lavage en relais : « commencé par … », « repris par … à hh:mm » ; arrêté, ce qu'il en reste pour le lendemain.
+   * Une reprise (correction 19) : « arrêté à hh:mm, repris par … à hh:mm » ; sur la part de l'équipe qui reprend,
+   * « commencé par …, arrêté à hh:mm ».
+   */
   function motsDuRelais(x) {
-    return (x.de ? '\nEn relais : commencé par ' + x.de.nom : '') + (x.vers ? '\nEn relais : repris par ' + x.vers.nom + ' à ' + P().hhmm(x.vers.a) : '')
+    const h = t => P().hhmm(t);
+    return (x.de ? (x.de.arrete != null ? '\nReprise : commencé par ' + x.de.nom + ', arrêté à ' + h(x.de.arrete) : '\nEn relais : commencé par ' + x.de.nom) : '')
+      + (x.vers ? (x.vers.arrete != null ? '\nArrêté à ' + h(x.vers.arrete) + ', repris par ' + x.vers.nom + ' à ' + h(x.vers.a) : '\nEn relais : repris par ' + x.vers.nom + ' à ' + h(x.vers.a)) : '')
       + (x.arrete ? '\nArrêté à ' + P().hhmm(x.arrete.a) + ', à la fin de la présence : reste ' + P().dureeLisible(x.arrete.reste) + ' à laver le lendemain'
         : x.propre !== null ? '\nPropre à ' + P().hhmm(x.propre) : '');
   }
@@ -287,8 +296,8 @@
     ['retard', 'en retard', 'Contour et alerte : le lot finit après la limite de sa commande.', '.pg-lot.retard'],
     ['limite', 'prête avant', 'Le petit trait après la barre : la limite de la commande. L’écart, c’est la marge.', '.pg-limite'],
     ['fleche', 'limite plus tard', 'Une flèche au bord droit : la limite de la commande est après la fenêtre affichée. Au survol : son heure.', '.pg-fleche'],
-    ['relais', 'relais', 'Un petit triangle à la jointure : à la plonge, le lavage passe d’une équipe à la suivante, sur le même tunnel. Au survol : qui l’a commencé, qui le reprend.', '.pg-relais'],
-    ['arrete', 'lavage arrêté', 'Un petit carré au bout de la barre : le lavage s’arrête à la fin de la présence ; le reste se lave le lendemain.', '.pg-arrete'],
+    ['relais', 'relais', 'Un petit triangle à la jointure : à la plonge, le lavage passe d’une équipe à la suivante, sur le même tunnel. Avec un trou entre les deux barres : le lavage s’est arrêté, l’équipe qui arrive le reprend. Au survol : qui l’a commencé, qui le reprend.', '.pg-relais'],
+    ['arrete', 'lavage arrêté', 'Un petit carré au bout de la barre : le lavage s’arrête à la fin de la présence, et aucune équipe ne le reprend ce jour-là ; le reste se lave le lendemain.', '.pg-arrete'],
     ['maintenant', 'heure rejouée', 'Le trait vertical : l’heure où en est le rejeu.', '.pg-maintenant:not([hidden])']
   ];
   /** La légende : les signes présents à l'écran (pas ceux d'un service replié), sur la ligne des boutons ; elle se replie. */

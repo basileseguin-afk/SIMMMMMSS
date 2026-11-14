@@ -2,8 +2,10 @@
  * unité fictive, en thème clair et sombre, à 1 366 × 768 et 1 920 × 1 080 :
  *   — le planning des équipes avec un relais : le lot sur les deux lignes de
  *     la plonge, chacune pour sa part, le repère à la jointure, la légende ;
- *   — la Synthèse avec un reste au lendemain : la ligne de la plonge (« reste
- *     à laver le lendemain : n vols (h de lavage) »), la carte « Où ça coince ».
+ *   — la Synthèse avec un reste au lendemain que l'équipe du matin ne peut
+ *     pas absorber (correction 19 b : un reste normal ne fait pas coincer) :
+ *     la ligne de la plonge (« reste à laver le lendemain : n vols (h de
+ *     lavage) »), la carte « Où ça coince ».
  * Chaque capture est vérifiée (sa taille, ce qu'elle doit montrer, la page qui
  * tient sur la largeur) et gardée hors du dépôt : dans $ORY_CAPTURES s'il est
  * donné, sinon dans un dossier temporaire, dit à la fin. Chaque étape attend
@@ -20,8 +22,10 @@ const taillePng=f=>{const b=fs.readFileSync(f);assert.equal(b.toString('latin1',
 const TETE='vol_id,compagnie,type_avion,sens,heure_std,heure_sta,nb_BC,nb_PC,nb_YC\n';
 // À la plonge, L1 (LONG, 180 min) arrive à 12:00 et passe en relais à 14:00 ; V2 et V3 suivent.
 const RELAIS=TETE+'NO1,NORD,MOYEN,DEP,18:00,,0,0,100\nL1,LONG,MOYEN,RET,,11:30,0,0,100\nV2,NORD,MOYEN,RET,,14:00,0,0,100\nV3,SUD,MOYEN,RET,,16:00,0,0,100\n';
-// Le soir, W1 arrive à 20:00 (il s'arrêtera à 21:00, 30 min restent) et W2 à 20:30 (il n'est pas commencé).
-const RESTE=RELAIS+'W1,NORD,MOYEN,RET,,19:30,0,0,100\nW2,SUD,MOYEN,RET,,20:00,0,0,100\n';
+// Le soir, W1 arrive à 20:00 (il s'arrêtera à 21:00, 30 min restent) et W2 à 20:30 (il n'est pas commencé) : 2 vols, 2 h de
+// lavage. Le matin est plein (M1 et M2, LONG, de 06:00 à 12:00, puis L1) : lavé d'abord le lendemain, ce reste pousserait 2 h
+// de son lavage après sa présence — il ne l'absorbe pas, la plonge coince (correction 19 b).
+const RESTE=RELAIS+'M1,LONG,MOYEN,RET,,05:30,0,0,100\nM2,LONG,MOYEN,RET,,08:30,0,0,100\nW1,NORD,MOYEN,RET,,19:30,0,0,100\nW2,SUD,MOYEN,RET,,20:00,0,0,100\n';
 /* L'unité fictive : la plonge par vol, seule — le matin (06:00–14:00) et l'après-midi (13:00–21:00), sur le même tunnel. */
 const UNITE=()=>{
   Sim.reglages.changer(()=>{const e=Sim.reglages.etat;e.regime={seuils:[],presence:480};e.heuresSup={actif:true,plafond:180};},'');
@@ -106,7 +110,7 @@ const UNITE=()=>{
     // La carte « Où ça coince » : la plonge y est, avec ce qu'elle laisse.
     const carte=page.locator('#bilan-journee .sy-carte',{hasText:'Où ça coince'}).first();
     await carte.scrollIntoViewIfNeeded();
-    assert.match(await carte.textContent(),/laisse 2 vols à laver le lendemain/,V+'la carte « Où ça coince »');
+    assert.match(await carte.textContent(),/laisse 2 vols à laver le lendemain, plus que l’équipe du matin ne peut en laver pendant sa présence/,V+'la carte « Où ça coince »');
     await capturer('synthese-coince');
     assert.deepEqual(errors,[],V+'aucune erreur de page');
    }finally{await ctx.close();}

@@ -108,7 +108,7 @@ de relire le cahier des charges initial :
 | M23 | **Les vacations longues** : des heures sup d'office, sans débordement de charge, sur les postes à vacation longue et fixe (régulation, coordination) | Banc d'essai, évolution 11 (e) | ✅ | Version 1 (`BANC_ESSAI.md` § 10, `MODELE_ATELIERS.md`) : une présence au contrat (`presenceContrat`) sur une équipe et sur l'encadrement saisi d'un service ({ personnes, presence, presenceContrat } ; l'ancienne forme, un nombre, se lit toujours) ; au-delà, chaque personne compte l'écart en heures sup d'office, chaque jour (`heuresSupOffice`, `heuresSupOfficeEncadrement`) ; la comparaison au réel les ajoute aux heures sup simulées. Sans ce champ, rien ne change |
 | M24 | **Rejouer chaque jour passé avec les personnes réellement présentes**, et caler le travail à part des décisions d'effectif | Banc d'essai, évolution 11 (f) | ✅ | Version 1 (`BANC_ESSAI.md` § 10, `FORMATS_EXCEL.md` § 5) : un planning daté (CSV ou feuille « Planning »), chaque jour rejoué avec ses équipes, leurs horaires et leurs personnes, à effectif imposé, des heures sup jusqu'à 12 h ; la comparaison ajoute les heures supp jour par jour, les nuits de plonge ouvertes, les lots en retard ; le calage du travail, un facteur des homme-minutes par ligne (grille de 0,5 à 2, affinage à ±4 et ±8 %), validé comme M21 (règles 1 à 4), applicable au barème. Dans la page (progression, Annuler), les outils (`--planning`, `--travail`) et le classeur ; le planning reste en mémoire |
 | M25 | **Une formule par service, apprise sur le réel**, et dire si elle vaut besoin | Banc d'essai, évolution 17 | ✅ | Version 1 (`BANC_ESSAI.md` § 10, `FORMATS_EXCEL.md` § 4 et 5). Les temps par vol du barème restent des entrées. Par ligne de la correspondance, la forme qui passe le mieux du travail au barème aux heures réelles, parmi un catalogue (« × a », « b + a × », « × a × jour », « puissance », « logarithme », « plancher », « plafond »), ajustée par moindres carrés dans ses bornes et jugée hors échantillon comme M21, avec deux garde-fous de plus (le seuil du test divisé par le nombre de candidats ; une forme plus riche seulement si elle bat la plus simple de plus de 0,1 ETP). La formule retenue s'écrit en clair. Chaque ligne a un statut — « à la limite » (les heures suivent le travail, les heures supp montent avec la charge), « en sur-effectif », « indéterminé » — et, hors « à la limite », la formule n'est que l'effectif mis : le besoin se borne (« au plus » le travail au barème du jour × le rythme des jours chargés). La politique d'effectif garde la forme, le statut et ce rythme, sans heure réelle. Dans la page (rapport, nuage de points, Période, Synthèse), les outils et les classeurs. Limites : une formule ne vaut que pour des jours qui ressemblent à ceux appris ; le statut ne mesure pas l'occupation réelle |
-| M26 | **Le relais à la plonge par vol** : deux équipes qui se suivent se passent le vol en cours dans son tunnel ; personne ne reste en heures sup pour le finir ; ce qui n'est pas fini à la fin de la dernière présence se lave le lendemain | Banc d'essai, évolution 18 | ✅ | Version 1 (`BANC_ESSAI.md` § 2, `MODELE_ATELIERS.md`). La règle est automatique, sans réglage, et ne change que la plonge par vol. Une équipe prend un vol tant qu'elle est présente ; à la fin de sa présence, une autre équipe de la même plonge présente à cet instant sur la même machine (un tunnel du même nom) continue le lavage : un seul lot, avec ses parts. Sinon le lavage s'arrête ; **la première équipe de la plonge qui arrive ensuite sur cette machine le reprend d'abord**, pour sa seule durée restante, à la vitesse de son tunnel — le même lot, une part de plus, avec son trou (correction 19). Ce n'est que sans équipe pour le reprendre ce jour-là que le vol reste sale et passe au lendemain avec sa durée restante (`saleFinal[].reste`), lavée d'abord. Une plonge par vol n'a plus d'heures sup ; la nuit « sur le retard » se juge sur le lavage que le retard pousse au-delà de la présence du matin. Dans les résultats : le lot sur les deux lignes du planning, « reste à laver le lendemain » dans la Synthèse, une conséquence de plus pour « Où ça coince » (§ 6 bis). |
+| M26 | **Le relais à la plonge par vol** : deux équipes qui se suivent se passent le vol en cours dans son tunnel ; personne ne reste en heures sup pour le finir ; ce qui n'est pas fini à la fin de la dernière présence se lave le lendemain | Banc d'essai, évolution 18 | ✅ | Version 1 (`BANC_ESSAI.md` § 2, `MODELE_ATELIERS.md`). La règle est automatique, sans réglage, et ne change que la plonge par vol. Une équipe prend un vol tant qu'elle est présente ; à la fin de sa présence, une autre équipe de la même plonge présente à cet instant sur la même machine (un tunnel du même nom) continue le lavage : un seul lot, avec ses parts. Sinon le lavage s'arrête ; **la première équipe de la plonge qui arrive ensuite sur cette machine le reprend d'abord**, pour sa seule durée restante, à la vitesse de son tunnel — le même lot, une part de plus, avec son trou (correction 19). Ce n'est que sans équipe pour le reprendre ce jour-là que le vol reste sale et passe au lendemain avec sa durée restante (`saleFinal[].reste`), lavée d'abord. Une plonge par vol n'a plus d'heures sup ; la nuit « sur le retard » se juge sur le lavage que le retard pousse au-delà de la présence du matin. Dans les résultats : le lot sur les deux lignes du planning (une reprise, avec son trou : « arrêté à hh:mm, repris par … à hh:mm »), « reste à laver le lendemain » dans la Synthèse, une conséquence de plus pour « Où ça coince » — seulement quand la première équipe du lendemain ne peut pas absorber ce reste pendant sa présence (correction 19, § 6 bis). |
 
 ## 6. Simulation et visualisation
 
@@ -240,18 +240,27 @@ jour s'affiche.
   après la limite le dit ainsi ; celui dont les lots finissent avant la limite,
   sur le chemin d'une commande en retard, dit que la commande ou le vol prend
   son retard en aval. Sinon : « rien ne coince ».
-  Une troisième conséquence (évolution 18) : (iii) **une plonge par vol qui
-  laisse des vols à laver le lendemain** coince — les vols qui ne sont pas
-  propres à la fin de la journée (`saleFinal`), comptés avec leur temps de
-  lavage : la durée restante d'un vol dont le lavage s'est arrêté à une fin de
-  présence, la durée entière d'un vol pas commencé. Quand c'est sa seule
-  conséquence, elle est rangée après les services qui dépassent leur horaire
-  ou font partir en retard, dont le rang ne change pas ; elle dit « laisse n
-  vols à laver le lendemain », et sa cause : ses équipes partent à la fin de
-  leur présence, personne ne reste pour finir. Sa ligne du tableau l'écrit
-  sous sa fin : « reste à laver le lendemain : n vols (h de lavage) ». Tout
-  lavé dans les présences, la plonge n'est pas citée : une équipe qui passe
-  le relais ne dépasse pas son horaire.
+  Une troisième conséquence (évolution 18, correction 19) : (iii) **une
+  plonge par vol qui laisse à laver le lendemain plus que la première équipe
+  du lendemain ne peut en absorber pendant sa présence** coince. Le reste :
+  les vols qui ne sont pas propres à la fin de la journée (`saleFinal`),
+  comptés avec leur temps de lavage — la durée restante d'un vol dont le
+  lavage s'est arrêté à une fin de présence, la durée entière d'un vol pas
+  commencé. Le jugement est celui de la mesure `absorbable` de la nuit sous
+  condition, calculé qu'il y ait ou non une telle équipe, sans seuil ni
+  réglage : seule, la première équipe du lendemain lave-t-elle pendant sa
+  présence ce reste et ses propres retours ? Un vol revenu en fin de soirée
+  se lave normalement le lendemain matin : **un reste absorbé est le
+  fonctionnement ordinaire**, il s'affiche sur la ligne de la plonge, sous sa
+  fin — « reste à laver le lendemain : n vols (h de lavage) » —, sans couleur
+  d'alerte, et « Où ça coince » ne cite pas la plonge. Quand elle coince,
+  elle est rangée après les services qui dépassent leur horaire ou font
+  partir en retard, dont le rang ne change pas, si c'est sa seule
+  conséquence ; elle dit pourquoi — « laisse n vols à laver le lendemain,
+  plus que l'équipe du matin ne peut en laver pendant sa présence » —, et sa
+  cause : ses équipes partent à la fin de leur présence, personne ne reste
+  pour finir. Tout lavé dans les présences, la plonge n'est pas citée : une
+  équipe qui passe le relais ne dépasse pas son horaire.
 - **La fin d'une équipe de plonge par vol** (évolution 18) : la fin de sa
   dernière part — un vol qu'elle passe en relais finit pour elle à la fin de
   sa présence ; elle n'a pas d'heures sup. Les réponses, les indicateurs de

@@ -77,15 +77,15 @@ const taillePng=f=>{const b=fs.readFileSync(f);assert.equal(b.toString('latin1',
     await synthese('arrivage',true,true);
     assert.ok(await page.locator('#bilan-journee .sy-arrivage[data-ton="attente"]').count()>=1,V+'un arrivage signalé');
     await seuils(null);
-    // Ni retard ni goulot : les vols fictifs partis plus tard — sans la plonge, qui laisse des vols à laver le lendemain et
-    // coince pour cela (évolution 18) ; avec elle, elle est le seul goulot, et la carte dit ce qu'elle laisse.
+    // Ni retard ni goulot : les vols fictifs partis plus tard. La plonge laisse des vols à laver le lendemain, que l'équipe du
+    // matin lave pendant sa présence : un reste normal, sur sa ligne, sans alerte — rien ne coince (correction 19 b ; avec
+    // l'évolution 18, elle en coinçait, et la capture se faisait sans elle).
     await F.importerVols(page,nav,ch.fichier,'vols-sans-retard.csv',F.volsSansRetardCsv());
     await nav.aller(page,'j-chiffres');
-    await page.waitForFunction(()=>{const r=Sim.reponses();return !!r&&r.exceptions.length===0&&r.coince.goulots.length===1&&!!r.coince.goulots[0].lendemain;});
-    assert.match(await page.locator('#bilan-journee .sy-carte[aria-label="Où ça coince"]').innerText(),/laisse \d+ vols à laver le lendemain/,V+'la plonge laisse des vols : la carte le dit');
-    const equipes=await F.sansPlonge(page);
+    await page.waitForFunction(()=>{const r=Sim.reponses();return !!r&&r.exceptions.length===0&&r.coince.goulots.length===0&&!!r.plonge.lendemain&&r.plonge.lendemain.absorbe===true;});
+    await page.waitForSelector('#bilan-journee .sy-table tr[data-service="plonge"] td.sy-fin .sy-lendemain');
+    assert.equal(await page.locator('#bilan-journee .sy-table tr[data-service="plonge"] td.sy-fin').getAttribute('data-ton'),null,V+'le reste du lendemain s’affiche sans alerte');
     await synthese('calme',false,false);
-    await F.remettreEquipes(page,equipes);
     // Un goulot, sans retard : les heures sup permises, le montage finit 20 min après son horaire — plus d'un quart d'heure
     // (sa présence est raccourcie pour cela ; avant l'évolution 18, c'était la plonge, qui finissait un vol en heures sup).
     const court=await F.faireDepasser(page);
