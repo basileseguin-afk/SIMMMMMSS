@@ -104,6 +104,21 @@
     return i < 0 ? null : { ...l.parts[i], rang: i, derniere: i === l.parts.length - 1 };
   }
 
+  /**
+   * Les relais d'une équipe de plonge par vol (évolution 18) : les vols qu'elle a passés à une autre (`passes`), ceux
+   * qu'elle a repris (`repris`), et son travail sur ces vols (`minutes`, de tunnel) ; null si elle n'en a aucun.
+   */
+  function relaisDe(v) {
+    let passes = 0, repris = 0, minutes = 0;
+    for (const l of v.lots || []) {
+      const p = partDe(l, v);
+      if (!p || l.parts.length < 2) continue;
+      if (!p.derniere) passes++;
+      if (p.rang > 0) repris++;
+      minutes += p.travail;
+    }
+    return passes || repris ? { passes, repris, minutes } : null;
+  }
   /** La fin de la présence d'une équipe : son début de poste + sa présence + ses heures sup ; sans présence, la fin de son travail. */
   function finPresence(v) {
     if (fini(v.presence)) return v.debutPoste + v.presence + (v.heuresSup || 0);
@@ -273,6 +288,9 @@
     if (v.type === 'handling') sansObjet.occupation = sansObjet.consommeSurDisponible = raison;
     if (e.debit === null && !sansObjet.debit) sansObjet.debit = fin.unite === 'vols' && !fin.volsDuJour ? 'aucun vol de ses compagnies ce jour-là'
       : fin.unite ? 'aucun travail' : 'pas d’unité';
+    // Une plonge par vol (évolution 18) : ses relais — seulement si elle en a.
+    const relais = v.type === 'lavage' ? relaisDe(v) : null;
+    if (relais) e.relais = relais;
     return { e, jour, series: seriesDe(v, jour, presents, t, pauses, file, fin.l, occupe, fin.unite) };
   }
 

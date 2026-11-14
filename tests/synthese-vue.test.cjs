@@ -91,9 +91,13 @@ test('les cartes : rien ne coince, rien ne part en retard ; et l’essai seuleme
   const r1 = SV.carteRetard(sans.rep);
   assert.equal(r1.ton, 'ok'); assert.match(r1.corps, /Rien\./);
   assert.match(r1.corps, /Commandes de repas à l’heure<\/dt><dd>\d+ sur \d+/);
-  // Sans retard ni dépassement, l'unité fictive ne coince pas (correction 18 a : sur les conséquences).
-  assert.deepEqual([sans.rep.coince.goulot, sans.rep.coince.goulots], [null, []]);
-  const libre = SV.carteCoince(sans.rep);
+  // Sans retard ni dépassement, seule la plonge de l'unité fictive coince (évolution 18) : elle laisse 6 vols à laver le
+  // lendemain. Avant, rien ne coinçait (correction 18 a : sur les conséquences).
+  assert.deepEqual(sans.rep.coince.goulots.map(g => [g.service, g.lendemain]), [['plonge', { vols: 6, minutes: 200 }]]);
+  const plonge = SV.carteCoince(sans.rep);
+  assert.equal(plonge.ton, 'attente'); assert.match(plonge.corps, /laisse 6 vols à laver le lendemain\./);
+  // Sans elle, rien ne coince.
+  const libre = SV.carteCoince({ ...sans.rep, coince: { ...sans.rep.coince, goulot: null, goulots: [] } });
   assert.equal(libre.ton, 'ok'); assert.match(libre.corps, /Rien ne coince\./);
   const avec = fictive(), r2 = SV.carteRetard(avec.rep);
   assert.equal(r2.ton, 'retard'); assert.match(r2.corps, /Et \d+ autres\./);

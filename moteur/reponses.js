@@ -319,9 +319,16 @@
     const boutiques = new Map((args.ateliers || []).filter(a => P().ouvertureDe(a)).map(a => [a.service, a]));
     return { classes: new Map((r.classes || []).map(c => [c.id, c])), boutiques, nom: nomDe(args), amonts: new Map() };
   }
+  /**
+   * Les lots d'une équipe tels qu'elle les a tenus (évolution 18) : d'un lavage passé en relais, ou arrêté à une fin de
+   * présence, sa part — son début, sa fin ; tout autre lot, tel quel.
+   */
+  function lotsTenus(v) {
+    return (v.lots || []).filter(l => !l.dispo).map(l => { const p = IND().partDe(l, v); return p === undefined ? l : p ? { ...l, debut: p.debut, fin: p.fin } : null; }).filter(Boolean);
+  }
   /** Le premier lot d'une équipe : celui qu'elle commence le premier (une mise à disposition n'en a pas). */
   function premierLot(v) {
-    return (v.lots || []).filter(l => !l.dispo && fini(l.debut)).reduce((m, l) => (!m || l.debut < m.debut - EPS ? l : m), null);
+    return lotsTenus(v).filter(l => fini(l.debut)).reduce((m, l) => (!m || l.debut < m.debut - EPS ? l : m), null);
   }
   /**
    * Les services qui alimentent une commande dans un service, d'après son chemin : ceux d'avant, en enjambant une case où
@@ -373,7 +380,7 @@
     const c = x && x.creneaux;
     if (!c || !c.sansTravail || !c.presents) return null;
     const PAS = IND().PAS, d = (x.jour || 0) * JOUR, n = +v.personnes || 0;
-    const lots = (v.lots || []).filter(l => !l.dispo && fini(l.debut));
+    const lots = lotsTenus(v).filter(l => fini(l.debut));
     const t1 = lots.length ? Math.min(...lots.map(l => l.debut)) : null, t2 = lots.length ? Math.max(...lots.map(l => (fini(l.fin) ? l.fin : Infinity))) : null;
     const arrivee = fini(v.debutPoste) ? v.debutPoste : -Infinity;
     let avant = 0, entre = 0, apres = 0;
@@ -422,6 +429,8 @@
    * jour ne tient pas dans l'horaire. Il ne dépasse pas, mais un de ses lots fait partir en retard : ce que son équipe
    * attendait avant son premier lot, si ce temps perdu couvre le retard ; le matériel ; sinon « limite » — un de ses lots
    * finit après la limite de la commande — ou « aval » : ses lots finissent à temps, la commande prend son retard après lui.
+   * Une plonge par vol qui ne fait que laisser des vols à laver le lendemain (évolution 18) : « presences » — ses équipes
+   * partent à la fin de leur présence.
    */
   function causeDuGoulot(ligne, fin, eqs, attendus, depasse) {
     const dire = a => (a.quoi === 'materiel' ? { code: 'materiel' } : { code: a.quoi, service: a.service, nom: a.nom, a: a.a });
@@ -431,6 +440,9 @@
       if (a && a.perdu >= pire.depasse - EPS) return dire(a);
       return ligne.cause === 'materiel' ? { code: 'materiel' } : { code: 'charge' };
     }
+    // Une plonge qui ne dépasse pas et ne fait rien partir en retard, mais laisse des vols à laver le lendemain (évolution 18) :
+    // ses équipes partent à la fin de leur présence, personne ne reste pour finir.
+    if (!(ligne.enRetard > 0) && ligne.lendemain) return { code: 'presences' };
     const a = eqs.map(v => attendus.get(v.id)).filter(Boolean).sort((p, q) => q.perdu - p.perdu)[0];
     if (a && a.perdu >= ligne.retardMax - EPS) return dire(a);
     if (ligne.cause === 'materiel') return { code: 'materiel' };
@@ -446,9 +458,13 @@
    * partir une commande ou un vol en retard. `goulots` : rangés par heures sup du dépassement (minutes × personnes ; un
    * dépassement sous le quart d'heure n'y compte pas), puis par cumul d'attente ; à égalité, ceux dont un lot finit lui-même
    * après la limite d'abord, puis l'ordre des lignes. `goulot` : le premier, ou null — rien ne coince.
+   * Une troisième conséquence (évolution 18) : une plonge par vol qui laisse des vols à laver le lendemain coince
+   * (`lendemain` : { vols, minutes }, sur sa ligne et sur son goulot, seulement s'il y en a). Quand c'est sa seule
+   * conséquence, elle est rangée après les services qui dépassent leur horaire ou font partir en retard — les plus grands
+   * restes d'abord : le rang des autres goulots ne change pas.
    */
   function coince(r, args, k, seuils, fins, ctx) {
-    const ke = new Map(k.equipes.map(e => [e.id, e])), nom = nomDe(args);
+    const ke = new Map(k.equipes.map(e => [e.id, e])), nom = nomDe(args), restes = lendemainParLigne(r, args, k);
     const finDe = new Map(((fins && fins.services) || []).map(f => [f.service + '|' + f.jour, f]));
     const services = k.services.map(s => {
       const membres = new Set(s.equipes || []), eqs = equipesDe(r, s), parEquipe = eqs.map(v => arrivagesDe(v, ke.get(v.id))).filter(Boolean);
@@ -461,13 +477,19 @@
         file: plus.lots ? { arrivages: plus.lots, a: plus.a } : null, cumul, parts, occupationFile,
         cause: causeDe(cumul, parts, occupationFile, seuils), enRetard: retards.n, apresLimite: retards.apres,
         attenteMax: pire ? { minutes: net(pire.minutes), lot: pire.lot.nom, lots: pire.lots, equipe: pire.equipe, de: pire.de, a: pire.a } : null,
+        ...(restes.has(s.service + '|' + s.jour) ? { lendemain: restes.get(s.service + '|' + s.jour) } : {}),
         retardMax: retards.retardMax, eqs };
     });
     const depasseDe = s => +((finDe.get(s.service + '|' + s.jour) || {}).depasse) || 0;
     // Les heures sup du dépassement : celles de la ligne, quand son dépassement compte (un quart d'heure au moins).
     const supDe = s => (depasseDe(s) >= DEPASSEMENT_MIN - EPS ? +(((finDe.get(s.service + '|' + s.jour) || {}).heuresSup || {}).total) || 0 : 0);
-    const goulots = services.filter(s => depasseDe(s) >= DEPASSEMENT_MIN - EPS || s.enRetard > 0)
-      .sort((p, q) => supDe(q) - supDe(p) || q.cumul - p.cumul || (q.apresLimite > 0) - (p.apresLimite > 0))
+    const depasse = s => depasseDe(s) >= DEPASSEMENT_MIN - EPS;
+    const rangs = services.filter(s => depasse(s) || s.enRetard > 0)
+      .sort((p, q) => supDe(q) - supDe(p) || q.cumul - p.cumul || (q.apresLimite > 0) - (p.apresLimite > 0));
+    // Une plonge qui laisse des vols au lendemain, sans autre conséquence : après les services qui dépassent leur horaire ou
+    // font partir en retard — un travail remis au lendemain pèse moins qu'un départ en retard.
+    rangs.push(...services.filter(s => s.lendemain && !depasse(s) && !(s.enRetard > 0)).sort((p, q) => q.lendemain.minutes - p.lendemain.minutes || q.lendemain.vols - p.lendemain.vols));
+    const goulots = rangs
       .map(g => {
         // Ce que chaque équipe de la ligne attendait avant son premier lot, et le temps qu'elle y a perdu (sur l'horloge).
         const attendus = new Map(g.eqs.map(v => { const a = attenduAvant(v, r, args, ctx), l = premierLot(v); return [v.id, a ? { ...a, perdu: l.debut - v.debutPoste } : null]; }));
@@ -475,7 +497,7 @@
         const f = finDe.get(g.service + '|' + g.jour) || {};
         return { service: g.service, nom: g.nom, jour: g.jour, depasse: net(depasseDe(g)), heuresSup: net(supDe(g)), enRetard: g.enRetard, apresLimite: g.apresLimite,
           equipe: depasseDe(g) >= DEPASSEMENT_MIN - EPS && f.equipeQuiDepasse ? { ...f.equipeQuiDepasse } : null,
-          cumul: g.cumul, attenteMax: g.attenteMax ? g.attenteMax.minutes : null,
+          cumul: g.cumul, attenteMax: g.attenteMax ? g.attenteMax.minutes : null, ...(g.lendemain ? { lendemain: { ...g.lendemain } } : {}),
           cause: causeDuGoulot(g, finDe.get(g.service + '|' + g.jour), g.eqs, attendus, depasseDe(g)) };
       });
     return { services: services.map(({ retardMax, eqs, ...s }) => s), goulots, goulot: goulots[0] || null };
@@ -505,9 +527,16 @@
    * dépassement (une équipe qui finit tard dans son horaire n'en cache pas une autre qui déborde du sien), et cette équipe
    * (`equipeQuiDepasse` : son nom, sa propre fin, son propre horaire ; null si aucune ne dépasse) ; ses heures sup (équipes,
    * renforts prêtés, chauffeurs). Les équipes de la veille ne prêtent ni leur fin ni leurs heures sup à celles du jour des vols.
+   * Une plonge par vol (évolution 18) : la fin d'une équipe est la fin de sa dernière part ; `relais`, seulement s'il y en a,
+   * liste ses lavages passés en relais ou arrêtés à une fin de présence — [{ vol, debut, fin (null : arrêté), reste, parts:
+   * [{ id, nom, debut, fin, travail }] }], sur la ligne de l'équipe qui a commencé le vol.
    */
   function fins(r, args, k) {
     const nom = nomDe(args), defs = new Map((args.ateliers || []).map(a => [a.id, a]));
+    const nomEquipe = new Map((r.ateliers || []).map(v => [v.id, v.nom]));
+    const relaisDe = eqs => { const ids = new Set(eqs.map(v => v.id)); return (r.lots || []).filter(l => l.retourVol && Array.isArray(l.parts) && l.parts.length && ids.has(l.parts[0].atelier))
+      .map(l => ({ vol: l.vol, debut: l.debut, fin: fini(l.fin) ? l.fin : null, reste: +l.reste || 0,
+        parts: l.parts.map(p => ({ id: p.atelier, nom: nomEquipe.get(p.atelier) || p.atelier, debut: p.debut, fin: p.fin, travail: p.travail })) })); };
     const max = l => (l.length ? Math.max(...l) : null);
     const services = k.services.map(s => {
       const eqs = equipesDe(r, s), travail = eqs.filter(travailleCeJour);
@@ -516,9 +545,11 @@
       const hs = { equipes: net(somme(eqs, heuresSupDe)), renforts: net(somme(eqs, v => v.renfortsHeuresSup)), chauffeurs: net(somme(eqs, v => v.heuresSupChauffeurs)) };
       // L'équipe qui dépasse le plus ; à égalité, la première de la liste.
       const pire = parEquipe.reduce((m, e) => (e.depasse > EPS && (!m || e.depasse > m.depasse + EPS) ? e : m), null);
+      const relais = relaisDe(eqs);
       return { service: s.service, nom: nom(s.service), jour: s.jour, fin: max(parEquipe.map(e => e.fin).filter(fini)),
         finHoraire: max(parEquipe.map(e => e.finHoraire).filter(fini)), depasse: max(parEquipe.map(e => e.depasse).filter(fini)),
-        equipeQuiDepasse: pire ? { ...pire } : null, heuresSup: { ...hs, total: net(hs.equipes + hs.renforts + hs.chauffeurs) }, equipes: parEquipe };
+        equipeQuiDepasse: pire ? { ...pire } : null, heuresSup: { ...hs, total: net(hs.equipes + hs.renforts + hs.chauffeurs) }, equipes: parEquipe,
+        ...(relais.length ? { relais } : {}) };
     });
     return { services };
   }
@@ -633,17 +664,68 @@
     const a = args || {}, seuils = seuilsComplets(o.seuils), k = o.k || IND().journee(r, a), ctx = contexteDe(r, a);
     const f = fins(r, a, k), c = coince(r, a, k, seuils, f, ctx);
     return { seuils, personnes: personnes(r, a, k, seuils), coince: c, sansTravail: sansTravail(r, a, k, ctx), fins: f, exceptions: exceptions(r, a, seuils),
-      comptes: comptes(r), plonge: plongeDe(r, k) };
+      comptes: comptes(r), plonge: plongeDe(r, k, c) };
   }
 
   /**
+   * Les vols qu'une plonge par vol laisse à laver le lendemain (évolution 18), lot par lot : ses lots non lavés (un lavage
+   * arrêté à une fin de présence, un vol que personne n'a commencé) dont le vol est dans `saleFinal`, chacun avec son temps
+   * de lavage, en minutes d'un tunnel normal — la durée restante d'un lavage arrêté ; pour un vol pas commencé, la durée
+   * restante que porte `saleFinal` (un reste de la veille que personne n'a repris) s'il n'a qu'un lot, sinon la durée du
+   * vol. Deux vols du même nom (celui du jour, celui de la veille) sont deux lots : chacun compte. Rend [{ lot, minutes }].
+   */
+  function restesDuJour(r) {
+    const cle = (vol, cie) => String(vol).replace(/ \(veille\)$/, '') + '|' + cie;
+    const sale = new Map(((r && r.saleFinal) || []).filter(x => +x.unites > 0).map(x => [x.vol + '|' + x.cie, x]));
+    const lots = ((r && r.lots) || []).filter(l => l.retourVol && l.impossible && sale.has(cle(l.vol, l.cie))), n = new Map();
+    for (const l of lots) n.set(cle(l.vol, l.cie), (n.get(cle(l.vol, l.cie)) || 0) + 1);
+    return lots.map(l => {
+      const x = sale.get(cle(l.vol, l.cie));
+      return { lot: l, minutes: l.fait > 0 ? +l.reste || 0 : n.get(cle(l.vol, l.cie)) === 1 && fini(x.reste) ? x.reste : +l.duree || 0 };
+    });
+  }
+  /** L'équipe qui tient un lot en dernier : celle de sa dernière part ; sans parts, la sienne. */
+  const tenuPar = l => (Array.isArray(l.parts) && l.parts.length ? l.parts[l.parts.length - 1].atelier : l.atelier);
+  /**
+   * Ce que chaque plonge par vol laisse à laver le lendemain (évolution 18), par ligne « service|jour » : ses vols non lavés
+   * et leur temps de lavage (`restesDuJour`), plus les vols de `saleFinal` qu'aucune équipe n'a reçus (toutes ses équipes
+   * fermées), à la durée que leur donne la première équipe par vol. Le reste va à la dernière ligne (le dernier jour de
+   * travail) de sa plonge. Une plonge au débit n'y est pas : son sale se compte en unités.
+   */
+  function lendemainParLigne(r, args, k) {
+    const out = new Map(), parVol = (args.ateliers || []).filter(x => x.type === 'lavage' && x.parVol);
+    if (!parVol.length || !Array.isArray(r.saleFinal)) return out;
+    const parService = new Map(), ajouter = (service, minutes) => { const o = parService.get(service) || { vols: 0, minutes: 0 }; parService.set(service, { vols: o.vols + 1, minutes: net(o.minutes + minutes) }); };
+    const restes = restesDuJour(r), avecLot = new Set(restes.map(x => String(x.lot.vol).replace(/ \(veille\)$/, '') + '|' + x.lot.cie));
+    for (const x of restes) ajouter(x.lot.service, x.minutes);
+    for (const x of r.saleFinal) if (+x.unites > 0 && !avecLot.has(x.vol + '|' + x.cie)) ajouter(parVol[0].service, fini(x.reste) ? x.reste : P().dureeLavageVol(parVol[0], x.cie) ?? 0);
+    for (const [service, o] of parService) {
+      const jours = k.services.filter(s => s.service === service).map(s => s.jour);
+      if (jours.length) out.set(service + '|' + Math.max(...jours), o);
+    }
+    return out;
+  }
+
+  /**
+   * Ce qu'une équipe de plonge par vol laisse à laver le lendemain (évolution 18) : les vols non lavés qu'elle tient en
+   * dernier (`restesDuJour`) et leur temps de lavage ; null si elle n'en laisse aucun. La somme des équipes d'une plonge est
+   * le reste de sa ligne.
+   */
+  function lendemainDeLEquipe(v, r) {
+    const siens = restesDuJour(r).filter(x => tenuPar(x.lot) === (v && v.id));
+    return siens.length ? { vols: siens.length, minutes: net(somme(siens, x => x.minutes)) } : null;
+  }
+  /**
    * La plonge, pour son « Bouchon » (correction 18 a) : l'attente la plus longue d'un arrivage — à une plonge par vol, un vol
    * revenu qui attend son tunnel. Au débit, sans arrivage : `attenteMax` null (le moteur garde alors son attente par unité).
+   * Évolution 18 : `lendemain`, ce qu'elle laisse à laver le lendemain, toutes ses lignes réunies — seulement s'il y en a.
    */
-  function plongeDe(r, k) {
+  function plongeDe(r, k, c) {
     const ke = new Map(k.equipes.map(e => [e.id, e]));
     const l = (r.ateliers || []).filter(v => v.type === 'lavage').map(v => arrivagesDe(v, ke.get(v.id))).filter(Boolean).flat();
-    return { attenteMax: l.length ? net(Math.max(0, ...l.map(a => a.minutes))) : null };
+    const restes = ((c && c.services) || []).filter(s => s.lendemain).map(s => s.lendemain);
+    return { attenteMax: l.length ? net(Math.max(0, ...l.map(a => a.minutes))) : null,
+      ...(restes.length ? { lendemain: { vols: somme(restes, x => x.vols), minutes: net(somme(restes, x => x.minutes)) } } : {}) };
   }
 
   /** Une différence : la valeur de A, celle de B, et B − A (null si l'une manque). */
@@ -679,7 +761,7 @@
   }
 
   const api = { CLE_STOCKAGE, SEUILS_DEFAUT, SEUILS, DEPASSEMENT_MIN, CAUSES_VOL, seuilsComplets, enveloppe, lireEnveloppe, seuilsDeLaSauvegarde, stockTropLong,
-    reponses, comparer, comptes, equipement, motDuJour, motDeLaLigne };
+    reponses, comparer, comptes, equipement, motDuJour, motDeLaLigne, lotsTenus, lendemainDeLEquipe };
   if (enNode) module.exports = api;
   else root.OrlyReponses = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

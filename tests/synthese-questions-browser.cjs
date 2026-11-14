@@ -112,7 +112,7 @@ const critiques=page=>page.evaluate(()=>{
       return {tetes:[...document.querySelectorAll('#bilan-journee .sy-table thead th')].map(th=>th.textContent),
         sans:sans.map(x=>{const td=rang(x).cells[8];return {attendu:D(x.minutes),part:Math.round(x.part*100)+' %',texte:td.textContent,titre:td.title,ton:td.dataset.ton||null,barre:!!td.querySelector('.sy-sans-barre i')};}),
         arr:arr.map(x=>{const td=rang(x).cells[9];return {n:x.arrivages,max:x.attenteMax?D(x.attenteMax.minutes):null,texte:td.textContent,ton:td.dataset.ton||null};}),
-        goulots:rep.coince.goulots.map(g=>({nom:g.nom,depasse:g.depasse,enRetard:g.enRetard})),
+        goulots:rep.coince.goulots.map(g=>({nom:g.nom,depasse:g.depasse,enRetard:g.enRetard,lendemain:g.lendemain?g.lendemain.vols:0})),
         carte:document.querySelector('#bilan-journee .sy-carte[aria-label="Où ça coince"]').innerText,
         notes:[...document.querySelectorAll('#bilan-journee .sy-explique-occ')].map(x=>x.textContent),texte:document.getElementById('bilan-journee').innerText};});
     assert.deepEqual(att.tetes,['Service','Besoin','Présents','Écart','Matin','Après-midi','Pic au travail','Occupation','Personnes sans travail','Attente d’un arrivage','Fin et heures sup'],V+'les colonnes');
@@ -132,7 +132,9 @@ const critiques=page=>page.evaluate(()=>{
     // Les mots : jamais « un lot attend » pour un lot simplement à faire, plus de « file la plus longue ».
     assert.doesNotMatch(att.texte,/un lot (y )?attend|File la plus longue|lots en file/i,V+'les mots');
     // « Où ça coince », sur les conséquences : avec ses départs en retard, l'unité fictive coince ; la carte en montre trois au plus.
-    assert.ok(att.goulots.length>=1&&att.goulots.every(g=>g.depasse>=15||g.enRetard>0),V+'des goulots : '+JSON.stringify(att.goulots));
+    // Sa plonge laisse 2 vols à laver le lendemain (évolution 18) : elle coince aussi, la dernière — après ceux qui font partir en retard.
+    assert.ok(att.goulots.length>=1&&att.goulots.every(g=>g.depasse>=15||g.enRetard>0||g.lendemain>0),V+'des goulots : '+JSON.stringify(att.goulots));
+    assert.deepEqual(att.goulots.filter(g=>g.lendemain>0).map(g=>[g.nom,g.lendemain]),[[att.goulots[att.goulots.length-1].nom,2]],V+'la plonge, la dernière : '+JSON.stringify(att.goulots));
     assert.ok(att.carte.includes(att.goulots[0].nom)&&/part(ent)? en retard par ses lots|après son horaire/.test(att.carte),V+'la carte nomme le goulot et dit pourquoi : '+att.carte);
     assert.ok(lu.tete[1].startsWith(att.goulots[0].nom),V+'la phrase de tête le nomme');
     assert.ok((await page.locator('#bilan-journee .sy-carte[aria-label="Où ça coince"] li').count())<=2,V+'trois services au plus');
@@ -174,10 +176,21 @@ const critiques=page=>page.evaluate(()=>{
    assert.deepEqual(await page.evaluate(()=>Sim.reponses().exceptions),[],'la journée n’a pas de retard');
    assert.match(await page.locator('#bilan-journee .sy-tete').innerText(),/rien ne part en retard\./);
    assert.equal(await page.locator('#bilan-journee .sy-carte[aria-label="Ce qui part en retard"] .sy-grand').textContent(),'Rien.');
-   // Sans retard ni dépassement d'un quart d'heure : rien ne coince, et la phrase de tête le dit (correction 18 a).
-   assert.deepEqual(await page.evaluate(()=>Sim.reponses().coince.goulots),[],'aucun goulot');
+   // Sans retard ni dépassement d'un quart d'heure, seule la plonge coince (évolution 18) : elle laisse 6 vols à laver le
+   // lendemain — la carte, la phrase de tête et sa ligne le disent. (Avant : rien ne coinçait.)
+   const plonge=await page.evaluate(()=>Sim.reponses().coince.goulots.map(g=>[g.service,g.nom,g.depasse,g.enRetard,g.lendemain]));
+   assert.deepEqual(plonge.map(g=>[g[0],g[2],g[3],g[4]]),[['plonge',0,0,{vols:6,minutes:200}]],'un seul goulot : la plonge');
+   assert.equal(await page.locator('#bilan-journee .sy-carte[aria-label="Où ça coince"] .sy-grand').textContent(),plonge[0][1]);
+   assert.match(await page.locator('#bilan-journee .sy-carte[aria-label="Où ça coince"]').innerText(),/laisse 6 vols à laver le lendemain\./);
+   assert.ok((await page.locator('#bilan-journee .sy-tete').innerText()).includes(plonge[0][1]+' coince : il laisse 6 vols à laver le lendemain ; rien ne part en retard.'));
+   assert.match(await page.locator('#bilan-journee .sy-table tr[data-service="plonge"] td.sy-fin .sy-lendemain').textContent(),/^reste à laver le lendemain : 6 vols \(3 h 20 de lavage\)$/);
+   // Sans la plonge : rien ne coince, et la phrase de tête le dit (correction 18 a).
+   const equipes=await page.evaluate(()=>{const avant=JSON.parse(JSON.stringify(Sim.ateliers.state.ateliers));Sim.ateliers.changer(()=>{const st=Sim.ateliers.state;st.ateliers=st.ateliers.filter(a=>a.type!=='lavage');},'');return avant;});
+   await page.waitForFunction(()=>{const r=Sim.reponses();return !!r&&r.coince.goulots.length===0&&/Rien ne coince/.test(document.querySelector('#bilan-journee .sy-tete').innerText);});
    assert.equal(await page.locator('#bilan-journee .sy-carte[aria-label="Où ça coince"] .sy-grand').textContent(),'Rien ne coince.');
    assert.match(await page.locator('#bilan-journee .sy-tete').innerText(),/Rien ne coince ; rien ne part en retard\./);
+   await page.evaluate(l=>Sim.ateliers.changer(()=>{Sim.ateliers.state.ateliers=l;},''),equipes);
+   await page.waitForFunction(()=>{const r=Sim.reponses();return !!r&&r.coince.goulots.length===1;});
    assert.deepEqual(await critiques(page),[],'aucune couleur critique');
    // 8. Correction 17 (c) : l'écart ne prend la couleur de statut que s'il manque des personnes. Le montage garde 1 personne
    // (ni seconde équipe, ni robot) : il lui en manque plus d'une, au seuil de 1 → sa case se colore ; les surplus du tableau

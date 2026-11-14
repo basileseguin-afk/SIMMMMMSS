@@ -5,6 +5,57 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-14 — Banc d'essai, évolution 18 (b) : le relais à la plonge, dans les résultats
+
+- **Les réponses** (`moteur/reponses.js`) lisent les parts d'un lavage en
+  relais : le premier lot d'une équipe et ses moments sans travail se comptent
+  autour de sa part ; `fins.services[].relais` liste les lavages passés en
+  relais ou arrêtés, avec leurs parts. Les indicateurs d'une équipe portent
+  ses relais (`relais: { passes, repris, minutes }`), seulement si elle en a.
+- **« Où ça coince » gagne une conséquence** : une plonge par vol qui laisse
+  des vols à laver le lendemain coince (`lendemain: { vols, minutes }`),
+  rangée après les services qui dépassent leur horaire ou font partir en
+  retard ; sa cause : ses équipes partent à la fin de leur présence. Tout
+  lavé dans les présences, la plonge n'est plus citée.
+- **La Synthèse** : sur la ligne de la plonge, « reste à laver le lendemain :
+  n vols (h de lavage) », et plus d'heures sup ; la phrase de tête et la
+  carte disent « laisse n vols à laver le lendemain ». L'étiquette
+  « Bouchon » de la plonge et la phrase du plan rejoué suivent.
+- **Le planning des équipes** : un lot en relais se dessine sur les deux
+  lignes, chacune pour sa part, avec un petit triangle à la jointure ; au
+  survol, « repris par … à hh:mm » et « commencé par … ». Un lavage arrêté va
+  jusqu'à la fin de la présence, avec un petit carré, et dit ce qu'il en
+  reste. La légende nomme les deux signes.
+- **Le plan rejoué** : un vol en relais reste dans son tunnel, sans coupure.
+- **Le classeur de la journée** : la feuille « Réponses » (le goulot, `Reste
+  à laver le lendemain`, `Lavage en relais`, `Lavage arrêté`) et la feuille
+  « Charge » (cinq colonnes de plus, seulement s'il y a un relais ou un
+  reste).
+
+Ne changent pas : le résultat de la journée, les indicateurs et le JSON des
+outils d'une journée sans relais ; le rang des autres goulots ; la version 2.
+
+Tests dont la valeur attendue change, parce que la plonge de l'unité fictive
+laisse des vols non lavés le soir : `tests/reponses-classeur.test.cjs`,
+`tests/synthese-vue.test.cjs` et `tests/synthese-questions-browser.cjs` (sans
+retard, la plonge seule coince : avant, rien ne coinçait ; avec des retards,
+elle coince aussi, la dernière), `tests/charge-export.test.cjs` (la feuille
+« Charge » gagne les cinq colonnes), `tests/details-browser.cjs` (le plan
+rejoué dit le reste du lendemain). Les captures d'une Synthèse où « rien ne
+coince » se font sans la plonge (`tests/captures-resultats-browser.cjs`,
+`tests/captures-correction-18-browser.cjs`, par `sansPlonge` de
+`tests/plan-rejoue-fictif.cjs`).
+
+Fichiers : `moteur/reponses.js`, `moteur/indicateurs.js`, `synthese-vue.js`,
+`synthese-vue.css`, `planning-vue.js`, `planning-vue.css`,
+`planning-ensemble.js`, `resultats-vue.js`, `sim.js`, `echanges-reponses.js`,
+`echanges-charge.js`, `index.html` (empreintes),
+`tests/plonge-relais-resultats.test.cjs` et `tests/plonge-relais-browser.cjs`
+(nouveaux), les tests ci-dessus, `docs/BANC_ESSAI.md` (§ 2),
+`docs/FORMATS_EXCEL.md` (§ 6, § 8), `CHANGELOG.md`.
+
+---
+
 ## 2026-11-14 — Banc d'essai, évolution 18 (a) : le relais à la plonge par vol, dans le moteur
 
 Sur le terrain, deux équipes de plonge qui se suivent se passent le relais :

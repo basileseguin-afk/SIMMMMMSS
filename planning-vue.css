@@ -55,6 +55,8 @@
 .pg-ex.trait{height:2px;border-radius:0}
 .pg-ex.avant{background:repeating-linear-gradient(135deg,var(--ds-texte-4) 0 1.5px,transparent 1.5px 4px)}
 .pg-ex.fleche{width:8px;height:8px;border-radius:0;background:none;border-top:1.5px solid var(--ds-texte-2);border-right:1.5px solid var(--ds-texte-2);transform:rotate(45deg) scale(.8)}
+.pg-ex.relais{width:0;height:0;border-radius:0;background:none;border-style:solid;border-width:5px 0 5px 7px;border-color:transparent transparent transparent var(--ds-texte-1)}
+.pg-ex.arrete{width:8px;height:8px;border-radius:1px;background:var(--ds-surface-1);border:1.5px solid var(--ds-texte-1)}
 .pg-ex.maintenant{width:2px;height:12px;border-radius:1px;background:var(--ds-texte-1)}
 
 /* Le cadre défile dans les deux sens ; il prend toute la hauteur qui reste dans la fenêtre, sous les boutons
@@ -148,6 +150,9 @@
 /* La limite de la commande : un petit trait au bout de la barre de son dernier lot ; le pointillé, la marge ; une flèche au
  * bord droit quand la limite est après la fenêtre affichée. */
 .pg-fleche{fill:none;stroke:var(--ds-texte-2);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;pointer-events:all}
+/* Le relais à la plonge (évolution 18) : un petit triangle à la jointure de deux parts ; un petit carré au bout d'un lavage arrêté. */
+.pg-relais{fill:var(--ds-texte-1);stroke:var(--ds-surface-1);stroke-width:1;stroke-linejoin:round;paint-order:stroke}
+.pg-arrete{fill:var(--ds-surface-1);stroke:var(--ds-texte-1);stroke-width:1.5}
 .pg-limite{stroke:var(--ds-texte-1);stroke-width:2;stroke-linecap:round}
 .pg-limite.depassee{stroke:var(--ds-surface-1);stroke-width:2}
 .pg-marge{stroke:var(--ds-texte-3);stroke-width:1;stroke-dasharray:2 2}

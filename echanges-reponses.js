@@ -91,7 +91,11 @@
   /** La cause d'un service qui coince, en mots. */
   const causeDuGoulot = c => (!c ? null : c.code === 'ouverture' || c.code === 'amont' ? attendu({ quoi: c.code, nom: c.nom, a: c.a })
     : c.code === 'materiel' ? 'ses arrivages attendent leur matériel' : c.code === 'limite' ? 'finit dans son horaire, mais après la limite d’une commande ou d’un vol'
-      : c.code === 'aval' ? 'ses lots finissent avant la limite : la commande ou le vol prend son retard en aval' : 'la charge du jour ne tient pas dans l’horaire');
+      : c.code === 'aval' ? 'ses lots finissent avant la limite : la commande ou le vol prend son retard en aval'
+        : c.code === 'presences' ? 'ses équipes partent à la fin de leur présence : personne ne reste pour finir, ce qui n’est pas lavé passe au lendemain'
+          : 'la charge du jour ne tient pas dans l’horaire');
+  /** Ce qu'une plonge par vol laisse à laver le lendemain (évolution 18), en mots. */
+  const lendemain = x => x.vols + ' vol(s) à laver le lendemain (' + entier(x.minutes) + ' min de lavage)';
 
   /**
    * R2 (correction 18 a). Les goulots, sur les conséquences : un service qui finit après son horaire d'au moins un quart
@@ -103,7 +107,8 @@
     const S = rep.seuils, QUART = REP().DEPASSEMENT_MIN, goulots = rep.coince.goulots || (rep.coince.goulot ? [rep.coince.goulot] : []);
     // La valeur : son dépassement, en minutes, au quart d'heure qui compte ; le détail : ses heures sup, ce qu'il fait partir en retard, sa cause.
     const out = goulots.length ? goulots.map((g, i) => ligne(1, g.nom, jour(g.jour), i ? 'Coince aussi' : 'Goulot', entier(g.depasse), 'min', QUART,
-      ouiNon(g.depasse >= QUART - EPS), 'heures sup ' + entier(g.heuresSup) + ' min × personnes ; ' + g.enRetard + ' commande(s) ou vol(s) en retard par ses lots ; cause : ' + causeDuGoulot(g.cause)))
+      ouiNon(g.depasse >= QUART - EPS), 'heures sup ' + entier(g.heuresSup) + ' min × personnes ; ' + g.enRetard + ' commande(s) ou vol(s) en retard par ses lots'
+        + (g.lendemain ? ' ; laisse ' + lendemain(g.lendemain) : '') + ' ; cause : ' + causeDuGoulot(g.cause)))
       : [ligne(1, 'aucun', null, 'Goulot', null, 'min', QUART, 'non',
         'aucun service ne finit au moins ' + QUART + ' min après son horaire ni ne fait partir une commande ou un vol en retard')];
     for (const s of rep.coince.services.filter(x => fini(x.arrivages))) {
@@ -114,6 +119,8 @@
           a ? a.lot + (a.lots > 1 ? ' (et ' + (a.lots - 1) + ' autre(s) lot(s))' : '') + ', de ' + heure(a.de) + ' à ' + heure(a.a) : 'aucun arrivage n’a attendu'),
         ligne(1, s.nom, j, 'Cumul d’attente des arrivages', entier(s.cumul), 'arrivages × minutes'),
         ligne(1, s.nom, j, 'Cause de l’attente des arrivages', null, null, null, null, s.cause ? CAUSES[s.cause] : 'aucune établie'));
+      // Une plonge par vol (évolution 18) : ce qu'elle laisse à laver le lendemain, seulement s'il y en a — dès un vol, elle coince.
+      if (s.lendemain) out.push(ligne(1, s.nom, j, 'Reste à laver le lendemain', s.lendemain.vols, 'vols', 0, 'oui', entier(s.lendemain.minutes) + ' min de lavage ; un lavage arrêté compte pour sa durée restante'));
     }
     for (const s of ((rep.sansTravail || {}).services || []).filter(x => fini(x.minutes))) {
       const j = jour(s.jour);
@@ -137,7 +144,11 @@
         ligne(2, s.nom, j, 'Dépassement', entier(s.depasse), 'min', REP().DEPASSEMENT_MIN, fini(s.depasse) ? ouiNon(s.depasse >= REP().DEPASSEMENT_MIN - EPS) : null,
           s.equipeQuiDepasse ? 'l’équipe ' + s.equipeQuiDepasse.nom + ' finit à ' + heure(s.equipeQuiDepasse.fin) + ' pour ' + heure(s.equipeQuiDepasse.finHoraire) : null),
         ligne(2, s.nom, j, 'Heures sup', entier(h.total), 'min × personnes', null, null,
-          'équipes ' + (entier(h.equipes) ?? 0) + ', renforts prêtés ' + (entier(h.renforts) ?? 0) + ', chauffeurs ' + (entier(h.chauffeurs) ?? 0))];
+          'équipes ' + (entier(h.equipes) ?? 0) + ', renforts prêtés ' + (entier(h.renforts) ?? 0) + ', chauffeurs ' + (entier(h.chauffeurs) ?? 0)),
+        // Une plonge par vol (évolution 18) : ses lavages passés en relais, ou arrêtés à une fin de présence — les parts de chacun.
+        ...(s.relais || []).map(x => ligne(2, s.nom, j, x.fin === null ? 'Lavage arrêté' : 'Lavage en relais', entier(x.parts.reduce((n, p) => n + p.travail, 0)), 'min', null, null,
+          x.vol + ' : ' + x.parts.map(p => p.nom + ' ' + heure(p.debut) + ' → ' + heure(p.fin) + ' (' + entier(p.travail) + ' min)').join(', ')
+          + (x.fin === null ? ' ; reste ' + entier(x.reste) + ' min à laver le lendemain' : ' ; propre à ' + heure(x.fin))))];
     });
   }
 

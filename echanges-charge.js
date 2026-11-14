@@ -22,6 +22,7 @@
   const enNode = typeof module !== 'undefined' && module.exports && typeof require === 'function';
   const T = () => (enNode ? require('./tableur.js') : root.OrlyTableur);
   const I = () => (enNode ? require('./moteur/indicateurs.js') : root.OrlyIndicateurs);
+  const REP = () => (enNode ? require('./moteur/reponses.js') : root.OrlyReponses);
   const n2 = x => (x == null || !Number.isFinite(+x) ? null : Math.round(+x * 100) / 100);
   const pc = x => (x == null || !Number.isFinite(+x) ? null : Math.round(+x * 1000) / 10);
   const dateFr = d => d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4);
@@ -59,6 +60,14 @@
       n2(k.heuresDebit), f ? f.lots : null, f && f.lots && Number.isFinite(f.a) ? T().celluleDate(x.vols, f.a) : null, n2(k.attente),
       n2(k.renfortsPretes), n2(k.renfortsRecus), sansObjet(k.sansObjet)];
   }
+
+  /**
+   * Le relais à la plonge par vol (évolution 18), dans la feuille « Charge » de la journée : cinq colonnes de plus, à la
+   * fin, seulement si une équipe a un relais ou laisse un vol au lendemain — sinon la feuille d'avant, telle quelle.
+   */
+  const TETE_RELAIS = ['Vols passés en relais', 'Vols repris en relais', 'Travail en relais (min)', 'Reste à laver le lendemain (vols)', 'Reste à laver le lendemain (min de lavage)'];
+  const ligneRelais = (k, reste) => [k.relais ? k.relais.passes : null, k.relais ? k.relais.repris : null, k.relais ? n2(k.relais.minutes) : null,
+    reste ? reste.vols : null, reste ? n2(reste.minutes) : null];
 
   /* ---- la feuille « Créneaux » ----------------------------------------- */
 
@@ -117,7 +126,12 @@
     const le = ctx.calculeLe ? new Date(ctx.calculeLe) : new Date();
     const date = ctx.date || le.getFullYear() + '-' + deux(le.getMonth() + 1) + '-' + deux(le.getDate());
     const noms = (x.args && x.args.noms) || {}, ns = ctx.nomService || (id => noms[id] || id);
-    const charge = [TETE_CHARGE, ...k.equipes.map(e => ({ cle: [decalerJour(date, e.jour || 0), ns(e.service), e.nom], l: ligneCharge({ vols: date, equipe: e, k: e, nomService: ns }) }))
+    // Ce que chaque équipe de plonge laisse à laver le lendemain (évolution 18) : lu dans le résultat, quand on l'a.
+    const vues = new Map(((x.resultat && x.resultat.ateliers) || []).map(v => [v.id, v]));
+    const restes = new Map(k.equipes.map(e => [e.id, vues.has(e.id) ? REP().lendemainDeLEquipe(vues.get(e.id), x.resultat) : null]));
+    const relais = k.equipes.some(e => e.relais || restes.get(e.id));
+    const charge = [relais ? [...TETE_CHARGE, ...TETE_RELAIS] : TETE_CHARGE, ...k.equipes.map(e => ({ cle: [decalerJour(date, e.jour || 0), ns(e.service), e.nom],
+      l: [...ligneCharge({ vols: date, equipe: e, k: e, nomService: ns }), ...(relais ? ligneRelais(e, restes.get(e.id)) : [])] }))
       .sort(parCle).map(y => y.l)];
     const creneaux = [TETE_CRENEAUX, ...k.services.slice().sort((p, q) => (p.jour - q.jour) || ns(p.service).localeCompare(ns(q.service)))
       .flatMap(s => lignesCreneaux(decalerJour(date, s.jour || 0), ns(s.service), s.creneaux))];
@@ -182,7 +196,7 @@
     return out;
   }
 
-  const api = { journeeVersClasseur, feuillesDeLaPeriode, avecCharge, TETE_CHARGE, TETE_CRENEAUX };
+  const api = { journeeVersClasseur, feuillesDeLaPeriode, avecCharge, TETE_CHARGE, TETE_CRENEAUX, TETE_RELAIS };
   if (enNode) module.exports = api;
   else root.OrlyEchangesCharge = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

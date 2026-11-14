@@ -1697,6 +1697,10 @@ function majGoulotInfo() {
     const top=rep?rep.coince.services.filter(x=>x.attenteMax&&x.attenteMax.minutes>rep.seuils.attenteLot).sort((x,y)=>y.cumul-x.cumul)[0]:null;
     if(top)html+='<p class="mini-note">Sur toute la journée, ce sont les arrivages de <strong>'+escapeHTML(top.nom)+'</strong> qui attendent le plus : '
       +MoteurProduction.dureeLisible(top.cumul)+' en tout.</p>';
+    // Évolution 18 : la plonge par vol qui laisse des vols à laver le lendemain — la même conséquence que dans la Synthèse.
+    const reste=rep?rep.coince.services.filter(x=>x.lendemain&&x.lendemain.vols>0):[];
+    for(const x of reste)html+='<p class="mini-note" data-reste-lendemain="'+escapeHTML(x.service)+'">À la fin de la journée, <strong>'+escapeHTML(x.nom)+'</strong> laisse '
+      +x.lendemain.vols+(x.lendemain.vols>1?' vols':' vol')+' à laver le lendemain ('+MoteurProduction.dureeLisible(x.lendemain.minutes)+' de lavage).</p>';
   }
   // Ce qui attend à cette heure : les repas en stock, le sale à laver.
   if(window.OrlyTemps&&lots.length&&Sim.vue&&t>Sim.vue.debut){
@@ -2217,8 +2221,8 @@ function renderReglageHeuresSup(force){
       +heuresFr(Sim.reglages.etat.regime.presence+hs.plafond)+' h. Ce que chaque service fait en plus se lit dans la Synthèse.'
       :'Désactivées : une équipe part à la fin de sa présence, et ce qu’elle n’a pas fini reste hors poste.')+'</p>';
 }
-/* Dans la Synthèse : les heures sup de la journée, par service et par équipe, en heures × personnes (heuresSupPersonnes) :
- * d'une plonge, seules les personnes des tunnels qui finissent un vol après sa présence comptent. */
+/* Dans « Détails » : les heures sup de la journée, par service et par équipe, en heures × personnes (heuresSupPersonnes).
+ * Une plonge par vol n'en fait plus (évolution 18 : elle passe le relais, ou s'arrête) : elle n'y est pas. */
 function renderHeuresSup(r){
   // Évolution 15 b : le détail des heures sup quitte la Synthèse pour « Détails ».
   const sec=document.getElementById('journee-details');if(!sec)return;

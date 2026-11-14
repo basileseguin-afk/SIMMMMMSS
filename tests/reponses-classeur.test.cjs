@@ -24,7 +24,8 @@ const lignes = (f, i) => f.lignes.slice(1).filter(l => l[0] === QUESTIONS[i]);
 const col = nom => ER.TETE.indexOf(nom);
 const r2 = x => (x == null ? null : Math.round(x * 100) / 100);
 // « Où ça coince » se juge sur les conséquences (correction 18 a) : avec ses départs en retard, l'unité fictive coince, à
-// n'importe quel seuil d'attente ; sans retard (B), rien ne coince.
+// n'importe quel seuil d'attente ; sans retard (B), seule sa plonge coince : elle laisse des vols à laver le lendemain
+// (évolution 18 ; avant, rien ne coinçait).
 const A60 = REP.reponses(p.resultat, p.args, { seuils: { attenteLot: 60 } });
 
 test('le classeur de la journée gagne la feuille « Réponses », à la fin ; les autres ne changent pas', () => {
@@ -81,8 +82,16 @@ test('les cinq réponses, dans l’ordre du contrat, celles du module', () => {
   }
   assert.equal(lignes(f, 1).filter(l => l[col('Mesure')] === 'Coince aussi').length, A.coince.goulots.length - 1);
   assert.deepEqual(lignes(ER.feuilleDesReponses(A60, { date: DATE }), 1).filter(l => /^(Goulot|Coince aussi)$/.test(l[col('Mesure')])), lignes(f, 1).filter(l => /^(Goulot|Coince aussi)$/.test(l[col('Mesure')])));
+  // Sans retard (B) : la plonge seule, qui laisse 6 vols à laver le lendemain (200 min : 20 min restent d'un vol arrêté quand
+  // l'équipe du matin part ; cinq vols reviennent trop tard). Elle ne dépasse pas : 0 min. Avant l'évolution 18 : aucun goulot.
   const g0 = lignes(ER.feuilleDesReponses(B, { date: DATE }), 1).find(l => l[col('Mesure')] === 'Goulot');
-  assert.deepEqual([B.coince.goulot, g0[col('Sujet')], g0[col('Valeur')], g0[col('Au-delà du seuil')]], [null, 'aucun', null, 'non']);
+  assert.deepEqual([B.coince.goulots.map(x => x.service), g0[col('Sujet')], g0[col('Valeur')], g0[col('Au-delà du seuil')]], [['plonge'], 'Plonge', 0, 'non']);
+  assert.match(g0[col('Détail')], / ; laisse 6 vol\(s\) à laver le lendemain \(200 min de lavage\) ; cause : ses équipes partent à la fin de leur présence/);
+  // Avec ses départs en retard (A), la plonge coince aussi, la dernière : 2 vols (75 min).
+  assert.deepEqual([A.coince.goulots[A.coince.goulots.length - 1].service, A.coince.goulots[A.coince.goulots.length - 1].lendemain], ['plonge', { vols: 2, minutes: 75 }]);
+  // Sans rien qui coince : la ligne le dit.
+  const rien = lignes(ER.feuilleDesReponses({ ...B, coince: { ...B.coince, goulot: null, goulots: [] } }, { date: DATE }), 1).find(l => l[col('Mesure')] === 'Goulot');
+  assert.deepEqual([rien[col('Sujet')], rien[col('Valeur')], rien[col('Au-delà du seuil')]], ['aucun', null, 'non']);
   // Les arrivages (les lots livrés ensemble) et les personnes sans travail, par service et jour de travail.
   for (const c of A.coince.services.filter(x => x.arrivages != null)) {
     const d = lignes(f, 1).filter(l => duJour(l, c)), v = m => (d.find(l => l[col('Mesure')] === m) || [])[col('Valeur')];

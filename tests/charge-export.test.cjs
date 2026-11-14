@@ -35,7 +35,10 @@ const VOLS = dates.flatMap(d => S.args.vols.map(v => ({ ...v, date: d })));
 test('le classeur de la journée : Lisez-moi, Charge (une ligne par équipe), Créneaux ; des dates Excel', () => {
   assert.deepEqual(JOURNEE.map(f => f.nom), ['Lisez-moi', 'Charge', 'Créneaux']);
   const c = feuille(JOURNEE, 'Charge');
-  assert.deepEqual(c.lignes[0], EC.TETE_CHARGE);
+  // L'unité fictive laisse deux vols non lavés le soir : la feuille gagne, à la fin, les colonnes du relais à la plonge et du
+  // reste du lendemain (évolution 18) ; les colonnes d'avant ne changent pas. Sans relais ni reste : la feuille d'avant.
+  assert.deepEqual(c.lignes[0], [...EC.TETE_CHARGE, ...EC.TETE_RELAIS]);
+  assert.deepEqual(c.lignes.find(l => l[c.lignes[0].indexOf('Équipe')] === K.equipes.find(e => e.id === 'pl2').nom).slice(EC.TETE_CHARGE.length), [null, null, null, 2, 75]);
   assert.equal(c.lignes.length, K.equipes.length + 1);
   const ligne = nom => c.lignes.find(l => l[col(c, 'Équipe')] === nom);
   // Le montage : ses indicateurs, en pourcents à un dixième près ; son jour de travail, celui des vols.

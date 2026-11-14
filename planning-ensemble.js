@@ -42,7 +42,9 @@
   const fini = x => Number.isFinite(x);
   /** Un lot de l'équipe : pas le repère d'une mise à disposition, et il a commencé. */
   const estUnLot = l => !l.dispo && fini(l.debut);
-  const lotsDe = a => (a.lots || []).filter(estUnLot);
+  /** Le lot tel que l'équipe l'a tenu (évolution 18) : d'un lavage par vol passé en relais, ou arrêté, sa part — son début, sa fin. */
+  const tenu = (l, a) => { if (!Array.isArray(l.parts)) return l; const p = l.parts.find(x => x.atelier === a.id); return p ? { ...l, debut: p.debut, fin: p.fin } : null; };
+  const lotsDe = a => (a.lots || []).map(l => tenu(l, a)).filter(l => l && estUnLot(l));
   /** Le jour de travail d'une équipe (0 : le jour des vols), celui de son poste. */
   const jourDeLEquipe = a => +a.jour || 0;
   const finDe = l => (fini(l.fin) ? l.fin : l.debut);

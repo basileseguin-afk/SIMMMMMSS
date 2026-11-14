@@ -107,7 +107,9 @@
   function bornes(r) {
     const lots = ((r && r.lots) || []).filter(l => Number.isFinite(l.debut));
     if (!lots.length) return null;
-    let a = Math.min(...lots.map(l => l.debut)), b = Math.max(...lots.map(l => (l.fin == null ? l.debut : l.fin)));
+    // Un lavage arrêté à une fin de présence (évolution 18) n'a pas de fin : sa dernière part en a une, la fenêtre va jusqu'à elle.
+    const finDe = l => Math.max(l.fin == null ? l.debut : l.fin, ...(Array.isArray(l.parts) ? l.parts.map(p => p.fin).filter(Number.isFinite) : []));
+    let a = Math.min(...lots.map(l => l.debut)), b = Math.max(...lots.map(finDe));
     for (const v of limites(r).values()) b = Math.max(b, v[v.length - 1]);
     const t0 = Math.floor(a / 60) * 60;
     return { t0, t1: Math.max(t0 + 60, Math.ceil(b / 60) * 60) };
@@ -182,6 +184,28 @@
     return m.length ? Math.min(...m) : null;
   }
 
+  /**
+   * Le lot tel qu'une équipe l'a tenu (évolution 18). Un lavage par vol passé en relais, ou arrêté à une fin de présence,
+   * porte ses parts : l'équipe le tient pendant la sienne — son début, sa fin, son travail. `relais` dit ce qu'il y a
+   * autour : qui l'a commencé (`de`), qui le reprend et quand (`vers`), s'il s'arrête là (`arrete` : l'heure, ce qu'il
+   * reste à laver) et, passé en relais, l'heure où il est propre. Tout autre lot : tel quel. Null si elle n'y a pas de part.
+   */
+  function lotTenu(l, a, nomEquipe) {
+    if (!Array.isArray(l.parts)) return l;
+    const i = l.parts.findIndex(p => p.atelier === a.id), n = l.parts.length;
+    if (i < 0) return null;
+    const p = l.parts[i], nom = id => (nomEquipe ? nomEquipe(id) : id) || id, dernier = i === n - 1;
+    return { ...l, debut: p.debut, fin: p.fin, duree: p.travail, arret: p.arret, attente: i ? 0 : l.attente,
+      relais: { rang: i, n, de: i ? { nom: nom(l.parts[i - 1].atelier) } : null, vers: dernier ? null : { nom: nom(l.parts[i + 1].atelier), a: p.fin },
+        arrete: dernier && l.fin == null ? { a: p.fin, reste: +l.reste || 0 } : null, propre: n > 1 && Number.isFinite(l.fin) ? l.fin : null } };
+  }
+  /** Les mots d'un lavage en relais : « commencé par … », « repris par … à hh:mm » ; arrêté, ce qu'il en reste pour le lendemain. */
+  function motsDuRelais(x) {
+    return (x.de ? '\nEn relais : commencé par ' + x.de.nom : '') + (x.vers ? '\nEn relais : repris par ' + x.vers.nom + ' à ' + P().hhmm(x.vers.a) : '')
+      + (x.arrete ? '\nArrêté à ' + P().hhmm(x.arrete.a) + ', à la fin de la présence : reste ' + P().dureeLisible(x.arrete.reste) + ' à laver le lendemain'
+        : x.propre !== null ? '\nPropre à ' + P().hhmm(x.propre) : '');
+  }
+
   /** L'infobulle d'une barre : la commande, le début, la fin, la durée, l'attente et la marge. */
   function info(l, a, o) {
     const nomSvc = id => ((o && o.nomService) ? o.nomService(id) : id) || id, m = marge(l, (o && o.parClasse) || {});
@@ -191,7 +215,8 @@
       + (l.arret ? ', dont ' + dl(l.arret) + ' d’arrêt' : '') + ')'
       + (l.fusion ? '\nÀ la chaîne : ' + nomSvc(l.fusion) + ' ' + dl(l.minutesFusion || 0) + ' + ' + nomSvc(a.service) + ' ' + dl(l.minutesIci || 0) + ' de travail' : '')
       + '\nAttente : ' + (l.attente >= 0.5 ? dl(l.attente) : 'aucune')
-      + (m == null ? '' : m < -0.5 ? '\nRetard : ' + dl(-m) : '\nMarge : ' + dl(Math.max(0, m)));
+      + (m == null ? '' : m < -0.5 ? '\nRetard : ' + dl(-m) : '\nMarge : ' + dl(Math.max(0, m)))
+      + (l.relais ? motsDuRelais(l.relais) : '');
   }
 
   /* ---- l'axe ---------------------------------------------------------------------- */
@@ -261,6 +286,8 @@
     ['retard', 'en retard', 'Contour et alerte : le lot finit après la limite de sa commande.', '.pg-lot.retard'],
     ['limite', 'prête avant', 'Le petit trait après la barre : la limite de la commande. L’écart, c’est la marge.', '.pg-limite'],
     ['fleche', 'limite plus tard', 'Une flèche au bord droit : la limite de la commande est après la fenêtre affichée. Au survol : son heure.', '.pg-fleche'],
+    ['relais', 'relais', 'Un petit triangle à la jointure : à la plonge, le lavage passe d’une équipe à la suivante, sur le même tunnel. Au survol : qui l’a commencé, qui le reprend.', '.pg-relais'],
+    ['arrete', 'lavage arrêté', 'Un petit carré au bout de la barre : le lavage s’arrête à la fin de la présence ; le reste se lave le lendemain.', '.pg-arrete'],
     ['maintenant', 'heure rejouée', 'Le trait vertical : l’heure où en est le rejeu.', '.pg-maintenant:not([hidden])']
   ];
   /** La légende : les signes présents à l'écran (pas ceux d'un service replié), sur la ligne des boutons ; elle se replie. */
@@ -305,9 +332,14 @@
       : `<line class="pg-marge" x1="${Math.min(x1, x(e)).toFixed(1)}" y1="${ym}" x2="${Math.max(x1, x(e)).toFixed(1)}" y2="${ym}"/>`
         + `<line class="pg-limite${e < l.fin ? ' depassee' : ''}" data-limite="${e}" x1="${x(e).toFixed(1)}" y1="${y - 3}" x2="${x(e).toFixed(1)}" y2="${y + h + 3}"/>`)).join('');
     const dit = info(l, a, { parClasse: par, nomService: nomSvc });
-    return `<g class="at-pl-lot pg-lot${a.type === 'robot' ? ' robot' : ''}${a.type === 'lavage' ? ' lavage' : ''}${l.fusion ? ' chaine' : ''}${retard ? ' retard' : ''}${morceaux.length > 1 ? ' troue' : ''}" tabindex="0" role="button"
-      data-lot="${i}" data-debut="${l.debut}" data-fin="${l.fin}" data-x="${x0.toFixed(2)}" data-x1="${x1.toFixed(2)}" data-info="${esc(dit)}" aria-label="${esc(dit.replace(/\n/g, ', '))}">${att}${morceaux.map(forme).join('')}${contour}${
-      mot ? `<text class="at-pl-etiq" x="${(large[0] + 5).toFixed(1)}" y="${y + 13}">${esc(mot)}</text>` : ''}${traits}</g>`;
+    // Le relais (évolution 18) : un petit triangle à la jointure — au bout de la part de l'équipe qui passe le lot, au début
+    // de celle qui le reprend ; un petit carré au bout d'un lavage arrêté.
+    const R = l.relais, triangle = (xa, sens) => `<path class="pg-relais" data-relais="${sens}" d="M${xa.toFixed(1)} ${ym - 4.5}l5.5 4.5-5.5 4.5z"/>`;
+    const reperes = !R ? '' : (R.de ? triangle(x0 - 6.5, 'repris') : '') + (R.vers ? triangle(x1 + 1, 'passe') : '')
+      + (R.arrete ? `<rect class="pg-arrete" x="${(x1 + 2).toFixed(1)}" y="${ym - 3.5}" width="7" height="7" rx="1"/>` : '');
+    return `<g class="at-pl-lot pg-lot${a.type === 'robot' ? ' robot' : ''}${a.type === 'lavage' ? ' lavage' : ''}${l.fusion ? ' chaine' : ''}${retard ? ' retard' : ''}${morceaux.length > 1 ? ' troue' : ''}${R ? ' en-relais' : ''}" tabindex="0" role="button"
+      data-lot="${i}" data-debut="${l.debut}" data-fin="${l.fin}" data-x="${x0.toFixed(2)}" data-x1="${x1.toFixed(2)}"${R ? ` data-part="${R.rang + 1}/${R.n}"` : ''} data-info="${esc(dit)}" aria-label="${esc(dit.replace(/\n/g, ', '))}">${att}${morceaux.map(forme).join('')}${contour}${
+      mot ? `<text class="at-pl-etiq" x="${(large[0] + 5).toFixed(1)}" y="${y + 13}">${esc(mot)}</text>` : ''}${traits}${reperes}</g>`;
   }
 
   /** L'axe, sur deux niveaux : le jour, puis les heures. */
@@ -330,7 +362,7 @@
     return `<div class="pg-ligne" data-equipe="${esc(a.id)}" data-service="${esc(a.service)}"><div class="pg-nom" title="${esc(titre)}"><span class="pg-nom-texte">${esc(nom)}</span>${
       service ? `<small class="pg-nom-service">${esc(service)}</small>` : ''}<small class="pg-pers">${esc(pers)}</small></div>
       <svg class="ds-graphique pg-barres" width="${v.L}" height="${HAUT_LIGNE}" style="width:${v.L}px;height:${HAUT_LIGNE}px" viewBox="0 0 ${v.L} ${HAUT_LIGNE}" role="group" aria-label="${esc(a.nom)}">${bande}${
-      a.lots.map((l, i) => barre(l, r.lots.indexOf(l) >= 0 ? r.lots.indexOf(l) : 'x' + i, a, v)).join('')}</svg></div>`;
+      a.lots.map((l, i) => { const t = lotTenu(l, a, v.nomEquipe); return t ? barre(t, r.lots.indexOf(l) >= 0 ? r.lots.indexOf(l) : 'x' + i, a, v) : ''; }).join('')}</svg></div>`;
   }
 
   /**
@@ -343,7 +375,8 @@
     const m = lus.length ? C.mini({ id: g.service, nom: g.nom, c: C.creneauxDuService(lus) }, { t0: v.t0, t1: v.t1, pxm: v.pxh / 60, haut: H, sansFile: true }, v.k.pas) : null;
     // Un trait fin par lot, sous la courbe : sur deux rangs, pour que deux lots qui se suivent se distinguent.
     let n = 0;
-    const traits = g.equipes.map(a => a.lots.filter(EN.estUnLot).map(l => {
+    // Chaque équipe pour ses lots tels qu'elle les a tenus : d'un lavage en relais, sa part (évolution 18).
+    const traits = g.equipes.map(a => EN.lotsDe(a).map(l => {
       const x0 = v.x(l.debut), x1 = Math.max(x0 + BARRE_MIN, v.x(l.fin == null ? l.debut : l.fin)), yt = H - 5 + (n++ % 2) * 3;
       return x1 < 0 || x0 > v.L ? '' : `<line class="pg-trait${enRetard(l, v.par) ? ' retard' : ''}" x1="${x0.toFixed(1)}" y1="${yt}" x2="${x1.toFixed(1)}" y2="${yt}"/>`;
     }).join('')).join('');
@@ -423,7 +456,9 @@
     const jour = etat.zoom === 'chaine' ? null : etat.jour, b = (jour == null ? null : EN.cadreDuJour(r, jour)) || bornes(r);
     const noms = largeurDesNoms(r, nomSvc), largeur = Math.max(120, (cadre ? cadre.clientWidth : 0) - noms - 2), pxh = pxParHeure(etat.zoom, largeur, b.t0, b.t1);
     const x = t => (t - b.t0) / 60 * pxh, j = journeeDe(o);
+    const nomsEquipes = new Map(r.ateliers.map(a => [a.id, a.nom]));
     return { jour, t0: b.t0, t1: b.t1, pxh, largeur, noms, L: Math.ceil((b.t1 - b.t0) / 60 * pxh - 0.01), x, par: r.parClasse || {}, lim: limites(r), nomSvc, k: j.k, rep: j.reponses,
+      nomEquipe: id => nomsEquipes.get(id) || id,
       lignes: EN.lignes(r, jour, ordreDesServices(r, (o.args || {}).parcours), nomSvc), avant: EN.avantLePremierLot(r, j.reponses) };
   }
 
@@ -706,7 +741,7 @@
   }
 
   const api = { ZOOMS, PX_HEURE, HAUT_LIGNE, HAUT_GROUPE, BARRE_MIN, pxParHeure, zoomVoisin, bornes, ordreDesServices, segments, limites, enRetard,
-    marge, info, periode, visible, reperes, commandeDe, porte, rendre, maintenant, viser, etat };
+    marge, info, lotTenu, motsDuRelais, periode, visible, reperes, commandeDe, porte, rendre, maintenant, viser, etat };
   if (enNode) module.exports = api;
   else root.OrlyPlanningVue = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

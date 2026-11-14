@@ -684,6 +684,19 @@ dit lesquels et pourquoi (« occupation, consommé sur disponible : handling »)
   mises à disposition, présentes sans travail propre ; présents = au travail
   + en pause + sans travail + en appui ou à disposition, sauf au handling.
   Les définitions et leurs limites : `BANC_ESSAI.md`, § 13.
+- **Le relais à la plonge** (évolution 18), dans le classeur de la journée :
+  la feuille Charge gagne cinq colonnes, à la fin, **seulement si** une équipe
+  de plonge par vol a un relais ou laisse un vol au lendemain — sinon la
+  feuille d'avant, telle quelle. `Vols passés en relais` (les vols qu'elle a
+  commencés et qu'une autre équipe a continués), `Vols repris en relais`,
+  `Travail en relais (min)` (son travail sur ces vols, en minutes de tunnel),
+  `Reste à laver le lendemain (vols)` et `Reste à laver le lendemain (min de
+  lavage)` : les vols qui ne sont pas propres le soir, sur la ligne de
+  l'équipe qui les tient en dernier — la durée restante d'un lavage arrêté,
+  la durée entière d'un vol pas commencé. Les autres colonnes d'une équipe de
+  plonge lisent les parts : `Au travail`, `Homme-minutes` et `Unités
+  terminées` comptent sa part de chaque vol, et le vol fini pour l'équipe qui
+  le finit. Le classeur de la période ne les a pas.
 - Le JSON des outils les porte aussi : `simuler-journee` rend
   `indicateursCharge` à côté de `resultat` (qui ne change pas) ;
   `simuler-periode`, le bilan (`indicateursCharge` par jour de travail, par
@@ -854,7 +867,12 @@ Une ligne par mesure, dans l'ordre du contrat :
   dépassement (min), face au quart d'heure qui compte (`Seuil` : 15 ; `Au-delà
   du seuil` : `oui` à partir du quart d'heure) ; le détail : ses heures sup
   (min × personnes), ce qu'il fait partir en retard et sa cause ; sinon
-  « aucun ». Puis, pour chaque service et jour de
+  « aucun ». Une plonge par vol qui laisse des vols à laver le lendemain
+  coince aussi (évolution 18), rangée après les autres : son détail ajoute
+  « laisse n vol(s) à laver le lendemain (m min de lavage) », et sa cause
+  est « ses équipes partent à la fin de leur présence… » ; sa ligne a alors
+  une mesure de plus, `Reste à laver le lendemain` (vols ; `Seuil` : 0 ;
+  `Au-delà du seuil` : `oui` ; en détail, les minutes de lavage). Puis, pour chaque service et jour de
   travail qui reçoit des arrivages (les lots livrés ensemble) : `Arrivages du
   jour`, `File d’arrivages la plus longue`, `Attente la plus longue d’un
   arrivage` (au seuil d'attente), `Cumul d’attente des arrivages`, `Cause de
@@ -868,7 +886,10 @@ Une ligne par mesure, dans l'ordre du contrat :
   équipes qui travaillent ce jour-là : correction 18, retouches), `Dépassement`
   (min ; « au-delà du seuil » à partir d'un quart d'heure, une règle fixe ; en détail, l'équipe qui
   dépasse, avec sa propre fin et son propre horaire), `Heures sup` (min × personnes ; équipes, renforts prêtés, chauffeurs
-  en détail).
+  en détail). Une plonge par vol (évolution 18) n'a plus d'heures sup ; elle a une ligne `Lavage en relais` par vol passé
+  d'une équipe à l'autre (min de tunnel ; en détail, ses parts : « L1 : Plonge matin 12:00 → 14:00 (120 min), Plonge
+  après-midi 14:00 → 15:00 (60 min) ; propre à 15:00 ») et une ligne `Lavage arrêté` par vol arrêté à une fin de présence
+  (en détail, sa part faite et « reste m min à laver le lendemain »).
 - **4.** Une ligne par exception (vol chargé en retard, vol pas chargé, vol
   pas prêt, vol sans équipe, commande en retard) : son retard en
   minutes, au seuil de retard, et sa cause ; sans exception, une ligne

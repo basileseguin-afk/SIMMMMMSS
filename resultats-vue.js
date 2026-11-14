@@ -162,12 +162,13 @@
    * le seuil d'attente. temps.js (commun aux deux versions) le dit dès une heure d'attente : la version 1 le corrige
    * d'après ce seuil — l'étiquette, et la couleur des deux tuiles qui le portent, retirées ou ajoutées. Correction 18 (a) :
    * l'attente est celle d'un arrivage (`plonge` : celle des réponses — à une plonge par vol, un vol revenu qui attend son
-   * tunnel) ; au débit, sans arrivage, celle du moteur, par unité.
+   * tunnel) ; au débit, sans arrivage, celle du moteur, par unité. Évolution 18 : une plonge par vol qui laisse des vols à
+   * laver le lendemain (`plonge.lendemain`) est en bouchon, comme elle coince dans la Synthèse.
    */
   const bouchon = (p, seuils, plonge) => {
     if (!p) return false;
     const attente = plonge && Number.isFinite(plonge.attenteMax) ? plonge.attenteMax : (p.attenteMax || 0);
-    return (p.resteSale || 0) > 0 || attente > seuils.attenteLot + 1e-9;
+    return (p.resteSale || 0) > 0 || attente > seuils.attenteLot + 1e-9 || !!(plonge && plonge.lendemain && plonge.lendemain.vols > 0);
   };
   function corrigerBouchon(box, p, seuils, plonge) {
     if (!box || !p) return;

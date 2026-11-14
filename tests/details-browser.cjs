@@ -133,8 +133,14 @@ const tropDeMinutes=texte=>[...String(texte).matchAll(/(\d[\d   ]*) ?min\b/g)
   // 7. « À regarder » se tait quand il n'a rien à dire : au début de la journée rejouée, personne n'attend ; et aucune attente
   //    de la journée ne passe un seuil de 24 h. Au seuil d'une heure, il dit qui attend le plus sur la journée.
   await page.evaluate(()=>Sim.seuils.enregistrer({attenteLot:1440}));
+  //    La plonge de l'unité fictive laisse des vols à laver le lendemain : le panneau le dit, et rien d'autre (évolution 18) ;
+  //    sans elle, il n'a rien à dire.
   await nav.aller(page,'j-plan');await page.evaluate(()=>Sim.vue.allerA(Sim.vue.debut));await attendre(300);
+  assert.match(await page.locator('#goulot-info').innerText(),/^\s*À la fin de la journée, .+ laisse 2 vols à laver le lendemain \(1 h 15 de lavage\)\.\s*$/,'le reste du lendemain, seul');
+  const equipes=await F.sansPlonge(page);
+  await page.evaluate(()=>Sim.vue.allerA(Sim.vue.debut));await attendre(300);
   assert.equal(await page.locator('#goulot-info').isVisible(),false,'rien à dire : rien d’affiché');
+  await F.remettreEquipes(page,equipes);
   await page.evaluate(()=>Sim.seuils.enregistrer({attenteLot:60}));await page.evaluate(()=>Sim.vue.allerA(Sim.vue.debut+1));await attendre(300);
   // Correction 18 (a) : la phrase suit l'attente d'un arrivage (les lots livrés ensemble), celle de la Synthèse.
   assert.match(await page.locator('#goulot-info').innerText(),/ce sont les arrivages de .* qui attendent le plus : \d+ h \d\d en tout/,'au-delà du seuil : il le dit, en heures');

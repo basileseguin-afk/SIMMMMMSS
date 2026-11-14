@@ -391,6 +391,54 @@ calcul, la plonge **par vol** (`parVol`) ; la plonge au débit, les autres
 `P.partsDuLot(lot)` rend les parts de tout lot : celles d'un relais, sinon le
 lot entier pour son équipe ; aucune pour un lot que personne n'a commencé.
 
+**Dans les résultats** (évolution 18 b) :
+
+- **Les réponses** (`moteur/reponses.js`) lisent les parts : le premier lot
+  d'une équipe et ses moments sans travail (avant, entre, après) se comptent
+  autour de sa part ; la fin d'une équipe de plonge est la fin de sa dernière
+  part, sans heures sup. `fins.services[].relais` (seulement s'il y en a)
+  liste les lavages passés en relais ou arrêtés, avec leurs parts.
+- **Une conséquence de plus** pour « Où ça coince » : une plonge par vol qui
+  laisse des vols à laver le lendemain coince — `lendemain: { vols, minutes }`
+  sur sa ligne (`coince.services[]`), sur son goulot et sur `plonge`,
+  seulement s'il y en a ; les minutes sont celles du lavage qui reste (la
+  durée restante d'un vol arrêté, la durée entière d'un vol pas commencé).
+  Quand c'est sa seule conséquence, elle est rangée **après** les services
+  qui dépassent leur horaire ou font partir en retard (le rang des autres ne
+  change pas) ; sa cause : ses équipes partent à la fin de leur présence.
+  Tout lavé dans les présences, la plonge n'est plus citée : le dépassement
+  d'une équipe qui finissait un vol en heures sup n'existe plus.
+- **La Synthèse** : sur la ligne de la plonge, sous sa fin, « reste à laver
+  le lendemain : n vols (h de lavage) » ; plus d'heures sup. La phrase de
+  tête et la carte « Où ça coince » disent « laisse n vols à laver le
+  lendemain ». L'étiquette « Bouchon » de la plonge suit la même règle, et
+  le plan rejoué le dit en une phrase.
+- **Le planning des équipes** : un lot passé en relais se dessine sur les
+  deux lignes, chacune pour sa part, avec un petit triangle à la jointure ;
+  au survol, « repris par … à hh:mm » et « commencé par … », et l'heure où le
+  vol est propre. Un lavage arrêté se dessine jusqu'à la fin de la présence,
+  avec un petit carré ; au survol, ce qu'il reste à laver le lendemain. La
+  bande « sans travail » d'avant le premier lot s'arrête au début de la part.
+- **Le plan rejoué** : un vol en relais reste dans son tunnel, sans coupure
+  (c'est un seul lot).
+- **Le classeur de la journée** : la feuille « Réponses » et la feuille
+  « Charge » donnent les parts et le reste du lendemain
+  ([`FORMATS_EXCEL.md`](FORMATS_EXCEL.md), § 6 et § 8). Les indicateurs d'une
+  équipe portent `relais: { passes, repris, minutes }`, seulement si elle en a.
+
+Le résultat de la journée, les indicateurs et le JSON des outils ne changent
+pas pour une journée sans relais ; les réponses n'ont un champ de plus que
+s'il y a un relais ou un reste.
+
+Vérifications : `tests/plonge-relais-resultats.test.cjs` (un relais : les
+fins, les personnes sans travail, rien ne coince ; un reste : la plonge
+coince, sa cause, son rang après un service qui dépasse ; la Synthèse ; le
+« Bouchon » ; les feuilles « Réponses » et « Charge » ; le planning ; sans
+relais ni reste, aucun champ de plus) ; `tests/plonge-relais-browser.cjs`
+(sur une unité fictive : le lot en relais sur deux lignes avec son repère et
+ses mots, la Synthèse sans heures sup à la plonge et avec le reste du
+lendemain, « Où ça coince », le plan rejoué sans coupure).
+
 Une journée où aucun lavage n'atteint une fin de présence, et une journée
 sans plonge par vol, rendent le résultat d'avant, champ par champ.
 

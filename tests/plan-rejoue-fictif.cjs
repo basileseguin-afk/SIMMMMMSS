@@ -95,4 +95,20 @@ async function retablirEquipe(page, x) {
   await page.evaluate(y => Sim.ateliers.changer(() => { const e = Sim.ateliers.state.ateliers.find(a => a.id === y.id); if (y.avant) e.regime = y.avant; else delete e.regime; }, ''), x);
 }
 
-module.exports = { S, volsCsv, volsSansRetardCsv, sauvegardeFictive, heureDuPicAttendue, charger, importerVols, faireDepasser, retablirEquipe, hh };
+/**
+ * Dans la page : retire les équipes de plonge de l'unité fictive, et attend la journée recalculée. Sa plonge laisse des vols
+ * à laver le lendemain : elle coince (évolution 18) ; sans elle, une journée sans retard ne coince pas. Rend les équipes
+ * d'avant, pour `remettreEquipes`.
+ */
+async function sansPlonge(page) {
+  const avant = await page.evaluate(() => { const l = JSON.parse(JSON.stringify(Sim.ateliers.state.ateliers)); Sim.ateliers.changer(() => { const st = Sim.ateliers.state; st.ateliers = st.ateliers.filter(a => a.type !== 'lavage'); }, ''); return l; });
+  await page.waitForFunction(() => { const r = Sim.ateliers.resultat; return !!r && !(r.ateliers || []).some(a => a.type === 'lavage'); });
+  return avant;
+}
+/** Dans la page : remet les équipes d'avant `sansPlonge`, et attend la journée recalculée. */
+async function remettreEquipes(page, equipes) {
+  await page.evaluate(l => Sim.ateliers.changer(() => { Sim.ateliers.state.ateliers = l; }, ''), equipes);
+  await page.waitForFunction(() => { const r = Sim.ateliers.resultat; return !!r && (r.ateliers || []).some(a => a.type === 'lavage'); });
+}
+
+module.exports = { S, volsCsv, volsSansRetardCsv, sauvegardeFictive, heureDuPicAttendue, charger, importerVols, faireDepasser, retablirEquipe, sansPlonge, remettreEquipes, hh };
