@@ -39,11 +39,14 @@ test('à la fin de sa présence, l’après-midi arrête le vol dans son tunnel 
   assert.equal(vue(r, 'apm').heuresSup, 0);
   assert.deepEqual(r.saleFinal, [{ vol: 'V1', cie: 'NORD', unites: 190, reste: 30 }, { vol: 'V2', cie: 'SUD', unites: 190 }],
     'pas de plonge pour le reprendre : V1 reste sale pour 30 min ; V2, pas commencé, va au retard');
-  // La nuit ouverte lave V2 à son arrivée. Elle arrive à 23:00, l'après-midi est partie à 21:45 : pas de relais, V1 passe au lendemain.
+  // La nuit arrive à 23:00, l'après-midi est partie à 21:45 : pas de relais. Elle reprend d'abord V1 dans son tunnel, pour ses
+  // 30 min (23:00 → 23:30), puis lave V2 (23:30 → 01:00) : rien ne reste. (Avant la retouche de la correction 19, son tunnel
+  // n'ayant pas le nom de celui de l'après-midi : V1 restait arrêté — `fait: 60`, `reste: 30`, dans `saleFinal` —, et V2 était
+  // lavé de 23:00 à 00:30.)
   const nuit = jouer(SOIR, [APM(), NUIT()], SUP);
-  assert.deepEqual([laves(nuit, 'apm'), coupes(nuit, 'apm')], [[], [['V1', '20:45', 60, 30]]]);
-  assert.deepEqual(laves(nuit, 'nuit'), [['V2', '23:00', 'J+1 00:30']]);
-  assert.deepEqual([vue(nuit, 'apm').heuresSup, nuit.saleFinal], [0, [{ vol: 'V1', cie: 'NORD', unites: 190, reste: 30 }]]);
+  assert.deepEqual([laves(nuit, 'apm'), coupes(nuit, 'apm')], [[['V1', '20:45', '23:30']], []]);
+  assert.deepEqual(laves(nuit, 'nuit'), [['V2', '23:30', 'J+1 01:00']]);
+  assert.deepEqual([vue(nuit, 'apm').heuresSup, vue(nuit, 'apm').fin, nuit.saleFinal], [0, h('21:45'), []]);
   // Une nuit fermée (sur le sale, sous son seuil) : V1 et V2 vont au sale de fin de journée.
   const fermee = jouer(SOIR, [APM(), NUIT({ condition: { mesure: 'sale', seuil: 1000 } })], SUP);
   assert.deepEqual([vue(fermee, 'nuit').personnes, fermee.saleFinal.map(x => x.vol)], [0, ['V1', 'V2']]);
@@ -80,7 +83,9 @@ test('l’option des heures sup n’y change plus rien : une plonge commence le 
   assert.deepEqual([laves(r, 'apm'), coupes(r, 'apm'), vue(r, 'apm').heuresSup, r.saleFinal.map(x => x.vol)], [[], [['V1', '20:45', 60, 30]], 0, ['V1', 'V2']]);
   assert.deepEqual(JSON.parse(JSON.stringify(r.lots)), JSON.parse(JSON.stringify(jouer(SOIR, [APM()], SUP).lots)), 'avec ou sans l’option : les mêmes lots');
   const nuit = jouer(SOIR, [APM(), NUIT()]);
-  assert.deepEqual([laves(nuit, 'nuit'), nuit.saleFinal.map(x => [x.vol, x.reste])], [[['V2', '23:00', 'J+1 00:30']], [['V1', 30]]]);
+  // La nuit reprend d'abord V1 (23:00 → 23:30), puis lave V2. (Avant la retouche de la correction 19 : V2 de 23:00 à 00:30,
+  // et V1 au sale du soir, `reste: 30`.)
+  assert.deepEqual([laves(nuit, 'nuit'), nuit.saleFinal.map(x => [x.vol, x.reste])], [[['V2', '23:30', 'J+1 01:00']], []]);
   // Une plonge dont la présence n'a pas de fin (règle de poste décochée) lave tout, comme avant.
   const libre = jouer(SOIR, [APM({ regime: { actif: false } })], SUP);
   assert.deepEqual(laves(libre, 'apm').map(x => x[0]), ['V1', 'V2']);

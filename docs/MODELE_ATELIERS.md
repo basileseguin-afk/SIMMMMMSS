@@ -777,9 +777,11 @@ prend un vol tant qu'elle est présente, même si elle ne peut pas le finir. À
 la fin de sa présence, une autre équipe de la même plonge présente à cet
 instant sur la même machine continue le lavage, sans interruption : un seul
 lot, avec ses `parts` (qui a lavé, de quand à quand, pour combien de travail).
-Sinon le lavage s'arrête ; la première équipe de la plonge qui arrive ensuite
-sur la même machine le reprend d'abord, pour sa seule durée restante : le même
-lot, une part de plus (`reprise`), avec son trou (correction 19). Sans équipe
+Sinon le lavage s'arrête ; une équipe de la plonge qui arrive ensuite le
+reprend d'abord, sur n'importe lequel de ses tunnels libres (celui où la
+reprise finirait le plus tôt), pour sa seule
+durée restante — à plusieurs lavages arrêtés, dans l'ordre de leur arrêt : le
+même lot, une part de plus (`reprise`), avec son trou (correction 19). Sans équipe
 pour le reprendre ce jour-là, le vol reste sale, et sa durée restante passe au
 lendemain avec lui (`saleFinal[].reste`, le sale de la veille), où il est lavé
 d'abord, pour cette seule durée. Personne ne reste en heures sup : une plonge

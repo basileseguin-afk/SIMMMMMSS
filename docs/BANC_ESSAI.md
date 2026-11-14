@@ -352,31 +352,55 @@ calcul, la plonge **par vol** (`parVol`) ; la plonge au débit, les autres
   dernière part. Le lot est dans la liste des lots des deux équipes.
 - **Sans équipe présente pour le continuer**, le lavage s'arrête à la fin de
   la présence.
-- **La reprise à l'arrivée** (correction 19 a). Un lavage arrêté est repris
-  par **la première équipe de la plonge qui arrive ensuite sur la même
-  machine** (un tunnel du même nom) : **d'abord**, avant tout autre vol, pour
-  sa **seule durée restante**, à la vitesse de son tunnel, avec ses pauses.
-  Tout ce que la machine lave ensuite — le sale de la veille qui attendrait
-  encore, puis les vols à leur heure — vient après la reprise, dans l'ordre
-  d'avant. C'est **le même lot** : une part de plus, marquée `reprise: true`,
-  qui commence à l'arrivée de l'équipe ; entre les deux parts, un trou, qui
-  n'est ni du travail ni un arrêt (`arret` ne compte que les pauses). La
-  durée du lot reste la somme du travail de ses parts ; sa fin est la fin de
-  la reprise : le matériel du vol est propre à cet instant, et le vol sort
-  de `saleFinal`. À la même heure d'arrivée, c'est l'équipe qui part le plus
-  tard qui reprend, puis la première de la liste ; une équipe qui ne laverait
-  rien de toute sa présence (en pause jusqu'à sa fin) ne reprend pas : c'est
-  la suivante. Une équipe réglée sur J+1 fait partie de la journée jouée :
-  elle reprend à son arrivée, le lendemain matin, comme elle lavait déjà les
-  vols que personne n'avait commencés. Une reprise que son équipe ne finit
-  pas passe en relais, est reprise encore, ou s'arrête : la même règle. Sur
-  une machine, il n'y a jamais qu'un lavage arrêté à reprendre
-  (rien d'autre n'y passe avant la reprise) ; une équipe qui tient deux
-  machines reprend le sien sur chacune, à son arrivée, et sa liste de lots
-  donne ses reprises d'abord, dans l'ordre de leur arrêt. Une équipe sans
-  tunnel du même nom ne reprend pas. Le choix du tunnel ne change pas : celui
-  où le lavage finirait le plus tôt s'il allait à son terme sans s'arrêter,
-  qu'une reprise suive ou non.
+- **La reprise à l'arrivée** (correction 19 a, et sa retouche). Un lavage
+  arrêté attend. **Une équipe de la plonge qui arrive ensuite le reprend sur
+  n'importe lequel de ses tunnels libres** — plus besoin d'un tunnel du même
+  nom (retouche : une nuit qui ne tenait qu'un tunnel venait encore sans rien
+  laver quand le lavage s'était arrêté sur un autre) : **d'abord**, avant
+  tout autre vol, pour sa **seule durée restante** (elle est en minutes d'un
+  tunnel normal), à la vitesse de ce tunnel, avec ses pauses ; **à plusieurs
+  lavages arrêtés, dans l'ordre de leur arrêt** (arrêtés à la même heure :
+  dans l'ordre de leur arrivée). Le relais sans interruption, lui, reste sur
+  la même machine. C'est **le même lot** : une part de plus, marquée
+  `reprise: true` ; entre les deux parts, un trou, qui n'est ni du travail
+  ni un arrêt (`arret` ne compte que les pauses). La durée du lot reste la
+  somme du travail de ses parts ; sa fin est la fin de la reprise : le
+  matériel du vol est propre à cet instant, et le vol sort de `saleFinal`.
+  Dans le détail :
+  - **qui reprend** : à chaque arrivée d'équipe, les lavages arrêtés avant
+    elle lui sont proposés dans l'ordre des arrêts ; chacun va dans celui de
+    ses tunnels où la reprise finirait le plus tôt si elle allait à son
+    terme — la règle qui choisit le tunnel d'un vol : le premier libre, ou
+    un plus rapide, même s'il se libère un peu plus tard ; le résultat ne
+    dépend pas de l'ordre de saisie des tunnels. À égalité : l'équipe qui
+    part le plus tard, puis la machine où il s'est arrêté, puis l'ordre de
+    la liste. Une machine que plusieurs équipes arrivées à la même heure
+    tiennent va à celle qui part le plus tard. Une équipe qui ne laverait
+    plus rien avant de partir (en pause jusqu'à sa fin, tunnels pris
+    jusqu'à son départ) ne le prend pas :
+    il attend l'arrivée suivante. Une équipe réglée sur J+1 fait partie de
+    la journée jouée : elle reprend à son arrivée, le lendemain matin ;
+  - **un tunnel pris n'est pas libre** : si la machine de l'équipe qui
+    arrive lave encore un vol (une autre équipe la tient en même temps), la
+    reprise commence quand elle se libère ;
+  - **une équipe déjà là** quand le lavage s'arrête ne le reprend pas : sur
+    la même machine, elle l'aurait continué en relais ; sur une autre, elle
+    n'« arrive » pas après lui ;
+  - **les vols qui attendaient cette équipe** viennent après ses reprises,
+    quand le lavage s'est arrêté avant leur arrivée à la plonge. Deux
+    limites, voulues : un vol arrivé plus tôt et déjà placé dans le tunnel
+    de cette équipe avant que l'arrêt ne soit connu garde sa place (les
+    vols se placent dans l'ordre de leur arrivée ; cela se voit quand toutes
+    les équipes sont prises et que des vols attendent déjà l'équipe du
+    soir) ; et un vol passé en relais sans interruption dans ce tunnel finit
+    son lavage avant la reprise (le relais garde sa machine) ;
+  - une reprise que son équipe ne finit pas passe en relais sur sa machine,
+    est reprise encore, ou s'arrête : la même règle ; le tunnel où le lavage
+    s'est arrêté est libre dès l'arrêt ;
+  - la liste des lots d'une équipe donne ses reprises d'abord, dans l'ordre
+    des arrêts. Le choix du tunnel d'un vol ne change pas : celui où le
+    lavage finirait le plus tôt s'il allait à son terme sans s'arrêter,
+    qu'une reprise suive ou non.
 - **Sans aucune équipe pour le reprendre ce jour-là**, le vol reste sale et
   passe au lendemain. Le lot est celui d'une équipe qui part en laissant un lot
   (`impossible`, `horsPoste`, `fin: null`) : `fait` est le travail fait,
@@ -562,28 +586,37 @@ journée, sans toucher la précédente, ne reprenait pas le vol arrêté : il
 attendait le lendemain, même si elle avait le temps — et une nuit sous
 condition, venue pour lui, pouvait ne rien laver. Elle le reprend maintenant
 à son arrivée. Seules changent les journées où un lavage s'arrête à une fin
-de présence **et** où une équipe de la plonge arrive ensuite, ce jour-là,
-sur la même machine :
+de présence **et** où une équipe de la plonge arrive ensuite, ce jour-là
+(avec la correction 19 a : sur la même machine ; depuis sa retouche : avec
+n'importe quel tunnel) :
 
 - le vol est lavé ce jour-là : il sort du sale du soir (`saleFinal`), et du
   reste que la Synthèse annonce pour le lendemain ;
-- l'équipe qui arrive commence par lui : les vols qu'elle lave ensuite sur
-  cette machine finissent plus tard, de la durée de la reprise ;
+- l'équipe qui arrive commence par lui : les vols qu'elle lave ensuite dans
+  ce tunnel finissent plus tard, de la durée de la reprise ;
 - **la nuit sous condition** : la journée jouée sans elle (§ 6) reprend
   aussi les lavages arrêtés que d'autres équipes peuvent reprendre — le
   retard mesuré peut donc baisser ; une nuit qui s'ouvre **lave ce qui l'a
-  fait venir** : elle n'a jamais zéro lavage quand un lavage reste arrêté sur
-  une de ses machines.
+  fait venir** : elle n'a jamais zéro lavage quand il reste un lavage arrêté,
+  quel que soit le tunnel où il s'est arrêté (retouche).
 
 Une journée sans lavage arrêté, ou dont le lavage arrêté n'a aucune équipe
-pour le reprendre (pas d'équipe ensuite, ou sans tunnel du même nom), rend
-le résultat d'avant, champ par champ.
+qui arrive ensuite, rend le résultat d'avant, champ par champ.
+
+**La retouche et les mesures passées.** Par rapport à la correction 19 (a),
+seules changent les journées où un lavage s'arrête et où l'équipe qui arrive
+ensuite ne tient pas le tunnel où il s'est arrêté : elle le reprend
+maintenant, dans un des siens. Le tunnel où il s'est arrêté est libre dès
+l'arrêt (il était réservé jusqu'à la fin de la reprise).
 
 Vérifications : `tests/plonge-reprise.test.cjs` (journées fictives calculées
 à la main : trois équipes dont la nuit arrive une heure après le départ de
 l'après-midi — le vol arrêté repris d'abord, pour sa durée restante, propre
 à l'heure attendue, absent de `saleFinal` ; la même journée sans nuit ; une
-équipe sans tunnel du même nom ; deux vols arrêtés, sur deux machines, repris
+équipe à un tunnel qui reprend un lavage arrêté sur un tunnel d'un autre
+nom ; deux lavages arrêtés et un seul tunnel, l'un après l'autre dans l'ordre
+des arrêts — même quand ce n'est pas l'ordre des arrivées ; un tunnel pris,
+une équipe déjà là ; deux vols arrêtés, sur deux machines, repris
 dans l'ordre de leur arrêt ; la somme du travail des parts ; un tunnel plus
 rapide, une pause à l'arrivée, une reprise trop courte ; une nuit sous
 condition qui s'ouvre et lave ce qui l'a fait venir ; des chaînes — relais,

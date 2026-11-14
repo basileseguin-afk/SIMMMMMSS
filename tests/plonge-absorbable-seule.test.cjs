@@ -61,11 +61,15 @@ test('un retard qui pousse 5 min de lavage au-delà de la présence du matin : l
   // (Avant l'évolution 18 : le retard, 360 min, de 08:00 à 14:00, M1 jusqu'à 16:20 — un dépassement de 20 min.)
   const vols = [ret('M1', 'SUD', h('09:30'))].concat(SOIR);
   const r = jouer(vols, [MATIN({ durees: { '*': 90, SUD: 140 } }), APM(), NUIT()]);
-  // La nuit, arrivée à 23:00, lave R7 et R8 (380 u). R2 et R6, arrêtés à 16:00 et à 21:45 quand personne n'était là pour
-  // les reprendre sur leur tunnel, passent au lendemain avec leur durée restante (avant : elle lavait les quatre, 760 u).
+  // La nuit, arrivée à 23:00, reprend d'abord dans son tunnel R2 et R6, arrêtés à 16:00 et à 21:45 dans les tunnels du matin
+  // et de l'après-midi (80 puis 75 min restantes, dans l'ordre de leur arrêt), puis lave R7 et R8 : les quatre, 760 u — la
+  // reprise n'exige plus le même nom de tunnel (retouche de la correction 19). Avec l'évolution 18 et la correction 19 (a),
+  // elle ne lavait que R7 et R8 (`lavees: 380`, `reste: 380`), et R2 et R6 passaient au lendemain.
   assert.deepEqual(vue(r, 'nuit').conditionSale, { mesure: 'absorbable', ouverte: true, equipe: 'matin', retard: { vols: 4, unites: 760 },
-    absorbe: false, depassement: 5, lavees: 380, reste: 380, fin: FIN_NUIT });
-  assert.deepEqual([vue(r, 'nuit').personnes, r.saleFinal], [2, RETARD.slice(0, 2)]);
+    absorbe: false, depassement: 5, lavees: 760, reste: 0, fin: FIN_NUIT });
+  assert.deepEqual([vue(r, 'nuit').personnes, r.saleFinal], [2, []]);
+  assert.deepEqual(vue(r, 'nuit').lots.map(l => [l.vol, P.hhmm(l.parts ? l.parts[l.parts.length - 1].debut : l.debut), P.hhmm(l.fin)]),
+    [['R2', '23:00', 'J+1 00:20'], ['R6', 'J+1 00:20', 'J+1 01:35'], ['R7', 'J+1 01:35', 'J+1 03:05'], ['R8', 'J+1 03:05', 'J+1 04:35']]);
   // À 90 min, M1 est lavé de 13:35 à 15:05, R2 de 15:50 à 17:20 : 80 min après 16:00, comme sans retard. Il l'absorbe.
   assert.equal(vue(jouer(vols, [MATIN(), APM(), NUIT()]), 'nuit').conditionSale.absorbe, true);
 });
@@ -80,10 +84,11 @@ test('les autres cas : sans retard, fermée ; sans équipe pour absorber, ouvert
   assert.deepEqual([un.retard, un.absorbe, un.depassement, un.ouverte], [{ vols: 1, unites: 190 }, true, 0, false]);
   const seule = vue(jouer(vols, [APM(), NUIT({ mesure: 'absorbable', equipe: 'matin' })]), 'nuit').conditionSale;
   assert.deepEqual([seule.equipe, seule.absorbe, seule.depassement, seule.ouverte], ['matin', false, null, true], 'l’équipe désignée ne travaille pas ce jour-là');
-  // Sur le sale, à 23:00 : deux vols attendent (R7, R8 ; R2 et R6 sont entrés dans un tunnel), elle s'ouvre et les lave ; R2
-  // et R6, arrêtés, restent sales à sa fin. (Avant l'évolution 18 : quatre vols attendaient, 760 u, tous lavés.)
+  // Sur le sale, à 23:00 : deux vols attendent (R7, R8 ; R2 et R6 sont entrés dans un tunnel), elle s'ouvre ; elle reprend
+  // d'abord R2 et R6, arrêtés dans d'autres tunnels, puis lave R7 et R8 : rien ne reste à sa fin (retouche de la correction
+  // 19 ; avant : `lavees: 380`, `reste: 380` — R2 et R6 restaient sales).
   assert.deepEqual(vue(jouer(vols, [MATIN(), APM(), NUIT({ mesure: 'sale' })]), 'nuit').conditionSale,
-    { mesure: 'sale', ouverte: true, a: '23:00', heure: h('23:00'), seuil: 1, sale: 380, lavees: 380, reste: 380, fin: FIN_NUIT });
+    { mesure: 'sale', ouverte: true, a: '23:00', heure: h('23:00'), seuil: 1, sale: 380, lavees: 760, reste: 0, fin: FIN_NUIT });
 });
 
 test('déterministe : la même journée, deux fois', () => {

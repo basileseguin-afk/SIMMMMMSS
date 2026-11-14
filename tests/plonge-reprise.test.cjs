@@ -1,11 +1,13 @@
-/* Banc d'essai, correction 19 (a) — la reprise à l'arrivée, à la plonge par
- * vol (v1). Un lavage arrêté à la fin d'une présence, personne n'étant là pour
- * le continuer, est repris par la première équipe de la plonge qui arrive
- * ensuite sur la même machine (le même nom de tunnel) : d'abord, pour sa seule
- * durée restante, à la vitesse de son tunnel. C'est le même lot : une part de
- * plus, avec son trou. Le reste ne passe au lendemain que si aucune équipe ne
- * peut le reprendre ce jour-là (docs/BANC_ESSAI.md § 2). Journées fictives,
- * calculées à la main : vols, compagnies et équipes inventés. */
+/* Banc d'essai, correction 19 (a) et sa retouche — la reprise à l'arrivée, à
+ * la plonge par vol (v1). Un lavage arrêté à la fin d'une présence, personne
+ * n'étant là pour le continuer, est repris par l'équipe de la plonge qui
+ * arrive ensuite, sur n'importe lequel de ses tunnels libres (retouche : plus
+ * besoin du même nom de tunnel) : d'abord, pour sa seule durée restante, à la
+ * vitesse de ce tunnel ; à plusieurs, dans l'ordre de leur arrêt. C'est le
+ * même lot : une part de plus, avec son trou. Le relais sans interruption
+ * reste sur la même machine. Le reste ne passe au lendemain que si aucune
+ * équipe ne peut le reprendre ce jour-là (docs/BANC_ESSAI.md § 2). Journées
+ * fictives, calculées à la main : vols, compagnies et équipes inventés. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
@@ -68,16 +70,69 @@ test('la même journée sans équipe de nuit : le reste passe au lendemain', () 
   assert.deepEqual(r.saleFinal, [{ vol: 'W1', cie: 'NORD', unites: 190, reste: 30 }, { vol: 'W2', cie: 'SUD', unites: 190 }]);
 });
 
-test('une équipe qui arrive sans tunnel du même nom ne reprend pas', () => {
-  // La nuit n'a qu'un « Tunnel 2 » : W1 reste arrêté ; W2, lui, entre dans son tunnel à son arrivée (22:00 → 23:30).
+test('une équipe à un tunnel reprend un lavage arrêté sur un tunnel d’un autre nom', () => {
+  // La nuit n'a qu'un « Tunnel 2 ». W1 s'est arrêté à 21:00 dans le « Tunnel 1 » de l'après-midi, 30 min restent (en minutes
+  // d'un tunnel normal) : elle le reprend à son arrivée dans son tunnel, de 22:00 à 22:30. W2, arrivé à 20:30, vient ensuite :
+  // 22:30 → 00:00. (Correction 19 a : elle ne le reprenait pas — W1 restait arrêté, `reste: 30`, dans `saleFinal`, et W2 était
+  // lavé de 22:00 à 23:30.)
   const r = jouer(SOIR, [MATIN(), APM(), NUIT({ tunnels: [T('Tunnel 2')] })]);
-  assert.deepEqual([lot(r, 'W1').fin, lot(r, 'W1').reste], [null, 30]);
-  assert.deepEqual([lot(r, 'W2').atelier, lot(r, 'W2').debut, lot(r, 'W2').fin], ['nuit', h('22:00'), h('23:30')]);
-  assert.deepEqual(r.saleFinal, [{ vol: 'W1', cie: 'NORD', unites: 190, reste: 30 }]);
-  // Avec le « Tunnel 1 » en second tunnel : elle reprend W1 sur cette machine, son tunnel n° 2 ; W2 va à son « Tunnel 2 », libre.
+  assert.deepEqual(json(lot(r, 'W1').parts), [part('apm', '20:00', '21:00', 60), reprise('nuit', '22:00', '22:30', 30, { nomTunnel: 'Tunnel 2' })]);
+  assert.deepEqual([lot(r, 'W1').fin, lot(r, 'W1').duree, lot(r, 'W1').impossible, 'reste' in lot(r, 'W1')], [h('22:30'), 90, false, false]);
+  assert.deepEqual([lot(r, 'W2').atelier, lot(r, 'W2').debut, lot(r, 'W2').fin], ['nuit', h('22:30'), h('24:00')]);
+  assert.deepEqual([vue(r, 'nuit').lots.map(l => l.vol), vue(r, 'nuit').travail, r.saleFinal], [['W1', 'W2'], 30 + 90, []]);
+  // Un tunnel d'un autre nom, deux fois plus rapide : les 30 min restantes en 15 min.
+  const vite = jouer(SOIR.slice(0, 1), [MATIN(), APM(), NUIT({ tunnels: [T('Tunnel 2', { vitesse: 2 })] })]);
+  assert.deepEqual(json(lot(vite, 'W1').parts), [part('apm', '20:00', '21:00', 60), reprise('nuit', '22:00', '22:15', 15, { nomTunnel: 'Tunnel 2', vitesse: 2 })]);
+  // Avec ses deux tunnels libres, elle le reprend dans la machine où il s'est arrêté, son tunnel n° 2 ; W2 va à son « Tunnel 2 ».
   const avec = jouer(SOIR, [MATIN(), APM(), NUIT({ tunnels: [T('Tunnel 2'), T('Tunnel 1')] })]);
   assert.deepEqual(json(lot(avec, 'W1').parts), [part('apm', '20:00', '21:00', 60), reprise('nuit', '22:00', '22:30', 30, { tunnel: 2 })]);
   assert.deepEqual([lot(avec, 'W2').tunnel, lot(avec, 'W2').debut, lot(avec, 'W2').fin, avec.saleFinal], [1, h('22:00'), h('23:30'), []]);
+});
+
+test('deux lavages arrêtés et un seul tunnel : l’un après l’autre, dans l’ordre des arrêts', () => {
+  // Deux équipes du matin, chacune son tunnel : la première part à 12:00, la seconde à 12:30. V1 (180 min) entre à 10:30 dans le
+  // « Tunnel 1 » : 90 min lavées à 12:00, 90 restent. V2 entre à 11:00 dans le « Tunnel 2 » : 90 min lavées à 12:30, 90 restent.
+  // L'équipe qui arrive à 14:00 n'a qu'un tunnel, d'un troisième nom : V1 (arrêté à 12:00) de 14:00 à 15:30, puis V2 (arrêté à
+  // 12:30) de 15:30 à 17:00 ; V3, arrivé à 14:10, vient après les reprises : 17:00 → 18:30.
+  const a1 = plonge('a1', '06:00', 360), a2 = plonge('a2', '06:30', 360, { tunnels: [T('Tunnel 2')] });
+  const seul = (p = {}) => plonge('x', '14:00', 480, { tunnels: [T('Tunnel 3')], ...p });
+  const vols = [ret('V1', 'LONG', '10:00'), ret('V2', 'LONG', '10:30'), ret('V3', 'NORD', '13:40')];
+  const r = jouer(vols, [a1, a2, seul()]);
+  assert.deepEqual(json(lot(r, 'V1').parts), [part('a1', '10:30', '12:00', 90), reprise('x', '14:00', '15:30', 90, { nomTunnel: 'Tunnel 3' })]);
+  assert.deepEqual(json(lot(r, 'V2').parts), [part('a2', '11:00', '12:30', 90, { nomTunnel: 'Tunnel 2' }), reprise('x', '15:30', '17:00', 90, { nomTunnel: 'Tunnel 3' })]);
+  assert.deepEqual([lot(r, 'V3').debut, lot(r, 'V3').fin, vue(r, 'x').lots.map(l => l.vol), vue(r, 'x').travail, r.saleFinal], [h('17:00'), h('18:30'), ['V1', 'V2', 'V3'], 270, []]);
+  // L'ordre des arrêts n'est pas celui des arrivées : le « Tunnel 1 » jusqu'à 12:30, le « Tunnel 2 » jusqu'à 12:00. V1, arrivé le
+  // premier, s'arrête à 12:30 (120 min lavées, 60 restent) ; V2 s'arrête à 12:00 (60 min lavées, 120 restent). À 14:00, V2
+  // d'abord, de 14:00 à 16:00 ; puis V1, de 16:00 à 17:00.
+  const b1 = plonge('b1', '06:00', 390), b2 = plonge('b2', '06:00', 360, { tunnels: [T('Tunnel 2')] });
+  const inverse = jouer(vols.slice(0, 2), [b1, b2, seul()]);
+  assert.deepEqual(json(lot(inverse, 'V2').parts), [part('b2', '11:00', '12:00', 60, { nomTunnel: 'Tunnel 2' }), reprise('x', '14:00', '16:00', 120, { nomTunnel: 'Tunnel 3' })]);
+  assert.deepEqual(json(lot(inverse, 'V1').parts), [part('b1', '10:30', '12:30', 120), reprise('x', '16:00', '17:00', 60, { nomTunnel: 'Tunnel 3' })]);
+  assert.deepEqual(vue(inverse, 'x').lots.map(l => l.vol), ['V2', 'V1']);
+  // Arrêtés à la même heure (une équipe à deux tunnels qui part à 21:00) : dans l'ordre de leur arrivée. W1 (30 min restantes)
+  // de 22:00 à 22:30, puis W2 (60 min restantes) de 22:30 à 23:30.
+  const meme = jouer(SOIR, [MATIN(), APM({ tunnels: [T('Tunnel 1'), T('Tunnel 2')] }), NUIT()]);
+  assert.deepEqual(json(lot(meme, 'W1').parts), [part('apm', '20:00', '21:00', 60), reprise('nuit', '22:00', '22:30', 30)]);
+  assert.deepEqual(json(lot(meme, 'W2').parts), [part('apm', '20:30', '21:00', 30, { tunnel: 2, nomTunnel: 'Tunnel 2' }), reprise('nuit', '22:30', '23:30', 60)]);
+  // Elle ne finit pas tout : sa présence s'arrête à 15:00. V1 repris de 14:00 à 15:00 (60 min, 30 restent) ; V2 n'est pas repris.
+  const court = jouer(vols.slice(0, 2), [a1, a2, seul({ regime: { actif: true, seuils: [], presence: 60 } })]);
+  assert.deepEqual([lot(court, 'V1').fin, lot(court, 'V1').fait, lot(court, 'V1').reste, lot(court, 'V2').fin, lot(court, 'V2').reste], [null, 150, 30, null, 90]);
+  assert.deepEqual(court.saleFinal, [{ vol: 'V1', cie: 'LONG', unites: 190, reste: 30 }, { vol: 'V2', cie: 'LONG', unites: 190, reste: 90 }]);
+});
+
+test('un tunnel pris n’est pas libre : la reprise attend qu’il le soit ; une équipe déjà là ne reprend pas', () => {
+  // L'équipe « côté » tient le « Tunnel 2 » de 13:00 à 23:00 ; un long vol X l'occupe de 19:50 à 22:50. W1 s'arrête à 21:00
+  // dans le « Tunnel 1 » de l'après-midi (30 min restent). La nuit arrive à 22:00 avec ce même « Tunnel 2 », pris jusqu'à
+  // 22:50 : elle reprend W1 dès qu'il est libre, de 22:50 à 23:20.
+  const cote = plonge('cote', '13:00', 600, { tunnels: [T('Tunnel 2')] }), X = ret('X', 'LONG', '19:20');
+  const r = jouer([X, SOIR[0]], [MATIN(), APM(), cote, NUIT({ tunnels: [T('Tunnel 2')] })]);
+  assert.deepEqual([lot(r, 'X').atelier, lot(r, 'X').debut, lot(r, 'X').fin], ['cote', h('19:50'), h('22:50')]);
+  assert.deepEqual(json(lot(r, 'W1').parts), [part('apm', '20:00', '21:00', 60), reprise('nuit', '22:50', '23:20', 30, { nomTunnel: 'Tunnel 2' })]);
+  // Sans la nuit : « côté » est déjà là quand le lavage s'arrête — elle n'arrive pas après lui, et son tunnel n'est pas celui du
+  // lavage (pas de relais) : elle ne le reprend pas, même quand son tunnel se libère. Le reste passe au lendemain, comme avant.
+  const sans = jouer([X, ...SOIR], [MATIN(), APM(), cote], M);
+  assert.deepEqual([lot(sans, 'W1').fin, lot(sans, 'W1').reste, sans.saleFinal.map(x => [x.vol, x.reste])], [null, 30, [['W1', 30], ['W2', 80]]]);
+  assert.equal(empreinte(sans), AVANT.dejaLa);
 });
 
 test('deux vols arrêtés sont repris dans l’ordre de leur arrêt', () => {
@@ -96,9 +151,11 @@ test('deux vols arrêtés sont repris dans l’ordre de leur arrêt', () => {
   // Dans la liste de l'équipe : les reprises d'abord, dans l'ordre de leur arrêt (12:00, puis 12:30), puis le vol du jour.
   assert.deepEqual(vue(r, 'x').lots.map(l => [l.vol, l.parts ? l.parts[0].fin : null]), [['V1', h('12:00')], ['V2', h('12:30')], ['V3', null]]);
   assert.deepEqual([vue(r, 'x').travail, vue(r, 'x').fin, r.saleFinal], [270, h('17:00'), []]);
-  // Elle ne tient que le « Tunnel 2 » : elle reprend V2 ; V1, sur une machine qu'elle ne tient pas, passe au lendemain.
+  // Elle ne tient que le « Tunnel 2 » : elle reprend les deux dans ce tunnel, l'un après l'autre — V1 (arrêté à 12:00) de 14:00
+  // à 15:30, V2 (arrêté à 12:30) de 15:30 à 17:00. (Correction 19 a : elle ne reprenait que V2, de 14:00 à 15:30 ; V1, arrêté
+  // sur une machine qu'elle ne tenait pas, passait au lendemain avec `reste: 90`.)
   const un = jouer(vols.slice(0, 2), [a1, a2, plonge('x', '14:00', 480, { tunnels: [T('Tunnel 2')] })]);
-  assert.deepEqual([lot(un, 'V1').fin, lot(un, 'V2').fin, un.saleFinal], [null, h('15:30'), [{ vol: 'V1', cie: 'LONG', unites: 190, reste: 90 }]]);
+  assert.deepEqual([lot(un, 'V1').fin, lot(un, 'V2').fin, un.saleFinal], [h('15:30'), h('17:00'), []]);
   // L'ordre des arrêts n'est pas celui des arrivées : le « Tunnel 1 » jusqu'à 12:30, le « Tunnel 2 » jusqu'à 12:00. V1, arrivé
   // le premier, s'arrête à 12:30 (120 min lavées, 60 restent) ; V2 s'arrête à 12:00 (60 min lavées, 120 restent). À 14:00,
   // chacun est repris sur sa machine ; la liste de l'équipe les donne dans l'ordre de leur arrêt : V2, puis V1.
@@ -129,7 +186,7 @@ test('la reprise va à la vitesse et aux pauses de l’équipe qui reprend ; tro
   assert.deepEqual(json(lot(jour, 'L1').parts), [part('matin', '11:00', '12:00', 60), reprise('apm', '13:00', '15:00', 120)]);
 });
 
-test('une nuit sous condition qui s’ouvre lave ce qui l’a fait venir : le lavage arrêté sur une de ses machines', () => {
+test('une nuit sous condition qui s’ouvre lave ce qui l’a fait venir : le lavage arrêté, sur sa machine ou sur une autre', () => {
   // Le matin : trois longs vols, de 06:00 à 15:00 (le dernier passe en relais à 14:00 : 60 min après sa présence, chaque jour).
   // Le soir, W1 s'arrête à 21:00, 30 min restent : c'est tout le retard. Seul, le matin le laverait d'abord (06:00 → 06:30), et
   // ses trois vols finiraient à 15:30 : 90 min après sa présence, 30 de plus que sans retard. Il ne l'absorbe pas : la nuit vient.
@@ -140,6 +197,11 @@ test('une nuit sous condition qui s’ouvre lave ce qui l’a fait venir : le la
   // Elle reprend W1 à son arrivée : elle n'est pas venue pour rien (avant la correction 19 : aucun lavage, W1 attendait le matin).
   assert.deepEqual(json(lot(r, 'W1').parts), [part('apm', '20:00', '21:00', 60), reprise('nuit', '22:00', '22:30', 30)]);
   assert.deepEqual([vue(r, 'nuit').lots.length, vue(r, 'nuit').travail, r.saleFinal], [1, 30, []]);
+  // Sa machine n'est pas celle où le lavage s'est arrêté (un « Tunnel 2 ») : elle vient, et le lave quand même — une nuit sous
+  // condition qui s'ouvre n'a jamais zéro lavage quand il reste un lavage arrêté (retouche ; avant : aucun lavage).
+  const autre = jouer(plein, [MATIN(), APM(), NUIT({ tunnels: [T('Tunnel 2')], condition: { mesure: 'absorbable' } })]);
+  assert.deepEqual([vue(autre, 'nuit').conditionSale.ouverte, vue(autre, 'nuit').lots.length, vue(autre, 'nuit').travail, autre.saleFinal], [true, 1, 30, []]);
+  assert.deepEqual(json(lot(autre, 'W1').parts), [part('apm', '20:00', '21:00', 60), reprise('nuit', '22:00', '22:30', 30, { nomTunnel: 'Tunnel 2' })]);
   // Sur le sale aussi : W2 attend à 22:00, elle vient ; W1 d'abord, puis W2.
   const sale = jouer(SOIR, [MATIN(), APM(), NUIT({ condition: { mesure: 'sale' } })]);
   assert.deepEqual([vue(sale, 'nuit').conditionSale.ouverte, vue(sale, 'nuit').lots.map(l => l.vol), sale.saleFinal], [true, ['W1', 'W2'], []]);
@@ -183,6 +245,62 @@ test('qui reprend : la première arrivée ; à la même heure, celle qui part le
   const demain = jouer(W1, [MATIN(), APM(), plonge('demain', '06:00', 480, { jour: 1 })]);
   assert.deepEqual(json(lot(demain, 'W1').parts), [part('apm', '20:00', '21:00', 60), { ...reprise('demain', '06:00', '06:30', 30), debut: h('06:00') + 1440, fin: h('06:30') + 1440 }]);
   assert.deepEqual(demain.saleFinal, []);
+  // Elle aussi sur un tunnel d'un autre nom.
+  const ailleurs = jouer(W1, [MATIN(), APM(), plonge('demain', '06:00', 480, { jour: 1, tunnels: [T('Tunnel 9')] })]);
+  assert.deepEqual(json(lot(ailleurs, 'W1').parts), [part('apm', '20:00', '21:00', 60),
+    { ...reprise('demain', '06:00', '06:30', 30, { nomTunnel: 'Tunnel 9' }), debut: h('06:00') + 1440, fin: h('06:30') + 1440 }]);
+  assert.deepEqual(ailleurs.saleFinal, []);
+});
+
+test('entre deux tunnels de l’équipe qui arrive : celui où la reprise finit le plus tôt, quel que soit l’ordre de saisie', () => {
+  // Le matin (06:00 à 12:00) lave 90 des 180 min de L1, de 10:30 à 12:00. L'équipe de 14:00 tient un tunnel normal et un tunnel
+  // deux fois plus rapide, libres tous les deux : les 90 min restantes finiraient à 15:30 dans l'un, à 14:45 dans l'autre.
+  const L1 = [ret('L1', 'LONG', '10:00')], matin = plonge('matin', '06:00', 360);
+  const lent = T('Tunnel 5'), rapide = T('Tunnel 6', { vitesse: 2 });
+  const suite = tunnels => plonge('suite', '14:00', 480, { tunnels });
+  const a = jouer(L1, [matin, suite([lent, rapide])]), b = jouer(L1, [matin, suite([rapide, lent])]);
+  assert.deepEqual(json(lot(a, 'L1').parts), [part('matin', '10:30', '12:00', 90), reprise('suite', '14:00', '14:45', 45, { tunnel: 2, nomTunnel: 'Tunnel 6', vitesse: 2 })]);
+  assert.deepEqual(json(lot(b, 'L1').parts), [part('matin', '10:30', '12:00', 90), reprise('suite', '14:00', '14:45', 45, { tunnel: 1, nomTunnel: 'Tunnel 6', vitesse: 2 })]);
+  assert.deepEqual([lot(a, 'L1').fin, lot(b, 'L1').fin, a.saleFinal, b.saleFinal], [h('14:45'), h('14:45'), [], []]);
+  // Le tunnel rapide se libère un peu plus tard : une équipe déjà là (11:00 à 19:00, elle ne reprend pas) y lave X1 de 12:40 à
+  // 14:10. La reprise l'attend dix minutes : elle y finit à 14:55, au lieu de 15:30 dans le tunnel libre dès 14:00.
+  const deja = plonge('deja', '11:00', 480, { tunnels: [T('Tunnel 6')] });
+  const c = jouer([...L1, ret('X1', 'NORD', '12:10')], [matin, deja, suite([lent, rapide])]);
+  assert.deepEqual(json(lot(c, 'X1').parts ?? null), null);
+  assert.deepEqual([lot(c, 'X1').atelier, lot(c, 'X1').debut, lot(c, 'X1').fin], ['deja', h('12:40'), h('14:10')]);
+  assert.deepEqual(json(lot(c, 'L1').parts), [part('matin', '10:30', '12:00', 90), reprise('suite', '14:10', '14:55', 45, { tunnel: 2, nomTunnel: 'Tunnel 6', vitesse: 2 })]);
+  // Deux tunnels pareils : celui où le lavage s'est arrêté, puis l'ordre de la liste.
+  const pareils = jouer(L1, [matin, suite([T('Tunnel 5'), T('Tunnel 1')])]);
+  assert.deepEqual(json(lot(pareils, 'L1').parts), [part('matin', '10:30', '12:00', 90), reprise('suite', '14:00', '15:30', 90, { tunnel: 2 })]);
+  const autres = jouer(L1, [matin, suite([T('Tunnel 5'), T('Tunnel 7')])]);
+  assert.deepEqual(json(lot(autres, 'L1').parts), [part('matin', '10:30', '12:00', 90), reprise('suite', '14:00', '15:30', 90, { tunnel: 1, nomTunnel: 'Tunnel 5' })]);
+});
+
+test('avec un handling 24 h/24, la reprise se joue à l’arrivée de l’équipe, pendant la journée', () => {
+  // Deux vols fictifs partent à 12:00 et 12:30 ; le handling tourne 24 h/24, leurs retours arrivent à la plonge à 10:20 et 11:00.
+  const vols = [{ id: 'N1', cie: 'NORD', sens: 'DEP', std: h('12:00'), bc: 0, pc: 0, yc: 100 }, { id: 'S1', cie: 'SUD', sens: 'DEP', std: h('12:30'), bc: 0, pc: 0, yc: 100 }];
+  const prepa = { id: 'pr', nom: 'Montage', service: 'prepa', type: 'manuel', debut: '00:00', jour: -1, personnes: 10, pauses: [], lots: [['NORD/YC'], ['SUD/YC']], regime: { actif: false } };
+  const handling = { id: 'ha', nom: 'Handling', service: 'handling', type: 'handling', debut: '00:00', jour: 0, personnes: 0, pauses: [], lots: [], regime: { actif: false },
+    durees: { '*': 20 }, allers: { '*': 10 }, retours: { '*': 10 }, simultanes: 5, avance: 180, handling24h: true, escale: { NORD: 120, SUD: 120 } };
+  const journee = (equipes, materiel = {}) => P.simuler({ vols, liaisons: [{ from: 'prepa', to: 'handling' }], bareme: { prepa: { '*/YC': 10 } }, rendement: 1,
+    ateliers: [prepa, ...equipes, handling], materiel: { actif: false, delaiRetour: 30, ...materiel } });
+  const soir = plonge('soir', '16:00', 300, { tunnels: [T('Tunnel 2')] });
+  // Le jour part à 12:00 : N1 est lavé (10:20 à 11:50), S1 s'arrête après 10 min. Le soir le reprend à son arrivée, sur son tunnel.
+  const r = journee([plonge('jour', '08:00', 240), soir]);
+  assert.deepEqual([lot(r, 'N1').arrivee, lot(r, 'N1').fin, lot(r, 'S1').arrivee], [h('10:20'), h('11:50'), h('11:00')]);
+  assert.deepEqual(json(lot(r, 'S1').parts), [part('jour', '11:50', '12:00', 10), reprise('soir', '16:00', '17:20', 80, { nomTunnel: 'Tunnel 2' })]);
+  assert.deepEqual([lot(r, 'S1').fin, vue(r, 'soir').lots.map(l => l.vol), vue(r, 'soir').travail, r.saleFinal], [h('17:20'), ['S1'], 80, []]);
+  // Sans le soir, il reste sale ; avec le matériel compté, la reprise est la même.
+  assert.deepEqual(journee([plonge('jour', '08:00', 240)]).saleFinal, [{ vol: 'S1', cie: 'SUD', unites: 190, reste: 80 }]);
+  const compte = journee([plonge('jour', '08:00', 240), soir], { actif: true, stockInitial: 0, unites: { YC: { parVol: 4 } } });
+  assert.deepEqual([json(lot(compte, 'S1').parts), compte.saleFinal], [json(lot(r, 'S1').parts), []]);
+  // Le jour part à 11:20 : N1 s'arrête (30 min restent), S1 n'a pas commencé et attend le soir. Le soir reprend N1 d'abord, puis lave S1.
+  const tot = journee([plonge('jour', '08:00', 200), soir]);
+  assert.deepEqual(json(lot(tot, 'N1').parts), [part('jour', '10:20', '11:20', 60), reprise('soir', '16:00', '16:30', 30, { nomTunnel: 'Tunnel 2' })]);
+  assert.deepEqual([lot(tot, 'S1').atelier, lot(tot, 'S1').debut, lot(tot, 'S1').fin, vue(tot, 'soir').lots.map(l => l.vol), tot.saleFinal],
+    ['soir', h('16:30'), h('18:00'), ['N1', 'S1'], []]);
+  // Déterministe.
+  assert.deepEqual(json(journee([plonge('jour', '08:00', 200), soir])), json(tot));
 });
 
 test('le planning des équipes lit l’heure de la reprise : « repris par … à » l’arrivée de l’équipe, pas à l’arrêt', () => {
@@ -200,7 +318,8 @@ test('le planning des équipes lit l’heure de la reprise : « repris par … �
 /* ---- non-régression : sans lavage arrêté qu'une équipe puisse reprendre, rien ne change ------------- */
 // Les empreintes des résultats, relevées avec le moteur d'avant la correction 19 (commit a8d0952).
 const empreinte = r => crypto.createHash('sha256').update(JSON.stringify(r)).digest('hex').slice(0, 16);
-const AVANT = { relais: 'c7a746551cc08aab', sansEquipeApres: '2e8498c92bc9491f', autreTunnel: '6e87363ce51c3f33', calme: 'af1a441b7d884f9f' };
+// `dejaLa` : relevée avec le moteur d'avant la retouche (commit 45740ce).
+const AVANT = { relais: 'c7a746551cc08aab', sansEquipeApres: '2e8498c92bc9491f', calme: 'af1a441b7d884f9f', dejaLa: '34cd5b21e34826cf' };
 const M = { materiel: { actif: true, stockInitial: 0 } };
 const RELAIS = [ret('L1', 'LONG', '11:30'), ret('V2', 'NORD', '14:00')];
 
@@ -213,10 +332,9 @@ test('non-régression : une journée sans lavage arrêté est celle d’avant, c
   assert.equal(empreinte(jouer(calme, [MATIN(), APM(), NUIT()], M)), AVANT.calme);
 });
 
-test('non-régression : un lavage arrêté que personne ne peut reprendre reste celui d’avant', () => {
-  // Aucune équipe après l'après-midi ; puis une nuit sans tunnel du même nom.
+test('non-régression : un lavage arrêté que personne ne vient reprendre reste celui d’avant', () => {
+  // Aucune équipe n'arrive après l'après-midi. (Une équipe déjà là sur un autre tunnel : plus haut, `dejaLa`.)
   assert.equal(empreinte(jouer([...RELAIS, ...SOIR], [MATIN(), APM()], M)), AVANT.sansEquipeApres);
-  assert.equal(empreinte(jouer([...RELAIS, ...SOIR], [MATIN(), APM(), NUIT({ tunnels: [T('Tunnel 2')] })], M)), AVANT.autreTunnel);
 });
 
 test('déterministe : la même journée, deux fois', () => {

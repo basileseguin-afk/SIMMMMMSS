@@ -5,6 +5,51 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-14 — Banc d'essai, correction 19 (retouche) : la reprise sur n'importe quel tunnel de l'équipe qui arrive
+
+Constat du banc : une nuit qui ne tient qu'un tunnel venait encore sans rien
+laver quand le lavage s'était arrêté sur un autre. La reprise exigeait le
+même nom de tunnel : c'était la consigne, et elle était fausse.
+
+- **La reprise n'exige plus le même tunnel** (`moteur/production.js`, la
+  plonge par vol). Un lavage arrêté attend ; une équipe qui arrive ensuite
+  le reprend sur n'importe lequel de ses tunnels libres, d'abord, pour sa
+  durée restante (déjà en minutes d'un tunnel normal), à la vitesse de ce
+  tunnel. Entre plusieurs tunnels : celui où la reprise finirait le plus
+  tôt, comme pour un vol (un tunnel plus rapide d'abord) ; le résultat ne
+  dépend pas de l'ordre de saisie des tunnels.
+- **Dans l'ordre des arrêts** : à chaque arrivée d'équipe, les lavages
+  arrêtés avant elle lui sont proposés du plus ancien arrêt au plus récent ;
+  avec un seul tunnel, l'un après l'autre. Les vols qui attendaient cette
+  équipe viennent après ses reprises — sauf un vol arrivé plus tôt, déjà
+  placé dans son tunnel avant que l'arrêt ne soit connu, et un vol passé en
+  relais dans ce tunnel : ils gardent leur place.
+- **Le relais sans interruption reste sur la même machine.** Une équipe déjà
+  là quand le lavage s'arrête ne le reprend pas ; un tunnel pris n'est pas
+  libre : la reprise attend qu'il le soit. Le tunnel où le lavage s'est
+  arrêté est libre dès l'arrêt.
+- Une nuit sous condition qui s'ouvre n'a jamais zéro lavage quand il reste
+  un lavage arrêté.
+
+Une journée sans lavage arrêté, ou dont le lavage arrêté n'a aucune équipe
+qui arrive ensuite, rend le résultat d'avant, champ par champ. Aucun réglage
+nouveau ; la version 2 n'est pas touchée.
+
+Tests dont la valeur attendue change : `tests/plonge-reprise.test.cjs` (une
+nuit au « Tunnel 2 » reprend le lavage arrêté au « Tunnel 1 » ; une équipe à
+un tunnel reprend les deux lavages arrêtés, l'un après l'autre),
+`tests/plonge-absorbable-seule.test.cjs` (la nuit lave les quatre vols,
+760 u, au lieu de deux) et `tests/plonge-heures-sup.test.cjs` (la nuit
+reprend V1 de 23:00 à 23:30, puis lave V2 de 23:30 à 01:00).
+
+Fichiers : `moteur/production.js`, `tests/plonge-reprise.test.cjs`,
+`tests/plonge-absorbable-seule.test.cjs`, `tests/plonge-heures-sup.test.cjs`,
+`docs/BANC_ESSAI.md`, `docs/CAHIER_DES_CHARGES.md`,
+`docs/MODELE_ATELIERS.md`, `README.md`, `CHANGELOG.md`, `index.html` (les
+empreintes).
+
+---
+
 ## 2026-11-14 — Banc d'essai, correction 19 (b) : un reste normal ne fait pas coincer la plonge
 
 Constat du banc : la plupart des jours, il reste du sale le soir, et la
