@@ -151,15 +151,26 @@ const MARGE=24,proche=(a,b,mot,t=1.5)=>assert.ok(Math.abs(a-b)<=t,mot+' : '+a+' 
    assert.deepEqual([sans.camera.cap,sans.ajustee],[45,true]);tient(sans,V+'« Cadrer » sans service choisi');
 
    // 7. Les deux thèmes : les couleurs de la scène sont celles des jetons ; la toile suit.
-   const pixel=()=>page.evaluate(()=>{const v=Sim.direct,z=v.site.zones.find(x=>x.id==='cuisine'),p=v.ecranDe(z.x+z.w*0.5,z.y+z.h*0.85,0),r=devicePixelRatio||1;
-     return [...v.toile.getContext('2d').getImageData(Math.round(p[0]*r),Math.round(p[1]*r),1,1).data].slice(0,3).join(',');});
+   // Des points du sol des zones, loin de leurs îlots, de leurs machines, des personnes et des chariots, hors de toute
+   // étiquette (celles des services, des avions, les mots de la scène) : la plupart ont exactement la couleur du jeton.
+   const pixel=()=>page.evaluate(()=>{const v=Sim.direct,e=v.etatVue(),r=devicePixelRatio||1,pris=[...e.etiquettes,...e.vols,...e.circule.marques],mobiles=[...e.personnes,...e.circule.chariots],out=[];
+     for(const z of v.site.zones){
+       const meubles=[...(z.lignes||[]),...(z.tunnels||[]),...(z.rayonnages||[]),...v.ilots.filter(i=>i.zone===z.id)];
+       for(const fx of [0.15,0.3,0.5,0.7,0.85])for(const fy of [0.15,0.3,0.5,0.7,0.85]){
+         const x=z.x+z.w*fx,y=z.y+z.h*fy,p=v.ecranDe(x,y,0);
+         if(p[0]<4||p[1]<4||p[0]>e.ecran.w-4||p[1]>e.ecran.h-4)continue;
+         if(pris.some(q=>p[0]>=q.x-3&&p[0]<=q.x+q.w+3&&p[1]>=q.y-3&&p[1]<=q.y+q.h+3))continue;
+         if(meubles.some(m=>x>=m.x-1.5&&x<=m.x+m.w+1.5&&y>=m.y-1.5&&y<=m.y+m.h+1.5)||mobiles.some(m=>Math.hypot(m.x-x,m.y-y)<1.5))continue;
+         out.push('rgb('+[...v.toile.getContext('2d').getImageData(Math.round(p[0]*r),Math.round(p[1]*r),1,1).data].slice(0,3).join(',')+')');}}
+     return out;});
+   const duJeton=(l,c)=>l.length>=5&&l.filter(x=>x===c).length>=Math.ceil(l.length*0.6);
    const clair=await pose(),pxClair=await pixel();
-   assert.equal('rgb('+pxClair+')',clair.couleurs.zone,V+'le sol d’une zone a la couleur de son jeton');
+   assert.ok(duJeton(pxClair,clair.couleurs.zone),V+'le sol d’une zone a la couleur de son jeton : '+pxClair+' / '+clair.couleurs.zone);
    await page.evaluate(()=>{document.documentElement.dataset.theme='sombre';});
    await page.waitForFunction(c=>Sim.direct.etatVue().couleurs&&Sim.direct.etatVue().couleurs.zone!==c,clair.couleurs.zone);
    const sombre=await pose(),pxSombre=await pixel();
    assert.notEqual(sombre.couleurs.fond,clair.couleurs.fond);assert.notEqual(sombre.couleurs.texte,clair.couleurs.texte);
-   assert.equal('rgb('+pxSombre+')',sombre.couleurs.zone,V+'thème sombre : le sol suit');
+   assert.ok(duJeton(pxSombre,sombre.couleurs.zone),V+'thème sombre : le sol suit : '+pxSombre+' / '+sombre.couleurs.zone);
    assert.deepEqual(sombre.recouvrements,[]);tient(sombre,V+'thème sombre');
    await page.evaluate(()=>{delete document.documentElement.dataset.theme;});
    await page.waitForFunction(c=>{const k=Sim.direct.etatVue().couleurs;return !!k&&k.zone===c;},clair.couleurs.zone);

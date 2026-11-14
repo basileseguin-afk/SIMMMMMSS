@@ -6,8 +6,9 @@
  *  (`--dv-…`) sont des mélanges de ces jetons : le canvas les lit dans la page.
  * ==========================================================================*/
 
-/* Les couleurs de la scène : le sol et les volumes en gris du thème, les états et les natures aux couleurs du système. */
-.direct{
+/* Les couleurs de la scène : le sol et les volumes en gris du thème, les états et les natures aux couleurs du système.
+ * La légende les lit aussi : ses carrés ont la couleur des chariots. */
+.direct,.direct-legende{
   --dv-fond:var(--ds-fond);
   --dv-sol:color-mix(in srgb,var(--ds-texte-1) 10%,var(--ds-surface-1));
   --dv-couloir:color-mix(in srgb,var(--ds-texte-1) 22%,var(--ds-surface-1));
@@ -26,7 +27,7 @@
   --dv-ok:var(--ds-ok);
   --dv-repas:var(--ds-d1);
   --dv-equipement:var(--ds-d5);
-  --dv-sale:color-mix(in srgb,var(--ds-d4) 62%,var(--ds-texte-3));
+  --dv-sale:color-mix(in srgb,var(--ds-d4) 45%,var(--ds-texte-1));
   --dv-texte:var(--ds-texte-1);
   --dv-texte2:var(--ds-texte-2);
   --dv-etiquette:var(--ds-surface-3);
@@ -35,7 +36,7 @@
   --dv-vehicule:color-mix(in srgb,var(--ds-texte-1) 12%,var(--ds-surface-1));
   --dv-avion:color-mix(in srgb,var(--ds-texte-1) 4%,var(--ds-surface-1));
 }
-:root[data-theme="sombre"] .direct{
+:root[data-theme="sombre"] .direct,:root[data-theme="sombre"] .direct-legende{
   --dv-peau:color-mix(in srgb,var(--ds-d4) 42%,var(--ds-texte-1));
   --dv-vehicule:color-mix(in srgb,var(--ds-texte-1) 72%,var(--ds-surface-1));
   --dv-avion:color-mix(in srgb,var(--ds-texte-1) 84%,var(--ds-surface-1));
@@ -72,6 +73,15 @@
 .direct-legende .dl-travail{background:var(--ds-accent)}
 .direct-legende .dl-attente{background:var(--ds-attente)}
 .direct-legende .dl-neutre{background:var(--ds-texte-3)}
+.plan-bande .direct-legende .carre{display:inline-block;width:10px;height:9px;margin-right:5px;border-radius:2px;border:0;vertical-align:baseline}
+.direct-legende .dl-repas{background:var(--dv-repas)}
+.direct-legende .dl-equipement{background:var(--dv-equipement)}
+.direct-legende .dl-sale{background:var(--dv-sale)}
+.direct-legende .dl-sep{align-self:stretch;width:1px;margin:2px 0;background:var(--ds-bordure)}
+.direct-legende .dl-tranche{color:var(--ds-texte-3)}
+/* En relief, la légende a sa propre ligne sous les chiffres, et passe à la ligne plutôt que de se couper. */
+body[data-direct="relief"] .plan-bande{flex-wrap:wrap}
+body[data-direct="relief"] .plan-bande .direct-legende{flex:1 1 100%;flex-wrap:wrap}
 .direct-note{margin:0;padding:1px var(--ds-e-4) 3px;min-height:18px;font-size:var(--ds-t-11);line-height:14px;color:var(--ds-texte-3);background:var(--ds-surface-1)}
 body:not([data-direct="relief"]) .direct-legende,body:not([data-direct="relief"]) .direct-note{display:none!important}
 

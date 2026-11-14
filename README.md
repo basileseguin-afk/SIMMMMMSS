@@ -742,6 +742,54 @@ La scène respecte les réglages de la simulation :
   ceux de vos réglages ; le moteur calcule combien de personnes sont dans
   chaque état ; leurs déplacements sont une mise en scène. »
 
+### En relief : ce qui circule (évolution 16 d)
+
+La scène montre ce que la journée déplace, lu dans son résultat — le journal
+des lots, les séjours en stock, les vols, les tournées :
+
+- **Les lots sont des chariots** : un chariot par tranche de repas, un au
+  moins par lot. La tranche est dite dans la légende — « un chariot = 50
+  repas » ; une journée qui compterait plus de 500 chariots en stock la
+  double, autant de fois qu'il faut. **Une couleur par nature** : les repas,
+  l'équipement (armement, dotation, roulés couverts), le retour sale.
+- **Un lot en cours est dans l'îlot de son atelier**, de son début à sa fin au
+  planning : posé au bout d'une table pour un atelier « tables » ; pour un
+  atelier « trolleys », c'est le trolley sur lequel on travaille.
+- **Un lot en stock attend dans la file du service qui va le prendre**
+  (les séjours du résultat : de, vers, entrée, sortie), en rangs depuis le
+  couloir : la file se voit. Les chariots en file devant un service sont
+  exactement ses lots en stock. Une longue file s'étale devant les îlots,
+  puis s'entasse, sans sortir de sa zone.
+- **Ce qui est prêt avant le chargement attend au quai du handling** ; sans
+  handling, au bout du couloir, du côté des avions.
+- **Chaque tournée du handling est un véhicule** — un camion ou un véhicule
+  léger, celui du résultat : il part du quai à son départ, rejoint l'avion de
+  son vol au bord de la scène, et revient ; hors de son trajet, il n'est pas
+  là.
+- **Chaque vol est un avion**, au bord de la scène, avec son numéro et son
+  heure. Il décolle à son départ. Chargé en retard, il attend son
+  chargement : passé son heure, son étiquette prend la couleur critique et dit
+  le retard (« NO101 · 06:10 · retard 20 min ») ; chargé, il décolle. Un vol
+  qu'aucun handling ne charge reste un avion, sans retard à dire : le résultat
+  ne dit pas quand il est chargé.
+- **Les retours sales rejoignent la file de la plonge**, puis passent dans
+  leur tunnel : chaque tunnel s'anime quand il lave, et seulement lui. Un
+  lavage passé en relais reste dans son tunnel quand l'équipe change — seuls
+  les personnages changent. Un lavage arrêté à une fin de présence reste
+  devant son tunnel, marqué « arrêté », jusqu'à sa reprise ; ce qui reste le
+  soir reste visible devant la plonge.
+- **La ligne robotisée s'anime quand son équipe travaille** : ses plateaux
+  avancent, et sa cadence est écrite au-dessus d'elle (« 300 plateaux par
+  heure »). Au repos, elle est grise et immobile.
+- **Ce qui est une mise en scène** : le chemin d'un chariot. Au moment où un
+  lot change de service, ses chariots roulent en convoi de l'îlot qui vient de
+  le finir à la file du service suivant, en deux minutes rejouées, poussés par
+  un personnage (au neutre : il n'est compté dans aucune équipe) ; un retour
+  sale arrive de même par le couloir, depuis la route. Un avion est là trois
+  heures avant son départ ; son décollage dure trois minutes. Les nombres, les
+  heures et les états, eux, sont ceux du résultat : rien ne circule quand rien
+  n'attend.
+
 **Dans la vue à plat**, « Tout voir » compte maintenant toutes les zones
 dessinées — les services, mais aussi les zones de production, les locaux, les
 chambres froides, les équipements et les circulations : un plan dont des zones
@@ -1162,6 +1210,8 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/direct-scene.test.cjs` | La scène de la vue en direct et ce qu’elle lit de la journée (v1, évolution 16 b), sans navigateur, sur l’unité fictive : des personnes entières par état, celles des créneaux des indicateurs, équipe par équipe et à chaque créneau ; les lots qui attendent devant un service, ceux des séjours en stock ; le décor (sols, murs bas sauf du côté du couloir, machines des réglages) ; les murs du fond seulement ; les étiquettes (« n au travail / n présents », « n lots à faire ») ; à « Tout voir », aucune étiquette n’en recouvre une autre, à 1 280 et 1 920 px, à quatre angles |
 | `tests/direct-ilots.test.cjs` | Les ateliers et les personnes de la vue en direct (v1, évolution 16 c), sans navigateur, sur l’unité fictive : un îlot par atelier réglé, dans la zone de son service ; un atelier ajouté ou retiré ; à chaque créneau de la journée, les personnages de chaque atelier égaux à ses présents aux indicateurs, état par état ; la couleur de l’état, la pause dans l’aire de pause, l’arrivée et le départ en chemin ; une équipe d’appui, une mise à disposition ; une équipe en heures sup après son horaire ; le poste de travail (cinq choix ; trois tables pour cinq personnes, aucune aux trolleys) ; les défauts par type et par service ; le réglage gardé, une sauvegarde d’avant aux défauts ; le poste ne change ni le résultat ni les indicateurs ; des îlots qui se resserrent sans sortir de leur zone |
 | `tests/direct-ateliers-browser.cjs` | Les ateliers et les personnes dans la page (v1, évolution 16 c) : un îlot par atelier réglé ; à six heures de la journée, les personnages égaux aux présents des indicateurs, à leur couleur ; la pause dans l’aire de pause ; la légende et la phrase sous elle ; le poste de travail réglé dans la fiche de l’équipe, gardé, sans effet sur la journée ; un atelier ajouté, un îlot de plus ; les noms au zoom ; « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant aux défauts ; la version 2 sans rien de cela |
+| `tests/direct-circulation.test.cjs` | Ce qui circule dans la vue en direct (v1, évolution 16 d), sans navigateur, sur l’unité fictive : un chariot par tranche de repas, un au moins par lot, la tranche doublée au-delà de 500 chariots ; une couleur par nature ; à chaque heure de la journée, les chariots en file devant un service égaux aux stocks du résultat, dans sa zone ; la file en rangs depuis le couloir, qui s’étale puis s’entasse ; un lot en cours dans l’îlot de son atelier (au bout d’une table, sur son trolley) ; le convoi de deux minutes et son pousseur ; un véhicule pendant son trajet et seulement là, du quai à l’avion de son vol, camion ou véhicule léger ; un avion par vol, sa place, son décollage ; un vol chargé en retard au critique, avec son retard ; une unité sans handling ; les retours sales, le tunnel qui lave et lui seul, le relais, l’arrêt marqué « arrêté », le reste du soir ; la cadence de la ligne robotisée ; rien ne circule quand rien n’attend ; la lecture ne touche à rien. |
+| `tests/direct-circulation-browser.cjs` | Ce qui circule, dans la page (v1, évolution 16 d) : la légende (une couleur par nature, « un chariot = 50 repas ») aux couleurs de la scène ; à sept heures de la journée, les chariots en file égaux aux stocks du résultat, les lots en cours dans l’îlot de leur atelier, un véhicule par tournée en route ; l’étiquette d’un vol chargé en retard teintée de critique, avec son retard ; « Tout voir » avec l’aire des avions ; seul le tunnel qui lave est éclairé ; la cadence de la ligne robotisée ; la lecture et la pause ; le thème sombre ; rien à plat ni en version 2. |
 | `tests/direct-camera-browser.cjs` | La vue en relief dans la page (v1, évolution 16 b), à 1 280 et 1 920 px : en relief à l’ouverture, à l’angle de la maquette, la scène entière à 24 px ; elle tient encore à quatre angles, à 25° et à 80° ; les étiquettes sans recouvrement, à leur taille, leurs chiffres ceux de la journée ; les murs dessinés au fond ; glisser, Maj + glisser, le bouton droit, la molette ; les flèches, ZQSD, A et E, + et −, 0 ; les boutons ; un clic choisit un service, « Cadrer » ; un doigt, deux doigts ; les deux thèmes ; « À plat » et retour ; sans animation avec « réduire les animations » ; à plat, un plan aux coordonnées négatives entier sur « Tout voir » |
 | `tests/direct-ips-browser.cjs` | La fluidité de la vue en relief (v1, évolution 16 b) : une unité fictive de 300 personnes et 500 chariots, la caméra en mouvement à chaque image — les images par seconde et le temps de dessin, affichés ; un garde-fou large (30 images par seconde) |
 | `tests/site-surface-browser.cjs` | La part de surface d’un service dans sa fiche (v1, évolution 16 a) : le champ de la section « Avancé », la part par défaut dite, la part réglée gardée et relue après rechargement, la journée inchangée, le retour au défaut ; « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant aux parts par défaut ; la version 2 sans le champ |

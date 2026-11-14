@@ -19,14 +19,15 @@
   const ETAT = () => (enNode ? require('./direct-etat.js') : root.OrlyDirectEtat);
 
   /** Les hauteurs, en mètres : les murs sont bas, pour que rien ne soit caché. */
-  const H = { mur: 0.5, convoyeur: 0.85, bras: 1.9, tunnel: 1.45, rayonnage: 2.1, etiquette: 2.8 };
+  const H = { mur: 0.5, convoyeur: 0.85, bras: 1.9, tunnel: 1.45, rayonnage: 2.1, etiquette: 2.8, avion: 2.6 };
   /** L'épaisseur d'un mur, et la longueur au-delà de laquelle une boîte longue se range par tronçons. */
   const MUR = 0.16, TRONCON = 2;
 
-  /** La boîte de la scène, à cadrer : l'emprise du site, jusqu'à la hauteur des étiquettes. */
-  function boite(site) {
+  /** La boîte de la scène, à cadrer : l'emprise du site — et l'aire des avions, s'il y en a une —, jusqu'à la hauteur des étiquettes. */
+  function boite(site, aire) {
     const e = (site && site.emprise) || { x0: 0, y0: 0, x1: 1, y1: 1 };
-    return { x0: e.x0, y0: e.y0, x1: e.x1, y1: e.y1, h: H.etiquette };
+    if (!aire) return { x0: e.x0, y0: e.y0, x1: e.x1, y1: e.y1, h: H.etiquette };
+    return { x0: e.x0, y0: Math.min(e.y0, aire.y), x1: Math.max(e.x1, aire.x + aire.w), y1: Math.max(e.y1, aire.y + aire.h), h: H.etiquette };
   }
   /** La boîte d'une zone, pour « Cadrer » le service choisi. */
   const boiteDeZone = z => ({ x0: z.x, y0: z.y, x1: z.x + z.w, y1: z.y + z.h, h: H.etiquette });
@@ -50,13 +51,15 @@
    *    les tunnels de lavage, les rayonnages du magasin ; avec `ilots` (ceux des ateliers), leurs tables et leurs rangs.
    *    Une rangée de l'entrepôt qui recouvrirait l'îlot d'un atelier du magasin réglé sur un autre poste s'efface.
    */
-  function decor(site, ilots) {
+  function decor(site, ilots, aire) {
     const sols = [], murs = [], objets = [];
     const posés = (ilots || []).filter(i => i.poste !== 'rayonnages' || i.rangs.length), touche = (r, i) => r.x < i.x + i.w && i.x < r.x + r.w && r.y < i.y + i.h && i.y < r.y + r.h;
     const cache = (z, r) => posés.some(i => i.zone === z.id && !i.machines && (i.tables.length || i.rangs.length || i.trolleys.length || i.poste === 'aucun') && touche(r, i));
-    if (!site || !site.zones.length) return { boite: boite(site), sols, murs, objets };
+    if (!site || !site.zones.length) return { boite: boite(site, aire), sols, murs, objets };
     const e = site.emprise;
     sols.push({ id: 'site', ton: 'site', x: e.x0 - 1, y: e.y0 - 1, w: e.x1 - e.x0 + 2, d: e.y1 - e.y0 + 2 });
+    // Du côté des avions : la route où roulent les véhicules du handling, et l'aire où se tiennent les avions.
+    if (aire) { sols.push({ id: 'route', ton: 'route', x: aire.route.x, y: aire.route.y, w: aire.route.w, d: aire.route.h }); sols.push({ id: 'aire', ton: 'aire', x: aire.x, y: aire.y, w: aire.w, d: aire.h }); }
     sols.push({ id: 'couloir', ton: 'couloir', x: site.couloir.x, y: site.couloir.y, w: site.couloir.w, d: site.couloir.h });
     sols.push({ id: 'pause', ton: 'pause', x: site.pause.x, y: site.pause.y, w: site.pause.w, d: site.pause.h });
     // L'aire de pause s'ouvre du côté de l'entrée.
@@ -70,11 +73,11 @@
         const c = Math.min(0.5, l.h * 0.4);
         objets.push({ quoi: 'bras', ton: 'bras', x: l.x + l.w / 2 - c / 2, y: l.y + l.h / 2 - c / 2, z: H.convoyeur, w: c, d: c, h: H.bras - H.convoyeur, zone: z.id, ref: i, ateliers: l.ateliers });
       }
-      for (const [i, t] of (z.tunnels || []).entries()) objets.push({ quoi: 'tunnel', ton: 'machine', x: t.x, y: t.y, z: 0, w: t.w, d: t.h, h: H.tunnel, zone: z.id, ref: i, nom: t.nom });
+      for (const [i, t] of (z.tunnels || []).entries()) objets.push({ quoi: 'tunnel', ton: 'machine', x: t.x, y: t.y, z: 0, w: t.w, d: t.h, h: H.tunnel, zone: z.id, ref: i, nom: t.nom, enLong: t.h > t.w });
       for (const [i, r] of (z.rayonnages || []).entries()) if (!cache(z, r)) objets.push({ quoi: 'rayonnage', ton: 'rayonnage', x: r.x, y: r.y, z: 0, w: r.w, d: r.h, h: H.rayonnage, zone: z.id, ref: i });
     }
     if (ilots) objets.push(...meublesDe(ilots));
-    return { boite: boite(site), sols, murs, objets };
+    return { boite: boite(site, aire), sols, murs, objets };
   }
 
   /**
@@ -364,6 +367,181 @@
     return c.reduce((m, p) => (profondeur(p.x, p.y) > profondeur(m.x, m.y) + 1e-9 ? p : m));
   }
 
+  /* ---- ce qui circule : chariots, véhicules, avions (évolution 16 d) -------------------------------------------- */
+
+  /** La route des véhicules (5 m), la place d'un avion (6,4 m sur 4,8), le pas des chariots d'une file. */
+  const ROUTE = 5, AVION = { w: 6.4, h: 4.8, long: 4.6 }, PAS_FILE = { x: 0.85, y: 0.7 };
+
+  /**
+   * L'aire des avions, au bord de la scène du côté des avions : la route, puis des places en colonnes ({ x, y } : le
+   * milieu de chacune). `nombre` : le plus grand nombre d'avions là en même temps (direct-etat.js) ; sans avion, pas d'aire.
+   */
+  function aireDe(site, nombre) {
+    if (!site || !site.zones.length || !(nombre > 0)) return null;
+    const parColonne = Math.max(1, Math.floor(site.profondeur / AVION.h)), colonnes = Math.ceil(nombre / parColonne), rangs = Math.min(nombre, parColonne);
+    const x = site.largeur + ROUTE, y = Math.min(0, (site.profondeur - rangs * AVION.h) / 2), h = Math.max(site.profondeur, rangs * AVION.h);
+    const places = Array.from({ length: nombre }, (_, i) => ({ x: x + (Math.floor(i / parColonne) + 0.5) * AVION.w, y: (site.profondeur - rangs * AVION.h) / 2 + ((i % parColonne) + 0.5) * AVION.h }));
+    return { x, y, w: colonnes * AVION.w, h, route: { x: site.largeur, y, w: ROUTE, h }, places };
+  }
+
+  /**
+   * La bande de la file d'une zone : devant elle, le long du couloir ({ x, y, w, h, sens }) ; `sens` : vers où s'empilent
+   * les rangs. Sa profondeur : la bande gardée libre devant les îlots (2,2 m) ; avec `ilots`, tout ce que les îlots et
+   * les machines de la zone laissent libre devant eux — une longue file s'y étale.
+   */
+  function bandeDeFile(z, ilots) {
+    const marge = Math.min(0.6, z.w * 0.15), base = Math.min(FILE, z.h * 0.4);
+    const pris = (ilots || []).filter(i => i.zone === z.id).map(i => (z.bande === 0 ? i.y + i.h - z.y : z.y + z.h - i.y));
+    const libre = ilots ? z.h - Math.max(profondeurMachines(z), 0, ...pris) - 0.3 : base, h = Math.min(z.h, Math.max(base, libre));
+    return { x: z.x + marge, w: Math.max(0.3, z.w - 2 * marge), h, y: z.bande === 0 ? z.y + z.h - h : z.y, sens: z.bande === 0 ? -1 : 1 };
+  }
+  /** Une file a trois rangs de profondeur d'ordinaire. */
+  const RANGS_FILE = 3;
+  /**
+   * Les `n` places d'une file, en rangs depuis le couloir : trois de profondeur ; une file plus longue que sa bande
+   * n'est large prend d'autres rangs, tant qu'il y a de la place devant les îlots ; au-delà, les colonnes se serrent — la
+   * file s'entasse, elle ne déborde pas de sa zone.
+   */
+  function placesDeFile(bande, n) {
+    const rangsMax = Math.max(1, Math.floor(bande.h / PAS_FILE.y)), colonnesMax = Math.max(1, Math.floor(bande.w / PAS_FILE.x));
+    const rangs = Math.max(1, Math.min(rangsMax, Math.max(RANGS_FILE, Math.ceil(n / colonnesMax)))), colonnes = Math.max(1, Math.ceil(n / rangs)), pas = Math.min(PAS_FILE.x, bande.w / colonnes);
+    const y0 = bande.sens < 0 ? bande.y + bande.h - PAS_FILE.y / 2 : bande.y + PAS_FILE.y / 2;
+    return Array.from({ length: n }, (_, i) => ({ x: bande.x + (Math.floor(i / rangs) + 0.5) * pas, y: y0 + bande.sens * (i % rangs) * PAS_FILE.y }));
+  }
+
+  /**
+   * Les places des chariots d'un lot en cours, dans l'îlot de son atelier : ses trolleys (c'est le trolley sur lequel on
+   * travaille), ou le bout de ses tables, d'un côté puis de l'autre ; au-delà, en rangs serrés le long de son bord, du
+   * côté du couloir (`sens` : 1 si le couloir est du côté des y croissants). Toujours dans l'îlot. `deja` : les chariots
+   * déjà posés là par un autre lot en cours.
+   */
+  function placesDansIlot(ilot, n, deja, sens) {
+    const e = ilot.echelle || 1, bout = cote => ilot.tables.map(t => ({ x: cote > 0 ? t.x + t.w + 0.3 * e : t.x - 0.3 * e, y: t.y + t.d / 2 }));
+    const propres = ilot.trolleys.length ? ilot.trolleys : [...bout(1), ...bout(-1)], out = [];
+    const par = Math.max(1, Math.floor(ilot.w / 0.7)), pas = ilot.w / par, bas = !(sens < 0);
+    for (let i = deja || 0; i < (deja || 0) + n; i++) {
+      if (i < propres.length) { out.push(dedans(propres[i], ilot, 0)); continue; }
+      const k = i - propres.length, rang = Math.floor(k / par) % 3;
+      out.push(dedans({ x: ilot.x + ((k % par) + 0.5) * pas, y: bas ? ilot.y + ilot.h - 0.25 - rang * 0.55 : ilot.y + 0.25 + rang * 0.55 }, ilot, 0));
+    }
+    return out;
+  }
+
+  /** Un convoi de `n` chariots sur un chemin : l'avance (0 à 1) du chariot n° `i` quand le lot en est à `k` ; ils partent l'un après l'autre et arrivent tous à 1. */
+  const CONVOI = 0.05;
+  const avanceDuConvoi = (k, i, n) => Math.max(0, Math.min(1, k * (1 + CONVOI * (n - 1)) - CONVOI * i));
+  /** Le personnage qui pousse un convoi : derrière son dernier chariot. Il n'est compté nulle part : c'est la mise en scène du trajet. */
+  const pousseur = (chemin, k, n) => { const q = surChemin(chemin, Math.max(0, avanceDuConvoi(k, n - 1, n) - 0.04)); return { quoi: 'personne', ton: TON_ETAT.enChemin, couche: 1, etat: 'pousse', hors: true, enChemin: true, x: q.x, y: q.y, i: 0 }; };
+
+  /**
+   * Ce qui circule à l'heure `t`, posé dans la scène. `scene` : { site, ilots, aire, places, tranche } (`places` : celles
+   * des vols, `tranche` : celle de la journée, direct-etat.js — calculées ici si elles manquent) ; `journee` : { r, k }. Rend :
+   *  - `chariots` : un par tranche de repas de chaque lot ({ quoi: 'chariot', ton, x, y, etat, service, classe, vol }) —
+   *    en file devant le service qui va le prendre (`etat: 'file'`), dans l'îlot de son atelier (`en cours`), sale devant
+   *    la plonge ou dans son tunnel ; un lot qui change de zone roule deux minutes, poussé par un personnage (`pousseurs`) ;
+   *  - `vehicules` : un par tournée du handling en route, du quai aux avions et retour ;
+   *  - `avions` : un par vol présent, à sa place, avec son étiquette (critique s'il est en retard) ;
+   *  - `tunnels` : les noms de ceux qui lavent ; `lignes` : les lignes robotisées au travail, avec leur cadence ;
+   *  - `marques` : les mots posés dans la scène (« arrêté », la cadence du robot) ;
+   *  - `tranche` : « un chariot = N repas ».
+   * Rien n'est inventé : sans lot en stock, en cours ou à laver, sans tournée ni vol, tout est vide.
+   */
+  function circulation(scene, journee, t) {
+    const E = ETAT(), r = journee && journee.r, site = scene.site, vide = { chariots: [], pousseurs: [], vehicules: [], avions: [], tunnels: [], lignes: [], marques: [], tranche: E.TRANCHE };
+    if (!site || !r || !Number.isFinite(t)) return vide;
+    const N = scene.tranche || E.tranche(r), out = { ...vide, tranche: N }, zones = site.zones;
+    const zoneDe = service => zones.find(z => z.services.includes(service)) || null, ilotDe = new Map(scene.ilots.map(i => [i.atelier, i]));
+    const quai = zones.find(z => z.role === 'quai') || null, plonge = zones.find(z => (z.tunnels || []).length) || zones.find(z => z.role === 'plonge') || null;
+    // Ce qui est prêt avant le chargement attend au quai du handling ; sans quai, au bout du couloir, du côté des avions.
+    const sortie = { x: site.largeur - 4, y: site.couloir.y + 0.4, w: 3.4, h: site.couloir.h - 0.8, sens: 1 };
+    const bande = service => { const z = service === 'chargement' ? quai : zoneDe(service); return z ? bandeDeFile(z, scene.ilots) : sortie; };
+    const porte = service => { const z = service === 'chargement' ? quai : zoneDe(service); return z ? z.porte : { x: sortie.x, y: site.couloir.y + site.couloir.h / 2 }; };
+    // D'où part un lot : l'îlot de l'atelier qui vient de le finir dans le service d'amont ; à défaut, la porte de sa zone.
+    const source = s => {
+      const l = (r.lots || []).find(x => x.service === s.de && !x.dispo && (x.classes || []).includes(s.classe) && Number.isFinite(x.fin) && Math.abs(x.fin - s.entree) < 1e-6), i = l && ilotDe.get(l.atelier);
+      return i ? { x: i.x + i.w / 2, y: i.y + i.h / 2 } : s.de ? porte(s.de) : porte(s.vers);
+    };
+    // Les files : devant chaque service, ses lots dans l'ordre de leur arrivée ; chacun, ses chariots à la suite.
+    for (const [service, lots] of Object.entries(E.filesA(r, t, N))) {
+      const places = placesDeFile(bande(service), lots.reduce((n, l) => n + l.chariots, 0));
+      let k = 0;
+      for (const l of lots) {
+        const base = { quoi: 'chariot', ton: l.nature, couche: 1, etat: 'file', service, classe: l.classe, vol: l.vol };
+        // Un lot qui vient d'entrer en stock roule deux minutes de son atelier à la file, en convoi, poussé par un personnage.
+        const depuis = l.arrive < 1 ? source(l) : null, chemin = depuis ? [depuis, porte(l.de || service), porte(service)] : null;
+        if (depuis) out.pousseurs.push(pousseur([...chemin, places[k + l.chariots - 1]], l.arrive, l.chariots));
+        for (let i = 0; i < l.chariots; i++, k++) {
+          const p = depuis ? surChemin([...chemin, places[k]], avanceDuConvoi(l.arrive, i, l.chariots)) : places[k];
+          out.chariots.push({ ...base, x: p.x, y: p.y, ...(depuis ? { enChemin: true } : {}) });
+        }
+      }
+    }
+    // Les lots en cours : dans l'îlot de leur atelier.
+    const deja = new Map();
+    for (const l of E.lotsEnCours(r, t, N)) {
+      const ilot = ilotDe.get(l.atelier); if (!ilot) continue;
+      const n0 = deja.get(l.atelier) || 0; deja.set(l.atelier, n0 + l.chariots);
+      const z = zones.find(x => x.id === ilot.zone);
+      for (const p of placesDansIlot(ilot, l.chariots, n0, z && z.bande === 0 ? 1 : -1)) out.chariots.push({ quoi: 'chariot', ton: l.nature, couche: 1, etat: 'en cours', service: l.service, atelier: l.atelier, classe: l.classes[0] ?? null, classes: l.classes, vol: null, x: p.x, y: p.y });
+    }
+    // Les retours sales : ils arrivent du quai des retours, attendent devant la plonge, passent dans leur tunnel.
+    if (plonge) {
+      const tunnels = plonge.tunnels || [], tunnelDe = nom => tunnels.find(x => x.nom === nom) || tunnels[0] || null, b = bandeDeFile(plonge, scene.ilots), retours = { x: site.largeur, y: site.couloir.y + site.couloir.h / 2 };
+      const lavages = E.lavagesA(r, t, N), enFile = lavages.filter(x => x.etat === 'file' || x.etat === 'arrive'), places = placesDeFile(b, enFile.reduce((n, x) => n + x.chariots, 0));
+      let k = 0;
+      for (const x of enFile) {
+        // Un retour qui arrive roule deux minutes depuis la route, du côté des avions, par le couloir, jusqu'à la file.
+        const roule = x.etat === 'arrive', chemin = [retours, { x: plonge.porte.x, y: retours.y }, plonge.porte];
+        if (roule) out.pousseurs.push(pousseur([...chemin, places[k + x.chariots - 1]], x.arrive, x.chariots));
+        for (let i = 0; i < x.chariots; i++, k++) {
+          const p = roule ? surChemin([...chemin, places[k]], avanceDuConvoi(x.arrive, i, x.chariots)) : places[k];
+          out.chariots.push({ quoi: 'chariot', ton: 'sale', couche: 1, etat: roule ? 'arrive' : 'file', service: plonge.services[0] || plonge.id, vol: x.vol, x: p.x, y: p.y, ...(roule ? { enChemin: true } : {}) });
+        }
+      }
+      const devant = new Map();
+      for (const x of lavages) {
+        if (x.etat !== 'lave' && x.etat !== 'arrete') continue;
+        const m = tunnelDe(x.tunnel); if (!m) continue;
+        // Dans son tunnel : à son entrée. Arrêté : devant lui, du côté de la file, marqué « arrêté ».
+        const enLong = m.h > m.w, rang = devant.get(m) || 0, cote = plonge.bande === 0 ? 1 : -1;
+        if (x.etat === 'lave') out.chariots.push({ quoi: 'chariot', ton: 'sale', couche: 1, etat: 'lave', service: plonge.services[0] || plonge.id, vol: x.vol, tunnel: m.nom, x: enLong ? m.x + m.w / 2 : m.x - 0.45, y: enLong ? (cote > 0 ? m.y + m.h + 0.4 : m.y - 0.4) : m.y + m.h / 2 });
+        else {
+          devant.set(m, rang + x.chariots);
+          for (let i = 0; i < x.chariots; i++) {
+            const d = 0.6 + (rang + i) * 0.7, p = enLong ? { x: m.x + m.w + d, y: cote > 0 ? m.y + m.h - 0.4 : m.y + 0.4 } : { x: m.x + 0.4 + (rang + i) * 0.7, y: cote > 0 ? m.y + m.h + 0.55 : m.y - 0.55 };
+            const q = dedans(p, plonge, 0.3);
+            out.chariots.push({ quoi: 'chariot', ton: 'sale', couche: 1, etat: 'arrete', service: plonge.services[0] || plonge.id, vol: x.vol, tunnel: m.nom, x: q.x, y: q.y });
+            if (i === 0) out.marques.push({ x: q.x, y: q.y, z: 1.3, texte: 'arrêté', ton: 'attente', vol: x.vol });
+          }
+        }
+      }
+      out.tunnels = [...new Set(lavages.filter(x => x.etat === 'lave').map(x => (tunnelDe(x.tunnel) || {}).nom).filter(n => n != null))];
+    }
+    // Les lignes robotisées : au travail quand leur équipe a un lot en cours, avec sa cadence en clair.
+    const food = zones.find(z => (z.lignes || []).length);
+    if (food) for (const x of E.robotsA(r, t)) {
+      const i = food.lignes.findIndex(l => l.ateliers.includes(x.atelier)); if (i < 0) continue;
+      const l = food.lignes[i], texte = x.debit ? Math.round(x.debit) + ' plateaux par heure' : 'au travail';
+      out.lignes.push({ ligne: i, atelier: x.atelier, debit: x.debit, lot: x.lot });
+      out.marques.push({ x: l.x + l.w / 2, y: l.y + l.h / 2, z: H.bras + 0.3, texte, ton: 'travail', ligne: i });
+    }
+    // Les avions : chacun à sa place ; il décolle à son départ. Les véhicules : du quai aux avions, et retour.
+    const aire = scene.aire, places = scene.places || E.placesDesVols(r);
+    if (aire) {
+      for (const v of E.volsA(r, t, places)) {
+        const p = aire.places[v.place % aire.places.length];
+        out.avions.push({ quoi: 'avion', couche: 1, id: v.id, cie: v.cie, depart: v.depart, charge: v.charge, retard: v.retard, enRetard: v.enRetard, decolle: v.decolle, x: p.x + v.decolle * 9, y: p.y, dz: v.decolle * 6, alpha: 1 - v.decolle });
+      }
+      const depart = quai ? { x: site.largeur, y: quai.y + quai.h / 2 } : { x: site.largeur, y: site.couloir.y + site.couloir.h / 2 }, route = aire.route.x + aire.route.w / 2;
+      for (const c of E.vehiculesA(r, t)) {
+        const p = aire.places[(places.places.get(c.vols[0]) ?? 0) % aire.places.length], but = { x: p.x - AVION.long / 2 - 0.2, y: p.y + 1.5 };
+        const q = surChemin([depart, { x: route, y: depart.y }, { x: route, y: but.y }, but], c.avance);
+        out.vehicules.push({ quoi: 'vehicule', couche: 1, cle: c.cle, type: c.vehicule, camion: c.camion, phase: c.phase, vols: c.vols, avance: c.avance, x: q.x, y: q.y });
+      }
+    }
+    return out;
+  }
+
   /** « 1 présent », « 3 présents » ; « 1 lot à faire », « 4 lots à faire ». */
   const pluriel = (n, un, des) => n + ' ' + (n > 1 ? des : un);
 
@@ -387,13 +565,30 @@
     });
   }
 
+  /** « 20 min », « 1 h 05 » : un retard en clair. */
+  const dureeEnClair = m => { const n = Math.max(1, Math.round(m)); return n < 60 ? n + ' min' : Math.floor(n / 60) + ' h ' + String(n % 60).padStart(2, '0'); };
+  const heureEnClair = t => { const m = ((Math.round(t) % 1440) + 1440) % 1440; return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+
+  /**
+   * Les étiquettes des avions : une par vol présent ({ id: 'vol:…', vol, x, y, z, titre, lignes: [], compacte, ton }) — son
+   * numéro et son heure, sur une ligne ; chargé en retard, passé son heure, elle prend la couleur critique (`ton`) et dit
+   * le retard (celui du résultat ; « pas chargé » s'il ne l'est jamais). Compactes : elles tiennent au-dessus de leurs avions.
+   */
+  function etiquettesDesVols(avions) {
+    return (avions || []).filter(a => !(a.decolle > 0)).map(a => ({ id: 'vol:' + a.id, vol: a.id, x: a.x, y: a.y, z: H.avion, compacte: true, lignes: [],
+      titre: a.id + ' · ' + heureEnClair(a.depart) + (a.enRetard ? ' · ' + (a.retard > 0 ? 'retard ' + dureeEnClair(a.retard) : 'pas chargé') : ''), ...(a.enRetard ? { ton: 'critique' } : {}) }));
+  }
+
   /** Le texte d'une étiquette, en pixels : toujours les mêmes, à tout zoom et à tout angle. */
   const ETIQUETTE = { titre: 12.5, ligne: 11.5, marge: 7, interligne: 15 };
+  /** Une étiquette compacte (un avion) : une ligne de 11 px, dans une pastille de 18 px. */
+  const COMPACTE = { titre: 11, ligne: 11, marge: 5, interligne: 11, h: 18 };
   /** Sans navigateur, la largeur d'un texte s'estime (pour les tests) ; dans la page, la vue donne la vraie (`mesure`). */
   const estimer = (texte, gras) => String(texte).length * (gras ? 7.3 : 6.3);
   /** La taille d'une étiquette à l'écran : son titre, ses lignes, sa marge. */
   function tailleEtiquette(e, mesure) {
     const m = mesure || estimer, w = Math.max(m(e.titre, true), ...e.lignes.map(l => m(l, false)));
+    if (e.compacte) return { w: Math.ceil(m(e.titre, true) * COMPACTE.titre / ETIQUETTE.titre + 2 * COMPACTE.marge + 2), h: COMPACTE.h };
     return { w: Math.ceil(w + 2 * ETIQUETTE.marge), h: Math.ceil(2 * ETIQUETTE.marge - 3 + ETIQUETTE.interligne * (1 + e.lignes.length)) };
   }
 
@@ -406,10 +601,11 @@
     const p = CAM().projecteur(cam, ecran);
     const vues = liste.map(e => ({ e, ax: p.x(e.x, e.y), ay: p.y(e.x, e.y, e.z) })).filter(a => a.ax >= 0 && a.ax <= ecran.w && a.ay >= 0 && a.ay <= ecran.h);
     const ancres = vues.map(a => ({ id: a.e.id, ax: a.ax, ay: a.ay, ...tailleEtiquette(a.e, mesure) }));
-    return CAM().placerEtiquettes(ancres, ecran).map((r, i) => ({ ...r, titre: vues[i].e.titre, lignes: vues[i].e.lignes }));
+    return CAM().placerEtiquettes(ancres, ecran).map((r, i) => ({ ...r, titre: vues[i].e.titre, lignes: vues[i].e.lignes, ...(vues[i].e.ton ? { ton: vues[i].e.ton } : {}), ...(vues[i].e.vol != null ? { vol: vues[i].e.vol } : {}), ...(vues[i].e.compacte ? { compacte: true } : {}) }));
   }
 
-  const api = { H, MUR, TRONCON, ETIQUETTE, POSTES, TABLE, RANG, FILE, boite, boiteDeZone, zoneDuService, zoneSous, decor, boitesDe, etiquettes, tailleEtiquette, poserEtiquettes, pluriel,
+  const api = { H, MUR, TRONCON, ETIQUETTE, COMPACTE, POSTES, TABLE, RANG, FILE, boite, boiteDeZone, zoneDuService, zoneSous, decor, boitesDe, etiquettes, tailleEtiquette, poserEtiquettes, pluriel,
+    ROUTE, AVION, PAS_FILE, aireDe, bandeDeFile, placesDeFile, placesDansIlot, circulation, etiquettesDesVols, avanceDuConvoi,
     posteParDefaut, posteDe, tablesPour, formeIlot, ilots, placeDe, meublesDe, ancreDuNom, MARCHE, TON_ETAT, ORDRE_ETATS, etatDe, surChemin, placePause, personnages };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyDirectScene = api;

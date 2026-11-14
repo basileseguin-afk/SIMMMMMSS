@@ -5,6 +5,46 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-14 — Évolution 16 (d) : la vue en direct — ce qui circule
+
+La scène montre ce que la journée déplace, lu dans son résultat.
+
+- **Les lots sont des chariots** (`direct-etat.js`, `direct-scene.js`) : un
+  par tranche de repas, un au moins par lot ; la légende dit la tranche (« un
+  chariot = 50 repas », doublée au-delà de 500 chariots en stock) et une
+  couleur par nature — repas, équipement, retour sale.
+- **Un lot en cours est dans l'îlot de son atelier** (au bout d'une table, ou
+  sur le trolley où l'on travaille) ; **un lot en stock attend dans la file du
+  service qui va le prendre**, en rangs depuis le couloir : les chariots en
+  file égalent les stocks du résultat. Au moment où il change de service, il
+  roule deux minutes rejouées, en convoi, poussé par un personnage.
+- **Ce qui est prêt attend au quai du handling** ; chaque tournée est un
+  véhicule (camion ou véhicule léger) du quai aux avions, pendant son trajet
+  et seulement là.
+- **Chaque vol est un avion** au bord de la scène, avec son numéro et son
+  heure ; il décolle à son départ. Chargé en retard, son étiquette prend la
+  couleur critique et dit le retard.
+- **Les retours sales** rejoignent la file de la plonge ; chaque tunnel
+  s'anime quand il lave, et seulement lui ; un lavage en relais reste dans
+  son tunnel ; arrêté, il reste devant, marqué « arrêté » ; le reste du soir
+  reste visible. **La ligne robotisée** s'anime quand son équipe travaille,
+  avec sa cadence en clair.
+- « Tout voir » montre aussi l'aire des avions. Les étiquettes des avions se
+  posent avec celles des services, sans recouvrement.
+
+Ce qui ne change pas : aucun calcul — la scène lit le journal des lots, les
+séjours en stock, les vols et les tournées du résultat ; elle n'ajoute aucune
+règle ni aucun seuil. La version 2 n'est pas touchée.
+
+Fichiers : `direct-etat.js`, `direct-scene.js`, `direct-dessin.js`,
+`direct-vue.js`, `direct.css`, `sim.js`, `index.html`,
+`tests/direct-circulation.test.cjs` et `tests/direct-circulation-browser.cjs`
+(nouveaux), `tests/direct-camera-browser.cjs` et
+`tests/direct-ateliers-browser.cjs` (la légende et un point du sol, relus),
+`README.md`, `CHANGELOG.md`.
+
+---
+
 ## 2026-11-14 — Évolution 16 (c) : la vue en direct — les ateliers et les personnes
 
 La scène respecte les réglages de la simulation : les mêmes ateliers, le même

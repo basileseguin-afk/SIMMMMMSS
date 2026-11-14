@@ -66,7 +66,7 @@ const compter=(l,f)=>l.reduce((m,x)=>{const k=f(x);m[k]=(m[k]||0)+1;return m;},{
   assert.ok(enPause.length>=8&&enPause.every(q=>q.x>=aire.x&&q.x<=aire.x+aire.w&&q.y>=aire.y&&q.y<=aire.y+aire.h),'en pause : dans l’aire de pause');
 
   // 3. La légende et la phrase, sous elle, en relief ; à plat, la légende du plan dessiné.
-  assert.deepEqual(await page.locator('#direct-legende > span').allInnerTexts(),['au travail','sans travail','en pause, en appui ou en chemin']);
+  assert.deepEqual((await page.locator('#direct-legende > span').allInnerTexts()).slice(0,3),['au travail','sans travail','en pause, en appui ou en chemin'],'les personnes d’abord (les chariots suivent, partie d)');
   assert.equal(await page.locator('#direct-note').innerText(),PHRASE);
   assert.deepEqual([await page.locator('#direct-legende').isVisible(),await page.locator('#direct-note').isVisible(),await page.locator('#legende-plan').isVisible()],[true,true,false]);
   const places=await page.evaluate(()=>{const b=s=>document.querySelector(s).getBoundingClientRect();return {legende:b('#direct-legende').bottom,note:b('#direct-note').top,toile:b('#direct-toile').top,noteBas:b('#direct-note').bottom,hauteur:b('#direct-note').height};});

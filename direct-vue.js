@@ -29,25 +29,29 @@
   /** La durée d'un changement d'angle animé (ms) ; un pas de déplacement au clavier (px) ; les degrés par pixel glissé. */
   const DUREE = 240, PAS_PX = 48, CAP_PAR_PX = 0.4, SITE_PAR_PX = 0.3;
   /** Le sol : le ton de chaque sorte de sol. */
-  const TON_SOL = { site: 'sol', couloir: 'couloir', pause: 'pause', zone: 'zone' };
+  const TON_SOL = { site: 'sol', couloir: 'couloir', pause: 'pause', zone: 'zone', route: 'couloir', aire: 'sol' };
   /** Le nom d'un atelier s'écrit à partir de ce zoom (pixels par mètre) : en dessous, il ne se lirait pas. */
   const ZOOM_NOMS = 30;
+  /** Ce qui s'anime pendant la lecture : la vague d'un tunnel qui lave (rad/s, rad/m), les plateaux d'une ligne robotisée (m/s, un tous les 0,9 m). */
+  const VAGUE = { temps: 5, espace: 1.6 }, PLATEAUX = { vitesse: 0.6, pas: 0.9, taille: 0.5 };
 
   /**
-   * Crée la vue dans `hote` (qui contient le canvas et les boutons). `a` : { lire, choisir } —
-   * `lire()` rend { site, journee, t, selection } ; `choisir(service)` choisit un service (un clic sur sa zone).
+   * Crée la vue dans `hote` (qui contient le canvas et les boutons). `a` : { lire, choisir, enLecture, dire } —
+   * `lire()` rend { site, journee, t, selection } ; `choisir(service)` choisit un service (un clic sur sa zone) ;
+   * `enLecture()` dit si la journée se rejoue (ce qui travaille s'anime) ; `dire({ tranche })` reçoit ce que la légende
+   * doit dire (« un chariot = N repas »).
    */
   function creer(hote, a) {
     const toile = hote.querySelector('canvas'), ctx = toile.getContext('2d');
-    const v = { cam: C().camera(), ajustee: true, site: null, decor: null, ilots: [], journee: null, etat: null, t: null, selection: null, lecture: false, pal: null, poses: [], personnes: [], noms: [], extras: null,
+    const v = { cam: C().camera(), ajustee: true, site: null, decor: null, ilots: [], aire: null, places: null, tranche: null, circule: null, journee: null, etat: null, t: null, selection: null, lecture: false, pal: null, poses: [], personnes: [], noms: [], marques: [], extras: null,
       stats: { images: 0, ms: 0, dernier: 0 } };
-    let ecran = { w: 0, h: 0, ...BANDES }, image = 0, anim = null, boites = null, cleBoites = '', perime = true, ateliers = null;
+    let ecran = { w: 0, h: 0, ...BANDES }, image = 0, anim = null, boites = null, cleBoites = '', perime = true, ateliers = null, circuleDe = null;
     const largeurs = new Map(), pointeurs = new Map();
     let geste = null;
 
     const immobile = () => !!(root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches);
     const visible = () => hote.offsetParent !== null && toile.clientWidth > 0 && toile.clientHeight > 0;
-    const boite = () => D().boite(v.site);
+    const boite = () => D().boite(v.site, v.aire);
     const demander = () => { if (!image) image = root.requestAnimationFrame(dessiner); };
 
     /** La largeur d'un texte d'étiquette, mesurée une fois. */
@@ -112,7 +116,14 @@
         ateliers = x.ateliers || null; v.site = x.site || null;
         const parId = new Map(((r && r.ateliers) || []).map(e => [e.id, e.personnes]));
         v.ilots = v.site && ateliers ? D().ilots(v.site, ateliers, id => parId.get(id)) : [];
-        v.decor = v.site ? D().decor(v.site, v.ilots) : null; boites = null;
+        // Les avions de la journée : leurs places au bord de la scène, du côté des avions ; la tranche d'un chariot.
+        const avant2 = v.aire;
+        v.places = r ? E().placesDesVols(r) : null; v.aire = v.site ? D().aireDe(v.site, v.places ? v.places.nombre : 0) : null;
+        const tranche = r ? E().tranche(r) : null;
+        if (tranche !== v.tranche) { v.tranche = tranche; if (a.dire) a.dire({ tranche }); }
+        v.decor = v.site ? D().decor(v.site, v.ilots, v.aire) : null; boites = null; circuleDe = null;
+        // L'aire des avions apparaît, grandit ou disparaît : la scène cadrée en entier se recadre, au même angle.
+        if (!nouveauSite && v.ajustee && v.site && ecran.w && JSON.stringify(avant2 && [avant2.w, avant2.h]) !== JSON.stringify(v.aire && [v.aire.w, v.aire.h])) { v.cam = C().cadrer(but(), ecran, boite()); anim = null; }
       }
       if (nouveauSite) {
         v.ajustee = true; anim = null;
@@ -124,10 +135,34 @@
 
     /* ---- le dessin ------------------------------------------------------------ */
 
-    function objet(o, p, devant, pal) {
+    function objet(o, p, devant, pal, anime) {
       if (o.quoi === 'personne') G().personne(ctx, p, o.x, o.y, pal.c(o.ton), pal.ton(o.ton, 0.35), pal.c('peau'), pal.voile('texte', 0.16), o.bob);
       else if (o.quoi === 'chariot') G().chariot(ctx, p, devant, o.x, o.y, pal.boite(o.ton));
-      else G().boite(ctx, p, devant, o.bx, o.by, o.z, o.w, o.d, o.h, pal.boite(o.ton));
+      else if (o.quoi === 'vehicule') G().vehicule(ctx, p, devant, o.x, o.y, o.phase === 'retour' ? -1 : 1, o.type === 'vl', pal.boite('vehicule'), pal.boite('travail'));
+      else if (o.quoi === 'avion') {
+        if (o.alpha < 1) ctx.globalAlpha = Math.max(0, o.alpha);
+        G().avion(ctx, p, devant, o.x, o.y, D().AVION.long, o.dz, pal.boite('avion'), pal.boite('avion'), pal.boite(o.enRetard ? 'critique' : 'travail'));
+        ctx.globalAlpha = 1;
+      } else if (o.quoi === 'tunnel' && anime.tunnels.has(o.nom)) {
+        // Un tunnel qui lave, et seulement lui : son dessus s'éclaire ; pendant la lecture, une vague le parcourt.
+        G().boite(ctx, p, devant, o.bx, o.by, o.z, o.w, o.d, o.h, pal.boite(o.ton));
+        const a = anime.h == null ? 0.45 : 0.3 + 0.25 * (0.5 + 0.5 * Math.sin(anime.h * VAGUE.temps - (o.enLong ? o.y : o.x) * VAGUE.espace));
+        G().sol(ctx, p, o.bx, o.by, o.w, o.d, pal.voile('travail', a), null, 0, o.z + o.h);
+      } else if (o.quoi === 'ligne' && anime.lignes.has(o.ref)) {
+        // Une ligne robotisée au travail : ses plateaux avancent sur le convoyeur.
+        G().boite(ctx, p, devant, o.bx, o.by, o.z, o.w, o.d, o.h, pal.boite(o.ton));
+        const l = anime.ligneDe(o), enLong = l.h > l.w, de = enLong ? o.by - l.y : o.bx - l.x, a0 = enLong ? o.d : o.w, large = Math.min(PLATEAUX.taille, (enLong ? o.w : o.d) * 0.7);
+        const decale = anime.h == null ? 0 : (anime.h * PLATEAUX.vitesse) % PLATEAUX.pas;
+        for (let u = decale + PLATEAUX.pas * Math.ceil((de - decale) / PLATEAUX.pas); u + PLATEAUX.taille <= de + a0 + 1e-9; u += PLATEAUX.pas) {
+          if (u < de - 1e-9) continue;
+          if (enLong) G().sol(ctx, p, l.x + (l.w - large) / 2, l.y + u, large, PLATEAUX.taille, pal.c('repas'), null, 0, o.z + o.h + 0.02);
+          else G().sol(ctx, p, l.x + u, l.y + (l.h - large) / 2, PLATEAUX.taille, large, pal.c('repas'), null, 0, o.z + o.h + 0.02);
+        }
+      } else if (o.quoi === 'bras') {
+        // Le bras de la ligne : à la couleur du travail quand son équipe travaille, au repos sinon.
+        const actif = anime.lignes.has(o.ref), dz = actif && anime.h != null ? 0.08 * Math.sin(anime.h * 4) : 0;
+        G().boite(ctx, p, devant, o.bx, o.by, o.z, o.w, o.d, o.h + dz, pal.boite(actif ? 'bras' : 'machine'));
+      } else G().boite(ctx, p, devant, o.bx, o.by, o.z, o.w, o.d, o.h, pal.boite(o.ton));
     }
 
     function dessiner(ts) {
@@ -157,12 +192,29 @@
       const cle = [fond.x0, fond.x1, fond.y0, fond.y1].map(Number).join('');
       if (!boites || cle !== cleBoites) { boites = D().boitesDe(v.decor, fond, C().decouper); cleBoites = cle; }
       // Les personnes : celles des indicateurs, à leur poste. Au travail, elles bougent légèrement pendant la lecture.
+      if (a.enLecture) v.lecture = !!a.enLecture();
+      const bouge = v.lecture && !immobile();
       v.personnes = v.journee && Number.isFinite(v.t) ? D().personnages({ site: v.site, ilots: v.ilots }, v.journee, v.t) : [];
-      if (v.lecture && !immobile()) { const h = ts / 230; for (const q of v.personnes) q.bob = q.etat === 'auTravail' && !q.enChemin ? Math.sin(h + q.i * 1.7 + q.x) * 1.2 : 0; }
-      const extras = v.extras ? v.extras(v) : null, mobiles = extras && extras.length ? v.personnes.concat(extras) : v.personnes;
-      for (const o of C().ordre(v.cam, mobiles.length ? boites.concat(mobiles) : boites)) objet(o, p, devant, pal);
-      // Le nom de chaque atelier, sous son îlot, à partir du zoom où il se lit.
-      v.poses = D().poserEtiquettes(D().etiquettes(v.site, v.etat, fond), v.cam, ecran, mesure);
+      if (bouge) { const h = ts / 230; for (const q of v.personnes) q.bob = q.etat === 'auTravail' && !q.enChemin ? Math.sin(h + q.i * 1.7 + q.x) * 1.2 : 0; }
+      // Ce qui circule : les chariots, les véhicules, les avions — lus dans le résultat pour l'heure rejouée.
+      if (!circuleDe || circuleDe.journee !== v.journee || circuleDe.t !== v.t || circuleDe.ilots !== v.ilots) {
+        v.circule = D().circulation({ site: v.site, ilots: v.ilots, aire: v.aire, places: v.places, tranche: v.tranche }, v.journee, v.t);
+        circuleDe = { journee: v.journee, t: v.t, ilots: v.ilots };
+      }
+      const c = v.circule, zoneFood = c.lignes.length ? v.site.zones.find(z => (z.lignes || []).length) : null;
+      const anime = { h: bouge ? ts / 1000 : null, tunnels: new Set(c.tunnels), lignes: new Set(c.lignes.map(l => l.ligne)), ligneDe: o => zoneFood.lignes[o.ref] };
+      const extras = v.extras ? v.extras(v) : null;
+      const mobiles = [].concat(v.personnes, c.pousseurs, c.chariots, c.vehicules, c.avions, extras || []);
+      for (const o of C().ordre(v.cam, mobiles.length ? boites.concat(mobiles) : boites)) objet(o, p, devant, pal, anime);
+      // Les mots posés dans la scène : « arrêté » devant un tunnel, la cadence d'une ligne robotisée.
+      v.marques = [];
+      for (const m of c.marques) {
+        const X = p.x(m.x, m.y), Y = p.y(m.x, m.y, m.z);
+        if (X < 0 || X > ecran.w || Y < 0 || Y > ecran.h) continue;
+        v.marques.push({ ...G().marque(ctx, X, Y, m.texte, pal.c('etiquette'), pal.c(m.ton), pal.c('texte')), texte: m.texte, ton: m.ton });
+      }
+      // Les étiquettes : celles des services et celles des avions, posées ensemble, sans se recouvrir.
+      v.poses = D().poserEtiquettes(D().etiquettes(v.site, v.etat, fond).concat(D().etiquettesDesVols(c.avions)), v.cam, ecran, mesure);
       // Le nom de chaque atelier, sous son îlot, à partir du zoom où il se lit ; jamais sur un autre nom ni sur une étiquette.
       v.noms = [];
       if (v.cam.zoom >= ZOOM_NOMS) {
@@ -181,7 +233,9 @@
       }
       const style = { fond: pal.c('etiquette'), bordure: pal.c('bordure'), titre: pal.c('texte'), texte: pal.c('texte2'), epaisseur: 1 };
       const styleChoisi = { ...style, bordure: pal.c('choisi'), epaisseur: 2 };
-      for (const e of v.poses) G().etiquette(ctx, e, choisie && e.id === choisie.id ? styleChoisi : style, D().ETIQUETTE);
+      // Un vol chargé en retard : son étiquette prend la couleur critique.
+      const styleCritique = { ...style, fond: pal.melange('etiquette', 'critique', 0.16), bordure: pal.c('critique'), texte: pal.c('texte'), epaisseur: 2 };
+      for (const e of v.poses) G().etiquette(ctx, e, e.ton === 'critique' ? styleCritique : choisie && e.id === choisie.id ? styleChoisi : style, e.compacte ? D().COMPACTE : D().ETIQUETTE);
       const ms = root.performance.now() - t0, s = v.stats;
       s.images++; s.ms = s.ms ? s.ms * 0.9 + ms * 0.1 : ms; s.dernier = ms;
     }
@@ -261,13 +315,20 @@
 
     /** Ce que la vue montre, pour le contrôle : la caméra, la scène à l'écran, les étiquettes posées, les murs dessinés. */
     function etat() {
-      const b = v.site ? boite() : null;
+      const b = v.site ? boite() : null, c = v.circule;
       return { camera: { ...v.cam }, ecran: { ...ecran }, ajustee: v.ajustee, enMouvement: !!anim, zones: v.site ? v.site.zones.map(z => z.id) : [], selection: v.selection, t: v.t,
         emprise: b ? C().emprise(v.cam, ecran, b) : null, tient: b ? C().tient(v.cam, ecran, b) : false, murs: C().mursDuFond(v.cam),
-        etiquettes: v.poses.map(e => ({ id: e.id, x: e.x, y: e.y, w: e.w, h: e.h, titre: e.titre, lignes: e.lignes.slice() })),
+        etiquettes: v.poses.filter(e => e.vol == null).map(e => ({ id: e.id, x: e.x, y: e.y, w: e.w, h: e.h, titre: e.titre, lignes: e.lignes.slice() })),
+        vols: v.poses.filter(e => e.vol != null).map(e => ({ vol: e.vol, x: e.x, y: e.y, w: e.w, h: e.h, titre: e.titre, lignes: e.lignes.slice(), ton: e.ton || null })),
+        circule: c ? { tranche: c.tranche, pousseurs: c.pousseurs.length, tunnels: c.tunnels.slice(), lignes: c.lignes.map(l => ({ ...l })), marques: v.marques.map(m => ({ ...m })),
+          chariots: c.chariots.map(o => ({ etat: o.etat, ton: o.ton, service: o.service, atelier: o.atelier ?? null, vol: o.vol ?? null, classe: o.classe ?? null, tunnel: o.tunnel ?? null, enChemin: !!o.enChemin, x: o.x, y: o.y })),
+          vehicules: c.vehicules.map(o => ({ cle: o.cle, camion: o.camion, type: o.type, phase: o.phase, vols: o.vols.slice(), avance: o.avance, x: o.x, y: o.y })),
+          avions: c.avions.map(o => ({ id: o.id, depart: o.depart, enRetard: o.enRetard, retard: o.retard, decolle: o.decolle, x: o.x, y: o.y })) } : null,
+        aire: v.aire ? { x: v.aire.x, y: v.aire.y, w: v.aire.w, h: v.aire.h, places: v.aire.places.length } : null,
         ilots: v.ilots.map(i => ({ atelier: i.atelier, service: i.service, zone: i.zone, poste: i.poste, tables: i.tables.length, places: i.places.length, echelle: i.echelle })),
         personnes: v.personnes.map(q => ({ atelier: q.atelier, etat: q.etat, ton: q.ton, hors: !!q.hors, enChemin: !!q.enChemin, x: q.x, y: q.y })), noms: v.noms.map(n => n.nom),
-        recouvrements: C().recouvrements(v.poses), images: v.stats.images, msDessin: v.stats.ms, couleurs: v.pal ? { fond: G().css(v.pal.base.fond), zone: G().css(v.pal.base.zone), texte: G().css(v.pal.base.texte) } : null };
+        recouvrements: C().recouvrements(v.poses), images: v.stats.images, msDessin: v.stats.ms, couleurs: v.pal ? { fond: G().css(v.pal.base.fond), zone: G().css(v.pal.base.zone), texte: G().css(v.pal.base.texte), critique: G().css(v.pal.base.critique), repas: G().css(v.pal.base.repas),
+          equipement: G().css(v.pal.base.equipement), sale: G().css(v.pal.base.sale), etiquetteCritique: v.pal.melange('etiquette', 'critique', 0.16) } : null };
     }
     /** Où est un point de la scène à l'écran (pour le contrôle) : [X, Y] en pixels de la toile. */
     const ecranDe = (x, y, z) => C().projeter(v.cam, ecran, x, y, z || 0);

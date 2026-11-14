@@ -2207,7 +2207,10 @@ function initDirect() {
     lire: () => ({ site: siteDeLaVue(), journee: journeeLue(), t: Sim.vue && !Sim.vue.vide ? Sim.vue.t : null, selection,
       // Les ateliers réglés (leurs îlots, leur poste de travail) ; la lecture en cours (les personnes au travail bougent).
       ateliers: Sim.ateliers ? Sim.ateliers.state.ateliers : null, lecture: !!(Sim.vue && Sim.vue.enMarche) }),
-    choisir: id => selectionner(id)
+    choisir: id => selectionner(id),
+    // Ce qui travaille s'anime pendant la lecture ; la légende dit la tranche d'un chariot (50 repas, plus si la journée en compterait trop).
+    enLecture: () => !!(Sim.vue && Sim.vue.enMarche),
+    dire: x => { const el = document.getElementById('direct-tranche'); if (el) el.textContent = 'un chariot = ' + (x.tranche || OrlyDirectEtat.TRANCHE) + ' repas'; }
   });
   if (choix) choix.addEventListener('click', e => { const b = e.target.closest('[data-direct-mode]'); if (b) choisirVueDirect(b.dataset.directMode); });
   choisirVueDirect('relief');

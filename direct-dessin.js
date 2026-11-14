@@ -108,6 +108,46 @@
   /** Un chariot en (x, y) : une boîte de 0,6 m sur 0,48, haute de 0,85. */
   function chariot(ctx, p, devant, x, y, tons) { boite(ctx, p, devant, x - 0.3, y - 0.24, 0.1, 0.6, 0.48, 0.85, tons); }
 
+  /**
+   * Un véhicule du handling en (x, y) : une caisse et, devant elle, une cabine — un camion (2,9 m) ou un véhicule léger
+   * (2 m). `sens` : 1 s'il roule vers les avions (les x croissants), -1 s'il revient. `tons` : la caisse ; `cabine` : la cabine.
+   */
+  function vehicule(ctx, p, devant, x, y, sens, leger, tons, cabine) {
+    const L = leger ? 1.2 : 2.1, l = leger ? 1.0 : 1.2, h = leger ? 1.0 : 1.5, c = leger ? 0.7 : 0.8, hc = leger ? 0.85 : 1.0, d = sens < 0 ? -1 : 1;
+    const caisse = () => boite(ctx, p, devant, d > 0 ? x - (L + c) / 2 : x + (L + c) / 2 - L, y - l / 2, 0.25, L, l, h, tons);
+    const avant = () => boite(ctx, p, devant, d > 0 ? x + (L + c) / 2 - c : x - (L + c) / 2, y - l / 2 + 0.05, 0.25, c, l - 0.1, hc, cabine);
+    // Du fond vers l'avant : la cabine est devant la caisse si l'œil regarde du côté où elle se trouve.
+    if ((d > 0) === !!devant.x1) { caisse(); avant(); } else { avant(); caisse(); }
+  }
+
+  /**
+   * Un avion en (x, y), le nez vers les x croissants : deux ailes, un fuselage de longueur `L`, une dérive, un nez. `dz` : sa
+   * hauteur au-dessus du sol (il décolle) ; `tons` : sa couleur ; `aile` : celle des ailes ; `derive` : celle de la dérive.
+   */
+  function avion(ctx, p, devant, x, y, L, dz, tons, aile, derive) {
+    const u = L / 7.4, x0 = x - L / 2, z = 0.7 * u + (dz || 0), l = 1.2 * u;
+    const aileA = cote => boite(ctx, p, devant, x0 + 2.8 * u, cote > 0 ? y + l / 2 : y - l / 2 - 2.7 * u, z + 0.25 * u, 1.3 * u, 2.7 * u, 0.14 * u, aile);
+    const nez = () => boite(ctx, p, devant, x0 + L, y - 0.4 * u, z + 0.15 * u, 0.5 * u, 0.8 * u, 0.8 * u, tons);
+    aileA(devant.y1 ? -1 : 1);
+    if (!devant.x1) nez();
+    boite(ctx, p, devant, x0, y - l / 2, z, L, l, 1.15 * u, tons);
+    if (devant.x1) nez();
+    boite(ctx, p, devant, x0 + 0.1 * u, y - 0.15 * u, z + 1.15 * u, 0.9 * u, 0.3 * u, 1.1 * u, derive);
+    aileA(devant.y1 ? 1 : -1);
+  }
+
+  /** Une marque posée dans la scène : un mot dans une pastille, centré en (X, Y), cerné de sa couleur. Rend son rectangle. */
+  function marque(ctx, X, Y, texte, fond, trait, encre) {
+    ctx.font = police(11, true);
+    const w = Math.ceil(ctx.measureText(texte).width) + 12, h = 18, x = Math.round(X - w / 2), y = Math.round(Y - h / 2);
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x + 0.5, y + 0.5, w - 1, h - 1, 9); else ctx.rect(x + 0.5, y + 0.5, w - 1, h - 1);
+    ctx.fillStyle = fond; ctx.fill(); ctx.strokeStyle = trait; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = encre; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(texte, x + w / 2, y + h / 2 + 0.5);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    return { x, y, w, h };
+  }
+
   /** La police d'un texte de la scène. */
   const police = (taille, gras) => (gras ? '600 ' : '500 ') + taille + 'px Inter, "Inter Variable", system-ui, sans-serif';
 
@@ -131,7 +171,7 @@
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   }
 
-  const api = { JETONS, OMBRES, rvb, css, melange, palette, poly, sol, boite, personne, chariot, police, etiquette };
+  const api = { JETONS, OMBRES, rvb, css, melange, palette, poly, sol, boite, personne, chariot, vehicule, avion, marque, police, etiquette };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.OrlyDirectDessin = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
