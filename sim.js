@@ -2204,7 +2204,9 @@ function initDirect() {
   const hote = document.getElementById('direct'), choix = document.getElementById('direct-choix');
   if (!hote || !window.OrlyDirectVue || !window.OrlySite) return;
   Sim.direct = OrlyDirectVue.creer(hote, {
-    lire: () => ({ site: siteDeLaVue(), journee: journeeLue(), t: Sim.vue && !Sim.vue.vide ? Sim.vue.t : null, selection }),
+    lire: () => ({ site: siteDeLaVue(), journee: journeeLue(), t: Sim.vue && !Sim.vue.vide ? Sim.vue.t : null, selection,
+      // Les ateliers réglés (leurs îlots, leur poste de travail) ; la lecture en cours (les personnes au travail bougent).
+      ateliers: Sim.ateliers ? Sim.ateliers.state.ateliers : null, lecture: !!(Sim.vue && Sim.vue.enMarche) }),
     choisir: id => selectionner(id)
   });
   if (choix) choix.addEventListener('click', e => { const b = e.target.closest('[data-direct-mode]'); if (b) choisirVueDirect(b.dataset.directMode); });

@@ -21,6 +21,9 @@
   /* La plonge lave ce qui revient des vols : son jour se compte depuis
    * l'arrivée des retours (J), pas depuis le départ (retour d'usage du 05/10). */
   const JOURS_PLONGE = [[-1, 'Veille de l’arrivée (J-1)'], [0, 'Jour d’arrivée des retours (J)'], [1, 'Lendemain de l’arrivée (J+1)']];
+  /** Les postes de travail d'une équipe dans la vue en direct (évolution 16 c), et leurs libellés. */
+  const POSTES_DIRECT = ['tables', 'trolleys', 'machine', 'rayonnages', 'aucun'];
+  const LIBELLES_POSTES = { tables: 'des tables', trolleys: 'des trolleys', machine: 'une machine', rayonnages: 'des rayonnages', aucun: 'aucun' };
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   const uid = () => 'at-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
   const clone = x => JSON.parse(JSON.stringify(x));
@@ -323,6 +326,9 @@
         // Sa présence au contrat (banc d'essai, évolution 11 e) : au-delà, chaque personne fait des heures sup d'office, chaque jour.
         ...(Number.isFinite(presenceLue(a.presenceContrat, 'Équipe « ' + nom + ' », présence au contrat')) ? { presenceContrat: presenceLue(a.presenceContrat, '') } : {}),
         ...(a.materiel === 'consomme' ? { materiel: 'consomme' } : {}),
+        // Son poste de travail dans la vue en direct (évolution 16 c) : des tables, des trolleys, une machine, des
+        // rayonnages, ou aucun. Un réglage d'affichage : il ne change aucun calcul. Sans lui, le défaut de la vue.
+        ...(POSTES_DIRECT.includes(a.poste) ? { poste: a.poste } : {}),
         // L'effectif saisi à la main avant que le calcul ne le remplace (05/10) :
         // cocher « Effectif constant » le retrouve.
         // L'atelier unique d'un service, pour certaines compagnies (07/10).
@@ -690,6 +696,17 @@
       const opt = (x, lib) => `<option value="${x}"${x === v ? ' selected' : ''}>${lib}</option>`;
       return `<label title="Souple : quand le lot suivant n’est pas prêt, elle prend le premier lot prêt de sa liste. Strict : dans l’ordre de la liste">Ordre de ses lots<select data-at-champ="ordreSouple">
         ${opt('', 'le réglage général (' + (general ? 'souple' : 'strict') + ')')}${opt('souple', 'souple : un lot prêt d’abord')}${opt('strict', 'strict : l’ordre de la liste')}</select></label>`;
+    }
+
+    /**
+     * Le poste de travail d'une équipe dans la vue en direct (évolution 16 c) : ce sur quoi elle travaille — des tables,
+     * des trolleys, une machine, des rayonnages, ou rien. Vide : le défaut de la vue, dit dans la liste. Il ne change aucun calcul.
+     */
+    champPoste(a) {
+      const D = root.OrlyDirectScene, defaut = D ? D.posteParDefaut(a) : 'tables', v = POSTES_DIRECT.includes(a.poste) ? a.poste : '';
+      const opt = (x, lib) => `<option value="${x}"${x === v ? ' selected' : ''}>${lib}</option>`;
+      return `<label title="Ce sur quoi l’équipe travaille, dans la vue en direct. Ce réglage ne change aucun calcul">Poste de travail, dans la vue en direct<select data-at-champ="poste">
+        ${opt('', 'par défaut (' + LIBELLES_POSTES[defaut] + ')')}${POSTES_DIRECT.map(p => opt(p, LIBELLES_POSTES[p])).join('')}</select></label>`;
     }
 
     /** Les renforts (banc d'essai, évolution 5) sont-ils actifs ? Ils montrent les postes de travail des équipes. */
@@ -1437,6 +1454,8 @@
           }
           // L'ordre de ses lots (correction 6) : le sien, ou la règle générale.
           case 'ordreSouple': if (v === 'souple') a.ordreSouple = true; else if (v === 'strict') a.ordreSouple = false; else delete a.ordreSouple; break;
+          // Son poste de travail dans la vue en direct : un choix, ou le défaut de la vue.
+          case 'poste': if (POSTES_DIRECT.includes(v)) a.poste = v; else delete a.poste; break;
           // Ses postes de travail (renforts) : vide, pas de limite.
           case 'personnesMax': {
             const n = +v;
@@ -2138,6 +2157,7 @@
           ${(a.type === 'manuel' || a.type === 'robot') && !o.compact && (this.renfortsActifs() || Number.isInteger(a.personnesMax)) ? `
           <label title="Les renforts ne la portent pas au-delà de ses postes de travail. Vide : pas de limite">Postes de travail${avecUnite(`<input type="number" min="1" max="999" step="1" value="${Number.isInteger(a.personnesMax) ? a.personnesMax : ''}" placeholder="sans limite" data-at-champ="personnesMax">`, 'pers.')}</label>` : ''}
           ${(a.type === 'manuel' || a.type === 'robot') && !o.compact ? this.champOrdre(a) : ''}
+          ${o.compact ? '' : this.champPoste(a)}
         </div>
         ${dispo ? `
         <p class="mini-note at-regle">Ce service <b>ne prépare pas une commande après l’autre</b> : il sert

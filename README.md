@@ -701,6 +701,47 @@ La caméra, l'ordre de dessin, les murs et la place des étiquettes sont dans
 journée dans `direct-etat.js` — trois modules sans navigateur. Le dessin est
 dans `direct-dessin.js`, la vue et ses gestes dans `direct-vue.js`.
 
+### En relief : les ateliers et les personnes (évolution 16 c)
+
+La scène respecte les réglages de la simulation :
+
+- **Un atelier réglé = un îlot**, dans la zone de son service, ni plus ni
+  moins : les ateliers de « Équipes ». Un atelier ajouté ou retiré dans les
+  réglages apparaît ou disparaît dans la scène. Son nom s'écrit sous son îlot
+  à partir du zoom où il se lit. Si les îlots d'un service ne tiennent pas
+  dans sa zone, ils se resserrent tous ensemble : aucun n'est supprimé, aucun
+  ne déborde sur la zone voisine.
+- **Chaque atelier montre exactement ses personnes** : celles du réglage
+  (saisies ou calculées), à ses horaires. Un atelier de deux personnes montre
+  deux personnages. À chaque créneau de 15 minutes, leur nombre est celui des
+  présents aux indicateurs de charge, et leur répartition par état aussi
+  (une mise à disposition, une équipe d'appui, une équipe en heures sup après
+  son horaire comprises).
+- **Le poste de travail** d'une équipe dit ce sur quoi elle travaille, dans
+  sa fiche (Équipes › Équipes une par une : « Poste de travail, dans la vue en
+  direct ») : **des tables** (une pour deux personnes, une au moins, les
+  personnes debout autour), **des trolleys** (pas de table : chaque personne à
+  côté d'un trolley), **une machine** (la ligne robotisée ou les tunnels de
+  lavage, les personnes autour), **des rayonnages** (les personnes vont et
+  viennent entre les rangées de l'entrepôt), ou **aucun** (les personnes
+  seules). Par défaut :
+  une machine pour un atelier de type robot ou lavage ; des trolleys pour les
+  services armement et dotation ; des rayonnages pour le magasin ; des tables
+  pour tous les autres. Le réglage se garde avec les ateliers (« Tout
+  sauvegarder », « Restaurer ») ; une sauvegarde d'avant prend les défauts ; il
+  ne change aucun calcul.
+- **La couleur d'une personne dit son état** : au travail (l'accent) ; sans
+  travail, en attente du service d'avant (l'avertissement) ; en pause, en
+  appui ou en chemin (neutre). La légende le rappelle dans la bande.
+- **Ce qui est une mise en scène** : une personne au travail est à son poste
+  et bouge légèrement pendant la lecture ; en pause, elle est dans l'aire de
+  pause ; elle rejoint son poste dans les deux minutes rejouées qui précèdent
+  le créneau où elle y est (du bord de sa zone à son arrivée, de la pause
+  quand elle en revient) et le quitte dans les deux minutes qui suivent. La
+  page le dit sous la légende : « Les ateliers et le nombre de personnes sont
+  ceux de vos réglages ; le moteur calcule combien de personnes sont dans
+  chaque état ; leurs déplacements sont une mise en scène. »
+
 **Dans la vue à plat**, « Tout voir » compte maintenant toutes les zones
 dessinées — les services, mais aussi les zones de production, les locaux, les
 chambres froides, les équipements et les circulations : un plan dont des zones
@@ -1119,6 +1160,8 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/site-genere.test.cjs` | Le site de la vue en direct, généré par des règles (v1, évolution 16 a), sur des unités fictives : les parts par défaut (1/5, 1/5, 1/5, 2/5) et des parts réglées ; la somme des surfaces égale le site, les zones remplissent les deux bandes ; un service sans atelier n’a pas de zone ; la préparation et le montage dans la zone FOOD ; les lignes robotisées (aucune, une, deux), dans la zone FOOD ; le nombre de tunnels de la plonge, ceux d’un quai qui lave ; quatre lignes, quatre et six tunnels dans leur zone, sans recouvrement ; une part réglée minuscule ou énorme ; des équipes à cheval sur minuit, à J−1 et J+1 ; une unité à un seul service ; 300 unités tirées d’une graine fixe (toutes les règles) ; le magasin, la pause, l’ordre du chemin ; la place des ateliers ; deux générations identiques ; la part gardée dans la sauvegarde, une sauvegarde d’avant aux défauts |
 | `tests/direct-camera.test.cjs` | La caméra de la vue en direct (v1, évolution 16 b), sans navigateur : la projection de la maquette (isométrique) et à plusieurs angles, son inverse au sol ; sans fuite de perspective ; les bornes (360°, de 25° à 80°) ; glisser, zoomer autour du pointeur, tourner ; « Tout voir » à 24 px des bords à tout angle, à 1 280 et 1 920 px ; l’ordre de dessin du fond vers l’avant ; les boîtes longues en tronçons ; les murs du fond à tout angle ; d’un angle à l’autre par le plus court ; les étiquettes à leur taille, sans recouvrement |
 | `tests/direct-scene.test.cjs` | La scène de la vue en direct et ce qu’elle lit de la journée (v1, évolution 16 b), sans navigateur, sur l’unité fictive : des personnes entières par état, celles des créneaux des indicateurs, équipe par équipe et à chaque créneau ; les lots qui attendent devant un service, ceux des séjours en stock ; le décor (sols, murs bas sauf du côté du couloir, machines des réglages) ; les murs du fond seulement ; les étiquettes (« n au travail / n présents », « n lots à faire ») ; à « Tout voir », aucune étiquette n’en recouvre une autre, à 1 280 et 1 920 px, à quatre angles |
+| `tests/direct-ilots.test.cjs` | Les ateliers et les personnes de la vue en direct (v1, évolution 16 c), sans navigateur, sur l’unité fictive : un îlot par atelier réglé, dans la zone de son service ; un atelier ajouté ou retiré ; à chaque créneau de la journée, les personnages de chaque atelier égaux à ses présents aux indicateurs, état par état ; la couleur de l’état, la pause dans l’aire de pause, l’arrivée et le départ en chemin ; une équipe d’appui, une mise à disposition ; une équipe en heures sup après son horaire ; le poste de travail (cinq choix ; trois tables pour cinq personnes, aucune aux trolleys) ; les défauts par type et par service ; le réglage gardé, une sauvegarde d’avant aux défauts ; le poste ne change ni le résultat ni les indicateurs ; des îlots qui se resserrent sans sortir de leur zone |
+| `tests/direct-ateliers-browser.cjs` | Les ateliers et les personnes dans la page (v1, évolution 16 c) : un îlot par atelier réglé ; à six heures de la journée, les personnages égaux aux présents des indicateurs, à leur couleur ; la pause dans l’aire de pause ; la légende et la phrase sous elle ; le poste de travail réglé dans la fiche de l’équipe, gardé, sans effet sur la journée ; un atelier ajouté, un îlot de plus ; les noms au zoom ; « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant aux défauts ; la version 2 sans rien de cela |
 | `tests/direct-camera-browser.cjs` | La vue en relief dans la page (v1, évolution 16 b), à 1 280 et 1 920 px : en relief à l’ouverture, à l’angle de la maquette, la scène entière à 24 px ; elle tient encore à quatre angles, à 25° et à 80° ; les étiquettes sans recouvrement, à leur taille, leurs chiffres ceux de la journée ; les murs dessinés au fond ; glisser, Maj + glisser, le bouton droit, la molette ; les flèches, ZQSD, A et E, + et −, 0 ; les boutons ; un clic choisit un service, « Cadrer » ; un doigt, deux doigts ; les deux thèmes ; « À plat » et retour ; sans animation avec « réduire les animations » ; à plat, un plan aux coordonnées négatives entier sur « Tout voir » |
 | `tests/direct-ips-browser.cjs` | La fluidité de la vue en relief (v1, évolution 16 b) : une unité fictive de 300 personnes et 500 chariots, la caméra en mouvement à chaque image — les images par seconde et le temps de dessin, affichés ; un garde-fou large (30 images par seconde) |
 | `tests/site-surface-browser.cjs` | La part de surface d’un service dans sa fiche (v1, évolution 16 a) : le champ de la section « Avancé », la part par défaut dite, la part réglée gardée et relue après rechargement, la journée inchangée, le retour au défaut ; « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant aux parts par défaut ; la version 2 sans le champ |

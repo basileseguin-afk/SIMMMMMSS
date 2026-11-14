@@ -5,6 +5,44 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-14 — Évolution 16 (c) : la vue en direct — les ateliers et les personnes
+
+La scène respecte les réglages de la simulation : les mêmes ateliers, le même
+nombre de personnes.
+
+- **Un atelier réglé = un îlot** dans la zone de son service
+  (`direct-scene.js`), avec son nom à partir du zoom où il se lit. Des îlots
+  qui ne tiennent pas se resserrent ensemble : aucun n'est supprimé, aucun ne
+  sort de sa zone.
+- **Chaque atelier montre exactement ses personnes**, dans l'état que disent
+  les indicateurs de charge à chaque créneau de 15 minutes : au travail
+  (accent), sans travail (avertissement), en pause, en appui ou en chemin
+  (neutre). En pause, elles sont dans l'aire de pause ; leurs déplacements
+  sont une mise en scène, en deux minutes rejouées.
+- **Le « poste de travail »** d'une équipe, dans sa fiche : des tables (une
+  pour deux personnes), des trolleys, une machine, des rayonnages, ou aucun.
+  Par défaut : une machine pour un robot ou un lavage, des trolleys à
+  l'armement et à la dotation, des rayonnages au magasin, des tables
+  ailleurs. Il se garde avec les ateliers (`poste`), donc dans « Tout
+  sauvegarder » et « Restaurer » ; une sauvegarde d'avant prend les défauts.
+- **La légende des personnes**, dans la bande, et la phrase sous elle : « Les
+  ateliers et le nombre de personnes sont ceux de vos réglages ; le moteur
+  calcule combien de personnes sont dans chaque état ; leurs déplacements sont
+  une mise en scène. »
+- Les étiquettes des services se tiennent au-dessus du fond de leur zone, pour
+  ne pas cacher les îlots.
+
+Ce qui ne change pas : aucun calcul — le poste de travail n'entre ni dans la
+journée ni dans les indicateurs (leur JSON est le même, champ par champ). La
+version 2 n'est pas touchée.
+
+Fichiers : `direct-scene.js`, `direct-vue.js`, `direct.css`, `ateliers.js` (le
+réglage, gardé et saisi), `sim.js`, `index.html`,
+`tests/direct-ilots.test.cjs` et `tests/direct-ateliers-browser.cjs`
+(nouveaux), `README.md`, `CHANGELOG.md`.
+
+---
+
 ## 2026-11-14 — Évolution 16 (b) : la vue en direct — la caméra, on se déplace dans le site
 
 Le plan rejoué s'ouvre « En relief » : le site généré, dessiné dans un canvas

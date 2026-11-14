@@ -30,6 +30,8 @@
   const DUREE = 240, PAS_PX = 48, CAP_PAR_PX = 0.4, SITE_PAR_PX = 0.3;
   /** Le sol : le ton de chaque sorte de sol. */
   const TON_SOL = { site: 'sol', couloir: 'couloir', pause: 'pause', zone: 'zone' };
+  /** Le nom d'un atelier s'écrit à partir de ce zoom (pixels par mètre) : en dessous, il ne se lirait pas. */
+  const ZOOM_NOMS = 30;
 
   /**
    * Crée la vue dans `hote` (qui contient le canvas et les boutons). `a` : { lire, choisir } —
@@ -37,9 +39,9 @@
    */
   function creer(hote, a) {
     const toile = hote.querySelector('canvas'), ctx = toile.getContext('2d');
-    const v = { cam: C().camera(), ajustee: true, site: null, decor: null, journee: null, etat: null, t: null, selection: null, pal: null, poses: [], extras: null,
+    const v = { cam: C().camera(), ajustee: true, site: null, decor: null, ilots: [], journee: null, etat: null, t: null, selection: null, lecture: false, pal: null, poses: [], personnes: [], noms: [], extras: null,
       stats: { images: 0, ms: 0, dernier: 0 } };
-    let ecran = { w: 0, h: 0, ...BANDES }, image = 0, anim = null, boites = null, cleBoites = '', perime = true;
+    let ecran = { w: 0, h: 0, ...BANDES }, image = 0, anim = null, boites = null, cleBoites = '', perime = true, ateliers = null;
     const largeurs = new Map(), pointeurs = new Map();
     let geste = null;
 
@@ -104,13 +106,20 @@
     function relire() {
       perime = false;
       const x = a.lire() || {};
-      if (x.site !== v.site) {
-        v.site = x.site || null; v.decor = v.site ? D().decor(v.site) : null; boites = null;
+      const nouveauSite = x.site !== v.site, r = x.journee && x.journee.r, avant = v.journee && v.journee.r;
+      if (nouveauSite || r !== avant || x.ateliers !== ateliers) {
+        // Les îlots : un par atelier réglé, avec ses personnes (celles de la journée calculée, sinon celles du réglage).
+        ateliers = x.ateliers || null; v.site = x.site || null;
+        const parId = new Map(((r && r.ateliers) || []).map(e => [e.id, e.personnes]));
+        v.ilots = v.site && ateliers ? D().ilots(v.site, ateliers, id => parId.get(id)) : [];
+        v.decor = v.site ? D().decor(v.site, v.ilots) : null; boites = null;
+      }
+      if (nouveauSite) {
         v.ajustee = true; anim = null;
         if (v.site && ecran.w) v.cam = C().cadrer(C().camera({ cap: C().CAP_MAQUETTE, site: C().SITE_MAQUETTE }), ecran, boite());
       }
       if (x.journee !== v.journee || x.t !== v.t) { v.journee = x.journee || null; v.t = x.t; v.etat = v.journee && Number.isFinite(x.t) ? E().etatA(v.journee, x.t) : null; }
-      v.selection = x.selection || null;
+      v.selection = x.selection || null; v.lecture = !!x.lecture;
     }
 
     /* ---- le dessin ------------------------------------------------------------ */
@@ -147,9 +156,29 @@
       if (choisie) G().sol(ctx, p, choisie.x, choisie.y, choisie.w, choisie.h, pal.voile('choisi', 0.12), pal.c('choisi'), 2);
       const cle = [fond.x0, fond.x1, fond.y0, fond.y1].map(Number).join('');
       if (!boites || cle !== cleBoites) { boites = D().boitesDe(v.decor, fond, C().decouper); cleBoites = cle; }
-      const extras = v.extras ? v.extras(v) : null;
-      for (const o of C().ordre(v.cam, extras && extras.length ? boites.concat(extras) : boites)) objet(o, p, devant, pal);
-      v.poses = D().poserEtiquettes(D().etiquettes(v.site, v.etat), v.cam, ecran, mesure);
+      // Les personnes : celles des indicateurs, à leur poste. Au travail, elles bougent légèrement pendant la lecture.
+      v.personnes = v.journee && Number.isFinite(v.t) ? D().personnages({ site: v.site, ilots: v.ilots }, v.journee, v.t) : [];
+      if (v.lecture && !immobile()) { const h = ts / 230; for (const q of v.personnes) q.bob = q.etat === 'auTravail' && !q.enChemin ? Math.sin(h + q.i * 1.7 + q.x) * 1.2 : 0; }
+      const extras = v.extras ? v.extras(v) : null, mobiles = extras && extras.length ? v.personnes.concat(extras) : v.personnes;
+      for (const o of C().ordre(v.cam, mobiles.length ? boites.concat(mobiles) : boites)) objet(o, p, devant, pal);
+      // Le nom de chaque atelier, sous son îlot, à partir du zoom où il se lit.
+      v.poses = D().poserEtiquettes(D().etiquettes(v.site, v.etat, fond), v.cam, ecran, mesure);
+      // Le nom de chaque atelier, sous son îlot, à partir du zoom où il se lit ; jamais sur un autre nom ni sur une étiquette.
+      v.noms = [];
+      if (v.cam.zoom >= ZOOM_NOMS) {
+        ctx.font = G().police(11, false); ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.lineJoin = 'round';
+        const pris = v.poses.map(e => ({ x: e.x, y: e.y, w: e.w, h: e.h }));
+        for (const i of v.ilots) {
+          const q = D().ancreDuNom(i, p.profondeur), X = p.x(q.x, q.y), Y = p.y(q.x, q.y, 0) + 5, w = ctx.measureText(i.nom).width, r = { x: X - w / 2 - 2, y: Y - 1, w: w + 4, h: 15 };
+          if (r.x < 0 || r.x + r.w > ecran.w || r.y < 0 || r.y + r.h > ecran.h) continue;
+          if (pris.some(o => r.x < o.x + o.w && o.x < r.x + r.w && r.y < o.y + o.h && o.y < r.y + r.h)) continue;
+          pris.push(r);
+          ctx.strokeStyle = pal.c('zone'); ctx.lineWidth = 3; ctx.strokeText(i.nom, X, Y);
+          ctx.fillStyle = pal.c('texte2'); ctx.fillText(i.nom, X, Y);
+          v.noms.push({ atelier: i.atelier, nom: i.nom, x: X, y: Y });
+        }
+        ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+      }
       const style = { fond: pal.c('etiquette'), bordure: pal.c('bordure'), titre: pal.c('texte'), texte: pal.c('texte2'), epaisseur: 1 };
       const styleChoisi = { ...style, bordure: pal.c('choisi'), epaisseur: 2 };
       for (const e of v.poses) G().etiquette(ctx, e, choisie && e.id === choisie.id ? styleChoisi : style, D().ETIQUETTE);
@@ -236,6 +265,8 @@
       return { camera: { ...v.cam }, ecran: { ...ecran }, ajustee: v.ajustee, enMouvement: !!anim, zones: v.site ? v.site.zones.map(z => z.id) : [], selection: v.selection, t: v.t,
         emprise: b ? C().emprise(v.cam, ecran, b) : null, tient: b ? C().tient(v.cam, ecran, b) : false, murs: C().mursDuFond(v.cam),
         etiquettes: v.poses.map(e => ({ id: e.id, x: e.x, y: e.y, w: e.w, h: e.h, titre: e.titre, lignes: e.lignes.slice() })),
+        ilots: v.ilots.map(i => ({ atelier: i.atelier, service: i.service, zone: i.zone, poste: i.poste, tables: i.tables.length, places: i.places.length, echelle: i.echelle })),
+        personnes: v.personnes.map(q => ({ atelier: q.atelier, etat: q.etat, ton: q.ton, hors: !!q.hors, enChemin: !!q.enChemin, x: q.x, y: q.y })), noms: v.noms.map(n => n.nom),
         recouvrements: C().recouvrements(v.poses), images: v.stats.images, msDessin: v.stats.ms, couleurs: v.pal ? { fond: G().css(v.pal.base.fond), zone: G().css(v.pal.base.zone), texte: G().css(v.pal.base.texte) } : null };
     }
     /** Où est un point de la scène à l'écran (pour le contrôle) : [X, Y] en pixels de la toile. */

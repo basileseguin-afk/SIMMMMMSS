@@ -67,6 +67,14 @@
 .so-outils .direct-choix .btn:hover:not([aria-pressed="true"]){background:var(--ds-survol)}
 .so-outils .direct-choix .btn:focus-visible{box-shadow:inset var(--ds-focus)}
 
+/* La légende des personnes, dans la bande ; dessous, une ligne dit ce qui vient des réglages, du moteur, et de la mise en scène. */
+.plan-bande .direct-legende .pastille{display:inline-block;width:9px;height:9px;margin-right:5px;border-radius:50%;border:0;vertical-align:baseline}
+.direct-legende .dl-travail{background:var(--ds-accent)}
+.direct-legende .dl-attente{background:var(--ds-attente)}
+.direct-legende .dl-neutre{background:var(--ds-texte-3)}
+.direct-note{margin:0;padding:1px var(--ds-e-4) 3px;min-height:18px;font-size:var(--ds-t-11);line-height:14px;color:var(--ds-texte-3);background:var(--ds-surface-1)}
+body:not([data-direct="relief"]) .direct-legende,body:not([data-direct="relief"]) .direct-note{display:none!important}
+
 /* En relief : la scène remplace le plan dessiné et ses outils (les liens, le fond, le zoom du plan) ; à plat, l'inverse. */
 body[data-direct="relief"][data-sous="j-plan"] #view-plan,
 body[data-direct="relief"][data-sous="j-plan"] .plan-tete>.fc-map-filter,
