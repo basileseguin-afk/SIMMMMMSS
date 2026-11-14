@@ -747,8 +747,9 @@ temps. » Une plonge `parVol` lave les vols revenus (sens RET), dans l'ordre de
 leur retour (arrivée + `delaiRetour`) ; **chaque tunnel qui tourne** (tenu par
 quelqu'un, dans l'ordre de la liste) en prend un, pour la durée de sa
 compagnie (`durees`, `*` pour toutes). Un vol qui arrive quand tous les
-tunnels sont pris attend ; un vol qui ne peut pas être lavé avant la fin du
-poste ne l'est pas (`plonge-vol`) ; une compagnie sans temps est signalée
+tunnels sont pris attend ; un vol que personne ne commence, ou dont le lavage
+s'arrête à la fin d'une présence, n'est pas lavé ce jour (`plonge-vol`, et le
+relais plus bas) ; une compagnie sans temps est signalée
 (`plonge-duree`). Avec la boucle du matériel, les unités du vol redeviennent
 propres à sa sortie du tunnel. Un tunnel peut aller plus vite qu'un tunnel
 normal (`vitesse`, 2 = deux fois plus vite) : les temps par compagnie sont
@@ -769,6 +770,16 @@ dans ses heures plutôt qu'à celle qui partirait en heures sup. Une plonge lave
 d'une seule façon : par vol ou au débit pour toutes ses équipes ; mêlées, elles
 laveraient deux fois le même matériel (`plonge-mixte`). Au débit, deux équipes
 présentes en même temps additionnent leurs débits.
+
+**Le relais** (banc d'essai, évolution 18 ; `BANC_ESSAI.md` § 2). Une équipe
+prend un vol tant qu'elle est présente, même si elle ne peut pas le finir. À
+la fin de sa présence, une autre équipe de la même plonge présente à cet
+instant sur la même machine continue le lavage, sans interruption : un seul
+lot, avec ses `parts` (qui a lavé, de quand à quand, pour combien de travail).
+Sinon le lavage s'arrête : le vol reste sale, et sa durée restante passe au
+lendemain avec lui (`saleFinal[].reste`, le sale de la veille), où il est lavé
+d'abord, pour cette seule durée. Personne ne reste en heures sup : une plonge
+par vol n'en fait plus.
 
 « + Ajouter une équipe de plonge » (Équipes › Services et équipes, la plonge)
 crée une équipe qui lave comme la première (`equipePlongeEnPlus`, parcours.js) :

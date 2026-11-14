@@ -481,7 +481,10 @@ le rouge ne sert qu’aux retards.
           jour-là ne prête pas le sien) — ou, quand une équipe dépasse, cette
           équipe, avec sa propre fin et son propre horaire (« l'équipe …
           finit à 21:30 pour 21:00 ») ; puis les heures sup, en personnes ×
-          heures. La case ne prend la couleur de statut que si le
+          heures. À la plonge par vol, deux équipes qui se suivent se passent
+          le relais du vol en cours : elle n'a pas d'heures sup, et sa ligne
+          dit, s'il y en a, « reste à laver le lendemain : n vols (h de
+          lavage) » — elle coince alors, après les autres (évolution 18). La case ne prend la couleur de statut que si le
           dépassement atteint le quart d'heure. À 1 366 px de large, tout le
           tableau tient sans défilement horizontal.
      4. **La journée** : la courbe des présents, des personnes au travail et
@@ -553,8 +556,9 @@ le rouge ne sert qu’aux retards.
      survolée ; leur échelle commune est dite une fois, dans l’en-tête ; un
      stock plus long que la durée maximale réglée est signalé (aucun tant
      qu’elle n’est pas réglée). Les retours des vols face au débit de la
-     plonge ; « Bouchon » seulement s’il reste du sale le soir ou si
-     l’attente passe le seuil.
+     plonge ; « Bouchon » seulement s’il reste du sale le soir, si
+     l’attente passe le seuil, ou si une plonge par vol laisse des vols à
+     laver le lendemain (évolution 18).
    - **Le trait « maintenant »** : dès que la journée est rejouée (ou le
      curseur déplacé), le planning, la frise des vols et les graphiques des
      stocks marquent l’heure rejouée d’un trait, l’heure écrite au bout ; il
@@ -647,6 +651,11 @@ service.
   fin par lot (dans la couleur du retard s'il finit après sa limite).
   Survoler le nom d'un service donne son résumé : le pic, son heure, les
   présents, l'occupation, les heures sup.
+- **Le relais à la plonge** (évolution 18) : un vol que deux équipes de
+  plonge se passent se dessine sur leurs deux lignes, chacune pour sa part,
+  avec un petit triangle à la jointure ; au survol, « repris par … à hh:mm »
+  et « commencé par … ». Un lavage arrêté à la fin d'une présence va jusqu'à
+  elle, avec un petit carré, et dit ce qu'il reste à laver le lendemain.
 - **Déplier** : un clic sur la ligne d'un service montre son résumé en entier,
   puis ses équipes, une ligne chacune, avec leur nombre de personnes ; « Tout
   déplier », « Tout replier ». Le navigateur retient les services dépliés.
@@ -1004,10 +1013,14 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/ordre-souple.test.cjs` | L’ordre souple (v1, banc d’essai) : lot 1 pas prêt, lot 2 prêt, le lot 2 d’abord ; la priorité de la liste entre lots prêts ; les commandes réunies par « + » ; aucun lot prêt, le premier qui le devient ; désactivé, la même journée ; la règle d’une équipe ; avec les heures sup ; déterminisme, validation, options du banc, Excel |
 | `tests/ordre-souple-browser.cjs` | L’ordre souple dans la page : la case des Réglages de la simulation, l’ordre des lots dans la fiche d’une équipe, le rechargement, « Tout sauvegarder » |
 | `tests/mise-a-disposition-servie.test.cjs` | Une mise à disposition fermée ne bloque pas une équipe déjà servie (v1, banc d’essai) : un robot qui enchaîne après la fermeture du magasin ne l’attend plus ; une équipe qui commence avant l’ouverture l’attend pour son premier lot, et seulement lui ; une journée magasin ouvert ne change pas |
-| `tests/heures-sup-personnes.test.cjs` | Les heures sup en minutes × personnes (v1, banc d’essai) : d’une plonge à tunnels, seules les personnes des tunnels qui finissent un vol après la présence ; un tunnel à vitesse 2 ; une plonge sans tunnels et une équipe à la main : heures sup × personnes ; sans l’option, 0 ; le récap des cases |
-| `tests/heures-sup-personnes-browser.cjs` | La Synthèse compte les heures sup de la plonge avec les personnes des tunnels restés |
+| `tests/heures-sup-personnes.test.cjs` | Les heures sup en minutes × personnes (v1, banc d’essai) : une équipe à la main, heures sup × personnes ; une plonge par vol n’en fait plus (évolution 18) — un ou deux tunnels en cours à la fin de sa présence, un tunnel à vitesse 2, sans liste de tunnels : 0, le vol s’arrête avec sa durée restante ; sans l’option, 0 ; le récap des cases |
+| `tests/heures-sup-personnes-browser.cjs` | « Détails » : une plonge par vol ne fait plus d’heures sup ; le vol en cours s’arrête, avec sa durée restante |
 | `tests/heures-sup-sans-attente.test.cjs` | En heures sup, on ne paie personne à attendre (v1, banc d’essai) : un dernier lot prêt 2 h après la présence est hors poste, sans heure sup ; un lot commencé finit en heures sup ; un lot prêt à la fin de la présence est fait, puis l’équipe part au premier lot pas prêt ; le robot ; le renfort en heures sup ; sans l’option, comme avant |
-| `tests/plonge-heures-sup.test.cjs` | La plonge en heures sup (v1, banc d’essai) : elle finit le vol dans son tunnel et ne commence pas celui qui attend (il va à la nuit, ou au sale de fin de journée) ; une nuit ne commence aucun vol après la fin de sa présence ; le retard compte ce que l’après-midi n’a pas commencé ; sans l’option, rien ne change ; déterminisme |
+| `tests/plonge-heures-sup.test.cjs` | La plonge à la fin de sa présence (v1, banc d’essai) : sans équipe pour le reprendre, elle arrête le vol dans son tunnel et ne commence pas celui qui attend (il va à la nuit, ou au sale de fin de journée) ; une nuit ne commence aucun vol après la fin de sa présence ; le retard compte le vol arrêté et ce que l’après-midi n’a pas commencé ; l’option des heures sup n’y change rien ; déterminisme |
+| `tests/plonge-relais.test.cjs` | Le relais à la plonge par vol (v1, banc d’essai, évolution 18 a), sur des journées fictives calculées à la main : deux équipes qui se chevauchent, un seul lot et deux parts, sans heures sup, le vol propre à la même heure ; deux équipes qui ne se touchent pas ; une seule équipe ; un tunnel d’un autre nom ; trois équipes dont une nuit sous condition ; la condition sur le retard ; deux jours (la durée restante) ; la période ; les indicateurs de charge ; les non-régressions ; le déterminisme |
+| `tests/plonge-relais-resultats.test.cjs` | Le relais dans les résultats (v1, évolution 18 b) : les réponses lisent les parts ; une plonge qui laisse des vols à laver le lendemain coince, après les autres ; la Synthèse (« reste à laver le lendemain »), le « Bouchon », les feuilles « Réponses » et « Charge », le planning ; sans relais ni reste, aucun champ de plus |
+| `tests/plonge-relais-browser.cjs` | Le relais dans les pages (v1, évolution 18 b), sur une unité fictive : le lot en relais sur les deux lignes du planning, avec son repère et ses mots ; la Synthèse sans heures sup à la plonge, avec le reste du lendemain ; « Où ça coince » ; le plan rejoué sans coupure |
+| `tests/captures-evolution-18-browser.cjs` | Les captures de contrôle de l’évolution 18 (v1), sur une unité fictive, en thème clair et sombre, à 1 366 × 768 et 1 920 × 1 080 : le planning des équipes avec un relais ; la Synthèse avec un reste au lendemain, sa ligne et sa carte « Où ça coince ». Douze captures, vérifiées une à une et gardées hors du dépôt (`ORY_CAPTURES`) |
 | `tests/plonge-absorbable.test.cjs` | La plonge de nuit qui ne vient que si le matin ne peut pas absorber le retard (v1, banc d’essai) : un petit retard absorbé la laisse fermée (la journée de l’unité sans elle), tout juste à la fin de la présence ; un gros retard l’ouvre, avec le dépassement du matin ; une seule plonge ; des heures sup pour l’absorber ne comptent pas ; l’équipe par défaut et l’équipe désignée ; au débit ; avec une plonge sur le sale ; déterminisme, validation, options du banc, Excel |
 | `tests/plonge-absorbable-seule.test.cjs` | La plonge de nuit sur le retard juge l’équipe du matin seule (v1, banc d’essai) : seule, elle lave le retard et ses retours avant la fin de sa présence, la nuit reste fermée même si au rejeu l’après-midi prend un de ses retours ; 20 min de dépassement l’ouvrent ; les autres cas et la condition « sale » ne changent pas ; déterminisme |
 | `tests/plonge-absorbable-browser.cjs` | Cette règle dans la page : la règle et l’équipe désignée dans la fiche de la plonge, son bilan du jour, le rechargement, « Tout sauvegarder » |

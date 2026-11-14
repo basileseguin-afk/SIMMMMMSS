@@ -5,6 +5,34 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-14 — Banc d'essai, évolution 18 (c) : contrôle et doc
+
+- **Captures de contrôle**, sur une unité fictive
+  (`tests/captures-evolution-18-browser.cjs`), en clair et en sombre, à
+  1 366 × 768 et 1 920 × 1 080 : le planning des équipes avec un relais (le
+  lot sur les deux lignes de la plonge, le repère à la jointure, la
+  légende) ; la Synthèse avec un reste au lendemain (la ligne de la plonge,
+  la carte « Où ça coince »). Douze captures, vérifiées une à une (leur
+  taille, ce qu'elles montrent, le texte qui se lit en entier, la page qui
+  tient sur la largeur), gardées hors du dépôt.
+- **Doc** : `docs/CAHIER_DES_CHARGES.md` (M26, la règle du relais dans la
+  plonge par vol ; au contrat des résultats, la troisième conséquence de
+  « Où ça coince » et la fin d'une équipe de plonge),
+  `docs/BANC_ESSAI.md` (§ 2 : ce que le relais change aux mesures passées
+  de la plonge — heures sup, fin des équipes, condition de la nuit —, sa
+  limite, le contrôle ; § 13 : les indicateurs), `docs/MODELE_ATELIERS.md`
+  (la plonge par vol), `README.md`. Les colonnes et les lignes ajoutées aux
+  feuilles « Charge » et « Réponses » sont dans `docs/FORMATS_EXCEL.md`
+  depuis la partie (b).
+
+Aucun code de la page ni du moteur ne change dans cette partie.
+
+Fichiers : `tests/captures-evolution-18-browser.cjs` (nouveau),
+`docs/CAHIER_DES_CHARGES.md`, `docs/BANC_ESSAI.md`,
+`docs/MODELE_ATELIERS.md`, `README.md`, `CHANGELOG.md`.
+
+---
+
 ## 2026-11-14 — Banc d'essai, évolution 18 (b) : le relais à la plonge, dans les résultats
 
 - **Les réponses** (`moteur/reponses.js`) lisent les parts d'un lavage en

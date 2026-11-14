@@ -430,6 +430,48 @@ Le résultat de la journée, les indicateurs et le JSON des outils ne changent
 pas pour une journée sans relais ; les réponses n'ont un champ de plus que
 s'il y a un relais ou un reste.
 
+**Ce que le relais change aux mesures passées de la plonge** (évolution
+18 c). Un banc qui a déjà mesuré des journées avec une plonge par vol les
+retrouve changées sur trois points, et sur eux seulement :
+
+- **Les heures sup de la plonge disparaissent.** Elles étaient le temps passé
+  après sa présence par l'équipe qui finissait un vol déjà dans un tunnel.
+  Avec une équipe suivante sur le même tunnel, ce temps devient du travail de
+  cette équipe, dans sa présence : le total du travail de la plonge ne change
+  pas, sa répartition entre équipes si. Sans équipe suivante, ce temps n'est
+  plus fait ce jour-là : il passe au lendemain, comme durée restante. Le
+  total des heures sup de l'unité baisse d'autant.
+- **La fin des équipes.** Une équipe de plonge finit au plus tard à la fin de
+  sa présence. La fin du service ne recule pas pour autant : le vol passé en
+  relais est propre à la même heure qu'avant. « Où ça coince » ne désigne
+  plus la plonge pour un dépassement ; il la désigne quand elle laisse des
+  vols à laver le lendemain.
+- **La condition de la nuit.** Sur le retard (`absorbable`), le retard compte
+  maintenant le vol arrêté à la fin de la dernière présence (pour sa durée
+  restante), et le matin n'est plus jugé sur un dépassement qu'il ne ferait
+  pas : un long vol qu'il passe chaque jour en relais ne fait plus venir la
+  nuit. Les nuits ouvertes peuvent donc changer, dans les deux sens. Sur le
+  sale (`sale`), la définition ne change pas, mais un vol commencé juste
+  avant la fin d'une présence est entré dans un tunnel : il ne compte plus
+  dans le sale en attente.
+
+Le sale du soir (`saleFinal`, en unités) compte, comme avant, les vols qui ne
+sont pas propres ; il compte en plus le vol arrêté, qui était lavé en heures
+sup. D'un jour au suivant, la période le reprend avec sa durée restante.
+
+**Limite connue.** Une équipe qui arrive plus tard dans la journée, sans
+toucher la précédente, ne reprend pas le vol arrêté : il attend le lendemain,
+même si elle a le temps. Avec des équipes qui se chevauchent ou se touchent,
+le cas ne se présente qu'à la fin de la dernière présence.
+
+**Contrôle** : `tests/captures-evolution-18-browser.cjs` fait douze captures
+sur une unité fictive, en clair et en sombre, à 1 366 × 768 et 1 920 × 1 080 —
+le planning des équipes avec un relais (le lot sur les deux lignes, le repère
+à la jointure, la légende) ; la Synthèse avec un reste au lendemain (la ligne
+de la plonge, la carte « Où ça coince »). Chacune est vérifiée (sa taille, ce
+qu'elle montre, la page qui tient sur la largeur) et gardée hors du dépôt
+(`ORY_CAPTURES`).
+
 Vérifications : `tests/plonge-relais-resultats.test.cjs` (un relais : les
 fins, les personnes sans travail, rien ne coince ; un reste : la plonge
 coince, sa cause, son rang après un service qui dépasse ; la Synthèse ; le
@@ -2709,8 +2751,8 @@ la moitié d'un créneau compte 0,5) :
 
 - **présents** : les personnes dont le poste couvre le créneau, du début de
   poste à la fin de présence, prolongée jusqu'à la fin du travail en cas
-  d'heures sup. À une plonge à tunnels en heures sup, seules les personnes des
-  tunnels encore en marche restent. Une mise à disposition compte présente à
+  d'heures sup. Une plonge par vol n'en fait plus (évolution 18) : ses
+  personnes sont présentes jusqu'à la fin de leur présence. Une mise à disposition compte présente à
   son heure et son jour saisis, pour sa présence. Un handling compte les
   chauffeurs de son plan (§ 4) ou de ses créneaux saisis ; sans vacation,
   « sans objet » ;
@@ -2742,8 +2784,8 @@ la moitié d'un créneau compte 0,5) :
 
 - **disponible** (correction 16), pour toutes les équipes = personnes ×
   (présence − les pauses vraiment prises) + heures sup, en minutes ×
-  personnes (à une plonge à tunnels, les heures sup des seuls tunnels qui
-  finissent tard, `heuresSupPersonnes`). Une pause du réglage que l'équipe
+  personnes (`heuresSupPersonnes` ; une plonge par vol n'en a plus,
+  évolution 18). Une pause du réglage que l'équipe
   n'atteint pas (elle n'a pas assez travaillé) reste disponible, « sans
   travail » ; au robot, les arrêts de sa ligne sont des pauses prises. Une
   plonge ne prend pas de pause dans le moteur : ses tunnels lavent sans
@@ -2958,8 +3000,9 @@ déterministe, une journée sans date ; la période (les deux feuilles après
 Équipes, les autres inchangées, « Jour complet », les créneaux réunis ; sans
 indicateurs, le classeur d'avant) ; les outils (le JSON, `--xlsx`, les appels
 mal formés). `tests/indicateurs-definitions.test.cjs` (correction 16,
-journées fictives) : une plonge qui lave sans pause et finit en heures sup
-(disponible 3 × 480 + 45, occupation ≤ 100 %) ; une équipe à la main qui
+journées fictives) : une plonge qui lave sans pause jusqu'à la fin de sa
+présence (disponible 3 × 480, occupation ≤ 100 % ; son dernier vol s'arrête,
+évolution 18) ; une équipe à la main qui
 n'atteint pas sa deuxième pause ; un service avec une équipe d'appui et une
 mise à disposition (les quatre catégories font les présents, créneau par
 créneau) ; l'armement de l'unité fictive (débit en vols par heure ; sans vol,
