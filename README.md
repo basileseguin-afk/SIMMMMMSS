@@ -622,9 +622,7 @@ La journée est **calculée d’un coup** par `moteur/production.js` et
 
 La vue en direct ne recopie pas le plan dessiné : elle montre un **site
 schématique**, généré à partir des réglages de la simulation, toujours de la
-même façon (`moteur/site.js`, un module sans navigateur). La génération et son
-réglage sont en place ; le dessin de la vue vient avec les parties suivantes de
-l'évolution. Les règles :
+même façon (`moteur/site.js`, un module sans navigateur). Les règles :
 
 - **Le site est un rectangle** : deux bandes de zones de part et d'autre d'un
   couloir central ; l'entrée est au bout gauche du couloir, l'aire de pause à
@@ -657,12 +655,64 @@ l'évolution. Les règles :
   bout (côté avions), la plonge au bout de l'autre bande, près du quai des
   retours.
 
+### En relief : se déplacer dans le site (évolution 16 b)
+
+Le plan rejoué s'ouvre **« En relief »** : la scène générée, dessinée dans un
+canvas 2D, sans bibliothèque. Le choix **« En relief / À plat »**, à côté du
+titre de la page, passe au plan dessiné de l'unité et en revient, avec les
+mêmes données et la même heure rejouée. « Voir sur le plan » (les liens de
+l'unité) ouvre la vue à plat : les liens se dessinent sur le plan dessiné.
+
+- **La projection est orthogonale** : sans fuite de perspective, les tailles
+  restent comparables. La caméra tourne autour du site (sur 360°), s'incline
+  (de 25° à 80° au-dessus de l'horizon), se déplace et zoome.
+- **Les gestes** : glisser déplace ; Maj + glisser, ou le bouton droit, tourne
+  et incline ; la molette zoome autour du pointeur. Au doigt : un doigt
+  déplace, deux doigts zooment et tournent.
+- **Au clavier** (la scène a le focus) : les flèches ou ZQSD déplacent, A et E
+  tournent, + et − zooment, Page précédente et Page suivante inclinent, 0
+  montre tout.
+- **À l'écran** : tourner à gauche, tourner à droite, incliner (plus haut,
+  plus bas), −, +, « Cadrer » (le service choisi dans « Voir un service » ou
+  d'un clic sur sa zone) et « Tout voir ».
+- **À l'ouverture et sur « Tout voir »**, la caméra revient à l'angle de trois
+  quarts (45°, vue isométrique) et la scène entière tient dans la zone
+  visible, à 24 px de ses bords. Tant qu'on n'a ni déplacé ni zoomé, elle y
+  tient encore quand on tourne ou qu'on incline, à n'importe quel angle.
+- **Les murs sont bas** (50 cm) et ne se dessinent que du côté opposé à la
+  caméra, quel que soit l'angle ; une zone s'ouvre sur le couloir. Les objets
+  se dessinent du fond vers l'avant, pour l'angle courant.
+- **Chaque service porte une étiquette** au-dessus de sa zone : son nom,
+  « n au travail / n présents » (le créneau de 15 min des indicateurs de
+  charge, équipe par équipe, en personnes entières) et « n lots à faire »
+  s'il y en a (les séjours en stock devant lui). Les étiquettes restent
+  droites, gardent la même taille à tout zoom et à tout angle, et ne se
+  recouvrent pas ; celle d'une zone sortie de l'écran ne s'affiche pas.
+- **Avec « réduire les animations »** (un réglage du système), la caméra
+  passe d'un angle à l'autre sans animation.
+- **Les couleurs** de la scène sont des mélanges des jetons de `ds.css`
+  (`direct.css`) : elles suivent le thème, clair ou sombre.
+- **La fluidité** : 60 images par seconde sur une unité fictive de 300
+  personnes et 500 chariots, caméra en mouvement (le dessin d'une image :
+  3 ms en moyenne à 1 920 px ; `tests/direct-ips-browser.cjs` le remesure).
+
+La caméra, l'ordre de dessin, les murs et la place des étiquettes sont dans
+`direct-camera.js` ; la scène dans `direct-scene.js` ; ce qu'elle lit de la
+journée dans `direct-etat.js` — trois modules sans navigateur. Le dessin est
+dans `direct-dessin.js`, la vue et ses gestes dans `direct-vue.js`.
+
+**Dans la vue à plat**, « Tout voir » compte maintenant toutes les zones
+dessinées — les services, mais aussi les zones de production, les locaux, les
+chambres froides, les équipements et les circulations : un plan dont des zones
+sont à des coordonnées négatives (à gauche des services) n'est plus coupé.
+
 ## Lire le plan rejoué et le planning
 
 **Le plan rejoué** (Résultats › Le plan rejoué) montre la journée calculée à
 l'heure rejouée — à l'ouverture, le créneau où le plus de personnes sont au
 travail. Rien n'y est recalculé : il lit le résultat du moteur et ses
-indicateurs.
+indicateurs. Ce qui suit décrit sa vue **« À plat »** (le plan dessiné) ; la
+vue « En relief » est décrite plus haut.
 
 - **La couleur d'un service dit son état** : rempli d'accent, il travaille ;
   de la couleur d'avertissement, son équipe est là mais attend le service
@@ -1067,6 +1117,10 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/plonge-relais.test.cjs` | Le relais à la plonge par vol (v1, banc d’essai, évolution 18 a), sur des journées fictives calculées à la main : deux équipes qui se chevauchent, un seul lot et deux parts, sans heures sup, le vol propre à la même heure ; deux équipes qui ne se touchent pas (la reprise à l’arrivée, correction 19) ; une seule équipe ; un tunnel d’un autre nom ; trois équipes dont une nuit sous condition ; la condition sur le retard ; deux jours (la durée restante) ; la période ; les indicateurs de charge ; les non-régressions ; le déterminisme |
 | `tests/plonge-reprise.test.cjs` | La reprise à l’arrivée, à la plonge par vol (v1, banc d’essai, correction 19 a et sa retouche), sur des journées fictives calculées à la main : la nuit arrive une heure après le départ de l’après-midi et reprend d’abord le vol arrêté, pour sa durée restante ; la même journée sans nuit ; une équipe à un tunnel reprend un lavage arrêté sur un tunnel d’un autre nom ; deux lavages arrêtés et un seul tunnel, l’un après l’autre dans l’ordre des arrêts ; un tunnel pris, une équipe déjà là ; deux vols arrêtés repris dans l’ordre de leur arrêt ; la somme du travail des parts ; un tunnel plus rapide, une pause, une reprise trop courte ; une nuit sous condition qui s’ouvre lave ce qui l’a fait venir, sur sa machine ou sur une autre ; des chaînes (relais, arrêt, reprise, relais ; deux reprises) ; qui reprend, une équipe de J+1 ; entre deux tunnels, celui où la reprise finit le plus tôt, quel que soit l’ordre de saisie ; avec un handling 24 h/24, la reprise à l’arrivée de l’équipe ; l’heure de la reprise dans le planning ; les non-régressions ; le déterminisme |
 | `tests/site-genere.test.cjs` | Le site de la vue en direct, généré par des règles (v1, évolution 16 a), sur des unités fictives : les parts par défaut (1/5, 1/5, 1/5, 2/5) et des parts réglées ; la somme des surfaces égale le site, les zones remplissent les deux bandes ; un service sans atelier n’a pas de zone ; la préparation et le montage dans la zone FOOD ; les lignes robotisées (aucune, une, deux), dans la zone FOOD ; le nombre de tunnels de la plonge, ceux d’un quai qui lave ; quatre lignes, quatre et six tunnels dans leur zone, sans recouvrement ; une part réglée minuscule ou énorme ; des équipes à cheval sur minuit, à J−1 et J+1 ; une unité à un seul service ; 300 unités tirées d’une graine fixe (toutes les règles) ; le magasin, la pause, l’ordre du chemin ; la place des ateliers ; deux générations identiques ; la part gardée dans la sauvegarde, une sauvegarde d’avant aux défauts |
+| `tests/direct-camera.test.cjs` | La caméra de la vue en direct (v1, évolution 16 b), sans navigateur : la projection de la maquette (isométrique) et à plusieurs angles, son inverse au sol ; sans fuite de perspective ; les bornes (360°, de 25° à 80°) ; glisser, zoomer autour du pointeur, tourner ; « Tout voir » à 24 px des bords à tout angle, à 1 280 et 1 920 px ; l’ordre de dessin du fond vers l’avant ; les boîtes longues en tronçons ; les murs du fond à tout angle ; d’un angle à l’autre par le plus court ; les étiquettes à leur taille, sans recouvrement |
+| `tests/direct-scene.test.cjs` | La scène de la vue en direct et ce qu’elle lit de la journée (v1, évolution 16 b), sans navigateur, sur l’unité fictive : des personnes entières par état, celles des créneaux des indicateurs, équipe par équipe et à chaque créneau ; les lots qui attendent devant un service, ceux des séjours en stock ; le décor (sols, murs bas sauf du côté du couloir, machines des réglages) ; les murs du fond seulement ; les étiquettes (« n au travail / n présents », « n lots à faire ») ; à « Tout voir », aucune étiquette n’en recouvre une autre, à 1 280 et 1 920 px, à quatre angles |
+| `tests/direct-camera-browser.cjs` | La vue en relief dans la page (v1, évolution 16 b), à 1 280 et 1 920 px : en relief à l’ouverture, à l’angle de la maquette, la scène entière à 24 px ; elle tient encore à quatre angles, à 25° et à 80° ; les étiquettes sans recouvrement, à leur taille, leurs chiffres ceux de la journée ; les murs dessinés au fond ; glisser, Maj + glisser, le bouton droit, la molette ; les flèches, ZQSD, A et E, + et −, 0 ; les boutons ; un clic choisit un service, « Cadrer » ; un doigt, deux doigts ; les deux thèmes ; « À plat » et retour ; sans animation avec « réduire les animations » ; à plat, un plan aux coordonnées négatives entier sur « Tout voir » |
+| `tests/direct-ips-browser.cjs` | La fluidité de la vue en relief (v1, évolution 16 b) : une unité fictive de 300 personnes et 500 chariots, la caméra en mouvement à chaque image — les images par seconde et le temps de dessin, affichés ; un garde-fou large (30 images par seconde) |
 | `tests/site-surface-browser.cjs` | La part de surface d’un service dans sa fiche (v1, évolution 16 a) : le champ de la section « Avancé », la part par défaut dite, la part réglée gardée et relue après rechargement, la journée inchangée, le retour au défaut ; « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant aux parts par défaut ; la version 2 sans le champ |
 | `tests/plonge-reste-lendemain.test.cjs` | Un reste normal ne fait pas coincer la plonge (v1, banc d’essai, correction 19 b), sur des journées fictives calculées à la main : le jugement du moteur (`P.absorptionDuReste`), le même que la mesure « absorbable » avec ou sans équipe sous condition ; un reste que le matin absorbe (la plonge ne coince pas, sa ligne l’affiche sans alerte) ; un reste qu’il n’absorbe pas (elle coince, avec la phrase) ; sans reste, rien ; le « Bouchon » ; la reprise dans le planning et la feuille « Réponses » |
 | `tests/plonge-reprise-browser.cjs` | La reprise et le reste du lendemain dans les pages (v1, correction 19), sur une unité fictive : la reprise sur les deux lignes du planning, avec son trou et ses mots (« arrêté à 21:00, repris par … à 22:00 ») ; un reste que le matin n’absorbe pas : la Synthèse (la phrase, la case en alerte, la carte) et le plan rejoué |

@@ -58,7 +58,7 @@ function heureDuPicAttendue(sauvegarde, csv) {
 }
 
 /** Restaurer la sauvegarde fictive dans la page, puis importer les vols : la page s'ouvre sur `pageId`. */
-async function charger(page, nav, url, { sauvegarde = sauvegardeFictive(), csv = volsCsv(), pageId = 'j-plan' } = {}) {
+async function charger(page, nav, url, { sauvegarde = sauvegardeFictive(), csv = volsCsv(), pageId = 'j-plan', relief = false } = {}) {
   const dossier = fs.mkdtempSync(path.join(os.tmpdir(), 'ory-plan-rejoue-'));
   const fichier = (nom, texte) => { const f = path.join(dossier, nom); fs.writeFileSync(f, texte); return f; };
   await page.goto(url);await page.waitForTimeout(300);
@@ -67,7 +67,8 @@ async function charger(page, nav, url, { sauvegarde = sauvegardeFictive(), csv =
   await page.locator('#sauvegarde-import').setInputFiles(fichier('unite-fictive.json', JSON.stringify(sauvegarde)));
   const recharge = page.waitForEvent('load');await nav.repondre(page);await recharge;await page.waitForLoadState('load');await page.waitForTimeout(500);
   await importerVols(page, nav, fichier, 'vols-fictifs.csv', csv);
-  await nav.aller(page, pageId);await page.waitForTimeout(400);
+  // Le plan rejoué : « À plat » (le plan dessiné) par défaut ; `relief` : la vue en relief de l'évolution 16.
+  await nav.aller(page, pageId, { relief });await page.waitForTimeout(400);
   return { fichier, effacer: () => fs.rmSync(dossier, { recursive: true, force: true }) };
 }
 async function importerVols(page, nav, fichier, nom, csv) {

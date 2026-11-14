@@ -1,0 +1,78 @@
+/* ==========================================================================
+ *  LA VUE EN DIRECT (version 1, évolution 16) — direct-vue.js
+ *  Une scène en relief dessinée dans un canvas, ses commandes de caméra, le
+ *  choix « En relief / À plat ». Couleurs, textes, espacements et rayons :
+ *  les jetons de ds.css ; le thème sombre suit. Les couleurs de la scène
+ *  (`--dv-…`) sont des mélanges de ces jetons : le canvas les lit dans la page.
+ * ==========================================================================*/
+
+/* Les couleurs de la scène : le sol et les volumes en gris du thème, les états et les natures aux couleurs du système. */
+.direct{
+  --dv-fond:var(--ds-fond);
+  --dv-sol:color-mix(in srgb,var(--ds-texte-1) 10%,var(--ds-surface-1));
+  --dv-couloir:color-mix(in srgb,var(--ds-texte-1) 22%,var(--ds-surface-1));
+  --dv-zone:var(--ds-surface-1);
+  --dv-pause:color-mix(in srgb,var(--ds-ok) 16%,var(--ds-surface-1));
+  --dv-mur:color-mix(in srgb,var(--ds-texte-1) 28%,var(--ds-surface-1));
+  --dv-machine:color-mix(in srgb,var(--ds-texte-1) 48%,var(--ds-surface-1));
+  --dv-bras:var(--ds-accent);
+  --dv-rayonnage:color-mix(in srgb,var(--ds-texte-1) 36%,var(--ds-surface-1));
+  --dv-table:color-mix(in srgb,var(--ds-texte-1) 30%,var(--ds-surface-1));
+  --dv-peau:color-mix(in srgb,var(--ds-d4) 34%,var(--ds-surface-1));
+  --dv-travail:var(--ds-accent);
+  --dv-attente:var(--ds-attente);
+  --dv-neutre:var(--ds-texte-3);
+  --dv-critique:var(--ds-retard);
+  --dv-ok:var(--ds-ok);
+  --dv-repas:var(--ds-d1);
+  --dv-equipement:var(--ds-d5);
+  --dv-sale:color-mix(in srgb,var(--ds-d4) 62%,var(--ds-texte-3));
+  --dv-texte:var(--ds-texte-1);
+  --dv-texte2:var(--ds-texte-2);
+  --dv-etiquette:var(--ds-surface-3);
+  --dv-bordure:color-mix(in srgb,var(--ds-texte-1) 26%,var(--ds-surface-1));
+  --dv-choisi:var(--ds-accent);
+  --dv-vehicule:color-mix(in srgb,var(--ds-texte-1) 12%,var(--ds-surface-1));
+  --dv-avion:color-mix(in srgb,var(--ds-texte-1) 4%,var(--ds-surface-1));
+}
+:root[data-theme="sombre"] .direct{
+  --dv-peau:color-mix(in srgb,var(--ds-d4) 42%,var(--ds-texte-1));
+  --dv-vehicule:color-mix(in srgb,var(--ds-texte-1) 72%,var(--ds-surface-1));
+  --dv-avion:color-mix(in srgb,var(--ds-texte-1) 84%,var(--ds-surface-1));
+}
+
+/* La scène prend la place du plan dessiné ; ses commandes se posent dessus, en bas à droite. */
+.col-plan>.direct{flex:1 1 auto;min-height:0;position:relative;display:flex;background:var(--dv-fond)}
+.direct-toile{flex:1 1 auto;min-width:0;min-height:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab;outline:0}
+.direct-toile.saisie{cursor:grabbing}
+.direct-toile:focus-visible{box-shadow:inset var(--ds-focus)}
+.direct-cmd{position:absolute;right:var(--ds-e-3);bottom:var(--ds-e-3);z-index:2;display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:2px;max-width:calc(100% - 2*var(--ds-e-3));
+  padding:2px;border-radius:var(--ds-r-3);background:var(--ds-surface-3);box-shadow:var(--ds-ombre-flottant)}
+.direct-cmd .btn{min-height:var(--ds-h-compact);min-width:var(--ds-h-compact);padding:0 8px;border-color:transparent;background:transparent;box-shadow:none;font-size:var(--ds-t-12)}
+.direct-cmd .btn:hover:not(:disabled){background:var(--ds-survol)}
+.direct-cmd .btn:focus-visible{box-shadow:var(--ds-focus);border-color:var(--ds-accent)}
+.direct-cmd .dc-sep{align-self:stretch;width:1px;margin:4px 2px;background:var(--ds-bordure)}
+.direct-cmd .dc-signe{font-size:var(--ds-t-14);line-height:1}
+.direct-aide{position:absolute;left:var(--ds-e-3);bottom:var(--ds-e-3);z-index:1;margin:0;max-width:46%;font-size:var(--ds-t-11);line-height:1.35;color:var(--ds-texte-3);pointer-events:none}
+@container toile (max-width:760px){.direct-aide{display:none}}
+@media(max-width:900px){.direct-aide{display:none}}
+
+/* Le choix de la vue : « En relief » (la scène générée) ou « À plat » (le plan dessiné), avec les mêmes données. Un seul
+ * contrôle à deux segments, de la hauteur des boutons voisins : la ligne du titre ne grandit pas. */
+.direct-choix{display:inline-flex;align-items:stretch;box-sizing:border-box;height:var(--ds-h-compact);padding:0;overflow:hidden;
+  border:1px solid var(--ds-bordure-forte);border-radius:var(--ds-r-2);background:var(--ds-surface-2)}
+.so-outils .direct-choix .btn{min-height:0;height:auto;padding:0 10px;border:0;border-radius:0;background:transparent;box-shadow:none;font-size:var(--ds-t-12);color:var(--ds-texte-2)}
+.so-outils .direct-choix .btn+.btn{border-left:1px solid var(--ds-bordure)}
+.so-outils .direct-choix .btn[aria-pressed="true"]{background:var(--ds-accent-pale);color:var(--ds-accent-texte);font-weight:var(--ds-g-moyen)}
+.so-outils .direct-choix .btn:hover:not([aria-pressed="true"]){background:var(--ds-survol)}
+.so-outils .direct-choix .btn:focus-visible{box-shadow:inset var(--ds-focus)}
+
+/* En relief : la scène remplace le plan dessiné et ses outils (les liens, le fond, le zoom du plan) ; à plat, l'inverse. */
+body[data-direct="relief"][data-sous="j-plan"] #view-plan,
+body[data-direct="relief"][data-sous="j-plan"] .plan-tete>.fc-map-filter,
+body[data-direct="relief"][data-sous="j-plan"] .plan-tete>.chk-fond,
+body[data-direct="relief"][data-sous="j-plan"] .plan-tete>#btn-edit,
+body[data-direct="relief"][data-sous="j-plan"] .lecteur .zoom-ctrl,
+body[data-direct="relief"][data-sous="j-plan"] #plan-circule-note,
+body[data-direct="relief"][data-sous="j-plan"] #legende-plan{display:none!important}
+body:not([data-direct="relief"]) .col-plan>.direct{display:none!important}

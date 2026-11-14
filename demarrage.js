@@ -38,7 +38,7 @@
     reglages: { titre: 'Les temps de travail',
       intro: 'Combien de minutes chaque service passe sur un vol : c’est ce qui fait durer chaque préparation.' },
     plan: { titre: 'La journée',
-      intro: 'Rejouez la journée sur le plan de l’unité : qui travaille, qui attend, ce qui est prêt.' },
+      intro: 'Rejouez la journée : qui travaille, qui attend, ce qui est prêt.' },
     flux: { titre: 'L’unité : qui livre qui',
       intro: 'Les liens entre les services de l’unité. Ils ne servent qu’aux commandes qui n’ont pas de chemin.' }
   };

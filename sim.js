@@ -1218,7 +1218,8 @@ function initFlux(){
     // Les liens ne servent au calcul que pour une commande sans chemin.
     liensUtiles:()=>sansChemin()>0,
     changed:()=>{if(Sim.flows)redessinerEdges();if(Sim.ateliers)Sim.ateliers.rendre();majDemarrage();},
-    showMap:()=>showView('plan'),notify:toast});
+    // « Voir sur le plan » montre les liens : ils se dessinent sur le plan dessiné, donc la vue à plat (évolution 16 b).
+    showMap:()=>{showView('plan');choisirVueDirect('plat');},notify:toast});
   redessinerEdges();
 }
 
@@ -1262,12 +1263,16 @@ let vk = 1, vtx = 0, vty = 0;
 let ZOOM_MIN = 0.5;
 const ZOOM_MAX = 16;
 /* Évolution 14 (a) : le plan entier, c'est ce qui est dessiné — les zones visibles et, s'il est affiché, le fond.
- * « Tout voir » et l'ouverture le font tenir dans la zone visible, à 24 px des bords (plan-rejoue.js). */
+ * « Tout voir » et l'ouverture le font tenir dans la zone visible, à 24 px des bords (plan-rejoue.js).
+ * Évolution 16 (b) : toutes les zones dessinées comptent — les services, mais aussi les zones de production, les locaux,
+ * les chambres froides, les équipements et les circulations que l'éditeur du plan dessine. Elles n'entraient pas dans le
+ * cadrage : placées à l'écart des services (à des coordonnées négatives, à gauche), elles restaient coupées. */
 function bornesDuPlan() {
   const zones = Object.keys(zoneEls).filter(id => zoneEls[id].g.style.display !== 'none' && ZONES[id]).map(id => boite(ZONES[id]));
+  const dessinees = Sim.editor && Sim.editor.state && Array.isArray(Sim.editor.state.zones) ? Sim.editor.state.zones.filter(z => z && z.visible && z.kind !== 'service').map(boite) : [];
   const c = document.getElementById('fond-plan');
   const fond = c && c.checked && !c.disabled && !svg.classList.contains('sans-fond') ? TILES.map(t => ({ x:t.x, y:t.y, w:t.w, h:t.h })) : [];
-  return OrlyPlanRejoue.bornes(zones.concat(fond)) || { x:VUE.x, y:VUE.y, w:VUE.w, h:VUE.h };
+  return OrlyPlanRejoue.bornes(zones.concat(dessinees, fond)) || { x:VUE.x, y:VUE.y, w:VUE.w, h:VUE.h };
 }
 const ecranDuPlan = () => ({ w:svg.clientWidth, h:svg.clientHeight });
 /** Pixels d'écran par unité du plan, au zoom courant. */
@@ -1414,6 +1419,7 @@ function selectionner(id) {
   if(Sim.editor)Sim.editor.showService(selection);
   document.querySelectorAll('#stats-ateliers button').forEach(b=>{const active=b.dataset.station===selection;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});
   majGoulotInfo();
+  if(Sim.direct)Sim.direct.rendre();
 }
 
 /* ==========================================================================
@@ -1791,6 +1797,7 @@ function peindreInstant(i) {
   majGoulotInfo();
   peindreBande(i);
   peindrePlanFlux(i.t);
+  if (Sim.direct) Sim.direct.rendre();
 }
 /* Évolution 14 (a) : la bande au-dessus du plan (les chiffres cumulés jusqu'à l'heure rejouée) et les repères du
  * curseur du temps (les jours, les départs des vols du jour relu). */
@@ -2167,6 +2174,43 @@ function installerPlanRejoue() {
   new MutationObserver(placer).observe(document.body, { attributes:true, attributeFilter:['data-sous'] });
   placer();
 }
+/* ==========================================================================
+ *  LA VUE EN DIRECT, EN RELIEF (évolution 16 b)
+ *  La page « Le plan rejoué » montre la journée de deux façons, avec les
+ *  mêmes données : « En relief », le site généré d'après les réglages
+ *  (moteur/site.js), dessiné dans un canvas qu'on parcourt avec une caméra
+ *  (direct-vue.js) ; « À plat », le plan dessiné de l'unité. La scène lit la
+ *  journée (journeeLue) à l'heure rejouée : elle ne calcule rien.
+ * ==========================================================================*/
+let siteGarde = null;
+/** Le site généré d'après les réglages : le même objet tant que ni la journée, ni les noms, ni la règle de poste ne changent. */
+function siteDeLaVue() {
+  const at = Sim.ateliers; if (!at || !window.OrlySite) return null;
+  const noms = Object.fromEntries(servicesDisponibles().map(x => [x.id, nomLisible(x.nom)]));
+  const regime = Sim.reglages && Sim.reglages.etat ? Sim.reglages.etat.regime : undefined;
+  const cle = JSON.stringify([noms, regime || null, at.state.surfaces || null, at.state.ateliers.length]);
+  if (siteGarde && siteGarde.r === at.resultat && siteGarde.cle === cle) return siteGarde.site;
+  siteGarde = { r: at.resultat, cle, site: OrlySite.generer({ ateliers: at.state.ateliers, parcours: at.state.parcours, noms, surfaces: at.state.surfaces, regime }) };
+  return siteGarde.site;
+}
+/** « En relief » ou « À plat » : le choix de la page, gardé le temps de la visite. */
+function choisirVueDirect(mode) {
+  const relief = mode !== 'plat';
+  document.body.dataset.direct = relief ? 'relief' : 'plat';
+  document.querySelectorAll('#direct-choix [data-direct-mode]').forEach(b => b.setAttribute('aria-pressed', String((b.dataset.directMode === 'relief') === relief)));
+  if (relief && Sim.direct) Sim.direct.rendre();
+}
+function initDirect() {
+  const hote = document.getElementById('direct'), choix = document.getElementById('direct-choix');
+  if (!hote || !window.OrlyDirectVue || !window.OrlySite) return;
+  Sim.direct = OrlyDirectVue.creer(hote, {
+    lire: () => ({ site: siteDeLaVue(), journee: journeeLue(), t: Sim.vue && !Sim.vue.vide ? Sim.vue.t : null, selection }),
+    choisir: id => selectionner(id)
+  });
+  if (choix) choix.addEventListener('click', e => { const b = e.target.closest('[data-direct-mode]'); if (b) choisirVueDirect(b.dataset.directMode); });
+  choisirVueDirect('relief');
+}
+
 let journeeRelue = null;
 function placerAuPic() {
   const v = Sim.vue, r = Sim.ateliers && Sim.ateliers.resultat;
@@ -3569,7 +3613,7 @@ etape('réglages de la simulation',()=>{if(Sim.ateliers)Sim.ateliers.rendreMater
 etape('simulation',initVueSimulation);
 etape('problèmes',initProblemes);
 etape('période',initPeriode);
-etape('menu',initOnglets); etape('plan rejoué',installerPlanRejoue);
+etape('menu',initOnglets); etape('plan rejoué',installerPlanRejoue); etape('vue en relief',initDirect);
 etape('accueil',initDemarrage);
 etape('annuler',initAnnuler);
 etape('palette',initPalette);

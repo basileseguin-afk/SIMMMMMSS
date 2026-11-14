@@ -118,7 +118,7 @@
       pages: [
         { id: 'j-chiffres', intro: 'Combien de personnes il faut, où ça coince, quand chaque service finit, ce qui part en retard, ce que change un essai.' },
         { id: 'j-periode', intro: 'La période jour après jour : les personnes, le besoin exact, les heures sup et les retards de chaque service.' },
-        { id: 'j-plan', intro: 'Rejouez la journée sur le plan de l’unité : qui travaille, qui attend, ce qui est prêt.' },
+        { id: 'j-plan', intro: 'Rejouez la journée : qui travaille, qui attend, ce qui est prêt.' },
         // Le planning occupe sa page (correction 18 b) : sa phrase n'est pas affichée (`sansIntro`).
         { id: 'at-planning', sansIntro: true, intro: 'Qui travaille quand : toute l’unité sur un écran, une ligne par service, de l’amont vers l’aval ; un clic déplie ses équipes ; un jour à la fois, trois zooms, l’axe des heures toujours visible ; le tableau des équipes dessous.' },
         // « Détails » (évolution 15 c) : quatre pages en onglets internes, une seule entrée au menu (GROUPES).

@@ -12,7 +12,17 @@ async function terminerPlan(page) {
     await page.locator('#edit-done').click(); await page.waitForTimeout(150);
   }
 }
-async function aller(page, id) {
+/* Le plan rejoué montre la journée « En relief » (le site généré d'après les réglages, évolution 16) ou « À plat » (le plan
+ * dessiné de l'unité), avec les mêmes données ; il s'ouvre en relief. Le choix tient jusqu'au rechargement de la page.
+ * `vueDuPlan(page, 'plat' | 'relief')` clique le choix, comme à la main ; sans ce choix (la version 2), elle ne fait rien. */
+async function vueDuPlan(page, mode) {
+  const b = page.locator(`#direct-choix [data-direct-mode=${mode}]`);
+  if (!(await b.count()) || !(await b.isVisible())) return;
+  if (await page.evaluate(() => document.body.dataset.direct) !== mode) { await b.click(); await page.waitForTimeout(150); }
+}
+/* `aller(page, 'j-plan')` choisit « À plat » : les tests d'avant l'évolution 16 y lisent le plan dessiné. Ceux de la vue en
+ * relief demandent `{ relief: true }`. */
+async function aller(page, id, options) {
   const partie = await page.evaluate(id => (OrlyOnglets.partieDe(id) || {}).id, id);
   if (!partie) throw new Error('page inconnue : ' + id);
   if (id !== 'u-plan') await terminerPlan(page);
@@ -37,6 +47,7 @@ async function aller(page, id) {
     }
   }
   await page.waitForTimeout(150);
+  if (id === 'j-plan') await vueDuPlan(page, options && options.relief ? 'relief' : 'plat');
 }
 /* Comme l'ancienne barre d'étapes : aller à une vue, c'est retrouver sa
  * dernière page ouverte (sinon sa première) ; y être déjà ne change rien. */
@@ -107,4 +118,4 @@ async function enregistre(page, cle, lire, arg) {
   }, [cle, lire.toString(), arg === undefined ? null : arg], { timeout: 60000 });
 }
 
-module.exports = { aller, vue, accueil, terminerPlan, creerChemin, deplier, effectifSaisi, repondre, pret, recharger, enregistre, PREMIERE };
+module.exports = { aller, vue, vueDuPlan, accueil, terminerPlan, creerChemin, deplier, effectifSaisi, repondre, pret, recharger, enregistre, PREMIERE };

@@ -5,6 +5,54 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-14 — Évolution 16 (b) : la vue en direct — la caméra, on se déplace dans le site
+
+Le plan rejoué s'ouvre « En relief » : le site généré, dessiné dans un canvas
+2D sans bibliothèque, vu par une caméra qu'on déplace. « À plat » garde le
+plan dessiné, avec les mêmes données.
+
+- **La caméra** (`direct-camera.js`, sans navigateur) : une projection
+  orthogonale ; on tourne sur 360°, on incline de 25° à 80°, on se déplace et
+  on zoome. À l'ouverture et sur « Tout voir » : l'angle de la maquette, la
+  scène entière à 24 px des bords ; elle y tient encore à tout angle tant
+  qu'on n'a ni déplacé ni zoomé.
+- **Les gestes** (`direct-vue.js`) : glisser déplace ; Maj + glisser ou le
+  bouton droit tourne et incline ; la molette zoome ; les flèches ou ZQSD,
+  A et E, + et −, 0 ; des boutons tourner, incliner, −, +, « Cadrer », « Tout
+  voir » ; un doigt déplace, deux doigts zooment et tournent. Avec « réduire
+  les animations », la caméra change d'angle sans animation.
+- **La scène** (`direct-scene.js`, `direct-dessin.js`) : les sols, les murs
+  bas — dessinés seulement du côté opposé à la caméra —, les machines des
+  réglages ; les objets du fond vers l'avant.
+- **Les étiquettes** : le nom du service, « n au travail / n présents », « n
+  lots à faire » ; droites, à taille fixe, sans recouvrement. Leurs chiffres
+  sont lus dans les indicateurs et les stocks de la journée
+  (`direct-etat.js`) : aucun calcul nouveau.
+- **Le choix « En relief / À plat »**, à côté du titre de la page (la phrase
+  sous le titre est raccourcie : « Rejouez la journée : qui travaille, qui
+  attend, ce qui est prêt. » — la ligne du titre garde sa hauteur).
+  « Voir sur le plan » (les liens de l'unité) ouvre la vue à plat : les liens
+  se dessinent sur le plan dessiné.
+- **La vue à plat** : « Tout voir » compte toutes les zones dessinées (zones
+  de production, locaux, chambres froides…), plus seulement les services :
+  un plan aux coordonnées négatives n'est plus coupé à gauche.
+- **La fluidité**, mesurée sur une unité fictive de 300 personnes et 500
+  chariots, caméra en mouvement, à 1 920 px : 60 images par seconde (le
+  dessin d'une image : 3 ms en moyenne).
+
+Ce qui ne change pas : aucun calcul ; les résultats, les indicateurs et les
+exports. La version 2 n'est pas touchée : tout est dans des modules de la
+version 1.
+
+Fichiers : `direct-camera.js`, `direct-scene.js`, `direct-etat.js`,
+`direct-dessin.js`, `direct-vue.js`, `direct.css` (nouveaux), `sim.js`,
+`index.html`, `onglets.js`, `demarrage.js` (la phrase de la page),
+`tests/direct-camera.test.cjs`, `tests/direct-scene.test.cjs`,
+`tests/direct-camera-browser.cjs`, `tests/direct-ips-browser.cjs` (nouveaux),
+`tests/nav.cjs`, `tests/plan-rejoue-fictif.cjs`, `README.md`, `CHANGELOG.md`.
+
+---
+
 ## 2026-11-14 — Évolution 16 (a) : la vue en direct — le site, généré par des règles
 
 La vue en relief ne recopiera pas le plan dessiné : elle montre un site
