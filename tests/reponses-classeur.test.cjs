@@ -82,11 +82,12 @@ test('les cinq réponses, dans l’ordre du contrat, celles du module', () => {
   }
   assert.equal(lignes(f, 1).filter(l => l[col('Mesure')] === 'Coince aussi').length, A.coince.goulots.length - 1);
   assert.deepEqual(lignes(ER.feuilleDesReponses(A60, { date: DATE }), 1).filter(l => /^(Goulot|Coince aussi)$/.test(l[col('Mesure')])), lignes(f, 1).filter(l => /^(Goulot|Coince aussi)$/.test(l[col('Mesure')])));
-  // Sans retard (B) : la plonge seule, qui laisse 6 vols à laver le lendemain (200 min : 20 min restent d'un vol arrêté quand
-  // l'équipe du matin part ; cinq vols reviennent trop tard). Elle ne dépasse pas : 0 min. Avant l'évolution 18 : aucun goulot.
+  // Sans retard (B) : la plonge seule, qui laisse 5 vols à laver le lendemain (180 min : ils reviennent trop tard). Elle ne
+  // dépasse pas : 0 min. Avant l'évolution 18 : aucun goulot. Avant la correction 19 : 6 vols (200 min), avec les 20 min d'un
+  // vol arrêté au départ de l'équipe du matin, que l'après-midi reprend désormais à son arrivée.
   const g0 = lignes(ER.feuilleDesReponses(B, { date: DATE }), 1).find(l => l[col('Mesure')] === 'Goulot');
   assert.deepEqual([B.coince.goulots.map(x => x.service), g0[col('Sujet')], g0[col('Valeur')], g0[col('Au-delà du seuil')]], [['plonge'], 'Plonge', 0, 'non']);
-  assert.match(g0[col('Détail')], / ; laisse 6 vol\(s\) à laver le lendemain \(200 min de lavage\) ; cause : ses équipes partent à la fin de leur présence/);
+  assert.match(g0[col('Détail')], / ; laisse 5 vol\(s\) à laver le lendemain \(180 min de lavage\) ; cause : ses équipes partent à la fin de leur présence/);
   // Avec ses départs en retard (A), la plonge coince aussi, la dernière : 2 vols (75 min).
   assert.deepEqual([A.coince.goulots[A.coince.goulots.length - 1].service, A.coince.goulots[A.coince.goulots.length - 1].lendemain], ['plonge', { vols: 2, minutes: 75 }]);
   // Sans rien qui coince : la ligne le dit.

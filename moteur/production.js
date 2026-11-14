@@ -3712,8 +3712,12 @@
         // LE RELAIS (évolution 18). Une équipe prend un vol tant qu'elle est présente, même si elle ne peut pas le
         // finir. À la fin de sa présence, une autre équipe de la plonge présente à cet instant sur la même machine
         // (le même nom de tunnel) continue le lavage, sans interruption : un seul lot, avec ses parts. Sinon le
-        // lavage s'arrête : le vol reste sale et passe au lendemain avec sa durée restante. Personne ne fait
-        // d'heures sup.
+        // lavage s'arrête. Personne ne fait d'heures sup.
+        // LA REPRISE À L'ARRIVÉE (correction 19). Un lavage arrêté est repris par la première équipe de la plonge qui
+        // arrive ensuite sur la même machine : d'abord, avant tout autre vol, pour sa seule durée restante, à la
+        // vitesse de son tunnel. C'est le même lot : une part de plus (`reprise`), avec son trou. Ce n'est que si
+        // aucune équipe ne vient le reprendre ce jour-là que le vol reste sale et passe au lendemain, avec sa durée
+        // restante.
         const pistes = [], machines = new Map();
         for (const x of groupe) {
           const vx = parId.get(x.id), rx = normaliserRegime(x.regime, opts.regime);
@@ -3739,24 +3743,37 @@
          *  (à plusieurs, celle qui part le plus tard, puis la première de la liste). */
         const relayeur = q => pistes.reduce((m, x) => (x.machine === q.machine && x.a !== q.a && x.depart <= q.finPresence + 1e-9
           && x.finPresence > q.finPresence + 1e-9 && (!m || x.finPresence > m.finPresence + 1e-9) ? x : m), null);
+        /** Qui reprend, à son arrivée, le lavage arrêté à la fin de la présence de `q` (correction 19) : la première
+         *  équipe qui arrive ensuite sur la même machine (à la même heure, celle qui part le plus tard, puis la première
+         *  de la liste). Jusque-là personne ne tient la machine : elle est libre pour la reprise. Une équipe qui ne
+         *  laverait rien de toute sa présence (en pause jusqu'à sa fin) ne reprend pas : c'est la suivante. */
+        const repreneur = q => pistes.reduce((m, x) => (x.machine === q.machine && x.a !== q.a && x.depart > q.finPresence + 1e-9
+          && travailEntre(x.depart, x.finPresence, x.pauses) > 1e-9
+          && (!m || x.depart < m.depart - 1e-9 || (Math.abs(x.depart - m.depart) <= 1e-9 && x.finPresence > m.finPresence + 1e-9)) ? x : m), null);
         /**
          * Le lavage d'un vol entré à `d0` dans le tunnel `q`, pour `normal` minutes d'un tunnel normal : ses parts
-         * (une par équipe, de relais en relais ; `normal` : ce qu'il restait à laver à son début), sa fin (null s'il
-         * s'arrête à une fin de présence, personne pour le reprendre), ce qu'il reste alors à laver (en minutes d'un
-         * tunnel normal), et l'heure où il finirait s'il allait à son terme (`vise`) : c'est elle qui choisit le tunnel.
+         * (une par équipe, de relais en relais et de reprise en reprise ; `normal` : ce qu'il restait à laver à son
+         * début ; `reprise` : commencée après un arrêt, à l'arrivée de son équipe), sa fin (null s'il s'arrête à une
+         * fin de présence, personne ne venant le reprendre ce jour-là), ce qu'il reste alors à laver (en minutes d'un
+         * tunnel normal), et l'heure où il finirait s'il allait à son terme sans s'arrêter (`vise`) : c'est elle qui
+         * choisit le tunnel, qu'une reprise suive ou non.
          */
         const lavage = (q, d0, normal) => {
           const parts = [];
-          let reste = normal, t = d0;
+          let reste = normal, t = d0, vise = null, reprise = false;
           for (let piste = q; ;) {
-            const duree = reste / piste.vitesse, f = finAvecPauses(t, duree, piste.pauses);
-            if (f.fin <= piste.finPresence + 1e-9) { parts.push({ piste, debut: t, fin: f.fin, travail: duree, arret: f.arret, normal: reste }); return { parts, fin: f.fin, vise: f.fin, reste: 0 }; }
+            const duree = reste / piste.vitesse, f = finAvecPauses(t, duree, piste.pauses), marque = reprise ? { reprise: true } : null;
+            if (f.fin <= piste.finPresence + 1e-9) { parts.push({ piste, debut: t, fin: f.fin, travail: duree, arret: f.arret, normal: reste, ...marque }); return { parts, fin: f.fin, vise: vise ?? f.fin, reste: 0 }; }
             const fait = travailEntre(t, piste.finPresence, piste.pauses);
-            parts.push({ piste, debut: t, fin: piste.finPresence, travail: fait, arret: piste.finPresence - t - fait, normal: reste });
+            parts.push({ piste, debut: t, fin: piste.finPresence, travail: fait, arret: piste.finPresence - t - fait, normal: reste, ...marque });
             reste = Math.max(0, reste - fait * piste.vitesse);
             const suivant = relayeur(piste);
-            if (!suivant) return { parts, fin: null, vise: f.fin, reste };
-            t = piste.finPresence; piste = suivant;
+            if (suivant) { t = piste.finPresence; piste = suivant; reprise = false; continue; }
+            // Personne à cet instant : le lavage s'arrête. L'équipe qui arrive ensuite sur la machine le reprend d'abord.
+            vise = vise ?? f.fin;
+            const arrive = repreneur(piste);
+            if (!arrive) return { parts, fin: null, vise, reste };
+            t = arrive.depart; piste = arrive; reprise = true;
           }
         };
         const laver = r => {
@@ -3802,19 +3819,25 @@
           const commun = { ...base, atelier: p.a.id, debut: debutV }, tunnel = { tunnel: p.numero, nomTunnel: p.nom, vitesse: p.vitesse };
           // Ses parts, s'il a atteint une fin de présence : qui a lavé, de quand à quand, pour combien de travail.
           const parts = !passeP ? null : c.parts.map(x => ({ atelier: x.piste.a.id, debut: x.debut, fin: x.fin, travail: x.travail, arret: x.arret,
-            tunnel: x.piste.numero, nomTunnel: x.piste.nom, vitesse: x.piste.vitesse }));
+            tunnel: x.piste.numero, nomTunnel: x.piste.nom, vitesse: x.piste.vitesse, ...(x.reprise ? { reprise: true } : {}) }));
           const ligne = !passeP ? { ...commun, fin: f.fin, duree, attente: debutV - r.t, arret, impossible: false, ...tunnel }
-            // Passé en relais et fini : un seul lot ; sa durée, le travail de ses parts.
+            // Passé en relais, ou arrêté puis repris, et fini : un seul lot ; sa durée, le travail de ses parts (le trou
+            // d'avant une reprise n'est ni du travail ni un arrêt).
             : f.fin != null ? { ...commun, fin: f.fin, duree, attente: debutV - r.t, arret, impossible: false, ...tunnel, parts }
-            // Arrêté à une fin de présence : le lot coupé d'une équipe qui part (`fait`), et ce qu'il reste à laver.
+            // Arrêté à une fin de présence, sans équipe pour le reprendre : le lot coupé d'une équipe qui part (`fait`),
+            // et ce qu'il reste à laver.
             : { ...commun, fin: null, duree: duree + c.reste / dernier.piste.vitesse, attente: debutV - r.t, arret, fait: duree, impossible: true, horsPoste: true,
               reste: c.reste, ...tunnel, parts };
           journal.push(ligne);
+          // L'heure de l'arrêt du lavage que l'équipe `id` a repris dans le lot `l` ; Infinity si elle n'y reprend rien.
+          const arretRepris = (l, id) => { const k = (l.parts || []).findIndex(y => y.reprise && y.atelier === id); return k > 0 ? l.parts[k - 1].fin : Infinity; };
           // Chaque équipe est créditée de sa part, et finit avec elle.
           c.parts.forEach((x, i) => {
             const v = x.piste.vue;
             v.pausesPrises.push(...pausesTraversees(x.debut, x.fin, x.piste.pauses));
-            v.lots.push(ligne);
+            // Une reprise vient d'abord dans la liste de son équipe (elle commence à son arrivée), dans l'ordre des arrêts.
+            if (x.reprise) { let k = 0; while (k < v.lots.length && arretRepris(v.lots[k], x.piste.a.id) <= c.parts[i - 1].fin + 1e-9) k++; v.lots.splice(k, 0, ligne); }
+            else v.lots.push(ligne);
             if (suiviLavage) suiviLavage.laves.push({ atelier: x.piste.a.id, vol: r.vol, cie: r.cie, t: i ? x.debut : r.t, u: i ? 0 : r.unites || 0, fin: f.fin ?? dernier.fin,
               veille: nomsVeille.has(r.vol), normal: x.normal });
             v.travail += x.travail; v.arret += x.arret; if (!i) v.attente += ligne.attente;

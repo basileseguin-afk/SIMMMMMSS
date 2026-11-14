@@ -5,8 +5,10 @@
  * Sans équipe pour le reprendre, le lavage s'arrête à la fin de la présence :
  * le vol reste sale, et sa durée restante (`reste`) passe au lendemain avec
  * lui (`saleFinal`, le sale de la veille). Une plonge par vol ne fait plus
- * d'heures sup (docs/BANC_ESSAI.md § 2). Journées fictives, calculées à la
- * main : vols, compagnies et équipes inventés. */
+ * d'heures sup (docs/BANC_ESSAI.md § 2). Une équipe qui arrive après un trou
+ * reprend le lavage arrêté (correction 19 : tests/plonge-reprise.test.cjs).
+ * Journées fictives, calculées à la main : vols, compagnies et équipes
+ * inventés. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
@@ -86,17 +88,27 @@ test('la somme du travail des parts égale la durée du lavage ; le travail de l
   assert.deepEqual([lot(pause, 'L1').fin, lot(pause, 'L1').duree, lot(pause, 'L1').arret, vue(pause, 'apm').arret], [h('15:20'), 180, 20, 20]);
 });
 
-test('deux équipes qui se suivent sans se toucher : pas de relais, le reste passe au lendemain', () => {
+test('deux équipes qui se suivent sans se toucher : pas de relais ; l’après-midi reprend le vol à son arrivée', () => {
   // Le matin de 06:00 à 12:00, l'après-midi de 13:00 à 19:00. L1 arrive à 11:00 : le matin en lave 60 min, puis s'en va.
   const vols = [ret('L1', 'LONG', '10:30'), ret('V2', 'NORD', '13:00')];
-  const r = jouer(vols, [MATIN({ regime: { actif: true, seuils: [], presence: 360 } }), APM({ regime: { actif: true, seuils: [], presence: 360 } })]);
-  assert.deepEqual(json(lot(r, 'L1')), { service: 'plonge', nom: 'Vol L1', vol: 'L1', cie: 'LONG', classes: [], retourVol: true, arrivee: h('11:00'), unites: 190, arret: 0,
+  const matin = MATIN({ regime: { actif: true, seuils: [], presence: 360 } });
+  // Sans équipe après lui ce jour-là : le lavage s'arrête, le vol reste sale avec sa durée restante. V2 n'est pas commencé.
+  const seul = jouer(vols, [matin]);
+  assert.deepEqual(json(lot(seul, 'L1')), { service: 'plonge', nom: 'Vol L1', vol: 'L1', cie: 'LONG', classes: [], retourVol: true, arrivee: h('11:00'), unites: 190, arret: 0,
     atelier: 'matin', debut: h('11:00'), fin: null, duree: 180, attente: 0, fait: 60, impossible: true, horsPoste: true, reste: 120, tunnel: 1, nomTunnel: 'Tunnel 1', vitesse: 1,
     parts: [part('matin', '11:00', '12:00', 60)] });
-  assert.deepEqual(r.saleFinal, [{ vol: 'L1', cie: 'LONG', unites: 190, reste: 120 }], 'le vol reste sale, avec sa durée restante');
+  assert.deepEqual(seul.saleFinal, [{ vol: 'L1', cie: 'LONG', unites: 190, reste: 120 }, { vol: 'V2', cie: 'NORD', unites: 190 }], 'le vol reste sale, avec sa durée restante');
+  assert.deepEqual(equipe(seul, 'matin'), [h('12:00'), 60, 0, 0]);
+  // Avec l'après-midi (correction 19) : personne à 12:00, ce n'est pas un relais ; elle le reprend à son arrivée, à 13:00,
+  // pour ses 120 min : propre à 15:00. Le même lot, une part de plus (`reprise`). V2, arrivé à 13:30, vient ensuite :
+  // de 15:00 à 16:30. (Évolution 18 : elle ne le reprenait pas ; L1 passait au lendemain, V2 était lavé de 13:30 à 15:00.)
+  const r = jouer(vols, [matin, APM({ regime: { actif: true, seuils: [], presence: 360 } })]);
+  assert.deepEqual(json(lot(r, 'L1')), { service: 'plonge', nom: 'Vol L1', vol: 'L1', cie: 'LONG', classes: [], retourVol: true, arrivee: h('11:00'), unites: 190, arret: 0,
+    atelier: 'matin', debut: h('11:00'), fin: h('15:00'), duree: 180, attente: 0, impossible: false, tunnel: 1, nomTunnel: 'Tunnel 1', vitesse: 1,
+    parts: [part('matin', '11:00', '12:00', 60), part('apm', '13:00', '15:00', 120, { reprise: true })] });
+  assert.deepEqual(r.saleFinal, [], 'le vol repris est propre');
   assert.deepEqual(equipe(r, 'matin'), [h('12:00'), 60, 0, 0]);
-  // L'après-midi ne le reprend pas ; le tunnel est libre pour elle : V2, arrivé à 13:30, est lavé de 13:30 à 15:00.
-  assert.deepEqual(vue(r, 'apm').lots.map(l => [l.vol, l.debut, l.fin]), [['V2', h('13:30'), h('15:00')]]);
+  assert.deepEqual(vue(r, 'apm').lots.map(l => [l.vol, l.debut, l.fin]), [['L1', h('11:00'), h('15:00')], ['V2', h('15:00'), h('16:30')]]);
   // Qu'elle arrive à 12:00, à l'instant où le matin part : elle est là, c'est un relais (60 + 120 min).
   const touche = jouer(vols, [MATIN({ regime: { actif: true, seuils: [], presence: 360 } }), APM({ debut: '12:00' })]);
   assert.deepEqual(json(lot(touche, 'L1').parts), [part('matin', '11:00', '12:00', 60), part('apm', '12:00', '14:00', 120)]);

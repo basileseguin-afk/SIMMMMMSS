@@ -748,8 +748,9 @@ leur retour (arrivée + `delaiRetour`) ; **chaque tunnel qui tourne** (tenu par
 quelqu'un, dans l'ordre de la liste) en prend un, pour la durée de sa
 compagnie (`durees`, `*` pour toutes). Un vol qui arrive quand tous les
 tunnels sont pris attend ; un vol que personne ne commence, ou dont le lavage
-s'arrête à la fin d'une présence, n'est pas lavé ce jour (`plonge-vol`, et le
-relais plus bas) ; une compagnie sans temps est signalée
+s'arrête à la fin d'une présence sans qu'une équipe le reprenne, n'est pas
+lavé ce jour (`plonge-vol`, et le relais plus bas) ; une compagnie sans temps
+est signalée
 (`plonge-duree`). Avec la boucle du matériel, les unités du vol redeviennent
 propres à sa sortie du tunnel. Un tunnel peut aller plus vite qu'un tunnel
 normal (`vitesse`, 2 = deux fois plus vite) : les temps par compagnie sont
@@ -776,7 +777,10 @@ prend un vol tant qu'elle est présente, même si elle ne peut pas le finir. À
 la fin de sa présence, une autre équipe de la même plonge présente à cet
 instant sur la même machine continue le lavage, sans interruption : un seul
 lot, avec ses `parts` (qui a lavé, de quand à quand, pour combien de travail).
-Sinon le lavage s'arrête : le vol reste sale, et sa durée restante passe au
+Sinon le lavage s'arrête ; la première équipe de la plonge qui arrive ensuite
+sur la même machine le reprend d'abord, pour sa seule durée restante : le même
+lot, une part de plus (`reprise`), avec son trou (correction 19). Sans équipe
+pour le reprendre ce jour-là, le vol reste sale, et sa durée restante passe au
 lendemain avec lui (`saleFinal[].reste`, le sale de la veille), où il est lavé
 d'abord, pour cette seule durée. Personne ne reste en heures sup : une plonge
 par vol n'en fait plus.

@@ -278,8 +278,9 @@ en laissant ses lots « hors poste ».
     (`saleFinal`), donc au retard que mesure une plonge de nuit sur le retard
     (§ 6). Par vol, le vol **déjà dans un tunnel** à la fin de sa présence
     passe en **relais** à l'équipe présente sur la même machine, sinon son
-    lavage s'arrête (évolution 18, plus bas) ; elle le finissait avant en
-    heures sup, jusqu'au plafond. Au débit : elle s'arrête à la fin de sa
+    lavage s'arrête, et l'équipe qui arrive ensuite sur cette machine le
+    reprend (évolution 18 et correction 19, plus bas) ; elle le finissait
+    avant en heures sup, jusqu'au plafond. Au débit : elle s'arrête à la fin de sa
     présence, heures sup permises ou non (sa `finPoste` est la fin de sa
     présence) ; le sale qui reste suit le même chemin. Elle lavait d'abord
     tout ce qui l'attendait à la fin de sa présence : rejouée avec une nuit et
@@ -349,8 +350,35 @@ calcul, la plonge **par vol** (`parVol`) ; la plonge au débit, les autres
   instant. Chaque équipe est créditée de sa part (`travail`, `arret`) et
   **finit avec elle** : la fin (`fin`) d'une équipe de plonge est la fin de sa
   dernière part. Le lot est dans la liste des lots des deux équipes.
-- **Sans équipe pour le reprendre**, le lavage s'arrête à la fin de la
-  présence. Le lot est celui d'une équipe qui part en laissant un lot
+- **Sans équipe présente pour le continuer**, le lavage s'arrête à la fin de
+  la présence.
+- **La reprise à l'arrivée** (correction 19 a). Un lavage arrêté est repris
+  par **la première équipe de la plonge qui arrive ensuite sur la même
+  machine** (un tunnel du même nom) : **d'abord**, avant tout autre vol, pour
+  sa **seule durée restante**, à la vitesse de son tunnel, avec ses pauses.
+  Tout ce que la machine lave ensuite — le sale de la veille qui attendrait
+  encore, puis les vols à leur heure — vient après la reprise, dans l'ordre
+  d'avant. C'est **le même lot** : une part de plus, marquée `reprise: true`,
+  qui commence à l'arrivée de l'équipe ; entre les deux parts, un trou, qui
+  n'est ni du travail ni un arrêt (`arret` ne compte que les pauses). La
+  durée du lot reste la somme du travail de ses parts ; sa fin est la fin de
+  la reprise : le matériel du vol est propre à cet instant, et le vol sort
+  de `saleFinal`. À la même heure d'arrivée, c'est l'équipe qui part le plus
+  tard qui reprend, puis la première de la liste ; une équipe qui ne laverait
+  rien de toute sa présence (en pause jusqu'à sa fin) ne reprend pas : c'est
+  la suivante. Une équipe réglée sur J+1 fait partie de la journée jouée :
+  elle reprend à son arrivée, le lendemain matin, comme elle lavait déjà les
+  vols que personne n'avait commencés. Une reprise que son équipe ne finit
+  pas passe en relais, est reprise encore, ou s'arrête : la même règle. Sur
+  une machine, il n'y a jamais qu'un lavage arrêté à reprendre
+  (rien d'autre n'y passe avant la reprise) ; une équipe qui tient deux
+  machines reprend le sien sur chacune, à son arrivée, et sa liste de lots
+  donne ses reprises d'abord, dans l'ordre de leur arrêt. Une équipe sans
+  tunnel du même nom ne reprend pas. Le choix du tunnel ne change pas : celui
+  où le lavage finirait le plus tôt s'il allait à son terme sans s'arrêter,
+  qu'une reprise suive ou non.
+- **Sans aucune équipe pour le reprendre ce jour-là**, le vol reste sale et
+  passe au lendemain. Le lot est celui d'une équipe qui part en laissant un lot
   (`impossible`, `horsPoste`, `fin: null`) : `fait` est le travail fait,
   `reste` ce qu'il reste à laver (en minutes d'un tunnel normal), `parts` qui
   a lavé. Le vol n'est pas propre : il est dans `saleFinal`, avec sa durée
@@ -358,9 +386,7 @@ calcul, la plonge **par vol** (`parVol`) ; la plonge au débit, les autres
   veille (`saleInitial`, § 6) le rend à la plonge, qui le lave d'abord, pour
   cette seule durée (÷ la vitesse du tunnel). La sauvegarde et la période
   gardent `reste` ; un vol que personne ne reprend le garde ; repris et encore
-  arrêté, il rend ce qu'il en reste. Une équipe qui arrive plus tard dans la
-  journée, sans toucher la précédente, ne le reprend pas : il passe au
-  lendemain.
+  arrêté, il rend ce qu'il en reste.
 - **Plus d'heures sup** : `heuresSup` et `heuresSupPersonnes` valent 0 pour
   une plonge par vol, l'option cochée ou non ; le plafond ne joue plus pour
   elle. Son `finPoste` ne change pas.
@@ -459,10 +485,42 @@ Le sale du soir (`saleFinal`, en unités) compte, comme avant, les vols qui ne
 sont pas propres ; il compte en plus le vol arrêté, qui était lavé en heures
 sup. D'un jour au suivant, la période le reprend avec sa durée restante.
 
-**Limite connue.** Une équipe qui arrive plus tard dans la journée, sans
-toucher la précédente, ne reprend pas le vol arrêté : il attend le lendemain,
-même si elle a le temps. Avec des équipes qui se chevauchent ou se touchent,
-le cas ne se présente qu'à la fin de la dernière présence.
+**Ce que la reprise à l'arrivée change aux mesures passées** (correction
+19 a). Avec l'évolution 18, une équipe qui arrivait plus tard dans la
+journée, sans toucher la précédente, ne reprenait pas le vol arrêté : il
+attendait le lendemain, même si elle avait le temps — et une nuit sous
+condition, venue pour lui, pouvait ne rien laver. Elle le reprend maintenant
+à son arrivée. Seules changent les journées où un lavage s'arrête à une fin
+de présence **et** où une équipe de la plonge arrive ensuite, ce jour-là,
+sur la même machine :
+
+- le vol est lavé ce jour-là : il sort du sale du soir (`saleFinal`), et du
+  reste que la Synthèse annonce pour le lendemain ;
+- l'équipe qui arrive commence par lui : les vols qu'elle lave ensuite sur
+  cette machine finissent plus tard, de la durée de la reprise ;
+- **la nuit sous condition** : la journée jouée sans elle (§ 6) reprend
+  aussi les lavages arrêtés que d'autres équipes peuvent reprendre — le
+  retard mesuré peut donc baisser ; une nuit qui s'ouvre **lave ce qui l'a
+  fait venir** : elle n'a jamais zéro lavage quand un lavage reste arrêté sur
+  une de ses machines.
+
+Une journée sans lavage arrêté, ou dont le lavage arrêté n'a aucune équipe
+pour le reprendre (pas d'équipe ensuite, ou sans tunnel du même nom), rend
+le résultat d'avant, champ par champ.
+
+Vérifications : `tests/plonge-reprise.test.cjs` (journées fictives calculées
+à la main : trois équipes dont la nuit arrive une heure après le départ de
+l'après-midi — le vol arrêté repris d'abord, pour sa durée restante, propre
+à l'heure attendue, absent de `saleFinal` ; la même journée sans nuit ; une
+équipe sans tunnel du même nom ; deux vols arrêtés, sur deux machines, repris
+dans l'ordre de leur arrêt ; la somme du travail des parts ; un tunnel plus
+rapide, une pause à l'arrivée, une reprise trop courte ; une nuit sous
+condition qui s'ouvre et lave ce qui l'a fait venir ; des chaînes — relais,
+arrêt, reprise, relais ; deux reprises de suite ; qui reprend : la première
+arrivée, à la même heure celle qui part le plus tard, jamais une équipe en
+pause toute sa présence, une équipe sans fin de présence, une équipe de
+J+1 ; l'heure de la reprise dans le planning ; les empreintes de quatre
+journées d'avant ; le déterminisme).
 
 **Contrôle** : `tests/captures-evolution-18-browser.cjs` fait douze captures
 sur une unité fictive, en clair et en sombre, à 1 366 × 768 et 1 920 × 1 080 —
@@ -489,7 +547,8 @@ la main : deux équipes qui se chevauchent, un seul lot et deux parts, la
 première finit à la fin de sa présence, sans heures sup, le vol propre à la
 même heure qu'avant ; le matériel propre à la fin du lavage ; la somme du
 travail des parts et le travail de la plonge ; un tunnel plus rapide, une
-pause au relais ; deux équipes qui ne se touchent pas ; une seule équipe ; une
+pause au relais ; deux équipes qui ne se touchent pas (la reprise à
+l'arrivée, correction 19) ; une seule équipe ; une
 équipe suivante sans tunnel du même nom ; trois équipes dont une nuit sous
 condition ; la condition sur le retard ; deux jours ; la durée restante dans
 une sauvegarde ; `partsDuLot` ; la période ; les indicateurs de charge ; les
@@ -1173,7 +1232,8 @@ son nom : une équipe inconnue est refusée en le nommant).
    (`saleFinal`) est **le retard**. Passé la fin de sa présence, une plonge
    ne commence pas de nouveau vol (§ 2) : le retard compte ce que l'après-midi
    n'a pas commencé et, par vol, le vol dont le lavage s'est arrêté (pour sa
-   durée restante).
+   durée restante) sans qu'une autre équipe, arrivée ensuite sur sa machine,
+   l'ait repris (correction 19, § 2).
 2. **L'équipe désignée l'absorbe** si, **seule**, sans limite de fin, elle
    lave pendant sa présence :
    - le retard, présent dès le début de la journée (00:00 du jour J, comme

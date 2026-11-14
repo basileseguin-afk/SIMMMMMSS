@@ -196,7 +196,8 @@
     if (i < 0) return null;
     const p = l.parts[i], nom = id => (nomEquipe ? nomEquipe(id) : id) || id, dernier = i === n - 1;
     return { ...l, debut: p.debut, fin: p.fin, duree: p.travail, arret: p.arret, attente: i ? 0 : l.attente,
-      relais: { rang: i, n, de: i ? { nom: nom(l.parts[i - 1].atelier) } : null, vers: dernier ? null : { nom: nom(l.parts[i + 1].atelier), a: p.fin },
+      // `vers.a` : l'heure où l'équipe suivante le prend — la fin de la part pour un relais ; son arrivée pour une reprise (correction 19).
+      relais: { rang: i, n, de: i ? { nom: nom(l.parts[i - 1].atelier) } : null, vers: dernier ? null : { nom: nom(l.parts[i + 1].atelier), a: l.parts[i + 1].debut },
         arrete: dernier && l.fin == null ? { a: p.fin, reste: +l.reste || 0 } : null, propre: n > 1 && Number.isFinite(l.fin) ? l.fin : null } };
   }
   /** Les mots d'un lavage en relais : « commencé par … », « repris par … à hh:mm » ; arrêté, ce qu'il en reste pour le lendemain. */

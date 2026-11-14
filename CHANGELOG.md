@@ -5,6 +5,64 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-14 — Banc d'essai, correction 19 (a) : la reprise à l'arrivée, à la plonge par vol
+
+Constat du banc : une équipe de nuit sous condition (`absorbable`) pouvait
+venir sans rien laver. Le lavage arrêté au départ de l'après-midi la faisait
+venir, mais elle ne le reprenait pas, parce qu'elle arrivait après ce
+départ : le vol attendait le lendemain matin.
+
+- **La reprise à l'arrivée** (`moteur/production.js`, la plonge par vol). Un
+  lavage arrêté à une fin de présence est repris par la première équipe de
+  la plonge qui arrive ensuite sur la même machine (un tunnel du même nom) :
+  d'abord, avant tout autre vol, pour sa seule durée restante, à la vitesse
+  de son tunnel. Tout ce que la machine lave ensuite — le sale de la veille
+  qui attendrait encore, puis les vols à leur heure — vient après la
+  reprise, dans l'ordre d'avant. À la même heure d'arrivée, l'équipe qui
+  part le plus tard reprend ; une équipe en pause pendant toute sa présence
+  ne reprend pas ; une équipe réglée sur J+1 reprend à son arrivée, le
+  lendemain matin.
+- **Le même lot**, une part de plus (`reprise: true`), avec son trou entre
+  les deux parts (ni travail ni arrêt). La durée du lot reste la somme du
+  travail de ses parts ; sa fin est la fin de la reprise : le matériel du
+  vol est propre à cet instant, et le vol sort de `saleFinal`.
+- **Sans aucune équipe pour le reprendre ce jour-là** (aucune ensuite, ou
+  sans tunnel du même nom), le reste passe au lendemain, comme avant.
+- **La nuit sous condition** se juge comme avant ; une nuit qui s'ouvre lave
+  ce qui l'a fait venir. La journée jouée sans elle reprend aussi les
+  lavages que d'autres équipes peuvent reprendre : le retard mesuré peut
+  baisser.
+- Le choix du tunnel ne change pas (là où le lavage finirait le plus tôt
+  s'il allait à son terme sans s'arrêter). Dans la liste des lots d'une
+  équipe, ses reprises viennent d'abord, dans l'ordre de leur arrêt.
+- **Le planning des équipes** dit l'heure de la reprise : « repris par … à
+  hh:mm » donne l'arrivée de l'équipe qui reprend, plus la fin de la part
+  d'avant (`planning-vue.js` ; pour un relais, la même heure qu'avant). Le
+  dessin et les mots de la reprise viennent en partie (b).
+
+Une journée sans lavage arrêté, ou dont le lavage arrêté n'a aucune équipe
+pour le reprendre, rend le résultat d'avant, champ par champ. Aucun réglage
+nouveau. La plonge au débit, les autres équipes et la version 2 ne changent
+pas.
+
+Tests dont la valeur attendue change (l'unité fictive et une journée du
+relais, où l'après-midi arrive après un trou) :
+`tests/plonge-relais.test.cjs` (le vol arrêté à 12:00 est repris à 13:00 et
+propre à 15:00 au lieu de passer au lendemain ; le vol suivant est lavé de
+15:00 à 16:30 au lieu de 13:30 à 15:00), `tests/reponses-classeur.test.cjs`,
+`tests/synthese-vue.test.cjs` et `tests/synthese-questions-browser.cjs` (le
+reste du lendemain de l'unité fictive : 5 vols et 180 min au lieu de 6 vols
+et 200 min).
+
+Fichiers : `moteur/production.js`, `planning-vue.js`,
+`tests/plonge-reprise.test.cjs` (nouveau), `tests/plonge-relais.test.cjs`,
+`tests/reponses-classeur.test.cjs`, `tests/synthese-vue.test.cjs`,
+`tests/synthese-questions-browser.cjs`, `docs/BANC_ESSAI.md`,
+`docs/CAHIER_DES_CHARGES.md`, `docs/MODELE_ATELIERS.md`, `README.md`,
+`CHANGELOG.md`, `index.html` (les empreintes).
+
+---
+
 ## 2026-11-14 — Banc d'essai, évolution 18 (c) : contrôle et doc
 
 - **Captures de contrôle**, sur une unité fictive
