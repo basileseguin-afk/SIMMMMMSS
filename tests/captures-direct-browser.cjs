@@ -57,9 +57,9 @@ const ANGLES=[
    const dessinee=async()=>{await page.waitForFunction(()=>!Sim.direct.etatVue().enMouvement);await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));return etat();};
    const aLHeure=async t=>{await page.evaluate(t=>{Sim.vue.pause();Sim.vue.allerA(t);},t);await page.waitForFunction(t=>Math.abs(Sim.direct.etatVue().t-t)<1e-9&&Math.abs(Sim.directTemps.etat().t-t)<1e-9,t);return dessinee();};
    const bouton=async(nom,n=1)=>{for(let i=0;i<n;i++)await page.locator(`#direct-cmd [data-direct-cmd=${nom}]`).click();return dessinee();};
-   /** La scène tient entière dans la zone visible, à 24 px de ses bords. */
-   const tient=(e,mot)=>{const v={x0:e.ecran.gauche,y0:e.ecran.haut,x1:e.ecran.w-e.ecran.droite,y1:e.ecran.h-e.ecran.bas},b=e.emprise;
-     assert.ok(e.tient&&b.x0>=v.x0+MARGE-0.6&&b.y0>=v.y0+MARGE-0.6&&b.x1<=v.x1-MARGE+0.6&&b.y1<=v.y1-MARGE+0.6,mot+' : la scène tient entière, à 24 px des bords');};
+   /** La scène tient entière dans la toile, à la marge du cadrage (24 px, jamais plus de 4 % du petit côté — évolution 16, retouches). */
+   const tient=(e,mot)=>{const v={x0:e.ecran.gauche,y0:e.ecran.haut,x1:e.ecran.w-e.ecran.droite,y1:e.ecran.h-e.ecran.bas},b=e.emprise,M=e.marge;
+     assert.ok(M>0&&M<=MARGE&&e.tient&&b.x0>=v.x0+M-0.6&&b.y0>=v.y0+M-0.6&&b.x1<=v.x1-M+0.6&&b.y1<=v.y1-M+0.6,mot+' : la scène tient entière, à sa marge des bords');};
    const capturer=async nom=>{const f=path.join(dossier,'16-'+theme+'-'+largeur+'-'+nom+'.png');await page.screenshot({path:f});
      assert.deepEqual(taillePng(f),[largeur,hauteur],V+nom+' : la taille de la capture');
      assert.ok(fs.statSync(f).size>20000,V+nom+' : une capture qui montre quelque chose');faites.push(f);};
@@ -145,17 +145,27 @@ const ANGLES=[
     await page.waitForFunction(()=>!Sim.direct.etatVue().suivi);
 
     // 4. Sous deux autres angles : la scène tient encore entière, les étiquettes ne se recouvrent pas.
+    let traits=0;
     for(const a of ANGLES){
      await aLHeure(a.t);await bouton('tout');
      if(a.haut)await bouton('haut',a.haut);
      const e=await bouton('droite',a.droite),mot=V+a.nom;
      assert.deepEqual([e.camera.cap,Math.round(e.camera.site*100)/100,e.ajustee],[a.cap,a.site,true],mot+' : l’angle');
      tient(e,mot);assert.deepEqual(e.recouvrements,[],mot+' : aucune étiquette n’en recouvre une autre');
-     assert.ok(await traitsSousLesCartouches(mot)>=3,mot+' : des étiquettes reliées à leur ancre par un trait');
+     // (Les étiquettes, en petit, tiennent presque toutes sur leur ancre — évolution 16, retouches : peu de traits.)
+     traits+=await traitsSousLesCartouches(mot);
      if(a.quoi==='vehicules')assert.ok(e.circule.vehicules.length>=1,mot+' : un véhicule du handling en tournée');
      else assert.ok(e.personnes.filter(q=>q.etat==='auTravail').length>=10,mot+' : des personnes au travail');
      await capturer(a.nom);
     }
+    // Pour lire l'ordre des tracés quand il y a des traits : un service choisi dit ses chiffres, ses voisines s'écartent.
+    await page.locator(`#direct-panneau-corps .dq-personnes [data-direct-service="${G.service}"]`).click();
+    await page.waitForFunction(s=>{const e=Sim.direct.etatVue(),c=document.getElementById('direct-toile');return e.selection===s&&!e.enMouvement&&e.ecran.w===c.clientWidth&&e.ecran.h===c.clientHeight&&!!document.querySelector('#direct-panneau-corps .dp-detail');},G.service);
+    await dessinee();
+    traits+=await traitsSousLesCartouches(V+'un service choisi');
+    await page.locator('#direct-panneau-corps [data-direct-retour]').click();
+    await page.waitForFunction(()=>!Sim.direct.etatVue().selection);
+    assert.ok(traits>=1,V+'des étiquettes reliées à leur ancre par un trait ('+traits+')');
     await bouton('tout');
 
     // 5. « À plat » montre les mêmes données, à la même heure : les personnes au travail de chaque service.

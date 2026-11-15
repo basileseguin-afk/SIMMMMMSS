@@ -5,6 +5,39 @@ Le plus récent est en haut.
 
 ---
 
+## 2026-11-15 — Évolution 16, retouches : la scène d'abord, des étiquettes discrètes, des personnes qui tombent juste
+
+Trois retouches de la vue en direct, vues sur un portable (1 366 × 768) avec
+une unité d'une quinzaine de services. Aucun calcul ne change ; le moteur
+n'est pas touché.
+
+- **La scène d'abord.** À l'ouverture, sur « Tout voir » et quand la fenêtre
+  change de taille, le site cadré remplit la toile : plus aucune bande n'est
+  gardée libre, et la marge ne dépasse pas 5 % (24 px, jamais plus de 4 % du
+  petit côté). La légende et la note tiennent sur une seule ligne, que « Tout
+  lire » déplie (toute la légende, la note entière, les gestes de la caméra).
+  Sous 1 500 px de large, « En ce moment » est replié à l'ouverture de la
+  scène ; son bouton l'ouvre, le choix est retenu.
+- **Les étiquettes ne cachent pas la scène.** Une étiquette ne dit que le nom
+  du service, en petit ; ses chiffres se lisent au survol, sur le service
+  choisi, et en permanence pour le seul goulot du moment. Seuls les vols
+  qu'on charge ou qui partent dans l'heure portent leur étiquette, six au
+  plus ; les autres, au survol. À l'ouverture, les étiquettes couvrent moins
+  de 15 % de la toile.
+- **Le tableau « Les personnes » tombe juste.** Sa colonne « En pause »
+  devient « En pause, en appui ou en chemin », comme la légende : pour chaque
+  service, la somme des trois colonnes fait les présents — des chauffeurs sur
+  la route ne laissent plus trois zéros. Le détail d'un service dit ses
+  personnes avec les mêmes mots.
+
+Fichiers : `direct-camera.js`, `direct-vue.js`, `direct-scene.js`,
+`direct-questions.js`, `direct-panneau.js`, `direct.css`, `sim.js`,
+`index.html`, `tests/direct-portable-browser.cjs` (nouveau), `tests/nav.cjs`,
+`tests/plan-rejoue-fictif.cjs`, les tests relus de la vue en direct,
+`README.md`, `CHANGELOG.md`.
+
+---
+
 ## 2026-11-15 — Évolution 16 (g) : la vue en direct — le menu, le contrôle et la doc
 
 - **Dans le menu Résultats, « En direct » remplace « Le plan rejoué »** et

@@ -737,18 +737,22 @@ l'unité) ouvre la vue à plat : les liens se dessinent sur le plan dessiné.
   plus bas), −, +, « Cadrer » (le service choisi dans « Voir un service » ou
   d'un clic sur sa zone) et « Tout voir ».
 - **À l'ouverture et sur « Tout voir »**, la caméra revient à l'angle de trois
-  quarts (45°, vue isométrique) et la scène entière tient dans la zone
-  visible, à 24 px de ses bords. Tant qu'on n'a ni déplacé ni zoomé, elle y
-  tient encore quand on tourne ou qu'on incline, à n'importe quel angle.
+  quarts (45°, vue isométrique) et la scène entière remplit la toile, à la
+  marge du cadrage près : 24 px, et jamais plus de 4 % du petit côté de la
+  toile. Tant qu'on n'a ni déplacé ni zoomé, elle y tient encore quand on
+  tourne, qu'on incline ou qu'on change la taille de la fenêtre.
 - **Les murs sont bas** (50 cm) et ne se dessinent que du côté opposé à la
   caméra, quel que soit l'angle ; une zone s'ouvre sur le couloir. Les objets
   se dessinent du fond vers l'avant, pour l'angle courant.
-- **Chaque service porte une étiquette** au-dessus de sa zone : son nom,
-  « n au travail / n présents » (le créneau de 15 min des indicateurs de
-  charge, équipe par équipe, en personnes entières) et « n lots à faire »
-  s'il y en a (les séjours en stock devant lui). Les étiquettes restent
-  droites, gardent la même taille à tout zoom et à tout angle, et ne se
-  recouvrent pas ; celle d'une zone sortie de l'écran ne s'affiche pas.
+- **Chaque service porte une étiquette** sur sa zone : son nom seul, en
+  petit — elle ne cache pas la scène ; si elle doit s'écarter, un trait fin la
+  relie à sa zone. Ses chiffres, « n au travail / n présents » (le créneau de
+  15 min des indicateurs de charge, équipe par équipe, en personnes entières)
+  et « n lots à faire » s'il y en a (les séjours en stock devant lui), se
+  lisent **au survol**, **sur le service choisi**, et en permanence pour le
+  seul goulot du moment. Les étiquettes restent droites, gardent la même
+  taille à tout zoom et à tout angle, et ne se recouvrent pas ; celle d'une
+  zone sortie de l'écran ne s'affiche pas.
 - **Avec « réduire les animations »** (un réglage du système), la caméra
   passe d'un angle à l'autre sans animation.
 - **Les couleurs** de la scène sont des mélanges des jetons de `ds.css`
@@ -832,7 +836,11 @@ des lots, les séjours en stock, les vols, les tournées :
   chargement : passé son heure, son étiquette prend la couleur critique et dit
   le retard (« NO101 · 06:10 · retard 20 min ») ; chargé, il décolle. Un vol
   qu'aucun handling ne charge reste un avion, sans retard à dire : le résultat
-  ne dit pas quand il est chargé.
+  ne dit pas quand il est chargé. Seuls les vols **qu'on charge** (une
+  tournée est en route vers eux ou les charge) ou **qui partent dans
+  l'heure** portent leur étiquette, six au plus, les plus proches d'abord ;
+  un autre la porte au survol de son avion. Un vol qui a passé son heure sans
+  être chargé garde sa dérive critique.
 - **Les retours sales rejoignent la file de la plonge**, puis passent dans
   leur tunnel : chaque tunnel s'anime quand il lave, et seulement lui. Un
   lavage passé en relais reste dans son tunnel quand l'équipe change — seuls
@@ -914,9 +922,12 @@ panneau « En ce moment » répond aux cinq questions de l'évolution 15, dans
 leur ordre, lues dans son module (`moteur/reponses.js`) et dites dans les mots
 de la Synthèse :
 
-1. **Les personnes**, par service, à l'heure rejouée : au travail, en pause,
-   sans travail, présents — celles des indicateurs de charge, entières, comme
-   dans la scène ; l'unité en dernière ligne ; dessous, la réponse de la
+1. **Les personnes**, par service, à l'heure rejouée : au travail ; en
+   pause, en appui ou en chemin (les mots de la légende : tous les présents
+   qui ne sont ni au travail ni sans travail — des chauffeurs sur la route en
+   sont) ; sans travail ; présents — celles des indicateurs de charge,
+   entières, comme dans la scène. Pour chaque service, les trois premières
+   colonnes font les présents. L'unité en dernière ligne ; dessous, la réponse de la
    journée (« Il faut … personnes, … sont présentes »). Le nom de chaque
    service est un bouton : il ouvre son détail.
 2. **Où ça coince** : à cette heure — les goulots du jour qui coincent
@@ -939,6 +950,31 @@ navigateur). La vue à plat montre toujours la journée en cours.
 dessinées — les services, mais aussi les zones de production, les locaux, les
 chambres froides, les équipements et les circulations : un plan dont des zones
 sont à des coordonnées négatives (à gauche des services) n'est plus coupé.
+
+### En relief : la scène d'abord (évolution 16, retouches)
+
+Sur un portable (1 366 × 768), la scène passe avant ce qui l'entoure :
+
+- **Le site cadré remplit la toile** — à l'ouverture, sur « Tout voir » et
+  quand la fenêtre change de taille : aucune bande de la toile n'est gardée
+  libre, et la marge ne dépasse pas 5 % (24 px, et jamais plus de 4 % du petit
+  côté). Vu de trois quarts, un site rectangulaire touche ses marges du côté
+  qui le limite — la hauteur sur une toile large ; les commandes de la
+  caméra se posent dans un coin, par-dessus.
+- **La légende et la note tiennent sur une seule ligne**, au-dessus de la
+  scène : la légende d'abord, la note ensuite, coupée par des points de
+  suspension. « Tout lire » la déplie — toute la légende, la note entière et
+  les gestes de la caméra ; « Replier » la referme.
+- **Sous 1 500 px de large, « En ce moment » est replié à l'ouverture** de la
+  scène en relief (sous 1 200 px pour le plan dessiné, comme avant). Son
+  bouton l'ouvre et le choix est retenu dans ce navigateur ; choisir un
+  service l'ouvre aussi, pour la visite, sans rien retenir.
+- **Les étiquettes couvrent moins de 15 % de la toile** à l'ouverture : le nom
+  seul des services, les chiffres au survol, six vols étiquetés au plus (voir
+  plus haut).
+- **Le tableau « Les personnes » tombe juste** : sa colonne du milieu est
+  « En pause, en appui ou en chemin », et la somme des trois colonnes fait
+  les présents, pour chaque service et pour l'unité.
 
 ## Lire le plan rejoué et le planning
 
@@ -1362,10 +1398,11 @@ latence, et la liste à suivre pour ajouter un écran (la refonte qui l’a pos�
 | `tests/direct-lire-browser.cjs` | Lire et agir, dans la page (v1, évolution 16 e) : l’ouverture au début du premier goulot ; sa zone critique (la couleur lue dans le canvas), son contour qui pulse, son étiquette ; le panneau en liste de boutons ; « Point suivant » jusqu’au début du goulot, puis de point en point ; le clic sur un service ouvre son détail, au clavier et panneau replié aussi ; le clic sur un avion ou un chariot suit son vol (ses lots nets, le reste pâli), Échap annule ; la barre d’espace ; les flèches sur la barre du temps ; un goulot qui dépasse son horaire ; sans animation ; rien à plat ni en version 2. |
 | `tests/direct-questions.test.cjs` | Les cinq réponses à côté de la scène (v1, évolution 16 f), sans navigateur, sur l’unité fictive : les cinq questions dans l’ordre ; à huit heures de la journée, les personnes par service et par état égales à celles des indicateurs, l’unité leur somme ; ce qui coince à cette heure (les goulots du moment, leur phrase) et sur la journée (la carte de la Synthèse) ; la fin, l’horaire et les heures sup de chaque ligne du module ; les exceptions et leur cause ; le choix « Référence / Essai » ; dans le panneau, les cinq réponses ou le détail du service ; tout texte de l’unité échappé. |
 | `tests/direct-questions-browser.cjs` | Les cinq réponses, dans la page (v1, évolution 16 f) : à six heures de la journée, les chiffres du panneau égaux à ceux du module ; le nom d’un service ouvre son détail ; avec deux essais retenus, « Référence » et « Essai » rejouent l’un ou l’autre à la même heure (ses ateliers, ses personnes, ses réponses), en lecture aussi ; la scène dit quelle journée elle rejoue ; les essais effacés, la journée en cours ; sur un écran étroit, le panneau sous la scène ; rien à plat ni en version 2. |
+| `tests/direct-portable-browser.cjs` | La vue en direct sur un portable (v1, évolution 16, retouches), sur l’unité fictive de 15 services, à 1 366 × 768 et 1 920 × 1 080 : à l’ouverture, après « Tout voir » et après un changement de taille, le site cadré remplit la toile (sa marge, 5 % au plus, du côté qui le limite ; les parts de la toile sont affichées) ; la légende et la note sur une ligne ; « En ce moment » replié sous 1 500 px, ouvert par son bouton, le choix retenu après un rechargement ; les étiquettes, le nom seul sauf le goulot, moins de 15 % de la toile ; les chiffres au survol et sur le service choisi ; les vols étiquetés à chaque heure (chargés ou dans l’heure, six au plus), un autre au survol ; la somme des trois colonnes des personnes égale aux présents à trois heures, dont une où des chauffeurs sont en route ; le détail du service avec les mêmes mots. Six captures de contrôle, hors du dépôt (`ORY_CAPTURES`) |
 | `tests/captures-direct-browser.cjs` | Les captures de contrôle de la vue en direct (v1, évolution 16 g), sur l’unité et les vols fictifs, en thème clair et sombre, à 1 280 et 1 920 px : à l’ouverture, pendant un goulot (cadré sur son service, son détail dans le panneau), en suivant un vol chargé en retard, sous deux autres angles (au pic de travail ; pendant une tournée du handling) — la scène entière à 24 px des bords, aucune étiquette sur une autre, les traits des étiquettes tracés avant tous les cartouches (aucun ne barre une étiquette). Et la non-régression dans la page : le résultat, les indicateurs, les réponses et l’export de la journée identiques, octet pour octet, avant et après ; « À plat » montre les mêmes personnes au travail, à la même heure. Gardées hors du dépôt : `ORY_CAPTURES=dossier node tests/captures-direct-browser.cjs`, sinon un dossier temporaire, dit à la fin |
 | `tests/direct-dessin.test.cjs` | Le dessin d’une étiquette de la vue en direct (v1, évolution 16 g), sans navigateur : son trait et son cartouche en deux passes, les deux ensemble égales au dessin d’un coup ; pas de trait pour une étiquette posée sur son ancre |
 | `tests/non-regression-16.test.cjs` / `tests/empreintes-resultats.cjs` | La non-régression de l’évolution 16 : le JSON de `simuler-journee` et de `simuler-periode`, et chaque feuille de leurs classeurs (« Réponses » comprise), ont les empreintes calculées sur le commit d’avant l’évolution ; sur la journée fictive que la vue rejoue, avec et sans retard, le résultat du moteur, les indicateurs de charge et les réponses à deux jeux de seuils aussi ; tout ce que la vue lit, à chaque demi-heure, ne change rien à la journée |
-| `tests/direct-camera-browser.cjs` | La vue en relief dans la page (v1, évolution 16 b), à 1 280 et 1 920 px : en relief à l’ouverture, à l’angle de la maquette, la scène entière à 24 px ; elle tient encore à quatre angles, à 25° et à 80° ; les étiquettes sans recouvrement, à leur taille, leurs chiffres ceux de la journée ; les murs dessinés au fond ; glisser, Maj + glisser, le bouton droit, la molette ; les flèches, ZQSD, A et E, + et −, 0 ; les boutons ; un clic choisit un service, « Cadrer » ; un doigt, deux doigts ; les deux thèmes ; « À plat » et retour ; sans animation avec « réduire les animations » ; à plat, un plan aux coordonnées négatives entier sur « Tout voir » |
+| `tests/direct-camera-browser.cjs` | La vue en relief dans la page (v1, évolution 16 b), à 1 280 et 1 920 px : en relief à l’ouverture, à l’angle de la maquette, la scène entière à sa marge des bords (24 px, 4 % du petit côté au plus) ; elle tient encore à quatre angles, à 25° et à 80° ; les étiquettes sans recouvrement, à leur taille, leurs chiffres ceux de la journée ; les murs dessinés au fond ; glisser, Maj + glisser, le bouton droit, la molette ; les flèches, ZQSD, A et E, + et −, 0 ; les boutons ; un clic choisit un service, « Cadrer » ; un doigt, deux doigts ; les deux thèmes ; « À plat » et retour ; sans animation avec « réduire les animations » ; à plat, un plan aux coordonnées négatives entier sur « Tout voir » |
 | `tests/direct-ips-browser.cjs` | La fluidité de la vue en relief (v1, évolution 16 b) : une unité fictive de 300 personnes et 500 chariots, la caméra en mouvement à chaque image — les images par seconde et le temps de dessin, affichés ; un garde-fou large (30 images par seconde) |
 | `tests/site-surface-browser.cjs` | La part de surface d’un service dans sa fiche (v1, évolution 16 a) : le champ de la section « Avancé », la part par défaut dite, la part réglée gardée et relue après rechargement, la journée inchangée, le retour au défaut ; « Tout sauvegarder » et « Restaurer », une sauvegarde d’avant aux parts par défaut ; la version 2 sans le champ |
 | `tests/plonge-reste-lendemain.test.cjs` | Un reste normal ne fait pas coincer la plonge (v1, banc d’essai, correction 19 b), sur des journées fictives calculées à la main : le jugement du moteur (`P.absorptionDuReste`), le même que la mesure « absorbable » avec ou sans équipe sous condition ; un reste que le matin absorbe (la plonge ne coince pas, sa ligne l’affiche sans alerte) ; un reste qu’il n’absorbe pas (elle coince, avec la phrase) ; sans reste, rien ; le « Bouchon » ; la reprise dans le planning et la feuille « Réponses » |

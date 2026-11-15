@@ -28,20 +28,31 @@
   const esc = x => String(x ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const heure = t => SY().heure(t), duree = m => SY().duree(Math.max(0, m));
   const MOT_DU_TON = { critique: 'coince', avertissement: 'à surveiller' };
-  const ETATS = ['auTravail', 'enPause', 'sansTravail', 'presents'];
+  /**
+   * Les colonnes du tableau des personnes : au travail ; en pause, en appui ou en chemin (les mots de la légende : tous
+   * les présents qui ne sont ni au travail ni sans travail — des chauffeurs sur la route en sont) ; sans travail ; présents.
+   * Pour chaque service, les trois premières font les présents.
+   */
+  const ETATS = ['auTravail', 'ailleurs', 'sansTravail', 'presents'];
+  const TITRES = { auTravail: 'Au travail', ailleurs: 'En pause, en appui ou en chemin', sansTravail: 'Sans travail', presents: 'Présents' };
+  /** Les personnes d'un service (direct-etat.js) dans ces colonnes. */
+  const colonnes = p => {
+    const presents = (p && p.presents) || 0, auTravail = (p && p.auTravail) || 0, sansTravail = (p && p.sansTravail) || 0;
+    return { auTravail, ailleurs: Math.max(0, presents - auTravail - sansTravail), sansTravail, presents };
+  };
 
   /** Les services de la scène, dans l'ordre des zones du site : [{ id, nom }]. */
   const servicesDe = (site, noms) => ((site && site.zones) || []).flatMap(z => z.services).map(id => ({ id, nom: (noms && noms[id]) || id }));
 
   /**
-   * 1. Les personnes par service à l'heure rejouée : au travail, en pause, sans travail, présents — celles des indicateurs
-   * de charge, entières (direct-etat.js). Le nom de chaque service est un bouton : il ouvre son détail. La dernière ligne
+   * 1. Les personnes par service à l'heure rejouée : au travail ; en pause, en appui ou en chemin ; sans travail ; présents
+   * — celles des indicateurs de charge, entières (direct-etat.js) ; les trois premières colonnes font les présents. Le nom de chaque service est un bouton : il ouvre son détail. La dernière ligne
    * est l'unité ; dessous, la réponse de la journée (« Il faut … personnes, … sont présentes »).
    */
   function personnes(x) {
     const services = servicesDe(x.site, x.noms), total = Object.fromEntries(ETATS.map(m => [m, 0]));
     const lignes = services.map(s => {
-      const p = (x.etat && x.etat.services[s.id]) || {}, ton = (x.tons && x.tons[s.id]) || { ton: 'neutre' }, mot = MOT_DU_TON[ton.ton];
+      const p = colonnes(x.etat && x.etat.services[s.id]), ton = (x.tons && x.tons[s.id]) || { ton: 'neutre' }, mot = MOT_DU_TON[ton.ton];
       for (const m of ETATS) total[m] += p[m] || 0;
       return '<tr' + (mot ? ' class="dq-' + ton.ton + '"' : '') + '><th scope="row"><button type="button" class="dq-service" data-direct-service="' + esc(s.id) + '" aria-pressed="' + (s.id === x.selection) + '"'
         + (ton.pourquoi ? ' title="' + esc(ton.pourquoi) + '"' : '') + '>' + esc(s.nom) + '</button>' + (mot ? ' <span class="dq-ton">' + esc(mot) + '</span>' : '') + '</th>'
@@ -49,7 +60,7 @@
     });
     const phrase = x.reponses ? SY().phrases(x.reponses)[0] : '';
     return '<section class="dq-question" data-question="1" aria-labelledby="dq-titre-1"><h3 id="dq-titre-1">1. Les personnes <small>à ' + esc(heure(x.t)) + '</small></h3>'
-      + '<table class="dq-table dq-personnes"><thead><tr><th scope="col">Service</th><th scope="col" class="num">Au travail</th><th scope="col" class="num">En pause</th><th scope="col" class="num">Sans travail</th><th scope="col" class="num">Présents</th></tr></thead>'
+      + '<table class="dq-table dq-personnes"><thead><tr><th scope="col">Service</th>' + ETATS.map(m => '<th scope="col" class="num" data-etat="' + m + '">' + esc(TITRES[m]) + '</th>').join('') + '</tr></thead>'
       + '<tbody>' + lignes.join('') + '</tbody><tfoot><tr><th scope="row">Unité</th>' + ETATS.map(m => '<td class="num" data-etat="' + m + '">' + total[m] + '</td>').join('') + '</tr></tfoot></table>'
       + (phrase ? '<p class="mini-note dq-jour">Sur la journée : ' + esc(phrase) + '</p>' : '') + '</section>';
   }
@@ -114,7 +125,7 @@
    */
   function rendu(x) { return personnes(x) + coince(x) + fins(x) + retards(x) + essai(x); }
 
-  const api = { ETATS, personnes, coince, fins, retards, essai, rendu };
+  const api = { ETATS, TITRES, colonnes, personnes, coince, fins, retards, essai, rendu };
   if (enNode) module.exports = api;
   else root.OrlyDirectQuestions = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

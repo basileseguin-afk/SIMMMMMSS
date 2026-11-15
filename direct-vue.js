@@ -24,8 +24,11 @@
 
   const C = () => root.OrlyDirectCamera, D = () => root.OrlyDirectScene, G = () => root.OrlyDirectDessin, E = () => root.OrlyDirectEtat, LIRE = () => root.OrlyDirectLire;
 
-  /** Les bandes de la toile gardées libres : en haut pour les étiquettes du fond, en bas pour les commandes. */
-  const BANDES = { haut: 44, bas: 48, gauche: 0, droite: 0 };
+  /**
+   * Les bandes de la toile gardées libres : aucune — la scène d'abord. Le site cadré remplit la toile, à la marge du
+   * cadrage près (direct-camera.js, `margeDe`) ; les commandes de la caméra se posent dans un coin, par-dessus.
+   */
+  const BANDES = { haut: 0, bas: 0, gauche: 0, droite: 0 };
   /** La durée d'un changement d'angle animé (ms) ; un pas de déplacement au clavier (px) ; les degrés par pixel glissé. */
   const DUREE = 240, PAS_PX = 48, CAP_PAR_PX = 0.4, SITE_PAR_PX = 0.3;
   /** Le sol : le ton de chaque sorte de sol. */
@@ -93,7 +96,7 @@
     const incliner = (d, anime) => allerA(recadree(C().incliner(but(), d)), anime);
     function zoomer(f, X, Y, anime) { v.ajustee = false; allerA(C().zoomer(but(), ecran, f, X, Y), anime); }
     function deplacer(dX, dY, anime) { v.ajustee = false; allerA(C().deplacer(but(), ecran, dX, dY), anime); }
-    /** « Tout voir » : l'angle de la maquette, la scène entière à 24 px des bords. */
+    /** « Tout voir » : l'angle de la maquette, la scène entière, à la marge du cadrage près. */
     function toutVoir(anime) {
       v.ajustee = true;
       if (!v.site) { demander(); return; }
@@ -248,12 +251,25 @@
       // Les étiquettes : celles des services, celles des avions et les mots posés dans la scène (« arrêté » devant un
       // tunnel, la cadence d'une ligne robotisée), posés ensemble, sans se recouvrir.
       // L'étiquette du goulot du moment reprend la phrase de la Synthèse, en critique.
-      const deZones = D().etiquettes(v.site, v.etat, fond);
-      // Une zone teintée le dit aussi en un mot (« à surveiller », « coince »), cernée de sa couleur.
-      for (const e of deZones) { const mot = MOT_DE_TEINTE[v.teintes[e.id]]; if (!mot || (zoneGoulot && e.id === zoneGoulot.id)) continue; e.lignes = [mot, ...e.lignes]; e.ton = v.teintes[e.id] === 'critique' ? 'critique' : 'attente'; delete e.compacte; }
+      // Par défaut, une étiquette ne dit que le nom du service, en petit : elle ne cache pas la scène. Ses chiffres se
+      // lisent au survol, sur le service choisi, et en permanence pour le seul goulot du moment.
+      const survol = v.survol || {}, detaillees = [survol.zone, choisie && choisie.id, zoneGoulot && zoneGoulot.id].filter(Boolean);
+      const deZones = D().etiquettes(v.site, v.etat, fond, detaillees);
+      // Une zone teintée le dit aussi en un mot (« à surveiller », « coince »), cernée de sa couleur : à côté de son nom
+      // tant qu'elle est en petit, sur sa propre ligne quand elle dit ses chiffres.
+      for (const e of deZones) {
+        const mot = MOT_DE_TEINTE[v.teintes[e.id]]; if (!mot || (zoneGoulot && e.id === zoneGoulot.id)) continue;
+        if (e.compacte) e.titre = e.titre + ' · ' + mot; else e.lignes = [mot, ...e.lignes];
+        e.ton = v.teintes[e.id] === 'critique' ? 'critique' : 'attente';
+      }
       if (zoneGoulot) { const e = deZones.find(x => x.id === zoneGoulot.id); if (e) { e.lignes = [...D().replier(v.goulot.phrase, PHRASE), ...e.lignes]; e.ton = 'critique'; e.avant = 1; delete e.compacte; } }
+      // Celles qu'on regarde (survolée, choisie) gardent leur place : les autres s'écartent.
+      for (const e of deZones) if (!e.compacte && !e.avant) e.avant = 1;
       const deMarques = c.marques.map((m, i) => ({ id: 'marque:' + i, marque: true, x: m.x, y: m.y, z: m.z, titre: m.texte, lignes: [], compacte: true, ton: m.ton }));
-      v.poses = D().poserEtiquettes(deZones.concat(D().etiquettesDesVols(c.avions), deMarques), v.cam, ecran, mesure);
+      // Les vols : seuls ceux qu'on charge ou qui partent dans l'heure portent leur étiquette, six au plus ; un autre, au survol.
+      const etiquetes = new Set(D().volsEtiquetes(c.avions, c.vehicules, v.t));
+      if (survol.vol != null) etiquetes.add(survol.vol);
+      v.poses = D().poserEtiquettes(deZones.concat(D().etiquettesDesVols(c.avions.filter(o => etiquetes.has(o.id))), deMarques), v.cam, ecran, mesure);
       v.marques = v.poses.filter(e => e.marque).map(e => ({ x: e.x, y: e.y, w: e.w, h: e.h, texte: e.titre, ton: e.ton }));
       // Le nom de chaque atelier, sous son îlot, à partir du zoom où il se lit ; jamais sur un autre nom ni sur une étiquette.
       v.noms = [];
@@ -298,7 +314,22 @@
       }
       toile.classList.add('saisie');
     });
+    /** Ce que le pointeur survole : { vol } sur un avion, sinon { zone } sur une zone du site, sinon rien. */
+    function survoler(q) {
+      let neuf = null;
+      if (q && v.site && v.circule) {
+        const o = sous(q.x, q.y);
+        if (o && o.quoi === 'avion') neuf = { vol: o.id };
+        else { const z = D().zoneSous(v.site, C().auSol(v.cam, ecran, q.x, q.y)); if (z) neuf = { zone: z.id }; }
+      }
+      const avant = v.survol || {}, apres = neuf || {};
+      if (avant.vol === apres.vol && avant.zone === apres.zone) return;
+      v.survol = neuf; demander();
+    }
+    toile.addEventListener('pointerleave', () => survoler(null));
     toile.addEventListener('pointermove', e => {
+      // Sans bouton appuyé, une souris survole : l'étiquette sous elle dit ses chiffres.
+      if (!geste && e.pointerType === 'mouse') { survoler(ou(e)); return; }
       if (!geste || !pointeurs.has(e.pointerId)) return;
       const q = ou(e), avant = pointeurs.get(e.pointerId); pointeurs.set(e.pointerId, q);
       if (geste.mode === 'pince') {
@@ -377,13 +408,14 @@
       const b = v.site ? boite() : null, c = v.circule;
       return { camera: { ...v.cam }, ecran: { ...ecran }, ajustee: v.ajustee, enMouvement: !!anim, zones: v.site ? v.site.zones.map(z => z.id) : [], selection: v.selection, t: v.t,
         emprise: b ? C().emprise(v.cam, ecran, b) : null, tient: b ? C().tient(v.cam, ecran, b) : false, murs: C().mursDuFond(v.cam),
-        etiquettes: v.poses.filter(e => e.vol == null && !e.marque).map(e => ({ id: e.id, x: e.x, y: e.y, w: e.w, h: e.h, titre: e.titre, lignes: e.lignes.slice(), ...(e.ton ? { ton: e.ton } : {}) })),
+        etiquettes: v.poses.filter(e => e.vol == null && !e.marque).map(e => ({ id: e.id, x: e.x, y: e.y, w: e.w, h: e.h, titre: e.titre, lignes: e.lignes.slice(), compacte: !!e.compacte, ...(e.ton ? { ton: e.ton } : {}) })),
         vols: v.poses.filter(e => e.vol != null).map(e => ({ vol: e.vol, x: e.x, y: e.y, w: e.w, h: e.h, titre: e.titre, lignes: e.lignes.slice(), ton: e.ton || null })),
         circule: c ? { tranche: c.tranche, pousseurs: c.pousseurs.length, tunnels: c.tunnels.slice(), lignes: c.lignes.map(l => ({ ...l })), marques: v.marques.map(m => ({ ...m })),
           chariots: c.chariots.map(o => ({ etat: o.etat, ton: o.ton, service: o.service, atelier: o.atelier ?? null, vol: o.vol ?? null, classe: o.classe ?? null, tunnel: o.tunnel ?? null, enChemin: !!o.enChemin, x: o.x, y: o.y })),
           vehicules: c.vehicules.map(o => ({ cle: o.cle, camion: o.camion, type: o.type, phase: o.phase, vols: o.vols.slice(), avance: o.avance, x: o.x, y: o.y })),
           avions: c.avions.map(o => ({ id: o.id, depart: o.depart, enRetard: o.enRetard, retard: o.retard, decolle: o.decolle, x: o.x, y: o.y })) } : null,
         aire: v.aire ? { x: v.aire.x, y: v.aire.y, w: v.aire.w, h: v.aire.h, places: v.aire.places.length } : null,
+        survol: v.survol ? { ...v.survol } : null, marge: C().margeDe(ecran),
         teintes: { ...(v.teintes || {}) }, goulot: v.goulot ? { service: v.goulot.service, jour: v.goulot.jour, phrase: v.goulot.phrase, zone: (D().zoneDuService(v.site, v.goulot.service) || {}).id || null } : null,
         suivi: v.suivi ? { vol: v.suivi.vol, phrase: v.suivi.phrase, nets: c ? c.chariots.filter(o => LIRE().estDuVol(v.suivi, o)).length : 0, pales: c ? c.chariots.filter(o => !LIRE().estDuVol(v.suivi, o)).length : 0 } : null,
         ilots: v.ilots.map(i => ({ atelier: i.atelier, service: i.service, zone: i.zone, poste: i.poste, tables: i.tables.length, places: i.places.length, echelle: i.echelle })),

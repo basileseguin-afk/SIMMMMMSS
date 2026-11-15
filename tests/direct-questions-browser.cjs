@@ -36,7 +36,7 @@ const net=s=>String(s).replace(/\s+/g,' ').trim();
  /** Ce que dit le module à l'heure `t`, pour la journée que rejoue la scène. */
  const module=t=>page.evaluate(t=>{const v=Sim.direct,j=v.journee,e=OrlyDirectEtat.etatA(j,t),lu=OrlyDirectLire.lire(j,{de:Sim.vue.debut,a:Sim.vue.fin}),rep=j.reponses,S=OrlySyntheseVue;
    const texte=h=>{const d=document.createElement('div');d.innerHTML=h;document.body.appendChild(d);const s=d.innerText.replace(/\s+/g,' ').trim();d.remove();return s;};
-   return {services:v.site.zones.flatMap(z=>z.services).map(id=>({id,n:Object.fromEntries(['auTravail','enPause','sansTravail','presents'].map(m=>[m,(e.services[id]||{})[m]||0]))})),
+   return {services:v.site.zones.flatMap(z=>z.services).map(id=>({id,n:OrlyDirectQuestions.colonnes(e.services[id])})),
      coincent:OrlyDirectLire.goulotsA(lu,t).map(g=>({id:g.service,texte:g.phrase})),phrase:S.phrases(rep)[0],coince:texte(S.carteCoince(rep).corps),retard:texte(S.carteRetard(rep).corps),
      fins:rep.fins.services.map(s=>({nom:s.nom,fin:S.heure(s.fin),horaire:S.heure(s.finHoraire),sup:s.heuresSup.total>0?S.duree(s.heuresSup.total):'—'})),memesReponses:rep===Sim.reponses()};},t);
  const verifier=async(t,mot)=>{
@@ -45,7 +45,9 @@ const net=s=>String(s).replace(/\s+/g,' ').trim();
    // 1. Les personnes par service : au travail, en pause, sans travail, présents — et l'unité, leur somme.
    assert.deepEqual(p.personnes.map(s=>s.id),m.services.map(s=>s.id),mot+'un service par ligne, dans l’ordre des zones');
    for(const [i,s] of m.services.entries())assert.deepEqual(p.personnes[i].n,s.n,mot+s.id+' : ses personnes par état');
-   for(const e of ['auTravail','enPause','sansTravail','presents'])assert.equal(p.unite[e],m.services.reduce((n,s)=>n+s.n[e],0),mot+'l’unité : '+e);
+   for(const e of ['auTravail','ailleurs','sansTravail','presents'])assert.equal(p.unite[e],m.services.reduce((n,s)=>n+s.n[e],0),mot+'l’unité : '+e);
+   // Les trois premières colonnes font les présents, pour chaque service et pour l'unité (évolution 16, retouches).
+   for(const s of [...p.personnes,{id:'unité',n:p.unite}])assert.equal(s.n.auTravail+s.n.ailleurs+s.n.sansTravail,s.n.presents,mot+s.id+' : la somme des trois colonnes fait les présents');
    assert.equal(p.jour,'Sur la journée : '+m.phrase,mot+'la réponse de la journée');
    // 2. Où ça coince : à cette heure, et sur la journée (la carte de la Synthèse).
    assert.deepEqual(p.coincent,m.coincent,mot+'ce qui coince à cette heure');

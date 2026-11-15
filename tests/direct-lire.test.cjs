@@ -392,17 +392,21 @@ test('le panneau : la liste des services est une liste de boutons ; le détail ;
   assert.ok(!PN.suivi({ vol: piege, phrase: piege, enRetard: true }).includes('<img'));
 });
 
-test('les étiquettes : une zone où il n’y a personne et rien à faire ne dit que son nom ; la phrase du goulot se replie', () => {
-  const t = U.lu.goulots[0].debut, etat = E.etatA(U.journee, t), l = D.etiquettes(U.site, etat);
+test('les étiquettes : le nom seul, en petit ; les chiffres pour la seule zone du goulot (ou survolée, ou choisie) ; la phrase du goulot se replie', () => {
+  const t = U.lu.goulots[0].debut, etat = E.etatA(U.journee, t), zoneDuGoulot = U.site.zones.find(z => z.services.includes(U.lu.goulots[0].service)).id;
+  // Sans zone demandée : toutes en petit, le nom seul (évolution 16, retouches).
+  assert.ok(D.etiquettes(U.site, etat).every(e => e.compacte === true && e.lignes.length === 0), 'le nom seul, en petit');
+  // Avec la zone du goulot : elle seule dit ses chiffres.
+  const l = D.etiquettes(U.site, etat, null, [zoneDuGoulot]);
   let compactes = 0, pleines = 0;
   for (const [i, z] of U.site.zones.entries()) {
     const n = z.services.reduce((s, id) => { const x = etat.services[id]; return x ? { p: s.p + x.presents, a: s.a + x.auTravail, l: s.l + x.lots } : s; }, { p: 0, a: 0, l: 0 });
     assert.equal(l[i].titre, z.nom);
-    if (n.p === 0 && n.l === 0) { assert.deepEqual(l[i].lignes, []); assert.equal(l[i].compacte, true, z.nom + ' : son nom seul, compacte'); compactes++; }
+    if (z.id !== zoneDuGoulot) { assert.deepEqual(l[i].lignes, []); assert.equal(l[i].compacte, true, z.nom + ' : son nom seul, compacte'); compactes++; }
     else { assert.equal(l[i].lignes[0], n.a + ' au travail / ' + n.p + (n.p > 1 ? ' présents' : ' présent')); assert.equal(l[i].compacte, undefined); pleines++; }
   }
-  assert.ok(compactes >= 2 && pleines >= 3, 'la journée fictive a les deux (' + compactes + ', ' + pleines + ')');
-  assert.ok(D.etiquettes(U.site, null).every(e => e.compacte === undefined && e.lignes.length === 0), 'sans journée : le nom seul, à sa taille');
+  assert.ok(compactes >= 4 && pleines === 1, 'une seule étiquette pleine (' + compactes + ', ' + pleines + ')');
+  assert.ok(D.etiquettes(U.site, null, null, [zoneDuGoulot]).every(e => e.compacte === true && e.lignes.length === 0), 'sans journée : le nom seul');
   // Une phrase se replie aux espaces, en lignes d'au plus n caractères, sans perdre un mot.
   const phrase = U.lu.goulots[0].phrase, lignes = D.replier(phrase, 40);
   assert.ok(lignes.length >= 2 && lignes.every(x => x.length <= 40));

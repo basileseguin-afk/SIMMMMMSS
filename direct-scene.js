@@ -546,25 +546,42 @@
   const pluriel = (n, un, des) => n + ' ' + (n > 1 ? des : un);
 
   /**
-   * Les étiquettes des services : une par zone, au-dessus d'elle ({ id, x, y, z, titre, lignes }). Le nom ; « n au travail /
-   * n présents » ; « n lots à faire » s'il y en a (ce qui attend devant le service). Une zone où il n'y a personne et rien
-   * à faire ne dit que son nom, en étiquette compacte : la scène reste lisible (évolution 16 e). `etat` : la journée à
-   * l'heure rejouée (direct-etat.js) ; sans elle, le nom seul. `fond` : les côtés du fond pour l'angle de la caméra
+   * Les étiquettes des services : une par zone, au-dessus d'elle ({ id, x, y, z, titre, lignes, compacte }). Par défaut, le
+   * nom seul, en petit (une étiquette compacte) : les étiquettes ne cachent pas la scène. Les zones de `chiffres` (leurs
+   * identifiants : celle qu'on survole, celle du service choisi, celle du goulot du moment) disent aussi « n au travail /
+   * n présents » et, s'il y en a, « n lots à faire » (ce qui attend devant le service). `etat` : la journée à l'heure
+   * rejouée (direct-etat.js) ; sans elle, le nom seul. `fond` : les côtés du fond pour l'angle de la caméra
    * (direct-camera.js) — l'étiquette se tient alors au-dessus du fond de sa zone, pour ne pas cacher ses ateliers ; sans
    * lui, au-dessus de son centre.
    */
-  function etiquettes(site, etat, fond) {
-    const dx = fond ? (fond.x0 ? -1 : fond.x1 ? 1 : 0) : 0, dy = fond ? (fond.y0 ? -1 : fond.y1 ? 1 : 0) : 0;
+  function etiquettes(site, etat, fond, chiffres) {
+    const dx = fond ? (fond.x0 ? -1 : fond.x1 ? 1 : 0) : 0, dy = fond ? (fond.y0 ? -1 : fond.y1 ? 1 : 0) : 0, avec = new Set(chiffres || []);
     return ((site && site.zones) || []).map(z => {
       const lignes = [];
-      if (etat) {
+      if (etat && avec.has(z.id)) {
         const n = { auTravail: 0, presents: 0, lots: 0 };
         for (const s of z.services) { const x = etat.services[s]; if (x) { n.auTravail += x.auTravail; n.presents += x.presents; n.lots += x.lots; } }
-        if (n.presents > 0 || n.lots > 0) lignes.push(n.auTravail + ' au travail / ' + pluriel(n.presents, 'présent', 'présents'));
+        lignes.push(n.auTravail + ' au travail / ' + pluriel(n.presents, 'présent', 'présents'));
         if (n.lots > 0) lignes.push(pluriel(n.lots, 'lot à faire', 'lots à faire'));
       }
-      return { id: z.id, x: z.x + z.w * (0.5 + 0.3 * dx), y: z.y + z.h * (0.5 + 0.3 * dy), z: H.etiquette, titre: z.nom, lignes, ...(etat && !lignes.length ? { compacte: true } : {}) };
+      return { id: z.id, x: z.x + z.w * (0.5 + 0.3 * dx), y: z.y + z.h * (0.5 + 0.3 * dy), z: H.etiquette, titre: z.nom, lignes, ...(lignes.length ? {} : { compacte: true }) };
     });
+  }
+
+  /** Un vol porte son étiquette s'il part dans l'heure ; six vols au plus la portent en même temps. */
+  const HEURE_DES_VOLS = 60, VOLS_ETIQUETES = 6;
+  /**
+   * Les vols qui portent leur étiquette à `t` (leurs identifiants) : ceux qu'on charge — une tournée du handling est en
+   * route vers eux ou les charge (`vehicules`, direct-etat.js) —, puis ceux dont l'heure de départ tombe dans l'heure qui
+   * vient, les plus proches d'abord ; `max` au plus. Les autres la portent au survol : un vol qui a passé son heure sans
+   * être chargé garde sa dérive critique, et dit son retard quand on le survole ou qu'on vient le charger.
+   */
+  function volsEtiquetes(avions, vehicules, t, max = VOLS_ETIQUETES) {
+    const enCharge = new Set();
+    for (const v of vehicules || []) if (v.phase !== 'retour') for (const id of v.vols || []) enCharge.add(id);
+    return (avions || []).filter(a => !(a.decolle > 0) && (enCharge.has(a.id) || (a.depart >= t && a.depart - t <= HEURE_DES_VOLS)))
+      .sort((a, b) => (enCharge.has(b.id) - enCharge.has(a.id)) || a.depart - b.depart || String(a.id).localeCompare(String(b.id)))
+      .slice(0, Math.max(0, max)).map(a => a.id);
   }
 
   /** « 20 min », « 1 h 05 » : un retard en clair. */
@@ -612,7 +629,7 @@
     return CAM().placerEtiquettes(ancres, ecran).map((r, i) => ({ ...r, titre: vues[i].e.titre, lignes: vues[i].e.lignes, ...(vues[i].e.ton ? { ton: vues[i].e.ton } : {}), ...(vues[i].e.vol != null ? { vol: vues[i].e.vol } : {}), ...(vues[i].e.compacte ? { compacte: true } : {}), ...(vues[i].e.marque ? { marque: true } : {}) }));
   }
 
-  const api = { H, MUR, TRONCON, ETIQUETTE, COMPACTE, replier, POSTES, TABLE, RANG, FILE, boite, boiteDeZone, zoneDuService, zoneSous, decor, boitesDe, etiquettes, tailleEtiquette, poserEtiquettes, pluriel,
+  const api = { H, MUR, TRONCON, ETIQUETTE, COMPACTE, replier, POSTES, TABLE, RANG, FILE, boite, boiteDeZone, zoneDuService, zoneSous, decor, boitesDe, etiquettes, HEURE_DES_VOLS, VOLS_ETIQUETES, volsEtiquetes, tailleEtiquette, poserEtiquettes, pluriel,
     ROUTE, AVION, PAS_FILE, aireDe, bandeDeFile, placesDeFile, placesDansIlot, circulation, etiquettesDesVols, avanceDuConvoi,
     posteParDefaut, posteDe, tablesPour, formeIlot, ilots, placeDe, meublesDe, ancreDuNom, MARCHE, TON_ETAT, ORDRE_ETATS, etatDe, surChemin, placePause, personnages };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

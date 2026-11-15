@@ -100,7 +100,15 @@ const rvb=texte=>(String(texte).match(/\d+(\.\d+)?/g)||[]).slice(0,3).map(Number
   assert.equal(eTot.titre,tard.id+' · '+hh(tard.depart),'son numéro et son heure');
   assert.equal(eTot.ton,null,'avant son heure, pas de couleur critique');
   const fondNormal=await pixel(eTot.x+4,eTot.y+eTot.h/2);
-  const apres=await aLHeure(tard.depart+5),eTard=apres.vols.find(v=>v.vol===tard.id);
+  // Passé son heure sans être chargé, un vol ne porte plus son étiquette (seuls ceux qu'on charge ou qui partent dans
+  // l'heure la portent — évolution 16, retouches) : elle revient au survol de son avion.
+  const sans=await aLHeure(tard.depart+5),avionTard=sans.circule.avions.find(a=>a.id===tard.id);
+  assert.ok(avionTard&&!sans.circule.vehicules.some(v=>v.vols.includes(tard.id)),'le vol en retard est là, et aucune tournée ne vient encore le charger');
+  assert.equal(sans.vols.find(v=>v.vol===tard.id),undefined,'sans survol, pas d’étiquette');
+  const boiteToile=await page.locator('#direct-toile').boundingBox(),ou=await page.evaluate(([x,y])=>Sim.direct.ecranDe(x,y,0.6),[avionTard.x,avionTard.y]);
+  await page.mouse.move(boiteToile.x+ou[0],boiteToile.y+ou[1]);
+  await page.waitForFunction(v=>{const s=Sim.direct.etatVue().survol;return !!s&&s.vol===v;},tard.id);
+  const apres=await dessinee(),eTard=apres.vols.find(v=>v.vol===tard.id);
   assert.equal(eTard.ton,'critique','chargé en retard, passé son heure : la couleur critique');
   const m=Math.round(tard.retard);
   assert.equal(eTard.titre,tard.id+' · '+hh(tard.depart)+' · retard '+(m<60?m+' min':Math.floor(m/60)+' h '+String(m%60).padStart(2,'0')),'elle dit le retard');

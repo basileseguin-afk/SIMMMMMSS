@@ -66,8 +66,9 @@
     l.push('<p class="dp-retour"><button type="button" class="btn btn-mini" data-direct-retour>← Tous les services</button></p>');
     l.push('<h3 class="dp-titre" tabindex="-1">' + esc(d.nom) + ' <small>à ' + esc(heure(d.t)) + '</small></h3>');
     if (d.pourquoi) l.push('<p class="dp-raison dp-' + esc(d.ton) + '"><b>' + esc(MOT_DU_TON[d.ton] === 'coince' ? 'Coince' : 'À surveiller') + '</b> — ' + esc(d.pourquoi) + '.</p>');
-    l.push('<h4>Ses personnes</h4><p class="dp-etats"><b>' + p.auTravail + '</b> au travail · <b>' + p.enPause + '</b> en pause · <b>' + p.sansTravail + '</b> sans travail' + (p.enAppui ? ' · <b>' + p.enAppui + '</b> en appui' : '')
-      + ' — ' + pluriel(p.presents, 'présent', 'présents') + '</p>');
+    // Les mots de la légende : tous les présents qui ne sont ni au travail ni sans travail sont en pause, en appui ou en chemin.
+    l.push('<h4>Ses personnes</h4><p class="dp-etats"><b>' + p.auTravail + '</b> au travail · <b>' + Math.max(0, p.presents - p.auTravail - p.sansTravail) + '</b> en pause, en appui ou en chemin · <b>'
+      + p.sansTravail + '</b> sans travail — ' + pluriel(p.presents, 'présent', 'présents') + '</p>');
     l.push('<h4>Ses équipes</h4><table class="dp-table"><thead><tr><th scope="col">Équipe</th><th scope="col">Horaire</th><th scope="col" class="num">Au travail</th><th scope="col" class="num">Présents</th></tr></thead><tbody>'
       + d.equipes.map(e => '<tr><th scope="row">' + esc(e.nom) + '</th><td>' + (fini(e.debut) && fini(e.finHoraire) ? esc(heure(e.debut) + ' – ' + heure(e.finHoraire)) : '—')
         + (e.apresHoraire ? ' <span class="dp-apres">après son horaire</span>' : '') + '</td><td class="num">' + e.personnes.auTravail + '</td><td class="num">' + e.personnes.presents + '</td></tr>').join('') + '</tbody></table>');

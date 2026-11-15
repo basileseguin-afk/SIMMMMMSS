@@ -44,6 +44,10 @@ const compter=(l,f)=>l.reduce((m,x)=>{const k=f(x);m[k]=(m[k]||0)+1;return m;},{
   assert.ok(e0.ilots.find(i=>i.atelier==='mo').tables>=1&&e0.ilots.find(i=>i.atelier==='ar').tables===0);
 
   // 2. À plusieurs heures : les personnages de chaque atelier sont ses présents aux indicateurs, état par état.
+  //    (Une étiquette ne dit ses chiffres que pour le service choisi, survolé, ou le goulot du moment — évolution 16,
+  //    retouches : on choisit donc un service de la zone FOOD, le temps de lire son étiquette.)
+  await page.locator('#direct-panneau-corps .dq-personnes [data-direct-service="prepa"]').click();
+  await page.waitForFunction(()=>Sim.direct.etatVue().selection==='prepa');
   for(const t of [-120,190,367,500,720,1000]){
     const e=await aLHeure(t);
     const lus=await page.evaluate(t=>OrlyDirectEtat.etatA(Sim.direct.journee,t).equipes,t);
@@ -56,11 +60,12 @@ const compter=(l,f)=>l.reduce((m,x)=>{const k=f(x);m[k]=(m[k]||0)+1;return m;},{
     for(const q of e.personnes)assert.equal(q.ton,q.enChemin?'neutre':{auTravail:'travail',sansTravail:'attente',enAppui:'neutre',enPause:'neutre'}[q.etat],q.atelier+' : '+q.etat);
     // L'étiquette du service dit la même chose que la scène.
     const food=e.etiquettes.find(l=>l.id==='food'),dansFood=e.personnes.filter(q=>!q.hors&&['preparation','prepa'].includes(regles.find(a=>a.id===q.atelier).service));
-    // (Sa ligne de chiffres : après la phrase du goulot quand la zone coince ; absente quand il n'y a personne ni rien à faire.)
+    // (Sa ligne de chiffres : après la phrase du goulot quand la zone coince.)
     const chiffres=food&&food.lignes.find(l=>/au travail/.test(l));
-    if(chiffres)assert.equal(chiffres,dansFood.filter(q=>q.etat==='auTravail').length+' au travail / '+dansFood.length+(dansFood.length>1?' présents':' présent'),'FOOD à '+t);
-    else if(food)assert.equal(dansFood.length,0,'FOOD à '+t+' : sans chiffres, personne n’y est');
+    assert.equal(chiffres,dansFood.filter(q=>q.etat==='auTravail').length+' au travail / '+dansFood.length+(dansFood.length>1?' présents':' présent'),'FOOD à '+t);
   }
+  await page.locator('#direct-panneau-corps [data-direct-retour]').click();
+  await page.waitForFunction(()=>!Sim.direct.etatVue().selection);
   const midi=await aLHeure(190);
   assert.ok(midi.personnes.filter(q=>q.etat==='auTravail').length>=10&&midi.personnes.some(q=>q.etat==='sansTravail'),'à 03:10 : des personnes au travail, d’autres sans travail');
   // Pendant la pause du montage, ses personnes sont dans l'aire de pause.
@@ -68,19 +73,33 @@ const compter=(l,f)=>l.reduce((m,x)=>{const k=f(x);m[k]=(m[k]||0)+1;return m;},{
   const enPause=pause.personnes.filter(q=>q.atelier==='mo'&&q.etat==='enPause');
   assert.ok(enPause.length>=8&&enPause.every(q=>q.x>=aire.x&&q.x<=aire.x+aire.w&&q.y>=aire.y&&q.y<=aire.y+aire.h),'en pause : dans l’aire de pause');
 
-  // 3. La légende et la phrase, sous elle, en relief ; à plat, la légende du plan dessiné.
+  // 3. La légende et la phrase, sur une seule ligne repliable, en relief (évolution 16, retouches) ; à plat, la légende du plan dessiné.
   assert.deepEqual((await page.locator('#direct-legende > span').allInnerTexts()).slice(0,3),['au travail','sans travail','en pause, en appui ou en chemin'],'les personnes d’abord (les chariots suivent, partie d)');
   assert.equal(await page.locator('#direct-note').innerText(),PHRASE);
-  assert.deepEqual([await page.locator('#direct-legende').isVisible(),await page.locator('#direct-note').isVisible(),await page.locator('#legende-plan').isVisible()],[true,true,false]);
-  const places=await page.evaluate(()=>{const b=s=>document.querySelector(s).getBoundingClientRect();return {legende:b('#direct-legende').bottom,note:b('#direct-note').top,toile:b('#direct-toile').top,noteBas:b('#direct-note').bottom,hauteur:b('#direct-note').height};});
-  assert.ok(places.note>=places.legende-1&&places.noteBas<=places.toile+1,'la phrase sous la légende, au-dessus de la scène');
-  assert.ok(places.hauteur<=22,'en une ligne ('+places.hauteur+' px)');
+  assert.deepEqual([await page.locator('#direct-legende').isVisible(),await page.locator('#legende-plan').isVisible()],[true,false]);
+  const places=()=>page.evaluate(()=>{const b=s=>document.querySelector(s).getBoundingClientRect();return {bande:b('#plan-bande').height,legende:b('#direct-legende'),note:b('#direct-note'),toile:b('#direct-toile').top,
+    aide:document.getElementById('direct-aide').offsetParent!==null,plus:document.getElementById('direct-plus').getAttribute('aria-expanded'),mot:document.getElementById('direct-plus').textContent};});
+  const repliee=await places();
+  assert.ok(repliee.bande<=28&&repliee.legende.height<=22&&repliee.note.height<=22,'la légende et la phrase sur une seule ligne ('+repliee.bande+' px)');
+  assert.ok(repliee.legende.bottom<=repliee.toile+1&&repliee.note.bottom<=repliee.toile+1&&Math.abs(repliee.note.top-repliee.legende.top)<8,'au-dessus de la scène, côte à côte');
+  assert.deepEqual([repliee.aide,repliee.plus,repliee.mot],[false,'false','Tout lire'],'repliée : les gestes de la caméra sont rangés');
+  // « Tout lire » la déplie : toute la légende, la phrase entière, les gestes de la caméra ; « Replier » la referme.
+  const hauteurToile=()=>page.evaluate(()=>document.getElementById('direct-toile').clientHeight),h0=await hauteurToile();
+  await page.locator('#direct-plus').click();
+  await page.waitForFunction(()=>document.getElementById('plan-bande').classList.contains('ouverte'));
+  const depliee=await places();
+  assert.deepEqual([depliee.aide,depliee.plus,depliee.mot],[true,'true','Replier']);
+  assert.ok(await page.locator('#direct-note').isVisible()&&depliee.note.top>=depliee.legende.bottom-1&&depliee.note.width>300,'dépliée : la phrase entière, sous la légende');
+  assert.ok(await page.evaluate(()=>{const n=document.getElementById('direct-note');return n.scrollWidth<=n.clientWidth+1;}),'sans coupure');
+  assert.match(await page.locator('#direct-aide').innerText(),/Glisser : se déplacer/);
+  await page.locator('#direct-plus').click();
+  await page.waitForFunction(h=>!document.getElementById('plan-bande').classList.contains('ouverte')&&document.getElementById('direct-toile').clientHeight===h,h0);
   // Les pastilles ont les couleurs des personnes de la scène (les jetons du thème).
   const couleurs=await page.evaluate(()=>{const c=s=>getComputedStyle(document.querySelector(s)).backgroundColor,j=n=>{const e=document.createElement('span');e.style.color='var(--dv-'+n+')';document.getElementById('direct').appendChild(e);const v=getComputedStyle(e).color;e.remove();return v;};
     return [[c('.dl-travail'),j('travail')],[c('.dl-attente'),j('attente')],[c('.dl-neutre'),j('neutre')]];});
   for(const [pastille,scene] of couleurs)assert.equal(pastille,scene);
   await nav.vueDuPlan(page,'plat');
-  assert.deepEqual([await page.locator('#direct-legende').isVisible(),await page.locator('#direct-note').isVisible(),await page.locator('#legende-plan').isVisible()],[false,false,true]);
+  assert.deepEqual([await page.locator('#direct-legende').isVisible(),await page.locator('#direct-note').isVisible(),await page.locator('#direct-plus').isVisible(),await page.locator('#legende-plan').isVisible()],[false,false,false,true]);
 
   // 4. Le poste de travail se règle dans la fiche de l'équipe : cinq choix, le défaut dit ; il ne change aucun calcul.
   //    (Les effectifs calculés de l'unité se posent au premier changement : la journée de référence est celle d'un

@@ -44,7 +44,7 @@ test('les cinq questions, dans l’ordre de l’évolution 15', () => {
   for (const n of [1, 2, 3, 4, 5]) assert.ok(section(html, n).includes('aria-labelledby="dq-titre-' + n + '"'), 'la question ' + n + ' porte son titre');
 });
 
-test('1. les personnes par service à l’heure rejouée : au travail, en pause, sans travail, présents — ceux des indicateurs', () => {
+test('1. les personnes par service à l’heure rejouée : au travail ; en pause, en appui ou en chemin ; sans travail ; présents — ceux des indicateurs', () => {
   const ids = U.site.zones.flatMap(z => z.services);
   for (const t of HEURES) {
     const etat = E.etatA(U.journee, t), html = Q.personnes(entree(U, t));
@@ -52,11 +52,19 @@ test('1. les personnes par service à l’heure rejouée : au travail, en pause,
     // Une ligne par service, dans l'ordre des zones ; son nom est un bouton.
     const lignes = [...html.matchAll(/<tr[^>]*><th scope="row"><button type="button" class="dq-service" data-direct-service="([^"]*)" aria-pressed="(true|false)"[^>]*>([^<]*)<\/button>[\s\S]*?<\/tr>/g)];
     assert.deepEqual(lignes.map(m => m[1]), ids, 'à ' + hh(t));
-    const total = { auTravail: 0, enPause: 0, sansTravail: 0, presents: 0 };
+    const total = { auTravail: 0, ailleurs: 0, sansTravail: 0, presents: 0 };
+    // Les titres des colonnes : celui du milieu reprend les mots de la légende (évolution 16, retouches).
+    assert.deepEqual([...html.matchAll(/<th scope="col" class="num" data-etat="\w+">([^<]*)<\/th>/g)].map(m => m[1]), ['Au travail', 'En pause, en appui ou en chemin', 'Sans travail', 'Présents']);
     for (const m of lignes) {
       const x = etat.services[m[1]] || {}, cellules = Object.fromEntries([...m[0].matchAll(/data-etat="(\w+)">(\d+)</g)].map(c => [c[1], +c[2]]));
-      assert.deepEqual(Object.keys(cellules), ['auTravail', 'enPause', 'sansTravail', 'presents'], 'les quatre colonnes, dans l’ordre');
-      for (const e of Q.ETATS) { assert.equal(cellules[e], x[e] || 0, m[1] + ' à ' + hh(t) + ' : ' + e); total[e] += x[e] || 0; }
+      assert.deepEqual(Object.keys(cellules), ['auTravail', 'ailleurs', 'sansTravail', 'presents'], 'les quatre colonnes, dans l’ordre');
+      // Au travail, sans travail et présents : ceux des indicateurs ; le milieu : tous les autres présents (en pause, en
+      // appui, en chemin). Les trois premières colonnes font les présents.
+      for (const e of ['auTravail', 'sansTravail', 'presents']) assert.equal(cellules[e], x[e] || 0, m[1] + ' à ' + hh(t) + ' : ' + e);
+      assert.equal(cellules.ailleurs, (x.presents || 0) - (x.auTravail || 0) - (x.sansTravail || 0), m[1] + ' à ' + hh(t) + ' : en pause, en appui ou en chemin');
+      assert.ok(cellules.ailleurs >= (x.enPause || 0), m[1] + ' à ' + hh(t) + ' : au moins les personnes en pause');
+      assert.equal(cellules.auTravail + cellules.ailleurs + cellules.sansTravail, cellules.presents, m[1] + ' à ' + hh(t) + ' : la somme des trois colonnes fait les présents');
+      for (const e of Q.ETATS) total[e] += cellules[e];
       assert.equal(m[3], U.noms[m[1]]);
     }
     // L'unité : la somme des services.
@@ -156,4 +164,24 @@ test('dans le panneau : les cinq réponses sans service choisi, le détail du se
   const avant = JSON.stringify(U.journee.reponses);
   Q.rendu(entree(U, 560, { essais: { A: U.journee.reponses, B: SANS.journee.reponses }, montre: 'B' }));
   assert.equal(JSON.stringify(U.journee.reponses), avant);
+});
+
+test('les trois premières colonnes font les présents, pour chaque service, à chaque quart d’heure — aussi quand des chauffeurs sont sur la route', () => {
+  const ids = U.site.zones.flatMap(z => z.services);
+  let ailleursSeuls = 0, heures = 0;
+  for (let t = Math.floor(U.bornes.de / 15) * 15; t <= U.bornes.a; t += 15) {
+    const etat = E.etatA(U.journee, t), tournee = E.vehiculesA(U.r, t).length > 0;
+    heures++;
+    for (const id of ids) {
+      const x = etat.services[id] || {}, c = Q.colonnes(etat.services[id]);
+      assert.ok((x.auTravail || 0) + (x.sansTravail || 0) <= (x.presents || 0), id + ' à ' + hh(t) + ' : jamais plus de personnes au travail ou sans travail que de présents');
+      assert.equal(c.auTravail + c.ailleurs + c.sansTravail, c.presents, id + ' à ' + hh(t) + ' : la somme fait les présents');
+      assert.deepEqual([c.auTravail, c.sansTravail, c.presents], [x.auTravail || 0, x.sansTravail || 0, x.presents || 0], id + ' à ' + hh(t) + ' : les chiffres des indicateurs');
+      // Le cas du constat : des présents qui ne sont ni au travail, ni en pause, ni sans travail — en appui ou en chemin.
+      if (tournee && c.presents > 0 && c.auTravail === 0 && c.sansTravail === 0 && !(x.enPause > 0)) { ailleursSeuls++; assert.equal(c.ailleurs, c.presents); }
+    }
+  }
+  assert.ok(heures > 80 && ailleursSeuls > 0, 'la journée fictive a des heures où des présents ne sont ni au travail, ni en pause, ni sans travail pendant une tournée (' + ailleursSeuls + ')');
+  // Sans personne : des zéros.
+  assert.deepEqual(Q.colonnes(undefined), { auTravail: 0, ailleurs: 0, sansTravail: 0, presents: 0 });
 });

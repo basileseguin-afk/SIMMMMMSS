@@ -416,6 +416,8 @@ function actionService(action,id){
   } else if(action==='voir'){
     if(Sim.onglets)Sim.onglets.choisir('j-plan');
     selection=null;selectionner(id);
+    // Le service choisi se lit dans « En ce moment » : replié, il s'ouvre.
+    if(selection)ouvrirEnCeMoment();
   } else if(action==='plan'){
     if(!editMode)basculerEdition();
     if(id&&Sim.editor){Sim.editor.select(id);selectionner(id);}
@@ -952,8 +954,20 @@ function initTheme(){
 /* « En ce moment » se replie : le plan rejoué prend alors toute la largeur.
  * Une préférence d'affichage, retenue dans ce navigateur, comme le thème. Sans
  * choix retenu, il s'ouvre sur un écran large et se replie sur un écran
- * étroit : le plan d'abord. */
+ * étroit : le plan d'abord — sous 1 200 px ; sous 1 500 px pour la scène en
+ * relief de « En direct », qui passe d'abord (évolution 16, retouches). */
 const CLE_EN_CE_MOMENT='ory-ui-en-ce-moment';
+const LARGEUR_EN_CE_MOMENT={plan:1200,relief:1500};
+/* Le choix de la visite : « ouvert », « replie », ou rien (selon l'écran). Le bouton le retient dans ce navigateur ;
+ * choisir un service l'ouvre pour la visite, sans rien retenir. */
+let choixEnCeMoment=null;
+function enCeMomentParDefaut(){
+  const relief=document.body.dataset.direct==='relief'&&document.body.dataset.sous==='j-plan';
+  return !window.matchMedia||matchMedia('(min-width: '+(relief?LARGEUR_EN_CE_MOMENT.relief:LARGEUR_EN_CE_MOMENT.plan)+'px)').matches;
+}
+function majEnCeMoment(){appliquerEnCeMoment(choixEnCeMoment?choixEnCeMoment!=='replie':enCeMomentParDefaut());}
+/* Ouvre « En ce moment » pour la visite (un service vient d'être choisi : son détail doit se voir). */
+function ouvrirEnCeMoment(){choixEnCeMoment='ouvert';appliquerEnCeMoment(true);}
 function appliquerEnCeMoment(ouvert){
   document.body.classList.toggle('sans-en-ce-moment',!ouvert);
   const b=document.getElementById('btn-en-ce-moment');if(!b)return;
@@ -962,13 +976,14 @@ function appliquerEnCeMoment(ouvert){
 }
 function initEnCeMoment(){
   const b=document.getElementById('btn-en-ce-moment');if(!b)return;
-  let choix=null;
-  try{choix=localStorage.getItem(CLE_EN_CE_MOMENT);}catch(e){/* stockage indisponible : selon l'écran */}
-  appliquerEnCeMoment(choix?choix!=='replie':!window.matchMedia||matchMedia('(min-width: 1200px)').matches);
+  try{const c=localStorage.getItem(CLE_EN_CE_MOMENT);choixEnCeMoment=c==='ouvert'||c==='replie'?c:null;}catch(e){/* stockage indisponible : selon l'écran */}
+  majEnCeMoment();
   b.addEventListener('click',()=>{
-    const o=document.body.classList.contains('sans-en-ce-moment');appliquerEnCeMoment(o);
-    try{localStorage.setItem(CLE_EN_CE_MOMENT,o?'ouvert':'replie');}catch(e){/* le choix vaut pour la visite */}
+    const o=document.body.classList.contains('sans-en-ce-moment');choixEnCeMoment=o?'ouvert':'replie';appliquerEnCeMoment(o);
+    try{localStorage.setItem(CLE_EN_CE_MOMENT,choixEnCeMoment);}catch(e){/* le choix vaut pour la visite */}
   });
+  // Sans choix, l'état suit la page et sa vue : la scène en relief demande plus de place que le plan dessiné.
+  if(typeof MutationObserver==='function')new MutationObserver(()=>{if(!choixEnCeMoment)majEnCeMoment();}).observe(document.body,{attributes:true,attributeFilter:['data-sous','data-direct']});
 }
 function majHauteurEntete(){
   const t=document.getElementById('tete-page');
@@ -2203,6 +2218,14 @@ function choisirVueDirect(mode) {
 function initDirect() {
   const hote = document.getElementById('direct'), choix = document.getElementById('direct-choix');
   if (!hote || !window.OrlyDirectVue || !window.OrlySite) return;
+  // La ligne de la légende se déplie (toute la légende, la note entière, les gestes de la caméra) et se replie : la
+  // scène reprend alors sa place (évolution 16, retouches).
+  const plus = document.getElementById('direct-plus'), bande = document.getElementById('plan-bande');
+  if (plus && bande) plus.addEventListener('click', () => {
+    const ouverte = !bande.classList.contains('ouverte');
+    bande.classList.toggle('ouverte', ouverte); plus.setAttribute('aria-expanded', String(ouverte)); plus.textContent = ouverte ? 'Replier' : 'Tout lire';
+    if (Sim.direct) Sim.direct.demander();
+  });
   Sim.direct = OrlyDirectVue.creer(hote, {
     lire: () => { const x = lectureDirecte(), m = journeeMontree(); return { site: m.site, journee: m.j, t: Sim.vue && !Sim.vue.vide ? Sim.vue.t : null, selection,
       // Les ateliers réglés (leurs îlots, leur poste de travail) ; la lecture en cours (les personnes au travail bougent).
@@ -2272,7 +2295,7 @@ function serviceSansEquipe() {
 }
 function choisirServiceDirect(id) {
   selectionner(id);
-  if (selection && document.body.classList.contains('sans-en-ce-moment')) appliquerEnCeMoment(true);
+  if (selection) ouvrirEnCeMoment();
 }
 /** Échap : ne plus suivre le vol ; sinon, fermer le détail du service. Dit si quelque chose a été annulé. */
 function annulerDirect() {

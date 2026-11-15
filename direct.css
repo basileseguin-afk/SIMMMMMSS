@@ -54,9 +54,8 @@
 .direct-cmd .btn:focus-visible{box-shadow:var(--ds-focus);border-color:var(--ds-accent)}
 .direct-cmd .dc-sep{align-self:stretch;width:1px;margin:4px 2px;background:var(--ds-bordure)}
 .direct-cmd .dc-signe{font-size:var(--ds-t-14);line-height:1}
-.direct-aide{position:absolute;left:var(--ds-e-3);bottom:var(--ds-e-3);z-index:1;margin:0;max-width:46%;font-size:var(--ds-t-11);line-height:1.35;color:var(--ds-texte-3);pointer-events:none}
-@container toile (max-width:760px){.direct-aide{display:none}}
-@media(max-width:900px){.direct-aide{display:none}}
+/* Les gestes de la caméra : rangés dans la ligne de la légende, lus quand on la déplie (évolution 16, retouches). */
+.direct-aide{display:none;margin:0;font-size:var(--ds-t-11);line-height:14px;color:var(--ds-texte-3)}
 
 /* Le choix de la vue : « En relief » (la scène générée) ou « À plat » (le plan dessiné), avec les mêmes données. Un seul
  * contrôle à deux segments, de la hauteur des boutons voisins : la ligne du titre ne grandit pas. */
@@ -79,13 +78,24 @@
 .direct-legende .dl-sale{background:var(--dv-sale)}
 .direct-legende .dl-sep{align-self:stretch;width:1px;margin:2px 0;background:var(--ds-bordure)}
 .direct-legende .dl-tranche{color:var(--ds-texte-3)}
-/* En relief, la légende a sa propre ligne sous les chiffres, et passe à la ligne plutôt que de se couper. */
-body[data-direct="relief"] .plan-bande{flex-wrap:wrap}
-body[data-direct="relief"] .plan-bande .direct-legende{flex:1 1 100%;flex-wrap:wrap}
-/* Trop étroite pour une ligne, la légende se coupe entre les personnes et les chariots. */
-@container bande (max-width:800px){.direct-legende .dl-sep{flex:0 0 100%;height:0;margin:0;background:none}}
-.direct-note{margin:0;padding:1px var(--ds-e-4) 3px;min-height:18px;font-size:var(--ds-t-11);line-height:14px;color:var(--ds-texte-3);background:var(--ds-surface-1)}
-body:not([data-direct="relief"]) .direct-legende,body:not([data-direct="relief"]) .direct-note{display:none!important}
+/* En relief, la légende et la note tiennent sur une seule ligne : la scène d'abord (évolution 16, retouches). La légende
+   d'abord, la note ensuite, coupée par des points de suspension ; « Tout lire » déplie la ligne — toute la légende, la
+   note entière et les gestes de la caméra — et « Replier » la referme. */
+body[data-direct="relief"] .plan-bande{flex-wrap:nowrap;overflow:hidden}
+/* Trop étroite pour toute la légende, la ligne en montre les premières entrées, entières : les suivantes passent sur
+   une ligne cachée, que « Tout lire » découvre. */
+body[data-direct="relief"] .plan-bande .direct-legende{flex:0 1 auto;flex-wrap:wrap;min-width:0;max-height:18px;overflow:hidden;white-space:nowrap}
+body[data-direct="relief"] .plan-bande .direct-legende>span{flex:0 0 auto}
+.direct-note{flex:1 1 0;min-width:0;margin:0;font-size:var(--ds-t-11);line-height:18px;color:var(--ds-texte-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.direct-plus{flex:0 0 auto;margin-left:auto;min-height:20px;padding:0 8px;font-size:var(--ds-t-11)}
+body[data-direct="relief"] .plan-bande.ouverte{flex-wrap:wrap;overflow:visible}
+body[data-direct="relief"] .plan-bande.ouverte .direct-legende{flex:1 1 100%;flex-wrap:wrap;max-height:none;white-space:normal;overflow:visible;order:1}
+.plan-bande.ouverte .direct-note{flex:1 1 100%;white-space:normal;overflow:visible;line-height:14px;order:2}
+.plan-bande.ouverte .direct-aide{display:block;flex:1 1 100%;order:3}
+.plan-bande.ouverte .direct-plus{order:0}
+body:not([data-direct="relief"]) .direct-legende,body:not([data-direct="relief"]) .direct-note,body:not([data-direct="relief"]) .direct-aide,body:not([data-direct="relief"]) .direct-plus{display:none!important}
+/* Le tableau des personnes : l'en-tête « En pause, en appui ou en chemin » se replie dans sa colonne. */
+.dq-personnes thead .num{white-space:normal;min-width:54px}
 
 /* En relief : la scène remplace le plan dessiné et ses outils (les liens, le fond, le zoom du plan) ; à plat, l'inverse. */
 body[data-direct="relief"][data-sous="j-plan"] #view-plan,

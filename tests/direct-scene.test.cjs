@@ -144,25 +144,35 @@ test('les boîtes à dessiner pour un angle : les murs du fond seulement, les bo
   }
 });
 
-test('les étiquettes : le nom, « n au travail / n présents », « n lots à faire » s’il y en a ; une zone vide, son nom seul', () => {
-  const etat = E.etatA(journee, J.t), l = D.etiquettes(SITE, etat);
-  assert.deepEqual(l.map(e => e.id), SITE.zones.map(z => z.id));
+test('les étiquettes : par défaut le nom seul, en petit ; les zones demandées disent « n au travail / n présents » et « n lots à faire »', () => {
+  const etat = E.etatA(journee, J.t), ids = SITE.zones.map(z => z.id);
+  // Par défaut (évolution 16, retouches) : chaque zone ne dit que son nom, en étiquette compacte — la scène d'abord.
+  const noms = D.etiquettes(SITE, etat);
+  assert.deepEqual(noms.map(e => e.id), ids);
+  for (const [i, z] of SITE.zones.entries()) {
+    assert.equal(noms[i].titre, z.nom);
+    assert.deepEqual(noms[i].lignes, [], z.nom + ' : son nom seul');
+    assert.equal(noms[i].compacte, true, z.nom + ' : en petit');
+    assert.deepEqual([noms[i].x, noms[i].y, noms[i].z], [z.x + z.w / 2, z.y + z.h / 2, D.H.etiquette], 'au-dessus de sa zone');
+  }
+  // Les zones demandées (celle qu'on survole, celle du service choisi, celle du goulot) disent leurs chiffres.
+  const l = D.etiquettes(SITE, etat, null, ids);
   for (const [i, z] of SITE.zones.entries()) {
     const n = z.services.reduce((s, id) => { const x = etat.services[id] || { auTravail: 0, presents: 0, lots: 0 }; return { a: s.a + x.auTravail, p: s.p + x.presents, l: s.l + x.lots }; }, { a: 0, p: 0, l: 0 });
     assert.equal(l[i].titre, z.nom);
-    // Une zone où il n'y a personne et rien à faire ne dit que son nom (évolution 16 e) ; les autres, leurs chiffres.
-    if (n.p === 0 && n.l === 0) { assert.deepEqual(l[i].lignes, [], z.nom + ' : son nom seul'); assert.equal(l[i].compacte, true); continue; }
     assert.equal(l[i].lignes[0], n.a + ' au travail / ' + n.p + (n.p > 1 ? ' présents' : ' présent'));
     assert.deepEqual(l[i].lignes.slice(1), n.l ? [n.l + (n.l > 1 ? ' lots à faire' : ' lot à faire')] : []);
-    assert.deepEqual([l[i].x, l[i].y, l[i].z], [z.x + z.w / 2, z.y + z.h / 2, D.H.etiquette], 'au-dessus de sa zone');
+    assert.equal(l[i].compacte, undefined, z.nom + ' : à sa taille quand elle dit ses chiffres');
   }
   assert.ok(l.some(e => e.lignes.length === 2) || Object.values(etat.services).every(s => !s.lots));
+  // Une seule zone demandée : elle seule dit ses chiffres.
+  assert.deepEqual(D.etiquettes(SITE, etat, null, [ids[1]]).map(e => e.lignes.length > 0), ids.map((id, i) => i === 1));
   // Le singulier ; sans journée : le nom seul.
   assert.deepEqual([D.pluriel(1, 'lot à faire', 'lots à faire'), D.pluriel(0, 'présent', 'présents'), D.pluriel(2, 'présent', 'présents')], ['1 lot à faire', '0 présent', '2 présents']);
   assert.deepEqual(D.etiquettes(SITE, null).map(e => e.lignes), SITE.zones.map(() => []));
   // À une heure où des lots attendent : la ligne y est.
   const s = J.resultat.stocks.sejours.find(x => SITE.zones.some(z => z.services.includes(x.vers))), quand = E.etatA(journee, s.entree + 1);
-  const e = D.etiquettes(SITE, quand).find(x => x.id === SITE.zones.find(z => z.services.includes(s.vers)).id);
+  const zoneDuLot = SITE.zones.find(z => z.services.includes(s.vers)).id, e = D.etiquettes(SITE, quand, null, [zoneDuLot]).find(x => x.id === zoneDuLot);
   assert.match(e.lignes[1], /^\d+ lots? à faire$/);
 });
 

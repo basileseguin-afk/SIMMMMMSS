@@ -181,3 +181,25 @@ test('les étiquettes gardent leur taille et ne se recouvrent pas ; sans gêne, 
   // Deux étiquettes qui se touchent sont dites.
   assert.deepEqual(C.recouvrements([{ id: 'p', x: 0, y: 0, w: 10, h: 10 }, { id: 'q', x: 5, y: 5, w: 10, h: 10 }, { id: 'r', x: 40, y: 0, w: 5, h: 5 }]), [['p', 'q']]);
 });
+
+test('la marge du cadrage : 24 px, et jamais plus de 4 % du petit côté — sur un petit écran, la scène remplit la toile', () => {
+  assert.equal(C.MARGE, 24);
+  assert.equal(C.PART_DE_MARGE, 0.04);
+  // Un grand écran garde ses 24 px ; un petit, 4 % de son petit côté ; sans écran, 24 px.
+  assert.equal(C.margeDe({ w: 1300, h: 760 }), 24);
+  assert.equal(C.margeDe({ w: 1134, h: 508 }), 508 * 0.04);
+  assert.equal(C.margeDe({ w: 400, h: 900 }), 16);
+  assert.equal(C.margeDe(null), 24);
+  // La toile d'un portable (1 366 × 768, le panneau replié) : la scène cadrée touche ses marges sur le côté qui la limite,
+  // et sa marge ne dépasse pas 5 % de la toile.
+  const boite = { x0: -7, y0: 0, x1: 54, y1: 20, z0: 0, z1: 3 };
+  for (const ecran of [{ w: 1134, h: 508, haut: 0, bas: 0, gauche: 0, droite: 0 }, { w: 1668, h: 820, haut: 0, bas: 0, gauche: 0, droite: 0 }, { w: 520, h: 700, haut: 0, bas: 0, gauche: 0, droite: 0 }]) {
+    const cam = C.cadrer(C.camera({}), ecran, boite), e = C.emprise(cam, ecran, boite), m = C.margeDe(ecran);
+    assert.ok(C.tient(cam, ecran, boite), 'la scène tient');
+    const marges = { gauche: e.x0, droite: ecran.w - e.x1, haut: e.y0, bas: ecran.h - e.y1 };
+    const limite = Math.min(marges.gauche, marges.droite) <= Math.min(marges.haut, marges.bas) ? ['gauche', 'droite'] : ['haut', 'bas'];
+    for (const c of limite) assert.ok(Math.abs(marges[c] - m) < 0.6, ecran.w + ' × ' + ecran.h + ' : à sa marge du côté ' + c + ' (' + marges[c] + ')');
+    const part = limite[0] === 'haut' ? (e.y1 - e.y0) / ecran.h : (e.x1 - e.x0) / ecran.w;
+    assert.ok(part >= 0.9 && m / Math.min(ecran.w, ecran.h) <= 0.05, ecran.w + ' × ' + ecran.h + ' : la scène prend ' + Math.round(part * 100) + ' % du côté qui la limite');
+  }
+});

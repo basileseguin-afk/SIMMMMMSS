@@ -27,6 +27,9 @@
   const SITE_MIN = 25, SITE_MAX = 80, ZOOM_MIN = 0.5, ZOOM_MAX = 160;
   /** La marge autour de la scène cadrée, en pixels d'écran. */
   const MARGE = 24;
+  /** La marge du cadrage : 24 px, et jamais plus de 4 % du petit côté de l'écran — sur un petit écran, la scène d'abord. */
+  const PART_DE_MARGE = 0.04;
+  const margeDe = ecran => { const e = ecran || {}, c = Math.min(e.w || 0, e.h || 0); return c > 0 ? Math.min(MARGE, c * PART_DE_MARGE) : MARGE; };
   /** Un pas de rotation et d'inclinaison (les boutons, les touches), en degrés ; un pas de zoom. */
   const PAS_CAP = 15, PAS_SITE = 10, PAS_ZOOM = 1.25;
 
@@ -100,7 +103,7 @@
    * La caméra, à son angle, qui fait tenir la boîte entière dans la zone visible, à `marge` pixels de ses bords : le plus
    * grand zoom qui la contient, la boîte au centre. Sans boîte ou sans écran : la caméra telle quelle.
    */
-  function cadrer(cam, ecran, boite, marge = MARGE) {
+  function cadrer(cam, ecran, boite, marge = margeDe(ecran)) {
     const v = visible(ecran), lw = v.x1 - v.x0 - 2 * marge, lh = v.y1 - v.y0 - 2 * marge;
     if (!boite || !(lw > 0) || !(lh > 0)) return cam;
     // À un pixel par mètre, la boîte projetée : sa taille donne le zoom, son milieu le centre.
@@ -111,7 +114,7 @@
   }
 
   /** La boîte tient entière dans la zone visible, à `marge` pixels de ses bords. */
-  function tient(cam, ecran, boite, marge = MARGE) {
+  function tient(cam, ecran, boite, marge = margeDe(ecran)) {
     const v = visible(ecran), e = emprise(cam, ecran, boite), t = 0.5;
     return e.x0 >= v.x0 + marge - t && e.y0 >= v.y0 + marge - t && e.x1 <= v.x1 - marge + t && e.y1 <= v.y1 - marge + t;
   }
@@ -199,7 +202,7 @@
     return l;
   }
 
-  const api = { CAP_MAQUETTE, SITE_MAQUETTE, SITE_MIN, SITE_MAX, ZOOM_MIN, ZOOM_MAX, MARGE, PAS_CAP, PAS_SITE, PAS_ZOOM,
+  const api = { CAP_MAQUETTE, SITE_MAQUETTE, SITE_MIN, SITE_MAX, ZOOM_MIN, ZOOM_MAX, MARGE, PART_DE_MARGE, margeDe, PAS_CAP, PAS_SITE, PAS_ZOOM,
     camera, visible, projecteur, projeter, auSol, deplacer, zoomer, tourner, incliner, emprise, cadrer, tient, mursDuFond, facesDevant,
     ordre, decouper, entre, placerEtiquettes, recouvrements };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

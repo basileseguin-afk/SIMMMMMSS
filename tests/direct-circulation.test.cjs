@@ -430,3 +430,31 @@ test('la lecture ne change rien et rend toujours la même scène', () => {
   // Aucun nombre invalide dans la scène.
   for (const t of HEURES) { const c = circule(t); for (const o of [...c.chariots, ...c.pousseurs, ...c.vehicules, ...c.avions, ...c.marques]) assert.ok(Number.isFinite(o.x) && Number.isFinite(o.y), 'à ' + P.hhmm(t)); }
 });
+
+test('les vols qui portent leur étiquette : ceux qu’on charge, puis ceux qui partent dans l’heure ; six au plus', () => {
+  const avion = (id, depart, plus = {}) => ({ id, depart, decolle: 0, ...plus });
+  assert.equal(D.HEURE_DES_VOLS, 60);
+  assert.equal(D.VOLS_ETIQUETES, 6);
+  // Dans l'heure qui vient : oui ; plus tard, ou son heure passée sans qu'on le charge : non.
+  const avions = [avion('F10', 630), avion('F11', 661), avion('F12', 600), avion('F13', 540, { enRetard: true }), avion('F14', 605, { decolle: 0.4 })];
+  assert.deepEqual(D.volsEtiquetes(avions, [], 600), ['F12', 'F10'], 'les plus proches d’abord ; ni celui d’après l’heure, ni celui en retard, ni celui qui décolle');
+  // Celui qu'on charge passe devant, même en retard ; une tournée qui rentre ne charge plus.
+  assert.deepEqual(D.volsEtiquetes(avions, [{ phase: 'aller', vols: ['F13'] }], 600), ['F13', 'F12', 'F10']);
+  assert.deepEqual(D.volsEtiquetes(avions, [{ phase: 'charge', vols: ['F13', 'F11'] }], 600), ['F13', 'F11', 'F12', 'F10'], 'ceux qu’on charge d’abord, le plus tôt en tête');
+  assert.deepEqual(D.volsEtiquetes(avions, [{ phase: 'retour', vols: ['F13'] }], 600), ['F12', 'F10']);
+  // Six au plus, quel que soit le nombre de vols dans l'heure.
+  const beaucoup = Array.from({ length: 10 }, (x, i) => avion('G' + i, 600 + i * 5));
+  assert.deepEqual(D.volsEtiquetes(beaucoup, [], 600), ['G0', 'G1', 'G2', 'G3', 'G4', 'G5']);
+  assert.deepEqual(D.volsEtiquetes(beaucoup, [{ phase: 'aller', vols: ['G9'] }], 600), ['G9', 'G0', 'G1', 'G2', 'G3', 'G4']);
+  assert.deepEqual(D.volsEtiquetes(beaucoup, [], 600, 2), ['G0', 'G1']);
+  assert.deepEqual(D.volsEtiquetes([], [], 600), []);
+  // Sur la journée fictive, à chaque heure de contrôle : six au plus, tous des avions présents, chargés ou dans l'heure.
+  let vus = 0;
+  for (const t of HEURES) {
+    const c = circule(t), ids = D.volsEtiquetes(c.avions, c.vehicules, t), enCharge = new Set(c.vehicules.filter(v => v.phase !== 'retour').flatMap(v => v.vols));
+    assert.ok(ids.length <= 6, 'à ' + t + ' : ' + ids.length);
+    for (const id of ids) { const a = c.avions.find(o => o.id === id); assert.ok(a && !(a.decolle > 0) && (enCharge.has(id) || (a.depart >= t && a.depart - t <= 60)), id + ' à ' + t); }
+    vus += ids.length;
+  }
+  assert.ok(vus > 20, 'la journée fictive a des vols étiquetés (' + vus + ')');
+});

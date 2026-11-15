@@ -110,7 +110,8 @@ const hh=t=>{const m=((Math.round(t)%1440)+1440)%1440;return String(Math.floor(m
     return null;});
   if(deux){const e=await aLHeure(deux.t),autre=deux.zones.find(z=>z!==e.goulot.zone),l=e.etiquettes.find(q=>q.id===autre);
     assert.equal(e.teintes[autre],'critique');
-    assert.ok(l&&l.ton==='critique'&&l.lignes[0]==='coince','une zone critique qui n’est pas le goulot du moment dit « coince » : '+JSON.stringify(l));}
+    // (En petit, le mot suit le nom du service sur la même ligne — évolution 16, retouches.)
+    assert.ok(l&&l.ton==='critique'&&l.compacte&&/ · coince$/.test(l.titre),'une zone critique qui n’est pas le goulot du moment dit « coince » : '+JSON.stringify(l));}
 
   // 4. Un clic sur un service ouvre son détail dans le panneau ; Échap le referme.
   await aLHeure(G.debut+60);

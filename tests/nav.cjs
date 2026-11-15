@@ -21,7 +21,9 @@ async function vueDuPlan(page, mode) {
   if (await page.evaluate(() => document.body.dataset.direct) !== mode) { await b.click(); await page.waitForTimeout(150); }
 }
 /* `aller(page, 'j-plan')` choisit « À plat » : les tests d'avant l'évolution 16 y lisent le plan dessiné. Ceux de la vue en
- * relief demandent `{ relief: true }`. */
+ * relief demandent `{ relief: true }`. En relief, sous 1 500 px de large, « En ce moment » est replié à l'ouverture
+ * (évolution 16, retouches) : ces tests lisent le panneau, il s'ouvre donc par son bouton, comme à la main — sauf avec
+ * `{ panneau: false }`, pour les tests qui regardent la page telle qu'elle s'ouvre. */
 async function aller(page, id, options) {
   const partie = await page.evaluate(id => (OrlyOnglets.partieDe(id) || {}).id, id);
   if (!partie) throw new Error('page inconnue : ' + id);
@@ -48,6 +50,9 @@ async function aller(page, id, options) {
   }
   await page.waitForTimeout(150);
   if (id === 'j-plan') await vueDuPlan(page, options && options.relief ? 'relief' : 'plat');
+  if (id === 'j-plan' && options && options.relief && options.panneau !== false && await page.evaluate(() => document.body.classList.contains('sans-en-ce-moment'))) {
+    await page.locator('#btn-en-ce-moment').click(); await page.waitForTimeout(150);
+  }
 }
 /* Comme l'ancienne barre d'étapes : aller à une vue, c'est retrouver sa
  * dernière page ouverte (sinon sa première) ; y être déjà ne change rien. */

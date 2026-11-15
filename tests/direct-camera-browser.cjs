@@ -41,8 +41,13 @@ const MARGE=24,proche=(a,b,mot,t=1.5)=>assert.ok(Math.abs(a-b)<=t,mot+' : '+a+' 
    const tient=(e,mot)=>{
      const v={x0:e.ecran.gauche,y0:e.ecran.haut,x1:e.ecran.w-e.ecran.droite,y1:e.ecran.h-e.ecran.bas},b=e.emprise;
      assert.ok(e.tient,mot+' : la scène tient');
-     assert.ok(b.x0>=v.x0+MARGE-0.6&&b.y0>=v.y0+MARGE-0.6&&b.x1<=v.x1-MARGE+0.6&&b.y1<=v.y1-MARGE+0.6,mot+' : à 24 px des bords ('+[b.x0,b.y0,b.x1,b.y1].map(Math.round)+' dans '+[v.x0,v.y0,v.x1,v.y1]+')');
-     assert.ok(Math.min(b.x0-v.x0,v.x1-b.x1,b.y0-v.y0,v.y1-b.y1)<MARGE+1,mot+' : au plus grand');
+     // La marge du cadrage : 24 px, et jamais plus de 4 % du petit côté de la toile (évolution 16, retouches) ; plus aucune
+     // bande n'est gardée libre : la scène remplit la toile.
+     const M=e.marge;
+     assert.ok(M>0&&M<=MARGE&&M<=0.04*Math.min(e.ecran.w,e.ecran.h)+1e-6,mot+' : la marge ('+M+')');
+     assert.deepEqual([e.ecran.haut,e.ecran.bas,e.ecran.gauche,e.ecran.droite],[0,0,0,0],mot+' : aucune bande gardée libre');
+     assert.ok(b.x0>=v.x0+M-0.6&&b.y0>=v.y0+M-0.6&&b.x1<=v.x1-M+0.6&&b.y1<=v.y1-M+0.6,mot+' : à sa marge des bords ('+[b.x0,b.y0,b.x1,b.y1].map(Math.round)+' dans '+[v.x0,v.y0,v.x1,v.y1]+')');
+     assert.ok(Math.min(b.x0-v.x0,v.x1-b.x1,b.y0-v.y0,v.y1-b.y1)<M+1,mot+' : au plus grand');
    };
    const tailles=e=>e.etiquettes.map(l=>[l.id,l.w,l.h]);
 
@@ -54,17 +59,20 @@ const MARGE=24,proche=(a,b,mot,t=1.5)=>assert.ok(Math.abs(a-b)<=t,mot+' : '+a+' 
    assert.deepEqual([e0.camera.cap,Math.round(e0.camera.site*100)/100,e0.ajustee],[45,35.26,true],V+'l’angle de la maquette');
    assert.deepEqual([e0.ecran.w,e0.ecran.h],[Math.round(cadre.width),Math.round(cadre.height)]);
    tient(e0,V+'à l’ouverture');
-   // Une zone par service qui a un atelier ; une étiquette par zone, avec « n au travail / n présents » ; une zone où il
-   // n'y a personne et rien à faire ne dit que son nom ; celle du goulot du moment dit d'abord sa phrase (évolution 16 e).
+   // Une zone par service qui a un atelier ; une étiquette par zone : le nom seul, en petit — sauf celle du goulot du
+   // moment, qui dit sa phrase puis « n au travail / n présents » et ses lots à faire (évolution 16 e, puis retouches).
    assert.ok(e0.zones.length>=6&&e0.zones.includes('food')&&e0.zones.includes('plonge'),V+e0.zones.join(' '));
    assert.deepEqual(e0.etiquettes.map(l=>l.id),e0.zones);
-   const chiffres=l=>l.lignes.find(x=>/^\d+ au travail \/ \d+ présents?$/.test(x))||null;
-   for(const l of e0.etiquettes)assert.ok(l.lignes.length===0||chiffres(l),V+l.titre+' : '+l.lignes.join(' | '));
-   assert.ok(e0.etiquettes.some(l=>l.lignes.some(x=>/^\d+ lots? à faire$/.test(x))),V+'des lots à faire devant un service');
+   const chiffres=l=>l.lignes.find(x=>/^\d+ au travail \/ \d+ présents?$/.test(x))||null,zoneGoulot=e0.goulot.zone;
+   for(const l of e0.etiquettes){
+     if(l.id===zoneGoulot)assert.ok(chiffres(l)&&!l.compacte,V+l.titre+' : la zone du goulot dit ses chiffres : '+l.lignes.join(' | '));
+     else assert.ok(l.compacte&&l.lignes.length===0,V+l.titre+' : le nom seul, en petit : '+l.lignes.join(' | '));
+   }
+   assert.ok(e0.etiquettes.find(l=>l.id===zoneGoulot).lignes.some(x=>/^\d+ lots? à faire$/.test(x)),V+'des lots à faire devant le goulot');
    assert.deepEqual(e0.recouvrements,[],V+'aucune étiquette n’en recouvre une autre');
    // Les chiffres des étiquettes sont ceux de la journée à l'heure rejouée (direct-etat.js, les indicateurs).
    const lus=await page.evaluate(()=>{const v=Sim.direct,e=OrlyDirectEtat.etatA(v.journee,v.t);return v.site.zones.map(z=>{const n=z.services.reduce((s,id)=>{const x=e.services[id]||{auTravail:0,presents:0,lots:0};return [s[0]+x.auTravail,s[1]+x.presents,s[2]+x.lots];},[0,0,0]);return n[1]||n[2]?n[0]+' au travail / '+n[1]+(n[1]>1?' présents':' présent'):null;});});
-   assert.deepEqual(e0.etiquettes.map(chiffres),lus);
+   assert.deepEqual(e0.etiquettes.map(chiffres),lus.map((x,i)=>e0.zones[i]===zoneGoulot?x:null));
 
    // 2. Les murs dessinés sont ceux du fond : à l'écran, plus haut que le milieu de leur zone.
    const mursDerriere=async(e,mot)=>{
@@ -144,7 +152,7 @@ const MARGE=24,proche=(a,b,mot,t=1.5)=>assert.ok(Math.abs(a-b)<=t,mot+' : '+a+' 
    const cadree=await bouton('cadrer'),zb=await page.evaluate(b=>{const e=Sim.direct.etatVue();return OrlyDirectCamera.emprise(e.camera,e.ecran,b);},cuisine.boite);
    assert.deepEqual([cadree.camera.cap,cadree.ajustee],[75,false],V+'« Cadrer » garde l’angle');
    assert.ok(cadree.camera.zoom>tout.camera.zoom*1.5,V+'« Cadrer » s’approche');
-   assert.ok(zb.x0>=MARGE-0.6&&zb.y0>=cadree.ecran.haut+MARGE-0.6&&zb.x1<=cadree.ecran.w-MARGE+0.6&&zb.y1<=cadree.ecran.h-cadree.ecran.bas-MARGE+0.6,V+'la zone cadrée tient à 24 px des bords');
+   assert.ok(zb.x0>=cadree.marge-0.6&&zb.y0>=cadree.ecran.haut+cadree.marge-0.6&&zb.x1<=cadree.ecran.w-cadree.marge+0.6&&zb.y1<=cadree.ecran.h-cadree.ecran.bas-cadree.marge+0.6,V+'la zone cadrée tient à sa marge des bords');
    // Choisir dans la liste des services du panneau choisit aussi dans la scène (en relief, elle remplace « Voir un
    // service », évolution 16 e) ; sans service choisi, « Cadrer » montre tout.
    await page.locator('#direct-panneau-corps [data-direct-retour]').click();
@@ -263,6 +271,6 @@ const MARGE=24,proche=(a,b,mot,t=1.5)=>assert.ok(Math.abs(a-b)<=t,mot+' : '+a+' 
   }
 
   assert.deepEqual(erreurs,[]);
-  console.log('direct-camera-browser : ok — en relief à l’ouverture, à l’angle de la maquette, la scène entière à 24 px (1 280 et 1 920 px) ; à quatre angles, à 25° et à 80° ; les étiquettes sans recouvrement, à leur taille ; les murs du fond ; la souris, la molette, le clavier, les boutons, les doigts ; « Cadrer » ; les deux thèmes ; « À plat » et retour ; sans animation ; à plat, un plan aux coordonnées négatives entier');
+  console.log('direct-camera-browser : ok — en relief à l’ouverture, à l’angle de la maquette, la scène entière à sa marge des bords (1 280 et 1 920 px) ; à quatre angles, à 25° et à 80° ; les étiquettes sans recouvrement, à leur taille ; les murs du fond ; la souris, la molette, le clavier, les boutons, les doigts ; « Cadrer » ; les deux thèmes ; « À plat » et retour ; sans animation ; à plat, un plan aux coordonnées négatives entier');
  }catch(e){console.error(e);process.exitCode=1;}finally{await browser.close();}
 })();
